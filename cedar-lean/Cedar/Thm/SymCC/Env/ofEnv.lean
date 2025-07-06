@@ -42,52 +42,6 @@ theorem ofEnv_preserves_entity
     assumption
   case _ => contradiction
 
-theorem map_make_append_find_disjoint
-  [LT α] [StrictLT α] [DecidableEq α] [DecidableLT α]
-  [SizeOf α] [SizeOf β]
-  {l₁ : List (α × β)} {l₂ : List (α × β)} {k : α}
-  (hfind₁ : l₁.find? (λ ⟨k', _⟩ => k' == k) = none)
-  (hfind₂ : (l₂.find? (λ ⟨k', _⟩ => k' == k)).isSome) :
-  ∃ v,
-    (Map.make (l₁ ++ l₂)).find? k = some v ∧
-    (k, v) ∈ l₂
-:= by
-  have hwf : (Map.make (l₁ ++ l₂)).WellFormed := by
-    exact Map.make_wf _
-  have hsub :
-    (Map.make (l₁ ++ l₂)).kvs ⊆ l₁ ++ l₂
-  := by
-    apply List.canonicalize_subseteq
-  simp [Subset, List.Subset] at hsub
-  have ⟨v, hv⟩ :
-    ∃ v, (Map.make (l₁ ++ l₂)).find? k = some v
-  := by
-    simp only [Option.isSome] at hfind₂
-    split at hfind₂
-    rotate_left
-    contradiction
-    rename_i kv hkv
-    exists kv.snd
-    apply Map.find?_implies_make_find?
-    simp [List.find?_append]
-    apply Or.inr
-    constructor
-    · simp only [List.find?_eq_none, beq_iff_eq, Prod.forall] at hfind₁
-      exact hfind₁
-    have := List.find?_some hkv
-    simp only [beq_iff_eq] at this
-    simp only [hkv]
-    simp [←this]
-  simp only [hv, Option.some.injEq, exists_eq_left']
-  have := Map.find?_mem_toList hv
-  have := hsub k v this
-  cases this with
-  | inl hmem₁ =>
-    have := List.find?_eq_none.mp hfind₁
-    specialize this (k, v) hmem₁
-    simp at this
-  | inr h => exact h
-
 /-- An action entity type is compiled correctly -/
 theorem ofEnv_preserves_action_entity
   {Γ : Environment} {uid : EntityUID}
@@ -151,7 +105,7 @@ theorem ofEnv_preserves_action_entity
       apply (Map.in_list_iff_find?_some hwf_acts).mpr
       assumption
     · rfl
-  have ⟨_, hfind, hmem⟩ := map_make_append_find_disjoint hfind₁ hfind₂
+  have ⟨_, hfind, hmem⟩ := Map.map_make_append_find_disjoint hfind₁ hfind₂
   simp only [hfind, Option.some.injEq]
   have ⟨_, _, heq⟩ := List.mem_map.mp hmem
   simp only [Prod.mk.injEq] at heq
@@ -578,12 +532,87 @@ theorem ofEnv_request_is_swf
   exact ofEnv_request_is_wf hwf
   exact ofEnv_request_is_basic
 
+theorem mem_eraseDups_implies_mem
+  [BEq α] [LawfulBEq α]
+  {xs : List α} {x : α}
+  (hmem : x ∈ xs.eraseDups) :
+  x ∈ xs
+:= sorry
+
+theorem ofEntityType_is_wf
+  {ety : EntityType} {Γ : Environment} {entry : EntitySchemaEntry}
+  (hwf : Γ.WellFormed)
+  (hfind : Map.find? Γ.ets ety = some entry) :
+  SymEntityData.WellFormed
+    (SymEnv.ofEnv Γ).entities
+    ety
+    (SymEntityData.ofEntityType ety entry)
+:= sorry
+
+theorem ofActionType_is_wf
+  {uid : EntityUID} {Γ : Environment} {entry : ActionSchemaEntry}
+  (hwf : Γ.WellFormed)
+  (hfind : Map.find? Γ.acts uid = some entry) :
+  SymEntityData.WellFormed
+    (SymEnv.ofEnv Γ).entities
+    uid.ty
+    (SymEntityData.ofActionType
+      uid.ty
+      (List.map (fun x => x.fst.ty) (Map.toList Γ.acts)).eraseDups
+      Γ.acts)
+:= sorry
+
+theorem ofEnv_entities_is_wf
+  {Γ : Environment}
+  (hwf : Γ.WellFormed) :
+  (SymEnv.ofEnv Γ).entities.WellFormed
+:= by
+  constructor
+  · exact Map.make_wf _
+  · intros ety data hfind
+    have := Map.find?_mem_toList hfind
+    simp only [Map.kvs] at this
+    have := Map.make_mem_list_mem this
+    have := List.mem_append.mp this
+    -- Reduce to either `ofEntityType_is_wf` or `ofActionType_is_wf`
+    cases this with
+    | inl hmem_ets =>
+      have ⟨⟨ety', entry⟩, hmem_entry, heq_entry⟩ := List.mem_map.mp hmem_ets
+      simp only [Prod.mk.injEq] at heq_entry
+      have ⟨heq_ety, heq_data⟩ := heq_entry
+      have hwf_ets := wf_env_implies_wf_ets_map hwf
+      have := (Map.in_list_iff_find?_some hwf_ets).mp hmem_entry
+      simp only [heq_ety] at this heq_data
+      simp only [←heq_data]
+      exact ofEntityType_is_wf hwf this
+    | inr hmem_acts =>
+      have ⟨ety, hmem_ety, heq_entry⟩ := List.mem_map.mp hmem_acts
+      simp only [Prod.mk.injEq] at heq_entry
+      have ⟨heq_ety, heq_es⟩ := heq_entry
+      have hwf_acts := wf_env_implies_wf_acts_map hwf
+      have hmem_ety := mem_eraseDups_implies_mem hmem_ety
+      have ⟨⟨uid, entry⟩, hmem, heq⟩ := List.mem_map.mp hmem_ety
+      simp only at heq
+      have := (Map.in_list_iff_find?_some hwf_acts).mp hmem
+      simp only [heq_ety] at heq
+      simp only [←heq, ←heq_es, heq_ety]
+      exact ofActionType_is_wf hwf this
+
+theorem ofEnv_entities_is_hierarchical
+  {Γ : Environment}
+  (hwf : Γ.WellFormed) :
+  (SymEnv.ofEnv Γ).entities.Hierarchical
+:= by
+  sorry
+
 theorem ofEnv_entities_is_swf
   {Γ : Environment}
   (hwf : Γ.WellFormed) :
   (SymEnv.ofEnv Γ).entities.StronglyWellFormed
 := by
-  sorry
+  constructor
+  exact ofEnv_entities_is_wf hwf
+  exact ofEnv_entities_is_hierarchical hwf
 
 /--
 Main well-formedness theorem for `SymEnv.ofEnv`,
