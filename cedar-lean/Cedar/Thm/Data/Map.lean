@@ -427,7 +427,7 @@ theorem find?_implies_make_find?
   {l : List (α × β)}
   {k : α} {v : β}
   (h : List.find? (λ x => x.fst == k) l = some (k, v)) :
-  (Data.Map.make l).find? k = some v
+  (make l).find? k = some v
 := by
   apply (in_list_iff_find?_some (Data.Map.make_wf l)).mp
   simp only [make, Data.Map.kvs]
