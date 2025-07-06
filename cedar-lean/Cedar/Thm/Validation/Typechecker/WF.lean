@@ -306,6 +306,15 @@ theorem wf_env_implies_wf_ets_map
   have ⟨hwf_ets, _, _⟩ := hwf
   exact hwf_ets.1
 
+theorem wf_env_implies_wf_entity_entry
+  {env : Environment} {ety : EntityType} {entry : EntitySchemaEntry}
+  (hwf : env.WellFormed)
+  (hfind : env.ets.find? ety = some entry) :
+  entry.WellFormed env
+:= by
+  have ⟨hwf_ets, _⟩ := hwf
+  exact hwf_ets.2 ety entry hfind
+
 theorem wf_env_implies_wf_ancestor
   {env : Environment} {entry : EntitySchemaEntry}
   {ety : EntityType} {anc : EntityType}

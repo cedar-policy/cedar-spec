@@ -663,7 +663,42 @@ theorem ofEnumEntityType_is_wf
     (SymEnv.ofEnv Γ).entities
     ety
     (SymEntityData.ofEnumEntityType ety eids)
-:= sorry
+:= by
+  and_intros
+  all_goals simp only [
+    SymEntityData.ofEnumEntityType,
+    Map.empty, Map.toList, Map.kvs,
+  ]
+  · constructor
+    · intros _ _ h
+      simp [Map.empty, Map.toList, Map.kvs] at h
+    · simp [Map.WellFormed, Map.make, Map.empty, List.canonicalize, Map.toList]
+  · simp only [
+      Map.empty, Term.isLiteral,
+      List.nil.sizeOf_spec, Nat.reduceAdd,
+      List.all_eq_true,
+      Subtype.forall, Prod.forall,
+    ]
+    intros _ _ _ h
+    simp [List.attach₃] at h
+  · simp [Term.typeOf, Map.empty, List.attach₃]
+  · simp [Map.WellFormed, Map.make, Map.empty, List.canonicalize, Map.toList]
+  · intros _ _ h
+    contradiction
+  · simp only [UnaryFunction.argType, SymEntityData.emptyAttrs, TermType.ofType]
+  · simp [
+      UnaryFunction.outType, SymEntityData.emptyAttrs,
+      TermType.ofType, TermType.isCedarRecordType,
+      Map.empty, TermType.cedarType?, List.mapM₃,
+      List.attach₃,
+    ]
+  · intros _ _ h
+    simp [Map.empty, Map.toList, Map.kvs, Map.find?] at h
+  · simp [Map.WellFormed, Map.make, Map.empty, List.canonicalize, Map.toList]
+  · intros _ h
+    contradiction
+  · have ⟨_, h⟩ := wf_env_implies_wf_entity_entry hwf hfind
+    simp [h]
 
 theorem ofEntityType_is_wf
   {ety : EntityType} {Γ : Environment} {entry : EntitySchemaEntry}
