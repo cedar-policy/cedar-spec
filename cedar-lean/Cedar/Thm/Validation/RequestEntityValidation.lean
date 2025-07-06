@@ -1,5 +1,6 @@
 import Cedar.Validation.RequestEntityValidator
 import Cedar.Validation.EnvironmentValidator
+import Cedar.Thm.Validation.EnvironmentValidation
 import Cedar.Thm.Validation.Typechecker.Types
 import Cedar.Thm.Validation.Validator
 
@@ -245,10 +246,6 @@ theorem instance_of_schema_refl {entities : Entities} {env : Environment} :
     case some data => exists data
     case none => simp [Map.contains, h₂] at h₀
 
-theorem env_well_formed_refl {env : Environment}:
-  env.validateWellFormed = .ok () → env.WellFormed
-:= sorry
-
 theorem instance_of_well_formed_env {env : Environment} {request : Request} {entities : Entities} :
   env.validateWellFormed = .ok () →
   requestMatchesEnvironment env request →
@@ -260,7 +257,7 @@ theorem instance_of_well_formed_env {env : Environment} {request : Request} {ent
   simp only [requestMatchesEnvironment] at h₁
   simp only [entitiesMatchEnvironment] at h₂
   constructor
-  exact env_well_formed_refl h₀
+  exact env_validate_well_formed_is_sound h₀
   constructor
   · exact instance_of_request_type_refl h₁
   · cases h₃ : instanceOfSchema entities env <;> simp only [h₃, Except.bind_err, Except.bind_ok, reduceCtorEq] at h₂
