@@ -306,4 +306,28 @@ theorem wf_env_implies_wf_ets_map
   have ⟨hwf_ets, _, _⟩ := hwf
   exact hwf_ets.1
 
+theorem wf_env_implies_wf_ancestor
+  {env : Environment} {entry : EntitySchemaEntry}
+  {ety : EntityType} {anc : EntityType}
+  (hwf : env.WellFormed)
+  (hfind : env.ets.find? ety = some entry)
+  (hanc : anc ∈ entry.ancestors) :
+  EntityType.WellFormed env anc
+:= by
+  have ⟨hwf_ets, _⟩ := hwf
+  have hwf_entry := hwf_ets.2 ety entry hfind
+  cases entry with
+  | standard entry =>
+    simp only [EntitySchemaEntry.WellFormed] at hwf_entry
+    have := hwf_entry.2.1
+    have ⟨_, hanc_entry, _⟩ := this anc hanc
+    apply Or.inl
+    simp only [EntitySchema.contains, hanc_entry, Option.isSome]
+  | enum es =>
+    simp [
+      EntitySchemaEntry.ancestors, Membership.mem,
+      Set.elts, Set.empty,
+    ] at hanc
+    contradiction
+
 end Cedar.Validation

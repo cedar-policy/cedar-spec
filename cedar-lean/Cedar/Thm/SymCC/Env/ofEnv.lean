@@ -532,13 +532,6 @@ theorem ofEnv_request_is_swf
   exact ofEnv_request_is_wf hwf
   exact ofEnv_request_is_basic
 
-theorem mem_eraseDups_implies_mem
-  [BEq α] [LawfulBEq α]
-  {xs : List α} {x : α}
-  (hmem : x ∈ xs.eraseDups) :
-  x ∈ xs
-:= sorry
-
 theorem ofStandardEntityType_is_wf
   {ety : EntityType} {Γ : Environment} {entry : StandardSchemaEntry}
   (hwf : Γ.WellFormed)
@@ -577,7 +570,31 @@ theorem ofStandardEntityType_is_wf
       CedarType.liftBoolTypes,
     ]
   -- Symbolic ancestors are well-formed
-  · sorry
+  · intros anc_ty sym_anc_f hfind_anc
+    have := Map.find?_mem_toList hfind_anc
+    simp only [Map.toList] at this
+    have := Map.make_mem_list_mem this
+    have ⟨anc_ty', hmem_anc', heq_anc'⟩ := List.mem_map.mp this
+    simp only [Prod.mk.injEq] at heq_anc'
+    simp only [heq_anc'.1] at hmem_anc'
+    simp only [←heq_anc'.2, heq_anc'.1]
+    and_intros
+    · exact hwf_ety
+    · simp
+      apply ofType_wf hwf
+      constructor
+      constructor
+      exact wf_env_implies_wf_ancestor hwf hfind hmem_anc'
+    · simp only [
+        UnaryFunction.argType,
+        SymEntityData.ofStandardEntityType.ancsUUF,
+      ]
+      rfl
+    · simp only [
+        UnaryFunction.outType,
+        SymEntityData.ofStandardEntityType.ancsUUF,
+      ]
+      rfl
   · exact Map.make_wf _
   -- Symbolic tags are well-formed
   · cases htags : entry.tags with
@@ -702,7 +719,7 @@ theorem ofEnv_entities_is_wf
       simp only [Prod.mk.injEq] at heq_entry
       have ⟨heq_ety, heq_es⟩ := heq_entry
       have hwf_acts := wf_env_implies_wf_acts_map hwf
-      have hmem_ety := mem_eraseDups_implies_mem hmem_ety
+      have hmem_ety := List.mem_eraseDups_implies_mem hmem_ety
       have ⟨⟨uid, entry⟩, hmem, heq⟩ := List.mem_map.mp hmem_ety
       simp only at heq
       have := (Map.in_list_iff_find?_some hwf_acts).mp hmem
