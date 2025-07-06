@@ -42,6 +42,23 @@ theorem ofEnv_preserves_entity
     assumption
   case _ => contradiction
 
+theorem map_make_append_find_disjoint
+  [BEq α] [LT α] [DecidableLT α] [SizeOf α] [SizeOf β]
+  {l₁ : List (α × β)} {l₂ : List (α × β)} {k : α}
+  (hfind₁ : l₁.find? (λ ⟨k', _⟩ => k' == k) = none)
+  (hfind₂ : (l₂.find? (λ ⟨k', _⟩ => k' == k)).isSome) :
+  ∃ v,
+    (Map.make (l₁ ++ l₂)).find? k = some v ∧
+    (k, v) ∈ l₂
+:= sorry
+
+theorem mem_eraseDups
+  [BEq α]
+  {xs : List α} {x : α}
+  {hmem : x ∈ xs} :
+  x ∈ xs.eraseDups
+:= sorry
+
 /-- An action entity type is compiled correctly -/
 theorem ofEnv_preserves_action_entity
   {Γ : Environment} {uid : EntityUID}
@@ -53,7 +70,65 @@ theorem ofEnv_preserves_action_entity
       (Γ.acts.toList.map λ (act, _) => act.ty).eraseDups
       Γ.acts)
 := by
-  sorry
+  simp only [SymEnv.ofEnv, SymEntities.ofSchema]
+  have hfind₁ :
+    (List.map
+      (fun x => (x.fst, SymEntityData.ofEntityType x.fst x.snd))
+      (Map.toList Γ.ets)
+    ).find? (λ ⟨k', _⟩ => k' == uid.ty) = none
+  := by
+    apply List.find?_eq_none.mpr
+    intros entry hmem_entry heq_ety_uid_ty
+    have ⟨ety, data⟩ := entry
+    have ⟨entry', hmem_entry', heq⟩ := List.mem_map.mp hmem_entry
+    have ⟨ety', data'⟩ := entry'
+    simp only [Prod.mk.injEq] at heq
+    have ⟨heq_ety, heq_data⟩ := heq
+    have hwf_ets : Map.WellFormed Γ.ets :=
+      wf_env_implies_wf_ets_map hwf
+    have hmem_ets := (Map.in_list_iff_find?_some hwf_ets).mp hmem_entry'
+    simp only [beq_iff_eq] at heq_ety_uid_ty
+    simp only [heq_ety, heq_ety_uid_ty] at hmem_ets
+    have ⟨_, hmem_acts⟩ := Map.contains_iff_some_find?.mp hmem
+    have := wf_env_disjoint_ets_acts hwf hmem_ets hmem_acts
+    contradiction
+  have hfind₂ :
+    ((List.map
+        (fun actTy =>
+          (actTy,
+            SymEntityData.ofActionType actTy
+              (List.map (fun x => x.fst.ty) (Map.toList Γ.acts)).eraseDups Γ.acts))
+        (List.map (fun x => x.fst.ty) (Map.toList Γ.acts)).eraseDups).find?
+      (λ ⟨k', _⟩ => k' == uid.ty)
+    ).isSome
+  := by
+    apply List.find?_isSome.mpr
+    simp only [
+      List.mem_map, beq_iff_eq, Prod.exists,
+      Prod.mk.injEq, exists_and_right,
+      exists_eq_right,
+    ]
+    apply Exists.intro
+    exists uid.ty
+    simp only [true_and]
+    constructor
+    · apply mem_eraseDups
+      apply List.mem_map.mpr
+      have ⟨entry, hmem_entry⟩ := Map.contains_iff_some_find?.mp hmem
+      exists (uid, entry)
+      simp only [and_true]
+      have hwf_acts : Map.WellFormed Γ.acts :=
+        wf_env_implies_wf_acts_map hwf
+      apply (Map.in_list_iff_find?_some hwf_acts).mpr
+      assumption
+    · rfl
+  have ⟨_, hfind, hmem⟩ := map_make_append_find_disjoint hfind₁ hfind₂
+  simp only [hfind, Option.some.injEq]
+  have ⟨_, _, heq⟩ := List.mem_map.mp hmem
+  simp only [Prod.mk.injEq] at heq
+  have ⟨heq_uid_ty, heq⟩ := heq
+  simp only [heq_uid_ty] at heq
+  simp [heq]
 
 theorem ofActionType_contains_act
   {Γ : Environment} {uid : EntityUID}
@@ -63,7 +138,21 @@ theorem ofActionType_contains_act
       uid.ty
       (Γ.acts.toList.map λ (act, _) => act.ty).eraseDups
       Γ.acts).members = some m ∧ m.contains uid.eid
-:= by sorry
+:= by
+  simp only [
+    SymEntityData.ofActionType,
+    SymEntityData.ofActionType.acts,
+    Option.some.injEq, exists_eq_left',
+  ]
+  apply Set.contains_prop_bool_equiv.mpr
+  apply (Set.make_mem _ _).mp
+  apply List.mem_filterMap.mpr
+  have ⟨entry, hentry⟩ := Map.contains_iff_some_find?.mp hmem
+  exists (uid, entry)
+  constructor
+  · have hwf_acts : Map.WellFormed Γ.acts := wf_env_implies_wf_acts_map hwf
+    exact (Map.in_list_iff_find?_some hwf_acts).mpr hentry
+  · simp
 
 /-- A variant of `ofEnv_preserves_entity` -/
 theorem ofEnv_entity_exists
@@ -83,7 +172,8 @@ theorem ofEnv_action_entity_exists
   (hmem : Map.contains Γ.acts uid) :
   Map.contains (SymEnv.ofEnv Γ).entities uid.ty
 := by
-  sorry
+  apply Map.contains_iff_some_find?.mpr
+  simp [ofEnv_preserves_action_entity hwf hmem]
 
 theorem ofEnv_wf_entity
   {Γ : Environment} {ety : EntityType}

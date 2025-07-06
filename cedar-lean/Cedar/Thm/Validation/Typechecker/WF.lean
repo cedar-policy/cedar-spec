@@ -290,4 +290,20 @@ theorem wf_env_implies_wf_request
     simp [Set.contains, hwf_res, Membership.mem]
   · simp [hwf_ctx, hwf_ctx_ty]
 
+theorem wf_env_implies_wf_acts_map
+  {env : Environment}
+  (hwf : env.WellFormed) :
+  Map.WellFormed env.acts
+:= by
+  have ⟨_, hwf_acts, _⟩ := hwf
+  exact hwf_acts.1
+
+theorem wf_env_implies_wf_ets_map
+  {env : Environment}
+  (hwf : env.WellFormed) :
+  Map.WellFormed env.ets
+:= by
+  have ⟨hwf_ets, _, _⟩ := hwf
+  exact hwf_ets.1
+
 end Cedar.Validation
