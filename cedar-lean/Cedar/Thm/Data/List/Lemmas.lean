@@ -1470,4 +1470,30 @@ decreasing_by
     _ < xs.length := by
       simp [*]
 
+theorem mem_eraseDups_implies_mem
+  [BEq α] [LawfulBEq α]
+  {xs : List α} {x : α}
+  (hmem : x ∈ xs.eraseDups) :
+  x ∈ xs
+:= by
+  cases xs with
+  | nil => contradiction
+  | cons hd tl =>
+    simp only [eraseDups_cons, mem_cons] at hmem
+    simp only [mem_cons]
+    cases hmem with
+    | inl h => exact Or.inl h
+    | inr h =>
+      apply Or.inr
+      have := mem_eraseDups_implies_mem h
+      have := List.mem_filter.mp this
+      exact this.1
+termination_by xs.length
+decreasing_by
+  calc
+    (List.filter (fun b => !b == hd) tl).length <= tl.length := by
+      apply List.length_filter_le
+    _ < xs.length := by
+      simp [*]
+
 end List
