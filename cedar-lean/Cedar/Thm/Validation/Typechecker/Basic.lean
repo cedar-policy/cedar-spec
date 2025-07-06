@@ -18,6 +18,7 @@ import Cedar.Spec
 import Cedar.Validation
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Validation.Typechecker.Types
+import Cedar.Thm.Validation.WellTyped.WF
 
 /-!
 This file contains useful definitions and lemmas about the `Typechecker` functions.
@@ -78,10 +79,10 @@ def GuardedCapabilitiesInvariant (e: Expr) (c: Capabilities) (request : Request)
 def TypeOfIsSound (x₁ : Expr) : Prop :=
   ∀ {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities},
     CapabilitiesInvariant c₁ request entities →
-    RequestAndEntitiesMatchEnvironment env request entities →
+    InstanceOfWellFormedEnvironment request entities env →
     typeOf x₁ c₁ env = Except.ok (ty, c₂) →
     GuardedCapabilitiesInvariant x₁ c₂ request entities ∧
-    ∃ v, EvaluatesTo x₁ request entities v ∧ InstanceOfType v ty.typeOf
+    ∃ v, EvaluatesTo x₁ request entities v ∧ InstanceOfType env v ty.typeOf
 
 ----- Capability lemmas -----
 
@@ -163,5 +164,22 @@ macro_rules
     split at $h:ident <;> simp at $h:ident
     cases $h:ident
   ))
+
+/--
+A variant of `type_is_inhabited` assuming instead
+that the type is the result of `typeOf`.
+-/
+theorem type_of_is_inhabited
+  {e : Expr}
+  {c₁ c₂ : Capabilities}
+  {env : Environment}
+  {tx : TypedExpr}
+  (hwf : env.WellFormed)
+  (hty : typeOf e c₁ env = .ok (tx, c₂)) :
+  ∃ v, InstanceOfType env v tx.typeOf
+:= by
+  apply type_is_inhabited hwf
+  apply typechecked_has_well_formed_type hwf
+  assumption
 
 end Cedar.Thm

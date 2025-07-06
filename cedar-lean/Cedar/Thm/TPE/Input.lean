@@ -96,6 +96,13 @@ theorem consistent_checks_ensure_refinement {schema : Schema} {req : Request} {e
     exact partial_is_valid_rfl (fun x => decide (x = req.resource)) (fun x => x = req.resource) preq.resource.asEntityUID decide_eq_implies_eq h₁₃
     exact partial_is_valid_rfl (fun x => decide (x = req.context)) (fun x => x = req.context) preq.context decide_eq_implies_eq h₁₄
   case _ =>
+    simp [
+      isValidAndConsistent.envIsWellFormed,
+      bind, Except.bind,
+    ] at h₂
+    split at h₂ <;> simp at h₂
+    rename_i h₃
+    replace h₂ := h₃
     simp [isValidAndConsistent.entitiesIsConsistent] at h₂
     split at h₂ <;> simp at h₂
     simp [isValidAndConsistent.entitiesMatch] at h₂

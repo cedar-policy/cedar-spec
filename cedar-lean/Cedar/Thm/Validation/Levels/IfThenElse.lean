@@ -36,7 +36,7 @@ open Cedar.Validation
 theorem level_based_slicing_is_sound_if {x₁ x₂ x₃ : Expr} {n : Nat} {c₀ c₁: Capabilities} {env : Environment} {request : Request} {entities slice : Entities}
   (hs : slice = entities.sliceAtLevel request n)
   (hc : CapabilitiesInvariant c₀ request entities)
-  (hr : RequestAndEntitiesMatchEnvironment env request entities)
+  (hr : InstanceOfWellFormedEnvironment request entities env)
   (htx : typeOf (.ite x₁ x₂ x₃) c₀ env = Except.ok (tx, c₁))
   (hl : tx.AtLevel env n)
   (ih₁ : TypedAtLevelIsSound x₁)

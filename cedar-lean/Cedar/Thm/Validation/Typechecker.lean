@@ -45,10 +45,10 @@ encoded in the `EvaluatesTo` predicate.
 -/
 theorem type_of_is_sound {e : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities} :
   CapabilitiesInvariant c₁ request entities →
-  RequestAndEntitiesMatchEnvironment env request entities →
+  InstanceOfWellFormedEnvironment request entities env →
   typeOf e c₁ env = .ok (ty, c₂) →
   GuardedCapabilitiesInvariant e c₂ request entities ∧
-  ∃ (v : Value), EvaluatesTo e request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ (v : Value), EvaluatesTo e request entities v ∧ InstanceOfType env v ty.typeOf
 := by
   intro h₁ h₂ h₃
   match e with
@@ -104,7 +104,7 @@ evaluates to the same result as the input expression.
 -/
 theorem type_of_preserves_evaluation_results {e : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities} :
   CapabilitiesInvariant c₁ request entities →
-  RequestAndEntitiesMatchEnvironment env request entities →
+  InstanceOfWellFormedEnvironment request entities env →
   typeOf e c₁ env = .ok (ty, c₂) →
   evaluate e request entities = evaluate ty.toExpr request entities
 := by
@@ -440,3 +440,5 @@ theorem type_of_preserves_evaluation_results {e : Expr} {c₁ c₂ : Capabilitie
     simp [List.mapM₁_eq_mapM fun x => justType (typeOf x c₁ env), List.mapM_ok_iff_forall₂] at h₃₁
     have h₄ := type_of_ok_list h₃₁ (λ x₁ h => hᵢ x₁ h h₁)
     exact type_of_preserves_evaluation_results_call h₃₂ (List.forall₂_implies_mapM_eq _ _ h₄)
+
+end Cedar.Thm

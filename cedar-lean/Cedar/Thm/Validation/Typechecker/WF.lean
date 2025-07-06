@@ -139,4 +139,155 @@ def Environment.WellFormed (env : Environment) : Prop :=
   env.acts.WellFormed env ∧
   env.reqty.WellFormed env
 
+----- Some lemmas -----
+
+theorem qty_wf_implies_type_of_wf {env : Environment} {qty : Qualified CedarType}
+  (h : QualifiedType.WellFormed env qty) :
+  CedarType.WellFormed env qty.getType
+:= by
+  cases h with
+  | optional_wf hwf => simp [Qualified.getType, hwf]
+  | required_wf hwf => simp [Qualified.getType, hwf]
+
+theorem wf_record_type_cons {env : Environment}
+  {hd : (Attr × Qualified CedarType)}
+  {tl : List (Attr × Qualified CedarType)}
+  (hwf : CedarType.WellFormed env (.record (Map.mk (hd :: tl)))) :
+  CedarType.WellFormed env hd.snd.getType ∧
+  CedarType.WellFormed env (.record (Map.mk tl))
+:= by
+  cases hwf
+  rename_i hwf_map hwf_tys
+  simp only [Map.WellFormed] at hwf_map
+  constructor
+  · have := hwf_tys hd.fst hd.snd
+    simp only [Map.find?, List.find?, BEq.rfl, forall_const] at this
+    cases e : hd.snd
+    all_goals
+      simp only [e] at *
+      cases this
+      simp only [Qualified.getType]
+      assumption
+  · constructor
+    · simp only [Map.WellFormed]
+      apply Eq.symm
+      apply Map.make_eq_mk.mp
+      have := Map.make_eq_mk.mpr (Eq.symm hwf_map)
+      cases this with
+      | cons_nil => constructor
+      | cons_cons =>
+        simp only [Map.toList, Map.kvs]
+        assumption
+    · intros attr qty hfound
+      have hfound := Map.find?_mem_toList hfound
+      simp only [Map.toList, Map.kvs] at hfound
+      have : (Map.mk (hd :: tl)).find? attr = some qty := by
+        apply (Map.in_list_iff_find?_some ?_).mp
+        · simp [Map.kvs, hfound]
+        · simp only [Map.WellFormed]
+          assumption
+      exact hwf_tys attr qty this
+
+theorem wf_record_implies_wf_attr {env : Environment} {rty : RecordType} {attr : Attr} {qty : QualifiedType}
+  (hwf : CedarType.WellFormed env (.record rty))
+  (hqty : rty.find? attr = some qty) :
+  QualifiedType.WellFormed env qty
+:= by
+  cases hwf with
+  | record_wf _ hattr =>
+    exact hattr attr qty hqty
+
+theorem wf_env_implies_wf_entity_schema_entry {env : Environment} {ety : EntityType} {entry : EntitySchemaEntry}
+  (hwf : env.WellFormed)
+  (hets : env.ets.find? ety = some entry) :
+  entry.WellFormed env
+:= by
+  have ⟨⟨_, hwf_ets⟩, _⟩ := hwf
+  exact hwf_ets ety entry hets
+
+theorem wf_env_implies_wf_tag_type {env : Environment} {ety : EntityType} {ty : CedarType}
+  (hwf : env.WellFormed)
+  (hety : env.ets.tags? ety = .some (.some ty)) :
+  CedarType.WellFormed env ty
+:= by
+  simp only [EntitySchema.tags?, Option.map_eq_some_iff] at hety
+  have ⟨entry, hentry, htags⟩ := hety
+  have ⟨⟨_, hwf_ets⟩, _⟩ := hwf
+  have hwf_entry := hwf_ets ety entry hentry
+  simp only [EntitySchemaEntry.WellFormed] at hwf_entry
+  split at hwf_entry
+  · have ⟨_, _, _, hwf_tag⟩ := hwf_entry
+    simp only [EntitySchemaEntry.tags?] at htags
+    exact hwf_tag ty htags
+  · simp [EntitySchemaEntry.tags?] at htags
+
+theorem wf_env_implies_wf_attrs {env : Environment} {ety : EntityType} {attrs : RecordType}
+  (hwf : env.WellFormed)
+  (hattrs : env.ets.attrs? ety = .some attrs) :
+  CedarType.WellFormed env (.record attrs)
+:= by
+  simp only [EntitySchema.attrs?, Option.map_eq_some_iff] at hattrs
+  have ⟨entry, hentry, hattrs⟩ := hattrs
+  have ⟨⟨_, hwf_ets⟩, _⟩ := hwf
+  have hwf_entry := hwf_ets ety entry hentry
+  simp only [EntitySchemaEntry.WellFormed] at hwf_entry
+  split at hwf_entry
+  · have ⟨_, _, hwf_attrs, _⟩ := hwf_entry
+    simp only [← hattrs]
+    exact hwf_attrs
+  · simp only [EntitySchemaEntry.attrs] at hattrs
+    simp only [← hattrs, Map.empty]
+    constructor
+    . simp [Map.WellFormed, Map.toList, Map.kvs, Map.make, List.canonicalize]
+    · simp [Map.find?, List.find?]
+
+theorem wf_env_implies_action_wf {env : Environment}
+  (hwf : env.WellFormed) :
+  EntityUID.WellFormed env env.reqty.action
+:= by
+  have ⟨_, _, hwf_req⟩ := hwf
+  have ⟨_, hact, _⟩ := hwf_req
+  apply Or.inr
+  simp [EntityUID.WellFormed, ActionSchema.contains, hact]
+
+theorem wf_env_disjoint_ets_acts
+  {env : Environment} {uid : EntityUID}
+  {ets_entry : EntitySchemaEntry}
+  {acts_entry : ActionSchemaEntry}
+  (hwf : env.WellFormed)
+  (hets : env.ets.find? uid.ty = some ets_entry)
+  (hacts : env.acts.find? uid = some acts_entry) :
+  False
+:= by
+  have ⟨_, ⟨_, _, hdisj, _⟩, _⟩ := hwf
+  have := hdisj uid
+  apply this
+  · simp [ActionSchema.contains, hacts]
+  · simp [EntitySchema.contains, hets]
+
+/--
+More well-formedness properties of `env.reqty`.
+-/
+theorem wf_env_implies_wf_request
+  {env : Environment}
+  (hwf : env.WellFormed) :
+  EntityType.WellFormed env env.reqty.principal ∧
+  env.acts.contains env.reqty.action ∧
+  EntityType.WellFormed env env.reqty.resource ∧
+  (CedarType.record env.reqty.context).WellFormed env
+:= by
+  have ⟨_, hwf_acts, ⟨entry, hwf_act, hwf_princ, hwf_res, hwf_ctx⟩⟩ := hwf
+  have ⟨_, hwf_acts, _⟩ := hwf_acts
+  have hwf_act_entry := hwf_acts env.reqty.action entry hwf_act
+  have ⟨_, _, _, hwf_app_to_princ, hwf_app_to_res, _, hwf_ctx_ty⟩ := hwf_act_entry
+  and_intros
+  · apply hwf_app_to_princ
+    simp only [Membership.mem] at hwf_princ
+    simp [Set.contains, hwf_princ, Membership.mem]
+  · simp [ActionSchema.contains, hwf_act]
+  · apply hwf_app_to_res
+    simp only [Membership.mem] at hwf_res
+    simp [Set.contains, hwf_res, Membership.mem]
+  · simp [hwf_ctx, hwf_ctx_ty]
+
 end Cedar.Validation

@@ -53,7 +53,7 @@ theorem slice_at_level_inner_well_formed {entities : Entities} {work slice : Set
 
 theorem checked_eval_entity_in_slice  {n : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {slice entities : Entities} {ed : EntityData}
   (hc : CapabilitiesInvariant c request entities)
-  (hr : RequestAndEntitiesMatchEnvironment env request entities)
+  (hr : InstanceOfWellFormedEnvironment request entities env)
   (ht : typeOf e c env = .ok (tx, c'))
   (hl : tx.EntityAccessAtLevel env n nmax [])
   (he : evaluate e request entities = .ok (Value.prim (Prim.entityUID euid)))
@@ -103,7 +103,7 @@ data for that entity in the slice will be hte same as in the original entities.
 -/
 theorem checked_eval_entity_find_entities_eq_find_slice  {n nmax : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {slice entities : Entities}
   (hc : CapabilitiesInvariant c request entities)
-  (hr : RequestAndEntitiesMatchEnvironment env request entities)
+  (hr : InstanceOfWellFormedEnvironment request entities env)
   (ht : typeOf e c env = .ok (tx, c'))
   (hl : tx.EntityAccessAtLevel env n nmax [])
   (he : evaluate e request entities = .ok (Value.prim (Prim.entityUID euid)))

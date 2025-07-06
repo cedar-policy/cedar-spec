@@ -631,4 +631,17 @@ theorem union_subset_eq [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] 
   · rw [union_comm]
     exact subset_union _ _
 
+theorem wellFormed_correct {α} [LT α] [StrictLT α] [DecidableLT α] {s : Set α} :
+  s.wellFormed = true ↔ s.WellFormed
+:= by
+  constructor
+  · intros h
+    apply (wf_iff_sorted s).mpr
+    apply List.isSorted_correct.mpr
+    exact h
+  · intros h
+    apply List.isSorted_correct.mp
+    apply (wf_iff_sorted s).mp
+    exact h
+
 end Cedar.Data.Set

@@ -55,12 +55,12 @@ theorem type_of_int_arith_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' 
 theorem type_of_int_arith_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₀ : op₂ = .add ∨ op₂ = .sub ∨ op₂ = .mul)
   (h₁ : CapabilitiesInvariant c₁ request entities)
-  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₂ : InstanceOfWellFormedEnvironment request entities env)
   (h₃ : typeOf (Expr.binaryApp op₂ x₁ x₂) c₁ env = Except.ok (ty, c₂))
   (ih₁ : TypeOfIsSound x₁)
   (ih₂ : TypeOfIsSound x₂) :
   GuardedCapabilitiesInvariant (Expr.binaryApp op₂ x₁ x₂) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.binaryApp op₂ x₁ x₂) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.binaryApp op₂ x₁ x₂) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
   have ⟨hc, hty, ht₁, ht₂⟩ := type_of_int_arith_inversion h₀ h₃
   subst hc ; rw [hty]
@@ -74,7 +74,7 @@ theorem type_of_int_arith_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c
   simp [EvaluatesTo, evaluate] at *
   cases h₄ : evaluate x₁ request entities <;> simp [h₄] at * <;>
   cases h₅ : evaluate x₂ request entities <;> simp [h₅] at * <;>
-  try { simp [ih₁, ih₂] ; exact type_is_inhabited .int }
+  try { simp [ih₁, ih₂] ; exact type_is_inhabited_int }
   replace ⟨ihl₁, ih₃⟩ := ih₁
   replace ⟨ihl₂, ih₄⟩ := ih₂
   rw [eq_comm] at ihl₁ ihl₂; subst ihl₁ ihl₂
@@ -86,15 +86,15 @@ theorem type_of_int_arith_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c
   rcases h₀ with h₀ | h₀ | h₀ <;> subst h₀ <;> simp [apply₂, intOrErr]
   case inl =>
     cases h₄ : Int64.add? i₁ i₂ <;> simp [h₄]
-    case none => exact type_is_inhabited CedarType.int
+    case none => exact type_is_inhabited_int
     case some => simp [InstanceOfType.instance_of_int]
   case inr.inl =>
     cases h₄ : Int64.sub? i₁ i₂ <;> simp [h₄]
-    case none => exact type_is_inhabited CedarType.int
+    case none => exact type_is_inhabited_int
     case some => simp [InstanceOfType.instance_of_int]
   case inr.inr =>
     cases h₄ : Int64.mul? i₁ i₂ <;> simp [h₄]
-    case none => exact type_is_inhabited CedarType.int
+    case none => exact type_is_inhabited_int
     case some => simp [InstanceOfType.instance_of_int]
 
 end Cedar.Thm
