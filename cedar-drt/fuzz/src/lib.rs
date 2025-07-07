@@ -116,7 +116,9 @@ impl<'e> DifferentialTester<'e> {
     }
 
     /// Differentially test validation on the given policy and schema.
-    /// Panics if the two engines do not agree.
+    /// Panics if Dafny reports an error but Rust does not. The Rust
+    /// implementation is known to be less precise, so this function does not
+    /// panic if Rust reports an unexpected error.
     pub fn run_validation(
         &self,
         schema: ValidatorSchema,
@@ -136,18 +138,15 @@ impl<'e> DifferentialTester<'e> {
             schema
         );
 
-        // Temporary fix to ignore a known mismatch between the Dafny and Rust.
-        // The issue is that the Rust code will always return an error for an
+        // Do not report an error due to known mismatches between Dafny and
+        // Rust. The Rust validator will occasionally report errors when Dafny
+        // does not. This is not a soundness issue, and we are not interested in
+        // improving the precision of the Rust validator on version 2.5.x.  For
+        // example, the Rust code will always return an error for an
         // unrecognized entity or action, even if that part of the expression
         // should be excluded from typechecking (e.g., `true || Undefined::"foo"`
         // should be well typed due to short-circuiting).
-        if rust_res.validation_errors().any(|e| {
-            matches!(
-                e.error_kind(),
-                ValidationErrorKind::UnrecognizedEntityType(_)
-                    | ValidationErrorKind::UnrecognizedActionId(_)
-            )
-        }) {
+        if !rust_res.validation_passed() {
             return;
         }
 

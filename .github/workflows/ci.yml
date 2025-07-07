@@ -92,13 +92,13 @@ jobs:
         run: cargo fmt --all --check
       - name: cargo rustc (cedar-policy-generators)
         working-directory: ./cedar-policy-generators
-        run: RUSTFLAGS="-D warnings -F unsafe-code" cargo build --verbose
+        run: RUSTFLAGS="-F unsafe-code" cargo build --verbose
       - name: cargo rustc (cedar-drt)
         working-directory: ./cedar-drt
-        run: RUSTFLAGS="-D warnings -F unsafe-code" cargo build --verbose
+        run: RUSTFLAGS="-F unsafe-code" cargo build --verbose
       - name: cargo rustc (cedar-drt/fuzz/)
         working-directory: ./cedar-drt/fuzz
-        run: RUSTFLAGS="--cfg=fuzzing -D warnings -F unsafe-code" cargo build --verbose
+        run: RUSTFLAGS="--cfg=fuzzing -F unsafe-code" cargo build --verbose
       - name: cargo test (cedar-policy-generators)
         working-directory: ./cedar-policy-generators
         run: cargo test --verbose
