@@ -24,7 +24,8 @@ use cedar_policy_core::validator::entity_manifest::{compute_entity_manifest, Ent
 use cedar_policy_core::validator::ValidatorSchema;
 use cedar_policy_generators::{
     abac::{ABACPolicy, ABACRequest},
-    hierarchy::{Hierarchy, HierarchyGenerator},
+    err::Error,
+    hierarchy::HierarchyGenerator,
     schema::Schema,
     settings::ABACSettings,
 };
@@ -39,7 +40,7 @@ struct FuzzTargetInput {
     /// generated schema
     pub schema: Schema,
     /// generated hierarchy
-    pub hierarchy: Hierarchy,
+    pub entities: Entities,
     /// the policy which we will see if it validates
     pub policy: ABACPolicy,
     /// the requests to try, if the policy validates.
@@ -76,9 +77,26 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
             schema.arbitrary_request(&hierarchy, u)?,
             schema.arbitrary_request(&hierarchy, u)?,
         ];
+
+        let entities = Entities::try_from(hierarchy).map_err(|_| Error::NotEnoughData)?;
+        let validator_schema =
+            cedar_policy_core::validator::ValidatorSchema::try_from(schema.clone())
+                .map_err(|e| Error::SchemaError(e))?;
+        let actions = validator_schema
+            .action_entities()
+            .map_err(|_| Error::EntitiesError("Error fetching action entities".into()))?;
+        let entities = entities
+            .add_entities(
+                actions.into_iter().map(|e| std::sync::Arc::new(e)),
+                None::<&cedar_policy_core::validator::CoreSchema>,
+                cedar_policy_core::entities::TCComputation::AssumeAlreadyComputed,
+                cedar_policy_core::extensions::Extensions::all_available(),
+            )
+            .map_err(|_| Error::EntitiesError("Error adding action entities to entities".into()))?;
+
         Ok(Self {
             schema,
-            hierarchy,
+            entities,
             policy,
             requests,
         })
@@ -108,38 +126,37 @@ fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
     if let Ok(schema) = ValidatorSchema::try_from(input.schema) {
         debug!("Schema: {:?}", schema);
-        if let Ok(entities) = Entities::try_from(input.hierarchy.clone()) {
-            let mut policyset = ast::PolicySet::new();
-            let policy: ast::StaticPolicy = input.policy.into();
-            policyset.add_static(policy.clone()).unwrap();
-            let manifest = match compute_entity_manifest(&Validator::new(schema), &policyset) {
-                Ok(manifest) => manifest,
-                Err(
-                    EntityManifestError::UnsupportedCedarFeature(_)
-                    | EntityManifestError::Validation(_),
-                ) => {
-                    return;
-                }
-                Err(e) => panic!("failed to produce an entity manifest: {e}"),
-            };
-
-            let authorizer = Authorizer::new();
-            debug!("Policies: {policyset}");
-            debug!("Entities: {entities}");
-            for abac_request in input.requests.into_iter() {
-                let request = ast::Request::from(abac_request);
-                debug!("Request: {request}");
-                let entity_slice = manifest
-                    .slice_entities(&entities, &request)
-                    .expect("failed to slice entities");
-                debug!("Entity slice: {entity_slice}");
-                let ans_original = authorizer.is_authorized(request.clone(), &policyset, &entities);
-                let ans_slice = authorizer.is_authorized(request, &policyset, &entity_slice);
-                assert_eq!(
-                    ans_original.decision, ans_slice.decision,
-                    "Authorization decision differed with and without entity slicing!"
-                );
+        let entities = input.entities;
+        let mut policyset = ast::PolicySet::new();
+        let policy: ast::StaticPolicy = input.policy.into();
+        policyset.add_static(policy.clone()).unwrap();
+        let manifest = match compute_entity_manifest(&Validator::new(schema), &policyset) {
+            Ok(manifest) => manifest,
+            Err(
+                EntityManifestError::UnsupportedCedarFeature(_)
+                | EntityManifestError::Validation(_),
+            ) => {
+                return;
             }
+            Err(e) => panic!("failed to produce an entity manifest: {e}"),
+        };
+
+        let authorizer = Authorizer::new();
+        debug!("Policies: {policyset}");
+        debug!("Entities: {entities}");
+        for abac_request in input.requests.into_iter() {
+            let request = ast::Request::from(abac_request);
+            debug!("Request: {request}");
+            let entity_slice = manifest
+                .slice_entities(&entities, &request)
+                .expect("failed to slice entities");
+            debug!("Entity slice: {entity_slice}");
+            let ans_original = authorizer.is_authorized(request.clone(), &policyset, &entities);
+            let ans_slice = authorizer.is_authorized(request, &policyset, &entity_slice);
+            assert_eq!(
+                ans_original.decision, ans_slice.decision,
+                "Authorization decision differed with and without entity slicing!"
+            );
         }
     }
 });
