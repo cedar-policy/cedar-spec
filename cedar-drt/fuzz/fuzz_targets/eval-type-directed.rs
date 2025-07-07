@@ -78,7 +78,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
                 .map_err(|e| Error::SchemaError(e))?;
         let actions = validator_schema
             .action_entities()
-            .map_err(|_| Error::EntitiesError("Error fetching action entities".into()))?;
+            .map_err(|e| Error::EntitiesError(format!("Error fetching action entities: {e}")))?;
         let entities = entities
             .add_entities(
                 actions.into_iter().map(|e| std::sync::Arc::new(e)),
@@ -86,7 +86,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
                 cedar_policy_core::entities::TCComputation::AssumeAlreadyComputed,
                 cedar_policy_core::extensions::Extensions::all_available(),
             )
-            .map_err(|_| Error::EntitiesError("Error adding action entities to entities".into()))?;
+            .map_err(|e| Error::EntitiesError(format!("Error adding action entities to entities: {e}")))?;
 
         Ok(Self {
             schema,
