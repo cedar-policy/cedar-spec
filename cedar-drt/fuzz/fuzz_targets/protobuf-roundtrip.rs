@@ -83,7 +83,9 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
                 cedar_policy_core::entities::TCComputation::AssumeAlreadyComputed,
                 cedar_policy_core::extensions::Extensions::all_available(),
             )
-            .map_err(|e| Error::EntitiesError(format!("Error adding action entities to entities: {e}")))?;
+            .map_err(|e| {
+                Error::EntitiesError(format!("Error adding action entities to entities: {e}"))
+            })?;
 
         Ok(Self {
             request,
