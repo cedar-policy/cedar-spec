@@ -1,5 +1,6 @@
 import Cedar.Thm.Validation.Typechecker.WF
 import Cedar.Thm.Validation.WellTyped.TypeLifting
+import Cedar.Thm.Validation.WellTyped.Definition
 import Cedar.Thm.SymCC.Data.Hierarchy
 import Cedar.Thm.SymCC.Env.WF
 import Cedar.Thm.SymCC.Data.LT
@@ -986,6 +987,138 @@ theorem ofEnv_entities_is_wf
       simp only [←heq, ←heq_es, heq_ety]
       exact ofActionType_is_wf hwf this
 
+theorem entity_uid_wf_implies_sym_entities_is_valid_entity_uid
+  {Γ : Environment} {uid : EntityUID}
+  (hwf : Γ.WellFormed)
+  (huid : EntityUID.WellFormed Γ uid) :
+  (SymEnv.ofEnv Γ).entities.isValidEntityUID uid
+:= by
+  simp only [SymEntities.isValidEntityUID]
+  cases huid with
+  | inl huid =>
+    simp only [EntitySchema.isValidEntityUID] at huid
+    split at huid
+    · rename_i entry hfind
+      have := ofEnv_preserves_entity rfl hfind
+      simp only [
+        this,
+        SymEntityData.ofEntityType,
+      ]
+      split
+      · rename_i eids h
+        split at h
+        · simp only [SymEntityData.ofStandardEntityType] at h
+          contradiction
+        · simp only [SymEntityData.ofEnumEntityType] at h
+          simp only [EntitySchemaEntry.isValidEntityEID] at huid
+          simp only [Option.some.injEq] at h
+          simp [←h, huid]
+      · rfl
+    · contradiction
+  | inr huid =>
+    have := ofEnv_preserves_action_entity hwf huid
+    simp only [
+      this,
+      SymEntityData.ofActionType,
+      SymEntityData.ofActionType.acts,
+    ]
+    apply Set.contains_prop_bool_equiv.mpr
+    apply (Set.make_mem _ _).mp
+    apply List.mem_filterMap.mpr
+    simp only [ActionSchema.contains, Map.contains, Option.isSome] at huid
+    split at huid
+    · rename_i entry hfind
+      exists (uid, entry)
+      simp only [↓reduceIte, and_true]
+      apply (Map.in_list_iff_find?_some ?_).mpr hfind
+      exact wf_env_implies_wf_acts_map hwf
+    · contradiction
+
+/--
+Given a well-formed environment and a well-typed expression in that environment,
+we show that the expression satisfies `ValidRefs`
+-/
+theorem ofEnv_entities_valid_refs_for_wt_expr
+  {Γ : Environment} {tx : TypedExpr}
+  (hwf : Γ.WellFormed)
+  (hwt : TypedExpr.WellTyped Γ tx) :
+  tx.toExpr.ValidRefs ((SymEnv.ofEnv Γ).entities.isValidEntityUID ·)
+:= by
+  cases hwt with
+  | lit hwt_prim =>
+    rename_i p ty
+    cases hwt_prim with
+    | bool | int | string =>
+      simp only [TypedExpr.toExpr]
+      constructor
+      constructor
+    | entityUID uid huid =>
+      simp only [TypedExpr.toExpr]
+      constructor
+      simp only [Prim.ValidRef]
+      apply entity_uid_wf_implies_sym_entities_is_valid_entity_uid hwf huid
+  | var hwt_var =>
+    simp only [TypedExpr.toExpr]
+    constructor
+  | ite h₁ h₂ h₃ =>
+    simp only [TypedExpr.toExpr]
+    constructor
+    exact ofEnv_entities_valid_refs_for_wt_expr hwf h₁
+    exact ofEnv_entities_valid_refs_for_wt_expr hwf h₂
+    exact ofEnv_entities_valid_refs_for_wt_expr hwf h₃
+  | and h₁ h₂ | or h₁ h₂ =>
+    simp only [TypedExpr.toExpr]
+    constructor
+    exact ofEnv_entities_valid_refs_for_wt_expr hwf h₁
+    exact ofEnv_entities_valid_refs_for_wt_expr hwf h₂
+  | unaryApp h
+  | hasAttr_entity h | hasAttr_record h
+  | getAttr_entity h | getAttr_record h =>
+    simp only [TypedExpr.toExpr]
+    constructor
+    exact ofEnv_entities_valid_refs_for_wt_expr hwf h
+  | binaryApp h₁ h₂ =>
+    simp only [TypedExpr.toExpr]
+    constructor
+    exact ofEnv_entities_valid_refs_for_wt_expr hwf h₁
+    exact ofEnv_entities_valid_refs_for_wt_expr hwf h₂
+  | set hs | call hs =>
+    simp only [TypedExpr.toExpr]
+    constructor
+    intros x hmem_x
+    simp only [List.map₁, List.map_attach_eq_pmap] at hmem_x
+    have ⟨x', hmem_x', hx'⟩ := List.mem_pmap.mp hmem_x
+    simp only [←hx']
+    have := hs x' hmem_x'
+    exact ofEnv_entities_valid_refs_for_wt_expr hwf this
+  | record hrec =>
+    simp only [TypedExpr.toExpr]
+    constructor
+    intros attr hmem_attr
+    simp only [List.map, List.attach₂, List.map_pmap] at hmem_attr
+    have ⟨attr', hmem_attr', hattr'⟩ := List.mem_pmap.mp hmem_attr
+    cases attr with | _ fst snd =>
+    simp only [Prod.mk.injEq] at hattr'
+    simp only [←hattr']
+    have := hrec attr'.fst attr'.snd hmem_attr'
+    exact ofEnv_entities_valid_refs_for_wt_expr hwf this
+termination_by sizeOf tx
+decreasing_by
+  any_goals
+    simp [*]
+    omega
+  · simp
+    have := List.sizeOf_lt_of_mem hmem_x'
+    omega
+  · cases attr'
+    simp
+    have := List.sizeOf_lt_of_mem hmem_attr'
+    simp at this
+    omega
+  · simp
+    have := List.sizeOf_lt_of_mem hmem_x'
+    omega
+
 theorem ofEnv_is_wf
   {Γ : Environment}
   (hwf : Γ.WellFormed) :
@@ -995,6 +1128,20 @@ theorem ofEnv_is_wf
   constructor
   · exact (ofEnv_request_is_swf hwf).1
   · exact ofEnv_entities_is_wf hwf
+
+/--
+If an expression is well-typed in a concrete, well-formed `Environment`,
+then it must also be well-formed in the compiled symbolic environment.
+-/
+theorem ofEnv_wf_for_expr
+  {Γ : Environment} {tx : TypedExpr}
+  (hwf : Γ.WellFormed)
+  (hwt : TypedExpr.WellTyped Γ tx) :
+  (SymEnv.ofEnv Γ).WellFormedFor tx.toExpr
+:= by
+  constructor
+  · exact ofEnv_is_wf hwf
+  · exact ofEnv_entities_valid_refs_for_wt_expr hwf hwt
 
 theorem ofEnv_entities_is_acyclic
   {Γ : Environment}
