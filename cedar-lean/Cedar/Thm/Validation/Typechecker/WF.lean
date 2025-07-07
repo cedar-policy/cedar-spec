@@ -315,6 +315,35 @@ theorem wf_env_implies_wf_entity_entry
   have ⟨hwf_ets, _⟩ := hwf
   exact hwf_ets.2 ety entry hfind
 
+theorem wf_env_implies_wf_action_entity_entry
+  {env : Environment} {uid : EntityUID} {entry : ActionSchemaEntry}
+  (hwf : env.WellFormed)
+  (hfind : env.acts.find? uid = some entry) :
+  entry.WellFormed env
+:= by
+  have ⟨_, hwf_acts, _⟩ := hwf
+  exact hwf_acts.2.1 uid entry hfind
+
+/-- Ancestor of an action entity should also be an action entity -/
+theorem wf_env_implies_wf_action_entity_ancestor
+  {env : Environment} {uid : EntityUID} {anc : EntityUID}
+  {entry : ActionSchemaEntry}
+  (hwf : env.WellFormed)
+  (hfind : env.acts.find? uid = some entry)
+  (hanc : anc ∈ entry.ancestors) :
+  ∃ anc_entry,
+    env.acts.find? anc = some anc_entry ∧
+    anc_entry.WellFormed env
+:= by
+  have ⟨_, _, _, _, _, hwf_anc, _⟩ := wf_env_implies_wf_action_entity_entry hwf hfind
+  have := hwf_anc anc hanc
+  simp only [ActionSchema.contains, Option.isSome] at this
+  split at this
+  · rename_i h
+    simp only [h, Option.some.injEq, exists_eq_left']
+    exact wf_env_implies_wf_action_entity_entry hwf h
+  contradiction
+
 theorem wf_env_implies_wf_ancestor
   {env : Environment} {entry : EntitySchemaEntry}
   {ety : EntityType} {anc : EntityType}
