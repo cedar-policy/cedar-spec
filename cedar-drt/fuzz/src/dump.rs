@@ -17,7 +17,7 @@
 use cedar_policy::{AuthorizationError, Policy};
 use cedar_policy_core::ast::{Context, EntityUID, EntityUIDEntry, PolicySet, Request};
 use cedar_policy_core::authorizer::Response;
-use cedar_policy_core::entities;
+use cedar_policy_core::entities::{self, err::EntitiesError, json::err::JsonSerializationError};
 use cedar_policy_core::entities::{Entities, TypeAndId};
 use cedar_policy_core::extensions::Extensions;
 use cedar_policy_core::jsonvalue::JsonValueWithNoDuplicateKeys;
@@ -62,13 +62,31 @@ pub fn dump(
     let entities_filename = dirname.join(format!("{testcasename}.entities.json"));
     let testcase_filename = dirname.join(format!("{testcasename}.json"));
 
+    let entities_file = std::fs::OpenOptions::new()
+        .create(true)
+        .write(true)
+        .append(false)
+        .truncate(true)
+        .open(&entities_filename)?;
+    match entities.write_to_json(entities_file) {
+        Ok(()) => (),
+        Err(EntitiesError::Serialization(JsonSerializationError::ExtnCall2OrMoreArguments(e)))
+            if e.to_string().contains("offset") =>
+        {
+            return Ok(());
+        }
+        Err(e) => panic!("Unexpected error while serializing entities: {e}"),
+    }
+
     let mut schema_file = std::fs::OpenOptions::new()
         .create(true)
         .write(true)
         .append(false)
         .truncate(true)
         .open(&schema_filename)?;
-    let schema_text = schema.to_cedarschema().unwrap();
+    let schema_text = schema
+        .to_cedarschema()
+        .expect("Schema serialization unexpected failed");
     writeln!(schema_file, "{schema_text}")?;
 
     let mut policies_file = std::fs::OpenOptions::new()
@@ -84,42 +102,45 @@ pub fn dump(
     let policy_text = static_policies.join("\n");
     writeln!(policies_file, "{policy_text}")?;
 
-    let entities_file = std::fs::OpenOptions::new()
-        .create(true)
-        .write(true)
-        .append(false)
-        .truncate(true)
-        .open(&entities_filename)?;
-    entities.write_to_json(entities_file).unwrap();
-
     let requests: Vec<JsonRequest> = requests
         .into_iter()
         .enumerate()
-        .map(|(i, (q, a))| JsonRequest {
-            description: format!("Request {i}"),
-            principal: dump_request_var(q.principal()),
-            action: dump_request_var(q.action()),
-            resource: dump_request_var(q.resource()),
-            context: dump_context(
+        .filter_map(|(i, (q, a))| {
+            let context_result = dump_context(
                 q.context()
                     .expect("`dump` does not support requests missing context")
                     .clone(),
-            ),
-            validate_request: true,
-            decision: a.decision,
-            reason: cedar_policy::Response::from(a.clone())
-                .diagnostics()
-                .reason()
-                .cloned()
-                .collect(),
-            errors: cedar_policy::Response::from(a)
-                .diagnostics()
-                .errors()
-                .map(|e| match e {
-                    AuthorizationError::PolicyEvaluationError(e) => e.policy_id(),
-                })
-                .cloned()
-                .collect(),
+            );
+            match context_result {
+                Err(JsonSerializationError::ExtnCall2OrMoreArguments(e))
+                    if e.to_string().contains("offset") =>
+                {
+                    None
+                }
+                Err(e) => panic!("Encountered an unexpected error while serializing context: {e}"),
+                Ok(context) => Some(JsonRequest {
+                    description: format!("Request {i}"),
+                    principal: dump_request_var(q.principal()),
+                    action: dump_request_var(q.action()),
+                    resource: dump_request_var(q.resource()),
+                    context,
+                    validate_request: true,
+                    decision: a.decision,
+                    reason: cedar_policy::Response::from(a.clone())
+                        .diagnostics()
+                        .reason()
+                        .cloned()
+                        .collect(),
+                    errors: cedar_policy::Response::from(a)
+                        .diagnostics()
+                        .errors()
+                        .map(|e| match e {
+                            AuthorizationError::PolicyEvaluationError(e) => e.policy_id(),
+                        })
+                        .cloned()
+                        .collect(),
+                }),
+            }
         })
         .collect();
 
@@ -229,12 +250,12 @@ fn dump_request_var(var: &EntityUIDEntry) -> JsonValueWithNoDuplicateKeys {
 }
 
 /// Dump the context to a "natural" json value
-fn dump_context(context: Context) -> JsonValueWithNoDuplicateKeys {
-    let context = context
+fn dump_context(context: Context) -> Result<JsonValueWithNoDuplicateKeys, JsonSerializationError> {
+    let context: Result<HashMap<_, _>, _> = context
         .into_iter()
-        .map(|(k, pval)| (k, pval.to_natural_json().unwrap()))
-        .collect::<HashMap<_, _>>();
-    serde_json::to_value(context)
+        .map(|(k, pval)| pval.to_natural_json().map(|val| (k, val)))
+        .collect();
+    Ok(serde_json::to_value(context?)
         .expect("failed to serialize context")
-        .into()
+        .into())
 }
