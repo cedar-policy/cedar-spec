@@ -2,6 +2,8 @@ import Cedar.Thm.Validation.Typechecker.WF
 import Cedar.Thm.Validation.WellTyped.TypeLifting
 import Cedar.Thm.SymCC.Data.Hierarchy
 import Cedar.Thm.SymCC.Env.WF
+import Cedar.Thm.SymCC.Data.LT
+import Cedar.Thm.SymCC.Term.WF
 import Cedar.Thm.Data.List.Lemmas
 
 /-!
@@ -713,6 +715,141 @@ theorem ofEntityType_is_wf
   | standard entry => exact ofStandardEntityType_is_wf hwf hfind
   | enum eids => exact ofEnumEntityType_is_wf hwf hfind
 
+/--
+A technical lemma that `SymEntityData.ofActionType.ancsUDF`
+produces a well-formed UDF.
+-/
+theorem ofActionType_ancsUDF_is_wf
+  {uid : EntityUID} {Γ : Environment}
+  {anc : EntityType}
+  {anc_f : UnaryFunction} (hwf : Γ.WellFormed)
+  (hanc :
+    (SymEntityData.ofActionType
+      uid.ty
+      (List.map (fun x => x.fst.ty) (Map.toList Γ.acts)).eraseDups
+      Γ.acts).ancestors.find? anc = some anc_f) :
+  UnaryFunction.WellFormed
+    (SymEnv.ofEnv Γ).entities
+    (SymEntityData.ofActionType.ancsUDF uid.ty Γ.acts anc) ∧
+  (SymEntityData.ofActionType.ancsUDF uid.ty Γ.acts anc).argType = .entity uid.ty ∧
+  (SymEntityData.ofActionType.ancsUDF uid.ty Γ.acts anc).outType = .set (.entity anc)
+:= by
+  have hwf_acts := wf_env_implies_wf_acts_map hwf
+  simp only [
+    SymEntityData.ofActionType.ancsUDF,
+    SymEntityData.ofActionType,
+    UnaryFunction.argType,
+    UnaryFunction.outType,
+  ]
+  have := Map.find?_mem_toList hanc
+  simp only [Map.toList] at this
+  have := Map.make_mem_list_mem this
+  have ⟨anc_ty', hmem_anc', heq_anc'⟩ := List.mem_map.mp this
+  simp only [Prod.mk.injEq] at heq_anc'
+  simp only [heq_anc'.1] at hmem_anc'
+  and_intros
+  any_goals simp only
+  · constructor
+    · intros; contradiction
+    · intros; contradiction
+    · apply ofType_wf hwf
+      constructor
+      have := List.mem_eraseDups_implies_mem hmem_anc'
+      have ⟨act, hact, hact_ty⟩ := List.mem_map.mp this
+      apply Or.inr
+      simp only [
+        ActionSchema.IsActionEntityType,
+        ActionSchema.contains,
+      ]
+      have := (Map.in_list_iff_find?_some
+        (wf_env_implies_wf_acts_map hwf)).mp hact
+      exists act.fst
+      simp only [this, Option.isSome, true_and, hact_ty]
+    · simp [Set.empty, Set.WellFormed, Set.make, Set.toList, Set.elts, List.canonicalize]
+  · simp [Set.empty, Term.isLiteral]
+  · simp [Term.typeOf, TermType.ofType, Set.empty, List.attach₃]
+  · simp only [Map.make_wf]
+  · -- WF of the ancestor UDF
+    intros tᵢ tₒ hmem
+    have := Map.make_mem_list_mem hmem
+    have ⟨act_entry, hact_entry, hsym⟩ := List.mem_filterMap.mp this
+    simp [bind, Option.bind] at hsym
+    split at hsym
+    contradiction
+    rename_i t₁ h₁
+    simp only [
+      SymEntityData.ofActionType.termOfType?,
+      Option.ite_none_right_eq_some,
+      Option.some.injEq,
+    ] at h₁
+    simp only [
+      Option.some.injEq, Prod.mk.injEq,
+      SymEntityData.ofActionType.ancsTerm,
+    ] at hsym
+    constructor
+    -- tᵢ is well-formed
+    · simp only [←hsym.1, ←h₁.2]
+      constructor
+      · constructor
+        constructor
+        have := (Map.in_list_iff_find?_some hwf_acts).mp hact_entry
+        have : Map.contains Γ.acts act_entry.fst := by
+          simp [Map.contains, this]
+        have := ofEnv_preserves_action_entity hwf this
+        simp only [
+          this,
+          SymEntities.isValidEntityUID,
+          SymEntityData.ofActionType,
+          SymEntityData.ofActionType.acts,
+          Set.contains,
+        ]
+        simp only [List.elem_eq_contains, List.contains_eq_mem, decide_eq_true_eq]
+        apply (Set.make_mem _ _).mp
+        apply List.mem_filterMap.mpr
+        exists act_entry
+        simp only [↓reduceIte, and_true]
+        apply (Map.in_list_iff_find?_some hwf_acts).mpr
+        assumption
+      · simp only [Term.isLiteral]
+    constructor
+    -- tᵢ has the right type
+    · simp [←h₁, ←hsym, Term.typeOf, TermPrim.typeOf, TermType.ofType]
+    -- tₒ is well-formed and has the right type
+    simp only [
+      ←h₁, ←hsym, TermType.ofType,
+      Term.WellFormedLiteral,
+    ]
+    apply and_assoc.mpr
+    apply and_left_comm.mp
+    constructor
+    · -- tₒ is literal
+      sorry
+    · apply wf_setOf
+      · intros t hmem_t
+        simp only [List.mem_filterMap] at hmem_t
+        have ⟨anc2, hmem_anc2, hsym⟩ := hmem_t
+        simp only [
+          SymEntityData.ofActionType.termOfType?,
+          Option.ite_none_right_eq_some,
+          Option.some.injEq,
+        ] at hsym
+        simp only [←hsym]
+        constructor
+        constructor
+        simp [
+          SymEntities.isValidEntityUID,
+        ]
+        sorry
+      · sorry
+      · constructor
+        have := List.mem_eraseDups_implies_mem hmem_anc'
+        have ⟨_, h₁, h₂⟩ := List.mem_map.mp this
+        simp only [←h₂]
+        apply ofEnv_action_entity_exists hwf
+        simp [Map.contains, (Map.in_list_iff_find?_some hwf_acts).mp h₁]
+  · simp [SymEntityData.ofActionType.ancsUDF, TermType.ofType]
+  · simp [SymEntityData.ofActionType.ancsUDF, TermType.ofType]
+
 theorem ofActionType_is_wf
   {uid : EntityUID} {Γ : Environment} {entry : ActionSchemaEntry}
   (hwf : Γ.WellFormed)
@@ -724,7 +861,56 @@ theorem ofActionType_is_wf
       uid.ty
       (List.map (fun x => x.fst.ty) (Map.toList Γ.acts)).eraseDups
       Γ.acts)
-:= sorry
+:= by
+  have hwf_acts := wf_env_implies_wf_acts_map hwf
+  and_intros
+  any_goals simp only [
+    SymEntityData.ofActionType,
+    SymEntityData.emptyAttrs,
+    Map.empty, Map.toList, Map.kvs,
+    UnaryFunction.argType,
+    UnaryFunction.outType,
+    TermType.ofType,
+  ]
+  · constructor
+    · intros _ _ h
+      simp [Map.toList, Map.kvs] at h
+    · simp [Map.WellFormed, Map.make, List.canonicalize, Map.toList]
+  · simp [Term.isLiteral, List.attach₃]
+  · simp [Term.typeOf, List.attach₃]
+  · simp [Map.WellFormed, Map.make, List.canonicalize, Map.toList]
+  · intros; contradiction
+  · simp [
+      TermType.isCedarRecordType,
+      TermType.cedarType?,
+      List.mapM₃, List.attach₃,
+    ]
+  -- Symbolic ancestors are well-formed
+  · intros anc sym_anc_f hfind_anc
+    have := Map.find?_mem_toList hfind_anc
+    simp only [Map.toList] at this
+    have := Map.make_mem_list_mem this
+    have ⟨anc_ty', hmem_anc', heq_anc'⟩ := List.mem_map.mp this
+    simp only [Prod.mk.injEq] at heq_anc'
+    simp only [heq_anc'.1] at hmem_anc'
+    have := ofActionType_ancsUDF_is_wf hwf hfind_anc
+    simp only [←heq_anc'.2, heq_anc'.1]
+    exact this
+  · simp only [Map.make_wf]
+  · intros; contradiction
+  · intros mems h
+    simp only [SymEntityData.ofActionType.acts, Option.some.injEq] at h
+    simp only [Bool.not_eq_true, ←h]
+    apply (Set.make_non_empty _).mp
+    simp only [
+      ne_eq, List.filterMap_eq_nil_iff, ite_eq_right_iff,
+      reduceCtorEq, imp_false,
+      Prod.forall, Classical.not_forall,
+      not_imp, Decidable.not_not, exists_and_right,
+    ]
+    exists uid
+    exists entry
+    exists (Map.find?_mem_toList hfind)
 
 theorem ofEnv_entities_is_wf
   {Γ : Environment}
