@@ -145,7 +145,7 @@ impl<'e> DifferentialTester<'e> {
         // example, the Rust code will always return an error for an
         // unrecognized entity or action, even if that part of the expression
         // should be excluded from typechecking (e.g., `true || Undefined::"foo"`
-        // should be well typed due to short-circuiting)
+        // should be well typed due to short-circuiting).
         if !rust_res.validation_passed() {
             return;
         }
