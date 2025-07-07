@@ -1,0 +1,102 @@
+name: Test Corpus Generation
+on:
+  workflow_call:
+    inputs:
+      cedar_spec_ref:
+        required: false
+        default: "main"
+        type: string
+      cedar_policy_ref:
+        required: false
+        default: "main"
+        type: string
+
+jobs:
+  abac_generation:
+    name: Test Corpus Generation (ABAC)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        toolchain:
+          - stable
+    steps:
+      - name: 
+      - name: Checkout cedar-spec
+        uses: actions/checkout@v4
+        with:
+          repository: cedar-policy/cedar-spec
+          ref: ${{ inputs.cedar_spec_ref }}
+          path: ./cedar-spec
+      - name: checkout cedar
+        uses: actions/checkout@v4
+        with:
+          repository: cedar-policy/cedar
+          path: ./cedar-spec/cedar
+          ref: ${{ inputs.cedar_policy_ref }}
+      - name: Setup Cargo config for local Cedar
+        working-directory: ./cedar-spec/cedar-lean-ffi
+        run: |
+          mkdir -p .cargo
+          cat > .cargo/config.toml << EOF
+          [patch.crates-io]
+          cedar-policy = { path = "../cedar/cedar-policy" }
+          EOF
+      - name: Install Lean
+        shell: bash
+        run: |
+              wget https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh
+              bash elan-init.sh -y
+      - name: Install protoc
+        run: sudo apt-get install protobuf-compiler
+      - name: Prepare Rust build
+        run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
+      - name: Build Lean libraries
+        working-directory: ./cedar-spec/cedar-lean
+        run: source ~/.profile && ../cedar-drt/build_lean_lib.sh
+      - name: Generate Corpus (ABAC)
+        working-directory: ./cedar-spec/cedar-drt
+        run: source ~/.profile && source set_env_vars.sh && FUZZ_TARGET=abac ./create_corpus.sh
+  abac_type_directed_generation:
+    name: Test Corpus Generation (ABAC Type Directed)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        toolchain:
+          - stable
+    steps:
+      - name: 
+      - name: Checkout cedar-spec
+        uses: actions/checkout@v4
+        with:
+          repository: cedar-policy/cedar-spec
+          ref: ${{ inputs.cedar_spec_ref }}
+          path: ./cedar-spec
+      - name: checkout cedar
+        uses: actions/checkout@v4
+        with:
+          repository: cedar-policy/cedar
+          path: ./cedar-spec/cedar
+          ref: ${{ inputs.cedar_policy_ref }}
+      - name: Setup Cargo config for local Cedar
+        working-directory: ./cedar-spec/cedar-lean-ffi
+        run: |
+          mkdir -p .cargo
+          cat > .cargo/config.toml << EOF
+          [patch.crates-io]
+          cedar-policy = { path = "../cedar/cedar-policy" }
+          EOF
+      - name: Install Lean
+        shell: bash
+        run: |
+              wget https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh
+              bash elan-init.sh -y
+      - name: Install protoc
+        run: sudo apt-get install protobuf-compiler
+      - name: Prepare Rust build
+        run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
+      - name: Build Lean libraries
+        working-directory: ./cedar-spec/cedar-lean
+        run: source ~/.profile && ../cedar-drt/build_lean_lib.sh
+      - name: Generate Corpus (ABAC Type Directed)
+        working-directory: ./cedar-spec/cedar-drt
+        run: source ~/.profile && source set_env_vars.sh && FUZZ_TARGET=abac-type-directed ./create_corpus.sh

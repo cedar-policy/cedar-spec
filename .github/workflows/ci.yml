@@ -78,6 +78,13 @@ jobs:
       cedar_spec_ref: ${{ github.ref }}
       cedar_policy_ref: ${{ needs.get-branch-name.outputs.branch_name }}
 
+  test_corpus_generation:
+    needs: get-branch-name
+    uses: ./.github/workflows/corpus_generation_test_reusable.yml
+    with:
+      cedar_spec_ref: ${{ github.ref }}
+      cedar_policy_ref: ${{ needs.get-branch-name.outputs.branch_name }}
+
   build_and_test_ffi:
     needs: get-branch-name
     uses: ./.github/workflows/build_and_test_ffi_reusable.yml
