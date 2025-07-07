@@ -986,12 +986,47 @@ theorem ofEnv_entities_is_wf
       simp only [←heq, ←heq_es, heq_ety]
       exact ofActionType_is_wf hwf this
 
+theorem ofEnv_is_wf
+  {Γ : Environment}
+  (hwf : Γ.WellFormed) :
+  (SymEnv.ofEnv Γ).WellFormed
+:= by
+  simp only [SymEnv.WellFormed]
+  constructor
+  · exact (ofEnv_request_is_swf hwf).1
+  · exact ofEnv_entities_is_wf hwf
+
+theorem ofEnv_entities_is_acyclic
+  {Γ : Environment}
+  (hwf : Γ.WellFormed) :
+  (SymEnv.ofEnv Γ).entities.Acyclic
+:= by
+  sorry
+
+theorem ofEnv_entities_is_transitive
+  {Γ : Environment}
+  (hwf : Γ.WellFormed) :
+  (SymEnv.ofEnv Γ).entities.Transitive
+:= by
+  sorry
+
+theorem ofEnv_entities_is_partitioned
+  {Γ : Environment}
+  (hwf : Γ.WellFormed) :
+  (SymEnv.ofEnv Γ).entities.Partitioned
+:= by
+  sorry
+
 theorem ofEnv_entities_is_hierarchical
   {Γ : Environment}
   (hwf : Γ.WellFormed) :
   (SymEnv.ofEnv Γ).entities.Hierarchical
 := by
-  sorry
+  constructor
+  · exact ofEnv_entities_is_acyclic hwf
+  constructor
+  · exact ofEnv_entities_is_transitive hwf
+  · exact ofEnv_entities_is_partitioned hwf
 
 theorem ofEnv_entities_is_swf
   {Γ : Environment}
