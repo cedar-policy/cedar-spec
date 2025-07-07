@@ -116,8 +116,8 @@ impl<'e> DifferentialTester<'e> {
     }
 
     /// Differentially test validation on the given policy and schema.
-    /// Panics if Dafny report an error but Rust does not. The Rust
-    /// implementation is known ot be less precise, so this function does not
+    /// Panics if Dafny reports an error but Rust does not. The Rust
+    /// implementation is known to be less precise, so this function does not
     /// panic if Rust reports an unexpected error.
     pub fn run_validation(
         &self,
