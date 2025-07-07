@@ -1119,6 +1119,11 @@ decreasing_by
     have := List.sizeOf_lt_of_mem hmem_x'
     omega
 
+/--
+Main well-formedness theorem for `SymEnv.ofEnv`,
+which says that if the input environment `Γ` is well-formed,
+then `SymEnv.ofEnv Γ` is well-formed.
+-/
 theorem ofEnv_is_wf
   {Γ : Environment}
   (hwf : Γ.WellFormed) :
@@ -1142,61 +1147,5 @@ theorem ofEnv_wf_for_expr
   constructor
   · exact ofEnv_is_wf hwf
   · exact ofEnv_entities_valid_refs_for_wt_expr hwf hwt
-
-theorem ofEnv_entities_is_acyclic
-  {Γ : Environment}
-  (hwf : Γ.WellFormed) :
-  (SymEnv.ofEnv Γ).entities.Acyclic
-:= by
-  sorry
-
-theorem ofEnv_entities_is_transitive
-  {Γ : Environment}
-  (hwf : Γ.WellFormed) :
-  (SymEnv.ofEnv Γ).entities.Transitive
-:= by
-  sorry
-
-theorem ofEnv_entities_is_partitioned
-  {Γ : Environment}
-  (hwf : Γ.WellFormed) :
-  (SymEnv.ofEnv Γ).entities.Partitioned
-:= by
-  sorry
-
-theorem ofEnv_entities_is_hierarchical
-  {Γ : Environment}
-  (hwf : Γ.WellFormed) :
-  (SymEnv.ofEnv Γ).entities.Hierarchical
-:= by
-  constructor
-  · exact ofEnv_entities_is_acyclic hwf
-  constructor
-  · exact ofEnv_entities_is_transitive hwf
-  · exact ofEnv_entities_is_partitioned hwf
-
-theorem ofEnv_entities_is_swf
-  {Γ : Environment}
-  (hwf : Γ.WellFormed) :
-  (SymEnv.ofEnv Γ).entities.StronglyWellFormed
-:= by
-  constructor
-  exact ofEnv_entities_is_wf hwf
-  exact ofEnv_entities_is_hierarchical hwf
-
-/--
-Main well-formedness theorem for `SymEnv.ofEnv`,
-which says that if the input environment `Γ` is well-formed,
-then `SymEnv.ofEnv Γ` is strongly well-formed.
--/
-theorem ofEnv_is_swf
-  {Γ : Environment}
-  (hwf : Γ.WellFormed) :
-  (SymEnv.ofEnv Γ).StronglyWellFormed
-:= by
-  simp only [SymEnv.StronglyWellFormed]
-  constructor
-  exact ofEnv_request_is_swf hwf
-  exact ofEnv_entities_is_swf hwf
 
 end Cedar.Thm
