@@ -201,6 +201,13 @@ theorem contains_iff_some_find? {α β} [BEq α] {m : Map α β} {k : α} :
   m.contains k ↔ ∃ v, m.find? k = .some v
 := by simp [contains, Option.isSome_iff_exists]
 
+theorem find?_some_implies_contains {α β} [BEq α] {m : Map α β} {k : α} {v : β} :
+  m.find? k = .some v → m.contains k
+:= by
+  intros h
+  apply contains_iff_some_find?.mpr
+  simp [h]
+
 theorem not_contains_of_empty {α β} [BEq α] (k : α) :
   ¬ (Map.empty : Map α β).contains k
 := by simp [contains, empty, find?, List.find?]

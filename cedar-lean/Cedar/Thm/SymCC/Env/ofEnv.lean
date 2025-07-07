@@ -4,6 +4,7 @@ import Cedar.Thm.SymCC.Data.Hierarchy
 import Cedar.Thm.SymCC.Env.WF
 import Cedar.Thm.SymCC.Data.LT
 import Cedar.Thm.SymCC.Term.WF
+import Cedar.Thm.SymCC.Term.Lit
 import Cedar.Thm.Data.List.Lemmas
 
 /-!
@@ -823,7 +824,17 @@ theorem ofActionType_ancsUDF_is_wf
     apply and_left_comm.mp
     constructor
     · -- tₒ is literal
-      sorry
+      simp only [Factory.setOf]
+      apply lit_term_set_impliedBy_lit_elts
+      intros t hmem_t
+      have := (Set.make_mem _ _).mpr hmem_t
+      have ⟨anc, hanc, hsym⟩ := List.mem_filterMap.mp this
+      simp only [
+        SymEntityData.ofActionType.termOfType?,
+        Option.ite_none_right_eq_some,
+        Option.some.injEq,
+      ] at hsym
+      simp only [←hsym, Term.isLiteral]
     · apply wf_setOf
       · intros t hmem_t
         simp only [List.mem_filterMap] at hmem_t
@@ -836,11 +847,38 @@ theorem ofActionType_ancsUDF_is_wf
         simp only [←hsym]
         constructor
         constructor
-        simp [
+        have := (Map.in_list_iff_find?_some hwf_acts).mp hact_entry
+        have ⟨anc_entry, hfind_anc_entry, hwf_anc_entry⟩ :=
+          wf_env_implies_wf_action_entity_ancestor hwf this hmem_anc2
+        have := ofEnv_preserves_action_entity hwf
+          (Map.find?_some_implies_contains hfind_anc_entry)
+        simp only [
           SymEntities.isValidEntityUID,
+          this,
+          SymEntityData.ofActionType,
+          SymEntityData.ofActionType.acts,
         ]
-        sorry
-      · sorry
+        apply Set.contains_prop_bool_equiv.mpr
+        apply (Set.make_mem _ _).mp
+        apply List.mem_filterMap.mpr
+        simp only [
+          Option.ite_none_right_eq_some,
+          Option.some.injEq, Prod.exists,
+          exists_and_right,
+        ]
+        exists anc2
+        simp only [and_self, and_true]
+        exists anc_entry
+        apply (Map.in_list_iff_find?_some hwf_acts).mpr
+        exact hfind_anc_entry
+      · intros t hmem_t
+        have ⟨anc, hanc, hsym⟩ := List.mem_filterMap.mp hmem_t
+        simp only [
+          SymEntityData.ofActionType.termOfType?,
+          Option.ite_none_right_eq_some,
+          Option.some.injEq,
+        ] at hsym
+        simp only [←hsym, Term.typeOf, TermPrim.typeOf]
       · constructor
         have := List.mem_eraseDups_implies_mem hmem_anc'
         have ⟨_, h₁, h₂⟩ := List.mem_map.mp this
