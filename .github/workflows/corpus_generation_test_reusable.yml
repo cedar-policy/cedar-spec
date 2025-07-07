@@ -20,7 +20,6 @@ jobs:
         toolchain:
           - stable
     steps:
-      - name: 
       - name: Checkout cedar-spec
         uses: actions/checkout@v4
         with:
@@ -64,7 +63,6 @@ jobs:
         toolchain:
           - stable
     steps:
-      - name: 
       - name: Checkout cedar-spec
         uses: actions/checkout@v4
         with:
