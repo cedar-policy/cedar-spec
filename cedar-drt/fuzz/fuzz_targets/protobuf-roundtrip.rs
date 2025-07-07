@@ -29,7 +29,7 @@ use cedar_policy_core::{
     extensions::Extensions,
 };
 use cedar_policy_generators::{
-    abac::ABACPolicy, abac::ABACRequest, hierarchy::HierarchyGenerator, schema::Schema,
+    abac::ABACPolicy, abac::ABACRequest, err::Error, hierarchy::HierarchyGenerator, schema::Schema,
     settings::ABACSettings,
 };
 
@@ -71,13 +71,27 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
         )
         .expect("Failed to create entities");
 
+        let schema = cedar_policy_core::validator::ValidatorSchema::try_from(schema.clone())
+            .map_err(|e| Error::SchemaError(e))?;
+        let actions = schema
+            .action_entities()
+            .map_err(|e| Error::EntitiesError(format!("Error fetching action entities: {e}")))?;
+        let entities = entities
+            .add_entities(
+                actions.into_iter().map(|e| std::sync::Arc::new(e)),
+                None::<&cedar_policy_core::validator::CoreSchema>,
+                cedar_policy_core::entities::TCComputation::AssumeAlreadyComputed,
+                cedar_policy_core::extensions::Extensions::all_available(),
+            )
+            .map_err(|e| {
+                Error::EntitiesError(format!("Error adding action entities to entities: {e}"))
+            })?;
+
         Ok(Self {
             request,
             policy,
             entities,
-            schema: schema
-                .try_into()
-                .expect("Failed to convert schema to ValidatorSchema"),
+            schema,
         })
     }
 
