@@ -20,7 +20,6 @@ use cedar_drt_inner::*;
 use cedar_policy_core::ast;
 use cedar_policy_core::entities::Entities;
 use cedar_policy_core::extensions::Extensions;
-use cedar_policy_core::parser;
 use libfuzzer_sys::arbitrary::{self, Arbitrary};
 
 #[derive(Arbitrary, Debug)]
@@ -45,38 +44,57 @@ enum AbstractPolicy {
     ForbidError,
 }
 
+mod concrete_policies {
+    use cedar_policy_core::{ast, parser};
+    use std::sync::LazyLock;
+
+    pub static PERMIT_TRUE: LazyLock<ast::StaticPolicy> = LazyLock::new(|| {
+        parser::parse_policy(None, "permit(principal, action, resource);")
+            .expect("should be a valid policy")
+    });
+
+    pub static PERMIT_FALSE: LazyLock<ast::StaticPolicy> = LazyLock::new(|| {
+        parser::parse_policy(None, "permit(principal, action, resource) when { 1 == 0 };")
+            .expect("should be a valid policy")
+    });
+
+    pub static PERMIT_ERROR: LazyLock<ast::StaticPolicy> = LazyLock::new(|| {
+        parser::parse_policy(
+            None,
+            "permit(principal, action, resource) when { 1 < \"hello\" };",
+        )
+        .expect("should be a valid policy")
+    });
+
+    pub static FORBID_TRUE: LazyLock<ast::StaticPolicy> = LazyLock::new(|| {
+        parser::parse_policy(None, "forbid(principal, action, resource);")
+            .expect("should be a valid policy")
+    });
+
+    pub static FORBID_FALSE: LazyLock<ast::StaticPolicy> = LazyLock::new(|| {
+        parser::parse_policy(None, "forbid(principal, action, resource) when { 1 == 0 };")
+            .expect("should be a valid policy")
+    });
+
+    pub static FORBID_ERROR: LazyLock<ast::StaticPolicy> = LazyLock::new(|| {
+        parser::parse_policy(
+            None,
+            "forbid(principal, action, resource) when { 1 < \"hello\" };",
+        )
+        .expect("should be a valid policy")
+    });
+}
+
 impl AbstractPolicy {
     /// Convert the `AbstractPolicy` into a `Policy` with the given `id`
     fn into_policy(self, id: ast::PolicyID) -> ast::StaticPolicy {
         match self {
-            AbstractPolicy::PermitTrue => {
-                parser::parse_policy(Some(id), "permit(principal, action, resource);")
-                    .expect("should be a valid policy")
-            }
-            AbstractPolicy::PermitFalse => parser::parse_policy(
-                Some(id),
-                "permit(principal, action, resource) when { 1 == 0 };",
-            )
-            .expect("should be a valid policy"),
-            AbstractPolicy::PermitError => parser::parse_policy(
-                Some(id),
-                "permit(principal, action, resource) when { 1 < \"hello\" };",
-            )
-            .expect("should be a valid policy"),
-            AbstractPolicy::ForbidTrue => {
-                parser::parse_policy(Some(id), "forbid(principal, action, resource);")
-                    .expect("should be a valid policy")
-            }
-            AbstractPolicy::ForbidFalse => parser::parse_policy(
-                Some(id),
-                "forbid(principal, action, resource) when { 1 == 0 };",
-            )
-            .expect("should be a valid policy"),
-            AbstractPolicy::ForbidError => parser::parse_policy(
-                Some(id),
-                "forbid(principal, action, resource) when { 1 < \"hello\" };",
-            )
-            .expect("should be a valid policy"),
+            AbstractPolicy::PermitTrue => concrete_policies::PERMIT_TRUE.new_id(id),
+            AbstractPolicy::PermitFalse => concrete_policies::PERMIT_FALSE.new_id(id),
+            AbstractPolicy::PermitError => concrete_policies::PERMIT_ERROR.new_id(id),
+            AbstractPolicy::ForbidTrue => concrete_policies::FORBID_TRUE.new_id(id),
+            AbstractPolicy::ForbidFalse => concrete_policies::FORBID_FALSE.new_id(id),
+            AbstractPolicy::ForbidError => concrete_policies::FORBID_ERROR.new_id(id),
         }
     }
 }
