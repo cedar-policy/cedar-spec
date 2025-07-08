@@ -92,7 +92,9 @@ Sound level-based entity slicing ([`Cedar/Thm/Validation/Levels.lean`](Cedar/Thm
 Sound and complete symbolic compilation ([`Cedar/Thm/SymbolicCompilation.lean`](Cedar/Thm/SymbolicCompilation.lean))
 
 * Compiling an expression results in an SMT term that both overapproximates (soundness) and underapproximates (completeness) the semantics of that expression.
+* Symbolic compilation always succeeds on a well-typed Cedar expression and produces a well-formed and well-typed term.
 
 Sound and complete verification ([`Cedar/Thm/Verification.lean`](Cedar/Thm/Verification.lean))
 
 * Verification checks (such as equivalence, implication, etc.) based on the symbolic compiler are sound (no false negatives) and complete (no false positives).
+

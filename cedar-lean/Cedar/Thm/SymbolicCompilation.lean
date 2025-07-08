@@ -14,10 +14,13 @@
  limitations under the License.
 -/
 
+import Cedar.Thm.SymCC.Env.ofEnv
 import Cedar.Thm.SymCC.Authorizer
 import Cedar.Thm.SymCC.Concretizer
 import Cedar.Thm.SymCC.Compiler
 import Cedar.Thm.SymCC.Compiler.WellTyped
+import Cedar.Thm.Validation.WellTyped.Definition
+import Cedar.Thm.Validation.Typechecker.WF
 
 /-!
 This file defines the top-level correctness properties for the symbolic
@@ -29,7 +32,7 @@ semantics.
 
 namespace Cedar.Thm
 
-open Spec SymCC
+open Spec SymCC Validation
 
 /--
 Let `x` be a Cedar expression, `env` a concrete evaluation environment (request
@@ -195,5 +198,26 @@ theorem isAuthorized_is_complete {ps : Policies} {εnv : SymEnv} {t : Term.Outco
   · exists I
   · replace heq := isAuthorized_bisimulation hεnv henv hI heq hok
     exact same_decision_and_response_implies_same_decision hinₒ heq
+
+/--
+For any well-typed expression `tx` in a well-formed environment `Γ`
+(which can be produced by Cedar's type checker), the symbolic compiler
+should never fail and produce a term `t` that is well-formed and has
+the type `TermType.ofType tx.typeOf`.
+-/
+theorem compile_well_typed {tx : TypedExpr} {Γ : Environment} :
+  Γ.WellFormed →
+  TypedExpr.WellTyped Γ tx →
+  ∃ t : Term,
+    compile tx.toExpr (SymEnv.ofEnv Γ) = .ok t ∧
+    t.WellFormed (SymEnv.ofEnv Γ).entities ∧
+    t.typeOf = .option (TermType.ofType tx.typeOf)
+:= by
+  intros hwf hwt
+  have hwf_tx := ofEnv_wf_for_expr hwf hwt
+  have ⟨t, hok, hty⟩ := compile_well_typed_on_wf_expr (And.intro rfl (And.intro hwt hwf_tx))
+  have hwf_t := compile_wf hwf_tx hok
+  exists t
+  simp [hok, hwf_t, hty]
 
 end Cedar.Thm
