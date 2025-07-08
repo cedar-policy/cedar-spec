@@ -187,6 +187,41 @@ def getOrHasTag (self tagTerms : WrappedAccessTerms) : WrappedAccessTerms :=
       WrappedAccessTerms.empty
 
 /--
+Compute the cross product of two sets of access terms.
+For each pair of terms, create a new ancestor access term.
+-/
+def crossProductAncestor (ofTerms ancestorTerms : AccessTerms) : List AccessTerm :=
+  ofTerms.terms.elts.foldl (fun acc ofTerm =>
+    acc ++ ancestorTerms.terms.elts.map (fun ancestorTerm =>
+      AccessTerm.ancestor ofTerm ancestorTerm)
+  ) []
+
+/--
+Add an ancestors required term for each of the wrapped access terms given.
+This function converts the `ancestors_trie` to `AccessTerms` and adds ancestor
+requirements to the current terms.
+-/
+def withAncestorsRequired (self ancestorTerms : WrappedAccessTerms) : WrappedAccessTerms :=
+  -- Compute cross product of the access terms and the ancestors
+  match returnedAccessTerms self, returnedAccessTerms ancestorTerms with
+  | some ofAccessTerms, some ancestorsAccessTerms =>
+      -- Compute cross product of the access terms
+      let ancestorTermsList := crossProductAncestor ofAccessTerms ancestorsAccessTerms
+
+      -- Create a union of all the new ancestor terms
+      let result := ancestorTermsList.foldl
+        (fun acc term =>
+          WrappedAccessTerms.union acc (WrappedAccessTerms.accessTerm term))
+        WrappedAccessTerms.empty
+
+      -- Return the new wrapped access terms with a drop
+      WrappedAccessTerms.withDroppedTerms self result
+  | _, _ =>
+      -- If either self or ancestorTerms is a record or set literal, just return self
+      -- This should never happen after typechecking
+      self
+
+/--
 Access this attribute across all access terms
 -/
 def getOrHasAttr (self : WrappedAccessTerms) (attr : Attr) : WrappedAccessTerms :=
@@ -205,10 +240,6 @@ def getOrHasAttr (self : WrappedAccessTerms) (attr : Attr) : WrappedAccessTerms 
       .withDroppedTerms (terms.getOrHasAttr attr) dropped
   | .union left right =>
       .union (left.getOrHasAttr attr) (right.getOrHasAttr attr)
-
-
-
-
 
 end WrappedAccessTerms
 
