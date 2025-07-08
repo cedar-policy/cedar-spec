@@ -1527,9 +1527,10 @@ theorem compile_well_typed_call
       simp [hty_comp_x1, hty_comp_x2, hty_x1, hty_x2, TermType.ofType]
 
 /--
-Compiling a well-typed expression should produce a term of the corresponding `TermType`.
+Compiling a well-typed expression should produce a term of the corresponding `TermType`,
+assuming that the expression is well-formed in the symbolic environment.
 -/
-theorem compile_well_typed {Γ : Environment} {εnv : SymEnv} {tx : TypedExpr} :
+theorem compile_well_typed_on_wf_expr {Γ : Environment} {εnv : SymEnv} {tx : TypedExpr} :
   CompileWellTypedCondition tx Γ εnv →
   CompileWellTyped tx εnv
 := by
@@ -1541,52 +1542,52 @@ theorem compile_well_typed {Γ : Environment} {εnv : SymEnv} {tx : TypedExpr} :
     have ⟨h1, h2, h3⟩ := h.eliminate_ite
     apply compile_well_typed_ite
     any_goals apply CompileWellTyped.add_wf
-    any_goals apply compile_well_typed
+    any_goals apply compile_well_typed_on_wf_expr
     any_goals assumption
   case and =>
     have ⟨ha, hb⟩ := h.eliminate_or_and ?_
     apply (compile_well_typed_or_and ?_ ?_).right
     any_goals apply CompileWellTyped.add_wf
-    any_goals apply compile_well_typed
+    any_goals apply compile_well_typed_on_wf_expr
     any_goals assumption
     any_goals simp
   case or =>
     have ⟨ha, hb⟩ := h.eliminate_or_and ?_
     apply (compile_well_typed_or_and ?_ ?_).left
     any_goals apply CompileWellTyped.add_wf
-    any_goals apply compile_well_typed
+    any_goals apply compile_well_typed_on_wf_expr
     any_goals assumption
     any_goals simp
   case unaryApp =>
     have hcond := h.eliminate_unaryApp
     apply compile_well_typed_unaryApp
     any_goals apply CompileWellTyped.add_wf
-    any_goals apply compile_well_typed
+    any_goals apply compile_well_typed_on_wf_expr
     all_goals assumption
   case binaryApp =>
     have ⟨ha, hb⟩ := h.eliminate_binaryApp
     apply compile_well_typed_binaryApp
     any_goals apply CompileWellTyped.add_wf
-    any_goals apply compile_well_typed
+    any_goals apply compile_well_typed_on_wf_expr
     any_goals assumption
   case getAttr =>
     have hcond := h.eliminate_getAttr
     apply compile_well_typed_getAttr
     any_goals apply CompileWellTyped.add_wf
-    any_goals apply compile_well_typed
+    any_goals apply compile_well_typed_on_wf_expr
     all_goals assumption
   case hasAttr =>
     have hcond := h.eliminate_hasAttr
     apply compile_well_typed_hasAttr
     any_goals apply CompileWellTyped.add_wf
-    any_goals apply compile_well_typed
+    any_goals apply compile_well_typed_on_wf_expr
     all_goals assumption
   case set =>
     have hcond := h.eliminate_set
     apply compile_well_typed_set
     · intros x hx
       apply CompileWellTyped.add_wf
-      apply compile_well_typed (hcond x hx)
+      apply compile_well_typed_on_wf_expr (hcond x hx)
       apply hcond
       assumption
     assumption
@@ -1595,7 +1596,7 @@ theorem compile_well_typed {Γ : Environment} {εnv : SymEnv} {tx : TypedExpr} :
     apply compile_well_typed_record
     · intros a x hx
       apply CompileWellTyped.add_wf
-      apply compile_well_typed (hcond a x hx)
+      apply compile_well_typed_on_wf_expr (hcond a x hx)
       apply hcond
       assumption
     assumption
@@ -1604,7 +1605,7 @@ theorem compile_well_typed {Γ : Environment} {εnv : SymEnv} {tx : TypedExpr} :
     apply compile_well_typed_call
     · intros x hx
       apply CompileWellTyped.add_wf
-      apply compile_well_typed (hcond x hx)
+      apply compile_well_typed_on_wf_expr (hcond x hx)
       apply hcond
       assumption
     assumption
