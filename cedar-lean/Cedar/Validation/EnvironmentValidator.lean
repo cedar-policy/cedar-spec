@@ -31,6 +31,11 @@ open Cedar.Spec
 inductive EnvironmentValidationError where
 | typeError (msg : String)
 
+instance : ToString EnvironmentValidationError where
+  toString err :=
+    match err with
+    | .typeError msg => s!"type error: {msg}"
+
 abbrev EnvironmentValidationResult := Except EnvironmentValidationError Unit
 
 def EntityType.validateWellFormed (env : Environment) (ety : EntityType) : EnvironmentValidationResult :=

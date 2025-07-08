@@ -20,4 +20,5 @@ import Cedar.Validation.Subtyping
 import Cedar.Validation.Typechecker
 import Cedar.Validation.Validator
 import Cedar.Validation.RequestEntityValidator
+import Cedar.Validation.EnvironmentValidator
 import Cedar.Validation.Levels
