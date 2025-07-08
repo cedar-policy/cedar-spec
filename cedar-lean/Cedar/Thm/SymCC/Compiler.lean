@@ -32,7 +32,7 @@ and completeness of Cedar's symbolic compiler.
 
 namespace Cedar.Thm
 
-open Spec SymCC Factory Validation
+open Spec SymCC Factory
 
 /--
 The lemma shows that the symbolic compiler (`compile`) behaves like the
