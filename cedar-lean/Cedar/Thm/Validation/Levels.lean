@@ -45,7 +45,7 @@ open Cedar.Validation
 theorem level_based_slicing_is_sound_expr {e : Expr} {n : Nat} {tx : TypedExpr} {c c₁ : Capabilities} {env : Environment} {request : Request} {entities slice : Entities}
   (hs : slice = entities.sliceAtLevel request n)
   (hc : CapabilitiesInvariant c request entities)
-  (hr : RequestAndEntitiesMatchEnvironment env request entities)
+  (hr : InstanceOfWellFormedEnvironment request entities env)
   (ht : typeOf e c env = Except.ok (tx, c₁))
   (hl : tx.AtLevel env n) :
   evaluate e request entities = evaluate e request slice
@@ -111,7 +111,7 @@ termination_by e
 
 theorem typecheck_policy_with_level_is_sound {p : Policy} {tx : TypedExpr} {n : Nat} {env : Environment} {request : Request} {entities slice : Entities}
   (hs : slice = entities.sliceAtLevel request n)
-  (hr : RequestAndEntitiesMatchEnvironment env request entities)
+  (hr : InstanceOfWellFormedEnvironment request entities env)
   (htl : typecheckPolicyWithLevel p n env = .ok tx) :
   evaluate p.toExpr request entities = evaluate p.toExpr request slice
 := by
@@ -131,7 +131,7 @@ theorem typecheck_policy_with_level_is_sound {p : Policy} {tx : TypedExpr} {n : 
 
 theorem typecheck_policy_at_level_with_environments_is_sound {p : Policy} {envs : List Environment} {n : Nat} {request : Request} {entities slice : Entities}
   (hs : slice = entities.sliceAtLevel request n)
-  (he : ∃ env ∈ envs, RequestAndEntitiesMatchEnvironment env request entities)
+  (he : ∃ env ∈ envs, InstanceOfWellFormedEnvironment request entities env)
   (htl : typecheckPolicyWithLevelWithEnvironments p n envs = .ok ()) :
   evaluate p.toExpr request entities = evaluate p.toExpr request slice
 := by

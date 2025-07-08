@@ -463,6 +463,57 @@ theorem mapM_key_id_sortedBy_key {α β : Type} [LT α] {ks : List α} {kvs : Li
 
     exact List.SortedBy.cons_cons hlt hs
 
+theorem isSortedBy_correct {α β} [LT β] [DecidableLT β] {l : List α} {f : α → β} :
+  l.SortedBy f ↔ l.isSortedBy f
+:= by
+  cases l with
+  | nil =>
+    simp [List.isSortedBy]
+    constructor
+  | cons x₁ tl =>
+    cases tl with
+    | nil =>
+      simp [List.isSortedBy]
+      constructor
+    | cons x₂ xs =>
+      simp [List.isSortedBy]
+      constructor
+      · intros h
+        cases h with
+        | cons_cons h₁ h₂ =>
+        simp only [h₁, true_and]
+        exact List.isSortedBy_correct.mp h₂
+      · intros h
+        constructor
+        exact h.1
+        exact List.isSortedBy_correct.mpr h.2
+
+theorem isSorted_correct {α} [LT α] [DecidableLT α] {l : List α} :
+  l.Sorted ↔ l.isSorted
+:= by
+  cases l with
+  | nil =>
+    simp [List.isSorted]
+    constructor
+  | cons x₁ tl =>
+    cases tl with
+    | nil =>
+      simp [List.isSorted]
+      constructor
+    | cons x₂ xs =>
+      simp [List.isSorted]
+      constructor
+      · intros h
+        cases h with
+        | cons_cons h₁ h₂ =>
+        simp only [id_eq] at h₁
+        simp only [h₁, true_and]
+        exact List.isSorted_correct.mp h₂
+      · intros h
+        constructor
+        exact h.1
+        exact List.isSorted_correct.mpr h.2
+
 /-! ### Forallᵥ -/
 
 def Forallᵥ {α β γ} (p : β → γ → Prop) (kvs₁ : List (α × β)) (kvs₂ : List (α × γ)) : Prop :=

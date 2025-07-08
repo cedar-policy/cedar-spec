@@ -96,4 +96,24 @@ def mapM₃ {m : Type u → Type v} [Monad m] {γ : Type u} [SizeOf α] [SizeOf 
 def mapUnion {α β} [Union α] [EmptyCollection α] (f : β → α) (bs : List β) : α :=
   bs.foldl (λ a b => a ∪ f b) ∅
 
+def isSortedBy {α β} [LT β] [DecidableLT β] (l : List α) (f : α → β) : Bool :=
+  match l with
+  | [] => true
+  | [_] => true
+  | x₁ :: x₂ :: xs =>
+    if f x₁ < f x₂ then
+      (x₂ :: xs).isSortedBy f
+    else
+      false
+
+def isSorted {α} [LT α] [DecidableLT α] (l : List α) : Bool :=
+  match l with
+  | [] => true
+  | [_] => true
+  | x₁ :: x₂ :: xs =>
+    if x₁ < x₂ then
+      (x₂ :: xs).isSorted
+    else
+      false
+
 end List

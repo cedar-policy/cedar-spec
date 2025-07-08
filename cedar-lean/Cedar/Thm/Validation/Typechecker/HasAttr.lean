@@ -74,13 +74,13 @@ theorem type_of_hasAttr_is_sound_for_records {x₁ : Expr} {a : Attr} {c₁ c₁
   (h₂ : typeOf (Expr.hasAttr x₁ a) c₁ env = Except.ok (ty, c₂))
   (h₃ : (typeOf x₁ c₁ env).typeOf = Except.ok (CedarType.record rty, c₁'))
   (h₄ : evaluate x₁ request entities = Except.ok v₁)
-  (h₅ : InstanceOfType v₁ (CedarType.record rty)) :
+  (h₅ : InstanceOfType env v₁ (CedarType.record rty)) :
   ∃ v,
   (hasAttr v₁ a entities = Except.error Error.entityDoesNotExist ∨
    hasAttr v₁ a entities = Except.error Error.extensionError ∨
    hasAttr v₁ a entities = Except.error Error.arithBoundsError ∨
    hasAttr v₁ a entities = Except.ok v) ∧
-  InstanceOfType v ty.typeOf
+  InstanceOfType env v ty.typeOf
 := by
   have ⟨r, h₅⟩ := instance_of_record_type_is_record h₅
   subst h₅
@@ -119,17 +119,17 @@ theorem type_of_hasAttr_is_sound_for_records {x₁ : Expr} {a : Attr} {c₁ c₁
 
 theorem type_of_hasAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c₁' : Capabilities} {env : Environment} {ety : EntityType} {request : Request} {entities : Entities} {v₁ : Value}
   (h₁ : CapabilitiesInvariant c₁ request entities)
-  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₂ : InstanceOfWellFormedEnvironment request entities env)
   (h₃ : typeOf (Expr.hasAttr x₁ a) c₁ env = Except.ok (ty, c₂))
   (h₄ : (typeOf x₁ c₁ env).typeOf = Except.ok (CedarType.entity ety, c₁'))
   (h₅ : evaluate x₁ request entities = Except.ok v₁)
-  (h₆ : InstanceOfType v₁ (CedarType.entity ety)) :
+  (h₆ : InstanceOfType env v₁ (CedarType.entity ety)) :
   ∃ v,
   (hasAttr v₁ a entities = Except.error Error.entityDoesNotExist ∨
    hasAttr v₁ a entities = Except.error Error.extensionError ∨
    hasAttr v₁ a entities = Except.error Error.arithBoundsError ∨
    hasAttr v₁ a entities = Except.ok v) ∧
-   InstanceOfType v ty.typeOf
+   InstanceOfType env v ty.typeOf
 := by
   have ⟨uid, h₆, h₇⟩ := instance_of_entity_type_is_entity h₆
   subst h₆ h₇
@@ -174,27 +174,27 @@ theorem type_of_hasAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
     unfold Entities.attrsOrEmpty
     rename_i _ h₇ _ _
     simp [EntitySchema.attrs?] at h₇
-    replace ⟨_, h₂, _⟩ := h₂
+    replace ⟨_, _, h₂⟩ := h₂
     cases h₈ : Map.find? entities uid <;> simp
     simp [Map.not_contains_of_empty, InstanceOfBoolType]
-    cases h₂ uid _ h₈ with
+    cases h₂.1 uid _ h₈ with
     | inl h₂ =>
       replace ⟨_, h₈, _⟩ := h₂
       rw [h₇] at h₈
       contradiction
     | inr h₂ =>
       -- Action entity always have empty attributes
-      have ⟨_, h₉, _⟩ := h₂
+      have ⟨h₉, _⟩ := h₂
       simp only [h₉, Map.contains, Map.find?, Map.empty, Map.kvs]
       constructor
 
 theorem type_of_hasAttr_is_sound {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
-  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₂ : InstanceOfWellFormedEnvironment request entities env)
   (h₃ : typeOf (Expr.hasAttr x₁ a) c₁ env = Except.ok (ty, c₂))
   (ih : TypeOfIsSound x₁) :
   GuardedCapabilitiesInvariant (Expr.hasAttr x₁ a) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.hasAttr x₁ a) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.hasAttr x₁ a) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
   have ⟨h₅, ty₁, c₁', hty₁, hty, h₄⟩ := type_of_hasAttr_inversion h₃
   apply And.intro
@@ -214,7 +214,7 @@ theorem type_of_hasAttr_is_sound {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilit
     simp [EvaluatesTo, evaluate] <;>
     rw [h₄] at h₇ <;>
     rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
-    <;> try exact type_is_inhabited ty.typeOf
+    <;> try exact type_of_is_inhabited h₂.wf_env h₃
     · have h₈ : (typeOf x₁ c₁ env).typeOf = Except.ok (CedarType.entity ety, c₁') := by simp [h₄, hty₁, ResultType.typeOf, Except.map]
       exact type_of_hasAttr_is_sound_for_entities h₁ h₂ h₃ h₈ h₆ h₇
     · have h₈ : (typeOf x₁ c₁ env).typeOf = Except.ok (CedarType.record rty, c₁') := by simp [h₄, hty₁, ResultType.typeOf, Except.map]

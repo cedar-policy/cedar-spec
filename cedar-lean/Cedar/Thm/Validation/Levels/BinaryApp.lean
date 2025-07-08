@@ -49,7 +49,7 @@ theorem not_dereferencing_apply₂_invariant_entities {op : BinaryOp} {entities 
 
 theorem level_based_slicing_is_sound_inₑ {e₁ : Expr} {euid₁ euid₂ : EntityUID} {n : Nat} {c₀ c₁ : Capabilities} {entities slice : Entities}
   (hc : CapabilitiesInvariant c₀ request entities)
-  (hr : RequestAndEntitiesMatchEnvironment env request entities)
+  (hr : InstanceOfWellFormedEnvironment request entities env)
   (ht : typeOf e₁ c₀ env = Except.ok (tx₁, c₁))
   (hl : tx₁.EntityAccessAtLevel env n (n + 1) [])
   (he : evaluate e₁ request entities = .ok (Value.prim (Prim.entityUID euid₁)))
@@ -64,7 +64,7 @@ theorem level_based_slicing_is_sound_inₑ {e₁ : Expr} {euid₁ euid₂ : Enti
 theorem level_based_slicing_is_sound_binary_app {op : BinaryOp} {e₁ e₂ : Expr} {n : Nat} {c₀ c₁: Capabilities} {env : Environment} {request : Request} {entities slice : Entities}
   (hs : slice = entities.sliceAtLevel request n)
   (hc : CapabilitiesInvariant c₀ request entities)
-  (hr : RequestAndEntitiesMatchEnvironment env request entities)
+  (hr : InstanceOfWellFormedEnvironment request entities env)
   (ht : typeOf (.binaryApp op e₁ e₂) c₀ env = Except.ok (tx, c₁))
   (hl : tx.AtLevel env n)
   (ihe₁ : TypedAtLevelIsSound e₁)

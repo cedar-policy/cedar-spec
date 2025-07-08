@@ -98,7 +98,7 @@ theorem type_of_call_decimal_inversion {xs : List Expr} {c c' : Capabilities} {e
 theorem type_of_call_decimal_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : typeOf (Expr.call .decimal xs) c₁ env = Except.ok (ty, c₂)) :
   GuardedCapabilitiesInvariant (Expr.call .decimal xs) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.call .decimal xs) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.call .decimal xs) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
   have ⟨h₂, h₃, s, h₄, h₅⟩ := type_of_call_decimal_inversion h₁
   rw [h₂]
@@ -137,7 +137,7 @@ theorem type_of_call_datetime_inversion {xs : List Expr} {c c' : Capabilities} {
 theorem type_of_call_datetime_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : typeOf (Expr.call .datetime xs) c₁ env = Except.ok (ty, c₂)) :
   GuardedCapabilitiesInvariant (Expr.call .datetime xs) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.call .datetime xs) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.call .datetime xs) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
   have ⟨h₂, h₃, s, h₄, h₅⟩ := type_of_call_datetime_inversion h₁
   rw [h₂]
@@ -174,7 +174,7 @@ theorem type_of_call_duration_inversion {xs : List Expr} {c c' : Capabilities} {
 theorem type_of_call_duration_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : typeOf (Expr.call .duration xs) c₁ env = Except.ok (ty, c₂)) :
   GuardedCapabilitiesInvariant (Expr.call .duration xs) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.call .duration xs) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.call .duration xs) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
   have ⟨h₂, h₃, s, h₄, h₅⟩ := type_of_call_duration_inversion h₁
   rw [h₂]
@@ -212,7 +212,7 @@ theorem type_of_call_ip_inversion {xs : List Expr} {c c' : Capabilities} {env : 
 theorem type_of_call_ip_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : typeOf (Expr.call .ip xs) c₁ env = Except.ok (ty, c₂)) :
   GuardedCapabilitiesInvariant (Expr.call .ip xs) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.call .ip xs) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.call .ip xs) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
   have ⟨h₂, h₃, s, h₄, h₅⟩ := type_of_call_ip_inversion h₁
   rw [h₂]
@@ -318,11 +318,11 @@ theorem type_of_call_decimal_comparator_inversion {xfn : ExtFun} {xs : List Expr
 theorem type_of_call_decimal_comparator_is_sound {xfn : ExtFun} {xs : List Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₀ : IsDecimalComparator xfn)
   (h₁ : CapabilitiesInvariant c₁ request entities)
-  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₂ : InstanceOfWellFormedEnvironment request entities env)
   (h₃ : typeOf (Expr.call xfn xs) c₁ env = Except.ok (ty, c₂))
   (ih : ∀ (xᵢ : Expr), xᵢ ∈ xs → TypeOfIsSound xᵢ) :
   GuardedCapabilitiesInvariant (Expr.call xfn xs) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.call xfn xs) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.call xfn xs) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
   have ⟨h₄, h₅, x₁, x₂, c₁', c₂', h₆, h₇, h₈⟩ := type_of_call_decimal_comparator_inversion h₀ h₃
   rw [h₄]
@@ -340,10 +340,10 @@ theorem type_of_call_decimal_comparator_is_sound {xfn : ExtFun} {xs : List Expr}
   simp [EvaluatesTo] at hl₁
   rcases hl₁ with hl₁ | hl₁ | hl₁ | hl₁ <;>
   simp [hl₁] <;>
-  try { exact type_is_inhabited (CedarType.bool BoolType.anyBool)}
+  try { exact type_is_inhabited_bool}
   rcases hl₂ with hl₂ | hl₂ | hl₂ | hl₂ <;>
   simp [hl₂] <;>
-  try { exact type_is_inhabited (CedarType.bool BoolType.anyBool)}
+  try { exact type_is_inhabited_bool}
   rw [hl₇] at  hr₁
   have ⟨d₁, hr₁⟩ := instance_of_decimal_type_is_decimal hr₁
   rw [hl₈] at  hr₂
@@ -391,11 +391,11 @@ theorem type_of_call_isInRange_inversion {xs : List Expr} {c c' : Capabilities} 
 
 theorem type_of_call_isInRange_comparator_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
-  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₂ : InstanceOfWellFormedEnvironment request entities env)
   (h₃ : typeOf (Expr.call .isInRange xs) c₁ env = Except.ok (ty, c₂))
   (ih : ∀ (xᵢ : Expr), xᵢ ∈ xs → TypeOfIsSound xᵢ) :
   GuardedCapabilitiesInvariant (Expr.call .isInRange xs) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.call .isInRange xs) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.call .isInRange xs) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
   have ⟨h₄, h₅, x₁, x₂, c₁', c₂', h₆, h₇, h₈⟩ := type_of_call_isInRange_inversion h₃
   rw [h₄]
@@ -413,10 +413,10 @@ theorem type_of_call_isInRange_comparator_is_sound {xs : List Expr} {c₁ c₂ :
   simp [EvaluatesTo] at hl₁
   rcases hl₁ with hl₁ | hl₁ | hl₁ | hl₁ <;>
   simp [hl₁] <;>
-  try { exact type_is_inhabited (CedarType.bool BoolType.anyBool)}
+  try { exact type_is_inhabited_bool}
   rcases hl₂ with hl₂ | hl₂ | hl₂ | hl₂ <;>
   simp [hl₂] <;>
-  try { exact type_is_inhabited (CedarType.bool BoolType.anyBool)}
+  try { exact type_is_inhabited_bool}
   rw [hl₇] at hr₁
   have ⟨d₁, hr₁⟩ := instance_of_ipAddr_type_is_ipAddr hr₁
   rw [hl₈] at hr₂
@@ -499,11 +499,11 @@ theorem type_of_call_toTime_inversion {xs : List Expr} {c c' : Capabilities} {en
 
 theorem type_of_call_toTime_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
-  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₂ : InstanceOfWellFormedEnvironment request entities env)
   (h₃ : typeOf (Expr.call .toTime xs) c₁ env = Except.ok (ty, c₂))
   (ih : ∀ (xᵢ : Expr), xᵢ ∈ xs → TypeOfIsSound xᵢ) :
   GuardedCapabilitiesInvariant (Expr.call .toTime xs) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.call .toTime xs) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.call .toTime xs) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
   have ⟨h₄, h₅, x₁, c₁', h₆, h₇⟩ := type_of_call_toTime_inversion h₃
   rw [h₄]
@@ -519,7 +519,7 @@ theorem type_of_call_toTime_is_sound {xs : List Expr} {c₁ c₂ : Capabilities}
   rcases hl₁ with hl₁ | hl₁ | hl₁ | hl₁ <;>
   simp only [hl₁, Except.bind_err, Except.error.injEq, reduceCtorEq, or_self, or_false, or_true,
     true_and] <;>
-  try { exact type_is_inhabited (CedarType.ext .duration)}
+  try { exact type_is_inhabited_ext}
   rw [hl₇] at hr₁
   have ⟨dt₁, hr₁⟩ := instance_of_datetime_type_is_datetime hr₁
   subst hr₁
@@ -559,11 +559,11 @@ theorem type_of_call_toDate_inversion {xs : List Expr} {c c' : Capabilities} {en
 
 theorem type_of_call_toDate_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
-  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₂ : InstanceOfWellFormedEnvironment request entities env)
   (h₃ : typeOf (Expr.call .toDate xs) c₁ env = Except.ok (ty, c₂))
   (ih : ∀ (xᵢ : Expr), xᵢ ∈ xs → TypeOfIsSound xᵢ) :
   GuardedCapabilitiesInvariant (Expr.call .toDate xs) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.call .toDate xs) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.call .toDate xs) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
   have ⟨h₄, h₅, x₁, c₁', h₆, h₇⟩ := type_of_call_toDate_inversion h₃
   rw [h₄]
@@ -579,7 +579,7 @@ theorem type_of_call_toDate_is_sound {xs : List Expr} {c₁ c₂ : Capabilities}
   rcases hl₁ with hl₁ | hl₁ | hl₁ | hl₁ <;>
   simp only [hl₁, Except.bind_err, Except.error.injEq, reduceCtorEq, or_self, or_false, or_true,
     true_and] <;>
-  try { exact type_is_inhabited (CedarType.ext .datetime)}
+  try { exact type_is_inhabited_ext}
   rw [hl₇] at hr₁
   have ⟨dt₁, hr₁⟩ := instance_of_datetime_type_is_datetime hr₁
   subst hr₁
@@ -591,7 +591,7 @@ theorem type_of_call_toDate_is_sound {xs : List Expr} {c₁ c₂ : Capabilities}
     simp [InstanceOfExtType]
   | none =>
     simp only [Except.error.injEq, reduceCtorEq, or_self, or_false, or_true, true_and]
-    apply type_is_inhabited
+    apply type_is_inhabited_ext
 
 theorem type_of_call_offset_inversion {xs : List Expr} {c c' : Capabilities} {env : Environment} {ty : TypedExpr}
   (h₁ : typeOf (Expr.call .offset xs) c env = Except.ok (ty, c')) :
@@ -629,11 +629,11 @@ theorem type_of_call_offset_inversion {xs : List Expr} {c c' : Capabilities} {en
 
 theorem type_of_call_offset_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
-  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₂ : InstanceOfWellFormedEnvironment request entities env)
   (h₃ : typeOf (Expr.call .offset xs) c₁ env = Except.ok (ty, c₂))
   (ih : ∀ (xᵢ : Expr), xᵢ ∈ xs → TypeOfIsSound xᵢ) :
   GuardedCapabilitiesInvariant (Expr.call .offset xs) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.call .offset xs) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.call .offset xs) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
     have ⟨h₄, h₅, x₁, x₂, c₁', c₂', h₆, h₇, h₈⟩ := type_of_call_offset_inversion h₃
     rw [h₄]
@@ -648,7 +648,7 @@ theorem type_of_call_offset_is_sound {xs : List Expr} {c₁ c₂ : Capabilities}
     simp only [EvaluatesTo] at hl₁
     rcases hl₁ with hl₁ | hl₁ | hl₁ | hl₁ <;>
     simp only [hl₁, Except.bind_err, Except.error.injEq, reduceCtorEq, or_self, or_false, or_true, true_and] <;>
-    try { exact type_is_inhabited (CedarType.ext .datetime)}
+    try { exact type_is_inhabited_ext}
     rw [hl₇] at hr₁
     have ⟨dt₁, hr₁⟩ := instance_of_datetime_type_is_datetime hr₁
     subst hr₁
@@ -660,7 +660,7 @@ theorem type_of_call_offset_is_sound {xs : List Expr} {c₁ c₂ : Capabilities}
     rcases hl₂ with hl₂ | hl₂ | hl₂ | hl₂ <;>
     simp only [hl₂, Except.bind_err, Except.bind_ok, Except.error.injEq, reduceCtorEq, or_self,
       or_false, or_true, true_and] <;>
-    try { exact type_is_inhabited (CedarType.ext .datetime)}
+    try { exact type_is_inhabited_ext}
     rw [hl₈] at hr₂
     have ⟨dt₂, hr₂⟩ := instance_of_duration_type_is_duration hr₂
     subst hr₂
@@ -672,7 +672,7 @@ theorem type_of_call_offset_is_sound {xs : List Expr} {c₁ c₂ : Capabilities}
       simp [InstanceOfExtType]
     | none =>
       simp only [Except.error.injEq, reduceCtorEq, or_self, or_false, or_true, true_and]
-      apply type_is_inhabited
+      apply type_is_inhabited_ext
 
 theorem type_of_call_durationSince_inversion {xs : List Expr} {c c' : Capabilities} {env : Environment} {ty : TypedExpr}
   (h₁ : typeOf (Expr.call .durationSince xs) c env = Except.ok (ty, c')) :
@@ -710,11 +710,11 @@ theorem type_of_call_durationSince_inversion {xs : List Expr} {c c' : Capabiliti
 
 theorem type_of_call_durationSince_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
-  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₂ : InstanceOfWellFormedEnvironment request entities env)
   (h₃ : typeOf (Expr.call .durationSince xs) c₁ env = Except.ok (ty, c₂))
   (ih : ∀ (xᵢ : Expr), xᵢ ∈ xs → TypeOfIsSound xᵢ) :
   GuardedCapabilitiesInvariant (Expr.call .durationSince xs) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.call .durationSince xs) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.call .durationSince xs) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
     have ⟨h₄, h₅, x₁, x₂, c₁', c₂', h₆, h₇, h₈⟩ := type_of_call_durationSince_inversion h₃
     rw [h₄]
@@ -730,7 +730,7 @@ theorem type_of_call_durationSince_is_sound {xs : List Expr} {c₁ c₂ : Capabi
     rcases hl₁ with hl₁ | hl₁ | hl₁ | hl₁ <;>
     simp only [hl₁, Except.bind_err, Except.error.injEq, reduceCtorEq, or_self, or_false, or_true,
       true_and] <;>
-    try { exact type_is_inhabited (CedarType.ext .duration)}
+    try { exact type_is_inhabited_ext}
     rw [hl₇] at hr₁
     have ⟨dt₁, hr₁⟩ := instance_of_datetime_type_is_datetime hr₁
     subst hr₁
@@ -742,7 +742,7 @@ theorem type_of_call_durationSince_is_sound {xs : List Expr} {c₁ c₂ : Capabi
     rcases hl₂ with hl₂ | hl₂ | hl₂ | hl₂ <;>
     simp only [hl₂, Except.bind_err, Except.bind_ok, Except.error.injEq, reduceCtorEq, or_self,
       or_false, or_true, true_and] <;>
-    try { exact type_is_inhabited (CedarType.ext .duration)}
+    try { exact type_is_inhabited_ext}
     rw [hl₈] at hr₂
     have ⟨dt₂, hr₂⟩ := instance_of_datetime_type_is_datetime hr₂
     subst hr₂
@@ -754,7 +754,7 @@ theorem type_of_call_durationSince_is_sound {xs : List Expr} {c₁ c₂ : Capabi
       simp [InstanceOfExtType]
     | none =>
       simp only [Except.error.injEq, reduceCtorEq, or_self, or_false, or_true, true_and]
-      apply type_is_inhabited
+      apply type_is_inhabited_ext
 
 theorem type_of_call_ipAddr_recognizer_inversion {xfn : ExtFun} {xs : List Expr} {c c' : Capabilities} {env : Environment} {ty : TypedExpr}
   (h₀ : IsIpAddrRecognizer xfn)
@@ -791,11 +791,11 @@ theorem type_of_call_ipAddr_recognizer_inversion {xfn : ExtFun} {xs : List Expr}
 theorem type_of_call_ipAddr_recognizer_is_sound {xfn : ExtFun} {xs : List Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₀ : IsIpAddrRecognizer xfn)
   (h₁ : CapabilitiesInvariant c₁ request entities)
-  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₂ : InstanceOfWellFormedEnvironment request entities env)
   (h₃ : typeOf (Expr.call xfn xs) c₁ env = Except.ok (ty, c₂))
   (ih : ∀ (xᵢ : Expr), xᵢ ∈ xs → TypeOfIsSound xᵢ) :
   GuardedCapabilitiesInvariant (Expr.call xfn xs) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.call xfn xs) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.call xfn xs) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
   have ⟨h₄, h₅, x₁, c₁', h₆, h₇⟩ := type_of_call_ipAddr_recognizer_inversion h₀ h₃
   rw [h₄]
@@ -810,7 +810,7 @@ theorem type_of_call_ipAddr_recognizer_is_sound {xfn : ExtFun} {xs : List Expr} 
   simp [EvaluatesTo] at hl₁
   rcases hl₁ with hl₁ | hl₁ | hl₁ | hl₁ <;>
   simp [hl₁] <;>
-  try { exact type_is_inhabited (CedarType.bool BoolType.anyBool)}
+  try { exact type_is_inhabited_bool}
   rw [hl₇] at hr₁
   have ⟨ip₁, hr₁⟩ := instance_of_ipAddr_type_is_ipAddr hr₁
   subst hr₁
@@ -864,11 +864,11 @@ theorem type_of_call_duration_converter_inversion {xfn : ExtFun} {xs : List Expr
 theorem type_of_call_duration_converter_is_sound {xfn : ExtFun} {xs : List Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₀ : IsDurationConverter xfn)
   (h₁ : CapabilitiesInvariant c₁ request entities)
-  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₂ : InstanceOfWellFormedEnvironment request entities env)
   (h₃ : typeOf (Expr.call xfn xs) c₁ env = Except.ok (ty, c₂))
   (ih : ∀ (xᵢ : Expr), xᵢ ∈ xs → TypeOfIsSound xᵢ) :
   GuardedCapabilitiesInvariant (Expr.call xfn xs) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.call xfn xs) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.call xfn xs) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
   have ⟨h₄, h₅, x₁, c₁', h₆, h₇⟩ := type_of_call_duration_converter_inversion h₀ h₃
   rw [h₄]
@@ -883,7 +883,7 @@ theorem type_of_call_duration_converter_is_sound {xfn : ExtFun} {xs : List Expr}
   simp [EvaluatesTo] at hl₁
   rcases hl₁ with hl₁ | hl₁ | hl₁ | hl₁ <;>
   simp [hl₁] <;>
-  try { exact type_is_inhabited (.int)}
+  try { exact type_is_inhabited_int}
   rw [hl₇] at hr₁
   have ⟨ip₁, hr₁⟩ := instance_of_duration_type_is_duration hr₁
   subst hr₁
@@ -896,11 +896,11 @@ theorem type_of_call_duration_converter_is_sound {xfn : ExtFun} {xs : List Expr}
 
 theorem type_of_call_is_sound {xfn : ExtFun} {xs : List Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
-  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₂ : InstanceOfWellFormedEnvironment request entities env)
   (h₃ : typeOf (Expr.call xfn xs) c₁ env = Except.ok (ty, c₂))
   (ih : ∀ (xᵢ : Expr), xᵢ ∈ xs → TypeOfIsSound xᵢ) :
   GuardedCapabilitiesInvariant (Expr.call xfn xs) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.call xfn xs) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.call xfn xs) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
   match xfn with
   | .decimal            => exact type_of_call_decimal_is_sound h₃
