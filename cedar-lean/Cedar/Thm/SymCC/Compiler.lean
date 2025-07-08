@@ -15,7 +15,6 @@
 -/
 
 import Cedar.Thm.SymCC.Env.Interpret
-import Cedar.Thm.SymCC.Env.ofEnv
 import Cedar.Thm.SymCC.Term.Same
 import Cedar.Thm.SymCC.Compiler.Attr
 import Cedar.Thm.SymCC.Compiler.Binary
@@ -25,9 +24,6 @@ import Cedar.Thm.SymCC.Compiler.LitVar
 import Cedar.Thm.SymCC.Compiler.Record
 import Cedar.Thm.SymCC.Compiler.Set
 import Cedar.Thm.SymCC.Compiler.Unary
-import Cedar.Thm.SymCC.Compiler.WellTyped
-import Cedar.Thm.Validation.WellTyped.Definition
-import Cedar.Thm.Validation.Typechecker.WF
 
 /-!
 This file proves two key auxiliary lemmas used to show the soundness
@@ -174,25 +170,5 @@ theorem compile_bisimulation {x : Expr} {env : Env} {εnv : SymEnv} {t : Term} {
   have h₆ := interpret_εnv_wf_for_expr h₁ h₃
   have h₇ := compile_interpret h₃ h₁ h₅
   exact compile_evaluate h₄ h₂ h₆ h₇
-
-/--
-Given a well-typed expression `tx` in a well-formed environment `Γ`,
-`compile` should succeed and produce a term with the corresponding
-type `TermType.ofType tx.typeOf`.
--/
-theorem compile_well_typed {tx : TypedExpr} {Γ : Environment} :
-  Γ.WellFormed →
-  TypedExpr.WellTyped Γ tx →
-  ∃ t : Term,
-    compile tx.toExpr (SymEnv.ofEnv Γ) = .ok t ∧
-    t.typeOf = .option (TermType.ofType tx.typeOf)
-:= by
-  intros hwf hwt
-  apply compile_well_typed_on_wf_expr
-  constructor
-  · rfl
-  constructor
-  · exact hwt
-  · apply ofEnv_wf_for_expr hwf hwt
 
 end Cedar.Thm
