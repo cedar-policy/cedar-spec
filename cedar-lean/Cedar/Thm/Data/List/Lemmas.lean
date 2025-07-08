@@ -1341,6 +1341,10 @@ theorem forM_ok_implies_all_ok {α β : Type} (xs : List α) (f : α → Except 
   obtain ⟨_, _, h₅⟩ := h₂ xin
   exact h₅
 
+theorem forM_ok_implies_all_ok' {α β : Type} {xs : List α} {f : α → Except β Unit} :
+  xs.forM f = Except.ok () → (∀ x ∈ xs, f x = Except.ok ())
+:= forM_ok_implies_all_ok xs f
+
 /-! ### removeAll -/
 
 theorem removeAll_singleton_cons_of_neq [DecidableEq α] (x y : α) (xs : List α) :

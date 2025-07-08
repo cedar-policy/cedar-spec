@@ -98,12 +98,12 @@ theorem type_of_or_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Env
 
 theorem type_of_or_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
-  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₂ : InstanceOfWellFormedEnvironment request entities env)
   (h₃ : typeOf (Expr.or x₁ x₂) c₁ env = Except.ok (ty, c₂))
   (ih₁ : TypeOfIsSound x₁)
   (ih₂ : TypeOfIsSound x₂) :
   GuardedCapabilitiesInvariant (Expr.or x₁ x₂) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.or x₁ x₂) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.or x₁ x₂) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
   have ⟨tx₁, bty₁, rc₁, h₄, h₅, h₆⟩ := type_of_or_inversion h₃
   specialize ih₁ h₁ h₂ h₄
@@ -136,7 +136,7 @@ theorem type_of_or_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env :
     rcases ih₁₂ with ih₁₂ | ih₁₂ | ih₁₂ | ih₁₂ <;>
     rcases ih₂₂ with ih₂₂ | ih₂₂ | ih₂₂ | ih₂₂ <;>
     simp [evaluate, Result.as, Coe.coe, Value.asBool, ih₁₂, ih₂₂, GuardedCapabilitiesInvariant, Lean.Internal.coeM, pure, Except.pure] <;>
-    try apply type_is_inhabited
+    try { simp only [TypedExpr.typeOf]; apply type_is_inhabited_bool }
     case false.inr.inr.inr.inr.inr.inr =>
       cases b₂ <;>
       simp [CoeT.coe, CoeHTCT.coe, CoeHTC.coe, CoeOTC.coe, CoeTC.coe, Coe.coe]

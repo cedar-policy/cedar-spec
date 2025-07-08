@@ -56,7 +56,7 @@ theorem reachable_attr_step {n : Nat} {euid euid' : EntityUID} {start : Set Enti
 
 theorem checked_eval_entity_reachable_get_attr {e : Expr} {n : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {entities : Entities} {path : List Attr}
   (hc : CapabilitiesInvariant c request entities)
-  (hr : RequestAndEntitiesMatchEnvironment env request entities)
+  (hr : InstanceOfWellFormedEnvironment request entities env)
   (ht : typeOf (e.getAttr a) c env = .ok (tx, c'))
   (hl : tx.EntityAccessAtLevel env n nmax path)
   (he : evaluate (e.getAttr a) request entities = .ok v)

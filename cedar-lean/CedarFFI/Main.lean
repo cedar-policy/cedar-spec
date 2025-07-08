@@ -203,7 +203,10 @@ def parseCheckPolicyReq (req : ByteArray) : Except String (Cedar.Spec.Policy × 
     let request := req.request
     match schema.environment? request.principal request.resource request.action with
     | none => .error s!"failed to get environment from requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource})"
-    | some env =>
+    | some env => do
+      match env.validateWellFormed with
+      | .error e => .error s!"failed to validate environment (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource}): {e}"
+      | .ok _ => .ok ()
       match wellTypedPolicy policy env with
       | none => .error s!"failed to validate policy for requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource})"
       | some policy => .ok (policy, SymEnv.ofTypeEnv env)

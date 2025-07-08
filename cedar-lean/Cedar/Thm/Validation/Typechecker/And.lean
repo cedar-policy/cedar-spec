@@ -81,12 +81,12 @@ theorem type_of_and_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : En
 
 theorem type_of_and_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {tx : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
-  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₂ : InstanceOfWellFormedEnvironment request entities env)
   (h₃ : typeOf (Expr.and x₁ x₂) c₁ env = Except.ok (tx, c₂))
   (ih₁ : TypeOfIsSound x₁)
   (ih₂ : TypeOfIsSound x₂) :
   GuardedCapabilitiesInvariant (Expr.and x₁ x₂) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.and x₁ x₂) request entities v ∧ InstanceOfType v tx.typeOf
+  ∃ v, EvaluatesTo (Expr.and x₁ x₂) request entities v ∧ InstanceOfType env v tx.typeOf
 := by
   have ⟨tx₁, bty₁, rc₁, h₄, h₅, h₆⟩ := type_of_and_inversion h₃
   specialize ih₁ h₁ h₂ h₄
@@ -105,7 +105,7 @@ theorem type_of_and_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env 
     simp [EvaluatesTo] at ih₁₂
     rcases ih₁₂ with ih₁₂ | ih₁₂ | ih₁₂ | ih₁₂ <;>
     simp [EvaluatesTo, evaluate, Result.as, ih₁₂, Coe.coe, Value.asBool] <;>
-    try exact type_is_inhabited (CedarType.bool BoolType.ff)
+    try exact type_is_inhabited_bool
     exact false_is_instance_of_ff
   case isFalse h₇ =>
     replace ⟨bty, tx₂, bty₂, rc₂, htx, htx₂, hty₂, h₆⟩ := h₆
@@ -138,13 +138,13 @@ theorem type_of_and_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env 
       case false =>
         rcases ih₁₂ with ih₁₂ | ih₁₂ | ih₁₂ | ih₁₂ <;>
         simp [EvaluatesTo, evaluate, Result.as, ih₁₂, Coe.coe, Value.asBool, GuardedCapabilitiesInvariant, TypedExpr.typeOf] <;>
-        try exact type_is_inhabited (CedarType.bool (lubBool bty₁ bty₂))
+        try exact type_is_inhabited_bool
         apply instance_of_lubBool
         simp [ih₁₃]
       case true =>
         rcases ih₁₂ with ih₁₂ | ih₁₂ | ih₁₂ | ih₁₂ <;>
         simp [EvaluatesTo, evaluate, Result.as, ih₁₂, Coe.coe, Value.asBool, GuardedCapabilitiesInvariant] <;>
-        try exact type_is_inhabited (CedarType.bool (lubBool bty₁ bty₂))
+        try exact type_is_inhabited_bool
         simp [GuardedCapabilitiesInvariant] at ih₁₁
         specialize ih₁₁ ih₁₂
         have h₇ := capability_union_invariant h₁ ih₁₁
@@ -153,7 +153,7 @@ theorem type_of_and_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env 
         simp [EvaluatesTo] at ih₂₂
         rcases ih₂₂ with ih₂₂ | ih₂₂ | ih₂₂ | ih₂₂ <;>
         simp [EvaluatesTo, evaluate, Result.as, ih₂₂, Coe.coe, Value.asBool, Lean.Internal.coeM, pure, Except.pure] <;>
-        try exact type_is_inhabited (CedarType.bool (lubBool bty₁ bty₂))
+        try exact type_is_inhabited_bool
         rw [hty₂] at ih₂₃
         have ⟨b₂, hb₂⟩ := instance_of_bool_is_bool ih₂₃
         subst hb₂
