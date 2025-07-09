@@ -15,20 +15,30 @@
  */
 
 #![no_main]
-use cedar_drt::*;
-use cedar_drt_inner::*;
-use cedar_policy_core::ast;
-use cedar_policy_core::entities::Entities;
-use cedar_policy_core::extensions::Extensions;
-use cedar_policy_generators::err::Result;
-use cedar_policy_generators::hierarchy::{
-    AttributesMode, HierarchyGenerator, HierarchyGeneratorMode,
+
+use cedar_drt::{
+    fuzz_target,
+    logger::{initialize_log, TOTAL_MSG},
+    tests::run_auth_test,
+    CedarLeanEngine,
 };
-use cedar_policy_generators::policy::GeneratedLinkedPolicy;
-use cedar_policy_generators::rbac::{RBACHierarchy, RBACPolicy, RBACRequest};
+
+use cedar_policy::{Entities, Policy, PolicySet, Request, Template};
+
+use cedar_policy_core::{ast, extensions::Extensions};
+
+use cedar_policy_generators::{
+    err::Result,
+    hierarchy::{AttributesMode, HierarchyGenerator, HierarchyGeneratorMode},
+    policy::GeneratedLinkedPolicy,
+    rbac::{RBACHierarchy, RBACPolicy, RBACRequest},
+};
+
+use cedar_testing::cedar_test_impl::time_function;
+
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
+
 use log::info;
-use std::convert::TryFrom;
 
 /// Input expected by this fuzz target:
 /// An RBAC hierarchy, policy set, and 8 associated requests
@@ -181,26 +191,28 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 // pure-RBAC requests.
 fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
-    let def_impl = LeanDefinitionalEngine::new();
     if let Ok(entities) = Entities::try_from(input.hierarchy) {
-        let mut policyset = ast::PolicySet::new();
+        let lean_engine = CedarLeanEngine::new();
+        let mut policy_set = PolicySet::new();
         for pg in input.policy_groups {
             match pg {
                 PolicyGroup::StaticPolicy(p) => {
-                    p.0.add_to_policyset(&mut policyset);
+                    let p = Policy::from(p);
+                    policy_set.add(p).unwrap();
                 }
                 PolicyGroup::TemplateWithLinks { template, links } => {
-                    template.0.add_to_policyset(&mut policyset);
+                    let template = Template::from(template);
+                    policy_set.add_template(template).unwrap();
                     for link in links {
-                        link.add_to_policyset(&mut policyset);
+                        link.add_to_api_policyset(&mut policy_set);
                     }
                 }
-            };
+            }
         }
-        for rbac_request in input.requests.into_iter() {
-            let request = ast::Request::from(rbac_request);
+        for request in input.requests.into_iter() {
+            let request = Request::from(request);
             let (_, dur) =
-                time_function(|| run_auth_test(&def_impl, request, &policyset, &entities));
+                time_function(|| run_auth_test(&lean_engine, &request, &policy_set, &entities));
             info!("{}{}", TOTAL_MSG, dur.as_nanos());
         }
     }

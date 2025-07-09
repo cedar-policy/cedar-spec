@@ -15,7 +15,7 @@
  */
 
 #![no_main]
-use cedar_drt_inner::*;
+use cedar_drt::{check_policy_set_equivalence, fuzz_target, policy_set_to_text};
 use cedar_policy_core::est::PolicySetFromJsonError;
 use thiserror::Error;
 

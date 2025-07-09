@@ -157,13 +157,13 @@ impl proto::EvaluationRequestChecked {
         expr: &Expression,
         entities: &Entities,
         request: &Request,
-        expected: &Expression,
+        expected: Option<&Expression>,
     ) -> Self {
         Self {
             expr: Some(cedar_policy::proto::models::Expr::from(expr)),
             request: Some(cedar_policy::proto::models::Request::from(request)),
             entities: Some(cedar_policy::proto::models::Entities::from(entities)),
-            expected: Some(cedar_policy::proto::models::Expr::from(expected)),
+            expected: expected.map(cedar_policy::proto::models::Expr::from),
         }
     }
 }

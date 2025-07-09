@@ -15,8 +15,8 @@
  */
 
 #![no_main]
+use cedar_drt::fuzz_target;
 use cedar_drt_inner::validation_drt;
-use libfuzzer_sys::fuzz_target;
 
 // Type-directed fuzzing of (strict) validation.
 fuzz_target!(|input: validation_drt::FuzzTargetInput<true>| validation_drt::fuzz_target(input));

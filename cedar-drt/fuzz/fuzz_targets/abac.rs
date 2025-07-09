@@ -15,11 +15,18 @@
  */
 
 #![no_main]
-use cedar_drt::*;
-use cedar_drt_inner::*;
-use cedar_policy_core::ast;
-use cedar_policy_core::authorizer::Authorizer;
-use cedar_policy_core::entities::Entities;
+use cedar_drt::{
+    dump::dump,
+    fuzz_target,
+    logger::{initialize_log, TOTAL_MSG},
+    tests::run_auth_test,
+    CedarLeanEngine,
+};
+
+use cedar_drt_inner::schemas;
+
+use cedar_policy::{Authorizer, Entities, Policy, PolicyId, PolicySet, Request, SchemaFragment};
+
 use cedar_policy_generators::{
     abac::{ABACPolicy, ABACRequest},
     err::Error,
@@ -27,6 +34,9 @@ use cedar_policy_generators::{
     schema::Schema,
     settings::ABACSettings,
 };
+
+use cedar_testing::cedar_test_impl::time_function;
+
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::{debug, info};
 use std::convert::TryFrom;
@@ -79,23 +89,9 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
             schema.arbitrary_request(&hierarchy, u)?,
         ];
 
+        let cedar_schema = cedar_policy::Schema::try_from(schema.clone()).unwrap();
         let entities = Entities::try_from(hierarchy).map_err(|_| Error::NotEnoughData)?;
-        let validator_schema =
-            cedar_policy_core::validator::ValidatorSchema::try_from(schema.clone())
-                .map_err(|e| Error::SchemaError(e))?;
-        let actions = validator_schema
-            .action_entities()
-            .map_err(|e| Error::EntitiesError(format!("Error fetching action entities: {e}")))?;
-        let entities = entities
-            .add_entities(
-                actions.into_iter().map(|e| std::sync::Arc::new(e)),
-                None::<&cedar_policy_core::validator::CoreSchema>,
-                cedar_policy_core::entities::TCComputation::AssumeAlreadyComputed,
-                cedar_policy_core::extensions::Extensions::all_available(),
-            )
-            .map_err(|e| {
-                Error::EntitiesError(format!("Error adding action entities to entities: {e}"))
-            })?;
+        let entities = schemas::add_actions_to_entities(&cedar_schema, entities)?;
 
         Ok(Self {
             schema,
@@ -127,45 +123,45 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 // Simple fuzzing of ABAC hierarchy/policy/requests without respect to types.
 fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
-    let def_impl = LeanDefinitionalEngine::new();
-    let entities = input.entities;
-    let mut policyset = ast::PolicySet::new();
-    let policy: ast::StaticPolicy = input.policy.into();
-    policyset.add_static(policy.clone()).unwrap();
+    let mut policyset = PolicySet::new();
+    let policy = Policy::from(input.policy);
+    policyset.add(policy.clone()).unwrap();
     debug!("Policies: {policyset}");
-    debug!("Entities: {entities}");
+    debug!("Entities: {:?}", input.entities);
     let requests = input
         .requests
         .into_iter()
-        .map(Into::into)
+        .map(Request::from)
         .collect::<Vec<_>>();
+
+    let lean_engine = CedarLeanEngine::new();
 
     for request in requests.iter().cloned() {
         debug!("Request: {request}");
         let (_, total_dur) =
-            time_function(|| run_auth_test(&def_impl, request, &policyset, &entities));
+            time_function(|| run_auth_test(&lean_engine, &request, &policyset, &input.entities));
         info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
     }
     if let Ok(test_name) = std::env::var("DUMP_TEST_NAME") {
         // When the corpus is re-parsed, the policy will be given id "policy0".
         // Recreate the policy set and compute responses here to account for this.
-        let mut policyset = ast::PolicySet::new();
-        let policy = policy.new_id(ast::PolicyID::from_string("policy0"));
-        policyset.add_static(policy).unwrap();
+        let mut policyset = PolicySet::new();
+        let policy = policy.new_id(PolicyId::new("policy0"));
+        policyset.add(policy).unwrap();
         let responses = requests
             .iter()
             .map(|request| {
                 let authorizer = Authorizer::new();
-                authorizer.is_authorized(request.clone(), &policyset, &entities)
+                authorizer.is_authorized(request, &policyset, &input.entities)
             })
             .collect::<Vec<_>>();
         let dump_dir = std::env::var("DUMP_TEST_DIR").unwrap_or_else(|_| ".".to_string());
         dump(
             dump_dir,
             &test_name,
-            &input.schema.into(),
+            &SchemaFragment::try_from(input.schema).unwrap(),
             &policyset,
-            &entities,
+            &input.entities,
             std::iter::zip(requests, responses),
         )
         .expect("failed to dump test case");

@@ -576,7 +576,7 @@ impl CedarLeanFfi {
         input_expr: &Expression,
         entities: &Entities,
         request: &Request,
-        output_expr: &Expression,
+        output_expr: Option<&Expression>,
     ) -> Result<TimedResult<bool>, FfiError> {
         let lean_eval_request = proto::EvaluationRequestChecked::new_checked(
             input_expr,
@@ -599,7 +599,7 @@ impl CedarLeanFfi {
         input_expr: &Expression,
         entities: &Entities,
         request: &Request,
-        output_expr: &Expression,
+        output_expr: Option<&Expression>,
     ) -> Result<bool, FfiError> {
         Ok(self
             .check_evaluate_timed(input_expr, entities, request, output_expr)?

@@ -15,11 +15,18 @@
  */
 
 #![no_main]
-use cedar_drt::*;
-use cedar_drt_inner::*;
-use cedar_policy_core::extensions::Extensions;
+use cedar_drt::{
+    fuzz_target,
+    logger::{initialize_log, TOTAL_MSG},
+    tests::run_ent_val_test,
+    CedarLeanEngine,
+};
+
+use cedar_policy::{Entities, Schema};
+use cedar_testing::cedar_test_impl::time_function;
+
 use cedar_policy_generators::{
-    hierarchy::Hierarchy, hierarchy::HierarchyGenerator, schema::Schema, settings::ABACSettings,
+    hierarchy::Hierarchy, hierarchy::HierarchyGenerator, schema, settings::ABACSettings,
 };
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::{debug, info};
@@ -28,7 +35,7 @@ use log::{debug, info};
 #[derive(Debug, Clone)]
 pub struct FuzzTargetInput {
     /// generated schema
-    pub schema: Schema,
+    pub schema: schema::Schema,
     /// generated hierarchy
     pub hierarchy: Hierarchy,
 }
@@ -49,7 +56,7 @@ const SETTINGS: ABACSettings = ABACSettings {
 
 impl<'a> Arbitrary<'a> for FuzzTargetInput {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        let schema: Schema = Schema::arbitrary(SETTINGS.clone(), u)?;
+        let schema: schema::Schema = schema::Schema::arbitrary(SETTINGS.clone(), u)?;
         let hierarchy = schema.arbitrary_hierarchy(u)?;
         Ok(Self { schema, hierarchy })
     }
@@ -58,7 +65,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
         depth: usize,
     ) -> arbitrary::Result<(usize, Option<usize>), arbitrary::MaxRecursionReached> {
         Ok(arbitrary::size_hint::and_all(&[
-            Schema::arbitrary_size_hint(depth)?,
+            schema::Schema::arbitrary_size_hint(depth)?,
             HierarchyGenerator::size_hint(depth),
         ]))
     }
@@ -66,15 +73,14 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 
 fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
-    let def_impl = LeanDefinitionalEngine::new();
+
+    let engine = CedarLeanEngine::new();
 
     // generate a schema
-    if let Ok(schema) = ValidatorSchema::try_from(input.schema) {
+    if let Ok(schema) = Schema::try_from(input.schema) {
         debug!("Schema: {:?}", schema);
         if let Ok(entities) = Entities::try_from(input.hierarchy) {
-            let (_, total_dur) = time_function(|| {
-                run_ent_val_test(&def_impl, schema, entities, Extensions::all_available())
-            });
+            let (_, total_dur) = time_function(|| run_ent_val_test(&engine, schema, entities));
             info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
         }
     }

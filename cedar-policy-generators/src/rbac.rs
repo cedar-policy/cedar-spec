@@ -19,7 +19,7 @@ use crate::hierarchy::Hierarchy;
 use crate::policy::GeneratedPolicy;
 use crate::request::Request;
 use arbitrary::{self, Unstructured};
-use ast::{Entity, Expr, PolicyID, StaticPolicy};
+use ast::{Entity, Expr, PolicyID, StaticPolicy, Template};
 use cedar_policy_core::ast;
 use cedar_policy_core::entities::Entities;
 use serde::Serialize;
@@ -179,12 +179,26 @@ impl From<RBACPolicy> for StaticPolicy {
     }
 }
 
+impl From<RBACPolicy> for Template {
+    fn from(rbac: RBACPolicy) -> Template {
+        rbac.0.into()
+    }
+}
+
 #[cfg(feature = "cedar-policy")]
 impl From<RBACPolicy> for cedar_policy::Policy {
     fn from(rbac: RBACPolicy) -> cedar_policy::Policy {
         StaticPolicy::from(rbac).into()
     }
 }
+
+#[cfg(feature = "cedar-policy")]
+impl From<RBACPolicy> for cedar_policy::Template {
+    fn from(rbac: RBACPolicy) -> cedar_policy::Template {
+        Template::from(rbac).into()
+    }
+}
+
 
 impl RBACPolicy {
     /// Generate an arbitrary RBAC policy

@@ -16,7 +16,7 @@
 
 #![no_main]
 
-use cedar_drt_inner::{check_for_internal_errors, fuzz_target};
+use cedar_drt::{check_for_internal_errors, fuzz_target};
 use cedar_policy_core::parser::parse_policyset;
 
 fuzz_target!(|input: String| {

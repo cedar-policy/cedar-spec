@@ -35,7 +35,7 @@ use cedar_policy_core::validator::json_schema::{
 };
 use cedar_policy_core::validator::{
     json_schema, ActionBehavior, AllDefs, RawName, SchemaError, ValidatorNamespaceDef,
-    ValidatorSchema, ValidatorSchemaFragment,
+    ValidatorSchema, ValidatorSchemaFragment, ConditionalName,
 };
 use smol_str::{SmolStr, ToSmolStr};
 use std::collections::BTreeMap;
@@ -1755,6 +1755,14 @@ impl From<Schema> for json_schema::Fragment<RawName> {
     }
 }
 
+impl TryFrom<Schema> for ValidatorSchemaFragment<ConditionalName, ConditionalName> {
+    type Error = SchemaError;
+    fn try_from(schema: Schema) -> std::result::Result<ValidatorSchemaFragment<ConditionalName, ConditionalName>, Self::Error> {
+        let json_fragment: json_schema::Fragment<RawName> = schema.into();
+        json_fragment.try_into()
+    }
+}
+
 /// Utility function to "downgrade" a [`json_schema::Fragment`] with fully-qualified
 /// names into one with [`RawName`]s.
 /// When this results in `RawName`s like `A::B`, this is unambiguous, because
@@ -1961,6 +1969,14 @@ impl TryFrom<Schema> for ValidatorSchema {
     type Error = SchemaError;
     fn try_from(schema: Schema) -> std::result::Result<ValidatorSchema, Self::Error> {
         ValidatorSchema::try_from(json_schema::Fragment::<RawName>::from(schema))
+    }
+}
+
+#[cfg(feature = "cedar-policy")]
+impl TryFrom<Schema> for cedar_policy::SchemaFragment {
+    type Error = SchemaError;
+    fn try_from(schema : Schema) -> std::result::Result<Self, Self::Error> {
+        cedar_policy::SchemaFragment::try_from(json_schema::Fragment::<RawName>::from(schema))
     }
 }
 

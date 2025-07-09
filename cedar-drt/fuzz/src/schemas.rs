@@ -25,6 +25,19 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
 
+use cedar_policy_generators::err::Error;
+use libfuzzer_sys::arbitrary;
+use cedar_policy::{Schema, Entities};
+
+pub fn add_actions_to_entities(schema: &Schema, entities: Entities) -> arbitrary::Result<Entities> {
+    let actions = schema
+        .action_entities()
+        .map_err(|e| Error::EntitiesError(format!("Error fetching action entities: {e}")))?;
+
+    Ok(entities.add_entities(actions, None)
+        .map_err(|e| Error::EntitiesError(format!("Error fetching action entities: {e}")))?)
+}
+
 /// Check if two schema fragments are equivalent, modulo empty apply specs.
 /// We do this because there are schemas that are representable in the JSON that are not
 /// representable in the Cedar syntax. All of these non-representable schemas
@@ -601,9 +614,8 @@ impl Equiv for cedar_policy_core::validator::ValidatorSchema {
 
 #[cfg(test)]
 mod tests {
-    use cedar_drt::est::Annotations;
-
-    use crate::schemas::Equiv;
+    use super::Equiv;
+    use cedar_policy_core::est::Annotations;
 
     #[test]
     fn annotations() {
