@@ -53,7 +53,7 @@ theorem reachable_tag_step {n : Nat} {euid euid' : EntityUID} {start : Set Entit
     have ih := reachable_tag_step hr' he₁ he₂ he₃
     exact ReachableIn.step euid'' hi he₁' ih
 
-theorem checked_eval_entity_reachable_get_tag {e₁ e₂: Expr} {n : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {entities : Entities} {path : List Attr}
+theorem checked_eval_entity_reachable_get_tag {e₁ e₂: Expr} {n : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : TypeEnv} {entities : Entities} {path : List Attr}
   (hc : CapabilitiesInvariant c request entities)
   (hr : InstanceOfWellFormedEnvironment request entities env)
   (ht : typeOf (.binaryApp .getTag e₁ e₂) c env = .ok (tx, c'))
@@ -109,7 +109,7 @@ theorem binary_op_not_euid_via_path {op : BinaryOp} {e₁ e₂: Expr} {entities 
     rw [←he] at ha
     cases ha
 
-theorem checked_eval_entity_reachable_binary {op : BinaryOp} {e₁ e₂: Expr} {n : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {entities : Entities} {path : List Attr}
+theorem checked_eval_entity_reachable_binary {op : BinaryOp} {e₁ e₂: Expr} {n : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : TypeEnv} {entities : Entities} {path : List Attr}
   (hc : CapabilitiesInvariant c request entities)
   (hr : InstanceOfWellFormedEnvironment request entities env)
   (ht : typeOf (.binaryApp op e₁ e₂) c env = .ok (tx, c'))

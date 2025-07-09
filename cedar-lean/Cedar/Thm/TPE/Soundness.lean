@@ -220,7 +220,7 @@ theorem partial_evaluate_is_sound_and
 {es : Entities}
 {preq : PartialRequest}
 {pes : PartialEntities}
-{env : Environment}
+{env : TypeEnv}
 (h₂ : InstanceOfWellFormedEnvironment req es env)
 (hᵢ₁ : TypedExpr.WellTyped env x₁)
 (hᵢ₂ : TypedExpr.WellTyped env x₂)
@@ -317,7 +317,7 @@ theorem partial_evaluate_is_sound_ite
 {es : Entities}
 {preq : PartialRequest}
 {pes : PartialEntities}
-{env : Environment}
+{env : TypeEnv}
 (h₂ : InstanceOfWellFormedEnvironment req es env)
 (hwt : TypedExpr.WellTyped env x₁)
 (hₜ : x₁.typeOf = CedarType.bool BoolType.anyBool)
@@ -370,7 +370,7 @@ theorem partial_evaluate_is_sound_or
 {es : Entities}
 {preq : PartialRequest}
 {pes : PartialEntities}
-{env : Environment}
+{env : TypeEnv}
 (h₂ : InstanceOfWellFormedEnvironment req es env)
 (hᵢ₁ : TypedExpr.WellTyped env x₁)
 (hᵢ₂ : TypedExpr.WellTyped env x₂)
@@ -518,7 +518,7 @@ theorem partial_evaluate_is_sound_binary_app
 {es : Entities}
 {preq : PartialRequest}
 {pes : PartialEntities}
-{env : Environment}
+{env : TypeEnv}
 (h₂ : InstanceOfWellFormedEnvironment req es env)
 (h₄ : RequestAndEntitiesRefine req es preq pes)
 (hwt : TypedExpr.WellTyped env x₂)

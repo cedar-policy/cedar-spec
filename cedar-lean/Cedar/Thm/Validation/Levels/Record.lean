@@ -33,7 +33,7 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem level_based_slicing_is_sound_record_attrs {rxs : List (Attr × Expr)} {n : Nat} {c : Capabilities} {env : Environment} {request : Request} {entities slice : Entities}
+theorem level_based_slicing_is_sound_record_attrs {rxs : List (Attr × Expr)} {n : Nat} {c : Capabilities} {env : TypeEnv} {request : Request} {entities slice : Entities}
   (hs : slice = entities.sliceAtLevel request n)
   (hc : CapabilitiesInvariant c request entities)
   (hr : InstanceOfWellFormedEnvironment request entities env)
@@ -65,7 +65,7 @@ theorem level_based_slicing_is_sound_record_attrs {rxs : List (Attr × Expr)} {n
     simp only [List.mapM_pmap_subtype (λ x : (Attr × Expr) => do let v ← evaluate x.snd request slice; .ok (x.fst, v)) rxs'] at ih' ⊢
     rw [ih']
 
-theorem level_based_slicing_is_sound_record {rxs : List (Attr × Expr)} {n : Nat} {c₀ c₁: Capabilities} {env : Environment} {request : Request} {entities slice : Entities}
+theorem level_based_slicing_is_sound_record {rxs : List (Attr × Expr)} {n : Nat} {c₀ c₁: Capabilities} {env : TypeEnv} {request : Request} {entities slice : Entities}
   (hs : slice = entities.sliceAtLevel request n)
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : InstanceOfWellFormedEnvironment request entities env)

@@ -18,7 +18,7 @@ import Cedar.Validation.Validator
 import Cedar.Validation.Typechecker
 
 /-!
-This file contains the executable version of `Environment.WellFormed`
+This file contains the executable version of `TypeEnv.WellFormed`
 and related definitions.
 -/
 
@@ -38,26 +38,26 @@ instance : ToString EnvironmentValidationError where
 
 abbrev EnvironmentValidationResult := Except EnvironmentValidationError Unit
 
-def EntityType.validateWellFormed (env : Environment) (ety : EntityType) : EnvironmentValidationResult :=
+def EntityType.validateWellFormed (env : TypeEnv) (ety : EntityType) : EnvironmentValidationResult :=
   if env.ets.contains ety then .ok ()
   else if env.acts.toList.any λ (uid, _) => uid.ty == ety then .ok ()
   else .error (.typeError s!"entity type {ety} is not defined in the schema")
 
 mutual
 
-def QualifiedType.validateWellFormed (env : Environment) (qty : QualifiedType) : EnvironmentValidationResult :=
+def QualifiedType.validateWellFormed (env : TypeEnv) (qty : QualifiedType) : EnvironmentValidationResult :=
   match qty with
   | .optional ty => ty.validateWellFormed env
   | .required ty => ty.validateWellFormed env
 
-def validateAttrsWellFormed (env : Environment) (rty : List (Attr × QualifiedType)) : EnvironmentValidationResult :=
+def validateAttrsWellFormed (env : TypeEnv) (rty : List (Attr × QualifiedType)) : EnvironmentValidationResult :=
   match rty with
   | [] => .ok ()
   | (_, qty) :: rest => do
     qty.validateWellFormed env
     validateAttrsWellFormed env rest
 
-def CedarType.validateWellFormed (env : Environment) (ty : CedarType) : EnvironmentValidationResult :=
+def CedarType.validateWellFormed (env : TypeEnv) (ty : CedarType) : EnvironmentValidationResult :=
   match ty with
   | .bool _ => .ok ()
   | .int => .ok ()
@@ -73,7 +73,7 @@ def CedarType.validateWellFormed (env : Environment) (ty : CedarType) : Environm
 
 end
 
-def StandardSchemaEntry.validateWellFormed (env : Environment) (entry : StandardSchemaEntry) : EnvironmentValidationResult :=
+def StandardSchemaEntry.validateWellFormed (env : TypeEnv) (entry : StandardSchemaEntry) : EnvironmentValidationResult :=
   do
     if entry.ancestors.wellFormed then .ok ()
     else .error (.typeError s!"ancestors set is not well-formed")
@@ -91,7 +91,7 @@ def StandardSchemaEntry.validateWellFormed (env : Environment) (entry : Standard
     | .some ty => ty.validateWellFormed env
     | .none => .ok ()
 
-def EntitySchemaEntry.validateWellFormed (env : Environment) (entry : EntitySchemaEntry) : EnvironmentValidationResult :=
+def EntitySchemaEntry.validateWellFormed (env : TypeEnv) (entry : EntitySchemaEntry) : EnvironmentValidationResult :=
   match entry with
   | .standard entry => entry.validateWellFormed env
   | .enum es => do
@@ -100,14 +100,14 @@ def EntitySchemaEntry.validateWellFormed (env : Environment) (entry : EntitySche
     if es.isEmpty then .error (.typeError s!"enum entity is empty")
     else .ok ()
 
-def EntitySchema.validateWellFormed (env : Environment) (ets : EntitySchema) : EnvironmentValidationResult :=
+def EntitySchema.validateWellFormed (env : TypeEnv) (ets : EntitySchema) : EnvironmentValidationResult :=
   do
     if Map.wellFormed ets then .ok ()
     else .error (.typeError s!"entity schema is not a well-formed map")
     ets.toList.forM λ (_, entry) =>
       entry.validateWellFormed env
 
-def ActionSchemaEntry.validateWellFormed (env : Environment) (entry : ActionSchemaEntry) : EnvironmentValidationResult :=
+def ActionSchemaEntry.validateWellFormed (env : TypeEnv) (entry : ActionSchemaEntry) : EnvironmentValidationResult :=
   do
     if entry.appliesToPrincipal.wellFormed then .ok ()
     else .error (.typeError s!"appliesToPrincipal set is not well-formed")
@@ -140,7 +140,7 @@ def ActionSchema.validateTransitiveActionHierarchy (acts : ActionSchema) : Envir
           .error (.typeError s!"action hierarchy is not transitive from {uid₁} to {uid₂}")
       else .ok ()
 
-def ActionSchema.validateWellFormed (env : Environment) (acts : ActionSchema) : EnvironmentValidationResult :=
+def ActionSchema.validateWellFormed (env : TypeEnv) (acts : ActionSchema) : EnvironmentValidationResult :=
   do
     if Map.wellFormed acts then .ok ()
     else
@@ -153,7 +153,7 @@ def ActionSchema.validateWellFormed (env : Environment) (acts : ActionSchema) : 
     acts.validateAcyclicActionHierarchy
     acts.validateTransitiveActionHierarchy
 
-def RequestType.validateWellFormed (env : Environment) (reqty : RequestType) : EnvironmentValidationResult :=
+def RequestType.validateWellFormed (env : TypeEnv) (reqty : RequestType) : EnvironmentValidationResult :=
   match env.acts.find? reqty.action with
   | some entry => do
     if entry.appliesToPrincipal.contains reqty.principal then .ok ()
@@ -167,14 +167,14 @@ def RequestType.validateWellFormed (env : Environment) (reqty : RequestType) : E
       .error (.typeError s!"action {reqty.action} context type does not match schema")
   | none => .error (.typeError s!"action {reqty.action} does not exist in schema")
 
-def Environment.validateWellFormed (env : Environment) : EnvironmentValidationResult := do
+def TypeEnv.validateWellFormed (env : TypeEnv) : EnvironmentValidationResult := do
   env.ets.validateWellFormed env
   env.acts.validateWellFormed env
   env.reqty.validateWellFormed env
 
--- TODO: Can be optimized, as `Environment.validateWellFormed`
+-- TODO: Can be optimized, as `TypeEnv.validateWellFormed`
 --       mostly only depends on the schema part of the environment.
 def Schema.validateWellFormed (schema : Schema) : EnvironmentValidationResult :=
-  schema.environments.forM Environment.validateWellFormed
+  schema.environments.forM TypeEnv.validateWellFormed
 
 end Cedar.Validation

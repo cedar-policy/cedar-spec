@@ -26,7 +26,7 @@ namespace Cedar.Thm
 open Cedar.Spec
 open Cedar.Validation
 
-theorem type_of_lit_is_sound {l : Prim} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
+theorem type_of_lit_is_sound {l : Prim} {c₁ c₂ : Capabilities} {env : TypeEnv} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₃ : (typeOf (Expr.lit l) c₁ env) = Except.ok (ty, c₂)) :
   GuardedCapabilitiesInvariant (Expr.lit l) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.lit l) request entities v ∧ InstanceOfType env v ty.typeOf
@@ -55,7 +55,7 @@ theorem type_of_lit_is_sound {l : Prim} {c₁ c₂ : Capabilities} {env : Enviro
       apply InstanceOfType.instance_of_string
   }
 
-theorem type_of_var_is_sound {var : Var} {c₁ c₂ : Capabilities} {env : Environment} {e' : TypedExpr} {request : Request} {entities : Entities}
+theorem type_of_var_is_sound {var : Var} {c₁ c₂ : Capabilities} {env : TypeEnv} {e' : TypedExpr} {request : Request} {entities : Entities}
   (h₂ : InstanceOfWellFormedEnvironment request entities env)
   (h₃ : typeOf (Expr.var var) c₁ env = Except.ok (e', c₂)) :
   GuardedCapabilitiesInvariant (Expr.var var) c₂ request entities ∧

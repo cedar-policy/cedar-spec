@@ -71,7 +71,7 @@ theorem in_val_then_val_slice {v path euid}
   case set | ext => cases hv
 
 def CheckedEvalEntityReachable (e : Expr) :=
-  ∀ {n nmax: Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {request : Request} {entities : Entities} {v: Value} {path : List Attr} {euid : EntityUID},
+  ∀ {n nmax: Nat} {c c' : Capabilities} {tx : TypedExpr} {env : TypeEnv} {request : Request} {entities : Entities} {v: Value} {path : List Attr} {euid : EntityUID},
     CapabilitiesInvariant c request entities →
     InstanceOfWellFormedEnvironment request entities env →
     typeOf e c env = .ok (tx, c') →

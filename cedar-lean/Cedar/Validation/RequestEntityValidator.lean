@@ -39,7 +39,7 @@ def instanceOfBoolType (b : Bool) (bty : BoolType) : Bool :=
   | _, .anyBool => true
   | _, _ => false
 
-def instanceOfEntityType (e : EntityUID) (ety : EntityType) (env : Environment) : Bool :=
+def instanceOfEntityType (e : EntityUID) (ety : EntityType) (env : TypeEnv) : Bool :=
   ety == e.ty &&
   (env.ets.isValidEntityUID e || env.acts.contains e)
 
@@ -56,7 +56,7 @@ match rty.find? k with
     | .some qty => if qty.isRequired then r.contains k else true
     | _ => true
 
-def instanceOfType (v : Value) (ty : CedarType) (env : Environment) : Bool :=
+def instanceOfType (v : Value) (ty : CedarType) (env : TypeEnv) : Bool :=
   match v, ty with
   | .prim (.bool b), .bool bty => instanceOfBoolType b bty
   | .prim (.int _), .int => true
@@ -83,7 +83,7 @@ def instanceOfType (v : Value) (ty : CedarType) (env : Environment) : Bool :=
         simp only [Map.mk.sizeOf_spec]
         omega
 
-def instanceOfRequestType (request : Request) (env : Environment) : Bool :=
+def instanceOfRequestType (request : Request) (env : TypeEnv) : Bool :=
   instanceOfEntityType request.principal env.reqty.principal env &&
   request.action == env.reqty.action &&
   instanceOfEntityType request.resource env.reqty.resource env &&
@@ -100,7 +100,7 @@ For every entity in the store,
 For every action in the entity store, the action's ancestors are consistent
 with the ancestor information in the action store.
 -/
-def instanceOfSchema (entities : Entities) (env : Environment) : EntityValidationResult :=
+def instanceOfSchema (entities : Entities) (env : TypeEnv) : EntityValidationResult :=
   do
     entities.toList.forM λ (uid, data) => instanceOfSchemaEntry uid data
     env.acts.toList.forM λ (uid, _) => actionExists uid
@@ -138,14 +138,14 @@ where
     if entities.contains uid then .ok ()
     else .error (.typeError s!"action entity {uid} does not exist")
 
-def requestMatchesEnvironment (env : Environment) (request : Request) : Bool := instanceOfRequestType request env
+def requestMatchesEnvironment (env : TypeEnv) (request : Request) : Bool := instanceOfRequestType request env
 
 def validateRequest (schema : Schema) (request : Request) : RequestValidationResult :=
   if ((schema.environments.any (requestMatchesEnvironment · request)))
   then .ok ()
   else .error (.typeError "request could not be validated in any environment")
 
-def entitiesMatchEnvironment (env : Environment) (entities : Entities) : EntityValidationResult :=
+def entitiesMatchEnvironment (env : TypeEnv) (entities : Entities) : EntityValidationResult :=
   instanceOfSchema entities env
 
 def actionSchemaEntryToEntityData (ase : ActionSchemaEntry) : EntityData := {

@@ -29,7 +29,7 @@ open Cedar.Spec
 
 /-- Successful evaluation of a well-typed expression should produce a value
 of corresponding type. -/
-theorem well_typed_is_sound {ty : TypedExpr} {v : Value} {env : Environment} {request : Request} {entities : Entities} :
+theorem well_typed_is_sound {ty : TypedExpr} {v : Value} {env : TypeEnv} {request : Request} {entities : Entities} :
   InstanceOfWellFormedEnvironment request entities env →
   TypedExpr.WellTyped env ty →
   evaluate ty.toExpr request entities = .ok v →

@@ -49,7 +49,7 @@ policy `p` may result in type errors---that is, the compiler rejecting the
 policy because it does not satisfy the `WellTyped` constraints that are assumed
 by the compiler, and enforced by the typechecker through policy transformation.
 -/
-def wellTypedPolicy (p : Policy) (Γ : Cedar.Validation.Environment) : Option Policy := do
+def wellTypedPolicy (p : Policy) (Γ : Cedar.Validation.TypeEnv) : Option Policy := do
   let tx ← (Cedar.Validation.typecheckPolicy p Γ).toOption
   .some {
     id             := p.id,
@@ -74,7 +74,7 @@ policies `ps` may result in type errors---that is, the compiler rejecting the
 policies because they don't satisfy the `WellTyped` constraints that are assumed
 by the compiler, and enforced by the typechecker through policy transformation.
 -/
-def wellTypedPolicies (ps : Policies) (Γ : Cedar.Validation.Environment) : Option Policies :=
+def wellTypedPolicies (ps : Policies) (Γ : Cedar.Validation.TypeEnv) : Option Policies :=
   ps.mapM (wellTypedPolicy · Γ)
 
 ----- Slow verification checks that extract models -----

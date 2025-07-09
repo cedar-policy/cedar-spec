@@ -51,7 +51,7 @@ theorem slice_at_level_inner_well_formed {entities : Entities} {work slice : Set
     subst hs
     simp only [Set.union_wf]
 
-theorem checked_eval_entity_in_slice  {n : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {slice entities : Entities} {ed : EntityData}
+theorem checked_eval_entity_in_slice  {n : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : TypeEnv} {slice entities : Entities} {ed : EntityData}
   (hc : CapabilitiesInvariant c request entities)
   (hr : InstanceOfWellFormedEnvironment request entities env)
   (ht : typeOf e c env = .ok (tx, c'))
@@ -101,7 +101,7 @@ theorem not_entities_then_not_slice {n: Nat} {request : Request} {uid : EntityUI
 If an expression checks at level `n` and then evaluates to an entity, then the
 data for that entity in the slice will be hte same as in the original entities.
 -/
-theorem checked_eval_entity_find_entities_eq_find_slice  {n nmax : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {slice entities : Entities}
+theorem checked_eval_entity_find_entities_eq_find_slice  {n nmax : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : TypeEnv} {slice entities : Entities}
   (hc : CapabilitiesInvariant c request entities)
   (hr : InstanceOfWellFormedEnvironment request entities env)
   (ht : typeOf e c env = .ok (tx, c'))

@@ -26,7 +26,7 @@ Basic definitions for levels proof
 open Cedar.Spec
 open Cedar.Validation
 
-def TypedAtLevelIsSound (e : Expr) : Prop := ∀ {n : Nat} {tx : TypedExpr} {c c₁ : Capabilities} {env :Environment} {request : Request} {entities slice : Entities},
+def TypedAtLevelIsSound (e : Expr) : Prop := ∀ {n : Nat} {tx : TypedExpr} {c c₁ : Capabilities} {env : TypeEnv} {request : Request} {entities slice : Entities},
   slice = entities.sliceAtLevel request n →
   CapabilitiesInvariant c request entities →
   InstanceOfWellFormedEnvironment request entities env →

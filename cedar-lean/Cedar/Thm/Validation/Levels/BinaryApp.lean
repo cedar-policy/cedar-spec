@@ -61,7 +61,7 @@ theorem level_based_slicing_is_sound_inₑ {e₁ : Expr} {euid₁ euid₂ : Enti
   have hfeq := checked_eval_entity_find_entities_eq_find_slice hc hr ht hl he hs
   simp [hfeq, Entities.ancestorsOrEmpty]
 
-theorem level_based_slicing_is_sound_binary_app {op : BinaryOp} {e₁ e₂ : Expr} {n : Nat} {c₀ c₁: Capabilities} {env : Environment} {request : Request} {entities slice : Entities}
+theorem level_based_slicing_is_sound_binary_app {op : BinaryOp} {e₁ e₂ : Expr} {n : Nat} {c₀ c₁: Capabilities} {env : TypeEnv} {request : Request} {entities slice : Entities}
   (hs : slice = entities.sliceAtLevel request n)
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : InstanceOfWellFormedEnvironment request entities env)

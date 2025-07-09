@@ -18,7 +18,7 @@ import Cedar.Spec
 import Cedar.Validation
 
 /-!
-This file contains the definition of well-formedness of `Environment`
+This file contains the definition of well-formedness of `TypeEnv`
 and related definitions.
 --/
 
@@ -37,11 +37,11 @@ def ActionSchema.IsActionEntityType (acts : ActionSchema) (ety : EntityType) : P
 Either a non-action entity type in `env.ets`,
 or an action entity type in `env.acts`.
 -/
-def EntityType.WellFormed (env : Environment) (ety : EntityType) : Prop :=
+def EntityType.WellFormed (env : TypeEnv) (ety : EntityType) : Prop :=
   env.ets.contains ety ∨ env.acts.IsActionEntityType ety
 
 mutual
-inductive QualifiedType.WellFormed (env : Environment) : Qualified CedarType → Prop where
+inductive QualifiedType.WellFormed (env : TypeEnv) : Qualified CedarType → Prop where
   | optional_wf {ty : CedarType}
     (h : CedarType.WellFormed env ty) :
     QualifiedType.WellFormed env (.optional ty)
@@ -50,9 +50,9 @@ inductive QualifiedType.WellFormed (env : Environment) : Qualified CedarType →
     QualifiedType.WellFormed env (.required ty)
 
 /--
-Defines when a `CedarType` is well-formed in an `Environment`.
+Defines when a `CedarType` is well-formed in an `TypeEnv`.
 -/
-inductive CedarType.WellFormed (env : Environment) : CedarType → Prop where
+inductive CedarType.WellFormed (env : TypeEnv) : CedarType → Prop where
   | bool_wf {bty : BoolType} : CedarType.WellFormed env (.bool bty)
   | int_wf : CedarType.WellFormed env .int
   | string_wf : CedarType.WellFormed env .string
@@ -71,7 +71,7 @@ inductive CedarType.WellFormed (env : Environment) : CedarType → Prop where
   | ext_wf {xty : ExtType} : CedarType.WellFormed env (.ext xty)
 end
 
-def StandardSchemaEntry.WellFormed (env : Environment) (entry : StandardSchemaEntry) : Prop :=
+def StandardSchemaEntry.WellFormed (env : TypeEnv) (entry : StandardSchemaEntry) : Prop :=
   -- Well-formed as `Map`/`Set`s
   entry.ancestors.WellFormed ∧
   -- Each ancestor entity type must be a well-formed,
@@ -83,19 +83,19 @@ def StandardSchemaEntry.WellFormed (env : Environment) (entry : StandardSchemaEn
   -- The tag type is well-formed
   (∀ ty, entry.tags = .some ty → CedarType.WellFormed env ty)
 
-def EntitySchemaEntry.WellFormed (env : Environment) (entry : EntitySchemaEntry) : Prop :=
+def EntitySchemaEntry.WellFormed (env : TypeEnv) (entry : EntitySchemaEntry) : Prop :=
   match entry with
   | standard entry => entry.WellFormed env
   | enum es => es.WellFormed ∧ ¬es.isEmpty
 
-def EntitySchema.WellFormed (env : Environment) (ets : EntitySchema) : Prop :=
+def EntitySchema.WellFormed (env : TypeEnv) (ets : EntitySchema) : Prop :=
   Map.WellFormed ets ∧
   ∀ ety entry, ets.find? ety = some entry → entry.WellFormed env
 
-def EntityUID.WellFormed (env : Environment) (uid : EntityUID) : Prop :=
+def EntityUID.WellFormed (env : TypeEnv) (uid : EntityUID) : Prop :=
   env.ets.isValidEntityUID uid ∨ env.acts.contains uid
 
-def ActionSchemaEntry.WellFormed (env : Environment) (entry : ActionSchemaEntry) : Prop :=
+def ActionSchemaEntry.WellFormed (env : TypeEnv) (entry : ActionSchemaEntry) : Prop :=
   -- Well-formed as `Map`/`Set`s
   entry.appliesToPrincipal.WellFormed ∧
   entry.appliesToResource.WellFormed ∧
@@ -118,14 +118,14 @@ def ActionSchema.TransitiveActionHierarchy (acts : ActionSchema) : Prop :=
     uid₂ ∈ entry₁.ancestors →
     entry₂.ancestors ⊆ entry₁.ancestors
 
-def ActionSchema.WellFormed (env : Environment) (acts : ActionSchema) : Prop :=
+def ActionSchema.WellFormed (env : TypeEnv) (acts : ActionSchema) : Prop :=
   Map.WellFormed acts ∧
   (∀ uid entry, acts.find? uid = some entry → entry.WellFormed env) ∧
   (∀ uid, acts.contains uid → ¬env.ets.contains uid.ty) ∧
   acts.AcyclicActionHierarchy ∧
   acts.TransitiveActionHierarchy
 
-def RequestType.WellFormed (env : Environment) (reqty : RequestType) : Prop :=
+def RequestType.WellFormed (env : TypeEnv) (reqty : RequestType) : Prop :=
   ∃ entry, env.acts.find? reqty.action = some entry ∧
     -- Enforce that principal/resource/context are valid for the action
     reqty.principal ∈ entry.appliesToPrincipal ∧
@@ -134,14 +134,14 @@ def RequestType.WellFormed (env : Environment) (reqty : RequestType) : Prop :=
   -- Other properties, such as the well-formedness of principal/resource/context
   -- follows from the above and the well-formedness of `env.ets` and `env.acts`.
 
-def Environment.WellFormed (env : Environment) : Prop :=
+def TypeEnv.WellFormed (env : TypeEnv) : Prop :=
   env.ets.WellFormed env ∧
   env.acts.WellFormed env ∧
   env.reqty.WellFormed env
 
 ----- Some lemmas -----
 
-theorem qty_wf_implies_type_of_wf {env : Environment} {qty : Qualified CedarType}
+theorem qty_wf_implies_type_of_wf {env : TypeEnv} {qty : Qualified CedarType}
   (h : QualifiedType.WellFormed env qty) :
   CedarType.WellFormed env qty.getType
 := by
@@ -149,7 +149,7 @@ theorem qty_wf_implies_type_of_wf {env : Environment} {qty : Qualified CedarType
   | optional_wf hwf => simp [Qualified.getType, hwf]
   | required_wf hwf => simp [Qualified.getType, hwf]
 
-theorem wf_record_type_cons {env : Environment}
+theorem wf_record_type_cons {env : TypeEnv}
   {hd : (Attr × Qualified CedarType)}
   {tl : List (Attr × Qualified CedarType)}
   (hwf : CedarType.WellFormed env (.record (Map.mk (hd :: tl)))) :
@@ -188,7 +188,7 @@ theorem wf_record_type_cons {env : Environment}
           assumption
       exact hwf_tys attr qty this
 
-theorem wf_record_implies_wf_attr {env : Environment} {rty : RecordType} {attr : Attr} {qty : QualifiedType}
+theorem wf_record_implies_wf_attr {env : TypeEnv} {rty : RecordType} {attr : Attr} {qty : QualifiedType}
   (hwf : CedarType.WellFormed env (.record rty))
   (hqty : rty.find? attr = some qty) :
   QualifiedType.WellFormed env qty
@@ -197,7 +197,7 @@ theorem wf_record_implies_wf_attr {env : Environment} {rty : RecordType} {attr :
   | record_wf _ hattr =>
     exact hattr attr qty hqty
 
-theorem wf_env_implies_wf_entity_schema_entry {env : Environment} {ety : EntityType} {entry : EntitySchemaEntry}
+theorem wf_env_implies_wf_entity_schema_entry {env : TypeEnv} {ety : EntityType} {entry : EntitySchemaEntry}
   (hwf : env.WellFormed)
   (hets : env.ets.find? ety = some entry) :
   entry.WellFormed env
@@ -205,7 +205,7 @@ theorem wf_env_implies_wf_entity_schema_entry {env : Environment} {ety : EntityT
   have ⟨⟨_, hwf_ets⟩, _⟩ := hwf
   exact hwf_ets ety entry hets
 
-theorem wf_env_implies_wf_tag_type {env : Environment} {ety : EntityType} {ty : CedarType}
+theorem wf_env_implies_wf_tag_type {env : TypeEnv} {ety : EntityType} {ty : CedarType}
   (hwf : env.WellFormed)
   (hety : env.ets.tags? ety = .some (.some ty)) :
   CedarType.WellFormed env ty
@@ -221,7 +221,7 @@ theorem wf_env_implies_wf_tag_type {env : Environment} {ety : EntityType} {ty : 
     exact hwf_tag ty htags
   · simp [EntitySchemaEntry.tags?] at htags
 
-theorem wf_env_implies_wf_attrs {env : Environment} {ety : EntityType} {attrs : RecordType}
+theorem wf_env_implies_wf_attrs {env : TypeEnv} {ety : EntityType} {attrs : RecordType}
   (hwf : env.WellFormed)
   (hattrs : env.ets.attrs? ety = .some attrs) :
   CedarType.WellFormed env (.record attrs)
@@ -241,7 +241,7 @@ theorem wf_env_implies_wf_attrs {env : Environment} {ety : EntityType} {attrs : 
     . simp [Map.WellFormed, Map.toList, Map.kvs, Map.make, List.canonicalize]
     · simp [Map.find?, List.find?]
 
-theorem wf_env_implies_action_wf {env : Environment}
+theorem wf_env_implies_action_wf {env : TypeEnv}
   (hwf : env.WellFormed) :
   EntityUID.WellFormed env env.reqty.action
 := by
@@ -251,7 +251,7 @@ theorem wf_env_implies_action_wf {env : Environment}
   simp [EntityUID.WellFormed, ActionSchema.contains, hact]
 
 theorem wf_env_disjoint_ets_acts
-  {env : Environment} {uid : EntityUID}
+  {env : TypeEnv} {uid : EntityUID}
   {ets_entry : EntitySchemaEntry}
   {acts_entry : ActionSchemaEntry}
   (hwf : env.WellFormed)
@@ -269,7 +269,7 @@ theorem wf_env_disjoint_ets_acts
 More well-formedness properties of `env.reqty`.
 -/
 theorem wf_env_implies_wf_request
-  {env : Environment}
+  {env : TypeEnv}
   (hwf : env.WellFormed) :
   EntityType.WellFormed env env.reqty.principal ∧
   env.acts.contains env.reqty.action ∧
@@ -291,7 +291,7 @@ theorem wf_env_implies_wf_request
   · simp [hwf_ctx, hwf_ctx_ty]
 
 theorem wf_env_implies_wf_acts_map
-  {env : Environment}
+  {env : TypeEnv}
   (hwf : env.WellFormed) :
   Map.WellFormed env.acts
 := by
@@ -299,7 +299,7 @@ theorem wf_env_implies_wf_acts_map
   exact hwf_acts.1
 
 theorem wf_env_implies_wf_ets_map
-  {env : Environment}
+  {env : TypeEnv}
   (hwf : env.WellFormed) :
   Map.WellFormed env.ets
 := by
@@ -307,7 +307,7 @@ theorem wf_env_implies_wf_ets_map
   exact hwf_ets.1
 
 theorem wf_env_implies_wf_entity_entry
-  {env : Environment} {ety : EntityType} {entry : EntitySchemaEntry}
+  {env : TypeEnv} {ety : EntityType} {entry : EntitySchemaEntry}
   (hwf : env.WellFormed)
   (hfind : env.ets.find? ety = some entry) :
   entry.WellFormed env
@@ -316,7 +316,7 @@ theorem wf_env_implies_wf_entity_entry
   exact hwf_ets.2 ety entry hfind
 
 theorem wf_env_implies_wf_action_entity_entry
-  {env : Environment} {uid : EntityUID} {entry : ActionSchemaEntry}
+  {env : TypeEnv} {uid : EntityUID} {entry : ActionSchemaEntry}
   (hwf : env.WellFormed)
   (hfind : env.acts.find? uid = some entry) :
   entry.WellFormed env
@@ -326,7 +326,7 @@ theorem wf_env_implies_wf_action_entity_entry
 
 /-- Ancestor of an action entity should also be an action entity -/
 theorem wf_env_implies_wf_action_entity_ancestor
-  {env : Environment} {uid : EntityUID} {anc : EntityUID}
+  {env : TypeEnv} {uid : EntityUID} {anc : EntityUID}
   {entry : ActionSchemaEntry}
   (hwf : env.WellFormed)
   (hfind : env.acts.find? uid = some entry)
@@ -345,7 +345,7 @@ theorem wf_env_implies_wf_action_entity_ancestor
   contradiction
 
 theorem wf_env_implies_wf_ancestor
-  {env : Environment} {entry : EntitySchemaEntry}
+  {env : TypeEnv} {entry : EntitySchemaEntry}
   {ety : EntityType} {anc : EntityType}
   (hwf : env.WellFormed)
   (hfind : env.ets.find? ety = some entry)

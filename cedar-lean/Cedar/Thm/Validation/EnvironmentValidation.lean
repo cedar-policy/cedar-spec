@@ -29,7 +29,7 @@ open Cedar.Spec
 open Cedar.Validation
 
 theorem entity_type_validate_well_formed_is_sound
-  {env : Environment} {ety : EntityType}
+  {env : TypeEnv} {ety : EntityType}
   (hok : EntityType.validateWellFormed env ety = .ok ()) :
   EntityType.WellFormed env ety
 := by
@@ -61,7 +61,7 @@ theorem entity_type_validate_well_formed_is_sound
 mutual
 
 theorem validate_attrs_well_formed_is_sound
-  {env : Environment} {rty} {attr : Attr} {qty : QualifiedType}
+  {env : TypeEnv} {rty} {attr : Attr} {qty : QualifiedType}
   (hwf : (Map.mk rty).WellFormed)
   (hok : validateAttrsWellFormed env rty = .ok ())
   (hfind : (Map.mk rty).find? attr = some qty) :
@@ -129,7 +129,7 @@ decreasing_by
         omega
 
 theorem type_validate_well_formed_is_sound
-  {env : Environment} {ty : CedarType}
+  {env : TypeEnv} {ty : CedarType}
   (hok : ty.validateWellFormed env = .ok ()) :
   CedarType.WellFormed env ty
 := by
@@ -169,7 +169,7 @@ decreasing_by
 end
 
 theorem standard_schema_entry_validate_well_formed_is_sound
-  {env : Environment} {entry : StandardSchemaEntry}
+  {env : TypeEnv} {entry : StandardSchemaEntry}
   (hok : entry.validateWellFormed env = .ok ()) :
   StandardSchemaEntry.WellFormed env entry
 := by
@@ -210,7 +210,7 @@ theorem standard_schema_entry_validate_well_formed_is_sound
     simp [htags]
 
 theorem entity_schema_entry_validate_well_formed_is_sound
-  {env : Environment} {entry : EntitySchemaEntry}
+  {env : TypeEnv} {entry : EntitySchemaEntry}
   (hok : entry.validateWellFormed env = .ok ()) :
   EntitySchemaEntry.WellFormed env entry
 := by
@@ -234,7 +234,7 @@ theorem entity_schema_entry_validate_well_formed_is_sound
     simp [Set.wellFormed_correct.mp hwf_es, hok]
 
 theorem entity_schema_validate_well_formed_is_sound
-  {env : Environment} {ets : EntitySchema}
+  {env : TypeEnv} {ets : EntitySchema}
   (hok : ets.validateWellFormed env = .ok ()) :
   EntitySchema.WellFormed env ets
 := by
@@ -253,7 +253,7 @@ theorem entity_schema_validate_well_formed_is_sound
   exact entity_schema_entry_validate_well_formed_is_sound this
 
 theorem action_schema_entry_validate_well_formed_is_sound
-  {env : Environment} {entry : ActionSchemaEntry}
+  {env : TypeEnv} {entry : ActionSchemaEntry}
   (hok : entry.validateWellFormed env = .ok ()) :
   ActionSchemaEntry.WellFormed env entry
 := by
@@ -355,7 +355,7 @@ theorem action_schema_validate_transitive_action_hierarchy_is_sound
   exact this (Set.contains_prop_bool_equiv.mpr hanc)
 
 theorem action_schema_validate_well_formed_is_sound
-  {env : Environment} {acts : ActionSchema}
+  {env : TypeEnv} {acts : ActionSchema}
   (hok : acts.validateWellFormed env = .ok ()) :
   ActionSchema.WellFormed env acts
 := by
@@ -405,7 +405,7 @@ theorem action_schema_validate_well_formed_is_sound
   exact action_schema_validate_transitive_action_hierarchy_is_sound hok
 
 theorem request_type_validate_well_formed_is_sound
-  {env : Environment} {reqty : RequestType}
+  {env : TypeEnv} {reqty : RequestType}
   (hok : reqty.validateWellFormed env = .ok ()) :
   RequestType.WellFormed env reqty
 := by
@@ -437,12 +437,12 @@ theorem request_type_validate_well_formed_is_sound
   exact beq_iff_eq.mp hctx
 
 theorem env_validate_well_formed_is_sound
-  {env : Environment}
+  {env : TypeEnv}
   (hok : env.validateWellFormed = .ok ()) :
-  Environment.WellFormed env
+  TypeEnv.WellFormed env
 := by
-  simp only [Environment.WellFormed]
-  simp only [Environment.validateWellFormed] at hok
+  simp only [TypeEnv.WellFormed]
+  simp only [TypeEnv.validateWellFormed] at hok
   -- Check that the entity schema is well-formed
   cases hwf_ets : env.ets.validateWellFormed env
   · simp [hwf_ets] at hok

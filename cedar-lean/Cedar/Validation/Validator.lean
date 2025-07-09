@@ -43,7 +43,7 @@ def ActionSchemaEntry.requestTypes (action : EntityUID) (entry : ActionSchemaEnt
     reqtys ++ acc) ∅
 
 /-- Return every schema-defined environment. -/
-def Schema.environments (schema : Schema) : List Environment :=
+def Schema.environments (schema : Schema) : List TypeEnv :=
   let requestTypes : List RequestType :=
     schema.acts.toList.foldl (fun acc (action,entry) => entry.requestTypes action ++ acc) ∅
   requestTypes.map ({
@@ -60,7 +60,7 @@ def Schema.environments (schema : Schema) : List Environment :=
   that the `action` was declared in the schema, but there are no valid
   environments for it
 -/
-def Schema.environmentsForAction? (schema : Schema) (action : EntityUID) : Option (List Environment) := do
+def Schema.environmentsForAction? (schema : Schema) (action : EntityUID) : Option (List TypeEnv) := do
   let ase ← schema.acts.find? action
   let p_r_pairs := List.productTR ase.appliesToPrincipal.elts ase.appliesToResource.elts
   some $ p_r_pairs.map λ (principal, resource) => {
@@ -78,7 +78,7 @@ def Schema.environmentsForAction? (schema : Schema) (action : EntityUID) : Optio
   Return the environment for the particular (p,a,r) tuple, or `none` if this
   is not a valid tuple in this schema
 -/
-def Schema.environment? (schema : Schema) (principal resource : EntityType) (action : EntityUID) : Option Environment := do
+def Schema.environment? (schema : Schema) (principal resource : EntityType) (action : EntityUID) : Option TypeEnv := do
   let ase ← schema.acts.find? action
   match ase.appliesToPrincipal.contains principal, ase.appliesToResource.contains resource with
   | true, true => some {
@@ -148,7 +148,7 @@ def substituteAction (uid : EntityUID) (expr : Expr) : Expr :=
   mapOnVars f expr
 
 /-- Check that a policy is Boolean-typed. -/
-def typecheckPolicy (policy : Policy) (env : Environment) : Except ValidationError TypedExpr :=
+def typecheckPolicy (policy : Policy) (env : TypeEnv) : Except ValidationError TypedExpr :=
   let expr := substituteAction env.reqty.action policy.toExpr
   match typeOf expr ∅ env with
   | .ok (tx, _) =>
@@ -157,7 +157,7 @@ def typecheckPolicy (policy : Policy) (env : Environment) : Except ValidationErr
     else .error (.typeError policy.id (.unexpectedType tx.typeOf))
   | .error e => .error (.typeError policy.id e)
 
-def typecheckPolicyWithLevel (policy : Policy) (level : Nat) (env : Environment) : Except ValidationError TypedExpr := do
+def typecheckPolicyWithLevel (policy : Policy) (level : Nat) (env : TypeEnv) : Except ValidationError TypedExpr := do
   let tx ← typecheckPolicy policy env
   if tx.checkLevel env level then
     .ok tx
@@ -168,12 +168,12 @@ def allFalse (txs : List TypedExpr) : Bool :=
   txs.all (TypedExpr.typeOf · == .bool .ff)
 
 /-- Check a policy under multiple environments. -/
-def typecheckPolicyWithEnvironments (policy : Policy) (envs : List Environment) : ValidationResult := do
+def typecheckPolicyWithEnvironments (policy : Policy) (envs : List TypeEnv) : ValidationResult := do
   let policyTypes ← envs.mapM (typecheckPolicy policy)
   if allFalse policyTypes then .error (.impossiblePolicy policy.id) else .ok ()
 
 /-- Check a policy with a level under multiple environments. -/
-def typecheckPolicyWithLevelWithEnvironments (policy : Policy) (level : Nat) (envs : List Environment) : ValidationResult := do
+def typecheckPolicyWithLevelWithEnvironments (policy : Policy) (level : Nat) (envs : List TypeEnv) : ValidationResult := do
   let policyTypes ← envs.mapM (typecheckPolicyWithLevel policy level)
   if allFalse policyTypes then .error (.impossiblePolicy policy.id) else .ok ()
 
