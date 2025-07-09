@@ -25,69 +25,68 @@ import Cedar.Thm.Validation.Typechecker.WF
 This file contains useful definitions and lemmas about Cedar types.
 -/
 
-namespace Cedar.Thm
+namespace Cedar.Validation
 
 open Cedar.Data
 open Cedar.Spec
-open Cedar.Validation
 
 ----- Definitions -----
 
-def InstanceOfBoolType : Bool → BoolType → Prop
-  | true,  .tt      => True
-  | false, .ff      => True
-  | _,     .anyBool => True
-  | _, _            => False
+def BoolType.AdmitsBool : BoolType → Bool → Prop
+  | .tt,     true  => True
+  | .ff,     false => True
+  | .anyBool, _    => True
+  | _, _           => False
 
-def InstanceOfEntityType (e : EntityUID) (ety: EntityType) (env : Environment) : Prop :=
+def Environment.AdmitsUIDOfEntityType (env : Environment) (e : EntityUID) (ety: EntityType) : Prop :=
   ety = e.ty ∧ EntityUID.WellFormed env e
 
-def InstanceOfExtType : Ext → ExtType → Prop
-  | .decimal _, .decimal => True
-  | .ipaddr _,  .ipAddr  => True
-  | .datetime _, .datetime => True
-  | .duration _, .duration => True
-  | _, _                 => False
+def ExtType.AdmitsExt : ExtType → Ext → Prop
+  | .decimal,  .decimal _  => True
+  | .ipAddr,   .ipaddr _   => True
+  | .datetime, .datetime _ => True
+  | .duration, .duration _ => True
+  | _, _                   => False
 
-inductive InstanceOfType (env : Environment) : Value → CedarType → Prop where
+inductive Environment.AdmitsValueOfType (env : Environment) : Value → CedarType → Prop where
   | instance_of_bool (b : Bool) (bty : BoolType)
-      (h₁ : InstanceOfBoolType b bty) :
-      InstanceOfType env (.prim (.bool b)) (.bool bty)
+      (h₁ : bty.AdmitsBool b) :
+      env.AdmitsValueOfType (.prim (.bool b)) (.bool bty)
   | instance_of_int :
-      InstanceOfType env (.prim (.int _)) .int
+      env.AdmitsValueOfType (.prim (.int _)) .int
   | instance_of_string :
-      InstanceOfType env (.prim (.string _)) .string
+      env.AdmitsValueOfType (.prim (.string _)) .string
   | instance_of_entity (e : EntityUID) (ety: EntityType)
-      (h₁ : InstanceOfEntityType e ety env) :
-      InstanceOfType env (.prim (.entityUID e)) (.entity ety)
+      (h₁ : env.AdmitsUIDOfEntityType e ety) :
+      env.AdmitsValueOfType (.prim (.entityUID e)) (.entity ety)
   | instance_of_set (s : Set Value) (ty : CedarType)
-      (h₁ : ∀ v, v ∈ s → InstanceOfType env v ty) :
-      InstanceOfType env (.set s) (.set ty)
+      (h₁ : ∀ v, v ∈ s → env.AdmitsValueOfType v ty) :
+      env.AdmitsValueOfType (.set s) (.set ty)
   | instance_of_record (r : Map Attr Value) (rty : RecordType)
       -- if an attribute is present in the record, then it is present in the type
       (h₁ : ∀ (k : Attr), r.contains k → rty.contains k)
       -- if an attribute is present, then it has the expected type
       (h₂ : ∀ (k : Attr) (v : Value) (qty : QualifiedType),
-        r.find? k = some v → rty.find? k = some qty → InstanceOfType env v qty.getType)
+        r.find? k = some v → rty.find? k = some qty → env.AdmitsValueOfType v qty.getType)
       -- required attributes are present
       (h₃ : ∀ (k : Attr) (qty : QualifiedType), rty.find? k = some qty → qty.isRequired → r.contains k) :
-      InstanceOfType env (.record r) (.record rty)
+      env.AdmitsValueOfType (.record r) (.record rty)
   | instance_of_ext (x : Ext) (xty : ExtType)
-      (h₁ : InstanceOfExtType x xty) :
-      InstanceOfType env (.ext x) (.ext xty)
+      (h₁ : xty.AdmitsExt x) :
+      env.AdmitsValueOfType (.ext x) (.ext xty)
 
-def InstanceOfRequestType (request : Request) (env : Environment) : Prop :=
-  InstanceOfEntityType request.principal env.reqty.principal env ∧
+def Environment.AdmitsRequest (env : Environment) (request : Request) : Prop :=
+  env.AdmitsUIDOfEntityType request.principal env.reqty.principal ∧
   request.action = env.reqty.action ∧
-  InstanceOfEntityType request.resource env.reqty.resource env ∧
-  InstanceOfType env request.context (.record env.reqty.context)
+  env.AdmitsUIDOfEntityType request.resource env.reqty.resource ∧
+  env.AdmitsValueOfType request.context (.record env.reqty.context)
 
-def InstanceOfEntityTags (data : EntityData) (entry : EntitySchemaEntry) (env : Environment) : Prop :=
+def Environment.AdmitsEntityTags (env : Environment) (data : EntityData) (entry : EntitySchemaEntry) : Prop :=
   match entry.tags? with
-  | .some tty => ∀ v ∈ data.tags.values, InstanceOfType env v tty
+  | .some tty => ∀ v ∈ data.tags.values, env.AdmitsValueOfType v tty
   | .none     => data.tags = Map.empty
 
-def IsValidEntityEID (entry: EntitySchemaEntry) (eid: String) : Prop :=
+def EntitySchemaEntry.AdmitsEID (entry: EntitySchemaEntry) (eid: String) : Prop :=
   match entry with
   | .standard _ => True
   | .enum eids => eid ∈ eids
@@ -100,18 +99,18 @@ For every entity `(uid, data)` in the store,
    in the type store.
 4. The entity's tags' types are consistent with the tags information in the type store.
 -/
-def InstanceOfEntitySchemaEntry (uid : EntityUID) (data : EntityData) (env : Environment) : Prop :=
+def Environment.AdmitsOrdinaryEntityData (env : Environment) (uid : EntityUID) (data : EntityData) : Prop :=
   ∃ entry, env.ets.find? uid.ty = some entry ∧
-    IsValidEntityEID entry uid.eid ∧
-    InstanceOfType env data.attrs (.record entry.attrs) ∧
+    entry.AdmitsEID uid.eid ∧
+    env.AdmitsValueOfType data.attrs (.record entry.attrs) ∧
     (∀ ancestor, ancestor ∈ data.ancestors → ancestor.ty ∈ entry.ancestors) ∧
-    InstanceOfEntityTags data entry env
+    env.AdmitsEntityTags data entry
 
 /--
 Similar to `WellFormedEntityData`, but a special case for action entities
 since they are stored disjoint from `ets`
 -/
-def InstanceOfActionSchemaEntry (uid : EntityUID) (data : EntityData) (env : Environment) : Prop :=
+def Environment.AdmitsActionEntityData (env : Environment) (uid : EntityUID) (data : EntityData) : Prop :=
   -- Action entities cannot have attributes or tags
   data.attrs = .empty ∧
   data.tags = .empty ∧
@@ -119,27 +118,33 @@ def InstanceOfActionSchemaEntry (uid : EntityUID) (data : EntityData) (env : Env
     env.acts.find? uid = some entry ∧
     data.ancestors = entry.ancestors
 
-def InstanceOfSchemaEntry (uid : EntityUID) (data : EntityData) (env : Environment) : Prop :=
-  InstanceOfEntitySchemaEntry uid data env ∨
-  InstanceOfActionSchemaEntry uid data env
+def Environment.AdmitsEntityData (env : Environment) (uid : EntityUID) (data : EntityData) : Prop :=
+  env.AdmitsOrdinaryEntityData uid data ∨
+  env.AdmitsActionEntityData uid data
 
 /--
 Each entry in the store is valid
 -/
-def InstanceOfSchema (entities : Entities) (env : Environment) : Prop :=
+def Environment.AdmitsEntities (env : Environment) (entities : Entities) : Prop :=
   -- Each entity data is valid
   (∀ (uid : EntityUID) (data : EntityData),
-    entities.find? uid = some data → InstanceOfSchemaEntry uid data env) ∧
+    entities.find? uid = some data → env.AdmitsEntityData uid data) ∧
   -- Each action in the schema exists
   (∀ (uid : EntityUID) (entry : ActionSchemaEntry),
     env.acts.find? uid = some entry → ∃ data, entities.find? uid = some data)
 
-def InstanceOfWellFormedEnvironment (request : Request) (entities : Entities) (env : Environment) : Prop :=
+def Environment.WellFormedForRequestEntities (env : Environment) (request : Request) (entities : Entities) : Prop :=
   env.WellFormed ∧
-  InstanceOfRequestType request env ∧
-  InstanceOfSchema entities env
+  env.AdmitsRequest request ∧
+  env.AdmitsEntities entities
+
+end Cedar.Validation
 
 ----- Theorems -----
+
+namespace Cedar.Thm
+
+open Cedar.Validation
 
 theorem false_is_instance_of_ff {env : Environment} :
   InstanceOfType env (Value.prim (Prim.bool false)) (CedarType.bool BoolType.ff)
