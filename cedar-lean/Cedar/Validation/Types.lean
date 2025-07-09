@@ -194,7 +194,7 @@ structure RequestType where
   resource : EntityType
   context : RecordType
 
-structure Environment where
+structure TypeEnv where
   ets : EntitySchema
   acts : ActionSchema
   reqty : RequestType
@@ -202,7 +202,7 @@ structure Environment where
 def ActionSchema.maybeDescendentOf (as : ActionSchema) (ety₁ ety₂ : EntityType) : Bool :=
   as.kvs.any λ (act, entry) => act.ty = ety₁ && entry.ancestors.any (EntityUID.ty · == ety₂)
 
-def Environment.descendentOf (env : Environment) (ety₁ ety₂ : EntityType) : Bool :=
+def TypeEnv.descendentOf (env : TypeEnv) (ety₁ ety₂ : EntityType) : Bool :=
   if ety₁ = ety₂
   then true
   else match env.ets.find? ety₁ with

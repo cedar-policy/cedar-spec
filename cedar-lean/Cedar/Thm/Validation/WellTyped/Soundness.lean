@@ -30,7 +30,7 @@ open Cedar.Spec
 
 theorem well_typed_is_sound_lit
 {v : Value}
-{env : Environment}
+{env : TypeEnv}
 {request : Request}
 {entities : Entities}
 {p : Prim}
@@ -55,7 +55,7 @@ InstanceOfType env v (TypedExpr.lit p ty).typeOf
 theorem well_typed_is_sound_var
 {v : Value}
 {var : Var}
-{env : Environment}
+{env : TypeEnv}
 {request : Request}
 {entities : Entities}
 {ty : CedarType}
@@ -361,7 +361,7 @@ theorem well_typed_is_sound_has_attr
 
 theorem well_typed_is_sound_get_attr_entity
 {v : Value}
-{env : Environment}
+{env : TypeEnv}
 {request : Request}
 {entities : Entities}
 {ety : EntityType}

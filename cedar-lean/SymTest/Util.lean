@@ -99,7 +99,7 @@ def entitySchema (principalAttrs resourceAttrs : RecordType) (principalTags reso
     (resourceType, .standard ⟨Set.empty, resourceAttrs, resourceTags⟩)
   ]
 
-def env (principalAttrs resourceAttrs context : RecordType) (principalTags resourceTags : Option CedarType := none) : Environment :=
+def env (principalAttrs resourceAttrs context : RecordType) (principalTags resourceTags : Option CedarType := none) : TypeEnv :=
   {
     ets   := entitySchema principalAttrs resourceAttrs principalTags resourceTags,
     acts  := actionSchema context,
@@ -188,7 +188,7 @@ def requestType (action : EntityUID) (resourceType : EntityType) (context : Reco
 
 deriving instance Inhabited for ActionSchemaEntry
 
-def env (action : EntityUID) (context : RecordType) : Environment :=
+def env (action : EntityUID) (context : RecordType) : TypeEnv :=
   let acts := actionSchema context
   let resourceType := (acts.find? action).get!.appliesToPrincipal.toList.head!
   {

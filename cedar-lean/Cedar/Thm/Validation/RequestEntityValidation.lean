@@ -17,7 +17,7 @@ theorem instance_of_bool_type_refl {b : Bool} {bty : BoolType} :
   intro h₀
   cases h₁ : b <;> cases h₂ : bty <;> subst h₁ <;> subst h₂ <;> simp only [Bool.false_eq_true] at *
 
-theorem instance_of_entity_type_refl {e : EntityUID} {ety : EntityType} {env : Environment} :
+theorem instance_of_entity_type_refl {e : EntityUID} {ety : EntityType} {env : TypeEnv} :
   instanceOfEntityType e ety env = true → InstanceOfEntityType e ety env
 := by
   simp only [InstanceOfEntityType, instanceOfEntityType]
@@ -33,7 +33,7 @@ theorem instance_of_ext_type_refl {ext : Ext} {extty : ExtType} :
   intro h₀
   cases h₁ : ext <;> cases h₂ : extty <;> subst h₁ <;> subst h₂ <;> simp only [Bool.false_eq_true] at *
 
-theorem instance_of_type_refl {v : Value} {ty : CedarType} {env : Environment} :
+theorem instance_of_type_refl {v : Value} {ty : CedarType} {env : TypeEnv} :
   instanceOfType v ty env = true → InstanceOfType env v ty
 := by
   intro h₀
@@ -146,7 +146,7 @@ decreasing_by
     have := Map.sizeOf_lt_of_value h₁
     omega
 
-theorem instance_of_request_type_refl {request : Request} {env : Environment}:
+theorem instance_of_request_type_refl {request : Request} {env : TypeEnv}:
   instanceOfRequestType request env = true → InstanceOfRequestType request env
 := by
   intro h₀
@@ -161,7 +161,7 @@ theorem instance_of_request_type_refl {request : Request} {env : Environment}:
   · exact (instance_of_entity_type_refl h₃).2
   · exact instance_of_type_refl h₄
 
-theorem instance_of_schema_refl {entities : Entities} {env : Environment} :
+theorem instance_of_schema_refl {entities : Entities} {env : TypeEnv} :
   instanceOfSchema entities env = .ok () → InstanceOfSchema entities env
 := by
   intro h₀
@@ -246,7 +246,7 @@ theorem instance_of_schema_refl {entities : Entities} {env : Environment} :
     case some data => exists data
     case none => simp [Map.contains, h₂] at h₀
 
-theorem instance_of_well_formed_env {env : Environment} {request : Request} {entities : Entities} :
+theorem instance_of_well_formed_env {env : TypeEnv} {request : Request} {entities : Entities} :
   env.validateWellFormed = .ok () →
   requestMatchesEnvironment env request →
   entitiesMatchEnvironment env entities = .ok () →
@@ -280,6 +280,6 @@ theorem request_and_entities_validate_implies_instance_of_wf_schema (schema : Sc
   exists env
   apply And.intro h₁
   apply instance_of_well_formed_env
-  simp only [List.forM_ok_implies_all_ok schema.environments Environment.validateWellFormed h₀ env h₁]
+  simp only [List.forM_ok_implies_all_ok schema.environments TypeEnv.validateWellFormed h₀ env h₁]
   assumption
   simp only [List.forM_ok_implies_all_ok schema.environments (entitiesMatchEnvironment · entities) h₂ env h₁]

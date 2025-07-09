@@ -42,7 +42,7 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem level_based_slicing_is_sound_expr {e : Expr} {n : Nat} {tx : TypedExpr} {c c₁ : Capabilities} {env : Environment} {request : Request} {entities slice : Entities}
+theorem level_based_slicing_is_sound_expr {e : Expr} {n : Nat} {tx : TypedExpr} {c c₁ : Capabilities} {env : TypeEnv} {request : Request} {entities slice : Entities}
   (hs : slice = entities.sliceAtLevel request n)
   (hc : CapabilitiesInvariant c request entities)
   (hr : InstanceOfWellFormedEnvironment request entities env)
@@ -109,7 +109,7 @@ theorem level_based_slicing_is_sound_expr {e : Expr} {n : Nat} {tx : TypedExpr} 
     exact level_based_slicing_is_sound_record hs hc hr ht hl ih
 termination_by e
 
-theorem typecheck_policy_with_level_is_sound {p : Policy} {tx : TypedExpr} {n : Nat} {env : Environment} {request : Request} {entities slice : Entities}
+theorem typecheck_policy_with_level_is_sound {p : Policy} {tx : TypedExpr} {n : Nat} {env : TypeEnv} {request : Request} {entities slice : Entities}
   (hs : slice = entities.sliceAtLevel request n)
   (hr : InstanceOfWellFormedEnvironment request entities env)
   (htl : typecheckPolicyWithLevel p n env = .ok tx) :
@@ -129,7 +129,7 @@ theorem typecheck_policy_with_level_is_sound {p : Policy} {tx : TypedExpr} {n : 
   have hc := empty_capabilities_invariant request entities
   exact level_based_slicing_is_sound_expr hs hc hr htx' htl'
 
-theorem typecheck_policy_at_level_with_environments_is_sound {p : Policy} {envs : List Environment} {n : Nat} {request : Request} {entities slice : Entities}
+theorem typecheck_policy_at_level_with_environments_is_sound {p : Policy} {envs : List TypeEnv} {n : Nat} {request : Request} {entities slice : Entities}
   (hs : slice = entities.sliceAtLevel request n)
   (he : ∃ env ∈ envs, InstanceOfWellFormedEnvironment request entities env)
   (htl : typecheckPolicyWithLevelWithEnvironments p n envs = .ok ()) :

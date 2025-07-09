@@ -43,7 +43,7 @@ theorem partial_evaluate_is_sound
   {es : Entities}
   {preq : PartialRequest}
   {pes : PartialEntities}
-  {env : Environment} :
+  {env : TypeEnv} :
   TypedExpr.WellTyped env x →
   InstanceOfWellFormedEnvironment req es env →
   RequestAndEntitiesRefine req es preq pes →

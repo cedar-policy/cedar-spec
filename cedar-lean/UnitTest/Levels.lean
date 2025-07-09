@@ -74,7 +74,7 @@ def schema : Schema :=
       ⟩)
   ]⟩
 
-def levelCheckExpr (e : Expr) (env : Environment) (n : Nat) : Except String Bool :=
+def levelCheckExpr (e : Expr) (env : TypeEnv) (n : Nat) : Except String Bool :=
   match typeOf e ∅ env with
   | .ok (tx, _) => pure $ tx.checkLevel env n
   | _           => .error "Typechecking failed, but all tests cases should be well typed"

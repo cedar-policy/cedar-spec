@@ -215,9 +215,9 @@ def SymRequest.ofRequestType (reqTy : RequestType) : SymRequest :=
 
 /--
 Returns a symbolic environment that conforms to the given
-type Environment.
+type environment.
 -/
-def SymEnv.ofEnv (tyEnv : Environment) : SymEnv :=
+def SymEnv.ofEnv (tyEnv : TypeEnv) : SymEnv :=
   {
     request  := SymRequest.ofRequestType tyEnv.reqty,
     entities := SymEntities.ofSchema tyEnv.ets tyEnv.acts

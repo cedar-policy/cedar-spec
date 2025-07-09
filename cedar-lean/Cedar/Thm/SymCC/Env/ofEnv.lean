@@ -24,7 +24,7 @@ If some entity exists in `Γ`, then it must
 also exists in `SymEnv.ofEnv Γ` with the corresponding `SymEntityData`
 -/
 theorem ofEnv_preserves_entity
-  {Γ : Environment} {εnv : SymEnv} {ety : EntityType} {entry : EntitySchemaEntry}
+  {Γ : TypeEnv} {εnv : SymEnv} {ety : EntityType} {entry : EntitySchemaEntry}
   (hεnv : εnv = SymEnv.ofEnv Γ)
   (hfind : Map.find? Γ.ets ety = some entry) :
   Map.find? εnv.entities ety = some (SymEntityData.ofEntityType ety entry)
@@ -48,7 +48,7 @@ theorem ofEnv_preserves_entity
 
 /-- An action entity type is compiled correctly -/
 theorem ofEnv_preserves_action_entity
-  {Γ : Environment} {uid : EntityUID}
+  {Γ : TypeEnv} {uid : EntityUID}
   (hwf : Γ.WellFormed)
   (hmem : Map.contains Γ.acts uid) :
   Map.find? (SymEnv.ofEnv Γ).entities uid.ty =
@@ -118,7 +118,7 @@ theorem ofEnv_preserves_action_entity
   simp [heq]
 
 theorem ofActionType_contains_act
-  {Γ : Environment} {uid : EntityUID}
+  {Γ : TypeEnv} {uid : EntityUID}
   (hwf : Γ.WellFormed)
   (hmem : Map.contains Γ.acts uid) :
   ∃ m, (SymEntityData.ofActionType
@@ -143,7 +143,7 @@ theorem ofActionType_contains_act
 
 /-- A variant of `ofEnv_preserves_entity` -/
 theorem ofEnv_entity_exists
-  {Γ : Environment} {ety : EntityType}
+  {Γ : TypeEnv} {ety : EntityType}
   (hmem : Map.contains Γ.ets ety) :
   Map.contains (SymEnv.ofEnv Γ).entities ety
 := by
@@ -154,7 +154,7 @@ theorem ofEnv_entity_exists
 
 /-- Similar to `ofEnv_entity_exists` but for action entities -/
 theorem ofEnv_action_entity_exists
-  {Γ : Environment} {uid : EntityUID}
+  {Γ : TypeEnv} {uid : EntityUID}
   (hwf : Γ.WellFormed)
   (hmem : Map.contains Γ.acts uid) :
   Map.contains (SymEnv.ofEnv Γ).entities uid.ty
@@ -163,7 +163,7 @@ theorem ofEnv_action_entity_exists
   simp [ofEnv_preserves_action_entity hwf hmem]
 
 theorem ofEnv_wf_entity
-  {Γ : Environment} {ety : EntityType}
+  {Γ : TypeEnv} {ety : EntityType}
   (hwf : Γ.WellFormed)
   (hwf_ety : EntityType.WellFormed Γ ety) :
   (SymEntities.ofSchema Γ.ets Γ.acts).isValidEntityType ety
@@ -179,12 +179,12 @@ theorem ofEnv_wf_entity
     exact ofEnv_action_entity_exists hwf huid
 
 /--
-Lemma that if a concrete `Γ : Environment` has tags for
+Lemma that if a concrete `Γ : TypeEnv` has tags for
 a particular entity type, then `SymEnv.ofEnv Γ` must also
 have tags for it
 -/
 theorem ofEnv_preserves_tags
-  {Γ : Environment} {ety : EntityType} {ty : CedarType}
+  {Γ : TypeEnv} {ety : EntityType} {ty : CedarType}
   (h : Γ.ets.tags? ety = some (some ty)) :
   ∃ τags : SymTags,
     (SymEnv.ofEnv Γ).entities.tags ety = some (some τags) ∧
@@ -217,7 +217,7 @@ theorem ofEnv_preserves_tags
 Show that `SymEnv.ofEnv Γ` preserves the result of attribute lookup
 -/
 theorem ofEnv_preserves_entity_attr
-  {Γ : Environment} {εnv : SymEnv}
+  {Γ : TypeEnv} {εnv : SymEnv}
   {rty : RecordType} {ety : EntityType}
   (hεnv : εnv = SymEnv.ofEnv Γ)
   (hattrs_exists : Γ.ets.attrs? ety = some rty)
@@ -291,7 +291,7 @@ theorem ofRecordType_eq_map
 (under the compiled `SymEnv`).
 -/
 theorem ofType_wf
-  {Γ : Environment} {ty : CedarType}
+  {Γ : TypeEnv} {ty : CedarType}
   (hwf : Γ.WellFormed)
   (hwf_ty : CedarType.WellFormed Γ ty) :
   (TermType.ofType ty).WellFormed (SymEnv.ofEnv Γ).entities
@@ -353,7 +353,7 @@ decreasing_by
 when applied to a well-formed `CedarType`.
 -/
 theorem wf_ofType_right_inverse_cedarType?
-  {Γ : Environment} {ty : CedarType}
+  {Γ : TypeEnv} {ty : CedarType}
   (hwf : Γ.WellFormed)
   (hwf_ty : CedarType.WellFormed Γ ty) :
   (TermType.ofType ty).cedarType? = ty.liftBoolTypes
@@ -469,7 +469,7 @@ where
     omega
 
 theorem ofEnv_request_is_wf
-  {Γ : Environment}
+  {Γ : TypeEnv}
   (hwf : Γ.WellFormed) :
   (SymEnv.ofEnv Γ).request.WellFormed
     (SymEnv.ofEnv Γ).entities
@@ -514,7 +514,7 @@ theorem ofEnv_request_is_wf
     simp [this, CedarType.liftBoolTypes]
 
 theorem ofEnv_request_is_basic
-  {Γ : Environment} :
+  {Γ : TypeEnv} :
   (SymEnv.ofEnv Γ).request.IsBasic
 := by
   simp [
@@ -526,7 +526,7 @@ theorem ofEnv_request_is_basic
   ]
 
 theorem ofEnv_request_is_swf
-  {Γ : Environment}
+  {Γ : TypeEnv}
   (hwf : Γ.WellFormed) :
   (SymEnv.ofEnv Γ).request.StronglyWellFormed
     (SymEnv.ofEnv Γ).entities
@@ -537,7 +537,7 @@ theorem ofEnv_request_is_swf
   exact ofEnv_request_is_basic
 
 theorem ofStandardEntityType_is_wf
-  {ety : EntityType} {Γ : Environment} {entry : StandardSchemaEntry}
+  {ety : EntityType} {Γ : TypeEnv} {entry : StandardSchemaEntry}
   (hwf : Γ.WellFormed)
   (hfind : Map.find? Γ.ets ety = some (.standard entry)) :
   SymEntityData.WellFormed
@@ -660,7 +660,7 @@ theorem ofStandardEntityType_is_wf
   · simp
 
 theorem ofEnumEntityType_is_wf
-  {ety : EntityType} {Γ : Environment} {eids : Set String}
+  {ety : EntityType} {Γ : TypeEnv} {eids : Set String}
   (hwf : Γ.WellFormed)
   (hfind : Map.find? Γ.ets ety = some (.enum eids)) :
   SymEntityData.WellFormed
@@ -705,7 +705,7 @@ theorem ofEnumEntityType_is_wf
     simp [h]
 
 theorem ofEntityType_is_wf
-  {ety : EntityType} {Γ : Environment} {entry : EntitySchemaEntry}
+  {ety : EntityType} {Γ : TypeEnv} {entry : EntitySchemaEntry}
   (hwf : Γ.WellFormed)
   (hfind : Map.find? Γ.ets ety = some entry) :
   SymEntityData.WellFormed
@@ -722,7 +722,7 @@ A technical lemma that `SymEntityData.ofActionType.ancsUDF`
 produces a well-formed UDF.
 -/
 theorem ofActionType_ancsUDF_is_wf
-  {uid : EntityUID} {Γ : Environment}
+  {uid : EntityUID} {Γ : TypeEnv}
   {anc : EntityType}
   {anc_f : UnaryFunction} (hwf : Γ.WellFormed)
   (hanc :
@@ -890,7 +890,7 @@ theorem ofActionType_ancsUDF_is_wf
   · simp [SymEntityData.ofActionType.ancsUDF, TermType.ofType]
 
 theorem ofActionType_is_wf
-  {uid : EntityUID} {Γ : Environment} {entry : ActionSchemaEntry}
+  {uid : EntityUID} {Γ : TypeEnv} {entry : ActionSchemaEntry}
   (hwf : Γ.WellFormed)
   (hfind : Map.find? Γ.acts uid = some entry) :
   SymEntityData.WellFormed
@@ -952,7 +952,7 @@ theorem ofActionType_is_wf
     exists (Map.find?_mem_toList hfind)
 
 theorem ofEnv_entities_is_wf
-  {Γ : Environment}
+  {Γ : TypeEnv}
   (hwf : Γ.WellFormed) :
   (SymEnv.ofEnv Γ).entities.WellFormed
 := by
@@ -988,7 +988,7 @@ theorem ofEnv_entities_is_wf
       exact ofActionType_is_wf hwf this
 
 theorem entity_uid_wf_implies_sym_entities_is_valid_entity_uid
-  {Γ : Environment} {uid : EntityUID}
+  {Γ : TypeEnv} {uid : EntityUID}
   (hwf : Γ.WellFormed)
   (huid : EntityUID.WellFormed Γ uid) :
   (SymEnv.ofEnv Γ).entities.isValidEntityUID uid
@@ -1039,7 +1039,7 @@ Given a well-formed environment and a well-typed expression in that environment,
 we show that the expression satisfies `ValidRefs`
 -/
 theorem ofEnv_entities_valid_refs_for_wt_expr
-  {Γ : Environment} {tx : TypedExpr}
+  {Γ : TypeEnv} {tx : TypedExpr}
   (hwf : Γ.WellFormed)
   (hwt : TypedExpr.WellTyped Γ tx) :
   tx.toExpr.ValidRefs ((SymEnv.ofEnv Γ).entities.isValidEntityUID ·)
@@ -1125,7 +1125,7 @@ which says that if the input environment `Γ` is well-formed,
 then `SymEnv.ofEnv Γ` is well-formed.
 -/
 theorem ofEnv_is_wf
-  {Γ : Environment}
+  {Γ : TypeEnv}
   (hwf : Γ.WellFormed) :
   (SymEnv.ofEnv Γ).WellFormed
 := by
@@ -1135,11 +1135,11 @@ theorem ofEnv_is_wf
   · exact ofEnv_entities_is_wf hwf
 
 /--
-If an expression is well-typed in a concrete, well-formed `Environment`,
+If an expression is well-typed in a concrete, well-formed `TypeEnv`,
 then it must also be well-formed in the compiled symbolic environment.
 -/
 theorem ofEnv_wf_for_expr
-  {Γ : Environment} {tx : TypedExpr}
+  {Γ : TypeEnv} {tx : TypedExpr}
   (hwf : Γ.WellFormed)
   (hwt : TypedExpr.WellTyped Γ tx) :
   (SymEnv.ofEnv Γ).WellFormedFor tx.toExpr

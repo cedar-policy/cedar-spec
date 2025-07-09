@@ -26,7 +26,7 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem type_of_hasTag_inversion {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr}
+theorem type_of_hasTag_inversion {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : TypeEnv} {ty : TypedExpr}
   (h₁ : typeOf (Expr.binaryApp .hasTag x₁ x₂) c₁ env = .ok (ty, c₂)) :
   ∃ ety c₁' c₂',
     (typeOf x₁ c₁ env).typeOf = .ok (.entity ety, c₁') ∧
@@ -50,12 +50,12 @@ theorem type_of_hasTag_inversion {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {
   simp only [h₄, h₅, ResultType.typeOf, Except.map]
   simp [←h₁, h₆, TypedExpr.typeOf]
 
-private theorem map_empty_contains_instance_of_ff [DecidableEq α] [DecidableEq β] {k : α} {env : Environment} :
+private theorem map_empty_contains_instance_of_ff [DecidableEq α] [DecidableEq β] {k : α} {env : TypeEnv} :
   InstanceOfType env (Value.prim (Prim.bool ((Map.empty : Map α β).contains k))) (CedarType.bool BoolType.ff)
 := by
   simp only [Map.not_contains_of_empty, false_is_instance_of_ff]
 
-private theorem no_tags_type_implies_no_tags {uid : EntityUID} {env : Environment} {entities : Entities}
+private theorem no_tags_type_implies_no_tags {uid : EntityUID} {env : TypeEnv} {entities : Entities}
   (h₁ : InstanceOfSchema entities env)
   (h₂ : env.ets.tags? uid.ty = .some .none) :
   InstanceOfType env (Value.prim (Prim.bool ((entities.tagsOrEmpty uid).contains s))) (CedarType.bool BoolType.ff)
@@ -83,7 +83,7 @@ private theorem no_tags_type_implies_no_tags {uid : EntityUID} {env : Environmen
       constructor
   · exact map_empty_contains_instance_of_ff
 
-private theorem no_type_implies_no_tags {uid : EntityUID} {env : Environment} {entities : Entities}
+private theorem no_type_implies_no_tags {uid : EntityUID} {env : TypeEnv} {entities : Entities}
   (h₁ : InstanceOfSchema entities env)
   (h₂ : env.ets.tags? uid.ty = .none) :
   InstanceOfType env (Value.prim (Prim.bool ((entities.tagsOrEmpty uid).contains s))) (CedarType.bool BoolType.ff)
@@ -103,7 +103,7 @@ private theorem no_type_implies_no_tags {uid : EntityUID} {env : Environment} {e
       constructor
   · exact map_empty_contains_instance_of_ff
 
-private theorem mem_capabilities_implies_mem_tags {env : Environment} {x₁ x₂ : Expr} {c₁ : Capabilities} {request : Request} {entities : Entities} {uid : EntityUID} {s : String}
+private theorem mem_capabilities_implies_mem_tags {env : TypeEnv} {x₁ x₂ : Expr} {c₁ : Capabilities} {request : Request} {entities : Entities} {uid : EntityUID} {s : String}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (ih₁ : evaluate x₁ request entities = Except.ok (Value.prim (Prim.entityUID uid)))
   (ih₂ : evaluate x₂ request entities = Except.ok (Value.prim (Prim.string s)))
@@ -128,7 +128,7 @@ private theorem hasTag_true_implies_cap_inv {x₁ x₂ : Expr} {request : Reques
   subst hin hin'
   simp only [EvaluatesTo, evaluate, ih₁, ih₂, apply₂, hasTag, Except.bind_ok, ht, or_true]
 
-theorem type_of_hasTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
+theorem type_of_hasTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : TypeEnv} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : InstanceOfWellFormedEnvironment request entities env)
   (h₃ : typeOf (Expr.binaryApp .hasTag x₁ x₂) c₁ env = Except.ok (ty, c₂))

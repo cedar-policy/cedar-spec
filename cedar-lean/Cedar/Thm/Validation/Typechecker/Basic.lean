@@ -77,7 +77,7 @@ def GuardedCapabilitiesInvariant (e: Expr) (c: Capabilities) (request : Request)
   CapabilitiesInvariant c request entities
 
 def TypeOfIsSound (x₁ : Expr) : Prop :=
-  ∀ {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities},
+  ∀ {c₁ c₂ : Capabilities} {env : TypeEnv} {ty : TypedExpr} {request : Request} {entities : Entities},
     CapabilitiesInvariant c₁ request entities →
     InstanceOfWellFormedEnvironment request entities env →
     typeOf x₁ c₁ env = Except.ok (ty, c₂) →
@@ -172,7 +172,7 @@ that the type is the result of `typeOf`.
 theorem type_of_is_inhabited
   {e : Expr}
   {c₁ c₂ : Capabilities}
-  {env : Environment}
+  {env : TypeEnv}
   {tx : TypedExpr}
   (hwf : env.WellFormed)
   (hty : typeOf e c₁ env = .ok (tx, c₂)) :

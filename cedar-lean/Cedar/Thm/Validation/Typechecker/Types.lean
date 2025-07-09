@@ -39,7 +39,7 @@ def InstanceOfBoolType : Bool → BoolType → Prop
   | _,     .anyBool => True
   | _, _            => False
 
-def InstanceOfEntityType (e : EntityUID) (ety: EntityType) (env : Environment) : Prop :=
+def InstanceOfEntityType (e : EntityUID) (ety: EntityType) (env : TypeEnv) : Prop :=
   ety = e.ty ∧ EntityUID.WellFormed env e
 
 def InstanceOfExtType : Ext → ExtType → Prop
@@ -49,7 +49,7 @@ def InstanceOfExtType : Ext → ExtType → Prop
   | .duration _, .duration => True
   | _, _                 => False
 
-inductive InstanceOfType (env : Environment) : Value → CedarType → Prop where
+inductive InstanceOfType (env : TypeEnv) : Value → CedarType → Prop where
   | instance_of_bool (b : Bool) (bty : BoolType)
       (h₁ : InstanceOfBoolType b bty) :
       InstanceOfType env (.prim (.bool b)) (.bool bty)
@@ -76,13 +76,13 @@ inductive InstanceOfType (env : Environment) : Value → CedarType → Prop wher
       (h₁ : InstanceOfExtType x xty) :
       InstanceOfType env (.ext x) (.ext xty)
 
-def InstanceOfRequestType (request : Request) (env : Environment) : Prop :=
+def InstanceOfRequestType (request : Request) (env : TypeEnv) : Prop :=
   InstanceOfEntityType request.principal env.reqty.principal env ∧
   request.action = env.reqty.action ∧
   InstanceOfEntityType request.resource env.reqty.resource env ∧
   InstanceOfType env request.context (.record env.reqty.context)
 
-def InstanceOfEntityTags (data : EntityData) (entry : EntitySchemaEntry) (env : Environment) : Prop :=
+def InstanceOfEntityTags (data : EntityData) (entry : EntitySchemaEntry) (env : TypeEnv) : Prop :=
   match entry.tags? with
   | .some tty => ∀ v ∈ data.tags.values, InstanceOfType env v tty
   | .none     => data.tags = Map.empty
@@ -100,7 +100,7 @@ For every entity `(uid, data)` in the store,
    in the type store.
 4. The entity's tags' types are consistent with the tags information in the type store.
 -/
-def InstanceOfEntitySchemaEntry (uid : EntityUID) (data : EntityData) (env : Environment) : Prop :=
+def InstanceOfEntitySchemaEntry (uid : EntityUID) (data : EntityData) (env : TypeEnv) : Prop :=
   ∃ entry, env.ets.find? uid.ty = some entry ∧
     IsValidEntityEID entry uid.eid ∧
     InstanceOfType env data.attrs (.record entry.attrs) ∧
@@ -111,7 +111,7 @@ def InstanceOfEntitySchemaEntry (uid : EntityUID) (data : EntityData) (env : Env
 Similar to `WellFormedEntityData`, but a special case for action entities
 since they are stored disjoint from `ets`
 -/
-def InstanceOfActionSchemaEntry (uid : EntityUID) (data : EntityData) (env : Environment) : Prop :=
+def InstanceOfActionSchemaEntry (uid : EntityUID) (data : EntityData) (env : TypeEnv) : Prop :=
   -- Action entities cannot have attributes or tags
   data.attrs = .empty ∧
   data.tags = .empty ∧
@@ -119,14 +119,14 @@ def InstanceOfActionSchemaEntry (uid : EntityUID) (data : EntityData) (env : Env
     env.acts.find? uid = some entry ∧
     data.ancestors = entry.ancestors
 
-def InstanceOfSchemaEntry (uid : EntityUID) (data : EntityData) (env : Environment) : Prop :=
+def InstanceOfSchemaEntry (uid : EntityUID) (data : EntityData) (env : TypeEnv) : Prop :=
   InstanceOfEntitySchemaEntry uid data env ∨
   InstanceOfActionSchemaEntry uid data env
 
 /--
 Each entry in the store is valid
 -/
-def InstanceOfSchema (entities : Entities) (env : Environment) : Prop :=
+def InstanceOfSchema (entities : Entities) (env : TypeEnv) : Prop :=
   -- Each entity data is valid
   (∀ (uid : EntityUID) (data : EntityData),
     entities.find? uid = some data → InstanceOfSchemaEntry uid data env) ∧
@@ -134,32 +134,32 @@ def InstanceOfSchema (entities : Entities) (env : Environment) : Prop :=
   (∀ (uid : EntityUID) (entry : ActionSchemaEntry),
     env.acts.find? uid = some entry → ∃ data, entities.find? uid = some data)
 
-def InstanceOfWellFormedEnvironment (request : Request) (entities : Entities) (env : Environment) : Prop :=
+def InstanceOfWellFormedEnvironment (request : Request) (entities : Entities) (env : TypeEnv) : Prop :=
   env.WellFormed ∧
   InstanceOfRequestType request env ∧
   InstanceOfSchema entities env
 
 ----- Theorems -----
 
-theorem false_is_instance_of_ff {env : Environment} :
+theorem false_is_instance_of_ff {env : TypeEnv} :
   InstanceOfType env (Value.prim (Prim.bool false)) (CedarType.bool BoolType.ff)
 := by
   apply InstanceOfType.instance_of_bool
   simp [InstanceOfBoolType]
 
-theorem true_is_instance_of_tt {env : Environment} :
+theorem true_is_instance_of_tt {env : TypeEnv} :
   InstanceOfType env (Value.prim (Prim.bool true)) (CedarType.bool BoolType.tt)
 := by
   apply InstanceOfType.instance_of_bool
   simp [InstanceOfBoolType]
 
-theorem bool_is_instance_of_anyBool {env : Environment} (b : Bool) :
+theorem bool_is_instance_of_anyBool {env : TypeEnv} (b : Bool) :
   InstanceOfType env (Value.prim (Prim.bool b)) (CedarType.bool BoolType.anyBool)
 := by
   apply InstanceOfType.instance_of_bool
   simp [InstanceOfBoolType]
 
-theorem instance_of_bool_is_bool {env : Environment} {v₁ : Value} {bty : BoolType} :
+theorem instance_of_bool_is_bool {env : TypeEnv} {v₁ : Value} {bty : BoolType} :
   InstanceOfType env v₁ (CedarType.bool bty) →
   ∃ b, v₁ = .prim (.bool b)
 := by
@@ -167,7 +167,7 @@ theorem instance_of_bool_is_bool {env : Environment} {v₁ : Value} {bty : BoolT
   rcases h₁ with ⟨b, _, _⟩
   exists b
 
-theorem instance_of_ff_is_false {env : Environment} {v₁ : Value} :
+theorem instance_of_ff_is_false {env : TypeEnv} {v₁ : Value} :
   InstanceOfType env v₁ (CedarType.bool BoolType.ff) →
   v₁ = .prim (.bool false)
 := by
@@ -178,7 +178,7 @@ theorem instance_of_ff_is_false {env : Environment} {v₁ : Value} :
     cases b <;> simp at h₁
     rfl
 
-theorem instance_of_tt_is_true {env : Environment} {v₁ : Value} :
+theorem instance_of_tt_is_true {env : TypeEnv} {v₁ : Value} :
   InstanceOfType env v₁ (CedarType.bool BoolType.tt) →
   v₁ = .prim (.bool true)
 := by
@@ -189,12 +189,12 @@ theorem instance_of_tt_is_true {env : Environment} {v₁ : Value} :
     cases b <;> simp at h₁
     rfl
 
-theorem instance_of_anyBool_is_bool {env : Environment} {v₁ : Value} :
+theorem instance_of_anyBool_is_bool {env : TypeEnv} {v₁ : Value} :
   InstanceOfType env v₁ (CedarType.bool BoolType.anyBool) →
   ∃ b, v₁ = .prim (.bool b)
 := instance_of_bool_is_bool
 
-theorem instance_of_int_is_int {env : Environment} {v₁ : Value} :
+theorem instance_of_int_is_int {env : TypeEnv} {v₁ : Value} :
   InstanceOfType env v₁ CedarType.int →
   ∃ i, v₁ = .prim (.int i)
 := by
@@ -203,7 +203,7 @@ theorem instance_of_int_is_int {env : Environment} {v₁ : Value} :
   rename_i y
   exists y
 
-theorem instance_of_string_is_string {env : Environment} {v₁ : Value} :
+theorem instance_of_string_is_string {env : TypeEnv} {v₁ : Value} :
   InstanceOfType env v₁ CedarType.string →
   ∃ s, v₁ = .prim (.string s)
 := by
@@ -212,7 +212,7 @@ theorem instance_of_string_is_string {env : Environment} {v₁ : Value} :
   rename_i y
   exists y
 
-theorem instance_of_entity_type_is_entity {env : Environment} {ety : EntityType} :
+theorem instance_of_entity_type_is_entity {env : TypeEnv} {ety : EntityType} :
   InstanceOfType env v₁ (.entity ety) →
   ∃ euid, euid.ty = ety ∧ v₁ = .prim (.entityUID euid)
 := by
@@ -223,7 +223,7 @@ theorem instance_of_entity_type_is_entity {env : Environment} {ety : EntityType}
   exists euid
   simp [h₁]
 
-theorem instance_of_decimal_type_is_decimal {env : Environment} {v₁ : Value} :
+theorem instance_of_decimal_type_is_decimal {env : TypeEnv} {v₁ : Value} :
   InstanceOfType env v₁ (CedarType.ext ExtType.decimal) →
   ∃ d, v₁ = .ext (.decimal d)
 := by
@@ -235,7 +235,7 @@ theorem instance_of_decimal_type_is_decimal {env : Environment} {v₁ : Value} :
   rename_i d _
   exists d
 
-theorem instance_of_ipAddr_type_is_ipAddr {env : Environment} {v₁ : Value} :
+theorem instance_of_ipAddr_type_is_ipAddr {env : TypeEnv} {v₁ : Value} :
   InstanceOfType env v₁ (CedarType.ext ExtType.ipAddr) →
   ∃ d, v₁ = .ext (.ipaddr d)
 := by
@@ -247,7 +247,7 @@ theorem instance_of_ipAddr_type_is_ipAddr {env : Environment} {v₁ : Value} :
   rename_i ip _
   exists ip
 
-theorem instance_of_datetime_type_is_datetime {env : Environment} {v₁ : Value} :
+theorem instance_of_datetime_type_is_datetime {env : TypeEnv} {v₁ : Value} :
   InstanceOfType env v₁ (CedarType.ext ExtType.datetime) →
   ∃ d, v₁ = .ext (.datetime d)
 := by
@@ -259,7 +259,7 @@ theorem instance_of_datetime_type_is_datetime {env : Environment} {v₁ : Value}
   rename_i d _
   exists d
 
-theorem instance_of_duration_type_is_duration {env : Environment} {v₁ : Value} :
+theorem instance_of_duration_type_is_duration {env : TypeEnv} {v₁ : Value} :
   InstanceOfType env v₁ (CedarType.ext ExtType.duration) →
   ∃ d, v₁ = .ext (.duration d)
 := by
@@ -271,7 +271,7 @@ theorem instance_of_duration_type_is_duration {env : Environment} {v₁ : Value}
   rename_i d _
   exists d
 
-theorem instance_of_set_type_is_set {env : Environment} {v : Value} {ty : CedarType} :
+theorem instance_of_set_type_is_set {env : TypeEnv} {v : Value} {ty : CedarType} :
   InstanceOfType env v (.set ty) →
   ∃ s, v = .set s
 := by
@@ -280,7 +280,7 @@ theorem instance_of_set_type_is_set {env : Environment} {v : Value} {ty : CedarT
   rename_i s h₁
   exists s
 
-theorem instance_of_record_type_is_record {env : Environment} {v : Value} {rty : RecordType} :
+theorem instance_of_record_type_is_record {env : TypeEnv} {v : Value} {rty : RecordType} :
   InstanceOfType env v (.record rty) →
   ∃ r, v = .record r
 := by
@@ -289,7 +289,7 @@ theorem instance_of_record_type_is_record {env : Environment} {v : Value} {rty :
   rename_i r _ _ _
   exists r
 
-theorem instance_of_attribute_type {env : Environment} {r : Map Attr Value} {v : Value} {rty : RecordType} {a : Attr} {aty : CedarType} {qaty : QualifiedType}
+theorem instance_of_attribute_type {env : TypeEnv} {r : Map Attr Value} {v : Value} {rty : RecordType} {a : Attr} {aty : CedarType} {qaty : QualifiedType}
   (h₁ : InstanceOfType env (.record r) (.record rty))
   (h₂ : rty.find? a = .some qaty)
   (h₃ : qaty.getType = aty)
@@ -301,7 +301,7 @@ theorem instance_of_attribute_type {env : Environment} {r : Map Attr Value} {v :
   rw [←h₃]
   apply h₅ a v qaty h₄ h₂
 
-theorem absent_attribute_is_absent {env : Environment} {r : Map Attr Value} {rty : RecordType} {a : Attr}
+theorem absent_attribute_is_absent {env : TypeEnv} {r : Map Attr Value} {rty : RecordType} {a : Attr}
   (h₁ : InstanceOfType env (.record r) (.record rty))
   (h₂ : rty.find? a = .none) :
   r.find? a = .none
@@ -313,7 +313,7 @@ theorem absent_attribute_is_absent {env : Environment} {r : Map Attr Value} {rty
     specialize h₃ a h₄
     simp [Map.contains_iff_some_find?, h₂] at h₃
 
-theorem required_attribute_is_present {env : Environment} {r : Map Attr Value} {rty : RecordType} {a : Attr} {aty : CedarType}
+theorem required_attribute_is_present {env : TypeEnv} {r : Map Attr Value} {rty : RecordType} {a : Attr} {aty : CedarType}
   (h₁ : InstanceOfType env (.record r) (.record rty))
   (h₂ : rty.find? a = .some (Qualified.required aty)) :
   ∃ v, r.find? a = .some v
@@ -325,7 +325,7 @@ theorem required_attribute_is_present {env : Environment} {r : Map Attr Value} {
   simp [Qualified.isRequired]
 
 theorem well_typed_entity_attributes
-  {env : Environment} {request : Request} {entities : Entities}
+  {env : TypeEnv} {request : Request} {entities : Entities}
   {uid: EntityUID} {d: EntityData} {rty : RecordType}
   (h₁ : InstanceOfWellFormedEnvironment request entities env)
   (h₂ : Map.find? entities uid = some d)
@@ -351,7 +351,7 @@ theorem well_typed_entity_attributes
       all_goals assumption
     · contradiction
 
-theorem instance_of_type_bool_is_bool {env : Environment} (v : Value) (ty : CedarType) :
+theorem instance_of_type_bool_is_bool {env : TypeEnv} (v : Value) (ty : CedarType) :
   InstanceOfType env v ty →
   ty ⊑ .bool .anyBool →
   ∃ b, v = .prim (.bool b)
@@ -371,7 +371,7 @@ theorem bool_type_is_inhabited (bty : BoolType) :
   case ff => simp only [or_false]
   case anyBool => simp only [or_self]
 
-theorem entity_type_is_inhabited {env : Environment} {ety : EntityType}
+theorem entity_type_is_inhabited {env : TypeEnv} {ety : EntityType}
   (hwf_env : env.WellFormed)
   (hwf : EntityType.WellFormed env ety) :
   ∃ euid, InstanceOfEntityType euid ety env
@@ -426,13 +426,13 @@ theorem ext_type_is_inhabited (xty : ExtType) :
   case datetime => exists (Ext.datetime (default : Ext.Datetime))
   case duration => exists (Ext.duration (default : Ext.Datetime.Duration))
 
-theorem instance_of_record_nil {env : Environment} :
+theorem instance_of_record_nil {env : TypeEnv} :
   InstanceOfType env (Value.record (Map.mk [])) (CedarType.record (Map.mk []))
 := by
   apply InstanceOfType.instance_of_record <;>
   simp [Map.contains, Map.find?, Map.kvs, List.find?]
 
-theorem instance_of_record_cons {env : Environment} {hd : Attr × Qualified CedarType} {tl : List (Attr × Qualified CedarType)} {rhd : Value} {rtl : List (Attr × Value)}
+theorem instance_of_record_cons {env : TypeEnv} {hd : Attr × Qualified CedarType} {tl : List (Attr × Qualified CedarType)} {rhd : Value} {rtl : List (Attr × Value)}
   (h₁ : InstanceOfType env rhd (Qualified.getType hd.snd))
   (h₂ : InstanceOfType env (Value.record (Map.mk rtl)) (CedarType.record (Map.mk tl))) :
   InstanceOfType env (Value.record (Map.mk ((hd.fst, rhd) :: rtl))) (CedarType.record (Map.mk (hd :: tl)))
@@ -480,7 +480,7 @@ theorem sizeOf_attribute_lt_sizeOf_qualified (aqty : Attr × Qualified CedarType
       omega
   }
 
-theorem type_is_inhabited {env : Environment} {ty : CedarType}
+theorem type_is_inhabited {env : TypeEnv} {ty : CedarType}
   (hwf_env : env.WellFormed)
   (hwf : ty.WellFormed env) :
   ∃ v, InstanceOfType env v ty
@@ -536,7 +536,7 @@ theorem type_is_inhabited {env : Environment} {ty : CedarType}
       exists (.record (Map.mk ((hd.fst, rhd) :: rtl)))
       exact instance_of_record_cons h₂ h₃
 
-theorem type_is_inhabited_bool {env : Environment} {bty : BoolType} :
+theorem type_is_inhabited_bool {env : TypeEnv} {bty : BoolType} :
   ∃ v, InstanceOfType env v (.bool bty)
 := by
   have ⟨v, h⟩ := bool_type_is_inhabited bty
@@ -544,13 +544,13 @@ theorem type_is_inhabited_bool {env : Environment} {bty : BoolType} :
   constructor
   assumption
 
-theorem type_is_inhabited_int {env : Environment} :
+theorem type_is_inhabited_int {env : TypeEnv} :
   ∃ v, InstanceOfType env v CedarType.int
 := by
   exists (.prim (.int default))
   apply InstanceOfType.instance_of_int
 
-theorem type_is_inhabited_set {env : Environment} {ty : CedarType} :
+theorem type_is_inhabited_set {env : TypeEnv} {ty : CedarType} :
   ∃ v, InstanceOfType env v (.set ty)
 := by
   exists (.set Set.empty)
@@ -559,14 +559,14 @@ theorem type_is_inhabited_set {env : Environment} {ty : CedarType} :
   have h₂ := Set.in_set_means_list_non_empty v₁ Set.empty h₁
   simp [Set.empty, Set.elts] at h₂
 
-theorem type_is_inhabited_ext {env : Environment} {xty : ExtType} :
+theorem type_is_inhabited_ext {env : TypeEnv} {xty : ExtType} :
   ∃ v, InstanceOfType env v (.ext xty)
 := by
   have ⟨x, h₁⟩ := ext_type_is_inhabited xty
   exists (.ext x)
   apply InstanceOfType.instance_of_ext _ _ h₁
 
-theorem instance_of_lubBool_left {env : Environment} {v : Value} {bty₁ bty₂ : BoolType} :
+theorem instance_of_lubBool_left {env : TypeEnv} {v : Value} {bty₁ bty₂ : BoolType} :
   InstanceOfType env v (CedarType.bool bty₁) →
   InstanceOfType env v (CedarType.bool (lubBool bty₁ bty₂))
 := by
@@ -577,7 +577,7 @@ theorem instance_of_lubBool_left {env : Environment} {v : Value} {bty₁ bty₂ 
     apply InstanceOfType.instance_of_bool b bty₁ h₁
   · exact bool_is_instance_of_anyBool b
 
-theorem instance_of_lubBool {env : Environment} {v : Value} {bty₁ bty₂ : BoolType} :
+theorem instance_of_lubBool {env : TypeEnv} {v : Value} {bty₁ bty₂ : BoolType} :
   (InstanceOfType env v (CedarType.bool bty₁) ∨ InstanceOfType env v (CedarType.bool bty₂)) →
   InstanceOfType env v (CedarType.bool (lubBool bty₁ bty₂))
 := by
@@ -614,7 +614,7 @@ theorem sizeOf_attr_type_lt_sizeOf_record_type {a : Attr} {qty : QualifiedType }
     case a => simp [←Nat.succ_eq_one_add]
 
 
-theorem instance_of_lub_left {env : Environment} {v : Value} {ty ty₁ ty₂ : CedarType}
+theorem instance_of_lub_left {env : TypeEnv} {v : Value} {ty ty₁ ty₂ : CedarType}
   (h₁ : (ty₁ ⊔ ty₂) = .some ty)
   (h₂ : InstanceOfType env v ty₁) :
   InstanceOfType env v ty
@@ -669,7 +669,7 @@ theorem instance_of_lub_left {env : Environment} {v : Value} {ty ty₁ ty₂ : C
     exact h₂
 termination_by (sizeOf ty₁, sizeOf ty₂)
 
-theorem instance_of_lub {env : Environment} {v : Value} {ty ty₁ ty₂ : CedarType}
+theorem instance_of_lub {env : TypeEnv} {v : Value} {ty ty₁ ty₂ : CedarType}
   (h₁ : (ty₁ ⊔ ty₂) = .some ty)
   (h₂ : InstanceOfType env v ty₁ ∨ InstanceOfType env v ty₂) :
   InstanceOfType env v ty
@@ -683,7 +683,7 @@ theorem instance_of_lub {env : Environment} {v : Value} {ty ty₁ ty₂ : CedarT
 TODO: move this back to Cedar/Thm/Validation/Typechecker/LitVar.lean
 after we fix the proof.
 -/
-theorem type_of_lit_inversion {p : Prim} {c₁ c₂ : Capabilities} {tx : TypedExpr} {env : Environment}
+theorem type_of_lit_inversion {p : Prim} {c₁ c₂ : Capabilities} {tx : TypedExpr} {env : TypeEnv}
   (h₁ : (typeOf (.lit p) c₁ env) = .ok (tx, c₂)) :
   ∃ ty, tx = .lit p ty
 := by
@@ -696,7 +696,7 @@ theorem type_of_lit_inversion {p : Prim} {c₁ c₂ : Capabilities} {tx : TypedE
 Obtains the fact of well-formed environment from `InstanceOfWellFormedEnvironment`.
 -/
 theorem InstanceOfWellFormedEnvironment.wf_env
-  {env : Environment} {request : Request} {entities : Entities}
+  {env : TypeEnv} {request : Request} {entities : Entities}
   (h : InstanceOfWellFormedEnvironment request entities env):
   env.WellFormed
 := by
@@ -704,7 +704,7 @@ theorem InstanceOfWellFormedEnvironment.wf_env
   exact h
 
 theorem InstanceOfWellFormedEnvironment.instance_of_schema_entry
-  {env : Environment} {request : Request} {entities : Entities}
+  {env : TypeEnv} {request : Request} {entities : Entities}
   {uid : EntityUID} {data : EntityData}
   (h : InstanceOfWellFormedEnvironment request entities env)
   (hentry : entities.find? uid = some data) :
@@ -714,7 +714,7 @@ theorem InstanceOfWellFormedEnvironment.instance_of_schema_entry
   exact hsch.1 uid data hentry
 
 theorem InstanceOfWellFormedEnvironment.instance_of_schema
-  {env : Environment} {request : Request} {entities : Entities}
+  {env : TypeEnv} {request : Request} {entities : Entities}
   (h : InstanceOfWellFormedEnvironment request entities env) :
   InstanceOfSchema entities env
 := by
@@ -722,7 +722,7 @@ theorem InstanceOfWellFormedEnvironment.instance_of_schema
   exact hsch
 
 theorem InstanceOfWellFormedEnvironment.wf_action_data
-  {env : Environment} {request : Request} {entities : Entities}
+  {env : TypeEnv} {request : Request} {entities : Entities}
   {uid : EntityUID} {entry : ActionSchemaEntry}
   (h : InstanceOfWellFormedEnvironment request entities env)
   (hacts : Map.find? env.acts uid = some entry) :

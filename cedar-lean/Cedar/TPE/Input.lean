@@ -63,7 +63,7 @@ def PartialEntities.attrs (es : PartialEntities) (uid : EntityUID) : Option (Map
 def partialIsValid {α} (o : Option α) (f : α → Bool) : Bool :=
   (o.map f).getD true
 
-def requestIsValid (env : Environment) (req : PartialRequest) : Bool :=
+def requestIsValid (env : TypeEnv) (req : PartialRequest) : Bool :=
   (partialIsValid req.principal.asEntityUID λ principal =>
     instanceOfEntityType principal env.reqty.principal env) &&
   req.action == env.reqty.action &&
@@ -72,7 +72,7 @@ def requestIsValid (env : Environment) (req : PartialRequest) : Bool :=
   (partialIsValid req.context λ m =>
     instanceOfType (.record m) (.record env.reqty.context) env)
 
-def entitiesIsValid (env : Environment) (es : PartialEntities) : Bool :=
+def entitiesIsValid (env : TypeEnv) (es : PartialEntities) : Bool :=
   (es.toList.all entityIsValid) && (env.acts.toList.all instanceOfActionSchema)
 where
   entityIsValid p :=
@@ -96,7 +96,7 @@ where
     | .some entry₁ => entry.ancestors == entry₁.ancestors
     | _            => false
 
-def requestAndEntitiesIsValid (env : Environment) (req : PartialRequest) (es : PartialEntities) : Bool :=
+def requestAndEntitiesIsValid (env : TypeEnv) (req : PartialRequest) (es : PartialEntities) : Bool :=
   requestIsValid env req && entitiesIsValid env es
 
 inductive ConcretizationError

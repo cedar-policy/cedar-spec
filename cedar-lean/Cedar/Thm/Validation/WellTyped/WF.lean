@@ -33,7 +33,7 @@ open Cedar.Spec
 `TypedExpr.WellTyped` implies well-formedness of the type (`CedarType.WellFormed`).
 -/
 theorem well_typed_implies_wf_type
-  {env : Environment} {tx : TypedExpr}
+  {env : TypeEnv} {tx : TypedExpr}
   (hwf_env : env.WellFormed)
   (hwt : TypedExpr.WellTyped env tx) :
   CedarType.WellFormed env tx.typeOf
@@ -168,7 +168,7 @@ The result of `typeOf` has a well-formed type.
 theorem typechecked_has_well_formed_type
   {e : Expr}
   {c₁ c₂ : Capabilities}
-  {env : Environment}
+  {env : TypeEnv}
   {tx : TypedExpr}
   (hwf : env.WellFormed)
   (hty : typeOf e c₁ env = .ok (tx, c₂)) :

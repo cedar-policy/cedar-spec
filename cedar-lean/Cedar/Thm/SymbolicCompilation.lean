@@ -205,7 +205,7 @@ For any well-typed expression `tx` in a well-formed environment `Γ`
 should never fail and produce a term `t` that is well-formed and has
 the type `TermType.ofType tx.typeOf`.
 -/
-theorem compile_well_typed {tx : TypedExpr} {Γ : Environment} :
+theorem compile_well_typed {tx : TypedExpr} {Γ : TypeEnv} :
   Γ.WellFormed →
   TypedExpr.WellTyped Γ tx →
   ∃ t : Term,

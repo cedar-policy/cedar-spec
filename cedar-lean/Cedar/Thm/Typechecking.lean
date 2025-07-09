@@ -25,7 +25,7 @@ namespace Cedar.Thm
 open Cedar.Spec
 open Cedar.Validation
 
-def typecheck (policy : Policy) (env : Environment) : Except TypeError CedarType := do
+def typecheck (policy : Policy) (env : TypeEnv) : Except TypeError CedarType := do
   let (ty, _) ← (typeOf policy.toExpr ∅ env).typeOf
   if ty ⊑ .bool .anyBool
   then .ok ty
@@ -40,7 +40,7 @@ these errors because it has no knowledge of the entities/context that will be
 provided at authorization time, and it does not reason about the semantics of
 arithmetic operators.
 -/
-theorem typecheck_is_sound (policy : Policy) (env : Environment) (t : CedarType) (request : Request) (entities : Entities) :
+theorem typecheck_is_sound (policy : Policy) (env : TypeEnv) (t : CedarType) (request : Request) (entities : Entities) :
   InstanceOfWellFormedEnvironment request entities env →
   typecheck policy env = .ok t →
   (∃ (b : Bool), EvaluatesTo policy.toExpr request entities b)

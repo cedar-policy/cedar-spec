@@ -331,7 +331,7 @@ theorem lifted_type_lub {ty₁ ty₂ ty : CedarType} :
   replace h₂ := lifted_type_is_top h₂
   simp only [h₁, h₂]
 
-theorem type_lifting_preserves_instance_of_type {env : Environment} {v : Value} {ty : CedarType} :
+theorem type_lifting_preserves_instance_of_type {env : TypeEnv} {v : Value} {ty : CedarType} :
   InstanceOfType env v ty →
   InstanceOfType env v ty.liftBoolTypes
 := by
@@ -353,7 +353,7 @@ theorem lift_bool_types_record_eq_map_on_values {rty : Data.Map Attr QualifiedTy
   rename_i hᵢ
   exact hᵢ
 
-theorem wf_type_iff_wf_liftBoolTypes {env : Environment} :
+theorem wf_type_iff_wf_liftBoolTypes {env : TypeEnv} :
   ∀ {ty : CedarType},
   CedarType.WellFormed env ty ↔ CedarType.WellFormed env ty.liftBoolTypes
 | .bool _

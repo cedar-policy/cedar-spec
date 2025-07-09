@@ -28,7 +28,7 @@ open Cedar.Spec
 open Cedar.Validation
 
 
-theorem type_of_mem_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Environment} {ty : TypedExpr}
+theorem type_of_mem_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : TypeEnv} {ty : TypedExpr}
   (h₁ : typeOf (Expr.binaryApp .mem x₁ x₂) c env = Except.ok (ty, c')) :
   c' = ∅ ∧
   ∃ (ety₁ ety₂ : EntityType),
@@ -103,7 +103,7 @@ theorem entityUIDs?_some_implies_entity_lits {x : Expr} {euids : List EntityUID}
 
 theorem acts_maybeDescendentOf_false_implies_not_ancestor_type
   {euid : EntityUID} {ety : EntityType} {data : EntityData} {entry : ActionSchemaEntry}
-  {env : Environment} {request : Request} {entities : Entities}
+  {env : TypeEnv} {request : Request} {entities : Entities}
   (hwf : InstanceOfWellFormedEnvironment request entities env)
   (hdesc : env.acts.maybeDescendentOf euid.ty ety = false)
   (hent_found : Map.find? entities euid = some data)
@@ -127,13 +127,13 @@ theorem acts_maybeDescendentOf_false_implies_not_ancestor_type
   contradiction
 
 theorem entity_type_in_false_implies_inₑ_false
-  {euid₁ euid₂ : EntityUID} {env : Environment} {request : Request} {entities : Entities}
+  {euid₁ euid₂ : EntityUID} {env : TypeEnv} {request : Request} {entities : Entities}
   (h₁ : InstanceOfWellFormedEnvironment request entities env)
   (h₂ : env.descendentOf euid₁.ty euid₂.ty = false) :
   inₑ euid₁ euid₂ entities = false
 := by
   have hwf := h₁
-  simp only [Environment.descendentOf, Bool.if_true_left, Bool.or_eq_false_iff,
+  simp only [TypeEnv.descendentOf, Bool.if_true_left, Bool.or_eq_false_iff,
     decide_eq_false_iff_not] at h₂
   simp only [inₑ, Bool.or_eq_false_iff, beq_eq_false_iff_ne, ne_eq]
   by_contra h₃
@@ -166,7 +166,7 @@ theorem entity_type_in_false_implies_inₑ_false
 
 theorem action_type_in_eq_action_inₑ
   (euid₁ euid₂ : EntityUID)
-  {env : Environment} {request : Request} {entities : Entities}
+  {env : TypeEnv} {request : Request} {entities : Entities}
   (h₁ : InstanceOfWellFormedEnvironment request entities env)
   (h₂ : env.acts.contains euid₁) :
   inₑ euid₁ euid₂ entities = ActionSchema.descendentOf env.acts euid₁ euid₂
@@ -178,7 +178,7 @@ theorem action_type_in_eq_action_inₑ
   simp [inₑ, ActionSchema.descendentOf, h₃, Entities.ancestorsOrEmpty, h₁₁]
   rcases h₄ : euid₁ == euid₂ <;> simp at h₄ <;> simp [h₄, h₁₂]
 
-theorem type_of_mem_is_soundₑ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilities} {env : Environment} {request : Request} {entities : Entities} {ety₁ ety₂ : EntityType}
+theorem type_of_mem_is_soundₑ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilities} {env : TypeEnv} {request : Request} {entities : Entities} {ety₁ ety₂ : EntityType}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : InstanceOfWellFormedEnvironment request entities env)
   (h₃ : (typeOf x₁ c₁ env).typeOf = Except.ok (CedarType.entity ety₁, c₁'))
@@ -238,7 +238,7 @@ theorem type_of_mem_is_soundₑ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilit
       simp [h₁₀] at h₈ h₉
       cases heq : ActionSchema.descendentOf env.acts auid euid <;> simp [heq] at h₈ h₉
 
-theorem entity_set_type_implies_set_of_entities {env : Environment} {vs : List Value} {ety : EntityType}
+theorem entity_set_type_implies_set_of_entities {env : TypeEnv} {vs : List Value} {ety : EntityType}
   (h₁ : InstanceOfType env (Value.set (Set.mk vs)) (CedarType.set (CedarType.entity ety))) :
   ∃ (euids : List EntityUID),
     vs.mapM Value.asEntityUID = Except.ok euids ∧
@@ -270,14 +270,14 @@ theorem entity_set_type_implies_set_of_entities {env : Environment} {vs : List V
 
 theorem entity_type_in_false_implies_inₛ_false
   {euid : EntityUID} {euids : List EntityUID} {ety : EntityType}
-  {env : Environment} {request : Request} {entities : Entities}
+  {env : TypeEnv} {request : Request} {entities : Entities}
   (h₁ : InstanceOfWellFormedEnvironment request entities env)
   (h₂ : env.descendentOf euid.ty ety = false)
   (h₃ : ∀ euid, euid ∈ euids → euid.ty = ety) :
   Set.any (fun x => inₑ euid x entities) (Set.make euids) = false
 := by
   have hwf := h₁
-  simp only [Environment.descendentOf] at h₂
+  simp only [TypeEnv.descendentOf] at h₂
   rw [Set.make_any_iff_any]
   by_contra h₄
   simp only [Bool.not_eq_false, List.any_eq_true] at h₄
@@ -396,7 +396,7 @@ theorem evaluate_entity_set_eqv {vs : List Value} {euids euids' : List EntityUID
 
 theorem action_type_in_eq_action_inₛ
   {auid : EntityUID} {euids euids' : List EntityUID}
-  {env : Environment} {request : Request} {entities : Entities}
+  {env : TypeEnv} {request : Request} {entities : Entities}
   (h₁ : InstanceOfWellFormedEnvironment request entities env)
   (h₂ : env.acts.contains auid)
   (h₃ : euids ≡ euids') :
@@ -442,7 +442,7 @@ theorem action_type_in_eq_action_inₛ
     case neg =>
       simp [inₑ, Entities.ancestorsOrEmpty, hl₁, hr₁, h₅]
 
-theorem type_of_mem_is_soundₛ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilities} {env : Environment} {request : Request} {entities : Entities} {ety₁ ety₂ : EntityType}
+theorem type_of_mem_is_soundₛ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilities} {env : TypeEnv} {request : Request} {entities : Entities} {ety₁ ety₂ : EntityType}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : InstanceOfWellFormedEnvironment request entities env)
   (h₃ : (typeOf x₁ c₁ env).typeOf = Except.ok (CedarType.entity ety₁, c₁'))
@@ -524,7 +524,7 @@ theorem type_of_mem_is_soundₛ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilit
         specialize h₉ euid' h₁₂.left
         simp only [h₁₂.right, Bool.true_eq_false] at h₉
 
-theorem type_of_mem_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
+theorem type_of_mem_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : TypeEnv} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : InstanceOfWellFormedEnvironment request entities env)
   (h₃ : typeOf (Expr.binaryApp .mem x₁ x₂) c₁ env = Except.ok (ty, c₂))

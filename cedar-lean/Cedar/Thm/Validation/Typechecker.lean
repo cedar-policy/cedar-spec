@@ -43,7 +43,7 @@ produces a value of the returned type or (2) it returns an error of type
 `entityDoesNotExist`, `extensionError`, or `arithBoundsError`. Both options are
 encoded in the `EvaluatesTo` predicate.
 -/
-theorem type_of_is_sound {e : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities} :
+theorem type_of_is_sound {e : Expr} {c₁ c₂ : Capabilities} {env : TypeEnv} {ty : TypedExpr} {request : Request} {entities : Entities} :
   CapabilitiesInvariant c₁ request entities →
   InstanceOfWellFormedEnvironment request entities env →
   typeOf e c₁ env = .ok (ty, c₂) →
@@ -102,7 +102,7 @@ termination_by sizeOf e
 /-- The type checker, if succeeds, should produce a typed expression that
 evaluates to the same result as the input expression.
 -/
-theorem type_of_preserves_evaluation_results {e : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities} :
+theorem type_of_preserves_evaluation_results {e : Expr} {c₁ c₂ : Capabilities} {env : TypeEnv} {ty : TypedExpr} {request : Request} {entities : Entities} :
   CapabilitiesInvariant c₁ request entities →
   InstanceOfWellFormedEnvironment request entities env →
   typeOf e c₁ env = .ok (ty, c₂) →

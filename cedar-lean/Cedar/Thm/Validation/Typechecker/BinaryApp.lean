@@ -35,7 +35,7 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem type_of_binaryApp_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' : Capabilities} {env : Environment} {tx : TypedExpr}
+theorem type_of_binaryApp_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' : Capabilities} {env : TypeEnv} {tx : TypedExpr}
   (htx : typeOf (Expr.binaryApp op₂ x₁ x₂) c env = Except.ok (tx, c')) :
   ∃ tx₁ c₁ tx₂ c₂,
     typeOf x₁ c env = Except.ok (tx₁, c₁) ∧
@@ -57,7 +57,7 @@ theorem type_of_binaryApp_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' 
     · rfl
     · simp only [TypedExpr.binaryApp.injEq, true_and, exists_eq']
 
-theorem type_of_binaryApp_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
+theorem type_of_binaryApp_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : TypeEnv} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : InstanceOfWellFormedEnvironment request entities env)
   (h₃ : typeOf (Expr.binaryApp op₂ x₁ x₂) c₁ env = Except.ok (ty, c₂))

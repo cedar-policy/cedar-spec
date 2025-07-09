@@ -27,7 +27,7 @@ def CompileWellTyped (tx : TypedExpr) (εnv : SymEnv) : Prop :=
 /--
 A sufficient condition for `CompileWellTyped` to hold.
 -/
-def CompileWellTypedCondition (tx : TypedExpr) (Γ : Environment) (εnv : SymEnv) : Prop :=
+def CompileWellTypedCondition (tx : TypedExpr) (Γ : TypeEnv) (εnv : SymEnv) : Prop :=
   εnv = SymEnv.ofEnv Γ ∧
   TypedExpr.WellTyped Γ tx ∧
   εnv.WellFormedFor tx.toExpr
@@ -46,7 +46,7 @@ def CompileWellTypedAndWF (tx : TypedExpr) (εnv : SymEnv) : Prop :=
 Strengthen `CompileWellTyped` to `CompileWellTypedAndWF`
 -/
 private theorem CompileWellTyped.add_wf
-  {tx : TypedExpr} {Γ : Environment} {εnv : SymEnv}
+  {tx : TypedExpr} {Γ : TypeEnv} {εnv : SymEnv}
   (h : CompileWellTyped tx εnv)
   (hcond : CompileWellTypedCondition tx Γ εnv) :
   CompileWellTypedAndWF tx εnv
@@ -60,7 +60,7 @@ private theorem CompileWellTyped.add_wf
 A wrapper around compile_wf for convenience
 -/
 private theorem wt_cond_implies_compile_wf
-  {tx : TypedExpr} {Γ : Environment} {εnv : SymEnv} {t : Term}
+  {tx : TypedExpr} {Γ : TypeEnv} {εnv : SymEnv} {t : Term}
   (h : CompileWellTypedCondition tx Γ εnv)
   (hcomp : compile tx.toExpr εnv = .ok t) :
   t.WellFormed εnv.entities
@@ -199,7 +199,7 @@ CompileWellTypedCondition decomposes for ite
 -/
 private theorem CompileWellTypedCondition.eliminate_ite
   {cond : TypedExpr} {thenExpr : TypedExpr} {elseExpr : TypedExpr} {ty : CedarType}
-  {Γ : Environment} {εnv : SymEnv}
+  {Γ : TypeEnv} {εnv : SymEnv}
   (h : CompileWellTypedCondition (.ite cond thenExpr elseExpr ty) Γ εnv) :
   CompileWellTypedCondition cond Γ εnv ∧
   CompileWellTypedCondition thenExpr Γ εnv ∧
@@ -218,7 +218,7 @@ CompileWellTypedCondition decomposes for `or` or `and`
 -/
 private theorem CompileWellTypedCondition.eliminate_or_and
   {a : TypedExpr} {b : TypedExpr} {ty : CedarType}
-  {Γ : Environment} {εnv : SymEnv}
+  {Γ : TypeEnv} {εnv : SymEnv}
   {cons : TypedExpr → TypedExpr → CedarType → TypedExpr}
   (h : CompileWellTypedCondition (cons a b ty) Γ εnv)
   (hcons : cons = .or ∨ cons = .and) :
@@ -243,7 +243,7 @@ CompileWellTypedCondition decomposes for unaryApp
 -/
 private theorem CompileWellTypedCondition.eliminate_unaryApp
   {op : UnaryOp} {expr : TypedExpr} {ty : CedarType}
-  {Γ : Environment} {εnv : SymEnv}
+  {Γ : TypeEnv} {εnv : SymEnv}
   (h : CompileWellTypedCondition (.unaryApp op expr ty) Γ εnv) :
   CompileWellTypedCondition expr Γ εnv
 := by
@@ -259,7 +259,7 @@ private theorem CompileWellTypedCondition.eliminate_unaryApp
 CompileWellTypedCondition decomposes for binaryApp
 -/
 private theorem CompileWellTypedCondition.eliminate_binaryApp
-  {op : BinaryOp} {a : TypedExpr} {b : TypedExpr} {ty : CedarType} {Γ : Environment} {εnv : SymEnv}
+  {op : BinaryOp} {a : TypedExpr} {b : TypedExpr} {ty : CedarType} {Γ : TypeEnv} {εnv : SymEnv}
   (h : CompileWellTypedCondition (.binaryApp op a b ty) Γ εnv) :
   CompileWellTypedCondition a Γ εnv ∧
   CompileWellTypedCondition b Γ εnv
@@ -277,7 +277,7 @@ CompileWellTypedCondition decomposes for getAttr
 -/
 private theorem CompileWellTypedCondition.eliminate_getAttr
   {expr : TypedExpr} {attr : Attr} {ty : CedarType}
-  {Γ : Environment} {εnv : SymEnv}
+  {Γ : TypeEnv} {εnv : SymEnv}
   (h : CompileWellTypedCondition (.getAttr expr attr ty) Γ εnv) :
   CompileWellTypedCondition expr Γ εnv
 := by
@@ -295,7 +295,7 @@ CompileWellTypedCondition decomposes for hasAttr
 -/
 private theorem CompileWellTypedCondition.eliminate_hasAttr
   {expr : TypedExpr} {attr : Attr} {ty : CedarType}
-  {Γ : Environment} {εnv : SymEnv}
+  {Γ : TypeEnv} {εnv : SymEnv}
   (h : CompileWellTypedCondition (.hasAttr expr attr ty) Γ εnv) :
   CompileWellTypedCondition expr Γ εnv
 := by
@@ -313,7 +313,7 @@ CompileWellTypedCondition decomposes for set
 -/
 private theorem CompileWellTypedCondition.eliminate_set
   {xs : List TypedExpr} {ty : CedarType}
-  {Γ : Environment} {εnv : SymEnv}
+  {Γ : TypeEnv} {εnv : SymEnv}
   (h : CompileWellTypedCondition (.set xs ty) Γ εnv)
   (x : TypedExpr)
   (hx : x ∈ xs) :
@@ -339,7 +339,7 @@ CompileWellTypedCondition decomposes for record
 -/
 private theorem CompileWellTypedCondition.eliminate_record
   {xs : List (Attr × TypedExpr)} {ty : CedarType}
-  {Γ : Environment} {εnv : SymEnv}
+  {Γ : TypeEnv} {εnv : SymEnv}
   (h : CompileWellTypedCondition (.record xs ty) Γ εnv)
   (a : Attr) (x : TypedExpr)
   (hx : (a, x) ∈ xs) :
@@ -369,7 +369,7 @@ CompileWellTypedCondition decomposes for call
 -/
 private theorem CompileWellTypedCondition.eliminate_call
   {xfn : ExtFun} {xs : List TypedExpr} {ty : CedarType}
-  {Γ : Environment} {εnv : SymEnv}
+  {Γ : TypeEnv} {εnv : SymEnv}
   (h : CompileWellTypedCondition (.call xfn xs ty) Γ εnv)
   (x : TypedExpr)
   (hx : x ∈ xs) :
@@ -390,7 +390,7 @@ private theorem CompileWellTypedCondition.eliminate_call
         apply Exists.intro x
         simp [hx]
 
-theorem compile_well_typed_lit {p : Prim} {tx : CedarType} {Γ : Environment} {εnv : SymEnv}
+theorem compile_well_typed_lit {p : Prim} {tx : CedarType} {Γ : TypeEnv} {εnv : SymEnv}
   (h : CompileWellTypedCondition (.lit p tx) Γ εnv) :
   CompileWellTyped (.lit p tx) εnv
 := by
@@ -421,7 +421,7 @@ theorem compile_well_typed_lit {p : Prim} {tx : CedarType} {Γ : Environment} {�
       BitVec.width,
     ]
 
-theorem compile_well_typed_var {v : Var} {ty : CedarType} {Γ : Environment} {εnv : SymEnv}
+theorem compile_well_typed_var {v : Var} {ty : CedarType} {Γ : TypeEnv} {εnv : SymEnv}
   (hcond : CompileWellTypedCondition (.var v ty) Γ εnv) :
   CompileWellTyped (.var v ty) εnv
 := by
@@ -464,7 +464,7 @@ theorem compile_well_typed_var {v : Var} {ty : CedarType} {Γ : Environment} {ε
 
 theorem compile_well_typed_ite
   {a : TypedExpr} {b : TypedExpr} {c : TypedExpr} {ty : CedarType}
-  {Γ : Environment} {εnv : SymEnv}
+  {Γ : TypeEnv} {εnv : SymEnv}
   (iha : CompileWellTypedAndWF a εnv)
   (ihb : CompileWellTypedAndWF b εnv)
   (ihc : CompileWellTypedAndWF c εnv)
@@ -516,7 +516,7 @@ Combined case for `or` and `and`
 -/
 theorem compile_well_typed_or_and
   {a : TypedExpr} {b : TypedExpr} {ty : CedarType}
-  {Γ : Environment} {εnv : SymEnv}
+  {Γ : TypeEnv} {εnv : SymEnv}
   (iha : CompileWellTypedAndWF a εnv)
   (ihb : CompileWellTypedAndWF b εnv) :
   (CompileWellTypedCondition (.or a b ty) Γ εnv →
@@ -566,7 +566,7 @@ theorem compile_well_typed_or_and
 
 theorem compile_well_typed_unaryApp
   {op : UnaryOp} {expr : TypedExpr} {ty : CedarType}
-  {Γ : Environment} {εnv : SymEnv}
+  {Γ : TypeEnv} {εnv : SymEnv}
   (ihexpr : CompileWellTypedAndWF expr εnv)
   (hcond : CompileWellTypedCondition (.unaryApp op expr ty) Γ εnv) :
   CompileWellTyped (.unaryApp op expr ty) εnv
@@ -722,7 +722,7 @@ it's enough to prove that `compile` of a `binaryApp` succeeds.
 -/
 theorem compile_ok_implies_compile_well_typed_binaryApp
   {op : BinaryOp} {a : TypedExpr} {b : TypedExpr} {ty : CedarType}
-  {Γ : Environment} {εnv : SymEnv}
+  {Γ : TypeEnv} {εnv : SymEnv}
   (iha : CompileWellTypedAndWF a εnv)
   (ihb : CompileWellTypedAndWF b εnv)
   (hcond : CompileWellTypedCondition (.binaryApp op a b ty) Γ εnv)
@@ -764,7 +764,7 @@ theorem compile_ok_implies_compile_well_typed_binaryApp
 
 theorem compile_well_typed_binaryApp
   {op : BinaryOp} {a : TypedExpr} {b : TypedExpr} {ty : CedarType}
-  {Γ : Environment} {εnv : SymEnv}
+  {Γ : TypeEnv} {εnv : SymEnv}
   (iha : CompileWellTypedAndWF a εnv)
   (ihb : CompileWellTypedAndWF b εnv)
   (hcond : CompileWellTypedCondition (.binaryApp op a b ty) Γ εnv) :
@@ -841,7 +841,7 @@ theorem compile_well_typed_binaryApp
 
 theorem compile_well_typed_getAttr
   {expr : TypedExpr} {attr : Attr} {ty : CedarType}
-  {Γ : Environment} {εnv : SymEnv}
+  {Γ : TypeEnv} {εnv : SymEnv}
   (ihexpr : CompileWellTypedAndWF expr εnv)
   (hcond : CompileWellTypedCondition (.getAttr expr attr ty) Γ εnv) :
   CompileWellTyped (.getAttr expr attr ty) εnv
@@ -975,7 +975,7 @@ theorem compile_well_typed_getAttr
 
 theorem compile_well_typed_hasAttr
   {expr : TypedExpr} {attr : Attr} {ty : CedarType}
-  {Γ : Environment} {εnv : SymEnv}
+  {Γ : TypeEnv} {εnv : SymEnv}
   (ihexpr : CompileWellTypedAndWF expr εnv)
   (hcond : CompileWellTypedCondition (.hasAttr expr attr ty) Γ εnv) :
   CompileWellTyped (.hasAttr expr attr ty) εnv
@@ -1105,7 +1105,7 @@ theorem compile_well_typed_hasAttr
 
 theorem compile_well_typed_set
   {xs : List TypedExpr} {ty : CedarType}
-  {Γ : Environment} {εnv : SymEnv}
+  {Γ : TypeEnv} {εnv : SymEnv}
   (ihxs : ∀ x, x ∈ xs → CompileWellTypedAndWF x εnv)
   (hcond : CompileWellTypedCondition (.set xs ty) Γ εnv) :
   CompileWellTyped (.set xs ty) εnv
@@ -1229,7 +1229,7 @@ theorem compile_well_typed_set
 
 theorem compile_well_typed_record
   {xs : List (Attr × TypedExpr)} {ty : CedarType}
-  {Γ : Environment} {εnv : SymEnv}
+  {Γ : TypeEnv} {εnv : SymEnv}
   (ihxs : ∀ a x, (a, x) ∈ xs → CompileWellTypedAndWF x εnv)
   (hcond : CompileWellTypedCondition (.record xs ty) Γ εnv) :
   CompileWellTyped (.record xs ty) εnv
@@ -1365,7 +1365,7 @@ theorem compile_well_typed_record
 
 theorem compile_well_typed_call
   {xfn : ExtFun} {xs : List TypedExpr} {ty : CedarType}
-  {Γ : Environment} {εnv : SymEnv}
+  {Γ : TypeEnv} {εnv : SymEnv}
   (ihxs : ∀ x, x ∈ xs → CompileWellTypedAndWF x εnv)
   (hcond : CompileWellTypedCondition (.call xfn xs ty) Γ εnv) :
   CompileWellTyped (.call xfn xs ty) εnv
@@ -1530,7 +1530,7 @@ theorem compile_well_typed_call
 Compiling a well-typed expression should produce a term of the corresponding `TermType`,
 assuming that the expression is well-formed in the symbolic environment.
 -/
-theorem compile_well_typed_on_wf_expr {Γ : Environment} {εnv : SymEnv} {tx : TypedExpr} :
+theorem compile_well_typed_on_wf_expr {Γ : TypeEnv} {εnv : SymEnv} {tx : TypedExpr} :
   CompileWellTypedCondition tx Γ εnv →
   CompileWellTyped tx εnv
 := by
