@@ -549,8 +549,12 @@ mod test {
                 .expect("Failed to decode protobuf unchecked Evaluation Request");
         assert_eq!(eval_unchecked_proto, eval_unchecked_pre_proto);
 
-        let eval_checked_pre_proto =
-            proto::EvaluationRequestChecked::new_checked(&expr, &entities, &request, Some(&expected));
+        let eval_checked_pre_proto = proto::EvaluationRequestChecked::new_checked(
+            &expr,
+            &entities,
+            &request,
+            Some(&expected),
+        );
         let eval_checked_bytes = eval_checked_pre_proto.encode_to_vec();
         let eval_checked_proto = proto::EvaluationRequestChecked::decode(&eval_checked_bytes[..])
             .expect("Failed to decode protobuf checked Evaluation Request");
