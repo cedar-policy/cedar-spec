@@ -61,7 +61,8 @@ pub fn evaluate(
     let lean_context = CedarLeanFfi::new();
     match expected_output {
         Some(output_expr) => {
-            let res = lean_context.check_evaluate(input_expr, entities, request, Some(output_expr))?;
+            let res =
+                lean_context.check_evaluate(input_expr, entities, request, Some(output_expr))?;
             if res {
                 println!("Input expression evaluated to the expected output expression.")
             } else {
