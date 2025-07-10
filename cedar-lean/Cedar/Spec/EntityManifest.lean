@@ -99,7 +99,10 @@ def decSExpr (x y : SLExpr) : Decidable (x = y) := by
     exact match decEq f f', decSExprList xs ys with
     | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
     | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
-  case _ => sorry
+  case assertTrue.assertTrue c1 e1 c2 e2 | assertFalse.assertFalse c1 e1 c2 e2 =>
+    exact match decSExpr c1 c2, decSExpr e1 e2 with
+    | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
+    | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
 
 def decProdAttrSExprList (axs ays : List (Prod Attr SLExpr)) : Decidable (axs = ays) :=
   match axs, ays with
