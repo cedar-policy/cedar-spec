@@ -23,6 +23,7 @@ import Cedar.Spec.Policy
 import Cedar.Spec.Request
 import Cedar.Spec.Response
 import Cedar.Spec.Slice
+import Cedar.Spec.EntityManifest
 import Cedar.Spec.Template
 import Cedar.Spec.Value
 import Cedar.Spec.Wildcard
