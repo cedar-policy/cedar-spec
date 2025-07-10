@@ -122,7 +122,7 @@ def to_straight_line_exprs (expr: Expr) : StraitLineExprs :=
     let exprs := to_straight_line_exprs expr
     .mk (exprs.toList.map (fun e => .hasAttr e attr))
   | .set ls =>
-    let exprs_lists := ls.map (fun e => (to_straight_line_exprs e).toList)
+    let exprs_lists := ls.map (fun sete => (to_straight_line_exprs sete).toList)
     let all_combinations := List.cartesianProduct exprs_lists
     .mk (all_combinations.map (fun combo => .set combo))
   | .record map =>
