@@ -190,7 +190,7 @@ impl From<GeneratedPolicy> for cedar_policy::Policy {
 
 #[cfg(feature = "cedar-policy")]
 impl From<GeneratedPolicy> for cedar_policy::Template {
-    fn from(gp : GeneratedPolicy) -> Self {
+    fn from(gp: GeneratedPolicy) -> Self {
         Template::from(gp).into()
     }
 }
@@ -531,18 +531,15 @@ impl GeneratedLinkedPolicy {
     pub fn add_to_api_policyset(self, policyset: &mut cedar_policy::PolicySet) {
         let mut vals = HashMap::new();
         if let Some(principal_uid) = self.principal {
-            let principal_uid : cedar_policy::EntityUid = principal_uid.into();
+            let principal_uid: cedar_policy::EntityUid = principal_uid.into();
             vals.insert(cedar_policy::SlotId::principal(), principal_uid);
         }
         if let Some(resource_uid) = self.resource {
-            let resource_uid : cedar_policy::EntityUid = resource_uid.into();
+            let resource_uid: cedar_policy::EntityUid = resource_uid.into();
             vals.insert(cedar_policy::SlotId::resource(), resource_uid);
         }
         let template_id = cedar_policy::PolicyId::new(self.template_id);
         let policy_id = cedar_policy::PolicyId::new(self.id);
-        policyset
-            .link(template_id, policy_id, vals.into())
-            .unwrap();
+        policyset.link(template_id, policy_id, vals.into()).unwrap();
     }
-
 }

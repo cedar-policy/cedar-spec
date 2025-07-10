@@ -34,8 +34,8 @@ use cedar_policy_core::validator::json_schema::{
     CommonType, CommonTypeId, EntityTypeKind, StandardEntityType,
 };
 use cedar_policy_core::validator::{
-    json_schema, ActionBehavior, AllDefs, RawName, SchemaError, ValidatorNamespaceDef,
-    ValidatorSchema, ValidatorSchemaFragment, ConditionalName,
+    json_schema, ActionBehavior, AllDefs, ConditionalName, RawName, SchemaError,
+    ValidatorNamespaceDef, ValidatorSchema, ValidatorSchemaFragment,
 };
 use smol_str::{SmolStr, ToSmolStr};
 use std::collections::BTreeMap;
@@ -1757,7 +1757,10 @@ impl From<Schema> for json_schema::Fragment<RawName> {
 
 impl TryFrom<Schema> for ValidatorSchemaFragment<ConditionalName, ConditionalName> {
     type Error = SchemaError;
-    fn try_from(schema: Schema) -> std::result::Result<ValidatorSchemaFragment<ConditionalName, ConditionalName>, Self::Error> {
+    fn try_from(
+        schema: Schema,
+    ) -> std::result::Result<ValidatorSchemaFragment<ConditionalName, ConditionalName>, Self::Error>
+    {
         let json_fragment: json_schema::Fragment<RawName> = schema.into();
         json_fragment.try_into()
     }
@@ -1975,7 +1978,7 @@ impl TryFrom<Schema> for ValidatorSchema {
 #[cfg(feature = "cedar-policy")]
 impl TryFrom<Schema> for cedar_policy::SchemaFragment {
     type Error = SchemaError;
-    fn try_from(schema : Schema) -> std::result::Result<Self, Self::Error> {
+    fn try_from(schema: Schema) -> std::result::Result<Self, Self::Error> {
         cedar_policy::SchemaFragment::try_from(json_schema::Fragment::<RawName>::from(schema))
     }
 }

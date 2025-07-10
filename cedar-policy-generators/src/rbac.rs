@@ -199,7 +199,6 @@ impl From<RBACPolicy> for cedar_policy::Template {
     }
 }
 
-
 impl RBACPolicy {
     /// Generate an arbitrary RBAC policy
     pub fn arbitrary_for_hierarchy(
