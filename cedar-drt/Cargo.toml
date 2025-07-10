@@ -7,7 +7,7 @@ publish = false
 [dependencies]
 libfuzzer-sys = "0.4"
 cedar-lean-ffi = { path = "../cedar-lean-ffi", version = "4.4.0" }
-cedar-policy = { path = "../cedar/cedar-policy", version = "4.4.0" }
+cedar-policy = { version = "4.4.0" }
 cedar-policy-core = { path = "../cedar/cedar-policy-core", version = "4.4.0", features = ["arbitrary", "entity-manifest"] }
 cedar-policy-formatter = { path = "../cedar/cedar-policy-formatter", version = "4.4.0" }
 cedar-testing = { path = "../cedar/cedar-testing", version = "4.4.0" }
