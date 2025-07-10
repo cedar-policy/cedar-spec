@@ -17,13 +17,12 @@
 #![no_main]
 use cedar_drt::{
     dump::dump,
-    fuzz_target,
     logger::{initialize_log, TOTAL_MSG},
     tests::run_auth_test,
     CedarLeanEngine,
 };
 
-use cedar_drt_inner::schemas;
+use cedar_drt_inner::{fuzz_target, schemas};
 
 use cedar_policy::{Authorizer, Entities, Policy, PolicyId, PolicySet, Request, SchemaFragment};
 

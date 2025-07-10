@@ -12,18 +12,14 @@ cedar-policy-core = { path = "../cedar/cedar-policy-core", version = "4.4.0", fe
 cedar-policy-formatter = { path = "../cedar/cedar-policy-formatter", version = "4.4.0" }
 cedar-testing = { path = "../cedar/cedar-testing", version = "4.4.0" }
 cedar-policy-generators = { path = "../cedar-policy-generators", version = "4.0.0", features = ["cedar-policy"] }
-clap = { version = "4.0", features = ["derive"], optional = true }
 env_logger = "0.11"
 log = "0.4"
 miette = "7.1.0"
-rand_chacha = { version = "0.9", optional = true }
-rayon = { version = "1.5", optional = true }
 serde_json = "1.0.140"
 similar-asserts = "1.5.0"
 smol_str = { version = "0.3", features = ["serde"] }
 
-[features]
-prt = ["dep:rayon", "dep:clap", "dep:rand_chacha"]
+
 
 [profile.release]
 overflow-checks = true

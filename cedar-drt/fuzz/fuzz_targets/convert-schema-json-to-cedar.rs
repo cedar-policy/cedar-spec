@@ -15,8 +15,9 @@
  */
 
 #![no_main]
-use cedar_drt::fuzz_target;
-use cedar_drt_inner::schemas::equivalence_check;
+use cedar_drt_inner::{fuzz_target, schemas::equivalence_check};
+#[cfg(feature = "prt")]
+use libfuzzer_sys::arbitrary::{Arbitrary, Unstructured};
 
 use cedar_policy_core::extensions::Extensions;
 use cedar_policy_core::validator::{json_schema, RawName, ValidatorSchema};

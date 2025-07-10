@@ -17,11 +17,11 @@
 #![no_main]
 
 use cedar_drt::{
-    fuzz_target,
     logger::{initialize_log, TOTAL_MSG},
     tests::run_auth_test,
     CedarLeanEngine,
 };
+use cedar_drt_inner::fuzz_target;
 
 use cedar_policy::{Entities, Policy, PolicySet, Request, Template};
 

@@ -16,11 +16,11 @@
 
 #![no_main]
 use cedar_drt::{
-    fuzz_target,
     logger::initialize_log,
     tests::{drop_some_entities, run_eval_test},
     CedarLeanEngine,
 };
+use cedar_drt_inner::fuzz_target;
 
 use cedar_policy::Entities;
 use cedar_policy_core::ast::Expr;
