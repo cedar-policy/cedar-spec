@@ -116,4 +116,18 @@ def isSorted {α} [LT α] [DecidableLT α] (l : List α) : Bool :=
     else
       false
 
+/--
+Performs a cartesian product l1 X l2 X l3 ...
+for every li in L
+-/
+def cartesianProduct {α} (L : List (List α)) : List (List α) :=
+  match L with
+  | [] => [[]]
+  | [l] => l.map (fun e => [e])
+  | l :: Lrest =>
+    let rest_product := cartesianProduct Lrest
+    let cartesian_between := List.productTR l rest_product
+    cartesian_between.map (fun (ele, list) => ele :: list)
+
+
 end List
