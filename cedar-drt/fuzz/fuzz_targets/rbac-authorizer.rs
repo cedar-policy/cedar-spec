@@ -17,7 +17,7 @@
 use cedar_drt::{fuzz_target, tests::run_auth_test, CedarLeanEngine};
 
 use cedar_policy::{Context, Entities, Policy, PolicySet, Request};
-use cedar_policy_core::{ast, parser};
+use cedar_policy_core::{ast};
 
 use libfuzzer_sys::arbitrary::{self, Arbitrary};
 
