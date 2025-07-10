@@ -527,6 +527,7 @@ impl GeneratedLinkedPolicy {
             .unwrap();
     }
 
+    #[cfg(feature = "cedar-policy")]
     /// Add this `GeneratedLinkedPolicy` to the given `cedar_policy::PolicySet`
     pub fn add_to_api_policyset(self, policyset: &mut cedar_policy::PolicySet) {
         let mut vals = HashMap::new();
