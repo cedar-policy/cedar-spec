@@ -15,10 +15,11 @@
  */
 
 #![no_main]
+use cedar_drt::fuzz_target;
 use cedar_drt_inner::schemas::equivalence_check;
-use cedar_drt_inner::*;
+
 use cedar_policy_core::extensions::Extensions;
-use cedar_policy_core::validator::{json_schema, RawName};
+use cedar_policy_core::validator::{json_schema, RawName, ValidatorSchema};
 use similar_asserts::SimpleDiff;
 
 // JSON String -> json_schema::Fragment -> Natural String -> json_schema::Fragment

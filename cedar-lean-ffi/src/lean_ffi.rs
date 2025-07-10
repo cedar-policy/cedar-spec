@@ -576,7 +576,7 @@ impl CedarLeanFfi {
         input_expr: &Expression,
         entities: &Entities,
         request: &Request,
-        output_expr: &Expression,
+        output_expr: Option<&Expression>,
     ) -> Result<TimedResult<bool>, FfiError> {
         let lean_eval_request = proto::EvaluationRequestChecked::new_checked(
             input_expr,
@@ -599,7 +599,7 @@ impl CedarLeanFfi {
         input_expr: &Expression,
         entities: &Entities,
         request: &Request,
-        output_expr: &Expression,
+        output_expr: Option<&Expression>,
     ) -> Result<bool, FfiError> {
         Ok(self
             .check_evaluate_timed(input_expr, entities, request, output_expr)?
@@ -1113,12 +1113,12 @@ mod test {
         let ffi = CedarLeanFfi::new();
 
         let res = ffi
-            .check_evaluate(&input_expr, &entities, &req, &eval_expr)
+            .check_evaluate(&input_expr, &entities, &req, Some(&eval_expr))
             .expect("Lean call unexpectedly failed for check_evaluate");
         assert!(res, "check_evaluate returned wrong result: Expected true");
 
         let res = ffi
-            .check_evaluate(&input_expr, &entities, &req, &wrong_expr)
+            .check_evaluate(&input_expr, &entities, &req, Some(&wrong_expr))
             .expect("Lean call unexpectedly failed for check_evaluate");
         assert!(!res, "check_evaluate returned wrong result: Expected false");
     }

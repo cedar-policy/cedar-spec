@@ -13,13 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #![no_main]
-use cedar_drt::*;
-use cedar_drt_inner::*;
+use cedar_drt::{fuzz_target, tests::run_auth_test, CedarLeanEngine};
+
+use cedar_policy::{Context, Entities, Policy, PolicySet, Request};
 use cedar_policy_core::ast;
-use cedar_policy_core::entities::Entities;
-use cedar_policy_core::extensions::Extensions;
+
 use libfuzzer_sys::arbitrary::{self, Arbitrary};
 
 #[derive(Arbitrary, Debug)]
@@ -104,32 +103,33 @@ impl AbstractPolicy {
 // trivial policies and requests, and focus on how the authorizer combines the
 // results.
 fuzz_target!(|input: AuthorizerInputAbstractEvaluator| {
-    let def_impl = LeanDefinitionalEngine::new();
     let policies = input
         .policies
         .iter()
         .cloned()
         .enumerate()
         .map(|(i, p)| p.into_policy(ast::PolicyID::from_string(format!("policy{i}"))));
-    let mut policyset = ast::PolicySet::new();
+    let mut policyset = PolicySet::new();
     for policy in policies {
-        policyset.add_static(policy).unwrap();
+        let policy = Policy::from(policy);
+        policyset.add(policy).unwrap();
     }
     assert_eq!(policyset.policies().count(), input.policies.len());
-    let entities = Entities::new();
-    let request = ast::Request::new(
-        ("User::\"alice\"".parse().expect("should be valid"), None),
-        ("Action::\"read\"".parse().expect("should be valid"), None),
-        ("Resource::\"foo\"".parse().expect("should be valid"), None),
-        ast::Context::empty(),
-        None::<&ast::RequestSchemaAllPass>,
-        Extensions::none(),
+    let entities = Entities::empty();
+    let request = Request::new(
+        "User::\"alice\"".parse().expect("should be valid"),
+        "Action::\"read\"".parse().expect("should be valid"),
+        "Resource::\"foo\"".parse().expect("should be valid"),
+        Context::empty(),
+        None,
     )
     .expect("we aren't doing request validation here, so new() can't fail");
 
+    let lean_engine = CedarLeanEngine::new();
+
     // Check agreement with definitional engine. Note that run_auth_test returns
     // the result of the call to is_authorized.
-    let res = run_auth_test(&def_impl, request, &policyset, &entities);
+    let res = run_auth_test(&lean_engine, &request, &policyset, &entities);
 
     // Check the following property: there should be an error reported iff we
     // had either PermitError or ForbidError
@@ -138,15 +138,14 @@ fuzz_target!(|input: AuthorizerInputAbstractEvaluator| {
         .iter()
         .any(|p| p == &AbstractPolicy::PermitError || p == &AbstractPolicy::ForbidError);
     if should_error {
-        assert!(!res.diagnostics.errors.is_empty());
+        assert!(!res.diagnostics().errors().collect::<Vec<_>>().is_empty());
     } else {
         // doing the assertion this way, rather than assert!(.is_empty()), gives
         // us a better assertion-failure message (showing what items were
         // present on the LHS)
         assert_eq!(
-            res.diagnostics
-                .errors
-                .iter()
+            res.diagnostics()
+                .errors()
                 .map(ToString::to_string)
                 .collect::<Vec<String>>(),
             Vec::<String>::new()

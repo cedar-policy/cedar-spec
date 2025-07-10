@@ -16,8 +16,8 @@
 
 #![no_main]
 
-use cedar_drt::initialize_log;
-use cedar_drt_inner::{check_policy_equivalence, fuzz_target};
+use cedar_drt::{check_policy_equivalence, fuzz_target, logger::initialize_log};
+
 use cedar_policy_core::ast::{self, StaticPolicy, Template};
 use cedar_policy_core::est;
 use cedar_policy_core::parser::{self, parse_policy};

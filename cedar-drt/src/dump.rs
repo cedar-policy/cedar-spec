@@ -15,22 +15,12 @@
  */
 
 use cedar_policy::{AuthorizationError, Policy};
-use cedar_policy_core::ast::{Context, EntityUID, EntityUIDEntry, PolicySet, Request};
-use cedar_policy_core::authorizer::Response;
-use cedar_policy_core::entities;
-use cedar_policy_core::entities::{Entities, TypeAndId};
-use cedar_policy_core::extensions::Extensions;
-use cedar_policy_core::jsonvalue::JsonValueWithNoDuplicateKeys;
-use cedar_policy_core::parser;
-use cedar_policy_core::validator::{
-    json_schema, RawName, ValidationMode, Validator, ValidatorSchema,
-};
+use cedar_policy_core::entities::TypeAndId;
+
 use cedar_policy_generators::collections::HashMap;
 use cedar_testing::cedar_test_impl::RustEngine;
 use cedar_testing::integration_testing::{perform_integration_test, JsonRequest, JsonTest};
-use std::io::Write;
-use std::path::Path;
-use std::str::FromStr;
+use std::{io::Write, path::Path, str::FromStr};
 
 /// Dump testcase to a directory.
 ///
@@ -42,10 +32,10 @@ use std::str::FromStr;
 pub fn dump(
     dirname: impl AsRef<Path>,
     testcasename: &str,
-    schema: &json_schema::Fragment<RawName>,
-    policies: &PolicySet,
-    entities: &Entities,
-    requests: impl IntoIterator<Item = (Request, Response)>,
+    schema: &cedar_policy::SchemaFragment,
+    policies: &cedar_policy::PolicySet,
+    entities: &cedar_policy::Entities,
+    requests: impl IntoIterator<Item = (cedar_policy::Request, cedar_policy::Response)>,
 ) -> std::io::Result<()> {
     // If the policy set cannot be re-parsed (which is possible with our current
     // generators), then ignore it. The corpus test format currently has no way
@@ -78,6 +68,7 @@ pub fn dump(
         .truncate(true)
         .open(&policies_filename)?;
     let static_policies: Vec<_> = policies
+        .as_ref()
         .static_policies()
         .map(ToString::to_string)
         .collect();
@@ -97,16 +88,16 @@ pub fn dump(
         .enumerate()
         .map(|(i, (q, a))| JsonRequest {
             description: format!("Request {i}"),
-            principal: dump_request_var(q.principal()),
-            action: dump_request_var(q.action()),
-            resource: dump_request_var(q.resource()),
+            principal: dump_request_var(q.principal().unwrap()),
+            action: dump_request_var(q.action().unwrap()),
+            resource: dump_request_var(q.resource().unwrap()),
             context: dump_context(
                 q.context()
                     .expect("`dump` does not support requests missing context")
                     .clone(),
             ),
             validate_request: true,
-            decision: a.decision,
+            decision: a.decision(),
             reason: cedar_policy::Response::from(a.clone())
                 .diagnostics()
                 .reason()
@@ -158,28 +149,23 @@ pub fn dump(
 fn check_test(
     formatted_policies: String,
     formatted_schema: String,
-    entities: &Entities,
+    entities: &cedar_policy::Entities,
     should_validate: bool,
     requests: Vec<JsonRequest>,
     test_name: &str,
 ) {
-    let parsed_policies = parser::parse_policyset(&formatted_policies)
+    let parsed_policies = cedar_policy::PolicySet::from_str(&formatted_policies)
         .unwrap_or_else(|e| panic!("error re-parsing policy file: {e}"));
 
-    let parsed_schema =
-        ValidatorSchema::from_cedarschema_str(&formatted_schema, Extensions::all_available())
-            .unwrap_or_else(|e| panic!("error re-parsing schema: {e}"))
-            .0;
+    let parsed_schema = cedar_policy::Schema::from_cedarschema_str(&formatted_schema)
+        .unwrap_or_else(|e| panic!("error re-parsing schema: {e}"))
+        .0;
 
-    let core_schema = cedar_policy_core::validator::CoreSchema::new(&parsed_schema);
-    let eparser = entities::EntityJsonParser::new(
-        Some(&core_schema),
-        Extensions::all_available(),
-        entities::TCComputation::ComputeNow,
-    );
-    let parsed_entities = eparser
-        .from_json_value(entities.to_json_value().unwrap())
-        .unwrap_or_else(|e| panic!("error re-parsing entities: {e}"));
+    let parsed_entities = cedar_policy::Entities::from_json_value(
+        entities.as_ref().to_json_value().unwrap(),
+        Some(&parsed_schema),
+    )
+    .unwrap_or_else(|e| panic!("error re-parsing entities: {e}"));
 
     let rust_impl = RustEngine::new();
 
@@ -195,19 +181,23 @@ fn check_test(
 }
 
 /// Check whether a policy set can be successfully parsed
-fn well_formed(policies: &PolicySet) -> bool {
+fn well_formed(policies: &cedar_policy::PolicySet) -> bool {
     policies
+        .as_ref()
         .static_policies()
         .map(ToString::to_string)
         .all(|p| Policy::from_str(&p).is_ok())
 }
 
 /// Check whether a policy set passes validation
-fn passes_validation(schema: json_schema::Fragment<RawName>, policies: &PolicySet) -> bool {
-    if let Ok(schema) = ValidatorSchema::try_from(schema) {
-        let validator = Validator::new(schema);
+fn passes_validation(
+    schema: cedar_policy::SchemaFragment,
+    policies: &cedar_policy::PolicySet,
+) -> bool {
+    if let Ok(schema) = schema.try_into() {
+        let validator = cedar_policy::Validator::new(schema);
         validator
-            .validate(policies, ValidationMode::default())
+            .validate(policies, cedar_policy::ValidationMode::default())
             .validation_passed()
     } else {
         false
@@ -215,26 +205,16 @@ fn passes_validation(schema: json_schema::Fragment<RawName>, policies: &PolicySe
 }
 
 /// Dump the entity uid to a json value
-fn dump_request_var(var: &EntityUIDEntry) -> JsonValueWithNoDuplicateKeys {
-    match var {
-        EntityUIDEntry::Unknown { .. } => {
-            panic!("`dump` does not support requests with unknown fields")
-        }
-        EntityUIDEntry::Known { euid, .. } => {
-            serde_json::to_value(TypeAndId::from(euid as &EntityUID))
-                .expect("failed to serialize euid")
-                .into()
-        }
-    }
+fn dump_request_var(var: &cedar_policy::EntityUid) -> serde_json::Value {
+    let tyid = TypeAndId::from(var.as_ref());
+    serde_json::to_value(tyid).expect("failed to serialize euid")
 }
 
 /// Dump the context to a "natural" json value
-fn dump_context(context: Context) -> JsonValueWithNoDuplicateKeys {
+fn dump_context(context: cedar_policy::Context) -> serde_json::Value {
     let context = context
         .into_iter()
-        .map(|(k, pval)| (k, pval.to_natural_json().unwrap()))
+        .map(|(k, pval)| (k, pval.as_ref().to_natural_json().unwrap()))
         .collect::<HashMap<_, _>>();
-    serde_json::to_value(context)
-        .expect("failed to serialize context")
-        .into()
+    serde_json::to_value(context).expect("failed to serialize context")
 }
