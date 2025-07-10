@@ -79,62 +79,78 @@ deriving instance Repr, Inhabited for StraitLineExprs
 namespace WrappedAccessTerms
 
 
-/--
-Converts an expr to a set of strait line exprs,
-exploring all possibilities when an if statement is encountered.
--/
-def to_straight_line_exprs (expr: Expr) : StraitLineExprs :=
-  match expr with
-  | .ite cond then_expr else_expr =>
-    let cond_exprs := to_straight_line_exprs cond
-    let then_exprs := to_straight_line_exprs then_expr
-    let else_exprs := to_straight_line_exprs else_expr
 
-    let then_with_cond := List.productTR cond_exprs.toList then_exprs.toList
-    let else_with_cond := List.productTR cond_exprs.toList else_exprs.toList
+mutual
+  def to_straight_line_map_list (exprList: List (Attr × Expr)) : List (List StraightLineExpr) :=
+    match exprList with
+    | [] => []
+    | [x] => [(to_straight_line_exprs x.2).toList]
+    | ele :: rest =>
+      (to_straight_line_exprs ele.2).toList :: (to_straight_line_map_list rest)
 
-    let then_results := then_with_cond.map (fun pair => .droppedCondition pair.1 pair.2)
-    let else_results := else_with_cond.map (fun pair => .droppedCondition pair.1 pair.2)
+  def to_strait_line_list (exprList : List Expr) : List (List StraitLineExpr) :=
+    match exprList with
+    | [] => []
+    | [x] => [(to_straight_line_exprs x).toList]
+    | ele :: rest =>
+      (to_straight_line_exprs ele).toList :: (to_straight_line_map_list rest)
+  /--
+  Converts an expr to a set of strait line exprs,
+  exploring all possibilities when an if statement is encountered.
+  -/
+  def to_straight_line_exprs (expr: Expr) : StraitLineExprs :=
+    match expr with
+    | .ite cond then_expr else_expr =>
+      let cond_exprs := to_straight_line_exprs cond
+      let then_exprs := to_straight_line_exprs then_expr
+      let else_exprs := to_straight_line_exprs else_expr
 
-    .mk (then_results ++ else_results)
-  | .lit p =>
-    .mk [.lit p]
-  | .var v =>
-    .mk [.var v]
-  | .and a b =>
-    let product := List.productTR (to_straight_line_exprs a).toList (to_straight_line_exprs b).toList
-    .mk (product.map (fun pair => .and pair.1 pair.2))
-  | .or a b =>
-    let product := List.productTR (to_straight_line_exprs a).toList (to_straight_line_exprs b).toList
-    .mk (product.map (fun pair => .or pair.1 pair.2))
-  | .unaryApp op expr =>
-    let exprs := to_straight_line_exprs expr
-    .mk (exprs.toList.map (fun e => .unaryApp op e))
-  | .binaryApp op a b =>
-    let a_exprs := to_straight_line_exprs a
-    let b_exprs := to_straight_line_exprs b
-    let product := List.productTR a_exprs.toList b_exprs.toList
-    .mk (product.map (fun pair => .binaryApp op pair.1 pair.2))
-  | .getAttr expr attr =>
-    let exprs := to_straight_line_exprs expr
-    .mk (exprs.toList.map (fun e => .getAttr e attr))
-  | .hasAttr expr attr =>
-    let exprs := to_straight_line_exprs expr
-    .mk (exprs.toList.map (fun e => .hasAttr e attr))
-  | .set ls =>
-    let exprs_lists := ls.map (fun sete => (to_straight_line_exprs sete).toList)
-    let all_combinations := List.cartesianProduct exprs_lists
-    .mk (all_combinations.map (fun combo => .set combo))
-  | .record map =>
-    let expr_lists := map.map (fun pair => (to_straight_line_exprs pair.2).toList)
-    let attrs := map.map (fun pair => pair.1)
-    let all_combinations := List.cartesianProduct expr_lists
-    .mk (all_combinations.map (fun combo =>
-      .record (List.zipWith (fun attr expr => (attr, expr)) attrs combo)))
-  | .call xfn args =>
-    let args_exprs := args.map (fun e => (to_straight_line_exprs e).toList)
-    let all_combinations := List.cartesianProduct args_exprs
-    .mk (all_combinations.map (fun combo => .call xfn combo))
+      let then_with_cond := List.productTR cond_exprs.toList then_exprs.toList
+      let else_with_cond := List.productTR cond_exprs.toList else_exprs.toList
+
+      let then_results := then_with_cond.map (fun pair => .droppedCondition pair.1 pair.2)
+      let else_results := else_with_cond.map (fun pair => .droppedCondition pair.1 pair.2)
+
+      .mk (then_results ++ else_results)
+    | .lit p =>
+      .mk [.lit p]
+    | .var v =>
+      .mk [.var v]
+    | .and a b =>
+      let product := List.productTR (to_straight_line_exprs a).toList (to_straight_line_exprs b).toList
+      .mk (product.map (fun pair => .and pair.1 pair.2))
+    | .or a b =>
+      let product := List.productTR (to_straight_line_exprs a).toList (to_straight_line_exprs b).toList
+      .mk (product.map (fun pair => .or pair.1 pair.2))
+    | .unaryApp op expr =>
+      let exprs := to_straight_line_exprs expr
+      .mk (exprs.toList.map (fun e => .unaryApp op e))
+    | .binaryApp op a b =>
+      let a_exprs := to_straight_line_exprs a
+      let b_exprs := to_straight_line_exprs b
+      let product := List.productTR a_exprs.toList b_exprs.toList
+      .mk (product.map (fun pair => .binaryApp op pair.1 pair.2))
+    | .getAttr expr attr =>
+      let exprs := to_straight_line_exprs expr
+      .mk (exprs.toList.map (fun e => .getAttr e attr))
+    | .hasAttr expr attr =>
+      let exprs := to_straight_line_exprs expr
+      .mk (exprs.toList.map (fun e => .hasAttr e attr))
+    | .set ls =>
+      let exprs_lists := ls.map (fun sete => (to_straight_line_exprs sete).toList)
+      let all_combinations := List.cartesianProduct exprs_lists
+      .mk (all_combinations.map (fun combo => .set combo))
+    | .record map =>
+      let expr_lists := to_straight_line_map_list map
+      let attrs := map.map (fun pair => pair.1)
+      let all_combinations := List.cartesianProduct expr_lists
+      .mk (all_combinations.map (fun combo =>
+        .record (List.zipWith (fun attr expr => (attr, expr)) attrs combo)))
+    | .call xfn args =>
+      let args_exprs := args.map (fun e => (to_straight_line_exprs e).toList)
+      let all_combinations := List.cartesianProduct args_exprs
+      .mk (all_combinations.map (fun combo => .call xfn combo))
+end
 
 
 
