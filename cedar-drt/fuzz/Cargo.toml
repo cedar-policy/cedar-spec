@@ -11,7 +11,7 @@ cargo-fuzz = true
 libfuzzer-sys = "0.4"
 cedar-drt = { version = "4.4.0", path = ".." }
 cedar-lean-ffi = { path = "../../cedar-lean-ffi", version = "4.4.0" }
-cedar-policy = { path = "../../cedar/cedar-policy", version = "4.4.0", features = ["permissive-validate", "entity-manifest"] }
+cedar-policy = { version = "4.4.0", features = ["permissive-validate", "entity-manifest"] }
 cedar-policy-core = { path = "../../cedar/cedar-policy-core", version = "4.4.0", features = ["arbitrary"] }
 cedar-policy-formatter = { path = "../../cedar/cedar-policy-formatter", version = "4.4.0" }
 cedar-testing = { path = "../../cedar/cedar-testing", version = "4.4.0" }
@@ -29,6 +29,9 @@ similar-asserts = "1.5.0"
 smol_str = { version = "0.3", features = ["serde"] }
 thiserror = "2.0"
 uuid = { version = "1.3.1", features = ["v4", "fast-rng"] }
+
+[patch.crates-io]
+cedar-policy = { path = "../cedar/cedar-policy" }
 
 [lib]
 path = "src/lib.rs"
