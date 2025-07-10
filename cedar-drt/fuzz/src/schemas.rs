@@ -25,16 +25,17 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
 
+use cedar_policy::{Entities, Schema};
 use cedar_policy_generators::err::Error;
 use libfuzzer_sys::arbitrary;
-use cedar_policy::{Schema, Entities};
 
 pub fn add_actions_to_entities(schema: &Schema, entities: Entities) -> arbitrary::Result<Entities> {
     let actions = schema
         .action_entities()
         .map_err(|e| Error::EntitiesError(format!("Error fetching action entities: {e}")))?;
 
-    Ok(entities.add_entities(actions, None)
+    Ok(entities
+        .add_entities(actions, None)
         .map_err(|e| Error::EntitiesError(format!("Error fetching action entities: {e}")))?)
 }
 
