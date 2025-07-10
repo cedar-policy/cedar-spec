@@ -16,8 +16,7 @@
 
 #![no_main]
 
-use cedar_drt::fuzz_target;
-use cedar_drt_inner::schemas::Equiv;
+use cedar_drt_inner::{fuzz_target, schemas::Equiv};
 
 use cedar_policy::{proto, Entities, Entity, Policy, PolicySet, Request, Schema};
 

@@ -16,7 +16,10 @@
 
 #![no_main]
 
-use cedar_drt::{check_for_internal_errors, fuzz_target};
+use cedar_drt::check_for_internal_errors;
+use cedar_drt_inner::fuzz_target;
+#[cfg(feature = "prt")]
+use libfuzzer_sys::arbitrary::{Arbitrary, Unstructured};
 
 use cedar_policy_core::parser::parse_policyset;
 use cedar_policy_formatter::{policies_str_to_pretty, Config};

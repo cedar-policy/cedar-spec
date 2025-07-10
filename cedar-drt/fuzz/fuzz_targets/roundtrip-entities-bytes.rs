@@ -15,7 +15,10 @@
  */
 
 #![no_main]
-use cedar_drt::fuzz_target;
+
+use cedar_drt_inner::fuzz_target;
+#[cfg(feature = "prt")]
+use libfuzzer_sys::arbitrary::{Arbitrary, Unstructured};
 
 use cedar_policy::Entities;
 

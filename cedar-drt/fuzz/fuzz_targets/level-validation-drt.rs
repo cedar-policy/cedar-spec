@@ -15,7 +15,8 @@
  */
 
 #![no_main]
-use cedar_drt::{fuzz_target, tests::run_level_val_test, CedarLeanEngine};
+use cedar_drt::{tests::run_level_val_test, CedarLeanEngine};
+use cedar_drt_inner::fuzz_target;
 
 use cedar_policy::{Policy, PolicySet, Schema, ValidationMode};
 

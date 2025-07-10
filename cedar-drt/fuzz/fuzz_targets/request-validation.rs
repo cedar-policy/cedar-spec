@@ -16,11 +16,11 @@
 
 #![no_main]
 use cedar_drt::{
-    fuzz_target,
     logger::{initialize_log, TOTAL_MSG},
     tests::run_req_val_test,
     CedarLeanEngine,
 };
+use cedar_drt_inner::fuzz_target;
 
 use cedar_policy::{Request, Schema};
 use cedar_testing::cedar_test_impl::time_function;
@@ -100,10 +100,10 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 // Non-type-directed fuzzing of (strict) validation.
 fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
-    let def_impl = CedarLeanEngine::new();
 
     // generate a schema
     if let Ok(schema) = Schema::try_from(input.schema) {
+        let def_impl = CedarLeanEngine::new();
         debug!("Schema: {:?}", schema);
         let requests = input
             .requests

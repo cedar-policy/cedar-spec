@@ -16,9 +16,8 @@
 
 #![no_main]
 
-use cedar_drt::{
-    check_policy_set_equivalence, fuzz_target, logger::initialize_log, policy_set_to_text,
-};
+use cedar_drt::{check_policy_set_equivalence, logger::initialize_log, policy_set_to_text};
+use cedar_drt_inner::fuzz_target;
 
 use cedar_policy_generators::{
     policy_set::GeneratedPolicySet, schema::Schema, settings::ABACSettings,

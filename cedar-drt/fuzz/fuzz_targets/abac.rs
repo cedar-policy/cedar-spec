@@ -17,13 +17,12 @@
 #![no_main]
 use cedar_drt::{
     dump::dump,
-    fuzz_target,
     logger::{initialize_log, TOTAL_MSG},
     tests::run_auth_test,
     CedarLeanEngine,
 };
 
-use cedar_drt_inner::schemas;
+use cedar_drt_inner::{fuzz_target, schemas};
 
 use cedar_policy::{Authorizer, Entities, Policy, PolicyId, PolicySet, Request, SchemaFragment};
 
@@ -127,7 +126,7 @@ fuzz_target!(|input: FuzzTargetInput| {
     let policy = Policy::from(input.policy);
     policyset.add(policy.clone()).unwrap();
     debug!("Policies: {policyset}");
-    debug!("Entities: {:?}", input.entities);
+    debug!("Entities: {}", input.entities.as_ref());
     let requests = input
         .requests
         .into_iter()

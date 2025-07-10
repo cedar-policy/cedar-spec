@@ -15,8 +15,7 @@
  */
 
 #![no_main]
-use cedar_drt::fuzz_target;
-use cedar_drt_inner::schemas;
+use cedar_drt_inner::{fuzz_target, schemas};
 
 use cedar_policy_core::ast;
 use cedar_policy_core::validator::json_schema;

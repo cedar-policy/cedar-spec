@@ -9,29 +9,37 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4"
-cedar-drt = { version = "4.4.0", path = ".." }
+cedar-drt = { path = "..", version = "4.4.0" }
 cedar-lean-ffi = { path = "../../cedar-lean-ffi", version = "4.4.0" }
 cedar-policy = { version = "4.4.0", features = ["permissive-validate", "entity-manifest"] }
-cedar-policy-core = { path = "../../cedar/cedar-policy-core", version = "4.4.0", features = ["arbitrary"] }
-cedar-policy-formatter = { path = "../../cedar/cedar-policy-formatter", version = "4.4.0" }
+cedar-policy-core = { version = "4.4.0", features = ["arbitrary"] }
+cedar-policy-formatter = "4.4.0"
 cedar-testing = { path = "../../cedar/cedar-testing", version = "4.4.0" }
 cedar-policy-generators = { path = "../../cedar-policy-generators", version = "4.0.0", features = ["cedar-policy"] }
+clap = { version = "4.0", features = ["derive"], optional = true }
 log = "0.4"
 logos = "0.15.0"
 itertools = "0.14.0"
 miette = "7.1.0"
 prost = "0.13"
 rand = { version = "0.9", features = ["small_rng"] }
+rand_chacha = { version = "0.9", optional = true }
+rayon = { version = "1.5", optional = true }
 regex = "1"
-serde = { version = "1.0" }
+serde = "1.0"
 serde_json = "1.0"
 similar-asserts = "1.5.0"
 smol_str = { version = "0.3", features = ["serde"] }
 thiserror = "2.0"
 uuid = { version = "1.3.1", features = ["v4", "fast-rng"] }
 
+[features]
+prt = ["dep:rayon", "dep:clap", "dep:rand_chacha"]
+
 [patch.crates-io]
 cedar-policy = { path = "../../cedar/cedar-policy" }
+cedar-policy-core = { path = "../../cedar/cedar-policy-core" }
+cedar-policy-formatter = { path = "../../cedar/cedar-policy-formatter" }
 
 [lib]
 path = "src/lib.rs"

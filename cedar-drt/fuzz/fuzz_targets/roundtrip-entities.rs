@@ -16,7 +16,7 @@
 
 #![no_main]
 
-use cedar_drt::fuzz_target;
+use cedar_drt_inner::fuzz_target;
 
 use cedar_policy::{Entities, Schema};
 

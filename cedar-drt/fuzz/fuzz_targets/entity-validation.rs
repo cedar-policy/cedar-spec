@@ -16,11 +16,11 @@
 
 #![no_main]
 use cedar_drt::{
-    fuzz_target,
     logger::{initialize_log, TOTAL_MSG},
     tests::run_ent_val_test,
     CedarLeanEngine,
 };
+use cedar_drt_inner::fuzz_target;
 
 use cedar_policy::{Entities, Schema};
 use cedar_testing::cedar_test_impl::time_function;

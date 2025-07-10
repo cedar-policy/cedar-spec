@@ -15,7 +15,8 @@
  */
 
 #![no_main]
-use cedar_drt::{fuzz_target, logger::initialize_log};
+use cedar_drt::logger::initialize_log;
+use cedar_drt_inner::fuzz_target;
 
 use cedar_policy::{
     AuthorizationError, Authorizer, Entities, EvaluationError, Policy, PolicySet, Request, Schema,
@@ -174,26 +175,18 @@ fn maybe_log_schemastats(schema: Option<&Schema>, suffix: &str) {
                 + "_"
                 + suffix
                 + "_"
-                + &format!("{:03}", schema.entity_types().collect_vec().len()),
+                + &format!("{:03}", schema.entity_types().count()),
         );
         checkpoint(
             LOG_FILENAME_TOTAL_ACTIONS.to_string()
                 + "_"
                 + suffix
                 + "_"
-                + &format!("{:03}", schema.actions().collect_vec().len()),
+                + &format!("{:03}", schema.actions().count()),
         );
         for action in schema.actions() {
-            let n_principals = schema
-                .principals_for_action(action)
-                .unwrap()
-                .collect_vec()
-                .len();
-            let n_resources = schema
-                .resources_for_action(action)
-                .unwrap()
-                .collect_vec()
-                .len();
+            let n_principals = schema.principals_for_action(action).unwrap().count();
+            let n_resources = schema.resources_for_action(action).unwrap().count();
             // Cartesian product is empty. So action applies to None
             if n_principals == 0 || n_resources == 0 {
                 checkpoint(LOG_FILENAME_APPLIES_TO_NONE.to_string() + "_" + suffix);

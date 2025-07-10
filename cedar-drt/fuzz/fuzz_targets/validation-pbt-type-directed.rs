@@ -16,7 +16,8 @@
 
 #![no_main]
 
-use cedar_drt::{fuzz_target, logger::initialize_log};
+use cedar_drt::logger::initialize_log;
+use cedar_drt_inner::fuzz_target;
 
 use cedar_policy::{
     AuthorizationError, Authorizer, Entities, EvaluationError, Policy, PolicySet, Request, Schema,
