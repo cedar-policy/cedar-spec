@@ -20,9 +20,9 @@ use cedar_drt_inner::fuzz_target;
 use cedar_policy::{Context, Entities, Policy, PolicySet, Request};
 use cedar_policy_core::ast;
 
-use libfuzzer_sys::arbitrary::{self, Arbitrary};
 #[cfg(feature = "prt")]
 use libfuzzer_sys::arbitrary::Unstructured;
+use libfuzzer_sys::arbitrary::{self, Arbitrary};
 
 #[derive(Arbitrary, Debug)]
 pub struct AuthorizerInputAbstractEvaluator {

@@ -100,10 +100,10 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 // Non-type-directed fuzzing of (strict) validation.
 fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
-    let def_impl = CedarLeanEngine::new();
 
     // generate a schema
     if let Ok(schema) = Schema::try_from(input.schema) {
+        let def_impl = CedarLeanEngine::new();
         debug!("Schema: {:?}", schema);
         let requests = input
             .requests

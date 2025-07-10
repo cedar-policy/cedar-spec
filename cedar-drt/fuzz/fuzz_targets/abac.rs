@@ -126,7 +126,7 @@ fuzz_target!(|input: FuzzTargetInput| {
     let policy = Policy::from(input.policy);
     policyset.add(policy.clone()).unwrap();
     debug!("Policies: {policyset}");
-    debug!("Entities: {:?}", input.entities);
+    debug!("Entities: {}", input.entities.as_ref());
     let requests = input
         .requests
         .into_iter()

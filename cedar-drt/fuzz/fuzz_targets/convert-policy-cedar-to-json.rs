@@ -20,7 +20,7 @@ use thiserror::Error;
 use cedar_drt::{check_for_internal_errors, check_policy_set_equivalence};
 use cedar_drt_inner::fuzz_target;
 #[cfg(feature = "prt")]
-use libfuzzer_sys::arbitrary::{Unstructured, Arbitrary};
+use libfuzzer_sys::arbitrary::{Arbitrary, Unstructured};
 
 use cedar_policy_core::est;
 use cedar_policy_core::parser;

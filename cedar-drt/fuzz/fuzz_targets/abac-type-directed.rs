@@ -125,7 +125,7 @@ fuzz_target!(|input: FuzzTargetInput| {
     policyset.add(policy.clone()).unwrap();
     debug!("Schema: {}\n", input.schema.schemafile_string());
     debug!("Policies: {policyset}\n");
-    debug!("Entities: {:?}\n", input.entities);
+    debug!("Entities: {}\n", input.entities.as_ref());
 
     let requests = input
         .requests
