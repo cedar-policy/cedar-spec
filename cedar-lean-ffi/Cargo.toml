@@ -5,7 +5,7 @@ version = "4.4.0"
 publish = false
 
 [dependencies]
-cedar-policy = { path="../cedar/cedar-policy", version = "4.4.0", features = ["protobufs"] }
+cedar-policy = { version = "4.4.0", features = ["protobufs"] }
 lean-sys = { version = "0.0.8", default-features = false }
 serde = "1"
 serde_json = "1.0"

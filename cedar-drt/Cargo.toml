@@ -27,3 +27,6 @@ prt = ["dep:rayon", "dep:clap", "dep:rand_chacha"]
 
 [profile.release]
 overflow-checks = true
+
+[patch.crates-io]
+cedar-policy = { path = "../cedar/cedar-policy" }

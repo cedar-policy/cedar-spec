@@ -5,7 +5,7 @@ version = "4.4.0"
 publish = false
 
 [dependencies]
-cedar-policy = { path="../cedar/cedar-policy", version = "4.4.0", features = ["protobufs"] }
+cedar-policy = { version = "4.4.0", features = ["protobufs"] }
 cedar-lean-ffi = { path = "../cedar-lean-ffi", version ="4.4.0" }
 clap = { version = "4.5.36", features = ["derive"] }
 serde = "1"
