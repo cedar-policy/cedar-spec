@@ -234,14 +234,12 @@ decreasing_by
     -- Set
   · rename_i h
     simp_wf
-    let so := @List.sizeOf_lt_of_mem Expr ele inferInstance ls
-    specialize so h
+    let so := List.sizeOf_lt_of_mem h
     omega
   -- Record
   · simp_wf
     rename_i h
-    let so := @List.sizeOf_lt_of_mem (Attr × Expr) pair inferInstance map
-    specialize so h
+    let so := List.sizeOf_lt_of_mem h
     have h2: sizeOf pair.snd < sizeOf pair := by {
       cases pair with
       | mk a b =>
@@ -250,7 +248,8 @@ decreasing_by
     omega
   -- Call
   · simp [*]
-    have h := List.sizeOf_lt_of_mem hx
+    rename_i h
+    have h2 := List.sizeOf_lt_of_mem h
     omega
 
 
@@ -301,10 +300,6 @@ def evaluate_sl(x : SLExpr) (req : Request) (es : Entities) : SLResult Value :=
     let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => evaluate_sl x₁ req es)
     (call xfn vs).toSLResult
 
-
-
--- gets all subexpressions, including expr
-mutual
 /-- Returns a list of all sub-expressions of the given SLExpr, including the expression itself. -/
 def all_sub_slexpr (expr: SLExpr) : List SLExpr :=
   match expr with
@@ -317,22 +312,34 @@ def all_sub_slexpr (expr: SLExpr) : List SLExpr :=
   | .binaryApp _ a b => expr :: (all_sub_slexpr a ++ all_sub_slexpr b)
   | .getAttr e _ => expr :: all_sub_slexpr e
   | .hasAttr e _ => expr :: all_sub_slexpr e
-  | .set ls => expr :: all_sub_slexpr_list ls
-  | .record map => expr :: all_sub_slexpr_attr_list map
-  | .call _ args => expr :: all_sub_slexpr_list args
+  | .set ls => expr :: (ls.map (fun e => all_sub_slexpr e)).mapUnion id
+  | .record map => expr :: (map.map (fun pair => all_sub_slexpr pair.2)).mapUnion id
+  | .call _ args => expr :: (args.map all_sub_slexpr).mapUnion id
+termination_by sizeOf expr
+decreasing_by
+  repeat case _ =>
+    simp [*]; try omega
+    -- Set
+  · rename_i h
+    simp_wf
+    have h2 := List.sizeOf_lt_of_mem h
+    omega
+  -- Record
+  · simp_wf
+    rename_i h
+    let so := List.sizeOf_lt_of_mem h
+    have h2: sizeOf pair.snd < sizeOf pair := by {
+      cases pair with
+      | mk a b =>
+        simp; omega
+    }
+    omega
+  -- Call
+  · simp [*]
+    rename_i h
+    have h2 := List.sizeOf_lt_of_mem h
+    omega
 
-/-- Helper function to get all sub-expressions from a list of SLExpr. -/
-def all_sub_slexpr_list (exprs: List SLExpr) : List SLExpr :=
-  match exprs with
-  | [] => []
-  | e :: es => all_sub_slexpr e ++ all_sub_slexpr_list es
-
-/-- Helper function to get all sub-expressions from a list of (Attr × SLExpr). -/
-def all_sub_slexpr_attr_list (attrs: List (Attr × SLExpr)) : List SLExpr :=
-  match attrs with
-  | [] => []
-  | (_, e) :: rest => all_sub_slexpr e ++ all_sub_slexpr_attr_list rest
-end
 
 
 -- evaluate the SLExpr, gathing all entity ids required
