@@ -84,82 +84,106 @@ def defaultLit' (Γ : TypeEnv) (ty : TermType) : Term :=
   Decoder.defaultLit (defaultEidOf Γ) ty
 
 /--
+Generates an interpretation of the attribute map.
+-/
+def Entities.symbolizeAttrs?
+  (entities : Entities) (Γ : TypeEnv)
+  (ety : EntityType) (entry : EntitySchemaEntry)
+  (uuf : UUF) : Option UDF :=
+  if uuf.id == s!"attrs[{toString ety}]" then
+    let outTy := (.record entry.attrs)
+    .some {
+      arg := TermType.ofType (.entity ety),
+      out := TermType.ofType outTy,
+      -- Collect concrete attributes of every entity of type `ety`
+      table := Map.make (entities.toList.filterMap λ (euid, data) => do
+        if euid.ty = ety then
+          .some (↑euid, ← Value.symbolize? data.attrs outTy)
+        else
+          .none),
+      default := defaultLit' Γ (TermType.ofType outTy),
+    }
+  else
+    .none
+
+/--
+Generates interpretations for the tag key and value maps.
+-/
+def Entities.symbolizeTags?
+  (entities : Entities) (Γ : TypeEnv)
+  (ety : EntityType) (entry : EntitySchemaEntry)
+  (uuf : UUF) : Option UDF := do
+  let tagTy := ← entry.tags?
+  if uuf.id == s!"tagKeys[{toString ety}]" then
+    .some {
+      arg := TermType.ofType (.entity ety),
+      out := TermType.ofType (.set .string),
+      -- Collect concrete tag keys of every entity of type `ety`
+      table := Map.make (entities.toList.filterMap λ (euid, data) => do
+        if euid.ty = ety then
+          .some (↑euid, ← Value.symbolize?
+            (.set (Set.make (data.tags.keys.toList.map λ k => .prim (.string k))))
+            (.set .string))
+        else
+          .none),
+      default := defaultLit' Γ (TermType.ofType (.set .string)),
+    }
+  else if uuf.id == s!"tagVals[{toString ety}]" then
+    .some {
+      arg := TermType.tagFor ety,
+      out := TermType.ofType tagTy,
+      -- Collect concrete tag values of every entity of type `ety`
+      -- i.e. a map from (entity, tag key) to tag value
+      table := Map.make (entities.toList.filterMap λ (euid, data) => do
+        if euid.ty = ety then
+          data.tags.toList.mapM λ (tag, value) => do
+            .some (
+              .record (Map.mk [
+                ("entity", .prim (.entity euid)),
+                ("tag", .prim (.string tag)),
+              ]),
+              ← Value.symbolize? value tagTy,
+            )
+        else
+          .none).flatten,
+      default := defaultLit' Γ (TermType.ofType (.set .string)),
+    }
+  else
+    .none
+
+/--
+Generates an interpretation for the ancestor map.
+-/
+def Entities.symbolizeAncs?
+  (entities : Entities) (Γ : TypeEnv)
+  (ety : EntityType) (entry : EntitySchemaEntry)
+  (uuf : UUF) : Option UDF :=
+  entry.ancestors.toList.findSome? λ ancTy =>
+    if uuf.id == s!"ancs[{toString ety}, {toString ancTy}]" then
+      .some {
+        arg := TermType.ofType (.entity ety),
+        out := TermType.ofType (.set (.entity ancTy)),
+        table := Map.make (entities.toList.filterMap λ (euid, data) => do
+        if euid.ty = ety then
+          .some (↑euid, ← Value.symbolize?
+            (.set (Set.make (data.ancestors.toList.map λ anc => .prim (.entityUID anc))))
+            (.set (.entity ancTy)))
+        else
+          .none),
+        default := defaultLit' Γ (.set (.entity ancTy)),
+      }
+    else
+      .none
+
+/--
 Symbolizes a concrete `Entities` into (part of) an `Interpretation` of `SymEnv.ofEnv Γ`.
 The `UUF` ids here should match those in `SymEntityData.ofStandardEntityType`.
 -/
 def Entities.symbolize? (entities : Entities) (Γ : TypeEnv) (uuf : UUF) : Option UDF :=
-  Γ.ets.toList.findSome? λ (ety, entry) => do
-    if uuf.id == s!"attrs[{toString ety}]" then
-      let outTy := (CedarType.record entry.attrs)
-      .some {
-        arg := TermType.ofType (.entity ety),
-        out := TermType.ofType outTy,
-        -- Collect concrete attributes of every entity of type `ety`
-        table := Map.make (entities.toList.filterMap λ (euid, data) => do
-          if euid.ty = ety then
-            .some (↑euid, ← Value.symbolize? data.attrs outTy)
-          else
-            .none),
-        default := defaultLit' Γ (TermType.ofType outTy),
-      }
-    else if uuf.id == s!"tagKeys[{toString ety}]" then
-      if let .some _ := entry.tags? then
-        .some {
-          arg := TermType.ofType (.entity ety),
-          out := TermType.ofType (.set .string),
-          -- Collect concrete tag keys of every entity of type `ety`
-          table := Map.make (entities.toList.filterMap λ (euid, data) => do
-            if euid.ty = ety then
-              .some (↑euid, ← Value.symbolize?
-                (.set (Set.make (data.tags.keys.toList.map λ k => .prim (.string k))))
-                (.set .string))
-            else
-              .none),
-          default := defaultLit' Γ (TermType.ofType (.set .string)),
-        }
-      else
-        .none
-    else if uuf.id == s!"tagVals[{toString ety}]" then
-      if let .some tagTy := entry.tags? then
-        .some {
-          arg := TermType.tagFor ety,
-          out := TermType.ofType tagTy,
-          -- Collect concrete tag values of every entity of type `ety`
-          -- i.e. a map from (entity, tag key) to tag value
-          table := Map.make (entities.toList.filterMap λ (euid, data) => do
-            if euid.ty = ety then
-              data.tags.toList.mapM λ (tag, value) => do
-                .some (
-                  Term.record (Map.mk [
-                    ("entity", .prim (.entity euid)),
-                    ("tag", .prim (.string tag)),
-                  ]),
-                  ← Value.symbolize? value tagTy,
-                )
-            else
-              .none).flatten,
-          default := defaultLit' Γ (TermType.ofType (.set .string)),
-        }
-      else
-        .none
-    else
-      -- Check if it's an ancestor UUF
-      entry.ancestors.toList.findSome? λ ancTy =>
-        if uuf.id == s!"ancs[{toString ety}, {toString ancTy}]" then
-          .some {
-            arg := TermType.ofType (.entity ety),
-            out := TermType.ofType (.set (.entity ancTy)),
-            table := Map.make (entities.toList.filterMap λ (euid, data) => do
-            if euid.ty = ety then
-              .some (↑euid, ← Value.symbolize?
-                (.set (Set.make (data.ancestors.toList.map λ anc => .prim (.entityUID anc))))
-                (.set (.entity ancTy)))
-            else
-              .none),
-            default := defaultLit' Γ (.set (.entity ancTy)),
-          }
-        else
-          .none
+  Γ.ets.toList.findSome? λ (ety, entry) =>
+    entities.symbolizeAttrs? Γ ety entry uuf <|>
+    entities.symbolizeTags? Γ ety entry uuf <|>
+    entities.symbolizeAncs? Γ ety entry uuf
 
 /--
 Converts an `Env` (assumed to be a well-typed instance of `TypeEnv`) into
