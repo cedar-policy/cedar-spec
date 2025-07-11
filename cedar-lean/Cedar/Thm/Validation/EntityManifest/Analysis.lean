@@ -22,7 +22,7 @@ theorem straight_line_exists_non_erroring {e: Expr} {r: Request}
       (evaluate_sl se r s).toResult = .some res
    := by
    intro h_es
-   induction e with
+   cases e with
    | lit p =>
      exists .lit p, .ok p
      apply And.intro
@@ -53,13 +53,13 @@ theorem straight_line_exists_non_erroring {e: Expr} {r: Request}
        | prim p =>
           cases p with
           | bool b =>
-            intro
+            sorry
           | _ => sorry
        | _ => sorry
      | error e =>
        -- If the condition doesn't evaluate to a boolean, we have an error
        sorry
-   |
+   | _ => sorry
 
 
 
