@@ -170,77 +170,92 @@ instance : Coe Value (SLResult (Data.Set Value)) where
   coe v := v.asSet.toSLResult
 
 
-mutual
-  def to_straight_line_map_list (exprList: List (Attr × Expr)) : List (List SLExpr) :=
-    match exprList with
-    | [] => []
-    | [(_attr, ele)] => [(all_sl_exprs ele).toList]
-    | (_attr, ele) :: rest =>
-      (all_sl_exprs ele).toList :: (to_straight_line_map_list rest)
+/--
+Converts an expr to a set of straight line exprs,
+exploring all possibilities when an if statement is encountered.
+-/
+def all_sl_exprs (expr: Expr) : SLExprs :=
+  match expr with
+  | .ite cond then_expr else_expr =>
+    let cond_exprs := all_sl_exprs cond
+    let then_exprs := all_sl_exprs then_expr
+    let else_exprs := all_sl_exprs else_expr
 
-  def to_straight_line_list (exprList : List Expr) : List (List SLExpr) :=
-    match exprList with
-    | [] => []
-    | [x] => [(all_sl_exprs x).toList]
-    | ele :: rest =>
-      (all_sl_exprs ele).toList :: (to_straight_line_list rest)
-  /--
-  Converts an expr to a set of straight line exprs,
-  exploring all possibilities when an if statement is encountered.
-  -/
-  def all_sl_exprs (expr: Expr) : SLExprs :=
-    match expr with
-    | .ite cond then_expr else_expr =>
-      let cond_exprs := all_sl_exprs cond
-      let then_exprs := all_sl_exprs then_expr
-      let else_exprs := all_sl_exprs else_expr
+    let then_with_cond := List.productTR cond_exprs.toList then_exprs.toList
+    let else_with_cond := List.productTR cond_exprs.toList else_exprs.toList
 
-      let then_with_cond := List.productTR cond_exprs.toList then_exprs.toList
-      let else_with_cond := List.productTR cond_exprs.toList else_exprs.toList
+    let then_results := then_with_cond.map (fun pair => .assertTrue pair.1 pair.2)
+    let else_results := else_with_cond.map (fun pair => .assertFalse pair.1 pair.2)
 
-      let then_results := then_with_cond.map (fun pair => .assertTrue pair.1 pair.2)
-      let else_results := else_with_cond.map (fun pair => .assertFalse pair.1 pair.2)
+    .mk (then_results ++ else_results)
+  | .lit p =>
+    .mk [.lit p]
+  | .var v =>
+    .mk [.var v]
+  | .and a b =>
+    let product := List.productTR (all_sl_exprs a).toList (all_sl_exprs b).toList
+    .mk (product.map (fun pair => .and pair.1 pair.2))
+  | .or a b =>
+    let product := List.productTR (all_sl_exprs a).toList (all_sl_exprs b).toList
+    .mk (product.map (fun pair => .or pair.1 pair.2))
+  | .unaryApp op expr =>
+    let exprs := all_sl_exprs expr
+    .mk (exprs.toList.map (fun e => .unaryApp op e))
+  | .binaryApp op a b =>
+    let a_exprs := all_sl_exprs a
+    let b_exprs := all_sl_exprs b
+    let product := List.productTR a_exprs.toList b_exprs.toList
+    .mk (product.map (fun pair => .binaryApp op pair.1 pair.2))
+  | .getAttr expr attr =>
+    let exprs := all_sl_exprs expr
+    .mk (exprs.toList.map (fun e => .getAttr e attr))
+  | .hasAttr expr attr =>
+    let exprs := all_sl_exprs expr
+    .mk (exprs.toList.map (fun e => .hasAttr e attr))
+  | .set ls =>
+    let exprs_lists := ls.map (fun ele =>
+      Set.toList (all_sl_exprs ele))
+    let all_combinations := List.cartesianProduct exprs_lists
+    .mk (all_combinations.map (fun combo => .set combo))
+  | .record map =>
+    let expr_lists := map.map (fun pair => Set.toList (all_sl_exprs pair.2))
+    let attrs := map.map (fun pair => pair.1)
+    let all_combinations := List.cartesianProduct expr_lists
+    .mk (all_combinations.map (fun combo =>
+      .record (List.zipWith (fun attr expr => (attr, expr)) attrs combo)))
+  | .call xfn args =>
+    let args_exprs := args.map (fun e => (all_sl_exprs e).toList)
+    let all_combinations := List.cartesianProduct args_exprs
+    .mk (all_combinations.map (fun combo => .call xfn combo))
+termination_by sizeOf expr
+decreasing_by
+  repeat case _ =>
+    simp [*]; try omega
+    -- Set
+  · rename_i h
+    simp_wf
+    let so := @List.sizeOf_lt_of_mem Expr ele inferInstance ls
+    specialize so h
+    omega
+  -- Record
+  · simp_wf
+    rename_i h
+    let so := @List.sizeOf_lt_of_mem (Attr × Expr) pair inferInstance map
+    specialize so h
+    have h2: sizeOf pair.snd < sizeOf pair := by {
+      cases pair with
+      | mk a b =>
+        simp; omega
+    }
+    omega
+  -- Call
+  · simp [*]
+    have h := List.sizeOf_lt_of_mem hx
+    omega
 
-      .mk (then_results ++ else_results)
-    | .lit p =>
-      .mk [.lit p]
-    | .var v =>
-      .mk [.var v]
-    | .and a b =>
-      let product := List.productTR (all_sl_exprs a).toList (all_sl_exprs b).toList
-      .mk (product.map (fun pair => .and pair.1 pair.2))
-    | .or a b =>
-      let product := List.productTR (all_sl_exprs a).toList (all_sl_exprs b).toList
-      .mk (product.map (fun pair => .or pair.1 pair.2))
-    | .unaryApp op expr =>
-      let exprs := all_sl_exprs expr
-      .mk (exprs.toList.map (fun e => .unaryApp op e))
-    | .binaryApp op a b =>
-      let a_exprs := all_sl_exprs a
-      let b_exprs := all_sl_exprs b
-      let product := List.productTR a_exprs.toList b_exprs.toList
-      .mk (product.map (fun pair => .binaryApp op pair.1 pair.2))
-    | .getAttr expr attr =>
-      let exprs := all_sl_exprs expr
-      .mk (exprs.toList.map (fun e => .getAttr e attr))
-    | .hasAttr expr attr =>
-      let exprs := all_sl_exprs expr
-      .mk (exprs.toList.map (fun e => .hasAttr e attr))
-    | .set ls =>
-      let exprs_lists := to_straight_line_list ls
-      let all_combinations := List.cartesianProduct exprs_lists
-      .mk (all_combinations.map (fun combo => .set combo))
-    | .record map =>
-      let expr_lists := to_straight_line_map_list map
-      let attrs := map.map (fun pair => pair.1)
-      let all_combinations := List.cartesianProduct expr_lists
-      .mk (all_combinations.map (fun combo =>
-        .record (List.zipWith (fun attr expr => (attr, expr)) attrs combo)))
-    | .call xfn args =>
-      let args_exprs := args.map (fun e => (all_sl_exprs e).toList)
-      let all_combinations := List.cartesianProduct args_exprs
-      .mk (all_combinations.map (fun combo => .call xfn combo))
-end
+
+
+
 
 -- Like evaluate but returns None if any asserts failed
 def evaluate_sl(x : SLExpr) (req : Request) (es : Entities) : SLResult Value :=
