@@ -64,6 +64,9 @@ deriving instance Repr, Inhabited for SLExprs
 
 
 mutual
+/-- very similar to decExpr
+Can be removed when these derivations are automatic.
+-/
 def decSExpr (x y : SLExpr) : Decidable (x = y) := by
   cases x <;> cases y <;>
   try { apply isFalse ; intro h ; injection h }
@@ -131,6 +134,7 @@ inductive SLError where
 | assertError
 | interpError (e: Error)
 
+-- Like a Result but can also throw assert errors.
 abbrev SLResult (α) := Except SLError α
 
 def SLResult.as {α} (β) [Coe α (SLResult β)] : SLResult α → SLResult β
@@ -170,26 +174,26 @@ mutual
   def to_straight_line_map_list (exprList: List (Attr × Expr)) : List (List SLExpr) :=
     match exprList with
     | [] => []
-    | [(_attr, ele)] => [(to_straight_line_exprs ele).toList]
+    | [(_attr, ele)] => [(all_sl_exprs ele).toList]
     | (_attr, ele) :: rest =>
-      (to_straight_line_exprs ele).toList :: (to_straight_line_map_list rest)
+      (all_sl_exprs ele).toList :: (to_straight_line_map_list rest)
 
   def to_straight_line_list (exprList : List Expr) : List (List SLExpr) :=
     match exprList with
     | [] => []
-    | [x] => [(to_straight_line_exprs x).toList]
+    | [x] => [(all_sl_exprs x).toList]
     | ele :: rest =>
-      (to_straight_line_exprs ele).toList :: (to_straight_line_list rest)
+      (all_sl_exprs ele).toList :: (to_straight_line_list rest)
   /--
   Converts an expr to a set of straight line exprs,
   exploring all possibilities when an if statement is encountered.
   -/
-  def to_straight_line_exprs (expr: Expr) : SLExprs :=
+  def all_sl_exprs (expr: Expr) : SLExprs :=
     match expr with
     | .ite cond then_expr else_expr =>
-      let cond_exprs := to_straight_line_exprs cond
-      let then_exprs := to_straight_line_exprs then_expr
-      let else_exprs := to_straight_line_exprs else_expr
+      let cond_exprs := all_sl_exprs cond
+      let then_exprs := all_sl_exprs then_expr
+      let else_exprs := all_sl_exprs else_expr
 
       let then_with_cond := List.productTR cond_exprs.toList then_exprs.toList
       let else_with_cond := List.productTR cond_exprs.toList else_exprs.toList
@@ -203,24 +207,24 @@ mutual
     | .var v =>
       .mk [.var v]
     | .and a b =>
-      let product := List.productTR (to_straight_line_exprs a).toList (to_straight_line_exprs b).toList
+      let product := List.productTR (all_sl_exprs a).toList (all_sl_exprs b).toList
       .mk (product.map (fun pair => .and pair.1 pair.2))
     | .or a b =>
-      let product := List.productTR (to_straight_line_exprs a).toList (to_straight_line_exprs b).toList
+      let product := List.productTR (all_sl_exprs a).toList (all_sl_exprs b).toList
       .mk (product.map (fun pair => .or pair.1 pair.2))
     | .unaryApp op expr =>
-      let exprs := to_straight_line_exprs expr
+      let exprs := all_sl_exprs expr
       .mk (exprs.toList.map (fun e => .unaryApp op e))
     | .binaryApp op a b =>
-      let a_exprs := to_straight_line_exprs a
-      let b_exprs := to_straight_line_exprs b
+      let a_exprs := all_sl_exprs a
+      let b_exprs := all_sl_exprs b
       let product := List.productTR a_exprs.toList b_exprs.toList
       .mk (product.map (fun pair => .binaryApp op pair.1 pair.2))
     | .getAttr expr attr =>
-      let exprs := to_straight_line_exprs expr
+      let exprs := all_sl_exprs expr
       .mk (exprs.toList.map (fun e => .getAttr e attr))
     | .hasAttr expr attr =>
-      let exprs := to_straight_line_exprs expr
+      let exprs := all_sl_exprs expr
       .mk (exprs.toList.map (fun e => .hasAttr e attr))
     | .set ls =>
       let exprs_lists := to_straight_line_list ls
@@ -233,7 +237,7 @@ mutual
       .mk (all_combinations.map (fun combo =>
         .record (List.zipWith (fun attr expr => (attr, expr)) attrs combo)))
     | .call xfn args =>
-      let args_exprs := args.map (fun e => (to_straight_line_exprs e).toList)
+      let args_exprs := args.map (fun e => (all_sl_exprs e).toList)
       let all_combinations := List.cartesianProduct args_exprs
       .mk (all_combinations.map (fun combo => .call xfn combo))
 end
@@ -332,7 +336,7 @@ def get_all_entities_touched (expr: SLExpr) (store: Entities) (request: Request)
 
 -- A simple slicer given a set of straight line exprs
 -- Loads entire entities from one entity store to the other
-def simple_slice_entities_straight_line (exprs: SLExprs) (store: Entities) (request: Request) : Entities :=
+def simple_slice_sl (exprs: SLExprs) (store: Entities) (request: Request) : Entities :=
   let entities_needed := Data.Set.union_all (exprs.toList.map (fun expr => get_all_entities_touched expr store request))
   store.filter (fun uid _ => entities_needed.contains uid)
 
