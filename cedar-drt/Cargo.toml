@@ -22,6 +22,13 @@ smol_str = { version = "0.3", features = ["serde"] }
 [profile.release]
 overflow-checks = true
 
+[features]
+integration-testing = []
+
+[dev-dependencies]
+walkdir = "2.4"
+statrs = "0.18"
+
 [patch.crates-io]
 cedar-policy = { path = "../cedar/cedar-policy" }
 cedar-policy-core = { path = "../cedar/cedar-policy-core" }
