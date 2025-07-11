@@ -32,15 +32,8 @@ open Cedar.Validation
 
 theorem ofEnv_soundness
   {Γ : TypeEnv} {env : Env}
-  (hinst : InstanceOfWellFormedEnvironment env.request env.entities Γ) :
+  (hmem : InstanceOfWellFormedEnvironment env.request env.entities Γ) :
   env ∈ᵢ SymEnv.ofEnv Γ
-:= sorry
-
-theorem ofEnv_completeness
-  {Γ : TypeEnv} {env : Env}
-  (hwf : Γ.WellFormed)
-  (hinst : env ∈ᵢ SymEnv.ofEnv Γ) :
-  InstanceOfWellFormedEnvironment env.request env.entities Γ
 := sorry
 
 end Cedar.Thm
