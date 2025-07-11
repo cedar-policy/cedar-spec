@@ -16,8 +16,9 @@
 
 #![no_main]
 
-use cedar_drt::initialize_log;
+use cedar_drt::logger::initialize_log;
 use cedar_drt_inner::fuzz_target;
+
 use cedar_policy_core::ast::{AnyId, StaticPolicy, Template};
 use cedar_policy_core::parser::{self, parse_policy};
 use cedar_policy_formatter::token::{Comment, Token, WrappedToken};

@@ -15,11 +15,13 @@
  */
 
 #![no_main]
-use cedar_drt::*;
-use cedar_drt_inner::*;
-use cedar_policy_core::ast;
+use cedar_drt::{tests::run_level_val_test, CedarLeanEngine};
+use cedar_drt_inner::fuzz_target;
+
+use cedar_policy::{Policy, PolicySet, Schema, ValidationMode};
+
 use cedar_policy_generators::{
-    abac::ABACPolicy, hierarchy::HierarchyGenerator, schema::Schema, settings::ABACSettings,
+    abac::ABACPolicy, hierarchy::HierarchyGenerator, schema, settings::ABACSettings,
     size_hint_utils::size_hint_for_range,
 };
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
@@ -28,7 +30,7 @@ use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 #[derive(Debug, Clone)]
 pub struct FuzzTargetInput {
     /// generated schema
-    pub schema: Schema,
+    pub schema: schema::Schema,
     /// generated policy
     pub policy: ABACPolicy,
     /// Level to validate the policy at
@@ -51,7 +53,7 @@ const SETTINGS: ABACSettings = ABACSettings {
 
 impl<'a> Arbitrary<'a> for FuzzTargetInput {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        let schema: Schema = Schema::arbitrary(SETTINGS.clone(), u)?;
+        let schema: schema::Schema = schema::Schema::arbitrary(SETTINGS.clone(), u)?;
         let hierarchy = schema.arbitrary_hierarchy(u)?;
         let policy = schema.arbitrary_policy(&hierarchy, u)?;
         let level = u.int_in_range(0..=SETTINGS.max_depth + 1)?;
@@ -66,21 +68,21 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
         depth: usize,
     ) -> arbitrary::Result<(usize, Option<usize>), arbitrary::MaxRecursionReached> {
         Ok(arbitrary::size_hint::and_all(&[
-            Schema::arbitrary_size_hint(depth)?,
+            schema::Schema::arbitrary_size_hint(depth)?,
             HierarchyGenerator::size_hint(depth),
-            Schema::arbitrary_policy_size_hint(&SETTINGS, depth),
+            schema::Schema::arbitrary_policy_size_hint(&SETTINGS, depth),
             size_hint_for_range(0, SETTINGS.max_depth + 1),
         ]))
     }
 }
 
 fuzz_target!(|input: FuzzTargetInput| {
-    let def_impl = LeanDefinitionalEngine::new();
+    let def_impl = CedarLeanEngine::new();
 
-    if let Ok(schema) = ValidatorSchema::try_from(input.schema) {
-        let mut policyset = ast::PolicySet::new();
-        let policy: ast::StaticPolicy = input.policy.into();
-        policyset.add_static(policy).unwrap();
+    if let Ok(schema) = Schema::try_from(input.schema) {
+        let policy = Policy::from(input.policy);
+        let mut policyset = PolicySet::new();
+        policyset.add(policy).unwrap();
 
         run_level_val_test(
             &def_impl,

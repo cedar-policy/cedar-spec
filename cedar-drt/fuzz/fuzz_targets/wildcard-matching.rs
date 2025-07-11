@@ -17,6 +17,7 @@
 #![no_main]
 
 use cedar_drt_inner::fuzz_target;
+
 use cedar_policy_core::ast::{Pattern, PatternElem};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Result, Unstructured};
 use regex::{escape, Regex};

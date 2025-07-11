@@ -15,9 +15,15 @@
  */
 
 #![no_main]
-use cedar_drt::*;
-use cedar_drt_inner::*;
-use cedar_policy_core::{ast::Expr, entities::Entities};
+use cedar_drt::{
+    logger::initialize_log,
+    tests::{drop_some_entities, run_eval_test},
+    CedarLeanEngine,
+};
+use cedar_drt_inner::fuzz_target;
+
+use cedar_policy::Entities;
+use cedar_policy_core::ast::Expr;
 use cedar_policy_generators::abac::ABACRequest;
 use cedar_policy_generators::err::Error;
 use cedar_policy_generators::hierarchy::HierarchyGenerator;
@@ -73,23 +79,6 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
         let request = schema.arbitrary_request(&hierarchy, u)?;
         let all_entities = Entities::try_from(hierarchy).map_err(Error::EntitiesError)?;
         let entities = drop_some_entities(all_entities, u)?;
-        let validator_schema =
-            cedar_policy_core::validator::ValidatorSchema::try_from(schema.clone())
-                .map_err(|e| Error::SchemaError(e))?;
-        let actions = validator_schema
-            .action_entities()
-            .map_err(|e| Error::EntitiesError(format!("Error fetching action entities: {e}")))?;
-        let entities = entities
-            .add_entities(
-                actions.into_iter().map(|e| std::sync::Arc::new(e)),
-                None::<&cedar_policy_core::validator::CoreSchema>,
-                cedar_policy_core::entities::TCComputation::AssumeAlreadyComputed,
-                cedar_policy_core::extensions::Extensions::all_available(),
-            )
-            .map_err(|e| {
-                Error::EntitiesError(format!("Error adding action entities to entities: {e}"))
-            })?;
-
         Ok(Self {
             schema,
             entities,
@@ -120,15 +109,14 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 // Type-directed fuzzing of expression evaluation.
 fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
-    let def_impl = LeanDefinitionalEngine::new();
+    let def_impl = CedarLeanEngine::new();
     debug!("Schema: {}\n", input.schema.schemafile_string());
     debug!("expr: {}\n", input.expression);
-    debug!("Entities: {}\n", input.entities);
+    debug!("Entities: {}\n", input.entities.as_ref());
     run_eval_test(
         &def_impl,
-        input.request.into(),
-        &input.expression,
+        &input.request.into(),
+        &input.expression.into(),
         &input.entities,
-        SETTINGS.enable_extensions,
     )
 });

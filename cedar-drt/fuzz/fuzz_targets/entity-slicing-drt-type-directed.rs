@@ -15,18 +15,18 @@
  */
 
 #![no_main]
-use cedar_drt::initialize_log;
-use cedar_drt_inner::*;
-use cedar_policy_core::ast;
-use cedar_policy_core::authorizer::Authorizer;
-use cedar_policy_core::entities::Entities;
-use cedar_policy_core::validator::entity_manifest::{compute_entity_manifest, EntityManifestError};
-use cedar_policy_core::validator::ValidatorSchema;
+use cedar_drt::logger::initialize_log;
+use cedar_drt_inner::fuzz_target;
+
+use cedar_policy::{
+    compute_entity_manifest, Authorizer, Entities, EntityManifestError, Policy, PolicySet, Request,
+    Schema, Validator,
+};
+
 use cedar_policy_generators::{
     abac::{ABACPolicy, ABACRequest},
-    err::Error,
-    hierarchy::HierarchyGenerator,
-    schema::Schema,
+    hierarchy::{Hierarchy, HierarchyGenerator},
+    schema,
     settings::ABACSettings,
 };
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
@@ -38,9 +38,9 @@ use std::convert::TryFrom;
 #[derive(Debug, Clone)]
 struct FuzzTargetInput {
     /// generated schema
-    pub schema: Schema,
+    pub schema: schema::Schema,
     /// generated hierarchy
-    pub entities: Entities,
+    pub hierarchy: Hierarchy,
     /// the policy which we will see if it validates
     pub policy: ABACPolicy,
     /// the requests to try, if the policy validates.
@@ -64,7 +64,7 @@ const SETTINGS: ABACSettings = ABACSettings {
 
 impl<'a> Arbitrary<'a> for FuzzTargetInput {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        let schema: Schema = Schema::arbitrary(SETTINGS.clone(), u)?;
+        let schema: schema::Schema = schema::Schema::arbitrary(SETTINGS.clone(), u)?;
         let hierarchy = schema.arbitrary_hierarchy(u)?;
         let policy = schema.arbitrary_policy(&hierarchy, u)?;
         let requests = [
@@ -77,28 +77,9 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
             schema.arbitrary_request(&hierarchy, u)?,
             schema.arbitrary_request(&hierarchy, u)?,
         ];
-
-        let entities = Entities::try_from(hierarchy).map_err(|_| Error::NotEnoughData)?;
-        let validator_schema =
-            cedar_policy_core::validator::ValidatorSchema::try_from(schema.clone())
-                .map_err(|e| Error::SchemaError(e))?;
-        let actions = validator_schema
-            .action_entities()
-            .map_err(|e| Error::EntitiesError(format!("Error fetching action entities: {e}")))?;
-        let entities = entities
-            .add_entities(
-                actions.into_iter().map(|e| std::sync::Arc::new(e)),
-                None::<&cedar_policy_core::validator::CoreSchema>,
-                cedar_policy_core::entities::TCComputation::AssumeAlreadyComputed,
-                cedar_policy_core::extensions::Extensions::all_available(),
-            )
-            .map_err(|e| {
-                Error::EntitiesError(format!("Error adding action entities to entities: {e}"))
-            })?;
-
         Ok(Self {
             schema,
-            entities,
+            hierarchy,
             policy,
             requests,
         })
@@ -108,17 +89,17 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
         depth: usize,
     ) -> arbitrary::Result<(usize, Option<usize>), arbitrary::MaxRecursionReached> {
         Ok(arbitrary::size_hint::and_all(&[
-            Schema::arbitrary_size_hint(depth)?,
+            schema::Schema::arbitrary_size_hint(depth)?,
             HierarchyGenerator::size_hint(depth),
-            Schema::arbitrary_policy_size_hint(&SETTINGS, depth),
-            Schema::arbitrary_request_size_hint(depth),
-            Schema::arbitrary_request_size_hint(depth),
-            Schema::arbitrary_request_size_hint(depth),
-            Schema::arbitrary_request_size_hint(depth),
-            Schema::arbitrary_request_size_hint(depth),
-            Schema::arbitrary_request_size_hint(depth),
-            Schema::arbitrary_request_size_hint(depth),
-            Schema::arbitrary_request_size_hint(depth),
+            schema::Schema::arbitrary_policy_size_hint(&SETTINGS, depth),
+            schema::Schema::arbitrary_request_size_hint(depth),
+            schema::Schema::arbitrary_request_size_hint(depth),
+            schema::Schema::arbitrary_request_size_hint(depth),
+            schema::Schema::arbitrary_request_size_hint(depth),
+            schema::Schema::arbitrary_request_size_hint(depth),
+            schema::Schema::arbitrary_request_size_hint(depth),
+            schema::Schema::arbitrary_request_size_hint(depth),
+            schema::Schema::arbitrary_request_size_hint(depth),
         ]))
     }
 }
@@ -126,39 +107,42 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 // The main fuzz target. This is for PBT on the validator
 fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
-    if let Ok(schema) = ValidatorSchema::try_from(input.schema) {
+    if let Ok(schema) = Schema::try_from(input.schema) {
         debug!("Schema: {:?}", schema);
-        let entities = input.entities;
-        let mut policyset = ast::PolicySet::new();
-        let policy: ast::StaticPolicy = input.policy.into();
-        policyset.add_static(policy.clone()).unwrap();
-        let manifest = match compute_entity_manifest(&Validator::new(schema), &policyset) {
-            Ok(manifest) => manifest,
-            Err(
-                EntityManifestError::UnsupportedCedarFeature(_)
-                | EntityManifestError::Validation(_),
-            ) => {
-                return;
-            }
-            Err(e) => panic!("failed to produce an entity manifest: {e}"),
-        };
+        if let Ok(entities) = Entities::try_from(input.hierarchy.clone()) {
+            let mut policyset = PolicySet::new();
+            let policy: Policy = input.policy.into();
+            policyset.add(policy.clone()).unwrap();
+            let manifest = match compute_entity_manifest(&Validator::new(schema), &policyset) {
+                Ok(manifest) => manifest,
+                Err(
+                    EntityManifestError::UnsupportedCedarFeature(_)
+                    | EntityManifestError::Validation(_),
+                ) => {
+                    return;
+                }
+                Err(e) => panic!("failed to produce an entity manifest: {e}"),
+            };
 
-        let authorizer = Authorizer::new();
-        debug!("Policies: {policyset}");
-        debug!("Entities: {entities}");
-        for abac_request in input.requests.into_iter() {
-            let request = ast::Request::from(abac_request);
-            debug!("Request: {request}");
-            let entity_slice = manifest
-                .slice_entities(&entities, &request)
-                .expect("failed to slice entities");
-            debug!("Entity slice: {entity_slice}");
-            let ans_original = authorizer.is_authorized(request.clone(), &policyset, &entities);
-            let ans_slice = authorizer.is_authorized(request, &policyset, &entity_slice);
-            assert_eq!(
-                ans_original.decision, ans_slice.decision,
-                "Authorization decision differed with and without entity slicing!"
-            );
+            let authorizer = Authorizer::new();
+            debug!("Policies: {policyset}");
+            debug!("Entities: {}", entities.as_ref());
+            for abac_request in input.requests.into_iter() {
+                let request = Request::from(abac_request);
+                debug!("Request: {request}");
+                let entity_slice: Entities = manifest
+                    .slice_entities(entities.as_ref(), request.as_ref())
+                    .expect("failed to slice entities")
+                    .into();
+                debug!("Entity slice: {}", entity_slice.as_ref());
+                let ans_original = authorizer.is_authorized(&request, &policyset, &entities);
+                let ans_slice = authorizer.is_authorized(&request, &policyset, &entity_slice);
+                assert_eq!(
+                    ans_original.decision(),
+                    ans_slice.decision(),
+                    "Authorization decision differed with and without entity slicing!"
+                );
+            }
         }
     }
 });

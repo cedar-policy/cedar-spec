@@ -157,13 +157,13 @@ impl proto::EvaluationRequestChecked {
         expr: &Expression,
         entities: &Entities,
         request: &Request,
-        expected: &Expression,
+        expected: Option<&Expression>,
     ) -> Self {
         Self {
             expr: Some(cedar_policy::proto::models::Expr::from(expr)),
             request: Some(cedar_policy::proto::models::Request::from(request)),
             entities: Some(cedar_policy::proto::models::Entities::from(entities)),
-            expected: Some(cedar_policy::proto::models::Expr::from(expected)),
+            expected: expected.map(cedar_policy::proto::models::Expr::from),
         }
     }
 }
@@ -549,8 +549,12 @@ mod test {
                 .expect("Failed to decode protobuf unchecked Evaluation Request");
         assert_eq!(eval_unchecked_proto, eval_unchecked_pre_proto);
 
-        let eval_checked_pre_proto =
-            proto::EvaluationRequestChecked::new_checked(&expr, &entities, &request, &expected);
+        let eval_checked_pre_proto = proto::EvaluationRequestChecked::new_checked(
+            &expr,
+            &entities,
+            &request,
+            Some(&expected),
+        );
         let eval_checked_bytes = eval_checked_pre_proto.encode_to_vec();
         let eval_checked_proto = proto::EvaluationRequestChecked::decode(&eval_checked_bytes[..])
             .expect("Failed to decode protobuf checked Evaluation Request");
