@@ -64,60 +64,118 @@ decreasing_by
     omega
   }
 
-def Request.symbolize? (req : Request) (Γ : TypeEnv) : Option SymRequest := do
-  .some {
-    principal := ← Value.symbolize? ↑req.principal (.entity Γ.reqty.principal),
-    action := ← Value.symbolize? ↑req.action (.entity Γ.reqty.action.ty),
-    resource := ← Value.symbolize? ↑req.resource (.entity Γ.reqty.resource),
-    context := ← Value.symbolize? ↑req.context (.record Γ.reqty.context),
-  }
+/--
+The variable ids here should match the variables in `SymRequest.ofRequestType`.
+-/
+def Request.symbolize? (req : Request) (Γ : TypeEnv) (var : TermVar) : Option Term :=
+  match var.id with
+  | "principal" => Value.symbolize? ↑req.principal (.entity Γ.reqty.principal)
+  | "action" => Value.symbolize? ↑req.action (.entity Γ.reqty.action.ty)
+  | "resource" => Value.symbolize? ↑req.resource (.entity Γ.reqty.resource)
+  | "context" => Value.symbolize? ↑req.context (.record Γ.reqty.context)
+  | _ => .none
 
-def Entities.symbolize? (entities : Entities) (Γ : TypeEnv) : Option SymEntities := do
-  let etys := (Γ.ets.toList.map Prod.fst ++
-              Γ.acts.toList.map λ entry => entry.1.ty).eraseDups
-  let data := ← etys.mapM₁ λ ⟨ety, _⟩ => do .some (ety, ← symbolizeForEntityType? ety)
-  .some (Map.make data)
-where
-  eidOf ety :=
-    match Γ.ets.find? ety with
-    | .some (.enum (.mk (eid :: _))) => eid
-    | _ => ""
-  attrRecordType ety :=
-    match Γ.ets.find? ety with
-    | .some data => data.attrs
-    | .none => Map.empty
-  members ety :=
-    match Γ.ets.find? ety with
-    | .some (.enum s) => .some s
-    | _ => .none
-  symbolizeForEntityType? ety := do
-    .some {
-      attrs := ← attrsUDF ety,
-      ancestors := ← ancsUDF ety,
-      members := members ety,
-      tags := sorry,
-    }
-  attrsUDF ety :=
-    let outTy := (.record (attrRecordType ety))
-    .some (.udf {
-      arg := TermType.ofType (.entity ety),
-      out := TermType.ofType outTy,
-      table := Map.make (entities.toList.filterMap λ (euid, data) => do
-        if euid.ty = ety then
-          .some (↑euid, ← Value.symbolize? data.attrs outTy)
-        else
-          .none),
-      default := Decoder.defaultLit eidOf (TermType.ofType outTy),
-    })
-  ancsUDF ety := sorry
+def defaultEidOf (Γ : TypeEnv) (ety : EntityType) : String :=
+  match Γ.ets.find? ety with
+  | .some (.enum (.mk (eid :: _))) => eid
+  | _ => ""
+
+def defaultLit' (Γ : TypeEnv) (ty : TermType) : Term :=
+  Decoder.defaultLit (defaultEidOf Γ) ty
 
 /--
-Converts an `Env` (assumed to be a well-typed instance of `TypeEnv`) into a `SymEnv`.
+Symbolizes a concrete `Entities` into (part of) an `Interpretation` of `SymEnv.ofEnv Γ`.
+The `UUF` ids here should match those in `SymEntityData.ofStandardEntityType`.
 -/
-def Env.symbolize? (env : Env) (Γ : TypeEnv) : Option SymEnv := do
-  .some {
-    request := ← env.request.symbolize? Γ,
-    entities := ← env.entities.symbolize? Γ,
+def Entities.symbolize? (entities : Entities) (Γ : TypeEnv) (uuf : UUF) : Option UDF :=
+  Γ.ets.toList.findSome? λ (ety, entry) => do
+    if uuf.id == s!"attrs[{toString ety}]" then
+      let outTy := (CedarType.record entry.attrs)
+      .some {
+        arg := TermType.ofType (.entity ety),
+        out := TermType.ofType outTy,
+        -- Collect concrete attributes of every entity of type `ety`
+        table := Map.make (entities.toList.filterMap λ (euid, data) => do
+          if euid.ty = ety then
+            .some (↑euid, ← Value.symbolize? data.attrs outTy)
+          else
+            .none),
+        default := defaultLit' Γ (TermType.ofType outTy),
+      }
+    else if uuf.id == s!"tagKeys[{toString ety}]" then
+      if let .some _ := entry.tags? then
+        .some {
+          arg := TermType.ofType (.entity ety),
+          out := TermType.ofType (.set .string),
+          -- Collect concrete tag keys of every entity of type `ety`
+          table := Map.make (entities.toList.filterMap λ (euid, data) => do
+            if euid.ty = ety then
+              .some (↑euid, ← Value.symbolize?
+                (.set (Set.make (data.tags.keys.toList.map λ k => .prim (.string k))))
+                (.set .string))
+            else
+              .none),
+          default := defaultLit' Γ (TermType.ofType (.set .string)),
+        }
+      else
+        .none
+    else if uuf.id == s!"tagVals[{toString ety}]" then
+      if let .some tagTy := entry.tags? then
+        .some {
+          arg := TermType.tagFor ety,
+          out := TermType.ofType tagTy,
+          -- Collect concrete tag values of every entity of type `ety`
+          -- i.e. a map from (entity, tag key) to tag value
+          table := Map.make (entities.toList.filterMap λ (euid, data) => do
+            if euid.ty = ety then
+              data.tags.toList.mapM λ (tag, value) => do
+                .some (
+                  Term.record (Map.mk [
+                    ("entity", .prim (.entity euid)),
+                    ("tag", .prim (.string tag)),
+                  ]),
+                  ← Value.symbolize? value tagTy,
+                )
+            else
+              .none).flatten,
+          default := defaultLit' Γ (TermType.ofType (.set .string)),
+        }
+      else
+        .none
+    else
+      -- Check if it's an ancestor UUF
+      entry.ancestors.toList.findSome? λ ancTy =>
+        if uuf.id == s!"ancs[{toString ety}, {toString ancTy}]" then
+          .some {
+            arg := TermType.ofType (.entity ety),
+            out := TermType.ofType (.set (.entity ancTy)),
+            table := Map.make (entities.toList.filterMap λ (euid, data) => do
+            if euid.ty = ety then
+              .some (↑euid, ← Value.symbolize?
+                (.set (Set.make (data.ancestors.toList.map λ anc => .prim (.entityUID anc))))
+                (.set (.entity ancTy)))
+            else
+              .none),
+            default := defaultLit' Γ (.set (.entity ancTy)),
+          }
+        else
+          .none
+
+/--
+Converts an `Env` (assumed to be a well-typed instance of `TypeEnv`) into
+an `Interpretation` of `SymEnv.ofEnv Γ`.
+-/
+def Env.symbolize? (env : Env) (Γ : TypeEnv) : Interpretation :=
+  {
+    vars := λ var =>
+      match Request.symbolize? env.request Γ var with
+      | .some term => term
+      | .none => defaultLit' Γ var.ty,
+    funs := λ uuf =>
+      match Entities.symbolize? env.entities Γ uuf with
+      | .some udf => udf
+      | .none => Decoder.defaultUDF (defaultEidOf Γ) uuf,
+    partials := λ t => defaultLit' Γ t.typeOf,
   }
 
 end Cedar.Spec
