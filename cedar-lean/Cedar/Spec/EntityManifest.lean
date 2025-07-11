@@ -359,7 +359,7 @@ def get_all_entities_touched (expr: SLExpr) (store: Entities) (request: Request)
 -- A simple slicer given a set of straight line exprs
 -- Loads entire entities from one entity store to the other
 def simple_slice_sl (exprs: SLExprs) (store: Entities) (request: Request) : Entities :=
-  let entities_needed := Data.Set.union_all (exprs.toList.map (fun expr => get_all_entities_touched expr store request))
+  let entities_needed := (exprs.toList.mapUnion (fun expr => get_all_entities_touched expr store request))
   store.filter (fun uid _ => entities_needed.contains uid)
 
 
