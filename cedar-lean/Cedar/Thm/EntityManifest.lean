@@ -7,7 +7,7 @@ open Cedar.Spec
 
 -- Define a local tactic for simplifying straight line expressions
 local macro "simp_slexpr_once" : tactic =>
-  `(tactic| (try (simp [to_straight_line_exprs, Data.Set.contains, Data.Set.elts, evaluate_sl, SLResult.toResult])))
+  `(tactic| (try (simp [all_sl_exprs, Data.Set.contains, Data.Set.elts, evaluate_sl, SLResult.toResult])))
 
 local macro "simp_slexpr" : tactic =>
   `(tactic| (simp_slexpr_once; simp_slexpr_once; simp_slexpr_once))
@@ -16,7 +16,7 @@ local macro "simp_slexpr" : tactic =>
 -- which does not have an assertion error
 theorem straight_line_exists_non_erroring {e: Expr} {r: Request}
   {es : SLExprs } {s: Entities}
-  : es = (to_straight_line_exprs e) ->
+  : es = (all_sl_exprs e) ->
     ∃ se, ∃ res,
     (es.contains se = true) ∧
       (evaluate_sl se r s).toResult = .some res
@@ -70,7 +70,7 @@ theorem straight_line_slicing_sound_for_straight {se : SLExpr} {s : Entities} {r
   {ses : SLExprs}
   {sliced : Entities}
   : ses.contains se ->
-  sliced =  (simple_slice_entities_straight_line ses s r) -> evaluate_sl se r s =
+  sliced =  (simple_slice_sl ses s r) -> evaluate_sl se r s =
   evaluate_sl se r sliced
 :=
   sorry
@@ -82,7 +82,7 @@ theorem straight_line_slicing_sound_for_straight {se : SLExpr} {s : Entities} {r
 -- unless they error
 theorem straight_line_same_semantics {e: Expr} {r: Request}
   {es : SLExprs } {se : SLExpr} {s: Entities} {v: Result Value}
-  : es = (to_straight_line_exprs e) ->
+  : es = (all_sl_exprs e) ->
     (es.contains se = true) ->
       ((evaluate_sl se r s).toResult = .some v) -> -- only when not erroring
         (evaluate e r s = v)
@@ -98,8 +98,8 @@ theorem straight_line_same_semantics {e: Expr} {r: Request}
 theorem straight_line_slicing_sound {e : Expr} {s : Entities} {r : Request}
   {es : SLExprs}
   {sliced : Entities}
-  : es = (to_straight_line_exprs e) ->
-  sliced =  (simple_slice_entities_straight_line es s r) -> evaluate e r s =
+  : es = (all_sl_exprs e) ->
+  sliced =  (simple_slice_sl es s r) -> evaluate e r s =
   evaluate e r sliced
 := by
   intros h_es h_sliced
