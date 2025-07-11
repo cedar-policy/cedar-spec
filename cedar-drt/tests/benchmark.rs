@@ -21,20 +21,12 @@
 
 mod integration_tests;
 
-use cedar_policy::{Entities, PolicySet, Request, Schema, ValidationMode};
 use cedar_drt::CedarLeanEngine;
-use cedar_testing::cedar_test_impl::{
-    CedarTestImplementation,
-    time_function,
-    RustEngine
-};
+use cedar_policy::{Entities, PolicySet, Request, Schema, ValidationMode};
+use cedar_testing::cedar_test_impl::{time_function, CedarTestImplementation, RustEngine};
 use cedar_testing::integration_testing::{
-    JsonTest,
-    resolve_integration_test_path,
-    parse_policies_from_test,
-    parse_schema_from_test,
-    parse_entities_from_test,
-    parse_request_from_test
+    parse_entities_from_test, parse_policies_from_test, parse_request_from_test,
+    parse_schema_from_test, resolve_integration_test_path, JsonTest,
 };
 use integration_tests::get_corpus_tests;
 use statrs::statistics::{Data, OrderStatistics};
