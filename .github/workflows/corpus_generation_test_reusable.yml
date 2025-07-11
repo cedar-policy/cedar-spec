@@ -46,7 +46,7 @@ jobs:
               wget https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh
               bash elan-init.sh -y
       - name: Install protoc
-        run: sudo apt-get install protobuf-compiler
+        run: sudo apt-get update && sudo apt-get install protobuf-compiler
       - name: Prepare Rust build
         run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
       - name: Install cargo-fuzz
@@ -91,7 +91,7 @@ jobs:
               wget https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh
               bash elan-init.sh -y
       - name: Install protoc
-        run: sudo apt-get install protobuf-compiler
+        run: sudo apt-get update && sudo apt-get install protobuf-compiler
       - name: Prepare Rust build
         run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
       - name: Install cargo-fuzz

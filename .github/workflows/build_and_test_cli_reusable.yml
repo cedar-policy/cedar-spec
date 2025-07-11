@@ -47,7 +47,7 @@ jobs:
               wget https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh
               bash elan-init.sh -y
       - name: Install protoc
-        run: sudo apt-get install protobuf-compiler
+        run: sudo apt-get update && sudo apt-get install protobuf-compiler
       - name: Install cvc5
         shell: bash
         run: |
