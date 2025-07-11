@@ -127,6 +127,44 @@ end
 instance : DecidableEq SLExpr := decSExpr
 
 
+inductive SLError where
+| assertError
+| interpError (e: Error)
+
+abbrev SLResult (α) := Except SLError α
+
+def SLResult.as {α} (β) [Coe α (SLResult β)] : SLResult α → SLResult β
+  | .ok v    => v
+  | .error e => .error e
+
+def Result.toSLResult (β) (r: (Result β)) : (SLResult β) :=
+match r with
+| .ok v    => .ok v
+| .error e => .error (.interpError e)
+
+def SLResult.toResult (β) (r: (SLResult β)) : Option (Result β) :=
+match r with
+| .ok v    => .some (.ok v)
+| .error .assertError => .none
+| .error (.interpError e) => .some (.error e)
+
+deriving instance Repr, DecidableEq, Inhabited for SLError
+
+instance : Coe Value (SLResult Bool) where
+  coe v := v.asBool.toSLResult
+
+instance : Coe Value (SLResult Int64) where
+  coe v := v.asInt.toSLResult
+
+instance : Coe Value (SLResult String) where
+  coe v := v.asString.toSLResult
+
+instance : Coe Value (SLResult EntityUID) where
+  coe v := v.asEntityUID.toSLResult
+
+instance : Coe Value (SLResult (Data.Set Value)) where
+  coe v := v.asSet.toSLResult
+
 
 mutual
   def to_straight_line_map_list (exprList: List (Attr × Expr)) : List (List SLExpr) :=
@@ -200,46 +238,6 @@ mutual
       .mk (all_combinations.map (fun combo => .call xfn combo))
 end
 
-
--- A simple slicer given a set of straight line exprs
--- Loads entire entities from one entity store to the other
-def simple_slice_entities_straight_line (_exprs: SLExprs) (store: Entities) : Entities :=
-  store
-
-inductive SLError where
-| assertError
-| interpError (e: Error)
-
-abbrev SLResult (α) := Except SLError α
-
-def SLResult.as {α} (β) [Coe α (SLResult β)] : SLResult α → SLResult β
-  | .ok v    => v
-  | .error e => .error e
-
-def Result.toSLResult (β) (r: (Result β)) : (SLResult β) :=
-match r with
-| .ok v    => .ok v
-| .error e => .error (.interpError e)
-
-deriving instance Repr, DecidableEq, Inhabited for SLError
-
-instance : Coe Value (SLResult Bool) where
-  coe v := v.asBool.toSLResult
-
-instance : Coe Value (SLResult Int64) where
-  coe v := v.asInt.toSLResult
-
-instance : Coe Value (SLResult String) where
-  coe v := v.asString.toSLResult
-
-instance : Coe Value (SLResult EntityUID) where
-  coe v := v.asEntityUID.toSLResult
-
-instance : Coe Value (SLResult (Data.Set Value)) where
-  coe v := v.asSet.toSLResult
-
-
-
 -- Like evaluate but returns None if any asserts failed
 def evaluate_sl(x : SLExpr) (req : Request) (es : Entities) : SLResult Value :=
   match x with
@@ -283,6 +281,61 @@ def evaluate_sl(x : SLExpr) (req : Request) (es : Entities) : SLResult Value :=
   | .call xfn xs     => do
     let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => evaluate_sl x₁ req es)
     (call xfn vs).toSLResult
+
+
+
+-- gets all subexpressions, including expr
+mutual
+/-- Returns a list of all sub-expressions of the given SLExpr, including the expression itself. -/
+def all_sub_slexpr (expr: SLExpr) : List SLExpr :=
+  match expr with
+  | .lit _ | .var _ => [expr]
+  | .assertTrue cond ret => expr :: (all_sub_slexpr cond ++ all_sub_slexpr ret)
+  | .assertFalse cond ret => expr :: (all_sub_slexpr cond ++ all_sub_slexpr ret)
+  | .and a b => expr :: (all_sub_slexpr a ++ all_sub_slexpr b)
+  | .or a b => expr :: (all_sub_slexpr a ++ all_sub_slexpr b)
+  | .unaryApp _ e => expr :: all_sub_slexpr e
+  | .binaryApp _ a b => expr :: (all_sub_slexpr a ++ all_sub_slexpr b)
+  | .getAttr e _ => expr :: all_sub_slexpr e
+  | .hasAttr e _ => expr :: all_sub_slexpr e
+  | .set ls => expr :: all_sub_slexpr_list ls
+  | .record map => expr :: all_sub_slexpr_attr_list map
+  | .call _ args => expr :: all_sub_slexpr_list args
+
+/-- Helper function to get all sub-expressions from a list of SLExpr. -/
+def all_sub_slexpr_list (exprs: List SLExpr) : List SLExpr :=
+  match exprs with
+  | [] => []
+  | e :: es => all_sub_slexpr e ++ all_sub_slexpr_list es
+
+/-- Helper function to get all sub-expressions from a list of (Attr × SLExpr). -/
+def all_sub_slexpr_attr_list (attrs: List (Attr × SLExpr)) : List SLExpr :=
+  match attrs with
+  | [] => []
+  | (_, e) :: rest => all_sub_slexpr e ++ all_sub_slexpr_attr_list rest
+end
+
+
+-- evaluate the SLExpr, gathing all entity ids required
+-- evaluates each subexpression
+def get_all_entities_touched (expr: SLExpr) (store: Entities) (request: Request) : Set EntityUID :=
+  let subexprs := all_sub_slexpr expr
+  let eval_results := subexprs.map (fun expr => evaluate_sl expr request store)
+
+  -- Extract entity UIDs from successful evaluations
+  let entity_uids := eval_results.filterMap (fun result =>
+    match result with
+    | .ok (.prim (.entityUID uid)) => some uid
+    | _ => none)
+  Set.mk entity_uids
+
+
+-- A simple slicer given a set of straight line exprs
+-- Loads entire entities from one entity store to the other
+def simple_slice_entities_straight_line (exprs: SLExprs) (store: Entities) (request: Request) : Entities :=
+  let entities_needed := Data.Set.union_all (exprs.toList.map (fun expr => get_all_entities_touched expr store request))
+  store.filter (fun uid _ => entities_needed.contains uid)
+
 
 
 end Cedar.Spec

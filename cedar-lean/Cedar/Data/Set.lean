@@ -78,6 +78,13 @@ def intersect {α} [DecidableEq α] (s₁ s₂ : Set α) : Set α :=
 def union {α} [LT α] [DecidableLT α] (s₁ s₂ : Set α) : Set α :=
   make (s₁.elts ++ s₂.elts)           -- enforce well-formedness
 
+/-- Union of all sets in a list -/
+def union_all {α} [LT α] [DecidableLT α] (sets : List (Set α)) : Set α :=
+  match sets with
+  | [] => empty
+  | s :: ss => s.union (union_all ss)
+
+
 instance [LT α] [DecidableLT α] : HAppend (Set α) (Set α) (Set α) where
   hAppend := Set.union
 
