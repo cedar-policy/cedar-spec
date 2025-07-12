@@ -44,26 +44,30 @@ def Value.symbolize? (v : Value) (ty : CedarType) : Option Term :=
     let elems := ← s.toList.mapM₁ (λ ⟨v, _⟩ => v.symbolize? ty)
     .some (.set (Set.make elems) (TermType.ofType ty))
   | .record rec, .record rty => do
-    let elems := ← rec.toList.mapM₂ λ x => do
-      match ← rty.find? x.val.fst with
-      | .optional ty => .some (x.val.fst, .some (← x.val.snd.symbolize? ty))
-      | .required ty => .some (x.val.fst, ← x.val.snd.symbolize? ty)
+    let elems := ← rec.toList.mapM₂ (λ x => symbolizeAttr? rec rty x.val)
     .some (Term.record (Map.mk elems))
   | .ext e, _ => .some ↑e
   | _, _ => .none
 termination_by sizeOf v
 decreasing_by
-  · rename_i h
+  · cases s
+    rename_i h
     have h := List.sizeOf_lt_of_mem h
-    cases s
     simp [Set.toList, Set.elts] at h
     simp [h]
     omega
-  any_goals
+  · simp
     have h := x.property
     cases rec
     simp [Map.toList, Map.kvs] at h
-    simp [h]
+    simp
+    omega
+where
+  symbolizeAttr? rec rty (x : Attr × Value) : Option (Attr × Term) := do
+    let qty := ← rty.find? x.fst
+    .some (x.fst, .some (← x.snd.symbolize? qty.getType))
+  termination_by 1 + sizeOf x.snd
+  decreasing_by
     omega
 
 /--

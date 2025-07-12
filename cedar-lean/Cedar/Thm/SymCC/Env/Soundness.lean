@@ -164,7 +164,31 @@ theorem value?_symbolize?_id
         simp [hval_sym_elem]
       simp only [this] at hmem_val_sym_elem
       exact (Set.make_mem _ _).mp hmem_val_sym_elem
-  | _ => sorry
+  | instance_of_record rec rty hrec_mem_implies_rty_mem hwt_rec hrec_required =>
+    cases hwf_ty with | record_wf hwf_rty_map hwf_rty =>
+    cases hwf_v with | record_wf hwf_rec hwf_rec_map =>
+    unfold Value.symbolize?
+    simp only [Option.bind_eq_bind]
+    simp only [List.mapM₂_eq_mapM _ _]
+
+    have :
+      ∃ sym_attrs,
+        List.mapM (Value.symbolize?.symbolizeAttr? rec rty) rec.toList
+        = .some sym_attrs
+    := by
+      sorry
+
+    -- generalize (Value.symbolize?.symbolizeAttr? rec rty) = xxx
+    -- have f (x : { x: Attr × Value // sizeOf x.snd < 1 + sizeOf rec.toList }) :=
+    --   (Map.find? rty x.val.fst).bind fun __do_lift =>
+    --     match __do_lift with
+    --     | Qualified.optional ty =>
+    --       (x.val.snd.symbolize? ty).bind fun __do_lift => Option.some (x.val.fst, Term.some __do_lift)
+    --     | Qualified.required ty =>
+    --       (x.val.snd.symbolize? ty).bind fun __do_lift => Option.some (x.val.fst, __do_lift)
+
+    -- rw [h]
+    sorry
 
 -- /--
 -- `Value.symbolize?` is a partial inverse of `Term.value?`.
