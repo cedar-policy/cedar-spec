@@ -115,6 +115,12 @@ theorem filter_equiv (f : α → Bool) (xs ys : List α) :
   exact And.intro (h₁ h₃.left) h₃.right
   exact And.intro (h₂ h₃.left) h₃.right
 
+
+theorem map_ele_implies_result_ele {f : α → β} { l : List α} :
+  e ∈ l → (f e) ∈ l.map f
+:= by
+  sorry
+
 theorem map_equiv (f : α → β) (xs ys : List α) :
   xs ≡ ys → xs.map f ≡ ys.map f
 := by

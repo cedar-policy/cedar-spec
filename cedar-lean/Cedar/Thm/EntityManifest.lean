@@ -1,41 +1,43 @@
 
 import Cedar.Spec
 
+import Cedar.Thm.Data
+
 namespace Cedar.Thm
 
-open Cedar.Spec
+open Data Spec
 
 -- Define a local tactic for simplifying straight line expressions
 local macro "simp_slexpr_once" : tactic =>
-  `(tactic| (try (simp [all_sl_exprs, Data.Set.contains, Data.Set.elts, evaluate_sl, SLResult.toResult])))
+  `(tactic| (try (simp [all_sl_exprs, Data.Set.contains, Data.Set.elts, evaluate_sl, SLResult.toResult] at *)))
 
 local macro "simp_slexpr" : tactic =>
   `(tactic| (simp_slexpr_once; simp_slexpr_once; simp_slexpr_once))
 
 -- after straight line analysis, there exists a SLExpr
 -- which does not have an assertion error
-theorem straight_line_exists_non_erroring {e: Expr} {r: Request}
-  {es : SLExprs } {s: Entities}
-  : es = (all_sl_exprs e) ->
+theorem sl_exists_non_erroring (e: Expr) (s: Entities) (r: Request)
+  : let es := all_sl_exprs e
     ∃ se, ∃ res,
-    (es.contains se = true) ∧
+    es.contains se ∧
       (evaluate_sl se r s).toResult = .some res
    := by
-   intro h_es
    cases e with
    | lit p =>
+     intro h_es
      exists .lit p, .ok p
+     subst h_es
      apply And.intro
-     rw [h_es]
      simp_slexpr
    | var v =>
+     intro h_es
      exists .var v, .ok (match v with
        | .principal => r.principal
        | .action => r.action
        | .resource => r.resource
        | .context => r.context)
+     subst h_es
      apply And.intro
-     rw [h_es]
      simp_slexpr
      simp_slexpr
      cases v with
@@ -59,6 +61,44 @@ theorem straight_line_exists_non_erroring {e: Expr} {r: Request}
      | error e =>
        -- If the condition doesn't evaluate to a boolean, we have an error
        sorry
+   | unaryApp op child =>
+     intro res
+     have ih := sl_exists_non_erroring child s r
+     simp at ih
+     obtain ⟨child_res, ih⟩ := ih
+     obtain ⟨ih1, ih2⟩ := ih
+     obtain ⟨child_v, ih2⟩ := ih2
+     let new_sl := SLExpr.unaryApp op child_res
+     exists new_sl
+     subst res
+     unfold all_sl_exprs
+     simp [*]
+     let child_exprs := all_sl_exprs child
+     apply And.intro
+     . rw [Set.contains_prop_bool_equiv]
+       let rec_set := (Set.toList (all_sl_exprs child))
+       let new_list := (List.map (fun e => SLExpr.unaryApp op e) (Set.toList (all_sl_exprs child)))
+       have child_res_in_set : child_res ∈ rec_set := by
+       {
+         subst rec_set
+         rw [Set.contains_prop_bool_equiv] at *
+         rw [← Set.in_list_iff_in_set] at ih1
+         unfold Set.toList
+         simp [*]
+       }
+       have app_in_new_set : new_sl ∈ new_list := by {
+         subst rec_set
+         subst new_list
+         rw [List.map_ele_implies_result_ele] at child_res_in_set
+       }
+       rw [Set.in_list_iff_in_set] at app_in_new_set
+       simp [*]
+     . sorry
+
+
+
+
+
    | _ => sorry
 
 
@@ -103,12 +143,13 @@ theorem straight_line_slicing_sound {e : Expr} {s : Entities} {r : Request}
   evaluate e r sliced
 := by
   intros h_es h_sliced
-  have h_exists := @straight_line_exists_non_erroring e r es s h_es
+  have h_exists := sl_exists_non_erroring e s r
   cases h_exists with
   | intro se h_exists_se =>
     cases h_exists_se with
     | intro res h_se =>
-      have h_contains : es.contains se = true := h_se.left
+      rw [←h_es] at h_se
+      let h_contains := h_se.left
       have h_res : (evaluate_sl se r s).toResult = res := h_se.right
 
       -- Use straight_line_slicing_sound_for_straight to show that evaluate_sl se r s = evaluate_sl se r sliced
