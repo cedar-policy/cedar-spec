@@ -344,6 +344,59 @@ theorem forall₂_swap
     assumption
     assumption
 
+/--
+Applying `mapM` on the RHS list of `Forall₂`
+leads to new `Forall₂` relation if certain
+conditions are met.
+-/
+theorem forall₂_compose_mapM_right
+  {l₁ : List α} {l₂ : List β} {l₃ : List γ}
+  {R₁ : α → β → Prop}
+  {R₂ : α → γ → Prop}
+  {f : β → Option γ}
+  (h : List.Forall₂ R₁ l₁ l₂)
+  (hmapM : List.mapM f l₂ = .some l₃)
+  (hf : ∀ a b, R₁ a b → ∃ c, f b = .some c ∧ R₂ a c) :
+  List.Forall₂ R₂ l₁ l₃
+:= by
+  induction h generalizing l₃ with
+  | nil =>
+    simp at hmapM
+    simp [hmapM]
+  | cons hhd htl ih =>
+    rename_i hd₁ hd₂ tl₁ tl₂
+    have ⟨c, hc, hrc⟩ := hf hd₁ hd₂ hhd
+    simp only [
+      List.mapM_cons, hc, Option.pure_def,
+      Option.bind_eq_bind,
+      Option.bind_some_fun,
+    ] at hmapM
+    simp only [bind, Option.bind] at hmapM
+    split at hmapM
+    contradiction
+    rename_i mapM_tl hmapM_tl
+    simp only [Option.some.injEq] at hmapM
+    simp only [←hmapM]
+    constructor
+    · exact hrc
+    · specialize ih hmapM_tl
+      exact ih
+
+theorem forall₂_eq_implies_filterMap
+  {l₁ : List α} {l₂ : List β} {p : α → β → Prop}
+  {f : α → Option β}
+  (h : List.Forall₂ p l₁ l₂)
+  (hp : ∀ a b, p a b → f a = .some b) :
+  l₁.filterMap f = l₂
+:= by
+  induction h with
+  | nil => simp
+  | cons hhd htl ih =>
+    rename_i hd₁ hd₂ tl₁ tl₂
+    simp only [List.filterMap]
+    have := hp hd₁ hd₂ hhd
+    simp only [this, ih]
+
 /-! ### mapM, mapM', mapM₁, and mapM₂ -/
 
 theorem mapM_some {xs : List α} :

@@ -32,25 +32,9 @@ open Cedar.SymCC
 open Cedar.Validation
 open Cedar.Data
 
-theorem forall₂_eq_implies_filterMap
-  {l₁ : List α} {l₂ : List β} {p : α → β → Prop}
-  {f : α → Option β}
-  (h : List.Forall₂ p l₁ l₂)
-  (hp : ∀ a b, p a b → f a = .some b) :
-  l₁.filterMap f = l₂
-:= sorry
-
-theorem forall₂_compose_mapM_right
-  {l₁ : List α} {l₂ : List β} {l₃ : List γ}
-  {R₁ : α → β → Prop}
-  {R₂ : α → γ → Prop}
-  {f : β → Option γ}
-  (h : List.Forall₂ R₁ l₁ l₂)
-  (hmapM : List.mapM f l₂ = .some l₃)
-  (hf : ∀ a b, R₁ a b → ∃ c, f b = .some c ∧ R₂ a c) :
-  List.Forall₂ R₂ l₁ l₃
-:= sorry
-
+/--
+`symbolize?` is the right inverse of `value?`.
+-/
 theorem value?_symbolize?_id
   {Γ : TypeEnv} {entities : Entities}
   {v : Value} {ty : CedarType}
@@ -270,7 +254,7 @@ theorem value?_symbolize?_id
       exists val_sym_attrs
       simp only [hval_sym_attrs, true_and]
       apply List.forall₂_swap
-      apply forall₂_compose_mapM_right hsym_attrs_forall₂ hval_sym_attrs
+      apply List.forall₂_compose_mapM_right hsym_attrs_forall₂ hval_sym_attrs
       intros a b hab
       have ⟨h₁, ⟨attr, z, h₂, h₃, h₄, h₅⟩⟩ := hab
       simp [h₅]
@@ -291,7 +275,7 @@ theorem value?_symbolize?_id
       Value.record.injEq,
       Map.mk.injEq,
     ]
-    apply forall₂_eq_implies_filterMap hval_sym_attrs_forall₂
+    apply List.forall₂_eq_implies_filterMap hval_sym_attrs_forall₂
     intros a b h
     have ⟨ha, hb⟩ := h
     simp [Option.map, hb, ha]
