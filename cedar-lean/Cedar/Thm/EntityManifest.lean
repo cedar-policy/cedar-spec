@@ -89,7 +89,8 @@ theorem sl_exists_non_erroring (e: Expr) (s: Entities) (r: Request)
        have app_in_new_set : new_sl ∈ new_list := by {
          subst rec_set
          subst new_list
-         rw [List.map_ele_implies_result_ele] at child_res_in_set
+         let func := (fun e => SLExpr.unaryApp op e)
+         apply [List.map_ele_implies_result_ele (func)] at child_res_in_set
        }
        rw [Set.in_list_iff_in_set] at app_in_new_set
        simp [*]

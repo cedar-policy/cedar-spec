@@ -116,8 +116,8 @@ theorem filter_equiv (f : α → Bool) (xs ys : List α) :
   exact And.intro (h₂ h₃.left) h₃.right
 
 
-theorem map_ele_implies_result_ele {f : α → β} { l : List α} :
-  e ∈ l → (f e) ∈ l.map f
+theorem map_ele_implies_result_ele (f : α → β) { l : List α} :
+  (e ∈ l) → (f e) ∈ l.map f
 := by
   sorry
 
