@@ -44,25 +44,27 @@ def Value.symbolize? (v : Value) (ty : CedarType) : Option Term :=
     let elems := ← s.toList.mapM₁ (λ ⟨v, _⟩ => v.symbolize? ty)
     .some (.set (Set.make elems) (TermType.ofType ty))
   | .record rec, .record rty => do
-    let elems := ← rec.toList.mapM₂ λ ⟨⟨a, v⟩, _⟩ => do
-      match ← rty.find? a with
-      | .optional ty => .some (a, .some (← v.symbolize? ty))
-      | .required ty => .some (a, ← v.symbolize? ty)
-    .some (Term.record (Map.make elems))
+    let elems := ← rec.toList.mapM₂ λ x => do
+      match ← rty.find? x.val.fst with
+      | .optional ty => .some (x.val.fst, .some (← x.val.snd.symbolize? ty))
+      | .required ty => .some (x.val.fst, ← x.val.snd.symbolize? ty)
+    .some (Term.record (Map.mk elems))
   | .ext e, _ => .some ↑e
   | _, _ => .none
 termination_by sizeOf v
 decreasing_by
-  all_goals {
-    simp_wf
-    rename_i h
-    try cases rec
-    try cases s
-    try replace h := List.sizeOf_lt_of_mem h
-    simp [Set.toList, Set.elts, Map.toList, Map.kvs] at h
+  · rename_i h
+    have h := List.sizeOf_lt_of_mem h
+    cases s
+    simp [Set.toList, Set.elts] at h
     simp [h]
     omega
-  }
+  any_goals
+    have h := x.property
+    cases rec
+    simp [Map.toList, Map.kvs] at h
+    simp [h]
+    omega
 
 /--
 The variable ids here should match the variables in `SymRequest.ofRequestType`.
