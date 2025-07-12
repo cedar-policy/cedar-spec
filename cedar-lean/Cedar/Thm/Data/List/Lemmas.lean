@@ -524,6 +524,41 @@ theorem mapM_implies_forall₂
       assumption
 
 /--
+Same as `mapM_implies_forall₂` but for `Option`
+-/
+theorem mapM_implies_forall₂_option
+  {f : α → Option β}
+  {p : α → β → Prop}
+  {xs : List α} {ys : List β}
+  (h : ∀ x y, x ∈ xs → f x = .some y → p x y)
+  (hmapM : List.mapM f xs = .some ys) :
+  List.Forall₂ p xs ys
+:= by
+  induction xs generalizing ys
+  case nil =>
+    simp only [mapM, mapM.loop, pure, Option.pure_def, reverse_nil, Option.some.injEq, nil_eq] at hmapM
+    simp [hmapM]
+  case cons xhd xtl ih =>
+    simp only [mapM_cons, bind, Option.bind, pure] at hmapM
+    split at hmapM
+    contradiction
+    simp only at hmapM
+    split at hmapM
+    contradiction
+    simp only [Option.some.injEq] at hmapM
+    simp only [← hmapM, forall₂_cons]
+    constructor
+    · apply h
+      simp only [mem_cons, true_or]
+      assumption
+    · apply ih
+      intros
+      apply h
+      simp only [mem_cons, or_true, *]
+      assumption
+      assumption
+
+/--
   Note that the converse is not true:
   counterexample `xs` is `[1]`, `ys` is `[1, 2]`, `f` is `Except.ok`
 
