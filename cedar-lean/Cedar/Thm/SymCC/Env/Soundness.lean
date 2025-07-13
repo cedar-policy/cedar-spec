@@ -33,7 +33,8 @@ open Cedar.Validation
 open Cedar.Data
 
 /--
-`symbolize?` is the right inverse of `value?`.
+`symbolize?` is the right inverse of `value?`,
+on sufficiently well-formed inputs
 -/
 theorem value?_symbolize?_id
   {Γ : TypeEnv} {entities : Entities}
@@ -360,13 +361,124 @@ theorem env_symbolize?_same_request
     simp only [Option.bind_eq_bind, hsym_ctx]
     exact hsame_sym_ctx
 
+theorem ofSchema_find?_ets
+  {Γ : TypeEnv} {ety : EntityType} {entry : EntitySchemaEntry}
+  (hwf_Γ : Γ.WellFormed)
+  (hfind_ety : Γ.ets.find? ety = .some entry) :
+  Map.find? (SymEntities.ofSchema Γ.ets Γ.acts) ety
+  = .some (SymEntityData.ofEntityType ety entry)
+:= sorry
+
+theorem ofSchema_find?_acts
+  {Γ : TypeEnv} {uid : EntityUID} {entry : ActionSchemaEntry}
+  (hwf_Γ : Γ.WellFormed)
+  (hfind_uid : Γ.acts.find? uid = .some entry) :
+  Map.find? (SymEntities.ofSchema Γ.ets Γ.acts) uid.ty
+  = .some (SymEntityData.ofActionType
+    uid.ty
+    (Γ.acts.toList.map λ (act, _) => act.ty).eraseDups
+    Γ.acts)
+:= sorry
+
+/--
+(List.map (fun ancTy => (ancTy, SymEntityData.ofActionType.ancsUDF uid.ty Γ.acts ancTy))
+                (List.map (fun x => x.fst.ty) (Map.toList Γ.acts)).eraseDups)
+-/
+theorem make_map_eraseDups_map_find
+  [BEq β] [LT β] [DecidableLT β]
+  {l : List α}
+  {f : α → β}
+  {g : β → γ}
+  {k : β} :
+  (Map.make ((l.map f).eraseDups.map (λ x => (x, g x)))).find? k =
+  (Map.make (l.map (λ x => (f x, g (f x))))).find? k
+:= sorry
+
+theorem env_symbolize?_same_entities_action
+  {Γ : TypeEnv} {env : Env}
+  {uid : EntityUID} {data : EntityData}
+  (hwf_env : env.StronglyWellFormed)
+  (hinst : InstanceOfWellFormedEnvironment env.request env.entities Γ)
+  (hinst_data : InstanceOfActionSchemaEntry uid data Γ) :
+  ∃ δ,
+    Map.find?
+      (SymEnv.interpret (env.symbolize? Γ) (SymEnv.ofEnv Γ)).entities
+      uid.ty = some δ ∧
+    SameEntityData uid data δ
+:= by
+  have ⟨hwf_Γ, _, _⟩ := hinst
+  have ⟨hattrs_emp, htags_emp, ⟨entry, hfind_entry, _⟩⟩ := hinst_data
+  have : Γ.ets.find? uid.ty = .none := by
+    cases h : Γ.ets.find? uid.ty with
+    | none => rfl
+    | some _ =>
+      have := wf_env_disjoint_ets_acts hwf_Γ h hfind_entry
+      contradiction
+  simp only [
+    SymEnv.interpret,
+    SymEntities.interpret,
+    SymEnv.ofEnv,
+  ]
+  simp only [←(Map.find?_mapOnValues _ _ _)]
+  have := ofSchema_find?_acts hwf_Γ hfind_entry
+  simp only [this, Option.map_some, Option.some.injEq, exists_eq_left']
+  simp only [
+    SymEntityData.ofActionType,
+    SymEntityData.interpret,
+    UnaryFunction.interpret,
+    SymEntityData.emptyAttrs,
+    Option.map,
+  ]
+  and_intros
+  · simp only [
+      Factory.app,
+      Map.empty,
+      Map.find?,
+      List.find?,
+      Term.isLiteral,
+      ↓reduceIte,
+    ]
+    simp [
+      hattrs_emp,
+      SameValues,
+      Term.value?,
+      List.attach₂,
+      List.mapM₂,
+      Map.empty,
+    ]
+  -- Same ancestor map
+  · intros anc hmem_anc
+    simp only [SameEntityData.InSymAncestors]
+    simp only [←(Map.find?_mapOnValues _ _ _)]
+    -- simp only [make_map_eraseDups_map_find]
+    have :
+      (Map.make
+        (List.map
+          (λ ancTy => (ancTy, SymEntityData.ofActionType.ancsUDF uid.ty Γ.acts ancTy))
+          (List.map (λ x => x.fst.ty)
+            (Map.toList Γ.acts)).eraseDups)).find?
+          anc.ty
+      = .some (SymEntityData.ofActionType.ancsUDF uid.ty Γ.acts anc.ty)
+    := by
+      apply (Map.in_list_iff_find?_some (Map.make_wf _)).mp
+      sorry
+    sorry
+  · sorry
+  · simp only [SameTags, htags_emp]
+
 theorem env_symbolize?_same_entities
   {Γ : TypeEnv} {env : Env}
   (hwf_env : env.StronglyWellFormed)
   (hinst : InstanceOfWellFormedEnvironment env.request env.entities Γ) :
   env.entities ∼ ((SymEnv.ofEnv Γ).interpret (env.symbolize? Γ)).entities
 := by
-  sorry
+  intros uid data hfind_uid_data
+  have ⟨hwf_Γ, _, ⟨hinst_data, _⟩⟩ := hinst
+  specialize hinst_data uid data hfind_uid_data
+  cases hinst_data with
+  | inl hinst_data => sorry
+  | inr hinst_data =>
+    exact env_symbolize?_same_entities_action hwf_env hinst hinst_data
 
 theorem env_symbolize?_same
   {Γ : TypeEnv} {env : Env}
