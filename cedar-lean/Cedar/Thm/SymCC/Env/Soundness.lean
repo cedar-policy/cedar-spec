@@ -516,10 +516,43 @@ theorem find?_unique_entry
           exact hf x this
         · exact hmem
 
-theorem env_symbolize?_same_entities_action
+theorem find?_id
+  [BEq α] [LawfulBEq α]
+  {l : List α}
+  {k : α}
+  (hmem : k ∈ l) :
+  List.find? (λ x => x == k) l = .some k
+:= by
+  induction l with
+  | nil => contradiction
+  | cons hd tl ih =>
+    simp only [List.mem_cons] at hmem
+    simp only [List.find?]
+    cases hmem with
+    | inl hmem => simp [hmem]
+    | inr hmem =>
+      split
+      · rename_i heq
+        simp only [beq_iff_eq] at heq
+        simp only [heq]
+      · exact ih hmem
+
+theorem env_symbolize?_same_entities_ordinary
   {Γ : TypeEnv} {env : Env}
   {uid : EntityUID} {data : EntityData}
   (hwf_env : env.StronglyWellFormed)
+  (hinst : InstanceOfWellFormedEnvironment env.request env.entities Γ)
+  (hinst_data : InstanceOfEntitySchemaEntry uid data Γ) :
+  ∃ δ,
+    Map.find?
+      (SymEnv.interpret (env.symbolize? Γ) (SymEnv.ofEnv Γ)).entities
+      uid.ty = some δ ∧
+    SameEntityData uid data δ
+:= sorry
+
+theorem env_symbolize?_same_entities_action
+  {Γ : TypeEnv} {env : Env}
+  {uid : EntityUID} {data : EntityData}
   (hinst : InstanceOfWellFormedEnvironment env.request env.entities Γ)
   (hinst_data : InstanceOfActionSchemaEntry uid data Γ) :
   ∃ δ,
@@ -552,6 +585,70 @@ theorem env_symbolize?_same_entities_action
     SymEntityData.emptyAttrs,
     Option.map,
   ]
+  -- Simplifying terms like `(SymEntityData.ofActionType.ancsUDF _ _).table.find? ...`
+  have hf_ancs_find {ancTy : EntityType} :
+    (Map.make
+      (List.filterMap
+        (λ x : EntityUID × ActionSchemaEntry =>
+          (SymEntityData.ofActionType.termOfType? uid.ty x.fst).bind
+          λ t => some (t, SymEntityData.ofActionType.ancsTerm ancTy x.snd.ancestors.toList))
+        (Map.toList Γ.acts))).find?
+      (Term.prim (TermPrim.entity uid))
+    = .some (.set
+      (Set.make (List.filterMap (SymEntityData.ofActionType.termOfType? ancTy) entry.ancestors.toList))
+      (TermType.entity ancTy))
+  := by
+    apply Map.find?_implies_make_find?
+    simp only [List.find?_filterMap]
+    have :
+      (List.find?
+        (λ a => Option.any
+          (λ x => x.fst == Term.prim (TermPrim.entity uid))
+          ((SymEntityData.ofActionType.termOfType? uid.ty a.fst).bind
+            λ t => some (t, SymEntityData.ofActionType.ancsTerm ancTy a.snd.ancestors.toList)))
+        (Map.toList Γ.acts))
+      = .some (uid, entry)
+    := by
+      apply find?_unique_entry
+      · intros x hmem_x hfilter
+        simp only [
+          SymEntityData.ofActionType.termOfType?,
+          Option.any,
+        ] at hfilter
+        split at hfilter
+        · rename_i v hv
+          split at hv
+          · rename_i heq_ty
+            simp only [Option.bind_some, Option.some.injEq] at hv
+            cases v
+            rename_i v₁ v₂
+            simp only [beq_iff_eq] at hfilter
+            simp only [
+              hfilter,
+              Prod.mk.injEq, Term.prim.injEq,
+              TermPrim.entity.injEq,
+            ] at hv
+            cases x
+            rename_i x₁ x₂
+            have := (Map.in_list_iff_find?_some hwf_acts).mp hmem_x
+            simp only at hv
+            simp only [hv.1] at this
+            simp only [hfind_entry, Option.some.injEq] at this
+            simp only [←this, hv.1]
+          · contradiction
+        · contradiction
+      · exact (Map.in_list_iff_find?_some hwf_acts).mpr hfind_entry
+      · simp [
+          SymEntityData.ofActionType.termOfType?,
+        ]
+    simp only [this, Option.bind_some]
+    simp [
+      SymEntityData.ofActionType.termOfType?,
+      SymEntityData.ofActionType.ancsTerm,
+      Factory.setOf,
+        TermType.ofType,
+    ]
+  -- Prove obligations of `SameEntityData`
   and_intros
   · simp only [
       Factory.app,
@@ -602,73 +699,12 @@ theorem env_symbolize?_same_entities_action
       Term.isLiteral,
       ↓reduceIte,
     ]
+    -- generalize hf_ancs_term : (λ x : EntityUID × ActionSchemaEntry =>
+    --   (SymEntityData.ofActionType.termOfType? uid.ty x.fst).bind
+    --   fun t => some (t, SymEntityData.ofActionType.ancsTerm anc.ty x.snd.ancestors.toList)) = f_ancs_term
     exists Set.make (entry.ancestors.toList.filterMap
       (SymEntityData.ofActionType.termOfType? anc.ty))
-    generalize hf_ancs_term : (λ x : EntityUID × ActionSchemaEntry =>
-      (SymEntityData.ofActionType.termOfType? uid.ty x.fst).bind
-      fun t => some (t, SymEntityData.ofActionType.ancsTerm anc.ty x.snd.ancestors.toList)) = f_ancs_term
-    have :
-      (Map.make
-          (List.filterMap
-            f_ancs_term
-            (Map.toList Γ.acts))).find?
-        (Term.prim (TermPrim.entity uid))
-      = .some (.set (Set.make (List.filterMap (SymEntityData.ofActionType.termOfType? anc.ty) entry.ancestors.toList))
-      (TermType.entity anc.ty))
-    := by
-      apply Map.find?_implies_make_find?
-      simp only [List.find?_filterMap]
-      have :
-        (List.find?
-          (λ a => Option.any
-            (λ x => x.fst == Term.prim (TermPrim.entity uid))
-            (f_ancs_term a))
-          (Map.toList Γ.acts))
-        = .some (uid, entry)
-      := by
-        apply find?_unique_entry
-        · intros x hmem_x hfilter
-          simp only [
-            ←hf_ancs_term,
-            SymEntityData.ofActionType.termOfType?,
-            Option.any,
-          ] at hfilter
-          split at hfilter
-          · rename_i v hv
-            split at hv
-            · rename_i heq_ty
-              simp only [Option.bind_some, Option.some.injEq] at hv
-              cases v
-              rename_i v₁ v₂
-              simp only [beq_iff_eq] at hfilter
-              simp only [
-                hfilter,
-                Prod.mk.injEq, Term.prim.injEq,
-                TermPrim.entity.injEq,
-              ] at hv
-              cases x
-              rename_i x₁ x₂
-              have := (Map.in_list_iff_find?_some hwf_acts).mp hmem_x
-              simp only at hv
-              simp only [hv.1] at this
-              simp only [hfind_entry, Option.some.injEq] at this
-              simp only [←this, hv.1]
-            · contradiction
-          · contradiction
-        · exact (Map.in_list_iff_find?_some hwf_acts).mpr hfind_entry
-        · simp [
-            ←hf_ancs_term,
-            SymEntityData.ofActionType.termOfType?,
-          ]
-      simp only [this, Option.bind_some]
-      simp [
-        ←hf_ancs_term,
-        SymEntityData.ofActionType.termOfType?,
-        SymEntityData.ofActionType.ancsTerm,
-        Factory.setOf,
-         TermType.ofType,
-      ]
-    simp only [this, true_and]
+    simp only [hf_ancs_find, true_and]
     apply (Set.make_mem _ _).mp
     apply List.mem_filterMap.mpr
     exists anc
@@ -677,7 +713,49 @@ theorem env_symbolize?_same_entities_action
       exact hmem_anc
     · simp only [SymEntityData.ofActionType.termOfType?, ↓reduceIte]
   · simp only
-    sorry
+    intros ancTy ancUF hancUF
+    have hancUF :
+      ancUF = SymEntityData.ofActionType.ancsUDF uid.ty Γ.acts ancTy
+    := by
+      simp only [←Map.find?_mapOnValues] at hancUF
+      simp only [Option.map_eq_some_iff] at hancUF
+      have ⟨ancUF', hancUF', heq_ancUF⟩ := hancUF
+      have := Map.find?_mem_toList hancUF'
+      have := Map.make_mem_list_mem this
+      have ⟨_, _, h⟩ := List.mem_map.mp this
+      simp only [Prod.mk.injEq] at h
+      simp only [h.1, true_and] at h
+      simp only [h]
+      simp only [←h] at heq_ancUF
+      simp only [UnaryFunction.interpret] at heq_ancUF
+      split at heq_ancUF
+      · rename_i heq
+        simp only [SymEntityData.ofActionType.ancsUDF] at heq
+        contradiction
+      · rename_i heq
+        simp only [h] at heq
+        simp only [heq_ancUF] at heq
+        simp [heq]
+    simp only [
+      SameEntityData.InAncestors,
+      hancUF,
+      Factory.app,
+      SymEntityData.ofActionType.ancsUDF,
+      Term.isLiteral,
+      ↓reduceIte,
+    ]
+    simp only [Option.bind_eq_bind, hf_ancs_find, Term.set.injEq, and_true, exists_eq_left']
+    intros anc_term hmem_anc_term
+    have hmem_anc_term := (Set.make_mem _ _).mpr hmem_anc_term
+    have ⟨anc, hmem_anc, hanc_term⟩ := List.mem_filterMap.mp hmem_anc_term
+    exists anc
+    simp only [
+      SymEntityData.ofActionType.termOfType?,
+      Option.ite_none_right_eq_some,
+      Option.some.injEq,
+    ] at hanc_term
+    simp only [hanc_term.2, true_and, heq_ancs]
+    exact hmem_anc
   · simp only [SameTags, htags_emp]
 
 theorem env_symbolize?_same_entities
@@ -690,9 +768,10 @@ theorem env_symbolize?_same_entities
   have ⟨hwf_Γ, _, ⟨hinst_data, _⟩⟩ := hinst
   specialize hinst_data uid data hfind_uid_data
   cases hinst_data with
-  | inl hinst_data => sorry
+  | inl hinst_data =>
+    exact env_symbolize?_same_entities_ordinary hwf_env hinst hinst_data
   | inr hinst_data =>
-    exact env_symbolize?_same_entities_action hwf_env hinst hinst_data
+    exact env_symbolize?_same_entities_action hinst hinst_data
 
 theorem env_symbolize?_same
   {Γ : TypeEnv} {env : Env}
