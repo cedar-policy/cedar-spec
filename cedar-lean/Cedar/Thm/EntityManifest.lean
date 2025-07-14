@@ -86,11 +86,19 @@ theorem sl_exists_non_erroring (e: Expr) (s: Entities) (r: Request)
          unfold Set.toList
          simp [*]
        }
+       -- TODO painful verbose low-level proof
        have app_in_new_set : new_sl ∈ new_list := by {
          subst rec_set
          subst new_list
          let func := (fun e => SLExpr.unaryApp op e)
-         apply [List.map_ele_implies_result_ele (func)] at child_res_in_set
+         subst new_sl
+         let l := (Set.toList (all_sl_exprs child))
+         let me := List.map_ele_implies_result_ele func l child_res
+         specialize me child_res_in_set
+         subst func
+         simp at me
+         simp
+         exact me
        }
        rw [Set.in_list_iff_in_set] at app_in_new_set
        simp [*]
