@@ -152,6 +152,11 @@ match r with
 | .error .assertError => .none
 | .error (.interpError e) => .some (.error e)
 
+def SLResult.fromOptionResult (β) (r: (Option (Result β))) : (SLResult β) :=
+match r with
+| .some v => v.toSLResult
+| .none => .error .assertError
+
 deriving instance Repr, DecidableEq, Inhabited for SLError
 
 instance : Coe Value (SLResult Bool) where

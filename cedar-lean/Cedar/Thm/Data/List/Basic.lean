@@ -116,7 +116,27 @@ theorem filter_equiv (f : α → Bool) (xs ys : List α) :
   exact And.intro (h₂ h₃.left) h₃.right
 
 
-theorem map_ele_implies_result_ele (f : α → β) (l : List α) (e : α) :
+theorem map_ele_implies_exists_application (f : α → β) {l : List α} {e : β} :
+  (e ∈ (l.map f)) → ∃ e', e' ∈ l ∧ f e' = e
+:= by
+  intro h
+  induction l with
+  | nil =>
+    simp
+    contradiction
+  | cons hd tl ih =>
+    simp
+    cases h with
+    | head hd =>
+      simp
+    | tail h_in =>
+      rename_i h
+      right
+      specialize ih h
+      exact ih
+
+
+theorem map_ele_implies_result_ele (f : α → β) {l : List α} {e : α} :
   (e ∈ l) → (f e) ∈ l.map f
 := by
   intro h

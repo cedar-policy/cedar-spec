@@ -5,7 +5,7 @@ import Cedar.Thm.Data
 
 namespace Cedar.Thm
 
-open Data Spec
+open Data Spec Error
 
 -- Define a local tactic for simplifying straight line expressions
 local macro "simp_slexpr_once" : tactic =>
@@ -13,6 +13,41 @@ local macro "simp_slexpr_once" : tactic =>
 
 local macro "simp_slexpr" : tactic =>
   `(tactic| (simp_slexpr_once; simp_slexpr_once; simp_slexpr_once))
+
+local macro "simp_set_containment" : tactic =>
+  `(tactic| (try rw [Set.in_list_iff_in_set] at *; try rw [← Set.in_list_iff_in_mk] at *; try rw [Set.in_list_iff_in_set]; try rw [← Set.in_list_iff_in_mk]; ))
+
+theorem to_result_from_result_inverses  (β) (v: Option (Result β))
+  : (SLResult.fromOptionResult β v).toResult = v
+  := by
+  cases v with
+  | none =>
+    simp [SLResult.toResult, SLResult.fromOptionResult]
+  | some r =>
+    simp [SLResult.toResult, SLResult.fromOptionResult, Result.toSLResult]
+    cases r with
+    | error e =>
+      simp
+    | ok v =>
+      simp
+
+theorem from_to_result_inverses  (β) (v: (SLResult β))
+  : (SLResult.fromOptionResult β (v.toResult)) = v
+  := by
+  cases v with
+  | error e =>
+    simp [SLResult.toResult, SLResult.fromOptionResult]
+    cases e with
+    | assertError =>
+      simp
+    | interpError e' =>
+      simp
+      unfold Result.toSLResult
+      simp
+  | ok r =>
+    simp [SLResult.toResult, SLResult.fromOptionResult]
+    unfold Result.toSLResult
+    simp
 
 -- after straight line analysis, there exists a SLExpr
 -- which does not have an assertion error
@@ -63,51 +98,30 @@ theorem sl_exists_non_erroring (e: Expr) (s: Entities) (r: Request)
        sorry
    | unaryApp op child =>
      intro res
-     have ih := sl_exists_non_erroring child s r
-     simp at ih
-     obtain ⟨child_res, ih⟩ := ih
-     obtain ⟨ih1, ih2⟩ := ih
-     obtain ⟨child_v, ih2⟩ := ih2
-     let new_sl := SLExpr.unaryApp op child_res
-     exists new_sl
      subst res
-     unfold all_sl_exprs
-     simp [*]
-     let child_exprs := all_sl_exprs child
+     rcases sl_exists_non_erroring child s r with ⟨child_res, ⟨child_res_in, ⟨child_v, eval_eq⟩⟩⟩
+     exists SLExpr.unaryApp op child_res
+     simp
      apply And.intro
-     . rw [Set.contains_prop_bool_equiv]
-       let rec_set := (Set.toList (all_sl_exprs child))
-       let new_list := (List.map (fun e => SLExpr.unaryApp op e) (Set.toList (all_sl_exprs child)))
-       have child_res_in_set : child_res ∈ rec_set := by
-       {
-         subst rec_set
-         rw [Set.contains_prop_bool_equiv] at *
-         rw [← Set.in_list_iff_in_set] at ih1
-         unfold Set.toList
-         simp [*]
-       }
-       -- TODO painful verbose low-level proof
-       have app_in_new_set : new_sl ∈ new_list := by {
-         subst rec_set
-         subst new_list
-         let func := (fun e => SLExpr.unaryApp op e)
-         subst new_sl
-         let l := (Set.toList (all_sl_exprs child))
-         let me := List.map_ele_implies_result_ele func l child_res
-         specialize me child_res_in_set
-         subst func
-         simp at me
-         simp
-         exact me
-       }
-       rw [Set.in_list_iff_in_set] at app_in_new_set
-       simp [*]
-     . sorry
 
-
-
-
-
+     . rw [Set.contains_prop_bool_equiv] at *
+       unfold all_sl_exprs
+       simp
+       let child_exprs := all_sl_exprs child
+       simp_set_containment
+       let mh := List.map_ele_implies_result_ele (fun e => SLExpr.unaryApp op e) child_v
+       exact mh
+     . have ih := congr_arg (SLResult.fromOptionResult Value) eval_eq
+       unfold evaluate_sl
+       rw [from_to_result_inverses] at ih
+       rw [ih]
+       cases child_res_in with
+       | ok v =>
+         simp [SLResult.fromOptionResult, SLResult.toResult, Result.toSLResult]
+         cases apply₁ op v
+         all_goals { simp }
+       | error e =>
+         simp [SLResult.fromOptionResult, SLResult.toResult, Result.toSLResult]
    | _ => sorry
 
 
@@ -121,7 +135,7 @@ theorem straight_line_slicing_sound_for_straight {se : SLExpr} {s : Entities} {r
   : ses.contains se ->
   sliced =  (simple_slice_sl ses s r) -> evaluate_sl se r s =
   evaluate_sl se r sliced
-:=
+:= by
   sorry
 
 
@@ -129,14 +143,36 @@ theorem straight_line_slicing_sound_for_straight {se : SLExpr} {s : Entities} {r
 
 -- all the resulting SLExprs have the same semantics
 -- unless they error
-theorem straight_line_same_semantics {e: Expr} {r: Request}
-  {es : SLExprs } {se : SLExpr} {s: Entities} {v: Result Value}
-  : es = (all_sl_exprs e) ->
+theorem straight_line_same_semantics (e: Expr) (r: Request) {se : SLExpr} {s: Entities} {v: Result Value}
+  : let es := (all_sl_exprs e)
     (es.contains se = true) ->
       ((evaluate_sl se r s).toResult = .some v) -> -- only when not erroring
         (evaluate e r s = v)
-   :=
-  sorry
+   := by
+   intro h_es h_contains h_res
+   subst h_es
+   cases e with
+   | lit p =>
+     simp [evaluate]
+     simp [all_sl_exprs] at *
+     rw [Set.contains_prop_bool_equiv] at *
+     sorry
+   | var v =>
+     sorry
+   | unaryApp op child_e =>
+     simp [evaluate]
+     simp [all_sl_exprs] at *
+     rw [Set.contains_prop_bool_equiv] at *
+     rcases List.map_ele_implies_exists_application (fun e => SLExpr.unaryApp op e) h_contains with ⟨child_se, ⟨child_in_list, child_to_se⟩⟩
+     sorry
+
+
+
+
+
+
+
+   | _ => sorry
 
 
 -- analyzing an expr and slicing using straight line exprs
@@ -172,13 +208,14 @@ theorem straight_line_slicing_sound {e : Expr} {s : Entities} {r : Request}
 
       -- Case analysis on res
 
+      rw [h_es] at h_contains
       -- Use straight_line_same_semantics to show that evaluate e r s = v
       have h_eval_s : evaluate e r s = res :=
-        @straight_line_same_semantics e r es se s res h_es h_contains h_res
+        @straight_line_same_semantics e r se s res h_contains h_res
 
       -- Use straight_line_same_semantics to show that evaluate e r sliced = v
       have h_eval_sliced : evaluate e r sliced = res :=
-        @straight_line_same_semantics e r es se sliced res h_es h_contains h_res_sliced
+        @straight_line_same_semantics e r se sliced res h_contains h_res_sliced
 
       -- Combine h_eval_s and h_eval_sliced to get the desired result
       rw [h_eval_s, h_eval_sliced]
