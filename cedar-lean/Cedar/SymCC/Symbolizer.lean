@@ -124,41 +124,42 @@ def Entities.symbolizeTags?
   (uuf : UUF) : Option UDF := do
   let tagTy := ← entry.tags?
   if uuf.id == s!"tagKeys[{toString ety}]" then
-    .some {
-      arg := TermType.ofType (.entity ety),
-      out := TermType.ofType (.set .string),
-      -- Collect concrete tag keys of every entity of type `ety`
-      table := Map.make (entities.toList.filterMap λ (euid, data) => do
-        if euid.ty = ety then
-          .some (↑euid, ← Value.symbolize?
-            (.set (Set.make (data.tags.keys.toList.map λ k => .prim (.string k))))
-            (.set .string))
-        else
-          .none),
-      default := defaultLit' Γ (TermType.ofType (.set .string)),
-    }
+    .some keysUDF
   else if uuf.id == s!"tagVals[{toString ety}]" then
-    .some {
-      arg := TermType.tagFor ety,
-      out := TermType.ofType tagTy,
-      -- Collect concrete tag values of every entity of type `ety`
-      -- i.e. a map from (entity, tag key) to tag value
-      table := Map.make (entities.toList.filterMap λ (euid, data) => do
-        if euid.ty = ety then
-          data.tags.toList.mapM λ (tag, value) => do
-            .some (
-              .record (Map.mk [
-                ("entity", .prim (.entity euid)),
-                ("tag", .prim (.string tag)),
-              ]),
-              ← Value.symbolize? value tagTy,
-            )
-        else
-          .none).flatten,
-      default := defaultLit' Γ (TermType.ofType (.set .string)),
-    }
+    .some (valsUDF tagTy)
   else
     .none
+where
+  keysUDF := {
+    arg := TermType.ofType (.entity ety),
+    out := TermType.ofType (.set .string),
+    -- Collect concrete tag keys of every entity of type `ety`
+    table := Map.make (entities.toList.filterMap λ (euid, data) => do
+      if euid.ty = ety then
+        .some (↑euid, .set (Set.make (data.tags.keys.toList.map λ k => .prim (.string k))) (.set .string))
+      else
+        .none),
+    default := defaultLit' Γ (TermType.ofType (.set .string)),
+  }
+  valsUDF tagTy := {
+    arg := TermType.tagFor ety,
+    out := TermType.ofType tagTy,
+    -- Collect concrete tag values of every entity of type `ety`
+    -- i.e. a map from (entity, tag key) to tag value
+    table := Map.make (entities.toList.filterMap λ (euid, data) => do
+      if euid.ty = ety then
+        data.tags.toList.mapM λ (tag, value) => do
+          .some (
+            .record (Map.mk [
+              ("entity", .prim (.entity euid)),
+              ("tag", .prim (.string tag)),
+            ]),
+            ← Value.symbolize? value tagTy,
+          )
+      else
+        .none).flatten,
+    default := defaultLit' Γ (TermType.ofType (.set .string)),
+  }
 
 /--
 Generates an interpretation for the ancestor map.
