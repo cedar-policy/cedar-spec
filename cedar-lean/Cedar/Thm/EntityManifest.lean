@@ -14,8 +14,16 @@ local macro "simp_slexpr_once" : tactic =>
 local macro "simp_slexpr" : tactic =>
   `(tactic| (simp_slexpr_once; simp_slexpr_once; simp_slexpr_once))
 
+local macro "simp_set_containment_helper" : tactic =>
+  `(tactic| (try rw [Set.in_list_iff_in_set] at *;
+             try rw [Set.contains_prop_bool_equiv] at *;
+             try rw [←Set.in_list_iff_in_mk] at *;
+             try rw [Set.in_list_iff_in_set];
+             try rw [Set.contains_prop_bool_equiv];
+             try rw [←Set.in_list_iff_in_mk]))
+
 local macro "simp_set_containment" : tactic =>
-  `(tactic| (try rw [Set.in_list_iff_in_set] at *; try rw [← Set.in_list_iff_in_mk] at *; try rw [Set.in_list_iff_in_set]; try rw [← Set.in_list_iff_in_mk]; ))
+  `(tactic| (simp_set_containment_helper; try simp [Set.toList] at *; simp_set_containment_helper))
 
 theorem to_result_from_result_inverses  (β) (v: Option (Result β))
   : (SLResult.fromOptionResult β v).toResult = v
@@ -110,6 +118,7 @@ theorem sl_exists_non_erroring (e: Expr) (s: Entities) (r: Request)
        let child_exprs := all_sl_exprs child
        simp_set_containment
        let mh := List.map_ele_implies_result_ele (fun e => SLExpr.unaryApp op e) child_v
+       simp_set_containment
        exact mh
      . have ih := congr_arg (SLResult.fromOptionResult Value) eval_eq
        unfold evaluate_sl
@@ -164,14 +173,13 @@ theorem straight_line_same_semantics (e: Expr) (r: Request) {se : SLExpr} {s: En
      simp [all_sl_exprs] at *
      rw [Set.contains_prop_bool_equiv] at *
      rcases List.map_ele_implies_exists_application (fun e => SLExpr.unaryApp op e) h_contains with ⟨child_se, ⟨child_in_list, child_to_se⟩⟩
+     rcases @straight_line_same_semantics child_e r with ih
+     simp at ih
+     specialize @ih child_se s
+     simp_set_containment
+     --specialize ih child_in_list
+     -- TODO need lemma that child evaluates to some v_child
      sorry
-
-
-
-
-
-
-
    | _ => sorry
 
 
