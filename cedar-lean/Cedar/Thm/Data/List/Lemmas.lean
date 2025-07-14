@@ -1584,4 +1584,13 @@ decreasing_by
     _ < xs.length := by
       simp [*]
 
+theorem mem_iff_mem_eraseDups
+  [BEq α] [LawfulBEq α]
+  {xs : List α} {x : α} :
+  x ∈ xs ↔ x ∈ xs.eraseDups
+:= by
+  constructor
+  · apply mem_implies_mem_eraseDups
+  · apply mem_eraseDups_implies_mem
+
 end List
