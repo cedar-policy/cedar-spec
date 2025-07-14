@@ -537,18 +537,188 @@ theorem find?_id
         simp only [heq]
       · exact ih hmem
 
+theorem env_symbolize?_lookup_attrs_udf
+  {Γ : TypeEnv} {env : Env}
+  {ety : EntityType} {entry : StandardSchemaEntry} :
+  (env.symbolize? Γ).funs {
+    id  := s!"attrs[{toString ety}]",
+    arg := TermType.ofType (.entity ety),
+    out := TermType.ofType (.record entry.attrs)
+  } = Entities.symbolizeAttrs?.udf env.entities Γ ety (EntitySchemaEntry.standard entry)
+:= sorry
+
+theorem find?_stronger_pred
+  {l : List α} {v : α}
+  {f : α → Bool}
+  {g : α → Bool}
+  (hfind : List.find? f l = .some v)
+  (hg : ∀ x ∈ l, g x → f x)
+  (hv : g v) :
+  List.find? g l = .some v
+:= by
+  induction l with
+  | nil => contradiction
+  | cons hd tl ih =>
+    simp only [List.find?]
+    cases h : g hd with
+    | false =>
+      simp only [List.find?] at hfind
+      apply ih
+      · split at hfind
+        · simp only [Option.some.injEq] at hfind
+          simp only [hfind, hv] at h
+          contradiction
+        · exact hfind
+      · intros x hmem_x h
+        apply hg
+        · simp [hmem_x]
+        · exact h
+    | true =>
+      simp only [Option.some.injEq]
+      have := hg hd List.mem_cons_self h
+      simp only [List.find?] at hfind
+      simp only [this, Option.some.injEq] at hfind
+      exact hfind
+
+theorem map_find?_to_list_find?
+  [BEq α] [LawfulBEq α]
+  {m : Map α β} {k : α} {v : β}
+  (hfind : Map.find? m k = .some v) :
+  List.find? (λ x => x.fst == k ) (Map.toList m) = .some (k, v)
+:= by
+  simp only [Map.find?] at hfind
+  split at hfind
+  · rename_i heq
+    simp only [Option.some.injEq] at hfind
+    simp only [Map.toList, heq, hfind]
+    have := List.find?_some heq
+    simp only [beq_iff_eq] at this
+    simp [this]
+  · contradiction
+
+theorem map_find?_implies_find?_weaker_pred
+  [BEq α] [LawfulBEq α] [BEq β] [LawfulBEq β]
+  {m : Map α β} {k : α} {v : β} {f : α × β → Bool}
+  (hfind : Map.find? m k = .some v)
+  (hf : ∀ kv, f kv → kv.1 = k)
+  (hkv : f (k, v)) :
+  List.find? f (Map.toList m) = .some (k, v)
+:= by
+  replace hfind := map_find?_to_list_find? hfind
+  cases m with | mk m =>
+  simp only [Map.toList, Map.kvs] at hfind ⊢
+  induction m with
+  | nil => contradiction
+  | cons hd tl ih =>
+    simp only [List.find?]
+    split
+    · rename_i heq
+      have := hf hd heq
+      simp only [List.find?, this, BEq.rfl, Option.some.injEq] at hfind
+      simp [hfind]
+    · rename_i heq
+      apply ih
+      simp only [List.find?] at hfind
+      split at hfind
+      · simp only [Option.some.injEq] at hfind
+        simp only [←hfind] at hkv
+        simp [hkv] at heq
+      · exact hfind
+
 theorem env_symbolize?_same_entity_data_standard
   {Γ : TypeEnv} {env : Env}
   {uid : EntityUID} {data : EntityData} {entry : StandardSchemaEntry}
   (hwf_env : env.StronglyWellFormed)
+  (hinst : InstanceOfWellFormedEnvironment env.request env.entities Γ)
   (hinst_data : InstanceOfEntitySchemaEntry uid data Γ)
   (hfind_entry : Map.find? Γ.ets uid.ty = some (.standard entry))
-  (hwf_entry : (EntitySchemaEntry.standard eids).WellFormed Γ) :
+  (hwf_entry : (EntitySchemaEntry.standard entry).WellFormed Γ)
+  (hfind_data : Map.find? env.entities uid = some data) :
   SameEntityData uid data
     (SymEntityData.interpret
       (env.symbolize? Γ)
       (SymEntityData.ofStandardEntityType uid.ty entry))
-:= sorry
+:= by
+  have ⟨_, ⟨hwf_entities, _⟩⟩ := hwf_env
+  have ⟨hwf_data_attrs, _⟩ := hwf_entities uid data hfind_data
+  have ⟨hwf_Γ, _, _⟩ := hinst
+  have ⟨entry', hfind_entry', _, hwt_data_attrs, hwt_data_ancs, hwt_data_tags⟩ := hinst_data
+  have hwf_entities_map : Map.WellFormed env.entities := sorry
+  simp only [hfind_entry, Option.some.injEq] at hfind_entry'
+  simp only [←hfind_entry', EntitySchemaEntry.attrs] at hwt_data_attrs
+  simp only [
+    SymEntityData.ofStandardEntityType,
+    SymEntityData.interpret,
+  ]
+  -- Proof obgligations of `SameEntityData`
+  and_intros
+  · simp only [
+      SymEntityData.ofStandardEntityType.attrsUUF,
+      UnaryFunction.interpret,
+      env_symbolize?_lookup_attrs_udf,
+      Factory.app,
+      Term.isLiteral,
+      ↓reduceIte,
+      Entities.symbolizeAttrs?.udf,
+    ]
+    have hwf_attrs_ty : (CedarType.record entry.attrs).WellFormed Γ
+    := by
+      have : Γ.ets.attrs? uid.ty = some entry.attrs := by
+        simp [EntitySchema.attrs?, hfind_entry, EntitySchemaEntry.attrs]
+      apply wf_env_implies_wf_attrs hwf_Γ this
+    have ⟨sym_attrs, hsym_attrs, hval_sym_attrs⟩ := value?_symbolize?_id hwf_Γ hwf_attrs_ty hwf_data_attrs hwt_data_attrs
+    have hfind_sym_attrs :
+      (Map.make
+        (List.filterMap
+          (λ x =>
+            if x.fst.ty = uid.ty then do
+              some (
+                Term.prim (TermPrim.entity x.fst),
+                ←(Value.record x.snd.attrs).symbolize? (CedarType.record entry.attrs),
+              )
+            else none)
+          (Map.toList env.entities))
+      ).find? (Term.prim (TermPrim.entity uid))
+      = .some sym_attrs
+    := by
+      apply Map.find?_implies_make_find?
+      simp only [List.find?_filterMap]
+      have :
+        List.find?
+          (λ a =>
+            Option.any (λ x => x.fst == Term.prim (TermPrim.entity uid))
+              (if a.fst.ty = uid.ty then do
+                some (Term.prim (TermPrim.entity a.fst), ← (Value.record a.snd.attrs).symbolize? (CedarType.record entry.attrs))
+              else none))
+          (Map.toList env.entities)
+        = .some (uid, data)
+      := by
+        apply map_find?_implies_find?_weaker_pred hfind_data
+        · intros kv hkv
+          simp only [Option.any] at hkv
+          split at hkv
+          · rename_i heq
+            split at heq
+            · simp only [Option.bind_eq_bind, bind, Option.bind] at heq
+              split at heq
+              · contradiction
+              · simp only [Option.some.injEq] at heq
+                simp only [← heq, beq_iff_eq, Term.prim.injEq, TermPrim.entity.injEq] at hkv
+                simp [hkv]
+            · contradiction
+          · contradiction
+        · simp [Option.any, hsym_attrs]
+      simp only [this]
+      simp only [
+        Option.bind_eq_bind, Option.bind_some,
+        ↓reduceIte,
+        hsym_attrs,
+      ]
+    simp only [hfind_sym_attrs, EntitySchemaEntry.attrs]
+    simp only [SameValues, hsym_attrs, hval_sym_attrs]
+  · sorry
+  · sorry
+  · sorry
 
 theorem env_symbolize?_same_entity_data_enum
   {Γ : TypeEnv} {env : Env}
@@ -625,7 +795,8 @@ theorem env_symbolize?_same_entities_ordinary
   {uid : EntityUID} {data : EntityData}
   (hwf_env : env.StronglyWellFormed)
   (hinst : InstanceOfWellFormedEnvironment env.request env.entities Γ)
-  (hinst_data : InstanceOfEntitySchemaEntry uid data Γ) :
+  (hinst_data : InstanceOfEntitySchemaEntry uid data Γ)
+  (hfind_data : Map.find? env.entities uid = some data) :
   ∃ δ,
     Map.find?
       (SymEnv.interpret (env.symbolize? Γ) (SymEnv.ofEnv Γ)).entities
@@ -665,7 +836,7 @@ theorem env_symbolize?_same_entities_ordinary
   cases entry with
   | standard entry =>
     simp only
-    exact env_symbolize?_same_entity_data_standard hwf_env hinst_data hfind_entry hwf_entry
+    exact env_symbolize?_same_entity_data_standard hwf_env hinst hinst_data hfind_entry hwf_entry hfind_data
   | enum es =>
     simp only
     exact env_symbolize?_same_entity_data_enum hinst hinst_data hfind_entry
@@ -883,7 +1054,7 @@ theorem env_symbolize?_same_entities
   specialize hinst_data uid data hfind_uid_data
   cases hinst_data with
   | inl hinst_data =>
-    exact env_symbolize?_same_entities_ordinary hwf_env hinst hinst_data
+    exact env_symbolize?_same_entities_ordinary hwf_env hinst hinst_data hfind_uid_data
   | inr hinst_data =>
     exact env_symbolize?_same_entities_action hinst hinst_data
 

@@ -97,8 +97,13 @@ def Entities.symbolizeAttrs?
   (ety : EntityType) (entry : EntitySchemaEntry)
   (uuf : UUF) : Option UDF :=
   if uuf.id == s!"attrs[{toString ety}]" then
+    .some udf
+  else
+    .none
+where
+  udf :=
     let outTy := (.record entry.attrs)
-    .some {
+    {
       arg := TermType.ofType (.entity ety),
       out := TermType.ofType outTy,
       -- Collect concrete attributes of every entity of type `ety`
@@ -109,8 +114,6 @@ def Entities.symbolizeAttrs?
           .none),
       default := defaultLit' Γ (TermType.ofType outTy),
     }
-  else
-    .none
 
 /--
 Generates interpretations for the tag key and value maps.
