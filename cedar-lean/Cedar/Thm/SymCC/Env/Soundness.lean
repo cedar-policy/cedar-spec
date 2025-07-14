@@ -547,7 +547,7 @@ theorem env_symbolize?_lookup_attrs_udf
   } = Entities.symbolizeAttrs?.udf env.entities Γ ety (EntitySchemaEntry.standard entry)
 := sorry
 
-theorem env_symbolize?_lookup_tag_key
+theorem env_symbolize?_lookup_tag_keys
   {Γ : TypeEnv} {env : Env}
   {ety : EntityType} :
   (env.symbolize? Γ).funs {
@@ -555,6 +555,16 @@ theorem env_symbolize?_lookup_tag_key
     arg := TermType.ofType (CedarType.entity ety),
     out := TermType.ofType CedarType.string.set,
   } = Entities.symbolizeTags?.keysUDF env.entities Γ ety
+:= sorry
+
+theorem env_symbolize?_lookup_tag_vals
+  {Γ : TypeEnv} {env : Env}
+  {ety : EntityType} {tagTy : CedarType} :
+  (env.symbolize? Γ).funs {
+    id := s!"tagVals[{toString ety}]",
+    arg := TermType.tagFor ety,
+    out := TermType.ofType tagTy
+  } = Entities.symbolizeTags?.valsUDF env.entities Γ ety tagTy
 := sorry
 
 theorem find?_stronger_pred
@@ -727,6 +737,212 @@ theorem not_contains_prop_bool_equiv [DecidableEq α] {v : α} {s : Set α} :
     | false =>
       rfl
 
+theorem env_symbolize?_same_entity_data_standard_same_tag
+  {Γ : TypeEnv} {env : Env}
+  {uid : EntityUID} {data : EntityData} {entry : StandardSchemaEntry}
+  (hwf_env : env.StronglyWellFormed)
+  (hinst : InstanceOfWellFormedEnvironment env.request env.entities Γ)
+  (hinst_data : InstanceOfEntitySchemaEntry uid data Γ)
+  (hfind_entry : Map.find? Γ.ets uid.ty = some (.standard entry))
+  (hwf_entry : (EntitySchemaEntry.standard entry).WellFormed Γ)
+  (hfind_data : Map.find? env.entities uid = some data) :
+  SameTags uid data
+    (SymEntityData.interpret
+      (env.symbolize? Γ)
+      (SymEntityData.ofStandardEntityType uid.ty entry))
+:= by
+  have ⟨_, ⟨hwf_entities, _⟩⟩ := hwf_env
+  have ⟨hwf_data_attrs, _, _, hwf_data_tags, _⟩ := hwf_entities uid data hfind_data
+  have ⟨hwf_Γ, _, _⟩ := hinst
+  have ⟨entry', hfind_entry', _, hwt_data_attrs, hwt_data_ancs, hwt_data_tags⟩ := hinst_data
+  simp only [hfind_entry, Option.some.injEq] at hfind_entry'
+  simp only [←hfind_entry', EntitySchemaEntry.attrs] at hwt_data_attrs hwt_data_tags
+  simp only [
+    SymEntityData.ofStandardEntityType,
+    SymEntityData.interpret,
+  ]
+  simp only [
+    SameTags,
+    SymEntityData.ofStandardEntityType.symTags,
+  ]
+  cases hentry_tags : entry.tags with
+  | none =>
+    simp only [Option.map_none]
+    simp only [InstanceOfEntityTags, EntitySchemaEntry.tags?, hentry_tags] at hwt_data_tags
+    exact hwt_data_tags
+  | some tagTy =>
+    have happ_tag_keys :
+      Factory.app (UnaryFunction.udf (Entities.symbolizeTags?.keysUDF env.entities Γ uid.ty)) (Term.entity uid)
+      = .set (Set.make (data.tags.keys.toList.map λ k => .prim (.string k))) (.set .string)
+    := by
+      apply app_table_make_filterMap hfind_data
+      · simp
+      · simp
+      · simp [Term.isLiteral]
+    have hkeys_set_is_literal :
+      (Term.set
+        (Set.make (List.map (fun k => Term.prim (TermPrim.string k)) data.tags.keys.toList))
+        TermType.string.set).isLiteral
+    := by
+      unfold Term.isLiteral
+      apply List.all_eq_true.mpr
+      intros x hmem_x
+      have hmem_x := x.property
+      have := (Set.make_mem _ _).mpr hmem_x
+      have ⟨_, _, hx⟩ := List.mem_map.mp this
+      simp [←hx, Term.isLiteral]
+    simp only [Option.map_some]
+    constructor
+    -- Tag key exists iff the symbolic tag key is true
+    · intros tag
+      simp only [
+        SymTags.hasTag,
+        SymTags.interpret,
+        UnaryFunction.interpret,
+        SymEntityData.ofStandardEntityType.symTags,
+        env_symbolize?_lookup_tag_keys,
+      ]
+      simp only [happ_tag_keys, Factory.set.member]
+      constructor
+      · intros hno_tag
+        split
+        · rfl
+        · rename_i s _ hs_not_emp heq
+          simp only [Term.set.injEq] at heq
+          replace heq := heq.1
+          simp only [
+            Term.isLiteral, hkeys_set_is_literal, Bool.and_self,
+            ↓reduceIte, Term.prim.injEq,
+            TermPrim.bool.injEq,
+          ]
+          simp only [←heq]
+          have :
+            ¬((Set.make (List.map (fun k => Term.prim (TermPrim.string k)) data.tags.keys.toList)).contains (Term.string tag) = true)
+          := by
+            intros h
+            have := Set.contains_prop_bool_equiv.mp h
+            have := (Set.make_mem _ _).mpr this
+            have ⟨_, hmem, heq⟩ := List.mem_map.mp this
+            simp only [Term.prim.injEq, TermPrim.string.injEq] at heq
+            simp only [heq] at hmem
+            have ⟨_, hfind⟩ := Map.in_keys_exists_value hmem
+            have := (Map.in_list_iff_find?_some hwf_data_tags).mp hfind
+            simp only [hno_tag] at this
+            contradiction
+          simp only [this]
+        · rename_i h
+          have := h
+            (Set.make (List.map (fun k => Term.prim (TermPrim.string k)) data.tags.keys.toList))
+            TermType.string.set
+            rfl
+          contradiction
+      · split
+        · rename_i heq
+          simp only [Term.set.injEq] at heq
+          replace heq := heq.1
+          simp only [forall_const]
+          have :
+            List.map (fun k => Term.prim (TermPrim.string k)) data.tags.keys.toList = []
+          := by
+            apply (Set.make_empty _).mpr
+            simp [heq, Set.isEmpty, Set.empty]
+          have := List.map_eq_nil_iff.mp this
+          have := map_keys_empty_implies_map_empty this
+          simp only [this, Map.find?, List.find?]
+        · rename_i s _ _ heq
+          simp only [Term.set.injEq] at heq
+          replace heq := heq.1
+          simp only [
+            Term.isLiteral, hkeys_set_is_literal,
+            Bool.and_self, ↓reduceIte,
+            Term.prim.injEq, TermPrim.bool.injEq,
+          ]
+          simp only [←heq]
+          intros hnot_contains
+          have {v} (h : data.tags.find? tag = .some v) :
+            False
+          := by
+            have :
+              Term.string tag ∈ Set.make (List.map (fun k => Term.prim (TermPrim.string k)) data.tags.keys.toList)
+            := by
+              apply (Set.make_mem _ _).mp
+              apply List.mem_map.mpr
+              exists tag
+              simp only [and_true]
+              apply Map.in_list_in_keys
+              apply (Map.in_list_iff_find?_some hwf_data_tags).mpr h
+            have := not_contains_prop_bool_equiv.mp hnot_contains this
+            contradiction
+          cases h : data.tags.find? tag with
+          | none => rfl
+          | some =>
+            have := this h
+            contradiction
+        · rename_i h
+          have := h
+            (Set.make (List.map (fun k => Term.prim (TermPrim.string k)) data.tags.keys.toList))
+            TermType.string.set
+            rfl
+          contradiction
+    -- Tag values match
+    · intros tag val hfind_tag
+      constructor
+      · simp only [
+          SymTags.hasTag,
+          SymTags.interpret,
+          UnaryFunction.interpret,
+          SymEntityData.ofStandardEntityType.symTags,
+          env_symbolize?_lookup_tag_keys,
+        ]
+        simp only [
+          happ_tag_keys,
+          Factory.set.member,
+        ]
+        split
+        · rename_i heq
+          simp only [Term.set.injEq] at heq
+          replace heq := heq.1
+          have :
+            List.map (fun k => Term.prim (TermPrim.string k)) data.tags.keys.toList = []
+          := by
+            apply (Set.make_empty _).mpr
+            simp [heq, Set.isEmpty, Set.empty]
+          have := List.map_eq_nil_iff.mp this
+          have := map_keys_empty_implies_map_empty this
+          simp [this, Map.find?, List.find?] at hfind_tag
+        · rename_i s _ _ heq
+          simp only [Term.set.injEq] at heq
+          replace heq := heq.1
+          simp only [
+            Term.isLiteral, hkeys_set_is_literal,
+            Bool.and_self, ↓reduceIte,
+            Term.prim.injEq, TermPrim.bool.injEq,
+          ]
+          simp only [←heq]
+          simp only [Set.contains_prop_bool_equiv]
+          apply (Set.make_mem _ _).mp
+          apply List.mem_map.mpr
+          exists tag
+          simp only [and_true]
+          apply Map.in_list_in_keys
+          apply (Map.in_list_iff_find?_some hwf_data_tags).mpr hfind_tag
+        · rename_i h
+          have := h
+            (Set.make (List.map (fun k => Term.prim (TermPrim.string k)) data.tags.keys.toList))
+            TermType.string.set
+            rfl
+          contradiction
+      · simp only [
+          SymEntityData.ofStandardEntityType.symTags,
+          SymTags.interpret,
+          SymTags.getTag!,
+          UnaryFunction.interpret,
+          env_symbolize?_lookup_tag_vals,
+          Entities.symbolizeTags?.valsUDF,
+        ]
+        -- Requires some fact about `find? ∘ Map.make ∘ flatten ∘ filterMap`
+        sorry
+
 theorem env_symbolize?_same_entity_data_standard
   {Γ : TypeEnv} {env : Env}
   {uid : EntityUID} {data : EntityData} {entry : StandardSchemaEntry}
@@ -786,131 +1002,8 @@ theorem env_symbolize?_same_entity_data_standard
     · simp [Term.isLiteral]
   · sorry
   · sorry
-  · simp only [
-      SameTags,
-      SymEntityData.ofStandardEntityType.symTags,
-    ]
-    cases hentry_tags : entry.tags with
-    | none =>
-      simp only [Option.map_none]
-      simp only [InstanceOfEntityTags, EntitySchemaEntry.tags?, hentry_tags] at hwt_data_tags
-      exact hwt_data_tags
-    | some tagTy =>
-      simp only [Option.map_some]
-      constructor
-      -- Tag key exists iff the symbolic tag key is true
-      · intros tag
-        have happ_tag_keys :
-          Factory.app (UnaryFunction.udf (Entities.symbolizeTags?.keysUDF env.entities Γ uid.ty)) (Term.entity uid)
-          = .set (Set.make (data.tags.keys.toList.map λ k => .prim (.string k))) (.set .string)
-        := by
-          apply app_table_make_filterMap hfind_data
-          · simp
-          · simp
-          · simp [Term.isLiteral]
-        have hkeys_set_is_literal :
-          (Term.set
-            (Set.make (List.map (fun k => Term.prim (TermPrim.string k)) data.tags.keys.toList))
-            TermType.string.set).isLiteral
-        := by
-          unfold Term.isLiteral
-          apply List.all_eq_true.mpr
-          intros x hmem_x
-          have hmem_x := x.property
-          have := (Set.make_mem _ _).mpr hmem_x
-          have ⟨_, _, hx⟩ := List.mem_map.mp this
-          simp [←hx, Term.isLiteral]
-        simp only [
-          SymTags.hasTag,
-          SymTags.interpret,
-          UnaryFunction.interpret,
-          SymEntityData.ofStandardEntityType.symTags,
-          env_symbolize?_lookup_tag_key,
-        ]
-        simp only [happ_tag_keys, Factory.set.member]
-        constructor
-        · intros hno_tag
-          split
-          · rfl
-          · rename_i s _ hs_not_emp heq
-            simp only [Term.set.injEq] at heq
-            replace heq := heq.1
-            simp only [
-              Term.isLiteral, hkeys_set_is_literal, Bool.and_self,
-              ↓reduceIte, Term.prim.injEq,
-              TermPrim.bool.injEq,
-            ]
-            simp only [←heq]
-            have :
-              ¬((Set.make (List.map (fun k => Term.prim (TermPrim.string k)) data.tags.keys.toList)).contains (Term.string tag) = true)
-            := by
-              intros h
-              have := Set.contains_prop_bool_equiv.mp h
-              have := (Set.make_mem _ _).mpr this
-              have ⟨_, hmem, heq⟩ := List.mem_map.mp this
-              simp only [Term.prim.injEq, TermPrim.string.injEq] at heq
-              simp only [heq] at hmem
-              have ⟨_, hfind⟩ := Map.in_keys_exists_value hmem
-              have := (Map.in_list_iff_find?_some hwf_data_tags).mp hfind
-              simp only [hno_tag] at this
-              contradiction
-            simp only [this]
-          · rename_i h
-            have := h
-              (Set.make (List.map (fun k => Term.prim (TermPrim.string k)) data.tags.keys.toList))
-              TermType.string.set
-              rfl
-            contradiction
-        · split
-          · rename_i heq
-            simp only [Term.set.injEq] at heq
-            replace heq := heq.1
-            simp only [forall_const]
-            have :
-              List.map (fun k => Term.prim (TermPrim.string k)) data.tags.keys.toList = []
-            := by
-              apply (Set.make_empty _).mpr
-              simp [heq, Set.isEmpty, Set.empty]
-            have := List.map_eq_nil_iff.mp this
-            have := map_keys_empty_implies_map_empty this
-            simp only [this, Map.find?, List.find?]
-          · rename_i s _ _ heq
-            simp only [Term.set.injEq] at heq
-            replace heq := heq.1
-            simp only [
-              Term.isLiteral, hkeys_set_is_literal,
-              Bool.and_self, ↓reduceIte,
-              Term.prim.injEq, TermPrim.bool.injEq,
-            ]
-            simp only [←heq]
-            intros hnot_contains
-            have {v} (h : data.tags.find? tag = .some v) :
-              False
-            := by
-              have :
-                Term.string tag ∈ Set.make (List.map (fun k => Term.prim (TermPrim.string k)) data.tags.keys.toList)
-              := by
-                apply (Set.make_mem _ _).mp
-                apply List.mem_map.mpr
-                exists tag
-                simp only [and_true]
-                apply Map.in_list_in_keys
-                apply (Map.in_list_iff_find?_some hwf_data_tags).mpr h
-              have := not_contains_prop_bool_equiv.mp hnot_contains this
-              contradiction
-            cases h : data.tags.find? tag with
-            | none => rfl
-            | some =>
-              have := this h
-              contradiction
-          · rename_i h
-            have := h
-              (Set.make (List.map (fun k => Term.prim (TermPrim.string k)) data.tags.keys.toList))
-              TermType.string.set
-              rfl
-            contradiction
-      -- Tag values match
-      · sorry
+  · exact env_symbolize?_same_entity_data_standard_same_tag
+      hwf_env hinst hinst_data hfind_entry hwf_entry hfind_data
 
 theorem env_symbolize?_same_entity_data_enum
   {Γ : TypeEnv} {env : Env}
