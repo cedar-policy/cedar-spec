@@ -537,6 +537,89 @@ theorem find?_id
         simp only [heq]
       · exact ih hmem
 
+theorem env_symbolize?_same_entity_data_standard
+  {Γ : TypeEnv} {env : Env}
+  {uid : EntityUID} {data : EntityData} {entry : StandardSchemaEntry}
+  (hwf_env : env.StronglyWellFormed)
+  (hinst_data : InstanceOfEntitySchemaEntry uid data Γ)
+  (hfind_entry : Map.find? Γ.ets uid.ty = some (.standard entry))
+  (hwf_entry : (EntitySchemaEntry.standard eids).WellFormed Γ) :
+  SameEntityData uid data
+    (SymEntityData.interpret
+      (env.symbolize? Γ)
+      (SymEntityData.ofStandardEntityType uid.ty entry))
+:= sorry
+
+theorem env_symbolize?_same_entity_data_enum
+  {Γ : TypeEnv} {env : Env}
+  {uid : EntityUID} {data : EntityData} {eids : Set String}
+  (hinst : InstanceOfWellFormedEnvironment env.request env.entities Γ)
+  (hinst_data : InstanceOfEntitySchemaEntry uid data Γ)
+  (hfind_entry : Map.find? Γ.ets uid.ty = some (.enum eids)) :
+  SameEntityData uid data
+    (SymEntityData.interpret
+      (env.symbolize? Γ)
+      (SymEntityData.ofEnumEntityType uid.ty eids))
+:= by
+  have ⟨hwf_Γ, _, _⟩ := hinst
+  have ⟨entry', hfind_entry', _, hwt_data_attrs, hwt_data_ancs, hwt_data_tags⟩ := hinst_data
+  simp only [hfind_entry, Option.some.injEq] at hfind_entry'
+  simp only [←hfind_entry'] at hwt_data_attrs hwt_data_ancs hwt_data_tags
+  simp only [
+    SymEntityData.interpret,
+    SymEntityData.ofEnumEntityType,
+  ]
+  have hemp_data_ancs : data.ancestors = (Set.mk [])
+  := by
+    simp only [EntitySchemaEntry.ancestors, Set.empty] at hwt_data_ancs
+    cases h : data.ancestors with | mk ancs =>
+    cases ancs with
+    | nil => rfl
+    | cons anc ancs =>
+      simp only [h] at hwt_data_ancs
+      have : anc ∈ Set.mk (anc :: ancs) := by
+        apply Set.mem_cons_self
+      have := hwt_data_ancs anc this
+      contradiction
+  -- Proof obgligations of `SameEntityData`
+  and_intros
+  · simp only [
+      SymEntityData.emptyAttrs,
+      UnaryFunction.interpret,
+      Factory.app,
+      Term.isLiteral,
+      ↓reduceIte,
+      Map.empty,
+      Map.find?,
+      List.find?
+    ]
+    simp only [EntitySchemaEntry.attrs, Map.empty] at hwt_data_attrs
+    cases hwt_data_attrs with | instance_of_record rec rty h₁ h₂ h₃ =>
+    have hemp_data_attrs : data.attrs = (Map.mk [])
+    := by
+      cases h : data.attrs with | mk attrs =>
+      cases attrs with
+      | nil => rfl
+      | cons attr attrs =>
+        simp only [h] at h₁
+        have := h₁ attr.1
+        simp [Map.contains, Map.find?, List.find?] at this
+    simp [
+      hemp_data_attrs,
+      SameValues,
+      Term.value?,
+      List.mapM₂,
+      List.attach₂,
+    ]
+  · simp only [hemp_data_ancs]
+    intros anc hmem_anc
+    contradiction
+  · intros ancTy ancUF
+    simp [Map.empty, Map.mapOnValues, List.map, Map.find?, List.find?]
+  · simp only [SameTags, Option.map_none]
+    simp only [InstanceOfEntityTags, EntitySchemaEntry.tags?] at hwt_data_tags
+    exact hwt_data_tags
+
 theorem env_symbolize?_same_entities_ordinary
   {Γ : TypeEnv} {env : Env}
   {uid : EntityUID} {data : EntityData}
@@ -548,7 +631,44 @@ theorem env_symbolize?_same_entities_ordinary
       (SymEnv.interpret (env.symbolize? Γ) (SymEnv.ofEnv Γ)).entities
       uid.ty = some δ ∧
     SameEntityData uid data δ
-:= sorry
+:= by
+  have ⟨hwf_Γ, _, _⟩ := hinst
+  have ⟨entry, hfind_entry, _⟩ := hinst_data
+  have := ofSchema_find?_ets hfind_entry
+  simp only [
+    SymEnv.interpret,
+    SymEnv.ofEnv,
+    SymEntities.interpret,
+    SymEntities.ofSchema,
+  ]
+  have hfind_interp_entry :
+    (Map.mapOnValues
+      (SymEntityData.interpret (env.symbolize? Γ))
+      (Map.make
+        (
+          List.map (λ x => (x.fst, SymEntityData.ofEntityType x.fst x.snd)) (Map.toList Γ.ets) ++
+          List.map
+            (λ actTy =>
+              (actTy,
+                SymEntityData.ofActionType actTy (List.map (λ x => x.fst.ty) (Map.toList Γ.acts)).eraseDups
+                  Γ.acts))
+            (List.map (λ x => x.fst.ty) (Map.toList Γ.acts)).eraseDups
+        )
+      )
+    ).find? uid.ty = .some (SymEntityData.interpret (env.symbolize? Γ) (SymEntityData.ofEntityType uid.ty entry))
+  := by
+    simp only [← Map.find?_mapOnValues, Option.map_eq_some_iff]
+    exists SymEntityData.ofEntityType uid.ty entry
+  simp only [hfind_interp_entry, Option.some.injEq, exists_eq_left']
+  simp only [SymEntityData.ofEntityType]
+  have hwf_entry := wf_env_implies_wf_entity_entry hwf_Γ hfind_entry
+  cases entry with
+  | standard entry =>
+    simp only
+    exact env_symbolize?_same_entity_data_standard hwf_env hinst_data hfind_entry hwf_entry
+  | enum es =>
+    simp only
+    exact env_symbolize?_same_entity_data_enum hinst hinst_data hfind_entry
 
 theorem env_symbolize?_same_entities_action
   {Γ : TypeEnv} {env : Env}
@@ -563,12 +683,6 @@ theorem env_symbolize?_same_entities_action
 := by
   have ⟨hwf_Γ, _, _⟩ := hinst
   have ⟨hattrs_emp, htags_emp, ⟨entry, hfind_entry, heq_ancs⟩⟩ := hinst_data
-  have : Γ.ets.find? uid.ty = .none := by
-    cases h : Γ.ets.find? uid.ty with
-    | none => rfl
-    | some _ =>
-      have := wf_env_disjoint_ets_acts hwf_Γ h hfind_entry
-      contradiction
   simp only [
     SymEnv.interpret,
     SymEntities.interpret,
