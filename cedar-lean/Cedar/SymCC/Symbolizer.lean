@@ -82,9 +82,15 @@ def Request.symbolize? (req : Request) (Γ : TypeEnv) (var : TermVar) : Option T
   | _ => .none
 
 def defaultEidOf (Γ : TypeEnv) (ety : EntityType) : String :=
-  match Γ.ets.find? ety with
-  | .some (.enum (.mk (eid :: _))) => eid
-  | _ => ""
+  -- TODO: Improve performance by looking up in `Γ` directly
+  match (SymEnv.ofEnv Γ).entities.find? ety with
+  | .some d =>
+    if let .some eids := d.members then
+      match eids.toList with
+      | [] => ""
+      | eid :: _ => eid
+    else ""
+  | .none => ""
 
 def defaultLit' (Γ : TypeEnv) (ty : TermType) : Term :=
   Decoder.defaultLit (defaultEidOf Γ) ty

@@ -16,6 +16,7 @@
 
 import Cedar.Thm.Validation.Typechecker.Types
 import Cedar.Thm.SymCC.Concretizer
+import Cedar.Thm.SymCC.Env.ofEnv
 import Cedar.SymCC.Concretizer
 import Cedar.SymCC.Symbolizer
 import Cedar.SymCC.Env
@@ -1869,6 +1870,183 @@ theorem env_symbolize?_same
   · exact env_symbolize?_same_request hwf_env hinst
   · exact env_symbolize?_same_entities hwf_env hinst
 
+/--
+`Decoder.defaultLit` is well-formed if given
+sufficiently well-formed `eidOf` and `ty`.
+-/
+theorem default_lit_wf
+  {εs : SymEntities}
+  {eidOf : EntityType → String} {ty : TermType}
+  (hwf_ty : ty.WellFormed εs)
+  (hwf_eidOf : ∀ ety, εs.isValidEntityType ety → εs.isValidEntityUID { ty := ety, eid := eidOf ety }) :
+  (Decoder.defaultLit eidOf ty).WellFormed εs
+:= by
+  cases ty with
+  | prim p =>
+    simp only [Decoder.defaultLit]
+    constructor
+    cases p with
+    | bool | bitvec | string =>
+      simp only [Decoder.defaultPrim]
+      constructor
+    | entity uid =>
+      simp only [Decoder.defaultPrim]
+      constructor
+      apply hwf_eidOf
+      cases hwf_ty
+      assumption
+    | ext e =>
+      cases e
+      all_goals
+        simp only [Decoder.defaultPrim, Decoder.defaultExt]
+        constructor
+  | option ty' =>
+    simp only [Decoder.defaultLit]
+    constructor
+    cases hwf_ty
+    assumption
+  | set ty' =>
+    simp only [Decoder.defaultLit]
+    constructor
+    · intros t ht
+      simp only [Set.empty, Membership.mem, Set.elts] at ht
+      contradiction
+    · intros t ht
+      simp only [Set.empty, Membership.mem, Set.elts] at ht
+      contradiction
+    · cases hwf_ty
+      assumption
+    · exact Set.empty_wf
+  | record rty =>
+    cases rty with | mk attrs =>
+    cases hwf_ty with | record_wf hwf_rty hwf_rty_map =>
+    simp only [Decoder.defaultLit]
+    constructor
+    · intros attr t hmem_attr_t
+      simp only [Map.toList, Map.kvs] at hmem_attr_t
+      have ⟨attr_ty, hmem_attr_ty, h⟩ := List.mem_map.mp hmem_attr_t
+      simp only [Prod.mk.injEq] at h
+      simp only [←h.2]
+      apply default_lit_wf _ hwf_eidOf
+      apply hwf_rty attr_ty.1.1
+      simp only [List.attach₂] at hmem_attr_ty
+      have ⟨attr_ty₁, hmem_attr_ty₁, heq⟩ := List.mem_pmap.mp hmem_attr_ty
+      cases attr_ty₁ with | mk a b =>
+      simp only [←heq]
+      exact (Map.in_list_iff_find?_some hwf_rty_map).mp hmem_attr_ty₁
+    · simp only [List.map_attach₂ (λ x => (x.fst, Decoder.defaultLit eidOf x.snd))]
+      apply Map.mapOnValues_wf.mp
+      exact hwf_rty_map
+termination_by sizeOf ty
+decreasing_by
+  have : ty = TermType.record rty := by assumption
+  simp only [this]
+  have : rty = Map.mk attrs := by assumption
+  simp only [this]
+  simp
+  have h := attr_ty.property
+  calc
+    sizeOf attr_ty.1.snd < 1 + sizeOf attrs := by assumption
+    _ < 1 + (1 + sizeOf attrs) := by omega
+
+theorem default_lit_wf'
+  {Γ : TypeEnv} {ty : TermType}
+  (hwf_Γ : Γ.WellFormed)
+  (hwf_ty : ty.WellFormed (SymEnv.ofEnv Γ).entities) :
+  (defaultLit' Γ ty).WellFormed (SymEnv.ofEnv Γ).entities
+:= by
+  apply default_lit_wf hwf_ty
+  intros ety hety
+  simp only [SymEntities.isValidEntityType, Map.contains, Option.isSome] at hety
+  split at hety
+  · rename_i δ hfind_δ
+    simp only [SymEntities.isValidEntityUID, hfind_δ, defaultEidOf]
+    split
+    · rename_i eids hmembers
+      simp only [hmembers]
+      split
+      · rename_i hempty_eids
+        replace hempty_eids : eids = (Set.mk []) := by
+          cases eids with | mk eids' =>
+          simp only [Set.toList, Set.elts] at hempty_eids
+          simp [hempty_eids]
+        -- `eids` should not be empty
+        simp only [SymEnv.ofEnv, SymEntities.ofSchema] at hfind_δ
+        have := Map.make_mem_list_mem (Map.find?_mem_toList hfind_δ)
+        have := List.mem_append.mp this
+        cases this with
+        | inl hmem_ets =>
+          have ⟨⟨ety', entry'⟩, hmem_ety', h⟩ := List.mem_map.mp hmem_ets
+          simp only [Prod.mk.injEq] at h
+          cases entry' with
+          | standard =>
+            replace h := h.2
+            simp only [
+              SymEntityData.ofEntityType,
+              SymEntityData.ofStandardEntityType,
+            ] at h
+            simp only [←h] at hmembers
+            contradiction
+          | enum eids' =>
+            simp only [
+              ←h.2, h.1,
+              SymEntityData.ofEntityType,
+              SymEntityData.ofEnumEntityType,
+              Option.some.injEq,
+              hempty_eids,
+            ] at hmembers
+            have := (Map.in_list_iff_find?_some (wf_env_implies_wf_ets_map hwf_Γ)).mp hmem_ety'
+            have := wf_env_implies_wf_entity_entry hwf_Γ this
+            simp only [EntitySchemaEntry.WellFormed, Bool.not_eq_true] at this
+            have h := this.2
+            simp [hmembers, Set.isEmpty, Set.empty] at h
+        | inr hmem_acts =>
+          have ⟨ety', hmem_ety', h⟩ := List.mem_map.mp hmem_acts
+          simp only [Prod.mk.injEq] at h
+          simp only [
+            ←h.2, h.1,
+            SymEntityData.ofActionType,
+            SymEntityData.ofActionType.acts,
+            Option.some.injEq,
+            hempty_eids,
+          ] at hmembers
+          have hemp :
+            List.filterMap (fun x => if x.fst.ty = ety then some x.fst.eid else none) (Map.toList Γ.acts)
+            = []
+          := by
+            apply (Set.make_empty _).mpr
+            simp only [Set.isEmpty, Set.empty, beq_iff_eq, hmembers]
+          have := List.mem_eraseDups_implies_mem hmem_ety'
+          have ⟨act, hmem_act, hact_ty⟩ := List.mem_map.mp this
+          simp only [h.1] at hact_ty
+          have := List.filterMap_empty_iff_all_none.mp hemp act hmem_act
+          simp only [hact_ty, ↓reduceIte] at this
+          contradiction
+      · rename_i eid _ hhead
+        simp only [Set.toList] at hhead
+        simp [Set.contains, hhead]
+    · rfl
+  · contradiction
+
+theorem env_symbolize?_wf
+  {Γ : TypeEnv} {env : Env}
+  (hwf_env : env.StronglyWellFormed)
+  (hinst : InstanceOfWellFormedEnvironment env.request env.entities Γ) :
+  (env.symbolize? Γ).WellFormed (SymEnv.ofEnv Γ).entities
+:= by
+  have ⟨hwf_Γ, _, _⟩ := hinst
+  and_intros
+  · sorry
+  · sorry
+  · intros t ht
+    simp only [Env.symbolize?, defaultLit']
+    constructor
+    · constructor
+      · apply default_lit_wf' hwf_Γ
+        sorry
+      · sorry
+    · sorry
+
 theorem ofEnv_soundness
   {Γ : TypeEnv} {env : Env}
   (hwf_env : env.StronglyWellFormed)
@@ -1878,7 +2056,7 @@ theorem ofEnv_soundness
   have ⟨hwf, hinst_req, hinst_sch⟩ := hinst
   exists env.symbolize? Γ
   constructor
-  · sorry
+  · exact env_symbolize?_wf hwf_env hinst
   . exact env_symbolize?_same hwf_env hinst
 
 end Cedar.Thm
