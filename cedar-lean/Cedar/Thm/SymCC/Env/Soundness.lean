@@ -17,6 +17,7 @@
 import Cedar.Thm.Validation.Typechecker.Types
 import Cedar.Thm.SymCC.Concretizer
 import Cedar.Thm.SymCC.Env.ofEnv
+import Cedar.Thm.SymCC.Env.WF
 import Cedar.SymCC.Concretizer
 import Cedar.SymCC.Symbolizer
 import Cedar.SymCC.Env
@@ -1949,6 +1950,93 @@ decreasing_by
     sizeOf attr_ty.1.snd < 1 + sizeOf attrs := by assumption
     _ < 1 + (1 + sizeOf attrs) := by omega
 
+theorem default_lit_is_lit
+  {eidOf : EntityType → String} {ty : TermType} :
+  (Decoder.defaultLit eidOf ty).isLiteral
+:= by
+  cases ty with
+  | prim p =>
+    cases p
+    all_goals
+      simp only [Decoder.defaultLit, Decoder.defaultPrim, Term.isLiteral]
+  | record rty =>
+    cases rty with | mk attrs =>
+    simp only [Decoder.defaultLit, Term.isLiteral]
+    rw [List.map_attach₂ (λ x => (x.fst, Decoder.defaultLit eidOf x.snd))]
+    simp only [List.attach₃]
+    rw [List.all_pmap_subtype
+      (λ x => x.snd.isLiteral)
+      (List.map (fun x => (x.fst, Decoder.defaultLit eidOf x.snd)) attrs)]
+    apply List.all_eq_true.mpr
+    intros attr_term hmem_attr_term
+    have ⟨attr, hmem_attr, hattr_term⟩ := List.mem_map.mp hmem_attr_term
+    simp only [←hattr_term]
+    exact default_lit_is_lit
+  | _ => simp [Decoder.defaultLit, Term.isLiteral, Set.empty]
+termination_by sizeOf ty
+decreasing_by
+  simp
+  have := List.sizeOf_lt_of_mem hmem_attr
+  cases attr
+  simp at this ⊢
+  omega
+
+theorem list_map_id_eq
+  {l : List α}
+  {f : α → α}
+  (hf : ∀ x ∈ l, f x = x) :
+  l.map f = l
+:= by
+  induction l with
+  | nil => rfl
+  | cons x xs ih =>
+    simp only [List.map_cons, List.cons.injEq]
+    constructor
+    · apply hf x
+      simp
+    · apply ih
+      intros x hmem_x
+      apply hf
+      simp [hmem_x]
+
+theorem default_lit_wt
+  {eidOf : EntityType → String} {ty : TermType} :
+  (Decoder.defaultLit eidOf ty).typeOf = ty
+:= by
+  cases ty with
+  | prim p =>
+    cases p with
+    | ext x =>
+      cases x
+      all_goals
+        simp only [Decoder.defaultLit, Decoder.defaultPrim, Term.typeOf, TermPrim.typeOf, Decoder.defaultExt]
+    | _ =>
+      simp only [Decoder.defaultLit, Decoder.defaultPrim, Term.typeOf, TermPrim.typeOf, BitVec.width]
+  | option =>
+    simp only [Decoder.defaultLit, Decoder.defaultPrim, Term.typeOf]
+  | set =>
+    simp only [Decoder.defaultLit, Decoder.defaultPrim, Term.typeOf]
+  | record rty =>
+    cases rty with | mk attrs =>
+    simp only [Decoder.defaultLit, Decoder.defaultPrim, Term.typeOf]
+    congr
+    rw [List.map_attach₂ (λ x => (x.fst, Decoder.defaultLit eidOf x.snd))]
+    simp only [List.map_attach₃_snd]
+    simp only [List.map_map]
+    unfold Function.comp
+    simp only
+    apply list_map_id_eq
+    intros x hmem_x
+    cases x with | mk a b =>
+    simp only [Prod.mk.injEq, true_and]
+    exact default_lit_wt
+termination_by sizeOf ty
+decreasing_by
+  simp
+  have := List.sizeOf_lt_of_mem hmem_x
+  simp at this ⊢
+  omega
+
 theorem default_lit_wf'
   {Γ : TypeEnv} {ty : TermType}
   (hwf_Γ : Γ.WellFormed)
@@ -2042,10 +2130,9 @@ theorem env_symbolize?_wf
     simp only [Env.symbolize?, defaultLit']
     constructor
     · constructor
-      · apply default_lit_wf' hwf_Γ
-        sorry
-      · sorry
-    · sorry
+      · exact default_lit_wf' hwf_Γ (wfp_term_implies_wf_ty ht)
+      · exact default_lit_is_lit
+    · exact default_lit_wt
 
 theorem ofEnv_soundness
   {Γ : TypeEnv} {env : Env}
