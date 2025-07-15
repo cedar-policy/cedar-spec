@@ -148,27 +148,36 @@ theorem sl_exists_non_erroring (e: Expr) (s: Entities) (r: Request)
    | _ => sorry
 
 
-
--- slicing using a straight line expr gives a new store
--- where evaluation is the same
--- TODO this one will change with fancier slicer
-theorem straight_line_slicing_sound_for_straight {se : SLExpr} {s : Entities} {r : Request}
-  {ses : SLExprs}
-  {sliced : Entities}
-  : ses.contains se ->
-  sliced =  (simple_slice_sl ses s r) -> evaluate_sl se r s =
-  evaluate_sl se r sliced
+theorem straight_line_slicing_sound_for_single { e : SLExpr } { s : Entities } { r : Request }
+  : let sliced := (simple_slice_sl (.mk [e]) s r)
+    evaluate_sl e r s = evaluate_sl e r sliced
 := by
   sorry
 
 
+-- slicing using a straight line expr gives a new store
+-- where evaluation is the same
+-- TODO this one will change with fancier slicer
+theorem straight_line_slicing_sound_for_straight {e : SLExpr} {s : Entities} {r : Request}
+  {es : SLExprs}
+  {sliced : Entities}
+  : let sliced := (simple_slice_sl es s r)
+    es.contains e ->
+    evaluate_sl e r s = evaluate_sl e r sliced
+:= by
+  -- todo use straight_line_slicing_sound_for_single
+  sorry
 
+
+
+instance : Membership SLExpr (Set SLExpr) where
+  mem s v := v ∈ s.elts
 
 -- all the resulting SLExprs have the same semantics
 -- unless they error
 theorem straight_line_same_semantics (e: Expr) (r: Request) {se : SLExpr} {s: Entities} {v: Result Value}
   : let es := (all_sl_exprs e)
-    (es.contains se = true) ->
+    se ∈ es ->
       ((evaluate_sl se r s).toResult = .some v) -> -- only when not erroring
         (evaluate e r s = v)
    := by
@@ -178,14 +187,13 @@ theorem straight_line_same_semantics (e: Expr) (r: Request) {se : SLExpr} {s: En
    | lit p =>
      simp [evaluate]
      simp [all_sl_exprs] at *
-     rw [Set.contains_prop_bool_equiv] at *
+     try rw [Set.contains_prop_bool_equiv] at *
      sorry
    | var v =>
      sorry
    | unaryApp op child_e =>
      simp [evaluate]
      simp [all_sl_exprs] at *
-     rw [Set.contains_prop_bool_equiv] at *
      rcases List.map_ele_implies_exists_application (fun e => SLExpr.unaryApp op e) h_contains with ⟨child_se, ⟨h_contains', child_to_se⟩⟩
      clear h_contains'
      rcases @straight_line_same_semantics child_e r with ih
@@ -239,12 +247,11 @@ theorem straight_line_same_semantics (e: Expr) (r: Request) {se : SLExpr} {s: En
 -- slicing preserves the semantics of slexprs
 theorem straight_line_slicing_sound {e : Expr} {s : Entities} {r : Request}
   {es : SLExprs}
-  {sliced : Entities}
   : es = (all_sl_exprs e) ->
-  sliced =  (simple_slice_sl es s r) -> evaluate e r s =
-  evaluate e r sliced
+  let sliced := (simple_slice_sl es s r)
+  evaluate e r s = evaluate e r sliced
 := by
-  intros h_es h_sliced
+  intros h_es sliced
   have h_exists := sl_exists_non_erroring e s r
   cases h_exists with
   | intro se h_exists_se =>
@@ -255,8 +262,12 @@ theorem straight_line_slicing_sound {e : Expr} {s : Entities} {r : Request}
       have h_res : (evaluate_sl se r s).toResult = res := h_se.right
 
       -- Use straight_line_slicing_sound_for_straight to show that evaluate_sl se r s = evaluate_sl se r sliced
-      have h_eval_sl : evaluate_sl se r s = evaluate_sl se r sliced :=
-        @straight_line_slicing_sound_for_straight se s r es sliced h_contains h_sliced
+      have h_eval_sl :=
+        @straight_line_slicing_sound_for_straight se s r es
+      simp at h_eval_sl
+      simp_set_containment
+      specialize h_eval_sl h_contains
+
 
       -- From h_eval_sl and h_res, we know that (evaluate_sl se r sliced).toResult = res
       have h_res_sliced : (evaluate_sl se r sliced).toResult = res := by
