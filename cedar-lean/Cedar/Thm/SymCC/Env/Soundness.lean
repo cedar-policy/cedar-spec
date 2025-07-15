@@ -344,7 +344,12 @@ theorem env_symbolize?_same_request
   ]
   and_intros
   all_goals
-    simp only [Term.interpret]
+    simp only [
+      beq_iff_eq, Option.bind_eq_bind,
+      Term.interpret, TermVar.mk.injEq,
+      String.reduceEq,
+      false_and, ↓reduceIte,
+    ]
   -- Actions match
   · have ⟨_, ⟨_, h, _, _⟩, _⟩ := hinst
     simp [h]
@@ -360,6 +365,7 @@ theorem env_symbolize?_same_request
       exact h
     have ⟨sym_ctx, hsym_ctx, hsame_sym_ctx⟩ := value?_symbolize?_id hwf hwf_ctx_ty hwf_ctx hwt_ctx
     simp only [Value.symbolize?, Option.bind_eq_bind] at hsym_ctx
+
     simp only [Option.bind_eq_bind, hsym_ctx]
     exact hsame_sym_ctx
 
@@ -1999,7 +2005,7 @@ theorem list_map_id_eq
       apply hf
       simp [hmem_x]
 
-theorem default_lit_wt
+theorem default_lit_well_typed
   {eidOf : EntityType → String} {ty : TermType} :
   (Decoder.defaultLit eidOf ty).typeOf = ty
 := by
@@ -2029,7 +2035,7 @@ theorem default_lit_wt
     intros x hmem_x
     cases x with | mk a b =>
     simp only [Prod.mk.injEq, true_and]
-    exact default_lit_wt
+    exact default_lit_well_typed
 termination_by sizeOf ty
 decreasing_by
   simp
@@ -2116,6 +2122,92 @@ theorem default_lit_wf'
     · rfl
   · contradiction
 
+theorem value_symbolize?_wf
+  {Γ : TypeEnv} {env : Env}
+  {v : Value} {ty : CedarType} {t : Term}
+  (hwf_env : env.StronglyWellFormed)
+  (hinst : InstanceOfWellFormedEnvironment env.request env.entities Γ)
+  (hwf_v : v.WellFormed env.entities)
+  (hsym : v.symbolize? ty = .some t) :
+  t.WellFormed (SymEnv.ofEnv Γ).entities
+:= by
+  sorry
+
+theorem value_symbolize?_is_lit
+  {Γ : TypeEnv} {env : Env}
+  {v : Value} {ty : CedarType} {t : Term}
+  (hwf_env : env.StronglyWellFormed)
+  (hinst : InstanceOfWellFormedEnvironment env.request env.entities Γ)
+  (hwf_v : v.WellFormed env.entities)
+  (hsym : v.symbolize? ty = .some t) :
+  t.isLiteral
+:= sorry
+
+theorem value_symbolize?_well_typed
+  {Γ : TypeEnv} {env : Env}
+  {v : Value} {ty : CedarType} {t : Term}
+  (hwf_env : env.StronglyWellFormed)
+  (hinst : InstanceOfWellFormedEnvironment env.request env.entities Γ)
+  (hwf_v : v.WellFormed env.entities)
+  (hsym : v.symbolize? ty = .some t) :
+  t.typeOf = TermType.ofType ty
+:= sorry
+
+theorem env_symbolize?_wf_vars
+  {Γ : TypeEnv} {env : Env} {var : TermVar}
+  (hwf_env : env.StronglyWellFormed)
+  (hinst : InstanceOfWellFormedEnvironment env.request env.entities Γ)
+  (hwf_var : TermVar.WellFormed (SymEnv.ofEnv Γ).entities var) :
+  Interpretation.WellFormed.WellFormedVarInterpretation
+    (SymEnv.ofEnv Γ).entities
+    var
+    ((env.symbolize? Γ).vars var)
+:= by
+  have ⟨⟨hwf_princ, hwf_action, hwf_resource, hwf_context⟩, _⟩ := hwf_env
+  have ⟨hwf_Γ, _, _⟩ := hinst
+  simp only [Env.symbolize?, Request.symbolize?]
+  constructor
+  · constructor
+    · split
+      · repeat
+          rename_i heq
+          split at heq
+          · apply value_symbolize?_wf hwf_env hinst _ heq
+            first
+            | constructor; exact hwf_princ
+            | constructor; exact hwf_action
+            | constructor; exact hwf_resource
+            | exact hwf_context
+        contradiction
+      · exact default_lit_wf' hwf_Γ hwf_var
+    · split
+      · repeat
+          rename_i heq
+          split at heq
+          · apply value_symbolize?_is_lit hwf_env hinst _ heq
+            first
+            | constructor; exact hwf_princ
+            | constructor; exact hwf_action
+            | constructor; exact hwf_resource
+            | exact hwf_context
+        contradiction
+      · exact default_lit_is_lit
+  · split
+    · rename_i heq
+      repeat
+        split at heq
+        rename_i heq heq_var
+        simp only [beq_iff_eq] at heq_var
+        simp only [heq_var]
+        apply value_symbolize?_well_typed hwf_env hinst _ heq
+        first
+        | constructor; exact hwf_princ
+        | constructor; exact hwf_action
+        | constructor; exact hwf_resource
+        | exact hwf_context
+      contradiction
+    · exact default_lit_well_typed
+
 theorem env_symbolize?_wf
   {Γ : TypeEnv} {env : Env}
   (hwf_env : env.StronglyWellFormed)
@@ -2124,7 +2216,8 @@ theorem env_symbolize?_wf
 := by
   have ⟨hwf_Γ, _, _⟩ := hinst
   and_intros
-  · sorry
+  · intros var hwf_var
+    exact env_symbolize?_wf_vars hwf_env hinst hwf_var
   · sorry
   · intros t ht
     simp only [Env.symbolize?, defaultLit']
@@ -2132,7 +2225,7 @@ theorem env_symbolize?_wf
     · constructor
       · exact default_lit_wf' hwf_Γ (wfp_term_implies_wf_ty ht)
       · exact default_lit_is_lit
-    · exact default_lit_wt
+    · exact default_lit_well_typed
 
 theorem ofEnv_soundness
   {Γ : TypeEnv} {env : Env}

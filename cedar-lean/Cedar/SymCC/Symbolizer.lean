@@ -74,12 +74,16 @@ where
 The variable ids here should match the variables in `SymRequest.ofRequestType`.
 -/
 def Request.symbolize? (req : Request) (Γ : TypeEnv) (var : TermVar) : Option Term :=
-  match var.id with
-  | "principal" => Value.symbolize? ↑req.principal (.entity Γ.reqty.principal)
-  | "action" => Value.symbolize? ↑req.action (.entity Γ.reqty.action.ty)
-  | "resource" => Value.symbolize? ↑req.resource (.entity Γ.reqty.resource)
-  | "context" => Value.symbolize? ↑req.context (.record Γ.reqty.context)
-  | _ => .none
+  if var == { id := "principal", ty := TermType.ofType (.entity Γ.reqty.principal) } then
+    Value.symbolize? ↑req.principal (.entity Γ.reqty.principal)
+  else if var == { id := "action", ty := TermType.ofType (.entity Γ.reqty.action.ty) } then
+    Value.symbolize? ↑req.action (.entity Γ.reqty.action.ty)
+  else if var == { id := "resource", ty := TermType.ofType (.entity Γ.reqty.resource) } then
+    Value.symbolize? ↑req.resource (.entity Γ.reqty.resource)
+  else if var == { id := "context", ty := TermType.ofType (.record Γ.reqty.context) } then
+    Value.symbolize? ↑req.context (.record Γ.reqty.context)
+  else
+    .none
 
 def defaultEidOf (Γ : TypeEnv) (ety : EntityType) : String :=
   -- TODO: Improve performance by looking up in `Γ` directly
