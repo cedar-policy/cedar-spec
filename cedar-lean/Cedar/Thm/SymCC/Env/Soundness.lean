@@ -938,6 +938,64 @@ theorem map_make_filterMap_find?
       ]
   simp [this, hkv]
 
+theorem map_make_filterMap_flatten_find?
+  [BEq α] [BEq β] [LawfulBEq α] [LawfulBEq β]
+  [DecidableEq γ] [LT γ] [DecidableLT γ] [StrictLT γ]
+  {m : Map α β}
+  {k : α} {v : β} {k' : γ} {v' : κ}
+  {f : α × β → Option (List (γ × κ))}
+  (hfind : m.find? k = .some v)
+  (hkv : ∃ l, f (k, v) = .some l ∧ l.find? (λ x => x.1 == k') = .some (k', v'))
+  (hf : ∀ kv, (∃ l, f kv = .some l ∧ (l.find? (λ x => x.1 == k')).isSome) → kv.1 = k) :
+  (Map.make (m.toList.filterMap f).flatten).find? k' = .some v'
+:= by
+  apply Map.find?_implies_make_find?
+  simp only [List.find?_flatten]
+  cases m with | mk l =>
+  simp only [Map.toList, Map.kvs, Map.find?] at *
+  split at hfind
+  rotate_left; contradiction
+  rename_i heq
+  simp only [Option.some.injEq] at hfind
+  simp only [hfind] at heq
+  have := List.find?_some heq
+  simp only [beq_iff_eq] at this
+  simp only [this] at heq
+  induction l with
+  | nil => contradiction
+  | cons hd tl ih =>
+    simp only [List.find?] at heq
+    split at heq
+    · simp only [Option.some.injEq] at heq
+      have ⟨fkv, hfkv, hfind_fkv⟩ := hkv
+      simp only [List.filterMap, heq, hfkv]
+      simp only [List.findSome?, hfind_fkv]
+    · rename_i hne_hd_key
+      simp only [List.filterMap]
+      split
+      · exact ih heq
+      · rename_i l' hhd
+        simp only [beq_eq_false_iff_ne, ne_eq] at hne_hd_key
+        have := hf hd
+        have :
+          (∃ l, f hd = some l ∧ (List.find? (fun x => x.fst == k') l).isSome = true) → False
+        := by
+          intros h
+          apply hne_hd_key
+          apply this h
+        simp only [
+          beq_iff_eq, Prod.exists,
+          exists_and_right, exists_eq_right,
+          imp_false, not_exists, not_and,
+        ] at this
+        have hfind_l' := this l' hhd
+        simp only [List.findSome?]
+        split
+        · rename_i heq
+          simp only [heq] at hfind_l'
+          simp at hfind_l'
+        · exact ih heq
+
 theorem app_table_make_filterMap
   [BEq α] [BEq β] [LawfulBEq α] [LawfulBEq β]
   {arg : TermType} {out : TermType} {default : Term}
@@ -1026,7 +1084,6 @@ theorem env_symbolize?_same_entity_data_standard_same_tag
   (hinst : InstanceOfWellFormedEnvironment env.request env.entities Γ)
   (hinst_data : InstanceOfEntitySchemaEntry uid data Γ)
   (hfind_entry : Map.find? Γ.ets uid.ty = some (.standard entry))
-  (hwf_entry : (EntitySchemaEntry.standard entry).WellFormed Γ)
   (hfind_data : Map.find? env.entities uid = some data) :
   SameTags uid data
     (SymEntityData.interpret
@@ -1034,7 +1091,7 @@ theorem env_symbolize?_same_entity_data_standard_same_tag
       (SymEntityData.ofStandardEntityType uid.ty entry))
 := by
   have ⟨_, ⟨hwf_entities, _⟩⟩ := hwf_env
-  have ⟨hwf_data_attrs, _, _, hwf_data_tags, _⟩ := hwf_entities uid data hfind_data
+  have ⟨hwf_data_attrs, _, _, hwf_data_tags_map, hwf_data_tags⟩ := hwf_entities uid data hfind_data
   have ⟨hwf_Γ, _, _⟩ := hinst
   have ⟨entry', hfind_entry', _, hwt_data_attrs, hwt_data_ancs, hwt_data_tags⟩ := hinst_data
   simp only [hfind_entry, Option.some.injEq] at hfind_entry'
@@ -1108,7 +1165,7 @@ theorem env_symbolize?_same_entity_data_standard_same_tag
             simp only [Term.prim.injEq, TermPrim.string.injEq] at heq
             simp only [heq] at hmem
             have ⟨_, hfind⟩ := Map.in_keys_exists_value hmem
-            have := (Map.in_list_iff_find?_some hwf_data_tags).mp hfind
+            have := (Map.in_list_iff_find?_some hwf_data_tags_map).mp hfind
             simp only [hno_tag] at this
             contradiction
           simp only [this]
@@ -1152,7 +1209,7 @@ theorem env_symbolize?_same_entity_data_standard_same_tag
               exists tag
               simp only [and_true]
               apply Map.in_list_in_keys
-              apply (Map.in_list_iff_find?_some hwf_data_tags).mpr h
+              apply (Map.in_list_iff_find?_some hwf_data_tags_map).mpr h
             have := not_contains_prop_bool_equiv.mp hnot_contains this
             contradiction
           cases h : data.tags.find? tag with
@@ -1207,7 +1264,7 @@ theorem env_symbolize?_same_entity_data_standard_same_tag
           exists tag
           simp only [and_true]
           apply Map.in_list_in_keys
-          apply (Map.in_list_iff_find?_some hwf_data_tags).mpr hfind_tag
+          apply (Map.in_list_iff_find?_some hwf_data_tags_map).mpr hfind_tag
         · rename_i h
           have := h
             (Set.make (List.map (fun k => Term.prim (TermPrim.string k)) data.tags.keys.toList))
@@ -1221,9 +1278,124 @@ theorem env_symbolize?_same_entity_data_standard_same_tag
           UnaryFunction.interpret,
           env_symbolize?_lookup_tag_vals hfind_entry hentry_tags,
           Entities.symbolizeTags?.valsUDF,
+          SameValues,
         ]
-        -- Requires some fact about `find? ∘ Map.make ∘ flatten ∘ filterMap`
-        sorry
+        have hwf_val := hwf_data_tags tag val hfind_tag
+        simp only [InstanceOfEntityTags, EntitySchemaEntry.tags?, hentry_tags] at hwt_data_tags
+        have hwt_val := hwt_data_tags val (Map.find?_some_implies_in_values hfind_tag)
+        have hwf_tagTy : tagTy.WellFormed Γ
+        := by
+          apply wf_env_implies_wf_tag_type hwf_Γ (ety := uid.ty)
+          simp only [EntitySchema.tags?, hfind_entry, Option.map, EntitySchemaEntry.tags?]
+          congr
+        have ⟨sym_val, hsym_val, hval_sym_val⟩ := value?_symbolize?_id hwf_Γ hwf_tagTy hwf_val hwt_val
+        simp only [←hval_sym_val]
+        congr
+        simp only [
+          Factory.app, Factory.tagOf,
+          Term.isLiteral, List.cons.sizeOf_spec,
+          Prod.mk.sizeOf_spec,
+          Term.prim.sizeOf_spec,
+          TermPrim.entity.sizeOf_spec,
+          TermPrim.string.sizeOf_spec,
+          List.nil.sizeOf_spec, List.attach₃,
+          List.pmap, List.all_cons,
+          List.all, Bool.and_self,
+          ↓reduceIte, Option.bind_eq_bind,
+        ]
+        rw [map_make_filterMap_flatten_find? (v' := sym_val) hfind_data]
+        · simp
+          have hsym_tag_val_id :
+            ∀ tag val,
+              (tag, val) ∈ data.tags.toList →
+              ∃ sym_val,
+                val.symbolize? tagTy = .some sym_val ∧
+                sym_val.value? = .some val
+          := by
+            intros tag val hmem_tag_val
+            have hfind_tag_val := (Map.in_list_iff_find?_some hwf_data_tags_map).mp hmem_tag_val
+            have hwf_tag_val := hwf_data_tags _ _ hfind_tag_val
+            have hwt_tag_val := hwt_data_tags _ (Map.find?_some_implies_in_values hfind_tag_val)
+            exact value?_symbolize?_id hwf_Γ hwf_tagTy hwf_tag_val hwt_tag_val
+          have ⟨sym_tags, hsym_tags⟩ :
+            ∃ sym_tags,
+              data.tags.toList.mapM
+                (λ x => do
+                  some (
+                    Term.record (Map.mk [
+                      ("entity", Term.prim (TermPrim.entity uid)),
+                      ("tag", Term.prim (TermPrim.string x.fst)),
+                    ]),
+                    ← x.snd.symbolize? tagTy))
+              = .some sym_tags
+          := by
+            apply List.all_some_implies_mapM_some
+            intros tag_val hmem_tag_val
+            have ⟨sym_tag_val, hsym_tag_val, hval_sym_tag_val⟩ := hsym_tag_val_id tag_val.1 tag_val.2 hmem_tag_val
+            simp [hsym_tag_val]
+          exists sym_tags
+          simp only [Option.bind_eq_bind] at hsym_tags
+          simp only [hsym_tags, true_and]
+          apply find?_unique_entry
+          · simp only [beq_iff_eq, Prod.forall, Prod.mk.injEq]
+            intros tag' val' hmem_tag'_val' htag'
+            have ⟨_, _, h⟩ := List.mapM_some_implies_all_from_some hsym_tags (tag', val') hmem_tag'_val'
+            rename_i tag_val' hmem_tag_val'
+            simp only [
+              bind, Option.bind,
+            ] at h
+            split at h
+            contradiction
+            simp only [Option.some.injEq, Prod.mk.injEq] at h
+            simp only [
+              ←h.1, Term.record.injEq, Map.mk.injEq,
+              List.cons.injEq, Prod.mk.injEq,
+              Term.prim.injEq, TermPrim.string.injEq,
+              true_and, and_true,
+            ]
+            rename_i heq
+            simp only [h.2] at heq
+            have ⟨sym_val', h₁, h₂⟩ := hsym_tag_val_id tag_val'.1 tag_val'.2 hmem_tag_val'
+            have heq_tag : tag_val'.fst = tag
+            := by
+              simp only [htag'] at h
+              replace h := h.1
+              simp only [
+                Term.record.injEq, Map.mk.injEq, List.cons.injEq, Prod.mk.injEq,
+                Term.prim.injEq, TermPrim.string.injEq, true_and, and_true,
+              ] at h
+              exact h
+            have heq_val : tag_val'.snd = val
+            := by
+              have := (Map.in_list_iff_find?_some hwf_data_tags_map).mp hmem_tag_val'
+              simp only [heq_tag, hfind_tag, Option.some.injEq] at this
+              simp [this]
+            simp only [heq_val, hsym_val, Option.some.injEq] at heq
+            simp [heq_tag, heq]
+          · have := (Map.in_list_iff_find?_some hwf_data_tags_map).mpr hfind_tag
+            have ⟨y, hmem_y, hy⟩ := List.mapM_some_implies_all_some hsym_tags (tag, val) this
+            simp only [hsym_val, Option.bind_some, Option.some.injEq] at hy
+            simp only [←hy] at hmem_y
+            exact hmem_y
+          · simp
+        · intros kv hkv
+          have ⟨l, h₁, h₂⟩ := hkv
+          simp only [Option.ite_none_right_eq_some] at h₁
+          replace h₁ := h₁.2
+          have ⟨x, hmem_x, hx⟩ := List.find?_isSome.mp h₂
+          have ⟨_, _, h⟩ := List.mapM_some_implies_all_from_some h₁ x hmem_x
+          simp only [bind, Option.bind] at h
+          split at h
+          contradiction
+          simp only [Option.some.injEq] at h
+          simp only [←h] at hx
+          simp only [
+            beq_iff_eq, Term.record.injEq, Map.mk.injEq,
+            List.cons.injEq, Prod.mk.injEq,
+            Term.prim.injEq, TermPrim.entity.injEq, true_and,
+            TermPrim.string.injEq, and_true,
+          ] at hx
+          exact hx.1
 
 theorem env_symbolize?_same_entity_data_standard
   {Γ : TypeEnv} {env : Env}
@@ -1232,7 +1404,6 @@ theorem env_symbolize?_same_entity_data_standard
   (hinst : InstanceOfWellFormedEnvironment env.request env.entities Γ)
   (hinst_data : InstanceOfEntitySchemaEntry uid data Γ)
   (hfind_entry : Map.find? Γ.ets uid.ty = some (.standard entry))
-  (hwf_entry : (EntitySchemaEntry.standard entry).WellFormed Γ)
   (hfind_data : Map.find? env.entities uid = some data) :
   SameEntityData uid data
     (SymEntityData.interpret
@@ -1348,7 +1519,7 @@ theorem env_symbolize?_same_entity_data_standard
       simp only [←heq, true_and]
       exact hmem_anc'
   · exact env_symbolize?_same_entity_data_standard_same_tag
-      hwf_env hinst hinst_data hfind_entry hwf_entry hfind_data
+      hwf_env hinst hinst_data hfind_entry hfind_data
 
 theorem env_symbolize?_same_entity_data_enum
   {Γ : TypeEnv} {env : Env}
@@ -1466,7 +1637,7 @@ theorem env_symbolize?_same_entities_ordinary
   cases entry with
   | standard entry =>
     simp only
-    exact env_symbolize?_same_entity_data_standard hwf_env hinst hinst_data hfind_entry hwf_entry hfind_data
+    exact env_symbolize?_same_entity_data_standard hwf_env hinst hinst_data hfind_entry hfind_data
   | enum es =>
     simp only
     exact env_symbolize?_same_entity_data_enum hinst hinst_data hfind_entry

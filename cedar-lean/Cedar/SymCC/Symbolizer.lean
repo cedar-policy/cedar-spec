@@ -145,12 +145,12 @@ where
     out := TermType.ofType tagTy,
     -- Collect concrete tag values of every entity of type `ety`
     -- i.e. a map from (entity, tag key) to tag value
-    table := Map.make (entities.toList.filterMap λ (euid, data) => do
-      if euid.ty = ety then
+    table := Map.make (entities.toList.filterMap λ (uid, data) => do
+      if uid.ty = ety then
         data.tags.toList.mapM λ (tag, value) => do
           .some (
             .record (Map.mk [
-              ("entity", .prim (.entity euid)),
+              ("entity", .prim (.entity uid)),
               ("tag", .prim (.string tag)),
             ]),
             ← Value.symbolize? value tagTy,
