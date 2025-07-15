@@ -22,8 +22,12 @@ local macro "simp_set_containment_helper" : tactic =>
              try rw [Set.contains_prop_bool_equiv];
              try rw [←Set.in_list_iff_in_mk]))
 
+-- Does its best to canonicalize set containment facts to simpler forms,
+-- eliminating wrappers that convert between sets and lists
 local macro "simp_set_containment" : tactic =>
-  `(tactic| (simp_set_containment_helper; try simp [Set.toList] at *; simp_set_containment_helper))
+  `(tactic| (simp_set_containment_helper;
+             try simp [Set.toList] at *;
+             simp_set_containment_helper))
 
 theorem to_result_from_result_inverses  (β) (v: Option (Result β))
   : (SLResult.fromOptionResult β v).toResult = v
@@ -56,6 +60,16 @@ theorem from_to_result_inverses  (β) (v: (SLResult β))
     simp [SLResult.toResult, SLResult.fromOptionResult]
     unfold Result.toSLResult
     simp
+
+theorem to_sl_to_result_inverse  (β) (v: (Result β))
+  : (SLResult.toResult β (v.toSLResult)) = v
+  := by
+  sorry
+
+local macro "simp_result_inverses" : tactic =>
+  `(tactic| (try rw [to_result_from_result_inverses] at *;
+             try rw [from_to_result_inverses] at *;
+             try rw [to_sl_to_result_inverse] at *))
 
 -- after straight line analysis, there exists a SLExpr
 -- which does not have an assertion error
@@ -172,14 +186,49 @@ theorem straight_line_same_semantics (e: Expr) (r: Request) {se : SLExpr} {s: En
      simp [evaluate]
      simp [all_sl_exprs] at *
      rw [Set.contains_prop_bool_equiv] at *
-     rcases List.map_ele_implies_exists_application (fun e => SLExpr.unaryApp op e) h_contains with ⟨child_se, ⟨child_in_list, child_to_se⟩⟩
+     rcases List.map_ele_implies_exists_application (fun e => SLExpr.unaryApp op e) h_contains with ⟨child_se, ⟨h_contains', child_to_se⟩⟩
+     clear h_contains'
      rcases @straight_line_same_semantics child_e r with ih
      simp at ih
      specialize @ih child_se s
      simp_set_containment
-     --specialize ih child_in_list
-     -- TODO need lemma that child evaluates to some v_child
-     sorry
+     rw [←child_to_se] at h_res
+     rw [←child_to_se] at *
+     clear child_to_se
+     simp_set_containment
+     simp [evaluate_sl] at h_res
+
+     cases case : (evaluate_sl child_se r s)
+     -- cases on what the child evaluated to
+     . rewrite [case] at h_res
+       simp at h_res
+       simp [SLResult.toResult] at h_res
+       rename_i a
+       cases h_a: a
+       . rw [h_a] at h_res
+         simp at h_res
+
+       . rw [h_a] at h_res
+         simp at h_res
+         rw [case] at ih
+         simp [SLResult.toResult] at ih
+         rw [h_a] at ih
+         simp at ih
+         specialize ih h_contains
+         rw [ih]
+         simp
+         exact h_res
+     . rename_i child_v
+       rw [case] at ih
+       simp [SLResult.toResult] at ih
+       specialize ih h_contains
+       rw [ih]
+       simp [Except.bind]
+       rw [case] at h_res
+       simp at h_res
+       simp_result_inverses
+       simp at h_res
+       exact h_res
    | _ => sorry
 
 
