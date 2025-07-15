@@ -96,7 +96,7 @@ def Entities.symbolizeAttrs?
   (entities : Entities) (Γ : TypeEnv)
   (ety : EntityType) (entry : EntitySchemaEntry)
   (uuf : UUF) : Option UDF :=
-  if uuf.id == s!"attrs[{toString ety}]" then
+  if uuf.id == UUF.attrs_id ety then
     .some udf
   else
     .none
@@ -121,12 +121,11 @@ Generates interpretations for the tag key and value maps.
 def Entities.symbolizeTags?
   (entities : Entities) (Γ : TypeEnv)
   (ety : EntityType) (entry : EntitySchemaEntry)
-  (uuf : UUF) : Option UDF := do
-  let tagTy := ← entry.tags?
-  if uuf.id == s!"tagKeys[{toString ety}]" then
+  (uuf : UUF) : Option UDF :=
+  if uuf.id == UUF.tag_keys_id ety then
     .some keysUDF
-  else if uuf.id == s!"tagVals[{toString ety}]" then
-    .some (valsUDF tagTy)
+  else if uuf.id == UUF.tag_vals_id ety then do
+    .some (valsUDF (← entry.tags?))
   else
     .none
 where
@@ -169,7 +168,7 @@ def Entities.symbolizeAncs?
   (ety : EntityType) (entry : EntitySchemaEntry)
   (uuf : UUF) : Option UDF :=
   entry.ancestors.toList.findSome? λ ancTy =>
-    if uuf.id == s!"ancs[{toString ety}, {toString ancTy}]" then
+    if uuf.id == UUF.ancs_id ety ancTy then
       .some {
         arg := TermType.ofType (.entity ety),
         out := TermType.ofType (.set (.entity ancTy)),

@@ -537,35 +537,211 @@ theorem find?_id
         simp only [heq]
       · exact ih hmem
 
+theorem map_toList_findSome?
+  [BEq α] [LawfulBEq α]
+  {m : Map α β} {k : α} {v : β} {v' : γ}
+  {f : α × β → Option γ}
+  (hfind : Map.find? m k = .some v)
+  (hf : ∀ kv, (∃ v', f kv = .some v') → kv.1 = k)
+  (hkv : f (k, v) = .some v') :
+  m.toList.findSome? f = .some v'
+:= by
+  cases m with | mk m =>
+  simp only [Map.toList, Map.kvs, Map.find?] at hfind ⊢
+  split at hfind
+  · rename_i heq
+    simp only [Option.some.injEq] at hfind
+    simp [hfind] at heq
+    induction m with
+    | nil => contradiction
+    | cons hd tl ih =>
+      simp only [List.findSome?]
+      simp only [List.find?] at heq
+      split
+      · rename_i fhd heq'
+        split at heq
+        · rename_i heq''
+          simp only [Option.some.injEq] at heq
+          simp only [beq_iff_eq, heq] at heq''
+          simp only [heq''] at heq
+          simp only [heq] at heq'
+          simp only [heq'] at hkv
+          simp [hkv]
+        · rename_i heq''
+          simp only [beq_eq_false_iff_ne, ne_eq] at heq''
+          apply False.elim
+          apply heq''
+          apply hf
+          exists fhd
+      · split at heq
+        · rename_i h₁ _ h₂
+          simp only [beq_iff_eq] at h₂
+          simp only [Option.some.injEq] at heq
+          simp only [heq] at h₂
+          simp only [h₂] at heq
+          simp only [heq] at h₁
+          simp only [hkv] at h₁
+          contradiction
+        · exact ih heq
+  · contradiction
+
+theorem uuf_attrs_id_inj
+  {ety₁ ety₂} :
+  UUF.attrs_id ety₁ = UUF.attrs_id ety₂ ↔ ety₁ = ety₂
+:= sorry
+
+theorem uuf_ancs_id_inj
+  {ety₁ ety₂ ancTy₁ ancTy₂} :
+  UUF.ancs_id ety₁ ancTy₁ = UUF.ancs_id ety₂ ancTy₂ ↔ ety₁ = ety₂ ∧ ancTy₁ = ancTy₂
+:= sorry
+
+theorem uuf_tag_keys_id_inj
+  {ety₁ ety₂} :
+  UUF.tag_keys_id ety₁ = UUF.tag_keys_id ety₂ ↔ ety₁ = ety₂
+:= sorry
+
+theorem uuf_tag_vals_id_inj
+  {ety₁ ety₂} :
+  UUF.tag_vals_id ety₁ = UUF.tag_vals_id ety₂ ↔ ety₁ = ety₂
+:= sorry
+
+theorem uuf_attrs_ancs_no_confusion
+  {ety₁ ety₂ ancTy} :
+  UUF.attrs_id ety₁ ≠ UUF.ancs_id ety₂ ancTy
+:= sorry
+
+theorem uuf_attrs_tag_keys_no_confusion
+  {ety₁ ety₂} :
+  UUF.attrs_id ety₁ ≠ UUF.tag_keys_id ety₂
+:= sorry
+
+theorem uuf_attrs_tag_vals_no_confusion
+  {ety₁ ety₂} :
+  UUF.attrs_id ety₁ ≠ UUF.tag_vals_id ety₂
+:= sorry
+
+theorem uuf_tag_vals_tag_keys_no_confusion
+  {ety₁ ety₂} :
+  UUF.tag_vals_id ety₁ ≠ UUF.tag_keys_id ety₂
+:= sorry
+
+theorem uuf_tag_keys_ancs_no_confusion
+  {ety₁ ety₂ ancTy} :
+  UUF.tag_keys_id ety₁ ≠ UUF.ancs_id ety₂ ancTy
+:= sorry
+
+theorem uuf_tag_vals_ancs_no_confusion
+  {ety₁ ety₂ ancTy} :
+  UUF.tag_vals_id ety₁ ≠ UUF.ancs_id ety₂ ancTy
+:= sorry
+
 theorem env_symbolize?_lookup_attrs_udf
   {Γ : TypeEnv} {env : Env}
-  {ety : EntityType} {entry : StandardSchemaEntry} :
+  {ety : EntityType} {entry : StandardSchemaEntry}
+  (hfind : Γ.ets.find? ety = .some (.standard entry)) :
   (env.symbolize? Γ).funs {
-    id  := s!"attrs[{toString ety}]",
+    id  := UUF.attrs_id ety,
     arg := TermType.ofType (.entity ety),
     out := TermType.ofType (.record entry.attrs),
   } = Entities.symbolizeAttrs?.udf env.entities Γ ety (EntitySchemaEntry.standard entry)
-:= sorry
+:= by
+  simp only [Env.symbolize?, Entities.symbolize?]
+  rw [map_toList_findSome? hfind _ _]
+  · intros kv hkv
+    have ⟨v, hv⟩ := hkv
+    simp [
+      Entities.symbolizeAttrs?,
+      Entities.symbolizeTags?,
+      uuf_attrs_id_inj,
+      uuf_tag_keys_id_inj,
+      uuf_attrs_tag_keys_no_confusion,
+      ne_comm.mp uuf_attrs_tag_keys_no_confusion,
+      uuf_tag_vals_tag_keys_no_confusion,
+      ne_comm.mp uuf_tag_vals_tag_keys_no_confusion,
+      uuf_attrs_tag_vals_no_confusion,
+      ne_comm.mp uuf_attrs_tag_vals_no_confusion,
+    ] at hv
+    cases hv with
+    | inl hv => simp [hv.1]
+    | inr hv =>
+      replace hv := hv.2
+      simp only [Entities.symbolizeAncs?] at hv
+      have ⟨_, _, _, _, h⟩ := List.findSome?_eq_some_iff.mp hv
+      simp [uuf_attrs_ancs_no_confusion] at h
+  · simp [Entities.symbolizeAttrs?]
 
 theorem env_symbolize?_lookup_tag_keys
   {Γ : TypeEnv} {env : Env}
-  {ety : EntityType} :
+  {ety : EntityType} {entry : StandardSchemaEntry}
+  (hfind : Γ.ets.find? ety = .some (.standard entry)) :
   (env.symbolize? Γ).funs {
-    id := s!"tagKeys[{toString ety}]",
+    id := UUF.tag_keys_id ety,
     arg := TermType.ofType (CedarType.entity ety),
     out := TermType.ofType CedarType.string.set,
   } = Entities.symbolizeTags?.keysUDF env.entities Γ ety
-:= sorry
+:= by
+  simp only [Env.symbolize?, Entities.symbolize?]
+  rw [map_toList_findSome? hfind _ _]
+  · intros kv hkv
+    have ⟨v, hv⟩ := hkv
+    simp [
+      Entities.symbolizeAttrs?,
+      Entities.symbolizeTags?,
+      uuf_tag_keys_id_inj,
+      ne_comm.mp uuf_attrs_tag_keys_no_confusion,
+      ne_comm.mp uuf_tag_vals_tag_keys_no_confusion,
+    ] at hv
+    cases hv with
+    | inl hv => simp [hv.1]
+    | inr hv =>
+      replace hv := hv.2
+      simp only [Entities.symbolizeAncs?] at hv
+      have ⟨_, _, _, _, h⟩ := List.findSome?_eq_some_iff.mp hv
+      simp [uuf_tag_keys_ancs_no_confusion] at h
+  · simp [
+      Entities.symbolizeAttrs?,
+      Entities.symbolizeTags?,
+      ne_comm.mp uuf_attrs_tag_keys_no_confusion,
+    ]
 
 theorem env_symbolize?_lookup_tag_vals
   {Γ : TypeEnv} {env : Env}
-  {ety : EntityType} {tagTy : CedarType} :
+  {ety : EntityType} {tagTy : CedarType} {entry : StandardSchemaEntry}
+  (hfind : Γ.ets.find? ety = .some (.standard entry))
+  (hfind_tagTy : entry.tags = .some tagTy) :
   (env.symbolize? Γ).funs {
-    id := s!"tagVals[{toString ety}]",
+    id := UUF.tag_vals_id ety,
     arg := TermType.tagFor ety,
     out := TermType.ofType tagTy
   } = Entities.symbolizeTags?.valsUDF env.entities Γ ety tagTy
-:= sorry
+:= by
+  simp only [Env.symbolize?, Entities.symbolize?]
+  rw [map_toList_findSome? hfind _ _]
+  · intros kv hkv
+    have ⟨v, hv⟩ := hkv
+    simp [
+      Entities.symbolizeAttrs?,
+      Entities.symbolizeTags?,
+      uuf_tag_vals_id_inj,
+      ne_comm.mp uuf_attrs_tag_keys_no_confusion,
+      ne_comm.mp uuf_attrs_tag_vals_no_confusion,
+      uuf_tag_vals_tag_keys_no_confusion,
+    ] at hv
+    cases hv with
+    | inl hv => simp [hv.1]
+    | inr hv =>
+      replace hv := hv.2
+      simp only [Entities.symbolizeAncs?] at hv
+      have ⟨_, _, _, _, h⟩ := List.findSome?_eq_some_iff.mp hv
+      simp [uuf_tag_vals_ancs_no_confusion] at h
+  · simp [
+      Entities.symbolizeAttrs?,
+      Entities.symbolizeTags?,
+      ne_comm.mp uuf_attrs_tag_vals_no_confusion,
+      uuf_tag_vals_tag_keys_no_confusion,
+      hfind_tagTy,
+      EntitySchemaEntry.tags?,
+    ]
 
 theorem find?_stronger_pred
   {l : List α} {v : α}
@@ -800,7 +976,7 @@ theorem env_symbolize?_same_entity_data_standard_same_tag
         SymTags.interpret,
         UnaryFunction.interpret,
         SymEntityData.ofStandardEntityType.symTags,
-        env_symbolize?_lookup_tag_keys,
+        env_symbolize?_lookup_tag_keys hfind_entry,
       ]
       simp only [happ_tag_keys, Factory.set.member]
       constructor
@@ -892,7 +1068,7 @@ theorem env_symbolize?_same_entity_data_standard_same_tag
           SymTags.interpret,
           UnaryFunction.interpret,
           SymEntityData.ofStandardEntityType.symTags,
-          env_symbolize?_lookup_tag_keys,
+          env_symbolize?_lookup_tag_keys hfind_entry,
         ]
         simp only [
           happ_tag_keys,
@@ -937,7 +1113,7 @@ theorem env_symbolize?_same_entity_data_standard_same_tag
           SymTags.interpret,
           SymTags.getTag!,
           UnaryFunction.interpret,
-          env_symbolize?_lookup_tag_vals,
+          env_symbolize?_lookup_tag_vals hfind_entry hentry_tags,
           Entities.symbolizeTags?.valsUDF,
         ]
         -- Requires some fact about `find? ∘ Map.make ∘ flatten ∘ filterMap`
@@ -972,7 +1148,7 @@ theorem env_symbolize?_same_entity_data_standard
   · simp only [
       SymEntityData.ofStandardEntityType.attrsUUF,
       UnaryFunction.interpret,
-      env_symbolize?_lookup_attrs_udf,
+      env_symbolize?_lookup_attrs_udf hfind_entry,
       Entities.symbolizeAttrs?.udf,
       SameValues,
     ]

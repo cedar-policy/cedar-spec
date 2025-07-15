@@ -109,6 +109,18 @@ deriving instance Repr, Inhabited, DecidableEq for SymEnv
 
 ----- Functions for constructing symbolic input from a schema -----
 
+def UUF.attrs_id (ety : EntityType) : String :=
+  s!"attrs[{toString ety}]"
+
+def UUF.ancs_id (ety : EntityType) (ancTy : EntityType) : String :=
+  s!"ancs[{toString ety}, {toString ancTy}]"
+
+def UUF.tag_keys_id (ety : EntityType) : String :=
+  s!"tagKeys[{toString ety}]"
+
+def UUF.tag_vals_id (ety : EntityType) : String :=
+  s!"tagVals[{toString ety}]"
+
 def SymEntityData.ofStandardEntityType (ety : EntityType) (sch : StandardSchemaEntry) : SymEntityData :=
   {
     attrs := attrsUUF,
@@ -119,24 +131,24 @@ def SymEntityData.ofStandardEntityType (ety : EntityType) (sch : StandardSchemaE
 where
   attrsUUF : UnaryFunction :=
     .uuf {
-      id  := s!"attrs[{toString ety}]",
+      id  := UUF.attrs_id ety,
       arg := TermType.ofType (.entity ety),
       out := TermType.ofType (.record sch.attrs)
     }
   ancsUUF (ancTy : EntityType) : UnaryFunction :=
     .uuf {
-      id  := s!"ancs[{toString ety}, {toString ancTy}]",
+      id  := UUF.ancs_id ety ancTy,
       arg := TermType.ofType (.entity ety),
       out := TermType.ofType (.set (.entity ancTy))
     }
   symTags (tagTy : CedarType) : SymTags :=
     {
       keys := .uuf {
-        id  := s!"tagKeys[{toString ety}]",
+        id  := UUF.tag_keys_id ety,
         arg := TermType.ofType (.entity ety),
         out := TermType.ofType (.set .string) },
       vals := .uuf {
-        id  := s!"tagVals[{toString ety}]",
+        id  := UUF.tag_vals_id ety,
         arg := TermType.tagFor ety, -- record representing the pair type (ety, .string)
         out := TermType.ofType tagTy
       }
