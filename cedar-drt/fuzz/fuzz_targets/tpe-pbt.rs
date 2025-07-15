@@ -15,25 +15,25 @@
  */
 
 #![no_main]
-use cedar_drt::ast::{EntityUID, Expr, Request, Value};
-use cedar_drt::evaluator::Evaluator;
-use cedar_drt::extensions::Extensions;
-use cedar_drt::initialize_log;
+use cedar_drt::logger::initialize_log;
 use cedar_drt_inner::*;
-use cedar_partial_evaluation::entities::{PartialEntities, PartialEntity};
-use cedar_partial_evaluation::request::{PartialEntityUID, PartialRequest};
-use cedar_partial_evaluation::residual::Residual;
-use cedar_partial_evaluation::tpe::tpe_policies;
 use cedar_policy_core::ast;
 use cedar_policy_core::ast::RequestSchema;
+use cedar_policy_core::ast::{EntityUID, Expr, Request, Value};
 use cedar_policy_core::entities::Entities;
+use cedar_policy_core::evaluator::Evaluator;
+use cedar_policy_core::extensions::Extensions;
+use cedar_policy_core::tpe::entities::{PartialEntities, PartialEntity};
+use cedar_policy_core::tpe::request::{PartialEntityUID, PartialRequest};
+use cedar_policy_core::tpe::residual::Residual;
+use cedar_policy_core::tpe::tpe_policies;
+use cedar_policy_core::validator::{CoreSchema, ValidationMode, Validator, ValidatorSchema};
 use cedar_policy_generators::{
     abac::{ABACPolicy, ABACRequest},
     hierarchy::{Hierarchy, HierarchyGenerator},
     schema::Schema,
     settings::ABACSettings,
 };
-use cedar_policy_validator::{CoreSchema, ValidationMode, Validator, ValidatorSchema};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -251,11 +251,15 @@ fuzz_target!(|input: FuzzTargetInput| {
                     let request: ast::Request = input.requests[i].clone().into();
                     let partial_request = &input.partial_requests[i];
                     if passes_request_validation(&schema, &request) {
-                        let residual =
+                        let residuals =
                             tpe_policies(&policyset, &partial_request, &partial_entities, &schema)
                                 .expect("tpe failed");
                         assert!(test_weak_equiv(
-                            residual[0].clone(),
+                            residuals
+                                .values()
+                                .next()
+                                .expect("should exist one residual")
+                                .clone(),
                             &expr,
                             request,
                             &entities
