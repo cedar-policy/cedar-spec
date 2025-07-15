@@ -2169,7 +2169,67 @@ theorem value_symbolize?_well_typed
   (hwt_v : InstanceOfType Γ v ty)
   (hsym : v.symbolize? ty = .some t) :
   t.typeOf = TermType.ofType ty
-:= sorry
+:= by
+  have ⟨hwf_Γ, _, _⟩ := hinst
+  cases hwt_v with
+  | instance_of_bool | instance_of_int | instance_of_string =>
+    simp only [Value.symbolize?, Prim.symbolize, Option.some.injEq] at hsym
+    simp only [
+      ←hsym, Term.typeOf,
+      TermPrim.typeOf, TermType.ofType,
+      Int64.toBitVec, BitVec.width,
+    ]
+  | instance_of_entity _ _ hwt_ety =>
+    simp only [Value.symbolize?, Prim.symbolize, Option.some.injEq] at hsym
+    simp only [
+      ←hsym, Term.typeOf,
+      TermPrim.typeOf, TermType.ofType,
+      hwt_ety.1,
+    ]
+  | instance_of_set s =>
+    simp only [
+      Value.symbolize?, Prim.symbolize, Option.some.injEq,
+      bind, Option.bind,
+    ] at hsym
+    split at hsym
+    contradiction
+    rename_i sym_elems hsym_elems
+    simp only [Option.some.injEq] at hsym
+    simp only [←hsym, Term.typeOf, TermType.ofType]
+  | instance_of_record rec rty h₁ h₂ h₃ =>
+    simp only [
+      Value.symbolize?, Prim.symbolize, Option.some.injEq,
+      bind, Option.bind,
+    ] at hsym
+    split at hsym
+    contradiction
+    rename_i sym_attrs hsym_attrs
+    simp only [Option.some.injEq] at hsym
+    simp only [←hsym, Term.typeOf, TermType.ofType]
+    congr
+    simp only [List.map_attach₃_snd]
+    -- Rephrase `TermType.ofRecordType` as a map
+    have (rty : List (Attr × QualifiedType)) :
+      TermType.ofRecordType rty
+      = rty.map λ (a, qty) => (a, TermType.ofQualifiedType qty)
+    := by
+      induction rty with
+      | nil => simp [TermType.ofRecordType]
+      | cons => simp [TermType.ofRecordType]; assumption
+    simp only [this]
+    simp only [List.mapM₂_eq_mapM] at hsym_attrs
+
+    sorry
+  | instance_of_ext _ _ hwt_ext =>
+    simp only [Value.symbolize?, Option.some.injEq] at hsym
+    simp only [
+      ←hsym, Term.typeOf,
+      TermPrim.typeOf, TermType.ofType,
+    ]
+    simp only [InstanceOfExtType] at hwt_ext
+    split at hwt_ext
+    any_goals simp
+    contradiction
 
 theorem mapM_on_values_wf
   [LT α] [DecidableLT α]
