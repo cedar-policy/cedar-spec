@@ -169,20 +169,23 @@ def Entities.symbolizeAncs?
   (uuf : UUF) : Option UDF :=
   entry.ancestors.toList.findSome? λ ancTy =>
     if uuf.id == UUF.ancs_id ety ancTy then
-      .some {
-        arg := TermType.ofType (.entity ety),
-        out := TermType.ofType (.set (.entity ancTy)),
-        table := Map.make (entities.toList.filterMap λ (euid, data) => do
-        if euid.ty = ety then
-          .some (↑euid, ← Value.symbolize?
-            (.set (Set.make (data.ancestors.toList.map λ anc => .prim (.entityUID anc))))
-            (.set (.entity ancTy)))
-        else
-          .none),
-        default := defaultLit' Γ (.set (.entity ancTy)),
-      }
+      .some (udf ancTy)
     else
       .none
+where
+  udf ancTy := {
+    arg := TermType.ofType (.entity ety),
+    out := TermType.ofType (.set (.entity ancTy)),
+    table := Map.make (entities.toList.filterMap λ (uid, data) => do
+    if uid.ty = ety then
+      .some (↑uid,
+        .set
+          (Set.make (data.ancestors.toList.map λ anc => .prim (.entity anc)))
+          (.entity ancTy))
+    else
+      .none),
+    default := defaultLit' Γ (.set (.entity ancTy)),
+  }
 
 /--
 Symbolizes a concrete `Entities` into (part of) an `Interpretation` of `SymEnv.ofEnv Γ`.

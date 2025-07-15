@@ -537,6 +537,32 @@ theorem find?_id
         simp only [heq]
       · exact ih hmem
 
+theorem list_findSome?_unique
+  [BEq α] [LawfulBEq α]
+  {l : List α} {x : α} {y : β}
+  {f : α → Option β}
+  (hfind : x ∈ l)
+  (hf : ∀ x', (∃ y', f x' = .some y') → x' = x)
+  (hx : f x = .some y) :
+  l.findSome? f = .some y
+:= by
+  induction l with
+  | nil => contradiction
+  | cons hd tl ih =>
+    simp only [List.findSome?]
+    simp only [List.mem_cons] at hfind
+    cases hfind with
+    | inl hfind =>
+      simp only [←hfind, hx]
+    | inr hfind =>
+      split
+      · rename_i v' hhd
+        simp only [←hx, ←hhd]
+        congr
+        apply hf
+        exists v'
+      · exact ih hfind
+
 theorem map_toList_findSome?
   [BEq α] [LawfulBEq α]
   {m : Map α β} {k : α} {v : β} {v' : γ}
@@ -743,6 +769,60 @@ theorem env_symbolize?_lookup_tag_vals
       EntitySchemaEntry.tags?,
     ]
 
+theorem env_symbolize?_lookup_ancs
+  {Γ : TypeEnv} {env : Env}
+  {ety : EntityType} {ancTy : EntityType}
+  {entry : StandardSchemaEntry}
+  (hfind : Γ.ets.find? ety = .some (.standard entry))
+  (hfind_ancTy : ancTy ∈ entry.ancestors) :
+  (env.symbolize? Γ).funs {
+    id := UUF.ancs_id ety ancTy,
+    arg := TermType.ofType (CedarType.entity ety),
+    out := TermType.ofType (CedarType.entity ancTy).set,
+  } = Entities.symbolizeAncs?.udf env.entities Γ ety ancTy
+:= by
+  simp only [Env.symbolize?, Entities.symbolize?]
+  rw [map_toList_findSome? hfind _ _]
+  · intros kv hkv
+    have ⟨v, hv⟩ := hkv
+    simp [
+      Entities.symbolizeAttrs?,
+      Entities.symbolizeTags?,
+      Entities.symbolizeAncs?,
+      uuf_tag_vals_id_inj,
+      ne_comm.mp uuf_attrs_tag_keys_no_confusion,
+      ne_comm.mp uuf_attrs_tag_vals_no_confusion,
+      ne_comm.mp uuf_attrs_ancs_no_confusion,
+      ne_comm.mp uuf_tag_keys_ancs_no_confusion,
+      ne_comm.mp uuf_tag_vals_ancs_no_confusion,
+      uuf_tag_vals_tag_keys_no_confusion,
+    ] at hv
+    have ⟨_, _, _, _, h, _⟩ := List.findSome?_eq_some_iff.mp hv
+    split at h
+    · rename_i heq
+      have := uuf_ancs_id_inj.mp heq
+      simp [this.1]
+    · contradiction
+  · simp [
+      Entities.symbolizeAttrs?,
+      Entities.symbolizeTags?,
+      Entities.symbolizeAncs?,
+      ne_comm.mp uuf_attrs_tag_vals_no_confusion,
+      ne_comm.mp uuf_attrs_ancs_no_confusion,
+      ne_comm.mp uuf_tag_keys_ancs_no_confusion,
+      ne_comm.mp uuf_tag_vals_ancs_no_confusion,
+    ]
+    apply list_findSome?_unique hfind_ancTy
+    · intros ancTy' hancTy'_mem
+      simp only [
+        Option.ite_none_right_eq_some,
+        Option.some.injEq,
+        exists_and_left, exists_eq',
+        and_true,
+      ] at hancTy'_mem
+      simp [uuf_ancs_id_inj.mp hancTy'_mem]
+    · simp
+
 theorem find?_stronger_pred
   {l : List α} {v : α}
   {f : α → Bool}
@@ -780,7 +860,7 @@ theorem map_find?_to_list_find?
   [BEq α] [LawfulBEq α]
   {m : Map α β} {k : α} {v : β}
   (hfind : Map.find? m k = .some v) :
-  List.find? (λ x => x.fst == k ) (Map.toList m) = .some (k, v)
+  List.find? (λ x => x.fst == k) (Map.toList m) = .some (k, v)
 := by
   simp only [Map.find?] at hfind
   split at hfind
@@ -912,6 +992,32 @@ theorem not_contains_prop_bool_equiv [DecidableEq α] {v : α} {s : Set α} :
       contradiction
     | false =>
       rfl
+
+theorem list_mem_implies_find?
+  {l : List α} {k : α} {f : α → Bool}
+  (hmem : k ∈ l)
+  (hk : f k)
+  (hf : ∀ k', f k' → k' = k) :
+  List.find? f l = .some k
+:= by
+  induction l with
+  | nil => contradiction
+  | cons hd tl ih =>
+    simp only [List.mem_cons] at hmem
+    simp only [List.find?_cons_eq_some, Bool.not_eq_eq_eq_not, Bool.not_true]
+    cases hmem with
+    | inl hmem =>
+      apply Or.inl
+      simp [←hmem, hk]
+    | inr hmem =>
+      cases hhd : f hd with
+      | true =>
+        apply Or.inl
+        simp [hhd, hf hd hhd]
+      | false =>
+        apply Or.inr
+        simp only [true_and]
+        exact ih hmem
 
 theorem env_symbolize?_same_entity_data_standard_same_tag
   {Γ : TypeEnv} {env : Env}
@@ -1134,11 +1240,11 @@ theorem env_symbolize?_same_entity_data_standard
       (SymEntityData.ofStandardEntityType uid.ty entry))
 := by
   have ⟨_, ⟨hwf_entities, _⟩⟩ := hwf_env
-  have ⟨hwf_data_attrs, _, _, hwf_data_tags, _⟩ := hwf_entities uid data hfind_data
+  have ⟨hwf_data_attrs, _, hwf_data_ancs, hwf_data_tags, _⟩ := hwf_entities uid data hfind_data
   have ⟨hwf_Γ, _, _⟩ := hinst
   have ⟨entry', hfind_entry', _, hwt_data_attrs, hwt_data_ancs, hwt_data_tags⟩ := hinst_data
   simp only [hfind_entry, Option.some.injEq] at hfind_entry'
-  simp only [←hfind_entry', EntitySchemaEntry.attrs] at hwt_data_attrs hwt_data_tags
+  simp only [←hfind_entry', EntitySchemaEntry.attrs] at hwt_data_attrs hwt_data_ancs hwt_data_tags
   simp only [
     SymEntityData.ofStandardEntityType,
     SymEntityData.interpret,
@@ -1176,8 +1282,71 @@ theorem env_symbolize?_same_entity_data_standard
         simp only [Option.some.injEq, Prod.mk.injEq, Term.prim.injEq, TermPrim.entity.injEq] at hkv
         simp [hkv.1]
     · simp [Term.isLiteral]
-  · sorry
-  · sorry
+  · intros anc hmem_anc
+    simp only [SameEntityData.InSymAncestors]
+    have hfind_ancTy := hwt_data_ancs anc hmem_anc
+    simp only [EntitySchemaEntry.ancestors] at hfind_ancTy
+    exists UnaryFunction.interpret (env.symbolize? Γ) (SymEntityData.ofStandardEntityType.ancsUUF uid.ty anc.ty)
+    constructor
+    · apply Map.find?_mapOnValues_some
+      apply Map.find?_implies_make_find?
+      simp only [List.find?_map]
+      unfold Function.comp
+      simp only
+      have : List.find? (λ x => x == anc.ty) entry.ancestors.toList = .some anc.ty
+      := by apply list_mem_implies_find? hfind_ancTy <;> simp
+      simp only [this, Option.map]
+    · simp only [
+        SymEntityData.ofStandardEntityType.ancsUUF,
+        UnaryFunction.interpret,
+        env_symbolize?_lookup_ancs hfind_entry hfind_ancTy,
+        Entities.symbolizeAncs?.udf,
+      ]
+      exists (Set.make (List.map
+        (λ anc => Term.prim (TermPrim.entity anc))
+        data.ancestors.toList))
+      constructor
+      · apply app_table_make_filterMap hfind_data
+        · simp
+        · simp
+        · simp only [Term.isLiteral]
+      · apply (Set.make_mem _ _).mp
+        apply List.mem_map.mpr
+        exists anc
+  · simp only
+    intros ancTy ancUF hancUF
+    simp only [
+      SameEntityData.InAncestors,
+    ]
+    have ⟨uuf, huuf, hancUF⟩ := Map.find?_mapOnValues_some' _ hancUF
+    have := (Map.in_list_iff_find?_some (Map.make_wf _)).mpr huuf
+    have := Map.make_mem_list_mem this
+    have ⟨_, hmem_ancTy, heq⟩ := List.mem_map.mp this
+    simp only [Prod.mk.injEq] at heq
+    replace huuf := heq.2
+    simp only [heq.1] at huuf hmem_ancTy
+    simp only [←huuf] at hancUF
+    simp only [
+      hancUF,
+      SymEntityData.ofStandardEntityType.ancsUUF,
+      UnaryFunction.interpret,
+      env_symbolize?_lookup_ancs hfind_entry hmem_ancTy,
+      Entities.symbolizeAncs?.udf,
+    ]
+    exists (Set.make (List.map
+      (λ anc => Term.prim (TermPrim.entity anc))
+      data.ancestors.toList))
+    constructor
+    · apply app_table_make_filterMap hfind_data
+      · simp
+      · simp
+      · simp only [Term.isLiteral]
+    · intros anc_term hmem_anc_term
+      have := (Set.make_mem _ _).mpr hmem_anc_term
+      have ⟨anc', hmem_anc', heq⟩ := List.mem_map.mp this
+      exists anc'
+      simp only [←heq, true_and]
+      exact hmem_anc'
   · exact env_symbolize?_same_entity_data_standard_same_tag
       hwf_env hinst hinst_data hfind_entry hwf_entry hfind_data
 
