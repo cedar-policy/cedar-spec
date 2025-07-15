@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Data.Set
+import Cedar.Data.List
 /-!
 
 This file defines a simple map data types, backed by a sorted duplicate-free
@@ -47,6 +48,12 @@ def empty {α β} : Map α β := .mk []
 /-- Returns an ordered and duplicate free list provided the given map is well-formed. -/
 def toList {α : Type u} {β : Type v} (m : Map α β) : List (Prod α β) := m.kvs
 
+
+/-- inserts an element, overwriting any existing element -/
+def insert {α β} [LT α] [DecidableLT α] (m : Map α β) (k : α) (v : β) : Map α β :=
+  -- TODO more efficient implementation
+  -- right now just rebuilds the map
+  Map.mk (((Prod.mk k v) :: m.kvs).canonicalize Prod.fst)
 
 /-- Returns the keys of `m` as a set. -/
 def keys {α β} (m : Map α β) : Set α :=

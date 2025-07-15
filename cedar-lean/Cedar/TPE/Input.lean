@@ -43,16 +43,40 @@ structure PartialRequest where
   -- (typed) `Residual`
   context   : Option (Map Attr Value)
 
+def Request.asPartialRequest (req : Request) : PartialRequest :=
+  { principal := { ty := req.principal.ty, id := .some req.principal.eid }
+  , action    := req.action
+  , resource  := { ty := req.resource.ty, id := .some req.resource.eid }
+  , context   := req.context }
+
+
 -- We don't need type annotations here following the rationale above
-structure PartialEntityData where
-  attrs     : Option (Map Attr Value)
-  ancestors : Option (Set EntityUID)
-  tags      : Option (Map Attr Value)
+inductive PartialEntityData where
+  | present (attrs : Option (Map Attr Value)) (ancestors : Option (Set EntityUID)) (tags : Option (Map Attr Value))
+  | MissingEntity
+
+def EntityData.asPartial (data : EntityData) : PartialEntityData :=
+  .present (.some data.attrs) (.some data.ancestors) (.some data.tags)
 
 abbrev PartialEntities := Map EntityUID PartialEntityData
 
+def Entities.asPartial (entities: Entities) : PartialEntities :=
+  entities.mapOnValues EntityData.asPartial
+
 def PartialEntities.get (es : PartialEntities) (uid : EntityUID) (f : PartialEntityData → Option α) : Option α :=
   (es.find? uid).bind f
+
+def PartialEntityData.ancestors : PartialEntityData → Option (Set EntityUID)
+  | .present _ ancestors _ => ancestors
+  | .MissingEntity => .some Set.empty
+
+def PartialEntityData.tags : PartialEntityData → Option (Map Attr Value)
+  | .present _ _ tags => tags
+  | .MissingEntity => .some Map.empty
+
+def PartialEntityData.attrs : PartialEntityData → Option (Map Attr Value)
+  | .present attrs _ _ => attrs
+  | .MissingEntity => .some Map.empty
 
 def PartialEntities.ancestors (es : PartialEntities) (uid : EntityUID) : Option (Set EntityUID) := es.get uid PartialEntityData.ancestors
 
@@ -76,7 +100,8 @@ def entitiesIsValid (env : TypeEnv) (es : PartialEntities) : Bool :=
   (es.toList.all entityIsValid) && (env.acts.toList.all instanceOfActionSchema)
 where
   entityIsValid p :=
-    let (uid, ⟨attrs, ancestors, tags⟩) := p
+    let (uid, entityData) := p
+    let (attrs, ancestors, tags) := (entityData.attrs, entityData.ancestors, entityData.tags)
     match env.ets.find? uid.ty with
     | .some entry =>
       entry.isValidEntityEID uid.eid &&
@@ -138,7 +163,7 @@ where
       es₂.kvs.all λ (a₂, e₂) => match es₁.find? a₂ with
         | .some e₁ =>
           let ⟨attrs₁, ancestors₁, tags₁⟩ := e₁
-          let ⟨attrs₂, ancestors₂, tags₂⟩ := e₂
+          let (attrs₂, ancestors₂, tags₂) := (e₂.attrs, e₂.ancestors, e₂.tags)
           partialIsValid attrs₂ (· = attrs₁) &&
           partialIsValid ancestors₂ (· = ancestors₁) &&
           partialIsValid tags₂ (· = tags₁)
