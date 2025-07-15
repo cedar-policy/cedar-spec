@@ -37,7 +37,7 @@ theorem hasAttrInRecord_has_empty_or_singleton_capabilities {x₁ : Expr} {a : A
   simp [ok, err] at h₁ <;>
   simp [h₁]
 
-theorem type_of_hasAttr_inversion {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilities} {env : Environment} {tx : TypedExpr}
+theorem type_of_hasAttr_inversion {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilities} {env : TypeEnv} {tx : TypedExpr}
   (h₁ : typeOf (Expr.hasAttr x₁ a) c₁ env = Except.ok (tx, c₂)) :
   (c₂ = ∅ ∨ c₂ = Capabilities.singleton x₁ (.attr a)) ∧
   ∃ tx₁ c₁',
@@ -69,18 +69,18 @@ theorem type_of_hasAttr_inversion {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabili
         simp [heq₁, ←h₁]
         simp [TypedExpr.typeOf]
 
-theorem type_of_hasAttr_is_sound_for_records {x₁ : Expr} {a : Attr} {c₁ c₁' : Capabilities} {env : Environment} {rty : RecordType} {request : Request} {entities : Entities} {v₁ : Value}
+theorem type_of_hasAttr_is_sound_for_records {x₁ : Expr} {a : Attr} {c₁ c₁' : Capabilities} {env : TypeEnv} {rty : RecordType} {request : Request} {entities : Entities} {v₁ : Value}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : typeOf (Expr.hasAttr x₁ a) c₁ env = Except.ok (ty, c₂))
   (h₃ : (typeOf x₁ c₁ env).typeOf = Except.ok (CedarType.record rty, c₁'))
   (h₄ : evaluate x₁ request entities = Except.ok v₁)
-  (h₅ : InstanceOfType v₁ (CedarType.record rty)) :
+  (h₅ : InstanceOfType env v₁ (CedarType.record rty)) :
   ∃ v,
   (hasAttr v₁ a entities = Except.error Error.entityDoesNotExist ∨
    hasAttr v₁ a entities = Except.error Error.extensionError ∨
    hasAttr v₁ a entities = Except.error Error.arithBoundsError ∨
    hasAttr v₁ a entities = Except.ok v) ∧
-  InstanceOfType v ty.typeOf
+  InstanceOfType env v ty.typeOf
 := by
   have ⟨r, h₅⟩ := instance_of_record_type_is_record h₅
   subst h₅
@@ -117,19 +117,19 @@ theorem type_of_hasAttr_is_sound_for_records {x₁ : Expr} {a : Attr} {c₁ c₁
     simp [Map.contains_iff_some_find?, h₇] at h₆
 
 
-theorem type_of_hasAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c₁' : Capabilities} {env : Environment} {ety : EntityType} {request : Request} {entities : Entities} {v₁ : Value}
+theorem type_of_hasAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c₁' : Capabilities} {env : TypeEnv} {ety : EntityType} {request : Request} {entities : Entities} {v₁ : Value}
   (h₁ : CapabilitiesInvariant c₁ request entities)
-  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₂ : InstanceOfWellFormedEnvironment request entities env)
   (h₃ : typeOf (Expr.hasAttr x₁ a) c₁ env = Except.ok (ty, c₂))
   (h₄ : (typeOf x₁ c₁ env).typeOf = Except.ok (CedarType.entity ety, c₁'))
   (h₅ : evaluate x₁ request entities = Except.ok v₁)
-  (h₆ : InstanceOfType v₁ (CedarType.entity ety)) :
+  (h₆ : InstanceOfType env v₁ (CedarType.entity ety)) :
   ∃ v,
   (hasAttr v₁ a entities = Except.error Error.entityDoesNotExist ∨
    hasAttr v₁ a entities = Except.error Error.extensionError ∨
    hasAttr v₁ a entities = Except.error Error.arithBoundsError ∨
    hasAttr v₁ a entities = Except.ok v) ∧
-   InstanceOfType v ty.typeOf
+   InstanceOfType env v ty.typeOf
 := by
   have ⟨uid, h₆, h₇⟩ := instance_of_entity_type_is_entity h₆
   subst h₆ h₇
@@ -139,7 +139,7 @@ theorem type_of_hasAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
   split at h₃ <;> try simp [err, hasAttrInRecord] at h₃
   rename_i _ rty h₇
   split at h₃
-  case h_1.h_1 =>
+  case h_1 =>
     split at h₃ <;> rcases h₃ with ⟨h₃, _⟩ <;>
     apply InstanceOfType.instance_of_bool <;>
     simp [InstanceOfBoolType]
@@ -148,7 +148,7 @@ theorem type_of_hasAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
     simp [CapabilitiesInvariant] at h₁
     replace h₁ := h₁.left x₁ a h₉
     simp [EvaluatesTo, evaluate, h₅, hasAttr, attrsOf, h₈] at h₁
-  case h_1.h_2 =>
+  case h_2 =>
     simp [ok] at h₃
     have ⟨h₃, _⟩ := h₃
     simp [←h₃]
@@ -158,11 +158,11 @@ theorem type_of_hasAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
     rename_i _ _ h₉ _ _
     simp [Entities.attrsOrEmpty] at h₈
     split at h₈
-    case h₁.true.h_1 _ _ _ _ _ h₁₀ =>
+    case h_1 _ _ _ _ _ h₁₀ =>
       have h₁₁ := well_typed_entity_attributes h₂ h₁₀ h₇
       have h₁₂ := absent_attribute_is_absent h₁₁ h₉
       simp [Map.contains_iff_some_find?, h₁₂] at h₈
-    case h₁.true.h_2 =>
+    case h_2 =>
       rcases (Map.not_contains_of_empty a) with _
       contradiction
   case h_2 =>
@@ -174,21 +174,27 @@ theorem type_of_hasAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
     unfold Entities.attrsOrEmpty
     rename_i _ h₇ _ _
     simp [EntitySchema.attrs?] at h₇
-    replace ⟨_, h₂, _⟩ := h₂
+    replace ⟨_, _, h₂⟩ := h₂
     cases h₈ : Map.find? entities uid <;> simp
     simp [Map.not_contains_of_empty, InstanceOfBoolType]
-    replace ⟨_, h₈, _⟩ := h₂ uid _ h₈
-    rw [h₇] at h₈
-    contradiction
+    cases h₂.1 uid _ h₈ with
+    | inl h₂ =>
+      replace ⟨_, h₈, _⟩ := h₂
+      rw [h₇] at h₈
+      contradiction
+    | inr h₂ =>
+      -- Action entity always have empty attributes
+      have ⟨h₉, _⟩ := h₂
+      simp only [h₉, Map.contains, Map.find?, Map.empty, Map.kvs]
+      constructor
 
-
-theorem type_of_hasAttr_is_sound {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
+theorem type_of_hasAttr_is_sound {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilities} {env : TypeEnv} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
-  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₂ : InstanceOfWellFormedEnvironment request entities env)
   (h₃ : typeOf (Expr.hasAttr x₁ a) c₁ env = Except.ok (ty, c₂))
   (ih : TypeOfIsSound x₁) :
   GuardedCapabilitiesInvariant (Expr.hasAttr x₁ a) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.hasAttr x₁ a) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.hasAttr x₁ a) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
   have ⟨h₅, ty₁, c₁', hty₁, hty, h₄⟩ := type_of_hasAttr_inversion h₃
   apply And.intro
@@ -208,7 +214,7 @@ theorem type_of_hasAttr_is_sound {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilit
     simp [EvaluatesTo, evaluate] <;>
     rw [h₄] at h₇ <;>
     rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
-    <;> try exact type_is_inhabited ty.typeOf
+    <;> try exact type_of_is_inhabited h₂.wf_env h₃
     · have h₈ : (typeOf x₁ c₁ env).typeOf = Except.ok (CedarType.entity ety, c₁') := by simp [h₄, hty₁, ResultType.typeOf, Except.map]
       exact type_of_hasAttr_is_sound_for_entities h₁ h₂ h₃ h₈ h₆ h₇
     · have h₈ : (typeOf x₁ c₁ env).typeOf = Except.ok (CedarType.record rty, c₁') := by simp [h₄, hty₁, ResultType.typeOf, Except.map]

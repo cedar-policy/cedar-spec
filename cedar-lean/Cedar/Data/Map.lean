@@ -99,6 +99,9 @@ def mapMOnKeys {α β γ} [LT γ] [DecidableLT γ] [Monad m] (f : α → m γ) (
   let kvs ← map.kvs.mapM (λ (k, v) => f k >>= λ k' => pure (k', v))
   pure (Map.make kvs)
 
+def wellFormed {α β} [LT α] [DecidableLT α] (m : Map α β) : Bool :=
+  m.toList.isSortedBy Prod.fst
+
 ----- Instances -----
 
 instance [LT (Prod α β)] : LT (Map α β) where

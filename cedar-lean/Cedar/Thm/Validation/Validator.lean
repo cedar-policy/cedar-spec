@@ -35,21 +35,21 @@ def EvaluatesToBool (expr : Expr) (request : Request) (entities : Entities) : Pr
 def AllEvaluateToBool (policies : Policies) (request : Request) (entities : Entities) : Prop :=
   ∀ policy ∈ policies, EvaluatesToBool policy.toExpr request entities
 
-def RequestAndEntitiesMatchSchema (schema : Schema) (request : Request) (entities : Entities) :Prop :=
+def InstanceOfWellFormedSchema (schema : Schema) (request : Request) (entities : Entities) : Prop :=
   ∃ env ∈ schema.environments,
-  RequestAndEntitiesMatchEnvironment env request entities
+  InstanceOfWellFormedEnvironment request entities env
 
-theorem action_matches_env {env : Environment} {request : Request} {entities : Entities} :
-  RequestAndEntitiesMatchEnvironment env request entities →
+theorem action_matches_env {env : TypeEnv} {request : Request} {entities : Entities} :
+  InstanceOfWellFormedEnvironment request entities env →
   request.action = env.reqty.action
 := by
   intro h₀
-  simp only [RequestAndEntitiesMatchEnvironment, InstanceOfRequestType] at h₀
-  obtain ⟨ ⟨ _, h₁, _, _ ⟩ , _ , _⟩ := h₀
+  simp only [InstanceOfWellFormedEnvironment, InstanceOfRequestType] at h₀
+  obtain ⟨_, ⟨ _, h₁, _, _ ⟩, _⟩ := h₀
   exact h₁
 
-theorem typecheck_policy_is_sound (policy : Policy) (env : Environment) (tx : TypedExpr) (request : Request) (entities : Entities) :
-  RequestAndEntitiesMatchEnvironment env request entities →
+theorem typecheck_policy_is_sound (policy : Policy) (env : TypeEnv) (tx : TypedExpr) (request : Request) (entities : Entities) :
+  InstanceOfWellFormedEnvironment request entities env →
   typecheckPolicy policy env = .ok tx →
   ∃ b : Bool, EvaluatesTo policy.toExpr request entities b
 := by
@@ -67,8 +67,8 @@ theorem typecheck_policy_is_sound (policy : Policy) (env : Environment) (tx : Ty
   rw [←substitute_action_preserves_evaluates_to, action_matches_env h₁]
   exact h₄
 
-theorem typecheck_policy_with_environments_is_sound (policy : Policy) (envs : List Environment) (request : Request) (entities : Entities) :
-  (∃ env ∈ envs, RequestAndEntitiesMatchEnvironment env request entities) →
+theorem typecheck_policy_with_environments_is_sound (policy : Policy) (envs : List TypeEnv) (request : Request) (entities : Entities) :
+  (∃ env ∈ envs, InstanceOfWellFormedEnvironment request entities env) →
   typecheckPolicyWithEnvironments policy envs = .ok () →
   ∃ b : Bool, EvaluatesTo policy.toExpr request entities b
 := by

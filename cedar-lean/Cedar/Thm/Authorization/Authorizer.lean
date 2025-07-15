@@ -304,8 +304,8 @@ theorem mapM_asEntityUID_on_set_uids_produces_ok (uids : List EntityUID) :
 := by
   apply if_mapM_doesn't_fail_on_list_then_doesn't_fail_on_set
   unfold Except.isOk Except.toBool
-  split <;> simp
-  case a.h_2 e h => simp [mapM_asEntityUID_of_uid] at h
+  split <;> simp only [Bool.false_eq_true]
+  case h_2 e h => simp only [mapM_asEntityUID_of_uid, reduceCtorEq] at h
 
 theorem mapOrErr_value_asEntityUID_on_uids_produces_set (list : List EntityUID) (err : Error) :
   Set.mapOrErr Value.asEntityUID (Set.make (list.map (Value.prim ∘ Prim.entityUID))) err =
@@ -346,9 +346,9 @@ theorem action_in_set_of_euids_produces_boolean (list : List EntityUID) (request
   unfold producesBool
   split <;> simp
   case h_2 _ h =>
-    simp [evaluate, apply₂, inₛ] at h
+    simp only [evaluate, apply₂, inₛ, bind_assoc, Except.bind_ok, imp_false, Bool.forall_bool] at h
     rw [List.mapM₁_eq_mapM (evaluate · request entities)] at h
-    simp [mapM_evaluate_uids_produces_uids] at h
+    simp only [mapM_evaluate_uids_produces_uids] at h
     simp [mapOrErr_value_asEntityUID_on_uids_produces_set] at h
 
 /--

@@ -27,7 +27,7 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem type_of_int_cmp_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' : Capabilities} {env : Environment} {ty : TypedExpr}
+theorem type_of_int_cmp_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' : Capabilities} {env : TypeEnv} {ty : TypedExpr}
   (h₁ : op₂ = .less ∨ op₂ = .lessEq)
   (h₂ : typeOf (Expr.binaryApp op₂ x₁ x₂) c env = Except.ok (ty, c')) :
   c' = ∅ ∧
@@ -70,15 +70,15 @@ theorem type_of_int_cmp_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' : 
     · exists tc₂.snd ; simp [←h₆, ResultType.typeOf, Except.map]
   )
 
-theorem type_of_int_cmp_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
+theorem type_of_int_cmp_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : TypeEnv} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₀ : op₂ = .less ∨ op₂ = .lessEq)
   (h₁ : CapabilitiesInvariant c₁ request entities)
-  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₂ : InstanceOfWellFormedEnvironment request entities env)
   (h₃ : typeOf (Expr.binaryApp op₂ x₁ x₂) c₁ env = Except.ok (ty, c₂))
   (ih₁ : TypeOfIsSound x₁)
   (ih₂ : TypeOfIsSound x₂) :
   GuardedCapabilitiesInvariant (Expr.binaryApp op₂ x₁ x₂) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.binaryApp op₂ x₁ x₂) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.binaryApp op₂ x₁ x₂) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
   have ⟨hc, hty, ht⟩ := type_of_int_cmp_inversion h₀ h₃
   rcases ht with ⟨ht₁, ht₂⟩ | ⟨ht₁, ht₂⟩ | ⟨ht₁, ht₂⟩
@@ -94,22 +94,22 @@ theorem type_of_int_cmp_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c�
     simp only [List.empty_eq, EvaluatesTo, evaluate] at *
     cases h₄ : evaluate x₁ request entities <;> simp [h₄] at * <;>
     cases h₅ : evaluate x₂ request entities <;> simp [h₅] at * <;>
-    try { simp only [ih₁, ih₂, true_and] ; exact type_is_inhabited (.bool .anyBool) }
+    try { simp only [ih₁, ih₂, true_and] ; exact type_is_inhabited_bool }
     replace ⟨ihl₁, ih₃⟩ := ih₁
     replace ⟨ihl₂, ih₄⟩ := ih₂
     rw [eq_comm] at ihl₁ ihl₂; subst ihl₁ ihl₂
     rw [htl₁] at ih₃
     rw [htl₂] at ih₄
   )
-  case' inl =>
-    have ⟨i₁, ih₁⟩ := instance_of_int_is_int ih₃
-    have ⟨i₂, ih₂⟩ := instance_of_int_is_int ih₄
-  case' inr.inl =>
-    have ⟨i₁, ih₁⟩ := instance_of_datetime_type_is_datetime ih₃
-    have ⟨i₂, ih₂⟩ := instance_of_datetime_type_is_datetime ih₄
-  case' inr.inr =>
-    have ⟨i₁, ih₁⟩ := instance_of_duration_type_is_duration ih₃
-    have ⟨i₂, ih₂⟩ := instance_of_duration_type_is_duration ih₄
+  have ⟨i₁, ih₁⟩ := instance_of_int_is_int ih₃
+  have ⟨i₂, ih₂⟩ := instance_of_int_is_int ih₄
+  rotate_left
+  have ⟨i₁, ih₁⟩ := instance_of_datetime_type_is_datetime ih₃
+  have ⟨i₂, ih₂⟩ := instance_of_datetime_type_is_datetime ih₄
+  rotate_left
+  have ⟨i₁, ih₁⟩ := instance_of_duration_type_is_duration ih₃
+  have ⟨i₂, ih₂⟩ := instance_of_duration_type_is_duration ih₄
+  rotate_left
   all_goals (
     subst ih₁ ih₂
     rcases h₀ with h₀ | h₀

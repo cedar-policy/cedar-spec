@@ -15,10 +15,12 @@
  */
 
 #![no_main]
-use cedar_drt_inner::schemas::equivalence_check;
-use cedar_drt_inner::*;
+use cedar_drt_inner::{fuzz_target, schemas::equivalence_check};
+#[cfg(feature = "prt")]
+use libfuzzer_sys::arbitrary::{Arbitrary, Unstructured};
+
 use cedar_policy_core::extensions::Extensions;
-use cedar_policy_validator::{json_schema, RawName};
+use cedar_policy_core::validator::{json_schema, RawName, ValidatorSchema};
 use similar_asserts::SimpleDiff;
 
 // JSON String -> json_schema::Fragment -> Natural String -> json_schema::Fragment
@@ -54,7 +56,7 @@ fuzz_target!(|src: String| {
                 }
             }
             Err(
-                cedar_policy_validator::cedar_schema::fmt::ToCedarSchemaSyntaxError::NameCollisions(
+                cedar_policy_core::validator::cedar_schema::fmt::ToCedarSchemaSyntaxError::NameCollisions(
                     _,
                 ),
             ) => {

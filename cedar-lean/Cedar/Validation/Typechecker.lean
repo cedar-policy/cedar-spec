@@ -51,7 +51,7 @@ def ResultType.typeOf : ResultType -> Except TypeError (CedarType × Capabilitie
 def ok {α : Type} (ty : α) (c : Capabilities := ∅) : Except TypeError (α × Capabilities) := .ok (ty, c)
 def err {α : Type} (e : TypeError) : Except TypeError (α × Capabilities) := .error e
 
-def typeOfLit (p : Prim) (env : Environment) : ResultType :=
+def typeOfLit (p : Prim) (env : TypeEnv) : ResultType :=
   let ok := ok ∘ TypedExpr.lit p
   match p with
   | .bool true     => ok (.bool .tt)
@@ -63,7 +63,7 @@ def typeOfLit (p : Prim) (env : Environment) : ResultType :=
     then ok (.entity uid.ty)
     else err (.unknownEntity uid.ty)
 
-def typeOfVar (v : Var) (env : Environment) : ResultType :=
+def typeOfVar (v : Var) (env : TypeEnv) : ResultType :=
   let ok := ok ∘ TypedExpr.var v
   match v with
   | .principal => ok (.entity env.reqty.principal)
@@ -156,34 +156,31 @@ def actionUID? (x : Expr) (acts: ActionSchema) : Option EntityUID := do
   let uid ← entityUID? x
   if acts.contains uid then .some uid else .none
 
-def actionType? (ety : EntityType) (acts: ActionSchema) : Bool :=
-  acts.keys.any (EntityUID.ty · == ety)
-
 -- x₁ in x₂ where x₁ has type ety₁ and x₂ has type ety₂
-def typeOfInₑ (ety₁ ety₂ : EntityType) (x₁ x₂ : Expr) (env : Environment) : BoolType :=
+def typeOfInₑ (ety₁ ety₂ : EntityType) (x₁ x₂ : Expr) (env : TypeEnv) : BoolType :=
   match actionUID? x₁ env.acts, entityUID? x₂ with
   | .some uid₁, .some uid₂ =>
     if env.acts.descendentOf uid₁ uid₂
     then .tt
     else .ff
   | _, _ =>
-    if env.ets.descendentOf ety₁ ety₂
+    if env.descendentOf ety₁ ety₂
     then .anyBool
     else .ff
 
 -- x₁ in x₂ where x₁ has type ety₁ and x₂ has type (.set ety₂)
-def typeOfInₛ (ety₁ ety₂ : EntityType) (x₁ x₂ : Expr) (env : Environment) : BoolType :=
+def typeOfInₛ (ety₁ ety₂ : EntityType) (x₁ x₂ : Expr) (env : TypeEnv) : BoolType :=
   match actionUID? x₁ env.acts, entityUIDs? x₂ with
   | .some uid₁, .some uids =>
     if uids.any (env.acts.descendentOf uid₁ ·)
     then .tt
     else .ff
   | _, _ =>
-    if env.ets.descendentOf ety₁ ety₂
+    if env.descendentOf ety₁ ety₂
     then .anyBool
     else .ff
 
-def typeOfHasTag (ety : EntityType) (x : Expr) (t : Expr) (c : Capabilities) (env : Environment) : Except TypeError (CedarType × Capabilities)  :=
+def typeOfHasTag (ety : EntityType) (x : Expr) (t : Expr) (c : Capabilities) (env : TypeEnv) : Except TypeError (CedarType × Capabilities)  :=
   match env.ets.tags? ety with
   | .some .none     => ok (.bool .ff)
   | .some (.some _) =>
@@ -191,11 +188,11 @@ def typeOfHasTag (ety : EntityType) (x : Expr) (t : Expr) (c : Capabilities) (en
     then ok (.bool .tt)
     else ok (.bool .anyBool) (Capabilities.singleton x (.tag t))
   | .none           =>
-    if actionType? ety env.acts
+    if env.acts.actionType? ety
     then ok (.bool .ff) -- action tags not allowed
     else err (.unknownEntity ety)
 
-def typeOfGetTag (ety : EntityType) (x : Expr) (t : Expr) (c : Capabilities) (env : Environment) : Except TypeError (CedarType × Capabilities) :=
+def typeOfGetTag (ety : EntityType) (x : Expr) (t : Expr) (c : Capabilities) (env : TypeEnv) : Except TypeError (CedarType × Capabilities) :=
   match env.ets.tags? ety with
   | .some .none      => err (.tagNotFound ety t)
   | .some (.some ty) => if (x, .tag t) ∈ c then ok ty else err (.tagNotFound ety t)
@@ -206,7 +203,7 @@ def ifLubThenBool (ty₁ ty₂ : CedarType) : Except TypeError (CedarType × Cap
   | some _ => ok (.bool .anyBool)
   | none   => err (.lubErr ty₁ ty₂)
 
-def typeOfBinaryApp (op₂ : BinaryOp) (ty₁ ty₂ : TypedExpr) (x₁ x₂ : Expr) (c : Capabilities) (env : Environment) : ResultType :=
+def typeOfBinaryApp (op₂ : BinaryOp) (ty₁ ty₂ : TypedExpr) (x₁ x₂ : Expr) (c : Capabilities) (env : TypeEnv) : ResultType :=
   let ok ty (c := ∅) := ok (TypedExpr.binaryApp op₂ ty₁ ty₂ ty) c
   match op₂, ty₁.typeOf, ty₂.typeOf with
   | .eq, _, _                               => typeOfEq ty₁ ty₂ x₁ x₂
@@ -246,7 +243,7 @@ def hasAttrInRecord (rty : RecordType) (x : Expr) (a : Attr) (c : Capabilities) 
     else ok (.bool .anyBool) (Capabilities.singleton x (.attr a))
   | .none     => ok (.bool .ff)
 
-def typeOfHasAttr (ty : TypedExpr) (x : Expr) (a : Attr) (c : Capabilities) (env : Environment) : ResultType :=
+def typeOfHasAttr (ty : TypedExpr) (x : Expr) (a : Attr) (c : Capabilities) (env : TypeEnv) : ResultType :=
   let ok ty₂ (c := ∅) := ok (TypedExpr.hasAttr  ty a ty₂) c
   match ty.typeOf with
   | .record rty => do
@@ -258,7 +255,7 @@ def typeOfHasAttr (ty : TypedExpr) (x : Expr) (a : Attr) (c : Capabilities) (env
       let (ty', c) ← hasAttrInRecord rty x a c false
       ok ty' c
     | .none     =>
-      if actionType? ety env.acts
+      if env.acts.actionType? ety
       then ok (.bool .ff) -- action attributes not allowed
       else err (.unknownEntity ety)
   | _           => err (.unexpectedType ty.typeOf)
@@ -269,7 +266,7 @@ def getAttrInRecord (ty : CedarType) (rty : RecordType) (x : Expr) (a : Attr) (c
   | .some (.optional aty) => if (x, .attr a) ∈ c then ok aty else err (.attrNotFound ty a)
   | .none                 => err (.attrNotFound ty a)
 
-def typeOfGetAttr (ty : TypedExpr) (x : Expr) (a : Attr) (c : Capabilities) (env : Environment) : ResultType :=
+def typeOfGetAttr (ty : TypedExpr) (x : Expr) (a : Attr) (c : Capabilities) (env : TypeEnv) : ResultType :=
   let ok ty₂ (c := ∅) := ok (TypedExpr.getAttr ty a ty₂) c
   match ty.typeOf with
   | .record rty => do
@@ -341,7 +338,7 @@ def typeOfCall (xfn : ExtFun) (tys : List TypedExpr) (xs : List Expr) : ResultTy
 -- Note: if x types as .tt or .ff, it is okay to replace x with the literal
 -- expression true or false if x can never throw an extension error at runtime.
 -- This is true for the current version of Cedar.
-def typeOf (x : Expr) (c : Capabilities) (env : Environment) : ResultType :=
+def typeOf (x : Expr) (c : Capabilities) (env : TypeEnv) : ResultType :=
   match x with
   | .lit p => typeOfLit p env
   | .var v => typeOfVar v env
@@ -380,6 +377,6 @@ def typeOf (x : Expr) (c : Capabilities) (env : Environment) : ResultType :=
 ---- Derivations -----
 
 deriving instance Repr for RequestType
-deriving instance Repr for Environment
+deriving instance Repr for TypeEnv
 
 end Cedar.Validation

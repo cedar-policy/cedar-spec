@@ -15,9 +15,15 @@
  */
 
 #![no_main]
-use cedar_drt::*;
-use cedar_drt_inner::*;
-use cedar_policy_core::{ast::Expr, entities::Entities};
+use cedar_drt::{
+    logger::initialize_log,
+    tests::{drop_some_entities, run_eval_test},
+    CedarLeanEngine,
+};
+use cedar_drt_inner::fuzz_target;
+
+use cedar_policy::Entities;
+use cedar_policy_core::ast::Expr;
 use cedar_policy_generators::abac::ABACRequest;
 use cedar_policy_generators::err::Error;
 use cedar_policy_generators::hierarchy::HierarchyGenerator;
@@ -103,15 +109,14 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 // Type-directed fuzzing of expression evaluation.
 fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
-    let def_impl = LeanDefinitionalEngine::new();
+    let def_impl = CedarLeanEngine::new();
     debug!("Schema: {}\n", input.schema.schemafile_string());
     debug!("expr: {}\n", input.expression);
-    debug!("Entities: {}\n", input.entities);
+    debug!("Entities: {}\n", input.entities.as_ref());
     run_eval_test(
         &def_impl,
-        input.request.into(),
-        &input.expression,
+        &input.request.into(),
+        &input.expression.into(),
         &input.entities,
-        SETTINGS.enable_extensions,
     )
 });

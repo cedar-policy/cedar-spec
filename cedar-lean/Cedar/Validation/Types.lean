@@ -137,6 +137,10 @@ def EntitySchemaEntry.ancestors : EntitySchemaEntry → Set EntityType
   | .standard ty => ty.ancestors
   | .enum _ => Set.empty
 
+def EntitySchemaEntry.isStandard : EntitySchemaEntry → Bool
+  | .standard _ => true
+  | .enum _     => false
+
 abbrev EntitySchema := Map EntityType EntitySchemaEntry
 
 def EntitySchema.entityTypeMembers? (ets: EntitySchema) (et: EntityType) : Option (Set String) :=
@@ -158,13 +162,6 @@ def EntitySchema.attrs? (ets : EntitySchema) (ety : EntityType) : Option RecordT
 def EntitySchema.tags? (ets : EntitySchema) (ety : EntityType) : Option (Option CedarType) :=
   (ets.find? ety).map EntitySchemaEntry.tags?
 
-def EntitySchema.descendentOf (ets : EntitySchema) (ety₁ ety₂ : EntityType) : Bool :=
-  if ety₁ = ety₂
-  then true
-  else match ets.find? ety₁ with
-    | .some entry => entry.ancestors.contains ety₂
-    | .none => false
-
 structure ActionSchemaEntry where
   appliesToPrincipal : Set EntityType
   appliesToResource : Set EntityType
@@ -173,6 +170,9 @@ structure ActionSchemaEntry where
 deriving Repr, Inhabited
 
 abbrev ActionSchema := Map EntityUID ActionSchemaEntry
+
+def ActionSchema.actionType? (acts: ActionSchema) (ety : EntityType) : Bool :=
+  acts.keys.any (EntityUID.ty · == ety)
 
 def ActionSchema.contains (as : ActionSchema) (uid : EntityUID) : Bool :=
   (as.find? uid).isSome
@@ -194,10 +194,20 @@ structure RequestType where
   resource : EntityType
   context : RecordType
 
-structure Environment where
+structure TypeEnv where
   ets : EntitySchema
   acts : ActionSchema
   reqty : RequestType
+
+def ActionSchema.maybeDescendentOf (as : ActionSchema) (ety₁ ety₂ : EntityType) : Bool :=
+  as.kvs.any λ (act, entry) => act.ty = ety₁ && entry.ancestors.any (EntityUID.ty · == ety₂)
+
+def TypeEnv.descendentOf (env : TypeEnv) (ety₁ ety₂ : EntityType) : Bool :=
+  if ety₁ = ety₂
+  then true
+  else match env.ets.find? ety₁ with
+    | .some entry => entry.ancestors.contains ety₂
+    | .none       => env.acts.maybeDescendentOf ety₁ ety₂
 
 ----- Derivations -----
 

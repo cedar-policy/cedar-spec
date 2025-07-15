@@ -121,7 +121,8 @@ macro_rules! fuzz_target {
             });
         }
     };
-}
 
-#[cfg(not(feature = "prt"))]
-pub use libfuzzer_sys::fuzz_target;
+    (|$data:ident: $dty: ty| $body:expr) => {
+        fuzz_target!(|$data: $dty| { $body });
+    };
+}

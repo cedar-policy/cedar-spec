@@ -15,7 +15,7 @@
 -/
 import Cedar.Validation.TypedExpr
 import Cedar.Spec.Ext
-import Cedar.Thm.Validation
+-- import Cedar.Thm.Validation
 
 /-!
 This file contains well-typedness definitions of `TypedExpr`
@@ -26,7 +26,7 @@ namespace Cedar.Spec
 open Cedar.Validation
 open Cedar.Spec.Ext
 
-inductive Prim.WellTyped (env : Environment) : Prim → CedarType → Prop
+inductive Prim.WellTyped (env : TypeEnv) : Prim → CedarType → Prop
   | bool (b : Bool) :
     WellTyped env (.bool b) (.bool .anyBool)
   | int (i : Int64) :
@@ -37,7 +37,7 @@ inductive Prim.WellTyped (env : Environment) : Prim → CedarType → Prop
     (h₁ : env.ets.isValidEntityUID uid ∨ env.acts.contains uid) :
     WellTyped env (.entityUID uid) (.entity uid.ty)
 
-inductive Var.WellTyped (env : Environment) : Var → CedarType → Prop
+inductive Var.WellTyped (env : TypeEnv) : Var → CedarType → Prop
   | principal :
     WellTyped env .principal (.entity env.reqty.principal)
   | resource :
@@ -64,7 +64,7 @@ inductive UnaryOp.WellTyped : UnaryOp → TypedExpr → CedarType → Prop
     (h₁ : x₁.typeOf = .entity ety₂) :
     WellTyped (.is ety₁) x₁ (.bool .anyBool)
 
-inductive BinaryOp.WellTyped (env : Environment) : BinaryOp → TypedExpr → TypedExpr → CedarType → Prop
+inductive BinaryOp.WellTyped (env : TypeEnv) : BinaryOp → TypedExpr → TypedExpr → CedarType → Prop
   | eq_lit {p₁ p₂ : Prim} {ty₁ ty₂ : CedarType} :
     -- do we need hypothesis like `InstanceOfType (.prim p₁) ty₁`?
     WellTyped env .eq (.lit p₁ ty₁) (.lit p₂ ty₂) (.bool .anyBool)
@@ -223,7 +223,7 @@ open Cedar.Validation
 open Cedar.Spec
 open Cedar.Data
 
-inductive TypedExpr.WellTyped (env : Environment) : TypedExpr → Prop
+inductive TypedExpr.WellTyped (env : TypeEnv) : TypedExpr → Prop
 | lit {p : Prim} {ty : CedarType}
   (h₁ : p.WellTyped env ty) :
   WellTyped env (.lit p ty)

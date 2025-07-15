@@ -15,15 +15,29 @@
  */
 
 use cedar_policy_core::ast::{Id, InternalName, Name};
-use cedar_policy_validator::json_schema;
-use cedar_policy_validator::json_schema::EntityTypeKind;
-use cedar_policy_validator::RawName;
-use cedar_policy_validator::ValidatorEntityTypeKind;
+use cedar_policy_core::validator::json_schema;
+use cedar_policy_core::validator::json_schema::EntityTypeKind;
+use cedar_policy_core::validator::RawName;
+use cedar_policy_core::validator::ValidatorEntityTypeKind;
 use itertools::Itertools;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
+
+use cedar_policy::{Entities, Schema};
+use cedar_policy_generators::err::Error;
+use libfuzzer_sys::arbitrary;
+
+pub fn add_actions_to_entities(schema: &Schema, entities: Entities) -> arbitrary::Result<Entities> {
+    let actions = schema
+        .action_entities()
+        .map_err(|e| Error::EntitiesError(format!("Error fetching action entities: {e}")))?;
+
+    Ok(entities
+        .add_entities(actions, None)
+        .map_err(|e| Error::EntitiesError(format!("Error fetching action entities: {e}")))?)
+}
 
 /// Check if two schema fragments are equivalent, modulo empty apply specs.
 /// We do this because there are schemas that are representable in the JSON that are not
@@ -262,7 +276,7 @@ impl<N: Clone + PartialEq + Debug + Display + TypeName + Ord> Equiv for json_sch
     }
 }
 
-impl Equiv for cedar_policy_validator::ValidatorEntityType {
+impl Equiv for cedar_policy_core::validator::ValidatorEntityType {
     fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
         match (&lhs.kind, &rhs.kind) {
             (ValidatorEntityTypeKind::Enum(c1), ValidatorEntityTypeKind::Enum(c2)) => {
@@ -306,7 +320,7 @@ impl<N: Clone + PartialEq + TypeName + Debug + Display> Equiv for json_schema::T
     }
 }
 
-impl Equiv for cedar_policy_validator::types::AttributeType {
+impl Equiv for cedar_policy_core::validator::types::AttributeType {
     fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
         if lhs.is_required != rhs.is_required {
             return Err("attributes differ in required flag".into());
@@ -349,7 +363,7 @@ impl<N: Clone + PartialEq + TypeName + Debug + Display> Equiv for json_schema::T
     }
 }
 
-impl Equiv for cedar_policy_validator::types::Type {
+impl Equiv for cedar_policy_core::validator::types::Type {
     fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
         if lhs != rhs {
             Err(format!("types are not equal: {lhs} != {rhs}"))
@@ -571,7 +585,7 @@ fn either_empty<N>(spec: &json_schema::ApplySpec<N>) -> bool {
     spec.principal_types.is_empty() || spec.resource_types.is_empty()
 }
 
-impl Equiv for cedar_policy_validator::ValidatorSchema {
+impl Equiv for cedar_policy_core::validator::ValidatorSchema {
     fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
         Equiv::equiv(
             &lhs.entity_types()
@@ -601,9 +615,8 @@ impl Equiv for cedar_policy_validator::ValidatorSchema {
 
 #[cfg(test)]
 mod tests {
-    use cedar_drt::est::Annotations;
-
-    use crate::schemas::Equiv;
+    use super::Equiv;
+    use cedar_policy_core::est::Annotations;
 
     #[test]
     fn annotations() {

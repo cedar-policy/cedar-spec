@@ -1,0 +1,6 @@
+entity P1, P2 in P2;
+entity R1, R2 in R2;
+action view, edit appliesTo {
+    principal: [P1, P2],
+    resource: [R1, R2]
+};

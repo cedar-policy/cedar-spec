@@ -37,8 +37,8 @@ open Cedar.Spec
 open Cedar.Validation
 
 
-theorem checked_eval_entity_lit_is_action {p : Prim} {n nmax : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {entities : Entities} {path : List Attr}
-  (hr : RequestAndEntitiesMatchEnvironment env request entities)
+theorem checked_eval_entity_lit_is_action {p : Prim} {n nmax : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : TypeEnv} {entities : Entities} {path : List Attr}
+  (hr : InstanceOfWellFormedEnvironment request entities env)
   (ht : typeOf (.lit p) c env = .ok (tx, c'))
   (he : evaluate (.lit p) request entities = .ok v)
   (hel : tx.EntityAccessAtLevel env n nmax path)
@@ -149,9 +149,9 @@ theorem call_not_euid_via_path {xfn : ExtFun} {xs : List Expr} {entities : Entit
 If an expression checks at level `n` and then evaluates an entity (or a record
 containing an entity), then that entity must reachable in `n + 1` steps.
 -/
-theorem checked_eval_entity_reachable {e : Expr} {n nmax: Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {request : Request} {entities : Entities} {v : Value} {path : List Attr} {euid : EntityUID}
+theorem checked_eval_entity_reachable {e : Expr} {n nmax: Nat} {c c' : Capabilities} {tx : TypedExpr} {env : TypeEnv} {request : Request} {entities : Entities} {v : Value} {path : List Attr} {euid : EntityUID}
   (hc : CapabilitiesInvariant c request entities)
-  (hr : RequestAndEntitiesMatchEnvironment env request entities)
+  (hr : InstanceOfWellFormedEnvironment request entities env)
   (ht : typeOf e c env = .ok (tx, c'))
   (hl : tx.EntityAccessAtLevel env n nmax path)
   (he : evaluate e request entities = .ok v)
@@ -231,7 +231,7 @@ theorem in_work_then_in_slice {entities : Entities} {work slice : Set EntityUID}
   rename_i eds
   cases hs₂ :
     List.mapM (λ x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs n) eds
-  <;> simp only [hs₂, Option.map_none', Option.map_some', Option.none_bind, Option.some_bind, reduceCtorEq,Option.some.injEq] at hs
+  <;> simp only [hs₂, Option.map_none, Option.map_some, Option.bind_none, Option.bind_some, reduceCtorEq,Option.some.injEq] at hs
   rename_i slice'
   subst hs
   have ⟨ _, hc ⟩ := Set.mem_union_iff_mem_or work (slice'.mapUnion id) euid
@@ -257,11 +257,11 @@ theorem slice_contains_reachable {n: Nat} {work : Set EntityUID} {euid : EntityU
       simp only [hs₁, Option.bind_none_fun, reduceCtorEq] at hs
     rename_i eds
     cases hs₂ : Option.map (List.mapUnion id) (List.mapM (λ x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs n) eds) <;>
-      simp only [hs₂, Option.map_eq_map, Option.bind_eq_bind, Option.bind_some_fun, Option.none_bind, reduceCtorEq, Option.some_bind, Option.some.injEq] at hs
+      simp only [hs₂, Option.map_eq_map, Option.bind_eq_bind, Option.bind_some_fun, Option.bind_none, reduceCtorEq, Option.bind_some, Option.some.injEq] at hs
     subst hs
     rename_i slice'
     cases hs₃ : List.mapM (λ x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs n) eds <;>
-      simp only [hs₃, Option.map_some', Option.some.injEq, Option.map_none', reduceCtorEq] at hs₂
+      simp only [hs₃, Option.map_some, Option.some.injEq, Option.map_none, reduceCtorEq] at hs₂
     subst hs₂
     rw [Set.mem_union_iff_mem_or]
     right

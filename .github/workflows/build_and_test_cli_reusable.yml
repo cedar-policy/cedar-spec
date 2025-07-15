@@ -1,0 +1,80 @@
+name: Build and Test Cedar Lean CLI
+
+on:
+  workflow_call:
+    inputs:
+      cedar_spec_ref:
+        required: false
+        default: "main"
+        type: string
+      cedar_policy_ref:
+        required: false
+        default: "main"
+        type: string
+
+jobs:
+  build_and_test_drt:
+    name: Build and Test Cedar Lean CLI
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        toolchain:
+          - stable
+    steps:
+      - name: Checkout cedar-spec
+        uses: actions/checkout@v4
+        with:
+          repository: cedar-policy/cedar-spec
+          ref: ${{ inputs.cedar_spec_ref }}
+          path: ./cedar-spec
+      - name: checkout cedar
+        uses: actions/checkout@v4
+        with:
+          repository: cedar-policy/cedar
+          path: ./cedar-spec/cedar
+          ref: ${{ inputs.cedar_policy_ref }}
+      - name: Setup Cargo config for local Cedar
+        working-directory: ./cedar-spec/cedar-lean-ffi
+        run: |
+          mkdir -p .cargo
+          cat > .cargo/config.toml << EOF
+          [patch.crates-io]
+          cedar-policy = { path = "../cedar/cedar-policy" }
+          EOF
+      - name: Install Lean
+        shell: bash
+        run: |
+              wget https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh
+              bash elan-init.sh -y
+      - name: Install protoc
+        run: sudo apt-get update && sudo apt-get install protobuf-compiler
+      - name: Install cvc5
+        shell: bash
+        run: |
+              ARCH=$(uname -m)
+              if [ "$ARCH" = "x86_64" ]; then
+                ARCH_NAME="x86_64"
+              elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+                ARCH_NAME="arm64"
+              else
+                echo "Unsupported architecture: $ARCH"
+                exit 1
+              fi
+              wget https://github.com/cvc5/cvc5/releases/download/cvc5-1.2.1/cvc5-Linux-${ARCH_NAME}-static.zip
+              unzip cvc5-Linux-${ARCH_NAME}-static.zip
+              chmod +x cvc5-Linux-${ARCH_NAME}-static/bin/cvc5
+              echo "CVC5=$GITHUB_WORKSPACE/cvc5-Linux-${ARCH_NAME}-static/bin/cvc5" >> $GITHUB_ENV
+      - name: Prepare Rust build
+        run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
+      - name: cargo fmt (cedar-lean-cli)
+        working-directory: ./cedar-spec/cedar-lean-cli
+        run: cargo fmt --all --check
+      - name: Build Lean libraries
+        working-directory: ./cedar-spec/cedar-lean-ffi
+        run: source ~/.profile && ./build_lean_lib.sh
+      - name: cargo install (cedar-lean-cli)
+        working-directory: ./cedar-spec/cedar-lean-cli
+        run: source ~/.profile && source ../cedar-lean-ffi/set_env_vars.sh && cargo install --path .
+      - name: cargo test (cedar-lean-cli)
+        working-directory: ./cedar-spec/cedar-lean-cli
+        run: source ~/.profile && source ../cedar-lean-ffi/set_env_vars.sh && cargo test

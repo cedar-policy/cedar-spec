@@ -1,0 +1,20 @@
+entity User in User;
+entity Thing in Thing;
+action view appliesTo {
+    principal: [User],
+    resource: [Thing],
+    context: {
+        n1: Long,
+        n2: Long,
+        ns: Set<Long>,
+        user1: User,
+        user2: User,
+        users: Set<User>,
+        thing1: Thing,
+        thing2: Thing,
+        thing3: Thing,
+        things: Set<Thing>,
+        things1: Set<Thing>,
+        things2: Set<Thing>
+    }
+};

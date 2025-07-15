@@ -42,7 +42,7 @@ open Cedar.Thm
 
 mutual
 
-inductive TypedExpr.EntityAccessAtLevel (env : Environment) : TypedExpr → Nat → Nat → List Attr → Prop where
+inductive TypedExpr.EntityAccessAtLevel (env : TypeEnv) : TypedExpr → Nat → Nat → List Attr → Prop where
   | var (v : Var) (ty : CedarType) (n nmax : Nat) (path : List Attr) :
     EntityAccessAtLevel env (.var v ty) n nmax path
   | action (ty : CedarType) (n nmax : Nat) (path : List Attr) :
@@ -70,7 +70,7 @@ inductive TypedExpr.EntityAccessAtLevel (env : Environment) : TypedExpr → Nat 
     (hl₂ : tx.EntityAccessAtLevel env n nmax path) :
     EntityAccessAtLevel env (.record attrs ty) n nmax (a :: path)
 
-inductive TypedExpr.AtLevel (env : Environment) : TypedExpr → Nat → Prop where
+inductive TypedExpr.AtLevel (env : TypeEnv) : TypedExpr → Nat → Prop where
   | lit (p : Prim) (ty : CedarType) (n : Nat) :
     AtLevel env (.lit p ty) n
   | var (v : Var) (ty : CedarType) (n : Nat) :
@@ -143,7 +143,7 @@ open Cedar.Validation
 open Cedar.Data
 open Cedar.Spec
 
-theorem entity_access_at_level_succ {path} {tx : TypedExpr} {env : Environment} {n n' : Nat}
+theorem entity_access_at_level_succ {path} {tx : TypedExpr} {env : TypeEnv} {n n' : Nat}
   (h₁ : tx.EntityAccessAtLevel env n n' path) :
   tx.EntityAccessAtLevel env (n + 1) n' path
 := by
@@ -171,7 +171,7 @@ theorem entity_access_at_level_succ {path} {tx : TypedExpr} {env : Environment} 
     | exact entity_access_at_level_succ (by assumption)
 termination_by tx
 
-theorem entity_access_at_level_then_at_level {tx : TypedExpr} {n : Nat} {env : Environment} {path : List Attr}
+theorem entity_access_at_level_then_at_level {tx : TypedExpr} {n : Nat} {env : TypeEnv} {path : List Attr}
   (h₁ : tx.EntityAccessAtLevel env n (n + 1) path) :
   tx.AtLevel env (n + 1)
 := by
@@ -191,7 +191,7 @@ termination_by tx
 
 mutual
 
-theorem entity_access_level_spec {tx : TypedExpr} {env : Environment} {n nmax : Nat} {path : List Attr} :
+theorem entity_access_level_spec {tx : TypedExpr} {env : TypeEnv} {n nmax : Nat} {path : List Attr} :
   (tx.EntityAccessAtLevel env n nmax path) ↔ (tx.checkEntityAccessLevel env n nmax path)
 := by
   cases tx
@@ -334,7 +334,7 @@ theorem entity_access_level_spec {tx : TypedExpr} {env : Environment} {n nmax : 
     cases hc
 termination_by tx
 
-theorem level_spec {tx : TypedExpr} {env : Environment} {n : Nat}:
+theorem level_spec {tx : TypedExpr} {env : TypeEnv} {n : Nat}:
   (tx.AtLevel env n) ↔ (tx.checkLevel env n = true)
 := by
   cases tx

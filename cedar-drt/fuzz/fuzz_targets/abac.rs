@@ -15,17 +15,27 @@
  */
 
 #![no_main]
-use cedar_drt::*;
-use cedar_drt_inner::*;
-use cedar_policy_core::ast;
-use cedar_policy_core::authorizer::Authorizer;
-use cedar_policy_core::entities::Entities;
+use cedar_drt::{
+    dump::dump,
+    logger::{initialize_log, TOTAL_MSG},
+    tests::run_auth_test,
+    CedarLeanEngine,
+};
+
+use cedar_drt_inner::{fuzz_target, schemas};
+
+use cedar_policy::{Authorizer, Entities, Policy, PolicyId, PolicySet, Request, SchemaFragment};
+
 use cedar_policy_generators::{
     abac::{ABACPolicy, ABACRequest},
-    hierarchy::{Hierarchy, HierarchyGenerator},
+    err::Error,
+    hierarchy::HierarchyGenerator,
     schema::Schema,
     settings::ABACSettings,
 };
+
+use cedar_testing::cedar_test_impl::time_function;
+
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::{debug, info};
 use std::convert::TryFrom;
@@ -37,7 +47,7 @@ pub struct FuzzTargetInput {
     /// generated schema
     pub schema: Schema,
     /// generated hierarchy
-    pub hierarchy: Hierarchy,
+    pub entities: Entities,
     /// generated policy
     pub policy: ABACPolicy,
     /// the requests to try for this hierarchy and policy. We try 8 requests per
@@ -77,9 +87,14 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
             schema.arbitrary_request(&hierarchy, u)?,
             schema.arbitrary_request(&hierarchy, u)?,
         ];
+
+        let cedar_schema = cedar_policy::Schema::try_from(schema.clone()).unwrap();
+        let entities = Entities::try_from(hierarchy).map_err(|_| Error::NotEnoughData)?;
+        let entities = schemas::add_actions_to_entities(&cedar_schema, entities)?;
+
         Ok(Self {
             schema,
-            hierarchy,
+            entities,
             policy,
             requests,
         })
@@ -107,48 +122,47 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 // Simple fuzzing of ABAC hierarchy/policy/requests without respect to types.
 fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
-    let def_impl = LeanDefinitionalEngine::new();
-    if let Ok(entities) = Entities::try_from(input.hierarchy) {
-        let mut policyset = ast::PolicySet::new();
-        let policy: ast::StaticPolicy = input.policy.into();
-        policyset.add_static(policy.clone()).unwrap();
-        debug!("Policies: {policyset}");
-        debug!("Entities: {entities}");
-        let requests = input
-            .requests
-            .into_iter()
-            .map(Into::into)
-            .collect::<Vec<_>>();
+    let mut policyset = PolicySet::new();
+    let policy = Policy::from(input.policy);
+    policyset.add(policy.clone()).unwrap();
+    debug!("Policies: {policyset}");
+    debug!("Entities: {}", input.entities.as_ref());
+    let requests = input
+        .requests
+        .into_iter()
+        .map(Request::from)
+        .collect::<Vec<_>>();
 
-        for request in requests.iter().cloned() {
-            debug!("Request: {request}");
-            let (_, total_dur) =
-                time_function(|| run_auth_test(&def_impl, request, &policyset, &entities));
-            info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
-        }
-        if let Ok(test_name) = std::env::var("DUMP_TEST_NAME") {
-            // When the corpus is re-parsed, the policy will be given id "policy0".
-            // Recreate the policy set and compute responses here to account for this.
-            let mut policyset = ast::PolicySet::new();
-            let policy = policy.new_id(ast::PolicyID::from_string("policy0"));
-            policyset.add_static(policy).unwrap();
-            let responses = requests
-                .iter()
-                .map(|request| {
-                    let authorizer = Authorizer::new();
-                    authorizer.is_authorized(request.clone(), &policyset, &entities)
-                })
-                .collect::<Vec<_>>();
-            let dump_dir = std::env::var("DUMP_TEST_DIR").unwrap_or_else(|_| ".".to_string());
-            dump(
-                dump_dir,
-                &test_name,
-                &input.schema.into(),
-                &policyset,
-                &entities,
-                std::iter::zip(requests, responses),
-            )
-            .expect("failed to dump test case");
-        }
+    let lean_engine = CedarLeanEngine::new();
+
+    for request in requests.iter().cloned() {
+        debug!("Request: {request}");
+        let (_, total_dur) =
+            time_function(|| run_auth_test(&lean_engine, &request, &policyset, &input.entities));
+        info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
+    }
+    if let Ok(test_name) = std::env::var("DUMP_TEST_NAME") {
+        // When the corpus is re-parsed, the policy will be given id "policy0".
+        // Recreate the policy set and compute responses here to account for this.
+        let mut policyset = PolicySet::new();
+        let policy = policy.new_id(PolicyId::new("policy0"));
+        policyset.add(policy).unwrap();
+        let responses = requests
+            .iter()
+            .map(|request| {
+                let authorizer = Authorizer::new();
+                authorizer.is_authorized(request, &policyset, &input.entities)
+            })
+            .collect::<Vec<_>>();
+        let dump_dir = std::env::var("DUMP_TEST_DIR").unwrap_or_else(|_| ".".to_string());
+        dump(
+            dump_dir,
+            &test_name,
+            &SchemaFragment::try_from(input.schema).unwrap(),
+            &policyset,
+            &input.entities,
+            std::iter::zip(requests, responses),
+        )
+        .expect("failed to dump test case");
     }
 });

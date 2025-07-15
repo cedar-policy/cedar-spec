@@ -15,13 +15,14 @@
  */
 
 #![no_main]
-use cedar_drt_inner::*;
+use cedar_drt_inner::{fuzz_target, schemas};
+
 use cedar_policy_core::ast;
+use cedar_policy_core::validator::json_schema;
 use cedar_policy_generators::{
     schema::{downgrade_frag_to_raw, Schema},
     settings::ABACSettings,
 };
-use cedar_policy_validator::json_schema;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::info;
 use std::collections::BTreeMap;
@@ -78,9 +79,9 @@ impl<'a> Arbitrary<'a> for Input {
 
 fuzz_target!(|i: Input| {
     info!("schemas: {i:?}");
-    let validator_schema1: Result<cedar_policy_validator::ValidatorSchema, _> =
+    let validator_schema1: Result<cedar_policy_core::validator::ValidatorSchema, _> =
         downgrade_frag_to_raw(i.schema).try_into();
-    let validator_schema2: Result<cedar_policy_validator::ValidatorSchema, _> =
+    let validator_schema2: Result<cedar_policy_core::validator::ValidatorSchema, _> =
         downgrade_frag_to_raw(i.schema_with_common_types).try_into();
     match (validator_schema1, validator_schema2) {
         (Ok(s1), Ok(s2)) => {

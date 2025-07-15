@@ -19,7 +19,7 @@ use crate::hierarchy::Hierarchy;
 use crate::policy::GeneratedPolicy;
 use crate::request::Request;
 use arbitrary::{self, Unstructured};
-use ast::{Entity, Expr, PolicyID, StaticPolicy};
+use ast::{Entity, Expr, PolicyID, StaticPolicy, Template};
 use cedar_policy_core::ast;
 use cedar_policy_core::entities::Entities;
 use serde::Serialize;
@@ -86,6 +86,14 @@ impl TryFrom<RBACHierarchy> for Entities {
     }
 }
 
+#[cfg(feature = "cedar-policy")]
+impl TryFrom<RBACHierarchy> for cedar_policy::Entities {
+    type Error = String;
+    fn try_from(rbac: RBACHierarchy) -> Result<cedar_policy::Entities, String> {
+        Entities::try_from(rbac).map(Into::into)
+    }
+}
+
 /// Represents an RBAC entity, ie, without attributes
 #[derive(Debug, Clone)]
 pub struct RBACEntity(pub Entity);
@@ -140,6 +148,13 @@ impl From<RBACEntity> for Entity {
     }
 }
 
+#[cfg(feature = "cedar-policy")]
+impl From<RBACEntity> for cedar_policy::Entity {
+    fn from(rbac: RBACEntity) -> cedar_policy::Entity {
+        Entity::from(rbac).into()
+    }
+}
+
 /// Represents an RBAC policy, ie, with no `when` or `unless` clauses
 #[derive(Debug, Clone, Serialize)]
 #[serde(transparent)]
@@ -161,6 +176,26 @@ impl DerefMut for RBACPolicy {
 impl From<RBACPolicy> for StaticPolicy {
     fn from(rbac: RBACPolicy) -> StaticPolicy {
         rbac.0.into()
+    }
+}
+
+impl From<RBACPolicy> for Template {
+    fn from(rbac: RBACPolicy) -> Template {
+        rbac.0.into()
+    }
+}
+
+#[cfg(feature = "cedar-policy")]
+impl From<RBACPolicy> for cedar_policy::Policy {
+    fn from(rbac: RBACPolicy) -> cedar_policy::Policy {
+        StaticPolicy::from(rbac).into()
+    }
+}
+
+#[cfg(feature = "cedar-policy")]
+impl From<RBACPolicy> for cedar_policy::Template {
+    fn from(rbac: RBACPolicy) -> cedar_policy::Template {
+        Template::from(rbac).into()
     }
 }
 
@@ -218,6 +253,13 @@ impl DerefMut for RBACRequest {
 impl From<RBACRequest> for ast::Request {
     fn from(rbac: RBACRequest) -> ast::Request {
         rbac.0.into()
+    }
+}
+
+#[cfg(feature = "cedar-policy")]
+impl From<RBACRequest> for cedar_policy::Request {
+    fn from(rbac: RBACRequest) -> cedar_policy::Request {
+        ast::Request::from(rbac).into()
     }
 }
 

@@ -23,7 +23,7 @@ use arbitrary::{Arbitrary, Unstructured};
 use cedar_policy_core::ast::{self, Eid, Entity, EntityUID};
 use cedar_policy_core::entities::{Entities, NoEntitiesSchema, TCComputation};
 use cedar_policy_core::extensions::Extensions;
-use cedar_policy_validator::json_schema::{self, EntityTypeKind, StandardEntityType};
+use cedar_policy_core::validator::json_schema::{self, EntityTypeKind, StandardEntityType};
 use smol_str::SmolStr;
 
 /// EntityUIDs with the mappings to their indices in the container.
@@ -294,6 +294,14 @@ impl TryFrom<Hierarchy> for Entities {
     }
 }
 
+#[cfg(feature = "cedar-policy")]
+impl TryFrom<Hierarchy> for cedar_policy::Entities {
+    type Error = String;
+    fn try_from(h: Hierarchy) -> std::result::Result<Self, Self::Error> {
+        Entities::try_from(h).map(Into::into)
+    }
+}
+
 impl From<Entities> for Hierarchy {
     fn from(entities: Entities) -> Hierarchy {
         let mut uids = Vec::new();
@@ -313,6 +321,13 @@ impl From<Entities> for Hierarchy {
             entities: entities.into_iter().map(|e| (e.uid().clone(), e)).collect(),
             entity_types,
         }
+    }
+}
+
+#[cfg(feature = "cedar-policy")]
+impl From<cedar_policy::Entities> for Hierarchy {
+    fn from(entities: cedar_policy::Entities) -> Self {
+        entities.as_ref().clone().into()
     }
 }
 

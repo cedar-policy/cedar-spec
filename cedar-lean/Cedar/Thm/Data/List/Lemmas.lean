@@ -295,7 +295,6 @@ theorem forall₂_fun_subset_implies {R : α → β → Prop} {xs xs' : List α}
   subst hf
   exact hy'
 
-
 /--
 The converse (ys ≡ ys' → xs ≡ xs') doesn't hold without requiring R to be
 injective (as well as functional).
@@ -314,6 +313,37 @@ theorem forall₂_fun_equiv_implies {R : α → β → Prop} {xs xs' : List α} 
   · exact forall₂_fun_subset_implies ha ha' hf heqv
   · exact forall₂_fun_subset_implies ha' ha hf heqv'
 
+theorem map_preserves_forall₂
+  {f : α → α'}
+  {g : β → β'}
+  {p₁ : α → β → Prop}
+  {p₂ : α' → β' → Prop}
+  {xs : List α} {ys : List β}
+  (h : ∀ x y, p₁ x y → p₂ (f x) (g y))
+  (hforall₂ : List.Forall₂ p₁ xs ys) :
+  List.Forall₂ p₂ (xs.map f) (ys.map g)
+:= by
+  induction hforall₂
+  case nil => simp
+  case cons =>
+    simp only [List.map]
+    constructor
+    apply h
+    assumption
+    assumption
+
+theorem forall₂_swap
+  {R : α → β → Prop} {xs : List α} {ys : List β}
+  (hforall₂ : List.Forall₂ (λ y x => R x y) ys xs) :
+  List.Forall₂ R xs ys
+:= by
+  induction hforall₂
+  case nil => simp
+  case cons =>
+    constructor
+    assumption
+    assumption
+
 /-! ### mapM, mapM', mapM₁, and mapM₂ -/
 
 theorem mapM_some {xs : List α} :
@@ -323,13 +353,6 @@ theorem mapM_some {xs : List α} :
   -- easily get that to work, and the direct inductive proof is very short
   induction xs
   case nil => simp only [mapM_nil, Option.pure_def]
-  case cons hd tl ih => simp [ih]
-
-theorem mapM_map {α β γ} [Monad m] [LawfulMonad m] {f : α → β} {g : β → m γ} {xs : List α} :
-  List.mapM g (xs.map f) = xs.mapM λ x => g (f x)
-:= by
-  induction xs
-  case nil => simp only [map_nil, mapM_nil]
   case cons hd tl ih => simp [ih]
 
 theorem mapM_pmap_subtype [Monad m] [LawfulMonad m]
@@ -352,13 +375,21 @@ theorem mapM₁_eq_mapM [Monad m] [LawfulMonad m]
 := by
   simp only [mapM₁, attach_def, mapM_pmap_subtype]
 
-theorem mapM₂_eq_mapM [Monad m] [LawfulMonad m]
+theorem mapM₂_eq_mapM [Monad m] [LawfulMonad m] [SizeOf α] [SizeOf β]
   (f : (α × β) → m γ)
   (as : List (α × β)) :
   List.mapM₂ as (λ x : { x // sizeOf x.snd < 1 + sizeOf as } => f x.val) =
   List.mapM f as
 := by
   simp only [mapM₂, attach₂, mapM_pmap_subtype]
+
+theorem mapM₃_eq_mapM [Monad m] [LawfulMonad m] [SizeOf α] [SizeOf β]
+  (f : (α × β) → m γ)
+  (as : List (α × β)) :
+  List.mapM₃ as (λ x : { x // sizeOf x.snd < 1 + (1 + sizeOf as) } => f x.val) =
+  List.mapM f as
+:= by
+  simp only [mapM₃, attach₃, mapM_pmap_subtype]
 
 theorem mapM_implies_nil {f : α → Except β γ} {as : List α}
   (h₁ : List.mapM f as = Except.ok []) :
@@ -396,8 +427,8 @@ theorem not_mem_implies_not_mem_mapM_key_id {α β : Type} {ks : List α} {kvs :
     cases hl'
   case cons head tail =>
     simp only [List.mapM_cons, Option.pure_def, Option.bind_eq_bind] at hm
-    cases hm₁ : fn head <;> simp only [hm₁, Option.none_bind, Option.some_bind, reduceCtorEq] at hm
-    cases hm₂ : (tail.mapM (λ k => (fn k).bind λ v => some (k, v))) <;> simp only [hm₂, Option.none_bind, Option.some_bind, Option.some.injEq, reduceCtorEq] at hm
+    cases hm₁ : fn head <;> simp only [hm₁, Option.bind_none, Option.bind_some, reduceCtorEq] at hm
+    cases hm₂ : (tail.mapM (λ k => (fn k).bind λ v => some (k, v))) <;> simp only [hm₂, Option.bind_none, Option.bind_some, Option.some.injEq, reduceCtorEq] at hm
     subst kvs
     cases hl'
     case head =>
@@ -454,6 +485,43 @@ theorem mapM_ok_iff_forall₂ {α β γ} {f : α → Except γ β} {xs : List α
 := by
   rw [← List.mapM'_eq_mapM]
   exact mapM'_ok_iff_forall₂
+
+/--
+Introduces `forall₂` through the input output relation
+of a `f` through `List.mapM`. This is slightly stronger
+than the forward direction of `mapM_ok_iff_forall₂`
+since it allowed an extra `x ∈ xs` condition in `h`.
+-/
+theorem mapM_implies_forall₂
+  {f : α → Except ε β}
+  {p : α → β → Prop}
+  {xs : List α} {ys : List β}
+  (h : ∀ x y, x ∈ xs → f x = .ok y → p x y)
+  (hmapM : List.mapM f xs = .ok ys) :
+  List.Forall₂ p xs ys
+:= by
+  induction xs generalizing ys
+  case nil =>
+    simp only [mapM, mapM.loop, pure, Except.pure, reverse_nil, Except.ok.injEq, nil_eq] at hmapM
+    simp [hmapM]
+  case cons xhd xtl ih =>
+    simp only [mapM_cons, Bind.bind, Except.bind, pure, Except.pure] at hmapM
+    split at hmapM
+    contradiction
+    split at hmapM
+    contradiction
+    simp only [Except.ok.injEq] at hmapM
+    simp only [← hmapM, forall₂_cons]
+    constructor
+    · apply h
+      simp only [mem_cons, true_or]
+      assumption
+    · apply ih
+      intros
+      apply h
+      simp only [mem_cons, or_true, *]
+      assumption
+      assumption
 
 /--
   Note that the converse is not true:
@@ -640,7 +708,7 @@ theorem mapM'_some_iff_forall₂ {α β} {f : α → Option β} {xs : List α} {
       subst h₁
       exact List.Forall₂.nil
     case cons xhd xtl ih =>
-      simp only [mapM'_cons, pure, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at h₁
+      simp only [mapM'_cons, pure, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at h₁
       replace ⟨yhd, h₁, ytl, h₂, h₃⟩ := h₁
       subst h₃
       exact List.Forall₂.cons h₁ (ih h₂)
@@ -764,7 +832,7 @@ theorem mapM'_none_iff_exists_none {α β} {f : α → Option β} {xs : List α}
       cases h₂ : f xhd <;> simp only [h₂, mem_cons, exists_eq_or_imp, true_or, false_or, reduceCtorEq]
       case some yhd =>
         simp only [mapM'_cons, h₂, Option.pure_def, Option.bind_eq_bind, Option.bind_some_fun,
-          Option.bind_eq_none, reduceCtorEq] at h₁
+          Option.bind_eq_none_iff, reduceCtorEq] at h₁
         apply mapM'_none_iff_exists_none.mp
         by_contra h₃
         rw [← ne_eq] at h₃
@@ -775,7 +843,7 @@ theorem mapM'_none_iff_exists_none {α β} {f : α → Option β} {xs : List α}
     replace ⟨x, h₁, h₂⟩ := h₁
     cases xs <;> simp only [mem_cons, not_mem_nil] at h₁
     case cons xhd xtl =>
-      simp only [mapM'_cons, Option.pure_def, Option.bind_eq_bind, Option.bind_eq_none]
+      simp only [mapM'_cons, Option.pure_def, Option.bind_eq_bind, Option.bind_eq_none_iff]
       intro yhd h₃ ytl h₄
       rcases h₁ with h₁ | h₁
       · subst h₁ ; simp [h₂] at h₃
@@ -800,7 +868,7 @@ theorem mapM'_some_eq_filterMap {α β} {f : α → Option β} {xs : List α} {y
     exact h
   case cons hd tl ih =>
     simp only [filterMap_cons]
-    simp only [mapM'_cons, Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some,
+    simp only [mapM'_cons, Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some_iff,
       Option.some.injEq] at h
     replace ⟨hd', h, tl', hm, hys⟩ := h
     subst hys
@@ -829,7 +897,7 @@ theorem mapM'_some_subset {f : α → Option β} {xs xs' : List α} {ys : List �
     simp only [cons_subset] at heqv
     replace ⟨ytl', ih⟩ := ih heqv.right
     replace ⟨yhd', _, hm⟩ := hm xhd' heqv.left
-    simp only [mapM'_cons, Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some,
+    simp only [mapM'_cons, Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some_iff,
       Option.some.injEq]
     exists (yhd' :: ytl'), yhd'
     simp only [hm, ih, Option.some.injEq, cons.injEq, true_and, exists_eq_right, and_self]
@@ -919,12 +987,12 @@ theorem foldlM_of_assoc_some (f : α → α → Option α) (x₀ x₁ x₂ x₃ 
     simp only [Option.bind_eq_bind, List.foldlM, pure, Option.some.injEq, Option.bind_some_fun] at *
     subst h₃; exact h₂
   case cons hd tl =>
-    simp only [Option.bind_eq_bind, List.foldlM, Option.bind_eq_some] at *
+    simp only [Option.bind_eq_bind, List.foldlM, Option.bind_eq_some_iff] at *
     cases h₄ : f x₂ hd <;> simp only [h₄, false_and, exists_false, Option.some.injEq, exists_eq_left', reduceCtorEq] at h₃
     case some x₄ =>
     have h₅ := h₁ x₀ x₁ hd
-    simp only [h₂, h₄, Option.some_bind] at h₅
-    cases h₆ : f x₁ hd <;> simp only [h₆, Option.some_bind, Option.none_bind, reduceCtorEq] at h₅
+    simp only [h₂, h₄, Option.bind_some] at h₅
+    cases h₆ : f x₁ hd <;> simp only [h₆, Option.bind_some, Option.bind_none, reduceCtorEq] at h₅
     case some x₅ =>
     have h₇ := List.foldlM_of_assoc_some f x₂ hd x₄ x₃ tl h₁ h₄ h₃
     cases h₈ : List.foldlM f hd tl <;> simp only [h₈, Option.bind_some_fun, Option.bind_none_fun, reduceCtorEq] at h₇
@@ -938,7 +1006,7 @@ theorem foldlM_of_assoc_some (f : α → α → Option α) (x₀ x₁ x₂ x₃ 
       have h₁₀ := List.foldlM_of_assoc_some f x₁ hd x₅ x₇ tl h₁ h₆ h₉
       simp only [h₈, Option.bind_some_fun] at h₁₀
       specialize h₁ x₀ x₁ x₆
-      simp only [h₂, h₁₀, Option.some_bind] at h₁
+      simp only [h₂, h₁₀, Option.bind_some] at h₁
       simp [←h₁, h₇]
 
 theorem foldlM_of_assoc_none' (f : α → α → Option α) (x₀ x₁ x₂ : α) (xs : List α)
@@ -953,7 +1021,7 @@ theorem foldlM_of_assoc_none' (f : α → α → Option α) (x₀ x₁ x₂ : α
   case nil =>
     simp only [foldlM_nil, pure, Option.some.injEq] at h₃ ; subst h₃; exact h₂
   case cons hd tl =>
-    simp only [List.foldlM, Option.bind_eq_bind, Option.bind_eq_some] at h₃
+    simp only [List.foldlM, Option.bind_eq_bind, Option.bind_eq_some_iff] at h₃
     cases h₄ : f x₁ hd <;> simp only [h₄, false_and, exists_false, Option.some.injEq, exists_eq_left', reduceCtorEq] at h₃
     case some x₃ =>
     have h₅ := List.foldlM_of_assoc_some f x₁ hd x₃ x₂ tl h₁ h₄ h₃
@@ -974,7 +1042,7 @@ theorem foldlM_of_assoc_none (f : α → α → Option α) (x₀ x₁ x₂ : α)
   cases xs
   case nil => simp [List.foldlM] at h₃
   case cons hd tl =>
-    simp only [List.foldlM, Option.bind_eq_bind, Option.bind_eq_none, Option.bind_eq_some,
+    simp only [List.foldlM, Option.bind_eq_bind, Option.bind_eq_none_iff, Option.bind_eq_some_iff,
       forall_exists_index, and_imp]
     cases h₄ : f x₁ hd <;> simp only [false_implies, implies_true, Option.some.injEq, forall_eq', reduceCtorEq]
     case some x₃ =>
@@ -983,7 +1051,7 @@ theorem foldlM_of_assoc_none (f : α → α → Option α) (x₀ x₁ x₂ : α)
     have h₆ := List.foldlM_of_assoc_some f x₁ hd x₃ x₄ tl h₁ h₄ h₅
     cases h₇ : List.foldlM f hd tl <;> simp only [h₇, Option.bind_some_fun, Option.bind_none_fun, reduceCtorEq] at h₆
     case some x₅ =>
-    simp only [List.foldlM, Option.bind_eq_bind, Option.bind_eq_none] at h₃
+    simp only [List.foldlM, Option.bind_eq_bind, Option.bind_eq_none_iff] at h₃
     cases h₈ : f x₂ hd <;> simp only [h₈, false_implies, implies_true, Option.some.injEq, forall_eq'] at h₃
     case none =>
       have h₉ := List.foldlM_of_assoc_none' f x₂ hd x₅ tl h₁ h₈ h₇
@@ -1005,13 +1073,13 @@ theorem foldlM_of_assoc (f : α → α → Option α) (x₀ x₁ : α) (xs : Lis
   (do let y ← List.foldlM f x₁ xs ; f x₀ y)
 := by
   simp only [List.foldlM, Option.bind_eq_bind]
-  cases h₂ : f x₀ x₁ <;> simp only [Option.some_bind, Option.none_bind]
+  cases h₂ : f x₀ x₁ <;> simp only [Option.bind_some, Option.bind_none]
   case none =>
     induction xs generalizing x₁
     case nil => simp [h₂]
     case cons hd tl ih =>
       simp only [List.foldlM, Option.bind_eq_bind]
-      cases h₃ : f x₁ hd <;> simp only [Option.some_bind, Option.none_bind]
+      cases h₃ : f x₁ hd <;> simp only [Option.bind_some, Option.bind_none]
       case some x₂ =>
       apply ih x₂
       specialize h₁ x₀ x₁ hd
@@ -1032,7 +1100,7 @@ theorem find?_pair_map {α β γ} [BEq α] (f : β → γ) (xs : List (α × β)
   List.find? (λ x => x.fst == k) (List.map (λ x => (x.fst, f x.snd)) xs)
 := by
   induction xs
-  case nil => simp only [find?_nil, Option.map_none', map_nil]
+  case nil => simp only [find?_nil, Option.map_none, map_nil]
   case cons hd tl ih =>
     cases h₁ : hd.fst == k <;> simp only [map_cons]
     case false =>
@@ -1073,6 +1141,35 @@ theorem find?_fst_map_implies_find? {α β γ} [BEq α] {f : β → γ} {xs : Li
       exists x
       simp only [Prod.map, id_eq] at heq
       simp [find?_cons, heq, ih]
+
+theorem find?_implies_find?_fst_map
+  {α β γ} [BEq α] [ReflBEq α]
+  {l : List (α × β)}
+  {k : α} {v : β}
+  {f : α → β → γ}
+  (h : List.find? (λ x => x.fst == k) l = some (k, v)) :
+  List.find? (λ x => x.fst == k) (l.map λ (k, v) => (k, f k v)) = some (k, f k v)
+:= by
+  induction l
+  case nil => simp only [find?_nil, reduceCtorEq] at h
+  case cons head tail ih =>
+    simp only [find?_cons_eq_some, Bool.not_eq_eq_eq_not, Bool.not_true] at h
+    cases h
+    case _ h => simp [h]
+    case _ h =>
+      specialize ih h.2
+      simp only [List.map]
+      simp only [List.find?]
+      simp [ih, h]
+
+theorem find?_implies_append_find?
+  {a b : List α}
+  {v : α}
+  {f : α → Bool}
+  (h : List.find? f a = some v) :
+  List.find? f (a ++ b) = some v
+:= by
+  simp [List.find?_append, h]
 
 theorem not_find?_some_iff_find?_none {α} {p : α → Bool} {xs : List α} :
   (∀ x ∈ xs, ¬xs.find? p = .some x) ↔ xs.find? p = .none
@@ -1252,6 +1349,10 @@ theorem forM_ok_implies_all_ok {α β : Type} (xs : List α) (f : α → Except 
   obtain ⟨_, _, h₅⟩ := h₂ xin
   exact h₅
 
+theorem forM_ok_implies_all_ok' {α β : Type} {xs : List α} {f : α → Except β Unit} :
+  xs.forM f = Except.ok () → (∀ x ∈ xs, f x = Except.ok ())
+:= forM_ok_implies_all_ok xs f
+
 /-! ### removeAll -/
 
 theorem removeAll_singleton_cons_of_neq [DecidableEq α] (x y : α) (xs : List α) :
@@ -1337,4 +1438,62 @@ theorem find?_compose {α β} (f : α → β) (p₁ : β → Bool) (p₂ : α �
       specialize hₐ head
       simp only [Function.comp_apply, heq₁, heq₂, Bool.false_eq_true] at hₐ
     case _ => exact h hₐ
+
+theorem mem_implies_mem_eraseDups
+  [BEq α] [LawfulBEq α]
+  {xs : List α} {x : α}
+  (hmem : x ∈ xs) :
+  x ∈ xs.eraseDups
+:= by
+  cases xs with
+  | nil => contradiction
+  | cons hd tl =>
+    simp only [List.eraseDups_cons, List.mem_cons]
+    simp only [List.mem_cons] at hmem
+    cases hx : x == hd
+    · simp only [beq_eq_false_iff_ne, ne_eq] at hx
+      apply Or.inr
+      simp only [hx, false_or] at hmem
+      apply mem_implies_mem_eraseDups
+      apply List.mem_filter.mpr
+      simp only [hmem, true_and]
+      simp only [Bool.not_eq_eq_eq_not, Bool.not_true, beq_eq_false_iff_ne, ne_eq]
+      exact hx
+    · apply Or.inl
+      simp only [beq_iff_eq] at hx
+      exact hx
+termination_by xs.length
+decreasing_by
+  calc
+    (List.filter (fun b => !b == hd) tl).length <= tl.length := by
+      apply List.length_filter_le
+    _ < xs.length := by
+      simp [*]
+
+theorem mem_eraseDups_implies_mem
+  [BEq α] [LawfulBEq α]
+  {xs : List α} {x : α}
+  (hmem : x ∈ xs.eraseDups) :
+  x ∈ xs
+:= by
+  cases xs with
+  | nil => contradiction
+  | cons hd tl =>
+    simp only [eraseDups_cons, mem_cons] at hmem
+    simp only [mem_cons]
+    cases hmem with
+    | inl h => exact Or.inl h
+    | inr h =>
+      apply Or.inr
+      have := mem_eraseDups_implies_mem h
+      have := List.mem_filter.mp this
+      exact this.1
+termination_by xs.length
+decreasing_by
+  calc
+    (List.filter (fun b => !b == hd) tl).length <= tl.length := by
+      apply List.length_filter_le
+    _ < xs.length := by
+      simp [*]
+
 end List

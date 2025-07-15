@@ -16,20 +16,17 @@
 
 #![no_main]
 
+use cedar_drt_inner::{fuzz_target, schemas::Equiv};
+
+use cedar_policy::{proto, Entities, Entity, Policy, PolicySet, Request, Schema};
+
 use libfuzzer_sys::arbitrary::{self, MaxRecursionReached};
 use prost::Message;
 
 use crate::arbitrary::Arbitrary;
 use crate::arbitrary::Unstructured;
-use cedar_drt::{AuthorizationRequest, OwnedAuthorizationRequest};
-use cedar_drt_inner::{fuzz_target, schemas::Equiv};
-use cedar_policy::proto;
-use cedar_policy_core::{
-    ast, entities::Entities, entities::NoEntitiesSchema, entities::TCComputation,
-    extensions::Extensions,
-};
 use cedar_policy_generators::{
-    abac::ABACPolicy, abac::ABACRequest, hierarchy::HierarchyGenerator, schema::Schema,
+    abac::ABACPolicy, abac::ABACRequest, hierarchy::HierarchyGenerator, schema,
     settings::ABACSettings,
 };
 
@@ -38,7 +35,7 @@ struct FuzzTargetInput {
     request: ABACRequest,
     policy: ABACPolicy,
     entities: Entities,
-    schema: cedar_policy_validator::ValidatorSchema,
+    schema: Schema,
 }
 
 // settings for this fuzz target
@@ -58,103 +55,98 @@ const SETTINGS: ABACSettings = ABACSettings {
 
 impl<'a> Arbitrary<'a> for FuzzTargetInput {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        let schema: Schema = Schema::arbitrary(SETTINGS.clone(), u)?;
+        let schema: schema::Schema = schema::Schema::arbitrary(SETTINGS.clone(), u)?;
         let hierarchy = schema.arbitrary_hierarchy(u)?;
         let request = schema.arbitrary_request(&hierarchy, u)?;
         let policy = schema.arbitrary_policy(&hierarchy, u)?;
 
-        let entities: Entities = Entities::from_entities(
-            hierarchy.entities().map(|x| x.to_owned()),
-            None::<&NoEntitiesSchema>,
-            TCComputation::AssumeAlreadyComputed,
-            Extensions::none(),
+        let entities = Entities::from_entities(
+            hierarchy.entities().map(|x| Entity::from(x.to_owned())),
+            None,
         )
         .expect("Failed to create entities");
+
+        let schema = schema
+            .try_into()
+            .expect("Failed to convert schema to ValidatorSchema");
 
         Ok(Self {
             request,
             policy,
             entities,
-            schema: schema
-                .try_into()
-                .expect("Failed to convert schema to ValidatorSchema"),
+            schema,
         })
     }
 
     fn try_size_hint(depth: usize) -> Result<(usize, Option<usize>), MaxRecursionReached> {
         Ok(arbitrary::size_hint::and_all(&[
-            Schema::arbitrary_size_hint(depth)?,
+            schema::Schema::arbitrary_size_hint(depth)?,
             HierarchyGenerator::size_hint(depth),
-            Schema::arbitrary_policy_size_hint(&SETTINGS, depth),
+            schema::Schema::arbitrary_policy_size_hint(&SETTINGS, depth),
         ]))
     }
 }
 
 fuzz_target!(|input: FuzzTargetInput| {
-    let s_policy: ast::StaticPolicy = input.policy.into();
-    let mut policies: ast::PolicySet = ast::PolicySet::new();
-    policies.add(s_policy.into()).expect("Failed to add policy");
-    roundtrip_authz_request_msg(AuthorizationRequest {
-        request: &input.request.into(),
-        policies: &policies,
-        entities: &input.entities,
-    });
+    let policy = Policy::from(input.policy);
+    let mut policies = PolicySet::new();
+    policies.add(policy).expect("Failed to add policy");
+    let request = Request::from(input.request);
+
+    roundtrip_policies(policies);
+    roundtrip_request(request);
+    roundtrip_entities(input.entities);
     roundtrip_schema(input.schema);
 });
 
-fn roundtrip_authz_request_msg(auth_request: AuthorizationRequest) {
-    // AST -> Protobuf
-    let auth_request_proto = cedar_drt::proto::AuthorizationRequest::from(&auth_request);
-
-    // Protobuf -> Bytes
-    let buf = auth_request_proto.encode_to_vec();
-
-    // Bytes -> Protobuf
-    let roundtripped_proto = cedar_drt::proto::AuthorizationRequest::decode(&buf[..])
-        .expect("Failed to deserialize AuthorizationRequest from proto");
-
-    // Protobuf -> AST
-    let roundtripped = OwnedAuthorizationRequest::from(roundtripped_proto);
-
-    // Checking request equality (ignores loc field)
-    assert_eq!(
-        auth_request.request.principal().uid(),
-        roundtripped.request.principal().uid()
-    );
-    assert_eq!(
-        auth_request.request.action().uid(),
-        roundtripped.request.action().uid()
-    );
-    assert_eq!(
-        auth_request.request.resource().uid(),
-        roundtripped.request.resource().uid()
-    );
-    assert_eq!(
-        auth_request.request.context(),
-        roundtripped.request.context()
-    );
-
-    // Checking policy set equality
-    assert_eq!(auth_request.policies, &roundtripped.policies);
-
-    // Checking entities equality
-    assert_eq!(auth_request.entities, &roundtripped.entities);
+fn roundtrip_policies(policies: PolicySet) {
+    let policies_proto = proto::models::PolicySet::from(&policies);
+    let buf = policies_proto.encode_to_vec();
+    let roundtriped_proto = proto::models::PolicySet::decode(&buf[..])
+        .expect("Failed to deserialize PolicySet from proto");
+    let roundtripped =
+        PolicySet::try_from(&roundtriped_proto).expect("Failed to convert from proto to PolicySet");
+    assert_eq!(policies, roundtripped);
 }
 
-fn roundtrip_schema(schema: cedar_policy_validator::ValidatorSchema) {
-    // AST -> Protobuf bytes
+fn roundtrip_entities(entities: Entities) {
+    let entities_proto = proto::models::Entities::from(&entities);
+    let buf = entities_proto.encode_to_vec();
+    let roundtriped_proto = proto::models::Entities::decode(&buf[..])
+        .expect("Failed to deserialize Entities from proto");
+    let roundtripped = Entities::from(&roundtriped_proto);
+    assert_eq!(entities, roundtripped);
+}
+
+fn roundtrip_request(request: Request) {
+    let request_proto = proto::models::Request::from(&request);
+    let buf = request_proto.encode_to_vec();
+    let roundtriped_proto =
+        proto::models::Request::decode(&buf[..]).expect("Failed to deserialize Request from proto");
+    let roundtripped = Request::from(&roundtriped_proto);
+    assert_eq!(
+        request.principal().map(|p| p.id()),
+        roundtripped.principal().map(|p| p.id())
+    );
+    assert_eq!(
+        request.action().map(|a| a.id()),
+        roundtripped.action().map(|a| a.id())
+    );
+    assert_eq!(
+        request.resource().map(|r| r.id()),
+        roundtripped.resource().map(|r| r.id())
+    );
+    assert_eq!(
+        request.context().map(|c| c.as_ref()),
+        roundtripped.context().map(|c| c.as_ref())
+    );
+}
+
+fn roundtrip_schema(schema: Schema) {
     let schema_proto = proto::models::Schema::from(&schema);
-
-    // Protobuf -> Bytes
     let buf = schema_proto.encode_to_vec();
-
-    // Bytes -> Protobuf
-    let roundtripped_proto =
+    let roundtriped_proto =
         proto::models::Schema::decode(&buf[..]).expect("Failed to deserialize Schema from proto");
-
-    // Protobuf -> AST
-    let roundtripped = cedar_policy_validator::ValidatorSchema::from(&roundtripped_proto);
-
-    // Checking schema equivalence
-    Equiv::equiv(&schema, &roundtripped).unwrap();
+    let roundtripped = Schema::from(&roundtriped_proto);
+    Equiv::equiv(schema.as_ref(), roundtripped.as_ref()).unwrap();
 }

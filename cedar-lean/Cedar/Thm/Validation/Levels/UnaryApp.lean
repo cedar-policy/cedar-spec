@@ -32,10 +32,10 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem level_based_slicing_is_sound_unary_app {op : UnaryOp} {e : Expr} {n : Nat} {c₀ c₁: Capabilities} {env : Environment} {request : Request} {entities slice : Entities}
+theorem level_based_slicing_is_sound_unary_app {op : UnaryOp} {e : Expr} {n : Nat} {c₀ c₁: Capabilities} {env : TypeEnv} {request : Request} {entities slice : Entities}
   (hs : slice = entities.sliceAtLevel request n)
   (hc : CapabilitiesInvariant c₀ request entities)
-  (hr : RequestAndEntitiesMatchEnvironment env request entities)
+  (hr : InstanceOfWellFormedEnvironment request entities env)
   (ht : typeOf (.unaryApp op e) c₀ env = Except.ok (tx, c₁))
   (hl : tx.AtLevel env n)
   (ihe : TypedAtLevelIsSound e)

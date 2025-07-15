@@ -21,11 +21,13 @@
 
 mod integration_tests;
 
-use cedar_drt::ast::{PolicySet, Request};
-use cedar_drt::{Entities, LeanDefinitionalEngine};
-use cedar_drt::{ValidationMode, ValidatorSchema};
-use cedar_testing::cedar_test_impl::*;
-use cedar_testing::integration_testing::*;
+use cedar_drt::CedarLeanEngine;
+use cedar_policy::{Entities, PolicySet, Request, Schema, ValidationMode};
+use cedar_testing::cedar_test_impl::{time_function, CedarTestImplementation, RustEngine};
+use cedar_testing::integration_testing::{
+    parse_entities_from_test, parse_policies_from_test, parse_request_from_test,
+    parse_schema_from_test, resolve_integration_test_path, JsonTest,
+};
 use integration_tests::get_corpus_tests;
 use statrs::statistics::{Data, OrderStatistics};
 use std::{collections::HashMap, path::Path};
@@ -34,7 +36,7 @@ const NUM_TRIALS: u32 = 10;
 
 /// Parse a file in the integration test format, ignoring the expected
 /// authorization/validation results.
-fn parse_test(jsonfile: impl AsRef<Path>) -> (PolicySet, Entities, ValidatorSchema, Vec<Request>) {
+fn parse_test(jsonfile: impl AsRef<Path>) -> (PolicySet, Entities, Schema, Vec<Request>) {
     let jsonfile = resolve_integration_test_path(jsonfile);
     let test_name: String = jsonfile.display().to_string();
     let jsonstr = std::fs::read_to_string(jsonfile.as_path())
@@ -171,7 +173,7 @@ fn print_summary(auth_times: HashMap<&str, Vec<f64>>, val_times: HashMap<&str, V
           // integration_tests.rs.
 fn print_timing_results() {
     let rust_impl = RustEngine::new();
-    let lean_impl = LeanDefinitionalEngine::new();
+    let lean_impl = CedarLeanEngine::new();
 
     println!("Running Rust implementation...");
     let auth_times = get_authorization_timing_results(&rust_impl);

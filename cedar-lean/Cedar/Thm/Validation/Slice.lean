@@ -45,15 +45,15 @@ theorem slice_at_level_inner_well_formed {entities : Entities} {work slice : Set
         simp only [hs₁, Option.map_eq_map, Option.bind_eq_bind, Option.bind_none_fun, Option.bind_some_fun, reduceCtorEq] at hs
       rename_i n eds
       cases hs₂ : eds.mapM (Entities.sliceAtLevel.sliceAtLevel entities ·.sliceEUIDs n) <;>
-        simp only [hs₂, Option.map_none', Option.map_some', Option.none_bind, Option.some_bind, reduceCtorEq, Option.some.injEq] at hs
+        simp only [hs₂, Option.map_none, Option.map_some, Option.bind_none, Option.bind_some, reduceCtorEq, Option.some.injEq] at hs
       rename_i slice'
       exists work, (slice'.mapUnion id)
     subst hs
     simp only [Set.union_wf]
 
-theorem checked_eval_entity_in_slice  {n : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {slice entities : Entities} {ed : EntityData}
+theorem checked_eval_entity_in_slice  {n : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : TypeEnv} {slice entities : Entities} {ed : EntityData}
   (hc : CapabilitiesInvariant c request entities)
-  (hr : RequestAndEntitiesMatchEnvironment env request entities)
+  (hr : InstanceOfWellFormedEnvironment request entities env)
   (ht : typeOf e c env = .ok (tx, c'))
   (hl : tx.EntityAccessAtLevel env n nmax [])
   (he : evaluate e request entities = .ok (Value.prim (Prim.entityUID euid)))
@@ -66,7 +66,7 @@ theorem checked_eval_entity_in_slice  {n : Nat} {c c' : Capabilities} {tx : Type
     simp only [hs₁, Option.bind_none_fun, reduceCtorEq] at hs
   rename_i eids
   cases hs₂ : (eids.elts.mapM (λ e => (Map.find? entities e).bind λ ed => some (e, ed))) <;>
-    simp only [hs₂, Option.bind_eq_bind, Option.bind_some_fun, Option.none_bind, reduceCtorEq, Option.some_bind, Option.some.injEq] at hs
+    simp only [hs₂, Option.bind_eq_bind, Option.bind_some_fun, Option.bind_none, reduceCtorEq, Option.bind_some, Option.some.injEq] at hs
   subst hs
   have hf₁ : Map.contains entities euid := by simp [Map.contains, hf]
   have hw : ReachableIn entities request.sliceEUIDs euid (n + 1) :=
@@ -93,7 +93,7 @@ theorem not_entities_then_not_slice {n: Nat} {request : Request} {uid : EntityUI
     simp only [hs₁, Option.bind_none_fun, reduceCtorEq] at hs
   rename_i eids
   cases hs₂ : (eids.elts.mapM (λ e => (entities.find? e).bind λ ed => some (e, ed))) <;>
-    simp only [hs₂, Option.bind_eq_bind, Option.bind_some_fun, Option.none_bind, reduceCtorEq, Option.some_bind, Option.some.injEq] at hs
+    simp only [hs₂, Option.bind_eq_bind, Option.bind_some_fun, Option.bind_none, reduceCtorEq, Option.bind_some, Option.some.injEq] at hs
   subst hs
   exact Map.mapM_key_id_key_none_implies_find?_none hs₂ hse
 
@@ -101,9 +101,9 @@ theorem not_entities_then_not_slice {n: Nat} {request : Request} {uid : EntityUI
 If an expression checks at level `n` and then evaluates to an entity, then the
 data for that entity in the slice will be hte same as in the original entities.
 -/
-theorem checked_eval_entity_find_entities_eq_find_slice  {n nmax : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {slice entities : Entities}
+theorem checked_eval_entity_find_entities_eq_find_slice  {n nmax : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : TypeEnv} {slice entities : Entities}
   (hc : CapabilitiesInvariant c request entities)
-  (hr : RequestAndEntitiesMatchEnvironment env request entities)
+  (hr : InstanceOfWellFormedEnvironment request entities env)
   (ht : typeOf e c env = .ok (tx, c'))
   (hl : tx.EntityAccessAtLevel env n nmax [])
   (he : evaluate e request entities = .ok (Value.prim (Prim.entityUID euid)))

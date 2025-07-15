@@ -30,7 +30,7 @@ open Cedar.Spec
 theorem typechecked_is_well_typed_after_lifting_lit
 {p : Prim}
 {c₁ c₂ : Capabilities}
-{env : Environment}
+{env : TypeEnv}
 {ty : TypedExpr} :
   typeOf (Expr.lit p) c₁ env = Except.ok (ty, c₂) → TypedExpr.WellTyped env ty.liftBoolTypes
 := by
@@ -58,7 +58,7 @@ theorem typechecked_is_well_typed_after_lifting_lit
 theorem typechecked_is_well_typed_after_lifting_var
 {v : Var}
 {c₁ c₂ : Capabilities}
-{env : Environment}
+{env : TypeEnv}
 {ty : TypedExpr} :
   typeOf (Expr.var v) c₁ env = Except.ok (ty, c₂) →
   TypedExpr.WellTyped env ty.liftBoolTypes
@@ -77,7 +77,7 @@ theorem typechecked_is_well_typed_after_lifting_var
 theorem typechecked_is_well_typed_after_lifting_ite
 {cond thenExpr elseExpr : Expr}
 {c₁ c₂ : Capabilities}
-{env : Environment}
+{env : TypeEnv}
 {ty : TypedExpr}
 (hᵢ₁ : ∀ {c₂ : Capabilities} {ty : TypedExpr},
     typeOf cond c₁ env = Except.ok (ty, c₂) → TypedExpr.WellTyped env ty.liftBoolTypes)
@@ -166,7 +166,7 @@ theorem typechecked_is_well_typed_after_lifting_ite
 theorem typechecked_is_well_typed_after_lifting_and
 {x₁ x₂ : Expr}
 {c₁ c₂ : Capabilities}
-{env : Environment}
+{env : TypeEnv}
 {ty : TypedExpr}
 (hᵢ₁ : ∀ {c₂ : Capabilities} {ty : TypedExpr},
     typeOf x₁ c₁ env = Except.ok (ty, c₂) → TypedExpr.WellTyped env ty.liftBoolTypes)
@@ -215,7 +215,7 @@ theorem typechecked_is_well_typed_after_lifting_and
 theorem typechecked_is_well_typed_after_lifting_or
 {x₁ x₂ : Expr}
 {c₁ c₂ : Capabilities}
-{env : Environment}
+{env : TypeEnv}
 {ty : TypedExpr}
 (hᵢ₁ : ∀ {c₂ : Capabilities} {ty : TypedExpr},
     typeOf x₁ c₁ env = Except.ok (ty, c₂) → TypedExpr.WellTyped env ty.liftBoolTypes)
@@ -281,7 +281,7 @@ theorem typechecked_is_well_typed_after_lifting_or
 theorem typechecked_is_well_typed_after_lifting_unary_app
 {x₁: Expr}
 {c₁ c₂ : Capabilities}
-{env : Environment}
+{env : TypeEnv}
 {ty : TypedExpr}
 {op₁ : UnaryOp}
 (hᵢ₁ : ∀ {c₂ : Capabilities} {ty : TypedExpr},
@@ -321,7 +321,7 @@ theorem typechecked_is_well_typed_after_lifting_unary_app
 theorem typechecked_is_well_typed_after_lifting_binary_app
 {x₁ x₂ : Expr}
 {c₁ c₂ : Capabilities}
-{env : Environment}
+{env : TypeEnv}
 {ty : TypedExpr}
 {op₂ : BinaryOp}
 (hᵢ₁ : ∀ {c₂ : Capabilities} {ty : TypedExpr},
@@ -643,7 +643,7 @@ theorem typechecked_is_well_typed_after_lifting_binary_app
 theorem typechecked_is_well_typed_after_lifting_has_attr
 {x₁ : Expr}
 {c₁ c₂ : Capabilities}
-{env : Environment}
+{env : TypeEnv}
 {ty : TypedExpr}
 {attr : Attr}
 (hᵢ₁ : ∀ {c₂ : Capabilities} {ty : TypedExpr},
@@ -761,7 +761,7 @@ theorem typechecked_is_well_typed_after_lifting_get_attr_in_record
 theorem typechecked_is_well_typed_after_lifting_get_attr
 {x₁ : Expr}
 {c₁ c₂ : Capabilities}
-{env : Environment}
+{env : TypeEnv}
 {ty : TypedExpr}
 {attr : Attr}
 (hᵢ₁ : ∀ {c₂ : Capabilities} {ty : TypedExpr},
@@ -803,7 +803,7 @@ theorem typechecked_is_well_typed_after_lifting_get_attr
 
 theorem typechecked_is_well_typed_after_lifting_call_arg
 {c₁: Capabilities}
-{env : Environment}
+{env : TypeEnv}
 {xs : List Expr}
 {tys : List TypedExpr}
 (hᵢ : List.Forall₂ (fun x y => justType (typeOf x c₁ env) = Except.ok y) xs tys)
@@ -827,7 +827,7 @@ theorem typechecked_is_well_typed_after_lifting_call_arg
 
 theorem typechecked_is_well_typed_after_lifting_call
 {c₁ c₂ : Capabilities}
-{env : Environment}
+{env : TypeEnv}
 {ty : TypedExpr}
 {xfn : ExtFun}
 {xs : List Expr}
@@ -1221,7 +1221,7 @@ theorem foldM_lub_some {x y: CedarType} {xs : List CedarType} :
 
 theorem typechecked_is_well_typed_after_lifting_set
 {c₁ c₂ : Capabilities}
-{env : Environment}
+{env : TypeEnv}
 {ty : TypedExpr}
 {xs : List Expr}
 (hᵢ₁ : ∀ (x₁ : Expr),
@@ -1319,7 +1319,7 @@ theorem record_lifting_make {tys : List (Attr × TypedExpr)} :
 
 theorem typechecked_is_well_typed_after_lifting_record
 {c₁ c₂ : Capabilities}
-{env : Environment}
+{env : TypeEnv}
 {ty : TypedExpr}
 {axs : List (Attr × Expr)}
 (hᵢ₁ : ∀ (a₁ : Attr) (x₁ : Expr),
@@ -1353,5 +1353,41 @@ theorem typechecked_is_well_typed_after_lifting_record
     exact hᵢ₁
   · simp only [List.map_attach₂ (fun (x : Attr × TypedExpr) => (x.fst, x.snd.liftBoolTypes))]
     exact record_lifting_make
+
+/-- The type checker produces typed expressions that are well-typed after type
+lifting. TODO: move this around after the proof is fixed -/
+theorem typechecked_is_well_typed_after_lifting
+{e : Expr}
+{c₁ c₂ : Capabilities}
+{env : TypeEnv}
+{ty : TypedExpr} :
+  typeOf e c₁ env = .ok (ty, c₂) →
+  TypedExpr.WellTyped env ty.liftBoolTypes
+:= by
+  induction e, c₁ using typeOf.induct generalizing ty c₂
+  case _ =>
+    exact typechecked_is_well_typed_after_lifting_lit
+  case _ =>
+    exact typechecked_is_well_typed_after_lifting_var
+  case _ hᵢ₁ hᵢ₂ hᵢ₃ =>
+    exact typechecked_is_well_typed_after_lifting_ite hᵢ₁ hᵢ₂ hᵢ₃
+  case _ hᵢ₁ hᵢ₂ =>
+    exact typechecked_is_well_typed_after_lifting_and hᵢ₁ hᵢ₂
+  case _ hᵢ₁ hᵢ₂ =>
+    exact typechecked_is_well_typed_after_lifting_or hᵢ₁ hᵢ₂
+  case _ hᵢ =>
+    exact typechecked_is_well_typed_after_lifting_unary_app hᵢ
+  case _ hᵢ₁ hᵢ₂ =>
+    exact typechecked_is_well_typed_after_lifting_binary_app hᵢ₁ hᵢ₂
+  case _ hᵢ =>
+    exact typechecked_is_well_typed_after_lifting_has_attr hᵢ
+  case _ hᵢ =>
+    exact typechecked_is_well_typed_after_lifting_get_attr hᵢ
+  case _ hᵢ =>
+    exact typechecked_is_well_typed_after_lifting_set hᵢ
+  case _ hᵢ =>
+    exact typechecked_is_well_typed_after_lifting_record hᵢ
+  case _ hᵢ =>
+    exact typechecked_is_well_typed_after_lifting_call hᵢ
 
 end Cedar.Thm

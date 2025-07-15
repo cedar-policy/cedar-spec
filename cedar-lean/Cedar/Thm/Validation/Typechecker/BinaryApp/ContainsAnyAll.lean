@@ -26,7 +26,7 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem type_of_containsA_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' : Capabilities} {env : Environment} {ty : TypedExpr}
+theorem type_of_containsA_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' : Capabilities} {env : TypeEnv} {ty : TypedExpr}
   (h₁ : op₂ = .containsAll ∨ op₂ = .containsAny)
   (h₂ : typeOf (Expr.binaryApp op₂ x₁ x₂) c env = Except.ok (ty, c')) :
   c' = ∅ ∧
@@ -56,15 +56,15 @@ theorem type_of_containsA_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' 
   }
 
 
-theorem type_of_containsA_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
+theorem type_of_containsA_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : TypeEnv} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₀ : op₂ = .containsAll ∨ op₂ = .containsAny)
   (h₁ : CapabilitiesInvariant c₁ request entities)
-  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₂ : InstanceOfWellFormedEnvironment request entities env)
   (h₃ : typeOf (Expr.binaryApp op₂ x₁ x₂) c₁ env = Except.ok (ty, c₂))
   (ih₁ : TypeOfIsSound x₁)
   (ih₂ : TypeOfIsSound x₂) :
   GuardedCapabilitiesInvariant (Expr.binaryApp op₂ x₁ x₂) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.binaryApp op₂ x₁ x₂) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.binaryApp op₂ x₁ x₂) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
   have ⟨hc, hty, ty₁, ty₂, _, ht₁, ht₂⟩ := type_of_containsA_inversion h₀ h₃
   subst hc ; rw [hty]
@@ -78,7 +78,7 @@ theorem type_of_containsA_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c
   simp [EvaluatesTo, evaluate] at *
   cases h₄ : evaluate x₁ request entities <;> simp [h₄] at * <;>
   cases h₅ : evaluate x₂ request entities <;> simp [h₅] at * <;>
-  try { simp [ih₁, ih₂] ; apply type_is_inhabited }
+  try { simp [ih₁, ih₂] ; apply type_is_inhabited_bool }
   replace ⟨ihl₁, ih₃⟩ := ih₁
   replace ⟨ihl₂, ih₄⟩ := ih₂
   rw [eq_comm] at ihl₁ ihl₂; subst ihl₁ ihl₂

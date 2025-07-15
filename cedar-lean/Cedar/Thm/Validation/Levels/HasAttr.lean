@@ -19,10 +19,10 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem level_based_slicing_is_sound_has_attr_entity {e : Expr} {tx₁: TypedExpr} {ty : CedarType} {a : Attr} {n : Nat} {c₀ c₁: Capabilities} {env : Environment} {request : Request} {entities slice : Entities}
+theorem level_based_slicing_is_sound_has_attr_entity {e : Expr} {tx₁: TypedExpr} {ty : CedarType} {a : Attr} {n : Nat} {c₀ c₁: Capabilities} {env : TypeEnv} {request : Request} {entities slice : Entities}
   (hs : slice = entities.sliceAtLevel request n)
   (hc : CapabilitiesInvariant c₀ request entities)
-  (hr : RequestAndEntitiesMatchEnvironment env request entities)
+  (hr : InstanceOfWellFormedEnvironment request entities env)
   (hl : (tx₁.hasAttr a ty).AtLevel env n)
   (ht : typeOf e c₀ env = Except.ok (tx₁, c₁))
   (hety : tx₁.typeOf = CedarType.entity ety)
@@ -47,10 +47,10 @@ theorem level_based_slicing_is_sound_has_attr_entity {e : Expr} {tx₁: TypedExp
   have hfeq := checked_eval_entity_find_entities_eq_find_slice hc hr ht hl₁ he hs
   simp [hfeq, hasAttr, attrsOf, Entities.attrsOrEmpty]
 
-theorem level_based_slicing_is_sound_has_attr_record {e : Expr} {tx : TypedExpr} {a : Attr} {n : Nat} {c₀: Capabilities} {env : Environment} {request : Request} {entities slice : Entities}
+theorem level_based_slicing_is_sound_has_attr_record {e : Expr} {tx : TypedExpr} {a : Attr} {n : Nat} {c₀: Capabilities} {env : TypeEnv} {request : Request} {entities slice : Entities}
   (hs : slice = entities.sliceAtLevel request n)
   (hc : CapabilitiesInvariant c₀ request entities)
-  (hr : RequestAndEntitiesMatchEnvironment env request entities)
+  (hr : InstanceOfWellFormedEnvironment request entities env)
   (hl : (tx.hasAttr a ty).AtLevel env n)
   (htx : typeOf e c₀ env = Except.ok (tx, c₁'))
   (hrty : tx.typeOf = CedarType.record rty)
@@ -73,10 +73,10 @@ theorem level_based_slicing_is_sound_has_attr_record {e : Expr} {tx : TypedExpr}
     simpa [EvaluatesTo, hv, he₁] using he
   simp [he, hasAttr, attrsOf]
 
-theorem level_based_slicing_is_sound_has_attr {e : Expr} {tx : TypedExpr} {a : Attr} {n : Nat} {c₀ c₁: Capabilities} {env : Environment} {request : Request} {entities slice : Entities}
+theorem level_based_slicing_is_sound_has_attr {e : Expr} {tx : TypedExpr} {a : Attr} {n : Nat} {c₀ c₁: Capabilities} {env : TypeEnv} {request : Request} {entities slice : Entities}
   (hs : slice = entities.sliceAtLevel request n)
   (hc : CapabilitiesInvariant c₀ request entities)
-  (hr : RequestAndEntitiesMatchEnvironment env request entities)
+  (hr : InstanceOfWellFormedEnvironment request entities env)
   (ht : typeOf (e.hasAttr a) c₀ env = Except.ok (tx, c₁))
   (hl : tx.AtLevel env n)
   (ihe : TypedAtLevelIsSound e)

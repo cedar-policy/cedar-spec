@@ -1,0 +1,10 @@
+Found 3 request environment specific warnings:
++---------------+--------------+--------------+----------------------------------------------+
+| PrincipalType | ActionName   | ResourceType | Findings                                     |
++---------------+--------------+--------------+----------------------------------------------+
+| User          | AddReader    | Document     | Policy `edit-file` shadowed by `any-own`     |
++---------------+--------------+--------------+----------------------------------------------+
+| User          | DownloadFile | Document     | Policy `any-own` shadowed by `download-file` |
++---------------+--------------+--------------+----------------------------------------------+
+| User          | EditFile     | Document     | Policy `edit-file` shadowed by `any-own`     |
++---------------+--------------+--------------+----------------------------------------------+

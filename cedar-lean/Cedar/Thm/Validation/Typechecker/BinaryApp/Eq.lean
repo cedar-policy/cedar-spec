@@ -27,7 +27,7 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem type_of_eq_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Environment} {ty : TypedExpr}
+theorem type_of_eq_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : TypeEnv} {ty : TypedExpr}
   (h₁ : typeOf (Expr.binaryApp .eq x₁ x₂) c env = Except.ok (ty, c')) :
   c' = ∅ ∧
   match x₁, x₂ with
@@ -91,9 +91,9 @@ theorem type_of_eq_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Env
             · exists ety₁
             · exists ety₂
 
-theorem no_entity_type_lub_implies_not_eq {v₁ v₂ : Value} {ety₁ ety₂ : EntityType}
-  (h₁ : InstanceOfType v₁ (CedarType.entity ety₁))
-  (h₂ : InstanceOfType v₂ (CedarType.entity ety₂))
+theorem no_entity_type_lub_implies_not_eq {env : TypeEnv} {v₁ v₂ : Value} {ety₁ ety₂ : EntityType}
+  (h₁ : InstanceOfType env v₁ (CedarType.entity ety₁))
+  (h₂ : InstanceOfType env v₂ (CedarType.entity ety₂))
   (h₃ : (CedarType.entity ety₁ ⊔ CedarType.entity ety₂) = none) :
   ¬ v₁ = v₂
 := by
@@ -103,17 +103,17 @@ theorem no_entity_type_lub_implies_not_eq {v₁ v₂ : Value} {ety₁ ety₂ : E
   cases h₁ ; cases h₂
   rename_i h₄ h₅
   simp [InstanceOfEntityType] at h₄ h₅
-  subst h₄ h₅
+  simp only [h₄.1, h₅.1] at h₃
   contradiction
 
-theorem type_of_eq_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
+theorem type_of_eq_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : TypeEnv} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
-  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₂ : InstanceOfWellFormedEnvironment request entities env)
   (h₃ : typeOf (Expr.binaryApp .eq x₁ x₂) c₁ env = Except.ok (ty, c₂))
   (ih₁ : TypeOfIsSound x₁)
   (ih₂ : TypeOfIsSound x₂) :
   GuardedCapabilitiesInvariant (Expr.binaryApp .eq x₁ x₂) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.binaryApp .eq x₁ x₂) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.binaryApp .eq x₁ x₂) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
   have ⟨hc, hty⟩ := type_of_eq_inversion h₃
   subst hc
@@ -138,7 +138,7 @@ theorem type_of_eq_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env :
     simp [EvaluatesTo, evaluate] at *
     cases h₄ : evaluate x₁ request entities <;> simp [h₄] at * <;>
     cases h₅ : evaluate x₂ request entities <;> simp [h₅] at * <;>
-    try { simp [ih₁, ih₂] ; apply type_is_inhabited }
+    try { simp [ih₁, ih₂] ; apply type_of_is_inhabited h₂.wf_env h₃ }
     replace ⟨ihl₁, ih₃⟩ := ih₁
     replace ⟨ihl₂, ih₄⟩ := ih₂
     rw [eq_comm] at ihl₁ ihl₂; subst ihl₁ ihl₂

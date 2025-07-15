@@ -18,6 +18,7 @@ import Cedar.Spec.Expr
 import Cedar.Spec.Request
 import Cedar.Spec.Value
 import Cedar.Validation.RequestEntityValidator
+import Cedar.Validation.EnvironmentValidator
 import Cedar.Validation.TypedExpr
 
 namespace Cedar.TPE
@@ -62,16 +63,16 @@ def PartialEntities.attrs (es : PartialEntities) (uid : EntityUID) : Option (Map
 def partialIsValid {α} (o : Option α) (f : α → Bool) : Bool :=
   (o.map f).getD true
 
-def requestIsValid (env : Environment) (req : PartialRequest) : Bool :=
+def requestIsValid (env : TypeEnv) (req : PartialRequest) : Bool :=
   (partialIsValid req.principal.asEntityUID λ principal =>
-    instanceOfEntityType principal env.reqty.principal env.ets.entityTypeMembers?) &&
+    instanceOfEntityType principal env.reqty.principal env) &&
   req.action == env.reqty.action &&
   (partialIsValid req.resource.asEntityUID λ resource =>
-    instanceOfEntityType resource env.reqty.resource env.ets.entityTypeMembers?) &&
+    instanceOfEntityType resource env.reqty.resource env) &&
   (partialIsValid req.context λ m =>
-    instanceOfType (.record m) (.record env.reqty.context) env.ets)
+    instanceOfType (.record m) (.record env.reqty.context) env)
 
-def entitiesIsValid (env : Environment) (es : PartialEntities) : Bool :=
+def entitiesIsValid (env : TypeEnv) (es : PartialEntities) : Bool :=
   (es.toList.all entityIsValid) && (env.acts.toList.all instanceOfActionSchema)
 where
   entityIsValid p :=
@@ -82,11 +83,11 @@ where
       (partialIsValid ancestors λ ancestors =>
         ancestors.all (λ ancestor =>
         entry.ancestors.contains ancestor.ty &&
-        instanceOfEntityType ancestor ancestor.ty env.ets.entityTypeMembers?)) &&
-      (partialIsValid attrs (instanceOfType · (.record entry.attrs) env.ets)) &&
+        instanceOfEntityType ancestor ancestor.ty env)) &&
+      (partialIsValid attrs (instanceOfType · (.record entry.attrs) env)) &&
       (partialIsValid tags λ tags =>
         match entry.tags? with
-        | .some tty => tags.values.all (instanceOfType · tty env.ets)
+        | .some tty => tags.values.all (instanceOfType · tty env)
         | .none     => tags == Map.empty)
     | .none       => false
   instanceOfActionSchema p :=
@@ -95,7 +96,7 @@ where
     | .some entry₁ => entry.ancestors == entry₁.ancestors
     | _            => false
 
-def requestAndEntitiesIsValid (env : Environment) (req : PartialRequest) (es : PartialEntities) : Bool :=
+def requestAndEntitiesIsValid (env : TypeEnv) (req : PartialRequest) (es : PartialEntities) : Bool :=
   requestIsValid env req && entitiesIsValid env es
 
 inductive ConcretizationError
@@ -106,7 +107,7 @@ inductive ConcretizationError
 
 def isValidAndConsistent (schema : Schema) (req₁ : Request) (es₁ : Entities) (req₂ : PartialRequest) (es₂ : PartialEntities) : Except ConcretizationError Unit :=
   match schema.environment? req₂.principal.ty req₂.resource.ty req₂.action with
-  | .some env => do requestIsConsistent env; entitiesIsConsistent env
+  | .some env => do requestIsConsistent env; entitiesIsConsistent env; envIsWellFormed env
   | .none => .error .invalidEnvironment
 where
   requestIsConsistent env :=
@@ -142,5 +143,11 @@ where
           partialIsValid ancestors₂ (· = ancestors₁) &&
           partialIsValid tags₂ (· = tags₁)
         | .none => false
+  envIsWellFormed env : Except ConcretizationError Unit :=
+    if !env.validateWellFormed.isOk
+    then
+      .error .typeError
+    else
+      .ok ()
 
 end Cedar.TPE

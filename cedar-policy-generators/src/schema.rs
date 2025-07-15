@@ -30,12 +30,12 @@ use arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
 use cedar_policy_core::ast::{self, Effect, PolicyID, UnreservedId};
 use cedar_policy_core::est;
 use cedar_policy_core::extensions::Extensions;
-use cedar_policy_validator::json_schema::{
+use cedar_policy_core::validator::json_schema::{
     CommonType, CommonTypeId, EntityTypeKind, StandardEntityType,
 };
-use cedar_policy_validator::{
-    json_schema, ActionBehavior, AllDefs, RawName, SchemaError, ValidatorNamespaceDef,
-    ValidatorSchema, ValidatorSchemaFragment,
+use cedar_policy_core::validator::{
+    json_schema, ActionBehavior, AllDefs, ConditionalName, RawName, SchemaError,
+    ValidatorNamespaceDef, ValidatorSchema, ValidatorSchemaFragment,
 };
 use smol_str::{SmolStr, ToSmolStr};
 use std::collections::BTreeMap;
@@ -1755,6 +1755,17 @@ impl From<Schema> for json_schema::Fragment<RawName> {
     }
 }
 
+impl TryFrom<Schema> for ValidatorSchemaFragment<ConditionalName, ConditionalName> {
+    type Error = SchemaError;
+    fn try_from(
+        schema: Schema,
+    ) -> std::result::Result<ValidatorSchemaFragment<ConditionalName, ConditionalName>, Self::Error>
+    {
+        let json_fragment: json_schema::Fragment<RawName> = schema.into();
+        json_fragment.try_into()
+    }
+}
+
 /// Utility function to "downgrade" a [`json_schema::Fragment`] with fully-qualified
 /// names into one with [`RawName`]s.
 /// When this results in `RawName`s like `A::B`, this is unambiguous, because
@@ -1964,6 +1975,22 @@ impl TryFrom<Schema> for ValidatorSchema {
     }
 }
 
+#[cfg(feature = "cedar-policy")]
+impl TryFrom<Schema> for cedar_policy::SchemaFragment {
+    type Error = SchemaError;
+    fn try_from(schema: Schema) -> std::result::Result<Self, Self::Error> {
+        cedar_policy::SchemaFragment::try_from(json_schema::Fragment::<RawName>::from(schema))
+    }
+}
+
+#[cfg(feature = "cedar-policy")]
+impl TryFrom<Schema> for cedar_policy::Schema {
+    type Error = SchemaError;
+    fn try_from(schema: Schema) -> std::result::Result<cedar_policy::Schema, Self::Error> {
+        ValidatorSchema::try_from(schema).map(Into::into)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::Schema;
@@ -1971,7 +1998,7 @@ mod tests {
     use arbitrary::Unstructured;
     use cedar_policy_core::entities::Entities;
     use cedar_policy_core::extensions::Extensions;
-    use cedar_policy_validator::{json_schema, CoreSchema, RawName, ValidatorSchema};
+    use cedar_policy_core::validator::{json_schema, CoreSchema, RawName, ValidatorSchema};
     use rand::{rng, rngs::ThreadRng, RngCore};
 
     const RANDOM_BYTE_SIZE: u16 = 1024;

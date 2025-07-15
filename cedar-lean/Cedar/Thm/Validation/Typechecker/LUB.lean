@@ -196,7 +196,7 @@ theorem lub_comm {ty₁ ty₂ : CedarType} :
   case h_4 =>
     rename_i h₁ h₂ h₃
     split <;> split <;> rename_i h₄
-    case isTrue.h_4 | isFalse.h_4 =>
+    case h_4 | h_4 => -- we have two goals named h_4 and Lean is perfectly fine with that; this selects them both
       rename_i _ _ h₅ _ _ _ _
       rw [eq_comm] at h₅
       simp [h₅]
@@ -264,7 +264,7 @@ theorem lubQualified_is_lub_of_getType {qty qty₁ qty₂: Qualified CedarType}
   (qty₁.getType ⊔ qty₂.getType) = .some qty.getType
 := by
   unfold lubQualifiedType at h₁
-  split at h₁ <;> try simp only [Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq, reduceCtorEq] at h₁
+  split at h₁ <;> try simp only [Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq, reduceCtorEq] at h₁
   all_goals {
     rename_i aty₁ aty₂
     cases h₂ : (aty₁ ⊔ aty₂)
@@ -741,5 +741,42 @@ theorem lub_assoc (ty₁ ty₂ ty₃ : CedarType) :
     apply lub_assoc_none_some h₂ h₁
   case some.some ty₄ ty₅ =>
     exact lub_assoc_some_some h₁ h₂
+
+theorem lub_lub_fixed {ty₁ ty₂ ty₃ ty₄ : CedarType}
+  (h₁ : (ty₁ ⊔ ty₂) = some ty₃)
+  (h₂ : (ty₃ ⊔ ty₄) = some ty₄) :
+  (ty₁ ⊔ ty₄) = some ty₄
+:= by
+  have h₃ := lub_left_subty h₁
+  have h₄ := lub_left_subty h₂
+  have h₅ := subty_trans h₃ h₄
+  simp [subty] at h₅
+  split at h₅ <;> simp at h₅ ; subst h₅
+  assumption
+
+theorem foldlM_of_lub_is_LUB {ty lubTy : CedarType } {tys : List CedarType}
+  (h₁ : List.foldlM lub? ty tys = some lubTy) :
+  (ty ⊔ lubTy) = some lubTy
+:= by
+  induction tys generalizing ty lubTy
+  case nil =>
+    simp [List.foldlM, pure] at h₁
+    subst h₁
+    exact lub_refl ty
+  case cons hd tl ih =>
+    simp [List.foldlM] at h₁
+    cases h₂ : ty ⊔ hd <;>
+    simp [h₂] at h₁
+    rename_i lubTy'
+    specialize ih h₁
+    apply lub_lub_fixed h₂ ih
+
+theorem foldlM_of_lub_assoc (ty₁ ty₂ : CedarType) (tys : List CedarType) :
+  List.foldlM lub? ty₁ (ty₂ :: tys) =
+  (do let ty₃ ← List.foldlM lub? ty₂ tys ; ty₁ ⊔ ty₃)
+:= by
+  apply List.foldlM_of_assoc
+  intro x₁ x₂ x₃
+  apply lub_assoc
 
 end Cedar.Thm

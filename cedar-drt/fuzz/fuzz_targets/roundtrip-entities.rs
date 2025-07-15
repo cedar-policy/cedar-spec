@@ -16,28 +16,21 @@
 
 #![no_main]
 
-use cedar_drt::{
-    entities::{EntityJsonParser, NoEntitiesSchema, TCComputation},
-    extensions::Extensions,
-    Entities, ValidatorSchema,
-};
+use cedar_drt_inner::fuzz_target;
+
+use cedar_policy::{Entities, Schema};
+
 use cedar_policy::{
     conformance_errors::EntitySchemaConformanceError, entities_errors::EntitiesError,
     entities_json_errors::JsonSerializationError,
 };
-use cedar_policy_generators::{
-    hierarchy::HierarchyGenerator, schema::Schema, settings::ABACSettings,
-};
-use cedar_policy_validator::CoreSchema;
-use libfuzzer_sys::{
-    arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured},
-    fuzz_target,
-};
+use cedar_policy_generators::{hierarchy::HierarchyGenerator, schema, settings::ABACSettings};
+use libfuzzer_sys::arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
 use similar_asserts::assert_eq;
 
 #[derive(Debug)]
 struct FuzzTargetInput {
-    pub schema: ValidatorSchema,
+    pub schema: Schema,
     pub entities: Entities,
 }
 
@@ -56,32 +49,28 @@ const SETTINGS: ABACSettings = ABACSettings {
 
 impl<'a> Arbitrary<'a> for FuzzTargetInput {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        let schema = Schema::arbitrary(SETTINGS.clone(), u)?;
+        let schema = schema::Schema::arbitrary(SETTINGS.clone(), u)?;
         let entities: Entities = schema
             .arbitrary_hierarchy(u)?
             .try_into()
             .expect("Should be able to get entities from hierarchy.");
-        let validator_schema: ValidatorSchema = schema
-            .try_into()
-            .expect("Should be able to get validator schema from schema.");
-        Ok(Self {
-            entities,
-            schema: validator_schema,
-        })
+        let schema =
+            Schema::try_from(schema).expect("Should be able to get validator schema from schema.");
+        Ok(Self { entities, schema })
     }
 
     fn try_size_hint(
         depth: usize,
     ) -> std::result::Result<(usize, Option<usize>), MaxRecursionReached> {
         Ok(arbitrary::size_hint::and_all(&[
-            Schema::arbitrary_size_hint(depth)?,
+            schema::Schema::arbitrary_size_hint(depth)?,
             HierarchyGenerator::size_hint(depth),
         ]))
     }
 }
 
 fuzz_target!(|input: FuzzTargetInput| {
-    let json = match input.entities.to_json_value() {
+    let json = match input.entities.as_ref().to_json_value() {
         Ok(json) => json,
         Err(EntitiesError::Serialization(JsonSerializationError::ReservedKey(_))) => {
             // Serializing to JSON is expected to fail when there's a record
@@ -103,30 +92,19 @@ fuzz_target!(|input: FuzzTargetInput| {
         }
     };
 
-    let eparser: EntityJsonParser<'_, '_, NoEntitiesSchema> = EntityJsonParser::new(
-        None,
-        Extensions::all_available(),
-        TCComputation::EnforceAlreadyComputed,
-    );
-    let roundtripped_entities = eparser
-        .from_json_value(json.clone())
+    let roundtripped_entities = Entities::from_json_value(json.clone(), None)
         .expect("Should be able to parse serialized entity JSON");
+
     assert_eq!(input.entities, roundtripped_entities);
 
-    let core_schema = CoreSchema::new(&input.schema);
-    let eparser: EntityJsonParser<'_, '_, _> = EntityJsonParser::new(
-        Some(&core_schema),
-        Extensions::all_available(),
-        TCComputation::EnforceAlreadyComputed,
-    );
     // The entity store generator currently produces entities of enumerated entity types but with invalid EIDs,
     // which are rejected by entity validation
-    match eparser.from_json_value(json.clone()) {
+    match Entities::from_json_value(json.clone(), Some(&input.schema)) {
         Ok(roundtripped_entities) => {
             // Weaker assertion for schema based parsing because it adds actions from the schema into entities.
             for e in input.entities {
                 let roundtripped_e = roundtripped_entities
-                    .entity(e.uid())
+                    .get(&e.uid())
                     .expect("Schema-based roundtrip dropped entity");
                 assert_eq!(&e, roundtripped_e);
             }

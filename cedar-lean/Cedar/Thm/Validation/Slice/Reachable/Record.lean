@@ -28,7 +28,7 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem typed_record_contains_typed_attrs {rxs : List (Attr × Expr)} {a : Attr} {x : Expr} {c c' : Capabilities} {env : Environment}
+theorem typed_record_contains_typed_attrs {rxs : List (Attr × Expr)} {a : Attr} {x : Expr} {c c' : Capabilities} {env : TypeEnv}
   (ht : typeOf (Expr.record rxs) c env = Except.ok (tx, c'))
   (hx : (Map.make rxs).find? a = some x) :
   ∃ rtxs ty atx,
@@ -51,9 +51,9 @@ theorem record_entity_access_implies_attr_entity_access {atx : TypedExpr} {rtxs 
     simpa [hfatx'] using hatx
   simpa [hatx] using hl
 
-theorem checked_eval_entity_reachable_record {rxs : List (Attr × Expr)} {n : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {entities : Entities} {path : List Attr}
+theorem checked_eval_entity_reachable_record {rxs : List (Attr × Expr)} {n : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : TypeEnv} {entities : Entities} {path : List Attr}
   (hc : CapabilitiesInvariant c request entities)
-  (hr : RequestAndEntitiesMatchEnvironment env request entities)
+  (hr : InstanceOfWellFormedEnvironment request entities env)
   (ht : typeOf (.record rxs) c env = .ok (tx, c'))
   (hl : tx.EntityAccessAtLevel env n nmax path)
   (he : evaluate (.record rxs) request entities = .ok v)

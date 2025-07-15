@@ -109,6 +109,10 @@ def size {α} (s : Set α) : Nat :=
 def singleton {α} (a : α) : Set α :=
   Set.mk [a]
 
+/-- Checks if a set if well-formed -/
+def wellFormed {α} [LT α] [DecidableLT α] (s : Set α) : Bool :=
+  s.elts.isSorted
+
 /-- If `s` is a singleton set, returns the single element -/
 def singleton? [Inhabited α] (s : Set α) : Option α :=
   match s.elts with

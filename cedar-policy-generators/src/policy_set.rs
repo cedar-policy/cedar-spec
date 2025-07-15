@@ -77,6 +77,14 @@ impl From<GeneratedPolicySet> for ast::PolicySet {
     }
 }
 
+#[cfg(feature = "cedar-policy")]
+impl TryFrom<GeneratedPolicySet> for cedar_policy::PolicySet {
+    type Error = cedar_policy::PolicySetError;
+    fn try_from(generated: GeneratedPolicySet) -> Result<Self, Self::Error> {
+        ast::PolicySet::from(generated).try_into()
+    }
+}
+
 impl Display for GeneratedPolicySet {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut iter = self.0.iter();
