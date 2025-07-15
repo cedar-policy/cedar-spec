@@ -43,11 +43,22 @@ structure PartialRequest where
   -- (typed) `Residual`
   context   : Option (Map Attr Value)
 
+def Request.asPartialRequest (req : Request) : PartialRequest :=
+  { principal := { ty := req.principal.ty, id := .some req.principal.eid }
+  , action    := req.action
+  , resource  := { ty := req.resource.ty, id := .some req.resource.eid }
+  , context   := req.context }
+
 -- We don't need type annotations here following the rationale above
 structure PartialEntityData where
   attrs     : Option (Map Attr Value)
   ancestors : Option (Set EntityUID)
   tags      : Option (Map Attr Value)
+
+def EntityData.asPartialEntityData (data : EntityData) : PartialEntityData :=
+  { attrs     := .some data.attrs
+  , ancestors := .some data.ancestors
+  , tags      := .some data.tags }
 
 abbrev PartialEntities := Map EntityUID PartialEntityData
 
