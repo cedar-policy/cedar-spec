@@ -16,7 +16,7 @@
 
 #![no_main]
 use cedar_drt::logger::initialize_log;
-use cedar_drt_inner::*;
+use cedar_drt_inner::fuzz_target;
 use cedar_policy_core::ast;
 use cedar_policy_core::ast::RequestSchema;
 use cedar_policy_core::ast::{EntityUID, Expr, Request, Value};
@@ -213,15 +213,18 @@ fn entities_to_partial_entities<'a>(
     ))
 }
 
-fn test_weak_equiv(residual: Residual, e: &Expr, req: Request, entities: &Entities) -> bool {
-    let eval = Evaluator::new(req, entities, Extensions::all_available());
+fn test_weak_equiv(residual: Residual, e: &Expr, req: &Request, entities: &Entities) -> bool {
+    let eval = Evaluator::new(req.clone(), entities, Extensions::all_available());
     let slots = HashMap::new();
 
     let expr = Expr::from(residual);
+    debug!("request: {req}");
     debug!("expr: {e}");
     debug!("residual: {expr}");
     let concrete_res = eval.interpret(e, &slots);
     let reeval_res = eval.interpret(&expr, &slots);
+    debug!("concrete evaluation result: {concrete_res:?}");
+    debug!("re-evaluation result: {reeval_res:?}");
     concrete_res.ok() == reeval_res.ok()
 }
 
@@ -247,9 +250,10 @@ fuzz_target!(|input: FuzzTargetInput| {
                     .compute_tc()
                     .expect("tc computation failed");
                 let expr = policy.condition();
-                for i in 0..8 {
-                    let request: ast::Request = input.requests[i].clone().into();
-                    let partial_request = &input.partial_requests[i];
+                for (request, partial_request) in
+                    input.requests.into_iter().zip(input.partial_requests)
+                {
+                    let request: ast::Request = request.into();
                     if passes_request_validation(&schema, &request) {
                         let residuals =
                             tpe_policies(&policyset, &partial_request, &partial_entities, &schema)
@@ -261,7 +265,7 @@ fuzz_target!(|input: FuzzTargetInput| {
                                 .expect("should exist one residual")
                                 .clone(),
                             &expr,
-                            request,
+                            &request,
                             &entities
                         ));
                     }
