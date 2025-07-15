@@ -2054,6 +2054,7 @@ theorem default_lit_wf'
   simp only [SymEntities.isValidEntityType, Map.contains, Option.isSome] at hety
   split at hety
   · rename_i δ hfind_δ
+    -- TODO: fix!!
     simp only [SymEntities.isValidEntityUID, hfind_δ, defaultEidOf]
     split
     · rename_i eids hmembers
@@ -2122,16 +2123,232 @@ theorem default_lit_wf'
     · rfl
   · contradiction
 
+theorem env_valid_uid_implies_sym_env_valid_uid
+  {Γ : TypeEnv} {env : Env} {uid : EntityUID}
+  (hinst : InstanceOfWellFormedEnvironment env.request env.entities Γ)
+  (hcont_uid : Map.contains env.entities uid = true) :
+  (SymEnv.ofEnv Γ).entities.isValidEntityUID uid = true
+:= by
+  have ⟨hwf_Γ, _, ⟨hinst_entities, _⟩⟩ := hinst
+  simp only [SymEnv.ofEnv, SymEntities.ofSchema]
+  simp only [Map.contains, Option.isSome] at hcont_uid
+  split at hcont_uid
+  · rename_i data hfind_data
+    apply entity_uid_wf_implies_sym_entities_is_valid_entity_uid hwf_Γ
+    have := hinst_entities uid data hfind_data
+    cases this with
+    | inl hinst_data =>
+      have ⟨entry, hfind_entry, hvalid_uid, _⟩ := hinst_data
+      simp only [
+        EntityUID.WellFormed,
+        EntitySchemaEntry.isValidEntityEID,
+        EntitySchema.isValidEntityUID,
+        hfind_entry,
+      ]
+      apply Or.inl
+      cases entry with
+      | standard => rfl
+      | enum eids =>
+        simp only [Set.contains, List.elem_eq_contains, List.contains_eq_mem, decide_eq_true_eq]
+        simp only [IsValidEntityEID] at hvalid_uid
+        exact hvalid_uid
+    | inr hinst_data =>
+      have ⟨_, _, ⟨_, hfind_acts, _⟩⟩ := hinst_data
+      simp only [EntityUID.WellFormed]
+      apply Or.inr
+      simp only [ActionSchema.contains, Map.contains, hfind_acts, Option.isSome]
+  · contradiction
+
+theorem value_symbolize?_well_typed
+  {Γ : TypeEnv} {env : Env}
+  {v : Value} {ty : CedarType} {t : Term}
+  (hwf_env : env.StronglyWellFormed)
+  (hinst : InstanceOfWellFormedEnvironment env.request env.entities Γ)
+  (hwf_ty : ty.WellFormed Γ)
+  (hwf_v : v.WellFormed env.entities)
+  (hwt_v : InstanceOfType Γ v ty)
+  (hsym : v.symbolize? ty = .some t) :
+  t.typeOf = TermType.ofType ty
+:= sorry
+
+theorem mapM_on_values_wf
+  [LT α] [DecidableLT α]
+  {m : Map α β} {l : List (α × γ)}
+  (f : α → β → Option γ)
+  (hwf : m.WellFormed)
+  (hmapM : m.toList.mapM (λ (k, v) => do .some (k, ← f k v)) = .some l) :
+  (Map.mk l).WellFormed
+:= sorry
+
 theorem value_symbolize?_wf
   {Γ : TypeEnv} {env : Env}
   {v : Value} {ty : CedarType} {t : Term}
   (hwf_env : env.StronglyWellFormed)
   (hinst : InstanceOfWellFormedEnvironment env.request env.entities Γ)
+  (hwf_ty : ty.WellFormed Γ)
   (hwf_v : v.WellFormed env.entities)
+  (hwt_v : InstanceOfType Γ v ty)
   (hsym : v.symbolize? ty = .some t) :
   t.WellFormed (SymEnv.ofEnv Γ).entities
 := by
-  sorry
+  have ⟨hwf_Γ, _, _⟩ := hinst
+  cases v with
+  | prim p =>
+    cases p with
+    | bool | int | string =>
+      simp only [Value.symbolize?, Prim.symbolize, Option.some.injEq] at hsym
+      simp only [←hsym]
+      repeat constructor
+    | entityUID uid =>
+      simp only [Value.symbolize?, Prim.symbolize, Option.some.injEq] at hsym
+      simp only [←hsym]
+      constructor
+      constructor
+      cases hwf_v with | prim_wf hwf_prim =>
+      simp only [Prim.WellFormed] at hwf_prim
+      exact env_valid_uid_implies_sym_env_valid_uid hinst hwf_prim
+  | set s =>
+    cases s with | mk elems =>
+    cases hwf_v with | set_wf hwf_elems =>
+    unfold Value.symbolize? at hsym
+    split at hsym
+    any_goals contradiction
+    rename_i s' elem_ty heq
+    simp only [Value.set.injEq] at heq
+    simp only [Option.bind_eq_bind, bind, Option.bind] at hsym
+    split at hsym
+    contradiction
+    rename_i sym_elems hsym_elems
+    simp only [Option.some.injEq] at hsym
+    simp only [←hsym]
+    cases hwf_ty with | set_wf hwf_elem_ty =>
+    -- Obligations of `Term.WellFormed` for `.set`
+    constructor
+    · intros t hmem_t
+      simp only [List.mapM₁_eq_mapM (λ x => x.symbolize? elem_ty) s'.toList] at hsym_elems
+      have ⟨elem, hmem_elem, hsym_elem⟩ := List.mapM_some_implies_all_from_some
+        hsym_elems t ((Set.make_mem _ _).mpr hmem_t)
+      simp only [←heq] at hmem_elem
+      have hwf_elem := hwf_elems elem hmem_elem
+      cases hwt_v with | instance_of_set _ _ hwt_elem =>
+      specialize hwt_elem elem hmem_elem
+      exact value_symbolize?_wf hwf_env hinst hwf_elem_ty hwf_elem hwt_elem hsym_elem
+    · intros t hmem_t
+      simp only [List.mapM₁_eq_mapM (λ x => x.symbolize? elem_ty) s'.toList] at hsym_elems
+      have ⟨elem, hmem_elem, hsym_elem⟩ := List.mapM_some_implies_all_from_some
+        hsym_elems t ((Set.make_mem _ _).mpr hmem_t)
+      simp only [←heq] at hmem_elem
+      have hwf_elem := hwf_elems elem hmem_elem
+      cases hwt_v with | instance_of_set _ _ hwt_elem =>
+      specialize hwt_elem elem hmem_elem
+      exact value_symbolize?_well_typed hwf_env hinst hwf_elem_ty hwf_elem hwt_elem hsym_elem
+    · exact ofType_wf hwf_Γ hwf_elem_ty
+    · exact Set.make_wf _
+  | record rec =>
+    cases rec with | mk attrs =>
+    cases hwf_v with | record_wf hwf_attrs hwf_attrs_map =>
+    unfold Value.symbolize? at hsym
+    split at hsym
+    any_goals contradiction
+    rename_i rec' rty heq_rec'
+    simp only [Value.record.injEq] at heq_rec'
+    simp only [bind, Option.bind] at hsym
+    split at hsym
+    contradiction
+    rename_i sym_attrs hsym_attrs
+    simp only [Option.some.injEq] at hsym
+    simp only [←hsym]
+    cases hwf_ty with | record_wf hwf_rty_map hwf_rty =>
+    simp only [
+      List.mapM₂_eq_mapM (Value.symbolize?.symbolizeAttr? rec' rty) rec'.toList,
+    ] at hsym_attrs
+    -- Obligations of `Term.WellFormed` for `.record`
+    constructor
+    · intros attr t hmem_attr_t
+      have ⟨attr_term, hmem_attr_term, hsym_attr_term⟩ :=
+        List.mapM_some_implies_all_from_some hsym_attrs (attr, t) hmem_attr_t
+      simp only [Value.symbolize?.symbolizeAttr?] at hsym_attr_term
+      simp only [bind, Option.bind] at hsym_attr_term
+      split at hsym_attr_term
+      contradiction
+      rename_i qty hfind_qty
+      simp only at hsym_attr_term
+      split at hsym_attr_term
+      contradiction
+      rename_i sym_attr_term' hsym_attr_term'
+      simp only [Option.some.injEq, Prod.mk.injEq] at hsym_attr_term
+      simp only [←hsym_attr_term.2]
+      constructor
+      cases hwt_v with | instance_of_record _ _ _ hwt_attr =>
+      have :
+        (Map.mk attrs).find? attr_term.fst = some attr_term.snd
+      := by
+        apply (Map.in_list_iff_find?_some hwf_attrs_map).mp
+        simp only [←heq_rec'] at hmem_attr_term
+        exact hmem_attr_term
+      specialize hwt_attr attr_term.fst attr_term.snd qty this hfind_qty
+      apply value_symbolize?_wf hwf_env hinst _ _ hwt_attr hsym_attr_term'
+      · have := hwf_rty attr_term.fst qty hfind_qty
+        cases qty
+        · simp only [Qualified.getType]
+          cases this
+          assumption
+        · simp only [Qualified.getType]
+          cases this
+          assumption
+      · simp only [heq_rec'] at hwf_attrs hwf_attrs_map
+        apply hwf_attrs attr_term.fst attr_term.snd
+        apply (Map.in_list_iff_find?_some hwf_attrs_map).mp
+        exact hmem_attr_term
+    · apply mapM_on_values_wf (λ k v => do
+        let qty := ← rty.find? k
+        Option.some (Term.some (← v.symbolize? qty.getType))) hwf_attrs_map
+      simp only [←hsym_attrs]
+      congr
+      funext x
+      simp only [Option.bind_eq_bind, Value.symbolize?.symbolizeAttr?]
+      cases rty.find? x.fst; rfl
+      rename_i v
+      simp only [Option.bind_some]
+      cases x.snd.symbolize? v.getType; rfl
+      simp
+  | ext =>
+    simp only [Value.symbolize?, Option.some.injEq] at hsym
+    simp only [←hsym]
+    repeat constructor
+termination_by sizeOf v
+decreasing_by
+  · have : v = Value.set s := by assumption
+    simp only [this]
+    have : s = Set.mk elems := by assumption
+    simp only [this]
+    rename Value.set (Set.mk elems) = Value.set _ => h
+    rename_i s'' _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+    have : Value.set (Set.mk elems) = Value.set s'' := by assumption
+    simp only [Value.set.injEq] at this
+    simp only [this]
+    have := List.sizeOf_lt_of_mem hmem_elem
+    cases s''
+    simp only [Set.toList, Set.elts] at this ⊢
+    simp
+    omega
+  · have h₁ : v = Value.record rec := by assumption
+    rename Map Attr Value => rec'
+    have h₂ : Value.record (Map.mk attrs) = Value.record rec' := by assumption
+    have h₃ : rec = Map.mk attrs := by assumption
+    simp [h₁, h₃, h₂]
+    have h₄ := List.sizeOf_lt_of_mem hmem_attr_term
+    cases attr_term
+    cases rec'
+    simp [Map.toList, Map.kvs] at this ⊢
+    rename_i l _ _ _ h₅
+    rename_i rec''
+      _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+      _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+    have : Value.record (Map.mk attrs) = Value.record rec'' := by assumption
+    simp only [Value.record.injEq] at this
+    simp [←this, h₅, Map.toList, Map.kvs] at h₄
+    omega
 
 theorem value_symbolize?_is_lit
   {Γ : TypeEnv} {env : Env}
@@ -2141,16 +2358,6 @@ theorem value_symbolize?_is_lit
   (hwf_v : v.WellFormed env.entities)
   (hsym : v.symbolize? ty = .some t) :
   t.isLiteral
-:= sorry
-
-theorem value_symbolize?_well_typed
-  {Γ : TypeEnv} {env : Env}
-  {v : Value} {ty : CedarType} {t : Term}
-  (hwf_env : env.StronglyWellFormed)
-  (hinst : InstanceOfWellFormedEnvironment env.request env.entities Γ)
-  (hwf_v : v.WellFormed env.entities)
-  (hsym : v.symbolize? ty = .some t) :
-  t.typeOf = TermType.ofType ty
 := sorry
 
 theorem env_symbolize?_wf_vars
@@ -2165,6 +2372,26 @@ theorem env_symbolize?_wf_vars
 := by
   have ⟨⟨hwf_princ, hwf_action, hwf_resource, hwf_context⟩, _⟩ := hwf_env
   have ⟨hwf_Γ, _, _⟩ := hinst
+  have ⟨hwf_princ_ty, _, hwf_resource_ty, hwf_context_ty⟩ := wf_env_implies_wf_request hwf_Γ
+  replace hwf_princ_ty :
+    (CedarType.entity Γ.reqty.principal).WellFormed Γ
+  := by constructor; exact hwf_princ_ty
+  replace hwf_resource_ty :
+    (CedarType.entity Γ.reqty.resource).WellFormed Γ
+  := by constructor; exact hwf_resource_ty
+  have hwf_action_ty :
+    (CedarType.entity Γ.reqty.action.ty).WellFormed Γ
+  := sorry
+  have ⟨_, ⟨hinst_princ, _, hinst_resource, hinst_context⟩, _⟩ := hinst
+  replace hinst_princ :
+    InstanceOfType Γ (Value.prim (Prim.entityUID env.request.principal)) (CedarType.entity Γ.reqty.principal)
+  := by constructor; exact hinst_princ
+  replace hinst_resource :
+    InstanceOfType Γ (Value.prim (Prim.entityUID env.request.resource)) (CedarType.entity Γ.reqty.resource)
+  := by constructor; exact hinst_resource
+  replace hinst_action :
+    InstanceOfType Γ (Value.prim (Prim.entityUID env.request.action)) (CedarType.entity Γ.reqty.action.ty)
+  := sorry
   simp only [Env.symbolize?, Request.symbolize?]
   constructor
   · constructor
@@ -2172,12 +2399,22 @@ theorem env_symbolize?_wf_vars
       · repeat
           rename_i heq
           split at heq
-          · apply value_symbolize?_wf hwf_env hinst _ heq
+          · apply value_symbolize?_wf hwf_env hinst _ _ _ heq
+            first
+            | exact hwf_princ_ty
+            | exact hwf_action_ty
+            | exact hwf_resource_ty
+            | exact hwf_context_ty
             first
             | constructor; exact hwf_princ
             | constructor; exact hwf_action
             | constructor; exact hwf_resource
             | exact hwf_context
+            first
+            | exact hinst_princ
+            | exact hinst_action
+            | exact hinst_resource
+            | exact hinst_context
         contradiction
       · exact default_lit_wf' hwf_Γ hwf_var
     · split
@@ -2199,12 +2436,22 @@ theorem env_symbolize?_wf_vars
         rename_i heq heq_var
         simp only [beq_iff_eq] at heq_var
         simp only [heq_var]
-        apply value_symbolize?_well_typed hwf_env hinst _ heq
+        apply value_symbolize?_well_typed hwf_env hinst _ _ _ heq
+        first
+        | exact hwf_princ_ty
+        | exact hwf_action_ty
+        | exact hwf_resource_ty
+        | exact hwf_context_ty
         first
         | constructor; exact hwf_princ
         | constructor; exact hwf_action
         | constructor; exact hwf_resource
         | exact hwf_context
+        first
+        | exact hinst_princ
+        | exact hinst_action
+        | exact hinst_resource
+        | exact hinst_context
       contradiction
     · exact default_lit_well_typed
 
