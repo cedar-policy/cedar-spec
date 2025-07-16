@@ -11,11 +11,19 @@ open Cedar.Spec
 open Cedar.Validation
 
 
+/--
+ Possible improvments
+ - Some entities don't need to be loaded at all (User::"oliver" == User::"emina")
+ - Never load ancestors- instead, ask if something is an ancestor of something else
+  - Configurable: Fewer pulls if you load all ancestors
+ - Analysis for how many calls to the entity loader there will be
+-/
+
 def EntityLoader: Type := (Set EntityUID) -> Map EntityUID EntityData
 
-def find_next_batch (x : Residual) : Set EntityUID :=
+def findNextBatch (x : Residual) : Set EntityUID :=
   match x with
-  | .val v ty =>
+  | .val v _ty =>
     match v with
     | .prim (.entityUID uid) => Set.singleton uid
     | _ => Set.empty
@@ -26,35 +34,72 @@ def find_next_batch (x : Residual) : Set EntityUID :=
     | .resource  => Set.empty
     | .action    => Set.empty
     | .context   => Set.empty
-  | .ite c t e _ => find_next_batch c ∪ find_next_batch t ∪ find_next_batch e
-  | .and a b _   => find_next_batch a ∪ find_next_batch b
-  | .or a b _    => find_next_batch a ∪ find_next_batch b
-  | .unaryApp _ e _ => find_next_batch e
-  | .binaryApp _ a b _ => find_next_batch a ∪ find_next_batch b
-  | .getAttr e _ _ => find_next_batch e
-  | .hasAttr e _ _ => find_next_batch e
-  | .set ls _ => ls.foldl (λ acc r => acc ∪ find_next_batch r) Set.empty
-  | .record m _ => m.foldl (λ acc (_, r) => acc ∪ find_next_batch r) Set.empty
-  | .call _ args _ => args.foldl (λ acc r => acc ∪ find_next_batch r) Set.empty
+  | .ite c t e _ => findNextBatch c ∪ findNextBatch t ∪ findNextBatch e
+  | .and a b _   => findNextBatch a ∪ findNextBatch b
+  | .or a b _    => findNextBatch a ∪ findNextBatch b
+  | .unaryApp _ e _ => findNextBatch e
+  | .binaryApp _ a b _ => findNextBatch a ∪ findNextBatch b
+  | .getAttr e _ _ => findNextBatch e
+  | .hasAttr e _ _ => findNextBatch e
+  | .set ls _ => ls.mapUnion₁ (λ ⟨v, _⟩ => findNextBatch v)
+  | .record m _ => m.mapUnion₂ (λ ⟨⟨_attr, v⟩, _⟩ => findNextBatch v)
+  | .call _ ls _ => ls.mapUnion₁ (λ ⟨v, _⟩ => findNextBatch v)
   | .error _ => Set.empty
+termination_by sizeOf x
+decreasing_by
+  repeat case _ =>
+    simp [*]; try omega
+  . rename_i h
+    let so := List.sizeOf_lt_of_mem h
+    simp
+    omega
+  . rename_i h
+    simp
+    simp at h
+    omega
+  . rename_i h
+    simp
+    let so := List.sizeOf_lt_of_mem h
+    simp at so
+    omega
 
+
+def List.sum [Add α] [OfNat α 0] (xs : List α) : α :=
+  xs.foldl (· + ·) 0
 
 -- A computable size of residuals, not including the size of types
 def Residual.size (r: Residual): Nat :=
  match r with
-  | .val v ty => 1
-  | .var v ty => 1
+  | .val _v _ty => 1
+  | .var _v _ty => 1
   | .ite cond thenExpr elseExpr ty => 1 + Residual.size cond + Residual.size thenExpr + Residual.size elseExpr
   | .and a b ty => 1 + Residual.size a + Residual.size b
   | .or a b ty => 1 + Residual.size a + Residual.size b
   | .unaryApp op expr ty => 1 + Residual.size expr
   | .binaryApp op a b ty => 1 + Residual.size a + Residual.size b
-  | .getAttr expr attr ty => 1 + Residual.size expr + Residual.size attr
-  | .hasAttr expr attr ty => 1 + Residual.size expr + Residual.size attr
-  | .set ls ty => ls.foldl (λ s r => s + r.size) 1
-  | .record map ty => map.foldl (λ s kv => s + kv.2.size) 1
-  | .call xfn args ty => args.foldl (λ s r => s + r.size) 1
-  | .error ty => 1
+  | .getAttr expr attr ty => 1 + Residual.size expr
+  | .hasAttr expr attr ty => 1 + Residual.size expr
+  | .set ls ty => (ls.map₁ (λ ⟨v, _⟩ => v.size)).sum + 1
+  | .record map ty => (map.map₂ (λ ⟨⟨_attr, v⟩, _⟩ => v.size)).sum + 1
+  | .call xfn args ty => (args.map₁ (λ ⟨v, _⟩ => v.size)).sum +  1
+  | .error _ty => 1
+termination_by sizeOf r
+decreasing_by
+  repeat case _ =>
+    simp [*]; try omega
+  . rename_i h
+    let so := List.sizeOf_lt_of_mem h
+    simp
+    omega
+  . rename_i h
+    simp
+    simp at h
+    omega
+  . rename_i h
+    simp
+    let so := List.sizeOf_lt_of_mem h
+    simp at so
+    omega
 
 
 def batched_eval_loop
@@ -63,7 +108,7 @@ def batched_eval_loop
   (loader: EntityLoader)
   (store: Entities)
   : Result Value :=
-  let to_load := (find_next_batch res).filter (λ uid => (store.find? uid).isNone)
+  let to_load := (findNextBatch res).filter (λ uid => (store.find? uid).isNone)
   let new_entities := loader to_load
   let new_store := new_entities.kvs.foldl (λ acc ed => acc.insert ed.1 ed.2) store
 
@@ -76,8 +121,15 @@ def batched_eval_loop
       if new_res.size < res.size
       then batched_eval_loop new_res req loader new_store
       else Cedar.Spec.evaluate expr.toExpr req new_store
+termination_by res.size
+decreasing_by
+  rename_i h
+  subst new_res
+  subst new_store
+  omega
 
-def batched_evaluate
+
+def batchedEvaluate
   (x : TypedExpr)
   (req: Request)/-  -/
   (loader: EntityLoader)

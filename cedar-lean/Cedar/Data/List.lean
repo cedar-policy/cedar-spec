@@ -81,6 +81,10 @@ List { x : α × β // sizeOf x.snd < 1 + (1 + sizeOf xs) } :=
 def map₁ {α : Type w} {β : Type u} (xs : List α) (f : {x : α // x ∈ xs} → β) : List β :=
   xs.attach.map f
 
+def map₂ {γ : Type u} [SizeOf α] [SizeOf β]
+  (xs : List (α × β)) (f : {x : α × β // sizeOf x.snd < 1 + sizeOf xs} → γ) : List γ :=
+  xs.attach₂.map f
+
 def mapM₁ {m : Type u → Type v} [Monad m] {α : Type w} {β : Type u}
   (xs : List α) (f : {x : α // x ∈ xs} → m β) : m (List β) :=
   xs.attach.mapM f
@@ -95,6 +99,14 @@ def mapM₃ {m : Type u → Type v} [Monad m] {γ : Type u} [SizeOf α] [SizeOf 
 
 def mapUnion {α β} [Union α] [EmptyCollection α] (f : β → α) (bs : List β) : α :=
   bs.foldl (λ a b => a ∪ f b) ∅
+
+def mapUnion₁ {α β} [Union α] [EmptyCollection α]
+  (xs : List β) (f : {x : β // x ∈ xs} → α) : α :=
+  xs.attach.foldl (λ a b => a ∪ f b) ∅
+
+def mapUnion₂ {α β γ} [Union α] [EmptyCollection α] [SizeOf β] [SizeOf γ]
+  (xs : List (β × γ)) (f : {x : β × γ // sizeOf x.snd < 1 + sizeOf xs} → α) : α :=
+  xs.attach₂.foldl (λ a b => a ∪ f b) ∅
 
 def isSortedBy {α β} [LT β] [DecidableLT β] (l : List α) (f : α → β) : Bool :=
   match l with
