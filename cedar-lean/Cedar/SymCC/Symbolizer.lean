@@ -44,7 +44,7 @@ def Value.symbolize? (v : Value) (ty : CedarType) : Option Term :=
     let elems := ← s.toList.mapM₁ (λ ⟨v, _⟩ => v.symbolize? ty)
     .some (.set (Set.make elems) (TermType.ofType ty))
   | .record rec, .record rty => do
-    let elems := ← rec.toList.mapM₂ (λ x => symbolizeAttr? rec rty x.val)
+    let elems := ← rty.toList.mapM (λ x => symbolizeAttr? rec rty x)
     .some (Term.record (Map.mk elems))
   | .ext e, _ => .some ↑e
   | _, _ => .none
@@ -57,18 +57,22 @@ decreasing_by
     simp [h]
     omega
   · simp
-    have h := x.property
-    cases rec
-    simp [Map.toList, Map.kvs] at h
-    simp
-    omega
 where
-  symbolizeAttr? rec rty (x : Attr × Value) : Option (Attr × Term) := do
-    let qty := ← rty.find? x.fst
-    .some (x.fst, .some (← x.snd.symbolize? qty.getType))
-  termination_by 1 + sizeOf x.snd
+  symbolizeAttr? rec rty x : Option (Attr × Term) :=
+    match _h : rec.find? x.fst with
+    | .none => .some (x.fst, .none (TermType.ofType x.snd.getType))
+    | .some v =>
+      match x.snd with
+      | .optional ty => do .some (x.fst, .some (← v.symbolize? ty))
+      | .required ty => do .some (x.fst, ← v.symbolize? ty)
+  termination_by sizeOf rec
   decreasing_by
-    omega
+    all_goals
+      have := Map.find?_mem_toList _h
+      have := List.sizeOf_lt_of_mem this
+      cases rec
+      simp [Map.toList, Map.kvs] at this ⊢
+      omega
 
 /--
 The variable ids here should match the variables in `SymRequest.ofRequestType`.
