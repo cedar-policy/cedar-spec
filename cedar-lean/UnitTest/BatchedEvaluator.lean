@@ -84,11 +84,7 @@ def testEntities : Entities :=
     (⟨DocumentType, "dummy"⟩, ⟨Map.empty, Set.empty, Map.empty⟩)
   ]
 
--- Entity loader that simulates entity slicing by only returning requested entities
-def testLoader : EntityLoader := fun uids =>
-  Map.make (uids.toList.filterMap (fun uid =>
-    testEntities.find? uid |>.map (fun data => (uid, data))))
-
+def testLoader : EntityLoader := entityLoaderFor testEntities
 def tests :=
   suite "BatchedEvaluator equivalence tests"
   [
