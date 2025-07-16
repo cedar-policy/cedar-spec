@@ -265,16 +265,38 @@ theorem env_valid_uid_implies_sym_env_valid_uid
 /-- `mapM` preserves `SortedBy` if the keys are preserved -/
 theorem mapM_preserves_SortedBy
   [LT γ]
-  {l : List α} {l' : List β}
+  {l₁ : List α} {l₂ : List β}
   {f : α → Option β}
   {k₁ : α → γ}
   {k₂ : β → γ}
-  (hsorted : List.SortedBy k₁ l)
-  (hmapM : l.mapM f = .some l')
+  (hsorted : List.SortedBy k₁ l₁)
+  (hmapM : l₁.mapM f = .some l₂)
   (hkey : ∀ a b, f a = .some b → k₁ a = k₂ b) :
-  List.SortedBy k₂ l'
+  List.SortedBy k₂ l₂
 := by
-  sorry
+  have := List.mapM_some_iff_forall₂.mp hmapM
+  induction this with
+  | nil => constructor
+  | cons hhd hrst ih =>
+    rename_i hd₁ hd₂ tl₁ tl₂
+    have hrst' := List.mapM_some_iff_forall₂.mpr hrst
+    cases tl₂ with
+    | nil => constructor
+    | cons hd₂' tl₂' =>
+      constructor
+      · cases hrst with | cons h =>
+        rename_i hd₁' _ _
+        simp only [
+          ←hkey _ _ hhd,
+          ←hkey _ _ h
+        ]
+        cases hsorted
+        assumption
+      · apply ih
+        · cases hsorted
+          · constructor
+          · assumption
+        · exact hrst'
 
 /-- The results of `symbolize?` is well-formed. -/
 theorem value_symbolize?_wf
