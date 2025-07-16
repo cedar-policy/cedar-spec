@@ -104,6 +104,12 @@ def tests :=
       (.lit (.bool true))
       testRequest
       testEntities
+      testLoader,
+    testBatchedEvaluatorEquivalence
+      "missing entity - User::\"nonexistent\".name == \"test\""
+      (.binaryApp .eq (.getAttr (.lit (.entityUID ⟨UserType, "nonexistent"⟩)) "name") (.lit (.string "test")))
+      testRequest
+      testEntities
       testLoader
   ]
 
