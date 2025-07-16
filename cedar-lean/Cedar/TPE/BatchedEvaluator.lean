@@ -102,6 +102,17 @@ decreasing_by
     omega
 
 
+/--
+The batched evaluation loop
+  1. Asks for any new entities referenced by the residual
+  2. Partially evaluates now that new entities are loaded
+  3. Continues if progress has been made, evaluating otherwise
+
+The subtle part of this algorithm is why it can use the normal Cedar.Spec.evaluate when no progress is made.
+The argument is that if no progress is made during partial
+evaluation, there must be a missing field or entity causing
+the algorithm to get stuck.
+-/
 def batched_eval_loop
   (res : Residual)
   (req: Request)
@@ -115,12 +126,10 @@ def batched_eval_loop
   do
     let expr ← res.asTypedExpr
     let new_res := Cedar.TPE.evaluate expr (Request.asPartialRequest req) (Entities.asPartial new_store)
-    match new_res.asValue with
-    | some v => .ok v
-    | none =>
-      if new_res.size < res.size
-      then batched_eval_loop new_res req loader new_store
-      else Cedar.Spec.evaluate expr.toExpr req new_store
+    if new_res.size < res.size
+    then batched_eval_loop new_res req loader new_store
+    else Cedar.Spec.evaluate expr.toExpr req new_store
+
 termination_by res.size
 decreasing_by
   rename_i h
@@ -129,6 +138,11 @@ decreasing_by
   omega
 
 
+/--
+Evaluate a cedar expression using an EntityLoader
+instead of a full Entities store.
+This algorithm minimizes the number of calls to the EntityLoader using partial evaluation.
+-/
 def batchedEvaluate
   (x : TypedExpr)
   (req: Request)/-  -/
@@ -136,7 +150,7 @@ def batchedEvaluate
   : Result Value
   :=
   let empty_store : Entities := Map.mk []
-  -- do a first partial evaluation on x
+  -- an initial partial evaluation, removing all variables
   let residual := Cedar.TPE.evaluate x (Request.asPartialRequest req) (Entities.asPartial empty_store)
-  -- start the batching loop
+  -- start the batched evaluation loop
   batched_eval_loop residual req loader empty_store

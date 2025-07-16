@@ -113,6 +113,4 @@ def tests :=
       testLoader
   ]
 
-#eval TestSuite.runAll [tests]
-
 end UnitTest.BatchedEvaluator
