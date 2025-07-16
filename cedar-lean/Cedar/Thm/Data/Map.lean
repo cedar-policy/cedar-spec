@@ -393,6 +393,20 @@ theorem find?_none_all_absent [LT α] [DecidableLT α] [StrictLT α] [DecidableE
   specialize hf (k, v) hc
   simp only [not_true_eq_false] at hf
 
+theorem in_list_implies_contains {α β}
+  [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α]
+  {m : Map α β} {k : α} {v : β} :
+  (k, v) ∈ m.kvs → m.contains k
+:= by
+  intros h
+  cases hfind : m.find? k with
+  | none =>
+    have := find?_none_all_absent hfind v h
+    contradiction
+  | some =>
+    apply contains_iff_some_find?.mpr
+    simp [hfind]
+
 theorem all_absent_find?_none [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {k : α} :
   (∀ v, (k, v) ∉ m.kvs) → m.find? k = none
 := by

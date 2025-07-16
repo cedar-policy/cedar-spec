@@ -1215,12 +1215,14 @@ theorem env_symbolize?_lookup_attrs_udf
       simp only [Entities.symbolizeAncs?] at hv
       have ⟨_, _, _, _, h⟩ := List.findSome?_eq_some_iff.mp hv
       simp [uuf_attrs_ancs_no_confusion] at h
-  · simp [Entities.symbolizeAttrs?]
+  · simp [Entities.symbolizeAttrs?, EntitySchemaEntry.attrs]
 
 theorem env_symbolize?_lookup_tag_keys
   {Γ : TypeEnv} {env : Env}
   {ety : EntityType} {entry : StandardSchemaEntry}
-  (hfind : Γ.ets.find? ety = .some (.standard entry)) :
+  {tagTy : CedarType}
+  (hfind : Γ.ets.find? ety = .some (.standard entry))
+  (htags : entry.tags = .some tagTy) :
   (env.symbolize? Γ).funs {
     id := UUF.tag_keys_id ety,
     arg := TermType.ofType (CedarType.entity ety),
@@ -1239,7 +1241,12 @@ theorem env_symbolize?_lookup_tag_keys
       ne_comm.mp uuf_tag_vals_tag_keys_no_confusion,
     ] at hv
     cases hv with
-    | inl hv => simp [hv.1]
+    | inl hv =>
+      simp only [bind, Option.bind] at hv
+      split at hv
+      contradiction
+      simp only [Option.ite_none_right_eq_some, Option.some.injEq] at hv
+      simp [hv.1]
     | inr hv =>
       replace hv := hv.2
       simp only [Entities.symbolizeAncs?] at hv
@@ -1248,6 +1255,8 @@ theorem env_symbolize?_lookup_tag_keys
   · simp [
       Entities.symbolizeAttrs?,
       Entities.symbolizeTags?,
+      EntitySchemaEntry.tags?,
+      htags,
       ne_comm.mp uuf_attrs_tag_keys_no_confusion,
     ]
 
@@ -1275,7 +1284,12 @@ theorem env_symbolize?_lookup_tag_vals
       uuf_tag_vals_tag_keys_no_confusion,
     ] at hv
     cases hv with
-    | inl hv => simp [hv.1]
+    | inl hv =>
+      simp only [bind, Option.bind] at hv
+      split at hv
+      contradiction
+      simp only [Option.ite_none_right_eq_some, Option.some.injEq] at hv
+      simp [hv.1]
     | inr hv =>
       replace hv := hv.2
       simp only [Entities.symbolizeAncs?] at hv
@@ -1321,7 +1335,7 @@ theorem env_symbolize?_lookup_ancs
     have ⟨_, _, _, _, h, _⟩ := List.findSome?_eq_some_iff.mp hv
     split at h
     · rename_i heq
-      have := uuf_ancs_id_inj.mp heq
+      have := uuf_ancs_id_inj.mp heq.1
       simp [this.1]
     · contradiction
   · simp [
@@ -1341,7 +1355,7 @@ theorem env_symbolize?_lookup_ancs
         exists_and_left, exists_eq',
         and_true,
       ] at hancTy'_mem
-      simp [uuf_ancs_id_inj.mp hancTy'_mem]
+      simp [uuf_ancs_id_inj.mp hancTy'_mem.1]
     · simp
 
 theorem find?_stronger_pred
@@ -1660,7 +1674,7 @@ theorem env_symbolize?_same_entity_data_standard_same_tag
         SymTags.interpret,
         UnaryFunction.interpret,
         SymEntityData.ofStandardEntityType.symTags,
-        env_symbolize?_lookup_tag_keys hfind_entry,
+        env_symbolize?_lookup_tag_keys hfind_entry hentry_tags,
       ]
       simp only [happ_tag_keys, Factory.set.member]
       constructor
@@ -1752,7 +1766,7 @@ theorem env_symbolize?_same_entity_data_standard_same_tag
           SymTags.interpret,
           UnaryFunction.interpret,
           SymEntityData.ofStandardEntityType.symTags,
-          env_symbolize?_lookup_tag_keys hfind_entry,
+          env_symbolize?_lookup_tag_keys hfind_entry hentry_tags,
         ]
         simp only [
           happ_tag_keys,
@@ -2817,6 +2831,222 @@ theorem env_symbolize?_wf_vars
       contradiction
     · exact default_lit_well_typed
 
+theorem default_udf_wf
+  {Γ : TypeEnv} {uuf : UUF}
+  (hwf_Γ : Γ.WellFormed)
+  (hwf_uuf : UUF.WellFormed (SymEnv.ofEnv Γ).entities uuf) :
+  Interpretation.WellFormed.WellFormedUUFInterpretation (SymEnv.ofEnv Γ).entities uuf
+    (Decoder.defaultUDF (defaultEidOf Γ) uuf)
+:= by
+  simp only [Decoder.defaultUDF]
+  and_intros
+  · simp only
+    exact default_lit_wf' hwf_Γ hwf_uuf.2
+  · simp only
+    exact default_lit_is_lit
+  · simp only
+    exact default_lit_well_typed
+  · simp [Map.empty, Map.WellFormed, Map.toList, Map.kvs, Map.make, List.canonicalize]
+  · simp only
+    intros _ _ h
+    simp [Map.empty, Map.toList, Map.kvs] at h
+  · simp only
+  · simp only
+
+theorem env_symbolize?_attrs_wf
+  {Γ : TypeEnv} {env : Env}
+  {ety : EntityType} {entry : EntitySchemaEntry}
+  {uuf : UUF} {udf : UDF}
+  (hwf_env : env.StronglyWellFormed)
+  (hinst : InstanceOfWellFormedEnvironment env.request env.entities Γ)
+  (hfind_entry : Map.find? Γ.ets ety = some entry)
+  (hudf : env.entities.symbolizeAttrs? Γ ety entry uuf = some udf) :
+  Interpretation.WellFormed.WellFormedUUFInterpretation
+    (SymEnv.ofEnv Γ).entities uuf udf
+:= by
+  have ⟨_, ⟨hwf_entities, _⟩⟩:= hwf_env
+  have ⟨hwf_Γ, _, hwf_sch⟩ := hinst
+  simp only [
+    Entities.symbolizeAttrs?, beq_iff_eq,
+    Option.ite_none_right_eq_some,
+    Option.some.injEq,
+  ] at hudf
+  simp only [←hudf.2]
+  simp only [Entities.symbolizeAttrs?.udf]
+  have hfind_attrs : Γ.ets.attrs? ety = .some entry.attrs := by
+    simp [EntitySchema.attrs?, hfind_entry]
+  and_intros
+  · simp only
+    apply default_lit_wf' hwf_Γ
+    apply ofType_wf hwf_Γ
+    exact wf_env_implies_wf_attrs hwf_Γ hfind_attrs
+  · simp only
+    exact default_lit_is_lit
+  · simp only
+    exact default_lit_well_typed
+  · simp only
+    exact Map.make_wf _
+  · simp only
+    intros tᵢ tₒ hmem
+    have hmem := Map.make_mem_list_mem hmem
+    have ⟨⟨uid, data⟩, hmem_uid_data, hio⟩ := List.mem_filterMap.mp hmem
+    -- have hwf_entry := hwf_entities uid data
+    simp only [bind, Option.bind, Option.ite_none_right_eq_some] at hio
+    have ⟨heq_ety, hio⟩ := hio
+    split at hio
+    contradiction
+    rename_i sym_attrs hsym_attrs
+    simp at hio
+    simp only [←hio]
+    have hwf_attrs : Value.WellFormed env.entities (Value.record data.attrs) := sorry
+    have hwt_attrs : InstanceOfType Γ (Value.record data.attrs) (CedarType.record entry.attrs) := sorry
+    have hwf_attrs_ty : CedarType.WellFormed Γ (CedarType.record entry.attrs)
+    := wf_env_implies_wf_attrs hwf_Γ hfind_attrs
+    and_intros
+    · constructor
+      constructor
+      apply env_valid_uid_implies_sym_env_valid_uid hinst
+      exact Map.in_list_implies_contains hmem_uid_data
+    · simp only [←hio.1, Term.isLiteral]
+    · simp only [Term.typeOf, TermPrim.typeOf, TermType.ofType, heq_ety]
+    · apply value_symbolize?_wf hinst hwf_attrs_ty hwf_attrs hwt_attrs hsym_attrs
+    · apply value_symbolize?_is_lit hsym_attrs
+    · apply value_symbolize?_well_typed hwf_attrs_ty hwt_attrs hsym_attrs
+  · simp only [hudf.1]
+  · simp only [hudf.1]
+
+theorem env_symbolize?_tags_wf
+  {Γ : TypeEnv} {env : Env}
+  {ety : EntityType} {entry : EntitySchemaEntry}
+  {uuf : UUF} {udf : UDF}
+  (hwf_env : env.StronglyWellFormed)
+  (hinst : InstanceOfWellFormedEnvironment env.request env.entities Γ)
+  (hfind_entry : Map.find? Γ.ets ety = some entry)
+  (hudf : env.entities.symbolizeTags? Γ ety entry uuf = some udf) :
+  Interpretation.WellFormed.WellFormedUUFInterpretation
+    (SymEnv.ofEnv Γ).entities uuf udf
+:= by
+  have ⟨_, ⟨hwf_entities, _⟩⟩:= hwf_env
+  have ⟨hwf_Γ, _, hwf_sch⟩ := hinst
+  simp only [Entities.symbolizeTags?, beq_iff_eq, Option.bind_eq_bind] at hudf
+  cases htagTy : entry.tags? with
+  | none => simp [htagTy] at hudf
+  | some tagTy =>
+    have htagTy' : Γ.ets.tags? ety = .some (.some tagTy) := by
+      simp only [EntitySchema.tags?, Option.map_eq_some_iff]
+      exists entry
+    simp only [htagTy, Option.bind_some] at hudf
+    split at hudf
+    -- Tag keys
+    · rename_i hudf_tag_keys
+      simp only [Option.some.injEq] at hudf
+      simp only [
+        ←hudf,
+        Entities.symbolizeTags?.keysUDF,
+      ]
+      and_intros
+      · simp only
+        apply default_lit_wf' hwf_Γ
+        apply ofType_wf hwf_Γ
+        repeat constructor
+      · simp only
+        exact default_lit_is_lit
+      · simp only
+        exact default_lit_well_typed
+      · simp only
+        exact Map.make_wf _
+      · sorry
+      · simp only [hudf_tag_keys]
+      · simp only [hudf_tag_keys]
+    -- Tag values
+    · simp only [Option.ite_none_right_eq_some, Option.some.injEq] at hudf
+      have hudf_tag_vals := hudf.1
+      replace hudf := hudf.2
+      simp only [
+        ←hudf,
+        Entities.symbolizeTags?.valsUDF,
+      ]
+      and_intros
+      · simp only
+        apply default_lit_wf' hwf_Γ
+        apply ofType_wf hwf_Γ
+        apply wf_env_implies_wf_tag_type hwf_Γ htagTy'
+      · simp only
+        exact default_lit_is_lit
+      · simp only
+        exact default_lit_well_typed
+      · simp only
+        exact Map.make_wf _
+      · sorry
+      · simp only [hudf_tag_vals]
+      · simp only [hudf_tag_vals]
+
+theorem env_symbolize?_ancs_wf
+  {Γ : TypeEnv} {env : Env}
+  {ety : EntityType} {entry : EntitySchemaEntry}
+  {uuf : UUF} {udf : UDF}
+  (hwf_env : env.StronglyWellFormed)
+  (hinst : InstanceOfWellFormedEnvironment env.request env.entities Γ)
+  (hfind_entry : Map.find? Γ.ets ety = some entry)
+  (hudf : env.entities.symbolizeAncs? Γ ety entry uuf = some udf) :
+  Interpretation.WellFormed.WellFormedUUFInterpretation
+    (SymEnv.ofEnv Γ).entities uuf udf
+:= by
+  have ⟨_, ⟨hwf_entities, _⟩⟩:= hwf_env
+  have ⟨hwf_Γ, _, hwf_sch⟩ := hinst
+  simp only [Entities.symbolizeAncs?, beq_iff_eq, Option.bind_eq_bind] at hudf
+  have ⟨_, anc, _, heq, hudf, _⟩ := List.findSome?_eq_some_iff.mp hudf
+  have hmem_ancs : anc ∈ entry.ancestors := by
+    apply (Set.in_list_iff_in_set _ _).mp
+    simp only [Set.toList] at heq
+    simp [heq]
+  simp only [Option.ite_none_right_eq_some, Option.some.injEq] at hudf
+  simp only [←hudf, Entities.symbolizeAncs?.udf]
+  and_intros
+  · simp only
+    apply default_lit_wf' hwf_Γ
+    apply ofType_wf hwf_Γ
+    constructor
+    constructor
+    exact wf_env_implies_wf_ancestor hwf_Γ hfind_entry hmem_ancs
+  · simp only
+    exact default_lit_is_lit
+  · simp only
+    exact default_lit_well_typed
+  · simp only
+    exact Map.make_wf _
+  · sorry
+  · simp only [hudf]
+  · simp only [hudf]
+
+theorem env_symbolize?_wf_funs
+  {Γ : TypeEnv} {env : Env} {uuf : UUF}
+  (hwf_env : env.StronglyWellFormed)
+  (hinst : InstanceOfWellFormedEnvironment env.request env.entities Γ)
+  (hwf_uuf : UUF.WellFormed (SymEnv.ofEnv Γ).entities uuf) :
+  Interpretation.WellFormed.WellFormedUUFInterpretation
+    (SymEnv.ofEnv Γ).entities
+    uuf
+    ((env.symbolize? Γ).funs uuf)
+:= by
+  have ⟨hwf_Γ, _, _⟩ := hinst
+  simp only [Env.symbolize?, Entities.symbolize?]
+  split
+  · rename_i udf hfind_udf
+    have ⟨_, ⟨ety, entry⟩, _, heq, hudf, _⟩ := List.findSome?_eq_some_iff.mp hfind_udf
+    have hmem_entry : (ety, entry) ∈ Γ.ets.toList := by simp [heq]
+    have hfind_entry := (Map.in_list_iff_find?_some (wf_env_implies_wf_ets_map hwf_Γ)).mp hmem_entry
+    simp only [Option.orElse_eq_orElse, Option.orElse_eq_or, Option.or_eq_some_iff] at hudf
+    cases hudf with
+    | inl hudf_attrs => exact env_symbolize?_attrs_wf hwf_env hinst hfind_entry hudf_attrs
+    | inr hudf =>
+      cases hudf.2 with
+      | inl hudf_tags => exact env_symbolize?_tags_wf hwf_env hinst hfind_entry hudf_tags
+      | inr hudf_ancs =>
+        replace hudf_ancs := hudf_ancs.2
+        exact env_symbolize?_ancs_wf hwf_env hinst hfind_entry hudf_ancs
+  · exact default_udf_wf hwf_Γ hwf_uuf
+
 theorem env_symbolize?_wf
   {Γ : TypeEnv} {env : Env}
   (hwf_env : env.StronglyWellFormed)
@@ -2827,7 +3057,8 @@ theorem env_symbolize?_wf
   and_intros
   · intros var hwf_var
     exact env_symbolize?_wf_vars hwf_env hinst hwf_var
-  · sorry
+  · intros uuf hwf_uuf
+    exact env_symbolize?_wf_funs hwf_env hinst hwf_uuf
   · intros t ht
     simp only [Env.symbolize?, defaultLit']
     constructor

@@ -110,7 +110,11 @@ def Entities.symbolizeAttrs?
   (entities : Entities) (Γ : TypeEnv)
   (ety : EntityType) (entry : EntitySchemaEntry)
   (uuf : UUF) : Option UDF :=
-  if uuf.id == UUF.attrs_id ety then
+  if uuf == {
+    id := UUF.attrs_id ety,
+    arg := TermType.ofType (.entity ety),
+    out := TermType.ofType (.record entry.attrs)
+  } then
     .some udf
   else
     .none
@@ -135,11 +139,20 @@ Generates interpretations for the tag key and value maps.
 def Entities.symbolizeTags?
   (entities : Entities) (Γ : TypeEnv)
   (ety : EntityType) (entry : EntitySchemaEntry)
-  (uuf : UUF) : Option UDF :=
-  if uuf.id == UUF.tag_keys_id ety then
+  (uuf : UUF) : Option UDF := do
+  let tagTy := ← entry.tags?
+  if uuf == {
+    id := UUF.tag_keys_id ety,
+    arg := TermType.ofType (.entity ety),
+    out := TermType.ofType (.set .string),
+  } then
     .some keysUDF
-  else if uuf.id == UUF.tag_vals_id ety then do
-    .some (valsUDF (← entry.tags?))
+  else if uuf == {
+    id := UUF.tag_vals_id ety,
+    arg := TermType.tagFor ety,
+    out := TermType.ofType tagTy,
+  } then
+    .some (valsUDF tagTy)
   else
     .none
 where
@@ -171,7 +184,7 @@ where
           )
       else
         .none).flatten,
-    default := defaultLit' Γ (TermType.ofType (.set .string)),
+    default := defaultLit' Γ (TermType.ofType tagTy),
   }
 
 /--
@@ -182,7 +195,11 @@ def Entities.symbolizeAncs?
   (ety : EntityType) (entry : EntitySchemaEntry)
   (uuf : UUF) : Option UDF :=
   entry.ancestors.toList.findSome? λ ancTy =>
-    if uuf.id == UUF.ancs_id ety ancTy then
+    if uuf == {
+      id := UUF.ancs_id ety ancTy,
+      arg := TermType.ofType (.entity ety),
+      out := TermType.ofType (.set (.entity ancTy)),
+    } then
       .some (udf ancTy)
     else
       .none
@@ -198,7 +215,7 @@ where
           (.entity ancTy))
     else
       .none),
-    default := defaultLit' Γ (.set (.entity ancTy)),
+    default := defaultLit' Γ (TermType.ofType (.set (.entity ancTy))),
   }
 
 /--
