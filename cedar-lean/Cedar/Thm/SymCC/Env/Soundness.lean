@@ -3044,15 +3044,71 @@ theorem env_symbolize?_tags_wf
       · simp only
         intros tᵢ tₒ hmem
         have hmem := Map.make_mem_list_mem hmem
-        -- TODO: handle `flatten`
-        -- have ⟨⟨uid, data⟩, hmem_uid_data, hio⟩ := List.mem_filterMap.mp hmem
-        -- have hfind_uid_data := (Map.in_list_iff_find?_some hwf_entities.1).mp hmem_uid_data
-        -- have ⟨hwf_attrs, _⟩ := hwf_entities.2 uid data hfind_uid_data
-        -- simp only [Option.ite_none_right_eq_some, Option.some.injEq, Prod.mk.injEq] at hio
-        -- have ⟨heq_ety, hio⟩ := hio
-        -- simp only [← hio]
-        -- and_intros
-        sorry
+        have ⟨l, hmem_l, hmem⟩ := List.mem_flatten.mp hmem
+        have ⟨⟨uid, data⟩, hmem_uid_data, hl⟩ := List.mem_filterMap.mp hmem_l
+        simp only [Option.bind_eq_bind, Option.ite_none_right_eq_some] at hl
+        have ⟨heq_ety, hl⟩ := hl
+        have ⟨⟨tag, val⟩, hmem_tag_val, htag_val⟩ :=
+          List.mapM_some_implies_all_from_some hl (tᵢ, tₒ) hmem
+        simp only [bind, Option.bind] at htag_val
+        split at htag_val
+        contradiction
+        rename_i sym_val hsym_val
+        simp only [Option.some.injEq, Prod.mk.injEq] at htag_val
+        simp only [←htag_val]
+        have hwf_tagTy : tagTy.WellFormed Γ
+        := wf_env_implies_wf_tag_type hwf_Γ htagTy'
+        have hfind_uid_data := (Map.in_list_iff_find?_some hwf_entities.1).mp hmem_uid_data
+        have ⟨_, _, _, hwf_tags_map, hwf_tags⟩ := hwf_entities.2 uid data hfind_uid_data
+        have hwf_val : val.WellFormed env.entities := by
+          have := (Map.in_list_iff_find?_some hwf_tags_map).mp hmem_tag_val
+          exact hwf_tags tag val this
+        have hwt_val : InstanceOfType Γ val tagTy := by
+          have := hwf_sch.1 uid data hfind_uid_data
+          cases this with
+          | inl this =>
+            have ⟨entry', hfind_entry', _, _, _, h⟩ := this
+            simp only [←heq_ety] at hfind_entry
+            simp only [hfind_entry, Option.some.injEq] at hfind_entry'
+            simp only [InstanceOfEntityTags, ←hfind_entry', htagTy] at h
+            exact h val (Map.in_list_in_values hmem_tag_val)
+          | inr this =>
+            have ⟨_, htag_emp, _⟩ := this
+            simp [htag_emp, Map.empty, Map.toList, Map.kvs] at hmem_tag_val
+        and_intros
+        · constructor
+          · intros a t hmem_a_t
+            simp only [
+              Map.toList, Map.kvs,
+              List.mem_cons, Prod.mk.injEq,
+              List.not_mem_nil, or_false,
+            ] at hmem_a_t
+            cases hmem_a_t with
+            | inl hmem_a_t =>
+              simp only [hmem_a_t]
+              constructor
+              constructor
+              apply env_valid_uid_implies_sym_env_valid_uid hinst
+              exact Map.in_list_implies_contains hmem_uid_data
+            | inr hmem_a_t =>
+              simp only [hmem_a_t]
+              constructor
+              constructor
+          · simp [
+              Map.WellFormed, Map.make,
+              List.canonicalize, Map.toList,
+              Map.kvs, List.insertCanonical,
+            ]
+        · simp [Term.isLiteral, List.all, List.attach₃, List.pmap]
+        · simp only [
+            Term.typeOf, TermPrim.typeOf,
+            TermType.ofType, heq_ety,
+            TermType.tagFor, EntityTag.mk,
+            List.attach₃, List.map, List.pmap,
+          ]
+        · apply value_symbolize?_wf hinst hwf_tagTy hwf_val hwt_val hsym_val
+        · apply value_symbolize?_is_lit hsym_val
+        · apply value_symbolize?_well_typed hwf_tagTy hwt_val hsym_val
       · simp only [hudf_tag_vals]
       · simp only [hudf_tag_vals]
 
