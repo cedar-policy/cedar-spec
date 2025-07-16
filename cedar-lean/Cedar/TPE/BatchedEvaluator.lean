@@ -109,9 +109,10 @@ The batched evaluation loop
   3. Continues if progress has been made, evaluating otherwise
 
 The subtle part of this algorithm is why it can use the normal Cedar.Spec.evaluate when no progress is made.
-The argument is that if no progress is made during partial
-evaluation, there must be a missing field or entity causing
-the algorithm to get stuck.
+
+When no progress is made, one of these cases must be true:
+  - We have reduced the expression to a value
+  - An entity or entity field is missing, so the expression will error
 -/
 def batched_eval_loop
   (res : Residual)
