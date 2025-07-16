@@ -226,6 +226,56 @@ theorem value_symbolize?_not_some
       try simp at hsome
       try contradiction
 
+theorem env_valid_uid_implies_sym_env_valid_uid
+  {Γ : TypeEnv} {env : Env} {uid : EntityUID}
+  (hinst : InstanceOfWellFormedEnvironment env.request env.entities Γ)
+  (hcont_uid : Map.contains env.entities uid = true) :
+  (SymEnv.ofEnv Γ).entities.isValidEntityUID uid = true
+:= by
+  have ⟨hwf_Γ, _, ⟨hinst_entities, _⟩⟩ := hinst
+  simp only [SymEnv.ofEnv, SymEntities.ofSchema]
+  simp only [Map.contains, Option.isSome] at hcont_uid
+  split at hcont_uid
+  · rename_i data hfind_data
+    apply entity_uid_wf_implies_sym_entities_is_valid_entity_uid hwf_Γ
+    have := hinst_entities uid data hfind_data
+    cases this with
+    | inl hinst_data =>
+      have ⟨entry, hfind_entry, hvalid_uid, _⟩ := hinst_data
+      simp only [
+        EntityUID.WellFormed,
+        EntitySchemaEntry.isValidEntityEID,
+        EntitySchema.isValidEntityUID,
+        hfind_entry,
+      ]
+      apply Or.inl
+      cases entry with
+      | standard => rfl
+      | enum eids =>
+        simp only [Set.contains, List.elem_eq_contains, List.contains_eq_mem, decide_eq_true_eq]
+        simp only [IsValidEntityEID] at hvalid_uid
+        exact hvalid_uid
+    | inr hinst_data =>
+      have ⟨_, _, ⟨_, hfind_acts, _⟩⟩ := hinst_data
+      simp only [EntityUID.WellFormed]
+      apply Or.inr
+      simp only [ActionSchema.contains, Map.contains, hfind_acts, Option.isSome]
+  · contradiction
+
+/-- `mapM` preserves `SortedBy` if the keys are preserved -/
+theorem mapM_preserves_SortedBy
+  [LT γ]
+  {l : List α} {l' : List β}
+  {f : α → Option β}
+  {k₁ : α → γ}
+  {k₂ : β → γ}
+  (hsorted : List.SortedBy k₁ l)
+  (hmapM : l.mapM f = .some l')
+  (hkey : ∀ a b, f a = .some b → k₁ a = k₂ b) :
+  List.SortedBy k₂ l'
+:= by
+  sorry
+
 /-- The results of `symbolize?` is well-formed. -/
 theorem value_symbolize?_wf
   {Γ : TypeEnv} {env : Env}
@@ -288,7 +338,7 @@ theorem value_symbolize?_wf
       have hwf_elem := hwf_elems elem hmem_elem
       cases hwt_v with | instance_of_set _ _ hwt_elem =>
       specialize hwt_elem elem hmem_elem
-      exact value_symbolize?_well_typed hwf_env hinst hwf_elem_ty hwf_elem hwt_elem hsym_elem
+      exact value_symbolize?_well_typed hwf_elem_ty hwt_elem hsym_elem
     · exact ofType_wf hwf_Γ hwf_elem_ty
     · exact Set.make_wf _
   | record rec =>
@@ -306,9 +356,7 @@ theorem value_symbolize?_wf
     simp only [Option.some.injEq] at hsym
     simp only [←hsym]
     cases hwf_ty with | record_wf hwf_rty_map hwf_rty =>
-    -- simp only [
-    --   List.mapM₂_eq_mapM (Value.symbolize?.symbolizeAttr? rec' rty) rec'.toList,
-    -- ] at hsym_attrs
+    cases rty with | mk rty_map =>
     -- Obligations of `Term.WellFormed` for `.record`
     constructor
     · intros attr t hmem_attr_t
@@ -316,101 +364,93 @@ theorem value_symbolize?_wf
         List.mapM_some_implies_all_from_some hsym_attrs (attr, t) hmem_attr_t
       simp only [Value.symbolize?.symbolizeAttr?] at hsym_attr_term
       simp only [bind, Option.bind] at hsym_attr_term
+      simp [Map.toList, Map.kvs] at hmem_attr_t
       split at hsym_attr_term
-
-      contradiction
-      rename_i qty hfind_qty
-      simp only at hsym_attr_term
-      split at hsym_attr_term
-      contradiction
-      rename_i sym_attr_term' hsym_attr_term'
-      simp only [Option.some.injEq, Prod.mk.injEq] at hsym_attr_term
-      simp only [←hsym_attr_term.2]
-      constructor
-      cases hwt_v with | instance_of_record _ _ _ hwt_attr =>
-      have :
-        (Map.mk attrs).find? attr_term.fst = some attr_term.snd
-      := by
-        apply (Map.in_list_iff_find?_some hwf_attrs_map).mp
-        simp only [←heq_rec'] at hmem_attr_term
-        exact hmem_attr_term
-      specialize hwt_attr attr_term.fst attr_term.snd qty this hfind_qty
-      apply value_symbolize?_wf hwf_env hinst _ _ hwt_attr hsym_attr_term'
-      · have := hwf_rty attr_term.fst qty hfind_qty
-        cases qty
-        · simp only [Qualified.getType]
+      · simp only [Option.some.injEq, Prod.mk.injEq] at hsym_attr_term
+        simp only [←hsym_attr_term.2]
+        constructor
+        have hfind_attr_term := (Map.in_list_iff_find?_some hwf_rty_map).mp hmem_attr_term
+        have := hwf_rty _ _ hfind_attr_term
+        cases hqty : attr_term.snd
+        all_goals
+          simp only [hqty] at this
           cases this
+          simp only [Qualified.getType]
+          apply ofType_wf hwf_Γ
           assumption
-        · simp only [Qualified.getType]
-          cases this
-          assumption
-      · simp only [heq_rec'] at hwf_attrs hwf_attrs_map
-        apply hwf_attrs attr_term.fst attr_term.snd
-        apply (Map.in_list_iff_find?_some hwf_attrs_map).mp
-        exact hmem_attr_term
-    · apply mapM_on_values_wf (λ k v => do
-        let qty := ← rty.find? k
-        Option.some (Term.some (← v.symbolize? qty.getType))) hwf_attrs_map
-      simp only [←hsym_attrs]
-      congr
-      funext x
-      simp only [Option.bind_eq_bind, Value.symbolize?.symbolizeAttr?]
-      cases rty.find? x.fst; rfl
-      rename_i v
-      simp only [Option.bind_some]
-      cases x.snd.symbolize? v.getType; rfl
-      simp
+      · rename_i val hfind_rec'
+        simp only [←heq_rec'] at hfind_rec'
+        split at hsym_attr_term
+        all_goals
+          rename_i ty' hty'
+          split at hsym_attr_term
+          contradiction
+          rename_i sym_val hsym_val
+          simp only [Option.some.injEq, Prod.mk.injEq] at hsym_attr_term
+          simp only [←hsym_attr_term.2]
+          try constructor
+          have hwf_ty' : CedarType.WellFormed Γ ty' := by
+            have hfind_attr := (Map.in_list_iff_find?_some hwf_rty_map).mp hmem_attr_term
+            have := hwf_rty _ _ hfind_attr
+            simp only [hty'] at this
+            cases this
+            assumption
+          have hwf_val : val.WellFormed env.entities := hwf_attrs _ _ hfind_rec'
+          have hwt_val : InstanceOfType Γ val ty' := by
+            cases hwt_v with | instance_of_record _ _ _ hwt_attr =>
+            have hfind_rty_attr := (Map.in_list_iff_find?_some hwf_rty_map).mp hmem_attr_term
+            simp only [hty'] at hfind_rty_attr
+            exact hwt_attr _ _ _ hfind_rec' hfind_rty_attr
+          exact value_symbolize?_wf hwf_env hinst hwf_ty' hwf_val hwt_val hsym_val
+    · apply Map.mk_wf
+      have hsorted_rty_map :
+        List.SortedBy Prod.fst rty_map
+      := Map.wf_iff_sorted.mp hwf_rty_map
+      -- TODO: merge this with `hsorted_sym_attrs`?
+      apply mapM_preserves_SortedBy hsorted_rty_map hsym_attrs
+      unfold Value.symbolize?.symbolizeAttr?
+      intros a b
+      split
+      · simp only [Option.some.injEq]
+        intros h
+        simp [←h]
+      · split
+        all_goals
+          simp only [bind, Option.bind]
+          split
+          · simp
+          · simp only [Option.some.injEq]
+            intros h
+            simp [←h]
   | ext =>
     simp only [Value.symbolize?, Option.some.injEq] at hsym
     simp only [←hsym]
     repeat constructor
 termination_by sizeOf v
 decreasing_by
-  · have : v = Value.set s := by assumption
-    simp only [this]
-    have : s = Set.mk elems := by assumption
-    simp only [this]
-    rename Value.set (Set.mk elems) = Value.set _ => h
-    rename_i s'' _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-    have : Value.set (Set.mk elems) = Value.set s'' := by assumption
-    simp only [Value.set.injEq] at this
-    simp only [this]
+  any_goals
+    rename v = Value.set s => h₁
+    rename s = Set.mk elems => h₂
+    simp [h₁, h₂]
+    simp at *
+    rename_i h₃ _ _ _ _ _
+    simp [←h₃, Set.toList, Set.elts] at hmem_elem
     have := List.sizeOf_lt_of_mem hmem_elem
-    cases s''
-    simp only [Set.toList, Set.elts] at this ⊢
-    simp
     omega
-  · have h₁ : v = Value.record rec := by assumption
-    rename Map Attr Value => rec'
-    have h₂ : Value.record (Map.mk attrs) = Value.record rec' := by assumption
-    have h₃ : rec = Map.mk attrs := by assumption
-    simp [h₁, h₃, h₂]
-    have h₄ := List.sizeOf_lt_of_mem hmem_attr_term
-    cases attr_term
-    cases rec'
-    simp [Map.toList, Map.kvs] at this ⊢
-    rename_i l _ _ _ h₅
-    rename_i rec''
-      _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-      _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-    have : Value.record (Map.mk attrs) = Value.record rec'' := by assumption
-    simp only [Value.record.injEq] at this
-    simp [←this, h₅, Map.toList, Map.kvs] at h₄
+  any_goals
+    rename v = Value.record rec => h₁
+    rename rec = Map.mk attrs => h₂
+    rename Value => v'
+    rename Map.find? _ attr_term.fst = some _ => h₃
+    rename Value.record (Map.mk attrs) = Value.record _ => h₄
+    simp [h₁, h₂]
+    simp at h₄
+    simp [←h₄] at h₃
+    have := Map.find?_mem_toList h₃
+    simp [Map.toList, Map.kvs] at this
+    have := List.sizeOf_lt_of_mem this
+    simp at this
     omega
-
-/-- `mapM` preserves `SortedBy` if the keys are preserved -/
-theorem mapM_preserves_SortedBy
-  [LT γ]
-  {l : List α} {l' : List β}
-  {f : α → Option β}
-  {k₁ : α → γ}
-  {k₂ : β → γ}
-  (hsorted : List.SortedBy k₁ l)
-  (hmapM : l.mapM f = .some l')
-  (hkey : ∀ a b, f a = .some b → k₁ a = k₂ b) :
-  List.SortedBy k₂ l'
-:= by
-  sorry
 
 /--
 `symbolize?` is the right inverse of `value?`,
@@ -2574,51 +2614,6 @@ theorem default_lit_wf'
         simp [Set.contains, hhead]
     · rfl
   · contradiction
-
-theorem env_valid_uid_implies_sym_env_valid_uid
-  {Γ : TypeEnv} {env : Env} {uid : EntityUID}
-  (hinst : InstanceOfWellFormedEnvironment env.request env.entities Γ)
-  (hcont_uid : Map.contains env.entities uid = true) :
-  (SymEnv.ofEnv Γ).entities.isValidEntityUID uid = true
-:= by
-  have ⟨hwf_Γ, _, ⟨hinst_entities, _⟩⟩ := hinst
-  simp only [SymEnv.ofEnv, SymEntities.ofSchema]
-  simp only [Map.contains, Option.isSome] at hcont_uid
-  split at hcont_uid
-  · rename_i data hfind_data
-    apply entity_uid_wf_implies_sym_entities_is_valid_entity_uid hwf_Γ
-    have := hinst_entities uid data hfind_data
-    cases this with
-    | inl hinst_data =>
-      have ⟨entry, hfind_entry, hvalid_uid, _⟩ := hinst_data
-      simp only [
-        EntityUID.WellFormed,
-        EntitySchemaEntry.isValidEntityEID,
-        EntitySchema.isValidEntityUID,
-        hfind_entry,
-      ]
-      apply Or.inl
-      cases entry with
-      | standard => rfl
-      | enum eids =>
-        simp only [Set.contains, List.elem_eq_contains, List.contains_eq_mem, decide_eq_true_eq]
-        simp only [IsValidEntityEID] at hvalid_uid
-        exact hvalid_uid
-    | inr hinst_data =>
-      have ⟨_, _, ⟨_, hfind_acts, _⟩⟩ := hinst_data
-      simp only [EntityUID.WellFormed]
-      apply Or.inr
-      simp only [ActionSchema.contains, Map.contains, hfind_acts, Option.isSome]
-  · contradiction
-
-theorem mapM_on_values_wf
-  [LT α] [DecidableLT α]
-  {m : Map α β} {l : List (α × γ)}
-  (f : α → β → Option γ)
-  (hwf : m.WellFormed)
-  (hmapM : m.toList.mapM (λ (k, v) => do .some (k, ← f k v)) = .some l) :
-  (Map.mk l).WellFormed
-:= sorry
 
 theorem value_symbolize?_is_lit
   {Γ : TypeEnv} {env : Env}
