@@ -1647,7 +1647,7 @@ theorem env_symbolize?_same_entity_data_standard_same_tag
   | some tagTy =>
     have happ_tag_keys :
       Factory.app (UnaryFunction.udf (Entities.symbolizeTags?.keysUDF env.entities Γ uid.ty)) (Term.entity uid)
-      = .set (Set.make (data.tags.keys.toList.map λ k => .prim (.string k))) (.set .string)
+      = .set (Set.make (data.tags.keys.toList.map λ k => .prim (.string k))) .string
     := by
       apply app_table_make_filterMap hfind_data
       · simp
@@ -1656,7 +1656,7 @@ theorem env_symbolize?_same_entity_data_standard_same_tag
     have hkeys_set_is_literal :
       (Term.set
         (Set.make (List.map (fun k => Term.prim (TermPrim.string k)) data.tags.keys.toList))
-        TermType.string.set).isLiteral
+        TermType.string).isLiteral
     := by
       unfold Term.isLiteral
       apply List.all_eq_true.mpr
@@ -1707,7 +1707,7 @@ theorem env_symbolize?_same_entity_data_standard_same_tag
         · rename_i h
           have := h
             (Set.make (List.map (fun k => Term.prim (TermPrim.string k)) data.tags.keys.toList))
-            TermType.string.set
+            TermType.string
             rfl
           contradiction
       · split
@@ -1755,7 +1755,7 @@ theorem env_symbolize?_same_entity_data_standard_same_tag
         · rename_i h
           have := h
             (Set.make (List.map (fun k => Term.prim (TermPrim.string k)) data.tags.keys.toList))
-            TermType.string.set
+            TermType.string
             rfl
           contradiction
     -- Tag values match
@@ -1803,7 +1803,7 @@ theorem env_symbolize?_same_entity_data_standard_same_tag
         · rename_i h
           have := h
             (Set.make (List.map (fun k => Term.prim (TermPrim.string k)) data.tags.keys.toList))
-            TermType.string.set
+            TermType.string
             rfl
           contradiction
       · simp only [
@@ -2008,8 +2008,12 @@ theorem env_symbolize?_same_entity_data_standard
         env_symbolize?_lookup_ancs hfind_entry hfind_ancTy,
         Entities.symbolizeAncs?.udf,
       ]
-      exists (Set.make (List.map
-        (λ anc => Term.prim (TermPrim.entity anc))
+      exists (Set.make (List.filterMap
+        (λ anc' =>
+          if anc'.ty = anc.ty then
+            .some (.prim (.entity anc'))
+          else
+            .none)
         data.ancestors.toList))
       constructor
       · apply app_table_make_filterMap hfind_data
@@ -2017,8 +2021,11 @@ theorem env_symbolize?_same_entity_data_standard
         · simp
         · simp only [Term.isLiteral]
       · apply (Set.make_mem _ _).mp
-        apply List.mem_map.mpr
+        apply List.mem_filterMap.mpr
         exists anc
+        constructor
+        · exact hmem_anc
+        · simp
   · simp only
     intros ancTy ancUF hancUF
     simp only [
@@ -2039,8 +2046,12 @@ theorem env_symbolize?_same_entity_data_standard
       env_symbolize?_lookup_ancs hfind_entry hmem_ancTy,
       Entities.symbolizeAncs?.udf,
     ]
-    exists (Set.make (List.map
-      (λ anc => Term.prim (TermPrim.entity anc))
+    exists (Set.make (List.filterMap
+      (λ anc =>
+        if anc.ty = ancTy then
+          .some (.prim (.entity anc))
+        else
+          .none)
       data.ancestors.toList))
     constructor
     · apply app_table_make_filterMap hfind_data
@@ -2049,8 +2060,9 @@ theorem env_symbolize?_same_entity_data_standard
       · simp only [Term.isLiteral]
     · intros anc_term hmem_anc_term
       have := (Set.make_mem _ _).mpr hmem_anc_term
-      have ⟨anc', hmem_anc', heq⟩ := List.mem_map.mp this
+      have ⟨anc', hmem_anc', heq⟩ := List.mem_filterMap.mp this
       exists anc'
+      simp only [Option.ite_none_right_eq_some, Option.some.injEq] at heq
       simp only [←heq, true_and]
       exact hmem_anc'
   · exact env_symbolize?_same_entity_data_standard_same_tag
@@ -2886,6 +2898,7 @@ theorem env_symbolize?_attrs_wf
     exact default_lit_well_typed
   · simp only
     exact Map.make_wf _
+  -- Well-formed `UDF.table`
   · simp only
     intros tᵢ tₒ hmem
     have hmem := Map.make_mem_list_mem hmem
@@ -2967,7 +2980,46 @@ theorem env_symbolize?_tags_wf
         exact default_lit_well_typed
       · simp only
         exact Map.make_wf _
-      · sorry
+      -- Well-formed `UDF.table`
+      · simp only
+        intros tᵢ tₒ hmem
+        have hmem := Map.make_mem_list_mem hmem
+        have ⟨⟨uid, data⟩, hmem_uid_data, hio⟩ := List.mem_filterMap.mp hmem
+        have hfind_uid_data := (Map.in_list_iff_find?_some hwf_entities.1).mp hmem_uid_data
+        have ⟨hwf_attrs, _⟩ := hwf_entities.2 uid data hfind_uid_data
+        simp only [Option.ite_none_right_eq_some, Option.some.injEq, Prod.mk.injEq] at hio
+        have ⟨heq_ety, hio⟩ := hio
+        simp only [← hio]
+        and_intros
+        · constructor
+          constructor
+          apply env_valid_uid_implies_sym_env_valid_uid hinst
+          exact Map.in_list_implies_contains hmem_uid_data
+        · simp only [Term.isLiteral]
+        · simp only [Term.typeOf, TermPrim.typeOf, TermType.ofType, heq_ety]
+        · constructor
+          · intros t hmem_t
+            replace hmem_t := (Set.make_mem _ _).mpr hmem_t
+            have ⟨_, _, h⟩ := List.mem_map.mp hmem_t
+            simp only [←h]
+            constructor
+            constructor
+          · intros t hmem_t
+            replace hmem_t := (Set.make_mem _ _).mpr hmem_t
+            have ⟨_, _, h⟩ := List.mem_map.mp hmem_t
+            simp only [←h]
+            simp only [Term.typeOf, TermPrim.typeOf]
+          · constructor
+          · exact Set.make_wf _
+        · unfold Term.isLiteral
+          apply List.all_eq_true.mpr
+          intros x hmem_x
+          simp only
+          replace hmem_x := x.property
+          have hmem_x := (Set.make_mem _ _).mpr hmem_x
+          have ⟨_, _, h⟩ := List.mem_map.mp hmem_x
+          simp only [←h, Term.isLiteral]
+        · simp only [Term.typeOf, TermType.ofType]
       · simp only [hudf_tag_keys]
       · simp only [hudf_tag_keys]
     -- Tag values
@@ -2989,7 +3041,18 @@ theorem env_symbolize?_tags_wf
         exact default_lit_well_typed
       · simp only
         exact Map.make_wf _
-      · sorry
+      · simp only
+        intros tᵢ tₒ hmem
+        have hmem := Map.make_mem_list_mem hmem
+        -- TODO: handle `flatten`
+        -- have ⟨⟨uid, data⟩, hmem_uid_data, hio⟩ := List.mem_filterMap.mp hmem
+        -- have hfind_uid_data := (Map.in_list_iff_find?_some hwf_entities.1).mp hmem_uid_data
+        -- have ⟨hwf_attrs, _⟩ := hwf_entities.2 uid data hfind_uid_data
+        -- simp only [Option.ite_none_right_eq_some, Option.some.injEq, Prod.mk.injEq] at hio
+        -- have ⟨heq_ety, hio⟩ := hio
+        -- simp only [← hio]
+        -- and_intros
+        sorry
       · simp only [hudf_tag_vals]
       · simp only [hudf_tag_vals]
 
@@ -3027,7 +3090,51 @@ theorem env_symbolize?_ancs_wf
     exact default_lit_well_typed
   · simp only
     exact Map.make_wf _
-  · sorry
+  · simp only
+    intros tᵢ tₒ hmem
+    have hmem := Map.make_mem_list_mem hmem
+    have ⟨⟨uid, data⟩, hmem_uid_data, hio⟩ := List.mem_filterMap.mp hmem
+    have hfind_uid_data := (Map.in_list_iff_find?_some hwf_entities.1).mp hmem_uid_data
+    have ⟨_, _, hwf_ancs, _⟩ := hwf_entities.2 uid data hfind_uid_data
+    simp only [Option.ite_none_right_eq_some, Option.some.injEq, Prod.mk.injEq] at hio
+    have ⟨heq_ety, hio⟩ := hio
+    simp only [← hio]
+    and_intros
+    · constructor
+      constructor
+      apply env_valid_uid_implies_sym_env_valid_uid hinst
+      exact Map.in_list_implies_contains hmem_uid_data
+    · simp only [Term.isLiteral]
+    · simp only [Term.typeOf, TermPrim.typeOf, TermType.ofType, heq_ety]
+    · constructor
+      · intros t hmem_t
+        replace hmem_t := (Set.make_mem _ _).mpr hmem_t
+        have ⟨anc, hmem_anc, h⟩ := List.mem_filterMap.mp hmem_t
+        simp only [Option.ite_none_right_eq_some, Option.some.injEq] at h
+        simp only [←h]
+        constructor
+        constructor
+        apply env_valid_uid_implies_sym_env_valid_uid hinst
+        exact hwf_ancs anc hmem_anc
+      · intros t hmem_t
+        replace hmem_t := (Set.make_mem _ _).mpr hmem_t
+        have ⟨anc, hmem_anc, h⟩ := List.mem_filterMap.mp hmem_t
+        simp only [Option.ite_none_right_eq_some, Option.some.injEq] at h
+        simp only [←h, Term.typeOf, TermPrim.typeOf]
+      · constructor
+        apply ofEnv_wf_entity hwf_Γ
+        apply wf_env_implies_wf_ancestor hwf_Γ hfind_entry hmem_ancs
+      · exact Set.make_wf _
+    · unfold Term.isLiteral
+      apply List.all_eq_true.mpr
+      intros x hmem_x
+      simp only
+      replace hmem_x := x.property
+      have hmem_x := (Set.make_mem _ _).mpr hmem_x
+      have ⟨anc, hmem_anc, h⟩ := List.mem_filterMap.mp hmem_x
+      simp only [Option.ite_none_right_eq_some, Option.some.injEq] at h
+      simp only [←h, Term.isLiteral]
+    · simp only [Term.typeOf, TermType.ofType]
   · simp only [hudf]
   · simp only [hudf]
 

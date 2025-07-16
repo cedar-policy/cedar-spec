@@ -162,7 +162,7 @@ where
     -- Collect concrete tag keys of every entity of type `ety`
     table := Map.make (entities.toList.filterMap λ (euid, data) => do
       if euid.ty = ety then
-        .some (↑euid, .set (Set.make (data.tags.keys.toList.map λ k => .prim (.string k))) (.set .string))
+        .some (↑euid, .set (Set.make (data.tags.keys.toList.map λ k => .prim (.string k))) .string)
       else
         .none),
     default := defaultLit' Γ (TermType.ofType (.set .string)),
@@ -211,7 +211,11 @@ where
     if uid.ty = ety then
       .some (↑uid,
         .set
-          (Set.make (data.ancestors.toList.map λ anc => .prim (.entity anc)))
+          (Set.make (data.ancestors.toList.filterMap λ anc =>
+            if anc.ty = ancTy then
+              .some (.prim (.entity anc))
+            else
+              .none))
           (.entity ancTy))
     else
       .none),
