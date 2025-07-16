@@ -1626,7 +1626,7 @@ theorem env_symbolize?_same_entity_data_standard_same_tag
       (SymEntityData.ofStandardEntityType uid.ty entry))
 := by
   have ⟨_, ⟨hwf_entities, _⟩⟩ := hwf_env
-  have ⟨hwf_data_attrs, _, _, hwf_data_tags_map, hwf_data_tags⟩ := hwf_entities uid data hfind_data
+  have ⟨hwf_data_attrs, _, _, hwf_data_tags_map, hwf_data_tags⟩ := hwf_entities.2 uid data hfind_data
   have ⟨hwf_Γ, _, _⟩ := hinst
   have ⟨entry', hfind_entry', _, hwt_data_attrs, hwt_data_ancs, hwt_data_tags⟩ := hinst_data
   simp only [hfind_entry, Option.some.injEq] at hfind_entry'
@@ -1946,7 +1946,7 @@ theorem env_symbolize?_same_entity_data_standard
       (SymEntityData.ofStandardEntityType uid.ty entry))
 := by
   have ⟨_, ⟨hwf_entities, _⟩⟩ := hwf_env
-  have ⟨hwf_data_attrs, _, hwf_data_ancs, hwf_data_tags, _⟩ := hwf_entities uid data hfind_data
+  have ⟨hwf_data_attrs, _, hwf_data_ancs, hwf_data_tags, _⟩ := hwf_entities.2 uid data hfind_data
   have ⟨hwf_Γ, _, _⟩ := hinst
   have ⟨entry', hfind_entry', _, hwt_data_attrs, hwt_data_ancs, hwt_data_tags⟩ := hinst_data
   simp only [hfind_entry, Option.some.injEq] at hfind_entry'
@@ -2890,7 +2890,8 @@ theorem env_symbolize?_attrs_wf
     intros tᵢ tₒ hmem
     have hmem := Map.make_mem_list_mem hmem
     have ⟨⟨uid, data⟩, hmem_uid_data, hio⟩ := List.mem_filterMap.mp hmem
-    -- have hwf_entry := hwf_entities uid data
+    have hfind_uid_data := (Map.in_list_iff_find?_some hwf_entities.1).mp hmem_uid_data
+    have ⟨hwf_attrs, _⟩ := hwf_entities.2 uid data hfind_uid_data
     simp only [bind, Option.bind, Option.ite_none_right_eq_some] at hio
     have ⟨heq_ety, hio⟩ := hio
     split at hio
@@ -2898,8 +2899,19 @@ theorem env_symbolize?_attrs_wf
     rename_i sym_attrs hsym_attrs
     simp at hio
     simp only [←hio]
-    have hwf_attrs : Value.WellFormed env.entities (Value.record data.attrs) := sorry
-    have hwt_attrs : InstanceOfType Γ (Value.record data.attrs) (CedarType.record entry.attrs) := sorry
+    have hwt_attrs : InstanceOfType Γ (Value.record data.attrs) (CedarType.record entry.attrs) := by
+      have := hwf_sch.1 uid data hfind_uid_data
+      simp only [←heq_ety] at hfind_entry
+      cases this with
+      | inl this =>
+        have ⟨_, hfind, _, h, _⟩ := this
+        simp only [hfind_entry, Option.some.injEq] at hfind
+        simp only [←hfind] at h
+        exact h
+      | inr this =>
+        have ⟨_, _, ⟨_, h, _⟩⟩ := this
+        have := wf_env_disjoint_ets_acts hwf_Γ hfind_entry h
+        contradiction
     have hwf_attrs_ty : CedarType.WellFormed Γ (CedarType.record entry.attrs)
     := wf_env_implies_wf_attrs hwf_Γ hfind_attrs
     and_intros
