@@ -49,6 +49,7 @@ def Request.asPartialRequest (req : Request) : PartialRequest :=
   , resource  := { ty := req.resource.ty, id := .some req.resource.eid }
   , context   := req.context }
 
+
 -- We don't need type annotations here following the rationale above
 structure PartialEntityData where
   attrs     : Option (Map Attr Value)
@@ -61,6 +62,9 @@ def EntityData.asPartialEntityData (data : EntityData) : PartialEntityData :=
   , tags      := .some data.tags }
 
 abbrev PartialEntities := Map EntityUID PartialEntityData
+
+def Entities.asPartial (entities: Entities) : PartialEntities :=
+  entities.mapOnValues EntityData.asPartialEntityData
 
 def PartialEntities.get (es : PartialEntities) (uid : EntityUID) (f : PartialEntityData → Option α) : Option α :=
   (es.find? uid).bind f
