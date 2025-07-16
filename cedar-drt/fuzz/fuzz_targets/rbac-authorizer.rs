@@ -23,10 +23,23 @@ use cedar_policy_core::authorizer::{Authorizer, Diagnostics, Response};
 use cedar_policy_core::entities::Entities;
 use libfuzzer_sys::arbitrary::{self, Arbitrary};
 
-#[derive(Arbitrary, Debug)]
+#[derive(Debug)]
 struct AuthorizerInputAbstractEvaluator {
     /// Set of AbstractPolicy objects
     policies: Vec<AbstractPolicy>,
+}
+
+static MAX_ABSTRACT_POLICIES: usize = 100;
+
+impl<'a> Arbitrary<'a> for AuthorizerInputAbstractEvaluator {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(Self {
+            policies: u
+                .arbitrary_iter()?
+                .take(MAX_ABSTRACT_POLICIES)
+                .collect::<Result<_, _>>()?,
+        })
+    }
 }
 
 #[derive(Arbitrary, Debug, PartialEq, Eq, Clone)]
