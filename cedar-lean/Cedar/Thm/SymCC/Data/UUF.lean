@@ -24,33 +24,6 @@ open Cedar.Thm
 open Cedar.Spec
 open Cedar.SymCC
 
--- TODO: this is technically not correct right now
-theorem ety_toString_inj
-  {ety₁ ety₂ : EntityType}
-  (h : toString ety₁ = toString ety₂) :
-  ety₁ = ety₂
-:= sorry
-
-theorem uuf_attrs_id_inj
-  {ety₁ ety₂} :
-  UUF.attrs_id ety₁ = UUF.attrs_id ety₂ ↔ ety₁ = ety₂
-:= sorry
-
-theorem uuf_ancs_id_inj
-  {ety₁ ety₂ ancTy₁ ancTy₂} :
-  UUF.ancs_id ety₁ ancTy₁ = UUF.ancs_id ety₂ ancTy₂ ↔ ety₁ = ety₂ ∧ ancTy₁ = ancTy₂
-:= sorry
-
-theorem uuf_tag_keys_id_inj
-  {ety₁ ety₂} :
-  UUF.tag_keys_id ety₁ = UUF.tag_keys_id ety₂ ↔ ety₁ = ety₂
-:= sorry
-
-theorem uuf_tag_vals_id_inj
-  {ety₁ ety₂} :
-  UUF.tag_vals_id ety₁ = UUF.tag_vals_id ety₂ ↔ ety₁ = ety₂
-:= sorry
-
 theorem uuf_attrs_ancs_no_confusion
   {ety₁ ety₂ ancTy} :
   UUF.attrs_id ety₁ ≠ UUF.ancs_id ety₂ ancTy

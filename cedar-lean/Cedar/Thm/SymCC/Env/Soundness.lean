@@ -98,8 +98,6 @@ private theorem env_symbolize?_lookup_attrs_udf
     simp [
       Entities.symbolizeAttrs?,
       Entities.symbolizeTags?,
-      uuf_attrs_id_inj,
-      uuf_tag_keys_id_inj,
       uuf_attrs_tag_keys_no_confusion,
       ne_comm.mp uuf_attrs_tag_keys_no_confusion,
       uuf_tag_vals_tag_keys_no_confusion,
@@ -108,7 +106,10 @@ private theorem env_symbolize?_lookup_attrs_udf
       ne_comm.mp uuf_attrs_tag_vals_no_confusion,
     ] at hv
     cases hv with
-    | inl hv => simp [hv.1]
+    | inl hv =>
+      have hv := hv.1.2.1
+      simp only [TermType.ofType, TermType.prim.injEq, TermPrimType.entity.injEq] at hv
+      simp [hv]
     | inr hv =>
       replace hv := hv.2
       simp only [Entities.symbolizeAncs?] at hv
@@ -135,7 +136,6 @@ private theorem env_symbolize?_lookup_tag_keys
     simp [
       Entities.symbolizeAttrs?,
       Entities.symbolizeTags?,
-      uuf_tag_keys_id_inj,
       ne_comm.mp uuf_attrs_tag_keys_no_confusion,
       ne_comm.mp uuf_tag_vals_tag_keys_no_confusion,
     ] at hv
@@ -145,7 +145,9 @@ private theorem env_symbolize?_lookup_tag_keys
       split at hv
       contradiction
       simp only [Option.ite_none_right_eq_some, Option.some.injEq] at hv
-      simp [hv.1]
+      have hv := hv.1.2
+      simp only [TermType.ofType, TermType.prim.injEq, TermPrimType.entity.injEq] at hv
+      simp [hv]
     | inr hv =>
       replace hv := hv.2
       simp only [Entities.symbolizeAncs?] at hv
@@ -177,7 +179,6 @@ private theorem env_symbolize?_lookup_tag_vals
     simp [
       Entities.symbolizeAttrs?,
       Entities.symbolizeTags?,
-      uuf_tag_vals_id_inj,
       ne_comm.mp uuf_attrs_tag_keys_no_confusion,
       ne_comm.mp uuf_attrs_tag_vals_no_confusion,
       uuf_tag_vals_tag_keys_no_confusion,
@@ -223,7 +224,6 @@ private theorem env_symbolize?_lookup_ancs
       Entities.symbolizeAttrs?,
       Entities.symbolizeTags?,
       Entities.symbolizeAncs?,
-      uuf_tag_vals_id_inj,
       ne_comm.mp uuf_attrs_tag_keys_no_confusion,
       ne_comm.mp uuf_attrs_tag_vals_no_confusion,
       ne_comm.mp uuf_attrs_ancs_no_confusion,
@@ -234,8 +234,10 @@ private theorem env_symbolize?_lookup_ancs
     have ⟨_, _, _, _, h, _⟩ := List.findSome?_eq_some_iff.mp hv
     split at h
     · rename_i heq
-      have := uuf_ancs_id_inj.mp heq.1
-      simp [this.1]
+      have heq := heq.2.1
+      simp only [TermType.ofType] at heq
+      simp only [TermType.prim.injEq, TermPrimType.entity.injEq] at heq
+      simp [heq]
     · contradiction
   · simp [
       Entities.symbolizeAttrs?,
@@ -254,7 +256,13 @@ private theorem env_symbolize?_lookup_ancs
         exists_and_left, exists_eq',
         and_true,
       ] at hancTy'_mem
-      simp [uuf_ancs_id_inj.mp hancTy'_mem.1]
+      have heq := hancTy'_mem.2
+      simp only [
+        TermType.ofType, TermType.set.injEq,
+        TermType.prim.injEq,
+        TermPrimType.entity.injEq,
+      ] at heq
+      simp [heq]
     · simp
 
 /--
