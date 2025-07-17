@@ -87,7 +87,7 @@ theorem value_symbolize?_well_typed
       List.Forall₂
         (λ rty_entry sym_attr =>
           rty_entry ∈ rty.toList ∧
-          .some sym_attr = Value.symbolize?.symbolizeAttr? rec rty rty_entry)
+          .some sym_attr = Value.symbolize?.symbolizeAttr? rec rty_entry.1 rty_entry.2)
         (Map.toList rty)
         sym_attrs
     := by
@@ -528,7 +528,7 @@ theorem value?_symbolize?_id
       {attr : Attr × QualifiedType}
       (hmem_attr : attr ∈ rty_map) :
       ∃ sym_attr opt_val_sym_attrs,
-        Value.symbolize?.symbolizeAttr? (Map.mk rec_map) (Map.mk rty_map) attr = some sym_attr ∧
+        Value.symbolize?.symbolizeAttr? (Map.mk rec_map) attr.fst attr.snd = some sym_attr ∧
         Term.value?.attrValue? sym_attr.fst sym_attr.snd = some opt_val_sym_attrs ∧
         opt_val_sym_attrs.fst = attr.fst ∧
         ∀ v, opt_val_sym_attrs.snd = some v ↔ (attr.fst, v) ∈ rec_map
@@ -611,7 +611,7 @@ theorem value?_symbolize?_id
       {sym_attr : Attr × Term}
       {opt_val_sym_attrs : Attr × Option Value}
       (hmem_attr : attr ∈ rty_map)
-      (hattr : Value.symbolize?.symbolizeAttr? (Map.mk rec_map) (Map.mk rty_map) attr = some sym_attr)
+      (hattr : Value.symbolize?.symbolizeAttr? (Map.mk rec_map) attr.fst attr.snd = some sym_attr)
       (hsym_attr : Term.value?.attrValue? sym_attr.fst sym_attr.snd = some opt_val_sym_attrs) :
       opt_val_sym_attrs.fst = attr.fst ∧
       ∀ v, opt_val_sym_attrs.snd = some v ↔ (attr.fst, v) ∈ rec_map
@@ -623,7 +623,7 @@ theorem value?_symbolize?_id
       simp [h₁, h₂, h₃]
     have ⟨sym_attrs, hsym_attrs⟩ :
       ∃ sym_attrs,
-        List.mapM (Value.symbolize?.symbolizeAttr? (Map.mk rec_map) (Map.mk rty_map)) rty_map
+        List.mapM (λ (a, qty) => Value.symbolize?.symbolizeAttr? (Map.mk rec_map) a qty) rty_map
         = .some sym_attrs
     := by
       apply List.all_some_implies_mapM_some
@@ -663,6 +663,7 @@ theorem value?_symbolize?_id
       apply List.mapM_preserves_SortedBy hsorted_rty_map hsym_attrs
       unfold Value.symbolize?.symbolizeAttr?
       intros a b
+      simp only [Option.bind_eq_bind]
       split
       · simp only [Option.some.injEq]
         intros h

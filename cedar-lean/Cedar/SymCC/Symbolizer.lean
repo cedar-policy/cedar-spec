@@ -43,7 +43,7 @@ def Value.symbolize? (v : Value) (ty : CedarType) : Option Term :=
     let elems := ← s.toList.mapM₁ (λ ⟨v, _⟩ => v.symbolize? ty)
     .some (.set (Set.make elems) (TermType.ofType ty))
   | .record rec, .record rty => do
-    let elems := ← rty.toList.mapM (λ x => symbolizeAttr? rec rty x)
+    let elems := ← rty.toList.mapM (λ (a, qty) => symbolizeAttr? rec a qty)
     .some (Term.record (Map.mk elems))
   | .ext e, _ => .some ↑e
   | _, _ => .none
@@ -57,13 +57,13 @@ decreasing_by
     omega
   · simp
 where
-  symbolizeAttr? rec rty x : Option (Attr × Term) :=
-    match _h : rec.find? x.fst with
-    | .none => .some (x.fst, .none (TermType.ofType x.snd.getType))
+  symbolizeAttr? (rec : Map Attr Value) (a : Attr) (qty : QualifiedType) : Option (Attr × Term) :=
+    match _h : rec.find? a with
+    | .none => .some (a, .none (TermType.ofType qty.getType))
     | .some v =>
-      match x.snd with
-      | .optional ty => do .some (x.fst, .some (← v.symbolize? ty))
-      | .required ty => do .some (x.fst, ← v.symbolize? ty)
+      match qty with
+      | .optional ty => do .some (a, .some (← v.symbolize? ty))
+      | .required ty => do .some (a, ← v.symbolize? ty)
   termination_by sizeOf rec
   decreasing_by
     all_goals
