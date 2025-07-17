@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Thm.SymCC.Verifier
+import Cedar.Thm.SymCC.Env.Soundness
 
 /-!
 This file proves the soundness and completeness of the verification queries in

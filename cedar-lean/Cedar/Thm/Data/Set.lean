@@ -63,6 +63,21 @@ theorem contains_prop_bool_equiv [DecidableEq α] {v : α} {s : Set α} :
   · exact List.mem_of_elem_eq_true h
   · exact List.elem_eq_true_of_mem h
 
+theorem not_contains_prop_bool_equiv [DecidableEq α] {v : α} {s : Set α} :
+  s.contains v = false ↔ v ∉ s
+:= by
+  constructor
+  · intros h hn
+    have := Set.contains_prop_bool_equiv.mpr hn
+    simp [h] at this
+  · intros h
+    cases hn : s.contains v with
+    | true =>
+      have := h (Set.contains_prop_bool_equiv.mp hn)
+      contradiction
+    | false =>
+      rfl
+
 theorem in_list_iff_in_set {α : Type u} (v : α) (s : Set α) :
   v ∈ s.elts ↔ v ∈ s
 := by

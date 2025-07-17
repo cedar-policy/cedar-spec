@@ -162,6 +162,99 @@ theorem ofEnv_action_entity_exists
   apply Map.contains_iff_some_find?.mpr
   simp [ofEnv_preserves_action_entity hwf hmem]
 
+theorem ofSchema_find?_ets
+  {Γ : TypeEnv} {ety : EntityType} {entry : EntitySchemaEntry}
+  (hfind_ety : Γ.ets.find? ety = .some entry) :
+  Map.find? (SymEntities.ofSchema Γ.ets Γ.acts) ety
+  = .some (SymEntityData.ofEntityType ety entry)
+:= by
+  apply Map.find?_implies_make_find?
+  simp only [List.find?_append]
+  simp only [Option.or_eq_some_iff]
+  apply Or.inl
+  simp only [List.find?_map]
+  unfold Function.comp
+  simp only
+  have hfind_ety':
+    List.find? (fun x => x.fst == ety) (Map.toList Γ.ets)
+    = .some (ety, entry)
+  := by
+    simp only [Map.find?] at hfind_ety
+    simp only [Map.toList]
+    split at hfind_ety
+    · rename_i heq
+      simp only [Option.some.injEq] at hfind_ety
+      simp only [hfind_ety] at heq ⊢
+      have := List.find?_some heq
+      simp only [beq_iff_eq] at this
+      simp only [heq, this]
+    · contradiction
+  simp [hfind_ety']
+
+theorem ofSchema_find?_acts
+  {Γ : TypeEnv} {uid : EntityUID} {entry : ActionSchemaEntry}
+  (hwf_Γ : Γ.WellFormed)
+  (hfind_uid : Γ.acts.find? uid = .some entry) :
+  Map.find? (SymEntities.ofSchema Γ.ets Γ.acts) uid.ty
+  = .some (SymEntityData.ofActionType
+    uid.ty
+    (Γ.acts.toList.map λ (act, _) => act.ty).eraseDups
+    Γ.acts)
+:= by
+  have ⟨δ, hfind_δ, hmem_δ⟩ :
+    ∃ δ,
+      Map.find? (SymEntities.ofSchema Γ.ets Γ.acts) uid.ty
+      = .some δ ∧
+      (uid.ty, δ) ∈ List.map
+        (λ actTy =>
+          (actTy,
+            SymEntityData.ofActionType actTy (List.map (λ x => x.fst.ty) (Map.toList Γ.acts)).eraseDups Γ.acts))
+        (List.map (λ x => x.fst.ty) (Map.toList Γ.acts)).eraseDups
+  := by
+    have hnot_find_ets : Map.find? Γ.ets uid.ty = .none := by
+      cases hfind_ets : Map.find? Γ.ets uid.ty with
+      | none => rfl
+      | some =>
+        have := wf_env_disjoint_ets_acts hwf_Γ hfind_ets hfind_uid
+        contradiction
+    apply Map.map_make_append_find_disjoint
+    · simp only [List.find?_map]
+      unfold Function.comp
+      simp only
+      simp only [Map.find?] at hnot_find_ets
+      have :
+        List.find? (fun x => x.fst == uid.ty) (Map.toList Γ.ets) = .none
+      := by
+        cases h : List.find? (fun x => x.fst == uid.ty) (Map.toList Γ.ets) with
+        | none => rfl
+        | some =>
+          simp only [Map.toList] at h
+          simp [h] at hnot_find_ets
+      simp [this]
+    · apply List.find?_isSome.mpr
+      simp only [
+        List.mem_map, beq_iff_eq,
+        Prod.exists, Prod.mk.injEq,
+        exists_and_right,
+        exists_eq_right,
+      ]
+      exists SymEntityData.ofActionType uid.ty
+        (List.map (fun x => x.fst.ty) (Map.toList Γ.acts)).eraseDups
+        Γ.acts
+      exists uid.ty
+      simp only [and_self, and_true]
+      apply List.mem_implies_mem_eraseDups
+      apply List.mem_map.mpr
+      exists (uid, entry)
+      simp only [and_true]
+      have := wf_env_implies_wf_acts_map hwf_Γ
+      exact (Map.in_list_iff_find?_some this).mpr hfind_uid
+  simp only [hfind_δ, Option.some.injEq]
+  have ⟨_, _, h⟩ := List.mem_map.mp hmem_δ
+  simp only [Prod.mk.injEq] at h
+  simp only [h.1, true_and] at h
+  simp [h]
+
 theorem ofEnv_wf_entity
   {Γ : TypeEnv} {ety : EntityType}
   (hwf : Γ.WellFormed)
@@ -1033,6 +1126,42 @@ theorem entity_uid_wf_implies_sym_entities_is_valid_entity_uid
       apply (Map.in_list_iff_find?_some ?_).mpr hfind
       exact wf_env_implies_wf_acts_map hwf
     · contradiction
+
+theorem env_valid_uid_implies_sym_env_valid_uid
+  {Γ : TypeEnv} {env : Env} {uid : EntityUID}
+  (hinst : InstanceOfWellFormedEnvironment env.request env.entities Γ)
+  (hcont_uid : Map.contains env.entities uid = true) :
+  (SymEnv.ofEnv Γ).entities.isValidEntityUID uid = true
+:= by
+  have ⟨hwf_Γ, _, ⟨hinst_entities, _⟩⟩ := hinst
+  simp only [SymEnv.ofEnv, SymEntities.ofSchema]
+  simp only [Map.contains, Option.isSome] at hcont_uid
+  split at hcont_uid
+  · rename_i data hfind_data
+    apply entity_uid_wf_implies_sym_entities_is_valid_entity_uid hwf_Γ
+    have := hinst_entities uid data hfind_data
+    cases this with
+    | inl hinst_data =>
+      have ⟨entry, hfind_entry, hvalid_uid, _⟩ := hinst_data
+      simp only [
+        EntityUID.WellFormed,
+        EntitySchemaEntry.isValidEntityEID,
+        EntitySchema.isValidEntityUID,
+        hfind_entry,
+      ]
+      apply Or.inl
+      cases entry with
+      | standard => rfl
+      | enum eids =>
+        simp only [Set.contains, List.elem_eq_contains, List.contains_eq_mem, decide_eq_true_eq]
+        simp only [IsValidEntityEID] at hvalid_uid
+        exact hvalid_uid
+    | inr hinst_data =>
+      have ⟨_, _, ⟨_, hfind_acts, _⟩⟩ := hinst_data
+      simp only [EntityUID.WellFormed]
+      apply Or.inr
+      simp only [ActionSchema.contains, Map.contains, hfind_acts, Option.isSome]
+  · contradiction
 
 /--
 Given a well-formed environment and a well-typed expression in that environment,
