@@ -1629,7 +1629,7 @@ theorem mapM_preserves_SortedBy
           · assumption
         · exact hrst'
 
-theorem map_id_eq
+theorem map_restricted_id
   {l : List α}
   {f : α → α}
   (hf : ∀ x ∈ l, f x = x) :
