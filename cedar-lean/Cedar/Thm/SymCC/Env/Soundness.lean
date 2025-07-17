@@ -1188,23 +1188,30 @@ private theorem default_lit_wf'
   {Γ : TypeEnv} {ty : TermType}
   (hwf_Γ : Γ.WellFormed)
   (hwf_ty : ty.WellFormed (SymEnv.ofEnv Γ).entities) :
-  (defaultLit' Γ ty).WellFormed (SymEnv.ofEnv Γ).entities
+  (defaultLitWithDefaultEid Γ ty).WellFormed (SymEnv.ofEnv Γ).entities
 := by
   apply default_lit_wf hwf_ty
   intros ety hety
   simp only [SymEntities.isValidEntityType, Map.contains, Option.isSome] at hety
   split at hety
   · rename_i δ hfind_δ
-    simp only [SymEntities.isValidEntityUID, hfind_δ, defaultEidOf]
+    simp only [SymEntities.isValidEntityUID, hfind_δ, defaultEidOf, Decoder.eidOfForEntities]
     split
     · rename_i eids hmembers
-      simp only [hmembers]
+      -- simp only [hmembers]
       split
+      · rename_i eid _ _ hhead
+        simp only [Option.some.injEq] at hhead
+        simp only [hhead, Option.some.injEq] at hmembers
+        simp [←hmembers, Set.contains, Set.elts, hhead]
       · rename_i hempty_eids
         replace hempty_eids : eids = (Set.mk []) := by
           cases eids with | mk eids' =>
-          simp only [Set.toList, Set.elts] at hempty_eids
-          simp [hempty_eids]
+          cases eids' with
+          | nil => rfl
+          | cons eid rst =>
+            have := hempty_eids δ.attrs δ.ancestors eid rst δ.tags
+            simp [←hmembers] at this
         -- `eids` should not be empty
         simp only [SymEnv.ofEnv, SymEntities.ofSchema] at hfind_δ
         have := Map.make_mem_list_mem (Map.find?_mem_toList hfind_δ)
@@ -1257,9 +1264,6 @@ private theorem default_lit_wf'
           have := List.filterMap_empty_iff_all_none.mp hemp act hmem_act
           simp only [hact_ty, ↓reduceIte] at this
           contradiction
-      · rename_i eid _ hhead
-        simp only [Set.toList] at hhead
-        simp [Set.contains, hhead]
     · rfl
   · contradiction
 
@@ -1745,7 +1749,7 @@ theorem env_symbolize?_wf
   · intros uuf hwf_uuf
     exact env_symbolize?_wf_funs hwf_env hinst hwf_uuf
   · intros t ht
-    simp only [Env.symbolize?, defaultLit']
+    simp only [Env.symbolize?, defaultLitWithDefaultEid]
     constructor
     · constructor
       · exact default_lit_wf' hwf_Γ (wfp_term_implies_wf_ty ht)

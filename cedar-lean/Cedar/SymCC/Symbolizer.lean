@@ -29,11 +29,10 @@ namespace Cedar.Spec
 
 open Data Spec SymCC Validation
 
-def Prim.symbolize (p : Prim) : Term :=
-  match p with
-  | .bool b => .prim (.bool b)
-  | .int i => .prim (.bitvec i.toBitVec)
-  | .string s => .prim (.string s)
+def Prim.symbolize : Prim → Term
+  | .bool b         => .prim (.bool b)
+  | .int i          => .prim (.bitvec i.toBitVec)
+  | .string s       => .prim (.string s)
   | .entityUID euid => .prim (.entity euid)
 
 /-- Encodes a `Value` as a `Term` assuming it is of a certain type -/
@@ -91,16 +90,9 @@ def Request.symbolize? (req : Request) (Γ : TypeEnv) (var : TermVar) : Option T
 
 def defaultEidOf (Γ : TypeEnv) (ety : EntityType) : String :=
   -- TODO: Improve performance by looking up in `Γ` directly
-  match (SymEnv.ofEnv Γ).entities.find? ety with
-  | .some d =>
-    if let .some eids := d.members then
-      match eids.toList with
-      | [] => ""
-      | eid :: _ => eid
-    else ""
-  | .none => ""
+  Decoder.eidOfForEntities (SymEnv.ofEnv Γ).entities ety
 
-def defaultLit' (Γ : TypeEnv) (ty : TermType) : Term :=
+def defaultLitWithDefaultEid (Γ : TypeEnv) (ty : TermType) : Term :=
   Decoder.defaultLit (defaultEidOf Γ) ty
 
 /--
@@ -130,7 +122,7 @@ where
           .some (↑euid, ← Value.symbolize? data.attrs outTy)
         else
           .none),
-      default := defaultLit' Γ (TermType.ofType outTy),
+      default := defaultLitWithDefaultEid Γ (TermType.ofType outTy),
     }
 
 /--
@@ -165,7 +157,7 @@ where
         .some (↑euid, .set (Set.make (data.tags.keys.toList.map λ k => .prim (.string k))) .string)
       else
         .none),
-    default := defaultLit' Γ (TermType.ofType (.set .string)),
+    default := defaultLitWithDefaultEid Γ (TermType.ofType (.set .string)),
   }
   valsUDF tagTy := {
     arg := TermType.tagFor ety,
@@ -184,7 +176,7 @@ where
           )
       else
         .none).flatten,
-    default := defaultLit' Γ (TermType.ofType tagTy),
+    default := defaultLitWithDefaultEid Γ (TermType.ofType tagTy),
   }
 
 /--
@@ -219,7 +211,7 @@ where
           (.entity ancTy))
     else
       .none),
-    default := defaultLit' Γ (TermType.ofType (.set (.entity ancTy))),
+    default := defaultLitWithDefaultEid Γ (TermType.ofType (.set (.entity ancTy))),
   }
 
 /--
@@ -241,12 +233,12 @@ def Env.symbolize? (env : Env) (Γ : TypeEnv) : Interpretation :=
     vars := λ var =>
       match Request.symbolize? env.request Γ var with
       | .some term => term
-      | .none => defaultLit' Γ var.ty,
+      | .none => defaultLitWithDefaultEid Γ var.ty,
     funs := λ uuf =>
       match Entities.symbolize? env.entities Γ uuf with
       | .some udf => udf
       | .none => Decoder.defaultUDF (defaultEidOf Γ) uuf,
-    partials := λ t => defaultLit' Γ t.typeOf,
+    partials := λ t => defaultLitWithDefaultEid Γ t.typeOf,
   }
 
 end Cedar.Spec
