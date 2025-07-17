@@ -1629,7 +1629,7 @@ theorem mapM_preserves_SortedBy
           · assumption
         · exact hrst'
 
-theorem list_map_id_eq
+theorem map_id_eq
   {l : List α}
   {f : α → α}
   (hf : ∀ x ∈ l, f x = x) :
@@ -1647,7 +1647,7 @@ theorem list_map_id_eq
       apply hf
       simp [hmem_x]
 
-theorem list_findSome?_unique
+theorem findSome?_unique
   [BEq α] [LawfulBEq α]
   {l : List α} {x : α} {y : β}
   {f : α → Option β}
@@ -1737,7 +1737,7 @@ theorem find?_stronger_pred
       simp only [this, Option.some.injEq] at hfind
       exact hfind
 
-theorem list_mem_implies_find?
+theorem mem_implies_find?
   {l : List α} {k : α} {f : α → Bool}
   (hmem : k ∈ l)
   (hk : f k)

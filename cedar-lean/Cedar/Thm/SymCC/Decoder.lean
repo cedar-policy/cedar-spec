@@ -162,7 +162,7 @@ theorem default_lit_well_typed
     simp only [List.map_map]
     unfold Function.comp
     simp only
-    apply List.list_map_id_eq
+    apply List.map_id_eq
     intros x hmem_x
     cases x with | mk a b =>
     simp only [Prod.mk.injEq, true_and]

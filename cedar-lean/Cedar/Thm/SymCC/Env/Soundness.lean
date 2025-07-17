@@ -248,7 +248,7 @@ private theorem env_symbolize?_lookup_ancs
       ne_comm.mp uuf_tag_keys_ancs_no_confusion,
       ne_comm.mp uuf_tag_vals_ancs_no_confusion,
     ]
-    apply List.list_findSome?_unique hfind_ancTy
+    apply List.findSome?_unique hfind_ancTy
     · intros ancTy' hancTy'_mem
       simp only [
         Option.ite_none_right_eq_some,
@@ -778,7 +778,7 @@ private theorem env_symbolize?_same_entity_data_standard
       unfold Function.comp
       simp only
       have : List.find? (λ x => x == anc.ty) entry.ancestors.toList = .some anc.ty
-      := by apply List.list_mem_implies_find? hfind_ancTy <;> simp
+      := by apply List.mem_implies_find? hfind_ancTy <;> simp
       simp only [this, Option.map]
     · simp only [
         SymEntityData.ofStandardEntityType.ancsUUF,
