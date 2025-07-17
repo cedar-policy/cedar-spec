@@ -86,7 +86,7 @@ private theorem env_symbolize?_lookup_attrs_udf
   {ety : EntityType} {entry : StandardSchemaEntry}
   (hfind : Γ.ets.find? ety = .some (.standard entry)) :
   (env.symbolize? Γ).funs {
-    id  := UUF.attrs_id ety,
+    id  := UUF.attrsId ety,
     arg := TermType.ofType (.entity ety),
     out := TermType.ofType (.record entry.attrs),
   } = Entities.symbolizeAttrs?.udf env.entities Γ ety (EntitySchemaEntry.standard entry)
@@ -124,7 +124,7 @@ private theorem env_symbolize?_lookup_tag_keys
   (hfind : Γ.ets.find? ety = .some (.standard entry))
   (htags : entry.tags = .some tagTy) :
   (env.symbolize? Γ).funs {
-    id := UUF.tag_keys_id ety,
+    id := UUF.tagKeysId ety,
     arg := TermType.ofType (CedarType.entity ety),
     out := TermType.ofType CedarType.string.set,
   } = Entities.symbolizeTags?.keysUDF env.entities Γ ety
@@ -167,7 +167,7 @@ private theorem env_symbolize?_lookup_tag_vals
   (hfind : Γ.ets.find? ety = .some (.standard entry))
   (hfind_tagTy : entry.tags = .some tagTy) :
   (env.symbolize? Γ).funs {
-    id := UUF.tag_vals_id ety,
+    id := UUF.tagValsId ety,
     arg := TermType.tagFor ety,
     out := TermType.ofType tagTy
   } = Entities.symbolizeTags?.valsUDF env.entities Γ ety tagTy
@@ -211,7 +211,7 @@ private theorem env_symbolize?_lookup_ancs
   (hfind : Γ.ets.find? ety = .some (.standard entry))
   (hfind_ancTy : ancTy ∈ entry.ancestors) :
   (env.symbolize? Γ).funs {
-    id := UUF.ancs_id ety ancTy,
+    id := UUF.ancsId ety ancTy,
     arg := TermType.ofType (CedarType.entity ety),
     out := TermType.ofType (CedarType.entity ancTy).set,
   } = Entities.symbolizeAncs?.udf env.entities Γ ety ancTy

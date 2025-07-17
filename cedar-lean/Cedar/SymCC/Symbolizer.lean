@@ -111,7 +111,7 @@ def Entities.symbolizeAttrs?
   (ety : EntityType) (entry : EntitySchemaEntry)
   (uuf : UUF) : Option UDF :=
   if uuf == {
-    id := UUF.attrs_id ety,
+    id := UUF.attrsId ety,
     arg := TermType.ofType (.entity ety),
     out := TermType.ofType (.record entry.attrs)
   } then
@@ -142,13 +142,13 @@ def Entities.symbolizeTags?
   (uuf : UUF) : Option UDF := do
   let tagTy := ← entry.tags?
   if uuf == {
-    id := UUF.tag_keys_id ety,
+    id := UUF.tagKeysId ety,
     arg := TermType.ofType (.entity ety),
     out := TermType.ofType (.set .string),
   } then
     .some keysUDF
   else if uuf == {
-    id := UUF.tag_vals_id ety,
+    id := UUF.tagValsId ety,
     arg := TermType.tagFor ety,
     out := TermType.ofType tagTy,
   } then
@@ -196,7 +196,7 @@ def Entities.symbolizeAncs?
   (uuf : UUF) : Option UDF :=
   entry.ancestors.toList.findSome? λ ancTy =>
     if uuf == {
-      id := UUF.ancs_id ety ancTy,
+      id := UUF.ancsId ety ancTy,
       arg := TermType.ofType (.entity ety),
       out := TermType.ofType (.set (.entity ancTy)),
     } then
