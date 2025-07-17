@@ -1184,7 +1184,7 @@ private theorem env_symbolize?_same_entities
   | inr hinst_data =>
     exact env_symbolize?_same_entities_action hinst hinst_data
 
-private theorem default_lit_wf'
+private theorem defaultLitWithDefaultEid_wf
   {Γ : TypeEnv} {ty : TermType}
   (hwf_Γ : Γ.WellFormed)
   (hwf_ty : ty.WellFormed (SymEnv.ofEnv Γ).entities) :
@@ -1329,7 +1329,7 @@ private theorem env_symbolize?_wf_vars
             | exact hinst_resource
             | exact hinst_context
         contradiction
-      · exact default_lit_wf' hwf_Γ hwf_var
+      · exact defaultLitWithDefaultEid_wf hwf_Γ hwf_var
     · split
       · repeat
           rename_i heq
@@ -1367,7 +1367,7 @@ private theorem default_udf_wf
   simp only [Decoder.defaultUDF]
   and_intros
   · simp only
-    exact default_lit_wf' hwf_Γ hwf_uuf.2
+    exact defaultLitWithDefaultEid_wf hwf_Γ hwf_uuf.2
   · simp only
     exact default_lit_is_lit
   · simp only
@@ -1403,7 +1403,7 @@ private theorem env_symbolize?_attrs_wf
     simp [EntitySchema.attrs?, hfind_entry]
   and_intros
   · simp only
-    apply default_lit_wf' hwf_Γ
+    apply defaultLitWithDefaultEid_wf hwf_Γ
     apply ofType_wf hwf_Γ
     exact wf_env_implies_wf_attrs hwf_Γ hfind_attrs
   · simp only
@@ -1485,7 +1485,7 @@ private theorem env_symbolize?_tags_wf
       ]
       and_intros
       · simp only
-        apply default_lit_wf' hwf_Γ
+        apply defaultLitWithDefaultEid_wf hwf_Γ
         apply ofType_wf hwf_Γ
         repeat constructor
       · simp only
@@ -1546,7 +1546,7 @@ private theorem env_symbolize?_tags_wf
       ]
       and_intros
       · simp only
-        apply default_lit_wf' hwf_Γ
+        apply defaultLitWithDefaultEid_wf hwf_Γ
         apply ofType_wf hwf_Γ
         apply wf_env_implies_wf_tag_type hwf_Γ htagTy'
       · simp only
@@ -1649,7 +1649,7 @@ private theorem env_symbolize?_ancs_wf
   simp only [←hudf, Entities.symbolizeAncs?.udf]
   and_intros
   · simp only
-    apply default_lit_wf' hwf_Γ
+    apply defaultLitWithDefaultEid_wf hwf_Γ
     apply ofType_wf hwf_Γ
     constructor
     constructor
@@ -1752,7 +1752,7 @@ theorem env_symbolize?_wf
     simp only [Env.symbolize?, defaultLitWithDefaultEid]
     constructor
     · constructor
-      · exact default_lit_wf' hwf_Γ (wfp_term_implies_wf_ty ht)
+      · exact defaultLitWithDefaultEid_wf hwf_Γ (wfp_term_implies_wf_ty ht)
       · exact default_lit_is_lit
     · exact default_lit_well_typed
 
