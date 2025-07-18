@@ -142,9 +142,9 @@ theorem partial_evaluate_is_sound_lit
 {pes : PartialEntities}
 {ty : CedarType} :
   Except.toOption (Spec.evaluate (TypedExpr.lit p ty).toExpr req es) =
-  Except.toOption ((TPE.evaluate (TypedExpr.lit p ty) preq pes).evaluate req es)
+  Except.toOption ((TPE.evaluate (TypedExpr.toResidual (TypedExpr.lit p ty)) preq pes).evaluate req es)
 := by
-  simp [TypedExpr.toExpr, Spec.evaluate, TPE.evaluate, Residual.evaluate]
+  simp [TypedExpr.toExpr, Spec.evaluate, TPE.evaluate, TypedExpr.toResidual, Residual.evaluate]
 
 theorem partial_evaluate_is_sound_var
 {req : Request}
@@ -155,9 +155,9 @@ theorem partial_evaluate_is_sound_var
 {ty : CedarType}
 (h₄ : RequestAndEntitiesRefine req es preq pes) :
   Except.toOption (Spec.evaluate (TypedExpr.var v ty).toExpr req es) =
-  Except.toOption ((TPE.evaluate (TypedExpr.var v ty) preq pes).evaluate req es)
+  Except.toOption ((TPE.evaluate (TypedExpr.toResidual (TypedExpr.var v ty)) preq pes).evaluate req es)
 := by
-  simp [TPE.evaluate, varₚ, TypedExpr.toExpr]
+  simp [TPE.evaluate, varₚ, TypedExpr.toExpr, TypedExpr.toResidual]
   split <;>
   simp [Spec.evaluate, varₚ.varₒ, someOrSelf]
   case _ =>
