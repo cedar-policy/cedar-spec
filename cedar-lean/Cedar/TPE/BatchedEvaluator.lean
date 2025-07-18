@@ -114,16 +114,16 @@ def batchedEvalLoop
   (loader : EntityLoader)
   (store : Entities)
   : Result Value :=
-  let to_load := (TypedExpr.allLiteralUIDs expr).filter (λ uid => (store.find? uid).isNone)
-  let new_entities := loader to_load
-  let new_store := new_entities.kvs.foldl (λ acc ed => acc.insert ed.1 ed.2) store
+  let toLoad := (TypedExpr.allLiteralUIDs expr).filter (λ uid => (store.find? uid).isNone)
+  let newEntities := loader toLoad
+  let newStore := newEntities.kvs.foldl (λ acc ed => acc.insert ed.1 ed.2) store
 
   do
-    let new_res := Cedar.TPE.evaluate expr (Request.asPartialRequest req) (Entities.asPartial new_store)
-    let new_expr_res ← new_res.asTypedExpr
-    if TypedExpr.size new_expr_res < TypedExpr.size expr
-    then batchedEvalLoop new_expr_res req loader new_store
-    else Cedar.Spec.evaluate expr.toExpr req new_store
+    let newRes := Cedar.TPE.evaluate expr (Request.asPartialRequest req) (Entities.asPartial newStore)
+    let newExprRes ← newRes.asTypedExpr
+    if TypedExpr.size newExprRes < TypedExpr.size expr
+    then batchedEvalLoop newExprRes req loader newStore
+    else Cedar.Spec.evaluate expr.toExpr req newStore
 
 termination_by TypedExpr.size expr
 decreasing_by
@@ -141,13 +141,13 @@ def batchedEvaluate
   (req : Request)
   (loader : EntityLoader)
   : Result Value :=
-  let empty_store : Entities := Map.mk []
+  let emptyStore : Entities := Map.mk []
   -- an initial partial evaluation, removing all variables
-  let residual := Cedar.TPE.evaluate x (Request.asPartialRequest req) (Entities.asPartial empty_store)
+  let residual := Cedar.TPE.evaluate x (Request.asPartialRequest req) (Entities.asPartial emptyStore)
   -- start the batched evaluation loop
   do
-    let new_expr ← residual.asTypedExpr
-    batchedEvalLoop new_expr req loader empty_store
+    let newExpr ← residual.asTypedExpr
+    batchedEvalLoop newExpr req loader emptyStore
 
 def entityLoaderFor : (e: Entities) -> EntityLoader :=
   fun e =>
