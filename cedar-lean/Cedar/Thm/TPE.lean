@@ -38,16 +38,16 @@ expression, provided that requests and entities are consistent. The equivalency
 is defined using `Except.toOption`.
 -/
 theorem partial_evaluate_is_sound
-  {x : TypedExpr}
+  {x : Residual}
   {req : Request}
   {es : Entities}
   {preq : PartialRequest}
   {pes : PartialEntities}
   {env : TypeEnv} :
-  TypedExpr.WellTyped env x →
+  Residual.WellTyped env x →
   InstanceOfWellFormedEnvironment req es env →
   RequestAndEntitiesRefine req es preq pes →
-  (Spec.evaluate x.toExpr req es).toOption = (Residual.evaluate (Cedar.TPE.evaluate x preq pes) req es).toOption
+  (x.evaluate req es).toOption = ((Cedar.TPE.evaluate x preq pes).evaluate req es).toOption
 := by
   intro h₁ h₂ h₃
   induction h₁
