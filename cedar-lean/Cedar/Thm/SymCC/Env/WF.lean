@@ -666,4 +666,16 @@ theorem wf_εnv_implies_attrs_wf
     simp only [hattrs_exists] at h1 h2 h3
     simp [h1, h2, h3]
 
+theorem wfp_term_implies_wf_ty {εs : SymEntities} {t : Term}
+  (h : Term.WellFormedPartialApp εs t) :
+  t.typeOf.WellFormed εs
+:= by
+  cases h with
+  | none_wfp h =>
+    simp only [Term.typeOf]
+    exact h
+  | _ =>
+    simp only [Term.typeOf]
+    repeat constructor
+
 end Cedar.Thm

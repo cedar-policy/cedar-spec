@@ -505,6 +505,13 @@ private theorem concretize?_εs_wf {uids : Set EntityUID} {es : Entities} {εs :
 := by
   intro hw hs
   simp only [Entities.WellFormed]
+  constructor
+  simp only [SymEntities.concretize?, bind, Option.bind] at hs
+  split at hs
+  contradiction
+  simp only [Option.some.injEq] at hs
+  simp only [←hs]
+  exact Map.make_wf _
   intro uid d hf
   have ⟨δ, hf', hs'⟩ := concretize?_εs_some_implies_δ hs hf
   simp only [EntityData.WellFormed]

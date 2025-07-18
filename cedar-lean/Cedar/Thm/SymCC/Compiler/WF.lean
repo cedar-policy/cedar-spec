@@ -991,7 +991,7 @@ private theorem evaluate_getAttr_wf {x : Expr} {a : Attr} {env : Env} {v : Value
     split at hd <;> simp only [Except.ok.injEq, reduceCtorEq] at hd
     subst hd
     rename_i d hd
-    exact (hwf.left.right uid d hd).left
+    exact (hwf.left.right.right uid d hd).left
   case h_3 =>
     simp only [Except.bind_err, reduceCtorEq] at hok
 
@@ -1056,7 +1056,7 @@ private theorem evaluate_binaryApp_wf {op : BinaryOp} {x₁ x₂ : Expr} {env : 
     simp only [Except.ok.injEq] at heq
     subst heq
     rw [Map.findOrErr_ok_iff_find?_some] at hd
-    specialize hwf uid d hd
+    replace hwf := hwf.2 uid d hd
     exact hwf.right.right.right.right tag v hok
 
 private theorem evaluate_call_wf {xfn : ExtFun} {xs : List Expr} {env : Env} {v : Value}

@@ -393,6 +393,20 @@ theorem find?_none_all_absent [LT α] [DecidableLT α] [StrictLT α] [DecidableE
   specialize hf (k, v) hc
   simp only [not_true_eq_false] at hf
 
+theorem in_list_implies_contains {α β}
+  [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α]
+  {m : Map α β} {k : α} {v : β} :
+  (k, v) ∈ m.kvs → m.contains k
+:= by
+  intros h
+  cases hfind : m.find? k with
+  | none =>
+    have := find?_none_all_absent hfind v h
+    contradiction
+  | some =>
+    apply contains_iff_some_find?.mpr
+    simp [hfind]
+
 theorem all_absent_find?_none [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {k : α} :
   (∀ v, (k, v) ∉ m.kvs) → m.find? k = none
 := by
@@ -1172,5 +1186,141 @@ theorem map_make_append_find_disjoint
     specialize this (k, v) hmem₁
     simp at this
   | inr h => exact h
+
+theorem make_map_values_find
+  [DecidableEq α] [LT α] [DecidableLT α]
+  [Cedar.Data.StrictLT α]
+  {l : List α}
+  {f : α → β}
+  {k : α}
+  (hfind : k ∈ l) :
+  (Map.make (l.map (λ x => (x, f x)))).find? k =
+  .some (f k)
+:= by
+  apply Map.find?_implies_make_find?
+  simp only [List.find?_map, Option.map_eq_some_iff, Prod.mk.injEq]
+  unfold Function.comp
+  simp only
+  induction l with
+  | nil => contradiction
+  | cons x xs ih =>
+    simp only [List.mem_cons] at hfind
+    cases hfind with
+    | inl hfind =>
+      exists x
+      simp [hfind]
+    | inr hfind =>
+      simp only [List.find?]
+      split
+      · rename_i heq
+        simp only [beq_iff_eq] at heq
+        exists x
+        simp [heq]
+      · exact ih hfind
+
+theorem map_toList_findSome?
+  [BEq α] [LawfulBEq α]
+  {m : Map α β} {k : α} {v : β} {v' : γ}
+  {f : α × β → Option γ}
+  (hfind : Map.find? m k = .some v)
+  (hf : ∀ kv, (∃ v', f kv = .some v') → kv.1 = k)
+  (hkv : f (k, v) = .some v') :
+  m.toList.findSome? f = .some v'
+:= by
+  cases m with | mk m =>
+  simp only [Map.toList, Map.kvs, Map.find?] at hfind ⊢
+  split at hfind
+  · rename_i heq
+    simp only [Option.some.injEq] at hfind
+    simp [hfind] at heq
+    induction m with
+    | nil => contradiction
+    | cons hd tl ih =>
+      simp only [List.findSome?]
+      simp only [List.find?] at heq
+      split
+      · rename_i fhd heq'
+        split at heq
+        · rename_i heq''
+          simp only [Option.some.injEq] at heq
+          simp only [beq_iff_eq, heq] at heq''
+          simp only [heq''] at heq
+          simp only [heq] at heq'
+          simp only [heq'] at hkv
+          simp [hkv]
+        · rename_i heq''
+          simp only [beq_eq_false_iff_ne, ne_eq] at heq''
+          apply False.elim
+          apply heq''
+          apply hf
+          exists fhd
+      · split at heq
+        · rename_i h₁ _ h₂
+          simp only [beq_iff_eq] at h₂
+          simp only [Option.some.injEq] at heq
+          simp only [heq] at h₂
+          simp only [h₂] at heq
+          simp only [heq] at h₁
+          simp only [hkv] at h₁
+          contradiction
+        · exact ih heq
+  · contradiction
+
+theorem map_find?_to_list_find?
+  [BEq α] [LawfulBEq α]
+  {m : Map α β} {k : α} {v : β}
+  (hfind : Map.find? m k = .some v) :
+  List.find? (λ x => x.fst == k) (Map.toList m) = .some (k, v)
+:= by
+  simp only [Map.find?] at hfind
+  split at hfind
+  · rename_i heq
+    simp only [Option.some.injEq] at hfind
+    simp only [Map.toList, heq, hfind]
+    have := List.find?_some heq
+    simp only [beq_iff_eq] at this
+    simp [this]
+  · contradiction
+
+theorem map_find?_implies_find?_weaker_pred
+  [BEq α] [LawfulBEq α] [BEq β] [LawfulBEq β]
+  {m : Map α β} {k : α} {v : β} {f : α × β → Bool}
+  (hfind : Map.find? m k = .some v)
+  (hf : ∀ kv, f kv → kv.1 = k)
+  (hkv : f (k, v)) :
+  List.find? f (Map.toList m) = .some (k, v)
+:= by
+  replace hfind := map_find?_to_list_find? hfind
+  cases m with | mk m =>
+  simp only [Map.toList, Map.kvs] at hfind ⊢
+  induction m with
+  | nil => contradiction
+  | cons hd tl ih =>
+    simp only [List.find?]
+    split
+    · rename_i heq
+      have := hf hd heq
+      simp only [List.find?, this, BEq.rfl, Option.some.injEq] at hfind
+      simp [hfind]
+    · rename_i heq
+      apply ih
+      simp only [List.find?] at hfind
+      split at hfind
+      · simp only [Option.some.injEq] at hfind
+        simp only [←hfind] at hkv
+        simp [hkv] at heq
+      · exact hfind
+
+theorem map_keys_empty_implies_map_empty
+  {m : Map α β}
+  (h : m.keys.toList = []) :
+  m = (Map.mk [])
+:= by
+  cases m with | mk m =>
+  cases m with
+  | nil => rfl
+  | cons hd tl =>
+    simp only [Map.keys, Map.kvs, List.map, Set.toList, Set.elts] at h
+    contradiction
 
 end Cedar.Data.Map

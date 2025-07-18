@@ -344,6 +344,59 @@ theorem forall₂_swap
     assumption
     assumption
 
+/--
+Applying `mapM` on the RHS list of `Forall₂`
+leads to new `Forall₂` relation if certain
+conditions are met.
+-/
+theorem forall₂_compose_mapM_right
+  {l₁ : List α} {l₂ : List β} {l₃ : List γ}
+  {R₁ : α → β → Prop}
+  {R₂ : α → γ → Prop}
+  {f : β → Option γ}
+  (h : List.Forall₂ R₁ l₁ l₂)
+  (hmapM : List.mapM f l₂ = .some l₃)
+  (hf : ∀ a b, R₁ a b → ∃ c, f b = .some c ∧ R₂ a c) :
+  List.Forall₂ R₂ l₁ l₃
+:= by
+  induction h generalizing l₃ with
+  | nil =>
+    simp at hmapM
+    simp [hmapM]
+  | cons hhd htl ih =>
+    rename_i hd₁ hd₂ tl₁ tl₂
+    have ⟨c, hc, hrc⟩ := hf hd₁ hd₂ hhd
+    simp only [
+      List.mapM_cons, hc, Option.pure_def,
+      Option.bind_eq_bind,
+      Option.bind_some_fun,
+    ] at hmapM
+    simp only [bind, Option.bind] at hmapM
+    split at hmapM
+    contradiction
+    rename_i mapM_tl hmapM_tl
+    simp only [Option.some.injEq] at hmapM
+    simp only [←hmapM]
+    constructor
+    · exact hrc
+    · specialize ih hmapM_tl
+      exact ih
+
+theorem forall₂_eq_implies_filterMap
+  {l₁ : List α} {l₂ : List β} {p : α → β → Prop}
+  {f : α → Option β}
+  (h : List.Forall₂ p l₁ l₂)
+  (hp : ∀ a b, p a b → f a = .some b) :
+  l₁.filterMap f = l₂
+:= by
+  induction h with
+  | nil => simp
+  | cons hhd htl ih =>
+    rename_i hd₁ hd₂ tl₁ tl₂
+    simp only [List.filterMap]
+    have := hp hd₁ hd₂ hhd
+    simp only [this, ih]
+
 /-! ### mapM, mapM', mapM₁, and mapM₂ -/
 
 theorem mapM_some {xs : List α} :
@@ -511,6 +564,41 @@ theorem mapM_implies_forall₂
     split at hmapM
     contradiction
     simp only [Except.ok.injEq] at hmapM
+    simp only [← hmapM, forall₂_cons]
+    constructor
+    · apply h
+      simp only [mem_cons, true_or]
+      assumption
+    · apply ih
+      intros
+      apply h
+      simp only [mem_cons, or_true, *]
+      assumption
+      assumption
+
+/--
+Same as `mapM_implies_forall₂` but for `Option`
+-/
+theorem mapM_implies_forall₂_option
+  {f : α → Option β}
+  {p : α → β → Prop}
+  {xs : List α} {ys : List β}
+  (h : ∀ x y, x ∈ xs → f x = .some y → p x y)
+  (hmapM : List.mapM f xs = .some ys) :
+  List.Forall₂ p xs ys
+:= by
+  induction xs generalizing ys
+  case nil =>
+    simp only [mapM, mapM.loop, pure, Option.pure_def, reverse_nil, Option.some.injEq, nil_eq] at hmapM
+    simp [hmapM]
+  case cons xhd xtl ih =>
+    simp only [mapM_cons, bind, Option.bind, pure] at hmapM
+    split at hmapM
+    contradiction
+    simp only at hmapM
+    split at hmapM
+    contradiction
+    simp only [Option.some.injEq] at hmapM
     simp only [← hmapM, forall₂_cons]
     constructor
     · apply h
@@ -1495,5 +1583,184 @@ decreasing_by
       apply List.length_filter_le
     _ < xs.length := by
       simp [*]
+
+theorem mem_iff_mem_eraseDups
+  [BEq α] [LawfulBEq α]
+  {xs : List α} {x : α} :
+  x ∈ xs ↔ x ∈ xs.eraseDups
+:= by
+  constructor
+  · apply mem_implies_mem_eraseDups
+  · apply mem_eraseDups_implies_mem
+
+/-- `mapM` preserves `SortedBy` if the keys are preserved -/
+theorem mapM_preserves_SortedBy
+  [LT γ]
+  {l₁ : List α} {l₂ : List β}
+  {f : α → Option β}
+  {k₁ : α → γ}
+  {k₂ : β → γ}
+  (hsorted : List.SortedBy k₁ l₁)
+  (hmapM : l₁.mapM f = .some l₂)
+  (hkey : ∀ a b, f a = .some b → k₁ a = k₂ b) :
+  List.SortedBy k₂ l₂
+:= by
+  have := List.mapM_some_iff_forall₂.mp hmapM
+  induction this with
+  | nil => constructor
+  | cons hhd hrst ih =>
+    rename_i hd₁ hd₂ tl₁ tl₂
+    have hrst' := List.mapM_some_iff_forall₂.mpr hrst
+    cases tl₂ with
+    | nil => constructor
+    | cons hd₂' tl₂' =>
+      constructor
+      · cases hrst with | cons h =>
+        rename_i hd₁' _ _
+        simp only [
+          ←hkey _ _ hhd,
+          ←hkey _ _ h
+        ]
+        cases hsorted
+        assumption
+      · apply ih
+        · cases hsorted
+          · constructor
+          · assumption
+        · exact hrst'
+
+theorem map_restricted_id
+  {l : List α}
+  {f : α → α}
+  (hf : ∀ x ∈ l, f x = x) :
+  l.map f = l
+:= by
+  induction l with
+  | nil => rfl
+  | cons x xs ih =>
+    simp only [List.map_cons, List.cons.injEq]
+    constructor
+    · apply hf x
+      simp
+    · apply ih
+      intros x hmem_x
+      apply hf
+      simp [hmem_x]
+
+theorem findSome?_unique
+  [BEq α] [LawfulBEq α]
+  {l : List α} {x : α} {y : β}
+  {f : α → Option β}
+  (hfind : x ∈ l)
+  (hf : ∀ x', (∃ y', f x' = .some y') → x' = x)
+  (hx : f x = .some y) :
+  l.findSome? f = .some y
+:= by
+  induction l with
+  | nil => contradiction
+  | cons hd tl ih =>
+    simp only [List.findSome?]
+    simp only [List.mem_cons] at hfind
+    cases hfind with
+    | inl hfind =>
+      simp only [←hfind, hx]
+    | inr hfind =>
+      split
+      · rename_i v' hhd
+        simp only [←hx, ←hhd]
+        congr
+        apply hf
+        exists v'
+      · exact ih hfind
+
+theorem find?_unique_entry
+  {l : List α}
+  {f : α → Bool}
+  {v : α}
+  (hf : ∀ x ∈ l, f x → x = v)
+  (hmem : v ∈ l)
+  (hv : f v) :
+  List.find? f l = .some v
+:= by
+  induction l with
+  | nil => contradiction
+  | cons hd tl ih =>
+    simp only [List.mem_cons] at hmem
+    simp only [List.find?]
+    cases hmem with
+    | inl hmem =>
+      simp only [hmem] at hv
+      simp only [hv, hmem]
+    | inr hmem =>
+      split
+      · rename_i h
+        have := hf hd
+        simp only [List.mem_cons, true_or, forall_const] at this
+        specialize this h
+        simp [this]
+      · apply ih
+        · intros x hmem_x_tl
+          have : x ∈ hd :: tl := by simp [hmem_x_tl]
+          exact hf x this
+        · exact hmem
+
+theorem find?_stronger_pred
+  {l : List α} {v : α}
+  {f : α → Bool}
+  {g : α → Bool}
+  (hfind : List.find? f l = .some v)
+  (hg : ∀ x ∈ l, g x → f x)
+  (hv : g v) :
+  List.find? g l = .some v
+:= by
+  induction l with
+  | nil => contradiction
+  | cons hd tl ih =>
+    simp only [List.find?]
+    cases h : g hd with
+    | false =>
+      simp only [List.find?] at hfind
+      apply ih
+      · split at hfind
+        · simp only [Option.some.injEq] at hfind
+          simp only [hfind, hv] at h
+          contradiction
+        · exact hfind
+      · intros x hmem_x h
+        apply hg
+        · simp [hmem_x]
+        · exact h
+    | true =>
+      simp only [Option.some.injEq]
+      have := hg hd List.mem_cons_self h
+      simp only [List.find?] at hfind
+      simp only [this, Option.some.injEq] at hfind
+      exact hfind
+
+theorem mem_implies_find?
+  {l : List α} {k : α} {f : α → Bool}
+  (hmem : k ∈ l)
+  (hk : f k)
+  (hf : ∀ k', f k' → k' = k) :
+  List.find? f l = .some k
+:= by
+  induction l with
+  | nil => contradiction
+  | cons hd tl ih =>
+    simp only [List.mem_cons] at hmem
+    simp only [List.find?_cons_eq_some, Bool.not_eq_eq_eq_not, Bool.not_true]
+    cases hmem with
+    | inl hmem =>
+      apply Or.inl
+      simp [←hmem, hk]
+    | inr hmem =>
+      cases hhd : f hd with
+      | true =>
+        apply Or.inl
+        simp [hhd, hf hd hhd]
+      | false =>
+        apply Or.inr
+        simp only [true_and]
+        exact ih hmem
 
 end List

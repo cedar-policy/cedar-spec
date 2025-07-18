@@ -117,6 +117,7 @@ def EntityData.WellFormed (es : Entities) (d : EntityData) : Prop :=
   (∀ t v, d.tags.find? t = some v → v.WellFormed es)
 
 def Entities.WellFormed (es : Entities) : Prop :=
+  Map.WellFormed es ∧
   ∀ uid d, es.find? uid = .some d → d.WellFormed es
 
 def Prim.ValidRef (validRef : EntityUID → Prop) : Prim → Prop
