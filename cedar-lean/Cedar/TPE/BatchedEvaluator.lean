@@ -61,41 +61,6 @@ decreasing_by
     omega
 
 
-def List.sum [Add α] [OfNat α 0] (xs : List α) : α :=
-  xs.foldl (· + ·) 0
-
--- A computable size of residuals, not including the size of types
-def TypedExpr.size (r : TypedExpr) : Nat :=
- match r with
-  | .lit _l _ty => 1
-  | .var _v _ty => 1
-  | .ite cond thenExpr elseExpr ty => 1 + TypedExpr.size cond + TypedExpr.size thenExpr + TypedExpr.size elseExpr
-  | .and a b ty => 1 + TypedExpr.size a + TypedExpr.size b
-  | .or a b ty => 1 + TypedExpr.size a + TypedExpr.size b
-  | .unaryApp op expr ty => 1 + TypedExpr.size expr
-  | .binaryApp op a b ty => 1 + TypedExpr.size a + TypedExpr.size b
-  | .getAttr expr attr ty => 1 + TypedExpr.size expr
-  | .hasAttr expr attr ty => 1 + TypedExpr.size expr
-  | .set ls ty => (ls.map₁ (λ ⟨v, _⟩ => TypedExpr.size v)).sum + 1
-  | .record map ty => (map.map₂ (λ ⟨⟨_attr, v⟩, _⟩ => TypedExpr.size v)).sum + 1
-  | .call xfn args ty => (args.map₁ (λ ⟨v, _⟩ => TypedExpr.size v)).sum + 1
-termination_by sizeOf r
-decreasing_by
-  repeat case _ =>
-    simp [*]; try omega
-  . rename_i h
-    let so := List.sizeOf_lt_of_mem h
-    simp
-    omega
-  . rename_i h
-    simp at *
-    omega
-  . rename_i h
-    let so := List.sizeOf_lt_of_mem h
-    simp at *
-    omega
-
-
 /--
 The batched evaluation loop
   1. Asks for any new entities referenced by the residual
@@ -108,7 +73,7 @@ When no progress is made, one of these cases must be true:
   - We have reduced the expression to a value
   - An entity or entity field is missing, so the expression will error
 -/
-def batchedEvalLoop
+partial def batchedEvalLoop
   (expr : TypedExpr)
   (req : Request)
   (loader : EntityLoader)
@@ -116,19 +81,15 @@ def batchedEvalLoop
   : Result Value :=
   let toLoad := (TypedExpr.allLiteralUIDs expr).filter (λ uid => (store.find? uid).isNone)
   let newEntities := loader toLoad
-  let newStore := newEntities.kvs.foldl (λ acc ed => acc.insert ed.1 ed.2) store
-
-  do
+  if newEntities.kvs.length == 0
+  then Cedar.Spec.evaluate expr.toExpr req store
+  else
+    let newStore := newEntities.kvs.foldl (λ acc ed => acc.insert ed.1 ed.2) store
     let newRes := Cedar.TPE.evaluate expr (Request.asPartialRequest req) (Entities.asPartial newStore)
-    let newExprRes ← newRes.asTypedExpr
-    if TypedExpr.size newExprRes < TypedExpr.size expr
-    then batchedEvalLoop newExprRes req loader newStore
-    else Cedar.Spec.evaluate expr.toExpr req newStore
 
-termination_by TypedExpr.size expr
-decreasing_by
-  simp [TypedExpr.size]
-  omega
+    do
+      let newExprRes ← newRes.asTypedExpr
+      batchedEvalLoop newExprRes req loader newStore
 
 
 /--
