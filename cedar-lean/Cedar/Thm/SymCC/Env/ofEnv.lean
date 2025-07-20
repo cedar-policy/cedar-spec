@@ -6,6 +6,7 @@ import Cedar.Thm.SymCC.Env.WF
 import Cedar.Thm.SymCC.Data.LT
 import Cedar.Thm.SymCC.Term.WF
 import Cedar.Thm.SymCC.Term.Lit
+import Cedar.Thm.SymCC.Term.UDF
 import Cedar.Thm.Data.List.Lemmas
 
 /-!
@@ -1248,6 +1249,180 @@ decreasing_by
     have := List.sizeOf_lt_of_mem hmem_x'
     omega
 
+theorem ofEnv_entities_is_acyclic
+  {Γ : TypeEnv}
+  (hwf : Γ.WellFormed) :
+  (SymEnv.ofEnv Γ).entities.Acyclic
+:= by
+  intros uid δ udf hfind_uid_ty hfind_udf_ancs huid_cyclic
+  simp only [SymEnv.ofEnv, SymEntities.ofSchema] at hfind_uid_ty
+  have := Map.find?_mem_toList hfind_uid_ty
+  have := Map.make_mem_list_mem this
+  have := List.mem_append.mp this
+  cases this with
+  | inl hmem_ets =>
+    -- Not possible since all `ancs` maps for `ets` are UUFs
+    have ⟨⟨ety, entry⟩, hmem_ety_entry, hsym_entry⟩ := List.mem_map.mp hmem_ets
+    simp only [Prod.mk.injEq] at hsym_entry
+    simp only [
+      ←hsym_entry.2,
+      SymEntityData.ofEntityType,
+      SymEntityData.ofStandardEntityType,
+      SymEntityData.ofEnumEntityType,
+    ] at hfind_udf_ancs
+    split at hfind_udf_ancs
+    · simp only at hfind_udf_ancs
+      have := Map.find?_mem_toList hfind_udf_ancs
+      have := Map.make_mem_list_mem this
+      have ⟨_, _, h⟩ := List.mem_map.mp this
+      simp [
+        Prod.mk.injEq,
+        SymEntityData.ofStandardEntityType.ancsUUF,
+      ] at h
+    · simp [Map.empty, Map.find?, Map.kvs] at hfind_udf_ancs
+  | inr hmem_acts =>
+    have ⟨ety, hmem_ety, hsym_act⟩ := List.mem_map.mp hmem_acts
+    simp only [Prod.mk.injEq, SymEntityData.ofActionType] at hsym_act
+    simp only [←hsym_act.2] at hfind_udf_ancs
+    have := Map.find?_mem_toList hfind_udf_ancs
+    have := Map.make_mem_list_mem this
+    have ⟨ancTy, hmem_ancTy, hudf⟩ := List.mem_map.mp this
+    have := List.mem_eraseDups_implies_mem hmem_ancTy
+    have ⟨⟨anc, entry⟩, hmem_anc, heq_anc⟩ := List.mem_map.mp this
+    simp only at heq_anc
+    simp only [Prod.mk.injEq] at hudf
+    simp only [←hudf.2] at huid_cyclic
+    -- `uid` may not even be valid, so we need to do case-analysis on that
+    cases hfind_uid : Map.find? Γ.acts uid with
+    | none =>
+      simp only [
+        Factory.app, SymEntityData.ofActionType.ancsUDF,
+        Option.bind_eq_bind,
+        Term.isLiteral, ↓reduceIte,
+      ] at huid_cyclic
+      have :
+        (Map.make
+          (List.filterMap
+            (λ x =>
+              (SymEntityData.ofActionType.termOfType? ety x.fst).bind
+              λ uid' =>
+                some (
+                  uid',
+                  SymEntityData.ofActionType.ancsTerm ancTy x.snd.ancestors.toList,
+                ))
+            (Map.toList Γ.acts))).find?
+        (Term.entity uid)
+        = none
+      := by
+        apply map_make_filterMap_find?_none hfind_uid
+        intros kv hkv
+        simp only [
+          SymEntityData.ofActionType.termOfType?,
+          Option.bind_eq_bind,
+        ] at hkv
+        split at hkv
+        · simp only [
+            Option.bind_some, Option.some.injEq,
+            Prod.mk.injEq, Term.prim.injEq,
+            TermPrim.entity.injEq, exists_and_left,
+            exists_eq', and_true,
+          ] at hkv
+          exact hkv
+        · simp at hkv
+      simp only [this, Set.empty, Term.entityUIDs] at huid_cyclic
+      contradiction
+    | some uid_entry =>
+      have :
+        Factory.app
+          (SymEntityData.ofActionType.ancsUDF ety Γ.acts ancTy)
+          (Term.entity uid)
+        = SymEntityData.ofActionType.ancsTerm uid.ty uid_entry.ancestors.toList
+      := by
+        simp only [SymEntityData.ofActionType.ancsUDF]
+        have hwf_acts := wf_env_implies_wf_acts_map hwf
+        apply app_table_make_filterMap hfind_uid
+        · have : anc.ty = ety := by
+            simp only [hsym_act.1, heq_anc, hudf.1]
+          simp [
+            SymEntityData.ofActionType.termOfType?,
+            ←hsym_act.1, ←heq_anc, this,
+          ]
+        · intros kv hkv
+          simp only [
+            SymEntityData.ofActionType.termOfType?,
+            Option.bind_eq_bind,
+          ] at hkv
+          split at hkv
+          · simp only [
+              Option.bind_some, Option.some.injEq,
+              Prod.mk.injEq, Term.prim.injEq,
+              TermPrim.entity.injEq, exists_and_left,
+              exists_eq', and_true,
+            ] at hkv
+            exact hkv
+          · simp at hkv
+        · simp only [Term.isLiteral]
+      simp only [
+        this,
+        SymEntityData.ofActionType.ancsTerm,
+        Factory.setOf,
+      ] at huid_cyclic
+      unfold Term.entityUIDs at huid_cyclic
+      have ⟨s, hmem_s, hmem_uid⟩ := (Set.mem_mapUnion_iff_mem_exists uid).mp huid_cyclic
+      replace ⟨s, hmem_s⟩ := s
+      have := (Set.make_mem _ _).mpr hmem_s
+      have ⟨anc', hmem_anc', hanc'⟩ := List.mem_filterMap.mp this
+      simp only [
+        SymEntityData.ofActionType.termOfType?,
+        Option.ite_none_right_eq_some,
+        Option.some.injEq,
+      ] at hanc'
+      simp only [
+        ←hanc'.2,
+        Term.entityUIDs,
+        TermPrim.entityUIDs,
+        Set.singleton,
+      ] at hmem_uid
+      have := (Set.mem_singleton_iff_eq _ _).mp hmem_uid
+      simp only [←this] at hmem_anc'
+      -- `uid` is in its own ancestor set, which contradicts hwf_Γ
+      have := wf_env_implies_acyclic_action_hierarchy hwf uid uid_entry hfind_uid hmem_anc'
+      contradiction
+
+theorem ofEnv_entities_is_transitive
+  {Γ : TypeEnv}
+  (hwf : Γ.WellFormed) :
+  (SymEnv.ofEnv Γ).entities.Transitive
+:= by
+  sorry
+
+theorem ofEnv_entities_is_partitioned
+  {Γ : TypeEnv}
+  (hwf : Γ.WellFormed) :
+  (SymEnv.ofEnv Γ).entities.Partitioned
+:= by
+  sorry
+
+theorem ofEnv_entities_is_hierarchical
+  {Γ : TypeEnv}
+  (hwf : Γ.WellFormed) :
+  (SymEnv.ofEnv Γ).entities.Hierarchical
+:= by
+  constructor
+  · exact ofEnv_entities_is_acyclic hwf
+  constructor
+  · exact ofEnv_entities_is_transitive hwf
+  · exact ofEnv_entities_is_partitioned hwf
+
+theorem ofEnv_entities_is_swf
+  {Γ : TypeEnv}
+  (hwf : Γ.WellFormed) :
+  (SymEnv.ofEnv Γ).entities.StronglyWellFormed
+:= by
+  constructor
+  exact ofEnv_entities_is_wf hwf
+  exact ofEnv_entities_is_hierarchical hwf
+
 /--
 Main well-formedness theorem for `SymEnv.ofEnv`,
 which says that if the input environment `Γ` is well-formed,
@@ -1262,6 +1437,20 @@ theorem ofEnv_is_wf
   constructor
   · exact (ofEnv_request_is_swf hwf).1
   · exact ofEnv_entities_is_wf hwf
+
+/--
+A stronger version of `ofEnv_is_wf` that
+shows that `SymEnv.ofEnv Γ` is strongly well-formed.
+-/
+theorem ofEnv_is_swf
+  {Γ : TypeEnv}
+  (hwf : Γ.WellFormed) :
+  (SymEnv.ofEnv Γ).StronglyWellFormed
+:= by
+  simp only [SymEnv.StronglyWellFormed]
+  constructor
+  exact ofEnv_request_is_swf hwf
+  exact ofEnv_entities_is_swf hwf
 
 /--
 If an expression is well-typed in a concrete, well-formed `TypeEnv`,

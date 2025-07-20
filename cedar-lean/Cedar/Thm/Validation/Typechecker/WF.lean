@@ -386,4 +386,13 @@ theorem wf_env_implies_wf_ancestor_set
   | enum es =>
     simp only [EntitySchemaEntry.ancestors, Set.empty_wf]
 
+theorem wf_env_implies_acyclic_action_hierarchy
+  {env : TypeEnv}
+  (hwf : env.WellFormed) :
+  env.acts.AcyclicActionHierarchy
+:= by
+  have ⟨_, hwf_acts, _⟩ := hwf
+  have ⟨_, _, _, h, _⟩ := hwf_acts
+  exact h
+
 end Cedar.Validation
