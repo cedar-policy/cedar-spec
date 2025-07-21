@@ -46,6 +46,7 @@ Returns the terms corresponding to subexpressions of `x` of the following form:
 
   * A variable term with an entity type
   * An entity reference literal
+  * An entity reference value
   * An attribute access expression with an entity type
   * A binary (`getTag`) expression with an entity type
 
@@ -58,6 +59,7 @@ All returned terms are of type `TermType.option .entity`.
 def footprint (x : Expr) (εnv : SymEnv) : Set Term :=
   match x with
   | .lit _
+  | .val _
   | .var _             => ofEntity
   | .ite x₁ x₂ x₃      => ofBranch x₁ (footprint x₁ εnv) (footprint x₂ εnv) (footprint x₃ εnv)
   | .and x₁ x₂         => ofBranch x₁ (footprint x₁ εnv) (footprint x₂ εnv) Set.empty

@@ -190,6 +190,22 @@ def compileSet (ts : List Term) : Result Term := do
 def compileRecord (ats : List (Attr × Term)) : Term :=
   ifAllSome (ats.map Prod.snd) (⊙recordOf (ats.map (Prod.map id option.get)))
 
+def compileVal (v : Value) (εs : SymEntities) : Result Term :=
+  match v with
+  | .prim p => compilePrim p εs
+  | .set s => do
+    let ts ← s.elts.mapM₁ (fun ⟨v, _⟩ => compileVal v εs)
+    compileSet ts
+  | .record m => do
+    let ats ← m.kvs.mapM (fun (a, v) => do
+      let t ← compileVal v εs
+      pure (a, t))
+    ⊙compileRecord ats
+  | .ext e => ⊙(.prim (.ext e))
+decreasing_by
+  sorry -- TODO
+  sorry
+
 def compileCall₀ {α} [Coe α Ext] (mk : String → Option α) : Term → Result Term
   | .some (.prim (.string s)) =>
     match (mk s) with
@@ -248,6 +264,7 @@ Given an expression `x` that has type `τ` with respect to a type environment
 -/
 def compile (x : Expr) (εnv : SymEnv) : Result Term := do
   match x with
+  | .val v => compileVal v εnv.entities
   | .lit l => compilePrim l εnv.entities
   | .var v => compileVar v εnv.request
   | .ite x₁ x₂ x₃ =>

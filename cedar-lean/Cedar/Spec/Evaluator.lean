@@ -92,6 +92,7 @@ def bindAttr [Monad m] (a : Attr) (res : m α) : m (Attr × α) := do
 
 def evaluate (x : Expr) (req : Request) (es : Entities) : Result Value :=
   match x with
+  | .val v => .ok v
   | .lit l           => .ok l
   | .var v           => match v with
     | .principal     => .ok req.principal

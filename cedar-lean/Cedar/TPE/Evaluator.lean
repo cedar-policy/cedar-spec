@@ -184,6 +184,7 @@ def evaluate
   (es : PartialEntities) : Residual :=
   match x with
   | .lit l ty => .val l ty
+  | .val v ty => .val v ty
   | .var v ty => varₚ req v ty
   | .ite x₁ x₂ x₃ ty =>
     ite (evaluate x₁ req es) (evaluate x₂ req es) (evaluate x₃ req es) ty

@@ -94,6 +94,7 @@ specifically in an entity access position
 -/
 def TypedExpr.checkLevel (tx : TypedExpr) (env : TypeEnv) (n : Nat) : Bool :=
   match tx with
+  | .val _ _ => true
   | .lit _ _ => true
   | .var _ _ => true
   | .ite x₁ x₂ x₃ _ =>

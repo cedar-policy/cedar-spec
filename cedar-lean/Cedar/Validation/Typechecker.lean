@@ -51,6 +51,15 @@ def ResultType.typeOf : ResultType -> Except TypeError (CedarType × Capabilitie
 def ok {α : Type} (ty : α) (c : Capabilities := ∅) : Except TypeError (α × Capabilities) := .ok (ty, c)
 def err {α : Type} (e : TypeError) : Except TypeError (α × Capabilities) := .error e
 
+def typeOfExt (e : Ext) (env : TypeEnv) : ResultType :=
+  match e with
+  | .decimal _ => ok (TypedExpr.val (.ext e) (.ext .decimal))
+  | .ipaddr _  => ok (TypedExpr.val (.ext e) (.ext .ipAddr))
+  | .datetime _ => ok (TypedExpr.val (.ext e) (.ext .datetime))
+  | .duration _ => ok (TypedExpr.val (.ext e) (.ext .duration))
+
+
+
 def typeOfLit (p : Prim) (env : TypeEnv) : ResultType :=
   let ok := ok ∘ TypedExpr.lit p
   match p with
@@ -62,6 +71,58 @@ def typeOfLit (p : Prim) (env : TypeEnv) : ResultType :=
     if env.ets.isValidEntityUID uid || env.acts.contains uid
     then ok (.entity uid.ty)
     else err (.unknownEntity uid.ty)
+
+def justType (r : ResultType) : Except TypeError TypedExpr :=
+  r.map Prod.fst
+
+def typeOfSet (tys : List TypedExpr) : ResultType :=
+  match tys with
+  | []       => err .emptySetErr
+  | hd :: tl =>
+    match (tl.map TypedExpr.typeOf).foldlM lub? hd.typeOf with
+    | .some ty => ok (.set tys (.set ty))
+    | .none    => err (.incompatibleSetTypes (hd.typeOf :: tl.map TypedExpr.typeOf))
+
+def typeOfVal (v : Value) (env : TypeEnv) : ResultType :=
+  match v with
+  | .prim p => typeOfLit p env
+  | .set s =>
+    do
+      let tys ← s.elts.mapM₁ (λ ⟨x₁, _⟩ => justType (typeOfVal x₁ env))
+      typeOfSet tys
+  | .record m =>
+    do
+      let atys ← m.kvs.mapM₂ (λ ⟨(a₁, x₁), _⟩ => (typeOfVal x₁ env).map (λ (ty, _) => (a₁, ty)))
+      ok (.record atys (.record (Map.make (atys.map (λ (a, ty) => (a, .required ty.typeOf))))))
+  | .ext e => typeOfExt e env
+termination_by sizeOf v
+decreasing_by
+  . sorry
+  -- todo terrible proof
+  . rename_i h
+    simp
+    simp at h
+    have h1 : sizeOf m.kvs ≤ sizeOf m := by {
+      conv in sizeOf m =>
+        {
+          unfold sizeOf
+          simp
+          simp [Map._sizeOf_inst]
+          simp [Map._sizeOf_1]
+        }
+      have h2: m.1 = m.kvs := by {
+        simp
+      }
+      rw [h2]
+      omega
+    }
+    omega
+
+
+
+
+
+
 
 def typeOfVar (v : Var) (env : TypeEnv) : ResultType :=
   let ok := ok ∘ TypedExpr.var v
@@ -280,16 +341,7 @@ def typeOfGetAttr (ty : TypedExpr) (x : Expr) (a : Attr) (c : Capabilities) (env
     | .none     => err (.unknownEntity ety)
   | _           => err (.unexpectedType ty.typeOf)
 
-def typeOfSet (tys : List TypedExpr) : ResultType :=
-  match tys with
-  | []       => err .emptySetErr
-  | hd :: tl =>
-    match (tl.map TypedExpr.typeOf).foldlM lub? hd.typeOf with
-    | .some ty => ok (.set tys (.set ty))
-    | .none    => err (.incompatibleSetTypes (hd.typeOf :: tl.map TypedExpr.typeOf))
 
-def justType (r : ResultType) : Except TypeError TypedExpr :=
-  r.map Prod.fst
 
 def typeOfConstructor (mk : String → Option α) (xs : List Expr) (ty : CedarType) : Except TypeError (CedarType × Capabilities) :=
   match xs with
@@ -340,6 +392,7 @@ def typeOfCall (xfn : ExtFun) (tys : List TypedExpr) (xs : List Expr) : ResultTy
 -- This is true for the current version of Cedar.
 def typeOf (x : Expr) (c : Capabilities) (env : TypeEnv) : ResultType :=
   match x with
+  | .val v => typeOfVal v env
   | .lit p => typeOfLit p env
   | .var v => typeOfVar v env
   | .ite x₁ x₂ x₃ => do

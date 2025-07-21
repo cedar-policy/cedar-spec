@@ -57,6 +57,8 @@ inductive BinaryOp where
 inductive Expr where
   | lit (p : Prim)
   | var (v : Var)
+  -- values are only produced by cedar partial evaluation
+  | val (v : Value)
   | ite (cond : Expr) (thenExpr : Expr) (elseExpr : Expr)
   | and (a : Expr) (b : Expr)
   | or (a : Expr) (b : Expr)
@@ -85,6 +87,10 @@ def decExpr (x y : Expr) : Decidable (x = y) := by
   try { apply isFalse ; intro h ; injection h }
   case lit.lit x₁ y₁ | var.var x₁ y₁ =>
     exact match decEq x₁ y₁ with
+    | isTrue h => isTrue (by rw [h])
+    | isFalse _ => isFalse (by intro h; injection h; contradiction)
+  case val.val v₁ v₂ =>
+    exact match decEq v₁ v₂ with
     | isTrue h => isTrue (by rw [h])
     | isFalse _ => isFalse (by intro h; injection h; contradiction)
   case ite.ite x₁ x₂ x₃ y₁ y₂ y₃ =>

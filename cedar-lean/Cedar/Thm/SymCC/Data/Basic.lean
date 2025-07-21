@@ -124,12 +124,29 @@ def Prim.ValidRef (validRef : EntityUID → Prop) : Prim → Prop
   | .entityUID uid => validRef uid
   | _              => True
 
+inductive Value.ValidRefs (validRef : EntityUID → Prop) :
+Value → Prop
+  | prim_valid {p : Prim}
+    (h₁ : p.ValidRef validRef) :
+    ValidRefs validRef (.prim p)
+  | set_valid {xs : List Value}
+    (h₁ : ∀ x ∈ xs, Value.ValidRefs validRef x) :
+    ValidRefs validRef (.set (.mk xs))
+  | record_valid {axs :  List (Attr × Value)}
+    (h₁ : ∀ ax ∈ axs, ValidRefs validRef ax.snd) :
+    ValidRefs validRef (.record (.mk axs))
+  | ext_valid {ext: Ext} :
+    ValidRefs validRef (.ext ext)
+
 inductive Expr.ValidRefs (validRef : EntityUID → Prop) : Expr → Prop
   | lit_valid {p : Prim}
     (h₁ : p.ValidRef validRef) :
     ValidRefs validRef (.lit p)
   | var_valid {v : Var} :
     ValidRefs validRef (.var v)
+  | val_valid {v : Value}
+    (h₁ : (Value.ValidRefs validRef v)) :
+    ValidRefs validRef (.val v)
   | ite_valid {x₁ x₂ x₃ : Expr}
     (h₁ : ValidRefs validRef x₁)
     (h₂ : ValidRefs validRef x₂)

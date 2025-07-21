@@ -26,6 +26,7 @@ namespace Cedar.Validation
 open Cedar.Data
 open Cedar.Spec
 
+
 /--
 A type annotated Cedar AST. This should have exactly the same variants as the
 unannotated `Expr` data type, but each variant carries an additional `ty` that
@@ -34,6 +35,8 @@ stores the type of the expression.
 inductive TypedExpr where
   | lit (p : Prim) (ty : CedarType)
   | var (v : Var) (ty : CedarType)
+  -- values produced by partial evaluation
+  | val (v : Value) (ty : CedarType)
   | ite (cond : TypedExpr) (thenExpr : TypedExpr) (elseExpr : TypedExpr) (ty : CedarType)
   | and (a : TypedExpr) (b : TypedExpr) (ty : CedarType)
   | or (a : TypedExpr) (b : TypedExpr) (ty : CedarType)
@@ -54,6 +57,10 @@ def decTypedExpr (x y : TypedExpr) : Decidable (x = y) := by
   cases x <;> cases y <;>
   try { apply isFalse ; intro h ; injection h }
   case lit.lit x₁ tx  y₁ ty  | var.var x₁ tx y₁ ty =>
+    exact match decEq x₁ y₁, decEq tx ty with
+    | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
+    | isFalse _, _  | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
+  case val.val x₁ tx y₁ ty =>
     exact match decEq x₁ y₁, decEq tx ty with
     | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
     | isFalse _, _  | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
@@ -115,6 +122,7 @@ instance : DecidableEq TypedExpr := decTypedExpr
 def TypedExpr.typeOf : TypedExpr → CedarType
   | lit _ ty
   | var _ ty
+  | val _ ty
   | ite _ _ _ ty
   | and _ _ ty
   | or _ _ ty
@@ -129,6 +137,7 @@ def TypedExpr.typeOf : TypedExpr → CedarType
 def TypedExpr.toExpr : TypedExpr → Expr
   | lit p _ => Expr.lit p
   | var v _ => Expr.var v
+  | val v _ => Expr.val v
   | ite cond thenExpr elseExpr _ => Expr.ite cond.toExpr thenExpr.toExpr elseExpr.toExpr
   | and a b _ => Expr.and a.toExpr b.toExpr
   | or a b _ => Expr.or a.toExpr b.toExpr
@@ -150,6 +159,7 @@ decreasing_by
 def TypedExpr.liftBoolTypes : TypedExpr → TypedExpr
   | .lit p ty => .lit p ty.liftBoolTypes
   | .var v ty =>  .var v ty.liftBoolTypes
+  | .val v ty => .val v ty.liftBoolTypes
   | .ite cond thenExpr elseExpr ty => .ite cond.liftBoolTypes thenExpr.liftBoolTypes elseExpr.liftBoolTypes ty.liftBoolTypes
   | .and a b ty => .and a.liftBoolTypes b.liftBoolTypes ty.liftBoolTypes
   | .or a b ty => .or a.liftBoolTypes b.liftBoolTypes ty.liftBoolTypes

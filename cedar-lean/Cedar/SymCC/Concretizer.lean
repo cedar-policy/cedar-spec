@@ -73,6 +73,7 @@ def Env.entityUIDs (env : Env) : Set EntityUID :=
 def Expr.entityUIDs : Expr → Set EntityUID
   | .lit p             => p.entityUIDs
   | .var _             => Set.empty
+  | .val v             => Value.entityUIDs v
   | .ite x₁ x₂ x₃      => x₁.entityUIDs ∪ x₂.entityUIDs ∪ x₃.entityUIDs
   | .and x₁ x₂
   | .or x₁ x₂

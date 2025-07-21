@@ -75,6 +75,8 @@ inductive TypedExpr.AtLevel (env : TypeEnv) : TypedExpr → Nat → Prop where
     AtLevel env (.lit p ty) n
   | var (v : Var) (ty : CedarType) (n : Nat) :
     AtLevel env (.var v ty) n
+  | val (v : Value) (ty : CedarType) (n : Nat) :
+    AtLevel env (.val v ty) n
   | ite (tx₁ tx₂ tx₃ : TypedExpr) (ty : CedarType) (n : Nat)
     (hl₁ : tx₁.AtLevel env n)
     (hl₂ : tx₂.AtLevel env n)
@@ -343,6 +345,10 @@ theorem level_spec {tx : TypedExpr} {env : TypeEnv} {n : Nat}:
     constructor
   case var =>
     simp only [TypedExpr.checkLevel, iff_true]
+    constructor
+  case val =>
+    simp only [TypedExpr.checkLevel, iff_true]
+
     constructor
   case ite tx₁ tx₂ tx₃ _ =>
     have ih₁ := @level_spec tx₁

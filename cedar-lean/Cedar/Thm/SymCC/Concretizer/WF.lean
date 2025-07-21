@@ -124,6 +124,32 @@ private theorem concretize?_εs_some_implies_closed_εs_entityUIDs {uids : Set E
   rw [Set.union_comm] at hs
   exact subset_implies_closed (Set.subset_union εs.entityUIDs _) hs
 
+private theorem value_entityUIDs_valid_refs { v : Value} {uids : Set EntityUID} {es : Entities}:
+  es.ClosedFor uids →
+  v.entityUIDs ⊆ uids →
+  Value.ValidRefs (fun uid => Map.contains es uid = true) v := by
+    intro hs hsub
+    induction v using Value.entityUIDs.induct
+
+    case case1 p => -- prim
+      apply Value.ValidRefs.prim_valid
+      simp only [Prim.ValidRef]
+      split <;> try trivial
+      simp only [Prim.entityUIDs, Set.subset_def, Set.mem_singleton_iff_eq, forall_eq, Value.entityUIDs] at hsub
+      exact hs _ hsub
+    case case2 s ih => --set
+      apply Value.ValidRefs.set_valid
+      unfold Value.entityUIDs at hsub
+      simp only [List.attach_def, List.mapUnion_pmap_subtype] at hsub
+      intro xᵢ hᵢ
+      have hsubᵢ := Set.mem_implies_subset_mapUnion Value.entityUIDs hᵢ
+      replace hsubᵢ := Set.subset_trans hsubᵢ hsub
+      exact ih xᵢ hᵢ hsubᵢ
+    case case3 r => --record
+      sorry
+    case case4 x => --ext
+      apply Value.ValidRefs.ext_valid
+
 private theorem expr_entityUIDs_valid_refs {x : Expr} {uids : Set EntityUID} {es : Entities} :
   x.entityUIDs ⊆ uids →
   es.ClosedFor uids →
@@ -140,39 +166,42 @@ private theorem expr_entityUIDs_valid_refs {x : Expr} {uids : Set EntityUID} {es
     exact hs _ hsub
   case case2 =>             -- var
     exact Expr.ValidRefs.var_valid
-  case case3 ih₁ ih₂ ih₃ => -- ite
+  case case3 v =>           -- value
+    apply Expr.ValidRefs.val_valid
+    exact value_entityUIDs_valid_refs hs hsub
+  case case4 ih₁ ih₂ ih₃ => -- ite
     simp only [Set.union_subset] at hsub
     exact Expr.ValidRefs.ite_valid (ih₁ hsub.left.left) (ih₂ hsub.left.right) (ih₃ hsub.right)
-  case case4 ih₁ ih₂ =>     -- and
+  case case5 ih₁ ih₂ =>     -- and
     rw [Set.union_subset] at hsub
     exact Expr.ValidRefs.and_valid (ih₁ hsub.left) (ih₂ hsub.right)
-  case case5 ih₁ ih₂ =>     -- or
+  case case6 ih₁ ih₂ =>     -- or
     rw [Set.union_subset] at hsub
     exact Expr.ValidRefs.or_valid (ih₁ hsub.left) (ih₂ hsub.right)
-  case case6 ih₁ ih₂ =>     -- binaryApp
+  case case7 ih₁ ih₂ =>     -- binaryApp
     rw [Set.union_subset] at hsub
     exact Expr.ValidRefs.binaryApp_valid (ih₁ hsub.left) (ih₂ hsub.right)
-  case case7 ih =>          -- unaryApp
+  case case8 ih =>          -- unaryApp
     exact Expr.ValidRefs.unaryApp_valid (ih hsub)
-  case case8 ih =>          -- getAttr
+  case case9 ih =>          -- getAttr
     exact Expr.ValidRefs.getAttr_valid (ih hsub)
-  case case9 ih =>          -- hasAttr
+  case case10 ih =>          -- hasAttr
     exact Expr.ValidRefs.hasAttr_valid (ih hsub)
-  case case10 ih =>         -- set
+  case case11 ih =>         -- set
     simp only [List.attach_def, List.mapUnion_pmap_subtype] at hsub
     apply Expr.ValidRefs.set_valid
     intro xᵢ hᵢ
     have hsubᵢ := Set.mem_implies_subset_mapUnion Expr.entityUIDs hᵢ
     replace hsubᵢ := Set.subset_trans hsubᵢ hsub
     exact ih xᵢ hᵢ hsubᵢ
-  case case11 ih =>         -- call
+  case case12 ih =>         -- call
     simp only [List.attach_def, List.mapUnion_pmap_subtype] at hsub
     apply Expr.ValidRefs.call_valid
     intro xᵢ hᵢ
     have hsubᵢ := Set.mem_implies_subset_mapUnion Expr.entityUIDs hᵢ
     replace hsubᵢ := Set.subset_trans hsubᵢ hsub
     exact ih xᵢ hᵢ hsubᵢ
-  case case12 ih =>         -- record
+  case case13 ih =>         -- record
     simp only [List.attach₂, List.mapUnion_pmap_subtype λ x : Attr × Expr => x.snd.entityUIDs] at hsub
     apply Expr.ValidRefs.record_valid
     intro (aᵢ, xᵢ) hᵢ

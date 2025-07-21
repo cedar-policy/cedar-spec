@@ -103,6 +103,7 @@ abbrev ValidationResult := Except ValidationError Unit
 def mapOnVars (f : Var → Expr) : Expr → Expr
   | .lit l => .lit l
   | .var var => f var
+  | .val v => .val v
   | .ite x₁ x₂ x₃ =>
     let x₁ := mapOnVars f x₁
     let x₂ := mapOnVars f x₂
