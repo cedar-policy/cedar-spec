@@ -51,8 +51,8 @@ theorem partial_evaluate_is_sound
 := by
   intro h₁ h₂ h₃
   induction h₁
-  case lit =>
-    exact partial_evaluate_is_sound_lit
+  case val =>
+    exact partial_evaluate_is_sound_val h₃
   case var =>
     exact partial_evaluate_is_sound_var h₃
   case ite x₁ x₂ x₃ hwt _ _ hₜ _ hᵢ₁ hᵢ₂ hᵢ₃ =>
