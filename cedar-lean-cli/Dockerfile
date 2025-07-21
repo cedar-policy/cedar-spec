@@ -37,6 +37,10 @@ FROM prepare AS build
 ENV CEDAR_SPEC_ROOT=/opt/src/cedar-spec
 COPY . $CEDAR_SPEC_ROOT
 
+# Clone `cedar` repository
+WORKDIR $CEDAR_SPEC_ROOT
+RUN git clone --depth 1 https://github.com/cedar-policy/cedar
+
 # Build the Lean formalization and extract to static C libraries
 WORKDIR $CEDAR_SPEC_ROOT/cedar-lean-ffi
 RUN source /root/.profile \
