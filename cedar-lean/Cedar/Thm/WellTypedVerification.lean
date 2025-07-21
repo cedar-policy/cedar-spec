@@ -14,11 +14,7 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.Validation.WellTyped.Definition
-import Cedar.Thm.SymCC.Verifier
-import Cedar.Thm.SymCC.Env.Soundness
-import Cedar.Thm.SymCC.Env.ofEnv
-import Cedar.Thm.SymbolicCompilation
+import Cedar.Thm.SymCC.Verifier.Basic
 import Cedar.Thm.Verification
 
 /-!
@@ -29,27 +25,6 @@ reduce some assumptions on `SymEnv` to `TypeEnv`.
 namespace Cedar.Thm
 
 open Spec SymCC Validation
-
-/--
-If inputs are sufficiently well-formed, then `verifyEvaluate` always succeeds.
--/
-theorem verifyEvaluate_is_ok {φ : Term → Term} {p p' : Policy} {Γ : TypeEnv}
-  (hwf : Γ.WellFormed)
-  (hwt : wellTypedPolicy p Γ = .some p') :
-  ∃ asserts, verifyEvaluate φ p' (SymEnv.ofEnv Γ) = .ok asserts
-:= by
-  have ⟨tx, hwt_tx, heq_tx⟩ := wellTypedPolicy_some_implies_well_typed_expr hwt
-  simp only [verifyEvaluate]
-  have ⟨_, hok, _⟩ := compile_well_typed hwf hwt_tx
-  simp only [heq_tx] at hok
-  simp [hok]
-
-theorem verifyNeverErrors_is_ok {p p' : Policy} {Γ : TypeEnv}
-  (hwf : Γ.WellFormed)
-  (hwt : wellTypedPolicy p Γ = .some p') :
-  ∃ asserts, verifyNeverErrors p' (SymEnv.ofEnv Γ) = .ok asserts
-:= by
-  exact verifyEvaluate_is_ok hwf hwt
 
 theorem verifyNeverErrors_is_ok_and_sound {p p' : Policy} {Γ : TypeEnv} :
   Γ.WellFormed →
