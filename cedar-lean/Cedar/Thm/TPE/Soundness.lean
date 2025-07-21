@@ -20,6 +20,7 @@ import Cedar.Validation
 import Cedar.Thm.TPE.Input
 import Cedar.Thm.Validation
 import Cedar.Thm.WellTyped
+import Cedar.Thm.Data.Control
 
 namespace Cedar.Thm
 
@@ -134,7 +135,7 @@ theorem to_option_eq_mapM {α β ε} {ls : List α} (f g: α → Except ε β) :
     case _ heq₁ _ _ heq₂ =>
       simp only [Except.toOption, heq₁, Except.bind_err, heq₂, implies_true]
 
-theorem partial_evaluate_is_sound_lit
+theorem partial_evaluate_is_sound_val
 {v : Value}
 {req : Request}
 {es : Entities}
@@ -214,5 +215,283 @@ theorem partial_evaluate_is_sound_var
       rfl
     case _ =>
       simp only [Residual.evaluate]
+
+theorem partial_evaluate_is_sound_and
+{x₁ x₂ : Residual}
+{req : Request}
+{es : Entities}
+{preq : PartialRequest}
+{pes : PartialEntities}
+{env : TypeEnv}
+(h₂ : InstanceOfWellFormedEnvironment req es env)
+(hᵢ₁ : Residual.WellTyped env x₁)
+(hᵢ₂ : Residual.WellTyped env x₂)
+(hᵢ₃ : x₁.typeOf = CedarType.bool BoolType.anyBool)
+(hᵢ₄ : x₂.typeOf = CedarType.bool BoolType.anyBool)
+(hᵢ₅ : Except.toOption (x₁.evaluate req es) = Except.toOption ((TPE.evaluate x₁ preq pes).evaluate req es))
+(hᵢ₆ : Except.toOption (x₂.evaluate req es) = Except.toOption ((TPE.evaluate x₂ preq pes).evaluate req es)) :
+  Except.toOption ((x₁.and x₂ (CedarType.bool BoolType.anyBool)).evaluate req es) =
+  Except.toOption ((TPE.evaluate (x₁.and x₂ (CedarType.bool BoolType.anyBool)) preq pes).evaluate req es)
+:= by
+  simp [TPE.evaluate, TPE.and]
+  split
+  case _ ty heq =>
+    simp [heq, Residual.evaluate] at hᵢ₅
+    have h₅ := to_option_right_ok' hᵢ₅
+    simp [Residual.evaluate, h₅, Result.as, Coe.coe, Value.asBool]
+    split
+    case _ heq₁ =>
+      have h₆ := residual_well_typed_is_sound h₂ hᵢ₂ heq₁
+      rw [hᵢ₄] at h₆
+      rcases instance_of_anyBool_is_bool h₆ with ⟨_, h₆⟩
+      replace hᵢ₆ := to_option_left_ok hᵢ₆ heq₁
+      simp only [h₆, Except.map_ok, hᵢ₆]
+    case _ heq₁ =>
+      simp only [Except.map_error]
+      rw [heq₁] at hᵢ₆
+      rcases to_option_left_err hᵢ₆ with ⟨_, hᵢ₆⟩
+      simp only [hᵢ₆, Except.toOption]
+  case _ heq =>
+    simp [heq, Residual.evaluate] at hᵢ₅
+    have h₅ := to_option_right_ok' hᵢ₅
+    simp [Residual.evaluate, h₅, Result.as, Coe.coe, Value.asBool, Residual.evaluate]
+  case _ heq =>
+    simp [heq, Residual.evaluate] at hᵢ₅
+    rcases to_option_right_err hᵢ₅ with ⟨_, hᵢ₅⟩
+    simp [Residual.evaluate, hᵢ₅, Result.as, Residual.evaluate, Except.toOption]
+  case _ heq _ _ _ =>
+    simp [heq, Residual.evaluate] at hᵢ₆
+    have h₅ := to_option_right_ok' hᵢ₆
+    simp [Residual.evaluate]
+    generalize h₆ : x₁.evaluate req es = res₁
+    cases res₁
+    case ok =>
+      have h₇ := residual_well_typed_is_sound h₂ hᵢ₁ h₆
+      rw [hᵢ₃] at h₇
+      rcases instance_of_anyBool_is_bool h₇ with ⟨_, h₇⟩
+      simp [h₇, Result.as, Coe.coe, Value.asBool]
+      split
+      case _ heq₁ =>
+        subst heq₁
+        rw [h₇] at h₆
+        rw [←h₆]
+        exact hᵢ₅
+      case _ heq₁ =>
+        simp [h₅]
+        simp at heq₁
+        subst heq₁
+        subst h₇
+        rw [←h₆]
+        exact hᵢ₅
+    case error =>
+      simp [h₆] at hᵢ₅
+      rcases to_option_left_err hᵢ₅ with ⟨_, hᵢ₅⟩
+      simp [h₆, Result.as, hᵢ₅, Except.toOption]
+  case _ =>
+    simp [Residual.evaluate]
+    generalize h₅ : x₁.evaluate req es = res₁
+    cases res₁
+    case ok =>
+      have h₆ := residual_well_typed_is_sound h₂ hᵢ₁ h₅
+      rw [hᵢ₃] at h₆
+      rcases instance_of_anyBool_is_bool h₆ with ⟨_, h₆⟩
+      subst h₆
+      replace h₅ := to_option_left_ok hᵢ₅ h₅
+      simp [Result.as, Coe.coe, Residual.evaluate, h₅, Value.asBool]
+      generalize h₇ : x₂.evaluate req es = res₂
+      cases res₂
+      case _ =>
+        rw [h₇] at hᵢ₆
+        rcases to_option_left_err hᵢ₆ with ⟨_, hᵢ₆⟩
+        simp [hᵢ₆]
+        split <;> simp [Except.toOption]
+      case _ =>
+        replace h₇ := to_option_left_ok hᵢ₆ h₇
+        rw [h₇]
+    case error =>
+      rw [h₅] at hᵢ₅
+      rcases to_option_left_err hᵢ₅ with ⟨_, hᵢ₅⟩
+      simp [Result.as, Residual.evaluate, hᵢ₅, Except.toOption]
+
+theorem partial_evaluate_is_sound_ite
+{x₁ x₂ x₃ : Residual}
+{req : Request}
+{es : Entities}
+{preq : PartialRequest}
+{pes : PartialEntities}
+{env : TypeEnv}
+(h₂ : InstanceOfWellFormedEnvironment req es env)
+(hwt : Residual.WellTyped env x₁)
+(hₜ : x₁.typeOf = CedarType.bool BoolType.anyBool)
+(hᵢ₁ : Except.toOption (x₁.evaluate req es) = Except.toOption ((TPE.evaluate x₁ preq pes).evaluate req es))
+(hᵢ₂ : Except.toOption (x₂.evaluate req es) = Except.toOption ((TPE.evaluate x₂ preq pes).evaluate req es))
+(hᵢ₃ : Except.toOption (x₃.evaluate req es) = Except.toOption ((TPE.evaluate x₃ preq pes).evaluate req es)) :
+  Except.toOption ((x₁.ite x₂ x₃ x₂.typeOf).evaluate req es) =
+  Except.toOption ((TPE.evaluate (x₁.ite x₂ x₃ x₂.typeOf) preq pes).evaluate req es) := by
+  simp [Residual.evaluate, TPE.evaluate, TPE.ite]
+  split
+  case _ heq =>
+    simp [heq, Residual.evaluate] at hᵢ₁
+    have h₆ := to_option_right_ok' hᵢ₁
+    split
+    case isTrue heq =>
+      simp [Residual.evaluate, h₆, Result.as, Coe.coe, Value.asBool, heq]
+      exact hᵢ₂
+    case isFalse heq =>
+      simp [Residual.evaluate, h₆, Result.as, Coe.coe, Value.asBool, heq]
+      exact hᵢ₃
+  case _ heq =>
+    simp [heq, Residual.evaluate] at hᵢ₁
+    rcases to_option_right_err hᵢ₁ with ⟨_, h₆⟩
+    simp [Residual.evaluate, h₆, Result.as, Residual.evaluate, Except.toOption]
+  case _ =>
+    simp [Residual.evaluate]
+    generalize h₅ : x₁.evaluate req es = res₁
+    cases res₁
+    case ok =>
+      simp [Result.as, Coe.coe]
+      have h₆ := residual_well_typed_is_sound h₂ hwt h₅
+      simp [hₜ] at h₆
+      rcases instance_of_anyBool_is_bool h₆ with ⟨_, h₆⟩
+      subst h₆
+      simp [Value.asBool]
+      replace hᵢ₆ := to_option_left_ok hᵢ₁ h₅
+      simp [Residual.evaluate, hᵢ₆, Value.asBool]
+      split
+      case _ => exact hᵢ₂
+      case _ => exact hᵢ₃
+    case error =>
+      simp [Result.as, Except.toOption]
+      simp [h₅] at hᵢ₁
+      rcases to_option_left_err hᵢ₁ with ⟨_, hᵢ₁⟩
+      simp only [Residual.evaluate, hᵢ₁, Except.bind_err]
+
+theorem partial_evaluate_is_sound_or
+{x₁ x₂ : Residual}
+{req : Request}
+{es : Entities}
+{preq : PartialRequest}
+{pes : PartialEntities}
+{env : TypeEnv}
+(h₂ : InstanceOfWellFormedEnvironment req es env)
+(hᵢ₁ : Residual.WellTyped env x₁)
+(hᵢ₂ : Residual.WellTyped env x₂)
+(hᵢ₃ : x₁.typeOf = CedarType.bool BoolType.anyBool)
+(hᵢ₄ : x₂.typeOf = CedarType.bool BoolType.anyBool)
+(hᵢ₅ : Except.toOption (x₁.evaluate req es) = Except.toOption ((TPE.evaluate x₁ preq pes).evaluate req es))
+(hᵢ₆ : Except.toOption (x₂.evaluate req es) = Except.toOption ((TPE.evaluate x₂ preq pes).evaluate req es)) :
+  Except.toOption ((x₁.or x₂ (CedarType.bool BoolType.anyBool)).evaluate req es) =
+  Except.toOption ((TPE.evaluate (x₁.or x₂ (CedarType.bool BoolType.anyBool)) preq pes).evaluate req es)
+:= by
+  sorry
+
+theorem partial_evaluate_is_sound_unary_app
+{x₁ : Residual}
+{req : Request}
+{es : Entities}
+{preq : PartialRequest}
+{pes : PartialEntities}
+{op₁ : UnaryOp}
+{ty : CedarType}
+(hᵢ₁ : Except.toOption (x₁.evaluate req es) = Except.toOption ((TPE.evaluate x₁ preq pes).evaluate req es)) :
+  Except.toOption ((Residual.unaryApp op₁ x₁ ty).evaluate req es) =
+  Except.toOption ((TPE.evaluate (Residual.unaryApp op₁ x₁ ty) preq pes).evaluate req es)
+:= by
+  sorry
+
+theorem partial_evaluate_is_sound_binary_app
+{op₂ : BinaryOp}
+{ty : CedarType}
+{x₁ x₂ : Residual}
+{req : Request}
+{es : Entities}
+{preq : PartialRequest}
+{pes : PartialEntities}
+{env : TypeEnv}
+(h₂ : InstanceOfWellFormedEnvironment req es env)
+(h₄ : RequestAndEntitiesRefine req es preq pes)
+(hwt : Residual.WellTyped env x₂)
+(howt : BinaryOp.WellTyped env op₂ x₁ x₂ ty)
+(hᵢ₁ : Except.toOption (x₁.evaluate req es) = Except.toOption ((TPE.evaluate x₁ preq pes).evaluate req es))
+(hᵢ₂ : Except.toOption (x₂.evaluate req es) = Except.toOption ((TPE.evaluate x₂ preq pes).evaluate req es)) :
+  Except.toOption ((Residual.binaryApp op₂ x₁ x₂ ty).evaluate req es) =
+  Except.toOption ((TPE.evaluate (Residual.binaryApp op₂ x₁ x₂ ty) preq pes).evaluate req es)
+:= by
+  sorry
+
+theorem partial_evaluate_is_sound_has_attr
+{x₁ : Residual}
+{req : Request}
+{es : Entities}
+{preq : PartialRequest}
+{pes : PartialEntities}
+{attr : Attr}
+(h₄ : RequestAndEntitiesRefine req es preq pes)
+(hᵢ₁ : Except.toOption (x₁.evaluate req es) = Except.toOption ((TPE.evaluate x₁ preq pes).evaluate req es)) :
+  Except.toOption ((x₁.hasAttr attr (CedarType.bool BoolType.anyBool)).evaluate req es) =
+  Except.toOption ((TPE.evaluate (x₁.hasAttr attr (CedarType.bool BoolType.anyBool)) preq pes).evaluate req es)
+:= by
+  sorry
+
+theorem partial_evaluate_is_sound_get_attr
+{x₁ : Residual}
+{req : Request}
+{es : Entities}
+{preq : PartialRequest}
+{pes : PartialEntities}
+{attr : Attr}
+{ty : CedarType}
+(h₄ : RequestAndEntitiesRefine req es preq pes)
+(hᵢ₁ : Except.toOption (x₁.evaluate req es) = Except.toOption ((TPE.evaluate x₁ preq pes).evaluate req es)) :
+  Except.toOption ((x₁.getAttr attr ty).evaluate req es) =
+  Except.toOption ((TPE.evaluate (x₁.getAttr attr ty) preq pes).evaluate req es)
+:= by
+  sorry
+
+theorem partial_evaluate_is_sound_set
+{req : Request}
+{es : Entities}
+{preq : PartialRequest}
+{pes : PartialEntities}
+{ls : List Residual}
+{ty : CedarType}
+(hᵢ₁ : ∀ (x : Residual),
+  x ∈ ls →
+    Except.toOption (x.evaluate req es) = Except.toOption ((TPE.evaluate x preq pes).evaluate req es)) :
+  Except.toOption ((Residual.set ls ty.set).evaluate req es) =
+  Except.toOption ((TPE.evaluate (Residual.set ls ty.set) preq pes).evaluate req es)
+:= by
+  sorry
+
+theorem partial_evaluate_is_sound_record
+{m : List (Attr × Residual)}
+{rty : RecordType}
+{req : Request}
+{es : Entities}
+{preq : PartialRequest}
+{pes : PartialEntities}
+(hᵢ₁ : ∀ (k : Attr) (v : Residual),
+  (k, v) ∈ m →
+    Except.toOption (v.evaluate req es) = Except.toOption ((TPE.evaluate v preq pes).evaluate req es)) :
+  Except.toOption ((Residual.record m (CedarType.record rty)).evaluate req es) =
+  Except.toOption ((TPE.evaluate (Residual.record m (CedarType.record rty)) preq pes).evaluate req es)
+:= by
+  sorry
+
+theorem partial_evaluate_is_sound_call
+{req : Request}
+{es : Entities}
+{preq : PartialRequest}
+{pes : PartialEntities}
+{xfn : ExtFun}
+{args : List Residual}
+{ty : CedarType}
+(hᵢ₁ : ∀ (x : Residual),
+  x ∈ args →
+    Except.toOption (x.evaluate req es) = Except.toOption ((TPE.evaluate x preq pes).evaluate req es)) :
+  Except.toOption ((Residual.call xfn args ty).evaluate req es) =
+  Except.toOption ((TPE.evaluate (Residual.call xfn args ty) preq pes).evaluate req es)
+:= by
+  sorry
 
 end Cedar.Thm
