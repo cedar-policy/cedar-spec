@@ -1,6 +1,7 @@
 import Cedar.Thm.Validation.Typechecker.WF
 import Cedar.Thm.Validation.WellTyped.TypeLifting
 import Cedar.Thm.Validation.WellTyped.Definition
+import Cedar.Thm.Validation.WellTyped.Typechecking
 import Cedar.Thm.SymCC.Data.Hierarchy
 import Cedar.Thm.SymCC.Env.WF
 import Cedar.Thm.SymCC.Data.LT
@@ -1249,6 +1250,162 @@ decreasing_by
     have := List.sizeOf_lt_of_mem hmem_x'
     omega
 
+/-- Removing `liftBoolTypes` does not affect `ValidRefs` -/
+theorem ValidRefs_invariant_under_liftBoolTypes
+  {tx : TypedExpr} {f : EntityUID → Prop}
+  (hrefs : tx.liftBoolTypes.toExpr.ValidRefs f) :
+  tx.toExpr.ValidRefs f
+:= by
+  cases tx with
+  | lit p ty =>
+    cases p with
+    | bool | int | string =>
+      simp only [TypedExpr.toExpr]
+      constructor
+      constructor
+    | entityUID uid =>
+      simp only [TypedExpr.toExpr, TypedExpr.liftBoolTypes] at hrefs ⊢
+      exact hrefs
+  | var =>
+    simp only [TypedExpr.toExpr]
+    constructor
+  | ite tx₁ tx₂ tx₃ ty =>
+    simp only [TypedExpr.toExpr, TypedExpr.liftBoolTypes] at hrefs ⊢
+    cases hrefs with | ite_valid h₁ h₂ h₃ =>
+    constructor
+    exact ValidRefs_invariant_under_liftBoolTypes h₁
+    exact ValidRefs_invariant_under_liftBoolTypes h₂
+    exact ValidRefs_invariant_under_liftBoolTypes h₃
+  | and tx₁ tx₂ ty =>
+    simp only [TypedExpr.toExpr, TypedExpr.liftBoolTypes] at hrefs ⊢
+    cases hrefs with | and_valid h₁ h₂ =>
+    constructor
+    exact ValidRefs_invariant_under_liftBoolTypes h₁
+    exact ValidRefs_invariant_under_liftBoolTypes h₂
+  | or tx₁ tx₂ ty =>
+    simp only [TypedExpr.toExpr, TypedExpr.liftBoolTypes] at hrefs ⊢
+    cases hrefs with | or_valid h₁ h₂ =>
+    constructor
+    exact ValidRefs_invariant_under_liftBoolTypes h₁
+    exact ValidRefs_invariant_under_liftBoolTypes h₂
+  | unaryApp tx f ty =>
+    simp only [TypedExpr.toExpr, TypedExpr.liftBoolTypes] at hrefs ⊢
+    cases hrefs with | unaryApp_valid h =>
+    constructor
+    exact ValidRefs_invariant_under_liftBoolTypes h
+  | hasAttr tx attr ty =>
+    simp only [TypedExpr.toExpr, TypedExpr.liftBoolTypes] at hrefs ⊢
+    cases hrefs with | hasAttr_valid h =>
+    constructor
+    exact ValidRefs_invariant_under_liftBoolTypes h
+  | getAttr tx attr ty =>
+    simp only [TypedExpr.toExpr, TypedExpr.liftBoolTypes] at hrefs ⊢
+    cases hrefs with | getAttr_valid h =>
+    constructor
+    exact ValidRefs_invariant_under_liftBoolTypes h
+  | binaryApp tx₁ tx₂ f ty =>
+    simp only [TypedExpr.toExpr, TypedExpr.liftBoolTypes] at hrefs ⊢
+    cases hrefs with | binaryApp_valid h₁ h₂ =>
+    constructor
+    exact ValidRefs_invariant_under_liftBoolTypes h₁
+    exact ValidRefs_invariant_under_liftBoolTypes h₂
+  | set txs ty =>
+    simp only [TypedExpr.toExpr, TypedExpr.liftBoolTypes] at hrefs ⊢
+    cases hrefs with | set_valid h =>
+    constructor
+    intros x hmem_x
+    simp only [List.map₁_eq_map] at hmem_x
+    simp only [
+      List.map₁_eq_map,
+      List.map_map, List.mem_map,
+      Function.comp_apply, forall_exists_index, and_imp,
+      forall_apply_eq_imp_iff₂,
+    ] at h
+    have ⟨tx, hmem_tx, htx⟩ := List.mem_map.mp hmem_x
+    have := h tx hmem_tx
+    simp only [←htx]
+    exact ValidRefs_invariant_under_liftBoolTypes this
+  | call txs ty =>
+    simp only [TypedExpr.toExpr, TypedExpr.liftBoolTypes] at hrefs ⊢
+    cases hrefs with | call_valid h =>
+    constructor
+    intros x hmem_x
+    simp only [List.map₁_eq_map] at hmem_x
+    simp only [
+      List.map₁_eq_map,
+      List.map_map, List.mem_map,
+      Function.comp_apply, forall_exists_index, and_imp,
+      forall_apply_eq_imp_iff₂,
+    ] at h
+    have ⟨tx, hmem_tx, htx⟩ := List.mem_map.mp hmem_x
+    have := h tx hmem_tx
+    simp only [←htx]
+    exact ValidRefs_invariant_under_liftBoolTypes this
+  | record attrs ty =>
+    simp only [TypedExpr.toExpr, TypedExpr.liftBoolTypes] at hrefs ⊢
+    cases hrefs with | record_valid h =>
+    constructor
+    intros attr hmem_attr
+    simp only [List.map_attach₂_snd] at hmem_attr
+    simp only [
+      List.map_attach₂_snd, List.map_map, List.mem_map,
+      Function.comp_apply, Prod.exists,
+      forall_exists_index, and_imp,
+      Prod.forall, Prod.mk.injEq,
+    ] at h
+    have ⟨⟨attr', tx⟩, hmem_attr'_tx, hattr'_tx⟩ := List.mem_map.mp hmem_attr
+    simp only at hattr'_tx
+    simp only [←hattr'_tx]
+    have := h attr' tx.liftBoolTypes.toExpr attr' tx hmem_attr'_tx rfl rfl
+    exact ValidRefs_invariant_under_liftBoolTypes this
+termination_by sizeOf tx
+decreasing_by
+  any_goals
+    simp [*]
+    omega
+  · simp [*]
+    have := List.sizeOf_lt_of_mem hmem_tx
+    omega
+  · cases attr'
+    simp [*]
+    have := List.sizeOf_lt_of_mem hmem_attr'_tx
+    simp at this
+    omega
+  · simp [*]
+    have := List.sizeOf_lt_of_mem hmem_tx
+    omega
+
+theorem wellTypedPolicy_some_implies_valid_refs
+  {Γ : TypeEnv} {p p' : Policy}
+  (hwf : Γ.WellFormed)
+  (hsome : wellTypedPolicy p Γ = .some p') :
+  p'.toExpr.ValidRefs ((SymEnv.ofEnv Γ).entities.isValidEntityUID ·)
+:= by
+  simp only [
+    wellTypedPolicy,
+    bind, Option.bind,
+  ] at hsome
+  split at hsome
+  contradiction
+  rename_i tx hwt
+  simp only [Option.some.injEq] at hsome
+  simp only [←hsome, Policy.toExpr]
+  any_goals repeat constructor
+  any_goals repeat constructor
+  simp only [Condition.toExpr]
+  simp only [typecheckPolicy] at hwt
+  split at hwt
+  · rename_i tx' _ hty
+    split at hwt
+    · simp only [Except.toOption, Option.some.injEq] at hwt
+      have := typechecked_is_well_typed_after_lifting hty
+      simp only [hwt] at this
+      have := ofEnv_entities_valid_refs_for_wt_expr hwf this
+      have := ValidRefs_invariant_under_liftBoolTypes this
+      exact this
+    · contradiction
+  · contradiction
+
 theorem ofEnv_entities_find?_some
   {Γ : TypeEnv} {ety : EntityType} {δ : SymEntityData}
   (hwf : Γ.WellFormed)
@@ -1779,5 +1936,48 @@ theorem ofEnv_wf_for_expr
   constructor
   · exact ofEnv_is_wf hwf
   · exact ofEnv_entities_valid_refs_for_wt_expr hwf hwt
+
+/-- Similar to `ofEnv_wf_for_expr` but for `StronglyWellFormedFor`. -/
+theorem ofEnv_swf_for_expr
+  {Γ : TypeEnv} {tx : TypedExpr}
+  (hwf : Γ.WellFormed)
+  (hwt : TypedExpr.WellTyped Γ tx) :
+  (SymEnv.ofEnv Γ).StronglyWellFormedFor tx.toExpr
+:= by
+  constructor
+  · exact ofEnv_is_swf hwf
+  · exact ofEnv_entities_valid_refs_for_wt_expr hwf hwt
+
+/-- Similar to `ofEnv_swf_for_expr` but for `StronglyWellFormedForPolicy`. -/
+theorem ofEnv_swf_for_policy
+  {Γ : TypeEnv} {p p' : Policy}
+  (hwf : Γ.WellFormed)
+  (hsome : wellTypedPolicy p Γ = .some p') :
+  (SymEnv.ofEnv Γ).StronglyWellFormedForPolicy p'
+:= by
+  constructor
+  · exact ofEnv_is_swf hwf
+  · exact wellTypedPolicy_some_implies_valid_refs hwf hsome
+
+/-- Similar to `ofEnv_swf_for_expr` but for `StronglyWellFormedForPolicies`. -/
+theorem ofEnv_swf_for_policies
+  {Γ : TypeEnv} {ps ps' : Policies}
+  (hwf : Γ.WellFormed)
+  (hsome : wellTypedPolicies ps Γ = .some ps') :
+  (SymEnv.ofEnv Γ).StronglyWellFormedForPolicies ps'
+:= by
+  simp only [
+    SymEnv.StronglyWellFormedForPolicies,
+    SymEnv.StronglyWellFormedForAll,
+  ]
+  constructor
+  · exact ofEnv_is_swf hwf
+  · intros tx hmem_tx
+    have ⟨p', hmem_p', hp'⟩ := List.mem_map.mp hmem_tx
+    simp only [wellTypedPolicies] at hsome
+    have ⟨p, hmem_p, hp⟩ := List.mapM_some_implies_all_from_some hsome p' hmem_p'
+    have ⟨_, h⟩ := ofEnv_swf_for_policy hwf hp
+    simp only [hp'] at h
+    exact h
 
 end Cedar.Thm
