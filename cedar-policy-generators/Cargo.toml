@@ -17,7 +17,7 @@ rand = "0.9.1"
 anyhow = "1.0.72"
 serde_with = "3.4.0"
 thiserror = "2.0"
-nonempty = { version = "0.10", features = ["arbitrary"] }
+nonempty = { version = "0.12", features = ["arbitrary"] }
 
 [features]
 cedar-policy = ["dep:cedar-policy"]
