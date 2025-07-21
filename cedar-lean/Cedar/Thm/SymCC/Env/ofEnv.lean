@@ -1,11 +1,13 @@
 import Cedar.Thm.Validation.Typechecker.WF
 import Cedar.Thm.Validation.WellTyped.TypeLifting
 import Cedar.Thm.Validation.WellTyped.Definition
+import Cedar.Thm.Validation.WellTyped.Typechecking
 import Cedar.Thm.SymCC.Data.Hierarchy
 import Cedar.Thm.SymCC.Env.WF
 import Cedar.Thm.SymCC.Data.LT
 import Cedar.Thm.SymCC.Term.WF
 import Cedar.Thm.SymCC.Term.Lit
+import Cedar.Thm.SymCC.Term.UDF
 import Cedar.Thm.Data.List.Lemmas
 
 /-!
@@ -1248,6 +1250,650 @@ decreasing_by
     have := List.sizeOf_lt_of_mem hmem_x'
     omega
 
+/-- Removing `liftBoolTypes` does not affect `ValidRefs` -/
+theorem ValidRefs_invariant_under_liftBoolTypes
+  {tx : TypedExpr} {f : EntityUID → Prop}
+  (hrefs : tx.liftBoolTypes.toExpr.ValidRefs f) :
+  tx.toExpr.ValidRefs f
+:= by
+  cases tx with
+  | lit p ty =>
+    cases p with
+    | bool | int | string =>
+      simp only [TypedExpr.toExpr]
+      constructor
+      constructor
+    | entityUID uid =>
+      simp only [TypedExpr.toExpr, TypedExpr.liftBoolTypes] at hrefs ⊢
+      exact hrefs
+  | var =>
+    simp only [TypedExpr.toExpr]
+    constructor
+  | ite tx₁ tx₂ tx₃ ty =>
+    simp only [TypedExpr.toExpr, TypedExpr.liftBoolTypes] at hrefs ⊢
+    cases hrefs with | ite_valid h₁ h₂ h₃ =>
+    constructor
+    exact ValidRefs_invariant_under_liftBoolTypes h₁
+    exact ValidRefs_invariant_under_liftBoolTypes h₂
+    exact ValidRefs_invariant_under_liftBoolTypes h₃
+  | and tx₁ tx₂ ty =>
+    simp only [TypedExpr.toExpr, TypedExpr.liftBoolTypes] at hrefs ⊢
+    cases hrefs with | and_valid h₁ h₂ =>
+    constructor
+    exact ValidRefs_invariant_under_liftBoolTypes h₁
+    exact ValidRefs_invariant_under_liftBoolTypes h₂
+  | or tx₁ tx₂ ty =>
+    simp only [TypedExpr.toExpr, TypedExpr.liftBoolTypes] at hrefs ⊢
+    cases hrefs with | or_valid h₁ h₂ =>
+    constructor
+    exact ValidRefs_invariant_under_liftBoolTypes h₁
+    exact ValidRefs_invariant_under_liftBoolTypes h₂
+  | unaryApp tx f ty =>
+    simp only [TypedExpr.toExpr, TypedExpr.liftBoolTypes] at hrefs ⊢
+    cases hrefs with | unaryApp_valid h =>
+    constructor
+    exact ValidRefs_invariant_under_liftBoolTypes h
+  | hasAttr tx attr ty =>
+    simp only [TypedExpr.toExpr, TypedExpr.liftBoolTypes] at hrefs ⊢
+    cases hrefs with | hasAttr_valid h =>
+    constructor
+    exact ValidRefs_invariant_under_liftBoolTypes h
+  | getAttr tx attr ty =>
+    simp only [TypedExpr.toExpr, TypedExpr.liftBoolTypes] at hrefs ⊢
+    cases hrefs with | getAttr_valid h =>
+    constructor
+    exact ValidRefs_invariant_under_liftBoolTypes h
+  | binaryApp tx₁ tx₂ f ty =>
+    simp only [TypedExpr.toExpr, TypedExpr.liftBoolTypes] at hrefs ⊢
+    cases hrefs with | binaryApp_valid h₁ h₂ =>
+    constructor
+    exact ValidRefs_invariant_under_liftBoolTypes h₁
+    exact ValidRefs_invariant_under_liftBoolTypes h₂
+  | set txs ty =>
+    simp only [TypedExpr.toExpr, TypedExpr.liftBoolTypes] at hrefs ⊢
+    cases hrefs with | set_valid h =>
+    constructor
+    intros x hmem_x
+    simp only [List.map₁_eq_map] at hmem_x
+    simp only [
+      List.map₁_eq_map,
+      List.map_map, List.mem_map,
+      Function.comp_apply, forall_exists_index, and_imp,
+      forall_apply_eq_imp_iff₂,
+    ] at h
+    have ⟨tx, hmem_tx, htx⟩ := List.mem_map.mp hmem_x
+    have := h tx hmem_tx
+    simp only [←htx]
+    exact ValidRefs_invariant_under_liftBoolTypes this
+  | call txs ty =>
+    simp only [TypedExpr.toExpr, TypedExpr.liftBoolTypes] at hrefs ⊢
+    cases hrefs with | call_valid h =>
+    constructor
+    intros x hmem_x
+    simp only [List.map₁_eq_map] at hmem_x
+    simp only [
+      List.map₁_eq_map,
+      List.map_map, List.mem_map,
+      Function.comp_apply, forall_exists_index, and_imp,
+      forall_apply_eq_imp_iff₂,
+    ] at h
+    have ⟨tx, hmem_tx, htx⟩ := List.mem_map.mp hmem_x
+    have := h tx hmem_tx
+    simp only [←htx]
+    exact ValidRefs_invariant_under_liftBoolTypes this
+  | record attrs ty =>
+    simp only [TypedExpr.toExpr, TypedExpr.liftBoolTypes] at hrefs ⊢
+    cases hrefs with | record_valid h =>
+    constructor
+    intros attr hmem_attr
+    simp only [List.map_attach₂_snd] at hmem_attr
+    simp only [
+      List.map_attach₂_snd, List.map_map, List.mem_map,
+      Function.comp_apply, Prod.exists,
+      forall_exists_index, and_imp,
+      Prod.forall, Prod.mk.injEq,
+    ] at h
+    have ⟨⟨attr', tx⟩, hmem_attr'_tx, hattr'_tx⟩ := List.mem_map.mp hmem_attr
+    simp only at hattr'_tx
+    simp only [←hattr'_tx]
+    have := h attr' tx.liftBoolTypes.toExpr attr' tx hmem_attr'_tx rfl rfl
+    exact ValidRefs_invariant_under_liftBoolTypes this
+termination_by sizeOf tx
+decreasing_by
+  any_goals
+    simp [*]
+    omega
+  · simp [*]
+    have := List.sizeOf_lt_of_mem hmem_tx
+    omega
+  · cases attr'
+    simp [*]
+    have := List.sizeOf_lt_of_mem hmem_attr'_tx
+    simp at this
+    omega
+  · simp [*]
+    have := List.sizeOf_lt_of_mem hmem_tx
+    omega
+
+theorem wellTypedPolicy_some_implies_valid_refs
+  {Γ : TypeEnv} {p p' : Policy}
+  (hwf : Γ.WellFormed)
+  (hsome : wellTypedPolicy p Γ = .some p') :
+  p'.toExpr.ValidRefs ((SymEnv.ofEnv Γ).entities.isValidEntityUID ·)
+:= by
+  simp only [
+    wellTypedPolicy,
+    bind, Option.bind,
+  ] at hsome
+  split at hsome
+  contradiction
+  rename_i tx hwt
+  simp only [Option.some.injEq] at hsome
+  simp only [←hsome, Policy.toExpr]
+  any_goals repeat constructor
+  any_goals repeat constructor
+  simp only [Condition.toExpr]
+  simp only [typecheckPolicy] at hwt
+  split at hwt
+  · rename_i tx' _ hty
+    split at hwt
+    · simp only [Except.toOption, Option.some.injEq] at hwt
+      have := typechecked_is_well_typed_after_lifting hty
+      simp only [hwt] at this
+      have := ofEnv_entities_valid_refs_for_wt_expr hwf this
+      have := ValidRefs_invariant_under_liftBoolTypes this
+      exact this
+    · contradiction
+  · contradiction
+
+theorem ofEnv_entities_find?_some
+  {Γ : TypeEnv} {ety : EntityType} {δ : SymEntityData}
+  (hwf : Γ.WellFormed)
+  (hfind : Map.find? (SymEnv.ofEnv Γ).entities ety = .some δ) :
+  ((∃ entry, Map.find? Γ.ets ety = .some (.standard entry) ∧
+    δ = SymEntityData.ofStandardEntityType ety entry) ∨
+  (∃ entry, Map.find? Γ.ets ety = .some (.enum entry) ∧
+    δ = SymEntityData.ofEnumEntityType ety entry)) ∨
+  (∃ uid entry,
+    uid.ty = ety ∧
+    Map.find? Γ.acts uid = .some entry ∧
+    δ = SymEntityData.ofActionType uid.ty
+      (List.map (fun x => x.fst.ty) (Map.toList Γ.acts)).eraseDups
+      Γ.acts)
+:= by
+  have := Map.find?_mem_toList hfind
+  have := Map.make_mem_list_mem this
+  have := List.mem_append.mp this
+  cases this with
+  | inl hmem_ets =>
+    apply Or.inl
+    have ⟨⟨ety, entry⟩, hmem_ety_entry, hsym_entry⟩ := List.mem_map.mp hmem_ets
+    simp only [Prod.mk.injEq, SymEntityData.ofEntityType] at hsym_entry
+    have hwf_ets := wf_env_implies_wf_ets_map hwf
+    split at hsym_entry
+    · rename_i entry
+      have := (Map.in_list_iff_find?_some hwf_ets).mp hmem_ety_entry
+      apply Or.inl
+      exists entry
+      simp [this, ←hsym_entry]
+    · rename_i entry
+      have := (Map.in_list_iff_find?_some hwf_ets).mp hmem_ety_entry
+      apply Or.inr
+      exists entry
+      simp [this, ←hsym_entry]
+  | inr hmem_acts =>
+    apply Or.inr
+    have ⟨ety', hmem_ety, hsym_act⟩ := List.mem_map.mp hmem_acts
+    simp only at hmem_ety
+    have := List.mem_eraseDups_implies_mem hmem_ety
+    have ⟨⟨uid, entry⟩, hmem_uid_entry, heq_ety⟩ := List.mem_map.mp this
+    exists uid, entry
+    simp only [Prod.mk.injEq] at hsym_act
+    simp only at heq_ety
+    have hwf_acts := wf_env_implies_wf_acts_map hwf
+    have := (Map.in_list_iff_find?_some hwf_acts).mp hmem_uid_entry
+    simp [heq_ety, ←hsym_act, this]
+
+/-- Simplifies `SymEntityData.ofActionType.ancsUDF` -/
+theorem ancsUDF_app
+  {Γ : TypeEnv} {uid : EntityUID} {entry : ActionSchemaEntry}
+  (ancTy : EntityType)
+  (hwf : Γ.WellFormed)
+  (hfind : Map.find? Γ.acts uid = some entry) :
+  Factory.app
+      (SymEntityData.ofActionType.ancsUDF uid.ty Γ.acts ancTy)
+      (Term.entity uid)
+    = SymEntityData.ofActionType.ancsTerm ancTy entry.ancestors.toList
+:= by
+  simp only [SymEntityData.ofActionType.ancsUDF]
+  have hwf_acts := wf_env_implies_wf_acts_map hwf
+  apply app_table_make_filterMap hfind
+  · simp [SymEntityData.ofActionType.termOfType?]
+  · intros kv hkv
+    simp only [
+      SymEntityData.ofActionType.termOfType?,
+      Option.bind_eq_bind,
+    ] at hkv
+    split at hkv
+    · simp only [
+        Option.bind_some, Option.some.injEq,
+        Prod.mk.injEq, Term.prim.injEq,
+        TermPrim.entity.injEq, exists_and_left,
+        exists_eq', and_true,
+      ] at hkv
+      exact hkv
+    · simp at hkv
+  · simp only [Term.isLiteral]
+
+theorem in_ancsUDF_implies_in_ancestors
+  {Γ : TypeEnv} {uid uid' : EntityUID} {ancTy : EntityType}
+  (hwf : Γ.WellFormed)
+  (hmem : uid' ∈ (Factory.app (SymEntityData.ofActionType.ancsUDF uid.ty Γ.acts ancTy) (Term.entity uid)).entityUIDs) :
+  ∃ entry,
+    uid'.ty = ancTy ∧
+    Map.find? Γ.acts uid = some entry ∧
+    uid' ∈ entry.ancestors
+:= by
+  cases hfind_uid : Map.find? Γ.acts uid with
+  | none =>
+    simp only [
+      SymEntityData.ofActionType.ancsUDF,
+      Factory.app,
+      Term.isLiteral,
+      ↓reduceIte,
+    ] at hmem
+    split at hmem
+    · rename_i heq
+      have := Map.find?_mem_toList heq
+      have := Map.make_mem_list_mem this
+      have ⟨entry, hmem_entry, heq_entry⟩ := List.mem_filterMap.mp this
+      simp only [bind, Option.bind] at heq_entry
+      split at heq_entry
+      contradiction
+      simp only [Option.some.injEq, Prod.mk.injEq] at heq_entry
+      rename_i h
+      simp only [
+        SymEntityData.ofActionType.termOfType?, heq_entry,
+        Option.ite_none_right_eq_some,
+        Option.some.injEq, Term.prim.injEq,
+        TermPrim.entity.injEq,
+      ] at h
+      cases entry with | mk a b =>
+      simp only at h
+      simp only [h.2] at hmem_entry
+      have hwf_acts := wf_env_implies_wf_acts_map hwf
+      have := (Map.in_list_iff_find?_some hwf_acts).mp hmem_entry
+      simp only [this] at hfind_uid
+      contradiction
+    · simp only [Set.empty, Term.entityUIDs] at hmem
+      contradiction
+  | some entry =>
+    simp only [
+      ancsUDF_app ancTy hwf hfind_uid,
+      SymEntityData.ofActionType.ancsTerm,
+      Factory.setOf,
+    ] at hmem
+    unfold Term.entityUIDs at hmem
+    have ⟨s, hmem_s, hmem_uid'⟩ := (Set.mem_mapUnion_iff_mem_exists _).mp hmem
+    replace ⟨s, hmem_s⟩ := s
+    have := (Set.make_mem _ _).mpr hmem_s
+    have ⟨anc', hmem_anc', hanc'⟩ := List.mem_filterMap.mp this
+    simp only [
+      SymEntityData.ofActionType.termOfType?,
+      Option.ite_none_right_eq_some,
+      Option.some.injEq,
+    ] at hanc'
+    simp only [←hanc'.2, Term.entityUIDs, TermPrim.entityUIDs, Set.singleton] at hmem_uid'
+    have := (Set.mem_singleton_iff_eq _ _).mp hmem_uid'
+    simp only [←this] at hmem_anc'
+    exists entry
+    simp only [this, hanc', true_and, true_and]
+    simp only [←this]
+    exact hmem_anc'
+
+theorem in_ancestors_implies_in_ancsUDF
+  {Γ : TypeEnv} {uid uid' : EntityUID} {entry : ActionSchemaEntry}
+  (hwf : Γ.WellFormed)
+  (hfind : Map.find? Γ.acts uid = some entry)
+  (hmem : uid' ∈ entry.ancestors):
+  uid' ∈ (Factory.app (SymEntityData.ofActionType.ancsUDF uid.ty Γ.acts uid'.ty) (Term.entity uid)).entityUIDs
+:= by
+  simp only [
+    ancsUDF_app uid'.ty hwf hfind,
+    SymEntityData.ofActionType.ancsTerm,
+    Factory.setOf,
+    Term.entityUIDs,
+  ]
+  unfold Term.entityUIDs
+  apply (Set.mem_mapUnion_iff_mem_exists _).mpr
+  simp only [List.mem_attach, true_and, Subtype.exists, exists_prop]
+  exists .prim (.entity uid')
+  constructor
+  · apply (Set.make_mem _ _).mp
+    apply List.mem_filterMap.mpr
+    exists uid'
+    constructor
+    · exact hmem
+    · simp [SymEntityData.ofActionType.termOfType?]
+  · simp only [Term.entityUIDs, TermPrim.entityUIDs]
+    exact Set.mem_singleton _
+
+theorem ofEnv_entities_is_acyclic
+  {Γ : TypeEnv}
+  (hwf : Γ.WellFormed) :
+  (SymEnv.ofEnv Γ).entities.Acyclic
+:= by
+  intros uid δ udf hfind_uid_ty hfind_udf_ancs huid_cyclic
+  simp only [SymEnv.ofEnv, SymEntities.ofSchema] at hfind_uid_ty
+  have := Map.find?_mem_toList hfind_uid_ty
+  have := Map.make_mem_list_mem this
+  have := List.mem_append.mp this
+  cases this with
+  | inl hmem_ets =>
+    -- Not possible since all `ancs` maps for `ets` are UUFs
+    have ⟨⟨ety, entry⟩, hmem_ety_entry, hsym_entry⟩ := List.mem_map.mp hmem_ets
+    simp only [Prod.mk.injEq] at hsym_entry
+    simp only [
+      ←hsym_entry.2,
+      SymEntityData.ofEntityType,
+      SymEntityData.ofStandardEntityType,
+      SymEntityData.ofEnumEntityType,
+    ] at hfind_udf_ancs
+    split at hfind_udf_ancs
+    · simp only at hfind_udf_ancs
+      have := Map.find?_mem_toList hfind_udf_ancs
+      have := Map.make_mem_list_mem this
+      have ⟨_, _, h⟩ := List.mem_map.mp this
+      simp [
+        Prod.mk.injEq,
+        SymEntityData.ofStandardEntityType.ancsUUF,
+      ] at h
+    · simp [Map.empty, Map.find?, Map.kvs] at hfind_udf_ancs
+  | inr hmem_acts =>
+    have ⟨ety, hmem_ety, hsym_act⟩ := List.mem_map.mp hmem_acts
+    simp only [Prod.mk.injEq, SymEntityData.ofActionType] at hsym_act
+    simp only [←hsym_act.2] at hfind_udf_ancs
+    have := Map.find?_mem_toList hfind_udf_ancs
+    have := Map.make_mem_list_mem this
+    have ⟨ancTy, hmem_ancTy, hudf⟩ := List.mem_map.mp this
+    have := List.mem_eraseDups_implies_mem hmem_ancTy
+    have ⟨⟨anc, entry⟩, hmem_anc, heq_anc⟩ := List.mem_map.mp this
+    simp only at heq_anc
+    simp only [Prod.mk.injEq] at hudf
+    simp only [←hudf.2, hsym_act.1] at huid_cyclic
+    have ⟨entry, heq_ancTy, hfind_entry, hanc⟩ := in_ancsUDF_implies_in_ancestors hwf huid_cyclic
+    have := wf_env_implies_acyclic_action_hierarchy hwf uid entry hfind_entry hanc
+    contradiction
+
+theorem ofEnv_entities_is_transitive
+  {Γ : TypeEnv}
+  (hwf : Γ.WellFormed) :
+  (SymEnv.ofEnv Γ).entities.Transitive
+:= by
+  intros uid₁ δ₁ uid₂ δ₂ hfind_uid₁ hfind_uid₂ hanc
+  apply Set.subset_def.mpr
+  intros uid huid_anc₂
+  have h₁ := ofEnv_entities_find?_some hwf hfind_uid₁
+  have h₂ := ofEnv_entities_find?_some hwf hfind_uid₂
+  rcases h₁ with (⟨entry₁, hfind_entry₁, hδ₁⟩ | ⟨entry₁, hfind_entry₁, hδ₁⟩) | ⟨uid₁', entry₁', heq_ety₁, hfind_entry₁', hδ₁⟩
+  all_goals rcases h₂ with (⟨entry₂, hfind_entry₂, hδ₂⟩ | ⟨entry₂, hfind_entry₂, hδ₂⟩) | ⟨uid₂', entry₂', heq_ety₂, hfind_entry₂', hδ₂⟩
+  -- Case: `uid₁` is an enum entity
+  all_goals
+    simp only [
+      hδ₁,
+      SymEntityData.ofEnumEntityType,
+      SymEntityData.knownAncestors,
+    ] at hanc
+    try contradiction
+  -- Case: `uid₂` is an enum entity
+  all_goals
+    simp only [
+      hδ₂,
+      SymEntityData.ofEnumEntityType,
+      SymEntityData.knownAncestors,
+    ] at huid_anc₂
+    try contradiction
+  -- Case: `uid₁`: standard; `uid₂`: standard
+  -- Case: `uid₁`: action; `uid₂`: standard
+  any_goals
+    have ⟨⟨ety, f_anc⟩, hmem_ety_f_anc, hmem_uid₁⟩ := (Set.mem_mapUnion_iff_mem_exists _).mp huid_anc₂
+    simp only [SymEntityData.ofStandardEntityType ] at hmem_ety_f_anc
+    have := Map.make_mem_list_mem hmem_ety_f_anc
+    replace ⟨ancTy, hmem_ancTy, heq_ancTy⟩ := List.mem_map.mp this
+    simp only [Prod.mk.injEq] at heq_ancTy
+    simp only [
+      ←heq_ancTy.2,
+      SymEntityData.knownAncestors.ancs,
+      SymEntityData.ofStandardEntityType.ancsUUF,
+      Set.empty,
+    ] at hmem_uid₁
+    contradiction
+  -- Case: `uid₁`: standard; `uid₂`: action
+  · have ⟨⟨ety, f_anc⟩, hmem_ety_f_anc, hmem_uid₂⟩ := (Set.mem_mapUnion_iff_mem_exists _).mp hanc
+    simp only [SymEntityData.ofStandardEntityType ] at hmem_ety_f_anc
+    have := Map.make_mem_list_mem hmem_ety_f_anc
+    replace ⟨ancTy, hmem_ancTy, heq_ancTy⟩ := List.mem_map.mp this
+    simp only [Prod.mk.injEq] at heq_ancTy
+    simp only [
+      ←heq_ancTy.2,
+      SymEntityData.knownAncestors.ancs,
+      SymEntityData.ofStandardEntityType.ancsUUF,
+      Set.empty,
+    ] at hmem_uid₂
+    contradiction
+  -- Case: `uid₁`: action; `uid₂`: action
+  · have ⟨⟨ety₁, f_anc₁⟩, hmem_ety_f_anc₁, hmem_uid₁⟩ := (Set.mem_mapUnion_iff_mem_exists _).mp hanc
+    have ⟨⟨ety₂, f_anc₂⟩, hmem_ety_f_anc₂, hmem_uid₂⟩ := (Set.mem_mapUnion_iff_mem_exists _).mp huid_anc₂
+    have := Map.make_mem_list_mem hmem_ety_f_anc₁
+    replace ⟨ancTy₁, hmem_ancTy₁, heq_ancTy₁⟩ := List.mem_map.mp this
+    simp only [Prod.mk.injEq] at heq_ancTy₁
+    simp only [
+      ←heq_ancTy₁.2,
+      SymEntityData.knownAncestors.ancs,
+      Set.empty,
+    ] at hmem_uid₁
+    replace hmem_uid₁ : uid₂ ∈ (Factory.app
+      (SymEntityData.ofActionType.ancsUDF uid₁'.ty Γ.acts ancTy₁)
+      (Term.entity uid₁)).entityUIDs
+    := by
+      split at hmem_uid₁
+      contradiction
+      rename_i heq
+      simp only [Prod.mk.injEq] at heq
+      simp only [←heq.2] at hmem_uid₁
+      exact hmem_uid₁
+    simp only [heq_ety₁] at hmem_uid₁
+    have := Map.make_mem_list_mem hmem_ety_f_anc₂
+    replace ⟨ancTy₂, hmem_ancTy₂, heq_ancTy₂⟩ := List.mem_map.mp this
+    simp only [Prod.mk.injEq] at heq_ancTy₂
+    simp only [
+      ←heq_ancTy₂.2,
+      SymEntityData.knownAncestors.ancs,
+      Set.empty,
+    ] at hmem_uid₂
+    replace hmem_uid₂ : uid ∈ (Factory.app
+      (SymEntityData.ofActionType.ancsUDF uid₂'.ty Γ.acts ancTy₂)
+      (Term.entity uid₂)).entityUIDs
+    := by
+      split at hmem_uid₂
+      contradiction
+      rename_i heq
+      simp only [Prod.mk.injEq] at heq
+      simp only [←heq.2] at hmem_uid₂
+      exact hmem_uid₂
+    simp only [heq_ety₂] at hmem_uid₂
+    have ⟨entry₁, heq_uid₂_ty_ancTy₁, hfind_entry₁, huid₂_in_entry₁_anc⟩ := in_ancsUDF_implies_in_ancestors hwf hmem_uid₁
+    have ⟨entry₂, heq_uid_ty_ancTy₂, hfind_entry₂, huid_in_entry₂_anc⟩ := in_ancsUDF_implies_in_ancestors hwf hmem_uid₂
+    have htrans := wf_env_implies_transitive_action_hierarchy hwf
+      uid₁ entry₁ uid₂ entry₂
+      hfind_entry₁ hfind_entry₂ huid₂_in_entry₁_anc
+    replace htrans := Set.subset_def.mp htrans uid huid_in_entry₂_anc
+    simp only [
+      SymEntityData.knownAncestors,
+      hδ₁, heq_ety₁,
+      SymEntityData.ofActionType,
+    ]
+    apply (Set.mem_mapUnion_iff_mem_exists _).mpr
+    exists (uid.ty, SymEntityData.ofActionType.ancsUDF uid₁.ty Γ.acts uid.ty)
+    constructor
+    · apply (Map.in_list_iff_find?_some (Map.make_wf _)).mpr
+      apply Map.make_map_values_find
+      apply List.mem_implies_mem_eraseDups
+      apply List.mem_map.mpr
+      have ⟨entry, hfind_entry, _⟩ := wf_env_implies_wf_action_entity_ancestor hwf hfind_entry₁ htrans
+      exists (uid, entry)
+      constructor
+      · exact (Map.in_list_iff_find?_some (wf_env_implies_wf_acts_map hwf)).mpr hfind_entry
+      · rfl
+    · simp only [SymEntityData.knownAncestors.ancs]
+      have := in_ancestors_implies_in_ancsUDF hwf hfind_entry₁ htrans
+      split
+      · rename_i heq
+        simp [SymEntityData.ofActionType.ancsUDF] at heq
+      · rename_i heq
+        simp only [Prod.mk.injEq] at heq
+        simp only [←heq]
+        exact this
+
+theorem ofEnv_entities_is_partitioned
+  {Γ : TypeEnv}
+  (hwf : Γ.WellFormed) :
+  (SymEnv.ofEnv Γ).entities.Partitioned
+:= by
+  constructor
+  · intros ety δ hfind_ety
+    simp only [SymEntityData.PartitionedAncestors]
+    have := ofEnv_entities_find?_some hwf hfind_ety
+    cases this with
+    | inl hfind_ets =>
+      cases hfind_ets with
+      | inl hfind_std =>
+        have ⟨entry, hfind_std, hstd⟩ := hfind_std
+        simp only [
+          SymEntityData.isEnum, hstd,
+          SymEntityData.ofStandardEntityType,
+          Option.isSome_none, Bool.false_eq_true,
+          ↓reduceIte,
+          SymEntityData.SymbolicAncestors,
+        ]
+        intros ancTy f hfind_f
+        have := Map.find?_mem_toList hfind_f
+        replace := Map.make_mem_list_mem this
+        have ⟨ancTy', hmem_ancTy', heq_ancTy'⟩ := List.mem_map.mp this
+        simp only [Prod.mk.injEq] at heq_ancTy'
+        simp only [
+          ←heq_ancTy'.2,
+          heq_ancTy'.1,
+          SymEntityData.ofStandardEntityType.ancsUUF,
+          UnaryFunction.isUUF,
+        ]
+      | inr hfind_enum =>
+        have ⟨entry, hfind_std, henum⟩ := hfind_enum
+        simp only [
+          SymEntityData.isEnum, henum,
+          SymEntityData.ofEnumEntityType,
+          Option.isSome_some,
+          ↓reduceIte,
+          SymEntityData.ConcreteAncestors,
+        ]
+        intros ancTy f hfind_f
+        simp [Map.empty, Map.find?, Map.kvs] at hfind_f
+    | inr hfind_acts =>
+      have ⟨uid, entry, heq_ety, hfind_uid, hact⟩ := hfind_acts
+      simp only [
+        SymEntityData.isEnum, hact,
+        SymEntityData.ofActionType, Option.isSome_some,
+        ↓reduceIte,
+        SymEntityData.ConcreteAncestors,
+      ]
+      intros ancTy f hfind_f
+      have := Map.find?_mem_toList hfind_f
+      replace := Map.make_mem_list_mem this
+      have ⟨ancTy', hmem_ancTy', heq_ancTy'⟩ := List.mem_map.mp this
+      simp only [Prod.mk.injEq] at heq_ancTy'
+      simp only [
+        ←heq_ancTy'.2,
+        heq_ancTy'.1,
+        SymEntityData.ofActionType.ancsUDF,
+        UnaryFunction.isUDF,
+      ]
+  · intros ety₁ δ₁ f ety₂ δ₂ hfind₁ hfind₂ hanc
+    have h₁ := ofEnv_entities_find?_some hwf hfind₁
+    have h₂ := ofEnv_entities_find?_some hwf hfind₂
+    rcases h₁ with (⟨entry₁, hfind_entry₁, hδ₁⟩ | ⟨entry₁, hfind_entry₁, hδ₁⟩) | ⟨uid₁, entry₁, heq_ety₁, hfind_entry₁, hδ₁⟩
+    all_goals rcases h₂ with (⟨entry₂, hfind_entry₂, hδ₂⟩ | ⟨entry₂, hfind_entry₂, hδ₂⟩) | ⟨uid₂, entry₂, heq_ety₂, hfind_entry₂, hδ₂⟩
+    any_goals simp only [
+      hδ₁, hδ₂,
+      SymEntityData.isEnum,
+      SymEntityData.ofStandardEntityType,
+      SymEntityData.ofEnumEntityType,
+      SymEntityData.ofActionType,
+      Option.isSome,
+    ]
+    all_goals
+      simp only [
+        hδ₁,
+        SymEntityData.ofEnumEntityType,
+        SymEntityData.ofActionType,
+      ] at hanc
+    any_goals
+      try · simp [Map.empty, Map.find?, Map.kvs] at hanc
+    -- entry₁: standard; entry₂: enum
+    · have hancs_std_only := wf_env_implies_ancestors_of_standard_ety_is_standard hwf hfind_entry₁ ety₂
+      simp only [SymEntityData.ofStandardEntityType] at hanc
+      have := Map.find?_mem_toList hanc
+      replace := Map.make_mem_list_mem this
+      have ⟨ancTy, hmem_ancTy, heq_ancTy⟩ := List.mem_map.mp this
+      simp only [Prod.mk.injEq] at heq_ancTy
+      simp only [heq_ancTy.1] at hmem_ancTy
+      specialize hancs_std_only hmem_ancTy
+      simp [hfind_entry₂, EntitySchemaEntry.isStandard] at hancs_std_only
+    -- entry₁: standard; entry₂: action
+    · have hancs_std_only := wf_env_implies_ancestors_of_standard_ety_is_standard hwf hfind_entry₁ ety₂
+      simp only [SymEntityData.ofStandardEntityType] at hanc
+      have := Map.find?_mem_toList hanc
+      replace := Map.make_mem_list_mem this
+      have ⟨ancTy, hmem_ancTy, heq_ancTy⟩ := List.mem_map.mp this
+      simp only [Prod.mk.injEq] at heq_ancTy
+      simp only [heq_ancTy.1] at hmem_ancTy
+      have ⟨_, h, _⟩ := hancs_std_only hmem_ancTy
+      simp only [←heq_ety₂] at h
+      have := wf_env_disjoint_ets_acts hwf h hfind_entry₂
+      contradiction
+    -- entry₁: action; entry₂: standard
+    · have := Map.find?_mem_toList hanc
+      replace := Map.make_mem_list_mem this
+      have ⟨ancTy, hmem_ancTy, heq_ancTy⟩ := List.mem_map.mp this
+      simp only [Prod.mk.injEq] at heq_ancTy
+      have := List.mem_eraseDups_implies_mem hmem_ancTy
+      have ⟨⟨anc, entry⟩, hmem_anc, heq_anc⟩ := List.mem_map.mp this
+      simp only at heq_anc
+      simp only [←heq_ancTy.1, ←heq_anc] at hfind_entry₂
+      have hwf_acts := wf_env_implies_wf_acts_map hwf
+      have := (Map.in_list_iff_find?_some hwf_acts).mp hmem_anc
+      have := wf_env_disjoint_ets_acts hwf hfind_entry₂ this
+      contradiction
+
+theorem ofEnv_entities_is_hierarchical
+  {Γ : TypeEnv}
+  (hwf : Γ.WellFormed) :
+  (SymEnv.ofEnv Γ).entities.Hierarchical
+:= by
+  constructor
+  · exact ofEnv_entities_is_acyclic hwf
+  constructor
+  · exact ofEnv_entities_is_transitive hwf
+  · exact ofEnv_entities_is_partitioned hwf
+
+theorem ofEnv_entities_is_swf
+  {Γ : TypeEnv}
+  (hwf : Γ.WellFormed) :
+  (SymEnv.ofEnv Γ).entities.StronglyWellFormed
+:= by
+  constructor
+  exact ofEnv_entities_is_wf hwf
+  exact ofEnv_entities_is_hierarchical hwf
+
 /--
 Main well-formedness theorem for `SymEnv.ofEnv`,
 which says that if the input environment `Γ` is well-formed,
@@ -1264,6 +1910,20 @@ theorem ofEnv_is_wf
   · exact ofEnv_entities_is_wf hwf
 
 /--
+A stronger version of `ofEnv_is_wf` that
+shows that `SymEnv.ofEnv Γ` is strongly well-formed.
+-/
+theorem ofEnv_is_swf
+  {Γ : TypeEnv}
+  (hwf : Γ.WellFormed) :
+  (SymEnv.ofEnv Γ).StronglyWellFormed
+:= by
+  simp only [SymEnv.StronglyWellFormed]
+  constructor
+  exact ofEnv_request_is_swf hwf
+  exact ofEnv_entities_is_swf hwf
+
+/--
 If an expression is well-typed in a concrete, well-formed `TypeEnv`,
 then it must also be well-formed in the compiled symbolic environment.
 -/
@@ -1276,5 +1936,48 @@ theorem ofEnv_wf_for_expr
   constructor
   · exact ofEnv_is_wf hwf
   · exact ofEnv_entities_valid_refs_for_wt_expr hwf hwt
+
+/-- Similar to `ofEnv_wf_for_expr` but for `StronglyWellFormedFor`. -/
+theorem ofEnv_swf_for_expr
+  {Γ : TypeEnv} {tx : TypedExpr}
+  (hwf : Γ.WellFormed)
+  (hwt : TypedExpr.WellTyped Γ tx) :
+  (SymEnv.ofEnv Γ).StronglyWellFormedFor tx.toExpr
+:= by
+  constructor
+  · exact ofEnv_is_swf hwf
+  · exact ofEnv_entities_valid_refs_for_wt_expr hwf hwt
+
+/-- Similar to `ofEnv_swf_for_expr` but for `StronglyWellFormedForPolicy`. -/
+theorem ofEnv_swf_for_policy
+  {Γ : TypeEnv} {p p' : Policy}
+  (hwf : Γ.WellFormed)
+  (hsome : wellTypedPolicy p Γ = .some p') :
+  (SymEnv.ofEnv Γ).StronglyWellFormedForPolicy p'
+:= by
+  constructor
+  · exact ofEnv_is_swf hwf
+  · exact wellTypedPolicy_some_implies_valid_refs hwf hsome
+
+/-- Similar to `ofEnv_swf_for_expr` but for `StronglyWellFormedForPolicies`. -/
+theorem ofEnv_swf_for_policies
+  {Γ : TypeEnv} {ps ps' : Policies}
+  (hwf : Γ.WellFormed)
+  (hsome : wellTypedPolicies ps Γ = .some ps') :
+  (SymEnv.ofEnv Γ).StronglyWellFormedForPolicies ps'
+:= by
+  simp only [
+    SymEnv.StronglyWellFormedForPolicies,
+    SymEnv.StronglyWellFormedForAll,
+  ]
+  constructor
+  · exact ofEnv_is_swf hwf
+  · intros tx hmem_tx
+    have ⟨p', hmem_p', hp'⟩ := List.mem_map.mp hmem_tx
+    simp only [wellTypedPolicies] at hsome
+    have ⟨p, hmem_p, hp⟩ := List.mapM_some_implies_all_from_some hsome p' hmem_p'
+    have ⟨_, h⟩ := ofEnv_swf_for_policy hwf hp
+    simp only [hp'] at h
+    exact h
 
 end Cedar.Thm

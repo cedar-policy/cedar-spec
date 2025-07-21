@@ -386,4 +386,47 @@ theorem wf_env_implies_wf_ancestor_set
   | enum es =>
     simp only [EntitySchemaEntry.ancestors, Set.empty_wf]
 
+theorem wf_env_implies_acyclic_action_hierarchy
+  {env : TypeEnv}
+  (hwf : env.WellFormed) :
+  env.acts.AcyclicActionHierarchy
+:= by
+  have ⟨_, hwf_acts, _⟩ := hwf
+  have ⟨_, _, _, h, _⟩ := hwf_acts
+  exact h
+
+theorem wf_env_implies_transitive_action_hierarchy
+  {env : TypeEnv}
+  (hwf : env.WellFormed) :
+  env.acts.TransitiveActionHierarchy
+:= by
+  have ⟨_, hwf_acts, _⟩ := hwf
+  have ⟨_, _, _, _, h⟩ := hwf_acts
+  exact h
+
+theorem wf_env_implies_ancestors_of_standard_ety_is_standard
+  {env : TypeEnv} {ety : EntityType} {entry : StandardSchemaEntry}
+  (hwf : env.WellFormed)
+  (hfind : env.ets.find? ety = some (.standard entry)) :
+  ∀ anc ∈ entry.ancestors,
+    ∃ entry, env.ets.find? anc = some entry ∧ entry.isStandard
+:= by
+  have ⟨hwf_ets, _⟩ := hwf
+  have hwf_entry := hwf_ets.2 ety (.standard entry) hfind
+  simp only [EntitySchemaEntry.WellFormed] at hwf_entry
+  have ⟨_, hancs, _⟩ := hwf_entry
+  exact hancs
+
+theorem wf_env_implies_ancestors_of_action_is_action
+  {env : TypeEnv} {uid : EntityUID} {entry : ActionSchemaEntry}
+  (hwf : env.WellFormed)
+  (hfind : env.acts.find? uid = some entry) :
+  ∀ uid ∈ entry.ancestors, env.acts.contains uid
+:= by
+  have ⟨_, hwf_acts, _⟩ := hwf
+  have hwf_entry := hwf_acts.2.1 uid entry hfind
+  simp only [ActionSchemaEntry.WellFormed] at hwf_entry
+  have ⟨_, _, _, _, _, hancs, _⟩ := hwf_entry
+  exact hancs
+
 end Cedar.Validation

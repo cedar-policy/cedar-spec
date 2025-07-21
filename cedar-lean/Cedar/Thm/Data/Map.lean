@@ -1283,7 +1283,7 @@ theorem map_find?_to_list_find?
   · contradiction
 
 theorem map_find?_implies_find?_weaker_pred
-  [BEq α] [LawfulBEq α] [BEq β] [LawfulBEq β]
+  [BEq α] [LawfulBEq α]
   {m : Map α β} {k : α} {v : β} {f : α × β → Bool}
   (hfind : Map.find? m k = .some v)
   (hf : ∀ kv, f kv → kv.1 = k)
