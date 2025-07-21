@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Thm.SymbolicCompilation
+import Cedar.Thm.SymCC.WellTyped
 
 /-! `verify*` functions always succeed on well-formed inputs. --/
 
