@@ -55,6 +55,16 @@ theorem typechecked_is_well_typed_after_lifting_lit
       exact TypedExpr.WellTyped.lit (Prim.WellTyped.entityUID uid h₄)
     · cases h₂
 
+theorem typechecked_is_well_typed_after_lifting_val
+{v : Value}
+{c₁ c₂ : Capabilities}
+{env : TypeEnv}
+{ty : TypedExpr} :
+  typeOf (Expr.val v) c₁ env = Except.ok (ty, c₂) →
+  TypedExpr.WellTyped env ty.liftBoolTypes
+:= by
+  sorry
+
 theorem typechecked_is_well_typed_after_lifting_var
 {v : Var}
 {c₁ c₂ : Capabilities}
@@ -1365,6 +1375,8 @@ theorem typechecked_is_well_typed_after_lifting
   TypedExpr.WellTyped env ty.liftBoolTypes
 := by
   induction e, c₁ using typeOf.induct generalizing ty c₂
+  case _ =>
+    exact typechecked_is_well_typed_after_lifting_val
   case _ =>
     exact typechecked_is_well_typed_after_lifting_lit
   case _ =>

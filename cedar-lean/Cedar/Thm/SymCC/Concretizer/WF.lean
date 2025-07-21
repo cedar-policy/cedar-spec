@@ -138,15 +138,26 @@ private theorem value_entityUIDs_valid_refs { v : Value} {uids : Set EntityUID} 
       simp only [Prim.entityUIDs, Set.subset_def, Set.mem_singleton_iff_eq, forall_eq, Value.entityUIDs] at hsub
       exact hs _ hsub
     case case2 s ih => --set
-      apply Value.ValidRefs.set_valid
       unfold Value.entityUIDs at hsub
+      apply Value.ValidRefs.set_valid
       simp only [List.attach_def, List.mapUnion_pmap_subtype] at hsub
       intro xᵢ hᵢ
       have hsubᵢ := Set.mem_implies_subset_mapUnion Value.entityUIDs hᵢ
       replace hsubᵢ := Set.subset_trans hsubᵢ hsub
       exact ih xᵢ hᵢ hsubᵢ
-    case case3 r => --record
-      sorry
+    case case3 r ih => --record
+      unfold Value.entityUIDs at hsub
+      simp only [List.attach₃, List.mapUnion_pmap_subtype λ x : Attr × Value => x.snd.entityUIDs] at hsub
+      apply Value.ValidRefs.record_valid
+      intro (aᵢ, xᵢ) hᵢ
+      have hsubᵢ := Set.mem_implies_subset_mapUnion (λ x : Attr × Value => x.snd.entityUIDs) hᵢ
+      replace hsubᵢ := Set.subset_trans hsubᵢ hsub
+      simp only at hsubᵢ
+      apply ih aᵢ xᵢ _ hsubᵢ
+      simp only
+      replace hᵢ := List.sizeOf_lt_of_mem hᵢ
+      simp only [Prod.mk.sizeOf_spec] at hᵢ
+      omega
     case case4 x => --ext
       apply Value.ValidRefs.ext_valid
 

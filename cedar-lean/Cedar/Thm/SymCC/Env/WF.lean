@@ -611,6 +611,14 @@ theorem prim_valid_refs_same_domain {εs₁ εs₂ : SymEntities} {p : Prim} :
   rw [h₁.left uid] at h₂
   exact h₂
 
+theorem val_valid_refs_same_domain {εs₁ εs₂ : SymEntities} {v : Value} :
+  SameDomain εs₁ εs₂ →
+  Value.ValidRefs (εs₁.isValidEntityUID · = true) v →
+  Value.ValidRefs (εs₂.isValidEntityUID · = true) v
+:= by
+  intro h₁ h₂
+  sorry
+
 theorem expr_valid_refs_same_domain {εs₁ εs₂ : SymEntities} {x : Expr} :
   SameDomain εs₁ εs₂ →
   x.ValidRefs (εs₁.isValidEntityUID · = true) →
@@ -622,6 +630,8 @@ theorem expr_valid_refs_same_domain {εs₁ εs₂ : SymEntities} {x : Expr} :
     exact Expr.ValidRefs.lit_valid (prim_valid_refs_same_domain h₁ h)
   case var_valid =>
     exact Expr.ValidRefs.var_valid
+  case val_valid v h =>
+    exact Expr.ValidRefs.val_valid (val_valid_refs_same_domain h₁ h)
   case ite_valid ih₁ ih₂ ih₃ =>
     exact Expr.ValidRefs.ite_valid ih₁ ih₂ ih₃
   case and_valid ih₁ ih₂ =>

@@ -55,6 +55,61 @@ theorem type_of_lit_is_sound {l : Prim} {c₁ c₂ : Capabilities} {env : TypeEn
       apply InstanceOfType.instance_of_string
   }
 
+
+theorem type_of_val_is_sound {v : Value} {c₁ c₂ : Capabilities} {env : TypeEnv} {ty : TypedExpr} {request : Request} {entities : Entities}
+  (h₁ : CapabilitiesInvariant c₁ request entities)
+  (h₂ : InstanceOfWellFormedEnvironment request entities env)
+  (h₃ : typeOf (Expr.val v) c₁ env = Except.ok (ty, c₂)) :
+  GuardedCapabilitiesInvariant (Expr.val v) c₂ request entities ∧
+  ∃ w, EvaluatesTo (Expr.val v) request entities w ∧ InstanceOfType env w ty.typeOf
+:= by
+  simp [EvaluatesTo, evaluate]
+  simp [typeOf] at h₃
+  -- typeOf (Expr.val v) c₁ env = typeOfVal v env, so we have typeOfVal v env = Except.ok (ty, c₂)
+  have h₄ : typeOfVal v env = Except.ok (ty, c₂) := h₃
+  -- We need to prove soundness by induction on the structure of v
+  induction v using Value.rec generalizing ty c₂ with
+  | prim p =>
+    -- For primitive values, typeOfVal calls typeOfLit
+    simp [typeOfVal] at h₄
+    have h₅ : typeOfLit p env = Except.ok (ty, c₂) := h₄
+    apply And.intro empty_guarded_capabilities_invariant
+    exists (Value.prim p)
+    apply And.intro
+    · simp [EvaluatesTo, evaluate]
+    · -- Use the soundness of typeOfLit
+      have h₆ := type_of_lit_is_sound (by simp [typeOf, h₅])
+      simp [EvaluatesTo, evaluate] at h₆
+      exact h₆.right.right
+  | set s ih =>
+    -- For set values, we need to handle the recursive case
+    simp [typeOfVal] at h₄
+    apply And.intro empty_guarded_capabilities_invariant
+    exists (Value.set s)
+    apply And.intro
+    · simp [EvaluatesTo, evaluate]
+    · -- This would require proving that the set type is correct
+      -- For now, we'll use sorry as this requires more complex reasoning
+      sorry
+  | record m ih =>
+    -- For record values, similar to sets
+    simp [typeOfVal] at h₄
+    apply And.intro empty_guarded_capabilities_invariant
+    exists (Value.record m)
+    apply And.intro
+    · simp [EvaluatesTo, evaluate]
+    · -- This would require proving that the record type is correct
+      sorry
+  | ext e =>
+    -- For extension values, typeOfVal calls typeOfExt
+    simp [typeOfVal] at h₄
+    apply And.intro empty_guarded_capabilities_invariant
+    exists (Value.ext e)
+    apply And.intro
+    · simp [EvaluatesTo, evaluate]
+    · -- This would require proving that the extension type is correct
+      sorry
+
 theorem type_of_var_is_sound {var : Var} {c₁ c₂ : Capabilities} {env : TypeEnv} {e' : TypedExpr} {request : Request} {entities : Entities}
   (h₂ : InstanceOfWellFormedEnvironment request entities env)
   (h₃ : typeOf (Expr.var var) c₁ env = Except.ok (e', c₂)) :
