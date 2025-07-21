@@ -21,7 +21,7 @@ log = "0.4"
 logos = "0.15.0"
 itertools = "0.14.0"
 miette = "7.1.0"
-prost = "0.13"
+prost = "0.14"
 rand = { version = "0.9", features = ["small_rng"] }
 rand_chacha = { version = "0.9", optional = true }
 rayon = { version = "1.5", optional = true }
