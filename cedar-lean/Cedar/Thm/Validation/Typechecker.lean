@@ -100,6 +100,34 @@ theorem type_of_is_sound {e : Expr} {c₁ c₂ : Capabilities} {env : TypeEnv} {
     exact type_of_call_is_sound h₁ h₂ h₃ ih
 termination_by sizeOf e
 
+theorem type_of_val_preserves_evaluation_results {v : Value} {c₁ c₂ : Capabilities} {env : TypeEnv} {ty : TypedExpr} {request : Request} {entities : Entities} :
+  CapabilitiesInvariant c₁ request entities →
+  InstanceOfWellFormedEnvironment request entities env →
+  typeOfVal v env = .ok (ty, c₂) →
+  evaluate (Expr.val v) request entities = evaluate ty.toExpr request entities := by
+  intro h₁ h₂ h₃
+  induction v using typeOfVal.induct generalizing ty
+  case _ =>
+    simp [typeOfVal, typeOfValLit, ok] at h₃
+    split at h₃ <;>
+    try (
+      simp at h₃
+      rcases h₃ with ⟨h₃, _⟩
+      subst h₃
+      simp only [TypedExpr.toExpr]
+    )
+    split at h₃ <;> simp [err] at h₃
+    rcases h₃ with ⟨h₃, _⟩
+    subst h₃
+    simp only [TypedExpr.toExpr]
+  case _ =>
+    sorry
+  case _ =>
+    sorry
+  case _ =>
+    sorry
+
+
 /-- The type checker, if succeeds, should produce a typed expression that
 evaluates to the same result as the input expression.
 -/
@@ -111,6 +139,9 @@ theorem type_of_preserves_evaluation_results {e : Expr} {c₁ c₂ : Capabilitie
 := by
   intro h₁ h₂ h₃
   induction e, c₁ using typeOf.induct generalizing ty c₂
+  case _ =>
+    simp [typeOf, typeOfLit, ok] at h₃
+    exact type_of_val_preserves_evaluation_results h₁ h₂ h₃
   case _ =>
     simp [typeOf, typeOfLit, ok] at h₃
     split at h₃ <;>

@@ -72,6 +72,19 @@ def typeOfLit (p : Prim) (env : TypeEnv) : ResultType :=
     then ok (.entity uid.ty)
     else err (.unknownEntity uid.ty)
 
+-- like typeOfLit but with TypeExpr.val calls
+def typeOfValLit  (p : Prim) (env : TypeEnv) : ResultType :=
+  let ok := ok ∘ TypedExpr.val p
+  match p with
+  | .bool true     => ok (.bool .tt)
+  | .bool false    => ok (.bool .ff)
+  | .int _         => ok .int
+  | .string _      => ok .string
+  | .entityUID uid =>
+    if env.ets.isValidEntityUID uid || env.acts.contains uid
+    then ok (.entity uid.ty)
+    else err (.unknownEntity uid.ty)
+
 def justType (r : ResultType) : Except TypeError TypedExpr :=
   r.map Prod.fst
 
@@ -83,13 +96,22 @@ def typeOfSet (tys : List TypedExpr) : ResultType :=
     | .some ty => ok (.set tys (.set ty))
     | .none    => err (.incompatibleSetTypes (hd.typeOf :: tl.map TypedExpr.typeOf))
 
+def typeOfValSet (tys : List TypedExpr) (s: Set Value) : ResultType :=
+  match tys with
+  | []       => err .emptySetErr
+  | hd :: tl =>
+    match (tl.map TypedExpr.typeOf).foldlM lub? hd.typeOf with
+    | .some ty => ok (TypedExpr.val (Value.set s) (.set ty))
+    | .none    => err (.incompatibleSetTypes (hd.typeOf :: tl.map TypedExpr.typeOf))
+
+
 def typeOfVal (v : Value) (env : TypeEnv) : ResultType :=
   match v with
-  | .prim p => typeOfLit p env
+  | .prim p => typeOfValLit p env
   | .set s =>
     do
       let tys ← s.elts.mapM₁ (λ ⟨x₁, _⟩ => justType (typeOfVal x₁ env))
-      typeOfSet tys
+      typeOfValSet tys s
   | .record m =>
     do
       let atys ← m.kvs.mapM₂ (λ ⟨(a₁, x₁), _⟩ => (typeOfVal x₁ env).map (λ (ty, _) => (a₁, ty)))
