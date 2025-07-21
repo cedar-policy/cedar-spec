@@ -395,6 +395,15 @@ theorem wf_env_implies_acyclic_action_hierarchy
   have ⟨_, _, _, h, _⟩ := hwf_acts
   exact h
 
+theorem wf_env_implies_transitive_action_hierarchy
+  {env : TypeEnv}
+  (hwf : env.WellFormed) :
+  env.acts.TransitiveActionHierarchy
+:= by
+  have ⟨_, hwf_acts, _⟩ := hwf
+  have ⟨_, _, _, _, h⟩ := hwf_acts
+  exact h
+
 theorem wf_env_implies_ancestors_of_standard_ety_is_standard
   {env : TypeEnv} {ety : EntityType} {entry : StandardSchemaEntry}
   (hwf : env.WellFormed)
