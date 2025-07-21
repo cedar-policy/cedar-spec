@@ -1763,4 +1763,23 @@ theorem mem_implies_find?
         simp only [true_and]
         exact ih hmem
 
+theorem filterMap_eq_filterMap
+  {l₁ : List α} {l₂ : List β}
+  {p : α → β → Prop} {f₁ : α → Option γ} {f₂ : β → Option γ}
+  (h : List.Forall₂ p l₁ l₂)
+  (hp : ∀ a b, p a b → f₁ a = f₂ b) :
+  l₁.filterMap f₁ = l₂.filterMap f₂
+:= by
+  induction h with
+  | nil => simp
+  | cons hhd htl ih =>
+    rename_i a b hmem_a hmem_b
+    simp only [List.filterMap_cons]
+    have heq := hp a b hhd
+    simp only [heq]
+    split
+    · exact ih
+    · simp only [cons.injEq, true_and]
+      exact ih
+
 end List

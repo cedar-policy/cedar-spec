@@ -152,10 +152,36 @@ theorem wellTypedPolicy_some_implies_well_typed_expr
   simp [hwt, h]
 
 /--
+`wellTypedPolicy` preserves `Entities.ValidRefsFor`.
+-/
+theorem wellTypedPolicy_preserves_valid_refs
+  {Γ : TypeEnv} {entities : Entities} {p p' : Policy} {request : Request} {entities : Entities}
+  (hinst : InstanceOfWellFormedEnvironment request entities Γ)
+  (hwt : wellTypedPolicy p Γ = .some p')
+  (hswf : entities.ValidRefsFor p.toExpr) :
+  entities.ValidRefsFor p'.toExpr
+:= by
+  have ⟨tx, tx', _, _, _, hty, heq_p', heq_tx'⟩ := wellTypedPolicy_some_implies_exists_typed_exprs hwt
+  simp only [
+    heq_tx', TypedExpr.toExpr,
+    ←type_lifting_preserves_expr tx,
+  ] at heq_p'
+  simp only [heq_p']
+  repeat
+    constructor
+    repeat constructor
+  rotate_left
+  repeat constructor
+  -- TODO: `substituteAction` preserves `ValidRefsFor`
+  -- TODO: `typeOf` preserves `ValidRefsFor`
+  sorry
+
+/--
 `wellTypedPolicy` preserves the result of `evaluate`.
 -/
 theorem wellTypedPolicy_preserves_evaluation
-  {Γ : TypeEnv} {p p' : Policy} {request : Request} {entities : Entities}
+  {Γ : TypeEnv} {request : Request} {entities : Entities}
+  {p p' : Policy}
   (hinst : InstanceOfWellFormedEnvironment request entities Γ)
   (hwt : wellTypedPolicy p Γ = .some p') :
   evaluate p.toExpr request entities
@@ -204,5 +230,104 @@ theorem wellTypedPolicy_preserves_evaluation
       cases hwt_v with | instance_of_bool b bt hwt_v_bool =>
       cases b <;> simp
     | _ => simp [htx_ty, CedarType.liftBoolTypes] at hbool
+
+theorem wellTypedPolicies_preserves_policy_id_and_effect
+  {Γ : TypeEnv} {p p' : Policy}
+  (hwt : wellTypedPolicy p Γ = .some p') :
+  p.id = p'.id ∧ p.effect = p'.effect
+:= by
+  simp only [wellTypedPolicy, bind, Option.bind] at hwt
+  split at hwt
+  contradiction
+  simp only [Option.some.injEq] at hwt
+  simp [←hwt]
+
+theorem wellTypedPolicies_preserves_satisfiedWithEffect
+  {Γ : TypeEnv} {entities : Entities} {request : Request}
+  {p p' : Policy}
+  (effect : Effect)
+  (hinst : InstanceOfWellFormedEnvironment request entities Γ)
+  (hwt : wellTypedPolicy p Γ = .some p') :
+  satisfiedWithEffect effect p request entities
+  = satisfiedWithEffect effect p' request entities
+:= by
+  have h := wellTypedPolicy_preserves_evaluation hinst hwt
+  simp only [
+    satisfiedWithEffect, satisfied,
+    h, wellTypedPolicies_preserves_policy_id_and_effect hwt
+  ]
+
+theorem wellTypedPolicies_preserves_satisfiedPolicies
+  {Γ : TypeEnv} {entities : Entities} {request : Request}
+  {ps ps' : Policies}
+  (effect : Effect)
+  (hinst : InstanceOfWellFormedEnvironment request entities Γ)
+  (hwt : wellTypedPolicies ps Γ = .some ps') :
+  satisfiedPolicies effect ps request entities
+  = satisfiedPolicies effect ps' request entities
+:= by
+  simp only [Spec.satisfiedPolicies]
+  have :
+    List.filterMap (λ x => satisfiedWithEffect effect x request entities) ps
+    = List.filterMap (λ x => satisfiedWithEffect effect x request entities) ps'
+  := by
+    apply List.filterMap_eq_filterMap
+      (p := λ x y =>
+        satisfiedWithEffect effect x request entities
+        = satisfiedWithEffect effect y request entities)
+    · apply List.mapM_implies_forall₂_option _ hwt
+      intros p p' hmem_p hwt_p
+      exact wellTypedPolicies_preserves_satisfiedWithEffect effect hinst hwt_p
+    · simp
+  rw [this]
+
+theorem wellTypedPolicies_preserves_errored
+  {Γ : TypeEnv} {entities : Entities} {request : Request}
+  {p p' : Policy}
+  (hinst : InstanceOfWellFormedEnvironment request entities Γ)
+  (hwt : wellTypedPolicy p Γ = .some p') :
+  errored p request entities
+  = errored p' request entities
+:= by
+  have h := wellTypedPolicy_preserves_evaluation hinst hwt
+  simp only [
+    errored, hasError,
+    h, wellTypedPolicies_preserves_policy_id_and_effect hwt
+  ]
+
+theorem wellTypedPolicies_preserves_errorPolicies
+  {Γ : TypeEnv} {entities : Entities} {request : Request}
+  {ps ps' : Policies}
+  (hinst : InstanceOfWellFormedEnvironment request entities Γ)
+  (hwt : wellTypedPolicies ps Γ = .some ps') :
+  errorPolicies ps request entities
+  = errorPolicies ps' request entities
+:= by
+  simp only [errorPolicies]
+  have :
+    List.filterMap (fun x => errored x request entities) ps
+    = List.filterMap (fun x => errored x request entities) ps'
+  := by
+    apply List.filterMap_eq_filterMap
+      (p := λ x y => errored x request entities = errored y request entities)
+    · apply List.mapM_implies_forall₂_option _ hwt
+      intros p p' hmem_p hwt_p
+      exact wellTypedPolicies_preserves_errored hinst hwt_p
+    · simp
+  rw [this]
+
+/-- `wellTypedPolicies` preserves the result of `isAuthorized`. -/
+theorem wellTypedPolicies_preserves_isAuthorized
+  {Γ : TypeEnv} {entities : Entities} {request : Request}
+  {ps ps' : Policies}
+  (hinst : InstanceOfWellFormedEnvironment request entities Γ)
+  (hwt : wellTypedPolicies ps Γ = .some ps') :
+  isAuthorized request entities ps
+  = isAuthorized request entities ps'
+:= by
+  have hpermit := wellTypedPolicies_preserves_satisfiedPolicies .permit hinst hwt
+  have hforbid := wellTypedPolicies_preserves_satisfiedPolicies .forbid hinst hwt
+  have herror := wellTypedPolicies_preserves_errorPolicies hinst hwt
+  simp only [Spec.isAuthorized, hpermit, hforbid, herror]
 
 end Cedar.Thm
