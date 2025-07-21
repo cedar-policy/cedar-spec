@@ -6,7 +6,12 @@
 version: 2
 updates:
   - package-ecosystem: "cargo"
-    directory: "/"
+    directories:
+      - "/cedar-drt"
+      - "/cedar-drt/fuzz"
+      - "/cedar-policy-generators"
+      - "/cedar-lean-cli"
+      - "/cedar-lean-ffi"
     schedule:
       interval: "daily"
     open-pull-requests-limit: 1
