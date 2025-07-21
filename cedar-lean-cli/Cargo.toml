@@ -16,3 +16,6 @@ miette = "7.6.0"
 prettytable-rs = "0.10"
 
 [profile.release]
+
+[patch.crates-io]
+cedar-policy = { path = "../cedar/cedar-policy" }
