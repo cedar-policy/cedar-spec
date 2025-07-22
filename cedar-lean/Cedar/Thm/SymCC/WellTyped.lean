@@ -284,12 +284,317 @@ decreasing_by
     simp at this ⊢
     omega
 
+set_option maxHeartbeats 1000000
+/--
+`typeOf` preserves `Entities.ValidRefsFor`.
+The converse is not true, due to policies with
+invalid UID literals, such as
+```
+// entity User enum ["alice"];
+permit(principal, action, resource)
+when { if true then User::"alice" else User::"bob" };
+```
+-/
 theorem typeOf_preserves_valid_refs
   {Γ : TypeEnv} (entities : Entities)
-  {expr : Expr} {tx : TypedExpr} {c : Capabilities}
-  (hty : typeOf expr ∅ Γ = Except.ok (tx, c)) :
-  entities.ValidRefsFor expr ↔ entities.ValidRefsFor tx.toExpr
-:= sorry
+  {expr : Expr} {tx : TypedExpr} {c₁ c₂ : Capabilities}
+  (hty : typeOf expr c₁ Γ = Except.ok (tx, c₂))
+  (hrefs : entities.ValidRefsFor expr) :
+  entities.ValidRefsFor tx.toExpr
+:= by
+  cases expr with
+  | lit p =>
+    simp only [typeOf, typeOfLit] at hty
+    cases p with
+    | bool | int | string =>
+      split at hty
+      any_goals contradiction
+      all_goals
+        simp only [
+          ok, List.empty_eq,
+          Function.comp_apply,
+          Except.ok.injEq,
+          Prod.mk.injEq,
+          List.nil_eq,
+        ] at hty
+        simp only [←hty.1, TypedExpr.toExpr]
+        repeat constructor
+    | entityUID uid =>
+      split at hty
+      any_goals contradiction
+      all_goals
+        split at hty
+        · simp only [
+            ok, List.empty_eq,
+            Function.comp_apply,
+            Except.ok.injEq,
+            Prod.mk.injEq,
+            List.nil_eq,
+          ] at hty
+          simp only [←hty.1, TypedExpr.toExpr]
+          constructor
+          cases hrefs
+          assumption
+        · contradiction
+  | var v =>
+    simp only [typeOf, typeOfVar] at hty
+    split at hty
+    all_goals
+      simp only [
+        ok, List.empty_eq, Function.comp_apply,
+        Except.ok.injEq, Prod.mk.injEq,
+        List.nil_eq,
+      ] at hty
+      simp only [←hty.1, TypedExpr.toExpr]
+      constructor
+  | and e₁ e₂ =>
+    cases hrefs with | and_valid hrefs₁ hrefs₂ =>
+    simp only [typeOf, typeOfAnd] at hty
+    cases hty₁ : typeOf e₁ c₁ Γ with
+    | error => simp [hty₁] at hty
+    | ok r₁ =>
+      have ⟨tx₁, c₃⟩ := r₁
+      simp only [hty₁, List.empty_eq, Except.bind_ok] at hty
+      split at hty
+      any_goals contradiction
+      · simp only [ok, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at hty
+        simp only [←hty.1, TypedExpr.toExpr]
+        exact typeOf_preserves_valid_refs entities hty₁ hrefs₁
+      · cases hty₂ : typeOf e₂ (c₁ ∪ c₃) Γ with
+        | error => simp [hty₂] at hty
+        | ok r₂ =>
+          have ⟨tx₂, c₄⟩ := r₂
+          simp only [hty₂, List.empty_eq, Except.bind_ok] at hty
+          split at hty
+          any_goals contradiction
+          all_goals
+            simp only [ok, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at hty
+            simp only [←hty.1, TypedExpr.toExpr]
+            constructor
+            · exact typeOf_preserves_valid_refs entities hty₁ hrefs₁
+            · exact typeOf_preserves_valid_refs entities hty₂ hrefs₂
+  | or e₁ e₂ =>
+    cases hrefs with | or_valid hrefs₁ hrefs₂ =>
+    simp only [typeOf, typeOfOr] at hty
+    cases hty₁ : typeOf e₁ c₁ Γ with
+    | error => simp [hty₁] at hty
+    | ok r₁ =>
+      have ⟨tx₁, c₃⟩ := r₁
+      simp only [hty₁, List.empty_eq, Except.bind_ok] at hty
+      split at hty
+      any_goals contradiction
+      · simp only [ok, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at hty
+        simp only [←hty.1, TypedExpr.toExpr]
+        exact typeOf_preserves_valid_refs entities hty₁ hrefs₁
+      · cases hty₂ : typeOf e₂ c₁ Γ with
+        | error => simp [hty₂] at hty
+        | ok r₂ =>
+          have ⟨tx₂, c₄⟩ := r₂
+          simp only [hty₂, List.empty_eq, Except.bind_ok] at hty
+          split at hty
+          any_goals contradiction
+          simp only [ok, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at hty
+          simp only [←hty.1, TypedExpr.toExpr]
+          constructor
+          · exact typeOf_preserves_valid_refs entities hty₁ hrefs₁
+          · exact typeOf_preserves_valid_refs entities hty₂ hrefs₂
+      · cases hty₂ : typeOf e₂ c₁ Γ with
+        | error => simp [hty₂] at hty
+        | ok r₂ =>
+          have ⟨tx₂, c₄⟩ := r₂
+          simp only [hty₂, List.empty_eq, Except.bind_ok] at hty
+          split at hty
+          any_goals contradiction
+          all_goals
+            simp only [ok, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at hty
+            simp only [←hty.1, TypedExpr.toExpr]
+            constructor
+            · exact typeOf_preserves_valid_refs entities hty₁ hrefs₁
+            · exact typeOf_preserves_valid_refs entities hty₂ hrefs₂
+  | ite e₁ e₂ e₃ =>
+    cases hrefs with | ite_valid hrefs₁ hrefs₂ hrefs₃ =>
+    simp only [typeOf, typeOfIf] at hty
+    cases hty₁ : typeOf e₁ c₁ Γ with
+    | error => simp [hty₁] at hty
+    | ok r₁ =>
+      have ⟨tx₁, c₃⟩ := r₁
+      simp only [hty₁, List.empty_eq, Except.bind_ok] at hty
+      split at hty
+      any_goals contradiction
+      · cases hty₂ : typeOf e₂ (c₁ ∪ c₃) Γ with
+        | error => simp [hty₂] at hty
+        | ok r₂ =>
+          have ⟨tx₂, c₄⟩ := r₂
+          simp only [hty₂, ok, Except.bind_ok, Except.ok.injEq, Prod.mk.injEq] at hty
+          simp only [←hty.1, TypedExpr.toExpr]
+          constructor
+          · exact typeOf_preserves_valid_refs entities hty₁ hrefs₁
+          · exact typeOf_preserves_valid_refs entities hty₂ hrefs₂
+          · exact typeOf_preserves_valid_refs entities hty₂ hrefs₂
+      · cases hty₃ : typeOf e₃ c₁ Γ with
+        | error => simp [hty₃] at hty
+        | ok r₃ =>
+          have ⟨tx₃, c₄⟩ := r₃
+          simp only [hty₃, ok, Except.bind_ok, Except.ok.injEq, Prod.mk.injEq] at hty
+          simp only [←hty.1, TypedExpr.toExpr]
+          constructor
+          · exact typeOf_preserves_valid_refs entities hty₁ hrefs₁
+          · exact typeOf_preserves_valid_refs entities hty₃ hrefs₃
+          · exact typeOf_preserves_valid_refs entities hty₃ hrefs₃
+      · cases hty₂ : typeOf e₂ (c₁ ∪ c₃) Γ with
+        | error => simp [hty₂] at hty
+        | ok r₂ =>
+        cases hty₃ : typeOf e₃ c₁ Γ with
+        | error => simp [hty₂, hty₃] at hty
+        | ok r₃ =>
+        have ⟨tx₂, c₄⟩ := r₂
+        have ⟨tx₃, c₅⟩ := r₃
+        simp only [hty₂, hty₃, ok, Except.bind_ok, Except.ok.injEq, Prod.mk.injEq] at hty
+        split at hty
+        · simp only [Except.ok.injEq, Prod.mk.injEq] at hty
+          simp only [←hty.1, TypedExpr.toExpr]
+          constructor
+          · exact typeOf_preserves_valid_refs entities hty₁ hrefs₁
+          · exact typeOf_preserves_valid_refs entities hty₂ hrefs₂
+          · exact typeOf_preserves_valid_refs entities hty₃ hrefs₃
+        · contradiction
+  | unaryApp _ e =>
+    simp only [typeOf, typeOfUnaryApp] at hty
+    cases hrefs with | unaryApp_valid hrefs =>
+    cases hty₁ : typeOf e c₁ Γ with
+    | error => simp [hty₁] at hty
+    | ok r₁ =>
+      have ⟨tx₁, c₃⟩ := r₁
+      simp only [hty₁, List.empty_eq, Except.bind_ok] at hty
+      split at hty
+      any_goals contradiction
+      all_goals
+        simp only [ok, Function.comp_apply, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at hty
+        simp only [←hty.1, TypedExpr.toExpr]
+        constructor
+        exact typeOf_preserves_valid_refs entities hty₁ hrefs
+  | binaryApp _ e₁ e₂ =>
+    simp only [typeOf, typeOfBinaryApp] at hty
+    cases hrefs with | binaryApp_valid hrefs₁ hrefs₂ =>
+    cases hty₁ : typeOf e₁ c₁ Γ with
+    | error => simp [hty₁] at hty
+    | ok r₁ =>
+    cases hty₂ : typeOf e₂ c₁ Γ with
+    | error => simp [hty₁, hty₂] at hty
+    | ok r₂ =>
+      have ⟨tx₁, c₃⟩ := r₁
+      have ⟨tx₂, c₄⟩ := r₂
+      simp only [hty₁, hty₂, List.empty_eq, Except.bind_ok] at hty
+      split at hty
+      any_goals contradiction
+      any_goals
+        simp only [ok, Function.comp_apply, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at hty
+        simp only [←hty.1, TypedExpr.toExpr]
+        constructor
+        exact typeOf_preserves_valid_refs entities hty₁ hrefs₁
+        exact typeOf_preserves_valid_refs entities hty₂ hrefs₂
+      any_goals
+        simp only [bind, Except.bind] at hty
+        split at hty
+        any_goals contradiction
+        all_goals
+          simp only [ok, Function.comp_apply, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at hty
+          simp only [←hty.1, TypedExpr.toExpr]
+          constructor
+          exact typeOf_preserves_valid_refs entities hty₁ hrefs₁
+          exact typeOf_preserves_valid_refs entities hty₂ hrefs₂
+      · simp only [typeOfEq] at hty
+        split at hty
+        · split at hty
+          all_goals
+            simp only [
+              ok, List.empty_eq, Function.comp_apply,
+              Except.ok.injEq, Prod.mk.injEq,
+              List.nil_eq,
+            ] at hty
+            simp only [←hty.1, TypedExpr.toExpr]
+            constructor
+            exact typeOf_preserves_valid_refs entities hty₁ hrefs₁
+            exact typeOf_preserves_valid_refs entities hty₂ hrefs₂
+        · split at hty
+          · simp only [
+              ok, List.empty_eq, Function.comp_apply,
+              Except.ok.injEq, Prod.mk.injEq,
+              List.nil_eq,
+            ] at hty
+            simp only [←hty.1, TypedExpr.toExpr]
+            constructor
+            exact typeOf_preserves_valid_refs entities hty₁ hrefs₁
+            exact typeOf_preserves_valid_refs entities hty₂ hrefs₂
+          · split at hty
+            · simp only [
+                ok, List.empty_eq, Function.comp_apply,
+                Except.ok.injEq, Prod.mk.injEq,
+                List.nil_eq,
+              ] at hty
+              simp only [←hty.1, TypedExpr.toExpr]
+              constructor
+              exact typeOf_preserves_valid_refs entities hty₁ hrefs₁
+              exact typeOf_preserves_valid_refs entities hty₂ hrefs₂
+            · contradiction
+  | getAttr e _ =>
+    simp only [typeOf, typeOfGetAttr] at hty
+    cases hrefs with | getAttr_valid hrefs =>
+    cases hty₁ : typeOf e c₁ Γ with
+    | error => simp [hty₁] at hty
+    | ok r₁ =>
+      have ⟨tx₁, c₃⟩ := r₁
+      simp only [hty₁, List.empty_eq, Except.bind_ok] at hty
+      split at hty
+      any_goals contradiction
+      · simp only [bind, Except.bind] at hty
+        split at hty
+        contradiction
+        simp only [ok, Function.comp_apply, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at hty
+        simp only [←hty.1, TypedExpr.toExpr]
+        constructor
+        exact typeOf_preserves_valid_refs entities hty₁ hrefs
+      · simp only [bind, Except.bind] at hty
+        split at hty
+        · split at hty
+          contradiction
+          simp only [ok, Function.comp_apply, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at hty
+          simp only [←hty.1, TypedExpr.toExpr]
+          constructor
+          exact typeOf_preserves_valid_refs entities hty₁ hrefs
+        · contradiction
+  | hasAttr e _ =>
+    simp only [typeOf, typeOfHasAttr] at hty
+    cases hrefs with | hasAttr_valid hrefs =>
+    cases hty₁ : typeOf e c₁ Γ with
+    | error => simp [hty₁] at hty
+    | ok r₁ =>
+      have ⟨tx₁, c₃⟩ := r₁
+      simp only [hty₁, List.empty_eq, Except.bind_ok] at hty
+      split at hty
+      any_goals contradiction
+      · simp only [bind, Except.bind] at hty
+        split at hty
+        contradiction
+        simp only [ok, Function.comp_apply, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at hty
+        simp only [←hty.1, TypedExpr.toExpr]
+        constructor
+        exact typeOf_preserves_valid_refs entities hty₁ hrefs
+      · simp only [bind, Except.bind] at hty
+        split at hty
+        · split at hty
+          contradiction
+          simp only [ok, Function.comp_apply, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at hty
+          simp only [←hty.1, TypedExpr.toExpr]
+          constructor
+          exact typeOf_preserves_valid_refs entities hty₁ hrefs
+        · split at hty
+          · simp only [ok, Function.comp_apply, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at hty
+            simp only [←hty.1, TypedExpr.toExpr]
+            constructor
+            exact typeOf_preserves_valid_refs entities hty₁ hrefs
+          · contradiction
+  | _ => sorry
 
 /--
 `wellTypedPolicy` preserves `Entities.ValidRefsFor`.
@@ -312,7 +617,7 @@ theorem wellTypedPolicy_preserves_valid_refs
     repeat constructor
   rotate_left
   repeat constructor
-  apply (typeOf_preserves_valid_refs entities hty).mp
+  apply typeOf_preserves_valid_refs entities hty
   have : Γ.reqty.action = request.action := by
     have ⟨_, ⟨_, h, _⟩, _⟩ := hinst
     simp [h]
