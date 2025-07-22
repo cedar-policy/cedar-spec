@@ -155,7 +155,7 @@ theorem wellTypedPolicy_some_implies_well_typed_expr
 `wellTypedPolicy` preserves `Entities.ValidRefsFor`.
 -/
 theorem wellTypedPolicy_preserves_valid_refs
-  {Γ : TypeEnv} {entities : Entities} {p p' : Policy} {request : Request} {entities : Entities}
+  {Γ : TypeEnv} {request : Request} {entities : Entities} {p p' : Policy}
   (hinst : InstanceOfWellFormedEnvironment request entities Γ)
   (hwt : wellTypedPolicy p Γ = .some p')
   (hswf : entities.ValidRefsFor p.toExpr) :
@@ -175,6 +175,36 @@ theorem wellTypedPolicy_preserves_valid_refs
   -- TODO: `substituteAction` preserves `ValidRefsFor`
   -- TODO: `typeOf` preserves `ValidRefsFor`
   sorry
+
+theorem wellTypedPolicy_preserves_StronglyWellFormedForPolicy
+  {Γ : TypeEnv} {env : Env} {p p' : Policy}
+  (hinst : InstanceOfWellFormedEnvironment env.request env.entities Γ)
+  (hwt : wellTypedPolicy p Γ = .some p')
+  (hswf : env.StronglyWellFormedForPolicy p) :
+  env.StronglyWellFormedForPolicy p'
+:= by
+  constructor
+  · exact hswf.1
+  · exact wellTypedPolicy_preserves_valid_refs hinst hwt hswf.2
+
+theorem wellTypedPolicies_preserves_StronglyWellFormedForPolicies
+  {Γ : TypeEnv} {env : Env} {ps ps' : Policies}
+  (hinst : InstanceOfWellFormedEnvironment env.request env.entities Γ)
+  (hwt : wellTypedPolicies ps Γ = .some ps')
+  (hswf : env.StronglyWellFormedForPolicies ps) :
+  env.StronglyWellFormedForPolicies ps'
+:= by
+  constructor
+  · exact hswf.1
+  · intros expr hmem_expr
+    have ⟨p', hmem_p', hp'⟩ := List.mem_map.mp hmem_expr
+    simp only [←hp']
+    have ⟨p, hmem_p, hwt_p⟩ := List.mapM_some_implies_all_from_some hwt p' hmem_p'
+    have hmem_p_expr : p.toExpr ∈ ps.map Policy.toExpr := by
+      apply List.mem_map.mpr
+      exists p
+    have := hswf.2 p.toExpr hmem_p_expr
+    exact wellTypedPolicy_preserves_valid_refs hinst hwt_p this
 
 /--
 `wellTypedPolicy` preserves the result of `evaluate`.

@@ -35,9 +35,8 @@ theorem verifyNeverErrors_is_ok_and_sound {p p' : Policy} {Γ : TypeEnv} :
     SymEnv.ofEnv Γ ⊭ asserts →
       ∀ env : Env,
         InstanceOfWellFormedEnvironment env.request env.entities Γ →
-        -- TODO: Ideally, use `p` instead of `p'` here.
-        env.StronglyWellFormedForPolicy p' →
-        (evaluate p'.toExpr env.request env.entities).isOk
+        env.StronglyWellFormedForPolicy p →
+        (evaluate p.toExpr env.request env.entities).isOk
 := by
   intros hwf hwt
   have hwf_εnv := ofEnv_swf_for_policy hwf hwt
@@ -45,9 +44,10 @@ theorem verifyNeverErrors_is_ok_and_sound {p p' : Policy} {Γ : TypeEnv} :
   exists asserts
   simp only [hok, true_and]
   intros hunsat env hinst hwf_env
+  simp only [wellTypedPolicy_preserves_evaluation hinst hwt]
   apply verifyNeverErrors_is_sound hwf_εnv hok hunsat env
   · exact ofEnv_soundness hwf_env.1 hinst
-  · exact hwf_env
+  · exact wellTypedPolicy_preserves_StronglyWellFormedForPolicy hinst hwt hwf_env
 
 theorem verifyEquivalent_is_ok_and_sound {ps₁ ps₁' ps₂ ps₂' : Policies} {Γ : TypeEnv} :
   Γ.WellFormed →
@@ -58,12 +58,11 @@ theorem verifyEquivalent_is_ok_and_sound {ps₁ ps₁' ps₂ ps₂' : Policies} 
     SymEnv.ofEnv Γ ⊭ asserts →
     ∀ env : Env,
       InstanceOfWellFormedEnvironment env.request env.entities Γ →
-      -- TODO: Ideally, use `p₁`/`p₂` instead of `p₁'`/`p₂'` here.
-      env.StronglyWellFormedForPolicies ps₁' →
-      env.StronglyWellFormedForPolicies ps₂' →
+      env.StronglyWellFormedForPolicies ps₁ →
+      env.StronglyWellFormedForPolicies ps₂ →
       bothAllowOrBothDeny
-        (Spec.isAuthorized env.request env.entities ps₁')
-        (Spec.isAuthorized env.request env.entities ps₂')
+        (Spec.isAuthorized env.request env.entities ps₁)
+        (Spec.isAuthorized env.request env.entities ps₂)
 := by
   intros hwf hwt₁ hwt₂
   have hwf_εnv₁ := ofEnv_swf_for_policies hwf hwt₁
@@ -72,7 +71,13 @@ theorem verifyEquivalent_is_ok_and_sound {ps₁ ps₁' ps₂ ps₂' : Policies} 
   exists asserts
   simp only [hok, true_and]
   intros hunsat env hinst hwf_ps₁ hwf_ps₂
-  apply verifyEquivalent_is_sound hwf_εnv₁ hwf_εnv₂ hok hunsat env _ hwf_ps₁ hwf_ps₂
+  simp only [
+    wellTypedPolicies_preserves_isAuthorized hinst hwt₁,
+    wellTypedPolicies_preserves_isAuthorized hinst hwt₂,
+  ]
+  have hwf_ps₁' := wellTypedPolicies_preserves_StronglyWellFormedForPolicies hinst hwt₁ hwf_ps₁
+  have hwf_ps₂' := wellTypedPolicies_preserves_StronglyWellFormedForPolicies hinst hwt₂ hwf_ps₂
+  apply verifyEquivalent_is_sound hwf_εnv₁ hwf_εnv₂ hok hunsat env _ hwf_ps₁' hwf_ps₂'
   exact ofEnv_soundness hwf_ps₁.1 hinst
 
 end Cedar.Thm
