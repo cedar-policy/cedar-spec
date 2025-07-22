@@ -70,6 +70,7 @@ inductive Value where
   | record (m : Map Attr Value)
   | ext (x : Ext)
 
+
 ----- Coercions -----
 
 def Value.asEntityUID : Value → Result EntityUID
@@ -144,6 +145,7 @@ deriving instance Repr, DecidableEq, Inhabited for EntityType
 deriving instance Repr, DecidableEq, Inhabited, Lean.ToJson for EntityUID
 deriving instance Repr, DecidableEq, Inhabited for Prim
 deriving instance Repr, Inhabited for Value
+
 
 mutual
 

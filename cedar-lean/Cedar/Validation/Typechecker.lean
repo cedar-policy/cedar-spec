@@ -53,10 +53,10 @@ def err {α : Type} (e : TypeError) : Except TypeError (α × Capabilities) := .
 
 def typeOfExt (e : Ext) (env : TypeEnv) : ResultType :=
   match e with
-  | .decimal _ => ok (TypedExpr.val (.ext e) (.ext .decimal))
-  | .ipaddr _  => ok (TypedExpr.val (.ext e) (.ext .ipAddr))
-  | .datetime _ => ok (TypedExpr.val (.ext e) (.ext .datetime))
-  | .duration _ => ok (TypedExpr.val (.ext e) (.ext .duration))
+  | .decimal _ => ok (TypedExpr.val (TypedValue.ext e (.ext .decimal)))
+  | .ipaddr _  => ok (TypedExpr.val (TypedValue.ext e (.ext .ipAddr)))
+  | .datetime _ => ok (TypedExpr.val (TypedValue.ext e (.ext .datetime)))
+  | .duration _ => ok (TypedExpr.val (TypedValue.ext e (.ext .duration)))
 
 
 
@@ -74,15 +74,14 @@ def typeOfLit (p : Prim) (env : TypeEnv) : ResultType :=
 
 -- like typeOfLit but with TypeExpr.val calls
 def typeOfValLit  (p : Prim) (env : TypeEnv) : ResultType :=
-  let ok := ok ∘ TypedExpr.val p
   match p with
-  | .bool true     => ok (.bool .tt)
-  | .bool false    => ok (.bool .ff)
-  | .int _         => ok .int
-  | .string _      => ok .string
+  | .bool true     => ok (TypedExpr.val (TypedValue.prim p (.bool .tt)))
+  | .bool false    => ok (TypedExpr.val (TypedValue.prim p (.bool .ff)))
+  | .int _         => ok (TypedExpr.val (TypedValue.prim p .int))
+  | .string _      => ok (TypedExpr.val (TypedValue.prim p .string))
   | .entityUID uid =>
     if env.ets.isValidEntityUID uid || env.acts.contains uid
-    then ok (.entity uid.ty)
+    then ok (TypedExpr.val (TypedValue.prim p (.entity uid.ty)))
     else err (.unknownEntity uid.ty)
 
 def justType (r : ResultType) : Except TypeError TypedExpr :=
@@ -101,7 +100,7 @@ def typeOfValSet (tys : List TypedExpr) (s: Set Value) : ResultType :=
   | []       => err .emptySetErr
   | hd :: tl =>
     match (tl.map TypedExpr.typeOf).foldlM lub? hd.typeOf with
-    | .some ty => ok (TypedExpr.val (Value.set s) (.set ty))
+    | .some ty => ok (TypedExpr.val (TypedValue.set s (.set ty)))
     | .none    => err (.incompatibleSetTypes (hd.typeOf :: tl.map TypedExpr.typeOf))
 
 

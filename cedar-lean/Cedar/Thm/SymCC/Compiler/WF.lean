@@ -39,11 +39,19 @@ private def CompileWF (x : Expr)  : Prop :=
     compile x εnv = .ok t →
     (t.WellFormed εnv.entities ∧ ∃ ty, t.typeOf = .option ty)
 
+private def CompileValueWF (x : Value)  : Prop :=
+  ∀ {εnv : SymEnv} {t : Term},
+    εnv.WellFormedForValue x →
+    compileVal x εnv.entities = .ok t →
+    (t.WellFormed εnv.entities ∧ ∃ ty, t.typeOf = .option ty)
+
 private theorem typeOf_term_some_is_option {t : Term} :
   ∃ ty, Term.typeOf (Term.some t) = TermType.option ty
 := by
   exists t.typeOf
   simp only [Term.typeOf]
+
+
 
 private theorem compile_lit_wf {p: Prim} {εnv : SymEnv} {t : Term}
   (hok : compile (Expr.lit p) εnv = Except.ok t) :
@@ -66,6 +74,15 @@ private theorem compile_lit_wf {p: Prim} {εnv : SymEnv} {t : Term}
     subst hok
     simp only [typeOf_term_some_is_option, and_true]
     exact Term.WellFormed.some_wf (Term.WellFormed.prim_wf (TermPrim.WellFormed.entity_wf h))
+
+
+private theorem compile_val_expr_wf {v : Value} {εnv : SymEnv} {t : Term}
+  (hwf : SymEnv.WellFormedFor εnv (Expr.val v))
+  (hok : compile (Expr.val v) εnv = Except.ok t) :
+  t.WellFormed εnv.entities ∧ ∃ ty, t.typeOf = .option ty
+:= by
+  -- todo use compile_val_wf
+  sorry
 
 private theorem compile_var_wf {v : Var} {εnv : SymEnv} {t : Term}
   (hwf : SymEnv.WellFormedFor εnv (Expr.var v))
@@ -589,6 +606,48 @@ private theorem compile_set_wf {xs : List Expr} {εnv : SymEnv} {t : Term}
   have hwa := wf_ifAllSome hwf hwfs.left hwfs.right
   simp only [hwa, TermType.option.injEq, exists_eq', and_self]
 
+private theorem comple_val_wf {v : Value} {εnv : SymEnv} {t : Term}
+  (hwf : SymEnv.WellFormedForValue εnv v)
+  (hok : compileVal v εnv.entities = Except.ok t) :
+  t.WellFormed εnv.entities ∧ ∃ ty, t.typeOf = .option ty
+:= by
+  cases v with
+  | prim p =>
+    simp [compileVal] at hok
+    have h : compilePrim p εnv.entities = compile (Expr.lit p) εnv := by {
+      simp [compile]
+    }
+    rw [h] at hok
+    exact compile_lit_wf hok
+  | set s =>
+    sorry
+  | record r =>
+    have ih : ∀ aᵢ xᵢ, (aᵢ, xᵢ) ∈ r.kvs → CompileValueWF xᵢ := by
+      intro aᵢ xᵢ h
+      have _ : sizeOf xᵢ < 1 + sizeOf r.kvs := List.sizeOf_snd_lt_sizeOf_list h
+      exact @comple_val_wf xᵢ
+    replace hwf := wf_εnv_for_record_val_implies hwf
+    replace ⟨ats, heq, hok⟩ := compile_record_val_ok_implies hok
+    subst hok
+    replace heq := List.forall₂_implies_all_right heq
+    simp only [compileRecord]
+    replace ih : ∀ a t, (a, t) ∈ ats → t.WellFormed εnv.entities ∧ ∃ ty, t.typeOf = .option ty := by
+      intro a t h
+      replace ⟨(_, x), h', ha, heq⟩ := heq (a, t) h
+      simp only at ha heq
+      rw [eq_comm] at ha ; subst ha
+      simp only [ih a x h' (hwf (a, x) h') heq, and_self]
+    replace hwf := wf_prods_option_implies_wf_prods ih
+    have hwg := wf_prods_implies_wf_map_snd hwf
+    have ⟨hwo, ty, hty⟩ := wf_some_recordOf_map (wf_option_get_mem_of_type_snd ih)
+    have hwa := wf_ifAllSome hwg hwo hty
+    simp only [someOf, hwa, TermType.option.injEq, exists_eq', and_self]
+  | ext e =>
+    sorry
+decreasing_by
+  -- todo figure out nasty termination proof here
+  sorry
+
 private theorem compile_record_wf {axs : List (Attr × Expr)} {εnv : SymEnv} {t : Term}
   (hwf : SymEnv.WellFormedFor εnv (Expr.record axs))
   (hok : compile (Expr.record axs) εnv = Except.ok t)
@@ -763,6 +822,7 @@ theorem compile_wf {x : Expr} {εnv : SymEnv} {t : Term} :
   match x with
   | .lit _           => exact compile_lit_wf hok
   | .var v           => exact compile_var_wf hwf hok
+  | .val v          => exact compile_val_expr_wf hwf hok
   | .ite x₁ x₂ x₃    =>
     have ih₁ := @compile_wf x₁
     have ih₂ := @compile_wf x₂
@@ -818,13 +878,6 @@ theorem compile_option_get_wf {x : Expr} {εnv : SymEnv} {t : Term} :
   have := wf_option_get hwt hty
   exists ty
 
----------- Evaluate is well-formed ----------
-
-private def EvaluateWF (x : Expr)  : Prop :=
-  ∀ {env : Env} {v : Value},
-    env.WellFormedFor x →
-    evaluate x env.request env.entities = .ok v →
-    v.WellFormed env.entities
 
 private theorem value_bool_wf {b : Bool} {es : Entities} :
   Value.WellFormed es (Value.prim (.bool b))
@@ -843,6 +896,23 @@ private theorem value_record_wf_implies_attr_value_wf {r : Map Attr Value} {a : 
   cases hwf
   rename_i hwf _
   exact hwf a v hf
+
+
+---------- Evaluate is well-formed ----------
+
+
+private def EvaluateWF (x : Expr)  : Prop :=
+  ∀ {env : Env} {v : Value},
+    env.WellFormedFor x →
+    evaluate x env.request env.entities = .ok v →
+    v.WellFormed env.entities
+
+private def EvaluateValueWF (v : Value)  : Prop :=
+  ∀ {env : Env},
+    env.WellFormedForValue v →
+    v.WellFormed env.entities
+
+
 
 private theorem evaluate_lit_wf {p: Prim} {env : Env} {v : Value}
   (hwf : Env.WellFormedFor env (Expr.lit p))
@@ -1136,6 +1206,7 @@ theorem evaluate_wf {x : Expr} {env : Env} {v : Value} :
   match x with
   | .lit _            => exact evaluate_lit_wf hwf hok
   | .var _            => exact evaluate_var_wf hwf hok
+  | .val _ => sorry
   | .ite _ x₂ x₃      => exact evaluate_ite_wf hwf hok (@evaluate_wf x₂) (@evaluate_wf x₃)
   | .and _ _          => exact evaluate_and_wf hok
   | .or _ _           => exact evaluate_or_wf hok

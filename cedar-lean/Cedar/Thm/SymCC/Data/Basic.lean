@@ -190,8 +190,14 @@ def Env.WellFormed (env : Env) : Prop :=
 abbrev Entities.ValidRefsFor (es : Entities) (x : Expr) : Prop :=
   x.ValidRefs (λ uid => es.contains uid)
 
+abbrev Entities.ValidRefsForValue (es : Entities) (x : Value) : Prop :=
+  x.ValidRefs (λ uid => es.contains uid)
+
 def Env.WellFormedFor (env : Env) (x : Expr) : Prop :=
   env.WellFormed ∧ env.entities.ValidRefsFor x
+
+def Env.WellFormedForValue  (env : Env) (x : Value) : Prop :=
+  env.WellFormed ∧ env.entities.ValidRefsForValue x
 
 def Env.WellFormedForPolicies (env : Env) (ps : Policies) : Prop :=
   env.WellFormed ∧ ∀ p ∈ ps, env.entities.ValidRefsFor p.toExpr
@@ -563,8 +569,14 @@ def SymEnv.WellFormed (εnv : SymEnv) : Prop :=
 abbrev SymEntities.ValidRefsFor (εs : SymEntities) (x : Expr) : Prop :=
   x.ValidRefs (εs.isValidEntityUID ·)
 
+abbrev SymEntities.ValidRefsForValue (εs : SymEntities) (x : Value) : Prop :=
+  x.ValidRefs (εs.isValidEntityUID ·)
+
 def SymEnv.WellFormedFor (εnv : SymEnv) (x : Expr) : Prop :=
   εnv.WellFormed ∧ εnv.entities.ValidRefsFor x
+
+def SymEnv.WellFormedForValue (εnv : SymEnv) (x : Value) : Prop :=
+  εnv.WellFormed ∧ εnv.entities.ValidRefsForValue x
 
 def SymEnv.WellFormedLiteralFor (εnv : SymEnv) (x : Expr) : Prop :=
   εnv.WellFormedFor x ∧ εnv.isLiteral

@@ -28,6 +28,17 @@ open Cedar.Spec
 
 
 /--
+Type-annotated values.
+-/
+inductive TypedValue where
+  | prim (p : Prim) (ty: CedarType)
+  | set (s : Set Value) (ty: CedarType)
+  | record (m : Map Attr Value) (ty: CedarType)
+  | ext (x : Ext) (ty: CedarType)
+deriving instance Repr, Inhabited for TypedValue
+
+
+/--
 A type annotated Cedar AST. This should have exactly the same variants as the
 unannotated `Expr` data type, but each variant carries an additional `ty` that
 stores the type of the expression.
@@ -36,7 +47,7 @@ inductive TypedExpr where
   | lit (p : Prim) (ty : CedarType)
   | var (v : Var) (ty : CedarType)
   -- values produced by partial evaluation
-  | val (v : Value) (ty : CedarType)
+  | val (v : TypedValue)
   | ite (cond : TypedExpr) (thenExpr : TypedExpr) (elseExpr : TypedExpr) (ty : CedarType)
   | and (a : TypedExpr) (b : TypedExpr) (ty : CedarType)
   | or (a : TypedExpr) (b : TypedExpr) (ty : CedarType)
@@ -53,6 +64,26 @@ deriving instance Repr, Inhabited for TypedExpr
 
 mutual
 
+def decTypedValue (x y : TypedValue) : Decidable (x = y) := by
+  cases x <;> cases y <;>
+  try { apply isFalse ; intro h ; injection h }
+  case prim.prim p₁ ty₁ p₂ ty₂ =>
+    exact match decEq p₁ p₂, decEq ty₁ ty₂ with
+    | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
+    | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
+  case set.set s₁ ty₁ s₂ ty₂ =>
+    exact match decEq s₁ s₂, decEq ty₁ ty₂ with
+    | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
+    | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
+  case record.record m₁ ty₁ m₂ ty₂ =>
+    exact match decEq m₁ m₂, decEq ty₁ ty₂ with
+    | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
+    | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
+  case ext.ext x₁ ty₁ x₂ ty₂ =>
+    exact match decEq x₁ x₂, decEq ty₁ ty₂ with
+    | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
+    | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
+
 def decTypedExpr (x y : TypedExpr) : Decidable (x = y) := by
   cases x <;> cases y <;>
   try { apply isFalse ; intro h ; injection h }
@@ -60,10 +91,10 @@ def decTypedExpr (x y : TypedExpr) : Decidable (x = y) := by
     exact match decEq x₁ y₁, decEq tx ty with
     | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
     | isFalse _, _  | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
-  case val.val x₁ tx y₁ ty =>
-    exact match decEq x₁ y₁, decEq tx ty with
-    | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
-    | isFalse _, _  | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
+  case val.val x₁ y₁ =>
+    exact match decTypedValue x₁ y₁ with
+    | isTrue h₁ => isTrue (by rw [h₁])
+    | isFalse _ => isFalse (by intro h; injection h; contradiction)
   case ite.ite x₁ x₂ x₃ tx y₁ y₂ y₃ ty =>
     exact match decTypedExpr x₁ y₁, decTypedExpr x₂ y₂, decTypedExpr x₃ y₃, decEq tx ty with
     | isTrue h₁, isTrue h₂, isTrue h₃, isTrue h₄ => isTrue (by rw [h₁, h₂, h₃, h₄])
@@ -117,27 +148,40 @@ def decExprList (xs ys : List TypedExpr) : Decidable (xs = ys) :=
     | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
 end
 
+instance : DecidableEq TypedValue := decTypedValue
 instance : DecidableEq TypedExpr := decTypedExpr
 
+def TypedValue.typeOf : TypedValue → CedarType
+  | prim _ ty => ty
+  | set _ ty => ty
+  | record _ ty => ty
+  | ext _ ty => ty
+
+def TypedValue.toValue : TypedValue → Value
+  | prim p _ => Value.prim p
+  | set s _ => Value.set s
+  | record m _ => Value.record m
+  | ext x _ => Value.ext x
+
 def TypedExpr.typeOf : TypedExpr → CedarType
-  | lit _ ty
-  | var _ ty
-  | val _ ty
-  | ite _ _ _ ty
-  | and _ _ ty
-  | or _ _ ty
-  | unaryApp _ _ ty
-  | binaryApp _ _ _ ty
-  | getAttr _ _ ty
-  | hasAttr _ _ ty
-  | set _ ty
-  | record _ ty
+  | lit _ ty => ty
+  | var _ ty => ty
+  | val v => v.typeOf
+  | ite _ _ _ ty => ty
+  | and _ _ ty => ty
+  | or _ _ ty => ty
+  | unaryApp _ _ ty => ty
+  | binaryApp _ _ _ ty => ty
+  | getAttr _ _ ty => ty
+  | hasAttr _ _ ty => ty
+  | set _ ty => ty
+  | record _ ty => ty
   | call _ _ ty => ty
 
 def TypedExpr.toExpr : TypedExpr → Expr
   | lit p _ => Expr.lit p
   | var v _ => Expr.var v
-  | val v _ => Expr.val v
+  | val v => Expr.val v.toValue
   | ite cond thenExpr elseExpr _ => Expr.ite cond.toExpr thenExpr.toExpr elseExpr.toExpr
   | and a b _ => Expr.and a.toExpr b.toExpr
   | or a b _ => Expr.or a.toExpr b.toExpr
@@ -156,10 +200,16 @@ decreasing_by
     try replace h := List.sizeOf_lt_of_mem h
     omega
 
+def TypedValue.liftBoolTypes : TypedValue → TypedValue
+  | .prim p ty => .prim p ty.liftBoolTypes
+  | .set s ty => .set s ty.liftBoolTypes
+  | .record m ty => .record m ty.liftBoolTypes
+  | .ext x ty => .ext x ty.liftBoolTypes
+
 def TypedExpr.liftBoolTypes : TypedExpr → TypedExpr
   | .lit p ty => .lit p ty.liftBoolTypes
   | .var v ty =>  .var v ty.liftBoolTypes
-  | .val v ty => .val v ty.liftBoolTypes
+  | .val v => .val v.liftBoolTypes
   | .ite cond thenExpr elseExpr ty => .ite cond.liftBoolTypes thenExpr.liftBoolTypes elseExpr.liftBoolTypes ty.liftBoolTypes
   | .and a b ty => .and a.liftBoolTypes b.liftBoolTypes ty.liftBoolTypes
   | .or a b ty => .or a.liftBoolTypes b.liftBoolTypes ty.liftBoolTypes

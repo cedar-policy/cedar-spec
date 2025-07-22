@@ -563,6 +563,14 @@ theorem compile_record_ok_implies {axs : List (Attr × Expr)} {εnv : SymEnv} {t
   simp only [Except.ok.injEq] at hp
   simp only [← hp, and_self]
 
+theorem compile_record_val_ok_implies {axs : Map Attr Value} {εs : SymEntities} {t : Term}
+  (hok : compileVal (.record axs) εs = .ok t) :
+  ∃ ats,
+    List.Forall₂ (λ px pt => px.fst = pt.fst ∧ compileVal px.snd εs = .ok pt.snd) axs.kvs ats ∧
+    t = compileRecord ats
+:= by
+  sorry
+
 local macro "simp_compileCall₀" : tactic => do
  `(tactic| (
     intro hok

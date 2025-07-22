@@ -310,6 +310,11 @@ theorem wf_εnv_for_record_implies {axs : List (Attr × Expr)} {εnv : SymEnv} :
   ∀ ax, ax ∈ axs → εnv.WellFormedFor ax.snd
 := by show_wf_εnv_for_nary_expr_implies
 
+theorem wf_εnv_for_record_val_implies {axs : Map Attr Value} {εnv : SymEnv} :
+  εnv.WellFormedForValue (.record axs) →
+  ∀ ax, ax ∈ axs.kvs → εnv.WellFormedForValue ax.snd
+:= by show_wf_εnv_for_nary_expr_implies
+
 theorem wf_env_for_record_implies {axs : List (Attr × Expr)} {env : Env} :
   env.WellFormedFor (.record axs) →
   ∀ ax, ax ∈ axs → env.WellFormedFor ax.snd
