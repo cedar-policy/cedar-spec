@@ -22,7 +22,7 @@ import Cedar.Thm.Validation.Typechecker.Basic
 
 namespace Cedar.Thm
 
-open Spec SymCC Validation
+open Spec SymCC Validation Data
 
 /-
 Given `wellTypedPolicy p Γ = .some p'`
@@ -154,6 +154,44 @@ theorem wellTypedPolicy_some_implies_well_typed_expr
 /--
 `wellTypedPolicy` preserves `Entities.ValidRefsFor`.
 -/
+theorem substitute_action_preserves_valid_refs
+  {Γ : TypeEnv} {request : Request} {entities : Entities} {expr : Expr}
+  (hinst : InstanceOfWellFormedEnvironment request entities Γ) :
+  entities.ValidRefsFor expr ↔ entities.ValidRefsFor (substituteAction request.action expr)
+:= by
+  have ⟨hwf_Γ, _, ⟨_, hinst_sch⟩⟩ := hinst
+  have ⟨_, _, ⟨act_entry, hfind_act, _⟩⟩ := hwf_Γ
+  have heq_act : Γ.reqty.action = request.action := by
+    have ⟨_, ⟨_, h, _⟩, _⟩ := hinst
+    simp [h]
+  cases expr with
+  | lit p => simp only [substituteAction, mapOnVars]
+  | var v =>
+    simp only [substituteAction, mapOnVars]
+    split
+    · constructor
+      · intros
+        constructor
+        simp only [Prim.ValidRef]
+        simp only [heq_act] at hfind_act
+        have ⟨_, h⟩ := hinst_sch request.action act_entry hfind_act
+        simp only [Map.contains, h, Option.isSome]
+      · intros
+        constructor
+    · simp
+  | _ =>
+    sorry
+
+theorem typeOf_preserves_valid_refs
+  {Γ : TypeEnv} (entities : Entities)
+  {expr : Expr} {tx : TypedExpr} {c : Capabilities}
+  (hty : typeOf expr ∅ Γ = Except.ok (tx, c)) :
+  entities.ValidRefsFor expr ↔ entities.ValidRefsFor tx.toExpr
+:= sorry
+
+/--
+`wellTypedPolicy` preserves `Entities.ValidRefsFor`.
+-/
 theorem wellTypedPolicy_preserves_valid_refs
   {Γ : TypeEnv} {request : Request} {entities : Entities} {p p' : Policy}
   (hinst : InstanceOfWellFormedEnvironment request entities Γ)
@@ -172,9 +210,13 @@ theorem wellTypedPolicy_preserves_valid_refs
     repeat constructor
   rotate_left
   repeat constructor
-  -- TODO: `substituteAction` preserves `ValidRefsFor`
-  -- TODO: `typeOf` preserves `ValidRefsFor`
-  sorry
+  apply (typeOf_preserves_valid_refs entities hty).mp
+  have : Γ.reqty.action = request.action := by
+    have ⟨_, ⟨_, h, _⟩, _⟩ := hinst
+    simp [h]
+  simp only [this]
+  apply (substitute_action_preserves_valid_refs hinst).mp
+  exact hswf
 
 theorem wellTypedPolicy_preserves_StronglyWellFormedForPolicy
   {Γ : TypeEnv} {env : Env} {p p' : Policy}
