@@ -179,8 +179,110 @@ theorem substitute_action_preserves_valid_refs
       · intros
         constructor
     · simp
-  | _ =>
-    sorry
+  | and e₁ e₂ | or e₁ e₂ | binaryApp _ e₁ e₂ =>
+    simp only [substituteAction, mapOnVars]
+    constructor
+    · intros hrefs
+      cases hrefs
+      rename_i hrefs₁ hrefs₂
+      constructor
+      · exact (substitute_action_preserves_valid_refs hinst).mp hrefs₁
+      · exact (substitute_action_preserves_valid_refs hinst).mp hrefs₂
+    · intros hrefs
+      cases hrefs
+      rename_i hrefs₁ hrefs₂
+      constructor
+      · exact (substitute_action_preserves_valid_refs hinst).mpr hrefs₁
+      · exact (substitute_action_preserves_valid_refs hinst).mpr hrefs₂
+  | ite e₁ e₂ e₃ =>
+    simp only [substituteAction, mapOnVars]
+    constructor
+    · intros hrefs
+      cases hrefs with | ite_valid hrefs₁ hrefs₂ hrefs₃ =>
+      constructor
+      · exact (substitute_action_preserves_valid_refs hinst).mp hrefs₁
+      · exact (substitute_action_preserves_valid_refs hinst).mp hrefs₂
+      · exact (substitute_action_preserves_valid_refs hinst).mp hrefs₃
+    · intros hrefs
+      cases hrefs with | ite_valid hrefs₁ hrefs₂ hrefs₃ =>
+      constructor
+      · exact (substitute_action_preserves_valid_refs hinst).mpr hrefs₁
+      · exact (substitute_action_preserves_valid_refs hinst).mpr hrefs₂
+      · exact (substitute_action_preserves_valid_refs hinst).mpr hrefs₃
+  | unaryApp _ e | getAttr e _ | hasAttr e _ =>
+    simp only [substituteAction, mapOnVars]
+    constructor
+    · intros hrefs
+      cases hrefs
+      rename_i hrefs
+      constructor
+      exact (substitute_action_preserves_valid_refs hinst).mp hrefs
+    · intros hrefs
+      cases hrefs
+      rename_i hrefs
+      constructor
+      exact (substitute_action_preserves_valid_refs hinst).mpr hrefs
+  | set s | call _ s =>
+    simp only [substituteAction, mapOnVars]
+    constructor
+    · intros hrefs
+      cases hrefs
+      rename_i hrefs
+      constructor
+      intros e' hmem_e'
+      have ⟨e, _, he'⟩ := List.mem_map.mp hmem_e'
+      have hmem_e := e.property
+      specialize hrefs e.val hmem_e
+      simp only [←he']
+      exact (substitute_action_preserves_valid_refs hinst).mp hrefs
+    · intros hrefs
+      cases hrefs
+      rename_i hrefs
+      constructor
+      intros e hmem_e
+      specialize hrefs (substituteAction request.action e)
+      apply (substitute_action_preserves_valid_refs hinst).mpr
+      apply hrefs
+      apply List.mem_map.mpr
+      exists ⟨e, hmem_e⟩
+      simp [substituteAction]
+  | record rec =>
+    simp only [substituteAction, mapOnVars]
+    constructor
+    · intros hrefs
+      cases hrefs
+      rename_i hrefs
+      constructor
+      intros attr_expr' hmem_attr_expr'
+      simp only [List.map_attach₂_snd] at hmem_attr_expr'
+      have ⟨attr_expr, hmem_attr_expr, hattr_expr⟩ := List.mem_map.mp hmem_attr_expr'
+      specialize hrefs attr_expr hmem_attr_expr
+      simp only [←hattr_expr]
+      exact (substitute_action_preserves_valid_refs hinst).mp hrefs
+    · intros hrefs
+      cases hrefs
+      rename_i hrefs
+      constructor
+      intros attr_expr hmem_attr_expr
+      specialize hrefs (attr_expr.fst, (substituteAction request.action attr_expr.snd))
+      apply (substitute_action_preserves_valid_refs hinst).mpr
+      apply hrefs
+      simp only [List.map_attach₂_snd]
+      apply List.mem_map.mpr
+      exists attr_expr
+termination_by sizeOf expr
+decreasing_by
+  any_goals simp; omega
+  any_goals
+    simp
+    have := List.sizeOf_lt_of_mem hmem_e
+    omega
+  any_goals
+    simp
+    have := List.sizeOf_lt_of_mem hmem_attr_expr
+    cases attr_expr
+    simp at this ⊢
+    omega
 
 theorem typeOf_preserves_valid_refs
   {Γ : TypeEnv} (entities : Entities)
