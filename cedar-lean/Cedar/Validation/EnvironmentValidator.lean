@@ -73,6 +73,30 @@ def CedarType.validateWellFormed (env : TypeEnv) (ty : CedarType) : EnvironmentV
 
 end
 
+def CedarType.validateLifted (ty : CedarType) : EnvironmentValidationResult :=
+  match ty with
+  | .bool .anyBool => .ok ()
+  | .bool _ => .error (.typeError s!"bool type is not lifted")
+  | .int => .ok ()
+  | .string => .ok ()
+  | .entity _ => .ok ()
+  | .set ty => ty.validateLifted
+  | .record rty =>
+    rty.toList.attach.forM λ ⟨(_, qty), _⟩ =>
+      match qty with
+      | .optional ty => ty.validateLifted
+      | .required ty => ty.validateLifted
+  | .ext _ => .ok ()
+termination_by sizeOf ty
+decreasing_by
+  any_goals simp
+  any_goals
+    rename_i hmem
+    have h := List.sizeOf_lt_of_mem hmem
+    cases rty
+    simp [Map.toList, Map.kvs] at h ⊢
+    omega
+
 def StandardSchemaEntry.validateWellFormed (env : TypeEnv) (entry : StandardSchemaEntry) : EnvironmentValidationResult :=
   do
     if entry.ancestors.wellFormed then .ok ()
@@ -86,9 +110,12 @@ def StandardSchemaEntry.validateWellFormed (env : TypeEnv) (entry : StandardSche
       | none => .error (.typeError s!"ancestor entity type {ety} does not exist")
     -- Attribute types should be well-formed
     (CedarType.record entry.attrs).validateWellFormed env
+    (CedarType.record entry.attrs).validateLifted
     -- The tag type is well-formed
     match entry.tags with
-    | .some ty => ty.validateWellFormed env
+    | .some ty => do
+      ty.validateWellFormed env
+      ty.validateLifted
     | .none => .ok ()
 
 def EntitySchemaEntry.validateWellFormed (env : TypeEnv) (entry : EntitySchemaEntry) : EnvironmentValidationResult :=
@@ -124,6 +151,7 @@ def ActionSchemaEntry.validateWellFormed (env : TypeEnv) (entry : ActionSchemaEn
       else .error (.typeError s!"non-action ancestor {uid}")
     -- Check that the context type is well-formed
     (CedarType.record entry.context).validateWellFormed env
+    (CedarType.record entry.context).validateLifted
 
 def ActionSchema.validateAcyclicActionHierarchy (acts : ActionSchema) : EnvironmentValidationResult :=
   acts.toList.forM λ (uid, entry) => do
