@@ -19,14 +19,20 @@ import Cedar.Thm.SymCC.WellTyped
 import Cedar.Thm.Verification
 
 /-!
-This file strengthens theorems in `Cedar.Thm.Verification` to
-reduce some assumptions on `SymEnv` to `TypeEnv`.
---/
+This file connects soundness theorems in `Cedar.Thm.Verification`
+with policy validation.
+
+We prove that if validation of a policy (set) succeeds in the sense of
+`wellTypedPolicy`/`wellTypedPolicies`), then various verification tasks
+would produce a symbolic encoding *without errors*, and is sound with
+respect to concrete `Env`s.
+-/
 
 namespace Cedar.Thm
 
 open Spec SymCC Validation
 
+/-- Concrete version of `verifyNeverErrors_is_sound`. -/
 theorem verifyNeverErrors_is_ok_and_sound {p p' : Policy} {Γ : TypeEnv} :
   Γ.WellFormed →
   wellTypedPolicy p Γ = .some p' →
@@ -49,6 +55,7 @@ theorem verifyNeverErrors_is_ok_and_sound {p p' : Policy} {Γ : TypeEnv} :
   · exact ofEnv_soundness hwf_env.1 hinst
   · exact wellTypedPolicy_preserves_StronglyWellFormedForPolicy hinst hwt hwf_env
 
+/-- Concrete version of `verifyEquivalent_is_sound`. -/
 theorem verifyEquivalent_is_ok_and_sound {ps₁ ps₁' ps₂ ps₂' : Policies} {Γ : TypeEnv} :
   Γ.WellFormed →
   wellTypedPolicies ps₁ Γ = .some ps₁' →
@@ -78,6 +85,120 @@ theorem verifyEquivalent_is_ok_and_sound {ps₁ ps₁' ps₂ ps₂' : Policies} 
   have hwf_ps₁' := wellTypedPolicies_preserves_StronglyWellFormedForPolicies hinst hwt₁ hwf_ps₁
   have hwf_ps₂' := wellTypedPolicies_preserves_StronglyWellFormedForPolicies hinst hwt₂ hwf_ps₂
   apply verifyEquivalent_is_sound hwf_εnv₁ hwf_εnv₂ hok hunsat env _ hwf_ps₁' hwf_ps₂'
+  exact ofEnv_soundness hwf_ps₁.1 hinst
+
+/-- Concrete version of `verifyDisjoint_is_sound`. -/
+theorem verifyDisjoint_is_ok_and_sound {ps₁ ps₁' ps₂ ps₂' : Policies} {Γ : TypeEnv} :
+  Γ.WellFormed →
+  wellTypedPolicies ps₁ Γ = .some ps₁' →
+  wellTypedPolicies ps₂ Γ = .some ps₂' →
+  ∃ asserts,
+    verifyDisjoint ps₁' ps₂' (SymEnv.ofEnv Γ) = .ok asserts ∧
+    SymEnv.ofEnv Γ ⊭ asserts →
+    ∀ env : Env,
+      InstanceOfWellFormedEnvironment env.request env.entities Γ →
+      env.StronglyWellFormedForPolicies ps₁ →
+      env.StronglyWellFormedForPolicies ps₂ →
+      atLeastOneDenies
+        (Spec.isAuthorized env.request env.entities ps₁)
+        (Spec.isAuthorized env.request env.entities ps₂)
+:= by
+  intros hwf hwt₁ hwt₂
+  have hwf_εnv₁ := ofEnv_swf_for_policies hwf hwt₁
+  have hwf_εnv₂ := ofEnv_swf_for_policies hwf hwt₂
+  have ⟨asserts, hok⟩ := verifyDisjoint_is_ok hwf hwt₁ hwt₂
+  exists asserts
+  simp only [hok, true_and]
+  intros hunsat env hinst hwf_ps₁ hwf_ps₂
+  simp only [
+    wellTypedPolicies_preserves_isAuthorized hinst hwt₁,
+    wellTypedPolicies_preserves_isAuthorized hinst hwt₂,
+  ]
+  have hwf_ps₁' := wellTypedPolicies_preserves_StronglyWellFormedForPolicies hinst hwt₁ hwf_ps₁
+  have hwf_ps₂' := wellTypedPolicies_preserves_StronglyWellFormedForPolicies hinst hwt₂ hwf_ps₂
+  apply verifyDisjoint_is_sound hwf_εnv₁ hwf_εnv₂ hok hunsat env _ hwf_ps₁' hwf_ps₂'
+  exact ofEnv_soundness hwf_ps₁.1 hinst
+
+/-- Concrete version of `verifyImplies_is_sound`. -/
+theorem verifyImplies_is_ok_and_sound {ps₁ ps₁' ps₂ ps₂' : Policies} {Γ : TypeEnv} :
+  Γ.WellFormed →
+  wellTypedPolicies ps₁ Γ = .some ps₁' →
+  wellTypedPolicies ps₂ Γ = .some ps₂' →
+  ∃ asserts,
+    verifyImplies ps₁' ps₂' (SymEnv.ofEnv Γ) = .ok asserts ∧
+    SymEnv.ofEnv Γ ⊭ asserts →
+    ∀ env : Env,
+      InstanceOfWellFormedEnvironment env.request env.entities Γ →
+      env.StronglyWellFormedForPolicies ps₁ →
+      env.StronglyWellFormedForPolicies ps₂ →
+      ifFirstAllowsSoDoesSecond
+        (Spec.isAuthorized env.request env.entities ps₁)
+        (Spec.isAuthorized env.request env.entities ps₂)
+:= by
+  intros hwf hwt₁ hwt₂
+  have hwf_εnv₁ := ofEnv_swf_for_policies hwf hwt₁
+  have hwf_εnv₂ := ofEnv_swf_for_policies hwf hwt₂
+  have ⟨asserts, hok⟩ := verifyImplies_is_ok hwf hwt₁ hwt₂
+  exists asserts
+  simp only [hok, true_and]
+  intros hunsat env hinst hwf_ps₁ hwf_ps₂
+  simp only [
+    wellTypedPolicies_preserves_isAuthorized hinst hwt₁,
+    wellTypedPolicies_preserves_isAuthorized hinst hwt₂,
+  ]
+  have hwf_ps₁' := wellTypedPolicies_preserves_StronglyWellFormedForPolicies hinst hwt₁ hwf_ps₁
+  have hwf_ps₂' := wellTypedPolicies_preserves_StronglyWellFormedForPolicies hinst hwt₂ hwf_ps₂
+  apply verifyImplies_is_sound hwf_εnv₁ hwf_εnv₂ hok hunsat env _ hwf_ps₁' hwf_ps₂'
+  exact ofEnv_soundness hwf_ps₁.1 hinst
+
+/-- Concrete version of `verifyAlwaysDenies_is_sound`. -/
+theorem verifyAlwaysDenies_is_ok_and_sound {ps₁ ps₁' : Policies} {Γ : TypeEnv} :
+  Γ.WellFormed →
+  wellTypedPolicies ps₁ Γ = .some ps₁' →
+  ∃ asserts,
+    verifyAlwaysDenies ps₁' (SymEnv.ofEnv Γ) = .ok asserts ∧
+    SymEnv.ofEnv Γ ⊭ asserts →
+    ∀ env : Env,
+      InstanceOfWellFormedEnvironment env.request env.entities Γ →
+      env.StronglyWellFormedForPolicies ps₁ →
+      denies (Spec.isAuthorized env.request env.entities ps₁)
+:= by
+  intros hwf hwt₁
+  have hwf_εnv₁ := ofEnv_swf_for_policies hwf hwt₁
+  have ⟨asserts, hok⟩ := verifyAlwaysDenies_is_ok hwf hwt₁
+  exists asserts
+  simp only [hok, true_and]
+  intros hunsat env hinst hwf_ps₁
+  simp only [
+    wellTypedPolicies_preserves_isAuthorized hinst hwt₁,
+  ]
+  have hwf_ps₁' := wellTypedPolicies_preserves_StronglyWellFormedForPolicies hinst hwt₁ hwf_ps₁
+  apply verifyAlwaysDenies_is_sound hwf_εnv₁ hok hunsat env _ hwf_ps₁'
+  exact ofEnv_soundness hwf_ps₁.1 hinst
+
+/-- Concrete version of `verifyAlwaysAllows_is_sound`. -/
+theorem verifyAlwaysAllows_is_ok_and_sound {ps₁ ps₁' : Policies} {Γ : TypeEnv} :
+  Γ.WellFormed →
+  wellTypedPolicies ps₁ Γ = .some ps₁' →
+  ∃ asserts,
+    verifyAlwaysAllows ps₁' (SymEnv.ofEnv Γ) = .ok asserts ∧
+    SymEnv.ofEnv Γ ⊭ asserts →
+    ∀ env : Env,
+      InstanceOfWellFormedEnvironment env.request env.entities Γ →
+      env.StronglyWellFormedForPolicies ps₁ →
+      allows (Spec.isAuthorized env.request env.entities ps₁)
+:= by
+  intros hwf hwt₁
+  have hwf_εnv₁ := ofEnv_swf_for_policies hwf hwt₁
+  have ⟨asserts, hok⟩ := verifyAlwaysAllows_is_ok hwf hwt₁
+  exists asserts
+  simp only [hok, true_and]
+  intros hunsat env hinst hwf_ps₁
+  simp only [
+    wellTypedPolicies_preserves_isAuthorized hinst hwt₁,
+  ]
+  have hwf_ps₁' := wellTypedPolicies_preserves_StronglyWellFormedForPolicies hinst hwt₁ hwf_ps₁
+  apply verifyAlwaysAllows_is_sound hwf_εnv₁ hok hunsat env _ hwf_ps₁'
   exact ofEnv_soundness hwf_ps₁.1 hinst
 
 end Cedar.Thm
