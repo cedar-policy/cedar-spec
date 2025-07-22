@@ -945,6 +945,20 @@ private theorem evaluate_var_wf {xv : Var} {env : Env} {v : Value}
     apply Value.WellFormed.prim_wf
     simp only [Prim.WellFormed, hwf]
 
+private theorem evaluate_val_wf {v : Value} {env : Env} {v' : Value}
+  (hwf : Env.WellFormedFor env (Expr.val v))
+  (hok : evaluate (Expr.val v) env.request env.entities = Except.ok v') :
+  Value.WellFormed env.entities v'
+:= by
+  simp only [evaluate, Except.ok.injEq] at hok
+  subst hok
+  unfold Env.WellFormedFor at hwf
+  replace ⟨h₁, h₂⟩ := hwf
+  simp [Entities.ValidRefsFor] at h₂
+  
+
+  sorry
+
 private theorem evaluate_ite_wf {x₁ x₂ x₃ : Expr} {env : Env} {v : Value}
   (hwf : Env.WellFormedFor env (Expr.ite x₁ x₂ x₃))
   (hok : evaluate (Expr.ite x₁ x₂ x₃) env.request env.entities = Except.ok v)
@@ -1206,7 +1220,7 @@ theorem evaluate_wf {x : Expr} {env : Env} {v : Value} :
   match x with
   | .lit _            => exact evaluate_lit_wf hwf hok
   | .var _            => exact evaluate_var_wf hwf hok
-  | .val _ => sorry
+  | .val _            => exact evaluate_val_wf hwf hok
   | .ite _ x₂ x₃      => exact evaluate_ite_wf hwf hok (@evaluate_wf x₂) (@evaluate_wf x₃)
   | .and _ _          => exact evaluate_and_wf hok
   | .or _ _           => exact evaluate_or_wf hok
