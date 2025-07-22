@@ -14,7 +14,7 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.SymCC.Verifier.Basic
+import Cedar.Thm.SymCC.Verifier.WellTypedOk
 import Cedar.Thm.SymCC.WellTyped
 import Cedar.Thm.Verification
 
