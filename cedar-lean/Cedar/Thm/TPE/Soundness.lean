@@ -586,8 +586,8 @@ theorem partial_evaluate_is_sound_binary_app
           simp [RequestAndEntitiesRefine, EntitiesRefine] at h₄
           rcases h₄ with ⟨_, h₄⟩
           specialize h₄ uid₁ data heq₅₁
-          rcases h₄ with ⟨ha, hb⟩ | ⟨_, h₄₁, _, h₄₂, _⟩
-          · rw [ha] at heq₅₂
+          rcases h₄ with ⟨h₄₁, h₄₂⟩ | ⟨_, h₄₁, _, h₄₂, _⟩
+          · rw [h₄₁] at heq₅₂
             simp [PartialEntityData.ancestors] at heq₅₂
             rw [←heq₅₂]
             simp [Data.Set.empty, Spec.inₑ, BEq.beq]
@@ -596,7 +596,7 @@ theorem partial_evaluate_is_sound_binary_app
               exact heq₄
             rw [h_decide_false]
             simp [Entities.ancestorsOrEmpty]
-            rw [hb]
+            rw [h₄₂]
             simp [Data.Set.empty]
           · rw [heq₅₂] at h₄₂
             cases h₄₂
@@ -663,11 +663,11 @@ theorem partial_evaluate_is_sound_binary_app
               split at h₂ <;> try cases h₂
               rename_i data heq₁
               specialize h₄ uid data heq₁
-              rcases h₄ with ⟨ha, hb⟩ | ⟨e, h₄, _, h₅, _⟩
+              rcases h₄ with ⟨h₄₁, h₄₂⟩ | ⟨e, h₄, _, h₅, _⟩
               · simp [Entities.ancestorsOrEmpty]
-                rw [hb]
+                rw [h₄₂]
                 simp [Data.Set.empty, Data.Set.contains, Data.Set.elts]
-                rw [ha] at h₂
+                rw [h₄₁] at h₂
                 simp [PartialEntityData.ancestors] at h₂
                 rw [←h₂] at h₃
                 simp [Data.Set.empty, Data.Set.contains, Data.Set.elts] at h₃
@@ -703,11 +703,11 @@ theorem partial_evaluate_is_sound_binary_app
         simp [RequestAndEntitiesRefine, EntitiesRefine] at h₄
         rcases h₄ with ⟨_, h₄⟩
         specialize h₄ uid data heq₃
-        rcases h₄ with ⟨ha, hb⟩ | ⟨_, h₄₁, _, _, h₄₂⟩
+        rcases h₄ with ⟨h₄₁, h₄₂⟩ | ⟨_, h₄₁, _, _, h₄₂⟩
         · simp [Spec.hasTag, Entities.tagsOrEmpty]
-          rw [hb]
+          rw [h₄₂]
           simp [Data.Map.empty, Data.Map.contains, Data.Map.find?, Data.Map.kvs]
-          rw [ha] at heq₄
+          rw [h₄₁] at heq₄
           simp [PartialEntityData.tags] at heq₄
           rw [← heq₄]
           simp [Data.Map.empty, Except.toOption, Residual.val, Residual.evaluate]
@@ -728,12 +728,12 @@ theorem partial_evaluate_is_sound_binary_app
         simp [RequestAndEntitiesRefine, EntitiesRefine] at h₄
         rcases h₄ with ⟨_, h₄⟩
         specialize h₄ uid data heq₂
-        rcases h₄ with ⟨ha, hb⟩ | ⟨_, h₄₁, _, _, h₄₂⟩
-        · rw [ha] at heq₃
+        rcases h₄ with ⟨h₄₁, h₄₂⟩ | ⟨_, h₄₁, _, _, h₄₂⟩
+        · rw [h₄₁] at heq₃
           simp [PartialEntityData.tags] at heq₃
           rw [← heq₃]
           simp [Data.Map.find?, Data.Map.kvs, Data.Map.empty, Residual.evaluate, Except.toOption, Spec.getTag, Entities.tags]
-          have h₆ := Data.Map.find?_none_implies_findorErr_errors Error.entityDoesNotExist hb
+          have h₆ := Data.Map.find?_none_implies_findorErr_errors Error.entityDoesNotExist h₄₂
           rw [h₆]
           simp
         · rw [heq₃] at h₄₂
@@ -799,11 +799,11 @@ theorem partial_evaluate_is_sound_has_attr
       simp [RequestAndEntitiesRefine, EntitiesRefine] at h₄
       rcases h₄ with ⟨_, h₄⟩
       specialize h₄ uid data heq₂
-      rcases h₄ with ⟨hₑ, hₘ⟩ | ⟨_, h₄₁, h₄₂, _⟩
-      · rw [hₑ] at heq₃
+      rcases h₄ with ⟨h₄₁, h₄₂⟩ | ⟨_, h₄₁, h₄₂, _⟩
+      · rw [h₄₁] at heq₃
         simp [PartialEntityData.attrs] at heq₃
         simp [Entities.attrsOrEmpty]
-        rw [hₘ]
+        rw [h₄₂]
         rw [←heq₃]
       · rw [heq₃] at h₄₂
         rcases h₄₂
@@ -858,12 +858,12 @@ theorem partial_evaluate_is_sound_get_attr
       simp [RequestAndEntitiesRefine, EntitiesRefine] at h₄
       rcases h₄ with ⟨_, h₄⟩
       specialize h₄ uid data heq₂
-      rcases h₄ with ⟨h₄, h₅⟩ | ⟨_, h₄₁, h₄₂, _⟩
+      rcases h₄ with ⟨h₄₁, h₄₂⟩ | ⟨_, h₄₁, h₄₂, _⟩
       · simp [Entities.attrs]
-        have h₆ := Data.Map.find?_none_implies_findorErr_errors Error.entityDoesNotExist h₅
+        have h₆ := Data.Map.find?_none_implies_findorErr_errors Error.entityDoesNotExist h₄₂
         rw [h₆]
         simp [Except.toOption]
-        rw [h₄] at heq₃
+        rw [h₄₁] at heq₃
         simp [PartialEntityData.attrs] at heq₃
         rw [← heq₃]
         simp [Data.Map.empty, Data.Map.find?, Data.Map.kvs, someOrError, Residual.evaluate]
