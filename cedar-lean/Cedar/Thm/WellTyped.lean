@@ -28,6 +28,7 @@ namespace Cedar.Thm
 open Cedar.Thm
 open Cedar.Validation
 open Cedar.Spec
+open Cedar.Spec.Ext
 open Cedar.TPE
 open Cedar.Data
 
@@ -70,6 +71,175 @@ theorem well_typed_is_sound {ty : TypedExpr} {v : Value} {env : TypeEnv} {reques
   case call xfn args ty _ h₄ _ =>
     exact well_typed_is_sound_call h₄ h₃
 
+inductive UnaryResidualWellTyped : UnaryOp → Residual → CedarType → Prop
+  | not {x₁ : Residual}
+    (h₁ : x₁.typeOf = .bool .anyBool) :
+    UnaryResidualWellTyped .not x₁ (.bool .anyBool)
+  | neg {x₁ : Residual}
+    (h₁ : x₁.typeOf = .int) :
+    UnaryResidualWellTyped .neg x₁ .int
+  | isEmpty {x₁ : Residual} {eltTy : CedarType}
+    (h₁ : x₁.typeOf = .set eltTy) :
+    UnaryResidualWellTyped .isEmpty x₁ (.bool .anyBool)
+  | like {x₁ : Residual} {p : Pattern}
+    (h₁ : x₁.typeOf = .string) :
+    UnaryResidualWellTyped (.like p) x₁ (.bool .anyBool)
+  | is {ety₁ ety₂ : EntityType}
+    (h₁ : x₁.typeOf = .entity ety₂) :
+    UnaryResidualWellTyped (.is ety₁) x₁ (.bool .anyBool)
+
+inductive BinaryResidualWellTyped (env : TypeEnv) : BinaryOp → Residual → Residual → CedarType → Prop
+  | eq_val {p₁ p₂ : Value} {ty₁ ty₂ : CedarType} :
+    BinaryResidualWellTyped env .eq (.val p₁ ty₁) (.val p₂ ty₂) (.bool .anyBool)
+  | eq_entity {ety₁ ety₂ : EntityType} {x₁ x₂ : Residual}
+    (h₁ : x₁.typeOf = .entity ety₁)
+    (h₂ : x₂.typeOf = .entity ety₂) :
+    BinaryResidualWellTyped env .eq x₁ x₂ (.bool .anyBool)
+  | eq {x₁ x₂ : Residual}
+    (h₁ : x₁.typeOf = x₂.typeOf) :
+    BinaryResidualWellTyped env .eq x₁ x₂ (.bool .anyBool)
+  | memₑ {x₁ x₂ : Residual} {ety₁ ety₂ : EntityType}
+    (h₁ : x₁.typeOf = .entity ety₁)
+    (h₂ : x₂.typeOf = .entity ety₂) :
+    BinaryResidualWellTyped env .mem x₁ x₂ (.bool .anyBool)
+  | memₛ {x₁ x₂ : Residual} {ety₁ ety₂ : EntityType}
+    (h₁ : x₁.typeOf = .entity ety₁)
+    (h₂ : x₂.typeOf = .set (.entity ety₂)) :
+    BinaryResidualWellTyped env .mem x₁ x₂ (.bool .anyBool)
+  | less_int {x₁ x₂ : Residual}
+    (h₁ : x₁.typeOf = .int)
+    (h₂ : x₂.typeOf = .int) :
+    BinaryResidualWellTyped env .less x₁ x₂ (.bool .anyBool)
+  | less_datetime {x₁ x₂ : Residual}
+    (h₁ : x₁.typeOf = .ext .datetime)
+    (h₂ : x₂.typeOf = .ext .datetime) :
+    BinaryResidualWellTyped env .less x₁ x₂ (.bool .anyBool)
+  | less_duration {x₁ x₂ : Residual}
+    (h₁ : x₁.typeOf = .ext .duration)
+    (h₂ : x₂.typeOf = .ext .duration) :
+    BinaryResidualWellTyped env .less x₁ x₂ (.bool .anyBool)
+  | lessEq_int {x₁ x₂ : Residual}
+    (h₁ : x₁.typeOf = .int)
+    (h₂ : x₂.typeOf = .int) :
+    BinaryResidualWellTyped env .lessEq x₁ x₂ (.bool .anyBool)
+  | lessEq_datetime {x₁ x₂ : Residual}
+    (h₁ : x₁.typeOf = .ext .datetime)
+    (h₂ : x₂.typeOf = .ext .datetime) :
+    BinaryResidualWellTyped env .lessEq x₁ x₂ (.bool .anyBool)
+  | lessEq_duration {x₁ x₂ : Residual}
+    (h₁ : x₁.typeOf = .ext .duration)
+    (h₂ : x₂.typeOf = .ext .duration) :
+    BinaryResidualWellTyped env .lessEq x₁ x₂ (.bool .anyBool)
+  | add {x₁ x₂ : Residual}
+    (h₁ : x₁.typeOf = .int)
+    (h₂ : x₂.typeOf = .int) :
+    BinaryResidualWellTyped env .add x₁ x₂ .int
+  | sub {x₁ x₂ : Residual}
+    (h₁ : x₁.typeOf = .int)
+    (h₂ : x₂.typeOf = .int) :
+    BinaryResidualWellTyped env .sub x₁ x₂ .int
+  | mul {x₁ x₂ : Residual}
+    (h₁ : x₁.typeOf = .int)
+    (h₂ : x₂.typeOf = .int) :
+    BinaryResidualWellTyped env .mul x₁ x₂ .int
+  | contains {x₁ x₂ : Residual}
+    (h₁ : x₁.typeOf = .set x₂.typeOf) :
+    BinaryResidualWellTyped env .contains x₁ x₂ (.bool .anyBool)
+  | containsAll {x₁ x₂ : Residual} {ty : CedarType}
+    (h₁ : x₁.typeOf = .set ty)
+    (h₂ : x₂.typeOf = .set ty) :
+    BinaryResidualWellTyped env .containsAll x₁ x₂ (.bool .anyBool)
+  | containsAny {x₁ x₂ : Residual} {ty : CedarType}
+    (h₁ : x₁.typeOf = .set ty)
+    (h₂ : x₂.typeOf = .set ty) :
+    BinaryResidualWellTyped env .containsAny x₁ x₂ (.bool .anyBool)
+  | hasTag {x₁ x₂ : Residual} {ety : EntityType}
+    (h₁ : x₁.typeOf = .entity ety)
+    (h₂ : x₂.typeOf = .string) :
+    BinaryResidualWellTyped env .hasTag x₁ x₂ (.bool .anyBool)
+  | getTag {x₁ x₂ : Residual} {ety : EntityType} {ty : CedarType}
+    (h₁ : x₁.typeOf = .entity ety)
+    (h₂ : x₂.typeOf = .string)
+    (h₃ : env.ets.tags? ety = .some (.some ty)) :
+    BinaryResidualWellTyped env .getTag x₁ x₂ ty.liftBoolTypes
+
+
+inductive ExtResidualWellTyped : ExtFun → List Residual → CedarType → Prop
+  | decimal {s₁ : String} {d₁ : Decimal}
+    (h₁ : d₁ = Decimal.decimal s₁) :
+    ExtResidualWellTyped .decimal [.val (.prim (.string s₁)) .string] (.ext .decimal)
+  | lessThan {x₁ x₂ : Residual}
+    (h₁ : x₁.typeOf = .ext .decimal)
+    (h₂ : x₂.typeOf = .ext .decimal) :
+    ExtResidualWellTyped .lessThan [x₁, x₂] (.bool .anyBool)
+  | lessThanOrEqual {x₁ x₂ : Residual}
+    (h₁ : x₁.typeOf = .ext .decimal)
+    (h₂ : x₂.typeOf = .ext .decimal) :
+    ExtResidualWellTyped .lessThanOrEqual [x₁, x₂] (.bool .anyBool)
+  | greaterThan {x₁ x₂ : Residual}
+    (h₁ : x₁.typeOf = .ext .decimal)
+    (h₂ : x₂.typeOf = .ext .decimal) :
+    ExtResidualWellTyped .greaterThan [x₁, x₂] (.bool .anyBool)
+  | greaterThanOrEqual {x₁ x₂ : Residual}
+    (h₁ : x₁.typeOf = .ext .decimal)
+    (h₂ : x₂.typeOf = .ext .decimal) :
+    ExtResidualWellTyped .greaterThanOrEqual [x₁, x₂] (.bool .anyBool)
+  | ip {s₁ : String} {ip₁ : IPAddr}
+    (h₁ : ip₁ =  IPAddr.ip s₁) :
+    ExtResidualWellTyped .ip [.val (.prim (.string s₁)) .string] (.ext .ipAddr)
+  | isIpv4 {x₁ : Residual}
+    (h₁ : x₁.typeOf = .ext .ipAddr) :
+    ExtResidualWellTyped .isIpv4 [x₁] (.bool .anyBool)
+  | isIpv6 {x₁ : Residual}
+    (h₁ : x₁.typeOf = .ext .ipAddr) :
+    ExtResidualWellTyped .isIpv6 [x₁] (.bool .anyBool)
+  | isLoopback {x₁ : Residual}
+    (h₁ : x₁.typeOf = .ext .ipAddr) :
+    ExtResidualWellTyped .isLoopback [x₁] (.bool .anyBool)
+  | isMulticast {x₁ : Residual}
+    (h₁ : x₁.typeOf = .ext .ipAddr) :
+    ExtResidualWellTyped .isMulticast [x₁] (.bool .anyBool)
+  | isInRange {x₁ x₂ : Residual}
+    (h₁ : x₁.typeOf = .ext .ipAddr)
+    (h₂ : x₂.typeOf = .ext .ipAddr):
+    ExtResidualWellTyped .isInRange [x₁, x₂] (.bool .anyBool)
+  | datetime {s₁ : String} {d₁ : Datetime}
+    (h₁ : d₁ =  Datetime.parse s₁) :
+    ExtResidualWellTyped .datetime [.val (.prim (.string s₁)) .string] (.ext .datetime)
+  | duration {s₁ : String} {d₁ : Duration}
+    (h₁ : d₁ =  Datetime.Duration.parse s₁) :
+    ExtResidualWellTyped .duration [.val (.prim (.string s₁)) .string] (.ext .duration)
+  | offset {x₁ x₂ : Residual}
+    (h₁ : x₁.typeOf = .ext .datetime)
+    (h₂ : x₂.typeOf = .ext .duration):
+    ExtResidualWellTyped .offset [x₁, x₂] (.ext .datetime)
+  | durationSince {x₁ x₂ : Residual}
+    (h₁ : x₁.typeOf = .ext .datetime)
+    (h₂ : x₂.typeOf = .ext .datetime):
+    ExtResidualWellTyped .durationSince [x₁, x₂] (.ext .duration)
+  | toDate {x₁ : Residual}
+    (h₁ : x₁.typeOf = .ext .datetime) :
+    ExtResidualWellTyped .toDate [x₁] (.ext .datetime)
+  | toTime {x₁ : Residual}
+    (h₁ : x₁.typeOf = .ext .datetime) :
+    ExtResidualWellTyped .toTime [x₁] (.ext .duration)
+  | toMilliseconds {x₁ : Residual}
+    (h₁ : x₁.typeOf = .ext .duration) :
+    ExtResidualWellTyped .toMilliseconds [x₁] .int
+  | toSeconds {x₁ : Residual}
+    (h₁ : x₁.typeOf = .ext .duration) :
+    ExtResidualWellTyped .toSeconds [x₁] .int
+  | toMinutes {x₁ : Residual}
+    (h₁ : x₁.typeOf = .ext .duration) :
+    ExtResidualWellTyped .toMinutes [x₁] .int
+  | toHours {x₁ : Residual}
+    (h₁ : x₁.typeOf = .ext .duration) :
+    ExtResidualWellTyped .toHours [x₁] .int
+  | toDays {x₁ : Residual}
+    (h₁ : x₁.typeOf = .ext .duration) :
+    ExtResidualWellTyped .toDays [x₁] .int
+
+
 /-- Well-typedness definition for Residual expressions -/
 inductive Residual.WellTyped (env : TypeEnv) : Residual → Prop
 | val {v : Value} {ty : CedarType}
@@ -78,13 +248,12 @@ inductive Residual.WellTyped (env : TypeEnv) : Residual → Prop
 | var {v : Var} {ty : CedarType}
   (h₁ : v.WellTyped env ty) :
   WellTyped env (.var v ty)
-| ite {x₁ x₂ x₃ : Residual} {ty : CedarType}
+| ite {x₁ x₂ x₃ : Residual}
   (h₁ : WellTyped env x₁)
   (h₂ : WellTyped env x₂)
   (h₃ : WellTyped env x₃)
   (h₄ : x₁.typeOf = .bool .anyBool)
-  (h₅ : x₂.typeOf = x₃.typeOf)
-  (h₆ : ty = x₂.typeOf) :
+  (h₅ : x₂.typeOf = x₃.typeOf) :
   WellTyped env (.ite x₁ x₂ x₃ ty)
 | and {x₁ x₂ : Residual} {ty : CedarType}
   (h₁ : WellTyped env x₁)
@@ -102,12 +271,12 @@ inductive Residual.WellTyped (env : TypeEnv) : Residual → Prop
   WellTyped env (.or x₁ x₂ ty)
 | unaryApp {op₁ : UnaryOp} {x₁ : Residual} {ty : CedarType}
   (h₁ : WellTyped env x₁)
-  (h₂ : op₁.WellTyped (x₁.toTypedExpr) ty) :
+  (h₂ : UnaryResidualWellTyped op₁ x₁ ty) :
   WellTyped env (.unaryApp op₁ x₁ ty)
 | binaryApp {op₂ : BinaryOp} {x₁ x₂: Residual} {ty : CedarType}
   (h₁ : WellTyped env x₁)
   (h₂ : WellTyped env x₂)
-  (h₃ : op₂.WellTyped env (x₁.toTypedExpr) (x₂.toTypedExpr) ty) :
+  (h₃ : BinaryResidualWellTyped env op₂ x₁ x₂ ty) :
   WellTyped env (.binaryApp op₂ x₁ x₂ ty)
 | hasAttr_entity {ety : EntityType} {x₁ : Residual} {attr : Attr} {ty : CedarType}
   (h₁ : WellTyped env x₁)
@@ -143,7 +312,7 @@ inductive Residual.WellTyped (env : TypeEnv) : Residual → Prop
   WellTyped env (.record m ty)
 | call {xfn : ExtFun} {args : List Residual} {ty : CedarType}
   (h₁ : ∀ x, x ∈ args → WellTyped env x)
-  (h₂ : xfn.WellTyped (args.map (λ r => r.toTypedExpr)) ty) :
+  (h₂ : ExtResidualWellTyped xfn args ty) :
   WellTyped env (.call xfn args ty)
 | error {ty : CedarType} :
   WellTyped env (.error ty)

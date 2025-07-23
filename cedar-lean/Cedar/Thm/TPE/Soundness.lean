@@ -411,7 +411,7 @@ theorem partial_evaluate_is_sound_binary_app
 (h₂ : InstanceOfWellFormedEnvironment req es env)
 (h₄ : RequestAndEntitiesRefine req es preq pes)
 (hwt : Residual.WellTyped env x₂)
-(howt : BinaryOp.WellTyped env op₂ x₁ x₂ ty)
+(howt : BinaryResidualWellTyped env op₂ x₁ x₂ ty)
 (hᵢ₁ : Except.toOption (x₁.evaluate req es) = Except.toOption ((TPE.evaluate x₁ preq pes).evaluate req es))
 (hᵢ₂ : Except.toOption (x₂.evaluate req es) = Except.toOption ((TPE.evaluate x₂ preq pes).evaluate req es)) :
   Except.toOption ((Residual.binaryApp op₂ x₁ x₂ ty).evaluate req es) =
