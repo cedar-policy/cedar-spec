@@ -78,10 +78,6 @@ def PartialEntityData.attrs : PartialEntityData → Option (Map Attr Value)
   | .present attrs _ _ => attrs
   | .MissingEntity => none
 
-def PartialEntityData.getComponents : PartialEntityData → (Option (Map Attr Value) × Option (Set EntityUID) × Option (Map Attr Value))
-  | .present attrs ancestors tags => (attrs, ancestors, tags)
-  | .MissingEntity => (none, none, none)
-
 def PartialEntities.ancestors (es : PartialEntities) (uid : EntityUID) : Option (Set EntityUID) := es.get uid PartialEntityData.ancestors
 
 def PartialEntities.tags (es : PartialEntities) (uid : EntityUID) : Option (Map Tag Value) := es.get uid PartialEntityData.tags
@@ -105,7 +101,7 @@ def entitiesIsValid (env : TypeEnv) (es : PartialEntities) : Bool :=
 where
   entityIsValid p :=
     let (uid, entityData) := p
-    let (attrs, ancestors, tags) := entityData.getComponents
+    let (attrs, ancestors, tags) := (entityData.attrs, entityData.ancestors, entityData.tags)
     match env.ets.find? uid.ty with
     | .some entry =>
       entry.isValidEntityEID uid.eid &&
@@ -167,7 +163,7 @@ where
       es₂.kvs.all λ (a₂, e₂) => match es₁.find? a₂ with
         | .some e₁ =>
           let ⟨attrs₁, ancestors₁, tags₁⟩ := e₁
-          let (attrs₂, ancestors₂, tags₂) := e₂.getComponents
+          let (attrs₂, ancestors₂, tags₂) := (e₂.attrs, e₂.ancestors, e₂.tags)
           partialIsValid attrs₂ (· = attrs₁) &&
           partialIsValid ancestors₂ (· = ancestors₁) &&
           partialIsValid tags₂ (· = tags₁)
