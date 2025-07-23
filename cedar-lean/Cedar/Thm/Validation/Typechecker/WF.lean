@@ -319,6 +319,20 @@ theorem wf_env_implies_wf_request
     simp [Set.contains, hwf_res, Membership.mem]
   · simp [hwf_ctx, hwf_ctx_ty]
 
+/--
+More well-formedness properties of `env.reqty`.
+-/
+theorem wf_env_implies_ctx_lifted
+  {env : TypeEnv}
+  (hwf : env.WellFormed) :
+  (CedarType.record env.reqty.context).IsLifted
+:= by
+  have ⟨_, hwf_acts, ⟨entry, hwf_act, _, _, hwf_ctx⟩⟩ := hwf
+  have ⟨_, hwf_acts, _⟩ := hwf_acts
+  have hwf_act_entry := hwf_acts env.reqty.action entry hwf_act
+  have ⟨_, _, _, _, _, _, hwf_ctx_ty⟩ := hwf_act_entry
+  simp [hwf_ctx, hwf_ctx_ty]
+
 theorem wf_env_implies_wf_acts_map
   {env : TypeEnv}
   (hwf : env.WellFormed) :
