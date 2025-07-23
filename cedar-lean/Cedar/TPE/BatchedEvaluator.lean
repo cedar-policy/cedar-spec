@@ -19,7 +19,7 @@ open Cedar.Validation
  - Analysis for how many calls to the entity loader there will be
 -/
 
-def EntityLoader : Type := Set EntityUID → Map EntityUID EntityData
+def EntityLoader : Type := Set EntityUID → Map EntityUID PartialEntityData
 
 def TypedExpr.allLiteralUIDs (x : TypedExpr) : Set EntityUID :=
   match x with
@@ -77,16 +77,16 @@ partial def batchedEvalLoop
   (expr : TypedExpr)
   (req : Request)
   (loader : EntityLoader)
-  (store : Entities)
+  (store : PartialEntities)
   : Result Value :=
   let toLoad := (TypedExpr.allLiteralUIDs expr).filter (λ uid => (store.find? uid).isNone)
   let newEntities := loader toLoad
-  if newEntities.kvs.length == 0
-  then Cedar.Spec.evaluate expr.toExpr req store
-  else
-    let newStore := newEntities.kvs.foldl (λ acc ed => acc.insert ed.1 ed.2) store
-    let newRes := Cedar.TPE.evaluate expr (Request.asPartialRequest req) (Entities.asPartial newStore)
+  let newStore := newEntities.kvs.foldl (λ acc ed => acc.insert ed.1 ed.2) store
+  let newRes := Cedar.TPE.evaluate expr (Request.asPartialRequest req) newStore
 
+  match newRes with
+  | .val v _ty => .ok v
+  | _ =>
     do
       let newExprRes ← newRes.asTypedExpr
       batchedEvalLoop newExprRes req loader newStore
@@ -102,9 +102,9 @@ def batchedEvaluate
   (req : Request)
   (loader : EntityLoader)
   : Result Value :=
-  let emptyStore : Entities := Map.mk []
+  let emptyStore : PartialEntities := Map.mk []
   -- an initial partial evaluation, removing all variables
-  let residual := Cedar.TPE.evaluate x (Request.asPartialRequest req) (Entities.asPartial emptyStore)
+  let residual := Cedar.TPE.evaluate x (Request.asPartialRequest req) emptyStore
   -- start the batched evaluation loop
   do
     let newExpr ← residual.asTypedExpr
@@ -113,5 +113,9 @@ def batchedEvaluate
 def entityLoaderFor : (e: Entities) -> EntityLoader :=
   fun e =>
    fun uids =>
-    Map.make (uids.toList.filterMap (fun uid =>
-      e.find? uid |>.map (fun data => (uid, data))))
+    Map.make (uids.toList.map (fun uid =>
+      match (e.find? uid) with
+      | .some data =>
+        (uid, EntityData.asPartial data)
+      | .none =>
+        (uid, PartialEntityData.MissingEntity)))

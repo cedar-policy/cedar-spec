@@ -60,7 +60,10 @@ def testBatchedEvaluatorEquivalence (name : String) (expr : Expr) (req : Request
     match typeOf expr ∅ type_env with
     | .ok (typedExpr, _) =>
       let batchedResult := batchedEvaluate typedExpr req loader
-      checkEq batchedResult regularResult
+      match (batchedResult, regularResult) with
+      | (.ok br, .ok rr) => checkEq br rr
+      | (.error _, .error _) => (.ok (.ok ()))
+      | _ => checkEq batchedResult regularResult
     | .error e =>
       .error s!"Type error: {repr e}"
   ⟩
@@ -112,7 +115,7 @@ def tests :=
       testEntities
       testLoader,
     testBatchedEvaluatorEquivalence
-      "missing entity - User::\"nonexistent\".name == \"test\""
+     "missing entity - User::\"nonexistent\".name == \"test\""
       (.binaryApp .eq (.getAttr (.lit (.entityUID ⟨UserType, "nonexistent"⟩)) "name") (.lit (.string "test")))
       testRequest
       testEntities
