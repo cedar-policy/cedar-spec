@@ -740,14 +740,25 @@ theorem partial_evaluate_is_sound_binary_app
         simp [RequestAndEntitiesRefine, EntitiesRefine] at h₄
         rcases h₄ with ⟨_, h₄⟩
         specialize h₄ uid data heq₂
-        rcases h₄ with ⟨_, h₄₁, _, _, h₄₂⟩
-        rw [heq₃] at h₄₂
-        cases h₄₂
-        rename_i heq₄
-        subst heq₄
-        simp only [Spec.getTag, Entities.tags, Data.Map.findOrErr, h₄₁]
-        split <;>
-        (rename_i heq₁; simp [heq₁, Residual.evaluate, Except.toOption])
+        cases h₄ with
+        | inl h₄ =>
+          replace ⟨ha, hb⟩ := h₄
+          rw [ha] at heq₃
+          simp [PartialEntityData.tags] at heq₃
+          rw [← heq₃]
+          simp [Data.Map.find?, Data.Map.kvs, Data.Map.empty, Residual.evaluate, Except.toOption, Spec.getTag, Entities.tags]
+          have h₆ := Data.Map.find?_none_implies_findorErr_errors Error.entityDoesNotExist hb
+          rw [h₆]
+          simp
+        | inr h₄ =>
+          rcases h₄ with ⟨_, h₄₁, _, _, h₄₂⟩
+          rw [heq₃] at h₄₂
+          cases h₄₂
+          rename_i heq₄
+          subst heq₄
+          simp only [Spec.getTag, Entities.tags, Data.Map.findOrErr, h₄₁]
+          split <;>
+          (rename_i heq₁; simp [heq₁, Residual.evaluate, Except.toOption])
       case _ =>
         simp only [Residual.evaluate, Spec.apply₂, Except.bind_ok]
     case _ => simp [Except.toOption]
@@ -867,14 +878,26 @@ theorem partial_evaluate_is_sound_get_attr
       simp [RequestAndEntitiesRefine, EntitiesRefine] at h₄
       rcases h₄ with ⟨_, h₄⟩
       specialize h₄ uid data heq₂
-      rcases h₄ with ⟨_, h₄₁, h₄₂, _⟩
-      rw [heq₃] at h₄₂
-      rcases h₄₂
-      rename_i data' _ h₄
-      subst h₄
-      simp [Entities.attrs, Data.Map.findOrErr, h₄₁]
-      generalize h₄ : data'.attrs.find? attr = res
-      cases res <;> simp [someOrError, Residual.evaluate, Except.toOption]
+      cases h₄ with
+      | inl h₄ =>
+        replace ⟨h₄, h₅⟩ := h₄
+        simp [Entities.attrs]
+        have h₆ := Data.Map.find?_none_implies_findorErr_errors Error.entityDoesNotExist h₅
+        rw [h₆]
+        simp [Except.toOption]
+        rw [h₄] at heq₃
+        simp [PartialEntityData.attrs] at heq₃
+        rw [← heq₃]
+        simp [Data.Map.empty, Data.Map.find?, Data.Map.kvs, someOrError, Residual.evaluate]
+      | inr h₄ =>
+        rcases h₄ with ⟨_, h₄₁, h₄₂, _⟩
+        rw [heq₃] at h₄₂
+        rcases h₄₂
+        rename_i data' _ h₄
+        subst h₄
+        simp [Entities.attrs, Data.Map.findOrErr, h₄₁]
+        generalize h₄ : data'.attrs.find? attr = res
+        cases res <;> simp [someOrError, Residual.evaluate, Except.toOption]
     case _ => cases heq
   case _ =>
     simp [Residual.evaluate]
