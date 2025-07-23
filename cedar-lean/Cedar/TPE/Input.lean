@@ -55,28 +55,28 @@ inductive PartialEntityData where
   | present (attrs : Option (Map Attr Value)) (ancestors : Option (Set EntityUID)) (tags : Option (Map Attr Value))
   | MissingEntity
 
-def EntityData.asPartialEntityData (data : EntityData) : PartialEntityData :=
+def EntityData.asPartial (data : EntityData) : PartialEntityData :=
   .present (.some data.attrs) (.some data.ancestors) (.some data.tags)
 
 abbrev PartialEntities := Map EntityUID PartialEntityData
 
 def Entities.asPartial (entities: Entities) : PartialEntities :=
-  entities.mapOnValues EntityData.asPartialEntityData
+  entities.mapOnValues EntityData.asPartial
 
 def PartialEntities.get (es : PartialEntities) (uid : EntityUID) (f : PartialEntityData → Option α) : Option α :=
   (es.find? uid).bind f
 
 def PartialEntityData.ancestors : PartialEntityData → Option (Set EntityUID)
   | .present _ ancestors _ => ancestors
-  | .MissingEntity => none
+  | .MissingEntity => .some Set.empty
 
 def PartialEntityData.tags : PartialEntityData → Option (Map Attr Value)
   | .present _ _ tags => tags
-  | .MissingEntity => none
+  | .MissingEntity => .some Map.empty
 
 def PartialEntityData.attrs : PartialEntityData → Option (Map Attr Value)
   | .present attrs _ _ => attrs
-  | .MissingEntity => none
+  | .MissingEntity => .some Map.empty
 
 def PartialEntities.ancestors (es : PartialEntities) (uid : EntityUID) : Option (Set EntityUID) := es.get uid PartialEntityData.ancestors
 
