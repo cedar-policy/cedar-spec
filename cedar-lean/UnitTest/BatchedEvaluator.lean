@@ -35,7 +35,7 @@ def DocumentType : EntityType := ⟨"Document", []⟩
 def entity_schema : EntitySchema :=
   Map.make [
     (ActionType, .standard ⟨default, default, default⟩),
-    (UserType, .standard ⟨default, Map.make [("name", .required .string)], default⟩),
+    (UserType, .standard ⟨default, Map.make [("name", .required .string), ("isAdmin", .required (.bool .anyBool))], (.some (.entity UserType))⟩),
     (DocumentType, .standard ⟨default, default, default⟩)
   ]
 
@@ -61,8 +61,8 @@ def testBatchedEvaluatorEquivalence (name : String) (expr : Expr) (req : Request
     | .ok (typedExpr, _) =>
       let batchedResult := batchedEvaluate typedExpr req loader
       checkEq batchedResult regularResult
-    | .error _ =>
-      .error "Failed to typecheck expression"
+    | .error e =>
+      .error s!"Type error: {repr e}"
   ⟩
 
 -- Translate the first Rust test: test_simple_entity_manifest
@@ -78,13 +78,23 @@ def testRequest : Request :=
 
 def testEntities : Entities :=
   Map.make [
-    (⟨UserType, "oliver"⟩, ⟨Map.make [("name", "Oliver")], Set.empty, Map.empty⟩),
-    (⟨UserType, "oliver2"⟩, ⟨Map.make [("name", "Oliver2")], Set.empty, Map.empty⟩),
+    (⟨UserType, "oliver"⟩, ⟨Map.make [("name", "Oliver"), ("isAdmin", true)], Set.empty, Map.mk [⟨"friend", (.prim (.entityUID ⟨UserType, "emina"⟩))⟩]⟩),
+    (⟨UserType, "emina"⟩, ⟨Map.make [("name", "emina"), ("isAdmin", true)], Set.empty, Map.empty⟩),
     (⟨ActionType, "Read"⟩, ⟨Map.empty, Set.empty, Map.empty⟩),
     (⟨DocumentType, "dummy"⟩, ⟨Map.empty, Set.empty, Map.empty⟩)
   ]
 
 def testLoader : EntityLoader := entityLoaderFor testEntities
+
+def has_expr_doesnt_eval: Expr := (.binaryApp .hasTag (.lit (.entityUID ⟨UserType, "nonexistent"⟩)) (.lit (.string "randomtag")))
+def delayed_friend_string: Expr := (.ite has_expr_doesnt_eval (.lit (.string "friend")) (.lit (.string "friend")))
+
+def oliver: Expr := (.lit (.entityUID ⟨UserType, "oliver"⟩))
+
+def getTag (e: Expr) (t: Expr) : Expr := (.binaryApp .getTag e t)
+def hasTag (e: Expr) (t: Expr) : Expr := (.binaryApp .hasTag e t)
+
+
 def tests :=
   suite "BatchedEvaluator equivalence tests"
   [
@@ -106,7 +116,18 @@ def tests :=
       (.binaryApp .eq (.getAttr (.lit (.entityUID ⟨UserType, "nonexistent"⟩)) "name") (.lit (.string "test")))
       testRequest
       testEntities
+      testLoader,
+    -- handling has on entity that isn't there
+    testBatchedEvaluatorEquivalence
+      "missing entity has attribute"
+      (.and (hasTag oliver delayed_friend_string) (
+        (.getAttr
+          (getTag oliver delayed_friend_string) "isAdmin")))
+      testRequest
+      testEntities
       testLoader
   ]
+
+#eval do TestSuite.runAll [tests]
 
 end UnitTest.BatchedEvaluator
