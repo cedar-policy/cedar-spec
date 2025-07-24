@@ -715,5 +715,18 @@ def memOfSymEnv (env : Env) (εnv : SymEnv) : Prop :=
 
 infixl:50 "∈ᵢ" => memOfSymEnv
 
+/--
+This is a condition that `env` contains all enum entities
+(including actions) specified in `εnv`. It's required for
+completeness (of `SymEnv.ofEnv`) and satisfied by the
+concretizer, but it's not required for the soundness, so
+we keep it as a separate definition here.
+-/
+def Env.EnumCompleteFor (env : Env) (εnv : SymEnv) : Prop :=
+  ∀ (uid : EntityUID) (δ : SymEntityData) (eids : Set String),
+    εnv.entities.find? uid.ty = .some δ →
+    δ.members = .some eids →
+    uid.eid ∈ eids →
+    ∃ data, env.entities.find? uid = .some data
 
 end Cedar.SymCC

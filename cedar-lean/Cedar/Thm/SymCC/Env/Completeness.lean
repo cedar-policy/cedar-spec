@@ -642,10 +642,73 @@ theorem ofEnv_entity_completeness
     -- δ' = SymEntityData.ofActionType uid.ty (List.map (fun x => x.fst.ty) (Map.toList Γ.acts)).eraseDups Γ.acts
     sorry
 
+theorem enum_complete_implies_has_all_actions
+  {Γ : TypeEnv} {env : Env}
+  (hwf_Γ : Γ.WellFormed)
+  (henum_comp : Env.EnumCompleteFor env (SymEnv.ofEnv Γ)) :
+  Entities.HasAllActions env.entities Γ
+:= by
+  intros uid entry hfind_uid
+  simp only [
+    Env.EnumCompleteFor,
+    SymEnv.ofEnv,
+    SymEntities.ofSchema,
+  ] at henum_comp
+  specialize henum_comp uid
+    (SymEntityData.ofActionType uid.ty (List.map (λ x => x.fst.ty) (Map.toList Γ.acts)).eraseDups Γ.acts)
+    (Set.make (SymEntityData.ofActionType.acts uid.ty Γ.acts))
+  apply henum_comp
+  · apply Map.map_make_append_find_disjoint'
+    have hwf_ets := wf_env_implies_wf_ets_map hwf_Γ
+    have hwf_acts := wf_env_implies_wf_acts_map hwf_Γ
+    · apply List.find?_eq_none.mpr
+      intros x hmem_ety
+      replace ⟨ety, entry⟩ := x
+      have ⟨⟨ety', entry'⟩, hmem_ety', hety'⟩ := List.mem_map.mp hmem_ety
+      simp only [Prod.mk.injEq] at hety'
+      have hfind_ety := (Map.in_list_iff_find?_some hwf_ets).mp hmem_ety'
+      simp only [hety'.1] at hfind_ety
+      intros heq
+      simp only [beq_iff_eq] at heq
+      simp only [heq] at hfind_ety
+      have := wf_env_disjoint_ets_acts hwf_Γ hfind_ety hfind_uid
+      contradiction
+    · apply List.find?_unique_entry
+      · intros x hmem heq
+        have ⟨ety, data⟩ := x
+        have ⟨_, _, hdata⟩ := List.mem_map.mp hmem
+        simp only [Prod.mk.injEq] at hdata
+        simp only [beq_iff_eq] at heq
+        simp only [heq] at hdata
+        simp only [hdata.1] at hdata
+        simp only [heq, ←hdata.2]
+      · apply List.mem_map.mpr
+        exists uid.ty
+        simp only [and_true]
+        apply List.mem_implies_mem_eraseDups
+        apply List.mem_map.mpr
+        exists (uid, entry)
+        simp [Map.find?_mem_toList hfind_uid]
+      · simp
+    · intros x₁ x₂ hmem₁ hmem₂
+      have ⟨ancTy₁, hmem_ancTy₁, hancTy₁⟩ := List.mem_map.mp hmem₁
+      have ⟨ancTy₂, hmem_ancTy₂, hancTy₂⟩ := List.mem_map.mp hmem₂
+      simp only [←hancTy₁, ←hancTy₂]
+      intros heq
+      simp only [heq]
+  · rfl
+  · apply (Set.make_mem _ _).mp
+    simp only [SymEntityData.ofActionType.acts]
+    apply List.mem_filterMap.mpr
+    exists (uid, entry)
+    simp only [↓reduceIte, and_true]
+    exact Map.find?_mem_toList hfind_uid
+
 theorem ofEnv_entities_completeness
   {Γ : TypeEnv} {env : Env} {I : Interpretation}
   (hwf_Γ : Γ.WellFormed)
   (hwf_I : I.WellFormed (SymEnv.ofEnv Γ).entities)
+  (henum_comp : Env.EnumCompleteFor env (SymEnv.ofEnv Γ))
   (hsame_I : env ∼ SymEnv.interpret I (SymEnv.ofEnv Γ)) :
   InstanceOfSchema env.entities Γ
 := by
@@ -656,14 +719,15 @@ theorem ofEnv_entities_completeness
     exact ofEnv_entity_completeness hwf_Γ hwf_I hfind_δ hsame_δ
   -- All action entities exist in `env.entities`
   · intros uid entry hfind_uid
-    -- TODO: `hsame_ents` is too weak!
-    sorry
+    have := enum_complete_implies_has_all_actions hwf_Γ henum_comp
+    exact this uid entry hfind_uid
 
 theorem ofEnv_completeness
   {Γ : TypeEnv} {env : Env}
   (hwf : Γ.WellFormed)
   -- TODO: maybe not required?
   -- (hwf_env : env.StronglyWellFormed)
+  (henum_comp : Env.EnumCompleteFor env (SymEnv.ofEnv Γ))
   (hinst : env ∈ᵢ SymEnv.ofEnv Γ) :
   InstanceOfWellFormedEnvironment env.request env.entities Γ
 := by
@@ -672,6 +736,6 @@ theorem ofEnv_completeness
   have ⟨I, hwf_I, hsame_I⟩ := hinst
   constructor
   · exact ofEnv_request_completeness hwf hwf_I hsame_I
-  · exact ofEnv_entities_completeness hwf hwf_I hsame_I
+  · exact ofEnv_entities_completeness hwf hwf_I henum_comp hsame_I
 
 end Cedar.Thm
