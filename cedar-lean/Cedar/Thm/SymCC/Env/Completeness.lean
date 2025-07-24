@@ -190,8 +190,7 @@ theorem value?_some_implies_typeOf_not_option
 
 /--
 If a term type is both the result of `TermType.ofType` and `Term.typeOf`
-for some well-formed `CedarType`
-and well-formed `Term`,
+for some well-formed `CedarType` and well-formed `Term`,
 then the if the the term is conretizable (via `value?`),
 the resulting `Value` should be well-typed.
 
@@ -569,25 +568,102 @@ theorem ofEnv_request_completeness
     have ⟨_, _, _, hwt_ctx⟩ := wf_env_implies_wf_request hwf_Γ
     have hlifted_ctx := wf_env_implies_ctx_lifted hwf_Γ
     apply ofType_typeOf_pullback hwf_Γ hwt_ctx hlifted_ctx hwf_I_ctx hwt_I_ctx hsame_I_ctx
-    -- Ideally we should have the "commuting" diagram (modulo `.some`)
-    --        cedarType?
-    --          ----->
-    --          ofType
-    -- TermType <----- CedarType
-    --    ^               ^
-    --    |               |
-    --    | typeOf        | InstanceOfType
-    --    |               |
-    --    |               |
-    --  Term ---------> Value
-    --         value?
-    --       <---------
-    --       symbolize?
+
+theorem ofEnv_entity_completeness_ordinary
+  {Γ : TypeEnv} {I : Interpretation}
+  {uid : EntityUID} {entry : EntitySchemaEntry}
+  {δ δ' : SymEntityData} {data : EntityData}
+  (hwf_Γ : Γ.WellFormed)
+  (hwf_I : I.WellFormed (SymEnv.ofEnv Γ).entities)
+  (hfind_uid : Γ.ets.find? uid.ty = entry)
+  (hδ' : δ' = SymEntityData.ofEntityType uid.ty entry)
+  (hδ : δ = SymEntityData.interpret I δ')
+  (hsame_δ : SameEntityData uid data δ) :
+  InstanceOfEntitySchemaEntry uid data Γ
+:= sorry
+
+theorem ofEnv_entity_completeness_action
+  {Γ : TypeEnv} {I : Interpretation}
+  {uid : EntityUID} {entry : ActionSchemaEntry}
+  {δ δ' : SymEntityData} {data : EntityData}
+  (hwf_Γ : Γ.WellFormed)
+  (hwf_I : I.WellFormed (SymEnv.ofEnv Γ).entities)
+  (hfind_uid : Γ.acts.find? uid = entry)
+  (hδ' : δ' = SymEntityData.ofActionType uid.ty
+    (List.map (λ x => x.fst.ty) (Map.toList Γ.acts)).eraseDups Γ.acts)
+  (hδ : δ = SymEntityData.interpret I δ')
+  (hsame_δ : SameEntityData uid data δ) :
+  InstanceOfEntitySchemaEntry uid data Γ
+:= sorry
+
+theorem ofEnv_entity_completeness
+  {Γ : TypeEnv} {I : Interpretation}
+  {uid : EntityUID} {δ : SymEntityData} {data : EntityData}
+  (hwf_Γ : Γ.WellFormed)
+  (hwf_I : I.WellFormed (SymEnv.ofEnv Γ).entities)
+  (hfind_δ : Map.find? (SymEnv.interpret I (SymEnv.ofEnv Γ)).entities uid.ty = some δ)
+  (hsame_δ : SameEntityData uid data δ) :
+  InstanceOfSchemaEntry uid data Γ
+:= by
+  simp only [
+    SymEnv.interpret,
+    SymEntities.interpret,
+    SymEnv.ofEnv,
+    SymEntities.ofSchema,
+  ] at hfind_δ
+  -- Exists a `SymEntityData` before interpretation
+  have ⟨δ', hfind_δ', hδ'⟩ := Map.find?_mapOnValues_some' _ hfind_δ
+  have := Map.find?_mem_toList hfind_δ'
+  have := Map.make_mem_list_mem this
+  have := List.mem_append.mp this
+  cases this with
+  -- Ordinary entity
+  | inl hmem =>
+    left
+    have ⟨⟨ety, entry⟩, hmem_ety, hety⟩ := List.mem_map.mp hmem
+    simp only [Prod.mk.injEq] at hety
+    have hwf_ets := wf_env_implies_wf_ets_map hwf_Γ
+    have hfind_ety := (Map.in_list_iff_find?_some hwf_ets).mp hmem_ety
+    have := Eq.symm hety.2
+    simp only [hety.1] at this hfind_ety
+    exact ofEnv_entity_completeness_ordinary hwf_Γ hwf_I hfind_ety this hδ' hsame_δ
+  -- Action entity
+  | inr hmem =>
+    right
+    have ⟨actTy, hmem_actTy, hactTy⟩ := List.mem_map.mp hmem
+    simp only [Prod.mk.injEq] at hactTy
+    have := hactTy.2
+    simp only [hactTy.1] at this
+    replace hmem_actTy := List.mem_eraseDups_implies_mem hmem_actTy
+    have ⟨⟨act, entry⟩, hmem_act, hact⟩ := List.mem_map.mp hmem_actTy
+    simp only at hact
+    have hwf_acts := wf_env_implies_wf_acts_map hwf_Γ
+    have hfind_act := (Map.in_list_iff_find?_some hwf_acts).mp hmem_act
+    -- δ' = SymEntityData.ofActionType uid.ty (List.map (fun x => x.fst.ty) (Map.toList Γ.acts)).eraseDups Γ.acts
+    sorry
+
+theorem ofEnv_entities_completeness
+  {Γ : TypeEnv} {env : Env} {I : Interpretation}
+  (hwf_Γ : Γ.WellFormed)
+  (hwf_I : I.WellFormed (SymEnv.ofEnv Γ).entities)
+  (hsame_I : env ∼ SymEnv.interpret I (SymEnv.ofEnv Γ)) :
+  InstanceOfSchema env.entities Γ
+:= by
+  have ⟨_, hsame_ents⟩ := hsame_I
+  constructor
+  · intros uid data hfind_uid
+    have ⟨δ, hfind_δ, hsame_δ⟩ := hsame_ents uid data hfind_uid
+    exact ofEnv_entity_completeness hwf_Γ hwf_I hfind_δ hsame_δ
+  -- All action entities exist in `env.entities`
+  · intros uid entry hfind_uid
+    -- TODO: `hsame_ents` is too weak!
+    sorry
 
 theorem ofEnv_completeness
   {Γ : TypeEnv} {env : Env}
   (hwf : Γ.WellFormed)
-  (hwf_env : env.StronglyWellFormed)
+  -- TODO: maybe not required?
+  -- (hwf_env : env.StronglyWellFormed)
   (hinst : env ∈ᵢ SymEnv.ofEnv Γ) :
   InstanceOfWellFormedEnvironment env.request env.entities Γ
 := by
@@ -596,6 +672,6 @@ theorem ofEnv_completeness
   have ⟨I, hwf_I, hsame_I⟩ := hinst
   constructor
   · exact ofEnv_request_completeness hwf hwf_I hsame_I
-  · sorry
+  · exact ofEnv_entities_completeness hwf hwf_I hsame_I
 
 end Cedar.Thm
