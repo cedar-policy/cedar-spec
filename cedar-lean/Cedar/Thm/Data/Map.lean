@@ -1323,4 +1323,14 @@ theorem map_keys_empty_implies_map_empty
     simp only [Map.keys, Map.kvs, List.map, Set.toList, Set.elts] at h
     contradiction
 
+theorem toList_congr
+  {m₁ m₂ : Map α β}
+  (h : m₁.toList = m₂.toList) :
+  m₁ = m₂
+:= by
+  cases m₁ with | mk m₁
+  cases m₂ with | mk m₂
+  simp only [Map.toList, Map.kvs] at h
+  simp [h]
+
 end Cedar.Data.Map

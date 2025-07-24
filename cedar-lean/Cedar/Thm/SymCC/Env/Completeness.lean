@@ -114,6 +114,30 @@ theorem ofType_typeOf_pullback_prim
       constructor
       simp only [InstanceOfExtType]
 
+theorem value?_some_implies_typeOf_not_option
+  {t : Term} {v : Value} {ty : TermType}
+  (hsome : t.value? = .some v)
+  (hopt : t.typeOf = .option ty) :
+  False
+:= by
+  cases t with
+  | prim p =>
+    cases p with
+    | ext =>
+      simp only [Term.typeOf, TermPrim.typeOf] at hopt
+      split at hopt
+      all_goals contradiction
+    | _ =>
+      simp only [Term.typeOf, TermPrim.typeOf] at hopt
+      contradiction
+  | record =>
+    unfold Term.typeOf at hopt
+    contradiction
+  | _ =>
+    try simp only [Term.value?] at hsome
+    try simp only [Term.typeOf] at hopt
+    contradiction
+
 /--
 If a term type is both the result of `TermType.ofType` and `Term.typeOf`
 for some well-formed `CedarType`
@@ -241,55 +265,189 @@ theorem ofType_typeOf_pullback
       exists attr_ty.snd
       apply (Map.in_list_iff_find?_some hwf_ty_rec_map).mp
       exact hmem_attr_ty
+    -- Simplify both sides of `heq_ty` to `Map.mapOnValues`
+    all_goals
+      have :
+        TermType.ofRecordType ty_rec
+        = (Map.mapOnValues TermType.ofQualifiedType (Map.mk ty_rec)).toList
+      := by
+        simp only [ofRecordType_as_map]
+        rfl
+      simp only [this] at heq_ty
+      have :
+        List.map (fun x => (x.fst, x.snd.typeOf)) rec_map
+        = (Map.mapOnValues Term.typeOf (Map.mk rec_map)).toList
+      := by rfl
+      simp only [this] at heq_ty
+      replace heq_ty := Map.toList_congr heq_ty
     · intros attr val qty hfind_val hfind_qty
       have hwf_ty' := hwf_ty_rec attr qty hfind_qty
       have hlift_ty' := hlift_ty_rec attr qty (Map.find?_mem_toList hfind_qty)
-      cases qty with
-      | optional ty' | required ty' =>
-      cases hwf_ty'
-      rename_i hwf_ty'
-      cases hlift_ty'
-      rename_i hlift_ty'
       have := Map.find?_mem_toList hfind_val
       have ⟨attr_v, hmem_attr_v, hattr_v⟩ := List.mem_filterMap.mp this
       have ⟨attr_t', hmem_attr_t', hattr_t'⟩ := List.mapM_some_implies_all_from_some hval_rec attr_v hmem_attr_v
       simp only [Option.map] at hattr_v
-      have heq_attr : attr = attr_t'.fst := sorry
-      sorry
-      -- split at hattr_v
-      -- · rename_i v hv
-      --   unfold Term.value?.attrValue? at hattr_t'
-      --   split at hattr_t'
-      --   · simp only [bind, Option.bind] at hattr_t'
-      --     split at hattr_t'
-      --     contradiction
-      --     rename_i v' hv'
-      --     have hwf_t' := hwf_rec attr_t'.fst attr_t'.snd hmem_attr_t'
-      --     simp only [Qualified.getType]
-      --     simp only [Option.some.injEq] at hattr_t'
-      --     simp only [←hattr_t', Option.some.injEq] at hv
-      --     simp only [hv] at hv'
-      --     simp only [Option.some.injEq, Prod.mk.injEq] at hattr_v
-      --     simp only [hattr_v.2] at hv'
-      --     apply ofType_typeOf_pullback hwf_Γ hwf_ty' hlift_ty' hwf_t' _ hv'
-      --     sorry
-      --   · simp only [Option.some.injEq] at hattr_t'
-      --     simp [←hattr_t'] at hv
-      --   · simp only [bind, Option.bind] at hattr_t'
-      --     split at hattr_t'
-      --     contradiction
-      --     rename_i v' hv'
-      --     have hwf_t' := hwf_rec attr_t'.fst attr_t'.snd hmem_attr_t'
-      --     simp only [Qualified.getType]
-      --     simp only [Option.some.injEq] at hattr_t'
-      --     simp only [←hattr_t', Option.some.injEq] at hv
-      --     simp only [hv] at hv'
-      --     simp only [Option.some.injEq, Prod.mk.injEq] at hattr_v
-      --     simp only [hattr_v.2] at hv'
-      --     apply ofType_typeOf_pullback hwf_Γ hwf_ty' hlift_ty' hwf_t' _ hv'
-      --     all_goals sorry
-      -- · contradiction
-    · sorry
+      have heq_attr : attr = attr_t'.fst := by
+        split at hattr_v
+        · simp only [Option.some.injEq, Prod.mk.injEq] at hattr_v
+          simp only [←hattr_v.1]
+          unfold Term.value?.attrValue? at hattr_t'
+          split at hattr_t'
+          · simp only [bind, Option.bind] at hattr_t'
+            split at hattr_t'
+            contradiction
+            simp only [Option.some.injEq] at hattr_t'
+            simp only [←hattr_t']
+          · simp only [Option.some.injEq] at hattr_t'
+            simp only [←hattr_t']
+          · simp only [bind, Option.bind] at hattr_t'
+            split at hattr_t'
+            contradiction
+            simp only [Option.some.injEq] at hattr_t'
+            simp only [←hattr_t']
+        · contradiction
+      split at hattr_v
+      · rename_i v hv
+        unfold Term.value?.attrValue? at hattr_t'
+        split at hattr_t'
+        · rename_i attr_t'' hattr_t''
+          simp only [bind, Option.bind] at hattr_t'
+          split at hattr_t'
+          contradiction
+          rename_i v' hv'
+          have hwf_t' := hwf_rec attr_t'.fst attr_t'.snd hmem_attr_t'
+          simp only [Qualified.getType]
+          simp only [Option.some.injEq] at hattr_t'
+          simp only [←hattr_t', Option.some.injEq] at hv
+          simp only [hv] at hv'
+          simp only [Option.some.injEq, Prod.mk.injEq] at hattr_v
+          simp only [hattr_v.2] at hv'
+          simp only [hattr_t''] at hwf_t'
+          cases hwf_t'
+          rename_i hwf_t'
+          have := (Map.in_list_iff_find?_some heq_ty_rec).mp hmem_attr_t'
+          have h₁ := Map.find?_mapOnValues_some Term.typeOf this
+          simp only [heq_ty] at h₁
+          have h₂ := Map.find?_mapOnValues_some TermType.ofQualifiedType hfind_qty
+          simp only [heq_attr] at h₂
+          simp only [h₁, Option.some.injEq, hattr_t'', Term.typeOf] at h₂
+          cases qty with
+          | optional ty' =>
+            cases hwf_ty'
+            rename_i hwf_ty'
+            cases hlift_ty'
+            rename_i hlift_ty'
+            simp only [TermType.ofQualifiedType, TermType.option.injEq] at h₂
+            apply ofType_typeOf_pullback hwf_Γ hwf_ty' hlift_ty' hwf_t' h₂ hv'
+          | required ty' =>
+            simp only [TermType.ofQualifiedType] at h₂
+            unfold TermType.ofType at h₂
+            split at h₂
+            all_goals contradiction
+        · simp only [Option.some.injEq] at hattr_t'
+          simp [←hattr_t'] at hv
+        · simp only [bind, Option.bind] at hattr_t'
+          split at hattr_t'
+          contradiction
+          rename_i v' hv'
+          have hwf_t' := hwf_rec attr_t'.fst attr_t'.snd hmem_attr_t'
+          simp only [Qualified.getType]
+          simp only [Option.some.injEq] at hattr_t'
+          simp only [←hattr_t', Option.some.injEq] at hv
+          simp only [hv] at hv'
+          simp only [Option.some.injEq, Prod.mk.injEq] at hattr_v
+          simp only [hattr_v.2] at hv'
+          have := (Map.in_list_iff_find?_some heq_ty_rec).mp hmem_attr_t'
+          have h₁ := Map.find?_mapOnValues_some Term.typeOf this
+          simp only [Map.find?, heq_ty] at h₁
+          have h₂ := Map.find?_mapOnValues_some TermType.ofQualifiedType hfind_qty
+          simp only [Map.find?, heq_attr] at h₂
+          simp only [h₁, Option.some.injEq, TermType.ofQualifiedType] at h₂
+          cases qty with
+          | optional ty' =>
+            simp only [TermType.ofQualifiedType, TermType.option.injEq] at h₂
+            have := value?_some_implies_typeOf_not_option hv' h₂
+            contradiction
+          | required ty' =>
+            cases hwf_ty'
+            rename_i hwf_ty'
+            cases hlift_ty'
+            rename_i hlift_ty'
+            exact ofType_typeOf_pullback hwf_Γ hwf_ty' hlift_ty' hwf_t' h₂ hv'
+      · contradiction
+    · intros attr qty hfind_qty hreq
+      cases qty with
+      | optional ty' => contradiction
+      | required ty' =>
+      have := Map.find?_mapOnValues_some TermType.ofQualifiedType hfind_qty
+      simp only [←heq_ty] at this
+      have ⟨v, hfind_v, hv⟩ := Map.find?_mapOnValues_some' _ this
+      simp only [TermType.ofQualifiedType] at hv
+      have := Map.find?_mem_toList hfind_v
+      have ⟨v', hfind_v', hv'⟩ := List.mapM_some_implies_all_some hval_rec (attr, v) this
+      simp only at hv'
+      unfold Term.value?.attrValue? at hv'
+      split at hv'
+      · simp only [Term.typeOf] at hv
+        unfold TermType.ofType at hv
+        split at hv
+        all_goals contradiction
+      · simp only [Term.typeOf] at hv
+        unfold TermType.ofType at hv
+        split at hv
+        all_goals contradiction
+      · simp only [bind, Option.bind] at hv'
+        split at hv'
+        contradiction
+        rename_i v'' hv''
+        simp only [Option.some.injEq] at hv'
+        apply Map.in_list_implies_contains (v := v'')
+        simp only [Map.kvs]
+        apply List.mem_filterMap.mpr
+        exists v'
+        simp only [hfind_v', true_and]
+        simp only [←hv', Option.map]
+termination_by sizeOf t
+decreasing_by
+  · rename t = Term.set ts ty' => h₁
+    rename ts = Set.mk ts_set => h₂
+    simp [h₁, h₂]
+    have := List.sizeOf_lt_of_mem hmem_t'
+    omega
+  · rename t = Term.record rec => h₃
+    rename rec = Map.mk rec_map => h₄
+    rename Term => t''
+    simp [h₃, h₄]
+    rename attr_t'.snd = _ => h₅
+    rename _ = t'' => h₆
+    simp only [h₆] at h₅ ⊢
+    calc sizeOf t''
+      _ < 1 + sizeOf t'' := by omega
+      _ ≤ sizeOf t''.some := by simp
+      _ = sizeOf attr_t'.snd := by simp [h₅]
+      _ < sizeOf attr_t' := by
+        cases attr_t'
+        simp
+        omega
+      _ < 1 + (1 + sizeOf rec_map) := by
+        have := List.sizeOf_lt_of_mem hmem_attr_t'
+        omega
+  · rename t = Term.record rec => h₃
+    rename rec = Map.mk rec_map => h₄
+    rename Term => t''
+    simp [h₃, h₄]
+    rename attr_t'.snd = t'' => h₅
+    have := List.sizeOf_lt_of_mem hmem_attr_t'
+    simp only [h₅] at ⊢ this
+    calc sizeOf t''
+      _ = sizeOf attr_t'.snd := by simp [h₅]
+      _ < sizeOf attr_t' := by
+        cases attr_t'
+        simp
+        omega
+      _ < 1 + (1 + sizeOf rec_map) := by
+        have := List.sizeOf_lt_of_mem hmem_attr_t'
+        omega
 
 theorem ofEnv_request_completeness
   {Γ : TypeEnv} {env : Env} {I : Interpretation}
