@@ -20,6 +20,7 @@ import Cedar.Validation
 import Cedar.Thm.TPE.Input
 import Cedar.Thm.TPE.Soundness
 import Cedar.Thm.Validation
+import Cedar.Thm.TPE.Conversion
 
 /-!
 This file defines the main theorem of TPE soundness and its associated lemmas.
@@ -144,7 +145,8 @@ theorem partial_evaluate_policy_is_sound
   rename_i heq₅
   have h₄ := instance_of_well_formed_env heq₅ heq₃ heq₄
   have h₅ := typechecked_is_well_typed_after_lifting heq₂
-  have h₉ : Residual.WellTyped env residual := by sorry
+  let old_residual := (TypedExpr.toResidual ty.liftBoolTypes)
+  have h₉ : Residual.WellTyped env old_residual := by sorry
   have h₆ := partial_evaluate_is_sound h₉ h₄ h₃
   subst h₁₂
   have h₇ := type_of_preserves_evaluation_results (empty_capabilities_invariant req es) h₄ heq₂
@@ -157,8 +159,8 @@ theorem partial_evaluate_policy_is_sound
     exact substitute_action_preserves_evaluation policy.toExpr req es
   simp [h₈] at h₇
   rw [h₇, type_lifting_preserves_expr]
-  have h₉ : (Spec.evaluate ty.liftBoolTypes.toExpr req es) = ((TPE.evaluate (TypedExpr.toResidual ty.liftBoolTypes) preq pes).evaluate req es) := by {
-    sorry
-  }
-  rw [h₉]
+  rw [← h₆]
+  subst old_residual
+  congr
+  apply conversion_preserves_evaluation
 end Cedar.Thm
