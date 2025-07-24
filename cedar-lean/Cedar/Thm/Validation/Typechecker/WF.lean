@@ -71,6 +71,32 @@ inductive CedarType.WellFormed (env : TypeEnv) : CedarType → Prop where
   | ext_wf {xty : ExtType} : CedarType.WellFormed env (.ext xty)
 end
 
+mutual
+inductive QualifiedType.IsLifted : Qualified CedarType → Prop where
+  | optional_wf {ty : CedarType}
+    (h : CedarType.IsLifted ty) :
+    QualifiedType.IsLifted (.optional ty)
+  | required_wf {ty : CedarType}
+    (h : CedarType.IsLifted ty) :
+    QualifiedType.IsLifted (.required ty)
+
+/--
+Defines when a `CedarType` does not have any singleton Bool types.
+-/
+inductive CedarType.IsLifted : CedarType → Prop where
+  | bool_wf : CedarType.IsLifted (.bool .anyBool)
+  | int_wf : CedarType.IsLifted .int
+  | string_wf : CedarType.IsLifted .string
+  | entity_wf {ety : EntityType} : CedarType.IsLifted (.entity ety)
+  | set_wf {ty : CedarType}
+    (h : CedarType.IsLifted ty) :
+    CedarType.IsLifted (.set ty)
+  | record_wf {rty : RecordType}
+    (h₂ : ∀ attr qty, (attr, qty) ∈ rty.toList → QualifiedType.IsLifted qty) :
+    CedarType.IsLifted (.record rty)
+  | ext_wf {xty : ExtType} : CedarType.IsLifted (.ext xty)
+end
+
 def StandardSchemaEntry.WellFormed (env : TypeEnv) (entry : StandardSchemaEntry) : Prop :=
   -- Well-formed as `Map`/`Set`s
   entry.ancestors.WellFormed ∧
@@ -80,8 +106,10 @@ def StandardSchemaEntry.WellFormed (env : TypeEnv) (entry : StandardSchemaEntry)
     ∃ entry, env.ets.find? anc = some entry ∧ entry.isStandard) ∧
   -- The attribute types are well-formed
   (CedarType.record entry.attrs).WellFormed env ∧
+  (CedarType.record entry.attrs).IsLifted ∧
   -- The tag type is well-formed
-  (∀ ty, entry.tags = .some ty → CedarType.WellFormed env ty)
+  (∀ ty, entry.tags = .some ty →
+    CedarType.WellFormed env ty ∧ ty.IsLifted)
 
 def EntitySchemaEntry.WellFormed (env : TypeEnv) (entry : EntitySchemaEntry) : Prop :=
   match entry with
@@ -106,7 +134,8 @@ def ActionSchemaEntry.WellFormed (env : TypeEnv) (entry : ActionSchemaEntry) : P
   -- Ancestors of each action entity must also be an action entity
   (∀ uid ∈ entry.ancestors, env.acts.contains uid) ∧
   -- Context is a well-formed `RecordType`
-  (CedarType.record entry.context).WellFormed env
+  (CedarType.record entry.context).WellFormed env ∧
+  (CedarType.record entry.context).IsLifted
 
 def ActionSchema.AcyclicActionHierarchy (acts : ActionSchema) : Prop :=
   ∀ uid entry, acts.find? uid = .some entry → uid ∉ entry.ancestors
@@ -216,9 +245,9 @@ theorem wf_env_implies_wf_tag_type {env : TypeEnv} {ety : EntityType} {ty : Ceda
   have hwf_entry := hwf_ets ety entry hentry
   simp only [EntitySchemaEntry.WellFormed] at hwf_entry
   split at hwf_entry
-  · have ⟨_, _, _, hwf_tag⟩ := hwf_entry
+  · have ⟨_, _, _, _, hwf_tag⟩ := hwf_entry
     simp only [EntitySchemaEntry.tags?] at htags
-    exact hwf_tag ty htags
+    exact (hwf_tag ty htags).1
   · simp [EntitySchemaEntry.tags?] at htags
 
 theorem wf_env_implies_wf_attrs {env : TypeEnv} {ety : EntityType} {attrs : RecordType}
