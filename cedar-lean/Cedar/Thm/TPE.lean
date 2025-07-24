@@ -81,7 +81,7 @@ theorem partial_evaluate_is_sound
   case call xfn args ty hᵢ₁ =>
     exact partial_evaluate_is_sound_call hᵢ₁
   case error ty =>
-    sorry
+    exact partial_evaluate_is_sound_error
 
 /-- The main theorem of TPE: Evaluating a result residual is equivalent to
 evaluating the input policy, given valid and consistent requests and entities.

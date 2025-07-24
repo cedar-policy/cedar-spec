@@ -878,4 +878,15 @@ theorem partial_evaluate_is_sound_call
     rw [h₃]
     rw [List.mapM_then_map_combiner]
 
+theorem partial_evaluate_is_sound_error
+{req : Request}
+{es : Entities}
+{preq : PartialRequest}
+{pes : PartialEntities}
+{ty : CedarType} :
+  Except.toOption ((Residual.error ty).evaluate req es) =
+  Except.toOption ((TPE.evaluate (Residual.error ty) preq pes).evaluate req es)
+:= by
+  simp [TPE.evaluate, Residual.evaluate]
+
 end Cedar.Thm
