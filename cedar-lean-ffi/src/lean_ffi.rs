@@ -807,10 +807,12 @@ mod test {
 
         ffi.smtlib_of_check_always_allows(&always_allows_pset, &schema, &req_env)
             .expect("Lean call unexpectedly failed for smtlib_of_check_always_allows");
-        
+
         ffi.term_of_check_always_allows(&always_allows_pset, &schema, &req_env)
             .expect("Lean call unexpectedly failed for term_of_check_always_allows")
-            .expect("Lean SymCC unexpectedly failed to encode term for term_of_check_always_allows");
+            .expect(
+                "Lean SymCC unexpectedly failed to encode term for term_of_check_always_allows",
+            );
 
         let res = ffi
             .run_check_always_allows(&always_denies_pset, &schema, &req_env)
@@ -821,11 +823,13 @@ mod test {
         );
 
         ffi.smtlib_of_check_always_allows(&always_denies_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for smtlib_of_check_always_allows");            
+            .expect("Lean call unexpectedly failed for smtlib_of_check_always_allows");
 
         ffi.term_of_check_always_allows(&always_denies_pset, &schema, &req_env)
             .expect("Lean call unexpectedly failed for term_of_check_always_allows")
-            .expect("Lean SymCC unexpectedly failed to encode term for term_of_check_always_allows");
+            .expect(
+                "Lean SymCC unexpectedly failed to encode term for term_of_check_always_allows",
+            );
     }
 
     #[test]
@@ -852,7 +856,9 @@ mod test {
 
         ffi.term_of_check_always_denies(&always_allows_pset, &schema, &req_env)
             .expect("Lean call unexpectedly failed for term_of_check_always_denies")
-            .expect("Lean SymCC unexpectedly failed to encode term for term_of_check_always_denies");
+            .expect(
+                "Lean SymCC unexpectedly failed to encode term for term_of_check_always_denies",
+            );
 
         let res = ffi
             .run_check_always_denies(&always_denies_pset, &schema, &req_env)
@@ -867,8 +873,9 @@ mod test {
 
         ffi.term_of_check_always_denies(&always_denies_pset, &schema, &req_env)
             .expect("Lean call unexpectedly failed for term_of_check_always_denies")
-            .expect("Lean SymCC unexpectedly failed to encode term for term_of_check_always_denies");
-
+            .expect(
+                "Lean SymCC unexpectedly failed to encode term for term_of_check_always_denies",
+            );
     }
 
     #[test]
@@ -926,7 +933,6 @@ mod test {
         ffi.term_of_check_equivalent(&always_allows_pset, &always_denies_pset, &schema, &req_env)
             .expect("Lean call unexpectedly failed for term_of_check_equivalent")
             .expect("Lean SymCC unexpectedly failed to encode term for term_of_check_equivalent");
-
     }
 
     #[test]
