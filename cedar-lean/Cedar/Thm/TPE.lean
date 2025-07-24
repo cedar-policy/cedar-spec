@@ -79,6 +79,8 @@ theorem partial_evaluate_is_sound
     exact partial_evaluate_is_sound_record hᵢ₁
   case call xfn args ty hᵢ₁ =>
     exact partial_evaluate_is_sound_call hᵢ₁
+  case error ty =>
+    sorry
 
 /-- The main theorem of TPE: Evaluating a result residual is equivalent to
 evaluating the input policy, given valid and consistent requests and entities.
@@ -142,7 +144,8 @@ theorem partial_evaluate_policy_is_sound
   rename_i heq₅
   have h₄ := instance_of_well_formed_env heq₅ heq₃ heq₄
   have h₅ := typechecked_is_well_typed_after_lifting heq₂
-  have h₆ := partial_evaluate_is_sound h₅ h₄ h₃
+  have h₉ : Residual.WellTyped env residual := by sorry
+  have h₆ := partial_evaluate_is_sound h₉ h₄ h₃
   subst h₁₂
   have h₇ := type_of_preserves_evaluation_results (empty_capabilities_invariant req es) h₄ heq₂
   have h₈ : Spec.evaluate (substituteAction env.reqty.action policy.toExpr) req es = Spec.evaluate policy.toExpr req es := by
@@ -154,5 +157,8 @@ theorem partial_evaluate_policy_is_sound
     exact substitute_action_preserves_evaluation policy.toExpr req es
   simp [h₈] at h₇
   rw [h₇, type_lifting_preserves_expr]
-  exact h₆
+  have h₉ : (Spec.evaluate ty.liftBoolTypes.toExpr req es) = ((TPE.evaluate (TypedExpr.toResidual ty.liftBoolTypes) preq pes).evaluate req es) := by {
+    sorry
+  }
+  rw [h₉]
 end Cedar.Thm
