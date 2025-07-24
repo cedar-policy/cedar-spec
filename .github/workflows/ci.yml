@@ -45,7 +45,7 @@ jobs:
       - name: Build libs
         working-directory: ./cedar-lean
         shell: bash
-        run: source ~/.profile && lake build Cedar:static Protobuf:static CedarProto:static Cedar.SymCC:static DiffTest:static CedarFFI:static SymFFI:static
+        run: source ~/.profile && lake build Cedar:static Protobuf:static CedarProto:static Cedar.SymCC:static DiffTest:static CedarFFI:static
       - name: Install cvc5
         shell: bash
         run: |
