@@ -39,7 +39,57 @@ theorem sym_entities_is_valid_entity_uid_implies_entity_uid_wf
   (huid : (SymEnv.ofEnv Γ).entities.isValidEntityUID uid) :
   EntityUID.WellFormed Γ uid
 := by
-  sorry
+  simp only [
+    SymEnv.ofEnv,
+    SymEntities.ofSchema,
+    SymEntities.isValidEntityUID,
+  ] at huid
+  have hwf_ets := wf_env_implies_wf_ets_map hwf
+  have hwf_acts := wf_env_implies_wf_acts_map hwf
+  split at huid
+  · rename_i δ hfind
+    have := Map.find?_mem_toList hfind
+    have := Map.make_mem_list_mem this
+    have := List.mem_append.mp this
+    cases this with
+    | inl hmem =>
+      left
+      have ⟨⟨ety, entry⟩, hmem_ety, hety⟩ := List.mem_map.mp hmem
+      simp only [Prod.mk.injEq] at hety
+      simp only [EntitySchema.isValidEntityUID]
+      have := (Map.in_list_iff_find?_some hwf_ets).mp hmem_ety
+      simp only [hety.1] at this
+      simp only [this, EntitySchemaEntry.isValidEntityEID]
+      split
+      · rfl
+      · rename_i eids
+        simp only [SymEntityData.ofEntityType, SymEntityData.ofEnumEntityType] at hety
+        simp only [←hety.2] at huid
+        exact huid
+    | inr hmem =>
+      right
+      have ⟨actTy, hmem_actTy, hactTy⟩ := List.mem_map.mp hmem
+      have := List.mem_eraseDups_implies_mem hmem_actTy
+      have ⟨⟨act, entry⟩, hmem_act, hact⟩ := List.mem_map.mp this
+      simp only at hact
+      simp only [SymEntityData.ofActionType, Prod.mk.injEq] at hactTy
+      simp only [←hactTy.2, SymEntityData.ofActionType.acts] at huid
+      have := Set.contains_prop_bool_equiv.mp huid
+      have := (Set.make_mem _ _).mpr this
+      have ⟨⟨act', entry'⟩, hmem_act', hact'⟩ := List.mem_filterMap.mp this
+      simp only [Option.ite_none_right_eq_some, Option.some.injEq] at hact'
+      have : act' = uid := by
+        cases act' with | mk ty' eid' =>
+        cases uid with | mk ty eid =>
+        simp only at hact'
+        simp only at hactTy
+        congr
+        simp only [hactTy, hact']
+        simp only [hact']
+      simp only [this] at hmem_act'
+      have := (Map.in_list_iff_find?_some hwf_acts).mp hmem_act'
+      simp only [ActionSchema.contains, Map.contains, this, Option.isSome]
+  · contradiction
 
 /-- `TermPrim` case of `ofType_typeOf_pullback`. -/
 theorem ofType_typeOf_pullback_prim
