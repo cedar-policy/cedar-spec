@@ -808,7 +808,7 @@ theorem ofEnv_entity_completeness_standard
   (hfind_δ : Map.find? (SymEnv.interpret I (SymEnv.ofEnv Γ)).entities uid.ty = some δ) :
   InstanceOfEntitySchemaEntry uid data Γ
 := by
-  have ⟨hsame_attrs, _, _, hvalid_eid, hsame_tags⟩ := hsame_δ
+  have ⟨hsame_attrs, hanc₁, _, hvalid_eid, hsame_tags⟩ := hsame_δ
   have ⟨_, hwf_funs⟩ := hwf_I
   have hwf_ofEnv_Γ := ofEnv_is_wf hwf_Γ
   have ⟨_, ⟨_, hwf_I_ents⟩⟩ := interpret_εnv_wf hwf_ofEnv_Γ hwf_I
@@ -872,7 +872,23 @@ theorem ofEnv_entity_completeness_standard
     · simp only [hwf_app.2, UnaryFunction.outType, ←hudf_out]
       simp only [←huuf]
       rfl
-  · sorry
+  -- Ancestor type matches
+  · intros anc hmem_data_anc
+    simp only [EntitySchemaEntry.ancestors]
+    have ⟨ancUF, hfind_ancUF, ⟨ts, happ_ancUF, hmem_ts⟩⟩ := hanc₁ anc hmem_data_anc
+    simp only [
+      hδ, hδ',
+      SymEntityData.interpret,
+      SymEntityData.ofEntityType,
+      SymEntityData.ofStandardEntityType,
+    ] at hfind_ancUF
+    have ⟨f, hfind_f, _⟩ := Map.find?_mapOnValues_some' _ hfind_ancUF
+    have := Map.find?_mem_toList hfind_f
+    have := Map.make_mem_list_mem this
+    have ⟨ancTy, hfind_ancTy, hancTy⟩ := List.mem_map.mp this
+    simp only [Prod.mk.injEq] at hancTy
+    simp only [hancTy.1] at hfind_ancTy
+    exact hfind_ancTy
   · exact ofEnv_entity_completeness_standard_inst_tags
       hwf_Γ hwf_data hwf_I hfind_uid hδ' hδ hsame_δ hfind_δ
 
