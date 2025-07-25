@@ -82,58 +82,40 @@ theorem residual_well_typed_is_sound {r : Residual} {v : Value} {env : TypeEnv} 
   InstanceOfType env v r.typeOf
 := by
   intro h₁ h₂ h₃
-  induction h₂ generalizing v
+  induction h₂ generalizing v <;> simp only [Residual.typeOf]
   case val v ty h₄ =>
-    simp only [Residual.typeOf]
     exact residual_well_typed_is_sound_val h₄ h₃
   case var var ty h₄ =>
-    simp only [Residual.typeOf]
     sorry
   case ite x₁ x₂ x₃ h₁ h₂ h₃ h₄ h₅ h₆ hᵢ₁ hᵢ₂ =>
-    simp only [Residual.typeOf, h₆]
-    -- The proof would need to handle the conditional evaluation
-    sorry
-  case and x₁ x₂ h₁ h₂ h₃ h₄ h₅ hᵢ₁ =>
-    simp only [Residual.typeOf, h₅]
-    -- The proof would need to handle boolean evaluation
-    sorry
-  case or x₁ x₂ h₁ h₂ h₃ h₄ h₅ hᵢ₁ =>
-    simp only [Residual.typeOf, h₅]
-    -- The proof would need to handle boolean evaluation
-    sorry
-  case unaryApp op₁ x₁ ty h₁ h₂ hᵢ₁ =>
-    simp only [Residual.typeOf]
-    exact residual_well_typed_is_sound_unary_app h₂ hᵢ₁ h₃
-  case binaryApp op₂ x₁ x₂ ty h₁ h₂ h₃ hᵢ₁ hᵢ₂ =>
-    simp only [Residual.typeOf]
-    -- The proof would need to handle binary operations
-    sorry
+    exact residual_well_typed_is_sound_ite h₄ h₅ h₆ hᵢ₁ hᵢ₂ h₃
+  case and x₁ x₂ _ _ h₄ h₅ hᵢ₁ hᵢ₂ =>
+    exact residual_well_typed_is_sound_and h₄ h₅ hᵢ₁ hᵢ₂ h₃
+  case or x₁ x₂ _ _ h₄ h₅ hᵢ₁ hᵢ₂ =>
+    exact residual_well_typed_is_sound_or h₄ h₅ hᵢ₁ hᵢ₂ h₃
+  case unaryApp op₁ x₁ ty _ h₄ hᵢ₁ =>
+    exact residual_well_typed_is_sound_unary_app h₄ hᵢ₁ h₃
+  case binaryApp op₂ x₁ x₂ ty _ _ h₄ hᵢ₁ hᵢ₂ =>
+    exact residual_well_typed_is_sound_binary_app h₁ h₄ hᵢ₁ hᵢ₂ h₃
   case hasAttr_entity ety x₁ attr h₁ h₂ h₃ =>
-    simp only [Residual.typeOf, h₃]
     -- The proof would need to handle hasAttr evaluation
     sorry
   case hasAttr_record rty x₁ attr h₁ h₂ h₃ =>
-    simp only [Residual.typeOf, h₃]
     -- The proof would need to handle hasAttr evaluation
     sorry
   case getAttr_entity ety rty x₁ attr ty h₁ h₂ h₃ h₄ hᵢ =>
-    simp only [Residual.typeOf]
     -- The proof would need to handle getAttr evaluation
     sorry
   case getAttr_record rty x₁ attr ty h₁ h₂ h₃ hᵢ =>
-    simp only [Residual.typeOf]
     -- The proof would need to handle getAttr evaluation
     sorry
   case set ls ty h₁ h₂ h₃ h₄ =>
-    simp only [Residual.typeOf, h₄]
     -- The proof would need to handle set evaluation
     sorry
   case record rty m h₁ h₂ h₃ hᵢ =>
-    simp only [Residual.typeOf, h₃]
     -- The proof would need to handle record evaluation
     sorry
   case call xfn args ty h₁ h₂ hᵢ =>
-    simp only [Residual.typeOf]
     -- The proof would need to handle function call evaluation
     sorry
   case error ty =>
