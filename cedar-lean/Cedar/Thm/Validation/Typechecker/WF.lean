@@ -429,6 +429,18 @@ theorem wf_env_implies_wf_ancestor_set
   | enum es =>
     simp only [EntitySchemaEntry.ancestors, Set.empty_wf]
 
+theorem wf_env_implies_wf_action_ancestor_set
+  {env : TypeEnv} {entry : ActionSchemaEntry}
+  {uid : EntityUID}
+  (hwf : env.WellFormed)
+  (hfind : env.acts.find? uid = some entry) :
+  Set.WellFormed entry.ancestors
+:= by
+  have ⟨_, hwf_acts⟩ := hwf
+  replace ⟨⟨_, hwf_acts, _⟩, _⟩ := hwf_acts
+  have ⟨_, _, h, _⟩ := hwf_acts uid entry hfind
+  exact h
+
 theorem wf_env_implies_acyclic_action_hierarchy
   {env : TypeEnv}
   (hwf : env.WellFormed) :

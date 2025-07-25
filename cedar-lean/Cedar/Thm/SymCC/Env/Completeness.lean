@@ -570,10 +570,11 @@ theorem ofEnv_request_completeness
     apply ofType_typeOf_pullback hwf_Γ hwt_ctx hlifted_ctx hwf_I_ctx hwt_I_ctx hsame_I_ctx
 
 theorem ofEnv_entity_completeness_ordinary
-  {Γ : TypeEnv} {I : Interpretation}
+  {Γ : TypeEnv} {I : Interpretation} {entities : Entities}
   {uid : EntityUID} {entry : EntitySchemaEntry}
   {δ δ' : SymEntityData} {data : EntityData}
   (hwf_Γ : Γ.WellFormed)
+  (hwf_data : data.WellFormed entities)
   (hwf_I : I.WellFormed (SymEnv.ofEnv Γ).entities)
   (hfind_uid : Γ.ets.find? uid.ty = entry)
   (hδ' : δ' = SymEntityData.ofEntityType uid.ty entry)
@@ -583,11 +584,11 @@ theorem ofEnv_entity_completeness_ordinary
 := sorry
 
 theorem ofEnv_entity_completeness_action
-  {Γ : TypeEnv} {I : Interpretation}
+  {Γ : TypeEnv} {I : Interpretation} {entities : Entities}
   {uid : EntityUID} {entry : ActionSchemaEntry}
   {δ δ' : SymEntityData} {data : EntityData}
   (hwf_Γ : Γ.WellFormed)
-  (hwf_I : I.WellFormed (SymEnv.ofEnv Γ).entities)
+  (hwf_data : data.WellFormed entities)
   (hfind_uid : Γ.acts.find? uid = entry)
   (hδ' : δ' = SymEntityData.ofActionType uid.ty
     (List.map (λ x => x.fst.ty) (Map.toList Γ.acts)).eraseDups Γ.acts)
@@ -595,7 +596,8 @@ theorem ofEnv_entity_completeness_action
   (hsame_δ : SameEntityData uid data δ) :
   InstanceOfActionSchemaEntry uid data Γ
 := by
-  have ⟨hsame_attrs, _, _, _, hsame_tags⟩ := hsame_δ
+  have ⟨hsame_attrs, hanc₁, hanc₂, _, hsame_tags⟩ := hsame_δ
+  have hwf_acts := wf_env_implies_wf_acts_map hwf_Γ
   and_intros
   · have : Map.mk [] = data.attrs
     := by
@@ -627,12 +629,117 @@ theorem ofEnv_entity_completeness_action
     exact hsame_tags
   · exists entry
     simp only [hfind_uid, true_and]
-    sorry
+    have hwf_data_anc : data.ancestors.WellFormed := hwf_data.2.1
+    have hwf_entry_anc : entry.ancestors.WellFormed :=
+      wf_env_implies_wf_action_ancestor_set hwf_Γ hfind_uid
+    apply (Set.subset_iff_eq hwf_data_anc hwf_entry_anc).mp
+    -- Prove that `data.ancestors = entry.ancestors`
+    constructor
+    · apply Set.subset_def.mpr
+      intros anc hmem_data_anc
+      have ⟨ancUF, hfind_ancUF, ⟨anc_ts, happ_ancUF, hmem_anc_ts⟩⟩ := hanc₁ anc hmem_data_anc
+      simp only [hδ, hδ', SymEntityData.ofActionType, SymEntityData.interpret] at hfind_ancUF
+      have ⟨ancUDF, hfind_ancUDF, hancUDF⟩ := Map.find?_mapOnValues_some' _ hfind_ancUF
+      have := Map.make_mem_list_mem (Map.find?_mem_toList hfind_ancUDF)
+      have ⟨ancTy, hmem_ancTy, hancTy⟩ := List.mem_map.mp this
+      simp only [Prod.mk.injEq] at hancTy
+      replace hmem_ancTy := List.mem_eraseDups_implies_mem hmem_ancTy
+      have ⟨⟨act', entry'⟩, hmem_act'_entry', hact'_entry'⟩ := List.mem_map.mp hmem_ancTy
+      simp only [Prod.mk.injEq] at hact'_entry'
+      simp only [←hancTy.2, SymEntityData.ofActionType.ancsUDF, UnaryFunction.interpret] at hancUDF
+      simp only [hancUDF, Factory.app, Term.isLiteral, ↓reduceIte] at happ_ancUF
+      split at happ_ancUF
+      · rename_i ts' hts'
+        have := Map.make_mem_list_mem (Map.find?_mem_toList hts')
+        have ⟨⟨act'', entry''⟩, hmem_act''_entry'', hact''_entry''⟩ := List.mem_filterMap.mp this
+        simp only [bind, Option.bind] at hact''_entry''
+        split at hact''_entry''
+        contradiction
+        rename_i tot htot
+        simp only [Option.some.injEq, Prod.mk.injEq] at hact''_entry''
+        simp only [
+          SymEntityData.ofActionType.termOfType?,
+          Option.ite_none_right_eq_some,
+          Option.some.injEq,
+        ] at htot
+        simp only [←htot] at hact''_entry''
+        have heq_act''_uid := hact''_entry''.1
+        simp only [Term.prim.injEq, TermPrim.entity.injEq] at heq_act''_uid
+        have heq_entry'' : entry'' = entry := by
+          simp only [heq_act''_uid] at hmem_act''_entry''
+          have := (Map.in_list_iff_find?_some hwf_acts).mp hmem_act''_entry''
+          simp only [this, Option.some.injEq] at hfind_uid
+          exact hfind_uid
+        simp only [←hact''_entry''.2, SymEntityData.ofActionType.ancsTerm, Factory.setOf] at happ_ancUF
+        simp only [Term.set.injEq] at happ_ancUF
+        simp only [←happ_ancUF.1] at hmem_anc_ts
+        simp only [heq_entry'', hancTy.1] at hmem_anc_ts
+        replace hmem_anc_ts := (Set.make_mem _ _).mpr hmem_anc_ts
+        have ⟨ancₜ, hmem_ancₜ, hancₜ⟩ := List.mem_filterMap.mp hmem_anc_ts
+        simp only [
+          SymEntityData.ofActionType.termOfType?,
+          Option.ite_none_right_eq_some,
+          Option.some.injEq, Term.prim.injEq,
+          TermPrim.entity.injEq,
+        ] at hancₜ
+        simp only [hancₜ] at hmem_ancₜ
+        exact hmem_ancₜ
+      · simp at happ_ancUF
+        simp only [←happ_ancUF, Set.empty] at hmem_anc_ts
+        contradiction
+    · apply Set.subset_def.mpr
+      intros anc hmem_entry_anc
+      have hcont_acts_anc := wf_env_implies_ancestors_of_action_is_action hwf_Γ hfind_uid anc hmem_entry_anc
+      have ⟨anc_entry, hfind_anc⟩ := Map.contains_iff_some_find?.mp hcont_acts_anc
+      have hδ_find_ancTy :
+        δ.ancestors.find? anc.ty =
+        some (UnaryFunction.interpret I (SymEntityData.ofActionType.ancsUDF uid.ty Γ.acts anc.ty))
+      := by
+        simp only [hδ, hδ', SymEntityData.ofActionType, SymEntityData.interpret]
+        apply Map.find?_mapOnValues_some
+        apply Map.make_map_values_find
+        apply List.mem_implies_mem_eraseDups
+        apply List.mem_map.mpr
+        exists (anc, anc_entry)
+        simp [Map.find?_mem_toList hfind_anc]
+      simp only [SymEntityData.ofActionType.ancsUDF, UnaryFunction.interpret] at hδ_find_ancTy
+      have ⟨ts, happ_ancsUDF, hmem⟩ := hanc₂ anc.ty
+        (SymEntityData.ofActionType.ancsUDF uid.ty Γ.acts anc.ty) hδ_find_ancTy
+      have :
+        Factory.app (SymEntityData.ofActionType.ancsUDF uid.ty Γ.acts anc.ty) (Term.prim (TermPrim.entity uid))
+        = SymEntityData.ofActionType.ancsTerm anc.ty entry.ancestors.toList
+      := by
+        apply app_table_make_filterMap hfind_uid
+        · simp [SymEntityData.ofActionType.termOfType?]
+        · intros kv hkv
+          have ⟨k, v⟩ := kv
+          have ⟨v', hv'⟩ := hkv
+          simp only [SymEntityData.ofActionType.termOfType?, Option.bind_eq_bind] at hv'
+          split at hv'
+          · simp only [
+              Option.bind_some, Option.some.injEq,
+              Prod.mk.injEq, Term.prim.injEq,
+              TermPrim.entity.injEq,
+            ] at hv'
+            simp only [hv'.1]
+          · contradiction
+        · simp only [Term.isLiteral]
+      simp only [this, SymEntityData.ofActionType.ancsTerm, Factory.setOf, Term.set.injEq] at happ_ancsUDF
+      simp only [←happ_ancsUDF.1] at hmem
+      specialize hmem (.prim (.entity anc))
+      simp only [Term.prim.injEq, TermPrim.entity.injEq, exists_eq_left'] at hmem
+      apply hmem
+      apply (Set.make_mem _ _).mp
+      apply List.mem_filterMap.mpr
+      exists anc
+      have := (Set.in_list_iff_in_set _ _).mpr hmem_entry_anc
+      simp [Set.toList, this, true_and, SymEntityData.ofActionType.termOfType?]
 
 theorem ofEnv_entity_completeness
-  {Γ : TypeEnv} {I : Interpretation}
+  {Γ : TypeEnv} {I : Interpretation} {entities : Entities}
   {uid : EntityUID} {δ : SymEntityData} {data : EntityData}
   (hwf_Γ : Γ.WellFormed)
+  (hwf_data : data.WellFormed entities)
   (hwf_I : I.WellFormed (SymEnv.ofEnv Γ).entities)
   (hfind_δ : Map.find? (SymEnv.interpret I (SymEnv.ofEnv Γ)).entities uid.ty = some δ)
   (hsame_δ : SameEntityData uid data δ) :
@@ -659,7 +766,7 @@ theorem ofEnv_entity_completeness
     have hfind_ety := (Map.in_list_iff_find?_some hwf_ets).mp hmem_ety
     have := Eq.symm hety.2
     simp only [hety.1] at this hfind_ety
-    exact ofEnv_entity_completeness_ordinary hwf_Γ hwf_I hfind_ety this hδ' hsame_δ
+    exact ofEnv_entity_completeness_ordinary hwf_Γ hwf_data hwf_I hfind_ety this hδ' hsame_δ
   -- Action entity
   | inr hmem =>
     right
@@ -685,7 +792,7 @@ theorem ofEnv_entity_completeness
       congr <;> simp [huid']
     simp only [heq_uid'] at hmem_uid'
     have hfind_uid := (Map.in_list_iff_find?_some hwf_acts).mp hmem_uid'
-    exact ofEnv_entity_completeness_action hwf_Γ hwf_I hfind_uid (Eq.symm heq_δ') hδ' hsame_δ
+    exact ofEnv_entity_completeness_action hwf_Γ hwf_data hfind_uid (Eq.symm heq_δ') hδ' hsame_δ
 
 theorem enum_complete_implies_has_all_actions
   {Γ : TypeEnv} {env : Env}
@@ -752,6 +859,7 @@ theorem enum_complete_implies_has_all_actions
 theorem ofEnv_entities_completeness
   {Γ : TypeEnv} {env : Env} {I : Interpretation}
   (hwf_Γ : Γ.WellFormed)
+  (hwf_env : env.StronglyWellFormed)
   (hwf_I : I.WellFormed (SymEnv.ofEnv Γ).entities)
   (henum_comp : Env.EnumCompleteFor env (SymEnv.ofEnv Γ))
   (hsame_I : env ∼ SymEnv.interpret I (SymEnv.ofEnv Γ)) :
@@ -761,7 +869,8 @@ theorem ofEnv_entities_completeness
   constructor
   · intros uid data hfind_uid
     have ⟨δ, hfind_δ, hsame_δ⟩ := hsame_ents uid data hfind_uid
-    exact ofEnv_entity_completeness hwf_Γ hwf_I hfind_δ hsame_δ
+    have hwf_data := hwf_env.2.1.2 uid data hfind_uid
+    exact ofEnv_entity_completeness hwf_Γ hwf_data hwf_I hfind_δ hsame_δ
   -- All action entities exist in `env.entities`
   · intros uid entry hfind_uid
     have := enum_complete_implies_has_all_actions hwf_Γ henum_comp
@@ -769,16 +878,17 @@ theorem ofEnv_entities_completeness
 
 theorem ofEnv_completeness
   {Γ : TypeEnv} {env : Env}
-  (hwf : Γ.WellFormed)
+  (hwf_Γ : Γ.WellFormed)
+  (hwf_env : env.StronglyWellFormed)
   (henum_comp : Env.EnumCompleteFor env (SymEnv.ofEnv Γ))
   (hinst : env ∈ᵢ SymEnv.ofEnv Γ) :
   InstanceOfWellFormedEnvironment env.request env.entities Γ
 := by
   constructor
-  · exact hwf
+  · exact hwf_Γ
   have ⟨I, hwf_I, hsame_I⟩ := hinst
   constructor
-  · exact ofEnv_request_completeness hwf hwf_I hsame_I
-  · exact ofEnv_entities_completeness hwf hwf_I henum_comp hsame_I
+  · exact ofEnv_request_completeness hwf_Γ hwf_I hsame_I
+  · exact ofEnv_entities_completeness hwf_Γ hwf_env hwf_I henum_comp hsame_I
 
 end Cedar.Thm
