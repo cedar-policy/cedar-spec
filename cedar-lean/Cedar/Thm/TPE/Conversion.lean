@@ -18,6 +18,7 @@ import Cedar.Spec.Evaluator
 import Cedar.TPE.Residual
 import Cedar.TPE.Evaluator
 import Cedar.Validation.TypedExpr
+import Cedar.Thm.Data.List.Lemmas
 
 namespace Cedar.TPE
 
@@ -39,11 +40,35 @@ theorem conversion_preserves_evaluation (te : TypedExpr) (req : Request) (es : E
     simp [TypedExpr.toExpr, TypedExpr.toResidual, Spec.evaluate, Residual.evaluate]
     cases v <;> simp [Spec.evaluate, Residual.evaluate]
   | ite cond thenExpr elseExpr ty =>
-    sorry
+    simp [TypedExpr.toExpr, TypedExpr.toResidual, Spec.evaluate, Residual.evaluate]
+    have ih_cond := conversion_preserves_evaluation cond req es
+    have ih_then := conversion_preserves_evaluation thenExpr req es
+    have ih_else := conversion_preserves_evaluation elseExpr req es
+    rw [←ih_cond]
+    simp [Result.as, Value.asBool]
+    rw [←ih_then, ←ih_else]
+    cases Spec.evaluate cond.toExpr req es
+    case ite.error =>
+      simp
+    case ite.ok =>
+      simp
+      rename_i a
+      cases a
+      case prim =>
+        simp [bind, Coe.coe, Value.asBool]
+      all_goals {
+        simp [Coe.coe, Value.asBool]
+      }
   | and a b ty =>
-    sorry
+    simp [TypedExpr.toExpr, TypedExpr.toResidual, Spec.evaluate, Residual.evaluate]
+    have ih_a := conversion_preserves_evaluation a req es
+    have ih_b := conversion_preserves_evaluation b req es
+    rw [←ih_a, ←ih_b]
   | or a b ty =>
-    sorry
+    simp [TypedExpr.toExpr, TypedExpr.toResidual, Spec.evaluate, Residual.evaluate]
+    have ih_a := conversion_preserves_evaluation a req es
+    have ih_b := conversion_preserves_evaluation b req es
+    rw [←ih_a, ←ih_b]
   | unaryApp op expr ty =>
     simp [TypedExpr.toExpr, TypedExpr.toResidual, Spec.evaluate, Residual.evaluate]
     have ih := conversion_preserves_evaluation expr req es
@@ -62,10 +87,27 @@ theorem conversion_preserves_evaluation (te : TypedExpr) (req : Request) (es : E
     have ih := conversion_preserves_evaluation expr req es
     rw [←ih]
   | set ls ty =>
-    sorry
+    simp [TypedExpr.toExpr, TypedExpr.toResidual, Spec.evaluate, Residual.evaluate]
+    congr 1
+    rw [List.mapM₁_eq_mapM, List.mapM₁_eq_mapM]
+    congr 1
+    ext x
+    exact conversion_preserves_evaluation x req es
   | record map ty =>
-    sorry
+    simp [TypedExpr.toExpr, TypedExpr.toResidual, Spec.evaluate, Residual.evaluate]
+    congr 1
+    rw [List.mapM₂_eq_mapM, List.mapM₂_eq_mapM]
+    congr 1
+    ext ⟨a, x⟩
+    simp [Spec.bindAttr]
+    congr 1
+    exact conversion_preserves_evaluation x req es
   | call xfn args ty =>
-    sorry
+    simp [TypedExpr.toExpr, TypedExpr.toResidual, Spec.evaluate, Residual.evaluate]
+    congr 2
+    rw [Cedar.Thm.Data.List.mapM₁_eq_mapM, Cedar.Thm.Data.List.mapM₁_eq_mapM]
+    congr 1
+    ext x
+    exact conversion_preserves_evaluation x req es
 
 end Cedar.TPE
