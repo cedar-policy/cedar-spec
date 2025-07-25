@@ -639,6 +639,7 @@ theorem ofEnv_entity_completeness
     simp only at hact
     have hwf_acts := wf_env_implies_wf_acts_map hwf_Γ
     have hfind_act := (Map.in_list_iff_find?_some hwf_acts).mp hmem_act
+
     -- δ' = SymEntityData.ofActionType uid.ty (List.map (fun x => x.fst.ty) (Map.toList Γ.acts)).eraseDups Γ.acts
     sorry
 

@@ -600,6 +600,7 @@ def SameEntityData (uid : EntityUID) (d : EntityData) (δ : SymEntityData) : Pro
   SameValues (.record d.attrs) (app δ.attrs uid) ∧
   (∀ anc, anc ∈ d.ancestors → InSymAncestors anc) ∧
   (∀ ancTy ancUF, δ.ancestors.find? ancTy = .some ancUF → InAncestors ancUF ancTy) ∧
+  (∀ mems, δ.members = .some mems → uid.eid ∈ mems) ∧
   SameTags uid d δ
 where
   InSymAncestors (anc : EntityUID) : Prop :=

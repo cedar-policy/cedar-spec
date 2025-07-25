@@ -1179,11 +1179,11 @@ private theorem compileApp₂_hasTag_implies_apply₂ {t₁ t₂ t₃ : Term} {v
       cases ht : d.tags.find? tag
       case none =>
         simp only [Map.contains, ht, Option.isSome_none]
-        rw [heq.left tag] at ht
+        rw [heq.right.left tag] at ht
         simp only [ht, same_ok_bool]
       case some val =>
         simp only [Map.contains, ht, Option.isSome_some]
-        replace heq := heq.right tag val ht
+        replace heq := heq.right.right tag val ht
         simp only [heq.left, same_ok_bool]
     case _ hd' => simp only [hd, reduceCtorEq] at hd'
 
@@ -1221,12 +1221,12 @@ private theorem compileApp₂_getTag_implies_apply₂ {t₁ t₂ t₃ : Term} {v
   simp only [SymTags.getTag]
   cases ht : d.tags.find? tag <;> simp only
   case none =>
-    rw [heq.left tag] at ht
+    rw [heq.right.left tag] at ht
     simp only [ht, pe_ifTrue_false]
     apply same_error_implied_by
     simp only [not_false_eq_true, reduceCtorEq]
   case some val =>
-    replace heq := heq.right tag val ht
+    replace heq := heq.right.right tag val ht
     simp only [Same.same, SameResults, heq.left, pe_ifTrue_true, heq.right]
 
 private theorem compileApp₂_implies_apply₂ {op₂ : BinaryOp} {t₁ t₂ t₃ : Term} {v₁ v₂ : Value} {es : Entities} {εs : SymEntities}

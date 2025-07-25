@@ -362,7 +362,11 @@ private theorem concretize?_some_same_entity_data {uid : EntityUID} {d : EntityD
   · constructor
     · intro ancTy ancUF hf'
       exact concretize?_some_InAncestors hf' hwδ hwt ha
-    · exact concretize?_some_same_tags hwδ hwt ht
+    · constructor
+      · intros mems hmems
+        simp only [SymEntityData.concretize?.isValidEntityUID, hmems] at hvd
+        exact Set.contains_prop_bool_equiv.mp hvd
+      · exact concretize?_some_same_tags hwδ hwt ht
 
 private theorem concretize?_some_same_entities {uids : Set EntityUID} {es : Entities} {εs : SymEntities} :
   εs.WellFormed →
