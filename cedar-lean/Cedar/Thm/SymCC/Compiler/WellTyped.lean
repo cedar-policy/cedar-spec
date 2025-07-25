@@ -2,6 +2,7 @@ import Cedar.Thm.Validation.WellTyped.Definition
 import Cedar.Thm.SymCC.Compiler.WF
 import Cedar.Thm.SymCC.Env.ofEnv
 import Cedar.Thm.SymCC.Env.WF
+import Cedar.Thm.SymCC.Term.ofType
 
 /-!
 This file contains theorems saying that `compile` succeeds
@@ -1343,15 +1344,7 @@ theorem compile_well_typed_record
       TermType.option.injEq, TermType.record.injEq,
       Data.Map.mk.injEq,
     ]
-    -- Rephrase `TermType.ofRecordType` with `List.map`
-    have e (rty : List (Attr × QualifiedType)) :
-      TermType.ofRecordType rty
-      = rty.map λ (a, qty) => (a, TermType.ofQualifiedType qty)
-    := by
-      induction rty with
-      | nil => simp [TermType.ofRecordType]
-      | cons => simp [TermType.ofRecordType]; assumption
-    simp only [e rty.1]
+    simp only [ofRecordType_as_map rty.1]
     simp only [hrty, Data.Map.make]
     simp only [List.attach₃]
     simp only [List.map_pmap]

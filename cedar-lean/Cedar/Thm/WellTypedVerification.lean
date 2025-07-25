@@ -17,6 +17,8 @@
 import Cedar.Thm.SymCC.Verifier.WellTypedOk
 import Cedar.Thm.SymCC.WellTyped
 import Cedar.Thm.Verification
+import Cedar.Thm.SymCC.Env.Soundness
+import Cedar.Thm.SymCC.Env.Completeness
 
 /-!
 This file connects soundness theorems in `Cedar.Thm.Verification`

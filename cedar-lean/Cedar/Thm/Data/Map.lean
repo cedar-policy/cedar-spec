@@ -70,6 +70,10 @@ theorem wf_implies_tail_wf {α β} [LT α] [DecidableLT α] [StrictLT α]
     simp only [Map.toList, Map.kvs]
     assumption
 
+theorem wf_empty {α β} [LT α] [DecidableLT α] :
+  (Map.empty : Map α β).WellFormed
+:= by simp [Map.WellFormed, Map.make, Map.empty, List.canonicalize, Map.toList]
+
 /--
   In well-formed maps, if there are two pairs with the same key, then they have
   the same value
@@ -1282,6 +1286,24 @@ theorem map_find?_to_list_find?
     simp [this]
   · contradiction
 
+/-- A variant of `map_make_append_find_disjoint`. -/
+theorem map_make_append_find_disjoint'
+  [LT α] [StrictLT α] [DecidableEq α] [DecidableLT α]
+  [SizeOf α] [SizeOf β]
+  {l₁ : List (α × β)} {l₂ : List (α × β)} {k : α} {v : β}
+  (hfind₁ : l₁.find? (λ ⟨k', _⟩ => k' == k) = none)
+  (hfind₂ : l₂.find? (λ ⟨k', _⟩ => k' == k) = .some (k, v))
+  (heq : ∀ x₁ x₂, x₁ ∈ l₂ → x₂ ∈ l₂ → x₁.fst = x₂.fst → x₁ = x₂) :
+  (Map.make (l₁ ++ l₂)).find? k = some v
+:= by
+  have : (l₂.find? (λ ⟨k', _⟩ => k' == k)).isSome
+  := by simp only [hfind₂, Option.isSome]
+  have ⟨v', hfind_k, hmem⟩ := map_make_append_find_disjoint hfind₁ this
+  have := List.mem_of_find?_eq_some hfind₂
+  have := heq _ _ this hmem
+  simp only [Prod.mk.injEq, true_and, forall_const] at this
+  simp only [this, hfind_k]
+
 theorem map_find?_implies_find?_weaker_pred
   [BEq α] [LawfulBEq α]
   {m : Map α β} {k : α} {v : β} {f : α × β → Bool}
@@ -1322,5 +1344,15 @@ theorem map_keys_empty_implies_map_empty
   | cons hd tl =>
     simp only [Map.keys, Map.kvs, List.map, Set.toList, Set.elts] at h
     contradiction
+
+theorem toList_congr
+  {m₁ m₂ : Map α β}
+  (h : m₁.toList = m₂.toList) :
+  m₁ = m₂
+:= by
+  cases m₁ with | mk m₁
+  cases m₂ with | mk m₂
+  simp only [Map.toList, Map.kvs] at h
+  simp [h]
 
 end Cedar.Data.Map

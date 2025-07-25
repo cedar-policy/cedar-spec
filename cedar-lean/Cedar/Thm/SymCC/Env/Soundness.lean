@@ -719,6 +719,8 @@ private theorem env_symbolize?_same_entity_data_standard
       simp only [Option.ite_none_right_eq_some, Option.some.injEq] at heq
       simp only [←heq, true_and]
       exact hmem_anc'
+  · intros mems hmems
+    simp at hmems
   · exact env_symbolize?_same_entity_data_standard_same_tag
       hwf_env hinst hinst_data hfind_entry hfind_data
 
@@ -734,7 +736,7 @@ private theorem env_symbolize?_same_entity_data_enum
       (SymEntityData.ofEnumEntityType uid.ty eids))
 := by
   have ⟨hwf_Γ, _, _⟩ := hinst
-  have ⟨entry', hfind_entry', _, hwt_data_attrs, hwt_data_ancs, hwt_data_tags⟩ := hinst_data
+  have ⟨entry', hfind_entry', hvalid_eid, hwt_data_attrs, hwt_data_ancs, hwt_data_tags⟩ := hinst_data
   simp only [hfind_entry, Option.some.injEq] at hfind_entry'
   simp only [←hfind_entry'] at hwt_data_attrs hwt_data_ancs hwt_data_tags
   simp only [
@@ -788,6 +790,11 @@ private theorem env_symbolize?_same_entity_data_enum
     contradiction
   · intros ancTy ancUF
     simp [Map.empty, Map.mapOnValues, List.map, Map.find?, List.find?]
+  · intros mems hmems
+    simp only [Option.some.injEq] at hmems
+    simp only [←hmems]
+    simp only [←hfind_entry'] at hvalid_eid
+    exact hvalid_eid
   · simp only [SameTags, Option.map_none]
     simp only [InstanceOfEntityTags, EntitySchemaEntry.tags?] at hwt_data_tags
     exact hwt_data_tags
@@ -1043,6 +1050,14 @@ private theorem env_symbolize?_same_entities_action
     ] at hanc_term
     simp only [hanc_term.2, true_and, heq_ancs]
     exact hmem_anc
+  · intros mems hmems
+    simp only [Option.some.injEq] at hmems
+    simp only [←hmems]
+    apply (Set.make_mem _ _).mp
+    simp only [SymEntityData.ofActionType.acts]
+    apply List.mem_filterMap.mpr
+    exists (uid, entry)
+    simp [Map.find?_mem_toList hfind_entry]
   · simp only [SameTags, htags_emp]
 
 private theorem env_symbolize?_same_entities
