@@ -18,7 +18,7 @@ import Cedar.Spec.Expr
 import Cedar.Spec.Value
 import Cedar.Validation.TypedExpr
 
-namespace Cedar.TPE
+namespace Cedar.Spec
 
 open Cedar.Data
 open Cedar.Spec
@@ -225,4 +225,4 @@ end
 
 instance : DecidableEq Residual := decResidual
 
-end Cedar.TPE
+end Cedar.Spec
