@@ -19,6 +19,7 @@ import Cedar.TPE.Residual
 import Cedar.Thm.Validation.WellTyped.Typechecking
 import Cedar.Data.Map
 import Cedar.Thm.Validation.Typechecker.Record
+import Cedar.Thm.Data.List.Lemmas
 
 /-!
 This file contains residual-specific lemmas of the theorem `residual_well_typed_is_sound`
@@ -620,15 +621,15 @@ theorem residual_well_typed_is_sound_call
 {args : List Residual}
 {ty : CedarType}
 {env : TypeEnv}
-(h₁ : ExtFunWellTyped xfn args ty)
+(h₁ : ExtResidualWellTyped xfn args ty)
 (h₂ : (Residual.call xfn args ty).evaluate request entities = Except.ok v) :
 InstanceOfType env v (Residual.call xfn args ty).typeOf
 := by
-  simp only [Residual.typeOf]
+  generalize hᵢ : (args.mapM₁ (fun ⟨x₁, _⟩ => Residual.evaluate x₁ request entities)) = res₁
   simp only [Residual.evaluate] at h₂
-  generalize hᵢ : (args.mapM (λ x => x.evaluate request entities)) = res₁
-  cases res₁ <;> rw [hᵢ] at h₂
+  cases res₁ <;> simp [hᵢ] at h₂
   simp only [Cedar.Spec.call, Cedar.Spec.res, gt_iff_lt, ge_iff_le] at h₂
+  simp only [Residual.typeOf]
   split at h₂ <;>
   cases h₁ <;>
   try cases h₂ <;>

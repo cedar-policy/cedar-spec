@@ -86,7 +86,7 @@ theorem residual_well_typed_is_sound {r : Residual} {v : Value} {env : TypeEnv} 
   case val v ty h₄ =>
     exact residual_well_typed_is_sound_val h₄ h₃
   case var var ty h₄ =>
-    sorry
+    exact residual_well_typed_is_sound_var h₁ h₄ h₃
   case ite x₁ x₂ x₃ h₁ h₂ h₃ h₄ h₅ h₆ hᵢ₁ hᵢ₂ =>
     exact residual_well_typed_is_sound_ite h₄ h₅ h₆ hᵢ₁ hᵢ₂ h₃
   case and x₁ x₂ _ _ h₄ h₅ hᵢ₁ hᵢ₂ =>
@@ -100,17 +100,13 @@ theorem residual_well_typed_is_sound {r : Residual} {v : Value} {env : TypeEnv} 
   case hasAttr_entity ety x₁ attr h₁ h₂ h₃ =>
     exact residual_well_typed_is_sound_has_attr_entity h₃
   case hasAttr_record rty x₁ attr h₁ h₂ h₃ =>
-    -- The proof would need to handle hasAttr evaluation
-    sorry
-  case getAttr_entity ety rty x₁ attr ty h₁ h₂ h₃ h₄ hᵢ =>
-    -- The proof would need to handle getAttr evaluation
-    sorry
-  case getAttr_record rty x₁ attr ty h₁ h₂ h₃ hᵢ =>
-    -- The proof would need to handle getAttr evaluation
-    sorry
-  case set ls ty h₁ h₂ h₃ h₄ =>
-    -- The proof would need to handle set evaluation
-    sorry
+    exact residual_well_typed_is_sound_has_attr_record h₃
+  case getAttr_entity ety rty x₁ attr ty h₄ h₅ h₆ h₇ hᵢ =>
+    exact residual_well_typed_is_sound_get_attr_entity h₁ hᵢ h₅ h₆ h₇ h₃
+  case getAttr_record rty x₁ attr ty h₄ h₅ h₆ hᵢ =>
+    exact residual_well_typed_is_sound_get_attr_record hᵢ h₅ h₆ h₃
+  case set ls ty h₄ h₅ h₆ h₇ =>
+    exact residual_well_typed_is_sound_set h₇ h₆ h₃
   case record rty m h₁ h₂ h₃ hᵢ =>
     -- The proof would need to handle record evaluation
     sorry
