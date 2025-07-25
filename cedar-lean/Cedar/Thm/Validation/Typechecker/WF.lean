@@ -270,6 +270,25 @@ theorem wf_env_implies_wf_attrs {env : TypeEnv} {ety : EntityType} {attrs : Reco
     . simp [Map.WellFormed, Map.toList, Map.kvs, Map.make, List.canonicalize]
     · simp [Map.find?, List.find?]
 
+theorem wf_env_implies_attrs_lifted {env : TypeEnv} {ety : EntityType} {attrs : RecordType}
+  (hwf : env.WellFormed)
+  (hattrs : env.ets.attrs? ety = .some attrs) :
+  (CedarType.record attrs).IsLifted
+:= by
+  simp only [EntitySchema.attrs?, Option.map_eq_some_iff] at hattrs
+  have ⟨entry, hentry, hattrs⟩ := hattrs
+  have ⟨⟨_, hwf_ets⟩, _⟩ := hwf
+  have hwf_entry := hwf_ets ety entry hentry
+  simp only [EntitySchemaEntry.WellFormed] at hwf_entry
+  split at hwf_entry
+  · have ⟨_, _, _, hlift, _⟩ := hwf_entry
+    simp only [← hattrs]
+    exact hlift
+  · simp only [EntitySchemaEntry.attrs] at hattrs
+    simp only [← hattrs, Map.empty]
+    constructor
+    simp [Map.WellFormed, Map.toList, Map.kvs, Map.make, List.canonicalize]
+
 theorem wf_env_implies_action_wf {env : TypeEnv}
   (hwf : env.WellFormed) :
   EntityUID.WellFormed env env.reqty.action

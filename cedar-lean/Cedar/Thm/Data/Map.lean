@@ -70,6 +70,10 @@ theorem wf_implies_tail_wf {α β} [LT α] [DecidableLT α] [StrictLT α]
     simp only [Map.toList, Map.kvs]
     assumption
 
+theorem wf_empty {α β} [LT α] [DecidableLT α] :
+  (Map.empty : Map α β).WellFormed
+:= by simp [Map.WellFormed, Map.make, Map.empty, List.canonicalize, Map.toList]
+
 /--
   In well-formed maps, if there are two pairs with the same key, then they have
   the same value
