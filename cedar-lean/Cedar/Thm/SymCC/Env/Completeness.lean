@@ -192,7 +192,7 @@ private theorem value?_some_implies_typeOf_not_option
 /--
 If a term type is both the result of `TermType.ofType` and `Term.typeOf`
 for some well-formed `CedarType` and well-formed `Term`,
-then the if the the term is conretizable (via `value?`),
+then the if the the term is concretizable (via `value?`),
 the resulting `Value` should be well-typed.
 
 i.e., if we know "--->"'s below,
