@@ -141,6 +141,7 @@ theorem verifyIsAuthorized_is_complete {φ : Term → Term → Term} {f : Respon
     env ∈ᵢ εnv ∧
     env.StronglyWellFormedForPolicies ps₁ ∧
     env.StronglyWellFormedForPolicies ps₂ ∧
+    Env.EnumCompleteFor env εnv ∧
     f (Spec.isAuthorized env.request env.entities ps₁) (Spec.isAuthorized env.request env.entities ps₂) = false
 := by
   intro ⟨hwφ, hiφ, hφf⟩ hwε₁ hwε₂ hok hsat
@@ -149,7 +150,7 @@ theorem verifyIsAuthorized_is_complete {φ : Term → Term → Term} {f : Respon
   replace ⟨t₁, t₂, ts, hok₁, hok₂, ha, hok⟩ := verifyIsAuthorized_ok_implies hok
   subst hok
   replace ⟨hsat, hvc⟩ := asserts_all_true hsat
-  replace ⟨I', env, hwI', heq, hwe, hsat⟩ := enforce_satisfiedBy_implies_exists_swf
+  replace ⟨I', env, hwI', heq, hwe, henum_comp, hsat⟩ := enforce_satisfiedBy_implies_exists_swf
     (swf_εnv_for_policies_iff_swf_for_append.mp (And.intro hwε₁ hwε₂)) hwI ha hsat
   exists env
   rw [← swf_env_for_policies_iff_swf_for_append] at hwe
@@ -174,6 +175,7 @@ theorem verifyIsAuthorized_is_complete {φ : Term → Term → Term} {f : Respon
     replace hok₂ := isAuthorized_interpret_eq_when_interpret_eq hwε₂ hwI hwI' hsat₂ hok₂
     rw [interpret_not_wbaq hwI (And.intro hwt₁ hwt₂) hwφ hiφ, hok₁, hok₂] at hvc
     have hrb := wbaq_bisimulation (And.intro hwt₁ hwt₂) hφf hwI' hrb₁ hrb₂
+    simp only [henum_comp, true_and]
     exact same_bool_not_true_implies_false hrb hvc
 
 end Cedar.Thm
