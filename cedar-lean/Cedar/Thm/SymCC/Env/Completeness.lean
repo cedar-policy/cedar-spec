@@ -20,7 +20,7 @@ import Cedar.Thm.SymCC.Term.Interpret.WF
 import Cedar.Thm.SymCC.Term.ofType
 
 /-!
-This file contains the soundness theorems of `Sym.ofEnv`
+This file contains the completeness theorems of `Sym.ofEnv`
 -/
 
 namespace Cedar.Thm
