@@ -250,6 +250,22 @@ theorem wf_env_implies_wf_tag_type {env : TypeEnv} {ety : EntityType} {ty : Ceda
     exact (hwf_tag ty htags).1
   · simp [EntitySchemaEntry.tags?] at htags
 
+theorem wf_env_implies_tag_type_lifted {env : TypeEnv} {ety : EntityType} {ty : CedarType}
+  (hwf : env.WellFormed)
+  (hety : env.ets.tags? ety = .some (.some ty)) :
+  ty.IsLifted
+:= by
+  simp only [EntitySchema.tags?, Option.map_eq_some_iff] at hety
+  have ⟨entry, hentry, htags⟩ := hety
+  have ⟨⟨_, hwf_ets⟩, _⟩ := hwf
+  have hwf_entry := hwf_ets ety entry hentry
+  simp only [EntitySchemaEntry.WellFormed] at hwf_entry
+  split at hwf_entry
+  · have ⟨_, _, _, _, hwf_tag⟩ := hwf_entry
+    simp only [EntitySchemaEntry.tags?] at htags
+    exact (hwf_tag ty htags).2
+  · simp [EntitySchemaEntry.tags?] at htags
+
 theorem wf_env_implies_wf_attrs {env : TypeEnv} {ety : EntityType} {attrs : RecordType}
   (hwf : env.WellFormed)
   (hattrs : env.ets.attrs? ety = .some attrs) :

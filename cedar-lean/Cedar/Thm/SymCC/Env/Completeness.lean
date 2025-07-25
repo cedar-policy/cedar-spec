@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Thm.SymCC.Env.ofEnv
+import Cedar.Thm.SymCC.Env.Interpret
 import Cedar.Thm.SymCC.Term.Interpret.WF
 import Cedar.Thm.SymCC.Term.ofType
 
@@ -569,6 +570,230 @@ theorem ofEnv_request_completeness
     have hlifted_ctx := wf_env_implies_ctx_lifted hwf_Γ
     apply ofType_typeOf_pullback hwf_Γ hwt_ctx hlifted_ctx hwf_I_ctx hwt_I_ctx hsame_I_ctx
 
+theorem ets_find_some_standard_entry_implies_valid_uid
+  {Γ : TypeEnv} {uid : EntityUID} {entry : StandardSchemaEntry}
+  (hfind_uid : Γ.ets.find? uid.ty = .some (.standard entry)) :
+  (SymEnv.ofEnv Γ).entities.isValidEntityUID uid
+:= by
+  simp only [SymEntities.isValidEntityUID]
+  have :
+    Map.find? (SymEnv.ofEnv Γ).entities uid.ty
+    = some (SymEntityData.ofEntityType uid.ty (.standard entry))
+  := by
+    apply ofEnv_preserves_entity rfl
+    exact hfind_uid
+  simp only [this, SymEntityData.ofEntityType, SymEntityData.ofStandardEntityType]
+
+theorem ets_find_some_standard_entry_implies_valid_uid_ty
+  {Γ : TypeEnv} {uid : EntityUID} {entry : StandardSchemaEntry}
+  (hfind_uid : Γ.ets.find? uid.ty = .some (.standard entry)) :
+  (SymEnv.ofEnv Γ).entities.isValidEntityType uid.ty
+:= by
+  have hvalid_uid := ets_find_some_standard_entry_implies_valid_uid hfind_uid
+  simp only [SymEntities.isValidEntityUID] at hvalid_uid
+  split at hvalid_uid
+  · rename_i heq
+    simp only [SymEntities.isValidEntityType, Map.contains, heq, Option.isSome]
+  · contradiction
+
+theorem ofEnv_entity_completeness_standard_inst_tags
+  {Γ : TypeEnv} {I : Interpretation} {entities : Entities}
+  {uid : EntityUID} {entry : StandardSchemaEntry}
+  {δ δ' : SymEntityData} {data : EntityData}
+  (hwf_Γ : Γ.WellFormed)
+  (hwf_data : data.WellFormed entities)
+  (hwf_I : I.WellFormed (SymEnv.ofEnv Γ).entities)
+  (hfind_uid : Γ.ets.find? uid.ty = .some (.standard entry))
+  (hδ' : δ' = SymEntityData.ofEntityType uid.ty (.standard entry))
+  (hδ : δ = SymEntityData.interpret I δ')
+  (hsame_δ : SameEntityData uid data δ)
+  (hfind_δ : Map.find? (SymEnv.interpret I (SymEnv.ofEnv Γ)).entities uid.ty = some δ) :
+  InstanceOfEntityTags data (EntitySchemaEntry.standard entry) Γ
+:= by
+  have ⟨hsame_attrs, _, _, hvalid_eid, hsame_tags⟩ := hsame_δ
+  have ⟨_, hwf_funs⟩ := hwf_I
+  have hwf_ofEnv_Γ := ofEnv_is_wf hwf_Γ
+  have ⟨_, ⟨_, hwf_I_ents⟩⟩ := interpret_εnv_wf hwf_ofEnv_Γ hwf_I
+  have hwf_δ := hwf_I_ents uid.ty δ hfind_δ
+  have ⟨_, _, _, _, _, hwf_τs, _⟩ := hwf_δ
+  have hvalid_uid := ets_find_some_standard_entry_implies_valid_uid hfind_uid
+  have hvalid_uid_ty := ets_find_some_standard_entry_implies_valid_uid_ty hfind_uid
+  have hwf_tag_ty :
+    TermType.WellFormed (SymEnv.ofEnv Γ).entities (TermType.tagFor uid.ty)
+  := by
+    simp only [TermType.tagFor, EntityTag.mk]
+    constructor
+    · intros a ty h
+      simp [Map.find?, List.find?] at h
+      split at h
+      any_goals contradiction
+      simp only [Option.some.injEq] at h
+      simp only [h] at *
+      rename_i heq
+      split at heq
+      · simp only [Option.some.injEq, Prod.mk.injEq] at heq
+        simp only [←heq.2]
+        constructor
+        exact hvalid_uid_ty
+      · split at heq
+        any_goals contradiction
+        simp only [Option.some.injEq, Prod.mk.injEq] at heq
+        simp only [←heq.2]
+        constructor
+    · simp [
+        Map.WellFormed, Map.make,
+        List.canonicalize, Map.toList,
+        Map.kvs, List.insertCanonical,
+      ]
+  cases htagTy : entry.tags with
+  | none =>
+    simp only [InstanceOfEntityTags, EntitySchemaEntry.tags?, htagTy]
+    simp only [
+      SameTags,
+      Option.map,
+      hδ, hδ', htagTy,
+      SymEntityData.ofEntityType,
+      SymEntityData.ofStandardEntityType,
+      SymEntityData.interpret,
+      UnaryFunction.interpret,
+      SymEntityData.emptyAttrs,
+      Factory.app,
+      Term.isLiteral,
+      ↓reduceIte,
+      Map.empty,
+      Map.find?,
+      List.find?,
+    ] at hsame_tags
+    exact hsame_tags
+  | some tagTy =>
+    simp only [
+      SameTags,
+      Option.map,
+      hδ, hδ', htagTy,
+      SymEntityData.ofEntityType,
+      SymEntityData.ofStandardEntityType,
+      SymEntityData.interpret,
+      UnaryFunction.interpret,
+      SymEntityData.emptyAttrs,
+      Factory.app,
+      Term.isLiteral,
+      ↓reduceIte,
+    ] at hsame_tags
+    simp only [InstanceOfEntityTags, EntitySchemaEntry.tags?, htagTy]
+    intros v hmem_v_tags
+    have ⟨k, hmem_kv⟩ := Map.in_values_exists_key hmem_v_tags
+    have hwf_tags : Map.WellFormed data.tags := by
+      have ⟨_, _, _, h, _⟩ := hwf_data
+      exact h
+    have hwf_tagTy : CedarType.WellFormed Γ tagTy
+    := by
+      apply wf_env_implies_wf_tag_type (ety := uid.ty) hwf_Γ
+      simp [EntitySchema.tags?, hfind_uid, htagTy, EntitySchemaEntry.tags?]
+    have hfind_kv := (Map.in_list_iff_find?_some hwf_tags).mp hmem_kv
+    have ⟨_, hsame_v⟩ := hsame_tags.2 k v hfind_kv
+    have ⟨vals_uuf, hvals_uuf⟩ :
+      ∃ uuf,
+        (SymEntityData.ofStandardEntityType.symTags uid.ty tagTy).vals = .uuf uuf
+    := by simp [SymEntityData.ofStandardEntityType.symTags]
+    -- Rewrite the tag value lookup as `Term.interpret`
+    have htag_lookup_as_interp :
+      Factory.app
+        (UnaryFunction.interpret I (SymEntityData.ofStandardEntityType.symTags uid.ty tagTy).vals)
+        (Factory.tagOf (Term.entity uid) (Term.string k))
+      = Term.interpret I (Factory.app
+        (.uuf vals_uuf)
+        (Factory.tagOf (Term.entity uid) (Term.string k)))
+    := by
+      simp only [
+        Term.interpret, Op.interpret,
+        List.attach_cons, List.attach_nil,
+        List.map_nil,
+        List.map_cons,
+        UnaryFunction.interpret,
+        hvals_uuf,
+        Factory.app,
+        Factory.tagOf,
+        Factory.recordOf,
+        Map.make,
+        List.canonicalize,
+        List.attach₃,
+        List.pmap,
+        List.insertCanonical,
+      ]
+      simp
+    -- Prove that the tag lookup term is well-formed and well-typed
+    have hwf_tag_lookup:
+      Term.WellFormed (SymEnv.ofEnv Γ).entities
+        ((SymTags.interpret I (SymEntityData.ofStandardEntityType.symTags uid.ty tagTy)).getTag!
+          (Term.entity uid)
+          (Term.string k)) ∧
+      ((SymTags.interpret I (SymEntityData.ofStandardEntityType.symTags uid.ty tagTy)).getTag!
+        (Term.entity uid)
+        (Term.string k)).typeOf =
+      (Factory.app
+        (.uuf vals_uuf)
+        (Factory.tagOf (Term.entity uid) (Term.string k))).typeOf
+    := by
+      simp only [
+        SymTags.interpret,
+        SymTags.getTag!,
+      ]
+      simp only [htag_lookup_as_interp]
+      apply interpret_term_wf hwf_I _
+      -- (UnaryFunction.uuf vals_uuf).outType
+      apply (wf_app _ _ _).1
+      · simp only [Factory.tagOf]
+        constructor
+        · intros a t h
+          simp [EntityTag.mk, Map.toList, Map.kvs] at h
+          cases h with
+          | inl h =>
+            simp only [h.2, Term.entity]
+            repeat constructor
+            exact hvalid_uid
+          | inr h =>
+            simp only [h.2, Term.string]
+            repeat constructor
+        · simp [
+            Map.WellFormed, Map.make,
+            List.canonicalize, Map.toList,
+            Map.kvs, List.insertCanonical,
+          ]
+      · simp only [
+          Factory.tagOf,
+          Term.typeOf,
+          List.attach₃,
+          List.pmap,
+          List.map,
+          TermPrim.typeOf,
+          ←hvals_uuf,
+        ]
+        simp only [
+          SymEntityData.ofStandardEntityType.symTags,
+          UnaryFunction.argType,
+        ]
+      · simp only [←hvals_uuf]
+        simp only [
+          SymEntityData.ofStandardEntityType.symTags,
+          UnaryFunction.WellFormed,
+          UUF.WellFormed,
+        ]
+        constructor
+        · exact hwf_tag_ty
+        · exact ofType_wf hwf_Γ hwf_tagTy
+    apply ofType_typeOf_pullback hwf_Γ _ _ _ _ hsame_v
+    · apply wf_env_implies_wf_tag_type (ety := uid.ty) hwf_Γ
+      simp [EntitySchema.tags?, hfind_uid, htagTy, EntitySchemaEntry.tags?]
+    · apply wf_env_implies_tag_type_lifted (ety := uid.ty) hwf_Γ
+      simp [EntitySchema.tags?, hfind_uid, htagTy, EntitySchemaEntry.tags?]
+    · exact hwf_tag_lookup.1
+    · simp [hwf_tag_lookup.2, ←hvals_uuf]
+      simp only [
+        Factory.app,
+        Term.typeOf,
+        SymEntityData.ofStandardEntityType.symTags,
+      ]
+
 theorem ofEnv_entity_completeness_standard
   {Γ : TypeEnv} {I : Interpretation} {entities : Entities}
   {uid : EntityUID} {entry : StandardSchemaEntry}
@@ -579,11 +804,18 @@ theorem ofEnv_entity_completeness_standard
   (hfind_uid : Γ.ets.find? uid.ty = .some (.standard entry))
   (hδ' : δ' = SymEntityData.ofEntityType uid.ty (.standard entry))
   (hδ : δ = SymEntityData.interpret I δ')
-  (hsame_δ : SameEntityData uid data δ) :
+  (hsame_δ : SameEntityData uid data δ)
+  (hfind_δ : Map.find? (SymEnv.interpret I (SymEnv.ofEnv Γ)).entities uid.ty = some δ) :
   InstanceOfEntitySchemaEntry uid data Γ
 := by
-  have ⟨hsame_attrs, _, _, hvalid_eid, _⟩ := hsame_δ
+  have ⟨hsame_attrs, _, _, hvalid_eid, hsame_tags⟩ := hsame_δ
   have ⟨_, hwf_funs⟩ := hwf_I
+  have hwf_ofEnv_Γ := ofEnv_is_wf hwf_Γ
+  have ⟨_, ⟨_, hwf_I_ents⟩⟩ := interpret_εnv_wf hwf_ofEnv_Γ hwf_I
+  have hwf_δ := hwf_I_ents uid.ty δ hfind_δ
+  have ⟨_, _, _, _, _, hwf_τs, _⟩ := hwf_δ
+  have hvalid_uid := ets_find_some_standard_entry_implies_valid_uid hfind_uid
+  have hvalid_uid_ty := ets_find_some_standard_entry_implies_valid_uid_ty hfind_uid
   exists .standard entry
   simp only [hfind_uid, true_and]
   and_intros
@@ -626,14 +858,7 @@ theorem ofEnv_entity_completeness_standard
       apply wf_app
       · constructor
         constructor
-        simp only [SymEntities.isValidEntityUID]
-        have :
-          Map.find? (SymEnv.ofEnv Γ).entities uid.ty
-          = some (SymEntityData.ofEntityType uid.ty (.standard entry))
-        := by
-          apply ofEnv_preserves_entity rfl
-          exact hfind_uid
-        simp only [this, SymEntityData.ofEntityType, SymEntityData.ofStandardEntityType]
+        exact hvalid_uid
       · simp only [UnaryFunction.argType, ←hudf_arg]
         simp only [←huuf, Term.typeOf, TermPrim.typeOf, TermType.ofType]
       · exact hwf_udf
@@ -648,22 +873,22 @@ theorem ofEnv_entity_completeness_standard
       simp only [←huuf]
       rfl
   · sorry
-  · sorry
+  · exact ofEnv_entity_completeness_standard_inst_tags
+      hwf_Γ hwf_data hwf_I hfind_uid hδ' hδ hsame_δ hfind_δ
 
 theorem ofEnv_entity_completeness_enum
-  {Γ : TypeEnv} {I : Interpretation} {entities : Entities}
+  {Γ : TypeEnv} {I : Interpretation}
   {uid : EntityUID} {eids : Set String}
   {δ δ' : SymEntityData} {data : EntityData}
   (hwf_Γ : Γ.WellFormed)
-  (hwf_data : data.WellFormed entities)
   (hwf_I : I.WellFormed (SymEnv.ofEnv Γ).entities)
   (hfind_uid : Γ.ets.find? uid.ty = .some (.enum eids))
   (hδ' : δ' = SymEntityData.ofEntityType uid.ty (.enum eids))
   (hδ : δ = SymEntityData.interpret I δ')
-  (hsame_δ : SameEntityData uid data δ) :
+  (hsame_δ : SameEntityData uid data δ):
   InstanceOfEntitySchemaEntry uid data Γ
 := by
-  have ⟨hsame_attrs, _, _, hvalid_eid, _⟩ := hsame_δ
+  have ⟨hsame_attrs, hanc₁, _, hvalid_eid, hsame_tags⟩ := hsame_δ
   have ⟨_, hwf_funs⟩ := hwf_I
   exists .enum eids
   simp only [hfind_uid, true_and]
@@ -702,8 +927,39 @@ theorem ofEnv_entity_completeness_enum
       · simp [Map.WellFormed, Map.make, Map.empty, List.canonicalize, Map.find?, List.find?, Map.toList, Map.kvs]
       · exact Map.wf_empty
     · simp [Term.typeOf, List.attach₃, TermType.ofType, Map.empty, TermType.ofRecordType]
-  · sorry
-  · sorry
+  · intros anc hmem_data_anc
+    have := hanc₁ anc hmem_data_anc
+    simp [
+      SameEntityData.InSymAncestors,
+      hδ, hδ',
+      SymEntityData.ofEntityType,
+      SymEntityData.ofEnumEntityType,
+      SymEntityData.interpret,
+      UnaryFunction.interpret,
+      Map.empty,
+      Map.mapOnValues,
+      List.map,
+      Map.find?,
+      List.find?,
+    ] at this
+  · simp only [
+      SameTags,
+      Option.map,
+      hδ, hδ',
+      SymEntityData.ofEntityType,
+      SymEntityData.ofEnumEntityType,
+      SymEntityData.interpret,
+      UnaryFunction.interpret,
+      SymEntityData.emptyAttrs,
+      Factory.app,
+      Term.isLiteral,
+      ↓reduceIte,
+      Map.empty,
+      Map.find?,
+      List.find?,
+    ] at hsame_tags
+    simp only [InstanceOfEntityTags, EntitySchemaEntry.tags?]
+    exact hsame_tags
 
 theorem ofEnv_entity_completeness_ordinary
   {Γ : TypeEnv} {I : Interpretation} {entities : Entities}
@@ -715,99 +971,15 @@ theorem ofEnv_entity_completeness_ordinary
   (hfind_uid : Γ.ets.find? uid.ty = entry)
   (hδ' : δ' = SymEntityData.ofEntityType uid.ty entry)
   (hδ : δ = SymEntityData.interpret I δ')
-  (hsame_δ : SameEntityData uid data δ) :
+  (hsame_δ : SameEntityData uid data δ)
+  (hfind_δ : Map.find? (SymEnv.interpret I (SymEnv.ofEnv Γ)).entities uid.ty = some δ) :
   InstanceOfEntitySchemaEntry uid data Γ
 := by
   cases entry with
   | standard entry =>
-    exact ofEnv_entity_completeness_standard hwf_Γ hwf_data hwf_I hfind_uid hδ' hδ hsame_δ
+    exact ofEnv_entity_completeness_standard hwf_Γ hwf_data hwf_I hfind_uid hδ' hδ hsame_δ hfind_δ
   | enum eids =>
-    exact ofEnv_entity_completeness_enum hwf_Γ hwf_data hwf_I hfind_uid hδ' hδ hsame_δ
-
-  -- have ⟨hsame_attrs, _, _, hvalid_eid, _⟩ := hsame_δ
-  -- have ⟨_, hwf_funs⟩ := hwf_I
-  -- exists entry
-  -- simp only [hfind_uid, true_and]
-  -- and_intros
-  -- · simp only [IsValidEntityEID]
-  --   cases hentry : entry with
-  --   | standard entry => simp
-  --   | enum eids =>
-  --     simp only
-  --     simp only [
-  --       hδ, hδ', hentry,
-  --       SymEntityData.interpret, SymEntityData.ofEntityType,
-  --       SymEntityData.ofEnumEntityType, Option.map_none,
-  --       Option.some.injEq, forall_eq',
-  --     ] at hvalid_eid
-  --     exact hvalid_eid
-  -- · cases hentry : entry with
-  --   | standard entry =>
-  --     simp only [
-  --       hδ, hδ', hentry,
-  --       SymEntityData.ofEntityType,
-  --       SymEntityData.ofStandardEntityType,
-  --       SymEntityData.interpret,
-  --       UnaryFunction.interpret,
-  --       SymEntityData.ofStandardEntityType.attrsUUF,
-  --     ] at hsame_attrs
-  --     generalize huuf : ({
-  --       id := UUF.attrsId uid.ty,
-  --       arg := TermType.ofType (CedarType.entity uid.ty),
-  --       out := TermType.ofType (CedarType.record entry.attrs)
-  --     } : UUF) = uuf
-  --     have hwf_uuf : uuf.WellFormed (SymEnv.ofEnv Γ).entities
-  --     := by
-  --       and_intros
-  --       · simp only [←huuf]
-  --         apply ofType_wf hwf_Γ
-  --         constructor
-  --         left
-  --         apply Map.contains_iff_some_find?.mpr
-  --         simp [hfind_uid]
-  --       · simp only [←huuf]
-  --         apply ofType_wf hwf_Γ
-  --         apply wf_env_implies_wf_attrs (ety := uid.ty) hwf_Γ
-  --         simp [EntitySchema.attrs?, hfind_uid, hentry, EntitySchemaEntry.attrs]
-  --     have ⟨hwf_udf, hudf_arg, hudf_out⟩ := hwf_funs.1 uuf hwf_uuf
-  --     have hwf_app :
-  --       (Factory.app
-  --         (UnaryFunction.udf (I.funs uuf))
-  --         (Term.prim (TermPrim.entity uid))).WellFormed (SymEnv.ofEnv Γ).entities ∧
-  --       (Factory.app
-  --         (UnaryFunction.udf (I.funs uuf))
-  --         (Term.prim (TermPrim.entity uid))).typeOf = (UnaryFunction.udf (I.funs uuf)).outType
-  --     := by
-  --       apply wf_app
-  --       · constructor
-  --         constructor
-  --         simp only [SymEntities.isValidEntityUID]
-  --         have :
-  --           Map.find? (SymEnv.ofEnv Γ).entities uid.ty
-  --           = some (SymEntityData.ofEntityType uid.ty (.standard entry))
-  --         := by
-  --           apply ofEnv_preserves_entity rfl
-  --           simp only [hentry] at hfind_uid
-  --           exact hfind_uid
-  --         simp only [this, SymEntityData.ofEntityType, SymEntityData.ofStandardEntityType]
-  --       · simp only [UnaryFunction.argType, ←hudf_arg]
-  --         simp only [←huuf, Term.typeOf, TermPrim.typeOf, TermType.ofType]
-  --       · exact hwf_udf
-  --     simp only [huuf] at hsame_attrs
-  --     apply ofType_typeOf_pullback hwf_Γ _ _ _ _ hsame_attrs
-  --     · apply wf_env_implies_wf_attrs (ety := uid.ty) hwf_Γ
-  --       simp [EntitySchema.attrs?, hfind_uid, hentry]
-  --     · apply wf_env_implies_attrs_lifted (ety := uid.ty) hwf_Γ
-  --       simp [EntitySchema.attrs?, hfind_uid, hentry]
-  --     · exact hwf_app.1
-  --     · simp only [hwf_app.2, UnaryFunction.outType, ←hudf_out]
-  --       simp only [←huuf]
-  --       rfl
-  --   | enum eids =>
-  --     simp only [EntitySchemaEntry.attrs]
-  --     sorry
-  -- · sorry
-  -- · sorry
+    exact ofEnv_entity_completeness_enum hwf_Γ hwf_I hfind_uid hδ' hδ hsame_δ
 
 theorem ofEnv_entity_completeness_action
   {Γ : TypeEnv} {I : Interpretation} {entities : Entities}
@@ -992,7 +1164,7 @@ theorem ofEnv_entity_completeness
     have hfind_ety := (Map.in_list_iff_find?_some hwf_ets).mp hmem_ety
     have := Eq.symm hety.2
     simp only [hety.1] at this hfind_ety
-    exact ofEnv_entity_completeness_ordinary hwf_Γ hwf_data hwf_I hfind_ety this hδ' hsame_δ
+    exact ofEnv_entity_completeness_ordinary hwf_Γ hwf_data hwf_I hfind_ety this hδ' hsame_δ hfind_δ
   -- Action entity
   | inr hmem =>
     right
