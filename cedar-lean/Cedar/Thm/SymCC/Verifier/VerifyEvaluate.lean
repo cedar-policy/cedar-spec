@@ -126,6 +126,7 @@ theorem verifyEvaluate_is_complete {φ : Term → Term} {f : Spec.Result Value �
   ∃ env,
     env ∈ᵢ εnv ∧
     env.StronglyWellFormedForPolicy p ∧
+    Env.EnumCompleteFor env εnv ∧
     f (evaluate p.toExpr env.request env.entities) = false
 := by
   intro ⟨hwφ, hiφ, hφf⟩ hwε hok hsat
@@ -134,7 +135,7 @@ theorem verifyEvaluate_is_complete {φ : Term → Term} {f : Spec.Result Value �
   replace ⟨t₁, ts, hok, ha, hvc⟩ := verifyEvaluate_ok_implies hok
   subst hvc
   replace ⟨hsat, hvc⟩ := asserts_all_true hsat
-  replace ⟨I', env, hwI', heq, hwe, hsat⟩ := enforce_satisfiedBy_implies_exists_swf
+  replace ⟨I', env, hwI', heq, hwe, henum_comp, hsat⟩ := enforce_satisfiedBy_implies_exists_swf
     (swf_εnv_for_policy_iff_swf_for_polices.mp hwε) hwI ha hsat
   exists env
   rw [← swf_env_for_policy_iff_swf_for_polices] at hwe
@@ -148,6 +149,7 @@ theorem verifyEvaluate_is_complete {φ : Term → Term} {f : Spec.Result Value �
     specialize hsat p t₁ (by simp only [List.mem_cons, List.not_mem_nil, or_false]) hok
     rw [interpret_not_wbeq hwI hwt₁ hwφ hiφ, hsat] at hvc
     replace hrb := wbeq_bisimulation hwt₁ hφf hwI' hrb
+    simp only [henum_comp, true_and]
     exact same_bool_not_true_implies_false hrb hvc
 
 end Cedar.Thm

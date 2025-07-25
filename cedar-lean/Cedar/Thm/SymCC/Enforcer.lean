@@ -16,6 +16,7 @@
 
 import Cedar.SymCC.Enforcer
 import Cedar.Thm.SymCC.Enforcer.Enforce
+import Cedar.Thm.SymCC.Enforcer.Extractor
 
 /-!
 This file proves key lemmas for the strong well-formedness assumptions for
@@ -65,10 +66,12 @@ theorem enforce_satisfiedBy_implies_exists_swf {ps : Policies} {εnv : SymEnv} {
     I'.WellFormed εnv.entities ∧
     env ∼ εnv.interpret I' ∧
     env.StronglyWellFormedForPolicies ps ∧
+    Env.EnumCompleteFor env εnv ∧
     ∀ p t, p ∈ ps → compile p.toExpr εnv = .ok t → t.interpret I = t.interpret I'
 := by
   intro hsε hI hok hsat
-  have ⟨I', env, _, _, _⟩ := enforce_satisfiedBy_implies_exists_swf_extract? hsε hI hok hsat
+  have ⟨I', env, hext, _, _, _, _⟩ := enforce_satisfiedBy_implies_exists_swf_extract? hsε hI hok hsat
+  have := extract?_implies_enum_complete hext
   exists I', env
 
 end Cedar.Thm

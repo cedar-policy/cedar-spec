@@ -474,4 +474,76 @@ theorem εnv_same_on_footprints {xs : List Expr} {εnv : SymEnv} {I : Interpreta
     · intro τs hτs
       exact interpret_tags_repair_eq xs I hsε.left.right.left hδ hτs
 
+theorem sym_entities_entityUIDs_include_enums
+  {εnv : SymEnv} {uid : EntityUID}
+  {δ : SymEntityData} {eids : Set String}
+  (I : Interpretation)
+  (hfind_uid_ty : Map.find? εnv.entities uid.ty = some δ)
+  (heids : δ.members = some eids)
+  (heid : uid.eid ∈ eids) :
+  uid ∈ (SymEnv.interpret I εnv).entities.entityUIDs
+:= by
+  simp only [SymEntities.entityUIDs]
+  apply (Set.mem_mapUnion_iff_mem_exists uid).mpr
+  exists (uid.ty, SymEntityData.interpret I δ)
+  constructor
+  · simp only [SymEnv.interpret, SymEntities.interpret]
+    apply Map.in_kvs_in_mapOnValues
+    exact Map.find?_mem_toList hfind_uid_ty
+  · simp only [SymEntityData.entityUIDs, SymEntityData.interpret]
+    apply (Set.mem_union_iff_mem_or _ _ uid).mpr; left
+    apply (Set.mem_union_iff_mem_or _ _ uid).mpr; left
+    apply (Set.mem_union_iff_mem_or _ _ uid).mpr; left
+    simp only [SymEntityData.entityUIDs.mems, heids]
+    apply (Set.make_mem _ _).mp
+    apply List.mem_map.mpr
+    exists uid.eid
+
+/-- `SymEnv.extract?` always produces a concrete `Env` that satisfies `Env.EnumCompleteFor`. -/
+theorem extract?_implies_enum_complete
+  {env : Env} {εnv : SymEnv} {I : Interpretation} {exprs : List Expr}
+  (hext : env = εnv.extract? exprs I) :
+  Env.EnumCompleteFor env εnv
+:= by
+  simp only [
+    SymEnv.extract?, SymEnv.concretize?,
+    bind, Option.bind,
+  ] at hext
+  split at hext
+  contradiction
+  rename_i req hreq
+  simp only at hext
+  split at hext
+  contradiction
+  rename_i entities hents
+  simp only [Option.some.injEq] at hext
+  simp only [hext, Env.EnumCompleteFor]
+  intros uid δ eids hfind_uid_ty heids heid
+  have huid := sym_entities_entityUIDs_include_enums (Interpretation.repair exprs εnv I) hfind_uid_ty heids heid
+  replace ⟨eds, heds, hents⟩ := concretize?_εs_some_eq hents
+  simp only [←hents]
+  have ⟨⟨uid', data⟩, hmem_uid'_data, huid'⟩
+  := List.mapM_some_implies_all_some heds uid
+    ((Set.mem_union_iff_mem_or _ _ uid).mpr (Or.intro_right _ huid))
+  have ⟨δ, d, hfind_uid_ty, hd, heq_uid'⟩ := concretize?_entityData?_some_eq huid'
+  simp only [Prod.mk.injEq] at heq_uid'
+  simp only [←heq_uid'.1] at hmem_uid'_data huid'
+  exists data
+  apply Map.find?_implies_make_find?
+  apply List.find?_unique_entry
+  · intros x hmem heq_fst
+    have ⟨uid', data'⟩ := x
+    simp only [beq_iff_eq] at heq_fst
+    simp only [heq_fst]
+    have ⟨uid'', hmem_uid'', huid''⟩ := List.mapM_some_implies_all_from_some heds (uid', data') hmem
+    have ⟨_, d', hfind_uid_ty', hd', heq_uid''⟩ := concretize?_entityData?_some_eq huid''
+    simp only [Prod.mk.injEq] at heq_uid''
+    simp only [heq_uid''.1, heq_fst] at hd' hfind_uid_ty'
+    simp only [hfind_uid_ty, Option.some.injEq] at hfind_uid_ty'
+    simp only [←hfind_uid_ty'] at hd'
+    simp only [hd', Option.some.injEq] at hd
+    simp only [←heq_uid''.2, hd, heq_uid'.2]
+  · exact hmem_uid'_data
+  · simp
+
 end Cedar.Thm
