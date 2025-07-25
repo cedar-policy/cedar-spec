@@ -138,10 +138,46 @@ theorem residual_well_typed_is_sound_unary_app
 {entities : Entities}
 {ty : CedarType}
 (h₁ : UnaryResidualWellTyped op₁ x₁ ty)
-(hᵢ₁ : ∀ {v : Value}, x₁.evaluate request entities = Except.ok v → InstanceOfType env v x₁.typeOf)
+(_ : ∀ {v : Value}, x₁.evaluate request entities = Except.ok v → InstanceOfType env v x₁.typeOf)
 (h₂ : (Residual.unaryApp op₁ x₁ ty).evaluate request entities = Except.ok v) :
 InstanceOfType env v (Residual.unaryApp op₁ x₁ ty).typeOf
 := by
-  sorry
+  simp only [Residual.typeOf]
+  simp only [Residual.evaluate] at h₂
+  generalize hᵢ₁' : x₁.evaluate request entities = res₁
+  cases res₁
+  case error => simp only [Result.as, hᵢ₁', Except.bind_err, reduceCtorEq] at h₂
+  case ok v₁ =>
+    simp only [hᵢ₁', Cedar.Spec.apply₁, Except.bind_ok] at h₂
+    split at h₂ <;> cases h₁
+    · -- not case
+      simp only [Except.ok.injEq] at h₂
+      simp only [←h₂, bool_is_instance_of_anyBool]
+    · -- neg case
+      simp only [intOrErr] at h₂
+      split at h₂
+      · simp only [Except.ok.injEq] at h₂
+        rw [←h₂]
+        exact InstanceOfType.instance_of_int
+      · cases h₂
+    · -- isEmpty case
+      simp only [Except.ok.injEq] at h₂
+      simp only [←h₂, bool_is_instance_of_anyBool]
+    · -- like case
+      simp only [Except.ok.injEq] at h₂
+      simp only [←h₂, bool_is_instance_of_anyBool]
+    · -- is case
+      simp only [Except.ok.injEq] at h₂
+      simp only [←h₂, bool_is_instance_of_anyBool]
+    · -- error case (when apply₁ fails)
+      cases h₂
+    · -- error case (when apply₁ fails)
+      cases h₂
+    · -- error case (when apply₁ fails)
+      cases h₂
+    · -- error case (when apply₁ fails)
+      cases h₂
+    · -- error case (when apply₁ fails)
+      cases h₂
 
 end Cedar.Thm

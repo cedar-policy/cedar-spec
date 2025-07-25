@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Thm.Validation.WellTyped.Soundness
+import Cedar.Thm.Validation.WellTyped.ResidualSoundness
 import Cedar.Thm.Validation.WellTyped.Typechecking
 import Cedar.Thm.Validation.WellTyped.ResidualDefinition
 import Cedar.TPE.Residual
@@ -84,10 +85,7 @@ theorem residual_well_typed_is_sound {r : Residual} {v : Value} {env : TypeEnv} 
   induction h₂ generalizing v
   case val v ty h₄ =>
     simp only [Residual.typeOf]
-    rename_i v2
-    simp [Residual.evaluate] at h₃
-    rewrite [h₃] at h₄
-    exact h₄
+    exact residual_well_typed_is_sound_val h₄ h₃
   case var var ty h₄ =>
     simp only [Residual.typeOf]
     sorry
@@ -105,8 +103,7 @@ theorem residual_well_typed_is_sound {r : Residual} {v : Value} {env : TypeEnv} 
     sorry
   case unaryApp op₁ x₁ ty h₁ h₂ hᵢ₁ =>
     simp only [Residual.typeOf]
-    -- The proof would need to handle unary operations
-    sorry
+    exact residual_well_typed_is_sound_unary_app h₂ hᵢ₁ h₃
   case binaryApp op₂ x₁ x₂ ty h₁ h₂ h₃ hᵢ₁ hᵢ₂ =>
     simp only [Residual.typeOf]
     -- The proof would need to handle binary operations
