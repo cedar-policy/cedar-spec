@@ -34,7 +34,7 @@ open Cedar.Data
 /--
 Inverse of `entity_uid_wf_implies_sym_entities_is_valid_entity_uid`
 -/
-theorem sym_entities_is_valid_entity_uid_implies_entity_uid_wf
+private theorem sym_entities_is_valid_entity_uid_implies_entity_uid_wf
   {Γ : TypeEnv} {uid : EntityUID}
   (hwf : Γ.WellFormed)
   (huid : (SymEnv.ofEnv Γ).entities.isValidEntityUID uid) :
@@ -93,7 +93,7 @@ theorem sym_entities_is_valid_entity_uid_implies_entity_uid_wf
   · contradiction
 
 /-- `TermPrim` case of `ofType_typeOf_pullback`. -/
-theorem ofType_typeOf_pullback_prim
+private theorem ofType_typeOf_pullback_prim
   {Γ : TypeEnv}
   {p : TermPrim} {ty : CedarType} {v : Value}
   (hwf_Γ : Γ.WellFormed)
@@ -165,7 +165,7 @@ theorem ofType_typeOf_pullback_prim
       constructor
       simp only [InstanceOfExtType]
 
-theorem value?_some_implies_typeOf_not_option
+private theorem value?_some_implies_typeOf_not_option
   {t : Term} {v : Value} {ty : TermType}
   (hsome : t.value? = .some v)
   (hopt : t.typeOf = .option ty) :
@@ -209,7 +209,7 @@ TermType <----- CedarType
  Term ---------> Value
         value?
 -/
-theorem ofType_typeOf_pullback
+private theorem ofType_typeOf_pullback
   {Γ : TypeEnv}
   {t : Term} {ty : CedarType} {v : Value}
   (hwf_Γ : Γ.WellFormed)
@@ -499,7 +499,7 @@ decreasing_by
         have := List.sizeOf_lt_of_mem hmem_attr_t'
         omega
 
-theorem ofEnv_request_completeness
+private theorem ofEnv_request_completeness
   {Γ : TypeEnv} {env : Env} {I : Interpretation}
   (hwf_Γ : Γ.WellFormed)
   (hwf_I : I.WellFormed (SymEnv.ofEnv Γ).entities)
@@ -570,7 +570,7 @@ theorem ofEnv_request_completeness
     have hlifted_ctx := wf_env_implies_ctx_lifted hwf_Γ
     apply ofType_typeOf_pullback hwf_Γ hwt_ctx hlifted_ctx hwf_I_ctx hwt_I_ctx hsame_I_ctx
 
-theorem ets_find_some_standard_entry_implies_valid_uid
+private theorem ets_find_some_standard_entry_implies_valid_uid
   {Γ : TypeEnv} {uid : EntityUID} {entry : StandardSchemaEntry}
   (hfind_uid : Γ.ets.find? uid.ty = .some (.standard entry)) :
   (SymEnv.ofEnv Γ).entities.isValidEntityUID uid
@@ -584,7 +584,7 @@ theorem ets_find_some_standard_entry_implies_valid_uid
     exact hfind_uid
   simp only [this, SymEntityData.ofEntityType, SymEntityData.ofStandardEntityType]
 
-theorem ets_find_some_standard_entry_implies_valid_uid_ty
+private theorem ets_find_some_standard_entry_implies_valid_uid_ty
   {Γ : TypeEnv} {uid : EntityUID} {entry : StandardSchemaEntry}
   (hfind_uid : Γ.ets.find? uid.ty = .some (.standard entry)) :
   (SymEnv.ofEnv Γ).entities.isValidEntityType uid.ty
@@ -596,7 +596,7 @@ theorem ets_find_some_standard_entry_implies_valid_uid_ty
     simp only [SymEntities.isValidEntityType, Map.contains, heq, Option.isSome]
   · contradiction
 
-theorem ofEnv_entity_completeness_standard_inst_tags
+private theorem ofEnv_entity_completeness_standard_inst_tags
   {Γ : TypeEnv} {I : Interpretation} {entities : Entities}
   {uid : EntityUID} {entry : StandardSchemaEntry}
   {δ δ' : SymEntityData} {data : EntityData}
@@ -794,7 +794,7 @@ theorem ofEnv_entity_completeness_standard_inst_tags
         SymEntityData.ofStandardEntityType.symTags,
       ]
 
-theorem ofEnv_entity_completeness_standard
+private theorem ofEnv_entity_completeness_standard
   {Γ : TypeEnv} {I : Interpretation} {entities : Entities}
   {uid : EntityUID} {entry : StandardSchemaEntry}
   {δ δ' : SymEntityData} {data : EntityData}
@@ -892,7 +892,7 @@ theorem ofEnv_entity_completeness_standard
   · exact ofEnv_entity_completeness_standard_inst_tags
       hwf_Γ hwf_data hwf_I hfind_uid hδ' hδ hsame_δ hfind_δ
 
-theorem ofEnv_entity_completeness_enum
+private theorem ofEnv_entity_completeness_enum
   {Γ : TypeEnv} {I : Interpretation}
   {uid : EntityUID} {eids : Set String}
   {δ δ' : SymEntityData} {data : EntityData}
@@ -977,7 +977,7 @@ theorem ofEnv_entity_completeness_enum
     simp only [InstanceOfEntityTags, EntitySchemaEntry.tags?]
     exact hsame_tags
 
-theorem ofEnv_entity_completeness_ordinary
+private theorem ofEnv_entity_completeness_ordinary
   {Γ : TypeEnv} {I : Interpretation} {entities : Entities}
   {uid : EntityUID} {entry : EntitySchemaEntry}
   {δ δ' : SymEntityData} {data : EntityData}
@@ -997,7 +997,7 @@ theorem ofEnv_entity_completeness_ordinary
   | enum eids =>
     exact ofEnv_entity_completeness_enum hwf_Γ hwf_I hfind_uid hδ' hδ hsame_δ
 
-theorem ofEnv_entity_completeness_action
+private theorem ofEnv_entity_completeness_action
   {Γ : TypeEnv} {I : Interpretation} {entities : Entities}
   {uid : EntityUID} {entry : ActionSchemaEntry}
   {δ δ' : SymEntityData} {data : EntityData}
@@ -1149,7 +1149,7 @@ theorem ofEnv_entity_completeness_action
       have := (Set.in_list_iff_in_set _ _).mpr hmem_entry_anc
       simp [Set.toList, this, true_and, SymEntityData.ofActionType.termOfType?]
 
-theorem ofEnv_entity_completeness
+private theorem ofEnv_entity_completeness
   {Γ : TypeEnv} {I : Interpretation} {entities : Entities}
   {uid : EntityUID} {δ : SymEntityData} {data : EntityData}
   (hwf_Γ : Γ.WellFormed)
@@ -1208,7 +1208,7 @@ theorem ofEnv_entity_completeness
     have hfind_uid := (Map.in_list_iff_find?_some hwf_acts).mp hmem_uid'
     exact ofEnv_entity_completeness_action hwf_Γ hwf_data hfind_uid (Eq.symm heq_δ') hδ' hsame_δ
 
-theorem enum_complete_implies_has_all_actions
+private theorem enum_complete_implies_has_all_actions
   {Γ : TypeEnv} {env : Env}
   (hwf_Γ : Γ.WellFormed)
   (henum_comp : Env.EnumCompleteFor env (SymEnv.ofEnv Γ)) :
@@ -1270,7 +1270,7 @@ theorem enum_complete_implies_has_all_actions
     simp only [↓reduceIte, and_true]
     exact Map.find?_mem_toList hfind_uid
 
-theorem ofEnv_entities_completeness
+private theorem ofEnv_entities_completeness
   {Γ : TypeEnv} {env : Env} {I : Interpretation}
   (hwf_Γ : Γ.WellFormed)
   (hwf_env : env.StronglyWellFormed)
