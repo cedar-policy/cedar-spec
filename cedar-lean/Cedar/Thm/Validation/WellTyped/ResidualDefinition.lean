@@ -255,7 +255,7 @@ inductive Residual.WellTyped (env : TypeEnv) : Residual → Prop
 | record {rty : RecordType} {m : List (Attr × Residual)}
   (h₁ : ∀ k v, (k,v) ∈ m → WellTyped env v)
   (h₂ : rty = Map.make (m.map (λ (a, r) => (a, .required r.typeOf)))) :
-  WellTyped env (.record m (.record ty))
+  WellTyped env (.record m (.record rty))
 | call {xfn : ExtFun} {args : List Residual} {ty : CedarType}
   (h₁ : ∀ x, x ∈ args → WellTyped env x)
   (h₂ : ExtResidualWellTyped xfn args ty) :

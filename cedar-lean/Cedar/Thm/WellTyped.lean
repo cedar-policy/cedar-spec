@@ -106,13 +106,11 @@ theorem residual_well_typed_is_sound {r : Residual} {v : Value} {env : TypeEnv} 
   case getAttr_record rty x₁ attr ty h₄ h₅ h₆ hᵢ =>
     exact residual_well_typed_is_sound_get_attr_record hᵢ h₅ h₆ h₃
   case set ls ty h₄ h₅ h₆ h₇ =>
-    exact residual_well_typed_is_sound_set h₇ h₆ h₃
-  case record rty m h₁ h₂ h₃ hᵢ =>
-    -- The proof would need to handle record evaluation
-    sorry
-  case call xfn args ty h₁ h₂ hᵢ =>
-    -- The proof would need to handle function call evaluation
-    sorry
+    exact residual_well_typed_is_sound_set h₇ h₅ h₃
+  case record rty m hᵢ₁ h₄ hᵢ =>
+    exact residual_well_typed_is_sound_record hᵢ h₄ h₃
+  case call xfn args ty _ h₄ _ =>
+    exact residual_well_typed_is_sound_call h₄ h₃
   case error ty =>
     -- Error case should not produce a successful result
     simp only [Residual.evaluate] at h₃
