@@ -251,6 +251,7 @@ theorem verifyAlwaysDenies_is_complete {ps₁ : Policies} {εnv : SymEnv} {asser
   ∃ env,
     env ∈ᵢ εnv ∧
     env.StronglyWellFormedForPolicies ps₁ ∧
+    Env.EnumCompleteFor env εnv ∧
     ¬ denies (Spec.isAuthorized env.request env.entities ps₁)
 := by
   intro hwε₁ hvc hsat
@@ -299,6 +300,7 @@ theorem verifyAlwaysAllows_is_complete {ps₁ : Policies} {εnv : SymEnv} {asser
   ∃ env,
     env ∈ᵢ εnv ∧
     env.StronglyWellFormedForPolicies ps₁ ∧
+    Env.EnumCompleteFor env εnv ∧
     ¬ allows (Spec.isAuthorized env.request env.entities ps₁)
 := by
   intro hwε₁ hvc hsat
