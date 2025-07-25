@@ -98,8 +98,7 @@ theorem residual_well_typed_is_sound {r : Residual} {v : Value} {env : TypeEnv} 
   case binaryApp op₂ x₁ x₂ ty _ _ h₄ hᵢ₁ hᵢ₂ =>
     exact residual_well_typed_is_sound_binary_app h₁ h₄ hᵢ₁ hᵢ₂ h₃
   case hasAttr_entity ety x₁ attr h₁ h₂ h₃ =>
-    -- The proof would need to handle hasAttr evaluation
-    sorry
+    exact residual_well_typed_is_sound_has_attr_entity h₃
   case hasAttr_record rty x₁ attr h₁ h₂ h₃ =>
     -- The proof would need to handle hasAttr evaluation
     sorry
