@@ -49,11 +49,11 @@ theorem verifyNeverErrors_is_ok_and_sound {p p' : Policy} {Γ : TypeEnv} :
   wellTypedPolicy p Γ = .some p' →
   ∃ asserts,
     verifyNeverErrors p' (SymEnv.ofEnv Γ) = .ok asserts ∧
-    SymEnv.ofEnv Γ ⊭ asserts →
+    (SymEnv.ofEnv Γ ⊭ asserts →
       ∀ env : Env,
         InstanceOfWellFormedEnvironment env.request env.entities Γ →
         env.StronglyWellFormedForPolicy p' →
-        (evaluate p.toExpr env.request env.entities).isOk
+        (evaluate p.toExpr env.request env.entities).isOk)
 := by
   intros hwf hwt
   have hwf_εnv := ofEnv_swf_for_policy hwf hwt
@@ -72,11 +72,11 @@ theorem verifyNeverErrors_is_ok_and_complete {p p' : Policy} {Γ : TypeEnv} :
   wellTypedPolicy p Γ = .some p' →
   ∃ asserts,
     verifyNeverErrors p' (SymEnv.ofEnv Γ) = .ok asserts ∧
-    SymEnv.ofEnv Γ ⊧ asserts →
+    (SymEnv.ofEnv Γ ⊧ asserts →
       ∃ env : Env,
         InstanceOfWellFormedEnvironment env.request env.entities Γ ∧
         env.StronglyWellFormedForPolicy p' ∧
-        ¬ (evaluate p.toExpr env.request env.entities).isOk
+        ¬ (evaluate p.toExpr env.request env.entities).isOk)
 := by
   intros hwf hwt
   have hwf_εnv := ofEnv_swf_for_policy hwf hwt
@@ -97,14 +97,14 @@ theorem verifyEquivalent_is_ok_and_sound {ps₁ ps₁' ps₂ ps₂' : Policies} 
   wellTypedPolicies ps₂ Γ = .some ps₂' →
   ∃ asserts,
     verifyEquivalent ps₁' ps₂' (SymEnv.ofEnv Γ) = .ok asserts ∧
-    SymEnv.ofEnv Γ ⊭ asserts →
-    ∀ env : Env,
-      InstanceOfWellFormedEnvironment env.request env.entities Γ →
-      env.StronglyWellFormedForPolicies ps₁' →
-      env.StronglyWellFormedForPolicies ps₂' →
-      bothAllowOrBothDeny
-        (Spec.isAuthorized env.request env.entities ps₁)
-        (Spec.isAuthorized env.request env.entities ps₂)
+    (SymEnv.ofEnv Γ ⊭ asserts →
+      ∀ env : Env,
+        InstanceOfWellFormedEnvironment env.request env.entities Γ →
+        env.StronglyWellFormedForPolicies ps₁' →
+        env.StronglyWellFormedForPolicies ps₂' →
+        bothAllowOrBothDeny
+          (Spec.isAuthorized env.request env.entities ps₁)
+          (Spec.isAuthorized env.request env.entities ps₂))
 := by
   intros hwf hwt₁ hwt₂
   have hwf_εnv₁ := ofEnv_swf_for_policies hwf hwt₁
@@ -127,14 +127,14 @@ theorem verifyEquivalent_is_ok_and_complete {ps₁ ps₁' ps₂ ps₂' : Policie
   wellTypedPolicies ps₂ Γ = .some ps₂' →
   ∃ asserts,
     verifyEquivalent ps₁' ps₂' (SymEnv.ofEnv Γ) = .ok asserts ∧
-    SymEnv.ofEnv Γ ⊧ asserts →
-    ∃ env : Env,
-      InstanceOfWellFormedEnvironment env.request env.entities Γ ∧
-      env.StronglyWellFormedForPolicies ps₁' ∧
-      env.StronglyWellFormedForPolicies ps₂' ∧
-      ¬ bothAllowOrBothDeny
-        (Spec.isAuthorized env.request env.entities ps₁)
-        (Spec.isAuthorized env.request env.entities ps₂)
+    (SymEnv.ofEnv Γ ⊧ asserts →
+      ∃ env : Env,
+        InstanceOfWellFormedEnvironment env.request env.entities Γ ∧
+        env.StronglyWellFormedForPolicies ps₁' ∧
+        env.StronglyWellFormedForPolicies ps₂' ∧
+        ¬ bothAllowOrBothDeny
+          (Spec.isAuthorized env.request env.entities ps₁)
+          (Spec.isAuthorized env.request env.entities ps₂))
 := by
   intros hwf hwt₁ hwt₂
   have hwf_εnv₁ := ofEnv_swf_for_policies hwf hwt₁
@@ -158,14 +158,14 @@ theorem verifyDisjoint_is_ok_and_sound {ps₁ ps₁' ps₂ ps₂' : Policies} {�
   wellTypedPolicies ps₂ Γ = .some ps₂' →
   ∃ asserts,
     verifyDisjoint ps₁' ps₂' (SymEnv.ofEnv Γ) = .ok asserts ∧
-    SymEnv.ofEnv Γ ⊭ asserts →
-    ∀ env : Env,
-      InstanceOfWellFormedEnvironment env.request env.entities Γ →
-      env.StronglyWellFormedForPolicies ps₁' →
-      env.StronglyWellFormedForPolicies ps₂' →
-      atLeastOneDenies
-        (Spec.isAuthorized env.request env.entities ps₁)
-        (Spec.isAuthorized env.request env.entities ps₂)
+    (SymEnv.ofEnv Γ ⊭ asserts →
+      ∀ env : Env,
+        InstanceOfWellFormedEnvironment env.request env.entities Γ →
+        env.StronglyWellFormedForPolicies ps₁' →
+        env.StronglyWellFormedForPolicies ps₂' →
+        atLeastOneDenies
+          (Spec.isAuthorized env.request env.entities ps₁)
+          (Spec.isAuthorized env.request env.entities ps₂))
 := by
   intros hwf hwt₁ hwt₂
   have hwf_εnv₁ := ofEnv_swf_for_policies hwf hwt₁
@@ -188,14 +188,14 @@ theorem verifyDisjoint_is_ok_and_complete {ps₁ ps₁' ps₂ ps₂' : Policies}
   wellTypedPolicies ps₂ Γ = .some ps₂' →
   ∃ asserts,
     verifyDisjoint ps₁' ps₂' (SymEnv.ofEnv Γ) = .ok asserts ∧
-    SymEnv.ofEnv Γ ⊧ asserts →
-    ∃ env : Env,
-      InstanceOfWellFormedEnvironment env.request env.entities Γ ∧
-      env.StronglyWellFormedForPolicies ps₁' ∧
-      env.StronglyWellFormedForPolicies ps₂' ∧
-      ¬ atLeastOneDenies
-        (Spec.isAuthorized env.request env.entities ps₁)
-        (Spec.isAuthorized env.request env.entities ps₂)
+    (SymEnv.ofEnv Γ ⊧ asserts →
+      ∃ env : Env,
+        InstanceOfWellFormedEnvironment env.request env.entities Γ ∧
+        env.StronglyWellFormedForPolicies ps₁' ∧
+        env.StronglyWellFormedForPolicies ps₂' ∧
+        ¬ atLeastOneDenies
+          (Spec.isAuthorized env.request env.entities ps₁)
+          (Spec.isAuthorized env.request env.entities ps₂))
 := by
   intros hwf hwt₁ hwt₂
   have hwf_εnv₁ := ofEnv_swf_for_policies hwf hwt₁
@@ -219,14 +219,14 @@ theorem verifyImplies_is_ok_and_sound {ps₁ ps₁' ps₂ ps₂' : Policies} {Γ
   wellTypedPolicies ps₂ Γ = .some ps₂' →
   ∃ asserts,
     verifyImplies ps₁' ps₂' (SymEnv.ofEnv Γ) = .ok asserts ∧
-    SymEnv.ofEnv Γ ⊭ asserts →
-    ∀ env : Env,
-      InstanceOfWellFormedEnvironment env.request env.entities Γ →
-      env.StronglyWellFormedForPolicies ps₁' →
-      env.StronglyWellFormedForPolicies ps₂' →
-      ifFirstAllowsSoDoesSecond
-        (Spec.isAuthorized env.request env.entities ps₁)
-        (Spec.isAuthorized env.request env.entities ps₂)
+    (SymEnv.ofEnv Γ ⊭ asserts →
+      ∀ env : Env,
+        InstanceOfWellFormedEnvironment env.request env.entities Γ →
+        env.StronglyWellFormedForPolicies ps₁' →
+        env.StronglyWellFormedForPolicies ps₂' →
+        ifFirstAllowsSoDoesSecond
+          (Spec.isAuthorized env.request env.entities ps₁)
+          (Spec.isAuthorized env.request env.entities ps₂))
 := by
   intros hwf hwt₁ hwt₂
   have hwf_εnv₁ := ofEnv_swf_for_policies hwf hwt₁
@@ -249,14 +249,14 @@ theorem verifyImplies_is_ok_and_complete {ps₁ ps₁' ps₂ ps₂' : Policies} 
   wellTypedPolicies ps₂ Γ = .some ps₂' →
   ∃ asserts,
     verifyImplies ps₁' ps₂' (SymEnv.ofEnv Γ) = .ok asserts ∧
-    SymEnv.ofEnv Γ ⊧ asserts →
-    ∃ env : Env,
-      InstanceOfWellFormedEnvironment env.request env.entities Γ ∧
-      env.StronglyWellFormedForPolicies ps₁' ∧
-      env.StronglyWellFormedForPolicies ps₂' ∧
-      ¬ ifFirstAllowsSoDoesSecond
-        (Spec.isAuthorized env.request env.entities ps₁)
-        (Spec.isAuthorized env.request env.entities ps₂)
+    (SymEnv.ofEnv Γ ⊧ asserts →
+      ∃ env : Env,
+        InstanceOfWellFormedEnvironment env.request env.entities Γ ∧
+        env.StronglyWellFormedForPolicies ps₁' ∧
+        env.StronglyWellFormedForPolicies ps₂' ∧
+        ¬ ifFirstAllowsSoDoesSecond
+          (Spec.isAuthorized env.request env.entities ps₁)
+          (Spec.isAuthorized env.request env.entities ps₂))
 := by
   intros hwf hwt₁ hwt₂
   have hwf_εnv₁ := ofEnv_swf_for_policies hwf hwt₁
@@ -279,11 +279,11 @@ theorem verifyAlwaysDenies_is_ok_and_sound {ps₁ ps₁' : Policies} {Γ : TypeE
   wellTypedPolicies ps₁ Γ = .some ps₁' →
   ∃ asserts,
     verifyAlwaysDenies ps₁' (SymEnv.ofEnv Γ) = .ok asserts ∧
-    SymEnv.ofEnv Γ ⊭ asserts →
-    ∀ env : Env,
-      InstanceOfWellFormedEnvironment env.request env.entities Γ →
-      env.StronglyWellFormedForPolicies ps₁' →
-      denies (Spec.isAuthorized env.request env.entities ps₁)
+    (SymEnv.ofEnv Γ ⊭ asserts →
+      ∀ env : Env,
+        InstanceOfWellFormedEnvironment env.request env.entities Γ →
+        env.StronglyWellFormedForPolicies ps₁' →
+        denies (Spec.isAuthorized env.request env.entities ps₁))
 := by
   intros hwf hwt₁
   have hwf_εnv₁ := ofEnv_swf_for_policies hwf hwt₁
@@ -303,11 +303,11 @@ theorem verifyAlwaysDenies_is_ok_and_complete {ps₁ ps₁' : Policies} {Γ : Ty
   wellTypedPolicies ps₁ Γ = .some ps₁' →
   ∃ asserts,
     verifyAlwaysDenies ps₁' (SymEnv.ofEnv Γ) = .ok asserts ∧
-    SymEnv.ofEnv Γ ⊧ asserts →
-    ∃ env : Env,
-      InstanceOfWellFormedEnvironment env.request env.entities Γ ∧
-      env.StronglyWellFormedForPolicies ps₁' ∧
-      ¬ denies (Spec.isAuthorized env.request env.entities ps₁)
+    (SymEnv.ofEnv Γ ⊧ asserts →
+      ∃ env : Env,
+        InstanceOfWellFormedEnvironment env.request env.entities Γ ∧
+        env.StronglyWellFormedForPolicies ps₁' ∧
+        ¬ denies (Spec.isAuthorized env.request env.entities ps₁))
 := by
   intros hwf hwt₁
   have hwf_εnv₁ := ofEnv_swf_for_policies hwf hwt₁
@@ -328,11 +328,11 @@ theorem verifyAlwaysAllows_is_ok_and_sound {ps₁ ps₁' : Policies} {Γ : TypeE
   wellTypedPolicies ps₁ Γ = .some ps₁' →
   ∃ asserts,
     verifyAlwaysAllows ps₁' (SymEnv.ofEnv Γ) = .ok asserts ∧
-    SymEnv.ofEnv Γ ⊭ asserts →
-    ∀ env : Env,
-      InstanceOfWellFormedEnvironment env.request env.entities Γ →
-      env.StronglyWellFormedForPolicies ps₁' →
-      allows (Spec.isAuthorized env.request env.entities ps₁)
+    (SymEnv.ofEnv Γ ⊭ asserts →
+      ∀ env : Env,
+        InstanceOfWellFormedEnvironment env.request env.entities Γ →
+        env.StronglyWellFormedForPolicies ps₁' →
+        allows (Spec.isAuthorized env.request env.entities ps₁))
 := by
   intros hwf hwt₁
   have hwf_εnv₁ := ofEnv_swf_for_policies hwf hwt₁
@@ -352,11 +352,11 @@ theorem verifyAlwaysAllows_is_ok_and_complete {ps₁ ps₁' : Policies} {Γ : Ty
   wellTypedPolicies ps₁ Γ = .some ps₁' →
   ∃ asserts,
     verifyAlwaysAllows ps₁' (SymEnv.ofEnv Γ) = .ok asserts ∧
-    SymEnv.ofEnv Γ ⊧ asserts →
-    ∃ env : Env,
-      InstanceOfWellFormedEnvironment env.request env.entities Γ ∧
-      env.StronglyWellFormedForPolicies ps₁' ∧
-      ¬ allows (Spec.isAuthorized env.request env.entities ps₁)
+    (SymEnv.ofEnv Γ ⊧ asserts →
+      ∃ env : Env,
+        InstanceOfWellFormedEnvironment env.request env.entities Γ ∧
+        env.StronglyWellFormedForPolicies ps₁' ∧
+        ¬ allows (Spec.isAuthorized env.request env.entities ps₁))
 := by
   intros hwf hwt₁
   have hwf_εnv₁ := ofEnv_swf_for_policies hwf hwt₁
