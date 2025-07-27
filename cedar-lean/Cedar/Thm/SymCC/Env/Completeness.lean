@@ -239,7 +239,7 @@ private theorem ofType_typeOf_pullback
     any_goals contradiction
     rename_i ty_ts
     injection heq_ty with heq_ty
-    cases hlift_ty with | set_wf hlift_ty_ts =>
+    cases hlift_ty with | set_lifted hlift_ty_ts =>
     cases hwf_ty with | set_wf hwf_ty_ts =>
     cases hwf_t with | set_wf hwf_ts heq_ty_ts =>
     simp only [←hval]
@@ -265,7 +265,7 @@ private theorem ofType_typeOf_pullback
     any_goals contradiction
     simp only [TermType.record.injEq, Map.mk.injEq] at heq_ty
     rename_i ty_rec
-    cases hlift_ty with | record_wf hlift_ty_rec =>
+    cases hlift_ty with | record_lifted hlift_ty_rec =>
     cases hwf_ty with | record_wf hwf_ty_rec_map hwf_ty_rec =>
     cases hwf_t with | record_wf hwf_rec heq_ty_rec =>
     simp only [←hval]

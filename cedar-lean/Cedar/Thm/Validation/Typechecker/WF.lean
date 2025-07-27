@@ -73,10 +73,10 @@ end
 
 mutual
 inductive QualifiedType.IsLifted : Qualified CedarType → Prop where
-  | optional_wf {ty : CedarType}
+  | optional_lifted {ty : CedarType}
     (h : CedarType.IsLifted ty) :
     QualifiedType.IsLifted (.optional ty)
-  | required_wf {ty : CedarType}
+  | required_lifted {ty : CedarType}
     (h : CedarType.IsLifted ty) :
     QualifiedType.IsLifted (.required ty)
 
@@ -84,17 +84,17 @@ inductive QualifiedType.IsLifted : Qualified CedarType → Prop where
 Defines when a `CedarType` does not have any singleton Bool types.
 -/
 inductive CedarType.IsLifted : CedarType → Prop where
-  | bool_wf : CedarType.IsLifted (.bool .anyBool)
-  | int_wf : CedarType.IsLifted .int
-  | string_wf : CedarType.IsLifted .string
-  | entity_wf {ety : EntityType} : CedarType.IsLifted (.entity ety)
-  | set_wf {ty : CedarType}
+  | bool_lifted : CedarType.IsLifted (.bool .anyBool)
+  | int_lifted : CedarType.IsLifted .int
+  | string_lifted : CedarType.IsLifted .string
+  | entity_lifted {ety : EntityType} : CedarType.IsLifted (.entity ety)
+  | set_lifted {ty : CedarType}
     (h : CedarType.IsLifted ty) :
     CedarType.IsLifted (.set ty)
-  | record_wf {rty : RecordType}
+  | record_lifted {rty : RecordType}
     (h₂ : ∀ attr qty, (attr, qty) ∈ rty.toList → QualifiedType.IsLifted qty) :
     CedarType.IsLifted (.record rty)
-  | ext_wf {xty : ExtType} : CedarType.IsLifted (.ext xty)
+  | ext_lifted {xty : ExtType} : CedarType.IsLifted (.ext xty)
 end
 
 def StandardSchemaEntry.WellFormed (env : TypeEnv) (entry : StandardSchemaEntry) : Prop :=
