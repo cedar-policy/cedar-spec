@@ -36,7 +36,7 @@ fuzz_target!(|input: String| {
             // attribute `__entity`, `__expr`, or `__extn`
             return;
         }
-        _ => panic!("Should be able to serialize entities to JSON"),
+        Err(e) => panic!("Should be able to serialize entities to JSON: {e}"),
     };
     let rountripped =
         Entities::from_json_value(json, None).expect("Should parse serialized entities JSON");
