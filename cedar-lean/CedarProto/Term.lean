@@ -251,7 +251,7 @@ namespace Pattern
   def parseField (t : Tag) : BParsec (MergeFn Pattern) := do
     match t.fieldNum with
     | 1 =>
-      let x : Proto.Packed PatElem ← Field.guardedParse t
+      let x : Proto.Repeated PatElem ← Field.guardedParse t
       pureMergeFn (merge · x.toList)
     | _ => t.wireType.skip ; pure ignore
 
@@ -622,6 +622,7 @@ namespace TermPrim
     | _, _ => t₂
 
   def parseField (t : Tag) : BParsec (MergeFn TermPrim) := do
+    dbg_trace s!"PRIM: {repr t}"
     match t.fieldNum with
     | 1 =>
       let x : Bool ← Field.guardedParse t
@@ -740,7 +741,7 @@ mutual
     have : Message RecordField := { parseField := RecordField.parseField, merge := RecordField.merge }
     match t.fieldNum with
     | 1 =>
-      let x : Proto.Packed RecordField ← Field.guardedParse t
+      let x : Proto.Repeated RecordField ← Field.guardedParse t
       pureMergeFn (Record.merge · (Record.mk x.toList))
     | _ => t.wireType.skip ; pure ignore
 
@@ -748,12 +749,13 @@ mutual
     have : Message Term := { parseField := Term.parseField, merge := Term.merge }
     match t.fieldNum with
     | 1 =>
-      let x : Packed Term ← Field.guardedParse t
+      let x : Repeated Term ← Field.guardedParse t
       pureMergeFn (· ++ x.toList)
     | _ => t.wireType.skip ; pure ignore
 
   partial def Asserts.parseField (t : Tag) : BParsec (MergeFn Asserts) := do
     have : Message (List Term) := { parseField := Terms.parseField, merge := (· ++ ·)}
+      dbg_trace s!"ASSERTS: {repr t}"
     match t.fieldNum with
     | 1 => parseFieldElement t Asserts.asserts (update asserts)
     | _ => t.wireType.skip ; pure ignore
@@ -778,6 +780,7 @@ mutual
     have : Message Set := { parseField := Set.parseField, merge := Set.merge }
     have : Message App := { parseField := App.parseField, merge := App.merge }
     have : Message Term := { parseField := Term.parseField, merge := Term.merge }
+    dbg_trace s!"TERM: {repr t}"
     match t.fieldNum with
     | 1 =>
       let x : TermPrim ← Field.guardedParse t

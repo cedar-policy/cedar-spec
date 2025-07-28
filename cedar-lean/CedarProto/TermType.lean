@@ -187,7 +187,7 @@ mutual
     have : Message RecordFieldType := { parseField := RecordFieldType.parseField, merge := RecordFieldType.merge }
     match t.fieldNum with
     | 1 =>
-      let x : Proto.Packed RecordFieldType ← Field.guardedParse t
+      let x : Proto.Repeated RecordFieldType ← Field.guardedParse t
       pureMergeFn (RecordType.merge · (RecordType.mk x.toList))
     | _ => let _ ← t.wireType.skip ; pure ignore
 
