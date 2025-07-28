@@ -92,3 +92,205 @@ message ComparePolicySetsRequest {
     cedar_policy_validator.Schema schema = 3;
     RequestEnv request = 4;
 }
+
+// Term Types
+message UUF {
+    string id = 1;
+    TermType arg = 2;
+    TermType out = 3;
+}
+
+enum ExtOp {
+    DecimalVal = 0;
+    IPaddrIsV4 = 1;
+    IPaddrAddrV4 = 2;
+    IPaddrPrefixV4 = 3;
+    IPaddrAddrV6 = 4;
+    IPaddrPrefixV6 = 5;
+    DatetimeVal = 6;
+    DatetimeOfBitVec = 7;
+    DurationVal = 8;
+    DurationOfBitVec = 9;
+}
+
+message PatElem {
+    oneof elem {
+        bool star = 1;
+        uint32 char = 2;
+    }
+}
+
+message Pattern {
+    repeated PatElem pattern = 1;
+}
+
+message Op {
+    oneof op {
+        BaseOp base_op = 1;
+        UUF uuf = 2;
+        uint32 zero_extend = 3;
+        string record_get = 4;
+        Pattern string_like = 5;
+        ExtOp ext_op = 6;
+    }
+
+    enum BaseOp {
+        Not = 0;
+        And = 1;
+        Or = 2;
+        Eq = 3;
+        Ite = 4;
+        Bvneg = 5;
+        Bvadd = 6;
+        Bvsub = 7;
+        Bvmul = 8;
+        Bvsdiv = 9;
+        Bvudiv = 10;
+        Bvsrem = 11;
+        Bvsmod = 12;
+        Bvumod = 13;
+        Bvshl = 14;
+        Bvlshr = 15;
+        Bvslt = 16;
+        Bvsle = 17;
+        Bvult = 18;
+        Bvule = 19;
+        Bvnego = 20;
+        Bvsaddo = 21;
+        Bvssubo = 22;
+        Bvsmulo = 23;
+        SetMember = 24;
+        SetSubset = 25;
+        SetInter = 26;
+        OptionGet = 27;
+    }
+}
+
+message Bitvec {
+    uint32 width = 1;
+    string val = 2;
+}
+
+message Decimal {
+    int64 d = 1;
+}
+
+message IpAddr {
+    oneof version {
+        Cidr v4 = 1;
+        Cidr v6 = 2;
+    }
+
+    message Cidr {
+        Bitvec addr = 1;
+        // Optional parameter
+        Bitvec pre = 2;
+    }
+}
+
+message Datetime {
+    int64 val = 1;
+}
+
+message Duration {
+    int64 val = 1;
+}
+
+enum ExtType {
+    IpAddrType = 0;
+    DecimalType = 1;
+    DatetimeType = 2;
+    DurationType = 3;
+}
+
+message TermPrimType {
+    oneof prim_type {
+        Prim prim = 1;
+        uint32 bitvec = 2;
+        cedar_policy_core.Name entity = 3;
+        ExtType ext = 4;
+    }
+
+    enum Prim {
+        Bool = 0;
+        String = 1;
+    }
+}
+
+message TermType {
+    oneof term_type {
+        TermPrimType prim = 1;
+        TermType option = 2;
+        TermType set = 3;
+        RecordType record = 4;
+    }
+
+    message RecordField {
+        string attr = 1;
+        TermType ty = 2;
+    }
+
+    message RecordType {
+        repeated RecordField fields = 1;
+    }
+}
+
+message TermVar {
+    string id = 1;
+    TermType ty = 2;
+}
+
+message Ext {
+    oneof ext {
+        Decimal decimal = 1;
+        IpAddr ipaddr = 2;
+        Datetime datetime = 3;
+        Duration duration = 4;
+    }
+}
+
+message TermPrim {
+    oneof prim {
+        bool bool = 1;
+        Bitvec bitvec = 2;
+        string string = 3;
+        cedar_policy_core.EntityUid entity = 4;
+        Ext ext = 5;
+    }
+}
+
+message Term {
+    oneof term {
+        TermPrim prim = 1;
+        TermVar var = 2;
+        TermType none = 3;
+        Term some = 4;
+        Set set = 5;
+        Record record = 6;
+        App app = 7;
+    }
+
+    message Set {
+        repeated Term elts = 1;
+        TermType elt_ty = 2;
+    }
+
+    message RecordField {
+        string attr = 1;
+        Term term = 2;
+    }
+
+    message Record {
+        repeated RecordField fields = 1;
+    }
+
+    message App {
+        Op op = 1;
+        repeated Term args = 2;
+        TermType ret_ty = 3;
+    }
+}
+
+message Asserts {
+    repeated Term asserts = 1;
+}
