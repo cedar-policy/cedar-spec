@@ -87,27 +87,59 @@ theorem conversion_preserves_evaluation (te : TypedExpr) (req : Request) (es : E
     have ih := conversion_preserves_evaluation expr req es
     rw [←ih]
   | set ls ty =>
+    unfold TypedExpr.toExpr
     simp [TypedExpr.toExpr, TypedExpr.toResidual, Spec.evaluate, Residual.evaluate]
     congr 1
-    rw [List.mapM₁_eq_mapM, List.mapM₁_eq_mapM]
-    congr 1
-    ext x
-    exact conversion_preserves_evaluation x req es
+    rw [List.map₁_eq_map, List.map₁_eq_map]
+    have h : (fun x : { x // x ∈ List.map TypedExpr.toExpr ls } => Spec.evaluate x.val req es) = (fun x => ((fun y => Spec.evaluate y req es) x.val)) := by {
+      simp
+    }
+    rw [h]
+    rw [List.mapM₁_eq_mapM (fun y => Spec.evaluate y req es)]
+    have h₂ : (List.map TypedExpr.toResidual ls).mapM₁ (fun x => x.val.evaluate req es) = (List.map TypedExpr.toResidual ls).mapM₁ (fun x => ((fun y => y.evaluate req es) x.val)) := by simp
+    rw [List.mapM₁_eq_mapM (fun y => Residual.evaluate y req es)]
+    rw [List.mapM_then_map_combiner, List.mapM_then_map_combiner]
+    rw [List.forall₂_implies_mapM_eq]
+    induction ls
+    case set.e_a.a.nil =>
+      simp
+    case _ ih =>
+      simp
+      constructor
+      case left =>
+        apply conversion_preserves_evaluation
+      case right =>
+        apply ih
+        simp
+        simp
   | record map ty =>
+    unfold TypedExpr.toExpr
     simp [TypedExpr.toExpr, TypedExpr.toResidual, Spec.evaluate, Residual.evaluate]
     congr 1
-    rw [List.mapM₂_eq_mapM, List.mapM₂_eq_mapM]
-    congr 1
-    ext ⟨a, x⟩
-    simp [Spec.bindAttr]
-    congr 1
-    exact conversion_preserves_evaluation x req es
+    unfold List.attach₂
+    rw [List.map_pmap_subtype (fun y => (y.fst, y.snd.toExpr)) map]
+    unfold List.mapM₂
+    unfold List.attach₂
+    unfold bindAttr
+    simp
+    rw [List.mapM_pmap_subtype (fun x => Prod.mk x.fst <$> Spec.evaluate x.snd req es) (List.map (fun y => (y.fst, y.snd.toExpr)) map)]
+    rw [List.mapM_pmap_subtype (fun x => Prod.mk x.fst <$> x.snd.evaluate req es) (List.map (fun x => (x.1.fst, TypedExpr.toResidual x.1.snd)) (List.pmap Subtype.mk map _))]
+    rw [List.map_pmap_subtype (fun x => (x.fst, TypedExpr.toResidual x.snd)) map]
+    rw [List.mapM_then_map_combiner, List.mapM_then_map_combiner]
+    simp
+    rw [List.forall₂_implies_mapM_eq]
+    induction map
+    case _ =>
+      simp
+    case _ ih =>
+      simp
+      constructor
+      case left =>
+        apply conversion_preserves_evaluation
+      case right =>
+        apply ih
   | call xfn args ty =>
     simp [TypedExpr.toExpr, TypedExpr.toResidual, Spec.evaluate, Residual.evaluate]
-    congr 2
-    rw [Cedar.Thm.Data.List.mapM₁_eq_mapM, Cedar.Thm.Data.List.mapM₁_eq_mapM]
-    congr 1
-    ext x
-    exact conversion_preserves_evaluation x req es
+    sorry
 
 end Cedar.TPE
