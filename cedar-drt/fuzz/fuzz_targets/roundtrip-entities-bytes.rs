@@ -16,29 +16,15 @@
 
 #![no_main]
 
-use cedar_drt_inner::fuzz_target;
+use cedar_drt_inner::{fuzz_target, roundtrip_entities};
 #[cfg(feature = "prt")]
 use libfuzzer_sys::arbitrary::{Arbitrary, Unstructured};
 
 use cedar_policy::Entities;
 
-use cedar_policy::{entities_errors::EntitiesError, entities_json_errors::JsonSerializationError};
-use similar_asserts::assert_eq;
-
 fuzz_target!(|input: String| {
     let Ok(entities) = Entities::from_json_str(&input, None) else {
         return;
     };
-    let json = match entities.as_ref().to_json_value() {
-        Ok(json) => json,
-        Err(EntitiesError::Serialization(JsonSerializationError::ReservedKey(_))) => {
-            // Serializing to JSON is expected to fail when there's a record
-            // attribute `__entity`, `__expr`, or `__extn`
-            return;
-        }
-        Err(e) => panic!("Should be able to serialize entities to JSON: {e}"),
-    };
-    let rountripped =
-        Entities::from_json_value(json, None).expect("Should parse serialized entities JSON");
-    assert_eq!(entities, rountripped);
+    roundtrip_entities::fuzz_target(entities, None);
 });
