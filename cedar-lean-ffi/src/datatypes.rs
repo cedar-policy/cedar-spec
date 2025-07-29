@@ -355,8 +355,8 @@ pub enum TermPrimType {
         n: u8,
     },
     String,
-    #[serde(deserialize_with = "deserialize_entity_type_name")]
     Entity {
+        #[serde(deserialize_with = "deserialize_entity_type_name")]
         ety: EntityTypeName,
     },
     Ext {
