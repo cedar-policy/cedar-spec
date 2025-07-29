@@ -51,7 +51,7 @@ def interpret? {α : Type} [Field α] [Inhabited α] (b : ByteArray) : Except St
 def guardWireType {α : Type} [Field α] (wt : WireType) : BParsec Unit := do
   let foundWt := Field.expectedWireType α
   if foundWt ≠ wt then
-    throw s!"WireType mismatch: found {repr foundWt}, expected {repr wt}"
+    throw s!"WireType mismatch: field expects {repr foundWt}, message contains {repr wt}"
 
 instance [Field α] : Field (Option α) where
   parse := Field.parse.map some

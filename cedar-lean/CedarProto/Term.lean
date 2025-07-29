@@ -42,9 +42,9 @@ namespace UUF
 
   def parseField (t : Tag) : BParsec (MergeFn UUF) := do
     match t.fieldNum with
-    | 1 => panic! ""
-    | 2 => panic! ""
-    | 3 => panic! ""
+    | 1 => parseFieldElement t id (update id)
+    | 2 => parseFieldElement t arg (update arg)
+    | 3 => parseFieldElement t out (update out)
     | _ => t.wireType.skip ; pure ignore
 
   instance : Message UUF := {
@@ -249,10 +249,11 @@ namespace Pattern
   def merge (p₁ p₂ : Pattern) : Pattern := p₁ ++ p₂
 
   def parseField (t : Tag) : BParsec (MergeFn Pattern) := do
+    have : Field (List PatElem) := Field.fromInterField (λ (elems : Repeated PatElem) => elems.toList) (· ++ ·)
     match t.fieldNum with
     | 1 =>
-      let x : Proto.Repeated PatElem ← Field.guardedParse t
-      pureMergeFn (merge · x.toList)
+      let x : List PatElem ← Field.guardedParse t
+      pureMergeFn (merge · x)
     | _ => t.wireType.skip ; pure ignore
 
   instance : Message Pattern := {
@@ -622,7 +623,6 @@ namespace TermPrim
     | _, _ => t₂
 
   def parseField (t : Tag) : BParsec (MergeFn TermPrim) := do
-    dbg_trace s!"PRIM: {repr t}"
     match t.fieldNum with
     | 1 =>
       let x : Bool ← Field.guardedParse t
@@ -739,36 +739,31 @@ mutual
 
   partial def Record.parseField (t : Tag) : BParsec (MergeFn Record) := do
     have : Message RecordField := { parseField := RecordField.parseField, merge := RecordField.merge }
+    have : Field (List RecordField) := Field.fromInterField (λ (fields : Repeated RecordField) => fields.toList) (· ++ ·)
     match t.fieldNum with
     | 1 =>
-      let x : Proto.Repeated RecordField ← Field.guardedParse t
-      pureMergeFn (Record.merge · (Record.mk x.toList))
-    | _ => t.wireType.skip ; pure ignore
-
-  partial def Terms.parseField (t : Tag) : BParsec (MergeFn (List Term)) := do
-    have : Message Term := { parseField := Term.parseField, merge := Term.merge }
-    match t.fieldNum with
-    | 1 =>
-      let x : Repeated Term ← Field.guardedParse t
-      pureMergeFn (· ++ x.toList)
+      let x : List RecordField ← Field.guardedParse t
+      pureMergeFn (Record.merge · (Record.mk x))
     | _ => t.wireType.skip ; pure ignore
 
   partial def Asserts.parseField (t : Tag) : BParsec (MergeFn Asserts) := do
-    have : Message (List Term) := { parseField := Terms.parseField, merge := (· ++ ·)}
-      dbg_trace s!"ASSERTS: {repr t}"
+    have : Message Term := { parseField := Term.parseField, merge := Term.merge }
+    have : Field (List Term) := Field.fromInterField (λ (terms : Repeated Term) => terms.toList) (· ++ ·)
     match t.fieldNum with
     | 1 => parseFieldElement t Asserts.asserts (update asserts)
     | _ => t.wireType.skip ; pure ignore
 
   partial def Set.parseField (t : Tag) : BParsec (MergeFn Set) := do
-    have : Message (List Term) := { parseField := Terms.parseField, merge := (· ++ ·)}
+    have : Message Term := { parseField := Term.parseField, merge := Term.merge }
+    have : Field (List Term) := Field.fromInterField (λ (terms : Repeated Term) => terms.toList) (· ++ ·)
     match t.fieldNum with
     | 1 => parseFieldElement t Set.elts (update elts)
     | 2 => parseFieldElement t Set.ty (update ty)
     | _ => t.wireType.skip ; pure ignore
 
   partial def App.parseField (t : Tag) : BParsec (MergeFn App) := do
-    have : Message (List Term) := { parseField := Terms.parseField, merge := (· ++ ·)}
+    have : Message Term := { parseField := Term.parseField, merge := Term.merge }
+    have : Field (List Term) := Field.fromInterField (λ (terms : Repeated Term) => terms.toList) (· ++ ·)
     match t.fieldNum with
     | 1 => parseFieldElement t App.op (update op)
     | 2 => parseFieldElement t App.args (update args)
@@ -780,7 +775,6 @@ mutual
     have : Message Set := { parseField := Set.parseField, merge := Set.merge }
     have : Message App := { parseField := App.parseField, merge := App.merge }
     have : Message Term := { parseField := Term.parseField, merge := Term.merge }
-    dbg_trace s!"TERM: {repr t}"
     match t.fieldNum with
     | 1 =>
       let x : TermPrim ← Field.guardedParse t

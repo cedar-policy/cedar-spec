@@ -185,10 +185,11 @@ mutual
 
   partial def RecordType.parseField (t : Tag) : BParsec (MergeFn RecordType) := do
     have : Message RecordFieldType := { parseField := RecordFieldType.parseField, merge := RecordFieldType.merge }
+    have : Field (List RecordFieldType) := Field.fromInterField (λ (fields : Repeated RecordFieldType) => fields.toList) (· ++ ·)
     match t.fieldNum with
     | 1 =>
-      let x : Proto.Repeated RecordFieldType ← Field.guardedParse t
-      pureMergeFn (RecordType.merge · (RecordType.mk x.toList))
+      let x : List RecordFieldType ← Field.guardedParse t
+      pureMergeFn (RecordType.merge · (RecordType.mk x))
     | _ => let _ ← t.wireType.skip ; pure ignore
 
   partial def TermType.parseField (t : Tag) : BParsec (MergeFn TermType) := do
