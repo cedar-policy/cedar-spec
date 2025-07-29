@@ -261,13 +261,18 @@ def parseComparePolicySetsReq (req : ByteArray) : Except String (Policies × Pol
       | _, none => .error s!"failed to validate policy for requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource})"
       | some srcPolicies, some tgtPolicies => .ok (srcPolicies, tgtPolicies, SymEnv.ofTypeEnv env)
 
-def parseAsserts (proto : ByteArray) : Except String Cedar.SymCC.Asserts :=
-  match (@Proto.Message.interpret? Proto.Asserts) proto with
+
+def parseCheckAssertsReq (proto : ByteArray) : Except String (Cedar.SymCC.Asserts × SymEnv) :=
+  match (@Proto.Message.interpret? CheckAssertsRequest) proto with
   | .error e => .error s!"failed to parse input: {e}"
-  | .ok protoTerm =>
-    match protoTerm.toCedar with
-    | .some t => .ok t
-    | .none => .error s!"Failed to convert Proto.Term {repr protoTerm} to Term"
+  | .ok req =>
+    let asserts := req.asserts
+    let schema := req.schema
+    let request := req.request
+    match schema.environment? request.principal request.resource request.action with
+    | none => .error s!"failed to get environment from requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource})"
+    | some env =>
+      .ok (asserts, SymEnv.ofTypeEnv env)
 
 /--
   Run `solver` on `vcs` without exposing the IO monad to the calling code
@@ -540,7 +545,7 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
   toString (Lean.toJson result)
 
 /--
-  `asserts`: binary protobuf for `Asserts`
+  `req`: binary protobuf for a `CheckAsserts`
 
   returns JSON encoded string that encodes
   1.) .error err_message if there was in error in parsing or running the solver
@@ -549,39 +554,54 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
 -/
 @[export runCheckAsserts] unsafe def runCheckAsserts (req: ByteArray) : String :=
   let result: Except String (Timed Bool) :=
-    match parseAsserts req with
+    match parseCheckAssertsReq req with
     | .error s => .error s!"runCheckAsserts: {s}\n{repr req}"
-    | .ok asserts => .error s!"runCheckAsserts: unimplemented for {repr asserts}\n{repr req}"
-      -- match timedSolve Solver.cvc5 (Cedar.SymCC.checkNeverErrors policy εnv) with
-      -- | .error s => .error s!"checkNeverErrors: {s}"
-      -- | .ok b => .ok b
-
-
+    | .ok (asserts, εnv) =>
+      match timedSolve Solver.cvc5 (Cedar.SymCC.checkUnsat (λ _ => .ok asserts) εnv) with
+      | .error s => .error s!"runCheckAsserts: {s}"
+      | .ok r => .ok r
   toString (Lean.toJson result)
 
 /--
-  `asserts`: binary protobuf for `Asserts`
+  `req`: binary protobuf for a `CheckAsserts`
 
   returns JSON encoded string that encodes
   1.) .error err_message if there was in error in parsing or encoding the vcs
   2.) .ok {data := (), duration := <encode+print_time>} if the vcs were successfully printed to stdout in SMTLib format
 -/
-@[export printCheckAsserts] unsafe def printCheckAsserts (_asserts: ByteArray) : String :=
+@[export printCheckAsserts] unsafe def printCheckAsserts (req: ByteArray) : String :=
   let result: Except String (Timed Unit) :=
-    .error "Unimplemented"
+    match parseCheckAssertsReq req with
+    | .error s => .error s!"printCheckAsserts: {s}\n{repr req}"
+    | .ok (asserts, εnv) =>
+      let stdOut := unsafeBaseIO IO.getStdout
+      let solver := Solver.streamWriter stdOut
+      match timedSolve solver (ignoreOutput (λ _ => .ok asserts) εnv) with
+      | .error s => .error s!"printCheckAsserts: {s}"
+      | .ok r => .ok r
   toString (Lean.toJson result)
 
 /--
-  `asserts`: binary protobuf for `Asserts`
+  `req`: binary protobuf for a `CheckAsserts`
 
   returns JSON encoded string that encodes
   1.) .error err_message if there was in error in parsing or encoding the vcs
   2.) .ok {data := SMTLib-Script, duration := encode_time} where SMTLib-Script is a
       string containing the SMTLib script encoding the verification query
 -/
-@[export smtLibOfCheckAsserts] unsafe def smtLibOfCheckAsserts (_asserts: ByteArray) : String :=
+@[export smtLibOfCheckAsserts] unsafe def smtLibOfCheckAsserts (req: ByteArray) : String :=
   let result: Except String (Timed String) :=
-    .error "Unimplemented"
+    match parseCheckAssertsReq req with
+    | .error s => .error s!"smtLibOfCheckAsserts: {s}\n{repr req}"
+    | .ok (asserts, εnv) =>
+      let buffer := unsafeBaseIO (IO.mkRef ⟨ByteArray.empty, 0⟩)
+      let solver := Solver.bufferWriter buffer
+      match timedSolve solver (ignoreOutput (λ _ => .ok asserts) εnv) with
+      | .error s => .error s!"smtLibOfCheckAsserts: {s}"
+      | .ok r =>
+        match unsafeIO (buffer.swap ⟨ByteArray.empty, 0⟩) with
+        | .error _ => .error s!"smtLibOfCheckAsserts: error retrieving SMTLib script from buffer"
+        | .ok inner_buffer => .ok { data := ((String.fromUTF8? inner_buffer.data).getD ""), duration := r.duration }
   toString (Lean.toJson result)
 
 /--

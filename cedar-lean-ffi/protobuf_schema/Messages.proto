@@ -294,3 +294,9 @@ message Term {
 message Asserts {
     repeated Term asserts = 1;
 }
+
+message CheckAssertsRequest {
+    Asserts asserts = 1;
+    cedar_policy_validator.Schema schema = 2;
+    RequestEnv request = 3;
+}

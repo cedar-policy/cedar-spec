@@ -17,6 +17,7 @@
 import Cedar.Spec
 import Protobuf.Message
 import Protobuf.Structure
+import CedarProto.Term
 
 -- Message Dependencies
 import CedarProto.Policy
@@ -169,5 +170,35 @@ instance : Message ComparePolicySetsRequest where
   }
 
 end ComparePolicySetsRequest
+
+structure CheckAssertsRequest where
+  asserts : Cedar.SymCC.Asserts
+  schema : Validation.Schema
+  request : Validation.Proto.RequestEnv
+deriving Inhabited
+
+namespace CheckAssertsRequest
+
+instance : Field Cedar.SymCC.Asserts := Field.fromInterFieldFallible (λ (asserts: Cedar.SymCC.Proto.Asserts) =>
+  match asserts.toCedar with
+  | .some asserts => .ok asserts
+  | .none => .error "Failed to convert to proto-Asserts to cedar-Asserts"
+) (· ++ ·)
+
+instance : Message CheckAssertsRequest where
+  parseField (t : Tag) := do
+    match t.fieldNum with
+    | 1 => parseFieldElement t asserts (update asserts)
+    | 2 => parseFieldElement t schema (update schema)
+    | 3 => parseFieldElement t request (update request)
+    | _ => t.wireType.skip ; pure ignore
+
+  merge x y := {
+    asserts := Field.merge x.asserts y.asserts
+    schema := Field.merge x.schema y.schema
+    request := Field.merge x.request y.request
+  }
+
+end CheckAssertsRequest
 
 end Cedar.SymCC.Proto

@@ -539,6 +539,16 @@ impl proto::Asserts {
     }
 }
 
+impl proto::CheckAssertsRequest {
+    pub(crate) fn new(asserts: &Vec<datatypes::Term>, schema: &Schema, request: &RequestEnv) -> Self {
+        Self {
+            asserts: Some(proto::Asserts::new(asserts)),
+            schema: Some(cedar_policy::proto::models::Schema::from(schema)),
+            request: Some(proto::RequestEnv::from(request)),
+        }
+    }
+}
+
 
 #[cfg(test)]
 mod test {

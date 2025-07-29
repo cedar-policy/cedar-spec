@@ -270,8 +270,10 @@ macro_rules! checkAsserts_func {
         pub fn $timed_func_name(
             &self,
             asserts: &Vec<Term>,
+            schema: &Schema,
+            request_env: &RequestEnv,
         ) -> Result<TimedResult<$ret_ty>, FfiError> {
-            let asserts_proto = proto::Asserts::new(asserts).encode_to_vec();
+            let asserts_proto = proto::CheckAssertsRequest::new(asserts, schema, request_env).encode_to_vec();
             let asserts_proto = buf_to_lean_obj(&asserts_proto);
             let response = unsafe { $lean_func_name(asserts_proto) };
             let response = lean_obj_p_to_rust_string(response);
@@ -284,8 +286,10 @@ macro_rules! checkAsserts_func {
         pub fn $untimed_func_name(
             &self,
             asserts: &Vec<Term>,
+            schema: &Schema,
+            request_env: &RequestEnv,
         ) -> Result<$ret_ty, FfiError> {
-            Ok(self.$timed_func_name(asserts)?.take_result())
+            Ok(self.$timed_func_name(asserts, schema, request_env)?.take_result())
         }
     };
 }
