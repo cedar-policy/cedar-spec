@@ -849,7 +849,9 @@ mod test {
 
         ffi.asserts_of_check_never_errors(&trivial_policy, &schema, &req_env)
             .expect("Lean call unexpectedly failed for asserts_of_check_never_errors")
-            .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_never_errors");
+            .expect(
+                "Lean SymCC unexpectedly failed to encode term for asserts_of_check_never_errors",
+            );
     }
 
     #[test]
@@ -963,9 +965,14 @@ mod test {
             "run_check_equivalent returned wrong result. Expected: true"
         );
 
-        ffi.asserts_of_check_equivalent(&always_allows_pset, &always_allows_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for asserts_of_check_equivalent")
-            .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_equivalent");
+        ffi.asserts_of_check_equivalent(
+            &always_allows_pset,
+            &always_allows_pset,
+            &schema,
+            &req_env,
+        )
+        .expect("Lean call unexpectedly failed for asserts_of_check_equivalent")
+        .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_equivalent");
 
         ffi.smtlib_of_check_equivalent(&always_allows_pset, &always_allows_pset, &schema, &req_env)
             .expect("Lean call unexpectedly failed for smtlib_of_check_equivalent");
@@ -981,9 +988,14 @@ mod test {
         ffi.smtlib_of_check_equivalent(&always_denies_pset, &always_denies_pset, &schema, &req_env)
             .expect("Lean call unexpectedly failed for smtlib_of_check_equivalent");
 
-        ffi.asserts_of_check_equivalent(&always_denies_pset, &always_denies_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for asserts_of_check_equivalent")
-            .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_equivalent");
+        ffi.asserts_of_check_equivalent(
+            &always_denies_pset,
+            &always_denies_pset,
+            &schema,
+            &req_env,
+        )
+        .expect("Lean call unexpectedly failed for asserts_of_check_equivalent")
+        .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_equivalent");
 
         let res = ffi
             .run_check_equivalent(&always_allows_pset, &always_denies_pset, &schema, &req_env)
@@ -996,9 +1008,14 @@ mod test {
         ffi.smtlib_of_check_equivalent(&always_allows_pset, &always_denies_pset, &schema, &req_env)
             .expect("Lean call unexpectedly failed for smtlib_of_check_equivalent");
 
-        ffi.asserts_of_check_equivalent(&always_allows_pset, &always_denies_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for asserts_of_check_equivalent")
-            .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_equivalent");
+        ffi.asserts_of_check_equivalent(
+            &always_allows_pset,
+            &always_denies_pset,
+            &schema,
+            &req_env,
+        )
+        .expect("Lean call unexpectedly failed for asserts_of_check_equivalent")
+        .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_equivalent");
     }
 
     #[test]

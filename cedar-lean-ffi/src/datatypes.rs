@@ -259,9 +259,7 @@ pub enum PatElem {
     #[serde(rename = "star")]
     Star,
     #[serde(rename = "justChar")]
-    Char {
-        c : u32,
-    }
+    Char { c: u32 },
 }
 
 #[derive(Debug, Deserialize)]

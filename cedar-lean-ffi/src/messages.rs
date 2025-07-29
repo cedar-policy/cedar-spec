@@ -250,16 +250,14 @@ impl proto::PatElem {
             datatypes::PatElem::Star => proto::pat_elem::Elem::Star(true),
             datatypes::PatElem::Char { c } => proto::pat_elem::Elem::Char(*c),
         };
-        Self {
-            elem: Some(elem),
-        }
+        Self { elem: Some(elem) }
     }
 }
 
 impl proto::Pattern {
     pub(crate) fn new(pattern: &Vec<datatypes::PatElem>) -> Self {
         Self {
-            pattern: pattern.iter().map(proto::PatElem::new).collect()
+            pattern: pattern.iter().map(proto::PatElem::new).collect(),
         }
     }
 }
@@ -270,19 +268,22 @@ impl proto::Op {
             datatypes::Op::Uuf(uuf) => proto::op::Op::Uuf(proto::Uuf::new(uuf)),
             datatypes::Op::ZeroExtend(bv_width) => proto::op::Op::ZeroExtend(*bv_width as u32),
             datatypes::Op::RecordGet(attr) => proto::op::Op::RecordGet(attr.clone()),
-            datatypes::Op::StringLike(pattern) => proto::op::Op::StringLike(proto::Pattern::new(pattern)),
+            datatypes::Op::StringLike(pattern) => {
+                proto::op::Op::StringLike(proto::Pattern::new(pattern))
+            }
             datatypes::Op::Ext(ext_op) => proto::op::Op::ExtOp(proto::ExtOp::new(ext_op).into()),
             _ => proto::op::Op::BaseOp(proto::op::BaseOp::new(op).into()),
         };
-        Self {
-            op: Some(op),
-        }
+        Self { op: Some(op) }
     }
 }
 
 impl proto::op::BaseOp {
     pub(crate) fn new(op: &datatypes::Op) -> Self {
-        #[allow(clippy::unreachable, reason="This function is only used within proto::Op::new which ensure unreachable variants are already handled")]
+        #[allow(
+            clippy::unreachable,
+            reason = "This function is only used within proto::Op::new which ensure unreachable variants are already handled"
+        )]
         match op {
             datatypes::Op::Not => proto::op::BaseOp::Not,
             datatypes::Op::And => proto::op::BaseOp::And,
@@ -328,17 +329,19 @@ impl proto::Bitvec {
 
 impl proto::Decimal {
     pub(crate) fn new(dec: &datatypes::Decimal) -> Self {
-        Self {
-            d: dec.0,
-        }
+        Self { d: dec.0 }
     }
 }
 
 impl proto::IpAddr {
     pub(crate) fn new(ip: &datatypes::IpAddr) -> Self {
         let cidr = match ip {
-            datatypes::IpAddr::V4(cidr) => proto::ip_addr::Version::V4(proto::ip_addr::Cidr::new(cidr)),
-            datatypes::IpAddr::V6(cidr) => proto::ip_addr::Version::V6(proto::ip_addr::Cidr::new(cidr)),
+            datatypes::IpAddr::V4(cidr) => {
+                proto::ip_addr::Version::V4(proto::ip_addr::Cidr::new(cidr))
+            }
+            datatypes::IpAddr::V6(cidr) => {
+                proto::ip_addr::Version::V6(proto::ip_addr::Cidr::new(cidr))
+            }
         };
         Self {
             version: Some(cidr),
@@ -357,17 +360,13 @@ impl proto::ip_addr::Cidr {
 
 impl proto::Datetime {
     pub(crate) fn new(dt: &datatypes::Datetime) -> Self {
-        Self {
-            val: dt.val,
-        }
+        Self { val: dt.val }
     }
 }
 
 impl proto::Duration {
     pub(crate) fn new(dur: &datatypes::Duration) -> Self {
-        Self {
-            val: dur.val,
-        }
+        Self { val: dur.val }
     }
 }
 
@@ -385,10 +384,18 @@ impl proto::ExtType {
 impl proto::TermPrimType {
     pub(crate) fn new(pty: &datatypes::TermPrimType) -> Self {
         let prim_type = match pty {
-            datatypes::TermPrimType::Bitvec { n } => proto::term_prim_type::PrimType::Bitvec(*n as u32),
-            datatypes::TermPrimType::Entity { ety } => proto::term_prim_type::PrimType::Entity(cedar_policy::proto::models::Name::from(ety)),
-            datatypes::TermPrimType::Ext { xty } => proto::term_prim_type::PrimType::Ext(proto::ExtType::new(xty).into()),
-            _ => proto::term_prim_type::PrimType::Prim(proto::term_prim_type::Prim::new(pty).into()),
+            datatypes::TermPrimType::Bitvec { n } => {
+                proto::term_prim_type::PrimType::Bitvec(*n as u32)
+            }
+            datatypes::TermPrimType::Entity { ety } => proto::term_prim_type::PrimType::Entity(
+                cedar_policy::proto::models::Name::from(ety),
+            ),
+            datatypes::TermPrimType::Ext { xty } => {
+                proto::term_prim_type::PrimType::Ext(proto::ExtType::new(xty).into())
+            }
+            _ => {
+                proto::term_prim_type::PrimType::Prim(proto::term_prim_type::Prim::new(pty).into())
+            }
         };
         Self {
             prim_type: Some(prim_type),
@@ -401,7 +408,9 @@ impl proto::term_prim_type::Prim {
         match pty {
             datatypes::TermPrimType::Bool => Self::Bool,
             datatypes::TermPrimType::String => Self::String,
-            _ => unreachable!("Other variants should be handled directly by proto::TermPrimType::new"),
+            _ => unreachable!(
+                "Other variants should be handled directly by proto::TermPrimType::new"
+            ),
         }
     }
 }
@@ -409,10 +418,18 @@ impl proto::term_prim_type::Prim {
 impl proto::TermType {
     pub(crate) fn new(ty: &datatypes::TermType) -> Self {
         let term_type = match ty {
-            datatypes::TermType::Prim { pty } => proto::term_type::TermType::Prim(proto::TermPrimType::new(pty).into()),
-            datatypes::TermType::Option { ty } => proto::term_type::TermType::Option(proto::TermType::new(ty).into()),
-            datatypes::TermType::Set { ty } => proto::term_type::TermType::Set(proto::TermType::new(ty).into()),
-            datatypes::TermType::Record { rty } => proto::term_type::TermType::Record(proto::term_type::RecordType::new(rty)),
+            datatypes::TermType::Prim { pty } => {
+                proto::term_type::TermType::Prim(proto::TermPrimType::new(pty).into())
+            }
+            datatypes::TermType::Option { ty } => {
+                proto::term_type::TermType::Option(proto::TermType::new(ty).into())
+            }
+            datatypes::TermType::Set { ty } => {
+                proto::term_type::TermType::Set(proto::TermType::new(ty).into())
+            }
+            datatypes::TermType::Record { rty } => {
+                proto::term_type::TermType::Record(proto::term_type::RecordType::new(rty))
+            }
         };
         Self {
             term_type: Some(term_type),
@@ -433,7 +450,10 @@ impl proto::term_type::RecordField {
 impl proto::term_type::RecordType {
     pub(crate) fn new(fields: &Vec<(String, datatypes::TermType)>) -> Self {
         Self {
-            fields: fields.iter().map(|(attr, ty)| proto::term_type::RecordField::new(attr, ty)).collect(),
+            fields: fields
+                .iter()
+                .map(|(attr, ty)| proto::term_type::RecordField::new(attr, ty))
+                .collect(),
         }
     }
 }
@@ -455,9 +475,7 @@ impl proto::Ext {
             datatypes::Ext::Datetime { dt } => proto::ext::Ext::Datetime(proto::Datetime::new(dt)),
             datatypes::Ext::Duration { d } => proto::ext::Ext::Duration(proto::Duration::new(d)),
         };
-        Self {
-            ext: Some(ext),
-        }
+        Self { ext: Some(ext) }
     }
 }
 
@@ -465,14 +483,16 @@ impl proto::TermPrim {
     pub(crate) fn new(prim: &datatypes::TermPrim) -> Self {
         let prim = match prim {
             datatypes::TermPrim::Bool(b) => proto::term_prim::Prim::Bool(*b),
-            datatypes::TermPrim::Bitvec(bv) => proto::term_prim::Prim::Bitvec(proto::Bitvec::new(bv)),
+            datatypes::TermPrim::Bitvec(bv) => {
+                proto::term_prim::Prim::Bitvec(proto::Bitvec::new(bv))
+            }
             datatypes::TermPrim::String(s) => proto::term_prim::Prim::String(s.clone()),
-            datatypes::TermPrim::Entity(euid) => proto::term_prim::Prim::Entity(cedar_policy::proto::models::EntityUid::from(euid)),
+            datatypes::TermPrim::Entity(euid) => {
+                proto::term_prim::Prim::Entity(cedar_policy::proto::models::EntityUid::from(euid))
+            }
             datatypes::TermPrim::Ext(ext) => proto::term_prim::Prim::Ext(proto::Ext::new(ext)),
         };
-        Self {
-            prim: Some(prim),
-        }
+        Self { prim: Some(prim) }
     }
 }
 
@@ -482,14 +502,20 @@ impl proto::Term {
             datatypes::Term::Prim(prim) => proto::term::Term::Prim(proto::TermPrim::new(prim)),
             datatypes::Term::Var(v) => proto::term::Term::Var(proto::TermVar::new(v)),
             datatypes::Term::None(ty) => proto::term::Term::None(proto::TermType::new(ty)),
-            datatypes::Term::Some(t) => proto::term::Term::Some(Box::new(proto::Term::new(t.as_ref()))),
-            datatypes::Term::Set { elts, elts_ty} => proto::term::Term::Set(proto::term::Set::new(elts, elts_ty)),
-            datatypes::Term::Record(fields) => proto::term::Term::Record(proto::term::Record::new(fields)),
-            datatypes::Term::App { op, args, ret_ty } => proto::term::Term::App(proto::term::App::new(op, args, ret_ty)),
+            datatypes::Term::Some(t) => {
+                proto::term::Term::Some(Box::new(proto::Term::new(t.as_ref())))
+            }
+            datatypes::Term::Set { elts, elts_ty } => {
+                proto::term::Term::Set(proto::term::Set::new(elts, elts_ty))
+            }
+            datatypes::Term::Record(fields) => {
+                proto::term::Term::Record(proto::term::Record::new(fields))
+            }
+            datatypes::Term::App { op, args, ret_ty } => {
+                proto::term::Term::App(proto::term::App::new(op, args, ret_ty))
+            }
         };
-        Self {
-            term: Some(term),
-        }
+        Self { term: Some(term) }
     }
 }
 
@@ -507,7 +533,6 @@ impl proto::term::RecordField {
         Self {
             attr: attr.to_string(),
             term: Some(proto::Term::new(value)),
-
         }
     }
 }
@@ -515,18 +540,24 @@ impl proto::term::RecordField {
 impl proto::term::Record {
     pub(crate) fn new(fields: &Vec<(String, datatypes::Term)>) -> Self {
         Self {
-            fields: fields.iter().map(|(attr, value)| proto::term::RecordField::new(attr, value)).collect(),
+            fields: fields
+                .iter()
+                .map(|(attr, value)| proto::term::RecordField::new(attr, value))
+                .collect(),
         }
     }
 }
 
 impl proto::term::App {
-    pub(crate) fn new(op: &datatypes::Op, args: &Vec<datatypes::Term>, ret_ty: &datatypes::TermType) -> Self {
+    pub(crate) fn new(
+        op: &datatypes::Op,
+        args: &Vec<datatypes::Term>,
+        ret_ty: &datatypes::TermType,
+    ) -> Self {
         Self {
             op: Some(proto::Op::new(op)),
             args: args.iter().map(proto::Term::new).collect(),
             ret_ty: Some(proto::TermType::new(ret_ty)),
-
         }
     }
 }
@@ -540,7 +571,11 @@ impl proto::Asserts {
 }
 
 impl proto::CheckAssertsRequest {
-    pub(crate) fn new(asserts: &Vec<datatypes::Term>, schema: &Schema, request: &RequestEnv) -> Self {
+    pub(crate) fn new(
+        asserts: &Vec<datatypes::Term>,
+        schema: &Schema,
+        request: &RequestEnv,
+    ) -> Self {
         Self {
             asserts: Some(proto::Asserts::new(asserts)),
             schema: Some(cedar_policy::proto::models::Schema::from(schema)),
@@ -548,7 +583,6 @@ impl proto::CheckAssertsRequest {
         }
     }
 }
-
 
 #[cfg(test)]
 mod test {
