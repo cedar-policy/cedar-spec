@@ -223,3 +223,9 @@ name = "tpe-pbt"
 path = "fuzz_targets/tpe-pbt.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "symcc-term-roundtrip-abac-type-directed"
+path = "fuzz_targets/symcc-term-roundtrip-abac-type-directed.rs"
+test = false
+doc = false
