@@ -90,7 +90,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
     }
 }
 
-// Type-directed fuzzing of ABAC hierarchy/policy/requests.
+// Fuzzing Target to show that Asserts/Term Serialization/Deserialization does not effect the final SMTLib script produced
 fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
     let len_engine = CedarLeanEngine::new();
@@ -103,11 +103,15 @@ fuzz_target!(|input: FuzzTargetInput| {
 
     if let Ok(schema) = Schema::try_from(input.schema) {
         for req_env in schema.request_envs() {
+            // Compute's SMTLib Script Directly in one-pass from Lean
             match lean_ffi.smtlib_of_check_always_allows(&policyset, &schema, &req_env) {
                 Ok(smtlib1) => {
+                    // Get intermedaite term representaion of the Asserts / Verification conditions from Lean
                     match lean_ffi.asserts_of_check_always_allows(&policyset, &schema, &req_env) {
                         Ok(Ok(asserts)) => {
+                            // Compute SMTLib script from the intermediate Assertions
                             match lean_ffi.smtlib_of_check_asserts(&asserts, &schema, &req_env) {
+                                // The smtlib scripts should be identical. Otherwise serialization/deserialization may have altered the assertions
                                 Ok(smtlib2) => assert_eq!(smtlib1, smtlib2, "Mismatch between direct smtlib and roundtripped term smtlib for {:?}\nDirect:\n{}\n\nRoundtripped\n{}", req_env, smtlib1, smtlib2),
                                 Err(e) => panic!("Rountripped errored when direct smtlib request did not error. Error: {}", e),
                             }
@@ -116,7 +120,9 @@ fuzz_target!(|input: FuzzTargetInput| {
                         Err(e) => panic!("Rountripped errored when direct smtlib request did not error. Error: {}", e),
                     }
                 }
+                // The policy/schema produced an error in Lean
                 Err(e) => {
+                    // Check that either the generation of asserts or checking the asserts errors
                     match lean_ffi.asserts_of_check_always_allows(&policyset, &schema, &req_env) {
                         Ok(Ok(asserts)) => {
                             match lean_ffi.smtlib_of_check_asserts(&asserts, &schema, &req_env) {
