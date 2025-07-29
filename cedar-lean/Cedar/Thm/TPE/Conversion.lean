@@ -44,17 +44,20 @@ def replaceValProjRec (e: Lean.Expr) : MetaM Lean.Expr :=
   | e' => return e'
 
 
-def fixupPmapType (ty : Lean.Expr) : MetaM Lean.Expr := do
+def fixupPmapType (ty : Lean.Expr) : Lean.Expr :=
   match ty with
-  | (.app (.const ``Subtype _) ty)
-    dbg_log "{toString ty}"
+  | (.app (.app (.const ``Subtype _) ty1) ty2) =>
+    dbg_trace s!"subty: {toString ty1}"
+    ty1
+  | _ =>
+    dbg_trace s!"sad"
     ty
-  | _
+
 
 def replaceValProj (e : Lean.Expr) : MetaM Lean.Expr :=
   match e with
   | .lam n t b d => do
-    let t' ← fixupPmapType t
+    let t' := fixupPmapType t
     let b' ← replaceValProjRec b
     return .lam n t' b' d
   | e' => return e'
@@ -182,7 +185,7 @@ theorem conversion_preserves_evaluation (te : TypedExpr) (req : Request) (es : E
     rw [List.mapM_pmap_subtype (fun x => Prod.mk x.fst <$> Spec.evaluate x.snd req es) (List.map (fun y => (y.fst, y.snd.toExpr)) map)]
     rw [List.mapM_pmap_subtype (fun x => Prod.mk x.fst <$> x.snd.evaluate req es) (List.map (fun x => (x.1.fst, TypedExpr.toResidual x.1.snd)) (List.pmap Subtype.mk map _))]
     find_pmap_func found
-    rw [List.map_pmap_subtype found map]
+    rw [List.map_pmap_subtype found]
     rw [List.mapM_then_map_combiner, List.mapM_then_map_combiner]
     simp
     rw [List.forall₂_implies_mapM_eq]
