@@ -16,6 +16,7 @@
 
 #![no_main]
 
+use cedar_drt_inner::roundtrip_entities;
 use cedar_drt_inner::{fuzz_target, schemas::Equiv};
 
 use cedar_policy::{proto, Entities, Entity, Policy, PolicySet, Request, Schema};
@@ -102,10 +103,10 @@ fuzz_target!(|input: FuzzTargetInput| {
 fn roundtrip_policies(policies: PolicySet) {
     let policies_proto = proto::models::PolicySet::from(&policies);
     let buf = policies_proto.encode_to_vec();
-    let roundtriped_proto = proto::models::PolicySet::decode(&buf[..])
+    let roundtripped_proto = proto::models::PolicySet::decode(&buf[..])
         .expect("Failed to deserialize PolicySet from proto");
-    let roundtripped =
-        PolicySet::try_from(&roundtriped_proto).expect("Failed to convert from proto to PolicySet");
+    let roundtripped = PolicySet::try_from(&roundtripped_proto)
+        .expect("Failed to convert from proto to PolicySet");
     assert_eq!(policies, roundtripped);
 }
 
@@ -115,7 +116,7 @@ fn roundtrip_entities(entities: Entities) {
     let roundtriped_proto = proto::models::Entities::decode(&buf[..])
         .expect("Failed to deserialize Entities from proto");
     let roundtripped = Entities::from(&roundtriped_proto);
-    assert_eq!(entities, roundtripped);
+    roundtrip_entities::pretty_assert_entities_deep_eq(&entities, &roundtripped);
 }
 
 fn roundtrip_request(request: Request) {
