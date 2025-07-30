@@ -16,6 +16,8 @@
 
 
 import Cedar.Thm.Data.List.Basic
+import Cedar.Thm.Data.List.Lemmas
+import Cedar.Data.List
 
 namespace List
 
@@ -92,6 +94,17 @@ elab "find_pmap_func" x:ident : tactic => do
   | none => throwError "No subexpression of the form 'List.map (fun x => ...) (List.pmap Subtype.mk ...)' found (nor using List.mapM)"
 
 
+
+/-- TODO there has to be an easier way to do this without a macro -/
+syntax "try_unfold_each" "[" ident,* "]" : tactic
+macro_rules
+  | `(tactic| try_unfold_each [$t,*]) => do
+    match t.getElems.toList with
+    | [] => `(tactic| skip)
+    | head :: tail =>
+      let tailArr := Syntax.TSepArray.mk tail.toArray
+      `(tactic| (try unfold $head); (try_unfold_each [$tailArr,*]))
+
 /--
   A tactic that automatically converts calls like `map₁`,
   `map₂`, `mapM₁`, `mapM₂` to corresponding `map` or `mapM`
@@ -110,9 +123,10 @@ elab "auto_map₁_to_map" : tactic => do
   let foundId := Lean.mkIdent found
   withMainContext do
     evalTactic (← `(tactic|
-      try simp only [List.mapM₁, List.attach, List.attach₂, List.mapM₂, List.mapM₁, List.attachWith, List.map₁];;
+      -- try simplifying 3 times to unwrap layers of calls
+      (try unfold List.attachWith); (try unfold List.mapM₁); (try unfold List.attach); (try unfold List.attach₂); (try unfold List.mapM₂); (try unfold List.mapM₁); (try unfold List.map₁); (try unfold List.attach);
+      (try unfold List.attachWith); (try unfold List.mapM₁); (try unfold List.attach); (try unfold List.attach₂); (try unfold List.mapM₂); (try unfold List.mapM₁); (try unfold List.map₁); (try unfold List.attach);
       find_pmap_func $foundId;
-      try rw [List.mapM_pmap_subtype $foundId];
+      (first | rw [List.mapM_pmap_subtype $foundId] | rw [List.map_pmap_subtype $foundId]);
+      subst $foundId
       ))
-    evalTactic (← `(tactic| try rw [List.map_pmap_subtype $foundId]))
-    evalTactic (← `(tactic| subst $foundId))

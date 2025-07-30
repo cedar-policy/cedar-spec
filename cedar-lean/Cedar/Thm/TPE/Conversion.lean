@@ -123,7 +123,9 @@ theorem conversion_preserves_evaluation (te : TypedExpr) (req : Request) (es : E
     simp [TypedExpr.toExpr, TypedExpr.toResidual, Spec.evaluate, Residual.evaluate]
     congr 1
     rw [List.map₁_eq_map, List.map₁_eq_map]
+
     repeat auto_map₁_to_map
+
     rw [List.mapM_then_map_combiner, List.mapM_then_map_combiner]
     rw [List.forall₂_implies_mapM_eq]
     apply conversion_preserves_evaluation_forall2
