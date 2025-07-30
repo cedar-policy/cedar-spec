@@ -458,4 +458,5 @@ theorem canonicalize_of_map_fst {α β γ} [LT α] [StrictLT α] [DecidableLT α
     simp only [canonicalize]
     exact insertCanonical_map_fst_canonicalize tl f hd
 
+
 end List
