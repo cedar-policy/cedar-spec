@@ -22,6 +22,23 @@ use cedar_policy::{
 };
 use itertools::Itertools;
 
+pub fn pretty_assert_entities_deep_eq(original: &Entities, roundtripped: &Entities) {
+    if !original.deep_eq(roundtripped) {
+        // Sort for usefull diff. `Entities` is backed by a `HashMap`
+        let original = original.iter().sorted_by_key(|e| e.uid()).collect_vec();
+        let roundtripped = roundtripped.iter().sorted_by_key(|e| e.uid()).collect_vec();
+        panic!(
+            "{}",
+            similar_asserts::SimpleDiff::from_str(
+                &format!("{original:#?}"),
+                &format!("{roundtripped:#?}"),
+                "original",
+                "roundtripped",
+            )
+        );
+    }
+}
+
 pub fn fuzz_target(entities: Entities, schema: Option<Schema>) {
     let json = match entities.as_ref().to_json_value() {
         Ok(json) => json,
@@ -47,26 +64,9 @@ pub fn fuzz_target(entities: Entities, schema: Option<Schema>) {
 
     let roundtripped_entities = Entities::from_json_value(json.clone(), None)
         .expect("Should be able to parse serialized entity JSON");
+    pretty_assert_entities_deep_eq(&entities, &roundtripped_entities);
 
-    if !entities.deep_eq(&roundtripped_entities) {
-        // Sort for usefull diff. `Entities` is backed by a `HashMap`
-        let entities = entities.iter().sorted_by_key(|e| e.uid()).collect_vec();
-        let roundtripped = roundtripped_entities
-            .iter()
-            .sorted_by_key(|e| e.uid())
-            .collect_vec();
-        panic!(
-            "{}",
-            similar_asserts::SimpleDiff::from_str(
-                &format!("{entities:#?}"),
-                &format!("{roundtripped:#?}"),
-                "original",
-                "roundtripped",
-            )
-        );
-    }
-
-    // Also check schema-based roundtirp
+    // Also check schema-based roundtrip
     if let Some(schema) = schema {
         // The entity store generator currently produces entities of enumerated entity types but with invalid EIDs,
         // which are rejected by entity validation
