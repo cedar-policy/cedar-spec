@@ -66,6 +66,11 @@ impl CedarLeanEngine {
             TestValidationResult { errors, ..res }
         })
     }
+
+    pub fn get_ffi<'a>(&'a self) -> &'a CedarLeanFfi {
+        &self.lean_ffi
+    }
+
 }
 
 impl CedarTestImplementation for CedarLeanEngine {

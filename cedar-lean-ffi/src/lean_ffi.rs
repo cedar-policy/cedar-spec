@@ -75,12 +75,16 @@ extern "C" {
     fn validateEntities(req: *mut lean_object) -> *mut lean_object;
     fn validateRequest(req: *mut lean_object) -> *mut lean_object;
 
-    fn termOfCheckNeverErrors(req: *mut lean_object) -> *mut lean_object;
-    fn termOfCheckAlwaysAllows(req: *mut lean_object) -> *mut lean_object;
-    fn termOfCheckAlwaysDenies(req: *mut lean_object) -> *mut lean_object;
-    fn termOfCheckEquivalent(req: *mut lean_object) -> *mut lean_object;
-    fn termOfCheckImplies(req: *mut lean_object) -> *mut lean_object;
-    fn termOfCheckDisjoint(req: *mut lean_object) -> *mut lean_object;
+    fn runCheckAsserts(asserts: *mut lean_object) -> *mut lean_object;
+    fn printCheckAsserts(asserts: *mut lean_object) -> *mut lean_object;
+    fn smtLibOfCheckAsserts(asserts: *mut lean_object) -> *mut lean_object;
+
+    fn assertsOfCheckNeverErrors(req: *mut lean_object) -> *mut lean_object;
+    fn assertsOfCheckAlwaysAllows(req: *mut lean_object) -> *mut lean_object;
+    fn assertsOfCheckAlwaysDenies(req: *mut lean_object) -> *mut lean_object;
+    fn assertsOfCheckEquivalent(req: *mut lean_object) -> *mut lean_object;
+    fn assertsOfCheckImplies(req: *mut lean_object) -> *mut lean_object;
+    fn assertsOfCheckDisjoint(req: *mut lean_object) -> *mut lean_object;
 
     fn initialize_CedarFFI(builtin: u8, ob: *mut lean_object) -> *mut lean_object;
 }
@@ -252,6 +256,44 @@ macro_rules! comparePolicySet_func {
     };
 }
 
+macro_rules! checkAsserts_func {
+    // Pattern for function identifier
+    (&timed_func_name:ident, $untimed_func_name:ident, $lean_func_name:ident, $transform:ident, $ret_ty:ty) => {
+        checkAsserts_func!(@internal $timed_func_name, $untimed_func_name, $lean_func_name, $transform, $ret_ty);
+    };
+    // Pattern for closure expression
+    ($timed_func_name:ident, $untimed_func_name:ident, $lean_func_name:ident, $transform:expr, $ret_ty:ty) => {
+        checkAsserts_func!(@internal $timed_func_name, $untimed_func_name, $lean_func_name, $transform, $ret_ty);
+    };
+    // Internal implementation
+    (@internal $timed_func_name:ident, $untimed_func_name:ident, $lean_func_name:ident, $transform:expr, $ret_ty:ty) => {
+        pub fn $timed_func_name(
+            &self,
+            asserts: &Vec<Term>,
+            schema: &Schema,
+            request_env: &RequestEnv,
+        ) -> Result<TimedResult<$ret_ty>, FfiError> {
+            let asserts_proto = proto::CheckAssertsRequest::new(asserts, schema, request_env).encode_to_vec();
+            let asserts_proto = buf_to_lean_obj(&asserts_proto);
+            let response = unsafe { $lean_func_name(asserts_proto) };
+            let response = lean_obj_p_to_rust_string(response);
+            match serde_json::from_str(&response) {
+                Ok(ResultDef::Ok(t)) => Ok(TimedResult::from_def(t).transform($transform)),
+                Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
+                Err(_) => Err(FfiError::LeanDeserializationError(response)),
+            }
+        }
+        pub fn $untimed_func_name(
+            &self,
+            asserts: &Vec<Term>,
+            schema: &Schema,
+            request_env: &RequestEnv,
+        ) -> Result<$ret_ty, FfiError> {
+            Ok(self.$timed_func_name(asserts, schema, request_env)?.take_result())
+        }
+    };
+}
+
 impl CedarLeanFfi {
     /// WARNING: we can only have one Lean thread
     pub fn new() -> Self {
@@ -377,50 +419,74 @@ impl CedarLeanFfi {
         ()
     );
 
+    checkAsserts_func!(
+        run_check_asserts_timed,
+        run_check_asserts,
+        runCheckAsserts,
+        |x| x,
+        bool
+    );
+
+    checkAsserts_func!(
+        print_check_asserts_timed,
+        print_check_asserts,
+        printCheckAsserts,
+        |x| x,
+        ()
+    );
+
+    checkAsserts_func!(
+        smtlib_of_check_asserts_timed,
+        smtlib_of_check_asserts,
+        smtLibOfCheckAsserts,
+        |x| x,
+        String
+    );
+
     checkPolicy_func!(
-        term_of_check_never_errors_timed,
-        term_of_check_never_errors,
-        termOfCheckNeverErrors,
+        asserts_of_check_never_errors_timed,
+        asserts_of_check_never_errors,
+        assertsOfCheckNeverErrors,
         ResultDef::to_result,
         Result<Vec<Term>, String>
     );
 
     checkPolicySet_func!(
-        term_of_check_always_allows_timed,
-        term_of_check_always_allows,
-        termOfCheckAlwaysAllows,
+        asserts_of_check_always_allows_timed,
+        asserts_of_check_always_allows,
+        assertsOfCheckAlwaysAllows,
         ResultDef::to_result,
         Result<Vec<Term>, String>
     );
 
     checkPolicySet_func!(
-        term_of_check_always_denies_timed,
-        term_of_check_always_denies,
-        termOfCheckAlwaysDenies,
+        asserts_of_check_always_denies_timed,
+        asserts_of_check_always_denies,
+        assertsOfCheckAlwaysDenies,
         ResultDef::to_result,
         Result<Vec<Term>, String>
     );
 
     comparePolicySet_func!(
-        term_of_check_equivalent_timed,
-        term_of_check_equivalent,
-        termOfCheckEquivalent,
+        asserts_of_check_equivalent_timed,
+        asserts_of_check_equivalent,
+        assertsOfCheckEquivalent,
         ResultDef::to_result,
         Result<Vec<Term>, String>
     );
 
     comparePolicySet_func!(
-        term_of_check_implies_timed,
-        term_of_check_implies,
-        termOfCheckImplies,
+        asserts_of_check_implies_timed,
+        asserts_of_check_implies,
+        assertsOfCheckImplies,
         ResultDef::to_result,
         Result<Vec<Term>, String>
     );
 
     comparePolicySet_func!(
-        term_of_check_disjoint_timed,
-        term_of_check_disjoint,
-        termOfCheckDisjoint,
+        asserts_of_check_disjoint_timed,
+        asserts_of_check_disjoint,
+        assertsOfCheckDisjoint,
         ResultDef::to_result,
         Result<Vec<Term>, String>
     );
@@ -781,9 +847,11 @@ mod test {
         ffi.smtlib_of_check_never_errors(&trivial_policy, &schema, &req_env)
             .expect("Lean call unexpectedly failed for smtlib_of_check_never_errors");
 
-        ffi.term_of_check_never_errors(&trivial_policy, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for term_of_check_never_errors")
-            .expect("Lean SymCC unexpectedly failed to encode term for term_of_check_never_errors");
+        ffi.asserts_of_check_never_errors(&trivial_policy, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for asserts_of_check_never_errors")
+            .expect(
+                "Lean SymCC unexpectedly failed to encode term for asserts_of_check_never_errors",
+            );
     }
 
     #[test]
@@ -808,10 +876,10 @@ mod test {
         ffi.smtlib_of_check_always_allows(&always_allows_pset, &schema, &req_env)
             .expect("Lean call unexpectedly failed for smtlib_of_check_always_allows");
 
-        ffi.term_of_check_always_allows(&always_allows_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for term_of_check_always_allows")
+        ffi.asserts_of_check_always_allows(&always_allows_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for asserts_of_check_always_allows")
             .expect(
-                "Lean SymCC unexpectedly failed to encode term for term_of_check_always_allows",
+                "Lean SymCC unexpectedly failed to encode term for asserts_of_check_always_allows",
             );
 
         let res = ffi
@@ -825,10 +893,10 @@ mod test {
         ffi.smtlib_of_check_always_allows(&always_denies_pset, &schema, &req_env)
             .expect("Lean call unexpectedly failed for smtlib_of_check_always_allows");
 
-        ffi.term_of_check_always_allows(&always_denies_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for term_of_check_always_allows")
+        ffi.asserts_of_check_always_allows(&always_denies_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for asserts_of_check_always_allows")
             .expect(
-                "Lean SymCC unexpectedly failed to encode term for term_of_check_always_allows",
+                "Lean SymCC unexpectedly failed to encode term for asserts_of_check_always_allows",
             );
     }
 
@@ -854,10 +922,10 @@ mod test {
         ffi.smtlib_of_check_always_denies(&always_allows_pset, &schema, &req_env)
             .expect("Lean call unexpectedly failed for smtlib_of_check_always_denies");
 
-        ffi.term_of_check_always_denies(&always_allows_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for term_of_check_always_denies")
+        ffi.asserts_of_check_always_denies(&always_allows_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for asserts_of_check_always_denies")
             .expect(
-                "Lean SymCC unexpectedly failed to encode term for term_of_check_always_denies",
+                "Lean SymCC unexpectedly failed to encode term for asserts_of_check_always_denies",
             );
 
         let res = ffi
@@ -871,10 +939,10 @@ mod test {
         ffi.smtlib_of_check_always_denies(&always_denies_pset, &schema, &req_env)
             .expect("Lean call unexpectedly failed for smtlib_of_check_always_denies");
 
-        ffi.term_of_check_always_denies(&always_denies_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for term_of_check_always_denies")
+        ffi.asserts_of_check_always_denies(&always_denies_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for asserts_of_check_always_denies")
             .expect(
-                "Lean SymCC unexpectedly failed to encode term for term_of_check_always_denies",
+                "Lean SymCC unexpectedly failed to encode term for asserts_of_check_always_denies",
             );
     }
 
@@ -897,9 +965,14 @@ mod test {
             "run_check_equivalent returned wrong result. Expected: true"
         );
 
-        ffi.term_of_check_equivalent(&always_allows_pset, &always_allows_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for term_of_check_equivalent")
-            .expect("Lean SymCC unexpectedly failed to encode term for term_of_check_equivalent");
+        ffi.asserts_of_check_equivalent(
+            &always_allows_pset,
+            &always_allows_pset,
+            &schema,
+            &req_env,
+        )
+        .expect("Lean call unexpectedly failed for asserts_of_check_equivalent")
+        .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_equivalent");
 
         ffi.smtlib_of_check_equivalent(&always_allows_pset, &always_allows_pset, &schema, &req_env)
             .expect("Lean call unexpectedly failed for smtlib_of_check_equivalent");
@@ -915,9 +988,14 @@ mod test {
         ffi.smtlib_of_check_equivalent(&always_denies_pset, &always_denies_pset, &schema, &req_env)
             .expect("Lean call unexpectedly failed for smtlib_of_check_equivalent");
 
-        ffi.term_of_check_equivalent(&always_denies_pset, &always_denies_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for term_of_check_equivalent")
-            .expect("Lean SymCC unexpectedly failed to encode term for term_of_check_equivalent");
+        ffi.asserts_of_check_equivalent(
+            &always_denies_pset,
+            &always_denies_pset,
+            &schema,
+            &req_env,
+        )
+        .expect("Lean call unexpectedly failed for asserts_of_check_equivalent")
+        .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_equivalent");
 
         let res = ffi
             .run_check_equivalent(&always_allows_pset, &always_denies_pset, &schema, &req_env)
@@ -930,9 +1008,14 @@ mod test {
         ffi.smtlib_of_check_equivalent(&always_allows_pset, &always_denies_pset, &schema, &req_env)
             .expect("Lean call unexpectedly failed for smtlib_of_check_equivalent");
 
-        ffi.term_of_check_equivalent(&always_allows_pset, &always_denies_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for term_of_check_equivalent")
-            .expect("Lean SymCC unexpectedly failed to encode term for term_of_check_equivalent");
+        ffi.asserts_of_check_equivalent(
+            &always_allows_pset,
+            &always_denies_pset,
+            &schema,
+            &req_env,
+        )
+        .expect("Lean call unexpectedly failed for asserts_of_check_equivalent")
+        .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_equivalent");
     }
 
     #[test]
@@ -957,9 +1040,9 @@ mod test {
         ffi.smtlib_of_check_implies(&always_allows_pset, &always_allows_pset, &schema, &req_env)
             .expect("Lean call unexpectedly failed for smtlib_of_check_implies");
 
-        ffi.term_of_check_implies(&always_allows_pset, &always_allows_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for term_of_check_implies")
-            .expect("Lean SymCC unexpectedly failed to encode term for term_of_check_implies");
+        ffi.asserts_of_check_implies(&always_allows_pset, &always_allows_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for asserts_of_check_implies")
+            .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_implies");
 
         let res = ffi
             .run_check_implies(&always_denies_pset, &always_denies_pset, &schema, &req_env)
@@ -972,9 +1055,9 @@ mod test {
         ffi.smtlib_of_check_implies(&always_denies_pset, &always_denies_pset, &schema, &req_env)
             .expect("Lean call unexpectedly failed for smtlib_of_check_implies");
 
-        ffi.term_of_check_implies(&always_denies_pset, &always_denies_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for term_of_check_implies")
-            .expect("Lean SymCC unexpectedly failed to encode term for term_of_check_implies");
+        ffi.asserts_of_check_implies(&always_denies_pset, &always_denies_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for asserts_of_check_implies")
+            .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_implies");
 
         let res = ffi
             .run_check_implies(&always_allows_pset, &always_denies_pset, &schema, &req_env)
@@ -987,9 +1070,9 @@ mod test {
         ffi.smtlib_of_check_implies(&always_allows_pset, &always_denies_pset, &schema, &req_env)
             .expect("Lean call unexpectedly failed for smtlib_of_check_implies");
 
-        ffi.term_of_check_implies(&always_allows_pset, &always_denies_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for term_of_check_implies")
-            .expect("Lean SymCC unexpectedly failed to encode term for term_of_check_implies");
+        ffi.asserts_of_check_implies(&always_allows_pset, &always_denies_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for asserts_of_check_implies")
+            .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_implies");
 
         let res = ffi
             .run_check_implies(&always_denies_pset, &always_allows_pset, &schema, &req_env)
@@ -1002,9 +1085,9 @@ mod test {
         ffi.smtlib_of_check_implies(&always_denies_pset, &always_allows_pset, &schema, &req_env)
             .expect("Lean call unexpectedly failed for smtlib_of_check_implies");
 
-        ffi.term_of_check_implies(&always_denies_pset, &always_allows_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for term_of_check_implies")
-            .expect("Lean SymCC unexpectedly failed to encode term for term_of_check_implies");
+        ffi.asserts_of_check_implies(&always_denies_pset, &always_allows_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for asserts_of_check_implies")
+            .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_implies");
     }
 
     #[test]
@@ -1029,9 +1112,9 @@ mod test {
         ffi.smtlib_of_check_disjoint(&always_allows_pset, &always_allows_pset, &schema, &req_env)
             .expect("Lean call unexpectedly failed for smtlib_of_check_disjoint");
 
-        ffi.term_of_check_disjoint(&always_allows_pset, &always_allows_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for term_of_check_disjoint")
-            .expect("Lean SymCC unexpectedly failed to encode term for term_of_check_disjoint");
+        ffi.asserts_of_check_disjoint(&always_allows_pset, &always_allows_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for asserts_of_check_disjoint")
+            .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_disjoint");
 
         let res = ffi
             .run_check_disjoint(&always_denies_pset, &always_denies_pset, &schema, &req_env)
@@ -1044,9 +1127,9 @@ mod test {
         ffi.smtlib_of_check_disjoint(&always_denies_pset, &always_denies_pset, &schema, &req_env)
             .expect("Lean call unexpectedly failed for smtlib_of_check_disjoint");
 
-        ffi.term_of_check_disjoint(&always_denies_pset, &always_denies_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for term_of_check_disjoint")
-            .expect("Lean SymCC unexpectedly failed to encode term for term_of_check_disjoint");
+        ffi.asserts_of_check_disjoint(&always_denies_pset, &always_denies_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for asserts_of_check_disjoint")
+            .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_disjoint");
 
         let res = ffi
             .run_check_disjoint(&always_allows_pset, &always_denies_pset, &schema, &req_env)
@@ -1059,9 +1142,9 @@ mod test {
         ffi.smtlib_of_check_disjoint(&always_allows_pset, &always_denies_pset, &schema, &req_env)
             .expect("Lean call unexpectedly failed for smtlib_of_check_disjoint");
 
-        ffi.term_of_check_disjoint(&always_allows_pset, &always_denies_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for term_of_check_disjoint")
-            .expect("Lean SymCC unexpectedly failed to encode term for term_of_check_disjoint");
+        ffi.asserts_of_check_disjoint(&always_allows_pset, &always_denies_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for asserts_of_check_disjoint")
+            .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_disjoint");
 
         let res = ffi
             .run_check_disjoint(&always_denies_pset, &always_allows_pset, &schema, &req_env)
@@ -1074,9 +1157,9 @@ mod test {
         ffi.smtlib_of_check_disjoint(&always_denies_pset, &always_allows_pset, &schema, &req_env)
             .expect("Lean call unexpectedly failed for smtlib_of_check_disjoint");
 
-        ffi.term_of_check_disjoint(&always_denies_pset, &always_allows_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for term_of_check_disjoint")
-            .expect("Lean SymCC unexpectedly failed to encode term for term_of_check_disjoint");
+        ffi.asserts_of_check_disjoint(&always_denies_pset, &always_allows_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for asserts_of_check_disjoint")
+            .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_disjoint");
     }
 
     #[test]
