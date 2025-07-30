@@ -80,7 +80,7 @@ def findMapPmapPattern (e : Lean.Expr) : MetaM (Option Lean.Expr) := do
     if let some res ← findMapPmapPattern f then return res
     if let some res ← findMapPmapPattern a then return res
     return none
-  | .mdata data expr => do
+  | .mdata _data expr => do
     if let some res ← findMapPmapPattern expr then return res
     return none
   | _ => return none
@@ -99,12 +99,25 @@ elab "find_pmap_func" x:ident : tactic => do
   | none => throwError "No subexpression of the form 'List.map (fun x => ...) (List.pmap Subtype.mk ...)' found (nor using List.mapM)"
 
 
-elab "simp_map_pmap" : tactic => do
+/--
+  A tactic that automatically converts calls like `map₁`,
+  `map₂`, `mapM₁`, `mapM₂` to corresponding `map` or `mapM`
+  calls. This helps proofs ignore annotations used
+  for termination proofs.
+
+  The tactic works by
+  1. Unfolding things like mapM₁, mapM₂, attach, ect
+  2. Finding an opportunity for simplification (a map on a pmap)
+  3. Rewritting using List.map_pmap_subtype and the simplified function.
+
+  If the tactic fails, you can try doing simplification first to expose these opportunities or using `find_pmap_func` to see what the computed function is.
+-/
+elab "auto_map₁_to_map" : tactic => do
   let found ← Lean.mkFreshId
   let foundId := Lean.mkIdent found
   withMainContext do
     evalTactic (← `(tactic|
-      try simp only [List.mapM₁, List.attach, List.attach₂, List.mapM₂, List.mapM₁, List.attachWith];;
+      try simp only [List.mapM₁, List.attach, List.attach₂, List.mapM₂, List.mapM₁, List.attachWith, List.map₁];;
       find_pmap_func $foundId;
       try rw [List.mapM_pmap_subtype $foundId];
       ))
@@ -177,11 +190,7 @@ theorem conversion_preserves_evaluation (te : TypedExpr) (req : Request) (es : E
     simp [TypedExpr.toExpr, TypedExpr.toResidual, Spec.evaluate, Residual.evaluate]
     congr 1
     rw [List.map₁_eq_map, List.map₁_eq_map]
-    have h : (fun x : { x // x ∈ List.map TypedExpr.toExpr ls } => Spec.evaluate x.val req es) = (fun x => ((fun y => Spec.evaluate y req es) x.val)) := by {
-      simp
-    }
-    rw [h]
-    repeat simp_map_pmap
+    repeat auto_map₁_to_map
     rw [List.mapM_then_map_combiner, List.mapM_then_map_combiner]
     rw [List.forall₂_implies_mapM_eq]
     induction ls
@@ -194,12 +203,11 @@ theorem conversion_preserves_evaluation (te : TypedExpr) (req : Request) (es : E
         apply conversion_preserves_evaluation
       case right =>
         apply ih
-        simp
   | record map ty =>
     unfold TypedExpr.toExpr
     simp [TypedExpr.toExpr, TypedExpr.toResidual, Spec.evaluate, Residual.evaluate]
     congr 1
-    repeat simp_map_pmap
+    repeat auto_map₁_to_map
     unfold bindAttr
     rw [List.mapM_then_map_combiner, List.mapM_then_map_combiner]
     simp
@@ -216,11 +224,33 @@ theorem conversion_preserves_evaluation (te : TypedExpr) (req : Request) (es : E
         apply ih
   | call xfn args ty =>
     simp [TypedExpr.toExpr, TypedExpr.toResidual, Spec.evaluate, Residual.evaluate]
-    sorry
+    congr 1
+    repeat auto_map₁_to_map
+    rw [List.mapM_then_map_combiner, List.mapM_then_map_combiner]
+    rw [List.forall₂_implies_mapM_eq]
+    induction args
+    case _ =>
+      simp
+    case _ ih =>
+      simp
+      constructor
+      case left =>
+        apply conversion_preserves_evaluation
+      case right =>
+        apply ih
 termination_by sizeOf te
 decreasing_by
-  all_goals {
+  any_goals
+    simp;
+    try omega;
+  case _ =>
     sorry
-  }
+  case _ =>
+    sorry
+  case _ =>
+    sorry
+
+
+
 
 end Cedar.TPE
