@@ -405,11 +405,13 @@ pub enum Term {
     Var(TermVar),
     None(TermType),
     Some(Box<Term>),
+    #[serde(rename_all = "camelCase")]
     Set {
         elts: Vec<Term>,
         elts_ty: TermType,
     },
     Record(Vec<(String, Term)>),
+    #[serde(rename_all = "camelCase")]
     App {
         op: Op,
         args: Vec<Term>,
