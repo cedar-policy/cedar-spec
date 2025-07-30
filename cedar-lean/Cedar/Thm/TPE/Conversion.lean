@@ -125,6 +125,37 @@ elab "auto_map₁_to_map" : tactic => do
     evalTactic (← `(tactic| subst $foundId))
 
 
+mutual
+theorem conversion_preserves_evaluation_forall2 :
+  List.Forall₂ (fun x y => Spec.evaluate x.toExpr req es = (TypedExpr.toResidual y).evaluate req es) ls ls := by
+  cases ls with
+  | nil =>
+    simp
+  | cons head tail =>
+    simp
+    constructor
+    case left =>
+      apply conversion_preserves_evaluation
+    case right =>
+      apply conversion_preserves_evaluation_forall2
+
+theorem conversion_preserves_evaluation_forall2_map {map : List (Attr × TypedExpr)} :
+  List.Forall₂
+  (fun x y =>
+    Prod.mk x.fst <$> Spec.evaluate x.snd.toExpr req es =
+      Prod.mk y.fst <$> (TypedExpr.toResidual y.snd).evaluate req es)
+  map map := by
+  cases map with
+  | nil =>
+    simp
+  | cons head tail =>
+    simp
+    constructor
+    case left =>
+      apply conversion_preserves_evaluation
+    case right =>
+      apply conversion_preserves_evaluation_forall2_map
+
 /--
 Theorem stating that converting a TypedExpr to a Residual preserves evaluation semantics.
 That is, evaluating the original TypedExpr (converted to Expr) gives the same result
@@ -193,16 +224,7 @@ theorem conversion_preserves_evaluation (te : TypedExpr) (req : Request) (es : E
     repeat auto_map₁_to_map
     rw [List.mapM_then_map_combiner, List.mapM_then_map_combiner]
     rw [List.forall₂_implies_mapM_eq]
-    induction ls
-    case set.e_a.a.nil =>
-      simp
-    case _ ih =>
-      simp
-      constructor
-      case left =>
-        apply conversion_preserves_evaluation
-      case right =>
-        apply ih
+    apply conversion_preserves_evaluation_forall2
   | record map ty =>
     unfold TypedExpr.toExpr
     simp [TypedExpr.toExpr, TypedExpr.toResidual, Spec.evaluate, Residual.evaluate]
@@ -212,44 +234,15 @@ theorem conversion_preserves_evaluation (te : TypedExpr) (req : Request) (es : E
     rw [List.mapM_then_map_combiner, List.mapM_then_map_combiner]
     simp
     rw [List.forall₂_implies_mapM_eq]
-    induction map
-    case _ =>
-      simp
-    case _ ih =>
-      simp
-      constructor
-      case left =>
-        apply conversion_preserves_evaluation
-      case right =>
-        apply ih
+    apply conversion_preserves_evaluation_forall2_map
   | call xfn args ty =>
     simp [TypedExpr.toExpr, TypedExpr.toResidual, Spec.evaluate, Residual.evaluate]
     congr 1
     repeat auto_map₁_to_map
     rw [List.mapM_then_map_combiner, List.mapM_then_map_combiner]
     rw [List.forall₂_implies_mapM_eq]
-    induction args
-    case _ =>
-      simp
-    case _ ih =>
-      simp
-      constructor
-      case left =>
-        apply conversion_preserves_evaluation
-      case right =>
-        apply ih
-termination_by sizeOf te
-decreasing_by
-  any_goals
-    simp;
-    try omega;
-  case _ =>
-    sorry
-  case _ =>
-    sorry
-  case _ =>
-    sorry
-
+    apply conversion_preserves_evaluation_forall2
+end
 
 
 
