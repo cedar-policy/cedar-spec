@@ -64,6 +64,109 @@ def Residual.isError : Residual → Bool
   | .error _ => true
   | _        => false
 
+def Value.asTypedExpr (v : Value) (ty: CedarType) : Result TypedExpr :=
+  match v with
+  | .prim p => .ok (TypedExpr.lit p ty)
+  | .set s =>
+    match ty with
+    | .set ty' => do
+      let ts ← s.elts.mapM₁ (fun ⟨v, _⟩ => Value.asTypedExpr v ty')
+      .ok (TypedExpr.set ts ty)
+    | _ => .error .typeError
+  | .record m =>
+    match ty with
+    | .record ty' => do
+     match m with
+     | .mk kvs =>
+        let ts ← kvs.mapM₂ (fun ⟨⟨a, v⟩, _⟩ => do
+          let vty ← (ty'.findOrErr a .attrDoesNotExist)
+          let v' ← Value.asTypedExpr v (vty.getType)
+          .ok (a, v'))
+        .ok (TypedExpr.record ts ty)
+    | _ => .error .typeError
+  | _ =>
+    -- TODO handle extension functions
+    .error .typeError
+termination_by sizeOf v
+decreasing_by
+  . rename_i h
+    have h2 := List.sizeOf_lt_of_mem h
+    simp at *
+    conv in (sizeOf s) =>
+      unfold sizeOf
+    -- painful unfolding proof
+    unfold Set._sizeOf_inst
+    simp
+    unfold Set._sizeOf_1
+    simp
+    have h3: s.elts = s.1 := by { simp}
+    rw [←h3]
+    omega
+  . simp
+    rename_i h
+    simp at *
+    omega
+
+def Residual.asTypedExpr (x : Residual) : Result TypedExpr :=
+  match x with
+  | .val v ty => Value.asTypedExpr v ty
+  | .var v ty => .ok (TypedExpr.var v ty)
+  | .ite c t e ty => do
+    let c' ← c.asTypedExpr
+    let t' ← t.asTypedExpr
+    let e' ← e.asTypedExpr
+    .ok (TypedExpr.ite c' t' e' ty)
+  | .and a b ty => do
+    let a' ← a.asTypedExpr
+    let b' ← b.asTypedExpr
+    .ok (TypedExpr.and a' b' ty)
+  | .or a b ty => do
+    let a' ← a.asTypedExpr
+    let b' ← b.asTypedExpr
+    .ok (TypedExpr.or a' b' ty)
+  | .unaryApp op e ty => do
+    let e' ← e.asTypedExpr
+    .ok (TypedExpr.unaryApp op e' ty)
+  | .binaryApp op a b ty => do
+    let a' ← a.asTypedExpr
+    let b' ← b.asTypedExpr
+    .ok (TypedExpr.binaryApp op a' b' ty)
+  | .getAttr e a ty => do
+    let e' ← e.asTypedExpr
+    .ok (TypedExpr.getAttr e' a ty)
+  | .hasAttr e a ty => do
+    let e' ← e.asTypedExpr
+    .ok (TypedExpr.hasAttr e' a ty)
+  | .set ls ty => do
+    let ts ← ls.mapM₁ (fun ⟨r, _⟩ => r.asTypedExpr)
+    .ok (TypedExpr.set ts ty)
+  | .record m ty => do
+    let ts ← m.mapM₂ (fun ⟨⟨a, r⟩, _⟩ => bindAttr a r.asTypedExpr)
+    .ok (TypedExpr.record ts ty)
+  | .call xfn args ty => do
+    let ts ← args.mapM (fun r => r.asTypedExpr)
+    .ok (TypedExpr.call xfn ts ty)
+  | .error _ty => .error .typeError
+termination_by sizeOf x
+decreasing_by
+  repeat case _ =>
+    simp [*]; try omega
+    -- Set
+  · rename_i h
+    simp_wf
+    let so := List.sizeOf_lt_of_mem h
+    omega
+  -- Record
+  · simp at *
+    rename_i h
+    omega
+  -- Call
+  · simp [*]
+    rename_i h
+    have h2 := List.sizeOf_lt_of_mem h
+    omega
+
+
 -- The interpreter of `Residual` that defines its semantics
 def Residual.evaluate (x : Residual) (req : Request) (es: Entities) : Result Value :=
   match x with
