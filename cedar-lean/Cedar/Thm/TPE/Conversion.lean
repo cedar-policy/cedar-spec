@@ -34,27 +34,32 @@ open Lean.Elab.Term
 open Lean.Elab.Tactic
 
 def replaceValProjRec (e: Lean.Expr) : MetaM Lean.Expr :=
-  match e with
-  | (.app (.app (.app (.const ``Subtype.val _) _) _) (.bvar 0)) =>
+do
+  let e' ← (Lean.Meta.reduce e)
+  match e' with
+  | .proj _name 0 (.bvar 0) =>
     return (.bvar 0)
-  | .app f a => do
-    let f' ← replaceValProjRec f
-    let a' ← replaceValProjRec a
-    return .app f' a'
-  | e' => return e'
+  | _ =>
+    match e with
+    | .proj name id child =>
+    let child' ← replaceValProjRec child
+    return (.proj name id child')
+    | .app f a =>
+        let f' ← replaceValProjRec f
+        let a' ← replaceValProjRec a
+        return (.app f' a')
+    | e' =>  return e'
 
 
 def fixupPmapType (ty : Lean.Expr) : Lean.Expr :=
   match ty with
-  | (.app (.app (.const ``Subtype _) ty1) ty2) =>
-    dbg_trace s!"subty: {toString ty1}"
+  | (.app (.app (.const ``Subtype _) ty1) _ty2) =>
     ty1
   | _ =>
-    dbg_trace s!"sad"
     ty
 
 
-def replaceValProj (e : Lean.Expr) : MetaM Lean.Expr :=
+def replaceValProj (e : Lean.Expr) : MetaM Lean.Expr := do
   match e with
   | .lam n t b d => do
     let t' := fixupPmapType t
@@ -65,7 +70,10 @@ def replaceValProj (e : Lean.Expr) : MetaM Lean.Expr :=
 def findMapPmapPattern (e : Lean.Expr) : MetaM (Option Lean.Expr) := do
   match e with
   | (.app (.app (.app (.app (.const ``List.map _) _) _) f)
-          (.app (.app (.app (.app (.app (.app (.const ``List.pmap _) _) _) _) _) ls) _)) => do
+          (.app (.app (.app (.app (.app (.app (.const ``List.pmap _) _) _) _) _) _ls) _)) => do
+    return f
+  | (.app (.app (.app (.app (.app (.app (.const ``List.mapM _) _) _) _) _) f)
+          (.app (.app (.app (.app (.app (.app (.const ``List.pmap _) _) _) _) _) _ls) _)) => do
     return f
   | .app f a => do
     if let some res ← findMapPmapPattern f then return res
@@ -85,6 +93,8 @@ elab "find_pmap_func" x:ident : tactic => do
       let (_, mvarIdNew) ← mvarIdNew.intro1P
       return [mvarIdNew]
   | none => throwError "No subexpression of the form 'List.map (fun x => ...) (List.pmap Subtype.mk ...)' found"
+
+
 
 /--
 Theorem stating that converting a TypedExpr to a Residual preserves evaluation semantics.
@@ -182,10 +192,13 @@ theorem conversion_preserves_evaluation (te : TypedExpr) (req : Request) (es : E
     unfold List.attach₂
     unfold bindAttr
     simp
-    rw [List.mapM_pmap_subtype (fun x => Prod.mk x.fst <$> Spec.evaluate x.snd req es) (List.map (fun y => (y.fst, y.snd.toExpr)) map)]
+    find_pmap_func found1
+    rw [List.mapM_pmap_subtype found1 (List.map (fun y => (y.fst, y.snd.toExpr)) map)]
     rw [List.mapM_pmap_subtype (fun x => Prod.mk x.fst <$> x.snd.evaluate req es) (List.map (fun x => (x.1.fst, TypedExpr.toResidual x.1.snd)) (List.pmap Subtype.mk map _))]
     find_pmap_func found
-    rw [List.map_pmap_subtype found]
+    rw [List.map_pmap_subtype found map]
+    subst found
+
     rw [List.mapM_then_map_combiner, List.mapM_then_map_combiner]
     simp
     rw [List.forall₂_implies_mapM_eq]
