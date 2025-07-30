@@ -35,20 +35,18 @@ open Lean.Elab.Tactic
 
 def replaceValProjRec (e: Lean.Expr) : MetaM Lean.Expr :=
 do
-  let e' ← (Lean.Meta.reduce e)
-  match e' with
+  match e with
   | .proj _name 0 (.bvar 0) =>
     return (.bvar 0)
-  | _ =>
-    match e with
-    | .proj name id child =>
-    let child' ← replaceValProjRec child
-    return (.proj name id child')
-    | .app f a =>
-        let f' ← replaceValProjRec f
-        let a' ← replaceValProjRec a
-        return (.app f' a')
-    | e' =>  return e'
+  | .proj name id child =>
+  let child' ← replaceValProjRec child
+  return (.proj name id child')
+  | .app f a =>
+      let f' ← replaceValProjRec f
+      let a' ← replaceValProjRec a
+      return (.app f' a')
+  | _ =>  return e
+
 
 
 def fixupPmapType (ty : Lean.Expr) : Lean.Expr :=
