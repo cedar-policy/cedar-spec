@@ -63,7 +63,6 @@ def replaceValProj (e : Lean.Expr) : MetaM Lean.Expr := do
   | e' => return e'
 
 def findMapPmapPattern (e : Lean.Expr) : MetaM (Option Lean.Expr) := do
-  dbg_trace "{toString e}"
   match e with
   | (.app (.app (.app (.app (.const ``List.map _) _) _) f)
           (.app (.app (.app (.app (.app (.app (.const ``List.pmap _) _) _) _) _) _ls) _)) => do
@@ -95,16 +94,6 @@ elab "find_pmap_func" x:ident : tactic => do
 
 
 
-/-- TODO there has to be an easier way to do this without a macro -/
-syntax "try_unfold_each" "[" ident,* "]" : tactic
-macro_rules
-  | `(tactic| try_unfold_each [$t,*]) => do
-    match t.getElems.toList with
-    | [] => `(tactic| skip)
-    | head :: tail =>
-      let tailArr := Syntax.TSepArray.mk tail.toArray
-      `(tactic| (try unfold $head); (try_unfold_each [$tailArr,*]))
-
 /--
   A tactic that automatically converts calls like `map₁`,
   `map₂`, `mapM₁`, `mapM₂` to corresponding `map` or `mapM`
@@ -124,8 +113,7 @@ elab "auto_map₁_to_map" : tactic => do
   withMainContext do
     evalTactic (← `(tactic|
       -- try simplifying 3 times to unwrap layers of calls
-      (try unfold List.attachWith); (try unfold List.mapM₁); (try unfold List.attach); (try unfold List.attach₂); (try unfold List.mapM₂); (try unfold List.mapM₁); (try unfold List.map₁); (try unfold List.attach);
-      (try unfold List.attachWith); (try unfold List.mapM₁); (try unfold List.attach); (try unfold List.attach₂); (try unfold List.mapM₂); (try unfold List.mapM₁); (try unfold List.map₁); (try unfold List.attach);
+      (iterate 2 (try dsimp only [List.attachWith, List.mapM₁, List.attach, List.attach₂, List.mapM₂, List.mapM₁, List.map₁, List.attach]));
       find_pmap_func $foundId;
       (first | rw [List.mapM_pmap_subtype $foundId] | rw [List.map_pmap_subtype $foundId]);
       subst $foundId
