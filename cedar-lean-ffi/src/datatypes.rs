@@ -255,6 +255,14 @@ pub enum ExtOp {
 }
 
 #[derive(Debug, Deserialize)]
+pub enum PatElem {
+    #[serde(rename = "star")]
+    Star,
+    #[serde(rename = "justChar")]
+    Char { c: u32 },
+}
+
+#[derive(Debug, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Op {
     Not,
@@ -292,9 +300,9 @@ pub enum Op {
     #[serde(rename = "option.get")]
     OptionGet,
     #[serde(rename = "record.get")]
-    RecordGet,
+    RecordGet(String),
     #[serde(rename = "string.like")]
-    StringLike,
+    StringLike(Vec<PatElem>),
     Ext(ExtOp),
 }
 
@@ -347,8 +355,8 @@ pub enum TermPrimType {
         n: u8,
     },
     String,
-    #[serde(deserialize_with = "deserialize_entity_type_name")]
     Entity {
+        #[serde(deserialize_with = "deserialize_entity_type_name")]
         ety: EntityTypeName,
     },
     Ext {
@@ -397,11 +405,13 @@ pub enum Term {
     Var(TermVar),
     None(TermType),
     Some(Box<Term>),
+    #[serde(rename_all = "camelCase")]
     Set {
         elts: Vec<Term>,
         elts_ty: TermType,
     },
     Record(Vec<(String, Term)>),
+    #[serde(rename_all = "camelCase")]
     App {
         op: Op,
         args: Vec<Term>,
