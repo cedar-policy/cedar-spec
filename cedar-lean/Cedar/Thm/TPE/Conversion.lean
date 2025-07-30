@@ -38,6 +38,8 @@ do
   match e with
   | .proj _name 0 (.bvar 0) =>
     return (.bvar 0)
+  | (.app (.app (.app (.const ``Subtype.val _) _) _) (.bvar 0)) =>
+    return (.bvar 0)
   | .proj name id child =>
   let child' ← replaceValProjRec child
   return (.proj name id child')
@@ -66,6 +68,7 @@ def replaceValProj (e : Lean.Expr) : MetaM Lean.Expr := do
   | e' => return e'
 
 def findMapPmapPattern (e : Lean.Expr) : MetaM (Option Lean.Expr) := do
+  dbg_trace "{toString e}"
   match e with
   | (.app (.app (.app (.app (.const ``List.map _) _) _) f)
           (.app (.app (.app (.app (.app (.app (.const ``List.pmap _) _) _) _) _) _ls) _)) => do
@@ -76,6 +79,9 @@ def findMapPmapPattern (e : Lean.Expr) : MetaM (Option Lean.Expr) := do
   | .app f a => do
     if let some res ← findMapPmapPattern f then return res
     if let some res ← findMapPmapPattern a then return res
+    return none
+  | .mdata data expr => do
+    if let some res ← findMapPmapPattern expr then return res
     return none
   | _ => return none
 
@@ -90,8 +96,20 @@ elab "find_pmap_func" x:ident : tactic => do
       let mvarIdNew ← mvarId.define x.getId inferred body'
       let (_, mvarIdNew) ← mvarIdNew.intro1P
       return [mvarIdNew]
-  | none => throwError "No subexpression of the form 'List.map (fun x => ...) (List.pmap Subtype.mk ...)' found"
+  | none => throwError "No subexpression of the form 'List.map (fun x => ...) (List.pmap Subtype.mk ...)' found (nor using List.mapM)"
 
+
+elab "simp_map_pmap" : tactic => do
+  let found ← Lean.mkFreshId
+  let foundId := Lean.mkIdent found
+  withMainContext do
+    evalTactic (← `(tactic|
+      try simp only [List.mapM₁, List.attach, List.attach₂, List.mapM₂, List.mapM₁, List.attachWith];;
+      find_pmap_func $foundId;
+      try rw [List.mapM_pmap_subtype $foundId];
+      ))
+    evalTactic (← `(tactic| try rw [List.map_pmap_subtype $foundId]))
+    evalTactic (← `(tactic| subst $foundId))
 
 
 /--
@@ -163,9 +181,7 @@ theorem conversion_preserves_evaluation (te : TypedExpr) (req : Request) (es : E
       simp
     }
     rw [h]
-    rw [List.mapM₁_eq_mapM (fun y => Spec.evaluate y req es)]
-    have h₂ : (List.map TypedExpr.toResidual ls).mapM₁ (fun x => x.val.evaluate req es) = (List.map TypedExpr.toResidual ls).mapM₁ (fun x => ((fun y => y.evaluate req es) x.val)) := by simp
-    rw [List.mapM₁_eq_mapM (fun y => Residual.evaluate y req es)]
+    repeat simp_map_pmap
     rw [List.mapM_then_map_combiner, List.mapM_then_map_combiner]
     rw [List.forall₂_implies_mapM_eq]
     induction ls
@@ -179,24 +195,12 @@ theorem conversion_preserves_evaluation (te : TypedExpr) (req : Request) (es : E
       case right =>
         apply ih
         simp
-        simp
   | record map ty =>
     unfold TypedExpr.toExpr
     simp [TypedExpr.toExpr, TypedExpr.toResidual, Spec.evaluate, Residual.evaluate]
     congr 1
-    unfold List.attach₂
-    rw [List.map_pmap_subtype (fun y => (y.fst, y.snd.toExpr)) map]
-    unfold List.mapM₂
-    unfold List.attach₂
+    repeat simp_map_pmap
     unfold bindAttr
-    simp
-    find_pmap_func found1
-    rw [List.mapM_pmap_subtype found1 (List.map (fun y => (y.fst, y.snd.toExpr)) map)]
-    rw [List.mapM_pmap_subtype (fun x => Prod.mk x.fst <$> x.snd.evaluate req es) (List.map (fun x => (x.1.fst, TypedExpr.toResidual x.1.snd)) (List.pmap Subtype.mk map _))]
-    find_pmap_func found
-    rw [List.map_pmap_subtype found map]
-    subst found
-
     rw [List.mapM_then_map_combiner, List.mapM_then_map_combiner]
     simp
     rw [List.forall₂_implies_mapM_eq]
