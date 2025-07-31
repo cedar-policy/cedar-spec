@@ -237,15 +237,152 @@ theorem conversion_preserves_typedness:
         exact h₄
   | unaryApp op₁ x₁ ty' =>
     simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
-    apply Residual.WellTyped.unaryApp
-    sorry
-    sorry
+    cases h with
+    | unaryApp h₁ h₂ =>
+      apply Residual.WellTyped.unaryApp
+      · apply conversion_preserves_typedness
+        exact h₁
+      · -- Convert UnaryOp.WellTyped to UnaryResidualWellTyped
+        cases h₂ with
+        | not h₂ =>
+          apply UnaryResidualWellTyped.not
+          rw [←conversion_preserves_typeof x₁]
+          exact h₂
+        | neg h₂ =>
+          apply UnaryResidualWellTyped.neg
+          rw [←conversion_preserves_typeof x₁]
+          exact h₂
+        | isEmpty h₂ =>
+          apply UnaryResidualWellTyped.isEmpty
+          rw [←conversion_preserves_typeof x₁]
+          exact h₂
+        | like h₂ =>
+          apply UnaryResidualWellTyped.like
+          rw [←conversion_preserves_typeof x₁]
+          exact h₂
+        | is h₂ =>
+          apply UnaryResidualWellTyped.is
+          rw [←conversion_preserves_typeof x₁]
+          exact h₂
   | binaryApp op₂ x₁ x₂ ty' =>
     simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
-    apply Residual.WellTyped.binaryApp
-    sorry
-    sorry
-    sorry
+    cases h with
+    | binaryApp h₁ h₂ h₃ =>
+      apply Residual.WellTyped.binaryApp
+      · apply conversion_preserves_typedness
+        exact h₁
+      · apply conversion_preserves_typedness
+        exact h₂
+      · -- Convert BinaryOp.WellTyped to BinaryResidualWellTyped
+        cases h₃ with
+        | eq_lit =>
+          simp [TypedExpr.toResidual]
+          apply BinaryResidualWellTyped.eq_val
+        | eq_entity h₃ h₄ =>
+          apply BinaryResidualWellTyped.eq_entity
+          · rw [←conversion_preserves_typeof x₁]
+            exact h₃
+          · rw [←conversion_preserves_typeof x₂]
+            exact h₄
+        | eq h₃ =>
+          apply BinaryResidualWellTyped.eq
+          rw [←conversion_preserves_typeof x₁, ←conversion_preserves_typeof x₂]
+          exact h₃
+        | memₑ h₃ h₄ =>
+          apply BinaryResidualWellTyped.memₑ
+          · rw [←conversion_preserves_typeof x₁]
+            exact h₃
+          · rw [←conversion_preserves_typeof x₂]
+            exact h₄
+        | memₛ h₃ h₄ =>
+          apply BinaryResidualWellTyped.memₛ
+          · rw [←conversion_preserves_typeof x₁]
+            exact h₃
+          · rw [←conversion_preserves_typeof x₂]
+            exact h₄
+        | less_int h₃ h₄ =>
+          apply BinaryResidualWellTyped.less_int
+          · rw [←conversion_preserves_typeof x₁]
+            exact h₃
+          · rw [←conversion_preserves_typeof x₂]
+            exact h₄
+        | less_datetime h₃ h₄ =>
+          apply BinaryResidualWellTyped.less_datetime
+          · rw [←conversion_preserves_typeof x₁]
+            exact h₃
+          · rw [←conversion_preserves_typeof x₂]
+            exact h₄
+        | less_duration h₃ h₄ =>
+          apply BinaryResidualWellTyped.less_duration
+          · rw [←conversion_preserves_typeof x₁]
+            exact h₃
+          · rw [←conversion_preserves_typeof x₂]
+            exact h₄
+        | lessEq_int h₃ h₄ =>
+          apply BinaryResidualWellTyped.lessEq_int
+          · rw [←conversion_preserves_typeof x₁]
+            exact h₃
+          · rw [←conversion_preserves_typeof x₂]
+            exact h₄
+        | lessEq_datetime h₃ h₄ =>
+          apply BinaryResidualWellTyped.lessEq_datetime
+          · rw [←conversion_preserves_typeof x₁]
+            exact h₃
+          · rw [←conversion_preserves_typeof x₂]
+            exact h₄
+        | lessEq_duration h₃ h₄ =>
+          apply BinaryResidualWellTyped.lessEq_duration
+          · rw [←conversion_preserves_typeof x₁]
+            exact h₃
+          · rw [←conversion_preserves_typeof x₂]
+            exact h₄
+        | add h₃ h₄ =>
+          apply BinaryResidualWellTyped.add
+          · rw [←conversion_preserves_typeof x₁]
+            exact h₃
+          · rw [←conversion_preserves_typeof x₂]
+            exact h₄
+        | sub h₃ h₄ =>
+          apply BinaryResidualWellTyped.sub
+          · rw [←conversion_preserves_typeof x₁]
+            exact h₃
+          · rw [←conversion_preserves_typeof x₂]
+            exact h₄
+        | mul h₃ h₄ =>
+          apply BinaryResidualWellTyped.mul
+          · rw [←conversion_preserves_typeof x₁]
+            exact h₃
+          · rw [←conversion_preserves_typeof x₂]
+            exact h₄
+        | contains h₃ =>
+          apply BinaryResidualWellTyped.contains
+          rw [←conversion_preserves_typeof x₁, ←conversion_preserves_typeof x₂]
+          exact h₃
+        | containsAll h₃ h₄ =>
+          apply BinaryResidualWellTyped.containsAll
+          · rw [←conversion_preserves_typeof x₁]
+            exact h₃
+          · rw [←conversion_preserves_typeof x₂]
+            exact h₄
+        | containsAny h₃ h₄ =>
+          apply BinaryResidualWellTyped.containsAny
+          · rw [←conversion_preserves_typeof x₁]
+            exact h₃
+          · rw [←conversion_preserves_typeof x₂]
+            exact h₄
+        | hasTag h₃ h₄ =>
+          apply BinaryResidualWellTyped.hasTag
+          · rw [←conversion_preserves_typeof x₁]
+            exact h₃
+          · rw [←conversion_preserves_typeof x₂]
+            exact h₄
+        | getTag h₃ h₄ h₅ =>
+          apply BinaryResidualWellTyped.getTag
+          · rw [←conversion_preserves_typeof x₁]
+            exact h₃
+          · rw [←conversion_preserves_typeof x₂]
+            exact h₄
+          · exact h₅
   | getAttr x₁ attr ty' =>
     simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
     cases h with
@@ -281,17 +418,116 @@ theorem conversion_preserves_typedness:
         exact h₂
   | set ls ty' =>
     simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
-    sorry
+    cases h with
+    | set h₁ h₂ h₃ =>
+      auto_map₁_to_map
+      apply Residual.WellTyped.set
+      · intro x hx
+        simp [List.mem_map] at hx
+        rcases hx with ⟨y, hy, hxy⟩
+        rw [←hxy]
+        apply conversion_preserves_typedness
+        exact h₁ y hy
+      · intro x hx
+        simp [List.mem_map] at hx
+        rename_i ty
+        rcases hx with ⟨y, hy, hxy⟩
+        rw [←hxy]
+        specialize h₁ y hy
+        rw [← conversion_preserves_typeof y]
+        specialize h₂ y hy
+        exact h₂
+      · simp [List.map_ne_nil_iff]
+        exact h₃
   | record m ty' =>
     simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
     sorry
   | call xfn args ty' =>
     simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
-    apply Residual.WellTyped.call
     cases h with
     | call h₁ h₂ =>
+      auto_map₁_to_map
+      apply Residual.WellTyped.call
       · intro x hx
-        sorry
-    sorry
+        simp [List.mem_map] at hx
+        rcases hx with ⟨y, hy, hxy⟩
+        rw [←hxy]
+        apply conversion_preserves_typedness
+        exact h₁ y hy
+      · -- Convert ExtFun.WellTyped to ExtResidualWellTyped
+        cases h₂ with
+        | decimal h₂ =>
+          apply ExtResidualWellTyped.decimal
+          exact h₂
+        | lessThan h₂ h₃ =>
+          apply ExtResidualWellTyped.lessThan
+          · exact h₂
+          · exact h₃
+        | lessThanOrEqual h₂ h₃ =>
+          apply ExtResidualWellTyped.lessThanOrEqual
+          · exact h₂
+          · exact h₃
+        | greaterThan h₂ h₃ =>
+          apply ExtResidualWellTyped.greaterThan
+          · exact h₂
+          · exact h₃
+        | greaterThanOrEqual h₂ h₃ =>
+          apply ExtResidualWellTyped.greaterThanOrEqual
+          · exact h₂
+          · exact h₃
+        | ip h₂ =>
+          apply ExtResidualWellTyped.ip
+          exact h₂
+        | isIpv4 h₂ =>
+          apply ExtResidualWellTyped.isIpv4
+          exact h₂
+        | isIpv6 h₂ =>
+          apply ExtResidualWellTyped.isIpv6
+          exact h₂
+        | isLoopback h₂ =>
+          apply ExtResidualWellTyped.isLoopback
+          exact h₂
+        | isMulticast h₂ =>
+          apply ExtResidualWellTyped.isMulticast
+          exact h₂
+        | isInRange h₂ h₃ =>
+          apply ExtResidualWellTyped.isInRange
+          · exact h₂
+          · exact h₃
+        | datetime h₂ =>
+          apply ExtResidualWellTyped.datetime
+          exact h₂
+        | duration h₂ =>
+          apply ExtResidualWellTyped.duration
+          exact h₂
+        | offset h₂ h₃ =>
+          apply ExtResidualWellTyped.offset
+          · exact h₂
+          · exact h₃
+        | durationSince h₂ h₃ =>
+          apply ExtResidualWellTyped.durationSince
+          · exact h₂
+          · exact h₃
+        | toDate h₂ =>
+          apply ExtResidualWellTyped.toDate
+          exact h₂
+        | toTime h₂ =>
+          apply ExtResidualWellTyped.toTime
+          exact h₂
+        | toMilliseconds h₂ =>
+          apply ExtResidualWellTyped.toMilliseconds
+          exact h₂
+        | toSeconds h₂ =>
+          apply ExtResidualWellTyped.toSeconds
+          exact h₂
+        | toMinutes h₂ =>
+          apply ExtResidualWellTyped.toMinutes
+          exact h₂
+        | toHours h₂ =>
+          apply ExtResidualWellTyped.toHours
+          exact h₂
+        | toDays h₂ =>
+          apply ExtResidualWellTyped.toDays
+          exact h₂
 
 end Cedar.Thm
