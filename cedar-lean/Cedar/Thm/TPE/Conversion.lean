@@ -596,19 +596,21 @@ termination_by sizeOf expr
 decreasing_by
   all_goals (
     simp
-    rename_i a b d d e f g h i j k l m n o
-    (try { rename_i p r s; rw [r]; simp; omega })
-    (try { rename_i p q r s t u v; rw [s]; simp; omega})
-    (try { rw [a]; simp; omega})
-    (try { rw [b]; simp; omega})
-    (try { rw [d]; simp; omega})
+    rename_i a b d d _e _f _g h _i _j _k _l _m _n _o
+    (first
+     | rename_i p r _s; rw [r]; simp; omega
+     | rename_i p q r s t u _v; rw [s]; simp; omega
+     | rw [a]; simp; omega
+     | rw [b]; simp; omega
+     | rw [d]; simp; omega
+     | skip)
   )
   . rw [d]
     simp
     let h := List.sizeOf_lt_of_mem hy
     omega
-  . rename_i p q r s
-    rw [q]
+  . rename_i p q r _s
+    rw [r]
     simp
     let h := List.sizeOf_lt_of_mem inm
     simp at h
