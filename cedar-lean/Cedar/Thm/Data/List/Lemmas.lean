@@ -428,7 +428,6 @@ theorem mapM₁_eq_mapM [Monad m] [LawfulMonad m]
 := by
   simp only [mapM₁, attach_def, mapM_pmap_subtype]
 
-
 theorem mapM₂_eq_mapM [Monad m] [LawfulMonad m] [SizeOf α] [SizeOf β]
   (f : (α × β) → m γ)
   (as : List (α × β)) :

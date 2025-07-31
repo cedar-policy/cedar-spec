@@ -17,7 +17,6 @@
 import Cedar.Thm.Validation.WellTyped.Soundness
 import Cedar.Thm.Validation.WellTyped.ResidualSoundness
 import Cedar.Thm.Validation.WellTyped.Typechecking
-import Cedar.Thm.Validation.WellTyped.ResidualDefinition
 import Cedar.TPE.Residual
 import Cedar.Data.Map
 

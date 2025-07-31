@@ -21,7 +21,6 @@ import Cedar.Thm.TPE.Input
 import Cedar.Thm.TPE.Conversion
 import Cedar.Thm.TPE.Soundness
 import Cedar.Thm.Validation
-import Cedar.Thm.TPE.Conversion
 
 /-!
 This file defines the main theorem of TPE soundness and its associated lemmas.
