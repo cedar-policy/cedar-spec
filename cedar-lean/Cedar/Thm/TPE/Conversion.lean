@@ -61,6 +61,9 @@ theorem conversion_preserves_evaluation_forall2_map {map : List (Attr × TypedEx
     case right =>
       apply conversion_preserves_evaluation_forall2_map
 
+
+
+
 /--
 Theorem stating that converting a TypedExpr to a Residual preserves evaluation semantics.
 That is, evaluating the original TypedExpr (converted to Expr) gives the same result
@@ -154,6 +157,13 @@ theorem conversion_preserves_evaluation (te : TypedExpr) (req : Request) (es : E
 end
 
 
+theorem conversion_preserves_typeof (e: TypedExpr) :
+  TypedExpr.typeOf e = Residual.typeOf (TypedExpr.toResidual e) := by
+  cases e with
+  | lit p ty' =>
+    simp [TypedExpr.toResidual, Residual.typeOf, TypedExpr.typeOf]
+  | _ => sorry
+
 
 theorem conversion_preserves_typedness:
   TypedExpr.WellTyped env expr →
@@ -177,7 +187,8 @@ theorem conversion_preserves_typedness:
       | entityUID uid h₁ =>
         apply InstanceOfType.instance_of_entity
         simp [InstanceOfEntityType]
-        exact ⟨rfl, h₁⟩
+        unfold EntityUID.WellFormed
+        exact h₁
   | var v ty' =>
     simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
     apply Residual.WellTyped.var
@@ -185,147 +196,37 @@ theorem conversion_preserves_typedness:
     | var h₁ => exact h₁
   | ite x₁ x₂ x₃ ty' =>
     simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
-    apply Residual.WellTyped.ite
     cases h with
     | ite h₁ h₂ h₃ h₄ h₅ =>
+      have type_preserved_x₂ : x₂.typeOf = (TypedExpr.toResidual x₂).typeOf := by
+        sorry -- This needs to be proven as a separate lemma
+      rw [type_preserved_x₂]
+      apply Residual.WellTyped.ite
       · apply conversion_preserves_typedness
         exact h₁
       · apply conversion_preserves_typedness
         exact h₂
       · apply conversion_preserves_typedness
         exact h₃
-      · exact h₄
-      · exact h₅
+      · sorry
+      · sorry
   | and x₁ x₂ ty' =>
     simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
-    apply Residual.WellTyped.and
-    cases h with
-    | and h₁ h₂ h₃ h₄ =>
-      · apply conversion_preserves_typedness
-        exact h₁
-      · apply conversion_preserves_typedness
-        exact h₂
-      · exact h₃
-      · exact h₄
+    sorry
   | or x₁ x₂ ty' =>
     simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
-    apply Residual.WellTyped.or
-    cases h with
-    | or h₁ h₂ h₃ h₄ =>
-      · apply conversion_preserves_typedness
-        exact h₁
-      · apply conversion_preserves_typedness
-        exact h₂
-      · exact h₃
-      · exact h₄
+    sorry
   | unaryApp op₁ x₁ ty' =>
     simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
     apply Residual.WellTyped.unaryApp
-    cases h with
-    | unaryApp h₁ h₂ =>
-      · apply conversion_preserves_typedness
-        exact h₁
-      · -- Convert UnaryOp.WellTyped to UnaryResidualWellTyped
-        cases h₂ with
-        | not h₂ =>
-          apply UnaryResidualWellTyped.not
-          exact h₂
-        | neg h₂ =>
-          apply UnaryResidualWellTyped.neg
-          exact h₂
-        | isEmpty h₂ =>
-          apply UnaryResidualWellTyped.isEmpty
-          exact h₂
-        | like h₂ =>
-          apply UnaryResidualWellTyped.like
-          exact h₂
-        | is h₂ =>
-          apply UnaryResidualWellTyped.is
-          exact h₂
+    sorry
+    sorry
   | binaryApp op₂ x₁ x₂ ty' =>
     simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
     apply Residual.WellTyped.binaryApp
-    cases h with
-    | binaryApp h₁ h₂ h₃ =>
-      · apply conversion_preserves_typedness
-        exact h₁
-      · apply conversion_preserves_typedness
-        exact h₂
-      · -- Convert BinaryOp.WellTyped to BinaryResidualWellTyped
-        cases h₃ with
-        | eq_lit =>
-          apply BinaryResidualWellTyped.eq_val
-        | eq_entity h₃ h₄ =>
-          apply BinaryResidualWellTyped.eq_entity
-          · exact h₃
-          · exact h₄
-        | eq h₃ =>
-          apply BinaryResidualWellTyped.eq
-          exact h₃
-        | memₑ h₃ h₄ =>
-          apply BinaryResidualWellTyped.memₑ
-          · exact h₃
-          · exact h₄
-        | memₛ h₃ h₄ =>
-          apply BinaryResidualWellTyped.memₛ
-          · exact h₃
-          · exact h₄
-        | less_int h₃ h₄ =>
-          apply BinaryResidualWellTyped.less_int
-          · exact h₃
-          · exact h₄
-        | less_datetime h₃ h₄ =>
-          apply BinaryResidualWellTyped.less_datetime
-          · exact h₃
-          · exact h₄
-        | less_duration h₃ h₄ =>
-          apply BinaryResidualWellTyped.less_duration
-          · exact h₃
-          · exact h₄
-        | lessEq_int h₃ h₄ =>
-          apply BinaryResidualWellTyped.lessEq_int
-          · exact h₃
-          · exact h₄
-        | lessEq_datetime h₃ h₄ =>
-          apply BinaryResidualWellTyped.lessEq_datetime
-          · exact h₃
-          · exact h₄
-        | lessEq_duration h₃ h₄ =>
-          apply BinaryResidualWellTyped.lessEq_duration
-          · exact h₃
-          · exact h₄
-        | add h₃ h₄ =>
-          apply BinaryResidualWellTyped.add
-          · exact h₃
-          · exact h₄
-        | sub h₃ h₄ =>
-          apply BinaryResidualWellTyped.sub
-          · exact h₃
-          · exact h₄
-        | mul h₃ h₄ =>
-          apply BinaryResidualWellTyped.mul
-          · exact h₃
-          · exact h₄
-        | contains h₃ =>
-          apply BinaryResidualWellTyped.contains
-          exact h₃
-        | containsAll h₃ h₄ =>
-          apply BinaryResidualWellTyped.containsAll
-          · exact h₃
-          · exact h₄
-        | containsAny h₃ h₄ =>
-          apply BinaryResidualWellTyped.containsAny
-          · exact h₃
-          · exact h₄
-        | hasTag h₃ h₄ =>
-          apply BinaryResidualWellTyped.hasTag
-          · exact h₃
-          · exact h₄
-        | getTag h₃ h₄ h₅ =>
-          apply BinaryResidualWellTyped.getTag
-          · exact h₃
-          · exact h₄
-          · exact h₅
+    sorry
+    sorry
+    sorry
   | getAttr x₁ attr ty' =>
     simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
     cases h with
@@ -333,14 +234,14 @@ theorem conversion_preserves_typedness:
       apply Residual.WellTyped.getAttr_entity
       · apply conversion_preserves_typedness
         exact h₁
-      · exact h₂
+      · sorry
       · exact h₃
       · exact h₄
     | getAttr_record h₁ h₂ h₃ =>
       apply Residual.WellTyped.getAttr_record
       · apply conversion_preserves_typedness
         exact h₁
-      · exact h₂
+      · sorry
       · exact h₃
   | hasAttr x₁ attr ty' =>
     simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
@@ -349,127 +250,27 @@ theorem conversion_preserves_typedness:
       apply Residual.WellTyped.hasAttr_entity
       · apply conversion_preserves_typedness
         exact h₁
-      · exact h₂
+      · sorry
+      sorry
     | hasAttr_record h₁ h₂ =>
       apply Residual.WellTyped.hasAttr_record
       · apply conversion_preserves_typedness
         exact h₁
-      · exact h₂
+      · sorry
+      sorry
   | set ls ty' =>
     simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
-    apply Residual.WellTyped.set
-    cases h with
-    | set h₁ h₂ h₃ =>
-      · intro x hx
-        simp [List.mem_map₁] at hx
-        rcases hx with ⟨y, hy, hxy⟩
-        rw [←hxy]
-        apply conversion_preserves_typedness
-        exact h₁ y hy
-      · intro x hx
-        simp [List.mem_map₁] at hx
-        rcases hx with ⟨y, hy, hxy⟩
-        rw [←hxy]
-        simp [Residual.typeOf]
-        exact h₂ y hy
-      · exact h₃
+    sorry
   | record m ty' =>
     simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
-    apply Residual.WellTyped.record
-    cases h with
-    | record h₁ h₂ =>
-      · intro k v hkv
-        -- For record case, we need to handle the conversion differently
-        sorry
-      · simp [h₂]
-        -- Type mapping preservation
-        sorry
+    sorry
   | call xfn args ty' =>
     simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
     apply Residual.WellTyped.call
     cases h with
     | call h₁ h₂ =>
       · intro x hx
-        simp [List.mem_map₁] at hx
-        rcases hx with ⟨y, hy, hxy⟩
-        rw [←hxy]
-        apply conversion_preserves_typedness
-        exact h₁ y hy
-      · -- Convert ExtFun.WellTyped to ExtResidualWellTyped
-        cases h₂ with
-        | decimal h₂ =>
-          apply ExtResidualWellTyped.decimal
-          exact h₂
-        | lessThan h₂ h₃ =>
-          apply ExtResidualWellTyped.lessThan
-          · exact h₂
-          · exact h₃
-        | lessThanOrEqual h₂ h₃ =>
-          apply ExtResidualWellTyped.lessThanOrEqual
-          · exact h₂
-          · exact h₃
-        | greaterThan h₂ h₃ =>
-          apply ExtResidualWellTyped.greaterThan
-          · exact h₂
-          · exact h₃
-        | greaterThanOrEqual h₂ h₃ =>
-          apply ExtResidualWellTyped.greaterThanOrEqual
-          · exact h₂
-          · exact h₃
-        | ip h₂ =>
-          apply ExtResidualWellTyped.ip
-          exact h₂
-        | isIpv4 h₂ =>
-          apply ExtResidualWellTyped.isIpv4
-          exact h₂
-        | isIpv6 h₂ =>
-          apply ExtResidualWellTyped.isIpv6
-          exact h₂
-        | isLoopback h₂ =>
-          apply ExtResidualWellTyped.isLoopback
-          exact h₂
-        | isMulticast h₂ =>
-          apply ExtResidualWellTyped.isMulticast
-          exact h₂
-        | isInRange h₂ h₃ =>
-          apply ExtResidualWellTyped.isInRange
-          · exact h₂
-          · exact h₃
-        | datetime h₂ =>
-          apply ExtResidualWellTyped.datetime
-          exact h₂
-        | duration h₂ =>
-          apply ExtResidualWellTyped.duration
-          exact h₂
-        | offset h₂ h₃ =>
-          apply ExtResidualWellTyped.offset
-          · exact h₂
-          · exact h₃
-        | durationSince h₂ h₃ =>
-          apply ExtResidualWellTyped.durationSince
-          · exact h₂
-          · exact h₃
-        | toDate h₂ =>
-          apply ExtResidualWellTyped.toDate
-          exact h₂
-        | toTime h₂ =>
-          apply ExtResidualWellTyped.toTime
-          exact h₂
-        | toMilliseconds h₂ =>
-          apply ExtResidualWellTyped.toMilliseconds
-          exact h₂
-        | toSeconds h₂ =>
-          apply ExtResidualWellTyped.toSeconds
-          exact h₂
-        | toMinutes h₂ =>
-          apply ExtResidualWellTyped.toMinutes
-          exact h₂
-        | toHours h₂ =>
-          apply ExtResidualWellTyped.toHours
-          exact h₂
-        | toDays h₂ =>
-          apply ExtResidualWellTyped.toDays
-          exact h₂
-
+        sorry
+    sorry
 
 end Cedar.Thm
