@@ -452,7 +452,28 @@ theorem conversion_preserves_typedness:
         rw [←btov]
         apply conversion_preserves_typedness
         exact h₁ a b inm
-      · sorry -- Complex type mapping preservation
+      · simp [h₂]
+        congr 1
+        ext ⟨k, v⟩
+        simp [conversion_preserves_typeof]
+        simp
+        constructor
+        . intro h
+          rcases h with ⟨a, ⟨b, ⟨h₁, h₂⟩⟩⟩
+          exists a
+          exists b
+          constructor
+          . exact h₁
+          . rw [← conversion_preserves_typeof b]
+            exact h₂
+        . intro h
+          rcases h with ⟨a, ⟨b, ⟨h₁, h₂⟩⟩⟩
+          exists a
+          exists b
+          constructor
+          . exact h₁
+          . rw [conversion_preserves_typeof b]
+            exact h₂
   | call xfn args ty' =>
     simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
     cases h with
