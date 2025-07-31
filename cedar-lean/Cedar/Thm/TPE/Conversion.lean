@@ -437,11 +437,22 @@ theorem conversion_preserves_typedness:
         rw [← conversion_preserves_typeof y]
         specialize h₂ y hy
         exact h₂
-      · simp [List.map_ne_nil_iff]
-        exact h₃
+      · cases ls with
+        | nil => simp at h₃
+        | cons => simp
   | record m ty' =>
     simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
-    sorry
+    cases h with
+    | record h₁ h₂ =>
+      auto_map₁_to_map
+      apply Residual.WellTyped.record
+      · intro k v hkv
+        simp [List.mem_map] at hkv
+        rcases hkv with ⟨a, ⟨b, ⟨inm, ⟨aeqk, btov⟩⟩⟩⟩
+        rw [←btov]
+        apply conversion_preserves_typedness
+        exact h₁ a b inm
+      · sorry -- Complex type mapping preservation
   | call xfn args ty' =>
     simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
     cases h with
