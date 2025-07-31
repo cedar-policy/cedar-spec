@@ -17,17 +17,18 @@
 #![no_main]
 use cedar_drt::logger::initialize_log;
 use cedar_drt_inner::fuzz_target;
-use cedar_policy_core::ast;
-use cedar_policy_core::ast::RequestSchema;
-use cedar_policy_core::ast::{EntityUID, Expr, Request, Value};
-use cedar_policy_core::entities::Entities;
-use cedar_policy_core::evaluator::Evaluator;
-use cedar_policy_core::extensions::Extensions;
-use cedar_policy_core::tpe::entities::{PartialEntities, PartialEntity};
-use cedar_policy_core::tpe::request::{PartialEntityUID, PartialRequest};
-use cedar_policy_core::tpe::residual::Residual;
-use cedar_policy_core::tpe::tpe_policies;
-use cedar_policy_core::validator::{CoreSchema, ValidationMode, Validator, ValidatorSchema};
+use cedar_policy_core::{
+    ast::{self, EntityUID, Expr, Request, RequestSchema, Value},
+    entities::Entities,
+    evaluator::Evaluator,
+    extensions::Extensions,
+    tpe::{
+        entities::{PartialEntities, PartialEntity},
+        is_authorized,
+        request::{PartialEntityUID, PartialRequest},
+    },
+    validator::{CoreSchema, ValidationMode, Validator, ValidatorSchema},
+};
 use cedar_policy_generators::{
     abac::{ABACPolicy, ABACRequest},
     hierarchy::{Hierarchy, HierarchyGenerator},
@@ -213,16 +214,15 @@ fn entities_to_partial_entities<'a>(
     ))
 }
 
-fn test_weak_equiv(residual: Residual, e: &Expr, req: &Request, entities: &Entities) -> bool {
+fn test_weak_equiv(residual: &Expr, e: &Expr, req: &Request, entities: &Entities) -> bool {
     let eval = Evaluator::new(req.clone(), entities, Extensions::all_available());
     let slots = HashMap::new();
 
-    let expr = Expr::from(residual);
     debug!("request: {req}");
     debug!("expr: {e}");
-    debug!("residual: {expr}");
+    debug!("residual: {residual}");
     let concrete_res = eval.interpret(e, &slots);
-    let reeval_res = eval.interpret(&expr, &slots);
+    let reeval_res = eval.interpret(&residual, &slots);
     debug!("concrete evaluation result: {concrete_res:?}");
     debug!("re-evaluation result: {reeval_res:?}");
     concrete_res.ok() == reeval_res.ok()
@@ -255,15 +255,11 @@ fuzz_target!(|input: FuzzTargetInput| {
                 {
                     let request: ast::Request = request.into();
                     if passes_request_validation(&schema, &request) {
-                        let residuals =
-                            tpe_policies(&policyset, &partial_request, &partial_entities, &schema)
+                        let response =
+                            is_authorized(&policyset, &partial_request, &partial_entities, &schema)
                                 .expect("tpe failed");
                         assert!(test_weak_equiv(
-                            residuals
-                                .values()
-                                .next()
-                                .expect("should exist one residual")
-                                .clone(),
+                            &response.residual_policies()[0].condition(),
                             &expr,
                             &request,
                             &entities
