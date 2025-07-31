@@ -159,11 +159,10 @@ end
 
 theorem conversion_preserves_typeof (e: TypedExpr) :
   TypedExpr.typeOf e = Residual.typeOf (TypedExpr.toResidual e) := by
-  cases e with
-  | lit p ty' =>
+  cases e
+  all_goals {
     simp [TypedExpr.toResidual, Residual.typeOf, TypedExpr.typeOf]
-  | _ => sorry
-
+  }
 
 theorem conversion_preserves_typedness:
   TypedExpr.WellTyped env expr →
@@ -198,9 +197,7 @@ theorem conversion_preserves_typedness:
     simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
     cases h with
     | ite h₁ h₂ h₃ h₄ h₅ =>
-      have type_preserved_x₂ : x₂.typeOf = (TypedExpr.toResidual x₂).typeOf := by
-        sorry -- This needs to be proven as a separate lemma
-      rw [type_preserved_x₂]
+      rw [conversion_preserves_typeof x₂]
       apply Residual.WellTyped.ite
       · apply conversion_preserves_typedness
         exact h₁
@@ -208,14 +205,36 @@ theorem conversion_preserves_typedness:
         exact h₂
       · apply conversion_preserves_typedness
         exact h₃
-      · sorry
-      · sorry
+      · rw [←conversion_preserves_typeof x₁]
+        exact h₄
+      · rw [←conversion_preserves_typeof x₂, ←conversion_preserves_typeof x₃]
+        exact h₅
   | and x₁ x₂ ty' =>
     simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
-    sorry
+    cases h with
+    | and h₁ h₂ h₃ h₄ =>
+      apply Residual.WellTyped.and
+      · apply conversion_preserves_typedness
+        exact h₁
+      · apply conversion_preserves_typedness
+        exact h₂
+      · rw [←conversion_preserves_typeof x₁]
+        exact h₃
+      · rw [←conversion_preserves_typeof x₂]
+        exact h₄
   | or x₁ x₂ ty' =>
     simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
-    sorry
+    cases h with
+    | or h₁ h₂ h₃ h₄ =>
+      apply Residual.WellTyped.or
+      · apply conversion_preserves_typedness
+        exact h₁
+      · apply conversion_preserves_typedness
+        exact h₂
+      · rw [←conversion_preserves_typeof x₁]
+        exact h₃
+      · rw [←conversion_preserves_typeof x₂]
+        exact h₄
   | unaryApp op₁ x₁ ty' =>
     simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
     apply Residual.WellTyped.unaryApp
@@ -234,14 +253,16 @@ theorem conversion_preserves_typedness:
       apply Residual.WellTyped.getAttr_entity
       · apply conversion_preserves_typedness
         exact h₁
-      · sorry
+      · rw [←conversion_preserves_typeof x₁]
+        exact h₂
       · exact h₃
       · exact h₄
     | getAttr_record h₁ h₂ h₃ =>
       apply Residual.WellTyped.getAttr_record
       · apply conversion_preserves_typedness
         exact h₁
-      · sorry
+      · rw [←conversion_preserves_typeof x₁]
+        exact h₂
       · exact h₃
   | hasAttr x₁ attr ty' =>
     simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
@@ -250,14 +271,14 @@ theorem conversion_preserves_typedness:
       apply Residual.WellTyped.hasAttr_entity
       · apply conversion_preserves_typedness
         exact h₁
-      · sorry
-      sorry
+      · rw [←conversion_preserves_typeof x₁]
+        exact h₂
     | hasAttr_record h₁ h₂ =>
       apply Residual.WellTyped.hasAttr_record
       · apply conversion_preserves_typedness
         exact h₁
-      · sorry
-      sorry
+      · rw [←conversion_preserves_typeof x₁]
+        exact h₂
   | set ls ty' =>
     simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
     sorry
