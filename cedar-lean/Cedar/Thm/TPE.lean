@@ -18,6 +18,7 @@ import Cedar.TPE
 import Cedar.Spec
 import Cedar.Validation
 import Cedar.Thm.TPE.Input
+import Cedar.Thm.TPE.Conversion
 import Cedar.Thm.TPE.Soundness
 import Cedar.Thm.Validation
 import Cedar.Thm.TPE.Conversion
@@ -146,8 +147,11 @@ theorem partial_evaluate_policy_is_sound
   have h₄ := instance_of_well_formed_env heq₅ heq₃ heq₄
   have h₅ := typechecked_is_well_typed_after_lifting heq₂
   let old_residual := (TypedExpr.toResidual ty.liftBoolTypes)
-  
-  have h₉ : Residual.WellTyped env old_residual := by sorry
+
+  have h₉ : Residual.WellTyped env old_residual := by {
+    have h := conversion_preserves_typedness h₅
+    exact h
+  }
   have h₆ := partial_evaluate_is_sound h₉ h₄ h₃
   subst h₁₂
   have h₇ := type_of_preserves_evaluation_results (empty_capabilities_invariant req es) h₄ heq₂

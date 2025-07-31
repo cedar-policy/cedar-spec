@@ -14,6 +14,7 @@
  limitations under the License.
 -/
 
+
 import Cedar.TPE
 import Cedar.Thm.TPE.Soundness
 import Cedar.Thm.Validation.WellTyped.Definition
@@ -29,6 +30,7 @@ open Cedar.TPE
 open Cedar.Spec
 open Cedar.Validation
 
+set_option pp.proofs true
 
 mutual
 theorem conversion_preserves_evaluation_forall2 :
@@ -489,77 +491,132 @@ theorem conversion_preserves_typedness:
       · -- Convert ExtFun.WellTyped to ExtResidualWellTyped
         cases h₂ with
         | decimal h₂ =>
+          simp [TypedExpr.toResidual]
           apply ExtResidualWellTyped.decimal
           exact h₂
         | lessThan h₂ h₃ =>
           apply ExtResidualWellTyped.lessThan
-          · exact h₂
-          · exact h₃
+          · rw [←conversion_preserves_typeof]
+            exact h₂
+          · rw [←conversion_preserves_typeof]
+            exact h₃
         | lessThanOrEqual h₂ h₃ =>
           apply ExtResidualWellTyped.lessThanOrEqual
-          · exact h₂
-          · exact h₃
+          · rw [←conversion_preserves_typeof]
+            exact h₂
+          · rw [←conversion_preserves_typeof]
+            exact h₃
         | greaterThan h₂ h₃ =>
           apply ExtResidualWellTyped.greaterThan
-          · exact h₂
-          · exact h₃
+          · rw [←conversion_preserves_typeof]
+            exact h₂
+          · rw [←conversion_preserves_typeof]
+            exact h₃
         | greaterThanOrEqual h₂ h₃ =>
           apply ExtResidualWellTyped.greaterThanOrEqual
-          · exact h₂
-          · exact h₃
+          · rw [←conversion_preserves_typeof]
+            exact h₂
+          · rw [←conversion_preserves_typeof]
+            exact h₃
         | ip h₂ =>
+          simp [TypedExpr.toResidual]
           apply ExtResidualWellTyped.ip
           exact h₂
         | isIpv4 h₂ =>
           apply ExtResidualWellTyped.isIpv4
+          rw [←conversion_preserves_typeof]
           exact h₂
         | isIpv6 h₂ =>
           apply ExtResidualWellTyped.isIpv6
+          rw [←conversion_preserves_typeof]
           exact h₂
         | isLoopback h₂ =>
           apply ExtResidualWellTyped.isLoopback
+          rw [←conversion_preserves_typeof]
           exact h₂
         | isMulticast h₂ =>
           apply ExtResidualWellTyped.isMulticast
+          rw [←conversion_preserves_typeof]
           exact h₂
         | isInRange h₂ h₃ =>
           apply ExtResidualWellTyped.isInRange
-          · exact h₂
-          · exact h₃
+          · rw [←conversion_preserves_typeof]
+            exact h₂
+          · rw [←conversion_preserves_typeof]
+            exact h₃
         | datetime h₂ =>
+          simp [TypedExpr.toResidual]
           apply ExtResidualWellTyped.datetime
           exact h₂
         | duration h₂ =>
+          simp [TypedExpr.toResidual]
           apply ExtResidualWellTyped.duration
           exact h₂
         | offset h₂ h₃ =>
           apply ExtResidualWellTyped.offset
-          · exact h₂
-          · exact h₃
+          · rw [←conversion_preserves_typeof]
+            exact h₂
+          · rw [←conversion_preserves_typeof]
+            exact h₃
         | durationSince h₂ h₃ =>
           apply ExtResidualWellTyped.durationSince
-          · exact h₂
-          · exact h₃
+          · rw [←conversion_preserves_typeof]
+            exact h₂
+          · rw [←conversion_preserves_typeof]
+            exact h₃
         | toDate h₂ =>
           apply ExtResidualWellTyped.toDate
+          rw [←conversion_preserves_typeof]
           exact h₂
         | toTime h₂ =>
           apply ExtResidualWellTyped.toTime
+          rw [←conversion_preserves_typeof]
           exact h₂
         | toMilliseconds h₂ =>
           apply ExtResidualWellTyped.toMilliseconds
+          rw [←conversion_preserves_typeof]
           exact h₂
         | toSeconds h₂ =>
           apply ExtResidualWellTyped.toSeconds
+          rw [←conversion_preserves_typeof]
           exact h₂
         | toMinutes h₂ =>
           apply ExtResidualWellTyped.toMinutes
+          rw [←conversion_preserves_typeof]
           exact h₂
         | toHours h₂ =>
           apply ExtResidualWellTyped.toHours
+          rw [←conversion_preserves_typeof]
           exact h₂
         | toDays h₂ =>
           apply ExtResidualWellTyped.toDays
+          rw [←conversion_preserves_typeof]
           exact h₂
+termination_by sizeOf expr
+decreasing_by
+  all_goals (
+    simp
+    rename_i a b d d e f g h i j k l m n o
+    (try { rename_i p r s; rw [r]; simp; omega })
+    (try { rename_i p q r s t u v; rw [s]; simp; omega})
+    (try { rw [a]; simp; omega})
+    (try { rw [b]; simp; omega})
+    (try { rw [d]; simp; omega})
+  )
+  . rw [d]
+    simp
+    let h := List.sizeOf_lt_of_mem hy
+    omega
+  . rename_i p q r s
+    rw [q]
+    simp
+    let h := List.sizeOf_lt_of_mem inm
+    simp at h
+    omega
+  . rw [b]
+    simp
+    let h := List.sizeOf_lt_of_mem hy
+    simp at h
+    omega
 
 end Cedar.Thm
