@@ -16,4 +16,5 @@
 
 import Cedar.Thm.Data.List.Basic
 import Cedar.Thm.Data.List.Canonical
+import Cedar.Thm.Data.List.Automation
 import Cedar.Thm.Data.List.Lemmas
