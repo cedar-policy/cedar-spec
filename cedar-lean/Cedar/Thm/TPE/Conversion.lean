@@ -19,6 +19,7 @@ import Cedar.TPE
 import Cedar.Thm.TPE.Soundness
 import Cedar.Thm.Validation.WellTyped.Definition
 import Cedar.Thm.Validation.WellTyped.ResidualDefinition
+import Cedar.Thm.Data.List.Lemmas
 
 /-!
 This file defines the main theorem of TPE soundness and its associated lemmas.

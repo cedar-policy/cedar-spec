@@ -79,32 +79,6 @@ def Residual.typeOf : Residual → CedarType
   | .call _ _ ty
   | .error ty => ty
 
-def Residual.toTypedExpr : Residual → TypedExpr
-  | .val (Prim.bool b) ty => .lit (Prim.bool b) ty
-  | .val (Prim.int i) ty => .lit (Prim.int i) ty
-  | .val (Prim.string s) ty => .lit (Prim.string s) ty
-  | .val (Prim.entityUID uid) ty => .lit (Prim.entityUID uid) ty
-  | .val _ ty => .lit (Prim.bool true) ty -- fallback for other values
-  | .var v ty => .var v ty
-  | .ite cond thenExpr elseExpr ty => .ite cond.toTypedExpr thenExpr.toTypedExpr elseExpr.toTypedExpr ty
-  | .and a b ty => .and a.toTypedExpr b.toTypedExpr ty
-  | .or a b ty => .or a.toTypedExpr b.toTypedExpr ty
-  | .unaryApp op expr ty => .unaryApp op expr.toTypedExpr ty
-  | .binaryApp op a b ty => .binaryApp op a.toTypedExpr b.toTypedExpr ty
-  | .getAttr expr attr ty => .getAttr expr.toTypedExpr attr ty
-  | .hasAttr expr attr ty => .hasAttr expr.toTypedExpr attr ty
-  | .set ls ty => .set (ls.map₁ (λ ⟨r, _⟩ => r.toTypedExpr)) ty
-  | .record map ty => .record (map.attach₂.map (λ ⟨(a, r), _⟩ => (a, r.toTypedExpr))) ty
-  | .call xfn args ty => .call xfn (args.map₁ (λ ⟨r, _⟩ => r.toTypedExpr)) ty
-  | .error ty => .lit (Prim.bool true) ty -- fallback for error
-decreasing_by
-  all_goals (simp_wf ; try omega)
-  all_goals
-    rename_i h
-    try simp at h
-    try replace h := List.sizeOf_lt_of_mem h
-    omega
-
 -- The interpreter of `Residual` that defines its semantics
 def Residual.evaluate (x : Residual) (req : Request) (es: Entities) : Result Value :=
   match x with
