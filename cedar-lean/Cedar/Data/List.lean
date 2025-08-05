@@ -81,10 +81,6 @@ List { x : α × β // sizeOf x.snd < 1 + (1 + sizeOf xs) } :=
 def map₁ {α : Type w} {β : Type u} (xs : List α) (f : {x : α // x ∈ xs} → β) : List β :=
   xs.attach.map f
 
-def map₂ {γ : Type u} [SizeOf α] [SizeOf β]
-  (xs : List (α × β)) (f : {x : α × β // sizeOf x.snd < 1 + sizeOf xs} → γ) : List γ :=
-  xs.attach₂.map f
-
 def mapM₁ {m : Type u → Type v} [Monad m] {α : Type w} {β : Type u}
   (xs : List α) (f : {x : α // x ∈ xs} → m β) : m (List β) :=
   xs.attach.mapM f

@@ -83,8 +83,7 @@ partial def batchedEvalLoop
   match newRes with
   | .val v _ty => .ok v
   | _ =>
-    do
-      batchedEvalLoop newRes req loader newStore
+    batchedEvalLoop newRes req loader newStore
 
 
 /--
@@ -102,8 +101,7 @@ def batchedEvaluate
   -- an initial partial evaluation, removing all variables
   let residual₂ := Cedar.TPE.evaluate residual (Request.asPartialRequest req) emptyStore
   -- start the batched evaluation loop
-  do
-    batchedEvalLoop residual₂ req loader emptyStore
+  batchedEvalLoop residual₂ req loader emptyStore
 
 def entityLoaderFor : (e: Entities) -> EntityLoader :=
   fun e =>
