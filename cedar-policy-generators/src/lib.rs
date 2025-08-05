@@ -62,3 +62,5 @@ pub mod settings;
 
 /// This module contains code for generating sets of templates and static policies
 pub mod policy_set;
+
+pub mod schema_gen;

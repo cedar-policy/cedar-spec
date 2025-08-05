@@ -20,8 +20,9 @@ use crate::err::{while_doing, Error, Result};
 use crate::hierarchy::{generate_uid_with_type, Hierarchy};
 use crate::schema::{
     attrs_from_attrs_or_context, entity_type_name_to_schema_type, lookup_common_type,
-    uid_for_action_name, Schema,
+    uid_for_action_name,
 };
+use crate::schema_gen::SchemaGen;
 use crate::settings::ABACSettings;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
 use crate::{accum, gen, gen_inner, uniform};
@@ -36,7 +37,7 @@ use std::collections::BTreeMap;
 #[derive(Debug)]
 pub struct ExprGenerator<'a> {
     /// Schema for generated expressions to conform to
-    pub schema: &'a Schema,
+    pub schema: &'a dyn SchemaGen,
     /// General settings for ABAC generation, many of which affect expression generation
     pub settings: &'a ABACSettings,
     /// Constant pool to use when needed
@@ -162,7 +163,7 @@ impl ExprGenerator<'_> {
                     1 => {
                             Ok(ast::Expr::is_entity_type(
                                 self.generate_expr(max_depth - 1, u)?,
-                                u.choose(&self.schema.entity_types)?.clone(),
+                                self.schema.arbitrary_entity_type(u)?,
                             ))
                     },
                     1 => {
