@@ -1,8 +1,9 @@
 use cedar_policy::{Decision, EntityId, EntityTypeName, EntityUid, PolicyId};
 use serde::{Deserialize, Deserializer};
 
-use std::collections::HashSet;
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::str::FromStr;
+use std::sync::Arc;
 
 use crate::FfiError;
 
@@ -417,4 +418,216 @@ pub enum Term {
         args: Vec<Term>,
         ret_ty: TermType,
     },
+}
+
+impl From<TermVar> for cedar_policy_symcc::TermVar {
+    fn from(value: TermVar) -> Self {
+        Self {
+            id: value.id,
+            ty: value.ty.into(),
+        }
+    }
+}
+
+impl From<Uuf> for cedar_policy_symcc::Uuf {
+    fn from(value: Uuf) -> Self {
+        Self {
+            id: value.id,
+            arg: value.arg.into(),
+            out: value.out.into(),
+        }
+    }
+}
+
+impl From<PatElem> for cedar_policy_core::ast::PatternElem {
+    fn from(value: PatElem) -> Self {
+        match value {
+            PatElem::Char { c } => Self::Char(c.try_into().unwrap()),
+            PatElem::Star => Self::Wildcard,
+        }
+    }
+}
+
+impl From<ExtOp> for cedar_policy_symcc::ExtOp {
+    fn from(value: ExtOp) -> Self {
+        match value {
+            ExtOp::DecimalVal => Self::DecimalVal,
+            ExtOp::IPaddrIsV4 => Self::IpaddrIsV4,
+            ExtOp::IPaddrAddrV4 => Self::IpaddrAddrV4,
+            ExtOp::IPaddrPrefixV4 => Self::IpaddrPrefixV4,
+            ExtOp::IPaddrAddrV6 => Self::IpaddrAddrV6,
+            ExtOp::IPaddrPrefixV6 => Self::IpaddrPrefixV6,
+            ExtOp::DatetimeVal => Self::DatetimeVal,
+            ExtOp::DatetimeOfBitVec => Self::DatetimeOfBitVec,
+            ExtOp::DurationVal => Self::DurationVal,
+            ExtOp::DurationOfBitVec => Self::DurationOfBitVec,
+        }
+    }
+}
+
+impl From<Op> for cedar_policy_symcc::Op {
+    fn from(value: Op) -> Self {
+        match value {
+            Op::Not => Self::Not,
+            Op::And => Self::And,
+            Op::Or => Self::Or,
+            Op::Eq => Self::Eq,
+            Op::Ite => Self::Ite,
+            Op::Uuf(uuf) => Self::Uuf(Arc::new(uuf.into())),
+            Op::Bvneg => Self::Bvneg,
+            Op::Bvadd => Self::Bvadd,
+            Op::Bvsub => Self::Bvsub,
+            Op::Bvmul => Self::Bvmul,
+            Op::Bvsdiv => Self::Bvsdiv,
+            Op::Bvudiv => Self::Bvudiv,
+            Op::Bvsrem => Self::Bvsrem,
+            Op::Bvsmod => Self::Bvsmod,
+            Op::Bvumod => Self::Bvumod,
+            Op::Bvshl => Self::Bvshl,
+            Op::Bvlshr => Self::Bvlshr,
+            Op::Bvslt => Self::Bvslt,
+            Op::Bvsle => Self::Bvsle,
+            Op::Bvult => Self::Bvult,
+            Op::Bvule => Self::Bvule,
+            Op::Bvnego => Self::Bvnego,
+            Op::Bvsaddo => Self::Bvsaddo,
+            Op::Bvssubo => Self::Bvssubo,
+            Op::Bvsmulo => Self::Bvsmulo,
+            Op::ZeroExtend(u) => Self::ZeroExtend(u.into()),
+            Op::SetMember => Self::SetMember,
+            Op::SetSubset => Self::SetSubset,
+            Op::SetInter => Self::SetInter,
+            Op::OptionGet => Self::OptionGet,
+            Op::RecordGet(a) => Self::RecordGet(a.into()),
+            Op::StringLike(pats) => Self::StringLike(
+                cedar_policy_core::ast::Pattern::from_iter(pats.into_iter().map(Into::into)).into(),
+            ),
+            Op::Ext(op) => Self::Ext(op.into()),
+        }
+    }
+}
+
+impl From<Bitvec> for cedar_policy_symcc::BitVec {
+    fn from(value: Bitvec) -> Self {
+        Self::of_nat(value.width.into(), value.val.parse().unwrap()).unwrap()
+    }
+}
+
+impl From<Ext> for cedar_policy_symcc::Ext {
+    fn from(value: Ext) -> Self {
+        match value {
+            Ext::Datetime { dt } => Self::Datetime { dt: dt.val.into() },
+            Ext::Duration { d } => Self::Duration { d: d.val.into() },
+            Ext::Decimal { d } => Self::Decimal {
+                d: cedar_policy_symcc::extension_types::decimal::Decimal(d.0),
+            },
+            Ext::Ipaddr {
+                ip: IpAddr::V4(cidr),
+            } => Self::Ipaddr {
+                ip: cedar_policy_symcc::extension_types::ipaddr::IPNet::V4(
+                    cedar_policy_symcc::extension_types::ipaddr::CIDRv4 {
+                        addr: cedar_policy_symcc::extension_types::ipaddr::IPv4Addr {
+                            val: cidr.addr.into(),
+                        },
+                        prefix: cedar_policy_symcc::extension_types::ipaddr::IPv4Prefix {
+                            val: cidr.prefix.map(Into::into),
+                        },
+                    },
+                ),
+            },
+            Ext::Ipaddr {
+                ip: IpAddr::V6(cidr),
+            } => Self::Ipaddr {
+                ip: cedar_policy_symcc::extension_types::ipaddr::IPNet::V6(
+                    cedar_policy_symcc::extension_types::ipaddr::CIDRv6 {
+                        addr: cedar_policy_symcc::extension_types::ipaddr::IPv6Addr {
+                            val: cidr.addr.into(),
+                        },
+                        prefix: cedar_policy_symcc::extension_types::ipaddr::IPv6Prefix {
+                            val: cidr.prefix.map(Into::into),
+                        },
+                    },
+                ),
+            },
+        }
+    }
+}
+
+impl From<TermPrim> for cedar_policy_symcc::TermPrim {
+    fn from(value: TermPrim) -> Self {
+        match value {
+            TermPrim::Bitvec(bv) => Self::Bitvec(bv.into()),
+            TermPrim::Bool(b) => Self::Bool(b),
+            TermPrim::Entity(uid) => Self::Entity(uid),
+            TermPrim::Ext(ext) => Self::Ext(ext.into()),
+            TermPrim::String(s) => Self::String(s.into()),
+        }
+    }
+}
+
+impl From<Term> for cedar_policy_symcc::Term {
+    fn from(value: Term) -> Self {
+        match value {
+            Term::App { op, args, ret_ty } => Self::App {
+                op: op.into(),
+                args: Arc::new(args.into_iter().map(Into::into).collect()),
+                ret_ty: ret_ty.into(),
+            },
+            Term::None(ty) => Self::None(ty.into()),
+            Term::Prim(prim) => Self::Prim(prim.into()),
+            Term::Record(r) => Self::Record(Arc::new(BTreeMap::from_iter(
+                r.into_iter().map(|(a, t)| (a.into(), t.into())),
+            ))),
+            Term::Set { elts, elts_ty } => Self::Set {
+                elts: Arc::new(BTreeSet::from_iter(elts.into_iter().map(Into::into))),
+                elts_ty: elts_ty.into(),
+            },
+            Term::Some(term) => Self::Some(Arc::new((*term).into())),
+            Term::Var(var) => Self::Var(var.into()),
+        }
+    }
+}
+
+impl From<ExtType> for cedar_policy_symcc::ExtType {
+    fn from(value: ExtType) -> Self {
+        match value {
+            ExtType::IpAddr => Self::IpAddr,
+            ExtType::Decimal => Self::Decimal,
+            ExtType::Datetime => Self::DateTime,
+            ExtType::Duration => Self::Duration,
+        }
+    }
+}
+
+impl From<TermType> for cedar_policy_symcc::TermType {
+    fn from(value: TermType) -> Self {
+        match value {
+            TermType::Option { ty } => Self::Option {
+                ty: Arc::new((*ty).into()),
+            },
+            TermType::Prim {
+                pty: TermPrimType::Bitvec { n },
+            } => Self::Bitvec { n: n.into() },
+            TermType::Prim {
+                pty: TermPrimType::Bool,
+            } => Self::Bool,
+            TermType::Prim {
+                pty: TermPrimType::Entity { ety },
+            } => Self::Entity { ety },
+            TermType::Prim {
+                pty: TermPrimType::Ext { xty },
+            } => Self::Ext { xty: xty.into() },
+            TermType::Prim {
+                pty: TermPrimType::String,
+            } => Self::String,
+            TermType::Record { rty } => Self::Record {
+                rty: Arc::new(BTreeMap::from_iter(
+                    rty.into_iter().map(|(a, ty)| (a.into(), ty.into())),
+                )),
+            },
+            TermType::Set { ty } => Self::Set {
+                ty: Arc::new((*ty).into()),
+            },
+        }
+    }
 }
