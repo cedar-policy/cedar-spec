@@ -1,6 +1,10 @@
 use cedar_policy::{Decision, EntityId, EntityTypeName, EntityUid, PolicyId};
+use num_bigint::ParseBigIntError;
 use serde::{Deserialize, Deserializer};
+use smol_str::SmolStr;
+use thiserror::Error;
 
+use std::char::CharTryFromError;
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::str::FromStr;
 use std::sync::Arc;
@@ -439,12 +443,24 @@ impl From<Uuf> for cedar_policy_symcc::Uuf {
     }
 }
 
-impl From<PatElem> for cedar_policy_core::ast::PatternElem {
-    fn from(value: PatElem) -> Self {
-        match value {
-            PatElem::Char { c } => Self::Char(c.try_into().unwrap()),
+#[derive(Debug, Error)]
+pub enum TermConversionError {
+    #[error(transparent)]
+    CharConversion(#[from] CharTryFromError),
+    #[error(transparent)]
+    ParseBigInt(#[from] ParseBigIntError),
+    #[error(transparent)]
+    ConstructBV(#[from] cedar_policy_symcc::result::Error),
+}
+
+impl TryFrom<PatElem> for cedar_policy_core::ast::PatternElem {
+    type Error = TermConversionError;
+
+    fn try_from(value: PatElem) -> Result<Self, Self::Error> {
+        Ok(match value {
+            PatElem::Char { c } => Self::Char(c.try_into()?),
             PatElem::Star => Self::Wildcard,
-        }
+        })
     }
 }
 
@@ -465,9 +481,11 @@ impl From<ExtOp> for cedar_policy_symcc::ExtOp {
     }
 }
 
-impl From<Op> for cedar_policy_symcc::Op {
-    fn from(value: Op) -> Self {
-        match value {
+impl TryFrom<Op> for cedar_policy_symcc::Op {
+    type Error = TermConversionError;
+
+    fn try_from(value: Op) -> Result<Self, Self::Error> {
+        Ok(match value {
             Op::Not => Self::Not,
             Op::And => Self::And,
             Op::Or => Self::Or,
@@ -500,22 +518,30 @@ impl From<Op> for cedar_policy_symcc::Op {
             Op::OptionGet => Self::OptionGet,
             Op::RecordGet(a) => Self::RecordGet(a.into()),
             Op::StringLike(pats) => Self::StringLike(
-                cedar_policy_core::ast::Pattern::from_iter(pats.into_iter().map(Into::into)).into(),
+                cedar_policy_core::ast::Pattern::from_iter(
+                    pats.into_iter()
+                        .map(TryInto::try_into)
+                        .collect::<Result<Vec<_>, _>>()?,
+                )
+                .into(),
             ),
             Op::Ext(op) => Self::Ext(op.into()),
-        }
+        })
     }
 }
 
-impl From<Bitvec> for cedar_policy_symcc::BitVec {
-    fn from(value: Bitvec) -> Self {
-        Self::of_nat(value.width.into(), value.val.parse().unwrap()).unwrap()
+impl TryFrom<Bitvec> for cedar_policy_symcc::BitVec {
+    type Error = TermConversionError;
+
+    fn try_from(value: Bitvec) -> Result<Self, Self::Error> {
+        Ok(Self::of_nat(value.width.into(), value.val.parse()?)?)
     }
 }
 
-impl From<Ext> for cedar_policy_symcc::Ext {
-    fn from(value: Ext) -> Self {
-        match value {
+impl TryFrom<Ext> for cedar_policy_symcc::Ext {
+    type Error = TermConversionError;
+    fn try_from(value: Ext) -> Result<Self, Self::Error> {
+        Ok(match value {
             Ext::Datetime { dt } => Self::Datetime { dt: dt.val.into() },
             Ext::Duration { d } => Self::Duration { d: d.val.into() },
             Ext::Decimal { d } => Self::Decimal {
@@ -527,10 +553,10 @@ impl From<Ext> for cedar_policy_symcc::Ext {
                 ip: cedar_policy_symcc::extension_types::ipaddr::IPNet::V4(
                     cedar_policy_symcc::extension_types::ipaddr::CIDRv4 {
                         addr: cedar_policy_symcc::extension_types::ipaddr::IPv4Addr {
-                            val: cidr.addr.into(),
+                            val: cidr.addr.try_into()?,
                         },
                         prefix: cedar_policy_symcc::extension_types::ipaddr::IPv4Prefix {
-                            val: cidr.prefix.map(Into::into),
+                            val: cidr.prefix.map(TryInto::try_into).transpose()?,
                         },
                     },
                 ),
@@ -541,50 +567,62 @@ impl From<Ext> for cedar_policy_symcc::Ext {
                 ip: cedar_policy_symcc::extension_types::ipaddr::IPNet::V6(
                     cedar_policy_symcc::extension_types::ipaddr::CIDRv6 {
                         addr: cedar_policy_symcc::extension_types::ipaddr::IPv6Addr {
-                            val: cidr.addr.into(),
+                            val: cidr.addr.try_into()?,
                         },
                         prefix: cedar_policy_symcc::extension_types::ipaddr::IPv6Prefix {
-                            val: cidr.prefix.map(Into::into),
+                            val: cidr.prefix.map(TryInto::try_into).transpose()?,
                         },
                     },
                 ),
             },
-        }
+        })
     }
 }
 
-impl From<TermPrim> for cedar_policy_symcc::TermPrim {
-    fn from(value: TermPrim) -> Self {
-        match value {
-            TermPrim::Bitvec(bv) => Self::Bitvec(bv.into()),
+impl TryFrom<TermPrim> for cedar_policy_symcc::TermPrim {
+    type Error = TermConversionError;
+    fn try_from(value: TermPrim) -> Result<Self, Self::Error> {
+        Ok(match value {
+            TermPrim::Bitvec(bv) => Self::Bitvec(bv.try_into()?),
             TermPrim::Bool(b) => Self::Bool(b),
             TermPrim::Entity(uid) => Self::Entity(uid),
-            TermPrim::Ext(ext) => Self::Ext(ext.into()),
+            TermPrim::Ext(ext) => Self::Ext(ext.try_into()?),
             TermPrim::String(s) => Self::String(s.into()),
-        }
+        })
     }
 }
 
-impl From<Term> for cedar_policy_symcc::Term {
-    fn from(value: Term) -> Self {
-        match value {
+impl TryFrom<Term> for cedar_policy_symcc::Term {
+    type Error = TermConversionError;
+    fn try_from(value: Term) -> Result<Self, Self::Error> {
+        Ok(match value {
             Term::App { op, args, ret_ty } => Self::App {
-                op: op.into(),
-                args: Arc::new(args.into_iter().map(Into::into).collect()),
+                op: op.try_into()?,
+                args: Arc::new(
+                    args.into_iter()
+                        .map(|t| Self::try_from(t))
+                        .collect::<Result<Vec<_>, _>>()?,
+                ),
                 ret_ty: ret_ty.into(),
             },
             Term::None(ty) => Self::None(ty.into()),
-            Term::Prim(prim) => Self::Prim(prim.into()),
-            Term::Record(r) => Self::Record(Arc::new(BTreeMap::from_iter(
-                r.into_iter().map(|(a, t)| (a.into(), t.into())),
-            ))),
+            Term::Prim(prim) => Self::Prim(prim.try_into()?),
+            Term::Record(r) => Self::Record(Arc::new(
+                r.into_iter()
+                    .map(|(a, t)| Ok((SmolStr::from(a), Self::try_from(t)?)))
+                    .collect::<Result<BTreeMap<SmolStr, Self>, Self::Error>>()?,
+            )),
             Term::Set { elts, elts_ty } => Self::Set {
-                elts: Arc::new(BTreeSet::from_iter(elts.into_iter().map(Into::into))),
+                elts: Arc::new(
+                    elts.into_iter()
+                        .map(|t| Self::try_from(t))
+                        .collect::<Result<BTreeSet<Self>, _>>()?,
+                ),
                 elts_ty: elts_ty.into(),
             },
-            Term::Some(term) => Self::Some(Arc::new((*term).into())),
+            Term::Some(term) => Self::Some(Arc::new((*term).try_into()?)),
             Term::Var(var) => Self::Var(var.into()),
-        }
+        })
     }
 }
 
