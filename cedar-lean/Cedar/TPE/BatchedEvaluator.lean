@@ -23,9 +23,11 @@ def EntityLoader : Type := Set EntityUID → Map EntityUID PartialEntityData
 
 def Residual.allLiteralUIDs (x : Residual) : Set EntityUID :=
   match x with
-  | .val v ty =>
-    sorry
-  | .error e =>
+  | .val v _ty =>
+    match v with
+    | .prim (.entityUID uid) => Set.singleton uid
+    | _ => Set.empty
+  | .error _e =>
     Set.empty
   | .var v _ =>
     -- these cases should not happen, since the request was fully concrete
@@ -65,13 +67,7 @@ decreasing_by
 The batched evaluation loop
   1. Asks for any new entities referenced by the residual
   2. Partially evaluates now that new entities are loaded
-  3. Continues if progress has been made, evaluating otherwise
-
-The subtle part of this algorithm is why it can use the normal Cedar.Spec.evaluate when no progress is made.
-
-When no progress is made, one of these cases must be true:
-  - We have reduced the expression to a value
-  - An entity or entity field is missing, so the expression will error
+  3. Exits if a value has been found
 -/
 partial def batchedEvalLoop
   (residual : Residual)
