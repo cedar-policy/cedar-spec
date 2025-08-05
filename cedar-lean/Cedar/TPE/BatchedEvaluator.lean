@@ -21,12 +21,12 @@ open Cedar.Validation
 
 def EntityLoader : Type := Set EntityUID → Map EntityUID PartialEntityData
 
-def TypedExpr.allLiteralUIDs (x : TypedExpr) : Set EntityUID :=
+def Residual.allLiteralUIDs (x : Residual) : Set EntityUID :=
   match x with
-  | .lit l _ =>
-    match l with
-    | .entityUID id => Set.singleton id
-    | _ => Set.empty
+  | .val v ty =>
+    sorry
+  | .error e =>
+    Set.empty
   | .var v _ =>
     -- these cases should not happen, since the request was fully concrete
     match v with
@@ -34,16 +34,16 @@ def TypedExpr.allLiteralUIDs (x : TypedExpr) : Set EntityUID :=
     | .resource  => Set.empty
     | .action    => Set.empty
     | .context   => Set.empty
-  | .ite c t e _ => TypedExpr.allLiteralUIDs c ∪ TypedExpr.allLiteralUIDs t ∪ TypedExpr.allLiteralUIDs e
-  | .and a b _   => TypedExpr.allLiteralUIDs a ∪ TypedExpr.allLiteralUIDs b
-  | .or a b _    => TypedExpr.allLiteralUIDs a ∪ TypedExpr.allLiteralUIDs b
-  | .unaryApp _ e _ => TypedExpr.allLiteralUIDs e
-  | .binaryApp _ a b _ => TypedExpr.allLiteralUIDs a ∪ TypedExpr.allLiteralUIDs b
-  | .getAttr e _ _ => TypedExpr.allLiteralUIDs e
-  | .hasAttr e _ _ => TypedExpr.allLiteralUIDs e
-  | .set ls _ => ls.mapUnion₁ (λ ⟨v, _⟩ => TypedExpr.allLiteralUIDs v)
-  | .record m _ => m.mapUnion₂ (λ ⟨⟨_attr, v⟩, _⟩ => TypedExpr.allLiteralUIDs v)
-  | .call _ ls _ => ls.mapUnion₁ (λ ⟨v, _⟩ => TypedExpr.allLiteralUIDs v)
+  | .ite c t e _ => Residual.allLiteralUIDs c ∪ Residual.allLiteralUIDs t ∪ Residual.allLiteralUIDs e
+  | .and a b _   => Residual.allLiteralUIDs a ∪ Residual.allLiteralUIDs b
+  | .or a b _    => Residual.allLiteralUIDs a ∪ Residual.allLiteralUIDs b
+  | .unaryApp _ e _ => Residual.allLiteralUIDs e
+  | .binaryApp _ a b _ => Residual.allLiteralUIDs a ∪ Residual.allLiteralUIDs b
+  | .getAttr e _ _ => Residual.allLiteralUIDs e
+  | .hasAttr e _ _ => Residual.allLiteralUIDs e
+  | .set ls _ => ls.mapUnion₁ (λ ⟨v, _⟩ => Residual.allLiteralUIDs v)
+  | .record m _ => m.mapUnion₂ (λ ⟨⟨_attr, v⟩, _⟩ => Residual.allLiteralUIDs v)
+  | .call _ ls _ => ls.mapUnion₁ (λ ⟨v, _⟩ => Residual.allLiteralUIDs v)
 termination_by sizeOf x
 decreasing_by
   repeat case _ =>
@@ -74,22 +74,21 @@ When no progress is made, one of these cases must be true:
   - An entity or entity field is missing, so the expression will error
 -/
 partial def batchedEvalLoop
-  (expr : TypedExpr)
+  (residual : Residual)
   (req : Request)
   (loader : EntityLoader)
   (store : PartialEntities)
   : Result Value :=
-  let toLoad := (TypedExpr.allLiteralUIDs expr).filter (λ uid => (store.find? uid).isNone)
+  let toLoad := (Residual.allLiteralUIDs residual).filter (λ uid => (store.find? uid).isNone)
   let newEntities := loader toLoad
   let newStore := newEntities.kvs.foldl (λ acc ed => acc.insert ed.1 ed.2) store
-  let newRes := Cedar.TPE.evaluate expr (Request.asPartialRequest req) newStore
+  let newRes := Cedar.TPE.evaluate residual (Request.asPartialRequest req) newStore
 
   match newRes with
   | .val v _ty => .ok v
   | _ =>
     do
-      let newExprRes ← newRes.asTypedExpr
-      batchedEvalLoop newExprRes req loader newStore
+      batchedEvalLoop newRes req loader newStore
 
 
 /--
@@ -103,12 +102,12 @@ def batchedEvaluate
   (loader : EntityLoader)
   : Result Value :=
   let emptyStore : PartialEntities := Map.mk []
+  let residual := TypedExpr.toResidual x
   -- an initial partial evaluation, removing all variables
-  let residual := Cedar.TPE.evaluate x (Request.asPartialRequest req) emptyStore
+  let residual₂ := Cedar.TPE.evaluate residual (Request.asPartialRequest req) emptyStore
   -- start the batched evaluation loop
   do
-    let newExpr ← residual.asTypedExpr
-    batchedEvalLoop newExpr req loader emptyStore
+    batchedEvalLoop residual₂ req loader emptyStore
 
 def entityLoaderFor : (e: Entities) -> EntityLoader :=
   fun e =>
