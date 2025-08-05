@@ -7,7 +7,7 @@ publish = false
 [dependencies]
 cedar-policy = { version = "4.5.0", features = ["protobufs"] }
 cedar-policy-core = "4.5.0"
-cedar-policy-symcc = { version = "*", path = "../cedar/cedar-policy-symcc", features = ["term"]}
+cedar-policy-symcc = { version = "*", path = "../cedar/cedar-policy-symcc" }
 lean-sys = { version = "0.0.8", default-features = false }
 serde = "1"
 serde_json = "1.0"
