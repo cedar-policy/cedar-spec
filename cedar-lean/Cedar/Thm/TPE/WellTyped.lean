@@ -29,6 +29,108 @@ open Cedar.Validation
 open Cedar.TPE
 
 /--
+Helper theorem: Partial evaluation preserves well-typedness for variable residuals.
+-/
+theorem partial_evaluation_preserves_var_well_typedness
+  {env : TypeEnv}
+  {v : Var}
+  {ty : CedarType}
+  {req : Request}
+  {preq : PartialRequest}
+  {es : Entities} :
+  InstanceOfWellFormedEnvironment req es env →
+  RequestRefines req preq →
+  Residual.WellTyped env (Residual.var v ty) →
+  Residual.WellTyped env (varₚ preq v ty) := by
+  intro h_wf h_rref h_wt
+  unfold varₚ
+  cases v with
+  | principal =>
+    simp
+    unfold RequestRefines at h_rref
+    rcases h_rref with ⟨h_pv, h_rest⟩
+    cases h : preq.principal.asEntityUID
+    . dsimp [varₚ.varₒ, someOrSelf]
+      exact h_wt
+    . dsimp [varₚ.varₒ, someOrSelf]
+      rw [h] at h_pv
+      apply Residual.WellTyped.val
+      cases h_pv with
+      | some _ h₃ =>
+        rw [h₃]
+        cases h_wt with
+        | var h₄ =>
+          cases h₄ with
+          | principal =>
+            apply InstanceOfType.instance_of_entity req.principal env.reqty.principal
+            rcases h_wf with ⟨_, ⟨h_principal, _, _, _⟩, _⟩
+            exact h_principal
+  | resource =>
+    simp
+    unfold RequestRefines at h_rref
+    rcases h_rref with ⟨h_pv, h_rest⟩
+    rcases h_rest with ⟨h_av, h_rv, h_cv⟩
+    cases h : preq.resource.asEntityUID
+    . dsimp [varₚ.varₒ, someOrSelf]
+      exact h_wt
+    . dsimp [varₚ.varₒ, someOrSelf]
+      rw [h] at h_rv
+      apply Residual.WellTyped.val
+      cases h_rv with
+      | some _ h₃ =>
+        rw [h₃]
+        cases h_wt with
+        | var h₄ =>
+          cases h₄ with
+          | resource =>
+            apply InstanceOfType.instance_of_entity req.resource env.reqty.resource
+            rcases h_wf with ⟨_, ⟨_, _, h_resource, _⟩, _⟩
+            exact h_resource
+  | action =>
+    simp
+    unfold RequestRefines at h_rref
+    rcases h_rref with ⟨h_pv, h_rest⟩
+    rcases h_rest with ⟨h_av, h_rv, h_cv⟩
+    -- Action is always concrete in partial requests
+    dsimp [varₚ.varₒ, someOrSelf]
+    apply Residual.WellTyped.val
+    cases h_wt with
+    | var h₄ =>
+      cases h₄ with
+      | action =>
+        rw [←h_av]
+        apply InstanceOfType.instance_of_entity req.action env.reqty.action.ty
+        rcases h_wf with ⟨hwf, ⟨_, h_action, _, _⟩, _⟩
+        rw [h_action]
+        have : InstanceOfEntityType env.reqty.action env.reqty.action.ty env := by
+          have ⟨_, _, ⟨_, hwf_act, _⟩⟩ := hwf
+          simp [
+            InstanceOfEntityType, EntityUID.WellFormed,
+            ActionSchema.contains, hwf_act,
+          ]
+        exact this
+  | context =>
+    simp
+    unfold RequestRefines at h_rref
+    rcases h_rref with ⟨h_pv, h_rest⟩
+    rcases h_rest with ⟨h_av, h_rv, h_cv⟩
+    cases h : preq.context
+    . dsimp [varₚ.varₒ, someOrSelf]
+      exact h_wt
+    . dsimp [varₚ.varₒ, someOrSelf]
+      rw [h] at h_cv
+      apply Residual.WellTyped.val
+      cases h_cv with
+      | some _ h₃ =>
+        rw [h₃]
+        cases h_wt with
+        | var h₄ =>
+          cases h₄ with
+          | context =>
+            rcases h_wf with ⟨_, ⟨_, _, _, h_context⟩, _⟩
+            exact type_lifting_preserves_instance_of_type h_context
+
+/--
 Theorem: Partial evaluation preserves well-typedness of residuals.
 
 If a residual is well-typed in some type environment, then partially evaluating it
@@ -60,20 +162,10 @@ theorem partial_evaluation_preserves_residual_well_typedness
     simp [TPE.evaluate]
     exact h_wt
   | var v ty =>
+    -- Case: .var v ty
+    -- Use the helper theorem for variable cases
     simp [TPE.evaluate]
-    unfold varₚ
-    cases v with
-    | principal =>
-      simp
-      unfold RequestRefines at h_rref
-      rcases h_rref with ⟨h_pv, h_rest⟩
-      cases preq.principal.asEntityUID with
-      | some id =>
-        sorry
-      | none =>
-        dsimp [varₚ.varₒ, someOrSelf]
-        exact h_wt
-    | _ => sorry
+    exact partial_evaluation_preserves_var_well_typedness h_wf h_rref h_wt
   | error ty =>
     -- Case: .error ty
     -- TPE.evaluate (.error ty) req es = .error ty
