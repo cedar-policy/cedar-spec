@@ -508,6 +508,95 @@ theorem partial_evaluation_preserves_residual_well_typedness
               apply UnaryResidualWellTyped.is
               rw [tpe_evaluate_preserves_type h_wf h_ref_reconstructed h_expr]
               exact h_ty
+  | binaryApp op expr1 expr2 ty =>
+    simp [TPE.evaluate]
+    cases h_wt with
+    | binaryApp h_expr1 h_expr2 h_op =>
+      let expr1_eval := TPE.evaluate expr1 preq pes
+      let expr2_eval := TPE.evaluate expr2 preq pes
+      have h_ref_reconstructed : RequestAndEntitiesRefine req es preq pes := ⟨h_rref, h_eref⟩
+      have h_expr1_wt : Residual.WellTyped env expr1_eval := partial_evaluation_preserves_residual_well_typedness h_wf h_ref_reconstructed h_expr1
+      have h_expr2_wt : Residual.WellTyped env expr2_eval := partial_evaluation_preserves_residual_well_typedness h_wf h_ref_reconstructed h_expr2
+      unfold TPE.apply₂
+      split
+      . simp
+        split
+        repeat case _ =>
+          apply Residual.WellTyped.val
+          cases h_op
+          all_goals {
+            apply InstanceOfType.instance_of_bool
+            unfold InstanceOfBoolType
+            split <;> try simp
+            contradiction
+          }
+        . rename_i i j h₁ h₂
+          cases (i.add? j) <;> simp [someOrError]
+          . apply Residual.WellTyped.error
+          . apply Residual.WellTyped.val
+            cases h_op
+            all_goals {
+              apply InstanceOfType.instance_of_int
+            }
+        . rename_i i j h₁ h₂
+          cases (i.sub? j) <;> simp [someOrError]
+          . apply Residual.WellTyped.error
+          . apply Residual.WellTyped.val
+            cases h_op
+            all_goals {
+              apply InstanceOfType.instance_of_int
+            }
+        . rename_i i j h₁ h₂
+          cases (i.mul? j) <;> simp [someOrError]
+          . apply Residual.WellTyped.error
+          . apply Residual.WellTyped.val
+            cases h_op
+            all_goals {
+              apply InstanceOfType.instance_of_int
+            }
+        . rename_i i j h₁ h₂
+          apply Residual.WellTyped.val
+          cases h_op
+          all_goals {
+            apply InstanceOfType.instance_of_bool
+            simp [InstanceOfBoolType]
+          }
+        repeat case _ =>
+          apply Residual.WellTyped.val
+          cases h_op
+          all_goals {
+            apply InstanceOfType.instance_of_bool
+            simp [InstanceOfBoolType]
+          }
+        . rename_i v1 v2 id1 id2 h₁ h₂
+          cases (TPE.inₑ id1 id2 pes)
+          . simp [someOrSelf]
+            unfold TPE.apply₂.self
+            unfold Residual.asValue at h₁
+            unfold Residual.asValue at h₂
+            split at h₁
+            . split at h₂
+              . injection h₁
+                injection h₂
+                rename_i x v ty h₃ h₄ h₅ h₆ h₇ h₈ h₉
+                rw [h₃]
+                rw [h₇]
+                apply Residual.WellTyped.binaryApp
+                . apply Residual.WellTyped.val
+                  sorry
+                . sorry
+                . sorry
+              . contradiction
+            . contradiction
+          . simp [someOrSelf]
+            apply Residual.WellTyped.val
+            cases h_op
+            . apply InstanceOfType.instance_of_bool
+              simp [InstanceOfBoolType]
+            . apply InstanceOfType.instance_of_bool
+              simp [InstanceOfBoolType]
+        repeat case _ => sorry
+      . sorry
   | error ty =>
     simp [TPE.evaluate]
     exact h_wt
