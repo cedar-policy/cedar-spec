@@ -140,17 +140,38 @@ def encodeType (ty : TermType) : EncoderM String := do
     | .record (.mk rty) => declareRecordType (← rty.mapM₃ (λ ⟨(aᵢ, tyᵢ), _⟩ => do return (aᵢ, (← encodeType tyᵢ))))
   modifyGet λ state => (enc, {state with types := state.types.insert ty enc})
 
-/-
-String printing has to be done carefully in the presence of
-non-ASCII characters.  See the SMTLib standard for the details:
-https://smtlib.cs.uiowa.edu/theories-UnicodeStrings.shtml. Here,
-we're assuming ASCII strings for simplicity.
+def smtLibMaxCodePoint : Nat := 196607
 
-According to the standard, `""` is the only escape sequence
-in strings, which is interpreted as a single `"` character.
+/-
+This function needs to encode unicode strings with two levels of
+escape sequences:
+- At the string theory level, we need to encode all non-printable
+  unicode characters as `\u{xxxx}`, where a character is printable
+  if its code point is within [32, 126] (see also the note on string
+  literals in https://smt-lib.org/theories-UnicodeStrings.shtml).
+- At the parser level, we need to replace any single `"` character
+  with `""`, according to the SMT-LIB 2.7 standard on string literals:
+  https://smt-lib.org/papers/smt-lib-reference-v2.7-r2025-07-07.pdf
+
+Note in particular that `\\` is NOT an escape sequence,
+so cvc5 will read `\\u{0}` as a two-character string with
+characters `\u{5c}` and `\0`.
 -/
-def encodeString (s : String) : String :=
-  s!"\"{s.replace "\"" "\"\""}\""
+def encodeString (s : String) : EncoderM String := do
+  let l ← s.toList.mapM (λ c =>
+      if c = '"' then return "\"\""
+      else if c = '\\' then
+        -- This is to avoid unexpectedly escaping some characters
+        return "\\u{5c}"
+      else if 32 ≤ c.toNat ∧ c.toNat ≤ 126 then return s!"{c}"
+      else
+        if c.toNat ≤ smtLibMaxCodePoint then
+          return ("\\u{" ++ (Nat.toDigits 16 c.toNat).toString ++ "}")
+        else
+          -- Invalid code point for SMT-LIB
+          throw (IO.userError s!"Code point {c.toNat} not supported in SMT-LIB: {s}")
+    )
+  return String.join l
 
 def encodeBitVec {n : Nat} (bv : _root_.BitVec n) : String :=
   s!"(_ bv{bv.toNat} {n})"
@@ -222,19 +243,19 @@ def encodeExtOp : ExtOp → String
   | .ext xop       => encodeExtOp xop
   | op             => op.mkName
 
-def encodePatElem : PatElem → String
-  | .star       => "(re.* re.allchar)"
-  | .justChar c => s!"(str.to_re \"{c}\")"
+def encodePatElem : PatElem → EncoderM String
+  | .star       => return "(re.* re.allchar)"
+  | .justChar c => return s!"(str.to_re \"{← encodeString c.toString}\")"
 
-def encodePattern : Pattern → String
-  | []  => "(str.to_re \"\")"
+def encodePattern : Pattern → EncoderM String
+  | []  => return "(str.to_re \"\")"
   | [e] => encodePatElem e
-  | p   => s!"(re.++ {String.intercalate " " (p.map encodePatElem)})"
+  | p   => return s!"(re.++ {String.intercalate " " (← p.mapM encodePatElem)})"
 
 def defineEntity (tyEnc : String) (entity : EntityUID) : EncoderM String := do
   match (← get).enums.find? entity.ty with
   | .some members => return s!"{enumId tyEnc (members.idxOf entity.eid)}"
-  | .none         => defineTerm tyEnc s!"({tyEnc} {encodeString entity.eid})"
+  | .none         => defineTerm tyEnc s!"({tyEnc} \"{← encodeString entity.eid})\""
 
 private def indexOfAttr (a : Attr) : TermType → EncoderM Nat
   | .record (.mk rty) => return rty.findIdx (Prod.fst · = a)
@@ -249,7 +270,7 @@ def defineApp (tyEnc : String) (op : Op) (tEncs : List String) (ts : List Term):
   let args := String.intercalate " " tEncs
   match op with
   | .record.get a  => defineRecordGet tyEnc a args ts.head!.typeOf
-  | .string.like p => defineTerm tyEnc s!"(str.in_re {args} {encodePattern p})"
+  | .string.like p => defineTerm tyEnc s!"(str.in_re {args} {← encodePattern p})"
   | .uuf f         => defineTerm tyEnc s!"({← encodeUUF f} {args})"
   | _              => defineTerm tyEnc s!"({encodeOp op} {args})"
 
@@ -263,7 +284,7 @@ def encodeTerm (t : Term) : EncoderM String := do
       match p with
       | .bool b         => return if b then "true" else "false"
       | .bitvec bv      => return encodeBitVec bv
-      | .string s       => return encodeString s
+      | .string s       => return s!"\"{← encodeString s}\""
       | .entity e       => defineEntity tyEnc e
       | .ext x          => defineTerm tyEnc (encodeExt x)
     | .none _           => defineTerm tyEnc s!"(as none {tyEnc})"
