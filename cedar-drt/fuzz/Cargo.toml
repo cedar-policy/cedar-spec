@@ -33,6 +33,7 @@ similar-asserts = "1.5.0"
 smol_str = { version = "0.3", features = ["serde"] }
 thiserror = "2.0"
 uuid = { version = "1.3.1", features = ["v4", "fast-rng"] }
+anyhow = "1.0.98"
 
 [features]
 prt = ["dep:rayon", "dep:clap", "dep:rand_chacha"]
