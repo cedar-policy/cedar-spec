@@ -140,6 +140,11 @@ def encodeType (ty : TermType) : EncoderM String := do
     | .record (.mk rty) => declareRecordType (← rty.mapM₃ (λ ⟨(aᵢ, tyᵢ), _⟩ => do return (aᵢ, (← encodeType tyᵢ))))
   modifyGet λ state => (enc, {state with types := state.types.insert ty enc})
 
+/--
+The maximum Unicode code point supported in SMT-LIB 2.7.
+Also see `num_codes` in cvc5:
+https://github.com/cvc5/cvc5/blob/b78e7ed23348659db52a32765ad181ae0c26bbd5/src/util/string.h#L53
+-/
 def smtLibMaxCodePoint : Nat := 196607
 
 /-
@@ -255,7 +260,7 @@ def encodePattern : Pattern → EncoderM String
 def defineEntity (tyEnc : String) (entity : EntityUID) : EncoderM String := do
   match (← get).enums.find? entity.ty with
   | .some members => return s!"{enumId tyEnc (members.idxOf entity.eid)}"
-  | .none         => defineTerm tyEnc s!"({tyEnc} \"{← encodeString entity.eid})\""
+  | .none         => defineTerm tyEnc s!"({tyEnc} \"{← encodeString entity.eid}\")"
 
 private def indexOfAttr (a : Attr) : TermType → EncoderM Nat
   | .record (.mk rty) => return rty.findIdx (Prod.fst · = a)

@@ -89,9 +89,11 @@ def parseString : Parser String := do
   repeat
     match ← any with
     | '\\' =>
-      let c ← unicodeEscapeNoBrace <|>
-              unicodeEscapeBrace <|>
+      let c ← unicodeEscapeBrace <|>
+              unicodeEscapeNoBrace <|>
               (return '\\')
+      if c.toNat > Cedar.SymCC.Encoder.smtLibMaxCodePoint then
+        fail s!"invalid Unicode code point {c} in SMT-LIB string"
       s := s ++ c.toString
     | '"' =>
       match ← peek? with
@@ -108,7 +110,7 @@ where
     else if 'A' ≤ c ∧ c ≤ 'F' then return c.toNat - 'A'.toNat + 10
     else fail s!"hex digit expected"
   -- Parses `ud₃d₂d₁d₀`
-  unicodeEscapeNoBrace : Parser Char := do
+  unicodeEscapeNoBrace : Parser Char := attempt do
     skipChar 'u'
     let d₃ ← hex
     let d₂ ← hex
@@ -116,18 +118,15 @@ where
     let d₀ ← hex
     return Char.ofNat (d₃ * 16^3 + d₂ * 16^2 + d₁ * 16 + d₀)
   -- Parses `u{d₁ ⋯ dₙ}`
-  unicodeEscapeBrace : Parser Char := do
+  unicodeEscapeBrace : Parser Char := attempt do
     skipString "u{"
     let mut c ← hex
     for _ in [:4] do
-      match ← optional hex with
+      match ← optional (attempt hex) with
       | .some d => c := c * 16 + d
       | .none   => break
     skipChar '}'
-    if c > Cedar.SymCC.Encoder.smtLibMaxCodePoint then
-      fail s!"invalid Unicode code point {c} in SMT-LIB string"
-    else
-      return Char.ofNat c
+    return Char.ofNat c
 
 def parseBinary : Parser (List Bool) := do
   skipString "#b"

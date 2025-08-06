@@ -48,6 +48,7 @@ def testsParseValidSMTStrings :=
     testParseOk parseNat "123   " 123,
     testParseOk parseString "\"\""  "",
     testParseOk parseString "\"a b c  ¬ \"\"s \""  "a b c  ¬ \"s ",
+    testParseOk parseString "\"\\u{1234}\"" "\u1234",
     testParseOk parseString "\"\\u{1F60a}\"" "😊",
     testParseOk parseString "\"\\u{1F60a\"" "\\u{1F60a",
     testParseOk parseBinary "#b0" [false],
