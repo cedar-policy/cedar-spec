@@ -20,6 +20,7 @@ import Cedar.Validation
 import Cedar.Thm.TPE.Input
 import Cedar.Thm.TPE.Conversion
 import Cedar.Thm.TPE.Soundness
+import Cedar.Thm.TPE.WellTyped
 import Cedar.Thm.Validation
 
 /-!

@@ -131,6 +131,101 @@ theorem partial_evaluation_preserves_var_well_typedness
             exact type_lifting_preserves_instance_of_type h_context
 
 /--
+Theorem: TPE.evaluate preserves the typeOf property.
+
+If a residual has a certain type, then partially evaluating it produces
+a residual with the same type. This is a key property for type preservation
+in partial evaluation.
+-/
+theorem tpe_evaluate_preserves_type
+  {env : TypeEnv}
+  {res : Residual}
+  {req : Request}
+  {preq : PartialRequest}
+  {es : Entities}
+  {pes : PartialEntities} :
+  InstanceOfWellFormedEnvironment req es env →
+  RequestAndEntitiesRefine req es preq pes →
+  Residual.WellTyped env res →
+  (TPE.evaluate res preq pes).typeOf = res.typeOf := by
+  intro h_wf h_ref h_wt
+  have h_ref₂ := h_ref
+  unfold RequestAndEntitiesRefine at h_ref₂
+  rcases h_ref₂ with ⟨h_rref, h_eref⟩
+  -- Proof by cases on the structure of the residual
+  cases res with
+  | val v ty =>
+    -- Case: .val v ty
+    -- TPE.evaluate (.val v ty) = .val v ty, so typeOf is preserved
+    simp [TPE.evaluate, Residual.typeOf]
+  | var v ty =>
+    -- Case: .var v ty
+    -- This case is more complex as varₚ can return different residuals
+    simp [TPE.evaluate, Residual.typeOf]
+    unfold varₚ
+    cases v with
+    | principal =>
+      -- For each variable case, we need to show that varₚ preserves the type
+      -- This requires analyzing the someOrSelf function
+      dsimp [varₚ.varₒ]
+      cases h: preq.principal.asEntityUID
+      . dsimp [someOrSelf, Option.bind]
+      . dsimp [someOrSelf]
+    | resource | action =>
+      dsimp [varₚ.varₒ]
+      cases h: preq.resource.asEntityUID
+      . dsimp [someOrSelf, Option.bind]
+      . dsimp [someOrSelf]
+    | context =>
+      dsimp [varₚ.varₒ]
+      dsimp [someOrSelf, Option.bind]
+      cases h: preq.context
+      . simp
+      . simp
+  | and a b ty =>
+    simp [TPE.evaluate, Residual.typeOf]
+    . cases h_wt with
+      | and h₁ h₂ h₃ h₄ =>
+        split
+        repeat case _ =>
+          rename Residual => x
+          rename CedarType => ty
+          rename_i heq
+          unfold TPE.and at heq
+          split at heq
+
+          . have h₅ := tpe_evaluate_preserves_type h_wf h_ref h₂
+            rw [heq] at h₅
+            rw [h₄] at h₅
+            simp [Residual.typeOf] at h₅
+            exact h₅
+          . (first
+             | contradiction
+             | injection heq with h₅ h₆
+               rw [h₆])
+          . first
+            | contradiction
+            | injection heq
+              rename_i heq
+              rw [heq]
+          . have h₅ := tpe_evaluate_preserves_type h_wf h_ref h₁
+            rw [h₃] at h₅
+            rw [heq] at h₅
+            simp [Residual.typeOf] at h₅
+            exact h₅
+          . first
+            | contradiction
+            | injection heq with h₅ h₆ h₇
+              rw [h₇]
+  | error ty =>
+    -- Case: .error ty
+    -- TPE.evaluate (.error ty) = .error ty, so typeOf is preserved
+    simp [TPE.evaluate, Residual.typeOf]
+  | _ =>
+    -- Other cases to be implemented
+    sorry
+
+/--
 Theorem: Partial evaluation preserves well-typedness of residuals.
 
 If a residual is well-typed in some type environment, then partially evaluating it
@@ -166,6 +261,53 @@ theorem partial_evaluation_preserves_residual_well_typedness
     -- Use the helper theorem for variable cases
     simp [TPE.evaluate]
     exact partial_evaluation_preserves_var_well_typedness h_wf h_rref h_wt
+  | and a b ty =>
+    -- Case: .and a b ty
+    -- TPE.evaluate (.and a b ty) preq pes = TPE.and (TPE.evaluate a preq pes) (TPE.evaluate b preq pes) ty
+    simp [TPE.evaluate]
+    -- We need to prove that TPE.and preserves well-typedness
+    -- This requires analyzing the cases in TPE.and
+    cases h_wt with
+    | and h_a h_b h_ty_a h_ty_b =>
+      let a_eval := TPE.evaluate a preq pes
+      let b_eval := TPE.evaluate b preq pes
+      have h_ref_reconstructed : RequestAndEntitiesRefine req es preq pes := ⟨h_rref, h_eref⟩
+      have h_a_wt : Residual.WellTyped env a_eval := partial_evaluation_preserves_residual_well_typedness h_wf h_ref_reconstructed h_a
+      have h_b_wt : Residual.WellTyped env b_eval := partial_evaluation_preserves_residual_well_typedness h_wf h_ref_reconstructed h_b
+      -- TPE.and has several cases - we need to handle each one
+      unfold TPE.and
+      split
+      . -- Case: first operand is .val true, so TPE.and returns the second operand
+        -- Goal: Residual.WellTyped env (TPE.evaluate b preq pes)
+        exact h_b_wt
+      . -- Case: first operand is .val false, so TPE.and returns false
+        -- Goal: Residual.WellTyped env (Residual.val (Value.prim (Prim.bool false)) (CedarType.bool BoolType.anyBool))
+        apply Residual.WellTyped.val
+        apply InstanceOfType.instance_of_bool false BoolType.anyBool
+        simp [InstanceOfBoolType]
+      . -- Case: first operand is .error, so TPE.and returns .error ty
+        -- Goal: Residual.WellTyped env (Residual.error ty)
+        apply Residual.WellTyped.error
+      . -- Case: second operand is .val true, so TPE.and returns the first operand
+        -- Goal: Residual.WellTyped env (TPE.evaluate a preq pes)
+        exact h_a_wt
+      . -- Case: default case, TPE.and returns .and a_eval b_eval ty
+        -- Goal: Residual.WellTyped env (Residual.and (TPE.evaluate a preq pes) (TPE.evaluate b preq pes) ty)
+        apply Residual.WellTyped.and
+        · exact h_a_wt
+        · exact h_b_wt
+        · -- Need to show a_eval.typeOf = CedarType.bool BoolType.anyBool
+          -- This follows from the fact that a has boolean type and TPE preserves types
+          have h_a_type : a.typeOf = CedarType.bool BoolType.anyBool := h_ty_a
+          -- Use the type preservation theorem
+          rw [tpe_evaluate_preserves_type h_wf h_ref_reconstructed h_a]
+          exact h_a_type
+        · -- Need to show b_eval.typeOf = CedarType.bool BoolType.anyBool
+          -- This follows from the fact that b has boolean type and TPE preserves types
+          have h_b_type : b.typeOf = CedarType.bool BoolType.anyBool := h_ty_b
+          -- Use the type preservation theorem
+          rw [tpe_evaluate_preserves_type h_wf h_ref_reconstructed h_b]
+          exact h_b_type
   | error ty =>
     -- Case: .error ty
     -- TPE.evaluate (.error ty) req es = .error ty
