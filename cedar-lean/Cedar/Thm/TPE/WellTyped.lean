@@ -217,6 +217,39 @@ theorem tpe_evaluate_preserves_type
             | contradiction
             | injection heq with h₅ h₆ h₇
               rw [h₇]
+  | or a b ty =>
+    simp [TPE.evaluate, Residual.typeOf]
+    . cases h_wt with
+      | or h₁ h₂ h₃ h₄ =>
+        split
+        repeat case _ =>
+          rename Residual => x
+          rename CedarType => ty
+          rename_i heq
+          unfold TPE.or at heq
+          split at heq
+
+          . injection heq
+            try rename_i heq
+            try rw [heq]
+          . have h₅ := tpe_evaluate_preserves_type h_wf h_ref h₂
+            rw [heq] at h₅
+            rw [h₄] at h₅
+            simp [Residual.typeOf] at h₅
+            exact h₅
+          . (first
+             | contradiction
+             | injection heq with h₅
+               rw [h₅])
+          . have h₅ := tpe_evaluate_preserves_type h_wf h_ref h₁
+            rw [heq] at h₅
+            rw [h₃] at h₅
+            simp [Residual.typeOf] at h₅
+            exact h₅
+          . first
+            | contradiction
+            | injection heq with h₅ h₆ h₇
+              rw [h₇]
   | error ty =>
     -- Case: .error ty
     -- TPE.evaluate (.error ty) = .error ty, so typeOf is preserved
