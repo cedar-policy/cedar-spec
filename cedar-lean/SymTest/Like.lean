@@ -86,7 +86,7 @@ def testsForBasicLikeOps :=
     testVerifyEquivalent "False: x != \"\"\" && x like \"\"\""
       (.and
         (.unaryApp .not (.binaryApp .eq x (.lit (.string "\""))))
-        (.unaryApp (.like []) x))
+        (.unaryApp (.like (justChars "\"")) x))
       (.lit (.bool false))
       likeSymEnv .unsat,
 
@@ -94,7 +94,7 @@ def testsForBasicLikeOps :=
     testVerifyEquivalent "False: x != \"🐼\" && x like \"🐼\""
       (.and
         (.unaryApp .not (.binaryApp .eq x (.lit (.string "🐼"))))
-        (.unaryApp (.like []) x))
+        (.unaryApp (.like (justChars "🐼")) x))
       (.lit (.bool false))
       likeSymEnv .unsat,
   ]
