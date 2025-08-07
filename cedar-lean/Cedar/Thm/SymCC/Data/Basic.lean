@@ -600,6 +600,7 @@ def SameEntityData (uid : EntityUID) (d : EntityData) (δ : SymEntityData) : Pro
   SameValues (.record d.attrs) (app δ.attrs uid) ∧
   (∀ anc, anc ∈ d.ancestors → InSymAncestors anc) ∧
   (∀ ancTy ancUF, δ.ancestors.find? ancTy = .some ancUF → InAncestors ancUF ancTy) ∧
+  (∀ mems, δ.members = .some mems → uid.eid ∈ mems) ∧
   SameTags uid d δ
 where
   InSymAncestors (anc : EntityUID) : Prop :=
@@ -715,5 +716,18 @@ def memOfSymEnv (env : Env) (εnv : SymEnv) : Prop :=
 
 infixl:50 "∈ᵢ" => memOfSymEnv
 
+/--
+This is a condition that `env` contains all enum entities
+(including actions) specified in `εnv`. It's required for
+completeness (of `SymEnv.ofEnv`) and satisfied by the
+concretizer, but it's not required for the soundness, so
+we keep it as a separate definition here.
+-/
+def Env.EnumCompleteFor (env : Env) (εnv : SymEnv) : Prop :=
+  ∀ (uid : EntityUID) (δ : SymEntityData) (eids : Set String),
+    εnv.entities.find? uid.ty = .some δ →
+    δ.members = .some eids →
+    uid.eid ∈ eids →
+    ∃ data, env.entities.find? uid = .some data
 
 end Cedar.SymCC

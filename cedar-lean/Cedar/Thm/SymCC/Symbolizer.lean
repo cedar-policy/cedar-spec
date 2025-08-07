@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Thm.SymCC.Env.ofEnv
+import Cedar.Thm.SymCC.Term.ofType
 import Cedar.SymCC.Concretizer
 import Cedar.SymCC.Symbolizer
 
@@ -74,15 +75,7 @@ theorem value_symbolize?_well_typed
     simp only [←hsym, Term.typeOf, TermType.ofType]
     congr
     simp only [List.map_attach₃_snd]
-    -- Rephrase `TermType.ofRecordType` as a map
-    have (rty : List (Attr × QualifiedType)) :
-      TermType.ofRecordType rty
-      = rty.map λ (a, qty) => (a, TermType.ofQualifiedType qty)
-    := by
-      induction rty with
-      | nil => simp [TermType.ofRecordType]
-      | cons => simp [TermType.ofRecordType]; assumption
-    simp only [this]
+    simp only [ofRecordType_as_map]
     have :
       List.Forall₂
         (λ rty_entry sym_attr =>

@@ -177,6 +177,21 @@ where
     match ids.enums.find? s with
     | .some uid => Term.entity uid
     | .none     =>  fail "enum id" s
+  constructEntityOrRecord tyId args : Result Term := do
+    match ids.types.find? tyId, args with
+    | .some (.entity ety), [.string eid] =>
+      Term.entity ⟨ety, eid⟩
+    | .some (.record (Map.mk rty)), _ =>
+      let ts ← args.mapM (SExpr.decodeLit ids)
+      if rty.length != ts.length then
+        fail s!"record literal args of length {rty.length}" args
+      for aty in rty, t in ts do
+        if t.typeOf != aty.snd then
+          fail s!"attribute {aty.fst} of type {reprStr aty.snd}" t
+      let ats := rty.zipWith (λ (a, _) t => (a, t)) ts
+      Term.record (Map.mk ats)
+    | _, _  =>
+        fail "entity or record literal" ((.symbol tyId) :: args)
   construct : List SExpr → Result Term
     | [.symbol "as", .symbol "none", oty] => do
       match (← oty.decodeType ids.types) with
@@ -215,21 +230,7 @@ where
       | .some (.prim (@TermPrim.bitvec 7 p)) => Term.ext (.ipaddr (.V6 ⟨a, p⟩))
       | .none (.bitvec 7)                    => Term.ext (.ipaddr (.V6 ⟨a, .none⟩))
       | other                                => fail "Option (BitVec 7)" other
-    | (.symbol tyId) :: xs => do
-      match ids.types.find? tyId, xs with
-      | .some (.entity ety), [.string eid] =>
-        Term.entity ⟨ety, eid⟩
-      | .some (.record (Map.mk rty)), _ =>
-        let ts ← xs.mapM (SExpr.decodeLit ids)
-        if rty.length != ts.length then
-          fail s!"record literal args of length {rty.length}" xs
-        for aty in rty, t in ts do
-          if t.typeOf != aty.snd then
-            fail s!"attribute {aty.fst} of type {reprStr aty.snd}" t
-        let ats := rty.zipWith (λ (a, _) t => (a, t)) ts
-        Term.record (Map.mk ats)
-      | _, _  =>
-        fail "entity or record literal" ((.symbol tyId) :: xs)
+    | (.symbol tyId) :: xs => constructEntityOrRecord tyId xs
     | other =>
       fail "literal expr" other
 

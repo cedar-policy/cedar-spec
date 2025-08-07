@@ -168,6 +168,52 @@ decreasing_by
 
 end
 
+theorem type_validate_lifted_is_sound
+  {ty : CedarType}
+  (hok : ty.validateLifted = .ok ()) :
+  CedarType.IsLifted ty
+:= by
+  cases ty with
+  | bool bty =>
+    cases bty
+    · constructor
+    · simp [CedarType.validateLifted] at hok
+    · simp [CedarType.validateLifted] at hok
+  | int | string | entity _ => constructor
+  | set ty' =>
+    simp only [CedarType.validateLifted] at hok
+    constructor
+    exact type_validate_lifted_is_sound hok
+  | record rty =>
+    simp only [CedarType.validateLifted] at hok
+    constructor
+    intros attr qty hmem
+    have := List.forM_ok_implies_all_ok _ _ hok ⟨(attr, qty), hmem⟩
+    specialize this (List.mem_attach rty.toList ⟨(attr, qty), hmem⟩)
+    simp only at this
+    cases qty with
+    | optional ty' =>
+      simp only at this
+      constructor
+      exact type_validate_lifted_is_sound this
+    | required ty' =>
+      simp only at this
+      constructor
+      exact type_validate_lifted_is_sound this
+  | ext _ => constructor
+termination_by sizeOf ty
+decreasing_by
+  · rename ty = ty'.set => h
+    simp [h]
+  all_goals
+    rename ty = CedarType.record rty => h
+    simp [h]
+    rename (attr, qty) ∈ rty.toList => hmem
+    have := List.sizeOf_lt_of_mem hmem
+    cases rty
+    simp [Map.toList, Map.kvs] at this ⊢
+    omega
+
 theorem standard_schema_entry_validate_well_formed_is_sound
   {env : TypeEnv} {entry : StandardSchemaEntry}
   (hok : entry.validateWellFormed env = .ok ()) :
@@ -202,10 +248,20 @@ theorem standard_schema_entry_validate_well_formed_is_sound
   contradiction
   rename_i hwf_attrs
   simp only [type_validate_well_formed_is_sound hwf_attrs, true_and]
+  split at hok
+  contradiction
+  rename_i hlift_attrs
+  simp only [type_validate_lifted_is_sound hlift_attrs, true_and]
   -- Tag type is well-formed
   split at hok
   · rename_i tag_ty htags
-    simp [type_validate_well_formed_is_sound hok, htags]
+    split at hok
+    contradiction
+    rename_i hwf_tags
+    simp [
+      type_validate_well_formed_is_sound hwf_tags, htags,
+      type_validate_lifted_is_sound hok,
+    ]
   · rename_i htags
     simp [htags]
 
@@ -309,7 +365,11 @@ theorem action_schema_entry_validate_well_formed_is_sound
   · simp [hmem_anc_acts] at this
   · rfl
   -- Check context type well-formedness
-  exact type_validate_well_formed_is_sound hok
+  split at hok
+  contradiction
+  rename_i hwf_ctx
+  simp only [type_validate_well_formed_is_sound hwf_ctx, true_and]
+  exact type_validate_lifted_is_sound hok
 
 theorem action_schema_validate_acyclic_action_hierarchy_is_sound
   {acts : ActionSchema}

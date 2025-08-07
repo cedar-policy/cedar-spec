@@ -123,6 +123,10 @@ def InstanceOfSchemaEntry (uid : EntityUID) (data : EntityData) (env : TypeEnv) 
   InstanceOfEntitySchemaEntry uid data env ∨
   InstanceOfActionSchemaEntry uid data env
 
+def Entities.HasAllActions (entities : Entities) (env : TypeEnv) : Prop :=
+  ∀ (uid : EntityUID) (entry : ActionSchemaEntry),
+    env.acts.find? uid = some entry → ∃ data, entities.find? uid = some data
+
 /--
 Each entry in the store is valid
 -/
@@ -130,9 +134,7 @@ def InstanceOfSchema (entities : Entities) (env : TypeEnv) : Prop :=
   -- Each entity data is valid
   (∀ (uid : EntityUID) (data : EntityData),
     entities.find? uid = some data → InstanceOfSchemaEntry uid data env) ∧
-  -- Each action in the schema exists
-  (∀ (uid : EntityUID) (entry : ActionSchemaEntry),
-    env.acts.find? uid = some entry → ∃ data, entities.find? uid = some data)
+  Entities.HasAllActions entities env
 
 def InstanceOfWellFormedEnvironment (request : Request) (entities : Entities) (env : TypeEnv) : Prop :=
   env.WellFormed ∧

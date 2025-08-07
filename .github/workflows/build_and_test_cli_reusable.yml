@@ -33,14 +33,6 @@ jobs:
           repository: cedar-policy/cedar
           path: ./cedar-spec/cedar
           ref: ${{ inputs.cedar_policy_ref }}
-      - name: Setup Cargo config for local Cedar
-        working-directory: ./cedar-spec/cedar-lean-ffi
-        run: |
-          mkdir -p .cargo
-          cat > .cargo/config.toml << EOF
-          [patch.crates-io]
-          cedar-policy = { path = "../cedar/cedar-policy" }
-          EOF
       - name: Install Lean
         shell: bash
         run: |

@@ -15,7 +15,6 @@
 -/
 
 import Cedar.Thm.SymCC.Verifier
-import Cedar.Thm.SymCC.Env.Soundness
 
 /-!
 This file proves the soundness and completeness of the verification queries in
@@ -69,6 +68,7 @@ theorem verifyNeverErrors_is_complete {p : Policy} {εnv : SymEnv} {asserts : As
   ∃ env,
     env ∈ᵢ εnv ∧
     env.StronglyWellFormedForPolicy p ∧
+    Env.EnumCompleteFor env εnv ∧
     ¬ (evaluate p.toExpr env.request env.entities).isOk
 := by
   simp only [Bool.not_eq_true]
@@ -113,6 +113,7 @@ theorem verifyEquivalent_is_complete  {ps₁ ps₂ : Policies} {εnv : SymEnv} {
     env ∈ᵢ εnv ∧
     env.StronglyWellFormedForPolicies ps₁ ∧
     env.StronglyWellFormedForPolicies ps₂ ∧
+    Env.EnumCompleteFor env εnv ∧
     ¬ bothAllowOrBothDeny
       (Spec.isAuthorized env.request env.entities ps₁)
       (Spec.isAuthorized env.request env.entities ps₂)
@@ -159,6 +160,7 @@ theorem verifyDisjoint_is_complete  {ps₁ ps₂ : Policies} {εnv : SymEnv} {as
     env ∈ᵢ εnv ∧
     env.StronglyWellFormedForPolicies ps₁ ∧
     env.StronglyWellFormedForPolicies ps₂ ∧
+    Env.EnumCompleteFor env εnv ∧
     ¬ atLeastOneDenies
       (Spec.isAuthorized env.request env.entities ps₁)
       (Spec.isAuthorized env.request env.entities ps₂)
@@ -204,6 +206,7 @@ theorem verifyImplies_is_complete  {ps₁ ps₂ : Policies} {εnv : SymEnv} {ass
     env ∈ᵢ εnv ∧
     env.StronglyWellFormedForPolicies ps₁ ∧
     env.StronglyWellFormedForPolicies ps₂ ∧
+    Env.EnumCompleteFor env εnv ∧
     ¬ ifFirstAllowsSoDoesSecond
       (Spec.isAuthorized env.request env.entities ps₁)
       (Spec.isAuthorized env.request env.entities ps₂)
@@ -248,6 +251,7 @@ theorem verifyAlwaysDenies_is_complete {ps₁ : Policies} {εnv : SymEnv} {asser
   ∃ env,
     env ∈ᵢ εnv ∧
     env.StronglyWellFormedForPolicies ps₁ ∧
+    Env.EnumCompleteFor env εnv ∧
     ¬ denies (Spec.isAuthorized env.request env.entities ps₁)
 := by
   intro hwε₁ hvc hsat
@@ -296,6 +300,7 @@ theorem verifyAlwaysAllows_is_complete {ps₁ : Policies} {εnv : SymEnv} {asser
   ∃ env,
     env ∈ᵢ εnv ∧
     env.StronglyWellFormedForPolicies ps₁ ∧
+    Env.EnumCompleteFor env εnv ∧
     ¬ allows (Spec.isAuthorized env.request env.entities ps₁)
 := by
   intro hwε₁ hvc hsat

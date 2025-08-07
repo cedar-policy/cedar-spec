@@ -71,6 +71,32 @@ inductive CedarType.WellFormed (env : TypeEnv) : CedarType → Prop where
   | ext_wf {xty : ExtType} : CedarType.WellFormed env (.ext xty)
 end
 
+mutual
+inductive QualifiedType.IsLifted : Qualified CedarType → Prop where
+  | optional_lifted {ty : CedarType}
+    (h : CedarType.IsLifted ty) :
+    QualifiedType.IsLifted (.optional ty)
+  | required_lifted {ty : CedarType}
+    (h : CedarType.IsLifted ty) :
+    QualifiedType.IsLifted (.required ty)
+
+/--
+Defines when a `CedarType` does not have any singleton Bool types.
+-/
+inductive CedarType.IsLifted : CedarType → Prop where
+  | bool_lifted : CedarType.IsLifted (.bool .anyBool)
+  | int_lifted : CedarType.IsLifted .int
+  | string_lifted : CedarType.IsLifted .string
+  | entity_lifted {ety : EntityType} : CedarType.IsLifted (.entity ety)
+  | set_lifted {ty : CedarType}
+    (h : CedarType.IsLifted ty) :
+    CedarType.IsLifted (.set ty)
+  | record_lifted {rty : RecordType}
+    (h₂ : ∀ attr qty, (attr, qty) ∈ rty.toList → QualifiedType.IsLifted qty) :
+    CedarType.IsLifted (.record rty)
+  | ext_lifted {xty : ExtType} : CedarType.IsLifted (.ext xty)
+end
+
 def StandardSchemaEntry.WellFormed (env : TypeEnv) (entry : StandardSchemaEntry) : Prop :=
   -- Well-formed as `Map`/`Set`s
   entry.ancestors.WellFormed ∧
@@ -80,8 +106,10 @@ def StandardSchemaEntry.WellFormed (env : TypeEnv) (entry : StandardSchemaEntry)
     ∃ entry, env.ets.find? anc = some entry ∧ entry.isStandard) ∧
   -- The attribute types are well-formed
   (CedarType.record entry.attrs).WellFormed env ∧
+  (CedarType.record entry.attrs).IsLifted ∧
   -- The tag type is well-formed
-  (∀ ty, entry.tags = .some ty → CedarType.WellFormed env ty)
+  (∀ ty, entry.tags = .some ty →
+    CedarType.WellFormed env ty ∧ ty.IsLifted)
 
 def EntitySchemaEntry.WellFormed (env : TypeEnv) (entry : EntitySchemaEntry) : Prop :=
   match entry with
@@ -106,7 +134,8 @@ def ActionSchemaEntry.WellFormed (env : TypeEnv) (entry : ActionSchemaEntry) : P
   -- Ancestors of each action entity must also be an action entity
   (∀ uid ∈ entry.ancestors, env.acts.contains uid) ∧
   -- Context is a well-formed `RecordType`
-  (CedarType.record entry.context).WellFormed env
+  (CedarType.record entry.context).WellFormed env ∧
+  (CedarType.record entry.context).IsLifted
 
 def ActionSchema.AcyclicActionHierarchy (acts : ActionSchema) : Prop :=
   ∀ uid entry, acts.find? uid = .some entry → uid ∉ entry.ancestors
@@ -216,9 +245,25 @@ theorem wf_env_implies_wf_tag_type {env : TypeEnv} {ety : EntityType} {ty : Ceda
   have hwf_entry := hwf_ets ety entry hentry
   simp only [EntitySchemaEntry.WellFormed] at hwf_entry
   split at hwf_entry
-  · have ⟨_, _, _, hwf_tag⟩ := hwf_entry
+  · have ⟨_, _, _, _, hwf_tag⟩ := hwf_entry
     simp only [EntitySchemaEntry.tags?] at htags
-    exact hwf_tag ty htags
+    exact (hwf_tag ty htags).1
+  · simp [EntitySchemaEntry.tags?] at htags
+
+theorem wf_env_implies_tag_type_lifted {env : TypeEnv} {ety : EntityType} {ty : CedarType}
+  (hwf : env.WellFormed)
+  (hety : env.ets.tags? ety = .some (.some ty)) :
+  ty.IsLifted
+:= by
+  simp only [EntitySchema.tags?, Option.map_eq_some_iff] at hety
+  have ⟨entry, hentry, htags⟩ := hety
+  have ⟨⟨_, hwf_ets⟩, _⟩ := hwf
+  have hwf_entry := hwf_ets ety entry hentry
+  simp only [EntitySchemaEntry.WellFormed] at hwf_entry
+  split at hwf_entry
+  · have ⟨_, _, _, _, hwf_tag⟩ := hwf_entry
+    simp only [EntitySchemaEntry.tags?] at htags
+    exact (hwf_tag ty htags).2
   · simp [EntitySchemaEntry.tags?] at htags
 
 theorem wf_env_implies_wf_attrs {env : TypeEnv} {ety : EntityType} {attrs : RecordType}
@@ -240,6 +285,25 @@ theorem wf_env_implies_wf_attrs {env : TypeEnv} {ety : EntityType} {attrs : Reco
     constructor
     . simp [Map.WellFormed, Map.toList, Map.kvs, Map.make, List.canonicalize]
     · simp [Map.find?, List.find?]
+
+theorem wf_env_implies_attrs_lifted {env : TypeEnv} {ety : EntityType} {attrs : RecordType}
+  (hwf : env.WellFormed)
+  (hattrs : env.ets.attrs? ety = .some attrs) :
+  (CedarType.record attrs).IsLifted
+:= by
+  simp only [EntitySchema.attrs?, Option.map_eq_some_iff] at hattrs
+  have ⟨entry, hentry, hattrs⟩ := hattrs
+  have ⟨⟨_, hwf_ets⟩, _⟩ := hwf
+  have hwf_entry := hwf_ets ety entry hentry
+  simp only [EntitySchemaEntry.WellFormed] at hwf_entry
+  split at hwf_entry
+  · have ⟨_, _, _, hlift, _⟩ := hwf_entry
+    simp only [← hattrs]
+    exact hlift
+  · simp only [EntitySchemaEntry.attrs] at hattrs
+    simp only [← hattrs, Map.empty]
+    constructor
+    simp [Map.WellFormed, Map.toList, Map.kvs, Map.make, List.canonicalize]
 
 theorem wf_env_implies_action_wf {env : TypeEnv}
   (hwf : env.WellFormed) :
@@ -289,6 +353,20 @@ theorem wf_env_implies_wf_request
     simp only [Membership.mem] at hwf_res
     simp [Set.contains, hwf_res, Membership.mem]
   · simp [hwf_ctx, hwf_ctx_ty]
+
+/--
+More well-formedness properties of `env.reqty`.
+-/
+theorem wf_env_implies_ctx_lifted
+  {env : TypeEnv}
+  (hwf : env.WellFormed) :
+  (CedarType.record env.reqty.context).IsLifted
+:= by
+  have ⟨_, hwf_acts, ⟨entry, hwf_act, _, _, hwf_ctx⟩⟩ := hwf
+  have ⟨_, hwf_acts, _⟩ := hwf_acts
+  have hwf_act_entry := hwf_acts env.reqty.action entry hwf_act
+  have ⟨_, _, _, _, _, _, hwf_ctx_ty⟩ := hwf_act_entry
+  simp [hwf_ctx, hwf_ctx_ty]
 
 theorem wf_env_implies_wf_acts_map
   {env : TypeEnv}
@@ -385,6 +463,18 @@ theorem wf_env_implies_wf_ancestor_set
     exact h
   | enum es =>
     simp only [EntitySchemaEntry.ancestors, Set.empty_wf]
+
+theorem wf_env_implies_wf_action_ancestor_set
+  {env : TypeEnv} {entry : ActionSchemaEntry}
+  {uid : EntityUID}
+  (hwf : env.WellFormed)
+  (hfind : env.acts.find? uid = some entry) :
+  Set.WellFormed entry.ancestors
+:= by
+  have ⟨_, hwf_acts⟩ := hwf
+  replace ⟨⟨_, hwf_acts, _⟩, _⟩ := hwf_acts
+  have ⟨_, _, h, _⟩ := hwf_acts uid entry hfind
+  exact h
 
 theorem wf_env_implies_acyclic_action_hierarchy
   {env : TypeEnv}
