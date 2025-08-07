@@ -119,7 +119,7 @@ def Condition.toExpr (c : Condition) : Expr :=
 def Conditions.toExpr (cs : Conditions) : Expr :=
   match cs with
   | [] => Expr.lit (Prim.bool true)
-  | c :: cs => cs.foldl (λ expr c => .and expr (c.toExpr)) c.toExpr
+  | c :: cs => cs.foldr (λ c expr => .and (c.toExpr) expr) c.toExpr
 
 def Policy.toExpr (p : Policy) : Expr :=
   .and
