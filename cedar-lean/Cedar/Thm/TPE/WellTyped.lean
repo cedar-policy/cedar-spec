@@ -28,20 +28,27 @@ open Cedar.Spec
 open Cedar.Validation
 open Cedar.TPE
 
+def PEWellTyped (env : TypeEnv)
+  (r₁ r₂ : Residual)
+  (req : Request)
+  (preq : PartialRequest)
+  (es : Entities) : Prop :=
+  InstanceOfWellFormedEnvironment req es env →
+  RequestRefines req preq →
+  Residual.WellTyped env r₁ →
+  Residual.WellTyped env r₂
+
 /--
 Helper theorem: Partial evaluation preserves well-typedness for variable residuals.
 -/
-theorem partial_evaluation_preserves_var_well_typedness
-  {env : TypeEnv}
+theorem partial_evaluation_preserves_var_well_typedness      {env : TypeEnv}
   {v : Var}
   {ty : CedarType}
   {req : Request}
   {preq : PartialRequest}
-  {es : Entities} :
-  InstanceOfWellFormedEnvironment req es env →
-  RequestRefines req preq →
-  Residual.WellTyped env (Residual.var v ty) →
-  Residual.WellTyped env (varₚ preq v ty) := by
+  {es : Entities}
+  :
+  PEWellTyped env (Residual.var v ty) (varₚ preq v ty) req preq es := by
   intro h_wf h_rref h_wt
   unfold varₚ
   cases v with
@@ -187,13 +194,12 @@ theorem tpe_evaluate_preserves_type
     . cases h_wt with
       | and h₁ h₂ h₃ h₄ =>
         split
-        repeat case _ =>
+        any_goals (
           rename Residual => x
           rename CedarType => ty
           rename_i heq
           unfold TPE.and at heq
           split at heq
-
           . have h₅ := tpe_evaluate_preserves_type h_wf h_ref h₂
             rw [heq] at h₅
             rw [h₄] at h₅
@@ -217,6 +223,7 @@ theorem tpe_evaluate_preserves_type
             | contradiction
             | injection heq with h₅ h₆ h₇
               rw [h₇]
+          )
   | or a b ty =>
     simp [TPE.evaluate, Residual.typeOf]
     . cases h_wt with
@@ -578,14 +585,55 @@ theorem partial_evaluation_preserves_residual_well_typedness
             . split at h₂
               . injection h₁
                 injection h₂
-                rename_i x v ty h₃ h₄ h₅ h₆ h₇ h₈ h₉
+                rename_i x v ty₁ h₃ h₄ h₅ ty₂ h₇ h₈ h₉
                 rw [h₃]
                 rw [h₇]
                 apply Residual.WellTyped.binaryApp
                 . apply Residual.WellTyped.val
-                  sorry
-                . sorry
-                . sorry
+                  subst expr1_eval
+                  subst expr2_eval
+                  rw [h₃] at h_expr1_wt
+                  rw [h₇] at h_expr2_wt
+                  cases h_expr1_wt
+                  rename_i h₈
+                  exact h₈
+                . apply Residual.WellTyped.val
+                  subst expr1_eval
+                  subst expr2_eval
+                  rw [h₃] at h_expr1_wt
+                  rw [h₇] at h_expr2_wt
+                  cases h_expr2_wt
+                  rename_i h₈
+                  exact h₈
+                . rw [h₈]
+                  rw [h₉]
+                  cases h_op
+                  . apply BinaryResidualWellTyped.memₑ
+                    . simp [Residual.typeOf]
+                      rename_i ety₁ ety₂ eq₁ eq₂
+                      have hᵣ : (ty₁ = CedarType.entity ety₁) := by {
+                        subst expr1_eval
+                        subst expr2_eval
+                        have h₁₀ := tpe_evaluate_preserves_type h_wf h_ref_reconstructed h_expr1
+                        rw [← h₁₀] at eq₁
+                        rw [h₃] at eq₁
+                        simp [Residual.typeOf] at eq₁
+                        exact eq₁
+                      }
+                      exact hᵣ
+                    . simp [Residual.typeOf]
+                      rename_i ety₁ ety₂ eq₁ eq₂
+                      have hᵣ : (ty₂ = CedarType.entity ety₂) := by {
+                        subst expr1_eval
+                        subst expr2_eval
+                        have h₁₀ := tpe_evaluate_preserves_type h_wf h_ref_reconstructed h_expr2
+                        rw [← h₁₀] at eq₂
+                        rw [h₇] at eq₂
+                        simp [Residual.typeOf] at eq₂
+                        exact eq₂
+                      }
+                      exact hᵣ
+                  . sorry
               . contradiction
             . contradiction
           . simp [someOrSelf]
