@@ -424,7 +424,7 @@ pub enum Term {
     },
 }
 
-impl From<TermVar> for cedar_policy_symcc::TermVar {
+impl From<TermVar> for cedar_policy_symcc::term::TermVar {
     fn from(value: TermVar) -> Self {
         Self {
             id: value.id,
@@ -433,7 +433,7 @@ impl From<TermVar> for cedar_policy_symcc::TermVar {
     }
 }
 
-impl From<Uuf> for cedar_policy_symcc::Uuf {
+impl From<Uuf> for cedar_policy_symcc::op::Uuf {
     fn from(value: Uuf) -> Self {
         Self {
             id: value.id,
@@ -450,7 +450,7 @@ pub enum TermConversionError {
     #[error(transparent)]
     ParseBigInt(#[from] ParseBigIntError),
     #[error(transparent)]
-    ConstructBV(#[from] cedar_policy_symcc::result::Error),
+    ConstructBV(#[from] cedar_policy_symcc::bitvec::BitVecError),
 }
 
 impl TryFrom<PatElem> for cedar_policy_core::ast::PatternElem {
@@ -464,7 +464,7 @@ impl TryFrom<PatElem> for cedar_policy_core::ast::PatternElem {
     }
 }
 
-impl From<ExtOp> for cedar_policy_symcc::ExtOp {
+impl From<ExtOp> for cedar_policy_symcc::op::ExtOp {
     fn from(value: ExtOp) -> Self {
         match value {
             ExtOp::DecimalVal => Self::DecimalVal,
@@ -481,7 +481,7 @@ impl From<ExtOp> for cedar_policy_symcc::ExtOp {
     }
 }
 
-impl TryFrom<Op> for cedar_policy_symcc::Op {
+impl TryFrom<Op> for cedar_policy_symcc::op::Op {
     type Error = TermConversionError;
 
     fn try_from(value: Op) -> Result<Self, Self::Error> {
@@ -530,7 +530,7 @@ impl TryFrom<Op> for cedar_policy_symcc::Op {
     }
 }
 
-impl TryFrom<Bitvec> for cedar_policy_symcc::BitVec {
+impl TryFrom<Bitvec> for cedar_policy_symcc::bitvec::BitVec {
     type Error = TermConversionError;
 
     fn try_from(value: Bitvec) -> Result<Self, Self::Error> {
@@ -538,7 +538,7 @@ impl TryFrom<Bitvec> for cedar_policy_symcc::BitVec {
     }
 }
 
-impl TryFrom<Ext> for cedar_policy_symcc::Ext {
+impl TryFrom<Ext> for cedar_policy_symcc::ext::Ext {
     type Error = TermConversionError;
     fn try_from(value: Ext) -> Result<Self, Self::Error> {
         Ok(match value {
@@ -579,7 +579,7 @@ impl TryFrom<Ext> for cedar_policy_symcc::Ext {
     }
 }
 
-impl TryFrom<TermPrim> for cedar_policy_symcc::TermPrim {
+impl TryFrom<TermPrim> for cedar_policy_symcc::term::TermPrim {
     type Error = TermConversionError;
     fn try_from(value: TermPrim) -> Result<Self, Self::Error> {
         Ok(match value {
@@ -592,7 +592,7 @@ impl TryFrom<TermPrim> for cedar_policy_symcc::TermPrim {
     }
 }
 
-impl TryFrom<Term> for cedar_policy_symcc::Term {
+impl TryFrom<Term> for cedar_policy_symcc::term::Term {
     type Error = TermConversionError;
     fn try_from(value: Term) -> Result<Self, Self::Error> {
         Ok(match value {
@@ -626,7 +626,7 @@ impl TryFrom<Term> for cedar_policy_symcc::Term {
     }
 }
 
-impl From<ExtType> for cedar_policy_symcc::ExtType {
+impl From<ExtType> for cedar_policy_symcc::type_abbrevs::ExtType {
     fn from(value: ExtType) -> Self {
         match value {
             ExtType::IpAddr => Self::IpAddr,
@@ -637,7 +637,7 @@ impl From<ExtType> for cedar_policy_symcc::ExtType {
     }
 }
 
-impl From<TermType> for cedar_policy_symcc::TermType {
+impl From<TermType> for cedar_policy_symcc::term_type::TermType {
     fn from(value: TermType) -> Self {
         match value {
             TermType::Option { ty } => Self::Option {
