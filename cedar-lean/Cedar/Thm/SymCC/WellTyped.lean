@@ -114,6 +114,8 @@ theorem wellTypedPolicy_some_implies_exists_typed_exprs
         Condition.toExpr,
         List.foldr,
         List.foldl,
+        List.reverse,
+        List.reverseAux,
         TypedExpr.toExpr,
         ←htx'',
         type_lifting_preserves_expr tx,
