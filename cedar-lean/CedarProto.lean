@@ -34,6 +34,8 @@ import CedarProto.RequestValidationRequest
 import CedarProto.Schema
 import CedarProto.SymCCRequest
 import CedarProto.TemplateBody
+import CedarProto.Term
+import CedarProto.TermType
 import CedarProto.Type
 import CedarProto.ValidationRequest
 import CedarProto.LevelValidationRequest

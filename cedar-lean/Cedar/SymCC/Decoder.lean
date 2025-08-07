@@ -61,19 +61,73 @@ where
 
 def parseNat : Parser Nat := do trim (← digits)
 
--- Note that SMT strings have only one escape character, "", which
--- stands for just " in the string. We parse SMT strings into Lean
--- strings, dropping the enclosing quotes from the output.
+/--
+This function decodes a string encoded in SMT-LIB 2 format
+as a Rust string.
+
+It handles two escape sequences:
+- Parser-level escape sequence `""` (which represents `"`)
+  (per https://smt-lib.org/papers/smt-lib-reference-v2.7-r2025-07-07.pdf)
+- Theory-level escape sequence for Unicode characters:
+  convert any of the following to the corresponding Unicode character
+  (see https://smt-lib.org/theories-UnicodeStrings.shtml):
+  - \ud₃d₂d₁d₀
+  - \u{d₀}
+  - \u{d₁d₀}
+  - \u{d₂d₁d₀}
+  - \u{d₃d₂d₁d₀}
+  - \u{d₄d₃d₂d₁d₀}
+
+See also:
+- The (right) inverse: `encodeString` (not verified)
+- The concrete C++ implementation in cvc5, which this function mimics
+  https://github.com/cvc5/cvc5/blob/b78e7ed23348659db52a32765ad181ae0c26bbd5/src/util/string.cpp#L136
+-/
 def parseString : Parser String := do
   skipChar '"'
   let mut s := ""
   repeat
-    s := s ++ (← manyChars (satisfy (· ≠ '"')))
-    skipChar '"'
-    match ← peek? with
-    | .some '"' => s := s ++ (← pchar '"').toString
-    | _         => break
+    match ← any with
+    | '\\' =>
+      let c ← unicodeEscapeBrace <|>
+              unicodeEscapeNoBrace <|>
+              (return '\\')
+      s := s ++ c.toString
+    | '"' =>
+      match ← peek? with
+      | .some '"' => s := s ++ (← pchar '"').toString
+      | _         => break
+    | c => s := s ++ c.toString
   trim s
+where
+  -- Parses a hex digit and returns its numeric value
+  hex : Parser Nat := do
+    let c ← any
+    if '0' ≤ c ∧ c ≤ '9' then return c.toNat - '0'.toNat
+    else if 'a' ≤ c ∧ c ≤ 'f' then return c.toNat - 'a'.toNat + 10
+    else if 'A' ≤ c ∧ c ≤ 'F' then return c.toNat - 'A'.toNat + 10
+    else fail s!"hex digit expected"
+  -- Parses `ud₃d₂d₁d₀`
+  unicodeEscapeNoBrace : Parser Char := attempt do
+    skipChar 'u'
+    let d₃ ← hex
+    let d₂ ← hex
+    let d₁ ← hex
+    let d₀ ← hex
+    return Char.ofNat (d₃ * 16^3 + d₂ * 16^2 + d₁ * 16 + d₀)
+  -- Parses `u{d₁ ⋯ dₙ}`
+  unicodeEscapeBrace : Parser Char := attempt do
+    skipString "u{"
+    let mut c ← hex
+    for _ in [:4] do
+      match ← optional (attempt hex) with
+      | .some d => c := c * 16 + d
+      | .none   => break
+    skipChar '}'
+    if c > Cedar.SymCC.Encoder.smtLibMaxCodePoint then
+      fail s!"invalid Unicode code point {c} in SMT-LIB string"
+    else
+      return Char.ofNat c
 
 def parseBinary : Parser (List Bool) := do
   skipString "#b"

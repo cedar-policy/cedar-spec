@@ -16,4 +16,4 @@
 # Build command needed for linking Lean lib with Rust code
 cd ../cedar-lean/
 lake update
-lake build Cedar:static Protobuf:static CedarProto:static Cedar.SymCC:static CedarFFI:static SymFFI:static Batteries:static
+lake build Cedar:static Protobuf:static CedarProto:static Cedar.SymCC:static CedarFFI:static Batteries:static

@@ -14,9 +14,16 @@
  * limitations under the License.
  */
 
+mod datatypes;
 mod err;
 mod lean_ffi;
 mod messages;
 
+pub use datatypes::{AuthorizationResponse, TimedResult, ValidationResponse};
+// Term and associated types
+pub use datatypes::{
+    Bitvec, Cidr, Datetime, Decimal, Duration, Ext, ExtOp, ExtType, IpAddr, Op, Term, TermPrim,
+    TermPrimType, TermType, TermVar, Uuf,
+};
 pub use err::FfiError;
-pub use lean_ffi::{AuthorizationResponse, CedarLeanFfi, TimedResult, ValidationResponse};
+pub use lean_ffi::CedarLeanFfi;

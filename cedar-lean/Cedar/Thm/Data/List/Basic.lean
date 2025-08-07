@@ -463,6 +463,7 @@ theorem mapM_key_id_sortedBy_key {α β : Type} [LT α] {ks : List α} {kvs : Li
 
     exact List.SortedBy.cons_cons hlt hs
 
+
 theorem isSortedBy_correct {α β} [LT β] [DecidableLT β] {l : List α} {f : α → β} :
   l.SortedBy f ↔ l.isSortedBy f
 := by

@@ -539,6 +539,21 @@ theorem mapM_ok_iff_forall₂ {α β γ} {f : α → Except γ β} {xs : List α
   rw [← List.mapM'_eq_mapM]
   exact mapM'_ok_iff_forall₂
 
+
+/-- if you use mapM on a list constructed using map
+    you can just do one mapM with a combined function
+    -/
+theorem mapM_then_map_combiner {α β γ ε} {f : α → β} {g : β → Except ε γ} {xs : List α} :
+  List.mapM g (xs.map f) = List.mapM (fun x => g (f x)) xs
+:= by
+  induction xs
+  case nil =>
+    simp only [map_nil, mapM_nil]
+  case cons head tail ih =>
+    simp only [map_cons, mapM_cons, ih]
+
+
+
 /--
 Introduces `forall₂` through the input output relation
 of a `f` through `List.mapM`. This is slightly stronger

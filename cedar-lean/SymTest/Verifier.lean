@@ -245,7 +245,10 @@ def testsForEncoder? :=
   suite "SymCC.Encoder" [
     testVerifyAlwaysAllows? .cex [
       policy "AllowAll" .permit (.binaryApp .eq (.var .principal) (.lit (.entityUID ⟨Photoflash.userType, "\""⟩) ))
-    ]
+    ],
+    testVerifyAlwaysAllows? .cex [
+      policy "AllowAll" .permit (.binaryApp .eq (.var .principal) (.lit (.entityUID ⟨Photoflash.userType, "🐼"⟩) ))
+    ],
   ]
 
 def tests := [
