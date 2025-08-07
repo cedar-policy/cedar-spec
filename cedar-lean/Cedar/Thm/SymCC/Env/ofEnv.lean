@@ -1389,8 +1389,7 @@ theorem wellTypedPolicy_some_implies_valid_refs
   contradiction
   rename_i tx hwt
   simp only [Option.some.injEq] at hsome
-  simp only [←hsome, Policy.toExpr]
-  any_goals repeat constructor
+  simp only [←hsome, Policy.toExpr, Conditions.toExpr, List.foldr, List.foldl]
   any_goals repeat constructor
   simp only [Condition.toExpr]
   simp only [typecheckPolicy] at hwt
