@@ -18,7 +18,7 @@ import Cedar.Spec.Expr
 import Cedar.Spec.Value
 import Cedar.Validation.TypedExpr
 
-namespace Cedar.TPE
+namespace Cedar.Spec
 
 open Cedar.Data
 open Cedar.Spec
@@ -63,6 +63,21 @@ def Value.toResidual (v : Value) (ty : CedarType) : Residual :=
 def Residual.isError : Residual → Bool
   | .error _ => true
   | _        => false
+
+def Residual.typeOf : Residual → CedarType
+  | .val _ ty
+  | .var _ ty
+  | .ite _ _ _ ty
+  | .and _ _ ty
+  | .or _ _ ty
+  | .unaryApp _ _ ty
+  | .binaryApp _ _ _ ty
+  | .getAttr _ _ ty
+  | .hasAttr _ _ ty
+  | .set _ ty
+  | .record _ ty
+  | .call _ _ ty
+  | .error ty => ty
 
 -- The interpreter of `Residual` that defines its semantics
 def Residual.evaluate (x : Residual) (req : Request) (es: Entities) : Result Value :=
@@ -184,4 +199,4 @@ end
 
 instance : DecidableEq Residual := decResidual
 
-end Cedar.TPE
+end Cedar.Spec
