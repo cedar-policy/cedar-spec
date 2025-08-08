@@ -633,7 +633,31 @@ theorem partial_evaluation_preserves_residual_well_typedness
                         exact eq₂
                       }
                       exact hᵣ
-                  . sorry
+                  . apply BinaryResidualWellTyped.memₛ
+                    . simp [Residual.typeOf]
+                      rename_i ety₁ ety₂ eq₁ eq₂
+                      have hᵣ : (ty₁ = CedarType.entity ety₁) := by {
+                        subst expr1_eval
+                        subst expr2_eval
+                        have h₁₀ := tpe_evaluate_preserves_type h_wf h_ref_reconstructed h_expr1
+                        rw [← h₁₀] at eq₁
+                        rw [h₃] at eq₁
+                        simp [Residual.typeOf] at eq₁
+                        exact eq₁
+                      }
+                      exact hᵣ
+                    . simp [Residual.typeOf]
+                      rename_i ety₁ ety₂ eq₁ eq₂
+                      have hᵣ : (ty₂ = (CedarType.entity ety₂).set) := by {
+                        subst expr1_eval
+                        subst expr2_eval
+                        have h₁₀ := tpe_evaluate_preserves_type h_wf h_ref_reconstructed h_expr2
+                        rw [← h₁₀] at eq₂
+                        rw [h₇] at eq₂
+                        simp [Residual.typeOf] at eq₂
+                        exact eq₂
+                      }
+                      exact hᵣ
               . contradiction
             . contradiction
           . simp [someOrSelf]
@@ -643,6 +667,7 @@ theorem partial_evaluation_preserves_residual_well_typedness
               simp [InstanceOfBoolType]
             . apply InstanceOfType.instance_of_bool
               simp [InstanceOfBoolType]
+        . 
         repeat case _ => sorry
       . sorry
   | error ty =>
