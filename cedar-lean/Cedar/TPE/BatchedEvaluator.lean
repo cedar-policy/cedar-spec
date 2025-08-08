@@ -80,13 +80,12 @@ partial def batchedEvalLoop
   : Result Value :=
   let toLoad := (Residual.allLiteralUIDs residual).filter (λ uid => (store.find? uid).isNone)
   let newEntities := loader toLoad
-  let newStore := newEntities.kvs.foldl (λ acc ed => acc.insert ed.1 ed.2) store
+  let newStore := Map.make (newEntities.kvs ++ store.kvs)
   let newRes := Cedar.TPE.evaluate residual (Request.asPartialRequest req) newStore
 
   match newRes with
   | .val v _ty => .ok v
-  | _ =>
-    batchedEvalLoop newRes req loader newStore
+  | _ => batchedEvalLoop newRes req loader newStore
 
 
 /--
@@ -100,18 +99,14 @@ def batchedEvaluate
   (loader : EntityLoader)
   : Result Value :=
   let emptyStore : PartialEntities := Map.mk []
-  let residual := TypedExpr.toResidual x
-  -- an initial partial evaluation, removing all variables
-  let residual₂ := Cedar.TPE.evaluate residual (Request.asPartialRequest req) emptyStore
+  let residual := Cedar.TPE.evaluate (TypedExpr.toResidual x) (Request.asPartialRequest req) Map.empty
   -- start the batched evaluation loop
-  batchedEvalLoop residual₂ req loader emptyStore
+  batchedEvalLoop residual req loader emptyStore
 
-def entityLoaderFor : (e: Entities) -> EntityLoader :=
-  fun e =>
-   fun uids =>
-    Map.make (uids.toList.map (fun uid =>
-      match (e.find? uid) with
-      | .some data =>
-        (uid, EntityData.asPartial data)
-      | .none =>
-        (uid, PartialEntityData.MissingEntity)))
+def entityLoaderFor (es: Entities) (uids : Set EntityUID) :=
+  Map.make (uids.toList.map (λ uid =>
+        match (es.find? uid) with
+        | .some data =>
+          (uid, EntityData.asPartial data)
+        | .none =>
+          (uid, PartialEntityData.abset)))

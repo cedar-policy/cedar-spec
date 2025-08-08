@@ -48,12 +48,6 @@ def empty {α β} : Map α β := .mk []
 def toList {α : Type u} {β : Type v} (m : Map α β) : List (Prod α β) := m.kvs
 
 
-/-- inserts an element, overwriting any existing element -/
-def insert {α β} [LT α] [DecidableLT α] (m : Map α β) (k : α) (v : β) : Map α β :=
-  -- TODO more efficient implementation
-  -- right now just rebuilds the map
-  Map.make ((k, v) :: m.kvs)
-
 /-- Returns the keys of `m` as a set. -/
 def keys {α β} (m : Map α β) : Set α :=
   Set.mk (m.kvs.map Prod.fst) -- well-formed by construction
