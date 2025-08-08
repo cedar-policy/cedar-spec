@@ -28,7 +28,7 @@ open Cedar.Spec
 open Cedar.Validation
 
 
-def EntityLoader : Type := Set EntityUID → Map EntityUID PartialEntityData
+abbrev EntityLoader := Set EntityUID → Map EntityUID PartialEntityData
 
 def Residual.allLiteralUIDs (x : Residual) : Set EntityUID :=
   match x with
@@ -38,23 +38,17 @@ def Residual.allLiteralUIDs (x : Residual) : Set EntityUID :=
     | _ => Set.empty
   | .error _e =>
     Set.empty
-  | .var v _ =>
-    -- these cases should not happen, since the request was fully concrete
-    match v with
-    | .principal => Set.empty
-    | .resource  => Set.empty
-    | .action    => Set.empty
-    | .context   => Set.empty
-  | .ite c t e _ => Residual.allLiteralUIDs c ∪ Residual.allLiteralUIDs t ∪ Residual.allLiteralUIDs e
-  | .and a b _   => Residual.allLiteralUIDs a ∪ Residual.allLiteralUIDs b
-  | .or a b _    => Residual.allLiteralUIDs a ∪ Residual.allLiteralUIDs b
-  | .unaryApp _ e _ => Residual.allLiteralUIDs e
-  | .binaryApp _ a b _ => Residual.allLiteralUIDs a ∪ Residual.allLiteralUIDs b
-  | .getAttr e _ _ => Residual.allLiteralUIDs e
-  | .hasAttr e _ _ => Residual.allLiteralUIDs e
-  | .set ls _ => ls.mapUnion₁ (λ ⟨v, _⟩ => Residual.allLiteralUIDs v)
-  | .record m _ => m.mapUnion₂ (λ ⟨⟨_attr, v⟩, _⟩ => Residual.allLiteralUIDs v)
-  | .call _ ls _ => ls.mapUnion₁ (λ ⟨v, _⟩ => Residual.allLiteralUIDs v)
+  | .var _ _ => Set.empty
+  | .ite x₁ x₂ x₃ _ => Residual.allLiteralUIDs x₁ ∪ Residual.allLiteralUIDs x₂ ∪ Residual.allLiteralUIDs x₃
+  | .and x₁ x₂ _   => Residual.allLiteralUIDs x₁ ∪ Residual.allLiteralUIDs x₂
+  | .or x₁ x₂ _    => Residual.allLiteralUIDs x₁ ∪ Residual.allLiteralUIDs x₂
+  | .unaryApp _ x _ => Residual.allLiteralUIDs x
+  | .binaryApp _ x₁ x₂ _ => Residual.allLiteralUIDs x₁ ∪ Residual.allLiteralUIDs x₂
+  | .getAttr x _ _ => Residual.allLiteralUIDs x
+  | .hasAttr x _ _ => Residual.allLiteralUIDs x
+  | .set x _ => x.mapUnion₁ (λ ⟨v, _⟩ => Residual.allLiteralUIDs v)
+  | .record x _ => x.mapUnion₂ (λ ⟨⟨_attr, v⟩, _⟩ => Residual.allLiteralUIDs v)
+  | .call _ x _ => x.mapUnion₁ (λ ⟨v, _⟩ => Residual.allLiteralUIDs v)
 termination_by sizeOf x
 decreasing_by
   repeat case _ =>
