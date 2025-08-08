@@ -213,6 +213,11 @@ theorem partial_eval_well_typed_app₂ :
   unfold PEWellTyped
   intros ih₁ ih₂ h_wf h_ref h_wt
   unfold TPE.apply₂
+
+  unfold RequestAndEntitiesRefine at h_ref
+  let h_ref₂ := h_ref
+  rcases h_ref₂ with ⟨h_rref, h_eref⟩
+
   cases h_wt with
   | binaryApp h_expr1 h_expr2 h_op
   split
@@ -424,7 +429,94 @@ theorem partial_eval_well_typed_app₂ :
           rename_i tags heq x₁ x₂ x₃ v h₃
           cases h_op
           rename_i ety ty h₄ h₅ h₆
+          unfold EntitiesRefine at h_eref
+          unfold Data.Map.find? at h₃
+          simp at h₃
+          split at h₃
+          case h_2 =>  contradiction
+          dsimp [PartialEntities.tags, PartialEntities.get] at heq
+          rename Value => v₂
+          cases h₇: (Data.Map.find? pes id1)
+          case h_1.none =>
+            rw [h₇] at heq
+            simp at heq
+
+          rename Value => v₃
+          rename PartialEntityData => pv
+          specialize h_eref id1 pv h₇
+          rw [h₇] at heq
+          simp at heq
+          cases h_eref
+          case h_1.some.inl =>
+            rename_i heq₂ h₈
+            rcases h₈ with ⟨h₉, _⟩
+            unfold PartialEntityData.tags at heq
+            rw [h₉] at heq
+            simp at heq
+            rw [← heq] at heq₂
+            simp [Data.Map.kvs] at heq₂
+            unfold Data.Map.empty at heq₂
+            dsimp [Data.Map.mk] at heq₂
+            contradiction
+          rename_i h₈
+          rcases h₈ with ⟨e, ⟨h₈, ⟨h₉, ⟨h₁₀, h₁₁⟩⟩⟩⟩
+          rw [heq] at h₁₁
+          cases h₁₁
+          rename_i h₁₂
+          rename_i h₁₃
+          rw [h₁₂] at h₁₃
+          unfold InstanceOfWellFormedEnvironment at h_wf
+          rcases h_wf with ⟨h₁₄, ⟨h₁₅, h₁₆⟩⟩
+          unfold InstanceOfSchema at h₁₆
+          rcases h₁₆ with ⟨h₁₆, h₁₇⟩
+          specialize h₁₆ id1 e h₈
+          unfold InstanceOfSchemaEntry at h₁₆
+          cases h₁₆
+          . rename_i h₁₆
+            unfold InstanceOfEntitySchemaEntry at h₁₆
+            rcases h₁₆ with ⟨_, ⟨_, ⟨_, ⟨_, ⟨_, h₁₇⟩⟩⟩⟩⟩
+            unfold InstanceOfEntityTags at h₁₇
+            rename EntitySchemaEntry => w
+            cases h₁₈: w.tags? <;> rw [h₁₈] at h₁₇ <;> simp at h₁₇
+            . rw [h₁₇] at h₁₃
+              simp [Data.Map.empty, Data.Map.mk, Data.Map.kvs] at h₁₃
+            . have h₁₈ : v₃ ∈ e.tags.values := by {
+                sorry
+              }
+              specialize h₁₇ v₃ h₁₈
+              rename CedarType => ty
+              rename_i h₁₉
+              rename CedarType => ty₂
+              injection h₃
+              rename_i h₃
+              rw [← h₃]
+              -- h₄ is finally useful
+              rename Data.Map.find? env.ets id1.ty = some w => h₂₁
+              unfold EntitySchema.tags? at h₄
+              -- HERE
+              sorry
+          . sorry
+
+
+
+
+
+
           sorry
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         . sorry
       . sorry
     repeat case _ => sorry
