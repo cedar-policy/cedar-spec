@@ -214,10 +214,13 @@ theorem partial_eval_well_typed_app₂ :
   intros ih₁ ih₂ h_wf h_ref h_wt
   unfold TPE.apply₂
 
+  let h_ref₂ := h_ref
   unfold RequestAndEntitiesRefine at h_ref
   let h_ref₂ := h_ref
   rcases h_ref₂ with ⟨h_rref, h_eref⟩
 
+  let h_wf₂ := h_wf
+  let h_wt₂ := h_wt
   cases h_wt with
   | binaryApp h_expr1 h_expr2 h_op
   split
@@ -481,6 +484,7 @@ theorem partial_eval_well_typed_app₂ :
             . rw [h₁₇] at h₁₃
               simp [Data.Map.empty, Data.Map.mk, Data.Map.kvs] at h₁₃
             . have h₁₈ : v₃ ∈ e.tags.values := by {
+                
                 sorry
               }
               specialize h₁₇ v₃ h₁₈
@@ -493,30 +497,44 @@ theorem partial_eval_well_typed_app₂ :
               -- h₄ is finally useful
               rename Data.Map.find? env.ets id1.ty = some w => h₂₁
               unfold EntitySchema.tags? at h₄
-              -- HERE
-              sorry
+              have h_ety_eq : ety = id1.ty := by {
+                have h₂₁ := tpe_evaluate_preserves_type h_wf₂ h_ref₂ h_expr1
+                rw [← h₂₁] at h₅
+                unfold Residual.asValue at h₁
+                cases h₂₂: TPE.evaluate expr1 preq pes
+                . rw [h₂₂] at h₁
+                  rename Value => v₄
+                  simp at h₁
+                  rw [h₁] at h₂₂
+                  rw [h₂₂] at h₅
+                  rw [h₂₂] at h₂₁
+                  rename  expr1.typeOf = CedarType.entity ety => h₂₃
+                  rw [h₂₃] at h₂₁
+                  simp [Residual.typeOf] at h₂₁
+                  rename CedarType => ty₃
+                  rw [h₂₂] at ih₁
+                  cases ih₁
+                  rename_i h₂₃
+                  rw [h₂₁] at h₂₃
+                  cases h₂₃
+                  rename_i h₂₄
+                  unfold InstanceOfEntityType at h₂₄
+                  rcases h₂₄ with ⟨h₂₄, _⟩
+                  exact h₂₄
+                all_goals {
+                  rw [h₂₂] at h₁
+                  simp at h₁
+                }
+              }
+              rw [h_ety_eq] at h₄
+              rw [h₂₁] at h₄
+              simp at h₄
+              rw [h₁₉] at h₄
+              simp at h₄
+              -- h₄ should now be: ty₂ = ty
+              rw [h₄] at h₁₇
+              exact type_lifting_preserves_instance_of_type h₁₇
           . sorry
-
-
-
-
-
-
-          sorry
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         . sorry
       . sorry
     repeat case _ => sorry
