@@ -17,6 +17,8 @@
 import Cedar.TPE
 import Cedar.Thm.TPE.Input
 import Cedar.Thm.Validation.WellTyped.ResidualDefinition
+import Cedar.Thm.Data.List
+import Cedar.Thm.Data.Map
 
 /-!
 This file contains theorems about partial evaluation preserving well-typedness of residuals.
@@ -24,6 +26,8 @@ This file contains theorems about partial evaluation preserving well-typedness o
 
 namespace Cedar.Thm
 
+open Cedar.Thm
+open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 open Cedar.TPE
@@ -199,6 +203,107 @@ theorem tpe_evaluate_preserves_type
     -- Case: .error ty
     -- TPE.evaluate (.error ty) = .error ty, so typeOf is preserved
     simp [TPE.evaluate, Residual.typeOf]
+  | unaryApp op e ty =>
+    simp [TPE.evaluate, TPE.apply₁]
+    split
+    . simp [Residual.typeOf]
+    . rename CedarType => ty₂
+      rename Residual => r
+      rename_i h₁
+      split
+      . rename Option Value => x
+        rename Value => v
+        rename_i h₂
+        unfold Spec.apply₁
+        split
+        any_goals simp [Residual.typeOf, Except.toOption, someOrError]
+        . rename Int64 => i
+          cases h₃ : i.neg?
+          all_goals
+            simp [intOrErr, Except.toOption, someOrError, Residual.typeOf]
+      . simp [Residual.typeOf, Except.toOption, someOrError]
+  | binaryApp op e ty =>
+    simp [TPE.evaluate, TPE.apply₂]
+    split
+    . split
+      any_goals simp [Residual.typeOf, Except.toOption, someOrError]
+      . rename_i i j h₁ h₂
+        cases i.add? j
+        all_goals simp
+      . rename_i i j h₁ h₂
+        cases i.sub? j
+        all_goals simp
+      . rename_i i j h₁ h₂
+        cases i.mul? j
+        all_goals simp
+      . rename_i v₁ v₂ uid₁ uid₂ h₁ h₂
+        cases (TPE.inₑ uid₁ uid₂ pes)
+        any_goals simp [someOrSelf, apply₂.self]
+      . rename_i uid₁ uid₂ vs h₃
+        cases (TPE.inₛ uid₁ uid₂ pes)
+        any_goals (simp [someOrSelf, apply₂.self])
+      . rename_i uid₁ tag h₃ h₄
+        cases (TPE.hasTag uid₁ tag pes)
+        any_goals (simp [someOrSelf, apply₂.self])
+      . rename_i uid₁ tag h₃ h₄
+        split
+        . cases h_wt
+          rename_i h₅ h₆ h₇ h₈
+          have ih := tpe_evaluate_preserves_type h_wf h_ref h₆
+          unfold TPE.getTag at h₅
+          split at h₅
+          . unfold someOrError at h₅
+            split at h₅
+            all_goals (
+              have h₉ := congr_arg (·.typeOf) h₅
+              simp [Residual.typeOf] at h₉
+              rw [h₉]
+            )
+          . have h₉ := congr_arg (·.typeOf) h₅
+            simp [Residual.typeOf] at h₉
+            rw [h₉]
+        repeat case _ =>
+          rename_i h₅
+          unfold TPE.getTag at h₅
+          split at h₅
+          . unfold someOrError at h₅
+            split at h₅
+            all_goals (
+              have h₉ := congr_arg (·.typeOf) h₅
+              simp [Residual.typeOf] at h₉
+              rw [h₉])
+          . simp at h₅
+        . rename_i h₅
+          unfold TPE.getTag at h₅
+          split at h₅
+          . unfold someOrError at h₅
+            split at h₅
+            all_goals (
+              have h₉ := congr_arg (·.typeOf) h₅
+              simp [Residual.typeOf] at h₉
+              rw [h₉])
+          . simp at h₅
+            rcases h₅ with ⟨_, ⟨_, ⟨_, h₆⟩⟩⟩
+            rw [h₆]
+        -- TODO same as repeat case _ above
+        . rename_i h₅
+          unfold TPE.getTag at h₅
+          split at h₅
+          . unfold someOrError at h₅
+            split at h₅
+            all_goals (
+              have h₉ := congr_arg (·.typeOf) h₅
+              simp [Residual.typeOf] at h₉
+              rw [h₉])
+          . simp at h₅
+    . split
+      all_goals simp [Residual.typeOf]
+      split
+      all_goals (
+        rename_i h₂
+        simp [apply₂.self] at h₂)
+      rcases h₂ with ⟨_, ⟨_, ⟨_, h₃⟩⟩⟩
+      rw [h₃]
   | _ =>
     -- Other cases to be implemented
     sorry
@@ -481,8 +586,11 @@ theorem partial_eval_well_typed_app₂ :
             . rw [h₁₇] at h₁₃
               simp [Data.Map.empty, Data.Map.mk, Data.Map.kvs] at h₁₃
             . have h₁₈ : v₃ ∈ e.tags.values := by {
-                -- Need well formedness of e.tags so we can use in_list_iff_find?_some
-                sorry
+                -- Use h₁₃
+                -- use lemma find?_mem_toList
+                have h₁₉ := List.list_find?_mem_toList h₁₃
+                have h₂₀ := Map.in_list_in_values h₁₉
+                exact h₂₀
               }
               specialize h₁₇ v₃ h₁₈
               rename CedarType => ty
