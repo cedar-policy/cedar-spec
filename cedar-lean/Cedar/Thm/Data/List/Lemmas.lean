@@ -1311,6 +1311,24 @@ theorem not_find?_some_iff_find?_none {α} {p : α → Bool} {xs : List α} :
     specialize h x hx
     contradiction
 
+theorem list_find?_mem_toList {α} [DecidableEq α] {l : List α} {k : α → Bool} {v : α}
+  (h₁ : l.find? k = .some v) :
+  v ∈ l
+:= by
+  unfold find? at *
+  split at h₁
+  case h_1 => contradiction
+  case h_2 =>
+    rename_i l₂
+    split at h₁
+    . injection h₁
+      rename_i h₂
+      rw [h₂]
+      simp
+    . have ih := list_find?_mem_toList h₁
+      simp
+      right
+      exact ih
 
 /-! ### filterMap -/
 
