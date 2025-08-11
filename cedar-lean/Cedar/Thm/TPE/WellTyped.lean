@@ -786,7 +786,9 @@ theorem partial_eval_well_typed_app₂ :
             rw [h₄] at h₅
             exact h₅
     . apply Residual.WellTyped.error
-  . split
+  . let h₇ := tpe_evaluate_preserves_type h_wf h_ref h_expr1
+    have h₈ := tpe_evaluate_preserves_type h_wf h_ref h_expr2
+    split
     any_goals (apply Residual.WellTyped.error)
     rename_i x₁ x₂ h₁ r₁ r₂ h₃ h₄
     unfold apply₂.self
@@ -816,8 +818,103 @@ theorem partial_eval_well_typed_app₂ :
         rw [← h₆] at h₈
         rw [← h₇] at h₈
         exact h₈
-    all_goals sorry
-
+    . let h₇ := tpe_evaluate_preserves_type h_wf h_ref h_expr1
+      have h₈ := tpe_evaluate_preserves_type h_wf h_ref h_expr2
+      cases h_op <;> rename_i ety₁ ety₂ h₅ h₆
+      . apply BinaryResidualWellTyped.memₑ
+        . rw [h₇]
+          rw [h₅]
+        . rw [h₈]
+          rw [h₆]
+      . apply BinaryResidualWellTyped.memₛ
+        . rw [h₇]
+          rw [h₅]
+        . rw [h₈]
+          rw [h₆]
+    . cases h_op
+      apply BinaryResidualWellTyped.hasTag <;> rename_i ety h₅ h₆
+      . rw [h₇]
+        rw [h₅]
+        congr
+        have h₈ : ety = ety := by simp
+        exact h₈
+      . rw [h₈]
+        rw [h₆]
+    . cases h_op
+      rename_i ety₁ ety₂ ty h₅ h₆
+      apply BinaryResidualWellTyped.getTag
+      . rw [h₇]
+        rw [h₅]
+      . rw [h₈]
+        rw [h₆]
+      . rw [ty]
+    . cases h_op <;> rename_i h₅ h₆
+      . apply BinaryResidualWellTyped.less_int
+        . rw [h₇]
+          rw [h₅]
+        . rw [h₈]
+          rw [h₆]
+      . apply BinaryResidualWellTyped.less_datetime
+        . rw [h₇]
+          rw [h₅]
+        . rw [h₈]
+          rw [h₆]
+      . apply BinaryResidualWellTyped.less_duration
+        . rw [h₇]
+          rw [h₅]
+        . rw [h₈]
+          rw [h₆]
+    . cases h_op <;> rename_i h₅ h₆
+      . apply BinaryResidualWellTyped.lessEq_int
+        . rw [h₇]
+          rw [h₅]
+        . rw [h₈]
+          rw [h₆]
+      . apply BinaryResidualWellTyped.lessEq_datetime
+        . rw [h₇]
+          rw [h₅]
+        . rw [h₈]
+          rw [h₆]
+      . apply BinaryResidualWellTyped.lessEq_duration
+        . rw [h₇]
+          rw [h₅]
+        . rw [h₈]
+          rw [h₆]
+    . cases h_op <;> rename_i h₅ h₆
+      apply BinaryResidualWellTyped.add
+      . rw [h₇]
+        rw [h₅]
+      . rw [h₈]
+        rw [h₆]
+    . cases h_op <;> rename_i h₅ h₆
+      apply BinaryResidualWellTyped.sub
+      . rw [h₇]
+        rw [h₅]
+      . rw [h₈]
+        rw [h₆]
+    . cases h_op <;> rename_i h₅ h₆
+      apply BinaryResidualWellTyped.mul
+      . rw [h₇]
+        rw [h₅]
+      . rw [h₈]
+        rw [h₆]
+    . cases h_op <;> rename_i h₅
+      apply BinaryResidualWellTyped.contains
+      rw [h₇]
+      rw [h₈]
+      exact h₅
+    . cases h_op <;> rename_i ty h₅ h₆
+      apply BinaryResidualWellTyped.containsAll
+      rw [h₇]
+      rw [h₅]
+      rw [h₈]
+      rw [h₆]
+    . cases h_op <;> rename_i ty h₅ h₆
+      apply BinaryResidualWellTyped.containsAny
+      rw [h₇]
+      rw [h₅]
+      rw [h₈]
+      rw [h₆]
 
 
 /--
