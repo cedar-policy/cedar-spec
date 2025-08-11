@@ -532,12 +532,81 @@ theorem mapM'_ok_iff_forall₂ {α β γ} {f : α → Except γ β} {xs : List �
         specialize ih h₃
         simp only [ih, Except.bind_err, Except.bind_ok]
 
+-- Copy of above but for option instead of exception
+theorem mapM'_some_iff_forall₂ {α β} {f : α → Option β} {xs : List α} {ys : List β} :
+  List.mapM' f xs = .some ys ↔
+  List.Forall₂ (λ x y => f x = .some y) xs ys
+:= by
+  constructor
+  case mp =>
+    intro h₁
+    induction xs generalizing ys
+    case nil =>
+      simp only [mapM'_nil, pure, Except.pure] at h₁
+      injection h₁; rename_i h₁
+      subst h₁
+      exact List.Forall₂.nil
+    case cons xhd xtl ih =>
+      simp only [mapM'_cons, pure, Except.pure] at h₁
+      cases h₂ : f xhd <;>
+      simp only [h₂, Option.bind_eq_bind, Option.bind, Option.bind_none_fun, reduceCtorEq] at h₁
+      rename_i yhd
+      cases mapM' f xtl
+      · split at h₁
+        . contradiction
+        . simp at h₁
+          rename_i a h₂
+          rw [← h₁]
+          specialize ih h₂
+          apply Forall₂.cons
+          . rename_i h₃ h₄ h₅
+            exact h₃
+          . exact ih
+      · split at h₁
+        . contradiction
+        . simp at h₁
+          rename_i a h₂
+          rw [← h₁]
+          specialize ih h₂
+          apply Forall₂.cons
+          . rename_i h₃ h₄ h₅ h₆
+            exact h₃
+          . exact ih
+  case mpr =>
+    intro h₁
+    induction xs generalizing ys
+    case nil =>
+      simp only [forall₂_nil_left_iff] at h₁
+      simp only [mapM'_nil, pure, Except.pure, h₁]
+    case cons xhd xtl ih =>
+      simp only [mapM'_cons, pure, Except.pure]
+      replace ⟨yhd, ytl, h₁, h₃, h₄⟩ := forall₂_cons_left_iff.mp h₁
+      subst ys
+      cases h₂ : f xhd
+      case none => simp [h₁] at h₂
+      case some y' =>
+        simp [h₁] at h₂
+        specialize ih h₃
+        simp only [ih, Except.bind_err, Except.bind_ok]
+        simp [Option.bind_some_fun, Option.some.injEq, cons.injEq, and_true]
+        rw [h₂]
+
+
+
 theorem mapM_ok_iff_forall₂ {α β γ} {f : α → Except γ β} {xs : List α} {ys : List β} :
   List.mapM f xs = .ok ys ↔
   List.Forall₂ (λ x y => f x = .ok y) xs ys
 := by
   rw [← List.mapM'_eq_mapM]
   exact mapM'_ok_iff_forall₂
+
+theorem mapM_some_iff_forall₂ {α β} {f : α → Option β} {xs : List α} {ys : List β} :
+  List.mapM f xs = .some ys ↔
+  List.Forall₂ (λ x y => f x = .some y) xs ys
+:= by
+  rw [← List.mapM'_eq_mapM]
+  exact mapM'_some_iff_forall₂
+
 
 
 /-- if you use mapM on a list constructed using map
@@ -807,47 +876,6 @@ theorem mapM_ok_eq_filterMap {α β} {f : α → Except ε β} {xs : List α} {y
 := by
   rw [← List.mapM'_eq_mapM]
   exact mapM'_ok_eq_filterMap
-
-theorem mapM'_some_iff_forall₂ {α β} {f : α → Option β} {xs : List α} {ys : List β} :
-  List.mapM' f xs = .some ys ↔
-  List.Forall₂ (λ x y => f x = .some y) xs ys
-:= by
-  constructor
-  case mp =>
-    intro h₁
-    induction xs generalizing ys
-    case nil =>
-      simp only [mapM'_nil, pure, Option.some.injEq] at h₁
-      subst h₁
-      exact List.Forall₂.nil
-    case cons xhd xtl ih =>
-      simp only [mapM'_cons, pure, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at h₁
-      replace ⟨yhd, h₁, ytl, h₂, h₃⟩ := h₁
-      subst h₃
-      exact List.Forall₂.cons h₁ (ih h₂)
-  case mpr =>
-    intro h₁
-    induction xs generalizing ys
-    case nil =>
-      simp only [forall₂_nil_left_iff] at h₁
-      simp only [mapM'_nil, pure, Except.pure, h₁]
-    case cons xhd xtl ih =>
-      simp only [mapM'_cons, pure, Except.pure]
-      replace ⟨yhd, ytl, h₁, h₃, h₄⟩ := forall₂_cons_left_iff.mp h₁
-      subst ys
-      cases h₂ : f xhd
-      case none => simp [h₁] at h₂
-      case some y' =>
-        simp only [h₁, Option.some.injEq] at h₂
-        subst y'
-        simp [ih h₃]
-
-theorem mapM_some_iff_forall₂ {α β} {f : α → Option β} {xs : List α} {ys : List β} :
-  List.mapM f xs = .some ys ↔
-  List.Forall₂ (λ x y => f x = .some y) xs ys
-:= by
-  rw [← List.mapM'_eq_mapM]
-  exact mapM'_some_iff_forall₂
 
 /--
   Note that the converse is not true:

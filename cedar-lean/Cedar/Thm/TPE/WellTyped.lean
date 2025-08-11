@@ -1017,6 +1017,40 @@ theorem partial_evaluation_well_typed_var      {env : TypeEnv}
             rcases h_wf with ⟨_, ⟨_, _, _, h_context⟩, _⟩
             exact type_lifting_preserves_instance_of_type h_context
 
+theorem partial_eval_record_key_preservation {xs : List (Attr × Residual)} {ys : List (Attr × Value)} :
+  List.Forall₂ (fun x y => ((fun x => bindAttr x.fst x.snd.asValue) ∘ fun x => (x.fst, TPE.evaluate x.snd preq pes)) x = some y) xs
+  ys →
+  p₁ ∈ ys →
+  ∃ p₂ ∈ xs, p₂.1 = p₁.1
+:= by
+  intro h₁ h₂
+  cases h₁
+  . contradiction
+  case cons a₁ b₁ l₁ l₂ h₃ h₄ =>
+    simp at h₂
+    cases h₂
+    case inl h₃ =>
+      rename_i h₄
+      rename_i h₅
+      simp [bindAttr, Residual.asValue] at h₅
+      exists a₁
+      simp
+      split at h₅
+      . simp at h₅
+        rw [← h₃] at h₅
+        have h₆ := congr_arg (·.fst) h₅
+        simp at h₆
+        exact h₆
+      . simp at h₅
+    case inr h₃ =>
+      let ih := partial_eval_record_key_preservation h₄ h₃
+      rcases ih with ⟨p₃, ⟨h₄, h₅⟩⟩
+      exists p₃
+      constructor
+      . simp
+        right
+        exact h₄
+      . exact h₅
 
 
 /--
@@ -1279,6 +1313,59 @@ theorem partial_eval_preserves_well_typed
         simp [Residual.typeOf] at h₈
         rw [← h₈]
         exact h₁₀
-    . sorry
+    . split
+      . apply Residual.WellTyped.error
+      . rename_i x h₃ h₄
+        apply Residual.WellTyped.set
+        . intro x h₅
+          simp [List.map₁, List.attach] at h₅
+          rcases h₅ with ⟨x₂, h₆, h₇⟩
+          specialize h₀ x₂ h₆
+          let ih := partial_eval_preserves_well_typed h_wf h_ref h₀
+          rw [← h₇]
+          exact ih
+        . intro x h₅
+          simp [List.map₁, List.attach] at h₅
+          rcases h₅ with ⟨x₂, h₆, h₇⟩
+          specialize h₀ x₂ h₆
+          let h₆ := partial_eval_preserves_typeof h_wf h_ref h₀
+          rw [h₇] at h₆
+          rename_i h₈
+          specialize h₁ x₂ h₈
+          rw [← h₁]
+          exact h₆
+        . simp [List.map₁]
+          simp at h₂
+          exact h₂
+  | record ls ty =>
+    cases h_wt
+    rename_i ty₁ h₀ h₁
+    simp [TPE.evaluate, TPE.set]
+    unfold List.map₁ List.attach List.attachWith
+    rw [List.map_pmap_subtype (fun x => (x.fst, TPE.evaluate x.snd preq pes)) ls]
+    simp [record]
+    split
+    . rename_i x xs h₃
+      apply Residual.WellTyped.val
+      apply InstanceOfType.instance_of_record
+      . intro k h₄
+        have h₅: ∃ v, v ∈ ls ∧ v.1 = k := by {
+          rw [List.mapM_some_iff_forall₂] at h₃
+          have h₄ := Map.contains_implies_in_list h₄
+          rcases h₄ with ⟨p, h₄, h₅⟩
+          have h₄ := Map.make_mem_list_mem h₄
+          have h₅ := partial_eval_record_key_preservation h₃ h₄
+          rcases h₅ with ⟨p₂, h₅⟩
+          exists p₂
+          rename_i h₆
+          rw [← h₆]
+          exact h₅
+        }
+        sorry
+
+      . sorry
+      . sorry
+
+    all_goals sorry
   | _ => sorry
 end Cedar.Thm
