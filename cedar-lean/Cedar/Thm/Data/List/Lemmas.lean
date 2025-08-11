@@ -895,7 +895,7 @@ theorem mem_mapM_some_implies_exists_ele_helper {α β} {y : β} {f : α → Opt
         exact ih₁
       . exact ih₂
 
-theorem mem_mapM_some_implies_exists_ele {α β} {x : α} {y : β} {f : α → Option β} {xs : List α} {ys : List β} :
+theorem mem_mapM_some_implies_exists_ele {α β} {y : β} {f : α → Option β} {xs : List α} {ys : List β} :
   List.mapM f xs = some ys →
   y ∈ ys →
   ∃ x, x ∈ xs ∧ f x = .some y := by
