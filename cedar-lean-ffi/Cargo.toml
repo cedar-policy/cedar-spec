@@ -1,12 +1,12 @@
 [package]
 name = "cedar-lean-ffi"
 edition = "2021"
-version = "4.4.0"
+version = "4.5.0"
 publish = false
 
 [dependencies]
-cedar-policy = { version = "4.5.0", features = ["protobufs"] }
-cedar-policy-core = "4.5.0"
+cedar-policy = { version = "*", path = "../cedar/cedar-policy", features = ["protobufs"] }
+cedar-policy-core = { version = "*", path = "../cedar/cedar-policy-core" }
 cedar-policy-symcc = { version = "*", path = "../cedar/cedar-policy-symcc" }
 lean-sys = { version = "0.0.8", default-features = false }
 serde = "1"
@@ -23,7 +23,3 @@ prost-build = "0.14"
 cargo_metadata = "0.20.0"
 
 [profile.release]
-
-[patch.crates-io]
-cedar-policy = { path = "../cedar/cedar-policy" }
-cedar-policy-core = { path = "../cedar/cedar-policy-core" }
