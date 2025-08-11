@@ -543,8 +543,18 @@ theorem mapM_ok_iff_forall₂ {α β γ} {f : α → Except γ β} {xs : List α
 /-- if you use mapM on a list constructed using map
     you can just do one mapM with a combined function
     -/
-theorem mapM_then_map_combiner {α β γ ε} {f : α → β} {g : β → Except ε γ} {xs : List α} :
-  List.mapM g (xs.map f) = List.mapM (fun x => g (f x)) xs
+theorem mapM_then_map_combiner {α β γ ε} (f : β → Except ε γ) (g : α → β) (xs : List α) :
+  List.mapM f (xs.map g) = List.mapM (fun x => f (g x)) xs
+:= by
+  induction xs
+  case nil =>
+    simp only [map_nil, mapM_nil]
+  case cons head tail ih =>
+    simp only [map_cons, mapM_cons, ih]
+
+
+theorem mapM_then_map_combiner_option {α β γ} (f : β → Option γ) (g : α → β) (xs : List α) :
+  List.mapM f (xs.map g) = List.mapM (fun x => f (g x)) xs
 := by
   induction xs
   case nil =>
@@ -858,6 +868,42 @@ theorem mapM_some_implies_all_some {α β} {f : α → Option β} {xs : List α}
 := by
   rw [← List.mapM'_eq_mapM]
   exact mapM'_some_implies_all_some
+
+theorem mem_mapM_some_implies_exists_ele_helper {α β} {y : β} {f : α → Option β} {xs : List α} {ys : List β} :
+  Forall₂ (fun x y => f x = some y) xs ys →
+  y ∈ ys →
+  (∃ x, x ∈ xs ∧ f x = some y) :=
+  by
+  intro h₁ h₂
+  cases h₁
+  case nil => contradiction
+  case cons a b l₁ l₂ h₃ h₄ =>
+    simp at h₂
+    cases h₂
+    case inl h₅ =>
+      exists a
+      simp
+      rw [h₅]
+      exact h₃
+    case inr h₅ =>
+      have ih := mem_mapM_some_implies_exists_ele_helper h₄ h₅
+      rcases ih with ⟨x, ih₁, ih₂⟩
+      exists x
+      constructor
+      . simp
+        right
+        exact ih₁
+      . exact ih₂
+
+theorem mem_mapM_some_implies_exists_ele {α β} {x : α} {y : β} {f : α → Option β} {xs : List α} {ys : List β} :
+  List.mapM f xs = some ys →
+  y ∈ ys →
+  ∃ x, x ∈ xs ∧ f x = .some y := by
+  intro h₁ h₂
+  rw [mapM_some_iff_forall₂] at h₁
+  apply mem_mapM_some_implies_exists_ele_helper h₁ h₂
+
+
 
 theorem all_some_implies_mapM'_some {α β} {f : α → Option β} {xs : List α} :
   (∀ x ∈ xs, ∃ y, f x = some y) →
