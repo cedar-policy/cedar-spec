@@ -286,7 +286,8 @@ theorem tpe_evaluate_preserves_type
             rcases h₅ with ⟨_, ⟨_, ⟨_, h₆⟩⟩⟩
             rw [h₆]
         -- TODO same as repeat case _ above
-        . rename_i h₅
+        repeat case _ =>
+          rename_i h₅
           unfold TPE.getTag at h₅
           split at h₅
           . unfold someOrError at h₅
@@ -304,9 +305,92 @@ theorem tpe_evaluate_preserves_type
         simp [apply₂.self] at h₂)
       rcases h₂ with ⟨_, ⟨_, ⟨_, h₃⟩⟩⟩
       rw [h₃]
-  | _ =>
-    -- Other cases to be implemented
-    sorry
+  | call xfn args ty =>
+    unfold TPE.evaluate
+    simp [Residual.typeOf]
+    split <;> rename_i h₁
+    all_goals
+      simp [TPE.call] at h₁
+      split at h₁
+      . simp [someOrError] at h₁
+        split at h₁
+        all_goals (
+          have h₂ := congr_arg (·.typeOf) h₁
+          simp [Residual.typeOf] at h₂
+          rw [h₂])
+      . split at h₁
+        all_goals (
+          have h₂ := congr_arg (·.typeOf) h₁
+          simp [Residual.typeOf] at h₂
+          rw [h₂])
+  | getAttr expr attr ty =>
+    simp [TPE.evaluate, TPE.getAttr]
+    split
+    . simp [Residual.typeOf]
+    . split
+      . unfold someOrError
+        split
+        . simp [Residual.typeOf]
+        . simp [Residual.typeOf]
+      . simp [Residual.typeOf]
+  | hasAttr expr attr ty =>
+    simp [TPE.evaluate, TPE.hasAttr]
+    split
+    . simp [Residual.typeOf]
+    . split
+      . cases h_wt
+        . simp [Residual.typeOf]
+        . simp [Residual.typeOf]
+      . simp [Residual.typeOf]
+  | set =>
+    simp [TPE.evaluate, Residual.typeOf]
+    split
+    repeat case _ =>
+      rename_i h₁
+      unfold TPE.set at h₁
+      split at h₁
+      repeat case _ =>
+        have h₂ := congr_arg (·.typeOf) h₁
+        simp [Residual.typeOf] at h₂
+        rw [h₂]
+      split at h₁
+      repeat case _ =>
+        have h₂ := congr_arg (·.typeOf) h₁
+        simp [Residual.typeOf] at h₂
+        rw [h₂]
+  | record =>
+    simp [TPE.evaluate, Residual.typeOf]
+    split
+    repeat case _ =>
+      rename_i h₁
+      unfold record at h₁
+      split at h₁
+      repeat case _ =>
+        have h₂ := congr_arg (·.typeOf) h₁
+        simp [Residual.typeOf] at h₂
+        rw [h₂]
+    . rename_i h₁
+      unfold record at h₁
+      split at h₁
+      . simp at h₁
+        rcases h₁ with ⟨_, h₂⟩
+        rw [h₂]
+      . split at h₁
+        repeat case _ =>
+          have h₂ := congr_arg (·.typeOf) h₁
+          simp [Residual.typeOf] at h₂
+          rw [h₂]
+    repeat case _ =>
+      rename_i h₁
+      unfold record at h₁
+      split at h₁
+      . simp at h₁
+      . split at h₁
+        repeat case _ =>
+          have h₂ := congr_arg (·.typeOf) h₁
+          simp [Residual.typeOf] at h₂
+          rw [h₂]
+
 
 theorem partial_eval_well_typed_app₂ :
   Residual.WellTyped env (TPE.evaluate expr1 preq pes) →
@@ -712,9 +796,26 @@ theorem partial_eval_well_typed_app₂ :
     any_goals (exact ih₂)
     cases op
     . cases h₅: h_op
-      . sorry
-      . sorry
-      . sorry
+      . cases h_wt₂
+        rename_i h₆
+        simp [TPE.evaluate]
+        exact h₆
+      . apply BinaryResidualWellTyped.eq_entity
+        . have h₆ := tpe_evaluate_preserves_type h_wf h_ref h_expr1
+          rw [h₆]
+          rename_i h₇ h₈
+          rw [h₇]
+        . have h₆ := tpe_evaluate_preserves_type h_wf h_ref h_expr2
+          rw [h₆]
+          rename_i h₇ h₈
+          rw [h₈]
+      . apply BinaryResidualWellTyped.eq
+        have h₆ := tpe_evaluate_preserves_type h_wf h_ref h_expr1
+        have h₇ := tpe_evaluate_preserves_type h_wf h_ref h_expr2
+        rename_i h₈
+        rw [← h₆] at h₈
+        rw [← h₇] at h₈
+        exact h₈
     all_goals sorry
 
 
