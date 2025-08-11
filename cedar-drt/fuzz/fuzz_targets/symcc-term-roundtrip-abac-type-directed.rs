@@ -15,20 +15,14 @@
  */
 
 #![no_main]
-use cedar_drt::{
-    logger::initialize_log,
-    CedarLeanEngine,
-};
+use cedar_drt::{logger::initialize_log, CedarLeanEngine};
 
 use cedar_drt_inner::fuzz_target;
 
 use cedar_policy::{Policy, PolicySet, Schema};
 
 use cedar_policy_generators::{
-    abac::ABACPolicy,
-    hierarchy::HierarchyGenerator,
-    schema,
-    settings::ABACSettings,
+    abac::ABACPolicy, hierarchy::HierarchyGenerator, schema, settings::ABACSettings,
 };
 
 use libfuzzer_sys::arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
@@ -65,10 +59,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
         let hierarchy = schema.arbitrary_hierarchy(u)?;
         let policy = schema.arbitrary_policy(&hierarchy, u)?;
 
-        Ok(Self {
-            schema,
-            policy,
-        })
+        Ok(Self { schema, policy })
     }
 
     fn try_size_hint(
