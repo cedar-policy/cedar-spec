@@ -1244,5 +1244,29 @@ theorem partial_evaluation_preserves_residual_well_typedness
   | error ty =>
     simp [TPE.evaluate]
     exact h_wt
+  | set ls ty =>
+    cases h_wt
+    rename_i ty₁ ty₂ h₁ h₂
+    simp [TPE.evaluate, TPE.set]
+    split
+    . rename_i x xs h₃
+      apply Residual.WellTyped.val
+      apply InstanceOfType.instance_of_set
+      intro v h₄
+      unfold List.map₁ List.attach List.attachWith at h₃
+      rw [List.map_pmap_subtype (fun x => TPE.evaluate x preq pes)] at h₃
+      rw [List.mapM_then_map_combiner_option] at h₃
+      rw [← Set.make_mem] at h₄
+      
+
+
+
+
+
+
+
+      sorry
+    . sorry
+
   | _ => sorry
 end Cedar.Thm
