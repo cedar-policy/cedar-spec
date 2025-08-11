@@ -411,6 +411,26 @@ theorem in_list_implies_contains {α β}
     apply contains_iff_some_find?.mpr
     simp [hfind]
 
+theorem contains_implies_in_list {α β}
+  [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] [DecidableEq β]
+  {m : Map α β} {k : α} :
+  m.contains k → ∃ p, p ∈ m.kvs ∧ p.1 = k
+:= by
+  intro h₁
+  simp [Map.contains] at h₁
+  cases h₂: m.find? k with
+  | none =>
+    rw [h₂] at h₁
+    contradiction
+  | some v =>
+    rw [h₂] at h₁
+    exists (k, v)
+    constructor
+    . have h₃ := find?_mem_toList h₂
+      unfold Map.toList at h₃
+      exact h₃
+    . simp
+
 theorem all_absent_find?_none [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {k : α} :
   (∀ v, (k, v) ∉ m.kvs) → m.find? k = none
 := by
