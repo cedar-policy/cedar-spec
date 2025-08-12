@@ -53,9 +53,6 @@ lean_lib CedarProto where
 lean_lib CedarFFI where
   defaultFacets := #[LeanLib.staticFacet]
 
-lean_lib SymFFI where
-  defaultFacets := #[LeanLib.staticFacet]
-
 lean_exe CedarUnitTests where
   root := `UnitTest.Main
 
