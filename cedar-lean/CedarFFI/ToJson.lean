@@ -28,7 +28,7 @@ instance {n : Nat} : Lean.ToJson (BitVec n) where
   toJson bv :=
     Lean.Json.mkObj [
       ("size", Lean.Json.num n),
-      ("value", Lean.Json.str (toString bv))
+      ("value", Lean.Json.str (toString bv.toNat))
     ]
 
 /- Serialize a char as its Nat representation -/

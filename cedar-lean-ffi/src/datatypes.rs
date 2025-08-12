@@ -720,10 +720,13 @@ mod deserialization {
     #[test]
     fn bitvec() {
         let json = serde_json::json!([64,
-            {"value": "0x8000000000000000#64", "size": 64}]);
+            {"value": "9223372036854775808", "size": 64}]);
         let bv: Bitvec = serde_json::from_value(json).expect("deserialization should succeed");
         assert_eq!(bv.width, 64);
-        assert_eq!(bv.val, "0x8000000000000000#64");
-        assert!(cedar_policy_symcc::bitvec::BitVec::try_from(bv).is_ok());
+        assert_eq!(bv.val, "9223372036854775808");
+        let bv =
+            cedar_policy_symcc::bitvec::BitVec::try_from(bv).expect("conversion should succeed");
+        assert_eq!(bv.width(), 64);
+        assert_eq!(bv.to_nat().to_string(), "9223372036854775808");
     }
 }
