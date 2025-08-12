@@ -82,10 +82,15 @@ extern "C" {
     fn assertsOfCheckNeverErrors(req: *mut lean_object) -> *mut lean_object;
     fn assertsOfCheckNeverErrorsOnOriginal(req: *mut lean_object) -> *mut lean_object;
     fn assertsOfCheckAlwaysAllows(req: *mut lean_object) -> *mut lean_object;
+    fn assertsOfCheckAlwaysAllowsOnOriginal(req: *mut lean_object) -> *mut lean_object;
     fn assertsOfCheckAlwaysDenies(req: *mut lean_object) -> *mut lean_object;
+    fn assertsOfCheckAlwaysDeniesOnOriginal(req: *mut lean_object) -> *mut lean_object;
     fn assertsOfCheckEquivalent(req: *mut lean_object) -> *mut lean_object;
+    fn assertsOfCheckEquivalentOnOriginal(req: *mut lean_object) -> *mut lean_object;
     fn assertsOfCheckImplies(req: *mut lean_object) -> *mut lean_object;
+    fn assertsOfCheckImpliesOnOriginal(req: *mut lean_object) -> *mut lean_object;
     fn assertsOfCheckDisjoint(req: *mut lean_object) -> *mut lean_object;
+    fn assertsOfCheckDisjointOnOriginal(req: *mut lean_object) -> *mut lean_object;
 
     fn initialize_CedarFFI(builtin: u8, ob: *mut lean_object) -> *mut lean_object;
 }
@@ -468,10 +473,26 @@ impl CedarLeanFfi {
         Result<Vec<Term>, String>
     );
 
+    checkPolicy_func!(
+        asserts_of_check_always_allows_on_original_timed,
+        asserts_of_check_always_allows_on_original,
+        assertsOfCheckAlwaysAllowsOnOriginal,
+        ResultDef::to_result,
+        Result<Vec<Term>, String>
+    );
+
     checkPolicySet_func!(
         asserts_of_check_always_denies_timed,
         asserts_of_check_always_denies,
         assertsOfCheckAlwaysDenies,
+        ResultDef::to_result,
+        Result<Vec<Term>, String>
+    );
+
+    checkPolicy_func!(
+        asserts_of_check_always_denies_on_original_timed,
+        asserts_of_check_always_denies_on_original,
+        assertsOfCheckAlwaysDeniesOnOriginal,
         ResultDef::to_result,
         Result<Vec<Term>, String>
     );
@@ -485,6 +506,14 @@ impl CedarLeanFfi {
     );
 
     comparePolicySet_func!(
+        asserts_of_check_equivalent_on_original_timed,
+        asserts_of_check_equivalent_on_original,
+        assertsOfCheckEquivalentOnOriginal,
+        ResultDef::to_result,
+        Result<Vec<Term>, String>
+    );
+
+    comparePolicySet_func!(
         asserts_of_check_implies_timed,
         asserts_of_check_implies,
         assertsOfCheckImplies,
@@ -493,9 +522,25 @@ impl CedarLeanFfi {
     );
 
     comparePolicySet_func!(
+        asserts_of_check_implies_on_original_timed,
+        asserts_of_check_implies_on_original,
+        assertsOfCheckImpliesOnOriginal,
+        ResultDef::to_result,
+        Result<Vec<Term>, String>
+    );
+
+    comparePolicySet_func!(
         asserts_of_check_disjoint_timed,
         asserts_of_check_disjoint,
         assertsOfCheckDisjoint,
+        ResultDef::to_result,
+        Result<Vec<Term>, String>
+    );
+
+    comparePolicySet_func!(
+        asserts_of_check_disjoint_on_original_timed,
+        asserts_of_check_disjoint_on_original,
+        assertsOfCheckDisjointOnOriginal,
         ResultDef::to_result,
         Result<Vec<Term>, String>
     );
