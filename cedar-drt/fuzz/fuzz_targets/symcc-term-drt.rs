@@ -29,7 +29,7 @@ use libfuzzer_sys::arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructure
 use log::debug;
 use std::{collections::BTreeSet, convert::TryFrom};
 
-use cedar_policy_symcc::{compile_never_errors, Asserts, SymEnv, Term, WellTypedPolicy};
+use cedar_policy_symcc::{compile_never_errors, term::Term, Asserts, SymEnv, WellTypedPolicy};
 
 /// Input expected by this fuzz target:
 /// An ABAC hierarchy, policy, and 8 associated requests
@@ -84,12 +84,11 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 }
 
 fn compile_rust_policy(
-    policy: &Policy,
+    policy: &WellTypedPolicy,
     schema: &Schema,
     req_env: &RequestEnv,
 ) -> anyhow::Result<Asserts> {
     let sym_env = SymEnv::new(&schema, &req_env)?;
-    let policy = WellTypedPolicy::from_policy(&policy, &req_env, &schema)?;
     let asserts = compile_never_errors(&policy, &sym_env)?;
     Ok(asserts.asserts().clone())
 }
@@ -105,32 +104,36 @@ fuzz_target!(|input: FuzzTargetInput| {
 
     if let Ok(schema) = Schema::try_from(input.schema) {
         for req_env in schema.request_envs() {
-            match (
-                lean_ffi.asserts_of_check_never_errors(&policy, &schema, &req_env),
-                compile_rust_policy(&policy, &schema, &req_env),
-            ) {
-                (Ok(Ok(lean_asserts)), Ok(rust_asserts)) => {
-                    let lean_asserts = lean_asserts
-                        .into_iter()
-                        .map(|t| Term::try_from(t).expect("term conversion should succeed"))
-                        .collect::<BTreeSet<_>>();
-                    let rust_asserts =
-                        BTreeSet::from_iter(rust_asserts.as_ref().into_iter().cloned());
-                    assert_eq!(
-                        lean_asserts, rust_asserts,
-                        "Lean terms: {lean_asserts:?}, Rust terms: {rust_asserts:?}"
-                    );
+            if let Ok(well_typed_policy) = WellTypedPolicy::from_policy(&policy, &req_env, &schema)
+            {
+                match (
+                    lean_ffi.asserts_of_check_never_errors(&policy, &schema, &req_env),
+                    compile_rust_policy(&well_typed_policy, &schema, &req_env),
+                ) {
+                    (Ok(Ok(lean_asserts)), Ok(rust_asserts)) => {
+                        let lean_asserts = lean_asserts
+                            .into_iter()
+                            .map(|t| Term::try_from(t).expect("term conversion should succeed"))
+                            .collect::<BTreeSet<_>>();
+                        let rust_asserts =
+                            BTreeSet::from_iter(rust_asserts.as_ref().into_iter().cloned());
+                        assert_eq!(
+                            lean_asserts, rust_asserts,
+                            "Lean terms: {lean_asserts:?}, Rust terms: {rust_asserts:?}"
+                        );
+                    }
+                    (Ok(Ok(lean_asserts)), Err(err)) => {
+                        debug!("Lean asserts: {lean_asserts:?}");
+                        panic!("Rust errors while Lean does not: {err}")
+                    }
+                    (Err(err), Ok(_)) => {
+                        panic!("Lean errors while Rust does not: {err}")
+                    }
+                    (Ok(Err(err)), Ok(_)) => {
+                        panic!("Lean errors while Rust does not: {err}")
+                    }
+                    (_, _) => {}
                 }
-                (Ok(Ok(_)), Err(err)) => {
-                    panic!("Rust errors while Lean does not: {err}")
-                }
-                (Err(err), Ok(_)) => {
-                    panic!("Lean errors while Rust does not: {err}")
-                }
-                (Ok(Err(err)), Ok(_)) => {
-                    panic!("Lean errors while Rust does not: {err}")
-                }
-                (_, _) => {}
             }
         }
     }
