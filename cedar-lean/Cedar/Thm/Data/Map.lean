@@ -501,6 +501,27 @@ theorem find?_implies_make_find?
       assumption
       simp [hneq]
 
+theorem make_find?_implies_find?
+  [DecidableEq α] [LT α] [DecidableLT α]
+  [Cedar.Data.StrictLT α]
+  {l : List (α × β)}
+  {k : α} {v : β}
+  (h : (make l).find? k = some v) :
+  List.find? (λ x => x.fst == k) l = some (k, v)
+:= by
+  induction l
+  case nil =>
+    simp [Map.make, List.find?, List.canonicalize] at h
+    cases h
+  case cons head tail ih =>
+    simp [Map.make, List.find?, List.canonicalize] at h
+    unfold List.find?
+    split
+    case h_1 b h₁ =>
+      simp at h₁
+      
+    . sorry
+
 theorem find?_mapM_key_id {α β : Type} [BEq α] [LawfulBEq α] {ks : List α} {kvs : List (α × β)} {fn : α → Option β} {k: α}
   (h₁ : ks.mapM (λ k => do (k, ←fn k)) = some kvs)
   (h₂ : k ∈ ks) :
