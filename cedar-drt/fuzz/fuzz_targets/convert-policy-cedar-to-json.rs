@@ -49,11 +49,9 @@ fuzz_target!(|src: String| {
                     .node
                     .expect("AST construction should fail for missing CST node");
                 // CST -> EST -> AST
-                println!("Yo");
                 let est_result: Result<_, ESTParseError> = cst_node
                     .try_into()
                     .map_err(|e: parser::err::ParseErrors| e.into());
-                println!("Yo");
                 let ast_from_est_result: Result<_, ESTParseError> = est_result
                     .and_then(|est: est::PolicySet| est.try_into().map_err(ESTParseError::from));
                 println!("Yo");

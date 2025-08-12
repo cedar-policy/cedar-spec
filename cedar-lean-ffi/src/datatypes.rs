@@ -450,7 +450,7 @@ pub enum TermConversionError {
     #[error(transparent)]
     ParseBigInt(#[from] ParseBigIntError),
     #[error(transparent)]
-    ConstructBV(#[from] cedar_policy_symcc::bitvec::BitVecError),
+    ConstructBV(#[from] cedar_policy_symcc::err::BitVecError),
 }
 
 impl TryFrom<PatElem> for cedar_policy_core::ast::PatternElem {
