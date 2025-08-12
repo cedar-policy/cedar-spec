@@ -290,6 +290,14 @@ theorem mem_list_mem_make [LT α] [StrictLT α] [DecidableLT α] {xs : List (α 
   rw [← h₃] at h₂
   exact h₂
 
+theorem key_mem_list_mem_make [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
+  x ∈ xs →
+  ∃ y, y ∈ (Map.make xs).kvs ∧ (y.1 = x.1)
+:= by
+  intro h₁
+  simp only [kvs, make]
+  sorry
+
 theorem make_nil_is_empty {α β} [LT α] [DecidableLT α] :
   (Map.make [] : Map α β) = Map.empty
 := by simp [make, empty, List.canonicalize_nil]

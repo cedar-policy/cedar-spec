@@ -1017,6 +1017,34 @@ theorem partial_evaluation_well_typed_var      {env : TypeEnv}
             rcases h_wf with ⟨_, ⟨_, _, _, h_context⟩, _⟩
             exact type_lifting_preserves_instance_of_type h_context
 
+theorem partial_eval_record_key_preservation_2 {ls : List (Attr × Residual)} :
+  v₁ ∈ ls →
+  ∃v₂,
+  (v₂ ∈ (List.map
+          (fun x =>
+            match x with
+            | (a, r) => (a, Qualified.required r.typeOf))
+          ls)
+    ∧ v₂.1 = v₁.1)
+:= by
+  intro h₁
+  cases ls
+  . contradiction
+  case cons h tl =>
+    simp at h₁
+    cases h₁
+    case inl h₂ =>
+      let v₂ := (fun x =>
+          match x with
+          | (a, r) => (a, Qualified.required r.typeOf)) h
+      exists v₂
+      subst v₂
+      simp
+      rw [h₂]
+    case inr h₂ =>
+      sorry
+
+
 theorem partial_eval_record_key_preservation {xs : List (Attr × Residual)} {ys : List (Attr × Value)} :
   List.Forall₂ (fun x y => ((fun x => bindAttr x.fst x.snd.asValue) ∘ fun x => (x.fst, TPE.evaluate x.snd preq pes)) x = some y) xs
   ys →
@@ -1361,8 +1389,34 @@ theorem partial_eval_preserves_well_typed
           rw [← h₆]
           exact h₅
         }
-        sorry
+        rcases h₅ with ⟨v, h₅, h₆⟩
+        rw [h₁]
+        let ls₂ := (List.map
+          (fun x =>
+            match x with
+            | (a, r) => (a, Qualified.required r.typeOf))
+          ls)
+        have h₇ : ∃v₂, v₂ ∈ ls₂ ∧ v₂.1 = v.1 := by
+        {
+          subst ls₂
+          exact partial_eval_record_key_preservation_2 h₅
+        }
+        rcases h₇ with ⟨v₂, h₇, h₈⟩
 
+
+        have h₉ := Map.key_mem_list_mem_make h₇
+        subst ls₂
+        rcases h₉ with ⟨p, h₉, h₁₀⟩
+        cases hₚ : p
+        rename_i k₂ v₃
+        rw [h₆] at h₈
+        rw [h₈] at h₁₀
+        rw [hₚ] at h₁₀
+        simp at h₁₀
+        rw [h₁₀] at hₚ
+        rw [hₚ] at h₉
+        apply Map.in_list_implies_contains
+        . exact h₉
       . sorry
       . sorry
 
