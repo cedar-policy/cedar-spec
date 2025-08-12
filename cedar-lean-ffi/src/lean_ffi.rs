@@ -80,6 +80,7 @@ extern "C" {
     fn smtLibOfCheckAsserts(asserts: *mut lean_object) -> *mut lean_object;
 
     fn assertsOfCheckNeverErrors(req: *mut lean_object) -> *mut lean_object;
+    fn assertsOfCheckNeverErrorsOnOriginal(req: *mut lean_object) -> *mut lean_object;
     fn assertsOfCheckAlwaysAllows(req: *mut lean_object) -> *mut lean_object;
     fn assertsOfCheckAlwaysDenies(req: *mut lean_object) -> *mut lean_object;
     fn assertsOfCheckEquivalent(req: *mut lean_object) -> *mut lean_object;
@@ -447,6 +448,14 @@ impl CedarLeanFfi {
         asserts_of_check_never_errors_timed,
         asserts_of_check_never_errors,
         assertsOfCheckNeverErrors,
+        ResultDef::to_result,
+        Result<Vec<Term>, String>
+    );
+
+    checkPolicy_func!(
+        asserts_of_check_never_errors_on_original_timed,
+        asserts_of_check_never_errors_on_original,
+        assertsOfCheckNeverErrorsOnOriginal,
         ResultDef::to_result,
         Result<Vec<Term>, String>
     );
