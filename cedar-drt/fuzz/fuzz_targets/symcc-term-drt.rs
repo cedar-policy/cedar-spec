@@ -31,8 +31,7 @@ use std::{collections::BTreeSet, convert::TryFrom};
 
 use cedar_policy_symcc::{compile_never_errors, term::Term, Asserts, SymEnv, WellTypedPolicy};
 
-/// Input expected by this fuzz target:
-/// An ABAC hierarchy, policy, and 8 associated requests
+/// Input expected by this fuzz target
 #[derive(Debug, Clone)]
 pub struct FuzzTargetInput {
     /// generated schema
@@ -121,8 +120,9 @@ fuzz_target!(|input: FuzzTargetInput| {
                             .collect::<BTreeSet<_>>();
                         let rust_asserts =
                             BTreeSet::from_iter(rust_asserts.as_ref().into_iter().cloned());
-                        assert_eq!(
-                            lean_asserts, rust_asserts,
+                        similiar_asserts::assert_eq!(
+                            lean_asserts,
+                            rust_asserts,
                             "Lean terms: {lean_asserts:?}, Rust terms: {rust_asserts:?}"
                         );
                     }
