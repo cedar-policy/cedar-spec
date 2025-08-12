@@ -54,7 +54,6 @@ fuzz_target!(|src: String| {
                     .map_err(|e: parser::err::ParseErrors| e.into());
                 let ast_from_est_result: Result<_, ESTParseError> = est_result
                     .and_then(|est: est::PolicySet| est.try_into().map_err(ESTParseError::from));
-                println!("Yo");
                 match ast_from_est_result {
                     Ok(ast_from_est) => {
                         check_policy_set_equivalence(&ast_from_cst, &ast_from_est);
