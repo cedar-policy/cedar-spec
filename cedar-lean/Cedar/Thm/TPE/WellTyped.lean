@@ -1025,7 +1025,8 @@ theorem partial_eval_record_key_preservation_2 {ls : List (Attr × Residual)} :
             match x with
             | (a, r) => (a, Qualified.required r.typeOf))
           ls)
-    ∧ v₂.1 = v₁.1)
+    ∧ v₂.1 = v₁.1
+    ∧ v₂.2 = Qualified.required v₁.2.typeOf)
 := by
   intro h₁
   cases ls
@@ -1041,15 +1042,23 @@ theorem partial_eval_record_key_preservation_2 {ls : List (Attr × Residual)} :
       subst v₂
       simp
       rw [h₂]
+      simp
     case inr h₂ =>
-      sorry
-
+      let ih := partial_eval_record_key_preservation_2 h₂
+      rcases ih with ⟨v₂, h₃, h₄⟩
+      exists v₂
+      constructor
+      . simp only [List.map, Membership.mem]
+        apply List.Mem.tail
+        simp only [Membership.mem] at h₃
+        exact h₃
+      . exact h₄
 
 theorem partial_eval_record_key_preservation {xs : List (Attr × Residual)} {ys : List (Attr × Value)} :
   List.Forall₂ (fun x y => ((fun x => bindAttr x.fst x.snd.asValue) ∘ fun x => (x.fst, TPE.evaluate x.snd preq pes)) x = some y) xs
   ys →
   p₁ ∈ ys →
-  ∃ p₂ ∈ xs, p₂.1 = p₁.1
+  ∃ p₂ ∈ xs, p₂.1 = p₁.1 ∧ p₁.2 = (TPE.evaluate p₂.2 preq pes).asValue
 := by
   intro h₁ h₂
   cases h₁
@@ -1068,7 +1077,12 @@ theorem partial_eval_record_key_preservation {xs : List (Attr × Residual)} {ys 
         rw [← h₃] at h₅
         have h₆ := congr_arg (·.fst) h₅
         simp at h₆
-        exact h₆
+        constructor
+        . exact h₆
+        . rename_i h₇
+          rw [h₇]
+          rw [← h₅]
+          simp [Residual.asValue]
       . simp at h₅
     case inr h₃ =>
       let ih := partial_eval_record_key_preservation h₄ h₃
@@ -1383,11 +1397,13 @@ theorem partial_eval_preserves_well_typed
           rcases h₄ with ⟨p, h₄, h₅⟩
           have h₄ := Map.make_mem_list_mem h₄
           have h₅ := partial_eval_record_key_preservation h₃ h₄
-          rcases h₅ with ⟨p₂, h₅⟩
+          rcases h₅ with ⟨p₂, h₅, h₆, h₇⟩
           exists p₂
-          rename_i h₆
-          rw [← h₆]
-          exact h₅
+          rename_i h₈
+          rw [← h₈]
+          constructor
+          . exact h₅
+          . exact h₆
         }
         rcases h₅ with ⟨v, h₅, h₆⟩
         rw [h₁]
@@ -1396,16 +1412,12 @@ theorem partial_eval_preserves_well_typed
             match x with
             | (a, r) => (a, Qualified.required r.typeOf))
           ls)
-        have h₇ : ∃v₂, v₂ ∈ ls₂ ∧ v₂.1 = v.1 := by
-        {
-          subst ls₂
-          exact partial_eval_record_key_preservation_2 h₅
-        }
-        rcases h₇ with ⟨v₂, h₇, h₈⟩
+        subst ls₂
+        have h₇ := partial_eval_record_key_preservation_2 h₅
+        rcases h₇ with ⟨v₂, h₇, h₈, _⟩
 
 
         have h₉ := Map.key_mem_list_mem_make h₇
-        subst ls₂
         rcases h₉ with ⟨p, h₉, h₁₀⟩
         cases hₚ : p
         rename_i k₂ v₃
@@ -1417,7 +1429,44 @@ theorem partial_eval_preserves_well_typed
         rw [hₚ] at h₉
         apply Map.in_list_implies_contains
         . exact h₉
-      . sorry
+      . intro k v qty h₄ h₅
+        have h₄ := Map.make_mem_list_mem (Map.find?_mem_toList h₄)
+
+        rw [List.mapM_some_iff_forall₂] at h₃
+        have h₅ := partial_eval_record_key_preservation h₃ h₄
+        rcases h₅ with ⟨p₂, h₅, h₆, h₇⟩
+        cases p₂
+        rename_i k₂ v₂
+        simp at h₆
+        rw [h₆] at h₅
+        simp [Residual.asValue] at h₇
+        split at h₇
+        case h_2 => contradiction
+        case h_1 x v₃ ty h₈ =>
+        injection h₇
+        rename_i h₉
+        rw [←h₉] at h₈
+        rename_i h₁₀
+        rw [h₁] at h₁₀
+        have h₇ := partial_eval_record_key_preservation_2 h₅
+        rcases h₇ with ⟨p, h₁₁, h₁₂, h₁₃⟩
+        cases p
+        rename_i k₃ v₅
+        simp at h₁₂
+        simp at h₁₃
+        specialize h₀ k v₂ h₅
+        have h₁₀ := Map.make_mem_list_mem (Map.find?_mem_toList h₁₀)
+
+
+
+
+
+
+
+
+
+
+        sorry
       . sorry
 
     all_goals sorry
