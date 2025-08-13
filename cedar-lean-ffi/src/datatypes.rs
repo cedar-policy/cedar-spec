@@ -92,15 +92,6 @@ pub(crate) struct EntityUidDef {
 }
 
 /********************************** Deserialization Helpers **********************************/
-// Helper function to deserialize OptionDef into Option
-fn deserialize_option_def<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
-where
-    D: Deserializer<'de>,
-    T: Deserialize<'de>,
-    OptionDef<T>: Deserialize<'de>,
-{
-    Ok(OptionDef::deserialize(deserializer)?.into())
-}
 
 // Helper function to deserialize NameDef into an EntityTypeName
 fn deserialize_entity_type_name<'de, D>(deserializer: D) -> Result<EntityTypeName, D::Error>
@@ -325,7 +316,7 @@ pub struct Decimal(pub i64);
 #[derive(Debug, Deserialize)]
 pub struct Cidr {
     pub addr: Bitvec,
-    #[serde(rename = "pre", deserialize_with = "deserialize_option_def")]
+    #[serde(rename = "pre")]
     pub prefix: Option<Bitvec>,
 }
 
@@ -392,7 +383,7 @@ pub enum Ext {
     Decimal { d: Decimal },
     Ipaddr { ip: IpAddr },
     Datetime { dt: Datetime },
-    Duration { d: Duration },
+    Duration { dur: Duration },
 }
 
 #[derive(Debug, Deserialize)]
@@ -545,7 +536,7 @@ impl TryFrom<Ext> for cedar_policy_symcc::ext::Ext {
     fn try_from(value: Ext) -> Result<Self, Self::Error> {
         Ok(match value {
             Ext::Datetime { dt } => Self::Datetime { dt: dt.val.into() },
-            Ext::Duration { d } => Self::Duration { d: d.val.into() },
+            Ext::Duration { dur } => Self::Duration { d: dur.val.into() },
             Ext::Decimal { d } => Self::Decimal {
                 d: cedar_policy_symcc::extension_types::decimal::Decimal(d.0),
             },
