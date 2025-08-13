@@ -120,7 +120,7 @@ fuzz_target!(|input: FuzzTargetInput| {
                             .collect::<BTreeSet<_>>();
                         let rust_asserts =
                             BTreeSet::from_iter(rust_asserts.as_ref().into_iter().cloned());
-                        similiar_asserts::assert_eq!(
+                        similar_asserts::assert_eq!(
                             lean_asserts,
                             rust_asserts,
                             "Lean terms: {lean_asserts:?}, Rust terms: {rust_asserts:?}"
