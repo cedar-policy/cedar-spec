@@ -112,7 +112,7 @@ deriving instance Lean.ToJson for Ext.IPAddr.CIDR
 deriving instance Lean.ToJson for Ext.IPAddr.IPNet
 deriving instance Lean.ToJson for Ext
 
-/- We need to manually implement the type class because the `.bitvec` variant
+/- We need to manually implement the type class because of the `.bitvec` variant
    The derived implementation converts it into a list
 -/
 instance : Lean.ToJson TermPrim where
@@ -124,7 +124,24 @@ instance : Lean.ToJson TermPrim where
   | .ext e => Lean.Json.mkObj [("ext", Lean.toJson e)]
 
 deriving instance Lean.ToJson for TermVar
-deriving instance Lean.ToJson for Term
+
+partial def termToJson : Term → Lean.Json
+  | .prim p => Lean.Json.mkObj [("prim", Lean.toJson p)]
+  | .var v => Lean.Json.mkObj [("var", Lean.toJson v)]
+  | .none t => Lean.Json.mkObj [("none", Lean.toJson t)]
+  | .some t => Lean.Json.mkObj [("some", termToJson t)]
+  | .set elts eltsTy =>
+    Lean.Json.mkObj [
+        ("set", Lean.Json.mkObj [
+          ("elts", Lean.Json.arr (elts.elts.map termToJson).toArray),
+          ("elts_ty", Lean.toJson eltsTy)
+        ])
+      ]
+  | .record m => Lean.Json.mkObj [("record", Lean.Json.mkObj (m.toList.map (fun (k, v) => (k, termToJson v))))]
+  | .app op args retTy => Lean.Json.mkObj [("app", Lean.toJson op), ("args", Lean.Json.arr (List.toArray (args.map termToJson))), ("ret_ty", Lean.toJson retTy)]
+
+partial instance : Lean.ToJson Term where
+  toJson := termToJson
 
 deriving instance Lean.ToJson for Cedar.SymCC.Error
 
