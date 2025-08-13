@@ -19,7 +19,7 @@ use cedar_drt::{logger::initialize_log, CedarLeanEngine};
 
 use cedar_drt_inner::fuzz_target;
 
-use cedar_policy::{Policy, RequestEnv, Schema};
+use cedar_policy::{Policy, PolicySet, RequestEnv, Schema};
 
 use cedar_policy_generators::{
     abac::ABACPolicy, hierarchy::HierarchyGenerator, schema, settings::ABACSettings,
@@ -29,7 +29,7 @@ use libfuzzer_sys::arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructure
 use log::debug;
 use std::{collections::BTreeSet, convert::TryFrom};
 
-use cedar_policy_symcc::{compile_never_errors, term::Term, Asserts, SymEnv, WellTypedPolicy};
+use cedar_policy_symcc::{compile_always_allows, term::Term, Asserts, SymEnv, WellTypedPolicies};
 
 /// Input expected by this fuzz target
 #[derive(Debug, Clone)]
@@ -74,12 +74,12 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 }
 
 fn compile_rust_policy(
-    policy: &WellTypedPolicy,
+    policy: &WellTypedPolicies,
     schema: &Schema,
     req_env: &RequestEnv,
 ) -> anyhow::Result<Asserts> {
     let sym_env = SymEnv::new(&schema, &req_env)?;
-    let asserts = compile_never_errors(&policy, &sym_env)?;
+    let asserts = compile_always_allows(policy, &sym_env)?;
     Ok(asserts.asserts().clone())
 }
 
@@ -88,7 +88,9 @@ fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
     let len_engine = CedarLeanEngine::new();
     let lean_ffi = len_engine.get_ffi();
-    let policy: Policy = input.policy.clone().into();
+    let mut policyset = PolicySet::new();
+    let policy: Policy = input.policy.into();
+    policyset.add(policy.clone()).unwrap();
     debug!("Schema: {}\n", input.schema.schemafile_string());
     debug!("Policies: {policy}\n");
 
@@ -98,7 +100,8 @@ fuzz_target!(|input: FuzzTargetInput| {
             // rust_passes_validation => lean_passes_validation
             // So, we run the Rust validator first and obtain a well-typed
             // policy. This policy should be also well-typed according to Lean.
-            if let Ok(well_typed_policy) = WellTypedPolicy::from_policy(&policy, &req_env, &schema)
+            if let Ok(well_typed_policies) =
+                WellTypedPolicies::from_policies(&policyset, &req_env, &schema)
             {
                 // We use `asserts_of_check_never_errors_on_original` instead
                 // of `asserts_of_check_never_errors` because there are
@@ -106,12 +109,12 @@ fuzz_target!(|input: FuzzTargetInput| {
                 // validators. And the enforcer is senstive to such
                 // discrepancies.
                 match (
-                    lean_ffi.asserts_of_check_never_errors_on_original(
-                        &well_typed_policy.policy().clone().into(),
+                    lean_ffi.asserts_of_check_always_allows_on_original(
+                        &well_typed_policies.policy_set().clone().try_into().unwrap(),
                         &schema,
                         &req_env,
                     ),
-                    compile_rust_policy(&well_typed_policy, &schema, &req_env),
+                    compile_rust_policy(&well_typed_policies, &schema, &req_env),
                 ) {
                     (Ok(Ok(lean_asserts)), Ok(rust_asserts)) => {
                         let lean_asserts = lean_asserts
