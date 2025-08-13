@@ -155,7 +155,7 @@ macro_rules! checkPolicy_func {
             match serde_json::from_str(&response) {
                 Ok(ResultDef::Ok(t)) => Ok(TimedResult::from_def(t).transform($transform)),
                 Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
-                Err(_) => Err(FfiError::LeanDeserializationError(response)),
+                Err(err) => Err(FfiError::LeanDeserializationError(format!("error: {err}\n{response}"))),
             }
         }
         pub fn $untimed_func_name(
@@ -197,7 +197,7 @@ macro_rules! checkPolicySet_func {
             match serde_json::from_str(&response) {
                 Ok(ResultDef::Ok(t)) => Ok(TimedResult::from_def(t).transform($transform)),
                 Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
-                Err(_) => Err(FfiError::LeanDeserializationError(response)),
+                Err(err) => Err(FfiError::LeanDeserializationError(format!("error: {err}\n{response}"))),
             }
         }
         pub fn $untimed_func_name(
@@ -245,7 +245,7 @@ macro_rules! comparePolicySet_func {
             match serde_json::from_str(&response) {
                 Ok(ResultDef::Ok(t)) => Ok(TimedResult::from_def(t).transform($transform)),
                 Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
-                Err(_) => Err(FfiError::LeanDeserializationError(response)),
+                Err(err) => Err(FfiError::LeanDeserializationError(format!("error: {err}\n{response}"))),
             }
         }
         pub fn $untimed_func_name(
