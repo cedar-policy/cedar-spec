@@ -1,6 +1,5 @@
 use cedar_policy::{Decision, EntityId, EntityTypeName, EntityUid, PolicyId};
 use num_bigint::ParseBigIntError;
-use serde::de::{SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer};
 use smol_str::SmolStr;
 use thiserror::Error;
@@ -312,52 +311,10 @@ pub enum Op {
     Ext(ExtOp),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize)]
 pub struct Bitvec {
-    pub width: u8,
-    pub val: String,
-}
-
-impl<'de> Deserialize<'de> for Bitvec {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        #[derive(Debug, Deserialize)]
-        struct BitVecInner {
-            value: String,
-            size: u8,
-        }
-        struct BitvecVisitor;
-
-        impl<'de> Visitor<'de> for BitvecVisitor {
-            type Value = Bitvec;
-
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("a sequence with width and bitvec object")
-            }
-
-            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-            where
-                A: SeqAccess<'de>,
-            {
-                let _: u8 = seq
-                    .next_element()?
-                    .ok_or_else(|| serde::de::Error::invalid_length(0, &self))?;
-
-                let inner: BitVecInner = seq
-                    .next_element()?
-                    .ok_or_else(|| serde::de::Error::invalid_length(1, &self))?;
-
-                Ok(Bitvec {
-                    width: inner.size,
-                    val: inner.value,
-                })
-            }
-        }
-
-        deserializer.deserialize_seq(BitvecVisitor)
-    }
+    pub size: u8,
+    pub value: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -577,7 +534,7 @@ impl TryFrom<Bitvec> for cedar_policy_symcc::bitvec::BitVec {
     type Error = TermConversionError;
 
     fn try_from(value: Bitvec) -> Result<Self, Self::Error> {
-        Ok(Self::of_nat(value.width.into(), value.val.parse()?)?)
+        Ok(Self::of_nat(value.size.into(), value.value.parse()?)?)
     }
 }
 
@@ -719,11 +676,11 @@ mod deserialization {
 
     #[test]
     fn bitvec() {
-        let json = serde_json::json!([64,
-            {"value": "9223372036854775808", "size": 64}]);
+        let json = serde_json::json!(
+            {"value": "9223372036854775808", "size": 64});
         let bv: Bitvec = serde_json::from_value(json).expect("deserialization should succeed");
-        assert_eq!(bv.width, 64);
-        assert_eq!(bv.val, "9223372036854775808");
+        assert_eq!(bv.size, 64);
+        assert_eq!(bv.value, "9223372036854775808");
         let bv =
             cedar_policy_symcc::bitvec::BitVec::try_from(bv).expect("conversion should succeed");
         assert_eq!(bv.width(), 64);

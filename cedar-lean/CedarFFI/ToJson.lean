@@ -111,7 +111,18 @@ deriving instance Lean.ToJson for Ext.Datetime
 deriving instance Lean.ToJson for Ext.IPAddr.CIDR
 deriving instance Lean.ToJson for Ext.IPAddr.IPNet
 deriving instance Lean.ToJson for Ext
-deriving instance Lean.ToJson for TermPrim
+
+/- We need to manually implement the type class because the `.bitvec` variant
+   The derived implementation converts it into a list
+-/
+instance : Lean.ToJson TermPrim where
+  toJson
+  | .bitvec bv => Lean.Json.mkObj [("bitvec", Lean.toJson bv)]
+  | .bool b => Lean.Json.mkObj [("bool", Lean.toJson b)]
+  | .string s => Lean.Json.mkObj [("string", Lean.toJson s)]
+  | .entity e => Lean.Json.mkObj [("entity", Lean.toJson e)]
+  | .ext e => Lean.Json.mkObj [("ext", Lean.toJson e)]
+
 deriving instance Lean.ToJson for TermVar
 deriving instance Lean.ToJson for Term
 
