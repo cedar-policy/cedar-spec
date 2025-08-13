@@ -324,6 +324,7 @@ end Op
 
 structure Bitvec where
   width : UInt32
+  /- `val` is the string representation of the bitvec's `Nat` value  -/
   val : String
 deriving Repr, Inhabited
 
@@ -342,41 +343,10 @@ namespace Bitvec
     merge := merge
   }
 
-  /- Returns (.some n) if s is the hex representation of n
-     Returns .none if s does not parse -/
-  def parseHex (s : String) : Option Nat := do
-    guard (s.startsWith "0x")
-    let hex := s.drop 2
-    let mut result := 0
-    for c in hex.data do
-      let digit ← match c with
-        | '0' => some 0 | '1' => some 1 | '2' => some 2 | '3' => some 3
-        | '4' => some 4 | '5' => some 5 | '6' => some 6 | '7' => some 7
-        | '8' => some 8 | '9' => some 9
-        | 'a'|'A' => some 10 | 'b'|'B' => some 11 | 'c'|'C' => some 12
-        | 'd'|'D' => some 13 | 'e'|'E' => some 14 | 'f'|'F' => some 15
-        | _ => none
-      result := result * 16 + digit
-    return result
-  /- Returns (.some ⟨n, val#n⟩) where s is of the form `0xhex(val)#n`
-     Returns .none if s fails to parse
-  -/
-  def parseBitvec (s: String) : Option (Σ (n : Nat), BitVec n) := do
-    let parts := s.splitOn "#"
-    guard (parts.length == 2)
-    let [hexPart, widthPart] := parts | none
-    -- Parse the width
-    let width ← widthPart.toNat?
-    -- Parse the hex value
-    let value ← parseHex hexPart
-    return ⟨width, BitVec.ofNat width value⟩
-
   def toCedar (bv : Bitvec) : Option (Σ (n : Nat), BitVec n) := do
     let n ← bv.width.toNat
-    let ⟨m, bv⟩ ← parseBitvec bv.val
-    -- assert that provided width and str encoded with are equal
-    guard (n == m)
-    return ⟨m, bv⟩
+    let bv ← bv.val.toNat?
+    return ⟨n, bv⟩
 end Bitvec
 
 abbrev Decimal := Proto.Int64

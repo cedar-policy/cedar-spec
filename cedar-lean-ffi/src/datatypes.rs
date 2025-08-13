@@ -313,7 +313,9 @@ pub enum Op {
 
 #[derive(Debug, Deserialize)]
 pub struct Bitvec {
+    #[serde(rename = "size")]
     pub width: u8,
+    #[serde(rename = "value")]
     pub val: String,
 }
 
@@ -667,5 +669,23 @@ impl From<TermType> for cedar_policy_symcc::term_type::TermType {
                 ty: Arc::new((*ty).into()),
             },
         }
+    }
+}
+
+#[cfg(test)]
+mod deserialization {
+    use crate::Bitvec;
+
+    #[test]
+    fn bitvec() {
+        let json = serde_json::json!(
+            {"value": "9223372036854775808", "size": 64});
+        let bv: Bitvec = serde_json::from_value(json).expect("deserialization should succeed");
+        assert_eq!(bv.width, 64);
+        assert_eq!(bv.val, "9223372036854775808");
+        let bv =
+            cedar_policy_symcc::bitvec::BitVec::try_from(bv).expect("conversion should succeed");
+        assert_eq!(bv.width(), 64);
+        assert_eq!(bv.to_nat().to_string(), "9223372036854775808");
     }
 }
