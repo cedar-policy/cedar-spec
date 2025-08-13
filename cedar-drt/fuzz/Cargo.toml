@@ -14,6 +14,7 @@ cedar-lean-ffi = { path = "../../cedar-lean-ffi", version = "4.4.0" }
 cedar-policy = { version = "4.4.0", features = ["permissive-validate", "entity-manifest"] }
 cedar-policy-core = { version = "4.4.0", features = ["arbitrary", "tpe"] }
 cedar-policy-formatter = "4.4.0"
+cedar-policy-symcc = "*"
 cedar-testing = { path = "../../cedar/cedar-testing", version = "4.4.0" }
 cedar-policy-generators = { path = "../../cedar-policy-generators", version = "4.0.0", features = ["cedar-policy"] }
 clap = { version = "4.0", features = ["derive"], optional = true }
@@ -32,6 +33,7 @@ similar-asserts = "1.5.0"
 smol_str = { version = "0.3", features = ["serde"] }
 thiserror = "2.0"
 uuid = { version = "1.3.1", features = ["v4", "fast-rng"] }
+anyhow = "1.0.98"
 
 [features]
 prt = ["dep:rayon", "dep:clap", "dep:rand_chacha"]
@@ -40,6 +42,7 @@ prt = ["dep:rayon", "dep:clap", "dep:rand_chacha"]
 cedar-policy = { path = "../../cedar/cedar-policy" }
 cedar-policy-core = { path = "../../cedar/cedar-policy-core" }
 cedar-policy-formatter = { path = "../../cedar/cedar-policy-formatter" }
+cedar-policy-symcc = { path = "../../cedar/cedar-policy-symcc" }
 
 [lib]
 path = "src/lib.rs"
@@ -227,5 +230,11 @@ doc = false
 [[bin]]
 name = "symcc-term-roundtrip-abac-type-directed"
 path = "fuzz_targets/symcc-term-roundtrip-abac-type-directed.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "symcc-term-drt"
+path = "fuzz_targets/symcc-term-drt.rs"
 test = false
 doc = false

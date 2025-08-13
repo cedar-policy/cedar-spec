@@ -473,7 +473,7 @@ impl CedarLeanFfi {
         Result<Vec<Term>, String>
     );
 
-    checkPolicy_func!(
+    checkPolicySet_func!(
         asserts_of_check_always_allows_on_original_timed,
         asserts_of_check_always_allows_on_original,
         assertsOfCheckAlwaysAllowsOnOriginal,
@@ -489,7 +489,7 @@ impl CedarLeanFfi {
         Result<Vec<Term>, String>
     );
 
-    checkPolicy_func!(
+    checkPolicySet_func!(
         asserts_of_check_always_denies_on_original_timed,
         asserts_of_check_always_denies_on_original,
         assertsOfCheckAlwaysDeniesOnOriginal,
