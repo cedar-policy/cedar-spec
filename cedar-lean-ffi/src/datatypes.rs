@@ -239,7 +239,7 @@ pub struct Uuf {
 pub enum ExtOp {
     #[serde(rename = "decimal.val")]
     DecimalVal,
-    #[serde(rename = "ipaddr.isv4")]
+    #[serde(rename = "ipaddr.isV4")]
     IPaddrIsV4,
     #[serde(rename = "ipaddr.addrV4")]
     IPaddrAddrV4,
@@ -687,5 +687,28 @@ mod deserialization {
             cedar_policy_symcc::bitvec::BitVec::try_from(bv).expect("conversion should succeed");
         assert_eq!(bv.width(), 64);
         assert_eq!(bv.to_nat().to_string(), "9223372036854775808");
+    }
+
+    #[test]
+    fn term() {
+        let json = serde_json::json!(
+                [{"prim": {"bool": true}},
+        {"app":
+         {"retTy": {"prim": {"pty": "bool"}},
+          "op": "not",
+          "args":
+          [{"app":
+            {"retTy": {"prim": {"pty": "bool"}},
+             "op": "eq",
+             "args":
+             [{"var":
+               {"ty":
+                {"prim": {"pty": {"entity": {"ety": {"path": [], "id": "a"}}}}},
+                "id": "resource"}},
+              {"prim":
+               {"entity": {"ty": {"path": [], "id": "a"}, "eid": ""}}}]}}]}}]
+            );
+        let _: Vec<crate::Term> =
+            serde_json::from_value(json).expect("deserialization should succeed");
     }
 }
