@@ -313,8 +313,10 @@ pub enum Op {
 
 #[derive(Debug, Deserialize)]
 pub struct Bitvec {
-    pub size: u8,
-    pub value: String,
+    #[serde(rename = "size")]
+    pub width: u8,
+    #[serde(rename = "value")]
+    pub val: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -534,7 +536,7 @@ impl TryFrom<Bitvec> for cedar_policy_symcc::bitvec::BitVec {
     type Error = TermConversionError;
 
     fn try_from(value: Bitvec) -> Result<Self, Self::Error> {
-        Ok(Self::of_nat(value.size.into(), value.value.parse()?)?)
+        Ok(Self::of_nat(value.width.into(), value.val.parse()?)?)
     }
 }
 
@@ -679,8 +681,8 @@ mod deserialization {
         let json = serde_json::json!(
             {"value": "9223372036854775808", "size": 64});
         let bv: Bitvec = serde_json::from_value(json).expect("deserialization should succeed");
-        assert_eq!(bv.size, 64);
-        assert_eq!(bv.value, "9223372036854775808");
+        assert_eq!(bv.width, 64);
+        assert_eq!(bv.val, "9223372036854775808");
         let bv =
             cedar_policy_symcc::bitvec::BitVec::try_from(bv).expect("conversion should succeed");
         assert_eq!(bv.width(), 64);

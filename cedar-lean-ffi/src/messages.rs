@@ -321,8 +321,8 @@ impl proto::op::BaseOp {
 impl proto::Bitvec {
     pub(crate) fn new(bv: &datatypes::Bitvec) -> Self {
         Self {
-            width: bv.size as u32,
-            val: bv.value.clone(),
+            width: bv.width as u32,
+            val: bv.val.clone(),
         }
     }
 }
