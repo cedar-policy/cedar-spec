@@ -134,7 +134,7 @@ partial def termToJson : Term → Lean.Json
     Lean.Json.mkObj [
         ("set", Lean.Json.mkObj [
           ("elts", Lean.Json.arr (elts.elts.map termToJson).toArray),
-          ("elts_ty", Lean.toJson eltsTy)
+          ("eltsTy", Lean.toJson eltsTy)
         ])
       ]
   | .record m => Lean.Json.mkObj [("record", Lean.Json.mkObj (m.toList.map (fun (k, v) => (k, termToJson v))))]
@@ -142,7 +142,7 @@ partial def termToJson : Term → Lean.Json
     [("app",
       Lean.Json.mkObj [
         ("op", Lean.toJson op),
-        ("args", Lean.Json.arr (List.toArray (args.map termToJson))), ("ret_ty", Lean.toJson retTy)])]
+        ("args", Lean.Json.arr (List.toArray (args.map termToJson))), ("retTy", Lean.toJson retTy)])]
 
 partial instance : Lean.ToJson Term where
   toJson := termToJson
