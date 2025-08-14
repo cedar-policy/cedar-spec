@@ -473,7 +473,9 @@ impl proto::Ext {
             datatypes::Ext::Decimal { d } => proto::ext::Ext::Decimal(proto::Decimal::new(d)),
             datatypes::Ext::Ipaddr { ip } => proto::ext::Ext::Ipaddr(proto::IpAddr::new(ip)),
             datatypes::Ext::Datetime { dt } => proto::ext::Ext::Datetime(proto::Datetime::new(dt)),
-            datatypes::Ext::Duration { d } => proto::ext::Ext::Duration(proto::Duration::new(d)),
+            datatypes::Ext::Duration { dur } => {
+                proto::ext::Ext::Duration(proto::Duration::new(dur))
+            }
         };
         Self { ext: Some(ext) }
     }
