@@ -1017,6 +1017,17 @@ theorem partial_evaluation_well_typed_var      {env : TypeEnv}
             exact type_lifting_preserves_instance_of_type h_context
 
 theorem partial_eval_record_key_preservation_2 {ls : List (Attr × Residual)} :
+  ls.find? (λ x => x.fst == k) = .some (k, v) →
+  ∃ v₂,
+  (List.map
+    (fun x =>
+      match x with
+      | (a, r) => (a, Qualified.required r.typeOf))
+    ls).find? (λ x => x.fst == k) = .some (k, v₂)
+:= by
+  sorry
+
+theorem partial_eval_record_key_preservation_2 {ls : List (Attr × Residual)} :
   (List.map
     (fun x =>
       match x with
@@ -1425,7 +1436,44 @@ theorem partial_eval_preserves_well_typed
     . rename_i x xs h₃
       apply Residual.WellTyped.val
       apply InstanceOfType.instance_of_record
-      . sorry
+      . intro k h₄
+        rw [Map.contains_iff_some_find?] at h₄
+        rcases h₄ with ⟨v, h₄⟩
+
+        have h₅ := Map.make_find?_implies_list_find? h₄
+        rw [Map.contains_iff_some_find?]
+        rw [List.mapM_some_iff_forall₂] at h₃
+        have h₈ := partial_eval_record_key_preservation h₃ h₅
+        rcases h₈ with ⟨v₂, h₈, h₉⟩
+        have h₉ := partial_eval_record_key_preservation_2 h₇
+        rcases h₉ with ⟨v₃, h₉, h₁₀⟩
+        rw [h₉]
+        have h₁₁ := h₀
+        have h₁₂ := List.mem_of_find?_eq_some h₈
+        specialize h₁₁ k v₂ h₁₂
+        rw [h₁₀] at h₈
+        injection h₈
+        rename_i h₁₃
+        simp at h₁₃
+        rw [h₁₃]
+        rename_i h₁₄
+        simp [Residual.asValue] at h₁₄
+        split at h₁₄
+        case h_2 => contradiction
+        rename_i v₄ ty h₁₅
+        injection h₁₄
+        rename_i h₁₅
+        rw [h₁₅]
+        simp [Qualified.getType]
+        rename_i h₁₆
+        have h₁₇ := partial_eval_preserves_typeof h_wf h_ref h₁₁
+        rw [h₁₆] at h₁₇
+        rw [←h₁₇]
+        simp [Residual.typeOf]
+        let ih := partial_eval_preserves_well_typed h_wf h_ref h₁₁
+        rw [h₁₆] at ih
+        cases ih
+        assumption
       . intro k v qty h₄ h₅
         rw [h₁] at h₅
         have h₆ := Map.make_find?_implies_list_find? h₄
@@ -1452,12 +1500,16 @@ theorem partial_eval_preserves_well_typed
         injection h₁₄
         rename_i h₁₅
         rw [h₁₅]
-        
-        sorry
-
-
-
-
+        simp [Qualified.getType]
+        rename_i h₁₆
+        have h₁₇ := partial_eval_preserves_typeof h_wf h_ref h₁₁
+        rw [h₁₆] at h₁₇
+        rw [←h₁₇]
+        simp [Residual.typeOf]
+        let ih := partial_eval_preserves_well_typed h_wf h_ref h₁₁
+        rw [h₁₆] at ih
+        cases ih
+        assumption
       . sorry
 
     all_goals sorry
