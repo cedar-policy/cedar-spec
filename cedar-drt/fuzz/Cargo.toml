@@ -238,3 +238,9 @@ name = "symcc-term-drt"
 path = "fuzz_targets/symcc-term-drt.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "symcc-smt-script-drt"
+path = "fuzz_targets/symcc-smt-script-drt.rs"
+test = false
+doc = false
