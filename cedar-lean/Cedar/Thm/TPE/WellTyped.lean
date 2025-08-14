@@ -1059,8 +1059,10 @@ theorem partial_eval_record_key_preservation_2 {ls : List (Attr × Residual)} :
 theorem partial_eval_record_key_preservation {xs : List (Attr × Residual)} {ys : List (Attr × Value)} :
   List.Forall₂ (fun x y => ((fun x => bindAttr x.fst x.snd.asValue) ∘ fun x => (x.fst, TPE.evaluate x.snd preq pes)) x = some y) xs
   ys →
-  p₁ ∈ ys →
-  ∃ p₂ ∈ xs, p₂.1 = p₁.1 ∧ p₁.2 = (TPE.evaluate p₂.2 preq pes).asValue
+  ys.find? (λ x => x.fst = k) = .some (k, v) →
+  ∃ v₂,
+  (xs.find? (λ x => x.fst = k) = .some (k, v₂)) ∧
+  v = (TPE.evaluate v₂ preq pes).asValue
 := by
   intro h₁ h₂
   cases h₁
@@ -1072,28 +1074,56 @@ theorem partial_eval_record_key_preservation {xs : List (Attr × Residual)} {ys 
       rename_i h₄
       rename_i h₅
       simp [bindAttr, Residual.asValue] at h₅
-      exists a₁
+      exists a₁.2
       simp
       split at h₅
       . simp at h₅
-        rw [← h₃] at h₅
-        have h₆ := congr_arg (·.fst) h₅
-        simp at h₆
+        rcases h₃ with ⟨h₃, h₆⟩
+        rename Value => v₂
+        rw [h₆] at h₅
+        simp at h₅
+        rcases h₅ with ⟨h₅, h₇⟩
+        rw [h₅]
+        simp
         constructor
-        . exact h₆
-        . rename_i h₇
-          rw [h₇]
-          rw [← h₅]
+        . cases a₁
+          rename_i a₁ a₂ h₈
+          simp
+          simp at h₅
+          assumption
+        . rename_i h₉
+          rw [h₉]
           simp [Residual.asValue]
+          rw [h₇]
       . simp at h₅
     case inr h₃ =>
-      let ih := partial_eval_record_key_preservation h₄ h₃
+      rcases h₃ with ⟨h₃, h₅⟩
+      let ih := partial_eval_record_key_preservation h₄ h₅
       rcases ih with ⟨p₃, ⟨h₄, h₅⟩⟩
       exists p₃
       constructor
       . simp
         right
-        exact h₄
+        rw [h₄]
+        simp
+        cases a₁
+        rename_i k₁ v₁
+        cases b₁
+        rename_i k₂ v₂
+        simp
+        simp at h₃
+        simp at v₂
+        rename_i k₃
+        unfold bindAttr at h₃
+        simp at h₃
+        cases h₄ : (TPE.evaluate v₁ preq pes).asValue
+        . rw [h₄] at h₃
+          simp at h₃
+        . rw [h₄] at h₃
+          simp at h₃
+          rcases h₃ with ⟨h₅, h₆⟩
+          rw [h₅]
+          assumption
       . exact h₅
 
 
@@ -1392,88 +1422,17 @@ theorem partial_eval_preserves_well_typed
     . rename_i x xs h₃
       apply Residual.WellTyped.val
       apply InstanceOfType.instance_of_record
-      . intro k h₄
-        have h₅: ∃ v, v ∈ ls ∧ v.1 = k := by {
-          rw [List.mapM_some_iff_forall₂] at h₃
-          have h₄ := Map.contains_implies_in_list h₄
-          rcases h₄ with ⟨p, h₄, h₅⟩
-          have h₄ := Map.make_mem_list_mem h₄
-          have h₅ := partial_eval_record_key_preservation h₃ h₄
-          rcases h₅ with ⟨p₂, h₅, h₆, h₇⟩
-          exists p₂
-          rename_i h₈
-          rw [← h₈]
-          constructor
-          . exact h₅
-          . exact h₆
-        }
-        rcases h₅ with ⟨v, h₅, h₆⟩
-        rw [h₁]
-        let ls₂ := (List.map
-          (fun x =>
-            match x with
-            | (a, r) => (a, Qualified.required r.typeOf))
-          ls)
-        subst ls₂
-        have h₇ := partial_eval_record_key_preservation_2 h₅
-        rcases h₇ with ⟨v₂, h₇, h₈, _⟩
-
-
-        have h₉ := Map.key_mem_list_mem_make h₇
-        rcases h₉ with ⟨p, h₉, h₁₀⟩
-        cases hₚ : p
-        rename_i k₂ v₃
-        rw [h₆] at h₈
-        rw [h₈] at h₁₀
-        rw [hₚ] at h₁₀
-        simp at h₁₀
-        rw [h₁₀] at hₚ
-        rw [hₚ] at h₉
-        apply Map.in_list_implies_contains
-        . exact h₉
+      . sorry
       . intro k v qty h₄ h₅
-        unfold Map.find? at h₄
-        simp at h₄
-        have h₄ := Map.make_mem_list_mem (Map.find?_mem_toList h₄)
-
-
+        rw [h₁] at h₅
+        have h₆ := Map.make_find?_implies_list_find? h₄
+        have h₇ := Map.make_find?_implies_list_find? h₅
         rw [List.mapM_some_iff_forall₂] at h₃
-        have h₅ := partial_eval_record_key_preservation h₃ h₄
-        rcases h₅ with ⟨p₂, h₅, h₆, h₇⟩
-        cases p₂
-        rename_i k₂ v₂
-        simp at h₆
-        rw [h₆] at h₅
-        simp [Residual.asValue] at h₇
-        split at h₇
-        case h_2 => contradiction
-        case h_1 x v₃ ty h₈ =>
-        injection h₇
-        rename_i h₉
-        rw [←h₉] at h₈
-        rename_i h₁₀
-        rw [h₁] at h₁₀
-
-        have h₇ := partial_eval_record_key_preservation_2 h₅
-        rcases h₇ with ⟨p, h₁₁, h₁₂, h₁₃⟩
-        cases p
-        rename_i k₃ v₅
-        simp at h₁₂
-        simp at h₁₃
-        specialize h₀ k v₂ h₅
-
-
-
-
-
-
-
-
-
-
-
-
         sorry
+
+
+
+
       . sorry
 
     all_goals sorry
