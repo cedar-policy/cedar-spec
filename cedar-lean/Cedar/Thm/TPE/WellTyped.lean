@@ -620,7 +620,6 @@ theorem partial_eval_well_typed_app₂ :
           rename_i ety ty h₄ h₅ h₆
           unfold EntitiesRefine at h_eref
           unfold Data.Map.find? at h₃
-          simp at h₃
           split at h₃
           case h_2 =>  contradiction
           dsimp [PartialEntities.tags, PartialEntities.get] at heq
@@ -1018,15 +1017,14 @@ theorem partial_evaluation_well_typed_var      {env : TypeEnv}
             exact type_lifting_preserves_instance_of_type h_context
 
 theorem partial_eval_record_key_preservation_2 {ls : List (Attr × Residual)} :
-  v₁ ∈ ls →
-  ∃v₂,
-  (v₂ ∈ (List.map
-          (fun x =>
-            match x with
-            | (a, r) => (a, Qualified.required r.typeOf))
-          ls)
-    ∧ v₂.1 = v₁.1
-    ∧ v₂.2 = Qualified.required v₁.2.typeOf)
+  (List.map
+    (fun x =>
+      match x with
+      | (a, r) => (a, Qualified.required r.typeOf))
+    ls).find? (λ x => x.fst == k) = .some (k, v₃) →
+  ∃ v₂,
+  v₃ = Qualified.required v₂.typeOf ∧
+  List.find? (fun x => decide (x.fst = k)) ls = some (k, v₂)
 := by
   intro h₁
   cases ls
@@ -1035,26 +1033,31 @@ theorem partial_eval_record_key_preservation_2 {ls : List (Attr × Residual)} :
     simp at h₁
     cases h₁
     case inl h₂ =>
-      let v₂ := (fun x =>
-          match x with
-          | (a, r) => (a, Qualified.required r.typeOf)) h
-      exists v₂
-      subst v₂
+      simp at h₂
+      rcases h₂ with ⟨h₃, h₄, h₅⟩
+      exists h.snd
       simp
-      rw [h₂]
-      simp
-    case inr h₂ =>
-      let ih := partial_eval_record_key_preservation_2 h₂
-      rcases ih with ⟨v₂, h₃, h₄⟩
-      exists v₂
+      left
       constructor
-      . simp only [List.map, Membership.mem]
-        apply List.Mem.tail
-        simp only [Membership.mem] at h₃
+      . assumption
+      . cases h
+        simp at h₃
+        rw [h₃]
+    case inr h₂ =>
+      rcases h₂ with ⟨h₂, a, b, h₃, h₄, h₅⟩
+      exists b
+      constructor
+      . rw [h₅]
+      . unfold List.find?
+        have h₆: (decide (h.fst = k)) = false := by
+          simp
+          assumption
+        rw [h₆]
+        simp
+        unfold Function.comp at h₃
+        simp at h₃
+        rw [h₄] at h₃
         exact h₃
-      . exact h₄
-
-
 
 theorem partial_eval_record_key_preservation {xs : List (Attr × Residual)} {ys : List (Attr × Value)} :
   List.Forall₂ (fun x y => ((fun x => bindAttr x.fst x.snd.asValue) ∘ fun x => (x.fst, TPE.evaluate x.snd preq pes)) x = some y) xs
@@ -1428,6 +1431,28 @@ theorem partial_eval_preserves_well_typed
         have h₆ := Map.make_find?_implies_list_find? h₄
         have h₇ := Map.make_find?_implies_list_find? h₅
         rw [List.mapM_some_iff_forall₂] at h₃
+        have h₈ := partial_eval_record_key_preservation h₃ h₆
+        rcases h₈ with ⟨v₂, h₈, h₉⟩
+        have h₉ := partial_eval_record_key_preservation_2 h₇
+        rcases h₉ with ⟨v₃, h₉, h₁₀⟩
+        rw [h₉]
+        have h₁₁ := h₀
+        have h₁₂ := List.mem_of_find?_eq_some h₈
+        specialize h₁₁ k v₂ h₁₂
+        rw [h₁₀] at h₈
+        injection h₈
+        rename_i h₁₃
+        simp at h₁₃
+        rw [h₁₃]
+        rename_i h₁₄
+        simp [Residual.asValue] at h₁₄
+        split at h₁₄
+        case h_2 => contradiction
+        rename_i v₄ ty h₁₅
+        injection h₁₄
+        rename_i h₁₅
+        rw [h₁₅]
+        
         sorry
 
 
