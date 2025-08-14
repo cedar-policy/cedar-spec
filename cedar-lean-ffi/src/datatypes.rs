@@ -663,6 +663,220 @@ impl From<TermType> for cedar_policy_symcc::term_type::TermType {
     }
 }
 
+impl From<cedar_policy_symcc::type_abbrevs::ExtType> for ExtType {
+    fn from(value: cedar_policy_symcc::type_abbrevs::ExtType) -> Self {
+        match value {
+            cedar_policy_symcc::type_abbrevs::ExtType::IpAddr => Self::IpAddr,
+            cedar_policy_symcc::type_abbrevs::ExtType::Decimal => Self::Decimal,
+            cedar_policy_symcc::type_abbrevs::ExtType::DateTime => Self::Datetime,
+            cedar_policy_symcc::type_abbrevs::ExtType::Duration => Self::Duration,
+        }
+    }
+}
+
+impl From<cedar_policy_symcc::term_type::TermType> for TermType {
+    fn from(value: cedar_policy_symcc::term_type::TermType) -> Self {
+        match value {
+            cedar_policy_symcc::term_type::TermType::Option { ty } => Self::Option {
+                ty: Box::new(ty.as_ref().clone().into()),
+            },
+            cedar_policy_symcc::term_type::TermType::Bitvec { n } => Self::Prim {
+                // PANIC SAFETY: `n` should not overflow `u8`
+                pty: TermPrimType::Bitvec {
+                    n: n.try_into().unwrap(),
+                },
+            },
+            cedar_policy_symcc::term_type::TermType::Bool => Self::Prim {
+                pty: TermPrimType::Bool,
+            },
+            cedar_policy_symcc::term_type::TermType::Entity { ety } => Self::Prim {
+                pty: TermPrimType::Entity { ety },
+            },
+            cedar_policy_symcc::term_type::TermType::Ext { xty } => Self::Prim {
+                pty: TermPrimType::Ext { xty: xty.into() },
+            },
+            cedar_policy_symcc::term_type::TermType::String => Self::Prim {
+                pty: TermPrimType::String,
+            },
+            cedar_policy_symcc::term_type::TermType::Record { rty } => Self::Record {
+                rty: rty
+                    .iter()
+                    .map(|(a, ty)| (a.to_string(), ty.clone().into()))
+                    .collect(),
+            },
+            cedar_policy_symcc::term_type::TermType::Set { ty } => Self::Set {
+                ty: Box::new(ty.as_ref().clone().into()),
+            },
+        }
+    }
+}
+
+impl From<cedar_policy_symcc::bitvec::BitVec> for Bitvec {
+    fn from(value: cedar_policy_symcc::bitvec::BitVec) -> Self {
+        Self {
+            // PANIC SAFETY: `value.width()` should not overflow `u8`
+            width: value.width().try_into().unwrap(),
+            val: value.to_nat().to_string(),
+        }
+    }
+}
+
+impl From<cedar_policy_symcc::term::TermPrim> for TermPrim {
+    fn from(value: cedar_policy_symcc::term::TermPrim) -> Self {
+        match value {
+            cedar_policy_symcc::term::TermPrim::Bitvec(bv) => Self::Bitvec(Bitvec {
+                width: bv.width().try_into().unwrap(),
+                val: bv.to_nat().to_string(),
+            }),
+            cedar_policy_symcc::term::TermPrim::Bool(b) => Self::Bool(b),
+            cedar_policy_symcc::term::TermPrim::Entity(uid) => Self::Entity(uid),
+            cedar_policy_symcc::term::TermPrim::Ext(ext) => Self::Ext(match ext {
+                cedar_policy_symcc::ext::Ext::Datetime { dt } => Ext::Datetime {
+                    dt: Datetime { val: dt.into() },
+                },
+                cedar_policy_symcc::ext::Ext::Duration { d } => Ext::Duration {
+                    dur: Duration { val: d.into() },
+                },
+                cedar_policy_symcc::ext::Ext::Decimal { d } => Ext::Decimal { d: Decimal(d.0) },
+                cedar_policy_symcc::ext::Ext::Ipaddr { ip } => Ext::Ipaddr {
+                    ip: match ip {
+                        cedar_policy_symcc::extension_types::ipaddr::IPNet::V4(cidr) => {
+                            IpAddr::V4(Cidr {
+                                addr: cidr.addr.val.into(),
+                                prefix: cidr.prefix.val.map(Into::into),
+                            })
+                        }
+                        cedar_policy_symcc::extension_types::ipaddr::IPNet::V6(cidr) => {
+                            IpAddr::V6(Cidr {
+                                addr: cidr.addr.val.into(),
+                                prefix: cidr.prefix.val.map(Into::into),
+                            })
+                        }
+                    },
+                },
+            }),
+            cedar_policy_symcc::term::TermPrim::String(s) => Self::String(s.to_string()),
+        }
+    }
+}
+
+impl From<cedar_policy_symcc::op::Uuf> for Uuf {
+    fn from(value: cedar_policy_symcc::op::Uuf) -> Self {
+        Self {
+            id: value.id,
+            arg: value.arg.into(),
+            out: value.out.into(),
+        }
+    }
+}
+
+impl From<cedar_policy_symcc::op::ExtOp> for ExtOp {
+    fn from(value: cedar_policy_symcc::op::ExtOp) -> Self {
+        match value {
+            cedar_policy_symcc::op::ExtOp::DatetimeOfBitVec => Self::DatetimeOfBitVec,
+            cedar_policy_symcc::op::ExtOp::DatetimeVal => Self::DatetimeVal,
+            cedar_policy_symcc::op::ExtOp::DecimalVal => Self::DecimalVal,
+            cedar_policy_symcc::op::ExtOp::DurationOfBitVec => Self::DurationOfBitVec,
+            cedar_policy_symcc::op::ExtOp::DurationVal => Self::DurationVal,
+            cedar_policy_symcc::op::ExtOp::IpaddrAddrV4 => Self::IPaddrAddrV4,
+            cedar_policy_symcc::op::ExtOp::IpaddrAddrV6 => Self::IPaddrAddrV6,
+            cedar_policy_symcc::op::ExtOp::IpaddrIsV4 => Self::IPaddrIsV4,
+            cedar_policy_symcc::op::ExtOp::IpaddrPrefixV4 => Self::IPaddrPrefixV4,
+            cedar_policy_symcc::op::ExtOp::IpaddrPrefixV6 => Self::IPaddrAddrV6,
+        }
+    }
+}
+
+impl From<cedar_policy_core::ast::PatternElem> for PatElem {
+    fn from(value: cedar_policy_core::ast::PatternElem) -> Self {
+        match value {
+            cedar_policy_core::ast::PatternElem::Char(c) => Self::Char { c: c.into() },
+            cedar_policy_core::ast::PatternElem::Wildcard => Self::Star,
+        }
+    }
+}
+
+impl From<cedar_policy_symcc::op::Op> for Op {
+    fn from(value: cedar_policy_symcc::op::Op) -> Self {
+        match value {
+            cedar_policy_symcc::op::Op::And => Self::And,
+            cedar_policy_symcc::op::Op::Or => Self::Or,
+            cedar_policy_symcc::op::Op::Not => Self::Not,
+            cedar_policy_symcc::op::Op::Eq => Self::Eq,
+            cedar_policy_symcc::op::Op::Ite => Self::Ite,
+            cedar_policy_symcc::op::Op::Bvadd => Self::Bvadd,
+            cedar_policy_symcc::op::Op::Bvsaddo => Self::Bvsaddo,
+            cedar_policy_symcc::op::Op::Bvlshr => Self::Bvlshr,
+            cedar_policy_symcc::op::Op::Bvmul => Self::Bvmul,
+            cedar_policy_symcc::op::Op::Bvneg => Self::Bvneg,
+            cedar_policy_symcc::op::Op::Bvnego => Self::Bvnego,
+            cedar_policy_symcc::op::Op::Bvsdiv => Self::Bvsdiv,
+            cedar_policy_symcc::op::Op::Bvshl => Self::Bvshl,
+            cedar_policy_symcc::op::Op::Bvsle => Self::Bvsle,
+            cedar_policy_symcc::op::Op::Bvsmod => Self::Bvsmod,
+            cedar_policy_symcc::op::Op::Bvslt => Self::Bvslt,
+            cedar_policy_symcc::op::Op::Bvsub => Self::Bvsub,
+            cedar_policy_symcc::op::Op::Bvsmulo => Self::Bvsmulo,
+            cedar_policy_symcc::op::Op::Bvsrem => Self::Bvsrem,
+            cedar_policy_symcc::op::Op::Bvssubo => Self::Bvssubo,
+            cedar_policy_symcc::op::Op::Bvudiv => Self::Bvudiv,
+            cedar_policy_symcc::op::Op::Bvule => Self::Bvule,
+            cedar_policy_symcc::op::Op::Bvult => Self::Bvult,
+            cedar_policy_symcc::op::Op::Bvumod => Self::Bvumod,
+            cedar_policy_symcc::op::Op::Uuf(uuf) => Self::Uuf(uuf.as_ref().clone().into()),
+            cedar_policy_symcc::op::Op::OptionGet => Self::OptionGet,
+            cedar_policy_symcc::op::Op::RecordGet(a) => Self::RecordGet(a.to_string()),
+            cedar_policy_symcc::op::Op::SetInter => Self::SetInter,
+            cedar_policy_symcc::op::Op::SetMember => Self::SetMember,
+            cedar_policy_symcc::op::Op::SetSubset => Self::SetSubset,
+            cedar_policy_symcc::op::Op::ZeroExtend(u) => Self::ZeroExtend(u.try_into().unwrap()),
+            cedar_policy_symcc::op::Op::StringLike(pat) => Self::StringLike(
+                pat.get_elems()
+                    .into_iter()
+                    .map(|p| p.clone().into())
+                    .collect(),
+            ),
+            cedar_policy_symcc::op::Op::Ext(op) => Self::Ext(op.into()),
+        }
+    }
+}
+
+impl From<cedar_policy_symcc::term::TermVar> for TermVar {
+    fn from(value: cedar_policy_symcc::term::TermVar) -> Self {
+        Self {
+            id: value.id,
+            ty: value.ty.into(),
+        }
+    }
+}
+
+impl From<cedar_policy_symcc::term::Term> for Term {
+    fn from(value: cedar_policy_symcc::term::Term) -> Self {
+        match value {
+            cedar_policy_symcc::term::Term::App { op, args, ret_ty } => Term::App {
+                op: op.into(),
+                args: args.iter().map(|t| t.clone().into()).collect(),
+                ret_ty: ret_ty.into(),
+            },
+            cedar_policy_symcc::term::Term::None(ty) => Term::None(ty.into()),
+            cedar_policy_symcc::term::Term::Prim(prim) => Term::Prim(prim.into()),
+            cedar_policy_symcc::term::Term::Record(r) => Term::Record(
+                r.iter()
+                    .map(|(a, t)| (a.to_string(), t.clone().into()))
+                    .collect(),
+            ),
+            cedar_policy_symcc::term::Term::Set { elts, elts_ty } => Term::Set {
+                elts: elts.iter().map(|t| t.clone().into()).collect(),
+                elts_ty: elts_ty.into(),
+            },
+            cedar_policy_symcc::term::Term::Some(term) => {
+                Term::Some(Box::new(term.as_ref().clone().into()))
+            }
+            cedar_policy_symcc::term::Term::Var(var) => Term::Var(var.into()),
+        }
+    }
+}
+
 #[cfg(test)]
 mod deserialization {
     use crate::Bitvec;
