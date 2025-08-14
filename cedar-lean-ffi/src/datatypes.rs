@@ -917,3 +917,16 @@ mod deserialization {
             serde_json::from_value(json).expect("deserialization should succeed");
     }
 }
+
+#[cfg(test)]
+mod term_conversion {
+    #[test]
+    fn roundtrip_pattern() {
+        let pattern = cedar_policy_core::ast::PatternElem::Char('a');
+        assert_eq!(
+            cedar_policy_core::ast::PatternElem::try_from(crate::datatypes::PatElem::from(pattern))
+                .unwrap(),
+            pattern
+        );
+    }
+}
