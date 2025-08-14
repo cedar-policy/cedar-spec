@@ -1572,6 +1572,6 @@ theorem partial_eval_preserves_well_typed
         rcases h₈ with ⟨v₃, h₈⟩
         exists v₃
         exact Map.list_find?_implies_make_find? h₈
-    all_goals sorry
+    . sorry
   | _ => sorry
 end Cedar.Thm
