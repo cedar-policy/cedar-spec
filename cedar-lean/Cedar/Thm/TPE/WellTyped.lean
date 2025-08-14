@@ -1057,7 +1057,6 @@ theorem partial_eval_record_key_preservation_3 {ls : List (Attr × Residual)} :
         exists a
         exists b
 
-
 theorem partial_eval_record_key_preservation_2 {ls : List (Attr × Residual)} :
   (List.map
     (fun x =>
@@ -1100,6 +1099,51 @@ theorem partial_eval_record_key_preservation_2 {ls : List (Attr × Residual)} :
         simp at h₃
         rw [h₄] at h₃
         exact h₃
+
+theorem partial_eval_record_key_preservation_4 {xs : List (Attr × Residual)} {ys : List (Attr × Value)} :
+  List.Forall₂ (fun x y => ((fun x => bindAttr x.fst x.snd.asValue) ∘ fun x => (x.fst, TPE.evaluate x.snd preq pes)) x = some y) xs
+  ys →
+  xs.find? (λ x => x.fst = k) = .some (k, v) →
+  ∃ v₃,
+  (ys.find? (λ x => x.fst = k) = .some (k, v₃))
+:= by
+  intro h₁
+  cases h₁
+  . simp
+  case cons a b l₁ l₂ h₂ h₃=>
+  . intro h₄
+    simp at h₄
+    cases h₄
+    case inl h₅ =>
+      rcases h₅ with ⟨h₅, h₆⟩
+      simp [bindAttr] at h₂
+      cases h₇: (TPE.evaluate a.snd preq pes).asValue <;> rw [h₇] at h₂
+      case intro.none =>
+        simp at h₂
+      case intro.some v₂ =>
+        simp at h₂
+        exists v₂
+        simp
+        left
+        rw [h₅] at h₂
+        rw [← h₂]
+        simp
+    case inr h₅ =>
+      rcases h₅ with ⟨h₅, h₆⟩
+      have ih := partial_eval_record_key_preservation_4 h₃ h₆
+      rcases ih with ⟨v₃, ih⟩
+      exists v₃
+      simp
+      right
+      simp [bindAttr] at h₂
+      cases h₇: (TPE.evaluate a.snd preq pes).asValue <;> rw [h₇] at h₂
+      . simp at h₂
+      . simp at h₂
+        rw [← h₂]
+        simp
+        constructor
+        . assumption
+        .assumption
 
 theorem partial_eval_record_key_preservation {xs : List (Attr × Residual)} {ys : List (Attr × Value)} :
   List.Forall₂ (fun x y => ((fun x => bindAttr x.fst x.snd.asValue) ∘ fun x => (x.fst, TPE.evaluate x.snd preq pes)) x = some y) xs
@@ -1517,8 +1561,17 @@ theorem partial_eval_preserves_well_typed
         rw [h₁₆] at ih
         cases ih
         assumption
-      . sorry
-
+      . intro k qty h₄ h₅
+        subst ty₁
+        have h₄ := Map.make_find?_implies_list_find? h₄
+        have h₆ := partial_eval_record_key_preservation_2 h₄
+        rcases h₆ with ⟨v₂, h₆, h₇⟩
+        rw [List.mapM_some_iff_forall₂] at h₃
+        have h₈ := partial_eval_record_key_preservation_4 h₃ h₇
+        rw [Map.contains_iff_some_find?]
+        rcases h₈ with ⟨v₃, h₈⟩
+        exists v₃
+        exact Map.list_find?_implies_make_find? h₈
     all_goals sorry
   | _ => sorry
 end Cedar.Thm
