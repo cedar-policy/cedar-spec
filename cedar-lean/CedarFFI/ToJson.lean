@@ -2,11 +2,13 @@ import Lean.Data.Json.FromToJson
 
 import Cedar.Spec
 import Cedar.SymCC
+import Cedar.Data
 
 namespace CedarFFI
 
 open Cedar.Spec
 open Cedar.SymCC
+open Cedar.Data
 
 abbrev x := Term
 
@@ -125,26 +127,51 @@ instance : Lean.ToJson TermPrim where
 
 deriving instance Lean.ToJson for TermVar
 
-partial def termToJson : Term → Lean.Json
+def termToJson : Term → Lean.Json
   | .prim p => Lean.Json.mkObj [("prim", Lean.toJson p)]
-  | .var v => Lean.Json.mkObj [("var", Lean.toJson v)]
+  | .var v  => Lean.Json.mkObj [("var",  Lean.toJson v)]
   | .none t => Lean.Json.mkObj [("none", Lean.toJson t)]
   | .some t => Lean.Json.mkObj [("some", termToJson t)]
   | .set elts eltsTy =>
     Lean.Json.mkObj [
-        ("set", Lean.Json.mkObj [
-          ("elts", Lean.Json.arr (elts.elts.map termToJson).toArray),
+      ("set",
+        Lean.Json.mkObj [
+          ("elts",
+            Lean.Json.arr (List.map₁ elts.elts (fun ⟨t,_⟩ => termToJson t) |>.toArray)),
           ("eltsTy", Lean.toJson eltsTy)
         ])
-      ]
-  | .record m => Lean.Json.mkObj [("record", Lean.Json.mkObj (m.toList.map (fun (k, v) => (k, termToJson v))))]
-  | .app op args retTy => Lean.Json.mkObj
-    [("app",
-      Lean.Json.mkObj [
-        ("op", Lean.toJson op),
-        ("args", Lean.Json.arr (List.toArray (args.map termToJson))), ("retTy", Lean.toJson retTy)])]
+    ]
+  | .record m =>
+    Lean.Json.mkObj [
+      ("record",
+        Lean.Json.arr (m.kvs.attach₂.map (fun ⟨(k,v), _⟩ =>
+          Lean.Json.arr [Lean.Json.str k, termToJson v].toArray)).toArray)
+    ]
+  | .app op args retTy =>
+    Lean.Json.mkObj [
+      ("app",
+        Lean.Json.mkObj [
+          ("op",   Lean.toJson op),
+          ("args", Lean.Json.arr (List.map₁ args (fun ⟨t,_⟩ => termToJson t) |>.toArray)),
+          ("retTy", Lean.toJson retTy)
+        ])
+    ]
+decreasing_by
+  all_goals simp_wf
+  case _ h₁ =>
+    have := Set.sizeOf_lt_of_mem h₁
+    omega
+  case _ h₁ =>
+    cases m
+    simp only [Map.kvs] at h₁
+    simp only [Map.mk.sizeOf_spec]
+    omega
+  case _ h₁ =>
+    have := List.sizeOf_lt_of_mem h₁
+    omega
 
-partial instance : Lean.ToJson Term where
+
+instance : Lean.ToJson Term where
   toJson := termToJson
 
 deriving instance Lean.ToJson for Cedar.SymCC.Error
