@@ -58,7 +58,7 @@ def values {α β} (m : Map α β) : List β :=
 
 /-- Returns the binding for `k` in `m`, if any. -/
 def find? {α β} [BEq α] (m : Map α β) (k : α) : Option β :=
-  match m.kvs.find? (λ ⟨k', _⟩ => k' == k) with
+  match m.kvs.find? (λ x => x.1 == k) with
   | some (_, v) => some v
   | _           => none
 

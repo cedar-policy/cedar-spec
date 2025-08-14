@@ -58,6 +58,32 @@ theorem insertCanonical_mem [LT β] [Cedar.Data.StrictLT β] [DecidableLT β]
     split; any_goals simp
     apply Or.inr ih
 
+theorem insertCanonical_find?
+  [LT β] [Cedar.Data.StrictLT β] [DecidableLT β] [BEq β] [LawfulBEq β]
+  {f : α → β} {xs : List α} (x : α) :
+  (List.insertCanonical f x xs).find? (λ e => f e == f x) = x
+:= by
+  unfold insertCanonical
+  split
+  case h_1 tl =>
+    simp
+  case h_2 hd tl =>
+    simp
+    split
+    case isTrue h₁ =>
+      simp
+    case isFalse h₁ =>
+      split
+      case isTrue h₂ =>
+        simp
+        right
+        constructor
+        . apply StrictLT.not_eq
+          assumption
+        . rw [insertCanonical_find?]
+      case isFalse h₂ =>
+        simp
+
 theorem insertCanonical_preserves_non_duplicate_element
   [LT β] [Cedar.Data.StrictLT β] [DecidableLT β] [DecidableEq β]
   {f : α → β} {xs : List α} {x : α} {y : α}
@@ -83,6 +109,10 @@ theorem insertCanonical_preserves_non_duplicate_element
         have hltgt := StrictLT.connected (f x) (f y) hneq
         cases hltgt <;> contradiction
       case _ hy => simp [hy]
+
+
+
+
 
 theorem insertCanonical_sortedBy [LT β] [StrictLT β] [DecidableLT β] {f : α → β} {xs : List α} (x : α) :
   SortedBy f xs →

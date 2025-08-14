@@ -1054,6 +1054,8 @@ theorem partial_eval_record_key_preservation_2 {ls : List (Attr × Residual)} :
         exact h₃
       . exact h₄
 
+
+
 theorem partial_eval_record_key_preservation {xs : List (Attr × Residual)} {ys : List (Attr × Value)} :
   List.Forall₂ (fun x y => ((fun x => bindAttr x.fst x.snd.asValue) ∘ fun x => (x.fst, TPE.evaluate x.snd preq pes)) x = some y) xs
   ys →
@@ -1430,7 +1432,10 @@ theorem partial_eval_preserves_well_typed
         apply Map.in_list_implies_contains
         . exact h₉
       . intro k v qty h₄ h₅
+        unfold Map.find? at h₄
+        simp at h₄
         have h₄ := Map.make_mem_list_mem (Map.find?_mem_toList h₄)
+
 
         rw [List.mapM_some_iff_forall₂] at h₃
         have h₅ := partial_eval_record_key_preservation h₃ h₄
@@ -1448,6 +1453,7 @@ theorem partial_eval_preserves_well_typed
         rw [←h₉] at h₈
         rename_i h₁₀
         rw [h₁] at h₁₀
+
         have h₇ := partial_eval_record_key_preservation_2 h₅
         rcases h₇ with ⟨p, h₁₁, h₁₂, h₁₃⟩
         cases p
@@ -1455,7 +1461,8 @@ theorem partial_eval_preserves_well_typed
         simp at h₁₂
         simp at h₁₃
         specialize h₀ k v₂ h₅
-        have h₁₀ := Map.make_mem_list_mem (Map.find?_mem_toList h₁₀)
+
+
 
 
 
