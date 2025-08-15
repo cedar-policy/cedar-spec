@@ -114,13 +114,14 @@ fuzz_target!(|input: FuzzTargetInput| {
                         .iter()
                         .map(|assert| assert.clone().into())
                         .collect();
+                    debug!("Lean asserts: {lean_asserts:#?}");
                     match lean_ffi.smtlib_of_check_asserts(&lean_asserts, &schema, &req_env) {
                         Ok(lean_smtlib) => {
                             let mut solver = CedarSymCompiler::new(BuffSolver::new())
                                 .expect("solver construction should succeed");
                             RUNTIME.block_on(async {
                                 match solver.check_sat(&rust_asserts).await {
-                                    Ok(_) => {}
+                                    Ok(_) | Err(cedar_policy_symcc::err::Error::SolverUnknown) => {}
                                     Err(e) => {
                                         panic!("Rust encoding should succeed: {e}")
                                     }
@@ -130,7 +131,7 @@ fuzz_target!(|input: FuzzTargetInput| {
                             similar_asserts::assert_eq!(
                                 rust_smtlib,
                                 lean_smtlib,
-                                "Rust and Lean SMT-LIB should be equivalent"
+                                "Rust:\n{rust_smtlib}\nLean:\n{lean_smtlib}"
                             );
                         }
                         Err(e) => {
