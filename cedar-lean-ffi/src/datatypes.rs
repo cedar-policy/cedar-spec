@@ -782,7 +782,7 @@ impl From<cedar_policy_symcc::op::ExtOp> for ExtOp {
             cedar_policy_symcc::op::ExtOp::IpaddrAddrV6 => Self::IPaddrAddrV6,
             cedar_policy_symcc::op::ExtOp::IpaddrIsV4 => Self::IPaddrIsV4,
             cedar_policy_symcc::op::ExtOp::IpaddrPrefixV4 => Self::IPaddrPrefixV4,
-            cedar_policy_symcc::op::ExtOp::IpaddrPrefixV6 => Self::IPaddrAddrV6,
+            cedar_policy_symcc::op::ExtOp::IpaddrPrefixV6 => Self::IPaddrPrefixV6,
         }
     }
 }
