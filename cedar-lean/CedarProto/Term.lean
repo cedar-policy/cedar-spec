@@ -349,7 +349,9 @@ namespace Bitvec
     return ⟨n, bv⟩
 end Bitvec
 
-abbrev Decimal := Proto.Int64
+structure Decimal where
+  val : Proto.Int64
+deriving Repr, Inhabited
 
 namespace Decimal
   @[inline]
@@ -357,9 +359,7 @@ namespace Decimal
 
   def parseField (t : Tag) : BParsec (MergeFn Decimal) := do
     match t.fieldNum with
-    | 1 =>
-      let x : Proto.Int64 ← Field.guardedParse t
-      pureMergeFn (merge · x)
+    | 1 => parseFieldElement t Decimal.val (update val)
     | _ => t.wireType.skip ; pure ignore
 
   instance : Message Decimal := {
@@ -367,7 +367,7 @@ namespace Decimal
     merge := merge
   }
 
-  def toCedar (d : Decimal) : Cedar.Spec.Ext.Decimal := d.toInt64
+  def toCedar (d : Decimal) : Cedar.Spec.Ext.Decimal := d.val.toInt64
 end Decimal
 
 structure Cidr where
@@ -461,8 +461,7 @@ deriving Repr, Inhabited
 
 namespace Datetime
   @[inline]
-  def merge (dt₁ dt₂ : Datetime) : Datetime :=
-    Datetime.mk (Field.merge dt₁.val dt₂.val)
+  def merge (_dt₁ dt₂ : Datetime) : Datetime := dt₂
 
   def parseField (t : Tag) : BParsec (MergeFn Datetime) := do
     match t.fieldNum with
