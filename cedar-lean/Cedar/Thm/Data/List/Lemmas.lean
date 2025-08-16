@@ -1885,6 +1885,30 @@ theorem find?_stronger_pred
       simp only [this, Option.some.injEq] at hfind
       exact hfind
 
+theorem mem_of_map_implies_exists_unmapped
+  {l : List α} {v₂ : β} {f : α → β}:
+  v₂ ∈ (List.map f l) →
+  ∃v₁, v₁ ∈ l ∧ v₂ = f v₁
+:= by
+  cases l
+  . simp
+  case cons hd tl =>
+    intro h₁
+    simp [map] at h₁
+    cases h₁
+    case inl h₂ =>
+      exists hd
+      simp
+      assumption
+    case inr h₂ =>
+      rcases h₂ with ⟨v₁, h₂, h₃⟩
+      exists v₁
+      simp
+      constructor
+      . right
+        assumption
+      . rw [h₃]
+
 theorem mem_implies_find?
   {l : List α} {k : α} {f : α → Bool}
   (hmem : k ∈ l)

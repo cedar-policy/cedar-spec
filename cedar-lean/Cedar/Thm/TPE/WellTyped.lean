@@ -1572,6 +1572,96 @@ theorem partial_eval_preserves_well_typed
         rcases h₈ with ⟨v₃, h₈⟩
         exists v₃
         exact Map.list_find?_implies_make_find? h₈
-    . sorry
+    case h_2 x h₂ =>
+      split
+      . apply Residual.WellTyped.error
+      . rename_i h₃
+        apply Residual.WellTyped.record
+        . intros k v h₄
+          have h₅ := List.mem_of_map_implies_exists_unmapped h₄
+          rcases h₅ with ⟨p, h₅, h₆⟩
+          cases p ; rename_i k₂ v₂
+          simp at h₆
+          rcases h₆ with ⟨h₆, h₇⟩
+          rw [← h₆] at h₅
+          specialize h₀ k v₂ h₅
+          have ih := partial_eval_preserves_well_typed h_wf h_ref h₀
+          rw [h₇]
+          assumption
+        . rw [h₁]
+          simp
+          unfold Function.comp
+          simp
+          congr 2
+          -- should be an easy proof with lemma bout forall and function equality
+          sorry
+  | getAttr expr attr ty =>
+    simp [TPE.evaluate, TPE.getAttr, TPE.attrsOf]
+    split
+    case h_1 =>
+      apply Residual.WellTyped.error
+    case h_2 r₁ h₁ =>
+      split
+      case h_1 x m h₂ =>
+        split at h₂
+        case h_1 r₂ m₂ ty₂ h₃ =>
+          injection h₂; rename_i h₂
+          rw [h₂] at h₃
+          cases h_wt
+          case getAttr_entity =>
+            sorry
+          case getAttr_record rty h₄ h₅ h₆ =>
+            have ih := partial_eval_preserves_well_typed h_wf h_ref h₄
+            rw [h₃] at ih
+            cases ih
+            rename_i h₇
+            cases h₇
+            rename_i rty₂ h₈ h₉ h₁₀
+            cases h₁₂ : m.find? attr
+            . simp [someOrError]
+              apply Residual.WellTyped.error
+            . rename_i v
+              simp [someOrError]
+              apply Residual.WellTyped.val
+              have h₁₁ := partial_eval_preserves_typeof h_wf h_ref h₄
+              rw [h₃] at h₁₁
+              rw [h₅] at h₁₁
+              simp [Residual.typeOf] at h₁₁
+              cases h₁₃ : (Map.find? rty attr) <;> rw [h₁₃] at h₆
+              . simp at h₆
+              rename_i qty
+              simp at h₆
+              rw [h₁₁] at h₉
+              specialize h₉ attr v qty h₁₂ h₁₃
+              rw [h₆] at h₉
+              exact h₉
+        case h_2 =>
+          sorry
+        case h_3 =>
+          sorry
+      case h_2 x h₂ =>
+        cases h_wt
+        case getAttr_entity ety rty h₅ h₆ h₇ h₈ =>
+          apply Residual.WellTyped.getAttr_entity
+          case h₁ =>
+            exact partial_eval_preserves_well_typed h_wf h_ref h₆
+          case h₂ =>
+            have h₁₀ := partial_eval_preserves_typeof h_wf h_ref h₆
+            rw [h₁₀]
+            rw [h₇]
+          case h₃ =>
+            rw [h₅]
+          case h₄ =>
+            exact h₈
+        case getAttr_record rty h₆ h₇ h₈ =>
+          apply Residual.WellTyped.getAttr_record
+          case h₁ =>
+            exact partial_eval_preserves_well_typed h_wf h_ref h₆
+          case h₂ =>
+            have h₁₀ := partial_eval_preserves_typeof h_wf h_ref h₆
+            rw [h₁₀]
+            rw [h₇]
+          case h₃ =>
+            rw [h₈]
   | _ => sorry
 end Cedar.Thm
