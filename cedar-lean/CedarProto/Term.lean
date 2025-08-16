@@ -455,17 +455,18 @@ namespace IpAddr
       return .V6 cidr
 end IpAddr
 
-abbrev Datetime := Proto.Int64
+structure Datetime where
+  val : Proto.Int64
+deriving Repr, Inhabited
 
 namespace Datetime
   @[inline]
-  def merge (_dt₁ dt₂ : Datetime) : Datetime := dt₂
+  def merge (dt₁ dt₂ : Datetime) : Datetime :=
+    Datetime.mk (Field.merge dt₁.val dt₂.val)
 
   def parseField (t : Tag) : BParsec (MergeFn Datetime) := do
     match t.fieldNum with
-    | 1 =>
-      let x : Proto.Int64 ← Field.guardedParse t
-      pureMergeFn (merge · x)
+    | 1 => parseFieldElement t Datetime.val (update val)
     | _ => t.wireType.skip ; pure ignore
 
   instance : Message Datetime := {
@@ -474,7 +475,7 @@ namespace Datetime
   }
 
   def toCedar (d : Datetime) : Cedar.Spec.Ext.Datetime:=
-    Cedar.Spec.Ext.Datetime.mk d.toInt64
+    Cedar.Spec.Ext.Datetime.mk d.val.toInt64
 end Datetime
 
 abbrev Duration := Proto.Int64

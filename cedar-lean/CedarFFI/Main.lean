@@ -584,6 +584,11 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
       | .ok r => .ok r
   toString (Lean.toJson result)
 
+def randomTempName : IO String := do
+  let r1 ← IO.rand 0 0xffffffff
+  let r2 ← IO.rand 0 0xffffffff
+  let timestamp ← IO.monoNanosNow
+  return s!"/tmp/temp_{r1}_{r2}_{timestamp}"
 /--
   `req`: binary protobuf for a `CheckAsserts`
 
@@ -597,14 +602,22 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
     match parseCheckAssertsReq req with
     | .error s => .error s!"smtLibOfCheckAsserts: {s}\n{repr req}"
     | .ok (asserts, εnv) =>
-      let buffer := unsafeBaseIO (IO.mkRef ⟨ByteArray.empty, 0⟩)
-      let solver := Solver.bufferWriter buffer
-      match timedSolve solver (ignoreOutput (λ _ => .ok asserts) εnv) with
-      | .error s => .error s!"smtLibOfCheckAsserts: {s}"
-      | .ok r =>
-        match unsafeIO (buffer.swap ⟨ByteArray.empty, 0⟩) with
-        | .error _ => .error s!"smtLibOfCheckAsserts: error retrieving SMTLib script from buffer"
-        | .ok inner_buffer => .ok { data := ((String.fromUTF8? inner_buffer.data).getD ""), duration := r.duration }
+      match unsafeIO randomTempName with
+      | .error _ => .error s!"smtLibOfCheckAsserts: error generating temp file name"
+      | .ok tempFileName =>
+        let tempFilePath : System.FilePath := tempFileName
+        let solverIO : IO Solver := do
+          let handle ← IO.FS.Handle.mk tempFilePath IO.FS.Mode.write
+          let stream := IO.FS.Stream.ofHandle handle
+          Solver.streamWriter stream
+        match timedSolve solverIO (ignoreOutput (λ _ => .ok asserts) εnv) with
+        | .error s => .error s!"smtLibOfCheckAsserts: {s}"
+        | .ok r =>
+          match unsafeIO (IO.FS.readFile tempFilePath) with
+          | .error _ => .error s!"smtLibOfCheckAsserts: error reading temporary file"
+          | .ok content =>
+            let _ := unsafeIO (IO.FS.removeFile tempFilePath)
+            .ok { data := content, duration := r.duration }
   toString (Lean.toJson result)
 
 /--
