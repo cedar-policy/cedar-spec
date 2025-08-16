@@ -285,7 +285,7 @@ private unsafe def unsafeSolve {α} (solver : IO Solver) (vcs : SolverM α) : Ex
     | .error _ => .error "error creating solver"
     | .ok solver =>
       match unsafeIO (vcs |>.run solver) with
-      | .error _ => .error "error encoding verification conditions or running solver"
+      | .error err => .error s!"error encoding verification conditions or running solver: {err}"
       | .ok b => .ok b
 
 @[implemented_by unsafeSolve]
@@ -417,9 +417,10 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
   match vc εnv with
   | .ok asserts =>
     if asserts.any (· == false) || asserts.all (· == true) then
-      Solver.reset
+      --Solver.reset
+      pure ()
     else
-      let _ ← Encoder.encode asserts εnv (produceModels := false)
+      let _ ← Encoder.encode asserts εnv (produceModels := true)
       match (← Solver.checkSat) with
       | .unsat   => pure ()
       | .sat     => pure ()
