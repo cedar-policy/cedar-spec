@@ -477,7 +477,9 @@ namespace Datetime
     Cedar.Spec.Ext.Datetime.mk d.val.toInt64
 end Datetime
 
-abbrev Duration := Proto.Int64
+structure Duration where
+  val : Proto.Int64
+deriving Repr, Inhabited
 
 namespace Duration
   @[inline]
@@ -485,9 +487,7 @@ namespace Duration
 
   def parseField (t : Tag) : BParsec (MergeFn Duration) := do
     match t.fieldNum with
-    | 1 =>
-      let x : Proto.Int64 ← Field.guardedParse t
-      pureMergeFn (merge · x)
+    | 1 => parseFieldElement t Duration.val (update val)
     | _ => t.wireType.skip ; pure ignore
 
   instance : Message Duration := {
@@ -496,7 +496,7 @@ namespace Duration
   }
 
   def toCedar (d : Duration) : Cedar.Spec.Ext.Datetime.Duration :=
-    Cedar.Spec.Ext.Datetime.Duration.mk d.toInt64
+    Cedar.Spec.Ext.Datetime.Duration.mk d.val.toInt64
 end Duration
 
 
