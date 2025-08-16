@@ -606,22 +606,27 @@ def randomTempName : IO String := do
       | .error _ => .error s!"smtLibOfCheckAsserts: error generating temp file name"
       | .ok tempFileName =>
         let tempFilePath : System.FilePath := tempFileName
-        let solverIO : IO Solver := do
+        let cleanup := unsafeIO (IO.FS.removeFile tempFilePath)
+        match unsafeIO (do
           let handle ← IO.FS.Handle.mk tempFilePath IO.FS.Mode.write
           let stream := IO.FS.Stream.ofHandle handle
-          Solver.streamWriter stream
-        match timedSolve solverIO (ignoreOutput (λ _ => .ok asserts) εnv) with
-        | .error s =>
-          let _ := unsafeIO (IO.FS.removeFile tempFilePath)
-          .error s!"smtLibOfCheckAsserts: {s}"
-        | .ok r =>
-          match unsafeIO (IO.FS.readFile tempFilePath) with
-          | .error _ =>
-            let _ := unsafeIO (IO.FS.removeFile tempFilePath)
-            .error s!"smtLibOfCheckAsserts: error reading temporary file"
-          | .ok content =>
-            let _ := unsafeIO (IO.FS.removeFile tempFilePath)
-            .ok { data := content, duration := r.duration }
+          Solver.streamWriter stream) with
+        | .error _ => 
+          let _ := cleanup
+          .error s!"smtLibOfCheckAsserts: error creating solver"
+        | .ok solver =>
+          match timedSolve (pure solver) (ignoreOutput (λ _ => .ok asserts) εnv) with
+          | .error s =>
+            let _ := cleanup
+            .error s!"smtLibOfCheckAsserts: {s}"
+          | .ok r =>
+            match unsafeIO (IO.FS.readFile tempFilePath) with
+            | .error _ =>
+              let _ := cleanup
+              .error s!"smtLibOfCheckAsserts: error reading temporary file"
+            | .ok content =>
+              let _ := cleanup
+              .ok { data := content, duration := r.duration }
   toString (Lean.toJson result)
 
 /--
