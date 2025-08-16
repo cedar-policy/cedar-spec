@@ -611,10 +611,14 @@ def randomTempName : IO String := do
           let stream := IO.FS.Stream.ofHandle handle
           Solver.streamWriter stream
         match timedSolve solverIO (ignoreOutput (λ _ => .ok asserts) εnv) with
-        | .error s => .error s!"smtLibOfCheckAsserts: {s}"
+        | .error s =>
+          let _ := unsafeIO (IO.FS.removeFile tempFilePath)
+          .error s!"smtLibOfCheckAsserts: {s}"
         | .ok r =>
           match unsafeIO (IO.FS.readFile tempFilePath) with
-          | .error _ => .error s!"smtLibOfCheckAsserts: error reading temporary file"
+          | .error _ =>
+            let _ := unsafeIO (IO.FS.removeFile tempFilePath)
+            .error s!"smtLibOfCheckAsserts: error reading temporary file"
           | .ok content =>
             let _ := unsafeIO (IO.FS.removeFile tempFilePath)
             .ok { data := content, duration := r.duration }
