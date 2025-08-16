@@ -291,14 +291,14 @@ private unsafe def unsafeSolve {α} (solver : IO Solver) (vcs : SolverM α) : Ex
 @[implemented_by unsafeSolve]
 opaque solve {α} (solver : IO Solver) (vcs : SolverM α) : Except String α
 
-private unsafe def unsafeTimedSolve {α} (solver: IO Solver) (vcs : SolverM α) : Except String (Timed α) :=
-  let result := unsafeBaseIO (runAndTime (λ () => solve solver vcs))
+private def safeTimedSolve {α} (solver: IO Solver) (vcs : SolverM α) : IO (Except String (Timed α)) := do
+  let result ← runAndTime (λ () => solve solver vcs)
   match result.data with
-  | .ok res => .ok ( { data := res, duration := result.duration })
-  | .error s => .error s
+  | .ok res => pure (.ok { data := res, duration := result.duration })
+  | .error s => pure (.error s)
 
-@[implemented_by unsafeTimedSolve]
-opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : Except String (Timed α)
+@[implemented_by safeTimedSolve]
+opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except String (Timed α))
 
 /--
   `req`: binary protobuf for an `CheckPolicyRequest`
@@ -313,9 +313,10 @@ opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : Except String (
     match parseCheckPolicyReq req false with
     | .error s => .error s!"checkNeverErrors: {s}"
     | .ok (policy, εnv) =>
-      match timedSolve Solver.cvc5 (Cedar.SymCC.checkNeverErrors policy εnv) with
-      | .error s => .error s!"checkNeverErrors: {s}"
-      | .ok b => .ok b
+      match unsafeIO (timedSolve Solver.cvc5 (Cedar.SymCC.checkNeverErrors policy εnv)) with
+      | .error _ => .error "checkNeverErrors: IO error"
+      | .ok (.error s) => .error s!"checkNeverErrors: {s}"
+      | .ok (.ok b) => .ok b
   toString (Lean.toJson result)
 
 /--
@@ -331,9 +332,10 @@ opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : Except String (
     match parseCheckPoliciesReq req false with
     | .error s => .error s!"checkAlwaysAllows: {s}"
     | .ok (policies, εnv) =>
-      match timedSolve Solver.cvc5 (Cedar.SymCC.checkAlwaysAllows policies εnv) with
-      | .error s => .error s!"checkAlwaysAllows: {s}"
-      | .ok b => .ok b
+      match unsafeIO (timedSolve Solver.cvc5 (Cedar.SymCC.checkAlwaysAllows policies εnv)) with
+      | .error _ => .error "checkAlwaysAllows: IO error"
+      | .ok (.error s) => .error s!"checkAlwaysAllows: {s}"
+      | .ok (.ok b) => .ok b
   toString (Lean.toJson result)
 
 /--
@@ -349,9 +351,10 @@ opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : Except String (
     match parseCheckPoliciesReq req false with
     | .error s => .error s!"checkAlwaysDenies: {s}"
     | .ok (policies, εnv) =>
-      match timedSolve Solver.cvc5 (Cedar.SymCC.checkAlwaysDenies policies εnv) with
-      | .error s => .error s!"checkAlwaysDenies: {s}"
-      | .ok b => .ok b
+      match unsafeIO (timedSolve Solver.cvc5 (Cedar.SymCC.checkAlwaysDenies policies εnv)) with
+      | .error _ => .error "checkAlwaysDenies: IO error"
+      | .ok (.error s) => .error s!"checkAlwaysDenies: {s}"
+      | .ok (.ok b) => .ok b
   toString (Lean.toJson result)
 
 /--
@@ -367,9 +370,10 @@ opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : Except String (
     match parseComparePolicySetsReq req false with
     | .error s => .error s!"checkEquivalent: {s}"
     | .ok (srcPolicies, tgtPolicies, εnv) =>
-      match timedSolve Solver.cvc5 (Cedar.SymCC.checkEquivalent srcPolicies tgtPolicies εnv) with
-      | .error s => .error s!"checkEquivalent: {s}"
-      | .ok b => .ok b
+      match unsafeIO (timedSolve Solver.cvc5 (Cedar.SymCC.checkEquivalent srcPolicies tgtPolicies εnv)) with
+      | .error _ => .error "checkEquivalent: IO error"
+      | .ok (.error s) => .error s!"checkEquivalent: {s}"
+      | .ok (.ok b) => .ok b
   toString (Lean.toJson result)
 
 /--
@@ -385,9 +389,10 @@ opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : Except String (
     match parseComparePolicySetsReq req false with
     | .error s => .error s!"checkImplies: {s}"
     | .ok (srcPolicies, tgtPolicies, εnv) =>
-      match timedSolve Solver.cvc5 (Cedar.SymCC.checkImplies srcPolicies tgtPolicies εnv) with
-      | .error s => .error s!"checkImplies: {s}"
-      | .ok b => .ok b
+      match unsafeIO (timedSolve Solver.cvc5 (Cedar.SymCC.checkImplies srcPolicies tgtPolicies εnv)) with
+      | .error _ => .error "checkImplies: IO error"
+      | .ok (.error s) => .error s!"checkImplies: {s}"
+      | .ok (.ok b) => .ok b
   toString (Lean.toJson result)
 
 /--
@@ -403,9 +408,10 @@ opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : Except String (
     match parseComparePolicySetsReq req false with
     | .error s => .error s!"checkDisjoint: {s}"
     | .ok (srcPolicies, tgtPolicies, εnv) =>
-      match timedSolve Solver.cvc5 (Cedar.SymCC.checkDisjoint srcPolicies tgtPolicies εnv) with
-      | .error s => .error s!"checkDisjoint: {s}"
-      | .ok b => .ok b
+      match unsafeIO (timedSolve Solver.cvc5 (Cedar.SymCC.checkDisjoint srcPolicies tgtPolicies εnv)) with
+      | .error _ => .error "checkDisjoint: IO error"
+      | .ok (.error s) => .error s!"checkDisjoint: {s}"
+      | .ok (.ok b) => .ok b
   toString (Lean.toJson result)
 
 /--
@@ -442,9 +448,10 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
       let stdOut := unsafeBaseIO IO.getStdout
       let solver := Solver.streamWriter stdOut
       let vcs := ignoreOutput (verifyNeverErrors policy) εnv
-      match timedSolve solver vcs with
-      | .error s => .error s!"checkNeverErrors: {s}"
-      | .ok r => .ok r
+      match unsafeIO (timedSolve solver vcs) with
+      | .error _ => .error "checkNeverErrors: IO error"
+      | .ok (.error s) => .error s!"checkNeverErrors: {s}"
+      | .ok (.ok r) => .ok r
   toString (Lean.toJson result)
 
 /--
@@ -462,9 +469,10 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
       let stdOut := unsafeBaseIO IO.getStdout
       let solver := Solver.streamWriter stdOut
       let vcs := ignoreOutput (verifyAlwaysAllows policies) εnv
-      match timedSolve solver vcs with
-      | .error s => .error s!"checkAlwaysAllows: {s}"
-      | .ok r => .ok r
+      match unsafeIO (timedSolve solver vcs) with
+      | .error _ => .error "checkAlwaysAllows: IO error"
+      | .ok (.error s) => .error s!"checkAlwaysAllows: {s}"
+      | .ok (.ok r) => .ok r
   toString (Lean.toJson result)
 
 /--
@@ -482,9 +490,10 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
       let stdOut := unsafeBaseIO IO.getStdout
       let solver := Solver.streamWriter stdOut
       let vcs := ignoreOutput (verifyAlwaysDenies policies) εnv
-      match timedSolve solver vcs with
-      | .error s => .error s!"checkAlwaysDenies: {s}"
-      | .ok r => .ok r
+      match unsafeIO (timedSolve solver vcs) with
+      | .error _ => .error "checkAlwaysDenies: IO error"
+      | .ok (.error s) => .error s!"checkAlwaysDenies: {s}"
+      | .ok (.ok r) => .ok r
   toString (Lean.toJson result)
 
 /--
@@ -502,9 +511,10 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
       let stdOut := unsafeBaseIO IO.getStdout
       let solver := Solver.streamWriter stdOut
       let vcs := ignoreOutput (verifyEquivalent srcPolicies tgtPolicies) εnv
-      match timedSolve solver vcs with
-      | .error s => .error s!"checkEquivalent: {s}"
-      | .ok r => .ok r
+      match unsafeIO (timedSolve solver vcs) with
+      | .error _ => .error "checkEquivalent: IO error"
+      | .ok (.error s) => .error s!"checkEquivalent: {s}"
+      | .ok (.ok r) => .ok r
   toString (Lean.toJson result)
 
 /--
@@ -522,9 +532,10 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
       let stdOut := unsafeBaseIO IO.getStdout
       let solver := Solver.streamWriter stdOut
       let vcs := ignoreOutput (verifyImplies srcPolicies tgtPolicies) εnv
-      match timedSolve solver vcs with
-      | .error s => .error s!"checkImplies: {s}"
-      | .ok r => .ok r
+      match unsafeIO (timedSolve solver vcs) with
+      | .error _ => .error "checkImplies: IO error"
+      | .ok (.error s) => .error s!"checkImplies: {s}"
+      | .ok (.ok r) => .ok r
   toString (Lean.toJson result)
 
 /--
@@ -542,9 +553,10 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
       let stdOut := unsafeBaseIO IO.getStdout
       let solver := Solver.streamWriter stdOut
       let vcs := ignoreOutput (verifyDisjoint srcPolicies tgtPolicies) εnv
-      match timedSolve solver vcs with
-      | .error s => .error s!"checkDisjoint: {s}"
-      | .ok r => .ok r
+      match unsafeIO (timedSolve solver vcs) with
+      | .error _ => .error "checkDisjoint: IO error"
+      | .ok (.error s) => .error s!"checkDisjoint: {s}"
+      | .ok (.ok r) => .ok r
   toString (Lean.toJson result)
 
 /--
@@ -560,9 +572,10 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
     match parseCheckAssertsReq req with
     | .error s => .error s!"runCheckAsserts: {s}\n{repr req}"
     | .ok (asserts, εnv) =>
-      match timedSolve Solver.cvc5 (Cedar.SymCC.checkUnsat (λ _ => .ok asserts) εnv) with
-      | .error s => .error s!"runCheckAsserts: {s}"
-      | .ok r => .ok r
+      match unsafeIO (timedSolve Solver.cvc5 (Cedar.SymCC.checkUnsat (λ _ => .ok asserts) εnv)) with
+      | .error _ => .error "runCheckAsserts: IO error"
+      | .ok (.error s) => .error s!"runCheckAsserts: {s}"
+      | .ok (.ok r) => .ok r
   toString (Lean.toJson result)
 
 /--
@@ -579,9 +592,10 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
     | .ok (asserts, εnv) =>
       let stdOut := unsafeBaseIO IO.getStdout
       let solver := Solver.streamWriter stdOut
-      match timedSolve solver (ignoreOutput (λ _ => .ok asserts) εnv) with
-      | .error s => .error s!"printCheckAsserts: {s}"
-      | .ok r => .ok r
+      match unsafeIO (timedSolve solver (ignoreOutput (λ _ => .ok asserts) εnv)) with
+      | .error _ => .error "printCheckAsserts: IO error"
+      | .ok (.error s) => .error s!"printCheckAsserts: {s}"
+      | .ok (.ok r) => .ok r
   toString (Lean.toJson result)
 
 def randomTempName : IO String := do
@@ -602,31 +616,17 @@ def randomTempName : IO String := do
     match parseCheckAssertsReq req with
     | .error s => .error s!"smtLibOfCheckAsserts: {s}\n{repr req}"
     | .ok (asserts, εnv) =>
-      match unsafeIO randomTempName with
-      | .error _ => .error s!"smtLibOfCheckAsserts: error generating temp file name"
-      | .ok tempFileName =>
-        let tempFilePath : System.FilePath := tempFileName
-        let cleanup := unsafeIO (IO.FS.removeFile tempFilePath)
-        match unsafeIO (do
-          let handle ← IO.FS.Handle.mk tempFilePath IO.FS.Mode.write
-          let stream := IO.FS.Stream.ofHandle handle
-          Solver.streamWriter stream) with
-        | .error _ => 
-          let _ := cleanup
-          .error s!"smtLibOfCheckAsserts: error creating solver"
-        | .ok solver =>
-          match timedSolve (pure solver) (ignoreOutput (λ _ => .ok asserts) εnv) with
-          | .error s =>
-            let _ := cleanup
-            .error s!"smtLibOfCheckAsserts: {s}"
-          | .ok r =>
-            match unsafeIO (IO.FS.readFile tempFilePath) with
-            | .error _ =>
-              let _ := cleanup
-              .error s!"smtLibOfCheckAsserts: error reading temporary file"
-            | .ok content =>
-              let _ := cleanup
-              .ok { data := content, duration := r.duration }
+      match unsafeIO (do
+        let buffer ← IO.mkRef ⟨ByteArray.empty, 0⟩
+        let solver := Solver.bufferWriter buffer
+        let timedResult ← timedSolve solver (ignoreOutput (λ _ => .ok asserts) εnv)
+        match timedResult with
+        | .error s => pure (.error s)
+        | .ok r => do
+          let inner_buffer ← buffer.swap ⟨ByteArray.empty, 0⟩
+          pure (.ok { data := ((String.fromUTF8? inner_buffer.data).getD ""), duration := r.duration })) with
+      | .error _ => .error "smtLibOfCheckAsserts: IO error"
+      | .ok result => result
   toString (Lean.toJson result)
 
 /--
@@ -813,9 +813,10 @@ def randomTempName : IO String := do
       let buffer := unsafeBaseIO (IO.mkRef ⟨ByteArray.empty, 0⟩)
       let solver := Solver.bufferWriter buffer
       let vcs := ignoreOutput (verifyNeverErrors policy) εnv
-      match timedSolve solver vcs with
-      | .error s => .error s!"checkNeverErrors: {s}"
-      | .ok r =>
+      match unsafeIO (timedSolve solver vcs) with
+      | .error _ => .error "checkNeverErrors: IO error"
+      | .ok (.error s) => .error s!"checkNeverErrors: {s}"
+      | .ok (.ok r) =>
         match unsafeIO (buffer.swap ⟨ByteArray.empty, 0⟩) with
         | .error _ => .error s!"checkNeverErrors: error retrieving SMTLib script from buffer"
         | .ok inner_buffer => .ok { data := ((String.fromUTF8? inner_buffer.data).getD ""), duration := r.duration }
@@ -837,9 +838,10 @@ def randomTempName : IO String := do
       let buffer := unsafeBaseIO (IO.mkRef ⟨ByteArray.empty, 0⟩)
       let solver := Solver.bufferWriter buffer
       let vcs := ignoreOutput (verifyAlwaysAllows policies) εnv
-      match timedSolve solver vcs with
-      | .error s => .error s!"checkAlwaysAllows: {s}"
-      | .ok r =>
+      match unsafeIO (timedSolve solver vcs) with
+      | .error _ => .error "checkAlwaysAllows: IO error"
+      | .ok (.error s) => .error s!"checkAlwaysAllows: {s}"
+      | .ok (.ok r) =>
         match unsafeIO (buffer.swap ⟨ByteArray.empty, 0⟩) with
         | .error _ => .error s!"checkAlwaysAllows: error retrieving SMTLib script from buffer"
         | .ok inner_buffer => .ok { data := ((String.fromUTF8? inner_buffer.data).getD ""), duration := r.duration }
@@ -861,9 +863,10 @@ def randomTempName : IO String := do
       let buffer := unsafeBaseIO (IO.mkRef ⟨ByteArray.empty, 0⟩)
       let solver := Solver.bufferWriter buffer
       let vcs := ignoreOutput (verifyAlwaysDenies policies) εnv
-      match timedSolve solver vcs with
-      | .error s => .error s!"checkAlwaysDenies: {s}"
-      | .ok r =>
+      match unsafeIO (timedSolve solver vcs) with
+      | .error _ => .error "checkAlwaysDenies: IO error"
+      | .ok (.error s) => .error s!"checkAlwaysDenies: {s}"
+      | .ok (.ok r) =>
         match unsafeIO (buffer.swap ⟨ByteArray.empty, 0⟩) with
         | .error _ => .error s!"checkAlwaysDenies: error retrieving SMTLib script from buffer"
         | .ok inner_buffer => .ok { data := ((String.fromUTF8? inner_buffer.data).getD ""), duration := r.duration }
@@ -885,9 +888,10 @@ def randomTempName : IO String := do
       let buffer := unsafeBaseIO (IO.mkRef ⟨ByteArray.empty, 0⟩)
       let solver := Solver.bufferWriter buffer
       let vcs := ignoreOutput (verifyEquivalent srcPolicies tgtPolicies) εnv
-      match timedSolve solver vcs with
-      | .error s => .error s!"checkEquivalent: {s}"
-      | .ok r =>
+      match unsafeIO (timedSolve solver vcs) with
+      | .error _ => .error "checkEquivalent: IO error"
+      | .ok (.error s) => .error s!"checkEquivalent: {s}"
+      | .ok (.ok r) =>
         match unsafeIO (buffer.swap ⟨ByteArray.empty, 0⟩) with
         | .error _ => .error s!"checkEquivalent: error retrieving SMTLib script from buffer"
         | .ok inner_buffer => .ok { data := ((String.fromUTF8? inner_buffer.data).getD ""), duration := r.duration }
@@ -909,9 +913,10 @@ def randomTempName : IO String := do
       let buffer := unsafeBaseIO (IO.mkRef ⟨ByteArray.empty, 0⟩)
       let solver := Solver.bufferWriter buffer
       let vcs := ignoreOutput (verifyImplies srcPolicies tgtPolicies) εnv
-      match timedSolve solver vcs with
-      | .error s => .error s!"checkImplies: {s}"
-      | .ok r =>
+      match unsafeIO (timedSolve solver vcs) with
+      | .error _ => .error "checkImplies: IO error"
+      | .ok (.error s) => .error s!"checkImplies: {s}"
+      | .ok (.ok r) =>
         match unsafeIO (buffer.swap ⟨ByteArray.empty, 0⟩) with
         | .error _ => .error s!"checkImplies: error retrieving SMTLib script from buffer"
         | .ok inner_buffer => .ok { data := ((String.fromUTF8? inner_buffer.data).getD ""), duration := r.duration }
@@ -933,9 +938,10 @@ def randomTempName : IO String := do
       let buffer := unsafeBaseIO (IO.mkRef ⟨ByteArray.empty, 0⟩)
       let solver := Solver.bufferWriter buffer
       let vcs := ignoreOutput (verifyDisjoint srcPolicies tgtPolicies) εnv
-      match timedSolve solver vcs with
-      | .error s => .error s!"checkDisjoint: {s}"
-      | .ok r =>
+      match unsafeIO (timedSolve solver vcs) with
+      | .error _ => .error "checkDisjoint: IO error"
+      | .ok (.error s) => .error s!"checkDisjoint: {s}"
+      | .ok (.ok r) =>
         match unsafeIO (buffer.swap ⟨ByteArray.empty, 0⟩) with
         | .error _ => .error s!"checkDisjoint: error retrieving SMTLib script from buffer"
         | .ok inner_buffer => .ok { data := ((String.fromUTF8? inner_buffer.data).getD ""), duration := r.duration }
