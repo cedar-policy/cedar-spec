@@ -531,14 +531,14 @@ private def printCheckEquivalentIO (req : ByteArray) : IO String := do
 private def printCheckImpliesIO (req : ByteArray) : IO String := do
   let result : Except String (Timed Unit) ←
     match parseComparePolicySetsReq req false with
-    | .error s => .error s!"checkImplies: {s}"
+    | .error s => pure (Except.error s!"checkImplies: {s}")
     | .ok (srcPolicies, tgtPolicies, εnv) =>
       let stdOut ← IO.getStdout
       let solver ← Solver.streamWriter stdOut
       let vcs := ignoreOutput (verifyImplies srcPolicies tgtPolicies) εnv
       match (←timedSolve (pure solver) vcs) with
-      | .error s => .error s!"checkImplies: {s}"
-      | .ok r => .ok r
+      | .error s => pure (.error s!"checkImplies: {s}")
+      | .ok r => pure (.ok r)
   return toString (Lean.toJson result)
 
 /--
@@ -556,14 +556,14 @@ private def printCheckImpliesIO (req : ByteArray) : IO String := do
 private def printCheckDisjointIO (req : ByteArray) : IO String := do
   let result : Except String (Timed Unit) ←
     match parseComparePolicySetsReq req false with
-    | .error s => .error s!"checkDisjoint: {s}"
+    | .error s => pure (Except.error s!"checkDisjoint: {s}")
     | .ok (srcPolicies, tgtPolicies, εnv) =>
       let stdOut ← IO.getStdout
       let solver ← Solver.streamWriter stdOut
       let vcs := ignoreOutput (verifyDisjoint srcPolicies tgtPolicies) εnv
       match (←timedSolve (pure solver) vcs) with
-      | .error s => .error s!"checkDisjoint: {s}"
-      | .ok r => .ok r
+      | .error s => pure (.error s!"checkDisjoint: {s}")
+      | .ok r => pure (.ok r)
   return toString (Lean.toJson result)
 
 /--
@@ -598,7 +598,7 @@ private def printCheckDisjointIO (req : ByteArray) : IO String := do
   toString (Lean.toJson result)
 
 private def printCheckAssertsIO (req: ByteArray) : IO String := do
-  let result: Except String (Timed Unit) ←
+  let result : Except String (Timed Unit) ←
     match parseCheckAssertsReq req with
     | .error s => .error s!"printCheckAsserts: {s}\n{repr req}"
     | .ok (asserts, εnv) =>
@@ -622,17 +622,17 @@ private def printCheckAssertsIO (req: ByteArray) : IO String := do
     | .ok s => s
 
 private def smtLibOfCheckAssertsIO (req: ByteArray) : IO String := do
-  let result: Except String (Timed String) ←
+  let result : Except String (Timed String) ←
     match parseCheckAssertsReq req with
-    | .error s => .error s!"smtLibOfCheckAsserts: {s}\n{repr req}"
-    | .ok (asserts, εnv) =>
+    | .error s => pure (Except.error s!"smtLibOfCheckAsserts: {s}\n{repr req}")
+    | .ok (asserts, εnv) => do
       let buffer ← IO.mkRef ⟨ByteArray.empty, 0⟩
-      let solver ←Solver.bufferWriter buffer
-      match ←timedSolve (pure solver) (ignoreOutput (λ _ => .ok asserts) εnv) with
-      | .error s => .error s!"smtLibOfCheckAsserts: {s}"
+      let solver ← Solver.bufferWriter buffer
+      match ← timedSolve (pure solver) (ignoreOutput (λ _ => .ok asserts) εnv) with
+      | .error s => pure (Except.error s!"smtLibOfCheckAsserts: {s}")
       | .ok r =>
         let inner_buffer ← buffer.swap ⟨ByteArray.empty, 0⟩
-        .ok ({ data := (String.fromUTF8? inner_buffer.data).getD "", duration := r.duration } : Timed String)
+        pure (Except.ok ({ data := (String.fromUTF8? inner_buffer.data).getD "", duration := r.duration } : Timed String))
   return toString (Lean.toJson result)
 /--
   `req`: binary protobuf for a `CheckAsserts`
@@ -818,16 +818,16 @@ private def smtLibOfCheckAssertsIO (req: ByteArray) : IO String := do
 private def smtLibOfCheckNeverErrorsIO (req : ByteArray) : IO String := do
   let result : Except String (Timed String) ←
     match parseCheckPolicyReq req false with
-    | .error s => .error s!"checkNeverErrors: {s}"
+    | .error s => pure (Except.error s!"checkNeverErrors: {s}")
     | .ok (policy, εnv) =>
       let buffer ← IO.mkRef ⟨ByteArray.empty, 0⟩
       let solver ← Solver.bufferWriter buffer
       let vcs := ignoreOutput (verifyNeverErrors policy) εnv
       match ←timedSolve (pure solver) vcs with
-      | .error s => .error s!"checkNeverErrors: {s}"
+      | .error s => pure (.error s!"checkNeverErrors: {s}")
       | .ok r =>
         let inner_buffer ← buffer.swap ⟨ByteArray.empty, 0⟩
-        .ok ({ data := (String.fromUTF8? inner_buffer.data).getD "", duration := r.duration } : Timed String)
+        pure (.ok ({ data := (String.fromUTF8? inner_buffer.data).getD "", duration := r.duration } : Timed String))
   return toString (Lean.toJson result)
 
 /--
@@ -846,16 +846,16 @@ private def smtLibOfCheckNeverErrorsIO (req : ByteArray) : IO String := do
 private def smtLibOfCheckAlwaysAllowsIO (req : ByteArray) : IO String := do
   let result : Except String (Timed String) ←
     match parseCheckPoliciesReq req false with
-    | .error s => .error s!"checkAlwaysAllows: {s}"
+    | .error s => pure (Except.error s!"checkAlwaysAllows: {s}")
     | .ok (policies, εnv) =>
       let buffer ← IO.mkRef ⟨ByteArray.empty, 0⟩
       let solver ← Solver.bufferWriter buffer
       let vcs := ignoreOutput (verifyAlwaysAllows policies) εnv
       match ←timedSolve (pure solver) vcs with
-      | .error s => .error s!"checkAlwaysAllows: {s}"
+      | .error s => pure (.error s!"checkAlwaysAllows: {s}")
       | .ok r =>
         let inner_buffer ← buffer.swap ⟨ByteArray.empty, 0⟩
-        .ok ({ data := (String.fromUTF8? inner_buffer.data).getD "", duration := r.duration } : Timed String)
+        pure (.ok ({ data := (String.fromUTF8? inner_buffer.data).getD "", duration := r.duration } : Timed String))
   return toString (Lean.toJson result)
 
 /--
@@ -874,16 +874,16 @@ private def smtLibOfCheckAlwaysAllowsIO (req : ByteArray) : IO String := do
 private def smtLibOfCheckAlwaysDeniesIO (req : ByteArray) : IO String := do
   let result : Except String (Timed String) ←
     match parseCheckPoliciesReq req false with
-    | .error s => .error s!"checkAlwaysDenies: {s}"
+    | .error s => pure (Except.error s!"checkAlwaysDenies: {s}")
     | .ok (policies, εnv) =>
       let buffer ← IO.mkRef ⟨ByteArray.empty, 0⟩
       let solver ← Solver.bufferWriter buffer
       let vcs := ignoreOutput (verifyAlwaysDenies policies) εnv
       match ←timedSolve (pure solver) vcs with
-      | .error s => .error s!"checkAlwaysDenies: {s}"
+      | .error s => pure (.error s!"checkAlwaysDenies: {s}")
       | .ok r =>
         let inner_buffer ← buffer.swap ⟨ByteArray.empty, 0⟩
-        .ok ({ data := (String.fromUTF8? inner_buffer.data).getD "", duration := r.duration } : Timed String)
+        pure (.ok ({ data := (String.fromUTF8? inner_buffer.data).getD "", duration := r.duration } : Timed String))
   return toString (Lean.toJson result)
 
 /--
@@ -902,16 +902,16 @@ private def smtLibOfCheckAlwaysDeniesIO (req : ByteArray) : IO String := do
 private def smtLibOfCheckEquivalentIO (req : ByteArray) : IO String := do
   let result : Except String (Timed String) ←
     match parseComparePolicySetsReq req false with
-    | .error s => .error s!"checkEquivalent: {s}"
+    | .error s => pure (Except.error s!"checkEquivalent: {s}")
     | .ok (srcPolicies, tgtPolicies, εnv) =>
       let buffer ← IO.mkRef ⟨ByteArray.empty, 0⟩
       let solver ← Solver.bufferWriter buffer
       let vcs := ignoreOutput (verifyEquivalent srcPolicies tgtPolicies) εnv
       match ←timedSolve (pure solver) vcs with
-      | .error s => .error s!"checkEquivalent: {s}"
+      | .error s => pure (.error s!"checkEquivalent: {s}")
       | .ok r =>
         let inner_buffer ← buffer.swap ⟨ByteArray.empty, 0⟩
-        .ok ({ data := (String.fromUTF8? inner_buffer.data).getD "", duration := r.duration } : Timed String)
+        pure (.ok ({ data := (String.fromUTF8? inner_buffer.data).getD "", duration := r.duration } : Timed String))
   return toString (Lean.toJson result)
 
 /--
@@ -930,16 +930,16 @@ private def smtLibOfCheckEquivalentIO (req : ByteArray) : IO String := do
 private def smtLibOfCheckImpliesIO (req : ByteArray) : IO String := do
   let result : Except String (Timed String) ←
     match parseComparePolicySetsReq req false with
-    | .error s => .error s!"checkImplies: {s}"
+    | .error s => pure (Except.error s!"checkImplies: {s}")
     | .ok (srcPolicies, tgtPolicies, εnv) =>
       let buffer ← IO.mkRef ⟨ByteArray.empty, 0⟩
       let solver ← Solver.bufferWriter buffer
       let vcs := ignoreOutput (verifyImplies srcPolicies tgtPolicies) εnv
       match ←timedSolve (pure solver) vcs with
-      | .error s => .error s!"checkImplies: {s}"
+      | .error s => pure (.error s!"checkImplies: {s}")
       | .ok r =>
         let inner_buffer ← buffer.swap ⟨ByteArray.empty, 0⟩
-        .ok ({ data := (String.fromUTF8? inner_buffer.data).getD "", duration := r.duration } : Timed String)
+        pure (.ok ({ data := (String.fromUTF8? inner_buffer.data).getD "", duration := r.duration } : Timed String))
   return toString (Lean.toJson result)
 
 /--
@@ -958,16 +958,16 @@ private def smtLibOfCheckImpliesIO (req : ByteArray) : IO String := do
 private def smtLibOfCheckDisjointIO (req : ByteArray) : IO String := do
   let result : Except String (Timed String) ←
     match parseComparePolicySetsReq req false with
-    | .error s => .error s!"checkDisjoint: {s}"
+    | .error s => pure (Except.error s!"checkDisjoint: {s}")
     | .ok (srcPolicies, tgtPolicies, εnv) =>
       let buffer ← IO.mkRef ⟨ByteArray.empty, 0⟩
       let solver ← Solver.bufferWriter buffer
       let vcs := ignoreOutput (verifyDisjoint srcPolicies tgtPolicies) εnv
       match ←timedSolve (pure solver) vcs with
-      | .error s => .error s!"checkDisjoint: {s}"
+      | .error s => pure (.error s!"checkDisjoint: {s}")
       | .ok r =>
         let inner_buffer ← buffer.swap ⟨ByteArray.empty, 0⟩
-        .ok ({ data := (String.fromUTF8? inner_buffer.data).getD "", duration := r.duration } : Timed String)
+        pure (.ok ({ data := (String.fromUTF8? inner_buffer.data).getD "", duration := r.duration } : Timed String))
   return toString (Lean.toJson result)
 
 /--
