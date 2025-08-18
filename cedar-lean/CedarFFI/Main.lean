@@ -34,6 +34,8 @@ open Cedar.SymCC
 open Cedar.Validation
 open Proto
 
+abbrev FfiM α := ExceptT String IO α
+
 structure Timed (α : Type) where
   data : α
   /-- Duration in nanoseconds -/
@@ -58,6 +60,12 @@ def runAndTimeIO (f : IO α) : IO (Timed α) := do
     duration := stop - start
   }
 
+unsafe def runFfiM {α : Type} [Lean.ToJson α] (m : FfiM α) : String :=
+  match unsafeIO m with
+  | .error s => toString (Lean.toJson ((.error s!"IO error: {s}") : Except String α))
+  | .ok (.error s) => toString (Lean.toJson ((.error s) : Except String α))
+  | .ok (.ok r) => toString (Lean.toJson (.ok r : Except String α))
+
 --------------------------------- Cedar Evaluation / Validation ---------------------------------
 
 /--
@@ -66,14 +74,9 @@ def runAndTimeIO (f : IO α) : IO (Timed α) := do
   returns a string containing JSON
 -/
 @[export isAuthorized] unsafe def isAuthorizedFFI (req: ByteArray) : String :=
-    let result: Except String (Timed Response) :=
-      match (@Message.interpret? AuthorizationRequest) req with
-      | .error e =>
-        .error s!"isAuthorizedDRT: failed to parse input: {e}"
-      | .ok p =>
-        let result := runAndTime (λ () => isAuthorized p.request p.entities p.policies)
-        .ok (unsafeBaseIO result)
-    toString (Lean.toJson result)
+  runFfiM do
+    let p ← (@Message.interpret? AuthorizationRequest) req |>.mapError (s!"failed to parse input: {·}")
+    runAndTime (λ () => isAuthorized p.request p.entities p.policies)
 
 /--
   `req`: binary protobuf for a `ValidationRequest`
@@ -81,14 +84,9 @@ def runAndTimeIO (f : IO α) : IO (Timed α) := do
   returns a string containing JSON
 -/
 @[export validate] unsafe def validateReqFFI (req : ByteArray) : String :=
-    let result: Except String (Timed ValidationResult) :=
-      match (@Message.interpret? ValidationRequest) req with
-      | .error e =>
-        .error s!"validateDRT: failed to parse input: {e}"
-      | .ok v =>
-        let result := runAndTime (λ () => validate v.policies v.schema)
-        .ok (unsafeBaseIO result)
-    toString (Lean.toJson result)
+  runFfiM do
+    let v ← (@Message.interpret? ValidationRequest) req |>.mapError (s!"failed to parse input: {·}")
+    runAndTime (λ () => validate v.policies v.schema)
 
 /--
   `req`: binary protobuf for a `LevelValidationRequest`
@@ -96,14 +94,9 @@ def runAndTimeIO (f : IO α) : IO (Timed α) := do
   returns a string containing JSON
 -/
 @[export levelValidate] unsafe def levelValidateFFI (req : ByteArray) : String :=
-    let result: Except String (Timed ValidationResult) :=
-      match (@Message.interpret? LevelValidationRequest) req with
-      | .error e =>
-        .error s!"levelValidateDRT: failed to parse input: {e}"
-      | .ok v =>
-        let result := runAndTime (λ () => validateWithLevel v.policies v.schema v.level.level)
-        .ok (unsafeBaseIO result)
-    toString (Lean.toJson result)
+  runFfiM do
+    let v ← (@Message.interpret? LevelValidationRequest) req |>.mapError (s!"failed to parse input: {·}")
+    runAndTime (λ () => validateWithLevel v.policies v.schema v.level.level)
 
 /--
   `req`: binary protobuf for an `EvaluationRequest`
@@ -112,26 +105,14 @@ def runAndTimeIO (f : IO α) : IO (Timed α) := do
   returns a string encoding either .error err_msg if an error occurs or .ok () upon success
 -/
 @[export printEvaluation] unsafe def printEvaluationFFI (req: ByteArray) : String :=
-  let result : Except String (Timed Unit) :=
-    match (@Message.interpret? EvaluationRequest) req with
-    | .error e => .error s!"evaluate: failed to parse input: {e}"
-    | .ok v =>
-      let result : BaseIO (Timed (Except String Unit)) := runAndTime (λ () =>
-        match evaluate v.expr v.request v.entities with
-        | .error e =>
-          match unsafeIO (println! s!"evaluate: error during evaluation: {reprStr e}") with
-          | .error _ => .error s!"evaluate: error occurred while printing evaluation error"
-          | .ok _ => .ok ()
-        | .ok v =>
-          match unsafeIO (println! "{reprStr v}") with
-          | .error _ => .error s!"evaluate: error printing value"
-          | .ok _ => .ok ()
-      )
-      let result := unsafeBaseIO result
-      match result.data with
-      | .ok _ => .ok { data := (), duration := result.duration }
-      | .error s => .error s
-  toString (Lean.toJson result)
+  runFfiM do
+    let v ← (@Message.interpret? EvaluationRequest) req |>.mapError (s!"failed to parse input: {·}")
+    runAndTimeIO do
+      match evaluate v.expr v.request v.entities with
+      | .error e =>
+        println! s!"evaluate: error during evaluation: {reprStr e}"
+      | .ok v =>
+        println! "{reprStr v}"
 
 /--
   `req`: binary protobuf for an `EvaluationRequest`
@@ -141,18 +122,14 @@ def runAndTimeIO (f : IO α) : IO (Timed α) := do
   indicates the evaluation is expected to produce an error)
 -/
 @[export checkEvaluate] unsafe def checkEvaluateFFI (req : ByteArray) : String :=
-  let result : Except String (Timed Bool) := do
-    match (@Message.interpret? EvaluationRequest) req with
-    | .error e => .error s!"evaluate: failed to parse input: {e}"
-    | .ok v =>
-      let result := runAndTime (λ () =>
-        match (evaluate v.expr v.request v.entities), v.expected with
-        | .error _, .none => true
-        | .ok v₁, .some v₂ => (v₁ == v₂)
-        | _, _ => false
-      )
-      .ok (unsafeBaseIO result)
-  toString (Lean.toJson result)
+  runFfiM do
+    let v ← (@Message.interpret? EvaluationRequest) req |>.mapError (s!"failed to parse input: {·}")
+    runAndTime (λ () =>
+      match (evaluate v.expr v.request v.entities), v.expected with
+      | .error _, .none => true
+      | .ok v₁, .some v₂ => (v₁ == v₂)
+      | _, _ => false
+    )
 
 /--
   `req`: binary protobuf for an `EntityValidationRequest`
@@ -160,16 +137,11 @@ def runAndTimeIO (f : IO α) : IO (Timed α) := do
   returns a string containing JSON
 -/
 @[export validateEntities] unsafe def validateEntitiesFFI (req : ByteArray) : String :=
-  let result : Except String (Timed EntityValidationResult) :=
-    match (@Message.interpret? EntityValidationRequest) req with
-    | .error e => .error s!"validateEntitiesDRT: failed to parse input: {e}"
-    | .ok v => do
-        let actionEntities := (v.schema.acts.mapOnValues actionSchemaEntryToEntityData)
-        let entities := Cedar.Data.Map.make (v.entities.kvs ++ actionEntities.kvs)
-        let result := runAndTime (λ () => Cedar.Validation.validateEntities v.schema entities )
-        .ok (unsafeBaseIO result)
-  toString (Lean.toJson result)
-
+  runFfiM do
+    let v ← (@Message.interpret? EntityValidationRequest) req |>.mapError (s!"failed to parse input: {·}")
+    let actionEntities := (v.schema.acts.mapOnValues actionSchemaEntryToEntityData)
+    let entities := Cedar.Data.Map.make (v.entities.kvs ++ actionEntities.kvs)
+    runAndTime (λ () => validateEntities v.schema entities)
 
 /--
   `req`: binary protobuf for a `RequestValidationRequest`
@@ -177,13 +149,9 @@ def runAndTimeIO (f : IO α) : IO (Timed α) := do
   returns a string containing JSON
 -/
 @[export validateRequest] unsafe def validateRequestFFI (req : ByteArray) : String :=
-  let result : Except String (Timed RequestValidationResult) :=
-    match (@Message.interpret? RequestValidationRequest) req with
-    | .error e => .error s!"validateRequestDRT: failed to parse input: {e}"
-    | .ok v => do
-        let result := runAndTime (λ () => Cedar.Validation.validateRequest v.schema v.request )
-        .ok (unsafeBaseIO result)
-  toString (Lean.toJson result)
+  runFfiM do
+    let v ← (@Message.interpret? RequestValidationRequest) req |>.mapError (s!"failed to parse input: {·}")
+    runAndTime (λ () => validateRequest v.schema v.request)
 
 ------------------------------------ Cedar Symbolic Compiler ------------------------------------
 
@@ -197,22 +165,19 @@ def runAndTimeIO (f : IO α) : IO (Timed α) := do
   2.) The requestEnv of `req` is not consistent with the schema of `req`
   3.) The policy of `req` is not well-typed for the requestEnv of `req`
 -/
-def parseCheckPolicyReq (req : ByteArray) (return_original: Bool) : Except String (Cedar.Spec.Policy × SymEnv) :=
-  match (@Proto.Message.interpret? CheckPolicyRequest) req with
-  | .error e => .error s!"failed to parse input: {e}"
-  | .ok req =>
-    let policy := req.policy
-    let schema := req.schema
-    let request := req.request
-    match schema.environment? request.principal request.resource request.action with
+def parseCheckPolicyReq (req : ByteArray) (return_original: Bool) : Except String (Cedar.Spec.Policy × SymEnv) := do
+  let req ← (@Message.interpret? CheckPolicyRequest) req |>.mapError (s!"failed to parse input: {·}")
+  let policy := req.policy
+  let schema := req.schema
+  let request := req.request
+  let env ← match schema.environment? request.principal request.resource request.action with
     | none => .error s!"failed to get environment from requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource})"
-    | some env => do
-      match env.validateWellFormed with
-      | .error e => .error s!"failed to validate environment (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource}): {e}"
-      | .ok _ => .ok ()
-      match wellTypedPolicy policy env with
-      | none => .error s!"failed to validate policy for requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource})"
-      | some well_typed_policy => .ok (if return_original then policy else well_typed_policy, SymEnv.ofTypeEnv env)
+    | some env => .ok env
+  let _ ← env.validateWellFormed |>.mapError (s!"failed to validate environment (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource}): {·}")
+  let well_typed_policy ← match wellTypedPolicy policy env with
+    | none => .error s!"failed to validate policy for requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource})"
+    | some policy => .ok policy
+  return (if return_original then policy else well_typed_policy, SymEnv.ofTypeEnv env)
 
 /--
   `req`: binary protobuf for an `CheckPolicySetRequest`
@@ -224,19 +189,18 @@ def parseCheckPolicyReq (req : ByteArray) (return_original: Bool) : Except Strin
   2.) The requestEnv of `req` is not consistent with the schema of `req`
   3.) Any policy of the policySet of `req` is not well-typed for the requestEnv of `req`
 -/
-def parseCheckPoliciesReq (req : ByteArray) (return_original: Bool) : Except String (Policies × SymEnv) :=
-  match (@Proto.Message.interpret? CheckPolicySetRequest) req with
-  | .error e => .error s!"failed to parse input: {e}"
-  | .ok req =>
-    let policySet := req.policySet
-    let schema := req.schema
-    let request := req.request
-    match schema.environment? request.principal request.resource request.action with
+def parseCheckPoliciesReq (req : ByteArray) (return_original: Bool) : Except String (Policies × SymEnv) := do
+  let req ← (@Message.interpret? CheckPolicySetRequest) req |>.mapError (s!"failed to parse input: {·}")
+  let policySet := req.policySet
+  let schema := req.schema
+  let request := req.request
+  let env ← match schema.environment? request.principal request.resource request.action with
     | none => .error s!"failed to get environment from requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource})"
-    | some env =>
-      match wellTypedPolicies policySet env with
-      | none => .error s!"failed to validate policy for requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource})"
-      | some well_typed_policies => .ok (if return_original then policySet else well_typed_policies, SymEnv.ofTypeEnv env)
+    | some env => .ok env
+  let well_typed_policies ← match wellTypedPolicies policySet env with
+    | none => .error s!"failed to validate policy for requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource})"
+    | some policies => .ok policies
+  return (if return_original then policySet else well_typed_policies, SymEnv.ofTypeEnv env)
 
 /--
   `req`: binary protobuf for an `CheckPolicySetRequest`
@@ -248,54 +212,45 @@ def parseCheckPoliciesReq (req : ByteArray) (return_original: Bool) : Except Str
   2.) The requestEnv of `req` is not consistent with the schema of `req`
   3.) Any policy of the source or target PolicySets of `req` is not well-typed for the requestEnv of `req`
 -/
-def parseComparePolicySetsReq (req : ByteArray) (return_original: Bool) : Except String (Policies × Policies × SymEnv) :=
-  match (@Proto.Message.interpret? ComparePolicySetsRequest) req with
-  | .error e => .error s!"failed to parse input: {e}"
-  | .ok req =>
-    let srcPolicySet := req.srcPolicySet
-    let tgtPolicySet := req.tgtPolicySet
-    let schema := req.schema
-    let request := req.request
-    match schema.environment? request.principal request.resource request.action with
+def parseComparePolicySetsReq (req : ByteArray) (return_original: Bool) : Except String (Policies × Policies × SymEnv) := do
+  let req ← (@Message.interpret? ComparePolicySetsRequest) req |>.mapError (s!"failed to parse input: {·}")
+  let srcPolicySet := req.srcPolicySet
+  let tgtPolicySet := req.tgtPolicySet
+  let schema := req.schema
+  let request := req.request
+  let env ← match schema.environment? request.principal request.resource request.action with
     | none => .error s!"failed to get environment from requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource})"
-    | some env =>
-      match wellTypedPolicies srcPolicySet env, wellTypedPolicies tgtPolicySet env with
-      | none, _
-      | _, none => .error s!"failed to validate policy for requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource})"
-      | some well_typed_src_policies, some well_typed_tgt_policies => .ok (if return_original then (srcPolicySet, tgtPolicySet, SymEnv.ofTypeEnv env) else (well_typed_src_policies, well_typed_tgt_policies, SymEnv.ofTypeEnv env))
+    | some env => .ok env
+  let (well_typed_src_policies, well_typed_tgt_policies) ← match wellTypedPolicies srcPolicySet env, wellTypedPolicies tgtPolicySet env with
+    | none, _ | _, none => .error s!"failed to validate policy for requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource})"
+    | some src, some tgt => .ok (src, tgt)
+  return if return_original then (srcPolicySet, tgtPolicySet, SymEnv.ofTypeEnv env) else (well_typed_src_policies, well_typed_tgt_policies, SymEnv.ofTypeEnv env)
 
 
-def parseCheckAssertsReq (proto : ByteArray) : Except String (Cedar.SymCC.Asserts × SymEnv) :=
-  match (@Proto.Message.interpret? CheckAssertsRequest) proto with
-  | .error e => .error s!"failed to parse input: {e}"
-  | .ok req =>
-    let asserts := req.asserts
-    let schema := req.schema
-    let request := req.request
-    match schema.environment? request.principal request.resource request.action with
+def parseCheckAssertsReq (proto : ByteArray) : Except String (Cedar.SymCC.Asserts × SymEnv) := do
+  let req ← (@Message.interpret? CheckAssertsRequest) proto |>.mapError (s!"failed to parse input: {·}")
+  let asserts := req.asserts
+  let schema := req.schema
+  let request := req.request
+  let env ← match schema.environment? request.principal request.resource request.action with
     | none => .error s!"failed to get environment from requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource})"
-    | some env =>
-      .ok (asserts, SymEnv.ofTypeEnv env)
+    | some env => .ok env
+  return (asserts, SymEnv.ofTypeEnv env)
 
 /--
   Run `solver` on `vcs` without exposing the IO monad to the calling code
 -/
-private unsafe def unsafeSolve {α} (solver : IO Solver) (vcs : SolverM α) : Except String α := do
-    match unsafeIO solver with
-    | .error _ => .error "error creating solver"
-    | .ok solver =>
-      match unsafeIO (vcs |>.run solver) with
-      | .error _ => .error "error encoding verification conditions or running solver"
-      | .ok b => .ok b
+private unsafe def safeSolve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except String α) := do vcs |>.run (←solver)
 
-@[implemented_by unsafeSolve]
-opaque solve {α} (solver : IO Solver) (vcs : SolverM α) : Except String α
 
-private def safeTimedSolve {α} (solver: IO Solver) (vcs : SolverM α) : IO (Except String (Timed α)) := do
-  let result ← runAndTime (λ () => solve solver vcs)
-  match result.data with
-  | .ok res => pure (.ok { data := res, duration := result.duration })
-  | .error s => pure (.error s)
+@[implemented_by safeSolve]
+opaque solve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except String α)
+
+private unsafe def safeTimedSolve {α} (solver: IO Solver) (vcs : SolverM α) : IO (Except String (Timed α)) := do
+  let result ← runAndTimeIO (solve solver vcs)
+  return match result.data with
+  | .ok res => .ok ( { data := res, duration := result.duration })
+  | .error s => .error s
 
 @[implemented_by safeTimedSolve]
 opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except String (Timed α))
@@ -309,15 +264,9 @@ opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except Stri
   3.) .ok { data := true, duration := <encode+solve_time> } if the solver could prove `req` does not hold
 -/
 @[export runCheckNeverErrors] unsafe def runCheckNeverErrors (req : ByteArray) : String :=
-  let result : Except String (Timed Bool) :=
-    match parseCheckPolicyReq req false with
-    | .error s => .error s!"checkNeverErrors: {s}"
-    | .ok (policy, εnv) =>
-      match unsafeIO (timedSolve Solver.cvc5 (Cedar.SymCC.checkNeverErrors policy εnv)) with
-      | .error _ => .error "checkNeverErrors: IO error"
-      | .ok (.error s) => .error s!"checkNeverErrors: {s}"
-      | .ok (.ok b) => .ok b
-  toString (Lean.toJson result)
+  runFfiM do
+    let (policy, εnv) ← parseCheckPolicyReq req false
+    timedSolve Solver.cvc5 (checkNeverErrors policy εnv)
 
 /--
   `req`: binary protobuf for an `CheckPolicySetRequest`
@@ -328,15 +277,9 @@ opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except Stri
   3.) .ok { data := true, duration := <encode+solve_time> } if the solver could prove `req` does not hold
 -/
 @[export runCheckAlwaysAllows] unsafe def runCheckAlwaysAllows (req : ByteArray) : String :=
-  let result : Except String (Timed Bool) :=
-    match parseCheckPoliciesReq req false with
-    | .error s => .error s!"checkAlwaysAllows: {s}"
-    | .ok (policies, εnv) =>
-      match unsafeIO (timedSolve Solver.cvc5 (Cedar.SymCC.checkAlwaysAllows policies εnv)) with
-      | .error _ => .error "checkAlwaysAllows: IO error"
-      | .ok (.error s) => .error s!"checkAlwaysAllows: {s}"
-      | .ok (.ok b) => .ok b
-  toString (Lean.toJson result)
+  runFfiM do
+    let (policies, εnv) ← parseCheckPoliciesReq req false
+    timedSolve Solver.cvc5 (checkAlwaysAllows policies εnv)
 
 /--
   `req`: binary protobuf for an `CheckPolicySetRequest`
@@ -347,15 +290,9 @@ opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except Stri
   3.) .ok { data := true, duration := <encode+solve_time> } if the solver could prove `req` does not hold
 -/
 @[export runCheckAlwaysDenies] unsafe def runCheckAlwaysDenies (req : ByteArray) : String :=
-  let result : Except String (Timed Bool) :=
-    match parseCheckPoliciesReq req false with
-    | .error s => .error s!"checkAlwaysDenies: {s}"
-    | .ok (policies, εnv) =>
-      match unsafeIO (timedSolve Solver.cvc5 (Cedar.SymCC.checkAlwaysDenies policies εnv)) with
-      | .error _ => .error "checkAlwaysDenies: IO error"
-      | .ok (.error s) => .error s!"checkAlwaysDenies: {s}"
-      | .ok (.ok b) => .ok b
-  toString (Lean.toJson result)
+  runFfiM do
+    let (policies, εnv) ← parseCheckPoliciesReq req false
+    timedSolve Solver.cvc5 (checkAlwaysDenies policies εnv)
 
 /--
   `req`: binary protobuf for an `ComparePolicySetsRequest`
@@ -366,15 +303,9 @@ opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except Stri
   3.) .ok { data := true, duration := <encode+solve_time> } if the solver could prove `req` does not hold
 -/
 @[export runCheckEquivalent] unsafe def runCheckEquivalent (req : ByteArray) : String :=
-  let result : Except String (Timed Bool) :=
-    match parseComparePolicySetsReq req false with
-    | .error s => .error s!"checkEquivalent: {s}"
-    | .ok (srcPolicies, tgtPolicies, εnv) =>
-      match unsafeIO (timedSolve Solver.cvc5 (Cedar.SymCC.checkEquivalent srcPolicies tgtPolicies εnv)) with
-      | .error _ => .error "checkEquivalent: IO error"
-      | .ok (.error s) => .error s!"checkEquivalent: {s}"
-      | .ok (.ok b) => .ok b
-  toString (Lean.toJson result)
+  runFfiM do
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req false
+    timedSolve Solver.cvc5 (checkEquivalent srcPolicies tgtPolicies εnv)
 
 /--
   `req`: binary protobuf for an `ComparePolicySetsRequest`
@@ -385,15 +316,9 @@ opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except Stri
   3.) .ok { data := true, duration := <encode+solve_time> } if the solver could prove `req` does not hold
 -/
 @[export runCheckImplies] unsafe def runCheckImplies (req : ByteArray) : String :=
-  let result : Except String (Timed Bool) :=
-    match parseComparePolicySetsReq req false with
-    | .error s => .error s!"checkImplies: {s}"
-    | .ok (srcPolicies, tgtPolicies, εnv) =>
-      match unsafeIO (timedSolve Solver.cvc5 (Cedar.SymCC.checkImplies srcPolicies tgtPolicies εnv)) with
-      | .error _ => .error "checkImplies: IO error"
-      | .ok (.error s) => .error s!"checkImplies: {s}"
-      | .ok (.ok b) => .ok b
-  toString (Lean.toJson result)
+  runFfiM do
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req false
+    timedSolve Solver.cvc5 (checkImplies srcPolicies tgtPolicies εnv)
 
 /--
   `req`: binary protobuf for an `ComparePolicySetsRequest`
@@ -404,15 +329,9 @@ opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except Stri
   3.) .ok { data := true, duration := <encode+solve_time> } if the solver could prove `req` does not hold
 -/
 @[export runCheckDisjoint] unsafe def runCheckDisjoint (req : ByteArray) : String :=
-  let result : Except String (Timed Bool) :=
-    match parseComparePolicySetsReq req false with
-    | .error s => .error s!"checkDisjoint: {s}"
-    | .ok (srcPolicies, tgtPolicies, εnv) =>
-      match unsafeIO (timedSolve Solver.cvc5 (Cedar.SymCC.checkDisjoint srcPolicies tgtPolicies εnv)) with
-      | .error _ => .error "checkDisjoint: IO error"
-      | .ok (.error s) => .error s!"checkDisjoint: {s}"
-      | .ok (.ok b) => .ok b
-  toString (Lean.toJson result)
+  runFfiM do
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req false
+    timedSolve Solver.cvc5 (checkDisjoint srcPolicies tgtPolicies εnv)
 
 /--
   Auxillary function that encodes and runs the solver on the generated VCs. Useful for
@@ -441,18 +360,12 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
   2.) .ok {data := (), duration := <encode+print_time>} if the vcs were successfully printed to stdout in SMTLib format
 -/
 @[export printCheckNeverErrors] unsafe def printCheckNeverErrors (req : ByteArray) : String :=
-  let result : Except String (Timed Unit) :=
-    match parseCheckPolicyReq req false with
-    | .error s => .error s!"checkNeverErrors: {s}"
-    | .ok (policy, εnv) =>
-      let stdOut := unsafeBaseIO IO.getStdout
-      let solver := Solver.streamWriter stdOut
-      let vcs := ignoreOutput (verifyNeverErrors policy) εnv
-      match unsafeIO (timedSolve solver vcs) with
-      | .error _ => .error "checkNeverErrors: IO error"
-      | .ok (.error s) => .error s!"checkNeverErrors: {s}"
-      | .ok (.ok r) => .ok r
-  toString (Lean.toJson result)
+  runFfiM do
+    let (policy, εnv) ← parseCheckPolicyReq req false
+    let stdOut ← IO.getStdout
+    let solver ← Solver.streamWriter stdOut
+    let vcs := ignoreOutput (verifyNeverErrors policy) εnv
+    timedSolve (pure solver) vcs
 
 /--
   `req`: binary protobuf for an `CheckPolicySetRequest`
@@ -462,18 +375,12 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
   2.) .ok {data := (), duration := <encode+print_time>} if the vcs were successfully printed to stdout in SMTLib format
 -/
 @[export printCheckAlwaysAllows] unsafe def printCheckAlwaysAllows (req : ByteArray) : String :=
-  let result : Except String (Timed Unit) :=
-    match parseCheckPoliciesReq req false with
-    | .error s => .error s!"checkAlwaysAllows: {s}"
-    | .ok (policies, εnv) =>
-      let stdOut := unsafeBaseIO IO.getStdout
-      let solver := Solver.streamWriter stdOut
-      let vcs := ignoreOutput (verifyAlwaysAllows policies) εnv
-      match unsafeIO (timedSolve solver vcs) with
-      | .error _ => .error "checkAlwaysAllows: IO error"
-      | .ok (.error s) => .error s!"checkAlwaysAllows: {s}"
-      | .ok (.ok r) => .ok r
-  toString (Lean.toJson result)
+  runFfiM do
+    let (policies, εnv) ← parseCheckPoliciesReq req false
+    let stdOut ← IO.getStdout
+    let solver ← Solver.streamWriter stdOut
+    let vcs := ignoreOutput (verifyAlwaysAllows policies) εnv
+    timedSolve (pure solver) vcs
 
 /--
   `req`: binary protobuf for an `CheckPolicySetRequest`
@@ -483,18 +390,12 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
   2.) .ok {data := (), duration := <encode+print_time>} if the vcs were successfully printed to stdout in SMTLib format
 -/
 @[export printCheckAlwaysDenies] unsafe def printCheckAlwaysDenies (req : ByteArray) : String :=
-  let result : Except String (Timed Unit) :=
-    match parseCheckPoliciesReq req false with
-    | .error s => .error s!"checkAlwaysDenies: {s}"
-    | .ok (policies, εnv) =>
-      let stdOut := unsafeBaseIO IO.getStdout
-      let solver := Solver.streamWriter stdOut
-      let vcs := ignoreOutput (verifyAlwaysDenies policies) εnv
-      match unsafeIO (timedSolve solver vcs) with
-      | .error _ => .error "checkAlwaysDenies: IO error"
-      | .ok (.error s) => .error s!"checkAlwaysDenies: {s}"
-      | .ok (.ok r) => .ok r
-  toString (Lean.toJson result)
+  runFfiM do
+    let (policies, εnv) ← parseCheckPoliciesReq req false
+    let stdOut ← IO.getStdout
+    let solver ← Solver.streamWriter stdOut
+    let vcs := ignoreOutput (verifyAlwaysDenies policies) εnv
+    timedSolve (pure solver) vcs
 
 /--
   `req`: binary protobuf for an `CheckPolicySetRequest`
@@ -504,18 +405,12 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
   2.) .ok {data := (), duration := <encode+print_time>} if the vcs were successfully printed to stdout in SMTLib format
 -/
 @[export printCheckEquivalent] unsafe def printCheckEquivalent (req : ByteArray) : String :=
-  let result : Except String (Timed Unit) :=
-    match parseComparePolicySetsReq req false with
-    | .error s => .error s!"checkEquivalent: {s}"
-    | .ok (srcPolicies, tgtPolicies, εnv) =>
-      let stdOut := unsafeBaseIO IO.getStdout
-      let solver := Solver.streamWriter stdOut
-      let vcs := ignoreOutput (verifyEquivalent srcPolicies tgtPolicies) εnv
-      match unsafeIO (timedSolve solver vcs) with
-      | .error _ => .error "checkEquivalent: IO error"
-      | .ok (.error s) => .error s!"checkEquivalent: {s}"
-      | .ok (.ok r) => .ok r
-  toString (Lean.toJson result)
+  runFfiM do
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req false
+    let stdOut ← IO.getStdout
+    let solver ← Solver.streamWriter stdOut
+    let vcs := ignoreOutput (verifyEquivalent srcPolicies tgtPolicies) εnv
+    timedSolve (pure solver) vcs
 
 /--
   `req`: binary protobuf for an `CheckPolicySetRequest`
@@ -525,18 +420,12 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
   2.) .ok {data := (), duration := <encode+print_time>} if the vcs were successfully printed to stdout in SMTLib format
 -/
 @[export printCheckImplies] unsafe def printCheckImplies (req : ByteArray) : String :=
-  let result : Except String (Timed Unit) :=
-    match parseComparePolicySetsReq req false with
-    | .error s => .error s!"checkImplies: {s}"
-    | .ok (srcPolicies, tgtPolicies, εnv) =>
-      let stdOut := unsafeBaseIO IO.getStdout
-      let solver := Solver.streamWriter stdOut
-      let vcs := ignoreOutput (verifyImplies srcPolicies tgtPolicies) εnv
-      match unsafeIO (timedSolve solver vcs) with
-      | .error _ => .error "checkImplies: IO error"
-      | .ok (.error s) => .error s!"checkImplies: {s}"
-      | .ok (.ok r) => .ok r
-  toString (Lean.toJson result)
+  runFfiM do
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req false
+    let stdOut ← IO.getStdout
+    let solver ← Solver.streamWriter stdOut
+    let vcs := ignoreOutput (verifyImplies srcPolicies tgtPolicies) εnv
+    timedSolve (pure solver) vcs
 
 /--
   `req`: binary protobuf for an `CheckPolicySetRequest`
@@ -546,18 +435,12 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
   2.) .ok {data := (), duration := <encode+print_time>} if the vcs were successfully printed to stdout in SMTLib format
 -/
 @[export printCheckDisjoint] unsafe def printCheckDisjoint (req : ByteArray) : String :=
-  let result : Except String (Timed Unit) :=
-    match parseComparePolicySetsReq req false with
-    | .error s => .error s!"checkDisjoint: {s}"
-    | .ok (srcPolicies, tgtPolicies, εnv) =>
-      let stdOut := unsafeBaseIO IO.getStdout
-      let solver := Solver.streamWriter stdOut
-      let vcs := ignoreOutput (verifyDisjoint srcPolicies tgtPolicies) εnv
-      match unsafeIO (timedSolve solver vcs) with
-      | .error _ => .error "checkDisjoint: IO error"
-      | .ok (.error s) => .error s!"checkDisjoint: {s}"
-      | .ok (.ok r) => .ok r
-  toString (Lean.toJson result)
+  runFfiM do
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req false
+    let stdOut ← IO.getStdout
+    let solver ← Solver.streamWriter stdOut
+    let vcs := ignoreOutput (verifyDisjoint srcPolicies tgtPolicies) εnv
+    timedSolve (pure solver) vcs
 
 /--
   `req`: binary protobuf for a `CheckAsserts`
@@ -568,15 +451,9 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
   3.) .ok { data := true, duration := <solve_time> } if the solver could prove `asserts` do not hold
 -/
 @[export runCheckAsserts] unsafe def runCheckAsserts (req: ByteArray) : String :=
-  let result: Except String (Timed Bool) :=
-    match parseCheckAssertsReq req with
-    | .error s => .error s!"runCheckAsserts: {s}\n{repr req}"
-    | .ok (asserts, εnv) =>
-      match unsafeIO (timedSolve Solver.cvc5 (Cedar.SymCC.checkUnsat (λ _ => .ok asserts) εnv)) with
-      | .error _ => .error "runCheckAsserts: IO error"
-      | .ok (.error s) => .error s!"runCheckAsserts: {s}"
-      | .ok (.ok r) => .ok r
-  toString (Lean.toJson result)
+  runFfiM do
+    let (asserts, εnv) ← parseCheckAssertsReq req
+    timedSolve Solver.cvc5 (checkUnsat (λ _ => .ok asserts) εnv)
 
 /--
   `req`: binary protobuf for a `CheckAsserts`
@@ -586,23 +463,12 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
   2.) .ok {data := (), duration := <encode+print_time>} if the vcs were successfully printed to stdout in SMTLib format
 -/
 @[export printCheckAsserts] unsafe def printCheckAsserts (req: ByteArray) : String :=
-  let result: Except String (Timed Unit) :=
-    match parseCheckAssertsReq req with
-    | .error s => .error s!"printCheckAsserts: {s}\n{repr req}"
-    | .ok (asserts, εnv) =>
-      let stdOut := unsafeBaseIO IO.getStdout
-      let solver := Solver.streamWriter stdOut
-      match unsafeIO (timedSolve solver (ignoreOutput (λ _ => .ok asserts) εnv)) with
-      | .error _ => .error "printCheckAsserts: IO error"
-      | .ok (.error s) => .error s!"printCheckAsserts: {s}"
-      | .ok (.ok r) => .ok r
-  toString (Lean.toJson result)
+  runFfiM do
+    let (asserts, εnv) ← parseCheckAssertsReq req
+    let stdOut ← IO.getStdout
+    let solver ← Solver.streamWriter stdOut
+    timedSolve (pure solver) (ignoreOutput (λ _ => .ok asserts) εnv)
 
-def randomTempName : IO String := do
-  let r1 ← IO.rand 0 0xffffffff
-  let r2 ← IO.rand 0 0xffffffff
-  let timestamp ← IO.monoNanosNow
-  return s!"/tmp/temp_{r1}_{r2}_{timestamp}"
 /--
   `req`: binary protobuf for a `CheckAsserts`
 
@@ -612,22 +478,14 @@ def randomTempName : IO String := do
       string containing the SMTLib script encoding the verification query
 -/
 @[export smtLibOfCheckAsserts] unsafe def smtLibOfCheckAsserts (req: ByteArray) : String :=
-  let result: Except String (Timed String) :=
-    match parseCheckAssertsReq req with
-    | .error s => .error s!"smtLibOfCheckAsserts: {s}\n{repr req}"
-    | .ok (asserts, εnv) =>
-      match unsafeIO (do
-        let buffer ← IO.mkRef ⟨ByteArray.empty, 0⟩
-        let solver := Solver.bufferWriter buffer
-        let timedResult ← timedSolve solver (ignoreOutput (λ _ => .ok asserts) εnv)
-        match timedResult with
-        | .error s => pure (.error s)
-        | .ok r => do
-          let inner_buffer ← buffer.swap ⟨ByteArray.empty, 0⟩
-          pure (.ok { data := ((String.fromUTF8? inner_buffer.data).getD ""), duration := r.duration })) with
-      | .error _ => .error "smtLibOfCheckAsserts: IO error"
-      | .ok result => result
-  toString (Lean.toJson result)
+  runFfiM do
+    let (asserts, εnv) ← parseCheckAssertsReq req
+    let buffer ← IO.mkRef ⟨ByteArray.empty, 0⟩
+    let solver ← Solver.bufferWriter buffer
+    let r ← timedSolve (pure solver) (ignoreOutput (fun _ => .ok asserts) εnv)
+    let inner ← buffer.swap ⟨ByteArray.empty, 0⟩
+    let data  := (String.fromUTF8? inner.data).getD ""
+    return ({ data := data, duration := r.duration } : Timed String)
 
 /--
   `req`: binary protobuf for an `CheckPolicyRequest`
@@ -635,13 +493,9 @@ def randomTempName : IO String := do
   returns JSON encoded of the term generated by `verifyNeverErrors`
 -/
 @[export assertsOfCheckNeverErrors] unsafe def assertsOfCheckNeverErrors (req: ByteArray) : String :=
-  let result : Except String (Timed (Cedar.SymCC.Result Cedar.SymCC.Asserts)) :=
-    match parseCheckPolicyReq req false with
-    | .error s => .error s!"assertsOfCheckNeverErrors: {s}"
-    | .ok (policy, εnv) =>
-      let result := runAndTime (λ () => verifyNeverErrors policy εnv)
-      .ok (unsafeBaseIO result)
-  toString (Lean.toJson result)
+  runFfiM do
+    let (policy, εnv) ← parseCheckPolicyReq req false
+    runAndTime (λ () => verifyNeverErrors policy εnv)
 
 /--
   `req`: binary protobuf for an `CheckPolicyRequest`
@@ -649,13 +503,9 @@ def randomTempName : IO String := do
   returns JSON encoded of the term generated by `verifyNeverErrors` on the deserialized policy
 -/
 @[export assertsOfCheckNeverErrorsOnOriginal] unsafe def assertsOfCheckNeverErrorsOnOriginal (req: ByteArray) : String :=
-  let result : Except String (Timed (Cedar.SymCC.Result Cedar.SymCC.Asserts)) :=
-    match parseCheckPolicyReq req true with
-    | .error s => .error s!"assertsOfCheckNeverErrors: {s}"
-    | .ok (policy, εnv) =>
-      let result := runAndTime (λ () => verifyNeverErrors policy εnv)
-      .ok (unsafeBaseIO result)
-  toString (Lean.toJson result)
+  runFfiM do
+    let (policy, εnv) ← parseCheckPolicyReq req true
+    runAndTime (λ () => verifyNeverErrors policy εnv)
 
 /--
   `req`: binary protobuf for an `CheckPoliciesRequest`
@@ -663,13 +513,9 @@ def randomTempName : IO String := do
   returns JSON encoded of the term generated by `verifyAlwaysAllows`
 -/
 @[export assertsOfCheckAlwaysAllows] unsafe def assertsOfCheckAlwaysAllows (req: ByteArray) : String :=
-  let result : Except String (Timed (Cedar.SymCC.Result Cedar.SymCC.Asserts)) :=
-    match parseCheckPoliciesReq req false with
-    | .error s => .error s!"assertsOfCheckAlwaysAllows: {s}"
-    | .ok (policies, εnv) =>
-      let result := runAndTime (λ () => verifyAlwaysAllows policies εnv)
-      .ok (unsafeBaseIO result)
-  toString (Lean.toJson result)
+  runFfiM do
+    let (policies, εnv) ← parseCheckPoliciesReq req false
+    runAndTime (λ () => verifyAlwaysAllows policies εnv)
 
 /--
   `req`: binary protobuf for an `CheckPoliciesRequest`
@@ -677,13 +523,9 @@ def randomTempName : IO String := do
   returns JSON encoded of the term generated by `verifyAlwaysAllows` on the deserialized policy set
 -/
 @[export assertsOfCheckAlwaysAllowsOnOriginal] unsafe def assertsOfCheckAlwaysAllowsOnOriginal (req: ByteArray) : String :=
-  let result : Except String (Timed (Cedar.SymCC.Result Cedar.SymCC.Asserts)) :=
-    match parseCheckPoliciesReq req true with
-    | .error s => .error s!"assertsOfCheckAlwaysAllows: {s}"
-    | .ok (policies, εnv) =>
-      let result := runAndTime (λ () => verifyAlwaysAllows policies εnv)
-      .ok (unsafeBaseIO result)
-  toString (Lean.toJson result)
+  runFfiM do
+    let (policies, εnv) ← parseCheckPoliciesReq req true
+    runAndTime (λ () => verifyAlwaysAllows policies εnv)
 
 /--
   `req`: binary protobuf for an `CheckPoliciesRequest`
@@ -691,13 +533,9 @@ def randomTempName : IO String := do
   returns JSON encoded of the term generated by `verifyAlwaysDenies`
 -/
 @[export assertsOfCheckAlwaysDenies] unsafe def assertsOfCheckAlwaysDenies (req: ByteArray) : String :=
-  let result : Except String (Timed (Cedar.SymCC.Result Cedar.SymCC.Asserts)) :=
-    match parseCheckPoliciesReq req false with
-    | .error s => .error s!"assertsOfCheckAlwaysDenies: {s}"
-    | .ok (policies, εnv) =>
-      let result := runAndTime (λ () => verifyAlwaysDenies policies εnv)
-      .ok (unsafeBaseIO result)
-  toString (Lean.toJson result)
+  runFfiM do
+    let (policies, εnv) ← parseCheckPoliciesReq req false
+    runAndTime (λ () => verifyAlwaysDenies policies εnv)
 
 /--
   `req`: binary protobuf for an `CheckPoliciesRequest`
@@ -705,13 +543,9 @@ def randomTempName : IO String := do
   returns JSON encoded of the term generated by `verifyAlwaysDenies` on deserialized policy set
 -/
 @[export assertsOfCheckAlwaysDeniesOnOriginal] unsafe def assertsOfCheckAlwaysDeniesOnOriginal (req: ByteArray) : String :=
-  let result : Except String (Timed (Cedar.SymCC.Result Cedar.SymCC.Asserts)) :=
-    match parseCheckPoliciesReq req true with
-    | .error s => .error s!"assertsOfCheckAlwaysDenies: {s}"
-    | .ok (policies, εnv) =>
-      let result := runAndTime (λ () => verifyAlwaysDenies policies εnv)
-      .ok (unsafeBaseIO result)
-  toString (Lean.toJson result)
+  runFfiM do
+    let (policies, εnv) ← parseCheckPoliciesReq req true
+    runAndTime (λ () => verifyAlwaysDenies policies εnv)
 
 /--
   `req`: binary protobuf for an `ComparePolicySetsRequest`
@@ -719,13 +553,9 @@ def randomTempName : IO String := do
   returns JSON encoded of the term generated by `verifyEquivalent`
 -/
 @[export assertsOfCheckEquivalent] unsafe def assertsOfCheckEquivalent (req: ByteArray) : String :=
-  let result : Except String (Timed (Cedar.SymCC.Result Cedar.SymCC.Asserts)) :=
-    match parseComparePolicySetsReq req false with
-    | .error s => .error s!"assertsOfCheckEquivalent: {s}"
-    | .ok (srcPolicies, tgtPolicies, εnv) =>
-      let result := runAndTime (λ () => verifyEquivalent srcPolicies tgtPolicies εnv)
-      .ok (unsafeBaseIO result)
-  toString (Lean.toJson result)
+  runFfiM do
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req false
+    runAndTime (λ () => verifyEquivalent srcPolicies tgtPolicies εnv)
 
 /--
   `req`: binary protobuf for an `ComparePolicySetsRequest`
@@ -733,13 +563,9 @@ def randomTempName : IO String := do
   returns JSON encoded of the term generated by `verifyEquivalent` on deserialized policy sets
 -/
 @[export assertsOfCheckEquivalentOnOriginal] unsafe def assertsOfCheckEquivalentOnOriginal (req: ByteArray) : String :=
-  let result : Except String (Timed (Cedar.SymCC.Result Cedar.SymCC.Asserts)) :=
-    match parseComparePolicySetsReq req true with
-    | .error s => .error s!"assertsOfCheckEquivalent: {s}"
-    | .ok (srcPolicies, tgtPolicies, εnv) =>
-      let result := runAndTime (λ () => verifyEquivalent srcPolicies tgtPolicies εnv)
-      .ok (unsafeBaseIO result)
-  toString (Lean.toJson result)
+  runFfiM do
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req true
+    runAndTime (λ () => verifyEquivalent srcPolicies tgtPolicies εnv)
 
 /--
   `req`: binary protobuf for an `ComparePolicySetsRequest`
@@ -747,13 +573,9 @@ def randomTempName : IO String := do
   returns JSON encoded of the term generated by `verifyImplies`
 -/
 @[export assertsOfCheckImplies] unsafe def assertsOfCheckImplies (req: ByteArray) : String :=
-  let result : Except String (Timed (Cedar.SymCC.Result Cedar.SymCC.Asserts)) :=
-    match parseComparePolicySetsReq req false with
-    | .error s => .error s!"assertsOfCheckImplies: {s}"
-    | .ok (srcPolicies, tgtPolicies, εnv) =>
-      let result := runAndTime (λ () => verifyImplies srcPolicies tgtPolicies εnv)
-      .ok (unsafeBaseIO result)
-  toString (Lean.toJson result)
+  runFfiM do
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req false
+    runAndTime (λ () => verifyImplies srcPolicies tgtPolicies εnv)
 
 /--
   `req`: binary protobuf for an `ComparePolicySetsRequest`
@@ -761,13 +583,9 @@ def randomTempName : IO String := do
   returns JSON encoded of the term generated by `verifyImplies` on deserialized policy sets
 -/
 @[export assertsOfCheckImpliesOnOriginal] unsafe def assertsOfCheckImpliesOnOriginal (req: ByteArray) : String :=
-  let result : Except String (Timed (Cedar.SymCC.Result Cedar.SymCC.Asserts)) :=
-    match parseComparePolicySetsReq req true with
-    | .error s => .error s!"assertsOfCheckImplies: {s}"
-    | .ok (srcPolicies, tgtPolicies, εnv) =>
-      let result := runAndTime (λ () => verifyImplies srcPolicies tgtPolicies εnv)
-      .ok (unsafeBaseIO result)
-  toString (Lean.toJson result)
+  runFfiM do
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req true
+    runAndTime (λ () => verifyImplies srcPolicies tgtPolicies εnv)
 
 /--
   `req`: binary protobuf for an `ComparePolicySetsRequest`
@@ -775,13 +593,9 @@ def randomTempName : IO String := do
   returns JSON encoded of the term generated by `verifyDisjoint`
 -/
 @[export assertsOfCheckDisjoint] unsafe def assertsOfCheckDisjoint (req: ByteArray) : String :=
-  let result : Except String (Timed (Cedar.SymCC.Result Cedar.SymCC.Asserts)) :=
-    match parseComparePolicySetsReq req false with
-    | .error s => .error s!"assertsOfCheckDisjoint: {s}"
-    | .ok (srcPolicies, tgtPolicies, εnv) =>
-      let result := runAndTime (λ () => verifyDisjoint srcPolicies tgtPolicies εnv)
-      .ok (unsafeBaseIO result)
-  toString (Lean.toJson result)
+  runFfiM do
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req false
+    runAndTime (λ () => verifyDisjoint srcPolicies tgtPolicies εnv)
 
 /--
   `req`: binary protobuf for an `ComparePolicySetsRequest`
@@ -789,13 +603,9 @@ def randomTempName : IO String := do
   returns JSON encoded of the term generated by `verifyDisjoint` on deserialized policy sets
 -/
 @[export assertsOfCheckDisjointOnOriginal] unsafe def assertsOfCheckDisjointOnOriginal (req: ByteArray) : String :=
-  let result : Except String (Timed (Cedar.SymCC.Result Cedar.SymCC.Asserts)) :=
-    match parseComparePolicySetsReq req true with
-    | .error s => .error s!"assertsOfCheckDisjoint: {s}"
-    | .ok (srcPolicies, tgtPolicies, εnv) =>
-      let result := runAndTime (λ () => verifyDisjoint srcPolicies tgtPolicies εnv)
-      .ok (unsafeBaseIO result)
-  toString (Lean.toJson result)
+  runFfiM do
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req true
+    runAndTime (λ () => verifyDisjoint srcPolicies tgtPolicies εnv)
 
 /--
   `req`: binary protobuf for an `CheckPolicyRequest`
@@ -806,21 +616,15 @@ def randomTempName : IO String := do
       string containing the SMTLib script encoding the verification query
 -/
 @[export smtLibOfCheckNeverErrors] unsafe def smtLibOfCheckNeverErrors (req : ByteArray) : String :=
-  let result : Except String (Timed String) :=
-    match parseCheckPolicyReq req false with
-    | .error s => .error s!"checkNeverErrors: {s}"
-    | .ok (policy, εnv) =>
-      let buffer := unsafeBaseIO (IO.mkRef ⟨ByteArray.empty, 0⟩)
-      let solver := Solver.bufferWriter buffer
-      let vcs := ignoreOutput (verifyNeverErrors policy) εnv
-      match unsafeIO (timedSolve solver vcs) with
-      | .error _ => .error "checkNeverErrors: IO error"
-      | .ok (.error s) => .error s!"checkNeverErrors: {s}"
-      | .ok (.ok r) =>
-        match unsafeIO (buffer.swap ⟨ByteArray.empty, 0⟩) with
-        | .error _ => .error s!"checkNeverErrors: error retrieving SMTLib script from buffer"
-        | .ok inner_buffer => .ok { data := ((String.fromUTF8? inner_buffer.data).getD ""), duration := r.duration }
-  toString (Lean.toJson result)
+  runFfiM do
+    let (policy, εnv) ← parseCheckPolicyReq req false
+    let buffer ← IO.mkRef ⟨ByteArray.empty, 0⟩
+    let solver ← Solver.bufferWriter buffer
+    let vcs := ignoreOutput (verifyNeverErrors policy) εnv
+    let r ← timedSolve (pure solver) vcs
+    let inner_buffer ← buffer.swap ⟨ByteArray.empty, 0⟩
+    let data := (String.fromUTF8? inner_buffer.data).getD ""
+    return ({ data := data, duration := r.duration } : Timed String)
 
 /--
   `req`: binary protobuf for an `CheckPolicySetRequest`
@@ -831,21 +635,15 @@ def randomTempName : IO String := do
       string containing the SMTLib script encoding the verification query
 -/
 @[export smtLibOfCheckAlwaysAllows] unsafe def smtLibOfCheckAlwaysAllows (req : ByteArray) : String :=
-  let result : Except String (Timed String) :=
-    match parseCheckPoliciesReq req false with
-    | .error s => .error s!"checkAlwaysAllows: {s}"
-    | .ok (policies, εnv) =>
-      let buffer := unsafeBaseIO (IO.mkRef ⟨ByteArray.empty, 0⟩)
-      let solver := Solver.bufferWriter buffer
-      let vcs := ignoreOutput (verifyAlwaysAllows policies) εnv
-      match unsafeIO (timedSolve solver vcs) with
-      | .error _ => .error "checkAlwaysAllows: IO error"
-      | .ok (.error s) => .error s!"checkAlwaysAllows: {s}"
-      | .ok (.ok r) =>
-        match unsafeIO (buffer.swap ⟨ByteArray.empty, 0⟩) with
-        | .error _ => .error s!"checkAlwaysAllows: error retrieving SMTLib script from buffer"
-        | .ok inner_buffer => .ok { data := ((String.fromUTF8? inner_buffer.data).getD ""), duration := r.duration }
-  toString (Lean.toJson result)
+  runFfiM do
+    let (policies, εnv) ← parseCheckPoliciesReq req false
+    let buffer ← IO.mkRef ⟨ByteArray.empty, 0⟩
+    let solver ← Solver.bufferWriter buffer
+    let vcs := ignoreOutput (verifyAlwaysAllows policies) εnv
+    let r ← timedSolve (pure solver) vcs
+    let inner_buffer ← buffer.swap ⟨ByteArray.empty, 0⟩
+    let data := (String.fromUTF8? inner_buffer.data).getD ""
+    return ({ data := data, duration := r.duration } : Timed String)
 
 /--
   `req`: binary protobuf for an `CheckPolicySetRequest`
@@ -856,21 +654,15 @@ def randomTempName : IO String := do
       string containing the SMTLib script encoding the verification query
 -/
 @[export smtLibOfCheckAlwaysDenies] unsafe def smtLibOfCheckAlwaysDenies (req : ByteArray) : String :=
-  let result : Except String (Timed String) :=
-    match parseCheckPoliciesReq req false with
-    | .error s => .error s!"checkAlwaysDenies: {s}"
-    | .ok (policies, εnv) =>
-      let buffer := unsafeBaseIO (IO.mkRef ⟨ByteArray.empty, 0⟩)
-      let solver := Solver.bufferWriter buffer
-      let vcs := ignoreOutput (verifyAlwaysDenies policies) εnv
-      match unsafeIO (timedSolve solver vcs) with
-      | .error _ => .error "checkAlwaysDenies: IO error"
-      | .ok (.error s) => .error s!"checkAlwaysDenies: {s}"
-      | .ok (.ok r) =>
-        match unsafeIO (buffer.swap ⟨ByteArray.empty, 0⟩) with
-        | .error _ => .error s!"checkAlwaysDenies: error retrieving SMTLib script from buffer"
-        | .ok inner_buffer => .ok { data := ((String.fromUTF8? inner_buffer.data).getD ""), duration := r.duration }
-  toString (Lean.toJson result)
+  runFfiM do
+    let (policies, εnv) ← parseCheckPoliciesReq req false
+    let buffer ← IO.mkRef ⟨ByteArray.empty, 0⟩
+    let solver ← Solver.bufferWriter buffer
+    let vcs := ignoreOutput (verifyAlwaysDenies policies) εnv
+    let r ← timedSolve (pure solver) vcs
+    let inner_buffer ← buffer.swap ⟨ByteArray.empty, 0⟩
+    let data := (String.fromUTF8? inner_buffer.data).getD ""
+    return ({ data := data, duration := r.duration } : Timed String)
 
 /--
   `req`: binary protobuf for an `CheckPolicySetRequest`
@@ -881,21 +673,15 @@ def randomTempName : IO String := do
       string containing the SMTLib script encoding the verification query
 -/
 @[export smtLibOfCheckEquivalent] unsafe def smtLibOfCheckEquivalent (req : ByteArray) : String :=
-  let result : Except String (Timed String) :=
-    match parseComparePolicySetsReq req false with
-    | .error s => .error s!"checkEquivalent: {s}"
-    | .ok (srcPolicies, tgtPolicies, εnv) =>
-      let buffer := unsafeBaseIO (IO.mkRef ⟨ByteArray.empty, 0⟩)
-      let solver := Solver.bufferWriter buffer
-      let vcs := ignoreOutput (verifyEquivalent srcPolicies tgtPolicies) εnv
-      match unsafeIO (timedSolve solver vcs) with
-      | .error _ => .error "checkEquivalent: IO error"
-      | .ok (.error s) => .error s!"checkEquivalent: {s}"
-      | .ok (.ok r) =>
-        match unsafeIO (buffer.swap ⟨ByteArray.empty, 0⟩) with
-        | .error _ => .error s!"checkEquivalent: error retrieving SMTLib script from buffer"
-        | .ok inner_buffer => .ok { data := ((String.fromUTF8? inner_buffer.data).getD ""), duration := r.duration }
-  toString (Lean.toJson result)
+  runFfiM do
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req false
+    let buffer ← IO.mkRef ⟨ByteArray.empty, 0⟩
+    let solver ← Solver.bufferWriter buffer
+    let vcs := ignoreOutput (verifyEquivalent srcPolicies tgtPolicies) εnv
+    let r ← timedSolve (pure solver) vcs
+    let inner_buffer ← buffer.swap ⟨ByteArray.empty, 0⟩
+    let data := (String.fromUTF8? inner_buffer.data).getD ""
+    return ({ data := data, duration := r.duration } : Timed String)
 
 /--
   `req`: binary protobuf for an `CheckPolicySetRequest`
@@ -906,21 +692,15 @@ def randomTempName : IO String := do
       string containing the SMTLib script encoding the verification query
 -/
 @[export smtLibOfCheckImplies] unsafe def smtLibOfCheckImplies (req : ByteArray) : String :=
-  let result : Except String (Timed String) :=
-    match parseComparePolicySetsReq req false with
-    | .error s => .error s!"checkImplies: {s}"
-    | .ok (srcPolicies, tgtPolicies, εnv) =>
-      let buffer := unsafeBaseIO (IO.mkRef ⟨ByteArray.empty, 0⟩)
-      let solver := Solver.bufferWriter buffer
-      let vcs := ignoreOutput (verifyImplies srcPolicies tgtPolicies) εnv
-      match unsafeIO (timedSolve solver vcs) with
-      | .error _ => .error "checkImplies: IO error"
-      | .ok (.error s) => .error s!"checkImplies: {s}"
-      | .ok (.ok r) =>
-        match unsafeIO (buffer.swap ⟨ByteArray.empty, 0⟩) with
-        | .error _ => .error s!"checkImplies: error retrieving SMTLib script from buffer"
-        | .ok inner_buffer => .ok { data := ((String.fromUTF8? inner_buffer.data).getD ""), duration := r.duration }
-  toString (Lean.toJson result)
+  runFfiM do
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req false
+    let buffer ← IO.mkRef ⟨ByteArray.empty, 0⟩
+    let solver ← Solver.bufferWriter buffer
+    let vcs := ignoreOutput (verifyImplies srcPolicies tgtPolicies) εnv
+    let r ← timedSolve (pure solver) vcs
+    let inner_buffer ← buffer.swap ⟨ByteArray.empty, 0⟩
+    let data := (String.fromUTF8? inner_buffer.data).getD ""
+    return ({ data := data, duration := r.duration } : Timed String)
 
 /--
   `req`: binary protobuf for an `CheckPolicySetRequest`
@@ -931,20 +711,14 @@ def randomTempName : IO String := do
       string containing the SMTLib script encoding the verification query
 -/
 @[export smtLibOfCheckDisjoint] unsafe def smtLibOfCheckDisjoint (req : ByteArray) : String :=
-  let result : Except String (Timed String) :=
-    match parseComparePolicySetsReq req false with
-    | .error s => .error s!"checkDisjoint: {s}"
-    | .ok (srcPolicies, tgtPolicies, εnv) =>
-      let buffer := unsafeBaseIO (IO.mkRef ⟨ByteArray.empty, 0⟩)
-      let solver := Solver.bufferWriter buffer
-      let vcs := ignoreOutput (verifyDisjoint srcPolicies tgtPolicies) εnv
-      match unsafeIO (timedSolve solver vcs) with
-      | .error _ => .error "checkDisjoint: IO error"
-      | .ok (.error s) => .error s!"checkDisjoint: {s}"
-      | .ok (.ok r) =>
-        match unsafeIO (buffer.swap ⟨ByteArray.empty, 0⟩) with
-        | .error _ => .error s!"checkDisjoint: error retrieving SMTLib script from buffer"
-        | .ok inner_buffer => .ok { data := ((String.fromUTF8? inner_buffer.data).getD ""), duration := r.duration }
-  toString (Lean.toJson result)
+  runFfiM do
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req false
+    let buffer ← IO.mkRef ⟨ByteArray.empty, 0⟩
+    let solver ← Solver.bufferWriter buffer
+    let vcs := ignoreOutput (verifyDisjoint srcPolicies tgtPolicies) εnv
+    let r ← timedSolve (pure solver) vcs
+    let inner_buffer ← buffer.swap ⟨ByteArray.empty, 0⟩
+    let data := (String.fromUTF8? inner_buffer.data).getD ""
+    return ({ data := data, duration := r.duration } : Timed String)
 
 end CedarFFI
