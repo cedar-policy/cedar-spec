@@ -17,7 +17,7 @@
 #![no_main]
 use cedar_drt::{logger::initialize_log, CedarLeanEngine};
 
-use cedar_drt_inner::fuzz_target;
+use cedar_drt_inner::{fuzz_target, symcc::BuffSolver};
 
 use cedar_policy::{Policy, PolicySet, RequestEnv, Schema};
 
@@ -30,8 +30,7 @@ use log::debug;
 use std::convert::TryFrom;
 
 use cedar_policy_symcc::{
-    compile_always_allows, solver::BuffSolver, CedarSymCompiler, SymEnv, WellFormedAsserts,
-    WellTypedPolicies,
+    compile_always_allows, CedarSymCompiler, SymEnv, WellFormedAsserts, WellTypedPolicies,
 };
 
 use std::sync::LazyLock;
