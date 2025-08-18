@@ -14,9 +14,11 @@
  * limitations under the License.
  */
 
+use cedar_policy::{PolicySet, RequestEnv, Schema};
 use cedar_policy_symcc::{
     err::SolverError,
     solver::{Decision, Solver, WriterSolver},
+    Asserts, SymEnv, WellFormedAsserts, WellTypedPolicies,
 };
 
 /// An implementation of [`Solver`] that stores the SMTLib text in a buffer
@@ -56,6 +58,36 @@ impl Solver for BuffSolver {
     async fn get_model(&mut self) -> std::result::Result<Option<String>, SolverError> {
         self.0.get_model().await
     }
+}
+
+/// Compile a well-typed policy set to `Asserts`
+pub fn compile_well_typed_policies(
+    func: impl for<'a> Fn(
+        &WellTypedPolicies,
+        &'a SymEnv,
+    ) -> cedar_policy_symcc::err::Result<WellFormedAsserts<'a>>,
+    policy: &WellTypedPolicies,
+    schema: &Schema,
+    req_env: &RequestEnv,
+) -> anyhow::Result<Asserts> {
+    let sym_env = SymEnv::new(&schema, &req_env)?;
+    let asserts = func(policy, &sym_env)?;
+    Ok(asserts.asserts().clone())
+}
+
+/// Compile a policy set to `WellFormedAsserts`
+pub fn compile_policies<'a>(
+    func: impl for<'b> Fn(
+        &WellTypedPolicies,
+        &'b SymEnv,
+    ) -> cedar_policy_symcc::err::Result<WellFormedAsserts<'b>>,
+    sym_env: &'a SymEnv,
+    policyset: &PolicySet,
+    req_env: &RequestEnv,
+    schema: &Schema,
+) -> anyhow::Result<WellFormedAsserts<'a>> {
+    let well_typed_policies = WellTypedPolicies::from_policies(policyset, req_env, schema)?;
+    Ok(func(&well_typed_policies, &sym_env)?)
 }
 
 #[cfg(test)]
