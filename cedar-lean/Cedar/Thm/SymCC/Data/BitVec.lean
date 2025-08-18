@@ -321,7 +321,8 @@ theorem sdiv_pos_lt_INT64_MAX {bv₁ bv₂ : BitVec 64}
       simp only [BitVec.neg, Int64.MAX, BitVec.udiv_eq, BitVec.udiv_def]
       simp only [Nat.reducePow, toNat_intMin, Nat.add_one_sub_one, Nat.reduceMod, toNat_ofNat,
         gt_iff_lt]
-      simp only [BitVec.toInt_ofNat]
+      simp only [BitVec.ofNat, Nat.reducePow, toInt_ofFin, Fin.val_ofNat, Int.natCast_emod,
+        Int.cast_ofNat_Int]
       simp only [BitVec.msb_eq_false_iff_two_mul_lt] at h₀
       replace h : 1 < bv₂.toNat := by
         simp only [BitVec.toInt, h₀, ↓reduceIte] at h
@@ -332,7 +333,7 @@ theorem sdiv_pos_lt_INT64_MAX {bv₁ bv₂ : BitVec 64}
       case false =>
         simp only [beq_eq_false_iff_ne, ne_eq, eq_false_of_ne_true] at h₁
         simp only [decide_eq_true_eq, Int.ofNat_eq_coe] at h₁
-        simp only [h₁, ↓reduceIte]
+        simp [h₁, ↓reduceIte]
         omega
       case true =>
         replace h₀ : n₂ < 2^63 := by omega
