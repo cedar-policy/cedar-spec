@@ -845,9 +845,7 @@ mutual
       let ret_ty := a.ty.toCedarTermType
       let cedar_args ← a.args.mapM Term.toCedar
       return .app op cedar_args ret_ty
-    | .record r =>
-      let r ← r.toCedar
-      return .record r
+    | .record r => .record (← r.toCedar)
 
   partial def Asserts.toCedar (a : Asserts) : Option Cedar.SymCC.Asserts :=
     a.asserts.mapM Term.toCedar
