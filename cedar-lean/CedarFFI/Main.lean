@@ -240,13 +240,13 @@ def parseCheckAssertsReq (proto : ByteArray) : Except String (Cedar.SymCC.Assert
 /--
   Run `solver` on `vcs` without exposing the IO monad to the calling code
 -/
-private unsafe def safeSolve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except String α) := do vcs |>.run (←solver)
+private def safeSolve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except String α) := do vcs |>.run (←solver)
 
 
 @[implemented_by safeSolve]
 opaque solve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except String α)
 
-private unsafe def safeTimedSolve {α} (solver: IO Solver) (vcs : SolverM α) : IO (Except String (Timed α)) := do
+private def safeTimedSolve {α} (solver: IO Solver) (vcs : SolverM α) : IO (Except String (Timed α)) := do
   let result ← runAndTimeIO (solve solver vcs)
   return match result.data with
   | .ok res => .ok ( { data := res, duration := result.duration })
@@ -342,9 +342,10 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
   match vc εnv with
   | .ok asserts =>
     if asserts.any (· == false) || asserts.all (· == true) then
-      Solver.reset
+      --Solver.reset
+      pure ()
     else
-      let _ ← Encoder.encode asserts εnv (produceModels := false)
+      let _ ← Encoder.encode asserts εnv (produceModels := true)
       match (← Solver.checkSat) with
       | .unsat   => pure ()
       | .sat     => pure ()
