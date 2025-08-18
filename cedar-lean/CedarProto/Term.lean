@@ -349,7 +349,9 @@ namespace Bitvec
     return ⟨n, bv⟩
 end Bitvec
 
-abbrev Decimal := Proto.Int64
+structure Decimal where
+  val : Proto.Int64
+deriving Repr, Inhabited
 
 namespace Decimal
   @[inline]
@@ -357,9 +359,7 @@ namespace Decimal
 
   def parseField (t : Tag) : BParsec (MergeFn Decimal) := do
     match t.fieldNum with
-    | 1 =>
-      let x : Proto.Int64 ← Field.guardedParse t
-      pureMergeFn (merge · x)
+    | 1 => parseFieldElement t Decimal.val (update val)
     | _ => t.wireType.skip ; pure ignore
 
   instance : Message Decimal := {
@@ -367,7 +367,7 @@ namespace Decimal
     merge := merge
   }
 
-  def toCedar (d : Decimal) : Cedar.Spec.Ext.Decimal := d.toInt64
+  def toCedar (d : Decimal) : Cedar.Spec.Ext.Decimal := d.val.toInt64
 end Decimal
 
 structure Cidr where
@@ -455,7 +455,9 @@ namespace IpAddr
       return .V6 cidr
 end IpAddr
 
-abbrev Datetime := Proto.Int64
+structure Datetime where
+  val : Proto.Int64
+deriving Repr, Inhabited
 
 namespace Datetime
   @[inline]
@@ -463,9 +465,7 @@ namespace Datetime
 
   def parseField (t : Tag) : BParsec (MergeFn Datetime) := do
     match t.fieldNum with
-    | 1 =>
-      let x : Proto.Int64 ← Field.guardedParse t
-      pureMergeFn (merge · x)
+    | 1 => parseFieldElement t Datetime.val (update val)
     | _ => t.wireType.skip ; pure ignore
 
   instance : Message Datetime := {
@@ -474,10 +474,12 @@ namespace Datetime
   }
 
   def toCedar (d : Datetime) : Cedar.Spec.Ext.Datetime:=
-    Cedar.Spec.Ext.Datetime.mk d.toInt64
+    Cedar.Spec.Ext.Datetime.mk d.val.toInt64
 end Datetime
 
-abbrev Duration := Proto.Int64
+structure Duration where
+  val : Proto.Int64
+deriving Repr, Inhabited
 
 namespace Duration
   @[inline]
@@ -485,9 +487,7 @@ namespace Duration
 
   def parseField (t : Tag) : BParsec (MergeFn Duration) := do
     match t.fieldNum with
-    | 1 =>
-      let x : Proto.Int64 ← Field.guardedParse t
-      pureMergeFn (merge · x)
+    | 1 => parseFieldElement t Duration.val (update val)
     | _ => t.wireType.skip ; pure ignore
 
   instance : Message Duration := {
@@ -496,7 +496,7 @@ namespace Duration
   }
 
   def toCedar (d : Duration) : Cedar.Spec.Ext.Datetime.Duration :=
-    Cedar.Spec.Ext.Datetime.Duration.mk d.toInt64
+    Cedar.Spec.Ext.Datetime.Duration.mk d.val.toInt64
 end Duration
 
 
@@ -845,7 +845,7 @@ mutual
       let ret_ty := a.ty.toCedarTermType
       let cedar_args ← a.args.mapM Term.toCedar
       return .app op cedar_args ret_ty
-    | _ => .none
+    | .record r => return .record (← r.toCedar)
 
   partial def Asserts.toCedar (a : Asserts) : Option Cedar.SymCC.Asserts :=
     a.asserts.mapM Term.toCedar
