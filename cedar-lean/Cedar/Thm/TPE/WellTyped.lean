@@ -1260,6 +1260,14 @@ decreasing_by
   omega
 
 
+theorem ext_well_typed_after_map :
+  ExtResidualWellTyped xfn args ty →
+  (∀ x, Residual.WellTyped env x → Residual.WellTyped env (f x)) →
+  ExtResidualWellTyped xf (args.map f) ty
+:= by
+  sorry
+
+
 
 /--
 Theorem: Partial evaluation preserves well-typedness of residuals.
@@ -1857,5 +1865,183 @@ theorem partial_eval_preserves_well_typed
             rw [h₁₀]
             rw [h₇]
   | call xfn args ty =>
-    sorry
+    simp [TPE.evaluate, TPE.call]
+    simp [List.map₁, List.attach, List.attachWith]
+    unfold Function.comp
+    simp
+    unfold List.unattach
+    rw [List.map_pmap_subtype (fun x => x)]
+    simp [List.mapM_then_map_combiner]
+    rw [List.map_pmap_subtype (fun x => TPE.evaluate x preq pes)]
+    split
+    case h_1 x xs h₁ =>
+      cases h_wt
+      rename_i h₂ h₃
+
+      unfold Spec.call
+      split
+      case h_1 | h_6 | h_7 | h_8 | h_9 | h_10 | h_12 | h_13 | h_16 =>
+        rename ExtFun => xf
+        rename List Value => vs
+        try unfold res
+        first
+          | unfold Ext.Decimal.decimal
+          | unfold Ext.IPAddr.ip
+          | unfold Ext.IPAddr.IPNet.isV4
+          | unfold Ext.IPAddr.IPNet.isV6
+          | unfold Ext.IPAddr.IPNet.isLoopback
+          | unfold Ext.IPAddr.IPNet.isMulticast
+          | skip
+
+        split
+        case h_1 x₂ v =>
+          simp [someOrError, Except.toOption]
+          apply Residual.WellTyped.val
+          rw [List.mapM_some_iff_forall₂, List.forall₂_singleton_right_iff] at h₁
+          rcases h₁ with ⟨x₃, h₁, h₅⟩
+          unfold Residual.asValue at h₁
+          split at h₁
+          case h_2 => contradiction
+          rename_i x₄ v₂ ty₂ h₆
+          have h₇ : x₃ ∈ args := by {
+            simp [Membership.mem]
+            rw [h₅]
+            apply List.Mem.head
+          }
+          injection h₁ ; rename_i h₁
+          specialize h₂ x₃ h₇
+          have ih := partial_eval_preserves_well_typed h_wf h_ref h₂
+          rw [h₆] at ih
+          rw [h₁] at ih
+          cases ih ; rename_i ih
+          cases ih
+          cases h₃
+          first
+          | apply InstanceOfType.instance_of_ext
+            simp [InstanceOfExtType]
+          | apply InstanceOfType.instance_of_bool
+            simp [InstanceOfBoolType]
+        case h_2 x₂ h₄ =>
+          simp [someOrError, Except.toOption]
+          first
+          | apply Residual.WellTyped.error
+          | apply Residual.WellTyped.val
+            cases h₃
+            apply InstanceOfType.instance_of_bool
+            simp [InstanceOfBoolType]
+      case h_2 | h_3 | h_4 | h_5 =>
+        rename_i xf vs d₁ d₂
+        simp [someOrError, Except.toOption]
+        cases h₃
+        apply Residual.WellTyped.val
+        apply InstanceOfType.instance_of_bool
+        simp [InstanceOfBoolType]
+      case h_11 | h_14 | h_15 =>
+        rename ExtFun => xf
+        rename List Value => vs
+        try unfold res
+
+        first
+          | unfold Ext.IPAddr.IPNet.inRange
+          | unfold Ext.Datetime.offset
+          | skip
+
+        split
+        case h_1 x₂ v =>
+          simp [someOrError, Except.toOption]
+          apply Residual.WellTyped.val
+          rw [List.mapM_some_iff_forall₂, List.forall₂_pair_right_iff] at h₁
+          rcases h₁ with ⟨x₃, x₄, h₁, h₅, h₆⟩
+
+          unfold Residual.asValue at h₁
+          split at h₁
+          case h_2 => contradiction
+          rename_i x₄ v₂ ty₂ h₇
+          have h₈ : x₃ ∈ args := by {
+            simp [Membership.mem]
+            rw [h₆]
+            apply List.Mem.head
+          }
+          injection h₁ ; rename_i h₁
+          specialize h₂ x₃ h₈
+          have ih := partial_eval_preserves_well_typed h_wf h_ref h₂
+          rw [h₇] at ih
+          rw [h₁] at ih
+          cases ih ; rename_i ih
+          cases ih
+          cases h₃
+          first
+          | apply InstanceOfType.instance_of_ext
+            simp [InstanceOfExtType]
+          | apply InstanceOfType.instance_of_bool
+            simp [InstanceOfBoolType]
+        case h_2 x₂ h₄ =>
+          simp [someOrError, Except.toOption]
+          first
+          | apply Residual.WellTyped.error
+          | apply Residual.WellTyped.val
+            cases h₃
+            apply InstanceOfType.instance_of_bool
+            simp [InstanceOfBoolType]
+        try case h_3 x₂ v =>
+          simp [someOrError, Except.toOption]
+          cases h₃
+          apply Residual.WellTyped.val
+          apply InstanceOfType.instance_of_bool
+          simp [InstanceOfBoolType]
+      case h_17 | h_18 | h_19 | h_20 | h_21 | h_22 =>
+        simp [someOrError, Except.toOption, Ext.Datetime.toTime, Ext.Datetime.Duration.toMilliseconds]
+        rw [List.mapM_some_iff_forall₂, List.forall₂_singleton_right_iff] at h₁
+        rcases h₁ with ⟨x₃, h₁, h₅⟩
+        unfold Residual.asValue at h₁
+        split at h₁
+        case h_2 => contradiction
+        rename_i x₄ v₂ ty₂ h₆
+        have h₇ : x₃ ∈ args := by {
+          simp [Membership.mem]
+          rw [h₅]
+          apply List.Mem.head
+        }
+        injection h₁ ; rename_i h₁
+        specialize h₂ x₃ h₇
+
+        have ih := partial_eval_preserves_well_typed h_wf h_ref h₂
+        rw [h₆] at ih
+        rw [h₁] at ih
+        cases ih ; rename_i ih
+        cases ih
+        cases h₃
+        apply Residual.WellTyped.val
+        first
+        | apply InstanceOfType.instance_of_ext
+          simp [InstanceOfExtType]
+        | apply InstanceOfType.instance_of_int
+      case h_23 =>
+        simp [someOrError, Except.toOption]
+        apply Residual.WellTyped.error
+    case h_2 x h₂ =>
+      split
+      case isTrue =>
+        apply Residual.WellTyped.error
+      case isFalse =>
+        cases h_wt
+        rename_i h₁ h₂
+        apply Residual.WellTyped.call
+        case call.h₁ =>
+          intro r h₃
+          have h₄ := List.mem_of_map_implies_exists_unmapped h₃
+          rcases h₄ with ⟨r₂, h₄, h₅⟩
+          specialize h₁ r₂ h₄
+          have ih := partial_eval_preserves_well_typed h_wf h_ref h₁
+          rw [h₅]
+          exact ih
+        case call.h₂ =>
+          have h₃ : ∀ x, Residual.WellTyped env x → Residual.WellTyped env ((fun x => TPE.evaluate x preq pes) x) := by {
+            intro r h₃
+            simp
+            exact partial_eval_preserves_well_typed h_wf h_ref h₃
+          }
+          exact ext_well_typed_after_map h₂ h₃
+
+
 end Cedar.Thm
