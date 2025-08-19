@@ -103,6 +103,30 @@ fn get_cex(
         .await;
 
         match (always_allow_result, always_deny_result) {
+            (
+                Ok(Err(cedar_policy_symcc::err::Error::EncodeError(
+                    cedar_policy_symcc::err::EncodeError::EncodeStringFailed(_),
+                ))),
+                _,
+            )
+            | (
+                Ok(Err(cedar_policy_symcc::err::Error::EncodeError(
+                    cedar_policy_symcc::err::EncodeError::EncodePatternFailed(_),
+                ))),
+                _,
+            )
+            | (
+                _,
+                Ok(Err(cedar_policy_symcc::err::Error::EncodeError(
+                    cedar_policy_symcc::err::EncodeError::EncodeStringFailed(_),
+                ))),
+            )
+            | (
+                _,
+                Ok(Err(cedar_policy_symcc::err::Error::EncodeError(
+                    cedar_policy_symcc::err::EncodeError::EncodePatternFailed(_),
+                ))),
+            ) => Ok((None, None)),
             (Ok(res1), Ok(res2)) => anyhow::Ok((res1?, res2?)),
             _ => Ok((None, None)),
         }
