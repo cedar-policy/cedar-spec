@@ -313,7 +313,9 @@ theorem utf8DecodeChar.progress {pos₀ pos₁ : ByteArray.ByteIterator} {c : Ch
                         replace h₃ := BParsec.nextByte.progress h₃
                         replace h₄ := BParsec.nextByte.progress h₄
                         split
-                        · simp [h₂, h₃, h₄]
+                        · simp only [BParsec.pure, UInt8.toUInt32_and, Nat.reduceLT,
+                          UInt8.toUInt32_ofNat, BParsec.ParseResult.mk.injEq, Except.ok.injEq,
+                          and_imp]
                           intro h₀ ; subst pos₅
                           omega
                         · simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq,
