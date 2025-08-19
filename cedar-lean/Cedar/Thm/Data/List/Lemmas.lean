@@ -70,6 +70,28 @@ theorem map_congr {f g : α → β} : ∀ {l : List α},
     let ⟨h₁, h₂⟩ := forall_mem_cons.1 h
     rw [map, map, h₁, map_congr h₂]
 
+theorem map_func_ext {l: List α} {f : α → β} {g : α → β}:
+  (∀ x, x ∈ l → (f x) = (g x)) →
+  (l.map f) = (l.map g)
+:= by
+  cases l
+  case nil => simp [map]
+  case cons hd tl =>
+    intro h₁
+    simp [map]
+    constructor
+    case left =>
+      specialize h₁ hd
+      simp at h₁
+      exact h₁
+    case right =>
+      intro a h₂
+      specialize h₁ a
+      simp at h₁
+      apply h₁
+      right
+      exact h₂
+
 /--
   Copied from Mathlib. We can delete this if it gets added to Batteries.
 -/
