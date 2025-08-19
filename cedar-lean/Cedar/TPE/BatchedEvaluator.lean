@@ -109,4 +109,4 @@ def entityLoaderFor (es: Entities) (uids : Set EntityUID) :=
         | .some data =>
           (uid, EntityData.asPartial data)
         | .none =>
-          (uid, PartialEntityData.abset)))
+          (uid, PartialEntityData.absent)))

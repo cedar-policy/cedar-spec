@@ -53,7 +53,7 @@ def Request.asPartialRequest (req : Request) : PartialRequest :=
 -- We don't need type annotations here following the rationale above
 inductive PartialEntityData where
   | present (attrs : Option (Map Attr Value)) (ancestors : Option (Set EntityUID)) (tags : Option (Map Attr Value))
-  | abset
+  | absent
 
 def EntityData.asPartial (data : EntityData) : PartialEntityData :=
   .present (.some data.attrs) (.some data.ancestors) (.some data.tags)
@@ -68,15 +68,15 @@ def PartialEntities.get (es : PartialEntities) (uid : EntityUID) (f : PartialEnt
 
 def PartialEntityData.ancestors : PartialEntityData → Option (Set EntityUID)
   | .present _ ancestors _ => ancestors
-  | .abset => .some Set.empty
+  | .absent => .some Set.empty
 
-def PartialEntityData.tags : PartialEntityData → Option (Map Attr Value)
+def PartialEntityData.tags : PartialEntityData → Option (Map Tag Value)
   | .present _ _ tags => tags
-  | .abset => .some Map.empty
+  | .absent => .some Map.empty
 
 def PartialEntityData.attrs : PartialEntityData → Option (Map Attr Value)
   | .present attrs _ _ => attrs
-  | .abset => .some Map.empty
+  | .absent => .some Map.empty
 
 def PartialEntities.ancestors (es : PartialEntities) (uid : EntityUID) : Option (Set EntityUID) := es.get uid PartialEntityData.ancestors
 

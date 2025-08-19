@@ -62,7 +62,7 @@ def RequestRefines (req : Request) (preq : PartialRequest) : Prop :=
 
 def EntitiesRefine (es : Entities) (pes : PartialEntities) : Prop :=
    ∀ a e₂, pes.find? a = some e₂ →
-    ((e₂ = PartialEntityData.abset ∧ (es.find? a = .none)) ∨
+    ((e₂ = PartialEntityData.absent ∧ (es.find? a = .none)) ∨
      (∃ e₁, es.find? a = some e₁ ∧
        PartialIsValid (· = e₁.attrs) e₂.attrs ∧
        PartialIsValid (· = e₁.ancestors) e₂.ancestors  ∧
