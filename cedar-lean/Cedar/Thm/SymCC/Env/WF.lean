@@ -151,7 +151,7 @@ theorem wf_εs_implies_wf_ancs {ety₁ ety₂ : EntityType} {fₐ : UnaryFunctio
   fₐ.argType = .entity ety₁ ∧
   fₐ.outType = .set (.entity ety₂)
 := by
-  simp only [SymEntities.ancestorsOfType, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at hf
+  simp only [SymEntities.ancestorsOfType, Option.bind_eq_bind, Option.bind_eq_some_iff] at hf
   replace ⟨ancs₁, ha, hf⟩ := hf
   simp only [SymEntities.ancestors, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at ha
   replace ⟨εd, hf', ha⟩ := ha
@@ -171,7 +171,7 @@ theorem wf_udf_implies_lit {f : UDF} {εs : SymEntities} :
   f.WellFormed εs → f.isLiteral
 := by
   intro hwf
-  simp only [UnaryFunction.WellFormed, UDF.WellFormed] at hwf
+  simp only [UDF.WellFormed] at hwf
   simp only [UDF.isLiteral, hwf.left.right, Bool.true_and, List.all_eq_true, Bool.and_eq_true]
   intro (tᵢ, tₒ) hin
   replace hwf := hwf.right.right.right tᵢ tₒ hin

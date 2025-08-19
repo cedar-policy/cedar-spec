@@ -48,8 +48,8 @@ theorem type_of_int_arith_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' 
     rw [←h₂]
     simp only [TypedExpr.typeOf, true_and]
     constructor
-    · exists tc₁.snd ; simp [←h₂, ←h₅, ResultType.typeOf, Except.map]
-    · exists tc₂.snd ; simp [←h₂, ←h₆, ResultType.typeOf, Except.map]
+    · exists tc₁.snd ; simp only [ResultType.typeOf, Except.map, ← h₅]
+    · exists tc₂.snd ; simp only [ResultType.typeOf, Except.map, ← h₆]
   }
 
 theorem type_of_int_arith_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : TypeEnv} {ty : TypedExpr} {request : Request} {entities : Entities}
@@ -85,15 +85,15 @@ theorem type_of_int_arith_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c
   subst ih₁ ih₂
   rcases h₀ with h₀ | h₀ | h₀ <;> subst h₀ <;> simp [apply₂, intOrErr]
   case inl =>
-    cases h₄ : Int64.add? i₁ i₂ <;> simp [h₄]
+    cases h₄ : Int64.add? i₁ i₂ <;> simp
     case none => exact type_is_inhabited_int
     case some => simp [InstanceOfType.instance_of_int]
   case inr.inl =>
-    cases h₄ : Int64.sub? i₁ i₂ <;> simp [h₄]
+    cases h₄ : Int64.sub? i₁ i₂ <;> simp
     case none => exact type_is_inhabited_int
     case some => simp [InstanceOfType.instance_of_int]
   case inr.inr =>
-    cases h₄ : Int64.mul? i₁ i₂ <;> simp [h₄]
+    cases h₄ : Int64.mul? i₁ i₂ <;> simp
     case none => exact type_is_inhabited_int
     case some => simp [InstanceOfType.instance_of_int]
 

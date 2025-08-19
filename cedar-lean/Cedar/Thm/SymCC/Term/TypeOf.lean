@@ -134,7 +134,7 @@ theorem typeOf_term_record_attr_value_none {r : Map Attr Term} {rty : Map Attr T
   rw [typeOf_term_record_eq] at h₁
   simp [Map.find?, Map.kvs] at *
   subst h₁
-  split at h₂ <;> simp only [Option.some.injEq, reduceCtorEq] at h₂
+  split at h₂ <;> simp only [reduceCtorEq] at h₂
   rename_i h₃
   split <;> simp only [reduceCtorEq]
   rename_i a t h₄
@@ -211,12 +211,12 @@ private theorem type_of_wt_op_is_wf {εs : SymEntities} {op : Op} {ts : List Ter
   cases ht
   case ite_wt =>
     apply ih
-    simp only [List.mem_cons, List.mem_singleton, true_or, or_true]
+    simp only [List.mem_cons, true_or, or_true]
   case uuf_wt h₂ =>
     exact h₂.right
   case set.inter_wt t₁ _ ty h₁ _ =>
     specialize ih t₁
-    simp [List.mem_cons, true_or, or_true, forall_const, h₁] at ih
+    simp [List.mem_cons, true_or, forall_const, h₁] at ih
     exact ih
   case option.get_wt t h₁ =>
     specialize ih t

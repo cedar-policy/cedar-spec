@@ -64,7 +64,7 @@ theorem and_true_implies_right_true {e₁ e₂ : Expr} {request : Request} {enti
   case ok v₂ =>
     cases v₂ <;> try simp only [Except.map_error, reduceCtorEq] at h₁
     case _ p₂ =>
-      cases p₂ <;> simp only [Except.map_error, Except.bind_ok, Except.bind_err, reduceCtorEq] at h₁
+      cases p₂ <;> simp only [Except.map_error, reduceCtorEq] at h₁
       case bool b =>
         cases b
         case false =>
@@ -111,26 +111,26 @@ theorem ways_and_can_error {e₁ e₂ : Expr} {request : Request} {entities : En
     simp [h₁]
     case prim prim =>
       cases prim <;>
-      simp [h_e₁] at h₁ <;>
+      simp [] at h₁ <;>
       simp [h₁]
       case bool b =>
         cases b with
         | true =>
           simp only [true_and]
-          simp only [h_e₁, reduceCtorEq] at h₁
+          simp only [reduceCtorEq] at h₁
           cases h_e₂ : (evaluate e₂ request entities) with
           | ok val =>
             cases val <;>
-            simp [h_e₂, evaluate, Result.as, Value.asBool, pure, Except.pure] at h₁ <;>
+            simp [h_e₂] at h₁ <;>
             simp [h₁]
             case prim prim =>
               cases prim <;>
-              simp [h_e₂] at h₁ <;>
+              simp [] at h₁ <;>
               simp [h₁]
           | error e =>
             simp only [↓reduceIte, h_e₂, Except.map_error, Except.error.injEq] at h₁
             simp only [h₁, and_false, or_false]
-        | false => simp [h_e₁] at h₁
+        | false => simp [] at h₁
   case error e =>
     simp [h_e₁, evaluate, Result.as, Coe.coe, Value.asBool] at h₁
     simp [h₁]
@@ -216,7 +216,7 @@ theorem record_value_contains_evaluated_attrs {rxs : List (Attr × Expr)} {rvs :
     apply List.Forall₂.imp _ he₁
     intro x y h
     simp only [bindAttr] at h
-    cases hx : evaluate x.snd request entities <;> simp only [hx, Except.bind_err, Except.bind_ok, reduceCtorEq, Except.ok.injEq] at h
+    cases hx : evaluate x.snd request entities <;> simp only [hx, Except.bind_err, Except.bind_ok, reduceCtorEq] at h
     simp only [pure, Except.pure, Except.ok.injEq] at h
     simp only [←h, and_self]
   replace he₁ := List.canonicalize_preserves_forallᵥ _ _ _ he₁

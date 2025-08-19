@@ -52,8 +52,8 @@ decreasing_by
   · cases s
     rename_i h
     have h := List.sizeOf_lt_of_mem h
-    simp [Set.toList, Set.elts] at h
-    simp [h]
+    simp only [Set.toList, Set.elts] at h
+    simp only [set.sizeOf_spec, Set.mk.sizeOf_spec, gt_iff_lt]
     omega
   · simp
 where

@@ -261,7 +261,7 @@ private theorem mapM_concretize?_taggedValueFor_none_implies_contains_tag_false
   τags.contains (Term.prim (TermPrim.string tag)) = false
 := by
   by_contra hc
-  simp only [ne_eq, Bool.not_eq_false] at hc
+  simp only [Bool.not_eq_false] at hc
   rw [Set.contains_prop_bool_equiv, ← Set.in_list_iff_in_set] at hc
   replace hkeqv := heqv.left
   simp only [List.subset_def, List.mem_map] at hkeqv
@@ -329,7 +329,7 @@ private theorem concretize?_some_same_tags {uid : EntityUID} {δ : SymEntityData
       · by_contra hc
         cases hf : (Map.mk tvs).find? tag <;> try contradiction
         have hn' := mapM_concretize?_taggedValueFor_some_implies_contains_tag_true heq hkeqv hf
-        simp only [hn, Term.prim.injEq, TermPrim.bool.injEq, Bool.false_eq_true] at hn'
+        simp only [hn, Bool.false_eq_true] at hn'
     · intro tag val hs
       constructor
       · exact mapM_concretize?_taggedValueFor_some_implies_contains_tag_true heq hkeqv hs

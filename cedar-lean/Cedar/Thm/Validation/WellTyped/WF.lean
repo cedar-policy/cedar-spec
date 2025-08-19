@@ -50,7 +50,7 @@ theorem well_typed_implies_wf_type
     rcases hwt_uid with hets | hacts
     · split at hets
       · rename_i hsome
-        simp [EntitySchema.contains, Map.contains, Option.isSome, hsome]
+        simp only [EntitySchema.contains, Option.isSome, hsome, true_or]
       · contradiction
     · rename_i uid
       apply Or.inr

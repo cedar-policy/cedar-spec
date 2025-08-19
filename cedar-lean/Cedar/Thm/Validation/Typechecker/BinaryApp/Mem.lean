@@ -51,7 +51,7 @@ theorem type_of_mem_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Ty
     exists ety₁
     constructor
     · exists tc₁.snd ; simp [←h₄, ResultType.typeOf, Except.map]
-    · exists ety₂, tc₂.snd ; simp [←h₅, h₁, ResultType.typeOf, Except.map]
+    · exists ety₂, tc₂.snd ; simp [←h₅, ResultType.typeOf, Except.map]
   }
 
 theorem entityUID?_some_implies_entity_lit {x : Expr} {euid : EntityUID}
@@ -88,7 +88,7 @@ theorem entityUIDs?_some_implies_entity_lits {x : Expr} {euids : List EntityUID}
     cases xs <;> simp only [List.Forall₂.nil, List.map_nil] at *
     case cons hd tl => simp only [List.forall₂_nil_right_iff, reduceCtorEq] at h₁
   case cons hd tl =>
-    cases xs <;> simp [pure, Except.pure] at *
+    cases xs <;> simp at *
     case nil => simp only [List.forall₂_nil_left_iff, reduceCtorEq] at h₁
     case cons hd' tl' =>
       cases h₂ : entityUID? hd' <;> simp [h₂] at h₁
@@ -137,8 +137,9 @@ theorem entity_type_in_false_implies_inₑ_false
     decide_eq_false_iff_not] at h₂
   simp only [inₑ, Bool.or_eq_false_iff, beq_eq_false_iff_ne, ne_eq]
   by_contra h₃
+  simp only [] at h₃
   simp only [not_and, Bool.not_eq_false] at h₃
-  simp only [not_and, Bool.not_eq_false, ← Classical.or_iff_not_imp_right] at h₃
+  simp only [← Classical.or_iff_not_imp_right] at h₃
   rcases h₃ with h₃ | h₃
   case inr => subst h₃ ; simp at h₂
   case inl =>
@@ -155,7 +156,7 @@ theorem entity_type_in_false_implies_inₑ_false
     | inr h₁ =>
       have ⟨h₁, _, ⟨entry, h₅, _⟩⟩ := h₁
       have h₂ := h₂.2
-      simp only [h₁, Bool.decide_eq_true, Bool.or_false, ActionSchema.actionType?] at h₂
+      simp only at h₂
       split at h₂
       · apply False.elim
         apply wf_env_disjoint_ets_acts hwf.wf_env
@@ -196,10 +197,10 @@ theorem type_of_mem_is_soundₑ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilit
   have ⟨_, v₂, hev₂, hty₂⟩ := ih₂ h₁ h₂ h₄
   simp [EvaluatesTo] at *
   simp [evaluate]
-  cases h₅ : evaluate x₁ request entities <;> simp [h₅] at hev₁ <;> simp [h₅, hev₁] <;>
+  cases h₅ : evaluate x₁ request entities <;> simp [h₅] at hev₁ <;> simp [hev₁] <;>
   try { apply type_is_inhabited_bool }
   rw [eq_comm] at hev₁ ; subst hev₁
-  cases h₆ : evaluate x₂ request entities <;> simp [h₆] at hev₂ <;> simp [h₆, hev₂] <;>
+  cases h₆ : evaluate x₂ request entities <;> simp [h₆] at hev₂ <;> simp [hev₂] <;>
   try { apply type_is_inhabited_bool }
   rw [eq_comm] at hev₂ ; subst hev₂
   rw [hl₃] at hty₁
@@ -311,15 +312,12 @@ theorem entity_type_in_false_implies_inₛ_false
     | inr h₁ =>
       have ⟨h₁, _, ⟨entry, h₉, _⟩⟩ := h₁
       simp only [
-        Bool.if_false_right,
-        Bool.decide_eq_true,
-        Bool.and_true,
         Bool.if_true_left,
         Bool.or_eq_false_iff,
         decide_eq_false_iff_not,
       ] at h₂
       have h₂ := h₂.2
-      simp only [h₁, Bool.decide_eq_true, Bool.or_false, ActionSchema.actionType?] at h₂
+      simp only [] at h₂
       split at h₂
       · apply False.elim
         apply wf_env_disjoint_ets_acts hwf.wf_env
@@ -334,7 +332,7 @@ theorem mapM'_eval_lits_eq_prims {ps : List Prim} {vs : List Value} {request : R
 := by
   cases ps
   case nil =>
-    simp [List.mapM', pure, Except.pure] at h₁
+    simp [pure, Except.pure] at h₁
     subst h₁
     simp only [List.map_nil]
   case cons hd tl =>
@@ -409,7 +407,7 @@ theorem action_type_in_eq_action_inₛ
   rename_i entry
   have h₁ := h₁.wf_action_data h₄
   constructor <;> intro h₄ <;> rename_i hfnd <;>
-  simp only [hfnd, true_implies] at h₁ <;>
+  simp only [] at h₁ <;>
   have ⟨data, hl₁, hr₁⟩ := h₁ <;> clear h₁
   case some.mp =>
     rw [List.any_eq_true] at h₄
@@ -460,10 +458,10 @@ theorem type_of_mem_is_soundₛ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilit
   have ⟨_, v₂, hev₂, hty₂⟩ := ih₂ h₁ h₂ h₄
   simp only [EvaluatesTo] at *
   simp only [evaluate]
-  cases h₅ : evaluate x₁ request entities <;> simp [h₅] at hev₁ <;> simp [h₅, hev₁] <;>
+  cases h₅ : evaluate x₁ request entities <;> simp [h₅] at hev₁ <;> simp [hev₁] <;>
   try { apply type_is_inhabited_bool }
   rw [eq_comm] at hev₁ ; subst hev₁
-  cases h₆ : evaluate x₂ request entities <;> simp [h₆] at hev₂ <;> simp [h₆, hev₂] <;>
+  cases h₆ : evaluate x₂ request entities <;> simp [h₆] at hev₂ <;> simp [hev₂] <;>
   try { apply type_is_inhabited_bool }
   rw [eq_comm] at hev₂ ; subst hev₂
   rw [hl₃] at hty₁
@@ -488,17 +486,17 @@ theorem type_of_mem_is_soundₛ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilit
     ite_eq_right_iff, reduceCtorEq] at h₈ h₉ h₁₀
   case none =>
     cases hin : env.descendentOf euid.ty ety₂ <;>
-    simp only [hin, Bool.false_eq_true, ↓reduceIte, not_false_eq_true, implies_true, imp_false,
+    simp only [hin, Bool.false_eq_true, ↓reduceIte, imp_false,
       Bool.not_eq_false, Bool.true_eq_false] at h₈ h₉ h₁₀
     simp only [entity_type_in_false_implies_inₛ_false hwf hin hty₇,
       Bool.false_eq_true] at h₁₀
   case some =>
     cases he : entityUIDs? x₂ <;>
     simp only [he, ite_eq_left_iff, not_exists, not_and, Bool.not_eq_true, imp_false,
-      Classical.not_forall, not_imp, Bool.not_eq_false, ite_eq_right_iff, reduceCtorEq] at h₈ h₉ h₁₀
+      Classical.not_forall, Bool.not_eq_false, ite_eq_right_iff, reduceCtorEq] at h₈ h₉ h₁₀
     case none =>
       cases hin : env.descendentOf euid.ty ety₂ <;>
-      simp only [hin, Bool.false_eq_true, ↓reduceIte, not_false_eq_true, implies_true, imp_false,
+      simp only [hin, Bool.false_eq_true, ↓reduceIte, imp_false,
         Bool.not_eq_false, Bool.true_eq_false] at h₈ h₉ h₁₀
       simp only [entity_type_in_false_implies_inₛ_false hwf hin hty₇, Bool.false_eq_true] at h₁₀
     case some =>

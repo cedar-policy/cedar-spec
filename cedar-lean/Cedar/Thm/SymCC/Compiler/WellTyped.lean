@@ -420,7 +420,6 @@ theorem compile_well_typed_lit {p : Prim} {tx : CedarType} {Γ : TypeEnv} {εnv 
       TermType.ofType,
       Term.typeOf,
       TermPrim.typeOf,
-      BitVec.width,
     ]
 
 theorem compile_well_typed_var {v : Var} {ty : CedarType} {Γ : TypeEnv} {εnv : SymEnv}
@@ -495,7 +494,7 @@ theorem compile_well_typed_ite
   · simp [← heqty, hty_comp_b]
     unfold TypedExpr.typeOf
     simp
-  · simp [heqty, hty_comp_c]
+  · simp [hty_comp_c]
     unfold TypedExpr.typeOf
     simp
   · simp
@@ -508,7 +507,7 @@ theorem compile_well_typed_ite
     · simp [heqty, hty_comp_b]
       unfold TypedExpr.typeOf
       simp
-    · simp [heqty, hty_comp_c]
+    · simp [hty_comp_c]
       unfold TypedExpr.typeOf
       simp
   · simp; contradiction
@@ -598,12 +597,12 @@ theorem compile_well_typed_unaryApp
     simp only [hty_expr, TermType.ofType] at hty_comp_expr hty_get_comp_expr
     simp only [hty_expr, TermType.ofType, Except.bind_ok, Except.ok.injEq, exists_eq_left']
     rw [typeOf_ifSome_option]
-    simp [TypedExpr.typeOf, TermType.ofType, Term.typeOf, Factory.ifFalse, Factory.noneOf, Factory.someOf]
+    simp [TypedExpr.typeOf, TermType.ofType, Factory.ifFalse, Factory.noneOf, Factory.someOf]
     have ⟨hwf_bvnego_get_expr, hty_bvnego_get_expr⟩ := wf_bvnego hwf_get_comp_expr hty_get_comp_expr
     have ⟨hwf_bvneg_get_expr, hty_bvneg_get_expr⟩ := wf_bvneg hwf_get_comp_expr hty_get_comp_expr
     apply wf_typeOf_ite
     any_goals assumption
-    any_goals simp [TermType.ofType, Term.typeOf, TermPrim.typeOf, Factory.someOf]
+    any_goals simp [Term.typeOf]
     · constructor
       simp [*]
       constructor
@@ -618,9 +617,6 @@ theorem compile_well_typed_unaryApp
       TypedExpr.typeOf,
       TermType.ofType,
       Term.typeOf,
-      Factory.ifFalse,
-      Factory.noneOf,
-      Factory.someOf,
       TermPrim.typeOf,
     ]
   case isEmpty elem_ty hty_expr =>
@@ -817,7 +813,7 @@ theorem compile_well_typed_binaryApp
     ]
     split <;> simp
   case eq _ heqty =>
-    simp [heqty, compileApp₂, TermType.ofType, reducibleEq]
+    simp [heqty, reducibleEq]
   case hasTag ety hty_a hty_b =>
     simp only [hty_a, hty_b, hεnv, TermType.ofType, compileHasTag]
     -- Show that `ety` is a valid entity type
@@ -1018,7 +1014,7 @@ theorem compile_well_typed_hasAttr
       have hty_attrs_out := isCedarRecordType_implies_isRecordType hty_attrs_out
       simp only [TermType.isRecordType] at hty_attrs_out
       cases e : sym_ety_data.attrs.outType with
-      | record => simp [e]
+      | record => simp
       | _ => simp [e] at hty_attrs_out
     have hty_app_attrs :
       (Factory.app sym_ety_data.attrs (Factory.option.get compile_expr)).typeOf
@@ -1057,7 +1053,7 @@ theorem compile_well_typed_hasAttr
       apply typeOf_ifSome_option
       simp [
         Factory.someOf, TermType.ofType, TypedExpr.typeOf, Term.typeOf,
-        Factory.isSome, TermPrim.typeOf,
+        TermPrim.typeOf,
       ]
     -- Attribute does not exist
     case _ =>
@@ -1065,7 +1061,7 @@ theorem compile_well_typed_hasAttr
       apply typeOf_ifSome_option
       simp [
         Factory.someOf, TermType.ofType, TypedExpr.typeOf, Term.typeOf,
-        Factory.isSome, TermPrim.typeOf,
+        TermPrim.typeOf,
       ]
   case hasAttr_record rty hwt_expr hty_expr =>
     simp only [
@@ -1093,17 +1089,11 @@ theorem compile_well_typed_hasAttr
     -- Required attribute
     case _ hattr_exists =>
       apply typeOf_ifSome_option
-      simp [
-        Factory.someOf, TermType.ofType, TypedExpr.typeOf, Term.typeOf,
-        Factory.isSome, TermPrim.typeOf,
-      ]
+      simp only [Factory.someOf, Term.typeOf, TermPrim.typeOf, TypedExpr.typeOf, TermType.ofType]
     -- Attribute does not exist
     case _ =>
       apply typeOf_ifSome_option
-      simp [
-        Factory.someOf, TermType.ofType, TypedExpr.typeOf, Term.typeOf,
-        Factory.isSome, TermPrim.typeOf,
-      ]
+      simp only [Factory.someOf, Term.typeOf, TermPrim.typeOf, TypedExpr.typeOf, TermType.ofType]
 
 theorem compile_well_typed_set
   {xs : List TypedExpr} {ty : CedarType}
@@ -1396,7 +1386,7 @@ theorem compile_well_typed_call
     simp only [
       List.map_cons, List.map_nil, List.attach_cons,
       List.attach_nil, List.mapM_cons,
-      List.mapM_nil, bind_pure_comp, Functor.map,
+      List.mapM_nil,
       bind, Except.bind,
     ] at hcomp_xs
     split at hcomp_xs

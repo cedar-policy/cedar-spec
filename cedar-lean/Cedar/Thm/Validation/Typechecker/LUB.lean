@@ -72,13 +72,13 @@ theorem lubRecord_find_implies_find {a : Attr} {qty : QualifiedType} {rty rty₁
   induction h₁
   case nil => simp [List.find?] at h₂
   case cons a' hd hd₁ hd₂ tl tl₁ tl₂ h₃ _ ih =>
-    simp [Map.find?, Map.kvs] at *
+    simp at *
     cases h₅ : a' == a
     case false =>
-      simp [List.find?, h₅] at *
+      simp [h₅] at *
       apply ih h₂
     case true =>
-      simp [List.find?, h₅] at *
+      simp [h₅] at *
       simp [h₂, h₃]
 
 theorem lubRecord_find_implied_by_find_left {a : Attr} {qty₁ : QualifiedType} {rty rty₁ rty₂ : List (Attr × Qualified CedarType)}
@@ -93,7 +93,7 @@ theorem lubRecord_find_implied_by_find_left {a : Attr} {qty₁ : QualifiedType} 
   induction h₁
   case nil => simp [List.find?] at h₂
   case cons a' hd hd₁ hd₂ tl tl₁ tl₂ h₃ _ ih =>
-    simp [Map.find?, Map.kvs] at *
+    simp at *
     cases h₅ : a' == a
     case false =>
       simp [List.find?, h₅] at *
@@ -268,7 +268,7 @@ theorem lubQualified_is_lub_of_getType {qty qty₁ qty₂: Qualified CedarType}
   all_goals {
     rename_i aty₁ aty₂
     cases h₂ : (aty₁ ⊔ aty₂)
-    <;> simp only [Qualified.getType, reduceCtorEq]
+    <;> simp only [Qualified.getType]
     <;> simp only [h₂, false_and, exists_const, exists_eq_left', Option.some.injEq, reduceCtorEq] at *
     subst qty
     simp only
@@ -359,7 +359,7 @@ theorem lubRecordType_trans {rty₁ rty₂ rty₃ : List (Attr × QualifiedType)
     have ⟨hl₂, hr₂⟩ := h₂
     rw [eq_comm] at hl₁ hl₂ hr₁ hr₂
     subst hl₁ hl₂ hr₁ hr₂
-    simp [Prod.snd] at *
+    simp at *
     have h₉ := lubQualifiedType_trans h₅ h₇
     have h₁₀ := lubRecordType_trans h₆ h₈
     simp [h₉, h₁₀]
@@ -417,7 +417,7 @@ theorem lub_left_subty {ty₁ ty₂ ty₃ : CedarType} :
     subst h₁
     simp [lub?]
     cases h₃ : sty₁ ⊔ sty₃ <;>
-    simp [h₃] <;>
+    simp <;>
     have h₄ := lub_left_subty h₂ <;>
     simp [subty, h₃] at h₄
     assumption
@@ -427,7 +427,7 @@ theorem lub_left_subty {ty₁ ty₂ ty₃ : CedarType} :
     subst h₁
     simp [lub?]
     cases h₃ : lubRecordType rty₁ rty₃ <;>
-    simp [h₃] <;>
+    simp <;>
     have h₄ := lubRecordType_left_subty h₂ <;>
     simp [h₃] at h₄
     assumption
@@ -719,7 +719,7 @@ theorem lubQualifiedType_assoc_some_some {qty₁ qty₂ qty₃ qty₄ qty₅ : Q
     cases h₄ : (ty₂' ⊔ ty₃') <;> simp [h₄] at h₂
     have h₅ := lub_assoc_some_some h₃ h₄
     subst h₁ h₂
-    simp [h₄, h₅]
+    simp [h₅]
   }
   termination_by sizeOf qty₁
 

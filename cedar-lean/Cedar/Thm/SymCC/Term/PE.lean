@@ -238,7 +238,7 @@ theorem pe_eq_simplify_lit {t₁ t₂ : Term} :
   Factory.eq.simplify t₁ t₂ = (t₁ == t₂)
 := by
   fun_cases Factory.eq.simplify t₁ t₂
-  <;> simp_all [Term.isLiteral, pe_eq_simplify_same]
+  <;> simp_all [Term.isLiteral]
 
 theorem pe_eq_lit {t₁ t₂ : Term} :
   t₁.isLiteral → t₂.isLiteral →
@@ -252,8 +252,8 @@ theorem pe_eq_lit {t₁ t₂ : Term} :
     simp only [Term.prim.injEq, TermPrim.bool.injEq]
     rename_i t₁ t₂
     cases h : t₁ == t₂ <;> simp_all
-  · simp [pe_eq_some_none, Term.isLiteral]
-  · simp [pe_eq_none_some, Term.isLiteral]
+  · simp [Term.isLiteral]
+  · simp [Term.isLiteral]
   · exact pe_eq_simplify_lit
 
 theorem pe_eq_prim {p₁ p₂ : TermPrim} :
@@ -365,11 +365,11 @@ theorem pe_ifSome_get_eq_get'₂ {εs : SymEntities} (I : Interpretation) {t₁ 
   case inr.inl =>
     subst hwo₂
     replace ⟨_, hwo₁, _⟩ := hwo₁ ; subst hwo₁
-    simp only [pe_isNone_some, pe_ite_false, hty₁, hty₂, pe_isNone_none, pe_ite_true]
+    simp only [pe_isNone_some, pe_ite_false, pe_isNone_none, pe_ite_true]
   case inr.inr =>
     replace ⟨_, hwo₁, _⟩ := hwo₁ ; subst hwo₁
     replace ⟨_, hwo₂, _⟩ := hwo₂ ; subst hwo₂
-    simp only [pe_isNone_some, pe_ite_false, pe_option_get_some, pe_option_get'_some, hty₁, hty₂]
+    simp only [pe_isNone_some, pe_ite_false, pe_option_get_some, pe_option_get'_some]
 
 theorem pe_ifSome_ok_get_eq_get' {εs : SymEntities} (I : Interpretation) {t₁ t₂ t₃ : Term} {ty₁ ty₂ : TermType} (f : Term → SymCC.Result Term)
   (hwφ₁ : Term.WellFormedLiteral εs t₁ ∧ Term.typeOf t₁ = TermType.option ty₁)
@@ -387,7 +387,7 @@ theorem pe_ifSome_ok_get_eq_get' {εs : SymEntities} (I : Interpretation) {t₁ 
     simp only [pe_isNone_none, pe_ite_true]
   case inr =>
     replace ⟨_, hwo₁, _⟩ := hwo₁ ; subst hwo₁
-    simp only [pe_isNone_some, pe_ite_false, pe_option_get_some, pe_option_get'_some]
+    simp only [pe_isNone_some, pe_ite_false]
     simp only [pe_option_get'_some] at hok₂
     simp only [pe_option_get_some, hok₂, Except.ok.injEq] at hok₃
     simp only [hok₃]
@@ -416,11 +416,11 @@ theorem pe_ifSome_ok_get_eq_get'₂ {εs : SymEntities} (I : Interpretation) {t�
   case inr.inl =>
     subst hwo₂
     replace ⟨_, hwo₁, _⟩ := hwo₁ ; subst hwo₁
-    simp only [pe_isNone_some, pe_ite_false, hty₃, hty₄, pe_isNone_none, pe_ite_true]
+    simp only [pe_isNone_some, pe_ite_false, pe_isNone_none, pe_ite_true]
   case inr.inr =>
     replace ⟨_, hwo₁, _⟩ := hwo₁ ; subst hwo₁
     replace ⟨_, hwo₂, _⟩ := hwo₂ ; subst hwo₂
-    simp only [pe_isNone_some, pe_ite_false, pe_option_get_some, pe_option_get'_some, hty₃, hty₄]
+    simp only [pe_isNone_some, pe_ite_false]
     simp only [pe_option_get'_some] at hok₃
     simp only [pe_option_get_some, hok₃, Except.ok.injEq] at hok₄
     simp only [hok₄]
@@ -434,7 +434,7 @@ private theorem pe_foldl_or_right_true {ts : List Term} {f : Term → Term} :
   case nil =>
     simp only [List.foldl_nil]
   case cons hd tl ih =>
-    simp only [List.foldl_nil, List.foldl_cons, pe_or_true_right, ih]
+    simp only [List.foldl_cons, pe_or_true_right, ih]
 
 theorem pe_wfls_of_type_option {εs : SymEntities} {ts : List Term}
   (hwφ : ∀ t ∈ ts, t.WellFormedLiteral εs ∧ ∃ ty, t.typeOf = .option ty) :
@@ -940,7 +940,7 @@ theorem pe_string_like_wfl {εs : SymEntities} {t : Term} {p : Pattern} :
 theorem pe_set_isEmpty {s : Set Term} {ty : TermType} :
   Factory.set.isEmpty (Term.set s ty) = s.isEmpty
 := by
-  cases s <;> rename_i ts
+  cases s ; rename_i ts
   cases ts
   case nil =>
     simp only [set.isEmpty, Set.isEmpty, Set.empty, beq_self_eq_true]
@@ -1077,7 +1077,7 @@ theorem pe_set_inter {s₁ s₂ : Set Term} {ty : TermType} :
     have h₄ := Set.inter_self_eq s₂
     simp only [Inter.inter] at h₄
     simp only [Term.set.injEq, and_true] at h₃
-    simp only [h₃, h₄, Term.set.injEq, and_true]
+    simp only [h₃, h₄]
   case isFalse =>
     split
     case h_1 heq | h_2 heq _ =>
@@ -1180,7 +1180,7 @@ theorem pe_ext_ipaddr_prefixV4'_wfl {εs : SymEntities} {I : Interpretation} {t 
   simp only [ext.ipaddr.prefixV4']
   cases ip <;> simp only
   case V4 =>
-    simp only [ext.ipaddr.prefixV4, Term.isLiteral]
+    simp only [ext.ipaddr.prefixV4]
     split <;>
     simp only [noneOf, someOf, Term.isLiteral]
   case V6 c6 =>
@@ -1215,7 +1215,7 @@ theorem pe_ext_ipaddr_prefixV6'_wfl {εs : SymEntities} {I : Interpretation} {t 
     have h₃ := wf_interpretation_implies_wfp_ext_ipaddr_prefixV6 c4.addr c4.pre h₀ rfl
     exact h₃.left.right
   case V6 =>
-    simp only [ext.ipaddr.prefixV6, Term.isLiteral]
+    simp only [ext.ipaddr.prefixV6]
     split <;>
     simp only [noneOf, someOf, Term.isLiteral]
 

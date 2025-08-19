@@ -55,7 +55,8 @@ theorem type_of_ite_inversion {x₁ x₂ x₃ : Expr} {c c' : Capabilities} {env
     rename_i res₂ ; simp [ok] at h₁
     have ⟨ht₂, hc₂⟩ := h₁
     subst ht₂ hc₂
-    simp [h₃, ←hr₁, TypedExpr.typeOf]
+    simp only [TypedExpr.typeOf, TypedExpr.ite.injEq, and_true, true_and, exists_and_left,
+      exists_eq', Except.ok.injEq, exists_eq_left']
     exists res₂.snd
   case h_2 =>
     exists res₁.fst, BoolType.ff, res₁.snd
@@ -76,7 +77,7 @@ theorem type_of_ite_inversion {x₁ x₂ x₃ : Expr} {c c' : Capabilities} {env
     have ⟨ht, hc⟩ := h₁
     subst ht hc
     exists res₂.fst, res₂.snd
-    simp only [←hr₁, h₃, Except.ok.injEq, true_and]
+    simp only [Except.ok.injEq, true_and]
     exists res₃.fst
     simp [TypedExpr.typeOf]
     exists res₃.snd

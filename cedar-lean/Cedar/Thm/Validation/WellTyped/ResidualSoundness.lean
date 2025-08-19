@@ -191,15 +191,15 @@ InstanceOfType env v (Residual.ite x₁ x₂ x₃ x₂.typeOf).typeOf
   -- The residual ite evaluation: first evaluate x₁, if true evaluate x₂, else evaluate x₃
   generalize hᵢ₁' : x₁.evaluate request entities = res₁
   cases res₁
-  case error => simp only [Result.as, hᵢ₁', Except.bind_err, reduceCtorEq] at h₃
+  case error => simp only [hᵢ₁', Except.bind_err, reduceCtorEq] at h₃
   case ok =>
     rename_i v₁
     specialize hᵢ₁ hᵢ₁'
     simp only [h₁] at hᵢ₁
     replace ⟨b, hᵢ₁⟩ := instance_of_anyBool_is_bool hᵢ₁
     simp only [hᵢ₁] at hᵢ₁'
-    simp only [Result.as, hᵢ₁', Coe.coe, Value.asBool, Except.bind_ok] at h₃
-    cases b <;> simp [hᵢ₁'] at h₃
+    simp only [hᵢ₁', Value.asBool, Except.bind_ok] at h₃
+    cases b <;> simp at h₃
     case false =>
       have h₄ : InstanceOfType env v x₂.typeOf := by
         rw [h₂]
@@ -225,7 +225,7 @@ InstanceOfType env v (Residual.unaryApp op₁ x₁ ty).typeOf
   simp only [Residual.evaluate] at h₂
   generalize hᵢ₁' : x₁.evaluate request entities = res₁
   cases res₁
-  case error => simp only [Result.as, hᵢ₁', Except.bind_err, reduceCtorEq] at h₂
+  case error => simp only [hᵢ₁', Except.bind_err, reduceCtorEq] at h₂
   case ok v₁ =>
     simp only [hᵢ₁', apply₁, Except.bind_ok] at h₂
     split at h₂ <;> cases h₁
@@ -438,7 +438,7 @@ InstanceOfType env v (Residual.getAttr x₁ attr ty).typeOf
         simp only [h₁₁, Option.some.injEq] at h₅₁
         simp only [← h₅₁] at h₅₃
         have h₈ := λ qty => h₈ attr v₁ qty heq₁
-        simp only [h₅₂] at h₈
+        simp only at h₈
         simp only [Option.map_eq_some_iff] at h₆
         rcases h₆ with ⟨qty, h₆₁, h₆₂⟩
         simp [←h₅₂, RecordType.liftBoolTypes, lift_bool_types_record_eq_map_on_values] at h₆₁
@@ -595,7 +595,7 @@ theorem residual_well_typed_is_sound_record
   simp only [List.mapM₂, List.attach₂] at h₄
   simp only [List.mapM_pmap_subtype
       (fun (x : Attr × Residual) => bindAttr x.fst (Residual.evaluate x.snd request entities))] at h₄
-  simp only [bindAttr, bind_pure_comp, List.mapM_map, List.mapM_ok_iff_forall₂] at h₄
+  simp only [bindAttr, bind_pure_comp, List.mapM_ok_iff_forall₂] at h₄
   let rty' := (List.map
       (fun x =>
         match x with

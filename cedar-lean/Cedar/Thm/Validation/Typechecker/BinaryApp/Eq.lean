@@ -57,7 +57,7 @@ theorem type_of_eq_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Typ
     case h_1 h₅ =>
       simp only [Function.comp_apply, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at h₁
       replace ⟨h₁, h₁''⟩ := h₁ ; subst ty c'
-      simp only [imp_false, List.empty_eq, CedarType.bool.injEq, Except.ok.injEq,
+      simp only [List.empty_eq, Except.ok.injEq,
         exists_and_left, exists_and_right, true_and]
       split
       case h_1 p₁ p₂ _ =>
@@ -74,7 +74,7 @@ theorem type_of_eq_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Typ
     case h_2 h₅ =>
       split at h₁ <;> simp only [Function.comp_apply, Except.ok.injEq, Prod.mk.injEq, List.nil_eq, reduceCtorEq] at h₁
       replace ⟨h₁, h₁''⟩ := h₁ ; subst ty c'
-      simp only [List.empty_eq, CedarType.bool.injEq, reduceCtorEq, if_false_left, and_true,
+      simp only [List.empty_eq,
         Except.ok.injEq, exists_and_left, exists_and_right, true_and]
       split
       case h_1 p₁ p₂ _ =>
@@ -153,7 +153,7 @@ theorem type_of_eq_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env :
       rw [hty₂] at ih₄ heq
       have h₆ := no_entity_type_lub_implies_not_eq ih₃ ih₄ heq
       cases h₇ : v₁ == v₂ <;>
-      simp only [beq_iff_eq, beq_eq_false_iff_ne, ne_eq, Value.prim.injEq] at h₇
+      simp only [beq_iff_eq, beq_eq_false_iff_ne, ne_eq] at h₇
       case false => rw [hty₀]; exact false_is_instance_of_ff
       case true  => contradiction
 

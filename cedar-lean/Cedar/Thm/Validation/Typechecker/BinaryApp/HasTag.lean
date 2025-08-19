@@ -42,7 +42,7 @@ theorem type_of_hasTag_inversion {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {
   rename_i ty₁ c₁' ty₂ c₂'
   simp only at h₁
   cases h₄ : ty₁.typeOf <;> simp only [h₄, typeOfBinaryApp, err, reduceCtorEq] at h₁
-  cases h₅ : ty₂.typeOf <;> simp only [h₅, typeOfBinaryApp, err, reduceCtorEq] at h₁
+  cases h₅ : ty₂.typeOf <;> simp only [h₅, reduceCtorEq] at h₁
   rename_i ety
   cases h₆ : typeOfHasTag ety x₁ x₂ c₁ env <;>
   simp only [h₆, Except.bind_err, Except.bind_ok, ok, reduceCtorEq, Except.ok.injEq, Prod.mk.injEq] at h₁
@@ -156,7 +156,7 @@ theorem type_of_hasTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
   rw [hl₅] at hty₂
   replace ⟨s, hv₂⟩ := instance_of_string_is_string hty₂
   subst hv₁ hv₂ hty₁
-  simp only [apply₂, hasTag, Except.ok.injEq, Value.prim.injEq, Prim.bool.injEq, false_or, exists_eq_left']
+  simp only [apply₂, hasTag, Except.ok.injEq, Value.prim.injEq, Prim.bool.injEq]
   simp only [typeOfHasTag, List.empty_eq] at h₃
   have hempty := empty_capabilities_invariant request entities
   simp only [List.empty_eq] at hempty

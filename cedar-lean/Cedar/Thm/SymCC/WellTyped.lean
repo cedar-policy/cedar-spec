@@ -112,7 +112,6 @@ theorem wellTypedPolicy_some_implies_exists_typed_exprs
         ResourceScope.toExpr,
         Conditions.toExpr,
         Condition.toExpr,
-        List.foldr,
         List.foldl,
         List.reverse,
         List.reverseAux,

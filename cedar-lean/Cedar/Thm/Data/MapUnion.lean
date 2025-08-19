@@ -214,13 +214,13 @@ private theorem foldl_union_comm {α} [LT α] [StrictLT α] [DecidableLT α] [De
 := by
   cases xs <;> cases ys
   case nil.nil =>
-    simp only [List.nil_append, List.append_nil]
+    simp only [List.append_nil]
   case nil.cons | cons.nil =>
     simp only [List.append_nil, List.nil_append, List.foldl_cons]
   case cons xhd xtl yhd ytl =>
     rw [foldl_union_swap_middle, foldl_union_swap_middle, ← List.singleton_append, List.append_assoc,
       @List.cons_append _ xhd, foldl_union_swap_middle]
-    simp only [List.cons_append, List.singleton_append, List.foldl_cons, List.nil_append]
+    simp only [List.cons_append, List.foldl_cons, List.nil_append]
     exact foldl_union_comm
 
 theorem mapUnion_comm {α β} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {f : β → Set α} {xs ys : List β} :
@@ -289,7 +289,7 @@ termination_by xs.length
 decreasing_by
   simp_wf
   rename_i xhd xtl hxs _ _ _ _ _ _
-  simp only [hxs, List.length_cons, Nat.succ_eq_add_one]
+  simp only [hxs, List.length_cons]
   have _ := List.length_removeAll_le xtl [xhd]
   omega
 

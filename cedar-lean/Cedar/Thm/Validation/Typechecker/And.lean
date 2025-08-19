@@ -52,7 +52,7 @@ theorem type_of_and_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Ty
     exists res₁.fst, BoolType.ff, res₁.snd
   case h_2 bty₁ h₃ h₄ =>
     exists res₁.fst, bty₁, res₁.snd
-    simp [h₄, ResultType.typeOf, Except.map]
+    simp only [h₄, true_and]
     split ; contradiction
     cases h₄ : typeOf x₂ (c ∪ res₁.snd) env <;> simp [h₄] at *
     rename_i res₂
@@ -128,11 +128,11 @@ theorem type_of_and_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env 
         have ⟨_, v₂, ih₂₂, ih₂₃⟩ := ih₂
         simp [EvaluatesTo] at ih₂₂
         rcases ih₂₂ with ih₂₂ | ih₂₂ | ih₂₂ | ih₂₂ <;>
-        simp [Result.as, ih₂₂, Coe.coe, Value.asBool, Lean.Internal.coeM, pure, Except.pure]
+        simp [ih₂₂]
         rw [hty₂] at ih₂₃
         have h₈ := instance_of_ff_is_false ih₂₃
         subst h₈
-        simp [CoeT.coe, CoeHTCT.coe, CoeHTC.coe, CoeOTC.coe, CoeTC.coe, Coe.coe]
+        simp only [Except.map_ok, reduceCtorEq, or_true]
     case isFalse hbty₂ =>
       cases b₁
       case false =>
@@ -152,12 +152,12 @@ theorem type_of_and_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env 
         have ⟨ih₂₁, v₂, ih₂₂, ih₂₃⟩ := ih₂
         simp [EvaluatesTo] at ih₂₂
         rcases ih₂₂ with ih₂₂ | ih₂₂ | ih₂₂ | ih₂₂ <;>
-        simp [EvaluatesTo, evaluate, Result.as, ih₂₂, Coe.coe, Value.asBool, Lean.Internal.coeM, pure, Except.pure] <;>
+        simp [ih₂₂] <;>
         try exact type_is_inhabited_bool
         rw [hty₂] at ih₂₃
         have ⟨b₂, hb₂⟩ := instance_of_bool_is_bool ih₂₃
         subst hb₂
-        cases b₂ <;> simp [TypedExpr.typeOf, CoeT.coe, CoeHTCT.coe, CoeHTC.coe, CoeOTC.coe, CoeTC.coe, Coe.coe]
+        cases b₂ <;> simp [TypedExpr.typeOf]
         case false =>
           apply instance_of_lubBool ; simp [ih₂₃]
         case true =>

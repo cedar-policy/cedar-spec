@@ -303,7 +303,7 @@ theorem wf_env_implies_attrs_lifted {env : TypeEnv} {ety : EntityType} {attrs : 
   · simp only [EntitySchemaEntry.attrs] at hattrs
     simp only [← hattrs, Map.empty]
     constructor
-    simp [Map.WellFormed, Map.toList, Map.kvs, Map.make, List.canonicalize]
+    simp [Map.toList, Map.kvs]
 
 theorem wf_env_implies_action_wf {env : TypeEnv}
   (hwf : env.WellFormed) :
@@ -312,7 +312,7 @@ theorem wf_env_implies_action_wf {env : TypeEnv}
   have ⟨_, _, hwf_req⟩ := hwf
   have ⟨_, hact, _⟩ := hwf_req
   apply Or.inr
-  simp [EntityUID.WellFormed, ActionSchema.contains, hact]
+  simp [ActionSchema.contains, hact]
 
 theorem wf_env_disjoint_ets_acts
   {env : TypeEnv} {uid : EntityUID}

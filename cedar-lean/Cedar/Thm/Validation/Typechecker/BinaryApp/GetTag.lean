@@ -47,7 +47,7 @@ theorem type_of_getTag_inversion {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {
   rename_i tx₁ c₁' tx₂ c₂'
   simp only at h₁
   cases h₄ : tx₁.typeOf <;> simp [typeOfBinaryApp, err, reduceCtorEq, h₄] at h₁
-  cases h₅ : tx₂.typeOf <;> simp [typeOfBinaryApp, err, reduceCtorEq, h₅] at h₁
+  cases h₅ : tx₂.typeOf <;> simp [reduceCtorEq, h₅] at h₁
   rename_i ety
   simp only [typeOfGetTag, List.empty_eq] at h₁
   split at h₁ <;> simp only [ok, err, Except.bind_err, reduceCtorEq] at h₁
@@ -58,8 +58,8 @@ theorem type_of_getTag_inversion {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {
   subst h₁ h₁'
   simp only [true_and]
   exists ety, ty, tx₁, tx₂
-  simp only [ResultType.typeOf, Except.map, h₄, h₅, h₆, h₇]
-  simp [TypedExpr.typeOf]
+  simp only [h₄, h₅, h₆, h₇]
+  simp []
 
 theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : TypeEnv} {tx : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
@@ -88,7 +88,7 @@ theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
   rw [h₆] at hty₂
   replace ⟨s, hv₂⟩ := instance_of_string_is_string hty₂
   subst hv₁ hv₂ hty₁
-  simp only [apply₂, hasTag, Except.ok.injEq, Value.prim.injEq, Prim.bool.injEq, false_or, exists_eq_left']
+  simp only [apply₂]
   simp only [getTag, Entities.tags]
   have hf₁ := Map.findOrErr_returns entities uid Error.entityDoesNotExist
   rcases hf₁ with ⟨d, hf₁⟩ | hf₁ <;>
@@ -110,7 +110,7 @@ theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
     rcases hf₃ with ⟨v, hf₃⟩ | hf₃ <;>
     simp only [hf₃, false_implies, Except.error.injEq, or_self, false_and, exists_const, and_false,
       Except.ok.injEq, false_or, exists_eq_left', reduceCtorEq]
-    · simp only [htx, TypedExpr.typeOf, ← List.empty_eq, empty_capabilities_invariant request entities, implies_true, true_and, reduceCtorEq]
+    · simp only [htx, TypedExpr.typeOf, ← List.empty_eq, empty_capabilities_invariant request entities, implies_true, true_and]
       apply h₂
       exact Map.findOrErr_ok_implies_in_values hf₃
     · replace h₁ := h₁.right x₁ x₂ hc₁
@@ -122,7 +122,7 @@ theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
     · cases ht₂
   | inr h =>
     replace ⟨h₃, _, ⟨_, hacts, _⟩⟩ := h
-    simp only [EntitySchema.tags?, h₃, Option.map] at ht
+    simp only [EntitySchema.tags?, Option.map] at ht
     split at ht
     · apply False.elim
       apply wf_env_disjoint_ets_acts h₂.wf_env
