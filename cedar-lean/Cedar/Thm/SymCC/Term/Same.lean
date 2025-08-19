@@ -55,7 +55,7 @@ theorem same_outcomes_implies_eq {o₁ o₂ : Outcome Value} {t : Term} :
     cases o₂ <;> simp at h₂
     simp only [SameValues] at h₁ h₂
     simp only [h₁, Option.some.injEq] at h₂
-    simp only [h₂, Except.ok.injEq]
+    simp only [h₂]
 
 theorem same_error_implies {e : Spec.Error} {t : Term} :
   (Except.error e : Spec.Result Value) ∼ t →
@@ -317,7 +317,7 @@ theorem same_set_implies {vs : Set Value} {t : Term} {ty : TermType} :
   unfold Term.value? at h₁
   split at h₁
   case h_1 =>
-    simp only [TermPrim.value?, Option.pure_def, Option.bind_eq_bind] at h₁ <;>
+    simp only [TermPrim.value?, Option.pure_def, Option.bind_eq_bind] at h₁ ;
     split at h₁ <;>
     simp only [Option.bind_eq_some_iff, Option.some.injEq, and_false, exists_const, reduceCtorEq] at h₁
   case h_2 =>
@@ -356,7 +356,7 @@ theorem same_record_implies {avs : Map Attr Value} {t : Term} {rty : Map Attr Te
   unfold Term.value? at h₁
   split at h₁
   case h_1 =>
-    simp only [TermPrim.value?, Option.pure_def, Option.bind_eq_bind] at h₁ <;>
+    simp only [TermPrim.value?, Option.pure_def, Option.bind_eq_bind] at h₁ ;
     split at h₁ <;>
     simp only [Option.bind_eq_some_iff, Option.some.injEq, and_false, exists_const, reduceCtorEq] at h₁
   case h_2 | h_4 =>
@@ -417,7 +417,7 @@ theorem same_bitvec_term_implies {v : Value} {n : Nat} {bv : BitVec n} :
   simp only [Option.some.injEq, reduceCtorEq] at h₁
   rename_i h₃
   subst h₃
-  simp only [Int64.toInt, ← h₁, Int64.ofIntChecked, and_true]
+  simp only [Int64.toInt, ← h₁, and_true]
   congr
   simp only [BitVec.toInt_ofInt64_toBitVec]
 
@@ -445,7 +445,7 @@ theorem same_int_implies {t : Term} {bv : BitVec 64} {i : Int64} :
       Option.some.injEq, Value.prim.injEq, Prim.int.injEq, exists_eq_right, reduceCtorEq] at h₂
     simp only [BitVec.int64?] at h₂
     split at h₂ <;>
-    simp only [Option.some.injEq, Int64.ofIntChecked, reduceCtorEq] at h₂
+    simp only [Option.some.injEq, reduceCtorEq] at h₂
     rename_i hn ; subst hn
     simp only [← h₂] at h₁
     simp only [BitVec.eq_of_toInt_eq h₁, BitVec.toInt_ofInt64_toBitVec]
@@ -462,7 +462,7 @@ theorem same_int {i : Int} {bv : BitVec 64}
   Value.prim (Prim.int (Int64.ofIntChecked i h₁)) ∼ Term.prim (TermPrim.bitvec bv)
 := by
   simp only [Same.same, SameValues, Term.value?, TermPrim.value?, BitVec.int64?, Int64.ofIntChecked, ↓reduceIte, h₂,
-    Option.pure_def, Option.bind_some_fun, Option.some.injEq, Value.prim.injEq, Prim.int.injEq]
+    Option.pure_def, Option.bind_some_fun]
 
 theorem same_bv {bv : BitVec 64} :
   Value.prim (Prim.int (Int64.ofInt bv.toInt)) ∼ Term.prim (TermPrim.bitvec bv)
@@ -476,7 +476,7 @@ theorem same_int64 {i : Int64} :
   simp only [Same.same, SameValues, Term.value?, TermPrim.value?, BitVec.int64?, ↓reduceIte,
     Option.pure_def, Option.bind_some_fun, Option.some.injEq, Value.prim.injEq, Prim.int.injEq]
   cases i; rename_i i; cases i; rename_i i
-  simp only [Int64.toBitVec, UInt64.toBitVec, Int64.ofInt, BitVec.ofInt_toInt]
+  simp only [Int64.toBitVec, Int64.ofInt, BitVec.ofInt_toInt]
 
 theorem same_ext {x : Ext} :
   Value.ext x ∼ Term.prim (TermPrim.ext x)
@@ -533,7 +533,7 @@ private theorem value?_attrValue?_none_optional {a : Attr} {ty : TermType} {av :
   (hv : Term.value?.attrValue? a (.none ty) = some av) :
   Term.value? (.none ty) = none ∧ (a, none) = av
 := by
-  simp only [Term.value?.attrValue?, Option.bind_eq_bind, Option.bind_eq_some_iff,
+  simp only [Term.value?.attrValue?,
     Option.some.injEq] at hv
   simp only [Term.value?, hv, and_self]
 
@@ -916,7 +916,7 @@ private theorem record_value?_eq' {rv : List (Attr × Value)} {r₁ r₂ : List 
   have htyₘ := hty
   simp only [typeOf_term_record_eq, TermType.record.injEq, Map.mk.injEq] at htyₘ
   cases r₁ <;> cases r₂ <;>
-  simp only [Map.mk.injEq, List.cons.injEq, reduceCtorEq] <;>
+  simp only [List.cons.injEq, reduceCtorEq] <;>
   simp only [List.map_nil, List.map_cons, List.cons.injEq, Prod.mk.injEq, reduceCtorEq] at htyₘ
   rename_i hd₁ tl₁ hd₂ tl₂
   cases hd₁ ; cases hd₂ ; rename_i a₁ t₁ a₂ t₂
@@ -1073,10 +1073,10 @@ decreasing_by
   . simp only [hsz, Term.set.sizeOf_spec]
     have _ := Set.sizeOf_lt_of_mem ht₁
     omega
-  · simp only [hsz, Term.record.sizeOf_spec, gt_iff_lt]
+  · simp only [hsz, Term.record.sizeOf_spec]
     have _ := Map.sizeOf_lt_of_value ht₁
     omega
-  · simp only [hsz, Term.record.sizeOf_spec, gt_iff_lt]
+  · simp only [hsz, Term.record.sizeOf_spec]
     have h := Map.sizeOf_lt_of_value ht₁
     simp only [Term.some.sizeOf_spec] at h
     omega
@@ -1145,8 +1145,8 @@ private theorem wfl_isCedarRecordType_implies_attr_wfl_cedarType? {a : Attr} {t 
     · rename_i h₁ h₂
       have h₃ := wfl_of_type_option_is_option (And.intro hwf' hlit') hty
       rcases h₃ with h₃ | ⟨t', h₃, _⟩ <;> subst h₃ <;>
-      simp only [Term.none.injEq, imp_false, imp_self,
-        implies_true, Term.some.injEq, forall_eq'] at h₁ h₂
+      simp only [Term.none.injEq, imp_false,
+        Term.some.injEq, forall_eq'] at h₁ h₂
 
 theorem term_value?_exists {t : Term} {ty : Validation.CedarType} {εs : SymEntities} :
   t.WellFormedLiteral εs →
@@ -1157,7 +1157,7 @@ theorem term_value?_exists {t : Term} {ty : Validation.CedarType} {εs : SymEnti
   have ⟨hwf, hlit⟩ := hwfl
   unfold Term.value?
   cases t <;>
-  simp only [exists_const, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq]
+  simp only [Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq]
   case var | app =>
     simp only [Term.isLiteral, Bool.false_eq_true] at hlit
   case none | some =>

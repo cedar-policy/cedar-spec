@@ -58,8 +58,7 @@ theorem compile_ite_ok_implies {x₁ x₂ x₃ : Expr} {εnv : SymEnv} {t : Term
     rename_i h₃
     simp only [Except.ok.injEq] at h₁
     exists t₁
-    simp only [h₁, h₂, h₃, Except.ok.injEq, exists_and_left, exists_eq_left', true_and,
-      compile_ite_ok_implies]
+    simp only [h₁, h₂, h₃, Except.ok.injEq, exists_and_left, exists_eq_left', true_and]
   case h_4 => simp only [reduceCtorEq] at h₁
 
 def CompileAndSym (t t₁ : Term) (r₂ : SymCC.Result Term): Prop :=
@@ -174,9 +173,9 @@ theorem compileHasAttr_ok_implies {t t₁ : Term} {a : Attr} {εs : SymEntities}
   rename_i rty heq
   exists t₂, rty ; simp only [true_and]
   unfold RecordHasAttr
-  simp only [Except.ok.injEq, heq, true_and] at *
+  simp only [heq, true_and] at *
   split <;> rename_i hfind <;>
-  simp only [hfind, someOf, Except.ok.injEq] at h₁ <;>
+  simp only [hfind, Except.ok.injEq] at h₁ <;>
   simp only [h₁]
 
 theorem compile_hasAttr_ok_implies {a : Attr} {x₁ : Expr} {εnv : SymEnv} {t : Term}
@@ -215,7 +214,7 @@ theorem compileGetAttr_ok_implies {t t₁ : Term} {a : Attr} {εs : SymEntities}
   rename_i rty heq
   exists t₂, rty ; simp only [true_and]
   unfold RecordGetAttr
-  simp only [Except.ok.injEq, heq, true_and] at *
+  simp only [heq, true_and] at *
   split at h₁ <;>
   simp only [Except.ok.injEq, reduceCtorEq] at h₁ <;>
   subst h₁
@@ -257,15 +256,15 @@ theorem compileApp₁_ok_implies {op₁ : UnaryOp} {t t₁ : Term}
     simp only [compileApp₁] at h₁
     split at h₁ <;>
     rename_i hop hty <;>
-    simp only [false_implies, forall_const, UnaryOp.like.injEq, forall_eq', reduceCtorEq] at hop h₁
+    simp only [false_implies, forall_const, UnaryOp.like.injEq, reduceCtorEq] at hop h₁
     simp only [someOf, Except.ok.injEq] at h₁
     simp only [hop, hty, h₁, TermType.set.injEq, exists_eq', and_self]
   case is =>
     simp only [compileApp₁] at h₁
     split at h₁ <;>
     rename_i hop hty <;>
-    simp only [Except.ok.injEq, false_implies, forall_const, UnaryOp.like.injEq, reduceCtorEq] at hop h₁
-    simp only [someOf, Except.ok.injEq] at h₁
+    simp only [Except.ok.injEq, reduceCtorEq] at hop h₁
+    simp only [someOf] at h₁
     simp only [UnaryOp.is.injEq] at hop
     subst hop
     simp only [hty, TermType.prim.injEq, TermPrimType.entity.injEq, exists_eq_left', h₁]
@@ -375,7 +374,7 @@ theorem compileApp₂_contains_ok_implies {t t₁ t₂ : Term} {εs : SymEntitie
   simp only [compileApp₂] at h₁
   split at h₁ <;> simp only [reduceCtorEq] at *
   rename_i hty₁ _
-  simp only [someOf, Except.ok.injEq] at h₁
+  simp only [someOf] at h₁
   split at h₁ <;> simp only [Except.ok.injEq, reduceCtorEq] at h₁
   rename_i hty₂
   simp only [hty₁, hty₂, h₁, and_self]
@@ -388,7 +387,7 @@ theorem compileApp₂_containsAll_ok_implies {t t₁ t₂ : Term} {εs : SymEnti
   simp only [compileApp₂] at h₁
   split at h₁ <;> simp only [reduceCtorEq] at *
   rename_i ty₁ _ hty₁ hty₂ _
-  simp only [someOf, Except.ok.injEq] at h₁
+  simp only [someOf] at h₁
   split at h₁ <;> simp only [Except.ok.injEq, reduceCtorEq] at h₁
   rename_i h ; subst h
   exists ty₁
@@ -402,7 +401,7 @@ theorem compileApp₂_containsAny_ok_implies {t t₁ t₂ : Term} {εs : SymEnti
   simp only [compileApp₂] at h₁
   split at h₁ <;> simp only [reduceCtorEq] at *
   rename_i ty₁ _ hty₁ hty₂ _
-  simp only [someOf, Except.ok.injEq] at h₁
+  simp only [someOf] at h₁
   split at h₁ <;> simp only [Except.ok.injEq, reduceCtorEq] at h₁
   rename_i h ; subst h
   exists ty₁
@@ -417,7 +416,7 @@ theorem compileHasTag_ok_implies {t t₁ t₂ : Term} {tags : Option (Option Sym
   simp only [compileHasTag] at h₁
   split at h₁ <;> simp only [Except.ok.injEq, someOf, reduceCtorEq] at h₁
   · simp_all only [and_self, Option.some.injEq, false_and, exists_const, or_false, reduceCtorEq]
-  · simp_all only [Option.some.injEq, false_and, exists_eq_left', or_true]
+  · simp_all only [Option.some.injEq, exists_eq_left', or_true]
 
 theorem compileApp₂_hasTag_ok_implies {t t₁ t₂ : Term} {εs : SymEntities} :
   compileApp₂ .hasTag t₁ t₂ εs = .ok t →
@@ -517,13 +516,13 @@ theorem compileSet_ok_implies {ts : List Term} {t : Term}
 := by
   simp only [compileSet, List.all_eq_true, decide_eq_true_eq] at hok
   split at hok <;> simp only [List.mem_cons, forall_eq_or_imp, List.map_cons, reduceCtorEq] at hok
-  simp only [ne_eq, not_false_eq_true, List.mem_cons, forall_eq_or_imp, true_and]
+  simp only [List.mem_cons, forall_eq_or_imp]
   split at hok <;> try (simp only [reduceCtorEq] at hok)
   rename_i hd tl _ ty _
   split at hok <;> simp only [Except.ok.injEq, someOf, reduceCtorEq] at hok
   rename_i heq
   exists ty, hd, tl
-  simp only [not_false_eq_true, List.mem_cons, forall_eq_or_imp, heq.left, true_and, List.map_cons,
+  simp only [heq.left, true_and, List.map_cons,
     hok, and_true]
   exact heq.right
 

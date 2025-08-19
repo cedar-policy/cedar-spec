@@ -245,7 +245,7 @@ theorem insertCanonical_map_fst {α β γ} [LT α] [StrictLT α] [DecidableLT α
   map (Prod.map id f) (insertCanonical Prod.fst x xs)
 := by
   induction xs generalizing x
-  case nil => simp [insertCanonical, canonicalize, Prod.map]
+  case nil => simp [insertCanonical, Prod.map]
   case cons hd tl ih =>
     simp only [insertCanonical, Prod.map, id_eq, map_cons, gt_iff_lt]
     split

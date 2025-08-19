@@ -92,7 +92,7 @@ theorem ExtOp.lt_conn {a b : ExtOp} :
   simp only [ExtOp.lt, decide_eq_true_eq]
   intro h₁
   cases a <;> cases b
-  any_goals (simp only [ne_eq, not_true_eq_false, not_false_eq_true] at h₁ )
+  any_goals (simp only [ne_eq, not_true_eq_false] at h₁ )
   all_goals (simp only [ExtOp.mkName] ; decide)
 
 instance ExtOp.strictLT : StrictLT ExtOp where
@@ -164,7 +164,7 @@ theorem TermType.lt_irrefl (ty : TermType) :
   ¬ TermType.lt ty ty
 := by
   cases ty <;>
-  simp only [TermType.lt, decide_eq_true_eq, Nat.lt_irrefl, decide_false, not_false_eq_true, Bool.not_eq_true]
+  simp only [TermType.lt, decide_eq_true_eq, Bool.not_eq_true]
   case prim =>
     apply StrictLT.irreflexive
   case option ty | set ty =>
@@ -209,7 +209,7 @@ theorem TermType.lt_trans (a b c : TermType) :
     have _ := TermPrimType.lt_trans _ _ _ h₁ h₂
     contradiction
   case option | set =>
-    simp only [TermType.lt, decide_eq_true_eq] at *
+    simp only [TermType.lt] at *
     have _ := TermType.lt_trans _ _ _ h₁ h₂
     contradiction
   case record =>
@@ -616,7 +616,7 @@ theorem Op.lt_conn {a b : Op} :
   split
   · simp only [Op.uuf.injEq, decide_eq_true_eq] at *
     exact UUF.lt_conn h
-  · simp only [Op.zero_extend.injEq, Nat.lt_eq, decide_eq_true_eq] at *
+  · simp only [Op.zero_extend.injEq, decide_eq_true_eq] at *
     exact Nat.strictLT.connected _ _ h
   · simp only [Op.record.get.injEq, decide_eq_true_eq] at *
     exact String.strictLT.connected _ _ h
@@ -677,7 +677,7 @@ theorem TermVar.lt_conn {a b : TermVar} :
   by_cases h₂ : aid = bid
   case pos =>
     subst h₂
-    simp only [forall_const, true_and] at *
+    simp only [true_and] at *
     have h₂ := StrictLT.irreflexive aid
     simp only [h₂, false_or]
     simp only [TermVar.mk.injEq, true_and] at h₁
@@ -911,7 +911,7 @@ private theorem Term.lt_implies_mkName_le {a b : Term} :
   intro h
   cases a
   all_goals {
-    cases b <;> simp only [decide_eq_true_eq, Term.mkName] at *
+    cases b <;> simp only [decide_eq_true_eq] at *
     any_goals (simp only [h, or_true])
     simp only [Term.mkName, true_or]
   }
@@ -1124,7 +1124,7 @@ theorem Term.lt_conn {a b : Term} :
     have ih := @Term.ltList_conn ts₁ ts₂
     exact Term.lt_conn_set h₁ ih
   case record r₁ =>
-    cases b <;> simp only [Bool.or_eq_true, decide_eq_true_eq, Bool.and_eq_true]
+    cases b <;> simp only [decide_eq_true_eq]
     any_goals (simp only [Term.mkName, String.reduceLT, or_false, or_true])
     simp only [Term.record.injEq] at h₁
     rename_i r₂
@@ -1133,7 +1133,7 @@ theorem Term.lt_conn {a b : Term} :
     exact Term.ltListProd_conn h₁
   case app o₁ ts₁ ty₁ =>
     cases b <;> simp only [Bool.or_eq_true, decide_eq_true_eq, Bool.and_eq_true]
-    any_goals (simp only [Term.mkName, String.reduceLT, or_false, or_true])
+    any_goals (simp only [Term.mkName, String.reduceLT, or_false])
     simp only [Term.app.injEq] at h₁
     rename_i o₂ ts₂ ty₂
     have ih := @Term.ltList_conn ts₁ ts₂

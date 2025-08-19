@@ -164,7 +164,7 @@ private theorem interpret_term_app_wf_uuf {εs : SymEntities} {I : Interpretatio
   replace ⟨h₁, ⟨_, h₂, h₃⟩, h₄⟩ := wf_term_app_uuf h₁
   subst h₁ h₂
   simp only [interpret_term_app_uuf, Term.typeOf]
-  simp only [List.mem_cons, List.mem_singleton, InterpretTermWF, forall_eq_or_imp, forall_eq] at ih
+  simp only [List.mem_cons, InterpretTermWF, forall_eq_or_imp] at ih
   replace ⟨ih, ih'⟩ := ih.left
   have h₅ := wf_interpretation_implies_wf_udf h₀ h₄
   have h₆ : f.out = (UnaryFunction.udf (Interpretation.funs I f)).outType := by simp only [UnaryFunction.outType, h₅]
@@ -321,7 +321,8 @@ private theorem interpret_term_app_wf_ite {εs : SymEntities} {I : Interpretatio
   replace ⟨t₁, t₂, t₃, h₁, h₂, h₃, h₄⟩ := wf_term_app_ite h₁
   subst h₁
   simp only [interpret_term_app_ite, Term.typeOf]
-  simp only [List.mem_cons, List.mem_singleton, InterpretTermWF, forall_eq_or_imp, forall_eq] at ih
+  simp only [List.mem_cons, List.not_mem_nil, or_false, InterpretTermWF, forall_eq_or_imp,
+    forall_eq] at ih
   have ⟨_, ih₂, _, _⟩ := ih
   simp only [WFArg] at h₂ h₃ h₄
   rw [←h₃.right, ←ih₂.right]
@@ -467,7 +468,8 @@ private theorem interpret_term_app_wf_set_member {εs : SymEntities} {I : Interp
   replace ⟨h₁, t₁, t₂, h₂, h₃, h₄, h₅⟩ := wf_term_app_set_member h₁
   subst h₁ h₂
   simp only [interpret_term_app_set_member, Term.typeOf]
-  simp [List.mem_cons, List.mem_singleton, InterpretTermWF, forall_eq_or_imp, forall_eq, h₃, h₄, h₅, List.not_mem_nil, false_implies, forall_const, and_true] at ih
+  simp only [List.mem_cons, List.not_mem_nil, or_false, InterpretTermWF, forall_eq_or_imp,
+    forall_eq, h₅] at ih
   replace ⟨ih, ih'⟩ := ih
   apply wf_set_member ih.left ih'.left
   rw [ih'.right, ←h₅, ih.right, h₅]

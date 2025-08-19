@@ -79,7 +79,7 @@ private theorem env_symbolize?_same_request
     have ⟨sym_ctx, hsym_ctx, hsame_sym_ctx⟩ := value?_symbolize?_id hwf hwf_ctx_ty hwf_ctx hwt_ctx
     simp only [Value.symbolize?, Option.bind_eq_bind] at hsym_ctx
 
-    simp only [Option.bind_eq_bind, hsym_ctx]
+    simp only [hsym_ctx]
     exact hsame_sym_ctx
 
 private theorem env_symbolize?_lookup_attrs_udf
@@ -100,11 +100,7 @@ private theorem env_symbolize?_lookup_attrs_udf
       Entities.symbolizeAttrs?,
       Entities.symbolizeTags?,
       uuf_attrs_tag_keys_no_confusion,
-      ne_comm.mp uuf_attrs_tag_keys_no_confusion,
-      uuf_tag_vals_tag_keys_no_confusion,
-      ne_comm.mp uuf_tag_vals_tag_keys_no_confusion,
-      uuf_attrs_tag_vals_no_confusion,
-      ne_comm.mp uuf_attrs_tag_vals_no_confusion,
+      uuf_attrs_tag_vals_no_confusion
     ] at hv
     cases hv with
     | inl hv =>
@@ -142,7 +138,7 @@ private theorem env_symbolize?_lookup_tag_keys
     ] at hv
     cases hv with
     | inl hv =>
-      simp only [bind, Option.bind] at hv
+      simp only [Option.bind] at hv
       split at hv
       contradiction
       simp only [Option.ite_none_right_eq_some, Option.some.injEq] at hv
@@ -180,13 +176,12 @@ private theorem env_symbolize?_lookup_tag_vals
     simp [
       Entities.symbolizeAttrs?,
       Entities.symbolizeTags?,
-      ne_comm.mp uuf_attrs_tag_keys_no_confusion,
       ne_comm.mp uuf_attrs_tag_vals_no_confusion,
       uuf_tag_vals_tag_keys_no_confusion,
     ] at hv
     cases hv with
     | inl hv =>
-      simp only [bind, Option.bind] at hv
+      simp only [Option.bind] at hv
       split at hv
       contradiction
       simp only [Option.ite_none_right_eq_some, Option.some.injEq] at hv
@@ -225,12 +220,9 @@ private theorem env_symbolize?_lookup_ancs
       Entities.symbolizeAttrs?,
       Entities.symbolizeTags?,
       Entities.symbolizeAncs?,
-      ne_comm.mp uuf_attrs_tag_keys_no_confusion,
-      ne_comm.mp uuf_attrs_tag_vals_no_confusion,
       ne_comm.mp uuf_attrs_ancs_no_confusion,
       ne_comm.mp uuf_tag_keys_ancs_no_confusion,
-      ne_comm.mp uuf_tag_vals_ancs_no_confusion,
-      uuf_tag_vals_tag_keys_no_confusion,
+      ne_comm.mp uuf_tag_vals_ancs_no_confusion
     ] at hv
     have ⟨_, _, _, _, h, _⟩ := List.findSome?_eq_some_iff.mp hv
     split at h
@@ -244,7 +236,6 @@ private theorem env_symbolize?_lookup_ancs
       Entities.symbolizeAttrs?,
       Entities.symbolizeTags?,
       Entities.symbolizeAncs?,
-      ne_comm.mp uuf_attrs_tag_vals_no_confusion,
       ne_comm.mp uuf_attrs_ancs_no_confusion,
       ne_comm.mp uuf_tag_keys_ancs_no_confusion,
       ne_comm.mp uuf_tag_vals_ancs_no_confusion,
@@ -290,8 +281,7 @@ private theorem env_symbolize?_same_entity_data_standard_same_tag
     SymEntityData.interpret,
   ]
   simp only [
-    SameTags,
-    SymEntityData.ofStandardEntityType.symTags,
+    SameTags
   ]
   cases hentry_tags : entry.tags with
   | none =>
@@ -531,7 +521,7 @@ private theorem env_symbolize?_same_entity_data_standard_same_tag
             have ⟨_, _, h⟩ := List.mapM_some_implies_all_from_some hsym_tags (tag', val') hmem_tag'_val'
             rename_i tag_val' hmem_tag_val'
             simp only [
-              bind, Option.bind,
+              Option.bind,
             ] at h
             split at h
             contradiction
@@ -573,7 +563,7 @@ private theorem env_symbolize?_same_entity_data_standard_same_tag
           replace h₁ := h₁.2
           have ⟨x, hmem_x, hx⟩ := List.find?_isSome.mp h₂
           have ⟨_, _, h⟩ := List.mapM_some_implies_all_from_some h₁ x hmem_x
-          simp only [bind, Option.bind] at h
+          simp only [Option.bind] at h
           split at h
           contradiction
           simp only [Option.some.injEq] at h
@@ -630,7 +620,7 @@ private theorem env_symbolize?_same_entity_data_standard
     · simp [EntitySchemaEntry.attrs, hsym_attrs]
     · intros kv hkv
       simp only [
-        EntitySchemaEntry.attrs, Option.bind_eq_bind,
+        EntitySchemaEntry.attrs,
         Option.ite_none_right_eq_some,
         exists_and_left,
         bind, Option.bind,
@@ -1094,7 +1084,7 @@ private theorem defaultLitWithDefaultEid_wf
       · rename_i eid _ _ hhead
         simp only [Option.some.injEq] at hhead
         simp only [hhead, Option.some.injEq] at hmembers
-        simp [←hmembers, Set.contains, Set.elts, hhead]
+        simp [←hmembers, Set.contains, Set.elts]
       · rename_i hempty_eids
         replace hempty_eids : eids = (Set.mk []) := by
           cases eids with | mk eids' =>
@@ -1337,7 +1327,7 @@ private theorem env_symbolize?_attrs_wf
       constructor
       apply env_valid_uid_implies_sym_env_valid_uid hinst
       exact Map.in_list_implies_contains hmem_uid_data
-    · simp only [←hio.1, Term.isLiteral]
+    · simp only [Term.isLiteral]
     · simp only [Term.typeOf, TermPrim.typeOf, TermType.ofType, heq_ety]
     · apply value_symbolize?_wf hinst hwf_attrs_ty hwf_attrs hwt_attrs hsym_attrs
     · apply value_symbolize?_is_lit hsym_attrs
@@ -1455,7 +1445,7 @@ private theorem env_symbolize?_tags_wf
         have ⟨heq_ety, hl⟩ := hl
         have ⟨⟨tag, val⟩, hmem_tag_val, htag_val⟩ :=
           List.mapM_some_implies_all_from_some hl (tᵢ, tₒ) hmem
-        simp only [bind, Option.bind] at htag_val
+        simp only [Option.bind] at htag_val
         split at htag_val
         contradiction
         rename_i sym_val hsym_val
@@ -1507,7 +1497,7 @@ private theorem env_symbolize?_tags_wf
         · simp [Term.isLiteral, List.all, List.attach₃, List.pmap]
         · simp only [
             Term.typeOf, TermPrim.typeOf,
-            TermType.ofType, heq_ety,
+            heq_ety,
             TermType.tagFor, EntityTag.mk,
             List.attach₃, List.map, List.pmap,
           ]
@@ -1530,7 +1520,7 @@ private theorem env_symbolize?_ancs_wf
 := by
   have ⟨_, ⟨hwf_entities, _⟩⟩:= hwf_env
   have ⟨hwf_Γ, _, hwf_sch⟩ := hinst
-  simp only [Entities.symbolizeAncs?, beq_iff_eq, Option.bind_eq_bind] at hudf
+  simp only [Entities.symbolizeAncs?, beq_iff_eq] at hudf
   have ⟨_, anc, _, heq, hudf, _⟩ := List.findSome?_eq_some_iff.mp hudf
   have hmem_ancs : anc ∈ entry.ancestors := by
     apply (Set.in_list_iff_in_set _ _).mp

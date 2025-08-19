@@ -89,7 +89,7 @@ theorem checked_eval_entity_reachable_get_attr {e : Expr} {n : Nat} {c c' : Capa
     cases he₂ : entities.attrs euid' <;> simp only [he₂, Except.bind_err, reduceCtorEq] at he
     rename_i attrs
     simp only [Map.findOrErr, Except.bind_ok] at he
-    split at he <;> simp only [reduceCtorEq, Except.bind_ok, Except.ok.injEq] at he
+    split at he <;> simp only [reduceCtorEq, Except.ok.injEq] at he
     subst he
     rename_i v hv
 

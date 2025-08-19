@@ -54,7 +54,7 @@ theorem value_symbolize?_well_typed
     ]
   | instance_of_set s =>
     simp only [
-      Value.symbolize?, Prim.symbolize, Option.some.injEq,
+      Value.symbolize?,
       bind, Option.bind,
     ] at hsym
     split at hsym
@@ -65,7 +65,7 @@ theorem value_symbolize?_well_typed
   | instance_of_record rec rty h₁ h₂ h₃ =>
     cases hwf_ty with | record_wf hwf_rty_map hwf_rty =>
     simp only [
-      Value.symbolize?, Prim.symbolize, Option.some.injEq,
+      Value.symbolize?,
       bind, Option.bind,
     ] at hsym
     split at hsym
@@ -98,7 +98,7 @@ theorem value_symbolize?_well_typed
     := by
       replace hsym_attr := hsym_attr.2
       split at hsym_attr
-      · simp only [Option.some.injEq, Prod.mk.injEq] at hsym_attr
+      · simp only [Option.some.injEq] at hsym_attr
         simp only [hsym_attr]
       · split at hsym_attr
         all_goals
@@ -110,7 +110,7 @@ theorem value_symbolize?_well_typed
     simp only [this, Prod.mk.injEq, true_and]
     have hfind_rty := (Map.in_list_iff_find?_some hwf_rty_map).mp hsym_attr.1
     split at hsym_attr
-    · simp only [Option.some.injEq, Prod.mk.injEq] at hsym_attr
+    · simp only [Option.some.injEq] at hsym_attr
       simp only [hsym_attr]
       cases hqty : rty_entry.snd with
       | optional =>
@@ -248,7 +248,7 @@ theorem value_symbolize?_wf
     any_goals contradiction
     rename_i s' elem_ty heq
     simp only [Value.set.injEq] at heq
-    simp only [Option.bind_eq_bind, bind, Option.bind] at hsym
+    simp only [bind, Option.bind] at hsym
     split at hsym
     contradiction
     rename_i sym_elems hsym_elems
@@ -411,7 +411,6 @@ theorem value?_symbolize?_id
   | instance_of_int =>
     simp [
       Value.symbolize?, Prim.symbolize,
-      Same.same, SameValues,
       Term.value?, TermPrim.value?, BitVec.int64?,
     ]
   | instance_of_set elems elem_ty hwt_elem =>
@@ -579,7 +578,7 @@ theorem value?_symbolize?_id
             exact hwt_rec attr.fst attr_val (Qualified.required ty') hfind_rec_attr hfind_rty_attr
           have ⟨sym_attr_val, hsym_attr_val, hval_sym_attr_val⟩ := value?_symbolize?_id hwf_Γ hwf_ty' hwf_attr_val hwt_attr_val
           simp only [hsym_attr_val, Option.bind_some_fun, Option.some.injEq, exists_and_left,
-            Prod.exists, exists_eq_left', Term.value?.attrValue?, Prod.mk.injEq]
+            Prod.exists, exists_eq_left']
           unfold Term.value?.attrValue?
           split
           · have := value_symbolize?_not_some hsym_attr_val (Eq.refl _)
@@ -613,7 +612,7 @@ theorem value?_symbolize?_id
       simp only [hattr, Option.some.injEq] at h₁
       simp only [h₁] at hsym_attr
       simp only [hsym_attr, Option.some.injEq] at h₂
-      simp [h₁, h₂, h₃]
+      simp only [h₂, h₃, implies_true, and_self]
     have ⟨sym_attrs, hsym_attrs⟩ :
       ∃ sym_attrs,
         List.mapM (λ (a, qty) => Value.symbolize?.symbolizeAttr? (Map.mk rec_map) a qty) rty_map
@@ -663,7 +662,7 @@ theorem value?_symbolize?_id
         simp [←h]
       · split
         all_goals
-          simp only [bind, Option.bind]
+          simp only [Option.bind]
           split
           · simp
           · simp only [Option.some.injEq]
@@ -827,7 +826,7 @@ decreasing_by
     rename Set Value => elems'
     simp at h₂
     simp only [←h₂] at h₃
-    simp only [h₁, h₃]
+    simp only [h₁]
     cases elems
     simp [Set.toList, Set.elts] at h₃ ⊢
     have := List.sizeOf_lt_of_mem h₃

@@ -77,7 +77,7 @@ theorem conversion_preserves_evaluation (te : TypedExpr) (req : Request) (es : E
   | lit p ty =>
     simp [TypedExpr.toExpr, TypedExpr.toResidual, Spec.evaluate, Residual.evaluate]
   | var v ty =>
-    simp [TypedExpr.toExpr, TypedExpr.toResidual, Spec.evaluate, Residual.evaluate]
+    simp [TypedExpr.toExpr, TypedExpr.toResidual]
     cases v <;> simp [Spec.evaluate, Residual.evaluate]
   | ite cond thenExpr elseExpr ty =>
     simp [TypedExpr.toExpr, TypedExpr.toResidual, Spec.evaluate, Residual.evaluate]
@@ -128,7 +128,7 @@ theorem conversion_preserves_evaluation (te : TypedExpr) (req : Request) (es : E
     rw [←ih]
   | set ls ty =>
     unfold TypedExpr.toExpr
-    simp [TypedExpr.toExpr, TypedExpr.toResidual, Spec.evaluate, Residual.evaluate]
+    simp [TypedExpr.toResidual, Spec.evaluate, Residual.evaluate]
     congr 1
     rw [List.map₁_eq_map, List.map₁_eq_map]
 
@@ -142,7 +142,7 @@ theorem conversion_preserves_evaluation (te : TypedExpr) (req : Request) (es : E
     apply conversion_preserves_evaluation_forall2
   | record map ty =>
     unfold TypedExpr.toExpr
-    simp [TypedExpr.toExpr, TypedExpr.toResidual, Spec.evaluate, Residual.evaluate]
+    simp [TypedExpr.toResidual, Spec.evaluate, Residual.evaluate]
     congr 1
 
     dsimp only [List.attachWith, List.mapM₁, List.attach, List.attach₂, List.mapM₂, List.mapM₁, List.map₁, List.attach]
@@ -182,7 +182,7 @@ theorem conversion_preserves_typedness:
   intro h
   cases expr with
   | lit p ty' =>
-    simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
+    simp [TypedExpr.toResidual] at h ⊢
     apply Residual.WellTyped.val
     cases h with
     | lit h₁ =>
@@ -201,12 +201,12 @@ theorem conversion_preserves_typedness:
         unfold EntityUID.WellFormed
         exact h₁
   | var v ty' =>
-    simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
+    simp [TypedExpr.toResidual] at h ⊢
     apply Residual.WellTyped.var
     cases h with
     | var h₁ => exact h₁
   | ite x₁ x₂ x₃ ty' =>
-    simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
+    simp [TypedExpr.toResidual] at h ⊢
     cases h with
     | ite h₁ h₂ h₃ h₄ h₅ =>
       rw [conversion_preserves_typeof x₂]
@@ -222,7 +222,7 @@ theorem conversion_preserves_typedness:
       · rw [←conversion_preserves_typeof x₂, ←conversion_preserves_typeof x₃]
         exact h₅
   | and x₁ x₂ ty' =>
-    simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
+    simp [TypedExpr.toResidual] at h ⊢
     cases h with
     | and h₁ h₂ h₃ h₄ =>
       apply Residual.WellTyped.and
@@ -235,7 +235,7 @@ theorem conversion_preserves_typedness:
       · rw [←conversion_preserves_typeof x₂]
         exact h₄
   | or x₁ x₂ ty' =>
-    simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
+    simp [TypedExpr.toResidual] at h ⊢
     cases h with
     | or h₁ h₂ h₃ h₄ =>
       apply Residual.WellTyped.or
@@ -248,7 +248,7 @@ theorem conversion_preserves_typedness:
       · rw [←conversion_preserves_typeof x₂]
         exact h₄
   | unaryApp op₁ x₁ ty' =>
-    simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
+    simp [TypedExpr.toResidual] at h ⊢
     cases h with
     | unaryApp h₁ h₂ =>
       apply Residual.WellTyped.unaryApp
@@ -277,7 +277,7 @@ theorem conversion_preserves_typedness:
           rw [←conversion_preserves_typeof x₁]
           exact h₂
   | binaryApp op₂ x₁ x₂ ty' =>
-    simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
+    simp [TypedExpr.toResidual] at h ⊢
     cases h with
     | binaryApp h₁ h₂ h₃ =>
       apply Residual.WellTyped.binaryApp
@@ -396,7 +396,7 @@ theorem conversion_preserves_typedness:
             exact h₄
           · exact h₅
   | getAttr x₁ attr ty' =>
-    simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
+    simp [TypedExpr.toResidual] at h ⊢
     cases h with
     | getAttr_entity h₁ h₂ h₃ h₄ =>
       apply Residual.WellTyped.getAttr_entity
@@ -414,7 +414,7 @@ theorem conversion_preserves_typedness:
         exact h₂
       · exact h₃
   | hasAttr x₁ attr ty' =>
-    simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
+    simp [TypedExpr.toResidual] at h ⊢
     cases h with
     | hasAttr_entity h₁ h₂ =>
       apply Residual.WellTyped.hasAttr_entity
@@ -429,7 +429,7 @@ theorem conversion_preserves_typedness:
       · rw [←conversion_preserves_typeof x₁]
         exact h₂
   | set ls ty' =>
-    simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
+    simp [TypedExpr.toResidual] at h ⊢
     cases h with
     | set h₁ h₂ h₃ =>
       dsimp only [List.attachWith, List.mapM₁, List.attach, List.attach₂, List.mapM₂, List.mapM₁, List.map₁, List.attach]
@@ -454,7 +454,7 @@ theorem conversion_preserves_typedness:
         | nil => simp at h₃
         | cons => simp
   | record m ty' =>
-    simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
+    simp [TypedExpr.toResidual] at h ⊢
     cases h with
     | record h₁ h₂ =>
       dsimp only [List.attachWith, List.mapM₁, List.attach, List.attach₂, List.mapM₂, List.mapM₁, List.map₁, List.attach]
@@ -489,7 +489,7 @@ theorem conversion_preserves_typedness:
           . rw [conversion_preserves_typeof b]
             exact h₂
   | call xfn args ty' =>
-    simp [TypedExpr.liftBoolTypes, TypedExpr.toResidual] at h ⊢
+    simp [TypedExpr.toResidual] at h ⊢
     cases h with
     | call h₁ h₂ =>
       dsimp only [List.attachWith, List.mapM₁, List.attach, List.attach₂, List.mapM₂, List.mapM₁, List.map₁, List.attach]

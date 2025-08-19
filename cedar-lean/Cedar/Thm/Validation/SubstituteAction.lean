@@ -123,7 +123,7 @@ theorem substitute_action_preserves_evaluation_set {xs : List Expr} {request : R
     have h₁ := ih₁ h
     simp only [h₀, List.mem_cons, true_or, true_implies] at h₁
     rw [substitute_action_cons_set]
-    simp only [mapOnVars, evaluate, List.mapM₁, List.attach_def, List.mapM_pmap_subtype (fun x => evaluate x request entities)]
+    simp only [evaluate, List.mapM₁, List.attach_def, List.mapM_pmap_subtype (fun x => evaluate x request entities)]
     simp only [List.mapM_cons, bind_assoc, pure_bind]
     rw [h₁]
     simp only [List.mapM_map, Function.comp_def]
@@ -159,9 +159,9 @@ theorem substitute_action_preserves_evaluation_record {axs : List (Attr × Expr)
     have h₁ := ih₁ hd
     simp only [h₀, List.mem_cons, true_or, true_implies] at h₁
     rw [substitute_action_cons_record]
-    simp only [mapOnVars, evaluate, List.mapM₂, List.attach₂, List.mapM_pmap_subtype (fun (a, e) => bindAttr a (evaluate e request entities))]
+    simp only [evaluate, List.mapM₂, List.attach₂, List.mapM_pmap_subtype (fun (a, e) => bindAttr a (evaluate e request entities))]
     simp only [bindAttr]
-    simp only [List.mapM_cons, bind_assoc, Except.bind_ok, pure_bind]
+    simp only [List.mapM_cons, bind_assoc, pure_bind]
     rw [h₁]
     simp only [List.mapM_map, Function.comp_def]
     have h₂ : ∀ x ∈ tl,
@@ -208,7 +208,7 @@ theorem substitute_action_preserves_evaluation_call {xfn : ExtFun} {xs : List Ex
     have h₁ := ih₁ h
     simp only [h₀, List.mem_cons, true_or, true_implies] at h₁
     rw [substitute_action_cons_call]
-    simp only [mapOnVars, evaluate, List.mapM₁, List.attach_def, List.mapM_pmap_subtype (fun x => evaluate x request entities)]
+    simp only [evaluate, List.mapM₁, List.attach_def, List.mapM_pmap_subtype (fun x => evaluate x request entities)]
     simp only [List.mapM_cons, bind_assoc, pure_bind]
     rw [h₁]
     simp only [List.mapM_map, Function.comp_def]
@@ -225,7 +225,7 @@ theorem substitute_action_preserves_evaluation (expr : Expr) (request : Request)
   cases h₀ : expr with
   | lit p => simp only [substituteAction, mapOnVars]
   | var vr =>
-    cases vr <;> simp only [substituteAction, mapOnVars] <;> try assumption
+    cases vr <;> simp only [substituteAction, mapOnVars] ; try assumption
     case action =>
       simp [evaluate]
   | ite i t e =>

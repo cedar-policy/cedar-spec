@@ -52,15 +52,14 @@ theorem type_of_getAttr_inversion {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabili
     have ⟨ty₁, c₁'⟩ := res
     simp [typeOfGetAttr, bind, Except.bind] at h₁
     split at h₁ <;> try contradiction
-    · simp [List.empty_eq, Except.ok.injEq, Prod.mk.injEq, false_and, exists_const,
-        CedarType.record.injEq, exists_and_right, exists_eq', true_and, false_or, and_true, reduceCtorEq]
+    · simp only [List.empty_eq, Except.ok.injEq, Prod.mk.injEq, exists_and_right, exists_and_left,
+      exists_eq', and_true, exists_eq_left']
       split at h₁ <;> simp [ok] at h₁
       rename_i heq₁ _ _ heq₂
       simp [heq₁, ←h₁]
       simp [TypedExpr.typeOf]
       apply getAttrInRecord_has_empty_capabilities heq₂
-    · simp only [List.empty_eq, Except.ok.injEq, Prod.mk.injEq, CedarType.entity.injEq,
-        exists_and_right, exists_eq', true_and, false_and, exists_const, or_false, and_true, reduceCtorEq]
+    · simp only [List.empty_eq, Except.ok.injEq, Prod.mk.injEq, exists_and_right]
       split at h₁ <;> try simp [err] at h₁
       split at h₁ <;> simp [ok] at h₁
       rename_i heq₁ _ _ _ _ _ heq₃
@@ -85,7 +84,7 @@ theorem type_of_getAttr_is_sound_for_records {x₁ : Expr} {a : Attr} {c₁ c₁
   subst h₆
   simp [getAttr, attrsOf, Map.findOrErr]
   split_type_of h₃ ; rename_i h₃ hl₃ hr₃
-  simp only [typeOf, hl₃, hr₃, typeOfGetAttr, getAttrInRecord, List.empty_eq, Except.bind_ok, bind, Except.bind] at h₂
+  simp only [typeOf, typeOfGetAttr, getAttrInRecord, List.empty_eq, bind, Except.bind] at h₂
   cases h₈ : Map.find? r a
   case none =>
     simp only [Except.error.injEq, reduceCtorEq, or_self, false_and, exists_const]
@@ -158,8 +157,8 @@ theorem type_of_getAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
     simp only [Except.bind_ok]
     cases h₉ : Map.find? d.attrs a
     case none =>
-      simp only [Except.error.injEq, or_self, false_and, exists_const]
-      simp only [typeOf, h₄, hl₄, typeOfGetAttr, getAttrInRecord, List.empty_eq, Except.bind_ok, bind, Except.bind] at h₃
+      simp only [Except.error.injEq]
+      simp only [typeOf, h₄, hl₄, typeOfGetAttr, getAttrInRecord, List.empty_eq, bind, Except.bind] at h₃
       split at h₃ <;> simp [ok, err] at h₃
       rename_i h₃₁
       split at h₃ <;> try simp at h₃

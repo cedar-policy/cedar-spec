@@ -67,7 +67,7 @@ InstanceOfType env v (TypedExpr.var var ty).typeOf
   have hwf := h₁.wf_env
   cases h₂ <;>
   simp only [TypedExpr.typeOf] <;>
-  simp only [TypedExpr.toExpr, evaluate, Except.ok.injEq] at h₃ <;>
+  simp only [evaluate, Except.ok.injEq] at h₃ <;>
   rw [←h₃] <;>
   simp only [InstanceOfWellFormedEnvironment, InstanceOfRequestType] at h₁
   case principal =>
@@ -114,7 +114,7 @@ theorem well_typed_is_sound_ite
     clear h₄
     replace ⟨b, hᵢ₁⟩ := instance_of_anyBool_is_bool hᵢ₁
     simp only [hᵢ₁] at hᵢ₁'
-    simp only [Result.as, hᵢ₁, Coe.coe, Value.asBool, Except.bind_ok] at h₃
+    simp only [Result.as, Coe.coe, Value.asBool] at h₃
     have h : (TypedExpr.ite x₁ x₂ x₃ x₂.typeOf).typeOf = x₂.typeOf := by
       simp only [TypedExpr.typeOf]
     rw [h]
@@ -224,7 +224,7 @@ theorem well_typed_is_sound_unary_app
   simp only [evaluate] at h₃
   generalize hᵢ₁ : evaluate x₁.toExpr request entities = res₁
   cases res₁
-  case error => simp only [Result.as, hᵢ₁, Except.bind_err, reduceCtorEq] at h₃
+  case error => simp only [hᵢ₁, Except.bind_err, reduceCtorEq] at h₃
   case ok v =>
     simp only [hᵢ₁, apply₁, Except.bind_ok] at h₃
     split at h₃ <;> cases h₄ <;> simp only [TypedExpr.typeOf]
@@ -405,7 +405,7 @@ InstanceOfType env v (x₁.getAttr attr ty).typeOf
         simp only [h₁₁, Option.some.injEq] at h₅₁
         simp only [← h₅₁] at h₅₃
         have h₈ := λ qty => h₈ attr v₁ qty heq₁
-        simp only [h₅₂] at h₈
+        simp only at h₈
         simp only [Option.map_eq_some_iff] at h₆
         rcases h₆ with ⟨qty, h₆₁, h₆₂⟩
         simp [←h₅₂, RecordType.liftBoolTypes, lift_bool_types_record_eq_map_on_values] at h₆₁

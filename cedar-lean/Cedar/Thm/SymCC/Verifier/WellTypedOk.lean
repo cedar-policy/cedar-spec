@@ -72,7 +72,7 @@ theorem satisfiedPolicies_is_ok (effect : Effect) {ps ps' : Policies} {Γ : Type
       | cons ps_hd ps_tl =>
         simp only [
           wellTypedPolicies, List.mapM_cons,
-          Option.pure_def, Option.bind_eq_bind,
+          Option.pure_def,
           bind, Option.bind,
         ] at hwt
         split at hwt
@@ -142,7 +142,6 @@ private theorem compileWithEffect_allowAll_is_ok (effect : Effect) (Γ : TypeEnv
       ActionScope.toExpr,
       ResourceScope.toExpr,
       Conditions.toExpr,
-      List.foldr,
       compile,
       compilePrim,
       compileAnd,

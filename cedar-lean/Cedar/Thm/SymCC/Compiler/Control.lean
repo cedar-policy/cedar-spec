@@ -76,7 +76,7 @@ theorem compile_evaluate_ite {x₁ x₂ x₃ : Expr} {env : Env} {εnv : SymEnv}
       replace ih₁ := same_ok_bool_implies ih₁
       subst ih₁
       cases b <;>
-      simp only [CompileIfSym] at h₄ <;>
+      simp only at h₄ <;>
       rw [eq_comm] at h₄
       case false => simp only [ite_false, ih₃ h₁ hwf₃ hwφ₃ h₄, reduceCtorEq]
       case true  => simp only [ite_true, ih₂ h₁ hwf₂ hwφ₂ h₄]
@@ -177,7 +177,6 @@ theorem compile_interpret_ite {x₁ x₂ x₃ : Expr} {εnv : SymEnv} {I : Inter
     case h_1 heq _ | h_2 heq _ =>
       subst h₃
       simp only [
-        Except.ok.injEq,
         heq,
         interpret_ifSome h₁ hwf₁.left h₈.left,
         interpret_ite h₁ h₆ hwf₂.left hwf₃.left h₇ hty,
@@ -256,7 +255,7 @@ theorem compile_evaluate_and {x₁ x₂ : Expr} {env : Env} {εnv : SymEnv} {t :
     case h_1 t₁ v b =>
       replace ih₁ := same_ok_bool_implies ih₁
       subst ih₁
-      cases b <;> simp only [ite_true, ite_false] at *
+      cases b <;> simp only [ite_true] at *
       case false =>
         subst h₄
         exact same_ok_bool
@@ -299,7 +298,7 @@ theorem compile_interpret_and {x₁ x₂ : Expr} {εnv : SymEnv} {I : Interpreta
   clear ih₁ h₂
   split at h₃
   case h_1 =>
-    simp only [interpret_term_some, interpret_term_prim, someOf, compileAnd]
+    simp only [interpret_term_some, interpret_term_prim, compileAnd]
     subst h₃
     simp only [interpret_term_some, interpret_term_prim]
   case h_2 t₁ _ hneq =>
@@ -408,11 +407,11 @@ theorem compile_evaluate_or {x₁ x₂ : Expr} {env : Env} {εnv : SymEnv} {t : 
     exact compile_evaluate_or_none hwφ₂ h₄ ih₁
   case ok =>
     split <;>
-    simp only [Bool.not_eq_true', Except.bind_ok, Except.bind_err]
+    simp only [Except.bind_ok, Except.bind_err]
     case h_1 t₁ v b =>
       replace ih₁ := same_ok_bool_implies ih₁
       subst ih₁
-      cases b <;> simp only [ite_true, ite_false] at *
+      cases b <;> simp only [ite_true] at *
       case true =>
         subst h₄
         exact same_ok_bool
@@ -455,7 +454,7 @@ theorem compile_interpret_or {x₁ x₂ : Expr} {εnv : SymEnv} {I : Interpretat
   clear ih₁ h₂
   split at h₃
   case h_1 =>
-    simp only [interpret_term_some, interpret_term_prim, someOf, compileOr]
+    simp only [interpret_term_some, interpret_term_prim, compileOr]
     subst h₃
     simp only [interpret_term_some, interpret_term_prim]
   case h_2 t₁ _ hneq =>

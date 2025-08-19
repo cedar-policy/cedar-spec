@@ -57,14 +57,14 @@ theorem type_of_or_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Typ
   case h_2 c₁ =>
     cases h₃ : typeOf x₂ c env <;> simp [h₃] at h₁
     rename_i res₂
-    split at h₁ <;> simp [ok, err] at h₁
+    split at h₁ <;> simp at h₁
     rename_i bty₂ hr₂
     have ⟨ht, hc⟩ := h₁
     subst ht hc
     exists res₁.fst, BoolType.ff, res₁.snd
     simp only [hr₁, hr₂, true_and]
     exists bty₂, res₂.fst
-    simp only [exists_eq_right_right', true_and]
+    simp only [true_and]
     exists bty₂, res₂.snd
   case h_3 bty₁ hneq₁ hneq₂ =>
     cases bty₁ <;> simp at hneq₁ hneq₂
@@ -72,9 +72,9 @@ theorem type_of_or_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Typ
     simp [hr₁]
     cases h₃ : typeOf x₂ c env <;> simp [h₃] at *
     rename_i res₂
-    split at h₁ <;> simp [ok, err] at h₁ <;>
+    split at h₁ <;> simp at h₁ <;>
     rename_i hr₂ <;>
-    have ⟨ht, hc⟩ := h₁ <;> subst ht hc <;> simp [hr₁, ResultType.typeOf, Except.map]
+    have ⟨ht, hc⟩ := h₁ <;> subst ht hc <;> simp
     case h_1 =>
       exists BoolType.tt, res₂.fst
       simp only [hr₂, true_and]
@@ -135,11 +135,11 @@ theorem type_of_or_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env :
     cases b₁ <;>
     rcases ih₁₂ with ih₁₂ | ih₁₂ | ih₁₂ | ih₁₂ <;>
     rcases ih₂₂ with ih₂₂ | ih₂₂ | ih₂₂ | ih₂₂ <;>
-    simp [evaluate, Result.as, Coe.coe, Value.asBool, ih₁₂, ih₂₂, GuardedCapabilitiesInvariant, Lean.Internal.coeM, pure, Except.pure] <;>
+    simp [evaluate, Result.as, Coe.coe, Value.asBool, ih₁₂, ih₂₂, GuardedCapabilitiesInvariant, pure, Except.pure] <;>
     try { simp only [TypedExpr.typeOf]; apply type_is_inhabited_bool }
     case false.inr.inr.inr.inr.inr.inr =>
       cases b₂ <;>
-      simp [CoeT.coe, CoeHTCT.coe, CoeHTC.coe, CoeOTC.coe, CoeTC.coe, Coe.coe]
+      simp
       case false h₉ =>
         cases bty₁ <;> simp at h₉ h₈
         case anyBool =>

@@ -114,12 +114,11 @@ theorem app_table_make_filterMap
 := by
   simp only [
     Factory.app,
-    UnaryFunction.interpret,
     hlit,
     ↓reduceIte,
   ]
   have := map_make_filterMap_find? hfind hkv hf
-  simp only [this, Option.some.injEq]
+  simp only [this]
 
 /--
 For simplifying `Factory.app` on a `UDF` with a table
@@ -171,8 +170,6 @@ theorem map_make_filterMap_flatten_find?
           apply hne_hd_key
           apply this h
         simp only [
-          beq_iff_eq, Prod.exists,
-          exists_and_right, exists_eq_right,
           imp_false, not_exists, not_and,
         ] at this
         have hfind_l' := this l' hhd

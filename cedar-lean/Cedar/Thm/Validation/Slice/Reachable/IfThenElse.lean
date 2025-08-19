@@ -75,7 +75,7 @@ theorem checked_eval_entity_reachable_ite {e₁ e₂ e₃: Expr} {n : Nat} {c c'
     exact ih₂ (capability_union_invariant hc hgc) hr htx₂ hl₂ he ha hf
   case isFalse hb =>
     replace hb : b = false := by
-      cases b <;> simp only [Bool.true_eq_false] <;> contradiction
+      cases b <;> simp only [Bool.true_eq_false] ; contradiction
     subst hb
     have htx₃ : typeOf e₃ c env = .ok (tx₃, c₃) := by
       split at hif <;> first

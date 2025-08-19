@@ -340,7 +340,7 @@ theorem wf_term_app_eq {εs : SymEntities} {ts : List Term} {ty : TermType}
   exists t₁.typeOf
   simp only [WFBinary, List.cons.injEq, and_true, WFArg]
   exists t₁, t₂
-  simp only [_root_.and_self, List.mem_cons, List.mem_singleton, true_or, h₁ t₁, h₂, or_true, h₁ t₂]
+  simp only [_root_.and_self, List.mem_cons, true_or, h₁ t₁, h₂, or_true, h₁ t₂]
 
 theorem wf_term_app_ite {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app .ite ts ty).WellFormed εs) :
@@ -351,7 +351,7 @@ theorem wf_term_app_ite {εs : SymEntities} {ts : List Term} {ty : TermType}
   cases h₂
   rename_i t₁ t₂ t₃ h₂ h₃
   exists t₁, t₂, t₃
-  simp only [WFArg, List.mem_cons, List.mem_singleton, true_or,
+  simp only [WFArg, List.mem_cons, true_or,
     h₁ t₁, h₂, _root_.and_self, or_true, h₁ t₂, h₃, h₁ t₃]
 
 theorem wf_term_app_ite_exact {εs : SymEntities} {t₁ t₂ t₃ : Term} {ty : TermType}
@@ -529,7 +529,7 @@ theorem wf_term_app_set_member {εs : SymEntities} {ts : List Term} {ty : TermTy
   rename_i t₁ t₂ h₂
   simp only [List.cons.injEq, and_true, true_and]
   exists t₁, t₂
-  simp only [_root_.and_self, List.mem_cons, List.mem_singleton, true_or,
+  simp only [_root_.and_self, List.mem_cons, true_or,
     h₁ t₁, WFArg, or_true, h₁ t₂, h₂]
 
 ----- Factory functions preserve well-formedness -----
@@ -567,7 +567,7 @@ theorem wf_args' {εs : SymEntities} {t₁ t₂ : Term}
   (h : ∀ (t : Term), t ∈ [t₁, t₂] → Term.WellFormed εs t) :
   Term.WellFormed εs t₁ ∧ Term.WellFormed εs t₂
 := by
-  simp only [List.mem_cons, List.mem_singleton, forall_eq_or_imp] at h
+  simp only [List.mem_cons, forall_eq_or_imp] at h
   simp only [List.not_mem_nil, false_implies, forall_const, and_true] at h
   exact h
 
@@ -669,11 +669,9 @@ theorem wf_eq_simplify {εs : SymEntities} {t₁ t₂ : Term}
   (eq.simplify t₁ t₂).WellFormed εs ∧ (eq.simplify t₁ t₂).typeOf = .bool
 := by
   fun_cases Factory.eq.simplify t₁ t₂
-  <;> simp_all only [Factory.eq.simplify, Term.prim.injEq, TermPrim.bool.injEq,
-    Bool.and_self, Bool.and_false, Bool.and_true, Bool.true_and, Bool.false_and,
-    Bool.and_eq_true, Bool.not_eq_true, Bool.false_eq_true, Bool.true_eq_false,
-    not_false_eq_true, not_true_eq_false, decide_eq_true_eq, decide_true, decide_false,
-    ite_true, ite_false, implies_true, imp_false, true_implies, false_implies, _root_.and_self, and_true,
+  <;> simp_all only [Term.prim.injEq, TermPrim.bool.injEq,
+    Bool.and_eq_true, Bool.false_eq_true,
+    not_false_eq_true, decide_eq_true_eq, _root_.and_self, and_true,
     typeOf_bool, wf_bool]
   · rename_i h₃ ; exact wf_not h₂ h₃.right
   · exact wf_not h₁ h₃
@@ -691,8 +689,8 @@ theorem wf_eq {εs : SymEntities} {t₁ t₂ : Term}
     replace h₂ := wf_term_some_implies h₂
     simp only [Term.typeOf, TermType.option.injEq] at h₃
     exact wf_eq_simplify h₁ h₂ h₃
-  · simp [Factory.eq, wf_bool, typeOf_bool]
-  · simp [Factory.eq, wf_bool, typeOf_bool]
+  · simp [wf_bool, typeOf_bool]
+  · simp [wf_bool, typeOf_bool]
   · exact wf_eq_simplify h₁ h₂ h₃
 
 theorem wf_and {εs : SymEntities} {t₁ t₂ : Term}
@@ -765,7 +763,7 @@ theorem wf_ite {εs : SymEntities} {t₁ t₂ t₃ : Term}
   (h₅ : t₂.typeOf = t₃.typeOf) :
   (ite t₁ t₂ t₃).WellFormed εs ∧ (ite t₁ t₂ t₃).typeOf = t₂.typeOf
 := by
-  simp only [Factory.ite, Bool.or_eq_true, decide_eq_true_eq]
+  simp only [Factory.ite]
   split
   · simp only [typeOf_term_some, TermType.option.injEq] at *
     replace h₂ := wf_term_some_implies h₂
@@ -813,14 +811,14 @@ theorem wf_app {εs : SymEntities} {t : Term} {f : UnaryFunction}
     split
     case isTrue =>
       have ⟨h₃, h₄, _, h₆⟩ := h₃
-      split <;> simp [Term.typeOf, UnaryFunction.outType]
+      split <;> simp [UnaryFunction.outType]
       case h_1 t' h₇ =>
         specialize h₆ t t' (Map.find?_mem_toList h₇)
         simp [Term.WellFormedLiteral] at h₆
         simp [h₆]
       case h_2 => simp [h₃.left, h₄]
     case isFalse f _ =>
-      simp [Term.typeOf, UnaryFunction.outType]
+      simp [UnaryFunction.outType]
       have ⟨h₃, h₄, _, h₆⟩ := h₃
       rw [←h₄]
       apply wf_foldr h₃.left
@@ -853,7 +851,7 @@ theorem wf_bvnego {εs : SymEntities} {t : Term} {n : Nat}
   split
   case h_1 => simp [wf_bool, typeOf_bool]
   case h_2 =>
-    simp [Term.typeOf, h₂]
+    simp [Term.typeOf]
     exact Term.WellFormed.app_wf (wf_arg h₁) (Op.WellTyped.bvnego_wt h₂)
 
 local macro "simp_wf_bv_arith" h₁:ident h₂:ident h₃:ident h₄:ident arith_fun:ident wf_thm:ident : tactic => do
@@ -1940,7 +1938,7 @@ theorem wf_tagOf {εs : SymEntities} {t₁ t₂ : Term} {ety : EntityType}
   constructor
   · apply Term.WellFormed.record_wf
     · intro a t hin
-      simp only [Map.toList, Map.kvs, List.mem_cons, Prod.mk.injEq, List.mem_singleton, List.not_mem_nil, or_false] at hin
+      simp only [Map.toList, Map.kvs, List.mem_cons, Prod.mk.injEq, List.not_mem_nil, or_false] at hin
       rcases hin with ⟨_, hin⟩ | ⟨_, hin⟩ <;>
       subst hin <;>
       assumption

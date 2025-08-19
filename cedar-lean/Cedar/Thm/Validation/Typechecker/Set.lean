@@ -59,7 +59,7 @@ theorem type_of_set_tail
       rw [←List.mapM₁_eq_mapM] at h₁
       simp only [h₁, typeOfSet, List.empty_eq, Except.bind_ok]
       cases h₄ : List.foldlM lub? hd'.typeOf (tl'.map TypedExpr.typeOf) <;>
-      simp only [err, ok, false_and, exists_const, Except.ok.injEq, Prod.mk.injEq, CedarType.set.injEq, and_true, exists_eq_left']
+      simp only [err, ok, Except.ok.injEq, Prod.mk.injEq, and_true]
       case none =>
         have h₅ := foldlM_of_lub_assoc hd.typeOf hd'.typeOf (tl'.map TypedExpr.typeOf)
         simp only [List.map] at h₂
@@ -100,7 +100,7 @@ theorem type_of_set_inversion {xs : List Expr} {c c' : Capabilities} {env : Type
   subst hl₁ hr₁
   simp only [List.empty_eq, true_and]
   exists (hd :: tl), ty
-  apply And.intro ; case left => simp [TypedExpr.typeOf]
+  apply And.intro ; case left => simp
   intro x h₄
   cases h₄
   case head xtl =>
@@ -118,12 +118,12 @@ theorem type_of_set_inversion {xs : List Expr} {c c' : Capabilities} {env : Type
     exists hdty, res.snd
     and_intros
     · simp
-    · simp [←h₅, h₇, ResultType.typeOf, Except.map]
+    · simp [←h₅, h₇]
     · exact foldlM_of_lub_is_LUB h₃
   case tail xhd xtl h₄ =>
     have ⟨ty', h₅, h₆⟩ := type_of_set_tail h₂ h₃ h₄
     have h₇ := @type_of_set_inversion xtl c ∅ env (.set tl ty'.set) h₅
-    simp only [List.empty_eq, exists_and_right, true_and] at h₇
+    simp only [List.empty_eq, true_and] at h₇
     replace ⟨ txs, ty, h₇, h₈ ⟩ := h₇
     simp only [TypedExpr.set.injEq, CedarType.set.injEq] at h₇
     replace ⟨ h₇, h₉ ⟩ := h₇
@@ -165,9 +165,9 @@ theorem type_of_set_is_sound_err {xs : List Expr} {c₁ : Capabilities} {env : T
   cases h₆ : xs
   case nil =>
     subst h₆
-    simp [List.mapM₁, List.attach, pure, Except.pure] at h₅
+    simp [pure, Except.pure] at h₅
   case cons hd tl =>
-    simp [List.mapM₁, List.attach, h₆] at h₅
+    simp [h₆] at h₅
     have h₄ := h₄ hd
     simp only [h₆, List.mem_cons, true_or, forall_const] at h₄
     have ⟨tyᵢ, cᵢ, h₇, _⟩ := h₄
@@ -180,7 +180,7 @@ theorem type_of_set_is_sound_err {xs : List Expr} {c₁ : Capabilities} {env : T
     try { simp [h₅] }
     subst h₆
     cases h₁₀ : List.mapM (fun x => evaluate x request entities) tl <;>
-    simp [h₁₀, pure, Except.pure] at h₅ ; rw [eq_comm] at h₅
+    simp [h₁₀] at h₅ ; rw [eq_comm] at h₅
     subst h₅
     apply @type_of_set_is_sound_err
       tl c₁ env ty request entities err
@@ -200,16 +200,16 @@ theorem type_of_set_is_sound_ok { xs : List Expr } { c₁ : Capabilities } { env
 := by
   cases xs
   case nil =>
-    simp [List.mapM₁, List.attach, pure, Except.pure] at h₄
+    simp [pure, Except.pure] at h₄
     subst h₄
-    simp only [List.find?_nil, List.not_mem_nil] at h₅
+    simp only [List.not_mem_nil] at h₅
   case cons hd tl =>
-    simp [List.mapM₁, List.attach] at h₄
+    simp at h₄
     cases h₇ : evaluate hd request entities <;>
     simp [h₇] at h₄
     rename_i vhd
     cases h₈ : List.mapM (fun x => evaluate x request entities) tl <;>
-    simp [h₈, pure, Except.pure] at h₄
+    simp [h₈] at h₄
     rename_i vtl
     subst h₄
     cases h₅
@@ -233,7 +233,7 @@ theorem type_of_set_is_sound_ok { xs : List Expr } { c₁ : Capabilities } { env
         h₁ h₂
         (list_is_typed_implies_tail_is_typed h₃)
         _ h₉
-      simp [List.mapM₁, List.attach, List.mapM_pmap_subtype (evaluate · request entities), h₈]
+      simp [h₈]
 
 theorem type_of_set_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : TypeEnv} {sty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
@@ -253,7 +253,7 @@ theorem type_of_set_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : 
     replace ⟨txᵢ, cᵢ, h₅⟩ := h₅ x h₁
     simp [h₅]
   cases h₆ : xs.mapM fun x => evaluate x request entities <;>
-  simp [h₆]
+  simp
   case error err =>
     simp only [TypedExpr.typeOf, type_is_inhabited_set, and_true]
     exact type_of_set_is_sound_err ih h₁ h₂ h₅ h₆

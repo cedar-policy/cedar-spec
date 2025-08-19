@@ -80,7 +80,7 @@ private theorem concretize?_εs_some_implies_closed {uids : Set EntityUID} {εs 
     apply Set.union_wf
   simp only [Map.find?, Map.kvs, Map.make, List.sortedBy_implies_canonicalize_eq hsrt]
   have hin' : uid ∈ uids ∪ εs.entityUIDs := by
-    simp only [Set.mem_union_iff_mem_or, hin, true_or]
+    simp only [hin]
   replace ⟨ed, hin', hs⟩ := List.mapM_some_implies_all_some hs uid hin'
   replace hs := concretize?_entityData?_implies_fst hs
   subst hs
@@ -214,7 +214,7 @@ private theorem concretize?_ρ_implies {ρ : SymRequest} {uids : Set EntityUID} 
     Set.mem_subset_mem (term_entityUID?_some_mem_entityUIDs ha) huidsₐ,
     Set.mem_subset_mem (term_entityUID?_some_mem_entityUIDs hr) huidsᵣ,
     term_value?_some_implies_ws hw hc, huids,
-    and_true, true_and]
+    and_true]
 
 private theorem concretize?_ρ_wf {ρ : SymRequest} {r : Request} {uids : Set EntityUID} {εs : SymEntities} {es : Entities} :
   ρ.WellFormed εs →
@@ -299,7 +299,7 @@ private theorem term_setOfEntityUIDs?_some_value? {t : Term} {uids : Set EntityU
     Value.set.injEq]
   replace ⟨uids', hs, heq⟩ := hs
   exists (List.map (fun uid => Value.prim (Prim.entityUID uid)) uids') -- uids.elts)
-  simp only [List.mapM₁_eq_mapM, and_true]
+  simp only [List.mapM₁_eq_mapM]
   constructor
   · rw [List.mapM_some_iff_forall₂]
     rw [List.mapM_some_iff_forall₂] at hs

@@ -34,7 +34,7 @@ theorem hasAttrInRecord_has_empty_or_singleton_capabilities {x₁ : Expr} {a : A
   simp [hasAttrInRecord] at h₁
   split at h₁ <;>
   (try split at h₁) <;>
-  simp [ok, err] at h₁ <;>
+  simp [ok] at h₁ <;>
   simp [h₁]
 
 theorem type_of_hasAttr_inversion {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilities} {env : TypeEnv} {tx : TypedExpr}
@@ -167,7 +167,7 @@ theorem type_of_hasAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
       contradiction
   case h_2 =>
     simp [ok] at h₃
-    split at h₃ <;> try simp [err, hasAttrInRecord] at h₃
+    split at h₃ <;> try simp at h₃
     replace ⟨h₃, _⟩ := h₃
     simp [←h₃]
     apply InstanceOfType.instance_of_bool

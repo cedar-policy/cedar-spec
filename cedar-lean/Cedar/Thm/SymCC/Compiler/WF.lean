@@ -61,7 +61,7 @@ private theorem compile_lit_wf {p: Prim} {εnv : SymEnv} {t : Term}
     simp only [and_self, typeOf_term_some_is_option, Term.WellFormed.some_wf (Term.WellFormed.prim_wf TermPrim.WellFormed.string_wf)]
   case entityUID =>
     split at hok <;>
-    simp only [Except.ok.injEq, someOf, reduceCtorEq] at hok
+    simp only [Except.ok.injEq, reduceCtorEq] at hok
     rename_i h
     subst hok
     simp only [typeOf_term_some_is_option, and_true]
@@ -227,9 +227,9 @@ theorem compileHasAttr_wf {t t₁: Term} {a : Attr} {εs : SymEntities}
     replace ⟨h, hty⟩ := wf_isSome (wf_record_get hw₂ hty.left heq).left
     constructor
     · exact Term.WellFormed.some_wf h
-    · simp only [typeOf_term_some, TermType.option.injEq, hty]
+    · simp only [typeOf_term_some, hty]
   case h_2 | h_3 =>
-    simp only [typeOf_term_some, typeOf_bool, TermType.option.injEq, exists_eq', and_true]
+    simp only [typeOf_term_some, typeOf_bool, and_true]
     exact Term.WellFormed.some_wf wf_bool
 
 private theorem compile_hasAttr_wf {x₁ : Expr} {a : Attr} {εnv : SymEnv} {t : Term}
@@ -449,14 +449,14 @@ theorem compileApp₂_wf_types {op₂ : BinaryOp} {t t₁ t₂: Term} {εs : Sym
   case eq =>
     have ht := compileApp₂_eq_ok_implies hok
     rcases ht with ⟨hty, ht⟩ | ⟨_, ht⟩ <;>
-    simp only [ht, typeOf_term_some, TermType.option.injEq, exists_eq', and_true]
+    simp only [ht, typeOf_term_some]
     · replace ⟨hwf, hty⟩ := wf_eq hw₁ hw₂ (reducibleEq_ok_true_implies hty)
       simp only [Term.WellFormed.some_wf hwf, hty, and_self]
     · simp only [Term.WellFormed.some_wf wf_bool, typeOf_bool, and_self]
   case mem =>
     replace ⟨ety₁, ety₂, hty₁, hok⟩ := compileApp₂_mem_ok_implies hok
     rcases hok with ⟨hty₂, ht⟩ | ⟨hty₂, ht⟩ <;>
-    simp only [ht, typeOf_term_some, TermType.option.injEq, exists_eq', and_true]
+    simp only [ht, typeOf_term_some, TermType.option.injEq]
     · have hwf := compileInₑ_wf hwε hw₁ hty₁ hw₂ hty₂ rfl
       exact And.intro (Term.WellFormed.some_wf hwf.left) hwf.right
     · have hwf := compileInₛ_wf hwε hw₁ hty₁ hw₂ hty₂ rfl
@@ -911,7 +911,7 @@ private theorem evaluate_and_or_wf {x₁ x₂ : Expr} {env : Env} {v : Value} {s
   split at hok <;>
   simp only [Except.bind_ok, Except.bind_err, reduceCtorEq] at hok
   cases hok₂ : evaluate x₂ env.request env.entities <;>
-  simp only [Bool.not_eq_true', Lean.Internal.coeM, hok₂, Except.bind_err] at hok
+  simp only [Lean.Internal.coeM, hok₂, Except.bind_err] at hok
   case error =>
     split at hok <;> simp only [Except.ok.injEq, reduceCtorEq] at hok
     subst hok
@@ -977,7 +977,7 @@ private theorem evaluate_getAttr_wf {x : Expr} {a : Attr} {env : Env} {v : Value
   case h_2 uid =>
     simp_do_let (Entities.attrs env.entities uid) at hok
     rename_i ha
-    simp only [Except.bind_ok, Map.findOrErr] at hok
+    simp only [Map.findOrErr] at hok
     split at hok <;> simp only [Except.ok.injEq, reduceCtorEq] at hok
     rename_i r _ v₁ hf
     subst hok

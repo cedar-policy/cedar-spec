@@ -71,7 +71,7 @@ theorem type_of_call_inversion {xs : List Expr} {c c' : Capabilities} {env : Typ
     | cases htx₁ : typeOfConstructor Cedar.Spec.Ext.Datetime.parse xs (.ext .datetime) <;> simp only [htx₁] at htx
     | cases htx₁ : typeOfConstructor Cedar.Spec.Ext.Datetime.Duration.parse xs (.ext .duration) <;> simp only [htx₁] at htx
     | skip) <;>
-    simp only [ok, err, Except.ok.injEq, Prod.mk.injEq, Except.bind_ok, Except.bind_err, reduceCtorEq] at htx <;>
+    simp only [ok, Except.ok.injEq, Prod.mk.injEq, Except.bind_ok, Except.bind_err, reduceCtorEq] at htx <;>
     simp [←htx]
   · exact type_of_call_args_inversion htx₁
 
@@ -260,8 +260,7 @@ theorem typeOf_of_binary_call_inversion {xs : List Expr} {c : Capabilities} {env
         subst hl₁ hr₁
         simp [h₂, h₃]
       case cons hd₃ tl₃ =>
-        simp only [List.attach_def, List.pmap, List.mapM_cons,
-          List.mapM_pmap_subtype (fun x => justType (typeOf x c env)), bind_assoc, pure_bind] at h₁
+        simp only [List.mapM_cons, bind_assoc, pure_bind] at h₁
         rw [justType, Except.map.eq_def] at h₁
         split at h₁ <;> simp at h₁
         rw [justType, Except.map.eq_def] at h₁
@@ -450,7 +449,7 @@ theorem typeOf_of_unary_call_inversion {xs : List Expr} {c : Capabilities} {env 
       simp only [List.attach_cons, List.attach_nil, List.map_nil, List.mapM_cons, List.mapM_nil,
         bind_pure_comp, map_pure] at h₁
       cases h₂ : justType (typeOf hd₁ c env)
-      · simp_all only [justType, List.cons.injEq, and_true, exists_and_left, exists_eq_left', Except.map_error, Except.map_ok, Except.ok.injEq]
+      · simp_all only [justType, List.cons.injEq, and_true, exists_and_left, exists_eq_left', Except.map_error]
         simp at h₁
       · simp only [List.cons.injEq, and_true, exists_and_left, exists_eq_left'] at *
         simp_all only [Except.map_ok, Except.ok.injEq, List.cons.injEq, and_true]
@@ -642,7 +641,7 @@ theorem type_of_call_offset_is_sound {xs : List Expr} {c₁ c₂ : Capabilities}
     simp only [EvaluatesTo, evaluate, List.mapM₁, List.attach_def, List.pmap, List.mapM_cons,
       List.mapM_nil, pure_bind, bind_assoc]
     have ih₁ := ih x₁
-    simp only [List.mem_cons, List.mem_singleton, true_or, TypeOfIsSound, forall_const] at ih₁
+    simp only [List.mem_cons, true_or, TypeOfIsSound, forall_const] at ih₁
     split_type_of h₇ ; rename_i h₇ hl₇ hr₇
     have ⟨_, v₁, hl₁, hr₁⟩ := ih₁ h₁ h₂ h₇
     simp only [EvaluatesTo] at hl₁
@@ -723,7 +722,7 @@ theorem type_of_call_durationSince_is_sound {xs : List Expr} {c₁ c₂ : Capabi
     simp only [EvaluatesTo, evaluate, List.mapM₁, List.attach_def, List.pmap, List.mapM_cons,
       List.mapM_nil, pure_bind, bind_assoc]
     have ih₁ := ih x₁
-    simp only [List.mem_cons, List.mem_singleton, true_or, TypeOfIsSound, forall_const] at ih₁
+    simp only [List.mem_cons, true_or, TypeOfIsSound, forall_const] at ih₁
     split_type_of h₇ ; rename_i h₇ hl₇ hr₇
     have ⟨_, v₁, hl₁, hr₁⟩ := ih₁ h₁ h₂ h₇
     simp only [EvaluatesTo] at hl₁

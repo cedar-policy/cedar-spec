@@ -139,9 +139,9 @@ theorem List.lt_conn [LT α] [StrictLT α] {xs ys : List α} :
   cases xs <;> cases ys
   case nil.nil => contradiction
   case nil.cons xhd xtl =>
-    simp_all only [ne_eq, nil_eq, not_false_eq_true, and_self, nil_lt_cons, not_true_eq_false]
+    simp_all only [ne_eq, nil_eq, nil_lt_cons, not_true_eq_false]
   case cons.nil yhd ytl =>
-    simp_all only [ne_eq, not_false_eq_true, and_self, not_lt_nil, nil_lt_cons, not_true_eq_false]
+    simp_all only [ne_eq, not_false_eq_true, not_lt_nil, nil_lt_cons, not_true_eq_false]
   case cons.cons xhd xtl yhd ytl =>
     by_cases (xhd < yhd)
     case pos h₄ =>

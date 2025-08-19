@@ -118,7 +118,7 @@ decreasing_by
     simp_wf
     rename_i h
     try replace h := List.sizeOf_lt_of_mem h
-    simp only [Prod.mk.sizeOf_spec] at h
+    simp only at h
     omega
   }
 where

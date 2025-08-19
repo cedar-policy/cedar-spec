@@ -150,12 +150,12 @@ theorem default_lit_well_typed
     | _ =>
       simp only [Decoder.defaultLit, Decoder.defaultPrim, Term.typeOf, TermPrim.typeOf, BitVec.width]
   | option =>
-    simp only [Decoder.defaultLit, Decoder.defaultPrim, Term.typeOf]
+    simp only [Decoder.defaultLit, Term.typeOf]
   | set =>
-    simp only [Decoder.defaultLit, Decoder.defaultPrim, Term.typeOf]
+    simp only [Decoder.defaultLit, Term.typeOf]
   | record rty =>
     cases rty with | mk attrs =>
-    simp only [Decoder.defaultLit, Decoder.defaultPrim, Term.typeOf]
+    simp only [Decoder.defaultLit, Term.typeOf]
     congr
     rw [List.map_attach₂ (λ x => (x.fst, Decoder.defaultLit eidOf x.snd))]
     simp only [List.map_attach₃_snd]

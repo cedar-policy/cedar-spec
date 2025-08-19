@@ -379,7 +379,7 @@ theorem find?_notmem_keys [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α
       simp only [h₂, Option.some.injEq, Prod.mk.injEq, and_true]
       simpa using List.find?_some h₂
   case mpr =>
-    split <;> simp <;> rename_i k' v h₂
+    split <;> simp ; rename_i k' v h₂
     · apply h₁ ; clear h₁
       have h₃ := List.find?_some h₂ ; simp at h₃ ; subst k'
       replace h₂ := List.mem_of_find?_eq_some h₂
@@ -689,7 +689,7 @@ theorem find?_some_implies_in_values [LT α] [DecidableLT α] [DecidableEq α] {
   simp [values]
   exists k
   have h₂ := find?_mem_toList h₁ ; simp [toList] at h₂
-  simp [h₁, h₂, and_true]
+  simp only [h₂]
 
 /--
   The converse requires the `wf` precondition, and is available in
@@ -714,7 +714,7 @@ theorem find?_some_iff_in_values [LT α] [DecidableLT α] [StrictLT α] [Decidab
     intro ⟨k, h₁⟩
     exact find?_some_implies_in_values h₁
   case mpr =>
-    simp only [values, List.mem_map, findOrErr_ok_iff_find?_some]
+    simp only [values, List.mem_map]
     intro h₁
     replace ⟨⟨k, v'⟩, ⟨h₁, h₂⟩⟩ := h₁
     simp only at h₂
@@ -809,7 +809,7 @@ theorem mapMOnValues_preserves_keys [LT α] [DecidableLT α] [StrictLT α] {f : 
   <;> unfold kvs at *
   case nil =>
     subst h₁
-    simp [h₂]
+    simp only [List.map_nil]
   case cons kv tl =>
     have (k, v) := kv ; clear kv
     replace ⟨(k', y), ⟨y', h₁, h₃⟩, ⟨tl', h₄, h₅⟩⟩ := h₁
@@ -821,7 +821,7 @@ theorem mapMOnValues_preserves_keys [LT α] [DecidableLT α] [StrictLT α] {f : 
     simp only [mapMOnValues, kvs, Option.pure_def, Option.bind_eq_bind,
       Option.bind_eq_some_iff, Option.some.injEq, mk.injEq, exists_eq_right] at ih
     specialize ih h₄
-    simp [ih, h₂]
+    simp only [ih, and_self]
 
 theorem mapMOnValues_some_wf [LT α] [DecidableLT α] [StrictLT α] {f : β → Option γ} {m₁ : Map α β} {m₂ : Map α γ} :
   m₁.WellFormed →
@@ -854,7 +854,7 @@ theorem mapMOnValues_some_wf_alt_proof [LT α] [DecidableLT α] [StrictLT α] {f
   apply List.filterMap_sortedBy _ wf
   intro (k, v) (k', v') h₁
   simp only at *
-  cases h₂ : f v <;> simp [h₂, Option.bind] at h₁
+  cases h₂ : f v <;> simp [h₂] at h₁
   exact h₁.left
 
 theorem mapMOnValues_ok_wf [LT α] [DecidableLT α] [StrictLT α] {f : β → Except ε γ} {m₁ : Map α β} {m₂ : Map α γ} :
@@ -875,7 +875,7 @@ theorem mapMOnValues_ok_wf [LT α] [DecidableLT α] [StrictLT α] {f : β → Ex
     apply List.filterMap_sortedBy _ wf
     intro (k, v) (k', v') h₁
     simp only at *
-    cases h₂ : f v <;> simp [h₂, Option.bind] at h₁
+    cases h₂ : f v <;> simp [h₂] at h₁
     exact h₁.left
 
 theorem mapMOnValues_nil [LT α] [DecidableLT α] {f : β → Option γ} :
@@ -1112,7 +1112,7 @@ theorem all_ok_implies_mapMOnValues_ok [LT α] [DecidableLT α] {f : β → Exce
   case error e =>
     exfalso
     replace ⟨(k, v), hkv, h₂⟩ := List.mapM_error_implies_exists_error h₂
-    split at h₂ <;> rename_i h₂' <;> simp only [pure, Except.pure] at h₂
+    split at h₂ ; rename_i h₂' ; simp only [pure, Except.pure] at h₂
     simp only [Prod.mk.injEq] at h₂' ; replace ⟨h₂', h₂''⟩ := h₂' ; subst k v ; rename_i k v
     replace ⟨v', h₁⟩ := h₁ (k, v) hkv
     simp only [h₁, Except.bind_ok, reduceCtorEq] at h₂
@@ -1342,7 +1342,7 @@ theorem map_keys_empty_implies_map_empty
   cases m with
   | nil => rfl
   | cons hd tl =>
-    simp only [Map.keys, Map.kvs, List.map, Set.toList, Set.elts] at h
+    simp only [Map.keys, List.map, Set.toList, Set.elts] at h
     contradiction
 
 theorem toList_congr

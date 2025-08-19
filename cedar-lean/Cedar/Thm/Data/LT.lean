@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Spec
+import Cedar.Data.Int64
 
 /-!
 This file contains proofs that the less-than (`<`) relation on Cedar values is strict.
@@ -49,7 +50,7 @@ instance IPNetPrefix.strictLT {w} : StrictLT (Ext.IPAddr.IPNetPrefix w) where
     unfold Ext.IPAddr.IPNetPrefix.lt Ext.IPAddr.IPNetPrefix.toNat Ext.IPAddr.ADDR_SIZE
     cases a <;> cases b <;> cases c <;>
     simp only [Nat.lt_irrefl, decide_false, imp_self,
-      decide_eq_true_eq, false_implies, implies_true]
+      decide_eq_true_eq, implies_true]
     all_goals { omega }
   connected  a b   := by
     simp only [LT.lt]
@@ -132,20 +133,17 @@ instance Datetime.strictLT : StrictLT Ext.Datetime where
   asymmetric a b   := by
     simp only [LT.lt]
     unfold Ext.Datetime.lt
-    simp only [not_false_eq_true, imp_self,
-      decide_eq_true_eq, not_true_eq_false, reduceCtorEq] <;>
+    simp only [decide_eq_true_eq];
       exact Int64.strictLT.asymmetric _ _
   transitive a b c := by
     simp only [LT.lt]
     unfold Ext.Datetime.lt
-    simp only [not_false_eq_true, imp_self,
-      decide_eq_true_eq, not_true_eq_false, reduceCtorEq] <;>
+    simp only [decide_eq_true_eq];
       exact Int64.strictLT.transitive _ _ _
   connected  a b   := by
     simp only [LT.lt]
     unfold Ext.Datetime.lt
-    simp only [not_false_eq_true, imp_self,
-      decide_eq_true_eq, not_true_eq_false, reduceCtorEq] <;>
+    simp only [decide_eq_true_eq];
     intro h₁
     apply Int64.strictLT.connected _ _
     exact fun h₂ => h₁ (congrArg Ext.Datetime.mk h₂)
@@ -156,20 +154,17 @@ instance Duration.strictLT : StrictLT Ext.Datetime.Duration where
   asymmetric a b   := by
     simp only [LT.lt]
     unfold Ext.Datetime.Duration.lt
-    simp only [not_false_eq_true, imp_self,
-      decide_eq_true_eq, not_true_eq_false, reduceCtorEq] <;>
+    simp only [decide_eq_true_eq];
       exact Int64.strictLT.asymmetric _ _
   transitive a b c := by
     simp only [LT.lt]
     unfold Ext.Datetime.Duration.lt
-    simp only [not_false_eq_true, imp_self,
-      decide_eq_true_eq, not_true_eq_false, reduceCtorEq] <;>
+    simp only [decide_eq_true_eq];
       exact Int64.strictLT.transitive _ _ _
   connected  a b   := by
     simp only [LT.lt]
     unfold Ext.Datetime.Duration.lt
-    simp only [not_false_eq_true, imp_self,
-      decide_eq_true_eq, not_true_eq_false, reduceCtorEq] <;>
+    simp only [decide_eq_true_eq];
     intro h₁
     apply Int64.strictLT.connected _ _
     exact fun h₂ => h₁ (congrArg Ext.Datetime.Duration.mk h₂)
@@ -266,12 +261,12 @@ theorem EntityUID.lt_asymm {a b : EntityUID} :
   a < b → ¬ b < a
 := by
   simp only [LT.lt] -- keep this separate so as not to over-simplify
-  simp only [EntityUID.lt, decide_eq_true_eq, not_or, Bool.not_eq_true, not_and]
+  simp only [EntityUID.lt, decide_eq_true_eq, not_or, not_and]
   intro h₁
   by_contra h₂
   simp only [not_and, not_imp, Classical.not_not] at h₂
   have h₃ := Name.strictLT.asymmetric a.ty b.ty
-  simp only [Bool.not_eq_true] at h₃
+  simp only at h₃
   rcases h₁ with h₁ | h₁
   · simp only [h₁, true_implies] at h₃
     simp only [h₃, not_false_eq_true, true_implies] at h₂
@@ -329,11 +324,11 @@ theorem Prim.lt_asymm {a b : Prim} :
   a < b → ¬ b < a
 := by
   cases a <;> cases b <;> simp [LT.lt] <;>
-  simp [Prim.lt, ←Int64.not_lt]
+  simp [Prim.lt] <;> try simp only [← Int64.not_lt]
   case bool b₁ b₂          => exact Bool.strictLT.asymmetric b₁ b₂
-  case int i₁ i₂           => exact (Int64.strictLT.asymmetric i₁ i₂)
-  case string s₁ s₂        => exact (String.strictLT.asymmetric s₁ s₂)
-  case entityUID uid₁ uid₂ => exact (EntityUID.strictLT.asymmetric uid₁ uid₂)
+  case int i₁ i₂           => exact Int64.strictLT.asymmetric i₁ i₂
+  case string s₁ s₂        => exact String.strictLT.asymmetric s₁ s₂
+  case entityUID uid₁ uid₂ => exact EntityUID.strictLT.asymmetric uid₁ uid₂
 
 theorem Prim.lt_trans {a b c : Prim} :
   a < b → b < c → a < c
@@ -448,7 +443,7 @@ theorem Values.lt_asym {vs₁ vs₂: List Value} :
     simp [h₂] ; intro h₃ ; subst h₃
     simp [h₁] at h₂
   · have ⟨hl₁, h₂⟩ := h₁
-    subst hl₁ ; simp only [true_and]
+    subst hl₁ ; simp only
     have h₂ := Values.lt_asym h₂
     simp [h₂, Value.lt_irrefl hd₁]
 
@@ -471,23 +466,22 @@ theorem ValueAttrs.lt_asym {vs₁ vs₂: List (Attr × Value)} :
     case inr =>
       have ⟨hl₁, h₂⟩ := h₁
       subst hl₁
-      simp only [decide_true, Bool.true_and]
+      simp only
       have h₃ := Value.lt_asymm h₂
-      simp [LT.lt] at h₃ ; simp [h₃]
-      have h₄ := StrictLT.irreflexive a₁
+      simp only [LT.lt, Bool.not_eq_true] at h₃
+      simp only [String.le_refl, h₃, imp_self, and_self, forall_const,
+        true_and]
       have h₅ := Value.lt_not_eq h₂
       rw [eq_comm] at h₅
-      simp [h₄, h₅]
+      simp [h₅]
   case inr =>
     have ⟨h₂, h₃⟩ := h₁
     have ⟨hl₂, hr₂⟩ := h₂
     subst hl₂ hr₂
-    simp only [decide_true, Bool.true_and, Bool.and_self]
+    simp only
     have h₃ := ValueAttrs.lt_asym h₃
-    have h₄ := StrictLT.irreflexive a₁
     have h₅ := Value.lt_irrefl v₁
-    simp [h₃, h₄, h₅]
-
+    simp only [String.le_refl, h₅, imp_self, and_self, h₃]
 end
 
 mutual

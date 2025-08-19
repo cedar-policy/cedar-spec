@@ -42,7 +42,7 @@ theorem asserts_unsatisfiable_def {εnv : SymEnv} {asserts : Asserts} :
   ∀ I, I.WellFormed εnv.entities → ∃ t ∈ asserts, t.interpret I ≠ true
 := by
   simp only [Asserts.Unsatisfiable, asserts_satisfiable_def, not_exists, not_and,
-    Classical.not_forall, not_imp, ne_eq, exists_prop]
+    Classical.not_forall, ne_eq, exists_prop]
 
 theorem asserts_last_not_true {I : Interpretation} {ts : Asserts} {t t' : Term} :
   ts.satisfiedBy I →

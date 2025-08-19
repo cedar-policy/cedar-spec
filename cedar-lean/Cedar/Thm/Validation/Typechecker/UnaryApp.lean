@@ -46,7 +46,7 @@ theorem type_of_unary_inversion {op : UnaryOp} {x₁ : Expr} {c₁ c₂ : Capabi
   all_goals {
     simp only [ok, Except.ok.injEq, Prod.mk.injEq] at h₁
     replace ⟨ h₁, hc ⟩ := h₁
-    simp only [hc, List.empty_eq, true_and]
+    simp only [hc, true_and]
     exists ty₁
     rename_i hty₁ _
     simp [h₁, hty₁]

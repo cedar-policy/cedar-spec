@@ -131,7 +131,7 @@ theorem interpret_or {εs : SymEntities} {I : Interpretation} {t₁ t₂ : Term}
   split
   case isTrue heq =>
     rcases heq with heq | heq <;>
-    simp [heq, interpret_term_prim, true_or, or_true, ite_true]
+    simp [heq, interpret_term_prim, true_or, or_true]
   case isFalse =>
     split
     case isTrue heq =>
@@ -259,8 +259,7 @@ theorem interpret_eq_simplify {I : Interpretation} {t₁ t₂ : Term} :
   (Factory.eq.simplify t₁ t₂).interpret I = Factory.eq.simplify (t₁.interpret I) (t₂.interpret I)
 := by
   fun_cases Factory.eq.simplify t₁ t₂
-  <;> simp_all only [Factory.eq.simplify, interpret_term_prim, reduceIte, forall_self_imp,
-    Bool.false_eq_true, Bool.and_eq_true, decide_eq_true_eq, implies_true, true_and]
+  <;> simp_all only [Factory.eq.simplify, interpret_term_prim, reduceIte, Bool.and_eq_true, decide_eq_true_eq, implies_true, true_and]
   case case2 =>
     split <;> rename_i h₁ h₂ h₃ <;> intro h₄ h₅ h₆
     · rw [interpret_term_lit_id I (And.intro h₅ h₂.left)] at h₃
@@ -277,7 +276,7 @@ theorem interpret_eq_simplify {I : Interpretation} {t₁ t₂ : Term} :
       have h₅ := interpret_term_wfl h₂ h₄
       rw [h₁] at h₅
       have h₆ := wfl_of_type_bool_is_true_or_false h₅.left h₅.right
-      simp_all only [Term.WellFormedLiteral, Bool.not_eq_true, ite_false, ite_true]
+      simp_all only [Term.WellFormedLiteral, ite_false, ite_true]
       rcases h₆ with h₆ | h₆
       · symm at h₆ ; contradiction
       · exact h₆
@@ -285,7 +284,7 @@ theorem interpret_eq_simplify {I : Interpretation} {t₁ t₂ : Term} :
     rename_i h₁ ; replace ⟨h₁', h₁⟩ := h₁ ; subst t₂
     split <;> simp_all only [typeOf_bool, Term.isLiteral, Bool.not_eq_true, Bool.true_eq_false,
       Term.prim.injEq, TermPrim.bool.injEq, not_false_eq_true,
-      implies_true, true_and, and_true, and_self, ite_false]
+      implies_true, and_true, and_self, ite_false]
     · intro h₂ h₃ h₄
       have h₅ := interpret_term_wfl h₂ h₃
       rw [h₁] at h₅
@@ -294,7 +293,7 @@ theorem interpret_eq_simplify {I : Interpretation} {t₁ t₂ : Term} :
   case case5 =>
     rename_i h₁ ; replace ⟨h₁', h₁⟩ := h₁ ; subst t₁
     intro h₂ h₃ h₄
-    split <;> simp_all only [interpret_not h₂ h₄, Bool.not_eq_true, Term.prim.injEq, TermPrim.bool.injEq,
+    split <;> simp_all only [interpret_not h₂ h₄, Term.prim.injEq, TermPrim.bool.injEq,
       Bool.false_eq_true, and_true, not_false_eq_true, false_and, ite_false]
     · rename_i h ; simp [← h, Factory.not]
     · have h₅ := interpret_term_wfl h₂ h₄
@@ -308,7 +307,7 @@ theorem interpret_eq_simplify {I : Interpretation} {t₁ t₂ : Term} :
   case case6 =>
     rename_i h₁ ; replace ⟨h₁', h₁⟩ := h₁ ; subst t₂
     intro h₂ h₃ h₄
-    split <;> simp_all only [interpret_not h₂ h₃, Bool.not_eq_true, Term.prim.injEq, TermPrim.bool.injEq,
+    split <;> simp_all only [interpret_not h₂ h₃, Term.prim.injEq, TermPrim.bool.injEq,
       Bool.false_eq_true, and_true, not_false_eq_true, false_and, ite_false]
     · simp [Factory.not]
     · have h₅ := interpret_term_wfl h₂ h₃
@@ -319,10 +318,10 @@ theorem interpret_eq_simplify {I : Interpretation} {t₁ t₂ : Term} :
     intro h₂ h₃ h₄
     have h₅ := interpret_term_wfl h₂ h₃
     have h₆ := interpret_term_wfl h₂ h₄
-    simp_all only [Bool.not_eq_true, Term.WellFormedLiteral, interpret_term_app_eq, Factory.eq,
+    simp_all only [Term.WellFormedLiteral, interpret_term_app_eq, Factory.eq,
       and_self, ite_true]
     split <;> rename_i h₇ h₈
-    <;> simp only [h₇, h₈, Bool.not_eq_true, reduceCtorEq, reduceIte, Term.some.injEq, imp_false] at *
+    <;> simp only [h₇, h₈, reduceCtorEq, reduceIte, Term.some.injEq, imp_false] at *
     · simp only [Term.isLiteral] at h₅ h₆
       split <;> rename_i h₉
       · simp [h₉, pe_eq_simplify_same]
@@ -351,11 +350,13 @@ theorem interpret_eq {I : Interpretation} {t₁ t₂ : Term} :
       simp only [Factory.eq.simplify, Term.some.injEq, Bool.and_eq_true, reduceCtorEq,
         decide_false, Bool.false_and, Bool.false_eq_true, ↓reduceIte]
       split <;> rename_i h₉
-      · simp [h₉, pe_eq_simplify_same]
-      · simp [h₄, h₅, h₉, Term.isLiteral]
-    · simp [h₄, Factory.eq.simplify, Term.isLiteral]
+      · simp only [h₉, BEq.rfl]
+      · simp only [Term.isLiteral, h₄, h₅, and_self, ↓reduceIte, Term.prim.injEq,
+        TermPrim.bool.injEq, Bool.false_eq, beq_eq_false_iff_ne, ne_eq, h₉, not_false_eq_true]
+    · simp only [eq.simplify, reduceCtorEq, ↓reduceIte, Term.isLiteral, h₄, Bool.and_self]
     · rw [(pe_eq_simplify_lit (by simp [Term.isLiteral]) (by simp_all [Term.isLiteral])).right]
-      simp
+      simp only [Term.prim.injEq, TermPrim.bool.injEq, beq_eq_false_iff_ne, ne_eq, reduceCtorEq,
+        not_false_eq_true]
 
 theorem interpret_isNone {I : Interpretation} {t : Term} :
   I.WellFormed εs → t.WellFormed εs →
@@ -808,7 +809,7 @@ theorem interpret_set_member {εs : SymEntities} {I : Interpretation} {t₁ t₂
       simp only [Bool.and_eq_true] at hlit
       have hlit₁ := interpret_term_lit_id I (And.intro hw₁ hlit.left)
       have hlit₂ := interpret_term_lit_id I (And.intro hw₂ hlit.right)
-      simp only [hlit₁, hlit₂, hlit, interpret_term_prim, set.member, Bool.and_self, ite_true]
+      simp only [hlit₁, hlit₂, hlit, interpret_term_prim, Bool.and_self, ite_true]
     case isFalse =>
       simp only [interpret_term_app_set_member, set.member, Bool.and_eq_true]
   case h_3 =>
@@ -918,13 +919,13 @@ theorem interpret_set_isEmpty {εs : SymEntities} {t : Term} {ty : TermType} :
   case h_3 =>
     have hwt := typeOf_wf_term_is_wf hw
     simp only [hty] at hwt
-    cases hwt <;> rename_i hwt
+    cases hwt ; rename_i hwt
     have hwe := wf_term_set_empty hwt
     simp only [hty, interpret_eq hI hw hwe.left, interpret_term_set_empty]
     have hwl := interpret_term_wfl hI hw
     simp only [hty] at hwl
     have ⟨ts, hws⟩ := wfl_of_type_set_is_set hwl.left hwl.right
-    cases ts <;> rename_i ts
+    cases ts ; rename_i ts
     simp only [hws] at *
     cases ts
     case nil =>

@@ -726,7 +726,7 @@ private theorem compileAttrsOf_interpret_record_get_eq {t₁ t₃ : Term} {a₁ 
   simp only [SymEntities.attrs, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at hf
   replace ⟨δ, hf⟩ := hf
   replace hsm := (hsm ety δ hf.left).left
-  simp only [SymEntityData.attrs, hf.right] at hsm
+  simp only [hf.right] at hsm
   simp only [hsm]
 
 private theorem compile_interpret_hasAttr_on_footprint {x₁ : Expr}  {a₁ : Attr} {ft : Set Term} {εnv : SymEnv} {I₁ I₂ : Interpretation} {t : Term}
