@@ -56,122 +56,120 @@ theorem partial_eval_preserves_typeof
   | var v ty =>
     simp [TPE.evaluate, Residual.typeOf]
     unfold varₚ
+    simp only [varₚ.varₒ, someOrSelf, Option.bind]
     cases v with
     | principal =>
-      dsimp [varₚ.varₒ]
-      cases h: preq.principal.asEntityUID
-      . dsimp [someOrSelf, Option.bind]
-      . dsimp [someOrSelf]
+      cases h: preq.principal.asEntityUID <;> simp
     | resource | action =>
-      dsimp [varₚ.varₒ]
-      cases h: preq.resource.asEntityUID
-      . dsimp [someOrSelf, Option.bind]
-      . dsimp [someOrSelf]
+      cases h: preq.resource.asEntityUID <;> simp
     | context =>
-      dsimp [varₚ.varₒ]
-      dsimp [someOrSelf, Option.bind]
-      cases h: preq.context
-      . simp
-      . simp
+      cases h: preq.context <;> simp
   | and a b ty =>
     simp [TPE.evaluate, Residual.typeOf]
     . cases h_wt with
       | and h₁ h₂ h₃ h₄ =>
         split
-        any_goals (
+        all_goals
           rename Residual => x
           rename CedarType => ty
           rename_i heq
           unfold TPE.and at heq
+        all_goals
           split at heq
-          . have h₅ := partial_eval_preserves_typeof h_wf h_ref h₂
-            rw [heq] at h₅
-            rw [h₄] at h₅
-            simp [Residual.typeOf] at h₅
-            exact h₅
-          . (first
-             | contradiction
-             | injection heq with h₅ h₆
-               rw [h₆])
-          . first
-            | contradiction
-            | injection heq
-              rename_i heq
-              rw [heq]
-          . have h₅ := partial_eval_preserves_typeof h_wf h_ref h₁
-            rw [h₃] at h₅
-            rw [heq] at h₅
-            simp [Residual.typeOf] at h₅
-            exact h₅
-          . first
-            | contradiction
-            | injection heq with h₅ h₆ h₇
-              rw [h₇]
-          )
+
+        any_goals
+          contradiction
+
+        any_goals
+          have h₅ := partial_eval_preserves_typeof h_wf h_ref h₁
+          rw [h₃] at h₅
+          rw [heq] at h₅
+          simp only [Residual.typeOf] at h₅
+          exact h₅
+        any_goals
+          have h₅ := partial_eval_preserves_typeof h_wf h_ref h₂
+          rw [heq] at h₅
+          rw [h₄] at h₅
+          simp [Residual.typeOf] at h₅
+          exact h₅
+
+        case h_2 =>
+          injection heq with h₅ h₆
+          rw [h₆]
+        case h_5 =>
+          injection heq with h₅ h₆ h₇
+          rw [h₇]
+        case h_3 =>
+          injection heq with h₅
+          rw [h₅]
   | or a b ty =>
     simp [TPE.evaluate, Residual.typeOf]
     . cases h_wt with
       | or h₁ h₂ h₃ h₄ =>
         split
-        repeat case _ =>
+        any_goals
           rename Residual => x
           rename CedarType => ty
           rename_i heq
           unfold TPE.or at heq
           split at heq
 
-          . injection heq
-            try rename_i heq
-            try rw [heq]
-          . have h₅ := partial_eval_preserves_typeof h_wf h_ref h₂
-            rw [heq] at h₅
-            rw [h₄] at h₅
-            simp [Residual.typeOf] at h₅
-            exact h₅
-          . (first
-             | contradiction
-             | injection heq with h₅
-               rw [h₅])
-          . have h₅ := partial_eval_preserves_typeof h_wf h_ref h₁
-            rw [heq] at h₅
-            rw [h₃] at h₅
-            simp [Residual.typeOf] at h₅
-            exact h₅
-          . first
-            | contradiction
-            | injection heq with h₅ h₆ h₇
-              rw [h₇]
+        any_goals contradiction
+
+        any_goals
+          have h₅ := partial_eval_preserves_typeof h_wf h_ref h₂
+          rw [heq] at h₅
+          rw [h₄] at h₅
+          simp [Residual.typeOf] at h₅
+          exact h₅
+
+        any_goals
+          have h₅ := partial_eval_preserves_typeof h_wf h_ref h₁
+          rw [heq] at h₅
+          rw [h₃] at h₅
+          simp [Residual.typeOf] at h₅
+          exact h₅
+
+        any_goals
+          injection heq with h₅
+          rename CedarType.bool BoolType.anyBool = ty => h₅
+          rw [h₅]
   | ite c t e ty =>
     simp [TPE.evaluate, Residual.typeOf]
     cases h_wt with
     | ite h_c h_t h_e h_ty_c h_ty_t =>
       split
-      repeat case _ =>
+      all_goals
         rename Residual => x
         rename CedarType => result_ty
         rename_i heq
         unfold TPE.ite at heq
         split at heq
-        · split at heq
-          · have h_t_type := partial_eval_preserves_typeof h_wf h_ref h_t
-            rw [heq] at h_t_type
-            simp [Residual.typeOf] at h_t_type
-            exact h_t_type
-          · have h_e_type := partial_eval_preserves_typeof h_wf h_ref h_e
-            rw [heq] at h_e_type
-            rw [h_ty_t]
-            rw [← h_e_type]
-            simp [Residual.typeOf]
-        · first
-          | contradiction
-          | injection heq with h₁
-            rw [h₁]
-        · first
-          | contradiction
-          | have heq' := congr_arg (·.typeOf) heq
-            simp [Residual.typeOf] at heq'
-            unfold Residual.typeOf
-            rw [heq']
+        try split at heq
+      any_goals contradiction
+      any_goals
+        have h_t_type := partial_eval_preserves_typeof h_wf h_ref h_t
+        rw [heq] at h_t_type
+        simp [Residual.typeOf] at h_t_type
+        exact h_t_type
+
+      any_goals
+        have h_e_type := partial_eval_preserves_typeof h_wf h_ref h_e
+        rw [heq] at h_e_type
+        rw [h_ty_t]
+        rw [← h_e_type]
+        simp [Residual.typeOf]
+
+      case h_2 =>
+        injection heq with h₁
+        rw [h₁]
+
+      case h_3 =>
+        have heq' := congr_arg (·.typeOf) heq
+        simp [Residual.typeOf] at heq'
+        unfold Residual.typeOf
+        rw [heq']
+
   | error ty =>
     simp [TPE.evaluate, Residual.typeOf]
   | unaryApp op e ty =>
@@ -233,19 +231,21 @@ theorem partial_eval_preserves_typeof
           . have h₉ := congr_arg (·.typeOf) h₅
             simp [Residual.typeOf] at h₉
             rw [h₉]
-        repeat case _ =>
+        any_goals (
           rename_i h₅
           unfold TPE.getTag at h₅
-          split at h₅
-          . unfold someOrError at h₅
+          try (
             split at h₅
-            all_goals (
-              have h₉ := congr_arg (·.typeOf) h₅
-              simp [Residual.typeOf] at h₉
-              rw [h₉])
-          . simp at h₅
+            . unfold someOrError at h₅
+              split at h₅
+              all_goals (
+                have h₉ := congr_arg (·.typeOf) h₅
+                simp [Residual.typeOf] at h₉
+                rw [h₉])
+            . simp at h₅
+          )
+        )
         . rename_i h₅
-          unfold TPE.getTag at h₅
           split at h₅
           . unfold someOrError at h₅
             split at h₅
@@ -256,24 +256,12 @@ theorem partial_eval_preserves_typeof
           . simp at h₅
             rcases h₅ with ⟨_, ⟨_, ⟨_, h₆⟩⟩⟩
             rw [h₆]
-        -- TODO same as repeat case _ above
-        repeat case _ =>
-          rename_i h₅
-          unfold TPE.getTag at h₅
-          split at h₅
-          . unfold someOrError at h₅
-            split at h₅
-            all_goals (
-              have h₉ := congr_arg (·.typeOf) h₅
-              simp [Residual.typeOf] at h₉
-              rw [h₉])
-          . simp at h₅
     . split
       all_goals simp [Residual.typeOf]
       split
-      all_goals (
+      all_goals
         rename_i h₂
-        simp [apply₂.self] at h₂)
+        simp [apply₂.self] at h₂
       rcases h₂ with ⟨_, ⟨_, ⟨_, h₃⟩⟩⟩
       rw [h₃]
   | call xfn args ty =>
@@ -285,15 +273,15 @@ theorem partial_eval_preserves_typeof
       split at h₁
       . simp [someOrError] at h₁
         split at h₁
-        all_goals (
+        all_goals
           have h₂ := congr_arg (·.typeOf) h₁
           simp [Residual.typeOf] at h₂
-          rw [h₂])
+          rw [h₂]
       . split at h₁
-        all_goals (
+        all_goals
           have h₂ := congr_arg (·.typeOf) h₁
           simp [Residual.typeOf] at h₂
-          rw [h₂])
+          rw [h₂]
   | getAttr expr attr ty =>
     simp [TPE.evaluate, TPE.getAttr]
     split
@@ -316,15 +304,16 @@ theorem partial_eval_preserves_typeof
   | set =>
     simp [TPE.evaluate, Residual.typeOf]
     split
-    repeat case _ =>
+    all_goals
       rename_i h₁
       unfold TPE.set at h₁
       split at h₁
-      repeat case _ =>
-        have h₂ := congr_arg (·.typeOf) h₁
-        simp [Residual.typeOf] at h₂
-        rw [h₂]
-      split at h₁
+      case h_2 =>
+        split at h₁
+        all_goals
+          have h₂ := congr_arg (·.typeOf) h₁
+          simp [Residual.typeOf] at h₂
+          rw [h₂]
       repeat case _ =>
         have h₂ := congr_arg (·.typeOf) h₁
         simp [Residual.typeOf] at h₂
@@ -332,32 +321,27 @@ theorem partial_eval_preserves_typeof
   | record =>
     simp [TPE.evaluate, Residual.typeOf]
     split
-    repeat case _ =>
+    all_goals
       rename_i h₁
       unfold record at h₁
-      split at h₁
-      repeat case _ =>
-        have h₂ := congr_arg (·.typeOf) h₁
-        simp [Residual.typeOf] at h₂
-        rw [h₂]
-    . rename_i h₁
-      unfold record at h₁
+      have h₂ := congr_arg (·.typeOf) h₁
+
+    case h_1 =>
       split at h₁
       . simp at h₁
         rcases h₁ with ⟨_, h₂⟩
         rw [h₂]
       . split at h₁
         repeat case _ =>
-          have h₂ := congr_arg (·.typeOf) h₁
-          simp [Residual.typeOf] at h₂
-          rw [h₂]
-    repeat case _ =>
-      rename_i h₁
-      unfold record at h₁
+          have h₃ := congr_arg (·.typeOf) h₁
+          simp [Residual.typeOf] at h₃
+          rw [h₃]
+
+    all_goals
       split at h₁
       . simp at h₁
       . split at h₁
-        repeat case _ =>
-          have h₂ := congr_arg (·.typeOf) h₁
-          simp [Residual.typeOf] at h₂
-          rw [h₂]
+        all_goals
+          have h₃ := congr_arg (·.typeOf) h₁
+          simp [Residual.typeOf] at h₃
+          rw [h₃]
