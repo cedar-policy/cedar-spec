@@ -919,7 +919,7 @@ theorem partial_eval_well_typed_app₂ :
 /--
 Helper theorem: Partial evaluation preserves well-typedness for variable residuals.
 -/
-theorem partial_evaluation_well_typed_var      {env : TypeEnv}
+theorem partial_evaluation_well_typed_var {pes}      {env : TypeEnv}
   {v : Var}
   {ty : CedarType}
   {req : Request}
@@ -1216,7 +1216,7 @@ theorem partial_eval_record_key_preservation {xs : List (Attr × Residual)} {ys 
       . exact h₅
 
 
-theorem find_lifted_type {m: RecordType} :
+theorem find_lifted_type {attr ty₁ ty₂} {m: RecordType} :
   Map.find? m attr = some ty₁ →
   Map.find? m.liftBoolTypes attr = some ty₂ →
   ty₂ = ty₁.liftBoolTypes
@@ -1260,12 +1260,86 @@ decreasing_by
   omega
 
 
-theorem ext_well_typed_after_map :
+theorem ext_well_typed_after_map {xfn args ty env f} :
   ExtResidualWellTyped xfn args ty →
-  (∀ x, Residual.WellTyped env x → Residual.WellTyped env (f x)) →
-  ExtResidualWellTyped xf (args.map f) ty
+  (∀ arg, arg ∈ args → Residual.WellTyped env arg → Residual.WellTyped env (f arg)) →
+  (∀ arg, arg ∈ args → (f arg).typeOf = arg.typeOf) →
+  (∀ x, x.asValue.isSome → f x = x) →
+  ExtResidualWellTyped xfn (args.map f) ty
 := by
-  sorry
+  intro h₁ h₂ h₃ h₄
+  cases h₅: h₁
+  -- String-based constructors: decimal, ip, datetime, duration
+  case decimal s d h₆ | ip s ip₁ h₆ | datetime s d h₆ | duration s d h₆ =>
+    simp
+    specialize h₄ (Residual.val (Value.prim (Prim.string s)) CedarType.string)
+    simp [Residual.asValue] at h₄
+    rw [h₄]
+    exact h₁
+  -- Binary comparison operators
+  case lessThan x₁ x₂ h₆ h₇ | lessThanOrEqual x₁ x₂ h₆ h₇ | greaterThan x₁ x₂ h₆ h₇ | greaterThanOrEqual x₁ x₂ h₆ h₇ =>
+    first
+    | apply ExtResidualWellTyped.lessThan
+    | apply ExtResidualWellTyped.lessThanOrEqual
+    | apply ExtResidualWellTyped.greaterThan
+    | apply ExtResidualWellTyped.greaterThanOrEqual
+    . rw [h₃ x₁]
+      rw [h₆]
+      simp
+    . rw [h₃ x₂]
+      rw [h₇]
+      simp
+  -- Unary IP address predicates
+  case isIpv4 x₁ h₆ | isIpv6 x₁ h₆ | isLoopback x₁ h₆ | isMulticast x₁ h₆ =>
+    simp
+    first
+    | apply ExtResidualWellTyped.isIpv4
+    | apply ExtResidualWellTyped.isIpv6
+    | apply ExtResidualWellTyped.isLoopback
+    | apply ExtResidualWellTyped.isMulticast
+    rw [h₃ x₁]
+    rw [h₆]
+    simp
+  -- Binary operations: isInRange, offset, durationSince
+  case isInRange x₁ x₂ h₆ h₇ | offset x₁ x₂ h₆ h₇ | durationSince x₁ x₂ h₆ h₇ =>
+    simp
+    first
+    | apply ExtResidualWellTyped.isInRange
+    | apply ExtResidualWellTyped.offset
+    | apply ExtResidualWellTyped.durationSince
+    . rw [h₃ x₁]
+      rw [h₆]
+      simp
+    . rw [h₃ x₂]
+      rw [h₇]
+      simp
+  -- Unary datetime/duration conversions
+  case toDate x₁ h₆ | toTime x₁ h₆ | toMilliseconds x₁ h₆ | toSeconds x₁ h₆ | toMinutes x₁ h₆ | toHours x₁ h₆ | toDays x₁ h₆ =>
+    simp
+    first
+    | apply ExtResidualWellTyped.toDate
+    | apply ExtResidualWellTyped.toTime
+    | apply ExtResidualWellTyped.toMilliseconds
+    | apply ExtResidualWellTyped.toSeconds
+    | apply ExtResidualWellTyped.toMinutes
+    | apply ExtResidualWellTyped.toHours
+    | apply ExtResidualWellTyped.toDays
+    rw [h₃ x₁]
+    rw [h₆]
+    simp
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1610,6 +1684,13 @@ theorem partial_eval_preserves_well_typed
         rw [h₁₆] at h₁₇
         rw [←h₁₇]
         simp [Residual.typeOf]
+        have termination : sizeOf v₂ < sizeOf ls := by {
+          have term₂ := List.sizeOf_lt_of_mem h₁₂
+          simp [sizeOf, Prod._sizeOf_1] at term₂
+          simp [sizeOf]
+          omega
+        }
+
         let ih := partial_eval_preserves_well_typed h_wf h_ref h₁₁
         rw [h₁₆] at ih
         cases ih
@@ -1645,9 +1726,17 @@ theorem partial_eval_preserves_well_typed
           simp
           unfold Function.comp
           simp
+          congr 1
+          apply List.map_func_ext
+          intro x h₄
           congr 2
-          -- should be an easy proof with lemma bout forall and function equality
-          sorry
+
+          cases x
+          rename_i k v
+          specialize h₀ k v h₄
+          simp
+          let h₅ := partial_eval_preserves_typeof h_wf h_ref h₀
+          rw [h₅]
   | getAttr expr attr ty =>
     simp [TPE.evaluate, TPE.getAttr, TPE.attrsOf]
     split
@@ -2041,7 +2130,23 @@ theorem partial_eval_preserves_well_typed
             simp
             exact partial_eval_preserves_well_typed h_wf h_ref h₃
           }
-          exact ext_well_typed_after_map h₂ h₃
+          apply ext_well_typed_after_map h₂
+          case a =>
+            intro x h₄
+            apply partial_eval_preserves_well_typed h_wf h_ref
+          case a =>
+            intro x h₄
+            specialize h₁ x h₄
+            apply partial_eval_preserves_typeof h_wf h_ref h₁
+          case a =>
+            intro x h₄
+            cases x
+            . rename_i v ty
+              simp [TPE.evaluate]
+            all_goals {
+              simp [Residual.asValue] at h₄
+            }
+termination_by (sizeOf res)
 
 
 end Cedar.Thm
