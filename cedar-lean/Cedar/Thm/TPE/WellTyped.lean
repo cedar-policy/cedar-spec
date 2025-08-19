@@ -1339,6 +1339,12 @@ theorem partial_eval_preserves_well_typed
         rw [h₁₆] at h₁₇
         rw [←h₁₇]
         simp [Residual.typeOf]
+        have termination₁ : sizeOf v₂ < sizeOf ls := by {
+          have term₂ := List.sizeOf_lt_of_mem h₁₂
+          simp [sizeOf, Prod._sizeOf_1] at term₂
+          simp [sizeOf]
+          omega
+        }
         have termination₂ : sizeOf ls < sizeOf res := by {
           rw [hᵣ]
           simp [sizeOf, Residual._sizeOf_1]
