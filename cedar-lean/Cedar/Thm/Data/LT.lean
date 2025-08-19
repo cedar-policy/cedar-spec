@@ -324,11 +324,11 @@ theorem Prim.lt_asymm {a b : Prim} :
   a < b → ¬ b < a
 := by
   cases a <;> cases b <;> simp [LT.lt] <;>
-  simp [Prim.lt]
+  simp [Prim.lt] <;> try simp only [← Int64.not_lt]
   case bool b₁ b₂          => exact Bool.strictLT.asymmetric b₁ b₂
-  case int i₁ i₂           => simp only [← Int64.not_lt]; exact Int64.strictLT.asymmetric i₁ i₂
-  case string s₁ s₂        => exact (String.strictLT.asymmetric s₁ s₂)
-  case entityUID uid₁ uid₂ => exact (EntityUID.strictLT.asymmetric uid₁ uid₂)
+  case int i₁ i₂           => exact Int64.strictLT.asymmetric i₁ i₂
+  case string s₁ s₂        => exact String.strictLT.asymmetric s₁ s₂
+  case entityUID uid₁ uid₂ => exact EntityUID.strictLT.asymmetric uid₁ uid₂
 
 theorem Prim.lt_trans {a b c : Prim} :
   a < b → b < c → a < c
@@ -468,8 +468,9 @@ theorem ValueAttrs.lt_asym {vs₁ vs₂: List (Attr × Value)} :
       subst hl₁
       simp only
       have h₃ := Value.lt_asymm h₂
-      simp [LT.lt] at h₃ ; simp [h₃]
-      have h₄ := StrictLT.irreflexive a₁
+      simp only [LT.lt, Bool.not_eq_true] at h₃
+      simp only [String.le_refl, h₃, imp_self, and_self, forall_const,
+        true_and]
       have h₅ := Value.lt_not_eq h₂
       rw [eq_comm] at h₅
       simp [h₅]
@@ -479,10 +480,8 @@ theorem ValueAttrs.lt_asym {vs₁ vs₂: List (Attr × Value)} :
     subst hl₂ hr₂
     simp only
     have h₃ := ValueAttrs.lt_asym h₃
-    have h₄ := StrictLT.irreflexive a₁
     have h₅ := Value.lt_irrefl v₁
-    simp [h₃, h₅]
-
+    simp only [String.le_refl, h₅, imp_self, and_self, h₃]
 end
 
 mutual

@@ -462,9 +462,9 @@ theorem mapM_head_tail {α β γ} {f : α → Except β γ} {x : α} {xs : List 
   (List.mapM f xs) = Except.ok ys
 := by
   simp only [← mapM'_eq_mapM, mapM'_cons]
-  cases h₁ : f x <;>
+  cases _ : f x <;>
   simp only [Except.bind_ok, Except.bind_err, false_implies, reduceCtorEq]
-  cases h₂ : mapM' f xs <;>
+  cases _ : mapM' f xs <;>
   simp [pure, Except.pure]
 
 theorem not_mem_implies_not_mem_mapM_key_id {α β : Type} {ks : List α} {kvs : List (α × β)} {fn : α → Option β} {k: α}

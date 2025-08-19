@@ -55,7 +55,7 @@ decreasing_by
     simp only [Set.toList, Set.elts] at h
     simp only [set.sizeOf_spec, Set.mk.sizeOf_spec, gt_iff_lt]
     omega
-  · simp
+  · simp only [record.sizeOf_spec, Nat.lt_add_left_iff_pos, Nat.lt_add_one]
 where
   symbolizeAttr? (rec : Map Attr Value) (a : Attr) (qty : QualifiedType) : Option (Attr × Term) :=
     match _h : rec.find? a with

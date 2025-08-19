@@ -59,7 +59,7 @@ theorem type_of_getTag_inversion {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {
   simp only [true_and]
   exists ety, ty, tx₁, tx₂
   simp only [h₄, h₅, h₆, h₇]
-  simp []
+  simp
 
 theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : TypeEnv} {tx : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)

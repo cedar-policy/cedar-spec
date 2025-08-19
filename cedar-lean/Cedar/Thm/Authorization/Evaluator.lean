@@ -111,7 +111,7 @@ theorem ways_and_can_error {e₁ e₂ : Expr} {request : Request} {entities : En
     simp [h₁]
     case prim prim =>
       cases prim <;>
-      simp [] at h₁ <;>
+      simp at h₁ <;>
       simp [h₁]
       case bool b =>
         cases b with
@@ -125,12 +125,12 @@ theorem ways_and_can_error {e₁ e₂ : Expr} {request : Request} {entities : En
             simp [h₁]
             case prim prim =>
               cases prim <;>
-              simp [] at h₁ <;>
+              simp at h₁ <;>
               simp [h₁]
           | error e =>
             simp only [↓reduceIte, h_e₂, Except.map_error, Except.error.injEq] at h₁
             simp only [h₁, and_false, or_false]
-        | false => simp [] at h₁
+        | false => simp at h₁
   case error e =>
     simp [h_e₁, evaluate, Result.as, Coe.coe, Value.asBool] at h₁
     simp [h₁]
