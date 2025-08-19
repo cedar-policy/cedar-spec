@@ -115,13 +115,14 @@ theorem partial_eval_well_typed_app₂ :
         apply InstanceOfType.instance_of_bool
         simp [InstanceOfBoolType]
       }
-    repeat case _ =>
+    any_goals (
       apply Residual.WellTyped.val
       cases h_op
       all_goals {
         apply InstanceOfType.instance_of_bool
         simp [InstanceOfBoolType]
       }
+    )
     any_goals (
       rename_i v1 v2 id1 id2 h₁ h₂
       try cases (TPE.inₑ id1 id2 pes)
@@ -982,15 +983,6 @@ theorem ext_well_typed_after_map {xfn args ty env f} :
     rw [h₃ x₁]
     rw [h₆]
     simp
-
-
-
-
-
-
-
-
-
 
 
 
