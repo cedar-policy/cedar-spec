@@ -186,84 +186,63 @@ theorem partial_eval_preserves_typeof
         unfold Spec.apply₁
         split
         any_goals simp [Residual.typeOf, Except.toOption, someOrError]
-        . rename Int64 => i
+        case h_2 =>
+          rename Int64 => i
           cases h₃ : i.neg?
           all_goals
             simp [intOrErr, Except.toOption, someOrError, Residual.typeOf]
       . simp [Residual.typeOf, Except.toOption, someOrError]
-  | binaryApp op e ty =>
+  | binaryApp op e ty ty₂ =>
     simp [TPE.evaluate, TPE.apply₂]
     split
-    . split
+    case h_1 =>
+      split
       any_goals simp [Residual.typeOf, Except.toOption, someOrError]
-      . rename_i i j h₁ h₂
+      case h_8 =>
+        rename_i i j h₁ h₂
         cases i.add? j
         all_goals simp
-      . rename_i i j h₁ h₂
+      case h_9 =>
+        rename_i i j h₁ h₂
         cases i.sub? j
         all_goals simp
-      . rename_i i j h₁ h₂
+      case h_10 =>
+        rename_i i j h₁ h₂
         cases i.mul? j
         all_goals simp
-      . rename_i v₁ v₂ uid₁ uid₂ h₁ h₂
+      case h_14 =>
+        rename_i v₁ v₂ uid₁ uid₂ h₁ h₂
         cases (TPE.inₑ uid₁ uid₂ pes)
         any_goals simp [someOrSelf, apply₂.self]
-      . rename_i uid₁ uid₂ vs h₃
+      case h_15 =>
+        rename_i uid₁ uid₂ vs h₃
         cases (TPE.inₛ uid₁ uid₂ pes)
         any_goals (simp [someOrSelf, apply₂.self])
-      . rename_i uid₁ tag h₃ h₄
+      case h_16 =>
+        rename_i uid₁ tag h₃ h₄
         cases (TPE.hasTag uid₁ tag pes)
         any_goals (simp [someOrSelf, apply₂.self])
-      . rename_i uid₁ tag h₃ h₄
-        split
-        . cases h_wt
-          rename_i h₅ h₆ h₇ h₈
-          have ih := partial_eval_preserves_typeof h_wf h_ref h₆
-          unfold TPE.getTag at h₅
-          split at h₅
-          . unfold someOrError at h₅
-            split at h₅
-            all_goals (
-              have h₉ := congr_arg (·.typeOf) h₅
-              simp [Residual.typeOf] at h₉
-              rw [h₉]
-            )
-          . have h₉ := congr_arg (·.typeOf) h₅
-            simp [Residual.typeOf] at h₉
-            rw [h₉]
-        any_goals (
-          rename_i h₅
-          unfold TPE.getTag at h₅
-          try (
-            split at h₅
-            . unfold someOrError at h₅
-              split at h₅
-              all_goals (
-                have h₉ := congr_arg (·.typeOf) h₅
-                simp [Residual.typeOf] at h₉
-                rw [h₉])
-            . simp at h₅
-          )
-        )
-        . rename_i h₅
-          split at h₅
-          . unfold someOrError at h₅
-            split at h₅
-            all_goals (
-              have h₉ := congr_arg (·.typeOf) h₅
-              simp [Residual.typeOf] at h₉
-              rw [h₉])
-          . simp at h₅
-            rcases h₅ with ⟨_, ⟨_, ⟨_, h₆⟩⟩⟩
-            rw [h₆]
-    . split
-      all_goals simp [Residual.typeOf]
+      case h_17 uid₁ tag _ _ =>
+        cases h_wt with
+        | binaryApp h₆ h₇ h₈ =>
+        have ih := partial_eval_preserves_typeof h_wf h_ref h₆
+        unfold TPE.getTag
+        cases pes.tags uid₁
+        case binaryApp.none =>
+          simp
+        case binaryApp.some v =>
+          simp [someOrError]
+          cases v.find? tag <;> simp
+    case h_2 =>
+      split
+      all_goals simp only [Residual.typeOf]
       split
       all_goals
         rename_i h₂
         simp [apply₂.self] at h₂
-      rcases h₂ with ⟨_, ⟨_, ⟨_, h₃⟩⟩⟩
-      rw [h₃]
+      case h_7 =>
+        rcases h₂ with ⟨_, ⟨_, ⟨_, h₃⟩⟩⟩
+        rw [h₃]
   | call xfn args ty =>
     unfold TPE.evaluate
     simp [Residual.typeOf]
