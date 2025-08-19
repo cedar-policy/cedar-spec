@@ -86,10 +86,10 @@ fn get_cex(
     always_allows_asserts: &WellFormedAsserts<'_>,
     always_denies_asserts: &WellFormedAsserts<'_>,
 ) -> anyhow::Result<(Option<Env>, Option<Env>)> {
-    let mut solver = CedarSymCompiler::new(LocalSolver::cvc5().expect("CVC5 should exist"))
-        .expect("solver construction should succeed");
-
     Ok(RUNTIME.block_on(async {
+        let mut solver = CedarSymCompiler::new(LocalSolver::cvc5().expect("CVC5 should exist"))
+            .expect("solver construction should succeed");
+
         let always_allow_result = timeout(
             Duration::from_secs(1),
             solver.check_sat(always_allows_asserts),
