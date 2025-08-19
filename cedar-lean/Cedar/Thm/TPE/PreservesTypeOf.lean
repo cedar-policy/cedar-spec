@@ -247,6 +247,7 @@ theorem partial_eval_preserves_typeof
     unfold TPE.evaluate
     simp [Residual.typeOf]
     split <;> rename_i h₁
+
     all_goals
       simp [TPE.call] at h₁
       split at h₁
@@ -291,11 +292,11 @@ theorem partial_eval_preserves_typeof
         split at h₁
         all_goals
           have h₂ := congr_arg (·.typeOf) h₁
-          simp [Residual.typeOf] at h₂
+          simp only [Residual.typeOf] at h₂
           rw [h₂]
-      repeat case _ =>
+      all_goals
         have h₂ := congr_arg (·.typeOf) h₁
-        simp [Residual.typeOf] at h₂
+        simp only [Residual.typeOf] at h₂
         rw [h₂]
   | record =>
     simp [TPE.evaluate, Residual.typeOf]
@@ -311,7 +312,7 @@ theorem partial_eval_preserves_typeof
         rcases h₁ with ⟨_, h₂⟩
         rw [h₂]
       . split at h₁
-        repeat case _ =>
+        all_goals
           have h₃ := congr_arg (·.typeOf) h₁
           simp [Residual.typeOf] at h₃
           rw [h₃]
