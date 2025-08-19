@@ -37,8 +37,12 @@ use cedar_policy_symcc::{
 
 use std::sync::LazyLock;
 
-static RUNTIME: LazyLock<tokio::runtime::Runtime> =
-    LazyLock::new(|| tokio::runtime::Runtime::new().unwrap());
+static RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+});
 
 /// Input expected by this fuzz target
 #[derive(Debug, Clone)]
