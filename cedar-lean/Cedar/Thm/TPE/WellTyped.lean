@@ -1369,18 +1369,18 @@ theorem partial_eval_preserves_well_typed
   rcases h_ref with ⟨h_rref, h_eref⟩
   have h_ref : RequestAndEntitiesRefine req es preq pes := ⟨h_rref, h_eref⟩
   -- Proof by cases on the structure of the residual
-  cases res with
-  | val v ty =>
+  cases hᵣ : res <;> rw [hᵣ] at h_wt
+  case val v ty =>
     -- Case: .val v ty
     -- TPE.evaluate (.val v ty) req es = .val v ty
     simp [TPE.evaluate]
     exact h_wt
-  | var v ty =>
+  case var v ty =>
     -- Case: .var v ty
     -- Use the helper theorem for variable cases
     simp [TPE.evaluate]
     exact partial_evaluation_well_typed_var h_wf h_ref h_wt
-  | and a b ty =>
+  case and a b ty =>
     -- Case: .and a b ty
     -- TPE.evaluate (.and a b ty) preq pes = TPE.and (TPE.evaluate a preq pes) (TPE.evaluate b preq pes) ty
     simp [TPE.evaluate]
@@ -1427,7 +1427,7 @@ theorem partial_eval_preserves_well_typed
           -- Use the type preservation theorem
           rw [partial_eval_preserves_typeof h_wf h_ref_reconstructed h_b]
           exact h_b_type
-  | or a b ty =>
+  case or a b ty =>
     simp [TPE.evaluate]
     cases h_wt with
     | or h_a h_b h_ty_a h_ty_b =>
@@ -1451,7 +1451,7 @@ theorem partial_eval_preserves_well_typed
           exact h_ty_a
         · rw [partial_eval_preserves_typeof h_wf h_ref_reconstructed h_b]
           exact h_ty_b
-  | ite c t e ty =>
+  case ite c t e ty =>
     simp [TPE.evaluate]
     cases h_wt with
     | ite h_c h_t h_e h_ty_c h_ty_t =>
@@ -1479,7 +1479,7 @@ theorem partial_eval_preserves_well_typed
         · rw [partial_eval_preserves_typeof h_wf h_ref_reconstructed h_t]
           rw [partial_eval_preserves_typeof h_wf h_ref_reconstructed h_e]
           exact h_ty_t
-  | unaryApp op expr ty =>
+  case unaryApp op expr ty =>
     simp [TPE.evaluate]
     cases h_wt with
     | unaryApp h_expr h_op =>
@@ -1556,7 +1556,7 @@ theorem partial_eval_preserves_well_typed
               apply UnaryResidualWellTyped.is
               rw [partial_eval_preserves_typeof h_wf h_ref_reconstructed h_expr]
               exact h_ty
-  | binaryApp op expr1 expr2 ty =>
+  case binaryApp op expr1 expr2 ty =>
     simp [TPE.evaluate]
     have h_wt₂ := h_wt
     cases h_wt with
@@ -1565,10 +1565,10 @@ theorem partial_eval_preserves_well_typed
       have ih2 : Residual.WellTyped env (TPE.evaluate expr2 preq pes) := partial_eval_preserves_well_typed h_wf h_ref h_expr2
 
       apply partial_eval_well_typed_app₂ ih1 ih2 h_wf h_ref h_wt₂
-  | error ty =>
+  case error ty =>
     simp [TPE.evaluate]
     exact h_wt
-  | set ls ty =>
+  case set ls ty =>
     cases h_wt
     rename_i ty₁ h₀ h₁ h₂
     simp [TPE.evaluate, TPE.set]
@@ -1627,7 +1627,7 @@ theorem partial_eval_preserves_well_typed
         . simp [List.map₁]
           simp at h₂
           exact h₂
-  | record ls ty =>
+  case record ls ty =>
     cases h_wt
     rename_i ty₁ h₀ h₁
     simp [TPE.evaluate, TPE.set]
@@ -1684,10 +1684,19 @@ theorem partial_eval_preserves_well_typed
         rw [h₁₆] at h₁₇
         rw [←h₁₇]
         simp [Residual.typeOf]
-        have termination : sizeOf v₂ < sizeOf ls := by {
+        have termination₁ : sizeOf v₂ < sizeOf ls := by {
           have term₂ := List.sizeOf_lt_of_mem h₁₂
           simp [sizeOf, Prod._sizeOf_1] at term₂
           simp [sizeOf]
+          omega
+        }
+        have termination₂ : sizeOf ls < sizeOf res := by {
+          rw [hᵣ]
+          simp [sizeOf, Residual._sizeOf_1]
+          unfold Residual.rec_2
+          
+
+
           omega
         }
 
@@ -1719,6 +1728,9 @@ theorem partial_eval_preserves_well_typed
           rcases h₆ with ⟨h₆, h₇⟩
           rw [← h₆] at h₅
           specialize h₀ k v₂ h₅
+          have termination₁ : sizeOf v₂ < sizeOf res := by {
+            sorry
+          }
           have ih := partial_eval_preserves_well_typed h_wf h_ref h₀
           rw [h₇]
           assumption
@@ -1737,7 +1749,7 @@ theorem partial_eval_preserves_well_typed
           simp
           let h₅ := partial_eval_preserves_typeof h_wf h_ref h₀
           rw [h₅]
-  | getAttr expr attr ty =>
+  case getAttr expr attr ty =>
     simp [TPE.evaluate, TPE.getAttr, TPE.attrsOf]
     split
     case h_1 =>
@@ -1923,7 +1935,7 @@ theorem partial_eval_preserves_well_typed
             rw [h₇]
           case h₃ =>
             rw [h₈]
-  | hasAttr expr attr ty =>
+  case hasAttr expr attr ty =>
     simp [TPE.evaluate, TPE.hasAttr, TPE.attrsOf]
     split
     case h_1 =>
@@ -1953,7 +1965,7 @@ theorem partial_eval_preserves_well_typed
             have h₁₀ := partial_eval_preserves_typeof h_wf h_ref h₆
             rw [h₁₀]
             rw [h₇]
-  | call xfn args ty =>
+  case call xfn args ty =>
     simp [TPE.evaluate, TPE.call]
     simp [List.map₁, List.attach, List.attachWith]
     unfold Function.comp
@@ -1972,7 +1984,7 @@ theorem partial_eval_preserves_well_typed
       case h_1 | h_6 | h_7 | h_8 | h_9 | h_10 | h_12 | h_13 | h_16 =>
         rename ExtFun => xf
         rename List Value => vs
-        try unfold res
+        try unfold Cedar.Spec.res
         first
           | unfold Ext.Decimal.decimal
           | unfold Ext.IPAddr.ip
@@ -1981,7 +1993,6 @@ theorem partial_eval_preserves_well_typed
           | unfold Ext.IPAddr.IPNet.isLoopback
           | unfold Ext.IPAddr.IPNet.isMulticast
           | skip
-
         split
         case h_1 x₂ v =>
           simp [someOrError, Except.toOption]
@@ -2028,7 +2039,7 @@ theorem partial_eval_preserves_well_typed
       case h_11 | h_14 | h_15 =>
         rename ExtFun => xf
         rename List Value => vs
-        try unfold res
+        try unfold Cedar.Spec.res
 
         first
           | unfold Ext.IPAddr.IPNet.inRange
@@ -2125,11 +2136,6 @@ theorem partial_eval_preserves_well_typed
           rw [h₅]
           exact ih
         case call.h₂ =>
-          have h₃ : ∀ x, Residual.WellTyped env x → Residual.WellTyped env ((fun x => TPE.evaluate x preq pes) x) := by {
-            intro r h₃
-            simp
-            exact partial_eval_preserves_well_typed h_wf h_ref h₃
-          }
           apply ext_well_typed_after_map h₂
           case a =>
             intro x h₄
