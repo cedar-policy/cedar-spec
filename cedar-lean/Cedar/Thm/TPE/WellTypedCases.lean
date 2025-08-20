@@ -384,9 +384,9 @@ theorem partial_eval_well_typed_var {env : TypeEnv} {v : Var} {ty : CedarType} {
     unfold RequestRefines at h_rref
     rcases h_rref with ⟨h_pv, h_rest⟩
     cases h : preq.principal.asEntityUID
-    . dsimp [varₚ.varₒ, someOrSelf]
+    . dsimp only [Option.bind_none, varₚ.varₒ, someOrSelf]
       exact h_wt
-    . dsimp [varₚ.varₒ, someOrSelf]
+    . dsimp only [Option.bind_some, varₚ.varₒ, someOrSelf]
       rw [h] at h_pv
       apply Residual.WellTyped.val
       cases h_pv with
@@ -405,9 +405,9 @@ theorem partial_eval_well_typed_var {env : TypeEnv} {v : Var} {ty : CedarType} {
     rcases h_rref with ⟨h_pv, h_rest⟩
     rcases h_rest with ⟨h_av, h_rv, h_cv⟩
     cases h : preq.resource.asEntityUID
-    . dsimp [varₚ.varₒ, someOrSelf]
+    . dsimp only [Option.bind_none, varₚ.varₒ, someOrSelf]
       exact h_wt
-    . dsimp [varₚ.varₒ, someOrSelf]
+    . dsimp only [Option.bind_some, varₚ.varₒ, someOrSelf]
       rw [h] at h_rv
       apply Residual.WellTyped.val
       cases h_rv with
@@ -426,7 +426,7 @@ theorem partial_eval_well_typed_var {env : TypeEnv} {v : Var} {ty : CedarType} {
     rcases h_rref with ⟨h_pv, h_rest⟩
     rcases h_rest with ⟨h_av, h_rv, h_cv⟩
     -- Action is always concrete in partial requests
-    dsimp [varₚ.varₒ, someOrSelf]
+    dsimp only [varₚ.varₒ, someOrSelf]
     apply Residual.WellTyped.val
     cases h_wt with
     | var h₄ =>
@@ -449,9 +449,9 @@ theorem partial_eval_well_typed_var {env : TypeEnv} {v : Var} {ty : CedarType} {
     rcases h_rref with ⟨h_pv, h_rest⟩
     rcases h_rest with ⟨h_av, h_rv, h_cv⟩
     cases h : preq.context
-    . dsimp [varₚ.varₒ, someOrSelf]
+    . dsimp only [Option.map_none, varₚ.varₒ, someOrSelf]
       exact h_wt
-    . dsimp [varₚ.varₒ, someOrSelf]
+    . dsimp only [Option.map_some, varₚ.varₒ, someOrSelf]
       rw [h] at h_cv
       apply Residual.WellTyped.val
       cases h_cv with
@@ -1446,7 +1446,7 @@ theorem partial_eval_well_typed_app₂ :
           unfold Data.Map.find? at h₃
           split at h₃
           case h_2 =>  contradiction
-          dsimp [PartialEntities.tags, PartialEntities.get] at heq
+          dsimp only [PartialEntities.tags, PartialEntities.get] at heq
           rename Value => v₂
           cases h₇: (Data.Map.find? pes id1)
           case h_1.none =>
@@ -1468,7 +1468,7 @@ theorem partial_eval_well_typed_app₂ :
             rw [← heq] at heq₂
             simp only [Map.kvs] at heq₂
             unfold Data.Map.empty at heq₂
-            dsimp [Data.Map.mk] at heq₂
+            dsimp only [List.find?_nil] at heq₂
             contradiction
           rename_i h₈
           rcases h₈ with ⟨e, h₈, h₉, h₁₀, h₁₁⟩
