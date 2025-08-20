@@ -50,6 +50,187 @@ abbrev PEWellTyped (env : TypeEnv)
 
 
 
+/--
+Helper theorem: Partial evaluation preserves well-typedness for value residuals.
+-/
+theorem partial_eval_well_typed_val {env : TypeEnv} {v : Value} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
+  PEWellTyped env (Residual.val v ty) (TPE.evaluate (Residual.val v ty) preq pes) req preq es pes := by
+  unfold PEWellTyped
+  intros h_wf h_ref h_wt
+  simp [TPE.evaluate]
+  exact h_wt
+
+/--
+Helper theorem: Partial evaluation preserves well-typedness for variable residuals.
+-/
+theorem partial_eval_well_typed_var {env : TypeEnv} {v : Var} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
+  PEWellTyped env (Residual.var v ty) (TPE.evaluate (Residual.var v ty) preq pes) req preq es pes := by
+  unfold PEWellTyped
+  intro h_wf h_ref h_wt
+  rcases h_ref with ⟨h_rref, h_eref⟩
+  simp [TPE.evaluate]
+  unfold varₚ
+  cases v with
+  | principal =>
+    simp
+    unfold RequestRefines at h_rref
+    rcases h_rref with ⟨h_pv, h_rest⟩
+    cases h : preq.principal.asEntityUID
+    . dsimp [varₚ.varₒ, someOrSelf]
+      exact h_wt
+    . dsimp [varₚ.varₒ, someOrSelf]
+      rw [h] at h_pv
+      apply Residual.WellTyped.val
+      cases h_pv with
+      | some _ h₃ =>
+        rw [h₃]
+        cases h_wt with
+        | var h₄ =>
+          cases h₄ with
+          | principal =>
+            apply InstanceOfType.instance_of_entity req.principal env.reqty.principal
+            rcases h_wf with ⟨_, ⟨h_principal, _, _, _⟩, _⟩
+            exact h_principal
+  | resource =>
+    simp
+    unfold RequestRefines at h_rref
+    rcases h_rref with ⟨h_pv, h_rest⟩
+    rcases h_rest with ⟨h_av, h_rv, h_cv⟩
+    cases h : preq.resource.asEntityUID
+    . dsimp [varₚ.varₒ, someOrSelf]
+      exact h_wt
+    . dsimp [varₚ.varₒ, someOrSelf]
+      rw [h] at h_rv
+      apply Residual.WellTyped.val
+      cases h_rv with
+      | some _ h₃ =>
+        rw [h₃]
+        cases h_wt with
+        | var h₄ =>
+          cases h₄ with
+          | resource =>
+            apply InstanceOfType.instance_of_entity req.resource env.reqty.resource
+            rcases h_wf with ⟨_, ⟨_, _, h_resource, _⟩, _⟩
+            exact h_resource
+  | action =>
+    simp
+    unfold RequestRefines at h_rref
+    rcases h_rref with ⟨h_pv, h_rest⟩
+    rcases h_rest with ⟨h_av, h_rv, h_cv⟩
+    -- Action is always concrete in partial requests
+    dsimp [varₚ.varₒ, someOrSelf]
+    apply Residual.WellTyped.val
+    cases h_wt with
+    | var h₄ =>
+      cases h₄ with
+      | action =>
+        rw [←h_av]
+        apply InstanceOfType.instance_of_entity req.action env.reqty.action.ty
+        rcases h_wf with ⟨hwf, ⟨_, h_action, _, _⟩, _⟩
+        rw [h_action]
+        have : InstanceOfEntityType env.reqty.action env.reqty.action.ty env := by
+          have ⟨_, _, _, hwf_act, _⟩ := hwf
+          simp [
+            InstanceOfEntityType, EntityUID.WellFormed,
+            ActionSchema.contains, hwf_act,
+          ]
+        exact this
+  | context =>
+    simp
+    unfold RequestRefines at h_rref
+    rcases h_rref with ⟨h_pv, h_rest⟩
+    rcases h_rest with ⟨h_av, h_rv, h_cv⟩
+    cases h : preq.context
+    . dsimp [varₚ.varₒ, someOrSelf]
+      exact h_wt
+    . dsimp [varₚ.varₒ, someOrSelf]
+      rw [h] at h_cv
+      apply Residual.WellTyped.val
+      cases h_cv with
+      | some _ h₃ =>
+        rw [h₃]
+        cases h_wt with
+        | var h₄ =>
+          cases h₄ with
+          | context =>
+            rcases h_wf with ⟨_, ⟨_, _, _, h_context⟩, _⟩
+            exact type_lifting_preserves_instance_of_type h_context
+
+/--
+Helper theorem: Partial evaluation preserves well-typedness for error residuals.
+-/
+theorem partial_eval_well_typed_error {env : TypeEnv} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
+  PEWellTyped env (Residual.error ty) (TPE.evaluate (Residual.error ty) preq pes) req preq es pes := by
+  unfold PEWellTyped
+  intros h_wf h_ref h_wt
+  simp [TPE.evaluate]
+  exact h_wt
+
+/--
+Helper theorem: Partial evaluation preserves well-typedness for and residuals.
+-/
+theorem partial_eval_well_typed_and {env : TypeEnv} {a b : Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
+  Residual.WellTyped env (TPE.evaluate a preq pes) →
+  Residual.WellTyped env (TPE.evaluate b preq pes) →
+  InstanceOfWellFormedEnvironment req es env →
+  RequestAndEntitiesRefine req es preq pes →
+  Residual.WellTyped env (Residual.and a b ty) →
+  Residual.WellTyped env (TPE.evaluate (Residual.and a b ty) preq pes) := by
+  intros h_a_wt h_b_wt h_wf h_ref h_wt
+  simp [TPE.evaluate]
+  cases h_wt with
+  | and h_a h_b h_ty_a h_ty_b =>
+    unfold TPE.and
+    split
+    . -- Case: first operand is .val true, so TPE.and returns the second operand
+      exact h_b_wt
+    . -- Case: first operand is .val false, so TPE.and returns false
+      apply Residual.WellTyped.val
+      apply InstanceOfType.instance_of_bool false BoolType.anyBool
+      simp [InstanceOfBoolType]
+    . -- Case: first operand is .error, so TPE.and returns .error ty
+      apply Residual.WellTyped.error
+    . -- Case: second operand is .val true, so TPE.and returns the first operand
+      exact h_a_wt
+    . -- Case: default case, TPE.and returns .and a_eval b_eval ty
+      apply Residual.WellTyped.and
+      · exact h_a_wt
+      · exact h_b_wt
+      · rw [partial_eval_preserves_typeof h_wf h_ref h_a]
+        exact h_ty_a
+      · rw [partial_eval_preserves_typeof h_wf h_ref h_b]
+        exact h_ty_b
+
+/--
+Helper theorem: Partial evaluation preserves well-typedness for or residuals.
+-/
+theorem partial_eval_well_typed_or {env : TypeEnv} {a b : Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
+  Residual.WellTyped env (TPE.evaluate a preq pes) →
+  Residual.WellTyped env (TPE.evaluate b preq pes) →
+  InstanceOfWellFormedEnvironment req es env →
+  RequestAndEntitiesRefine req es preq pes →
+  Residual.WellTyped env (Residual.or a b ty) →
+  Residual.WellTyped env (TPE.evaluate (Residual.or a b ty) preq pes) := by
+  intros h_a_wt h_b_wt h_wf h_ref h_wt
+  simp [TPE.evaluate]
+  cases h_wt with
+  | or h_a h_b h_ty_a h_ty_b =>
+    unfold TPE.or
+    split
+    . apply Residual.WellTyped.val
+      apply InstanceOfType.instance_of_bool true BoolType.anyBool
+      simp [InstanceOfBoolType]
+    . exact h_b_wt
+    . apply Residual.WellTyped.error
+    . exact h_a_wt
+    . apply Residual.WellTyped.or
+      · exact h_a_wt
+      · exact h_b_wt
+      · rw [partial_eval_preserves_typeof h_wf h_ref h_a]
+        exact h_ty_a
+      · rw [partial_eval_preserves_typeof h_wf h_ref h_b]
+        exact h_ty_b
+
 theorem partial_eval_well_typed_app₂ :
   Residual.WellTyped env (TPE.evaluate expr1 preq pes) →
   Residual.WellTyped env (TPE.evaluate expr2 preq pes) →
@@ -273,7 +454,7 @@ theorem partial_eval_well_typed_app₂ :
             dsimp [Data.Map.mk] at heq₂
             contradiction
           rename_i h₈
-          rcases h₈ with ⟨e, ⟨h₈, ⟨h₉, ⟨h₁₀, h₁₁⟩⟩⟩⟩
+          rcases h₈ with ⟨e, h₈, h₉, h₁₀, h₁₁⟩
           rw [heq] at h₁₁
           cases h₁₁
           rename_i h₁₂
@@ -281,7 +462,7 @@ theorem partial_eval_well_typed_app₂ :
           rw [h₁₂] at h₁₃
           let h_wf₂ := h_wf
           unfold InstanceOfWellFormedEnvironment at h_wf₂
-          rcases h_wf₂ with ⟨h₁₄, ⟨h₁₅, h₁₆⟩⟩
+          rcases h_wf₂ with ⟨h₁₄, h₁₅, h₁₆⟩
           unfold InstanceOfSchema at h₁₆
           rcases h₁₆ with ⟨h₁₆, h₁₇⟩
           specialize h₁₆ id1 e h₈
@@ -289,7 +470,7 @@ theorem partial_eval_well_typed_app₂ :
           cases h₁₆
           . rename_i h₁₆
             unfold InstanceOfEntitySchemaEntry at h₁₆
-            rcases h₁₆ with ⟨_, ⟨_, ⟨_, ⟨_, ⟨_, h₁₇⟩⟩⟩⟩⟩
+            rcases h₁₆ with ⟨_, _, _, _, _, h₁₇⟩
             unfold InstanceOfEntityTags at h₁₇
             rename EntitySchemaEntry => w
             cases h₁₈: w.tags? <;> rw [h₁₈] at h₁₇ <;> simp at h₁₇
@@ -350,7 +531,7 @@ theorem partial_eval_well_typed_app₂ :
               exact type_lifting_preserves_instance_of_type h₁₇
           . rename_i h₁₆
             unfold InstanceOfActionSchemaEntry at h₁₆
-            rcases h₁₆ with ⟨_, ⟨h₁₇, ⟨_, ⟨_, _⟩⟩⟩⟩
+            rcases h₁₆ with ⟨_, h₁₇, _, _, _⟩
             rw [h₁₇] at h₁₃
             simp [Data.Map.empty, Data.Map.kvs] at h₁₃
         . apply Residual.WellTyped.error

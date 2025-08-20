@@ -387,7 +387,6 @@ by
       apply find?_implies_key_matches h₂
 
 
-
 theorem make_find_list_find [LT α] [StrictLT α] [DecidableLT α] [BEq α] [LawfulBEq α] {xs : List (α × β)} :
   (Map.make xs).find? k = .some v →
   List.find? (fun x => x.fst == k) xs = .some (k, v)
