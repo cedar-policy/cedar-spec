@@ -61,7 +61,7 @@ theorem ext_well_typed_after_map {xfn args ty env f} :
   case decimal s d h₆ | ip s ip₁ h₆ | datetime s d h₆ | duration s d h₆ =>
     simp only [List.map]
     specialize h₄ (Residual.val (Value.prim (Prim.string s)) CedarType.string)
-    simp [Residual.asValue] at h₄
+    simp only [Residual.asValue, Option.isSome_some, forall_const] at h₄
     rw [h₄]
     exact h₁
   -- Binary comparison operators
@@ -90,7 +90,7 @@ theorem ext_well_typed_after_map {xfn args ty env f} :
     simp [List.map]
   -- Binary operations: isInRange, offset, durationSince
   case isInRange x₁ x₂ h₆ h₇ | offset x₁ x₂ h₆ h₇ | durationSince x₁ x₂ h₆ h₇ =>
-    simp
+    simp only [List.map_cons, List.map_nil]
     first
     | apply ExtResidualWellTyped.isInRange
     | apply ExtResidualWellTyped.offset
@@ -121,7 +121,7 @@ theorem find_lifted_type {attr ty₁ ty₂} {m: RecordType} :
   Map.find? m.liftBoolTypes attr = some ty₂ →
   ty₂ = ty₁.liftBoolTypes
 := by
-  simp [Map.find?, Map.kvs]
+  simp only [Map.find?, Map.kvs]
   intro h₁ h₂
   cases h₃: m.1
   . rw [h₃] at h₁
@@ -130,22 +130,20 @@ theorem find_lifted_type {attr ty₁ ty₂} {m: RecordType} :
     rw [h₃] at h₁
     unfold RecordType.liftBoolTypes at h₂
     rw [h₃] at h₂
-    simp [CedarType.liftBoolTypesRecord, List.find?] at h₂
+    simp only [CedarType.liftBoolTypesRecord, List.find?] at h₂
     cases h₄ : hd.fst == attr
     case cons.false =>
       rw [h₄] at h₂
-      simp at h₂
-      simp [List.find?] at h₁
+      simp only [List.find?] at h₁
       rw [h₄] at h₁
-      simp at h₁
       exact find_lifted_type h₁ h₂
     case cons.true =>
       rw [h₄] at h₂
-      simp at h₂
+      simp only [Option.some.injEq] at h₂
       rw [← h₂]
-      simp [List.find?] at h₁
+      simp only [List.find?] at h₁
       rw [h₄] at h₁
-      simp at h₁
+      simp only [Option.some.injEq] at h₁
       rw [h₁]
 decreasing_by
   rename_i hd tail _ _
@@ -180,7 +178,7 @@ theorem partial_eval_record_key_preservation_3 {ls : List (Attr × Residual)} :
       cases hd
       rename_i k₂ v₂
       simp
-      simp at h₂
+      simp only [Prod.mk.injEq] at h₂
       rcases h₂ with ⟨h₃, h₄⟩
       rw [h₃]
       rw [h₄]
