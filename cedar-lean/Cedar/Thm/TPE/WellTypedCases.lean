@@ -234,9 +234,9 @@ theorem partial_eval_record_key_preservation_2 {ls : List (Attr × Residual)} :
           simp only [decide_eq_false_iff_not]
           assumption
         rw [h₆]
-        simp
+        simp only
         unfold Function.comp at h₃
-        simp at h₃
+        simp only at h₃
         rw [h₄] at h₃
         exact h₃
 
@@ -249,14 +249,14 @@ theorem partial_eval_record_key_preservation_4 {xs : List (Attr × Residual)} {y
 := by
   intro h₁
   cases h₁
-  . simp
+  . simp only [List.find?_nil, reduceCtorEq, exists_const, imp_self]
   case cons a b l₁ l₂ h₂ h₃=>
   . intro h₄
     simp at h₄
     cases h₄
     case inl h₅ =>
       rcases h₅ with ⟨h₅, h₆⟩
-      simp [bindAttr] at h₂
+      simp only [bindAttr, Option.pure_def, Option.bind_eq_bind, Function.comp_apply] at h₂
       cases h₇: (TPE.evaluate a.snd preq pes).asValue <;> rw [h₇] at h₂
       case intro.none =>
         simp at h₂
