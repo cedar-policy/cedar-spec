@@ -22,4 +22,7 @@ num-bigint = "0.4.6"
 prost-build = "0.14"
 cargo_metadata = "0.20.0"
 
+[dev-dependencies]
+cool_asserts = "2.0.3"
+
 [profile.release]

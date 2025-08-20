@@ -127,6 +127,14 @@ instance : Lean.ToJson TermPrim where
 
 deriving instance Lean.ToJson for TermVar
 
+/- Add ToJson instance for Cedar Value -/
+instance : Lean.ToJson Cedar.Spec.Prim where
+  toJson
+  | .bool b => Lean.Json.mkObj [("bool", Lean.toJson b)]
+  | .int i => Lean.Json.mkObj [("int", Lean.toJson i.toInt)]
+  | .string s => Lean.Json.mkObj [("string", Lean.toJson s)]
+  | .entityUID uid => Lean.Json.mkObj [("entityUID", Lean.toJson uid)]
+
 def termToJson : Term → Lean.Json
   | .prim p => Lean.Json.mkObj [("prim", Lean.toJson p)]
   | .var v  => Lean.Json.mkObj [("var",  Lean.toJson v)]
@@ -175,5 +183,14 @@ instance : Lean.ToJson Term where
   toJson := termToJson
 
 deriving instance Lean.ToJson for Cedar.SymCC.Error
+
+/- Serializing `Request` and `Entities` -/
+deriving instance Lean.ToJson for Value
+deriving instance Lean.ToJson for Request
+deriving instance Lean.ToJson for EntityData
+deriving instance Lean.ToJson for Entities
+
+/- Serializing `Env` -/
+deriving instance Lean.ToJson for Env
 
 end CedarFFI
