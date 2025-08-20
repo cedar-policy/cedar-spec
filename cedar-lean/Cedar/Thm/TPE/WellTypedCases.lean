@@ -167,7 +167,7 @@ theorem partial_eval_record_key_preservation_3 {ls : List (Attr × Residual)} :
 := by
   intro h₁
   cases ls
-  . simp only [List.find?_nil, reduceCtorEq] at h₁
+  . simp at h₁
   . simp only [List.find?_cons_eq_some, beq_iff_eq, Bool.not_eq_eq_eq_not, Bool.not_true, beq_eq_false_iff_ne, ne_eq] at h₁
     cases h₁
     . rename_i hd tl h₁
@@ -261,7 +261,7 @@ theorem partial_eval_record_key_preservation_4 {xs : List (Attr × Residual)} {y
       case intro.none =>
         simp at h₂
       case intro.some v₂ =>
-        simp at h₂
+        simp only [Option.bind_some, Option.some.injEq] at h₂
         exists v₂
         simp
         left
@@ -275,12 +275,12 @@ theorem partial_eval_record_key_preservation_4 {xs : List (Attr × Residual)} {y
       exists v₃
       simp
       right
-      simp [bindAttr] at h₂
+      simp only [bindAttr, Option.pure_def, Option.bind_eq_bind, Function.comp_apply] at h₂
       cases h₇: (TPE.evaluate a.snd preq pes).asValue <;> rw [h₇] at h₂
-      . simp at h₂
-      . simp at h₂
+      . simp only [Option.bind_none, reduceCtorEq] at h₂
+      . simp only [Option.bind_some, Option.some.injEq] at h₂
         rw [← h₂]
-        simp
+        simp only
         constructor
         . assumption
         .assumption
@@ -302,27 +302,27 @@ theorem partial_eval_record_key_preservation {xs : List (Attr × Residual)} {ys 
     case inl h₃ =>
       rename_i h₄
       rename_i h₅
-      simp [bindAttr, Residual.asValue] at h₅
+      simp only [bindAttr, Residual.asValue, Option.pure_def, Option.bind_eq_bind, Function.comp_apply] at h₅
       exists a₁.2
       simp
       split at h₅
-      . simp at h₅
+      . simp only [Option.bind_some, Option.some.injEq] at h₅
         rcases h₃ with ⟨h₃, h₆⟩
         rename Value => v₂
         rw [h₆] at h₅
-        simp at h₅
+        simp only [Prod.mk.injEq] at h₅
         rcases h₅ with ⟨h₅, h₇⟩
         rw [h₅]
-        simp
+        simp only [true_and, not_true_eq_false, false_and, or_false]
         constructor
         . cases a₁
           rename_i a₁ a₂ h₈
-          simp
-          simp at h₅
+          simp only [Prod.mk.injEq, and_true]
+          simp only at h₅
           assumption
         . rename_i h₉
           rw [h₉]
-          simp [Residual.asValue]
+          simp only [Residual.asValue, Option.some.injEq]
           rw [h₇]
       . simp at h₅
     case inr h₃ =>
@@ -334,22 +334,22 @@ theorem partial_eval_record_key_preservation {xs : List (Attr × Residual)} {ys 
       . simp
         right
         rw [h₄]
-        simp
+        simp only [and_true]
         cases a₁
         rename_i k₁ v₁
         cases b₁
         rename_i k₂ v₂
-        simp
-        simp at h₃
-        simp at v₂
+        simp only
+        simp only [Function.comp_apply] at h₃
+        simp only at v₂
         rename_i k₃
         unfold bindAttr at h₃
-        simp at h₃
+        simp only [Option.pure_def, Option.bind_eq_bind] at h₃
         cases h₄ : (TPE.evaluate v₁ preq pes).asValue
         . rw [h₄] at h₃
           simp at h₃
         . rw [h₄] at h₃
-          simp at h₃
+          simp only [Option.bind_some, Option.some.injEq, Prod.mk.injEq] at h₃
           rcases h₃ with ⟨h₅, h₆⟩
           rw [h₅]
           assumption
@@ -365,7 +365,7 @@ theorem partial_eval_well_typed_val {env : TypeEnv} {v : Value} {ty : CedarType}
   PEWellTyped env (Residual.val v ty) (TPE.evaluate (Residual.val v ty) preq pes) req preq es pes := by
   unfold PEWellTyped
   intros h_wf h_ref h_wt
-  simp [TPE.evaluate]
+  simp only [TPE.evaluate]
   exact h_wt
 
 /--
@@ -376,11 +376,11 @@ theorem partial_eval_well_typed_var {env : TypeEnv} {v : Var} {ty : CedarType} {
   unfold PEWellTyped
   intro h_wf h_ref h_wt
   rcases h_ref with ⟨h_rref, h_eref⟩
-  simp [TPE.evaluate]
+  simp only [TPE.evaluate]
   unfold varₚ
   cases v with
   | principal =>
-    simp
+    simp only [Option.pure_def, Option.bind_eq_bind]
     unfold RequestRefines at h_rref
     rcases h_rref with ⟨h_pv, h_rest⟩
     cases h : preq.principal.asEntityUID
