@@ -59,7 +59,7 @@ theorem ext_well_typed_after_map {xfn args ty env f} :
   cases h₅: h₁
   -- String-based constructors: decimal, ip, datetime, duration
   case decimal s d h₆ | ip s ip₁ h₆ | datetime s d h₆ | duration s d h₆ =>
-    simp
+    simp only [List.map]
     specialize h₄ (Residual.val (Value.prim (Prim.string s)) CedarType.string)
     simp [Residual.asValue] at h₄
     rw [h₄]
@@ -73,13 +73,13 @@ theorem ext_well_typed_after_map {xfn args ty env f} :
     | apply ExtResidualWellTyped.greaterThanOrEqual
     . rw [h₃ x₁]
       rw [h₆]
-      simp
+      simp [List.map]
     . rw [h₃ x₂]
       rw [h₇]
-      simp
+      simp [List.map]
   -- Unary IP address predicates
   case isIpv4 x₁ h₆ | isIpv6 x₁ h₆ | isLoopback x₁ h₆ | isMulticast x₁ h₆ =>
-    simp
+    simp only [List.map]
     first
     | apply ExtResidualWellTyped.isIpv4
     | apply ExtResidualWellTyped.isIpv6
@@ -87,7 +87,7 @@ theorem ext_well_typed_after_map {xfn args ty env f} :
     | apply ExtResidualWellTyped.isMulticast
     rw [h₃ x₁]
     rw [h₆]
-    simp
+    simp [List.map]
   -- Binary operations: isInRange, offset, durationSince
   case isInRange x₁ x₂ h₆ h₇ | offset x₁ x₂ h₆ h₇ | durationSince x₁ x₂ h₆ h₇ =>
     simp
