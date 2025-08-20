@@ -400,7 +400,7 @@ theorem partial_eval_well_typed_var {env : TypeEnv} {v : Var} {ty : CedarType} {
             rcases h_wf with ⟨_, ⟨h_principal, _, _, _⟩, _⟩
             exact h_principal
   | resource =>
-    simp
+    simp only [Option.pure_def, Option.bind_eq_bind]
     unfold RequestRefines at h_rref
     rcases h_rref with ⟨h_pv, h_rest⟩
     rcases h_rest with ⟨h_av, h_rv, h_cv⟩
@@ -421,7 +421,7 @@ theorem partial_eval_well_typed_var {env : TypeEnv} {v : Var} {ty : CedarType} {
             rcases h_wf with ⟨_, ⟨_, _, h_resource, _⟩, _⟩
             exact h_resource
   | action =>
-    simp
+    simp only
     unfold RequestRefines at h_rref
     rcases h_rref with ⟨h_pv, h_rest⟩
     rcases h_rest with ⟨h_av, h_rv, h_cv⟩
@@ -444,7 +444,7 @@ theorem partial_eval_well_typed_var {env : TypeEnv} {v : Var} {ty : CedarType} {
           ]
         exact this
   | context =>
-    simp
+    simp only
     unfold RequestRefines at h_rref
     rcases h_rref with ⟨h_pv, h_rest⟩
     rcases h_rest with ⟨h_av, h_rv, h_cv⟩
@@ -471,7 +471,7 @@ theorem partial_eval_well_typed_error {env : TypeEnv} {ty : CedarType} {req : Re
   PEWellTyped env (Residual.error ty) (TPE.evaluate (Residual.error ty) preq pes) req preq es pes := by
   unfold PEWellTyped
   intros h_wf h_ref h_wt
-  simp [TPE.evaluate]
+  simp only [TPE.evaluate]
   exact h_wt
 
 /--
@@ -482,7 +482,7 @@ theorem partial_eval_well_typed_and {env : TypeEnv} {a b : Residual} {ty : Cedar
   Residual.WellTyped env (TPE.evaluate b preq pes) →
   PEWellTyped env (Residual.and a b ty) (TPE.evaluate (Residual.and a b ty) preq pes) req preq es pes := by
   intros h_a_wt h_b_wt h_wf h_ref h_wt
-  simp [TPE.evaluate]
+  simp only [TPE.evaluate]
   cases h_wt with
   | and h_a h_b h_ty_a h_ty_b =>
     unfold TPE.and
@@ -514,7 +514,7 @@ theorem partial_eval_well_typed_or {env : TypeEnv} {a b : Residual} {ty : CedarT
   Residual.WellTyped env (TPE.evaluate b preq pes) →
   PEWellTyped env (Residual.or a b ty) (TPE.evaluate (Residual.or a b ty) preq pes) req preq es pes := by
   intros h_a_wt h_b_wt h_wf h_ref h_wt
-  simp [TPE.evaluate]
+  simp only [TPE.evaluate]
   cases h_wt with
   | or h_a h_b h_ty_a h_ty_b =>
     unfold TPE.or
@@ -542,7 +542,7 @@ theorem partial_eval_well_typed_ite {env : TypeEnv} {c t e : Residual} {ty : Ced
   Residual.WellTyped env (TPE.evaluate e preq pes) →
   PEWellTyped env (Residual.ite c t e ty) (TPE.evaluate (Residual.ite c t e ty) preq pes) req preq es pes := by
   intros h_c_wt h_t_wt h_e_wt h_wf h_ref h_wt
-  simp [TPE.evaluate]
+  simp only [TPE.evaluate]
   cases h_wt with
   | ite h_c h_t h_e h_ty_c h_ty_t =>
     unfold TPE.ite
@@ -570,7 +570,7 @@ theorem partial_eval_well_typed_unaryApp {env : TypeEnv} {op : UnaryOp} {expr : 
   Residual.WellTyped env (TPE.evaluate expr preq pes) →
   PEWellTyped env (Residual.unaryApp op expr ty) (TPE.evaluate (Residual.unaryApp op expr ty) preq pes) req preq es pes := by
   intros h_expr_wt h_wf h_ref h_wt
-  simp [TPE.evaluate]
+  simp only [TPE.evaluate]
   cases h_wt with
   | unaryApp h_expr h_op =>
     let expr_eval := TPE.evaluate expr preq pes
@@ -588,32 +588,32 @@ theorem partial_eval_well_typed_unaryApp {env : TypeEnv} {op : UnaryOp} {expr : 
             apply Residual.WellTyped.val
             split at heq
             . cases h_op
-              simp [Except.toOption] at heq
+              simp only [Except.toOption, Option.some.injEq] at heq
               rw [← heq]
               apply InstanceOfType.instance_of_bool
               simp [InstanceOfBoolType]
             . cases h_op
-              simp [Except.toOption, intOrErr] at heq
+              simp only [Except.toOption, intOrErr] at heq
               rename Int64 => i
               cases h₂: i.neg?
               . rw [h₂] at heq
                 simp at heq
               . rw [h₂] at heq
-                simp at heq
+                simp only [Option.some.injEq] at heq
                 rw [← heq]
                 apply InstanceOfType.instance_of_int
             . cases h_op
-              simp [Except.toOption] at heq
+              simp only [Except.toOption, Option.some.injEq] at heq
               rw [← heq]
               apply InstanceOfType.instance_of_bool
               simp [InstanceOfBoolType]
-            . simp [Except.toOption] at heq
+            . simp only [Except.toOption, Option.some.injEq] at heq
               rw [← heq]
               cases h_op
               apply InstanceOfType.instance_of_bool
               simp [InstanceOfBoolType]
             . cases h_op
-              simp [Except.toOption] at heq
+              simp only [Except.toOption, Option.some.injEq] at heq
               rw [← heq]
               apply InstanceOfType.instance_of_bool
               simp [InstanceOfBoolType]
@@ -654,7 +654,7 @@ theorem partial_eval_well_typed_set {env : TypeEnv} {ls : List Residual} {ty : C
   intros h_ls_wt h_wf h_ref h_wt
   cases h_wt
   rename_i ty₁ h₀ h₁ h₂
-  simp [TPE.evaluate, TPE.set]
+  simp only [TPE.evaluate, TPE.set, List.any_eq_true]
   split
   . rename_i x xs h₃
     apply Residual.WellTyped.val
@@ -683,7 +683,7 @@ theorem partial_eval_well_typed_set {env : TypeEnv} {ls : List Residual} {ty : C
       specialize h₁ y h₆
       rw [h₁] at h₈
       rw [h₉] at h₈
-      simp [Residual.typeOf] at h₈
+      simp only [Residual.typeOf] at h₈
       rw [← h₈]
       exact h₁₀
   . split
@@ -691,14 +691,14 @@ theorem partial_eval_well_typed_set {env : TypeEnv} {ls : List Residual} {ty : C
     . rename_i x h₃ h₄
       apply Residual.WellTyped.set
       . intro x h₅
-        simp [List.map₁, List.attach] at h₅
+        simp only [List.map₁, List.attach, List.map_subtype, List.unattach_attachWith, List.mem_map] at h₅
         rcases h₅ with ⟨x₂, h₆, h₇⟩
         specialize h₀ x₂ h₆
         let ih := h_ls_wt x₂ h₆
         rw [← h₇]
         exact ih
       . intro x h₅
-        simp [List.map₁, List.attach] at h₅
+        simp only [List.map₁, List.attach, List.map_subtype, List.unattach_attachWith, List.mem_map] at h₅
         rcases h₅ with ⟨x₂, h₆, h₇⟩
         specialize h₀ x₂ h₆
         let h₆ := partial_eval_preserves_typeof h_wf h_ref h₀
@@ -707,8 +707,8 @@ theorem partial_eval_well_typed_set {env : TypeEnv} {ls : List Residual} {ty : C
         specialize h₁ x₂ h₈
         rw [← h₁]
         exact h₆
-      . simp [List.map₁]
-        simp at h₂
+      . simp only [List.map₁, List.map_subtype, List.unattach_attach, bne_iff_ne, ne_eq, List.map_eq_nil_iff]
+        simp only [bne_iff_ne, ne_eq] at h₂
         exact h₂
 
 /--
@@ -720,10 +720,10 @@ theorem partial_eval_well_typed_record {env : TypeEnv} {ls : List (Attr × Resid
   intros h_ls_wt h_wf h_ref h_wt
   cases h_wt
   rename_i ty₁ h₀ h₁
-  simp [TPE.evaluate, TPE.set]
+  simp only [TPE.evaluate]
   unfold List.map₁ List.attach List.attachWith
   rw [List.map_pmap_subtype (fun x => (x.fst, TPE.evaluate x.snd preq pes)) ls]
-  simp [record]
+  simp only [record, List.mapM_map, List.any_map, List.any_eq_true, Function.comp_apply, Prod.exists]
   split
   . rename_i x xs h₃
     apply Residual.WellTyped.val
@@ -758,22 +758,22 @@ theorem partial_eval_well_typed_record {env : TypeEnv} {ls : List (Attr × Resid
       rw [h₁₀] at h₈
       injection h₈
       rename_i h₁₃
-      simp at h₁₃
+      simp only [Prod.mk.injEq, true_and] at h₁₃
       rw [h₁₃]
       rename_i h₁₄
-      simp [Residual.asValue] at h₁₄
+      simp only [Residual.asValue] at h₁₄
       split at h₁₄
       case h_2 => contradiction
       rename_i v₄ ty h₁₅
       injection h₁₄
       rename_i h₁₅
       rw [h₁₅]
-      simp [Qualified.getType]
+      simp only [Qualified.getType]
       rename_i h₁₆
       have h₁₇ := partial_eval_preserves_typeof h_wf h_ref h₁₁
       rw [h₁₆] at h₁₇
       rw [←h₁₇]
-      simp [Residual.typeOf]
+      simp only [Residual.typeOf]
       let ih := h_ls_wt k v₂ h₁₂
       rw [h₁₆] at ih
       cases ih
@@ -798,7 +798,7 @@ theorem partial_eval_well_typed_record {env : TypeEnv} {ls : List (Attr × Resid
         have h₅ := List.mem_of_map_implies_exists_unmapped h₄
         rcases h₅ with ⟨p, h₅, h₆⟩
         cases p ; rename_i k₂ v₂
-        simp at h₆
+        simp only [Prod.mk.injEq] at h₆
         rcases h₆ with ⟨h₆, h₇⟩
         rw [← h₆] at h₅
         specialize h₀ k v₂ h₅
@@ -806,9 +806,9 @@ theorem partial_eval_well_typed_record {env : TypeEnv} {ls : List (Attr × Resid
         rw [h₇]
         assumption
       . rw [h₁]
-        simp
+        simp only [List.map_map]
         unfold Function.comp
-        simp
+        simp only
         congr 1
         apply List.map_func_ext
         intro x h₄
@@ -817,7 +817,7 @@ theorem partial_eval_well_typed_record {env : TypeEnv} {ls : List (Attr × Resid
         cases x
         rename_i k v
         specialize h₀ k v h₄
-        simp
+        simp only
         let h₅ := partial_eval_preserves_typeof h_wf h_ref h₀
         rw [h₅]
 
@@ -828,7 +828,7 @@ theorem partial_eval_well_typed_getAttr {env : TypeEnv} {expr : Residual} {attr 
   Residual.WellTyped env (TPE.evaluate expr preq pes) →
   PEWellTyped env (Residual.getAttr expr attr ty) (TPE.evaluate (Residual.getAttr expr attr ty) preq pes) req preq es pes := by
   intros h_expr_wt h_wf h_ref h_wt
-  simp [TPE.evaluate, TPE.getAttr, TPE.attrsOf]
+  simp only [TPE.evaluate, TPE.getAttr, TPE.attrsOf]
   split
   case h_1 =>
     apply Residual.WellTyped.error
@@ -848,10 +848,10 @@ theorem partial_eval_well_typed_getAttr {env : TypeEnv} {expr : Residual} {attr 
           cases h₇
           rename_i rty₂ h₈ h₉ h₁₀
           cases h₁₂ : m.find? attr
-          . simp [someOrError]
+          . simp only [someOrError]
             apply Residual.WellTyped.error
           . rename_i v
-            simp [someOrError]
+            simp only [someOrError]
             apply Residual.WellTyped.val
             have h₁₁ := partial_eval_preserves_typeof h_wf h_ref h₅
             rw [h₃] at h₁₁
@@ -865,19 +865,19 @@ theorem partial_eval_well_typed_getAttr {env : TypeEnv} {expr : Residual} {attr 
           cases h₇
           rename_i rty₂ h₈ h₉ h₁₀
           cases h₁₂ : m.find? attr
-          . simp [someOrError]
+          . simp only [someOrError]
             apply Residual.WellTyped.error
           . rename_i v
-            simp [someOrError]
+            simp only [someOrError]
             apply Residual.WellTyped.val
             have h₁₁ := partial_eval_preserves_typeof h_wf h_ref h₄
             rw [h₃] at h₁₁
             rw [h₅] at h₁₁
-            simp [Residual.typeOf] at h₁₁
+            simp only [Residual.typeOf, CedarType.record.injEq] at h₁₁
             cases h₁₃ : (Map.find? rty attr) <;> rw [h₁₃] at h₆
-            . simp at h₆
+            . simp only [Option.map_none, reduceCtorEq] at h₆
             rename_i qty
-            simp at h₆
+            simp only [Option.map_some, Option.some.injEq] at h₆
             rw [h₁₁] at h₉
             specialize h₉ attr v qty h₁₂ h₁₃
             rw [h₆] at h₉
@@ -892,15 +892,15 @@ theorem partial_eval_well_typed_getAttr {env : TypeEnv} {expr : Residual} {attr 
           cases h₇
           rename_i ety₂ h₈
           cases h₁₂ : m.find? attr
-          . simp [someOrError]
+          . simp only [someOrError]
             apply Residual.WellTyped.error
           . rename_i v
-            simp [someOrError]
+            simp only [someOrError]
             apply Residual.WellTyped.val
             have h₁₁ := partial_eval_preserves_typeof h_wf h_ref h₅
             rw [h₃] at h₁₁
             rw [h₆] at h₁₁
-            simp [Residual.typeOf] at h₁₁
+            simp only [Residual.typeOf, CedarType.entity.injEq] at h₁₁
             unfold RequestAndEntitiesRefine at h_ref
             rcases h_ref with ⟨h_rref, h_eref⟩
             unfold EntitiesRefine at h_eref
@@ -913,12 +913,12 @@ theorem partial_eval_well_typed_getAttr {env : TypeEnv} {expr : Residual} {attr 
               . rename_i h₁₄
                 rcases h₁₄ with ⟨h₁₅, h₁₆⟩
                 rw [h₁₅] at h₂
-                simp [PartialEntityData.attrs] at h₂
+                simp only [Option.bind_some, PartialEntityData.attrs, Option.some.injEq] at h₂
                 rw [← h₂] at h₁₂
                 simp [Map.empty, Map.find?, Map.kvs, List.find?] at h₁₂
               . rename_i h₁₄
                 rcases h₁₄ with ⟨e₂, h₁₄, h₁₅, h₁₆, h₁₇⟩
-                simp [Option.bind] at h₂
+                simp only [Option.bind] at h₂
                 rw [h₂] at h₁₅
                 cases h₁₅
                 rename_i h₁₈
@@ -940,7 +940,7 @@ theorem partial_eval_well_typed_getAttr {env : TypeEnv} {expr : Residual} {attr 
                   cases h₂₅
                   rename_i h₂₉ h₃₀ h₃₁
                   specialize h₃₀ attr v
-                  simp [EntitySchema.attrs?] at h₄
+                  simp only [EntitySchema.attrs?, Option.map_map, Option.map_eq_some_iff, Function.comp_apply] at h₄
                   rcases h₄ with ⟨e₄, h₃₂, h₃₃⟩
                   rw [h₁₁] at h₂₃
                   rw [h₂₃] at h₃₂
@@ -949,9 +949,9 @@ theorem partial_eval_well_typed_getAttr {env : TypeEnv} {expr : Residual} {attr 
                   rw [← h₃₃] at h₇
                   cases h₃₄ : (Map.find? e₃.attrs attr)
                   . specialize h₂₉ attr
-                    simp [Map.contains] at h₂₉
+                    simp only [Map.contains] at h₂₉
                     rw [h₁₂] at h₂₉
-                    simp at h₂₉
+                    simp only [Option.isSome_some, forall_const] at h₂₉
                     rw [h₃₄] at h₂₉
                     simp at h₂₉
                   . rename_i ty₃
@@ -963,15 +963,15 @@ theorem partial_eval_well_typed_getAttr {env : TypeEnv} {expr : Residual} {attr 
                       rw [h₃₅] at h₇
 
                       specialize h₃₀ ty₃ h₁₂ h₃₄
-                      simp at h₇
+                      simp only [Option.map_some, Option.some.injEq] at h₇
                       rw [← h₇]
                       rw [h₃₆]
                       have h₃₇ := type_lifting_preserves_instance_of_type h₃₀
                       cases ty₃
                       all_goals
                         rename_i ty₃
-                        simp [Qualified.getType] at h₃₇
-                        simp [QualifiedType.liftBoolTypes, Qualified.getType]
+                        simp only [Qualified.getType] at h₃₇
+                        simp only [Qualified.getType, QualifiedType.liftBoolTypes]
                         exact h₃₇
                 . rename_i h₂₃
                   unfold InstanceOfActionSchemaEntry at h₂₃
@@ -982,7 +982,7 @@ theorem partial_eval_well_typed_getAttr {env : TypeEnv} {expr : Residual} {attr 
           have h₇ := partial_eval_preserves_typeof h_wf h_ref h₄
           rw [h₃] at h₇
           rw [h₅] at h₇
-          simp [Residual.typeOf] at h₇
+          simp only [Residual.typeOf] at h₇
           have h₈ := h_expr_wt
           rw [h₃] at h₈
           cases h₈
@@ -1023,7 +1023,7 @@ theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List
   (∀ r ∈ args, Residual.WellTyped env (TPE.evaluate r preq pes)) →
   PEWellTyped env (Residual.call xfn args ty) (TPE.evaluate (Residual.call xfn args ty) preq pes) req preq es pes := by
   intros h_args_wt h_wf h_ref h_wt
-  simp [TPE.evaluate, TPE.call]
+  simp only [TPE.evaluate, TPE.call, List.any_eq_true]
   simp [List.map₁, List.attach, List.attachWith]
   unfold Function.comp
   simp
@@ -1052,7 +1052,7 @@ theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List
         | skip
       split
       case h_1 x₂ v =>
-        simp [someOrError, Except.toOption]
+        simp only [someOrError, Except.toOption]
         apply Residual.WellTyped.val
         rw [List.mapM_some_iff_forall₂, List.forall₂_singleton_right_iff] at h₁
         rcases h₁ with ⟨x₃, h₁, h₅⟩
@@ -1061,7 +1061,7 @@ theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List
         case h_2 => contradiction
         rename_i x₄ v₂ ty₂ h₆
         have h₇ : x₃ ∈ args := by {
-          simp [Membership.mem]
+          simp only [Membership.mem]
           rw [h₅]
           apply List.Mem.head
         }
@@ -1079,7 +1079,7 @@ theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List
         | apply InstanceOfType.instance_of_bool
           simp [InstanceOfBoolType]
       case h_2 x₂ h₄ =>
-        simp [someOrError, Except.toOption]
+        simp only [someOrError, Except.toOption]
         first
         | apply Residual.WellTyped.error
         | apply Residual.WellTyped.val
@@ -1088,7 +1088,7 @@ theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List
           simp [InstanceOfBoolType]
     case h_2 | h_3 | h_4 | h_5 =>
       rename_i xf vs d₁ d₂
-      simp [someOrError, Except.toOption]
+      simp only [someOrError, Except.toOption]
       cases h₃
       apply Residual.WellTyped.val
       apply InstanceOfType.instance_of_bool
@@ -1105,7 +1105,7 @@ theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List
 
       split
       case h_1 x₂ v =>
-        simp [someOrError, Except.toOption]
+        simp only [someOrError, Except.toOption]
         apply Residual.WellTyped.val
         rw [List.mapM_some_iff_forall₂, List.forall₂_pair_right_iff] at h₁
         rcases h₁ with ⟨x₃, x₄, h₁, h₅, h₆⟩
@@ -1115,7 +1115,7 @@ theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List
         case h_2 => contradiction
         rename_i x₄ v₂ ty₂ h₇
         have h₈ : x₃ ∈ args := by {
-          simp [Membership.mem]
+          simp only [Membership.mem]
           rw [h₆]
           apply List.Mem.head
         }
@@ -1133,7 +1133,7 @@ theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List
         | apply InstanceOfType.instance_of_bool
           simp [InstanceOfBoolType]
       case h_2 x₂ h₄ =>
-        simp [someOrError, Except.toOption]
+        simp only [someOrError, Except.toOption]
         first
         | apply Residual.WellTyped.error
         | apply Residual.WellTyped.val
@@ -1141,13 +1141,13 @@ theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List
           apply InstanceOfType.instance_of_bool
           simp [InstanceOfBoolType]
       try case h_3 x₂ v =>
-        simp [someOrError, Except.toOption]
+        simp only [someOrError, Except.toOption]
         cases h₃
         apply Residual.WellTyped.val
         apply InstanceOfType.instance_of_bool
         simp [InstanceOfBoolType]
     case h_17 | h_18 | h_19 | h_20 | h_21 | h_22 =>
-      simp [someOrError, Except.toOption, Ext.Datetime.toTime, Ext.Datetime.Duration.toMilliseconds]
+      simp only [someOrError, Except.toOption, Ext.Datetime.toTime, ge_iff_le, beq_iff_eq]
       rw [List.mapM_some_iff_forall₂, List.forall₂_singleton_right_iff] at h₁
       rcases h₁ with ⟨x₃, h₁, h₅⟩
       unfold Residual.asValue at h₁
@@ -1155,7 +1155,7 @@ theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List
       case h_2 => contradiction
       rename_i x₄ v₂ ty₂ h₆
       have h₇ : x₃ ∈ args := by {
-        simp [Membership.mem]
+        simp only [Membership.mem]
         rw [h₅]
         apply List.Mem.head
       }
@@ -1174,7 +1174,7 @@ theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List
         simp [InstanceOfExtType]
       | apply InstanceOfType.instance_of_int
     case h_23 =>
-      simp [someOrError, Except.toOption]
+      simp only [someOrError, Except.toOption]
       apply Residual.WellTyped.error
   case h_2 x h₂ =>
     split
@@ -1218,7 +1218,7 @@ theorem partial_eval_well_typed_hasAttr {env : TypeEnv} {expr : Residual} {attr 
   Residual.WellTyped env (TPE.evaluate expr preq pes) →
   PEWellTyped env (Residual.hasAttr expr attr ty) (TPE.evaluate (Residual.hasAttr expr attr ty) preq pes) req preq es pes := by
   intros h_expr_wt h_wf h_ref h_wt
-  simp [TPE.evaluate, TPE.hasAttr, TPE.attrsOf]
+  simp only [TPE.evaluate, TPE.hasAttr, TPE.attrsOf]
   split
   case h_1 =>
     apply Residual.WellTyped.error
@@ -1266,7 +1266,7 @@ theorem partial_eval_well_typed_app₂ :
 
   split
   case h_1 =>
-    simp
+    simp only [Option.pure_def, Option.bind_eq_bind]
     split
     any_goals
       apply Residual.WellTyped.val
@@ -1274,7 +1274,7 @@ theorem partial_eval_well_typed_app₂ :
       all_goals
         apply InstanceOfType.instance_of_bool
         unfold InstanceOfBoolType
-        split <;> try simp
+        split <;> try simp only
         contradiction
     case h_8 | h_9 | h_10 =>
       simp only [Option.bind]
@@ -1290,7 +1290,7 @@ theorem partial_eval_well_typed_app₂ :
     -- mem and mem set
     case h_14 | h_15 =>
       rename_i v1 v2 id1 id2 h₁ h₂
-      simp [Option.bind]
+      simp only [Option.bind]
       split
       case h_1 =>
         simp only [someOrSelf, TPE.apply₂.self]
@@ -1323,44 +1323,44 @@ theorem partial_eval_well_typed_app₂ :
               rw [h₉]
               cases h_op
               . apply BinaryResidualWellTyped.memₑ
-                . simp [Residual.typeOf]
+                . simp only [Residual.typeOf]
                   rename_i ety₁ ety₂ eq₁ eq₂
                   have hᵣ : (ty₁ = CedarType.entity ety₁) := by {
                     have h₁₀ := partial_eval_preserves_typeof h_wf h_ref h_expr1
                     rw [← h₁₀] at eq₁
                     rw [h₃] at eq₁
-                    simp [Residual.typeOf] at eq₁
+                    simp only [Residual.typeOf] at eq₁
                     exact eq₁
                   }
                   exact hᵣ
-                . simp [Residual.typeOf]
+                . simp only [Residual.typeOf]
                   rename_i ety₁ ety₂ eq₁ eq₂
                   have hᵣ : (ty₂ = CedarType.entity ety₂) := by {
                     have h₁₀ := partial_eval_preserves_typeof h_wf h_ref h_expr2
                     rw [← h₁₀] at eq₂
                     rw [h₇] at eq₂
-                    simp [Residual.typeOf] at eq₂
+                    simp only [Residual.typeOf] at eq₂
                     exact eq₂
                   }
                   exact hᵣ
               . apply BinaryResidualWellTyped.memₛ
-                . simp [Residual.typeOf]
+                . simp only [Residual.typeOf]
                   rename_i ety₁ ety₂ eq₁ eq₂
                   have hᵣ : (ty₁ = CedarType.entity ety₁) := by {
                     have h₁₀ := partial_eval_preserves_typeof h_wf h_ref h_expr1
                     rw [← h₁₀] at eq₁
                     rw [h₃] at eq₁
-                    simp [Residual.typeOf] at eq₁
+                    simp only [Residual.typeOf] at eq₁
                     exact eq₁
                   }
                   exact hᵣ
-                . simp [Residual.typeOf]
+                . simp only [Residual.typeOf]
                   rename_i ety₁ ety₂ eq₁ eq₂
                   have hᵣ : (ty₂ = (CedarType.entity ety₂).set) := by {
                     have h₁₀ := partial_eval_preserves_typeof h_wf h_ref h_expr2
                     rw [← h₁₀] at eq₂
                     rw [h₇] at eq₂
-                    simp [Residual.typeOf] at eq₂
+                    simp only [Residual.typeOf] at eq₂
                     exact eq₂
                   }
                   exact hᵣ
@@ -1376,7 +1376,7 @@ theorem partial_eval_well_typed_app₂ :
 
     case h_16 v1 v2 id1 id2 h₁ h₂ =>
       cases TPE.hasTag id1 id2 pes
-      . simp [someOrSelf]
+      . simp only [someOrSelf, Option.bind_none]
         unfold TPE.apply₂.self
         unfold Residual.asValue at h₁
         unfold Residual.asValue at h₂
@@ -1404,17 +1404,17 @@ theorem partial_eval_well_typed_app₂ :
               rw [h₉]
               cases h_op
               . apply BinaryResidualWellTyped.hasTag
-                . simp [Residual.typeOf]
+                . simp only [Residual.typeOf]
                   rename_i ety₁ ety₂ eq₁ eq₂
                   have hᵣ : (ty₁ = CedarType.entity ety₂) := by {
                     have h₁₀ := partial_eval_preserves_typeof h_wf h_ref h_expr1
                     rw [← h₁₀] at eq₁
                     rw [h₃] at eq₁
-                    simp [Residual.typeOf] at eq₁
+                    simp only [Residual.typeOf] at eq₁
                     exact eq₁
                   }
                   exact hᵣ
-                . simp [Residual.typeOf]
+                . simp only [Residual.typeOf]
                   rename_i ety₁ ety₂ eq₁ eq₂
                   have hᵣ : (ty₂ = CedarType.string) := by {
                     have h₁₀ := partial_eval_preserves_typeof h_wf h_ref h_expr2
@@ -1427,7 +1427,7 @@ theorem partial_eval_well_typed_app₂ :
                   exact hᵣ
           . contradiction
         . contradiction
-      . simp [someOrSelf]
+      . simp only [someOrSelf, Option.bind_some]
         apply Residual.WellTyped.val
         cases h_op
         . apply InstanceOfType.instance_of_bool
@@ -1457,16 +1457,16 @@ theorem partial_eval_well_typed_app₂ :
           rename PartialEntityData => pv
           specialize h_eref id1 pv h₇
           rw [h₇] at heq
-          simp at heq
+          simp only [Option.bind_some] at heq
           cases h_eref
           case h_1.some.inl =>
             rename_i heq₂ h₈
             rcases h₈ with ⟨h₉, _⟩
             unfold PartialEntityData.tags at heq
             rw [h₉] at heq
-            simp at heq
+            simp only [Option.some.injEq] at heq
             rw [← heq] at heq₂
-            simp [Data.Map.kvs] at heq₂
+            simp only [Map.kvs] at heq₂
             unfold Data.Map.empty at heq₂
             dsimp [Data.Map.mk] at heq₂
             contradiction
@@ -1490,7 +1490,7 @@ theorem partial_eval_well_typed_app₂ :
             rcases h₁₆ with ⟨_, _, _, _, _, h₁₇⟩
             unfold InstanceOfEntityTags at h₁₇
             rename EntitySchemaEntry => w
-            cases h₁₈: w.tags? <;> rw [h₁₈] at h₁₇ <;> simp at h₁₇
+            cases h₁₈: w.tags? <;> rw [h₁₈] at h₁₇ <;> simp only at h₁₇
             . rw [h₁₇] at h₁₃
               simp [Data.Map.empty, Data.Map.mk, Data.Map.kvs] at h₁₃
             . have h₁₈ : v₃ ∈ e.tags.values := by {
@@ -1517,13 +1517,13 @@ theorem partial_eval_well_typed_app₂ :
                 cases h₂₂: TPE.evaluate expr1 preq pes
                 . rw [h₂₂] at h₁
                   rename Value => v₄
-                  simp at h₁
+                  simp only [Option.some.injEq] at h₁
                   rw [h₁] at h₂₂
                   rw [h₂₂] at h₅
                   rw [h₂₂] at h₂₁
                   rename  expr1.typeOf = CedarType.entity ety => h₂₃
                   rw [h₂₃] at h₂₁
-                  simp [Residual.typeOf] at h₂₁
+                  simp only [Residual.typeOf] at h₂₁
                   rename CedarType => ty₃
                   rw [h₂₂] at ih₁
                   cases ih₁
@@ -1541,9 +1541,9 @@ theorem partial_eval_well_typed_app₂ :
               }
               rw [h_ety_eq] at h₄
               rw [h₂₁] at h₄
-              simp at h₄
+              simp only [Option.map_some, Option.some.injEq] at h₄
               rw [h₁₉] at h₄
-              simp at h₄
+              simp only [Option.some.injEq] at h₄
               rw [h₄] at h₁₇
               exact type_lifting_preserves_instance_of_type h₁₇
           . rename_i h₁₆
@@ -1578,13 +1578,13 @@ theorem partial_eval_well_typed_app₂ :
         . cases h_op with
           | getTag h₃ h₄ h₅ =>
           apply BinaryResidualWellTyped.getTag
-          . simp [Residual.typeOf]
+          . simp only [Residual.typeOf, CedarType.entity.injEq]
             rfl
           . simp [Residual.typeOf]
           . rename_i ety ty
             have h₄ : ety = id1.ty := by {
               have h₄ := partial_eval_preserves_typeof h_wf h_ref h_expr1
-              simp [Residual.asValue] at h₁
+              simp only [Residual.asValue] at h₁
               split at h₁
               case h_2 =>
                 contradiction
@@ -1597,7 +1597,7 @@ theorem partial_eval_well_typed_app₂ :
               rw [h₅] at h₄
               rw [h₃] at h₄
               rw [h₇] at h₄
-              simp [Residual.typeOf] at h₄
+              simp only [Residual.typeOf] at h₄
               cases h₆
               rename_i ety₂ h₈
               injection h₄ with h₄
@@ -1632,7 +1632,7 @@ theorem partial_eval_well_typed_app₂ :
       case eq_val =>
         cases h_wt₂
         rename_i h₆
-        simp [TPE.evaluate]
+        simp only [TPE.evaluate]
         exact h₆
       case eq_entity =>
         apply BinaryResidualWellTyped.eq_entity
@@ -1666,7 +1666,7 @@ theorem partial_eval_well_typed_app₂ :
       . rw [h₁]
         rw [h₅]
         congr
-        have h₈ : ety = ety := by simp
+        have h₈ : ety = ety := by simp only
         exact h₈
       . rw [h₂]
         rw [h₆]
