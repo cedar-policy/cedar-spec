@@ -108,7 +108,7 @@ theorem partial_evaluation_well_typed_var {pes}      {env : TypeEnv}
         rcases h_wf with ⟨hwf, ⟨_, h_action, _, _⟩, _⟩
         rw [h_action]
         have : InstanceOfEntityType env.reqty.action env.reqty.action.ty env := by
-          have ⟨_, _, ⟨_, hwf_act, _⟩⟩ := hwf
+          have ⟨_, _, _, hwf_act, _⟩ := hwf
           simp [
             InstanceOfEntityType, EntityUID.WellFormed,
             ActionSchema.contains, hwf_act,
@@ -307,7 +307,7 @@ theorem partial_eval_record_key_preservation {xs : List (Attr × Residual)} {ys 
     case inr h₃ =>
       rcases h₃ with ⟨h₃, h₅⟩
       let ih := partial_eval_record_key_preservation h₄ h₅
-      rcases ih with ⟨p₃, ⟨h₄, h₅⟩⟩
+      rcases ih with ⟨p₃, h₄, h₅⟩
       exists p₃
       constructor
       . simp
@@ -478,89 +478,26 @@ theorem partial_eval_preserves_well_typed
   unfold RequestAndEntitiesRefine at h_ref
   rcases h_ref with ⟨h_rref, h_eref⟩
   have h_ref : RequestAndEntitiesRefine req es preq pes := ⟨h_rref, h_eref⟩
-  -- Proof by cases on the structure of the residual
+
   cases hᵣ : res <;> rw [hᵣ] at h_wt
   case val v ty =>
-    -- Case: .val v ty
-    -- TPE.evaluate (.val v ty) req es = .val v ty
-    simp [TPE.evaluate]
-    exact h_wt
+    exact partial_eval_well_typed_val h_wf h_ref h_wt
   case var v ty =>
-    -- Case: .var v ty
-    -- Use the helper theorem for variable cases
-    simp [TPE.evaluate]
-    exact partial_evaluation_well_typed_var h_wf h_ref h_wt
+    exact partial_eval_well_typed_var h_wf h_ref h_wt
   case and a b ty =>
-    -- Case: .and a b ty
-    -- TPE.evaluate (.and a b ty) preq pes = TPE.and (TPE.evaluate a preq pes) (TPE.evaluate b preq pes) ty
-    simp [TPE.evaluate]
-    -- We need to prove that TPE.and preserves well-typedness
-    -- This requires analyzing the cases in TPE.and
-    cases h_wt with
+    let h_wt₂ := h_wt
+    cases h_wt₂ with
     | and h_a h_b h_ty_a h_ty_b =>
-      let a_eval := TPE.evaluate a preq pes
-      let b_eval := TPE.evaluate b preq pes
-      have h_ref_reconstructed : RequestAndEntitiesRefine req es preq pes := ⟨h_rref, h_eref⟩
-      have h_a_wt : Residual.WellTyped env a_eval := partial_eval_preserves_well_typed h_wf h_ref_reconstructed h_a
-      have h_b_wt : Residual.WellTyped env b_eval := partial_eval_preserves_well_typed h_wf h_ref_reconstructed h_b
-      -- TPE.and has several cases - we need to handle each one
-      unfold TPE.and
-      split
-      . -- Case: first operand is .val true, so TPE.and returns the second operand
-        -- Goal: Residual.WellTyped env (TPE.evaluate b preq pes)
-        exact h_b_wt
-      . -- Case: first operand is .val false, so TPE.and returns false
-        -- Goal: Residual.WellTyped env (Residual.val (Value.prim (Prim.bool false)) (CedarType.bool BoolType.anyBool))
-        apply Residual.WellTyped.val
-        apply InstanceOfType.instance_of_bool false BoolType.anyBool
-        simp [InstanceOfBoolType]
-      . -- Case: first operand is .error, so TPE.and returns .error ty
-        -- Goal: Residual.WellTyped env (Residual.error ty)
-        apply Residual.WellTyped.error
-      . -- Case: second operand is .val true, so TPE.and returns the first operand
-        -- Goal: Residual.WellTyped env (TPE.evaluate a preq pes)
-        exact h_a_wt
-      . -- Case: default case, TPE.and returns .and a_eval b_eval ty
-        -- Goal: Residual.WellTyped env (Residual.and (TPE.evaluate a preq pes) (TPE.evaluate b preq pes) ty)
-        apply Residual.WellTyped.and
-        · exact h_a_wt
-        · exact h_b_wt
-        · -- Need to show a_eval.typeOf = CedarType.bool BoolType.anyBool
-          -- This follows from the fact that a has boolean type and TPE preserves types
-          have h_a_type : a.typeOf = CedarType.bool BoolType.anyBool := h_ty_a
-          -- Use the type preservation theorem
-          rw [partial_eval_preserves_typeof h_wf h_ref_reconstructed h_a]
-          exact h_a_type
-        · -- Need to show b_eval.typeOf = CedarType.bool BoolType.anyBool
-          -- This follows from the fact that b has boolean type and TPE preserves types
-          have h_b_type : b.typeOf = CedarType.bool BoolType.anyBool := h_ty_b
-          -- Use the type preservation theorem
-          rw [partial_eval_preserves_typeof h_wf h_ref_reconstructed h_b]
-          exact h_b_type
+      have ih_a : Residual.WellTyped env (TPE.evaluate a preq pes) := partial_eval_preserves_well_typed h_wf h_ref h_a
+      have ih_b : Residual.WellTyped env (TPE.evaluate b preq pes) := partial_eval_preserves_well_typed h_wf h_ref h_b
+      exact partial_eval_well_typed_and ih_a ih_b h_wf h_ref h_wt
   case or a b ty =>
-    simp [TPE.evaluate]
-    cases h_wt with
+    let h_wt₂ := h_wt
+    cases h_wt₂ with
     | or h_a h_b h_ty_a h_ty_b =>
-      let a_eval := TPE.evaluate a preq pes
-      let b_eval := TPE.evaluate b preq pes
-      have h_ref_reconstructed : RequestAndEntitiesRefine req es preq pes := ⟨h_rref, h_eref⟩
-      have h_a_wt : Residual.WellTyped env a_eval := partial_eval_preserves_well_typed h_wf h_ref_reconstructed h_a
-      have h_b_wt : Residual.WellTyped env b_eval := partial_eval_preserves_well_typed h_wf h_ref_reconstructed h_b
-      unfold TPE.or
-      split
-      . apply Residual.WellTyped.val
-        apply InstanceOfType.instance_of_bool true BoolType.anyBool
-        simp [InstanceOfBoolType]
-      . exact h_b_wt
-      . apply Residual.WellTyped.error
-      . exact h_a_wt
-      . apply Residual.WellTyped.or
-        · exact h_a_wt
-        · exact h_b_wt
-        · rw [partial_eval_preserves_typeof h_wf h_ref_reconstructed h_a]
-          exact h_ty_a
-        · rw [partial_eval_preserves_typeof h_wf h_ref_reconstructed h_b]
-          exact h_ty_b
+      have ih_a : Residual.WellTyped env (TPE.evaluate a preq pes) := partial_eval_preserves_well_typed h_wf h_ref h_a
+      have ih_b : Residual.WellTyped env (TPE.evaluate b preq pes) := partial_eval_preserves_well_typed h_wf h_ref h_b
+      exact partial_eval_well_typed_or ih_a ih_b h_wf h_ref h_wt
   case ite c t e ty =>
     simp [TPE.evaluate]
     cases h_wt with
