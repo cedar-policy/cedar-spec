@@ -148,16 +148,15 @@ theorem find_lifted_type {attr ty₁ ty₂} {m: RecordType} :
       simp at h₁
       rw [h₁]
 decreasing_by
-  have h₅ : sizeOf m.1 < sizeOf m := by {
-    simp [sizeOf]
-    simp [Map._sizeOf_1]
-    sorry
+  rename_i hd tail _ _
+  have h₈: sizeOf (Map.mk tail) < sizeOf m := by {
+    simp [sizeOf, Map._sizeOf_1]
+    have h₉ : m.1 = hd :: tail := h₃
+    rw [h₉]
+    simp [List._sizeOf_1]
+    omega
   }
-  rename_i hd tail h₆ h₇
-  have h₈: sizeOf (Map.mk tail) < sizeOf m.1 := by {
-    sorry
-  }
-  omega
+  exact h₈
 
 theorem partial_eval_record_key_preservation_3 {ls : List (Attr × Residual)} :
   ls.find? (λ x => x.fst == k) = .some (k, v) →
@@ -1024,10 +1023,7 @@ Helper theorem: Partial evaluation preserves well-typedness for call residuals.
 -/
 theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
   (∀ r ∈ args, Residual.WellTyped env (TPE.evaluate r preq pes)) →
-  InstanceOfWellFormedEnvironment req es env →
-  RequestAndEntitiesRefine req es preq pes →
-  Residual.WellTyped env (Residual.call xfn args ty) →
-  Residual.WellTyped env (TPE.evaluate (Residual.call xfn args ty) preq pes) := by
+  PEWellTyped env (Residual.call xfn args ty) (TPE.evaluate (Residual.call xfn args ty) preq pes) req preq es pes := by
   intros h_args_wt h_wf h_ref h_wt
   simp [TPE.evaluate, TPE.call]
   simp [List.map₁, List.attach, List.attachWith]
@@ -1222,10 +1218,7 @@ Helper theorem: Partial evaluation preserves well-typedness for hasAttr residual
 -/
 theorem partial_eval_well_typed_hasAttr {env : TypeEnv} {expr : Residual} {attr : Attr} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
   Residual.WellTyped env (TPE.evaluate expr preq pes) →
-  InstanceOfWellFormedEnvironment req es env →
-  RequestAndEntitiesRefine req es preq pes →
-  Residual.WellTyped env (Residual.hasAttr expr attr ty) →
-  Residual.WellTyped env (TPE.evaluate (Residual.hasAttr expr attr ty) preq pes) := by
+  PEWellTyped env (Residual.hasAttr expr attr ty) (TPE.evaluate (Residual.hasAttr expr attr ty) preq pes) req preq es pes := by
   intros h_expr_wt h_wf h_ref h_wt
   simp [TPE.evaluate, TPE.hasAttr, TPE.attrsOf]
   split
