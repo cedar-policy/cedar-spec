@@ -205,7 +205,7 @@ theorem partial_eval_record_key_preservation_2 {ls : List (Attr × Residual)} :
     ls).find? (λ x => x.fst == k) = .some (k, v₃) →
   ∃ v₂,
   v₃ = Qualified.required v₂.typeOf ∧
-  List.find? (fun x => decide (x.fst = k)) ls = some (k, v₂)
+  List.find? (fun x => (x.fst == k)) ls = some (k, v₂)
 := by
   intro h₁
   cases ls
@@ -220,7 +220,8 @@ theorem partial_eval_record_key_preservation_2 {ls : List (Attr × Residual)} :
       simp only [List.find?_cons_eq_some, decide_eq_true_eq, Bool.not_eq_eq_eq_not, Bool.not_true, decide_eq_false_iff_not, true_and]
       left
       constructor
-      . assumption
+      . simp
+        rw [h₃]
       . cases h
         simp only at h₃
         rw [h₃]
@@ -230,8 +231,8 @@ theorem partial_eval_record_key_preservation_2 {ls : List (Attr × Residual)} :
       constructor
       . rw [h₅]
       . unfold List.find?
-        have h₆: (decide (h.fst = k)) = false := by
-          simp only [decide_eq_false_iff_not]
+        have h₆: (h.fst == k) = false := by
+          simp
           assumption
         rw [h₆]
         simp only
@@ -284,78 +285,6 @@ theorem partial_eval_record_key_preservation_4 {xs : List (Attr × Residual)} {y
         constructor
         . assumption
         .assumption
-
-theorem partial_eval_record_key_preservation {xs : List (Attr × Residual)} {ys : List (Attr × Value)} :
-  List.Forall₂ (fun x y => ((fun x => bindAttr x.fst x.snd.asValue) ∘ fun x => (x.fst, TPE.evaluate x.snd preq pes)) x = some y) xs
-  ys →
-  ys.find? (λ x => x.fst = k) = .some (k, v) →
-  ∃ v₂,
-  (xs.find? (λ x => x.fst = k) = .some (k, v₂)) ∧
-  v = (TPE.evaluate v₂ preq pes).asValue
-:= by
-  intro h₁ h₂
-  cases h₁
-  . contradiction
-  case cons a₁ b₁ l₁ l₂ h₃ h₄ =>
-    simp only [List.find?_cons_eq_some, decide_eq_true_eq, Bool.not_eq_eq_eq_not, Bool.not_true, decide_eq_false_iff_not] at h₂
-    cases h₂
-    case inl h₃ =>
-      rename_i h₄
-      rename_i h₅
-      simp only [bindAttr, Residual.asValue, Option.pure_def, Option.bind_eq_bind, Function.comp_apply] at h₅
-      exists a₁.2
-      simp only [List.find?_cons_eq_some, decide_eq_true_eq, Bool.not_eq_eq_eq_not, Bool.not_true, decide_eq_false_iff_not]
-      split at h₅
-      . simp only [Option.bind_some, Option.some.injEq] at h₅
-        rcases h₃ with ⟨h₃, h₆⟩
-        rename Value => v₂
-        rw [h₆] at h₅
-        simp only [Prod.mk.injEq] at h₅
-        rcases h₅ with ⟨h₅, h₇⟩
-        rw [h₅]
-        simp only [true_and, not_true_eq_false, false_and, or_false]
-        constructor
-        . cases a₁
-          rename_i a₁ a₂ h₈
-          simp only [Prod.mk.injEq, and_true]
-          simp only at h₅
-          assumption
-        . rename_i h₉
-          rw [h₉]
-          simp only [Residual.asValue, Option.some.injEq]
-          rw [h₇]
-      . simp at h₅
-    case inr h₃ =>
-      rcases h₃ with ⟨h₃, h₅⟩
-      let ih := partial_eval_record_key_preservation h₄ h₅
-      rcases ih with ⟨p₃, h₄, h₅⟩
-      exists p₃
-      constructor
-      . simp only [List.find?_cons_eq_some, decide_eq_true_eq, Bool.not_eq_eq_eq_not, Bool.not_true, decide_eq_false_iff_not]
-        right
-        rw [h₄]
-        simp only [and_true]
-        cases a₁
-        rename_i k₁ v₁
-        cases b₁
-        rename_i k₂ v₂
-        simp only
-        simp only [Function.comp_apply] at h₃
-        simp only at v₂
-        rename_i k₃
-        unfold bindAttr at h₃
-        simp only [Option.pure_def, Option.bind_eq_bind] at h₃
-        cases h₄ : (TPE.evaluate v₁ preq pes).asValue
-        . rw [h₄] at h₃
-          simp at h₃
-        . rw [h₄] at h₃
-          simp only [Option.bind_some, Option.some.injEq, Prod.mk.injEq] at h₃
-          rcases h₃ with ⟨h₅, h₆⟩
-          rw [h₅]
-          assumption
-      . exact h₅
-
-
 
 
 /--
@@ -734,10 +663,14 @@ theorem partial_eval_well_typed_record {env : TypeEnv} {ls : List (Attr × Resid
 
       have h₅ := Map.make_find?_implies_list_find? h₄
       rw [Map.contains_iff_some_find?]
-      rw [List.mapM_some_iff_forall₂] at h₃
-      have h₈ := partial_eval_record_key_preservation h₃ h₅
+      have h₄ := Map.make_find?_implies_list_find? h₄
+      unfold Function.comp at h₃
+      simp [bindAttr] at h₃
+
+      have h₈ := Map.list_find?_mapM_implies_exists_unmapped (λ x => (TPE.evaluate x preq pes).asValue) h₃ h₄
       rcases h₈ with ⟨v₂, h₈, h₉⟩
-      have h₉ := partial_eval_record_key_preservation_3 h₈
+      simp at h₈
+      have h₉ := partial_eval_record_key_preservation_3 h₉
       subst ty₁
       rcases h₉ with ⟨v₃, h₉⟩
       have h₁₀ := Map.list_find?_implies_make_find? h₉
@@ -746,9 +679,10 @@ theorem partial_eval_well_typed_record {env : TypeEnv} {ls : List (Attr × Resid
       rw [h₁] at h₅
       have h₆ := Map.make_find?_implies_list_find? h₄
       have h₇ := Map.make_find?_implies_list_find? h₅
-      rw [List.mapM_some_iff_forall₂] at h₃
-      have h₈ := partial_eval_record_key_preservation h₃ h₆
-      rcases h₈ with ⟨v₂, h₈, h₉⟩
+      unfold Function.comp at h₃
+      simp [bindAttr] at h₃
+      have h₈ := Map.list_find?_mapM_implies_exists_unmapped (λ x => (TPE.evaluate x preq pes).asValue) h₃ h₆
+      rcases h₈ with ⟨v₂, _, h₈⟩
       have h₉ := partial_eval_record_key_preservation_2 h₇
       rcases h₉ with ⟨v₃, h₉, h₁₀⟩
       rw [h₉]
@@ -765,9 +699,7 @@ theorem partial_eval_well_typed_record {env : TypeEnv} {ls : List (Attr × Resid
       split at h₁₄
       case h_2 => contradiction
       rename_i v₄ ty h₁₅
-      injection h₁₄
-      rename_i h₁₅
-      rw [h₁₅]
+      injection h₁₄; rename_i h₁₅
       simp only [Qualified.getType]
       rename_i h₁₆
       have h₁₇ := partial_eval_preserves_typeof h_wf h_ref h₁₁
@@ -777,6 +709,7 @@ theorem partial_eval_well_typed_record {env : TypeEnv} {ls : List (Attr × Resid
       let ih := h_ls_wt k v₂ h₁₂
       rw [h₁₆] at ih
       cases ih
+      rw [← h₁₅]
       assumption
     . intro k qty h₄ h₅
       subst ty₁

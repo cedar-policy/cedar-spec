@@ -636,6 +636,58 @@ theorem find?_none_iff_all_absent [LT α] [DecidableLT α] [StrictLT α] [Decida
 := Iff.intro find?_none_all_absent all_absent_find?_none
 
 
+theorem list_find?_mapM_implies_exists_unmapped {α β γ : Type} [BEq α] [LawfulBEq α] {ls : List (α × β)} (fn : β → Option γ) {ys: List (α × γ)} {k: α} {y: γ} :
+  List.mapM (fun x =>
+              (fn x.2).bind
+                (fun v => some (x.fst, v))) ls = some ys →
+  ys.find? (λ x => x.1 == k) = .some (k, y) →
+  ∃ x, fn x = some y ∧ (ls.find? (λ x => x.1 == k) = .some (k, x))
+:= by
+  intro h₁ h₂
+  rw [List.mapM_some_iff_forall₂] at h₁
+  cases h₁
+  case nil =>
+    simp at h₂
+  case cons hd₁ hd₂ tl₁ tl₂ h₃ h₄=>
+    simp [List.find?] at h₂
+    split at h₂
+    case h_1 x h₅ =>
+      injection h₂ ; rename_i h₂
+      rw [h₂] at h₃
+      cases h₆ : (fn hd₁.snd) <;> rw [h₆] at h₃
+      case none =>
+        simp at h₃
+      case some y₂ =>
+        simp at h₃
+        rcases h₃ with ⟨h₃, h₇⟩
+        exists hd₁.snd
+        rw [h₆, h₇]
+        simp
+        rw [h₃]
+        simp
+        cases hd₁
+        simp at h₃
+        rw [h₃]
+    case h_2 x h₅ =>
+      rw [← List.mapM_some_iff_forall₂] at h₄
+      unfold List.find?
+      have h₆ : (hd₁.fst == k) = false := by
+        cases h₆ : (fn hd₁.snd) <;> rw [h₆] at h₃
+        case none =>
+          simp at h₃
+        case some =>
+          simp at h₃
+          cases hd₂
+          simp at h₅
+          simp
+          simp at h₃
+          rcases h₃ with ⟨h₃, _⟩
+          rw [h₃]
+          exact h₅
+      rw [h₆]
+      simp
+      exact list_find?_mapM_implies_exists_unmapped fn h₄ h₂
+
 theorem find?_mapM_key_id {α β : Type} [BEq α] [LawfulBEq α] {ks : List α} {kvs : List (α × β)} {fn : α → Option β} {k: α}
   (h₁ : ks.mapM (λ k => do (k, ←fn k)) = some kvs)
   (h₂ : k ∈ ks) :
