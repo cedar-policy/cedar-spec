@@ -252,7 +252,7 @@ theorem partial_eval_record_key_preservation_4 {xs : List (Attr × Residual)} {y
   . simp only [List.find?_nil, reduceCtorEq, exists_const, imp_self]
   case cons a b l₁ l₂ h₂ h₃=>
   . intro h₄
-    simp at h₄
+    simp only [List.find?_cons_eq_some, decide_eq_true_eq, Bool.not_eq_eq_eq_not, Bool.not_true, decide_eq_false_iff_not] at h₄
     cases h₄
     case inl h₅ =>
       rcases h₅ with ⟨h₅, h₆⟩
@@ -263,7 +263,7 @@ theorem partial_eval_record_key_preservation_4 {xs : List (Attr × Residual)} {y
       case intro.some v₂ =>
         simp only [Option.bind_some, Option.some.injEq] at h₂
         exists v₂
-        simp
+        simp only [List.find?_cons_eq_some, decide_eq_true_eq, Bool.not_eq_eq_eq_not, Bool.not_true, decide_eq_false_iff_not]
         left
         rw [h₅] at h₂
         rw [← h₂]
@@ -273,7 +273,7 @@ theorem partial_eval_record_key_preservation_4 {xs : List (Attr × Residual)} {y
       have ih := partial_eval_record_key_preservation_4 h₃ h₆
       rcases ih with ⟨v₃, ih⟩
       exists v₃
-      simp
+      simp only [List.find?_cons_eq_some, decide_eq_true_eq, Bool.not_eq_eq_eq_not, Bool.not_true, decide_eq_false_iff_not]
       right
       simp only [bindAttr, Option.pure_def, Option.bind_eq_bind, Function.comp_apply] at h₂
       cases h₇: (TPE.evaluate a.snd preq pes).asValue <;> rw [h₇] at h₂
@@ -297,14 +297,14 @@ theorem partial_eval_record_key_preservation {xs : List (Attr × Residual)} {ys 
   cases h₁
   . contradiction
   case cons a₁ b₁ l₁ l₂ h₃ h₄ =>
-    simp at h₂
+    simp only [List.find?_cons_eq_some, decide_eq_true_eq, Bool.not_eq_eq_eq_not, Bool.not_true, decide_eq_false_iff_not] at h₂
     cases h₂
     case inl h₃ =>
       rename_i h₄
       rename_i h₅
       simp only [bindAttr, Residual.asValue, Option.pure_def, Option.bind_eq_bind, Function.comp_apply] at h₅
       exists a₁.2
-      simp
+      simp only [List.find?_cons_eq_some, decide_eq_true_eq, Bool.not_eq_eq_eq_not, Bool.not_true, decide_eq_false_iff_not]
       split at h₅
       . simp only [Option.bind_some, Option.some.injEq] at h₅
         rcases h₃ with ⟨h₃, h₆⟩
@@ -331,7 +331,7 @@ theorem partial_eval_record_key_preservation {xs : List (Attr × Residual)} {ys 
       rcases ih with ⟨p₃, h₄, h₅⟩
       exists p₃
       constructor
-      . simp
+      . simp only [List.find?_cons_eq_some, decide_eq_true_eq, Bool.not_eq_eq_eq_not, Bool.not_true, decide_eq_false_iff_not]
         right
         rw [h₄]
         simp only [and_true]
@@ -1024,12 +1024,12 @@ theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List
   PEWellTyped env (Residual.call xfn args ty) (TPE.evaluate (Residual.call xfn args ty) preq pes) req preq es pes := by
   intros h_args_wt h_wf h_ref h_wt
   simp only [TPE.evaluate, TPE.call, List.any_eq_true]
-  simp [List.map₁, List.attach, List.attachWith]
+  simp only [List.map₁, List.attach, List.attachWith, List.map_subtype, List.mapM_map, List.mem_map, List.mem_unattach, List.mem_pmap, Subtype.mk.injEq, exists_prop, exists_eq_right, and_self]
   unfold Function.comp
-  simp
+  simp only [List.map_subtype, List.mem_map, List.mem_unattach, List.mem_pmap, Subtype.mk.injEq, exists_prop, exists_eq_right, and_self]
   unfold List.unattach
   rw [List.map_pmap_subtype (fun x => x)]
-  simp [List.mapM_then_map_combiner]
+  simp only [List.map_id_fun', id_eq, List.map_subtype, List.mem_map, List.mem_unattach, List.mem_pmap, Subtype.mk.injEq, exists_prop, exists_eq_right, and_self]
   rw [List.map_pmap_subtype (fun x => TPE.evaluate x preq pes)]
   split
   case h_1 x xs h₁ =>
