@@ -103,7 +103,7 @@ theorem ext_well_typed_after_map {xfn args ty env f} :
       simp
   -- Unary datetime/duration conversions
   case toDate x₁ h₆ | toTime x₁ h₆ | toMilliseconds x₁ h₆ | toSeconds x₁ h₆ | toMinutes x₁ h₆ | toHours x₁ h₆ | toDays x₁ h₆ =>
-    simp
+    simp only [List.map_cons, List.map_nil]
     first
     | apply ExtResidualWellTyped.toDate
     | apply ExtResidualWellTyped.toTime
@@ -148,10 +148,10 @@ theorem find_lifted_type {attr ty₁ ty₂} {m: RecordType} :
 decreasing_by
   rename_i hd tail _ _
   have h₈: sizeOf (Map.mk tail) < sizeOf m := by {
-    simp [sizeOf, Map._sizeOf_1]
+    simp only [sizeOf, Map._sizeOf_1, Nat.add_lt_add_iff_left]
     have h₉ : m.1 = hd :: tail := h₃
     rw [h₉]
-    simp [List._sizeOf_1]
+    simp only [List._sizeOf_1, Nat.lt_add_left_iff_pos, gt_iff_lt]
     omega
   }
   exact h₈
@@ -167,17 +167,17 @@ theorem partial_eval_record_key_preservation_3 {ls : List (Attr × Residual)} :
 := by
   intro h₁
   cases ls
-  . simp at h₁
-  . simp at h₁
+  . simp only [List.find?_nil, reduceCtorEq] at h₁
+  . simp only [List.find?_cons_eq_some, beq_iff_eq, Bool.not_eq_eq_eq_not, Bool.not_true, beq_eq_false_iff_ne, ne_eq] at h₁
     cases h₁
     . rename_i hd tl h₁
       rcases h₁ with ⟨h₁, h₂⟩
       exists (Qualified.required v.typeOf)
-      simp
+      simp only [List.map_cons, List.find?_cons_eq_some, beq_iff_eq, Prod.mk.injEq, Qualified.required.injEq, and_self_left, Bool.not_eq_eq_eq_not, Bool.not_true, beq_eq_false_iff_ne, ne_eq, List.find?_map, Option.map_eq_some_iff, Prod.exists]
       left
       cases hd
       rename_i k₂ v₂
-      simp
+      simp only
       simp only [Prod.mk.injEq] at h₂
       rcases h₂ with ⟨h₃, h₄⟩
       rw [h₃]
@@ -188,8 +188,8 @@ theorem partial_eval_record_key_preservation_3 {ls : List (Attr × Residual)} :
       let ih := partial_eval_record_key_preservation_3 h₂
       rcases ih with ⟨v₂, ih⟩
       exists v₂
-      simp at ih
-      simp
+      simp only [List.find?_map, Option.map_eq_some_iff, Prod.mk.injEq, Prod.exists] at ih
+      simp only [List.map_cons, List.find?_cons_eq_some, beq_iff_eq, Prod.mk.injEq, and_self_left, Bool.not_eq_eq_eq_not, Bool.not_true, beq_eq_false_iff_ne, ne_eq, List.find?_map, Option.map_eq_some_iff, Prod.exists]
       right
       constructor
       . assumption
@@ -211,18 +211,18 @@ theorem partial_eval_record_key_preservation_2 {ls : List (Attr × Residual)} :
   cases ls
   . contradiction
   case cons h tl =>
-    simp at h₁
+    simp only [List.map_cons, List.find?_cons_eq_some, beq_iff_eq, Prod.mk.injEq, and_self_left, Bool.not_eq_eq_eq_not, Bool.not_true, beq_eq_false_iff_ne, ne_eq, List.find?_map, Option.map_eq_some_iff, Prod.exists] at h₁
     cases h₁
     case inl h₂ =>
-      simp at h₂
+      simp only at h₂
       rcases h₂ with ⟨h₃, h₄, h₅⟩
       exists h.snd
-      simp
+      simp only [List.find?_cons_eq_some, decide_eq_true_eq, Bool.not_eq_eq_eq_not, Bool.not_true, decide_eq_false_iff_not, true_and]
       left
       constructor
       . assumption
       . cases h
-        simp at h₃
+        simp only at h₃
         rw [h₃]
     case inr h₂ =>
       rcases h₂ with ⟨h₂, a, b, h₃, h₄, h₅⟩
@@ -231,7 +231,7 @@ theorem partial_eval_record_key_preservation_2 {ls : List (Attr × Residual)} :
       . rw [h₅]
       . unfold List.find?
         have h₆: (decide (h.fst = k)) = false := by
-          simp
+          simp only [decide_eq_false_iff_not]
           assumption
         rw [h₆]
         simp
