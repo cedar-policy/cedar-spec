@@ -48,6 +48,74 @@ abbrev PEWellTyped (env : TypeEnv)
   Residual.WellTyped env r₂
 
 -- Helper theorems for record key preservation and type lifting
+theorem ext_well_typed_after_map {xfn args ty env f} :
+  ExtResidualWellTyped xfn args ty →
+  (∀ arg, arg ∈ args → Residual.WellTyped env arg → Residual.WellTyped env (f arg)) →
+  (∀ arg, arg ∈ args → (f arg).typeOf = arg.typeOf) →
+  (∀ x, x.asValue.isSome → f x = x) →
+  ExtResidualWellTyped xfn (args.map f) ty
+:= by
+  intro h₁ h₂ h₃ h₄
+  cases h₅: h₁
+  -- String-based constructors: decimal, ip, datetime, duration
+  case decimal s d h₆ | ip s ip₁ h₆ | datetime s d h₆ | duration s d h₆ =>
+    simp
+    specialize h₄ (Residual.val (Value.prim (Prim.string s)) CedarType.string)
+    simp [Residual.asValue] at h₄
+    rw [h₄]
+    exact h₁
+  -- Binary comparison operators
+  case lessThan x₁ x₂ h₆ h₇ | lessThanOrEqual x₁ x₂ h₆ h₇ | greaterThan x₁ x₂ h₆ h₇ | greaterThanOrEqual x₁ x₂ h₆ h₇ =>
+    first
+    | apply ExtResidualWellTyped.lessThan
+    | apply ExtResidualWellTyped.lessThanOrEqual
+    | apply ExtResidualWellTyped.greaterThan
+    | apply ExtResidualWellTyped.greaterThanOrEqual
+    . rw [h₃ x₁]
+      rw [h₆]
+      simp
+    . rw [h₃ x₂]
+      rw [h₇]
+      simp
+  -- Unary IP address predicates
+  case isIpv4 x₁ h₆ | isIpv6 x₁ h₆ | isLoopback x₁ h₆ | isMulticast x₁ h₆ =>
+    simp
+    first
+    | apply ExtResidualWellTyped.isIpv4
+    | apply ExtResidualWellTyped.isIpv6
+    | apply ExtResidualWellTyped.isLoopback
+    | apply ExtResidualWellTyped.isMulticast
+    rw [h₃ x₁]
+    rw [h₆]
+    simp
+  -- Binary operations: isInRange, offset, durationSince
+  case isInRange x₁ x₂ h₆ h₇ | offset x₁ x₂ h₆ h₇ | durationSince x₁ x₂ h₆ h₇ =>
+    simp
+    first
+    | apply ExtResidualWellTyped.isInRange
+    | apply ExtResidualWellTyped.offset
+    | apply ExtResidualWellTyped.durationSince
+    . rw [h₃ x₁]
+      rw [h₆]
+      simp
+    . rw [h₃ x₂]
+      rw [h₇]
+      simp
+  -- Unary datetime/duration conversions
+  case toDate x₁ h₆ | toTime x₁ h₆ | toMilliseconds x₁ h₆ | toSeconds x₁ h₆ | toMinutes x₁ h₆ | toHours x₁ h₆ | toDays x₁ h₆ =>
+    simp
+    first
+    | apply ExtResidualWellTyped.toDate
+    | apply ExtResidualWellTyped.toTime
+    | apply ExtResidualWellTyped.toMilliseconds
+    | apply ExtResidualWellTyped.toSeconds
+    | apply ExtResidualWellTyped.toMinutes
+    | apply ExtResidualWellTyped.toHours
+    | apply ExtResidualWellTyped.toDays
+    rw [h₃ x₁]
+    rw [h₆]
+    simp
+
 theorem find_lifted_type {attr ty₁ ty₂} {m: RecordType} :
   Map.find? m attr = some ty₁ →
   Map.find? m.liftBoolTypes attr = some ty₂ →
@@ -415,10 +483,7 @@ Helper theorem: Partial evaluation preserves well-typedness for and residuals.
 theorem partial_eval_well_typed_and {env : TypeEnv} {a b : Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
   Residual.WellTyped env (TPE.evaluate a preq pes) →
   Residual.WellTyped env (TPE.evaluate b preq pes) →
-  InstanceOfWellFormedEnvironment req es env →
-  RequestAndEntitiesRefine req es preq pes →
-  Residual.WellTyped env (Residual.and a b ty) →
-  Residual.WellTyped env (TPE.evaluate (Residual.and a b ty) preq pes) := by
+  PEWellTyped env (Residual.and a b ty) (TPE.evaluate (Residual.and a b ty) preq pes) req preq es pes := by
   intros h_a_wt h_b_wt h_wf h_ref h_wt
   simp [TPE.evaluate]
   cases h_wt with
@@ -450,10 +515,7 @@ Helper theorem: Partial evaluation preserves well-typedness for or residuals.
 theorem partial_eval_well_typed_or {env : TypeEnv} {a b : Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
   Residual.WellTyped env (TPE.evaluate a preq pes) →
   Residual.WellTyped env (TPE.evaluate b preq pes) →
-  InstanceOfWellFormedEnvironment req es env →
-  RequestAndEntitiesRefine req es preq pes →
-  Residual.WellTyped env (Residual.or a b ty) →
-  Residual.WellTyped env (TPE.evaluate (Residual.or a b ty) preq pes) := by
+  PEWellTyped env (Residual.or a b ty) (TPE.evaluate (Residual.or a b ty) preq pes) req preq es pes := by
   intros h_a_wt h_b_wt h_wf h_ref h_wt
   simp [TPE.evaluate]
   cases h_wt with
@@ -481,10 +543,7 @@ theorem partial_eval_well_typed_ite {env : TypeEnv} {c t e : Residual} {ty : Ced
   Residual.WellTyped env (TPE.evaluate c preq pes) →
   Residual.WellTyped env (TPE.evaluate t preq pes) →
   Residual.WellTyped env (TPE.evaluate e preq pes) →
-  InstanceOfWellFormedEnvironment req es env →
-  RequestAndEntitiesRefine req es preq pes →
-  Residual.WellTyped env (Residual.ite c t e ty) →
-  Residual.WellTyped env (TPE.evaluate (Residual.ite c t e ty) preq pes) := by
+  PEWellTyped env (Residual.ite c t e ty) (TPE.evaluate (Residual.ite c t e ty) preq pes) req preq es pes := by
   intros h_c_wt h_t_wt h_e_wt h_wf h_ref h_wt
   simp [TPE.evaluate]
   cases h_wt with
@@ -512,10 +571,7 @@ Helper theorem: Partial evaluation preserves well-typedness for unary applicatio
 -/
 theorem partial_eval_well_typed_unaryApp {env : TypeEnv} {op : UnaryOp} {expr : Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
   Residual.WellTyped env (TPE.evaluate expr preq pes) →
-  InstanceOfWellFormedEnvironment req es env →
-  RequestAndEntitiesRefine req es preq pes →
-  Residual.WellTyped env (Residual.unaryApp op expr ty) →
-  Residual.WellTyped env (TPE.evaluate (Residual.unaryApp op expr ty) preq pes) := by
+  PEWellTyped env (Residual.unaryApp op expr ty) (TPE.evaluate (Residual.unaryApp op expr ty) preq pes) req preq es pes := by
   intros h_expr_wt h_wf h_ref h_wt
   simp [TPE.evaluate]
   cases h_wt with
@@ -597,10 +653,7 @@ Helper theorem: Partial evaluation preserves well-typedness for set residuals.
 -/
 theorem partial_eval_well_typed_set {env : TypeEnv} {ls : List Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
   (∀ r ∈ ls, Residual.WellTyped env (TPE.evaluate r preq pes)) →
-  InstanceOfWellFormedEnvironment req es env →
-  RequestAndEntitiesRefine req es preq pes →
-  Residual.WellTyped env (Residual.set ls ty) →
-  Residual.WellTyped env (TPE.evaluate (Residual.set ls ty) preq pes) := by
+  PEWellTyped env (Residual.set ls ty) (TPE.evaluate (Residual.set ls ty) preq pes) req preq es pes := by
   intros h_ls_wt h_wf h_ref h_wt
   cases h_wt
   rename_i ty₁ h₀ h₁ h₂
@@ -666,10 +719,7 @@ Helper theorem: Partial evaluation preserves well-typedness for record residuals
 -/
 theorem partial_eval_well_typed_record {env : TypeEnv} {ls : List (Attr × Residual)} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
   (∀ k v, (k, v) ∈ ls → Residual.WellTyped env (TPE.evaluate v preq pes)) →
-  InstanceOfWellFormedEnvironment req es env →
-  RequestAndEntitiesRefine req es preq pes →
-  Residual.WellTyped env (Residual.record ls ty) →
-  Residual.WellTyped env (TPE.evaluate (Residual.record ls ty) preq pes) := by
+  PEWellTyped env (Residual.record ls ty) (TPE.evaluate (Residual.record ls ty) preq pes) req preq es pes := by
   intros h_ls_wt h_wf h_ref h_wt
   cases h_wt
   rename_i ty₁ h₀ h₁
@@ -779,10 +829,7 @@ Helper theorem: Partial evaluation preserves well-typedness for getAttr residual
 -/
 theorem partial_eval_well_typed_getAttr {env : TypeEnv} {expr : Residual} {attr : Attr} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
   Residual.WellTyped env (TPE.evaluate expr preq pes) →
-  InstanceOfWellFormedEnvironment req es env →
-  RequestAndEntitiesRefine req es preq pes →
-  Residual.WellTyped env (Residual.getAttr expr attr ty) →
-  Residual.WellTyped env (TPE.evaluate (Residual.getAttr expr attr ty) preq pes) := by
+  PEWellTyped env (Residual.getAttr expr attr ty) (TPE.evaluate (Residual.getAttr expr attr ty) preq pes) req preq es pes := by
   intros h_expr_wt h_wf h_ref h_wt
   simp [TPE.evaluate, TPE.getAttr, TPE.attrsOf]
   split
@@ -971,6 +1018,244 @@ theorem partial_eval_well_typed_getAttr {env : TypeEnv} {expr : Residual} {attr 
           rw [h₇]
         case h₃ =>
           rw [h₈]
+
+/--
+Helper theorem: Partial evaluation preserves well-typedness for call residuals.
+-/
+theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
+  (∀ r ∈ args, Residual.WellTyped env (TPE.evaluate r preq pes)) →
+  InstanceOfWellFormedEnvironment req es env →
+  RequestAndEntitiesRefine req es preq pes →
+  Residual.WellTyped env (Residual.call xfn args ty) →
+  Residual.WellTyped env (TPE.evaluate (Residual.call xfn args ty) preq pes) := by
+  intros h_args_wt h_wf h_ref h_wt
+  simp [TPE.evaluate, TPE.call]
+  simp [List.map₁, List.attach, List.attachWith]
+  unfold Function.comp
+  simp
+  unfold List.unattach
+  rw [List.map_pmap_subtype (fun x => x)]
+  simp [List.mapM_then_map_combiner]
+  rw [List.map_pmap_subtype (fun x => TPE.evaluate x preq pes)]
+  split
+  case h_1 x xs h₁ =>
+    cases h_wt
+    rename_i h₂ h₃
+
+    unfold Spec.call
+    split
+    case h_1 | h_6 | h_7 | h_8 | h_9 | h_10 | h_12 | h_13 | h_16 =>
+      rename ExtFun => xf
+      rename List Value => vs
+      try unfold Cedar.Spec.res
+      first
+        | unfold Ext.Decimal.decimal
+        | unfold Ext.IPAddr.ip
+        | unfold Ext.IPAddr.IPNet.isV4
+        | unfold Ext.IPAddr.IPNet.isV6
+        | unfold Ext.IPAddr.IPNet.isLoopback
+        | unfold Ext.IPAddr.IPNet.isMulticast
+        | skip
+      split
+      case h_1 x₂ v =>
+        simp [someOrError, Except.toOption]
+        apply Residual.WellTyped.val
+        rw [List.mapM_some_iff_forall₂, List.forall₂_singleton_right_iff] at h₁
+        rcases h₁ with ⟨x₃, h₁, h₅⟩
+        unfold Residual.asValue at h₁
+        split at h₁
+        case h_2 => contradiction
+        rename_i x₄ v₂ ty₂ h₆
+        have h₇ : x₃ ∈ args := by {
+          simp [Membership.mem]
+          rw [h₅]
+          apply List.Mem.head
+        }
+        injection h₁ ; rename_i h₁
+        specialize h₂ x₃ h₇
+        have ih := h_args_wt x₃ h₇
+        rw [h₆] at ih
+        rw [h₁] at ih
+        cases ih ; rename_i ih
+        cases ih
+        cases h₃
+        first
+        | apply InstanceOfType.instance_of_ext
+          simp [InstanceOfExtType]
+        | apply InstanceOfType.instance_of_bool
+          simp [InstanceOfBoolType]
+      case h_2 x₂ h₄ =>
+        simp [someOrError, Except.toOption]
+        first
+        | apply Residual.WellTyped.error
+        | apply Residual.WellTyped.val
+          cases h₃
+          apply InstanceOfType.instance_of_bool
+          simp [InstanceOfBoolType]
+    case h_2 | h_3 | h_4 | h_5 =>
+      rename_i xf vs d₁ d₂
+      simp [someOrError, Except.toOption]
+      cases h₃
+      apply Residual.WellTyped.val
+      apply InstanceOfType.instance_of_bool
+      simp [InstanceOfBoolType]
+    case h_11 | h_14 | h_15 =>
+      rename ExtFun => xf
+      rename List Value => vs
+      try unfold Cedar.Spec.res
+
+      first
+        | unfold Ext.IPAddr.IPNet.inRange
+        | unfold Ext.Datetime.offset
+        | skip
+
+      split
+      case h_1 x₂ v =>
+        simp [someOrError, Except.toOption]
+        apply Residual.WellTyped.val
+        rw [List.mapM_some_iff_forall₂, List.forall₂_pair_right_iff] at h₁
+        rcases h₁ with ⟨x₃, x₄, h₁, h₅, h₆⟩
+
+        unfold Residual.asValue at h₁
+        split at h₁
+        case h_2 => contradiction
+        rename_i x₄ v₂ ty₂ h₇
+        have h₈ : x₃ ∈ args := by {
+          simp [Membership.mem]
+          rw [h₆]
+          apply List.Mem.head
+        }
+        injection h₁ ; rename_i h₁
+        specialize h₂ x₃ h₈
+        have ih := h_args_wt x₃ h₈
+        rw [h₇] at ih
+        rw [h₁] at ih
+        cases ih ; rename_i ih
+        cases ih
+        cases h₃
+        first
+        | apply InstanceOfType.instance_of_ext
+          simp [InstanceOfExtType]
+        | apply InstanceOfType.instance_of_bool
+          simp [InstanceOfBoolType]
+      case h_2 x₂ h₄ =>
+        simp [someOrError, Except.toOption]
+        first
+        | apply Residual.WellTyped.error
+        | apply Residual.WellTyped.val
+          cases h₃
+          apply InstanceOfType.instance_of_bool
+          simp [InstanceOfBoolType]
+      try case h_3 x₂ v =>
+        simp [someOrError, Except.toOption]
+        cases h₃
+        apply Residual.WellTyped.val
+        apply InstanceOfType.instance_of_bool
+        simp [InstanceOfBoolType]
+    case h_17 | h_18 | h_19 | h_20 | h_21 | h_22 =>
+      simp [someOrError, Except.toOption, Ext.Datetime.toTime, Ext.Datetime.Duration.toMilliseconds]
+      rw [List.mapM_some_iff_forall₂, List.forall₂_singleton_right_iff] at h₁
+      rcases h₁ with ⟨x₃, h₁, h₅⟩
+      unfold Residual.asValue at h₁
+      split at h₁
+      case h_2 => contradiction
+      rename_i x₄ v₂ ty₂ h₆
+      have h₇ : x₃ ∈ args := by {
+        simp [Membership.mem]
+        rw [h₅]
+        apply List.Mem.head
+      }
+      injection h₁ ; rename_i h₁
+      specialize h₂ x₃ h₇
+
+      have ih := h_args_wt x₃ h₇
+      rw [h₆] at ih
+      rw [h₁] at ih
+      cases ih ; rename_i ih
+      cases ih
+      cases h₃
+      apply Residual.WellTyped.val
+      first
+      | apply InstanceOfType.instance_of_ext
+        simp [InstanceOfExtType]
+      | apply InstanceOfType.instance_of_int
+    case h_23 =>
+      simp [someOrError, Except.toOption]
+      apply Residual.WellTyped.error
+  case h_2 x h₂ =>
+    split
+    case isTrue =>
+      apply Residual.WellTyped.error
+    case isFalse =>
+      cases h_wt
+      rename_i h₁ h₂
+      apply Residual.WellTyped.call
+      case call.h₁ =>
+        intro r h₃
+        have h₄ := List.mem_of_map_implies_exists_unmapped h₃
+        rcases h₄ with ⟨r₂, h₄, h₅⟩
+        specialize h₁ r₂ h₄
+        have ih := h_args_wt r₂ h₄
+        rw [h₅]
+        exact ih
+      case call.h₂ =>
+        apply ext_well_typed_after_map h₂
+        case a =>
+          intro x h₄ h₅
+          apply h_args_wt
+          exact h₄
+        case a =>
+          intro x h₄
+          specialize h₁ x h₄
+          apply partial_eval_preserves_typeof h_wf h_ref h₁
+        case a =>
+          intro x h₄
+          cases x
+          . rename_i v ty
+            simp [TPE.evaluate]
+          all_goals {
+            simp [Residual.asValue] at h₄
+          }
+
+/--
+Helper theorem: Partial evaluation preserves well-typedness for hasAttr residuals.
+-/
+theorem partial_eval_well_typed_hasAttr {env : TypeEnv} {expr : Residual} {attr : Attr} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
+  Residual.WellTyped env (TPE.evaluate expr preq pes) →
+  InstanceOfWellFormedEnvironment req es env →
+  RequestAndEntitiesRefine req es preq pes →
+  Residual.WellTyped env (Residual.hasAttr expr attr ty) →
+  Residual.WellTyped env (TPE.evaluate (Residual.hasAttr expr attr ty) preq pes) := by
+  intros h_expr_wt h_wf h_ref h_wt
+  simp [TPE.evaluate, TPE.hasAttr, TPE.attrsOf]
+  split
+  case h_1 =>
+    apply Residual.WellTyped.error
+  case h_2 r₁ h₁ =>
+    split
+    case h_1 x m h₂ =>
+      apply Residual.WellTyped.val
+      apply InstanceOfType.instance_of_bool
+      unfold InstanceOfBoolType
+      simp
+    case h_2 x h₂ =>
+      cases h_wt
+      case hasAttr_entity ety  h₅ h₆ =>
+        apply Residual.WellTyped.hasAttr_entity
+        case h₁ =>
+          exact h_expr_wt
+        case h₂ =>
+          have h₁₀ := partial_eval_preserves_typeof h_wf h_ref h₅
+          rw [h₁₀]
+          rw [h₆]
+      case hasAttr_record rty h₆ h₇ =>
+        apply Residual.WellTyped.hasAttr_record
+        case h₁ =>
+          exact h_expr_wt
+        case h₂ =>
+          have h₁₀ := partial_eval_preserves_typeof h_wf h_ref h₆
+          rw [h₁₀]
+          rw [h₇]
 
 theorem partial_eval_well_typed_app₂ :
   Residual.WellTyped env (TPE.evaluate expr1 preq pes) →
