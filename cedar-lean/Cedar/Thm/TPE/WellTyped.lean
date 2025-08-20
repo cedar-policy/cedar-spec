@@ -499,110 +499,19 @@ theorem partial_eval_preserves_well_typed
       have ih_b : Residual.WellTyped env (TPE.evaluate b preq pes) := partial_eval_preserves_well_typed h_wf h_ref h_b
       exact partial_eval_well_typed_or ih_a ih_b h_wf h_ref h_wt
   case ite c t e ty =>
-    simp [TPE.evaluate]
-    cases h_wt with
+    let h_wt₂ := h_wt
+    cases h_wt₂ with
     | ite h_c h_t h_e h_ty_c h_ty_t =>
-      let c_eval := TPE.evaluate c preq pes
-      let t_eval := TPE.evaluate t preq pes
-      let e_eval := TPE.evaluate e preq pes
-      have h_ref_reconstructed : RequestAndEntitiesRefine req es preq pes := ⟨h_rref, h_eref⟩
-      have h_c_wt : Residual.WellTyped env c_eval := partial_eval_preserves_well_typed h_wf h_ref_reconstructed h_c
-      have h_t_wt : Residual.WellTyped env t_eval := partial_eval_preserves_well_typed h_wf h_ref_reconstructed h_t
-      have h_e_wt : Residual.WellTyped env e_eval := partial_eval_preserves_well_typed h_wf h_ref_reconstructed h_e
-      unfold TPE.ite
-      split
-      . split
-        · exact h_t_wt
-        · exact h_e_wt
-      . apply Residual.WellTyped.error
-      . have h_t_type_eq : t.typeOf = t_eval.typeOf := (partial_eval_preserves_typeof h_wf h_ref_reconstructed h_t).symm
-        rw [h_t_type_eq]
-        apply Residual.WellTyped.ite
-        · exact h_c_wt
-        · exact h_t_wt
-        · exact h_e_wt
-        · rw [partial_eval_preserves_typeof h_wf h_ref_reconstructed h_c]
-          exact h_ty_c
-        · rw [partial_eval_preserves_typeof h_wf h_ref_reconstructed h_t]
-          rw [partial_eval_preserves_typeof h_wf h_ref_reconstructed h_e]
-          exact h_ty_t
+      have ih_c : Residual.WellTyped env (TPE.evaluate c preq pes) := partial_eval_preserves_well_typed h_wf h_ref h_c
+      have ih_t : Residual.WellTyped env (TPE.evaluate t preq pes) := partial_eval_preserves_well_typed h_wf h_ref h_t
+      have ih_e : Residual.WellTyped env (TPE.evaluate e preq pes) := partial_eval_preserves_well_typed h_wf h_ref h_e
+      exact partial_eval_well_typed_ite ih_c ih_t ih_e h_wf h_ref h_wt
   case unaryApp op expr ty =>
-    simp [TPE.evaluate]
-    cases h_wt with
+    let h_wt₂ := h_wt
+    cases h_wt₂ with
     | unaryApp h_expr h_op =>
-      let expr_eval := TPE.evaluate expr preq pes
-      have h_ref_reconstructed : RequestAndEntitiesRefine req es preq pes := ⟨h_rref, h_eref⟩
-      have h_expr_wt : Residual.WellTyped env expr_eval := partial_eval_preserves_well_typed h_wf h_ref_reconstructed h_expr
-      unfold TPE.apply₁
-      split
-      . apply Residual.WellTyped.error
-      . cases h : expr_eval.asValue with
-        | some v =>
-          unfold someOrError
-          split
-          . split
-            . rename_i r v₂ ov v₁ v2v ty ox x v heq
-              injection v2v with hᵥ
-              unfold Spec.apply₁ at heq
-              apply Residual.WellTyped.val
-              split at heq
-              . cases h_op
-                simp [Except.toOption] at heq
-                rw [← heq]
-                apply InstanceOfType.instance_of_bool
-                simp [InstanceOfBoolType]
-              . cases h_op
-                simp [Except.toOption, intOrErr] at heq
-                rename Int64 => i
-                cases h₂: i.neg?
-                . rw [h₂] at heq
-                  simp at heq
-                . rw [h₂] at heq
-                  simp at heq
-                  rw [← heq]
-                  apply InstanceOfType.instance_of_int
-              . cases h_op
-                simp [Except.toOption] at heq
-                rw [← heq]
-                apply InstanceOfType.instance_of_bool
-                simp [InstanceOfBoolType]
-              . simp [Except.toOption] at heq
-                rw [← heq]
-                cases h_op
-                apply InstanceOfType.instance_of_bool
-                simp [InstanceOfBoolType]
-              . cases h_op
-                simp [Except.toOption] at heq
-                rw [← heq]
-                apply InstanceOfType.instance_of_bool
-                simp [InstanceOfBoolType]
-              . contradiction
-            . apply Residual.WellTyped.error
-          . contradiction
-        | none =>
-          apply Residual.WellTyped.unaryApp
-          · exact h_expr_wt
-          · cases h_op with
-            | not h_ty =>
-              apply UnaryResidualWellTyped.not
-              rw [partial_eval_preserves_typeof h_wf h_ref_reconstructed h_expr]
-              exact h_ty
-            | neg h_ty =>
-              apply UnaryResidualWellTyped.neg
-              rw [partial_eval_preserves_typeof h_wf h_ref_reconstructed h_expr]
-              exact h_ty
-            | isEmpty h_ty =>
-              apply UnaryResidualWellTyped.isEmpty
-              rw [partial_eval_preserves_typeof h_wf h_ref_reconstructed h_expr]
-              exact h_ty
-            | like h_ty =>
-              apply UnaryResidualWellTyped.like
-              rw [partial_eval_preserves_typeof h_wf h_ref_reconstructed h_expr]
-              exact h_ty
-            | is h_ty =>
-              apply UnaryResidualWellTyped.is
-              rw [partial_eval_preserves_typeof h_wf h_ref_reconstructed h_expr]
-              exact h_ty
+      have ih_expr : Residual.WellTyped env (TPE.evaluate expr preq pes) := partial_eval_preserves_well_typed h_wf h_ref h_expr
+      exact partial_eval_well_typed_unaryApp ih_expr h_wf h_ref h_wt
   case binaryApp op expr1 expr2 ty =>
     simp [TPE.evaluate]
     have h_wt₂ := h_wt
@@ -613,67 +522,16 @@ theorem partial_eval_preserves_well_typed
 
       apply partial_eval_well_typed_app₂ ih1 ih2 h_wf h_ref h_wt₂
   case error ty =>
-    simp [TPE.evaluate]
-    exact h_wt
+    exact partial_eval_well_typed_error h_wf h_ref h_wt
   case set ls ty =>
-    cases h_wt
+    let h_wt₂ := h_wt
+    cases h_wt₂
     rename_i ty₁ h₀ h₁ h₂
-    simp [TPE.evaluate, TPE.set]
-    split
-    . rename_i x xs h₃
-      apply Residual.WellTyped.val
-      apply InstanceOfType.instance_of_set
-      intro v h₄
-      unfold List.map₁ List.attach List.attachWith at h₃
-      rw [List.map_pmap_subtype (fun x => TPE.evaluate x preq pes)] at h₃
-      rw [List.mapM_then_map_combiner_option] at h₃
-      rw [← Set.make_mem] at h₄
-      have h₅ := List.mem_mapM_some_implies_exists_ele h₃ h₄
-      rcases h₅ with ⟨y, h₆, h₇⟩
-      specialize h₀ y h₆
-      let h₈ := partial_eval_preserves_typeof h_wf h_ref h₀
-      unfold Residual.asValue at h₇
-      split at h₇
-      case h_2 =>
-        contradiction
-      case h_1 x₂ v₂ ty₂ h₉ =>
-        injection h₇
-        rename_i h₇
-        rw [h₇] at h₉
-        let ih := partial_eval_preserves_well_typed h_wf h_ref h₀
-        rw [h₉] at ih
-        cases ih
-        case val h₁₀ =>
-        specialize h₁ y h₆
-        rw [h₁] at h₈
-        rw [h₉] at h₈
-        simp [Residual.typeOf] at h₈
-        rw [← h₈]
-        exact h₁₀
-    . split
-      . apply Residual.WellTyped.error
-      . rename_i x h₃ h₄
-        apply Residual.WellTyped.set
-        . intro x h₅
-          simp [List.map₁, List.attach] at h₅
-          rcases h₅ with ⟨x₂, h₆, h₇⟩
-          specialize h₀ x₂ h₆
-          let ih := partial_eval_preserves_well_typed h_wf h_ref h₀
-          rw [← h₇]
-          exact ih
-        . intro x h₅
-          simp [List.map₁, List.attach] at h₅
-          rcases h₅ with ⟨x₂, h₆, h₇⟩
-          specialize h₀ x₂ h₆
-          let h₆ := partial_eval_preserves_typeof h_wf h_ref h₀
-          rw [h₇] at h₆
-          rename_i h₈
-          specialize h₁ x₂ h₈
-          rw [← h₁]
-          exact h₆
-        . simp [List.map₁]
-          simp at h₂
-          exact h₂
+    have ih_ls : ∀ r ∈ ls, Residual.WellTyped env (TPE.evaluate r preq pes) := by
+      intros r h_mem
+      specialize h₀ r h_mem
+      exact partial_eval_preserves_well_typed h_wf h_ref h₀
+    exact partial_eval_well_typed_set ih_ls h_wf h_ref h_wt
   case record ls ty =>
     cases h_wt
     rename_i ty₁ h₀ h₁
