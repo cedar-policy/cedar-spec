@@ -35,107 +35,6 @@ open Cedar.Validation
 open Cedar.TPE
 
 
-/--
-Helper theorem: Partial evaluation preserves well-typedness for variable residuals.
--/
-theorem partial_evaluation_well_typed_var {pes}      {env : TypeEnv}
-  {v : Var}
-  {ty : CedarType}
-  {req : Request}
-  {preq : PartialRequest}
-  {es : Entities}
-  :
-  PEWellTyped env (Residual.var v ty) (varₚ preq v ty) req preq es pes := by
-  intro h_wf h_ref h_wt
-  rcases h_ref with ⟨h_rref, h_eref⟩
-  unfold varₚ
-  cases v with
-  | principal =>
-    simp
-    unfold RequestRefines at h_rref
-    rcases h_rref with ⟨h_pv, h_rest⟩
-    cases h : preq.principal.asEntityUID
-    . dsimp [varₚ.varₒ, someOrSelf]
-      exact h_wt
-    . dsimp [varₚ.varₒ, someOrSelf]
-      rw [h] at h_pv
-      apply Residual.WellTyped.val
-      cases h_pv with
-      | some _ h₃ =>
-        rw [h₃]
-        cases h_wt with
-        | var h₄ =>
-          cases h₄ with
-          | principal =>
-            apply InstanceOfType.instance_of_entity req.principal env.reqty.principal
-            rcases h_wf with ⟨_, ⟨h_principal, _, _, _⟩, _⟩
-            exact h_principal
-  | resource =>
-    simp
-    unfold RequestRefines at h_rref
-    rcases h_rref with ⟨h_pv, h_rest⟩
-    rcases h_rest with ⟨h_av, h_rv, h_cv⟩
-    cases h : preq.resource.asEntityUID
-    . dsimp [varₚ.varₒ, someOrSelf]
-      exact h_wt
-    . dsimp [varₚ.varₒ, someOrSelf]
-      rw [h] at h_rv
-      apply Residual.WellTyped.val
-      cases h_rv with
-      | some _ h₃ =>
-        rw [h₃]
-        cases h_wt with
-        | var h₄ =>
-          cases h₄ with
-          | resource =>
-            apply InstanceOfType.instance_of_entity req.resource env.reqty.resource
-            rcases h_wf with ⟨_, ⟨_, _, h_resource, _⟩, _⟩
-            exact h_resource
-  | action =>
-    simp
-    unfold RequestRefines at h_rref
-    rcases h_rref with ⟨h_pv, h_rest⟩
-    rcases h_rest with ⟨h_av, h_rv, h_cv⟩
-    -- Action is always concrete in partial requests
-    dsimp [varₚ.varₒ, someOrSelf]
-    apply Residual.WellTyped.val
-    cases h_wt with
-    | var h₄ =>
-      cases h₄ with
-      | action =>
-        rw [←h_av]
-        apply InstanceOfType.instance_of_entity req.action env.reqty.action.ty
-        rcases h_wf with ⟨hwf, ⟨_, h_action, _, _⟩, _⟩
-        rw [h_action]
-        have : InstanceOfEntityType env.reqty.action env.reqty.action.ty env := by
-          have ⟨_, _, _, hwf_act, _⟩ := hwf
-          simp [
-            InstanceOfEntityType, EntityUID.WellFormed,
-            ActionSchema.contains, hwf_act,
-          ]
-        exact this
-  | context =>
-    simp
-    unfold RequestRefines at h_rref
-    rcases h_rref with ⟨h_pv, h_rest⟩
-    rcases h_rest with ⟨h_av, h_rv, h_cv⟩
-    cases h : preq.context
-    . dsimp [varₚ.varₒ, someOrSelf]
-      exact h_wt
-    . dsimp [varₚ.varₒ, someOrSelf]
-      rw [h] at h_cv
-      apply Residual.WellTyped.val
-      cases h_cv with
-      | some _ h₃ =>
-        rw [h₃]
-        cases h_wt with
-        | var h₄ =>
-          cases h₄ with
-          | context =>
-            rcases h_wf with ⟨_, ⟨_, _, _, h_context⟩, _⟩
-            exact type_lifting_preserves_instance_of_type h_context
-
-
 
 /--
 Theorem: Partial evaluation preserves well-typedness of residuals.
@@ -224,6 +123,12 @@ theorem partial_eval_preserves_well_typed
       intros k v h_mem
       specialize h₀ k v h_mem
       have termination : sizeOf v < sizeOf res := by {
+        -- Use the existing lemma for list member size
+        have h_snd_lt : sizeOf (k, v).snd < 1 + sizeOf ls := List.sizeOf_snd_lt_sizeOf_list h_mem
+        simp at h_snd_lt
+        -- The size of the record includes the size of the list plus overhead
+        rw [hᵣ]
+        -- unclear how to get size of ls compared to residual.record
         sorry
       }
       exact partial_eval_preserves_well_typed h_wf h_ref h₀
