@@ -43,6 +43,9 @@ static RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
         .unwrap()
 });
 
+/// Limit the number of request environments so that we don't produce slow units
+const MAX_REQ_ENV_NUM: usize = 128;
+
 /// Input expected by this fuzz target
 #[derive(Debug, Clone)]
 pub struct FuzzTargetInput {
@@ -110,7 +113,7 @@ fuzz_target!(|input: FuzzTargetInput| {
     debug!("Policies: {policy}\n");
 
     if let Ok(schema) = Schema::try_from(input.schema) {
-        for req_env in schema.request_envs() {
+        for req_env in schema.request_envs().take(MAX_REQ_ENV_NUM) {
             if let Ok(sym_env) = SymEnv::new(&schema, &req_env) {
                 // We let Rust to drive the term generation as it's faster than Lean
                 if let Ok(rust_asserts) = compile_policies(
