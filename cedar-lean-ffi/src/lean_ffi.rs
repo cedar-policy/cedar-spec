@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 use crate::datatypes::{
-    AuthorizationResponse, AuthorizationResponseInner, ResultDef, Term, TimedDef, TimedResult,
+    AuthorizationResponse, AuthorizationResponseInner, Env, ResultDef, Term, TimedDef, TimedResult,
     ValidationResponse,
 };
 use crate::err::FfiError;
@@ -347,7 +347,7 @@ impl CedarLeanFfi {
         run_check_never_errors_with_cex,
         runCheckNeverErrorsWithCex,
         |x| x,
-        Option<serde_json::Value>
+        Option<Env>
     );
 
     checkPolicySet_func!(
@@ -363,7 +363,7 @@ impl CedarLeanFfi {
         run_check_always_allows_with_cex,
         runCheckAlwaysAllowsWithCex,
         |x| x,
-        Option<serde_json::Value>
+        Option<Env>
     );
 
     checkPolicySet_func!(
@@ -379,7 +379,7 @@ impl CedarLeanFfi {
         run_check_always_denies_with_cex,
         runCheckAlwaysDeniesWithCex,
         |x| x,
-        Option<serde_json::Value>
+        Option<Env>
     );
 
     comparePolicySet_func!(
@@ -395,7 +395,7 @@ impl CedarLeanFfi {
         run_check_equivalent_with_cex,
         runCheckEquivalentWithCex,
         |x| x,
-        Option<serde_json::Value>
+        Option<Env>
     );
 
     comparePolicySet_func!(
@@ -411,7 +411,7 @@ impl CedarLeanFfi {
         run_check_implies_with_cex,
         runCheckImpliesWithCex,
         |x| x,
-        Option<serde_json::Value>
+        Option<Env>
     );
 
     comparePolicySet_func!(
@@ -427,7 +427,7 @@ impl CedarLeanFfi {
         run_check_disjoint_with_cex,
         runCheckDisjointWithCex,
         |x| x,
-        Option<serde_json::Value>
+        Option<Env>
     );
 
     // Adds each of the print_(symcc-command) to call the corresponding lean function
