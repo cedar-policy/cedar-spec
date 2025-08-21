@@ -948,11 +948,6 @@ impl Schema {
         }
     }
 
-    // An upper bound on the number of request environment a schema can produce
-    // See https://github.com/cedar-policy/cedar-spec/issues/610 for the
-    // motivation why we want this limit
-    pub(crate) const PER_ACTION_REQUEST_ENV_LIMIT: usize = 128;
-
     /// Get an arbitrary `Schema`.
     pub fn arbitrary(settings: ABACSettings, u: &mut Unstructured<'_>) -> Result<Schema> {
         let namespace = arbitrary_namespace(u)?;
@@ -1067,7 +1062,7 @@ impl Schema {
             // Pre-select the number of entity types (minimum 1), then randomly select that many indices
             let num = u
                 .int_in_range(
-                    1..=std::cmp::min(entity_types.len(), Self::PER_ACTION_REQUEST_ENV_LIMIT),
+                    1..=std::cmp::min(entity_types.len(), settings.per_action_request_env_limit),
                 )
                 .unwrap();
             let mut indices: Vec<usize> = (0..entity_types.len()).collect();
@@ -1091,6 +1086,7 @@ impl Schema {
             )
         };
         let mut principal_and_resource_types_exist = false;
+        let mut total_req_env_num = 0;
         // Ensure on the first pass we always generate a principal/resource
         // After that, flip a coin to optional delete the principal/resource type lists
         let mut actions: Vec<(SmolStr, json_schema::ActionType<ast::InternalName>)> = action_names
@@ -1118,8 +1114,18 @@ impl Schema {
                                 picked_principal_types.len() * picked_resource_types.len();
                             // Fail fast if the number of request environment
                             // number is too large
-                            if req_env_num > Self::PER_ACTION_REQUEST_ENV_LIMIT {
-                                return Err(Error::TooManyReqEnvs(req_env_num));
+                            if req_env_num > settings.per_action_request_env_limit {
+                                return Err(Error::TooManyReqEnvsPerAction(
+                                    req_env_num,
+                                    settings.per_action_request_env_limit,
+                                ));
+                            }
+                            total_req_env_num += req_env_num;
+                            if total_req_env_num > settings.total_action_request_env_limit {
+                                return Err(Error::TooManyReqEnvs(
+                                    total_req_env_num,
+                                    settings.total_action_request_env_limit,
+                                ));
                             }
                             Some(json_schema::ApplySpec {
                                 resource_types: picked_resource_types,
@@ -2015,6 +2021,8 @@ mod tests {
         enable_arbitrary_func_call: false,
         enable_unknowns: false,
         enable_action_in_constraints: true,
+        per_action_request_env_limit: ABACSettings::default_per_action_request_env_limit(),
+        total_action_request_env_limit: ABACSettings::default_total_action_request_env_limit(),
     };
 
     const GITHUB_SCHEMA_STR: &str = r#"

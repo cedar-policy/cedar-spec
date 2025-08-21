@@ -17,7 +17,10 @@
 #![no_main]
 use cedar_drt::{logger::initialize_log, CedarLeanEngine};
 
-use cedar_drt_inner::{fuzz_target, symcc::compile_well_typed_policies};
+use cedar_drt_inner::{
+    fuzz_target,
+    symcc::{compile_well_typed_policies, total_action_request_env_limit},
+};
 
 use cedar_policy::{Policy, PolicySet, Schema};
 
@@ -55,6 +58,8 @@ const SETTINGS: ABACSettings = ABACSettings {
     enable_arbitrary_func_call: true,
     enable_unknowns: false,
     enable_action_in_constraints: true,
+    per_action_request_env_limit: ABACSettings::default_per_action_request_env_limit(),
+    total_action_request_env_limit: total_action_request_env_limit(),
 };
 
 impl<'a> Arbitrary<'a> for FuzzTargetInput {
