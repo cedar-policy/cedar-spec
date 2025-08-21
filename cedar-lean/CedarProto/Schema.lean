@@ -30,6 +30,10 @@ structure Schema where
   acts : Repeated ActionDecl
 deriving Repr, Inhabited
 
+deriving instance Hashable for Spec.Name
+deriving instance Hashable for Spec.EntityType
+deriving instance Hashable for Spec.EntityUID
+
 /-
 The Rust data types store _descendant_ information for the entity type store
 and action store, but _ancestor_ information for the entity store. The Lean
@@ -39,13 +43,11 @@ The definitions and utility functions below are used to convert the descendant
 representation to the ancestor representation.
 -/
 @[inline]
-private def findInMapValues [LT α] [DecidableEq α] [DecidableLT α] (m : List (α × (Data.Set α))) (k₁ : α) : Data.Set α :=
-  let setOfSets := m.map λ (k₂,v) => if v.contains k₁ then Data.Set.singleton k₂ else Data.Set.empty
-  setOfSets.foldl Data.Set.union Data.Set.empty
-
-@[inline]
-private def descendantsToAncestors [LT α] [DecidableEq α] [DecidableLT α] (descendants : List (α × (Data.Set α))) : Data.Map α (Data.Set α) :=
-  Data.Map.make (descendants.map λ (k,_) => (k, findInMapValues descendants k))
+private def descendantsToAncestors [BEq α] [Hashable α] (descendants : Std.HashMap α (Std.HashSet α)) : Std.HashMap α (Std.HashSet α) :=
+  descendants.fold (fun acc k _ => acc.insert k (findInMapValues k)) Std.HashMap.emptyWithCapacity
+where
+  findInMapValues (k₁ : α) : Std.HashSet α :=
+    descendants.fold (fun acc k₂ v => if v.contains k₁ then acc.insert k₂ else acc) Std.HashSet.emptyWithCapacity
 
 namespace Schema
 
@@ -76,26 +78,26 @@ private def attrsToCedarType (attrs : Proto.Map String (Qualified ProtoType)) : 
 
 def toSchema (schema : Schema) : Except String Validation.Schema := do
   let ets := schema.ets.toList
-  let descendantMap := ets.map λ decl => (decl.name.toName, Data.Set.make $ decl.descendants.toList.map Spec.Proto.Name.toName)
+  let descendantMap := Std.HashMap.ofList $ ets.map λ decl => (decl.name.toName, Std.HashSet.ofList $ decl.descendants.toList.map Spec.Proto.Name.toName)
   let ancestorMap := descendantsToAncestors descendantMap
   let ets ← ets.mapM λ decl => do
     let name := decl.name.toName
     let ese : EntitySchemaEntry ←
       if decl.enums.isEmpty then .ok $ .standard {
-        ancestors := ancestorMap.find! name
+        ancestors := Data.Set.make (ancestorMap.getD name (Std.HashSet.emptyWithCapacity 0)).toList
         attrs := ← attrsToCedarType decl.attrs
         tags := ← option_transpose $ decl.tags.map ProtoType.toCedarType
       }
       else .ok $ .enum $ Cedar.Data.Set.make decl.enums.toList
     .ok (name, ese)
   let acts := schema.acts.toList
-  let descendantMap := acts.map λ decl => (decl.name, Data.Set.make decl.descendants.toList)
+  let descendantMap := Std.HashMap.ofList $ acts.map λ decl => (decl.name, Std.HashSet.ofList decl.descendants.toList)
   let ancestorMap := descendantsToAncestors descendantMap
   let acts ← acts.mapM λ decl => do
     .ok (decl.name, {
       appliesToPrincipal := Data.Set.make $ decl.principalTypes.toList.map Spec.Proto.Name.toName
       appliesToResource := Data.Set.make $ decl.resourceTypes.toList.map Spec.Proto.Name.toName
-      ancestors := ancestorMap.find! decl.name
+      ancestors := Data.Set.make (ancestorMap.getD decl.name (Std.HashSet.emptyWithCapacity 0)).toList
       context := ← attrsToCedarType decl.context
     })
   .ok { ets := Data.Map.make ets, acts := Data.Map.make acts }
