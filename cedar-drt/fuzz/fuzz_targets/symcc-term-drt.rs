@@ -31,6 +31,9 @@ use std::{collections::BTreeSet, convert::TryFrom};
 
 use cedar_policy_symcc::{compile_always_allows, term::Term, WellTypedPolicies};
 
+/// Limit the number of request environments so that we don't produce slow units
+const MAX_REQ_ENV_NUM: usize = 128;
+
 /// Input expected by this fuzz target
 #[derive(Debug, Clone)]
 pub struct FuzzTargetInput {
@@ -85,7 +88,7 @@ fuzz_target!(|input: FuzzTargetInput| {
     debug!("Policies: {policy}\n");
 
     if let Ok(schema) = Schema::try_from(input.schema) {
-        for req_env in schema.request_envs() {
+        for req_env in schema.request_envs().take(MAX_REQ_ENV_NUM) {
             // The validator DRT property we've been testing is that
             // rust_passes_validation => lean_passes_validation
             // So, we run the Rust validator first and obtain a well-typed
