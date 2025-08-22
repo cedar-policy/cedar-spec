@@ -99,10 +99,9 @@ def batchedEvaluate
   (req : Request)
   (loader : EntityLoader)
   : Result Value :=
-  let emptyStore : PartialEntities := Map.mk []
   let residual := Cedar.TPE.evaluate (TypedExpr.toResidual x) (Request.asPartialRequest req) Map.empty
   -- start the batched evaluation loop
-  batchedEvalLoop residual req loader emptyStore
+  batchedEvalLoop residual req loader Map.empty
 
 def entityLoaderFor (es: Entities) (uids : Set EntityUID) :=
   Map.make (uids.toList.map (λ uid =>
