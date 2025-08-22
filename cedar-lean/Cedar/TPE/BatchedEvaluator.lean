@@ -56,16 +56,12 @@ def Residual.allLiteralUIDs (x : Residual) : Set EntityUID :=
     x.mapUnion₁ (λ ⟨v, _⟩ => Residual.allLiteralUIDs v)
 termination_by sizeOf x
 decreasing_by
-  repeat case _ =>
-    simp [*]; try omega
-  . rename_i h
-    let so := List.sizeOf_lt_of_mem h
+  any_goals
     simp
-    omega
-  . rename_i h
-    simp at *
-    omega
-  . rename_i h
+    try simp at *
+    try omega
+  all_goals
+    rename_i h
     let so := List.sizeOf_lt_of_mem h
     simp at *
     omega
