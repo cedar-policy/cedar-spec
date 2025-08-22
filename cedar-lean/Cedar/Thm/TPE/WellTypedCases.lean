@@ -542,12 +542,11 @@ theorem partial_eval_well_typed_record {env : TypeEnv} {ls : List (Attr × Resid
       simp at h₈
 
       rw [Map.list_find?_some_iff_map_find?_some] at h₉
-      replace h₉ := Map.find?_implies_exists_mapped_value (λ x => Qualified.required x.typeOf) h₉
+      replace h₉ := Map.find?_mapOnValues_some (λ x => Qualified.required x.typeOf) h₉
 
       subst ty₁
-      rcases h₉ with ⟨v₃, h₉⟩
       simp [Map.mapOnValues] at h₉
-      exists v₃
+      exists (Qualified.required v₂.typeOf)
       rw [← Map.list_find?_iff_make_find?]
       rw [← Map.list_find?_iff_mk_find?] at h₉
       exact h₉
@@ -569,9 +568,9 @@ theorem partial_eval_well_typed_record {env : TypeEnv} {ls : List (Attr × Resid
         simp [Map.find?]
         rw [h₇]
 
-      have h₉_new := Map.find?_map_implies_exists_unmapped h₇_new
+      have h₉_new := Map.find?_mapOnValues_some' (fun x: Residual => Qualified.required x.typeOf) h₇_new
       rcases h₉_new with ⟨v₃, h₁₀, h₉⟩
-      rw [← h₉]
+      rw [h₉]
       have h₁₁ := h₀
       have h₁₂ := List.mem_of_find?_eq_some h₈
       specialize h₁₁ k v₂ h₁₂
@@ -606,7 +605,7 @@ theorem partial_eval_well_typed_record {env : TypeEnv} {ls : List (Attr × Resid
         simp [Map.find?]
         rw [← Map.list_find?_iff_make_find?] at h₄
         rw [h₄]
-      have h₅ := Map.find?_map_implies_exists_unmapped (α := Attr) h₄
+      have h₅ := Map.find?_mapOnValues_some' (α := Attr) (fun x: Residual => Qualified.required x.typeOf) h₄
 
       rcases h₅ with ⟨v₂, h₅, _⟩
       rw [← Map.list_find?_iff_mk_find?] at h₅
