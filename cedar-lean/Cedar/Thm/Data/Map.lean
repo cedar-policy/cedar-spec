@@ -1662,7 +1662,6 @@ private theorem list_find?_implies_make_find?
       assumption
       simp [hneq]
 
-
 theorem list_find?_iff_make_find?
   [DecidableEq α] [LT α] [DecidableLT α]
   [Cedar.Data.StrictLT α]
