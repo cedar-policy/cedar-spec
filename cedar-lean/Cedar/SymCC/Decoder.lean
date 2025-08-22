@@ -233,7 +233,7 @@ where
     | .none     => constructEntityOrRecord s []
   constructEntityOrRecord tyId args : Result Term := do
     match ids.types.find? tyId, args with
-    | .some (.entity ety), [.string eid] =>
+    | .some (.entity ety), [SExpr.string eid] =>
       Term.entity ⟨ety, eid⟩
     | .some (.record (Map.mk rty)), _ =>
       let ts ← args.mapM (SExpr.decodeLit ids)
