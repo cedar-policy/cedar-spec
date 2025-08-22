@@ -32,23 +32,28 @@ abbrev EntityLoader := Set EntityUID → Map EntityUID PartialEntityData
 
 def Residual.allLiteralUIDs (x : Residual) : Set EntityUID :=
   match x with
-  | .val v _ty =>
-    match v with
-    | .prim (.entityUID uid) => Set.singleton uid
-    | _ => Set.empty
-  | .error _e =>
-    Set.empty
-  | .var _ _ => Set.empty
-  | .ite x₁ x₂ x₃ _ => Residual.allLiteralUIDs x₁ ∪ Residual.allLiteralUIDs x₂ ∪ Residual.allLiteralUIDs x₃
-  | .and x₁ x₂ _   => Residual.allLiteralUIDs x₁ ∪ Residual.allLiteralUIDs x₂
-  | .or x₁ x₂ _    => Residual.allLiteralUIDs x₁ ∪ Residual.allLiteralUIDs x₂
-  | .unaryApp _ x _ => Residual.allLiteralUIDs x
-  | .binaryApp _ x₁ x₂ _ => Residual.allLiteralUIDs x₁ ∪ Residual.allLiteralUIDs x₂
-  | .getAttr x _ _ => Residual.allLiteralUIDs x
-  | .hasAttr x _ _ => Residual.allLiteralUIDs x
-  | .set x _ => x.mapUnion₁ (λ ⟨v, _⟩ => Residual.allLiteralUIDs v)
-  | .record x _ => x.mapUnion₂ (λ ⟨⟨_attr, v⟩, _⟩ => Residual.allLiteralUIDs v)
-  | .call _ x _ => x.mapUnion₁ (λ ⟨v, _⟩ => Residual.allLiteralUIDs v)
+  | .val (.prim (.entityUID uid)) _ty  => Set.singleton uid
+  | .val _ _                           => Set.empty
+  | .error _e                          => Set.empty
+  | .var _ _                           => Set.empty
+  | .ite x₁ x₂ x₃ _      =>
+    Residual.allLiteralUIDs x₁ ∪ Residual.allLiteralUIDs x₂ ∪ Residual.allLiteralUIDs x₃
+  | .and x₁ x₂ _         =>
+    Residual.allLiteralUIDs x₁ ∪ Residual.allLiteralUIDs x₂
+  | .or x₁ x₂ _          =>
+    Residual.allLiteralUIDs x₁ ∪ Residual.allLiteralUIDs x₂
+  | .unaryApp _ x _      =>
+    Residual.allLiteralUIDs x
+  | .binaryApp _ x₁ x₂ _ =>
+    Residual.allLiteralUIDs x₁ ∪ Residual.allLiteralUIDs x₂
+  | .getAttr x _ _       => Residual.allLiteralUIDs x
+  | .hasAttr x _ _       => Residual.allLiteralUIDs x
+  | .set x _             =>
+    x.mapUnion₁ (λ ⟨v, _⟩ => Residual.allLiteralUIDs v)
+  | .record x _          =>
+    x.mapUnion₂ (λ ⟨⟨_attr, v⟩, _⟩ => Residual.allLiteralUIDs v)
+  | .call _ x _          =>
+    x.mapUnion₁ (λ ⟨v, _⟩ => Residual.allLiteralUIDs v)
 termination_by sizeOf x
 decreasing_by
   repeat case _ =>
