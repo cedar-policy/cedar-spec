@@ -42,7 +42,8 @@ theorem ofEnv_preserves_entity
     have h := List.find?_some hfind
     simp only [beq_iff_eq] at h
     simp only [h] at hfind
-    apply Map.list_find?_implies_make_find?
+    rw [← Map.find?]
+    rw [← Map.list_find?_iff_make_find?]
     apply List.find?_implies_append_find?
     apply List.find?_implies_find?_fst_map
     assumption
@@ -170,7 +171,8 @@ theorem ofSchema_find?_ets
   Map.find? (SymEntities.ofSchema Γ.ets Γ.acts) ety
   = .some (SymEntityData.ofEntityType ety entry)
 := by
-  apply Map.list_find?_implies_make_find?
+  simp only [SymEntities.ofSchema]
+  rw [← Map.list_find?_iff_make_find?]
   simp only [List.find?_append]
   simp only [Option.or_eq_some_iff]
   apply Or.inl
