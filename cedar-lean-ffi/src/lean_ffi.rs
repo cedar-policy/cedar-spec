@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 use crate::datatypes::{
-    AuthorizationResponse, AuthorizationResponseInner, ResultDef, Term, TimedDef, TimedResult,
+    AuthorizationResponse, AuthorizationResponseInner, Env, ResultDef, Term, TimedDef, TimedResult,
     ValidationResponse,
 };
 use crate::err::FfiError;
@@ -47,11 +47,17 @@ use std::sync::Once;
 #[link(name = "CedarFFI", kind = "static")]
 extern "C" {
     fn runCheckNeverErrors(req: *mut lean_object) -> *mut lean_object;
+    fn runCheckNeverErrorsWithCex(req: *mut lean_object) -> *mut lean_object;
     fn runCheckAlwaysAllows(req: *mut lean_object) -> *mut lean_object;
+    fn runCheckAlwaysAllowsWithCex(req: *mut lean_object) -> *mut lean_object;
     fn runCheckAlwaysDenies(req: *mut lean_object) -> *mut lean_object;
+    fn runCheckAlwaysDeniesWithCex(req: *mut lean_object) -> *mut lean_object;
     fn runCheckEquivalent(req: *mut lean_object) -> *mut lean_object;
+    fn runCheckEquivalentWithCex(req: *mut lean_object) -> *mut lean_object;
     fn runCheckImplies(req: *mut lean_object) -> *mut lean_object;
+    fn runCheckImpliesWithCex(req: *mut lean_object) -> *mut lean_object;
     fn runCheckDisjoint(req: *mut lean_object) -> *mut lean_object;
+    fn runCheckDisjointWithCex(req: *mut lean_object) -> *mut lean_object;
 
     fn printCheckNeverErrors(req: *mut lean_object) -> *mut lean_object;
     fn printCheckAlwaysAllows(req: *mut lean_object) -> *mut lean_object;
@@ -336,6 +342,14 @@ impl CedarLeanFfi {
         bool
     );
 
+    checkPolicy_func!(
+        run_check_never_errors_with_cex_timed,
+        run_check_never_errors_with_cex,
+        runCheckNeverErrorsWithCex,
+        |x| x,
+        Option<Env>
+    );
+
     checkPolicySet_func!(
         run_check_always_allows_timed,
         run_check_always_allows,
@@ -345,11 +359,27 @@ impl CedarLeanFfi {
     );
 
     checkPolicySet_func!(
+        run_check_always_allows_with_cex_timed,
+        run_check_always_allows_with_cex,
+        runCheckAlwaysAllowsWithCex,
+        |x| x,
+        Option<Env>
+    );
+
+    checkPolicySet_func!(
         run_check_always_denies_timed,
         run_check_always_denies,
         runCheckAlwaysDenies,
         |x| x,
         bool
+    );
+
+    checkPolicySet_func!(
+        run_check_always_denies_with_cex_timed,
+        run_check_always_denies_with_cex,
+        runCheckAlwaysDeniesWithCex,
+        |x| x,
+        Option<Env>
     );
 
     comparePolicySet_func!(
@@ -361,6 +391,14 @@ impl CedarLeanFfi {
     );
 
     comparePolicySet_func!(
+        run_check_equivalent_with_cex_timed,
+        run_check_equivalent_with_cex,
+        runCheckEquivalentWithCex,
+        |x| x,
+        Option<Env>
+    );
+
+    comparePolicySet_func!(
         run_check_implies_timed,
         run_check_implies,
         runCheckImplies,
@@ -369,11 +407,27 @@ impl CedarLeanFfi {
     );
 
     comparePolicySet_func!(
+        run_check_implies_with_cex_timed,
+        run_check_implies_with_cex,
+        runCheckImpliesWithCex,
+        |x| x,
+        Option<Env>
+    );
+
+    comparePolicySet_func!(
         run_check_disjoint_timed,
         run_check_disjoint,
         runCheckDisjoint,
         |x| x,
         bool
+    );
+
+    comparePolicySet_func!(
+        run_check_disjoint_with_cex_timed,
+        run_check_disjoint_with_cex,
+        runCheckDisjointWithCex,
+        |x| x,
+        Option<Env>
     );
 
     // Adds each of the print_(symcc-command) to call the corresponding lean function
@@ -829,6 +883,7 @@ mod test {
         Context, Entities, Entity, EntityTypeName, EntityUid, Expression, Policy, PolicyId,
         PolicySet, Request, RequestEnv, Schema, ValidationMode,
     };
+    use cool_asserts::assert_matches;
 
     use std::collections::HashSet;
     use std::str::FromStr;
@@ -1364,5 +1419,119 @@ mod test {
             .validate_request(&schema, &req)
             .expect("Lean call unexpectedly failed for validate_request");
         assert_eq!(res, ValidationResponse::Ok(()));
+    }
+
+    #[test]
+    fn test_cex() {
+        let schema = Schema::from_str(
+            r#"
+        entity a {
+          r : Bool,
+        };
+        action "action" appliesTo {
+          principal: a,
+          resource: a,
+        };
+        "#,
+        )
+        .unwrap();
+        let ps = PolicySet::from_str(
+            r#"
+        permit(
+      principal,
+      action in [Action::"action"],
+      resource
+    ) when {
+      ((true && (a::"*"["r"])) && true) && true
+    };"#,
+        )
+        .unwrap();
+        let ffi = CedarLeanFfi::new();
+        let req_env = request_env("a", "Action::\"action\"", "a");
+
+        assert_matches!(
+            ffi.run_check_always_denies_with_cex_timed(&ps, &schema, &req_env),
+            Ok(TimedResult {
+                result: Some(_),
+                ..
+            })
+        );
+        assert_matches!(
+            ffi.run_check_always_denies_timed(&ps, &schema, &req_env),
+            Ok(TimedResult { result: false, .. })
+        );
+
+        assert_matches!(
+            ffi.run_check_always_allows_with_cex_timed(&ps, &schema, &req_env),
+            Ok(TimedResult {
+                result: Some(_),
+                ..
+            })
+        );
+        assert_matches!(
+            ffi.run_check_always_allows_timed(&ps, &schema, &req_env),
+            Ok(TimedResult { result: false, .. })
+        );
+
+        assert_matches!(
+            ffi.run_check_never_errors_with_cex_timed(
+                ps.policies().next().unwrap(),
+                &schema,
+                &req_env,
+            ),
+            Ok(TimedResult { result: None, .. })
+        );
+        assert_matches!(
+            ffi.run_check_never_errors_timed(ps.policies().next().unwrap(), &schema, &req_env,),
+            Ok(TimedResult { result: true, .. })
+        );
+
+        let ps_new = PolicySet::from_str(
+            r#"
+        permit(
+      principal,
+      action in [Action::"action"],
+      resource
+    ) when {
+      ((true && (a::"..."["r"])) && true) && true
+    };"#,
+        )
+        .unwrap();
+
+        assert_matches!(
+            ffi.run_check_equivalent_with_cex_timed(&ps, &ps_new, &schema, &req_env),
+            Ok(TimedResult {
+                result: Some(_),
+                ..
+            })
+        );
+        assert_matches!(
+            ffi.run_check_equivalent_timed(&ps, &ps_new, &schema, &req_env),
+            Ok(TimedResult { result: false, .. })
+        );
+
+        assert_matches!(
+            ffi.run_check_implies_with_cex_timed(&ps, &ps_new, &schema, &req_env),
+            Ok(TimedResult {
+                result: Some(_),
+                ..
+            })
+        );
+        assert_matches!(
+            ffi.run_check_implies_timed(&ps, &ps_new, &schema, &req_env),
+            Ok(TimedResult { result: false, .. })
+        );
+
+        assert_matches!(
+            ffi.run_check_disjoint_with_cex_timed(&ps, &ps_new, &schema, &req_env),
+            Ok(TimedResult {
+                result: Some(_),
+                ..
+            })
+        );
+        assert_matches!(
+            ffi.run_check_disjoint_timed(&ps, &ps_new, &schema, &req_env),
+            Ok(TimedResult { result: false, .. })
+        );
     }
 }

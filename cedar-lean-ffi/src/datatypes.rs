@@ -877,6 +877,15 @@ impl From<cedar_policy_symcc::term::Term> for Term {
     }
 }
 
+/// Represent a counterexample
+#[derive(Debug, Deserialize)]
+pub struct Env {
+    /// The request
+    pub request: serde_json::Value,
+    /// The entities
+    pub entities: serde_json::Value,
+}
+
 #[cfg(test)]
 mod deserialization {
     use crate::Bitvec;

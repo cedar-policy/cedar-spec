@@ -261,7 +261,7 @@ opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except Stri
   returns JSON encoded string that encodes
   1.) .error err_message if there was in error in parsing or running the solver
   2.) .ok { data := true, duration := <encode+solve_time> } if the solver could prove `req` holds
-  3.) .ok { data := true, duration := <encode+solve_time> } if the solver could prove `req` does not hold
+  3.) .ok { data := false, duration := <encode+solve_time> } if the solver could prove `req` does not hold
 -/
 @[export runCheckNeverErrors] unsafe def runCheckNeverErrors (req : ByteArray) : String :=
   runFfiM do
@@ -269,12 +269,25 @@ opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except Stri
     timedSolve Solver.cvc5 (checkNeverErrors policy εnv)
 
 /--
+  `req`: binary protobuf for an `CheckPolicyRequest`
+
+  returns JSON encoded string that encodes
+  1.) .error err_message if there was in error in parsing or running the solver
+  2.) .ok { data := null, duration := <encode+solve_time> } if the solver could prove `req` holds
+  3.) .ok { data := {request: ..., entities: ...}, duration := <encode+solve_time> } if the solver could prove `req` does not hold
+-/
+@[export runCheckNeverErrorsWithCex] unsafe def runCheckNeverErrorsWithCex (req : ByteArray) : String :=
+  runFfiM do
+    let (policy, εnv) ← parseCheckPolicyReq req false
+    timedSolve Solver.cvc5 (neverErrors? policy εnv)
+
+/--
   `req`: binary protobuf for an `CheckPolicySetRequest`
 
   returns JSON encoded string that encodes
   1.) .error err_message if there was in error in parsing or running the solver
   2.) .ok { data := true, duration := <encode+solve_time> } if the solver could prove `req` holds
-  3.) .ok { data := true, duration := <encode+solve_time> } if the solver could prove `req` does not hold
+  3.) .ok { data := false, duration := <encode+solve_time> } if the solver could prove `req` does not hold
 -/
 @[export runCheckAlwaysAllows] unsafe def runCheckAlwaysAllows (req : ByteArray) : String :=
   runFfiM do
@@ -286,8 +299,21 @@ opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except Stri
 
   returns JSON encoded string that encodes
   1.) .error err_message if there was in error in parsing or running the solver
+  2.) .ok { data := null, duration := <encode+solve_time> } if the solver could prove `req` holds
+  3.) .ok { data := {request: ..., entities: ...}, duration := <encode+solve_time> } if the solver could prove `req` does not hold
+-/
+@[export runCheckAlwaysAllowsWithCex] unsafe def runCheckAlwaysAllowsWithCex (req : ByteArray) : String :=
+  runFfiM do
+    let (policies, εnv) ← parseCheckPoliciesReq req false
+    timedSolve Solver.cvc5 (alwaysAllows? policies εnv)
+
+/--
+  `req`: binary protobuf for an `CheckPolicySetRequest`
+
+  returns JSON encoded string that encodes
+  1.) .error err_message if there was in error in parsing or running the solver
   2.) .ok { data := true, duration := <encode+solve_time> } if the solver could prove `req` holds
-  3.) .ok { data := true, duration := <encode+solve_time> } if the solver could prove `req` does not hold
+  3.) .ok { data := false, duration := <encode+solve_time> } if the solver could prove `req` does not hold
 -/
 @[export runCheckAlwaysDenies] unsafe def runCheckAlwaysDenies (req : ByteArray) : String :=
   runFfiM do
@@ -295,12 +321,25 @@ opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except Stri
     timedSolve Solver.cvc5 (checkAlwaysDenies policies εnv)
 
 /--
+  `req`: binary protobuf for an `CheckPolicySetRequest`
+
+  returns JSON encoded string that encodes
+  1.) .error err_message if there was in error in parsing or running the solver
+  2.) .ok { data := null, duration := <encode+solve_time> } if the solver could prove `req` holds
+  3.) .ok { data := {request: ..., entities: ...}, duration := <encode+solve_time> } if the solver could prove `req` does not hold
+-/
+@[export runCheckAlwaysDeniesWithCex] unsafe def runCheckAlwaysDeniesWithCex (req : ByteArray) : String :=
+  runFfiM do
+    let (policies, εnv) ← parseCheckPoliciesReq req false
+    timedSolve Solver.cvc5 (alwaysDenies? policies εnv)
+
+/--
   `req`: binary protobuf for an `ComparePolicySetsRequest`
 
   returns JSON encoded string that encodes
   1.) .error err_message if there was in error in parsing or running the solver
   2.) .ok { data := true, duration := <encode+solve_time> } if the solver could prove `req` holds
-  3.) .ok { data := true, duration := <encode+solve_time> } if the solver could prove `req` does not hold
+  3.) .ok { data := false, duration := <encode+solve_time> } if the solver could prove `req` does not hold
 -/
 @[export runCheckEquivalent] unsafe def runCheckEquivalent (req : ByteArray) : String :=
   runFfiM do
@@ -312,8 +351,21 @@ opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except Stri
 
   returns JSON encoded string that encodes
   1.) .error err_message if there was in error in parsing or running the solver
+  2.) .ok { data := null, duration := <encode+solve_time> } if the solver could prove `req` holds
+  3.) .ok { data := {request: ..., entities: ...}, duration := <encode+solve_time> } if the solver could prove `req` does not hold
+-/
+@[export runCheckEquivalentWithCex] unsafe def runCheckEquivalentWithCex (req : ByteArray) : String :=
+  runFfiM do
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req false
+    timedSolve Solver.cvc5 (equivalent? srcPolicies tgtPolicies εnv)
+
+/--
+  `req`: binary protobuf for an `ComparePolicySetsRequest`
+
+  returns JSON encoded string that encodes
+  1.) .error err_message if there was in error in parsing or running the solver
   2.) .ok { data := true, duration := <encode+solve_time> } if the solver could prove `req` holds
-  3.) .ok { data := true, duration := <encode+solve_time> } if the solver could prove `req` does not hold
+  3.) .ok { data := false, duration := <encode+solve_time> } if the solver could prove `req` does not hold
 -/
 @[export runCheckImplies] unsafe def runCheckImplies (req : ByteArray) : String :=
   runFfiM do
@@ -325,13 +377,39 @@ opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except Stri
 
   returns JSON encoded string that encodes
   1.) .error err_message if there was in error in parsing or running the solver
+  2.) .ok { data := null, duration := <encode+solve_time> } if the solver could prove `req` holds
+  3.) .ok { data := {request: ..., entities: ...}, duration := <encode+solve_time> } if the solver could prove `req` does not hold
+-/
+@[export runCheckImpliesWithCex] unsafe def runCheckImpliesWithCex (req : ByteArray) : String :=
+  runFfiM do
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req false
+    timedSolve Solver.cvc5 (implies? srcPolicies tgtPolicies εnv)
+
+/--
+  `req`: binary protobuf for an `ComparePolicySetsRequest`
+
+  returns JSON encoded string that encodes
+  1.) .error err_message if there was in error in parsing or running the solver
   2.) .ok { data := true, duration := <encode+solve_time> } if the solver could prove `req` holds
-  3.) .ok { data := true, duration := <encode+solve_time> } if the solver could prove `req` does not hold
+  3.) .ok { data := false, duration := <encode+solve_time> } if the solver could prove `req` does not hold
 -/
 @[export runCheckDisjoint] unsafe def runCheckDisjoint (req : ByteArray) : String :=
   runFfiM do
     let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req false
     timedSolve Solver.cvc5 (checkDisjoint srcPolicies tgtPolicies εnv)
+
+/--
+  `req`: binary protobuf for an `ComparePolicySetsRequest`
+
+  returns JSON encoded string that encodes
+  1.) .error err_message if there was in error in parsing or running the solver
+  2.) .ok { data := null, duration := <encode+solve_time> } if the solver could prove `req` holds
+  3.) .ok { data := {request: ..., entities: ...}, duration := <encode+solve_time> } if the solver could prove `req` does not hold
+-/
+@[export runCheckDisjointWithCex] unsafe def runCheckDisjointWithCex (req : ByteArray) : String :=
+  runFfiM do
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req false
+    timedSolve Solver.cvc5 (disjoint? srcPolicies tgtPolicies εnv)
 
 /--
   Auxillary function that encodes and runs the solver on the generated VCs. Useful for
@@ -449,7 +527,7 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
   returns JSON encoded string that encodes
   1.) .error err_message if there was in error in parsing or running the solver
   2.) .ok { data := true, duration := <solve_time> } if the solver could prove `asserts` hold
-  3.) .ok { data := true, duration := <solve_time> } if the solver could prove `asserts` do not hold
+  3.) .ok { data := false, duration := <solve_time> } if the solver could prove `asserts` do not hold
 -/
 @[export runCheckAsserts] unsafe def runCheckAsserts (req: ByteArray) : String :=
   runFfiM do
