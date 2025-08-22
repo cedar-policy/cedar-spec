@@ -47,6 +47,8 @@ const SETTINGS: ABACSettings = ABACSettings {
     enable_arbitrary_func_call: true,
     enable_unknowns: false,
     enable_action_in_constraints: true,
+    per_action_request_env_limit: ABACSettings::default_per_action_request_env_limit(),
+    total_action_request_env_limit: ABACSettings::default_total_action_request_env_limit(),
 };
 
 impl<'a> Arbitrary<'a> for Input {

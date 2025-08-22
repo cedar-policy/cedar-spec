@@ -90,6 +90,11 @@ pub fn compile_policies<'a>(
     Ok(func(&well_typed_policies, &sym_env)?)
 }
 
+/// The limit on the total number of request envs specific to symcc
+pub const fn total_action_request_env_limit() -> usize {
+    128
+}
+
 #[cfg(test)]
 mod buff_solver_tests {
     use cedar_policy_symcc::{solver::Solver, SmtLibScript};
