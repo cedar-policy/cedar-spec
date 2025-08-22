@@ -156,92 +156,6 @@ decreasing_by
   }
   exact h₈
 
-theorem partial_eval_record_key_preservation_3 {ls : List (Attr × Residual)} :
-  ls.find? (λ x => x.fst == k) = .some (k, v) →
-  ∃ v₂,
-  (List.map
-    (fun x =>
-      match x with
-      | (a, r) => (a, Qualified.required r.typeOf))
-    ls).find? (λ x => x.fst == k) = .some (k, v₂)
-:= by
-  intro h₁
-  cases ls
-  . simp at h₁
-  . simp only [List.find?_cons_eq_some, beq_iff_eq, Bool.not_eq_eq_eq_not, Bool.not_true, beq_eq_false_iff_ne, ne_eq] at h₁
-    cases h₁
-    . rename_i hd tl h₁
-      rcases h₁ with ⟨h₁, h₂⟩
-      exists (Qualified.required v.typeOf)
-      simp only [List.map_cons, List.find?_cons_eq_some, beq_iff_eq, Prod.mk.injEq, Qualified.required.injEq, and_self_left, Bool.not_eq_eq_eq_not, Bool.not_true, beq_eq_false_iff_ne, ne_eq, List.find?_map, Option.map_eq_some_iff, Prod.exists]
-      left
-      cases hd
-      rename_i k₂ v₂
-      simp only
-      simp only [Prod.mk.injEq] at h₂
-      rcases h₂ with ⟨h₃, h₄⟩
-      rw [h₃]
-      rw [h₄]
-      simp
-    . rename_i hd tl h₁
-      rcases h₁ with ⟨h₁, h₂⟩
-      let ih := partial_eval_record_key_preservation_3 h₂
-      rcases ih with ⟨v₂, ih⟩
-      exists v₂
-      simp only [List.find?_map, Option.map_eq_some_iff, Prod.mk.injEq, Prod.exists] at ih
-      simp only [List.map_cons, List.find?_cons_eq_some, beq_iff_eq, Prod.mk.injEq, and_self_left, Bool.not_eq_eq_eq_not, Bool.not_true, beq_eq_false_iff_ne, ne_eq, List.find?_map, Option.map_eq_some_iff, Prod.exists]
-      right
-      constructor
-      . assumption
-      . rcases ih with ⟨a, b, h₃, h₄, h₅⟩
-        exists a
-        exists b
-
-theorem partial_eval_record_key_preservation_4 {xs : List (Attr × Residual)} {ys : List (Attr × Value)} :
-  List.Forall₂ (fun x y => ((fun x => bindAttr x.fst x.snd.asValue) ∘ fun x => (x.fst, TPE.evaluate x.snd preq pes)) x = some y) xs
-  ys →
-  xs.find? (λ x => x.fst = k) = .some (k, v) →
-  ∃ v₃,
-  (ys.find? (λ x => x.fst = k) = .some (k, v₃))
-:= by
-  intro h₁
-  cases h₁
-  . simp only [List.find?_nil, reduceCtorEq, exists_const, imp_self]
-  case cons a b l₁ l₂ h₂ h₃=>
-  . intro h₄
-    simp only [List.find?_cons_eq_some, decide_eq_true_eq, Bool.not_eq_eq_eq_not, Bool.not_true, decide_eq_false_iff_not] at h₄
-    cases h₄
-    case inl h₅ =>
-      rcases h₅ with ⟨h₅, h₆⟩
-      simp only [bindAttr, Option.pure_def, Option.bind_eq_bind, Function.comp_apply] at h₂
-      cases h₇: (TPE.evaluate a.snd preq pes).asValue <;> rw [h₇] at h₂
-      case intro.none =>
-        simp at h₂
-      case intro.some v₂ =>
-        simp only [Option.bind_some, Option.some.injEq] at h₂
-        exists v₂
-        simp only [List.find?_cons_eq_some, decide_eq_true_eq, Bool.not_eq_eq_eq_not, Bool.not_true, decide_eq_false_iff_not]
-        left
-        rw [h₅] at h₂
-        rw [← h₂]
-        simp
-    case inr h₅ =>
-      rcases h₅ with ⟨h₅, h₆⟩
-      have ih := partial_eval_record_key_preservation_4 h₃ h₆
-      rcases ih with ⟨v₃, ih⟩
-      exists v₃
-      simp only [List.find?_cons_eq_some, decide_eq_true_eq, Bool.not_eq_eq_eq_not, Bool.not_true, decide_eq_false_iff_not]
-      right
-      simp only [bindAttr, Option.pure_def, Option.bind_eq_bind, Function.comp_apply] at h₂
-      cases h₇: (TPE.evaluate a.snd preq pes).asValue <;> rw [h₇] at h₂
-      . simp only [Option.bind_none, reduceCtorEq] at h₂
-      . simp only [Option.bind_some, Option.some.injEq] at h₂
-        rw [← h₂]
-        simp only
-        constructor
-        . assumption
-        .assumption
-
 
 /--
 Helper theorem: Partial evaluation preserves well-typedness for value residuals.
@@ -627,22 +541,16 @@ theorem partial_eval_well_typed_record {env : TypeEnv} {ls : List (Attr × Resid
       rcases h₈ with ⟨v₂, h₈, h₉⟩
       simp at h₈
 
-      have h₉_new := h₉
-      rw [Map.list_find?_some_iff_map_find?_some] at h₉_new
-
-      have h₉_new := Map.find?_implies_exists_mapped_value (λ x => Qualified.required x.typeOf) h₉_new -- TODO
-
-      --have h₉_new := Map.find?_implies_exists_mapped
-      --rw [Map.list_find?_iff_mk_find?] at h₉
-      --have h₉ := Map.find?_map_implies_exists_unmapped h₉
-      have h₉_new := Map.list_find?_mapM_implies_exists_mapped (fn := (λ x => (TPE.evaluate x preq pes).asValue)) h₃ h₉
-
-      have h₉ := partial_eval_record_key_preservation_3 h₉
+      rw [Map.list_find?_some_iff_map_find?_some] at h₉
+      replace h₉ := Map.find?_implies_exists_mapped_value (λ x => Qualified.required x.typeOf) h₉
 
       subst ty₁
       rcases h₉ with ⟨v₃, h₉⟩
-      rw [Map.list_find?_iff_make_find?] at h₉
+      simp [Map.mapOnValues] at h₉
       exists v₃
+      rw [← Map.list_find?_iff_make_find?]
+      rw [← Map.list_find?_iff_mk_find?] at h₉
+      exact h₉
     . intro k v qty h₄ h₅
       rw [h₁] at h₅
       have h₆ := h₄
