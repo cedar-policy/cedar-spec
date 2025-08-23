@@ -20,7 +20,6 @@ import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.List
 import Cedar.Thm.Data.Set
 
-
 /-!
 # Map properties
 
@@ -259,33 +258,6 @@ theorem make_mem_list_mem [LT α] [StrictLT α] [DecidableLT α] {xs : List (α 
   simp only [List.subset_def] at h₂
   exact h₂ h₁
 
-theorem insertcanonical_find_inserted [LT α] [StrictLT α] [DecidableLT α] [BEq α] [LawfulBEq α] [ReflBEq α] {k: α} {v: β} {xs : List (α × β)} :
-  (List.insertCanonical Prod.fst (k, v) xs).find? (λ x => x.1 == k) = .some (k, v)
-:= by
-  unfold List.insertCanonical
-  split
-  case h_1 xs =>
-    simp [List.find?]
-  case h_2 xs hd tl =>
-    simp
-    split
-    case isTrue h₁ =>
-      simp
-    case isFalse h₁ =>
-      split
-      case isTrue h₂ =>
-        simp
-        right
-        constructor
-        case h.left =>
-          apply StrictLT.not_eq
-          exact h₂
-        case h.right =>
-          rw [insertcanonical_find_inserted]
-      case isFalse h₂ =>
-        simp
-
-
 private theorem insertCanonical_preserves_find_other_element
   [LT α] [DecidableLT α] [BEq α] [StrictLT α]
   (k : α)
@@ -470,26 +442,6 @@ theorem in_list_implies_contains {α β}
   | some =>
     apply contains_iff_some_find?.mpr
     simp [hfind]
-
-theorem contains_implies_in_list {α β}
-  [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] [DecidableEq β]
-  {m : Map α β} {k : α} :
-  m.contains k → ∃ p, p ∈ m.kvs ∧ p.1 = k
-:= by
-  intro h₁
-  simp [Map.contains] at h₁
-  cases h₂: m.find? k with
-  | none =>
-    rw [h₂] at h₁
-    contradiction
-  | some v =>
-    rw [h₂] at h₁
-    exists (k, v)
-    constructor
-    . have h₃ := find?_mem_toList h₂
-      unfold Map.toList at h₃
-      exact h₃
-    . simp
 
 theorem all_absent_find?_none [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {k : α} :
   (∀ v, (k, v) ∉ m.kvs) → m.find? k = none
@@ -1583,8 +1535,6 @@ theorem map_make_append_find_disjoint
     specialize this (k, v) hmem₁
     simp at this
   | inr h => exact h
-
-
 
 theorem make_map_values_find
   [DecidableEq α] [LT α] [DecidableLT α]
