@@ -124,25 +124,24 @@ theorem find_lifted_type {attr ty₁ ty₂} {m: RecordType} :
   simp only [Map.find?, Map.kvs]
   intro h₁ h₂
   cases h₃: m.1
-  . rw [h₃] at h₁
+  case nil =>
+    rw [h₃] at h₁
     simp at h₁
-  . rename_i hd tl
+  case cons hd tl =>
     rw [h₃] at h₁
     unfold RecordType.liftBoolTypes at h₂
     rw [h₃] at h₂
     simp only [CedarType.liftBoolTypesRecord, List.find?] at h₂
     cases h₄ : hd.fst == attr
-    case cons.false =>
+    any_goals
       rw [h₄] at h₂
       simp only [List.find?] at h₁
       rw [h₄] at h₁
+    case false =>
       exact find_lifted_type h₁ h₂
-    case cons.true =>
-      rw [h₄] at h₂
+    case true =>
       simp only [Option.some.injEq] at h₂
       rw [← h₂]
-      simp only [List.find?] at h₁
-      rw [h₄] at h₁
       simp only [Option.some.injEq] at h₁
       rw [h₁]
 decreasing_by
@@ -177,28 +176,28 @@ theorem partial_eval_well_typed_var {env : TypeEnv} {v : Var} {ty : CedarType} {
   rcases h_ref with ⟨h_rref, h_eref⟩
   simp only [TPE.evaluate]
   unfold varₚ
-  cases v with
-  | principal =>
+  cases v
+  case principal =>
     simp only [Option.pure_def, Option.bind_eq_bind]
     unfold RequestRefines at h_rref
     rcases h_rref with ⟨h_pv, h_rest⟩
     cases h : preq.principal.asEntityUID
-    . dsimp only [Option.bind_none, varₚ.varₒ, someOrSelf]
+    case intro.none =>
+      simp only [Option.bind_none, varₚ.varₒ, someOrSelf]
       exact h_wt
-    . dsimp only [Option.bind_some, varₚ.varₒ, someOrSelf]
+    case intro.some =>
+      simp only [Option.bind_some, varₚ.varₒ, someOrSelf]
       rw [h] at h_pv
       apply Residual.WellTyped.val
-      cases h_pv with
-      | some _ h₃ =>
-        rw [h₃]
-        cases h_wt with
-        | var h₄ =>
-          cases h₄ with
-          | principal =>
-            apply InstanceOfType.instance_of_entity req.principal env.reqty.principal
-            rcases h_wf with ⟨_, ⟨h_principal, _, _, _⟩, _⟩
-            exact h_principal
-  | resource =>
+      cases h_pv with | some _ h₃ =>
+      cases h_wt with | var h₄ =>
+      cases h₄ with | principal =>
+
+      rw [h₃]
+      apply InstanceOfType.instance_of_entity req.principal env.reqty.principal
+      rcases h_wf with ⟨_, ⟨h_principal, _, _, _⟩, _⟩
+      exact h_principal
+  case resource =>
     simp only [Option.pure_def, Option.bind_eq_bind]
     unfold RequestRefines at h_rref
     rcases h_rref with ⟨h_pv, h_rest⟩
@@ -209,59 +208,54 @@ theorem partial_eval_well_typed_var {env : TypeEnv} {v : Var} {ty : CedarType} {
     . dsimp only [Option.bind_some, varₚ.varₒ, someOrSelf]
       rw [h] at h_rv
       apply Residual.WellTyped.val
-      cases h_rv with
-      | some _ h₃ =>
-        rw [h₃]
-        cases h_wt with
-        | var h₄ =>
-          cases h₄ with
-          | resource =>
-            apply InstanceOfType.instance_of_entity req.resource env.reqty.resource
-            rcases h_wf with ⟨_, ⟨_, _, h_resource, _⟩, _⟩
-            exact h_resource
-  | action =>
+      cases h_rv with | some _ h₃ =>
+      rw [h₃]
+      cases h_wt with | var h₄ =>
+      cases h₄ with | resource =>
+
+      apply InstanceOfType.instance_of_entity req.resource env.reqty.resource
+      rcases h_wf with ⟨_, ⟨_, _, h_resource, _⟩, _⟩
+      exact h_resource
+  case action =>
     simp only
     unfold RequestRefines at h_rref
     rcases h_rref with ⟨h_pv, h_rest⟩
     rcases h_rest with ⟨h_av, h_rv, h_cv⟩
     -- Action is always concrete in partial requests
-    dsimp only [varₚ.varₒ, someOrSelf]
+    simp only [varₚ.varₒ, someOrSelf]
     apply Residual.WellTyped.val
-    cases h_wt with
-    | var h₄ =>
-      cases h₄ with
-      | action =>
-        rw [←h_av]
-        apply InstanceOfType.instance_of_entity req.action env.reqty.action.ty
-        rcases h_wf with ⟨hwf, ⟨_, h_action, _, _⟩, _⟩
-        rw [h_action]
-        have : InstanceOfEntityType env.reqty.action env.reqty.action.ty env := by
-          have ⟨_, _, _, hwf_act, _⟩ := hwf
-          simp [
-            InstanceOfEntityType, EntityUID.WellFormed,
-            ActionSchema.contains, hwf_act,
-          ]
-        exact this
-  | context =>
+    cases h_wt with | var h₄ =>
+    cases h₄ with | action =>
+
+    rw [←h_av]
+    apply InstanceOfType.instance_of_entity req.action env.reqty.action.ty
+    rcases h_wf with ⟨hwf, ⟨_, h_action, _, _⟩, _⟩
+    rw [h_action]
+    have : InstanceOfEntityType env.reqty.action env.reqty.action.ty env := by
+      have ⟨_, _, _, hwf_act, _⟩ := hwf
+      simp [
+        InstanceOfEntityType, EntityUID.WellFormed,
+        ActionSchema.contains, hwf_act,
+      ]
+    exact this
+  case context =>
     simp only
     unfold RequestRefines at h_rref
     rcases h_rref with ⟨h_pv, h_rest⟩
     rcases h_rest with ⟨h_av, h_rv, h_cv⟩
     cases h : preq.context
-    . dsimp only [Option.map_none, varₚ.varₒ, someOrSelf]
+    . simp only [Option.map_none, varₚ.varₒ, someOrSelf]
       exact h_wt
-    . dsimp only [Option.map_some, varₚ.varₒ, someOrSelf]
+    . simp only [Option.map_some, varₚ.varₒ, someOrSelf]
       rw [h] at h_cv
       apply Residual.WellTyped.val
-      cases h_cv with
-      | some _ h₃ =>
-        rw [h₃]
-        cases h_wt with
-        | var h₄ =>
-          cases h₄ with
-          | context =>
-            rcases h_wf with ⟨_, ⟨_, _, _, h_context⟩, _⟩
-            exact type_lifting_preserves_instance_of_type h_context
+      cases h_cv with | some _ h₃ =>
+      rw [h₃]
+      cases h_wt with | var h₄ =>
+      cases h₄ with | context =>
+
+      rcases h_wf with ⟨_, ⟨_, _, _, h_context⟩, _⟩
+      exact type_lifting_preserves_instance_of_type h_context
 
 /--
 Helper theorem: Partial evaluation preserves well-typedness for error residuals.
@@ -286,18 +280,13 @@ theorem partial_eval_well_typed_and {env : TypeEnv} {a b : Residual} {ty : Cedar
   | and h_a h_b h_ty_a h_ty_b =>
     unfold TPE.and
     split
-    . -- Case: first operand is .val true, so TPE.and returns the second operand
-      exact h_b_wt
-    . -- Case: first operand is .val false, so TPE.and returns false
-      apply Residual.WellTyped.val
+    . exact h_b_wt
+    . apply Residual.WellTyped.val
       apply InstanceOfType.instance_of_bool false BoolType.anyBool
       simp [InstanceOfBoolType]
-    . -- Case: first operand is .error, so TPE.and returns .error ty
-      apply Residual.WellTyped.error
-    . -- Case: second operand is .val true, so TPE.and returns the first operand
-      exact h_a_wt
-    . -- Case: default case, TPE.and returns .and a_eval b_eval ty
-      apply Residual.WellTyped.and
+    . apply Residual.WellTyped.error
+    . exact h_a_wt
+    . apply Residual.WellTyped.and
       · exact h_a_wt
       · exact h_b_wt
       · rw [partial_eval_preserves_typeof h_wf h_ref h_a]
@@ -375,74 +364,52 @@ theorem partial_eval_well_typed_unaryApp {env : TypeEnv} {op : UnaryOp} {expr : 
     let expr_eval := TPE.evaluate expr preq pes
     unfold TPE.apply₁
     split
-    . apply Residual.WellTyped.error
-    . cases h : expr_eval.asValue with
+    case h_1 => apply Residual.WellTyped.error
+    case h_2 =>
+      cases h : expr_eval.asValue with
       | some v =>
-        unfold someOrError
+        simp only [someOrError]
         split
-        . split
-          . rename_i r v₂ ov v₁ v2v ty ox x v heq
-            injection v2v with hᵥ
-            unfold Spec.apply₁ at heq
-            apply Residual.WellTyped.val
-            split at heq
-            . cases h_op
-              simp only [Except.toOption, Option.some.injEq] at heq
-              rw [← heq]
-              apply InstanceOfType.instance_of_bool
-              simp [InstanceOfBoolType]
-            . cases h_op
-              simp only [Except.toOption, intOrErr] at heq
-              rename Int64 => i
-              cases h₂: i.neg?
-              . rw [h₂] at heq
-                simp at heq
-              . rw [h₂] at heq
-                simp only [Option.some.injEq] at heq
-                rw [← heq]
-                apply InstanceOfType.instance_of_int
-            . cases h_op
-              simp only [Except.toOption, Option.some.injEq] at heq
-              rw [← heq]
-              apply InstanceOfType.instance_of_bool
-              simp [InstanceOfBoolType]
-            . simp only [Except.toOption, Option.some.injEq] at heq
+        case h_2 =>
+          apply Residual.WellTyped.error
+        case h_1 v ty ox x v₂ heq =>
+          apply Residual.WellTyped.val
+          unfold Spec.apply₁ at heq
+          split at heq
+          any_goals
+            cases h_op
+            simp only [Except.toOption, Option.some.injEq] at heq
+            rw [← heq]
+            apply InstanceOfType.instance_of_bool
+            simp [InstanceOfBoolType]
+          case h_2 =>
+            simp only [Except.toOption, intOrErr] at heq
+            rename Int64 => i
+            cases h₂: i.neg?
+            . rw [h₂] at heq
+              simp at heq
+            . rw [h₂] at heq
+              simp only [Option.some.injEq] at heq
               rw [← heq]
               cases h_op
-              apply InstanceOfType.instance_of_bool
-              simp [InstanceOfBoolType]
-            . cases h_op
-              simp only [Except.toOption, Option.some.injEq] at heq
-              rw [← heq]
-              apply InstanceOfType.instance_of_bool
-              simp [InstanceOfBoolType]
-            . contradiction
-          . apply Residual.WellTyped.error
-        . contradiction
+              apply InstanceOfType.instance_of_int
+          case h_6 =>
+           contradiction
       | none =>
         apply Residual.WellTyped.unaryApp
-        · exact h_expr_wt
-        · cases h_op with
-          | not h_ty =>
-            apply UnaryResidualWellTyped.not
+        case none.h₁ =>
+          exact h_expr_wt
+        case none.h₂ =>
+          cases h_op
+          all_goals
+            first
+            | apply UnaryResidualWellTyped.not
+            | apply UnaryResidualWellTyped.neg
+            | apply UnaryResidualWellTyped.isEmpty
+            | apply UnaryResidualWellTyped.like
+            | apply UnaryResidualWellTyped.is
             rw [partial_eval_preserves_typeof h_wf h_ref h_expr]
-            exact h_ty
-          | neg h_ty =>
-            apply UnaryResidualWellTyped.neg
-            rw [partial_eval_preserves_typeof h_wf h_ref h_expr]
-            exact h_ty
-          | isEmpty h_ty =>
-            apply UnaryResidualWellTyped.isEmpty
-            rw [partial_eval_preserves_typeof h_wf h_ref h_expr]
-            exact h_ty
-          | like h_ty =>
-            apply UnaryResidualWellTyped.like
-            rw [partial_eval_preserves_typeof h_wf h_ref h_expr]
-            exact h_ty
-          | is h_ty =>
-            apply UnaryResidualWellTyped.is
-            rw [partial_eval_preserves_typeof h_wf h_ref h_expr]
-            exact h_ty
+            assumption
 
 /--
 Helper theorem: Partial evaluation preserves well-typedness for set residuals.
