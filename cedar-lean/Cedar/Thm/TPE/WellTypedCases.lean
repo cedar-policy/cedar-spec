@@ -422,7 +422,7 @@ theorem partial_eval_well_typed_set {env : TypeEnv} {ls : List Residual} {ty : C
   rename_i ty₁ h₀ h₁ h₂
   simp only [TPE.evaluate, TPE.set, List.any_eq_true]
   split
-  . rename_i x xs h₃
+  case h_1 x xs h₃ =>
     apply Residual.WellTyped.val
     apply InstanceOfType.instance_of_set
     intro v h₄
@@ -452,9 +452,10 @@ theorem partial_eval_well_typed_set {env : TypeEnv} {ls : List Residual} {ty : C
       simp only [Residual.typeOf] at h₈
       rw [← h₈]
       exact h₁₀
-  . split
+  case h_2 x h₃ =>
+    split
     . apply Residual.WellTyped.error
-    . rename_i x h₃ h₄
+    case isFalse _ =>
       apply Residual.WellTyped.set
       . intro x h₅
         simp only [List.map₁, List.attach, List.map_subtype, List.unattach_attachWith, List.mem_map] at h₅
