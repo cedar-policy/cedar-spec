@@ -529,7 +529,7 @@ theorem extract?_implies_enum_complete
   simp only [Prod.mk.injEq] at heq_uid'
   simp only [←heq_uid'.1] at hmem_uid'_data huid'
   exists data
-  apply Map.find?_implies_make_find?
+  rw [← Map.list_find?_iff_make_find?]
   apply List.find?_unique_entry
   · intros x hmem heq_fst
     have ⟨uid', data'⟩ := x

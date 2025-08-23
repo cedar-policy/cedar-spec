@@ -110,10 +110,6 @@ theorem insertCanonical_preserves_non_duplicate_element
         cases hltgt <;> contradiction
       case _ hy => simp [hy]
 
-
-
-
-
 theorem insertCanonical_sortedBy [LT β] [StrictLT β] [DecidableLT β] {f : α → β} {xs : List α} (x : α) :
   SortedBy f xs →
   SortedBy f (insertCanonical f x xs)
