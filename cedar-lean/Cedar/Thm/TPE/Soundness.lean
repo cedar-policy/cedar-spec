@@ -950,7 +950,7 @@ theorem partial_evaluate_is_sound_set
         (fun x => (TPE.evaluate x preq pes).evaluate req es)
         hᵢ₁
       rw [h₃]
-      rw [List.mapM_then_map_combiner]
+      rw [List.mapM_map_combiner]
 
 
 
@@ -1117,7 +1117,7 @@ theorem partial_evaluate_is_sound_call
       (fun x => (TPE.evaluate x preq pes).evaluate req es)
       hᵢ₁
     rw [h₃]
-    rw [List.mapM_then_map_combiner]
+    rw [List.mapM_map_combiner]
 
 theorem partial_evaluate_is_sound_error
 {req : Request}

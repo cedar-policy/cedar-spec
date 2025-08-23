@@ -461,9 +461,9 @@ theorem partial_eval_well_typed_set {env : TypeEnv} {ls : List Residual} {ty : C
     intro v h₄
     unfold List.map₁ List.attach List.attachWith at h₃
     rw [List.map_pmap_subtype (fun x => TPE.evaluate x preq pes)] at h₃
-    rw [List.mapM_then_map_combiner_option] at h₃
+    rw [List.mapM_map_combiner_option] at h₃
     rw [← Set.make_mem] at h₄
-    have h₅ := List.mem_mapM_some_implies_exists_ele h₃ h₄
+    have h₅ := List.mem_mapM_some_implies_exists_unmapped h₃ h₄
     rcases h₅ with ⟨y, h₆, h₇⟩
     specialize h₀ y h₆
     let h₈ := partial_eval_preserves_typeof h_wf h_ref h₀
@@ -1326,7 +1326,7 @@ theorem partial_eval_well_typed_app₂ :
             . have h₁₈ : v₃ ∈ e.tags.values := by {
                 -- Use h₁₃
                 -- use lemma find?_mem_toList
-                have h₁₉ := List.list_find?_mem_toList h₁₃
+                have h₁₉ := List.find?_some_is_mem h₁₃
                 have h₂₀ := Map.in_list_in_values h₁₉
                 exact h₂₀
               }

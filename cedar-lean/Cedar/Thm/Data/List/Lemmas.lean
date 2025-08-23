@@ -554,7 +554,7 @@ theorem mapM'_ok_iff_forall₂ {α β γ} {f : α → Except γ β} {xs : List �
         specialize ih h₃
         simp only [ih, Except.bind_ok]
 
--- Copy of above but for option instead of exception
+/-- Copy of mapM'_ok_iff_forall₂ but for option instead of exception -/
 theorem mapM'_some_iff_forall₂ {α β} {f : α → Option β} {xs : List α} {ys : List β} :
   List.mapM' f xs = .some ys ↔
   List.Forall₂ (λ x y => f x = .some y) xs ys
@@ -634,7 +634,7 @@ theorem mapM_some_iff_forall₂ {α β} {f : α → Option β} {xs : List α} {y
 /-- if you use mapM on a list constructed using map
     you can just do one mapM with a combined function
     -/
-theorem mapM_then_map_combiner {α β γ ε} (f : β → Except ε γ) (g : α → β) (xs : List α) :
+theorem mapM_map_combiner {α β γ ε} (f : β → Except ε γ) (g : α → β) (xs : List α) :
   List.mapM f (xs.map g) = List.mapM (fun x => f (g x)) xs
 := by
   induction xs
@@ -644,7 +644,7 @@ theorem mapM_then_map_combiner {α β γ ε} (f : β → Except ε γ) (g : α �
     simp only [map_cons, mapM_cons, ih]
 
 
-theorem mapM_then_map_combiner_option {α β γ} (f : β → Option γ) (g : α → β) (xs : List α) :
+theorem mapM_map_combiner_option {α β γ} (f : β → Option γ) (g : α → β) (xs : List α) :
   List.mapM f (xs.map g) = List.mapM (fun x => f (g x)) xs
 := by
   induction xs
@@ -960,7 +960,7 @@ theorem mapM_some_implies_all_some {α β} {f : α → Option β} {xs : List α}
   rw [← List.mapM'_eq_mapM]
   exact mapM'_some_implies_all_some
 
-theorem mem_mapM_some_implies_exists_ele_helper {α β} {y : β} {f : α → Option β} {xs : List α} {ys : List β} :
+theorem mem_mapM_some_implies_exists_unmapped_helper {α β} {y : β} {f : α → Option β} {xs : List α} {ys : List β} :
   Forall₂ (fun x y => f x = some y) xs ys →
   y ∈ ys →
   (∃ x, x ∈ xs ∧ f x = some y) :=
@@ -977,7 +977,7 @@ theorem mem_mapM_some_implies_exists_ele_helper {α β} {y : β} {f : α → Opt
       rw [h₅]
       exact h₃
     case inr h₅ =>
-      have ih := mem_mapM_some_implies_exists_ele_helper h₄ h₅
+      have ih := mem_mapM_some_implies_exists_unmapped_helper h₄ h₅
       rcases ih with ⟨x, ih₁, ih₂⟩
       exists x
       constructor
@@ -986,13 +986,13 @@ theorem mem_mapM_some_implies_exists_ele_helper {α β} {y : β} {f : α → Opt
         exact ih₁
       . exact ih₂
 
-theorem mem_mapM_some_implies_exists_ele {α β} {y : β} {f : α → Option β} {xs : List α} {ys : List β} :
+theorem mem_mapM_some_implies_exists_unmapped {α β} {y : β} {f : α → Option β} {xs : List α} {ys : List β} :
   List.mapM f xs = some ys →
   y ∈ ys →
   ∃ x, x ∈ xs ∧ f x = .some y := by
   intro h₁ h₂
   rw [mapM_some_iff_forall₂] at h₁
-  apply mem_mapM_some_implies_exists_ele_helper h₁ h₂
+  apply mem_mapM_some_implies_exists_unmapped_helper h₁ h₂
 
 
 
@@ -1448,7 +1448,7 @@ theorem not_find?_some_iff_find?_none {α} {p : α → Bool} {xs : List α} :
     specialize h x hx
     contradiction
 
-theorem list_find?_mem_toList {α} [DecidableEq α] {l : List α} {k : α → Bool} {v : α}
+theorem find?_some_is_mem {α} [DecidableEq α] {l : List α} {k : α → Bool} {v : α}
   (h₁ : l.find? k = .some v) :
   v ∈ l
 := by
@@ -1462,7 +1462,7 @@ theorem list_find?_mem_toList {α} [DecidableEq α] {l : List α} {k : α → Bo
       rename_i h₂
       rw [h₂]
       simp
-    . have ih := list_find?_mem_toList h₁
+    . have ih := find?_some_is_mem h₁
       simp
       right
       exact ih

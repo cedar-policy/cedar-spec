@@ -259,7 +259,7 @@ theorem make_mem_list_mem [LT α] [StrictLT α] [DecidableLT α] {xs : List (α 
   simp only [List.subset_def] at h₂
   exact h₂ h₁
 
-theorem insertCanonical_find_succeeds [LT α] [StrictLT α] [DecidableLT α] [BEq α] [LawfulBEq α] [ReflBEq α] {k: α} {v: β} {xs : List (α × β)} :
+theorem insertcanonical_find_inserted [LT α] [StrictLT α] [DecidableLT α] [BEq α] [LawfulBEq α] [ReflBEq α] {k: α} {v: β} {xs : List (α × β)} :
   (List.insertCanonical Prod.fst (k, v) xs).find? (λ x => x.1 == k) = .some (k, v)
 := by
   unfold List.insertCanonical
@@ -281,12 +281,12 @@ theorem insertCanonical_find_succeeds [LT α] [StrictLT α] [DecidableLT α] [BE
           apply StrictLT.not_eq
           exact h₂
         case h.right =>
-          rw [insertCanonical_find_succeeds]
+          rw [insertcanonical_find_inserted]
       case isFalse h₂ =>
         simp
 
 
-theorem insertCanonical_preserves_find_other_element
+private theorem insertCanonical_preserves_find_other_element
   [LT α] [DecidableLT α] [BEq α] [StrictLT α]
   (k : α)
   (x : (α × β)) (xs : List (α × β))  :
@@ -317,118 +317,6 @@ theorem insertCanonical_preserves_find_other_element
         have h₄ := @StrictLT.if_not_lt_gt_then_eq α i₁ i₂ x.fst hd₂.fst h₂ h₃
         rw [← h₄]
         rw [h₁]
-
-theorem canonicalize_preserves_find?
-  {α} {tl: List (α × β)} {k : α} [BEq α] [LT α] [DecidableLT α] [StrictLT α] [LawfulBEq α]
-:
-  List.find? (λ x => x.fst == k) (List.canonicalize Prod.fst tl) =  List.find? (λ x => x.fst == k) tl
-:= by
-  cases tl
-  . simp
-    intro a b c
-    contradiction
-  . rename_i hd tl
-    simp [List.find?, List.canonicalize]
-    split
-    . rename_i h₁
-      simp at h₁
-      unfold List.insertCanonical
-      split
-      . simp
-        assumption
-      . simp
-        split
-        . simp
-          left
-          assumption
-        . split
-          . simp
-            right
-            rename_i h₂
-            rename LT α => i₁
-            rename StrictLT α => i₂
-            rename α × β => hd₂
-            have h₃ := @StrictLT.not_eq α i₁ i₂ hd₂.fst hd.fst h₂
-            rw [h₁] at h₃
-            constructor
-            . assumption
-            . rename_i tl₂ h₂ h₃
-              cases hd
-              rename_i hd_1 hd_2
-              simp at h₁
-              rw [h₁]
-              rw [insertCanonical_find_succeeds]
-          . simp
-            left
-            assumption
-    . rename_i h₁
-      have h₂ := insertCanonical_preserves_find_other_element k hd (List.canonicalize Prod.fst tl) h₁
-      rw [h₂]
-      apply canonicalize_preserves_find?
-
-theorem find?_implies_key_matches
-  {k: α} {xs: List (α × β)} [BEq α] [LawfulBEq α] :
-  List.find? (fun x => x.fst == k) xs = .some p →
-  p.fst = k :=
-by
-  cases xs
-  . simp
-  . simp
-    intro h
-    cases h
-    case cons.inl hd tl h =>
-      simp at h
-      rcases h with ⟨h₁, h₂⟩
-      rw [← h₂]
-      assumption
-    case cons.inr hd tl h =>
-      simp at h
-      rcases h with ⟨h₁, h₂⟩
-      apply find?_implies_key_matches h₂
-
-
-theorem make_find_list_find [LT α] [StrictLT α] [DecidableLT α] [BEq α] [LawfulBEq α] {xs : List (α × β)} :
-  (Map.make xs).find? k = .some v →
-  List.find? (fun x => x.fst == k) xs = .some (k, v)
-:= by
-  simp only [kvs, make]
-  intro h₁
-  cases xs
-  case nil =>
-    simp [List.canonicalize, Prod.fst, List.find?, Map.find?] at h₁
-  case cons hd tl =>
-    simp only [List.find?]
-    split
-    . rename_i x h₂
-      simp [List.canonicalize, List.insertCanonical, Map.find?] at h₁
-      cases hd
-      rename_i k₂ v₂
-      simp at h₂
-      rw [h₂] at h₁
-      rw [insertCanonical_find_succeeds] at h₁
-      simp at h₁
-      rw [h₂, h₁]
-    . rename_i x h₂
-      simp [List.canonicalize, List.insertCanonical, Map.find?] at h₁
-      cases hd
-      rename_i k₂ v₂
-      have h₃ := insertCanonical_preserves_find_other_element k (k₂, v₂) (List.canonicalize Prod.fst tl) h₂
-      simp [Map.kvs] at h₁
-      rw [h₃] at h₁
-      rw [canonicalize_preserves_find?] at h₁
-
-      split at h₁
-      . rename_i k₃ v₃ h₂
-        rw [h₂]
-        simp
-        injection h₁
-        constructor
-        . rename_i h₄ h₅ h₆
-          have h₇ := find?_implies_key_matches h₂
-          simp at h₇
-          assumption
-        . assumption
-      . contradiction
 
 /--
   Very similar to `make_mem_list_mem` above

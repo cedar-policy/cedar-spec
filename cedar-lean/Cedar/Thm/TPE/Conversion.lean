@@ -137,7 +137,7 @@ theorem conversion_preserves_evaluation (te : TypedExpr) (req : Request) (es : E
     rw [List.mapM_pmap_subtype (fun x => Spec.evaluate x req es)]
     rw [List.mapM_pmap_subtype (fun x => x.evaluate req es) (List.map TypedExpr.toResidual ls) (List.attach._proof_1 (List.map TypedExpr.toResidual ls))]
 
-    rw [List.mapM_then_map_combiner, List.mapM_then_map_combiner]
+    rw [List.mapM_map_combiner, List.mapM_map_combiner]
     rw [List.forall₂_implies_mapM_eq]
     apply conversion_preserves_evaluation_forall2
   | record map ty =>
@@ -151,7 +151,7 @@ theorem conversion_preserves_evaluation (te : TypedExpr) (req : Request) (es : E
     rw [List.map_pmap_subtype (fun x => (x.fst, TypedExpr.toResidual x.snd)) map]
     rw [List.mapM_pmap_subtype (fun x => bindAttr x.fst (x.snd.evaluate req es)) (List.map (fun x => (x.fst, TypedExpr.toResidual x.snd)) map)]
     unfold bindAttr
-    rw [List.mapM_then_map_combiner, List.mapM_then_map_combiner]
+    rw [List.mapM_map_combiner, List.mapM_map_combiner]
     simp
     rw [List.forall₂_implies_mapM_eq]
     apply conversion_preserves_evaluation_forall2_map
@@ -163,7 +163,7 @@ theorem conversion_preserves_evaluation (te : TypedExpr) (req : Request) (es : E
     rw [List.map_pmap_subtype]
     rw [List.mapM_pmap_subtype (fun x => x.evaluate req es) (List.map TypedExpr.toResidual args)]
     rw [List.mapM_pmap_subtype (fun x => Spec.evaluate x req es)]
-    rw [List.mapM_then_map_combiner, List.mapM_then_map_combiner]
+    rw [List.mapM_map_combiner, List.mapM_map_combiner]
     rw [List.forall₂_implies_mapM_eq]
     apply conversion_preserves_evaluation_forall2
 end
