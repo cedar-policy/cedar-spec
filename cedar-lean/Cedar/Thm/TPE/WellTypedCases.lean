@@ -166,7 +166,7 @@ theorem partial_eval_well_typed_var {env : TypeEnv} {v : Var} {ty : CedarType} {
   case principal =>
     simp only [Option.pure_def, Option.bind_eq_bind]
     unfold RequestRefines at h_rref
-    rcases h_rref with ⟨h_pv, h_rest⟩
+    rcases h_rref with ⟨h_pv, _⟩
     cases h : preq.principal.asEntityUID
     case intro.none =>
       assumption
@@ -186,8 +186,7 @@ theorem partial_eval_well_typed_var {env : TypeEnv} {v : Var} {ty : CedarType} {
   case resource =>
     simp only [Option.pure_def, Option.bind_eq_bind]
     unfold RequestRefines at h_rref
-    rcases h_rref with ⟨h_pv, h_rest⟩
-    rcases h_rest with ⟨h_av, h_rv, h_cv⟩
+    rcases h_rref with ⟨_, ⟨_, h_rv, _⟩⟩
     cases h : preq.resource.asEntityUID
     . dsimp only [Option.bind_none, varₚ.varₒ, someOrSelf]
       exact h_wt
@@ -1047,7 +1046,6 @@ theorem partial_eval_well_typed_app₂ :
   let h_wt₂ := h_wt
   cases h_wt with
   | binaryApp h_expr1 h_expr2 h_op =>
-
   split
   case h_1 =>
     simp only [Option.pure_def, Option.bind_eq_bind]
