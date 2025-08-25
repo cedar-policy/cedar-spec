@@ -58,7 +58,7 @@ theorem ext_well_typed_after_map {xfn args ty env f} :
   intro h₁ h₂ h₃ h₄
   cases h₅: h₁
   -- String-based constructors: decimal, ip, datetime, duration
-  case decimal s d h₆ | ip s ip₁ h₆ | datetime s d h₆ | duration s d h₆ =>
+  case decimal s d _ | ip s ip₁ _ | datetime s d _ | duration s d _ =>
     simp only [List.map]
     specialize h₄ (Residual.val (Value.prim (Prim.string s)) CedarType.string)
     simp only [Residual.asValue, Option.isSome_some, forall_const] at h₄
@@ -112,9 +112,7 @@ theorem ext_well_typed_after_map {xfn args ty env f} :
     | apply ExtResidualWellTyped.toMinutes
     | apply ExtResidualWellTyped.toHours
     | apply ExtResidualWellTyped.toDays
-    rw [h₃ x₁]
-    rw [h₆]
-    simp
+    rw [h₃ x₁ (List.mem_singleton.mpr rfl), h₆]
 
 theorem find_lifted_type {attr ty₁ ty₂} {m: RecordType} :
   Map.find? m attr = some ty₁ →
