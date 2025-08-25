@@ -37,7 +37,7 @@ def Residual.allLiteralUIDs (x : Residual) : Set EntityUID :=
   | .error _e                          => Set.empty
   | .var _ _                           => Set.empty
   | .ite x₁ x₂ x₃ _      =>
-    x₁.allLiteralUIDs ∪ x₂.allLiteralUIDs ∪ x₃.allLiteralUIDs
+    Residual.allLiteralUIDs x₁ ∪ Residual.allLiteralUIDs x₂ ∪ Residual.allLiteralUIDs x₃
   | .and x₁ x₂ _         =>
     Residual.allLiteralUIDs x₁ ∪ Residual.allLiteralUIDs x₂
   | .or x₁ x₂ _          =>
@@ -82,7 +82,7 @@ partial def batchedEvalLoop
   let toLoad := (Residual.allLiteralUIDs residual).filter (λ uid => (store.find? uid).isNone)
   let newEntities := loader toLoad
   let newStore := Map.make (newEntities.kvs ++ store.kvs)
-  let newRes := Cedar.TPE.evaluate residual req.asPartialRequest newStore
+  let newRes := Cedar.TPE.evaluate residual (Request.asPartialRequest req) newStore
 
   match newRes with
   | .val v _ty => .ok v
