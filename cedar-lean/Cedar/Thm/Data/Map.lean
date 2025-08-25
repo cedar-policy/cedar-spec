@@ -752,6 +752,29 @@ theorem in_kvs_in_mapOnValues [LT α] [DecidableLT α] [DecidableEq α] {f : β 
   simp only [kvs, List.mem_map, Prod.mk.injEq]
   exists (k, v)
 
+
+/--
+  Given a hypothesis like:
+    h: Data.Map.find? es uid = none
+  Proves something like:
+    Data.Map.findOrErr es uid Error.entityDoesNotExist = .error .entityDoesNotExist
+-/
+theorem find?_none_iff_findorErr_errors [LT α] [DecidableLT α] [DecidableEq α] {m : Map α β} {k : α} (e : Error) :
+  m.find? k = none ↔ m.findOrErr k e = .error e
+:= by
+  constructor
+  case mp =>
+    intro h
+    simp only [findOrErr, h]
+  case mpr =>
+    intro h₁
+    simp only [findOrErr] at h₁
+    cases h₂: m.find? k
+    case none => simp
+    case some =>
+      rw [h₂] at h₁
+      simp at h₁
+
 /--
   Converse of `in_kvs_in_mapOnValues`; requires the extra preconditions that `m`
   is `WellFormed` and `f` is injective

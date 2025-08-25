@@ -217,31 +217,6 @@ decreasing_by
     try simp at h
     omega
 
-
-def TypedExpr.toResidual : TypedExpr → Residual
-  | .lit p ty => .val (.prim p) ty
-  | .var v ty => .var v ty
-  | .ite x₁ x₂ x₃ ty => .ite (TypedExpr.toResidual x₁) (TypedExpr.toResidual x₂) (TypedExpr.toResidual x₃) ty
-  | .and a b ty => .and (TypedExpr.toResidual a) (TypedExpr.toResidual b) ty
-  | .or a b ty => .or (TypedExpr.toResidual a) (TypedExpr.toResidual b) ty
-  | .unaryApp op expr ty => .unaryApp op (TypedExpr.toResidual expr) ty
-  | .binaryApp op a b ty => .binaryApp op (TypedExpr.toResidual a) (TypedExpr.toResidual b) ty
-  | .getAttr expr attr ty => .getAttr (TypedExpr.toResidual expr) attr ty
-  | .hasAttr expr attr ty => .hasAttr (TypedExpr.toResidual expr) attr ty
-  | .set ls ty => .set (ls.map₁ (λ ⟨e, _⟩ => TypedExpr.toResidual e)) ty
-  | .record ls ty => .record (ls.attach₂.map (λ ⟨(a, e), _⟩ => (a, TypedExpr.toResidual e))) ty
-  | .call xfn args ty => .call xfn (args.map₁ (λ ⟨e, _⟩ => TypedExpr.toResidual e)) ty
-decreasing_by
-  all_goals (simp_wf ; try omega)
-  all_goals
-    rename_i h
-    try simp at h
-    try replace h := List.sizeOf_lt_of_mem h
-    omega
-
-
-
-
 open Cedar.Spec Cedar.Validation
 
 /-- Partially evaluating a policy.
@@ -268,7 +243,7 @@ def evaluatePolicy (schema : Schema)
         do
           let expr := substituteAction env.reqty.action p.toExpr
           let (te, _) ← (typeOf expr ∅ env).mapError Error.invalidPolicy
-          .ok (evaluate (TypedExpr.toResidual te.liftBoolTypes) req es)
+          .ok (evaluate te.liftBoolTypes.toResidual req es)
       else .error .invalidRequestOrEntities
     | .none => .error .invalidEnvironment
 
