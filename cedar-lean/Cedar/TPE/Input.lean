@@ -163,10 +163,9 @@ where
       es₂.kvs.all λ (a₂, e₂) => match es₁.find? a₂ with
         | .some e₁ =>
           let ⟨attrs₁, ancestors₁, tags₁⟩ := e₁
-          let (attrs₂, ancestors₂, tags₂) := (e₂.attrs, e₂.ancestors, e₂.tags)
-          partialIsValid attrs₂ (· = attrs₁) &&
-          partialIsValid ancestors₂ (· = ancestors₁) &&
-          partialIsValid tags₂ (· = tags₁)
+          partialIsValid e₂.attrs (· = attrs₁) &&
+          partialIsValid e₂.ancestors (· = ancestors₁) &&
+          partialIsValid e₂.tags (· = tags₁)
         | .none => false
   envIsWellFormed env : Except ConcretizationError Unit :=
     if !env.validateWellFormed.isOk
