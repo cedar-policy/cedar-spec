@@ -465,12 +465,12 @@ theorem action_schema_validate_well_formed_is_sound
   exact action_schema_validate_transitive_action_hierarchy_is_sound hok
 
 theorem request_type_validate_well_formed_is_sound
-  {env : TypeEnv} {reqty : RequestType}
-  (hok : reqty.validateWellFormed env = .ok ()) :
-  RequestType.WellFormed env reqty
+  {env : TypeEnv} {sig : ActionSignature}
+  (hok : sig.validateWellFormed env = .ok ()) :
+  sig.WellFormed env
 := by
-  simp only [RequestType.WellFormed]
-  simp only [RequestType.validateWellFormed] at hok
+  simp only [ActionSignature.WellFormed]
+  simp only [ActionSignature.validateWellFormed] at hok
   split at hok
   rotate_left
   · contradiction
@@ -519,8 +519,8 @@ theorem env_validate_well_formed_is_sound
     action_schema_validate_well_formed_is_sound hwf_acts,
     true_and,
   ]
-  -- Check that the request types are well-formed
-  cases hwf_reqs : RequestType.validateWellFormed env env.reqty
+  -- Check that the action signature is well-formed
+  cases hwf_reqs : env.sig.validateWellFormed env
   · simp [hwf_reqs] at hok
   simp only [hwf_reqs] at hok
   exact request_type_validate_well_formed_is_sound hwf_reqs

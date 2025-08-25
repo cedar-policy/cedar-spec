@@ -74,17 +74,17 @@ where
       omega
 
 /--
-The variable ids here should match the variables in `SymRequest.ofRequestType`.
+The variable ids here should match the variables in `SymRequest.ofActionSignature`.
 -/
 def Request.symbolize? (req : Request) (Γ : TypeEnv) (var : TermVar) : Option Term :=
-  if var == { id := "principal", ty := TermType.ofType (.entity Γ.reqty.principal) } then
-    Value.symbolize? ↑req.principal (.entity Γ.reqty.principal)
-  else if var == { id := "action", ty := TermType.ofType (.entity Γ.reqty.action.ty) } then
-    Value.symbolize? ↑req.action (.entity Γ.reqty.action.ty)
-  else if var == { id := "resource", ty := TermType.ofType (.entity Γ.reqty.resource) } then
-    Value.symbolize? ↑req.resource (.entity Γ.reqty.resource)
-  else if var == { id := "context", ty := TermType.ofType (.record Γ.reqty.context) } then
-    Value.symbolize? ↑req.context (.record Γ.reqty.context)
+  if var == { id := "principal", ty := TermType.ofType (.entity Γ.sig.principal) } then
+    Value.symbolize? ↑req.principal (.entity Γ.sig.principal)
+  else if var == { id := "action", ty := TermType.ofType (.entity Γ.sig.action.ty) } then
+    Value.symbolize? ↑req.action (.entity Γ.sig.action.ty)
+  else if var == { id := "resource", ty := TermType.ofType (.entity Γ.sig.resource) } then
+    Value.symbolize? ↑req.resource (.entity Γ.sig.resource)
+  else if var == { id := "context", ty := TermType.ofType (.record Γ.sig.context) } then
+    Value.symbolize? ↑req.context (.record Γ.sig.context)
   else
     .none
 

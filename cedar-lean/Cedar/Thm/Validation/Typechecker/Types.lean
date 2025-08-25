@@ -76,11 +76,11 @@ inductive InstanceOfType (env : TypeEnv) : Value → CedarType → Prop where
       (h₁ : InstanceOfExtType x xty) :
       InstanceOfType env (.ext x) (.ext xty)
 
-def InstanceOfRequestType (request : Request) (env : TypeEnv) : Prop :=
-  InstanceOfEntityType request.principal env.reqty.principal env ∧
-  request.action = env.reqty.action ∧
-  InstanceOfEntityType request.resource env.reqty.resource env ∧
-  InstanceOfType env request.context (.record env.reqty.context)
+def InstanceOfTypeEnv (request : Request) (env : TypeEnv) : Prop :=
+  InstanceOfEntityType request.principal env.sig.principal env ∧
+  request.action = env.sig.action ∧
+  InstanceOfEntityType request.resource env.sig.resource env ∧
+  InstanceOfType env request.context (.record env.sig.context)
 
 def InstanceOfEntityTags (data : EntityData) (entry : EntitySchemaEntry) (env : TypeEnv) : Prop :=
   match entry.tags? with
@@ -138,7 +138,7 @@ def InstanceOfSchema (entities : Entities) (env : TypeEnv) : Prop :=
 
 def InstanceOfWellFormedEnvironment (request : Request) (entities : Entities) (env : TypeEnv) : Prop :=
   env.WellFormed ∧
-  InstanceOfRequestType request env ∧
+  InstanceOfTypeEnv request env ∧
   InstanceOfSchema entities env
 
 ----- Theorems -----

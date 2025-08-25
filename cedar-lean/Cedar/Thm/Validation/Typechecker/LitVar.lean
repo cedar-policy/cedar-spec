@@ -65,7 +65,7 @@ theorem type_of_var_is_sound {var : Var} {c₁ c₂ : Capabilities} {env : TypeE
   simp only [typeOf, typeOfVar, List.empty_eq, Function.comp_apply] at h₃
   have hwf := h₂.wf_env
   have ⟨_, h₂, _⟩ := h₂
-  simp [InstanceOfRequestType] at h₂
+  simp [InstanceOfTypeEnv] at h₂
   cases var
   <;> simp [ok] at h₃
   <;> have ⟨h₃, h₄⟩ := h₃

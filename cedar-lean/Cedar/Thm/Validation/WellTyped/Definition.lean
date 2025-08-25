@@ -39,13 +39,13 @@ inductive Prim.WellTyped (env : TypeEnv) : Prim → CedarType → Prop
 
 inductive Var.WellTyped (env : TypeEnv) : Var → CedarType → Prop
   | principal :
-    WellTyped env .principal (.entity env.reqty.principal)
+    WellTyped env .principal (.entity env.sig.principal)
   | resource :
-    WellTyped env .resource (.entity env.reqty.resource)
+    WellTyped env .resource (.entity env.sig.resource)
   | action :
-    WellTyped env .action (.entity env.reqty.action.ty)
+    WellTyped env .action (.entity env.sig.action.ty)
   | context:
-    WellTyped env .context (CedarType.liftBoolTypes (.record env.reqty.context))
+    WellTyped env .context (CedarType.liftBoolTypes (.record env.sig.context))
 
 inductive UnaryOp.WellTyped : UnaryOp → TypedExpr → CedarType → Prop
   | not {x₁ : TypedExpr}

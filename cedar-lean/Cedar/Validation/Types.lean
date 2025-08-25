@@ -188,7 +188,7 @@ structure Schema where
   ets : EntitySchema
   acts : ActionSchema
 
-structure RequestType where
+structure ActionSignature where
   principal : EntityType
   action : EntityUID
   resource : EntityType
@@ -197,7 +197,7 @@ structure RequestType where
 structure TypeEnv where
   ets : EntitySchema
   acts : ActionSchema
-  reqty : RequestType
+  sig : ActionSignature
 
 def ActionSchema.maybeDescendentOf (as : ActionSchema) (ety₁ ety₂ : EntityType) : Bool :=
   as.kvs.any λ (act, entry) => act.ty = ety₁ && entry.ancestors.any (EntityUID.ty · == ety₂)

@@ -67,7 +67,7 @@ theorem well_typed_implies_wf_type
       constructor
       simp only [EntityType.WellFormed, ActionSchema.IsActionEntityType]
       apply Or.inr
-      exists env.reqty.action
+      exists env.sig.action
     case resource =>
       constructor
       assumption

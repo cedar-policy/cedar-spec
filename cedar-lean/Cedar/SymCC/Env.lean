@@ -215,14 +215,14 @@ def SymEntities.ofSchema (ets : EntitySchema) (acts : ActionSchema) : SymEntitie
   Map.make (eData ++ aData)
 
 /--
-Creates a symbolic request for the given request type.
+Creates a symbolic request for the given action signature.
 -/
-def SymRequest.ofRequestType (reqTy : RequestType) : SymRequest :=
+def SymRequest.ofActionSignature (sig : ActionSignature) : SymRequest :=
   {
-    principal := .var ⟨"principal", TermType.ofType (.entity reqTy.principal)⟩,
-    action    := .prim (.entity reqTy.action),
-    resource  := .var ⟨"resource", TermType.ofType (.entity reqTy.resource)⟩,
-    context   := .var ⟨"context", TermType.ofType (.record reqTy.context)⟩
+    principal := .var ⟨"principal", TermType.ofType (.entity sig.principal)⟩,
+    action    := .prim (.entity sig.action),
+    resource  := .var ⟨"resource", TermType.ofType (.entity sig.resource)⟩,
+    context   := .var ⟨"context", TermType.ofType (.record sig.context)⟩
   }
 
 /--
@@ -231,7 +231,7 @@ type environment.
 -/
 def SymEnv.ofEnv (tyEnv : TypeEnv) : SymEnv :=
   {
-    request  := SymRequest.ofRequestType tyEnv.reqty,
+    request  := SymRequest.ofActionSignature tyEnv.sig,
     entities := SymEntities.ofSchema tyEnv.ets tyEnv.acts
   }
 

@@ -66,10 +66,10 @@ def typeOfLit (p : Prim) (env : TypeEnv) : ResultType :=
 def typeOfVar (v : Var) (env : TypeEnv) : ResultType :=
   let ok := ok ∘ TypedExpr.var v
   match v with
-  | .principal => ok (.entity env.reqty.principal)
-  | .action    => ok (.entity env.reqty.action.ty)
-  | .resource  => ok (.entity env.reqty.resource)
-  | .context   => ok (.record env.reqty.context)
+  | .principal => ok (.entity env.sig.principal)
+  | .action    => ok (.entity env.sig.action.ty)
+  | .resource  => ok (.entity env.sig.resource)
+  | .context   => ok (.record env.sig.context)
 
 def typeOfIf (r₁ : TypedExpr × Capabilities) (r₂ r₃ : ResultType) : ResultType :=
   let c₁ := r₁.snd
@@ -376,7 +376,7 @@ def typeOf (x : Expr) (c : Capabilities) (env : TypeEnv) : ResultType :=
 
 ---- Derivations -----
 
-deriving instance Repr for RequestType
+deriving instance Repr for ActionSignature
 deriving instance Repr for TypeEnv
 
 end Cedar.Validation

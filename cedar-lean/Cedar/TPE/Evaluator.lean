@@ -266,7 +266,7 @@ def evaluatePolicy (schema : Schema)
       if requestAndEntitiesIsValid env req es
       then
         do
-          let expr := substituteAction env.reqty.action p.toExpr
+          let expr := substituteAction env.sig.action p.toExpr
           let (te, _) ← (typeOf expr ∅ env).mapError Error.invalidPolicy
           .ok (evaluate (TypedExpr.toResidual te.liftBoolTypes) req es)
       else .error .invalidRequestOrEntities

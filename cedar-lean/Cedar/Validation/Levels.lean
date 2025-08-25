@@ -56,7 +56,7 @@ def TypedExpr.checkEntityAccessLevel (tx : TypedExpr) (env : TypeEnv) (n nmax : 
   match tx, path with
   | .var _ _, _ => true
   | .lit (.entityUID euid) _, _ =>
-    euid == env.reqty.action
+    euid == env.sig.action
   | .ite tx₁ tx₂ tx₃ _, _ =>
     tx₁.checkLevel env nmax &&
     tx₂.checkEntityAccessLevel env n nmax path &&

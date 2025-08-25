@@ -504,7 +504,7 @@ private theorem ofEnv_request_completeness
   (hwf_Γ : Γ.WellFormed)
   (hwf_I : I.WellFormed (SymEnv.ofEnv Γ).entities)
   (hsame_I : env ∼ SymEnv.interpret I (SymEnv.ofEnv Γ)) :
-  InstanceOfRequestType env.request Γ
+  InstanceOfTypeEnv env.request Γ
 := by
   have ⟨hwf_I_vars, _⟩ := hwf_I
   have ⟨⟨hsame_I_princ, hsame_I_act, hsame_I_res, hsame_I_ctx⟩, _⟩ := hsame_I
@@ -520,7 +520,7 @@ private theorem ofEnv_request_completeness
     simp only [hsame_I_princ, Term.typeOf, TermPrim.typeOf] at hwt_I_princ
     simp only [
       SymEnv.ofEnv,
-      SymRequest.ofRequestType,
+      SymRequest.ofActionSignature,
       Term.typeOf,
       TermType.ofType,
     ] at hwt_I_princ
@@ -535,7 +535,7 @@ private theorem ofEnv_request_completeness
   · simp only [
       Term.interpret,
       SymEnv.ofEnv,
-      SymRequest.ofRequestType,
+      SymRequest.ofActionSignature,
     ] at hsame_I_act
     simp only [Term.prim.injEq, TermPrim.entity.injEq] at hsame_I_act
     simp [hsame_I_act]
@@ -544,7 +544,7 @@ private theorem ofEnv_request_completeness
     simp only [hsame_I_res, Term.typeOf, TermPrim.typeOf] at hwt_I_res
     simp only [
       SymEnv.ofEnv,
-      SymRequest.ofRequestType,
+      SymRequest.ofActionSignature,
       Term.typeOf,
       TermType.ofType,
     ] at hwt_I_res
@@ -558,13 +558,13 @@ private theorem ofEnv_request_completeness
   · have ⟨hwf_I_ctx, hwt_I_ctx⟩ := interpret_term_wf hwf_I hwf_sym_ctx
     simp only [
       SymEnv.ofEnv,
-      SymRequest.ofRequestType,
+      SymRequest.ofActionSignature,
       Term.typeOf,
     ] at hwt_I_ctx
     simp only [
       SameValues,
       SymEnv.ofEnv,
-      SymRequest.ofRequestType,
+      SymRequest.ofActionSignature,
     ] at hsame_I_ctx
     have ⟨_, _, _, hwt_ctx⟩ := wf_env_implies_wf_request hwf_Γ
     have hlifted_ctx := wf_env_implies_ctx_lifted hwf_Γ

@@ -41,10 +41,10 @@ def InstanceOfWellFormedSchema (schema : Schema) (request : Request) (entities :
 
 theorem action_matches_env {env : TypeEnv} {request : Request} {entities : Entities} :
   InstanceOfWellFormedEnvironment request entities env →
-  request.action = env.reqty.action
+  request.action = env.sig.action
 := by
   intro h₀
-  simp only [InstanceOfWellFormedEnvironment, InstanceOfRequestType] at h₀
+  simp only [InstanceOfWellFormedEnvironment, InstanceOfTypeEnv] at h₀
   obtain ⟨_, ⟨ _, h₁, _, _ ⟩, _⟩ := h₀
   exact h₁
 
@@ -55,7 +55,7 @@ theorem typecheck_policy_is_sound (policy : Policy) (env : TypeEnv) (tx : TypedE
 := by
   intro h₁ h₂
   simp only [typecheckPolicy] at h₂
-  cases h₃ : typeOf (substituteAction env.reqty.action policy.toExpr) [] env <;>
+  cases h₃ : typeOf (substituteAction env.sig.action policy.toExpr) [] env <;>
   simp only [List.empty_eq, h₃, reduceCtorEq] at h₂
   split at h₂ <;> simp only [Except.ok.injEq, reduceCtorEq] at h₂
   rename_i cp ht

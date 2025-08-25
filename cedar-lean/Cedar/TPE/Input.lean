@@ -65,12 +65,12 @@ def partialIsValid {α} (o : Option α) (f : α → Bool) : Bool :=
 
 def requestIsValid (env : TypeEnv) (req : PartialRequest) : Bool :=
   (partialIsValid req.principal.asEntityUID λ principal =>
-    instanceOfEntityType principal env.reqty.principal env) &&
-  req.action == env.reqty.action &&
+    instanceOfEntityType principal env.sig.principal env) &&
+  req.action == env.sig.action &&
   (partialIsValid req.resource.asEntityUID λ resource =>
-    instanceOfEntityType resource env.reqty.resource env) &&
+    instanceOfEntityType resource env.sig.resource env) &&
   (partialIsValid req.context λ m =>
-    instanceOfType (.record m) (.record env.reqty.context) env)
+    instanceOfType (.record m) (.record env.sig.context) env)
 
 def entitiesIsValid (env : TypeEnv) (es : PartialEntities) : Bool :=
   (es.toList.all entityIsValid) && (env.acts.toList.all instanceOfActionSchema)

@@ -30,9 +30,9 @@ open Cedar.Data
 For a given action, compute the cross-product of the applicable principal and
 resource types.
 -/
-def ActionSchemaEntry.requestTypes (action : EntityUID) (entry : ActionSchemaEntry) : List RequestType :=
+def ActionSchemaEntry.actionSignatures (action : EntityUID) (entry : ActionSchemaEntry) : List ActionSignature :=
   entry.appliesToPrincipal.toList.foldl (fun acc principal =>
-    let reqtys : List RequestType :=
+    let sigs : List ActionSignature :=
       entry.appliesToResource.toList.map (fun resource =>
         {
           principal := principal,
@@ -40,16 +40,16 @@ def ActionSchemaEntry.requestTypes (action : EntityUID) (entry : ActionSchemaEnt
           resource := resource,
           context := entry.context
         })
-    reqtys ++ acc) ∅
+    sigs ++ acc) ∅
 
 /-- Return every schema-defined environment. -/
 def Schema.environments (schema : Schema) : List TypeEnv :=
-  let requestTypes : List RequestType :=
-    schema.acts.toList.foldl (fun acc (action,entry) => entry.requestTypes action ++ acc) ∅
-  requestTypes.map ({
+  let sigs : List ActionSignature :=
+    schema.acts.toList.foldl (fun acc (action,entry) => entry.actionSignatures action ++ acc) ∅
+  sigs.map ({
     ets := schema.ets,
     acts := schema.acts,
-    reqty := ·
+    sig := ·
   })
 
 /--
@@ -66,7 +66,7 @@ def Schema.environmentsForAction? (schema : Schema) (action : EntityUID) : Optio
   some $ p_r_pairs.map λ (principal, resource) => {
     ets := schema.ets,
     acts := schema.acts,
-    reqty := {
+    sig := {
       principal,
       action,
       resource,
@@ -84,7 +84,7 @@ def Schema.environment? (schema : Schema) (principal resource : EntityType) (act
   | true, true => some {
     ets := schema.ets,
     acts := schema.acts,
-    reqty := {
+    sig := {
       principal,
       action,
       resource,
@@ -149,7 +149,7 @@ def substituteAction (uid : EntityUID) (expr : Expr) : Expr :=
 
 /-- Check that a policy is Boolean-typed. -/
 def typecheckPolicy (policy : Policy) (env : TypeEnv) : Except ValidationError TypedExpr :=
-  let expr := substituteAction env.reqty.action policy.toExpr
+  let expr := substituteAction env.sig.action policy.toExpr
   match typeOf expr ∅ env with
   | .ok (tx, _) =>
     if tx.typeOf ⊑ .bool .anyBool

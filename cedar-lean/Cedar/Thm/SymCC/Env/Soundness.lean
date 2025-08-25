@@ -49,7 +49,7 @@ private theorem env_symbolize?_same_request
     SymEnv.interpret,
     Env.symbolize?,
     SymEnv.ofEnv,
-    SymRequest.ofRequestType,
+    SymRequest.ofActionSignature,
     SymRequest.interpret,
     Request.symbolize?,
     Value.symbolize?,
@@ -67,10 +67,10 @@ private theorem env_symbolize?_same_request
   · have ⟨_, ⟨_, h, _, _⟩, _⟩ := hinst
     simp [h]
   -- Same context after interpretation
-  · have hwf_ctx_ty : (CedarType.record Γ.reqty.context).WellFormed Γ := by
+  · have hwf_ctx_ty : (CedarType.record Γ.sig.context).WellFormed Γ := by
       have ⟨_, _, _, h⟩ := wf_env_implies_wf_request hwf
       exact h
-    have hwt_ctx : InstanceOfType Γ env.request.context (.record Γ.reqty.context) := by
+    have hwt_ctx : InstanceOfType Γ env.request.context (.record Γ.sig.context) := by
       have ⟨_, ⟨_, _, _, h⟩, _⟩ := hinst
       exact h
     have hwf_ctx : (Value.record env.request.context).WellFormed env.entities := by
@@ -1162,27 +1162,27 @@ private theorem env_symbolize?_wf_vars
   have ⟨hwf_Γ, _, _⟩ := hinst
   have ⟨hwf_princ_ty, hcontains_action, hwf_resource_ty, hwf_context_ty⟩ := wf_env_implies_wf_request hwf_Γ
   replace hwf_princ_ty :
-    (CedarType.entity Γ.reqty.principal).WellFormed Γ
+    (CedarType.entity Γ.sig.principal).WellFormed Γ
   := by constructor; exact hwf_princ_ty
   replace hwf_resource_ty :
-    (CedarType.entity Γ.reqty.resource).WellFormed Γ
+    (CedarType.entity Γ.sig.resource).WellFormed Γ
   := by constructor; exact hwf_resource_ty
   have hwf_action_ty :
-    (CedarType.entity Γ.reqty.action.ty).WellFormed Γ
+    (CedarType.entity Γ.sig.action.ty).WellFormed Γ
   := by
     constructor
     apply Or.inr
     simp only [ActionSchema.IsActionEntityType]
-    exists Γ.reqty.action
+    exists Γ.sig.action
   have ⟨_, ⟨hinst_princ, hinst_action, hinst_resource, hinst_context⟩, _⟩ := hinst
   replace hinst_princ :
-    InstanceOfType Γ (Value.prim (Prim.entityUID env.request.principal)) (CedarType.entity Γ.reqty.principal)
+    InstanceOfType Γ (Value.prim (Prim.entityUID env.request.principal)) (CedarType.entity Γ.sig.principal)
   := by constructor; exact hinst_princ
   replace hinst_resource :
-    InstanceOfType Γ (Value.prim (Prim.entityUID env.request.resource)) (CedarType.entity Γ.reqty.resource)
+    InstanceOfType Γ (Value.prim (Prim.entityUID env.request.resource)) (CedarType.entity Γ.sig.resource)
   := by constructor; exact hinst_resource
   replace hinst_action :
-    InstanceOfType Γ (Value.prim (Prim.entityUID env.request.action)) (CedarType.entity Γ.reqty.action.ty)
+    InstanceOfType Γ (Value.prim (Prim.entityUID env.request.action)) (CedarType.entity Γ.sig.action.ty)
   := by
     constructor
     simp only [InstanceOfEntityType, hinst_action, true_and]
