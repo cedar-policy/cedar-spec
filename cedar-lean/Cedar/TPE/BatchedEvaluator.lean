@@ -62,7 +62,7 @@ def batchedEvaluate
   (req : Request)
   (loader : EntityLoader)
   : Result Value :=
-  let residual := Cedar.TPE.evaluate (TypedExpr.toResidual x) req.asPartialRequest Map.empty
+  let residual := Cedar.TPE.evaluate x.toResidual req.asPartialRequest Map.empty
   -- start the batched evaluation loop
   batchedEvalLoop residual req loader Map.empty
 
@@ -78,6 +78,6 @@ def entityLoaderFor (es: Entities) (uids : Set EntityUID) :=
   Map.make (uids.toList.map (λ uid =>
         match (es.find? uid) with
         | .some data =>
-          (uid, EntityData.asPartial data)
+          (uid, data.asPartial)
         | .none =>
           (uid, PartialEntityData.absent)))
