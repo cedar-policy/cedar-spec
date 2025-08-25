@@ -99,7 +99,7 @@ def batchedEvaluate
   (req : Request)
   (loader : EntityLoader)
   : Result Value :=
-  let residual := Cedar.TPE.evaluate x.toResidual req.asPartialRequest Map.empty
+  let residual := Cedar.TPE.evaluate (TypedExpr.toResidual x) (Request.asPartialRequest req) Map.empty
   -- start the batched evaluation loop
   batchedEvalLoop residual req loader Map.empty
 
