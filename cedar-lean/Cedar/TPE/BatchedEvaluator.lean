@@ -37,7 +37,7 @@ def Residual.allLiteralUIDs (x : Residual) : Set EntityUID :=
   | .error _e                          => Set.empty
   | .var _ _                           => Set.empty
   | .ite x₁ x₂ x₃ _      =>
-    Residual.allLiteralUIDs x₁ ∪ Residual.allLiteralUIDs x₂ ∪ Residual.allLiteralUIDs x₃
+    x₁.allLiteralUIDs ∪ x₂.allLiteralUIDs ∪ x₃.allLiteralUIDs
   | .and x₁ x₂ _         =>
     Residual.allLiteralUIDs x₁ ∪ Residual.allLiteralUIDs x₂
   | .or x₁ x₂ _          =>
