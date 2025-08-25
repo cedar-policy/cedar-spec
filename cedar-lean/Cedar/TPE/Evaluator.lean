@@ -240,8 +240,6 @@ decreasing_by
     omega
 
 
-
-
 open Cedar.Spec Cedar.Validation
 
 /-- Partially evaluating a policy.
