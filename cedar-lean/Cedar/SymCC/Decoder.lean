@@ -223,17 +223,17 @@ partial def SExpr.decodeLit (ids : IdMaps) : SExpr → Result Term
   | .string s       => Term.string s
   | .symbol "true"  => Term.bool true
   | .symbol "false" => Term.bool false
-  | .symbol e       => enum e
+  | .symbol e       => enumOrEmptyRecord e
   | .sexpr xs       => construct xs
   | other           => fail "literal expr" other
 where
-  enum (s : String) : Result Term :=
+  enumOrEmptyRecord (s : String) : Result Term :=
     match ids.enums.find? s with
     | .some uid => Term.entity uid
-    | .none     =>  fail "enum id" s
+    | .none     => constructEntityOrRecord s []
   constructEntityOrRecord tyId args : Result Term := do
     match ids.types.find? tyId, args with
-    | .some (.entity ety), [.string eid] =>
+    | .some (.entity ety), [SExpr.string eid] =>
       Term.entity ⟨ety, eid⟩
     | .some (.record (Map.mk rty)), _ =>
       let ts ← args.mapM (SExpr.decodeLit ids)

@@ -301,6 +301,7 @@ def testsDecodeValidLitStrings :=
     testDecodeLitOk "(V6 #b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 ((as some (Option (_ BitVec 7))) #b0000001))" (.ext (.ipaddr (.V6 ⟨0#128, 1#7⟩))),
     testDecodeLitOk "(E1 \"Alice\")" (.entity ⟨userType, "Alice"⟩),
     testDecodeLitOk "(R3)" (.record Map.empty),
+    testDecodeLitOk "R3" (.record Map.empty),
     testDecodeLitOk "(R4 (as none (Option Bool)) #b0000000000000000000000000000000000000000000000000000000000001010 E0_m2)"
       (.record (Map.make [("a", .none .bool), ("b", 10#64), ("c", .entity ⟨colorType, "red"⟩)])),
     testDecodeLitOk "(R6 (R5 true))" (.record (Map.make [("d", .record (Map.make [("e", .bool true)]))])),
