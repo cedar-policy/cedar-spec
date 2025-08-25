@@ -627,26 +627,24 @@ theorem partial_eval_well_typed_getAttr {env : TypeEnv} {expr : Residual} {attr 
           have ih := h_expr_wt
           rw [h₃] at ih
           cases ih
-          rename_i h₇
-          cases h₇
-          rename_i rty₂ h₈ h₉ h₁₀
+          rename_i h_wt_val
+          cases h_wt_val
+          rename_i rty₂ h₈ h₉ _
           cases h₁₂ : m.find? attr
           . simp only [someOrError]
             apply Residual.WellTyped.error
-          . rename_i v
-            simp only [someOrError]
+          . simp only [someOrError]
             apply Residual.WellTyped.val
             have h₁₁ := partial_eval_preserves_typeof h_wf h_ref h₅
-            rw [h₃] at h₁₁
-            rw [h₆] at h₁₁
+            rw [h₃, h₆] at h₁₁
             simp [Residual.typeOf] at h₁₁
         case getAttr_record rty h₄ h₅ h₆ =>
           have ih := h_expr_wt
           rw [h₃] at ih
           cases ih
-          rename_i h₇
-          cases h₇
-          rename_i rty₂ h₈ h₉ h₁₀
+          rename_i h_wt_rec
+          cases h_wt_rec
+          rename_i rty₂ h₈ h₉ _
           cases h₁₂ : m.find? attr
           . simp only [someOrError]
             apply Residual.WellTyped.error
@@ -671,8 +669,8 @@ theorem partial_eval_well_typed_getAttr {env : TypeEnv} {expr : Residual} {attr 
           have ih := h_expr_wt
           rw [h₃] at ih
           cases ih
-          rename_i h₇
-          cases h₇
+          rename_i h_wt_ent
+          cases h_wt_ent
           rename_i ety₂ h₈
           cases h₁₂ : m.find? attr
           . simp only [someOrError]
@@ -681,8 +679,7 @@ theorem partial_eval_well_typed_getAttr {env : TypeEnv} {expr : Residual} {attr 
             simp only [someOrError]
             apply Residual.WellTyped.val
             have h₁₁ := partial_eval_preserves_typeof h_wf h_ref h₅
-            rw [h₃] at h₁₁
-            rw [h₆] at h₁₁
+            rw [h₃, h₆] at h₁₁
             simp only [Residual.typeOf, CedarType.entity.injEq] at h₁₁
             unfold RequestAndEntitiesRefine at h_ref
             rcases h_ref with ⟨h_rref, h_eref⟩
@@ -694,7 +691,7 @@ theorem partial_eval_well_typed_getAttr {env : TypeEnv} {expr : Residual} {attr 
               specialize h_eref uid e h₁₃
               cases h_eref
               . rename_i h₁₄
-                rcases h₁₄ with ⟨h₁₅, h₁₆⟩
+                rcases h₁₄ with ⟨h₁₅, _⟩
                 rw [h₁₅] at h₂
                 simp only [Option.bind_some, PartialEntityData.attrs, Option.some.injEq] at h₂
                 rw [← h₂] at h₁₂
