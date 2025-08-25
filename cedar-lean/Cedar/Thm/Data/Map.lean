@@ -757,7 +757,7 @@ theorem in_kvs_in_mapOnValues [LT α] [DecidableLT α] [DecidableEq α] {f : β 
   Given a hypothesis like:
     h: Data.Map.find? es uid = none
   Proves something like:
-    Data.Map.findOrErr es uid Error.entityDoesNotExist
+    Data.Map.findOrErr es uid Error.entityDoesNotExist = .error .entityDoesNotExist
 -/
 theorem find?_none_implies_findorErr_errors [LT α] [DecidableLT α] [DecidableEq α] {m : Map α β} {k : α} (e : Error) :
   m.find? k = none → m.findOrErr k e = .error e
