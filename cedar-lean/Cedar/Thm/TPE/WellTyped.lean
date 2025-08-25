@@ -35,6 +35,57 @@ open Cedar.Validation
 open Cedar.TPE
 
 
+-- TODO super ugly theorem for sizeOf
+theorem sizeOf_Residual_rec2_eq_ls_sizeOf (ls: List (Attr × Residual)) :
+  let rec2: Nat := (Residual.rec_2 (fun v ty => 1 + v._sizeOf_1 + ty._sizeOf_1) (fun v ty => 1 + v._sizeOf_1 + ty._sizeOf_1)
+        (fun cond thenExpr elseExpr ty cond_ih thenExpr_ih elseExpr_ih =>
+          1 + cond_ih + thenExpr_ih + elseExpr_ih + ty._sizeOf_1)
+        (fun a b ty a_ih b_ih => 1 + a_ih + b_ih + ty._sizeOf_1)
+        (fun a b ty a_ih b_ih => 1 + a_ih + b_ih + ty._sizeOf_1)
+        (fun op expr ty expr_ih => 1 + op._sizeOf_1 + expr_ih + ty._sizeOf_1)
+        (fun op a b ty a_ih b_ih => 1 + op._sizeOf_1 + a_ih + b_ih + ty._sizeOf_1)
+        (fun expr attr ty expr_ih => 1 + expr_ih + String._sizeOf_1 attr + ty._sizeOf_1)
+        (fun expr attr ty expr_ih => 1 + expr_ih + String._sizeOf_1 attr + ty._sizeOf_1)
+        (fun ls ty ls_ih => 1 + ls_ih + ty._sizeOf_1) (fun map ty map_ih => 1 + map_ih + ty._sizeOf_1)
+        (fun xfn args ty args_ih => 1 + xfn._sizeOf_1 + args_ih + ty._sizeOf_1) (fun ty => 1 + ty._sizeOf_1) 1
+        (fun head tail head_ih tail_ih => 1 + head_ih + tail_ih) 1
+        (fun head tail head_ih tail_ih => 1 + head_ih + tail_ih)
+        (fun fst snd snd_ih => 1 + String._sizeOf_1 fst + snd_ih) ls)
+  ls._sizeOf_1 = rec2
+  := by
+  intro rec2
+  subst rec2
+  cases ls
+  case nil => simp [List._sizeOf_1]
+  case cons hd tl =>
+    simp [List._sizeOf_1, Residual.rec]
+    have ih := sizeOf_Residual_rec2_eq_ls_sizeOf tl
+    simp [sizeOf, Prod._sizeOf_1]
+    -- tmp to unfold just this instance of _sizeOf_1
+    let tmp : hd.snd._sizeOf_1 = (Residual.rec (fun v ty => 1 + sizeOf v + sizeOf ty) (fun v ty => 1 + sizeOf v + sizeOf ty)
+    (fun cond thenExpr elseExpr ty cond_ih thenExpr_ih elseExpr_ih =>
+      1 + cond_ih + thenExpr_ih + elseExpr_ih + sizeOf ty)
+    (fun a b ty a_ih b_ih => 1 + a_ih + b_ih + sizeOf ty) (fun a b ty a_ih b_ih => 1 + a_ih + b_ih + sizeOf ty)
+    (fun op expr ty expr_ih => 1 + sizeOf op + expr_ih + sizeOf ty)
+    (fun op a b ty a_ih b_ih => 1 + sizeOf op + a_ih + b_ih + sizeOf ty)
+    (fun expr attr ty expr_ih => 1 + expr_ih + sizeOf attr + sizeOf ty)
+    (fun expr attr ty expr_ih => 1 + expr_ih + sizeOf attr + sizeOf ty) (fun ls ty ls_ih => 1 + ls_ih + sizeOf ty)
+    (fun map ty map_ih => 1 + map_ih + sizeOf ty) (fun xfn args ty args_ih => 1 + sizeOf xfn + args_ih + sizeOf ty)
+    (fun ty => 1 + sizeOf ty) 1 (fun head tail head_ih tail_ih => 1 + head_ih + tail_ih) 1
+    (fun head tail head_ih tail_ih => 1 + head_ih + tail_ih) (fun fst snd snd_ih => 1 + sizeOf fst + snd_ih) hd.snd) := by
+      simp [Residual._sizeOf_1]
+    rw [tmp]
+    simp at ih
+    rw [← ih]
+    congr
+
+
+theorem sizeOf_Residual_record_elems_lt {ls ty} :
+  sizeOf ls < sizeOf (Residual.record ls (CedarType.record ty))
+  := by
+  simp [sizeOf, Residual._sizeOf_1]
+  rw [sizeOf_Residual_rec2_eq_ls_sizeOf]
+  omega
 
 /--
 Theorem: Partial evaluation preserves well-typedness of residuals.
@@ -122,15 +173,14 @@ theorem partial_eval_preserves_well_typed
     have ih_ls : ∀ k v, (k, v) ∈ ls → Residual.WellTyped env (TPE.evaluate v preq pes) := by
       intros k v h_mem
       specialize h₀ k v h_mem
-      have termination : sizeOf v < sizeOf res := by {
+      have termination : sizeOf v <= sizeOf ls := by
         -- Use the existing lemma for list member size
         have h_snd_lt : sizeOf (k, v).snd < 1 + sizeOf ls := List.sizeOf_snd_lt_sizeOf_list h_mem
         simp at h_snd_lt
-        -- The size of the record includes the size of the list plus overhead
-        rw [hᵣ]
-        -- unclear how to get size of ls compared to residual.record
-        sorry
-      }
+        omega
+
+      have termination₂ : sizeOf ls < sizeOf (Residual.record ls (CedarType.record ty₁)) := by
+        exact sizeOf_Residual_record_elems_lt
       exact partial_eval_preserves_well_typed h_wf h_ref h₀
     exact partial_eval_well_typed_record ih_ls h_wf h_ref h_wt
   case getAttr expr attr ty =>

@@ -183,8 +183,7 @@ theorem partial_eval_well_typed_var {env : TypeEnv} {v : Var} {ty : CedarType} {
     rcases h_rref with ⟨h_pv, h_rest⟩
     cases h : preq.principal.asEntityUID
     case intro.none =>
-      simp only [Option.bind_none, varₚ.varₒ, someOrSelf]
-      exact h_wt
+      assumption
     case intro.some =>
       simp only [Option.bind_some, varₚ.varₒ, someOrSelf]
       rw [h] at h_pv
@@ -195,6 +194,7 @@ theorem partial_eval_well_typed_var {env : TypeEnv} {v : Var} {ty : CedarType} {
 
       rw [h₃]
       apply InstanceOfType.instance_of_entity req.principal env.reqty.principal
+
       rcases h_wf with ⟨_, ⟨h_principal, _, _, _⟩, _⟩
       exact h_principal
   case resource =>
@@ -590,7 +590,7 @@ theorem partial_eval_well_typed_record {env : TypeEnv} {ls : List (Attr × Resid
   case h_2 x h₂ =>
     split
     . apply Residual.WellTyped.error
-    . rename_i h₃
+    case isFalse h₃ =>
       apply Residual.WellTyped.record
       . intros k v h₄
         have h₅ := List.mem_of_map_implies_exists_unmapped h₄
