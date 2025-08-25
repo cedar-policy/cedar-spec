@@ -71,12 +71,8 @@ theorem ext_well_typed_after_map {xfn args ty env f} :
     | apply ExtResidualWellTyped.lessThanOrEqual
     | apply ExtResidualWellTyped.greaterThan
     | apply ExtResidualWellTyped.greaterThanOrEqual
-    . rw [h₃ x₁]
-      rw [h₆]
-      simp [List.map]
-    . rw [h₃ x₂]
-      rw [h₇]
-      simp [List.map]
+    . rw [h₃ x₁ (by simp), h₆]
+    . rw [h₃ x₂ (by simp), h₇]
   -- Unary IP address predicates
   case isIpv4 x₁ h₆ | isIpv6 x₁ h₆ | isLoopback x₁ h₆ | isMulticast x₁ h₆ =>
     simp only [List.map]
@@ -85,9 +81,7 @@ theorem ext_well_typed_after_map {xfn args ty env f} :
     | apply ExtResidualWellTyped.isIpv6
     | apply ExtResidualWellTyped.isLoopback
     | apply ExtResidualWellTyped.isMulticast
-    rw [h₃ x₁]
-    rw [h₆]
-    simp [List.map]
+    rw [h₃ x₁ (by simp), h₆]
   -- Binary operations: isInRange, offset, durationSince
   case isInRange x₁ x₂ h₆ h₇ | offset x₁ x₂ h₆ h₇ | durationSince x₁ x₂ h₆ h₇ =>
     simp only [List.map_cons, List.map_nil]
@@ -95,12 +89,8 @@ theorem ext_well_typed_after_map {xfn args ty env f} :
     | apply ExtResidualWellTyped.isInRange
     | apply ExtResidualWellTyped.offset
     | apply ExtResidualWellTyped.durationSince
-    . rw [h₃ x₁]
-      rw [h₆]
-      simp
-    . rw [h₃ x₂]
-      rw [h₇]
-      simp
+    . rw [h₃ x₁ (by simp), h₆]
+    . rw [h₃ x₂ (by simp), h₇]
   -- Unary datetime/duration conversions
   case toDate x₁ h₆ | toTime x₁ h₆ | toMilliseconds x₁ h₆ | toSeconds x₁ h₆ | toMinutes x₁ h₆ | toHours x₁ h₆ | toDays x₁ h₆ =>
     simp only [List.map_cons, List.map_nil]
@@ -131,17 +121,15 @@ theorem find_lifted_type {attr ty₁ ty₂} {m: RecordType} :
     rw [h₃] at h₂
     simp only [CedarType.liftBoolTypesRecord, List.find?] at h₂
     cases h₄ : hd.fst == attr
-    any_goals
-      rw [h₄] at h₂
-      simp only [List.find?] at h₁
-      rw [h₄] at h₁
     case false =>
+      simp only [List.find?] at h₁
+      rw [h₄] at h₁ h₂
       exact find_lifted_type h₁ h₂
     case true =>
-      simp only [Option.some.injEq] at h₂
-      rw [← h₂]
-      simp only [Option.some.injEq] at h₁
-      rw [h₁]
+      simp only [List.find?] at h₁
+      rw [h₄] at h₁ h₂
+      simp only [Option.some.injEq] at h₁ h₂
+      rw [← h₂, h₁]
 decreasing_by
   rename_i hd tail _ _
   have h₈: sizeOf (Map.mk tail) < sizeOf m := by {
