@@ -733,8 +733,8 @@ theorem partial_evaluate_is_sound_binary_app
           simp [PartialEntityData.tags] at heq₃
           rw [← heq₃]
           simp [Data.Map.find?, Data.Map.kvs, Data.Map.empty, Residual.evaluate, Except.toOption, Spec.getTag, Entities.tags]
-          have h₆ := Data.Map.find?_none_implies_findorErr_errors Error.entityDoesNotExist h₄₂
-          rw [h₆]
+          rw [Data.Map.find?_none_iff_findorErr_errors] at h₄₂
+          rw [h₄₂]
           simp
         · rw [heq₃] at h₄₂
           cases h₄₂
@@ -860,8 +860,8 @@ theorem partial_evaluate_is_sound_get_attr
       specialize h₄ uid data heq₂
       rcases h₄ with ⟨h₄₁, h₄₂⟩ | ⟨_, h₄₁, h₄₂, _⟩
       · simp [Entities.attrs]
-        have h₆ := Data.Map.find?_none_implies_findorErr_errors Error.entityDoesNotExist h₄₂
-        rw [h₆]
+        rw [Data.Map.find?_none_iff_findorErr_errors] at h₄₂
+        rw [h₄₂]
         simp [Except.toOption]
         rw [h₄₁] at heq₃
         simp [PartialEntityData.attrs] at heq₃
