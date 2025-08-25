@@ -43,12 +43,6 @@ structure PartialRequest where
   -- (typed) `Residual`
   context   : Option (Map Attr Value)
 
-def Request.asPartialRequest (req : Request) : PartialRequest :=
-  { principal := { ty := req.principal.ty, id := .some req.principal.eid }
-  , action    := req.action
-  , resource  := { ty := req.resource.ty, id := .some req.resource.eid }
-  , context   := req.context }
-
 
 -- We don't need type annotations here following the rationale above
 inductive PartialEntityData where
@@ -174,4 +168,22 @@ where
     else
       .ok ()
 
+
 end Cedar.TPE
+
+namespace Cedar.Spec
+
+open Cedar.Data
+open Cedar.Spec
+open Cedar.Validation
+open Cedar.TPE
+
+def Request.asPartialRequest (req : Request) : PartialRequest :=
+  { principal := { ty := req.principal.ty, id := .some req.principal.eid }
+  , action    := req.action
+  , resource  := { ty := req.resource.ty, id := .some req.resource.eid }
+  , context   := req.context }
+
+
+
+end Cedar.Spec
