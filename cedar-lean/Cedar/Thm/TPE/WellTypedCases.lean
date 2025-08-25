@@ -697,7 +697,7 @@ theorem partial_eval_well_typed_getAttr {env : TypeEnv} {expr : Residual} {attr 
                 rw [← h₂] at h₁₂
                 simp [Map.empty, Map.find?, Map.kvs, List.find?] at h₁₂
               . rename_i h₁₄
-                rcases h₁₄ with ⟨e₂, h₁₄, h₁₅, h₁₆, h₁₇⟩
+                rcases h₁₄ with ⟨e₂, h₁₄, h₁₅, _, h₁₇⟩
                 simp only [Option.bind] at h₂
                 rw [h₂] at h₁₅
                 cases h₁₅
@@ -705,7 +705,7 @@ theorem partial_eval_well_typed_getAttr {env : TypeEnv} {expr : Residual} {attr 
                 rw [h₁₈] at h₁₂
                 have h_wf2 := h_wf
                 unfold InstanceOfWellFormedEnvironment at h_wf2
-                rcases h_wf2 with ⟨h₁₉, h₂₀, h₂₁⟩
+                rcases h_wf2 with ⟨h₁₉, _, h₂₁⟩
                 unfold InstanceOfSchema at h₂₁
                 rcases h₂₁ with ⟨h₂₁, h₂₂⟩
                 specialize h₂₁ uid e₂ h₁₄
@@ -1258,7 +1258,7 @@ theorem partial_eval_well_typed_app₂ :
           rw [h₁₂] at h₁₃
           let h_wf₂ := h_wf
           unfold InstanceOfWellFormedEnvironment at h_wf₂
-          rcases h_wf₂ with ⟨h₁₄, h₁₅, h₁₆⟩
+          rcases h_wf₂ with ⟨h₁₄, _, h₁₆⟩
           unfold InstanceOfSchema at h₁₆
           rcases h₁₆ with ⟨h₁₆, h₁₇⟩
           specialize h₁₆ id1 e h₈
