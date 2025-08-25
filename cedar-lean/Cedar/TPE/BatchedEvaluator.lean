@@ -66,6 +66,14 @@ def batchedEvaluate
   -- start the batched evaluation loop
   batchedEvalLoop residual req loader Map.empty
 
+/--
+Create an entity loader for an entity store Entities.
+This is used to model user-provided entity loaders which
+load entities from a backing database.
+
+Given Entities es, the entity loader provides the requested
+entities specified by a set of entity ids.
+-/
 def entityLoaderFor (es: Entities) (uids : Set EntityUID) :=
   Map.make (uids.toList.map (λ uid =>
         match (es.find? uid) with
