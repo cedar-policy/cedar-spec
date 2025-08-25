@@ -131,6 +131,45 @@ decreasing_by
     try simp at h
     omega
 
+
+def Residual.allLiteralUIDs (x : Residual) : Set EntityUID :=
+  match x with
+  | .val (.prim (.entityUID uid)) _ty  => Set.singleton uid
+  | .val _ _                           => Set.empty
+  | .error _e                          => Set.empty
+  | .var _ _                           => Set.empty
+  | .ite x₁ x₂ x₃ _      =>
+    x₁.allLiteralUIDs ∪ x₂.allLiteralUIDs ∪ x₃.allLiteralUIDs
+  | .and x₁ x₂ _         =>
+    x₁.allLiteralUIDs ∪ x₂.allLiteralUIDs
+  | .or x₁ x₂ _          =>
+    x₁.allLiteralUIDs ∪ x₂.allLiteralUIDs
+  | .unaryApp _ x _      =>
+    x.allLiteralUIDs
+  | .binaryApp _ x₁ x₂ _ =>
+    x₁.allLiteralUIDs ∪ x₂.allLiteralUIDs
+  | .getAttr x _ _       => Residual.allLiteralUIDs x
+  | .hasAttr x _ _       => Residual.allLiteralUIDs x
+  | .set x _             =>
+    x.mapUnion₁ (λ ⟨v, _⟩ => Residual.allLiteralUIDs v)
+  | .record x _          =>
+    x.mapUnion₂ (λ ⟨⟨_attr, v⟩, _⟩ => Residual.allLiteralUIDs v)
+  | .call _ x _          =>
+    x.mapUnion₁ (λ ⟨v, _⟩ => Residual.allLiteralUIDs v)
+termination_by sizeOf x
+decreasing_by
+  any_goals
+    simp
+    try simp at *
+    try omega
+  all_goals
+    rename_i h
+    let so := List.sizeOf_lt_of_mem h
+    simp at *
+    omega
+
+
+
 mutual
 
 def decResidual (x y : Residual) : Decidable (x = y) := by
@@ -200,3 +239,32 @@ end
 instance : DecidableEq Residual := decResidual
 
 end Cedar.Spec
+
+namespace Cedar.Validation
+
+open Cedar.Data
+open Cedar.Spec
+
+
+def TypedExpr.toResidual : TypedExpr → Residual
+  | .lit p ty => .val (.prim p) ty
+  | .var v ty => .var v ty
+  | .ite x₁ x₂ x₃ ty => .ite (TypedExpr.toResidual x₁) (TypedExpr.toResidual x₂) (TypedExpr.toResidual x₃) ty
+  | .and a b ty => .and (TypedExpr.toResidual a) (TypedExpr.toResidual b) ty
+  | .or a b ty => .or (TypedExpr.toResidual a) (TypedExpr.toResidual b) ty
+  | .unaryApp op expr ty => .unaryApp op (TypedExpr.toResidual expr) ty
+  | .binaryApp op a b ty => .binaryApp op (TypedExpr.toResidual a) (TypedExpr.toResidual b) ty
+  | .getAttr expr attr ty => .getAttr (TypedExpr.toResidual expr) attr ty
+  | .hasAttr expr attr ty => .hasAttr (TypedExpr.toResidual expr) attr ty
+  | .set ls ty => .set (ls.map₁ (λ ⟨e, _⟩ => TypedExpr.toResidual e)) ty
+  | .record ls ty => .record (ls.attach₂.map (λ ⟨(a, e), _⟩ => (a, TypedExpr.toResidual e))) ty
+  | .call xfn args ty => .call xfn (args.map₁ (λ ⟨e, _⟩ => TypedExpr.toResidual e)) ty
+decreasing_by
+  all_goals (simp_wf ; try omega)
+  all_goals
+    rename_i h
+    try simp at h
+    try replace h := List.sizeOf_lt_of_mem h
+    omega
+
+end Cedar.Validation

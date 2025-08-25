@@ -585,14 +585,25 @@ theorem partial_evaluate_is_sound_binary_app
           simp [RequestAndEntitiesRefine, EntitiesRefine] at h₄
           rcases h₄ with ⟨_, h₄⟩
           specialize h₄ uid₁ data heq₅₁
-          rcases h₄ with ⟨_, h₄₁, _, h₄₂, _⟩
-          rw [heq₅₂] at h₄₂
-          cases h₄₂
-          rename_i h₄₂
-          simp [Spec.inₑ, Entities.ancestorsOrEmpty, h₄₁, ←h₄₂]
-          have : (uid₁ == uid₂) = false := by
-            simp only [beq_eq_false_iff_ne, ne_eq, heq₄, not_false_eq_true]
-          simp only [this, Bool.false_or]
+          rcases h₄ with ⟨h₄₁, h₄₂⟩ | ⟨_, h₄₁, _, h₄₂, _⟩
+          · rw [h₄₁] at heq₅₂
+            simp [PartialEntityData.ancestors] at heq₅₂
+            rw [←heq₅₂]
+            simp [Data.Set.empty, Spec.inₑ, BEq.beq]
+            have h_decide_false : decide (uid₁ = uid₂) = false := by
+              apply decide_eq_false
+              exact heq₄
+            rw [h_decide_false]
+            simp [Entities.ancestorsOrEmpty]
+            rw [h₄₂]
+            simp [Data.Set.empty]
+          · rw [heq₅₂] at h₄₂
+            cases h₄₂
+            rename_i h₄₂
+            simp [Spec.inₑ, Entities.ancestorsOrEmpty, h₄₁, ←h₄₂]
+            have : (uid₁ == uid₂) = false := by
+              simp only [beq_eq_false_iff_ne, ne_eq, heq₄, not_false_eq_true]
+            simp only [this, Bool.false_or]
       case _ heq₃ =>
         simp only [Residual.evaluate, Spec.apply₂, Except.bind_ok]
     case _ =>
@@ -651,13 +662,23 @@ theorem partial_evaluate_is_sound_binary_app
               split at h₂ <;> try cases h₂
               rename_i data heq₁
               specialize h₄ uid data heq₁
-              rcases h₄ with ⟨e, h₄, _, h₅, _⟩
-              rw [h₂] at h₅
-              cases h₅
-              rename_i heq₂
-              rw [heq₂] at h₃
-              simp only [Entities.ancestorsOrEmpty, h₄, h₃, Bool.or_eq_right_iff_imp, beq_iff_eq, heq,
-                false_implies]
+              rcases h₄ with ⟨h₄₁, h₄₂⟩ | ⟨e, h₄, _, h₅, _⟩
+              · simp [Entities.ancestorsOrEmpty]
+                rw [h₄₂]
+                simp [Data.Set.empty, Data.Set.contains, Data.Set.elts]
+                rw [h₄₁] at h₂
+                simp [PartialEntityData.ancestors] at h₂
+                rw [←h₂] at h₃
+                simp [Data.Set.empty, Data.Set.contains, Data.Set.elts] at h₃
+                rw [h₃]
+                simp [BEq.beq]
+                exact heq
+              · rw [h₂] at h₅
+                cases h₅
+                rename_i heq₂
+                rw [heq₂] at h₃
+                simp only [Entities.ancestorsOrEmpty, h₄, h₃, Bool.or_eq_right_iff_imp, beq_iff_eq, heq,
+                  false_implies]
           replace heq₃₂ := anyM_some_implies_any (fun x => if uid = x then some true else Option.map (fun y => y.contains x) (pes.ancestors uid))
             (fun x => uid == x || (es.ancestorsOrEmpty uid).contains x) this heq₃₂
           subst heq₃₂
@@ -681,12 +702,19 @@ theorem partial_evaluate_is_sound_binary_app
         simp [RequestAndEntitiesRefine, EntitiesRefine] at h₄
         rcases h₄ with ⟨_, h₄⟩
         specialize h₄ uid data heq₃
-        rcases h₄ with ⟨_, h₄₁, _, _, h₄₂⟩
-        rw [heq₄] at h₄₂
-        cases h₄₂
-        rename_i heq₅
-        subst heq₅
-        simp only [Spec.hasTag, Entities.tagsOrEmpty, h₄₁, Residual.evaluate]
+        rcases h₄ with ⟨h₄₁, h₄₂⟩ | ⟨_, h₄₁, _, _, h₄₂⟩
+        · simp [Spec.hasTag, Entities.tagsOrEmpty]
+          rw [h₄₂]
+          simp [Data.Map.empty, Data.Map.contains, Data.Map.find?, Data.Map.kvs]
+          rw [h₄₁] at heq₄
+          simp [PartialEntityData.tags] at heq₄
+          rw [← heq₄]
+          simp [Data.Map.empty, Except.toOption, Residual.val, Residual.evaluate]
+        · rw [heq₄] at h₄₂
+          cases h₄₂
+          rename_i heq₅
+          subst heq₅
+          simp only [Spec.hasTag, Entities.tagsOrEmpty, h₄₁, Residual.evaluate]
       case _ =>
         simp only [heq₁, heq₂, Residual.evaluate, Spec.apply₂, Except.bind_ok]
     case _ uid _ =>
@@ -699,14 +727,21 @@ theorem partial_evaluate_is_sound_binary_app
         simp [RequestAndEntitiesRefine, EntitiesRefine] at h₄
         rcases h₄ with ⟨_, h₄⟩
         specialize h₄ uid data heq₂
-        rcases h₄ with ⟨_, h₄₁, _, _, h₄₂⟩
-        rw [heq₃] at h₄₂
-        cases h₄₂
-        rename_i heq₄
-        subst heq₄
-        simp only [Spec.getTag, Entities.tags, Data.Map.findOrErr, h₄₁]
-        split <;>
-        (rename_i heq₁; simp [heq₁, Residual.evaluate, Except.toOption])
+        rcases h₄ with ⟨h₄₁, h₄₂⟩ | ⟨_, h₄₁, _, _, h₄₂⟩
+        · rw [h₄₁] at heq₃
+          simp [PartialEntityData.tags] at heq₃
+          rw [← heq₃]
+          simp [Data.Map.find?, Data.Map.kvs, Data.Map.empty, Residual.evaluate, Except.toOption, Spec.getTag, Entities.tags]
+          rw [Data.Map.find?_none_iff_findorErr_errors] at h₄₂
+          rw [h₄₂]
+          simp
+        · rw [heq₃] at h₄₂
+          cases h₄₂
+          rename_i heq₄
+          subst heq₄
+          simp only [Spec.getTag, Entities.tags, Data.Map.findOrErr, h₄₁]
+          split <;>
+          (rename_i heq₁; simp [heq₁, Residual.evaluate, Except.toOption])
       case _ =>
         simp only [Residual.evaluate, Spec.apply₂, Except.bind_ok]
     case _ => simp [Except.toOption]
@@ -763,12 +798,17 @@ theorem partial_evaluate_is_sound_has_attr
       simp [RequestAndEntitiesRefine, EntitiesRefine] at h₄
       rcases h₄ with ⟨_, h₄⟩
       specialize h₄ uid data heq₂
-      rcases h₄ with ⟨_, h₄₁, h₄₂, _⟩
-      rw [heq₃] at h₄₂
-      rcases h₄₂
-      rename_i h₄
-      subst h₄
-      simp [Entities.attrsOrEmpty, h₄₁]
+      rcases h₄ with ⟨h₄₁, h₄₂⟩ | ⟨_, h₄₁, h₄₂, _⟩
+      · rw [h₄₁] at heq₃
+        simp [PartialEntityData.attrs] at heq₃
+        simp [Entities.attrsOrEmpty]
+        rw [h₄₂]
+        rw [←heq₃]
+      · rw [heq₃] at h₄₂
+        rcases h₄₂
+        rename_i h₄
+        subst h₄
+        simp [Entities.attrsOrEmpty, h₄₁]
     case _ => cases heq
   case _ =>
     simp [Residual.evaluate]
@@ -817,14 +857,22 @@ theorem partial_evaluate_is_sound_get_attr
       simp [RequestAndEntitiesRefine, EntitiesRefine] at h₄
       rcases h₄ with ⟨_, h₄⟩
       specialize h₄ uid data heq₂
-      rcases h₄ with ⟨_, h₄₁, h₄₂, _⟩
-      rw [heq₃] at h₄₂
-      rcases h₄₂
-      rename_i data' _ h₄
-      subst h₄
-      simp [Entities.attrs, Data.Map.findOrErr, h₄₁]
-      generalize h₄ : data'.attrs.find? attr = res
-      cases res <;> simp [someOrError, Residual.evaluate, Except.toOption]
+      rcases h₄ with ⟨h₄₁, h₄₂⟩ | ⟨_, h₄₁, h₄₂, _⟩
+      · simp [Entities.attrs]
+        rw [Data.Map.find?_none_iff_findorErr_errors] at h₄₂
+        rw [h₄₂]
+        simp [Except.toOption]
+        rw [h₄₁] at heq₃
+        simp [PartialEntityData.attrs] at heq₃
+        rw [← heq₃]
+        simp [Data.Map.empty, Data.Map.find?, Data.Map.kvs, someOrError, Residual.evaluate]
+      · rw [heq₃] at h₄₂
+        rcases h₄₂
+        rename_i data' _ h₄
+        subst h₄
+        simp [Entities.attrs, Data.Map.findOrErr, h₄₁]
+        generalize h₄ : data'.attrs.find? attr = res
+        cases res <;> simp [someOrError, Residual.evaluate, Except.toOption]
     case _ => cases heq
   case _ =>
     simp [Residual.evaluate]
