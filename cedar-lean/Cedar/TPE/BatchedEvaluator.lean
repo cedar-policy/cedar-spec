@@ -82,7 +82,7 @@ partial def batchedEvalLoop
   let toLoad := (Residual.allLiteralUIDs residual).filter (λ uid => (store.find? uid).isNone)
   let newEntities := loader toLoad
   let newStore := Map.make (newEntities.kvs ++ store.kvs)
-  let newRes := Cedar.TPE.evaluate residual (Request.asPartialRequest req) newStore
+  let newRes := Cedar.TPE.evaluate residual req.asPartialRequest newStore
 
   match newRes with
   | .val v _ty => .ok v
