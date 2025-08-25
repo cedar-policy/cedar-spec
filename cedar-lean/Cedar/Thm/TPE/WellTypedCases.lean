@@ -713,9 +713,9 @@ theorem partial_eval_well_typed_getAttr {env : TypeEnv} {expr : Residual} {attr 
                 cases h₂₁
                 . rename_i h₂₃
                   unfold InstanceOfEntitySchemaEntry at h₂₃
-                  rcases h₂₃ with ⟨e₃, h₂₃, h₂₄, h₂₅, h₂₆, h₂₇⟩
+                  rcases h₂₃ with ⟨e₃, h₂₃, _, h₂₅, _, _⟩
                   unfold InstanceOfEntityType at h₈
-                  rcases h₈ with ⟨h₈, h₂₈⟩
+                  rcases h₈ with ⟨h₈, _⟩
                   rw [← h₈] at h₂₃
                   cases h₂₅
                   rename_i h₂₉ h₃₀ h₃₁
@@ -755,7 +755,7 @@ theorem partial_eval_well_typed_getAttr {env : TypeEnv} {expr : Residual} {attr 
                         exact h₃₇
                 . rename_i h₂₃
                   unfold InstanceOfActionSchemaEntry at h₂₃
-                  rcases h₂₃ with ⟨e₃, h₂₃, h₂₄, h₂₅⟩
+                  rcases h₂₃ with ⟨e₃, h₂₃, _, _⟩
                   rw [e₃] at h₁₂
                   simp [Map.empty, Map.find?, Map.kvs] at h₁₂
         case getAttr_record rty h₄ h₅ h₆ =>
