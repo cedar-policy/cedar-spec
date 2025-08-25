@@ -154,10 +154,10 @@ theorem partial_evaluate_policy_is_sound
   have h₆ := partial_evaluate_is_sound h₉ h₄ h₃
   subst h₁₂
   have h₇ := type_of_preserves_evaluation_results (empty_capabilities_invariant req es) h₄ heq₂
-  have h₈ : Spec.evaluate (substituteAction env.reqty.action policy.toExpr) req es = Spec.evaluate policy.toExpr req es := by
+  have h₈ : Spec.evaluate (substituteAction env.sig.action policy.toExpr) req es = Spec.evaluate policy.toExpr req es := by
     simp [InstanceOfWellFormedEnvironment] at h₄
     rcases h₄ with ⟨_, h₄, _⟩
-    simp [InstanceOfRequestType] at h₄
+    simp [InstanceOfTypeEnv] at h₄
     rcases h₄ with ⟨_, h₄, _⟩
     rw [←h₄]
     exact substitute_action_preserves_evaluation policy.toExpr req es
