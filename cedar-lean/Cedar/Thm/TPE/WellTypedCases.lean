@@ -1324,11 +1324,10 @@ theorem partial_eval_well_typed_app₂_values_mem :
       injection h₁
       injection h₂
       rename_i h₈ h₉
-      
+      subst h₈ h₉
       rw [h₃, h₇]
       rw [h₃] at ih₁
       rw [h₇] at ih₂
-      rw [h₉]
       apply Residual.WellTyped.binaryApp
       . apply Residual.WellTyped.val
         cases ih₁
@@ -1337,10 +1336,8 @@ theorem partial_eval_well_typed_app₂_values_mem :
       . apply Residual.WellTyped.val
         cases ih₂
         rename_i h₈
-        rw [h₉] at h₈
         exact h₈
-      . rw [h₈]
-        cases h_op
+      . cases h_op
         . apply BinaryResidualWellTyped.memₑ
           . simp only [Residual.typeOf]
             rename_i ety₁ ety₂ eq₁ eq₂
