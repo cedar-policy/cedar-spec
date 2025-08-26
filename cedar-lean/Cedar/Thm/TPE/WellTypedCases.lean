@@ -202,12 +202,11 @@ theorem partial_eval_well_typed_var {env : TypeEnv} {v : Var} {ty : CedarType} {
       rcases h_wf with ⟨_, ⟨_, _, h_resource, _⟩, _⟩
       exact h_resource
   case action =>
-    simp only
+    simp only [varₚ.varₒ, someOrSelf]
     unfold RequestRefines at h_rref
     rcases h_rref with ⟨h_pv, h_rest⟩
     rcases h_rest with ⟨h_av, h_rv, h_cv⟩
     -- Action is always concrete in partial requests
-    simp only [varₚ.varₒ, someOrSelf]
     apply Residual.WellTyped.val
     cases h_wt with | var h₄ =>
     cases h₄ with | action =>
@@ -218,16 +217,12 @@ theorem partial_eval_well_typed_var {env : TypeEnv} {v : Var} {ty : CedarType} {
     rw [h_action]
     have : InstanceOfEntityType env.reqty.action env.reqty.action.ty env := by
       have ⟨_, _, _, hwf_act, _⟩ := hwf
-      simp [
-        InstanceOfEntityType, EntityUID.WellFormed,
-        ActionSchema.contains, hwf_act,
-      ]
+      simp [InstanceOfEntityType, EntityUID.WellFormed, ActionSchema.contains, hwf_act]
     exact this
   case context =>
     simp only
     unfold RequestRefines at h_rref
-    rcases h_rref with ⟨h_pv, h_rest⟩
-    rcases h_rest with ⟨h_av, h_rv, h_cv⟩
+    rcases h_rref with ⟨h_pv, ⟨h_av, h_rv, h_cv⟩⟩
     cases h : preq.context
     . simp only [Option.map_none, varₚ.varₒ, someOrSelf]
       exact h_wt
@@ -412,8 +407,7 @@ theorem partial_eval_well_typed_set {env : TypeEnv} {ls : List Residual} {ty : C
     apply InstanceOfType.instance_of_set
     intro v h₄
     unfold List.map₁ List.attach List.attachWith at h₃
-    rw [List.map_pmap_subtype (fun x => TPE.evaluate x preq pes)] at h₃
-    rw [List.mapM_map] at h₃
+    rw [List.map_pmap_subtype (fun x => TPE.evaluate x preq pes), List.mapM_map] at h₃
     rw [← Set.make_mem] at h₄
     have h₅ := List.mem_mapM_some_implies_exists_unmapped h₃ h₄
     rcases h₅ with ⟨y, h₆, h₇⟩
@@ -791,8 +785,7 @@ theorem partial_eval_well_typed_getAttr {env : TypeEnv} {expr : Residual} {attr 
           exact h_expr_wt
         case h₂ =>
           have h₁₀ := partial_eval_preserves_typeof h_wf h_ref h₆
-          rw [h₁₀]
-          rw [h₇]
+          rw [h₁₀, h₇]
         case h₃ =>
           rw [h₈]
 
@@ -1017,8 +1010,7 @@ theorem partial_eval_well_typed_hasAttr {env : TypeEnv} {expr : Residual} {attr 
           exact h_expr_wt
         case h₂ =>
           have h₁₀ := partial_eval_preserves_typeof h_wf h_ref h₅
-          rw [h₁₀]
-          rw [h₆]
+          rw [h₁₀, h₆]
       case hasAttr_record rty h₆ h₇ =>
         apply Residual.WellTyped.hasAttr_record
         case h₁ =>
