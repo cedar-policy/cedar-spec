@@ -778,8 +778,8 @@ theorem partial_eval_well_typed_getAttr {env : TypeEnv} {expr : Residual} {attr 
         case h₁ =>
           exact h_expr_wt
         case h₂ =>
-          have h₁₀ := partial_eval_preserves_typeof h_wf h_ref h₆
-          rw [h₁₀]
+          have h₈ := partial_eval_preserves_typeof h_wf h_ref h₆
+          rw [h₈]
           rw [h₇]
         case h₃ =>
           rw [h₅]
@@ -1272,7 +1272,7 @@ theorem partial_eval_well_typed_app₂_values_getTag :
         rfl
       . simp [Residual.typeOf]
       . rename_i ety ty
-        have h₄ : ety = id₁.ty := by {
+        have h₄ : ety = id₁.ty := by
           have h₄ := partial_eval_preserves_typeof h_wf h_ref h_expr1
           simp only [Residual.asValue] at h₁
           split at h₁
@@ -1284,9 +1284,7 @@ theorem partial_eval_well_typed_app₂_values_getTag :
           rename_i h₆
           injection h₁ with h₇
           rw [h₇] at h₆
-          rw [h₅] at h₄
-          rw [h₃] at h₄
-          rw [h₇] at h₄
+          rw [h₅, h₃, h₇] at h₄
           simp only [Residual.typeOf] at h₄
           cases h₆
           rename_i ety₂ h₈
@@ -1295,7 +1293,6 @@ theorem partial_eval_well_typed_app₂_values_getTag :
           rcases h₈ with ⟨h₉, _⟩
           rw [h₉] at h₄
           rw [h₄]
-        }
         rw [h₄] at h₅
         exact h₅
 
@@ -1322,28 +1319,27 @@ theorem partial_eval_well_typed_app₂_values_mem :
   split at h₁
   case h_1 x v ty₁ h₃ =>
     split at h₂
-    case h_1  h₄ h₅ ty₂ h₇ =>
+    case h_1 x₂ v₃ ty₂ h₇ =>
       -- both expr1 and expr2 are values
       injection h₁
       injection h₂
       rename_i h₈ h₉
-      rw [h₃]
-      rw [h₇]
+      
+      rw [h₃, h₇]
+      rw [h₃] at ih₁
+      rw [h₇] at ih₂
+      rw [h₉]
       apply Residual.WellTyped.binaryApp
       . apply Residual.WellTyped.val
-        rw [h₃] at ih₁
-        rw [h₇] at ih₂
         cases ih₁
         rename_i h₈
         exact h₈
       . apply Residual.WellTyped.val
-        rw [h₃] at ih₁
-        rw [h₇] at ih₂
         cases ih₂
         rename_i h₈
+        rw [h₉] at h₈
         exact h₈
       . rw [h₈]
-        rw [h₉]
         cases h_op
         . apply BinaryResidualWellTyped.memₑ
           . simp only [Residual.typeOf]
