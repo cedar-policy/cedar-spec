@@ -899,47 +899,6 @@ theorem mapM_ok_eq_filterMap {α β} {f : α → Except ε β} {xs : List α} {y
   rw [← List.mapM'_eq_mapM]
   exact mapM'_ok_eq_filterMap
 
-theorem mapM'_some_iff_forall₂ {α β} {f : α → Option β} {xs : List α} {ys : List β} :
-  List.mapM' f xs = .some ys ↔
-  List.Forall₂ (λ x y => f x = .some y) xs ys
-:= by
-  constructor
-  case mp =>
-    intro h₁
-    induction xs generalizing ys
-    case nil =>
-      simp only [mapM'_nil, pure, Option.some.injEq] at h₁
-      subst h₁
-      exact List.Forall₂.nil
-    case cons xhd xtl ih =>
-      simp only [mapM'_cons, pure, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at h₁
-      replace ⟨yhd, h₁, ytl, h₂, h₃⟩ := h₁
-      subst h₃
-      exact List.Forall₂.cons h₁ (ih h₂)
-  case mpr =>
-    intro h₁
-    induction xs generalizing ys
-    case nil =>
-      simp only [forall₂_nil_left_iff] at h₁
-      simp only [mapM'_nil, pure, h₁]
-    case cons xhd xtl ih =>
-      simp only [mapM'_cons, pure]
-      replace ⟨yhd, ytl, h₁, h₃, h₄⟩ := forall₂_cons_left_iff.mp h₁
-      subst ys
-      cases h₂ : f xhd
-      case none => simp [h₁] at h₂
-      case some y' =>
-        simp only [h₁, Option.some.injEq] at h₂
-        subst y'
-        simp [ih h₃]
-
-theorem mapM_some_iff_forall₂ {α β} {f : α → Option β} {xs : List α} {ys : List β} :
-  List.mapM f xs = .some ys ↔
-  List.Forall₂ (λ x y => f x = .some y) xs ys
-:= by
-  rw [← List.mapM'_eq_mapM]
-  exact mapM'_some_iff_forall₂
-
 /--
   Note that the converse is not true:
   counterexample `xs` is `[1]`, `ys` is `[1, 2]`, `f` is `Option.some`
