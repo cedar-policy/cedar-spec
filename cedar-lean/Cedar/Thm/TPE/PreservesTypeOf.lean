@@ -130,7 +130,7 @@ theorem partial_eval_preserves_typeof
           simp [Residual.typeOf] at h₅
           exact h₅
 
-        any_goals
+        case h_1 | h_5 | h_3 =>
           injection heq with h₅
           rename CedarType.bool BoolType.anyBool = ty => h₅
           rw [h₅]
@@ -146,6 +146,7 @@ theorem partial_eval_preserves_typeof
         unfold TPE.ite at heq
         split at heq
         try split at heq
+
       any_goals contradiction
       any_goals
         have h_t_type := partial_eval_preserves_typeof h_wf h_ref h_t
@@ -189,6 +190,7 @@ theorem partial_eval_preserves_typeof
         case h_2 =>
           rename Int64 => i
           cases h₃ : i.neg?
+
           all_goals
             simp [intOrErr, Except.toOption, someOrError, Residual.typeOf]
       . simp [Residual.typeOf, Except.toOption, someOrError]
@@ -247,7 +249,7 @@ theorem partial_eval_preserves_typeof
     unfold TPE.evaluate
     simp [Residual.typeOf]
     split <;> rename_i h₁
-
+    
     all_goals
       simp [TPE.call] at h₁
       split at h₁
