@@ -58,7 +58,7 @@ theorem sizeOf_Residual_rec2_eq_ls_sizeOf (ls: List (Attr × Residual)) :
   cases ls
   case nil => simp [List._sizeOf_1]
   case cons hd tl =>
-    simp [List._sizeOf_1, Residual.rec]
+    simp [List._sizeOf_1]
     have ih := sizeOf_Residual_rec2_eq_ls_sizeOf tl
     simp [sizeOf, Prod._sizeOf_1]
     -- tmp to unfold just this instance of _sizeOf_1
