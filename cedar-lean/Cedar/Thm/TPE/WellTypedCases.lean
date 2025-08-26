@@ -413,13 +413,13 @@ theorem partial_eval_well_typed_set {env : TypeEnv} {ls : List Residual} {ty : C
     intro v h₄
     unfold List.map₁ List.attach List.attachWith at h₃
     rw [List.map_pmap_subtype (fun x => TPE.evaluate x preq pes)] at h₃
-    rw [List.mapM_map_option] at h₃
+    rw [List.mapM_map] at h₃
     rw [← Set.make_mem] at h₄
     have h₅ := List.mem_mapM_some_implies_exists_unmapped h₃ h₄
     rcases h₅ with ⟨y, h₆, h₇⟩
     specialize h₀ y h₆
     let h₈ := partial_eval_preserves_typeof h_wf h_ref h₀
-    unfold Residual.asValue at h₇
+    simp only [Function.comp_apply, Residual.asValue] at h₇
     split at h₇
     case h_2 =>
       contradiction
@@ -498,7 +498,7 @@ theorem partial_eval_well_typed_record {env : TypeEnv} {ls : List (Attr × Resid
       replace h₉ := Map.find?_mapOnValues_some (λ x => Qualified.required x.typeOf) h₉
 
       subst ty₁
-      simp [Map.mapOnValues] at h₉
+      simp only [Map.mapOnValues] at h₉
       exists (Qualified.required v₂.typeOf)
       rw [← Map.list_find?_iff_make_find?]
       rw [← Map.list_find?_iff_mk_find?] at h₉
@@ -510,15 +510,15 @@ theorem partial_eval_well_typed_record {env : TypeEnv} {ls : List (Attr × Resid
       have h₇ := h₅
       rw [← Map.list_find?_iff_make_find?] at h₇
       unfold Function.comp at h₃
-      simp [bindAttr] at h₃
+      simp only [bindAttr, Option.pure_def, Option.bind_eq_bind] at h₃
       have h₈ := Map.list_find?_mapM_implies_exists_unmapped (λ x => (TPE.evaluate x preq pes).asValue) h₃ h₆
       rcases h₈ with ⟨v₂, _, h₈⟩
 
 
       have h₇_new : ((Map.mk ls).mapOnValues (λ x => Qualified.required x.typeOf)).find? k = some qty := by
         unfold Map.mapOnValues
-        simp [Map.kvs]
-        simp [Map.find?]
+        simp only [Map.kvs]
+        simp only [Map.find?]
         rw [h₇]
 
       have h₉_new := Map.find?_mapOnValues_some' (fun x: Residual => Qualified.required x.typeOf) h₇_new
@@ -554,8 +554,8 @@ theorem partial_eval_well_typed_record {env : TypeEnv} {ls : List (Attr × Resid
       subst ty₁
       replace h₄ : ((Map.mk ls).mapOnValues (λ x => Qualified.required x.typeOf)).find? k = some qty := by
         unfold Map.mapOnValues
-        simp [Map.kvs]
-        simp [Map.find?]
+        simp only [Map.kvs]
+        simp only [Map.find?]
         rw [← Map.list_find?_iff_make_find?] at h₄
         rw [h₄]
       have h₅ := Map.find?_mapOnValues_some' (α := Attr) (fun x: Residual => Qualified.required x.typeOf) h₄
@@ -564,7 +564,7 @@ theorem partial_eval_well_typed_record {env : TypeEnv} {ls : List (Attr × Resid
       rw [← Map.list_find?_iff_mk_find?] at h₅
 
       unfold Function.comp at h₃
-      simp [bindAttr] at h₃
+      simp only [bindAttr, Option.pure_def, Option.bind_eq_bind] at h₃
       have h₆ := Map.list_find?_mapM_implies_exists_mapped (λ x => (TPE.evaluate x preq pes).asValue) h₃ h₅
 
       rw [Map.contains_iff_some_find?]
@@ -695,7 +695,7 @@ theorem partial_eval_well_typed_getAttr {env : TypeEnv} {expr : Residual} {attr 
                 rw [h₁₅] at h₂
                 simp only [Option.bind_some, PartialEntityData.attrs, Option.some.injEq] at h₂
                 rw [← h₂] at h₁₂
-                simp [Map.empty, Map.find?, Map.kvs, List.find?] at h₁₂
+                simp [Map.empty, Map.find?, Map.kvs] at h₁₂
               . rename_i h₁₄
                 rcases h₁₄ with ⟨e₂, h₁₄, h₁₅, _, h₁₇⟩
                 simp only [Option.bind] at h₂
@@ -1182,7 +1182,7 @@ theorem partial_eval_well_typed_app₂_values_getTag :
         rename EntitySchemaEntry => w
         cases h₁₈: w.tags? <;> rw [h₁₈] at h₁₇ <;> simp only at h₁₇
         . rw [h₁₇] at h₁₃
-          simp [Data.Map.empty, Data.Map.mk, Data.Map.kvs] at h₁₃
+          simp [Data.Map.empty, Data.Map.kvs] at h₁₃
         . have h₁₈ : v₃ ∈ e.tags.values := by {
             -- Use h₁₃
             -- use lemma find?_mem_toList
@@ -1414,7 +1414,7 @@ theorem partial_eval_well_typed_app₂_values :
       split <;> try simp only
       contradiction
   case h_8 | h_9 | h_10 =>
-    simp [Option.bind]
+    simp only [Option.pure_def, Option.bind_eq_bind, Option.bind]
     split
     case h_1 =>
       apply Residual.WellTyped.error
@@ -1427,7 +1427,7 @@ theorem partial_eval_well_typed_app₂_values :
   -- mem and mem set
   case h_14 | h_15 =>
     rename_i v1 v2 id1 id2
-    simp [Option.bind]
+    simp only [Option.pure_def, Option.bind_eq_bind, Option.bind]
     split
     case h_1 =>
       simp only [someOrSelf, TPE.apply₂.self]
@@ -1440,7 +1440,7 @@ theorem partial_eval_well_typed_app₂_values :
         apply InstanceOfType.instance_of_bool
         simp [InstanceOfBoolType]
   case h_16 v1 v2 id1 id2 =>
-    simp [apply₂.self]
+    simp only [Option.pure_def, Option.bind_eq_bind, apply₂.self]
     apply partial_eval_well_typed_app₂_values_hasTag ih₁ ih₂ h₁ h₂ h_wf h_ref h_wt₂
   case h_17 v₁ v₂ id₁ id₂ =>
     apply partial_eval_well_typed_app₂_values_getTag ih₁ ih₂ h₁ h₂ h_wf h_ref h_wt₂
@@ -1559,7 +1559,7 @@ theorem partial_eval_well_typed_app₂_nonvalues :
         . rw [h₁, h₃]
         . rw [h₂, h₄]
     case mul | sub | add =>
-      cases h_op <;> rename_i h₃ h₄
+      cases h_op; rename_i h₃ h₄
       first
       | apply BinaryResidualWellTyped.mul
       | apply BinaryResidualWellTyped.sub
@@ -1567,12 +1567,12 @@ theorem partial_eval_well_typed_app₂_nonvalues :
       . rw [h₁, h₃]
       . rw [h₂, h₄]
     case contains =>
-      cases h_op <;> rename_i h₃
+      cases h_op; rename_i h₃
       apply BinaryResidualWellTyped.contains
       rw [h₁, h₂]
       exact h₃
     case containsAll | containsAny =>
-      cases h_op <;> rename_i ty h₃ h₄
+      cases h_op; rename_i ty h₃ h₄
       first
       | apply BinaryResidualWellTyped.containsAll
       | apply BinaryResidualWellTyped.containsAny
