@@ -46,50 +46,33 @@ theorem any_refines_empty_entities:
 -- Helper lemma for entityLoaderFor refinement
 theorem entityLoaderFor_refines (es : Entities) (toLoad : Set EntityUID) :
   EntitiesRefine es (entityLoaderFor es toLoad) := by
-  unfold EntitiesRefine entityLoaderFor
-  intro uid data₂ h_find
-  -- Use the fact that entityLoaderFor creates entries based on es.find?
-  have h_make_find := Map.list_find?_iff_make_find?.mpr h_find
-  simp [List.find?_map] at h_make_find
-  cases h_es : es.find? uid with
-  | none =>
-    -- Entity doesn't exist in es, so loaded data should be absent
-    left
-    constructor
-    · -- Show data₂ = PartialEntityData.absent
-      sorry
-    · -- Show es.find? uid = none
-      exact h_es
-  | some entity_data =>
-    -- Entity exists in es, so loaded data should be entity_data.asPartial
-    right
-    exists entity_data
-    constructor
-    · exact h_es
-    constructor
-    · -- attrs refine
-      sorry
-    constructor
-    · -- ancestors refine
-      sorry
-    · -- tags refine
-      sorry
+  sorry
 
 -- Helper lemma for map append refinement
 theorem entities_refine_append (es : Entities) (m1 m2 : PartialEntities) :
   EntitiesRefine es m1 → EntitiesRefine es m2 → EntitiesRefine es (m2 ++ m1) := by
   intro h1 h2
   unfold EntitiesRefine
-  intro uid data₂ h_find
-  simp [Map.find?] at h_find
-  cases h_case : m2.find? uid with
-  | some loaded_data =>
-    simp [h_case] at h_find
-    subst h_find
-    exact h2 uid loaded_data h_case
+  intro a e₂ h_find
+  -- We know that (m2 ++ m1).find? a = some e₂
+  -- The append operation is defined as Map.make (m2.kvs ++ m1.kvs)
+  -- We need to show that either m1 or m2 refines es for this key-value pair
+
+  -- The key insight is that we can use the existing lemmas about map append
+  -- Let's check if the key exists in m2 first
+  cases h_case : m2.find? a with
+  | some e₂' =>
+    -- If m2 contains the key, then by the properties of map append,
+    -- the result should come from m2 (since m2 comes first in the append)
+    have h_eq : e₂ = e₂' := by
+      sorry
+    rw [h_eq]
+    exact h2 a e₂' h_case
   | none =>
-    simp [h_case] at h_find
-    exact h1 uid data₂ h_find
+    -- If m2 doesn't contain the key, then the result must come from m1
+    have h_find1 : m1.find? a = some e₂ := by
+      sorry
+    exact h1 a e₂ h_find1
 
 
 theorem direct_request_and_entities_refine

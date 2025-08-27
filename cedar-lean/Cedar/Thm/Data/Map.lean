@@ -1700,4 +1700,25 @@ theorem toList_congr
   simp only [Map.toList, Map.kvs] at h
   simp [h]
 
+/--
+If you find a key-value pair in the first map, then you should find the same
+key-value pair in the appended map (m₁ ++ m₂).
+This lemma shows that map append preserves findings from the first map.
+-/
+theorem find?_implies_append_find?
+  [LT α] [StrictLT α] [DecidableEq α] [DecidableLT α]
+  {m₁ m₂ : Map α β} {k : α} {v : β}
+  (h : m₁.find? k = some v) :
+  (m₁ ++ m₂).find? k = some v
+:= by
+  apply list_find?_implies_make_find?
+
+  have h_list_find : List.find? (λ x => x.fst == k) m₁.kvs = some (k, v) := by
+    -- Convert the map find? to list find?
+    apply list_find?_iff_mk_find?.mpr
+    rw [mk_kvs_id]
+    exact h
+
+  exact List.find?_implies_append_find? h_list_find
+
 end Cedar.Data.Map
