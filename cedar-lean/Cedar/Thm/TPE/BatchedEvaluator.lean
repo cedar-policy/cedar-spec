@@ -43,12 +43,90 @@ theorem any_refines_empty_entities:
   intro a e₂ h₁
   simp [Data.Map.empty, Data.Map.find?, Map.kvs] at h₁
 
+-- Helper lemma for entityLoaderFor refinement
+theorem entityLoaderFor_refines (es : Entities) (toLoad : Set EntityUID) :
+  EntitiesRefine es (entityLoaderFor es toLoad) := by
+  unfold EntitiesRefine entityLoaderFor
+  intro uid data₂ h_find
+  -- Use the fact that entityLoaderFor creates entries based on es.find?
+  have h_make_find := Map.list_find?_iff_make_find?.mpr h_find
+  simp [List.find?_map] at h_make_find
+  cases h_es : es.find? uid with
+  | none =>
+    -- Entity doesn't exist in es, so loaded data should be absent
+    left
+    constructor
+    · -- Show data₂ = PartialEntityData.absent
+      sorry
+    · -- Show es.find? uid = none
+      exact h_es
+  | some entity_data =>
+    -- Entity exists in es, so loaded data should be entity_data.asPartial
+    right
+    exists entity_data
+    constructor
+    · exact h_es
+    constructor
+    · -- attrs refine
+      sorry
+    constructor
+    · -- ancestors refine
+      sorry
+    · -- tags refine
+      sorry
+
+-- Helper lemma for map append refinement
+theorem entities_refine_append (es : Entities) (m1 m2 : PartialEntities) :
+  EntitiesRefine es m1 → EntitiesRefine es m2 → EntitiesRefine es (m2 ++ m1) := by
+  intro h1 h2
+  unfold EntitiesRefine
+  intro uid data₂ h_find
+  simp [Map.find?] at h_find
+  cases h_case : m2.find? uid with
+  | some loaded_data =>
+    simp [h_case] at h_find
+    subst h_find
+    exact h2 uid loaded_data h_case
+  | none =>
+    simp [h_case] at h_find
+    exact h1 uid data₂ h_find
+
 
 theorem direct_request_and_entities_refine
   (req : Request)
   (es : Entities) :
   RequestAndEntitiesRefine req es (Request.asPartialRequest req) (Entities.asPartial es) := by
-  sorry
+  unfold RequestAndEntitiesRefine
+  constructor
+  · -- Prove RequestRefines req (Request.asPartialRequest req)
+    exact as_partial_request_refines
+  · -- Prove EntitiesRefine es (Entities.asPartial es)
+    unfold EntitiesRefine Entities.asPartial
+    intro uid data₂ h_find
+    -- data₂ comes from (es.mapOnValues EntityData.asPartial)
+    have h_mapOnValues := Map.find?_mapOnValues_some' EntityData.asPartial h_find
+    obtain ⟨data₁, h_find₁, h_eq⟩ := h_mapOnValues
+    right
+    exists data₁
+    constructor
+    · exact h_find₁
+    constructor
+    · -- attrs refine
+      rw [h_eq]
+      simp [EntityData.asPartial, PartialEntityData.attrs]
+      apply PartialIsValid.some
+      rfl
+    constructor
+    · -- ancestors refine
+      rw [h_eq]
+      simp [EntityData.asPartial, PartialEntityData.ancestors]
+      apply PartialIsValid.some
+      rfl
+    · -- tags refine
+      rw [h_eq]
+      simp [EntityData.asPartial, PartialEntityData.tags]
+      apply PartialIsValid.some
+      rfl
 
 
 
@@ -73,7 +151,18 @@ theorem batched_eval_loop_eq_evaluate
     let toLoad := (Set.filter (fun uid => (Map.find? current_store uid).isNone) x.allLiteralUIDs)
     let newStore := entityLoaderFor es toLoad ++ current_store
     have h₄ : RequestAndEntitiesRefine req es req.asPartialRequest newStore := by
-      sorry
+      unfold RequestAndEntitiesRefine
+      constructor
+      · -- RequestRefines part is the same
+        exact as_partial_request_refines
+      · -- EntitiesRefine es newStore
+        -- Use the helper lemmas
+        apply entities_refine_append
+        · -- current_store refines es
+          unfold RequestAndEntitiesRefine at h₂
+          exact h₂.right
+        · -- entityLoaderFor es toLoad refines es
+          exact entityLoaderFor_refines es toLoad
     let newRes := TPE.evaluate x req.asPartialRequest newStore
     have h₅ : (Residual.evaluate newRes req es).toOption = (Residual.evaluate x req es).toOption := by
       subst newRes
@@ -93,12 +182,6 @@ theorem batched_eval_loop_eq_evaluate
       . apply partial_eval_preserves_well_typed h₃ h₄ h₁
       . exact h₄
       . exact h₃
-
-
-
-
-
-
 
 
 
