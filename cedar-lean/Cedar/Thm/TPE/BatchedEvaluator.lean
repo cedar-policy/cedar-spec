@@ -61,9 +61,44 @@ theorem batched_eval_loop_eq_evaluate
   {env : TypeEnv} :
   let loader := entityLoaderFor es
   Residual.WellTyped env x →
+  RequestAndEntitiesRefine req es req.asPartialRequest current_store →
   InstanceOfWellFormedEnvironment req es env →
-  (batchedEvalLoop x req loader current_store).toOption = (Residual.evaluate x req es).toOption := by
-  sorry
+  (Residual.evaluate (batchedEvalLoop x req loader current_store iters) req es).toOption = (Residual.evaluate x req es).toOption := by
+  simp
+  intro h₁ h₂ h₃
+  unfold batchedEvalLoop
+  split
+  case h_1 => simp
+  case h_2 iters n=>
+    let toLoad := (Set.filter (fun uid => (Map.find? current_store uid).isNone) x.allLiteralUIDs)
+    let newStore := entityLoaderFor es toLoad ++ current_store
+    have h₄ : RequestAndEntitiesRefine req es req.asPartialRequest newStore := by
+      sorry
+    let newRes := TPE.evaluate x req.asPartialRequest newStore
+    have h₅ : (Residual.evaluate newRes req es).toOption = (Residual.evaluate x req es).toOption := by
+      subst newRes
+      rw [← partial_evaluate_is_sound h₁ h₃ h₄]
+
+    simp
+    split
+    case h_1 h₆ =>
+      rw [← h₆]
+      subst toLoad newStore newRes
+      exact h₅
+    case h_2 =>
+      subst toLoad newStore newRes
+      rw [batched_eval_loop_eq_evaluate]
+      . exact h₅
+      . exact env
+      . apply partial_eval_preserves_well_typed h₃ h₄ h₁
+      . exact h₄
+      . exact h₃
+
+
+
+
+
+
 
 
 
@@ -81,10 +116,11 @@ theorem batched_eval_eq_evaluate
   let loader := entityLoaderFor es
   TypedExpr.WellTyped env x →
   InstanceOfWellFormedEnvironment req es env →
-  (batchedEvaluate x req loader).toOption = (evaluate x.toExpr req es).toOption := by
+  (Residual.evaluate (batchedEvaluate x req loader iters) req es).toOption = (evaluate x.toExpr req es).toOption := by
   simp [batchedEvaluate]
   intro h₁ h₂
   have h₃ := (direct_request_and_entities_refine req es)
+
   let first_partial := (TPE.evaluate (TypedExpr.toResidual x) (Request.asPartialRequest req) (Entities.asPartial (Data.Map.mk [])))
   let h₅ : Residual.WellTyped env (TypedExpr.toResidual x) := by {
     apply conversion_preserves_typedness
@@ -119,7 +155,10 @@ theorem batched_eval_eq_evaluate
      . apply as_partial_request_refines
      . apply any_refines_empty_entities
    . exact h₅
+  . unfold RequestAndEntitiesRefine
+    constructor
+    . apply as_partial_request_refines
+    . apply any_refines_empty_entities
   . exact h₂
-
 
 end Cedar.Thm

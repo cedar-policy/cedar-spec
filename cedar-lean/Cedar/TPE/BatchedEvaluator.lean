@@ -34,22 +34,24 @@ abbrev EntityLoader := Set EntityUID → Map EntityUID PartialEntityData
 The batched evaluation loop
   1. Asks for any new entities referenced by the residual
   2. Partially evaluates now that new entities are loaded
-  3. Exits if a value has been found
+  3. Exits if a value has been found or iterations are exhausted
 -/
-partial def batchedEvalLoop
+def batchedEvalLoop
   (residual : Residual)
   (req : Request)
   (loader : EntityLoader)
   (store : PartialEntities)
-  : Result Value :=
-  let toLoad := residual.allLiteralUIDs.filter (λ uid => (store.find? uid).isNone)
-  let newEntities := loader toLoad
-  let newStore := newEntities ++ store
-  let newRes := Cedar.TPE.evaluate residual req.asPartialRequest newStore
+  (iters : Nat)
+  : Residual :=
+  match iters with
+  | 0 => residual
+  | n + 1 =>
+    let toLoad := residual.allLiteralUIDs.filter (λ uid => (store.find? uid).isNone)
+    let newStore := (loader toLoad) ++ store
 
-  match newRes with
-  | .val v _ty => .ok v
-  | _ => batchedEvalLoop newRes req loader newStore
+    match Cedar.TPE.evaluate residual req.asPartialRequest newStore with
+    | .val v _ty => .val v _ty
+    | newRes => batchedEvalLoop newRes req loader newStore n
 
 
 /--
@@ -61,10 +63,11 @@ def batchedEvaluate
   (x : TypedExpr)
   (req : Request)
   (loader : EntityLoader)
-  : Result Value :=
+  (iters : Nat)
+  : Residual :=
   let residual := Cedar.TPE.evaluate x.toResidual req.asPartialRequest Map.empty
   -- start the batched evaluation loop
-  batchedEvalLoop residual req loader Map.empty
+  batchedEvalLoop residual req loader Map.empty iters
 
 /--
 Create an entity loader for an entity store Entities.
