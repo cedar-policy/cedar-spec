@@ -54,7 +54,8 @@ theorem partial_eval_preserves_well_typed
   InstanceOfWellFormedEnvironment req es env →
   RequestAndEntitiesRefine req es preq pes →
   Residual.WellTyped env res →
-  Residual.WellTyped env (TPE.evaluate res preq pes) := by
+  Residual.WellTyped env (TPE.evaluate res preq pes)
+:= by
   intro h_wf h_ref h_wt
   unfold RequestAndEntitiesRefine at h_ref
   rcases h_ref with ⟨h_rref, h_eref⟩

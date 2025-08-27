@@ -146,7 +146,8 @@ decreasing_by
 Helper theorem: Partial evaluation preserves well-typedness for value residuals.
 -/
 theorem partial_eval_well_typed_val {env : TypeEnv} {v : Value} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
-  PEWellTyped env (Residual.val v ty) (TPE.evaluate (Residual.val v ty) preq pes) req preq es pes := by
+  PEWellTyped env (Residual.val v ty) (TPE.evaluate (Residual.val v ty) preq pes) req preq es pes
+:= by
   unfold PEWellTyped
   intros h_wf h_ref h_wt
   simp only [TPE.evaluate]
@@ -156,7 +157,8 @@ theorem partial_eval_well_typed_val {env : TypeEnv} {v : Value} {ty : CedarType}
 Helper theorem: Partial evaluation preserves well-typedness for variable residuals.
 -/
 theorem partial_eval_well_typed_var {env : TypeEnv} {v : Var} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
-  PEWellTyped env (Residual.var v ty) (TPE.evaluate (Residual.var v ty) preq pes) req preq es pes := by
+  PEWellTyped env (Residual.var v ty) (TPE.evaluate (Residual.var v ty) preq pes) req preq es pes
+:= by
   unfold PEWellTyped
   intro h_wf h_ref h_wt
   rcases h_ref with ⟨h_rref, h_eref⟩
@@ -241,7 +243,8 @@ theorem partial_eval_well_typed_var {env : TypeEnv} {v : Var} {ty : CedarType} {
 Helper theorem: Partial evaluation preserves well-typedness for error residuals.
 -/
 theorem partial_eval_well_typed_error {env : TypeEnv} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
-  PEWellTyped env (Residual.error ty) (TPE.evaluate (Residual.error ty) preq pes) req preq es pes := by
+  PEWellTyped env (Residual.error ty) (TPE.evaluate (Residual.error ty) preq pes) req preq es pes
+:= by
   unfold PEWellTyped
   intros h_wf h_ref h_wt
   simp only [TPE.evaluate]
@@ -253,7 +256,8 @@ Helper theorem: Partial evaluation preserves well-typedness for and residuals.
 theorem partial_eval_well_typed_and {env : TypeEnv} {a b : Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
   Residual.WellTyped env (TPE.evaluate a preq pes) →
   Residual.WellTyped env (TPE.evaluate b preq pes) →
-  PEWellTyped env (Residual.and a b ty) (TPE.evaluate (Residual.and a b ty) preq pes) req preq es pes := by
+  PEWellTyped env (Residual.and a b ty) (TPE.evaluate (Residual.and a b ty) preq pes) req preq es pes
+:= by
   intros h_a_wt h_b_wt h_wf h_ref h_wt
   simp only [TPE.evaluate]
   cases h_wt with
@@ -280,7 +284,8 @@ Helper theorem: Partial evaluation preserves well-typedness for or residuals.
 theorem partial_eval_well_typed_or {env : TypeEnv} {a b : Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
   Residual.WellTyped env (TPE.evaluate a preq pes) →
   Residual.WellTyped env (TPE.evaluate b preq pes) →
-  PEWellTyped env (Residual.or a b ty) (TPE.evaluate (Residual.or a b ty) preq pes) req preq es pes := by
+  PEWellTyped env (Residual.or a b ty) (TPE.evaluate (Residual.or a b ty) preq pes) req preq es pes
+:= by
   intros h_a_wt h_b_wt h_wf h_ref h_wt
   simp only [TPE.evaluate]
   cases h_wt with
@@ -308,7 +313,8 @@ theorem partial_eval_well_typed_ite {env : TypeEnv} {c t e : Residual} {ty : Ced
   Residual.WellTyped env (TPE.evaluate c preq pes) →
   Residual.WellTyped env (TPE.evaluate t preq pes) →
   Residual.WellTyped env (TPE.evaluate e preq pes) →
-  PEWellTyped env (Residual.ite c t e ty) (TPE.evaluate (Residual.ite c t e ty) preq pes) req preq es pes := by
+  PEWellTyped env (Residual.ite c t e ty) (TPE.evaluate (Residual.ite c t e ty) preq pes) req preq es pes
+:= by
   intros h_c_wt h_t_wt h_e_wt h_wf h_ref h_wt
   simp only [TPE.evaluate]
   cases h_wt with
@@ -336,7 +342,8 @@ Helper theorem: Partial evaluation preserves well-typedness for unary applicatio
 -/
 theorem partial_eval_well_typed_unaryApp {env : TypeEnv} {op : UnaryOp} {expr : Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
   Residual.WellTyped env (TPE.evaluate expr preq pes) →
-  PEWellTyped env (Residual.unaryApp op expr ty) (TPE.evaluate (Residual.unaryApp op expr ty) preq pes) req preq es pes := by
+  PEWellTyped env (Residual.unaryApp op expr ty) (TPE.evaluate (Residual.unaryApp op expr ty) preq pes) req preq es pes
+:= by
   intros h_expr_wt h_wf h_ref h_wt
   simp only [TPE.evaluate]
   cases h_wt with
@@ -396,7 +403,8 @@ Helper theorem: Partial evaluation preserves well-typedness for set residuals.
 -/
 theorem partial_eval_well_typed_set {env : TypeEnv} {ls : List Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
   (∀ r ∈ ls, Residual.WellTyped env (TPE.evaluate r preq pes)) →
-  PEWellTyped env (Residual.set ls ty) (TPE.evaluate (Residual.set ls ty) preq pes) req preq es pes := by
+  PEWellTyped env (Residual.set ls ty) (TPE.evaluate (Residual.set ls ty) preq pes) req preq es pes
+:= by
   intros h_ls_wt h_wf h_ref h_wt
   cases h_wt
   rename_i ty₁ h₀ h₁ h₂
@@ -462,7 +470,8 @@ Helper theorem: Partial evaluation preserves well-typedness for record residuals
 -/
 theorem partial_eval_well_typed_record {env : TypeEnv} {ls : List (Attr × Residual)} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
   (∀ k v, (k, v) ∈ ls → Residual.WellTyped env (TPE.evaluate v preq pes)) →
-  PEWellTyped env (Residual.record ls ty) (TPE.evaluate (Residual.record ls ty) preq pes) req preq es pes := by
+  PEWellTyped env (Residual.record ls ty) (TPE.evaluate (Residual.record ls ty) preq pes) req preq es pes
+:= by
   intros h_ls_wt h_wf h_ref h_wt
   cases h_wt
   rename_i ty₁ h₀ h₁
@@ -603,7 +612,8 @@ Helper theorem: Partial evaluation preserves well-typedness for getAttr residual
 -/
 theorem partial_eval_well_typed_getAttr {env : TypeEnv} {expr : Residual} {attr : Attr} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
   Residual.WellTyped env (TPE.evaluate expr preq pes) →
-  PEWellTyped env (Residual.getAttr expr attr ty) (TPE.evaluate (Residual.getAttr expr attr ty) preq pes) req preq es pes := by
+  PEWellTyped env (Residual.getAttr expr attr ty) (TPE.evaluate (Residual.getAttr expr attr ty) preq pes) req preq es pes
+:= by
   intros h_expr_wt h_wf h_ref h_wt
   simp only [TPE.evaluate, TPE.getAttr, TPE.attrsOf]
   split
@@ -794,7 +804,8 @@ Helper theorem: Partial evaluation preserves well-typedness for call residuals.
 -/
 theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
   (∀ r ∈ args, Residual.WellTyped env (TPE.evaluate r preq pes)) →
-  PEWellTyped env (Residual.call xfn args ty) (TPE.evaluate (Residual.call xfn args ty) preq pes) req preq es pes := by
+  PEWellTyped env (Residual.call xfn args ty) (TPE.evaluate (Residual.call xfn args ty) preq pes) req preq es pes
+:= by
   intros h_args_wt h_wf h_ref h_wt
   simp only [TPE.evaluate, TPE.call, List.any_eq_true]
   simp only [List.map₁, List.attach, List.attachWith, List.map_subtype, List.mapM_map, List.mem_map, List.mem_unattach, List.mem_pmap, Subtype.mk.injEq, exists_prop, exists_eq_right, and_self]
@@ -989,7 +1000,8 @@ Helper theorem: Partial evaluation preserves well-typedness for hasAttr residual
 -/
 theorem partial_eval_well_typed_hasAttr {env : TypeEnv} {expr : Residual} {attr : Attr} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
   Residual.WellTyped env (TPE.evaluate expr preq pes) →
-  PEWellTyped env (Residual.hasAttr expr attr ty) (TPE.evaluate (Residual.hasAttr expr attr ty) preq pes) req preq es pes := by
+  PEWellTyped env (Residual.hasAttr expr attr ty) (TPE.evaluate (Residual.hasAttr expr attr ty) preq pes) req preq es pes
+:= by
   intros h_expr_wt h_wf h_ref h_wt
   simp only [TPE.evaluate, TPE.hasAttr, TPE.attrsOf]
   split
@@ -1028,7 +1040,7 @@ theorem partial_eval_well_typed_app₂_values_hasTag :
   PEWellTyped env (Residual.binaryApp BinaryOp.hasTag expr1 expr2 ty)
     (someOrSelf ((TPE.hasTag id1 id2 pes).bind fun a => some (Value.prim (Prim.bool a))) ty
     (Residual.binaryApp BinaryOp.hasTag (TPE.evaluate expr1 preq pes) (TPE.evaluate expr2 preq pes) ty)) req preq es pes
-   := by
+:= by
   unfold PEWellTyped
   intros ih₁ ih₂ h₁ h₂ h_wf h_ref h_wt
   let h_ref₂ := h_ref
@@ -1103,7 +1115,7 @@ theorem partial_eval_well_typed_app₂_values_getTag :
   (TPE.evaluate expr1 preq pes).asValue = some (Value.prim (Prim.entityUID id₁)) →
   (TPE.evaluate expr2 preq pes).asValue = some (Value.prim (Prim.string id₂)) →
   PEWellTyped env (Residual.binaryApp BinaryOp.getTag expr1 expr2 ty) (TPE.getTag id₁ id₂ pes ty) req preq es pes
-   := by
+:= by
   unfold PEWellTyped
   intros ih₁ ih₂ h₁ h₂ h_wf h_ref h_wt
   let h_ref₂ := h_ref
@@ -1292,7 +1304,7 @@ theorem partial_eval_well_typed_app₂_values_mem :
   (TPE.evaluate expr1 preq pes).asValue = .some v₁ →
   (TPE.evaluate expr2 preq pes).asValue = .some v₂ →
   PEWellTyped env (Residual.binaryApp BinaryOp.mem expr1 expr2 ty) (Residual.binaryApp BinaryOp.mem (TPE.evaluate expr1 preq pes) (TPE.evaluate expr2 preq pes) ty) req preq es pes
-   := by
+:= by
   unfold PEWellTyped
   intros ih₁ ih₂ h₁ h₂ h_wf h_ref h_wt
   let h_ref₂ := h_ref
@@ -1377,7 +1389,8 @@ theorem partial_eval_well_typed_app₂_values :
   Residual.WellTyped env (TPE.evaluate expr2 preq pes) →
   (TPE.evaluate expr1 preq pes).asValue = .some v₁ →
   (TPE.evaluate expr2 preq pes).asValue = .some v₂ →
-  PEWellTyped env (Residual.binaryApp op expr1 expr2 ty) (TPE.apply₂ op (TPE.evaluate expr1 preq pes) (TPE.evaluate expr2 preq pes) pes ty) req preq es pes := by
+  PEWellTyped env (Residual.binaryApp op expr1 expr2 ty) (TPE.apply₂ op (TPE.evaluate expr1 preq pes) (TPE.evaluate expr2 preq pes) pes ty) req preq es pes
+:= by
   unfold PEWellTyped
   intros ih₁ ih₂ h₁ h₂ h_wf h_ref h_wt
 
@@ -1440,7 +1453,8 @@ theorem partial_eval_well_typed_app₂_nonvalues :
   Residual.WellTyped env (TPE.evaluate expr1 preq pes) →
   Residual.WellTyped env (TPE.evaluate expr2 preq pes) →
   (TPE.evaluate expr1 preq pes).asValue = .none ∨ (TPE.evaluate expr2 preq pes).asValue = .none →
-  PEWellTyped env (Residual.binaryApp op expr1 expr2 ty) (TPE.apply₂ op (TPE.evaluate expr1 preq pes) (TPE.evaluate expr2 preq pes) pes ty) req preq es pes := by
+  PEWellTyped env (Residual.binaryApp op expr1 expr2 ty) (TPE.apply₂ op (TPE.evaluate expr1 preq pes) (TPE.evaluate expr2 preq pes) pes ty) req preq es pes
+:= by
   unfold PEWellTyped
   intros ih₁ ih₂ h₁ h_wf h_ref h_wt
 
@@ -1573,7 +1587,8 @@ theorem partial_eval_well_typed_app₂_nonvalues :
 theorem partial_eval_well_typed_app₂ :
   Residual.WellTyped env (TPE.evaluate expr1 preq pes) →
   Residual.WellTyped env (TPE.evaluate expr2 preq pes) →
-  PEWellTyped env (Residual.binaryApp op expr1 expr2 ty) (TPE.apply₂ op (TPE.evaluate expr1 preq pes) (TPE.evaluate expr2 preq pes) pes ty) req preq es pes := by
+  PEWellTyped env (Residual.binaryApp op expr1 expr2 ty) (TPE.apply₂ op (TPE.evaluate expr1 preq pes) (TPE.evaluate expr2 preq pes) pes ty) req preq es pes
+:= by
   intro ih₁ ih₂ h₁
   cases h₂ : (TPE.evaluate expr1 preq pes).asValue
   case none =>
