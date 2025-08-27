@@ -258,6 +258,38 @@ theorem make_mem_list_mem [LT α] [StrictLT α] [DecidableLT α] {xs : List (α 
   simp only [List.subset_def] at h₂
   exact h₂ h₁
 
+private theorem insertCanonical_preserves_find_other_element
+  [LT α] [DecidableLT α] [BEq α] [StrictLT α]
+  (k : α)
+  (x : (α × β)) (xs : List (α × β))  :
+  (x.fst == k) = false →
+  (List.insertCanonical Prod.fst x xs).find? (λ x => x.fst == k) =
+  xs.find? (λ x => x.fst == k)
+:= by
+  intro h₁
+  unfold List.insertCanonical
+  split
+  . simp
+    assumption
+  . simp
+    split
+    . simp [List.find?]
+      rw [h₁]
+    . split
+      . unfold List.find?
+        rename_i tl h₂ h₃
+        have ih := insertCanonical_preserves_find_other_element k x tl h₁
+        rw [ih]
+      . unfold List.find?
+        rw [h₁]
+        simp
+        rename_i hd₂ tl₂ h₂ h₃
+        rename LT α => i₁
+        rename StrictLT α => i₂
+        have h₄ := @StrictLT.if_not_lt_gt_then_eq α i₁ i₂ x.fst hd₂.fst h₂ h₃
+        rw [← h₄]
+        rw [h₁]
+
 /--
   Very similar to `make_mem_list_mem` above
 -/
@@ -443,35 +475,144 @@ theorem find?_none_iff_all_absent [LT α] [DecidableLT α] [StrictLT α] [Decida
   m.find? k = none ↔ ∀ v, ¬ (k, v) ∈ m.kvs
 := Iff.intro find?_none_all_absent all_absent_find?_none
 
-/--
-  If the key-value pair exists in l, then it exists in `Data.Map.make l`
--/
-theorem find?_implies_make_find?
-  [DecidableEq α] [LT α] [DecidableLT α]
-  [Cedar.Data.StrictLT α]
-  {l : List (α × β)}
-  {k : α} {v : β}
-  (h : List.find? (λ x => x.fst == k) l = some (k, v)) :
-  (make l).find? k = some v
+
+theorem list_find?_some_iff_map_find?_some {α β: Type} [BEq α] [LawfulBEq α] {l: List (α × β)} {k : α} {v : β} :
+  l.find? (λ x => x.1 == k) = .some (k, v) ↔
+  (Map.mk l).find? k = .some v
 := by
-  apply (in_list_iff_find?_some (Data.Map.make_wf l)).mp
-  simp only [make, Data.Map.kvs]
-  induction l
-  case nil => simp at h
-  case cons head tail ih =>
-    simp only [List.find?] at h
-    split at h
-    case _ heq =>
-      simp only [Option.some.injEq] at h
-      simp only [List.canonicalize, h]
-      apply List.insertCanonical_mem
-    case _ hneq =>
-      have ih := ih h
-      simp only [beq_eq_false_iff_ne, ne_eq] at hneq
-      simp only [List.canonicalize]
-      apply List.insertCanonical_preserves_non_duplicate_element
-      assumption
-      simp [hneq]
+  constructor
+  case mp =>
+    intro h₁
+    simp [Map.find?]
+    split
+    case h_1 k₂ v₂ h₂ =>
+      simp [Map.kvs] at h₂
+      rw [h₁] at h₂
+      simp at h₂
+      rcases h₂ with ⟨h₂, h₃⟩
+      rw [h₃]
+    case h_2 h₂ =>
+      specialize h₂ k v
+      simp [Map.kvs] at h₂
+      rw [h₁] at h₂
+      contradiction
+  case mpr =>
+    intro h₁
+    simp [Map.find?] at h₁
+    split at h₁
+    case h_1 k₂ v₂ h₂ =>
+      simp [Map.kvs] at h₂
+      rw [h₂]
+      simp
+      have h₃ := List.find?_some h₂
+      simp at h₃
+      injection h₁ ; rename_i h₁
+      rw [h₁]
+      rw [h₃]
+      simp
+    case h_2 =>
+      contradiction
+
+theorem list_find?_mapM_implies_exists_mapped {α β γ : Type} [BEq α] [LawfulBEq α] {ls : List (α × β)} (fn : β → Option γ) {ys: List (α × γ)} {k: α} {x : β} :
+  List.mapM (fun x =>
+              (fn x.2).bind
+                (fun v => some (x.fst, v))) ls = some ys →
+  ls.find? (λ x => x.1 == k) = .some (k, x) →
+  ∃y, fn x = .some y ∧  ys.find? (λ x => x.1 == k) = .some (k, y)
+:= by
+  intro h₁ h₂
+  rw [List.mapM_some_iff_forall₂] at h₁
+  cases h₁
+  case nil =>
+    simp at h₂
+  case cons hd₁ hd₂ tl₁ tl₂ h₃ h₄ =>
+    simp [List.find?] at h₂
+    split at h₂
+    case h_1 x₂ h₅ =>
+      injection h₂ ; rename_i h₂
+      rw [h₂] at h₃
+      simp at h₃
+      cases h₆ : (fn x) <;> rw [h₆] at h₃
+      case none =>
+        simp at h₃
+      case some y₂ =>
+        simp at h₃
+        rcases h₃ with ⟨h₃, h₇⟩
+        exists y₂
+        simp
+    case h_2 x h₅ =>
+      rw [← List.mapM_some_iff_forall₂] at h₄
+      unfold List.find?
+      have h₆ : (hd₂.fst == k) = false := by
+        cases h₆ : (fn hd₁.snd) <;> rw [h₆] at h₃
+        case none =>
+          simp at h₃
+        case some =>
+          simp at h₃
+          cases hd₂
+          simp at h₅
+          simp
+          simp at h₃
+          rcases h₃ with ⟨h₃, _⟩
+          rw [← h₃]
+          exact h₅
+      rw [h₆]
+      simp
+      exact list_find?_mapM_implies_exists_mapped fn h₄ h₂
+
+
+theorem list_find?_mapM_implies_exists_unmapped {α β γ : Type} [BEq α] [LawfulBEq α] {ls : List (α × β)} (fn : β → Option γ) {ys: List (α × γ)} {k: α} {y: γ} :
+  List.mapM (fun x =>
+              (fn x.2).bind
+                (fun v => some (x.fst, v))) ls = some ys →
+  ys.find? (λ x => x.1 == k) = .some (k, y) →
+  ∃ x, fn x = some y ∧ (ls.find? (λ x => x.1 == k) = .some (k, x))
+:= by
+  intro h₁ h₂
+  rw [List.mapM_some_iff_forall₂] at h₁
+  cases h₁
+  case nil =>
+    simp at h₂
+  case cons hd₁ hd₂ tl₁ tl₂ h₃ h₄=>
+    simp [List.find?] at h₂
+    split at h₂
+    case h_1 x h₅ =>
+      injection h₂ ; rename_i h₂
+      rw [h₂] at h₃
+      cases h₆ : (fn hd₁.snd) <;> rw [h₆] at h₃
+      case none =>
+        simp at h₃
+      case some y₂ =>
+        simp at h₃
+        rcases h₃ with ⟨h₃, h₇⟩
+        exists hd₁.snd
+        rw [h₆, h₇]
+        simp
+        rw [h₃]
+        simp
+        cases hd₁
+        simp at h₃
+        rw [h₃]
+    case h_2 x h₅ =>
+      rw [← List.mapM_some_iff_forall₂] at h₄
+      unfold List.find?
+      have h₆ : (hd₁.fst == k) = false := by
+        cases h₆ : (fn hd₁.snd) <;> rw [h₆] at h₃
+        case none =>
+          simp at h₃
+        case some =>
+          simp at h₃
+          cases hd₂
+          simp at h₅
+          simp
+          simp at h₃
+          rcases h₃ with ⟨h₃, _⟩
+          rw [h₃]
+          exact h₅
+      rw [h₆]
+      simp
+      exact list_find?_mapM_implies_exists_unmapped fn h₄ h₂
+
 
 theorem find?_mapM_key_id {α β : Type} [BEq α] [LawfulBEq α] {ks : List α} {kvs : List (α × β)} {fn : α → Option β} {k: α}
   (h₁ : ks.mapM (λ k => do (k, ←fn k)) = some kvs)
@@ -1164,6 +1305,187 @@ theorem wellFormed_correct {α β} [LT α] [StrictLT α] [DecidableLT α] {m : M
     apply wf_iff_sorted.mp
     exact h
 
+
+
+theorem map_make_find_in_tail
+  [LT α] [StrictLT α] [DecidableEq α]
+  [DecidableLT α] [LawfulBEq α]
+  [SizeOf α] [SizeOf β]
+  {hd : (α × β)} {tl : List (α × β)} {k : α} :
+  (Map.make (hd :: tl)).find? k = some v →
+  ¬(hd.1 = k) →
+  (Map.make tl).find? k = some v
+:= by
+  simp [Map.make]
+  intro h₁ h₂
+  simp [List.canonicalize] at h₁
+  unfold List.insertCanonical at h₁
+  split at h₁
+  . simp [Map.find?, List.find?] at h₁
+    split at h₁
+    . rename_i h₂
+      split at h₂ <;> rename_i h₃
+      . simp at h₃
+        contradiction
+      . contradiction
+    . contradiction
+  . simp at h₁
+    split at h₁
+    case h_2.isTrue hd₂ tl₂ h₃ h₄ =>
+      unfold Map.find?
+      simp [Map.find?, Map.kvs, List.find?] at h₁
+      split at h₁ <;> rename_i h₅
+      . split at h₅ <;> rename_i h₆
+        . simp at h₆
+          contradiction
+        . rw [h₅]
+          simp
+          injection h₁
+      . contradiction
+    case h_2.isFalse xs hd₂ tl₂ h₃ h₄ =>
+      rw [h₃]
+      rename LT α => i₁
+      rename StrictLT α => i₂
+      split at h₁
+      case isTrue h₅ =>
+        simp [Map.find?, Map.kvs, List.find?] at h₁
+        simp [Map.find?, Map.kvs, List.find?]
+        cases h₆: hd₂.fst == k
+        case false =>
+          simp
+          rw [h₆] at h₁
+          simp at h₁
+          have h₇ : ((fun x => x.fst == k) hd) = false := by
+            simp
+            assumption
+          have h₈ := insertCanonical_preserves_find_other_element k hd tl₂
+
+          specialize h₈ h₇
+          rw [h₈] at h₁
+          assumption
+        case true =>
+          simp
+          simp at h₆
+          rw [h₆] at h₁
+          simp at h₁
+          assumption
+      case isFalse h₅ =>
+        have h₆ := @StrictLT.if_not_lt_gt_then_eq α i₁ i₂ hd.fst hd₂.fst h₄ h₅
+        simp [Map.find?, Map.kvs, List.find?] at h₁
+        simp [Map.find?, Map.kvs, List.find?]
+        have h₇ : (hd₂.fst == k) = false := by simp; rw [h₆] at h₂; assumption
+        have h₈ : (hd.fst == k) = false := by simp; assumption
+        rw [h₇]
+        rw [h₈] at h₁
+        simp
+        simp at h₁
+        assumption
+
+/--
+Helper- use list_find?_iff_make_find?
+-/
+private theorem make_find?_implies_list_find?
+  [DecidableEq α] [LT α] [DecidableLT α]
+  [Cedar.Data.StrictLT α]
+  {l : List (α × β)}
+  {k : α} {v : β} :
+  (make l).find? k = some v →
+  List.find? (λ x => x.fst == k) l = some (k, v)
+:= by
+  intro h₁
+  cases l
+  case nil =>
+    simp [Map.find?, List.find?, make, List.canonicalize, make] at h₁
+  case cons i₁ i₂ i₃ i₄ hd tl =>
+    simp [List.find?]
+    split
+    case h_1 x h₃ =>
+      simp [make, List.canonicalize, Map.find?] at h₁
+      cases hd
+      case mk k₂ v₂ =>
+      simp at h₃
+      rw [h₃] at h₁
+      have h₄ : k = (k, v₂).fst := by simp
+      rw [h₄] at h₁
+      rw [List.insertCanonical_find?] at h₁
+      simp at h₁
+      rw [h₃, h₁]
+    case h_2 x h₃ =>
+      rw [make_find?_implies_list_find?]
+      simp at h₃
+      have h₄ := map_make_find_in_tail h₁ h₃
+      assumption
+
+
+/--
+Helper- use list_find?_iff_make_find?
+-/
+private theorem list_find?_implies_make_find?
+  [DecidableEq α] [LT α] [DecidableLT α]
+  [Cedar.Data.StrictLT α]
+  {l : List (α × β)}
+  {k : α} {v : β} :
+  (h : List.find? (λ x => x.fst == k) l = some (k, v)) →
+  (make l).find? k = some v
+:= by
+  intro h
+  apply (in_list_iff_find?_some (Data.Map.make_wf l)).mp
+  simp only [make, Data.Map.kvs]
+  induction l
+  case nil => simp at h
+  case cons head tail ih =>
+    simp only [List.find?] at h
+    split at h
+    case _ heq =>
+      simp only [Option.some.injEq] at h
+      simp only [List.canonicalize, h]
+      apply List.insertCanonical_mem
+    case _ hneq =>
+      have ih := ih h
+      simp only [beq_eq_false_iff_ne, ne_eq] at hneq
+      simp only [List.canonicalize]
+      apply List.insertCanonical_preserves_non_duplicate_element
+      assumption
+      simp [hneq]
+
+theorem list_find?_iff_make_find?
+  [DecidableEq α] [LT α] [DecidableLT α]
+  [Cedar.Data.StrictLT α]
+  {l : List (α × β)}
+  {k : α} {v : β} :
+  List.find? (λ x => x.fst == k) l = some (k, v) ↔
+  (make l).find? k = some v := by
+  constructor
+  case mp =>
+    exact list_find?_implies_make_find?
+  case mpr =>
+    exact make_find?_implies_list_find?
+
+theorem list_find?_iff_mk_find?
+  [DecidableEq α] [LT α] [DecidableLT α]
+  [Cedar.Data.StrictLT α]
+  {l : List (α × β)}
+  {k : α} {v : β} :
+  List.find? (λ x => x.fst == k) l = some (k, v) ↔
+  (mk l).find? k = some v := by
+  constructor
+  case mp =>
+    intro h₁
+    simp [Map.find?, Map.kvs]
+    rw [h₁]
+  case mpr =>
+    intro h₁
+    simp [Map.find?, Map.kvs] at h₁
+    split at h₁
+    case h_1 k₂ v₂ h₂ =>
+      injection h₁ ; rename_i h₁
+      have h₃ := List.find?_some h₂
+      simp at h₃
+      rw [h₁, h₃] at h₂
+      exact h₂
+    case h_2 =>
+      contradiction
+
 /--
 If a key exists in `l₂` but not in `l₁`,
 then `Map.make (l₁ ++ l₂)` contains that key.
@@ -1194,7 +1516,7 @@ theorem map_make_append_find_disjoint
     contradiction
     rename_i kv hkv
     exists kv.snd
-    apply Map.find?_implies_make_find?
+    apply list_find?_implies_make_find?
     simp [List.find?_append]
     apply Or.inr
     constructor
@@ -1224,7 +1546,7 @@ theorem make_map_values_find
   (Map.make (l.map (λ x => (x, f x)))).find? k =
   .some (f k)
 := by
-  apply Map.find?_implies_make_find?
+  apply list_find?_implies_make_find?
   simp only [List.find?_map, Option.map_eq_some_iff, Prod.mk.injEq]
   unfold Function.comp
   simp only

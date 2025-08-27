@@ -639,7 +639,7 @@ private theorem env_symbolize?_same_entity_data_standard
     exists UnaryFunction.interpret (env.symbolize? Γ) (SymEntityData.ofStandardEntityType.ancsUUF uid.ty anc.ty)
     constructor
     · apply Map.find?_mapOnValues_some
-      apply Map.find?_implies_make_find?
+      rw [← Map.list_find?_iff_make_find?]
       simp only [List.find?_map]
       unfold Function.comp
       simp only
@@ -882,7 +882,7 @@ private theorem env_symbolize?_same_entities_action
       (Set.make (List.filterMap (SymEntityData.ofActionType.termOfType? ancTy) entry.ancestors.toList))
       (TermType.entity ancTy))
   := by
-    apply Map.find?_implies_make_find?
+    rw [← Map.list_find?_iff_make_find?]
     simp only [List.find?_filterMap]
     have :
       (List.find?

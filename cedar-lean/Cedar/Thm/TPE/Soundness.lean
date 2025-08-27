@@ -709,7 +709,7 @@ theorem partial_evaluate_is_sound_binary_app
           rw [h₄₁] at heq₄
           simp [PartialEntityData.tags] at heq₄
           rw [← heq₄]
-          simp [Data.Map.empty, Except.toOption, Residual.val, Residual.evaluate]
+          simp [Data.Map.empty, Except.toOption, Residual.evaluate]
         · rw [heq₄] at h₄₂
           cases h₄₂
           rename_i heq₅
@@ -950,7 +950,9 @@ theorem partial_evaluate_is_sound_set
         (fun x => (TPE.evaluate x preq pes).evaluate req es)
         hᵢ₁
       rw [h₃]
-      rw [List.mapM_then_map_combiner]
+      rw [List.mapM_map]
+      unfold Function.comp
+      simp
 
 
 
@@ -1117,7 +1119,9 @@ theorem partial_evaluate_is_sound_call
       (fun x => (TPE.evaluate x preq pes).evaluate req es)
       hᵢ₁
     rw [h₃]
-    rw [List.mapM_then_map_combiner]
+    rw [List.mapM_map]
+    unfold Function.comp
+    simp
 
 theorem partial_evaluate_is_sound_error
 {req : Request}
