@@ -39,9 +39,6 @@ abbrev PEPreservesTypeOf (env : TypeEnv)
   Residual.WellTyped env res →
   (TPE.evaluate res preq pes).typeOf = res.typeOf
 
-/--
-Helper theorem: Partial evaluation preserves typeOf for and residuals.
--/
 private theorem partial_eval_preserves_typeof_and {env : TypeEnv} {a b : Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities}
   (ih_a : PEPreservesTypeOf env a req preq es pes)
   (ih_b : PEPreservesTypeOf env b req preq es pes) :
@@ -86,9 +83,6 @@ private theorem partial_eval_preserves_typeof_and {env : TypeEnv} {a b : Residua
       injection heq with h₅
       rw [h₅]
 
-/--
-Helper theorem: Partial evaluation preserves typeOf for or residuals.
--/
 private theorem partial_eval_preserves_typeof_or {env : TypeEnv} {a b : Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities}
   (ih_a : PEPreservesTypeOf env a req preq es pes)
   (ih_b : PEPreservesTypeOf env b req preq es pes) :
@@ -127,9 +121,6 @@ private theorem partial_eval_preserves_typeof_or {env : TypeEnv} {a b : Residual
       rename CedarType.bool BoolType.anyBool = ty => h₅
       rw [h₅]
 
-/--
-Helper theorem: Partial evaluation preserves typeOf for ite residuals.
--/
 private theorem partial_eval_preserves_typeof_ite {env : TypeEnv} {c t e : Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities}
   (ih_t : PEPreservesTypeOf env t req preq es pes)
   (ih_e : PEPreservesTypeOf env e req preq es pes) :
@@ -172,9 +163,6 @@ private theorem partial_eval_preserves_typeof_ite {env : TypeEnv} {c t e : Resid
       unfold Residual.typeOf
       rw [heq']
 
-/--
-Helper theorem: Partial evaluation preserves typeOf for unaryApp residuals.
--/
 private theorem partial_eval_preserves_typeof_unaryApp {env : TypeEnv} {op : UnaryOp} {e : Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
   PEPreservesTypeOf env (Residual.unaryApp op e ty) req preq es pes := by
   unfold PEPreservesTypeOf
@@ -200,9 +188,6 @@ private theorem partial_eval_preserves_typeof_unaryApp {env : TypeEnv} {op : Una
           simp [intOrErr]
     . simp [Residual.typeOf]
 
-/--
-Helper theorem: Partial evaluation preserves typeOf for binaryApp residuals.
--/
 private theorem partial_eval_preserves_typeof_binaryApp {env : TypeEnv} {op : BinaryOp} {e1 e2 : Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities}
   (ih_e1 : PEPreservesTypeOf env e1 req preq es pes) :
   PEPreservesTypeOf env (Residual.binaryApp op e1 e2 ty) req preq es pes := by
@@ -259,9 +244,6 @@ private theorem partial_eval_preserves_typeof_binaryApp {env : TypeEnv} {op : Bi
       rcases h₂ with ⟨_, ⟨_, ⟨_, h₃⟩⟩⟩
       rw [h₃]
 
-/--
-Helper theorem: Partial evaluation preserves typeOf for call residuals.
--/
 private theorem partial_eval_preserves_typeof_call {env : TypeEnv} {xfn : ExtFun} {args : List Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
   PEPreservesTypeOf env (Residual.call xfn args ty) req preq es pes := by
   unfold PEPreservesTypeOf
@@ -285,9 +267,6 @@ private theorem partial_eval_preserves_typeof_call {env : TypeEnv} {xfn : ExtFun
         simp only [Residual.typeOf] at h₂
         rw [h₂]
 
-/--
-Helper theorem: Partial evaluation preserves typeOf for getAttr residuals.
--/
 private theorem partial_eval_preserves_typeof_getAttr {env : TypeEnv} {expr : Residual} {attr : Attr} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
   PEPreservesTypeOf env (Residual.getAttr expr attr ty) req preq es pes := by
   unfold PEPreservesTypeOf
@@ -302,9 +281,6 @@ private theorem partial_eval_preserves_typeof_getAttr {env : TypeEnv} {expr : Re
       . simp [Residual.typeOf]
     . simp [Residual.typeOf]
 
-/--
-Helper theorem: Partial evaluation preserves typeOf for hasAttr residuals.
--/
 private theorem partial_eval_preserves_typeof_hasAttr {env : TypeEnv} {expr : Residual} {attr : Attr} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
   PEPreservesTypeOf env (Residual.hasAttr expr attr ty) req preq es pes := by
   unfold PEPreservesTypeOf
@@ -318,9 +294,6 @@ private theorem partial_eval_preserves_typeof_hasAttr {env : TypeEnv} {expr : Re
       . simp [Residual.typeOf]
     . simp [Residual.typeOf]
 
-/--
-Helper theorem: Partial evaluation preserves typeOf for set residuals.
--/
 private theorem partial_eval_preserves_typeof_set {env : TypeEnv} {ls : List Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
   PEPreservesTypeOf env (Residual.set ls ty) req preq es pes := by
   unfold PEPreservesTypeOf
@@ -342,9 +315,6 @@ private theorem partial_eval_preserves_typeof_set {env : TypeEnv} {ls : List Res
       simp only [Residual.typeOf] at h₂
       rw [h₂]
 
-/--
-Helper theorem: Partial evaluation preserves typeOf for record residuals.
--/
 private theorem partial_eval_preserves_typeof_record {env : TypeEnv} {ls : List (Attr × Residual)} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
   PEPreservesTypeOf env (Residual.record ls ty) req preq es pes := by
   unfold PEPreservesTypeOf
