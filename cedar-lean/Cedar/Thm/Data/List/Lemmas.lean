@@ -70,28 +70,6 @@ theorem map_congr {f g : α → β} : ∀ {l : List α},
     let ⟨h₁, h₂⟩ := forall_mem_cons.1 h
     rw [map, map, h₁, map_congr h₂]
 
-theorem map_func_ext {l: List α} {f : α → β} {g : α → β}:
-  (∀ x, x ∈ l → (f x) = (g x)) →
-  (l.map f) = (l.map g)
-:= by
-  cases l
-  case nil => simp [map]
-  case cons hd tl =>
-    intro h₁
-    simp [map]
-    constructor
-    case left =>
-      specialize h₁ hd
-      simp at h₁
-      exact h₁
-    case right =>
-      intro a h₂
-      specialize h₁ a
-      simp at h₁
-      apply h₁
-      right
-      exact h₂
-
 /--
   Copied from Mathlib. We can delete this if it gets added to Batteries.
 -/
@@ -564,12 +542,12 @@ theorem mapM'_some_iff_forall₂ {α β} {f : α → Option β} {xs : List α} {
     intro h₁
     induction xs generalizing ys
     case nil =>
-      simp only [mapM'_nil, pure, Except.pure] at h₁
+      simp only [mapM'_nil, pure] at h₁
       injection h₁; rename_i h₁
       subst h₁
       exact List.Forall₂.nil
     case cons xhd xtl ih =>
-      simp only [mapM'_cons, pure, Except.pure] at h₁
+      simp only [mapM'_cons, pure] at h₁
       cases h₂ : f xhd <;>
       simp only [h₂, Option.bind_eq_bind, Option.bind, Option.bind_none_fun, reduceCtorEq] at h₁
       rename_i yhd
@@ -599,9 +577,9 @@ theorem mapM'_some_iff_forall₂ {α β} {f : α → Option β} {xs : List α} {
     induction xs generalizing ys
     case nil =>
       simp only [forall₂_nil_left_iff] at h₁
-      simp only [mapM'_nil, pure, Except.pure, h₁]
+      simp only [mapM'_nil, pure, h₁]
     case cons xhd xtl ih =>
-      simp only [mapM'_cons, pure, Except.pure]
+      simp only [mapM'_cons, pure]
       replace ⟨yhd, ytl, h₁, h₃, h₄⟩ := forall₂_cons_left_iff.mp h₁
       subst ys
       cases h₂ : f xhd
@@ -609,7 +587,7 @@ theorem mapM'_some_iff_forall₂ {α β} {f : α → Option β} {xs : List α} {
       case some y' =>
         simp [h₁] at h₂
         specialize ih h₃
-        simp only [ih, Except.bind_err, Except.bind_ok]
+        simp only [ih]
         simp [Option.bind_some_fun, Option.some.injEq, cons.injEq, and_true]
         rw [h₂]
 
@@ -1380,25 +1358,6 @@ theorem not_find?_some_iff_find?_none {α} {p : α → Bool} {xs : List α} :
     replace hc := List.find?_some hc
     specialize h x hx
     contradiction
-
-theorem find?_some_is_mem {α} [DecidableEq α] {l : List α} {k : α → Bool} {v : α}
-  (h₁ : l.find? k = .some v) :
-  v ∈ l
-:= by
-  unfold find? at *
-  split at h₁
-  case h_1 => contradiction
-  case h_2 =>
-    rename_i l₂
-    split at h₁
-    . injection h₁
-      rename_i h₂
-      rw [h₂]
-      simp
-    . have ih := find?_some_is_mem h₁
-      simp
-      right
-      exact ih
 
 /-! ### filterMap -/
 

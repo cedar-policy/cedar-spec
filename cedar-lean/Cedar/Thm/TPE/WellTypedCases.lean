@@ -587,7 +587,7 @@ theorem partial_eval_well_typed_record {env : TypeEnv} {ls : List (Attr × Resid
         unfold Function.comp
         simp only
         congr 1
-        apply List.map_func_ext
+        apply List.map_congr
         intro x h₄
         congr 2
 
@@ -1176,9 +1176,7 @@ theorem partial_eval_well_typed_app₂_values_getTag :
         . rw [h₁₇] at h₁₃
           simp [Data.Map.empty, Data.Map.kvs] at h₁₃
         . have h₁₈ : v₃ ∈ e.tags.values := by {
-            -- Use h₁₃
-            -- use lemma find?_mem_toList
-            have h₁₉ := List.find?_some_is_mem h₁₃
+            have h₁₉ := List.mem_of_find?_eq_some h₁₃
             have h₂₀ := Map.in_list_in_values h₁₉
             exact h₂₀
           }
@@ -1189,7 +1187,6 @@ theorem partial_eval_well_typed_app₂_values_getTag :
           injection h₃
           rename_i h₃
           rw [← h₃]
-          -- h₄ is finally useful
           rename Data.Map.find? env.ets id₁.ty = some w => h₂₁
           unfold EntitySchema.tags? at h₄
           have h_ety_eq : ety = id₁.ty := by {
