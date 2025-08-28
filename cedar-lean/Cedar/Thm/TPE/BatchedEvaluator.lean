@@ -18,30 +18,25 @@ open Cedar.Thm
 open Cedar.Data
 
 
-theorem as_partial_request_refines
-  {req: Request}
-  : RequestRefines req (Request.asPartialRequest req)
-  := by
-  dsimp only [Request.asPartialRequest, RequestRefines]
+theorem as_partial_request_refines {req : Request} :
+  RequestRefines req (Request.asPartialRequest req) := by
+  simp only [Request.asPartialRequest, RequestRefines, PartialEntityUID.asEntityUID, Option.map_some]
   constructor
-  . simp only [PartialEntityUID.asEntityUID, Option.map_some]
-    apply PartialIsValid.some
-    simp
-  . constructor
-    simp only
-    constructor
-    all_goals {
-      dsimp only [PartialEntityUID.asEntityUID, Option.map_some]
-      apply PartialIsValid.some
-      simp
-    }
+  · apply PartialIsValid.some
+    rfl
+  constructor
+  · trivial
+  constructor
+  · apply PartialIsValid.some
+    rfl
+  · apply PartialIsValid.some
+    rfl
 
-theorem any_refines_empty_entities:
-  EntitiesRefine es Data.Map.empty
-:= by
-  simp only [EntitiesRefine]
+theorem any_refines_empty_entities :
+  EntitiesRefine es Data.Map.empty := by
+  simp only [EntitiesRefine, Data.Map.empty, Data.Map.find?, Map.kvs]
   intro a e₂ h₁
-  simp [Data.Map.empty, Data.Map.find?, Map.kvs] at h₁
+  contradiction
 
 -- Helper lemma for entityLoaderFor refinement
 theorem entityLoaderFor_refines (es : Entities) (toLoad : Set EntityUID) :
@@ -127,41 +122,20 @@ theorem entities_refine_append (es : Entities) (m1 m2 : PartialEntities) :
     exact h1 a e₂ h_find1
 
 
-theorem direct_request_and_entities_refine
-  (req : Request)
-  (es : Entities) :
+theorem direct_request_and_entities_refine (req : Request) (es : Entities) :
   RequestAndEntitiesRefine req es (Request.asPartialRequest req) (Entities.asPartial es) := by
-  unfold RequestAndEntitiesRefine
   constructor
-  · -- Prove RequestRefines req (Request.asPartialRequest req)
-    exact as_partial_request_refines
-  · -- Prove EntitiesRefine es (Entities.asPartial es)
-    unfold EntitiesRefine Entities.asPartial
+  · exact as_partial_request_refines
+  · unfold EntitiesRefine Entities.asPartial
     intro uid data₂ h_find
-    -- data₂ comes from (es.mapOnValues EntityData.asPartial)
     have h_mapOnValues := Map.find?_mapOnValues_some' EntityData.asPartial h_find
     obtain ⟨data₁, h_find₁, h_eq⟩ := h_mapOnValues
     right
     exists data₁
-    constructor
-    · exact h_find₁
-    constructor
-    · -- attrs refine
-      rw [h_eq]
-      simp only [PartialEntityData.attrs, EntityData.asPartial]
-      apply PartialIsValid.some
-      rfl
-    constructor
-    · -- ancestors refine
-      rw [h_eq]
-      simp only [PartialEntityData.ancestors, EntityData.asPartial]
-      apply PartialIsValid.some
-      rfl
-    · -- tags refine
-      rw [h_eq]
-      simp only [PartialEntityData.tags, EntityData.asPartial]
-      apply PartialIsValid.some
-      rfl
+    exact ⟨h_find₁,
+           by rw [h_eq]; apply PartialIsValid.some; rfl,
+           by rw [h_eq]; apply PartialIsValid.some; rfl,
+           by rw [h_eq]; apply PartialIsValid.some; rfl⟩
 
 
 
