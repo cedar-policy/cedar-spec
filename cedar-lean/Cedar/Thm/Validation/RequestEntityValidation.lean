@@ -147,11 +147,11 @@ decreasing_by
     omega
 
 theorem instance_of_request_type_refl {request : Request} {env : TypeEnv}:
-  instanceOfRequestType request env = true → InstanceOfRequestType request env
+  instanceOfTypeEnv request env = true → InstanceOfTypeEnv request env
 := by
   intro h₀
-  simp only [InstanceOfRequestType]
-  simp only [instanceOfRequestType, Bool.and_eq_true, beq_iff_eq] at h₀
+  simp only [InstanceOfTypeEnv]
+  simp only [instanceOfTypeEnv, Bool.and_eq_true, beq_iff_eq] at h₀
   have ⟨⟨⟨h₁,h₂⟩,h₃⟩, h₄⟩ := h₀
   and_intros
   · exact (instance_of_entity_type_refl h₁).1

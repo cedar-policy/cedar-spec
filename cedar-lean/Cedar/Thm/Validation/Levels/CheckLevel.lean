@@ -46,7 +46,7 @@ inductive TypedExpr.EntityAccessAtLevel (env : TypeEnv) : TypedExpr → Nat → 
   | var (v : Var) (ty : CedarType) (n nmax : Nat) (path : List Attr) :
     EntityAccessAtLevel env (.var v ty) n nmax path
   | action (ty : CedarType) (n nmax : Nat) (path : List Attr) :
-    EntityAccessAtLevel env (.lit (.entityUID env.reqty.action) ty) n nmax path
+    EntityAccessAtLevel env (.lit (.entityUID env.sig.action) ty) n nmax path
   | ite (tx₁ tx₂ tx₃ : TypedExpr) (ty : CedarType)  (n nmax : Nat) (path : List Attr)
     (hl₁ : AtLevel env tx₁ nmax)
     (hl₂ : tx₂.EntityAccessAtLevel env n nmax path)
