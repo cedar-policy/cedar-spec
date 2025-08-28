@@ -54,17 +54,20 @@ theorem entities_refine_append (es : Entities) (m1 m2 : PartialEntities) :
   intro h1 h2
   unfold EntitiesRefine
   intro a e₂ h_find
+  rw [Map.find?_append] at h_find
   cases h_case : m2.find? a with
   | some e₂' =>
     have h_eq : e₂ = e₂' := by
-      have h_m2_find := Map.find?_implies_append_find? (m₁ := m2) (m₂ := m1) h_case
-      rw [h_find] at h_m2_find
-      injection h_m2_find
+      rw [h_case] at h_find
+      simp at h_find
+      rw [h_find]
     rw [h_eq]
     exact h2 a e₂' h_case
   | none =>
     have h_find1 : m1.find? a = some e₂ := by
-      sorry
+      rw [h_case] at h_find
+      simp at h_find
+      rw [h_find]
     exact h1 a e₂ h_find1
 
 
