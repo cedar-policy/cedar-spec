@@ -1364,11 +1364,7 @@ theorem find?_exact_iff_mem {α} [DecidableEq α] {l : List α}  {v : α}:
   constructor
   case mp =>
     intro h₁
-    cases l
-    case nil =>
-      simp at h₁
-    case cons hd tl =>
-      grind
+    exact mem_of_find?_eq_some h₁
   case mpr =>
     intro h₁
     cases l
@@ -1378,7 +1374,8 @@ theorem find?_exact_iff_mem {α} [DecidableEq α] {l : List α}  {v : α}:
       simp [List.find?]
       split
       case h_1 h₂ =>
-        grind
+        simp at h₂
+        rw [h₂]
       case h_2 h₂ =>
         simp at h₁
         simp at h₂
