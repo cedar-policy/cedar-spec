@@ -22,16 +22,16 @@ theorem as_partial_request_refines
   {req: Request}
   : RequestRefines req (Request.asPartialRequest req)
   := by
-  dsimp [RequestRefines, Request.asPartialRequest]
+  dsimp only [Request.asPartialRequest, RequestRefines]
   constructor
-  . simp [PartialEntityUID.asEntityUID]
+  . simp only [PartialEntityUID.asEntityUID, Option.map_some]
     apply PartialIsValid.some
     simp
   . constructor
-    simp
+    simp only
     constructor
     all_goals {
-      dsimp [PartialEntityUID.asEntityUID]
+      dsimp only [PartialEntityUID.asEntityUID, Option.map_some]
       apply PartialIsValid.some
       simp
     }
@@ -39,7 +39,7 @@ theorem as_partial_request_refines
 theorem any_refines_empty_entities:
   EntitiesRefine es Data.Map.empty
 := by
-  simp [EntitiesRefine]
+  simp only [EntitiesRefine]
   intro a e₂ h₁
   simp [Data.Map.empty, Data.Map.find?, Map.kvs] at h₁
 
@@ -115,14 +115,14 @@ theorem entities_refine_append (es : Entities) (m1 m2 : PartialEntities) :
   | some e₂' =>
     have h_eq : e₂ = e₂' := by
       rw [h_case] at h_find
-      simp at h_find
+      simp only [Option.some_or, Option.some.injEq] at h_find
       rw [h_find]
     rw [h_eq]
     exact h2 a e₂' h_case
   | none =>
     have h_find1 : m1.find? a = some e₂ := by
       rw [h_case] at h_find
-      simp at h_find
+      simp only [Option.none_or] at h_find
       rw [h_find]
     exact h1 a e₂ h_find1
 
@@ -148,18 +148,18 @@ theorem direct_request_and_entities_refine
     constructor
     · -- attrs refine
       rw [h_eq]
-      simp [EntityData.asPartial, PartialEntityData.attrs]
+      simp only [PartialEntityData.attrs, EntityData.asPartial]
       apply PartialIsValid.some
       rfl
     constructor
     · -- ancestors refine
       rw [h_eq]
-      simp [EntityData.asPartial, PartialEntityData.ancestors]
+      simp only [PartialEntityData.ancestors, EntityData.asPartial]
       apply PartialIsValid.some
       rfl
     · -- tags refine
       rw [h_eq]
-      simp [EntityData.asPartial, PartialEntityData.tags]
+      simp only [PartialEntityData.tags, EntityData.asPartial]
       apply PartialIsValid.some
       rfl
 
@@ -177,11 +177,11 @@ theorem batched_eval_loop_eq_evaluate
   RequestAndEntitiesRefine req es req.asPartialRequest current_store →
   InstanceOfWellFormedEnvironment req es env →
   (Residual.evaluate (batchedEvalLoop x req loader current_store iters) req es).toOption = (Residual.evaluate x req es).toOption := by
-  simp
+  simp only
   intro h₁ h₂ h₃
   unfold batchedEvalLoop
   split
-  case h_1 => simp
+  case h_1 => simp only
   case h_2 iters n=>
     let toLoad := (Set.filter (fun uid => (Map.find? current_store uid).isNone) x.allLiteralUIDs)
     let newStore := entityLoaderFor es toLoad ++ current_store
@@ -203,7 +203,7 @@ theorem batched_eval_loop_eq_evaluate
       subst newRes
       rw [← partial_evaluate_is_sound h₁ h₃ h₄]
 
-    simp
+    simp only
     split
     case h_1 h₆ =>
       rw [← h₆]
@@ -235,7 +235,7 @@ theorem batched_eval_eq_evaluate
   TypedExpr.WellTyped env x →
   InstanceOfWellFormedEnvironment req es env →
   (Residual.evaluate (batchedEvaluate x req loader iters) req es).toOption = (evaluate x.toExpr req es).toOption := by
-  simp [batchedEvaluate]
+  simp only [batchedEvaluate]
   intro h₁ h₂
   have h₃ := (direct_request_and_entities_refine req es)
 
@@ -262,7 +262,7 @@ theorem batched_eval_eq_evaluate
   . unfold EntitiesRefine
     intro uid
     intro pd
-    dsimp [Data.Map.find?, Data.Map.kvs]
+    dsimp only [Map.find?, Map.kvs]
     intro h_contra
     contradiction
   . exact env
