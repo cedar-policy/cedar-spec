@@ -1389,26 +1389,6 @@ theorem find?_exact_iff_mem {α} [DecidableEq α] {l : List α}  {v : α}:
         case inr h₃ =>
           rw [find?_exact_iff_mem.mpr h₃]
 
-
-theorem find?_some_is_mem {α} [DecidableEq α] {l : List α} {k : α → Bool} {v : α}
-  (h₁ : l.find? k = .some v) :
-  v ∈ l
-:= by
-  unfold find? at *
-  split at h₁
-  case h_1 => contradiction
-  case h_2 =>
-    rename_i l₂
-    split at h₁
-    . injection h₁
-      rename_i h₂
-      rw [h₂]
-      simp
-    . have ih := find?_some_is_mem h₁
-      simp
-      right
-      exact ih
-
 /-! ### filterMap -/
 
 /--

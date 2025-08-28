@@ -188,16 +188,11 @@ theorem batched_eval_loop_eq_evaluate
     have h₄ : RequestAndEntitiesRefine req es req.asPartialRequest newStore := by
       unfold RequestAndEntitiesRefine
       constructor
-      · -- RequestRefines part is the same
-        exact as_partial_request_refines
-      · -- EntitiesRefine es newStore
-        -- Use the helper lemmas
-        apply entities_refine_append
-        · -- current_store refines es
-          unfold RequestAndEntitiesRefine at h₂
+      · exact as_partial_request_refines
+      · apply entities_refine_append
+        · unfold RequestAndEntitiesRefine at h₂
           exact h₂.right
-        · -- entityLoaderFor es toLoad refines es
-          exact entityLoaderFor_refines es toLoad
+        · exact entityLoaderFor_refines es toLoad
     let newRes := TPE.evaluate x req.asPartialRequest newStore
     have h₅ : (Residual.evaluate newRes req es).toOption = (Residual.evaluate x req es).toOption := by
       subst newRes
@@ -248,35 +243,21 @@ theorem batched_eval_eq_evaluate
   rw [conversion_sound]
   have partial_sound := partial_evaluate_is_sound h₅ h₂ h₃
   rw [partial_sound]
-  rw [batched_eval_loop_eq_evaluate]
-  rw [←partial_evaluate_is_sound]
-  rw [←partial_evaluate_is_sound]
-  exact h₅
-  exact h₂
-  exact h₃
-  exact h₅
-  exact h₂
-  unfold RequestAndEntitiesRefine
-  constructor
-  . apply as_partial_request_refines
-  . unfold EntitiesRefine
-    intro uid
-    intro pd
-    dsimp only [Map.find?, Map.kvs]
-    intro h_contra
-    contradiction
-  . exact env
-  case a =>
-   apply partial_eval_preserves_well_typed h₂
-   . unfold RequestAndEntitiesRefine
-     constructor
-     . apply as_partial_request_refines
-     . apply any_refines_empty_entities
-   . exact h₅
-  . unfold RequestAndEntitiesRefine
+
+  have h₆ : Residual.WellTyped env (TPE.evaluate x.toResidual req.asPartialRequest Map.empty) := by
+    apply partial_eval_preserves_well_typed h₂
+    . unfold RequestAndEntitiesRefine
+      constructor
+      . apply as_partial_request_refines
+      . apply any_refines_empty_entities
+    . exact h₅
+  have h₇: RequestAndEntitiesRefine req es req.asPartialRequest Map.empty := by
     constructor
     . apply as_partial_request_refines
     . apply any_refines_empty_entities
-  . exact h₂
+
+  rw [batched_eval_loop_eq_evaluate es h₆ h₇ h₂]
+  rw [←partial_evaluate_is_sound h₅ h₂ h₇]
+  rw [←partial_evaluate_is_sound h₅ h₂ h₃]
 
 end Cedar.Thm
