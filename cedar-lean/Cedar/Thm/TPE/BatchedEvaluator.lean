@@ -54,22 +54,15 @@ theorem entities_refine_append (es : Entities) (m1 m2 : PartialEntities) :
   intro h1 h2
   unfold EntitiesRefine
   intro a e₂ h_find
-  -- We know that (m2 ++ m1).find? a = some e₂
-  -- The append operation is defined as Map.make (m2.kvs ++ m1.kvs)
-  -- We need to show that either m1 or m2 refines es for this key-value pair
-
-  -- The key insight is that we can use the existing lemmas about map append
-  -- Let's check if the key exists in m2 first
   cases h_case : m2.find? a with
   | some e₂' =>
-    -- If m2 contains the key, then by the properties of map append,
-    -- the result should come from m2 (since m2 comes first in the append)
     have h_eq : e₂ = e₂' := by
-      sorry
+      have h_m2_find := Map.find?_implies_append_find? (m₁ := m2) (m₂ := m1) h_case
+      rw [h_find] at h_m2_find
+      injection h_m2_find
     rw [h_eq]
     exact h2 a e₂' h_case
   | none =>
-    -- If m2 doesn't contain the key, then the result must come from m1
     have h_find1 : m1.find? a = some e₂ := by
       sorry
     exact h1 a e₂ h_find1
