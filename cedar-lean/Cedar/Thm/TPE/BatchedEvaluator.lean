@@ -46,7 +46,63 @@ theorem any_refines_empty_entities:
 -- Helper lemma for entityLoaderFor refinement
 theorem entityLoaderFor_refines (es : Entities) (toLoad : Set EntityUID) :
   EntitiesRefine es (entityLoaderFor es toLoad) := by
-  sorry
+  unfold EntitiesRefine entityLoaderFor
+  intro uid data₂ h_find
+  rw [← Map.list_find?_iff_make_find?] at h_find
+  have h_mem := List.mem_of_find?_eq_some h_find
+  simp only [List.mem_map] at h_mem
+  obtain ⟨uid', h_mem_toLoad, h_eq⟩ := h_mem
+
+  cases h_case : es.find? uid' with
+  | some data₁ =>
+    -- Case: entity exists in es
+    have h_simplified : (uid', data₁.asPartial) = (uid, data₂) := by
+      rw [h_case] at h_eq
+      exact h_eq
+    have h_uid_eq : uid = uid' := by
+      injection h_simplified with h_uid_eq _
+      exact h_uid_eq.symm
+    have h_data_eq : data₂ = data₁.asPartial := by
+      injection h_simplified with _ h_data_eq
+      exact h_data_eq.symm
+    right
+    exists data₁
+    constructor
+    · rw [h_uid_eq]
+      exact h_case
+    constructor
+    · -- attrs refine
+      rw [h_data_eq]
+      simp only [EntityData.asPartial, PartialEntityData.attrs]
+      constructor
+      rfl
+    constructor
+    · -- ancestors refine
+      rw [h_data_eq]
+      simp only [EntityData.asPartial, PartialEntityData.ancestors]
+      constructor
+      rfl
+    · -- tags refine
+      rw [h_data_eq]
+      simp only [EntityData.asPartial, PartialEntityData.tags]
+      constructor
+      rfl
+  | none =>
+    -- Case: entity doesn't exist in es
+    have h_simplified : (uid', PartialEntityData.absent) = (uid, data₂) := by
+      rw [h_case] at h_eq
+      exact h_eq
+    have h_uid_eq : uid = uid' := by
+      injection h_simplified with h_uid_eq _
+      exact h_uid_eq.symm
+    have h_data_eq : data₂ = PartialEntityData.absent := by
+      injection h_simplified with _ h_data_eq
+      exact h_data_eq.symm
+    left
+    constructor
+    · exact h_data_eq
+    · rw [h_uid_eq]
+      exact h_case
 
 -- Helper lemma for map append refinement
 theorem entities_refine_append (es : Entities) (m1 m2 : PartialEntities) :
