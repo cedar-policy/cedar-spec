@@ -30,7 +30,8 @@ open Cedar.Validation
 
 /--
 Loads everything requested by the set of entity ids,
-  and loading more is okay.
+  returning `Option.none` for missing entities.
+Loading more entities than requested is okay.
 See `EntityLoader.WellBehaved` for a formal definition.
 -/
 abbrev EntityLoader := Set EntityUID → Map EntityUID (Option EntityData)
@@ -82,7 +83,7 @@ def batchedEvaluate
   batchedEvalLoop residual req loader Map.empty iters
 
 /--
-Create an entity loader for an entity store Entities.
+Create an entity loader for a given entity store.
 This is used for testing.
 -/
 def entityLoaderFor (es: Entities) (uids : Set EntityUID) :=

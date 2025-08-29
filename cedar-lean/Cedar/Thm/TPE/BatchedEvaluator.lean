@@ -19,11 +19,13 @@ open Cedar.Data
 
 
 /-- A well behaved entity loader
-1. Loads all the requested entities
+1. Loads all the requested entities, returning none for missing
+entities
 2. Refines the backing entity store
 
-The first condition is actually not used in our theorems,
-but it is required for convergence of the batched evaluation algorithm to a value. Convergence is not currently proven.
+The first condition is required for convergence of
+batched evaluation, which has not be proven. It is unused
+in the code base at the moment.
 -/
 abbrev EntityLoader.WellBehaved (store: Entities) (loader: EntityLoader) : Prop :=
   ∀ s, s ⊆ (loader s).keys ∧
