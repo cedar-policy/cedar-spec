@@ -168,6 +168,40 @@ decreasing_by
     simp at *
     omega
 
+def Residual.treeSize (r: Residual) : Nat :=
+  match r with
+  | Residual.val _ _ => 1
+  | Residual.var _ _ => 2
+  | Residual.error _ => 2
+  | Residual.ite cond thenExpr elseExpr _ =>
+    2 + cond.treeSize + thenExpr.treeSize + elseExpr.treeSize
+  | Residual.and a b _ =>
+    2 + a.treeSize + b.treeSize
+  | Residual.or a b _ =>
+    2 + a.treeSize + b.treeSize
+  | Residual.unaryApp _ expr _ =>
+    2 + expr.treeSize
+  | Residual.binaryApp _ a b _ =>
+    2 + a.treeSize + b.treeSize
+  | Residual.getAttr expr _ _ =>
+    2 + expr.treeSize
+  | Residual.hasAttr expr _ _ =>
+    2 + expr.treeSize
+  | Residual.set ls _ =>
+    2 + (ls.map₁ (fun ⟨r, _⟩ =>
+      r.treeSize)).sum
+  | Residual.record map _ =>
+    2 + (map.map₁ (fun ⟨(_, r), _⟩ => r.treeSize)).sum
+  | Residual.call _ args _ =>
+    2 + (args.map₁ (fun ⟨r, _⟩ => r.treeSize)).sum
+termination_by sizeOf r
+decreasing_by
+  any_goals
+    simp
+    omega
+  all_goals sorry
+
+
 
 
 mutual
