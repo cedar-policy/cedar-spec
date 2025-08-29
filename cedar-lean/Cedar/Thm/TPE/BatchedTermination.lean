@@ -11,55 +11,133 @@ open Cedar.Spec
 open Cedar.Validation
 open Cedar.Data
 
--- Helper theorem: TPE evaluation doesn't increase size
-theorem tpe_evaluate_size_le (r : Residual) (req : PartialRequest) (es : PartialEntities) :
-  sizeOf (Cedar.TPE.evaluate r req es) ≤ sizeOf r := by
-  sorry
 
--- Helper theorem: If TPE evaluation produces a different result, size decreases
-theorem tpe_evaluate_progress (r : Residual) (req : PartialRequest) (es : PartialEntities) :
-  let result := Cedar.TPE.evaluate r req es
-  result ≠ r → sizeOf result < sizeOf r := by
-  sorry
+theorem tpe_not_value_implies_input_not_value:
+  (TPE.evaluate expr req store).asValue = none
+  → expr.asValue = none := by
+  intro h
+  by_contra h_contra
+  cases expr with
+  | val v ty =>
+    simp [TPE.evaluate] at h
+    simp [Residual.asValue] at h
+  | var v ty =>
+    simp [Residual.asValue] at h_contra
+  | error ty =>
+    simp [Residual.asValue] at h_contra
+  | ite cond thenExpr elseExpr ty =>
+    simp [Residual.asValue] at h_contra
+  | and a b ty =>
+    simp [Residual.asValue] at h_contra
+  | or a b ty =>
+    simp [Residual.asValue] at h_contra
+  | unaryApp op expr ty =>
+    simp [Residual.asValue] at h_contra
+  | binaryApp op a b ty =>
+    simp [Residual.asValue] at h_contra
+  | getAttr expr attr ty =>
+    simp [Residual.asValue] at h_contra
+  | hasAttr expr attr ty =>
+    simp [Residual.asValue] at h_contra
+  | set ls ty =>
+    simp [Residual.asValue] at h_contra
+  | record map ty =>
+    simp [Residual.asValue] at h_contra
+  | call xfn args ty =>
+    simp [Residual.asValue] at h_contra
 
--- Theorem for unaryApp case in batched evaluation
-theorem batched_eval_unaryApp_case
+theorem tree_size_gt_0 (r: Residual) :
+  r.treeSize > 0
+:= by
+  unfold Residual.treeSize
+  split <;> omega
+
+/--
+Theorem for unaryApp case: If the child expression evaluates to a smaller size
+or produces a value, then the unaryApp either produces a value or has smaller size.
+Includes inductive hypothesis about child expr size decreasing.
+-/
+theorem unaryApp_termination
   (op : UnaryOp)
   (expr : Residual)
   (ty : CedarType)
   (req : Request)
   (loader : EntityLoader)
   (store : PartialEntities)
-  (ih : expr.asValue.isNone →
-    let result := batchedEvalLoop expr req loader store 1
-    result.asValue.isSome ∨ sizeOf result < sizeOf expr) :
-  let residual := Residual.unaryApp op expr ty
-  let result := batchedEvalLoop residual req loader store 1
-  result.asValue.isSome ∨ sizeOf result < sizeOf residual := by
-  simp only [batchedEvalLoop]
+  (ih :
+    expr.asValue = Option.none →
+    (batchedEvalLoop expr req loader store 1).treeSize < expr.treeSize) :
+  (batchedEvalLoop (Residual.unaryApp op expr ty) req loader store 1).treeSize < (Residual.unaryApp op expr ty).treeSize := by
+  unfold batchedEvalLoop
+  simp only
+  split
+  -- expr is a value
+  case h_1 x v ty₂ h₁ =>
+    -- todo val bigger than expr
+    simp [Residual.treeSize]
+    have h := tree_size_gt_0 expr
+    omega
+  case h_2 r₁ h₁ =>
+    simp [TPE.evaluate, TPE.apply₁]
+    split
+    case h_1 r₂ ty₂ h₂ =>
+      simp [batchedEvalLoop]
+      simp [Residual.treeSize]
+      apply tree_size_gt_0
+    case h_2 r₂ h₂ =>
+      split
+      case h_1 =>
+        simp [batchedEvalLoop]
+        simp [Spec.apply₁]
+        split
+        any_goals
+          simp [someOrError, Except.toOption, Residual.treeSize]
+          try omega
+        case h_2 =>
+          split
+          all_goals
+            simp [Residual.treeSize]
+            have h := tree_size_gt_0 expr
+            omega
+        all_goals
+          apply tree_size_gt_0
 
-  -- Case analysis on whether the child expression is a value
-  cases h : expr.asValue with
-  | none =>
-    -- Case: child is not a value
-    -- Apply inductive hypothesis
-    have h_isNone : expr.asValue.isNone = true := by simp [Option.isNone, h]
-    have ih_result := ih h_isNone
-    -- The batched evaluation will first evaluate the child expression
-    -- Since the child is not a value, by IH either we get a value or size decreases
-    cases ih_result with
-    | inl h_val =>
-      right
-      simp [batchedEvalLoop]
-      apply tpe_evaluate_size_le
-    | inr h_size =>
-      right
-      simp [batchedEvalLoop]
-      apply tpe_evaluate_size_le
-  | some val =>
-    -- Case: child is already a value
-    -- We can directly apply the unary operation
-    sorry
+      case h_2 h₃ =>
+        simp [batchedEvalLoop]
+        have h₄ := tpe_not_value_implies_input_not_value h₃
+        specialize ih h₄
+        simp [batchedEvalLoop] at ih
+        split at ih
+        case h_1 h₅ =>
+          simp [Residual.allLiteralUIDs] at h₃
+          rw [h₅] at h₃
+          contradiction
+        case h_2 =>
+          simp [Residual.allLiteralUIDs]
+          simp [Residual.treeSize]
+          exact ih
+
+/--
+Theorem for binaryApp case: If the child expressions evaluate to smaller sizes
+or produce values, then the binaryApp either produces a value or has smaller size.
+Includes inductive hypotheses about child expr sizes decreasing.
+-/
+theorem binaryApp_termination
+  (op : BinaryOp)
+  (a b : Residual)
+  (ty : CedarType)
+  (req : Request)
+  (loader : EntityLoader)
+  (store : PartialEntities)
+  (ih_a :
+    a.asValue = Option.none →
+    (batchedEvalLoop a req loader store 1).treeSize < a.treeSize)
+  (ih_b :
+    b.asValue = Option.none →
+    (batchedEvalLoop b req loader store 1).treeSize < b.treeSize) :
+  (batchedEvalLoop (Residual.binaryApp op a b ty) req loader store 1).treeSize < (Residual.binaryApp op a b ty).treeSize := by
+  sorry
+
 
 /--
 The main theorem for termination of batched
@@ -67,95 +145,50 @@ evaluation-
 After one iteration of batched evaluation loop on a residual
 which is not a value, either we get a value or the size decreases.
 -/
-theorem batched_eval_loop_decreases_size_or_unchanged
+theorem batched_eval_loop_decreases_size
   (residual : Residual)
   (req : Request)
   (loader : EntityLoader)
-  (store : PartialEntities)
-  (h_not_val : residual.asValue.isNone) :
-  let result := batchedEvalLoop residual req loader store 1
-  result.asValue.isSome ∨ sizeOf result < sizeOf residual
+  (store : PartialEntities):
+  residual.asValue = Option.none →
+  (batchedEvalLoop residual req loader store 1).treeSize < residual.treeSize
   := by
-  simp only
-
   -- The batched evaluation loop loads new entities and evaluates
   let toLoad := residual.allLiteralUIDs.filter (λ uid => (store.find? uid).isNone)
   let newEntities := ((loader toLoad).mapOnValues EntityDataOption.asPartial)
   let newStore := newEntities ++ store
+  intro h₁
 
   -- Case analysis on the residual structure
   cases residual with
   | val v ty =>
-    -- This contradicts h_not_val
-    simp [Residual.asValue] at h_not_val
+    sorry
   | error ty =>
     sorry
   | var v ty =>
-    simp [Cedar.TPE.evaluate, Cedar.TPE.varₚ]
-    cases v with
-    | principal =>
-      -- Principal variable
-      cases h_prin : req.asPartialRequest.principal.asEntityUID with
-      | some uid =>
-        simp [batchedEvalLoop, Cedar.TPE.someOrSelf]
-        left
-        simp [Residual.asValue]
-        sorry
-      | none =>
-        -- should not happen, prove contradiction
-        sorry
-    | resource =>
-      -- Resource variable
-      simp [Cedar.TPE.someOrSelf]
-      cases h_res : req.asPartialRequest.resource.asEntityUID with
-      | some uid =>
-        simp [batchedEvalLoop, Cedar.TPE.someOrSelf]
-        left
-        simp [Residual.asValue]
-        sorry
-      | none =>
-        sorry
-    | action =>
-      simp [Cedar.TPE.someOrSelf]
-      left
-      simp [Residual.asValue]
-      sorry
-    | context =>
-      simp [Cedar.TPE.someOrSelf]
-      cases h_ctx : req.asPartialRequest.context with
-      | some ctx =>
-        simp [batchedEvalLoop, Cedar.TPE.someOrSelf]
-        sorry
-      | none =>
-        sorry
+    sorry
   | ite cond thenExpr elseExpr ty =>
-    simp [Cedar.TPE.evaluate]
     sorry
   | and a b ty =>
-    simp [Cedar.TPE.evaluate, Cedar.TPE.and]
     sorry
   | or a b ty =>
-    simp [Cedar.TPE.evaluate]
     sorry
   | unaryApp op expr ty =>
-    sorry
+    have ih := batched_eval_loop_decreases_size expr req loader store
+    apply unaryApp_termination op expr ty req loader store ih
   | binaryApp op a b ty =>
-    simp [Cedar.TPE.evaluate]
-    sorry
+    have ih_a := batched_eval_loop_decreases_size a req loader store
+    have ih_b := batched_eval_loop_decreases_size b req loader store
+    apply binaryApp_termination op a b ty req loader store ih_a ih_b
   | getAttr expr attr ty =>
-    simp [Cedar.TPE.evaluate]
     sorry
   | hasAttr expr attr ty =>
-    simp [Cedar.TPE.evaluate]
     sorry
   | set ls ty =>
-    simp [Cedar.TPE.evaluate]
     sorry
   | record map ty =>
-    simp [Cedar.TPE.evaluate]
     sorry
   | call xfn args ty =>
-    simp [Cedar.TPE.evaluate]
     sorry
 
 end Cedar.Thm.TPE
