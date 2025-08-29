@@ -1309,7 +1309,7 @@ theorem wellFormed_correct {α β} [LT α] [StrictLT α] [DecidableLT α] {m : M
 /--
 Helper for make_find?_eq_list_find?
 -/
-private theorem map_make_find_in_tail
+private theorem map_make_find?_in_tail
   [LT α] [StrictLT α] [BEq α] [LawfulBEq α]
   [DecidableLT α]
   [SizeOf α] [SizeOf β]
@@ -1400,7 +1400,7 @@ theorem make_find?_eq_list_find?
       rw [List.insertCanonical_find? (f := Prod.fst) hd]
     case h_2 x h₃ =>
       simp at h₃
-      rw [map_make_find_in_tail h₃]
+      rw [map_make_find?_in_tail h₃]
       rw [make_find?_eq_list_find?]
 
 

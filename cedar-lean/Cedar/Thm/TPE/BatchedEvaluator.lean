@@ -18,6 +18,10 @@ open Cedar.Thm
 open Cedar.Data
 
 
+inductive EntityLoader.WellBehaved (store: Entities) : EntityLoader → Prop
+| mk (h₁ : ∀ s, EntitiesRefine store (loader s)) :
+  (WellBehaved store loader)
+
 theorem as_partial_request_refines {req : Request} :
   RequestRefines req (Request.asPartialRequest req) := by
   simp only [Request.asPartialRequest, RequestRefines, PartialEntityUID.asEntityUID, Option.map_some]
@@ -37,67 +41,6 @@ theorem any_refines_empty_entities :
   simp only [EntitiesRefine, Data.Map.empty, Data.Map.find?, Map.kvs]
   intro a e₂ h₁
   contradiction
-
--- Helper lemma for entityLoaderFor refinement
-theorem entityLoaderFor_refines (es : Entities) (toLoad : Set EntityUID) :
-  EntitiesRefine es (entityLoaderFor es toLoad) := by
-  unfold EntitiesRefine entityLoaderFor
-  intro uid data₂ h_find
-  rw [← Map.list_find?_iff_make_find?] at h_find
-  have h_mem := List.mem_of_find?_eq_some h_find
-  simp only [List.mem_map] at h_mem
-  obtain ⟨uid', h_mem_toLoad, h_eq⟩ := h_mem
-
-  cases h_case : es.find? uid' with
-  | some data₁ =>
-    -- Case: entity exists in es
-    have h_simplified : (uid', data₁.asPartial) = (uid, data₂) := by
-      rw [h_case] at h_eq
-      exact h_eq
-    have h_uid_eq : uid = uid' := by
-      injection h_simplified with h_uid_eq _
-      exact h_uid_eq.symm
-    have h_data_eq : data₂ = data₁.asPartial := by
-      injection h_simplified with _ h_data_eq
-      exact h_data_eq.symm
-    right
-    exists data₁
-    constructor
-    · rw [h_uid_eq]
-      exact h_case
-    constructor
-    · -- attrs refine
-      rw [h_data_eq]
-      simp only [EntityData.asPartial, PartialEntityData.attrs]
-      constructor
-      rfl
-    constructor
-    · -- ancestors refine
-      rw [h_data_eq]
-      simp only [EntityData.asPartial, PartialEntityData.ancestors]
-      constructor
-      rfl
-    · -- tags refine
-      rw [h_data_eq]
-      simp only [EntityData.asPartial, PartialEntityData.tags]
-      constructor
-      rfl
-  | none =>
-    -- Case: entity doesn't exist in es
-    have h_simplified : (uid', PartialEntityData.absent) = (uid, data₂) := by
-      rw [h_case] at h_eq
-      exact h_eq
-    have h_uid_eq : uid = uid' := by
-      injection h_simplified with h_uid_eq _
-      exact h_uid_eq.symm
-    have h_data_eq : data₂ = PartialEntityData.absent := by
-      injection h_simplified with _ h_data_eq
-      exact h_data_eq.symm
-    left
-    constructor
-    · exact h_data_eq
-    · rw [h_uid_eq]
-      exact h_case
 
 -- Helper lemma for map append refinement
 theorem entities_refine_append (es : Entities) (m1 m2 : PartialEntities) :
@@ -146,19 +89,21 @@ theorem batched_eval_loop_eq_evaluate
   (es : Entities)
   {current_store : PartialEntities}
   {env : TypeEnv} :
-  let loader := entityLoaderFor es
+  EntityLoader.WellBehaved es loader →
   Residual.WellTyped env x →
   RequestAndEntitiesRefine req es req.asPartialRequest current_store →
   InstanceOfWellFormedEnvironment req es env →
   (Residual.evaluate (batchedEvalLoop x req loader current_store iters) req es).toOption = (Residual.evaluate x req es).toOption := by
-  simp only
-  intro h₁ h₂ h₃
+  intro h₀ h₁ h₂ h₃
+  have h₀₂ := h₀
+  obtain ⟨h_ref⟩ := h₀₂
+
   unfold batchedEvalLoop
   split
   case h_1 => simp only
   case h_2 iters n=>
     let toLoad := (Set.filter (fun uid => (Map.find? current_store uid).isNone) x.allLiteralUIDs)
-    let newStore := entityLoaderFor es toLoad ++ current_store
+    let newStore := loader toLoad ++ current_store
     have h₄ : RequestAndEntitiesRefine req es req.asPartialRequest newStore := by
       unfold RequestAndEntitiesRefine
       constructor
@@ -166,7 +111,7 @@ theorem batched_eval_loop_eq_evaluate
       · apply entities_refine_append
         · unfold RequestAndEntitiesRefine at h₂
           exact h₂.right
-        · exact entityLoaderFor_refines es toLoad
+        · apply h_ref
     let newRes := TPE.evaluate x req.asPartialRequest newStore
     have h₅ : (Residual.evaluate newRes req es).toOption = (Residual.evaluate x req es).toOption := by
       subst newRes
@@ -180,14 +125,9 @@ theorem batched_eval_loop_eq_evaluate
       exact h₅
     case h_2 =>
       subst toLoad newStore newRes
-      rw [batched_eval_loop_eq_evaluate]
-      . exact h₅
-      . exact env
-      . apply partial_eval_preserves_well_typed h₃ h₄ h₁
-      . exact h₄
-      . exact h₃
-
-
+      have h₆ := (partial_eval_preserves_well_typed h₃ h₄ h₁)
+      rw [batched_eval_loop_eq_evaluate es h₀ h₆ h₄ h₃]
+      exact h₅
 
 
 /--
@@ -200,26 +140,26 @@ theorem batched_eval_eq_evaluate
   {req : Request}
   {es : Entities}
   {env : TypeEnv} :
-  let loader := entityLoaderFor es
+  EntityLoader.WellBehaved es loader →
   TypedExpr.WellTyped env x →
   InstanceOfWellFormedEnvironment req es env →
   (Residual.evaluate (batchedEvaluate x req loader iters) req es).toOption = (evaluate x.toExpr req es).toOption := by
   simp only [batchedEvaluate]
-  intro h₁ h₂
-  have h₃ := (direct_request_and_entities_refine req es)
+  intro h₁ h₂ h₃
+  have h₄ := (direct_request_and_entities_refine req es)
 
   let first_partial := (TPE.evaluate (TypedExpr.toResidual x) (Request.asPartialRequest req) (Entities.asPartial (Data.Map.mk [])))
   let h₅ : Residual.WellTyped env (TypedExpr.toResidual x) := by {
     apply conversion_preserves_typedness
-    exact h₁
+    exact h₂
   }
   have conversion_sound := conversion_preserves_evaluation x req es
   rw [conversion_sound]
-  have partial_sound := partial_evaluate_is_sound h₅ h₂ h₃
+  have partial_sound := partial_evaluate_is_sound h₅ h₃ h₄
   rw [partial_sound]
 
   have h₆ : Residual.WellTyped env (TPE.evaluate x.toResidual req.asPartialRequest Map.empty) := by
-    apply partial_eval_preserves_well_typed h₂
+    apply partial_eval_preserves_well_typed h₃
     . unfold RequestAndEntitiesRefine
       constructor
       . apply as_partial_request_refines
@@ -230,8 +170,8 @@ theorem batched_eval_eq_evaluate
     . apply as_partial_request_refines
     . apply any_refines_empty_entities
 
-  rw [batched_eval_loop_eq_evaluate es h₆ h₇ h₂]
-  rw [←partial_evaluate_is_sound h₅ h₂ h₇]
-  rw [←partial_evaluate_is_sound h₅ h₂ h₃]
+  rw [batched_eval_loop_eq_evaluate es h₁ h₆ h₇ h₃]
+  rw [←partial_evaluate_is_sound h₅ h₃ h₇]
+  rw [←partial_evaluate_is_sound h₅ h₃ h₄]
 
 end Cedar.Thm

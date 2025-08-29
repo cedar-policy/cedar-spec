@@ -41,9 +41,7 @@ def batchedEvalLoop
   (req : Request)
   (loader : EntityLoader)
   (store : PartialEntities)
-  (iters : Nat)
-  : Residual :=
-  match iters with
+  : Nat → Residual
   | 0 => residual
   | n + 1 =>
     let toLoad := residual.allLiteralUIDs.filter (λ uid => (store.find? uid).isNone)
