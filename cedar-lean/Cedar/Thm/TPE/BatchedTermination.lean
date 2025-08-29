@@ -129,14 +129,74 @@ theorem binaryApp_termination
   (req : Request)
   (loader : EntityLoader)
   (store : PartialEntities)
-  (ih_a :
+  (ih₁ :
     a.asValue = Option.none →
     (batchedEvalLoop a req loader store 1).treeSize < a.treeSize)
-  (ih_b :
+  (ih₂ :
     b.asValue = Option.none →
     (batchedEvalLoop b req loader store 1).treeSize < b.treeSize) :
   (batchedEvalLoop (Residual.binaryApp op a b ty) req loader store 1).treeSize < (Residual.binaryApp op a b ty).treeSize := by
-  sorry
+  unfold batchedEvalLoop
+  simp only
+  split
+  -- Case 1: The binaryApp evaluates to a value immediately
+  case h_1 x v ty₂ h₁ =>
+    -- When evaluation produces a value, the result has size 1, which is less than 2 + a.treeSize + b.treeSize
+    simp [Residual.treeSize]
+    have h_a := tree_size_gt_0 a
+    have h_b := tree_size_gt_0 b
+    omega
+  case h_2 r₁ h₁ =>
+    simp [TPE.evaluate, TPE.apply₂]
+    split
+    case h_1 r₂ ty₂ h₂ =>
+      simp [batchedEvalLoop]
+      simp [Residual.treeSize]
+      split
+      any_goals
+        try simp [someOrError]
+        have h₃ := tree_size_gt_0 a
+        have h₄ := tree_size_gt_0 b
+        try split
+      any_goals
+        simp [Residual.treeSize]
+        try omega
+      case h_15 =>
+        simp [someOrSelf]
+        split
+        . simp [Residual.treeSize]
+          have h₃ := tree_size_gt_0 a
+          have h₄ := tree_size_gt_0 b
+          omega
+        case h_2 h₃ =>
+          simp [apply₂.self, Residual.treeSize]
+          -- contradicton: we got none for values that we should have loaded
+          sorry
+      case h_14 h₃ =>
+        sorry
+      case h_16 h₃ =>
+        sorry
+      case h_17 h₃ =>
+        simp [TPE.getTag]
+        sorry
+    case h_2 r₂ h₂ =>
+      simp [batchedEvalLoop]
+      split
+      case h_1 =>
+        simp [Residual.treeSize]
+        have h_a := tree_size_gt_0 a
+        have h_b := tree_size_gt_0 b
+        omega
+      case h_2 h₃ =>
+        simp [Residual.treeSize]
+        have h_a := tree_size_gt_0 a
+        have h_b := tree_size_gt_0 b
+        omega
+      case h_3 =>
+        simp [apply₂.self]
+        simp [Residual.treeSize]
+        simp at h₂
+        sorry
 
 
 /--
