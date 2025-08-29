@@ -39,6 +39,9 @@ pub struct FuzzTargetInput {
     pub policy: ABACPolicy,
 }
 
+const SYMCC_TERM_ROUNDTRIP_PER_ACTION_REQUEST_ENV_LIMIT: usize = 4;
+const SYMCC_TERM_ROUNDTRIP_TOTAL_ACTION_REQUEST_ENV_LIMIT: usize = 24;
+
 /// settings for this fuzz target
 const SETTINGS: ABACSettings = ABACSettings {
     match_types: true,
@@ -51,8 +54,8 @@ const SETTINGS: ABACSettings = ABACSettings {
     enable_arbitrary_func_call: true,
     enable_unknowns: false,
     enable_action_in_constraints: true,
-    per_action_request_env_limit: ABACSettings::default_per_action_request_env_limit(),
-    total_action_request_env_limit: total_action_request_env_limit(),
+    per_action_request_env_limit: SYMCC_TERM_ROUNDTRIP_PER_ACTION_REQUEST_ENV_LIMIT,
+    total_action_request_env_limit: SYMCC_TERM_ROUNDTRIP_TOTAL_ACTION_REQUEST_ENV_LIMIT,
 };
 
 impl<'a> Arbitrary<'a> for FuzzTargetInput {
