@@ -18,8 +18,16 @@ open Cedar.Thm
 open Cedar.Data
 
 
-def EntityLoader.WellBehaved (store: Entities) (loader: EntityLoader) : Prop :=
-  ∀ s, EntitiesRefine store (loader s)
+/-- A well behaved entity loader
+1. Loads all the requested entities
+2. Refines the backing entity store
+
+The first condition is actually not used in our theorems,
+but it is required for convergence of the batched evaluation algorithm to a value. Convergence is not currently proven.
+-/
+abbrev EntityLoader.WellBehaved (store: Entities) (loader: EntityLoader) : Prop :=
+  ∀ s, s ⊆ (loader s).keys ∧
+       EntitiesRefine store ((loader s).mapOnValues EntityDataOption.asPartial)
 
 theorem as_partial_request_refines {req : Request} :
   RequestRefines req (Request.asPartialRequest req) := by
@@ -79,9 +87,6 @@ theorem direct_request_and_entities_refine (req : Request) (es : Entities) :
            by rw [h_eq]; apply PartialIsValid.some; rfl,
            by rw [h_eq]; apply PartialIsValid.some; rfl⟩
 
-
-
-
 theorem batched_eval_loop_eq_evaluate
   {x : Residual}
   {req : Request}
@@ -99,32 +104,38 @@ theorem batched_eval_loop_eq_evaluate
   case h_1 => simp only
   case h_2 iters n=>
     let toLoad := (Set.filter (fun uid => (Map.find? current_store uid).isNone) x.allLiteralUIDs)
-    let newStore := loader toLoad ++ current_store
-    have h₄ : RequestAndEntitiesRefine req es req.asPartialRequest newStore := by
+    let newEntities := ((loader toLoad).mapOnValues EntityDataOption.asPartial)
+    let newStore := newEntities ++ current_store
+
+    have h₀₂ := h₀
+    specialize h₀₂ toLoad
+    obtain ⟨h₄, h₅⟩ := h₀₂
+
+    have h₆ : RequestAndEntitiesRefine req es req.asPartialRequest newStore := by
       unfold RequestAndEntitiesRefine
       constructor
       · exact as_partial_request_refines
       · apply entities_refine_append
         · unfold RequestAndEntitiesRefine at h₂
           exact h₂.right
-        · apply h₀
+        · apply h₅
     let newRes := TPE.evaluate x req.asPartialRequest newStore
-    have h₅ : (Residual.evaluate newRes req es).toOption = (Residual.evaluate x req es).toOption := by
+    have h₇ : (Residual.evaluate newRes req es).toOption = (Residual.evaluate x req es).toOption := by
       subst newRes
-      rw [← partial_evaluate_is_sound h₁ h₃ h₄]
+      rw [← partial_evaluate_is_sound h₁ h₃ h₆]
 
     simp only
     split
     case h_1 h₆ =>
       rw [← h₆]
       subst toLoad newStore newRes
-      exact h₅
+      exact h₇
     case h_2 =>
       subst toLoad newStore newRes
-      have h₆ := (partial_eval_preserves_well_typed h₃ h₄ h₁)
-      rw [batched_eval_loop_eq_evaluate es h₀ h₆ h₄ h₃]
-      exact h₅
+      have h₈ := (partial_eval_preserves_well_typed h₃ h₆ h₁)
 
+      rw [batched_eval_loop_eq_evaluate es h₀ h₈ h₆ h₃]
+      exact h₇
 
 /--
 The main correctness theorem for batched evaluation:

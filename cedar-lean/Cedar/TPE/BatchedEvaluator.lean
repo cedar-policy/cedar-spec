@@ -28,7 +28,20 @@ open Cedar.Spec
 open Cedar.Validation
 
 
-abbrev EntityLoader := Set EntityUID → Map EntityUID PartialEntityData
+/--
+Loads everything requested by the set of entity ids,
+  and loading more is okay.
+See `EntityLoader.WellBehaved` for a formal definition.
+-/
+abbrev EntityLoader := Set EntityUID → Map EntityUID (Option EntityData)
+
+def EntityDataOption.asPartial :
+  Option EntityData → PartialEntityData
+| none =>
+  PartialEntityData.absent
+| some d =>
+  d.asPartial
+
 
 /--
 The batched evaluation loop
@@ -45,7 +58,8 @@ def batchedEvalLoop
   | 0 => residual
   | n + 1 =>
     let toLoad := residual.allLiteralUIDs.filter (λ uid => (store.find? uid).isNone)
-    let newStore := (loader toLoad) ++ store
+    let newEntities := ((loader toLoad).mapOnValues EntityDataOption.asPartial)
+    let newStore := newEntities ++ store
 
     match Cedar.TPE.evaluate residual req.asPartialRequest newStore with
     | .val v _ty => .val v _ty
@@ -69,16 +83,12 @@ def batchedEvaluate
 
 /--
 Create an entity loader for an entity store Entities.
-This is used to model user-provided entity loaders which
-load entities from a backing database.
-
-Given Entities es, the entity loader provides the requested
-entities specified by a set of entity ids.
+This is used for testing.
 -/
 def entityLoaderFor (es: Entities) (uids : Set EntityUID) :=
   Map.make (uids.toList.map (λ uid =>
         match (es.find? uid) with
         | .some data =>
-          (uid, data.asPartial)
+          (uid, Option.some data)
         | .none =>
-          (uid, PartialEntityData.absent)))
+          (uid, Option.none)))
