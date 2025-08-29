@@ -18,9 +18,8 @@ open Cedar.Thm
 open Cedar.Data
 
 
-inductive EntityLoader.WellBehaved (store: Entities) : EntityLoader → Prop
-| mk (h₁ : ∀ s, EntitiesRefine store (loader s)) :
-  (WellBehaved store loader)
+def EntityLoader.WellBehaved (store: Entities) (loader: EntityLoader) : Prop :=
+  ∀ s, EntitiesRefine store (loader s)
 
 theorem as_partial_request_refines {req : Request} :
   RequestRefines req (Request.asPartialRequest req) := by
@@ -95,9 +94,6 @@ theorem batched_eval_loop_eq_evaluate
   InstanceOfWellFormedEnvironment req es env →
   (Residual.evaluate (batchedEvalLoop x req loader current_store iters) req es).toOption = (Residual.evaluate x req es).toOption := by
   intro h₀ h₁ h₂ h₃
-  have h₀₂ := h₀
-  obtain ⟨h_ref⟩ := h₀₂
-
   unfold batchedEvalLoop
   split
   case h_1 => simp only
@@ -111,7 +107,7 @@ theorem batched_eval_loop_eq_evaluate
       · apply entities_refine_append
         · unfold RequestAndEntitiesRefine at h₂
           exact h₂.right
-        · apply h_ref
+        · apply h₀
     let newRes := TPE.evaluate x req.asPartialRequest newStore
     have h₅ : (Residual.evaluate newRes req es).toOption = (Residual.evaluate x req es).toOption := by
       subst newRes
