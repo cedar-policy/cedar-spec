@@ -1359,6 +1359,33 @@ theorem not_find?_some_iff_find?_none {α} {p : α → Bool} {xs : List α} :
     specialize h x hx
     contradiction
 
+theorem find?_exact_iff_mem {α} [DecidableEq α] {l : List α}  {v : α}:
+  (l.find? (λ x => x == v) = some v) ↔ v ∈ l := by
+  constructor
+  case mp =>
+    intro h₁
+    exact mem_of_find?_eq_some h₁
+  case mpr =>
+    intro h₁
+    cases l
+    case nil =>
+      simp at h₁
+    case cons hd tl =>
+      simp [List.find?]
+      split
+      case h_1 h₂ =>
+        simp at h₂
+        rw [h₂]
+      case h_2 h₂ =>
+        simp at h₁
+        simp at h₂
+        cases h₁
+        case inl h₃ =>
+          rw [h₃] at h₂
+          contradiction
+        case inr h₃ =>
+          rw [find?_exact_iff_mem.mpr h₃]
+
 /-! ### filterMap -/
 
 /--

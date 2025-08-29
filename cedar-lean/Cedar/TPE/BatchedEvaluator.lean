@@ -28,28 +28,43 @@ open Cedar.Spec
 open Cedar.Validation
 
 
-abbrev EntityLoader := Set EntityUID → Map EntityUID PartialEntityData
+/--
+Loads everything requested by the set of entity ids,
+  returning `Option.none` for missing entities.
+Loading more entities than requested is okay.
+See `EntityLoader.WellBehaved` for a formal definition.
+-/
+abbrev EntityLoader := Set EntityUID → Map EntityUID (Option EntityData)
+
+def EntityDataOption.asPartial :
+  Option EntityData → PartialEntityData
+| none =>
+  PartialEntityData.absent
+| some d =>
+  d.asPartial
+
 
 /--
 The batched evaluation loop
   1. Asks for any new entities referenced by the residual
   2. Partially evaluates now that new entities are loaded
-  3. Exits if a value has been found
+  3. Exits if a value has been found or iterations are exhausted
 -/
-partial def batchedEvalLoop
+def batchedEvalLoop
   (residual : Residual)
   (req : Request)
   (loader : EntityLoader)
   (store : PartialEntities)
-  : Result Value :=
-  let toLoad := residual.allLiteralUIDs.filter (λ uid => (store.find? uid).isNone)
-  let newEntities := loader toLoad
-  let newStore := newEntities ++ store
-  let newRes := Cedar.TPE.evaluate residual req.asPartialRequest newStore
+  : Nat → Residual
+  | 0 => residual
+  | n + 1 =>
+    let toLoad := residual.allLiteralUIDs.filter (λ uid => (store.find? uid).isNone)
+    let newEntities := ((loader toLoad).mapOnValues EntityDataOption.asPartial)
+    let newStore := newEntities ++ store
 
-  match newRes with
-  | .val v _ty => .ok v
-  | _ => batchedEvalLoop newRes req loader newStore
+    match Cedar.TPE.evaluate residual req.asPartialRequest newStore with
+    | .val v _ty => .val v _ty
+    | newRes => batchedEvalLoop newRes req loader newStore n
 
 
 /--
@@ -61,23 +76,20 @@ def batchedEvaluate
   (x : TypedExpr)
   (req : Request)
   (loader : EntityLoader)
-  : Result Value :=
+  (iters : Nat)
+  : Residual :=
   let residual := Cedar.TPE.evaluate x.toResidual req.asPartialRequest Map.empty
   -- start the batched evaluation loop
-  batchedEvalLoop residual req loader Map.empty
+  batchedEvalLoop residual req loader Map.empty iters
 
 /--
-Create an entity loader for an entity store Entities.
-This is used to model user-provided entity loaders which
-load entities from a backing database.
-
-Given Entities es, the entity loader provides the requested
-entities specified by a set of entity ids.
+Create an entity loader for a given entity store.
+This is used for testing.
 -/
 def entityLoaderFor (es: Entities) (uids : Set EntityUID) :=
   Map.make (uids.toList.map (λ uid =>
         match (es.find? uid) with
         | .some data =>
-          (uid, data.asPartial)
+          (uid, Option.some data)
         | .none =>
-          (uid, PartialEntityData.absent)))
+          (uid, Option.none)))
