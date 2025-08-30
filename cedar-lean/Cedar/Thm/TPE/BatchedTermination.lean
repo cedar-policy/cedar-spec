@@ -117,6 +117,108 @@ theorem unaryApp_termination
           simp [Residual.treeSize]
           exact ih
 
+
+theorem PE_size_decreases_or_returns_same (r rq es)  :
+  (TPE.evaluate r rq es).treeSize < r.treeSize ∨
+  (TPE.evaluate r rq es) = r
+:= by
+  sorry
+
+theorem anyM_none_implies_exists_none {α} {f} {ls: List α}:
+  ls.anyM f = none → ∃ e, e ∈ ls ∧ (f e) = none
+:= by
+  intro h
+  cases ls
+  case nil =>
+    simp at h
+  case cons hd tl =>
+    simp at h
+    rcases h with ⟨h₁, h₂⟩
+    cases h₃: f hd
+    case intro.none =>
+      exists hd
+      simp
+      exact h₃
+    case intro.some v =>
+      cases v
+      case false =>
+        specialize h₁ h₃
+        have ⟨e, ih₁, ih₂⟩ := anyM_none_implies_exists_none h₁
+        exists e
+        simp
+        constructor
+        . right
+          assumption
+        . assumption
+      case true =>
+        rw [h₃] at h₂
+        contradiction
+
+
+
+theorem binaryApp_termination_mem {vs uid} {a b ty} {store: PartialEntities} {req: Request} {loader: EntityLoader} :
+  let newStore :=
+    (Map.mapOnValues EntityDataOption.asPartial
+      (loader
+        (Set.filter (fun uid => (Map.find? store uid).isNone)
+          (Residual.binaryApp BinaryOp.mem a b ty).allLiteralUIDs)) ++
+          store)
+  (TPE.evaluate a req.asPartialRequest newStore).asValue =
+    some (Value.prim (Prim.entityUID uid)) →
+  (TPE.evaluate b req.asPartialRequest newStore).asValue =
+    some (Value.set vs) →
+  TPE.inₛ uid vs newStore = none →
+  (Residual.binaryApp BinaryOp.mem
+      (TPE.evaluate a req.asPartialRequest
+        newStore)
+      (TPE.evaluate b req.asPartialRequest
+        newStore)
+      ty).treeSize <
+  2 + a.treeSize + b.treeSize
+:= by
+  intro newStore h₁ h₂ h₃
+  have h₄ := PE_size_decreases_or_returns_same a req.asPartialRequest newStore
+  have h₅ := PE_size_decreases_or_returns_same b req.asPartialRequest newStore
+  cases h₄
+  case inl h₃ =>
+    sorry
+  case inr h₄ =>
+    cases h₅
+    case inl h₅ =>
+      sorry
+    case inr h₅ =>
+      -- here we have a contradiction using h₁ and h₂
+      rw [h₄] at h₁
+      rw [h₄, h₅]
+      clear h₄ h₅
+      unfold TPE.inₛ at h₃
+      cases h₄: List.mapM (Except.toOption ∘ Value.asEntityUID) vs.toList
+      case none =>
+        -- TODO need well typedness to say they are all uids
+        sorry
+      case some ls =>
+        rw [h₄] at h₃
+        clear h₄
+        simp [TPE.inₑ] at h₃
+        replace h₃ := anyM_none_implies_exists_none h₃
+        rcases h₃ with ⟨e, h₃, h₄⟩
+        split at h₄
+        . contradiction
+        . simp [PartialEntities.ancestors, PartialEntities.get] at h₄
+          have ⟨e, h₅⟩: ∃e, newStore.find? uid = some e := by
+            sorry
+          specialize h₄ e h₅
+          rw [← Map.list_find?_some_iff_map_find?_some] at h₅
+          rw [← Map.kvs] at h₅
+          simp [HAppend.hAppend] at h₅
+          -- TODO need invariant that store contains full entities
+
+          --replace h₅ := Map.in_mapOnValues_in_kvs' h₅
+          sorry
+
+
+
+
 /--
 Theorem for binaryApp case: If the child expressions evaluate to smaller sizes
 or produce values, then the binaryApp either produces a value or has smaller size.
@@ -137,7 +239,13 @@ theorem binaryApp_termination
     (batchedEvalLoop b req loader store 1).treeSize < b.treeSize) :
   (batchedEvalLoop (Residual.binaryApp op a b ty) req loader store 1).treeSize < (Residual.binaryApp op a b ty).treeSize := by
   unfold batchedEvalLoop
+
   simp only
+  have newStore := (Map.mapOnValues EntityDataOption.asPartial
+      (loader
+        (Set.filter (fun uid => (Map.find? store uid).isNone) (Residual.binaryApp op a b ty).allLiteralUIDs)) ++
+    store)
+
   split
   -- Case 1: The binaryApp evaluates to a value immediately
   case h_1 x v ty₂ h₁ =>
@@ -149,7 +257,7 @@ theorem binaryApp_termination
   case h_2 r₁ h₁ =>
     simp [TPE.evaluate, TPE.apply₂]
     split
-    case h_1 r₂ ty₂ h₂ =>
+    case h_1 r₂ a_some h₂ =>
       simp [batchedEvalLoop]
       simp [Residual.treeSize]
       split
@@ -169,9 +277,14 @@ theorem binaryApp_termination
           have h₄ := tree_size_gt_0 b
           omega
         case h_2 h₃ =>
-          simp [apply₂.self, Residual.treeSize]
-          -- contradicton: we got none for values that we should have loaded
-          sorry
+          simp [Option.bind] at h₃
+          split at h₃
+          case h_2 h₃ =>
+            simp at h₃
+          case h_1 h₃ h₄ =>
+            simp [apply₂.self]
+
+            exact binaryApp_termination_mem a_some h₂ h₄
       case h_14 h₃ =>
         sorry
       case h_16 h₃ =>
