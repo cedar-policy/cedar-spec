@@ -3,6 +3,7 @@
 import Cedar.TPE.BatchedEvaluator
 import Cedar.Thm.TPE.BatchedEvaluator
 import Cedar.Data.SizeOf
+import Cedar.Thm.TPE.BatchedWellTyped
 
 namespace Cedar.Thm.TPE
 
@@ -163,29 +164,35 @@ theorem binaryApp_termination_mem {vs uid} {a b ty} {store: PartialEntities} {re
         (Set.filter (fun uid => (Map.find? store uid).isNone)
           (Residual.binaryApp BinaryOp.mem a b ty).allLiteralUIDs)) ++
           store)
-  (TPE.evaluate a req.asPartialRequest newStore).asValue =
-    some (Value.prim (Prim.entityUID uid)) →
-  (TPE.evaluate b req.asPartialRequest newStore).asValue =
-    some (Value.set vs) →
+  let newA := (TPE.evaluate a req.asPartialRequest newStore)
+  let newB := (TPE.evaluate b req.asPartialRequest newStore)
+  newA.asValue = some (Value.prim (Prim.entityUID uid)) →
+  newB.asValue = some (Value.set vs) →
   TPE.inₛ uid vs newStore = none →
-  (Residual.binaryApp BinaryOp.mem
-      (TPE.evaluate a req.asPartialRequest
-        newStore)
-      (TPE.evaluate b req.asPartialRequest
-        newStore)
-      ty).treeSize <
-  2 + a.treeSize + b.treeSize
+  Residual.WellTyped env
+    (Residual.binaryApp BinaryOp.mem newA newB ty) →
+  (Residual.binaryApp BinaryOp.mem newA newB ty).treeSize <
+    2 + a.treeSize + b.treeSize
 := by
-  intro newStore h₁ h₂ h₃
+  intro newStore newA newB h₁ h₂ h₃ h_wt
+  subst newA
+  subst newB
   have h₄ := PE_size_decreases_or_returns_same a req.asPartialRequest newStore
   have h₅ := PE_size_decreases_or_returns_same b req.asPartialRequest newStore
   cases h₄
   case inl h₃ =>
-    sorry
+    simp [Residual.treeSize]
+    cases h₅
+    . omega
+    case inr h₄ =>
+      rw [h₄]
+      omega
   case inr h₄ =>
     cases h₅
     case inl h₅ =>
-      sorry
+      rw [h₄]
+      simp [Residual.treeSize]
+      omega
     case inr h₅ =>
       -- here we have a contradiction using h₁ and h₂
       rw [h₄] at h₁
@@ -194,8 +201,30 @@ theorem binaryApp_termination_mem {vs uid} {a b ty} {store: PartialEntities} {re
       unfold TPE.inₛ at h₃
       cases h₄: List.mapM (Except.toOption ∘ Value.asEntityUID) vs.toList
       case none =>
-        -- TODO need well typedness to say they are all uids
-        sorry
+        clear h₃
+        cases h_wt; rename_i h_wt₁ h_wt₂ h_wt₃
+        cases h_wt₃ <;> rename_i h_wt₄ h_wt₅
+        case binaryApp.memₑ =>
+          -- contradiction: we got a set not an entity
+          sorry
+
+        case binaryApp.memₛ ety₁ ety₂ =>
+        simp [Residual.asValue] at h₂
+        split at h₂
+        case h_2 => contradiction
+        case h_1 r₂ v₂ ty h₃ =>
+        injection h₂; rename_i h₂
+        subst h₂
+        rw [h₃] at h_wt₅
+        rw [h₃] at h_wt₂
+        cases h_wt₂; rename_i h_wt₂
+        cases h_wt₂; rename_i ty₂ h_wt₂
+        simp [Residual.typeOf] at h_wt₅
+        subst h_wt₅
+        replace ⟨v, h₄, h₅⟩ := List.mapM_none_iff_exists_none.mp h₄
+        specialize h_wt₂ v h₄
+        cases h_wt₂
+        simp [Value.asEntityUID, Except.toOption] at h₅
       case some ls =>
         rw [h₄] at h₃
         clear h₄
@@ -231,14 +260,18 @@ theorem binaryApp_termination
   (req : Request)
   (loader : EntityLoader)
   (store : PartialEntities)
-  (ih₁ :
-    a.asValue = Option.none →
-    (batchedEvalLoop a req loader store 1).treeSize < a.treeSize)
-  (ih₂ :
-    b.asValue = Option.none →
-    (batchedEvalLoop b req loader store 1).treeSize < b.treeSize) :
+   :
+  InstanceOfWellFormedEnvironment req es env →
+  RequestAndEntitiesRefine req es (req.asPartialRequest) pes →
+  Residual.WellTyped env (Residual.binaryApp op a b ty) →
   (batchedEvalLoop (Residual.binaryApp op a b ty) req loader store 1).treeSize < (Residual.binaryApp op a b ty).treeSize := by
+  intro h_wf h_ref h_wt
+
+  have new_wt := batched_eval_loop_preserves_well_typed loader store 1 h_wf h_ref h_wt
   unfold batchedEvalLoop
+  unfold batchedEvalLoop at new_wt
+  simp only at new_wt
+
 
   simp only
   have newStore := (Map.mapOnValues EntityDataOption.asPartial
@@ -255,6 +288,14 @@ theorem binaryApp_termination
     have h_b := tree_size_gt_0 b
     omega
   case h_2 r₁ h₁ =>
+    split at new_wt
+    case h_1 v ty h₂ =>
+      rw [h₂] at h₁
+      specialize h₁ v ty
+      simp at h₁
+    case h_2 dup =>
+    clear dup
+
     simp [TPE.evaluate, TPE.apply₂]
     split
     case h_1 r₂ a_some h₂ =>
@@ -282,9 +323,15 @@ theorem binaryApp_termination
           case h_2 h₃ =>
             simp at h₃
           case h_1 h₃ h₄ =>
+            clear h₃
             simp [apply₂.self]
-
-            exact binaryApp_termination_mem a_some h₂ h₄
+            simp [batchedEvalLoop, TPE.evaluate, TPE.apply₂] at new_wt
+            rw [a_some] at new_wt
+            rw [h₂] at new_wt
+            simp [someOrSelf, apply₂.self] at new_wt
+            rw [h₄] at new_wt
+            simp at new_wt
+            exact binaryApp_termination_mem a_some h₂ h₄ new_wt
       case h_14 h₃ =>
         sorry
       case h_16 h₃ =>
@@ -323,6 +370,9 @@ theorem batched_eval_loop_decreases_size
   (req : Request)
   (loader : EntityLoader)
   (store : PartialEntities):
+  InstanceOfWellFormedEnvironment req es env →
+  RequestAndEntitiesRefine req es (req.asPartialRequest) pes →
+  Residual.WellTyped env residual →
   residual.asValue = Option.none →
   (batchedEvalLoop residual req loader store 1).treeSize < residual.treeSize
   := by
@@ -330,7 +380,7 @@ theorem batched_eval_loop_decreases_size
   let toLoad := residual.allLiteralUIDs.filter (λ uid => (store.find? uid).isNone)
   let newEntities := ((loader toLoad).mapOnValues EntityDataOption.asPartial)
   let newStore := newEntities ++ store
-  intro h₁
+  intro h_wf h_ref h_wt h₁
 
   -- Case analysis on the residual structure
   cases residual with
@@ -347,12 +397,11 @@ theorem batched_eval_loop_decreases_size
   | or a b ty =>
     sorry
   | unaryApp op expr ty =>
-    have ih := batched_eval_loop_decreases_size expr req loader store
+    cases h_wt; rename_i h_wt₁ h_wt₂
+    have ih := batched_eval_loop_decreases_size expr req loader store h_wf h_ref h_wt₁
     apply unaryApp_termination op expr ty req loader store ih
   | binaryApp op a b ty =>
-    have ih_a := batched_eval_loop_decreases_size a req loader store
-    have ih_b := batched_eval_loop_decreases_size b req loader store
-    apply binaryApp_termination op a b ty req loader store ih_a ih_b
+    apply binaryApp_termination op a b ty req loader store h_wf h_ref h_wt
   | getAttr expr attr ty =>
     sorry
   | hasAttr expr attr ty =>
