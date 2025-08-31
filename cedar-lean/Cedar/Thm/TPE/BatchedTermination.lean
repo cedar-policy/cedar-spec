@@ -156,6 +156,12 @@ theorem anyM_none_implies_exists_none {α} {f} {ls: List α}:
         contradiction
 
 
+theorem residual_asValue_some_value {r: Residual}:
+  r.asValue = Option.some v →
+  ∃ty, r = Residual.val v ty
+:= by
+  sorry
+
 
 theorem binaryApp_termination_mem {vs uid} {a b ty} {store: PartialEntities} {req: Request} {loader: EntityLoader} :
   let newStore :=
@@ -166,6 +172,7 @@ theorem binaryApp_termination_mem {vs uid} {a b ty} {store: PartialEntities} {re
           store)
   let newA := (TPE.evaluate a req.asPartialRequest newStore)
   let newB := (TPE.evaluate b req.asPartialRequest newStore)
+  EntityLoader.WellBehaved es loader →
   newA.asValue = some (Value.prim (Prim.entityUID uid)) →
   newB.asValue = some (Value.set vs) →
   TPE.inₛ uid vs newStore = none →
@@ -174,7 +181,7 @@ theorem binaryApp_termination_mem {vs uid} {a b ty} {store: PartialEntities} {re
   (Residual.binaryApp BinaryOp.mem newA newB ty).treeSize <
     2 + a.treeSize + b.treeSize
 := by
-  intro newStore newA newB h₁ h₂ h₃ h_wt
+  intro newStore newA newB h_wb h₁ h₂ h₃ h_wt
   subst newA
   subst newB
   have h₄ := PE_size_decreases_or_returns_same a req.asPartialRequest newStore
@@ -197,6 +204,9 @@ theorem binaryApp_termination_mem {vs uid} {a b ty} {store: PartialEntities} {re
       -- here we have a contradiction using h₁ and h₂
       rw [h₄] at h₁
       rw [h₄, h₅]
+      rw [h₄, h₅] at h_wt
+      rw [h₅] at h₂
+
       clear h₄ h₅
       unfold TPE.inₛ at h₃
       cases h₄: List.mapM (Except.toOption ∘ Value.asEntityUID) vs.toList
@@ -212,14 +222,13 @@ theorem binaryApp_termination_mem {vs uid} {a b ty} {store: PartialEntities} {re
         simp [Residual.asValue] at h₂
         split at h₂
         case h_2 => contradiction
-        case h_1 r₂ v₂ ty h₃ =>
+        case h_1 r₂ v₂ ty =>
         injection h₂; rename_i h₂
         subst h₂
-        rw [h₃] at h_wt₅
-        rw [h₃] at h_wt₂
         cases h_wt₂; rename_i h_wt₂
         cases h_wt₂; rename_i ty₂ h_wt₂
         simp [Residual.typeOf] at h_wt₅
+
         subst h_wt₅
         replace ⟨v, h₄, h₅⟩ := List.mapM_none_iff_exists_none.mp h₄
         specialize h_wt₂ v h₄
@@ -233,14 +242,35 @@ theorem binaryApp_termination_mem {vs uid} {a b ty} {store: PartialEntities} {re
         rcases h₃ with ⟨e, h₃, h₄⟩
         split at h₄
         . contradiction
-        . simp [PartialEntities.ancestors, PartialEntities.get] at h₄
-          have ⟨e, h₅⟩: ∃e, newStore.find? uid = some e := by
-            sorry
-          specialize h₄ e h₅
-          rw [← Map.list_find?_some_iff_map_find?_some] at h₅
-          rw [← Map.kvs] at h₅
-          simp [HAppend.hAppend] at h₅
+        . rename_i h₅
+          simp [PartialEntities.ancestors, PartialEntities.get] at h₄
+
+
+          replace ⟨ty₂, h₁⟩ := residual_asValue_some_value h₁
+          subst h₁
+          replace ⟨ty₃, h₂⟩ := residual_asValue_some_value h₂
+          subst h₂
+
+          -- can find an entity e for uid from a
+          have ⟨e, h₆⟩: ∃e, newStore.find? uid = some e := by
+            subst newStore
+            simp [Residual.allLiteralUIDs, Set.filter, Set.singleton, Set.elts, Union.union, Set.union, Set.make, List.canonicalize, Set.empty, List.insertCanonical, List.filter]
+            split
+            case h_1 b h₆ =>
+              simp [EntityLoader.WellBehaved] at h_wb
+              specialize h_wb (Set.mk [uid])
+              rcases h_wb with ⟨h_wb₁, h_wb₂⟩
+              
+
+              sorry
+            case h_2 =>
+              sorry
+          specialize h₄ e h₆
+          rw [← Map.list_find?_some_iff_map_find?_some] at h₆
+          rw [← Map.kvs] at h₆
+          simp [HAppend.hAppend] at h₆
           -- TODO need invariant that store contains full entities
+
 
           --replace h₅ := Map.in_mapOnValues_in_kvs' h₅
           sorry
@@ -261,11 +291,12 @@ theorem binaryApp_termination
   (loader : EntityLoader)
   (store : PartialEntities)
    :
+  EntityLoader.WellBehaved es loader →
   InstanceOfWellFormedEnvironment req es env →
   RequestAndEntitiesRefine req es (req.asPartialRequest) pes →
   Residual.WellTyped env (Residual.binaryApp op a b ty) →
   (batchedEvalLoop (Residual.binaryApp op a b ty) req loader store 1).treeSize < (Residual.binaryApp op a b ty).treeSize := by
-  intro h_wf h_ref h_wt
+  intro h_wb h_wf h_ref h_wt
 
   have new_wt := batched_eval_loop_preserves_well_typed loader store 1 h_wf h_ref h_wt
   unfold batchedEvalLoop
@@ -331,7 +362,7 @@ theorem binaryApp_termination
             simp [someOrSelf, apply₂.self] at new_wt
             rw [h₄] at new_wt
             simp at new_wt
-            exact binaryApp_termination_mem a_some h₂ h₄ new_wt
+            exact binaryApp_termination_mem h_wb a_some h₂ h₄ new_wt
       case h_14 h₃ =>
         sorry
       case h_16 h₃ =>
@@ -370,6 +401,7 @@ theorem batched_eval_loop_decreases_size
   (req : Request)
   (loader : EntityLoader)
   (store : PartialEntities):
+  EntityLoader.WellBehaved es loader →
   InstanceOfWellFormedEnvironment req es env →
   RequestAndEntitiesRefine req es (req.asPartialRequest) pes →
   Residual.WellTyped env residual →
@@ -380,7 +412,7 @@ theorem batched_eval_loop_decreases_size
   let toLoad := residual.allLiteralUIDs.filter (λ uid => (store.find? uid).isNone)
   let newEntities := ((loader toLoad).mapOnValues EntityDataOption.asPartial)
   let newStore := newEntities ++ store
-  intro h_wf h_ref h_wt h₁
+  intro h_wb h_wf h_ref h_wt h₁
 
   -- Case analysis on the residual structure
   cases residual with
@@ -398,10 +430,10 @@ theorem batched_eval_loop_decreases_size
     sorry
   | unaryApp op expr ty =>
     cases h_wt; rename_i h_wt₁ h_wt₂
-    have ih := batched_eval_loop_decreases_size expr req loader store h_wf h_ref h_wt₁
+    have ih := batched_eval_loop_decreases_size expr req loader store h_wb h_wf h_ref h_wt₁
     apply unaryApp_termination op expr ty req loader store ih
   | binaryApp op a b ty =>
-    apply binaryApp_termination op a b ty req loader store h_wf h_ref h_wt
+    apply binaryApp_termination op a b ty req loader store h_wb h_wf h_ref h_wt
   | getAttr expr attr ty =>
     sorry
   | hasAttr expr attr ty =>
