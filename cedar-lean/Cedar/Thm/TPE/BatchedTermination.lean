@@ -260,7 +260,12 @@ theorem binaryApp_termination_mem {vs uid} {a b ty} {store: PartialEntities} {re
               simp [EntityLoader.WellBehaved] at h_wb
               specialize h_wb (Set.mk [uid])
               rcases h_wb with ⟨h_wb₁, h_wb₂⟩
+              rw [← Option.isSome_iff_exists]
+              rw [Map.find?_append]
               
+
+
+
 
               sorry
             case h_2 =>

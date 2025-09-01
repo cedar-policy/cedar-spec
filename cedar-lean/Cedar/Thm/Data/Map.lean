@@ -1661,4 +1661,13 @@ theorem find?_append
       simp
   . simp
 
+theorem mapOnValues_append
+  [LT α] [StrictLT α] [DecidableEq α] [DecidableLT α]
+  {m₁ m₂ : Map α β} {k : α}:
+  (m₁ ++ m₂).mapOnValues f = (m₁.mapOnValues f) ++ (m₂.mapOnValues f)
+:= by
+  simp [mapOnValues]
+  simp [HAppend.hAppend]
+  sorry
+
 end Cedar.Data.Map
