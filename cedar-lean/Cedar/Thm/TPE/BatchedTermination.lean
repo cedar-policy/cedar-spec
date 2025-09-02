@@ -259,6 +259,14 @@ theorem binaryApp_termination_mem {vs uid} {a b ty} {store: EntitiesWithMissing}
               rcases h_wb with ⟨h_wb₁, h_wb₂⟩
               rw [← Option.isSome_iff_exists]
               rw [Map.find?_append]
+              simp [Option.or]
+              rw [Option.isSome_iff_exists]
+              -- Since uid ∈ keys of loader map, find? must return some
+              have h_in_keys : uid ∈ (loader (Set.mk [uid])) := by
+                rw [Set.subset_def] at h_wb₁
+                apply h_wb₁
+                simp [Membership.mem, Set.elts]
+                apply List.Mem.head
               sorry
             case h_2 =>
               sorry
