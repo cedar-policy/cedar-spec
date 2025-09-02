@@ -62,7 +62,7 @@ theorem unaryApp_termination
   (ty : CedarType)
   (req : Request)
   (loader : EntityLoader)
-  (store : PartialEntities)
+  (store : EntitiesWithMissing)
   (ih :
     expr.asValue = Option.none →
     (batchedEvalLoop expr req loader store 1).treeSize < expr.treeSize) :
@@ -161,19 +161,18 @@ theorem residual_asValue_some_value {r: Residual}:
   sorry
 
 
-theorem binaryApp_termination_mem {vs uid} {a b ty} {store: PartialEntities} {req: Request} {loader: EntityLoader} :
-  let newStore :=
-    (Map.mapOnValues EntityDataOption.asPartial
-      (loader
-        (Set.filter (fun uid => (Map.find? store uid).isNone)
-          (Residual.binaryApp BinaryOp.mem a b ty).allLiteralUIDs)) ++
-          store)
-  let newA := (TPE.evaluate a req.asPartialRequest newStore)
-  let newB := (TPE.evaluate b req.asPartialRequest newStore)
+theorem binaryApp_termination_mem {vs uid} {a b ty} {store: EntitiesWithMissing} {req: Request} {loader: EntityLoader} :
+  let newStore: EntitiesWithMissing :=
+    (loader
+          (Set.filter (fun uid => (Map.find? store uid).isNone)
+            (Residual.binaryApp BinaryOp.mem a b ty).allLiteralUIDs) ++
+        store)
+  let newA := (TPE.evaluate a req.asPartialRequest newStore.asPartial)
+  let newB := (TPE.evaluate b req.asPartialRequest newStore.asPartial)
   EntityLoader.WellBehaved es loader →
   newA.asValue = some (Value.prim (Prim.entityUID uid)) →
   newB.asValue = some (Value.set vs) →
-  TPE.inₛ uid vs newStore = none →
+  TPE.inₛ uid vs newStore.asPartial = none →
   Residual.WellTyped env
     (Residual.binaryApp BinaryOp.mem newA newB ty) →
   (Residual.binaryApp BinaryOp.mem newA newB ty).treeSize <
@@ -182,8 +181,8 @@ theorem binaryApp_termination_mem {vs uid} {a b ty} {store: PartialEntities} {re
   intro newStore newA newB h_wb h₁ h₂ h₃ h_wt
   subst newA
   subst newB
-  have h₄ := PE_size_decreases_or_returns_same a req.asPartialRequest newStore
-  have h₅ := PE_size_decreases_or_returns_same b req.asPartialRequest newStore
+  have h₄ := PE_size_decreases_or_returns_same a req.asPartialRequest newStore.asPartial
+  have h₅ := PE_size_decreases_or_returns_same b req.asPartialRequest newStore.asPartial
   cases h₄
   case inl h₃ =>
     simp [Residual.treeSize]
@@ -263,15 +262,16 @@ theorem binaryApp_termination_mem {vs uid} {a b ty} {store: PartialEntities} {re
               sorry
             case h_2 =>
               sorry
-          specialize h₄ e h₆
+          have h₇ : newStore.asPartial.find? uid = some e.asPartial := by
+            sorry
+          specialize h₄ e.asPartial h₇
           rw [← Map.list_find?_some_iff_map_find?_some] at h₆
           rw [← Map.kvs] at h₆
           simp [HAppend.hAppend] at h₆
-          -- TODO need invariant that store contains full entities
-
-
-          --replace h₅ := Map.in_mapOnValues_in_kvs' h₅
-          sorry
+          simp [EntityOrMissing.asPartial] at h₄
+          split at h₄
+          . simp [PartialEntityData.ancestors] at h₄
+          . simp [EntityData.asPartial, PartialEntityData.ancestors] at h₄
 
 
 
@@ -287,7 +287,7 @@ theorem binaryApp_termination
   (ty : CedarType)
   (req : Request)
   (loader : EntityLoader)
-  (store : PartialEntities)
+  (store : EntitiesWithMissing)
    :
   EntityLoader.WellBehaved es loader →
   InstanceOfWellFormedEnvironment req es env →
@@ -303,10 +303,9 @@ theorem binaryApp_termination
 
 
   simp only
-  have newStore := (Map.mapOnValues EntityDataOption.asPartial
-      (loader
-        (Set.filter (fun uid => (Map.find? store uid).isNone) (Residual.binaryApp op a b ty).allLiteralUIDs)) ++
-    store)
+
+  have newStore := (loader (Set.filter (fun uid => (Map.find? store uid).isNone) (Residual.binaryApp op a b ty).allLiteralUIDs) ++
+          store)
 
   split
   -- Case 1: The binaryApp evaluates to a value immediately
@@ -360,6 +359,7 @@ theorem binaryApp_termination
             simp [someOrSelf, apply₂.self] at new_wt
             rw [h₄] at new_wt
             simp at new_wt
+
             exact binaryApp_termination_mem h_wb a_some h₂ h₄ new_wt
       case h_14 h₃ =>
         sorry
@@ -398,7 +398,7 @@ theorem batched_eval_loop_decreases_size
   (residual : Residual)
   (req : Request)
   (loader : EntityLoader)
-  (store : PartialEntities):
+  (store : EntitiesWithMissing):
   EntityLoader.WellBehaved es loader →
   InstanceOfWellFormedEnvironment req es env →
   RequestAndEntitiesRefine req es (req.asPartialRequest) pes →
@@ -408,7 +408,7 @@ theorem batched_eval_loop_decreases_size
   := by
   -- The batched evaluation loop loads new entities and evaluates
   let toLoad := residual.allLiteralUIDs.filter (λ uid => (store.find? uid).isNone)
-  let newEntities := ((loader toLoad).mapOnValues EntityDataOption.asPartial)
+  let newEntities: EntitiesWithMissing := (loader toLoad)
   let newStore := newEntities ++ store
   intro h_wb h_wf h_ref h_wt h₁
 
