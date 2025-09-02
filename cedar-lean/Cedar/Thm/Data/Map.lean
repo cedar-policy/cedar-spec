@@ -363,6 +363,16 @@ theorem find?_mem_toList {α β} [LT α] [DecidableLT α] [DecidableEq α] {m : 
   simp only [beq_iff_eq] at h₃ ; subst h₃
   exact List.mem_of_find?_eq_some h₂
 
+theorem in_keys_iff_find?_some  [DecidableEq α] {k : α} {m : Map α β}:
+  (k ∈ m) ↔ ∃v, m.find? k = some v
+:= by
+  constructor
+  case mp =>
+    intro h₁
+    sorry
+  case mpr =>
+    sorry
+
 /--
   The `mpr` direction of this does not need the `wf` precondition and, in fact,
   is available separately as `find?_mem_toList` above

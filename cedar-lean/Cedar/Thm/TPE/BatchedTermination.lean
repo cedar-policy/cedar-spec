@@ -267,9 +267,24 @@ theorem binaryApp_termination_mem {vs uid} {a b ty} {store: EntitiesWithMissing}
                 apply h_wb₁
                 simp [Membership.mem, Set.elts]
                 apply List.Mem.head
-              sorry
-            case h_2 =>
-              sorry
+              have ⟨v, h₇⟩ := Map.in_keys_iff_find?_some.mp h_in_keys
+              rw [h₇]
+              exists v
+            case h_2 h₅ =>
+              rw [Map.find?_append]
+              cases (Map.find? (loader (Set.mk [])) uid)
+              case none =>
+                simp
+                simp [Option.isSome] at h₅
+                split at h₅
+                case h_1 =>
+                  rename_i e h₇
+                  rw [h₇]
+                  exists e
+                case h_2 =>
+                  contradiction
+              case some e =>
+                exists e
           have h₇ : newStore.asPartial.find? uid = some e.asPartial := by
             sorry
           specialize h₄ e.asPartial h₇
