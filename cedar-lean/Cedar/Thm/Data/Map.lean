@@ -1306,147 +1306,103 @@ theorem wellFormed_correct {α β} [LT α] [StrictLT α] [DecidableLT α] {m : M
     exact h
 
 
-
-theorem map_make_find_in_tail
-  [LT α] [StrictLT α] [DecidableEq α]
-  [DecidableLT α] [LawfulBEq α]
+/--
+Helper for make_find?_eq_list_find?
+-/
+private theorem map_make_find?_in_tail
+  [LT α] [StrictLT α] [BEq α] [LawfulBEq α]
+  [DecidableLT α]
   [SizeOf α] [SizeOf β]
   {hd : (α × β)} {tl : List (α × β)} {k : α} :
-  (Map.make (hd :: tl)).find? k = some v →
   ¬(hd.1 = k) →
-  (Map.make tl).find? k = some v
+  (Map.make (hd :: tl)).find? k = (Map.make tl).find? k
 := by
   simp [Map.make]
-  intro h₁ h₂
-  simp [List.canonicalize] at h₁
-  unfold List.insertCanonical at h₁
-  split at h₁
-  . simp [Map.find?, List.find?] at h₁
-    split at h₁
+  intro h₁
+  simp [List.canonicalize]
+  unfold List.insertCanonical
+  split
+  . simp [Map.find?, List.find?]
+    split
     . rename_i h₂
       split at h₂ <;> rename_i h₃
       . simp at h₃
         contradiction
       . contradiction
-    . contradiction
-  . simp at h₁
-    split at h₁
+    . rename_i h₃ _ _
+      rw [h₃]
+      simp [Map.kvs]
+  . simp
+    split
     case h_2.isTrue hd₂ tl₂ h₃ h₄ =>
       unfold Map.find?
-      simp [Map.find?, Map.kvs, List.find?] at h₁
-      split at h₁ <;> rename_i h₅
+      simp [List.find?]
+      split <;> rename_i h₅
       . split at h₅ <;> rename_i h₆
         . simp at h₆
           contradiction
         . rw [h₅]
+      . simp at h₅
+        have h₆ : (hd.fst == k) = false := by
           simp
-          injection h₁
-      . contradiction
+          assumption
+        rw [h₆] at h₅
+        simp at h₅
+        split
+        case h_1 h₇ =>
+          rename α => k
+          rename β => v
+          rw [h₇] at h₅
+          specialize h₅ k v
+          contradiction
+        case h_2 => simp
     case h_2.isFalse xs hd₂ tl₂ h₃ h₄ =>
       rw [h₃]
       rename LT α => i₁
       rename StrictLT α => i₂
-      split at h₁
+      split
       case isTrue h₅ =>
-        simp [Map.find?, Map.kvs, List.find?] at h₁
-        simp [Map.find?, Map.kvs, List.find?]
+        simp [Map.find?, List.find?]
         cases h₆: hd₂.fst == k
         case false =>
           simp
-          rw [h₆] at h₁
-          simp at h₁
-          have h₇ : ((fun x => x.fst == k) hd) = false := by
+          have h₇ : (hd.fst == k) = false := by
             simp
             assumption
-          have h₈ := insertCanonical_preserves_find_other_element k hd tl₂
-
-          specialize h₈ h₇
-          rw [h₈] at h₁
-          assumption
+          have h₈ := insertCanonical_preserves_find_other_element k hd tl₂ h₇
+          rw [h₈]
         case true =>
           simp
-          simp at h₆
-          rw [h₆] at h₁
-          simp at h₁
-          assumption
       case isFalse h₅ =>
         have h₆ := @StrictLT.if_not_lt_gt_then_eq α i₁ i₂ hd.fst hd₂.fst h₄ h₅
-        simp [Map.find?, Map.kvs, List.find?] at h₁
-        simp [Map.find?, Map.kvs, List.find?]
-        have h₇ : (hd₂.fst == k) = false := by simp; rw [h₆] at h₂; assumption
+        simp [Map.find?, List.find?]
+        rw [← h₆]
         have h₈ : (hd.fst == k) = false := by simp; assumption
-        rw [h₇]
-        rw [h₈] at h₁
-        simp
-        simp at h₁
-        assumption
+        rw [h₈]
 
-/--
-Helper- use list_find?_iff_make_find?
--/
-private theorem make_find?_implies_list_find?
+theorem make_find?_eq_list_find?
   [DecidableEq α] [LT α] [DecidableLT α]
   [Cedar.Data.StrictLT α]
   {l : List (α × β)}
-  {k : α} {v : β} :
-  (make l).find? k = some v →
-  List.find? (λ x => x.fst == k) l = some (k, v)
-:= by
-  intro h₁
+  {k : α} :
+  (make l).find? k = (List.find? (λ x => x.fst == k) l).map Prod.snd
+   := by
   cases l
   case nil =>
-    simp [Map.find?, List.find?, make, List.canonicalize, make] at h₁
-  case cons i₁ i₂ i₃ i₄ hd tl =>
+    simp [make, List.canonicalize, Map.find?, List.find?]
+  case cons hd tl =>
     simp [List.find?]
     split
-    case h_1 x h₃ =>
-      simp [make, List.canonicalize, Map.find?] at h₁
-      cases hd
-      case mk k₂ v₂ =>
-      simp at h₃
-      rw [h₃] at h₁
-      have h₄ : k = (k, v₂).fst := by simp
-      rw [h₄] at h₁
-      rw [List.insertCanonical_find?] at h₁
+    case h_1 x h₁ =>
+      simp [make, List.canonicalize, Map.find?, Map.kvs]
       simp at h₁
-      rw [h₃, h₁]
+      rw [← h₁]
+      rw [List.insertCanonical_find? (f := Prod.fst) hd]
     case h_2 x h₃ =>
-      rw [make_find?_implies_list_find?]
       simp at h₃
-      have h₄ := map_make_find_in_tail h₁ h₃
-      assumption
+      rw [map_make_find?_in_tail h₃]
+      rw [make_find?_eq_list_find?]
 
-
-/--
-Helper- use list_find?_iff_make_find?
--/
-private theorem list_find?_implies_make_find?
-  [DecidableEq α] [LT α] [DecidableLT α]
-  [Cedar.Data.StrictLT α]
-  {l : List (α × β)}
-  {k : α} {v : β} :
-  (h : List.find? (λ x => x.fst == k) l = some (k, v)) →
-  (make l).find? k = some v
-:= by
-  intro h
-  apply (in_list_iff_find?_some (Data.Map.make_wf l)).mp
-  simp only [make, Data.Map.kvs]
-  induction l
-  case nil => simp at h
-  case cons head tail ih =>
-    simp only [List.find?] at h
-    split at h
-    case _ heq =>
-      simp only [Option.some.injEq] at h
-      simp only [List.canonicalize, h]
-      apply List.insertCanonical_mem
-    case _ hneq =>
-      have ih := ih h
-      simp only [beq_eq_false_iff_ne, ne_eq] at hneq
-      simp only [List.canonicalize]
-      apply List.insertCanonical_preserves_non_duplicate_element
-      assumption
-      simp [hneq]
 
 theorem list_find?_iff_make_find?
   [DecidableEq α] [LT α] [DecidableLT α]
@@ -1455,11 +1411,19 @@ theorem list_find?_iff_make_find?
   {k : α} {v : β} :
   List.find? (λ x => x.fst == k) l = some (k, v) ↔
   (make l).find? k = some v := by
+  rw [make_find?_eq_list_find?]
+  simp
   constructor
   case mp =>
-    exact list_find?_implies_make_find?
+    intro h
+    exists k
   case mpr =>
-    exact make_find?_implies_list_find?
+    intro h
+    replace ⟨k₂, h⟩ := h
+    have h₂ := List.find?_some h
+    simp at h₂
+    rw [h₂] at h
+    exact h
 
 theorem list_find?_iff_mk_find?
   [DecidableEq α] [LT α] [DecidableLT α]
@@ -1516,16 +1480,10 @@ theorem map_make_append_find_disjoint
     contradiction
     rename_i kv hkv
     exists kv.snd
-    apply list_find?_implies_make_find?
-    simp [List.find?_append]
-    apply Or.inr
-    constructor
-    · simp only [List.find?_eq_none, beq_iff_eq, Prod.forall] at hfind₁
-      exact hfind₁
-    have := List.find?_some hkv
-    simp only [beq_iff_eq] at this
-    simp only [hkv]
-    simp [←this]
+    rw [make_find?_eq_list_find?]
+    rw [List.find?_append]
+    rw [hkv, hfind₁]
+    simp
   simp only [hv, Option.some.injEq, exists_eq_left']
   have := Map.find?_mem_toList hv
   have := hsub k v this
@@ -1546,26 +1504,14 @@ theorem make_map_values_find
   (Map.make (l.map (λ x => (x, f x)))).find? k =
   .some (f k)
 := by
-  apply list_find?_implies_make_find?
-  simp only [List.find?_map, Option.map_eq_some_iff, Prod.mk.injEq]
+  rw [make_find?_eq_list_find?]
+  simp only [List.find?_map, Option.map_eq_some_iff]
   unfold Function.comp
-  simp only
-  induction l with
-  | nil => contradiction
-  | cons x xs ih =>
-    simp only [List.mem_cons] at hfind
-    cases hfind with
-    | inl hfind =>
-      exists x
-      simp [hfind]
-    | inr hfind =>
-      simp only [List.find?]
-      split
-      · rename_i heq
-        simp only [beq_iff_eq] at heq
-        exists x
-        simp [heq]
-      · exact ih hfind
+  simp
+  exists k
+  exists k
+  simp
+  rw [List.find?_exact_iff_mem.mpr hfind]
 
 theorem map_toList_findSome?
   [BEq α] [LawfulBEq α]
@@ -1699,5 +1645,21 @@ theorem toList_congr
   cases m₂ with | mk m₂
   simp only [Map.toList, Map.kvs] at h
   simp [h]
+
+theorem find?_append
+  [LT α] [StrictLT α] [DecidableEq α] [DecidableLT α]
+  {m₁ m₂ : Map α β} {k : α}:
+  (m₁ ++ m₂).find? k = (m₁.find? k).or (m₂.find? k)
+:= by
+  have h_append_eq : (m₁ ++ m₂).find? k = (Map.make (m₁.kvs ++ m₂.kvs)).find? k := by
+    rfl
+  rw [h_append_eq]
+  rw [make_find?_eq_list_find?]
+  rw [List.find?_append]
+  simp [Map.find?, Option.map, Option.or]
+  cases List.find? (fun x => x.fst == k) m₁.kvs
+  . simp
+    cases List.find? (fun x => x.fst == k) m₂.kvs <;> simp
+  . simp
 
 end Cedar.Data.Map
