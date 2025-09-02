@@ -1,5 +1,3 @@
-
-
 import Cedar.TPE.BatchedEvaluator
 import Cedar.Thm.TPE.BatchedEvaluator
 import Cedar.Data.SizeOf
@@ -262,11 +260,6 @@ theorem binaryApp_termination_mem {vs uid} {a b ty} {store: PartialEntities} {re
               rcases h_wb with ⟨h_wb₁, h_wb₂⟩
               rw [← Option.isSome_iff_exists]
               rw [Map.find?_append]
-              
-
-
-
-
               sorry
             case h_2 =>
               sorry

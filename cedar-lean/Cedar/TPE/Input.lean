@@ -49,7 +49,12 @@ inductive PartialEntityData where
   | present (attrs : Option (Map Attr Value)) (ancestors : Option (Set EntityUID)) (tags : Option (Map Attr Value))
   | absent
 
+abbrev EntityOrMissing := Option EntityData
+
 abbrev PartialEntities := Map EntityUID PartialEntityData
+abbrev EntitiesWithMissing := Map EntityUID EntityOrMissing
+
+
 
 def PartialEntities.get (es : PartialEntities) (uid : EntityUID) (f : PartialEntityData → Option α) : Option α :=
   (es.find? uid).bind f
@@ -71,6 +76,8 @@ def PartialEntities.ancestors (es : PartialEntities) (uid : EntityUID) : Option 
 def PartialEntities.tags (es : PartialEntities) (uid : EntityUID) : Option (Map Tag Value) := es.get uid PartialEntityData.tags
 
 def PartialEntities.attrs (es : PartialEntities) (uid : EntityUID) : Option (Map Tag Value) := es.get uid PartialEntityData.attrs
+
+
 
 def partialIsValid {α} (o : Option α) (f : α → Bool) : Bool :=
   (o.map f).getD true
@@ -178,12 +185,6 @@ def Request.asPartialRequest (req : Request) : PartialRequest :=
   , resource  := { ty := req.resource.ty, id := .some req.resource.eid }
   , context   := req.context }
 
-
-
-end Cedar.Spec
-
-
-namespace Cedar.Spec
 open Cedar.TPE
 
 def EntityData.asPartial (data : EntityData) : PartialEntityData :=
@@ -192,4 +193,21 @@ def EntityData.asPartial (data : EntityData) : PartialEntityData :=
 def Entities.asPartial (entities: Entities) : PartialEntities :=
   entities.mapOnValues EntityData.asPartial
 
+
 end Cedar.Spec
+
+
+namespace Cedar.TPE
+
+
+def EntityOrMissing.asPartial :
+  EntityOrMissing → PartialEntityData
+| none =>
+  PartialEntityData.absent
+| some d =>
+  d.asPartial
+
+def EntitiesWithMissing.asPartial (store: EntitiesWithMissing) : PartialEntities :=
+  store.mapOnValues EntityOrMissing.asPartial
+
+end Cedar.TPE

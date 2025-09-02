@@ -34,15 +34,7 @@ Loads everything requested by the set of entity ids,
 Loading more entities than requested is okay.
 See `EntityLoader.WellBehaved` for a formal definition.
 -/
-abbrev EntityLoader := Set EntityUID → Map EntityUID (Option EntityData)
-
-def EntityDataOption.asPartial :
-  Option EntityData → PartialEntityData
-| none =>
-  PartialEntityData.absent
-| some d =>
-  d.asPartial
-
+abbrev EntityLoader := Set EntityUID → EntitiesWithMissing
 
 /--
 The batched evaluation loop
@@ -54,15 +46,15 @@ def batchedEvalLoop
   (residual : Residual)
   (req : Request)
   (loader : EntityLoader)
-  (store : PartialEntities)
+  (store : EntitiesWithMissing)
   : Nat → Residual
   | 0 => residual
   | n + 1 =>
     let toLoad := residual.allLiteralUIDs.filter (λ uid => (store.find? uid).isNone)
-    let newEntities := ((loader toLoad).mapOnValues EntityDataOption.asPartial)
-    let newStore := newEntities ++ store
+    let newEntities := (loader toLoad)
+    let newStore: EntitiesWithMissing := newEntities ++ store
 
-    match Cedar.TPE.evaluate residual req.asPartialRequest newStore with
+    match Cedar.TPE.evaluate residual req.asPartialRequest newStore.asPartial with
     | .val v _ty => .val v _ty
     | newRes => batchedEvalLoop newRes req loader newStore n
 
