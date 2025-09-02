@@ -48,7 +48,7 @@ def EntityDataOption.asPartial :
 The batched evaluation loop
   1. Asks for any new entities referenced by the residual
   2. Partially evaluates now that new entities are loaded
-  3. Exits if a value has been found or iterations are exhausted
+  3. Exits if a value has been found or it hits the maximum iteration limit
 -/
 def batchedEvalLoop
   (residual : Residual)
@@ -70,7 +70,8 @@ def batchedEvalLoop
 /--
 Evaluate a cedar expression using an EntityLoader
 instead of a full Entities store.
-This algorithm minimizes the number of calls to the EntityLoader using partial evaluation.
+Performs a maximum of `iter` number of calls to `loader`,
+but may perform fewer when a value is found.
 -/
 def batchedEvaluate
   (x : TypedExpr)

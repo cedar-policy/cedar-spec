@@ -24,7 +24,7 @@ entities
 2. Refines the backing entity store
 
 The first condition is required for convergence of
-batched evaluation, which has not be proven. It is unused
+batched evaluation, which has not been proven. It is unused
 in the code base at the moment.
 -/
 abbrev EntityLoader.WellBehaved (store: Entities) (loader: EntityLoader) : Prop :=
@@ -32,7 +32,7 @@ abbrev EntityLoader.WellBehaved (store: Entities) (loader: EntityLoader) : Prop 
        EntitiesRefine store ((loader s).mapOnValues EntityDataOption.asPartial)
 
 theorem as_partial_request_refines {req : Request} :
-  RequestRefines req (Request.asPartialRequest req) := by
+  RequestRefines req req.asPartialRequest := by
   simp only [Request.asPartialRequest, RequestRefines, PartialEntityUID.asEntityUID, Option.map_some]
   constructor
   · apply PartialIsValid.some
@@ -75,7 +75,7 @@ theorem entities_refine_append (es : Entities) (m1 m2 : PartialEntities) :
 
 
 theorem direct_request_and_entities_refine (req : Request) (es : Entities) :
-  RequestAndEntitiesRefine req es (Request.asPartialRequest req) (Entities.asPartial es) := by
+  RequestAndEntitiesRefine req es req.asPartialRequest es.asPartial := by
   constructor
   · exact as_partial_request_refines
   · unfold EntitiesRefine Entities.asPartial
@@ -157,23 +157,20 @@ theorem batched_eval_eq_evaluate
   intro h₁ h₂ h₃
   have h₄ := (direct_request_and_entities_refine req es)
 
-  let first_partial := (TPE.evaluate (TypedExpr.toResidual x) (Request.asPartialRequest req) (Entities.asPartial (Data.Map.mk [])))
+  let first_partial := (TPE.evaluate x.toResidual req.asPartialRequest (Entities.asPartial (Data.Map.mk [])))
   let h₅ : Residual.WellTyped env (TypedExpr.toResidual x) := by {
     apply conversion_preserves_typedness
     exact h₂
   }
-  have conversion_sound := conversion_preserves_evaluation x req es
-  rw [conversion_sound]
-  have partial_sound := partial_evaluate_is_sound h₅ h₃ h₄
-  rw [partial_sound]
+  rw [conversion_preserves_evaluation x req es]
+  rw [partial_evaluate_is_sound h₅ h₃ h₄]
 
   have h₆ : Residual.WellTyped env (TPE.evaluate x.toResidual req.asPartialRequest Map.empty) := by
-    apply partial_eval_preserves_well_typed h₃
+    apply partial_eval_preserves_well_typed h₃ _ h₅
     . unfold RequestAndEntitiesRefine
       constructor
       . apply as_partial_request_refines
       . apply any_refines_empty_entities
-    . exact h₅
   have h₇: RequestAndEntitiesRefine req es req.asPartialRequest Map.empty := by
     constructor
     . apply as_partial_request_refines

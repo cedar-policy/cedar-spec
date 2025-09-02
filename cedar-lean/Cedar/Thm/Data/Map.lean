@@ -1419,7 +1419,7 @@ theorem list_find?_iff_make_find?
     exists k
   case mpr =>
     intro h
-    rcases h with ⟨k₂, h⟩
+    replace ⟨k₂, h⟩ := h
     have h₂ := List.find?_some h
     simp at h₂
     rw [h₂] at h
@@ -1659,9 +1659,7 @@ theorem find?_append
   simp [Map.find?, Option.map, Option.or]
   cases List.find? (fun x => x.fst == k) m₁.kvs
   . simp
-    cases List.find? (fun x => x.fst == k) m₂.kvs
-    all_goals
-      simp
+    cases List.find? (fun x => x.fst == k) m₂.kvs <;> simp
   . simp
 
 end Cedar.Data.Map
