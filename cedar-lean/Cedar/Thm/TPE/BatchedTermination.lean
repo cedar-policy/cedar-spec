@@ -161,7 +161,15 @@ theorem residual_asValue_some_value {r: Residual}:
   sorry
 
 
-theorem binaryApp_termination_mem {vs uid} {a b ty} {store: EntitiesWithMissing} {req: Request} {loader: EntityLoader} :
+theorem find_entity_in_batched_new_store {store: EntitiesWithMissing}:
+  EntityLoader.WellBehaved env loader →
+  uid ∈ l →
+  ∃ e, (loader (Set.mk (List.filter (fun uid => (Map.find? store uid).isNone) l)) ++ store).find? uid = some e
+:= by
+  intro h_wb inl
+  sorry
+
+theorem binaryApp_termination_memₛ {vs uid} {a b ty} {store: EntitiesWithMissing} {req: Request} {loader: EntityLoader} :
   let newStore: EntitiesWithMissing :=
     (loader
           (Set.filter (fun uid => (Map.find? store uid).isNone)
@@ -213,7 +221,17 @@ theorem binaryApp_termination_mem {vs uid} {a b ty} {store: EntitiesWithMissing}
         cases h_wt₃ <;> rename_i h_wt₄ h_wt₅
         case binaryApp.memₑ =>
           -- contradiction: we got a set not an entity
-          sorry
+          simp [Residual.asValue] at h₂
+          split at h₂
+          case h_2 => contradiction
+          case h_1 r₂ v₂ ty₂ =>
+            injection h₂; rename_i h₂
+            subst h₂
+            simp [Residual.typeOf] at h_wt₅
+            cases h_wt₂
+            rename_i h_wt₂
+            rw [h_wt₅] at h_wt₂
+            cases h_wt₂
 
         case binaryApp.memₛ ety₁ ety₂ =>
         simp [Residual.asValue] at h₂
@@ -254,6 +272,7 @@ theorem binaryApp_termination_mem {vs uid} {a b ty} {store: EntitiesWithMissing}
             simp [Residual.allLiteralUIDs, Set.filter, Set.singleton, Set.elts, Union.union, Set.union, Set.make, List.canonicalize, Set.empty, List.insertCanonical, List.filter]
             split
             case h_1 b h₆ =>
+              -- TODO
               simp [EntityLoader.WellBehaved] at h_wb
               specialize h_wb (Set.mk [uid])
               rcases h_wb with ⟨h_wb₁, h_wb₂⟩
@@ -286,7 +305,8 @@ theorem binaryApp_termination_mem {vs uid} {a b ty} {store: EntitiesWithMissing}
               case some e =>
                 exists e
           have h₇ : newStore.asPartial.find? uid = some e.asPartial := by
-            sorry
+            unfold EntitiesWithMissing.asPartial
+            exact Map.find?_mapOnValues_some EntityOrMissing.asPartial h₆
           specialize h₄ e.asPartial h₇
           rw [← Map.list_find?_some_iff_map_find?_some] at h₆
           rw [← Map.kvs] at h₆
@@ -296,6 +316,85 @@ theorem binaryApp_termination_mem {vs uid} {a b ty} {store: EntitiesWithMissing}
           . simp [PartialEntityData.ancestors] at h₄
           . simp [EntityData.asPartial, PartialEntityData.ancestors] at h₄
 
+
+theorem binaryApp_termination_memₑ {uid2 uid} {a b ty} {store: EntitiesWithMissing} {req: Request} {loader: EntityLoader} :
+  let newStore: EntitiesWithMissing :=
+    (loader
+          (Set.filter (fun uid => (Map.find? store uid).isNone)
+            (Residual.binaryApp BinaryOp.mem a b ty).allLiteralUIDs) ++
+        store)
+  let newA := (TPE.evaluate a req.asPartialRequest newStore.asPartial)
+  let newB := (TPE.evaluate b req.asPartialRequest newStore.asPartial)
+  EntityLoader.WellBehaved es loader →
+  newA.asValue = some (Value.prim (Prim.entityUID uid)) →
+  newB.asValue = some (Value.prim (Prim.entityUID uid2)) →
+  TPE.inₑ uid uid2 newStore.asPartial = none →
+  Residual.WellTyped env
+    (Residual.binaryApp BinaryOp.mem newA newB ty) →
+  (Residual.binaryApp BinaryOp.mem newA newB ty).treeSize <
+    2 + a.treeSize + b.treeSize
+:= by
+  intro newStore newA newB h_wb h₁ h₂ h₃ h_wt
+  subst newA
+  subst newB
+  have h₄ := PE_size_decreases_or_returns_same a req.asPartialRequest newStore.asPartial
+  have h₅ := PE_size_decreases_or_returns_same b req.asPartialRequest newStore.asPartial
+  cases h₄
+  case inl h₃ =>
+    simp [Residual.treeSize]
+    cases h₅
+    . omega
+    case inr h₄ =>
+      rw [h₄]
+      omega
+  case inr h₄ =>
+    cases h₅
+    case inl h₅ =>
+      rw [h₄]
+      simp [Residual.treeSize]
+      omega
+    case inr h₅ =>
+      -- here we have a contradiction using h₁ and h₂
+      rw [h₄] at h₁
+      rw [h₄, h₅]
+      rw [h₄, h₅] at h_wt
+      rw [h₅] at h₂
+
+      clear h₄ h₅
+      unfold TPE.inₑ at h₃
+      split at h₃
+      case isTrue => contradiction
+      -- contradiction: .ancestors was none at h₃
+      simp [EntitiesWithMissing.asPartial, PartialEntities.ancestors, PartialEntities.get] at h₃
+      replace ⟨ty₂, h₁⟩ := residual_asValue_some_value h₁
+      subst h₁
+      replace ⟨ty₃, h₂⟩ := residual_asValue_some_value h₂
+      subst h₂
+      -- can find an entity e for uid from a
+      have ⟨e, h₆⟩: ∃e, newStore.find? uid = some e := by
+        subst newStore
+        simp [Residual.allLiteralUIDs, Set.filter, Set.singleton, Set.elts, Union.union, Set.union, Set.make, List.canonicalize, List.insertCanonical]
+        split
+        case isTrue =>
+          apply find_entity_in_batched_new_store h_wb
+          simp
+        case isFalse =>
+          split
+          case isTrue =>
+            apply find_entity_in_batched_new_store h_wb
+            simp
+          case isFalse =>
+            apply find_entity_in_batched_new_store h_wb
+            simp
+
+      simp [Residual.treeSize]
+
+      have h₇ := Map.find?_mapOnValues_some EntityOrMissing.asPartial h₆
+      specialize h₃ e.asPartial h₇
+      simp [EntityOrMissing.asPartial, EntityData.asPartial] at h₃
+      split at h₃
+      . simp [PartialEntityData.ancestors] at h₃
+      . simp [PartialEntityData.ancestors] at h₃
 
 
 
@@ -383,9 +482,30 @@ theorem binaryApp_termination
             rw [h₄] at new_wt
             simp at new_wt
 
-            exact binaryApp_termination_mem h_wb a_some h₂ h₄ new_wt
+            exact binaryApp_termination_memₛ h_wb a_some h₂ h₄ new_wt
       case h_14 h₃ =>
-        sorry
+        simp [someOrSelf]
+        split
+        . simp [Residual.treeSize]
+          have h₃ := tree_size_gt_0 a
+          have h₄ := tree_size_gt_0 b
+          omega
+        case h_2 h₃ =>
+          simp [Option.bind] at h₃
+          split at h₃
+          case h_2 h₃ =>
+            simp at h₃
+          case h_1 h₃ h₄ =>
+            clear h₃
+            simp [apply₂.self]
+            simp [batchedEvalLoop, TPE.evaluate, TPE.apply₂] at new_wt
+            rw [a_some] at new_wt
+            rw [h₂] at new_wt
+            simp [someOrSelf, apply₂.self] at new_wt
+            rw [h₄] at new_wt
+            simp at new_wt
+
+            exact binaryApp_termination_memₑ h_wb a_some h₂ h₄ new_wt
       case h_16 h₃ =>
         sorry
       case h_17 h₃ =>
