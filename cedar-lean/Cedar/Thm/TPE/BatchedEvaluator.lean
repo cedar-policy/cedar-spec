@@ -65,15 +65,19 @@ theorem entities_refine_withMissing_asPartial_append (es : Entities) (m2 m1 : En
 
   rw [Map.find?_append] at h_find
   cases h_case : m1.find? a with
-  | some e₂' =>
+  | some e₁' =>
     unfold EntitiesWithMissing.asPartial at h_find
-    have h_find₂ : Map.find? m2.asPartial a = e₂'.asPartial := by
-      sorry
-    have h_eq : e₂ = e₂'.asPartial := by
-      sorry
+    have h_find₂ : Map.find? m1.asPartial a = some e₁'.asPartial := by
+      unfold EntitiesWithMissing.asPartial
+      exact Map.find?_mapOnValues_some EntityOrMissing.asPartial h_case
+    have h_eq : e₂ = e₁'.asPartial := by
+      unfold EntitiesWithMissing.asPartial at h_find₂
+      rw [h_find₂] at h_find
+      simp [Option.or] at h_find
+      exact h_find.symm
     rw [h_eq]
 
-    exact h2 a e₂'.asPartial h_find₂
+    exact h1 a e₁'.asPartial h_find₂
   | none =>
     have h_find₃ : m1.asPartial.find? a = none := by
       sorry
