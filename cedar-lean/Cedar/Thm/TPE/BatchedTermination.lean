@@ -158,7 +158,15 @@ theorem residual_asValue_some_value {r: Residual}:
   r.asValue = Option.some v →
   ∃ty, r = Residual.val v ty
 := by
-  sorry
+  intro h
+  cases r with
+  | val v' ty =>
+    simp only [Residual.asValue] at h
+    have h_eq : v' = v := Option.some.inj h
+    subst h_eq
+    exact ⟨ty, rfl⟩
+  | _ =>
+    simp [Residual.asValue] at h
 
 
 theorem find_entity_in_batched_new_store {store: EntitiesWithMissing}:
@@ -167,7 +175,48 @@ theorem find_entity_in_batched_new_store {store: EntitiesWithMissing}:
   ∃ e, (loader (Set.mk (List.filter (fun uid => (Map.find? store uid).isNone) l)) ++ store).find? uid = some e
 := by
   intro h_wb inl
-  sorry
+  rw [Map.find?_append]
+  cases h_case : Map.find? store uid
+  case none =>
+    -- uid is not in store, so it should be in the filtered list and loaded by loader
+    -- Since uid ∈ l and uid is not in store, uid should be in the filtered list
+    have uid_in_filtered : uid ∈ List.filter (fun uid => (Map.find? store uid).isNone) l := by
+      rw [List.mem_filter]
+      constructor
+      · exact inl
+      · rw [h_case]
+        simp
+
+    -- Convert to set membership
+    have uid_in_set : uid ∈ Set.mk (List.filter (fun uid => (Map.find? store uid).isNone) l) := by
+      simp [Membership.mem, Set.elts]
+      exact uid_in_filtered
+
+    -- Use EntityLoader.WellBehaved property
+    simp [EntityLoader.WellBehaved] at h_wb
+    specialize h_wb (Set.mk (List.filter (fun uid => (Map.find? store uid).isNone) l))
+    rcases h_wb with ⟨h_subset, _⟩
+
+    -- uid is in the keys of the loaded map
+    have uid_in_keys : uid ∈ (loader (Set.mk (List.filter (fun uid => (Map.find? store uid).isNone) l))).keys := by
+      rw [Set.subset_def] at h_subset
+      apply h_subset
+      exact uid_in_set
+
+    replace uid_in_keys : uid ∈ (loader (Set.mk (List.filter (fun uid => (Map.find? store uid).isNone) l))) := by
+      simp [Membership.mem]
+      simp [Membership.mem] at uid_in_keys
+      exact uid_in_keys
+    -- If uid is in keys, then find? returns some value
+    rw [Map.in_keys_iff_find?_some] at uid_in_keys
+    rcases uid_in_keys with ⟨v, hv⟩
+    exists v
+    simp only [Option.or, h_case, Option.none_or]
+    rw [hv]
+  case some e =>
+    cases (Map.find? (loader (Set.mk (List.filter (fun uid => (Map.find? store uid).isNone) l))) uid)
+    all_goals
+      simp
 
 theorem binaryApp_termination_memₛ {vs uid} {a b ty} {store: EntitiesWithMissing} {req: Request} {loader: EntityLoader} :
   let newStore: EntitiesWithMissing :=
