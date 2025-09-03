@@ -27,6 +27,7 @@ use cedar_policy_generators::{
 
 use libfuzzer_sys::arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
 use log::debug;
+use similar_asserts::assert_eq;
 use std::convert::TryFrom;
 
 /// Input expected by this fuzz target:
@@ -71,14 +72,6 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
             schema::Schema::arbitrary_size_hint(depth)?,
             HierarchyGenerator::size_hint(depth),
             schema::Schema::arbitrary_policy_size_hint(&SETTINGS, depth),
-            schema::Schema::arbitrary_request_size_hint(depth),
-            schema::Schema::arbitrary_request_size_hint(depth),
-            schema::Schema::arbitrary_request_size_hint(depth),
-            schema::Schema::arbitrary_request_size_hint(depth),
-            schema::Schema::arbitrary_request_size_hint(depth),
-            schema::Schema::arbitrary_request_size_hint(depth),
-            schema::Schema::arbitrary_request_size_hint(depth),
-            schema::Schema::arbitrary_request_size_hint(depth),
         ]))
     }
 }
@@ -86,8 +79,8 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 // Fuzzing Target to show that Asserts/Term Serialization/Deserialization does not effect the final SMTLib script produced
 fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
-    let len_engine = CedarLeanEngine::new();
-    let lean_ffi = len_engine.get_ffi();
+    let lean_engine = CedarLeanEngine::new();
+    let lean_ffi = lean_engine.get_ffi();
     let mut policyset = PolicySet::new();
     let policy: Policy = input.policy.into();
     policyset.add(policy.clone()).unwrap();
@@ -99,18 +92,18 @@ fuzz_target!(|input: FuzzTargetInput| {
             // Compute's SMTLib Script Directly in one-pass from Lean
             match lean_ffi.smtlib_of_check_always_allows(&policyset, &schema, &req_env) {
                 Ok(smtlib1) => {
-                    // Get intermedaite term representaion of the Asserts / Verification conditions from Lean
+                    // Get intermediate term representation of the Asserts / Verification conditions from Lean
                     match lean_ffi.asserts_of_check_always_allows(&policyset, &schema, &req_env) {
                         Ok(Ok(asserts)) => {
                             // Compute SMTLib script from the intermediate Assertions
                             match lean_ffi.smtlib_of_check_asserts(&asserts, &schema, &req_env) {
                                 // The smtlib scripts should be identical. Otherwise serialization/deserialization may have altered the assertions
-                                Ok(smtlib2) => assert_eq!(smtlib1, smtlib2, "Mismatch between direct smtlib and roundtripped term smtlib for {:?}\nDirect:\n{}\n\nRoundtripped\n{}", req_env, smtlib1, smtlib2),
-                                Err(e) => panic!("Rountripped errored when direct smtlib request did not error. Error: {}", e),
+                                Ok(smtlib2) => assert_eq!(Direct: smtlib1, Roundtripped: smtlib2, "Mismatch between direct smtlib and roundtripped term smtlib for {req_env:?}"),
+                                Err(e) => panic!("Roundtripped errored when direct smtlib request did not error. Error: {e}"),
                             }
                         }
-                        Ok(Err(s)) => panic!("Roundtrip erorred when direct smtlib result did not error. Error: {}", s),
-                        Err(e) => panic!("Rountripped errored when direct smtlib request did not error. Error: {}", e),
+                        Ok(Err(s)) => panic!("Roundtrip errored when direct smtlib result did not error. Error: {s}"),
+                        Err(e) => panic!("Roundtripped errored when direct smtlib request did not error. Error: {e}"),
                     }
                 }
                 // The policy/schema produced an error in Lean
@@ -119,7 +112,7 @@ fuzz_target!(|input: FuzzTargetInput| {
                     match lean_ffi.asserts_of_check_always_allows(&policyset, &schema, &req_env) {
                         Ok(Ok(asserts)) => {
                             match lean_ffi.smtlib_of_check_asserts(&asserts, &schema, &req_env) {
-                                Ok(_) => panic!("Rountripped did not error when direct smtlib request errored. Error: {}", e),
+                                Ok(_) => panic!("Roundtripped did not error when direct smtlib request errored. Error: {e}"),
                                 Err(_) => (),
                             }
                         }
