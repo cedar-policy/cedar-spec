@@ -181,24 +181,24 @@ def ActionSchema.validateWellFormed (env : TypeEnv) (acts : ActionSchema) : Envi
     acts.validateAcyclicActionHierarchy
     acts.validateTransitiveActionHierarchy
 
-def RequestType.validateWellFormed (env : TypeEnv) (reqty : RequestType) : EnvironmentValidationResult :=
-  match env.acts.find? reqty.action with
+def ActionSignature.validateWellFormed (env : TypeEnv) (sig : ActionSignature) : EnvironmentValidationResult :=
+  match env.acts.find? sig.action with
   | some entry => do
-    if entry.appliesToPrincipal.contains reqty.principal then .ok ()
+    if entry.appliesToPrincipal.contains sig.principal then .ok ()
     else
-      .error (.typeError s!"action {reqty.action} does not apply to principal {reqty.principal}")
-    if entry.appliesToResource.contains reqty.resource then .ok ()
+      .error (.typeError s!"action {sig.action} does not apply to principal {sig.principal}")
+    if entry.appliesToResource.contains sig.resource then .ok ()
     else
-      .error (.typeError s!"action {reqty.action} does not apply to resource {reqty.resource}")
-    if reqty.context == entry.context then .ok ()
+      .error (.typeError s!"action {sig.action} does not apply to resource {sig.resource}")
+    if sig.context == entry.context then .ok ()
     else
-      .error (.typeError s!"action {reqty.action} context type does not match schema")
-  | none => .error (.typeError s!"action {reqty.action} does not exist in schema")
+      .error (.typeError s!"action {sig.action} context type does not match schema")
+  | none => .error (.typeError s!"action {sig.action} does not exist in schema")
 
 def TypeEnv.validateWellFormed (env : TypeEnv) : EnvironmentValidationResult := do
   env.ets.validateWellFormed env
   env.acts.validateWellFormed env
-  env.reqty.validateWellFormed env
+  env.sig.validateWellFormed env
 
 -- TODO: Can be optimized, as `TypeEnv.validateWellFormed`
 --       mostly only depends on the schema part of the environment.
