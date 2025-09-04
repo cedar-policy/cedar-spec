@@ -35,7 +35,7 @@ deriving instance Hashable for Spec.EntityType
 deriving instance Hashable for Spec.EntityUID
 
 /-
-Fast variant of `Set.make`, assuming we start with starting with an array we can
+Fast variant of `Set.make`, assuming we start with an array we can
 sort in place. Not proven equivalent.
 -/
 private def setOfArray {α} [LT α] [DecidableLT α] [BEq α] (elts : Array α) : Data.Set α :=
