@@ -296,7 +296,7 @@ pub enum Op {
     #[serde(rename = "option.get")]
     OptionGet,
     #[serde(rename = "record.get")]
-    RecordGet(String),
+    RecordGet(SmolStr),
     #[serde(rename = "string.like")]
     StringLike(Vec<PatElem>),
     Ext(ExtOp),
@@ -368,7 +368,7 @@ pub enum TermType {
     Prim { pty: TermPrimType },
     Option { ty: Box<TermType> },
     Set { ty: Box<TermType> },
-    Record { rty: Vec<(String, TermType)> },
+    Record { rty: Vec<(SmolStr, TermType)> },
 }
 
 #[derive(Debug, Deserialize)]
@@ -408,7 +408,7 @@ pub enum Term {
         elts: Vec<Term>,
         elts_ty: TermType,
     },
-    Record(Vec<(String, Term)>),
+    Record(Vec<(SmolStr, Term)>),
     #[serde(rename_all = "camelCase")]
     App {
         op: Op,
@@ -678,7 +678,7 @@ impl From<cedar_policy_symcc::term_type::TermType> for TermType {
     fn from(value: cedar_policy_symcc::term_type::TermType) -> Self {
         match value {
             cedar_policy_symcc::term_type::TermType::Option { ty } => Self::Option {
-                ty: Box::new(ty.as_ref().clone().into()),
+                ty: Box::new(Arc::unwrap_or_clone(ty).into()),
             },
             cedar_policy_symcc::term_type::TermType::Bitvec { n } => Self::Prim {
                 // PANIC SAFETY: `n` should not overflow `u8`
@@ -699,13 +699,13 @@ impl From<cedar_policy_symcc::term_type::TermType> for TermType {
                 pty: TermPrimType::String,
             },
             cedar_policy_symcc::term_type::TermType::Record { rty } => Self::Record {
-                rty: rty
-                    .iter()
-                    .map(|(a, ty)| (a.to_string(), ty.clone().into()))
+                rty: Arc::unwrap_or_clone(rty)
+                    .into_iter()
+                    .map(|(a, ty)| (a, ty.into()))
                     .collect(),
             },
             cedar_policy_symcc::term_type::TermType::Set { ty } => Self::Set {
-                ty: Box::new(ty.as_ref().clone().into()),
+                ty: Box::new(Arc::unwrap_or_clone(ty).into()),
             },
         }
     }
@@ -755,7 +755,7 @@ impl From<cedar_policy_symcc::term::TermPrim> for TermPrim {
                     },
                 },
             }),
-            cedar_policy_symcc::term::TermPrim::String(s) => Self::String(s.to_string()),
+            cedar_policy_symcc::term::TermPrim::String(s) => Self::String(s),
         }
     }
 }
@@ -823,9 +823,9 @@ impl From<cedar_policy_symcc::op::Op> for Op {
             cedar_policy_symcc::op::Op::Bvule => Self::Bvule,
             cedar_policy_symcc::op::Op::Bvult => Self::Bvult,
             cedar_policy_symcc::op::Op::Bvumod => Self::Bvumod,
-            cedar_policy_symcc::op::Op::Uuf(uuf) => Self::Uuf(uuf.as_ref().clone().into()),
+            cedar_policy_symcc::op::Op::Uuf(uuf) => Self::Uuf(Arc::unwrap_or_clone(uuf).into()),
             cedar_policy_symcc::op::Op::OptionGet => Self::OptionGet,
-            cedar_policy_symcc::op::Op::RecordGet(a) => Self::RecordGet(a.to_string()),
+            cedar_policy_symcc::op::Op::RecordGet(a) => Self::RecordGet(a),
             cedar_policy_symcc::op::Op::SetInter => Self::SetInter,
             cedar_policy_symcc::op::Op::SetMember => Self::SetMember,
             cedar_policy_symcc::op::Op::SetSubset => Self::SetSubset,
@@ -855,22 +855,29 @@ impl From<cedar_policy_symcc::term::Term> for Term {
         match value {
             cedar_policy_symcc::term::Term::App { op, args, ret_ty } => Term::App {
                 op: op.into(),
-                args: args.iter().map(|t| t.clone().into()).collect(),
+                args: Arc::unwrap_or_clone(args)
+                    .into_iter()
+                    .map(|t| t.into())
+                    .collect(),
                 ret_ty: ret_ty.into(),
             },
             cedar_policy_symcc::term::Term::None(ty) => Term::None(ty.into()),
             cedar_policy_symcc::term::Term::Prim(prim) => Term::Prim(prim.into()),
             cedar_policy_symcc::term::Term::Record(r) => Term::Record(
-                r.iter()
-                    .map(|(a, t)| (a.to_string(), t.clone().into()))
+                Arc::unwrap_or_clone(r)
+                    .into_iter()
+                    .map(|(a, t)| (a, t.into()))
                     .collect(),
             ),
             cedar_policy_symcc::term::Term::Set { elts, elts_ty } => Term::Set {
-                elts: elts.iter().map(|t| t.clone().into()).collect(),
+                elts: Arc::unwrap_or_clone(elts)
+                    .into_iter()
+                    .map(|t| t.into())
+                    .collect(),
                 elts_ty: elts_ty.into(),
             },
             cedar_policy_symcc::term::Term::Some(term) => {
-                Term::Some(Box::new(term.as_ref().clone().into()))
+                Term::Some(Box::new(Arc::unwrap_or_clone(term).into()))
             }
             cedar_policy_symcc::term::Term::Var(var) => Term::Var(var.into()),
         }
