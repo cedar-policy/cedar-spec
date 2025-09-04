@@ -109,30 +109,52 @@ static START: Once = Once::new();
 /// A struct which will initialize the lean backend (and initialize a thread running the lean runtime)
 pub struct CedarLeanFfi {}
 
-/// Takes ownership of its argument -- do not access `lean_str_obj` after
-/// calling this function
-fn lean_obj_p_to_rust_string(lean_str_obj: *mut lean_object) -> String {
-    let lean_obj_p = unsafe { lean_string_cstr(lean_str_obj) };
-    let lean_obj_cstr = unsafe { CStr::from_ptr(lean_obj_p as *const c_char) };
-    let rust_string = lean_obj_cstr
-        .to_str()
-        .expect("failed to convert Lean object to string")
-        .to_owned();
-    unsafe {
-        lean_dec(lean_str_obj);
-    };
-    rust_string
+/// Safe wrapper around `*mut lean_object`, which ensures that the Lean object
+/// is freed when this Rust value is dropped. Only use this if the Rust code is
+/// responsible for decrementing the reference count on the `lean_object` in
+/// question.
+struct OwnedLeanObject(*mut lean_object);
+
+impl Drop for OwnedLeanObject {
+    fn drop(&mut self) {
+        unsafe {
+            lean_dec(self.0);
+        }
+    }
 }
 
-fn buf_to_lean_obj(buf: &[u8]) -> *mut lean_object {
-    unsafe {
-        let x: *mut lean_sarray_object = lean_alloc_sarray(1, buf.len(), buf.len()).cast();
-        let y = (*x).m_data.as_mut_ptr();
-        for (i, bi) in buf.iter().enumerate() {
-            y.add(i).write(*bi)
+impl OwnedLeanObject {
+    fn from_buf(buf: &[u8]) -> Self {
+        unsafe {
+            let x: *mut lean_sarray_object = lean_alloc_sarray(1, buf.len(), buf.len()).cast();
+            let y = (*x).m_data.as_mut_ptr();
+            for (i, bi) in buf.iter().enumerate() {
+                y.add(i).write(*bi)
+            }
+            Self(x.cast())
         }
-        x.cast()
     }
+
+    fn into_rust_string(self) -> String {
+        let cstr = unsafe {
+            let lean_obj_p = lean_string_cstr(self.0);
+            CStr::from_ptr(lean_obj_p as *const c_char)
+        };
+        cstr.to_str()
+            .expect("failed to convert Lean object to string")
+            .to_owned()
+    }
+}
+
+/// Call a Lean FFI function that is assumed to take a single Lean object as
+/// argument and return a single Lean object as the return value.
+/// Assumes that Rust is responsible for eventually decrementing the reference
+/// count on the returned Lean object.
+unsafe fn call_lean_ffi_function(
+    func: unsafe extern "C" fn(*mut lean_object) -> *mut lean_object,
+    arg: OwnedLeanObject,
+) -> OwnedLeanObject {
+    OwnedLeanObject(func(arg.0))
 }
 
 /// A macro which converts symcc-request to protobuf, calls the lean code, then deserializes the output
@@ -155,9 +177,9 @@ macro_rules! checkPolicy_func {
         ) -> Result<TimedResult<$ret_ty>, FfiError> {
             let lean_check_request =
                 proto::CheckPolicyRequest::new(policy, schema, request_env).encode_to_vec();
-            let lean_check_request = buf_to_lean_obj(&lean_check_request);
-            let response = unsafe { $lean_func_name(lean_check_request) };
-            let response = lean_obj_p_to_rust_string(response);
+            let lean_check_request = OwnedLeanObject::from_buf(&lean_check_request);
+            let response = unsafe { call_lean_ffi_function($lean_func_name, lean_check_request) };
+            let response = response.into_rust_string();
             match serde_json::from_str(&response) {
                 Ok(ResultDef::Ok(t)) => Ok(TimedResult::from_def(t).transform($transform)),
                 Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
@@ -197,9 +219,9 @@ macro_rules! checkPolicySet_func {
         ) -> Result<TimedResult<$ret_ty>, FfiError> {
             let lean_check_request =
                 proto::CheckPolicySetRequest::new(policyset, schema, request_env).encode_to_vec();
-            let lean_check_request = buf_to_lean_obj(&lean_check_request);
-            let response = unsafe { $lean_func_name(lean_check_request) };
-            let response = lean_obj_p_to_rust_string(response);
+            let lean_check_request = OwnedLeanObject::from_buf(&lean_check_request);
+            let response = unsafe { call_lean_ffi_function($lean_func_name, lean_check_request) };
+            let response = response.into_rust_string();
             match serde_json::from_str(&response) {
                 Ok(ResultDef::Ok(t)) => Ok(TimedResult::from_def(t).transform($transform)),
                 Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
@@ -245,9 +267,9 @@ macro_rules! comparePolicySet_func {
                 request_env,
             )
             .encode_to_vec();
-            let lean_check_request = buf_to_lean_obj(&lean_check_request);
-            let response = unsafe { $lean_func_name(lean_check_request) };
-            let response = lean_obj_p_to_rust_string(response);
+            let lean_check_request = OwnedLeanObject::from_buf(&lean_check_request);
+            let response = unsafe { call_lean_ffi_function($lean_func_name, lean_check_request) };
+            let response = response.into_rust_string();
             match serde_json::from_str(&response) {
                 Ok(ResultDef::Ok(t)) => Ok(TimedResult::from_def(t).transform($transform)),
                 Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
@@ -286,9 +308,9 @@ macro_rules! checkAsserts_func {
             request_env: &RequestEnv,
         ) -> Result<TimedResult<$ret_ty>, FfiError> {
             let asserts_proto = proto::CheckAssertsRequest::new(asserts, schema, request_env).encode_to_vec();
-            let asserts_proto = buf_to_lean_obj(&asserts_proto);
-            let response = unsafe { $lean_func_name(asserts_proto) };
-            let response = lean_obj_p_to_rust_string(response);
+            let asserts_proto = OwnedLeanObject::from_buf(&asserts_proto);
+            let response = unsafe { call_lean_ffi_function($lean_func_name, asserts_proto) };
+            let response = response.into_rust_string();
             match serde_json::from_str(&response) {
                 Ok(ResultDef::Ok(t)) => Ok(TimedResult::from_def(t).transform($transform)),
                 Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
@@ -658,9 +680,9 @@ impl CedarLeanFfi {
     ) -> Result<TimedResult<AuthorizationResponse>, FfiError> {
         let lean_auth_request =
             proto::AuthorizationRequest::new(policyset, entities, request).encode_to_vec();
-        let lean_auth_request = buf_to_lean_obj(&lean_auth_request);
-        let response = unsafe { isAuthorized(lean_auth_request) };
-        let response = lean_obj_p_to_rust_string(response);
+        let lean_auth_request = OwnedLeanObject::from_buf(&lean_auth_request);
+        let response = unsafe { call_lean_ffi_function(isAuthorized, lean_auth_request) };
+        let response = response.into_rust_string();
         let result: Result<ResultDef<TimedDef<AuthorizationResponseInner>>, _> =
             serde_json::from_str(&response);
         match result {
@@ -695,9 +717,9 @@ impl CedarLeanFfi {
     ) -> Result<TimedResult<()>, FfiError> {
         let lean_eval_request =
             proto::EvaluationRequestChecked::new(input_expr, entities, request).encode_to_vec();
-        let lean_eval_request = buf_to_lean_obj(&lean_eval_request);
-        let ret = unsafe { printEvaluation(lean_eval_request) };
-        let ret = lean_obj_p_to_rust_string(ret);
+        let lean_eval_request = OwnedLeanObject::from_buf(&lean_eval_request);
+        let ret = unsafe { call_lean_ffi_function(printEvaluation, lean_eval_request) };
+        let ret = ret.into_rust_string();
         match serde_json::from_str(&ret) {
             Ok(ResultDef::Ok(t)) => Ok(TimedResult::from_def(t)),
             Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
@@ -730,9 +752,9 @@ impl CedarLeanFfi {
             output_expr,
         )
         .encode_to_vec();
-        let lean_eval_request = buf_to_lean_obj(&lean_eval_request);
-        let ret = unsafe { checkEvaluate(lean_eval_request) };
-        let ret = lean_obj_p_to_rust_string(ret);
+        let lean_eval_request = OwnedLeanObject::from_buf(&lean_eval_request);
+        let ret = unsafe { call_lean_ffi_function(checkEvaluate, lean_eval_request) };
+        let ret = ret.into_rust_string();
         match serde_json::from_str(&ret) {
             Ok(ResultDef::Ok(are_eq)) => Ok(TimedResult::from_def(are_eq)),
             Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
@@ -760,9 +782,9 @@ impl CedarLeanFfi {
     ) -> Result<TimedResult<ValidationResponse>, FfiError> {
         let lean_validation_request =
             proto::ValidationRequest::new(policyset, schema, mode).encode_to_vec();
-        let lean_validation_request = buf_to_lean_obj(&lean_validation_request);
-        let ret = unsafe { validate(lean_validation_request) };
-        let ret = lean_obj_p_to_rust_string(ret);
+        let lean_validation_request = OwnedLeanObject::from_buf(&lean_validation_request);
+        let ret = unsafe { call_lean_ffi_function(validate, lean_validation_request) };
+        let ret = ret.into_rust_string();
         match serde_json::from_str(&ret) {
             Ok(ResultDef::Ok(res)) => Ok(TimedResult::from_def(res)),
             Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
@@ -787,9 +809,9 @@ impl CedarLeanFfi {
     ) -> Result<TimedResult<ValidationResponse>, FfiError> {
         let lean_validation_request =
             proto::LevelValidationRequest::new(policyset, schema, level).encode_to_vec();
-        let lean_validation_request = buf_to_lean_obj(&lean_validation_request);
-        let ret = unsafe { levelValidate(lean_validation_request) };
-        let ret = lean_obj_p_to_rust_string(ret);
+        let lean_validation_request = OwnedLeanObject::from_buf(&lean_validation_request);
+        let ret = unsafe { call_lean_ffi_function(levelValidate, lean_validation_request) };
+        let ret = ret.into_rust_string();
         match serde_json::from_str(&ret) {
             Ok(ResultDef::Ok(res)) => Ok(TimedResult::from_def(res)),
             Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
@@ -815,9 +837,9 @@ impl CedarLeanFfi {
     ) -> Result<TimedResult<ValidationResponse>, FfiError> {
         let lean_validation_request =
             proto::EntityValidationRequest::new(schema, entities).encode_to_vec();
-        let lean_validation_request = buf_to_lean_obj(&lean_validation_request);
-        let ret = unsafe { validateEntities(lean_validation_request) };
-        let ret = lean_obj_p_to_rust_string(ret);
+        let lean_validation_request = OwnedLeanObject::from_buf(&lean_validation_request);
+        let ret = unsafe { call_lean_ffi_function(validateEntities, lean_validation_request) };
+        let ret = ret.into_rust_string();
         match serde_json::from_str(&ret) {
             Ok(ResultDef::Ok(res)) => Ok(TimedResult::from_def(res)),
             Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
@@ -842,9 +864,9 @@ impl CedarLeanFfi {
     ) -> Result<TimedResult<ValidationResponse>, FfiError> {
         let lean_validation_request =
             proto::RequestValidationRequest::new(schema, request).encode_to_vec();
-        let lean_validation_request = buf_to_lean_obj(&lean_validation_request);
-        let ret = unsafe { validateRequest(lean_validation_request) };
-        let ret = lean_obj_p_to_rust_string(ret);
+        let lean_validation_request = OwnedLeanObject::from_buf(&lean_validation_request);
+        let ret = unsafe { call_lean_ffi_function(validateRequest, lean_validation_request) };
+        let ret = ret.into_rust_string();
         match serde_json::from_str(&ret) {
             Ok(ResultDef::Ok(res)) => Ok(TimedResult::from_def(res)),
             Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
