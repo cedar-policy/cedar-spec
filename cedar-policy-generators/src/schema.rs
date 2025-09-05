@@ -15,7 +15,8 @@
  */
 
 use crate::abac::{
-    ABACPolicy, ABACRequest, AvailableExtensionFunctions, ConstantPool, Type, UnknownPool,
+    ABACPolicy, ABACRequest, AvailableExtensionFunctions, ConstantPool, QualifiedType, Type,
+    UnknownPool,
 };
 use crate::collections::{HashMap, HashSet};
 use crate::err::{while_doing, Error, Result};
@@ -27,7 +28,7 @@ use crate::settings::ABACSettings;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
 use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
-use cedar_policy_core::ast::{self, Effect, PolicyID, UnreservedId};
+use cedar_policy_core::ast::{self, Effect, EntityType, PolicyID, UnreservedId};
 use cedar_policy_core::est;
 use cedar_policy_core::extensions::Extensions;
 use cedar_policy_core::validator::json_schema::{
@@ -282,17 +283,6 @@ pub fn entity_type_name_to_schema_type_variant<N: From<ast::Name>>(
     }
 }
 
-/// Convert an [`ast::EntityType`] into the corresponding [`json_schema::Type`]
-/// for an entity reference with that entity type.
-pub fn entity_type_name_to_schema_type<N: From<ast::Name>>(
-    name: &ast::EntityType,
-) -> json_schema::Type<N> {
-    json_schema::Type::Type {
-        ty: entity_type_name_to_schema_type_variant(name),
-        loc: name.loc().cloned(),
-    }
-}
-
 /// size hint for arbitrary_schematype_with_bounded_depth
 fn arbitrary_schematype_size_hint(depth: usize) -> (usize, Option<usize>) {
     // assume it's similar to the unbounded-depth version
@@ -329,26 +319,42 @@ pub fn lookup_common_type<'a>(
 fn schematype_to_type(
     schema: &json_schema::NamespaceDefinition<ast::InternalName>,
     schematy: &json_schema::Type<ast::InternalName>,
+    namespace: Option<&ast::Name>,
 ) -> Type {
     match schematy {
         json_schema::Type::CommonTypeRef { type_name, .. } => schematype_to_type(
             schema,
             lookup_common_type(schema, type_name)
                 .unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")),
+            namespace,
         ),
         json_schema::Type::Type { ty, .. } => match ty {
             json_schema::TypeVariant::Boolean => Type::bool(),
             json_schema::TypeVariant::Long => Type::long(),
             json_schema::TypeVariant::String => Type::string(),
             json_schema::TypeVariant::Set { element } => {
-                Type::set_of(schematype_to_type(schema, element))
+                Type::set_of(schematype_to_type(schema, element, namespace))
             }
-            json_schema::TypeVariant::Record { .. } => Type::record(),
-            json_schema::TypeVariant::Entity { .. } => Type::entity(),
+            json_schema::TypeVariant::Record(m) => {
+                Type::record(m.attributes.iter().map(|(a, t)| {
+                    (
+                        a.clone(),
+                        QualifiedType {
+                            ty: Box::new(schematype_to_type(schema, &t.ty, namespace)),
+                            required: t.required,
+                        },
+                    )
+                }))
+            }
+            json_schema::TypeVariant::Entity { name } => Type::entity(EntityType::EntityType(
+                name.qualify_with_name(namespace).try_into().unwrap(),
+            )),
             json_schema::TypeVariant::EntityOrCommon { type_name } => {
                 match lookup_common_type(schema, type_name) {
-                    Some(ty) => schematype_to_type(schema, ty),
-                    None => Type::entity(),
+                    Some(ty) => schematype_to_type(schema, ty, namespace),
+                    None => Type::entity(EntityType::EntityType(
+                        type_name.qualify_with_name(namespace).try_into().unwrap(),
+                    )),
                 }
             }
             json_schema::TypeVariant::Extension { name } => match name.as_ref() {
@@ -467,7 +473,7 @@ fn build_attributes_by_type<'a>(
         .flat_map(|(tyname, attributes)| {
             attributes.attrs.iter().map(move |(attr_name, ty)| {
                 (
-                    schematype_to_type(schema, &ty.ty),
+                    schematype_to_type(schema, &ty.ty, namespace),
                     (tyname.clone(), attr_name.clone()),
                 )
             })
@@ -1288,6 +1294,7 @@ impl Schema {
             .arbitrary_uid_with_type(&ty, u)
     }
 
+    /*
     /// internal helper function, try to convert [`Type`] into [`json_schema::Type`]
     pub fn try_into_schematype<N: From<ast::Name>>(
         &self,
@@ -1305,13 +1312,14 @@ impl Schema {
                         element: Box::new(schematy),
                     })
             }
-            Type::Record => Some(json_schema::TypeVariant::Record(json_schema::RecordType {
-                attributes: BTreeMap::new(),
-                additional_attributes: true,
+            Type::Record(..) => Some(json_schema::TypeVariant::Record(json_schema::RecordType {
+                attributes: todo!(),
+                additional_attributes: false,
             })),
-            Type::Entity => {
-                let entity_type = self.exprgenerator(None).generate_uid(u)?.components().0;
-                Some(entity_type_name_to_schema_type_variant(&entity_type))
+            Type::Entity(..) => {
+                //let entity_type = self.exprgenerator(None).generate_uid(u)?.components().0;
+                //Some(entity_type_name_to_schema_type_variant(&entity_type))
+                todo!()
             }
             Type::IPAddr => Some(json_schema::TypeVariant::Extension {
                 name: "ipaddr".parse().unwrap(),
@@ -1328,6 +1336,8 @@ impl Schema {
         }
         .map(|ty| json_schema::Type::Type { ty, loc: None }))
     }
+
+    */
 
     /// get an attribute name and its `json_schema::Type`, from the schema
     pub fn arbitrary_attr(
@@ -1359,6 +1369,7 @@ impl Schema {
         }
     }
 
+    /*
     /// Given a [`json_schema::Type`], get an entity type name and attribute
     /// name, such that entities with that typename have a (possibly optional)
     /// attribute with the given [`json_schema::Type`]
@@ -1395,6 +1406,7 @@ impl Schema {
             )
         })
     }
+    */
 
     /// Given a type, get an entity type name that has tags of that type, if
     /// that exists.
@@ -1416,49 +1428,7 @@ impl Schema {
                     ..
                 } = et
                 {
-                    if &schematype_to_type(&self.schema, tag_ty) == target_type {
-                        Some(
-                            ast::EntityType::from(ast::Name::from(name.clone()))
-                                .qualify_with(self.namespace()),
-                        )
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            })
-            .collect();
-        u.choose(&candidates).cloned().map_err(|e| {
-            while_doing(
-                format!("getting entity type with tag schematype {target_type:?}"),
-                e,
-            )
-        })
-    }
-
-    /// Given a [`json_schema::Type`], get an entity type name that has tags of
-    /// that type, if that exists.
-    pub fn arbitrary_entity_type_with_tag_schematype(
-        &self,
-        target_type: impl Into<json_schema::Type<ast::InternalName>>,
-        u: &mut Unstructured<'_>,
-    ) -> Result<ast::EntityType> {
-        let target_type: json_schema::Type<ast::InternalName> = target_type.into();
-        let candidates: Vec<ast::EntityType> = self
-            .schema
-            .entity_types
-            .iter()
-            .filter_map(|(name, et)| {
-                if let json_schema::EntityType {
-                    kind:
-                        EntityTypeKind::Standard(StandardEntityType {
-                            tags: Some(tag_ty), ..
-                        }),
-                    ..
-                } = et
-                {
-                    if tag_ty == &target_type {
+                    if &schematype_to_type(&self.schema, tag_ty, self.namespace()) == target_type {
                         Some(
                             ast::EntityType::from(ast::Name::from(name.clone()))
                                 .qualify_with(self.namespace()),
