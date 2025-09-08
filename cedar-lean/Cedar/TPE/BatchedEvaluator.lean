@@ -34,7 +34,7 @@ Loads everything requested by the set of entity ids,
 Loading more entities than requested is okay.
 See `EntityLoader.WellBehaved` for a formal definition.
 -/
-abbrev EntityLoader := Set EntityUID → Map EntityUID EntityOrMissing
+abbrev EntityLoader := Set EntityUID → Map EntityUID MaybeEntityData
 
 /--
 The batched evaluation loop

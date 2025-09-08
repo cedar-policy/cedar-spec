@@ -51,12 +51,12 @@ theorem any_refines_empty_entities :
   intro a e₂ h₁
   contradiction
 
--- Helper lemma for map append refinement
+-- Helper lemma for map append refinementSlicedEntities
 theorem entities_refine_append (es : Entities) (m1 m2 : PartialEntities) :
   EntitiesRefine es m1 → EntitiesRefine es m2 → EntitiesRefine es (m2 ++ m1) := by
   intro h1 h2
   unfold EntitiesRefine
-  intro a e₂ h_find
+  intro a e₂ h_findSlicedEntities
   rw [Map.find?_append] at h_find
   cases h_case : m2.find? a with
   | some e₂' =>
@@ -106,7 +106,7 @@ theorem batched_eval_loop_eq_evaluate
   case h_2 iters n=>
     let toLoad := (Set.filter (fun uid => (Map.find? current_store uid).isNone) x.allLiteralUIDs)
     let newEntities := ((loader toLoad).mapOnValues EntityDataOption.asPartial)
-    let newStore := newEntities ++ current_store
+    let newStore :=SlicedEntitiesrent_store
 
     have h₀₂ := h₀
     specialize h₀₂ toLoad
@@ -120,7 +120,7 @@ theorem batched_eval_loop_eq_evaluate
         · unfold RequestAndEntitiesRefine at h₂
           exact h₂.right
         · apply h₅
-    let newRes := TPE.evaluate x req.asPartialRequest newStore
+    let newRes := SlicedEntitiesasPartialRequest newStore
     have h₇ : (Residual.evaluate newRes req es).toOption = (Residual.evaluate x req es).toOption := by
       subst newRes
       rw [← partial_evaluate_is_sound h₁ h₃ h₆]

@@ -50,10 +50,16 @@ structure PartialEntityData where
   ancestors : Option (Set EntityUID)
   tags      : Option (Map Attr Value)
 
-abbrev EntityOrMissing := Option EntityData
+abbrev MaybeEntityData := Option EntityData
 
 abbrev PartialEntities := Map EntityUID PartialEntityData
-abbrev EntitiesWithMissing := Map EntityUID EntityOrMissing
+
+/--
+A subset of an Entities store.
+When a `MaybeEntityData` is `none`, it means that the entity is not present in
+the backing store.
+-/
+abbrev SlicedEntities := Map EntityUID MaybeEntityData
 
 
 
@@ -200,7 +206,7 @@ This is because
 This is a necessary condition for the soundness of batched entity loading.
 -/
 def EntityOrMissing.asPartial :
-  EntityOrMissing → PartialEntityData
+  MaybeEntityData → PartialEntityData
 | none =>
   { attrs :=  (.some Map.empty)
   , ancestors := (.some Set.empty)
@@ -208,7 +214,7 @@ def EntityOrMissing.asPartial :
 | some d =>
   d.asPartial
 
-def EntitiesWithMissing.asPartial (store: EntitiesWithMissing) : PartialEntities :=
+def EntitiesWithMissing.asPartial (store: SlicedEntities) : PartialEntities :=
   store.mapOnValues EntityOrMissing.asPartial
 
 end Cedar.TPE
