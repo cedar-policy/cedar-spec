@@ -61,12 +61,10 @@ def RequestRefines (req : Request) (preq : PartialRequest) : Prop :=
   PartialIsValid (· = req.context) preq.context
 
 def EntitiesRefine (es : Entities) (pes : PartialEntities) : Prop :=
-   ∀ a e₂, pes.find? a = some e₂ →
-    ((e₂ = PartialEntityData.absent ∧ (es.find? a = .none)) ∨
-     (∃ e₁, es.find? a = some e₁ ∧
-       PartialIsValid (· = e₁.attrs) e₂.attrs ∧
-       PartialIsValid (· = e₁.ancestors) e₂.ancestors  ∧
-       PartialIsValid (· = e₁.tags) e₂.tags))
+   ∀ a e₂, pes.find? a = some e₂ → (∃ e₁, es.find? a = some e₁ ∧
+    PartialIsValid (· = e₁.attrs) e₂.attrs ∧
+    PartialIsValid (· = e₁.ancestors) e₂.ancestors  ∧
+    PartialIsValid (· = e₁.tags) e₂.tags)
 
 /-- Concrete request `req` and entities `es` refine their partial counterparts
 `peq` and `pes`.
@@ -116,7 +114,6 @@ theorem consistent_checks_ensure_refinement {schema : Schema} {req : Request} {e
     split at h₂ <;> simp at h₂
     rcases h₂ with ⟨⟨h₂₁, h₂₂⟩, h₂₃⟩
     rename_i data₁ heq
-    right
     exists data₁
     constructor
     exact heq

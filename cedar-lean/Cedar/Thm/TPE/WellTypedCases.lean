@@ -695,13 +695,7 @@ theorem partial_eval_well_typed_getAttr {env : TypeEnv} {expr : Residual} {attr 
               specialize h_eref uid e h₁₃
               cases h_eref
               . rename_i h₁₄
-                rcases h₁₄ with ⟨h₁₅, _⟩
-                rw [h₁₅] at h₂
-                simp only [Option.bind_some, PartialEntityData.attrs, Option.some.injEq] at h₂
-                rw [← h₂] at h₁₂
-                simp [Map.empty, Map.find?, Map.kvs] at h₁₂
-              . rename_i h₁₄
-                rcases h₁₄ with ⟨e₂, h₁₄, h₁₅, _, h₁₇⟩
+                rcases h₁₄ with ⟨h₁₄, h₁₅, _, h₁₇⟩
                 simp only [Option.bind] at h₂
                 rw [h₂] at h₁₅
                 cases h₁₅
@@ -712,6 +706,7 @@ theorem partial_eval_well_typed_getAttr {env : TypeEnv} {expr : Residual} {attr 
                 rcases h_wf2 with ⟨h₁₉, _, h₂₁⟩
                 unfold InstanceOfSchema at h₂₁
                 rcases h₂₁ with ⟨h₂₁, h₂₂⟩
+                rename EntityData => e₂
                 specialize h₂₁ uid e₂ h₁₄
                 unfold InstanceOfSchemaEntry at h₂₁
                 cases h₂₁
@@ -1153,24 +1148,13 @@ theorem partial_eval_well_typed_app₂_values_getTag :
       rw [h₇] at heq
       simp only [Option.bind_some] at heq
       cases h_eref
-      case h_1.some.inl =>
-        rename_i heq₂ h₈
-        rcases h₈ with ⟨h₉, _⟩
-        unfold PartialEntityData.tags at heq
-        rw [h₉] at heq
-        simp only [Option.some.injEq] at heq
-        rw [← heq] at heq₂
-        simp only [Map.kvs] at heq₂
-        unfold Data.Map.empty at heq₂
-        dsimp only [List.find?_nil] at heq₂
-        contradiction
       rename_i h₈
-      rcases h₈ with ⟨e, h₈, h₉, h₁₀, h₁₁⟩
+      rcases h₈ with ⟨h₈, h₉, h₁₀, h₁₁⟩
       rw [heq] at h₁₁
       cases h₁₁
       rename_i h₁₂
-      rename_i h₁₃
-      rw [h₁₂] at h₁₃
+      rename_i e
+      subst h₁₂
       let h_wf₂ := h_wf
       unfold InstanceOfWellFormedEnvironment at h_wf₂
       rcases h_wf₂ with ⟨h₁₄, _, h₁₆⟩
@@ -1179,7 +1163,7 @@ theorem partial_eval_well_typed_app₂_values_getTag :
       specialize h₁₆ id₁ e h₈
       unfold InstanceOfSchemaEntry at h₁₆
       cases h₁₆
-      . rename_i h₁₆
+      . rename_i h₁₃ _ h₁₆
         unfold InstanceOfEntitySchemaEntry at h₁₆
         rcases h₁₆ with ⟨_, _, _, _, _, h₁₇⟩
         unfold InstanceOfEntityTags at h₁₇
@@ -1237,7 +1221,7 @@ theorem partial_eval_well_typed_app₂_values_getTag :
           simp only [Option.some.injEq] at h₄
           rw [h₄] at h₁₇
           exact type_lifting_preserves_instance_of_type h₁₇
-      . rename_i h₁₆
+      . rename_i h₁₃ _ h₁₆
         unfold InstanceOfActionSchemaEntry at h₁₆
         rcases h₁₆ with ⟨_, h₁₇, _, _, _⟩
         rw [h₁₇] at h₁₃

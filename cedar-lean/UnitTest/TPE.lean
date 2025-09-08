@@ -213,9 +213,9 @@ def req : PartialRequest :=
 
 def es : PartialEntities :=
   Map.make [
-     (⟨ActionType, "View"⟩, (.present (.some default) (.some default) (.some default))),
-     (⟨ActionType, "Delete"⟩, (.present (.some default) (.some default) (.some default))),
-     (⟨UserType, "Alice"⟩, (.present (.some default) (.some default) (.some default)))
+     (⟨ActionType, "View"⟩, ⟨.some default, .some default, .some default⟩),
+     (⟨ActionType, "Delete"⟩, ⟨.some default, .some default, .some default⟩),
+     (⟨UserType, "Alice"⟩, ⟨.some default, .some default, default⟩)
   ]
 
 def tests :=
@@ -354,8 +354,8 @@ def req : PartialRequest :=
 
 def es : PartialEntities :=
   Map.make [
-     (⟨ActionType, "PickUp"⟩, (.present (.some default) (.some default) (.some default))),
-     (⟨UserType, "Alice"⟩, (.present (.some $ Map.make [("address", .record $ Map.make [("street", "Sesame Street")])]) (.some default) default))
+     (⟨ActionType, "PickUp"⟩, ⟨.some default, .some default, .some default⟩),
+     (⟨UserType, "Alice"⟩, ⟨.some $ Map.make [("address", .record $ Map.make [("street", "Sesame Street")])], .some default, default⟩)
   ]
 
 def tests :=
@@ -419,7 +419,7 @@ def schema : Schema :=
 
 def es : PartialEntities :=
   Map.make [
-     (⟨ActionType, "a"⟩, (.present (.some default) (.some default) (.some default))),
+     (⟨ActionType, "a"⟩, ⟨.some default, .some default, .some default⟩),
   ]
 
 def req : PartialRequest :=
