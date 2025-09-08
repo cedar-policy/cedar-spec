@@ -184,24 +184,3 @@ def Entities.asPartial (entities: Entities) : PartialEntities :=
   entities.mapOnValues EntityData.asPartial
 
 end Cedar.Spec
-
-
-namespace Cedar.TPE
-open Cedar.Data
-
-/-- subtle: a missing entity is the same as a fresh entity
-with attrs, tags, or ancestors.
--/
-def EntityOrMissing.asPartial :
-  EntityOrMissing → PartialEntityData
-| none =>
-  { attrs :=  (.some Map.empty)
-  , ancestors := (.some Set.empty)
-  , tags := (.some Map.empty)}
-| some d =>
-  d.asPartial
-
-def EntitiesWithMissing.asPartial (store: EntitiesWithMissing) : PartialEntities :=
-  store.mapOnValues EntityOrMissing.asPartial
-
-end Cedar.TPE

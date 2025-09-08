@@ -36,13 +36,18 @@ See `EntityLoader.WellBehaved` for a formal definition.
 -/
 abbrev EntityLoader := Set EntityUID → Map EntityUID (Option EntityData)
 
+
+/-- subtle: a missing entity is the same as a fresh entity
+with attrs, tags, or ancestors.
+-/
 def EntityDataOption.asPartial :
   Option EntityData → PartialEntityData
 | none =>
-  PartialEntityData.absent
+  { attrs :=  (.some Map.empty)
+  , ancestors := (.some Set.empty)
+  , tags := (.some Map.empty)}
 | some d =>
   d.asPartial
-
 
 /--
 The batched evaluation loop

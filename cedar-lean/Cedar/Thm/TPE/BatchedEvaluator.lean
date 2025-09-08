@@ -82,7 +82,6 @@ theorem direct_request_and_entities_refine (req : Request) (es : Entities) :
     intro uid data₂ h_find
     have h_mapOnValues := Map.find?_mapOnValues_some' EntityData.asPartial h_find
     obtain ⟨data₁, h_find₁, h_eq⟩ := h_mapOnValues
-    right
     exists data₁
     exact ⟨h_find₁,
            by rw [h_eq]; apply PartialIsValid.some; rfl,
