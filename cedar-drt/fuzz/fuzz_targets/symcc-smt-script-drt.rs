@@ -87,7 +87,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
     }
 }
 
-fn smtlib_of_check_asserts(rust_asserts: &WellFormedAsserts<'_>) -> anyhow::Result<String> {
+fn smtlib_of_check_asserts(rust_asserts: &WellFormedAsserts<'_>) -> Result<String, String> {
     Ok(RUNTIME.block_on(async {
         let mut solver =
             CedarSymCompiler::new(BuffSolver::new()).expect("solver construction should succeed");
@@ -95,7 +95,7 @@ fn smtlib_of_check_asserts(rust_asserts: &WellFormedAsserts<'_>) -> anyhow::Resu
             Ok(_) | Err(cedar_policy_symcc::err::Error::SolverUnknown) => {
                 Ok(solver.solver_mut().contents())
             }
-            Err(e) => Err(e),
+            Err(e) => Err(e.to_string()),
         }
     })?)
 }
