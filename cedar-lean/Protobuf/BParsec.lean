@@ -124,6 +124,14 @@ def forward (n : Nat) : BParsec Unit := λ pos =>
 def nextByte : BParsec (Option UInt8) := λ pos =>
   { pos := pos.next, res := .ok pos.data[pos.pos]? }
 
+/-- Advance the iterator `n` bytes, returning them as a byte array, or `None` if the iterator had fewer than `n` bytes remaining -/
+@[inline]
+def nextByteArray (n : Nat) : BParsec (Option ByteArray) := λ pos =>
+  if n > pos.remaining then
+    { pos := pos.forward n, res := .ok none }
+  else
+    { pos := pos.forward n, res := .ok ∘ .some $ pos.data.extract pos.pos (pos.pos + n) }
+
 /-- Return some computation on the current iterator state, without changing the state -/
 @[inline]
 def inspect (f : ByteArray.ByteIterator → α) : BParsec α := λ pos =>

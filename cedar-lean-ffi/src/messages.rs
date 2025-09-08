@@ -16,6 +16,7 @@
 use cedar_policy::{
     Entities, Expression, Policy, PolicySet, Request, RequestEnv, Schema, ValidationMode,
 };
+use smol_str::SmolStr;
 
 use crate::datatypes;
 
@@ -267,7 +268,7 @@ impl proto::Op {
         let op = match op {
             datatypes::Op::Uuf(uuf) => proto::op::Op::Uuf(proto::Uuf::new(uuf)),
             datatypes::Op::ZeroExtend(bv_width) => proto::op::Op::ZeroExtend(*bv_width as u32),
-            datatypes::Op::RecordGet(attr) => proto::op::Op::RecordGet(attr.clone()),
+            datatypes::Op::RecordGet(attr) => proto::op::Op::RecordGet(attr.to_string()),
             datatypes::Op::StringLike(pattern) => {
                 proto::op::Op::StringLike(proto::Pattern::new(pattern))
             }
@@ -448,7 +449,7 @@ impl proto::term_type::RecordField {
 }
 
 impl proto::term_type::RecordType {
-    pub(crate) fn new(fields: &Vec<(String, datatypes::TermType)>) -> Self {
+    pub(crate) fn new(fields: &Vec<(SmolStr, datatypes::TermType)>) -> Self {
         Self {
             fields: fields
                 .iter()
@@ -540,7 +541,7 @@ impl proto::term::RecordField {
 }
 
 impl proto::term::Record {
-    pub(crate) fn new(fields: &Vec<(String, datatypes::Term)>) -> Self {
+    pub(crate) fn new(fields: &Vec<(SmolStr, datatypes::Term)>) -> Self {
         Self {
             fields: fields
                 .iter()

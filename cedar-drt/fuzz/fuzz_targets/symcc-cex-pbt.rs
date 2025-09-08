@@ -94,8 +94,8 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 fn get_cex(
     always_allows_asserts: &WellFormedAsserts<'_>,
     always_denies_asserts: &WellFormedAsserts<'_>,
-) -> anyhow::Result<(Option<Env>, Option<Env>)> {
-    Ok(RUNTIME.block_on(async {
+) -> Result<(Option<Env>, Option<Env>), String> {
+    RUNTIME.block_on(async {
         let mut solver = CedarSymCompiler::new(LocalSolver::cvc5().expect("CVC5 should exist"))
             .expect("solver construction should succeed");
 
@@ -136,10 +136,13 @@ fn get_cex(
                     cedar_policy_symcc::err::EncodeError::EncodePatternFailed(_),
                 ))),
             ) => Ok((None, None)),
-            (Ok(res1), Ok(res2)) => anyhow::Ok((res1?, res2?)),
+            (Ok(res1), Ok(res2)) => Ok((
+                res1.map_err(|err| err.to_string())?,
+                res2.map_err(|err| err.to_string())?,
+            )),
             _ => Ok((None, None)),
         }
-    })?)
+    })
 }
 
 fn reproduce(env: &Env, policies: &PolicySet) -> bool {

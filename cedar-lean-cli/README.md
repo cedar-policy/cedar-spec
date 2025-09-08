@@ -4,6 +4,8 @@ This directory contains a command line interface (CLI) for interacting with the 
 
 ## Build
 
+### Docker Build
+
 The simplest way to build the CLI is to use the provided Dockerfile to build and run the cli within a docker container.
 
 ```
@@ -20,7 +22,7 @@ bash-5.2# cedar-lean-cli help
 
 If you prefer to install directly on your machine, you may follow the below detailed instructions for installing `cedar-lean-cli` from source.
 
-### Prerequisites:
+### Build from source
 
 #### Install Lean
 For more details read about Lean's version manager [elan](https://github.com/leanprover/elan).
@@ -59,7 +61,7 @@ cp bin/protoc /usr/local/bin/
 cp -r include/google/ /usr/local/include/
 ```
 
-### Build this CLI
+#### Build this CLI
 
 Use the following commands to build `cedar-lean-cli`
 
