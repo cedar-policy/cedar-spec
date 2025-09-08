@@ -314,9 +314,9 @@ pub fn lookup_common_type<'a>(
     schema.common_types.get(&base_type_name).map(|ty| &ty.ty)
 }
 
-/// internal helper function, convert a [`json_schema::Type`] to a [`Type`]
+/// Helper function, convert a [`json_schema::Type`] to a [`Type`]
 /// (loses some information)
-pub(crate) fn schematype_to_type(
+pub fn schematype_to_type(
     schema: &json_schema::NamespaceDefinition<ast::InternalName>,
     schematy: &json_schema::Type<ast::InternalName>,
     namespace: Option<&ast::Name>,
