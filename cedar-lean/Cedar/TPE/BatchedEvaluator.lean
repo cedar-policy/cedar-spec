@@ -51,7 +51,7 @@ def batchedEvalLoop
   | 0 => residual
   | n + 1 =>
     let toLoad := residual.allLiteralUIDs.filter (λ uid => (store.find? uid).isNone)
-    let newEntities := ((loader toLoad).mapOnValues EntityOrMissing.asPartial)
+    let newEntities := ((loader toLoad).mapOnValues MaybeEntityData.asPartial)
     let newStore := newEntities ++ store
 
     match Cedar.TPE.evaluate residual req.asPartialRequest newStore with

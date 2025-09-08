@@ -205,7 +205,7 @@ This is because
 
 This is a necessary condition for the soundness of batched entity loading.
 -/
-def EntityOrMissing.asPartial :
+def MaybeEntityData.asPartial :
   MaybeEntityData → PartialEntityData
 | none =>
   { attrs :=  (.some Map.empty)
@@ -215,6 +215,6 @@ def EntityOrMissing.asPartial :
   d.asPartial
 
 def EntitiesWithMissing.asPartial (store: SlicedEntities) : PartialEntities :=
-  store.mapOnValues EntityOrMissing.asPartial
+  store.mapOnValues MaybeEntityData.asPartial
 
 end Cedar.TPE

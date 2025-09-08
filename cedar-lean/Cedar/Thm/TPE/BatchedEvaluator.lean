@@ -67,21 +67,21 @@ theorem entities_refine_append (es : Entities) (m1 m2 : PartialEntities) :
     rw [h_eq]
     exact h2 a e₂' h_case
   | none =>
-    have h_find1 : m1.find? a = some e₂ := by
+    have h_find1 : m1.find? a = some e₂ := byMaybeEntityData.asPartial
       rw [h_case] at h_find
-      simp only [Option.none_or] at h_find
-      rw [h_find]
+      simp only [Option.none_or] at h_fMaybeEntityData.asPartial
+      rw [h_find]MaybeEntityData.asPartial
     exact h1 a e₂ h_find1
 
 
 theorem direct_request_and_entities_refine (req : Request) (es : Entities) :
   RequestAndEntitiesRefine req es req.asPartialRequest es.asPartial := by
   constructor
-  · exact as_partial_request_refines
+  · exact as_partiaMaybeEntityData.asPartial_refines
   · unfold EntitiesRefine Entities.asPartial
     intro uid data₂ h_find
     have h_mapOnValues := Map.find?_mapOnValues_some' EntityData.asPartial h_find
-    obtain ⟨data₁, h_find₁, h_eq⟩ := h_mapOnValues
+    obtain ⟨data₁, h_find₁, h_eq⟩ := h_MaybeEntityData.asPartial
     exists data₁
     exact ⟨h_find₁,
            by rw [h_eq]; apply PartialIsValid.some; rfl,
