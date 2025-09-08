@@ -50,7 +50,12 @@ structure PartialEntityData where
   ancestors : Option (Set EntityUID)
   tags      : Option (Map Attr Value)
 
+abbrev EntityOrMissing := Option EntityData
+
 abbrev PartialEntities := Map EntityUID PartialEntityData
+abbrev EntitiesWithMissing := Map EntityUID EntityOrMissing
+
+
 
 def PartialEntities.get (es : PartialEntities) (uid : EntityUID) (f : PartialEntityData → Option α) : Option α :=
   (es.find? uid).bind f
@@ -60,6 +65,8 @@ def PartialEntities.ancestors (es : PartialEntities) (uid : EntityUID) : Option 
 def PartialEntities.tags (es : PartialEntities) (uid : EntityUID) : Option (Map Tag Value) := es.get uid PartialEntityData.tags
 
 def PartialEntities.attrs (es : PartialEntities) (uid : EntityUID) : Option (Map Tag Value) := es.get uid PartialEntityData.attrs
+
+
 
 def partialIsValid {α} (o : Option α) (f : α → Bool) : Bool :=
   (o.map f).getD true
@@ -167,12 +174,6 @@ def Request.asPartialRequest (req : Request) : PartialRequest :=
   , resource  := { ty := req.resource.ty, id := .some req.resource.eid }
   , context   := req.context }
 
-
-
-end Cedar.Spec
-
-
-namespace Cedar.Spec
 open Cedar.TPE
 
 def EntityData.asPartial (data : EntityData) : PartialEntityData :=
@@ -183,4 +184,31 @@ def EntityData.asPartial (data : EntityData) : PartialEntityData :=
 def Entities.asPartial (entities: Entities) : PartialEntities :=
   entities.mapOnValues EntityData.asPartial
 
+
 end Cedar.Spec
+
+
+namespace Cedar.TPE
+open Cedar.Data
+
+/-- subtle: a missing entity bahaves the same way as a concrete entity
+with empty attrs, ancestors, and tags.
+This is because
+1. Cedar doesn't have a way to check for a presence of a particular entity id in the database.
+2. Each of the cedar operations behave the same way when encountering a missing entity compared to a empty one.
+
+This is a necessary condition for the soundness of batched entity loading.
+-/
+def EntityOrMissing.asPartial :
+  EntityOrMissing → PartialEntityData
+| none =>
+  { attrs :=  (.some Map.empty)
+  , ancestors := (.some Set.empty)
+  , tags := (.some Map.empty)}
+| some d =>
+  d.asPartial
+
+def EntitiesWithMissing.asPartial (store: EntitiesWithMissing) : PartialEntities :=
+  store.mapOnValues EntityOrMissing.asPartial
+
+end Cedar.TPE
