@@ -316,7 +316,7 @@ pub fn lookup_common_type<'a>(
 
 /// internal helper function, convert a [`json_schema::Type`] to a [`Type`]
 /// (loses some information)
-fn schematype_to_type(
+pub(crate) fn schematype_to_type(
     schema: &json_schema::NamespaceDefinition<ast::InternalName>,
     schematy: &json_schema::Type<ast::InternalName>,
     namespace: Option<&ast::Name>,
@@ -1295,12 +1295,10 @@ impl Schema {
     }
 
     /// get an attribute name and its `json_schema::Type`, from the schema
-    pub fn arbitrary_attr(
-        &self,
-        u: &mut Unstructured<'_>,
-    ) -> Result<&(SmolStr, json_schema::Type<ast::InternalName>)> {
+    pub fn arbitrary_attr(&self, u: &mut Unstructured<'_>) -> Result<SmolStr> {
         u.choose(&self.attributes)
             .map_err(|e| while_doing("getting arbitrary attr from schema".into(), e))
+            .map(|t| t.0.clone())
     }
 
     /// Given a type, get an entity type name and attribute name, such that
@@ -1599,8 +1597,12 @@ impl Schema {
                         Ok((
                             attr_name.parse().expect("failed to parse attribute name"),
                             exprgenerator
-                                .generate_attr_value_for_schematype(
-                                    &attr_type.ty,
+                                .generate_attr_value_for_type(
+                                    &schematype_to_type(
+                                        &self.schema,
+                                        &attr_type.ty,
+                                        self.namespace(),
+                                    ),
                                     self.settings.max_depth,
                                     u,
                                 )?
