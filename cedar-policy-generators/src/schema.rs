@@ -1294,51 +1294,6 @@ impl Schema {
             .arbitrary_uid_with_type(&ty, u)
     }
 
-    /*
-    /// internal helper function, try to convert [`Type`] into [`json_schema::Type`]
-    pub fn try_into_schematype<N: From<ast::Name>>(
-        &self,
-        ty: &Type,
-        u: &mut Unstructured<'_>,
-    ) -> Result<Option<json_schema::Type<N>>> {
-        Ok(match ty {
-            Type::Bool => Some(json_schema::TypeVariant::Boolean),
-            Type::Long => Some(json_schema::TypeVariant::Long),
-            Type::String => Some(json_schema::TypeVariant::String),
-            Type::Set(None) => None, // json_schema::Type doesn't support any-set
-            Type::Set(Some(el_ty)) => {
-                self.try_into_schematype(el_ty, u)?
-                    .map(|schematy| json_schema::TypeVariant::Set {
-                        element: Box::new(schematy),
-                    })
-            }
-            Type::Record(..) => Some(json_schema::TypeVariant::Record(json_schema::RecordType {
-                attributes: todo!(),
-                additional_attributes: false,
-            })),
-            Type::Entity(..) => {
-                //let entity_type = self.exprgenerator(None).generate_uid(u)?.components().0;
-                //Some(entity_type_name_to_schema_type_variant(&entity_type))
-                todo!()
-            }
-            Type::IPAddr => Some(json_schema::TypeVariant::Extension {
-                name: "ipaddr".parse().unwrap(),
-            }),
-            Type::Decimal => Some(json_schema::TypeVariant::Extension {
-                name: "decimal".parse().unwrap(),
-            }),
-            Type::DateTime => Some(json_schema::TypeVariant::Extension {
-                name: "datetime".parse().unwrap(),
-            }),
-            Type::Duration => Some(json_schema::TypeVariant::Extension {
-                name: "duration".parse().unwrap(),
-            }),
-        }
-        .map(|ty| json_schema::Type::Type { ty, loc: None }))
-    }
-
-    */
-
     /// get an attribute name and its `json_schema::Type`, from the schema
     pub fn arbitrary_attr(
         &self,
@@ -1368,45 +1323,6 @@ impl Schema {
             }),
         }
     }
-
-    /*
-    /// Given a [`json_schema::Type`], get an entity type name and attribute
-    /// name, such that entities with that typename have a (possibly optional)
-    /// attribute with the given [`json_schema::Type`]
-    pub fn arbitrary_attr_for_schematype(
-        &self,
-        target_type: impl Into<json_schema::Type<ast::InternalName>>,
-        u: &mut Unstructured<'_>,
-    ) -> Result<(ast::EntityType, SmolStr)> {
-        let target_type: json_schema::Type<ast::InternalName> = target_type.into();
-        let pairs: Vec<(ast::EntityType, SmolStr)> = self
-            .schema
-            .entity_types
-            .iter()
-            .filter_map(|(name, et)| match &et.kind {
-                EntityTypeKind::Enum { .. } => None,
-                EntityTypeKind::Standard(StandardEntityType { shape, .. }) => Some((
-                    ast::EntityType::from(ast::Name::from(name.clone()))
-                        .qualify_with(self.namespace()),
-                    attrs_from_attrs_or_context(&self.schema, shape),
-                )),
-            })
-            .flat_map(|(tyname, attributes)| {
-                attributes
-                    .attrs
-                    .iter()
-                    .filter(|(_, ty)| ty.ty == target_type)
-                    .map(move |(attr_name, _)| (tyname.clone(), attr_name.clone()))
-            })
-            .collect();
-        u.choose(&pairs).cloned().map_err(|e| {
-            while_doing(
-                format!("getting arbitrary attr for schematype {target_type:?}"),
-                e,
-            )
-        })
-    }
-    */
 
     /// Given a type, get an entity type name that has tags of that type, if
     /// that exists.
