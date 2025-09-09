@@ -21,13 +21,11 @@ use crate::collections::HashMap;
 use crate::err::{while_doing, Error, Result};
 use crate::hierarchy::{generate_uid_with_type, Hierarchy};
 use crate::schema_gen::SchemaGen;
-use crate::schema::{attrs_from_attrs_or_context, uid_for_action_name, Schema};
 use crate::settings::ABACSettings;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
 use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{Arbitrary, MaxRecursionReached, Unstructured};
 use cedar_policy_core::ast;
-use cedar_policy_core::validator::json_schema::{EntityTypeKind, StandardEntityType};
 use smol_str::SmolStr;
 use std::collections::BTreeMap;
 
@@ -421,8 +419,8 @@ impl ExprGenerator<'_> {
                         )),
                         // in expression, non-set form
                         11 => {
-                            let ety1 = u.choose(self.schema.entity_types())?;
-                            let ety2 = u.choose(self.schema.entity_types())?;
+                            let ety1 = self.schema.arbitrary_entity_type(u)?;
+                            let ety2 = self.schema.arbitrary_entity_type(u)?;
                             Ok(ast::Expr::is_in(
                             self.generate_expr_for_type(
                                 &Type::Entity(ety1.clone()),
@@ -437,8 +435,8 @@ impl ExprGenerator<'_> {
                         ))},
                         // in expression, set form
                         2 => {
-                            let ety1 = u.choose(self.schema.entity_types())?;
-                            let ety2 = u.choose(self.schema.entity_types())?;
+                            let ety1 = self.schema.arbitrary_entity_type(u)?;
+                            let ety2 = self.schema.arbitrary_entity_type(u)?;
                             Ok(ast::Expr::is_in(
                             self.generate_expr_for_type(
                                 &Type::Entity(ety1.clone()),
@@ -519,8 +517,8 @@ impl ExprGenerator<'_> {
                         },
                         // is
                         2 => {
-                            let ety_l = u.choose(&self.schema.entity_types)?.clone();
-                            let ety_r = u.choose(&self.schema.entity_types)?.clone();
+                            let ety_l = self.schema.arbitrary_entity_type(u)?;
+                            let ety_r = self.schema.arbitrary_entity_type(u)?;
                                 Ok(ast::Expr::is_entity_type(
                                     self.generate_expr_for_type(
                                         &Type::Entity(ety_l),
@@ -587,38 +585,21 @@ impl ExprGenerator<'_> {
                         },
                         // has expression on an entity, for a (possibly optional) attribute the entity does have in the schema
                         2 => {
-                            let (entity_name, entity_type) = self
-                                .schema
-                                .schema
-                                .entity_types
-                                .iter()
-                                .nth(
-                                    u.choose_index(self.schema.entity_types.len())
-                                        .expect("Failed to select entity index."),
-                                )
-                                .expect("Failed to select entity from map.");
-                            let attr_names: Vec<&SmolStr> = match &entity_type.kind {
-                                // Generate an empty vec here so that we fail fast
-                                EntityTypeKind::Enum { .. } => vec![],
-                                EntityTypeKind::Standard(StandardEntityType { shape, ..}) => attrs_from_attrs_or_context(&self.schema.schema, shape)
-                                .attrs
-                                .keys()
-                                .collect::<Vec<_>>()
-                            };
-                            let attr_name = SmolStr::clone(u.choose(&attr_names)?);
+                            let ety = self.schema.arbitrary_entity_type(u)?;
+                            let attr = self.schema.arbitrary_attr_of_entity_type(&ety, u)?;
                             Ok(ast::Expr::has_attr(
                                 self.generate_expr_for_type(
-                                    &Type::Entity(ast::EntityType::from(ast::Name::from(entity_name.clone())).qualify_with(self.schema.namespace())),
+                                    &Type::Entity(ast::EntityType::from(ety)),
                                     max_depth - 1,
                                     u,
                                 )?,
-                                attr_name,
+                                attr,
                             ))
                         },
                         // has expression on an entity, for an arbitrary attribute name
                         1 => Ok(ast::Expr::has_attr(
                             self.generate_expr_for_type(
-                                &Type::Entity(u.choose(self.schema.entity_types())?.clone()),
+                                &Type::Entity(self.schema.arbitrary_entity_type(u)?),
                                 max_depth - 1,
                                 u,
                             )?,
@@ -627,7 +608,7 @@ impl ExprGenerator<'_> {
                         // hasTag expression on an entity, for an arbitrary tag name
                         1 => Ok(ast::Expr::has_tag(
                             self.generate_expr_for_type(
-                                &Type::Entity(u.choose(self.schema.entity_types())?.clone()),
+                                &Type::Entity(self.schema.arbitrary_entity_type(u)?),
                                 max_depth - 1,
                                 u,
                             )?,
@@ -1107,7 +1088,7 @@ impl ExprGenerator<'_> {
                         // getting an attr (on an entity) with type entity
                         6 => {
                             let (entity_type, attr_name) = self.schema.arbitrary_attr_for_type(
-                                &Type::Entity(u.choose(&self.schema.entity_types)?.clone()),
+                                &Type::Entity(self.schema.arbitrary_entity_type(u)?),
                                 u,
                             )?;
                             Ok(ast::Expr::get_attr(
@@ -1127,7 +1108,7 @@ impl ExprGenerator<'_> {
                                     &record_type_with_attr(
                                         attr_name.clone(),
                                         Type::Entity(
-                                            u.choose(&self.schema.entity_types)?.clone(),
+                                            self.schema.arbitrary_entity_type(u)?,
                                         ),
                                     ),
                                     max_depth - 1,
@@ -1139,7 +1120,7 @@ impl ExprGenerator<'_> {
                         // getting an entity tag with type entity
                         5 => {
                             let entity_type = self.schema.arbitrary_entity_type_with_tag_type(
-                                &Type::Entity(u.choose(&self.schema.entity_types)?.clone()),
+                                &Type::Entity(self.schema.arbitrary_entity_type(u)?),
                                 u,
                             )?;
                             Ok(ast::Expr::get_tag(
@@ -1647,7 +1628,7 @@ impl ExprGenerator<'_> {
         uniform!(
             u,
             self.arbitrary_principal_uid(u),
-            self.arbitrary_action_uid(u),
+            self.schema.arbitrary_action_uid(u),
             self.arbitrary_resource_uid(u)
         )
     }
@@ -1667,8 +1648,10 @@ impl ExprGenerator<'_> {
     /// get a UID of a type that could be used as a `principal` for some action in the schema.
     pub fn arbitrary_principal_uid(&self, u: &mut Unstructured<'_>) -> Result<ast::EntityUID> {
         self.arbitrary_uid_with_type(
-            u.choose(&self.schema.principal_types)
-                .map_err(|e| while_doing("choosing a principal type".into(), e))?,
+            &self
+                .schema
+                .arbitrary_principal_type(u)
+                .map_err(|e| while_doing("choosing a principal type".into(), e.into()))?,
             u,
         )
     }
@@ -1680,20 +1663,6 @@ impl ExprGenerator<'_> {
         )
     }
 
-    /// get an arbitrary action UID from the schema.
-    ///
-    /// This doesn't reference the `Hierarchy`, because we assume that all
-    /// actions are defined in the schema, and we just give you one of the
-    /// actions from the schema.
-    pub fn arbitrary_action_uid(&self, u: &mut Unstructured<'_>) -> Result<ast::EntityUID> {
-        let action = u
-            .choose(&self.schema.actions_eids)
-            .map_err(|e| while_doing("choosing an action".into(), e))?;
-        Ok(uid_for_action_name(
-            self.schema.namespace.as_ref(),
-            action.clone(),
-        ))
-    }
     /// size hint for arbitrary_action_uid()
     pub fn arbitrary_action_uid_size_hint(_depth: usize) -> (usize, Option<usize>) {
         size_hint_for_choose(None)
@@ -1702,8 +1671,10 @@ impl ExprGenerator<'_> {
     /// get a UID of a type that could be used as a `resource` for some action in the schema.
     pub fn arbitrary_resource_uid(&self, u: &mut Unstructured<'_>) -> Result<ast::EntityUID> {
         self.arbitrary_uid_with_type(
-            u.choose(&self.schema.resource_types)
-                .map_err(|e| while_doing("choosing a resource type".into(), e))?,
+            &self
+                .schema
+                .arbitrary_resource_type(u)
+                .map_err(|e| while_doing("choosing a resource type".into(), e.into()))?,
             u,
         )
     }

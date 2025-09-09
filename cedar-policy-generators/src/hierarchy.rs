@@ -18,6 +18,7 @@ use crate::abac::Type;
 use crate::collections::{HashMap, HashSet};
 use crate::err::{while_doing, Error, Result};
 use crate::schema::{attrs_from_attrs_or_context, schematype_to_type, Schema};
+use crate::schema_gen::SchemaGen;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_ratio};
 use arbitrary::{Arbitrary, Unstructured};
 use cedar_policy_core::ast::{self, Eid, Entity, EntityUID};
@@ -159,7 +160,7 @@ impl Hierarchy {
     /// pick one of the valid EIDs for that type.
     pub fn arbitrary_uid_with_type(
         &self,
-        schema: Option<&Schema>,
+        schema: Option<&dyn SchemaGen>,
         typename: &ast::EntityType,
         u: &mut Unstructured<'_>,
     ) -> Result<EntityUID> {

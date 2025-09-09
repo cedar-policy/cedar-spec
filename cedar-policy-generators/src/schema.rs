@@ -1501,6 +1501,10 @@ impl Schema {
         )
     }
 
+    fn arbitrary_action_uid(&self, u: &mut Unstructured<'_>) -> Result<ast::EntityUID> {
+        todo!()
+    }
+
     /// Generates an arbitrary action constraint.
     pub fn arbitrary_action_constraint(
         &self,
@@ -1511,18 +1515,17 @@ impl Schema {
             // 25% of the time, NoConstraint; 75%, Eq
             gen!(u,
         1 => Ok(ActionConstraint::NoConstraint),
-        3 => Ok(ActionConstraint::Eq(self.exprgenerator(None).arbitrary_action_uid(u)?)))
+        3 => Ok(ActionConstraint::Eq(self.arbitrary_action_uid(u)?)))
         } else {
             // 10% of the time, NoConstraint; 30%, Eq; 30%, In; 30%, InList
             gen!(u,
             1 => Ok(ActionConstraint::NoConstraint),
-            3 => Ok(ActionConstraint::Eq(self.exprgenerator(None).arbitrary_action_uid(u)?)),
-            3 => Ok(ActionConstraint::In(self.exprgenerator(None).arbitrary_action_uid(u)?)),
+            3 => Ok(ActionConstraint::Eq(self.arbitrary_action_uid(u)?)),
+            3 => Ok(ActionConstraint::In(self.arbitrary_action_uid(u)?)),
             3 => {
                 let mut uids = vec![];
-                let exprgenerator = self.exprgenerator(None);
                 u.arbitrary_loop(Some(0), max_list_length, |u| {
-                    uids.push(exprgenerator.arbitrary_action_uid(u)?);
+                    uids.push(self.arbitrary_action_uid(u)?);
                     Ok(std::ops::ControlFlow::Continue(()))
                 })?;
                 Ok(ActionConstraint::InList(uids))
