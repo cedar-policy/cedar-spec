@@ -162,7 +162,7 @@ theorem alternate_errorPolicies_equiv_errorPolicies (policies : Policies) (reque
     exists p
     unfold errored hasError at h₂
     split at h₂ <;>
-    simp only [Bool.false_eq_true, ↓reduceIte, reduceCtorEq, Option.some.injEq] at h₂ <;>
+    simp only [Bool.false_eq_true, ↓reduceIte, reduceCtorEq, Option.some.injEq] at h₂ ;
     rename_i h₃
     unfold hasError
     apply And.intro _ h₂
@@ -357,11 +357,11 @@ theorem action_in_set_of_euids_produces_boolean (list : List EntityUID) (request
 theorem principal_scope_produces_boolean (policy : Policy) (request : Request) (entities : Entities) :
   producesBool policy.principalScope.toExpr request entities
 := by
-  simp [producesBool, evaluate, PrincipalScope.toExpr, Scope.toExpr]
+  simp only [producesBool, PrincipalScope.toExpr, Scope.toExpr, Bool.false_eq_true]
   cases policy.principalScope.1 <;>
   simp [evaluate, Var.eqEntityUID, Var.inEntityUID, Var.isEntityType, apply₁, apply₂]
   case isMem ety uid =>
-    simp only [Result.as, Coe.coe, Value.asBool, pure, Except.pure, Except.bind_ok,
+    simp only [Result.as, Coe.coe, Value.asBool, Except.bind_ok,
       beq_eq_false_iff_ne, ne_eq, ite_not]
     generalize (inₑ request.principal uid entities) = b₁
     generalize (ety == request.principal.ty) = b₂
@@ -375,7 +375,7 @@ theorem principal_scope_produces_boolean (policy : Policy) (request : Request) (
 theorem action_scope_produces_boolean (policy : Policy) (request : Request) (entities : Entities) :
   producesBool policy.actionScope.toExpr request entities
 := by
-  simp [producesBool, evaluate, ActionScope.toExpr, Scope.toExpr]
+  simp only [producesBool, ActionScope.toExpr, Scope.toExpr, Bool.false_eq_true]
   cases policy.actionScope
   case actionInAny list =>
     split
@@ -388,10 +388,10 @@ theorem action_scope_produces_boolean (policy : Policy) (request : Request) (ent
       · simp [h₂] at h
       · simp at h₁
   case actionScope scope =>
-    simp [evaluate, Var.eqEntityUID, Var.inEntityUID, Var.isEntityType, apply₁, apply₂]
+    simp only [Var.eqEntityUID, Var.inEntityUID, Var.isEntityType]
     cases scope <;> simp [evaluate, apply₁, apply₂, Result.as]
     case isMem ety uid =>
-      simp only [Coe.coe, Value.asBool, pure, Except.pure, Except.bind_ok, beq_eq_false_iff_ne,
+      simp only [Coe.coe, Value.asBool, Except.bind_ok, beq_eq_false_iff_ne,
         ne_eq, ite_not]
       generalize (inₑ request.action uid entities) = b₁
       generalize (ety == request.action.ty) = b₂
@@ -405,11 +405,11 @@ theorem action_scope_produces_boolean (policy : Policy) (request : Request) (ent
 theorem resource_scope_produces_boolean (policy : Policy) (request : Request) (entities : Entities) :
   producesBool policy.resourceScope.toExpr request entities
 := by
-  simp [producesBool, evaluate, ResourceScope.toExpr, Scope.toExpr]
+  simp only [producesBool, ResourceScope.toExpr, Scope.toExpr, Bool.false_eq_true]
   cases policy.resourceScope.1 <;>
   simp [evaluate, Var.eqEntityUID, Var.inEntityUID, Var.isEntityType, apply₁, apply₂]
   case isMem ety uid =>
-    simp only [Result.as, Coe.coe, Value.asBool, pure, Except.pure, Except.bind_ok,
+    simp only [Result.as, Coe.coe, Value.asBool, Except.bind_ok,
       beq_eq_false_iff_ne, ne_eq, ite_not]
     generalize (inₑ request.resource uid entities) = b₁
     generalize (ety == request.resource.ty) = b₂

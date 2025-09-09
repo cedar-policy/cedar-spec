@@ -39,7 +39,7 @@ theorem entity_type_validate_well_formed_is_sound
     exists_and_right, ite_eq_left_iff, Bool.not_eq_true,
     not_exists, not_and, forall_exists_index,
     reduceCtorEq, imp_false, Classical.not_forall,
-    not_imp, Decidable.not_not,
+    Decidable.not_not,
   ] at hok
   simp only [EntityType.WellFormed, ActionSchema.IsActionEntityType]
   cases h : env.ets.contains ety
@@ -56,7 +56,7 @@ theorem entity_type_validate_well_formed_is_sound
     cases h : List.find? (fun x => x.fst == uid) (Map.kvs env.acts)
     · simp [h] at this
     · simp [ActionSchema.contains, Map.find?, h]
-  · simp [h]
+  · simp only [true_or]
 
 mutual
 
@@ -70,7 +70,7 @@ theorem validate_attrs_well_formed_is_sound
   cases rty with
   | nil => simp [Map.find?, List.find?] at hfind
   | cons hd tl =>
-    simp only [Map.toList, validateAttrsWellFormed] at hok
+    simp only [validateAttrsWellFormed] at hok
     cases h : hd.snd with
     | optional attr_ty =>
       simp only [h, bind, Except.bind] at hok
@@ -456,7 +456,7 @@ theorem action_schema_validate_well_formed_is_sound
   -- Check `acts.validateAcyclicActionHierarchy`
   cases hacts_acyclic : acts.validateAcyclicActionHierarchy
   · simp [hacts_acyclic] at hok
-  simp only [hacts_acyclic, ↓reduceIte] at hok
+  simp only [hacts_acyclic] at hok
   simp only [
     action_schema_validate_acyclic_action_hierarchy_is_sound hacts_acyclic,
     true_and,
@@ -506,7 +506,7 @@ theorem env_validate_well_formed_is_sound
   -- Check that the entity schema is well-formed
   cases hwf_ets : env.ets.validateWellFormed env
   · simp [hwf_ets] at hok
-  simp only [hwf_ets, ↓reduceIte] at hok
+  simp only [hwf_ets] at hok
   simp only [
     entity_schema_validate_well_formed_is_sound hwf_ets,
     true_and,
@@ -514,7 +514,7 @@ theorem env_validate_well_formed_is_sound
   -- Check that the action schema is well-formed
   cases hwf_acts : env.acts.validateWellFormed env
   · simp [hwf_acts] at hok
-  simp only [hwf_acts, ↓reduceIte] at hok
+  simp only [hwf_acts] at hok
   simp only [
     action_schema_validate_well_formed_is_sound hwf_acts,
     true_and,
@@ -522,7 +522,7 @@ theorem env_validate_well_formed_is_sound
   -- Check that the request types are well-formed
   cases hwf_reqs : RequestType.validateWellFormed env env.reqty
   · simp [hwf_reqs] at hok
-  simp only [hwf_reqs, ↓reduceIte] at hok
+  simp only [hwf_reqs] at hok
   exact request_type_validate_well_formed_is_sound hwf_reqs
 
 end Cedar.Thm

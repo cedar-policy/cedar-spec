@@ -17,7 +17,7 @@
 use crate::abac::Type;
 use crate::collections::{HashMap, HashSet};
 use crate::err::{while_doing, Error, Result};
-use crate::schema::{attrs_from_attrs_or_context, Schema};
+use crate::schema::{attrs_from_attrs_or_context, schematype_to_type, Schema};
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_ratio};
 use arbitrary::{Arbitrary, Unstructured};
 use cedar_policy_core::ast::{self, Eid, Entity, EntityUID};
@@ -618,8 +618,8 @@ impl HierarchyGenerator<'_, '_> {
                                     if ty.required || self.u.ratio::<u8>(1, 2)? {
                                         let attr_val = schema
                                             .exprgenerator(Some(&hierarchy_no_attrs))
-                                            .generate_attr_value_for_schematype(
-                                                &ty.ty,
+                                            .generate_attr_value_for_type(
+                                                &schematype_to_type(&schema.schema, &ty.ty, schema.namespace()),
                                                 schema.settings.max_depth,
                                                 self.u,
                                             )?;
@@ -662,8 +662,8 @@ impl HierarchyGenerator<'_, '_> {
                                         tag_key,
                                         schema
                                             .exprgenerator(Some(&hierarchy_no_attrs))
-                                            .generate_attr_value_for_schematype(
-                                                tag_type,
+                                            .generate_attr_value_for_type(
+                                                &schematype_to_type(&schema.schema, tag_type, schema.namespace()),
                                                 schema.settings.max_depth,
                                                 u,
                                             )?

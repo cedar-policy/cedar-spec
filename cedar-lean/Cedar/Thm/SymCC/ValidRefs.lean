@@ -108,13 +108,13 @@ theorem typeOf_preserves_valid_refs_and
     split at hty
     any_goals contradiction
     · simp only [ok, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at hty
-      simp only [←hty.1, TypedExpr.toExpr]
+      simp only [←hty.1]
       exact ih₁ hty₁ hrefs₁
     · cases hty₂ : typeOf e₂ (c₁ ∪ c₃) Γ with
       | error => simp [hty₂] at hty
       | ok r₂ =>
         have ⟨tx₂, c₄⟩ := r₂
-        simp only [hty₂, List.empty_eq, Except.bind_ok] at hty
+        simp only [hty₂, Except.bind_ok] at hty
         split at hty
         any_goals contradiction
         all_goals
@@ -143,16 +143,16 @@ theorem typeOf_preserves_valid_refs_or
     split at hty
     any_goals contradiction
     · simp only [ok, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at hty
-      simp only [←hty.1, TypedExpr.toExpr]
+      simp only [←hty.1]
       exact ih₁ hty₁ hrefs₁
     · cases hty₂ : typeOf e₂ c₁ Γ with
       | error => simp [hty₂] at hty
       | ok r₂ =>
         have ⟨tx₂, c₄⟩ := r₂
-        simp only [hty₂, List.empty_eq, Except.bind_ok] at hty
+        simp only [hty₂, Except.bind_ok] at hty
         split at hty
         any_goals contradiction
-        simp only [ok, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at hty
+        simp only [ok, Except.ok.injEq, Prod.mk.injEq] at hty
         simp only [←hty.1, TypedExpr.toExpr]
         constructor
         · exact ih₁ hty₁ hrefs₁
@@ -161,7 +161,7 @@ theorem typeOf_preserves_valid_refs_or
       | error => simp [hty₂] at hty
       | ok r₂ =>
         have ⟨tx₂, c₄⟩ := r₂
-        simp only [hty₂, List.empty_eq, Except.bind_ok] at hty
+        simp only [hty₂, Except.bind_ok] at hty
         split at hty
         any_goals contradiction
         all_goals
@@ -187,7 +187,7 @@ theorem typeOf_preserves_valid_refs_ite
   | error => simp [hty₁] at hty
   | ok r₁ =>
     have ⟨tx₁, c₃⟩ := r₁
-    simp only [hty₁, List.empty_eq, Except.bind_ok] at hty
+    simp only [hty₁, Except.bind_ok] at hty
     split at hty
     any_goals contradiction
     · cases hty₂ : typeOf e₂ (c₁ ∪ c₃) Γ with
@@ -218,7 +218,7 @@ theorem typeOf_preserves_valid_refs_ite
       | ok r₃ =>
       have ⟨tx₂, c₄⟩ := r₂
       have ⟨tx₃, c₅⟩ := r₃
-      simp only [hty₂, hty₃, ok, Except.bind_ok, Except.ok.injEq, Prod.mk.injEq] at hty
+      simp only [hty₂, hty₃, ok, Except.bind_ok] at hty
       split at hty
       · simp only [Except.ok.injEq, Prod.mk.injEq] at hty
         simp only [←hty.1, TypedExpr.toExpr]
@@ -274,7 +274,7 @@ theorem typeOf_preserves_valid_refs_binaryApp
     split at hty
     any_goals contradiction
     any_goals
-      simp only [ok, Function.comp_apply, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at hty
+      simp only [ok, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at hty
       simp only [←hty.1, TypedExpr.toExpr]
       constructor
       exact ih₁ hty₁ hrefs₁
@@ -284,7 +284,7 @@ theorem typeOf_preserves_valid_refs_binaryApp
       split at hty
       any_goals contradiction
       all_goals
-        simp only [ok, Function.comp_apply, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at hty
+        simp only [ok, Except.ok.injEq, Prod.mk.injEq] at hty
         simp only [←hty.1, TypedExpr.toExpr]
         constructor
         exact ih₁ hty₁ hrefs₁
@@ -338,13 +338,13 @@ theorem typeOf_preserves_valid_refs_getAttr
   | error => simp [hty₁] at hty
   | ok r₁ =>
     have ⟨tx₁, c₃⟩ := r₁
-    simp only [hty₁, List.empty_eq, Except.bind_ok] at hty
+    simp only [hty₁, Except.bind_ok] at hty
     split at hty
     any_goals contradiction
     · simp only [bind, Except.bind] at hty
       split at hty
       contradiction
-      simp only [ok, Function.comp_apply, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at hty
+      simp only [ok,Except.ok.injEq, Prod.mk.injEq] at hty
       simp only [←hty.1, TypedExpr.toExpr]
       constructor
       exact ih hty₁ hrefs
@@ -352,7 +352,7 @@ theorem typeOf_preserves_valid_refs_getAttr
       split at hty
       · split at hty
         contradiction
-        simp only [ok, Function.comp_apply, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at hty
+        simp only [ok, Except.ok.injEq, Prod.mk.injEq] at hty
         simp only [←hty.1, TypedExpr.toExpr]
         constructor
         exact ih hty₁ hrefs
@@ -378,7 +378,7 @@ theorem typeOf_preserves_valid_refs_hasAttr
     · simp only [bind, Except.bind] at hty
       split at hty
       contradiction
-      simp only [ok, Function.comp_apply, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at hty
+      simp only [ok, Except.ok.injEq, Prod.mk.injEq] at hty
       simp only [←hty.1, TypedExpr.toExpr]
       constructor
       exact ih hty₁ hrefs
@@ -386,12 +386,12 @@ theorem typeOf_preserves_valid_refs_hasAttr
       split at hty
       · split at hty
         contradiction
-        simp only [ok, Function.comp_apply, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at hty
+        simp only [ok, Except.ok.injEq, Prod.mk.injEq] at hty
         simp only [←hty.1, TypedExpr.toExpr]
         constructor
         exact ih hty₁ hrefs
       · split at hty
-        · simp only [ok, Function.comp_apply, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at hty
+        · simp only [ok, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at hty
           simp only [←hty.1, TypedExpr.toExpr]
           constructor
           exact ih hty₁ hrefs

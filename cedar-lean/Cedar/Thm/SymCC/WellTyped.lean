@@ -44,10 +44,7 @@ theorem wellTypedPolicy_some_implies_exists_typed_exprs
       (TypedExpr.and (TypedExpr.lit (Prim.bool true) (.bool .anyBool))
       (TypedExpr.and (TypedExpr.lit (Prim.bool true) (.bool .anyBool))
       (TypedExpr.and (TypedExpr.lit (Prim.bool true) (.bool .anyBool))
-        (TypedExpr.and
-          tx.liftBoolTypes
-          (TypedExpr.lit (Prim.bool true) (.bool .anyBool))
-          (.bool .anyBool))
+        tx.liftBoolTypes
       (.bool .anyBool))
       (.bool .anyBool))
       (.bool .anyBool)) ∧
@@ -83,10 +80,7 @@ theorem wellTypedPolicy_some_implies_exists_typed_exprs
         (TypedExpr.and (TypedExpr.lit (Prim.bool true) (.bool .anyBool))
         (TypedExpr.and (TypedExpr.lit (Prim.bool true) (.bool .anyBool))
         (TypedExpr.and (TypedExpr.lit (Prim.bool true) (.bool .anyBool))
-          (TypedExpr.and
-            tx.liftBoolTypes
-            (TypedExpr.lit (Prim.bool true) (.bool .anyBool))
-            (.bool .anyBool))
+          tx.liftBoolTypes
         (.bool .anyBool))
         (.bool .anyBool))
         (.bool .anyBool)) = tx''
@@ -98,13 +92,9 @@ theorem wellTypedPolicy_some_implies_exists_typed_exprs
           · repeat constructor
           · constructor
             · repeat constructor
-            · constructor
-              · exact hwf_lift
-              · repeat constructor
-              · exact this
-              · rfl
-            · rfl
-            · rfl
+            · exact hwf_lift
+            · repeat constructor
+            · exact this
           · rfl
           · rfl
         · rfl
@@ -122,7 +112,9 @@ theorem wellTypedPolicy_some_implies_exists_typed_exprs
         ResourceScope.toExpr,
         Conditions.toExpr,
         Condition.toExpr,
-        List.foldr,
+        List.foldl,
+        List.reverse,
+        List.reverseAux,
         TypedExpr.toExpr,
         ←htx'',
         type_lifting_preserves_expr tx,

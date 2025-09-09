@@ -179,12 +179,13 @@ def call (xfn : ExtFun) (rs : List Residual) (ty : CedarType) : Residual :=
   | .none    => if rs.any Residual.isError then .error ty else .call xfn rs ty
 
 def evaluate
-  (x : TypedExpr)
+  (x : Residual)
   (req : PartialRequest)
   (es : PartialEntities) : Residual :=
   match x with
-  | .lit l ty => .val l ty
+  | .val l ty => .val l ty
   | .var v ty => varₚ req v ty
+  | .error ty => .error ty
   | .ite x₁ x₂ x₃ ty =>
     ite (evaluate x₁ req es) (evaluate x₂ req es) (evaluate x₃ req es) ty
   | .and x₁ x₂ ty =>
@@ -216,6 +217,8 @@ decreasing_by
     try simp at h
     omega
 
+open Cedar.Spec Cedar.Validation
+
 /-- Partially evaluating a policy.
 Note that this function actually evaluates a type-lifted version of `TypedExpr`
 produced by the type checker, as opposed to evaluating the expression directly.
@@ -240,7 +243,7 @@ def evaluatePolicy (schema : Schema)
         do
           let expr := substituteAction env.reqty.action p.toExpr
           let (te, _) ← (typeOf expr ∅ env).mapError Error.invalidPolicy
-          .ok (evaluate te.liftBoolTypes req es)
+          .ok (evaluate te.liftBoolTypes.toResidual req es)
       else .error .invalidRequestOrEntities
     | .none => .error .invalidEnvironment
 

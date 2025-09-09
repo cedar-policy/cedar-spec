@@ -61,8 +61,8 @@ theorem type_of_var_is_sound {var : Var} {c₁ c₂ : Capabilities} {env : TypeE
   GuardedCapabilitiesInvariant (Expr.var var) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.var var) request entities v ∧ InstanceOfType env v e'.typeOf
 := by
-  simp [EvaluatesTo, evaluate]
-  simp [typeOf, typeOfVar] at h₃
+  simp only [EvaluatesTo]
+  simp only [typeOf, typeOfVar, List.empty_eq, Function.comp_apply] at h₃
   have hwf := h₂.wf_env
   have ⟨_, h₂, _⟩ := h₂
   simp [InstanceOfRequestType] at h₂

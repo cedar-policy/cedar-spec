@@ -206,7 +206,7 @@ theorem instance_of_schema_refl {entities : Entities} {env : TypeEnv} :
         simp only [Set.all, List.all_eq_true] at h₄
         constructor
         · intro anc ancin
-          simp only [Set.contains, List.elem_eq_mem, decide_eq_true_eq] at h₄
+          simp only [Set.contains, List.elem_eq_mem] at h₄
           rw [← Set.in_list_iff_in_set] at ancin
           replace h₄ := h₄ anc ancin
           simp at h₄
@@ -241,8 +241,9 @@ theorem instance_of_schema_refl {entities : Entities} {env : TypeEnv} :
     replace h₀ := List.forM_ok_implies_all_ok (Map.toList env.acts) f h₀ (uid, entry)
     replace h₀ := h₀ (Map.find?_mem_toList h₂)
     rw [← h₁] at h₀
-    simp only [instanceOfSchema.actionExists, beq_iff_eq] at h₀
-    cases h₂ : Map.find? entities uid <;> simp [h₂] at h₀
+    simp only [instanceOfSchema.actionExists] at h₀
+    cases h₂ : Map.find? entities uid <;> simp only [ite_eq_left_iff, Bool.not_eq_true,
+      reduceCtorEq, imp_false, Bool.not_eq_false] at h₀
     case some data => exists data
     case none => simp [Map.contains, h₂] at h₀
 
@@ -260,7 +261,7 @@ theorem instance_of_well_formed_env {env : TypeEnv} {request : Request} {entitie
   exact env_validate_well_formed_is_sound h₀
   constructor
   · exact instance_of_request_type_refl h₁
-  · cases h₃ : instanceOfSchema entities env <;> simp only [h₃, Except.bind_err, Except.bind_ok, reduceCtorEq] at h₂
+  · cases h₃ : instanceOfSchema entities env <;> simp only [h₃, reduceCtorEq] at h₂
     exact instance_of_schema_refl h₃
 
 theorem request_and_entities_validate_implies_instance_of_wf_schema (schema : Schema) (request : Request) (entities : Entities) :
@@ -272,7 +273,7 @@ theorem request_and_entities_validate_implies_instance_of_wf_schema (schema : Sc
   intro h₀ h₁ h₂
   simp only [InstanceOfWellFormedSchema]
   simp only [validateRequest, List.any_eq_true, ite_eq_left_iff, not_exists, not_and,
-    Bool.not_eq_true, reduceCtorEq, imp_false, Classical.not_forall, not_imp,
+    Bool.not_eq_true, reduceCtorEq, imp_false, Classical.not_forall,
     Bool.not_eq_false] at h₁
   simp only [validateEntities] at h₂
   simp only [Schema.validateWellFormed] at h₀

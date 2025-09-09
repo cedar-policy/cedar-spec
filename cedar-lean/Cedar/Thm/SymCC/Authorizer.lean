@@ -82,10 +82,10 @@ theorem satisfiedPolicies_filterMapM_eq {effect : Effect} {ps : Policies} {εnv 
       simp only [List.mapM_cons, bind_pure_comp]
       simp_do_let (compile p.toExpr εnv)
       case error h₃ =>
-        simp only [h₃, Except.map_error, Except.error.injEq] at *
+        simp only [h₃, Except.error.injEq] at *
         simp only [h₂]
       case ok h₃ =>
-        simp only [h₃, Except.map_ok, reduceCtorEq] at h₂
+        simp only [h₃, reduceCtorEq] at h₂
     case ok opt h₁ =>
       cases opt <;> simp only
       case none =>
@@ -217,7 +217,7 @@ theorem satisfiedPolicies_interpret {effect : Effect} {ps : Policies} {εnv : Sy
   have hfun_I := mapM_compile_ok_implies_interpret_eqSomeTrue hwε hwI hok
   replace hok := mapM_compile_ok_implies_map_interpret hwε hwI hok
   simp only [SymCC.satisfiedPolicies, satisfiedPolicies_filterMapM_eq, hok, someOf,
-    interpret_anyTrue hwI hfun_wf hfun_I, Except.bind_ok, Except.ok.injEq]
+    interpret_anyTrue hwI hfun_wf hfun_I, Except.bind_ok]
 
 theorem satisfiedPolicies_eq {effect : Effect} {ps : Policies} {env : Env} {εnv : SymEnv} {t : Term}
   (hwε : εnv.WellFormedForPolicies ps)

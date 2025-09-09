@@ -24,11 +24,11 @@ use cedar_drt_inner::fuzz_target;
 
 use cedar_policy::Entities;
 use cedar_policy_core::ast::Expr;
-use cedar_policy_generators::abac::ABACRequest;
 use cedar_policy_generators::err::Error;
 use cedar_policy_generators::hierarchy::HierarchyGenerator;
 use cedar_policy_generators::schema::{arbitrary_schematype_with_bounded_depth, Schema};
 use cedar_policy_generators::settings::ABACSettings;
+use cedar_policy_generators::{abac::ABACRequest, schema::schematype_to_type};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
 use std::convert::TryFrom;
@@ -60,21 +60,26 @@ const SETTINGS: ABACSettings = ABACSettings {
     enable_arbitrary_func_call: true,
     enable_unknowns: false,
     enable_action_in_constraints: true,
+    per_action_request_env_limit: ABACSettings::default_per_action_request_env_limit(),
+    total_action_request_env_limit: ABACSettings::default_total_action_request_env_limit(),
 };
 
 impl<'a> Arbitrary<'a> for FuzzTargetInput {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
         let schema = Schema::arbitrary(SETTINGS.clone(), u)?;
         let hierarchy = schema.arbitrary_hierarchy(u)?;
-        let toplevel_type = arbitrary_schematype_with_bounded_depth(
-            &SETTINGS,
-            schema.entity_types(),
-            SETTINGS.max_depth,
-            u,
-        )?;
+        let toplevel_type = schematype_to_type(
+            schema.schemafile(),
+            &arbitrary_schematype_with_bounded_depth(
+                &SETTINGS,
+                schema.entity_types(),
+                SETTINGS.max_depth,
+                u,
+            )?,
+            schema.namespace(),
+        );
         let expr_gen = schema.exprgenerator(Some(&hierarchy));
-        let expression =
-            expr_gen.generate_expr_for_schematype(&toplevel_type, SETTINGS.max_depth, u)?;
+        let expression = expr_gen.generate_expr_for_type(&toplevel_type, SETTINGS.max_depth, u)?;
 
         let request = schema.arbitrary_request(&hierarchy, u)?;
         let all_entities = Entities::try_from(hierarchy).map_err(Error::EntitiesError)?;

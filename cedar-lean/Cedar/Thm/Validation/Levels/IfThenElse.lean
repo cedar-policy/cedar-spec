@@ -75,7 +75,7 @@ theorem level_based_slicing_is_sound_if {x₁ x₂ x₃ : Expr} {n : Nat} {c₀ 
       simp [ih₂]
     · replace ⟨htx₂, htx₃, _, _⟩ := htx₂₃
       specialize ih₃ hs hc hr htx₃ hl₃
-      simp only [ih₁, ih₃, evaluate]
+      simp only [ih₃]
       cases b
       case false => simp
       case true =>

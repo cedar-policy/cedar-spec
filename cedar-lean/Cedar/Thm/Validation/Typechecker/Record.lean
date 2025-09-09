@@ -142,7 +142,7 @@ theorem mk_vals_instance_of_mk_types₃ {env : TypeEnv} {a : Attr} {qty : Qualif
     cases h₆ : rhd.fst == a <;> simp [h₆] at h₂ ⊢
     cases h₇ : rtl.find? λ (a', _) => a' == a <;> simp [h₇] at h₂
     have h₈ := @mk_vals_instance_of_mk_types₃ env a qty atl rtl h₅
-    simp [Map.find?, List.find?, Map.kvs, h₇, h₂, Map.contains] at h₈
+    simp [Map.find?, Map.kvs, h₇, h₂, Map.contains] at h₈
     exact h₈
 
 theorem mk_vals_instance_of_mk_types {env : TypeEnv} {avs : List (Attr × Value)} {rty : List (Attr × QualifiedType)}
@@ -169,7 +169,7 @@ theorem find_mk_xs_find_mk_txs {axs : List (Attr × Expr)} {atxs : List (Attr ×
   case nil =>
     simp [Map.find?, List.find?] at h₂
   case cons axh axt atxh athl h₄ h₅ =>
-    simp [Map.contains, Map.find?, List.find?]
+    simp [Map.find?, List.find?]
     simp [Map.find?, List.find?] at h₂
     simp [AttrExprHasAttrType] at h₄
     replace ⟨h₄, _, h₆⟩ := h₄ ; rw [←h₄]
@@ -178,7 +178,7 @@ theorem find_mk_xs_find_mk_txs {axs : List (Attr × Expr)} {atxs : List (Attr ×
       subst h₂
       rename_i ax
       have h₉ := @find_mk_xs_find_mk_txs c env a ax.snd axt athl h₅
-      simp [h₈, Map.find?, List.find?, Map.kvs, Map.contains] at h₉
+      simp [h₈, Map.find?, Map.kvs] at h₉
       exact h₉
     · subst h₂
       simp [h₆]
@@ -212,7 +212,7 @@ theorem head_of_vals_instance_of_head_of_types {xhd : Attr × Expr} {c₁ : Capa
   simp [bindAttr] at h₅
   cases h₈ : evaluate xhd.snd request entities <;> simp [h₈] at h₅
   simp [EvaluatesTo, h₈] at h₁ ; subst h₁ h₅
-  simp [AttrValueHasAttrType, Qualified.getType, h₇, h₆]
+  simp [AttrValueHasAttrType, Qualified.getType, h₇]
 
 theorem vals_instance_of_types {axs : List (Attr × Expr)} {c₁ : Capabilities} {env : TypeEnv} {request : Request} {entities : Entities} {rtx : List (Attr × TypedExpr)} {avs : List (Attr × Value)}
   (ih : ∀ (axᵢ : Attr × Expr), axᵢ ∈ axs → TypeOfIsSound axᵢ.snd)
@@ -228,7 +228,7 @@ theorem vals_instance_of_types {axs : List (Attr × Expr)} {c₁ : Capabilities}
     subst h₄
     simp [List.map_nil]
   case cons xhd rhd xtl rtl h₅ h₆ =>
-    simp [List.mapM'_eq_mapM, pure, Except.pure] at h₄
+    simp [pure, Except.pure] at h₄
     cases h₇ : bindAttr xhd.fst (evaluate xhd.snd request entities) <;> simp [h₇] at h₄
     cases h₈ : List.mapM (fun x => bindAttr x.fst (evaluate x.snd request entities)) xtl <;> simp [h₈] at h₄
     subst h₄
@@ -268,10 +268,10 @@ theorem type_of_record_is_sound_err {axs : List (Attr × Expr)} {c₁ : Capabili
 := by
   cases axs
   case nil =>
-    simp [List.mapM₂, List.attach₂, pure, Except.pure] at h₄
+    simp only [List.mapM_nil, pure, Except.pure, reduceCtorEq] at h₄
   case cons hd tl =>
     cases h₃ ; rename_i hd' tl' hh₃ ht₃
-    simp only [List.mapM_cons, List.mapM₂, List.attach₂] at h₄
+    simp only [List.mapM_cons] at h₄
     cases h₅ : bindAttr hd.fst (evaluate hd.snd request entities) <;> simp only [h₅] at h₄
     case error e =>
       simp only [bindAttr] at h₅
@@ -292,7 +292,7 @@ theorem type_of_record_is_sound_err {axs : List (Attr × Expr)} {c₁ : Capabili
         tl c₁ env request entities tl' err
         (by intro axᵢ h ; apply ih ; simp [h])
         h₁ h₂ ht₃
-        (by simp [List.mapM₂, List.attach₂, List.mapM_pmap_subtype, h₅])
+        (by simp [h₅])
 
 
 theorem type_of_record_is_sound {axs : List (Attr × Expr)} {c₁ c₂ : Capabilities} {env : TypeEnv} {tx : TypedExpr} {request : Request} {entities : Entities}
@@ -311,7 +311,7 @@ theorem type_of_record_is_sound {axs : List (Attr × Expr)} {c₁ c₂ : Capabil
   simp only [List.mapM₂, List.attach₂]
   let f := fun (x : Attr × Expr) => bindAttr x.fst (evaluate x.snd request entities)
   rw [List.mapM_pmap_subtype f]
-  cases h₅ : (axs.mapM f) <;> simp [h₅]
+  cases h₅ : (axs.mapM f) <;> simp
   case error err =>
     rename_i h₄
     simp [type_of_is_inhabited h₂.wf_env h₃]

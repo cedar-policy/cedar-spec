@@ -29,7 +29,7 @@ theorem int64?_some {i : Int64} :
 := by
   simp only [BitVec.int64?, ↓reduceIte, Int64.toBitVec, Option.some.injEq]
   cases i ; rename_i i
-  simp only [Int64.ofInt, UInt64.toInt64]
+  simp only [Int64.ofInt]
   cases i ; rename_i i
   simp only
   congr
@@ -43,20 +43,19 @@ theorem compile_evaluate_lit {p : Prim} {env : Env} {εnv : SymEnv} {t : Term}
   simp only [compile, compilePrim, someOf, Except.ok.injEq] at h₁
   case bool | string =>
     subst h₁
-    simp only [Same.same, SameResults, evaluate, SameValues, ne_eq, Term.value?,
+    simp only [Same.same, SameResults, evaluate, SameValues, Term.value?,
       TermPrim.value?]
   case int i =>
     subst h₁
-    simp only [Same.same, SameResults, evaluate, SameValues, ne_eq, Term.value?,
+    simp only [Same.same, SameResults, evaluate, SameValues, Term.value?,
       TermPrim.value?]
-    simp only [Lean.Internal.coeM, CoeT.coe, CoeHTCT.coe, CoeHTC.coe, CoeOTC.coe, CoeTC.coe,
-      Coe.coe, Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq,
+    simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq,
       Value.prim.injEq, Prim.int.injEq, exists_eq_right]
     exact int64?_some
   case entityUID =>
     split at h₁ <;> simp only [Except.ok.injEq, reduceCtorEq] at h₁
     subst h₁
-    simp only [Same.same, SameResults, evaluate, SameValues, ne_eq, Term.value?,
+    simp only [Same.same, SameResults, evaluate, SameValues, Term.value?,
       TermPrim.value?]
 
 theorem compile_evaluate_var {v : Var} {env : Env} {εnv : SymEnv} {t : Term}

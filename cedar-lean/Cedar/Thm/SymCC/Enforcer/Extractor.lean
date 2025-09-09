@@ -34,7 +34,7 @@ open Data Spec SymCC Factory
 private theorem footprintUIDs_wf {xs : List Expr} {εnv : SymEnv} {I : Interpretation} :
   (Interpretation.repair.footprintUIDs xs εnv I).WellFormed
 := by
-  simp only [Interpretation.repair.footprintUIDs, Set.mapUnion_wf, true_and]
+  simp only [Interpretation.repair.footprintUIDs, Set.mapUnion_wf]
 
 private theorem footprintUIDs_valid {xs : List Expr} {εnv : SymEnv} {I : Interpretation}
   (hwε : εnv.WellFormed)
@@ -67,7 +67,7 @@ private theorem repairAncestors_default_wfl {εs : SymEntities} {f : UDF}
   rename_i ty heq
   replace hlt := typeOf_wf_term_is_wf hlt.left
   simp only [hty, heq] at hlt
-  cases hlt <;> rename_i hlt
+  cases hlt ; rename_i hlt
   replace hlt := wf_term_set_empty hlt
   simp only [Set.empty, hlt, heq, and_true]
   exact And.intro hlt.left (lit_term_set_empty ty)
@@ -395,7 +395,7 @@ private theorem type_of_ancestor_uuf_eq {εnv : SymEnv} {f : UUF}
   (hf : f ∈ εnv.entities.uufAncestors) :
   ∃ ety aty, f.arg = .entity ety ∧ f.out = .set (.entity aty)
 := by
-  simp only [SymEntities.uufAncestors, Set.in_list_iff_in_set, Set.mem_mapUnion_iff_mem_exists,
+  simp only [SymEntities.uufAncestors, Set.mem_mapUnion_iff_mem_exists,
     Function.comp_apply] at hf
   replace ⟨(ety, δ), hδ, hf⟩ := hf
   simp only [SymEntityData.uufAncestors, ← Set.make_mem, List.mem_filterMap, Function.comp_apply] at hf
@@ -529,7 +529,7 @@ theorem extract?_implies_enum_complete
   simp only [Prod.mk.injEq] at heq_uid'
   simp only [←heq_uid'.1] at hmem_uid'_data huid'
   exists data
-  apply Map.find?_implies_make_find?
+  rw [← Map.list_find?_iff_make_find?]
   apply List.find?_unique_entry
   · intros x hmem heq_fst
     have ⟨uid', data'⟩ := x

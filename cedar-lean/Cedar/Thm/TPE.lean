@@ -18,7 +18,10 @@ import Cedar.TPE
 import Cedar.Spec
 import Cedar.Validation
 import Cedar.Thm.TPE.Input
+import Cedar.Thm.TPE.Conversion
 import Cedar.Thm.TPE.Soundness
+import Cedar.Thm.TPE.PreservesTypeOf
+import Cedar.Thm.TPE.WellTyped
 import Cedar.Thm.Validation
 
 /-!
@@ -38,21 +41,21 @@ expression, provided that requests and entities are consistent. The equivalency
 is defined using `Except.toOption`.
 -/
 theorem partial_evaluate_is_sound
-  {x : TypedExpr}
+  {x : Residual}
   {req : Request}
   {es : Entities}
   {preq : PartialRequest}
   {pes : PartialEntities}
   {env : TypeEnv} :
-  TypedExpr.WellTyped env x →
+  Residual.WellTyped env x →
   InstanceOfWellFormedEnvironment req es env →
   RequestAndEntitiesRefine req es preq pes →
-  (Spec.evaluate x.toExpr req es).toOption = (Residual.evaluate (Cedar.TPE.evaluate x preq pes) req es).toOption
+  (x.evaluate req es).toOption = ((Cedar.TPE.evaluate x preq pes).evaluate req es).toOption
 := by
   intro h₁ h₂ h₃
   induction h₁
-  case lit =>
-    exact partial_evaluate_is_sound_lit
+  case val =>
+    exact partial_evaluate_is_sound_val
   case var =>
     exact partial_evaluate_is_sound_var h₃
   case ite x₁ x₂ x₃ hwt _ _ hₜ _ hᵢ₁ hᵢ₂ hᵢ₃ =>
@@ -79,6 +82,8 @@ theorem partial_evaluate_is_sound
     exact partial_evaluate_is_sound_record hᵢ₁
   case call xfn args ty hᵢ₁ =>
     exact partial_evaluate_is_sound_call hᵢ₁
+  case error ty =>
+    exact partial_evaluate_is_sound_error
 
 /-- The main theorem of TPE: Evaluating a result residual is equivalent to
 evaluating the input policy, given valid and consistent requests and entities.
@@ -142,7 +147,13 @@ theorem partial_evaluate_policy_is_sound
   rename_i heq₅
   have h₄ := instance_of_well_formed_env heq₅ heq₃ heq₄
   have h₅ := typechecked_is_well_typed_after_lifting heq₂
-  have h₆ := partial_evaluate_is_sound h₅ h₄ h₃
+  let old_residual := (TypedExpr.toResidual ty.liftBoolTypes)
+
+  have h₉ : Residual.WellTyped env old_residual := by {
+    have h := conversion_preserves_typedness h₅
+    exact h
+  }
+  have h₆ := partial_evaluate_is_sound h₉ h₄ h₃
   subst h₁₂
   have h₇ := type_of_preserves_evaluation_results (empty_capabilities_invariant req es) h₄ heq₂
   have h₈ : Spec.evaluate (substituteAction env.reqty.action policy.toExpr) req es = Spec.evaluate policy.toExpr req es := by
@@ -154,5 +165,8 @@ theorem partial_evaluate_policy_is_sound
     exact substitute_action_preserves_evaluation policy.toExpr req es
   simp [h₈] at h₇
   rw [h₇, type_lifting_preserves_expr]
-  exact h₆
+  rw [← h₆]
+  subst old_residual
+  congr
+  apply conversion_preserves_evaluation
 end Cedar.Thm

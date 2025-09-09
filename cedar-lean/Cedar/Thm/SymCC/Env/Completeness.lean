@@ -89,7 +89,7 @@ private theorem sym_entities_is_valid_entity_uid_implies_entity_uid_wf
         simp only [hact']
       simp only [this] at hmem_act'
       have := (Map.in_list_iff_find?_some hwf_acts).mp hmem_act'
-      simp only [ActionSchema.contains, Map.contains, this, Option.isSome]
+      simp only [ActionSchema.contains, this, Option.isSome]
   · contradiction
 
 /-- `TermPrim` case of `ofType_typeOf_pullback`. -/
@@ -412,10 +412,10 @@ private theorem ofType_typeOf_pullback
           simp only [Map.find?, heq_ty] at h₁
           have h₂ := Map.find?_mapOnValues_some TermType.ofQualifiedType hfind_qty
           simp only [Map.find?, heq_attr] at h₂
-          simp only [h₁, Option.some.injEq, TermType.ofQualifiedType] at h₂
+          simp only [h₁, Option.some.injEq] at h₂
           cases qty with
           | optional ty' =>
-            simp only [TermType.ofQualifiedType, TermType.option.injEq] at h₂
+            simp only [TermType.ofQualifiedType] at h₂
             have := value?_some_implies_typeOf_not_option hv' h₂
             contradiction
           | required ty' =>
@@ -656,13 +656,7 @@ private theorem ofEnv_entity_completeness_standard_inst_tags
       SymEntityData.ofStandardEntityType,
       SymEntityData.interpret,
       UnaryFunction.interpret,
-      SymEntityData.emptyAttrs,
-      Factory.app,
-      Term.isLiteral,
-      ↓reduceIte,
-      Map.empty,
-      Map.find?,
-      List.find?,
+      Map.empty
     ] at hsame_tags
     exact hsame_tags
   | some tagTy =>
@@ -673,11 +667,7 @@ private theorem ofEnv_entity_completeness_standard_inst_tags
       SymEntityData.ofEntityType,
       SymEntityData.ofStandardEntityType,
       SymEntityData.interpret,
-      UnaryFunction.interpret,
-      SymEntityData.emptyAttrs,
-      Factory.app,
-      Term.isLiteral,
-      ↓reduceIte,
+      UnaryFunction.interpret
     ] at hsame_tags
     simp only [InstanceOfEntityTags, EntitySchemaEntry.tags?, htagTy]
     intros v hmem_v_tags
@@ -745,7 +735,8 @@ private theorem ofEnv_entity_completeness_standard_inst_tags
       · simp only [Factory.tagOf]
         constructor
         · intros a t h
-          simp [EntityTag.mk, Map.toList, Map.kvs] at h
+          simp only [Map.toList, Map.kvs, List.mem_cons, Prod.mk.injEq, List.not_mem_nil,
+            or_false] at h
           cases h with
           | inl h =>
             simp only [h.2, Term.entity]
@@ -920,7 +911,6 @@ private theorem ofEnv_entity_completeness_enum
   · simp only [
       hδ, hδ',
       SymEntityData.ofEntityType,
-      SymEntityData.ofStandardEntityType,
       SymEntityData.interpret,
       UnaryFunction.interpret,
       SymEntityData.ofEnumEntityType,
@@ -936,11 +926,11 @@ private theorem ofEnv_entity_completeness_enum
     apply ofType_typeOf_pullback hwf_Γ _ _ _ _ hsame_attrs
     · constructor
       · exact Map.wf_empty
-      · simp [Map.WellFormed, Map.make, Map.empty, List.canonicalize, Map.find?, List.find?, Map.toList]
+      · simp only [Map.find?, Map.empty, List.find?, reduceCtorEq, false_implies, implies_true]
     · constructor
-      simp [Map.WellFormed, Map.make, Map.empty, List.canonicalize, Map.find?, List.find?, Map.toList, Map.kvs]
+      simp only [Map.toList, Map.kvs, Map.empty, List.not_mem_nil, false_implies, implies_true]
     · constructor
-      · simp [Map.WellFormed, Map.make, Map.empty, List.canonicalize, Map.find?, List.find?, Map.toList, Map.kvs]
+      · simp only [Map.toList, Map.kvs, List.not_mem_nil, false_implies, implies_true]
       · exact Map.wf_empty
     · simp [Term.typeOf, List.attach₃, TermType.ofType, Map.empty, TermType.ofRecordType]
   · intros anc hmem_data_anc
@@ -967,12 +957,7 @@ private theorem ofEnv_entity_completeness_enum
       SymEntityData.interpret,
       UnaryFunction.interpret,
       SymEntityData.emptyAttrs,
-      Factory.app,
-      Term.isLiteral,
-      ↓reduceIte,
-      Map.empty,
-      Map.find?,
-      List.find?,
+      Map.empty
     ] at hsame_tags
     simp only [InstanceOfEntityTags, EntitySchemaEntry.tags?]
     exact hsame_tags
@@ -1034,7 +1019,7 @@ private theorem ofEnv_entity_completeness_action
   · simp only [
       hδ, hδ',
       SameTags,
-      Factory.app, SymEntityData.interpret,
+      SymEntityData.interpret,
       UnaryFunction.interpret,
       SymEntityData.ofActionType,
       SymEntityData.emptyAttrs, Map.empty,
@@ -1059,7 +1044,7 @@ private theorem ofEnv_entity_completeness_action
       simp only [Prod.mk.injEq] at hancTy
       replace hmem_ancTy := List.mem_eraseDups_implies_mem hmem_ancTy
       have ⟨⟨act', entry'⟩, hmem_act'_entry', hact'_entry'⟩ := List.mem_map.mp hmem_ancTy
-      simp only [Prod.mk.injEq] at hact'_entry'
+      simp only at hact'_entry'
       simp only [←hancTy.2, SymEntityData.ofActionType.ancsUDF, UnaryFunction.interpret] at hancUDF
       simp only [hancUDF, Factory.app, Term.isLiteral, ↓reduceIte] at happ_ancUF
       split at happ_ancUF
@@ -1147,7 +1132,7 @@ private theorem ofEnv_entity_completeness_action
       apply List.mem_filterMap.mpr
       exists anc
       have := (Set.in_list_iff_in_set _ _).mpr hmem_entry_anc
-      simp [Set.toList, this, true_and, SymEntityData.ofActionType.termOfType?]
+      simp only [Set.toList, this, SymEntityData.ofActionType.termOfType?, ↓reduceIte, and_self]
 
 private theorem ofEnv_entity_completeness
   {Γ : TypeEnv} {I : Interpretation} {entities : Entities}

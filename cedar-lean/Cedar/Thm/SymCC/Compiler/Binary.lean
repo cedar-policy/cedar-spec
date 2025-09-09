@@ -188,7 +188,7 @@ private theorem interpret_compileApp₂ {op₂ : BinaryOp} {t t₁ t₂: Term} {
     rcases hok with ⟨hok, ht⟩ | ⟨hok, ht⟩ <;>
     simp only [ht, compileApp₂, hwl₁, hwl₂, hok, someOf, interpret_term_some,
       interpret_eq hI hwφ₁ hwφ₂, interpret_term_prim,
-      Term.some.injEq, Except.bind_ok, Except.ok.injEq, ite_true, ite_false, reduceCtorEq]
+      Except.bind_ok, ite_true, ite_false, reduceCtorEq]
   case less =>
     rcases compileApp₂_less_ok_implies hok with hok | hok | hok <;>
       simp [compileApp₂, hwl₁, hwl₂, hok, someOf, interpret_term_some,
@@ -201,19 +201,19 @@ private theorem interpret_compileApp₂ {op₂ : BinaryOp} {t t₁ t₂: Term} {
     replace ⟨hty₁, hty₂, hok⟩ := compileApp₂_add_ok_implies hok
     have hwg := wf_bvsaddo hwφ₁ hwφ₂ hty₁ hty₂
     have hwt := wf_bvadd hwφ₁ hwφ₂ hty₁ hty₂
-    simp only [compileApp₂, hwl₁, hwl₂, hty₁, hty₂, hok, someOf, interpret_term_some,
+    simp only [compileApp₂, hwl₁, hwl₂, hty₁, hty₂, hok,
       interpret_ifFalse hI hwg.left hwg.right hwt.left, interpret_bvsaddo, interpret_bvadd]
   case sub =>
     replace ⟨hty₁, hty₂, hok⟩ := compileApp₂_sub_ok_implies hok
     have hwg := wf_bvssubo hwφ₁ hwφ₂ hty₁ hty₂
     have hwt := wf_bvsub hwφ₁ hwφ₂ hty₁ hty₂
-    simp only [compileApp₂, hwl₁, hwl₂, hty₁, hty₂, hok, someOf, interpret_term_some,
+    simp only [compileApp₂, hwl₁, hwl₂, hty₁, hty₂, hok,
       interpret_ifFalse hI hwg.left hwg.right hwt.left, interpret_bvssubo, interpret_bvsub]
   case mul =>
     replace ⟨hty₁, hty₂, hok⟩ := compileApp₂_mul_ok_implies hok
     have hwg := wf_bvsmulo hwφ₁ hwφ₂ hty₁ hty₂
     have hwt := wf_bvmul hwφ₁ hwφ₂ hty₁ hty₂
-    simp only [compileApp₂, hwl₁, hwl₂, hty₁, hty₂, hok, someOf, interpret_term_some,
+    simp only [compileApp₂, hwl₁, hwl₂, hty₁, hty₂, hok,
       interpret_ifFalse hI hwg.left hwg.right hwt.left, interpret_bvsmulo, interpret_bvmul]
   case contains =>
     replace ⟨hty, hok⟩ := compileApp₂_contains_ok_implies hok
@@ -229,12 +229,10 @@ private theorem interpret_compileApp₂ {op₂ : BinaryOp} {t t₁ t₂: Term} {
     rcases hok with ⟨hty₂, hok⟩ | ⟨hty₂, hok⟩
     case inl =>
       simp only [compileApp₂, hwl₁, hwl₂, hty₁, hty₂, hok, someOf, interpret_term_some,
-        interpret_compileInₑ hwε hI hwφ₁ hwφ₂ hwl₁ hwl₂ hty₁ hty₂,
-        Except.ok.injEq, Term.some.injEq]
+        interpret_compileInₑ hwε hI hwφ₁ hwφ₂ hwl₁ hwl₂ hty₁ hty₂]
     case inr =>
       simp only [compileApp₂, hwl₁, hwl₂, hty₁, hty₂, hok, someOf, interpret_term_some,
-        interpret_compileInₛ hwε hI hwφ₁ hwφ₂ hwl₁ hwl₂ hty₁ hty₂,
-        Except.ok.injEq, Term.some.injEq]
+        interpret_compileInₛ hwε hI hwφ₁ hwφ₂ hwl₁ hwl₂ hty₁ hty₂]
   case hasTag =>
     replace ⟨ety, hty₁, hty₂, hok⟩ := compileApp₂_hasTag_ok_implies hok
     replace hok := compileHasTag_ok_implies hok
@@ -551,7 +549,7 @@ private theorem compileApp₂_sub_implies_apply₂ {t₁ t₂ t₃ : Term} {v₁
 := by
   simp_binaryApp_bv_inputs compileApp₂_sub_ok_implies hok hwφ₁ hwφ₂ ih₁ ih₂
   simp only [apply₂, Int64.sub?, Int64.ofInt?, bvssubo, bvso, bvsub, bvapp, BitVec.ofNat_toNat,
-    BitVec.setWidth_eq, BitVec.add_eq]
+    BitVec.setWidth_eq]
   split
   case isTrue h =>
     simp only [Same.same, SameResults, intOrErr, ih₁, ih₂, BitVec.overflows_false_64 h, pe_ifFalse_false]
@@ -572,7 +570,7 @@ private theorem compileApp₂_mul_implies_apply₂ {t₁ t₂ t₃ : Term} {v₁
 := by
   simp_binaryApp_bv_inputs compileApp₂_mul_ok_implies hok hwφ₁ hwφ₂ ih₁ ih₂
   simp only [apply₂, Int64.mul?, Int64.ofInt?, bvsmulo, bvso, bvmul, bvapp, BitVec.ofNat_toNat,
-    BitVec.setWidth_eq, BitVec.add_eq]
+    BitVec.setWidth_eq]
   split
   case isTrue h =>
     simp only [Same.same, SameResults, intOrErr, ih₁, ih₂, BitVec.overflows_false_64 h, pe_ifFalse_false]
@@ -896,7 +894,7 @@ private theorem term_entity_set_wfl_implies_sorted_entity_list {εs : SymEntitie
         simp only [List.Sorted] at hlt
         replace hlt := List.sortedBy_implies_head_lt_tail hlt hd'
         simp only [← ih.right.left, List.mem_cons, true_or, ht, id_eq, forall_const] at hlt
-        simp only [LT.lt, Term.lt, TermPrim.lt, decide_eq_true_eq, Bool.decide_eq_true] at hlt
+        simp only [LT.lt, Term.lt, TermPrim.lt, Bool.decide_eq_true] at hlt
         simp only [LT.lt, hlt]
       · exact ih.left
 
@@ -1033,9 +1031,9 @@ private theorem compileInₛ_eq_any_inₑ_some {es : Entities} {εs : SymEntitie
     replace ⟨e₂, h', h⟩ := Set.intersects_iff_exists.mp h
     rw [← Set.in_list_iff_in_mk] at h'
     specialize heq e₂ (hty e₂ h')
-    simp only [ha, pe_set_intersects hlit hlit', Term.prim.injEq, TermPrim.bool.injEq, Set.intersects_iff_exists]
+    simp only [Set.intersects_iff_exists]
     exists (Term.prim (TermPrim.entity e₂))
-    simp only [hts, Set.mem_inter_iff, ← Set.in_list_iff_in_mk, List.mem_map, Term.prim.injEq,
+    simp only [hts, ← Set.in_list_iff_in_mk, List.mem_map, Term.prim.injEq,
       TermPrim.entity.injEq, exists_eq_right, h', heq, h, and_self]
 
 private theorem compileInₛ_eq_any_inₑ {es : Entities} {εs : SymEntities} {ety₂ : EntityType} {e₁ : EntityUID} {ts : List Term} {uids : List EntityUID}

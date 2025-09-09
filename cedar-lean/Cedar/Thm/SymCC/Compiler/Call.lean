@@ -180,15 +180,13 @@ private theorem pe_datetime_offset {dt : Ext.Datetime} {dur : Ext.Datetime.Durat
   cases h: dt.val.add? dur.val <;> unfold Int64.add? at h <;> simp
   case none =>
     rw [BitVec.Int64_ofInt?_eq_none_iff_overflows] at h
-    simp [BitVec.Int64_toBitVec_toInt_eq_toInt, h, pe_ifFalse_true,
-      (wf_ifFalse wf_bool (wf_ext_datetime_ofBitVec wf_bv typeOf_bv).left typeOf_bool).right]
+    simp [h, pe_ifFalse_true]
     apply (wf_ext_datetime_ofBitVec wf_bv typeOf_bv).right; exact Map.empty
   case some v =>
     have h' : ∃ v, Int64.ofInt? (dt.val.toInt + dur.val.toInt) = some v := by exact Exists.intro v h
     rw [← Option.isSome_iff_exists, Option.isSome_iff_ne_none, ne_eq, BitVec.Int64_ofInt?_eq_none_iff_overflows] at h'
     simp only [Bool.not_eq_true] at h'
-    simp [BitVec.Int64_toBitVec_toInt_eq_toInt, h', pe_ifFalse_false,
-      (wf_ifFalse wf_bool (wf_ext_datetime_ofBitVec wf_bv typeOf_bv).left typeOf_bool).right]
+    simp [h', pe_ifFalse_false]
     simp only [Int64.ofInt?, Option.dite_none_right_eq_some, Option.some.injEq, Int64.ofIntChecked] at h
     cases h; rename_i h heq
     subst heq
@@ -204,15 +202,13 @@ private theorem pe_datetime_durationSince {dt₁ dt₂ : Ext.Datetime}:
   cases h: dt₁.val.sub? dt₂.val <;> unfold Int64.sub? at h <;> simp
   case none =>
     rw [BitVec.Int64_ofInt?_eq_none_iff_overflows] at h
-    simp [BitVec.Int64_toBitVec_toInt_eq_toInt, h, pe_ifFalse_true,
-      (wf_ifFalse wf_bool (wf_ext_duration_ofBitVec wf_bv typeOf_bv).left typeOf_bool).right]
+    simp [h, pe_ifFalse_true]
     apply (wf_ext_duration_ofBitVec wf_bv typeOf_bv).right; exact Map.empty
   case some v =>
     have h' : ∃ v, Int64.ofInt? (dt₁.val.toInt - dt₂.val.toInt) = some v := by exact Exists.intro v h
     rw [← Option.isSome_iff_exists, Option.isSome_iff_ne_none, ne_eq, BitVec.Int64_ofInt?_eq_none_iff_overflows] at h'
     simp only [Bool.not_eq_true] at h'
-    simp [BitVec.Int64_toBitVec_toInt_eq_toInt, h', pe_ifFalse_false,
-      (wf_ifFalse wf_bool (wf_ext_datetime_ofBitVec wf_bv typeOf_bv).left typeOf_bool).right]
+    simp [h', pe_ifFalse_false]
     simp only [Int64.ofInt?, Option.dite_none_right_eq_some, Option.some.injEq, Int64.ofIntChecked] at h
     cases h; rename_i h heq
     subst heq
@@ -260,14 +256,14 @@ private theorem pe_datetime_toDate {dt : Ext.Datetime}:
     show Int64.toBitVec 86400000 = 86400000 by rfl ]
   cases h₀ : BitVec.sle 0 dt.val.toBitVec
   case false =>
-    simp only [h₀, pe_ite_false]
+    simp only [pe_ite_false]
     have h₁ : ¬dt.val ≥ 0 := by
-      simp only [ge_iff_le, LE.le, Int64.le, BitVec.ofNat_eq_ofNat, Bool.not_eq_true]
+      simp only [ge_iff_le, LE.le, Int64.le, Bool.not_eq_true]
       exact h₀
     simp only [h₁, ↓reduceIte]
     cases h₂ : Term.prim (TermPrim.bitvec (dt.val.toBitVec.srem 86400000)) == Term.prim (TermPrim.bitvec 0)
     case false =>
-      simp only [pe_ite_false, beq_eq_false_iff_ne, ne_eq, Term.prim.injEq,
+      simp only [beq_eq_false_iff_ne, ne_eq, Term.prim.injEq,
         TermPrim.bitvec.injEq, heq_eq_eq, true_and, Int64.toBitVec] at h₂
       simp only [BitVec.ofInt_ofNat, BitVec.ofInt_toInt]
       simp only [Int64.toBitVec, BEq.beq, decide_eq_true_eq, OfNat.ofNat, Int64.ofNat]
@@ -285,8 +281,8 @@ private theorem pe_datetime_toDate {dt : Ext.Datetime}:
         replace ⟨h₄, h₅⟩ := h₄
         simp only [@BitVec.smtSDiv_eq_sdiv _ _ 86400000#64 (by simp only [BitVec.ofNat_eq_ofNat, ne_eq, BitVec.reduceEq, not_false_eq_true])] at *
         simp only [h₃, Int64.ofInt?, h₄, h₅]
-        simp only [and_self, ↓reduceDIte, BitVec.toInt_sub,
-          BitVec.reduceToInt, Nat.reducePow, Option.pure_def, Option.bind_some_fun, Term.some.injEq,
+        simp only [and_self, ↓reduceDIte,
+          BitVec.reduceToInt, Option.pure_def, Option.bind_some_fun, Term.some.injEq,
           Term.prim.injEq, TermPrim.ext.injEq, Ext.datetime.injEq, Ext.Datetime.mk.injEq]
         simp only [Int64.ofIntChecked, Int64.ofInt]
         apply congr_arg ; apply congr_arg
@@ -310,7 +306,7 @@ private theorem pe_datetime_toDate {dt : Ext.Datetime}:
       simp only [UInt64.ofBitVec_ofNat, h₃, UInt64.toInt64, beq_self_eq_true, ↓reduceIte]
   case true =>
     have h₁ : dt.val ≥ 0 := by
-      simp only [ge_iff_le, LE.le, Int64.le, BitVec.ofNat_eq_ofNat, Bool.not_eq_true]
+      simp only [ge_iff_le, LE.le, Int64.le]
       exact h₀
     simp only [h₁, ↓reduceIte, pe_ite_true]; clear h₀ h₁
     simp only [Int64.toInt, Int64.toBitVec]
@@ -320,7 +316,7 @@ private theorem pe_datetime_toDate {dt : Ext.Datetime}:
       simp only [BitVec.toInt, BitVec.ofInt_ofNat, BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod,
         Nat.reduceMul, Nat.reduceLT, ↓reduceIte]
     have h₁ : (BitVec.ofInt 64 86400000) = 86400000#64 := by simp only [BitVec.ofInt_ofNat]
-    simp only [h₀, h₁] ; clear h₀ h₁
+    simp only [h₁] ; clear h₀ h₁
     rw [@BitVec.mul_toInt_sdiv_eq_toInt_mul_sdiv _ 86400000#64 (by simp only [BitVec.reduceToInt, Int.reduceLT])]
     simp only [Ext.Datetime.datetime?, Int64.ofInt?, BitVec.toInt_ge_INT64_MIN, BitVec.toInt_le_INT64_MAX]
     simp only [BitVec.mul_eq, BitVec.toInt_mul, BitVec.reduceToInt, Nat.reducePow, and_self,
@@ -345,7 +341,7 @@ private theorem pe_datetime_toTime {dt : Ext.Datetime}:
   cases h₀ : BitVec.sle 0#64 dt.val.toBitVec
   case false =>
     have h₁ : ¬dt.val ≥ 0 := by
-      simp only [ge_iff_le, LE.le, Int64.le, BitVec.ofNat_eq_ofNat, Bool.not_eq_true]
+      simp only [ge_iff_le, LE.le, Int64.le, Bool.not_eq_true]
       exact h₀
     simp only [pe_ite_false, h₁, ↓reduceIte]; clear h₀ h₁
     have h₁ : UInt64.toInt64 { toBitVec := 0#64 } = 0 := by
@@ -371,7 +367,7 @@ private theorem pe_datetime_toTime {dt : Ext.Datetime}:
       rfl
   case true =>
     have h₁ : dt.val ≥ 0 := by
-      simp only [ge_iff_le, LE.le, Int64.le, BitVec.ofNat_eq_ofNat, Bool.not_eq_true]
+      simp only [ge_iff_le, LE.le, Int64.le]
       exact h₀
     simp only [h₁, ↓reduceIte, pe_ite_true, pe_ext_duration_ofBitVec, Int64.ofInt, BitVec.ofInt_toInt]
 
@@ -381,19 +377,19 @@ private theorem pe_duration_toMilliseconds {dur : Ext.Datetime.Duration} :
 
 private theorem pe_duration_toSeconds {dur : Ext.Datetime.Duration} :
   Duration.toSeconds (.prim (.ext (Ext.duration dur))) = dur.toSeconds
-:= by simp only [Duration.toSeconds, pe_ext_duration_val, pe_bvsdiv] ; rfl
+:= by simp only [Duration.toSeconds] ; rfl
 
 theorem pe_duration_toMinutes {dur : Ext.Datetime.Duration} :
   Duration.toMinutes (.prim (.ext (Ext.duration dur))) = dur.toMinutes
-:= by simp only [Duration.toMinutes, pe_ext_duration_val, pe_bvsdiv] ; rfl
+:= by simp only [Duration.toMinutes] ; rfl
 
 private theorem pe_duration_toHours {dur : Ext.Datetime.Duration} :
   Duration.toHours (.prim (.ext (Ext.duration dur))) = dur.toHours
-:= by simp only [Duration.toHours, pe_ext_duration_val, pe_bvsdiv] ; rfl
+:= by simp only [Duration.toHours] ; rfl
 
 private theorem pe_duration_toDays {dur : Ext.Datetime.Duration} :
   Duration.toDays (.prim (.ext (Ext.duration dur))) = dur.toDays
-:= by simp only [Duration.toDays, pe_ext_duration_val, pe_bvsdiv] ; rfl
+:= by simp only [Duration.toDays] ; rfl
 
 ----- Interpret lemmas for ExtFuns -----
 

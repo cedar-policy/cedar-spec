@@ -32,6 +32,13 @@ private def testParseOk {α} [BEq α] [Repr α] (parser : Parser α) (str : Stri
 private def testParseError {α} [BEq α] [Repr α] (parser : Parser α) (str : String) : TestCase IO :=
   test str ⟨λ _ => checkBEq (parser.run str).isOk false⟩
 
+private def testParseEncodeRoundtrip (str : String) : TestCase IO :=
+  test str ⟨λ _ => do
+    let enc := s!"\"{← Encoder.encodeString str}\""
+    match parseString.run enc with
+    | .ok str' => checkBEq str str'
+    | _ => .error s!"parseString failed on result of encodeString \"{str}\""⟩
+
 def testsParseValidSMTStrings :=
   suite "Decoder.parse* for valid strings"
   [
@@ -48,6 +55,43 @@ def testsParseValidSMTStrings :=
     testParseOk parseNat "123   " 123,
     testParseOk parseString "\"\""  "",
     testParseOk parseString "\"a b c  ¬ \"\"s \""  "a b c  ¬ \"s ",
+    testParseOk parseString "\"\\u{2ffff}\"" s!"{Char.ofNat 0x2ffff}",
+    testParseOk parseString "\"\\u{1234}\"" "\u1234",
+    testParseOk parseString "\"\\u{1F60a}\"" "😊",
+    -- Invalid unicode escape sequences with braces
+    testParseOk parseString "\"\\u{1F60a\"" "\\u{1F60a",
+    testParseOk parseString "\"\\u\"" "\\u",
+    testParseOk parseString "\"\\u{\"" "\\u{",
+    testParseOk parseString "\"\\u{1\"" "\\u{1",
+    testParseOk parseString "\"\\u{1d\"" "\\u{1d",
+    testParseOk parseString "\"\\u{1dc\"" "\\u{1dc",
+    testParseOk parseString "\"\\u{1dce\"" "\\u{1dce",
+    testParseOk parseString "\"\\u{1dcx}\"" "\\u{1dcx}",
+    testParseOk parseString "\"\\u{1dcef\"" "\\u{1dcef",
+    testParseOk parseString "\"\\u\"\"\"" "\\u\"",
+    testParseOk parseString "\"\\u{32344}\"" "\\u{32344}",
+    testParseOk parseString "\"\\u{30000}\"" "\\u{30000}",
+    -- Invalid unicode escape sequences without braces
+    testParseOk parseString "\"\\u123\"" "\\u123",
+    testParseOk parseString "\"\\u12\"" "\\u12",
+    testParseOk parseString "\"\\u**\"" "\\u**",
+    testParseOk parseString "\"\\u****\"" "\\u****",
+    testParseOk parseString "\"\\u0\"" "\\u0",
+    -- Other invalid escape sequences
+    testParseOk parseString "\"\\x\"" "\\x",
+    testParseOk parseString "\"\\n\"" "\\n",
+    testParseOk parseString "\"\\t\\n\\u\"" "\\t\\n\\u",
+    -- Valid escape sequences
+    testParseOk parseString "\"\\u{1dcef}\"" s!"{Char.ofNat 0x1dcef}",
+    testParseOk parseString "\"\\u{1DcEf}\"" s!"{Char.ofNat 0x1dcef}",
+    testParseOk parseString "\"\\u{1dce}\"" "\u1dce",
+    testParseOk parseString "\"\\\\u{1dce}\"" "\\\u1dce",
+    testParseOk parseString "\"\\u1234\"" "\u1234",
+    testParseOk parseString "\"\\uffff\"" "\uffff",
+    testParseOk parseString "\"\\u{0}\"" "\u0000",
+    testParseOk parseString "\"\\u{01}\"" "\u0001",
+    testParseOk parseString "\"\\u{a01}\"" "\u0a01",
+    testParseOk parseString "\"\\u{a01b}\"" "\ua01b",
     testParseOk parseBinary "#b0" [false],
     testParseOk parseBinary "#b1011" [true, false, true, true],
     testParseOk SExpr.parse "true" (.symbol "true"),
@@ -81,6 +125,47 @@ def testsParseInvalidSMTStrings :=
     testParseError SExpr.parse ")",
     testParseError SExpr.parse "(1",
     testParseError SExpr.parse "(foo bar",
+  ]
+
+def testsDecodeEncodeStringInverse :=
+  suite "Decoder.parseString ∘ Encoder.encodeString = id"
+  [
+    testParseEncodeRoundtrip "",
+    testParseEncodeRoundtrip "hello",
+    testParseEncodeRoundtrip "\"hello\"",
+    testParseEncodeRoundtrip "\\u",
+    testParseEncodeRoundtrip "\\u{",
+    testParseEncodeRoundtrip "\\u{1",
+    testParseEncodeRoundtrip "\\u{1d",
+    testParseEncodeRoundtrip "\\u{1dc",
+    testParseEncodeRoundtrip "\\u{1dce",
+    testParseEncodeRoundtrip "\\u{1dcx}",
+    testParseEncodeRoundtrip "\\u{1dcef",
+    testParseEncodeRoundtrip "\\u\"\"",
+    testParseEncodeRoundtrip "\\u{32344}",
+    testParseEncodeRoundtrip "\\u123",
+    testParseEncodeRoundtrip "\\u12",
+    testParseEncodeRoundtrip "\\u**",
+    testParseEncodeRoundtrip "\\u0",
+    testParseEncodeRoundtrip "\\x",
+    testParseEncodeRoundtrip "\\n",
+    testParseEncodeRoundtrip "\\t\\n\\u",
+    testParseEncodeRoundtrip "\\u{1dcef}",
+    testParseEncodeRoundtrip "\\u{1DcEf}",
+    testParseEncodeRoundtrip "\\u{1dce}",
+    testParseEncodeRoundtrip "\\\\u{1dce}",
+    testParseEncodeRoundtrip "\\u1234",
+    testParseEncodeRoundtrip "\\uffff",
+    testParseEncodeRoundtrip "\\u{0}",
+    testParseEncodeRoundtrip "\\u{01}",
+    testParseEncodeRoundtrip "\\u{a01}",
+    testParseEncodeRoundtrip "\\u{a01b}",
+    testParseEncodeRoundtrip s!"{Char.ofNat 0x1dcef}",
+    testParseEncodeRoundtrip "\u1dce",
+    testParseEncodeRoundtrip "\uffff",
+    testParseEncodeRoundtrip "\u0000",
+    testParseEncodeRoundtrip "\ua01b",
+    testParseEncodeRoundtrip s!"abc{Char.ofNat 0x2ffff}d",
   ]
 
 private def colorType : EntityType := ⟨"Color", []⟩
@@ -216,6 +301,7 @@ def testsDecodeValidLitStrings :=
     testDecodeLitOk "(V6 #b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 ((as some (Option (_ BitVec 7))) #b0000001))" (.ext (.ipaddr (.V6 ⟨0#128, 1#7⟩))),
     testDecodeLitOk "(E1 \"Alice\")" (.entity ⟨userType, "Alice"⟩),
     testDecodeLitOk "(R3)" (.record Map.empty),
+    testDecodeLitOk "R3" (.record Map.empty),
     testDecodeLitOk "(R4 (as none (Option Bool)) #b0000000000000000000000000000000000000000000000000000000000001010 E0_m2)"
       (.record (Map.make [("a", .none .bool), ("b", 10#64), ("c", .entity ⟨colorType, "red"⟩)])),
     testDecodeLitOk "(R6 (R5 true))" (.record (Map.make [("d", .record (Map.make [("e", .bool true)]))])),
@@ -369,6 +455,7 @@ def tests := [
   testsParseInvalidSMTStrings,
   testsDecodeValidTypeStrings,
   testsDecodeInvalidTypeStrings,
+  testsDecodeEncodeStringInverse,
   testsDecodeValidLitStrings,
   testsDecodeInvalidLitStrings,
   testsDecodeValidFunctionTableStrings,

@@ -457,7 +457,7 @@ private theorem swf_implies_transitivity_areAncestorsOfType
   case some f₁₃ =>
     have ⟨ts₁, heq₁, hlit₁, hmem₁⟩ := same_entities_ancestors_some_of_type heq hv₁ hanc₁
     simp only [heq₁, pe_set_subset hlit₂ hlit₁, Term.prim.injEq, TermPrim.bool.injEq]
-    have hsub : ts₂ ⊆ ts₁ ↔ ts₂.subset ts₁ = true := by simp only [Subset, imp_self]
+    have hsub : ts₂ ⊆ ts₁ ↔ ts₂.subset ts₁ = true := by simp only [Subset]
     simp only [← hsub, Set.subset_def]
     intro t₃ hin₃
     replace ⟨hwt₃, hty₃⟩ := wfl_ancestors_implies_wfl_term_entity hwε hwt₂ hanc₂ heq₂ hlit₂ hin₃

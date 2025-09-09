@@ -18,9 +18,9 @@ import Lake
 open Lake DSL
 
 meta if get_config? env = some "dev" then -- dev is so not everyone has to build it
-require "leanprover" / "doc-gen4" @ git "v4.21.0"
+require "leanprover" / "doc-gen4" @ git "v4.22.0"
 
-require "leanprover-community" / "batteries" @ git "v4.21.0"
+require "leanprover-community" / "batteries" @ git "v4.22.0"
 
 package Cedar
 
@@ -51,9 +51,6 @@ lean_lib CedarProto where
   defaultFacets := #[LeanLib.staticFacet]
 
 lean_lib CedarFFI where
-  defaultFacets := #[LeanLib.staticFacet]
-
-lean_lib SymFFI where
   defaultFacets := #[LeanLib.staticFacet]
 
 lean_exe CedarUnitTests where

@@ -220,10 +220,12 @@ theorem lifted_type_is_super_type {ty₁ ty₂ : CedarType} :
         generalize h : lubRecordType m₁ m₂ = res
         cases res
         case none =>
-          simp [h] at heq₁
+          simp only [h, Option.bind_none, reduceCtorEq] at heq₁
         case some =>
-          simp [h] at heq₁
-          simp [h, hᵢ₁, heq₁]
+          simp only [h, Option.bind_some, Option.some.injEq, CedarType.record.injEq,
+            Data.Map.mk.injEq] at heq₁
+          simp only [heq₁, Option.bind_some, CedarType.record.injEq, Data.Map.mk.injEq,
+            List.cons.injEq, Prod.mk.injEq, Qualified.optional.injEq, true_and, and_true, hᵢ₁]
       case _ => cases hᵢ₂
     case _ => cases hᵢ₁
   case record_fst_required hᵢ₁ hᵢ₂ =>
@@ -240,10 +242,12 @@ theorem lifted_type_is_super_type {ty₁ ty₂ : CedarType} :
         generalize h : lubRecordType m₁ m₂ = res
         cases res
         case none =>
-          simp [h] at heq₁
+          simp only [h, Option.bind_none, reduceCtorEq] at heq₁
         case some =>
-          simp [h] at heq₁
-          simp [h, hᵢ₁, heq₁]
+          simp only [h, Option.bind_some, Option.some.injEq, CedarType.record.injEq,
+            Data.Map.mk.injEq] at heq₁
+          simp only [heq₁, Option.bind_some, CedarType.record.injEq, Data.Map.mk.injEq,
+            List.cons.injEq, Prod.mk.injEq, Qualified.required.injEq, true_and, and_true, hᵢ₁]
       case _ => cases hᵢ₂
     case _ => cases hᵢ₁
 mutual

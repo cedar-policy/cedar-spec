@@ -85,7 +85,7 @@ def filter {α β} (f : α → β → Bool) (m : Map α β) : Map α β :=
 def size {α β} (m : Map α β) : Nat :=
   m.kvs.length
 
-def mapOnValues {α β γ} [LT α] [DecidableLT α] (f : β → γ) (m : Map α β) : Map α γ :=
+def mapOnValues {α β γ} (f : β → γ) (m : Map α β) : Map α γ :=
   Map.mk (m.kvs.map (λ (k, v) => (k, f v)))
 
 def mapOnKeys {α β γ} [LT γ] [DecidableLT γ] (f : α → γ) (m : Map α β) : Map γ β :=
@@ -113,6 +113,9 @@ instance decLt [LT (Prod α β)] [DecidableEq (Prod α β)] [DecidableLT (Prod �
 -- enables ∈ notation for map keys
 instance : Membership α (Map α β) where
   mem m a := List.Mem a (m.kvs.map Prod.fst)
+
+instance [LT α] [DecidableLT α] : HAppend (Map α β) (Map α β) (Map α β) where
+  hAppend a b := Map.make (a.kvs ++ b.kvs)
 
 end Map
 

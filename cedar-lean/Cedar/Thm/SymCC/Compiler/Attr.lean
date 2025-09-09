@@ -133,7 +133,7 @@ private theorem compile_evaluate_attrsOrEmpty
   have hwa := wf_app hwo.left hwφ.right.left hwφ.left
   rw [eq_comm] at hrty
   have ⟨rt, hlit'⟩ := wfl_of_type_record_is_record (And.intro hwa.left hlit) hrty
-  simp only [hlit', true_and] at *
+  simp only [hlit'] at *
   simp only [SameValues] at heq
   exists rt
   simp only [hrty, heq, and_true, true_and]
@@ -155,7 +155,7 @@ private theorem compile_evaluate_hasAttr_entity
   (ih : (Except.ok v₁ : Spec.Result Value) ∼ t₁) :
   (hasAttr v₁ a es : Spec.Result Value) ∼ ifSome t₁ t₂
 := by
-  simp only [RecordHasAttr, hwo.right, TermType.record.injEq] at ha
+  simp only [RecordHasAttr] at ha
   replace ⟨hrty, ha⟩ := ha
   rw [eq_comm] at hrty
   have ht₁ := same_ok_value_implies_lit ih
@@ -362,7 +362,7 @@ theorem compile_interpret_hasAttr {x₁ : Expr} {a : Attr} {εnv : SymEnv} {I : 
   simp only [compile, ih, Except.bind_ok]
   simp_do_let (compileHasAttr (option.get (Term.interpret I t₂)) a (SymEnv.interpret I εnv).entities) <;>
   rename_i heq <;>
-  simp only [SymEnv.interpret, Except.ok.injEq] at heq
+  simp only [SymEnv.interpret] at heq
   case error =>
     have ⟨hwo₁, hwo₂, hty'⟩ := interpret_option_get_aux hI hwφ₁ hty₁
     have ⟨_, hok'⟩ := compileHasAttr_ok_typeOf hwε' hwo₁ hwo₂ hty' hi
@@ -408,12 +408,12 @@ private theorem compile_evaluate_getAttr_record_aux
       simp only [hf, ne_eq, not_false_eq_true, reduceCtorEq]
     case inr =>
       replace ⟨_, hf, hf'⟩ := record_value?_find?_optional_some (wf_term_record_implies_wf_map hwo.left) hf ih
-      simp only [hf, ne_eq, hf']
+      simp only [hf, hf']
   case h_2 aty hnopt =>
     replace ⟨tₐ, hf, hf'⟩ := typeOf_term_record_attr_value hwo.right hf
     subst hf'
     replace ⟨vₐ, hf', hf''⟩ := record_value?_find?_required (wf_term_record_implies_wf_map hwo.left) hnopt hf ih
-    simp only [Same.same, SameResults, Map.findOrErr, hf', pe_record_get hf, SameValues, ne_eq, hf'']
+    simp only [Same.same, SameResults, Map.findOrErr, hf', pe_record_get hf, SameValues, hf'']
 
 private theorem compile_evaluate_getAttr_record
   {a : Attr} {v₁ : Value} {es : Entities}
@@ -470,7 +470,7 @@ private theorem compile_evaluate_getAttr_entity
   (ih : (Except.ok v₁ : Spec.Result Value) ∼ t₁) :
   (getAttr v₁ a es : Spec.Result Value) ∼ ifSome t₁ t₂
 := by
-  simp only [RecordGetAttr, hwo.right, TermType.record.injEq] at ha
+  simp only [RecordGetAttr] at ha
   replace ⟨hrty, ha⟩ := ha
   rw [eq_comm] at hrty
   have ht₁ := same_ok_value_implies_lit ih
@@ -681,7 +681,7 @@ theorem compile_interpret_getAttr {x₁ : Expr} {a : Attr} {εnv : SymEnv} {I : 
   simp only [compile, ih, Except.bind_ok]
   simp_do_let (compileGetAttr (option.get (Term.interpret I t₂)) a (SymEnv.interpret I εnv).entities) <;>
   rename_i heq <;>
-  simp only [SymEnv.interpret, Except.ok.injEq] at heq
+  simp only [SymEnv.interpret] at heq
   case error =>
     have ⟨hwo₁, hwo₂, hty'⟩ := interpret_option_get_aux hI hwφ₁ hty₁
     have ⟨_, hok'⟩ := compileGetAttr_ok_typeOf hwε' hwo₁ hwo₂ hty' hi

@@ -109,7 +109,7 @@ theorem wfl_of_type_bool_is_bool {εs : SymEntities} {t : Term} :
       split at h₂ <;>
       rename_i heq <;>
       simp only [TermPrim.ext.injEq, reduceCtorEq] at heq <;>
-      simp only [TermType.ext, TermType.prim.injEq, reduceCtorEq] at h₂
+      simp only [TermType.prim.injEq, reduceCtorEq] at h₂
   case record r =>
     have ⟨_, h₄⟩ := @typeOf_term_record_is_record_type r
     simp only [h₂, reduceCtorEq] at h₄
@@ -226,7 +226,7 @@ theorem wfl_of_type_string_is_string {εs : SymEntities} {t : Term} :
       split at h₂ <;>
       rename_i heq <;>
       simp only [TermPrim.ext.injEq, reduceCtorEq] at heq <;>
-      simp only [TermType.ext, TermType.prim.injEq, reduceCtorEq] at h₂
+      simp only [TermType.prim.injEq, reduceCtorEq] at h₂
   case record r =>
     have ⟨_, h₄⟩ := @typeOf_term_record_is_record_type r
     simp only [h₂, reduceCtorEq] at h₄
@@ -255,7 +255,7 @@ theorem wfl_of_type_entity_is_entity {εs : SymEntities} {t : Term} {ety : Entit
       split at h₂ <;>
       rename_i heq <;>
       simp only [TermPrim.ext.injEq, reduceCtorEq] at heq <;>
-      simp only [TermType.ext, TermType.prim.injEq, reduceCtorEq] at h₂
+      simp only [TermType.prim.injEq, reduceCtorEq] at h₂
   case record r =>
     have ⟨_, h₄⟩ := @typeOf_term_record_is_record_type r
     simp only [h₂, reduceCtorEq] at h₄
@@ -275,11 +275,11 @@ theorem wfl_of_type_set_is_set {εs : SymEntities} {t : Term} {ty : TermType} :
     simp only [
       Term.typeOf, TermPrim.typeOf, TermType.bool,
       TermType.bitvec, TermType.string, TermType.entity,
-      TermType.ext, TermType.prim.injEq, reduceCtorEq] at h₂
+      TermType.ext, reduceCtorEq] at h₂
     case ext x =>
       cases x <;>
       rename_i x <;>
-      simp only [TermType.ext, TermType.prim.injEq, reduceCtorEq] at h₂
+      simp only [reduceCtorEq] at h₂
   case set s _ =>
     simp [Term.typeOf] at h₂
     subst h₂

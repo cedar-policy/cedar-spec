@@ -108,7 +108,7 @@ def denies (r₁ : Response) : Bool :=
 theorem isAuthorized_empty_denies (env : Env) :
   (Spec.isAuthorized env.request env.entities []).decision = .deny
 := by
-  simp [Spec.isAuthorized, Spec.satisfiedPolicies, denies]
+  simp [Spec.isAuthorized, Spec.satisfiedPolicies]
 
 theorem denies_eq_implies_false (r₁ : Response) (env : Env) :
   denies r₁ = ifFirstAllowsSoDoesSecond r₁ (Spec.isAuthorized env.request env.entities [])
@@ -176,7 +176,7 @@ private theorem allowAll_validRefs (f : EntityUID → Prop) :
   Expr.ValidRefs f verifyAlwaysAllows.allowAll.toExpr
 := by
   simp only [Policy.toExpr, PrincipalScope.toExpr, Scope.toExpr, verifyAlwaysAllows.allowAll,
-    ActionScope.toExpr, ResourceScope.toExpr, Conditions.toExpr, List.foldr_nil]
+    ActionScope.toExpr, ResourceScope.toExpr, Conditions.toExpr]
   have ht : Prim.ValidRef f (Prim.bool true) := by simp only [Prim.ValidRef]
   apply Expr.ValidRefs.and_valid
   exact Expr.ValidRefs.lit_valid ht
@@ -199,6 +199,6 @@ theorem swf_env_for_allowAll_policies {env : Env} :
   simp only [Env.StronglyWellFormedForPolicies, Env.StronglyWellFormedForAll, List.map_cons,
     List.map_nil, List.mem_cons, List.not_mem_nil, or_false, forall_eq]
   intro h
-  simp [h, SymEntities.ValidRefsFor, allowAll_validRefs]
+  simp [h, allowAll_validRefs]
 
 end Cedar.Thm

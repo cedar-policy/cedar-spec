@@ -357,7 +357,7 @@ open BEq LawfulBEq in
 theorem mem_inter_iff {α} [DecidableEq α] {x : α} {s₁ s₂ : Set α} :
   x ∈ s₁ ∩ s₂ ↔ x ∈ s₁ ∧ x ∈ s₂
 := by
-  simp only [Membership.mem, intersect]
+  simp only [Membership.mem]
   have h := @List.mem_inter_iff α _ _ x (elts s₁) (elts s₂)
   simp only [Membership.mem, Inter.inter] at h
   exact h
@@ -557,7 +557,7 @@ theorem elts_subset_then_subset [LT α] [DecidableLT α] [StrictLT α] [Decidabl
 theorem subset_def [DecidableEq α] {s₁ s₂ : Set α} :
   s₁ ⊆ s₂ ↔ ∀ a, a ∈ s₁ → a ∈ s₂
 := by
-  simp only [Subset, List.Subset, subset, List.all_eq_true]
+  simp only [Subset, subset, List.all_eq_true]
   constructor <;> intro h₁ a h₂ <;> specialize h₁ a
   case mp =>
     rw [in_list_iff_in_set] at h₁

@@ -40,7 +40,7 @@ private theorem compileApp₁_implies_apply₁ {op₁ : UnaryOp} {v₁ : Value} 
     have ⟨_, h⟩ := wfl_of_type_bool_is_bool hwfl hr.left
     subst h
     replace ih := same_bool_term_implies ih
-    simp only [Same.same, SameResults, ih, hr.right, pe_not_lit, ne_eq]
+    simp only [Same.same, SameResults, ih, hr.right, pe_not_lit]
     exact same_implies_same_value same_bool
   case neg =>
     have ⟨bv, h⟩ := wfl_of_type_bitvec_is_bitvec hwfl hr.left
@@ -60,14 +60,14 @@ private theorem compileApp₁_implies_apply₁ {op₁ : UnaryOp} {v₁ : Value} 
     have ⟨_, h⟩ := wfl_of_type_string_is_string hwfl hr.left
     subst h
     replace ih := same_string_term_implies ih
-    simp only [Same.same, SameResults, ih, hr.right, string.like, ne_eq]
+    simp only [Same.same, SameResults, ih, hr.right, string.like]
     exact same_implies_same_value same_bool
   case is =>
     replace ⟨_, hr⟩ := hr
     have ⟨_, huid, hty⟩ := wfl_of_type_entity_is_entity hwfl hr.left
     subst huid hty
     replace ih := same_entity_term_implies ih
-    simp only [Same.same, SameResults, ih, hr.right, ne_eq]
+    simp only [Same.same, SameResults, ih, hr.right]
     exact same_implies_same_value same_bool
   case isEmpty =>
     replace ⟨⟨_, hty⟩, hr⟩ := hr
@@ -138,7 +138,7 @@ theorem interpret_compileApp₁ {op₁ : UnaryOp} {t t₁: Term} {εs : SymEntit
   case neg =>
     have hwt₁ := wf_bvnego hwt hok.left
     have hwt₂ := wf_bvneg hwt hok.left
-    simp only [hok, someOf,
+    simp only [hok,
       interpret_ifFalse hI hwt₁.left hwt₁.right hwt₂.left,
       interpret_bvnego hI hwt hok.left,
       interpret_bvneg hI hwt hok.left]

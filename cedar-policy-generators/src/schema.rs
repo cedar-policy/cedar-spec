@@ -15,7 +15,8 @@
  */
 
 use crate::abac::{
-    ABACPolicy, ABACRequest, AvailableExtensionFunctions, ConstantPool, Type, UnknownPool,
+    ABACPolicy, ABACRequest, AvailableExtensionFunctions, ConstantPool, QualifiedType, Type,
+    UnknownPool,
 };
 use crate::collections::{HashMap, HashSet};
 use crate::err::{while_doing, Error, Result};
@@ -27,7 +28,7 @@ use crate::settings::ABACSettings;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
 use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
-use cedar_policy_core::ast::{self, Effect, PolicyID, UnreservedId};
+use cedar_policy_core::ast::{self, Effect, EntityType, PolicyID, UnreservedId};
 use cedar_policy_core::est;
 use cedar_policy_core::extensions::Extensions;
 use cedar_policy_core::validator::json_schema::{
@@ -282,17 +283,6 @@ pub fn entity_type_name_to_schema_type_variant<N: From<ast::Name>>(
     }
 }
 
-/// Convert an [`ast::EntityType`] into the corresponding [`json_schema::Type`]
-/// for an entity reference with that entity type.
-pub fn entity_type_name_to_schema_type<N: From<ast::Name>>(
-    name: &ast::EntityType,
-) -> json_schema::Type<N> {
-    json_schema::Type::Type {
-        ty: entity_type_name_to_schema_type_variant(name),
-        loc: name.loc().cloned(),
-    }
-}
-
 /// size hint for arbitrary_schematype_with_bounded_depth
 fn arbitrary_schematype_size_hint(depth: usize) -> (usize, Option<usize>) {
     // assume it's similar to the unbounded-depth version
@@ -324,31 +314,47 @@ pub fn lookup_common_type<'a>(
     schema.common_types.get(&base_type_name).map(|ty| &ty.ty)
 }
 
-/// internal helper function, convert a [`json_schema::Type`] to a [`Type`]
+/// Helper function, convert a [`json_schema::Type`] to a [`Type`]
 /// (loses some information)
-fn schematype_to_type(
+pub fn schematype_to_type(
     schema: &json_schema::NamespaceDefinition<ast::InternalName>,
     schematy: &json_schema::Type<ast::InternalName>,
+    namespace: Option<&ast::Name>,
 ) -> Type {
     match schematy {
         json_schema::Type::CommonTypeRef { type_name, .. } => schematype_to_type(
             schema,
             lookup_common_type(schema, type_name)
                 .unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")),
+            namespace,
         ),
         json_schema::Type::Type { ty, .. } => match ty {
             json_schema::TypeVariant::Boolean => Type::bool(),
             json_schema::TypeVariant::Long => Type::long(),
             json_schema::TypeVariant::String => Type::string(),
             json_schema::TypeVariant::Set { element } => {
-                Type::set_of(schematype_to_type(schema, element))
+                Type::set_of(schematype_to_type(schema, element, namespace))
             }
-            json_schema::TypeVariant::Record { .. } => Type::record(),
-            json_schema::TypeVariant::Entity { .. } => Type::entity(),
+            json_schema::TypeVariant::Record(m) => {
+                Type::record(m.attributes.iter().map(|(a, t)| {
+                    (
+                        a.clone(),
+                        QualifiedType {
+                            ty: Box::new(schematype_to_type(schema, &t.ty, namespace)),
+                            required: t.required,
+                        },
+                    )
+                }))
+            }
+            json_schema::TypeVariant::Entity { name } => Type::entity(EntityType::EntityType(
+                name.qualify_with_name(namespace).try_into().unwrap(),
+            )),
             json_schema::TypeVariant::EntityOrCommon { type_name } => {
                 match lookup_common_type(schema, type_name) {
-                    Some(ty) => schematype_to_type(schema, ty),
-                    None => Type::entity(),
+                    Some(ty) => schematype_to_type(schema, ty, namespace),
+                    None => Type::entity(EntityType::EntityType(
+                        type_name.qualify_with_name(namespace).try_into().unwrap(),
+                    )),
                 }
             }
             json_schema::TypeVariant::Extension { name } => match name.as_ref() {
@@ -467,7 +473,7 @@ fn build_attributes_by_type<'a>(
         .flat_map(|(tyname, attributes)| {
             attributes.attrs.iter().map(move |(attr_name, ty)| {
                 (
-                    schematype_to_type(schema, &ty.ty),
+                    schematype_to_type(schema, &ty.ty, namespace),
                     (tyname.clone(), attr_name.clone()),
                 )
             })
@@ -948,11 +954,6 @@ impl Schema {
         }
     }
 
-    // An upper bound on the number of request environment a schema can produce
-    // See https://github.com/cedar-policy/cedar-spec/issues/610 for the
-    // motivation why we want this limit
-    pub(crate) const PER_ACTION_REQUEST_ENV_LIMIT: usize = 128;
-
     /// Get an arbitrary `Schema`.
     pub fn arbitrary(settings: ABACSettings, u: &mut Unstructured<'_>) -> Result<Schema> {
         let namespace = arbitrary_namespace(u)?;
@@ -1067,7 +1068,7 @@ impl Schema {
             // Pre-select the number of entity types (minimum 1), then randomly select that many indices
             let num = u
                 .int_in_range(
-                    1..=std::cmp::min(entity_types.len(), Self::PER_ACTION_REQUEST_ENV_LIMIT),
+                    1..=std::cmp::min(entity_types.len(), settings.per_action_request_env_limit),
                 )
                 .unwrap();
             let mut indices: Vec<usize> = (0..entity_types.len()).collect();
@@ -1091,6 +1092,7 @@ impl Schema {
             )
         };
         let mut principal_and_resource_types_exist = false;
+        let mut total_req_env_num = 0;
         // Ensure on the first pass we always generate a principal/resource
         // After that, flip a coin to optional delete the principal/resource type lists
         let mut actions: Vec<(SmolStr, json_schema::ActionType<ast::InternalName>)> = action_names
@@ -1118,8 +1120,18 @@ impl Schema {
                                 picked_principal_types.len() * picked_resource_types.len();
                             // Fail fast if the number of request environment
                             // number is too large
-                            if req_env_num > Self::PER_ACTION_REQUEST_ENV_LIMIT {
-                                return Err(Error::TooManyReqEnvs(req_env_num));
+                            if req_env_num > settings.per_action_request_env_limit {
+                                return Err(Error::TooManyReqEnvsPerAction(
+                                    req_env_num,
+                                    settings.per_action_request_env_limit,
+                                ));
+                            }
+                            total_req_env_num += req_env_num;
+                            if total_req_env_num > settings.total_action_request_env_limit {
+                                return Err(Error::TooManyReqEnvs(
+                                    total_req_env_num,
+                                    settings.total_action_request_env_limit,
+                                ));
                             }
                             Some(json_schema::ApplySpec {
                                 resource_types: picked_resource_types,
@@ -1282,54 +1294,11 @@ impl Schema {
             .arbitrary_uid_with_type(&ty, u)
     }
 
-    /// internal helper function, try to convert [`Type`] into [`json_schema::Type`]
-    pub fn try_into_schematype<N: From<ast::Name>>(
-        &self,
-        ty: &Type,
-        u: &mut Unstructured<'_>,
-    ) -> Result<Option<json_schema::Type<N>>> {
-        Ok(match ty {
-            Type::Bool => Some(json_schema::TypeVariant::Boolean),
-            Type::Long => Some(json_schema::TypeVariant::Long),
-            Type::String => Some(json_schema::TypeVariant::String),
-            Type::Set(None) => None, // json_schema::Type doesn't support any-set
-            Type::Set(Some(el_ty)) => {
-                self.try_into_schematype(el_ty, u)?
-                    .map(|schematy| json_schema::TypeVariant::Set {
-                        element: Box::new(schematy),
-                    })
-            }
-            Type::Record => Some(json_schema::TypeVariant::Record(json_schema::RecordType {
-                attributes: BTreeMap::new(),
-                additional_attributes: true,
-            })),
-            Type::Entity => {
-                let entity_type = self.exprgenerator(None).generate_uid(u)?.components().0;
-                Some(entity_type_name_to_schema_type_variant(&entity_type))
-            }
-            Type::IPAddr => Some(json_schema::TypeVariant::Extension {
-                name: "ipaddr".parse().unwrap(),
-            }),
-            Type::Decimal => Some(json_schema::TypeVariant::Extension {
-                name: "decimal".parse().unwrap(),
-            }),
-            Type::DateTime => Some(json_schema::TypeVariant::Extension {
-                name: "datetime".parse().unwrap(),
-            }),
-            Type::Duration => Some(json_schema::TypeVariant::Extension {
-                name: "duration".parse().unwrap(),
-            }),
-        }
-        .map(|ty| json_schema::Type::Type { ty, loc: None }))
-    }
-
     /// get an attribute name and its `json_schema::Type`, from the schema
-    pub fn arbitrary_attr(
-        &self,
-        u: &mut Unstructured<'_>,
-    ) -> Result<&(SmolStr, json_schema::Type<ast::InternalName>)> {
+    pub fn arbitrary_attr(&self, u: &mut Unstructured<'_>) -> Result<SmolStr> {
         u.choose(&self.attributes)
             .map_err(|e| while_doing("getting arbitrary attr from schema".into(), e))
+            .map(|t| t.0.clone())
     }
 
     /// Given a type, get an entity type name and attribute name, such that
@@ -1353,43 +1322,6 @@ impl Schema {
         }
     }
 
-    /// Given a [`json_schema::Type`], get an entity type name and attribute
-    /// name, such that entities with that typename have a (possibly optional)
-    /// attribute with the given [`json_schema::Type`]
-    pub fn arbitrary_attr_for_schematype(
-        &self,
-        target_type: impl Into<json_schema::Type<ast::InternalName>>,
-        u: &mut Unstructured<'_>,
-    ) -> Result<(ast::EntityType, SmolStr)> {
-        let target_type: json_schema::Type<ast::InternalName> = target_type.into();
-        let pairs: Vec<(ast::EntityType, SmolStr)> = self
-            .schema
-            .entity_types
-            .iter()
-            .filter_map(|(name, et)| match &et.kind {
-                EntityTypeKind::Enum { .. } => None,
-                EntityTypeKind::Standard(StandardEntityType { shape, .. }) => Some((
-                    ast::EntityType::from(ast::Name::from(name.clone()))
-                        .qualify_with(self.namespace()),
-                    attrs_from_attrs_or_context(&self.schema, shape),
-                )),
-            })
-            .flat_map(|(tyname, attributes)| {
-                attributes
-                    .attrs
-                    .iter()
-                    .filter(|(_, ty)| ty.ty == target_type)
-                    .map(move |(attr_name, _)| (tyname.clone(), attr_name.clone()))
-            })
-            .collect();
-        u.choose(&pairs).cloned().map_err(|e| {
-            while_doing(
-                format!("getting arbitrary attr for schematype {target_type:?}"),
-                e,
-            )
-        })
-    }
-
     /// Given a type, get an entity type name that has tags of that type, if
     /// that exists.
     pub fn arbitrary_entity_type_with_tag_type(
@@ -1410,49 +1342,7 @@ impl Schema {
                     ..
                 } = et
                 {
-                    if &schematype_to_type(&self.schema, tag_ty) == target_type {
-                        Some(
-                            ast::EntityType::from(ast::Name::from(name.clone()))
-                                .qualify_with(self.namespace()),
-                        )
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            })
-            .collect();
-        u.choose(&candidates).cloned().map_err(|e| {
-            while_doing(
-                format!("getting entity type with tag schematype {target_type:?}"),
-                e,
-            )
-        })
-    }
-
-    /// Given a [`json_schema::Type`], get an entity type name that has tags of
-    /// that type, if that exists.
-    pub fn arbitrary_entity_type_with_tag_schematype(
-        &self,
-        target_type: impl Into<json_schema::Type<ast::InternalName>>,
-        u: &mut Unstructured<'_>,
-    ) -> Result<ast::EntityType> {
-        let target_type: json_schema::Type<ast::InternalName> = target_type.into();
-        let candidates: Vec<ast::EntityType> = self
-            .schema
-            .entity_types
-            .iter()
-            .filter_map(|(name, et)| {
-                if let json_schema::EntityType {
-                    kind:
-                        EntityTypeKind::Standard(StandardEntityType {
-                            tags: Some(tag_ty), ..
-                        }),
-                    ..
-                } = et
-                {
-                    if tag_ty == &target_type {
+                    if &schematype_to_type(&self.schema, tag_ty, self.namespace()) == target_type {
                         Some(
                             ast::EntityType::from(ast::Name::from(name.clone()))
                                 .qualify_with(self.namespace()),
@@ -1707,8 +1597,12 @@ impl Schema {
                         Ok((
                             attr_name.parse().expect("failed to parse attribute name"),
                             exprgenerator
-                                .generate_attr_value_for_schematype(
-                                    &attr_type.ty,
+                                .generate_attr_value_for_type(
+                                    &schematype_to_type(
+                                        &self.schema,
+                                        &attr_type.ty,
+                                        self.namespace(),
+                                    ),
                                     self.settings.max_depth,
                                     u,
                                 )?
@@ -2015,6 +1909,8 @@ mod tests {
         enable_arbitrary_func_call: false,
         enable_unknowns: false,
         enable_action_in_constraints: true,
+        per_action_request_env_limit: ABACSettings::default_per_action_request_env_limit(),
+        total_action_request_env_limit: ABACSettings::default_total_action_request_env_limit(),
     };
 
     const GITHUB_SCHEMA_STR: &str = r#"

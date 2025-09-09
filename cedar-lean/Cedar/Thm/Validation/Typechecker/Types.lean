@@ -346,7 +346,7 @@ theorem well_typed_entity_attributes
     exact h₁
   | inr h₁ =>
     have ⟨h₁, _, _, ⟨_, hentry⟩⟩ := h₁
-    simp only [EntitySchema.attrs?, Option.map, h₁] at h₃
+    simp only [EntitySchema.attrs?, Option.map] at h₃
     split at h₃
     · apply False.elim
       apply wf_env_disjoint_ets_acts
@@ -394,7 +394,6 @@ theorem entity_type_is_inhabited {env : TypeEnv} {ety : EntityType}
           EntitySchema.isValidEntityUID,
           hentry,
           EntitySchemaEntry.isValidEntityEID,
-          Set.contains, Membership.mem,
         ]
       | enum eids =>
         have ⟨_, hnon_empty⟩ := hwf_entry
@@ -432,7 +431,7 @@ theorem instance_of_record_nil {env : TypeEnv} :
   InstanceOfType env (Value.record (Map.mk [])) (CedarType.record (Map.mk []))
 := by
   apply InstanceOfType.instance_of_record <;>
-  simp [Map.contains, Map.find?, Map.kvs, List.find?]
+  simp [Map.contains, Map.find?, List.find?]
 
 theorem instance_of_record_cons {env : TypeEnv} {hd : Attr × Qualified CedarType} {tl : List (Attr × Qualified CedarType)} {rhd : Value} {rtl : List (Attr × Value)}
   (h₁ : InstanceOfType env rhd (Qualified.getType hd.snd))
@@ -444,16 +443,16 @@ theorem instance_of_record_cons {env : TypeEnv} {hd : Attr × Qualified CedarTyp
   case h₁ =>
     intro a
     specialize h₂ a
-    simp [Map.contains, Map.find?, Map.kvs, List.find?]
-    simp [Map.contains, Map.find?, Map.kvs, List.find?] at h₂
-    cases h₅ : hd.fst == a <;> simp [h₅]
+    simp [Map.contains, Map.find?, List.find?]
+    simp [Map.contains, Map.find?, Map.kvs] at h₂
+    cases h₅ : hd.fst == a <;> simp
     exact h₂
   case h₂ =>
     intro a v qty
     specialize h₃ a v qty
-    simp [Map.contains, Map.find?, Map.kvs, List.find?]
-    simp [Map.contains, Map.find?, Map.kvs, List.find?] at h₃
-    cases h₅ : hd.fst == a <;> simp [h₅]
+    simp [Map.find?, List.find?]
+    simp [Map.find?, Map.kvs] at h₃
+    cases h₅ : hd.fst == a <;> simp
     case false => exact h₃
     case true =>
       intro h₆ h₇
@@ -462,9 +461,9 @@ theorem instance_of_record_cons {env : TypeEnv} {hd : Attr × Qualified CedarTyp
   case h₃ =>
     intro a qty
     specialize h₄ a qty
-    simp [Map.contains, Map.find?, Map.kvs, List.find?]
-    simp [Map.contains, Map.find?, Map.kvs, List.find?] at h₄
-    cases h₅ : hd.fst == a <;> simp [h₅]
+    simp [Map.contains, Map.find?, List.find?]
+    simp [Map.contains, Map.find?, Map.kvs] at h₄
+    cases h₅ : hd.fst == a <;> simp
     exact h₄
 
 
@@ -478,7 +477,7 @@ theorem sizeOf_attribute_lt_sizeOf_qualified (aqty : Attr × Qualified CedarType
     apply @Nat.lt_trans _ (sizeOf aqty.snd)
     case h₁ => simp [h, ←Nat.succ_eq_one_add]
     case a =>
-      cases aqty ; simp [Prod.snd]
+      cases aqty ; simp
       omega
   }
 
@@ -626,7 +625,7 @@ theorem instance_of_lub_left {env : TypeEnv} {v : Value} {ty ty₁ ty₂ : Cedar
   -- s₁ after the split.  We need these for the termination proof.
   generalize hty₁ : ty₁ = ty₁'
   generalize hty₂ : ty₂ = ty₂'
-  simp [hty₁, hty₂] at h₂
+  simp only [hty₁] at h₂
   split at h₁
   case h_1 =>
     simp at h₁ ; subst h₁ hty₁ hty₂
@@ -634,7 +633,7 @@ theorem instance_of_lub_left {env : TypeEnv} {v : Value} {ty ty₁ ty₂ : Cedar
   case h_2 _ _ sty₁ sty₂ =>
     cases h₃ : sty₁ ⊔ sty₂ <;> simp [h₃] at h₁
     rename_i sty
-    subst h₁ ; simp [←hty₁, ←hty₂] at h₂
+    subst h₁ ; simp only [← hty₁] at h₂
     cases h₂ ; rename_i h₄
     apply InstanceOfType.instance_of_set
     intro w h₅

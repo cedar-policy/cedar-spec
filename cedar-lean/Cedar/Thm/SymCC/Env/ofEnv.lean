@@ -42,7 +42,8 @@ theorem ofEnv_preserves_entity
     have h := List.find?_some hfind
     simp only [beq_iff_eq] at h
     simp only [h] at hfind
-    apply Map.find?_implies_make_find?
+    rw [← Map.find?]
+    rw [← Map.list_find?_iff_make_find?]
     apply List.find?_implies_append_find?
     apply List.find?_implies_find?_fst_map
     assumption
@@ -170,7 +171,8 @@ theorem ofSchema_find?_ets
   Map.find? (SymEntities.ofSchema Γ.ets Γ.acts) ety
   = .some (SymEntityData.ofEntityType ety entry)
 := by
-  apply Map.find?_implies_make_find?
+  simp only [SymEntities.ofSchema]
+  rw [← Map.list_find?_iff_make_find?]
   simp only [List.find?_append]
   simp only [Option.or_eq_some_iff]
   apply Or.inl
@@ -301,7 +303,7 @@ theorem ofEnv_preserves_tags
     SymEntityData.ofEnumEntityType,
     Option.map_some, Option.some.injEq,
   ]
-  split <;> simp only [Option.eq_some_iff_get_eq, reduceCtorEq, false_and, exists_const]
+  split <;> simp only [Option.eq_some_iff_get_eq]
   case h_1 std_entry =>
     simp only [EntitySchemaEntry.tags?] at hty_entry
     simp [hty_entry, SymEntityData.ofStandardEntityType.symTags, UnaryFunction.outType]
@@ -516,18 +518,14 @@ where
           ]
           simp only [
             Option.bind_some_fun, Option.bind_some,
-            Option.some.injEq, Prod.mk.injEq,
-            true_and, QualifiedType.liftBoolTypes,
+            QualifiedType.liftBoolTypes,
           ]
         | required attr_ty =>
           simp only [h] at hwf_hd_snd
           cases hwf_hd_snd with | required_wf hwf_hd_snd =>
           simp only [
             TermType.ofQualifiedType,
-            TermType.cedarType?.qualifiedType?,
-            Option.bind_some_fun, Option.bind_some,
-            Option.some.injEq, Prod.mk.injEq,
-            true_and, QualifiedType.liftBoolTypes,
+            QualifiedType.liftBoolTypes,
           ]
           unfold TermType.cedarType?.qualifiedType?
           split
@@ -743,7 +741,7 @@ theorem ofStandardEntityType_is_wf
             constructor
         · simp [
             Map.WellFormed, Map.toList, Map.kvs,
-            Map.make, List.canonicalize, Map.mk.injEq,
+            Map.make, List.canonicalize,
             List.insertCanonical,
           ]
       · exact ofType_wf hwf hwf_tags
@@ -770,18 +768,19 @@ theorem ofEnumEntityType_is_wf
   ]
   · constructor
     · intros _ _ h
-      simp [Map.empty, Map.toList, Map.kvs] at h
-    · simp [Map.WellFormed, Map.make, Map.empty, List.canonicalize, Map.toList]
+      simp only [Map.toList, Map.kvs, List.not_mem_nil] at h
+    · simp only [Map.WellFormed, Map.make, Map.toList, List.canonicalize]
   · simp only [
-      Map.empty, Term.isLiteral,
+      Term.isLiteral,
       List.nil.sizeOf_spec, Nat.reduceAdd,
       List.all_eq_true,
       Subtype.forall, Prod.forall,
     ]
     intros _ _ _ h
     simp [List.attach₃] at h
-  · simp [Term.typeOf, Map.empty, List.attach₃]
-  · simp [Map.WellFormed, Map.make, Map.empty, List.canonicalize, Map.toList]
+  · simp only [Term.typeOf, List.nil.sizeOf_spec, Nat.reduceAdd, List.attach₃, List.pmap_nil,
+    List.map_nil]
+  · simp only [Map.WellFormed, Map.make, Map.toList, List.canonicalize]
   · intros _ _ h
     contradiction
   · simp only [UnaryFunction.argType, SymEntityData.emptyAttrs, TermType.ofType]
@@ -792,8 +791,8 @@ theorem ofEnumEntityType_is_wf
       List.attach₃,
     ]
   · intros _ _ h
-    simp [Map.empty, Map.toList, Map.kvs, Map.find?] at h
-  · simp [Map.WellFormed, Map.make, Map.empty, List.canonicalize, Map.toList]
+    simp only [Map.find?, Map.kvs, List.find?_nil, reduceCtorEq] at h
+  · simp only [Map.WellFormed, Map.make, Map.toList, List.canonicalize]
   · intros _ h
     contradiction
   · have ⟨_, h⟩ := wf_env_implies_wf_entity_entry hwf hfind
@@ -834,7 +833,6 @@ theorem ofActionType_ancsUDF_is_wf
   have hwf_acts := wf_env_implies_wf_acts_map hwf
   simp only [
     SymEntityData.ofActionType.ancsUDF,
-    SymEntityData.ofActionType,
     UnaryFunction.argType,
     UnaryFunction.outType,
   ]
@@ -864,7 +862,7 @@ theorem ofActionType_ancsUDF_is_wf
       simp only [this, Option.isSome, true_and, hact_ty]
     · simp [Set.empty, Set.WellFormed, Set.make, Set.toList, Set.elts, List.canonicalize]
   · simp [Set.empty, Term.isLiteral]
-  · simp [Term.typeOf, TermType.ofType, Set.empty, List.attach₃]
+  · simp only [Set.empty, TermType.ofType, Term.typeOf]
   · simp only [Map.make_wf]
   · -- WF of the ancestor UDF
     intros tᵢ tₒ hmem
@@ -913,7 +911,7 @@ theorem ofActionType_ancsUDF_is_wf
     · simp [←h₁, ←hsym, Term.typeOf, TermPrim.typeOf, TermType.ofType]
     -- tₒ is well-formed and has the right type
     simp only [
-      ←h₁, ←hsym, TermType.ofType,
+      ←hsym, TermType.ofType,
       Term.WellFormedLiteral,
     ]
     apply and_assoc.mpr
@@ -981,8 +979,8 @@ theorem ofActionType_ancsUDF_is_wf
         simp only [←h₂]
         apply ofEnv_action_entity_exists hwf
         simp [Map.contains, (Map.in_list_iff_find?_some hwf_acts).mp h₁]
-  · simp [SymEntityData.ofActionType.ancsUDF, TermType.ofType]
-  · simp [SymEntityData.ofActionType.ancsUDF, TermType.ofType]
+  · simp only [TermType.ofType]
+  · simp only [TermType.ofType]
 
 theorem ofActionType_is_wf
   {uid : EntityUID} {Γ : TypeEnv} {entry : ActionSchemaEntry}
@@ -1040,7 +1038,7 @@ theorem ofActionType_is_wf
       ne_eq, List.filterMap_eq_nil_iff, ite_eq_right_iff,
       reduceCtorEq, imp_false,
       Prod.forall, Classical.not_forall,
-      not_imp, Decidable.not_not, exists_and_right,
+      Decidable.not_not
     ]
     exists uid
     exists entry
@@ -1055,7 +1053,7 @@ theorem ofEnv_entities_is_wf
   · exact Map.make_wf _
   · intros ety data hfind
     have := Map.find?_mem_toList hfind
-    simp only [Map.kvs] at this
+    simp only at this
     have := Map.make_mem_list_mem this
     have := List.mem_append.mp this
     -- Reduce to either `ofEntityType_is_wf` or `ofActionType_is_wf`
@@ -1120,7 +1118,7 @@ theorem entity_uid_wf_implies_sym_entities_is_valid_entity_uid
     apply Set.contains_prop_bool_equiv.mpr
     apply (Set.make_mem _ _).mp
     apply List.mem_filterMap.mpr
-    simp only [ActionSchema.contains, Map.contains, Option.isSome] at huid
+    simp only [ActionSchema.contains, Option.isSome] at huid
     split at huid
     · rename_i entry hfind
       exists (uid, entry)
@@ -1162,7 +1160,7 @@ theorem env_valid_uid_implies_sym_env_valid_uid
       have ⟨_, _, ⟨_, hfind_acts, _⟩⟩ := hinst_data
       simp only [EntityUID.WellFormed]
       apply Or.inr
-      simp only [ActionSchema.contains, Map.contains, hfind_acts, Option.isSome]
+      simp only [ActionSchema.contains, hfind_acts, Option.isSome]
   · contradiction
 
 /--
@@ -1226,7 +1224,7 @@ theorem ofEnv_entities_valid_refs_for_wt_expr
     simp only [TypedExpr.toExpr]
     constructor
     intros attr hmem_attr
-    simp only [List.map, List.attach₂, List.map_pmap] at hmem_attr
+    simp only [List.attach₂, List.map_pmap] at hmem_attr
     have ⟨attr', hmem_attr', hattr'⟩ := List.mem_pmap.mp hmem_attr
     cases attr with | _ fst snd =>
     simp only [Prod.mk.injEq] at hattr'
@@ -1389,8 +1387,10 @@ theorem wellTypedPolicy_some_implies_valid_refs
   contradiction
   rename_i tx hwt
   simp only [Option.some.injEq] at hsome
-  simp only [←hsome, Policy.toExpr]
-  any_goals repeat constructor
+  simp only [
+    ←hsome, Policy.toExpr, Conditions.toExpr,
+    List.foldl, List.reverse, List.reverseAux,
+  ]
   any_goals repeat constructor
   simp only [Condition.toExpr]
   simp only [typecheckPolicy] at hwt
@@ -1562,7 +1562,6 @@ theorem in_ancestors_implies_in_ancsUDF
     ancsUDF_app uid'.ty hwf hfind,
     SymEntityData.ofActionType.ancsTerm,
     Factory.setOf,
-    Term.entityUIDs,
   ]
   unfold Term.entityUIDs
   apply (Set.mem_mapUnion_iff_mem_exists _).mpr

@@ -268,7 +268,7 @@ theorem typechecked_is_well_typed_after_lifting_or
           simp [ok] at h₃
           rcases h₃ with ⟨h₃, _⟩
           subst h₃
-          simp [TypedExpr.liftBoolTypes, heq₁, CedarType.liftBoolTypes, BoolType.lift]
+          simp only [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes, BoolType.lift]
           apply TypedExpr.WellTyped.or
           · exact hᵢ₁ hₓ₁
           · exact hᵢ₂ hₓ₂
@@ -551,7 +551,7 @@ theorem typechecked_is_well_typed_after_lifting_binary_app
     simp [ok] at h₃
     rcases h₃ with ⟨h₃, _⟩
     subst h₃
-    simp [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes, BoolType.lift]
+    simp only [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes]
     constructor
     · exact hᵢ₁ hᵢ₁'
     · exact hᵢ₂ hᵢ₂'
@@ -562,7 +562,7 @@ theorem typechecked_is_well_typed_after_lifting_binary_app
     simp [ok] at h₃
     rcases h₃ with ⟨h₃, _⟩
     subst h₃
-    simp [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes, BoolType.lift]
+    simp only [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes]
     constructor
     · exact hᵢ₁ hᵢ₁'
     · exact hᵢ₂ hᵢ₂'
@@ -573,7 +573,7 @@ theorem typechecked_is_well_typed_after_lifting_binary_app
     simp [ok] at h₃
     rcases h₃ with ⟨h₃, _⟩
     subst h₃
-    simp [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes, BoolType.lift]
+    simp only [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes]
     constructor
     · exact hᵢ₁ hᵢ₁'
     · exact hᵢ₂ hᵢ₂'
@@ -699,7 +699,7 @@ theorem typechecked_is_well_typed_after_lifting_has_attr
         simp [CedarType.liftBoolTypes, BoolType.lift]
         apply @TypedExpr.WellTyped.hasAttr_entity env ety
         · exact hᵢ₁ hᵢ
-        · simp [type_of_after_lifted_is_lifted, heq, CedarType.liftBoolTypes, RecordType.liftBoolTypes]
+        · simp only [type_of_after_lifted_is_lifted, heq, CedarType.liftBoolTypes]
       }
       · simp only [ok, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at h₃₁
         rcases h₃₁ with ⟨h₃₁, _⟩
@@ -707,7 +707,7 @@ theorem typechecked_is_well_typed_after_lifting_has_attr
         simp only [CedarType.liftBoolTypes, BoolType.lift]
         apply @TypedExpr.WellTyped.hasAttr_entity env ety
         · exact hᵢ₁ hᵢ
-        · simp [type_of_after_lifted_is_lifted, heq, CedarType.liftBoolTypes, RecordType.liftBoolTypes]
+        · simp only [type_of_after_lifted_is_lifted, heq, CedarType.liftBoolTypes]
     case _ =>
       split at h₃
       · simp only [ok, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at h₃
@@ -716,7 +716,7 @@ theorem typechecked_is_well_typed_after_lifting_has_attr
         simp [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes, BoolType.lift]
         apply @TypedExpr.WellTyped.hasAttr_entity env ety
         · exact hᵢ₁ hᵢ
-        · simp [type_of_after_lifted_is_lifted, heq, CedarType.liftBoolTypes, RecordType.liftBoolTypes]
+        · simp only [type_of_after_lifted_is_lifted, heq, CedarType.liftBoolTypes]
       · simp only [err, reduceCtorEq] at h₃
   case _ => simp only [err, reduceCtorEq] at h₃
 
@@ -1075,37 +1075,37 @@ theorem typechecked_is_well_typed_after_lifting_call
     simp only [TypedExpr.liftBoolTypes]
     apply TypedExpr.WellTyped.call
     · exact typechecked_is_well_typed_after_lifting_call_arg hᵢ hᵢ₁
-    · simp [CedarType.liftBoolTypes, List.map₁_eq_map, BoolType.lift]
+    · simp only [List.map₁_eq_map, CedarType.liftBoolTypes]
       unfold List.map at heq
       split at heq <;> simp at heq
       rcases heq with ⟨h₂, _, h₃, h₄⟩
       subst h₃
       simp only [List.map_cons, List.map_nil]
       constructor <;> simp [type_of_after_lifted_is_lifted]
-      · simp [h₂, CedarType.liftBoolTypes]
-      · simp [h₄, CedarType.liftBoolTypes]
+      · simp only [h₂, CedarType.liftBoolTypes]
+      · simp only [h₄, CedarType.liftBoolTypes]
   case _ tys _ _ heq =>
     rcases h₃ with ⟨h₃, _⟩
     subst h₃
     simp only [TypedExpr.liftBoolTypes]
     apply TypedExpr.WellTyped.call
     · exact typechecked_is_well_typed_after_lifting_call_arg hᵢ hᵢ₁
-    · simp [CedarType.liftBoolTypes, List.map₁_eq_map, BoolType.lift]
+    · simp only [List.map₁_eq_map, CedarType.liftBoolTypes]
       unfold List.map at heq
       split at heq <;> simp at heq
       rcases heq with ⟨h₂, _, h₃, h₄⟩
       subst h₃
       simp only [List.map_cons, List.map_nil]
       constructor <;> simp [type_of_after_lifted_is_lifted]
-      · simp [h₂, CedarType.liftBoolTypes]
-      · simp [h₄, CedarType.liftBoolTypes]
+      · simp only [h₂, CedarType.liftBoolTypes]
+      · simp only [h₄, CedarType.liftBoolTypes]
   case _ tys _ _ heq =>
     rcases h₃ with ⟨h₃, _⟩
     subst h₃
     simp only [TypedExpr.liftBoolTypes]
     apply TypedExpr.WellTyped.call
     · exact typechecked_is_well_typed_after_lifting_call_arg hᵢ hᵢ₁
-    · simp [CedarType.liftBoolTypes, List.map₁_eq_map, BoolType.lift]
+    · simp only [List.map₁_eq_map, CedarType.liftBoolTypes]
       unfold List.map at heq
       split at heq <;> simp at heq
       rcases heq with ⟨h₂, h₃⟩
@@ -1119,7 +1119,7 @@ theorem typechecked_is_well_typed_after_lifting_call
     simp only [TypedExpr.liftBoolTypes]
     apply TypedExpr.WellTyped.call
     · exact typechecked_is_well_typed_after_lifting_call_arg hᵢ hᵢ₁
-    · simp [CedarType.liftBoolTypes, List.map₁_eq_map, BoolType.lift]
+    · simp only [List.map₁_eq_map, CedarType.liftBoolTypes]
       unfold List.map at heq
       split at heq <;> simp at heq
       rcases heq with ⟨h₂, h₃⟩
@@ -1133,7 +1133,7 @@ theorem typechecked_is_well_typed_after_lifting_call
     simp only [TypedExpr.liftBoolTypes]
     apply TypedExpr.WellTyped.call
     · exact typechecked_is_well_typed_after_lifting_call_arg hᵢ hᵢ₁
-    · simp [CedarType.liftBoolTypes, List.map₁_eq_map, BoolType.lift]
+    · simp only [List.map₁_eq_map, CedarType.liftBoolTypes]
       unfold List.map at heq
       split at heq <;> simp at heq
       rcases heq with ⟨h₂, h₃⟩
@@ -1147,7 +1147,7 @@ theorem typechecked_is_well_typed_after_lifting_call
     simp only [TypedExpr.liftBoolTypes]
     apply TypedExpr.WellTyped.call
     · exact typechecked_is_well_typed_after_lifting_call_arg hᵢ hᵢ₁
-    · simp [CedarType.liftBoolTypes, List.map₁_eq_map, BoolType.lift]
+    · simp only [List.map₁_eq_map, CedarType.liftBoolTypes]
       unfold List.map at heq
       split at heq <;> simp at heq
       rcases heq with ⟨h₂, h₃⟩
@@ -1161,7 +1161,7 @@ theorem typechecked_is_well_typed_after_lifting_call
     simp only [TypedExpr.liftBoolTypes]
     apply TypedExpr.WellTyped.call
     · exact typechecked_is_well_typed_after_lifting_call_arg hᵢ hᵢ₁
-    · simp [CedarType.liftBoolTypes, List.map₁_eq_map, BoolType.lift]
+    · simp only [List.map₁_eq_map, CedarType.liftBoolTypes]
       unfold List.map at heq
       split at heq <;> simp at heq
       rcases heq with ⟨h₂, h₃⟩
@@ -1175,7 +1175,7 @@ theorem typechecked_is_well_typed_after_lifting_call
     simp only [TypedExpr.liftBoolTypes]
     apply TypedExpr.WellTyped.call
     · exact typechecked_is_well_typed_after_lifting_call_arg hᵢ hᵢ₁
-    · simp [CedarType.liftBoolTypes, List.map₁_eq_map, BoolType.lift]
+    · simp only [List.map₁_eq_map, CedarType.liftBoolTypes]
       unfold List.map at heq
       split at heq <;> simp at heq
       rcases heq with ⟨h₂, h₃⟩
@@ -1189,7 +1189,7 @@ theorem typechecked_is_well_typed_after_lifting_call
     simp only [TypedExpr.liftBoolTypes]
     apply TypedExpr.WellTyped.call
     · exact typechecked_is_well_typed_after_lifting_call_arg hᵢ hᵢ₁
-    · simp [CedarType.liftBoolTypes, List.map₁_eq_map, BoolType.lift]
+    · simp only [List.map₁_eq_map, CedarType.liftBoolTypes]
       unfold List.map at heq
       split at heq <;> simp at heq
       rcases heq with ⟨h₂, h₃⟩
