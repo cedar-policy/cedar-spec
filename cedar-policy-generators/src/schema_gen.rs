@@ -1,17 +1,21 @@
 use std::collections::BTreeMap;
 
 use crate::{
-    abac::{self, AvailableExtensionFunctions, ConstantPool, QualifiedType, UnknownPool},
+    abac::{
+        self, ABACPolicy, AvailableExtensionFunctions, ConstantPool, QualifiedType, UnknownPool,
+    },
     collections::HashMap,
     err::{while_doing, Result},
     expr::ExprGenerator,
-    hierarchy::Hierarchy,
+    hierarchy::{Hierarchy, HierarchyGenerator, HierarchyGeneratorMode, NumEntities},
+    policy::{ActionConstraint, GeneratedPolicy, PrincipalOrResourceConstraint},
     schema::Schema,
     settings::ABACSettings,
 };
 use arbitrary::Unstructured;
 use cedar_policy_core::{
     ast::{self, EntityType},
+    extensions::Extensions,
     validator::{
         types::{self, OpenTag},
         ValidatorSchema as CoreSchema,
@@ -119,6 +123,136 @@ pub trait SchemaGen: std::fmt::Debug {
     fn get_abac_settings(&self) -> &ABACSettings;
     /// Get an expression generator
     fn exprgenerator<'s>(&'s self, hierarchy: Option<&'s Hierarchy>) -> ExprGenerator<'s>;
+    /// Get an arbitrary Hierarchy conforming to the schema.
+    fn arbitrary_hierarchy(&self, u: &mut Unstructured<'_>) -> Result<Hierarchy>;
+    /// get an arbitrary policy conforming to this schema
+    fn arbitrary_policy(
+        &self,
+        hierarchy: &Hierarchy,
+        u: &mut Unstructured<'_>,
+    ) -> Result<ABACPolicy> {
+        let id = u.arbitrary()?;
+        let effect = u.arbitrary()?;
+        let principal_constraint = self.arbitrary_principal_constraint(hierarchy, u)?;
+        let action_constraint = self.arbitrary_action_constraint(u, Some(3))?;
+        let resource_constraint = self.arbitrary_resource_constraint(hierarchy, u)?;
+        let conjunction = self.arbitrary_abac_constraints(hierarchy, u)?;
+        Ok(ABACPolicy(GeneratedPolicy::new(
+            id,
+            u.arbitrary()?,
+            effect,
+            principal_constraint,
+            action_constraint,
+            resource_constraint,
+            conjunction,
+        )))
+    }
+    /// Generate an arbitrary principal constraint
+    fn arbitrary_principal_constraint(
+        &self,
+        hierarchy: &Hierarchy,
+        u: &mut Unstructured<'_>,
+    ) -> Result<PrincipalOrResourceConstraint> {
+        // 20% of the time, NoConstraint
+        if u.ratio(1, 5)? {
+            Ok(PrincipalOrResourceConstraint::NoConstraint)
+        } else {
+            // 32% Eq, 16% In, 16% Is, 16% IsIn
+            let uid = self
+                .exprgenerator(Some(hierarchy))
+                .arbitrary_principal_uid(u)?;
+            let entity_types: Vec<_> = self.entity_types().collect();
+            let ety = u.choose(&entity_types)?.clone();
+            gen!(u,
+                2 => Ok(PrincipalOrResourceConstraint::Eq(uid)),
+                1 => Ok(PrincipalOrResourceConstraint::In(uid)),
+                1 => Ok(PrincipalOrResourceConstraint::IsType(ety)),
+                1 => Ok(PrincipalOrResourceConstraint::IsTypeIn(ety, uid))
+            )
+        }
+    }
+    /// Generates an arbitrary action constraint.
+    fn arbitrary_action_constraint(
+        &self,
+        u: &mut Unstructured<'_>,
+        max_list_length: Option<u32>,
+    ) -> Result<ActionConstraint> {
+        if !self.get_abac_settings().enable_action_in_constraints {
+            // 25% of the time, NoConstraint; 75%, Eq
+            gen!(u,
+        1 => Ok(ActionConstraint::NoConstraint),
+        3 => Ok(ActionConstraint::Eq(self.arbitrary_action_uid(u)?)))
+        } else {
+            // 10% of the time, NoConstraint; 30%, Eq; 30%, In; 30%, InList
+            gen!(u,
+            1 => Ok(ActionConstraint::NoConstraint),
+            3 => Ok(ActionConstraint::Eq(self.arbitrary_action_uid(u)?)),
+            3 => Ok(ActionConstraint::In(self.arbitrary_action_uid(u)?)),
+            3 => {
+                let mut uids = vec![];
+                u.arbitrary_loop(Some(0), max_list_length, |u| {
+                    uids.push(self.arbitrary_action_uid(u)?);
+                    Ok(std::ops::ControlFlow::Continue(()))
+                })?;
+                Ok(ActionConstraint::InList(uids))
+            })
+        }
+    }
+    /// Generate an arbitrary resource constraint
+    fn arbitrary_resource_constraint(
+        &self,
+        hierarchy: &Hierarchy,
+        u: &mut Unstructured<'_>,
+    ) -> Result<PrincipalOrResourceConstraint> {
+        // 20% of the time, NoConstraint
+        if u.ratio(1, 5)? {
+            Ok(PrincipalOrResourceConstraint::NoConstraint)
+        } else {
+            // 32% Eq, 16% In, 16% Is, 16% IsIn
+            let uid = self
+                .exprgenerator(Some(hierarchy))
+                .arbitrary_resource_uid(u)?;
+            let entity_types: Vec<_> = self.entity_types().collect();
+            let ety = u.choose(&entity_types)?.clone();
+            gen!(u,
+                2 => Ok(PrincipalOrResourceConstraint::Eq(uid)),
+                1 => Ok(PrincipalOrResourceConstraint::In(uid)),
+                1 => Ok(PrincipalOrResourceConstraint::IsType(ety)),
+                1 => Ok(PrincipalOrResourceConstraint::IsTypeIn(ety, uid))
+            )
+        }
+    }
+    /// Generates arbitrary non-scope constraints
+    fn arbitrary_abac_constraints(
+        &self,
+        hierarchy: &Hierarchy,
+        u: &mut Unstructured<'_>,
+    ) -> Result<ast::Expr> {
+        let mut abac_constraints = Vec::new();
+        let mut exprgenerator = self.exprgenerator(Some(hierarchy));
+        u.arbitrary_loop(
+            Some(0),
+            Some(self.get_abac_settings().max_depth as u32),
+            |u| {
+                if self.get_abac_settings().match_types {
+                    abac_constraints.push(exprgenerator.generate_expr_for_type(
+                        &abac::Type::bool(),
+                        self.get_abac_settings().max_depth,
+                        u,
+                    )?);
+                } else {
+                    abac_constraints
+                        .push(exprgenerator.generate_expr(self.get_abac_settings().max_depth, u)?);
+                }
+                Ok(std::ops::ControlFlow::Continue(()))
+            },
+        )?;
+        let mut conjunction = ast::Expr::val(true);
+        for constraint in abac_constraints {
+            conjunction = ast::Expr::and(conjunction, constraint);
+        }
+        Ok(conjunction)
+    }
 }
 
 /// A wrapper around the validator schema of core
@@ -322,6 +456,15 @@ impl SchemaGen for ValidatorSchema<'_> {
             hierarchy,
         }
     }
+    fn arbitrary_hierarchy(&self, u: &mut Unstructured<'_>) -> Result<Hierarchy> {
+        HierarchyGenerator {
+            mode: HierarchyGeneratorMode::SchemaBased { schema: self },
+            num_entities: NumEntities::RangePerEntityType(1..=self.settings.max_width),
+            u,
+            extensions: Extensions::all_available(),
+        }
+        .generate()
+    }
 }
 
 impl SchemaGen for Schema {
@@ -390,5 +533,14 @@ impl SchemaGen for Schema {
     }
     fn exprgenerator<'s>(&'s self, hierarchy: Option<&'s Hierarchy>) -> ExprGenerator<'s> {
         self.exprgenerator(hierarchy)
+    }
+    fn arbitrary_hierarchy(&self, u: &mut Unstructured<'_>) -> Result<Hierarchy> {
+        HierarchyGenerator {
+            mode: HierarchyGeneratorMode::SchemaBased { schema: self },
+            num_entities: NumEntities::RangePerEntityType(1..=self.settings.max_width),
+            u,
+            extensions: Extensions::all_available(),
+        }
+        .generate()
     }
 }

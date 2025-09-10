@@ -15,14 +15,12 @@
  */
 
 use crate::abac::{
-    ABACPolicy, ABACRequest, AvailableExtensionFunctions, ConstantPool, QualifiedType, Type,
-    UnknownPool,
+    ABACRequest, AvailableExtensionFunctions, ConstantPool, QualifiedType, Type, UnknownPool,
 };
 use crate::collections::{HashMap, HashSet};
 use crate::err::{while_doing, Error, Result};
 use crate::expr::ExprGenerator;
-use crate::hierarchy::{Hierarchy, HierarchyGenerator, HierarchyGeneratorMode, NumEntities};
-use crate::policy::{ActionConstraint, GeneratedPolicy, PrincipalOrResourceConstraint};
+use crate::hierarchy::Hierarchy;
 use crate::request::Request;
 use crate::settings::ABACSettings;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
@@ -1379,17 +1377,6 @@ impl Schema {
         ]))
     }
 
-    /// Get an arbitrary Hierarchy conforming to the schema.
-    pub fn arbitrary_hierarchy(&self, u: &mut Unstructured<'_>) -> Result<Hierarchy> {
-        HierarchyGenerator {
-            mode: HierarchyGeneratorMode::SchemaBased { schema: self },
-            num_entities: NumEntities::RangePerEntityType(1..=self.settings.max_width),
-            u,
-            extensions: Extensions::all_available(),
-        }
-        .generate()
-    }
-
     #[allow(dead_code)]
     fn arbitrary_uid_with_etype(
         &self,
@@ -1483,56 +1470,6 @@ impl Schema {
         })
     }
 
-    /// get an arbitrary policy conforming to this schema
-    pub fn arbitrary_policy(
-        &self,
-        hierarchy: &Hierarchy,
-        u: &mut Unstructured<'_>,
-    ) -> Result<ABACPolicy> {
-        let id = u.arbitrary()?;
-        let effect = u.arbitrary()?;
-        let principal_constraint = self.arbitrary_principal_constraint(hierarchy, u)?;
-        let action_constraint = self.arbitrary_action_constraint(u, Some(3))?;
-        let resource_constraint = self.arbitrary_resource_constraint(hierarchy, u)?;
-        let conjunction = self.arbitrary_abac_constraints(hierarchy, u)?;
-        Ok(ABACPolicy(GeneratedPolicy::new(
-            id,
-            u.arbitrary()?,
-            effect,
-            principal_constraint,
-            action_constraint,
-            resource_constraint,
-            conjunction,
-        )))
-    }
-
-    /// Generates arbitrary non-scope constraints
-    pub fn arbitrary_abac_constraints(
-        &self,
-        hierarchy: &Hierarchy,
-        u: &mut Unstructured<'_>,
-    ) -> Result<ast::Expr> {
-        let mut abac_constraints = Vec::new();
-        let mut exprgenerator = self.exprgenerator(Some(hierarchy));
-        u.arbitrary_loop(Some(0), Some(self.settings.max_depth as u32), |u| {
-            if self.settings.match_types {
-                abac_constraints.push(exprgenerator.generate_expr_for_type(
-                    &Type::bool(),
-                    self.settings.max_depth,
-                    u,
-                )?);
-            } else {
-                abac_constraints.push(exprgenerator.generate_expr(self.settings.max_depth, u)?);
-            }
-            Ok(std::ops::ControlFlow::Continue(()))
-        })?;
-        let mut conjunction = ast::Expr::val(true);
-        for constraint in abac_constraints {
-            conjunction = ast::Expr::and(conjunction, constraint);
-        }
-        Ok(conjunction)
-    }
-
     /// Size hint for [`Self::arbitrary_abac_constraints()`].
     pub fn arbitrary_abac_constraints_size_hint(_depth: usize) -> (usize, Option<usize>) {
         // not sure how to count the arbitrary_loop() call
@@ -1554,29 +1491,6 @@ impl Schema {
         ])
     }
 
-    fn arbitrary_principal_constraint(
-        &self,
-        hierarchy: &Hierarchy,
-        u: &mut Unstructured<'_>,
-    ) -> Result<PrincipalOrResourceConstraint> {
-        // 20% of the time, NoConstraint
-        if u.ratio(1, 5)? {
-            Ok(PrincipalOrResourceConstraint::NoConstraint)
-        } else {
-            // 32% Eq, 16% In, 16% Is, 16% IsIn
-            let uid = self
-                .exprgenerator(Some(hierarchy))
-                .arbitrary_principal_uid(u)?;
-            let ety = u.choose(self.entity_types())?.clone();
-            gen!(u,
-                2 => Ok(PrincipalOrResourceConstraint::Eq(uid)),
-                1 => Ok(PrincipalOrResourceConstraint::In(uid)),
-                1 => Ok(PrincipalOrResourceConstraint::IsType(ety)),
-                1 => Ok(PrincipalOrResourceConstraint::IsTypeIn(ety, uid))
-            )
-        }
-    }
-
     fn arbitrary_principal_constraint_size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and(
             size_hint_for_range(1, 10),
@@ -1588,28 +1502,6 @@ impl Schema {
         )
     }
 
-    fn arbitrary_resource_constraint(
-        &self,
-        hierarchy: &Hierarchy,
-        u: &mut Unstructured<'_>,
-    ) -> Result<PrincipalOrResourceConstraint> {
-        // 20% of the time, NoConstraint
-        if u.ratio(1, 5)? {
-            Ok(PrincipalOrResourceConstraint::NoConstraint)
-        } else {
-            // 32% Eq, 16% In, 16% Is, 16% IsIn
-            let uid = self
-                .exprgenerator(Some(hierarchy))
-                .arbitrary_resource_uid(u)?;
-            let ety = u.choose(self.entity_types())?.clone();
-            gen!(u,
-                2 => Ok(PrincipalOrResourceConstraint::Eq(uid)),
-                1 => Ok(PrincipalOrResourceConstraint::In(uid)),
-                1 => Ok(PrincipalOrResourceConstraint::IsType(ety)),
-                1 => Ok(PrincipalOrResourceConstraint::IsTypeIn(ety, uid))
-            )
-        }
-    }
     fn arbitrary_resource_constraint_size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and(
             size_hint_for_range(1, 10),
@@ -1638,34 +1530,6 @@ impl Schema {
                 .collect::<Vec<_>>(),
         )?
         .clone())
-    }
-
-    /// Generates an arbitrary action constraint.
-    pub fn arbitrary_action_constraint(
-        &self,
-        u: &mut Unstructured<'_>,
-        max_list_length: Option<u32>,
-    ) -> Result<ActionConstraint> {
-        if !self.settings.enable_action_in_constraints {
-            // 25% of the time, NoConstraint; 75%, Eq
-            gen!(u,
-        1 => Ok(ActionConstraint::NoConstraint),
-        3 => Ok(ActionConstraint::Eq(self.arbitrary_action_uid(u)?)))
-        } else {
-            // 10% of the time, NoConstraint; 30%, Eq; 30%, In; 30%, InList
-            gen!(u,
-            1 => Ok(ActionConstraint::NoConstraint),
-            3 => Ok(ActionConstraint::Eq(self.arbitrary_action_uid(u)?)),
-            3 => Ok(ActionConstraint::In(self.arbitrary_action_uid(u)?)),
-            3 => {
-                let mut uids = vec![];
-                u.arbitrary_loop(Some(0), max_list_length, |u| {
-                    uids.push(self.arbitrary_action_uid(u)?);
-                    Ok(std::ops::ControlFlow::Continue(()))
-                })?;
-                Ok(ActionConstraint::InList(uids))
-            })
-        }
     }
 
     /// Size hint for [`Self::arbitrary_action_constraint()`].
@@ -2026,6 +1890,7 @@ impl TryFrom<Schema> for cedar_policy::Schema {
 #[cfg(test)]
 mod tests {
     use super::Schema;
+    use crate::schema_gen::SchemaGen;
     use crate::settings::ABACSettings;
     use arbitrary::Unstructured;
     use cedar_policy_core::entities::Entities;
