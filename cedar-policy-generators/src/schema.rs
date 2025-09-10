@@ -76,6 +76,7 @@ pub struct Schema {
     /// note that we can't make a similar map for json_schema::Type because it
     /// isn't Hash or Ord
     attributes_by_type: HashMap<Type, Vec<(ast::EntityType, SmolStr)>>,
+    entitytypes_by_type: HashMap<ast::EntityType, json_schema::EntityType<ast::InternalName>>,
 }
 
 /// internal helper function, basically `impl Arbitrary for AttributesOrContext`
@@ -375,6 +376,7 @@ fn arbitrary_namespace(u: &mut Unstructured<'_>) -> Result<Option<ast::Name>> {
 }
 
 /// Information about attributes from the schema
+#[derive(Debug, Clone)]
 pub(crate) struct Attributes<'a> {
     /// the actual attributes
     pub attrs: &'a BTreeMap<SmolStr, json_schema::TypeOfAttribute<ast::InternalName>>,
@@ -712,6 +714,82 @@ fn bind_type(
 }
 
 impl Schema {
+    /// Get attribute by an entity type
+    pub fn tag_type_by_entity_type(&self, ety: &EntityType) -> Option<Option<Type>> {
+        if let Some(ty) = self.entitytypes_by_type.get(ety) {
+            match &ty.kind {
+                EntityTypeKind::Enum { .. } => Some(None),
+                EntityTypeKind::Standard(StandardEntityType { tags, .. }) => Some(
+                    tags.as_ref()
+                        .map(|ty| schematype_to_type(&self.schema, ty, self.namespace())),
+                ),
+            }
+        } else {
+            None
+        }
+    }
+    /// Get attribute by an entity type
+    pub fn attribute_by_entity_type(
+        &self,
+        ety: &EntityType,
+    ) -> Option<(BTreeMap<SmolStr, QualifiedType>, bool)> {
+        if let Some(ty) = self.entitytypes_by_type.get(ety) {
+            match &ty.kind {
+                EntityTypeKind::Enum { .. } => Some((BTreeMap::new(), false)),
+                EntityTypeKind::Standard(StandardEntityType { shape, .. }) => {
+                    let attributes = attrs_from_attrs_or_context(&self.schema, shape);
+                    Some((
+                        attributes
+                            .attrs
+                            .into_iter()
+                            .map(|(a, ty)| {
+                                (
+                                    a.clone(),
+                                    QualifiedType {
+                                        ty: Box::new(schematype_to_type(
+                                            &self.schema,
+                                            &ty.ty,
+                                            self.namespace(),
+                                        )),
+                                        required: ty.required,
+                                    },
+                                )
+                            })
+                            .collect(),
+                        attributes.additional_attrs,
+                    ))
+                }
+            }
+        } else {
+            None
+        }
+    }
+    /// Get allowed parent type names
+    pub fn allowed_parent_typenames(
+        &self,
+        ety: &EntityType,
+    ) -> Option<impl Iterator<Item = EntityType>> {
+        if let Some(ty) = self.entitytypes_by_type.get(ety) {
+            match &ty.kind {
+                EntityTypeKind::Enum { .. } => Some(vec![].into_iter()),
+                EntityTypeKind::Standard(StandardEntityType {
+                    member_of_types, ..
+                }) => Some(
+                    member_of_types
+                        .iter()
+                        .map(|name| {
+                            ast::Name::try_from(name.qualify_with_name(self.namespace.as_ref()))
+                                .unwrap()
+                                .into()
+                        })
+                        .collect::<Vec<_>>()
+                        .into_iter(),
+                ),
+            }
+        } else {
+            None
+        }
+    }
     /// Get valid UID choices if `ty` is an enumerated entity type otherwise return an empty vector
     pub fn get_uid_enum_choices(&self, ty: &ast::EntityType) -> Vec<SmolStr> {
         if let Some(json_schema::EntityType {
@@ -865,7 +943,6 @@ impl Schema {
         let attributes_by_type =
             build_attributes_by_type(&nsdef, &nsdef.entity_types, namespace.as_ref());
         Ok(Schema {
-            namespace,
             constant_pool: u
                 .arbitrary()
                 .map_err(|e| while_doing("generating constant pool".into(), e))?,
@@ -891,6 +968,18 @@ impl Schema {
                 .collect(),
             attributes,
             attributes_by_type,
+            entitytypes_by_type: nsdef
+                .entity_types
+                .iter()
+                .map(|(name, et)| {
+                    (
+                        ast::EntityType::from(ast::Name::from(name.clone()))
+                            .qualify_with(namespace.as_ref()),
+                        et.clone(),
+                    )
+                })
+                .collect(),
+            namespace,
             schema: nsdef,
         })
     }
@@ -1218,6 +1307,17 @@ impl Schema {
             .keys()
             .map(|name| ast::Eid::new(name.clone()))
             .collect();
+        let entitytypes_by_type = nsdef
+            .entity_types
+            .iter()
+            .map(|(name, et)| {
+                (
+                    ast::EntityType::from(ast::Name::from(name.clone()))
+                        .qualify_with(namespace.as_ref()),
+                    et.clone(),
+                )
+            })
+            .collect();
         Ok(Schema {
             schema: nsdef,
             namespace,
@@ -1239,6 +1339,7 @@ impl Schema {
                 .collect(),
             attributes,
             attributes_by_type,
+            entitytypes_by_type,
         })
     }
     /// size hint for arbitrary()
