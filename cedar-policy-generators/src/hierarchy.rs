@@ -17,7 +17,6 @@
 use crate::abac::Type;
 use crate::collections::{HashMap, HashSet};
 use crate::err::{while_doing, Error, Result};
-use crate::schema::{attrs_from_attrs_or_context, schematype_to_type, Schema};
 use crate::schema_gen::SchemaGen;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_ratio};
 use arbitrary::{Arbitrary, Unstructured};
@@ -358,7 +357,7 @@ pub enum HierarchyGeneratorMode<'a> {
     /// The generated `Hierarchy` will conform to this `Schema`.
     SchemaBased {
         /// Schema that the generated `Hierarchy` will conform to
-        schema: &'a Schema,
+        schema: &'a dyn SchemaGen,
     },
     /// The generated `Hierarchy` will be fully arbitrary
     Arbitrary {
@@ -422,8 +421,8 @@ pub(crate) fn generate_uid_with_type(
 impl HierarchyGenerator<'_, '_> {
     /// Generate a `Hierarchy` according to the specified parameters
     pub fn generate(&mut self) -> Result<Hierarchy> {
-        let entity_types = match &self.mode {
-            HierarchyGeneratorMode::SchemaBased { schema } => schema.entity_types.clone(),
+        let entity_types: HashSet<ast::EntityType> = match &self.mode {
+            HierarchyGeneratorMode::SchemaBased { schema } => schema.entity_types().collect(),
             HierarchyGeneratorMode::Arbitrary { .. } => {
                 // generate a HashSet first to avoid duplicates
                 let entity_types: HashSet<ast::EntityType> = self.u.arbitrary()?;
@@ -436,10 +435,9 @@ impl HierarchyGenerator<'_, '_> {
             .iter()
             .map(|name| {
                 let (name, uid_choices) = match &self.mode {
-                    HierarchyGeneratorMode::SchemaBased { schema } => (
-                        name.qualify_with(schema.namespace()),
-                        schema.get_uid_enum_choices(name),
-                    ),
+                    HierarchyGeneratorMode::SchemaBased { schema } => {
+                        (name.clone(), schema.get_uid_enum_choices(name))
+                    }
                     HierarchyGeneratorMode::Arbitrary { .. } => (name.clone(), vec![]),
                 };
                 let uids = match &self.num_entities {
@@ -540,9 +538,9 @@ impl HierarchyGenerator<'_, '_> {
                                     // maybe add some additional attributes with arbitrary types
                                     self.u.arbitrary_loop(
                                         None,
-                                        Some(schema.settings.max_width as u32),
+                                        Some(schema.get_abac_settings().max_width as u32),
                                         |u| {
-                                            let attr_type = if schema.settings.enable_extensions {
+                                            let attr_type = if schema.get_abac_settings().enable_extensions {
                                                 u.arbitrary()?
                                             } else {
                                                 Type::arbitrary_nonextension(u)?
@@ -554,7 +552,7 @@ impl HierarchyGenerator<'_, '_> {
                                                     .exprgenerator(Some(&hierarchy_no_attrs))
                                                     .generate_attr_value_for_type(
                                                         &attr_type,
-                                                        schema.settings.max_depth,
+                                                        schema.get_abac_settings().max_depth,
                                                         u,
                                                     )?
                                                     .into(),
@@ -575,7 +573,7 @@ impl HierarchyGenerator<'_, '_> {
                                             .exprgenerator(Some(&hierarchy_no_attrs))
                                             .generate_attr_value_for_type(
                                               &ty.ty,
-                                                schema.settings.max_depth,
+                                                schema.get_abac_settings().max_depth,
                                                 self.u,
                                             )?;
                                         attrs.insert(
@@ -605,7 +603,7 @@ impl HierarchyGenerator<'_, '_> {
                             // add tags with the type `tag_type`
                             self.u.arbitrary_loop(
                                 None,
-                                Some(schema.settings.max_width as u32),
+                                Some(schema.get_abac_settings().max_width as u32),
                                 |u| {
                                     let tag_key: SmolStr = u.arbitrary()?;
                                     tags.insert(
@@ -614,7 +612,7 @@ impl HierarchyGenerator<'_, '_> {
                                             .exprgenerator(Some(&hierarchy_no_attrs))
                                             .generate_attr_value_for_type(
                                                 &tag_type,
-                                                schema.settings.max_depth,
+                                                schema.get_abac_settings().max_depth,
                                                 u,
                                             )?
                                             .into(),

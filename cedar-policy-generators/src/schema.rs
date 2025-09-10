@@ -28,7 +28,7 @@ use crate::settings::ABACSettings;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
 use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
-use cedar_policy_core::ast::{self, Effect, EntityType, PolicyID, UnreservedId};
+use cedar_policy_core::ast::{self, Effect, EntityType, EntityUID, PolicyID, UnreservedId};
 use cedar_policy_core::est;
 use cedar_policy_core::extensions::Extensions;
 use cedar_policy_core::validator::json_schema::{
@@ -714,6 +714,25 @@ fn bind_type(
 }
 
 impl Schema {
+    pub(crate) fn arbitrary_attr_of_entity_type(
+        &self,
+        entity_type: &ast::EntityType,
+        u: &mut Unstructured<'_>,
+    ) -> Result<SmolStr> {
+        match &self.entitytypes_by_type.get(entity_type).expect("entity type should exist").kind {
+            EntityTypeKind::Enum { .. } => Err(Error::EmptyChoose { doing_what: "generate arbitrary attribute for enum entity".into() }),
+            EntityTypeKind::Standard(StandardEntityType { shape, .. }) => {
+                match &shape.0 {
+        json_schema::Type::CommonTypeRef { type_name, .. } => match lookup_common_type(&self.schema, type_name).unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")) {
+            json_schema::Type::CommonTypeRef { .. } => panic!("common type `{type_name}` refers to another common type, which is not allowed as of this writing?"),
+            json_schema::Type::Type { ty: json_schema::TypeVariant::Record(json_schema::RecordType { attributes, .. }), .. } => Ok(u.choose(&attributes.keys().cloned().collect::<Vec<_>>())?.clone()),
+            ty => panic!("expected attributes or context to be a record, got {ty:?}"),
+        }
+        json_schema::Type::Type { ty: json_schema::TypeVariant::Record(json_schema::RecordType { attributes, .. }), .. } => Ok(u.choose(&attributes.keys().cloned().collect::<Vec<_>>())?.clone()),
+        ty => panic!("expected attributes or context to be a record, got {ty:?}")
+            }}
+        }
+    }
     /// Get attribute by an entity type
     pub fn tag_type_by_entity_type(&self, ety: &EntityType) -> Option<Option<Type>> {
         if let Some(ty) = self.entitytypes_by_type.get(ety) {
@@ -1602,8 +1621,23 @@ impl Schema {
         )
     }
 
-    fn arbitrary_action_uid(&self, u: &mut Unstructured<'_>) -> Result<ast::EntityUID> {
-        todo!()
+    pub(crate) fn arbitrary_action_uid(&self, u: &mut Unstructured<'_>) -> Result<ast::EntityUID> {
+        Ok(u.choose(
+            &self
+                .actions_eids
+                .iter()
+                .map(|eid| {
+                    EntityUID::from_components(
+                        EntityType::from_normalized_str("Action")
+                            .unwrap()
+                            .qualify_with(self.namespace()),
+                        eid.clone(),
+                        None,
+                    )
+                })
+                .collect::<Vec<_>>(),
+        )?
+        .clone())
     }
 
     /// Generates an arbitrary action constraint.

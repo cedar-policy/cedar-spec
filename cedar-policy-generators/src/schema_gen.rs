@@ -1,12 +1,21 @@
+use std::collections::BTreeMap;
+
 use crate::{
-    abac::{self, QualifiedType},
-    err::Result,
+    abac::{self, AvailableExtensionFunctions, ConstantPool, QualifiedType, UnknownPool},
+    collections::HashMap,
+    err::{while_doing, Result},
+    expr::ExprGenerator,
+    hierarchy::Hierarchy,
     schema::Schema,
+    settings::ABACSettings,
 };
 use arbitrary::Unstructured;
 use cedar_policy_core::{
     ast::{self, EntityType},
-    validator::{types, ValidatorSchema as CoreSchema},
+    validator::{
+        types::{self, OpenTag},
+        ValidatorSchema as CoreSchema,
+    },
 };
 use smol_str::SmolStr;
 
@@ -62,6 +71,8 @@ impl From<types::Type> for abac::Type {
 
 /// A trait that specifies what methods other generators expect from a schema
 pub trait SchemaGen: std::fmt::Debug {
+    /// Gen all entity types
+    fn entity_types(&self) -> Box<dyn Iterator<Item = EntityType> + '_>;
     /// Get an arbitrary entity type
     fn arbitrary_entity_type(&self, u: &mut Unstructured<'_>) -> Result<EntityType>;
     /// Get an arbitrary attribute
@@ -92,6 +103,22 @@ pub trait SchemaGen: std::fmt::Debug {
     fn arbitrary_resource_type(&self, u: &mut Unstructured<'_>) -> Result<ast::EntityType>;
     /// Get an arbitrary action
     fn arbitrary_action_uid(&self, u: &mut Unstructured<'_>) -> Result<ast::EntityUID>;
+    /// Get allowed parent type names
+    fn allowed_parent_typenames(
+        &self,
+        ety: &EntityType,
+    ) -> Option<Box<dyn Iterator<Item = EntityType> + '_>>;
+    /// Get attribute types and whether there are additional attributes
+    fn attribute_by_entity_type(
+        &self,
+        ety: &EntityType,
+    ) -> Option<(BTreeMap<SmolStr, QualifiedType>, bool)>;
+    /// Get tag type of an entity type
+    fn tag_type_by_entity_type(&self, ety: &EntityType) -> Option<Option<abac::Type>>;
+    /// Get settings
+    fn get_abac_settings(&self) -> &ABACSettings;
+    /// Get an expression generator
+    fn exprgenerator<'s>(&'s self, hierarchy: Option<&'s Hierarchy>) -> ExprGenerator<'s>;
 }
 
 /// A wrapper around the validator schema of core
@@ -100,23 +127,52 @@ pub struct ValidatorSchema<'a> {
     core_schema: &'a CoreSchema,
     entity_types: Vec<EntityType>,
     attributes: Vec<(SmolStr, abac::Type)>,
+    attributes_by_type: HashMap<abac::Type, Vec<(ast::EntityType, SmolStr)>>,
+    settings: &'a ABACSettings,
+    constant_pool: ConstantPool,
+    unknown_pool: UnknownPool,
+    ext_funcs: AvailableExtensionFunctions,
 }
 
 impl<'a> ValidatorSchema<'a> {
     /// Create such wrapper
-    pub fn new(core_schema: &'a CoreSchema) -> Self {
+    pub fn new(
+        core_schema: &'a CoreSchema,
+        settings: &'a ABACSettings,
+        u: &mut Unstructured<'_>,
+    ) -> Result<Self> {
         let entity_types = core_schema.entity_type_names().cloned().collect();
-        Self {
+        let attributes_by_type = Self::build_attributes(core_schema);
+        let attributes = attributes_by_type
+            .iter()
+            .flat_map(|(ty, pairs)| {
+                pairs
+                    .iter()
+                    .map(move |(_, attr)| (attr.clone(), ty.clone()))
+            })
+            .collect();
+        Ok(Self {
             core_schema,
             entity_types,
-            attributes: Self::build_attributes(core_schema),
-        }
+            attributes,
+            attributes_by_type,
+            settings,
+            constant_pool: u.arbitrary()?,
+            unknown_pool: UnknownPool::default(),
+            ext_funcs: AvailableExtensionFunctions::create(&settings),
+        })
     }
-    fn build_attributes(core_schema: &'a CoreSchema) -> Vec<(SmolStr, abac::Type)> {
-        let mut attributes = Vec::new();
+    fn build_attributes(
+        core_schema: &'a CoreSchema,
+    ) -> HashMap<abac::Type, Vec<(ast::EntityType, SmolStr)>> {
+        let mut attributes = HashMap::new();
         for et in core_schema.entity_types() {
             for (attr, ty) in et.attributes().iter() {
-                attributes.push((attr.clone(), abac::Type::from(ty.attr_type.clone())));
+                let attr_type = abac::Type::from(ty.attr_type.clone());
+                attributes
+                    .entry(attr_type)
+                    .or_insert_with(Vec::new)
+                    .push((et.name().clone(), attr.clone()));
             }
         }
         attributes
@@ -135,33 +191,136 @@ impl SchemaGen for ValidatorSchema<'_> {
         target_type: &abac::Type,
         u: &mut Unstructured<'_>,
     ) -> Result<&(ast::EntityType, SmolStr)> {
-        todo!()
+        match self.attributes_by_type.get(target_type) {
+            Some(vec) => u.choose(vec).map_err(|e| {
+                while_doing(
+                    format!("getting arbitrary attr for type {target_type:?}"),
+                    e,
+                )
+            }),
+            None => Err(crate::err::Error::EmptyChoose {
+                doing_what: format!("getting arbitrary attr for type {target_type:?}"),
+            }),
+        }
     }
     fn arbitrary_entity_type_with_tag_type(
         &self,
         target_type: &abac::Type,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::EntityType> {
-        todo!()
+        let candidates: Vec<ast::EntityType> = self
+            .core_schema
+            .entity_types()
+            .filter_map(|ty| match ty.tag_type() {
+                Some(t) if &abac::Type::from(t.clone()) == target_type => Some(ty.name().clone()),
+                _ => None,
+            })
+            .collect();
+        u.choose(&candidates).cloned().map_err(|e| {
+            while_doing(
+                format!("getting entity type with tag schematype {target_type:?}"),
+                e,
+            )
+        })
     }
     fn arbitrary_attr_of_entity_type(
         &self,
         entity_type: &ast::EntityType,
         u: &mut Unstructured<'_>,
     ) -> Result<SmolStr> {
-        todo!()
+        Ok(u.choose(
+            &self
+                .core_schema
+                .get_entity_type(entity_type)
+                .expect("entity type should exist")
+                .attributes()
+                .iter()
+                .map(|a| a.0.clone())
+                .collect::<Vec<_>>(),
+        )?
+        .clone())
     }
     fn arbitrary_action_uid(&self, u: &mut Unstructured<'_>) -> Result<ast::EntityUID> {
-        todo!()
+        Ok(
+            u.choose(&self.core_schema.action_ids().collect::<Vec<_>>())?
+                .name()
+                .clone(),
+        )
     }
     fn arbitrary_principal_type(&self, u: &mut Unstructured<'_>) -> Result<ast::EntityType> {
-        todo!()
+        let principals: Vec<_> = self.core_schema.principals().cloned().collect();
+        Ok(u.choose(&principals)?.clone())
     }
     fn arbitrary_resource_type(&self, u: &mut Unstructured<'_>) -> Result<ast::EntityType> {
-        todo!()
+        let resources: Vec<_> = self.core_schema.resources().cloned().collect();
+        Ok(u.choose(&resources)?.clone())
     }
     fn get_uid_enum_choices(&self, ty: &ast::EntityType) -> Vec<SmolStr> {
-        todo!()
+        self.core_schema
+            .get_entity_type(ty)
+            .map_or(vec![], |ty| match &ty.kind {
+                cedar_policy_core::validator::ValidatorEntityTypeKind::Enum(choices) => {
+                    choices.into_iter().cloned().collect()
+                }
+                cedar_policy_core::validator::ValidatorEntityTypeKind::Standard(_) => vec![],
+            })
+    }
+    fn entity_types(&self) -> Box<dyn Iterator<Item = EntityType> + '_> {
+        Box::new(self.entity_types.clone().into_iter())
+    }
+    fn allowed_parent_typenames(
+        &self,
+        ety: &EntityType,
+    ) -> Option<Box<dyn Iterator<Item = EntityType> + '_>> {
+        self.core_schema.get_entity_type(ety).map(|_| {
+            let parent_types: Vec<EntityType> = self
+                .core_schema
+                .entity_types()
+                .filter(|t| t.has_descendant_entity_type(ety))
+                .map(|t| t.name().clone())
+                .collect();
+            Box::new(parent_types.into_iter()) as Box<dyn Iterator<Item = EntityType> + '_>
+        })
+    }
+    fn attribute_by_entity_type(
+        &self,
+        ety: &EntityType,
+    ) -> Option<(BTreeMap<SmolStr, QualifiedType>, bool)> {
+        self.core_schema.get_entity_type(ety).map(|ty| {
+            (
+                ty.attributes()
+                    .iter()
+                    .map(|(a, q)| {
+                        (
+                            a.clone(),
+                            QualifiedType {
+                                ty: Box::new(q.attr_type.clone().into()),
+                                required: q.is_required,
+                            },
+                        )
+                    })
+                    .collect(),
+                matches!(ty.open_attributes(), OpenTag::OpenAttributes),
+            )
+        })
+    }
+    fn tag_type_by_entity_type(&self, ety: &EntityType) -> Option<Option<abac::Type>> {
+        self.core_schema
+            .get_entity_type(ety)
+            .map(|ty| ty.tag_type().map(|ty| abac::Type::from(ty.clone())))
+    }
+    fn get_abac_settings(&self) -> &ABACSettings {
+        self.settings
+    }
+    fn exprgenerator<'s>(&'s self, hierarchy: Option<&'s Hierarchy>) -> ExprGenerator<'s> {
+        ExprGenerator {
+            schema: self,
+            settings: self.settings,
+            constant_pool: &self.constant_pool,
+            unknown_pool: &self.unknown_pool,
+            ext_funcs: &self.ext_funcs,
+            hierarchy,
+        }
     }
 }
 
@@ -177,32 +336,59 @@ impl SchemaGen for Schema {
         target_type: &abac::Type,
         u: &mut Unstructured<'_>,
     ) -> Result<&(ast::EntityType, SmolStr)> {
-        todo!()
+        self.arbitrary_attr_for_type(target_type, u)
     }
     fn arbitrary_entity_type_with_tag_type(
         &self,
         target_type: &abac::Type,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::EntityType> {
-        todo!()
+        self.arbitrary_entity_type_with_tag_type(target_type, u)
     }
     fn arbitrary_attr_of_entity_type(
         &self,
         entity_type: &ast::EntityType,
         u: &mut Unstructured<'_>,
     ) -> Result<SmolStr> {
-        todo!()
+        self.arbitrary_attr_of_entity_type(entity_type, u)
     }
     fn arbitrary_action_uid(&self, u: &mut Unstructured<'_>) -> Result<ast::EntityUID> {
-        todo!()
+        self.arbitrary_action_uid(u)
     }
     fn arbitrary_principal_type(&self, u: &mut Unstructured<'_>) -> Result<ast::EntityType> {
-        todo!()
+        // TODO: figure out if we need to qualify them with ns
+        Ok(u.choose(&self.principal_types).cloned()?)
     }
     fn arbitrary_resource_type(&self, u: &mut Unstructured<'_>) -> Result<ast::EntityType> {
-        todo!()
+        // TODO: figure out if we need to qualify them with ns
+        Ok(u.choose(&self.resource_types).cloned()?)
     }
     fn get_uid_enum_choices(&self, ty: &ast::EntityType) -> Vec<SmolStr> {
-        todo!()
+        self.get_uid_enum_choices(ty)
+    }
+    fn entity_types(&self) -> Box<dyn Iterator<Item = EntityType> + '_> {
+        Box::new(self.entity_types.clone().into_iter())
+    }
+    fn allowed_parent_typenames(
+        &self,
+        ety: &EntityType,
+    ) -> Option<Box<dyn Iterator<Item = EntityType> + '_>> {
+        self.allowed_parent_typenames(ety)
+            .map(|iter| Box::new(iter) as Box<dyn Iterator<Item = EntityType> + '_>)
+    }
+    fn attribute_by_entity_type(
+        &self,
+        ety: &EntityType,
+    ) -> Option<(BTreeMap<SmolStr, QualifiedType>, bool)> {
+        self.attribute_by_entity_type(ety)
+    }
+    fn tag_type_by_entity_type(&self, ety: &EntityType) -> Option<Option<abac::Type>> {
+        self.tag_type_by_entity_type(ety)
+    }
+    fn get_abac_settings(&self) -> &ABACSettings {
+        &self.settings
+    }
+    fn exprgenerator<'s>(&'s self, hierarchy: Option<&'s Hierarchy>) -> ExprGenerator<'s> {
+        self.exprgenerator(hierarchy)
     }
 }
