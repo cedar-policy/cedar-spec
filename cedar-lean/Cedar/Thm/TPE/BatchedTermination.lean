@@ -117,10 +117,83 @@ theorem unaryApp_termination
           exact ih
 
 
+theorem PE_res_size_le_input (r rq es)  :
+  (TPE.evaluate r rq es).treeSize <= r.treeSize
+:= by
+  cases r with
+  | val v ty =>
+    simp [TPE.evaluate]
+  | error ty =>
+    simp [TPE.evaluate]
+  | var v ty =>
+    simp only [TPE.evaluate, TPE.varₚ]
+    split
+    any_goals
+      simp [TPE.someOrSelf, varₚ.varₒ, Residual.treeSize]
+    all_goals
+      split
+      all_goals
+        simp [Residual.treeSize]
+  | ite cond thenExpr elseExpr ty =>
+    sorry
+  | and a b ty =>
+    have ih₁ := PE_res_size_le_input a rq es
+    have ih₂ := PE_res_size_le_input b rq es
+    simp [TPE.evaluate, TPE.and]
+    split
+    all_goals
+      simp [Residual.treeSize]
+      omega
+  | or a b ty =>
+    have ih₁ := PE_res_size_le_input a rq es
+    have ih₂ := PE_res_size_le_input b rq es
+    simp [TPE.evaluate, TPE.or]
+    split
+    all_goals
+      simp [Residual.treeSize]
+      omega
+  | unaryApp op expr ty =>
+    have ih₁ := PE_res_size_le_input expr rq es
+    simp [TPE.evaluate, TPE.apply₁]
+    split
+    any_goals
+      simp [Residual.treeSize]
+    . split
+      . simp [someOrError]
+        split
+        . simp [Residual.treeSize]
+          omega
+        . simp [Residual.treeSize]
+      . simp [Residual.treeSize]
+        omega
+  | binaryApp op a b ty =>
+    have ih₁ := PE_res_size_le_input a rq es
+    have ih₂ := PE_res_size_le_input b rq es
+    simp [TPE.evaluate, TPE.apply₂]
+    split
+    . split
+      any_goals
+        simp [Residual.treeSize]; omega
+      . simp [someOrError]
+        split
+        all_goals
+         simp [Residual.treeSize]; omega
+      all_goals sorry
+    . sorry
+  | getAttr expr attr ty =>
+    sorry
+  | hasAttr expr attr ty =>
+    sorry
+  | set ls ty =>
+    sorry
+  | record map ty =>
+    sorry
+  | call xfn args ty =>
+    sorry
+
 theorem PE_size_decreases_or_returns_same (r rq es)  :
   (TPE.evaluate r rq es).treeSize < r.treeSize ∨
-  (TPE.evaluate r rq es) = r
-:= by
+  (TPE.evaluate r rq es) = r := by
   sorry
 
 theorem anyM_none_implies_exists_none {α} {f} {ls: List α}:
