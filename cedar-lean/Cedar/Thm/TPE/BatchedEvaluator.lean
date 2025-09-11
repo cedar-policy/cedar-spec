@@ -80,8 +80,8 @@ theorem entities_refine_withMissing_asPartial_append (es : Entities) (m2 m1 : Sl
     exact h1 a e₁'.asPartial h_find₂
   | none =>
     have h_find₃ : m1.asPartial.find? a = none := by
-      unfold EntitiesWithMissing.asPartial
-      exact Map.find?_mapOnValues_none EntityOrMissing.asPartial h_case
+      unfold SlicedEntities.asPartial
+      exact Map.find?_mapOnValues_none MaybeEntityData.asPartial h_case
     rw [h_find₃] at h_find
     simp [Option.or] at h_find
     exact h2 a e₂ h_find
