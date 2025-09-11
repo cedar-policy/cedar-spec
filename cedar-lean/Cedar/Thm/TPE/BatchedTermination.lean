@@ -62,7 +62,7 @@ theorem unaryApp_termination
   (ty : CedarType)
   (req : Request)
   (loader : EntityLoader)
-  (store : EntitiesWithMissing)
+  (store : SlicedEntities)
   (ih :
     expr.asValue = Option.none →
     (batchedEvalLoop expr req loader store 1).treeSize < expr.treeSize) :
@@ -169,7 +169,7 @@ theorem residual_asValue_some_value {r: Residual}:
     simp [Residual.asValue] at h
 
 
-theorem find_entity_in_batched_new_store {store: EntitiesWithMissing}:
+theorem find_entity_in_batched_new_store {store: SlicedEntities}:
   EntityLoader.WellBehaved env loader →
   uid ∈ l →
   ∃ e, (loader (Set.mk (List.filter (fun uid => (Map.find? store uid).isNone) l)) ++ store).find? uid = some e
@@ -218,8 +218,8 @@ theorem find_entity_in_batched_new_store {store: EntitiesWithMissing}:
     all_goals
       simp
 
-theorem binaryApp_termination_memₛ {vs uid} {a b ty} {store: EntitiesWithMissing} {req: Request} {loader: EntityLoader} :
-  let newStore: EntitiesWithMissing :=
+theorem binaryApp_termination_memₛ {vs uid} {a b ty} {store: SlicedEntities} {req: Request} {loader: EntityLoader} :
+  let newStore: SlicedEntities :=
     (loader
           (Set.filter (fun uid => (Map.find? store uid).isNone)
             (Residual.binaryApp BinaryOp.mem a b ty).allLiteralUIDs) ++
@@ -354,20 +354,20 @@ theorem binaryApp_termination_memₛ {vs uid} {a b ty} {store: EntitiesWithMissi
               case some e =>
                 exists e
           have h₇ : newStore.asPartial.find? uid = some e.asPartial := by
-            unfold EntitiesWithMissing.asPartial
-            exact Map.find?_mapOnValues_some EntityOrMissing.asPartial h₆
+            unfold SlicedEntities.asPartial
+            exact Map.find?_mapOnValues_some MaybeEntityData.asPartial h₆
           specialize h₄ e.asPartial h₇
           rw [← Map.list_find?_some_iff_map_find?_some] at h₆
           rw [← Map.kvs] at h₆
           simp [HAppend.hAppend] at h₆
-          simp [EntityOrMissing.asPartial] at h₄
+          simp [MaybeEntityData.asPartial] at h₄
           split at h₄
           . simp [PartialEntityData.ancestors] at h₄
           . simp [EntityData.asPartial, PartialEntityData.ancestors] at h₄
 
 
-theorem binaryApp_termination_memₑ {uid2 uid} {a b ty} {store: EntitiesWithMissing} {req: Request} {loader: EntityLoader} :
-  let newStore: EntitiesWithMissing :=
+theorem binaryApp_termination_memₑ {uid2 uid} {a b ty} {store: SlicedEntities} {req: Request} {loader: EntityLoader} :
+  let newStore: SlicedEntities :=
     (loader
           (Set.filter (fun uid => (Map.find? store uid).isNone)
             (Residual.binaryApp BinaryOp.mem a b ty).allLiteralUIDs) ++
@@ -414,7 +414,7 @@ theorem binaryApp_termination_memₑ {uid2 uid} {a b ty} {store: EntitiesWithMis
       split at h₃
       case isTrue => contradiction
       -- contradiction: .ancestors was none at h₃
-      simp [EntitiesWithMissing.asPartial, PartialEntities.ancestors, PartialEntities.get] at h₃
+      simp [SlicedEntities.asPartial, PartialEntities.ancestors, PartialEntities.get] at h₃
       replace ⟨ty₂, h₁⟩ := residual_asValue_some_value h₁
       subst h₁
       replace ⟨ty₃, h₂⟩ := residual_asValue_some_value h₂
@@ -438,15 +438,15 @@ theorem binaryApp_termination_memₑ {uid2 uid} {a b ty} {store: EntitiesWithMis
 
       simp [Residual.treeSize]
 
-      have h₇ := Map.find?_mapOnValues_some EntityOrMissing.asPartial h₆
+      have h₇ := Map.find?_mapOnValues_some MaybeEntityData.asPartial h₆
       specialize h₃ e.asPartial h₇
-      simp [EntityOrMissing.asPartial, EntityData.asPartial] at h₃
+      simp [MaybeEntityData.asPartial, EntityData.asPartial] at h₃
       split at h₃
       . simp [PartialEntityData.ancestors] at h₃
       . simp [PartialEntityData.ancestors] at h₃
 
-theorem binaryApp_termination_hasTag {uid tag} {a b ty} {store: EntitiesWithMissing} {req: Request} {loader: EntityLoader} :
-  let newStore: EntitiesWithMissing :=
+theorem binaryApp_termination_hasTag {uid tag} {a b ty} {store: SlicedEntities} {req: Request} {loader: EntityLoader} :
+  let newStore: SlicedEntities :=
     (loader
           (Set.filter (fun uid => (Map.find? store uid).isNone)
             (Residual.binaryApp BinaryOp.hasTag a b ty).allLiteralUIDs) ++
@@ -490,7 +490,7 @@ theorem binaryApp_termination_hasTag {uid tag} {a b ty} {store: EntitiesWithMiss
 
       clear h₄ h₅
       unfold TPE.hasTag at h₃
-      simp [EntitiesWithMissing.asPartial, PartialEntities.tags] at h₃
+      simp [SlicedEntities.asPartial, PartialEntities.tags] at h₃
 
       replace ⟨ty₂, h₁⟩ := residual_asValue_some_value h₁
       subst h₁
@@ -505,10 +505,10 @@ theorem binaryApp_termination_hasTag {uid tag} {a b ty} {store: EntitiesWithMiss
         simp [List.insertCanonical, List.canonicalize, Set.empty]
       simp [Residual.treeSize]
       simp [PartialEntities.get] at h₃
-      have h₇ : (Map.mapOnValues EntityOrMissing.asPartial newStore).find? uid = some e.asPartial := by
-        exact Map.find?_mapOnValues_some EntityOrMissing.asPartial h₆
+      have h₇ : (Map.mapOnValues MaybeEntityData.asPartial newStore).find? uid = some e.asPartial := by
+        exact Map.find?_mapOnValues_some MaybeEntityData.asPartial h₆
       specialize h₃ e.asPartial h₇
-      simp [EntityOrMissing.asPartial] at h₃
+      simp [MaybeEntityData.asPartial] at h₃
       split at h₃
       . simp [PartialEntityData.tags] at h₃
       . simp [EntityData.asPartial, PartialEntityData.tags] at h₃
@@ -526,7 +526,7 @@ theorem binaryApp_termination
   (ty : CedarType)
   (req : Request)
   (loader : EntityLoader)
-  (store : EntitiesWithMissing)
+  (store : SlicedEntities)
    :
   EntityLoader.WellBehaved es loader →
   InstanceOfWellFormedEnvironment req es env →
@@ -679,7 +679,7 @@ theorem batched_eval_loop_decreases_size
   (residual : Residual)
   (req : Request)
   (loader : EntityLoader)
-  (store : EntitiesWithMissing):
+  (store : SlicedEntities):
   EntityLoader.WellBehaved es loader →
   InstanceOfWellFormedEnvironment req es env →
   RequestAndEntitiesRefine req es (req.asPartialRequest) pes →
@@ -689,7 +689,7 @@ theorem batched_eval_loop_decreases_size
   := by
   -- The batched evaluation loop loads new entities and evaluates
   let toLoad := residual.allLiteralUIDs.filter (λ uid => (store.find? uid).isNone)
-  let newEntities: EntitiesWithMissing := (loader toLoad)
+  let newEntities: SlicedEntities := (loader toLoad)
   let newStore := newEntities ++ store
   intro h_wb h_wf h_ref h_wt h₁
 
