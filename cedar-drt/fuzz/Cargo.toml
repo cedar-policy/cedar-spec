@@ -250,3 +250,9 @@ name = "symcc-cex-pbt"
 path = "fuzz_targets/symcc-cex-pbt.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "input-generation"
+path = "fuzz_targets/input-generation.rs"
+test = false
+doc = false

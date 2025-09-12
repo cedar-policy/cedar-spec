@@ -17,13 +17,12 @@
 use crate::abac::Type;
 use crate::collections::{HashMap, HashSet};
 use crate::err::{while_doing, Error, Result};
-use crate::schema::{attrs_from_attrs_or_context, Schema};
+use crate::schema_gen::SchemaGen;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_ratio};
 use arbitrary::{Arbitrary, Unstructured};
 use cedar_policy_core::ast::{self, Eid, Entity, EntityUID};
 use cedar_policy_core::entities::{Entities, NoEntitiesSchema, TCComputation};
 use cedar_policy_core::extensions::Extensions;
-use cedar_policy_core::validator::json_schema::{self, EntityTypeKind, StandardEntityType};
 use smol_str::SmolStr;
 
 /// EntityUIDs with the mappings to their indices in the container.
@@ -159,7 +158,7 @@ impl Hierarchy {
     /// pick one of the valid EIDs for that type.
     pub fn arbitrary_uid_with_type(
         &self,
-        schema: Option<&Schema>,
+        schema: Option<&dyn SchemaGen>,
         typename: &ast::EntityType,
         u: &mut Unstructured<'_>,
     ) -> Result<EntityUID> {
@@ -358,7 +357,7 @@ pub enum HierarchyGeneratorMode<'a> {
     /// The generated `Hierarchy` will conform to this `Schema`.
     SchemaBased {
         /// Schema that the generated `Hierarchy` will conform to
-        schema: &'a Schema,
+        schema: &'a dyn SchemaGen,
     },
     /// The generated `Hierarchy` will be fully arbitrary
     Arbitrary {
@@ -422,8 +421,8 @@ pub(crate) fn generate_uid_with_type(
 impl HierarchyGenerator<'_, '_> {
     /// Generate a `Hierarchy` according to the specified parameters
     pub fn generate(&mut self) -> Result<Hierarchy> {
-        let entity_types = match &self.mode {
-            HierarchyGeneratorMode::SchemaBased { schema } => schema.entity_types.clone(),
+        let entity_types: HashSet<ast::EntityType> = match &self.mode {
+            HierarchyGeneratorMode::SchemaBased { schema } => schema.entity_types().collect(),
             HierarchyGeneratorMode::Arbitrary { .. } => {
                 // generate a HashSet first to avoid duplicates
                 let entity_types: HashSet<ast::EntityType> = self.u.arbitrary()?;
@@ -436,10 +435,9 @@ impl HierarchyGenerator<'_, '_> {
             .iter()
             .map(|name| {
                 let (name, uid_choices) = match &self.mode {
-                    HierarchyGeneratorMode::SchemaBased { schema } => (
-                        name.qualify_with(schema.namespace()),
-                        schema.get_uid_enum_choices(name),
-                    ),
+                    HierarchyGeneratorMode::SchemaBased { schema } => {
+                        (name.clone(), schema.get_uid_enum_choices(name))
+                    }
                     HierarchyGeneratorMode::Arbitrary { .. } => (name.clone(), vec![]),
                 };
                 let uids = match &self.num_entities {
@@ -481,25 +479,6 @@ impl HierarchyGenerator<'_, '_> {
             })
             .collect::<Result<HashMap<ast::EntityType, HashSet<ast::EntityUID>>>>()?;
         let hierarchy_no_attrs = Hierarchy::from_uids_by_type(uids_by_type);
-        let entitytypes_by_type: Option<
-            HashMap<ast::EntityType, &json_schema::EntityType<ast::InternalName>>,
-        > = match &self.mode {
-            HierarchyGeneratorMode::SchemaBased { schema } => Some(
-                schema
-                    .schema
-                    .entity_types
-                    .iter()
-                    .map(|(name, et)| {
-                        (
-                            ast::EntityType::from(ast::Name::from(name.clone()))
-                                .qualify_with(schema.namespace.as_ref()),
-                            et,
-                        )
-                    })
-                    .collect(),
-            ),
-            HierarchyGeneratorMode::Arbitrary { .. } => None,
-        };
         // now create an entity hierarchy composed of those entity UIDs
         let entities = hierarchy_no_attrs
             .entities()
@@ -510,29 +489,11 @@ impl HierarchyGenerator<'_, '_> {
                 let mut parents = HashSet::new();
                 match &self.mode {
                     HierarchyGeneratorMode::SchemaBased { schema } => {
-                        // we have schema data. Choose parents of appropriate types.
-                        let Some(entitytypes_by_type) = &entitytypes_by_type else {
-                            unreachable!("in schema-based mode, this should always be Some")
-                        };
-                        for allowed_parent_typename in match &entitytypes_by_type
-                            .get(name)
-                            .expect("typename should have an EntityType").kind
-                            {
-                                json_schema::EntityTypeKind::Standard(StandardEntityType { member_of_types, ..} ) => member_of_types.clone(),
-                                json_schema::EntityTypeKind::Enum { .. } => vec![]
-                            }
-                        {
-                            let allowed_parent_typename = ast::Name::try_from(
-                                allowed_parent_typename
-                                    .qualify_with_name(schema.namespace.as_ref()),
-                            )
-                            .unwrap()
-                            .into();
+                        for ty in schema.allowed_parent_typenames(name).unwrap() {
                             for possible_parent_uid in
-                                // `uids_for_type` only prevent cycles resulting from self-loops in the entity types graph
-                                // It should be very unlikely where loops involving multiple entity types occur in the schemas
-                                hierarchy_no_attrs
-                                    .uids_for_type(&allowed_parent_typename, uid)
+                            // `uids_for_type` only prevent cycles resulting from self-loops in the entity types graph
+                            // It should be very unlikely where loops involving multiple entity types occur in the schemas
+                            hierarchy_no_attrs.uids_for_type(&ty, uid)
                             {
                                 if self.u.ratio::<u8>(1, 2)? {
                                     parents.insert(possible_parent_uid.clone());
@@ -570,24 +531,16 @@ impl HierarchyGenerator<'_, '_> {
                     }
                     HierarchyGeneratorMode::SchemaBased { schema } => {
                         // add attributes
-                        let Some(entitytypes_by_type) = &entitytypes_by_type else {
+                        let Some ((entity_attrs, additional_attrs)) = schema.attribute_by_entity_type(name) else {
                             unreachable!("in schema-based mode, this should always be Some")
                         };
-                        let et = entitytypes_by_type
-                        .get(name)
-                        .expect("typename should have an EntityType");
-                        match &et.kind {
-                            EntityTypeKind::Enum { .. } => {}
-                            EntityTypeKind::Standard(StandardEntityType { shape, .. }) => {
-                                let attributes = attrs_from_attrs_or_context(
-                                    &schema.schema,shape);
-                                if attributes.additional_attrs {
+                                if additional_attrs {
                                     // maybe add some additional attributes with arbitrary types
                                     self.u.arbitrary_loop(
                                         None,
-                                        Some(schema.settings.max_width as u32),
+                                        Some(schema.get_abac_settings().max_width as u32),
                                         |u| {
-                                            let attr_type = if schema.settings.enable_extensions {
+                                            let attr_type = if schema.get_abac_settings().enable_extensions {
                                                 u.arbitrary()?
                                             } else {
                                                 Type::arbitrary_nonextension(u)?
@@ -599,7 +552,7 @@ impl HierarchyGenerator<'_, '_> {
                                                     .exprgenerator(Some(&hierarchy_no_attrs))
                                                     .generate_attr_value_for_type(
                                                         &attr_type,
-                                                        schema.settings.max_depth,
+                                                        schema.get_abac_settings().max_depth,
                                                         u,
                                                     )?
                                                     .into(),
@@ -608,7 +561,7 @@ impl HierarchyGenerator<'_, '_> {
                                         },
                                     )?;
                                 }
-                                for (attr, ty) in attributes.attrs {
+                                for (attr, ty) in entity_attrs {
                                     // now add the actual optional and required attributes, with the
                                     // correct types.
                                     // Doing this second ensures that we overwrite any "additional"
@@ -618,9 +571,9 @@ impl HierarchyGenerator<'_, '_> {
                                     if ty.required || self.u.ratio::<u8>(1, 2)? {
                                         let attr_val = schema
                                             .exprgenerator(Some(&hierarchy_no_attrs))
-                                            .generate_attr_value_for_schematype(
-                                                &ty.ty,
-                                                schema.settings.max_depth,
+                                            .generate_attr_value_for_type(
+                                              &ty.ty,
+                                                schema.get_abac_settings().max_depth,
                                                 self.u,
                                             )?;
                                         attrs.insert(
@@ -632,8 +585,6 @@ impl HierarchyGenerator<'_, '_> {
                                     }
                                 }
                             }
-                            }
-                        }
                 }
                 // generate appropriate tags for the entity
                 let mut tags = HashMap::new();
@@ -645,26 +596,23 @@ impl HierarchyGenerator<'_, '_> {
                     }
                     HierarchyGeneratorMode::SchemaBased { schema } => {
                         // add tags
-                        let Some(entitytypes_by_type) = &entitytypes_by_type else {
-                            unreachable!("in schema-based mode, this should always be Some")
-                        };
-                        let et = entitytypes_by_type
-                        .get(name)
-                        .expect("typename should have an EntityType");
-                        if let EntityTypeKind::Standard(StandardEntityType { tags: Some(tag_type), .. })  = &et.kind {
+                       let Some(tag_type) = schema.tag_type_by_entity_type(name) else {
+                        unreachable!("in schema-based mode, this should always be Some")
+                       };
+                        if let Some(tag_type) = tag_type {
                             // add tags with the type `tag_type`
                             self.u.arbitrary_loop(
                                 None,
-                                Some(schema.settings.max_width as u32),
+                                Some(schema.get_abac_settings().max_width as u32),
                                 |u| {
                                     let tag_key: SmolStr = u.arbitrary()?;
                                     tags.insert(
                                         tag_key,
                                         schema
                                             .exprgenerator(Some(&hierarchy_no_attrs))
-                                            .generate_attr_value_for_schematype(
-                                                tag_type,
-                                                schema.settings.max_depth,
+                                            .generate_attr_value_for_type(
+                                                &tag_type,
+                                                schema.get_abac_settings().max_depth,
                                                 u,
                                             )?
                                             .into(),

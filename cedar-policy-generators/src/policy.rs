@@ -18,6 +18,7 @@ use crate::collections::HashMap;
 use crate::err::Result;
 use crate::hierarchy::Hierarchy;
 use crate::schema::Schema;
+use crate::schema_gen::SchemaGen;
 use crate::size_hint_utils::size_hint_for_ratio;
 use arbitrary::{Arbitrary, Unstructured};
 use cedar_policy_core::ast::{
