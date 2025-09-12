@@ -69,23 +69,23 @@ InstanceOfType env v (TypedExpr.var var ty).typeOf
   simp only [TypedExpr.typeOf] <;>
   simp only [evaluate, Except.ok.injEq] at h₃ <;>
   rw [←h₃] <;>
-  simp only [InstanceOfWellFormedEnvironment, InstanceOfRequestType] at h₁
+  simp only [InstanceOfWellFormedEnvironment, InstanceOfTypeEnv] at h₁
   case principal =>
     rcases h₁ with ⟨_, ⟨h₁, _, _, _⟩, _⟩
-    exact InstanceOfType.instance_of_entity request.principal env.reqty.principal h₁
+    exact InstanceOfType.instance_of_entity request.principal env.sig.principal h₁
   case resource =>
     rcases h₁ with ⟨_, ⟨_, _, h₁, _⟩, _⟩
-    exact InstanceOfType.instance_of_entity request.resource env.reqty.resource h₁
+    exact InstanceOfType.instance_of_entity request.resource env.sig.resource h₁
   case action =>
     rcases h₁ with ⟨_, ⟨_, h₁, _, _⟩, _⟩
     simp only [h₁]
-    have : InstanceOfEntityType env.reqty.action env.reqty.action.ty env := by
+    have : InstanceOfEntityType env.sig.action env.sig.action.ty env := by
       have ⟨_, _, ⟨_, hwf_act, _⟩⟩ := hwf
       simp [
         InstanceOfEntityType, EntityUID.WellFormed,
         ActionSchema.contains, hwf_act,
       ]
-    exact InstanceOfType.instance_of_entity env.reqty.action env.reqty.action.ty this
+    exact InstanceOfType.instance_of_entity env.sig.action env.sig.action.ty this
   case context =>
     rcases h₁ with ⟨_, ⟨_, _, _, h₁⟩, _⟩
     exact type_lifting_preserves_instance_of_type h₁

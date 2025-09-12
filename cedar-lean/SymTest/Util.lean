@@ -85,7 +85,7 @@ def actionSchema (context : RecordType) : ActionSchema :=
   }
   Map.make [(action, entry)]
 
-def requestType (context : RecordType) : RequestType :=
+def actionSignature (context : RecordType) : ActionSignature :=
   {
     principal := principalType,
     action := action,
@@ -101,9 +101,9 @@ def entitySchema (principalAttrs resourceAttrs : RecordType) (principalTags reso
 
 def env (principalAttrs resourceAttrs context : RecordType) (principalTags resourceTags : Option CedarType := none) : TypeEnv :=
   {
-    ets   := entitySchema principalAttrs resourceAttrs principalTags resourceTags,
-    acts  := actionSchema context,
-    reqty := requestType context
+    ets  := entitySchema principalAttrs resourceAttrs principalTags resourceTags,
+    acts := actionSchema context,
+    sig  := actionSignature context
   }
 
 end BasicTypes
@@ -178,7 +178,7 @@ where
     .standard ⟨Set.make ancs, Map.make attrs, none⟩
 
 
-def requestType (action : EntityUID) (resourceType : EntityType) (context : RecordType) : RequestType :=
+def actionSignature (action : EntityUID) (resourceType : EntityType) (context : RecordType) : ActionSignature :=
   {
     principal := userType,
     action := action,
@@ -192,9 +192,9 @@ def env (action : EntityUID) (context : RecordType) : TypeEnv :=
   let acts := actionSchema context
   let resourceType := (acts.find? action).get!.appliesToPrincipal.toList.head!
   {
-    ets   := entitySchema,
-    acts  := acts,
-    reqty := requestType action resourceType context
+    ets  := entitySchema,
+    acts := acts,
+    sig  := actionSignature action resourceType context
   }
 
 end Photoflash

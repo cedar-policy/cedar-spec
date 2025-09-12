@@ -154,19 +154,19 @@ def ActionSchema.WellFormed (env : TypeEnv) (acts : ActionSchema) : Prop :=
   acts.AcyclicActionHierarchy ∧
   acts.TransitiveActionHierarchy
 
-def RequestType.WellFormed (env : TypeEnv) (reqty : RequestType) : Prop :=
-  ∃ entry, env.acts.find? reqty.action = some entry ∧
+def ActionSignature.WellFormed (env : TypeEnv) (sig : ActionSignature) : Prop :=
+  ∃ entry, env.acts.find? sig.action = some entry ∧
     -- Enforce that principal/resource/context are valid for the action
-    reqty.principal ∈ entry.appliesToPrincipal ∧
-    reqty.resource ∈ entry.appliesToResource ∧
-    reqty.context = entry.context
+    sig.principal ∈ entry.appliesToPrincipal ∧
+    sig.resource ∈ entry.appliesToResource ∧
+    sig.context = entry.context
   -- Other properties, such as the well-formedness of principal/resource/context
   -- follows from the above and the well-formedness of `env.ets` and `env.acts`.
 
 def TypeEnv.WellFormed (env : TypeEnv) : Prop :=
   env.ets.WellFormed env ∧
   env.acts.WellFormed env ∧
-  env.reqty.WellFormed env
+  env.sig.WellFormed env
 
 ----- Some lemmas -----
 
@@ -307,7 +307,7 @@ theorem wf_env_implies_attrs_lifted {env : TypeEnv} {ety : EntityType} {attrs : 
 
 theorem wf_env_implies_action_wf {env : TypeEnv}
   (hwf : env.WellFormed) :
-  EntityUID.WellFormed env env.reqty.action
+  EntityUID.WellFormed env env.sig.action
 := by
   have ⟨_, _, hwf_req⟩ := hwf
   have ⟨_, hact, _⟩ := hwf_req
@@ -330,19 +330,19 @@ theorem wf_env_disjoint_ets_acts
   · simp [EntitySchema.contains, hets]
 
 /--
-More well-formedness properties of `env.reqty`.
+More well-formedness properties of `env.sig`.
 -/
 theorem wf_env_implies_wf_request
   {env : TypeEnv}
   (hwf : env.WellFormed) :
-  EntityType.WellFormed env env.reqty.principal ∧
-  env.acts.contains env.reqty.action ∧
-  EntityType.WellFormed env env.reqty.resource ∧
-  (CedarType.record env.reqty.context).WellFormed env
+  EntityType.WellFormed env env.sig.principal ∧
+  env.acts.contains env.sig.action ∧
+  EntityType.WellFormed env env.sig.resource ∧
+  (CedarType.record env.sig.context).WellFormed env
 := by
   have ⟨_, hwf_acts, ⟨entry, hwf_act, hwf_princ, hwf_res, hwf_ctx⟩⟩ := hwf
   have ⟨_, hwf_acts, _⟩ := hwf_acts
-  have hwf_act_entry := hwf_acts env.reqty.action entry hwf_act
+  have hwf_act_entry := hwf_acts env.sig.action entry hwf_act
   have ⟨_, _, _, hwf_app_to_princ, hwf_app_to_res, _, hwf_ctx_ty⟩ := hwf_act_entry
   and_intros
   · apply hwf_app_to_princ
@@ -355,16 +355,16 @@ theorem wf_env_implies_wf_request
   · simp [hwf_ctx, hwf_ctx_ty]
 
 /--
-More well-formedness properties of `env.reqty`.
+More well-formedness properties of `env.sig`.
 -/
 theorem wf_env_implies_ctx_lifted
   {env : TypeEnv}
   (hwf : env.WellFormed) :
-  (CedarType.record env.reqty.context).IsLifted
+  (CedarType.record env.sig.context).IsLifted
 := by
   have ⟨_, hwf_acts, ⟨entry, hwf_act, _, _, hwf_ctx⟩⟩ := hwf
   have ⟨_, hwf_acts, _⟩ := hwf_acts
-  have hwf_act_entry := hwf_acts env.reqty.action entry hwf_act
+  have hwf_act_entry := hwf_acts env.sig.action entry hwf_act
   have ⟨_, _, _, _, _, _, hwf_ctx_ty⟩ := hwf_act_entry
   simp [hwf_ctx, hwf_ctx_ty]
 
