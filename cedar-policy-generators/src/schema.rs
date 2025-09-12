@@ -40,7 +40,6 @@ use cedar_policy_core::validator::{
 };
 use smol_str::{SmolStr, ToSmolStr};
 use std::collections::BTreeMap;
-use std::sync::Arc;
 
 /// Contains the schema, but also pools of constants etc
 #[derive(Debug, Clone)]
@@ -342,7 +341,7 @@ pub fn schematype_to_type(
                     (
                         a.clone(),
                         QualifiedType {
-                            ty: Arc::new(schematype_to_type(schema, &t.ty, namespace)),
+                            ty: schematype_to_type(schema, &t.ty, namespace),
                             required: t.required,
                         },
                     )
@@ -747,11 +746,11 @@ impl Schema {
                                 (
                                     a.clone(),
                                     QualifiedType {
-                                        ty: Arc::new(schematype_to_type(
+                                        ty: schematype_to_type(
                                             &self.schema,
                                             &ty.ty,
                                             self.namespace(),
-                                        )),
+                                        ),
                                         required: ty.required,
                                     },
                                 )

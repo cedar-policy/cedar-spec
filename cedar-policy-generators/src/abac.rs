@@ -31,7 +31,6 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::ops::{Deref, DerefMut};
-use std::sync::Arc;
 use thiserror::Error;
 
 // Mutate a hypothetically valid string (randomly).
@@ -699,7 +698,7 @@ impl AvailableExtensionFunctions {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Arbitrary)]
 pub struct QualifiedType {
     /// Type
-    pub ty: Arc<Type>,
+    pub ty: Type,
     /// Qualification
     pub required: bool,
 }
@@ -810,7 +809,7 @@ impl Type {
             Type::string(),
             Type::set_of(Self::arbitrary_nonextension(u)?),
             Self::arbitrary_record_inner(u, None, |u| Ok(QualifiedType {
-                ty: Arc::new(Self::arbitrary_nonextension(u)?),
+                ty: Self::arbitrary_nonextension(u)?,
                 required: u.arbitrary()?
             }))?,
             Type::entity(u.arbitrary()?)

@@ -29,7 +29,6 @@ use cedar_policy_core::ast;
 use cedar_policy_core::validator::json_schema::{EntityTypeKind, StandardEntityType};
 use smol_str::SmolStr;
 use std::collections::BTreeMap;
-use std::sync::Arc;
 
 /// Struct for generating expressions
 #[derive(Debug)]
@@ -1754,7 +1753,7 @@ fn record_type_with_attr(attr_name: SmolStr, attr_type: Type) -> Type {
     Type::Record(BTreeMap::from_iter([(
         attr_name,
         QualifiedType {
-            ty: Arc::new(attr_type),
+            ty: attr_type,
             required: true,
         },
     )]))
