@@ -2,13 +2,15 @@ use std::collections::BTreeMap;
 
 use crate::{
     abac::{
-        self, ABACPolicy, AvailableExtensionFunctions, ConstantPool, QualifiedType, UnknownPool,
+        self, ABACPolicy, ABACRequest, AvailableExtensionFunctions, ConstantPool, QualifiedType,
+        UnknownPool,
     },
     collections::HashMap,
     err::{while_doing, Result},
     expr::ExprGenerator,
     hierarchy::{Hierarchy, HierarchyGenerator, HierarchyGeneratorMode, NumEntities},
     policy::{ActionConstraint, GeneratedPolicy, PrincipalOrResourceConstraint},
+    request::Request,
     schema::Schema,
     settings::ABACSettings,
 };
@@ -253,6 +255,12 @@ pub trait SchemaGen: std::fmt::Debug {
         }
         Ok(conjunction)
     }
+    /// Generate an arbitrary request
+    fn arbitrary_request(
+        &self,
+        hierarchy: &Hierarchy,
+        u: &mut Unstructured<'_>,
+    ) -> Result<abac::ABACRequest>;
 }
 
 /// A wrapper around the validator schema of core
@@ -465,6 +473,54 @@ impl SchemaGen for ValidatorSchema<'_> {
         }
         .generate()
     }
+    fn arbitrary_request(
+        &self,
+        hierarchy: &Hierarchy,
+        u: &mut Unstructured<'_>,
+    ) -> Result<abac::ABACRequest> {
+        let actions: Vec<_> = self.core_schema.actions().cloned().collect();
+        let action = u.choose(&actions)?;
+        let action_id = self
+            .core_schema
+            .get_action_id(action)
+            .expect("action id should exist");
+        let principals: Vec<_> = action_id.applies_to_principals().cloned().collect();
+        let principal_type = u.choose(&principals)?;
+        let resources: Vec<_> = action_id.applies_to_resources().cloned().collect();
+        let resource_type = u.choose(&resources)?;
+        let context_ty = abac::Type::from(action_id.context_type().clone());
+        Ok(ABACRequest(Request {
+            principal: self
+                .exprgenerator(Some(hierarchy))
+                .arbitrary_uid_with_type(principal_type, u)?,
+            action: action_id.name().clone(),
+            resource: self
+                .exprgenerator(Some(hierarchy))
+                .arbitrary_uid_with_type(resource_type, u)?,
+            context: {
+                let abac::Type::Record(m) = context_ty else {
+                    unreachable!("record should be a map")
+                };
+                let mut attrs = BTreeMap::new();
+
+                for (a, t) in m {
+                    if t.required || u.ratio(1, 2)? {
+                        attrs.insert(
+                            a,
+                            self.exprgenerator(Some(hierarchy))
+                                .generate_attr_value_for_type(
+                                    &t.ty,
+                                    self.get_abac_settings().max_depth,
+                                    u,
+                                )?
+                                .into(),
+                        );
+                    }
+                }
+                ast::Context::from_pairs(attrs, Extensions::all_available())?
+            },
+        }))
+    }
 }
 
 impl SchemaGen for Schema {
@@ -542,5 +598,12 @@ impl SchemaGen for Schema {
             extensions: Extensions::all_available(),
         }
         .generate()
+    }
+    fn arbitrary_request(
+        &self,
+        hierarchy: &Hierarchy,
+        u: &mut Unstructured<'_>,
+    ) -> Result<abac::ABACRequest> {
+        self.arbitrary_request(hierarchy, u)
     }
 }

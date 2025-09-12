@@ -23,7 +23,8 @@ use cedar_drt::{
 use cedar_policy::{Policy, PolicySet, Schema, ValidationMode};
 
 use cedar_policy_generators::{
-    abac::ABACPolicy, hierarchy::HierarchyGenerator, schema, settings::ABACSettings,
+    abac::ABACPolicy, hierarchy::HierarchyGenerator, schema, schema_gen::SchemaGen,
+    settings::ABACSettings,
 };
 use cedar_testing::cedar_test_impl::time_function;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
