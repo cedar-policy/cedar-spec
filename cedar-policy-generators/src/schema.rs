@@ -40,6 +40,7 @@ use cedar_policy_core::validator::{
 };
 use smol_str::{SmolStr, ToSmolStr};
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 /// Contains the schema, but also pools of constants etc
 #[derive(Debug, Clone)]
@@ -341,7 +342,7 @@ pub fn schematype_to_type(
                     (
                         a.clone(),
                         QualifiedType {
-                            ty: Box::new(schematype_to_type(schema, &t.ty, namespace)),
+                            ty: Arc::new(schematype_to_type(schema, &t.ty, namespace)),
                             required: t.required,
                         },
                     )
@@ -746,7 +747,7 @@ impl Schema {
                                 (
                                     a.clone(),
                                     QualifiedType {
-                                        ty: Box::new(schematype_to_type(
+                                        ty: Arc::new(schematype_to_type(
                                             &self.schema,
                                             &ty.ty,
                                             self.namespace(),
@@ -1395,7 +1396,7 @@ impl Schema {
             .arbitrary_uid_with_type(&ty, u)
     }
 
-    /// get an attribute name and its `json_schema::Type`, from the schema
+    /// get an attribute name from the schema
     pub fn arbitrary_attr(&self, u: &mut Unstructured<'_>) -> Result<SmolStr> {
         u.choose(&self.attributes)
             .map_err(|e| while_doing("getting arbitrary attr from schema".into(), e))

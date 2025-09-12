@@ -29,6 +29,7 @@ use cedar_policy_core::ast;
 use cedar_policy_core::validator::json_schema::{EntityTypeKind, StandardEntityType};
 use smol_str::SmolStr;
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 /// Struct for generating expressions
 #[derive(Debug)]
@@ -1747,13 +1748,13 @@ impl ExprGenerator<'_> {
     }
 }
 
-/// internal helper function, get a [`json_schema::Type`] representing a Record
+/// internal helper function, get a [`abac::Type`] representing a Record
 /// with (at least) one attribute of the specified name and type.
 fn record_type_with_attr(attr_name: SmolStr, attr_type: Type) -> Type {
     Type::Record(BTreeMap::from_iter([(
         attr_name,
         QualifiedType {
-            ty: Box::new(attr_type),
+            ty: Arc::new(attr_type),
             required: true,
         },
     )]))

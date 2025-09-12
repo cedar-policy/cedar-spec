@@ -31,6 +31,7 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::ops::{Deref, DerefMut};
+use std::sync::Arc;
 use thiserror::Error;
 
 // Mutate a hypothetically valid string (randomly).
@@ -698,7 +699,7 @@ impl AvailableExtensionFunctions {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Arbitrary)]
 pub struct QualifiedType {
     /// Type
-    pub ty: Box<Type>,
+    pub ty: Arc<Type>,
     /// Qualification
     pub required: bool,
 }
@@ -713,16 +714,11 @@ pub enum Type {
     Long,
     /// String
     String,
-    /// Set, with the given element type. Note that we only generate
-    /// homogeneous sets.
-    /// Set(None) means any set type. It will still be a homogeneous set.
+    /// Homogeneous set, with the given element type
     Set(Box<Type>),
-    /// Note that for now we have only a single Record type: all records are the
-    /// same type, no effort to generate records with particular attributes
+    /// Record: an ordered map of attributes to qualified types
     Record(BTreeMap<SmolStr, QualifiedType>),
-    /// Note that for now we have only a single Entity type: all entities are
-    /// the same type, no effort to generate entities with particular
-    /// attributes, or distinguish entities of different entity types
+    /// Entity
     Entity(EntityType),
     /// IP address
     IPAddr,
@@ -752,7 +748,7 @@ impl Type {
         Type::Set(Box::new(element_ty))
     }
     /// Record type
-    pub fn record(m: impl Iterator<Item = (SmolStr, QualifiedType)>) -> Self {
+    pub fn record(m: impl IntoIterator<Item = (SmolStr, QualifiedType)>) -> Self {
         Type::Record(BTreeMap::from_iter(m))
     }
     /// Entity type
@@ -814,7 +810,7 @@ impl Type {
             Type::string(),
             Type::set_of(Self::arbitrary_nonextension(u)?),
             Self::arbitrary_record_inner(u, None, |u| Ok(QualifiedType {
-                ty: Box::new(Self::arbitrary_nonextension(u)?),
+                ty: Arc::new(Self::arbitrary_nonextension(u)?),
                 required: u.arbitrary()?
             }))?,
             Type::entity(u.arbitrary()?)
