@@ -14,21 +14,19 @@
  * limitations under the License.
  */
 
-use crate::abac::{AttrValue, AvailableExtensionFunctions, ConstantPool, Type, UnknownPool};
+use crate::abac::{
+    AttrValue, AvailableExtensionFunctions, ConstantPool, QualifiedType, Type, UnknownPool,
+};
 use crate::collections::HashMap;
 use crate::err::{while_doing, Error, Result};
 use crate::hierarchy::{generate_uid_with_type, Hierarchy};
-use crate::schema::{
-    attrs_from_attrs_or_context, entity_type_name_to_schema_type, lookup_common_type,
-    uid_for_action_name, Schema,
-};
+use crate::schema::{attrs_from_attrs_or_context, uid_for_action_name, Schema};
 use crate::settings::ABACSettings;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
 use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{Arbitrary, MaxRecursionReached, Unstructured};
-use cedar_policy_core::ast::{self, UnreservedId};
-use cedar_policy_core::est::Annotations;
-use cedar_policy_core::validator::json_schema::{self, EntityTypeKind, StandardEntityType};
+use cedar_policy_core::ast;
+use cedar_policy_core::validator::json_schema::{EntityTypeKind, StandardEntityType};
 use smol_str::SmolStr;
 use std::collections::BTreeMap;
 
@@ -176,9 +174,9 @@ impl ExprGenerator<'_> {
                     1 => {
                         let mut r = HashMap::new();
                         u.arbitrary_loop(Some(0), Some(self.settings.max_width as u32), |u| {
-                            let (attr_name, _) = self.schema.arbitrary_attr(u)?;
+                            let attr_name = self.schema.arbitrary_attr(u)?;
                             r.insert(
-                                attr_name.clone(),
+                                attr_name,
                                 self.generate_expr(max_depth - 1, u)?,
                             );
                             Ok(std::ops::ControlFlow::Continue(()))
@@ -219,7 +217,7 @@ impl ExprGenerator<'_> {
                                 let s: String = u.arbitrary()?;
                                 SmolStr::from(s)
                             },
-                            6 => self.schema.arbitrary_attr(u)?.0.clone());
+                            6 => self.schema.arbitrary_attr(u)?);
                         let e = self.generate_expr(max_depth - 1, u)?;
                         // We should be able to have an arbitrary expression
                         // as the base of an `GetAttr` operation.
@@ -241,7 +239,7 @@ impl ExprGenerator<'_> {
                     },
                     4 => {
                         let attr_name = uniform!(u,
-                           self.schema.arbitrary_attr(u)?.0.clone(),
+                           self.schema.arbitrary_attr(u)?,
                             {
                                 let s: String = u.arbitrary()?;
                                 SmolStr::from(s)
@@ -254,7 +252,7 @@ impl ExprGenerator<'_> {
                     4 => {
                         let tag_name = uniform!(u,
                             self.generate_expr(max_depth - 1, u)?,
-                            ast::Expr::val(self.schema.arbitrary_attr(u)?.0.clone())
+                            ast::Expr::val(self.schema.arbitrary_attr(u)?)
                         );
                         let e = self.generate_expr(max_depth - 1, u)?;
                         Ok(ast::Expr::has_tag(e, tag_name))
@@ -421,31 +419,37 @@ impl ExprGenerator<'_> {
                             )?,
                         )),
                         // in expression, non-set form
-                        11 => Ok(ast::Expr::is_in(
+                        11 => {
+                            let ety1 = u.choose(self.schema.entity_types())?;
+                            let ety2 = u.choose(self.schema.entity_types())?;
+                            Ok(ast::Expr::is_in(
                             self.generate_expr_for_type(
-                                &Type::entity(),
+                                &Type::Entity(ety1.clone()),
                                 max_depth - 1,
                                 u,
                             )?,
                             self.generate_expr_for_type(
-                                &Type::entity(),
+                                &Type::Entity(ety2.clone()),
                                 max_depth - 1,
                                 u,
                             )?,
-                        )),
+                        ))},
                         // in expression, set form
-                        2 => Ok(ast::Expr::is_in(
+                        2 => {
+                            let ety1 = u.choose(self.schema.entity_types())?;
+                            let ety2 = u.choose(self.schema.entity_types())?;
+                            Ok(ast::Expr::is_in(
                             self.generate_expr_for_type(
-                                &Type::entity(),
+                                &Type::Entity(ety1.clone()),
                                 max_depth - 1,
                                 u,
                             )?,
                             self.generate_expr_for_type(
-                                &Type::set_of(Type::entity()),
+                               &Type::set_of(Type::Entity(ety2.clone())),
                                 max_depth - 1,
                                 u,
                             )?,
-                        )),
+                        ))},
                         // contains() on a set
                         2 => {
                             let element_ty = u.arbitrary()?;
@@ -514,13 +518,15 @@ impl ExprGenerator<'_> {
                         },
                         // is
                         2 => {
+                            let ety_l = u.choose(&self.schema.entity_types)?.clone();
+                            let ety_r = u.choose(&self.schema.entity_types)?.clone();
                                 Ok(ast::Expr::is_entity_type(
                                     self.generate_expr_for_type(
-                                        &Type::entity(),
+                                        &Type::Entity(ety_l),
                                         max_depth - 1,
                                         u,
                                     )?,
-                                    u.choose(&self.schema.entity_types)?.clone(),
+                                    ety_r,
                                 ))
                         },
                         // extension function that returns bool
@@ -531,27 +537,27 @@ impl ExprGenerator<'_> {
                         ),
                         // getting an attr (on an entity) with type bool
                         1 => {
-                            let (entity_type, attr_name) = self.schema.arbitrary_attr_for_schematype(
-                                json_schema::TypeVariant::Boolean,
+                            let (entity_type, attr_name) = self.schema.arbitrary_attr_for_type(
+                                &Type::Bool,
                                 u,
                             )?;
                             Ok(ast::Expr::get_attr(
-                                self.generate_expr_for_schematype(
-                                    &entity_type_name_to_schema_type(&entity_type),
+                                self.generate_expr_for_type(
+                                    &Type::Entity(entity_type.clone()),
                                     max_depth - 1,
                                     u,
                                 )?,
-                                attr_name,
+                                attr_name.clone(),
                             ))
                         },
                         // getting an attr (on a record) with type bool
                         1 => {
                             let attr_name = self.constant_pool.arbitrary_string_constant(u)?;
                             Ok(ast::Expr::get_attr(
-                                self.generate_expr_for_schematype(
-                                    &record_schematype_with_attr(
+                                self.generate_expr_for_type(
+                                    &record_type_with_attr(
                                         attr_name.clone(),
-                                        json_schema::TypeVariant::Boolean,
+                                        Type::Bool,
                                     ),
                                     max_depth - 1,
                                     u,
@@ -561,18 +567,18 @@ impl ExprGenerator<'_> {
                         },
                         // getting an entity tag with type bool
                         1 => {
-                            let entity_type = self.schema.arbitrary_entity_type_with_tag_schematype(
-                                json_schema::TypeVariant::Boolean,
+                            let entity_type = self.schema.arbitrary_entity_type_with_tag_type(
+                                &Type::Bool,
                                 u,
                             )?;
                             Ok(ast::Expr::get_tag(
-                                self.generate_expr_for_schematype(
-                                    &entity_type_name_to_schema_type(&entity_type),
+                                self.generate_expr_for_type(
+                                    &Type::Entity(entity_type),
                                     max_depth - 1,
                                     u,
                                 )?,
-                                self.generate_expr_for_schematype(
-                                    &json_schema::Type::Type { ty: json_schema::TypeVariant::String, loc: None },
+                                self.generate_expr_for_type(
+                                    &Type::String,
                                     max_depth - 1,
                                     u,
                                 )?,
@@ -600,13 +606,8 @@ impl ExprGenerator<'_> {
                             };
                             let attr_name = SmolStr::clone(u.choose(&attr_names)?);
                             Ok(ast::Expr::has_attr(
-                                self.generate_expr_for_schematype(
-                                    &json_schema::Type::Type {
-                                        ty: json_schema::TypeVariant::Entity {
-                                            name: ast::Name::from(entity_name.clone()).into(),
-                                        },
-                                        loc: None,
-                                    },
+                                self.generate_expr_for_type(
+                                    &Type::Entity(ast::EntityType::from(ast::Name::from(entity_name.clone())).qualify_with(self.schema.namespace())),
                                     max_depth - 1,
                                     u,
                                 )?,
@@ -616,7 +617,7 @@ impl ExprGenerator<'_> {
                         // has expression on an entity, for an arbitrary attribute name
                         1 => Ok(ast::Expr::has_attr(
                             self.generate_expr_for_type(
-                                &Type::entity(),
+                                &Type::Entity(u.choose(self.schema.entity_types())?.clone()),
                                 max_depth - 1,
                                 u,
                             )?,
@@ -625,7 +626,7 @@ impl ExprGenerator<'_> {
                         // hasTag expression on an entity, for an arbitrary tag name
                         1 => Ok(ast::Expr::has_tag(
                             self.generate_expr_for_type(
-                                &Type::entity(),
+                                &Type::Entity(u.choose(self.schema.entity_types())?.clone()),
                                 max_depth - 1,
                                 u,
                             )?,
@@ -638,7 +639,7 @@ impl ExprGenerator<'_> {
                         // has expression on a record
                         2 => Ok(ast::Expr::has_attr(
                             self.generate_expr_for_type(
-                                &Type::record(),
+                                &Type::arbitrary_record(u, self.settings.max_width)?,
                                 max_depth - 1,
                                 u,
                             )?,
@@ -731,27 +732,27 @@ impl ExprGenerator<'_> {
                         ),
                         // getting an attr (on an entity) with type long
                         4 => {
-                            let (entity_type, attr_name) = self.schema.arbitrary_attr_for_schematype(
-                                json_schema::TypeVariant::Long,
+                            let (entity_type, attr_name) = self.schema.arbitrary_attr_for_type(
+                                &Type::Long,
                                 u,
                             )?;
                             Ok(ast::Expr::get_attr(
-                                self.generate_expr_for_schematype(
-                                    &entity_type_name_to_schema_type(&entity_type),
+                                self.generate_expr_for_type(
+                                    &Type::Entity(entity_type.clone()),
                                     max_depth - 1,
                                     u,
                                 )?,
-                                attr_name,
+                                attr_name.clone(),
                             ))
                         },
                         // getting an attr (on a record) with type long
                         4 => {
                             let attr_name = self.constant_pool.arbitrary_string_constant(u)?;
                             Ok(ast::Expr::get_attr(
-                                self.generate_expr_for_schematype(
-                                    &record_schematype_with_attr(
+                                self.generate_expr_for_type(
+                                    &record_type_with_attr(
                                         attr_name.clone(),
-                                        json_schema::TypeVariant::Long,
+                                        Type::Long,
                                     ),
                                     max_depth - 1,
                                     u,
@@ -761,18 +762,18 @@ impl ExprGenerator<'_> {
                         },
                         // getting an entity tag with type long
                         3 => {
-                            let entity_type = self.schema.arbitrary_entity_type_with_tag_schematype(
-                                json_schema::TypeVariant::Long,
+                            let entity_type = self.schema.arbitrary_entity_type_with_tag_type(
+                                &Type::Long,
                                 u,
                             )?;
                             Ok(ast::Expr::get_tag(
-                                self.generate_expr_for_schematype(
-                                    &entity_type_name_to_schema_type(&entity_type),
+                                self.generate_expr_for_type(
+                                    &Type::Entity(entity_type),
                                     max_depth - 1,
                                     u,
                                 )?,
-                                self.generate_expr_for_schematype(
-                                    &json_schema::Type::Type { ty: json_schema::TypeVariant::String, loc: None },
+                                self.generate_expr_for_type(
+                                    &Type::String,
                                     max_depth - 1,
                                     u,
                                 )?,
@@ -820,27 +821,27 @@ impl ExprGenerator<'_> {
                         ),
                         // getting an attr (on an entity) with type string
                         4 => {
-                            let (entity_type, attr_name) = self.schema.arbitrary_attr_for_schematype(
-                                json_schema::TypeVariant::String,
+                            let (entity_type, attr_name) = self.schema.arbitrary_attr_for_type(
+                                &Type::String,
                                 u,
                             )?;
                             Ok(ast::Expr::get_attr(
-                                self.generate_expr_for_schematype(
-                                    &entity_type_name_to_schema_type(&entity_type),
+                                self.generate_expr_for_type(
+                                    &Type::Entity(entity_type.clone()),
                                     max_depth - 1,
                                     u,
                                 )?,
-                                attr_name,
+                                attr_name.clone(),
                             ))
                         },
                         // getting an attr (on a record) with type string
                         4 => {
                             let attr_name = self.constant_pool.arbitrary_string_constant(u)?;
                             Ok(ast::Expr::get_attr(
-                                self.generate_expr_for_schematype(
-                                    &record_schematype_with_attr(
+                                self.generate_expr_for_type(
+                                    &record_type_with_attr(
                                         attr_name.clone(),
-                                        json_schema::TypeVariant::String,
+                                        Type::String,
                                     ),
                                     max_depth - 1,
                                     u,
@@ -850,18 +851,18 @@ impl ExprGenerator<'_> {
                         },
                         // getting an entity tag with type string
                         3 => {
-                            let entity_type = self.schema.arbitrary_entity_type_with_tag_schematype(
-                                json_schema::TypeVariant::String,
+                            let entity_type = self.schema.arbitrary_entity_type_with_tag_type(
+                                &Type::String,
                                 u,
                             )?;
                             Ok(ast::Expr::get_tag(
-                                self.generate_expr_for_schematype(
-                                    &entity_type_name_to_schema_type(&entity_type),
+                                self.generate_expr_for_type(
+                                    &Type::Entity(entity_type),
                                     max_depth - 1,
                                     u,
                                 )?,
-                                self.generate_expr_for_schematype(
-                                    &json_schema::Type::Type { ty: json_schema::TypeVariant::String, loc: None },
+                                self.generate_expr_for_type(
+                                    &Type::String,
                                     max_depth - 1,
                                     u,
                                 )?,
@@ -878,9 +879,6 @@ impl ExprGenerator<'_> {
                         // set literal
                         6 => {
                             let mut l = Vec::new();
-                            let target_element_ty = target_element_ty
-                                .as_ref()
-                                .map_or_else(|| u.arbitrary(), |ty| Ok((*ty).clone()))?;
                             u.arbitrary_loop(
                                 Some(0),
                                 Some(self.settings.max_width as u32),
@@ -924,8 +922,8 @@ impl ExprGenerator<'_> {
                             let (entity_type, attr_name) =
                                 self.schema.arbitrary_attr_for_type(target_type, u)?;
                             Ok(ast::Expr::get_attr(
-                                self.generate_expr_for_schematype(
-                                    &entity_type_name_to_schema_type(entity_type),
+                                self.generate_expr_for_type(
+                                    &Type::Entity(entity_type.clone()),
                                     max_depth - 1,
                                     u,
                                 )?,
@@ -936,16 +934,9 @@ impl ExprGenerator<'_> {
                         3 => {
                             let attr_name: SmolStr =
                                 self.constant_pool.arbitrary_string_constant(u)?;
-                            let attr_ty: json_schema::Type<ast::InternalName> =
-                                match self.schema.try_into_schematype(target_type, u)? {
-                                    Some(schematy) => schematy,
-                                    None => return Err(Error::IncorrectFormat {
-                                        doing_what: format!("target_type {target_type:?} not supported in this position"),
-                                    })
-                                };
                             Ok(ast::Expr::get_attr(
-                                self.generate_expr_for_schematype(
-                                    &record_schematype_with_attr(attr_name.clone(), attr_ty),
+                                self.generate_expr_for_type(
+                                    &record_type_with_attr(attr_name.clone(), target_type.clone()),
                                     max_depth - 1,
                                     u,
                                 )?,
@@ -959,13 +950,13 @@ impl ExprGenerator<'_> {
                                 u,
                             )?;
                             Ok(ast::Expr::get_tag(
-                                self.generate_expr_for_schematype(
-                                    &entity_type_name_to_schema_type(&entity_type),
+                                self.generate_expr_for_type(
+                                    &Type::Entity(entity_type),
                                     max_depth - 1,
                                     u,
                                 )?,
-                                self.generate_expr_for_schematype(
-                                    &json_schema::Type::Type { ty: json_schema::TypeVariant::String, loc: None },
+                                self.generate_expr_for_type(
+                                    &Type::String,
                                     max_depth - 1,
                                     u,
                                 )?,
@@ -973,7 +964,7 @@ impl ExprGenerator<'_> {
                         })
                     }
                 }
-                Type::Record => {
+                Type::Record(m) => {
                     if max_depth == 0 || u.len() < 10 {
                         // no recursion allowed
                         Err(Error::TooDeep)
@@ -982,22 +973,15 @@ impl ExprGenerator<'_> {
                         // record literal
                         2 => {
                             let mut r = HashMap::new();
-                            u.arbitrary_loop(
-                                Some(0),
-                                Some(self.settings.max_width as u32),
-                                |u| {
-                                    let attr_val = self.generate_expr_for_type(
-                                        &u.arbitrary()?,
-                                        max_depth - 1,
-                                        u,
-                                    )?;
-                                    r.insert(
-                                        self.constant_pool.arbitrary_string_constant(u)?,
-                                        attr_val,
-                                    );
-                                    Ok(std::ops::ControlFlow::Continue(()))
-                                },
-                            )?;
+                            for (a, qt) in m {
+                                if qt.required {
+                                    r.insert(a.clone(), self.generate_expr_for_type(&qt.ty, max_depth-1, u)?);
+                                } else {
+                                    if u.ratio(1, 2)? {
+                                        r.insert(a.clone(), self.generate_expr_for_type(&qt.ty, max_depth-1, u)?);
+                                    }
+                                }
+                            }
                             Ok(ast::Expr::record(r).expect("can't have duplicate keys because `r` was already a HashMap"))
                         },
                         // if-then-else expression, where both arms are records
@@ -1008,52 +992,45 @@ impl ExprGenerator<'_> {
                                 u,
                             )?,
                             self.generate_expr_for_type(
-                                &Type::record(),
+                                target_type,
                                 max_depth - 1,
                                 u,
                             )?,
                             self.generate_expr_for_type(
-                                &Type::record(),
+                                target_type,
                                 max_depth - 1,
                                 u,
                             )?,
                         )),
                         // extension function that returns a record
                         1 => self.generate_ext_func_call_for_type(
-                            &Type::record(),
+                            target_type,
                             max_depth - 1,
                             u,
                         ),
                         // getting an attr (on an entity) with type record
                         4 => {
-                            let (entity_type, attr_name) = self.schema.arbitrary_attr_for_schematype(
-                                json_schema::TypeVariant::Record(json_schema::RecordType {
-                                    // TODO: should we put in some other attributes that appear in schema?
-                                    attributes: BTreeMap::new(),
-                                    additional_attributes: true,
-                                }),
+                            let (entity_type, attr_name) = self.schema.arbitrary_attr_for_type(
+                                &Type::Record(BTreeMap::default()),
                                 u,
                             )?;
                             Ok(ast::Expr::get_attr(
-                                self.generate_expr_for_schematype(
-                                    &entity_type_name_to_schema_type(&entity_type),
+                                self.generate_expr_for_type(
+                                    &Type::Entity(entity_type.clone()),
                                     max_depth - 1,
                                     u,
                                 )?,
-                                attr_name,
+                                attr_name.clone(),
                             ))
                         },
                         // getting an attr (on a record) with type record
                         3 => {
                             let attr_name = self.constant_pool.arbitrary_string_constant(u)?;
                             Ok(ast::Expr::get_attr(
-                                self.generate_expr_for_schematype(
-                                    &record_schematype_with_attr(
+                                self.generate_expr_for_type(
+                                    &record_type_with_attr(
                                         attr_name.clone(),
-                                        json_schema::TypeVariant::Record(json_schema::RecordType {
-                                            attributes: BTreeMap::new(),
-                                            additional_attributes: true,
-                                        }),
+                                        Type::Record(BTreeMap::default()),
                                     ),
                                     max_depth - 1,
                                     u,
@@ -1068,13 +1045,13 @@ impl ExprGenerator<'_> {
                                 u,
                             )?;
                             Ok(ast::Expr::get_tag(
-                                self.generate_expr_for_schematype(
-                                    &entity_type_name_to_schema_type(&entity_type),
+                                self.generate_expr_for_type(
+                                    &Type::Entity(entity_type),
                                     max_depth - 1,
                                     u,
                                 )?,
-                                self.generate_expr_for_schematype(
-                                    &json_schema::Type::Type { ty: json_schema::TypeVariant::String, loc: None },
+                                self.generate_expr_for_type(
+                                    &Type::String,
                                     max_depth - 1,
                                     u,
                                 )?,
@@ -1082,7 +1059,7 @@ impl ExprGenerator<'_> {
                         })
                     }
                 }
-                Type::Entity => {
+                Type::Entity(ety) => {
                     if max_depth == 0 || u.len() < 10 {
                         // no recursion allowed, so, just do `principal`, `action`, or `resource`
                         Ok(ast::Expr::var(*u.choose(&[
@@ -1093,7 +1070,7 @@ impl ExprGenerator<'_> {
                     } else {
                         gen!(u,
                         // UID literal, that exists
-                        11 => Ok(ast::Expr::val(self.generate_uid(u)?)),
+                        11 => Ok(ast::Expr::val(self.arbitrary_uid_with_type(ety, u)?)),
                         // UID literal, that doesn't exist
                         2 => Ok(ast::Expr::val(u.arbitrary::<ast::EntityUID>()?)),
                         // `principal`
@@ -1110,46 +1087,46 @@ impl ExprGenerator<'_> {
                                 u,
                             )?,
                             self.generate_expr_for_type(
-                                &Type::entity(),
+                                target_type,
                                 max_depth - 1,
                                 u,
                             )?,
                             self.generate_expr_for_type(
-                                &Type::entity(),
+                                target_type,
                                 max_depth - 1,
                                 u,
                             )?,
                         )),
                         // extension function that returns an entity
                         1 => self.generate_ext_func_call_for_type(
-                            &Type::entity(),
+                            target_type,
                             max_depth - 1,
                             u,
                         ),
                         // getting an attr (on an entity) with type entity
                         6 => {
-                            let (entity_type, attr_name) = self.schema.arbitrary_attr_for_schematype(
-                                entity_type_name_to_schema_type(u.choose(&self.schema.entity_types)?),
+                            let (entity_type, attr_name) = self.schema.arbitrary_attr_for_type(
+                                &Type::Entity(u.choose(&self.schema.entity_types)?.clone()),
                                 u,
                             )?;
                             Ok(ast::Expr::get_attr(
-                                self.generate_expr_for_schematype(
-                                    &entity_type_name_to_schema_type(&entity_type),
+                                self.generate_expr_for_type(
+                                    &Type::Entity(entity_type.clone()),
                                     max_depth - 1,
                                     u,
                                 )?,
-                                attr_name,
+                                attr_name.clone(),
                             ))
                         },
                         // getting an attr (on a record) with type entity
                         5 => {
                             let attr_name = self.constant_pool.arbitrary_string_constant(u)?;
                             Ok(ast::Expr::get_attr(
-                                self.generate_expr_for_schematype(
-                                    &record_schematype_with_attr(
+                                self.generate_expr_for_type(
+                                    &record_type_with_attr(
                                         attr_name.clone(),
-                                        entity_type_name_to_schema_type(
-                                            u.choose(&self.schema.entity_types)?,
+                                        Type::Entity(
+                                            u.choose(&self.schema.entity_types)?.clone(),
                                         ),
                                     ),
                                     max_depth - 1,
@@ -1160,18 +1137,18 @@ impl ExprGenerator<'_> {
                         },
                         // getting an entity tag with type entity
                         5 => {
-                            let entity_type = self.schema.arbitrary_entity_type_with_tag_schematype(
-                                entity_type_name_to_schema_type(u.choose(&self.schema.entity_types)?),
+                            let entity_type = self.schema.arbitrary_entity_type_with_tag_type(
+                                &Type::Entity(u.choose(&self.schema.entity_types)?.clone()),
                                 u,
                             )?;
                             Ok(ast::Expr::get_tag(
-                                self.generate_expr_for_schematype(
-                                    &entity_type_name_to_schema_type(&entity_type),
+                                self.generate_expr_for_type(
+                                    &Type::Entity(entity_type.clone()),
                                     max_depth - 1,
                                     u,
                                 )?,
-                                self.generate_expr_for_schematype(
-                                    &json_schema::Type::Type { ty: json_schema::TypeVariant::String, loc: None },
+                                self.generate_expr_for_type(
+                                    &Type::String,
                                     max_depth - 1,
                                     u,
                                 )?,
@@ -1193,13 +1170,6 @@ impl ExprGenerator<'_> {
                             u,
                         )
                     } else {
-                        let type_name: UnreservedId = match target_type {
-                            Type::IPAddr => "ipaddr".parse::<UnreservedId>().unwrap(),
-                            Type::Decimal => "decimal".parse().unwrap(),
-                            Type::DateTime => "datetime".parse().unwrap(),
-                            Type::Duration => "duration".parse().unwrap(),
-                            _ => unreachable!("target type is deemed to be an extension type!"),
-                        };
                         gen!(u,
                         // if-then-else expression, where both arms are extension types
                         2 => Ok(ast::Expr::ite(
@@ -1227,31 +1197,27 @@ impl ExprGenerator<'_> {
                         ),
                         // getting an attr (on an entity) with extension type
                         2 => {
-                            let (entity_type, attr_name) = self.schema.arbitrary_attr_for_schematype(
-                                json_schema::TypeVariant::Extension {
-                                    name: type_name,
-                                },
+                            let (entity_type, attr_name) = self.schema.arbitrary_attr_for_type(
+                                target_type,
                                 u,
                             )?;
                             Ok(ast::Expr::get_attr(
-                                self.generate_expr_for_schematype(
-                                    &entity_type_name_to_schema_type(&entity_type),
+                                self.generate_expr_for_type(
+                                    &Type::Entity(entity_type.clone()),
                                     max_depth - 1,
                                     u,
                                 )?,
-                                attr_name,
+                                attr_name.clone(),
                             ))
                         },
                         // getting an attr (on a record) with extension type
                         2 => {
                             let attr_name = self.constant_pool.arbitrary_string_constant(u)?;
                             Ok(ast::Expr::get_attr(
-                                self.generate_expr_for_schematype(
-                                    &record_schematype_with_attr(
+                                self.generate_expr_for_type(
+                                    &record_type_with_attr(
                                         attr_name.clone(),
-                                        json_schema::TypeVariant::Extension {
-                                            name: type_name,
-                                        },
+                                        target_type.clone(),
                                     ),
                                     max_depth - 1,
                                     u,
@@ -1261,18 +1227,18 @@ impl ExprGenerator<'_> {
                         },
                         // getting an entity tag with extension type
                         5 => {
-                            let entity_type = self.schema.arbitrary_entity_type_with_tag_schematype(
-                                json_schema::TypeVariant::Extension { name: type_name },
+                            let entity_type = self.schema.arbitrary_entity_type_with_tag_type(
+                                target_type,
                                 u,
                             )?;
                             Ok(ast::Expr::get_tag(
-                                self.generate_expr_for_schematype(
-                                    &entity_type_name_to_schema_type(&entity_type),
+                                self.generate_expr_for_type(
+                                    &Type::Entity(entity_type),
                                     max_depth - 1,
                                     u,
                                 )?,
-                                self.generate_expr_for_schematype(
-                                    &json_schema::Type::Type { ty: json_schema::TypeVariant::String, loc: None },
+                                self.generate_expr_for_type(
+                                    &Type::String,
                                     max_depth - 1,
                                     u,
                                 )?,
@@ -1281,412 +1247,6 @@ impl ExprGenerator<'_> {
                     }
                 }
             }
-        }
-    }
-
-    /// get an arbitrary expression of a given [`json_schema::Type`] conforming to
-    /// the schema
-    ///
-    /// If `hierarchy` is present, any literal UIDs included in the Expr will
-    /// (usually) exist in the hierarchy.
-    ///
-    /// `max_depth`: maximum size (i.e., depth) of the expression.
-    /// For instance, maximum depth of nested sets. Not to be confused with the
-    /// `depth` parameter to size_hint.
-    pub fn generate_expr_for_schematype(
-        &self,
-        target_type: &json_schema::Type<ast::InternalName>,
-        max_depth: usize,
-        u: &mut Unstructured<'_>,
-    ) -> Result<ast::Expr> {
-        match target_type {
-            json_schema::Type::CommonTypeRef { type_name, .. } => self
-                .generate_expr_for_schematype(
-                    lookup_common_type(&self.schema.schema, type_name).unwrap_or_else(|| {
-                        panic!("reference to undefined common type: {type_name}")
-                    }),
-                    max_depth,
-                    u,
-                ),
-            json_schema::Type::Type {
-                ty: json_schema::TypeVariant::EntityOrCommon { type_name },
-                ..
-            } => {
-                match lookup_common_type(&self.schema.schema, type_name) {
-                    Some(ty) => self.generate_expr_for_schematype(ty, max_depth, u),
-                    None => {
-                        // must be an entity reference, so treat it as we treat entity references
-                        self.generate_expr_for_schematype(
-                            &json_schema::Type::Type {
-                                ty: json_schema::TypeVariant::Entity {
-                                    name: type_name.clone(),
-                                },
-                                loc: None,
-                            },
-                            max_depth,
-                            u,
-                        )
-                    }
-                }
-            }
-            json_schema::Type::Type {
-                ty: json_schema::TypeVariant::Boolean,
-                ..
-            } => self.generate_expr_for_type(&Type::bool(), max_depth, u),
-            json_schema::Type::Type {
-                ty: json_schema::TypeVariant::Long,
-                ..
-            } => self.generate_expr_for_type(&Type::long(), max_depth, u),
-            json_schema::Type::Type {
-                ty: json_schema::TypeVariant::String,
-                ..
-            } => self.generate_expr_for_type(&Type::string(), max_depth, u),
-            json_schema::Type::Type {
-                ty:
-                    json_schema::TypeVariant::Set {
-                        element: element_ty,
-                    },
-                ..
-            } => {
-                if max_depth == 0 || u.len() < 10 {
-                    // no recursion allowed, so, just do empty-set
-                    Ok(ast::Expr::set(vec![]))
-                } else {
-                    gen!(u,
-                    // set literal
-                    6 => {
-                        let mut l = Vec::new();
-                        u.arbitrary_loop(Some(0), Some(self.settings.max_width as u32), |u| {
-                            l.push(self.generate_expr_for_schematype(
-                                element_ty,
-                                max_depth - 1,
-                                u,
-                            )?);
-                            Ok(std::ops::ControlFlow::Continue(()))
-                        })?;
-                        Ok(ast::Expr::set(l))
-                    },
-                    // if-then-else expression, where both arms are (appropriate) sets
-                    2 => Ok(ast::Expr::ite(
-                        self.generate_expr_for_type(
-                            &Type::bool(),
-                            max_depth - 1,
-                            u,
-                        )?,
-                        self.generate_expr_for_schematype(
-                            element_ty,
-                            max_depth - 1,
-                            u,
-                        )?,
-                        self.generate_expr_for_schematype(
-                            element_ty,
-                            max_depth - 1,
-                            u,
-                        )?,
-                    )),
-                    // extension function that returns an (appropriate) set
-                    1 => self.generate_ext_func_call_for_schematype(
-                        element_ty,
-                        max_depth - 1,
-                        u,
-                    ),
-                    // getting an attr (on an entity) with the appropriate set type
-                    4 => {
-                        let (entity_type, attr_name) =
-                            self.schema.arbitrary_attr_for_schematype(target_type.clone(), u)?;
-                        Ok(ast::Expr::get_attr(
-                            self.generate_expr_for_schematype(
-                                &entity_type_name_to_schema_type(&entity_type),
-                                max_depth - 1,
-                                u,
-                            )?,
-                            attr_name,
-                        ))
-                    },
-                    // getting an attr (on a record) with the appropriate set type
-                    3 => {
-                        let attr_name = self.constant_pool.arbitrary_string_constant(u)?;
-                        let record_expr = self.generate_expr_for_schematype(
-                            &record_schematype_with_attr(
-                                attr_name.clone(),
-                                target_type.clone(),
-                            ),
-                            max_depth - 1,
-                            u,
-                        )?;
-                        Ok(ast::Expr::get_attr(record_expr, attr_name))
-                    },
-                    // getting an entity tag with the appropriate set type
-                    3 => {
-                        let entity_type = self.schema.arbitrary_entity_type_with_tag_schematype(
-                            target_type.clone(),
-                            u,
-                        )?;
-                        Ok(ast::Expr::get_tag(
-                            self.generate_expr_for_schematype(
-                                &entity_type_name_to_schema_type(&entity_type),
-                                max_depth - 1,
-                                u,
-                            )?,
-                            self.generate_expr_for_schematype(
-                                &json_schema::Type::Type { ty: json_schema::TypeVariant::String, loc: None },
-                                max_depth - 1,
-                                u,
-                            )?,
-                        ))
-                    })
-                }
-            }
-            json_schema::Type::Type {
-                ty:
-                    json_schema::TypeVariant::Record(json_schema::RecordType {
-                        attributes,
-                        additional_attributes,
-                    }),
-                ..
-            } => {
-                if max_depth == 0 || u.len() < 10 {
-                    // no recursion allowed
-                    Err(Error::TooDeep)
-                } else {
-                    gen!(u,
-                    // record literal
-                    2 => {
-                        let mut r: HashMap<SmolStr, ast::Expr> = HashMap::new();
-                        if *additional_attributes {
-                            // maybe add some additional attributes with arbitrary types
-                            u.arbitrary_loop(
-                                None,
-                                Some(self.settings.max_width as u32),
-                                |u| {
-                                    let attr_type = if self.settings.enable_extensions {
-                                        u.arbitrary()?
-                                    } else {
-                                        Type::arbitrary_nonextension(u)?
-                                    };
-                                    let attr_name = {
-                                        let s: String = u.arbitrary()?;
-                                        SmolStr::from(s)
-                                    };
-                                    r.insert(
-                                        attr_name,
-                                        self.generate_expr_for_type(
-                                            &attr_type,
-                                            max_depth - 1,
-                                            u,
-                                        )?,
-                                    );
-                                    Ok(std::ops::ControlFlow::Continue(()))
-                                },
-                            )?;
-                        }
-                        for (attr, ty) in attributes {
-                            // now add the actual optional and required attributes, with the
-                            // correct types.
-                            // Doing this second ensures that we overwrite any "additional"
-                            // attributes so that they definitely have the required type, in
-                            // case we got a name collision between an explicitly specified
-                            // attribute and one of the "additional" ones we added.
-                            if ty.required || u.ratio::<u8>(1, 2)? {
-                                let attr_val = self.generate_expr_for_schematype(
-                                    &ty.ty,
-                                    max_depth - 1,
-                                    u,
-                                )?;
-                                r.insert(attr.clone(), attr_val);
-                            }
-                        }
-                        Ok(ast::Expr::record(r).expect("can't have duplicate keys because `r` was already a HashMap"))
-                    },
-                    // `context`, if `context` is an appropriate record type
-                    // TODO: Check if the `context` is the appropriate type, and
-                    // return it if it is.
-                    14 => Err(Error::TooDeep),
-                    // if-then-else expression, where both arms are (appropriate) records
-                    2 => Ok(ast::Expr::ite(
-                        self.generate_expr_for_type(
-                            &Type::bool(),
-                            max_depth - 1,
-                            u,
-                        )?,
-                        self.generate_expr_for_schematype(
-                            target_type,
-                            max_depth - 1,
-                            u,
-                        )?,
-                        self.generate_expr_for_schematype(
-                            target_type,
-                            max_depth - 1,
-                            u,
-                        )?,
-                    )),
-                    // extension function that returns an appropriate record
-                    1 => self.generate_ext_func_call_for_schematype(
-                        target_type,
-                        max_depth - 1,
-                        u,
-                    ),
-                    // getting an attr (on an entity) with an appropriate record type
-                    4 => {
-                        let (entity_type, attr_name) =
-                            self.schema.arbitrary_attr_for_schematype(target_type.clone(), u)?;
-                        Ok(ast::Expr::get_attr(
-                            self.generate_expr_for_schematype(
-                                &entity_type_name_to_schema_type(&entity_type),
-                                max_depth - 1,
-                                u,
-                            )?,
-                            attr_name,
-                        ))
-                    },
-                    // getting an attr (on a record) with an appropriate record type
-                    3 => {
-                        let attr_name = self.constant_pool.arbitrary_string_constant(u)?;
-                        Ok(ast::Expr::get_attr(
-                            self.generate_expr_for_schematype(
-                                &record_schematype_with_attr(
-                                    attr_name.clone(),
-                                    target_type.clone(),
-                                ),
-                                max_depth - 1,
-                                u,
-                            )?,
-                            attr_name,
-                        ))
-                    },
-                    // getting an entity tag with the appropriate record type
-                    3 => {
-                        let entity_type = self.schema.arbitrary_entity_type_with_tag_schematype(
-                            target_type.clone(),
-                            u,
-                        )?;
-                        Ok(ast::Expr::get_tag(
-                            self.generate_expr_for_schematype(
-                                &entity_type_name_to_schema_type(&entity_type),
-                                max_depth - 1,
-                                u,
-                            )?,
-                            self.generate_expr_for_schematype(
-                                &json_schema::Type::Type { ty: json_schema::TypeVariant::String, loc: None },
-                                max_depth - 1,
-                                u,
-                            )?,
-                        ))
-                    })
-                }
-            }
-            json_schema::Type::Type {
-                ty: json_schema::TypeVariant::Entity { name },
-                ..
-            } => {
-                if max_depth == 0 || u.len() < 10 {
-                    // no recursion allowed, so, just do `principal`, `action`, or `resource`
-                    Ok(ast::Expr::var(*u.choose(&[
-                        ast::Var::Principal,
-                        ast::Var::Action,
-                        ast::Var::Resource,
-                    ])?))
-                } else {
-                    gen!(u,
-                    // UID literal
-                    13 => {
-                        let entity_type_name = ast::Name::try_from(name.qualify_with_name(self.schema.namespace())).unwrap().into();
-                        Ok(ast::Expr::val(self.arbitrary_uid_with_type(
-                            &entity_type_name, u,
-                        )?))
-                    },
-                    // `principal`
-                    6 => Ok(ast::Expr::var(ast::Var::Principal)),
-                    // `action`
-                    6 => Ok(ast::Expr::var(ast::Var::Action)),
-                    // `resource`
-                    6 => Ok(ast::Expr::var(ast::Var::Resource)),
-                    // if-then-else expression, where both arms are entities with the appropriate type
-                    2 => Ok(ast::Expr::ite(
-                        self.generate_expr_for_type(
-                            &Type::bool(),
-                            max_depth - 1,
-                            u,
-                        )?,
-                        self.generate_expr_for_schematype(
-                            target_type,
-                            max_depth - 1,
-                            u,
-                        )?,
-                        self.generate_expr_for_schematype(
-                            target_type,
-                            max_depth - 1,
-                            u,
-                        )?,
-                    )),
-                    // extension function that returns an entity
-                    1 => {
-                        // TODO: this doesn't guarantee it returns the _correct_ entity type
-                        self.generate_ext_func_call_for_type(
-                            &Type::entity(),
-                            max_depth - 1,
-                            u,
-                        )
-                    },
-                    // getting an attr (on an entity) with the appropriate entity type
-                    6 => {
-                        let (entity_type, attr_name) =
-                            self.schema.arbitrary_attr_for_schematype(target_type.clone(), u)?;
-                        Ok(ast::Expr::get_attr(
-                            self.generate_expr_for_schematype(
-                                &entity_type_name_to_schema_type(&entity_type),
-                                max_depth - 1,
-                                u,
-                            )?,
-                            attr_name,
-                        ))
-                    },
-                    // getting an attr (on a record) with the appropriate entity type
-                    5 => {
-                        let attr_name = self.constant_pool.arbitrary_string_constant(u)?;
-                        Ok(ast::Expr::get_attr(
-                            self.generate_expr_for_schematype(
-                                &record_schematype_with_attr(
-                                    attr_name.clone(),
-                                    target_type.clone(),
-                                ),
-                                max_depth - 1,
-                                u,
-                            )?,
-                            attr_name,
-                        ))
-                    },
-                    // getting an entity tag with the appropriate entity type
-                    5 => {
-                        let entity_type = self.schema.arbitrary_entity_type_with_tag_schematype(
-                            target_type.clone(),
-                            u,
-                        )?;
-                        Ok(ast::Expr::get_tag(
-                            self.generate_expr_for_schematype(
-                                &entity_type_name_to_schema_type(&entity_type),
-                                max_depth - 1,
-                                u,
-                            )?,
-                            self.generate_expr_for_schematype(
-                                &json_schema::Type::Type { ty: json_schema::TypeVariant::String, loc: None },
-                                max_depth - 1,
-                                u,
-                            )?,
-                        ))
-                    })
-                }
-            }
-            json_schema::Type::Type {
-                ty: json_schema::TypeVariant::Extension { name },
-                ..
-            } => match name.as_ref() {
-                "ipaddr" => self.generate_expr_for_type(&Type::ipaddr(), max_depth, u),
-                "decimal" => self.generate_expr_for_type(&Type::decimal(), max_depth, u),
-                "datetime" => self.generate_expr_for_type(&Type::datetime(), max_depth, u),
-                "duration" => self.generate_expr_for_type(&Type::duration(), max_depth, u),
-                _ => panic!("unrecognized extension type: {name:?}"),
-            },
         }
     }
 
@@ -1708,29 +1268,29 @@ impl ExprGenerator<'_> {
             Type::Set(el_ty) => {
                 let mut l = Vec::new();
                 u.arbitrary_loop(Some(0), Some(self.settings.max_width as u32), |u| {
-                    let el = match el_ty {
-                        None => self.generate_const_expr(u)?,
-                        Some(el_ty) => self.generate_const_expr_for_type(el_ty, u)?,
-                    };
-                    l.push(el);
+                    l.push(self.generate_const_expr_for_type(el_ty, u)?);
                     Ok(std::ops::ControlFlow::Continue(()))
                 })?;
                 Ok(ast::Expr::set(l))
             }
-            Type::Record => {
+            Type::Record(m) => {
                 let mut r = HashMap::new();
-                u.arbitrary_loop(Some(0), Some(self.settings.max_width as u32), |u| {
-                    let (attr_name, _) = self.schema.arbitrary_attr(u)?;
-                    r.insert(attr_name.clone(), self.generate_const_expr(u)?);
-                    Ok(std::ops::ControlFlow::Continue(()))
-                })?;
+                for (a, qt) in m {
+                    if qt.required {
+                        r.insert(a.clone(), self.generate_const_expr_for_type(&qt.ty, u)?);
+                    } else {
+                        if u.ratio(1, 2)? {
+                            r.insert(a.clone(), self.generate_const_expr_for_type(&qt.ty, u)?);
+                        }
+                    }
+                }
                 Ok(ast::Expr::record(r)
                     .expect("can't have duplicate keys because `r` was already a HashMap"))
             }
-            Type::Entity => {
+            Type::Entity(ety) => {
                 gen!(u,
                 // UID literal, that exists
-                3 => Ok(ast::Expr::val(self.generate_uid(u)?)),
+                3 => Ok(ast::Expr::val(self.arbitrary_uid_with_type(ety, u)?)),
                 // UID literal, that doesn't exist
                 1 => Ok(ast::Expr::val(u.arbitrary::<ast::EntityUID>()?))
                 )
@@ -1761,84 +1321,6 @@ impl ExprGenerator<'_> {
             .map(|param_ty| self.generate_expr_for_type(param_ty, max_depth, u))
             .collect::<Result<_>>()?;
         Ok(ast::Expr::call_extension_fn(func.name.clone(), args))
-    }
-
-    /// internal helper function: get an extension-function-call expression that
-    /// returns the given [`json_schema::Type`]
-    ///
-    /// `max_depth`: maximum depth of each argument expression.
-    /// For instance, maximum depth of nested sets. Not to be confused with the
-    /// `depth` parameter to size_hint.
-    fn generate_ext_func_call_for_schematype(
-        &self,
-        target_type: &json_schema::Type<ast::InternalName>,
-        max_depth: usize,
-        u: &mut Unstructured<'_>,
-    ) -> Result<ast::Expr> {
-        match target_type {
-            json_schema::Type::CommonTypeRef { type_name, .. } => self
-                .generate_ext_func_call_for_schematype(
-                    lookup_common_type(&self.schema.schema, type_name).unwrap_or_else(|| {
-                        panic!("reference to undefined common type: {type_name}")
-                    }),
-                    max_depth,
-                    u,
-                ),
-            json_schema::Type::Type { ty, .. } => match ty {
-                json_schema::TypeVariant::EntityOrCommon { type_name } => {
-                    match lookup_common_type(&self.schema.schema, type_name) {
-                        Some(ty) => self.generate_ext_func_call_for_schematype(ty, max_depth, u),
-                        None => {
-                            // must be an entity reference, so treat it how we treat entity references
-                            self.generate_ext_func_call_for_schematype(
-                                &json_schema::Type::Type {
-                                    ty: json_schema::TypeVariant::Entity {
-                                        name: type_name.clone(),
-                                    },
-                                    loc: None,
-                                },
-                                max_depth,
-                                u,
-                            )
-                        }
-                    }
-                }
-                json_schema::TypeVariant::Boolean => {
-                    self.generate_ext_func_call_for_type(&Type::bool(), max_depth, u)
-                }
-                json_schema::TypeVariant::Long => {
-                    self.generate_ext_func_call_for_type(&Type::long(), max_depth, u)
-                }
-                json_schema::TypeVariant::String => {
-                    self.generate_ext_func_call_for_type(&Type::string(), max_depth, u)
-                }
-                json_schema::TypeVariant::Extension { name } => match name.as_ref() {
-                    "ipaddr" => self.generate_ext_func_call_for_type(&Type::ipaddr(), max_depth, u),
-                    "decimal" => {
-                        self.generate_ext_func_call_for_type(&Type::decimal(), max_depth, u)
-                    }
-                    "datetime" => {
-                        self.generate_ext_func_call_for_type(&Type::datetime(), max_depth, u)
-                    }
-                    "duration" => {
-                        self.generate_ext_func_call_for_type(&Type::duration(), max_depth, u)
-                    }
-                    _ => panic!("unrecognized extension type: {name:?}"),
-                },
-                // no existing extension functions return set type
-                json_schema::TypeVariant::Set { .. } => Err(Error::EmptyChoose {
-                    doing_what: "getting an extension function returning set type".into(),
-                }),
-                // no existing extension functions return record type
-                json_schema::TypeVariant::Record { .. } => Err(Error::EmptyChoose {
-                    doing_what: "getting an extension function returning record type".into(),
-                }),
-                // no existing extension functions return entity type
-                json_schema::TypeVariant::Entity { .. } => Err(Error::EmptyChoose {
-                    doing_what: "getting an extension function returning entity type".into(),
-                }),
-            },
-        }
     }
 
     /// Generate a call for an extension constructor producing `target_type`.
@@ -1926,9 +1408,9 @@ impl ExprGenerator<'_> {
                     self.constant_pool.arbitrary_string_constant(u)?,
                 ))
             }
-            Type::Entity => {
+            Type::Entity(ety) => {
                 // the only valid entity-typed attribute value is a UID literal
-                Ok(AttrValue::UIDLit(self.generate_uid(u)?))
+                Ok(AttrValue::UIDLit(self.arbitrary_uid_with_type(ety, u)?))
             }
             Type::IPAddr | Type::Decimal | Type::DateTime | Type::Duration => {
                 // the only valid extension-typed attribute value is a call of an extension constructor with return the type returned
@@ -1949,16 +1431,6 @@ impl ExprGenerator<'_> {
                     Ok(AttrValue::Set(vec![]))
                 } else {
                     let mut l = Vec::new();
-                    let target_element_ty = match target_element_ty {
-                        None => {
-                            if self.settings.enable_extensions {
-                                u.arbitrary()?
-                            } else {
-                                Type::arbitrary_nonextension(u)?
-                            }
-                        }
-                        Some(ty) => *ty.clone(),
-                    };
                     u.arbitrary_loop(None, Some(self.settings.max_width as u32), |u| {
                         l.push(self.generate_attr_value_for_type(
                             &target_element_ty,
@@ -1970,20 +1442,28 @@ impl ExprGenerator<'_> {
                     Ok(AttrValue::Set(l))
                 }
             }
-            Type::Record => {
+            Type::Record(m) => {
+                let mut r = HashMap::new();
                 // the only valid Record-typed attribute value is a record literal
                 if max_depth == 0 {
                     // no recursion allowed: just do the empty record
                     Ok(AttrValue::Record(HashMap::new()))
                 } else {
-                    let mut r = HashMap::new();
-                    u.arbitrary_loop(None, Some(self.settings.max_width as u32), |u| {
-                        let (attr_name, attr_ty) = self.schema.arbitrary_attr(u)?.clone();
-                        let attr_val =
-                            self.generate_attr_value_for_schematype(&attr_ty, max_depth - 1, u)?;
-                        r.insert(attr_name, attr_val);
-                        Ok(std::ops::ControlFlow::Continue(()))
-                    })?;
+                    for (attr, qt) in m {
+                        if qt.required {
+                            r.insert(
+                                attr.clone(),
+                                self.generate_attr_value_for_type(&qt.ty, max_depth - 1, u)?,
+                            );
+                        } else {
+                            if u.ratio(1, 2)? {
+                                r.insert(
+                                    attr.clone(),
+                                    self.generate_attr_value_for_type(&qt.ty, max_depth - 1, u)?,
+                                );
+                            }
+                        }
+                    }
                     Ok(AttrValue::Record(r))
                 }
             }
@@ -2017,173 +1497,6 @@ impl ExprGenerator<'_> {
                 ]),
             ))
         })
-    }
-
-    /// get an [`AttrValue`] of the given [`json_schema::Type`] which conforms
-    /// to this schema
-    ///
-    /// `max_depth`: maximum depth of the attribute value expression.
-    /// For instance, maximum depth of nested sets. Not to be confused with the
-    /// `depth` parameter to size_hint.
-    pub fn generate_attr_value_for_schematype(
-        &self,
-        target_type: &json_schema::Type<ast::InternalName>,
-        max_depth: usize,
-        u: &mut Unstructured<'_>,
-    ) -> Result<AttrValue> {
-        match target_type {
-            json_schema::Type::CommonTypeRef { type_name, .. } => self
-                .generate_attr_value_for_schematype(
-                    lookup_common_type(&self.schema.schema, type_name).unwrap_or_else(|| {
-                        panic!("reference to undefined common type: {type_name}")
-                    }),
-                    max_depth,
-                    u,
-                ),
-            json_schema::Type::Type {
-                ty: json_schema::TypeVariant::EntityOrCommon { type_name },
-                ..
-            } => {
-                match lookup_common_type(&self.schema.schema, type_name) {
-                    Some(ty) => self.generate_attr_value_for_schematype(ty, max_depth, u),
-                    None => {
-                        // must be an entity reference, so treat it how we treat entity references
-                        self.generate_attr_value_for_schematype(
-                            &json_schema::Type::Type {
-                                ty: json_schema::TypeVariant::Entity {
-                                    name: type_name.clone(),
-                                },
-                                loc: type_name.loc().cloned(),
-                            },
-                            max_depth,
-                            u,
-                        )
-                    }
-                }
-            }
-            json_schema::Type::Type {
-                ty: json_schema::TypeVariant::Boolean,
-                ..
-            } => self.generate_attr_value_for_type(&Type::bool(), max_depth, u),
-            json_schema::Type::Type {
-                ty: json_schema::TypeVariant::Long,
-                ..
-            } => self.generate_attr_value_for_type(&Type::long(), max_depth, u),
-            json_schema::Type::Type {
-                ty: json_schema::TypeVariant::String,
-                ..
-            } => self.generate_attr_value_for_type(&Type::string(), max_depth, u),
-            json_schema::Type::Type {
-                ty:
-                    json_schema::TypeVariant::Set {
-                        element: element_ty,
-                    },
-                ..
-            } => {
-                // the only valid Set-typed attribute value is a set literal
-                if max_depth == 0 {
-                    // no recursion allowed: just do the empty set
-                    Ok(AttrValue::Set(vec![]))
-                } else {
-                    let mut l = Vec::new();
-                    u.arbitrary_loop(None, Some(self.settings.max_width as u32), |u| {
-                        l.push(self.generate_attr_value_for_schematype(
-                            element_ty,
-                            max_depth - 1,
-                            u,
-                        )?);
-                        Ok(std::ops::ControlFlow::Continue(()))
-                    })?;
-                    Ok(AttrValue::Set(l))
-                }
-            }
-            json_schema::Type::Type {
-                ty:
-                    json_schema::TypeVariant::Record(json_schema::RecordType {
-                        attributes,
-                        additional_attributes,
-                    }),
-                ..
-            } => {
-                // the only valid Record-typed attribute value is a record literal
-                if max_depth == 0 {
-                    // no recursion allowed: quit here
-                    Err(Error::TooDeep)
-                } else {
-                    let mut r = HashMap::new();
-                    if *additional_attributes {
-                        // maybe add some "additional" attributes not mentioned in schema
-                        u.arbitrary_loop(None, Some(self.settings.max_width as u32), |u| {
-                            let (attr_name, attr_ty) = self.schema.arbitrary_attr(u)?.clone();
-                            let attr_val = self.generate_attr_value_for_schematype(
-                                &attr_ty,
-                                max_depth - 1,
-                                u,
-                            )?;
-                            r.insert(attr_name, attr_val);
-                            Ok(std::ops::ControlFlow::Continue(()))
-                        })?;
-                    }
-                    // now add all the explicitly specified required and
-                    // optional attributes.
-                    // Doing this second ensures that we overwrite any
-                    // "additional" attributes so that they definitely have the
-                    // required type, in case we got a name collision between an
-                    // explicitly specified attribute and one of the
-                    // "additional" ones we added.
-                    for (attr_name, attr_ty) in attributes.iter() {
-                        // if the attribute is optional, flip a coin to decide
-                        // whether to add it. (but if we added an attribute of
-                        // the same name as an "additional" attribute above,
-                        // then we definitely need to add it here so that it has
-                        // the correct type)
-                        if attr_ty.required || r.contains_key(attr_name) || u.ratio::<u8>(1, 2)? {
-                            let attr_val = self.generate_attr_value_for_schematype(
-                                &attr_ty.ty,
-                                max_depth - 1,
-                                u,
-                            )?;
-                            r.insert(
-                                attr_name.parse().expect(
-                                    "all attribute names in the schema should be valid identifiers",
-                                ),
-                                attr_val,
-                            );
-                        }
-                    }
-                    Ok(AttrValue::Record(r))
-                }
-            }
-            json_schema::Type::Type {
-                ty: json_schema::TypeVariant::Entity { name },
-                ..
-            } => {
-                // the only valid entity-typed attribute value is a UID literal
-                let entity_type_name =
-                    ast::Name::try_from(name.qualify_with_name(self.schema.namespace()))
-                        .unwrap()
-                        .into();
-                Ok(AttrValue::UIDLit(
-                    self.arbitrary_uid_with_type(&entity_type_name, u)?,
-                ))
-            }
-            json_schema::Type::Type {
-                ty: json_schema::TypeVariant::Extension { .. },
-                ..
-            } if !self.settings.enable_extensions => {
-                panic!("shouldn't have TypeVariant::Extension with extensions disabled")
-            }
-            json_schema::Type::Type {
-                ty: json_schema::TypeVariant::Extension { name },
-                ..
-            } => match name.as_ref() {
-                "ipaddr" => self.generate_attr_value_for_type(&Type::ipaddr(), max_depth, u),
-                "decimal" => self.generate_attr_value_for_type(&Type::decimal(), max_depth, u),
-                "datetime" => self.generate_attr_value_for_type(&Type::datetime(), max_depth, u),
-                "duration" => self.generate_attr_value_for_type(&Type::duration(), max_depth, u),
-                _ => unimplemented!("extension type {name:?}"),
-            },
-        }
     }
 
     /// size hint for generate_attr_value_for_schematype()
@@ -2225,9 +1538,9 @@ impl ExprGenerator<'_> {
                     self.constant_pool.arbitrary_string_constant(u)?,
                 ))
             }
-            Type::Entity => {
+            Type::Entity(ety) => {
                 // the only valid entity-typed attribute value is a UID literal
-                Ok(Value::from(self.generate_uid(u)?))
+                Ok(Value::from(self.arbitrary_uid_with_type(ety, u)?))
             }
             Type::Set(target_element_ty) => {
                 // the only valid Set-typed attribute value is a set literal
@@ -2236,16 +1549,6 @@ impl ExprGenerator<'_> {
                     Ok(Value::empty_set(None))
                 } else {
                     let mut l = Vec::new();
-                    let target_element_ty = match target_element_ty {
-                        None => {
-                            if self.settings.enable_extensions {
-                                u.arbitrary()?
-                            } else {
-                                Type::arbitrary_nonextension(u)?
-                            }
-                        }
-                        Some(ty) => *ty.clone(),
-                    };
                     u.arbitrary_loop(None, Some(self.settings.max_width as u32), |u| {
                         l.push(self.generate_value_for_type(
                             &target_element_ty,
@@ -2257,164 +1560,30 @@ impl ExprGenerator<'_> {
                     Ok(Value::set(l, None))
                 }
             }
-            Type::Record => {
+            Type::Record(m) => {
                 // the only valid Record-typed attribute value is a record literal
                 if max_depth == 0 {
                     // no recursion allowed: just do the empty record
                     Ok(Value::empty_record(None))
                 } else {
                     let mut r = HashMap::new();
-                    u.arbitrary_loop(None, Some(self.settings.max_width as u32), |u| {
-                        let (attr_name, attr_ty) = self.schema.arbitrary_attr(u)?.clone();
-                        let attr_val =
-                            self.generate_value_for_schematype(&attr_ty, max_depth - 1, u)?;
-                        r.insert(attr_name, attr_val);
-                        Ok(std::ops::ControlFlow::Continue(()))
-                    })?;
-                    Ok(Value::record(r, None))
-                }
-            }
-            _ => Err(Error::ExtensionsDisabled),
-        }
-    }
-
-    /// generate an arbitrary [`ast::Value`] of the given [`json_schema::Type`]
-    fn generate_value_for_schematype(
-        &self,
-        target_type: &json_schema::Type<ast::InternalName>,
-        max_depth: usize,
-        u: &mut Unstructured<'_>,
-    ) -> Result<ast::Value> {
-        use ast::Value;
-        match target_type {
-            json_schema::Type::CommonTypeRef { type_name, .. } => self
-                .generate_value_for_schematype(
-                    lookup_common_type(&self.schema.schema, type_name).unwrap_or_else(|| {
-                        panic!("reference to undefined common type: {type_name}")
-                    }),
-                    max_depth,
-                    u,
-                ),
-            json_schema::Type::Type {
-                ty: json_schema::TypeVariant::EntityOrCommon { type_name },
-                ..
-            } => {
-                match lookup_common_type(&self.schema.schema, type_name) {
-                    Some(ty) => self.generate_value_for_schematype(ty, max_depth, u),
-                    None => {
-                        // must be an entity reference, so treat it how we treat entity references
-                        self.generate_value_for_schematype(
-                            &json_schema::Type::Type {
-                                ty: json_schema::TypeVariant::Entity {
-                                    name: type_name.clone(),
-                                },
-                                loc: type_name.loc().cloned(),
-                            },
-                            max_depth,
-                            u,
-                        )
-                    }
-                }
-            }
-            json_schema::Type::Type {
-                ty: json_schema::TypeVariant::Boolean,
-                ..
-            } => self.generate_value_for_type(&Type::bool(), max_depth, u),
-            json_schema::Type::Type {
-                ty: json_schema::TypeVariant::Long,
-                ..
-            } => self.generate_value_for_type(&Type::long(), max_depth, u),
-            json_schema::Type::Type {
-                ty: json_schema::TypeVariant::String,
-                ..
-            } => self.generate_value_for_type(&Type::string(), max_depth, u),
-            json_schema::Type::Type {
-                ty:
-                    json_schema::TypeVariant::Set {
-                        element: element_ty,
-                    },
-                ..
-            } => {
-                // the only valid Set-typed attribute value is a set literal
-                if max_depth == 0 {
-                    // no recursion allowed: just do the empty set
-                    Ok(Value::empty_set(None))
-                } else {
-                    let mut l = Vec::new();
-                    u.arbitrary_loop(None, Some(self.settings.max_width as u32), |u| {
-                        l.push(self.generate_value_for_schematype(element_ty, max_depth - 1, u)?);
-                        Ok(std::ops::ControlFlow::Continue(()))
-                    })?;
-                    Ok(Value::set(l, None))
-                }
-            }
-            json_schema::Type::Type {
-                ty:
-                    json_schema::TypeVariant::Record(json_schema::RecordType {
-                        attributes,
-                        additional_attributes,
-                    }),
-                ..
-            } => {
-                // the only valid Record-typed attribute value is a record literal
-                if max_depth == 0 {
-                    // no recursion allowed: quit here
-                    Err(Error::TooDeep)
-                } else {
-                    let mut r = HashMap::new();
-                    if *additional_attributes {
-                        // maybe add some "additional" attributes not mentioned in schema
-                        u.arbitrary_loop(None, Some(self.settings.max_width as u32), |u| {
-                            let (attr_name, attr_ty) = self.schema.arbitrary_attr(u)?.clone();
-                            let attr_val =
-                                self.generate_value_for_schematype(&attr_ty, max_depth - 1, u)?;
-                            r.insert(attr_name, attr_val);
-                            Ok(std::ops::ControlFlow::Continue(()))
-                        })?;
-                    }
-                    // now add all the explicitly specified required and
-                    // optional attributes.
-                    // Doing this second ensures that we overwrite any
-                    // "additional" attributes so that they definitely have the
-                    // required type, in case we got a name collision between an
-                    // explicitly specified attribute and one of the
-                    // "additional" ones we added.
-                    for (attr_name, attr_ty) in attributes.iter() {
-                        // if the attribute is optional, flip a coin to decide
-                        // whether to add it. (but if we added an attribute of
-                        // the same name as an "additional" attribute above,
-                        // then we definitely need to add it here so that it has
-                        // the correct type)
-                        if attr_ty.required || r.contains_key(attr_name) || u.ratio::<u8>(1, 2)? {
-                            let attr_val =
-                                self.generate_value_for_schematype(&attr_ty.ty, max_depth - 1, u)?;
+                    for (a, qt) in m {
+                        if qt.required {
                             r.insert(
-                                attr_name.parse().expect(
-                                    "all attribute names in the schema should be valid identifiers",
-                                ),
-                                attr_val,
+                                a.clone(),
+                                self.generate_value_for_type(&qt.ty, max_depth - 1, u)?,
                             );
+                        } else {
+                            if u.ratio(1, 2)? {
+                                r.insert(
+                                    a.clone(),
+                                    self.generate_value_for_type(&qt.ty, max_depth - 1, u)?,
+                                );
+                            }
                         }
                     }
                     Ok(Value::record(r, None))
                 }
-            }
-            json_schema::Type::Type {
-                ty: json_schema::TypeVariant::Entity { name },
-                ..
-            } => {
-                // the only valid entity-typed attribute value is a UID literal
-
-                // The namespace for the entity type is the namespace of the
-                // Type if one is present. Otherwise, it is the schema
-                // namespace if that is present. The type is unqualified if
-                // neither is present.
-                let entity_type_name =
-                    ast::Name::try_from(name.qualify_with_name(self.schema.namespace()))
-                        .unwrap()
-                        .into();
-                let euid = self.arbitrary_uid_with_type(&entity_type_name, u)?;
-                Ok(Value::from(euid))
             }
             _ => Err(Error::ExtensionsDisabled),
         }
@@ -2436,8 +1605,8 @@ impl ExprGenerator<'_> {
         1 => {
             let mut r = HashMap::new();
             u.arbitrary_loop(Some(0), Some(self.settings.max_width as u32), |u| {
-                let (attr_name, _) = self.schema.arbitrary_attr(u)?;
-                r.insert(attr_name.clone(), self.generate_const_expr(u)?);
+                let attr_name = self.schema.arbitrary_attr(u)?;
+                r.insert(attr_name, self.generate_const_expr(u)?);
                 Ok(std::ops::ControlFlow::Continue(()))
             })?;
             Ok(ast::Expr::record(r).expect("can't have duplicate keys because `r` was already a HashMap"))
@@ -2578,26 +1747,14 @@ impl ExprGenerator<'_> {
     }
 }
 
-/// internal helper function, get a [`json_schema::Type`] representing a Record
+/// internal helper function, get a [`abac::Type`] representing a Record
 /// with (at least) one attribute of the specified name and type.
-fn record_schematype_with_attr<N>(
-    attr_name: SmolStr,
-    attr_type: impl Into<json_schema::Type<N>>,
-) -> json_schema::Type<N> {
-    json_schema::Type::Type {
-        ty: json_schema::TypeVariant::Record(json_schema::RecordType {
-            attributes: [(
-                attr_name,
-                json_schema::TypeOfAttribute {
-                    ty: attr_type.into(),
-                    required: true,
-                    annotations: Annotations::new(),
-                },
-            )]
-            .into_iter()
-            .collect(),
-            additional_attributes: true,
-        }),
-        loc: None,
-    }
+fn record_type_with_attr(attr_name: SmolStr, attr_type: Type) -> Type {
+    Type::Record(BTreeMap::from_iter([(
+        attr_name,
+        QualifiedType {
+            ty: attr_type,
+            required: true,
+        },
+    )]))
 }

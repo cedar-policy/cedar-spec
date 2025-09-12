@@ -23,11 +23,12 @@ use crate::size_hint_utils::size_hint_for_choose;
 use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{Arbitrary, Unstructured};
 use ast::{EntityUID, Name, RestrictedExpr, StaticPolicy};
-use cedar_policy_core::ast;
+use cedar_policy_core::ast::{self, EntityType};
 use cedar_policy_core::extensions;
 use serde::Serialize;
-use smol_str::SmolStr;
+use smol_str::{SmolStr, ToSmolStr};
 use std::cell::RefCell;
+use std::collections::BTreeMap;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::ops::{Deref, DerefMut};
 use thiserror::Error;
@@ -693,6 +694,15 @@ impl AvailableExtensionFunctions {
     }
 }
 
+/// A qualified type
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Arbitrary)]
+pub struct QualifiedType {
+    /// Type
+    pub ty: Type,
+    /// Qualification
+    pub required: bool,
+}
+
 /// Approximation of the Cedar type system used by the type-directed
 /// generator
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Arbitrary)]
@@ -703,17 +713,12 @@ pub enum Type {
     Long,
     /// String
     String,
-    /// Set, with the given element type. Note that we only generate
-    /// homogeneous sets.
-    /// Set(None) means any set type. It will still be a homogeneous set.
-    Set(Option<Box<Type>>),
-    /// Note that for now we have only a single Record type: all records are the
-    /// same type, no effort to generate records with particular attributes
-    Record,
-    /// Note that for now we have only a single Entity type: all entities are
-    /// the same type, no effort to generate entities with particular
-    /// attributes, or distinguish entities of different entity types
-    Entity,
+    /// Homogeneous set, with the given element type
+    Set(Box<Type>),
+    /// Record: an ordered map of attributes to qualified types
+    Record(BTreeMap<SmolStr, QualifiedType>),
+    /// Entity
+    Entity(EntityType),
     /// IP address
     IPAddr,
     /// Decimal numbers
@@ -739,20 +744,15 @@ impl Type {
     }
     /// Set type, with the given element type
     pub fn set_of(element_ty: Type) -> Self {
-        Type::Set(Some(Box::new(element_ty)))
-    }
-    /// Set type, without specifying the element type. (It will still be a
-    /// homogeneous set.)
-    pub fn any_set() -> Self {
-        Type::Set(None)
+        Type::Set(Box::new(element_ty))
     }
     /// Record type
-    pub fn record() -> Self {
-        Type::Record
+    pub fn record(m: impl IntoIterator<Item = (SmolStr, QualifiedType)>) -> Self {
+        Type::Record(BTreeMap::from_iter(m))
     }
     /// Entity type
-    pub fn entity() -> Self {
-        Type::Entity
+    pub fn entity(ety: EntityType) -> Self {
+        Type::Entity(ety)
     }
     /// IP type
     pub fn ipaddr() -> Self {
@@ -770,6 +770,34 @@ impl Type {
     pub fn duration() -> Self {
         Type::Duration
     }
+    /// Extension type
+    pub fn extension(name: &Name) -> Self {
+        match name.to_smolstr().as_str() {
+            "decimal" => Self::Decimal,
+            "datetime" => Self::DateTime,
+            "duration" => Self::Duration,
+            "ip" => Self::IPAddr,
+            _ => unreachable!("unexpected extension type"),
+        }
+    }
+
+    fn arbitrary_record_inner(
+        u: &mut Unstructured<'_>,
+        max_width: Option<usize>,
+        type_gen: impl Fn(&mut Unstructured<'_>) -> Result<QualifiedType>,
+    ) -> Result<Type> {
+        let mut r: BTreeMap<SmolStr, QualifiedType> = BTreeMap::new();
+        u.arbitrary_loop(Some(0), max_width.map(|u| u as u32), |u| {
+            r.insert(u.arbitrary()?, type_gen(u)?);
+            Ok(std::ops::ControlFlow::Continue(()))
+        })?;
+        Ok(Self::Record(r))
+    }
+
+    /// Produce an arbitrary record with `max_width`
+    pub fn arbitrary_record(u: &mut Unstructured<'_>, max_width: usize) -> Result<Type> {
+        Self::arbitrary_record_inner(u, Some(max_width), |u| Ok(u.arbitrary()?))
+    }
 
     /// `Type` has `Arbitrary` auto-derived for it, but for the case where you
     /// want "any nonextension Type", you have this
@@ -780,9 +808,11 @@ impl Type {
             Type::long(),
             Type::string(),
             Type::set_of(Self::arbitrary_nonextension(u)?),
-            Type::any_set(),
-            Type::record(),
-            Type::entity()
+            Self::arbitrary_record_inner(u, None, |u| Ok(QualifiedType {
+                ty: Self::arbitrary_nonextension(u)?,
+                required: u.arbitrary()?
+            }))?,
+            Type::entity(u.arbitrary()?)
         ))
     }
 }
@@ -795,8 +825,8 @@ impl TryFrom<Type> for ast::Type {
             Type::Long => Ok(ast::Type::Long),
             Type::String => Ok(ast::Type::String),
             Type::Set(_) => Ok(ast::Type::Set),
-            Type::Record => Ok(ast::Type::Record),
-            Type::Entity => Err(NotEnoughTypeInformation::NeedEntityTypename),
+            Type::Record(_) => Ok(ast::Type::Record),
+            Type::Entity(ety) => Ok(ast::Type::Entity { ty: ety }),
             Type::IPAddr => Ok(ast::Type::Extension {
                 name: extensions::ipaddr::extension().name().clone(),
             }),
