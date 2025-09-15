@@ -53,15 +53,13 @@ impl From<&RequestEnv> for proto::RequestEnv {
 #[derive(Clone, Debug)]
 pub(crate) struct CheckPolicyRequest {
     pub(crate) policy: Policy,
-    pub(crate) schema: Schema,
     pub(crate) request: RequestEnv,
 }
 
 impl proto::CheckPolicyRequest {
-    pub(crate) fn new(policy: &Policy, schema: &Schema, request: &RequestEnv) -> Self {
+    pub(crate) fn new(policy: &Policy, request: &RequestEnv) -> Self {
         Self {
             policy: Some(proto::Policy::from(policy)),
-            schema: Some(cedar_policy::proto::models::Schema::from(schema)),
             request: Some(proto::RequestEnv::from(request)),
         }
     }
@@ -70,22 +68,20 @@ impl proto::CheckPolicyRequest {
 /// Serialize the symcc request arguments to a ProtoBuf message
 impl From<&CheckPolicyRequest> for proto::CheckPolicyRequest {
     fn from(req: &CheckPolicyRequest) -> Self {
-        Self::new(&req.policy, &req.schema, &req.request)
+        Self::new(&req.policy, &req.request)
     }
 }
 
 #[derive(Clone, Debug)]
 pub(crate) struct CheckPolicySetRequest {
     pub(crate) policyset: PolicySet,
-    pub(crate) schema: Schema,
     pub(crate) request: RequestEnv,
 }
 
 impl proto::CheckPolicySetRequest {
-    pub(crate) fn new(policyset: &PolicySet, schema: &Schema, request: &RequestEnv) -> Self {
+    pub(crate) fn new(policyset: &PolicySet, request: &RequestEnv) -> Self {
         Self {
             policy_set: Some(cedar_policy::proto::models::PolicySet::from(policyset)),
-            schema: Some(cedar_policy::proto::models::Schema::from(schema)),
             request: Some(proto::RequestEnv::from(request)),
         }
     }
@@ -94,7 +90,7 @@ impl proto::CheckPolicySetRequest {
 /// Serialize the symcc request arguments to a ProtoBuf message
 impl From<&CheckPolicySetRequest> for proto::CheckPolicySetRequest {
     fn from(req: &CheckPolicySetRequest) -> Self {
-        Self::new(&req.policyset, &req.schema, &req.request)
+        Self::new(&req.policyset, &req.request)
     }
 }
 
@@ -102,7 +98,6 @@ impl From<&CheckPolicySetRequest> for proto::CheckPolicySetRequest {
 pub(crate) struct ComparePolicySetsRequest {
     pub(crate) src_policyset: PolicySet,
     pub(crate) tgt_policyset: PolicySet,
-    pub(crate) schema: Schema,
     pub(crate) request: RequestEnv,
 }
 
@@ -110,13 +105,11 @@ impl proto::ComparePolicySetsRequest {
     pub(crate) fn new(
         src_policyset: &PolicySet,
         tgt_policyset: &PolicySet,
-        schema: &Schema,
         request: &RequestEnv,
     ) -> Self {
         Self {
             src_policy_set: Some(cedar_policy::proto::models::PolicySet::from(src_policyset)),
             tgt_policy_set: Some(cedar_policy::proto::models::PolicySet::from(tgt_policyset)),
-            schema: Some(cedar_policy::proto::models::Schema::from(schema)),
             request: Some(proto::RequestEnv::from(request)),
         }
     }
@@ -125,12 +118,7 @@ impl proto::ComparePolicySetsRequest {
 /// Serialize the symcc request arguments to a ProtoBuf message
 impl From<&ComparePolicySetsRequest> for proto::ComparePolicySetsRequest {
     fn from(req: &ComparePolicySetsRequest) -> Self {
-        Self::new(
-            &req.src_policyset,
-            &req.tgt_policyset,
-            &req.schema,
-            &req.request,
-        )
+        Self::new(&req.src_policyset, &req.tgt_policyset, &req.request)
     }
 }
 
@@ -576,12 +564,10 @@ impl proto::Asserts {
 impl proto::CheckAssertsRequest {
     pub(crate) fn new(
         asserts: &Vec<datatypes::Term>,
-        schema: &Schema,
         request: &RequestEnv,
     ) -> Self {
         Self {
             asserts: Some(proto::Asserts::new(asserts)),
-            schema: Some(cedar_policy::proto::models::Schema::from(schema)),
             request: Some(proto::RequestEnv::from(request)),
         }
     }
@@ -682,7 +668,6 @@ mod test {
     fn convert_proto_check_policy_request() {
         let policy = Policy::from_str("permit(principal, action, resource);")
             .expect("Failed to parse policy");
-        let schema = example_schema();
         let principal_type =
             EntityTypeName::from_str("User").expect("Failed to construct PrincipalType");
         let action_name =
@@ -695,32 +680,18 @@ mod test {
             resource_type.clone(),
         );
 
-        let check_policy_pre_proto = proto::CheckPolicyRequest::new(&policy, &schema, &request_env);
+        let check_policy_pre_proto = proto::CheckPolicyRequest::new(&policy, &request_env);
         let check_policy_bytes = check_policy_pre_proto.encode_to_vec();
         let check_policy_proto = proto::CheckPolicyRequest::decode(&check_policy_bytes[..])
             .expect("Failed to decode protobuf CheckPolicyReuqest");
         assert_eq!(check_policy_pre_proto, check_policy_proto);
 
         let policy_proto = check_policy_proto.policy.unwrap();
-        let rt_schema = cedar_policy::Schema::from(&check_policy_proto.schema.unwrap());
         let request_proto = check_policy_proto.request.unwrap();
 
         assert_eq!(
             policy_proto.template.unwrap().id,
             policy.as_ref().template().id().as_ref()
-        );
-        // Need to collect into a collection that is either unordered or is first sorted
-        assert_eq!(
-            rt_schema.principals().collect::<HashSet<_>>(),
-            schema.principals().collect::<HashSet<_>>()
-        );
-        assert_eq!(
-            rt_schema.actions().collect::<HashSet<_>>(),
-            schema.actions().collect::<HashSet<_>>()
-        );
-        assert_eq!(
-            rt_schema.resources().collect::<HashSet<_>>(),
-            schema.resources().collect::<HashSet<_>>()
         );
 
         let proto_principal = request_proto.principal.unwrap();
@@ -741,7 +712,6 @@ mod test {
     fn convert_proto_check_policyset_request() {
         let policyset = PolicySet::from_str("permit(principal, action, resource);")
             .expect("Failed to parse PolicySet");
-        let schema = example_schema();
         let principal_type =
             EntityTypeName::from_str("User").expect("Failed to construct PrincipalType");
         let action_name =
@@ -754,8 +724,7 @@ mod test {
             resource_type.clone(),
         );
 
-        let check_policyset_pre_proto =
-            proto::CheckPolicySetRequest::new(&policyset, &schema, &request_env);
+        let check_policyset_pre_proto = proto::CheckPolicySetRequest::new(&policyset, &request_env);
         let check_policyset_bytes = check_policyset_pre_proto.encode_to_vec();
         let check_policyset_proto =
             proto::CheckPolicySetRequest::decode(&check_policyset_bytes[..])
@@ -765,23 +734,9 @@ mod test {
         let policyset_proto = check_policyset_proto.policy_set.unwrap();
         let rt_policyset =
             PolicySet::try_from(&policyset_proto).expect("Failed to roundtrip policy");
-        let rt_schema = Schema::from(&check_policyset_proto.schema.unwrap());
         let request_proto = check_policyset_proto.request.unwrap();
 
         assert_eq!(policyset, rt_policyset);
-        // Need to collect into a collection that is either unordered or is first sorted
-        assert_eq!(
-            rt_schema.principals().collect::<HashSet<_>>(),
-            schema.principals().collect::<HashSet<_>>()
-        );
-        assert_eq!(
-            rt_schema.actions().collect::<HashSet<_>>(),
-            schema.actions().collect::<HashSet<_>>()
-        );
-        assert_eq!(
-            rt_schema.resources().collect::<HashSet<_>>(),
-            schema.resources().collect::<HashSet<_>>()
-        );
 
         let proto_principal = request_proto.principal.unwrap();
         let proto_action = request_proto.action.unwrap();
@@ -803,7 +758,6 @@ mod test {
             .expect("Failed to parse PolicySet");
         let tgt_policyset = PolicySet::from_str("permit(principal, action, resource);")
             .expect("Failed to parse PolicySet");
-        let schema = example_schema();
         let principal_type =
             EntityTypeName::from_str("User").expect("Failed to construct PrincipalType");
         let action_name =
@@ -816,12 +770,8 @@ mod test {
             resource_type.clone(),
         );
 
-        let compare_policyset_pre_proto = proto::ComparePolicySetsRequest::new(
-            &src_policyset,
-            &tgt_policyset,
-            &schema,
-            &request_env,
-        );
+        let compare_policyset_pre_proto =
+            proto::ComparePolicySetsRequest::new(&src_policyset, &tgt_policyset, &request_env);
         let compare_policyset_bytes = compare_policyset_pre_proto.encode_to_vec();
         let compare_policyset_proto =
             proto::ComparePolicySetsRequest::decode(&compare_policyset_bytes[..])
@@ -834,25 +784,10 @@ mod test {
         let tgt_policyset_proto = compare_policyset_proto.tgt_policy_set.unwrap();
         let rt_tgt_policyset =
             PolicySet::try_from(&tgt_policyset_proto).expect("Failed to roundtrip policy");
-        let rt_schema = Schema::from(&compare_policyset_proto.schema.unwrap());
         let request_proto = compare_policyset_proto.request.unwrap();
 
         assert_eq!(src_policyset, rt_src_policyset);
         assert_eq!(tgt_policyset, rt_tgt_policyset);
-        // Need to collect into a collection that is either unordered or is first sorted
-        assert_eq!(
-            rt_schema.principals().collect::<HashSet<_>>(),
-            schema.principals().collect::<HashSet<_>>()
-        );
-        assert_eq!(
-            rt_schema.actions().collect::<HashSet<_>>(),
-            schema.actions().collect::<HashSet<_>>()
-        );
-        assert_eq!(
-            rt_schema.resources().collect::<HashSet<_>>(),
-            schema.resources().collect::<HashSet<_>>()
-        );
-
         let proto_principal = request_proto.principal.unwrap();
         let proto_action = request_proto.action.unwrap();
         let proto_resource = request_proto.resource.unwrap();

@@ -112,6 +112,7 @@ fuzz_target!(|input: FuzzTargetInput| {
     debug!("Policies: {policy}\n");
 
     if let Ok(schema) = Schema::try_from(input.schema) {
+        let lean_schema = lean_ffi.load_lean_schema_object(&schema).unwrap();
         for req_env in schema.request_envs() {
             if let Ok(sym_env) = SymEnv::new(&schema, &req_env) {
                 // We let Rust to drive the term generation as it's faster than Lean
@@ -130,7 +131,11 @@ fuzz_target!(|input: FuzzTargetInput| {
                     debug!("Lean asserts: {lean_asserts:#?}");
                     match (
                         smtlib_of_check_asserts(&rust_asserts),
-                        lean_ffi.smtlib_of_check_asserts(&lean_asserts, &schema, &req_env),
+                        lean_ffi.smtlib_of_check_asserts(
+                            &lean_asserts,
+                            lean_schema.clone(),
+                            &req_env,
+                        ),
                     ) {
                         (Ok(rust_smtlib), Ok(lean_smtlib)) => {
                             similar_asserts::assert_eq!(

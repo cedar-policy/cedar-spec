@@ -90,6 +90,7 @@ fuzz_target!(|input: FuzzTargetInput| {
     debug!("Policies: {policy}\n");
 
     if let Ok(schema) = Schema::try_from(input.schema) {
+        let lean_schema = lean_ffi.load_lean_schema_object(&schema).unwrap();
         for req_env in schema.request_envs() {
             // The validator DRT property we've been testing is that
             // rust_passes_validation => lean_passes_validation
@@ -106,7 +107,7 @@ fuzz_target!(|input: FuzzTargetInput| {
                 match (
                     lean_ffi.asserts_of_check_always_allows_on_original(
                         &well_typed_policies.policy_set().clone().try_into().unwrap(),
-                        &schema,
+                        lean_schema.clone(),
                         &req_env,
                     ),
                     compile_well_typed_policies(

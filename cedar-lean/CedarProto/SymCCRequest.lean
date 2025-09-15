@@ -98,7 +98,6 @@ namespace Cedar.SymCC.Proto
 
 structure CheckPolicyRequest where
   policy  : Spec.Policy
-  schema  : Validation.Schema
   request : Validation.Proto.RequestEnv
 deriving Inhabited
 
@@ -108,13 +107,11 @@ instance : Message CheckPolicyRequest where
   parseField (t : Proto.Tag) := do
     match t.fieldNum with
     | 1 => parseFieldElement t policy (update policy)
-    | 2 => parseFieldElement t schema (update schema)
     | 3 => parseFieldElement t request (update request)
     | _ => let _ ← t.wireType.skip ; pure ignore
 
   merge x y := {
     policy  := Field.merge x.policy y.policy
-    schema  := Field.merge x.schema y.schema
     request := Field.merge x.request y.request
   }
 
@@ -122,7 +119,6 @@ end CheckPolicyRequest
 
 structure CheckPolicySetRequest where
   policySet : Spec.Policies
-  schema : Validation.Schema
   request : Validation.Proto.RequestEnv
 deriving Inhabited
 
@@ -132,13 +128,11 @@ instance : Message CheckPolicySetRequest where
   parseField (t : Proto.Tag) := do
     match t.fieldNum with
     | 1 => parseFieldElement t policySet (update policySet)
-    | 2 => parseFieldElement t schema (update schema)
     | 3 => parseFieldElement t request (update request)
     | _ => let _ ← t.wireType.skip ; pure ignore
 
   merge x y := {
     policySet := Field.merge x.policySet y.policySet
-    schema := Field.merge x.schema y.schema
     request := Field.merge x.request y.request
   }
 
@@ -147,7 +141,6 @@ end CheckPolicySetRequest
 structure ComparePolicySetsRequest where
   srcPolicySet : Spec.Policies
   tgtPolicySet : Spec.Policies
-  schema : Validation.Schema
   request : Validation.Proto.RequestEnv
 deriving Inhabited
 
@@ -158,14 +151,12 @@ instance : Message ComparePolicySetsRequest where
     match t.fieldNum with
     | 1 => parseFieldElement t srcPolicySet (update srcPolicySet)
     | 2 => parseFieldElement t tgtPolicySet (update tgtPolicySet)
-    | 3 => parseFieldElement t schema (update schema)
     | 4 => parseFieldElement t request (update request)
     | _ => let _ ← t.wireType.skip ; pure ignore
 
   merge x y := {
     srcPolicySet := Field.merge x.srcPolicySet y.srcPolicySet
     tgtPolicySet := Field.merge x.tgtPolicySet y.tgtPolicySet
-    schema := Field.merge x.schema y.schema
     request := Field.merge x.request y.request
   }
 
@@ -173,7 +164,6 @@ end ComparePolicySetsRequest
 
 structure CheckAssertsRequest where
   asserts : Cedar.SymCC.Asserts
-  schema : Validation.Schema
   request : Validation.Proto.RequestEnv
 deriving Inhabited
 
@@ -189,13 +179,11 @@ instance : Message CheckAssertsRequest where
   parseField (t : Tag) := do
     match t.fieldNum with
     | 1 => parseFieldElement t asserts (update asserts)
-    | 2 => parseFieldElement t schema (update schema)
     | 3 => parseFieldElement t request (update request)
     | _ => t.wireType.skip ; pure ignore
 
   merge x y := {
     asserts := Field.merge x.asserts y.asserts
-    schema := Field.merge x.schema y.schema
     request := Field.merge x.request y.request
   }
 
