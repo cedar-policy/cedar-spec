@@ -214,62 +214,62 @@ theorem wf_term_app_not_exact {εs : SymEntities} {t : Term} {ty : TermType}
   exact h₂
 
 theorem wf_term_app_string_like {εs : SymEntities} {ts : List Term} {ty : TermType} {p : Pattern}
-  (h₁ : (Term.app (.string.like p) ts ty).WellFormed εs) :
+  (h₁ : (Term.app (Op.string.like p) ts ty).WellFormed εs) :
   ty = .bool ∧ WFUnary εs ts .string
 := by invert_wf_term_app_unary h₁
 
 theorem wf_term_app_option_get {εs : SymEntities} {ts : List Term} {ty : TermType}
-  (h₁ : (Term.app .option.get ts ty).WellFormed εs) :
+  (h₁ : (Term.app Op.option.get ts ty).WellFormed εs) :
   WFUnary εs ts (.option ty)
 := by invert_wf_term_app_unary h₁
 
 theorem wf_term_app_ext_decimal_val {εs : SymEntities} {ts : List Term} {ty : TermType}
-  (h₁ : (Term.app (.ext .decimal.val) ts ty).WellFormed εs) :
+  (h₁ : (Term.app (.ext ExtOp.decimal.val) ts ty).WellFormed εs) :
   ty = (.bitvec 64) ∧ WFUnary εs ts (.ext .decimal)
 := by invert_wf_term_app_unary h₁
 
 theorem wf_term_app_ext_ipaddr_isV4 {εs : SymEntities} {ts : List Term} {ty : TermType}
-  (h₁ : (Term.app (.ext .ipaddr.isV4) ts ty).WellFormed εs) :
+  (h₁ : (Term.app (.ext ExtOp.ipaddr.isV4) ts ty).WellFormed εs) :
   ty = .bool ∧ WFUnary εs ts (.ext .ipAddr)
 := by invert_wf_term_app_unary h₁
 
 theorem wf_term_app_ext_ipaddr_addrV4 {εs : SymEntities} {ts : List Term} {ty : TermType}
-  (h₁ : (Term.app (.ext .ipaddr.addrV4) ts ty).WellFormed εs) :
+  (h₁ : (Term.app (.ext ExtOp.ipaddr.addrV4) ts ty).WellFormed εs) :
   ty = (.bitvec 32) ∧ WFUnary εs ts (.ext .ipAddr)
 := by invert_wf_term_app_unary h₁
 
 theorem wf_term_app_ext_ipaddr_prefixV4 {εs : SymEntities} {ts : List Term} {ty : TermType}
-  (h₁ : (Term.app (.ext .ipaddr.prefixV4) ts ty).WellFormed εs) :
+  (h₁ : (Term.app (.ext ExtOp.ipaddr.prefixV4) ts ty).WellFormed εs) :
   ty = (.option (.bitvec 5)) ∧ WFUnary εs ts (.ext .ipAddr)
 := by invert_wf_term_app_unary h₁
 
 theorem wf_term_app_ext_ipaddr_addrV6 {εs : SymEntities} {ts : List Term} {ty : TermType}
-  (h₁ : (Term.app (.ext .ipaddr.addrV6) ts ty).WellFormed εs) :
+  (h₁ : (Term.app (.ext ExtOp.ipaddr.addrV6) ts ty).WellFormed εs) :
   ty = (.bitvec 128) ∧ WFUnary εs ts (.ext .ipAddr)
 := by invert_wf_term_app_unary h₁
 
 theorem wf_term_app_ext_ipaddr_prefixV6 {εs : SymEntities} {ts : List Term} {ty : TermType}
-  (h₁ : (Term.app (.ext .ipaddr.prefixV6) ts ty).WellFormed εs) :
+  (h₁ : (Term.app (.ext ExtOp.ipaddr.prefixV6) ts ty).WellFormed εs) :
   ty = (.option (.bitvec 7)) ∧ WFUnary εs ts (.ext .ipAddr)
 := by invert_wf_term_app_unary h₁
 
 theorem wf_term_app_ext_datetime_val {εs : SymEntities} {ts : List Term} {ty : TermType}
-  (h₁ : (Term.app (.ext .datetime.val) ts ty).WellFormed εs) :
+  (h₁ : (Term.app (.ext ExtOp.datetime.val) ts ty).WellFormed εs) :
   ty = (.bitvec 64) ∧ WFUnary εs ts (.ext .datetime)
 := by invert_wf_term_app_unary h₁
 
 theorem wf_term_app_ext_datetime_ofBitVec {εs : SymEntities} {ts : List Term} {ty : TermType}
-  (h₁ : (Term.app (.ext .datetime.ofBitVec) ts ty).WellFormed εs) :
+  (h₁ : (Term.app (.ext ExtOp.datetime.ofBitVec) ts ty).WellFormed εs) :
   ty = (.ext .datetime) ∧ WFUnary εs ts (.bitvec 64)
 := by invert_wf_term_app_unary h₁
 
 theorem wf_term_app_ext_duration_val {εs : SymEntities} {ts : List Term} {ty : TermType}
-  (h₁ : (Term.app (.ext .duration.val) ts ty).WellFormed εs) :
+  (h₁ : (Term.app (.ext ExtOp.duration.val) ts ty).WellFormed εs) :
   ty = (.bitvec 64) ∧ WFUnary εs ts (.ext .duration)
 := by invert_wf_term_app_unary h₁
 
 theorem wf_term_app_ext_duration_ofBitVec {εs : SymEntities} {ts : List Term} {ty : TermType}
-  (h₁ : (Term.app (.ext .duration.ofBitVec) ts ty).WellFormed εs) :
+  (h₁ : (Term.app (.ext ExtOp.duration.ofBitVec) ts ty).WellFormed εs) :
   ty = (.ext .duration) ∧ WFUnary εs ts (.bitvec 64)
 := by invert_wf_term_app_unary h₁
 
@@ -285,7 +285,7 @@ theorem wf_term_app_uuf {εs : SymEntities} {ts : List Term} {f : UUF} {ty : Ter
     h₂, _root_.and_self, h₃]
 
 theorem wf_term_app_record_get {εs : SymEntities} {ts : List Term} {a : Attr} {ty : TermType}
-  (h₁ : (Term.app (.record.get a) ts ty).WellFormed εs) :
+  (h₁ : (Term.app (Op.record.get a) ts ty).WellFormed εs) :
   ∃ rty, rty.find? a = .some ty ∧ WFUnary εs ts (.record rty)
 := by
   cases h₁
@@ -510,17 +510,17 @@ theorem wf_term_app_bvule {εs : SymEntities} {ts : List Term} {ty : TermType}
 := by invert_wf_term_app_param_binary h₁
 
 theorem wf_term_app_set_subset {εs : SymEntities} {ts : List Term} {ty : TermType}
-  (h₁ : (Term.app .set.subset ts ty).WellFormed εs) :
+  (h₁ : (Term.app Op.set.subset ts ty).WellFormed εs) :
   ty = .bool ∧ ∃ ty, WFBinary εs ts (.set ty)
 := by invert_wf_term_app_param_binary h₁
 
 theorem wf_term_app_set_inter {εs : SymEntities} {ts : List Term} {ty : TermType}
-  (h₁ : (Term.app .set.inter ts ty).WellFormed εs) :
+  (h₁ : (Term.app Op.set.inter ts ty).WellFormed εs) :
   ∃ ty', ty = (.set ty') ∧ WFBinary εs ts (.set ty')
 := by invert_wf_term_app_param_binary h₁
 
 theorem wf_term_app_set_member {εs : SymEntities} {ts : List Term} {ty : TermType}
-  (h₁ : (Term.app .set.member ts ty).WellFormed εs) :
+  (h₁ : (Term.app Op.set.member ts ty).WellFormed εs) :
   ty = .bool ∧ ∃ t₁ t₂, ts = [t₁, t₂] ∧ t₁.WellFormed εs ∧ WFArg εs t₂ (.set t₁.typeOf)
 := by
   cases h₁

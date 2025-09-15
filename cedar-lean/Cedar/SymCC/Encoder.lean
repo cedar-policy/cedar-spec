@@ -230,21 +230,21 @@ def encodeUUF (uuf : UUF) : EncoderM String := do
   modifyGet λ state => (id, {state with uufs := state.uufs.insert uuf id})
 
 def encodeExtOp : ExtOp → String
-  | .decimal.val       => "decimalVal"
-  | .ipaddr.isV4       => "(_ is V4)"
-  | .ipaddr.addrV4     => "addrV4"
-  | .ipaddr.prefixV4   => "prefixV4"
-  | .ipaddr.addrV6     => "addrV6"
-  | .ipaddr.prefixV6   => "prefixV6"
-  | .datetime.val      => "datetimeVal"
-  | .datetime.ofBitVec => "Datetime"
-  | .duration.val      => "durationVal"
-  | .duration.ofBitVec => "Duration"
+  | ExtOp.decimal.val       => "decimalVal"
+  | ExtOp.ipaddr.isV4       => "(_ is V4)"
+  | ExtOp.ipaddr.addrV4     => "addrV4"
+  | ExtOp.ipaddr.prefixV4   => "prefixV4"
+  | ExtOp.ipaddr.addrV6     => "addrV6"
+  | ExtOp.ipaddr.prefixV6   => "prefixV6"
+  | ExtOp.datetime.val      => "datetimeVal"
+  | ExtOp.datetime.ofBitVec => "Datetime"
+  | ExtOp.duration.val      => "durationVal"
+  | ExtOp.duration.ofBitVec => "Duration"
 
  def encodeOp : Op → String
   | .eq            => "="
   | .zero_extend n => s!"(_ zero_extend {n})"
-  | .option.get    => "val"
+  | Op.option.get    => "val"
   | .ext xop       => encodeExtOp xop
   | op             => op.mkName
 
@@ -274,8 +274,8 @@ def defineRecordGet (tyEnc a tEnc : String) (ty : TermType) : EncoderM String :=
 def defineApp (tyEnc : String) (op : Op) (tEncs : List String) (ts : List Term): EncoderM String := do
   let args := String.intercalate " " tEncs
   match op with
-  | .record.get a  => defineRecordGet tyEnc a args ts.head!.typeOf
-  | .string.like p => defineTerm tyEnc s!"(str.in_re {args} {← encodePattern p})"
+  | Op.record.get a  => defineRecordGet tyEnc a args ts.head!.typeOf
+  | Op.string.like p => defineTerm tyEnc s!"(str.in_re {args} {← encodePattern p})"
   | .uuf f         => defineTerm tyEnc s!"({← encodeUUF f} {args})"
   | _              => defineTerm tyEnc s!"({encodeOp op} {args})"
 

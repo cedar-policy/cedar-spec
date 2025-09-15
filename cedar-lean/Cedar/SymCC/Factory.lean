@@ -219,8 +219,8 @@ def set.member (t ts : Term) : Term :=
   | .set s _ =>
     if t.isLiteral && ts.isLiteral
     then s.contains t
-    else .app .set.member [t, ts] .bool
-  | _ => .app .set.member [t, ts] .bool
+    else .app Op.set.member [t, ts] .bool
+  | _ => .app Op.set.member [t, ts] .bool
 
 def set.subset (sub sup : Term) : Term :=
   if sub = sup
@@ -230,8 +230,8 @@ def set.subset (sub sup : Term) : Term :=
     | .set s₁ _, .set s₂ _  =>
       if sub.isLiteral && sup.isLiteral
       then s₁.subset s₂
-      else .app .set.subset [sub, sup] .bool
-    | _, _ => .app .set.subset [sub, sup] .bool
+      else .app Op.set.subset [sub, sup] .bool
+    | _, _ => .app Op.set.subset [sub, sup] .bool
 
 def set.inter (ts₁ ts₂ : Term) : Term :=
   if ts₁ = ts₂
@@ -242,8 +242,8 @@ def set.inter (ts₁ ts₂ : Term) : Term :=
     | .set s₁ ty, .set s₂ _  =>
       if ts₁.isLiteral && ts₂.isLiteral
       then .set (s₁.intersect s₂) ty
-      else .app .set.inter [ts₁, ts₂] (.set ty)
-    | _, _ => .app .set.inter [ts₁, ts₂] ts₁.typeOf
+      else .app Op.set.inter [ts₁, ts₂] (.set ty)
+    | _, _ => .app Op.set.inter [ts₁, ts₂] ts₁.typeOf
 
 def set.isEmpty : Term → Term
   | .set (Set.mk []) _     => true
@@ -262,7 +262,7 @@ def option.get : Term → Term
   | .some t  => t
   | t        =>
     match t.typeOf with
-    | .option ty => .app .option.get [t] ty
+    | .option ty => .app Op.option.get [t] ty
     | _          => t
 
 def record.get (t : Term) (a : Attr) : Term :=
@@ -270,61 +270,61 @@ def record.get (t : Term) (a : Attr) : Term :=
   | .record r => if let some tₐ := r.find? a then tₐ else t
   | _         =>
     match t.typeOf with
-    | .record rty => if let some ty := rty.find? a then .app (.record.get a) [t] ty else t
+    | .record rty => if let some ty := rty.find? a then .app (Op.record.get a) [t] ty else t
     | _           => t
 
 def string.like (t : Term) (p : Pattern) : Term :=
   match t with
   | .prim (.string s) => wildcardMatch s p
-  | _                 => .app (.string.like p) [t] .bool
+  | _                 => .app (Op.string.like p) [t] .bool
 
 ---------- Extension ADT operators with a trusted mapping to SMT ----------
 
 def ext.decimal.val : Term → Term
   | .prim (.ext (.decimal d)) => d
-  | t                         => .app (.ext .decimal.val) [t] (.bitvec 64)
+  | t                         => .app (.ext ExtOp.decimal.val) [t] (.bitvec 64)
 
 def ext.ipaddr.isV4 : Term → Term
   | .prim (.ext (.ipaddr ip)) => ip.isV4
-  | t                         => .app (.ext .ipaddr.isV4) [t] .bool
+  | t                         => .app (.ext ExtOp.ipaddr.isV4) [t] .bool
 
 def ext.ipaddr.addrV4 : Term → Term
   | .prim (.ext (.ipaddr (.V4 ⟨v4, _⟩))) => v4
-  | t                                    => .app (.ext .ipaddr.addrV4) [t] (.bitvec 32)
+  | t                                    => .app (.ext ExtOp.ipaddr.addrV4) [t] (.bitvec 32)
 
 def ext.ipaddr.prefixV4 : Term → Term
   | .prim (.ext (.ipaddr (.V4 ⟨_, p4⟩))) =>
     match p4 with
     | .none     => noneOf (.bitvec 5)
     | .some pre => someOf pre
-  | t => .app (.ext .ipaddr.prefixV4) [t] (.option (.bitvec 5))
+  | t => .app (.ext ExtOp.ipaddr.prefixV4) [t] (.option (.bitvec 5))
 
 def ext.ipaddr.addrV6 : Term → Term
   | .prim (.ext (.ipaddr (.V6 ⟨v6, _⟩))) => v6
-  | t                                    => .app (.ext .ipaddr.addrV6) [t] (.bitvec 128)
+  | t                                    => .app (.ext ExtOp.ipaddr.addrV6) [t] (.bitvec 128)
 
 def ext.ipaddr.prefixV6 : Term → Term
   | .prim (.ext (.ipaddr (.V6 ⟨_, p6⟩))) =>
     match p6 with
     | .none     => noneOf (.bitvec 7)
     | .some pre => someOf pre
-  | t => .app (.ext .ipaddr.prefixV6) [t] (.option (.bitvec 7))
+  | t => .app (.ext ExtOp.ipaddr.prefixV6) [t] (.option (.bitvec 7))
 
 def ext.datetime.val : Term → Term
   | .prim (.ext (.datetime d)) => d.val
-  | t                          => .app (.ext .datetime.val) [t] (.bitvec 64)
+  | t                          => .app (.ext ExtOp.datetime.val) [t] (.bitvec 64)
 
 def ext.datetime.ofBitVec : Term -> Term
   | .prim (@TermPrim.bitvec 64 bv) => .prim (.ext (.datetime (Int64.ofInt bv.toInt)))
-  | t                              => .app (.ext .datetime.ofBitVec) [t] (.ext .datetime)
+  | t                              => .app (.ext ExtOp.datetime.ofBitVec) [t] (.ext .datetime)
 
 def ext.duration.val : Term → Term
   | .prim (.ext (.duration d)) => d.val
-  | t                          => .app (.ext .duration.val) [t] (.bitvec 64)
+  | t                          => .app (.ext ExtOp.duration.val) [t] (.bitvec 64)
 
 def ext.duration.ofBitVec : Term -> Term
   | .prim (@TermPrim.bitvec 64 bv) => .prim (.ext (.duration (Int64.ofInt bv.toInt)))
-  | t                              => .app (.ext .duration.ofBitVec) [t] (.ext .duration)
+  | t                              => .app (.ext ExtOp.duration.ofBitVec) [t] (.ext .duration)
 
 ---------- Helper functions for constructing compound terms ----------
 
