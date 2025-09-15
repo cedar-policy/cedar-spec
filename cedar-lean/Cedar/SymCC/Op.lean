@@ -113,16 +113,16 @@ instance UUF.decLt (x y : UUF) : Decidable (x < y) :=
   if h : UUF.lt x y then isTrue h else isFalse h
 
 def ExtOp.mkName : ExtOp → String
-  | decimal.val       => "decimal.val"
-  | ipaddr.isV4       => "ipaddr.isV4"
-  | ipaddr.addrV4     => "ipaddr.addrV4"
-  | ipaddr.prefixV4   => "ipaddr.prefixV4"
-  | ipaddr.addrV6     => "ipaddr.addrV6"
-  | ipaddr.prefixV6   => "ipaddr.prefixV6"
-  | datetime.val      => "datetime.val"
-  | datetime.ofBitVec => "datetime.ofBitVec"
-  | duration.val      => "duration.val"
-  | duration.ofBitVec => "duration.ofBitVec"
+  | ExtOp.decimal.val       => "decimal.val"
+  | ExtOp.ipaddr.isV4       => "ipaddr.isV4"
+  | ExtOp.ipaddr.addrV4     => "ipaddr.addrV4"
+  | ExtOp.ipaddr.prefixV4   => "ipaddr.prefixV4"
+  | ExtOp.ipaddr.addrV6     => "ipaddr.addrV6"
+  | ExtOp.ipaddr.prefixV6   => "ipaddr.prefixV6"
+  | ExtOp.datetime.val      => "datetime.val"
+  | ExtOp.datetime.ofBitVec => "datetime.ofBitVec"
+  | ExtOp.duration.val      => "duration.val"
+  | ExtOp.duration.ofBitVec => "duration.ofBitVec"
 
 def ExtOp.lt : ExtOp → ExtOp → Bool
   | ty₁, ty₂    => ty₁.mkName < ty₂.mkName
@@ -160,19 +160,19 @@ def Op.mkName : Op → String
   | .bvssubo       => "bvssubo"
   | .bvsmulo       => "bvsmulo"
   | .zero_extend _ => "zero_extend"
-  | .set.member    => "set.member"
-  | .set.subset    => "set.subset"
-  | .set.inter     => "set.inter"
-  | .option.get    => "option.get"
-  | .record.get _  => "record.get"
-  | .string.like _ => "string.like"
+  | Op.set.member    => "set.member"
+  | Op.set.subset    => "set.subset"
+  | Op.set.inter     => "set.inter"
+  | Op.option.get    => "option.get"
+  | Op.record.get _  => "record.get"
+  | Op.string.like _ => "string.like"
   | .ext _         => "ext"
 
 def Op.lt : Op → Op → Bool
   | .uuf f₁, uuf f₂                  => f₁ < f₂
   | .zero_extend n₁, .zero_extend n₂ => n₁ < n₂
-  | .record.get a₁, .record.get a₂   => a₁ < a₂
-  | .string.like p₁, .string.like p₂ => p₁ < p₂
+  | Op.record.get a₁, Op.record.get a₂   => a₁ < a₂
+  | Op.string.like p₁, Op.string.like p₂ => p₁ < p₂
   | .ext xty₁, .ext xty₂             => xty₁ < xty₂
   | ty₁, ty₂                         => ty₁.mkName < ty₂.mkName
 

@@ -192,16 +192,16 @@ private theorem interpret_term_app_wf_zero_extend {εs : SymEntities} {I : Inter
 := by show_interpret_term_app_wf_unary h₁ ih interpret_term_app_zero_extend wf_term_app_zero_extend wf_zero_extend
 
 private theorem interpret_term_app_wf_string_like {εs : SymEntities} {I : Interpretation} {ts : List Term} {p : Pattern} {ty : TermType}
-  (h₁ : Term.WellFormed εs (Term.app (.string.like p) ts ty))
+  (h₁ : Term.WellFormed εs (Term.app (Op.string.like p) ts ty))
   (ih : ∀ (t : Term), t ∈ ts → InterpretTermWF εs I t) :
-  InterpretTermWF εs I (Term.app (.string.like p) ts ty)
+  InterpretTermWF εs I (Term.app (Op.string.like p) ts ty)
 := by show_interpret_term_app_wf_unary h₁ ih interpret_term_app_string_like wf_term_app_string_like wf_string_like
 
 private theorem interpret_term_app_wf_option_get {εs : SymEntities} {I : Interpretation} {ts : List Term} {ty : TermType}
   (h₀ : I.WellFormed εs)
-  (h₁ : Term.WellFormed εs (Term.app .option.get ts ty))
+  (h₁ : Term.WellFormed εs (Term.app Op.option.get ts ty))
   (ih : ∀ (t : Term), t ∈ ts → InterpretTermWF εs I t) :
-  InterpretTermWF εs I (Term.app .option.get ts ty)
+  InterpretTermWF εs I (Term.app Op.option.get ts ty)
 := by
   simp only [InterpretTermWF]
   replace ⟨_, h₁, _, h₃⟩ := wf_term_app_option_get h₁
@@ -211,67 +211,67 @@ private theorem interpret_term_app_wf_option_get {εs : SymEntities} {I : Interp
   exact wf_option_get' h₀ ih.left ih.right
 
 private theorem interpret_term_app_wf_ext_decimal_val {εs : SymEntities} {I : Interpretation} {ts : List Term} {ty : TermType}
-  (h₁ : Term.WellFormed εs (Term.app (.ext .decimal.val) ts ty))
+  (h₁ : Term.WellFormed εs (Term.app (.ext ExtOp.decimal.val) ts ty))
   (ih : ∀ (t : Term), t ∈ ts → InterpretTermWF εs I t) :
-  InterpretTermWF εs I (Term.app (.ext .decimal.val) ts ty)
+  InterpretTermWF εs I (Term.app (.ext ExtOp.decimal.val) ts ty)
 := by show_interpret_term_app_wf_unary h₁ ih interpret_term_app_ext_decimal_val wf_term_app_ext_decimal_val wf_ext_decimal_val
 
 private theorem interpret_term_app_wf_ext_ipaddr_isV4 {εs : SymEntities} {I : Interpretation} {ts : List Term} {ty : TermType}
-  (h₁ : Term.WellFormed εs (Term.app (.ext .ipaddr.isV4) ts ty))
+  (h₁ : Term.WellFormed εs (Term.app (.ext ExtOp.ipaddr.isV4) ts ty))
   (ih : ∀ (t : Term), t ∈ ts → InterpretTermWF εs I t) :
-  InterpretTermWF εs I (Term.app (.ext .ipaddr.isV4) ts ty)
+  InterpretTermWF εs I (Term.app (.ext ExtOp.ipaddr.isV4) ts ty)
 := by show_interpret_term_app_wf_unary h₁ ih interpret_term_app_ext_ipaddr_isV4 wf_term_app_ext_ipaddr_isV4 wf_ext_ipaddr_isV4
 
 private theorem interpret_term_app_wf_ext_ipaddr_addrV4 {εs : SymEntities} {I : Interpretation} {ts : List Term} {ty : TermType}
   (h₀ : I.WellFormed εs)
-  (h₁ : Term.WellFormed εs (Term.app (.ext .ipaddr.addrV4) ts ty))
+  (h₁ : Term.WellFormed εs (Term.app (.ext ExtOp.ipaddr.addrV4) ts ty))
   (ih : ∀ (t : Term), t ∈ ts → InterpretTermWF εs I t) :
-  InterpretTermWF εs I (Term.app (.ext .ipaddr.addrV4) ts ty)
+  InterpretTermWF εs I (Term.app (.ext ExtOp.ipaddr.addrV4) ts ty)
 := by show_interpret_term_app_wf_unary h₁ ih interpret_term_app_ext_ipaddr_addrV4 wf_term_app_ext_ipaddr_addrV4 (wf_ext_ipaddr_addrV4' h₀)
 
 private theorem interpret_term_app_wf_ext_ipaddr_prefixV4 {εs : SymEntities} {I : Interpretation} {ts : List Term} {ty : TermType}
   (h₀ : I.WellFormed εs)
-  (h₁ : Term.WellFormed εs (Term.app (.ext .ipaddr.prefixV4) ts ty))
+  (h₁ : Term.WellFormed εs (Term.app (.ext ExtOp.ipaddr.prefixV4) ts ty))
   (ih : ∀ (t : Term), t ∈ ts → InterpretTermWF εs I t) :
-  InterpretTermWF εs I (Term.app (.ext .ipaddr.prefixV4) ts ty)
+  InterpretTermWF εs I (Term.app (.ext ExtOp.ipaddr.prefixV4) ts ty)
 := by show_interpret_term_app_wf_unary h₁ ih interpret_term_app_ext_ipaddr_prefixV4 wf_term_app_ext_ipaddr_prefixV4 (wf_ext_ipaddr_prefixV4' h₀)
 
 private theorem interpret_term_app_wf_ext_ipaddr_addrV6 {εs : SymEntities} {I : Interpretation} {ts : List Term} {ty : TermType}
   (h₀ : I.WellFormed εs)
-  (h₁ : Term.WellFormed εs (Term.app (.ext .ipaddr.addrV6) ts ty))
+  (h₁ : Term.WellFormed εs (Term.app (.ext ExtOp.ipaddr.addrV6) ts ty))
   (ih : ∀ (t : Term), t ∈ ts → InterpretTermWF εs I t) :
-  InterpretTermWF εs I (Term.app (.ext .ipaddr.addrV6) ts ty)
+  InterpretTermWF εs I (Term.app (.ext ExtOp.ipaddr.addrV6) ts ty)
 := by show_interpret_term_app_wf_unary h₁ ih interpret_term_app_ext_ipaddr_addrV6 wf_term_app_ext_ipaddr_addrV6 (wf_ext_ipaddr_addrV6' h₀)
 
 private theorem interpret_term_app_wf_ext_ipaddr_prefixV6 {εs : SymEntities} {I : Interpretation} {ts : List Term} {ty : TermType}
   (h₀ : I.WellFormed εs)
-  (h₁ : Term.WellFormed εs (Term.app (.ext .ipaddr.prefixV6) ts ty))
+  (h₁ : Term.WellFormed εs (Term.app (.ext ExtOp.ipaddr.prefixV6) ts ty))
   (ih : ∀ (t : Term), t ∈ ts → InterpretTermWF εs I t) :
-  InterpretTermWF εs I (Term.app (.ext .ipaddr.prefixV6) ts ty)
+  InterpretTermWF εs I (Term.app (.ext ExtOp.ipaddr.prefixV6) ts ty)
 := by show_interpret_term_app_wf_unary h₁ ih interpret_term_app_ext_ipaddr_prefixV6 wf_term_app_ext_ipaddr_prefixV6 (wf_ext_ipaddr_prefixV6' h₀)
 
 private theorem interpret_term_app_wf_ext_datetime_val {εs : SymEntities} {I : Interpretation} {ts : List Term} {ty : TermType}
-  (h₁ : Term.WellFormed εs (Term.app (.ext .datetime.val) ts ty))
+  (h₁ : Term.WellFormed εs (Term.app (.ext ExtOp.datetime.val) ts ty))
   (ih : ∀ (t : Term), t ∈ ts → InterpretTermWF εs I t) :
-  InterpretTermWF εs I (Term.app (.ext .datetime.val) ts ty)
+  InterpretTermWF εs I (Term.app (.ext ExtOp.datetime.val) ts ty)
 := by show_interpret_term_app_wf_unary h₁ ih interpret_term_app_ext_datetime_val wf_term_app_ext_datetime_val wf_ext_datetime_val
 
 private theorem interpret_term_app_wf_ext_datetime_ofBitVec {εs : SymEntities} {I : Interpretation} {ts : List Term} {ty : TermType}
-  (h₁ : Term.WellFormed εs (Term.app (.ext .datetime.ofBitVec) ts ty))
+  (h₁ : Term.WellFormed εs (Term.app (.ext ExtOp.datetime.ofBitVec) ts ty))
   (ih : ∀ (t : Term), t ∈ ts → InterpretTermWF εs I t) :
-  InterpretTermWF εs I (Term.app (.ext .datetime.ofBitVec) ts ty)
+  InterpretTermWF εs I (Term.app (.ext ExtOp.datetime.ofBitVec) ts ty)
 := by show_interpret_term_app_wf_unary h₁ ih interpret_term_app_ext_datetime_ofBitVec wf_term_app_ext_datetime_ofBitVec wf_ext_datetime_ofBitVec
 
 private theorem interpret_term_app_wf_ext_duration_val {εs : SymEntities} {I : Interpretation} {ts : List Term} {ty : TermType}
-  (h₁ : Term.WellFormed εs (Term.app (.ext .duration.val) ts ty))
+  (h₁ : Term.WellFormed εs (Term.app (.ext ExtOp.duration.val) ts ty))
   (ih : ∀ (t : Term), t ∈ ts → InterpretTermWF εs I t) :
-  InterpretTermWF εs I (Term.app (.ext .duration.val) ts ty)
+  InterpretTermWF εs I (Term.app (.ext ExtOp.duration.val) ts ty)
 := by show_interpret_term_app_wf_unary h₁ ih interpret_term_app_ext_duration_val wf_term_app_ext_duration_val wf_ext_duration_val
 
 private theorem interpret_term_app_wf_ext_duration_ofBitVec {εs : SymEntities} {I : Interpretation} {ts : List Term} {ty : TermType}
-  (h₁ : Term.WellFormed εs (Term.app (.ext .duration.ofBitVec) ts ty))
+  (h₁ : Term.WellFormed εs (Term.app (.ext ExtOp.duration.ofBitVec) ts ty))
   (ih : ∀ (t : Term), t ∈ ts → InterpretTermWF εs I t) :
-  InterpretTermWF εs I (Term.app (.ext .duration.ofBitVec) ts ty)
+  InterpretTermWF εs I (Term.app (.ext ExtOp.duration.ofBitVec) ts ty)
 := by show_interpret_term_app_wf_unary h₁ ih interpret_term_app_ext_duration_ofBitVec wf_term_app_ext_duration_ofBitVec wf_ext_duration_ofBitVec
 
 local macro "show_interpret_term_app_wf_binary" h1:ident ih:ident invert:ident wfdestruct:ident wfconstruct:ident : tactic => do
@@ -448,21 +448,21 @@ private theorem interpret_term_app_wf_bvule {εs : SymEntities} {I : Interpretat
 := by show_interpret_term_app_wf_binary_pred h₁ ih interpret_term_app_bvule wf_term_app_bvule wf_bvule
 
 private theorem interpret_term_app_wf_set_subset {εs : SymEntities} {I : Interpretation} {ts : List Term} {ty : TermType}
-  (h₁ : Term.WellFormed εs (Term.app .set.subset ts ty))
+  (h₁ : Term.WellFormed εs (Term.app Op.set.subset ts ty))
   (ih : ∀ (t : Term), t ∈ ts → InterpretTermWF εs I t) :
-  InterpretTermWF εs I (Term.app .set.subset ts ty)
+  InterpretTermWF εs I (Term.app Op.set.subset ts ty)
 := by show_interpret_term_app_wf_binary_pred h₁ ih interpret_term_app_set_subset wf_term_app_set_subset wf_set_subset
 
 private theorem interpret_term_app_wf_set_inter {εs : SymEntities} {I : Interpretation} {ts : List Term} {ty : TermType}
-  (h₁ : Term.WellFormed εs (Term.app .set.inter ts ty))
+  (h₁ : Term.WellFormed εs (Term.app Op.set.inter ts ty))
   (ih : ∀ (t : Term), t ∈ ts → InterpretTermWF εs I t) :
-  InterpretTermWF εs I (Term.app .set.inter ts ty)
+  InterpretTermWF εs I (Term.app Op.set.inter ts ty)
 := by show_interpret_term_app_wf_binary h₁ ih interpret_term_app_set_inter wf_term_app_set_inter wf_set_inter
 
 private theorem interpret_term_app_wf_set_member {εs : SymEntities} {I : Interpretation} {ts : List Term} {ty : TermType}
-  (h₁ : Term.WellFormed εs (Term.app .set.member ts ty))
+  (h₁ : Term.WellFormed εs (Term.app Op.set.member ts ty))
   (ih : ∀ (t : Term), t ∈ ts → InterpretTermWF εs I t) :
-  InterpretTermWF εs I (Term.app .set.member ts ty)
+  InterpretTermWF εs I (Term.app Op.set.member ts ty)
 := by
   simp only [InterpretTermWF]
   replace ⟨h₁, t₁, t₂, h₂, h₃, h₄, h₅⟩ := wf_term_app_set_member h₁
@@ -475,9 +475,9 @@ private theorem interpret_term_app_wf_set_member {εs : SymEntities} {I : Interp
   rw [ih'.right, ←h₅, ih.right, h₅]
 
 private theorem interpret_term_app_wf_record_get {εs : SymEntities} {I : Interpretation} {ts : List Term} {a : Attr} {ty : TermType}
-  (h₁ : Term.WellFormed εs (Term.app (.record.get a) ts ty))
+  (h₁ : Term.WellFormed εs (Term.app (Op.record.get a) ts ty))
   (ih : ∀ (t : Term), t ∈ ts → InterpretTermWF εs I t) :
-  InterpretTermWF εs I (Term.app (.record.get a) ts ty)
+  InterpretTermWF εs I (Term.app (Op.record.get a) ts ty)
 := by
   simp only [InterpretTermWF]
   replace ⟨r, h₁, t₁, h₂, _, h₃⟩ := wf_term_app_record_get h₁
@@ -518,25 +518,25 @@ theorem interpret_term_app_wf {εs : SymEntities} {I : Interpretation} {op : Op}
   | .bvsle             => exact interpret_term_app_wf_bvsle h₁ ih
   | .bvult             => exact interpret_term_app_wf_bvult h₁ ih
   | .bvule             => exact interpret_term_app_wf_bvule h₁ ih
-  | .set.member        => exact interpret_term_app_wf_set_member h₁ ih
-  | .set.subset        => exact interpret_term_app_wf_set_subset h₁ ih
-  | .set.inter         => exact interpret_term_app_wf_set_inter h₁ ih
+  | Op.set.member        => exact interpret_term_app_wf_set_member h₁ ih
+  | Op.set.subset        => exact interpret_term_app_wf_set_subset h₁ ih
+  | Op.set.inter         => exact interpret_term_app_wf_set_inter h₁ ih
   | .zero_extend _     => exact interpret_term_app_wf_zero_extend h₁ ih
-  | .option.get        => exact interpret_term_app_wf_option_get h₀ h₁ ih
-  | .record.get _      => exact interpret_term_app_wf_record_get h₁ ih
-  | .string.like _     => exact interpret_term_app_wf_string_like h₁ ih
+  | Op.option.get        => exact interpret_term_app_wf_option_get h₀ h₁ ih
+  | Op.record.get _      => exact interpret_term_app_wf_record_get h₁ ih
+  | Op.string.like _     => exact interpret_term_app_wf_string_like h₁ ih
   | .ext xop           =>
     match xop with
-    | .decimal.val       => exact interpret_term_app_wf_ext_decimal_val h₁ ih
-    | .ipaddr.isV4       => exact interpret_term_app_wf_ext_ipaddr_isV4 h₁ ih
-    | .ipaddr.addrV4     => exact interpret_term_app_wf_ext_ipaddr_addrV4 h₀ h₁ ih
-    | .ipaddr.prefixV4   => exact interpret_term_app_wf_ext_ipaddr_prefixV4 h₀ h₁ ih
-    | .ipaddr.addrV6     => exact interpret_term_app_wf_ext_ipaddr_addrV6 h₀ h₁ ih
-    | .ipaddr.prefixV6   => exact interpret_term_app_wf_ext_ipaddr_prefixV6 h₀ h₁ ih
-    | .datetime.val      => exact interpret_term_app_wf_ext_datetime_val h₁ ih
-    | .datetime.ofBitVec => exact interpret_term_app_wf_ext_datetime_ofBitVec h₁ ih
-    | .duration.val      => exact interpret_term_app_wf_ext_duration_val h₁ ih
-    | .duration.ofBitVec => exact interpret_term_app_wf_ext_duration_ofBitVec h₁ ih
+    | ExtOp.decimal.val       => exact interpret_term_app_wf_ext_decimal_val h₁ ih
+    | ExtOp.ipaddr.isV4       => exact interpret_term_app_wf_ext_ipaddr_isV4 h₁ ih
+    | ExtOp.ipaddr.addrV4     => exact interpret_term_app_wf_ext_ipaddr_addrV4 h₀ h₁ ih
+    | ExtOp.ipaddr.prefixV4   => exact interpret_term_app_wf_ext_ipaddr_prefixV4 h₀ h₁ ih
+    | ExtOp.ipaddr.addrV6     => exact interpret_term_app_wf_ext_ipaddr_addrV6 h₀ h₁ ih
+    | ExtOp.ipaddr.prefixV6   => exact interpret_term_app_wf_ext_ipaddr_prefixV6 h₀ h₁ ih
+    | ExtOp.datetime.val      => exact interpret_term_app_wf_ext_datetime_val h₁ ih
+    | ExtOp.datetime.ofBitVec => exact interpret_term_app_wf_ext_datetime_ofBitVec h₁ ih
+    | ExtOp.duration.val      => exact interpret_term_app_wf_ext_duration_val h₁ ih
+    | ExtOp.duration.ofBitVec => exact interpret_term_app_wf_ext_duration_ofBitVec h₁ ih
 
 theorem interpret_term_wf {εs : SymEntities} {I : Interpretation} {t : Term}
   (h₁ : I.WellFormed εs)

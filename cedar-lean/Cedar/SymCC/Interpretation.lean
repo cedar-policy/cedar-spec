@@ -57,41 +57,41 @@ def UnaryFunction.interpret (I : Interpretation) : UnaryFunction → UnaryFuncti
 
 def Factory.option.get' (I : Interpretation) (t : Term) : Term :=
   if let .none ty := t
-  then I.partials (.app .option.get [.none ty] ty)
+  then I.partials (.app Op.option.get [.none ty] ty)
   else (Factory.option.get t)
 
 def Factory.ext.ipaddr.addrV4' (I : Interpretation) (t : Term) : Term :=
   if let .prim (.ext (.ipaddr (.V6 ⟨v6, p6⟩))) := t
-  then I.partials (.app (.ext .ipaddr.addrV4) [.prim (.ext (.ipaddr (.V6 ⟨v6, p6⟩)))] (.bitvec 32))
+  then I.partials (.app (.ext ExtOp.ipaddr.addrV4) [.prim (.ext (.ipaddr (.V6 ⟨v6, p6⟩)))] (.bitvec 32))
   else (Factory.ext.ipaddr.addrV4 t)
 
 def Factory.ext.ipaddr.prefixV4' (I : Interpretation) (t : Term) : Term :=
   if let .prim (.ext (.ipaddr (.V6 ⟨v6, p6⟩))) := t
-  then I.partials (.app (.ext .ipaddr.prefixV4) [.prim (.ext (.ipaddr (.V6 ⟨v6, p6⟩)))] (.option (.bitvec 5)))
+  then I.partials (.app (.ext ExtOp.ipaddr.prefixV4) [.prim (.ext (.ipaddr (.V6 ⟨v6, p6⟩)))] (.option (.bitvec 5)))
   else (Factory.ext.ipaddr.prefixV4 t)
 
 def Factory.ext.ipaddr.addrV6' (I : Interpretation) (t : Term) : Term :=
   if let .prim (.ext (.ipaddr (.V4 ⟨v4, p4⟩))) := t
-  then I.partials (.app (.ext .ipaddr.addrV6) [.prim (.ext (.ipaddr (.V4 ⟨v4, p4⟩)))] (.bitvec 128))
+  then I.partials (.app (.ext ExtOp.ipaddr.addrV6) [.prim (.ext (.ipaddr (.V4 ⟨v4, p4⟩)))] (.bitvec 128))
   else (Factory.ext.ipaddr.addrV6 t)
 
 def Factory.ext.ipaddr.prefixV6' (I : Interpretation) (t : Term) : Term :=
   if let .prim (.ext (.ipaddr (.V4 ⟨v4, p4⟩))) := t
-  then I.partials (.app (.ext .ipaddr.prefixV6) [.prim (.ext (.ipaddr (.V4 ⟨v4, p4⟩)))] (.option (.bitvec 7)))
+  then I.partials (.app (.ext ExtOp.ipaddr.prefixV6) [.prim (.ext (.ipaddr (.V4 ⟨v4, p4⟩)))] (.option (.bitvec 7)))
   else (Factory.ext.ipaddr.prefixV6 t)
 
 def ExtOp.interpret (I : Interpretation) (op : ExtOp) (t₁ : Term) : Term :=
   match op with
-  | .decimal.val       => Factory.ext.decimal.val t₁
-  | .ipaddr.isV4       => Factory.ext.ipaddr.isV4 t₁
-  | .ipaddr.addrV4     => Factory.ext.ipaddr.addrV4' I t₁
-  | .ipaddr.prefixV4   => Factory.ext.ipaddr.prefixV4' I t₁
-  | .ipaddr.addrV6     => Factory.ext.ipaddr.addrV6' I t₁
-  | .ipaddr.prefixV6   => Factory.ext.ipaddr.prefixV6' I t₁
-  | .datetime.val      => Factory.ext.datetime.val t₁
-  | .datetime.ofBitVec => Factory.ext.datetime.ofBitVec t₁
-  | .duration.val      => Factory.ext.duration.val t₁
-  | .duration.ofBitVec => Factory.ext.duration.ofBitVec t₁
+  | ExtOp.decimal.val       => Factory.ext.decimal.val t₁
+  | ExtOp.ipaddr.isV4       => Factory.ext.ipaddr.isV4 t₁
+  | ExtOp.ipaddr.addrV4     => Factory.ext.ipaddr.addrV4' I t₁
+  | ExtOp.ipaddr.prefixV4   => Factory.ext.ipaddr.prefixV4' I t₁
+  | ExtOp.ipaddr.addrV6     => Factory.ext.ipaddr.addrV6' I t₁
+  | ExtOp.ipaddr.prefixV6   => Factory.ext.ipaddr.prefixV6' I t₁
+  | ExtOp.datetime.val      => Factory.ext.datetime.val t₁
+  | ExtOp.datetime.ofBitVec => Factory.ext.datetime.ofBitVec t₁
+  | ExtOp.duration.val      => Factory.ext.duration.val t₁
+  | ExtOp.duration.ofBitVec => Factory.ext.duration.ofBitVec t₁
 
 def Op.interpret (I : Interpretation) (op : Op) (ts : List Term) (ty : TermType) : Term :=
   match op, ts with
@@ -121,12 +121,12 @@ def Op.interpret (I : Interpretation) (op : Op) (ts : List Term) (ty : TermType)
   | .bvult, [t₁, t₂]      => Factory.bvult t₁ t₂
   | .bvule, [t₁, t₂]      => Factory.bvule t₁ t₂
   | .zero_extend n, [t₁]  => Factory.zero_extend n t₁
-  | .set.member, [t₁, t₂] => Factory.set.member t₁ t₂
-  | .set.subset, [t₁, t₂] => Factory.set.subset t₁ t₂
-  | .set.inter, [t₁, t₂]  => Factory.set.inter t₁ t₂
-  | .option.get, [t₁]     => Factory.option.get' I t₁
-  | .record.get a, [t₁]   => Factory.record.get t₁ a
-  | .string.like p, [t₁]  => Factory.string.like t₁ p
+  | Op.set.member, [t₁, t₂] => Factory.set.member t₁ t₂
+  | Op.set.subset, [t₁, t₂] => Factory.set.subset t₁ t₂
+  | Op.set.inter, [t₁, t₂]  => Factory.set.inter t₁ t₂
+  | Op.option.get, [t₁]     => Factory.option.get' I t₁
+  | Op.record.get a, [t₁]   => Factory.record.get t₁ a
+  | Op.string.like p, [t₁]  => Factory.string.like t₁ p
   | .ext xop, [t₁]        => xop.interpret I t₁
   | _, _                  => .app op ts ty
 

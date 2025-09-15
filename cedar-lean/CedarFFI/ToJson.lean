@@ -54,16 +54,16 @@ deriving instance Lean.ToJson for PatElem
 instance : Lean.ToJson ExtOp where
   toJson op :=
   match op with
-  | .decimal.val => Lean.Json.str "decimal.val"
-  | .ipaddr.isV4 => Lean.Json.str "ipaddr.isV4"
-  | .ipaddr.addrV4 => Lean.Json.str "ipaddr.addrV4"
-  | .ipaddr.prefixV4 => Lean.Json.str "ipaddr.prefixV4"
-  | .ipaddr.addrV6 => Lean.Json.str "ipaddr.addrV6"
-  | .ipaddr.prefixV6 => Lean.Json.str "ipaddr.prefixV6"
-  | .datetime.val => Lean.Json.str "datetime.val"
-  | .datetime.ofBitVec => Lean.Json.str "datetime.ofBitVec"
-  | .duration.val => Lean.Json.str "duration.val"
-  | .duration.ofBitVec => Lean.Json.str "duration.ofBitVec"
+  | ExtOp.decimal.val => Lean.Json.str "decimal.val"
+  | ExtOp.ipaddr.isV4 => Lean.Json.str "ipaddr.isV4"
+  | ExtOp.ipaddr.addrV4 => Lean.Json.str "ipaddr.addrV4"
+  | ExtOp.ipaddr.prefixV4 => Lean.Json.str "ipaddr.prefixV4"
+  | ExtOp.ipaddr.addrV6 => Lean.Json.str "ipaddr.addrV6"
+  | ExtOp.ipaddr.prefixV6 => Lean.Json.str "ipaddr.prefixV6"
+  | ExtOp.datetime.val => Lean.Json.str "datetime.val"
+  | ExtOp.datetime.ofBitVec => Lean.Json.str "datetime.ofBitVec"
+  | ExtOp.duration.val => Lean.Json.str "duration.val"
+  | ExtOp.duration.ofBitVec => Lean.Json.str "duration.ofBitVec"
 
 /- Don't deriving default implementatation which serializes compound constructors
    (e.g., .option.get) as the final constructor element (e.g., Lean.Json.str ".get")
@@ -98,13 +98,13 @@ instance : Lean.ToJson Op where
   | .bvsmulo => Lean.Json.str "bvsmulo"
   | .zero_extend n => Lean.Json.mkObj [("zero_extend", Lean.Json.num n)]
   ---------- CVC theory of finite sets (`FS`) ----------
-  | .set.member => Lean.Json.str "set.member"
-  | .set.subset => Lean.Json.str "set.subset"
-  | .set.inter => Lean.Json.str "set.inter"
+  | Op.set.member => Lean.Json.str "set.member"
+  | Op.set.subset => Lean.Json.str "set.subset"
+  | Op.set.inter => Lean.Json.str "set.inter"
   ---------- Core ADT operators with a trusted mapping to SMT ----------
-  | .option.get => Lean.Json.str "option.get"
-  | .record.get attr => Lean.Json.mkObj [("record.get", Lean.Json.str attr)]
-  | .string.like pattern => Lean.Json.mkObj [("string.like", pattern.toJson)]
+  | Op.option.get => Lean.Json.str "option.get"
+  | Op.record.get attr => Lean.Json.mkObj [("record.get", Lean.Json.str attr)]
+  | Op.string.like pattern => Lean.Json.mkObj [("string.like", pattern.toJson)]
   ---------- Extension ADT operators with a trusted mapping to SMT ----------
   | .ext xop => Lean.Json.mkObj [("ext", Lean.toJson xop)]
 

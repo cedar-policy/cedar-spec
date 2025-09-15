@@ -302,7 +302,7 @@ def TermVar.WellFormed (εs : SymEntities) (v : TermVar) : Prop :=
 inductive ExtOp.WellTyped : ExtOp → List Term → TermType → Prop
   | decimal.val_wt {t : Term}
     (h₁ : t.typeOf = (.ext .decimal)) :
-    WellTyped .decimal.val [t] (.bitvec 64)
+    WellTyped ExtOp.decimal.val [t] (.bitvec 64)
   | ipaddr.isV4_wt {t : Term}
     (h₁ : t.typeOf = (.ext .ipAddr)) :
     WellTyped ipaddr.isV4 [t] .bool
@@ -437,25 +437,25 @@ inductive Op.WellTyped (εs : SymEntities) : Op → List Term → TermType → P
     WellTyped εs (.zero_extend n) [t] (.bitvec (n + m))
   | set.member_wt {t₁ t₂ : Term}
     (h₁ : t₂.typeOf = .set (t₁.typeOf)) :
-    WellTyped εs .set.member [t₁, t₂] .bool
+    WellTyped εs Op.set.member [t₁, t₂] .bool
   | set.subset_wt {t₁ t₂ : Term} {ty : TermType}
     (h₁ : t₁.typeOf = .set ty)
     (h₂ : t₂.typeOf = .set ty) :
-    WellTyped εs .set.subset [t₁, t₂] .bool
+    WellTyped εs Op.set.subset [t₁, t₂] .bool
   | set.inter_wt {t₁ t₂ : Term} {ty : TermType}
     (h₁ : t₁.typeOf = .set ty)
     (h₂ : t₂.typeOf = .set ty) :
-    WellTyped εs .set.inter [t₁, t₂] (.set ty)
+    WellTyped εs Op.set.inter [t₁, t₂] (.set ty)
   | option.get_wt {t : Term} {ty : TermType}
     (h₁ : t.typeOf = .option ty) :
-    WellTyped εs .option.get [t] ty
+    WellTyped εs Op.option.get [t] ty
   | record.get_wt {t : Term} {a : Attr} {ty : TermType} {rty : Map Attr TermType}
     (h₁ : t.typeOf = .record rty)
     (h₂ : rty.find? a = .some ty) :
-    WellTyped εs (.record.get a) [t] ty
+    WellTyped εs (Op.record.get a) [t] ty
   | string.like_wt {t : Term} {p : Pattern}
     (h₁ : t.typeOf = .string) :
-    WellTyped εs (.string.like p) [t] .bool
+    WellTyped εs (Op.string.like p) [t] .bool
   | ext_wt {xop : ExtOp} {ts : List Term} {ty : TermType}
     (h₁ : xop.WellTyped ts ty) :
     WellTyped εs (.ext xop) ts ty
@@ -654,19 +654,19 @@ instance : Same Env SymEnv where
 inductive Term.WellFormedPartialApp (εs : SymEntities) : Term → Prop
   | none_wfp {ty : TermType}
     (h₁ : ty.WellFormed εs) :
-    Term.WellFormedPartialApp εs (Term.app .option.get [.none ty] ty)
+    Term.WellFormedPartialApp εs (Term.app Op.option.get [.none ty] ty)
   | ext_ipddr_addr4_wfp {ip : IPAddr}
     (h₁ : ¬ ip.isV4) :
-    Term.WellFormedPartialApp εs (Term.app (.ext .ipaddr.addrV4) [.prim (.ext (.ipaddr ip))] (.bitvec 32))
+    Term.WellFormedPartialApp εs (Term.app (.ext ExtOp.ipaddr.addrV4) [.prim (.ext (.ipaddr ip))] (.bitvec 32))
   | ext_ipddr_prefix4_wfp {ip : IPAddr}
     (h₁ : ¬ ip.isV4) :
-    Term.WellFormedPartialApp εs (Term.app (.ext .ipaddr.prefixV4) [.prim (.ext (.ipaddr ip))] (.option (.bitvec 5)))
+    Term.WellFormedPartialApp εs (Term.app (.ext ExtOp.ipaddr.prefixV4) [.prim (.ext (.ipaddr ip))] (.option (.bitvec 5)))
   | ext_ipddr_addr6_wfp {ip : IPAddr}
     (h₁ : ¬ ip.isV6) :
-    Term.WellFormedPartialApp εs (Term.app (.ext .ipaddr.addrV6) [.prim (.ext (.ipaddr ip))] (.bitvec 128))
+    Term.WellFormedPartialApp εs (Term.app (.ext ExtOp.ipaddr.addrV6) [.prim (.ext (.ipaddr ip))] (.bitvec 128))
   | ext_ipddr_prefix6_wfp {ip : IPAddr}
     (h₁ : ¬ ip.isV6) :
-    Term.WellFormedPartialApp εs (Term.app (.ext .ipaddr.prefixV6) [.prim (.ext (.ipaddr ip))] (.option (.bitvec 7)))
+    Term.WellFormedPartialApp εs (Term.app (.ext ExtOp.ipaddr.prefixV6) [.prim (.ext (.ipaddr ip))] (.option (.bitvec 7)))
 
 def Interpretation.WellFormed (I : Interpretation) (εs : SymEntities) : Prop :=
   (∀ v, v.WellFormed εs → WellFormedVarInterpretation v (I.vars v)) ∧
