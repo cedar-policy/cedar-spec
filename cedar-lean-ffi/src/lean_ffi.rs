@@ -21,7 +21,8 @@ use crate::err::FfiError;
 use crate::messages::*;
 
 use cedar_policy::{
-    Entities, Expression, Policy, PolicySet, Request, RequestEnv, Schema, ValidationMode,
+    Decision, Effect, Entities, Expression, Policy, PolicySet, Request, RequestEnv, Schema,
+    ValidationMode,
 };
 use lean_sys::lean_object;
 use lean_sys::{
@@ -921,7 +922,7 @@ impl CedarLeanFfi {
         request: &Request,
         entities: &Entities,
         iteration: u32,
-    ) -> Result<TimedResult<Option<bool>>, FfiError> {
+    ) -> Result<TimedResult<Option<Decision>>, FfiError> {
         let policyset = PolicySet::from_policies(std::iter::once(policy.clone()))
             .expect("policy set construction should succeed");
         let response = unsafe {
@@ -933,7 +934,14 @@ impl CedarLeanFfi {
             )
         };
         match response.deserialize_into()? {
-            ResultDef::Ok(res) => Ok(TimedResult::from_def(res)),
+            ResultDef::Ok(res) => Ok(TimedResult::from_def(res).transform(|b: Option<bool>| {
+                b.map(|b| match (b, policy.effect()) {
+                    (true, Effect::Permit) => Decision::Allow,
+                    (true, Effect::Forbid) => Decision::Deny,
+                    (false, Effect::Permit) => Decision::Deny,
+                    (false, Effect::Forbid) => Decision::Deny,
+                })
+            })),
             ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
         }
     }
@@ -944,7 +952,7 @@ impl CedarLeanFfi {
         request: &Request,
         entities: &Entities,
         iteration: u32,
-    ) -> Result<Option<bool>, FfiError> {
+    ) -> Result<Option<Decision>, FfiError> {
         Ok(self
             .batched_evaluation_timed(policy, schema, request, entities, iteration)?
             .take_result())
@@ -1775,7 +1783,7 @@ when
         let ffi = CedarLeanFfi::new();
         assert_matches!(
             ffi.batched_evaluation(&policy, &schema, &request, &entities, 3),
-            Ok(Some(true))
+            Ok(Some(Decision::Allow))
         );
     }
 }

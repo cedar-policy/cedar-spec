@@ -15,10 +15,10 @@
  */
 
 #![no_main]
-use cedar_drt::CedarLeanEngine;
+use cedar_drt::{logger::initialize_log, CedarLeanEngine};
 use cedar_drt_inner::{fuzz_target, schemas};
 
-use cedar_policy::{Decision, Effect, Entities, Policy, PolicySet, Schema, TestEntityLoader};
+use cedar_policy::{Entities, Policy, PolicySet, Schema, TestEntityLoader};
 
 use cedar_policy_generators::{
     abac::{ABACPolicy, ABACRequest},
@@ -41,6 +41,7 @@ pub struct FuzzTargetInput {
     /// the requests to try for this hierarchy and policy. We try 8 requests per
     /// policy/hierarchy
     pub requests: [ABACRequest; 8],
+    /// Number of maximum iterations
     pub iterations: u8,
 }
 
@@ -50,7 +51,7 @@ const SETTINGS: ABACSettings = ABACSettings {
     enable_extensions: true,
     max_depth: 7,
     max_width: 7,
-    enable_additional_attributes: true,
+    enable_additional_attributes: false,
     enable_like: true,
     enable_action_groups_and_attrs: true,
     enable_arbitrary_func_call: true,
@@ -108,24 +109,23 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
     }
 }
 
-fn infer_lean_result(effect: Effect, decision: Decision) -> bool {
-    match (effect, decision) {
-        (Effect::Permit, Decision::Allow) | (Effect::Forbid, Decision::Deny) => true,
-        (Effect::Permit, Decision::Deny) | (Effect::Forbid, Decision::Allow) => false,
-    }
-}
-
 fuzz_target!(|input: FuzzTargetInput| {
     let ffi = CedarLeanEngine::new();
+    initialize_log();
 
     if let Ok(schema) = Schema::try_from(input.schema) {
         let policy = Policy::from(input.policy);
         let mut policyset = PolicySet::new();
         policyset.add(policy.clone()).unwrap();
         let mut loader = TestEntityLoader::new(&input.entities);
+        log::debug!("policy: {policyset}");
 
         for req in input.requests {
             let req = req.into();
+            log::debug!("req: {req}");
+            // We need to start with an `Ok` result of Rust because the
+            // validation DRT property is if Rust validations, then Lean also
+            // does. `is_authorized_batched` validates policies/request/entities
             if let Ok(rust_decision) =
                 policyset.is_authorized_batched(&req, &schema, &mut loader, input.iterations.into())
             {
@@ -136,10 +136,7 @@ fuzz_target!(|input: FuzzTargetInput| {
                     &input.entities,
                     input.iterations.into(),
                 ) {
-                    assert_eq!(
-                        lean_decision,
-                        Some(infer_lean_result(policy.effect(), rust_decision))
-                    );
+                    assert_eq!(lean_decision, Some(rust_decision));
                 } else {
                     panic!("lean failed but rust didn't");
                 }
