@@ -11,7 +11,7 @@ cargo-fuzz = true
 libfuzzer-sys = "0.4"
 cedar-drt = { path = "..", version = "4.4.0" }
 cedar-lean-ffi = { path = "../../cedar-lean-ffi", version = "4.4.0" }
-cedar-policy = { version = "4.4.0", features = ["permissive-validate", "entity-manifest"] }
+cedar-policy = { version = "4.4.0", features = ["permissive-validate", "entity-manifest", "tpe"] }
 cedar-policy-core = { version = "4.4.0", features = ["arbitrary", "tpe"] }
 cedar-policy-formatter = "4.4.0"
 cedar-policy-symcc = "*"
@@ -248,5 +248,11 @@ doc = false
 [[bin]]
 name = "symcc-cex-pbt"
 path = "fuzz_targets/symcc-cex-pbt.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "batched-evaluation-drt"
+path = "fuzz_targets/batched-evaluation-drt.rs"
 test = false
 doc = false
