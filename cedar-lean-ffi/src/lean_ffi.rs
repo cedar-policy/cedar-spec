@@ -97,6 +97,8 @@ extern "C" {
     fn assertsOfCheckDisjoint(req: *mut lean_object) -> *mut lean_object;
     fn assertsOfCheckDisjointOnOriginal(req: *mut lean_object) -> *mut lean_object;
 
+    fn batchedEvaluateFFI(req: *mut lean_object) -> *mut lean_object;
+
     fn initialize_CedarFFI(builtin: u8, ob: *mut lean_object) -> *mut lean_object;
 }
 
@@ -910,6 +912,43 @@ impl CedarLeanFfi {
     ) -> Result<ValidationResponse, FfiError> {
         Ok(self.validate_request_timed(schema, request)?.take_result())
     }
+
+    /// Calls the lean backend to perform batched evaluation
+    pub fn batched_evaluation_timed(
+        &self,
+        policy: &Policy,
+        schema: &Schema,
+        request: &Request,
+        entities: &Entities,
+        iteration: u32,
+    ) -> Result<TimedResult<Option<bool>>, FfiError> {
+        let policyset = PolicySet::from_policies(std::iter::once(policy.clone()))
+            .expect("policy set construction should succeed");
+        let response = unsafe {
+            call_lean_ffi_takes_protobuf(
+                batchedEvaluateFFI,
+                &proto::BatchedEvaluationRequest::new(
+                    &policyset, schema, request, entities, iteration,
+                ),
+            )
+        };
+        match response.deserialize_into()? {
+            ResultDef::Ok(res) => Ok(TimedResult::from_def(res)),
+            ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
+        }
+    }
+    pub fn batched_evaluation(
+        &self,
+        policy: &Policy,
+        schema: &Schema,
+        request: &Request,
+        entities: &Entities,
+        iteration: u32,
+    ) -> Result<Option<bool>, FfiError> {
+        Ok(self
+            .batched_evaluation_timed(policy, schema, request, entities, iteration)?
+            .take_result())
+    }
 }
 
 /// uninitialize lean thread when done
@@ -1584,6 +1623,159 @@ mod test {
         assert_matches!(
             ffi.run_check_disjoint_timed(&ps, &ps_new, &schema, &req_env),
             Ok(TimedResult { result: false, .. })
+        );
+    }
+
+    #[test]
+    fn test_batched_evaluation() {
+        let schema = Schema::from_str(
+            r#"
+            namespace Taxpreparer {
+  type orgInfo = {
+    organization: String,
+    serviceline: String,
+    location: String,
+  };
+  // A tax-preparing professional
+  entity Professional = { 
+    assigned_orgs: Set<orgInfo>,
+    location: String,
+  };
+  // A client's tax document
+  entity Document = {
+    serviceline: String,
+    location: String,
+    owner: Client,
+  };
+  // A client 
+  entity Client = {
+    organization: String
+  };
+
+  action viewDocument appliesTo {
+    principal: [Professional],
+    resource: [Document],
+  };
+}
+        "#,
+        )
+        .expect("valid schema");
+        let policy = Policy::from_str(
+            r#"
+        // Rule 1a: organization-level access
+permit (
+  principal,
+  action == Taxpreparer::Action::"viewDocument",
+  resource
+)
+when
+{
+  principal.assigned_orgs
+    .contains
+    (
+      {organization
+       :resource.owner.organization,
+       serviceline
+       :resource.serviceline,
+       location
+       :resource.location}
+    )
+};
+        "#,
+        )
+        .expect("valid policy");
+        let entities = Entities::from_json_value(
+            serde_json::json!([
+                {
+                    "uid": {
+                        "type": "Taxpreparer::Professional",
+                        "id": "Alice"
+                    },
+                    "attrs": {
+                        "location": "IAD",
+                        "assigned_orgs": [
+                            {
+                                "organization": "org-1",
+                                "serviceline": "corporate",
+                                "location": "IAD"
+                            }
+                        ]
+                    },
+                    "parents": []
+                },
+                {
+                    "uid": {
+                        "type": "Taxpreparer::Professional",
+                        "id": "Bob"
+                    },
+                    "attrs": {
+                        "location": "JFK",
+                        "assigned_orgs": [
+                            {
+                                "organization": "org-1",
+                                "serviceline": "corporate",
+                                "location": "JFK"
+                            }
+                        ]
+                    },
+                    "parents": []
+                },
+                {
+                    "uid": {
+                        "type": "Taxpreparer::Client",
+                        "id": "Ramon"
+                    },
+                    "attrs": {
+                        "organization": "org-1"
+                    },
+                    "parents": []
+                },
+                {
+                    "uid": {
+                        "type": "Taxpreparer::Document",
+                        "id": "ABC"
+                    },
+                    "attrs": {
+                        "serviceline": "corporate",
+                        "location": "IAD",
+                        "owner": {
+                            "type": "Taxpreparer::Client",
+                            "id": "Ramon"
+                        }
+                    },
+                    "parents": []
+                },
+                {
+                    "uid": {
+                        "type": "Taxpreparer::Document",
+                        "id": "DEF"
+                    },
+                    "attrs": {
+                        "serviceline": "corporate",
+                        "location": "JFK",
+                        "owner": {
+                            "type": "Taxpreparer::Client",
+                            "id": "Ramon"
+                        }
+                    },
+                    "parents": []
+                }
+            ]),
+            Some(&schema),
+        )
+        .expect("valid entities");
+        let request = Request::new(
+            "Taxpreparer::Professional::\"Alice\"".parse().unwrap(),
+            "Taxpreparer::Action::\"viewDocument\"".parse().unwrap(),
+            "Taxpreparer::Document::\"ABC\"".parse().unwrap(),
+            Context::empty(),
+            None,
+        )
+        .expect("valid request");
+        let ffi = CedarLeanFfi::new();
+        assert_matches!(
+            ffi.batched_evaluation(&policy, &schema, &request, &entities, 3),
+            Ok(Some(true))
         );
     }
 }
