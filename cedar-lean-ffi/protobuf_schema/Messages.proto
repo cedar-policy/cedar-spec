@@ -300,3 +300,12 @@ message CheckAssertsRequest {
     cedar_policy_validator.Schema schema = 2;
     RequestEnv request = 3;
 }
+
+// Batched evaluation request
+message BatchedEvaluationRequest {
+    cedar_policy_core.PolicySet policies = 1;
+    cedar_policy_validator.Schema schema = 2;
+    cedar_policy_core.Request request = 3;
+    cedar_policy_core.Entities entities = 4;
+    uint32 iteration = 5;
+}

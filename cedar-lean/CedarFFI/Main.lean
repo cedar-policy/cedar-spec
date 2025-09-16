@@ -20,6 +20,7 @@ import Cedar.Spec
 import Cedar.Validation
 import Cedar.SymCC
 import CedarProto
+import Cedar.TPE
 import Protobuf
 
 import CedarFFI.ToJson
@@ -31,7 +32,9 @@ namespace CedarFFI
 
 open Cedar.Spec
 open Cedar.SymCC
+open Cedar.TPE
 open Cedar.Validation
+open Cedar.Proto
 open Proto
 
 abbrev FfiM α := ExceptT String IO α
@@ -800,4 +803,41 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
     let data := (String.fromUTF8? inner_buffer.data).getD ""
     return ({ data := data, duration := r.duration } : Timed String)
 
+def EntityLoader.mk (entities: Cedar.Spec.Entities) : EntityLoader :=
+  λ uids => Cedar.Data.Map.mk (uids.elts.map (λ uid =>
+    (uid, entities.find? uid)))
+
+/--
+  `req`: binary protobuf for an `BatchedEvaluationRequest`
+-/
+def parseBatchedEvaluationReq (req : ByteArray) : Except String (Cedar.Validation.TypedExpr × Cedar.Spec.Request × Cedar.Spec.Entities × Nat) := do
+  let req ← (@Message.interpret? BatchedEvaluationRequest) req |>.mapError (s!"failed to parse input: {·}")
+  let policySet := req.policies
+  let policy ← match policySet with
+    | [policy] => .ok policy
+    | _ => .error s!"only one policy is expected"
+  let schema := req.schema
+  let request := req.request
+  let entities := req.entities
+  let iteration := req.iteration.toNat
+  let expr ← match schema.environment? request.principal.ty request.resource.ty request.action with
+    | .some env =>
+      if requestIsValid env request.asPartialRequest then do
+        let expr := substituteAction env.reqty.action policy.toExpr
+        let (te, _) ← (typeOf expr ∅ env).mapError (fun err => s!"invalid policy: {reprStr err}")
+        .ok te
+      else
+        .error s!"invalid request"
+    | .none => .error s!"invalid environment derived from request"
+  return (expr, request, entities, iteration)
+
+@[export batchedEvaluateFFI] unsafe def batchedEvaluateFFI (req : ByteArray) : String :=
+  runFfiM do
+    let (expr, request, entities, iteration) ← parseBatchedEvaluationReq req
+    runAndTime (λ () => match batchedEvaluate expr request (entityLoaderFor entities) iteration with
+    | .val v _ => match v.asBool with
+      | .ok b => (Option.some b : Option Bool)
+      | .error _ => (Option.none : Option Bool)
+    | _ => (Option.none : Option Bool)
+    )
 end CedarFFI
