@@ -935,12 +935,12 @@ impl CedarLeanFfi {
         };
         match response.deserialize_into()? {
             ResultDef::Ok(res) => Ok(TimedResult::from_def(res).transform(|b: Option<bool>| {
-                b.map(|b| match (b, policy.effect()) {
-                    (true, Effect::Permit) => Decision::Allow,
-                    (true, Effect::Forbid) => Decision::Deny,
-                    (false, Effect::Permit) => Decision::Deny,
-                    (false, Effect::Forbid) => Decision::Deny,
-                })
+                match (b, policy.effect()) {
+                    (Some(true), Effect::Permit) => Some(Decision::Allow),
+                    (Some(_), _) | (None, Effect::Forbid) => Some(Decision::Deny),
+                    // We can't make any conclusions for this case
+                    (None, Effect::Permit) => None,
+                }
             })),
             ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
         }
