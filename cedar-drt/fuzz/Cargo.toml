@@ -256,3 +256,9 @@ name = "batched-evaluation-drt"
 path = "fuzz_targets/batched-evaluation-drt.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "batched-evaluation-pbt"
+path = "fuzz_targets/batched-evaluation-pbt.rs"
+test = false
+doc = false
