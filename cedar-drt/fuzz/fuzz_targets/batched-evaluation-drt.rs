@@ -109,6 +109,8 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
     }
 }
 
+// This target tests a property that batched evaluation, if succeeds, should
+// produce the same authorization decision based on the Lean model output
 fuzz_target!(|input: FuzzTargetInput| {
     let ffi = CedarLeanEngine::new();
     initialize_log();

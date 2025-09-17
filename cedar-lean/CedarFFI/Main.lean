@@ -809,6 +809,13 @@ def EntityLoader.mk (entities: Cedar.Spec.Entities) : EntityLoader :=
 
 /--
   `req`: binary protobuf for an `BatchedEvaluationRequest`
+  Upon success returns inputs to `batchedEvaluate`
+  Returns a failure if
+  1.) Protobuf message could not be parsed
+  2.) Cannot derive a request environment from the request
+  3.) Request cannot be validated
+  4.) Policy cannot be validated
+  5.) Policy set contains more than one policy (a limitation at this moment)
 -/
 def parseBatchedEvaluationReq (req : ByteArray) : Except String (Cedar.Validation.TypedExpr × Cedar.Spec.Request × Cedar.Spec.Entities × Nat) := do
   let req ← (@Message.interpret? BatchedEvaluationRequest) req |>.mapError (s!"failed to parse input: {·}")
@@ -831,6 +838,16 @@ def parseBatchedEvaluationReq (req : ByteArray) : Except String (Cedar.Validatio
     | .none => .error s!"invalid environment derived from request"
   return (expr, request, entities, iteration)
 
+/--
+  `req`: binary protobuf for an `CheckPolicySetRequest`
+
+  returns JSON encoded of `Option Bool`
+  1.) .error err_message if there was in error in parsing `req`
+  2.) .ok {data, ..} where data is of type `Option Bool`. It is true when the
+      result residual is `.val true`; and it is false when the result residual
+      is either `.val false` or `.error _`. So we can interpret the boolean
+      value as if the policy takes effect or not
+-/
 @[export batchedEvaluateFFI] unsafe def batchedEvaluateFFI (req : ByteArray) : String :=
   runFfiM do
     let (expr, request, entities, iteration) ← parseBatchedEvaluationReq req

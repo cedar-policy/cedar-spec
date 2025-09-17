@@ -914,7 +914,7 @@ impl CedarLeanFfi {
         Ok(self.validate_request_timed(schema, request)?.take_result())
     }
 
-    /// Calls the lean backend to perform batched evaluation
+    /// Calls the lean backend to perform batched evaluation on a single policy
     pub fn batched_evaluation_timed(
         &self,
         policy: &Policy,
@@ -923,6 +923,7 @@ impl CedarLeanFfi {
         entities: &Entities,
         iteration: u32,
     ) -> Result<TimedResult<Option<Decision>>, FfiError> {
+        // We have to construct a policy set because we don't have protobuf encoding of policy yet
         let policyset = PolicySet::from_policies(std::iter::once(policy.clone()))
             .expect("policy set construction should succeed");
         let response = unsafe {

@@ -109,6 +109,9 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
     }
 }
 
+// This target tests a property that batched evaluation, if succeeds, should
+// produce the same authorization decision of normal authorization where the
+// the entire in-memory entity store is provided
 fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
 
