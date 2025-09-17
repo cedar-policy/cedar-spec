@@ -214,7 +214,7 @@ def MaybeEntityData.asPartial :
 | some d =>
   d.asPartial
 
-def EntitiesWithMissing.asPartial (store: SlicedEntities) : PartialEntities :=
+def SlicedEntities.asPartial (store: SlicedEntities) : PartialEntities :=
   store.mapOnValues MaybeEntityData.asPartial
 
 end Cedar.TPE
