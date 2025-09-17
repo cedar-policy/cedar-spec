@@ -836,8 +836,9 @@ def parseBatchedEvaluationReq (req : ByteArray) : Except String (Cedar.Validatio
     let (expr, request, entities, iteration) ← parseBatchedEvaluationReq req
     runAndTime (λ () => match batchedEvaluate expr request (entityLoaderFor entities) iteration with
     | .val v _ => match v.asBool with
-      | .ok b => (Option.some b : Option Bool)
-      | .error _ => (Option.none : Option Bool)
-    | _ => (Option.none : Option Bool)
+      | .ok b => (.some b : Option Bool)
+      | .error _ => .none
+    | .error _ => (.some false)
+    | _ => .none
     )
 end CedarFFI
