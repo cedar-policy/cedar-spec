@@ -20,6 +20,7 @@ use cedar_drt_inner::{fuzz_target, schemas};
 
 use cedar_policy::{Authorizer, Entities, Policy, PolicySet, Schema, TestEntityLoader};
 
+use cedar_policy_core::batched_evaluator::err::BatchedEvalError;
 use cedar_policy_generators::{
     abac::{ABACPolicy, ABACRequest},
     err::Error,
@@ -41,8 +42,6 @@ pub struct FuzzTargetInput {
     /// the requests to try for this hierarchy and policy. We try 8 requests per
     /// policy/hierarchy
     pub requests: [ABACRequest; 8],
-    /// Number of maximum iterations
-    pub iterations: u8,
 }
 
 /// settings for this fuzz target
@@ -85,7 +84,6 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
             entities,
             policy,
             requests,
-            iterations: u8::arbitrary(u)?,
         })
     }
 
@@ -104,7 +102,6 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
             schema::Schema::arbitrary_request_size_hint(depth),
             schema::Schema::arbitrary_request_size_hint(depth),
             schema::Schema::arbitrary_request_size_hint(depth),
-            u8::size_hint(depth),
         ]))
     }
 }
@@ -121,20 +118,25 @@ fuzz_target!(|input: FuzzTargetInput| {
         policyset.add(policy.clone()).unwrap();
         let mut loader = TestEntityLoader::new(&input.entities);
         log::debug!("policy: {policyset}");
+        let iteration = (SETTINGS.max_depth + 1) as u32;
 
         for req in input.requests {
             let req = req.into();
             log::debug!("req: {req}");
-            if let Ok(batched_decision) =
-                policyset.is_authorized_batched(&req, &schema, &mut loader, input.iterations.into())
-            {
-                let authorizer = Authorizer::new();
-                assert_eq!(
-                    batched_decision,
-                    authorizer
-                        .is_authorized(&req, &policyset, &input.entities)
-                        .decision()
-                );
+            match policyset.is_authorized_batched(&req, &schema, &mut loader, iteration) {
+                Ok(batched_decision) => {
+                    let authorizer = Authorizer::new();
+                    assert_eq!(
+                        batched_decision,
+                        authorizer
+                            .is_authorized(&req, &policyset, &input.entities)
+                            .decision()
+                    );
+                }
+                Err(BatchedEvalError::InsufficientIterations(_)) => {
+                    panic!("encountered unexpected `InsufficientIterations` error");
+                }
+                Err(_) => {}
             }
         }
     }

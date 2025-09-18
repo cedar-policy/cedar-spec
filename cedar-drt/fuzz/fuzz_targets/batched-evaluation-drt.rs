@@ -41,8 +41,6 @@ pub struct FuzzTargetInput {
     /// the requests to try for this hierarchy and policy. We try 8 requests per
     /// policy/hierarchy
     pub requests: [ABACRequest; 8],
-    /// Number of maximum iterations
-    pub iterations: u8,
 }
 
 /// settings for this fuzz target
@@ -85,7 +83,6 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
             entities,
             policy,
             requests,
-            iterations: u8::arbitrary(u)?,
         })
     }
 
@@ -104,7 +101,6 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
             schema::Schema::arbitrary_request_size_hint(depth),
             schema::Schema::arbitrary_request_size_hint(depth),
             schema::Schema::arbitrary_request_size_hint(depth),
-            u8::size_hint(depth),
         ]))
     }
 }
@@ -121,6 +117,7 @@ fuzz_target!(|input: FuzzTargetInput| {
         policyset.add(policy.clone()).unwrap();
         let mut loader = TestEntityLoader::new(&input.entities);
         log::debug!("policy: {policyset}");
+        let iteration = (SETTINGS.max_depth + 1) as u32;
 
         for req in input.requests {
             let req = req.into();
@@ -129,18 +126,21 @@ fuzz_target!(|input: FuzzTargetInput| {
             // validation DRT property is if Rust validations, then Lean also
             // does. `is_authorized_batched` validates policies/request/entities
             if let Ok(rust_decision) =
-                policyset.is_authorized_batched(&req, &schema, &mut loader, input.iterations.into())
+                policyset.is_authorized_batched(&req, &schema, &mut loader, iteration)
             {
-                if let Ok(lean_decision) = ffi.get_ffi().batched_evaluation(
+                match ffi.get_ffi().batched_evaluation(
                     &policy,
                     &schema,
                     &req,
                     &input.entities,
-                    input.iterations.into(),
+                    iteration,
                 ) {
-                    assert_eq!(lean_decision, Some(rust_decision));
-                } else {
-                    panic!("lean failed but rust didn't");
+                    Ok(lean_decision) => {
+                        assert_eq!(lean_decision, Some(rust_decision));
+                    }
+                    Err(err) => {
+                        panic!("lean failed but rust didn't: {err}");
+                    }
                 }
             }
         }
