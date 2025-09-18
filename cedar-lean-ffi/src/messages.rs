@@ -587,6 +587,24 @@ impl proto::CheckAssertsRequest {
     }
 }
 
+impl proto::BatchedEvaluationRequest {
+    pub(crate) fn new(
+        policies: &PolicySet,
+        schema: &Schema,
+        request: &Request,
+        entities: &Entities,
+        iteration: u32,
+    ) -> Self {
+        Self {
+            policies: Some(cedar_policy::proto::models::PolicySet::from(policies)),
+            schema: Some(cedar_policy::proto::models::Schema::from(schema)),
+            request: Some(cedar_policy::proto::models::Request::from(request)),
+            entities: Some(cedar_policy::proto::models::Entities::from(entities)),
+            iteration,
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use cedar_policy::{Context, EntityTypeName, EntityUid, Policy, PolicySet, Schema};
