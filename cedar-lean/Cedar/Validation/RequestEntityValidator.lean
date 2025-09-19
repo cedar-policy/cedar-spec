@@ -83,11 +83,11 @@ def instanceOfType (v : Value) (ty : CedarType) (env : TypeEnv) : Bool :=
         simp only [Map.mk.sizeOf_spec]
         omega
 
-def instanceOfRequestType (request : Request) (env : TypeEnv) : Bool :=
-  instanceOfEntityType request.principal env.reqty.principal env &&
-  request.action == env.reqty.action &&
-  instanceOfEntityType request.resource env.reqty.resource env &&
-  instanceOfType request.context (.record env.reqty.context) env
+def instanceOfTypeEnv (request : Request) (env : TypeEnv) : Bool :=
+  instanceOfEntityType request.principal env.sig.principal env &&
+  request.action == env.sig.action &&
+  instanceOfEntityType request.resource env.sig.resource env &&
+  instanceOfType request.context (.record env.sig.context) env
 
 /--
 For every entity in the store,
@@ -138,7 +138,7 @@ where
     if entities.contains uid then .ok ()
     else .error (.typeError s!"action entity {uid} does not exist")
 
-def requestMatchesEnvironment (env : TypeEnv) (request : Request) : Bool := instanceOfRequestType request env
+def requestMatchesEnvironment (env : TypeEnv) (request : Request) : Bool := instanceOfTypeEnv request env
 
 def validateRequest (schema : Schema) (request : Request) : RequestValidationResult :=
   if ((schema.environments.any (requestMatchesEnvironment · request)))

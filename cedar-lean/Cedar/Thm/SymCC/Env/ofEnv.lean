@@ -569,7 +569,7 @@ theorem ofEnv_request_is_wf
 := by
   simp only [
     SymEnv.ofEnv,
-    SymRequest.ofRequestType,
+    SymRequest.ofActionSignature,
     SymRequest.WellFormed,
     TermType.ofType,
   ]
@@ -612,7 +612,7 @@ theorem ofEnv_request_is_basic
 := by
   simp [
     SymEnv.ofEnv,
-    SymRequest.ofRequestType,
+    SymRequest.ofActionSignature,
     SymRequest.IsBasic,
     Term.isBasic,
     Term.isLiteral,
