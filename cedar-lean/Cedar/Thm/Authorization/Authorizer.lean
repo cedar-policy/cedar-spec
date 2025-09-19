@@ -52,47 +52,6 @@ theorem if_hasError_then_exists_error {policy : Policy} {request : Request} {ent
   · simp at h₁
   · rename_i err _ ; exists err
 
-theorem if_satisfied_then_satisfiedPolicies_non_empty {effect : Effect} {policies : Policies} {request : Request} {entities : Entities} :
-  (∃ policy,
-    policy ∈ policies ∧
-    policy.effect = effect ∧
-    satisfied policy request entities) →
-  (satisfiedPolicies effect policies request entities).isEmpty = false
-:= by
-  intro h₀
-  replace ⟨policy, h₀⟩ := h₀
-  unfold satisfiedPolicies
-  rw [←Set.make_non_empty]
-  apply @List.ne_nil_of_mem _ policy.id
-  rw [List.mem_filterMap]
-  exists policy
-  unfold satisfiedWithEffect
-  simp [h₀]
-
-theorem if_satisfiedPolicies_non_empty_then_satisfied {effect : Effect} {policies : Policies} {request : Request} {entities : Entities} :
-  (satisfiedPolicies effect policies request entities).isEmpty = false →
-  ∃ policy,
-    policy ∈ policies ∧
-    policy.effect = effect ∧
-    satisfied policy request entities
-:= by
-  unfold satisfiedPolicies
-  intro h₀
-  rw [←Set.make_non_empty] at h₀
-  have ⟨pid, h₁⟩ := List.exists_mem_of_ne_nil _ h₀
-  rw [List.mem_filterMap] at h₁
-  replace ⟨policy, h₁, h₂⟩ := h₁
-  unfold satisfiedWithEffect at h₂
-  exists policy
-  simp [h₁]
-  cases h₃ : (policy.effect == effect) <;> simp at h₃
-  case false => simp [h₃] at h₂
-  case true =>
-    simp [h₃]
-    cases h₄ : (satisfied policy request entities) with
-    | true => rfl
-    | false => simp [h₃, h₄] at h₂
-
 theorem satisfiedPolicies_order_and_dup_independent {policies₁ policies₂ : Policies} (effect : Effect) (request : Request) (entities : Entities) :
   policies₁ ≡ policies₂ →
   satisfiedPolicies effect policies₁ request entities = satisfiedPolicies effect policies₂ request entities
