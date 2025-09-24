@@ -24,32 +24,50 @@ namespace Cedar.Thm
 open Cedar.Data
 open Cedar.Spec
 
+def HasSatisfiedEffect (effect : Effect) (request : Request) (entities : Entities) (policies : Policies) : Prop :=
+  ∃ (policy : Policy),
+    policy ∈ policies ∧
+    policy.effect = effect ∧
+    satisfied policy request entities
+
+theorem satisfied_iff_satisfiedPolicies_non_empty {effect : Effect} {request : Request} {entities : Entities} {policies : Policies} :
+  HasSatisfiedEffect effect request entities policies ↔ (satisfiedPolicies effect policies request entities).isEmpty = false
+:= by simp [HasSatisfiedEffect, satisfiedPolicies, satisfiedWithEffect, ←Set.make_non_empty]
+
+/--
+A request is explicitly forbidden when there is at least one satisfied forbid policy.
+-/
+def IsExplicitlyForbidden := HasSatisfiedEffect .forbid
+
+theorem explicitly_forbidden_iff_satisfying_forbid :
+  IsExplicitlyForbidden req entities policies ↔ (satisfiedPolicies .forbid policies req entities).isEmpty = false
+:= satisfied_iff_satisfiedPolicies_non_empty
+
+/--
+A request is explicitly permitted when there is at least one satisfied permit policy.
+Note that there may still be satisfied forbid policies leading to a deny decisions.
+-/
+def IsExplicitlyPermitted := HasSatisfiedEffect .permit
+
+theorem explicitly_permitted_iff_satisfying_permit :
+  IsExplicitlyPermitted req entities policies ↔ (satisfiedPolicies .permit policies req entities).isEmpty = false
+:= satisfied_iff_satisfiedPolicies_non_empty
+
 /--
 Forbid trumps permit: if a `forbid` policy is satisfied, the request is denied.
 -/
 theorem forbid_trumps_permit
   (request : Request) (entities : Entities) (policies : Policies) :
-  (∃ (policy : Policy),
-    policy ∈ policies ∧
-    policy.effect = .forbid ∧
-    satisfied policy request entities) →
+  (IsExplicitlyForbidden request entities policies) →
   (isAuthorized request entities policies).decision = .deny
 := by
   intro h
   unfold isAuthorized
-  simp [if_satisfied_then_satisfiedPolicies_non_empty h]
-
-/--
-A request is explicitly permitted when there is at least one satisfied permit policy.
--/
-def IsExplicitlyPermitted (request : Request) (entities : Entities) (policies : Policies) : Prop :=
-  ∃ (policy : Policy),
-    policy ∈ policies ∧
-    policy.effect = .permit ∧
-    satisfied policy request entities
+  rw [explicitly_forbidden_iff_satisfying_forbid] at h
+  simp [h]
 
 /-- A request is allowed only if it is explicitly permitted. -/
-theorem allowed_if_explicitly_permitted (request : Request) (entities : Entities) (policies : Policies) :
+theorem allowed_only_if_explicitly_permitted (request : Request) (entities : Entities) (policies : Policies) :
   (isAuthorized request entities policies).decision = .allow →
   IsExplicitlyPermitted request entities policies
 := by
@@ -59,13 +77,12 @@ theorem allowed_if_explicitly_permitted (request : Request) (entities : Entities
   simp only [Bool.and_eq_true, Bool.not_eq_true']
   cases forbids.isEmpty <;> simp
   cases h₁ : permits.isEmpty <;> simp
-  unfold IsExplicitlyPermitted
   subst hp
-  exact if_satisfiedPolicies_non_empty_then_satisfied h₁
+  exact explicitly_permitted_iff_satisfying_permit.mpr h₁
 
 /--
 Default deny: if not explicitly permitted, the request is denied.
-This is contrapositive of allowed_if_explicitly_permitted.
+This is contrapositive of allowed_only_if_explicitly_permitted.
 -/
 theorem default_deny (request : Request) (entities : Entities) (policies : Policies) :
   ¬ IsExplicitlyPermitted request entities policies →
@@ -76,9 +93,29 @@ theorem default_deny (request : Request) (entities : Entities) (policies : Polic
   by_contra h₂
   cases dec
   case allow =>
-    have h₃ := allowed_if_explicitly_permitted request entities policies h₁
+    have h₃ := allowed_only_if_explicitly_permitted request entities policies h₁
     contradiction
   case deny => contradiction
+
+/--
+A request is allowed if and only if it is explicitly permitted and is not
+explicitly forbidden.
+-/
+theorem allowed_iff_explicitly_permitted_and_not_denied (request : Request) (entities : Entities) (policies : Policies) :
+  (IsExplicitlyPermitted request entities policies ∧ ¬ IsExplicitlyForbidden request entities policies) ↔
+  (isAuthorized request entities policies).decision = .allow
+:= by
+  apply Iff.intro
+  · intro ⟨h₁, h₂⟩
+    unfold isAuthorized
+    rw [explicitly_permitted_iff_satisfying_permit] at h₁
+    rw [explicitly_forbidden_iff_satisfying_forbid] at h₂
+    simp [h₁, h₂]
+  · intro h₁
+    have h₁' : ¬ (isAuthorized request entities policies).decision = Decision.deny := by simp [h₁]
+    have h₂ := (mt $ forbid_trumps_permit request entities policies) h₁'
+    have h₃ := allowed_only_if_explicitly_permitted request entities policies h₁
+    exact .intro h₃ h₂
 
 /--
 Order and duplicate independence: isAuthorized produces the same result
