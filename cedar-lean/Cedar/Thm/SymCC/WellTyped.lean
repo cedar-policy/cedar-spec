@@ -38,7 +38,7 @@ theorem wellTypedPolicy_some_implies_exists_typed_exprs
   ∃ tx tx' : TypedExpr, ∃ c,
     TypedExpr.WellTyped Γ tx.liftBoolTypes ∧
     TypedExpr.WellTyped Γ tx' ∧
-    typeOf (substituteAction Γ.reqty.action p.toExpr) ∅ Γ = Except.ok (tx, c) ∧
+    typeOf (substituteAction Γ.sig.action p.toExpr) ∅ Γ = Except.ok (tx, c) ∧
     p'.toExpr = tx'.toExpr ∧
     tx' =
       (TypedExpr.and (TypedExpr.lit (Prim.bool true) (.bool .anyBool))
@@ -147,7 +147,7 @@ theorem substitute_action_preserves_valid_refs
 := by
   have ⟨hwf_Γ, _, ⟨_, hinst_sch⟩⟩ := hinst
   have ⟨_, _, ⟨act_entry, hfind_act, _⟩⟩ := hwf_Γ
-  have heq_act : Γ.reqty.action = request.action := by
+  have heq_act : Γ.sig.action = request.action := by
     have ⟨_, ⟨_, h, _⟩, _⟩ := hinst
     simp [h]
   cases expr with
@@ -292,7 +292,7 @@ theorem wellTypedPolicy_preserves_valid_refs
   rotate_left
   repeat constructor
   apply typeOf_preserves_valid_refs entities hty
-  have : Γ.reqty.action = request.action := by
+  have : Γ.sig.action = request.action := by
     have ⟨_, ⟨_, h, _⟩, _⟩ := hinst
     simp [h]
   simp only [this]
@@ -341,18 +341,18 @@ theorem wellTypedPolicy_preserves_evaluation
   = evaluate p'.toExpr request entities
 := by
   have ⟨tx, tx', _, hwt_tx_lift, hwt_tx', hty, heq_p'_tx', heq_tx', hbool⟩ := wellTypedPolicy_some_implies_exists_typed_exprs hwt
-  have heq_action : Γ.reqty.action = request.action := by
+  have heq_action : Γ.sig.action = request.action := by
     have ⟨_, ⟨_, h, _⟩, _⟩ := hinst
     simp [h]
   have :
     evaluate p.toExpr request entities
-    = evaluate (substituteAction Γ.reqty.action p.toExpr) request entities
+    = evaluate (substituteAction Γ.sig.action p.toExpr) request entities
   := by
     simp only [heq_action]
     exact Eq.symm (substitute_action_preserves_evaluation _ _ _)
   rw [this]
   have heq :
-    evaluate (substituteAction Γ.reqty.action p.toExpr) request entities
+    evaluate (substituteAction Γ.sig.action p.toExpr) request entities
     = evaluate tx.toExpr request entities
   := type_of_preserves_evaluation_results (empty_capabilities_invariant _ _) hinst hty
   rw [heq]

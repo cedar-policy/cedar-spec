@@ -435,7 +435,7 @@ theorem compile_well_typed_var {v : Var} {ty : CedarType} {Γ : TypeEnv} {εnv :
     CompileWellTyped,
     TypedExpr.toExpr,
     SymEnv.ofEnv,
-    SymRequest.ofRequestType,
+    SymRequest.ofActionSignature,
     TermType.ofType,
     compile,
     compileVar,
