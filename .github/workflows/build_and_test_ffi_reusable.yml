@@ -57,7 +57,7 @@ jobs:
               chmod +x cvc5-Linux-${ARCH_NAME}-static/bin/cvc5
               echo "CVC5=$GITHUB_WORKSPACE/cvc5-Linux-${ARCH_NAME}-static/bin/cvc5" >> $GITHUB_ENV
       - name: Prepare Rust build
-        run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
+        run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }} && rustup component add rustfmt
       - name: cargo fmt (cedar-lean-ffi)
         working-directory: ./cedar-spec/cedar-lean-ffi
         run: cargo fmt --all --check
