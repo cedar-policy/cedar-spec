@@ -16,10 +16,11 @@
 
 #![no_main]
 
+use cedar_drt::check_policy_equivalence;
 use cedar_drt::logger::initialize_log;
 use cedar_drt_inner::fuzz_target;
 
-use cedar_policy_core::ast::{AnyId, StaticPolicy, Template};
+use cedar_policy_core::ast::{StaticPolicy, Template};
 use cedar_policy_core::parser::{self, parse_policy};
 use cedar_policy_formatter::token::{Comment, Token, WrappedToken};
 use cedar_policy_formatter::{policies_str_to_pretty, Config};
@@ -32,8 +33,7 @@ use logos::Logos;
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 use similar_asserts::SimpleDiff;
-use smol_str::SmolStr;
-use std::collections::HashMap;
+use std::sync::Arc;
 use uuid::Builder;
 
 // A thin wrapper for policy
@@ -162,53 +162,9 @@ fuzz_target!(|input: FuzzTargetInput| {
                 t.slots().collect::<Vec<_>>().is_empty(),
                 "\nold template slots should be empty\n"
             );
-            // just dump to standard hashmaps to check equality without order.
-            // also ignore source locations, which are not preserved in this roundtrip
-            let roundtripped_anno: HashMap<&AnyId, &SmolStr> = roundtripped
-                .annotations()
-                .map(|(k, v)| (k, &v.val))
-                .collect();
-            let original_anno: HashMap<&AnyId, &SmolStr> =
-                t.annotations().map(|(k, v)| (k, &v.val)).collect();
-            assert_eq!(
-                original_anno, roundtripped_anno,
-                "\nannotations should be the same, found:\noriginal: {original_anno:?}\nroundtripped: {roundtripped_anno:?}\n",
-            );
-            assert_eq!(
-                roundtripped.effect(),
-                t.effect(),
-                "\nnew effect: {:?}\nold effect: {:?}\n",
-                roundtripped.effect(),
-                t.effect()
-            );
-            assert_eq!(
-                roundtripped.principal_constraint(),
-                t.principal_constraint(),
-                "\nnew principal constraint: {:?}\nold principal constraint: {:?}\n",
-                roundtripped.principal_constraint(),
-                t.principal_constraint()
-            );
-            assert_eq!(
-                roundtripped.action_constraint(),
-                t.action_constraint(),
-                "\nnew action constraint: {:?}\nold action constraint: {:?}\n",
-                roundtripped.action_constraint(),
-                t.action_constraint()
-            );
-            assert_eq!(
-                roundtripped.resource_constraint(),
-                t.resource_constraint(),
-                "\nnew resource constraint: {:?}\nold resource constraint: {:?}\n",
-                roundtripped.resource_constraint(),
-                t.resource_constraint()
-            );
-            assert!(
-                roundtripped
-                    .non_scope_constraints()
-                    .eq_shape(t.non_scope_constraints()),
-                "\nnew policy condition: {}\nold policy condition: {}\n",
-                roundtripped.non_scope_constraints(),
-                t.non_scope_constraints(),
+            check_policy_equivalence(
+                &Into::<Arc<Template>>::into(p),
+                &Into::<Arc<Template>>::into(roundtripped),
             );
         }
         Err(err) => panic!(
