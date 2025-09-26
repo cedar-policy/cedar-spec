@@ -66,6 +66,9 @@ unsafe def runFfiM {α : Type} [Lean.ToJson α] (m : FfiM α) : String :=
   | .ok (.error s) => toString (Lean.toJson ((.error s) : Except String α))
   | .ok (.ok r) => toString (Lean.toJson (.ok r : Except String α))
 
+@[export loadProtobufSchema] unsafe def loadProtobufSchema (req: ByteArray) : Except String Cedar.Validation.Schema :=
+  ((@Message.interpret? Proto.Schema) req |>.mapError (s!"failed to parse input: {·}")) >>= (·.toSchema)
+
 --------------------------------- Cedar Evaluation / Validation ---------------------------------
 
 /--
@@ -165,10 +168,9 @@ unsafe def runFfiM {α : Type} [Lean.ToJson α] (m : FfiM α) : String :=
   2.) The requestEnv of `req` is not consistent with the schema of `req`
   3.) The policy of `req` is not well-typed for the requestEnv of `req`
 -/
-def parseCheckPolicyReq (req : ByteArray) (return_original: Bool) : Except String (Cedar.Spec.Policy × SymEnv) := do
+def parseCheckPolicyReq (schema : Cedar.Validation.Schema) (req : ByteArray) (return_original: Bool) : Except String (Cedar.Spec.Policy × SymEnv) := do
   let req ← (@Message.interpret? CheckPolicyRequest) req |>.mapError (s!"failed to parse input: {·}")
   let policy := req.policy
-  let schema := req.schema
   let request := req.request
   let env ← match schema.environment? request.principal request.resource request.action with
     | none => .error s!"failed to get environment from requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource})"
@@ -189,10 +191,9 @@ def parseCheckPolicyReq (req : ByteArray) (return_original: Bool) : Except Strin
   2.) The requestEnv of `req` is not consistent with the schema of `req`
   3.) Any policy of the policySet of `req` is not well-typed for the requestEnv of `req`
 -/
-def parseCheckPoliciesReq (req : ByteArray) (return_original: Bool) : Except String (Policies × SymEnv) := do
+def parseCheckPoliciesReq (schema : Cedar.Validation.Schema) (req : ByteArray) (return_original: Bool) : Except String (Policies × SymEnv) := do
   let req ← (@Message.interpret? CheckPolicySetRequest) req |>.mapError (s!"failed to parse input: {·}")
   let policySet := req.policySet
-  let schema := req.schema
   let request := req.request
   let env ← match schema.environment? request.principal request.resource request.action with
     | none => .error s!"failed to get environment from requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource})"
@@ -212,11 +213,10 @@ def parseCheckPoliciesReq (req : ByteArray) (return_original: Bool) : Except Str
   2.) The requestEnv of `req` is not consistent with the schema of `req`
   3.) Any policy of the source or target PolicySets of `req` is not well-typed for the requestEnv of `req`
 -/
-def parseComparePolicySetsReq (req : ByteArray) (return_original: Bool) : Except String (Policies × Policies × SymEnv) := do
+def parseComparePolicySetsReq (schema : Cedar.Validation.Schema) (req : ByteArray) (return_original: Bool) : Except String (Policies × Policies × SymEnv) := do
   let req ← (@Message.interpret? ComparePolicySetsRequest) req |>.mapError (s!"failed to parse input: {·}")
   let srcPolicySet := req.srcPolicySet
   let tgtPolicySet := req.tgtPolicySet
-  let schema := req.schema
   let request := req.request
   let env ← match schema.environment? request.principal request.resource request.action with
     | none => .error s!"failed to get environment from requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource})"
@@ -227,10 +227,9 @@ def parseComparePolicySetsReq (req : ByteArray) (return_original: Bool) : Except
   return if return_original then (srcPolicySet, tgtPolicySet, SymEnv.ofTypeEnv env) else (well_typed_src_policies, well_typed_tgt_policies, SymEnv.ofTypeEnv env)
 
 
-def parseCheckAssertsReq (proto : ByteArray) : Except String (Cedar.SymCC.Asserts × SymEnv) := do
+def parseCheckAssertsReq (schema : Cedar.Validation.Schema) (proto : ByteArray) : Except String (Cedar.SymCC.Asserts × SymEnv) := do
   let req ← (@Message.interpret? CheckAssertsRequest) proto |>.mapError (s!"failed to parse input: {·}")
   let asserts := req.asserts
-  let schema := req.schema
   let request := req.request
   let env ← match schema.environment? request.principal request.resource request.action with
     | none => .error s!"failed to get environment from requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource})"
@@ -263,9 +262,9 @@ opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except Stri
   2.) .ok { data := true, duration := <encode+solve_time> } if the solver could prove `req` holds
   3.) .ok { data := false, duration := <encode+solve_time> } if the solver could prove `req` does not hold
 -/
-@[export runCheckNeverErrors] unsafe def runCheckNeverErrors (req : ByteArray) : String :=
+@[export runCheckNeverErrors] unsafe def runCheckNeverErrors (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
-    let (policy, εnv) ← parseCheckPolicyReq req false
+    let (policy, εnv) ← parseCheckPolicyReq schema req false
     timedSolve Solver.cvc5 (checkNeverErrors policy εnv)
 
 /--
@@ -276,9 +275,9 @@ opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except Stri
   2.) .ok { data := null, duration := <encode+solve_time> } if the solver could prove `req` holds
   3.) .ok { data := {request: ..., entities: ...}, duration := <encode+solve_time> } if the solver could prove `req` does not hold
 -/
-@[export runCheckNeverErrorsWithCex] unsafe def runCheckNeverErrorsWithCex (req : ByteArray) : String :=
+@[export runCheckNeverErrorsWithCex] unsafe def runCheckNeverErrorsWithCex (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
-    let (policy, εnv) ← parseCheckPolicyReq req false
+    let (policy, εnv) ← parseCheckPolicyReq schema req false
     timedSolve Solver.cvc5 (neverErrors? policy εnv)
 
 /--
@@ -289,9 +288,9 @@ opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except Stri
   2.) .ok { data := true, duration := <encode+solve_time> } if the solver could prove `req` holds
   3.) .ok { data := false, duration := <encode+solve_time> } if the solver could prove `req` does not hold
 -/
-@[export runCheckAlwaysAllows] unsafe def runCheckAlwaysAllows (req : ByteArray) : String :=
+@[export runCheckAlwaysAllows] unsafe def runCheckAlwaysAllows (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
-    let (policies, εnv) ← parseCheckPoliciesReq req false
+    let (policies, εnv) ← parseCheckPoliciesReq schema req false
     timedSolve Solver.cvc5 (checkAlwaysAllows policies εnv)
 
 /--
@@ -302,9 +301,9 @@ opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except Stri
   2.) .ok { data := null, duration := <encode+solve_time> } if the solver could prove `req` holds
   3.) .ok { data := {request: ..., entities: ...}, duration := <encode+solve_time> } if the solver could prove `req` does not hold
 -/
-@[export runCheckAlwaysAllowsWithCex] unsafe def runCheckAlwaysAllowsWithCex (req : ByteArray) : String :=
+@[export runCheckAlwaysAllowsWithCex] unsafe def runCheckAlwaysAllowsWithCex (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
-    let (policies, εnv) ← parseCheckPoliciesReq req false
+    let (policies, εnv) ← parseCheckPoliciesReq schema req false
     timedSolve Solver.cvc5 (alwaysAllows? policies εnv)
 
 /--
@@ -315,9 +314,9 @@ opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except Stri
   2.) .ok { data := true, duration := <encode+solve_time> } if the solver could prove `req` holds
   3.) .ok { data := false, duration := <encode+solve_time> } if the solver could prove `req` does not hold
 -/
-@[export runCheckAlwaysDenies] unsafe def runCheckAlwaysDenies (req : ByteArray) : String :=
+@[export runCheckAlwaysDenies] unsafe def runCheckAlwaysDenies (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
-    let (policies, εnv) ← parseCheckPoliciesReq req false
+    let (policies, εnv) ← parseCheckPoliciesReq schema req false
     timedSolve Solver.cvc5 (checkAlwaysDenies policies εnv)
 
 /--
@@ -328,9 +327,9 @@ opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except Stri
   2.) .ok { data := null, duration := <encode+solve_time> } if the solver could prove `req` holds
   3.) .ok { data := {request: ..., entities: ...}, duration := <encode+solve_time> } if the solver could prove `req` does not hold
 -/
-@[export runCheckAlwaysDeniesWithCex] unsafe def runCheckAlwaysDeniesWithCex (req : ByteArray) : String :=
+@[export runCheckAlwaysDeniesWithCex] unsafe def runCheckAlwaysDeniesWithCex (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
-    let (policies, εnv) ← parseCheckPoliciesReq req false
+    let (policies, εnv) ← parseCheckPoliciesReq schema req false
     timedSolve Solver.cvc5 (alwaysDenies? policies εnv)
 
 /--
@@ -341,9 +340,9 @@ opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except Stri
   2.) .ok { data := true, duration := <encode+solve_time> } if the solver could prove `req` holds
   3.) .ok { data := false, duration := <encode+solve_time> } if the solver could prove `req` does not hold
 -/
-@[export runCheckEquivalent] unsafe def runCheckEquivalent (req : ByteArray) : String :=
+@[export runCheckEquivalent] unsafe def runCheckEquivalent (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
-    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req false
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq schema req false
     timedSolve Solver.cvc5 (checkEquivalent srcPolicies tgtPolicies εnv)
 
 /--
@@ -354,9 +353,9 @@ opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except Stri
   2.) .ok { data := null, duration := <encode+solve_time> } if the solver could prove `req` holds
   3.) .ok { data := {request: ..., entities: ...}, duration := <encode+solve_time> } if the solver could prove `req` does not hold
 -/
-@[export runCheckEquivalentWithCex] unsafe def runCheckEquivalentWithCex (req : ByteArray) : String :=
+@[export runCheckEquivalentWithCex] unsafe def runCheckEquivalentWithCex (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
-    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req false
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq schema req false
     timedSolve Solver.cvc5 (equivalent? srcPolicies tgtPolicies εnv)
 
 /--
@@ -367,9 +366,9 @@ opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except Stri
   2.) .ok { data := true, duration := <encode+solve_time> } if the solver could prove `req` holds
   3.) .ok { data := false, duration := <encode+solve_time> } if the solver could prove `req` does not hold
 -/
-@[export runCheckImplies] unsafe def runCheckImplies (req : ByteArray) : String :=
+@[export runCheckImplies] unsafe def runCheckImplies (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
-    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req false
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq schema req false
     timedSolve Solver.cvc5 (checkImplies srcPolicies tgtPolicies εnv)
 
 /--
@@ -380,9 +379,9 @@ opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except Stri
   2.) .ok { data := null, duration := <encode+solve_time> } if the solver could prove `req` holds
   3.) .ok { data := {request: ..., entities: ...}, duration := <encode+solve_time> } if the solver could prove `req` does not hold
 -/
-@[export runCheckImpliesWithCex] unsafe def runCheckImpliesWithCex (req : ByteArray) : String :=
+@[export runCheckImpliesWithCex] unsafe def runCheckImpliesWithCex (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
-    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req false
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq schema req false
     timedSolve Solver.cvc5 (implies? srcPolicies tgtPolicies εnv)
 
 /--
@@ -393,9 +392,9 @@ opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except Stri
   2.) .ok { data := true, duration := <encode+solve_time> } if the solver could prove `req` holds
   3.) .ok { data := false, duration := <encode+solve_time> } if the solver could prove `req` does not hold
 -/
-@[export runCheckDisjoint] unsafe def runCheckDisjoint (req : ByteArray) : String :=
+@[export runCheckDisjoint] unsafe def runCheckDisjoint (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
-    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req false
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq schema req false
     timedSolve Solver.cvc5 (checkDisjoint srcPolicies tgtPolicies εnv)
 
 /--
@@ -406,9 +405,9 @@ opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except Stri
   2.) .ok { data := null, duration := <encode+solve_time> } if the solver could prove `req` holds
   3.) .ok { data := {request: ..., entities: ...}, duration := <encode+solve_time> } if the solver could prove `req` does not hold
 -/
-@[export runCheckDisjointWithCex] unsafe def runCheckDisjointWithCex (req : ByteArray) : String :=
+@[export runCheckDisjointWithCex] unsafe def runCheckDisjointWithCex (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
-    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req false
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq schema req false
     timedSolve Solver.cvc5 (disjoint? srcPolicies tgtPolicies εnv)
 
 /--
@@ -438,9 +437,9 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
   1.) .error err_message if there was in error in parsing or encoding the vcs
   2.) .ok {data := (), duration := <encode+print_time>} if the vcs were successfully printed to stdout in SMTLib format
 -/
-@[export printCheckNeverErrors] unsafe def printCheckNeverErrors (req : ByteArray) : String :=
+@[export printCheckNeverErrors] unsafe def printCheckNeverErrors (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
-    let (policy, εnv) ← parseCheckPolicyReq req false
+    let (policy, εnv) ← parseCheckPolicyReq schema req false
     let stdOut ← IO.getStdout
     let solver ← Solver.streamWriter stdOut
     let vcs := ignoreOutput (verifyNeverErrors policy) εnv
@@ -453,9 +452,9 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
   1.) .error err_message if there was in error in parsing or encoding the vcs
   2.) .ok {data := (), duration := <encode+print_time>} if the vcs were successfully printed to stdout in SMTLib format
 -/
-@[export printCheckAlwaysAllows] unsafe def printCheckAlwaysAllows (req : ByteArray) : String :=
+@[export printCheckAlwaysAllows] unsafe def printCheckAlwaysAllows (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
-    let (policies, εnv) ← parseCheckPoliciesReq req false
+    let (policies, εnv) ← parseCheckPoliciesReq schema req false
     let stdOut ← IO.getStdout
     let solver ← Solver.streamWriter stdOut
     let vcs := ignoreOutput (verifyAlwaysAllows policies) εnv
@@ -468,9 +467,9 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
   1.) .error err_message if there was in error in parsing or encoding the vcs
   2.) .ok {data := (), duration := <encode+print_time>} if the vcs were successfully printed to stdout in SMTLib format
 -/
-@[export printCheckAlwaysDenies] unsafe def printCheckAlwaysDenies (req : ByteArray) : String :=
+@[export printCheckAlwaysDenies] unsafe def printCheckAlwaysDenies (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
-    let (policies, εnv) ← parseCheckPoliciesReq req false
+    let (policies, εnv) ← parseCheckPoliciesReq schema req false
     let stdOut ← IO.getStdout
     let solver ← Solver.streamWriter stdOut
     let vcs := ignoreOutput (verifyAlwaysDenies policies) εnv
@@ -483,9 +482,9 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
   1.) .error err_message if there was in error in parsing or encoding the vcs
   2.) .ok {data := (), duration := <encode+print_time>} if the vcs were successfully printed to stdout in SMTLib format
 -/
-@[export printCheckEquivalent] unsafe def printCheckEquivalent (req : ByteArray) : String :=
+@[export printCheckEquivalent] unsafe def printCheckEquivalent (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
-    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req false
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq schema req false
     let stdOut ← IO.getStdout
     let solver ← Solver.streamWriter stdOut
     let vcs := ignoreOutput (verifyEquivalent srcPolicies tgtPolicies) εnv
@@ -498,9 +497,9 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
   1.) .error err_message if there was in error in parsing or encoding the vcs
   2.) .ok {data := (), duration := <encode+print_time>} if the vcs were successfully printed to stdout in SMTLib format
 -/
-@[export printCheckImplies] unsafe def printCheckImplies (req : ByteArray) : String :=
+@[export printCheckImplies] unsafe def printCheckImplies (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
-    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req false
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq schema req false
     let stdOut ← IO.getStdout
     let solver ← Solver.streamWriter stdOut
     let vcs := ignoreOutput (verifyImplies srcPolicies tgtPolicies) εnv
@@ -513,9 +512,9 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
   1.) .error err_message if there was in error in parsing or encoding the vcs
   2.) .ok {data := (), duration := <encode+print_time>} if the vcs were successfully printed to stdout in SMTLib format
 -/
-@[export printCheckDisjoint] unsafe def printCheckDisjoint (req : ByteArray) : String :=
+@[export printCheckDisjoint] unsafe def printCheckDisjoint (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
-    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req false
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq schema req false
     let stdOut ← IO.getStdout
     let solver ← Solver.streamWriter stdOut
     let vcs := ignoreOutput (verifyDisjoint srcPolicies tgtPolicies) εnv
@@ -529,9 +528,9 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
   2.) .ok { data := true, duration := <solve_time> } if the solver could prove `asserts` hold
   3.) .ok { data := false, duration := <solve_time> } if the solver could prove `asserts` do not hold
 -/
-@[export runCheckAsserts] unsafe def runCheckAsserts (req: ByteArray) : String :=
+@[export runCheckAsserts] unsafe def runCheckAsserts (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
   runFfiM do
-    let (asserts, εnv) ← parseCheckAssertsReq req
+    let (asserts, εnv) ← parseCheckAssertsReq schema req
     timedSolve Solver.cvc5 (checkUnsat (λ _ => .ok asserts) εnv)
 
 /--
@@ -541,9 +540,9 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
   1.) .error err_message if there was in error in parsing or encoding the vcs
   2.) .ok {data := (), duration := <encode+print_time>} if the vcs were successfully printed to stdout in SMTLib format
 -/
-@[export printCheckAsserts] unsafe def printCheckAsserts (req: ByteArray) : String :=
+@[export printCheckAsserts] unsafe def printCheckAsserts (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
   runFfiM do
-    let (asserts, εnv) ← parseCheckAssertsReq req
+    let (asserts, εnv) ← parseCheckAssertsReq schema req
     let stdOut ← IO.getStdout
     let solver ← Solver.streamWriter stdOut
     timedSolve (pure solver) (ignoreOutput (λ _ => .ok asserts) εnv)
@@ -556,9 +555,9 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
   2.) .ok {data := SMTLib-Script, duration := encode_time} where SMTLib-Script is a
       string containing the SMTLib script encoding the verification query
 -/
-@[export smtLibOfCheckAsserts] unsafe def smtLibOfCheckAsserts (req: ByteArray) : String :=
+@[export smtLibOfCheckAsserts] unsafe def smtLibOfCheckAsserts (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
   runFfiM do
-    let (asserts, εnv) ← parseCheckAssertsReq req
+    let (asserts, εnv) ← parseCheckAssertsReq schema req
     let buffer ← IO.mkRef ⟨ByteArray.empty, 0⟩
     let solver ← Solver.bufferWriter buffer
     let r ← timedSolve (pure solver) (ignoreOutput (fun _ => .ok asserts) εnv)
@@ -571,9 +570,9 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
 
   returns JSON encoded of the term generated by `verifyNeverErrors`
 -/
-@[export assertsOfCheckNeverErrors] unsafe def assertsOfCheckNeverErrors (req: ByteArray) : String :=
+@[export assertsOfCheckNeverErrors] unsafe def assertsOfCheckNeverErrors (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
   runFfiM do
-    let (policy, εnv) ← parseCheckPolicyReq req false
+    let (policy, εnv) ← parseCheckPolicyReq schema req false
     runAndTime (λ () => verifyNeverErrors policy εnv)
 
 /--
@@ -581,9 +580,9 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
 
   returns JSON encoded of the term generated by `verifyNeverErrors` on the deserialized policy
 -/
-@[export assertsOfCheckNeverErrorsOnOriginal] unsafe def assertsOfCheckNeverErrorsOnOriginal (req: ByteArray) : String :=
+@[export assertsOfCheckNeverErrorsOnOriginal] unsafe def assertsOfCheckNeverErrorsOnOriginal (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
   runFfiM do
-    let (policy, εnv) ← parseCheckPolicyReq req true
+    let (policy, εnv) ← parseCheckPolicyReq schema req true
     runAndTime (λ () => verifyNeverErrors policy εnv)
 
 /--
@@ -591,9 +590,9 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
 
   returns JSON encoded of the term generated by `verifyAlwaysAllows`
 -/
-@[export assertsOfCheckAlwaysAllows] unsafe def assertsOfCheckAlwaysAllows (req: ByteArray) : String :=
+@[export assertsOfCheckAlwaysAllows] unsafe def assertsOfCheckAlwaysAllows (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
   runFfiM do
-    let (policies, εnv) ← parseCheckPoliciesReq req false
+    let (policies, εnv) ← parseCheckPoliciesReq schema req false
     runAndTime (λ () => verifyAlwaysAllows policies εnv)
 
 /--
@@ -601,9 +600,9 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
 
   returns JSON encoded of the term generated by `verifyAlwaysAllows` on the deserialized policy set
 -/
-@[export assertsOfCheckAlwaysAllowsOnOriginal] unsafe def assertsOfCheckAlwaysAllowsOnOriginal (req: ByteArray) : String :=
+@[export assertsOfCheckAlwaysAllowsOnOriginal] unsafe def assertsOfCheckAlwaysAllowsOnOriginal (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
   runFfiM do
-    let (policies, εnv) ← parseCheckPoliciesReq req true
+    let (policies, εnv) ← parseCheckPoliciesReq schema req true
     runAndTime (λ () => verifyAlwaysAllows policies εnv)
 
 /--
@@ -611,9 +610,9 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
 
   returns JSON encoded of the term generated by `verifyAlwaysDenies`
 -/
-@[export assertsOfCheckAlwaysDenies] unsafe def assertsOfCheckAlwaysDenies (req: ByteArray) : String :=
+@[export assertsOfCheckAlwaysDenies] unsafe def assertsOfCheckAlwaysDenies (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
   runFfiM do
-    let (policies, εnv) ← parseCheckPoliciesReq req false
+    let (policies, εnv) ← parseCheckPoliciesReq schema req false
     runAndTime (λ () => verifyAlwaysDenies policies εnv)
 
 /--
@@ -621,9 +620,9 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
 
   returns JSON encoded of the term generated by `verifyAlwaysDenies` on deserialized policy set
 -/
-@[export assertsOfCheckAlwaysDeniesOnOriginal] unsafe def assertsOfCheckAlwaysDeniesOnOriginal (req: ByteArray) : String :=
+@[export assertsOfCheckAlwaysDeniesOnOriginal] unsafe def assertsOfCheckAlwaysDeniesOnOriginal (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
   runFfiM do
-    let (policies, εnv) ← parseCheckPoliciesReq req true
+    let (policies, εnv) ← parseCheckPoliciesReq schema req true
     runAndTime (λ () => verifyAlwaysDenies policies εnv)
 
 /--
@@ -631,9 +630,9 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
 
   returns JSON encoded of the term generated by `verifyEquivalent`
 -/
-@[export assertsOfCheckEquivalent] unsafe def assertsOfCheckEquivalent (req: ByteArray) : String :=
+@[export assertsOfCheckEquivalent] unsafe def assertsOfCheckEquivalent (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
   runFfiM do
-    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req false
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq schema req false
     runAndTime (λ () => verifyEquivalent srcPolicies tgtPolicies εnv)
 
 /--
@@ -641,9 +640,9 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
 
   returns JSON encoded of the term generated by `verifyEquivalent` on deserialized policy sets
 -/
-@[export assertsOfCheckEquivalentOnOriginal] unsafe def assertsOfCheckEquivalentOnOriginal (req: ByteArray) : String :=
+@[export assertsOfCheckEquivalentOnOriginal] unsafe def assertsOfCheckEquivalentOnOriginal (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
   runFfiM do
-    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req true
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq schema req true
     runAndTime (λ () => verifyEquivalent srcPolicies tgtPolicies εnv)
 
 /--
@@ -651,9 +650,9 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
 
   returns JSON encoded of the term generated by `verifyImplies`
 -/
-@[export assertsOfCheckImplies] unsafe def assertsOfCheckImplies (req: ByteArray) : String :=
+@[export assertsOfCheckImplies] unsafe def assertsOfCheckImplies (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
   runFfiM do
-    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req false
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq schema req false
     runAndTime (λ () => verifyImplies srcPolicies tgtPolicies εnv)
 
 /--
@@ -661,9 +660,9 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
 
   returns JSON encoded of the term generated by `verifyImplies` on deserialized policy sets
 -/
-@[export assertsOfCheckImpliesOnOriginal] unsafe def assertsOfCheckImpliesOnOriginal (req: ByteArray) : String :=
+@[export assertsOfCheckImpliesOnOriginal] unsafe def assertsOfCheckImpliesOnOriginal (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
   runFfiM do
-    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req true
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq schema req true
     runAndTime (λ () => verifyImplies srcPolicies tgtPolicies εnv)
 
 /--
@@ -671,9 +670,9 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
 
   returns JSON encoded of the term generated by `verifyDisjoint`
 -/
-@[export assertsOfCheckDisjoint] unsafe def assertsOfCheckDisjoint (req: ByteArray) : String :=
+@[export assertsOfCheckDisjoint] unsafe def assertsOfCheckDisjoint (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
   runFfiM do
-    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req false
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq schema req false
     runAndTime (λ () => verifyDisjoint srcPolicies tgtPolicies εnv)
 
 /--
@@ -681,9 +680,9 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
 
   returns JSON encoded of the term generated by `verifyDisjoint` on deserialized policy sets
 -/
-@[export assertsOfCheckDisjointOnOriginal] unsafe def assertsOfCheckDisjointOnOriginal (req: ByteArray) : String :=
+@[export assertsOfCheckDisjointOnOriginal] unsafe def assertsOfCheckDisjointOnOriginal (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
   runFfiM do
-    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req true
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq schema req true
     runAndTime (λ () => verifyDisjoint srcPolicies tgtPolicies εnv)
 
 /--
@@ -694,9 +693,9 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
   2.) .ok {data := SMTLib-Script, duration := encode_time} where SMTLib-Script is a
       string containing the SMTLib script encoding the verification query
 -/
-@[export smtLibOfCheckNeverErrors] unsafe def smtLibOfCheckNeverErrors (req : ByteArray) : String :=
+@[export smtLibOfCheckNeverErrors] unsafe def smtLibOfCheckNeverErrors (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
-    let (policy, εnv) ← parseCheckPolicyReq req false
+    let (policy, εnv) ← parseCheckPolicyReq schema req false
     let buffer ← IO.mkRef ⟨ByteArray.empty, 0⟩
     let solver ← Solver.bufferWriter buffer
     let vcs := ignoreOutput (verifyNeverErrors policy) εnv
@@ -713,9 +712,9 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
   2.) .ok {data := SMTLib-Script, duration := encode_time} where SMTLib-Script is a
       string containing the SMTLib script encoding the verification query
 -/
-@[export smtLibOfCheckAlwaysAllows] unsafe def smtLibOfCheckAlwaysAllows (req : ByteArray) : String :=
+@[export smtLibOfCheckAlwaysAllows] unsafe def smtLibOfCheckAlwaysAllows (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
-    let (policies, εnv) ← parseCheckPoliciesReq req false
+    let (policies, εnv) ← parseCheckPoliciesReq schema req false
     let buffer ← IO.mkRef ⟨ByteArray.empty, 0⟩
     let solver ← Solver.bufferWriter buffer
     let vcs := ignoreOutput (verifyAlwaysAllows policies) εnv
@@ -732,9 +731,9 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
   2.) .ok {data := SMTLib-Script, duration := encode_time} where SMTLib-Script is a
       string containing the SMTLib script encoding the verification query
 -/
-@[export smtLibOfCheckAlwaysDenies] unsafe def smtLibOfCheckAlwaysDenies (req : ByteArray) : String :=
+@[export smtLibOfCheckAlwaysDenies] unsafe def smtLibOfCheckAlwaysDenies (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
-    let (policies, εnv) ← parseCheckPoliciesReq req false
+    let (policies, εnv) ← parseCheckPoliciesReq schema req false
     let buffer ← IO.mkRef ⟨ByteArray.empty, 0⟩
     let solver ← Solver.bufferWriter buffer
     let vcs := ignoreOutput (verifyAlwaysDenies policies) εnv
@@ -751,9 +750,9 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
   2.) .ok {data := SMTLib-Script, duration := encode_time} where SMTLib-Script is a
       string containing the SMTLib script encoding the verification query
 -/
-@[export smtLibOfCheckEquivalent] unsafe def smtLibOfCheckEquivalent (req : ByteArray) : String :=
+@[export smtLibOfCheckEquivalent] unsafe def smtLibOfCheckEquivalent (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
-    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req false
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq schema req false
     let buffer ← IO.mkRef ⟨ByteArray.empty, 0⟩
     let solver ← Solver.bufferWriter buffer
     let vcs := ignoreOutput (verifyEquivalent srcPolicies tgtPolicies) εnv
@@ -770,9 +769,9 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
   2.) .ok {data := SMTLib-Script, duration := encode_time} where SMTLib-Script is a
       string containing the SMTLib script encoding the verification query
 -/
-@[export smtLibOfCheckImplies] unsafe def smtLibOfCheckImplies (req : ByteArray) : String :=
+@[export smtLibOfCheckImplies] unsafe def smtLibOfCheckImplies (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
-    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req false
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq schema req false
     let buffer ← IO.mkRef ⟨ByteArray.empty, 0⟩
     let solver ← Solver.bufferWriter buffer
     let vcs := ignoreOutput (verifyImplies srcPolicies tgtPolicies) εnv
@@ -789,9 +788,9 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
   2.) .ok {data := SMTLib-Script, duration := encode_time} where SMTLib-Script is a
       string containing the SMTLib script encoding the verification query
 -/
-@[export smtLibOfCheckDisjoint] unsafe def smtLibOfCheckDisjoint (req : ByteArray) : String :=
+@[export smtLibOfCheckDisjoint] unsafe def smtLibOfCheckDisjoint (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
-    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq req false
+    let (srcPolicies, tgtPolicies, εnv) ← parseComparePolicySetsReq schema req false
     let buffer ← IO.mkRef ⟨ByteArray.empty, 0⟩
     let solver ← Solver.bufferWriter buffer
     let vcs := ignoreOutput (verifyDisjoint srcPolicies tgtPolicies) εnv
@@ -799,5 +798,12 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
     let inner_buffer ← buffer.swap ⟨ByteArray.empty, 0⟩
     let data := (String.fromUTF8? inner_buffer.data).getD ""
     return ({ data := data, duration := r.duration } : Timed String)
+
+--------------------------------- FFI Test Utils ---------------------------------
+/- Some definitions used to test lean object decoding in Rust -/
+
+@[export ffiTestString] def ffiTestString : String := "ffiTestString"
+@[export ffiTestExceptOk] def ffiTestExceptOk : Except String String := .ok "ok"
+@[export ffiTestExceptErr] def ffiTestExceptErr : Except String String := .error "error"
 
 end CedarFFI

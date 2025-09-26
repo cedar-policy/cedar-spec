@@ -88,15 +88,17 @@ fuzz_target!(|input: FuzzTargetInput| {
     debug!("Policies: {policyset}\n");
 
     if let Ok(schema) = Schema::try_from(input.schema) {
+        let lean_schema = lean_ffi.load_lean_schema_object(&schema).unwrap();
         for req_env in schema.request_envs() {
             // Compute's SMTLib Script Directly in one-pass from Lean
-            match lean_ffi.smtlib_of_check_always_allows(&policyset, &schema, &req_env) {
+            match lean_ffi.smtlib_of_check_always_allows(&policyset, lean_schema.clone(), &req_env)
+            {
                 Ok(smtlib1) => {
                     // Get intermediate term representation of the Asserts / Verification conditions from Lean
-                    match lean_ffi.asserts_of_check_always_allows(&policyset, &schema, &req_env) {
+                    match lean_ffi.asserts_of_check_always_allows(&policyset, lean_schema.clone(), &req_env) {
                         Ok(Ok(asserts)) => {
                             // Compute SMTLib script from the intermediate Assertions
-                            match lean_ffi.smtlib_of_check_asserts(&asserts, &schema, &req_env) {
+                            match lean_ffi.smtlib_of_check_asserts(&asserts, lean_schema.clone(), &req_env) {
                                 // The smtlib scripts should be identical. Otherwise serialization/deserialization may have altered the assertions
                                 Ok(smtlib2) => assert_eq!(Direct: smtlib1, Roundtripped: smtlib2, "Mismatch between direct smtlib and roundtripped term smtlib for {req_env:?}"),
                                 Err(e) => panic!("Roundtripped errored when direct smtlib request did not error. Error: {e}"),
@@ -109,9 +111,13 @@ fuzz_target!(|input: FuzzTargetInput| {
                 // The policy/schema produced an error in Lean
                 Err(e) => {
                     // Check that either the generation of asserts or checking the asserts errors
-                    match lean_ffi.asserts_of_check_always_allows(&policyset, &schema, &req_env) {
+                    match lean_ffi.asserts_of_check_always_allows(
+                        &policyset,
+                        lean_schema.clone(),
+                        &req_env,
+                    ) {
                         Ok(Ok(asserts)) => {
-                            match lean_ffi.smtlib_of_check_asserts(&asserts, &schema, &req_env) {
+                            match lean_ffi.smtlib_of_check_asserts(&asserts, lean_schema.clone(), &req_env) {
                                 Ok(_) => panic!("Roundtripped did not error when direct smtlib request errored. Error: {e}"),
                                 Err(_) => (),
                             }
