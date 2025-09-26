@@ -562,10 +562,7 @@ impl proto::Asserts {
 }
 
 impl proto::CheckAssertsRequest {
-    pub(crate) fn new(
-        asserts: &Vec<datatypes::Term>,
-        request: &RequestEnv,
-    ) -> Self {
+    pub(crate) fn new(asserts: &Vec<datatypes::Term>, request: &RequestEnv) -> Self {
         Self {
             asserts: Some(proto::Asserts::new(asserts)),
             request: Some(proto::RequestEnv::from(request)),
