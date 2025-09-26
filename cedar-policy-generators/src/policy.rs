@@ -152,7 +152,7 @@ impl From<GeneratedPolicy> for StaticPolicy {
             gen.principal_constraint.into(),
             gen.action_constraint.into(),
             gen.resource_constraint.into(),
-            gen.abac_constraints,
+            Some(gen.abac_constraints),
         )
         .unwrap() // Will panic if the GeneratedPolicy contains a slot.
     }
@@ -168,7 +168,7 @@ impl From<GeneratedPolicy> for Template {
             gen.principal_constraint.into(),
             gen.action_constraint.into(),
             gen.resource_constraint.into(),
-            gen.abac_constraints,
+            Some(gen.abac_constraints),
         )
     }
 }
