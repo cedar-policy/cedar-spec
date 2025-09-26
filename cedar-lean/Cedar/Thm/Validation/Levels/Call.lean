@@ -27,26 +27,25 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem level_based_slicing_is_sound_call {xs : List Expr} {n : Nat} {c₀ c₁: Capabilities} {env : TypeEnv} {request : Request} {entities slice : Entities}
-  (hs : slice = entities.sliceAtLevel request n)
+theorem level_based_slicing_is_sound_call {xs : List Expr} {n : Nat} {c₀ c₁: Capabilities} {env : TypeEnv} {request : Request} {entities : Entities}
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : InstanceOfWellFormedEnvironment request entities env)
   (ht : typeOf (.call xfn xs) c₀ env = Except.ok (tx, c₁))
   (hl : tx.AtLevel env n)
   (ih : ∀ x ∈ xs, TypedAtLevelIsSound x) :
-  evaluate (.call xfn xs) request entities = evaluate (.call xfn xs) request slice
+  evaluate (.call xfn xs) request entities = evaluate (.call xfn xs) request (entities.sliceAtLevel request n)
 := by
   replace ⟨ txs, ⟨ty, hty⟩, ht ⟩ := type_of_call_inversion ht
   subst tx
   cases hl ; rename_i hl
 
-  have he : ∀ x ∈ xs, evaluate x request entities = evaluate x request slice := by
+  have he : ∀ x ∈ xs, evaluate x request entities = evaluate x request (entities.sliceAtLevel request n) := by
     intros x hx
     replace ⟨ tx, htxs, c', htx ⟩ := List.forall₂_implies_all_left ht x hx
     specialize hl tx htxs
-    exact ih x hx hs hc hr htx hl
+    exact ih x hx hc hr htx hl
 
   simp only [evaluate, List.mapM₁, List.attach, List.attachWith]
   simp only [List.mapM_pmap_subtype (λ x : Expr => evaluate x request entities) xs]
-  simp only [List.mapM_pmap_subtype (λ x : Expr => evaluate x request slice) xs]
+  simp only [List.mapM_pmap_subtype (λ x : Expr => evaluate x request (entities.sliceAtLevel request n)) xs]
   rw [List.mapM_congr he]

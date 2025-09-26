@@ -82,19 +82,12 @@ authorization request made using a slice of entities obtained by slicing at
 level `n` will return the same response as authorizing using the original
 entities.
 -/
-theorem validate_with_level_is_sound {ps : Policies} {schema : Schema} {n : Nat} {request : Request} {entities slice : Entities}
+theorem validate_with_level_is_sound {ps : Policies} {schema : Schema} {n : Nat} {request : Request} {entities : Entities}
   (hwf : schema.validateWellFormed = .ok ())
   (hr : validateRequest schema request = .ok ())
   (he : validateEntities schema entities = .ok ())
-  (hs : slice = entities.sliceAtLevel request n)
   (htl : validateWithLevel ps schema n = .ok ()) :
-  isAuthorized request entities ps = isAuthorized request slice ps
-:= by
-  have hsound : ∀ p ∈ ps, evaluate p.toExpr request entities = evaluate p.toExpr request slice := by
-    have hre := request_and_entities_validate_implies_instance_of_wf_schema _ _ _ hwf hr he
-    replace htl := List.forM_ok_implies_all_ok _ _ htl
-    intro p hp
-    exact typecheck_policy_at_level_with_environments_is_sound hs hre (htl p hp)
-  exact is_authorized_congr_evaluate hsound
+  isAuthorized request entities ps = isAuthorized request (entities.sliceAtLevel request n) ps
+:= validate_with_level_is_sound_wf (request_and_entities_validate_implies_instance_of_wf_schema _ _ _ hwf hr he) htl
 
 end Cedar.Thm
