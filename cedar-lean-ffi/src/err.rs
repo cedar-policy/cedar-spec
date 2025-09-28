@@ -15,10 +15,14 @@
  */
 use thiserror::Error;
 
+use crate::lean_object::LeanObjectError;
+
 #[derive(Error, Debug)]
 pub enum FfiError {
     #[error("Error deserializing Lean backend output : {0}")]
     LeanDeserializationError(String),
-    #[error("Error occured in Lean backend : {0}")]
+    #[error("Error occurred in Lean backend : {0}")]
     LeanBackendError(String),
+    #[error(transparent)]
+    LeanObjectError(#[from] LeanObjectError),
 }

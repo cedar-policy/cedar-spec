@@ -16,7 +16,7 @@
 
 import Cedar.SymCC.Authorizer
 import Cedar.Thm.SymCC.Compiler
-import Cedar.Thm.Authorization.Authorizer
+import Cedar.Thm.Authorization
 
 /-!
 This file proves a key lemma used to show the soundness and completeness of
@@ -231,7 +231,7 @@ theorem satisfiedPolicies_eq {effect : Effect} {ps : Policies} {env : Env} {εnv
   cases hb : (Spec.satisfiedPolicies effect ps env.request env.entities).isEmpty <;>
   simp only [Bool.not_true, Bool.not_false]
   case false =>
-    replace ⟨p, hpin, heff, hb⟩ := if_satisfiedPolicies_non_empty_then_satisfied hb
+    replace ⟨p, hpin, heff, hb⟩ := satisfied_iff_satisfiedPolicies_non_empty.mpr hb
     replace ⟨t, htin, hok⟩ := List.mapM_ok_implies_all_ok hok p (by simp only [List.mem_filter, hpin, heff,
       beq_self_eq_true, and_self])
     simp only [satisfied, decide_eq_true_eq] at hb
@@ -266,7 +266,7 @@ theorem satisfiedPolicies_eq {effect : Effect} {ps : Policies} {env : Env} {εnv
       · replace hr := same_bool_term_implies hr
         subst hr
         have hb' : (Spec.satisfiedPolicies effect ps env.request env.entities).isEmpty = false := by
-          apply if_satisfied_then_satisfiedPolicies_non_empty
+          apply satisfied_iff_satisfiedPolicies_non_empty.mp
           exists p
           simp only [hpin, satisfied, hv, decide_true, and_self]
         simp only [hb, Bool.true_eq_false] at hb'

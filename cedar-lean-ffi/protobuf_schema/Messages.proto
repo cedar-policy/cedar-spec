@@ -76,20 +76,17 @@ message RequestEnv {
 
 message CheckPolicyRequest {
     Policy policy = 1;
-    cedar_policy_validator.Schema schema = 2;
     RequestEnv request = 3;
 }
 
 message CheckPolicySetRequest {
     cedar_policy_core.PolicySet policySet = 1;
-    cedar_policy_validator.Schema schema = 2;
     RequestEnv request = 3;
 }
 
 message ComparePolicySetsRequest {
     cedar_policy_core.PolicySet srcPolicySet = 1;
     cedar_policy_core.PolicySet tgtPolicySet = 2;
-    cedar_policy_validator.Schema schema = 3;
     RequestEnv request = 4;
 }
 
@@ -297,7 +294,6 @@ message Asserts {
 
 message CheckAssertsRequest {
     Asserts asserts = 1;
-    cedar_policy_validator.Schema schema = 2;
     RequestEnv request = 3;
 }
 

@@ -14,3 +14,6 @@ thiserror = "2.0"
 itertools = "0.14.0"
 miette = "7.6.0"
 prettytable-rs = "0.10"
+
+[dev-dependencies]
+assert_cmd = "2.0.17"

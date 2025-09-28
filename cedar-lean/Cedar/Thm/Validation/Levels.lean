@@ -42,13 +42,12 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem level_based_slicing_is_sound_expr {e : Expr} {n : Nat} {tx : TypedExpr} {c c₁ : Capabilities} {env : TypeEnv} {request : Request} {entities slice : Entities}
-  (hs : slice = entities.sliceAtLevel request n)
+theorem level_based_slicing_is_sound_expr {e : Expr} {n : Nat} {tx : TypedExpr} {c c₁ : Capabilities} {env : TypeEnv} {request : Request} {entities : Entities}
   (hc : CapabilitiesInvariant c request entities)
   (hr : InstanceOfWellFormedEnvironment request entities env)
   (ht : typeOf e c env = Except.ok (tx, c₁))
   (hl : tx.AtLevel env n) :
-  evaluate e request entities = evaluate e request slice
+  evaluate e request entities = evaluate e request (entities.sliceAtLevel request n)
 := by
   cases e
   case lit => simp [evaluate]
@@ -57,28 +56,28 @@ theorem level_based_slicing_is_sound_expr {e : Expr} {n : Nat} {tx : TypedExpr} 
     have ihc := @level_based_slicing_is_sound_expr c
     have iht := @level_based_slicing_is_sound_expr t
     have ihe := @level_based_slicing_is_sound_expr e
-    exact level_based_slicing_is_sound_if hs hc hr ht hl ihc iht ihe
+    exact level_based_slicing_is_sound_if hc hr ht hl ihc iht ihe
   case and e₁ e₂ =>
     have ih₁ := @level_based_slicing_is_sound_expr e₁
     have ih₂ := @level_based_slicing_is_sound_expr e₂
-    exact level_based_slicing_is_sound_and hs hc hr ht hl ih₁ ih₂
+    exact level_based_slicing_is_sound_and hc hr ht hl ih₁ ih₂
   case or e₁ e₂ =>
     have ih₁ := @level_based_slicing_is_sound_expr e₁
     have ih₂ := @level_based_slicing_is_sound_expr e₂
-    exact level_based_slicing_is_sound_or hs hc hr ht hl ih₁ ih₂
+    exact level_based_slicing_is_sound_or hc hr ht hl ih₁ ih₂
   case unaryApp op e =>
     have ihe := @level_based_slicing_is_sound_expr e
-    exact level_based_slicing_is_sound_unary_app hs hc hr ht hl ihe
+    exact level_based_slicing_is_sound_unary_app hc hr ht hl ihe
   case binaryApp op e₁ e₂ =>
     have ihe₁ := @level_based_slicing_is_sound_expr e₁
     have ihe₂ := @level_based_slicing_is_sound_expr e₂
-    exact level_based_slicing_is_sound_binary_app hs hc hr ht hl ihe₁ ihe₂
+    exact level_based_slicing_is_sound_binary_app hc hr ht hl ihe₁ ihe₂
   case getAttr e _ =>
     have ihe := @level_based_slicing_is_sound_expr e
-    exact level_based_slicing_is_sound_get_attr hs hc hr ht hl ihe
+    exact level_based_slicing_is_sound_get_attr hc hr ht hl ihe
   case hasAttr e _ =>
     have ihe := @level_based_slicing_is_sound_expr e
-    exact level_based_slicing_is_sound_has_attr hs hc hr ht hl ihe
+    exact level_based_slicing_is_sound_has_attr hc hr ht hl ihe
   case set xs =>
     have ih : ∀ x ∈ xs, TypedAtLevelIsSound x := by
       intro x hx
@@ -87,7 +86,7 @@ theorem level_based_slicing_is_sound_expr {e : Expr} {n : Nat} {tx : TypedExpr} 
         simp only [Expr.set.sizeOf_spec]
         omega
       exact @level_based_slicing_is_sound_expr x
-    exact level_based_slicing_is_sound_set hs hc hr ht hl ih
+    exact level_based_slicing_is_sound_set hc hr ht hl ih
   case call xfn xs =>
     have ih : ∀ x ∈ xs, TypedAtLevelIsSound x := by
       intro x hx
@@ -96,7 +95,7 @@ theorem level_based_slicing_is_sound_expr {e : Expr} {n : Nat} {tx : TypedExpr} 
         simp only [Expr.set.sizeOf_spec]
         omega
       exact @level_based_slicing_is_sound_expr x
-    exact level_based_slicing_is_sound_call hs hc hr ht hl ih
+    exact level_based_slicing_is_sound_call hc hr ht hl ih
   case record rxs =>
     have ih : ∀ x ∈ rxs, TypedAtLevelIsSound x.snd := by
       intro x hx
@@ -106,14 +105,13 @@ theorem level_based_slicing_is_sound_expr {e : Expr} {n : Nat} {tx : TypedExpr} 
         simp only [Expr.record.sizeOf_spec]
         omega
       exact @level_based_slicing_is_sound_expr x.snd
-    exact level_based_slicing_is_sound_record hs hc hr ht hl ih
+    exact level_based_slicing_is_sound_record hc hr ht hl ih
 termination_by e
 
-theorem typecheck_policy_with_level_is_sound {p : Policy} {tx : TypedExpr} {n : Nat} {env : TypeEnv} {request : Request} {entities slice : Entities}
-  (hs : slice = entities.sliceAtLevel request n)
+theorem typecheck_policy_with_level_is_sound {p : Policy} {tx : TypedExpr} {n : Nat} {env : TypeEnv} {request : Request} {entities : Entities}
   (hr : InstanceOfWellFormedEnvironment request entities env)
   (htl : typecheckPolicyWithLevel p n env = .ok tx) :
-  evaluate p.toExpr request entities = evaluate p.toExpr request slice
+  evaluate p.toExpr request entities = evaluate p.toExpr request (entities.sliceAtLevel request n)
 := by
   simp only [typecheckPolicyWithLevel, typecheckPolicy] at htl
   split at htl <;> try contradiction
@@ -123,17 +121,16 @@ theorem typecheck_policy_with_level_is_sound {p : Policy} {tx : TypedExpr} {n : 
   subst htl
   rename_i htl'
   have subst_action_preserves_entities := (@substitute_action_preserves_evaluation · · entities)
-  have subst_action_preserves_slice := (@substitute_action_preserves_evaluation · · slice)
+  have subst_action_preserves_slice := (@substitute_action_preserves_evaluation · · (entities.sliceAtLevel request n))
   rw [←subst_action_preserves_slice, ←subst_action_preserves_entities, action_matches_env hr]
   rw [←level_spec] at htl'
   have hc := empty_capabilities_invariant request entities
-  exact level_based_slicing_is_sound_expr hs hc hr htx' htl'
+  exact level_based_slicing_is_sound_expr hc hr htx' htl'
 
-theorem typecheck_policy_at_level_with_environments_is_sound {p : Policy} {envs : List TypeEnv} {n : Nat} {request : Request} {entities slice : Entities}
-  (hs : slice = entities.sliceAtLevel request n)
+theorem typecheck_policy_at_level_with_environments_is_sound {p : Policy} {envs : List TypeEnv} {n : Nat} {request : Request} {entities : Entities}
   (he : ∃ env ∈ envs, InstanceOfWellFormedEnvironment request entities env)
   (htl : typecheckPolicyWithLevelWithEnvironments p n envs = .ok ()) :
-  evaluate p.toExpr request entities = evaluate p.toExpr request slice
+  evaluate p.toExpr request entities = evaluate p.toExpr request (entities.sliceAtLevel request n)
 := by
   replace htl : ∀ x ∈ envs, ∃ tx, typecheckPolicyWithLevel p n x = .ok tx := by
     cases htl₁ : List.mapM (typecheckPolicyWithLevel p n) envs <;>
@@ -145,4 +142,15 @@ theorem typecheck_policy_at_level_with_environments_is_sound {p : Policy} {envs 
   have ⟨env, ⟨he₁, hr⟩⟩ := he
   specialize htl env he₁
   replace ⟨_, htl⟩ := htl
-  exact typecheck_policy_with_level_is_sound hs hr htl
+  exact typecheck_policy_with_level_is_sound hr htl
+
+theorem validate_with_level_is_sound_wf {ps : Policies} {schema : Schema} {n : Nat} {request : Request} {entities : Entities}
+  (hwf : InstanceOfWellFormedSchema schema request entities)
+  (htl : validateWithLevel ps schema n = .ok ()) :
+  isAuthorized request entities ps = isAuthorized request (entities.sliceAtLevel request n) ps
+:= by
+  have hsound : ∀ p ∈ ps, evaluate p.toExpr request entities = evaluate p.toExpr request (entities.sliceAtLevel request n) := by
+    replace htl := List.forM_ok_implies_all_ok _ _ htl
+    intro p hp
+    exact typecheck_policy_at_level_with_environments_is_sound hwf (htl p hp)
+  exact is_authorized_congr_evaluate hsound

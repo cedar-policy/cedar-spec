@@ -33,8 +33,7 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem level_based_slicing_is_sound_record_attrs {rxs : List (Attr × Expr)} {n : Nat} {c : Capabilities} {env : TypeEnv} {request : Request} {entities slice : Entities}
-  (hs : slice = entities.sliceAtLevel request n)
+theorem level_based_slicing_is_sound_record_attrs {rxs : List (Attr × Expr)} {n : Nat} {c : Capabilities} {env : TypeEnv} {request : Request} {entities : Entities}
   (hc : CapabilitiesInvariant c request entities)
   (hr : InstanceOfWellFormedEnvironment request entities env)
   (ht : List.Forall₂ (AttrExprHasAttrType c env) rxs atxs)
@@ -45,7 +44,7 @@ theorem level_based_slicing_is_sound_record_attrs {rxs : List (Attr × Expr)} {n
     let v ← (evaluate x.1.snd request entities)
     Except.ok (x.1.fst, v)) =
   (rxs.mapM₂ λ x => do
-    let v ← (evaluate x.1.snd request slice)
+    let v ← (evaluate x.1.snd request (entities.sliceAtLevel request n))
     Except.ok (x.1.fst, v))
 := by
   cases ht
@@ -56,27 +55,26 @@ theorem level_based_slicing_is_sound_record_attrs {rxs : List (Attr × Expr)} {n
     replace ⟨ ihx, ih ⟩ := ih
     replace ⟨ hlx, hl ⟩ := hl
     replace ⟨ _, _, htx ⟩ := htx
-    specialize ihx hs hc hr htx hlx
+    specialize ihx hc hr htx hlx
     simp only [←ihx, List.mapM₂, List.attach₂, List.pmap_cons, List.mapM_cons]
     cases he₁ : evaluate x.snd request entities <;> simp only [Except.bind_err, Except.bind_ok]
-    have ih' := level_based_slicing_is_sound_record_attrs hs hc hr ht hl ih
+    have ih' := level_based_slicing_is_sound_record_attrs hc hr ht hl ih
     simp only [List.mapM₂, List.attach₂] at ih'
     simp only [List.mapM_pmap_subtype (λ x : (Attr × Expr) => do let v ← evaluate x.snd request entities; .ok (x.fst, v)) rxs'] at ih' ⊢
-    simp only [List.mapM_pmap_subtype (λ x : (Attr × Expr) => do let v ← evaluate x.snd request slice; .ok (x.fst, v)) rxs'] at ih' ⊢
+    simp only [List.mapM_pmap_subtype (λ x : (Attr × Expr) => do let v ← evaluate x.snd request (entities.sliceAtLevel request n); .ok (x.fst, v)) rxs'] at ih' ⊢
     rw [ih']
 
-theorem level_based_slicing_is_sound_record {rxs : List (Attr × Expr)} {n : Nat} {c₀ c₁: Capabilities} {env : TypeEnv} {request : Request} {entities slice : Entities}
-  (hs : slice = entities.sliceAtLevel request n)
+theorem level_based_slicing_is_sound_record {rxs : List (Attr × Expr)} {n : Nat} {c₀ c₁: Capabilities} {env : TypeEnv} {request : Request} {entities : Entities}
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : InstanceOfWellFormedEnvironment request entities env)
   (ht : typeOf (.record rxs) c₀ env = Except.ok (tx, c₁))
   (hl : tx.AtLevel env n)
   (ih : ∀ x ∈ rxs, TypedAtLevelIsSound x.snd) :
-  evaluate (.record rxs) request entities = evaluate (.record rxs) request slice
+  evaluate (.record rxs) request entities = evaluate (.record rxs) request (entities.sliceAtLevel request n)
 := by
   replace ⟨ hc₁, atxs, htx, hatxs ⟩ := type_of_record_inversion ht
   subst htx
   cases hl
   rename_i hlatxs
-  have h := level_based_slicing_is_sound_record_attrs hs hc hr hatxs hlatxs ih
+  have h := level_based_slicing_is_sound_record_attrs hc hr hatxs hlatxs ih
   simp only [h, evaluate, bindAttr, pure, Except.pure]

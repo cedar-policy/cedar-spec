@@ -457,10 +457,11 @@ fn policyset_vacuous(
     let mut vr = Vec::new();
 
     let lean_context = CedarLeanFfi::new();
+    let schema = lean_context.load_lean_schema_object(schema)?;
     for req_env in req_envs {
-        if lean_context.run_check_always_allows(policyset, schema, req_env)? {
+        if lean_context.run_check_always_allows(policyset, schema.clone(), req_env)? {
             vr.push(VacuityResult::MatchesAll);
-        } else if lean_context.run_check_always_denies(policyset, schema, req_env)? {
+        } else if lean_context.run_check_always_denies(policyset, schema.clone(), req_env)? {
             vr.push(VacuityResult::MatchesNone);
         } else {
             vr.push(VacuityResult::MatchesSome);
@@ -518,6 +519,7 @@ fn compute_permit_shadowing_result(
     })?;
 
     let lean_context = CedarLeanFfi::new();
+    let schema = lean_context.load_lean_schema_object(schema)?;
     for ((src_vr, tgt_vr), req_env) in zip(zip(src_vacuous_results, tgt_vacuous_results), req_envs)
     {
         match (src_vr, tgt_vr) {
@@ -534,10 +536,18 @@ fn compute_permit_shadowing_result(
                 results.push(ShadowingResult::TgtShadowsSrc)
             }
             (VacuityResult::MatchesSome, VacuityResult::MatchesSome) => {
-                let src_implies_tgt =
-                    lean_context.run_check_implies(&src_pset, &tgt_pset, schema, req_env)?;
-                let tgt_implies_src =
-                    lean_context.run_check_implies(&tgt_pset, &src_pset, schema, req_env)?;
+                let src_implies_tgt = lean_context.run_check_implies(
+                    &src_pset,
+                    &tgt_pset,
+                    schema.clone(),
+                    req_env,
+                )?;
+                let tgt_implies_src = lean_context.run_check_implies(
+                    &tgt_pset,
+                    &src_pset,
+                    schema.clone(),
+                    req_env,
+                )?;
                 match (src_implies_tgt, tgt_implies_src) {
                     (true, true) => results.push(ShadowingResult::Equivalent),
                     (true, _) => results.push(ShadowingResult::TgtShadowsSrc),
@@ -579,6 +589,7 @@ fn compute_forbid_overrides_shadow_result(
     })?;
 
     let lean_context = CedarLeanFfi::new();
+    let schema = lean_context.load_lean_schema_object(schema)?;
     for ((forbid_vr, permit_vr), req_env) in zip(
         zip(forbid_vacuous_results, permit_vacuous_results),
         req_envs,
@@ -587,7 +598,7 @@ fn compute_forbid_overrides_shadow_result(
             (VacuityResult::MatchesNone, _) | (VacuityResult::MatchesAll, _) |                                          // forbid policy is vacous: does not apply or denies all
             (_, VacuityResult::MatchesNone) | (_, VacuityResult::MatchesAll) => results.push(OverrideResult::NoResult), // permit policy is vacous: does not apply or allows all (no need to check overriding)
             _ => {
-                if lean_context.run_check_implies(&permit_pset, &forbid_pset, schema, req_env)? {
+                if lean_context.run_check_implies(&permit_pset, &forbid_pset, schema.clone(), req_env)? {
                     results.push(OverrideResult::Overrides); // Every request allowed by permit is denied by forbid
                 } else {
                     results.push(OverrideResult::NoResult);  // some request allowed by permit is not denies by forbid
@@ -619,6 +630,7 @@ fn compute_forbid_shadowing_result(
         }
     })?;
     let lean_context = CedarLeanFfi::new();
+    let schema = lean_context.load_lean_schema_object(schema)?;
     for ((src_vr, tgt_vr), req_env) in zip(zip(src_vacuous_results, tgt_vacuous_results), req_envs)
     {
         // Forbid vacuity results are computed on them as if they were permit policies
@@ -636,10 +648,18 @@ fn compute_forbid_shadowing_result(
                 results.push(ShadowingResult::TgtShadowsSrc) // Tgt policy denies all requests, Src denies some
             }
             (VacuityResult::MatchesSome, VacuityResult::MatchesSome) => {
-                let src_implies_tgt =
-                    lean_context.run_check_implies(&src_pset, &tgt_pset, schema, req_env)?;
-                let tgt_implies_src =
-                    lean_context.run_check_implies(&tgt_pset, &src_pset, schema, req_env)?;
+                let src_implies_tgt = lean_context.run_check_implies(
+                    &src_pset,
+                    &tgt_pset,
+                    schema.clone(),
+                    req_env,
+                )?;
+                let tgt_implies_src = lean_context.run_check_implies(
+                    &tgt_pset,
+                    &src_pset,
+                    schema.clone(),
+                    req_env,
+                )?;
                 match (src_implies_tgt, tgt_implies_src) {
                     (true, true) => results.push(ShadowingResult::Equivalent), // Equivalent
                     (true, _) => results.push(ShadowingResult::TgtShadowsSrc), // Tgt denies strictly more than Src
@@ -752,13 +772,22 @@ pub fn compare_policysets(
 ) -> Result<(), ExecError> {
     let req_envs = OpenRequestEnv::any().to_request_envs(&schema)?;
     let lean_context = CedarLeanFfi::new();
+    let schema = lean_context.load_lean_schema_object(&schema)?;
     let comparison_results: Vec<PolicySetComparisonResult> = req_envs
         .iter()
         .map(|req_env| -> Result<PolicySetComparisonResult, ExecError> {
-            let fwd_implies =
-                lean_context.run_check_implies(&src_policyset, &tgt_policyset, &schema, req_env)?;
-            let bwd_implies =
-                lean_context.run_check_implies(&tgt_policyset, &src_policyset, &schema, req_env)?;
+            let fwd_implies = lean_context.run_check_implies(
+                &src_policyset,
+                &tgt_policyset,
+                schema.clone(),
+                req_env,
+            )?;
+            let bwd_implies = lean_context.run_check_implies(
+                &tgt_policyset,
+                &src_policyset,
+                schema.clone(),
+                req_env,
+            )?;
             let status = match (fwd_implies, bwd_implies) {
                 (true, true) => PolicySetComparisonStatus::Equivalent,
                 (true, false) => PolicySetComparisonStatus::LessPermissive,
