@@ -220,7 +220,7 @@ def defineSet (tyEnc : String) (tEncs : List String) : EncoderM String := do
   defineTerm tyEnc (tEncs.foldl (λ acc t => s!"(set.insert {t} {acc})") s!"(as set.empty {tyEnc})")
 
 def defineRecord (tyEnc : String) (tEncs : List String) : EncoderM String := do
-  defineTerm tyEnc s!"({tyEnc} {String.intercalate " " tEncs})"
+  defineTerm tyEnc (if tEncs.isEmpty then tyEnc else s!"({tyEnc} {String.intercalate " " tEncs})")
 
 def encodeUUF (uuf : UUF) : EncoderM String := do
   if let (.some enc) := (← get).uufs.find? uuf then return enc

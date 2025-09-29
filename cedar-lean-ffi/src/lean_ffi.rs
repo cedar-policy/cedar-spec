@@ -1998,4 +1998,44 @@ when
             Ok(Some(cedar_policy::Decision::Allow))
         );
     }
+
+    #[test]
+    fn empty_record_encoding() {
+        let schema = Schema::from_str(
+            r#"
+            entity V;
+entity N;
+entity V3 = {
+  "x": {}
+};
+action "" appliesTo {
+  principal: [N],
+  resource: [V],
+  context: {}
+};
+            "#,
+        )
+        .unwrap();
+        let pset = PolicySet::from_str(
+            r#"
+            permit(
+  principal,
+  action in [Action::""],
+  resource
+) when {
+  {} == (V3::"".x)
+};
+            "#,
+        )
+        .unwrap();
+        let request_env = request_env("N", "Action::\"\"", "V");
+        let ffi = CedarLeanFfi::new();
+        assert!(!ffi
+            .run_check_always_denies(
+                &pset,
+                ffi.load_lean_schema_object(&schema).unwrap(),
+                &request_env
+            )
+            .unwrap());
+    }
 }
