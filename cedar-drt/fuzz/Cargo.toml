@@ -262,3 +262,46 @@ name = "batched-evaluation-pbt"
 path = "fuzz_targets/batched-evaluation-pbt.rs"
 test = false
 doc = false
+
+
+[[bin]]
+name = "symcc-check-always-allows-ok"
+path = "fuzz_targets/symcc-check-always-allows-ok.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "symcc-check-never-errors-ok"
+path = "fuzz_targets/symcc-check-never-errors-ok.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "symcc-check-always-denies-ok"
+path = "fuzz_targets/symcc-check-always-denies-ok.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "symcc-check-implies-ok"
+path = "fuzz_targets/symcc-check-implies-ok.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "symcc-check-equivalent-ok"
+path = "fuzz_targets/symcc-check-equivalent-ok.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "symcc-check-disjoint-ok"
+path = "fuzz_targets/symcc-check-disjoint-ok.rs"
+test = false
+doc = false
+bench = false

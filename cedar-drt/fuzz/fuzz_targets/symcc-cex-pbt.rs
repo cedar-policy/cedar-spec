@@ -111,6 +111,13 @@ fn get_cex(
         )
         .await;
 
+        // Clean up the local solver process
+        solver
+            .solver_mut()
+            .clean_up()
+            .await
+            .map_err(|e| e.to_string())?;
+
         match (always_allow_result, always_deny_result) {
             (
                 Ok(Err(cedar_policy_symcc::err::Error::EncodeError(
