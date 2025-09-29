@@ -17,6 +17,7 @@
 mod datatypes;
 mod err;
 mod lean_ffi;
+mod lean_object;
 mod messages;
 
 pub use datatypes::{AuthorizationResponse, TimedResult, ValidationResponse};

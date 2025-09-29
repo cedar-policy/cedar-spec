@@ -219,22 +219,13 @@ theorem checked_eval_entity_reachable {e : Expr} {n nmax: Nat} {c c' : Capabilit
     exact call_not_euid_via_path he ha
 termination_by e
 
-theorem in_work_then_in_slice {entities : Entities} {work slice : Set EntityUID} {euid : EntityUID} {n : Nat}
+theorem in_work_then_in_slice {entities : Entities} {work : Set EntityUID} {euid : EntityUID} {n : Nat}
   (hw : euid ∈ work)
-  (hs : Entities.sliceAtLevel.sliceAtLevel entities work (n + 1) = some slice)
-  : euid ∈ slice
+  : euid ∈ Entities.sliceAtLevel.sliceAtLevel entities work (n + 1)
 := by
-  unfold Entities.sliceAtLevel.sliceAtLevel at hs
-  cases hs₁ :
-    List.mapM (Map.find? entities) work.elts
-  <;> simp only [hs₁, Option.map_eq_map, Option.bind_eq_bind, Option.bind_none_fun, reduceCtorEq] at hs
-  rename_i eds
-  cases hs₂ :
-    List.mapM (λ x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs n) eds
-  <;> simp only [hs₂, Option.map_none, Option.map_some, Option.bind_none, Option.bind_some, reduceCtorEq,Option.some.injEq] at hs
-  rename_i slice'
-  subst hs
-  have ⟨ _, hc ⟩ := Set.mem_union_iff_mem_or work (slice'.mapUnion id) euid
+  simp only [Entities.sliceAtLevel.sliceAtLevel]
+  let slice' := ((List.filterMap (Map.find? entities) work.elts).map λ ed => Entities.sliceAtLevel.sliceAtLevel entities ed.sliceEUIDs n).mapUnion id
+  have ⟨ _, hc ⟩ := Set.mem_union_iff_mem_or work slice' euid
   apply hc
   simp [hw]
 
@@ -243,38 +234,26 @@ If an entity is reachable in `n` steps, then it must be included in slice at
 `n`. This lemma talks about the inner slicing function, so it's possible that
 the entity isn't in the original entities if it's in `work`.
 -/
-theorem slice_contains_reachable {n: Nat} {work : Set EntityUID} {euid : EntityUID} {entities : Entities} {slice : Set EntityUID}
-  (hw : ReachableIn entities work euid (n + 1))
-  (hs : Entities.sliceAtLevel.sliceAtLevel entities work (n + 1) = some slice) :
-  euid ∈ slice
+theorem slice_contains_reachable {n: Nat} {work : Set EntityUID} {euid : EntityUID} {entities : Entities}
+  (hw : ReachableIn entities work euid (n + 1)) :
+  euid ∈ Entities.sliceAtLevel.sliceAtLevel entities work (n + 1)
 := by
   cases hw
   case in_start hw =>
-    exact in_work_then_in_slice hw hs
+    exact in_work_then_in_slice hw
   case step ed euid' hf hi hw =>
-    unfold Entities.sliceAtLevel.sliceAtLevel at hs
-    cases hs₁ : (List.mapM (Map.find? entities) work.elts) <;>
-      simp only [hs₁, Option.bind_none_fun, reduceCtorEq] at hs
-    rename_i eds
-    cases hs₂ : Option.map (List.mapUnion id) (List.mapM (λ x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs n) eds) <;>
-      simp only [hs₂, Option.map_eq_map, Option.bind_eq_bind, Option.bind_some_fun, Option.bind_none, reduceCtorEq, Option.bind_some, Option.some.injEq] at hs
-    subst hs
-    rename_i slice'
-    cases hs₃ : List.mapM (λ x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs n) eds <;>
-      simp only [hs₃, Option.map_some, Option.some.injEq, Option.map_none, reduceCtorEq] at hs₂
-    subst hs₂
+    simp only [Entities.sliceAtLevel.sliceAtLevel]
+    let slice' := ((List.filterMap (Map.find? entities) work.elts).map λ ed => Entities.sliceAtLevel.sliceAtLevel entities ed.sliceEUIDs n).mapUnion id
     rw [Set.mem_union_iff_mem_or]
     right
-    have ⟨ ed, hi₁, hf₁ ⟩ := List.mapM_some_implies_all_some hs₁ _ hi
-    have ⟨ slice, _, hs ⟩ := List.mapM_some_implies_all_some hs₃ _ hi₁
-    rw [hf₁] at hf ; injections hf ; subst hf
-    cases hs₄ : Entities.sliceAtLevel.sliceAtLevel entities ed.sliceEUIDs n <;>
-      simp only [hs₄, reduceCtorEq, Option.some.injEq] at hs
     cases n
     case _ => cases hw
     case _ n' =>
-      have ih := slice_contains_reachable hw hs₄
-      rw [Set.mem_mapUnion_iff_mem_exists]
-      subst hs
-      rename_i ed_slice _
-      exists ed_slice
+      simp only [Set.mem_mapUnion_iff_mem_exists, List.mem_map, List.mem_filterMap]
+      exists Entities.sliceAtLevel.sliceAtLevel entities ed.sliceEUIDs (n' + 1)
+      and_intros
+      · exists ed
+        and_intros
+        · exists euid'
+        · rfl
+      · exact slice_contains_reachable hw

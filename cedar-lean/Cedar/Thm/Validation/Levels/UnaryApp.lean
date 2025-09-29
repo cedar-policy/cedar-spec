@@ -32,18 +32,17 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem level_based_slicing_is_sound_unary_app {op : UnaryOp} {e : Expr} {n : Nat} {c₀ c₁: Capabilities} {env : TypeEnv} {request : Request} {entities slice : Entities}
-  (hs : slice = entities.sliceAtLevel request n)
+theorem level_based_slicing_is_sound_unary_app {op : UnaryOp} {e : Expr} {n : Nat} {c₀ c₁: Capabilities} {env : TypeEnv} {request : Request} {entities : Entities}
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : InstanceOfWellFormedEnvironment request entities env)
   (ht : typeOf (.unaryApp op e) c₀ env = Except.ok (tx, c₁))
   (hl : tx.AtLevel env n)
   (ihe : TypedAtLevelIsSound e)
-  : evaluate (.unaryApp op e) request entities = evaluate (.unaryApp op e) request slice
+  : evaluate (.unaryApp op e) request entities = evaluate (.unaryApp op e) request (entities.sliceAtLevel request n)
 := by
   replace ⟨hc₁, tx₁, ty, c₁', htx, htx₁, ht⟩ := type_of_unary_inversion ht
   subst tx
   cases hl
   rename_i hl₁
-  specialize ihe hs hc hr htx₁ hl₁
+  specialize ihe hc hr htx₁ hl₁
   simp [evaluate, ihe]
