@@ -428,6 +428,41 @@ theorem filterMap_sortedBy [LT β] [StrictLT β] [DecidableLT β] {f : α → β
         rw [← h₁ x hd' hgx]
         exact sortedBy_implies_head_lt_tail h₂ x hx
 
+theorem filterMap_key_id_sortedBy_key {α β : Type} [LT α] [StrictLT α] [DecidableLT α] {ks : List α} {fn : α → Option β}
+  (hs : ks.Sorted) :
+  (ks.filterMap (λ k => do (some (k, ←fn k)))).SortedBy Prod.fst
+:= by
+  apply (filterMap_sortedBy · hs)
+  intro k kv hf
+  cases hk : fn k
+  case none =>
+    simp [hk] at hf
+  case some k' =>
+    simp only [hk, Option.bind_some_fun, Option.some.injEq] at hf
+    simp [←hf]
+
+theorem find?_filterMap_key_id {α β : Type} [BEq α] [LawfulBEq α] {ks : List α} {fn : α → Option β} {k: α}
+  (h₂ : k ∈ ks) :
+  ((ks.filterMap (λ k => do (k, ←fn k))).find? (λ ⟨k', _⟩ => k' == k)).map Prod.snd = fn k
+:= by
+  simp
+  cases h₃ : (List.find? (fun a => Option.any (fun x => x.fst == k) ((fn a).bind fun __do_lift => some (a, __do_lift))) ks)
+  · replace h₃ := List.find?_eq_none.mp h₃ k h₂
+    have h₄ : fn k = none := by
+      cases h₄ : (fn k) <;> simp [h₄] at h₃ ⊢
+    simp [h₄]
+  · rename_i k'
+    simp only [Option.bind_some, Function.comp_apply, Option.map_bind]
+    have h₄ : (fn k').bind (Option.map Prod.snd ∘  λ x' => some (k', x')) = (fn k') := by
+      cases (fn k') <;> simp
+    rw [h₄]
+    replace h₃ := List.find?_some h₃
+    have hk : k' = k := by
+      cases hk : fn k'
+      · simp [hk] at h₃
+      · simpa [hk] using h₃
+    simp [hk]
+
 theorem mapM_key_id_sortedBy_key {α β : Type} [LT α] {ks : List α} {kvs : List (α × β)} {fn : α → Option β}
   (hm : ks.mapM (λ k => do (some (k, ←fn k))) = some kvs)
   (hs : ks.Sorted) :

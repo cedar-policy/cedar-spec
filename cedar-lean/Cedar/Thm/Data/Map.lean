@@ -639,6 +639,51 @@ theorem find?_mapM_key_id {α β : Type} [BEq α] [LawfulBEq α] {ks : List α} 
     · simp only [beq_iff_eq] at h₃
       simp [h₃, ←hf]
 
+theorem find?_filterMap_key_id {α β : Type} [BEq α] [LawfulBEq α] {ks : List α} {fn : α → Option β} {k: α}
+  (h₂ : k ∈ ks) :
+  (Map.mk (ks.filterMap (λ k => do (k, ←fn k)))).find? k = fn k
+:= by
+  simp only [Map.find?, Map.kvs]
+  have h₃ := List.find?_filterMap_key_id (fn := fn) h₂
+  simp only [Option.map] at h₃
+  split at h₃
+  all_goals
+    rename_i h₄
+    rw [h₄]
+    exact h₃
+
+theorem filterMap_key_id_key_none_implies_find?_none {α β : Type} [DecidableEq α] [LT α] [StrictLT α] [DecidableLT α] {ks : List α} {fn : α → Option β} {k: α}
+  (h₁ : fn k = none) :
+  (Map.make (ks.filterMap (λ k => do some (k, ←fn k)))).find? k = none
+:= by
+  suffices h : (Map.mk (ks.filterMap (λ k => do some (k, ←fn k)))).find? k = none from by
+    simp only [Map.find?_none_iff_all_absent] at ⊢ h
+    intro v
+    simp only [Map.make, Map.kvs]
+    exact mt List.in_canonicalize_in_list $ h v
+
+  cases h₂ : decide (k ∈ ks)
+  case false =>
+    simp only [decide_eq_false_iff_not] at h₂
+    simp only [find?, kvs]
+    have h₃ : ∀ x ∈ ks, ¬Option.any (λ x => x.fst == k) (do some (x, ←fn x)) = true := by
+      intro x hx₁
+      simp only [Option.any, Bool.not_eq_true]
+      cases fn x <;> simp only [Option.bind_none_fun, Option.bind_some_fun, beq_eq_false_iff_ne, ne_eq]
+      intro hx₂
+      rw [hx₂] at hx₁
+      simp [hx₁] at h₂
+    have h₄ := (@List.find?_eq_none _ (λ a => Option.any (λ x => x.fst == k) (do some (a, ←fn a))) ks).mpr h₃
+    simp only [Option.bind_eq_bind] at h₄
+    simp [h₄]
+  case true =>
+    simp only [decide_eq_true_eq] at h₂
+    replace h₂ := find?_filterMap_key_id (fn := fn) h₂
+    rw [h₂]
+    exact h₁
+
+
+
 theorem mapM_key_id_key_none_implies_find?_none {α β : Type} [DecidableEq α] [LT α] [StrictLT α] [DecidableLT α] {ks : List α} {kvs : List (α × β)} {fn : α → Option β} {k: α}
   (h₂ : ks.mapM (λ k => do (k, ←fn k)) = some kvs)
   (h₁ : fn k = none) :

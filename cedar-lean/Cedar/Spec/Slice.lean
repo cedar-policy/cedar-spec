@@ -40,14 +40,14 @@ def Request.sliceEUIDs (r : Request) : Set EntityUID :=
   Set.make [r.principal, r.action, r.resource] ∪
   (Value.record r.context).sliceEUIDs
 
-def Entities.sliceAtLevel (es : Entities) (r : Request) (level : Nat) : Option Entities := do
-  let slice ← sliceAtLevel r.sliceEUIDs level
-  let slice ← slice.elts.mapM λ e => do some (e, ←(es.find? e))
-  some (Map.make slice)
+def Entities.sliceAtLevel (es : Entities) (r : Request) (level : Nat) : Entities :=
+  let slice := sliceAtLevel r.sliceEUIDs level
+  let slice := slice.elts.filterMap λ e => do some (e, ←(es.find? e))
+  Map.make slice
 where
-  sliceAtLevel (work : Set EntityUID) : Nat → Option (Set EntityUID)
-    | 0 => some ∅
-    | level + 1 => do
-      let eds ← work.elts.mapM es.find?
-      let slice ← List.mapUnion id <$> eds.mapM (λ ed => sliceAtLevel ed.sliceEUIDs level)
-      some (work ∪ slice)
+  sliceAtLevel (work : Set EntityUID) : Nat → Set EntityUID
+    | 0 => ∅
+    | level + 1 =>
+      let eds := work.elts.filterMap es.find?
+      let slice := List.mapUnion id $ eds.map (λ ed => sliceAtLevel ed.sliceEUIDs level)
+      work ∪ slice

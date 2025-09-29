@@ -27,9 +27,10 @@ pub fn run_check_never_errors(
 ) -> Result<(), ExecError> {
     let lean_context = CedarLeanFfi::new();
     let req_envs = request_env.to_request_envs(&schema)?;
+    let schema = lean_context.load_lean_schema_object(&schema)?;
     let mut results = Vec::new();
     for req_env in req_envs.iter() {
-        results.push(lean_context.run_check_never_errors(&policy, &schema, req_env)?);
+        results.push(lean_context.run_check_never_errors(&policy, schema.clone(), req_env)?);
     }
     print_check_never_errors_results(&results, &req_envs, request_env);
     Ok(())
@@ -43,9 +44,10 @@ pub fn run_check_always_allows(
 ) -> Result<(), ExecError> {
     let lean_context = CedarLeanFfi::new();
     let req_envs = request_env.to_request_envs(&schema)?;
+    let schema = lean_context.load_lean_schema_object(&schema)?;
     let mut results = Vec::new();
     for req_env in req_envs.iter() {
-        results.push(lean_context.run_check_always_allows(&policyset, &schema, req_env)?);
+        results.push(lean_context.run_check_always_allows(&policyset, schema.clone(), req_env)?);
     }
     print_check_always_allows_results(&results, &req_envs, request_env);
     Ok(())
@@ -59,9 +61,10 @@ pub fn run_check_always_denies(
 ) -> Result<(), ExecError> {
     let lean_context = CedarLeanFfi::new();
     let req_envs = request_env.to_request_envs(&schema)?;
+    let schema = lean_context.load_lean_schema_object(&schema)?;
     let mut results = Vec::new();
     for req_env in req_envs.iter() {
-        results.push(lean_context.run_check_always_denies(&policyset, &schema, req_env)?);
+        results.push(lean_context.run_check_always_denies(&policyset, schema.clone(), req_env)?);
     }
     print_check_always_denies_results(&results, &req_envs, request_env);
     Ok(())
@@ -76,12 +79,13 @@ pub fn run_check_equivalent(
 ) -> Result<(), ExecError> {
     let lean_context = CedarLeanFfi::new();
     let req_envs = request_env.to_request_envs(&schema)?;
+    let schema = lean_context.load_lean_schema_object(&schema)?;
     let mut results = Vec::new();
     for req_env in req_envs.iter() {
         results.push(lean_context.run_check_equivalent(
             &src_policyset,
             &tgt_policyset,
-            &schema,
+            schema.clone(),
             req_env,
         )?);
     }
@@ -99,12 +103,13 @@ pub fn run_check_implies(
 ) -> Result<(), ExecError> {
     let lean_context = CedarLeanFfi::new();
     let req_envs = request_env.to_request_envs(&schema)?;
+    let schema = lean_context.load_lean_schema_object(&schema)?;
     let mut results = Vec::new();
     for req_env in req_envs.iter() {
         results.push(lean_context.run_check_implies(
             &src_policyset,
             &tgt_policyset,
-            &schema,
+            schema.clone(),
             req_env,
         )?);
     }
@@ -120,12 +125,13 @@ pub fn run_check_disjoint(
 ) -> Result<(), ExecError> {
     let lean_context = CedarLeanFfi::new();
     let req_envs = request_env.to_request_envs(&schema)?;
+    let schema = lean_context.load_lean_schema_object(&schema)?;
     let mut results = Vec::new();
     for req_env in req_envs.iter() {
         results.push(lean_context.run_check_disjoint(
             &src_policyset,
             &tgt_policyset,
-            &schema,
+            schema.clone(),
             req_env,
         )?);
     }
@@ -141,6 +147,7 @@ pub fn print_check_never_errors(
 ) -> Result<(), ExecError> {
     let lean_context = CedarLeanFfi::new();
     let req_envs = request_env.to_request_envs(&schema)?;
+    let schema = lean_context.load_lean_schema_object(&schema)?;
     for req_env in req_envs {
         println!(";;");
         println!(
@@ -148,7 +155,7 @@ pub fn print_check_never_errors(
             ReqEnv::Env(req_env.clone())
         );
         println!(";;");
-        lean_context.print_check_never_errors(&policy, &schema, &req_env)?;
+        lean_context.print_check_never_errors(&policy, schema.clone(), &req_env)?;
         println!();
     }
     Ok(())
@@ -162,6 +169,7 @@ pub fn print_check_always_allows(
 ) -> Result<(), ExecError> {
     let lean_context = CedarLeanFfi::new();
     let req_envs = request_env.to_request_envs(&schema)?;
+    let schema = lean_context.load_lean_schema_object(&schema)?;
     for req_env in req_envs {
         println!(";;");
         println!(
@@ -169,7 +177,7 @@ pub fn print_check_always_allows(
             ReqEnv::Env(req_env.clone())
         );
         println!(";;");
-        lean_context.print_check_always_allows(&policyset, &schema, &req_env)?;
+        lean_context.print_check_always_allows(&policyset, schema.clone(), &req_env)?;
         println!();
     }
     Ok(())
@@ -183,6 +191,7 @@ pub fn print_check_always_denies(
 ) -> Result<(), ExecError> {
     let lean_context = CedarLeanFfi::new();
     let req_envs = request_env.to_request_envs(&schema)?;
+    let schema = lean_context.load_lean_schema_object(&schema)?;
     for req_env in req_envs {
         println!(";;");
         println!(
@@ -190,7 +199,7 @@ pub fn print_check_always_denies(
             ReqEnv::Env(req_env.clone())
         );
         println!(";;");
-        lean_context.print_check_always_denies(&policyset, &schema, &req_env)?;
+        lean_context.print_check_always_denies(&policyset, schema.clone(), &req_env)?;
         println!();
     }
     Ok(())
@@ -205,6 +214,7 @@ pub fn print_check_equivalent(
 ) -> Result<(), ExecError> {
     let lean_context = CedarLeanFfi::new();
     let req_envs = request_env.to_request_envs(&schema)?;
+    let schema = lean_context.load_lean_schema_object(&schema)?;
     for req_env in req_envs {
         println!(";;");
         println!(
@@ -212,7 +222,12 @@ pub fn print_check_equivalent(
             ReqEnv::Env(req_env.clone())
         );
         println!(";;");
-        lean_context.print_check_equivalent(&src_policyset, &tgt_policyset, &schema, &req_env)?;
+        lean_context.print_check_equivalent(
+            &src_policyset,
+            &tgt_policyset,
+            schema.clone(),
+            &req_env,
+        )?;
         println!();
     }
     Ok(())
@@ -227,6 +242,7 @@ pub fn print_check_implies(
 ) -> Result<(), ExecError> {
     let lean_context = CedarLeanFfi::new();
     let req_envs = request_env.to_request_envs(&schema)?;
+    let schema = lean_context.load_lean_schema_object(&schema)?;
     for req_env in req_envs {
         println!(";;");
         println!(
@@ -234,7 +250,12 @@ pub fn print_check_implies(
             ReqEnv::Env(req_env.clone())
         );
         println!(";;");
-        lean_context.print_check_implies(&src_policyset, &tgt_policyset, &schema, &req_env)?;
+        lean_context.print_check_implies(
+            &src_policyset,
+            &tgt_policyset,
+            schema.clone(),
+            &req_env,
+        )?;
         println!();
     }
     Ok(())
@@ -249,6 +270,7 @@ pub fn print_check_disjoint(
 ) -> Result<(), ExecError> {
     let lean_context = CedarLeanFfi::new();
     let req_envs = request_env.to_request_envs(&schema)?;
+    let schema = lean_context.load_lean_schema_object(&schema)?;
     for req_env in req_envs {
         println!(";;");
         println!(
@@ -256,7 +278,12 @@ pub fn print_check_disjoint(
             ReqEnv::Env(req_env.clone())
         );
         println!(";;");
-        lean_context.print_check_disjoint(&src_policyset, &tgt_policyset, &schema, &req_env)?;
+        lean_context.print_check_disjoint(
+            &src_policyset,
+            &tgt_policyset,
+            schema.clone(),
+            &req_env,
+        )?;
         println!();
     }
     Ok(())
