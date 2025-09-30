@@ -429,7 +429,7 @@ impl From<TermVar> for cedar_policy_symcc::term::TermVar {
 impl From<Uuf> for cedar_policy_symcc::op::Uuf {
     fn from(value: Uuf) -> Self {
         Self {
-            id: value.id,
+            id: value.id.into(),
             arg: value.arg.into(),
             out: value.out.into(),
         }
@@ -763,7 +763,7 @@ impl From<cedar_policy_symcc::term::TermPrim> for TermPrim {
 impl From<cedar_policy_symcc::op::Uuf> for Uuf {
     fn from(value: cedar_policy_symcc::op::Uuf) -> Self {
         Self {
-            id: value.id,
+            id: value.id.into(),
             arg: value.arg.into(),
             out: value.out.into(),
         }
