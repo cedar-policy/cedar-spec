@@ -29,7 +29,7 @@ use std::fmt::Display;
 use std::sync::Arc;
 
 /// Data structure representing a generated policy (or template)
-#[derive(Debug, Clone, Serialize)]
+#[derive(Clone, Serialize)]
 // `GeneratedPolicy` is now a bit of a misnomer: it may have slots depending on
 // how it is generated, e.g., the `allow_slots` parameter to
 // `arbitrary_for_hierarchy()`. But as of this writing, it feels like renaming
@@ -206,6 +206,13 @@ impl Display for GeneratedPolicy {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let t: Template = self.clone().into();
         write!(f, "{t}")
+    }
+}
+
+// Use `Display` implentation for `Debug` so we see Cedar policy syntax in fuzz target error reports.
+impl std::fmt::Debug for GeneratedPolicy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self}")
     }
 }
 

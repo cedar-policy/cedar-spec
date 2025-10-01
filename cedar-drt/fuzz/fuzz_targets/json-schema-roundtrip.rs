@@ -55,7 +55,7 @@ impl<'a> Arbitrary<'a> for Input {
         let namespace = arb_schema.schema;
         let name = arb_schema.namespace;
 
-        let schema = json_schema::Fragment(BTreeMap::from([(name, namespace)]));
+        let schema = json_schema::Fragment(BTreeMap::from([(name, namespace.0)]));
 
         Ok(Self { schema })
     }

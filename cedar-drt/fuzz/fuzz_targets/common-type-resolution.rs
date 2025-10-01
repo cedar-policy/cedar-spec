@@ -55,7 +55,7 @@ const SETTINGS: ABACSettings = ABACSettings {
 impl<'a> Arbitrary<'a> for Input {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
         let arb_schema = Schema::arbitrary(SETTINGS.clone(), u)?;
-        let namespace = &arb_schema.schema;
+        let namespace = &arb_schema.schema.0;
         let name = &arb_schema.namespace;
 
         let schema = json_schema::Fragment(BTreeMap::from([(name.clone(), namespace.clone())]));
