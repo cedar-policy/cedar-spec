@@ -420,7 +420,7 @@ pub enum Term {
 impl From<TermVar> for cedar_policy_symcc::term::TermVar {
     fn from(value: TermVar) -> Self {
         Self {
-            id: value.id.to_string(),
+            id: value.id,
             ty: value.ty.into(),
         }
     }
