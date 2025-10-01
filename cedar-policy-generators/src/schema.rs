@@ -40,12 +40,13 @@ use cedar_policy_core::validator::{
 };
 use smol_str::{SmolStr, ToSmolStr};
 use std::collections::BTreeMap;
+use std::ops::Deref;
 
 /// Contains the schema, but also pools of constants etc
 #[derive(Debug, Clone)]
 pub struct Schema {
     /// actual underlying schema
-    pub schema: json_schema::NamespaceDefinition<ast::InternalName>,
+    pub schema: DebugSchemaAsCedar,
     /// Namespace for the schema, as an `ast::Name`
     pub namespace: Option<ast::Name>,
     /// settings
@@ -77,6 +78,24 @@ pub struct Schema {
     /// isn't Hash or Ord
     attributes_by_type: HashMap<Type, Vec<(ast::EntityType, SmolStr)>>,
     entitytypes_by_type: HashMap<ast::EntityType, json_schema::EntityType<ast::InternalName>>,
+}
+
+/// Wrapper so that we pretty print schema in the Cedar schema syntax in debug output for fuzz target failures.
+#[derive(Clone)]
+pub struct DebugSchemaAsCedar(pub json_schema::NamespaceDefinition<ast::InternalName>);
+
+impl Deref for DebugSchemaAsCedar {
+    type Target = json_schema::NamespaceDefinition<ast::InternalName>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl std::fmt::Debug for DebugSchemaAsCedar {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
 }
 
 /// internal helper function, basically `impl Arbitrary for AttributesOrContext`
@@ -980,7 +999,7 @@ impl Schema {
                 })
                 .collect(),
             namespace,
-            schema: nsdef,
+            schema: DebugSchemaAsCedar(nsdef),
         })
     }
 
@@ -1319,7 +1338,7 @@ impl Schema {
             })
             .collect();
         Ok(Schema {
-            schema: nsdef,
+            schema: DebugSchemaAsCedar(nsdef),
             namespace,
             constant_pool: u
                 .arbitrary()
@@ -1733,14 +1752,14 @@ impl Schema {
 
     /// Get the underlying schema file, as a String containing JSON
     pub fn schemafile_string(&self) -> String {
-        serde_json::to_string_pretty(&self.schema)
+        serde_json::to_string_pretty(&self.schema.0)
             .expect("failed to serialize schema NamespaceDefinition")
     }
 }
 
 impl From<Schema> for json_schema::Fragment<ast::InternalName> {
     fn from(schema: Schema) -> json_schema::Fragment<ast::InternalName> {
-        json_schema::Fragment(BTreeMap::from_iter([(schema.namespace, schema.schema)]))
+        json_schema::Fragment(BTreeMap::from_iter([(schema.namespace, schema.schema.0)]))
     }
 }
 
