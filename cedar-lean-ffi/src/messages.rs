@@ -209,7 +209,7 @@ impl proto::RequestValidationRequest {
 impl proto::Uuf {
     pub(crate) fn new(uuf: &datatypes::Uuf) -> Self {
         Self {
-            id: uuf.id.clone(),
+            id: uuf.id.to_string(),
             arg: Some(proto::TermType::new(&uuf.arg)),
             out: Some(proto::TermType::new(&uuf.out)),
         }
@@ -450,7 +450,7 @@ impl proto::term_type::RecordType {
 impl proto::TermVar {
     pub(crate) fn new(var: &datatypes::TermVar) -> Self {
         Self {
-            id: var.id.clone(),
+            id: var.id.to_string(),
             ty: Some(proto::TermType::new(&var.ty)),
         }
     }

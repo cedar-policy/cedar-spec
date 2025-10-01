@@ -80,15 +80,15 @@ impl<T> From<OptionDef<T>> for Option<T> {
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct NameDef {
-    id: String,
-    path: Vec<String>,
+    id: SmolStr,
+    path: Vec<SmolStr>,
 }
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct EntityUidDef {
     #[serde(deserialize_with = "deserialize_entity_type_name")]
     ty: EntityTypeName,
-    eid: String,
+    eid: SmolStr,
 }
 
 /********************************** Deserialization Helpers **********************************/
@@ -221,7 +221,7 @@ pub enum ValidationResponse {
 
 #[derive(Debug, Deserialize)]
 pub struct Uuf {
-    pub id: String,
+    pub id: SmolStr,
     pub arg: TermType,
     pub out: TermType,
 }
@@ -373,7 +373,7 @@ pub enum TermType {
 
 #[derive(Debug, Deserialize)]
 pub struct TermVar {
-    pub id: String,
+    pub id: SmolStr,
     pub ty: TermType,
 }
 
@@ -429,7 +429,7 @@ impl From<TermVar> for cedar_policy_symcc::term::TermVar {
 impl From<Uuf> for cedar_policy_symcc::op::Uuf {
     fn from(value: Uuf) -> Self {
         Self {
-            id: value.id.into(),
+            id: value.id,
             arg: value.arg.into(),
             out: value.out.into(),
         }
@@ -844,7 +844,7 @@ impl From<cedar_policy_symcc::op::Op> for Op {
 impl From<cedar_policy_symcc::term::TermVar> for TermVar {
     fn from(value: cedar_policy_symcc::term::TermVar) -> Self {
         Self {
-            id: value.id,
+            id: value.id.into(),
             ty: value.ty.into(),
         }
     }
