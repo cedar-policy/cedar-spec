@@ -89,13 +89,14 @@ fuzz_target!(|input: FuzzTargetInput| {
 
     if let Ok(schema) = Schema::try_from(input.schema) {
         let lean_schema = lean_ffi.load_lean_schema_object(&schema).unwrap();
+        let lean_policyset = lean_ffi.load_lean_policyset_object(&policyset).unwrap();
         for req_env in schema.request_envs() {
             // Compute's SMTLib Script Directly in one-pass from Lean
-            match lean_ffi.smtlib_of_check_always_allows(&policyset, lean_schema.clone(), &req_env)
+            match lean_ffi.smtlib_of_check_always_allows(lean_policyset.clone(), lean_schema.clone(), &req_env)
             {
                 Ok(smtlib1) => {
                     // Get intermediate term representation of the Asserts / Verification conditions from Lean
-                    match lean_ffi.asserts_of_check_always_allows(&policyset, lean_schema.clone(), &req_env) {
+                    match lean_ffi.asserts_of_check_always_allows(lean_policyset.clone(), lean_schema.clone(), &req_env) {
                         Ok(Ok(asserts)) => {
                             // Compute SMTLib script from the intermediate Assertions
                             match lean_ffi.smtlib_of_check_asserts(&asserts, lean_schema.clone(), &req_env) {
@@ -112,7 +113,7 @@ fuzz_target!(|input: FuzzTargetInput| {
                 Err(e) => {
                     // Check that either the generation of asserts or checking the asserts errors
                     match lean_ffi.asserts_of_check_always_allows(
-                        &policyset,
+                        lean_policyset.clone(),
                         lean_schema.clone(),
                         &req_env,
                     ) {

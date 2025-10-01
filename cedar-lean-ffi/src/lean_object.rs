@@ -250,6 +250,23 @@ pub unsafe fn call_lean_ffi_bi_function(
     ret
 }
 
+pub unsafe fn call_lean_ffi_tri_function(
+    func: unsafe extern "C" fn(*mut lean_object, *mut lean_object, *mut lean_object) -> *mut lean_object,
+    arg0: OwnedLeanObject,
+    arg1: OwnedLeanObject,
+    arg2: OwnedLeanObject,
+) -> OwnedLeanObject {
+    let ret = OwnedLeanObject(func(arg0.0, arg1.0, arg2.0));
+    // Since `func` "takes ownership" of `arg`, we need to not decrement the
+    // refcount on `arg` ourselves when it is dropped. So we `mem::forget` it to
+    // prevent the `Drop` impl from running. Effectively, Lean has dropped it
+    // for us.
+    std::mem::forget(arg0);
+    std::mem::forget(arg1);
+    std::mem::forget(arg2);
+    ret
+}
+
 /// Call a Lean FFI function that is assumed to take a Protobuf message as
 /// argument
 pub unsafe fn call_lean_ffi_takes_protobuf(
@@ -267,4 +284,14 @@ pub unsafe fn call_lean_ffi_takes_obj_and_protobuf(
 ) -> OwnedLeanObject {
     let arg1 = OwnedLeanObject::new_array_from_buf(&arg1.encode_to_vec());
     call_lean_ffi_bi_function(func, arg0, arg1)
+}
+
+pub unsafe fn call_lean_ffi_takes_two_objs_and_protobuf(
+    func: unsafe extern "C" fn(*mut lean_object, *mut lean_object, *mut lean_object) -> *mut lean_object,
+    arg0: OwnedLeanObject,
+    arg1: OwnedLeanObject,
+    arg2: &impl Message,
+) -> OwnedLeanObject {
+    let arg2 = OwnedLeanObject::new_array_from_buf(&arg2.encode_to_vec());
+    call_lean_ffi_tri_function(func, arg0, arg1, arg2)
 }

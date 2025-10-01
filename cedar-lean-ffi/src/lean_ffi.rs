@@ -19,7 +19,7 @@ use crate::datatypes::{
 };
 use crate::err::FfiError;
 use crate::lean_object::{
-    call_lean_ffi_takes_obj_and_protobuf, call_lean_ffi_takes_protobuf, OwnedLeanObject,
+    call_lean_ffi_takes_obj_and_protobuf, call_lean_ffi_takes_protobuf, call_lean_ffi_takes_two_objs_and_protobuf, OwnedLeanObject,
 };
 use crate::messages::*;
 
@@ -83,10 +83,12 @@ extern "C" {
     ) -> *mut lean_object;
     fn smtLibOfCheckAlwaysAllows(
         schema: *mut lean_object,
+        policies: *mut lean_object,
         req: *mut lean_object,
     ) -> *mut lean_object;
     fn smtLibOfCheckAlwaysDenies(
         schema: *mut lean_object,
+        policies: *mut lean_object,
         req: *mut lean_object,
     ) -> *mut lean_object;
     fn smtLibOfCheckEquivalent(schema: *mut lean_object, req: *mut lean_object)
@@ -119,6 +121,7 @@ extern "C" {
     ) -> *mut lean_object;
     fn assertsOfCheckAlwaysAllows(
         schema: *mut lean_object,
+        policies: *mut lean_object,
         req: *mut lean_object,
     ) -> *mut lean_object;
     fn assertsOfCheckAlwaysAllowsOnOriginal(
@@ -127,6 +130,7 @@ extern "C" {
     ) -> *mut lean_object;
     fn assertsOfCheckAlwaysDenies(
         schema: *mut lean_object,
+        policies: *mut lean_object,
         req: *mut lean_object,
     ) -> *mut lean_object;
     fn assertsOfCheckAlwaysDeniesOnOriginal(
@@ -157,6 +161,7 @@ extern "C" {
     fn initialize_CedarFFI(builtin: u8, ob: *mut lean_object) -> *mut lean_object;
 
     fn loadProtobufSchema(req: *mut lean_object) -> *mut lean_object;
+    fn loadProtobufPolicySet(req: *mut lean_object) -> *mut lean_object;
 
     #[cfg(test)]
     static ffiTestString: *mut lean_object;
@@ -169,6 +174,10 @@ extern "C" {
 /// New type wrapper around a `OwnedLeanObject` containing a schema which has already been parsed into a Lean object.
 #[derive(Clone, Debug)]
 pub struct LeanSchema(OwnedLeanObject);
+
+/// New type wrapper around a `OwnedLeanObject` containing a policy set which has already been parsed into a Lean object.
+#[derive(Clone, Debug)]
+pub struct LeanPolicySet(OwnedLeanObject);
 
 /// Lean can only be initialized once, use a static variable to know if lean backend needs
 /// to be initialized
@@ -341,6 +350,45 @@ macro_rules! checkAsserts_func {
             request_env: &RequestEnv,
         ) -> Result<$ret_ty, FfiError> {
             Ok(self.$timed_func_name(asserts, schema, request_env)?.take_result())
+        }
+    };
+}
+
+/// A macro for functions that take pre-parsed policy sets and schema objects
+macro_rules! checkPolicySetParsed_func {
+    ($timed_func_name:ident, $untimed_func_name:ident, $lean_func_name:ident, $transform:ident, $ret_ty:ty) => {
+        checkPolicySetParsed_func!(@internal $timed_func_name, $untimed_func_name, $lean_func_name, $transform, $ret_ty);
+    };
+    ($timed_func_name:ident, $untimed_func_name:ident, $lean_func_name:ident, $transform:expr, $ret_ty:ty) => {
+        checkPolicySetParsed_func!(@internal $timed_func_name, $untimed_func_name, $lean_func_name, $transform, $ret_ty);
+    };
+    (@internal $timed_func_name:ident, $untimed_func_name:ident, $lean_func_name:ident, $transform:expr, $ret_ty:ty) => {
+        pub fn $timed_func_name(
+            &self,
+            lean_policyset: LeanPolicySet,
+            lean_schema: LeanSchema,
+            request_env: &RequestEnv,
+        ) -> Result<TimedResult<$ret_ty>, FfiError> {
+            let response = unsafe {
+                call_lean_ffi_takes_two_objs_and_protobuf(
+                    $lean_func_name,
+                    lean_schema.0,
+                    lean_policyset.0,
+                    &proto::RequestEnv::from(request_env),
+                )
+            };
+            match response.as_borrowed().deserialize_into()? {
+                ResultDef::Ok(t) => Ok(TimedResult::from_def(t).transform($transform)),
+                ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
+            }
+        }
+        pub fn $untimed_func_name(
+            &self,
+            lean_policyset: LeanPolicySet,
+            lean_schema: LeanSchema,
+            request_env: &RequestEnv,
+        ) -> Result<$ret_ty, FfiError> {
+            Ok(self.$timed_func_name(lean_policyset, lean_schema, request_env)?.take_result())
         }
     };
 }
@@ -558,7 +606,7 @@ impl CedarLeanFfi {
         Result<Vec<Term>, String>
     );
 
-    checkPolicySet_func!(
+    checkPolicySetParsed_func!(
         asserts_of_check_always_allows_timed,
         asserts_of_check_always_allows,
         assertsOfCheckAlwaysAllows,
@@ -574,7 +622,7 @@ impl CedarLeanFfi {
         Result<Vec<Term>, String>
     );
 
-    checkPolicySet_func!(
+    checkPolicySetParsed_func!(
         asserts_of_check_always_denies_timed,
         asserts_of_check_always_denies,
         assertsOfCheckAlwaysDenies,
@@ -647,7 +695,7 @@ impl CedarLeanFfi {
         String
     );
 
-    checkPolicySet_func!(
+    checkPolicySetParsed_func!(
         smtlib_of_check_always_allows_timed,
         smtlib_of_check_always_allows,
         smtLibOfCheckAlwaysAllows,
@@ -655,7 +703,7 @@ impl CedarLeanFfi {
         String
     );
 
-    checkPolicySet_func!(
+    checkPolicySetParsed_func!(
         smtlib_of_check_always_denies_timed,
         smtlib_of_check_always_denies,
         smtLibOfCheckAlwaysDenies,
@@ -953,6 +1001,21 @@ impl CedarLeanFfi {
         };
         match lean_schema_object.as_borrowed().as_result()? {
             Ok(lean_ok_obj) => Ok(LeanSchema(lean_ok_obj.to_owned())),
+            Err(lean_err_obj) => Err(FfiError::LeanBackendError(
+                lean_err_obj.as_rust_str()?.to_string(),
+            )),
+        }
+    }
+
+    pub fn load_lean_policyset_object(&self, policyset: &PolicySet) -> Result<LeanPolicySet, FfiError> {
+        let lean_policyset_object = unsafe {
+            call_lean_ffi_takes_protobuf(
+                loadProtobufPolicySet,
+                &cedar_policy::proto::models::PolicySet::from(policyset),
+            )
+        };
+        match lean_policyset_object.as_borrowed().as_result()? {
+            Ok(lean_ok_obj) => Ok(LeanPolicySet(lean_ok_obj.to_owned())),
             Err(lean_err_obj) => Err(FfiError::LeanBackendError(
                 lean_err_obj.as_rust_str()?.to_string(),
             )),
