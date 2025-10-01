@@ -1320,7 +1320,7 @@ impl ExprGenerator<'_> {
             .iter()
             .map(|param_ty| self.generate_expr_for_type(param_ty, max_depth, u))
             .collect::<Result<_>>()?;
-        if self.settings.enable_arbitrary_func_call && u.ratio::<u8>(1, 10)? {
+        if self.settings.enable_arbitrary_func_call && u.ratio::<u8>(1, 20)? {
             let last_param_ty = func
                 .parameter_types
                 .last()
