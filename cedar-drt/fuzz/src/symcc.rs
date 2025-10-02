@@ -16,8 +16,9 @@
 
 use cedar_policy::{Policy, PolicySet, RequestEnv, Schema};
 use cedar_policy_symcc::{
-    solver::LocalSolver, Asserts, CedarSymCompiler, SymEnv, WellFormedAsserts, WellTypedPolicies,
-    WellTypedPolicy,
+    err::{EncodeError, Error},
+    solver::LocalSolver,
+    Asserts, CedarSymCompiler, SymEnv, WellFormedAsserts, WellTypedPolicies, WellTypedPolicy,
 };
 
 /// Compile a well-typed policy set to `Asserts`
@@ -98,6 +99,20 @@ pub trait ValidationTask: Sync {
                     .await;
                 // Ensure the solver process is reaped.
                 let clean_up_result = compiler.solver_mut().clean_up().await;
+                let check_result = match check_result {
+                    Ok(_) => Ok(()),
+                    // SMT-LIB only supports a limited set of unicode
+                    Err(err)
+                        if matches!(
+                            err.as_ref(),
+                            Error::EncodeError(EncodeError::EncodePatternFailed(_))
+                                | Error::EncodeError(EncodeError::EncodeStringFailed(_))
+                        ) =>
+                    {
+                        Ok(())
+                    }
+                    Err(err) => Err(err),
+                };
                 check_result?;
                 clean_up_result.map_err(|e| Box::new(e.into()))
             } else {
