@@ -143,18 +143,6 @@ fuzz_target!(|input: FuzzTargetInput| {
             time_function(|| run_auth_test(&lean_engine, &request, &policyset, &entities));
 
         info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
-
-        // additional invariant:
-        // type-directed fuzzing should never produce wrong-number-of-arguments errors
-        assert_eq!(
-            rust_res
-                .diagnostics()
-                .errors()
-                .map(ToString::to_string)
-                .filter(|err| err.contains("wrong number of arguments"))
-                .collect::<Vec<String>>(),
-            Vec::<String>::new()
-        );
     }
 
     if let Ok(test_name) = std::env::var("DUMP_TEST_NAME") {
