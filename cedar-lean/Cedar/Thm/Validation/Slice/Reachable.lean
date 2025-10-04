@@ -47,7 +47,7 @@ theorem checked_eval_entity_lit_is_action {p : Prim} {n nmax : Nat} {c c' : Capa
 := by
   cases p
   case entityUID =>
-    replace he : euid = env.reqty.action := by
+    replace he : euid = env.sig.action := by
       replace ⟨ _, ht ⟩ := type_of_lit_inversion ht
       rw [ht] at hel
       cases hel
