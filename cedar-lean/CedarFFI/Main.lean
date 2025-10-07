@@ -20,6 +20,7 @@ import Cedar.Spec
 import Cedar.Validation
 import Cedar.SymCC
 import CedarProto
+import Cedar.TPE
 import Protobuf
 
 import CedarFFI.ToJson
@@ -31,7 +32,9 @@ namespace CedarFFI
 
 open Cedar.Spec
 open Cedar.SymCC
+open Cedar.TPE
 open Cedar.Validation
+open Cedar.Proto
 open Proto
 
 abbrev FfiM α := ExceptT String IO α
@@ -798,6 +801,58 @@ private def ignoreOutput (vc : SymEnv → Cedar.SymCC.Result Cedar.SymCC.Asserts
     let inner_buffer ← buffer.swap ⟨ByteArray.empty, 0⟩
     let data := (String.fromUTF8? inner_buffer.data).getD ""
     return ({ data := data, duration := r.duration } : Timed String)
+
+/--
+  `req`: binary protobuf for an `BatchedEvaluationRequest`
+  Upon success returns inputs to `batchedEvaluate`
+  Returns a failure if
+  1.) Protobuf message could not be parsed
+  2.) Cannot derive a request environment from the request
+  3.) Request cannot be validated
+  4.) Policy cannot be validated
+  5.) Policy set contains more than one policy (a limitation at this moment)
+-/
+def parseBatchedEvaluationReq (req : ByteArray) : Except String (Cedar.Validation.TypedExpr × Cedar.Spec.Request × Cedar.Spec.Entities × Nat) := do
+  let req ← (@Message.interpret? BatchedEvaluationRequest) req |>.mapError (s!"failed to parse input: {·}")
+  let policySet := req.policies
+  let policy ← match policySet with
+    | [policy] => .ok policy
+    | _ => .error s!"only one policy is expected"
+  let schema := req.schema
+  let request := req.request
+  let entities := req.entities
+  let iteration := req.iteration.toNat
+  let expr ← match schema.environment? request.principal.ty request.resource.ty request.action with
+    | .some env =>
+      if requestIsValid env request.asPartialRequest then do
+        let expr := substituteAction env.reqty.action policy.toExpr
+        let (te, _) ← (typeOf expr ∅ env).mapError (fun err => s!"invalid policy: {reprStr err}")
+        .ok te
+      else
+        .error s!"invalid request"
+    | .none => .error s!"invalid environment derived from request"
+  return (expr, request, entities, iteration)
+
+/--
+  `req`: binary protobuf for an `CheckPolicySetRequest`
+
+  returns JSON encoded of `Option Bool`
+  1.) .error err_message if there was in error in parsing `req`
+  2.) .ok {data, ..} where data is of type `Option Bool`. It is true when the
+      result residual is `.val true`; and it is false when the result residual
+      is either `.val false` or `.error _`. So we can interpret the boolean
+      value as if the policy takes effect or not
+-/
+@[export batchedEvaluateFFI] unsafe def batchedEvaluateFFI (req : ByteArray) : String :=
+  runFfiM do
+    let (expr, request, entities, iteration) ← parseBatchedEvaluationReq req
+    runAndTime (λ () => match batchedEvaluate expr request (entityLoaderFor entities) iteration with
+    | .val v _ => match v.asBool with
+      | .ok b => (.some b : Option Bool)
+      | .error _ => .none
+    | .error _ => (.some false)
+    | _ => .none
+    )
 
 --------------------------------- FFI Test Utils ---------------------------------
 /- Some definitions used to test lean object decoding in Rust -/
