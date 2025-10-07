@@ -209,7 +209,7 @@ impl proto::RequestValidationRequest {
 impl proto::Uuf {
     pub(crate) fn new(uuf: &datatypes::Uuf) -> Self {
         Self {
-            id: uuf.id.clone(),
+            id: uuf.id.to_string(),
             arg: Some(proto::TermType::new(&uuf.arg)),
             out: Some(proto::TermType::new(&uuf.out)),
         }
@@ -450,7 +450,7 @@ impl proto::term_type::RecordType {
 impl proto::TermVar {
     pub(crate) fn new(var: &datatypes::TermVar) -> Self {
         Self {
-            id: var.id.clone(),
+            id: var.id.to_string(),
             ty: Some(proto::TermType::new(&var.ty)),
         }
     }
@@ -566,6 +566,24 @@ impl proto::CheckAssertsRequest {
         Self {
             asserts: Some(proto::Asserts::new(asserts)),
             request: Some(proto::RequestEnv::from(request)),
+        }
+    }
+}
+
+impl proto::BatchedEvaluationRequest {
+    pub(crate) fn new(
+        policies: &PolicySet,
+        schema: &Schema,
+        request: &Request,
+        entities: &Entities,
+        iteration: u32,
+    ) -> Self {
+        Self {
+            policies: Some(cedar_policy::proto::models::PolicySet::from(policies)),
+            schema: Some(cedar_policy::proto::models::Schema::from(schema)),
+            request: Some(cedar_policy::proto::models::Request::from(request)),
+            entities: Some(cedar_policy::proto::models::Entities::from(entities)),
+            iteration,
         }
     }
 }

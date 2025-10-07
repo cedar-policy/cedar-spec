@@ -11,7 +11,7 @@ cargo-fuzz = true
 libfuzzer-sys = "0.4"
 cedar-drt = { path = "..", version = "4.4.0" }
 cedar-lean-ffi = { path = "../../cedar-lean-ffi", version = "4.4.0" }
-cedar-policy = { version = "4.4.0", features = ["permissive-validate", "entity-manifest"] }
+cedar-policy = { version = "4.4.0", features = ["permissive-validate", "entity-manifest", "tpe"] }
 cedar-policy-core = { version = "4.4.0", features = ["arbitrary", "tpe"] }
 cedar-policy-formatter = "4.4.0"
 cedar-policy-symcc = "*"
@@ -250,3 +250,58 @@ name = "symcc-cex-pbt"
 path = "fuzz_targets/symcc-cex-pbt.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "batched-evaluation-drt"
+path = "fuzz_targets/batched-evaluation-drt.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "batched-evaluation-pbt"
+path = "fuzz_targets/batched-evaluation-pbt.rs"
+test = false
+doc = false
+
+
+[[bin]]
+name = "symcc-check-always-allows-ok"
+path = "fuzz_targets/symcc-check-always-allows-ok.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "symcc-check-never-errors-ok"
+path = "fuzz_targets/symcc-check-never-errors-ok.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "symcc-check-always-denies-ok"
+path = "fuzz_targets/symcc-check-always-denies-ok.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "symcc-check-implies-ok"
+path = "fuzz_targets/symcc-check-implies-ok.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "symcc-check-equivalent-ok"
+path = "fuzz_targets/symcc-check-equivalent-ok.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "symcc-check-disjoint-ok"
+path = "fuzz_targets/symcc-check-disjoint-ok.rs"
+test = false
+doc = false
+bench = false

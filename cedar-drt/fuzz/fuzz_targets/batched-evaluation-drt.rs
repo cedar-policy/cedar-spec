@@ -15,16 +15,10 @@
  */
 
 #![no_main]
-use cedar_drt::{
-    dump::dump,
-    logger::{initialize_log, TOTAL_MSG},
-    tests::{drop_some_entities, run_auth_test},
-    CedarLeanEngine,
-};
-
+use cedar_drt::{logger::initialize_log, CedarLeanEngine};
 use cedar_drt_inner::{fuzz_target, schemas};
 
-use cedar_policy::{Authorizer, Entities, Policy, PolicyId, PolicySet, Schema, SchemaFragment};
+use cedar_policy::{Entities, Policy, PolicySet, Schema, TestEntityLoader};
 
 use cedar_policy_generators::{
     abac::{ABACPolicy, ABACRequest},
@@ -33,15 +27,9 @@ use cedar_policy_generators::{
     schema,
     settings::ABACSettings,
 };
+use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 
-use cedar_testing::cedar_test_impl::time_function;
-
-use libfuzzer_sys::arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
-use log::{debug, info};
-use std::convert::TryFrom;
-
-/// Input expected by this fuzz target:
-/// An ABAC hierarchy, policy, and 8 associated requests
+/// Input expected by this fuzz target
 #[derive(Debug, Clone)]
 pub struct FuzzTargetInput {
     /// generated schema
@@ -59,8 +47,8 @@ pub struct FuzzTargetInput {
 const SETTINGS: ABACSettings = ABACSettings {
     match_types: true,
     enable_extensions: true,
-    max_depth: 3,
-    max_width: 3,
+    max_depth: 7,
+    max_width: 7,
     enable_additional_attributes: false,
     enable_like: true,
     enable_action_groups_and_attrs: true,
@@ -89,8 +77,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
         ];
         let all_entities = Entities::try_from(hierarchy).map_err(|_| Error::NotEnoughData)?;
         let cedar_schema = Schema::try_from(schema.clone()).unwrap();
-        let entities = drop_some_entities(all_entities.into(), u)?.into();
-        let entities = schemas::add_actions_to_entities(&cedar_schema, entities)?;
+        let entities = schemas::add_actions_to_entities(&cedar_schema, all_entities)?;
         Ok(Self {
             schema,
             entities,
@@ -101,7 +88,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 
     fn try_size_hint(
         depth: usize,
-    ) -> std::result::Result<(usize, Option<usize>), MaxRecursionReached> {
+    ) -> arbitrary::Result<(usize, Option<usize>), arbitrary::MaxRecursionReached> {
         Ok(arbitrary::size_hint::and_all(&[
             schema::Schema::arbitrary_size_hint(depth)?,
             HierarchyGenerator::size_hint(depth),
@@ -118,55 +105,44 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
     }
 }
 
-// Type-directed fuzzing of ABAC hierarchy/policy/requests.
+// This target tests a property that batched evaluation, if succeeds, should
+// produce the same authorization decision based on the Lean model output
 fuzz_target!(|input: FuzzTargetInput| {
+    let ffi = CedarLeanEngine::new();
     initialize_log();
-    let lean_engine = CedarLeanEngine::new();
-    let mut policyset = PolicySet::new();
-    let policy: Policy = input.policy.into();
-    policyset.add(policy.clone()).unwrap();
-    debug!("Schema: {}\n", input.schema.schemafile_string());
-    debug!("Policies: {policyset}\n");
-    debug!("Entities: {}\n", input.entities.as_ref());
 
-    let requests = input
-        .requests
-        .into_iter()
-        .map(Into::into)
-        .collect::<Vec<_>>();
-
-    let entities = input.entities.into();
-
-    for request in requests.iter() {
-        debug!("Request : {request}");
-        let (rust_res, total_dur) =
-            time_function(|| run_auth_test(&lean_engine, &request, &policyset, &entities));
-
-        info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
-    }
-
-    if let Ok(test_name) = std::env::var("DUMP_TEST_NAME") {
-        // When the corpus is re-parsed, the policy will be given id "policy0".
-        // Recreate the policy set and compute responses here to account for this.
+    if let Ok(schema) = Schema::try_from(input.schema) {
+        let policy = Policy::from(input.policy);
         let mut policyset = PolicySet::new();
-        let policy = policy.new_id(PolicyId::new("policy0"));
-        policyset.add(policy).unwrap();
-        let responses = requests
-            .iter()
-            .map(|request| {
-                let authorizer = Authorizer::new();
-                authorizer.is_authorized(request, &policyset, &entities)
-            })
-            .collect::<Vec<_>>();
-        let dump_dir = std::env::var("DUMP_TEST_DIR").unwrap_or_else(|_| ".".to_string());
-        dump(
-            dump_dir,
-            &test_name,
-            &SchemaFragment::try_from(input.schema).unwrap(),
-            &policyset,
-            &entities,
-            std::iter::zip(requests, responses),
-        )
-        .expect("failed to dump test case");
+        policyset.add(policy.clone()).unwrap();
+        let mut loader = TestEntityLoader::new(&input.entities);
+        log::debug!("policy: {policyset}");
+        let iteration = (SETTINGS.max_depth + 1) as u32;
+
+        for req in input.requests {
+            let req = req.into();
+            log::debug!("req: {req}");
+            // We need to start with an `Ok` result of Rust because the
+            // validation DRT property is if Rust validations, then Lean also
+            // does. `is_authorized_batched` validates policies/request/entities
+            if let Ok(rust_decision) =
+                policyset.is_authorized_batched(&req, &schema, &mut loader, iteration)
+            {
+                match ffi.get_ffi().batched_evaluation(
+                    &policy,
+                    &schema,
+                    &req,
+                    &input.entities,
+                    iteration,
+                ) {
+                    Ok(lean_decision) => {
+                        assert_eq!(lean_decision, Some(rust_decision));
+                    }
+                    Err(err) => {
+                        panic!("lean failed but rust didn't: {err}");
+                    }
+                }
+            }
+        }
     }
 });

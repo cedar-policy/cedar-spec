@@ -24,7 +24,8 @@ use crate::lean_object::{
 use crate::messages::*;
 
 use cedar_policy::{
-    Entities, Expression, Policy, PolicySet, Request, RequestEnv, Schema, ValidationMode,
+    Decision, Effect, Entities, Expression, Policy, PolicySet, Request, RequestEnv, Schema,
+    ValidationMode,
 };
 use lean_sys::{
     lean_dec, lean_dec_ref, lean_finalize_thread, lean_initialize_runtime_module_locked,
@@ -150,6 +151,8 @@ extern "C" {
         schema: *mut lean_object,
         req: *mut lean_object,
     ) -> *mut lean_object;
+
+    fn batchedEvaluateFFI(req: *mut lean_object) -> *mut lean_object;
 
     fn initialize_CedarFFI(builtin: u8, ob: *mut lean_object) -> *mut lean_object;
 
@@ -894,6 +897,52 @@ impl CedarLeanFfi {
         request: &Request,
     ) -> Result<ValidationResponse, FfiError> {
         Ok(self.validate_request_timed(schema, request)?.take_result())
+    }
+
+    /// Calls the lean backend to perform batched evaluation on a single policy
+    pub fn batched_evaluation_timed(
+        &self,
+        policy: &Policy,
+        schema: &Schema,
+        request: &Request,
+        entities: &Entities,
+        iteration: u32,
+    ) -> Result<TimedResult<Option<Decision>>, FfiError> {
+        // We have to construct a policy set because we don't have protobuf encoding of policy yet
+        let policyset = PolicySet::from_policies(std::iter::once(policy.clone()))
+            .expect("policy set construction should succeed");
+        let response = unsafe {
+            call_lean_ffi_takes_protobuf(
+                batchedEvaluateFFI,
+                &proto::BatchedEvaluationRequest::new(
+                    &policyset, schema, request, entities, iteration,
+                ),
+            )
+        };
+        match response.as_borrowed().deserialize_into()? {
+            ResultDef::Ok(res) => Ok(TimedResult::from_def(res).transform(|b: Option<bool>| {
+                match (b, policy.effect()) {
+                    (Some(true), Effect::Permit) => Some(Decision::Allow),
+                    (Some(_), _) | (None, Effect::Forbid) => Some(Decision::Deny),
+                    // We can't make any conclusions for this case
+                    (None, Effect::Permit) => None,
+                }
+            })),
+            ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
+        }
+    }
+
+    pub fn batched_evaluation(
+        &self,
+        policy: &Policy,
+        schema: &Schema,
+        request: &Request,
+        entities: &Entities,
+        iteration: u32,
+    ) -> Result<Option<Decision>, FfiError> {
+        Ok(self
+            .batched_evaluation_timed(policy, schema, request, entities, iteration)?
+            .take_result())
     }
 
     pub fn load_lean_schema_object(&self, schema: &Schema) -> Result<LeanSchema, FfiError> {
@@ -1796,5 +1845,198 @@ mod test {
             ffi.run_check_disjoint_timed(&ps, &ps_new, schema, &req_env),
             Ok(TimedResult { result: false, .. })
         );
+    }
+
+    #[test]
+    fn test_batched_evaluation() {
+        let schema = Schema::from_str(
+            r#"
+            namespace Taxpreparer {
+  type orgInfo = {
+    organization: String,
+    serviceline: String,
+    location: String,
+  };
+  // A tax-preparing professional
+  entity Professional = { 
+    assigned_orgs: Set<orgInfo>,
+    location: String,
+  };
+  // A client's tax document
+  entity Document = {
+    serviceline: String,
+    location: String,
+    owner: Client,
+  };
+  // A client 
+  entity Client = {
+    organization: String
+  };
+
+  action viewDocument appliesTo {
+    principal: [Professional],
+    resource: [Document],
+  };
+}
+        "#,
+        )
+        .expect("valid schema");
+        let policy = Policy::from_str(
+            r#"
+        // Rule 1a: organization-level access
+permit (
+  principal,
+  action == Taxpreparer::Action::"viewDocument",
+  resource
+)
+when
+{
+  principal.assigned_orgs
+    .contains
+    (
+      {organization
+       :resource.owner.organization,
+       serviceline
+       :resource.serviceline,
+       location
+       :resource.location}
+    )
+};
+        "#,
+        )
+        .expect("valid policy");
+        let entities = Entities::from_json_value(
+            serde_json::json!([
+                {
+                    "uid": {
+                        "type": "Taxpreparer::Professional",
+                        "id": "Alice"
+                    },
+                    "attrs": {
+                        "location": "IAD",
+                        "assigned_orgs": [
+                            {
+                                "organization": "org-1",
+                                "serviceline": "corporate",
+                                "location": "IAD"
+                            }
+                        ]
+                    },
+                    "parents": []
+                },
+                {
+                    "uid": {
+                        "type": "Taxpreparer::Professional",
+                        "id": "Bob"
+                    },
+                    "attrs": {
+                        "location": "JFK",
+                        "assigned_orgs": [
+                            {
+                                "organization": "org-1",
+                                "serviceline": "corporate",
+                                "location": "JFK"
+                            }
+                        ]
+                    },
+                    "parents": []
+                },
+                {
+                    "uid": {
+                        "type": "Taxpreparer::Client",
+                        "id": "Ramon"
+                    },
+                    "attrs": {
+                        "organization": "org-1"
+                    },
+                    "parents": []
+                },
+                {
+                    "uid": {
+                        "type": "Taxpreparer::Document",
+                        "id": "ABC"
+                    },
+                    "attrs": {
+                        "serviceline": "corporate",
+                        "location": "IAD",
+                        "owner": {
+                            "type": "Taxpreparer::Client",
+                            "id": "Ramon"
+                        }
+                    },
+                    "parents": []
+                },
+                {
+                    "uid": {
+                        "type": "Taxpreparer::Document",
+                        "id": "DEF"
+                    },
+                    "attrs": {
+                        "serviceline": "corporate",
+                        "location": "JFK",
+                        "owner": {
+                            "type": "Taxpreparer::Client",
+                            "id": "Ramon"
+                        }
+                    },
+                    "parents": []
+                }
+            ]),
+            Some(&schema),
+        )
+        .expect("valid entities");
+        let request = Request::new(
+            "Taxpreparer::Professional::\"Alice\"".parse().unwrap(),
+            "Taxpreparer::Action::\"viewDocument\"".parse().unwrap(),
+            "Taxpreparer::Document::\"ABC\"".parse().unwrap(),
+            Context::empty(),
+            None,
+        )
+        .expect("valid request");
+        let ffi = CedarLeanFfi::new();
+        assert_matches!(
+            ffi.batched_evaluation(&policy, &schema, &request, &entities, 3),
+            Ok(Some(cedar_policy::Decision::Allow))
+        );
+    }
+
+    #[test]
+    fn empty_record_encoding() {
+        let schema = Schema::from_str(
+            r#"
+            entity V;
+entity N;
+entity V3 = {
+  "x": {}
+};
+action "" appliesTo {
+  principal: [N],
+  resource: [V],
+  context: {}
+};
+            "#,
+        )
+        .unwrap();
+        let pset = PolicySet::from_str(
+            r#"
+            permit(
+  principal,
+  action in [Action::""],
+  resource
+) when {
+  {} == (V3::"".x)
+};
+            "#,
+        )
+        .unwrap();
+        let request_env = request_env("N", "Action::\"\"", "V");
+        let ffi = CedarLeanFfi::new();
+        assert!(!ffi
+            .run_check_always_denies(
+                &pset,
+                ffi.load_lean_schema_object(&schema).unwrap(),
+                &request_env
+            )
+            .unwrap());
     }
 }
