@@ -38,13 +38,20 @@ use cedar_policy_symcc::{
     SymEnv, WellFormedAsserts,
 };
 
-use std::sync::LazyLock;
+use std::sync::{LazyLock, Mutex};
 
 static RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
     tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .unwrap()
+});
+
+static SOLVER: LazyLock<Mutex<CedarSymCompiler<LocalSolver>>> = LazyLock::new(|| {
+    Mutex::new(
+        CedarSymCompiler::new(LocalSolver::cvc5().expect("CVC5 should exist"))
+            .expect("solver construction should succeed"),
+    )
 });
 
 /// Input expected by this fuzz target
@@ -96,27 +103,17 @@ fn get_cex(
     always_denies_asserts: &WellFormedAsserts<'_>,
 ) -> Result<(Option<Env>, Option<Env>), String> {
     RUNTIME.block_on(async {
-        let mut solver = CedarSymCompiler::new(LocalSolver::cvc5().expect("CVC5 should exist"))
-            .expect("solver construction should succeed");
-
         let always_allow_result = timeout(
             Duration::from_secs(1),
-            solver.check_sat(always_allows_asserts),
+            SOLVER.lock().unwrap().check_sat(always_allows_asserts),
         )
         .await;
 
         let always_deny_result = timeout(
             Duration::from_secs(1),
-            solver.check_sat(always_denies_asserts),
+            SOLVER.lock().unwrap().check_sat(always_denies_asserts),
         )
         .await;
-
-        // Clean up the local solver process
-        solver
-            .solver_mut()
-            .clean_up()
-            .await
-            .map_err(|e| e.to_string())?;
 
         match (always_allow_result, always_deny_result) {
             (
