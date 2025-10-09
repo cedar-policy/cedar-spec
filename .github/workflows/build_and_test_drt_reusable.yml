@@ -72,4 +72,4 @@ jobs:
         run: source ~/.profile && source ../set_env_vars.sh && cargo test -- --nocapture
       - name: dry run fuzz targets
         working-directory: ./cedar-spec/cedar-drt
-        run: source ~/.profile && source ../set_env_vars.sh && ./dry_run_fuzz_targets.sh
+        run: source ~/.profile && source set_env_vars.sh && ./dry_run_fuzz_targets.sh
