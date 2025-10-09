@@ -18,6 +18,7 @@ mod prt;
 #[cfg(not(feature = "prt"))]
 pub use libfuzzer_sys::fuzz_target;
 
+pub mod abac;
 pub mod roundtrip_entities;
 pub mod schemas;
 pub mod symcc;
