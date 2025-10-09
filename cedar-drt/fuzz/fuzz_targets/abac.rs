@@ -22,107 +22,18 @@ use cedar_drt::{
     CedarLeanEngine,
 };
 
-use cedar_drt_inner::{fuzz_target, schemas};
+use cedar_drt_inner::{abac::FuzzTargetInput, fuzz_target};
 
-use cedar_policy::{Authorizer, Entities, Policy, PolicyId, PolicySet, Request, SchemaFragment};
-
-use cedar_policy_generators::{
-    abac::{ABACPolicy, ABACRequest},
-    err::Error,
-    hierarchy::HierarchyGenerator,
-    schema::Schema,
-    settings::ABACSettings,
-};
+use cedar_policy::{Authorizer, Policy, PolicyId, PolicySet, Request, SchemaFragment};
 
 use cedar_testing::cedar_test_impl::time_function;
 
-use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
+use libfuzzer_sys::arbitrary::{Arbitrary, Unstructured};
 use log::{debug, info};
 use std::convert::TryFrom;
 
-/// Input expected by this fuzz target:
-/// An ABAC hierarchy, policy, and 8 associated requests
-#[derive(Debug, Clone)]
-pub struct FuzzTargetInput {
-    /// generated schema
-    pub schema: Schema,
-    /// generated hierarchy
-    pub entities: Entities,
-    /// generated policy
-    pub policy: ABACPolicy,
-    /// the requests to try for this hierarchy and policy. We try 8 requests per
-    /// policy/hierarchy
-    pub requests: [ABACRequest; 8],
-}
-
-/// settings for this fuzz target
-const SETTINGS: ABACSettings = ABACSettings {
-    match_types: false,
-    enable_extensions: true,
-    max_depth: 3,
-    max_width: 7,
-    enable_additional_attributes: false,
-    enable_like: true,
-    // ABAC fuzzing restricts the use of action because it is used to generate
-    // the corpus tests which will be run on Cedar and CedarCLI.
-    // These packages only expose the restricted action behavior.
-    enable_action_groups_and_attrs: false,
-    enable_arbitrary_func_call: true,
-    enable_unknowns: false,
-    enable_action_in_constraints: true,
-    per_action_request_env_limit: ABACSettings::default_per_action_request_env_limit(),
-    total_action_request_env_limit: ABACSettings::default_total_action_request_env_limit(),
-};
-
-impl<'a> Arbitrary<'a> for FuzzTargetInput {
-    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        let schema = Schema::arbitrary(SETTINGS.clone(), u)?;
-        let hierarchy = schema.arbitrary_hierarchy(u)?;
-        let policy = schema.arbitrary_policy(&hierarchy, u)?;
-        let requests = [
-            schema.arbitrary_request(&hierarchy, u)?,
-            schema.arbitrary_request(&hierarchy, u)?,
-            schema.arbitrary_request(&hierarchy, u)?,
-            schema.arbitrary_request(&hierarchy, u)?,
-            schema.arbitrary_request(&hierarchy, u)?,
-            schema.arbitrary_request(&hierarchy, u)?,
-            schema.arbitrary_request(&hierarchy, u)?,
-            schema.arbitrary_request(&hierarchy, u)?,
-        ];
-
-        let cedar_schema = cedar_policy::Schema::try_from(schema.clone()).unwrap();
-        let entities = Entities::try_from(hierarchy).map_err(|_| Error::NotEnoughData)?;
-        let entities = schemas::add_actions_to_entities(&cedar_schema, entities)?;
-
-        Ok(Self {
-            schema,
-            entities,
-            policy,
-            requests,
-        })
-    }
-
-    fn try_size_hint(
-        depth: usize,
-    ) -> arbitrary::Result<(usize, Option<usize>), arbitrary::MaxRecursionReached> {
-        Ok(arbitrary::size_hint::and_all(&[
-            Schema::arbitrary_size_hint(depth)?,
-            HierarchyGenerator::size_hint(depth),
-            Schema::arbitrary_policy_size_hint(&SETTINGS, depth),
-            Schema::arbitrary_request_size_hint(depth),
-            Schema::arbitrary_request_size_hint(depth),
-            Schema::arbitrary_request_size_hint(depth),
-            Schema::arbitrary_request_size_hint(depth),
-            Schema::arbitrary_request_size_hint(depth),
-            Schema::arbitrary_request_size_hint(depth),
-            Schema::arbitrary_request_size_hint(depth),
-            Schema::arbitrary_request_size_hint(depth),
-        ]))
-    }
-}
-
 // Simple fuzzing of ABAC hierarchy/policy/requests without respect to types.
-fuzz_target!(|input: FuzzTargetInput| {
+fuzz_target!(|input: FuzzTargetInput<false>| {
     initialize_log();
     let mut policyset = PolicySet::new();
     let policy = Policy::from(input.policy);
