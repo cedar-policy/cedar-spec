@@ -16,14 +16,14 @@
 
 #![no_main]
 use cedar_drt::logger::initialize_log;
-use cedar_drt_inner::{abac, fuzz_target};
-use cedar_policy::{Entities, Entity, EntityUid};
+use cedar_drt_inner::{abac, fuzz_target, tpe::entities_to_partial_entities};
+use cedar_policy::Entities;
 use cedar_policy_core::{
-    ast::{self, Expr, Request, RequestSchema, Value},
+    ast::{self, Expr, Request, RequestSchema},
     evaluator::Evaluator,
     extensions::Extensions,
     tpe::{
-        entities::{PartialEntities, PartialEntity},
+        entities::PartialEntities,
         is_authorized,
         request::{PartialEntityUID, PartialRequest},
     },
@@ -32,8 +32,7 @@ use cedar_policy_core::{
 use cedar_policy_generators::abac::ABACRequest;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
-use ref_cast::RefCast;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::HashMap;
 use std::convert::TryFrom;
 
 /// Input expected by this fuzz target:
@@ -110,64 +109,6 @@ fn passes_request_validation(schema: &ValidatorSchema, request: &ast::Request) -
         .is_ok()
 }
 
-fn entity_to_partial_entity(
-    entity: &Entity,
-    u: &mut Unstructured<'_>,
-    leafs: &HashSet<EntityUid>,
-) -> arbitrary::Result<PartialEntity> {
-    Ok(PartialEntity {
-        uid: entity.as_ref().uid().clone(),
-        attrs: if u.ratio(1, 4)? {
-            None
-        } else {
-            Some(BTreeMap::from_iter(entity.as_ref().attrs().map(
-                |(k, v)| (k.clone(), Value::try_from(v.clone()).unwrap()),
-            )))
-        },
-        ancestors: if leafs.contains(&entity.uid()) {
-            if u.ratio(1, 4)? {
-                None
-            } else {
-                Some(HashSet::from_iter(entity.as_ref().ancestors().cloned()))
-            }
-        } else {
-            Some(HashSet::from_iter(entity.as_ref().ancestors().cloned()))
-        },
-        tags: if u.ratio(1, 4)? {
-            None
-        } else {
-            Some(BTreeMap::from_iter(entity.as_ref().tags().map(|(k, v)| {
-                (k.clone(), Value::try_from(v.clone()).unwrap())
-            })))
-        },
-    })
-}
-
-fn entities_to_partial_entities<'a>(
-    entities: impl Iterator<Item = &'a Entity>,
-    u: &mut Unstructured<'_>,
-) -> arbitrary::Result<PartialEntities> {
-    let entities: HashSet<Entity> = HashSet::from_iter(entities.cloned());
-    let mut leafs: HashSet<_> = entities.iter().map(|e| e.uid().clone()).collect();
-    for e in &entities {
-        for a in e.as_ref().ancestors() {
-            leafs.remove(RefCast::ref_cast(a));
-        }
-    }
-    Ok(PartialEntities::from_entities_unchecked(
-        entities
-            .iter()
-            .map(|e| {
-                Ok((
-                    e.uid().as_ref().clone(),
-                    entity_to_partial_entity(e, u, &leafs)?,
-                ))
-            })
-            .collect::<arbitrary::Result<Vec<(ast::EntityUID, PartialEntity)>>>()?
-            .into_iter(),
-    ))
-}
-
 fn test_weak_equiv(residual: &Expr, e: &Expr, req: &Request, entities: &Entities) -> bool {
     let eval = Evaluator::new(req.clone(), entities.as_ref(), Extensions::all_available());
     let slots = HashMap::new();
@@ -196,7 +137,8 @@ fuzz_target!(|input: FuzzTargetInput| {
         let passes_strict = passes_policy_validation(&validator, &policyset);
         if passes_strict {
             for e in input.partial_entities.entities() {
-                e.validate(&schema).expect("entities should be valid");
+                e.validate(&schema)
+                    .unwrap_or_else(|_| panic!("entities should be valid: {e:#?}"));
             }
             let mut partial_entities = input.partial_entities;
             partial_entities
