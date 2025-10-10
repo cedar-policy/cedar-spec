@@ -4,5 +4,8 @@
 # seed.  Not intended to find bugs in the code under test, just to exercise the
 # targets and catch any silly mistakes in their implementation.
 
+set -e
+set -o pipefail
+
 cargo fuzz build -s none
-cargo fuzz list | xargs -n 1 -I{} cargo fuzz run  -s none {} -- -seed=1 -runs=100
+cargo fuzz list | xargs -I{} cargo fuzz run  -s none {} -- -seed=1 -runs=100
