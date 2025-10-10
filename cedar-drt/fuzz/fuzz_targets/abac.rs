@@ -28,7 +28,6 @@ use cedar_policy::{Authorizer, Policy, PolicyId, PolicySet, Request, SchemaFragm
 
 use cedar_testing::cedar_test_impl::time_function;
 
-use libfuzzer_sys::arbitrary::{Arbitrary, Unstructured};
 use log::{debug, info};
 use std::convert::TryFrom;
 

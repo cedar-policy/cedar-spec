@@ -23,7 +23,6 @@ use cedar_policy::{
     Schema, Validator,
 };
 
-use libfuzzer_sys::arbitrary::{Arbitrary, Unstructured};
 use log::debug;
 use std::convert::TryFrom;
 

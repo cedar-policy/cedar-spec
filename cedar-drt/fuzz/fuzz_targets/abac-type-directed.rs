@@ -27,7 +27,6 @@ use cedar_drt_inner::{abac::FuzzTargetInput, fuzz_target};
 use cedar_policy::{Authorizer, Policy, PolicyId, PolicySet, SchemaFragment};
 use cedar_testing::cedar_test_impl::time_function;
 
-use libfuzzer_sys::arbitrary::{Arbitrary, Unstructured};
 use log::{debug, info};
 use std::convert::TryFrom;
 

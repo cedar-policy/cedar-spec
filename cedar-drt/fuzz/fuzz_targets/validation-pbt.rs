@@ -24,7 +24,6 @@ use cedar_policy::{
 };
 
 use itertools::Itertools;
-use libfuzzer_sys::arbitrary::{Arbitrary, Unstructured};
 use log::debug;
 use std::convert::TryFrom;
 

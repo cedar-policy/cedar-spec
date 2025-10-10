@@ -229,6 +229,24 @@ test = false
 doc = false
 
 [[bin]]
+name = "tpe-query-action-pbt"
+path = "fuzz_targets/tpe-query-action-pbt.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "tpe-query-principal-pbt"
+path = "fuzz_targets/tpe-query-principal-pbt.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "tpe-query-resource-pbt"
+path = "fuzz_targets/tpe-query-resource-pbt.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "symcc-term-roundtrip-abac-type-directed"
 path = "fuzz_targets/symcc-term-roundtrip-abac-type-directed.rs"
 test = false
