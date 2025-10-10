@@ -21,7 +21,6 @@ use cedar_drt_inner::{abac::FuzzTargetInput, fuzz_target};
 use cedar_policy::{Authorizer, Policy, PolicySet, Schema, TestEntityLoader};
 
 use cedar_policy_core::batched_evaluator::err::BatchedEvalError;
-use libfuzzer_sys::arbitrary::{Arbitrary, Unstructured};
 
 // This target tests a property that batched evaluation, if succeeds, should
 // produce the same authorization decision of normal authorization where the

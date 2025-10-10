@@ -20,8 +20,6 @@ use cedar_drt_inner::{abac::FuzzTargetInput, fuzz_target};
 
 use cedar_policy::{Policy, PolicySet, Schema, TestEntityLoader};
 
-use libfuzzer_sys::arbitrary::{Arbitrary, Unstructured};
-
 // This target tests a property that batched evaluation, if succeeds, should
 // produce the same authorization decision based on the Lean model output
 fuzz_target!(|input: FuzzTargetInput<true>| {

@@ -19,7 +19,6 @@ use cedar_drt_inner::{abac::FuzzTargetInput, fuzz_target};
 
 use cedar_policy::{PolicySet, PrincipalQueryRequest, Request, Validator};
 
-use libfuzzer_sys::arbitrary::{Arbitrary, Unstructured};
 use std::{collections::BTreeSet, convert::TryFrom};
 
 fuzz_target!(|input: FuzzTargetInput<true>| {
