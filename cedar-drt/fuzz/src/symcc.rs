@@ -57,6 +57,12 @@ pub const fn total_action_request_env_limit() -> usize {
     128
 }
 
+/// Creat a local solver suited for fuzzing
+pub fn local_solver() -> Result<cedar_policy_symcc::solver::LocalSolver, String> {
+    cedar_policy_symcc::solver::LocalSolver::cvc5_with_args(["--tlimit-per=60000"])
+        .map_err(|err| err.to_string())
+}
+
 pub trait ValidationTask: Sync {
     type RawInput: Send + Sync;
     type WellTypedInput: Send;

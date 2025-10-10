@@ -19,7 +19,7 @@ use cedar_drt::logger::initialize_log;
 
 use cedar_drt_inner::{
     fuzz_target,
-    symcc::{compile_policies, total_action_request_env_limit},
+    symcc::{compile_policies, local_solver, total_action_request_env_limit},
 };
 
 use cedar_policy::{Authorizer, Decision, Policy, PolicySet, Schema};
@@ -31,11 +31,11 @@ use cedar_policy_generators::{
 use libfuzzer_sys::arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
 use log::debug;
 use std::convert::TryFrom;
-use tokio::time::{timeout, Duration};
+use tokio::time::{error::Elapsed, timeout, Duration};
 
 use cedar_policy_symcc::{
-    compile_always_allows, compile_always_denies, solver::LocalSolver, CedarSymCompiler, Env,
-    SymEnv, WellFormedAsserts,
+    compile_always_allows, compile_always_denies, err::SolverError, solver::LocalSolver,
+    CedarSymCompiler, Env, SymEnv, WellFormedAsserts,
 };
 
 use std::sync::{LazyLock, Mutex};
@@ -49,7 +49,7 @@ static RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
 
 static SOLVER: LazyLock<Mutex<CedarSymCompiler<LocalSolver>>> = LazyLock::new(|| {
     Mutex::new(
-        CedarSymCompiler::new(LocalSolver::cvc5().expect("CVC5 should exist"))
+        CedarSymCompiler::new(local_solver().expect("CVC5 should exist"))
             .expect("solver construction should succeed"),
     )
 });
@@ -98,54 +98,63 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
     }
 }
 
+#[derive(Debug)]
+enum CexError {
+    Solver(SolverError),
+    Timeout(Elapsed),
+    Other(String),
+}
+
 fn get_cex(
     always_allows_asserts: &WellFormedAsserts<'_>,
     always_denies_asserts: &WellFormedAsserts<'_>,
-) -> Result<(Option<Env>, Option<Env>), String> {
+) -> Result<(Option<Env>, Option<Env>), CexError> {
+    // TODO: wrap a single run in a function
     RUNTIME.block_on(async {
         let always_allow_result = timeout(
-            Duration::from_secs(1),
+            Duration::from_secs(60),
             SOLVER.lock().unwrap().check_sat(always_allows_asserts),
         )
         .await;
 
+        let always_allow_result = match always_allow_result {
+            // Propagate any error errors because we shouldn't continue running
+            // the solver if it errors
+            Ok(Err(cedar_policy_symcc::err::Error::SolverError(err))) => Err(CexError::Solver(err)),
+            // Encoding errors are benign
+            Ok(Err(cedar_policy_symcc::err::Error::EncodeError(
+                cedar_policy_symcc::err::EncodeError::EncodeStringFailed(_),
+            )))
+            | Ok(Err(cedar_policy_symcc::err::Error::EncodeError(
+                cedar_policy_symcc::err::EncodeError::EncodePatternFailed(_),
+            ))) => Ok(None),
+            // Propagate any other errors
+            Ok(Err(err)) => Err(CexError::Other(err.to_string())),
+            Ok(Ok(env)) => Ok(env),
+            // If timed out, propagate this error because we now have a
+            // long-running solver and should not continue sending scripts
+            Err(err) => Err(CexError::Timeout(err)),
+        }?;
+
         let always_deny_result = timeout(
-            Duration::from_secs(1),
+            Duration::from_secs(60),
             SOLVER.lock().unwrap().check_sat(always_denies_asserts),
         )
         .await;
 
-        match (always_allow_result, always_deny_result) {
-            (
-                Ok(Err(cedar_policy_symcc::err::Error::EncodeError(
-                    cedar_policy_symcc::err::EncodeError::EncodeStringFailed(_),
-                ))),
-                _,
-            )
-            | (
-                Ok(Err(cedar_policy_symcc::err::Error::EncodeError(
-                    cedar_policy_symcc::err::EncodeError::EncodePatternFailed(_),
-                ))),
-                _,
-            )
-            | (
-                _,
-                Ok(Err(cedar_policy_symcc::err::Error::EncodeError(
-                    cedar_policy_symcc::err::EncodeError::EncodeStringFailed(_),
-                ))),
-            )
-            | (
-                _,
-                Ok(Err(cedar_policy_symcc::err::Error::EncodeError(
-                    cedar_policy_symcc::err::EncodeError::EncodePatternFailed(_),
-                ))),
-            ) => Ok((None, None)),
-            (Ok(res1), Ok(res2)) => Ok((
-                res1.map_err(|err| err.to_string())?,
-                res2.map_err(|err| err.to_string())?,
-            )),
-            _ => Ok((None, None)),
-        }
+        let always_deny_result = match always_deny_result {
+            Ok(Err(cedar_policy_symcc::err::Error::SolverError(err))) => Err(CexError::Solver(err)),
+            Ok(Err(cedar_policy_symcc::err::Error::EncodeError(
+                cedar_policy_symcc::err::EncodeError::EncodeStringFailed(_),
+            )))
+            | Ok(Err(cedar_policy_symcc::err::Error::EncodeError(
+                cedar_policy_symcc::err::EncodeError::EncodePatternFailed(_),
+            ))) => Ok(None),
+            Ok(Err(err)) => Err(CexError::Other(err.to_string())),
+            Ok(Ok(env)) => Ok(env),
+            Err(err) => Err(CexError::Timeout(err)),
+        }?;
+        Ok((always_allow_result, always_deny_result))
     })
 }
 
@@ -208,7 +217,13 @@ fuzz_target!(|input: FuzzTargetInput| {
                             }
                         }
                         Ok((None, None)) => {}
-                        Err(e) => panic!("failing to run checksat: {e}"),
+                        Err(CexError::Solver(err)) => {
+                            panic!("Error running solver: {err}");
+                        }
+                        Err(CexError::Timeout(err)) => {
+                            panic!("Solver timed out: {err}");
+                        }
+                        Err(CexError::Other(err)) => panic!("failing to run checksat: {err}"),
                     }
                 }
             }
