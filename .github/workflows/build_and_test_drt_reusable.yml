@@ -72,6 +72,22 @@ jobs:
         run: source ~/.profile && source ../set_env_vars.sh && cargo test -- --nocapture
       - name: Install cargo-fuzz
         run: cargo install cargo-fuzz
+      - name: Install cvc5
+        shell: bash
+        run: |
+              ARCH=$(uname -m)
+              if [ "$ARCH" = "x86_64" ]; then
+                ARCH_NAME="x86_64"
+              elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+                ARCH_NAME="arm64"
+              else
+                echo "Unsupported architecture: $ARCH"
+                exit 1
+              fi
+              wget https://github.com/cvc5/cvc5/releases/download/cvc5-1.2.1/cvc5-Linux-${ARCH_NAME}-static.zip
+              unzip cvc5-Linux-${ARCH_NAME}-static.zip
+              chmod +x cvc5-Linux-${ARCH_NAME}-static/bin/cvc5
+              echo "CVC5=$GITHUB_WORKSPACE/cvc5-Linux-${ARCH_NAME}-static/bin/cvc5" >> $GITHUB_ENV
       - name: Dry run fuzz targets
         working-directory: ./cedar-spec/cedar-drt
         run: source ~/.profile && source set_env_vars.sh && ./dry_run_fuzz_targets.sh
