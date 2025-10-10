@@ -19,7 +19,7 @@ use cedar_drt::logger::initialize_log;
 
 use cedar_drt_inner::{
     fuzz_target,
-    symcc::{compile_policies, total_action_request_env_limit},
+    symcc::{compile_policies, local_solver, total_action_request_env_limit},
 };
 
 use cedar_policy::{Authorizer, Decision, Policy, PolicySet, Schema};
@@ -49,7 +49,7 @@ static RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
 
 static SOLVER: LazyLock<Mutex<CedarSymCompiler<LocalSolver>>> = LazyLock::new(|| {
     Mutex::new(
-        CedarSymCompiler::new(LocalSolver::cvc5().expect("CVC5 should exist"))
+        CedarSymCompiler::new(local_solver().expect("CVC5 should exist"))
             .expect("solver construction should succeed"),
     )
 });
@@ -124,6 +124,9 @@ fn get_cex(
             // Encoding errors are benign
             Ok(Err(cedar_policy_symcc::err::Error::EncodeError(
                 cedar_policy_symcc::err::EncodeError::EncodeStringFailed(_),
+            )))
+            | Ok(Err(cedar_policy_symcc::err::Error::EncodeError(
+                cedar_policy_symcc::err::EncodeError::EncodePatternFailed(_),
             ))) => Ok(None),
             // Propagate any other errors
             Ok(Err(err)) => Err(CexError::Other(err.to_string())),
@@ -143,6 +146,9 @@ fn get_cex(
             Ok(Err(cedar_policy_symcc::err::Error::SolverError(err))) => Err(CexError::Solver(err)),
             Ok(Err(cedar_policy_symcc::err::Error::EncodeError(
                 cedar_policy_symcc::err::EncodeError::EncodeStringFailed(_),
+            )))
+            | Ok(Err(cedar_policy_symcc::err::Error::EncodeError(
+                cedar_policy_symcc::err::EncodeError::EncodePatternFailed(_),
             ))) => Ok(None),
             Ok(Err(err)) => Err(CexError::Other(err.to_string())),
             Ok(Ok(env)) => Ok(env),
