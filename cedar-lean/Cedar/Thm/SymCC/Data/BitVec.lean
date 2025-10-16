@@ -321,8 +321,7 @@ theorem sdiv_pos_lt_INT64_MAX {bv₁ bv₂ : BitVec 64}
       simp only [BitVec.neg, Int64.MAX, BitVec.udiv_eq, BitVec.udiv_def]
       simp only [Nat.reducePow, toNat_intMin, Nat.add_one_sub_one, Nat.reduceMod, toNat_ofNat,
         gt_iff_lt]
-      simp only [BitVec.ofNat, Nat.reducePow, toInt_ofFin, Fin.val_ofNat, Int.natCast_emod,
-        Int.cast_ofNat_Int]
+      simp only [BitVec.toInt_ofNat', Nat.reducePow]
       simp only [BitVec.msb_eq_false_iff_two_mul_lt] at h₀
       replace h : 1 < bv₂.toNat := by
         simp only [BitVec.toInt, h₀, ↓reduceIte] at h
