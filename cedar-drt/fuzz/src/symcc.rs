@@ -75,7 +75,7 @@ pub fn local_solver() -> Result<cedar_policy_symcc::solver::LocalSolver, String>
             Ok(())
         });
     }
-    cedar_policy_symcc::solver::LocalSolver::cvc5_with_args([""]).map_err(|err| err.to_string())
+    cedar_policy_symcc::solver::LocalSolver::from_command(&mut cmd).map_err(|err| err.to_string())
 }
 
 pub trait ValidationTask: Sync {
