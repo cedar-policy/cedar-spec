@@ -20,6 +20,7 @@ use cedar_policy_symcc::{
     solver::LocalSolver,
     Asserts, CedarSymCompiler, SymEnv, WellFormedAsserts, WellTypedPolicies, WellTypedPolicy,
 };
+use tokio::process::Command;
 
 /// Compile a well-typed policy set to `Asserts`
 pub fn compile_well_typed_policies(
@@ -59,8 +60,22 @@ pub const fn total_action_request_env_limit() -> usize {
 
 /// Creat a local solver suited for fuzzing
 pub fn local_solver() -> Result<cedar_policy_symcc::solver::LocalSolver, String> {
-    cedar_policy_symcc::solver::LocalSolver::cvc5_with_args(["--tlimit-per=60000"])
-        .map_err(|err| err.to_string())
+    let path = std::env::var("CVC5").unwrap_or_else(|_| "cvc5".into());
+    let mut cmd = Command::new(path);
+    // Do not set `tlimit` here and let tokio's `timeout` function handle timeout
+    cmd.args(["--lang", "smt"]);
+    unsafe {
+        cmd.pre_exec(|| {
+            // Set memory limit to 1GB before CVC5 starts
+            let limit = libc::rlimit {
+                rlim_cur: 1024 * 1024 * 1024,
+                rlim_max: 1024 * 1024 * 1024,
+            };
+            libc::setrlimit(libc::RLIMIT_AS, &limit);
+            Ok(())
+        });
+    }
+    cedar_policy_symcc::solver::LocalSolver::cvc5_with_args([""]).map_err(|err| err.to_string())
 }
 
 pub trait ValidationTask: Sync {
