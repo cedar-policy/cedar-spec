@@ -53,7 +53,7 @@ struct Solver {
 }
 
 impl Solver {
-    const SOLVER_USAGE_LIMIT: usize = 100_000;
+    const SOLVER_USAGE_LIMIT: usize = 10_000;
 }
 
 static SOLVER: LazyLock<Mutex<Solver>> = LazyLock::new(|| {
