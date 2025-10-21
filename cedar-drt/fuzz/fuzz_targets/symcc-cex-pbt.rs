@@ -53,7 +53,7 @@ struct Solver {
 }
 
 impl Solver {
-    const SOLVER_USAGE_LIMIT: usize = 10_000;
+    const SOLVER_USAGE_LIMIT: usize = 100_000;
 }
 
 static SOLVER: LazyLock<Mutex<Solver>> = LazyLock::new(|| {
@@ -64,13 +64,11 @@ static SOLVER: LazyLock<Mutex<Solver>> = LazyLock::new(|| {
     })
 });
 
-fn get_solver() -> std::sync::MutexGuard<'static, Solver> {
+async fn get_solver() -> std::sync::MutexGuard<'static, Solver> {
     let mut guard = SOLVER.lock().unwrap();
     guard.usage_count += 1;
     if guard.usage_count >= Solver::SOLVER_USAGE_LIMIT {
-        RUNTIME.block_on(async {
-            let _ = guard.local_solver.solver_mut().clean_up().await;
-        });
+        let _ = guard.local_solver.solver_mut().clean_up().await;
         guard.local_solver = CedarSymCompiler::new(local_solver().expect("CVC5 should exist"))
             .expect("solver construction should succeed");
         guard.usage_count = 0;
@@ -137,7 +135,10 @@ fn get_cex(
     RUNTIME.block_on(async {
         let always_allow_result = timeout(
             Duration::from_secs(60),
-            get_solver().local_solver.check_sat(always_allows_asserts),
+            get_solver()
+                .await
+                .local_solver
+                .check_sat(always_allows_asserts),
         )
         .await;
 
@@ -162,7 +163,10 @@ fn get_cex(
 
         let always_deny_result = timeout(
             Duration::from_secs(60),
-            get_solver().local_solver.check_sat(always_denies_asserts),
+            get_solver()
+                .await
+                .local_solver
+                .check_sat(always_denies_asserts),
         )
         .await;
 
