@@ -46,20 +46,10 @@ struct FuzzTargetInput {
 }
 
 // settings for this fuzz target
-// copy-pasted from abac.rs
 const SETTINGS: ABACSettings = ABACSettings {
-    match_types: false,
-    enable_extensions: true,
-    max_depth: 7,
-    max_width: 7,
     enable_additional_attributes: true,
-    enable_like: true,
-    enable_action_groups_and_attrs: true,
     enable_arbitrary_func_call: false,
-    enable_unknowns: false,
-    enable_action_in_constraints: true,
-    per_action_request_env_limit: ABACSettings::default_per_action_request_env_limit(),
-    total_action_request_env_limit: ABACSettings::default_total_action_request_env_limit(),
+    ..ABACSettings::undirected()
 };
 
 impl<'a> Arbitrary<'a> for FuzzTargetInput {

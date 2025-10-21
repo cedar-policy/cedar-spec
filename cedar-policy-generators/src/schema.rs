@@ -2019,18 +2019,13 @@ mod tests {
     const ITERATION: u8 = 100;
 
     const TEST_SETTINGS: ABACSettings = ABACSettings {
-        match_types: false,
         enable_extensions: false,
         max_depth: 4,
         max_width: 4,
         enable_additional_attributes: false,
         enable_like: false,
-        enable_action_groups_and_attrs: true,
         enable_arbitrary_func_call: false,
-        enable_unknowns: false,
-        enable_action_in_constraints: true,
-        per_action_request_env_limit: ABACSettings::default_per_action_request_env_limit(),
-        total_action_request_env_limit: ABACSettings::default_total_action_request_env_limit(),
+        ..ABACSettings::undirected()
     };
 
     const GITHUB_SCHEMA_STR: &str = r#"
