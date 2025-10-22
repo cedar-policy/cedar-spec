@@ -47,12 +47,34 @@ static RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
         .unwrap()
 });
 
-static SOLVER: LazyLock<Mutex<CedarSymCompiler<LocalSolver>>> = LazyLock::new(|| {
-    Mutex::new(
-        CedarSymCompiler::new(local_solver().expect("CVC5 should exist"))
+struct Solver {
+    local_solver: CedarSymCompiler<LocalSolver>,
+    usage_count: usize,
+}
+
+impl Solver {
+    const SOLVER_USAGE_LIMIT: usize = 10_000;
+}
+
+static SOLVER: LazyLock<Mutex<Solver>> = LazyLock::new(|| {
+    Mutex::new(Solver {
+        local_solver: CedarSymCompiler::new(local_solver().expect("CVC5 should exist"))
             .expect("solver construction should succeed"),
-    )
+        usage_count: 0,
+    })
 });
+
+async fn get_solver() -> std::sync::MutexGuard<'static, Solver> {
+    let mut guard = SOLVER.lock().unwrap();
+    guard.usage_count += 1;
+    if guard.usage_count >= Solver::SOLVER_USAGE_LIMIT {
+        let _ = guard.local_solver.solver_mut().clean_up().await;
+        guard.local_solver = CedarSymCompiler::new(local_solver().expect("CVC5 should exist"))
+            .expect("solver construction should succeed");
+        guard.usage_count = 0;
+    }
+    guard
+}
 
 /// Input expected by this fuzz target
 #[derive(Debug, Clone)]
@@ -65,18 +87,10 @@ pub struct FuzzTargetInput {
 
 /// settings for this fuzz target
 const SETTINGS: ABACSettings = ABACSettings {
-    match_types: true,
-    enable_extensions: true,
     max_depth: 3,
     max_width: 3,
-    enable_additional_attributes: false,
-    enable_like: true,
-    enable_action_groups_and_attrs: true,
-    enable_arbitrary_func_call: true,
-    enable_unknowns: false,
-    enable_action_in_constraints: true,
-    per_action_request_env_limit: ABACSettings::default_per_action_request_env_limit(),
     total_action_request_env_limit: total_action_request_env_limit(),
+    ..ABACSettings::type_directed()
 };
 
 impl<'a> Arbitrary<'a> for FuzzTargetInput {
@@ -113,7 +127,10 @@ fn get_cex(
     RUNTIME.block_on(async {
         let always_allow_result = timeout(
             Duration::from_secs(60),
-            SOLVER.lock().unwrap().check_sat(always_allows_asserts),
+            get_solver()
+                .await
+                .local_solver
+                .check_sat(always_allows_asserts),
         )
         .await;
 
@@ -138,7 +155,10 @@ fn get_cex(
 
         let always_deny_result = timeout(
             Duration::from_secs(60),
-            SOLVER.lock().unwrap().check_sat(always_denies_asserts),
+            get_solver()
+                .await
+                .local_solver
+                .check_sat(always_denies_asserts),
         )
         .await;
 

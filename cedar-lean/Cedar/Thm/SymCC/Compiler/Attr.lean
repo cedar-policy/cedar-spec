@@ -607,18 +607,18 @@ private theorem compileAttrsOf_ok_typeOf_eq {t₁ t₁' t₂ t₂' : Term} {εs 
   have h₂ := compileAttrsOf_ok_implies hok₂
   rcases h₁ with ⟨rty₁', h₁, h₁'⟩ | ⟨ety₁, f₁, h₁⟩ <;>
   rcases h₂ with ⟨rty₂', h₂, h₂'⟩ | ⟨ety₂, f₂, h₂⟩
-  case inl.intro.intro.inr =>
+  case inl.inr =>
     simp only [hty, h₂.left, reduceCtorEq] at h₁
-  case inr.intro.intro.inl =>
+  case inr.inl =>
     simp only [hty, h₂, false_and, reduceCtorEq] at h₁
-  case inl.intro.intro.inl =>
+  case inl.inl =>
     rw [eq_comm] at h₁' h₂'
     subst h₁' h₂'
     simp only [hty, h₂, TermType.record.injEq] at h₁
     subst h₁
     simp only [h₂] at hty
     simp only [hty, h₂]
-  case inr.intro.intro.inr =>
+  case inr.inr =>
     replace ⟨h₁, h₁', h₁''⟩ := h₁
     replace ⟨h₂, h₂', h₂''⟩ := h₂
     subst h₁'' h₂''

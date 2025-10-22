@@ -170,9 +170,9 @@ theorem partial_eval_well_typed_var {env : TypeEnv} {v : Var} {ty : CedarType} {
     unfold RequestRefines at h_rref
     rcases h_rref with ⟨h_pv, _⟩
     cases h : preq.principal.asEntityUID
-    case intro.none =>
+    case none =>
       assumption
-    case intro.some =>
+    case some =>
       simp only [Option.bind_some, varₚ.varₒ, someOrSelf]
       rw [h] at h_pv
       apply Residual.WellTyped.val
@@ -1507,9 +1507,6 @@ theorem partial_eval_well_typed_app₂_nonvalues :
       cases h_op
       apply BinaryResidualWellTyped.hasTag <;> rename_i ety h₅ h₆
       . rw [h₁, h₅]
-        congr
-        have h₈ : ety = ety := by simp only
-        exact h₈
       . rw [h₂, h₆]
     case getTag =>
       cases h_op ; rename_i ty h₅ h₆
