@@ -157,7 +157,7 @@ fuzz_target!(|input: FuzzTargetInput| {
                         is_authorized(&policyset, &partial_request, &partial_entities, &schema)
                             .expect("tpe failed");
                     assert!(test_weak_equiv(
-                        &response.residual_policies()[0].condition(),
+                        &response.residual_policies().next().unwrap().condition(),
                         &expr,
                         &request,
                         &input.abac_input.entities
