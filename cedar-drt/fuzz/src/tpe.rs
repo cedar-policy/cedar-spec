@@ -16,11 +16,8 @@
 
 //! Test utilities for type-directed partial evaluation fuzz targets
 
-use cedar_policy::{Entity, EntityUid};
-use cedar_policy_core::{
-    ast::{self, Value},
-    tpe::entities::{PartialEntities, PartialEntity},
-};
+use cedar_policy::{Entity, EntityUid, PartialEntities, PartialEntity, Schema};
+use cedar_policy_core::ast::{self, Value};
 use libfuzzer_sys::arbitrary::{self, Unstructured};
 use ref_cast::RefCast;
 use std::collections::{BTreeMap, HashSet};
@@ -30,34 +27,49 @@ pub fn entity_to_partial_entity(
     entity: &Entity,
     u: &mut Unstructured<'_>,
     leafs: &HashSet<EntityUid>,
+    schema: &Schema,
 ) -> arbitrary::Result<PartialEntity> {
     let is_action = entity.uid().type_name().as_ref().is_action();
-    Ok(PartialEntity {
-        uid: entity.as_ref().uid().clone(),
-        attrs: if !is_action && u.ratio(1, 4)? {
+    PartialEntity::new(
+        entity.as_ref().uid().clone().into(),
+        if !is_action && u.ratio(1, 4)? {
             None
         } else {
             Some(BTreeMap::from_iter(entity.as_ref().attrs().map(
-                |(k, v)| (k.clone(), Value::try_from(v.clone()).unwrap()),
+                |(k, v)| {
+                    (
+                        k.clone(),
+                        ast::RestrictedExpr::from(Value::try_from(v.clone()).unwrap()).into(),
+                    )
+                },
             )))
         },
-        ancestors: if !is_action && leafs.contains(&entity.uid()) {
+        if !is_action && leafs.contains(&entity.uid()) {
             if u.ratio(1, 4)? {
                 None
             } else {
-                Some(HashSet::from_iter(entity.as_ref().ancestors().cloned()))
+                Some(HashSet::from_iter(
+                    entity.as_ref().ancestors().cloned().map(Into::into),
+                ))
             }
         } else {
-            Some(HashSet::from_iter(entity.as_ref().ancestors().cloned()))
+            Some(HashSet::from_iter(
+                entity.as_ref().ancestors().cloned().map(Into::into),
+            ))
         },
-        tags: if !is_action && u.ratio(1, 4)? {
+        if !is_action && u.ratio(1, 4)? {
             None
         } else {
             Some(BTreeMap::from_iter(entity.as_ref().tags().map(|(k, v)| {
-                (k.clone(), Value::try_from(v.clone()).unwrap())
+                (
+                    k.clone(),
+                    ast::RestrictedExpr::from(Value::try_from(v.clone()).unwrap()).into(),
+                )
             })))
         },
-    })
+        schema,
+    )
+    .map_err(|_| arbitrary::Error::IncorrectFormat)
 }
 
 /// Constructs a `PartialEntities` given some concrete entities, using `u` to
@@ -66,6 +78,7 @@ pub fn entity_to_partial_entity(
 pub fn entities_to_partial_entities<'a>(
     entities: impl Iterator<Item = &'a Entity>,
     u: &mut Unstructured<'_>,
+    schema: &Schema,
 ) -> arbitrary::Result<PartialEntities> {
     let entities: HashSet<Entity> = HashSet::from_iter(entities.cloned());
     let mut leafs: HashSet<_> = entities.iter().map(|e| e.uid().clone()).collect();
@@ -74,19 +87,13 @@ pub fn entities_to_partial_entities<'a>(
             leafs.remove(RefCast::ref_cast(a));
         }
     }
-    Ok(
-        cedar_policy_core::tpe::entities::PartialEntities::from_entities_unchecked(
-            entities
-                .iter()
-                .map(|e| {
-                    Ok((
-                        e.uid().as_ref().clone(),
-                        entity_to_partial_entity(e, u, &leafs)?,
-                    ))
-                })
-                .collect::<arbitrary::Result<Vec<(ast::EntityUID, PartialEntity)>>>()?
-                .into_iter(),
-        )
-        .into(),
+    PartialEntities::from_partial_entities(
+        entities
+            .iter()
+            .map(|e| entity_to_partial_entity(e, u, &leafs, schema))
+            .collect::<arbitrary::Result<Vec<PartialEntity>>>()?
+            .into_iter(),
+        schema,
     )
+    .map_err(|_| arbitrary::Error::IncorrectFormat)
 }
