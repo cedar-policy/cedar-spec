@@ -21,15 +21,13 @@ use cedar_policy::{
     Authorizer, Entities, EntityId, PartialEntities, PartialEntityUid, PartialRequest, Policy,
     PolicySet, Request, Schema, Validator,
 };
-use cedar_policy_core::ast::RequestSchema;
-use cedar_policy_core::extensions::Extensions;
 use cedar_policy_generators::abac::ABACRequest;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
 use std::convert::TryFrom;
 
-/// Input expected by this fuzz target:
-/// An ABAC hierarchy, schema, and 8 associated policies
+// Input expected by this fuzz target:
+// An ABAC hierarchy, schema, and 8 associated policies
 #[derive(Debug, Clone)]
 struct FuzzTargetInput {
     pub abac_input: abac::FuzzTargetInput<true>,
@@ -37,6 +35,8 @@ struct FuzzTargetInput {
     pub partial_entities: PartialEntities,
 }
 
+// Construct a partial request based on a concrete request
+// Essentially drop eid for a probability of 1/4
 fn make_partial_request(
     req: &ABACRequest,
     u: &mut Unstructured<'_>,
@@ -104,12 +104,18 @@ fn passes_policy_validation(validator: &Validator, pset: &PolicySet) -> bool {
         .validation_passed()
 }
 
+// It turns out we don't have a request validation function in public API
+// Use the workaround to reconstruct a request with the schema, which should
+// validate the request
 fn passes_request_validation(validator: &Validator, request: &Request) -> bool {
-    validator
-        .schema()
-        .as_ref()
-        .validate_request(request.as_ref(), Extensions::all_available())
-        .is_ok()
+    Request::new(
+        request.principal().unwrap().clone(),
+        request.action().unwrap().clone(),
+        request.resource().unwrap().clone(),
+        request.context().unwrap().clone(),
+        Some(validator.schema()),
+    )
+    .is_ok()
 }
 
 fn test_weak_equiv(

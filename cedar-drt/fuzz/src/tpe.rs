@@ -23,7 +23,7 @@ use ref_cast::RefCast;
 use std::collections::{BTreeMap, HashSet};
 use std::convert::TryFrom;
 
-pub fn entity_to_partial_entity(
+fn entity_to_partial_entity(
     entity: &Entity,
     u: &mut Unstructured<'_>,
     leafs: &HashSet<EntityUid>,
@@ -44,6 +44,7 @@ pub fn entity_to_partial_entity(
                 },
             )))
         },
+        // We can only mark ancestors of leaf nodes to unknown
         if !is_action && leafs.contains(&entity.uid()) {
             if u.ratio(1, 4)? {
                 None
