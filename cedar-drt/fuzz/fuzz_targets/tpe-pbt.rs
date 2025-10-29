@@ -17,26 +17,17 @@
 #![no_main]
 use cedar_drt::logger::initialize_log;
 use cedar_drt_inner::{abac, fuzz_target, tpe::entities_to_partial_entities};
-use cedar_policy::Entities;
-use cedar_policy_core::{
-    ast::{self, Expr, Request, RequestSchema},
-    evaluator::Evaluator,
-    extensions::Extensions,
-    tpe::{
-        entities::PartialEntities,
-        is_authorized,
-        request::{PartialEntityUID, PartialRequest},
-    },
-    validator::{CoreSchema, ValidationMode, Validator, ValidatorSchema},
+use cedar_policy::{
+    Authorizer, Entities, EntityId, PartialEntities, PartialEntityUid, PartialRequest, Policy,
+    PolicySet, Request, Schema, Validator,
 };
 use cedar_policy_generators::abac::ABACRequest;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
-use std::collections::HashMap;
 use std::convert::TryFrom;
 
-/// Input expected by this fuzz target:
-/// An ABAC hierarchy, schema, and 8 associated policies
+// Input expected by this fuzz target:
+// An ABAC hierarchy, schema, and 8 associated policies
 #[derive(Debug, Clone)]
 struct FuzzTargetInput {
     pub abac_input: abac::FuzzTargetInput<true>,
@@ -44,43 +35,54 @@ struct FuzzTargetInput {
     pub partial_entities: PartialEntities,
 }
 
+// Construct a partial request based on a concrete request
+// Essentially drop eid for a probability of 1/4
 fn make_partial_request(
     req: &ABACRequest,
     u: &mut Unstructured<'_>,
+    schema: &Schema,
 ) -> arbitrary::Result<PartialRequest> {
-    Ok(PartialRequest::new_unchecked(
-        PartialEntityUID {
-            ty: req.principal.entity_type().clone(),
-            eid: if u.ratio(1, 4)? {
+    PartialRequest::new(
+        PartialEntityUid::new(
+            req.principal.entity_type().clone().into(),
+            if u.ratio(1, 4)? {
                 None
             } else {
-                Some(req.principal.eid().clone())
+                Some(EntityId::new(req.principal.eid()))
             },
-        },
-        PartialEntityUID {
-            ty: req.resource.entity_type().clone(),
-            eid: if u.ratio(1, 4)? {
+        ),
+        req.action.clone().into(),
+        PartialEntityUid::new(
+            req.resource.entity_type().clone().into(),
+            if u.ratio(1, 4)? {
                 None
             } else {
-                Some(req.resource.eid().clone())
+                Some(EntityId::new(req.resource.eid()))
             },
-        },
-        req.action.clone(),
+        ),
         None,
-    ))
+        schema,
+    )
+    .map_err(|_| arbitrary::Error::IncorrectFormat)
 }
 
 impl<'a> Arbitrary<'a> for FuzzTargetInput {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
         let abac_input = abac::FuzzTargetInput::<true>::arbitrary(u)?;
+        let schema: cedar_policy::Schema = abac_input
+            .schema
+            .clone()
+            .try_into()
+            .map_err(|_| arbitrary::Error::IncorrectFormat)?;
         let partial_requests = abac_input
             .requests
             .iter()
-            .map(|req| make_partial_request(req, u))
+            .map(|req| make_partial_request(req, u, &schema))
             .collect::<arbitrary::Result<Vec<_>>>()?
             .try_into()
             .unwrap();
-        let partial_entities = entities_to_partial_entities(abac_input.entities.iter(), u)?;
+        let partial_entities =
+            entities_to_partial_entities(abac_input.entities.iter(), u, &schema)?;
         Ok(Self {
             abac_input,
             partial_requests,
@@ -96,31 +98,41 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 }
 
 /// helper function that just tells us whether a policyset passes validation
-fn passes_policy_validation(validator: &Validator, policyset: &ast::PolicySet) -> bool {
+fn passes_policy_validation(validator: &Validator, pset: &PolicySet) -> bool {
     validator
-        .validate(policyset, ValidationMode::Strict)
+        .validate(pset, cedar_policy::ValidationMode::Strict)
         .validation_passed()
 }
 
-fn passes_request_validation(schema: &ValidatorSchema, request: &ast::Request) -> bool {
-    let core_schema = CoreSchema::new(schema);
-    core_schema
-        .validate_request(request, Extensions::all_available())
-        .is_ok()
+// It turns out we don't have a request validation function in public API
+// Use the workaround to reconstruct a request with the schema, which should
+// validate the request
+fn passes_request_validation(validator: &Validator, request: &Request) -> bool {
+    Request::new(
+        request.principal().unwrap().clone(),
+        request.action().unwrap().clone(),
+        request.resource().unwrap().clone(),
+        request.context().unwrap().clone(),
+        Some(validator.schema()),
+    )
+    .is_ok()
 }
 
-fn test_weak_equiv(residual: &Expr, e: &Expr, req: &Request, entities: &Entities) -> bool {
-    let eval = Evaluator::new(req.clone(), entities.as_ref(), Extensions::all_available());
-    let slots = HashMap::new();
-
+fn test_weak_equiv(
+    residual: &PolicySet,
+    e: &PolicySet,
+    req: &Request,
+    entities: &Entities,
+) -> bool {
     debug!("request: {req}");
     debug!("expr: {e}");
     debug!("residual: {residual}");
-    let concrete_res = eval.interpret(e, &slots);
-    let reeval_res = eval.interpret(&residual, &slots);
+    let authorizer = Authorizer::new();
+    let concrete_res = authorizer.is_authorized(req, e, entities);
+    let reeval_res = authorizer.is_authorized(req, residual, entities);
     debug!("concrete evaluation result: {concrete_res:?}");
     debug!("re-evaluation result: {reeval_res:?}");
-    concrete_res.ok() == reeval_res.ok()
+    concrete_res.decision() == reeval_res.decision()
 }
 
 // The main fuzz target. This is for PBT on the validator
@@ -128,40 +140,29 @@ fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
     // preserve the schema in string format, which may be needed for error messages later
     let schemafile_string = input.abac_input.schema.schemafile_string();
-    if let Ok(schema) = ValidatorSchema::try_from(input.abac_input.schema) {
+    if let Ok(schema) = Schema::try_from(input.abac_input.schema) {
         debug!("Schema: {schemafile_string}");
         let validator = Validator::new(schema.clone());
-        let mut policyset = ast::PolicySet::new();
-        let policy: ast::StaticPolicy = input.abac_input.policy.into();
-        policyset.add_static(policy.clone()).unwrap();
+        let mut policyset = PolicySet::new();
+        let policy: Policy = input.abac_input.policy.into();
+        policyset.add(policy.clone()).unwrap();
         let passes_strict = passes_policy_validation(&validator, &policyset);
         if passes_strict {
-            for e in input.partial_entities.entities() {
-                e.validate(&schema)
-                    .unwrap_or_else(|_| panic!("entities should be valid: {e:#?}"));
-            }
-            let mut partial_entities = input.partial_entities;
-            partial_entities
-                .compute_tc()
-                .expect("tc computation failed");
-            let expr = policy.condition();
+            let partial_entities = input.partial_entities;
             for (request, partial_request) in input
                 .abac_input
                 .requests
                 .into_iter()
                 .zip(input.partial_requests)
             {
-                let request: ast::Request = request.into();
-                if passes_request_validation(&schema, &request) {
-                    let response =
-                        is_authorized(&policyset, &partial_request, &partial_entities, &schema)
-                            .expect("tpe failed");
+                let request: Request = request.into();
+                if passes_request_validation(&validator, &request) {
+                    let response = policyset
+                        .tpe(&partial_request, &partial_entities, &schema)
+                        .expect("tpe failed");
                     assert!(test_weak_equiv(
-                        &cedar_policy_core::ast::Policy::from(
-                            response.residual_policies().next().unwrap().clone()
-                        )
-                        .condition(),
-                        &expr,
+                        &PolicySet::from_policies(response.residual_policies()).unwrap(),
+                        &policyset,
                         &request,
                         &input.abac_input.entities
                     ));

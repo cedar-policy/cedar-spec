@@ -18,13 +18,11 @@
 use cedar_drt::logger::initialize_log;
 use cedar_drt_inner::{abac, fuzz_target, tpe::entities_to_partial_entities};
 use cedar_policy::{
-    ActionQueryRequest, Decision, EntityId, PartialEntityUid, PolicySet, Request, ValidationMode,
-    Validator,
+    ActionQueryRequest, Decision, EntityId, PartialEntities, PartialEntityUid, PolicySet, Request,
+    ValidationMode, Validator,
 };
-use cedar_policy_core::tpe::entities::PartialEntities;
 use cedar_policy_generators::abac::ABACRequest;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
-use ref_cast::RefCast;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 
@@ -82,7 +80,8 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
             .collect::<arbitrary::Result<Vec<_>>>()?
             .try_into()
             .unwrap();
-        let partial_entities = entities_to_partial_entities(abac_input.entities.iter(), u)?;
+        let partial_entities =
+            entities_to_partial_entities(abac_input.entities.iter(), u, &cedar_schema)?;
         Ok(Self {
             abac_input,
             partial_requests,
@@ -126,7 +125,7 @@ fuzz_target!(|input: FuzzTargetInput| {
         let resp = auth.is_authorized(&request, &policyset, &input.abac_input.entities);
 
         let actions: HashMap<_, _> = policyset
-            .query_action(&action_request, RefCast::ref_cast(&input.partial_entities))
+            .query_action(&action_request, &input.partial_entities)
             .unwrap()
             .collect();
         match actions.get(request.action().unwrap()) {
