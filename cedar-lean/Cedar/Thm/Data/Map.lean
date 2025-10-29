@@ -363,6 +363,16 @@ theorem find?_mem_toList {α β} [LT α] [DecidableLT α] [DecidableEq α] {m : 
   simp only [beq_iff_eq] at h₃ ; subst h₃
   exact List.mem_of_find?_eq_some h₂
 
+theorem in_keys_iff_find?_some  [DecidableEq α] {k : α} {m : Map α β}:
+  (k ∈ m) ↔ ∃v, m.find? k = some v
+:= by
+  constructor
+  case mp =>
+    intro h₁
+    sorry
+  case mpr =>
+    sorry
+
 /--
   The `mpr` direction of this does not need the `wf` precondition and, in fact,
   is available separately as `find?_mem_toList` above
@@ -984,18 +994,15 @@ theorem in_mapOnValues_in_kvs [LT α] [DecidableLT α] [StrictLT α] [DecidableE
 /--
   Slightly different formulation of `in_mapOnValues_in_kvs`
 -/
-theorem in_mapOnValues_in_kvs' [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {f : β → γ} {m : Map α β} {k : α} {v' : γ}
-  (wf : m.WellFormed) :
+theorem in_mapOnValues_in_kvs' {f : β → γ} {m : Map α β} {k : α} {v' : γ}:
   (k, v') ∈ (m.mapOnValues f).kvs →
   ∃ v, f v = v' ∧ (k, v) ∈ m.kvs
 := by
-  rw [mapOnValues_eq_make_map f wf]
-  unfold toList
-  intro h₁
-  replace h₁ := make_mem_list_mem h₁
-  replace ⟨(k', v'), h₁, h₂⟩ := List.mem_map.mp h₁
-  simp only [Prod.mk.injEq] at h₂ ; replace ⟨h₂', h₂⟩ := h₂ ; subst k' h₂
-  exists v'
+  simp [mapOnValues, Map.kvs]
+  intro x y h xk h₂
+  subst xk
+  subst h₂
+  exists y
 
 /-! ### mapMOnValues -/
 
@@ -1706,5 +1713,14 @@ theorem find?_append
   . simp
     cases List.find? (fun x => x.fst == k) m₂.kvs <;> simp
   . simp
+
+theorem mapOnValues_append
+  [LT α] [StrictLT α] [DecidableEq α] [DecidableLT α]
+  {m₁ m₂ : Map α β} {k : α}:
+  (m₁ ++ m₂).mapOnValues f = (m₁.mapOnValues f) ++ (m₂.mapOnValues f)
+:= by
+  simp [mapOnValues]
+  simp [HAppend.hAppend]
+  sorry
 
 end Cedar.Data.Map
