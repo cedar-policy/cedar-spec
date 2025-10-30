@@ -248,6 +248,12 @@ test = false
 doc = false
 
 [[bin]]
+name = "tpe-partial-entities-eq-entities"
+path = "fuzz_targets/tpe-partial-entities-eq-entities.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "symcc-term-roundtrip-abac-type-directed"
 path = "fuzz_targets/symcc-term-roundtrip-abac-type-directed.rs"
 test = false
