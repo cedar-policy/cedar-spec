@@ -61,10 +61,10 @@ theorem validation_is_sound (policies : Policies) (schema : Schema) (request : R
   | cons h' t' =>
     intro policy pin
     simp only [EvaluatesToBool]
-    apply typecheck_policy_with_environments_is_sound policy schema.environments request entities h₁
+    apply typecheck_policy_with_environments_is_sound policy schema request entities h₁
     subst h₃
     simp only [List.forM_eq_forM, List.forM_cons] at h₀
-    cases h₄ : (typecheckPolicyWithEnvironments h' schema.environments) <;>
+    cases h₄ : (typecheckPolicyWithEnvironments typecheckPolicy h' schema) <;>
     simp only [h₄, Except.bind_err, reduceCtorEq] at h₀
     case ok _ =>
       rw [List.mem_cons] at pin
@@ -73,7 +73,7 @@ theorem validation_is_sound (policies : Policies) (schema : Schema) (request : R
         subst h₅
         exact h₄
       | inr h₅ =>
-        apply List.forM_ok_implies_all_ok t' (typecheckPolicyWithEnvironments · schema.environments)
+        apply List.forM_ok_implies_all_ok t' (typecheckPolicyWithEnvironments _ · schema)
         repeat assumption
 
 /--

@@ -100,6 +100,45 @@ inductive ValidationError where
 
 abbrev ValidationResult := Except ValidationError Unit
 
+/-!
+Check that all referenced entity types, actions, and enum entities are declared
+in the schema.  The Lean model of typechecking _also_ does this check, but Rust
+does it only as a separate pass.  This means the Rust validator will report
+undefined entity types that the Lean typechecker ignores due to short-circuiting.
+We include this validation pass so that the validators behave exactly the same,
+but we don't need to prove anything about it for soundness.
+-/
+def checkEntities (schema : Schema) : Expr → Except TypeError Unit
+  | .lit (.entityUID uid) =>
+    if schema.ets.isValidEntityUID uid || schema.acts.contains uid
+    then .ok ()
+    else .error (.unknownEntity uid.ty)
+  | .unaryApp (.is ety) x₁ =>
+    match schema.ets.find? ety with
+    | .some _ => checkEntities schema x₁
+    | .none => .error (.unknownEntity ety)
+  | .lit _ | .var _ => .ok ()
+  | .ite x₁ x₂ x₃ => do
+    checkEntities schema x₁
+    checkEntities schema x₂
+    checkEntities schema x₃
+  | .binaryApp _ x₁ x₂
+  | .and x₁ x₂
+  | .or x₁ x₂ => do
+    checkEntities schema x₁
+    checkEntities schema x₂
+  | .getAttr x₁ _
+  | .hasAttr x₁ _
+  | .unaryApp _ x₁ =>
+    checkEntities schema x₁
+  | .call _ xs
+  | .set xs =>
+    xs.attach.forM (λ x =>
+      have _ := List.sizeOf_lt_of_mem x.property
+      checkEntities schema x.val)
+  | .record axs =>
+    axs.attach₂.forM (checkEntities schema ·.val.snd)
+
 def mapOnVars (f : Var → Expr) : Expr → Expr
   | .lit l => .lit l
   | .var var => f var
@@ -168,28 +207,24 @@ def allFalse (txs : List TypedExpr) : Bool :=
   txs.all (TypedExpr.typeOf · == .bool .ff)
 
 /-- Check a policy under multiple environments. -/
-def typecheckPolicyWithEnvironments (policy : Policy) (envs : List TypeEnv) : ValidationResult := do
-  let policyTypes ← envs.mapM (typecheckPolicy policy)
-  if allFalse policyTypes then .error (.impossiblePolicy policy.id) else .ok ()
-
-/-- Check a policy with a level under multiple environments. -/
-def typecheckPolicyWithLevelWithEnvironments (policy : Policy) (level : Nat) (envs : List TypeEnv) : ValidationResult := do
-  let policyTypes ← envs.mapM (typecheckPolicyWithLevel policy level)
+def typecheckPolicyWithEnvironments (tc : Policy → TypeEnv → Except ValidationError TypedExpr) (policy : Policy) (schema : Schema) : ValidationResult := do
+  (checkEntities schema policy.toExpr).mapError (.typeError policy.id)
+  let policyTypes ← schema.environments.mapM (tc policy)
   if allFalse policyTypes then .error (.impossiblePolicy policy.id) else .ok ()
 
 /--
 Analyze a set of policies to check that all are boolean-typed, and that
 none are guaranteed to be false under all possible environments.
 -/
-def validate (policies : Policies) (schema : Schema) : ValidationResult :=
-  policies.forM (typecheckPolicyWithEnvironments · schema.environments)
+def validate (policies : Policies) (schema : Schema) : ValidationResult := do
+  policies.forM (typecheckPolicyWithEnvironments typecheckPolicy · schema)
 
 /--
 Analyze a set of policies to check that all are boolean-typed, and that
 none are guaranteed to be false under all possible environments.
 -/
 def validateWithLevel (policies : Policies) (schema : Schema) (level : Nat) : ValidationResult :=
-  policies.forM (typecheckPolicyWithLevelWithEnvironments · level schema.environments)
+  policies.forM (typecheckPolicyWithEnvironments (typecheckPolicyWithLevel · level) · schema)
 
 ----- Derivations -----
 
