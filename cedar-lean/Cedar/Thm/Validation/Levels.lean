@@ -127,14 +127,16 @@ theorem typecheck_policy_with_level_is_sound {p : Policy} {tx : TypedExpr} {n : 
   have hc := empty_capabilities_invariant request entities
   exact level_based_slicing_is_sound_expr hc hr htx' htl'
 
-theorem typecheck_policy_at_level_with_environments_is_sound {p : Policy} {envs : List TypeEnv} {n : Nat} {request : Request} {entities : Entities}
-  (he : ∃ env ∈ envs, InstanceOfWellFormedEnvironment request entities env)
-  (htl : typecheckPolicyWithLevelWithEnvironments p n envs = .ok ()) :
+theorem typecheck_policy_at_level_with_environments_is_sound {p : Policy} {schema : Schema} {n : Nat} {request : Request} {entities : Entities}
+  (he : ∃ env ∈ schema.environments, InstanceOfWellFormedEnvironment request entities env)
+  (htl : typecheckPolicyWithEnvironments (typecheckPolicyWithLevel · n) p schema = .ok ()) :
   evaluate p.toExpr request entities = evaluate p.toExpr request (entities.sliceAtLevel request n)
 := by
-  replace htl : ∀ x ∈ envs, ∃ tx, typecheckPolicyWithLevel p n x = .ok tx := by
-    cases htl₁ : List.mapM (typecheckPolicyWithLevel p n) envs <;>
-    simp only [htl₁, typecheckPolicyWithLevelWithEnvironments, Except.bind_err, reduceCtorEq] at htl
+  replace htl : ∀ x ∈ schema.environments, ∃ tx, typecheckPolicyWithLevel p n x = .ok tx := by
+    simp only [typecheckPolicyWithEnvironments, Except.mapError] at htl
+    cases hes : checkEntities schema p.toExpr <;> simp only [hes, Except.bind_err, Except.bind_ok, reduceCtorEq] at htl
+    cases htl₁ : List.mapM (typecheckPolicyWithLevel p n) schema.environments <;>
+    simp only [htl₁, Except.bind_err, reduceCtorEq] at htl
     replace htl₁ := List.forall₂_implies_all_left ∘ List.mapM_ok_iff_forall₂.mp $ htl₁
     intro env he
     specialize htl₁ env he
