@@ -35,7 +35,7 @@ use cedar_policy_core::validator::json_schema::{
     CommonType, CommonTypeId, EntityTypeKind, StandardEntityType,
 };
 use cedar_policy_core::validator::{
-    json_schema, ActionBehavior, AllDefs, ConditionalName, RawName, SchemaError,
+    json_schema, AllDefs, ConditionalName, RawName, SchemaError,
     ValidatorNamespaceDef, ValidatorSchema, ValidatorSchemaFragment,
 };
 use smol_str::{SmolStr, ToSmolStr};
@@ -908,8 +908,6 @@ impl Schema {
             ValidatorNamespaceDef::from_namespace_definition(
                 namespace.clone().map(Into::into),
                 nsdef.clone(),
-                ActionBehavior::PermitAttributes,
-                Extensions::all_available(),
             )?,
         ]));
         Self::from_nsdef(
