@@ -35,8 +35,8 @@ use cedar_policy_core::validator::json_schema::{
     CommonType, CommonTypeId, EntityTypeKind, StandardEntityType,
 };
 use cedar_policy_core::validator::{
-    json_schema, AllDefs, ConditionalName, RawName, SchemaError,
-    ValidatorNamespaceDef, ValidatorSchema, ValidatorSchemaFragment,
+    json_schema, AllDefs, ConditionalName, RawName, SchemaError, ValidatorNamespaceDef,
+    ValidatorSchema, ValidatorSchemaFragment,
 };
 use smol_str::{SmolStr, ToSmolStr};
 use std::collections::BTreeMap;
