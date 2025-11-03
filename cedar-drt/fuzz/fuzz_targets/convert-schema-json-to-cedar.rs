@@ -61,6 +61,7 @@ fuzz_target!(|src: String| {
                 ) | cedar_policy_core::validator::cedar_schema::fmt::ToCedarSchemaSyntaxError::UnconvertibleEntityTypeShape(_),
             ) => {
                 // Currently, we ignore name-collisions errors, as JSON schemas encountering name-collisions errors are not supported for conversion to Cedar format; see cedar#1272
+                // We also ignore entity type shapes that are not supported in the Cedar schema syntax format; see cedar#1702
                 return;
             }
         }
