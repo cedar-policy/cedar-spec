@@ -114,9 +114,9 @@ def checkEntities (schema : Schema) : Expr → Except TypeError Unit
     then .ok ()
     else .error (.unknownEntity uid.ty)
   | .unaryApp (.is ety) x₁ =>
-    match schema.ets.find? ety with
-    | .some _ => checkEntities schema x₁
-    | .none => .error (.unknownEntity ety)
+    if schema.ets.contains ety || schema.acts.actionType? ety
+    then checkEntities schema x₁
+    else .error (.unknownEntity ety)
   | .lit _ | .var _ => .ok ()
   | .ite x₁ x₂ x₃ => do
     checkEntities schema x₁
