@@ -42,9 +42,6 @@ impl From<types::Type> for abac::Type {
             types::Type::Never => {
                 unreachable!("validated schema shouldn't contain such type variant")
             }
-            types::Type::EntityOrRecord(types::EntityRecordKind::ActionEntity { name, .. }) => {
-                Self::Entity(name)
-            }
             types::Type::EntityOrRecord(types::EntityRecordKind::AnyEntity) => {
                 unreachable!("validated schema shouldn't contain such type variant")
             }
@@ -57,7 +54,7 @@ impl From<types::Type> for abac::Type {
                     (
                         a,
                         QualifiedType {
-                            ty: Box::new(ty.attr_type.into()),
+                            ty: ty.attr_type.into(),
                             required: ty.is_required,
                         },
                     )
@@ -436,7 +433,7 @@ impl SchemaGen for ValidatorSchema<'_> {
                         (
                             a.clone(),
                             QualifiedType {
-                                ty: Box::new(q.attr_type.clone().into()),
+                                ty: q.attr_type.clone().into(),
                                 required: q.is_required,
                             },
                         )

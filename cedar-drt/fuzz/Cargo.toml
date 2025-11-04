@@ -11,7 +11,7 @@ cargo-fuzz = true
 libfuzzer-sys = "0.4"
 cedar-drt = { path = "..", version = "4.4.0" }
 cedar-lean-ffi = { path = "../../cedar-lean-ffi", version = "4.4.0" }
-cedar-policy = { version = "4.4.0", features = ["permissive-validate", "entity-manifest"] }
+cedar-policy = { version = "4.4.0", features = ["permissive-validate", "entity-manifest", "tpe"] }
 cedar-policy-core = { version = "4.4.0", features = ["arbitrary", "tpe"] }
 cedar-policy-formatter = "4.4.0"
 cedar-policy-symcc = "*"
@@ -26,6 +26,7 @@ prost = "0.14"
 rand = { version = "0.9", features = ["small_rng"] }
 rand_chacha = { version = "0.9", optional = true }
 rayon = { version = "1.5", optional = true }
+ref-cast = "1.0"
 regex = "1"
 serde = "1.0"
 serde_json = "1.0"
@@ -34,6 +35,7 @@ smol_str = { version = "0.3", features = ["serde"] }
 thiserror = "2.0"
 uuid = { version = "1.3.1", features = ["v4", "fast-rng"] }
 tokio = { version = "1.0", features = ["full"] } # for symcc targets
+libc = "0.2.177"
 
 [features]
 prt = ["dep:rayon", "dep:clap", "dep:rand_chacha"]
@@ -228,6 +230,24 @@ test = false
 doc = false
 
 [[bin]]
+name = "tpe-query-action-pbt"
+path = "fuzz_targets/tpe-query-action-pbt.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "tpe-query-principal-pbt"
+path = "fuzz_targets/tpe-query-principal-pbt.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "tpe-query-resource-pbt"
+path = "fuzz_targets/tpe-query-resource-pbt.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "symcc-term-roundtrip-abac-type-directed"
 path = "fuzz_targets/symcc-term-roundtrip-abac-type-directed.rs"
 test = false
@@ -256,3 +276,58 @@ name = "input-generation"
 path = "fuzz_targets/input-generation.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "batched-evaluation-drt"
+path = "fuzz_targets/batched-evaluation-drt.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "batched-evaluation-pbt"
+path = "fuzz_targets/batched-evaluation-pbt.rs"
+test = false
+doc = false
+
+
+[[bin]]
+name = "symcc-check-always-allows-ok"
+path = "fuzz_targets/symcc-check-always-allows-ok.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "symcc-check-never-errors-ok"
+path = "fuzz_targets/symcc-check-never-errors-ok.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "symcc-check-always-denies-ok"
+path = "fuzz_targets/symcc-check-always-denies-ok.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "symcc-check-implies-ok"
+path = "fuzz_targets/symcc-check-implies-ok.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "symcc-check-equivalent-ok"
+path = "fuzz_targets/symcc-check-equivalent-ok.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "symcc-check-disjoint-ok"
+path = "fuzz_targets/symcc-check-disjoint-ok.rs"
+test = false
+doc = false
+bench = false

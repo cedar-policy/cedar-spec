@@ -45,32 +45,34 @@ structure PartialRequest where
 
 
 -- We don't need type annotations here following the rationale above
-inductive PartialEntityData where
-  | present (attrs : Option (Map Attr Value)) (ancestors : Option (Set EntityUID)) (tags : Option (Map Attr Value))
-  | absent
+structure PartialEntityData where
+  attrs     : Option (Map Attr Value)
+  ancestors : Option (Set EntityUID)
+  tags      : Option (Map Attr Value)
+
+abbrev MaybeEntityData := Option EntityData
 
 abbrev PartialEntities := Map EntityUID PartialEntityData
 
+/--
+A subset of an Entities store.
+When a `MaybeEntityData` is `none`, it means that the entity is not present in
+the backing store.
+-/
+abbrev SlicedEntities := Map EntityUID MaybeEntityData
+
+
+
 def PartialEntities.get (es : PartialEntities) (uid : EntityUID) (f : PartialEntityData → Option α) : Option α :=
   (es.find? uid).bind f
-
-def PartialEntityData.ancestors : PartialEntityData → Option (Set EntityUID)
-  | .present _ ancestors _ => ancestors
-  | .absent => .some Set.empty
-
-def PartialEntityData.tags : PartialEntityData → Option (Map Tag Value)
-  | .present _ _ tags => tags
-  | .absent => .some Map.empty
-
-def PartialEntityData.attrs : PartialEntityData → Option (Map Attr Value)
-  | .present attrs _ _ => attrs
-  | .absent => .some Map.empty
 
 def PartialEntities.ancestors (es : PartialEntities) (uid : EntityUID) : Option (Set EntityUID) := es.get uid PartialEntityData.ancestors
 
 def PartialEntities.tags (es : PartialEntities) (uid : EntityUID) : Option (Map Tag Value) := es.get uid PartialEntityData.tags
 
 def PartialEntities.attrs (es : PartialEntities) (uid : EntityUID) : Option (Map Tag Value) := es.get uid PartialEntityData.attrs
+
+
 
 def partialIsValid {α} (o : Option α) (f : α → Bool) : Bool :=
   (o.map f).getD true
@@ -178,18 +180,41 @@ def Request.asPartialRequest (req : Request) : PartialRequest :=
   , resource  := { ty := req.resource.ty, id := .some req.resource.eid }
   , context   := req.context }
 
-
-
-end Cedar.Spec
-
-
-namespace Cedar.Spec
 open Cedar.TPE
 
 def EntityData.asPartial (data : EntityData) : PartialEntityData :=
-  .present (.some data.attrs) (.some data.ancestors) (.some data.tags)
+  { attrs := (.some data.attrs)
+  , ancestors := (.some data.ancestors)
+  , tags := (.some data.tags)}
 
 def Entities.asPartial (entities: Entities) : PartialEntities :=
   entities.mapOnValues EntityData.asPartial
 
+
 end Cedar.Spec
+
+
+namespace Cedar.TPE
+open Cedar.Data
+
+/-- subtle: a missing entity bahaves the same way as a concrete entity
+with empty attrs, ancestors, and tags.
+This is because
+1. Cedar doesn't have a way to check for a presence of a particular entity id in the database.
+2. Each of the cedar operations behave the same way when encountering a missing entity compared to a empty one.
+
+This is a necessary condition for the soundness of batched entity loading.
+-/
+def MaybeEntityData.asPartial :
+  MaybeEntityData → PartialEntityData
+| none =>
+  { attrs :=  (.some Map.empty)
+  , ancestors := (.some Set.empty)
+  , tags := (.some Map.empty)}
+| some d =>
+  d.asPartial
+
+def EntitiesWithMissing.asPartial (store: SlicedEntities) : PartialEntities :=
+  store.mapOnValues MaybeEntityData.asPartial
+
+end Cedar.TPE

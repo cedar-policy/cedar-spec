@@ -73,16 +73,16 @@ namespace ExtOp
   @[inline]
   def fromInt(n : Int) : Except String ExtOp :=
     match n with
-    | 0 => .ok .decimal.val
-    | 1 => .ok .ipaddr.isV4
-    | 2 => .ok .ipaddr.addrV4
-    | 3 => .ok .ipaddr.prefixV4
-    | 4 => .ok .ipaddr.addrV6
-    | 5 => .ok .ipaddr.prefixV6
-    | 6 => .ok .datetime.val
-    | 7 => .ok .datetime.ofBitVec
-    | 8 => .ok .duration.val
-    | 9 => .ok .duration.ofBitVec
+    | 0 => .ok ExtOp.decimal.val
+    | 1 => .ok ExtOp.ipaddr.isV4
+    | 2 => .ok ExtOp.ipaddr.addrV4
+    | 3 => .ok ExtOp.ipaddr.prefixV4
+    | 4 => .ok ExtOp.ipaddr.addrV6
+    | 5 => .ok ExtOp.ipaddr.prefixV6
+    | 6 => .ok ExtOp.datetime.val
+    | 7 => .ok ExtOp.datetime.ofBitVec
+    | 8 => .ok ExtOp.duration.val
+    | 9 => .ok ExtOp.duration.ofBitVec
     | _ => .error s!"Field {n} does not exist in enum"
 
   def merge (_xop₁ xop₂ : ExtOp) : ExtOp := xop₂
@@ -93,16 +93,16 @@ namespace ExtOp
 
   def toCedar (xop : ExtOp) : Cedar.SymCC.ExtOp :=
     match xop with
-    | .decimal.val => .decimal.val
-    | .ipaddr.isV4 => .ipaddr.isV4
-    | .ipaddr.addrV4 => .ipaddr.addrV4
-    | .ipaddr.prefixV4 => .ipaddr.prefixV4
-    | .ipaddr.addrV6 => .ipaddr.addrV6
-    | .ipaddr.prefixV6 => .ipaddr.prefixV6
-    | .datetime.val => .datetime.val
-    | .datetime.ofBitVec => .datetime.ofBitVec
-    | .duration.val => .duration.val
-    | .duration.ofBitVec => .duration.ofBitVec
+    | ExtOp.decimal.val => Cedar.SymCC.ExtOp.decimal.val
+    | ExtOp.ipaddr.isV4 => Cedar.SymCC.ExtOp.ipaddr.isV4
+    | ExtOp.ipaddr.addrV4 => Cedar.SymCC.ExtOp.ipaddr.addrV4
+    | ExtOp.ipaddr.prefixV4 => Cedar.SymCC.ExtOp.ipaddr.prefixV4
+    | ExtOp.ipaddr.addrV6 => Cedar.SymCC.ExtOp.ipaddr.addrV6
+    | ExtOp.ipaddr.prefixV6 => Cedar.SymCC.ExtOp.ipaddr.prefixV6
+    | ExtOp.datetime.val => Cedar.SymCC.ExtOp.datetime.val
+    | ExtOp.datetime.ofBitVec => Cedar.SymCC.ExtOp.datetime.ofBitVec
+    | ExtOp.duration.val => Cedar.SymCC.ExtOp.duration.val
+    | ExtOp.duration.ofBitVec => Cedar.SymCC.ExtOp.duration.ofBitVec
 end ExtOp
 
 inductive BaseOp where
@@ -164,10 +164,10 @@ namespace BaseOp
     | 21 => .ok .bvsaddo
     | 22 => .ok .bvssubo
     | 23 => .ok .bvsmulo
-    | 24 => .ok .set.member
-    | 25 => .ok .set.subset
-    | 26 => .ok .set.inter
-    | 27 => .ok .option.get
+    | 24 => .ok BaseOp.set.member
+    | 25 => .ok BaseOp.set.subset
+    | 26 => .ok BaseOp.set.inter
+    | 27 => .ok BaseOp.option.get
     | _ => .error s!"Field {n} does not exist in enum"
 
   def merge (_op₁ op₂ : BaseOp) : BaseOp := op₂
@@ -202,10 +202,10 @@ namespace BaseOp
     | .bvsaddo => .bvsaddo
     | .bvssubo => .bvssubo
     | .bvsmulo => .bvsmulo
-    | .set.member => .set.member
-    | .set.subset => .set.subset
-    | .set.inter => .set.inter
-    | .option.get => .option.get
+    | BaseOp.set.member => Cedar.SymCC.Op.set.member
+    | BaseOp.set.subset => Cedar.SymCC.Op.set.subset
+    | BaseOp.set.inter => Cedar.SymCC.Op.set.inter
+    | BaseOp.option.get => Cedar.SymCC.Op.option.get
 end BaseOp
 
 inductive PatElem where
@@ -280,8 +280,8 @@ namespace Op
     | .base bop₁, .base bop₂ => .base (Field.merge bop₁ bop₂)
     | .uuf f₁, .uuf f₂ => .uuf (Field.merge f₁ f₂)
     | .zero_extend _, .zero_extend n => .zero_extend n
-    | .record.get s, .record.get t => .record.get (Field.merge s t)
-    | .string.like p₁, .string.like p₂ => .string.like (Field.merge p₁ p₂)
+    | Op.record.get s, Op.record.get t => Op.record.get (Field.merge s t)
+    | Op.string.like p₁, Op.string.like p₂ => Op.string.like (Field.merge p₁ p₂)
     | .ext xop₁, .ext xop₂ => .ext (Field.merge xop₁ xop₂)
     | _, _ => op₂
 
@@ -298,10 +298,10 @@ namespace Op
       pureMergeFn (merge · (.zero_extend x.toNat))
     | 4 =>
       let x : String ← Field.guardedParse t
-      pureMergeFn (merge · (.record.get x))
+      pureMergeFn (merge · (Op.record.get x))
     | 5 =>
       let x : Pattern ← Field.guardedParse t
-      pureMergeFn (merge · (.string.like x))
+      pureMergeFn (merge · (Op.string.like x))
     | 6 =>
       let x : ExtOp ← Field.guardedParse t
       pureMergeFn (merge · (.ext x))
@@ -317,8 +317,8 @@ namespace Op
     | .base bop => bop.toCedar
     | .uuf f => .uuf f.toCedar
     | .zero_extend n => .zero_extend n
-    | .record.get attr => .record.get attr
-    | .string.like p => .string.like p.toCedar
+    | Op.record.get attr => Cedar.SymCC.Op.record.get attr
+    | Op.string.like p => Cedar.SymCC.Op.string.like p.toCedar
     | .ext xop => .ext xop.toCedar
 end Op
 

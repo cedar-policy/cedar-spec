@@ -29,12 +29,7 @@ To run the unit tests:
 lake exe CedarUnitTests
 ```
 
-To run the CLI, use `lake exe Cli`. We provide some example inputs in `Cli/json-inputs`. The authorization examples should all return "allow" and the validation examples should return "ok".
-
-```shell
-lake exe Cli authorize Cli/json-inputs/authorize/example2a.json
-lake exe Cli validate Cli/json-inputs/validate/example2a.json
-```
+We provide a CLI for CedarLean in [cedar-lean-cli](../cedar-lean-cli). You can find its usage [here](../cedar-lean-cli/README.md#usage).
 
 ## Updating the Lean toolchain
 

@@ -87,8 +87,8 @@ fn main() {
         enable_arbitrary_func_call: true,
         enable_unknowns: false,
         enable_action_in_constraints: true,
-        per_action_request_env_limit: ABACSettings::default_per_action_request_env_limit(),
-        total_action_request_env_limit: ABACSettings::default_total_action_request_env_limit(),
+        per_action_request_env_limit: 128,
+        total_action_request_env_limit: 1024,
     };
     let mut rng = StdRng::seed_from_u64(42);
     let mut bytes = [0u8; 4096];

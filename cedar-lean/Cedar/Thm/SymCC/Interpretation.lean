@@ -54,7 +54,7 @@ theorem wf_interpretation_implies_wf_udf {εs : SymEntities} {I : Interpretation
   simp only [h₁, h₃, h₄, and_self]
 
 theorem wf_interpretation_implies_wfp_option_get {εs : SymEntities} {I : Interpretation} {t : Term} {ty : TermType} :
-  I.WellFormed εs → ty.WellFormed εs → t = .app .option.get [.none ty] ty →
+  I.WellFormed εs → ty.WellFormed εs → t = .app Op.option.get [.none ty] ty →
   (I.partials t).WellFormedLiteral εs ∧ (I.partials t).typeOf = ty
 := by
   intro h₁ h₂ h₃
@@ -68,7 +68,7 @@ theorem wf_interpretation_implies_wfp_option_get {εs : SymEntities} {I : Interp
 theorem wf_interpretation_implies_wfp_ext_ipaddr_addrV4 {εs : SymEntities} {I : Interpretation} {t : Term}
   (v6 : Ext.IPAddr.IPv6Addr) (p6 : Ext.IPAddr.IPv6Prefix) :
   I.WellFormed εs →
-  t = .app (.ext .ipaddr.addrV4) [.prim (.ext (.ipaddr (.V6 ⟨v6, p6⟩)))] (.bitvec 32) →
+  t = .app (.ext ExtOp.ipaddr.addrV4) [.prim (.ext (.ipaddr (.V6 ⟨v6, p6⟩)))] (.bitvec 32) →
   (I.partials t).WellFormedLiteral εs ∧ (I.partials t).typeOf = (.bitvec 32)
 := by
   intro h₁ h₂
@@ -76,7 +76,7 @@ theorem wf_interpretation_implies_wfp_ext_ipaddr_addrV4 {εs : SymEntities} {I :
   have h₂ : ¬ (Ext.IPAddr.IPNet.V6 ⟨v6, p6⟩).isV4 :=
     by simp only [Ext.IPAddr.IPNet.isV4, Bool.false_eq_true, not_false_eq_true]
   replace h₁ := h₁.right.right
-    (.app (.ext .ipaddr.addrV4) [.prim (.ext (.ipaddr (.V6 ⟨v6, p6⟩)))] (.bitvec 32))
+    (.app (.ext ExtOp.ipaddr.addrV4) [.prim (.ext (.ipaddr (.V6 ⟨v6, p6⟩)))] (.bitvec 32))
     (Term.WellFormedPartialApp.ext_ipddr_addr4_wfp h₂)
   simp only [Interpretation.WellFormed.WellFormedPartialAppInterpretation,
     Term.typeOf] at h₁
@@ -85,7 +85,7 @@ theorem wf_interpretation_implies_wfp_ext_ipaddr_addrV4 {εs : SymEntities} {I :
 theorem wf_interpretation_implies_wfp_ext_ipaddr_prefixV4 {εs : SymEntities} {I : Interpretation} {t : Term}
   (v6 : Ext.IPAddr.IPv6Addr) (p6 : Ext.IPAddr.IPv6Prefix) :
   I.WellFormed εs →
-  t = .app (.ext .ipaddr.prefixV4) [.prim (.ext (.ipaddr (.V6 ⟨v6, p6⟩)))] (.option (.bitvec 5)) →
+  t = .app (.ext ExtOp.ipaddr.prefixV4) [.prim (.ext (.ipaddr (.V6 ⟨v6, p6⟩)))] (.option (.bitvec 5)) →
   (I.partials t).WellFormedLiteral εs ∧ (I.partials t).typeOf = (.option (.bitvec 5))
 := by
   intro h₁ h₂
@@ -93,7 +93,7 @@ theorem wf_interpretation_implies_wfp_ext_ipaddr_prefixV4 {εs : SymEntities} {I
   have h₂ : ¬ (Ext.IPAddr.IPNet.V6 ⟨v6, p6⟩).isV4 := by
     simp only [Ext.IPAddr.IPNet.isV4, Bool.false_eq_true, not_false_eq_true]
   replace h₁ := h₁.right.right
-    (.app (.ext .ipaddr.prefixV4) [.prim (.ext (.ipaddr (.V6 ⟨v6, p6⟩)))] (.option (.bitvec 5)))
+    (.app (.ext ExtOp.ipaddr.prefixV4) [.prim (.ext (.ipaddr (.V6 ⟨v6, p6⟩)))] (.option (.bitvec 5)))
     (Term.WellFormedPartialApp.ext_ipddr_prefix4_wfp h₂)
   simp only [Interpretation.WellFormed.WellFormedPartialAppInterpretation,
     Term.typeOf] at h₁
@@ -102,7 +102,7 @@ theorem wf_interpretation_implies_wfp_ext_ipaddr_prefixV4 {εs : SymEntities} {I
 theorem wf_interpretation_implies_wfp_ext_ipaddr_addrV6 {εs : SymEntities} {I : Interpretation} {t : Term}
   (v4 : Ext.IPAddr.IPv4Addr) (p4 : Ext.IPAddr.IPv4Prefix) :
   I.WellFormed εs →
-  t = .app (.ext .ipaddr.addrV6) [.prim (.ext (.ipaddr (.V4 ⟨v4, p4⟩)))] (.bitvec 128) →
+  t = .app (.ext ExtOp.ipaddr.addrV6) [.prim (.ext (.ipaddr (.V4 ⟨v4, p4⟩)))] (.bitvec 128) →
   (I.partials t).WellFormedLiteral εs ∧ (I.partials t).typeOf = (.bitvec 128)
 := by
   intro h₁ h₂
@@ -110,7 +110,7 @@ theorem wf_interpretation_implies_wfp_ext_ipaddr_addrV6 {εs : SymEntities} {I :
   have h₂ : ¬ (Ext.IPAddr.IPNet.V4 ⟨v4, p4⟩).isV6 := by
     simp only [Ext.IPAddr.IPNet.isV6, Bool.false_eq_true, not_false_eq_true]
   replace h₁ := h₁.right.right
-    (.app (.ext .ipaddr.addrV6) [.prim (.ext (.ipaddr (.V4 ⟨v4, p4⟩)))] (.bitvec 128))
+    (.app (.ext ExtOp.ipaddr.addrV6) [.prim (.ext (.ipaddr (.V4 ⟨v4, p4⟩)))] (.bitvec 128))
     (Term.WellFormedPartialApp.ext_ipddr_addr6_wfp h₂)
   simp only [Interpretation.WellFormed.WellFormedPartialAppInterpretation,
     Term.typeOf] at h₁
@@ -119,7 +119,7 @@ theorem wf_interpretation_implies_wfp_ext_ipaddr_addrV6 {εs : SymEntities} {I :
 theorem wf_interpretation_implies_wfp_ext_ipaddr_prefixV6 {εs : SymEntities} {I : Interpretation} {t : Term}
   (v4 : Ext.IPAddr.IPv4Addr) (p4 : Ext.IPAddr.IPv4Prefix) :
   I.WellFormed εs →
-  t = .app (.ext .ipaddr.prefixV6) [.prim (.ext (.ipaddr (.V4 ⟨v4, p4⟩)))] (.option (.bitvec 7)) →
+  t = .app (.ext ExtOp.ipaddr.prefixV6) [.prim (.ext (.ipaddr (.V4 ⟨v4, p4⟩)))] (.option (.bitvec 7)) →
   (I.partials t).WellFormedLiteral εs ∧ (I.partials t).typeOf = (.option (.bitvec 7))
 := by
   intro h₁ h₂
@@ -127,7 +127,7 @@ theorem wf_interpretation_implies_wfp_ext_ipaddr_prefixV6 {εs : SymEntities} {I
   have h₂ : ¬ (Ext.IPAddr.IPNet.V4 ⟨v4, p4⟩).isV6 := by
     simp only [Ext.IPAddr.IPNet.isV6, Bool.false_eq_true, not_false_eq_true]
   replace h₁ := h₁.right.right
-    (.app (.ext .ipaddr.prefixV6) [.prim (.ext (.ipaddr (.V4 ⟨v4, p4⟩)))] (.option (.bitvec 7)))
+    (.app (.ext ExtOp.ipaddr.prefixV6) [.prim (.ext (.ipaddr (.V4 ⟨v4, p4⟩)))] (.option (.bitvec 7)))
     (Term.WellFormedPartialApp.ext_ipddr_prefix6_wfp h₂)
   simp only [Interpretation.WellFormed.WellFormedPartialAppInterpretation,
     Term.typeOf] at h₁

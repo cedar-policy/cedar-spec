@@ -98,13 +98,29 @@ pub struct ABACSettings {
 }
 
 impl ABACSettings {
-    /// Default value of `per_action_request_env_limit`
-    pub const fn default_per_action_request_env_limit() -> usize {
-        128
+    /// Default setting configuration using type directed generation
+    pub const fn type_directed() -> Self {
+        Self {
+            match_types: true,
+            enable_extensions: true,
+            max_depth: 7,
+            max_width: 7,
+            enable_additional_attributes: false,
+            enable_like: true,
+            enable_action_groups_and_attrs: true,
+            enable_arbitrary_func_call: true,
+            enable_unknowns: false,
+            enable_action_in_constraints: true,
+            per_action_request_env_limit: 128,
+            total_action_request_env_limit: 1024,
+        }
     }
 
-    /// Default value of `total_action_request_env_limit`
-    pub const fn default_total_action_request_env_limit() -> usize {
-        1024
+    /// Default setting configuration not using type directed generation
+    pub const fn undirected() -> Self {
+        Self {
+            match_types: false,
+            ..Self::type_directed()
+        }
     }
 }

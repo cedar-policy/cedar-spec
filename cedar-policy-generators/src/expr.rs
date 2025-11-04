@@ -589,7 +589,7 @@ impl ExprGenerator<'_> {
                             let attr = self.schema.arbitrary_attr_of_entity_type(&ety, u)?;
                             Ok(ast::Expr::has_attr(
                                 self.generate_expr_for_type(
-                                    &Type::Entity(ast::EntityType::from(ety)),
+                                    &Type::Entity(ety),
                                     max_depth - 1,
                                     u,
                                 )?,
@@ -1297,11 +1297,21 @@ impl ExprGenerator<'_> {
     ) -> Result<ast::Expr> {
         let func = self.ext_funcs.arbitrary_for_type(target_type, u)?;
         assert_eq!(&func.return_ty, target_type);
-        let args = func
+        let mut args: Vec<ast::Expr> = func
             .parameter_types
             .iter()
             .map(|param_ty| self.generate_expr_for_type(param_ty, max_depth, u))
             .collect::<Result<_>>()?;
+        if self.settings.enable_arbitrary_func_call && u.ratio::<u8>(1, 20)? {
+            let last_param_ty = func
+                .parameter_types
+                .last()
+                .expect("All extension functions accept at least one argument.");
+            u.arbitrary_loop(Some(0), Some(self.settings.max_width as u32), |u| {
+                args.push(self.generate_expr_for_type(last_param_ty, max_depth, u)?);
+                Ok(std::ops::ControlFlow::Continue(()))
+            })?;
+        }
         Ok(ast::Expr::call_extension_fn(func.name.clone(), args))
     }
 
@@ -1719,13 +1729,13 @@ impl ExprGenerator<'_> {
     }
 }
 
-/// internal helper function, get a [`json_schema::Type`] representing a Record
+/// internal helper function, get a [`abac::Type`] representing a Record
 /// with (at least) one attribute of the specified name and type.
 fn record_type_with_attr(attr_name: SmolStr, attr_type: Type) -> Type {
     Type::Record(BTreeMap::from_iter([(
         attr_name,
         QualifiedType {
-            ty: Box::new(attr_type),
+            ty: attr_type,
             required: true,
         },
     )]))

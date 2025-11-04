@@ -32,21 +32,13 @@ struct Input {
 
 /// settings for this fuzz target
 const SETTINGS: ABACSettings = ABACSettings {
-    match_types: false,
-    enable_extensions: true,
     max_depth: 3,
     max_width: 7,
-    enable_additional_attributes: false,
-    enable_like: true,
     // ABAC fuzzing restricts the use of action because it is used to generate
     // the corpus tests which will be run on Cedar and CedarCLI.
     // These packages only expose the restricted action behavior.
     enable_action_groups_and_attrs: false,
-    enable_arbitrary_func_call: true,
-    enable_unknowns: false,
-    enable_action_in_constraints: true,
-    per_action_request_env_limit: ABACSettings::default_per_action_request_env_limit(),
-    total_action_request_env_limit: ABACSettings::default_total_action_request_env_limit(),
+    ..ABACSettings::undirected()
 };
 
 impl<'a> Arbitrary<'a> for Input {
@@ -55,7 +47,7 @@ impl<'a> Arbitrary<'a> for Input {
         let namespace = arb_schema.schema;
         let name = arb_schema.namespace;
 
-        let schema = json_schema::Fragment(BTreeMap::from([(name, namespace)]));
+        let schema = json_schema::Fragment(BTreeMap::from([(name, namespace.0)]));
 
         Ok(Self { schema })
     }

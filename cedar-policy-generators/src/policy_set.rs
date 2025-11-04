@@ -16,7 +16,6 @@
 use crate::hierarchy::Hierarchy;
 use crate::policy::GeneratedPolicy;
 use crate::schema::Schema;
-use crate::schema_gen::SchemaGen;
 use arbitrary::Unstructured;
 use cedar_policy_core::ast;
 use cedar_policy_core::ast::PolicyID;

@@ -19,6 +19,7 @@ use smol_str::SmolStr;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write;
 use std::hash::{Hash, Hasher};
+use std::mem;
 
 // Check that two policies are equivalent, ignoring policy ids and source
 // locations.  Panic if the two policies are not the same.
@@ -34,18 +35,26 @@ pub fn check_policy_equivalence(p_old: &Template, p_new: &Template) {
     similar_asserts::assert_eq!(p_new.principal_constraint(), p_old.principal_constraint(),);
     similar_asserts::assert_eq!(p_new.action_constraint(), p_old.action_constraint(),);
     similar_asserts::assert_eq!(p_new.resource_constraint(), p_old.resource_constraint(),);
-    assert!(
-        p_new
-            .non_scope_constraints()
-            .eq_shape(p_old.non_scope_constraints()),
-        "{}",
-        similar_asserts::SimpleDiff::from_str(
-            &p_new.non_scope_constraints().to_string(),
-            &p_old.non_scope_constraints().to_string(),
-            "new",
-            "old"
-        )
-    );
+    match (p_new.non_scope_constraints(), p_old.non_scope_constraints()) {
+        (Some(p_new), Some(p_old)) if !p_new.eq_shape(p_old) => {
+            panic!(
+                "{}",
+                similar_asserts::SimpleDiff::from_str(
+                    &p_new.to_string(),
+                    &p_old.to_string(),
+                    "new",
+                    "old"
+                )
+            )
+        }
+        (Some(p_new), None) => {
+            panic!("New policy added non scope constraint {p_new}")
+        }
+        (None, Some(p_old)) => {
+            panic!("New policy dropped non scope constraint {p_old}")
+        }
+        _ => (),
+    }
 }
 
 // Check that we don't see a few specific errors, which correspond to violations
@@ -79,10 +88,14 @@ impl PartialEq for PreservedTemplate<'_> {
             && self.template.action_constraint() == other.template.action_constraint()
             && self.template.resource_constraint() == other.template.resource_constraint()
             && self.annotations == other.annotations
-            && self
-                .template
-                .non_scope_constraints()
-                .eq_shape(other.template.non_scope_constraints())
+            && match (
+                self.template.non_scope_constraints(),
+                other.template.non_scope_constraints(),
+            ) {
+                (Some(s), Some(o)) => s.eq_shape(o),
+                (Some(_), None) | (None, Some(_)) => false,
+                (None, None) => true,
+            }
     }
 }
 
@@ -92,7 +105,10 @@ impl Hash for PreservedTemplate<'_> {
         self.template.principal_constraint().hash(hasher);
         self.template.action_constraint().hash(hasher);
         self.template.resource_constraint().hash(hasher);
-        self.template.non_scope_constraints().hash_shape(hasher);
+        mem::discriminant(&self.template.non_scope_constraints()).hash(hasher);
+        if let Some(expr) = self.template.non_scope_constraints() {
+            expr.hash_shape(hasher);
+        }
         self.annotations.hash(hasher);
     }
 }
@@ -129,26 +145,11 @@ pub fn policy_set_to_text(policy_set: &cedar_policy_core::ast::PolicySet) -> Str
     let mut res = String::new();
     let mut iter = policy_set.all_templates();
     if let Some(template) = iter.next() {
-        to_cedar_text(template, &mut res).unwrap();
+        write!(res, "{template}").unwrap();
         for template in iter {
             writeln!(&mut res).unwrap();
-            to_cedar_text(template, &mut res).unwrap();
+            write!(res, "{template}").unwrap();
         }
     }
     res
-}
-
-fn to_cedar_text(template: &Template, f: &mut impl std::fmt::Write) -> std::fmt::Result {
-    for (k, v) in template.annotations() {
-        writeln!(f, "@{}(\"{}\")", k, v.val.escape_debug())?
-    }
-    write!(
-        f,
-        "{}(\n  {},\n  {},\n  {}\n) when {{\n  {}\n}};",
-        template.effect(),
-        template.principal_constraint(),
-        template.action_constraint(),
-        template.resource_constraint(),
-        template.non_scope_constraints()
-    )
 }

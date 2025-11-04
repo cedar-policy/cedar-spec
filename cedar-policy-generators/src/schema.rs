@@ -15,13 +15,16 @@
  */
 
 use crate::abac::{
-    ABACRequest, AvailableExtensionFunctions, ConstantPool, QualifiedType, Type, UnknownPool,
+    ABACPolicy, ABACRequest, AvailableExtensionFunctions, ConstantPool, QualifiedType, Type,
+    UnknownPool,
 };
 use crate::collections::{HashMap, HashSet};
 use crate::err::{while_doing, Error, Result};
 use crate::expr::ExprGenerator;
 use crate::hierarchy::Hierarchy;
+use crate::policy::GeneratedPolicy;
 use crate::request::Request;
+use crate::schema_gen::SchemaGen;
 use crate::settings::ABACSettings;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
 use crate::{accum, gen, gen_inner, uniform};
@@ -33,17 +36,18 @@ use cedar_policy_core::validator::json_schema::{
     CommonType, CommonTypeId, EntityTypeKind, StandardEntityType,
 };
 use cedar_policy_core::validator::{
-    json_schema, ActionBehavior, AllDefs, ConditionalName, RawName, SchemaError,
-    ValidatorNamespaceDef, ValidatorSchema, ValidatorSchemaFragment,
+    json_schema, AllDefs, ConditionalName, RawName, SchemaError, ValidatorNamespaceDef,
+    ValidatorSchema, ValidatorSchemaFragment,
 };
 use smol_str::{SmolStr, ToSmolStr};
 use std::collections::BTreeMap;
+use std::ops::Deref;
 
 /// Contains the schema, but also pools of constants etc
 #[derive(Debug, Clone)]
 pub struct Schema {
     /// actual underlying schema
-    pub schema: json_schema::NamespaceDefinition<ast::InternalName>,
+    pub schema: DebugSchemaAsCedar,
     /// Namespace for the schema, as an `ast::Name`
     pub namespace: Option<ast::Name>,
     /// settings
@@ -75,6 +79,24 @@ pub struct Schema {
     /// isn't Hash or Ord
     attributes_by_type: HashMap<Type, Vec<(ast::EntityType, SmolStr)>>,
     entitytypes_by_type: HashMap<ast::EntityType, json_schema::EntityType<ast::InternalName>>,
+}
+
+/// Wrapper so that we pretty print schema in the Cedar schema syntax in debug output for fuzz target failures.
+#[derive(Clone)]
+pub struct DebugSchemaAsCedar(pub json_schema::NamespaceDefinition<ast::InternalName>);
+
+impl Deref for DebugSchemaAsCedar {
+    type Target = json_schema::NamespaceDefinition<ast::InternalName>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl std::fmt::Debug for DebugSchemaAsCedar {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
 }
 
 /// internal helper function, basically `impl Arbitrary for AttributesOrContext`
@@ -339,7 +361,7 @@ pub fn schematype_to_type(
                     (
                         a.clone(),
                         QualifiedType {
-                            ty: Box::new(schematype_to_type(schema, &t.ty, namespace)),
+                            ty: schematype_to_type(schema, &t.ty, namespace),
                             required: t.required,
                         },
                     )
@@ -763,11 +785,11 @@ impl Schema {
                                 (
                                     a.clone(),
                                     QualifiedType {
-                                        ty: Box::new(schematype_to_type(
+                                        ty: schematype_to_type(
                                             &self.schema,
                                             &ty.ty,
                                             self.namespace(),
-                                        )),
+                                        ),
                                         required: ty.required,
                                     },
                                 )
@@ -906,8 +928,6 @@ impl Schema {
             ValidatorNamespaceDef::from_namespace_definition(
                 namespace.clone().map(Into::into),
                 nsdef.clone(),
-                ActionBehavior::PermitAttributes,
-                Extensions::all_available(),
             )?,
         ]));
         Self::from_nsdef(
@@ -997,7 +1017,7 @@ impl Schema {
                 })
                 .collect(),
             namespace,
-            schema: nsdef,
+            schema: DebugSchemaAsCedar(nsdef),
         })
     }
 
@@ -1336,7 +1356,7 @@ impl Schema {
             })
             .collect();
         Ok(Schema {
-            schema: nsdef,
+            schema: DebugSchemaAsCedar(nsdef),
             namespace,
             constant_pool: u
                 .arbitrary()
@@ -1401,7 +1421,7 @@ impl Schema {
             .arbitrary_uid_with_type(&ty, u)
     }
 
-    /// get an attribute name and its `json_schema::Type`, from the schema
+    /// get an attribute name from the schema
     pub fn arbitrary_attr(&self, u: &mut Unstructured<'_>) -> Result<SmolStr> {
         u.choose(&self.attributes)
             .map_err(|e| while_doing("getting arbitrary attr from schema".into(), e))
@@ -1468,6 +1488,56 @@ impl Schema {
                 e,
             )
         })
+    }
+
+    /// get an arbitrary policy conforming to this schema
+    pub fn arbitrary_policy(
+        &self,
+        hierarchy: &Hierarchy,
+        u: &mut Unstructured<'_>,
+    ) -> Result<ABACPolicy> {
+        let id = u.arbitrary()?;
+        let effect = u.arbitrary()?;
+        let principal_constraint = self.arbitrary_principal_constraint(hierarchy, u)?;
+        let action_constraint = self.arbitrary_action_constraint(u, Some(3))?;
+        let resource_constraint = self.arbitrary_resource_constraint(hierarchy, u)?;
+        let conjunction = self.arbitrary_abac_constraints(hierarchy, u)?;
+        Ok(ABACPolicy(GeneratedPolicy::new(
+            id,
+            u.arbitrary()?,
+            effect,
+            principal_constraint,
+            action_constraint,
+            resource_constraint,
+            conjunction,
+        )))
+    }
+
+    /// Generates arbitrary non-scope constraints
+    pub fn arbitrary_abac_constraints(
+        &self,
+        hierarchy: &Hierarchy,
+        u: &mut Unstructured<'_>,
+    ) -> Result<ast::Expr> {
+        let mut abac_constraints = Vec::new();
+        let mut exprgenerator = self.exprgenerator(Some(hierarchy));
+        u.arbitrary_loop(Some(0), Some(self.settings.max_depth as u32), |u| {
+            if self.settings.match_types {
+                abac_constraints.push(exprgenerator.generate_expr_for_type(
+                    &Type::bool(),
+                    self.settings.max_depth,
+                    u,
+                )?);
+            } else {
+                abac_constraints.push(exprgenerator.generate_expr(self.settings.max_depth, u)?);
+            }
+            Ok(std::ops::ControlFlow::Continue(()))
+        })?;
+        let mut conjunction = ast::Expr::val(true);
+        for constraint in abac_constraints {
+            conjunction = ast::Expr::and(conjunction, constraint);
+        }
+        Ok(conjunction)
     }
 
     /// Size hint for [`Self::arbitrary_abac_constraints()`].
@@ -1634,14 +1704,14 @@ impl Schema {
 
     /// Get the underlying schema file, as a String containing JSON
     pub fn schemafile_string(&self) -> String {
-        serde_json::to_string_pretty(&self.schema)
+        serde_json::to_string_pretty(&self.schema.0)
             .expect("failed to serialize schema NamespaceDefinition")
     }
 }
 
 impl From<Schema> for json_schema::Fragment<ast::InternalName> {
     fn from(schema: Schema) -> json_schema::Fragment<ast::InternalName> {
-        json_schema::Fragment(BTreeMap::from_iter([(schema.namespace, schema.schema)]))
+        json_schema::Fragment(BTreeMap::from_iter([(schema.namespace, schema.schema.0)]))
     }
 }
 
@@ -1902,18 +1972,13 @@ mod tests {
     const ITERATION: u8 = 100;
 
     const TEST_SETTINGS: ABACSettings = ABACSettings {
-        match_types: false,
         enable_extensions: false,
         max_depth: 4,
         max_width: 4,
         enable_additional_attributes: false,
         enable_like: false,
-        enable_action_groups_and_attrs: true,
         enable_arbitrary_func_call: false,
-        enable_unknowns: false,
-        enable_action_in_constraints: true,
-        per_action_request_env_limit: ABACSettings::default_per_action_request_env_limit(),
-        total_action_request_env_limit: ABACSettings::default_total_action_request_env_limit(),
+        ..ABACSettings::undirected()
     };
 
     const GITHUB_SCHEMA_STR: &str = r#"

@@ -18,23 +18,21 @@ use crate::datatypes::{
     ValidationResponse,
 };
 use crate::err::FfiError;
+use crate::lean_object::{
+    call_lean_ffi_takes_obj_and_protobuf, call_lean_ffi_takes_protobuf, OwnedLeanObject,
+};
 use crate::messages::*;
 
 use cedar_policy::{
-    Entities, Expression, Policy, PolicySet, Request, RequestEnv, Schema, ValidationMode,
+    Decision, Effect, Entities, Expression, Policy, PolicySet, Request, RequestEnv, Schema,
+    ValidationMode,
 };
-
-use lean_sys::lean_object;
 use lean_sys::{
-    lean_alloc_sarray, lean_dec, lean_dec_ref, lean_finalize_thread,
-    lean_initialize_runtime_module_locked, lean_initialize_thread, lean_io_mark_end_initialization,
-    lean_io_mk_world, lean_io_result_is_ok, lean_io_result_show_error, lean_sarray_object,
-    lean_set_exit_on_panic, lean_string_cstr,
+    lean_dec, lean_dec_ref, lean_finalize_thread, lean_initialize_runtime_module_locked,
+    lean_initialize_thread, lean_io_mark_end_initialization, lean_io_mk_world,
+    lean_io_result_is_ok, lean_io_result_show_error, lean_object, lean_set_exit_on_panic,
 };
 
-use prost::Message;
-
-use std::ffi::{c_char, CStr};
 use std::sync::Once;
 
 // Import and signal RUST to link the exported Lean FFI code (which are C functions at this point)
@@ -46,32 +44,55 @@ use std::sync::Once;
 #[link(name = "Batteries", kind = "static")]
 #[link(name = "CedarFFI", kind = "static")]
 extern "C" {
-    fn runCheckNeverErrors(req: *mut lean_object) -> *mut lean_object;
-    fn runCheckNeverErrorsWithCex(req: *mut lean_object) -> *mut lean_object;
-    fn runCheckAlwaysAllows(req: *mut lean_object) -> *mut lean_object;
-    fn runCheckAlwaysAllowsWithCex(req: *mut lean_object) -> *mut lean_object;
-    fn runCheckAlwaysDenies(req: *mut lean_object) -> *mut lean_object;
-    fn runCheckAlwaysDeniesWithCex(req: *mut lean_object) -> *mut lean_object;
-    fn runCheckEquivalent(req: *mut lean_object) -> *mut lean_object;
-    fn runCheckEquivalentWithCex(req: *mut lean_object) -> *mut lean_object;
-    fn runCheckImplies(req: *mut lean_object) -> *mut lean_object;
-    fn runCheckImpliesWithCex(req: *mut lean_object) -> *mut lean_object;
-    fn runCheckDisjoint(req: *mut lean_object) -> *mut lean_object;
-    fn runCheckDisjointWithCex(req: *mut lean_object) -> *mut lean_object;
+    fn runCheckNeverErrors(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
+    fn runCheckNeverErrorsWithCex(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn runCheckAlwaysAllows(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
+    fn runCheckAlwaysAllowsWithCex(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn runCheckAlwaysDenies(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
+    fn runCheckAlwaysDeniesWithCex(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn runCheckEquivalent(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
+    fn runCheckEquivalentWithCex(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn runCheckImplies(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
+    fn runCheckImpliesWithCex(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
+    fn runCheckDisjoint(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
+    fn runCheckDisjointWithCex(schema: *mut lean_object, req: *mut lean_object)
+        -> *mut lean_object;
 
-    fn printCheckNeverErrors(req: *mut lean_object) -> *mut lean_object;
-    fn printCheckAlwaysAllows(req: *mut lean_object) -> *mut lean_object;
-    fn printCheckAlwaysDenies(req: *mut lean_object) -> *mut lean_object;
-    fn printCheckEquivalent(req: *mut lean_object) -> *mut lean_object;
-    fn printCheckImplies(req: *mut lean_object) -> *mut lean_object;
-    fn printCheckDisjoint(req: *mut lean_object) -> *mut lean_object;
+    fn printCheckNeverErrors(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
+    fn printCheckAlwaysAllows(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
+    fn printCheckAlwaysDenies(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
+    fn printCheckEquivalent(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
+    fn printCheckImplies(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
+    fn printCheckDisjoint(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
 
-    fn smtLibOfCheckNeverErrors(req: *mut lean_object) -> *mut lean_object;
-    fn smtLibOfCheckAlwaysAllows(req: *mut lean_object) -> *mut lean_object;
-    fn smtLibOfCheckAlwaysDenies(req: *mut lean_object) -> *mut lean_object;
-    fn smtLibOfCheckEquivalent(req: *mut lean_object) -> *mut lean_object;
-    fn smtLibOfCheckImplies(req: *mut lean_object) -> *mut lean_object;
-    fn smtLibOfCheckDisjoint(req: *mut lean_object) -> *mut lean_object;
+    fn smtLibOfCheckNeverErrors(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn smtLibOfCheckAlwaysAllows(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn smtLibOfCheckAlwaysDenies(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn smtLibOfCheckEquivalent(schema: *mut lean_object, req: *mut lean_object)
+        -> *mut lean_object;
+    fn smtLibOfCheckImplies(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
+    fn smtLibOfCheckDisjoint(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
 
     fn isAuthorized(req: *mut lean_object) -> *mut lean_object;
     fn validate(req: *mut lean_object) -> *mut lean_object;
@@ -81,25 +102,73 @@ extern "C" {
     fn validateEntities(req: *mut lean_object) -> *mut lean_object;
     fn validateRequest(req: *mut lean_object) -> *mut lean_object;
 
-    fn runCheckAsserts(asserts: *mut lean_object) -> *mut lean_object;
-    fn printCheckAsserts(asserts: *mut lean_object) -> *mut lean_object;
-    fn smtLibOfCheckAsserts(asserts: *mut lean_object) -> *mut lean_object;
+    fn runCheckAsserts(schema: *mut lean_object, asserts: *mut lean_object) -> *mut lean_object;
+    fn printCheckAsserts(schema: *mut lean_object, asserts: *mut lean_object) -> *mut lean_object;
+    fn smtLibOfCheckAsserts(
+        schema: *mut lean_object,
+        asserts: *mut lean_object,
+    ) -> *mut lean_object;
 
-    fn assertsOfCheckNeverErrors(req: *mut lean_object) -> *mut lean_object;
-    fn assertsOfCheckNeverErrorsOnOriginal(req: *mut lean_object) -> *mut lean_object;
-    fn assertsOfCheckAlwaysAllows(req: *mut lean_object) -> *mut lean_object;
-    fn assertsOfCheckAlwaysAllowsOnOriginal(req: *mut lean_object) -> *mut lean_object;
-    fn assertsOfCheckAlwaysDenies(req: *mut lean_object) -> *mut lean_object;
-    fn assertsOfCheckAlwaysDeniesOnOriginal(req: *mut lean_object) -> *mut lean_object;
-    fn assertsOfCheckEquivalent(req: *mut lean_object) -> *mut lean_object;
-    fn assertsOfCheckEquivalentOnOriginal(req: *mut lean_object) -> *mut lean_object;
-    fn assertsOfCheckImplies(req: *mut lean_object) -> *mut lean_object;
-    fn assertsOfCheckImpliesOnOriginal(req: *mut lean_object) -> *mut lean_object;
-    fn assertsOfCheckDisjoint(req: *mut lean_object) -> *mut lean_object;
-    fn assertsOfCheckDisjointOnOriginal(req: *mut lean_object) -> *mut lean_object;
+    fn assertsOfCheckNeverErrors(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn assertsOfCheckNeverErrorsOnOriginal(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn assertsOfCheckAlwaysAllows(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn assertsOfCheckAlwaysAllowsOnOriginal(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn assertsOfCheckAlwaysDenies(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn assertsOfCheckAlwaysDeniesOnOriginal(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn assertsOfCheckEquivalent(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn assertsOfCheckEquivalentOnOriginal(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn assertsOfCheckImplies(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
+    fn assertsOfCheckImpliesOnOriginal(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn assertsOfCheckDisjoint(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
+    fn assertsOfCheckDisjointOnOriginal(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+
+    fn batchedEvaluateFFI(req: *mut lean_object) -> *mut lean_object;
 
     fn initialize_CedarFFI(builtin: u8, ob: *mut lean_object) -> *mut lean_object;
+
+    fn loadProtobufSchema(req: *mut lean_object) -> *mut lean_object;
+
+    #[cfg(test)]
+    static ffiTestString: *mut lean_object;
+    #[cfg(test)]
+    static ffiTestExceptOk: *mut lean_object;
+    #[cfg(test)]
+    static ffiTestExceptErr: *mut lean_object;
 }
+
+/// New type wrapper around a `OwnedLeanObject` containing a schema which has already been parsed into a Lean object.
+#[derive(Clone, Debug)]
+pub struct LeanSchema(OwnedLeanObject);
 
 /// Lean can only be initialized once, use a static variable to know if lean backend needs
 /// to be initialized
@@ -108,32 +177,6 @@ static START: Once = Once::new();
 #[derive(Default)]
 /// A struct which will initialize the lean backend (and initialize a thread running the lean runtime)
 pub struct CedarLeanFfi {}
-
-/// Takes ownership of its argument -- do not access `lean_str_obj` after
-/// calling this function
-fn lean_obj_p_to_rust_string(lean_str_obj: *mut lean_object) -> String {
-    let lean_obj_p = unsafe { lean_string_cstr(lean_str_obj) };
-    let lean_obj_cstr = unsafe { CStr::from_ptr(lean_obj_p as *const c_char) };
-    let rust_string = lean_obj_cstr
-        .to_str()
-        .expect("failed to convert Lean object to string")
-        .to_owned();
-    unsafe {
-        lean_dec(lean_str_obj);
-    };
-    rust_string
-}
-
-fn buf_to_lean_obj(buf: &[u8]) -> *mut lean_object {
-    unsafe {
-        let x: *mut lean_sarray_object = lean_alloc_sarray(1, buf.len(), buf.len()).cast();
-        let y = (*x).m_data.as_mut_ptr();
-        for (i, bi) in buf.iter().enumerate() {
-            y.add(i).write(*bi)
-        }
-        x.cast()
-    }
-}
 
 /// A macro which converts symcc-request to protobuf, calls the lean code, then deserializes the output
 macro_rules! checkPolicy_func {
@@ -150,24 +193,23 @@ macro_rules! checkPolicy_func {
         pub fn $timed_func_name(
             &self,
             policy: &Policy,
-            schema: &Schema,
+            schema: LeanSchema,
             request_env: &RequestEnv,
         ) -> Result<TimedResult<$ret_ty>, FfiError> {
-            let lean_check_request =
-                proto::CheckPolicyRequest::new(policy, schema, request_env).encode_to_vec();
-            let lean_check_request = buf_to_lean_obj(&lean_check_request);
-            let response = unsafe { $lean_func_name(lean_check_request) };
-            let response = lean_obj_p_to_rust_string(response);
-            match serde_json::from_str(&response) {
-                Ok(ResultDef::Ok(t)) => Ok(TimedResult::from_def(t).transform($transform)),
-                Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
-                Err(err) => Err(FfiError::LeanDeserializationError(format!("error: {err}\n{response}"))),
+            let response = unsafe { call_lean_ffi_takes_obj_and_protobuf(
+                $lean_func_name,
+                schema.0,
+                &proto::CheckPolicyRequest::new(policy, request_env),
+            )};
+            match response.as_borrowed().deserialize_into()? {
+                ResultDef::Ok(t) => Ok(TimedResult::from_def(t).transform($transform)),
+                ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
             }
         }
         pub fn $untimed_func_name(
             &self,
             policy: &Policy,
-            schema: &Schema,
+            schema: LeanSchema,
             request_env: &RequestEnv,
         ) -> Result<$ret_ty, FfiError> {
             Ok(self
@@ -192,24 +234,23 @@ macro_rules! checkPolicySet_func {
         pub fn $timed_func_name(
             &self,
             policyset: &PolicySet,
-            schema: &Schema,
+            schema: LeanSchema,
             request_env: &RequestEnv,
         ) -> Result<TimedResult<$ret_ty>, FfiError> {
-            let lean_check_request =
-                proto::CheckPolicySetRequest::new(policyset, schema, request_env).encode_to_vec();
-            let lean_check_request = buf_to_lean_obj(&lean_check_request);
-            let response = unsafe { $lean_func_name(lean_check_request) };
-            let response = lean_obj_p_to_rust_string(response);
-            match serde_json::from_str(&response) {
-                Ok(ResultDef::Ok(t)) => Ok(TimedResult::from_def(t).transform($transform)),
-                Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
-                Err(err) => Err(FfiError::LeanDeserializationError(format!("error: {err}\n{response}"))),
+            let response = unsafe { call_lean_ffi_takes_obj_and_protobuf(
+                $lean_func_name,
+                schema.0,
+                &proto::CheckPolicySetRequest::new(policyset, request_env),
+            )};
+            match response.as_borrowed().deserialize_into()? {
+                ResultDef::Ok(t) => Ok(TimedResult::from_def(t).transform($transform)),
+                ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
             }
         }
         pub fn $untimed_func_name(
             &self,
             policyset: &PolicySet,
-            schema: &Schema,
+            schema: LeanSchema,
             request_env: &RequestEnv,
         ) -> Result<$ret_ty, FfiError> {
             Ok(self
@@ -235,30 +276,28 @@ macro_rules! comparePolicySet_func {
             &self,
             src_policyset: &PolicySet,
             tgt_policyset: &PolicySet,
-            schema: &Schema,
+            schema: LeanSchema,
             request_env: &RequestEnv,
         ) -> Result<TimedResult<$ret_ty>, FfiError> {
-            let lean_check_request = proto::ComparePolicySetsRequest::new(
-                src_policyset,
-                tgt_policyset,
-                schema,
-                request_env,
-            )
-            .encode_to_vec();
-            let lean_check_request = buf_to_lean_obj(&lean_check_request);
-            let response = unsafe { $lean_func_name(lean_check_request) };
-            let response = lean_obj_p_to_rust_string(response);
-            match serde_json::from_str(&response) {
-                Ok(ResultDef::Ok(t)) => Ok(TimedResult::from_def(t).transform($transform)),
-                Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
-                Err(err) => Err(FfiError::LeanDeserializationError(format!("error: {err}\n{response}"))),
+            let response = unsafe { call_lean_ffi_takes_obj_and_protobuf(
+                $lean_func_name,
+                schema.0,
+                &proto::ComparePolicySetsRequest::new(
+                    src_policyset,
+                    tgt_policyset,
+                    request_env,
+                ),
+            )};
+            match response.as_borrowed().deserialize_into()? {
+                ResultDef::Ok(t) => Ok(TimedResult::from_def(t).transform($transform)),
+                ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
             }
         }
         pub fn $untimed_func_name(
             &self,
             src_policyset: &PolicySet,
             tgt_policyset: &PolicySet,
-            schema: &Schema,
+            schema: LeanSchema,
             request_env: &RequestEnv,
         ) -> Result<$ret_ty, FfiError> {
             Ok(self
@@ -282,23 +321,23 @@ macro_rules! checkAsserts_func {
         pub fn $timed_func_name(
             &self,
             asserts: &Vec<Term>,
-            schema: &Schema,
+            schema: LeanSchema,
             request_env: &RequestEnv,
         ) -> Result<TimedResult<$ret_ty>, FfiError> {
-            let asserts_proto = proto::CheckAssertsRequest::new(asserts, schema, request_env).encode_to_vec();
-            let asserts_proto = buf_to_lean_obj(&asserts_proto);
-            let response = unsafe { $lean_func_name(asserts_proto) };
-            let response = lean_obj_p_to_rust_string(response);
-            match serde_json::from_str(&response) {
-                Ok(ResultDef::Ok(t)) => Ok(TimedResult::from_def(t).transform($transform)),
-                Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
-                Err(_) => Err(FfiError::LeanDeserializationError(response)),
+            let response = unsafe { call_lean_ffi_takes_obj_and_protobuf(
+                $lean_func_name,
+                schema.0,
+                &proto::CheckAssertsRequest::new(asserts, request_env),
+            )};
+            match response.as_borrowed().deserialize_into()? {
+                ResultDef::Ok(t) => Ok(TimedResult::from_def(t).transform($transform)),
+                ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
             }
         }
         pub fn $untimed_func_name(
             &self,
             asserts: &Vec<Term>,
-            schema: &Schema,
+            schema: LeanSchema,
             request_env: &RequestEnv,
         ) -> Result<$ret_ty, FfiError> {
             Ok(self.$timed_func_name(asserts, schema, request_env)?.take_result())
@@ -656,23 +695,24 @@ impl CedarLeanFfi {
         entities: &Entities,
         request: &Request,
     ) -> Result<TimedResult<AuthorizationResponse>, FfiError> {
-        let lean_auth_request =
-            proto::AuthorizationRequest::new(policyset, entities, request).encode_to_vec();
-        let lean_auth_request = buf_to_lean_obj(&lean_auth_request);
-        let response = unsafe { isAuthorized(lean_auth_request) };
-        let response = lean_obj_p_to_rust_string(response);
-        let result: Result<ResultDef<TimedDef<AuthorizationResponseInner>>, _> =
-            serde_json::from_str(&response);
-        match result {
-            Ok(ResultDef::Ok(resp)) => {
+        let response = unsafe {
+            call_lean_ffi_takes_protobuf(
+                isAuthorized,
+                &proto::AuthorizationRequest::new(policyset, entities, request),
+            )
+        };
+        match response
+            .as_borrowed()
+            .deserialize_into::<ResultDef<TimedDef<AuthorizationResponseInner>>>()?
+        {
+            ResultDef::Ok(resp) => {
                 let tdef = TimedDef {
                     data: AuthorizationResponse::from_inner(resp.data)?,
                     duration: resp.duration,
                 };
                 Ok(TimedResult::from_def(tdef))
             }
-            Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
-            Err(_) => Err(FfiError::LeanDeserializationError(response)),
+            ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
         }
     }
     pub fn is_authorized(
@@ -693,15 +733,15 @@ impl CedarLeanFfi {
         entities: &Entities,
         request: &Request,
     ) -> Result<TimedResult<()>, FfiError> {
-        let lean_eval_request =
-            proto::EvaluationRequestChecked::new(input_expr, entities, request).encode_to_vec();
-        let lean_eval_request = buf_to_lean_obj(&lean_eval_request);
-        let ret = unsafe { printEvaluation(lean_eval_request) };
-        let ret = lean_obj_p_to_rust_string(ret);
-        match serde_json::from_str(&ret) {
-            Ok(ResultDef::Ok(t)) => Ok(TimedResult::from_def(t)),
-            Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
-            Err(_) => Err(FfiError::LeanDeserializationError(ret)),
+        let response = unsafe {
+            call_lean_ffi_takes_protobuf(
+                printEvaluation,
+                &proto::EvaluationRequestChecked::new(input_expr, entities, request),
+            )
+        };
+        match response.as_borrowed().deserialize_into()? {
+            ResultDef::Ok(t) => Ok(TimedResult::from_def(t)),
+            ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
         }
     }
     pub fn print_evaluation(
@@ -723,20 +763,20 @@ impl CedarLeanFfi {
         request: &Request,
         output_expr: Option<&Expression>,
     ) -> Result<TimedResult<bool>, FfiError> {
-        let lean_eval_request = proto::EvaluationRequestChecked::new_checked(
-            input_expr,
-            entities,
-            request,
-            output_expr,
-        )
-        .encode_to_vec();
-        let lean_eval_request = buf_to_lean_obj(&lean_eval_request);
-        let ret = unsafe { checkEvaluate(lean_eval_request) };
-        let ret = lean_obj_p_to_rust_string(ret);
-        match serde_json::from_str(&ret) {
-            Ok(ResultDef::Ok(are_eq)) => Ok(TimedResult::from_def(are_eq)),
-            Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
-            Err(_) => Err(FfiError::LeanDeserializationError(ret)),
+        let response = unsafe {
+            call_lean_ffi_takes_protobuf(
+                checkEvaluate,
+                &proto::EvaluationRequestChecked::new_checked(
+                    input_expr,
+                    entities,
+                    request,
+                    output_expr,
+                ),
+            )
+        };
+        match response.as_borrowed().deserialize_into()? {
+            ResultDef::Ok(are_eq) => Ok(TimedResult::from_def(are_eq)),
+            ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
         }
     }
     pub fn check_evaluate(
@@ -758,15 +798,15 @@ impl CedarLeanFfi {
         schema: &Schema,
         mode: &ValidationMode,
     ) -> Result<TimedResult<ValidationResponse>, FfiError> {
-        let lean_validation_request =
-            proto::ValidationRequest::new(policyset, schema, mode).encode_to_vec();
-        let lean_validation_request = buf_to_lean_obj(&lean_validation_request);
-        let ret = unsafe { validate(lean_validation_request) };
-        let ret = lean_obj_p_to_rust_string(ret);
-        match serde_json::from_str(&ret) {
-            Ok(ResultDef::Ok(res)) => Ok(TimedResult::from_def(res)),
-            Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
-            Err(_) => Err(FfiError::LeanDeserializationError(ret)),
+        let response = unsafe {
+            call_lean_ffi_takes_protobuf(
+                validate,
+                &proto::ValidationRequest::new(policyset, schema, mode),
+            )
+        };
+        match response.as_borrowed().deserialize_into()? {
+            ResultDef::Ok(res) => Ok(TimedResult::from_def(res)),
+            ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
         }
     }
     pub fn validate(
@@ -785,15 +825,15 @@ impl CedarLeanFfi {
         schema: &Schema,
         level: i32,
     ) -> Result<TimedResult<ValidationResponse>, FfiError> {
-        let lean_validation_request =
-            proto::LevelValidationRequest::new(policyset, schema, level).encode_to_vec();
-        let lean_validation_request = buf_to_lean_obj(&lean_validation_request);
-        let ret = unsafe { levelValidate(lean_validation_request) };
-        let ret = lean_obj_p_to_rust_string(ret);
-        match serde_json::from_str(&ret) {
-            Ok(ResultDef::Ok(res)) => Ok(TimedResult::from_def(res)),
-            Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
-            Err(_) => Err(FfiError::LeanDeserializationError(ret)),
+        let response = unsafe {
+            call_lean_ffi_takes_protobuf(
+                levelValidate,
+                &proto::LevelValidationRequest::new(policyset, schema, level),
+            )
+        };
+        match response.as_borrowed().deserialize_into()? {
+            ResultDef::Ok(res) => Ok(TimedResult::from_def(res)),
+            ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
         }
     }
     pub fn level_validate(
@@ -813,15 +853,15 @@ impl CedarLeanFfi {
         schema: &Schema,
         entities: &Entities,
     ) -> Result<TimedResult<ValidationResponse>, FfiError> {
-        let lean_validation_request =
-            proto::EntityValidationRequest::new(schema, entities).encode_to_vec();
-        let lean_validation_request = buf_to_lean_obj(&lean_validation_request);
-        let ret = unsafe { validateEntities(lean_validation_request) };
-        let ret = lean_obj_p_to_rust_string(ret);
-        match serde_json::from_str(&ret) {
-            Ok(ResultDef::Ok(res)) => Ok(TimedResult::from_def(res)),
-            Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
-            Err(_) => Err(FfiError::LeanDeserializationError(ret)),
+        let response = unsafe {
+            call_lean_ffi_takes_protobuf(
+                validateEntities,
+                &proto::EntityValidationRequest::new(schema, entities),
+            )
+        };
+        match response.as_borrowed().deserialize_into()? {
+            ResultDef::Ok(res) => Ok(TimedResult::from_def(res)),
+            ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
         }
     }
     pub fn validate_entities(
@@ -840,15 +880,15 @@ impl CedarLeanFfi {
         schema: &Schema,
         request: &Request,
     ) -> Result<TimedResult<ValidationResponse>, FfiError> {
-        let lean_validation_request =
-            proto::RequestValidationRequest::new(schema, request).encode_to_vec();
-        let lean_validation_request = buf_to_lean_obj(&lean_validation_request);
-        let ret = unsafe { validateRequest(lean_validation_request) };
-        let ret = lean_obj_p_to_rust_string(ret);
-        match serde_json::from_str(&ret) {
-            Ok(ResultDef::Ok(res)) => Ok(TimedResult::from_def(res)),
-            Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
-            Err(_) => Err(FfiError::LeanDeserializationError(ret)),
+        let response = unsafe {
+            call_lean_ffi_takes_protobuf(
+                validateRequest,
+                &proto::RequestValidationRequest::new(schema, request),
+            )
+        };
+        match response.as_borrowed().deserialize_into()? {
+            ResultDef::Ok(res) => Ok(TimedResult::from_def(res)),
+            ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
         }
     }
     pub fn validate_request(
@@ -857,6 +897,66 @@ impl CedarLeanFfi {
         request: &Request,
     ) -> Result<ValidationResponse, FfiError> {
         Ok(self.validate_request_timed(schema, request)?.take_result())
+    }
+
+    /// Calls the lean backend to perform batched evaluation on a single policy
+    pub fn batched_evaluation_timed(
+        &self,
+        policy: &Policy,
+        schema: &Schema,
+        request: &Request,
+        entities: &Entities,
+        iteration: u32,
+    ) -> Result<TimedResult<Option<Decision>>, FfiError> {
+        // We have to construct a policy set because we don't have protobuf encoding of policy yet
+        let policyset = PolicySet::from_policies(std::iter::once(policy.clone()))
+            .expect("policy set construction should succeed");
+        let response = unsafe {
+            call_lean_ffi_takes_protobuf(
+                batchedEvaluateFFI,
+                &proto::BatchedEvaluationRequest::new(
+                    &policyset, schema, request, entities, iteration,
+                ),
+            )
+        };
+        match response.as_borrowed().deserialize_into()? {
+            ResultDef::Ok(res) => Ok(TimedResult::from_def(res).transform(|b: Option<bool>| {
+                match (b, policy.effect()) {
+                    (Some(true), Effect::Permit) => Some(Decision::Allow),
+                    (Some(_), _) | (None, Effect::Forbid) => Some(Decision::Deny),
+                    // We can't make any conclusions for this case
+                    (None, Effect::Permit) => None,
+                }
+            })),
+            ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
+        }
+    }
+    pub fn batched_evaluation(
+        &self,
+        policy: &Policy,
+        schema: &Schema,
+        request: &Request,
+        entities: &Entities,
+        iteration: u32,
+    ) -> Result<Option<Decision>, FfiError> {
+        Ok(self
+            .batched_evaluation_timed(policy, schema, request, entities, iteration)?
+            .take_result())
+    }
+
+    pub fn load_lean_schema_object(&self, schema: &Schema) -> Result<LeanSchema, FfiError> {
+        let lean_schema_object = unsafe {
+            call_lean_ffi_takes_protobuf(
+                loadProtobufSchema,
+                &cedar_policy::proto::models::Schema::from(schema),
+            )
+        };
+        match lean_schema_object.as_borrowed().as_result()? {
+            Ok(lean_ok_obj) => Ok(LeanSchema(lean_ok_obj.to_owned())),
+            Err(lean_err_obj) => Err(FfiError::LeanBackendError(
+                lean_err_obj.as_rust_str()?.to_string(),
+            )),
+        }
     }
 }
 
@@ -886,9 +986,65 @@ mod test {
     use cool_asserts::assert_matches;
 
     use std::collections::HashSet;
+    use std::marker::PhantomData;
     use std::str::FromStr;
 
-    use super::*;
+    use crate::{
+        lean_ffi::{ffiTestExceptErr, ffiTestExceptOk, ffiTestString},
+        lean_object::LeanObject,
+        CedarLeanFfi, TimedResult, ValidationResponse,
+    };
+
+    impl CedarLeanFfi {
+        fn ffi_test_string(&self) -> LeanObject<'static> {
+            unsafe { LeanObject(ffiTestString, PhantomData) }
+        }
+
+        fn ffi_test_except_ok(&self) -> LeanObject<'static> {
+            unsafe { LeanObject(ffiTestExceptOk, PhantomData) }
+        }
+
+        fn ffi_test_except_err(&self) -> LeanObject<'static> {
+            unsafe { LeanObject(ffiTestExceptErr, PhantomData) }
+        }
+    }
+
+    #[test]
+    fn read_test_string() {
+        let ffi = CedarLeanFfi::new();
+        let rust_str = ffi.ffi_test_string().as_rust_str().unwrap();
+        assert_eq!(rust_str, "ffiTestString");
+    }
+
+    #[test]
+    fn read_test_except_ok() {
+        let ffi = CedarLeanFfi::new();
+        let ok_str = ffi
+            .ffi_test_except_ok()
+            .as_ctor()
+            .unwrap()
+            .as_result()
+            .unwrap()
+            .unwrap()
+            .as_rust_str()
+            .unwrap();
+        assert_eq!(ok_str, "ok");
+    }
+
+    #[test]
+    fn read_test_except_err() {
+        let ffi = CedarLeanFfi::new();
+        let err_str = ffi
+            .ffi_test_except_err()
+            .as_ctor()
+            .unwrap()
+            .as_result()
+            .unwrap()
+            .unwrap_err()
+            .as_rust_str()
+            .unwrap();
+        assert_eq!(err_str, "error");
+    }
 
     fn example_schema() -> Schema {
         Schema::from_cedarschema_str(
@@ -913,6 +1069,14 @@ mod test {
         )
         .expect("Example schema failed to parse")
         .0
+    }
+
+    #[test]
+    fn load_schema() {
+        let ffi = CedarLeanFfi::new();
+        let schema = example_schema();
+        let t = ffi.load_lean_schema_object(&schema);
+        t.unwrap();
     }
 
     fn request(principal: &str, action: &str, resource: &str) -> Request {
@@ -940,23 +1104,22 @@ mod test {
     fn test_check_never_errors() {
         let trivial_policy = Policy::from_str("permit(principal, action, resource);")
             .expect("Failed to parse trivial policy");
-        let schema = example_schema();
+        let ffi = CedarLeanFfi::new();
+        let schema = ffi.load_lean_schema_object(&example_schema()).unwrap();
         let req_env = request_env("Identity", "Action::\"view\"", "Thing");
 
-        let ffi = CedarLeanFfi::new();
-
         let res = ffi
-            .run_check_never_errors(&trivial_policy, &schema, &req_env)
+            .run_check_never_errors(&trivial_policy, schema.clone(), &req_env)
             .expect("Lean call unexpectedly failed for run_check_never_errors");
         assert!(
             res,
             "run_check_never_errors returned wrong result. Expected: true"
         );
 
-        ffi.smtlib_of_check_never_errors(&trivial_policy, &schema, &req_env)
+        ffi.smtlib_of_check_never_errors(&trivial_policy, schema.clone(), &req_env)
             .expect("Lean call unexpectedly failed for smtlib_of_check_never_errors");
 
-        ffi.asserts_of_check_never_errors(&trivial_policy, &schema, &req_env)
+        ffi.asserts_of_check_never_errors(&trivial_policy, schema.clone(), &req_env)
             .expect("Lean call unexpectedly failed for asserts_of_check_never_errors")
             .expect(
                 "Lean SymCC unexpectedly failed to encode term for asserts_of_check_never_errors",
@@ -969,40 +1132,39 @@ mod test {
             .expect("Failed to parse trivial policy set");
         let always_denies_pset = PolicySet::from_str("forbid(principal, action, resource);")
             .expect("Failed to parse trivial policy set");
-        let schema = example_schema();
+        let ffi = CedarLeanFfi::new();
+        let schema = ffi.load_lean_schema_object(&example_schema()).unwrap();
         let req_env = request_env("Identity", "Action::\"view\"", "Thing");
 
-        let ffi = CedarLeanFfi::new();
-
         let res = ffi
-            .run_check_always_allows(&always_allows_pset, &schema, &req_env)
+            .run_check_always_allows(&always_allows_pset, schema.clone(), &req_env)
             .expect("Lean call unexpectedly failed for run_check_always_allows");
         assert!(
             res,
             "run_check_always_allows returned wrong result. Expected: true"
         );
 
-        ffi.smtlib_of_check_always_allows(&always_allows_pset, &schema, &req_env)
+        ffi.smtlib_of_check_always_allows(&always_allows_pset, schema.clone(), &req_env)
             .expect("Lean call unexpectedly failed for smtlib_of_check_always_allows");
 
-        ffi.asserts_of_check_always_allows(&always_allows_pset, &schema, &req_env)
+        ffi.asserts_of_check_always_allows(&always_allows_pset, schema.clone(), &req_env)
             .expect("Lean call unexpectedly failed for asserts_of_check_always_allows")
             .expect(
                 "Lean SymCC unexpectedly failed to encode term for asserts_of_check_always_allows",
             );
 
         let res = ffi
-            .run_check_always_allows(&always_denies_pset, &schema, &req_env)
+            .run_check_always_allows(&always_denies_pset, schema.clone(), &req_env)
             .expect("Lean call unexpectedly failed for run_check_always_allows");
         assert!(
             !res,
             "run_check_always_allows returned wrong result. Expected: false"
         );
 
-        ffi.smtlib_of_check_always_allows(&always_denies_pset, &schema, &req_env)
+        ffi.smtlib_of_check_always_allows(&always_denies_pset, schema.clone(), &req_env)
             .expect("Lean call unexpectedly failed for smtlib_of_check_always_allows");
 
-        ffi.asserts_of_check_always_allows(&always_denies_pset, &schema, &req_env)
+        ffi.asserts_of_check_always_allows(&always_denies_pset, schema.clone(), &req_env)
             .expect("Lean call unexpectedly failed for asserts_of_check_always_allows")
             .expect(
                 "Lean SymCC unexpectedly failed to encode term for asserts_of_check_always_allows",
@@ -1015,40 +1177,39 @@ mod test {
             .expect("Failed to parse trivial policy set");
         let always_denies_pset = PolicySet::from_str("forbid(principal, action, resource);")
             .expect("Failed to parse trivial policy set");
-        let schema = example_schema();
+        let ffi = CedarLeanFfi::new();
+        let schema = ffi.load_lean_schema_object(&example_schema()).unwrap();
         let req_env = request_env("Identity", "Action::\"view\"", "Thing");
 
-        let ffi = CedarLeanFfi::new();
-
         let res = ffi
-            .run_check_always_denies(&always_allows_pset, &schema, &req_env)
+            .run_check_always_denies(&always_allows_pset, schema.clone(), &req_env)
             .expect("Lean call unexpectedly failed for run_check_always_denies");
         assert!(
             !res,
             "run_check_always_denies returned wrong result. Expected: false"
         );
 
-        ffi.smtlib_of_check_always_denies(&always_allows_pset, &schema, &req_env)
+        ffi.smtlib_of_check_always_denies(&always_allows_pset, schema.clone(), &req_env)
             .expect("Lean call unexpectedly failed for smtlib_of_check_always_denies");
 
-        ffi.asserts_of_check_always_denies(&always_allows_pset, &schema, &req_env)
+        ffi.asserts_of_check_always_denies(&always_allows_pset, schema.clone(), &req_env)
             .expect("Lean call unexpectedly failed for asserts_of_check_always_denies")
             .expect(
                 "Lean SymCC unexpectedly failed to encode term for asserts_of_check_always_denies",
             );
 
         let res = ffi
-            .run_check_always_denies(&always_denies_pset, &schema, &req_env)
+            .run_check_always_denies(&always_denies_pset, schema.clone(), &req_env)
             .expect("Lean call unexpectedly failed for run_check_always_denies");
         assert!(
             res,
             "run_check_always_denies returned wrong result. Expected: true"
         );
 
-        ffi.smtlib_of_check_always_denies(&always_denies_pset, &schema, &req_env)
+        ffi.smtlib_of_check_always_denies(&always_denies_pset, schema.clone(), &req_env)
             .expect("Lean call unexpectedly failed for smtlib_of_check_always_denies");
 
-        ffi.asserts_of_check_always_denies(&always_denies_pset, &schema, &req_env)
+        ffi.asserts_of_check_always_denies(&always_denies_pset, schema.clone(), &req_env)
             .expect("Lean call unexpectedly failed for asserts_of_check_always_denies")
             .expect(
                 "Lean SymCC unexpectedly failed to encode term for asserts_of_check_always_denies",
@@ -1061,13 +1222,17 @@ mod test {
             .expect("Failed to parse trivial policy set");
         let always_denies_pset = PolicySet::from_str("forbid(principal, action, resource);")
             .expect("Failed to parse trivial policy set");
-        let schema = example_schema();
+        let ffi = CedarLeanFfi::new();
+        let schema = ffi.load_lean_schema_object(&example_schema()).unwrap();
         let req_env = request_env("Identity", "Action::\"view\"", "Thing");
 
-        let ffi = CedarLeanFfi::new();
-
         let res = ffi
-            .run_check_equivalent(&always_allows_pset, &always_allows_pset, &schema, &req_env)
+            .run_check_equivalent(
+                &always_allows_pset,
+                &always_allows_pset,
+                schema.clone(),
+                &req_env,
+            )
             .expect("Lean call unexpectedly failed for run_check_equivalent");
         assert!(
             res,
@@ -1077,50 +1242,75 @@ mod test {
         ffi.asserts_of_check_equivalent(
             &always_allows_pset,
             &always_allows_pset,
-            &schema,
+            schema.clone(),
             &req_env,
         )
         .expect("Lean call unexpectedly failed for asserts_of_check_equivalent")
         .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_equivalent");
 
-        ffi.smtlib_of_check_equivalent(&always_allows_pset, &always_allows_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for smtlib_of_check_equivalent");
+        ffi.smtlib_of_check_equivalent(
+            &always_allows_pset,
+            &always_allows_pset,
+            schema.clone(),
+            &req_env,
+        )
+        .expect("Lean call unexpectedly failed for smtlib_of_check_equivalent");
 
         let res = ffi
-            .run_check_equivalent(&always_denies_pset, &always_denies_pset, &schema, &req_env)
+            .run_check_equivalent(
+                &always_denies_pset,
+                &always_denies_pset,
+                schema.clone(),
+                &req_env,
+            )
             .expect("Lean call unexpectedly failed for run_check_equivalent");
         assert!(
             res,
             "run_check_equivalent returned wrong result. Expected: true"
         );
 
-        ffi.smtlib_of_check_equivalent(&always_denies_pset, &always_denies_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for smtlib_of_check_equivalent");
+        ffi.smtlib_of_check_equivalent(
+            &always_denies_pset,
+            &always_denies_pset,
+            schema.clone(),
+            &req_env,
+        )
+        .expect("Lean call unexpectedly failed for smtlib_of_check_equivalent");
 
         ffi.asserts_of_check_equivalent(
             &always_denies_pset,
             &always_denies_pset,
-            &schema,
+            schema.clone(),
             &req_env,
         )
         .expect("Lean call unexpectedly failed for asserts_of_check_equivalent")
         .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_equivalent");
 
         let res = ffi
-            .run_check_equivalent(&always_allows_pset, &always_denies_pset, &schema, &req_env)
+            .run_check_equivalent(
+                &always_allows_pset,
+                &always_denies_pset,
+                schema.clone(),
+                &req_env,
+            )
             .expect("Lean call unexpectedly failed for run_check_equivalent");
         assert!(
             !res,
             "run_check_equivalent returned wrong result. Expected: false"
         );
 
-        ffi.smtlib_of_check_equivalent(&always_allows_pset, &always_denies_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for smtlib_of_check_equivalent");
+        ffi.smtlib_of_check_equivalent(
+            &always_allows_pset,
+            &always_denies_pset,
+            schema.clone(),
+            &req_env,
+        )
+        .expect("Lean call unexpectedly failed for smtlib_of_check_equivalent");
 
         ffi.asserts_of_check_equivalent(
             &always_allows_pset,
             &always_denies_pset,
-            &schema,
+            schema.clone(),
             &req_env,
         )
         .expect("Lean call unexpectedly failed for asserts_of_check_equivalent")
@@ -1133,68 +1323,122 @@ mod test {
             .expect("Failed to parse trivial policy set");
         let always_denies_pset = PolicySet::from_str("forbid(principal, action, resource);")
             .expect("Failed to parse trivial policy set");
-        let schema = example_schema();
+        let ffi = CedarLeanFfi::new();
+        let schema = ffi.load_lean_schema_object(&example_schema()).unwrap();
         let req_env = request_env("Identity", "Action::\"view\"", "Thing");
 
-        let ffi = CedarLeanFfi::new();
-
         let res = ffi
-            .run_check_implies(&always_allows_pset, &always_allows_pset, &schema, &req_env)
+            .run_check_implies(
+                &always_allows_pset,
+                &always_allows_pset,
+                schema.clone(),
+                &req_env,
+            )
             .expect("Lean call unexpectedly failed for run_check_implies");
         assert!(
             res,
             "run_check_implies returned wrong result. Expected: true"
         );
 
-        ffi.smtlib_of_check_implies(&always_allows_pset, &always_allows_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for smtlib_of_check_implies");
+        ffi.smtlib_of_check_implies(
+            &always_allows_pset,
+            &always_allows_pset,
+            schema.clone(),
+            &req_env,
+        )
+        .expect("Lean call unexpectedly failed for smtlib_of_check_implies");
 
-        ffi.asserts_of_check_implies(&always_allows_pset, &always_allows_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for asserts_of_check_implies")
-            .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_implies");
+        ffi.asserts_of_check_implies(
+            &always_allows_pset,
+            &always_allows_pset,
+            schema.clone(),
+            &req_env,
+        )
+        .expect("Lean call unexpectedly failed for asserts_of_check_implies")
+        .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_implies");
 
         let res = ffi
-            .run_check_implies(&always_denies_pset, &always_denies_pset, &schema, &req_env)
+            .run_check_implies(
+                &always_denies_pset,
+                &always_denies_pset,
+                schema.clone(),
+                &req_env,
+            )
             .expect("Lean call unexpectedly failed for run_check_implies");
         assert!(
             res,
             "run_check_implies returned wrong result. Expected: true"
         );
 
-        ffi.smtlib_of_check_implies(&always_denies_pset, &always_denies_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for smtlib_of_check_implies");
+        ffi.smtlib_of_check_implies(
+            &always_denies_pset,
+            &always_denies_pset,
+            schema.clone(),
+            &req_env,
+        )
+        .expect("Lean call unexpectedly failed for smtlib_of_check_implies");
 
-        ffi.asserts_of_check_implies(&always_denies_pset, &always_denies_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for asserts_of_check_implies")
-            .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_implies");
+        ffi.asserts_of_check_implies(
+            &always_denies_pset,
+            &always_denies_pset,
+            schema.clone(),
+            &req_env,
+        )
+        .expect("Lean call unexpectedly failed for asserts_of_check_implies")
+        .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_implies");
 
         let res = ffi
-            .run_check_implies(&always_allows_pset, &always_denies_pset, &schema, &req_env)
+            .run_check_implies(
+                &always_allows_pset,
+                &always_denies_pset,
+                schema.clone(),
+                &req_env,
+            )
             .expect("Lean call unexpectedly failed for run_check_implies");
         assert!(
             !res,
             "run_check_implies returned wrong result. Expected: false"
         );
 
-        ffi.smtlib_of_check_implies(&always_allows_pset, &always_denies_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for smtlib_of_check_implies");
+        ffi.smtlib_of_check_implies(
+            &always_allows_pset,
+            &always_denies_pset,
+            schema.clone(),
+            &req_env,
+        )
+        .expect("Lean call unexpectedly failed for smtlib_of_check_implies");
 
-        ffi.asserts_of_check_implies(&always_allows_pset, &always_denies_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for asserts_of_check_implies")
-            .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_implies");
+        ffi.asserts_of_check_implies(
+            &always_allows_pset,
+            &always_denies_pset,
+            schema.clone(),
+            &req_env,
+        )
+        .expect("Lean call unexpectedly failed for asserts_of_check_implies")
+        .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_implies");
 
         let res = ffi
-            .run_check_implies(&always_denies_pset, &always_allows_pset, &schema, &req_env)
+            .run_check_implies(
+                &always_denies_pset,
+                &always_allows_pset,
+                schema.clone(),
+                &req_env,
+            )
             .expect("Lean call unexpectedly failed for run_check_implies");
         assert!(
             res,
             "run_check_implies returned wrong result. Expected: true"
         );
 
-        ffi.smtlib_of_check_implies(&always_denies_pset, &always_allows_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for smtlib_of_check_implies");
+        ffi.smtlib_of_check_implies(
+            &always_denies_pset,
+            &always_allows_pset,
+            schema.clone(),
+            &req_env,
+        )
+        .expect("Lean call unexpectedly failed for smtlib_of_check_implies");
 
-        ffi.asserts_of_check_implies(&always_denies_pset, &always_allows_pset, &schema, &req_env)
+        ffi.asserts_of_check_implies(&always_denies_pset, &always_allows_pset, schema, &req_env)
             .expect("Lean call unexpectedly failed for asserts_of_check_implies")
             .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_implies");
     }
@@ -1205,70 +1449,129 @@ mod test {
             .expect("Failed to parse trivial policy set");
         let always_denies_pset = PolicySet::from_str("forbid(principal, action, resource);")
             .expect("Failed to parse trivial policy set");
-        let schema = example_schema();
+        let ffi = CedarLeanFfi::new();
+        let schema = ffi.load_lean_schema_object(&example_schema()).unwrap();
         let req_env = request_env("Identity", "Action::\"view\"", "Thing");
 
-        let ffi = CedarLeanFfi::new();
-
         let res = ffi
-            .run_check_disjoint(&always_allows_pset, &always_allows_pset, &schema, &req_env)
+            .run_check_disjoint(
+                &always_allows_pset,
+                &always_allows_pset,
+                schema.clone(),
+                &req_env,
+            )
             .expect("Lean call unexpectedly failed for run_check_disjoint");
         assert!(
             !res,
             "run_check_disjoint returned wrong result. Expected: false"
         );
 
-        ffi.smtlib_of_check_disjoint(&always_allows_pset, &always_allows_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for smtlib_of_check_disjoint");
+        ffi.smtlib_of_check_disjoint(
+            &always_allows_pset,
+            &always_allows_pset,
+            schema.clone(),
+            &req_env,
+        )
+        .expect("Lean call unexpectedly failed for smtlib_of_check_disjoint");
 
-        ffi.asserts_of_check_disjoint(&always_allows_pset, &always_allows_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for asserts_of_check_disjoint")
-            .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_disjoint");
+        ffi.asserts_of_check_disjoint(
+            &always_allows_pset,
+            &always_allows_pset,
+            schema.clone(),
+            &req_env,
+        )
+        .expect("Lean call unexpectedly failed for asserts_of_check_disjoint")
+        .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_disjoint");
 
         let res = ffi
-            .run_check_disjoint(&always_denies_pset, &always_denies_pset, &schema, &req_env)
+            .run_check_disjoint(
+                &always_denies_pset,
+                &always_denies_pset,
+                schema.clone(),
+                &req_env,
+            )
             .expect("Lean call unexpectedly failed for run_check_disjoint");
         assert!(
             res,
             "run_check_disjoint returned wrong result. Expected: true"
         );
 
-        ffi.smtlib_of_check_disjoint(&always_denies_pset, &always_denies_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for smtlib_of_check_disjoint");
+        ffi.smtlib_of_check_disjoint(
+            &always_denies_pset,
+            &always_denies_pset,
+            schema.clone(),
+            &req_env,
+        )
+        .expect("Lean call unexpectedly failed for smtlib_of_check_disjoint");
 
-        ffi.asserts_of_check_disjoint(&always_denies_pset, &always_denies_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for asserts_of_check_disjoint")
-            .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_disjoint");
+        ffi.asserts_of_check_disjoint(
+            &always_denies_pset,
+            &always_denies_pset,
+            schema.clone(),
+            &req_env,
+        )
+        .expect("Lean call unexpectedly failed for asserts_of_check_disjoint")
+        .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_disjoint");
 
         let res = ffi
-            .run_check_disjoint(&always_allows_pset, &always_denies_pset, &schema, &req_env)
+            .run_check_disjoint(
+                &always_allows_pset,
+                &always_denies_pset,
+                schema.clone(),
+                &req_env,
+            )
             .expect("Lean call unexpectedly failed for run_check_disjoint");
         assert!(
             res,
             "run_check_disjoint returned wrong result. Expected: true"
         );
 
-        ffi.smtlib_of_check_disjoint(&always_allows_pset, &always_denies_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for smtlib_of_check_disjoint");
+        ffi.smtlib_of_check_disjoint(
+            &always_allows_pset,
+            &always_denies_pset,
+            schema.clone(),
+            &req_env,
+        )
+        .expect("Lean call unexpectedly failed for smtlib_of_check_disjoint");
 
-        ffi.asserts_of_check_disjoint(&always_allows_pset, &always_denies_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for asserts_of_check_disjoint")
-            .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_disjoint");
+        ffi.asserts_of_check_disjoint(
+            &always_allows_pset,
+            &always_denies_pset,
+            schema.clone(),
+            &req_env,
+        )
+        .expect("Lean call unexpectedly failed for asserts_of_check_disjoint")
+        .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_disjoint");
 
         let res = ffi
-            .run_check_disjoint(&always_denies_pset, &always_allows_pset, &schema, &req_env)
+            .run_check_disjoint(
+                &always_denies_pset,
+                &always_allows_pset,
+                schema.clone(),
+                &req_env,
+            )
             .expect("Lean call unexpectedly failed for run_check_disjoint");
         assert!(
             res,
             "run_check_disjoint returned wrong result. Expected: true"
         );
 
-        ffi.smtlib_of_check_disjoint(&always_denies_pset, &always_allows_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for smtlib_of_check_disjoint");
+        ffi.smtlib_of_check_disjoint(
+            &always_denies_pset,
+            &always_allows_pset,
+            schema.clone(),
+            &req_env,
+        )
+        .expect("Lean call unexpectedly failed for smtlib_of_check_disjoint");
 
-        ffi.asserts_of_check_disjoint(&always_denies_pset, &always_allows_pset, &schema, &req_env)
-            .expect("Lean call unexpectedly failed for asserts_of_check_disjoint")
-            .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_disjoint");
+        ffi.asserts_of_check_disjoint(
+            &always_denies_pset,
+            &always_allows_pset,
+            schema.clone(),
+            &req_env,
+        )
+        .expect("Lean call unexpectedly failed for asserts_of_check_disjoint")
+        .expect("Lean SymCC unexpectedly failed to encode term for asserts_of_check_disjoint");
     }
 
     #[test]
@@ -1423,8 +1726,11 @@ mod test {
 
     #[test]
     fn test_cex() {
-        let schema = Schema::from_str(
-            r#"
+        let ffi = CedarLeanFfi::new();
+        let schema = ffi
+            .load_lean_schema_object(
+                &Schema::from_str(
+                    r#"
         entity a {
           r : Bool,
         };
@@ -1433,8 +1739,10 @@ mod test {
           resource: a,
         };
         "#,
-        )
-        .unwrap();
+                )
+                .unwrap(),
+            )
+            .unwrap();
         let ps = PolicySet::from_str(
             r#"
         permit(
@@ -1446,43 +1754,46 @@ mod test {
     };"#,
         )
         .unwrap();
-        let ffi = CedarLeanFfi::new();
         let req_env = request_env("a", "Action::\"action\"", "a");
 
         assert_matches!(
-            ffi.run_check_always_denies_with_cex_timed(&ps, &schema, &req_env),
+            ffi.run_check_always_denies_with_cex_timed(&ps, schema.clone(), &req_env),
             Ok(TimedResult {
                 result: Some(_),
                 ..
             })
         );
         assert_matches!(
-            ffi.run_check_always_denies_timed(&ps, &schema, &req_env),
+            ffi.run_check_always_denies_timed(&ps, schema.clone(), &req_env),
             Ok(TimedResult { result: false, .. })
         );
 
         assert_matches!(
-            ffi.run_check_always_allows_with_cex_timed(&ps, &schema, &req_env),
+            ffi.run_check_always_allows_with_cex_timed(&ps, schema.clone(), &req_env),
             Ok(TimedResult {
                 result: Some(_),
                 ..
             })
         );
         assert_matches!(
-            ffi.run_check_always_allows_timed(&ps, &schema, &req_env),
+            ffi.run_check_always_allows_timed(&ps, schema.clone(), &req_env),
             Ok(TimedResult { result: false, .. })
         );
 
         assert_matches!(
             ffi.run_check_never_errors_with_cex_timed(
                 ps.policies().next().unwrap(),
-                &schema,
+                schema.clone(),
                 &req_env,
             ),
             Ok(TimedResult { result: None, .. })
         );
         assert_matches!(
-            ffi.run_check_never_errors_timed(ps.policies().next().unwrap(), &schema, &req_env,),
+            ffi.run_check_never_errors_timed(
+                ps.policies().next().unwrap(),
+                schema.clone(),
+                &req_env,
+            ),
             Ok(TimedResult { result: true, .. })
         );
 
@@ -1499,39 +1810,232 @@ mod test {
         .unwrap();
 
         assert_matches!(
-            ffi.run_check_equivalent_with_cex_timed(&ps, &ps_new, &schema, &req_env),
+            ffi.run_check_equivalent_with_cex_timed(&ps, &ps_new, schema.clone(), &req_env),
             Ok(TimedResult {
                 result: Some(_),
                 ..
             })
         );
         assert_matches!(
-            ffi.run_check_equivalent_timed(&ps, &ps_new, &schema, &req_env),
+            ffi.run_check_equivalent_timed(&ps, &ps_new, schema.clone(), &req_env),
             Ok(TimedResult { result: false, .. })
         );
 
         assert_matches!(
-            ffi.run_check_implies_with_cex_timed(&ps, &ps_new, &schema, &req_env),
+            ffi.run_check_implies_with_cex_timed(&ps, &ps_new, schema.clone(), &req_env),
             Ok(TimedResult {
                 result: Some(_),
                 ..
             })
         );
         assert_matches!(
-            ffi.run_check_implies_timed(&ps, &ps_new, &schema, &req_env),
+            ffi.run_check_implies_timed(&ps, &ps_new, schema.clone(), &req_env),
             Ok(TimedResult { result: false, .. })
         );
 
         assert_matches!(
-            ffi.run_check_disjoint_with_cex_timed(&ps, &ps_new, &schema, &req_env),
+            ffi.run_check_disjoint_with_cex_timed(&ps, &ps_new, schema.clone(), &req_env),
             Ok(TimedResult {
                 result: Some(_),
                 ..
             })
         );
         assert_matches!(
-            ffi.run_check_disjoint_timed(&ps, &ps_new, &schema, &req_env),
+            ffi.run_check_disjoint_timed(&ps, &ps_new, schema, &req_env),
             Ok(TimedResult { result: false, .. })
         );
+    }
+
+    #[test]
+    fn test_batched_evaluation() {
+        let schema = Schema::from_str(
+            r#"
+            namespace Taxpreparer {
+  type orgInfo = {
+    organization: String,
+    serviceline: String,
+    location: String,
+  };
+  // A tax-preparing professional
+  entity Professional = { 
+    assigned_orgs: Set<orgInfo>,
+    location: String,
+  };
+  // A client's tax document
+  entity Document = {
+    serviceline: String,
+    location: String,
+    owner: Client,
+  };
+  // A client 
+  entity Client = {
+    organization: String
+  };
+
+  action viewDocument appliesTo {
+    principal: [Professional],
+    resource: [Document],
+  };
+}
+        "#,
+        )
+        .expect("valid schema");
+        let policy = Policy::from_str(
+            r#"
+        // Rule 1a: organization-level access
+permit (
+  principal,
+  action == Taxpreparer::Action::"viewDocument",
+  resource
+)
+when
+{
+  principal.assigned_orgs
+    .contains
+    (
+      {organization
+       :resource.owner.organization,
+       serviceline
+       :resource.serviceline,
+       location
+       :resource.location}
+    )
+};
+        "#,
+        )
+        .expect("valid policy");
+        let entities = Entities::from_json_value(
+            serde_json::json!([
+                {
+                    "uid": {
+                        "type": "Taxpreparer::Professional",
+                        "id": "Alice"
+                    },
+                    "attrs": {
+                        "location": "IAD",
+                        "assigned_orgs": [
+                            {
+                                "organization": "org-1",
+                                "serviceline": "corporate",
+                                "location": "IAD"
+                            }
+                        ]
+                    },
+                    "parents": []
+                },
+                {
+                    "uid": {
+                        "type": "Taxpreparer::Professional",
+                        "id": "Bob"
+                    },
+                    "attrs": {
+                        "location": "JFK",
+                        "assigned_orgs": [
+                            {
+                                "organization": "org-1",
+                                "serviceline": "corporate",
+                                "location": "JFK"
+                            }
+                        ]
+                    },
+                    "parents": []
+                },
+                {
+                    "uid": {
+                        "type": "Taxpreparer::Client",
+                        "id": "Ramon"
+                    },
+                    "attrs": {
+                        "organization": "org-1"
+                    },
+                    "parents": []
+                },
+                {
+                    "uid": {
+                        "type": "Taxpreparer::Document",
+                        "id": "ABC"
+                    },
+                    "attrs": {
+                        "serviceline": "corporate",
+                        "location": "IAD",
+                        "owner": {
+                            "type": "Taxpreparer::Client",
+                            "id": "Ramon"
+                        }
+                    },
+                    "parents": []
+                },
+                {
+                    "uid": {
+                        "type": "Taxpreparer::Document",
+                        "id": "DEF"
+                    },
+                    "attrs": {
+                        "serviceline": "corporate",
+                        "location": "JFK",
+                        "owner": {
+                            "type": "Taxpreparer::Client",
+                            "id": "Ramon"
+                        }
+                    },
+                    "parents": []
+                }
+            ]),
+            Some(&schema),
+        )
+        .expect("valid entities");
+        let request = Request::new(
+            "Taxpreparer::Professional::\"Alice\"".parse().unwrap(),
+            "Taxpreparer::Action::\"viewDocument\"".parse().unwrap(),
+            "Taxpreparer::Document::\"ABC\"".parse().unwrap(),
+            Context::empty(),
+            None,
+        )
+        .expect("valid request");
+        let ffi = CedarLeanFfi::new();
+        assert_matches!(
+            ffi.batched_evaluation(&policy, &schema, &request, &entities, 3),
+            Ok(Some(cedar_policy::Decision::Allow))
+        );
+    }
+
+    #[test]
+    fn empty_record_encoding() {
+        let schema = Schema::from_str(
+            r#"
+            entity V;
+entity N;
+entity V3 = {
+  "x": {}
+};
+action "" appliesTo {
+  principal: [N],
+  resource: [V],
+  context: {}
+};
+            "#,
+        )
+        .unwrap();
+        let pset = PolicySet::from_str(
+            r#"
+            permit(
+  principal,
+  action in [Action::""],
+  resource
+) when {
+  {} == (V3::"".x)
+};
+            "#,
+        )
+        .unwrap();
+        let request_env = request_env("N", "Action::\"\"", "V");
+        let ffi = CedarLeanFfi::new();
+        assert!(!ffi
+            .run_check_always_denies(
+                &pset,
+                ffi.load_lean_schema_object(&schema).unwrap(),
+                &request_env
+            )
+            .unwrap());
     }
 }

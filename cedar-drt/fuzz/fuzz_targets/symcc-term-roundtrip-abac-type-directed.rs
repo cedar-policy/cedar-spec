@@ -42,18 +42,10 @@ pub struct FuzzTargetInput {
 
 /// settings for this fuzz target
 const SETTINGS: ABACSettings = ABACSettings {
-    match_types: true,
-    enable_extensions: true,
     max_depth: 3,
     max_width: 3,
-    enable_additional_attributes: false,
-    enable_like: true,
-    enable_action_groups_and_attrs: true,
-    enable_arbitrary_func_call: true,
-    enable_unknowns: false,
-    enable_action_in_constraints: true,
-    per_action_request_env_limit: ABACSettings::default_per_action_request_env_limit(),
     total_action_request_env_limit: total_action_request_env_limit(),
+    ..ABACSettings::type_directed()
 };
 
 impl<'a> Arbitrary<'a> for FuzzTargetInput {
@@ -88,15 +80,17 @@ fuzz_target!(|input: FuzzTargetInput| {
     debug!("Policies: {policyset}\n");
 
     if let Ok(schema) = Schema::try_from(input.schema) {
+        let lean_schema = lean_ffi.load_lean_schema_object(&schema).unwrap();
         for req_env in schema.request_envs() {
             // Compute's SMTLib Script Directly in one-pass from Lean
-            match lean_ffi.smtlib_of_check_always_allows(&policyset, &schema, &req_env) {
+            match lean_ffi.smtlib_of_check_always_allows(&policyset, lean_schema.clone(), &req_env)
+            {
                 Ok(smtlib1) => {
                     // Get intermediate term representation of the Asserts / Verification conditions from Lean
-                    match lean_ffi.asserts_of_check_always_allows(&policyset, &schema, &req_env) {
+                    match lean_ffi.asserts_of_check_always_allows(&policyset, lean_schema.clone(), &req_env) {
                         Ok(Ok(asserts)) => {
                             // Compute SMTLib script from the intermediate Assertions
-                            match lean_ffi.smtlib_of_check_asserts(&asserts, &schema, &req_env) {
+                            match lean_ffi.smtlib_of_check_asserts(&asserts, lean_schema.clone(), &req_env) {
                                 // The smtlib scripts should be identical. Otherwise serialization/deserialization may have altered the assertions
                                 Ok(smtlib2) => assert_eq!(Direct: smtlib1, Roundtripped: smtlib2, "Mismatch between direct smtlib and roundtripped term smtlib for {req_env:?}"),
                                 Err(e) => panic!("Roundtripped errored when direct smtlib request did not error. Error: {e}"),
@@ -109,9 +103,13 @@ fuzz_target!(|input: FuzzTargetInput| {
                 // The policy/schema produced an error in Lean
                 Err(e) => {
                     // Check that either the generation of asserts or checking the asserts errors
-                    match lean_ffi.asserts_of_check_always_allows(&policyset, &schema, &req_env) {
+                    match lean_ffi.asserts_of_check_always_allows(
+                        &policyset,
+                        lean_schema.clone(),
+                        &req_env,
+                    ) {
                         Ok(Ok(asserts)) => {
-                            match lean_ffi.smtlib_of_check_asserts(&asserts, &schema, &req_env) {
+                            match lean_ffi.smtlib_of_check_asserts(&asserts, lean_schema.clone(), &req_env) {
                                 Ok(_) => panic!("Roundtripped did not error when direct smtlib request errored. Error: {e}"),
                                 Err(_) => (),
                             }

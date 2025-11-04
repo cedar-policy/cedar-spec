@@ -45,18 +45,10 @@ pub struct FuzzTargetInput {
 
 /// settings for this fuzz target
 const SETTINGS: ABACSettings = ABACSettings {
-    match_types: true,
-    enable_extensions: true,
     max_depth: 3,
     max_width: 3,
-    enable_additional_attributes: false,
-    enable_like: true,
-    enable_action_groups_and_attrs: true,
-    enable_arbitrary_func_call: true,
-    enable_unknowns: false,
-    enable_action_in_constraints: true,
-    per_action_request_env_limit: ABACSettings::default_per_action_request_env_limit(),
     total_action_request_env_limit: total_action_request_env_limit(),
+    ..ABACSettings::type_directed()
 };
 
 impl<'a> Arbitrary<'a> for FuzzTargetInput {
@@ -90,6 +82,7 @@ fuzz_target!(|input: FuzzTargetInput| {
     debug!("Policies: {policy}\n");
 
     if let Ok(schema) = Schema::try_from(input.schema) {
+        let lean_schema = lean_ffi.load_lean_schema_object(&schema).unwrap();
         for req_env in schema.request_envs() {
             // The validator DRT property we've been testing is that
             // rust_passes_validation => lean_passes_validation
@@ -106,7 +99,7 @@ fuzz_target!(|input: FuzzTargetInput| {
                 match (
                     lean_ffi.asserts_of_check_always_allows_on_original(
                         &well_typed_policies.policy_set().clone().try_into().unwrap(),
-                        &schema,
+                        lean_schema.clone(),
                         &req_env,
                     ),
                     compile_well_typed_policies(

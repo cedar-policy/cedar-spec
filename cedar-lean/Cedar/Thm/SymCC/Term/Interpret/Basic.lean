@@ -210,82 +210,82 @@ theorem interpret_term_app_zero_extend {I : Interpretation} {n : Nat} {t₁ : Te
 := by simp_interpret_term_app
 
 theorem interpret_term_app_set_member {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
-  (Term.app .set.member [t₁, t₂] ty).interpret I =
+  (Term.app Op.set.member [t₁, t₂] ty).interpret I =
   Factory.set.member (t₁.interpret I) (t₂.interpret I)
 := by simp_interpret_term_app
 
 theorem interpret_term_app_set_subset {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
-  (Term.app .set.subset [t₁, t₂] ty).interpret I =
+  (Term.app Op.set.subset [t₁, t₂] ty).interpret I =
   Factory.set.subset (t₁.interpret I) (t₂.interpret I)
 := by simp_interpret_term_app
 
 theorem interpret_term_app_set_inter {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
-  (Term.app .set.inter [t₁, t₂] ty).interpret I =
+  (Term.app Op.set.inter [t₁, t₂] ty).interpret I =
   Factory.set.inter (t₁.interpret I) (t₂.interpret I)
 := by simp_interpret_term_app
 
 theorem interpret_term_app_option_get {I : Interpretation} {t₁ : Term} {ty : TermType} :
-  (Term.app .option.get [t₁] ty).interpret I =
+  (Term.app Op.option.get [t₁] ty).interpret I =
   Factory.option.get' I (t₁.interpret I)
 := by simp_interpret_term_app
 
 theorem interpret_term_app_record_get {I : Interpretation} {a : Attr} {t₁ : Term} {ty : TermType} :
-  (Term.app (.record.get a) [t₁] ty).interpret I =
+  (Term.app (Op.record.get a) [t₁] ty).interpret I =
   Factory.record.get (t₁.interpret I) a
 := by simp_interpret_term_app
 
 theorem interpret_term_app_string_like {I : Interpretation} {p : Pattern} {t₁ : Term} {ty : TermType} :
-  (Term.app (.string.like p) [t₁] ty).interpret I =
+  (Term.app (Op.string.like p) [t₁] ty).interpret I =
   Factory.string.like (t₁.interpret I) p
 := by simp_interpret_term_app
 
 theorem interpret_term_app_ext_decimal_val {I : Interpretation} {t₁ : Term} {ty : TermType} :
-  (Term.app (.ext .decimal.val) [t₁] ty).interpret I =
+  (Term.app (.ext ExtOp.decimal.val) [t₁] ty).interpret I =
   Factory.ext.decimal.val (t₁.interpret I)
 := by simp_interpret_term_app; simp only [ExtOp.interpret]
 
 theorem interpret_term_app_ext_ipaddr_isV4 {I : Interpretation} {t₁ : Term} {ty : TermType} :
-  (Term.app (.ext .ipaddr.isV4) [t₁] ty).interpret I =
+  (Term.app (.ext ExtOp.ipaddr.isV4) [t₁] ty).interpret I =
   Factory.ext.ipaddr.isV4 (t₁.interpret I)
 := by simp_interpret_term_app; simp only [ExtOp.interpret]
 
 theorem interpret_term_app_ext_ipaddr_addrV4 {I : Interpretation} {t₁ : Term} {ty : TermType} :
-  (Term.app (.ext .ipaddr.addrV4) [t₁] ty).interpret I =
+  (Term.app (.ext ExtOp.ipaddr.addrV4) [t₁] ty).interpret I =
   Factory.ext.ipaddr.addrV4' I (t₁.interpret I)
 := by simp_interpret_term_app; simp only [ExtOp.interpret]
 
 theorem interpret_term_app_ext_ipaddr_prefixV4 {I : Interpretation} {t₁ : Term} {ty : TermType} :
-  (Term.app (.ext .ipaddr.prefixV4) [t₁] ty).interpret I =
+  (Term.app (.ext ExtOp.ipaddr.prefixV4) [t₁] ty).interpret I =
   Factory.ext.ipaddr.prefixV4' I (t₁.interpret I)
 := by simp_interpret_term_app; simp only [ExtOp.interpret]
 
 theorem interpret_term_app_ext_ipaddr_addrV6 {I : Interpretation} {t₁ : Term} {ty : TermType} :
-  (Term.app (.ext .ipaddr.addrV6) [t₁] ty).interpret I =
+  (Term.app (.ext ExtOp.ipaddr.addrV6) [t₁] ty).interpret I =
   Factory.ext.ipaddr.addrV6' I (t₁.interpret I)
 := by simp_interpret_term_app; simp only [ExtOp.interpret]
 
 theorem interpret_term_app_ext_ipaddr_prefixV6 {I : Interpretation} {t₁ : Term} {ty : TermType} :
-  (Term.app (.ext .ipaddr.prefixV6) [t₁] ty).interpret I =
+  (Term.app (.ext ExtOp.ipaddr.prefixV6) [t₁] ty).interpret I =
   Factory.ext.ipaddr.prefixV6' I (t₁.interpret I)
 := by simp_interpret_term_app; simp only [ExtOp.interpret]
 
 theorem interpret_term_app_ext_datetime_val {I : Interpretation} {t₁ : Term} {ty : TermType} :
-  (Term.app (.ext .datetime.val) [t₁] ty).interpret I =
+  (Term.app (.ext ExtOp.datetime.val) [t₁] ty).interpret I =
   Factory.ext.datetime.val (t₁.interpret I)
 := by simp_interpret_term_app; simp only [ExtOp.interpret]
 
 theorem interpret_term_app_ext_datetime_ofBitVec {I : Interpretation} {t₁ : Term} {ty : TermType} :
-  (Term.app (.ext .datetime.ofBitVec) [t₁] ty).interpret I =
+  (Term.app (.ext ExtOp.datetime.ofBitVec) [t₁] ty).interpret I =
   Factory.ext.datetime.ofBitVec (t₁.interpret I)
 := by simp_interpret_term_app; simp only [ExtOp.interpret]
 
 theorem interpret_term_app_ext_duration_val {I : Interpretation} {t₁ : Term} {ty : TermType} :
-  (Term.app (.ext .duration.val) [t₁] ty).interpret I =
+  (Term.app (.ext ExtOp.duration.val) [t₁] ty).interpret I =
   Factory.ext.duration.val (t₁.interpret I)
 := by simp_interpret_term_app; simp only [ExtOp.interpret]
 
 theorem interpret_term_app_ext_duration_ofBitVec {I : Interpretation} {t₁ : Term} {ty : TermType} :
-  (Term.app (.ext .duration.ofBitVec) [t₁] ty).interpret I =
+  (Term.app (.ext ExtOp.duration.ofBitVec) [t₁] ty).interpret I =
   Factory.ext.duration.ofBitVec (t₁.interpret I)
 := by simp_interpret_term_app; simp only [ExtOp.interpret]
 
