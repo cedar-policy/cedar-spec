@@ -26,7 +26,10 @@ use cedar_policy::{Entities, Schema};
 use cedar_testing::cedar_test_impl::time_function;
 
 use cedar_policy_generators::{
-    hierarchy::Hierarchy, hierarchy::HierarchyGenerator, schema, settings::ABACSettings,
+    hierarchy::{Hierarchy, HierarchyGenerator},
+    schema,
+    schema_gen::SchemaGen,
+    settings::ABACSettings,
 };
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::{debug, info};

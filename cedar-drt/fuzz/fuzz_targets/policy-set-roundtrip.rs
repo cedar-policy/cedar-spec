@@ -20,7 +20,7 @@ use cedar_drt::{check_policy_set_equivalence, logger::initialize_log, policy_set
 use cedar_drt_inner::fuzz_target;
 
 use cedar_policy_generators::{
-    policy_set::GeneratedPolicySet, schema::Schema, settings::ABACSettings,
+    policy_set::GeneratedPolicySet, schema::Schema, schema_gen::SchemaGen, settings::ABACSettings,
 };
 use itertools::Itertools;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};

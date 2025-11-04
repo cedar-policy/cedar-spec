@@ -24,6 +24,7 @@ use cedar_policy_core::ast::{StaticPolicy, Template};
 use cedar_policy_core::parser::{self, parse_policy};
 use cedar_policy_formatter::token::{Comment, Token, WrappedToken};
 use cedar_policy_formatter::{policies_str_to_pretty, Config};
+use cedar_policy_generators::schema_gen::SchemaGen;
 use cedar_policy_generators::{
     abac::ABACPolicy, hierarchy::HierarchyGenerator, schema::Schema, settings::ABACSettings,
 };

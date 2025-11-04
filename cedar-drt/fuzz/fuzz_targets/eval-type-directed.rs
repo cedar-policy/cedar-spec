@@ -24,11 +24,11 @@ use cedar_drt_inner::fuzz_target;
 
 use cedar_policy::Entities;
 use cedar_policy_core::ast::Expr;
-use cedar_policy_generators::err::Error;
 use cedar_policy_generators::hierarchy::HierarchyGenerator;
 use cedar_policy_generators::schema::{arbitrary_schematype_with_bounded_depth, Schema};
 use cedar_policy_generators::settings::ABACSettings;
 use cedar_policy_generators::{abac::ABACRequest, schema::schematype_to_type};
+use cedar_policy_generators::{err::Error, schema_gen::SchemaGen};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
 use std::convert::TryFrom;
