@@ -67,14 +67,15 @@ theorem typecheck_policy_is_sound (policy : Policy) (env : TypeEnv) (tx : TypedE
   rw [←substitute_action_preserves_evaluates_to, action_matches_env h₁]
   exact h₄
 
-theorem typecheck_policy_with_environments_is_sound (policy : Policy) (envs : List TypeEnv) (request : Request) (entities : Entities) :
-  (∃ env ∈ envs, InstanceOfWellFormedEnvironment request entities env) →
-  typecheckPolicyWithEnvironments policy envs = .ok () →
+theorem typecheck_policy_with_environments_is_sound (policy : Policy) (schema : Schema) (request : Request) (entities : Entities) :
+  (∃ env ∈ schema.environments, InstanceOfWellFormedEnvironment request entities env) →
+  typecheckPolicyWithEnvironments typecheckPolicy policy schema = .ok () →
   ∃ b : Bool, EvaluatesTo policy.toExpr request entities b
 := by
   intro h₀ h₂
-  simp only [typecheckPolicyWithEnvironments] at h₂
-  cases h₃ : List.mapM (typecheckPolicy policy) envs with
+  simp only [typecheckPolicyWithEnvironments, Except.mapError] at h₂
+  cases h₄ : checkEntities schema policy.toExpr <;> simp only [h₄, Except.bind_err, Except.bind_ok, reduceCtorEq] at h₂
+  cases h₃ : List.mapM (typecheckPolicy policy) schema.environments with
   | error => simp only [h₃, Except.bind_err, reduceCtorEq] at h₂
   | ok ts =>
     simp only [h₃, Except.bind_ok, ite_eq_right_iff, allFalse] at h₂
