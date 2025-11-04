@@ -212,6 +212,6 @@ impl CedarTestImplementation for CedarLeanEngine {
 
     /// `ValidationComparisonMode` that should be used for this `CedarTestImplementation`
     fn validation_comparison_mode(&self) -> ValidationComparisonMode {
-        ValidationComparisonMode::AgreeOnValid
+        ValidationComparisonMode::AgreeOnAll
     }
 }
