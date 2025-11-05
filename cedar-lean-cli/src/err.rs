@@ -92,7 +92,7 @@ pub enum ExecError {
     #[error("Error Creating Request : {error}")]
     RequestValidationError { error: Box<dyn std::error::Error> },
     #[error("Could not fetch actions from Schema")]
-    ActionsFromSchemaError(#[from] EntitiesError),
+    ActionsFromSchemaError(#[from] Box<EntitiesError>),
     #[error("{principal_type} cannot {action_name} on {resource_type} in the provided Schema")]
     RequestEnvArgsIncompatible {
         principal_type: String,
