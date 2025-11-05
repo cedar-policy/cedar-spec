@@ -105,7 +105,9 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
     }
 }
 
-// Type-directed fuzzing of ABAC hierarchy/policy/requests.
+// Use cargo-fuzz to generate inputs (requests/entities) given a schema and a
+// policy. The rationale is that coverage of the evaluator guides the
+// generation of inputs to cover more sub-expressions in the policies.
 fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
 

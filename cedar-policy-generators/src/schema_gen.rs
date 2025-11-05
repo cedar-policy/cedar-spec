@@ -117,6 +117,8 @@ pub trait SchemaGen: std::fmt::Debug {
         ety: &EntityType,
     ) -> Option<(BTreeMap<SmolStr, QualifiedType>, bool)>;
     /// Get tag type of an entity type
+    /// Return `None` if `ety` is not defined in the schema
+    /// Return `Some(None)` if `ety` does not have tags defined
     fn tag_type_by_entity_type(&self, ety: &EntityType) -> Option<Option<abac::Type>>;
     /// Get settings
     fn get_abac_settings(&self) -> &ABACSettings;
@@ -347,15 +349,15 @@ impl SchemaGen for ValidatorSchema<'_> {
         target_type: &abac::Type,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::EntityType> {
-        let candidates: Vec<ast::EntityType> = self
+        let candidates: Vec<&ast::EntityType> = self
             .core_schema
             .entity_types()
             .filter_map(|ty| match ty.tag_type() {
-                Some(t) if &abac::Type::from(t.clone()) == target_type => Some(ty.name().clone()),
+                Some(t) if &abac::Type::from(t.clone()) == target_type => Some(ty.name()),
                 _ => None,
             })
             .collect();
-        u.choose(&candidates).cloned().map_err(|e| {
+        u.choose(&candidates).cloned().cloned().map_err(|e| {
             while_doing(
                 format!("getting entity type with tag schematype {target_type:?}"),
                 e,

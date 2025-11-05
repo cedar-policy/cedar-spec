@@ -39,6 +39,7 @@ libc = "0.2.177"
 
 [features]
 prt = ["dep:rayon", "dep:clap", "dep:rand_chacha"]
+input-generation = []
 
 [patch.crates-io]
 cedar-policy = { path = "../../cedar/cedar-policy" }
@@ -276,6 +277,7 @@ name = "input-generation"
 path = "fuzz_targets/input-generation.rs"
 test = false
 doc = false
+required-features = ["input-generation"]
 
 [[bin]]
 name = "batched-evaluation-drt"
