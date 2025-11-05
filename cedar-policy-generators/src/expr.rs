@@ -956,9 +956,7 @@ impl ExprGenerator<'_> {
                         2 => {
                             let mut r = HashMap::new();
                             for (a, qt) in m {
-                                if qt.required {
-                                    r.insert(a.clone(), self.generate_expr_for_type(&qt.ty, max_depth-1, u)?);
-                                } else if u.ratio(1, 2)? {
+                                if qt.required || u.ratio(1, 2)?{
                                     r.insert(a.clone(), self.generate_expr_for_type(&qt.ty, max_depth-1, u)?);
                                 }
                             }
@@ -1256,9 +1254,7 @@ impl ExprGenerator<'_> {
             Type::Record(m) => {
                 let mut r = HashMap::new();
                 for (a, qt) in m {
-                    if qt.required {
-                        r.insert(a.clone(), self.generate_const_expr_for_type(&qt.ty, u)?);
-                    } else if u.ratio(1, 2)? {
+                    if qt.required || u.ratio(1, 2)? {
                         r.insert(a.clone(), self.generate_const_expr_for_type(&qt.ty, u)?);
                     }
                 }
@@ -1438,12 +1434,7 @@ impl ExprGenerator<'_> {
                     Ok(AttrValue::Record(HashMap::new()))
                 } else {
                     for (attr, qt) in m {
-                        if qt.required {
-                            r.insert(
-                                attr.clone(),
-                                self.generate_attr_value_for_type(&qt.ty, max_depth - 1, u)?,
-                            );
-                        } else if u.ratio(1, 2)? {
+                        if qt.required || u.ratio(1, 2)? {
                             r.insert(
                                 attr.clone(),
                                 self.generate_attr_value_for_type(&qt.ty, max_depth - 1, u)?,
@@ -1554,12 +1545,7 @@ impl ExprGenerator<'_> {
                 } else {
                     let mut r = HashMap::new();
                     for (a, qt) in m {
-                        if qt.required {
-                            r.insert(
-                                a.clone(),
-                                self.generate_value_for_type(&qt.ty, max_depth - 1, u)?,
-                            );
-                        } else if u.ratio(1, 2)? {
+                        if qt.required || u.ratio(1, 2)? {
                             r.insert(
                                 a.clone(),
                                 self.generate_value_for_type(&qt.ty, max_depth - 1, u)?,

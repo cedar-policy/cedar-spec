@@ -6,7 +6,7 @@ use crate::{
         UnknownPool,
     },
     collections::HashMap,
-    err::{while_doing, Result},
+    err::{while_doing, Error, Result},
     expr::ExprGenerator,
     hierarchy::{Hierarchy, HierarchyGenerator, HierarchyGeneratorMode, NumEntities},
     policy::{ActionConstraint, GeneratedPolicy, PrincipalOrResourceConstraint},
@@ -516,7 +516,8 @@ impl SchemaGen for ValidatorSchema<'_> {
                         );
                     }
                 }
-                ast::Context::from_pairs(attrs, Extensions::all_available())?
+                ast::Context::from_pairs(attrs, Extensions::all_available())
+                    .map_err(|e| Error::ContextError(Box::new(e)))?
             },
         }))
     }
