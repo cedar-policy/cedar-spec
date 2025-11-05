@@ -509,7 +509,7 @@ impl TryFrom<Op> for cedar_policy_symcc::op::Op {
             Op::SetSubset => Self::SetSubset,
             Op::SetInter => Self::SetInter,
             Op::OptionGet => Self::OptionGet,
-            Op::RecordGet(a) => Self::RecordGet(a.into()),
+            Op::RecordGet(a) => Self::RecordGet(a),
             Op::StringLike(pats) => Self::StringLike(
                 cedar_policy_core::ast::Pattern::from_iter(
                     pats.into_iter()
@@ -580,7 +580,7 @@ impl TryFrom<TermPrim> for cedar_policy_symcc::term::TermPrim {
             TermPrim::Bool(b) => Self::Bool(b),
             TermPrim::Entity(uid) => Self::Entity(uid),
             TermPrim::Ext(ext) => Self::Ext(ext.try_into()?),
-            TermPrim::String(s) => Self::String(s.into()),
+            TermPrim::String(s) => Self::String(s),
         })
     }
 }
@@ -593,7 +593,7 @@ impl TryFrom<Term> for cedar_policy_symcc::term::Term {
                 op: op.try_into()?,
                 args: Arc::new(
                     args.into_iter()
-                        .map(|t| Self::try_from(t))
+                        .map(Self::try_from)
                         .collect::<Result<Vec<_>, _>>()?,
                 ),
                 ret_ty: ret_ty.into(),
@@ -602,13 +602,13 @@ impl TryFrom<Term> for cedar_policy_symcc::term::Term {
             Term::Prim(prim) => Self::Prim(prim.try_into()?),
             Term::Record(r) => Self::Record(Arc::new(
                 r.into_iter()
-                    .map(|(a, t)| Ok((SmolStr::from(a), Self::try_from(t)?)))
+                    .map(|(a, t)| Ok((a, Self::try_from(t)?)))
                     .collect::<Result<BTreeMap<SmolStr, Self>, Self::Error>>()?,
             )),
             Term::Set { elts, elts_ty } => Self::Set {
                 elts: Arc::new(
                     elts.into_iter()
-                        .map(|t| Self::try_from(t))
+                        .map(Self::try_from)
                         .collect::<Result<BTreeSet<Self>, _>>()?,
                 ),
                 elts_ty: elts_ty.into(),
@@ -653,7 +653,7 @@ impl From<TermType> for cedar_policy_symcc::term_type::TermType {
             } => Self::String,
             TermType::Record { rty } => Self::Record {
                 rty: Arc::new(BTreeMap::from_iter(
-                    rty.into_iter().map(|(a, ty)| (a.into(), ty.into())),
+                    rty.into_iter().map(|(a, ty)| (a, ty.into())),
                 )),
             },
             TermType::Set { ty } => Self::Set {
@@ -763,7 +763,7 @@ impl From<cedar_policy_symcc::term::TermPrim> for TermPrim {
 impl From<cedar_policy_symcc::op::Uuf> for Uuf {
     fn from(value: cedar_policy_symcc::op::Uuf) -> Self {
         Self {
-            id: value.id.into(),
+            id: value.id,
             arg: value.arg.into(),
             out: value.out.into(),
         }
@@ -830,12 +830,9 @@ impl From<cedar_policy_symcc::op::Op> for Op {
             cedar_policy_symcc::op::Op::SetMember => Self::SetMember,
             cedar_policy_symcc::op::Op::SetSubset => Self::SetSubset,
             cedar_policy_symcc::op::Op::ZeroExtend(u) => Self::ZeroExtend(u.try_into().unwrap()),
-            cedar_policy_symcc::op::Op::StringLike(pat) => Self::StringLike(
-                pat.get_elems()
-                    .into_iter()
-                    .map(|p| p.clone().into())
-                    .collect(),
-            ),
+            cedar_policy_symcc::op::Op::StringLike(pat) => {
+                Self::StringLike(pat.get_elems().iter().map(|p| (*p).into()).collect())
+            }
             cedar_policy_symcc::op::Op::Ext(op) => Self::Ext(op.into()),
         }
     }
@@ -844,7 +841,7 @@ impl From<cedar_policy_symcc::op::Op> for Op {
 impl From<cedar_policy_symcc::term::TermVar> for TermVar {
     fn from(value: cedar_policy_symcc::term::TermVar) -> Self {
         Self {
-            id: value.id.into(),
+            id: value.id,
             ty: value.ty.into(),
         }
     }

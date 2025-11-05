@@ -110,9 +110,12 @@ fuzz_target!(|input: FuzzTargetInput| {
                         &req_env,
                     ) {
                         Ok(Ok(asserts)) => {
-                            match lean_ffi.smtlib_of_check_asserts(&asserts, lean_schema.clone(), &req_env) {
-                                Ok(_) => panic!("Roundtripped did not error when direct smtlib request errored. Error: {e}"),
-                                Err(_) => (),
+                            if let Ok(_) = lean_ffi.smtlib_of_check_asserts(
+                                &asserts,
+                                lean_schema.clone(),
+                                &req_env,
+                            ) {
+                                panic!("Roundtripped did not error when direct smtlib request errored. Error: {e}")
                             }
                         }
                         Ok(Err(_)) => (),

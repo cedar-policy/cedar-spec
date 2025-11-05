@@ -408,7 +408,7 @@ impl proto::TermType {
     pub(crate) fn new(ty: &datatypes::TermType) -> Self {
         let term_type = match ty {
             datatypes::TermType::Prim { pty } => {
-                proto::term_type::TermType::Prim(proto::TermPrimType::new(pty).into())
+                proto::term_type::TermType::Prim(proto::TermPrimType::new(pty))
             }
             datatypes::TermType::Option { ty } => {
                 proto::term_type::TermType::Option(proto::TermType::new(ty).into())

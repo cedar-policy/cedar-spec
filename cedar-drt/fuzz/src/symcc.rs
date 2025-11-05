@@ -32,7 +32,7 @@ pub fn compile_well_typed_policies(
     schema: &Schema,
     req_env: &RequestEnv,
 ) -> Result<Asserts, String> {
-    let sym_env = SymEnv::new(&schema, &req_env).map_err(|err| err.to_string())?;
+    let sym_env = SymEnv::new(schema, req_env).map_err(|err| err.to_string())?;
     let asserts = func(policy, &sym_env).map_err(|err| err.to_string())?;
     Ok(asserts.asserts().clone())
 }
@@ -50,7 +50,7 @@ pub fn compile_policies<'a>(
 ) -> Result<WellFormedAsserts<'a>, String> {
     let well_typed_policies = WellTypedPolicies::from_policies(policyset, req_env, schema)
         .map_err(|err| err.to_string())?;
-    func(&well_typed_policies, &sym_env).map_err(|err| err.to_string())
+    func(&well_typed_policies, sym_env).map_err(|err| err.to_string())
 }
 
 /// The limit on the total number of request envs specific to symcc

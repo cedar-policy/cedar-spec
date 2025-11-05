@@ -76,7 +76,7 @@ impl<'a, const TYPE_DIRECTED: bool> Arbitrary<'a> for FuzzTargetInput<TYPE_DIREC
         ];
         let all_entities = Entities::try_from(hierarchy).map_err(|_| Error::NotEnoughData)?;
         let cedar_schema = Schema::try_from(schema.clone()).unwrap();
-        let entities = drop_some_entities(all_entities.into(), u)?.into();
+        let entities = drop_some_entities(all_entities, u)?;
         let entities = schemas::add_actions_to_entities(&cedar_schema, entities)?;
         Ok(Self {
             schema,

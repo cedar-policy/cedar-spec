@@ -129,7 +129,8 @@ impl<'a> LeanObject<'a> {
 
     /// Returns a view of this object as an inductive object, if it is one, otherwise returns `None`.
     pub fn as_ctor(&self) -> Option<LeanCtorObject<'a>> {
-        self.is_ctor().then(|| LeanCtorObject(self.0, PhantomData))
+        self.is_ctor()
+            .then_some(LeanCtorObject(self.0, PhantomData))
     }
 
     /// Get the tag for this object, used to differentiate between constructors of inductive objects.

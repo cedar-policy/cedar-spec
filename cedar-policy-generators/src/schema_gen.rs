@@ -300,7 +300,7 @@ impl<'a> ValidatorSchema<'a> {
             settings,
             constant_pool: u.arbitrary()?,
             unknown_pool: UnknownPool::default(),
-            ext_funcs: AvailableExtensionFunctions::create(&settings),
+            ext_funcs: AvailableExtensionFunctions::create(settings),
         })
     }
     fn build_attributes(

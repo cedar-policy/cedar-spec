@@ -31,6 +31,12 @@ pub struct CedarLeanEngine {
     lean_ffi: CedarLeanFfi,
 }
 
+impl Default for CedarLeanEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CedarLeanEngine {
     pub fn new() -> Self {
         Self {
@@ -67,7 +73,7 @@ impl CedarLeanEngine {
         })
     }
 
-    pub fn get_ffi<'a>(&'a self) -> &'a CedarLeanFfi {
+    pub fn get_ffi(&self) -> &CedarLeanFfi {
         &self.lean_ffi
     }
 }

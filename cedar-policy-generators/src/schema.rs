@@ -721,8 +721,8 @@ fn bind_type(
             ..
         } => {
             attributes
-                .iter()
-                .map(|(_, attr_ty)| bind_type(&attr_ty.ty, u, bindings))
+                .values()
+                .map(|attr_ty| bind_type(&attr_ty.ty, u, bindings))
                 .collect::<Result<Vec<()>>>()?;
         }
         json_schema::Type::CommonTypeRef { .. } => {
@@ -780,7 +780,7 @@ impl Schema {
                     Some((
                         attributes
                             .attrs
-                            .into_iter()
+                            .iter()
                             .map(|(a, ty)| {
                                 (
                                     a.clone(),
