@@ -21,8 +21,8 @@ use cedar_drt_inner::fuzz_target;
 use cedar_policy::{Policy, PolicySet, Schema, ValidationMode};
 
 use cedar_policy_generators::{
-    abac::ABACPolicy, hierarchy::HierarchyGenerator, schema, settings::ABACSettings,
-    size_hint_utils::size_hint_for_range,
+    abac::ABACPolicy, hierarchy::HierarchyGenerator, schema, schema_gen::SchemaGen,
+    settings::ABACSettings, size_hint_utils::size_hint_for_range,
 };
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 

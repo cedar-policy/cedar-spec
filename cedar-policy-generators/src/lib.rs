@@ -62,3 +62,6 @@ pub mod settings;
 
 /// This module contains code for generating sets of templates and static policies
 pub mod policy_set;
+
+/// A trait that specifies what methods other generators expect from a schema
+pub mod schema_gen;

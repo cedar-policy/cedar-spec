@@ -22,6 +22,7 @@ use cedar_drt_inner::fuzz_target;
 use cedar_policy_core::ast::{self, StaticPolicy, Template};
 use cedar_policy_core::est;
 use cedar_policy_core::parser::{self, parse_policy};
+use cedar_policy_generators::schema_gen::SchemaGen;
 use cedar_policy_generators::{
     abac::ABACPolicy, hierarchy::HierarchyGenerator, schema::Schema, settings::ABACSettings,
 };

@@ -21,6 +21,7 @@ use cedar_drt_inner::{fuzz_target, schemas::Equiv};
 
 use cedar_policy::{proto, Entities, Entity, Policy, PolicySet, Request, Schema};
 
+use cedar_policy_generators::schema_gen::SchemaGen;
 use libfuzzer_sys::arbitrary::{self, MaxRecursionReached};
 use prost::Message;
 

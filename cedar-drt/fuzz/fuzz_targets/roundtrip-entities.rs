@@ -20,7 +20,9 @@ use cedar_drt_inner::{fuzz_target, roundtrip_entities};
 
 use cedar_policy::{Entities, Schema};
 
-use cedar_policy_generators::{hierarchy::HierarchyGenerator, schema, settings::ABACSettings};
+use cedar_policy_generators::{
+    hierarchy::HierarchyGenerator, schema, schema_gen::SchemaGen, settings::ABACSettings,
+};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
 
 #[derive(Debug)]

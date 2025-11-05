@@ -25,7 +25,8 @@ use cedar_drt_inner::{
 use cedar_policy::Schema;
 
 use cedar_policy_generators::{
-    abac::ABACPolicy, hierarchy::HierarchyGenerator, schema, settings::ABACSettings,
+    abac::ABACPolicy, hierarchy::HierarchyGenerator, schema, schema_gen::SchemaGen,
+    settings::ABACSettings,
 };
 
 use libfuzzer_sys::arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
