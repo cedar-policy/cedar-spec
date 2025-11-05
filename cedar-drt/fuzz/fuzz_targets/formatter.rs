@@ -102,7 +102,7 @@ fn attach_comment(p: &str, uuids: &mut Vec<String>, seed: u64) -> String {
 
 // round-tripping of a policy
 // i.e., print a policy to string, format it, and parse it back
-fn round_trip(p: &StaticPolicy, seed: u64) -> Result<StaticPolicy, parser::err::ParseErrors> {
+fn round_trip(p: &StaticPolicy, seed: u64) -> Result<StaticPolicy, Box<parser::err::ParseErrors>> {
     let config = Config {
         indent_width: 2,
         line_width: 80,
@@ -134,7 +134,7 @@ fn round_trip(p: &StaticPolicy, seed: u64) -> Result<StaticPolicy, parser::err::
             }
         }
     }
-    parse_policy(None, formatted_policy_str)
+    Ok(parse_policy(None, formatted_policy_str)?)
 }
 
 fuzz_target!(|input: FuzzTargetInput| {

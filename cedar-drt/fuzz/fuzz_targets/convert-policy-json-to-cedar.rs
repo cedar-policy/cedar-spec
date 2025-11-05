@@ -29,7 +29,7 @@ enum ESTParseError {
     JSONToEST(#[from] serde_json::error::Error),
     #[error(transparent)]
     #[diagnostic(transparent)]
-    ESTToAST(#[from] PolicySetFromJsonError),
+    ESTToAST(#[from] Box<PolicySetFromJsonError>),
 }
 
 fuzz_target!(|est_json_str: String| {
@@ -40,7 +40,8 @@ fuzz_target!(|est_json_str: String| {
         .and_then(serde_json::from_value::<cedar_policy_core::est::PolicySet>)
         .map_err(ESTParseError::from)
         .and_then(|est| {
-            cedar_policy_core::ast::PolicySet::try_from(est).map_err(ESTParseError::from)
+            cedar_policy_core::ast::PolicySet::try_from(est)
+                .map_err(|e| ESTParseError::from(Box::new(e)))
         });
     if let Ok(ast_from_est) = ast_from_est_result {
         // AST -> text

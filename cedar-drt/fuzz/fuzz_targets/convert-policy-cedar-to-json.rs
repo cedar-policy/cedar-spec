@@ -29,10 +29,10 @@ use cedar_policy_core::parser;
 enum ESTParseError {
     #[error(transparent)]
     #[diagnostic(transparent)]
-    CSTToEST(#[from] parser::err::ParseErrors),
+    CSTToEST(#[from] Box<parser::err::ParseErrors>),
     #[error(transparent)]
     #[diagnostic(transparent)]
-    ESTToAST(#[from] est::PolicySetFromJsonError),
+    ESTToAST(#[from] Box<est::PolicySetFromJsonError>),
 }
 
 // Given some Cedar source, assert that parsing it directly (parsing to CST,
@@ -51,9 +51,11 @@ fuzz_target!(|src: String| {
                 // CST -> EST -> AST
                 let est_result: Result<_, ESTParseError> = cst_node
                     .try_into()
-                    .map_err(|e: parser::err::ParseErrors| e.into());
-                let ast_from_est_result: Result<_, ESTParseError> = est_result
-                    .and_then(|est: est::PolicySet| est.try_into().map_err(ESTParseError::from));
+                    .map_err(|e: parser::err::ParseErrors| ESTParseError::from(Box::new(e)));
+                let ast_from_est_result: Result<_, ESTParseError> =
+                    est_result.and_then(|est: est::PolicySet| {
+                        est.try_into().map_err(|e| ESTParseError::from(Box::new(e)))
+                    });
                 match ast_from_est_result {
                     Ok(ast_from_est) => {
                         check_policy_set_equivalence(&ast_from_cst, &ast_from_est);
