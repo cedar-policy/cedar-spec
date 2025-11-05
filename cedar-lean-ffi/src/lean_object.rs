@@ -108,15 +108,17 @@ pub struct LeanObject<'a>(
     pub(crate) PhantomData<&'a OwnedLeanObject>,
 );
 
-impl<'a> LeanObject<'a> {
-    /// Convert this borrowed Lean object to an owned object by incrementing the reference count.
-    pub fn to_owned(&self) -> OwnedLeanObject {
+/// Convert a Lean object to an owned object by incrementing the reference count.
+impl From<LeanObject<'_>> for OwnedLeanObject {
+    fn from(value: LeanObject) -> Self {
         unsafe {
-            lean_inc(self.0);
+            lean_inc(value.0);
         }
-        OwnedLeanObject(self.0)
+        OwnedLeanObject(value.0)
     }
+}
 
+impl<'a> LeanObject<'a> {
     /// Check if this object is an inductive
     pub fn is_ctor(&self) -> bool {
         unsafe { lean_is_ctor(self.0) }

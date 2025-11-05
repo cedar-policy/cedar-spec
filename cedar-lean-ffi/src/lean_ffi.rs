@@ -320,7 +320,7 @@ macro_rules! checkAsserts_func {
     (@internal $timed_func_name:ident, $untimed_func_name:ident, $lean_func_name:ident, $transform:expr, $ret_ty:ty) => {
         pub fn $timed_func_name(
             &self,
-            asserts: &Vec<Term>,
+            asserts: &[Term],
             schema: LeanSchema,
             request_env: &RequestEnv,
         ) -> Result<TimedResult<$ret_ty>, FfiError> {
@@ -336,7 +336,7 @@ macro_rules! checkAsserts_func {
         }
         pub fn $untimed_func_name(
             &self,
-            asserts: &Vec<Term>,
+            asserts: &[Term],
             schema: LeanSchema,
             request_env: &RequestEnv,
         ) -> Result<$ret_ty, FfiError> {
@@ -952,7 +952,7 @@ impl CedarLeanFfi {
             )
         };
         match lean_schema_object.as_borrowed().as_result()? {
-            Ok(lean_ok_obj) => Ok(LeanSchema(lean_ok_obj.to_owned())),
+            Ok(lean_ok_obj) => Ok(LeanSchema(lean_ok_obj.into())),
             Err(lean_err_obj) => Err(FfiError::LeanBackendError(
                 lean_err_obj.as_rust_str()?.to_string(),
             )),

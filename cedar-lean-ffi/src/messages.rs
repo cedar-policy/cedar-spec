@@ -244,7 +244,7 @@ impl proto::PatElem {
 }
 
 impl proto::Pattern {
-    pub(crate) fn new(pattern: &Vec<datatypes::PatElem>) -> Self {
+    pub(crate) fn new(pattern: &[datatypes::PatElem]) -> Self {
         Self {
             pattern: pattern.iter().map(proto::PatElem::new).collect(),
         }
@@ -437,7 +437,7 @@ impl proto::term_type::RecordField {
 }
 
 impl proto::term_type::RecordType {
-    pub(crate) fn new(fields: &Vec<(SmolStr, datatypes::TermType)>) -> Self {
+    pub(crate) fn new(fields: &[(SmolStr, datatypes::TermType)]) -> Self {
         Self {
             fields: fields
                 .iter()
@@ -511,7 +511,7 @@ impl proto::Term {
 }
 
 impl proto::term::Set {
-    pub(crate) fn new(elts: &Vec<datatypes::Term>, elt_ty: &datatypes::TermType) -> Self {
+    pub(crate) fn new(elts: &[datatypes::Term], elt_ty: &datatypes::TermType) -> Self {
         Self {
             elts: elts.iter().map(proto::Term::new).collect(),
             elt_ty: Some(proto::TermType::new(elt_ty)),
@@ -529,7 +529,7 @@ impl proto::term::RecordField {
 }
 
 impl proto::term::Record {
-    pub(crate) fn new(fields: &Vec<(SmolStr, datatypes::Term)>) -> Self {
+    pub(crate) fn new(fields: &[(SmolStr, datatypes::Term)]) -> Self {
         Self {
             fields: fields
                 .iter()
@@ -542,7 +542,7 @@ impl proto::term::Record {
 impl proto::term::App {
     pub(crate) fn new(
         op: &datatypes::Op,
-        args: &Vec<datatypes::Term>,
+        args: &[datatypes::Term],
         ret_ty: &datatypes::TermType,
     ) -> Self {
         Self {
@@ -554,7 +554,7 @@ impl proto::term::App {
 }
 
 impl proto::Asserts {
-    pub(crate) fn new(asserts: &Vec<datatypes::Term>) -> Self {
+    pub(crate) fn new(asserts: &[datatypes::Term]) -> Self {
         Self {
             asserts: asserts.iter().map(proto::Term::new).collect(),
         }
@@ -562,7 +562,7 @@ impl proto::Asserts {
 }
 
 impl proto::CheckAssertsRequest {
-    pub(crate) fn new(asserts: &Vec<datatypes::Term>, request: &RequestEnv) -> Self {
+    pub(crate) fn new(asserts: &[datatypes::Term], request: &RequestEnv) -> Self {
         Self {
             asserts: Some(proto::Asserts::new(asserts)),
             request: Some(proto::RequestEnv::from(request)),
