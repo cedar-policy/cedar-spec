@@ -47,12 +47,12 @@ fuzz_target!(|input: FuzzTargetInput<true>| {
         .map(Into::into)
         .collect::<Vec<_>>();
 
-    let entities = input.entities.into();
+    let entities = input.entities;
 
     for request in requests.iter() {
         debug!("Request : {request}");
         let (_, total_dur) =
-            time_function(|| run_auth_test(&lean_engine, &request, &policyset, &entities));
+            time_function(|| run_auth_test(&lean_engine, request, &policyset, &entities));
 
         info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
     }

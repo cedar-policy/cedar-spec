@@ -47,10 +47,10 @@ fuzz_target!(|input: FuzzTargetInput<false>| {
 
     let lean_engine = CedarLeanEngine::new();
 
-    for request in requests.iter().cloned() {
+    for request in requests.iter() {
         debug!("Request: {request}");
         let (_, total_dur) =
-            time_function(|| run_auth_test(&lean_engine, &request, &policyset, &input.entities));
+            time_function(|| run_auth_test(&lean_engine, request, &policyset, &input.entities));
         info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
     }
     if let Ok(test_name) = std::env::var("DUMP_TEST_NAME") {

@@ -77,7 +77,7 @@ pub fn fuzz_target(entities: Entities, schema: Option<Schema>) {
                     let roundtripped_e = roundtripped_entities
                         .get(&e.uid())
                         .expect("Schema-based roundtrip dropped entity");
-                    if !e.deep_eq(&roundtripped_e) {
+                    if !e.deep_eq(roundtripped_e) {
                         panic!(
                             "{}",
                             similar_asserts::SimpleDiff::from_str(

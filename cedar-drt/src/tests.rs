@@ -45,7 +45,7 @@ pub fn run_eval_test(
 
     // `custom_impl.interpret()` returns true when the result of evaluating `expr`
     // matches `expected`
-    let definitional_res = custom_impl.interpret(&request, entities, expr, expected.clone());
+    let definitional_res = custom_impl.interpret(request, entities, expr, expected.clone());
 
     match definitional_res {
         TestResult::Failure(err) => {
@@ -83,7 +83,7 @@ pub fn run_auth_test(
         time_function(|| authorizer.is_authorized(request, policies, entities));
     info!("{}{}", RUST_AUTH_MSG, rust_auth_dur.as_nanos());
 
-    let definitional_res = custom_impl.is_authorized(&request, policies, entities);
+    let definitional_res = custom_impl.is_authorized(request, policies, entities);
 
     match definitional_res {
         TestResult::Failure(err) => {

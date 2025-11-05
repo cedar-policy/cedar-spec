@@ -866,7 +866,7 @@ impl ExprGenerator<'_> {
                                 Some(self.settings.max_width as u32),
                                 |u| {
                                     l.push(self.generate_expr_for_type(
-                                        &target_element_ty,
+                                        target_element_ty,
                                         max_depth - 1,
                                         u,
                                     )?);
@@ -958,10 +958,8 @@ impl ExprGenerator<'_> {
                             for (a, qt) in m {
                                 if qt.required {
                                     r.insert(a.clone(), self.generate_expr_for_type(&qt.ty, max_depth-1, u)?);
-                                } else {
-                                    if u.ratio(1, 2)? {
-                                        r.insert(a.clone(), self.generate_expr_for_type(&qt.ty, max_depth-1, u)?);
-                                    }
+                                } else if u.ratio(1, 2)? {
+                                    r.insert(a.clone(), self.generate_expr_for_type(&qt.ty, max_depth-1, u)?);
                                 }
                             }
                             Ok(ast::Expr::record(r).expect("can't have duplicate keys because `r` was already a HashMap"))
@@ -1260,10 +1258,8 @@ impl ExprGenerator<'_> {
                 for (a, qt) in m {
                     if qt.required {
                         r.insert(a.clone(), self.generate_const_expr_for_type(&qt.ty, u)?);
-                    } else {
-                        if u.ratio(1, 2)? {
-                            r.insert(a.clone(), self.generate_const_expr_for_type(&qt.ty, u)?);
-                        }
+                    } else if u.ratio(1, 2)? {
+                        r.insert(a.clone(), self.generate_const_expr_for_type(&qt.ty, u)?);
                     }
                 }
                 Ok(ast::Expr::record(r)
@@ -1425,7 +1421,7 @@ impl ExprGenerator<'_> {
                     let mut l = Vec::new();
                     u.arbitrary_loop(None, Some(self.settings.max_width as u32), |u| {
                         l.push(self.generate_attr_value_for_type(
-                            &target_element_ty,
+                            target_element_ty,
                             max_depth - 1,
                             u,
                         )?);
@@ -1447,13 +1443,11 @@ impl ExprGenerator<'_> {
                                 attr.clone(),
                                 self.generate_attr_value_for_type(&qt.ty, max_depth - 1, u)?,
                             );
-                        } else {
-                            if u.ratio(1, 2)? {
-                                r.insert(
-                                    attr.clone(),
-                                    self.generate_attr_value_for_type(&qt.ty, max_depth - 1, u)?,
-                                );
-                            }
+                        } else if u.ratio(1, 2)? {
+                            r.insert(
+                                attr.clone(),
+                                self.generate_attr_value_for_type(&qt.ty, max_depth - 1, u)?,
+                            );
                         }
                     }
                     Ok(AttrValue::Record(r))
@@ -1543,7 +1537,7 @@ impl ExprGenerator<'_> {
                     let mut l = Vec::new();
                     u.arbitrary_loop(None, Some(self.settings.max_width as u32), |u| {
                         l.push(self.generate_value_for_type(
-                            &target_element_ty,
+                            target_element_ty,
                             max_depth - 1,
                             u,
                         )?);
@@ -1565,13 +1559,11 @@ impl ExprGenerator<'_> {
                                 a.clone(),
                                 self.generate_value_for_type(&qt.ty, max_depth - 1, u)?,
                             );
-                        } else {
-                            if u.ratio(1, 2)? {
-                                r.insert(
-                                    a.clone(),
-                                    self.generate_value_for_type(&qt.ty, max_depth - 1, u)?,
-                                );
-                            }
+                        } else if u.ratio(1, 2)? {
+                            r.insert(
+                                a.clone(),
+                                self.generate_value_for_type(&qt.ty, max_depth - 1, u)?,
+                            );
                         }
                     }
                     Ok(Value::record(r, None))

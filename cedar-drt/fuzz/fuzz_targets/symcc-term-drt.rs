@@ -116,7 +116,7 @@ fuzz_target!(|input: FuzzTargetInput| {
                             .map(|t| Term::try_from(t).expect("term conversion should succeed"))
                             .collect::<BTreeSet<_>>();
                         let rust_asserts =
-                            BTreeSet::from_iter(rust_asserts.as_ref().into_iter().cloned());
+                            BTreeSet::from_iter(rust_asserts.as_ref().iter().cloned());
                         similar_asserts::assert_eq!(
                             lean_asserts,
                             rust_asserts,

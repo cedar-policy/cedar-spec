@@ -98,12 +98,8 @@ pub fn dump(
             ),
             validate_request: true,
             decision: a.decision(),
-            reason: cedar_policy::Response::from(a.clone())
-                .diagnostics()
-                .reason()
-                .cloned()
-                .collect(),
-            errors: cedar_policy::Response::from(a)
+            reason: a.clone().diagnostics().reason().cloned().collect(),
+            errors: a
                 .diagnostics()
                 .errors()
                 .map(|e| match e {

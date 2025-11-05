@@ -92,8 +92,7 @@ pub fn entities_to_partial_entities<'a>(
         entities
             .iter()
             .map(|e| entity_to_partial_entity(e, u, &leafs, schema))
-            .collect::<arbitrary::Result<Vec<PartialEntity>>>()?
-            .into_iter(),
+            .collect::<arbitrary::Result<Vec<PartialEntity>>>()?,
         schema,
     )
     .map_err(|_| arbitrary::Error::IncorrectFormat)
