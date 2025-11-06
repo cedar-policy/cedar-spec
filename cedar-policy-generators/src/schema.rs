@@ -928,7 +928,8 @@ impl Schema {
             ValidatorNamespaceDef::from_namespace_definition(
                 namespace.clone().map(Into::into),
                 nsdef.clone(),
-            )?,
+            )
+            .map_err(|e| Error::SchemaError(Box::new(e)))?,
         ]));
         Self::from_nsdef(
             nsdef
@@ -1683,7 +1684,7 @@ impl Schema {
                     })
                     .collect::<Result<HashMap<_, _>>>()?;
                 ast::Context::from_pairs(attrs, Extensions::all_available())
-                    .map_err(Error::ContextError)?
+                    .map_err(|e| Error::ContextError(Box::new(e)))?
             },
         }))
     }

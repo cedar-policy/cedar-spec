@@ -180,7 +180,8 @@ impl OpenRequestEnv {
     /// if the schema has no such request environments, then an empty vector is returned.
     pub fn to_request_envs(&self, schema: &Schema) -> Result<Vec<RequestEnv>, ExecError> {
         let action_ids = schema
-            .action_entities()?
+            .action_entities()
+            .map_err(Box::new)?
             .into_iter()
             .map(|action| action.uid());
         let mut req_envs: Vec<RequestEnv> = Vec::new();

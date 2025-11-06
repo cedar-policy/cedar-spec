@@ -320,7 +320,7 @@ macro_rules! checkAsserts_func {
     (@internal $timed_func_name:ident, $untimed_func_name:ident, $lean_func_name:ident, $transform:expr, $ret_ty:ty) => {
         pub fn $timed_func_name(
             &self,
-            asserts: &Vec<Term>,
+            asserts: &[Term],
             schema: LeanSchema,
             request_env: &RequestEnv,
         ) -> Result<TimedResult<$ret_ty>, FfiError> {
@@ -336,7 +336,7 @@ macro_rules! checkAsserts_func {
         }
         pub fn $untimed_func_name(
             &self,
-            asserts: &Vec<Term>,
+            asserts: &[Term],
             schema: LeanSchema,
             request_env: &RequestEnv,
         ) -> Result<$ret_ty, FfiError> {

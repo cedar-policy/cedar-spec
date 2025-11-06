@@ -117,12 +117,12 @@ fuzz_target!(|input: FuzzTargetInput| {
         .map(Into::into)
         .collect::<Vec<_>>();
 
-    let entities = input.entities.into();
+    let entities = input.entities;
 
     for request in requests.iter() {
         debug!("Request : {request}");
 
         let authorizer = Authorizer::new();
-        authorizer.is_authorized(request, &*POLICY_SET, &entities);
+        authorizer.is_authorized(request, &POLICY_SET, &entities);
     }
 });

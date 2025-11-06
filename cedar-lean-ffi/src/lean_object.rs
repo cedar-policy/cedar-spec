@@ -110,13 +110,16 @@ pub struct LeanObject<'a>(
 
 impl<'a> LeanObject<'a> {
     /// Convert this borrowed Lean object to an owned object by incrementing the reference count.
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_owned(&self) -> OwnedLeanObject {
         unsafe {
             lean_inc(self.0);
         }
         OwnedLeanObject(self.0)
     }
+}
 
+impl<'a> LeanObject<'a> {
     /// Check if this object is an inductive
     pub fn is_ctor(&self) -> bool {
         unsafe { lean_is_ctor(self.0) }

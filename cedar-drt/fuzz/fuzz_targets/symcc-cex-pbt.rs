@@ -32,14 +32,17 @@ use cedar_policy_generators::{
 use libfuzzer_sys::arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
 use log::debug;
 use std::convert::TryFrom;
-use tokio::time::{error::Elapsed, timeout, Duration};
+use tokio::{
+    sync::{Mutex, MutexGuard},
+    time::{error::Elapsed, timeout, Duration},
+};
 
 use cedar_policy_symcc::{
     compile_always_allows, compile_always_denies, err::SolverError, solver::LocalSolver,
     CedarSymCompiler, Env, SymEnv, WellFormedAsserts,
 };
 
-use std::sync::{LazyLock, Mutex};
+use std::sync::LazyLock;
 
 static RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
     tokio::runtime::Builder::new_current_thread()
@@ -65,8 +68,8 @@ static SOLVER: LazyLock<Mutex<Solver>> = LazyLock::new(|| {
     })
 });
 
-async fn get_solver() -> std::sync::MutexGuard<'static, Solver> {
-    let mut guard = SOLVER.lock().unwrap();
+async fn get_solver() -> MutexGuard<'static, Solver> {
+    let mut guard = SOLVER.lock().await;
     guard.usage_count += 1;
     if guard.usage_count >= Solver::SOLVER_USAGE_LIMIT {
         let _ = guard.local_solver.solver_mut().clean_up().await;

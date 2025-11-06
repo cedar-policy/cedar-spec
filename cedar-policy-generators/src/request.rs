@@ -48,7 +48,7 @@ impl Request {
             action: hierarchy.arbitrary_uid(u)?,
             resource: hierarchy.arbitrary_uid(u)?,
             context: ast::Context::from_pairs(context, Extensions::all_available())
-                .map_err(Error::ContextError)?,
+                .map_err(|e| Error::ContextError(Box::new(e)))?,
         })
     }
 }

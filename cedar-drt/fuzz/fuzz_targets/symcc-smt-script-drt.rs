@@ -121,7 +121,7 @@ fuzz_target!(|input: FuzzTargetInput| {
                     &req_env,
                     &schema,
                 ) {
-                    let lean_asserts = rust_asserts
+                    let lean_asserts: Vec<_> = rust_asserts
                         .asserts()
                         .iter()
                         .map(|assert| assert.clone().into())
