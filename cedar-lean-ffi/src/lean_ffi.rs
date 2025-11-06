@@ -952,7 +952,7 @@ impl CedarLeanFfi {
             )
         };
         match lean_schema_object.as_borrowed().as_result()? {
-            Ok(lean_ok_obj) => Ok(LeanSchema(lean_ok_obj.into())),
+            Ok(lean_ok_obj) => Ok(LeanSchema(lean_ok_obj.to_owned())),
             Err(lean_err_obj) => Err(FfiError::LeanBackendError(
                 lean_err_obj.as_rust_str()?.to_string(),
             )),
