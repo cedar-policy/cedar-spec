@@ -136,8 +136,13 @@ pub fn check_policy_set_equivalence(set1: &PolicySet, set2: &PolicySet) {
         .all_templates()
         .map(PreservedTemplate::from)
         .collect::<HashSet<PreservedTemplate>>();
-    // Check that the sets are the same size
-    assert_eq!(t1, t2);
+    // Check that the sets of preserved templates are equal
+    assert_eq!(
+        t1,
+        t2,
+        "{}",
+        similar_asserts::SimpleDiff::from_str(&set1.to_string(), &set2.to_string(), "LHS", "RHS",)
+    );
 }
 
 /// Converts an ast policy set to Cedar text, removing linked policies.
