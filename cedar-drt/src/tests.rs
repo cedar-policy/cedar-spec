@@ -21,7 +21,7 @@ use cedar_testing::cedar_test_impl::{
 
 use cedar_policy::{
     eval_expression, ffi, AuthorizationError, Authorizer, Entities, Expression, PolicySet, Request,
-    Response, Schema, ValidationMode, ValidationResult, Validator,
+    Response, Schema, ValidationError, ValidationMode, ValidationResult, Validator,
 };
 
 use libfuzzer_sys::arbitrary::{self, Unstructured};
@@ -203,7 +203,11 @@ fn compare_validation_results(
             }
         }
         TestResult::Success(definitional_res) => {
-            if rust_res.validation_passed() {
+            // `InvalidActionApplication` is never reported by Lean
+            let rust_passed = rust_res
+                .validation_errors()
+                .all(|e| matches!(e, ValidationError::InvalidActionApplication(_)));
+            if rust_passed {
                 // If `cedar-policy` does not return an error, then the spec should not return an error.
                 // This implies type soundness of the `cedar-policy` validator since type soundness of the
                 // spec is formally proven.
@@ -217,7 +221,7 @@ fn compare_validation_results(
                     "Mismatch for Policies:\n{}\nSchema:\n{:?}\ncedar-policy response: {:?}\nTest engine response: {:?}\n",
                     &policies,
                     schema,
-                    rust_res,
+                    miette::Report::new(rust_res),
                     definitional_res,
                 );
             } else {
@@ -227,10 +231,10 @@ fn compare_validation_results(
                     ValidationComparisonMode::AgreeOnAll => {
                         assert!(
                             !definitional_res.validation_passed(),
-                            "Mismatch for Policies:\n{}\nSchema:\n{:?}\ncedar-policy response: {:?}\nTest engine response: {:?}\n",
+                            "Mismatch for Policies:\n{}\nSchema:\n{:?}\ncedar-policy response:\n{:?}\nTest engine response: {:?}\n",
                             &policies,
                             schema,
-                            rust_res,
+                            miette::Report::new(rust_res),
                             definitional_res,
                         );
                     }
