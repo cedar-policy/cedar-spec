@@ -15,7 +15,6 @@
  */
 
 use crate::abac::Type;
-use crate::collections::{HashMap, HashSet};
 use crate::err::{while_doing, Error, Result};
 use crate::schema_gen::SchemaGen;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_ratio};
@@ -23,13 +22,14 @@ use arbitrary::{Arbitrary, Unstructured};
 use cedar_policy_core::ast::{self, Eid, Entity, EntityUID};
 use cedar_policy_core::entities::{Entities, NoEntitiesSchema, TCComputation};
 use cedar_policy_core::extensions::Extensions;
+use indexmap::{IndexMap, IndexSet};
 use smol_str::SmolStr;
 
 /// EntityUIDs with the mappings to their indices in the container.
 /// This is used to generate an entity that is lexicographically smaller/greater than the input entity.
 #[derive(Debug, Clone)]
 struct EntityUIDs {
-    pub indices: HashMap<EntityUID, usize>,
+    pub indices: IndexMap<EntityUID, usize>,
     pub uids: Vec<EntityUID>,
 }
 
@@ -70,7 +70,7 @@ impl EntityUIDs {
 #[derive(Debug, Clone)]
 pub struct Hierarchy {
     /// maps EntityUID to the corresponding Entity
-    entities: HashMap<EntityUID, Entity>,
+    entities: IndexMap<EntityUID, Entity>,
     /// Vec of UIDs in the hierarchy, which we keep in sync with the `entities`
     /// HashMap.
     /// The reason we have this separately is that is allows us to do
@@ -79,7 +79,7 @@ pub struct Hierarchy {
     /// Map of entity typename to UID, for all UIDs in the hierarchy.
     /// We keep this in sync with the `entities` HashMap too.
     /// This is to make arbitrary_uid_with_type() fast.
-    uids_by_type: HashMap<ast::EntityType, EntityUIDs>,
+    uids_by_type: IndexMap<ast::EntityType, EntityUIDs>,
     /// Vec of all entity types used by entities in the hierarchy, again kept in
     /// sync with the `entities` HashMap. Makes `arbitrary_entity_type()` fast.
     entity_types: Vec<ast::EntityType>,
@@ -89,12 +89,12 @@ impl Hierarchy {
     /// Create a new `Hierarchy` from the given UIDs, sorted by type (in a
     /// `HashMap` of entity typename to UID). The entities will have no
     /// attributes or parents.
-    pub fn from_uids_by_type(uids_by_type: HashMap<ast::EntityType, HashSet<EntityUID>>) -> Self {
+    pub fn from_uids_by_type(uids_by_type: IndexMap<ast::EntityType, IndexSet<EntityUID>>) -> Self {
         let uids: Vec<EntityUID> = uids_by_type
             .values()
             .flat_map(|uids_inner| uids_inner.iter().cloned())
             .collect();
-        let uids_by_type: HashMap<_, _> = uids_by_type
+        let uids_by_type: IndexMap<_, _> = uids_by_type
             .into_iter()
             .map(|(n, uids)| (n, EntityUIDs::from_iter(uids)))
             .collect();
@@ -251,7 +251,7 @@ impl Hierarchy {
     // The main benefit of offering this method vs making callers use a more
     // generic constructor is that we can move the data structures `uids` and
     // `uids_by_type` rather than cloning or reconstructing them.
-    pub fn replace_entities(self, new_entities: HashMap<EntityUID, Entity>) -> Self {
+    pub fn replace_entities(self, new_entities: IndexMap<EntityUID, Entity>) -> Self {
         Self {
             entities: new_entities,
             uids: self.uids,
@@ -304,7 +304,8 @@ impl TryFrom<Hierarchy> for cedar_policy::Entities {
 impl From<Entities> for Hierarchy {
     fn from(entities: Entities) -> Hierarchy {
         let mut uids = Vec::new();
-        let mut uids_by_type: HashMap<ast::EntityType, HashSet<&ast::EntityUID>> = HashMap::new();
+        let mut uids_by_type: IndexMap<ast::EntityType, IndexSet<&ast::EntityUID>> =
+            IndexMap::new();
         for e in entities.iter() {
             let etype = e.uid().entity_type().clone();
             uids_by_type.entry(etype).or_default().insert(e.uid());
@@ -421,17 +422,17 @@ pub(crate) fn generate_uid_with_type(
 impl HierarchyGenerator<'_, '_> {
     /// Generate a `Hierarchy` according to the specified parameters
     pub fn generate(&mut self) -> Result<Hierarchy> {
-        let entity_types: HashSet<ast::EntityType> = match &self.mode {
+        let entity_types: IndexSet<ast::EntityType> = match &self.mode {
             HierarchyGeneratorMode::SchemaBased { schema } => schema.entity_types().collect(),
             HierarchyGeneratorMode::Arbitrary { .. } => {
                 // generate a HashSet first to avoid duplicates
-                let entity_types: HashSet<ast::EntityType> = self.u.arbitrary()?;
+                let entity_types: IndexSet<ast::EntityType> = self.u.arbitrary()?;
                 // Collect into a vector
                 entity_types.into_iter().collect()
             }
         };
         // For each entity type, generate entity UIDs of that type
-        let uids_by_type: HashMap<ast::EntityType, HashSet<EntityUID>> = entity_types
+        let uids_by_type: IndexMap<ast::EntityType, IndexSet<EntityUID>> = entity_types
             .iter()
             .map(|name| {
                 let (name, uid_choices) = match &self.mode {
@@ -442,7 +443,7 @@ impl HierarchyGenerator<'_, '_> {
                 };
                 let uids = match &self.num_entities {
                     NumEntities::RangePerEntityType(r) => {
-                        let mut uids = HashSet::new();
+                        let mut uids = IndexSet::new();
                         self.u.arbitrary_loop(
                             Some((*r.start()).try_into().unwrap()),
                             Some((*r.end()).try_into().unwrap()),
@@ -462,7 +463,7 @@ impl HierarchyGenerator<'_, '_> {
                     NumEntities::Exactly(num_entities) => {
                         // generate a fixed number of entity UIDs of this type
                         let num_entities_per_type = num_entities / entity_types.len();
-                        let mut uids = HashSet::new();
+                        let mut uids = IndexSet::new();
                         while uids.len() < num_entities_per_type {
                             // If we run out of bytes in `u`, then `uid` will be the same on every
                             // subsequent iteration, so the size of `uids` won't increase.
@@ -477,7 +478,7 @@ impl HierarchyGenerator<'_, '_> {
                 };
                 Ok((name, uids))
             })
-            .collect::<Result<HashMap<ast::EntityType, HashSet<ast::EntityUID>>>>()?;
+            .collect::<Result<IndexMap<ast::EntityType, IndexSet<ast::EntityUID>>>>()?;
         let hierarchy_no_attrs = Hierarchy::from_uids_by_type(uids_by_type);
         // now create an entity hierarchy composed of those entity UIDs
         let entities = hierarchy_no_attrs
@@ -486,7 +487,7 @@ impl HierarchyGenerator<'_, '_> {
             .map(|uid| {
                 let name = uid.entity_type();
                 // choose parents for this entity
-                let mut parents = HashSet::new();
+                let mut parents = IndexSet::new();
                 match &self.mode {
                     HierarchyGeneratorMode::SchemaBased { schema } => {
                         for ty in schema.allowed_parent_typenames(name).unwrap() {
@@ -522,7 +523,7 @@ impl HierarchyGenerator<'_, '_> {
                     }
                 }
                 // generate appropriate attributes for this entity
-                let mut attrs = HashMap::new();
+                let mut attrs = IndexMap::new();
                 match &self.mode {
                     HierarchyGeneratorMode::Arbitrary {
                         attributes_mode: AttributesMode::NoAttributesOrTags,
@@ -587,7 +588,7 @@ impl HierarchyGenerator<'_, '_> {
                             }
                 }
                 // generate appropriate tags for the entity
-                let mut tags = HashMap::new();
+                let mut tags = IndexMap::new();
                 match &self.mode {
                     HierarchyGeneratorMode::Arbitrary {
                         attributes_mode: AttributesMode::NoAttributesOrTags,

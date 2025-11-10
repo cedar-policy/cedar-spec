@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-use crate::collections::HashMap;
 use crate::err::{while_doing, Error, Result};
 use crate::policy::GeneratedPolicy;
 use crate::request::Request;
@@ -25,6 +24,7 @@ use arbitrary::{Arbitrary, Unstructured};
 use ast::{EntityUID, Name, RestrictedExpr, StaticPolicy};
 use cedar_policy_core::ast::{self, EntityType};
 use cedar_policy_core::extensions;
+use indexmap::IndexMap;
 use serde::Serialize;
 use smol_str::{SmolStr, ToSmolStr};
 use std::cell::RefCell;
@@ -74,7 +74,7 @@ fn mutate_str(u: &mut Unstructured<'_>, s: &str) -> Result<String> {
 /// Pool of "unknowns"
 #[derive(Debug, Clone, Default)]
 pub struct UnknownPool {
-    unknowns: RefCell<HashMap<String, (Type, ast::Value)>>,
+    unknowns: RefCell<IndexMap<String, (Type, ast::Value)>>,
 }
 
 impl UnknownPool {
@@ -419,10 +419,10 @@ pub struct AvailableExtensionFunctions {
     all: Vec<AvailableExtensionFunction>,
     /// available constructors, by their return types (map keys are return types).
     /// Empty if settings.enable_extensions is false and/or settings.match_types is false
-    constructors_by_type: HashMap<Type, Vec<AvailableExtensionFunction>>,
+    constructors_by_type: IndexMap<Type, Vec<AvailableExtensionFunction>>,
     /// available extension functions, by their return types (map keys are return types).
     /// Empty if settings.enable_extensions is false and/or settings.match_types is false
-    all_by_type: HashMap<Type, Vec<AvailableExtensionFunction>>,
+    all_by_type: IndexMap<Type, Vec<AvailableExtensionFunction>>,
 }
 
 impl AvailableExtensionFunctions {
@@ -592,8 +592,8 @@ impl AvailableExtensionFunctions {
             .filter(|func| func.is_constructor)
             .cloned()
             .collect::<Vec<_>>();
-        let mut constructors_by_type: HashMap<Type, Vec<AvailableExtensionFunction>> =
-            HashMap::new();
+        let mut constructors_by_type: IndexMap<Type, Vec<AvailableExtensionFunction>> =
+            IndexMap::new();
         if settings.match_types {
             for func in &constructors {
                 constructors_by_type
@@ -602,7 +602,7 @@ impl AvailableExtensionFunctions {
                     .push(func.clone());
             }
         }
-        let mut all_by_type: HashMap<Type, Vec<AvailableExtensionFunction>> = HashMap::new();
+        let mut all_by_type: IndexMap<Type, Vec<AvailableExtensionFunction>> = IndexMap::new();
         if settings.match_types {
             for func in &available_ext_funcs {
                 all_by_type
@@ -886,7 +886,7 @@ pub enum AttrValue {
     /// Set literal
     Set(Vec<AttrValue>),
     /// Record literal
-    Record(HashMap<SmolStr, AttrValue>),
+    Record(IndexMap<SmolStr, AttrValue>),
 }
 
 impl From<AttrValue> for RestrictedExpr {

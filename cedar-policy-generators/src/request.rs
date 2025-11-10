@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-use crate::collections::HashMap;
 use crate::err::Error;
 use crate::hierarchy::Hierarchy;
 use arbitrary::Unstructured;
 use cedar_policy_core::ast::{self, EntityUID, RestrictedExpr};
 use cedar_policy_core::extensions::Extensions;
+use indexmap::IndexMap;
 use smol_str::SmolStr;
 
 /// Data structure representing an authorization request
@@ -40,7 +40,7 @@ impl Request {
     /// schema)
     pub fn arbitrary_for_hierarchy(
         hierarchy: &Hierarchy,
-        context: HashMap<SmolStr, RestrictedExpr>,
+        context: IndexMap<SmolStr, RestrictedExpr>,
         u: &mut Unstructured<'_>,
     ) -> arbitrary::Result<Self> {
         Ok(Self {

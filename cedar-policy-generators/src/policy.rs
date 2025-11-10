@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-use crate::collections::HashMap;
 use crate::err::Result;
 use crate::hierarchy::Hierarchy;
 use crate::schema::Schema;
@@ -25,7 +24,9 @@ use cedar_policy_core::ast::{
     Effect, EntityUID, Expr, Policy, PolicyID, PolicySet, StaticPolicy, Template,
 };
 use cedar_policy_core::{ast, est};
+use indexmap::IndexMap;
 use serde::Serialize;
+use std::collections::HashMap;
 use std::fmt::Display;
 use std::sync::Arc;
 
@@ -523,7 +524,7 @@ impl GeneratedLinkedPolicy {
 
     /// Add this `GeneratedLinkedPolicy` to the given `PolicySet`
     pub fn add_to_policyset(self, policyset: &mut PolicySet) {
-        let mut vals = HashMap::new();
+        let mut vals = IndexMap::new();
         if let Some(principal_uid) = self.principal {
             vals.insert(ast::SlotId::principal(), principal_uid);
         }
@@ -531,7 +532,7 @@ impl GeneratedLinkedPolicy {
             vals.insert(ast::SlotId::resource(), resource_uid);
         }
         policyset
-            .link(self.template_id, self.id, vals.into())
+            .link(self.template_id, self.id, HashMap::from_iter(vals))
             .unwrap();
     }
 

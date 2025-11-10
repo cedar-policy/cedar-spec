@@ -5,7 +5,6 @@ use crate::{
         self, ABACPolicy, ABACRequest, AvailableExtensionFunctions, ConstantPool, QualifiedType,
         UnknownPool,
     },
-    collections::HashMap,
     err::{while_doing, Error, Result},
     expr::ExprGenerator,
     hierarchy::{Hierarchy, HierarchyGenerator, HierarchyGeneratorMode, NumEntities},
@@ -23,6 +22,7 @@ use cedar_policy_core::{
         ValidatorSchema as CoreSchema,
     },
 };
+use indexmap::IndexMap;
 use smol_str::SmolStr;
 
 impl From<types::Type> for abac::Type {
@@ -268,7 +268,7 @@ pub struct ValidatorSchema<'a> {
     core_schema: &'a CoreSchema,
     entity_types: Vec<EntityType>,
     attributes: Vec<(SmolStr, abac::Type)>,
-    attributes_by_type: HashMap<abac::Type, Vec<(ast::EntityType, SmolStr)>>,
+    attributes_by_type: IndexMap<abac::Type, Vec<(ast::EntityType, SmolStr)>>,
     settings: &'a ABACSettings,
     constant_pool: ConstantPool,
     unknown_pool: UnknownPool,
@@ -305,8 +305,8 @@ impl<'a> ValidatorSchema<'a> {
     }
     fn build_attributes(
         core_schema: &'a CoreSchema,
-    ) -> HashMap<abac::Type, Vec<(ast::EntityType, SmolStr)>> {
-        let mut attributes = HashMap::new();
+    ) -> IndexMap<abac::Type, Vec<(ast::EntityType, SmolStr)>> {
+        let mut attributes = IndexMap::new();
         for et in core_schema.entity_types() {
             for (attr, ty) in et.attributes().iter() {
                 let attr_type = abac::Type::from(ty.attr_type.clone());

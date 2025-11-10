@@ -23,9 +23,6 @@
 /// requests -- that is, fully general, containing attributes
 pub mod abac;
 
-/// This module contains deterministic versions of `HashMap` and `HashSet`
-pub mod collections;
-
 /// This module contains error types used by the crate
 pub mod err;
 

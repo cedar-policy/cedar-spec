@@ -17,7 +17,6 @@
 use cedar_policy::{AuthorizationError, Policy};
 use cedar_policy_core::entities::TypeAndId;
 
-use cedar_policy_generators::collections::HashMap;
 use cedar_testing::cedar_test_impl::RustEngine;
 use cedar_testing::integration_testing::{perform_integration_test, JsonRequest, JsonTest};
 use std::{io::Write, path::Path, str::FromStr};
@@ -211,6 +210,6 @@ fn dump_context(context: cedar_policy::Context) -> serde_json::Value {
     let context = context
         .into_iter()
         .map(|(k, pval)| (k, pval.as_ref().to_natural_json().unwrap()))
-        .collect::<HashMap<_, _>>();
+        .collect::<indexmap::IndexMap<_, _>>();
     serde_json::to_value(context).expect("failed to serialize context")
 }
