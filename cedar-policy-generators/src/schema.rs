@@ -18,7 +18,6 @@ use crate::abac::{
     ABACPolicy, ABACRequest, AvailableExtensionFunctions, ConstantPool, QualifiedType, Type,
     UnknownPool,
 };
-use crate::collections::{HashMap, HashSet};
 use crate::err::{while_doing, Error, Result};
 use crate::expr::ExprGenerator;
 use crate::hierarchy::Hierarchy;
@@ -39,6 +38,7 @@ use cedar_policy_core::validator::{
     json_schema, AllDefs, ConditionalName, RawName, SchemaError, ValidatorNamespaceDef,
     ValidatorSchema, ValidatorSchemaFragment,
 };
+use indexmap::{IndexMap, IndexSet};
 use smol_str::{SmolStr, ToSmolStr};
 use std::collections::BTreeMap;
 use std::ops::Deref;
@@ -77,8 +77,8 @@ pub struct Schema {
     /// attributes in the `schema` that have that type.
     /// note that we can't make a similar map for json_schema::Type because it
     /// isn't Hash or Ord
-    attributes_by_type: HashMap<Type, Vec<(ast::EntityType, SmolStr)>>,
-    entitytypes_by_type: HashMap<ast::EntityType, json_schema::EntityType<ast::InternalName>>,
+    attributes_by_type: IndexMap<Type, Vec<(ast::EntityType, SmolStr)>>,
+    entitytypes_by_type: IndexMap<ast::EntityType, json_schema::EntityType<ast::InternalName>>,
 }
 
 /// Wrapper so that we pretty print schema in the Cedar schema syntax in debug output for fuzz target failures.
@@ -230,7 +230,7 @@ pub fn arbitrary_schematype_with_bounded_depth<N: From<ast::Name>>(
         } else {
             Ok(json_schema::TypeVariant::Record(json_schema::RecordType {
                 attributes: {
-                    let attr_names: HashSet<String> = u
+                    let attr_names: IndexSet<String> = u
                         .arbitrary()
                         .map_err(|e| while_doing("generating attribute names".into(), e))?;
                     attr_names
@@ -482,7 +482,7 @@ fn build_attributes_by_type<'a>(
         ),
     >,
     namespace: Option<&ast::Name>,
-) -> HashMap<Type, Vec<(ast::EntityType, SmolStr)>> {
+) -> IndexMap<Type, Vec<(ast::EntityType, SmolStr)>> {
     let triples = entity_types
         .into_iter()
         .filter_map(|(name, et)| match &et.kind {
@@ -500,7 +500,7 @@ fn build_attributes_by_type<'a>(
                 )
             })
         });
-    let mut hm: HashMap<Type, Vec<(ast::EntityType, SmolStr)>> = HashMap::new();
+    let mut hm: IndexMap<Type, Vec<(ast::EntityType, SmolStr)>> = IndexMap::new();
     for (ty, pair) in triples {
         hm.entry(ty).or_default().push(pair);
     }
@@ -516,13 +516,13 @@ struct Bindings {
     // contain any common type references.
     bindings: BTreeMap<json_schema::Type<ast::InternalName>, Vec<CommonTypeId>>,
     // The set of `CommonTypeId`s used in the bindings
-    ids: HashSet<SmolStr>,
+    ids: IndexSet<SmolStr>,
 }
 impl Bindings {
     fn new() -> Self {
         Self {
             bindings: BTreeMap::new(),
-            ids: HashSet::new(),
+            ids: IndexSet::new(),
         }
     }
 
@@ -953,8 +953,8 @@ impl Schema {
         settings: ABACSettings,
         u: &mut Unstructured<'_>,
     ) -> Result<Schema> {
-        let mut principal_types = HashSet::new();
-        let mut resource_types = HashSet::new();
+        let mut principal_types = IndexSet::new();
+        let mut resource_types = IndexSet::new();
         for atype in nsdef.actions.values() {
             if let Some(applyspec) = atype.applies_to.as_ref() {
                 principal_types.extend(applyspec.principal_types.iter());
@@ -1088,7 +1088,7 @@ impl Schema {
         // first generate the pool of names. we generate a set (so there are no
         // duplicates), but then convert it to a Vec (because we want them
         // ordered, even though we want the order to be arbitrary)
-        let entity_type_ids: HashSet<ast::UnreservedId> = u
+        let entity_type_ids: IndexSet<ast::UnreservedId> = u
             .arbitrary()
             .map_err(|e| while_doing("generating entity type ids".into(), e))?;
         let entity_type_ids: Vec<ast::UnreservedId> = if entity_type_ids.is_empty() {
@@ -1166,10 +1166,10 @@ impl Schema {
         }
 
         // same for actions
-        let action_names: HashSet<String> = u
+        let action_names: IndexSet<String> = u
             .arbitrary()
             .map_err(|e| while_doing("generating action names".into(), e))?;
-        let action_names: HashSet<SmolStr> = action_names.into_iter().map(SmolStr::from).collect();
+        let action_names: IndexSet<SmolStr> = action_names.into_iter().map(SmolStr::from).collect();
         let action_names: Vec<SmolStr> = action_names
             .into_iter()
             .filter(|n| {
@@ -1186,10 +1186,10 @@ impl Schema {
         } else {
             action_names
         };
-        let mut principal_types: HashSet<ast::InternalName> = HashSet::new();
-        let mut resource_types: HashSet<ast::InternalName> = HashSet::new();
+        let mut principal_types: IndexSet<ast::InternalName> = IndexSet::new();
+        let mut resource_types: IndexSet<ast::InternalName> = IndexSet::new();
         // optionally return a list of entity types and add them to `tys` at the same time
-        let pick_entity_types = |tys: &mut HashSet<ast::InternalName>,
+        let pick_entity_types = |tys: &mut IndexSet<ast::InternalName>,
                                  u: &mut Unstructured<'_>|
          -> Result<Vec<ast::InternalName>> {
             // Pre-select the number of entity types (minimum 1), then randomly select that many indices
@@ -1385,10 +1385,10 @@ impl Schema {
         depth: usize,
     ) -> std::result::Result<(usize, Option<usize>), MaxRecursionReached> {
         Ok(arbitrary::size_hint::and_all(&[
-            <HashSet<ast::Name> as Arbitrary>::size_hint(depth),
+            <IndexSet<ast::Name> as Arbitrary>::size_hint(depth),
             arbitrary_attrspec_size_hint(depth)?, // actually we do one of these per Name that was generated
             size_hint_for_ratio(1, 2),            // actually many of these calls
-            <HashSet<String> as Arbitrary>::size_hint(depth),
+            <IndexSet<String> as Arbitrary>::size_hint(depth),
             size_hint_for_ratio(1, 8), // actually many of these calls
             size_hint_for_ratio(1, 4), // zero to many of these calls
             size_hint_for_ratio(1, 2), // zero to many of these calls
@@ -1682,7 +1682,7 @@ impl Schema {
                                 .into(),
                         ))
                     })
-                    .collect::<Result<HashMap<_, _>>>()?;
+                    .collect::<Result<IndexMap<_, _>>>()?;
                 ast::Context::from_pairs(attrs, Extensions::all_available())
                     .map_err(|e| Error::ContextError(Box::new(e)))?
             },

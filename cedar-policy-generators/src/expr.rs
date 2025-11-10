@@ -17,7 +17,6 @@
 use crate::abac::{
     AttrValue, AvailableExtensionFunctions, ConstantPool, QualifiedType, Type, UnknownPool,
 };
-use crate::collections::HashMap;
 use crate::err::{while_doing, Error, Result};
 use crate::hierarchy::{generate_uid_with_type, Hierarchy};
 use crate::schema_gen::SchemaGen;
@@ -26,6 +25,7 @@ use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hin
 use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{Arbitrary, MaxRecursionReached, Unstructured};
 use cedar_policy_core::ast;
+use indexmap::IndexMap;
 use smol_str::SmolStr;
 use std::collections::BTreeMap;
 
@@ -171,7 +171,7 @@ impl ExprGenerator<'_> {
                         Ok(ast::Expr::set(l))
                     },
                     1 => {
-                        let mut r = HashMap::new();
+                        let mut r = IndexMap::new();
                         u.arbitrary_loop(Some(0), Some(self.settings.max_width as u32), |u| {
                             let attr_name = self.schema.arbitrary_attr(u)?;
                             r.insert(
@@ -954,7 +954,7 @@ impl ExprGenerator<'_> {
                         gen!(u,
                         // record literal
                         2 => {
-                            let mut r = HashMap::new();
+                            let mut r = IndexMap::new();
                             for (a, qt) in m {
                                 if qt.required || u.ratio(1, 2)?{
                                     r.insert(a.clone(), self.generate_expr_for_type(&qt.ty, max_depth-1, u)?);
@@ -1252,7 +1252,7 @@ impl ExprGenerator<'_> {
                 Ok(ast::Expr::set(l))
             }
             Type::Record(m) => {
-                let mut r = HashMap::new();
+                let mut r = IndexMap::new();
                 for (a, qt) in m {
                     if qt.required || u.ratio(1, 2)? {
                         r.insert(a.clone(), self.generate_const_expr_for_type(&qt.ty, u)?);
@@ -1427,11 +1427,11 @@ impl ExprGenerator<'_> {
                 }
             }
             Type::Record(m) => {
-                let mut r = HashMap::new();
+                let mut r = IndexMap::new();
                 // the only valid Record-typed attribute value is a record literal
                 if max_depth == 0 {
                     // no recursion allowed: just do the empty record
-                    Ok(AttrValue::Record(HashMap::new()))
+                    Ok(AttrValue::Record(IndexMap::new()))
                 } else {
                     for (attr, qt) in m {
                         if qt.required || u.ratio(1, 2)? {
@@ -1543,7 +1543,7 @@ impl ExprGenerator<'_> {
                     // no recursion allowed: just do the empty record
                     Ok(Value::empty_record(None))
                 } else {
-                    let mut r = HashMap::new();
+                    let mut r = IndexMap::new();
                     for (a, qt) in m {
                         if qt.required || u.ratio(1, 2)? {
                             r.insert(
@@ -1573,7 +1573,7 @@ impl ExprGenerator<'_> {
             Ok(ast::Expr::set(l))
         },
         1 => {
-            let mut r = HashMap::new();
+            let mut r = IndexMap::new();
             u.arbitrary_loop(Some(0), Some(self.settings.max_width as u32), |u| {
                 let attr_name = self.schema.arbitrary_attr(u)?;
                 r.insert(attr_name, self.generate_const_expr(u)?);

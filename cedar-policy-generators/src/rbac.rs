@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-use crate::collections::HashMap;
 use crate::hierarchy::Hierarchy;
 use crate::policy::GeneratedPolicy;
 use crate::request::Request;
@@ -22,6 +21,7 @@ use arbitrary::{self, Unstructured};
 use ast::{Entity, Expr, PolicyID, StaticPolicy, Template};
 use cedar_policy_core::ast;
 use cedar_policy_core::entities::Entities;
+use indexmap::IndexMap;
 use serde::Serialize;
 use std::ops::{Deref, DerefMut};
 
@@ -277,7 +277,7 @@ impl RBACRequest {
     ) -> arbitrary::Result<Self> {
         Ok(Self(Request::arbitrary_for_hierarchy(
             hierarchy,
-            HashMap::new(),
+            IndexMap::new(),
             u,
         )?))
     }
