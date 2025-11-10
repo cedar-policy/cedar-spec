@@ -46,3 +46,6 @@ WORKDIR $CEDAR_SPEC_ROOT/cedar-drt
 RUN source /root/.profile &&  ./initialize_corpus.sh --all
 
 ENTRYPOINT ["/usr/bin/bash", "--rcfile", "../rcfile"]
+
+
+
