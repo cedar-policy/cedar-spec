@@ -221,7 +221,7 @@ fn compare_validation_results(
                     "Mismatch for Policies:\n{}\nSchema:\n{:?}\ncedar-policy response: {:?}\nTest engine response: {:?}\n",
                     &policies,
                     schema,
-                    rust_res,
+                    miette::Report::new(rust_res),
                     definitional_res,
                 );
             } else {
