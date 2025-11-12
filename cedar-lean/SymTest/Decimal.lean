@@ -32,7 +32,6 @@ private def decimalContext : RecordType :=
   ]
 
 private def decimalTypeEnv := BasicTypes.env Map.empty Map.empty decimalContext
-private def decimalSymEnv  := SymEnv.ofEnv decimalTypeEnv
 
 private def x : Expr := .getAttr (.var .context) "x"
 private def y : Expr := .getAttr (.var .context) "y"
@@ -45,13 +44,13 @@ def decLit (str : String) : Expr :=
 private def testValid (str : String) (rep : Int) : TestCase SolverM :=
   testCompile str
     (decLit str)
-    decimalSymEnv
+    (SymEnv.ofTypeEnv decimalTypeEnv)
     (.ok (.some (.prim (.ext (.decimal (Ext.Decimal.decimal? rep).get!)))))
 
 private def testInvalid (str : String) (msg : String) : TestCase SolverM :=
   testCompile s!"{str} [{msg}]"
     (decLit str)
-    decimalSymEnv
+    (SymEnv.ofTypeEnv decimalTypeEnv)
     (.error .typeError)
 
 def testsForDecimalConstructor :=
@@ -77,66 +76,66 @@ def testsForDecimalConstructor :=
     testInvalid "-922337203685477.5809" "overflow",
     testCompile s!"Error: applying decimal constructor to a non-literal"
       (.call .decimal [s])
-      decimalSymEnv
+      (SymEnv.ofTypeEnv decimalTypeEnv)
       (.error .typeError)
   ]
 
 def testsForDecimalComparisonOperations :=
-  suite "Decimal.comparisons"
+  suite "Decimal.comparisons" $ List.flatten
   [
     testVerifyEquivalent "True: x lessThanOrEqual 922337203685477.5807"
       (.call .lessThanOrEqual [x, decLit "922337203685477.5807"])
       (.lit (.bool true))
-      decimalSymEnv .unsat,
+      decimalTypeEnv .unsat,
 
     testVerifyEquivalent "True: 922337203685477.5807 greaterThanOrEqual x"
       (.call .greaterThanOrEqual [decLit "922337203685477.5807", x])
       (.lit (.bool true))
-      decimalSymEnv .unsat,
+      decimalTypeEnv .unsat,
 
     testVerifyEquivalent "True: x greaterThanOrEqual -922337203685477.5808"
       (.call .greaterThanOrEqual [x, decLit "-922337203685477.5808"])
       (.lit (.bool true))
-      decimalSymEnv .unsat,
+      decimalTypeEnv .unsat,
 
     testVerifyEquivalent "True: -922337203685477.5808 lessThanOrEqual x"
       (.call .lessThanOrEqual [decLit "-922337203685477.5808", x])
       (.lit (.bool true))
-      decimalSymEnv .unsat,
+      decimalTypeEnv .unsat,
 
     testVerifyImplies "Implies: x != 922337203685477.5807 ==> x lessThan 922337203685477.5807"
       (.unaryApp .not (.binaryApp .eq x (decLit "922337203685477.5807")))
       (.call .lessThan [x, decLit "922337203685477.5807"])
-      decimalSymEnv .unsat,
+      decimalTypeEnv .unsat,
 
     testVerifyImplies "Implies: x != -922337203685477.5808 ==> x greaterThan -922337203685477.5808"
       (.unaryApp .not (.binaryApp .eq x (decLit "-922337203685477.5808")))
       (.call .greaterThan [x, decLit "-922337203685477.5808"])
-      decimalSymEnv .unsat,
+      decimalTypeEnv .unsat,
 
     testVerifyImplies "Implies: x lessThan y ==> y greaterThan x"
       (.call .lessThan [x, y])
       (.call .greaterThan [y, x])
-      decimalSymEnv .unsat,
+      decimalTypeEnv .unsat,
 
     testVerifyImplies "Implies: x lessThanOrEqual y ==> y greaterThanOrEqual x"
       (.call .lessThanOrEqual [x, y])
       (.call .greaterThanOrEqual [y, x])
-      decimalSymEnv .unsat,
+      decimalTypeEnv .unsat,
 
     testVerifyImplies "Implies: x lessThanOrEqual y && y lessThanOrEqual x ==> x = y"
       (.and
         (.call .lessThanOrEqual [x, y])
         (.call .lessThanOrEqual [y, x]))
       (.binaryApp .eq x y)
-      decimalSymEnv .unsat,
+      decimalTypeEnv .unsat,
 
-    testVerifyImplies "Implies: x lessThan y && x lessThan z ==> z greaterThan x"
+    testVerifyImplies "Implies: x lessThan y && y lessThan z ==> z greaterThan x"
       (.and
         (.call .lessThan [x, y])
         (.call .lessThan [y, z]))
       (.call .greaterThan [z, x])
-      decimalSymEnv .unsat,
+      decimalTypeEnv .unsat,
   ]
 
 def tests := [

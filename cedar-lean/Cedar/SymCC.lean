@@ -80,6 +80,36 @@ def wellTypedPolicies (ps : Policies) (Γ : Cedar.Validation.TypeEnv) : Option P
 ----- Slow verification checks that extract models -----
 
 /--
+Given some `asserts` and their corresponding symbolic environment `εnv`,
+calls the SMT solver (if necessary) on an SMTLib encoding of `asserts` and
+returns `none` if the result is unsatisfiable. Otherwise returns `some I`
+containing a counterexample interpretation `I`. The `asserts` are expected to
+be well-formed with respect to `εnv` according to `Cedar.SymCC.Term.WellFormed`.
+This call resets the solver.
+-/
+def checkSatAsserts (asserts : Asserts) (εnv : SymEnv) : SolverM (Option Interpretation) := do
+  if asserts.any (· == false) then
+    Solver.reset
+    pure .none
+  else if asserts.all (· == true) then
+    Solver.reset
+    pure (.some (Decoder.defaultInterpretation εnv.entities))
+  else
+    let enc ← Encoder.encode asserts εnv (produceModels := true)
+    match (← Solver.checkSat) with
+    | .unsat   => pure .none
+    | .sat     =>
+      let model ← Solver.getModel
+      match Decoder.decode model enc with
+      | .ok I      => -- validate the model
+        for t in asserts do
+          if t.interpret I != true then
+            throw (IO.userError s!"Model violates assertion {reprStr t}: {model}")
+        pure (.some I)
+      | .error msg => throw (IO.userError s!"Model decoding failed: {msg}\n {model}")
+    | .unknown => throw (IO.userError s!"Solver returned unknown.")
+
+/--
 Given a verification condition generator `vc` and a symbolic environment `εnv`,
 calls the SMT solver (if necessary) on an SMTLib encoding of `vc εnv` and
 returns `none` if the result is unsatisfiable. Otherwise returns `some I`
@@ -87,31 +117,32 @@ containing a counterexample interpretation `I`. The function `vc` is expected to
 produce a list of terms type .bool that are well-formed with respect to `εnv`
 according to `Cedar.SymCC.Term.WellFormed`. This call resets the solver.
 -/
-def checkSat (vc : SymEnv → Result Asserts) (εnv : SymEnv) : SolverM (Option Interpretation) := do
+def checkSat (vc : SymEnv → Result Asserts) (εnv : SymEnv) : SolverM (Option Interpretation) :=
   match vc εnv with
-  | .ok asserts =>
-    if asserts.any (· == false) then
-      Solver.reset
-      pure .none
-    else if asserts.all (· == true) then
-      Solver.reset
-      pure (.some (Decoder.defaultInterpretation εnv.entities))
-    else
-      let enc ← Encoder.encode asserts εnv (produceModels := true)
-      match (← Solver.checkSat) with
-      | .unsat   => pure .none
-      | .sat     =>
-        let model ← Solver.getModel
-        match Decoder.decode model enc with
-        | .ok I      => -- validate the model
-          for t in asserts do
-            if t.interpret I != true then
-              throw (IO.userError s!"Model violates assertion {reprStr t}: {model}")
-          pure (.some I)
-        | .error msg => throw (IO.userError s!"Model decoding failed: {msg}\n {model}")
-      | .unknown => throw (IO.userError s!"Solver returned unknown.")
-  | .error err =>
-    throw (IO.userError s!"SymCC failed: {reprStr err}.")
+  | .ok asserts => checkSatAsserts asserts εnv
+  | .error err => throw (IO.userError s!"SymCC failed: {reprStr err}.")
+
+/--
+Given policies `ps` (in their post-typecheck `Expr` forms), some `asserts`, and
+the corresponding symbolic environment `εnv`, calls the SMT solver (if
+necessary) on an SMTLib encoding of `asserts` and returns `none` if the result is
+unsatisfiable. Otherwise returns `some env` containing a counterexample environment
+such that evaluating `ps` in `env` violates the property verified by `asserts`.
+
+The `asserts` are expected to be well-formed with respect to `εnv` according to
+`Cedar.SymCC.Term.WellFormed`. They must encode a property of policies `pc`.
+Specifically, for each term `t ∈ asserts`, there must be a set of expressions
+`xs` such that each `x ∈ xs` is a subexpression of `p ∈ ps`, and the meaning of
+`t` is a function of the meaning of `xs`. This ensures that findings generated
+by `solve` are sound and complete.
+-/
+def satAsserts? (ps : List Expr) (asserts : Asserts) (εnv : SymEnv) : SolverM (Option Env) := do
+  match ← checkSatAsserts asserts εnv with
+  | .none   => pure none
+  | .some I =>
+    match εnv.extract? ps I with
+    | .some env => pure (some env)
+    | .none     => throw (IO.userError s!"Extraction failed.")
 
 /--
 Given policies `ps`, a verification condition generator `vc`, and a symbolic
@@ -130,13 +161,10 @@ and complete.
 
 This call resets the solver.
 -/
-def sat? (ps : Policies) (vc : SymEnv → Result Asserts) (εnv : SymEnv) : SolverM (Option Env) := do
-  match ← checkSat vc εnv with
-  | .none   => pure none
-  | .some I =>
-    match εnv.extract? (ps.map Policy.toExpr) I with
-    | .some env => pure (some env)
-    | .none     => throw (IO.userError s!"Extraction failed.")
+def sat? (ps : Policies) (vc : SymEnv → Result Asserts) (εnv : SymEnv) : SolverM (Option Env) :=
+  match vc εnv with
+  | .ok asserts => satAsserts? (ps.map Policy.toExpr) asserts εnv
+  | .error err => throw (IO.userError s!"SymCC failed: {reprStr err}.")
 
 /--
 Returns `none` iff `p` does not error on any well-formed input in `εnv`.
@@ -188,6 +216,27 @@ def disjoint? (ps₁ ps₂ : Policies) (εnv : SymEnv) : SolverM (Option Env) :=
 ----- Faster verification checks that don't extract models -----
 
 /--
+Given some `asserts` and their corresponding symbolic environment `εnv`,
+calls the SMT solver (if necessary) on an SMTLib encoding of `asserts` and
+returns `true` iff the result is unsatisfiable. The `asserts` are expected to
+be well-formed with respect to `εnv` according to `Cedar.SymCC.Term.WellFormed`.
+This call resets the solver.
+-/
+def checkUnsatAsserts (asserts : Asserts) (εnv : SymEnv) : SolverM Bool := do
+  if asserts.any (· == false) then
+    Solver.reset
+    pure true
+  else if asserts.all (· == true) then
+    Solver.reset
+    pure false
+  else
+    let _ ← Encoder.encode asserts εnv (produceModels := false)
+    match (← Solver.checkSat) with
+    | .unsat   => pure true
+    | .sat     => pure false
+    | .unknown => throw (IO.userError s!"Solver returned unknown.")
+
+/--
 Given a verification condition generator `vc` and a symbolic environment `εnv`,
 calls the SMT solver (if necessary) on an SMTLib encoding of `vc εnv` and
 returns `true` iff the result is unsatisfiable. The function `vc` is expected to
@@ -196,21 +245,8 @@ according to `Cedar.SymCC.Term.WellFormed`. This call resets the solver.
 -/
 def checkUnsat (vc : SymEnv → Result Asserts) (εnv : SymEnv) : SolverM Bool := do
   match vc εnv with
-  | .ok asserts =>
-    if asserts.any (· == false) then
-      Solver.reset
-      pure true
-    else if asserts.all (· == true) then
-      Solver.reset
-      pure false
-    else
-      let _ ← Encoder.encode asserts εnv (produceModels := false)
-      match (← Solver.checkSat) with
-      | .unsat   => pure true
-      | .sat     => pure false
-      | .unknown => throw (IO.userError s!"Solver returned unknown.")
-  | .error err =>
-    throw (IO.userError s!"SymCC failed: {reprStr err}.")
+  | .ok asserts => checkUnsatAsserts asserts εnv
+  | .error err => throw (IO.userError s!"SymCC failed: {reprStr err}.")
 
 /--
 Returns true iff `p` does not error on any well-formed input in `εnv`.

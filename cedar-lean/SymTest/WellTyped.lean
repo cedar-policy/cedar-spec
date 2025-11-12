@@ -177,23 +177,40 @@ private def policyB : Policy := {
       (.lit (.bool true))⟩]
 }
 
-def testFailsOnIllTyped (p : Policy) : TestCase SolverM :=
-  test s!"verifyNeverErrors of {p.id} fails due to type errors"
-    ⟨λ _ => checkEq (verifyNeverErrors p εnv) (.error .typeError)⟩
+/-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/
+def testFailsOnIllTyped (p : Policy) : List (TestCase SolverM) :=
+  let desc := s!"verifyNeverErrors of {p.id} fails due to type errors"
+  [
+    test (desc ++ " (unoptimized)")
+      -- on the unoptimized path, verifyNeverErrors fails with .typeError
+      ⟨λ _ => checkEq (verifyNeverErrors p εnv) (.error .typeError)⟩,
+    test (desc ++ " (optimized)")
+      -- on the optimized path, policy compilation fails with .typeError
+      ⟨λ _ => checkMatches (CompiledPolicy.compile p Γ matches .error (.validationError (.typeError _ _)))⟩,
+  ]
 
-def testSucceedsOnWellTyped (p : Policy) (expected : Bool) : TestCase SolverM :=
-  test s!"checkNeverErrors of (wellTypedPolicy {p.id} Γ) succeeds with outcome '{expected}'"
-    ⟨λ _ => do checkEq (← checkNeverErrors (wellTypedPolicy p Γ).get! εnv) expected⟩
+/-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/
+def testSucceedsOnWellTyped (p : Policy) (expected : Bool) : List (TestCase SolverM) :=
+  let desc := s!"checkNeverErrors of (wellTypedPolicy {p.id} Γ) succeeds with outcome '{expected}'"
+  [
+    test (desc ++ " (unoptimized)")
+      ⟨λ _ => do checkEq (← checkNeverErrors (wellTypedPolicy p Γ).get! εnv) expected⟩,
+    test (desc ++ " (optimized)")
+      ⟨λ _ => do
+        let cp ← CompiledPolicy.compile p Γ |> IO.ofExcept
+        checkEq (← checkNeverErrorsOpt cp) expected
+      ⟩,
+  ]
 
 def testsForIllTyped :=
-  suite "WellTyped.compileFailsOnIllTypedPolicies"
+  suite "WellTyped.compileFailsOnIllTypedPolicies" $ List.flatten
   [
     testFailsOnIllTyped policyA,
     testFailsOnIllTyped policyB,
   ]
 
 def testsForWellTyped :=
-  suite "WellTyped.compileSucceedsOnWellTypedPolicies"
+  suite "WellTyped.compileSucceedsOnWellTypedPolicies" $ List.flatten
   [
     testSucceedsOnWellTyped policyA false,
     testSucceedsOnWellTyped policyB true,

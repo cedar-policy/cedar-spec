@@ -97,6 +97,13 @@ inductive ValidationError where
   | typeError (pid : PolicyID) (error : TypeError)
   | levelError (pid : PolicyID)
   | impossiblePolicy (pid : PolicyID)
+deriving Repr, BEq
+
+instance : ToString ValidationError where
+  toString
+  | .typeError pid error => s!"typeError for {pid}: {repr error}"
+  | .levelError pid => s!"levelError for {pid}"
+  | .impossiblePolicy pid => s!"impossiblePolicy: {pid}"
 
 abbrev ValidationResult := Except ValidationError Unit
 
