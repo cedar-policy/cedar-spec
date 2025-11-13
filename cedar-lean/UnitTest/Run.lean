@@ -34,10 +34,10 @@ def checkBEq {α} [BEq α] [Repr α] (actual expected : α) : m TestResult :=
   then return .ok ()
   else return .error s!"actual: {reprArg actual}\nexpected: {reprArg expected}"
 
-def checkMatches (matchesExpr : Bool) : m TestResult :=
+def checkMatches [Repr e] (matchesExpr : Bool) (origExpr : e) : m TestResult :=
   if matchesExpr
   then return .ok ()
-  else return .error s!"does not match expected pattern"
+  else return .error s!"does not match expected pattern: got {reprArg origExpr}"
 
 structure TestCase (m) [Monad m] [MonadLiftT IO m] extends Thunk (m TestResult) where
   name : String

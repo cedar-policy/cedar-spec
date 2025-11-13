@@ -64,11 +64,11 @@ private def CompiledPolicies.permit (x : Expr) (Γ : Validation.TypeEnv) : Excep
 
 def testFailsCompilePolicy (desc : String) (x : Expr) (Γ : Validation.TypeEnv) : TestCase SolverM :=
   let compileResult := CompiledPolicy.compile (Policy.permit x) Γ
-  test desc ⟨λ _ => checkMatches $ compileResult matches .error _⟩
+  test desc ⟨λ _ => checkMatches (compileResult matches .error _) compileResult⟩
 
 def testFailsCompilePolicies (desc : String) (x : Expr) (Γ : Validation.TypeEnv) : TestCase SolverM :=
   let compileResult := CompiledPolicies.compile [Policy.permit x] Γ
-  test desc ⟨λ _ => checkMatches $ compileResult matches .error _⟩
+  test desc ⟨λ _ => checkMatches (compileResult matches .error _) compileResult⟩
 
 /-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/
 def testVerifyNoError (desc : String) (x : Expr) (Γ : Validation.TypeEnv) (expected : Outcome) : List (TestCase SolverM) :=

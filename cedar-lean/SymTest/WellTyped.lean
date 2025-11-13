@@ -186,7 +186,9 @@ def testFailsOnIllTyped (p : Policy) : List (TestCase SolverM) :=
       ⟨λ _ => checkEq (verifyNeverErrors p εnv) (.error .typeError)⟩,
     test (desc ++ " (optimized)")
       -- on the optimized path, policy compilation fails with .typeError
-      ⟨λ _ => checkMatches (CompiledPolicy.compile p Γ matches .error (.validationError (.typeError _ _)))⟩,
+      ⟨λ _ =>
+        let compileResult := CompiledPolicy.compile p Γ
+        checkMatches (compileResult matches .error (.validationError (.typeError _ _))) compileResult⟩,
   ]
 
 /-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/

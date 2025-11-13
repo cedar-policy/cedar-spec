@@ -110,19 +110,6 @@ def checkSatAsserts (asserts : Asserts) (εnv : SymEnv) : SolverM (Option Interp
     | .unknown => throw (IO.userError s!"Solver returned unknown.")
 
 /--
-Given a verification condition generator `vc` and a symbolic environment `εnv`,
-calls the SMT solver (if necessary) on an SMTLib encoding of `vc εnv` and
-returns `none` if the result is unsatisfiable. Otherwise returns `some I`
-containing a counterexample interpretation `I`. The function `vc` is expected to
-produce a list of terms type .bool that are well-formed with respect to `εnv`
-according to `Cedar.SymCC.Term.WellFormed`. This call resets the solver.
--/
-def checkSat (vc : SymEnv → Result Asserts) (εnv : SymEnv) : SolverM (Option Interpretation) :=
-  match vc εnv with
-  | .ok asserts => checkSatAsserts asserts εnv
-  | .error err => throw (IO.userError s!"SymCC failed: {reprStr err}.")
-
-/--
 Given policies `ps` (in their post-typecheck `Expr` forms), some `asserts`, and
 the corresponding symbolic environment `εnv`, calls the SMT solver (if
 necessary) on an SMTLib encoding of `asserts` and returns `none` if the result is
