@@ -179,16 +179,26 @@ private def policyB : Policy := {
 
 /-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/
 def testFailsOnIllTyped (p : Policy) : List (TestCase SolverM) :=
-  let desc := s!"verifyNeverErrors of {p.id} fails due to type errors"
   [
-    test (desc ++ " (unoptimized)")
+    test s!"on the unoptimized path, verifyNeverErrors of {p.id} fails due to type errors"
       -- on the unoptimized path, verifyNeverErrors fails with .typeError
+      -- (if the caller used `wellTypedPolicy p Γ` rather than `p` directly, as they
+      -- should, then either `wellTypedPolicy` itself would fail-fast, or both
+      -- `wellTypedPolicy` and `verifyNeverErrors` would succeed; see theorem
+      -- `verifyNeverErrors_is_ok_and_sound` in WellTypedVerification.lean.)
       ⟨λ _ => checkEq (verifyNeverErrors p εnv) (.error .typeError)⟩,
-    test (desc ++ " (optimized)")
-      -- on the optimized path, policy compilation fails with .typeError
+    test s!"on the optimized path, policy compilation and verifyNeverErrorsOpt of {p.id} succeed"
+      -- on the optimized path, policy compilation and `verifyNeverErrorsOpt` both succeed
+      -- (despite the extensive comments at the top of this file) because it compiles the
+      -- _transformed_ policies produced by the typechecker -- equivalent to if the
+      -- caller in the unoptimized case had passed their policies through `wellTypedPolicy`
+      -- (as they properly should) rather than feeding them to `verifyNeverErrors` directly.
       ⟨λ _ =>
         let compileResult := CompiledPolicy.compile p Γ
-        checkMatches (compileResult matches .error (.validationError (.typeError _ _))) compileResult⟩,
+        -- no need to actually check that `verifyNeverErrorsOpt` succeeds,
+        -- because it is infallible (doesn't return a Result/Except type). Tests
+        -- in other modules check the end-to-end behavior of the optimized path.
+        checkMatches (compileResult matches .ok _) compileResult⟩,
   ]
 
 /-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/
