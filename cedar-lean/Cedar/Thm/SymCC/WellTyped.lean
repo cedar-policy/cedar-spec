@@ -30,11 +30,11 @@ namespace Cedar.Thm
 open Spec SymCC Validation Data
 
 /--
-Reduces `wellTypedPolicy` being `some` to the existence of `TypedExpr`s.
+Reduces `wellTypedPolicy` being `ok` to the existence of `TypedExpr`s.
 -/
-theorem wellTypedPolicy_some_implies_exists_typed_exprs
+theorem wellTypedPolicy_ok_implies_exists_typed_exprs
   {Γ : TypeEnv} {p p' : Policy}
-  (hsome : wellTypedPolicy p Γ = .some p') :
+  (hwt : wellTypedPolicy p Γ = .ok p') :
   ∃ tx tx' : TypedExpr, ∃ c,
     TypedExpr.WellTyped Γ tx.liftBoolTypes ∧
     TypedExpr.WellTyped Γ tx' ∧
@@ -50,23 +50,18 @@ theorem wellTypedPolicy_some_implies_exists_typed_exprs
       (.bool .anyBool)) ∧
     tx.liftBoolTypes.typeOf = .bool .anyBool
 := by
-  simp only [
-    wellTypedPolicy,
-    bind, Option.bind,
-  ] at hsome
-  split at hsome
+  simp only [wellTypedPolicy, bind, Except.bind] at hwt
+  split at hwt
   contradiction
   rename_i tx hwt
-  simp only [Option.some.injEq] at hsome
-  simp only [←hsome]
+  simp only [Except.ok.injEq] at hwt ; subst p'
   simp only [typecheckPolicy] at hwt
   split at hwt
   · rename_i tx' c hty
     split at hwt
     · rename_i hwt_bool
       have hwf_lift := typechecked_is_well_typed_after_lifting hty
-      simp only [Except.toOption, Option.some.injEq] at hwt
-      simp only [hwt] at hwf_lift hwt_bool
+      simp only [Except.ok.injEq] at hwt ; subst tx'
       have :
         tx.liftBoolTypes.typeOf = .bool .anyBool
       := by
@@ -101,7 +96,7 @@ theorem wellTypedPolicy_some_implies_exists_typed_exprs
         · rfl
       exists tx, tx'', c
       simp only [
-        hwf_lift, hwf_tx'', hty, hwt, htx'', this,
+        hwf_lift, hwf_tx'', hty, htx'', this,
         true_and, and_true,
       ]
       simp only [
@@ -126,14 +121,14 @@ theorem wellTypedPolicy_some_implies_exists_typed_exprs
 If a policy `p` is well-typed via `wellTypedPolicy`, then there
 is a well-typed `TypedExpr` corresponding to `p`'s condition.
 -/
-theorem wellTypedPolicy_some_implies_well_typed_expr
+theorem wellTypedPolicy_ok_implies_well_typed_expr
   {Γ : TypeEnv} {p p' : Policy}
-  (hsome : wellTypedPolicy p Γ = .some p') :
+  (hwt : wellTypedPolicy p Γ = .ok p') :
   ∃ tx : TypedExpr,
     TypedExpr.WellTyped Γ tx ∧
     tx.toExpr = p'.toExpr
 := by
-  have ⟨tx, tx', _, _, hwt, _, h, _⟩ := wellTypedPolicy_some_implies_exists_typed_exprs hsome
+  have ⟨tx, tx', _, _, hwt, _, h, _⟩ := wellTypedPolicy_ok_implies_exists_typed_exprs hwt
   exists tx'
   simp [hwt, h]
 
@@ -276,11 +271,11 @@ decreasing_by
 theorem wellTypedPolicy_preserves_valid_refs
   {Γ : TypeEnv} {request : Request} {entities : Entities} {p p' : Policy}
   (hinst : InstanceOfWellFormedEnvironment request entities Γ)
-  (hwt : wellTypedPolicy p Γ = .some p')
+  (hwt : wellTypedPolicy p Γ = .ok p')
   (hswf : entities.ValidRefsFor p.toExpr) :
   entities.ValidRefsFor p'.toExpr
 := by
-  have ⟨tx, tx', _, _, _, hty, heq_p', heq_tx'⟩ := wellTypedPolicy_some_implies_exists_typed_exprs hwt
+  have ⟨tx, tx', _, _, _, hty, heq_p', heq_tx'⟩ := wellTypedPolicy_ok_implies_exists_typed_exprs hwt
   simp only [
     heq_tx', TypedExpr.toExpr,
     ←type_lifting_preserves_expr tx,
@@ -302,7 +297,7 @@ theorem wellTypedPolicy_preserves_valid_refs
 theorem wellTypedPolicy_preserves_StronglyWellFormedForPolicy
   {Γ : TypeEnv} {env : Env} {p p' : Policy}
   (hinst : InstanceOfWellFormedEnvironment env.request env.entities Γ)
-  (hwt : wellTypedPolicy p Γ = .some p')
+  (hwt : wellTypedPolicy p Γ = .ok p')
   (hswf : env.StronglyWellFormedForPolicy p) :
   env.StronglyWellFormedForPolicy p'
 := by
@@ -313,7 +308,7 @@ theorem wellTypedPolicy_preserves_StronglyWellFormedForPolicy
 theorem wellTypedPolicies_preserves_StronglyWellFormedForPolicies
   {Γ : TypeEnv} {env : Env} {ps ps' : Policies}
   (hinst : InstanceOfWellFormedEnvironment env.request env.entities Γ)
-  (hwt : wellTypedPolicies ps Γ = .some ps')
+  (hwt : wellTypedPolicies ps Γ = .ok ps')
   (hswf : env.StronglyWellFormedForPolicies ps) :
   env.StronglyWellFormedForPolicies ps'
 := by
@@ -322,7 +317,7 @@ theorem wellTypedPolicies_preserves_StronglyWellFormedForPolicies
   · intros expr hmem_expr
     have ⟨p', hmem_p', hp'⟩ := List.mem_map.mp hmem_expr
     simp only [←hp']
-    have ⟨p, hmem_p, hwt_p⟩ := List.mapM_some_implies_all_from_some hwt p' hmem_p'
+    have ⟨p, hmem_p, hwt_p⟩ := List.mapM_ok_implies_all_from_ok hwt p' hmem_p'
     have hmem_p_expr : p.toExpr ∈ ps.map Policy.toExpr := by
       apply List.mem_map.mpr
       exists p
@@ -336,11 +331,11 @@ theorem wellTypedPolicy_preserves_evaluation
   {Γ : TypeEnv} {request : Request} {entities : Entities}
   {p p' : Policy}
   (hinst : InstanceOfWellFormedEnvironment request entities Γ)
-  (hwt : wellTypedPolicy p Γ = .some p') :
+  (hwt : wellTypedPolicy p Γ = .ok p') :
   evaluate p.toExpr request entities
   = evaluate p'.toExpr request entities
 := by
-  have ⟨tx, tx', _, hwt_tx_lift, hwt_tx', hty, heq_p'_tx', heq_tx', hbool⟩ := wellTypedPolicy_some_implies_exists_typed_exprs hwt
+  have ⟨tx, tx', _, hwt_tx_lift, hwt_tx', hty, heq_p'_tx', heq_tx', hbool⟩ := wellTypedPolicy_ok_implies_exists_typed_exprs hwt
   have heq_action : Γ.reqty.action = request.action := by
     have ⟨_, ⟨_, h, _⟩, _⟩ := hinst
     simp [h]
@@ -386,13 +381,13 @@ theorem wellTypedPolicy_preserves_evaluation
 
 theorem wellTypedPolicies_preserves_policy_id_and_effect
   {Γ : TypeEnv} {p p' : Policy}
-  (hwt : wellTypedPolicy p Γ = .some p') :
+  (hwt : wellTypedPolicy p Γ = .ok p') :
   p.id = p'.id ∧ p.effect = p'.effect
 := by
-  simp only [wellTypedPolicy, bind, Option.bind] at hwt
+  simp only [wellTypedPolicy, bind, Except.bind] at hwt
   split at hwt
   contradiction
-  simp only [Option.some.injEq] at hwt
+  simp only [Except.ok.injEq] at hwt
   simp [←hwt]
 
 theorem wellTypedPolicies_preserves_satisfiedWithEffect
@@ -400,7 +395,7 @@ theorem wellTypedPolicies_preserves_satisfiedWithEffect
   {p p' : Policy}
   (effect : Effect)
   (hinst : InstanceOfWellFormedEnvironment request entities Γ)
-  (hwt : wellTypedPolicy p Γ = .some p') :
+  (hwt : wellTypedPolicy p Γ = .ok p') :
   satisfiedWithEffect effect p request entities
   = satisfiedWithEffect effect p' request entities
 := by
@@ -415,7 +410,7 @@ theorem wellTypedPolicies_preserves_satisfiedPolicies
   {ps ps' : Policies}
   (effect : Effect)
   (hinst : InstanceOfWellFormedEnvironment request entities Γ)
-  (hwt : wellTypedPolicies ps Γ = .some ps') :
+  (hwt : wellTypedPolicies ps Γ = .ok ps') :
   satisfiedPolicies effect ps request entities
   = satisfiedPolicies effect ps' request entities
 := by
@@ -428,7 +423,7 @@ theorem wellTypedPolicies_preserves_satisfiedPolicies
       (p := λ x y =>
         satisfiedWithEffect effect x request entities
         = satisfiedWithEffect effect y request entities)
-    · apply List.mapM_implies_forall₂_option _ hwt
+    · apply List.mapM_implies_forall₂ _ hwt
       intros p p' hmem_p hwt_p
       exact wellTypedPolicies_preserves_satisfiedWithEffect effect hinst hwt_p
     · simp
@@ -438,7 +433,7 @@ theorem wellTypedPolicies_preserves_errored
   {Γ : TypeEnv} {entities : Entities} {request : Request}
   {p p' : Policy}
   (hinst : InstanceOfWellFormedEnvironment request entities Γ)
-  (hwt : wellTypedPolicy p Γ = .some p') :
+  (hwt : wellTypedPolicy p Γ = .ok p') :
   errored p request entities
   = errored p' request entities
 := by
@@ -452,7 +447,7 @@ theorem wellTypedPolicies_preserves_errorPolicies
   {Γ : TypeEnv} {entities : Entities} {request : Request}
   {ps ps' : Policies}
   (hinst : InstanceOfWellFormedEnvironment request entities Γ)
-  (hwt : wellTypedPolicies ps Γ = .some ps') :
+  (hwt : wellTypedPolicies ps Γ = .ok ps') :
   errorPolicies ps request entities
   = errorPolicies ps' request entities
 := by
@@ -463,7 +458,7 @@ theorem wellTypedPolicies_preserves_errorPolicies
   := by
     apply List.filterMap_eq_filterMap
       (p := λ x y => errored x request entities = errored y request entities)
-    · apply List.mapM_implies_forall₂_option _ hwt
+    · apply List.mapM_implies_forall₂ _ hwt
       intros p p' hmem_p hwt_p
       exact wellTypedPolicies_preserves_errored hinst hwt_p
     · simp
@@ -474,7 +469,7 @@ theorem wellTypedPolicies_preserves_isAuthorized
   {Γ : TypeEnv} {entities : Entities} {request : Request}
   {ps ps' : Policies}
   (hinst : InstanceOfWellFormedEnvironment request entities Γ)
-  (hwt : wellTypedPolicies ps Γ = .some ps') :
+  (hwt : wellTypedPolicies ps Γ = .ok ps') :
   isAuthorized request entities ps
   = isAuthorized request entities ps'
 := by

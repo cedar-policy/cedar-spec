@@ -15,9 +15,7 @@
 -/
 
 import Cedar.Spec
-import Cedar.SymCC.Authorizer
-import Cedar.SymCC.Compiler
-import Cedar.SymCC.Env
+import Cedar.SymCC
 import Cedar.Validation.Validator
 
 namespace Cedar.SymCC
@@ -44,8 +42,8 @@ structure CompiledPolicy where
   term : Term
   /-- `SymEnv` representing the environment this policy was compiled for -/
   εnv : SymEnv
-  /-- typechecked policy as an `Expr` -/
-  policy : Expr
+  /-- typechecked policy -/
+  policy : Policy
   /-- footprint of the policy -/
   footprint : Set Term
   /-- acyclicity constraints for this policy -/
@@ -59,11 +57,10 @@ semantically equivalent to `p` and well-typed with respect to `Γ`.
 Then, it runs the symbolic compiler to produce a compiled policy.
 -/
 def CompiledPolicy.compile (p : Policy) (Γ : Validation.TypeEnv) : Except CompiledPolicyError CompiledPolicy := do
-  let tx ← Cedar.Validation.typecheckPolicy p Γ |>.mapError .validationError
-  let policy := tx.toExpr
+  let policy ← wellTypedPolicy p Γ |>.mapError .validationError
   let εnv := SymEnv.ofEnv Γ
-  let term ← SymCC.compile policy εnv |>.mapError .symCCError
-  let footprint := SymCC.footprint policy εnv
+  let term ← SymCC.compile policy.toExpr εnv |>.mapError .symCCError
+  let footprint := SymCC.footprint policy.toExpr εnv
   let acyclicity := footprint.map (SymCC.acyclicity · εnv.entities)
   .ok { term, εnv, policy, footprint, acyclicity }
 
@@ -77,8 +74,8 @@ structure CompiledPolicies where
   term : Term
   /-- `SymEnv` representing the environment these policies were compiled for -/
   εnv : SymEnv
-  /-- typechecked policies as a list of `Expr` -/
-  policies : List Expr
+  /-- typechecked policies -/
+  policies : Policies
   /-- footprint of the policies -/
   footprint : Set Term
   /-- acyclicity constraints for these policies -/
@@ -92,11 +89,10 @@ that is semantically equivalent to `p` and well-typed with respect to `Γ`.
 Then, it runs the symbolic compiler to produce a compiled policy.
 -/
 def CompiledPolicies.compile (ps : Policies) (Γ : Validation.TypeEnv) : Except CompiledPolicyError CompiledPolicies := do
-  let txs ← ps.mapM (Cedar.Validation.typecheckPolicy · Γ |>.mapError .validationError)
-  let policies := txs.map Validation.TypedExpr.toExpr
+  let policies ← wellTypedPolicies ps Γ |>.mapError .validationError
   let εnv := SymEnv.ofEnv Γ
-  let term ← isAuthorized ps εnv |>.mapError .symCCError
-  let footprint := SymCC.footprints policies εnv
+  let term ← isAuthorized policies εnv |>.mapError .symCCError
+  let footprint := SymCC.footprints (policies.map Policy.toExpr) εnv
   let acyclicity := footprint.map (SymCC.acyclicity · εnv.entities)
   .ok { term, εnv, policies, footprint, acyclicity }
 
@@ -113,8 +109,7 @@ def CompiledPolicies.allowAll (εnv : SymEnv) : CompiledPolicies :=
     resourceScope := .resourceScope .any,
     condition := [],
   }
-  let allowAll := allowAll.toExpr
-  let footprint := SymCC.footprint allowAll εnv
+  let footprint := SymCC.footprint allowAll.toExpr εnv
   {
     term := .bool true
     εnv
