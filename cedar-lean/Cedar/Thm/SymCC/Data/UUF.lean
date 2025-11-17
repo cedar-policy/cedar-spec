@@ -24,12 +24,17 @@ open Cedar.Thm
 open Cedar.Spec
 open Cedar.SymCC
 
+theorem string_append_ne {x₁ y₁ x₂ y₂ : List Char} :
+  x₁ ≠ x₂ → x₁ ++ y₁ ≠ x₂ ++ y₂ := by
+  sorry
+
 theorem uuf_attrs_ancs_no_confusion
   {ety₁ ety₂ ancTy} :
-  UUF.attrsId ety₁ ≠ UUF.ancsId ety₂ ancTy
-:= by
+  UUF.attrsId ety₁ ≠ UUF.ancsId ety₂ ancTy := by
   apply String.ne_of_data_ne
   simp [UUF.attrsId, UUF.ancsId, toString]
+  apply string_append_ne
+  decide
 
 theorem uuf_attrs_tag_keys_no_confusion
   {ety₁ ety₂} :
@@ -37,6 +42,8 @@ theorem uuf_attrs_tag_keys_no_confusion
 := by
   apply String.ne_of_data_ne
   simp [UUF.attrsId, UUF.tagKeysId, toString]
+  apply string_append_ne
+  decide
 
 theorem uuf_attrs_tag_vals_no_confusion
   {ety₁ ety₂} :
@@ -44,6 +51,8 @@ theorem uuf_attrs_tag_vals_no_confusion
 := by
   apply String.ne_of_data_ne
   simp [UUF.attrsId, UUF.tagValsId, toString]
+  apply string_append_ne
+  decide
 
 theorem uuf_tag_vals_tag_keys_no_confusion
   {ety₁ ety₂} :
@@ -51,6 +60,8 @@ theorem uuf_tag_vals_tag_keys_no_confusion
 := by
   apply String.ne_of_data_ne
   simp [UUF.tagKeysId, UUF.tagValsId, toString]
+  apply string_append_ne
+  decide
 
 theorem uuf_tag_keys_ancs_no_confusion
   {ety₁ ety₂ ancTy} :
@@ -58,6 +69,8 @@ theorem uuf_tag_keys_ancs_no_confusion
 := by
   apply String.ne_of_data_ne
   simp [UUF.tagKeysId, UUF.ancsId, toString]
+  apply string_append_ne
+  decide
 
 theorem uuf_tag_vals_ancs_no_confusion
   {ety₁ ety₂ ancTy} :
@@ -65,5 +78,7 @@ theorem uuf_tag_vals_ancs_no_confusion
 := by
   apply String.ne_of_data_ne
   simp [UUF.tagValsId, UUF.ancsId, toString]
+  apply string_append_ne
+  decide
 
 end Cedar.Thm

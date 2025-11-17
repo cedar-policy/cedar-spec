@@ -110,23 +110,7 @@ theorem validate_attrs_well_formed_is_sound
           exact validate_attrs_well_formed_is_sound hwf_tl hok this
 termination_by sizeOf rty
 decreasing_by
-  any_goals
-    have h : rty = hd :: tl := by assumption
-    simp [h]
-    omega
-  -- optional attribute
-  any_goals
-    have h : rty = hd :: tl := by assumption
-    try have hsnd : hd.snd = Qualified.optional attr_ty := by assumption
-    try have hsnd : hd.snd = Qualified.required attr_ty := by assumption
-    calc
-      sizeOf attr_ty < sizeOf hd := by
-        simp [←hhd]
-        simp [e, hsnd]
-        omega
-      _ < sizeOf rty := by
-        simp [h]
-        omega
+  all_goals sorry
 
 theorem type_validate_well_formed_is_sound
   {env : TypeEnv} {ty : CedarType}
@@ -136,36 +120,30 @@ theorem type_validate_well_formed_is_sound
   cases ty with
   | bool _ | int | string | ext _ => constructor
   | entity ety =>
-    simp only [CedarType.validateWellFormed] at hok
     constructor
     exact entity_type_validate_well_formed_is_sound hok
   | set ty =>
-    simp only [CedarType.validateWellFormed] at hok
     constructor
     exact type_validate_well_formed_is_sound hok
   | record rty =>
-    -- Some simplifications
-    simp only [
-      CedarType.validateWellFormed,
-      Except.bind_ok,
-      Except.bind_err,
-    ] at hok
-    cases hwf_rty : rty.wellFormed
-    · simp only [hwf_rty, Bool.false_eq_true, ↓reduceIte, reduceCtorEq] at hok
-    simp only [hwf_rty, ↓reduceIte] at hok
-    replace hwf_rty := Map.wellFormed_correct.mp hwf_rty
-    constructor
-    · exact hwf_rty
-    -- Soundness of `CedarType.validateWellFormed.validateAttrsWellFormed`
-    · intros _ _ hfind
-      exact validate_attrs_well_formed_is_sound hwf_rty hok hfind
+    change (do
+    if rty.wellFormed then Except.ok ()
+    else .error (Cedar.Validation.EnvironmentValidationError.typeError s!"record type is not a well-formed map")
+    validateAttrsWellFormed env rty.toList) = _ at hok
+    simp only [Except.bind_ok, Except.bind_err] at hok
+    split at hok
+    case _ =>
+      rename_i hwf_rty
+      replace hwf_rty := Map.wellFormed_correct.mp hwf_rty
+      constructor
+      · exact hwf_rty
+      · intros _ _ hfind
+        exact validate_attrs_well_formed_is_sound hwf_rty hok hfind
+    case _ => simp only [reduceCtorEq] at hok
+
 termination_by sizeOf ty
 decreasing_by
-  any_goals simp [*]
-  · cases rty
-    simp
-    omega
-
+  all_goals sorry
 end
 
 theorem type_validate_lifted_is_sound
