@@ -31,42 +31,41 @@ private def arithContext : RecordType :=
   ]
 
 private def arithTypeEnv := BasicTypes.env Map.empty Map.empty arithContext
-private def arithSymEnv  := SymEnv.ofEnv arithTypeEnv
 
 private def x : Expr := .getAttr (.var .context) "x"
 private def y : Expr := .getAttr (.var .context) "y"
 private def z : Expr := .getAttr (.var .context) "z"
 
 def testsForBasicArithEqualities :=
-  suite "Arith.basic"
+  suite "Arith.basic" $ List.flatten
   [
     testVerifyEquivalent "Equivalent: x + 0 = x"
       (.binaryApp .eq
         (.binaryApp .add x (.lit (.int 0)))
         x)
       (.lit (.bool true))
-      arithSymEnv .unsat,
+      arithTypeEnv .unsat,
 
     testVerifyEquivalent "Equivalent: x - 0 = x"
       (.binaryApp .eq
         (.binaryApp .sub x (.lit (.int 0)))
         x)
       (.lit (.bool true))
-      arithSymEnv .unsat,
+      arithTypeEnv .unsat,
 
     testVerifyEquivalent "Equivalent: x - x = 0"
       (.binaryApp .eq
         (.binaryApp .sub x x)
         (.lit (.int 0)))
       (.lit (.bool true))
-      arithSymEnv .unsat,
+      arithTypeEnv .unsat,
 
     testVerifyEquivalent "Equivalent: x * 1 = x"
       (.binaryApp .eq
         (.binaryApp .mul (.lit (.int 1)) x)
         x)
       (.lit (.bool true))
-      arithSymEnv .unsat,
+      arithTypeEnv .unsat,
 
     testVerifyEquivalent "Equivalent: (x <= y and y <= x) = (x = y)"
       (.binaryApp .eq
@@ -75,14 +74,14 @@ def testsForBasicArithEqualities :=
           (.binaryApp .lessEq y x))
         (.binaryApp .eq x y))
       (.lit (.bool true))
-      arithSymEnv .unsat,
+      arithTypeEnv .unsat,
 
     testVerifyEquivalent "Equivalent: (x < y) = not (y <= x)"
       (.binaryApp .eq
         (.binaryApp .less x y)
         (.unaryApp .not (.binaryApp .lessEq y x)))
       (.lit (.bool true))
-      arithSymEnv .unsat,
+      arithTypeEnv .unsat,
   ]
 
 private def inRange (x : Expr) (lo hi : Int64) : Expr :=
@@ -91,49 +90,49 @@ private def inRange (x : Expr) (lo hi : Int64) : Expr :=
     (.binaryApp .lessEq x (.lit (.int hi)))
 
 def testsForOverflowSemantics :=
-  suite "Arith.overflow"
+  suite "Arith.overflow" $ List.flatten
   [
     testVerifyNoError "Overflow: x + y = y + x"
       (.binaryApp .eq (.binaryApp .add x y) (.binaryApp .add y x))
-      arithSymEnv .sat,
+      arithTypeEnv .sat,
 
     testVerifyNoError "Overflow: x = - (- x)"
       (.binaryApp .eq x (.unaryApp .neg (.unaryApp .neg x)))
-      arithSymEnv .sat,
+      arithTypeEnv .sat,
 
     testVerifyNoError "Overflow: x - y = - y + x"
       (.binaryApp .eq (.binaryApp .sub x y) (.binaryApp .add (.unaryApp .neg y) x))
-      arithSymEnv .sat,
+      arithTypeEnv .sat,
 
     testVerifyNoError "Overflow: x + x = x * 2"
       (.binaryApp .eq (.binaryApp .add x x) (.binaryApp .mul (.lit (.int 2)) x))
-      arithSymEnv .sat,
+      arithTypeEnv .sat,
 
     testVerifyNoError "No overflow: x = 0 && x + y = y + x"
       (.and
         (.binaryApp .eq x (.lit (.int 0)))
         (.binaryApp .eq (.binaryApp .add x y) (.binaryApp .add y x)))
-      arithSymEnv .unsat,
+      arithTypeEnv .unsat,
 
     testVerifyImplies "Implies: (-100 <= x && x <= 100) && (-100 <= y && y <= 100) ==> x + y = y + x"
       (.and (inRange x (-100) 100) (inRange y (-100) 100))
       (.binaryApp .eq (.binaryApp .add x y) (.binaryApp .add y x))
-      arithSymEnv .unsat,
+      arithTypeEnv .unsat,
 
     testVerifyImplies "Implies: INT64_MIN < x ==> x = - (- x)"
       (.binaryApp .less (.lit (.int (Int64.ofIntChecked Int64.MIN (by decide)))) x)
       (.binaryApp .eq x (.unaryApp .neg (.unaryApp .neg x)))
-      arithSymEnv .unsat,
+      arithTypeEnv .unsat,
 
     testVerifyImplies "Implies: (-100 <= x && x <= 100) && (-100 <= y && y <= 100) ==> x - y = - y + x"
       (.and (inRange x (-100) 100) (inRange y (-100) 100))
       (.binaryApp .eq (.binaryApp .sub x y) (.binaryApp .add (.unaryApp .neg y) x))
-      arithSymEnv .unsat,
+      arithTypeEnv .unsat,
 
     testVerifyImplies "Implies: (-100 <= x && x <= 100) && (-100 <= y && y <= 100) ==>  x + x = x * 2"
       (.and (inRange x (-100) 100) (inRange y (-100) 100))
       (.binaryApp .eq (.binaryApp .add x x) (.binaryApp .mul (.lit (.int 2)) x))
-      arithSymEnv .unsat,
+      arithTypeEnv .unsat,
 
     testVerifyEquivalent "False: x == - 3 && y == 5 && z == 4 * (y - x) + 9223372036854775807 && z != 9223372036854775839"
       (.and
@@ -148,7 +147,7 @@ def testsForOverflowSemantics :=
             (.unaryApp .not
               (.binaryApp .eq z (.lit (.int 9223372036854775839)))))))
       (.lit (.bool false))
-      arithSymEnv .unsat,
+      arithTypeEnv .unsat,
 
     testVerifyImplies "Nothing other than 0 should satisfy x = -x"
       (.and
@@ -156,7 +155,7 @@ def testsForOverflowSemantics :=
         (.binaryApp .eq x (.unaryApp .neg x))
       )
       (.lit (.bool false))
-      arithSymEnv .unsat,
+      arithTypeEnv .unsat,
   ]
 
 def tests := [

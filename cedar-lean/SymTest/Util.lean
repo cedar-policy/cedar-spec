@@ -17,6 +17,7 @@
 import Cedar.SymCC.Decoder
 import Cedar.SymCC.Encoder
 import Cedar.SymCC.Verifier
+import Cedar.SymCCOpt
 import UnitTest.Run
 
 /-! This file defines simple utilities for unit testing symbolic compilation. -/
@@ -28,24 +29,25 @@ open UnitTest
 
 abbrev Outcome := SymCC.Decision
 
+def Outcome.checkAsserts (expected : Outcome) (asserts : Asserts) (εnv : SymEnv) : SolverM TestResult := do
+  let enc ← Encoder.encode asserts εnv (produceModels := true)
+  let dec ← Solver.checkSat
+  if dec matches .sat then
+    let model ← Solver.getModel
+    match Decoder.decode model enc with
+    | .ok I      => -- validate the model
+      for t in asserts do
+        if t.interpret I != true then
+          throw (IO.userError s!"Model violates assertion {reprStr t}: {model}")
+    | .error msg => throw (IO.userError s!"Decoding failed: {msg}\n {model}")
+  checkEq dec expected
+
 def Outcome.check (expected : Outcome) (verify : SymEnv → SymCC.Result Asserts) (εnv : SymEnv) : SolverM TestResult := do
   match verify εnv with
-  | .ok asserts =>
-    let enc ← Encoder.encode asserts εnv (produceModels := true)
-    let dec ← Solver.checkSat
-    if dec matches .sat then
-      let model ← Solver.getModel
-      match Decoder.decode model enc with
-      | .ok I      => -- validate the model
-        for t in asserts do
-          if t.interpret I != true then
-            throw (IO.userError s!"Model violates assertion {reprStr t}: {model}")
-      | .error msg => throw (IO.userError s!"Decoding failed: {msg}\n {model}")
-    checkEq dec expected
-  | .error err  =>
-    throw (IO.userError s!"SymCC failed: {reprStr err}")
+  | .ok asserts => Outcome.checkAsserts expected asserts εnv
+  | .error err  => throw (IO.userError s!"SymCC failed: {reprStr err}")
 
-def permit (x : Expr) : Policy := {
+private def Policy.permit (x : Expr) : Policy := {
   id             := "policy",
   effect         := .permit,
   principalScope := .principalScope .any,
@@ -54,14 +56,51 @@ def permit (x : Expr) : Policy := {
   condition      := [⟨.when, x⟩]
 }
 
-def testVerifyNoError (desc : String) (x : Expr) (εnv : SymEnv) (expected : Outcome) : TestCase SolverM :=
-  test desc ⟨λ _ => expected.check (verifyNeverErrors (permit x)) εnv⟩
+private def CompiledPolicy.permit (x : Expr) (Γ : Validation.TypeEnv) : Except CompiledPolicyError CompiledPolicy :=
+  CompiledPolicy.compile (Policy.permit x) Γ
 
-def testVerifyImplies (desc : String) (x₁ x₂ : Expr) (εnv : SymEnv) (expected : Outcome) : TestCase SolverM :=
-  test desc ⟨λ _ => expected.check (verifyImplies [(permit x₁)] [(permit x₂)]) εnv⟩
+private def CompiledPolicies.permit (x : Expr) (Γ : Validation.TypeEnv) : Except CompiledPolicyError CompiledPolicies :=
+  CompiledPolicies.compile [Policy.permit x] Γ
 
-def testVerifyEquivalent (desc : String) (x₁ x₂ : Expr) (εnv : SymEnv) (expected : Outcome) : TestCase SolverM :=
-  test desc ⟨λ _ => expected.check (verifyEquivalent [(permit x₁)] [(permit x₂)]) εnv⟩
+def testFailsCompilePolicy (desc : String) (x : Expr) (Γ : Validation.TypeEnv) : TestCase SolverM :=
+  let compileResult := CompiledPolicy.compile (Policy.permit x) Γ
+  test desc ⟨λ _ => checkMatches (compileResult matches .error _) compileResult⟩
+
+def testFailsCompilePolicies (desc : String) (x : Expr) (Γ : Validation.TypeEnv) : TestCase SolverM :=
+  let compileResult := CompiledPolicies.compile [Policy.permit x] Γ
+  test desc ⟨λ _ => checkMatches (compileResult matches .error _) compileResult⟩
+
+/-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/
+def testVerifyNoError (desc : String) (x : Expr) (Γ : Validation.TypeEnv) (expected : Outcome) : List (TestCase SolverM) :=
+  let εnv := SymEnv.ofTypeEnv Γ
+  [
+    test (desc ++ " (unoptimized)") ⟨λ _ => expected.check (verifyNeverErrors (Policy.permit x)) εnv⟩,
+    test (desc ++ " (optimized)") ⟨λ _ => do
+      let cp ← CompiledPolicy.permit x Γ |> IO.ofExcept
+      expected.checkAsserts (verifyNeverErrorsOpt cp) εnv⟩,
+  ]
+
+/-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/
+def testVerifyImplies (desc : String) (x₁ x₂ : Expr) (Γ : Validation.TypeEnv) (expected : Outcome) : List (TestCase SolverM) :=
+  let εnv := SymEnv.ofTypeEnv Γ
+  [
+    test (desc ++ " (unoptimized)") ⟨λ _ => expected.check (verifyImplies [(Policy.permit x₁)] [(Policy.permit x₂)]) εnv⟩,
+    test (desc ++ " (optimized)") ⟨λ _ => do
+      let cps₁ ← CompiledPolicies.permit x₁ Γ |> IO.ofExcept
+      let cps₂ ← CompiledPolicies.permit x₂ Γ |> IO.ofExcept
+      expected.checkAsserts (verifyImpliesOpt cps₁ cps₂) εnv⟩,
+  ]
+
+/-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/
+def testVerifyEquivalent (desc : String) (x₁ x₂ : Expr) (Γ : Validation.TypeEnv) (expected : Outcome) : List (TestCase SolverM) :=
+  let εnv := SymEnv.ofTypeEnv Γ
+  [
+    test (desc ++ " (unoptimized)") ⟨λ _ => expected.check (verifyEquivalent [(Policy.permit x₁)] [(Policy.permit x₂)]) εnv⟩,
+    test (desc ++ " (optimized)") ⟨λ _ => do
+      let cps₁ ← CompiledPolicies.permit x₁ Γ |> IO.ofExcept
+      let cps₂ ← CompiledPolicies.permit x₂ Γ |> IO.ofExcept
+      expected.checkAsserts (verifyEquivalentOpt cps₁ cps₂) εnv⟩,
+  ]
 
 def testCompile (desc : String) (x : Expr) (εnv : SymEnv) (expected : SymCC.Result Term) : TestCase SolverM :=
   test desc ⟨λ _ => checkEq (compile x εnv) expected⟩

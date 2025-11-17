@@ -15,6 +15,7 @@
 -/
 
 import Cedar.SymCC
+import Cedar.SymCCOpt
 import SymTest.Util
 
 /-!
@@ -26,16 +27,16 @@ namespace SymTest.Verifier
 
 open Cedar Spec Validation Data UnitTest SymCC
 
-private def testVerifyCex (desc : String) (εnv : SymEnv) (query : SymEnv → SolverM (Option Env)) (property : Env → Bool) : TestCase SolverM :=
+private def testVerifyCex (desc : String) (query : SolverM (Option Env)) (property : Env → Bool) : TestCase SolverM :=
   test desc ⟨λ _ => do
-    match ← query εnv with
+    match ← query with
     | some env =>
       -- dbg_trace "here {reprStr env}"
       checkEq (property env) false
     | none     => checkEq "none" "some cex"⟩
 
-private def testVerifyQed (desc : String) (εnv : SymEnv) (query : SymEnv → SolverM (Option Env)) : TestCase SolverM :=
-  test desc ⟨λ _ => do checkEq (← query εnv) none⟩
+private def testVerifyQed (desc : String) (query : SolverM (Option Env)) : TestCase SolverM :=
+  test desc ⟨λ _ => do checkEq (← query) none⟩
 
 private def policy (id : String) (effect : Effect) (condition : Expr) : Policy := {
   id             := id,
@@ -51,7 +52,8 @@ private def readCtxType : RecordType := Map.make [
   ("b", .required (.ext .datetime))
 ]
 
-private def εnvRead := SymEnv.ofTypeEnv (Photoflash.env Photoflash.readPhoto readCtxType)
+private def typeEnvRead := Photoflash.env Photoflash.readPhoto readCtxType
+private def εnvRead := SymEnv.ofTypeEnv typeEnvRead
 
 /-
 permit (principal, action, resource)
@@ -129,50 +131,104 @@ deriving Repr, Inhabited, DecidableEq
 instance : ToString Finding where
   toString f := if f = .cex then "cex" else "qed"
 
-private def testVerifyNeverErrors? (expected : Finding) (p : Policy) : TestCase SolverM :=
+/-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/
+private def testVerifyNeverErrors? (expected : Finding) (p : Policy) : List (TestCase SolverM) :=
   let desc := s!"[{expected}] neverErrors? {p.id}"
+  let cp := CompiledPolicy.compile p typeEnvRead |> IO.ofExcept
   match expected with
-  | .cex => testVerifyCex desc εnvRead (neverErrors? p)
-      (λ env => evaluate p.toExpr env.request env.entities matches .ok _)
-  | .qed => testVerifyQed desc εnvRead (neverErrors? p)
+  | .cex => [
+      testVerifyCex (desc ++ " (unoptimized)") (neverErrors? p εnvRead)
+        (λ env => evaluate p.toExpr env.request env.entities matches .ok _),
+      testVerifyCex (desc ++ " (optimized)") (do neverErrorsOpt? (← cp))
+        (λ env => evaluate p.toExpr env.request env.entities matches .ok _),
+    ]
+  | .qed => [
+      testVerifyQed (desc ++ " (unoptimized)") (neverErrors? p εnvRead),
+      testVerifyQed (desc ++ " (optimized)") (do neverErrorsOpt? (← cp))
+    ]
 
 private def authorize (ps : Policies) (env : Env) : Bool :=
   (Spec.isAuthorized env.request env.entities ps).decision matches .allow
 
-private def testVerifyImplies? (expected : Finding) (ps₁ ps₂ : Policies) : TestCase SolverM :=
+/-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/
+private def testVerifyImplies? (expected : Finding) (ps₁ ps₂ : Policies) : List (TestCase SolverM) :=
   let desc := s!"[{expected}] implies? [{ps₁.map Policy.id}] [{ps₂.map Policy.id}]"
+  let cps₁ := CompiledPolicies.compile ps₁ typeEnvRead |> IO.ofExcept
+  let cps₂ := CompiledPolicies.compile ps₂ typeEnvRead |> IO.ofExcept
   match expected with
-  | .cex => testVerifyCex desc εnvRead (implies? ps₁ ps₂)
-      (λ env => !(authorize ps₁ env) || (authorize ps₂ env))
-  | .qed => testVerifyQed desc εnvRead (implies? ps₁ ps₂)
+  | .cex => [
+      testVerifyCex (desc ++ " (unoptimized)") (implies? ps₁ ps₂ εnvRead)
+        (λ env => !(authorize ps₁ env) || (authorize ps₂ env)),
+      testVerifyCex (desc ++ " (optimized)") (do impliesOpt? (← cps₁) (← cps₂))
+        (λ env => !(authorize ps₁ env) || (authorize ps₂ env)),
+    ]
+  | .qed => [
+      testVerifyQed (desc ++ " (unoptimized)") (implies? ps₁ ps₂ εnvRead),
+      testVerifyQed (desc ++ " (optimized)") (do impliesOpt? (← cps₁) (← cps₂))
+    ]
 
-private def testVerifyAlwaysAllows? (expected : Finding) (ps : Policies) : TestCase SolverM :=
+/-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/
+private def testVerifyAlwaysAllows? (expected : Finding) (ps : Policies) : List (TestCase SolverM) :=
   let desc := s!"[{expected}] alwaysAllows? [{ps.map Policy.id}]"
+  let cps := CompiledPolicies.compile ps typeEnvRead |> IO.ofExcept
   match expected with
-  | .cex => testVerifyCex desc εnvRead (alwaysAllows? ps)
-      (λ env => authorize ps env = true)
-  | .qed => testVerifyQed desc εnvRead (alwaysAllows? ps)
+  | .cex => [
+      testVerifyCex (desc ++ " (unoptimized)") (alwaysAllows? ps εnvRead)
+        (λ env => authorize ps env = true),
+      testVerifyCex (desc ++ " (optimized)") (do alwaysAllowsOpt? (← cps))
+        (λ env => authorize ps env = true),
+    ]
+  | .qed => [
+      testVerifyQed (desc ++ " (unoptimized)") (alwaysAllows? ps εnvRead),
+      testVerifyQed (desc ++ " (optimized)") (do alwaysAllowsOpt? (← cps)),
+    ]
 
-private def testVerifyAlwaysDenies? (expected : Finding) (ps : Policies) : TestCase SolverM :=
+private def testVerifyAlwaysDenies? (expected : Finding) (ps : Policies) : List (TestCase SolverM) :=
   let desc := s!"[{expected}] alwaysDenies? [{ps.map Policy.id}]"
+  let cps := CompiledPolicies.compile ps typeEnvRead |> IO.ofExcept
   match expected with
-  | .cex => testVerifyCex desc εnvRead (alwaysDenies? ps)
-      (λ env => authorize ps env = false)
-  | .qed => testVerifyQed desc εnvRead (alwaysDenies? ps)
+  | .cex => [
+      testVerifyCex (desc ++ " (unoptimized)") (alwaysDenies? ps εnvRead)
+        (λ env => authorize ps env = false),
+      testVerifyCex (desc ++ " (optimized)") (do alwaysDeniesOpt? (← cps))
+        (λ env => authorize ps env = false),
+    ]
+  | .qed => [
+      testVerifyQed (desc ++ " (unoptimized)") (alwaysDenies? ps εnvRead),
+      testVerifyQed (desc ++ " (optimized)") (do alwaysDeniesOpt? (← cps)),
+    ]
 
-private def testVerifyEquivalent? (expected : Finding) (ps₁ ps₂ : Policies) : TestCase SolverM :=
+private def testVerifyEquivalent? (expected : Finding) (ps₁ ps₂ : Policies) : List (TestCase SolverM) :=
   let desc := s!"[{expected}] equivalent? [{ps₁.map Policy.id}] [{ps₂.map Policy.id}]"
+  let cps₁ := CompiledPolicies.compile ps₁ typeEnvRead |> IO.ofExcept
+  let cps₂ := CompiledPolicies.compile ps₂ typeEnvRead |> IO.ofExcept
   match expected with
-  | .cex => testVerifyCex desc εnvRead (equivalent? ps₁ ps₂)
-      (λ env => (authorize ps₁ env) = (authorize ps₂ env))
-  | .qed => testVerifyQed desc εnvRead (equivalent? ps₁ ps₂)
+  | .cex => [
+      testVerifyCex (desc ++ " (unoptimized)") (equivalent? ps₁ ps₂ εnvRead)
+        (λ env => (authorize ps₁ env) = (authorize ps₂ env)),
+      testVerifyCex (desc ++ " (optimized)") (do equivalentOpt? (← cps₁) (← cps₂))
+        (λ env => (authorize ps₁ env) = (authorize ps₂ env)),
+    ]
+  | .qed => [
+      testVerifyQed (desc ++ " (unoptimized)") (equivalent? ps₁ ps₂ εnvRead),
+      testVerifyQed (desc ++ " (optimized)") (do equivalentOpt? (← cps₁) (← cps₂)),
+    ]
 
-private def testVerifyDisjoint? (expected : Finding) (ps₁ ps₂ : Policies) : TestCase SolverM :=
+private def testVerifyDisjoint? (expected : Finding) (ps₁ ps₂ : Policies) : List (TestCase SolverM) :=
   let desc := s!"[{expected}] disjoint? [{ps₁.map Policy.id}] [{ps₂.map Policy.id}]"
+  let cps₁ := CompiledPolicies.compile ps₁ typeEnvRead |> IO.ofExcept
+  let cps₂ := CompiledPolicies.compile ps₂ typeEnvRead |> IO.ofExcept
   match expected with
-  | .cex => testVerifyCex desc εnvRead (disjoint? ps₁ ps₂)
-      (λ env => (authorize ps₁ env) != true || (authorize ps₂ env) != true)
-  | .qed => testVerifyQed desc εnvRead (disjoint? ps₁ ps₂)
+  | .cex => [
+      testVerifyCex (desc ++ " (unoptimized)") (disjoint? ps₁ ps₂ εnvRead)
+        (λ env => (authorize ps₁ env) != true || (authorize ps₂ env) != true),
+      testVerifyCex (desc ++ " (optimized)") (do disjointOpt? (← cps₁) (← cps₂))
+        (λ env => (authorize ps₁ env) != true || (authorize ps₂ env) != true),
+    ]
+  | .qed => [
+      testVerifyQed (desc ++ " (unoptimized)") (disjoint? ps₁ ps₂ εnvRead),
+      testVerifyQed (desc ++ " (optimized)") (do disjointOpt? (← cps₁) (← cps₂)),
+    ]
 
 def testTrivialPolicies :=
   suite "Reduction of trivial policies" [
@@ -181,7 +237,7 @@ def testTrivialPolicies :=
   ]
 
 def testsForNeverErrors? :=
-  suite "SymCC.neverErrors?" [
+  suite "SymCC.neverErrors?" $ List.flatten [
     testVerifyNeverErrors? .qed policyAllowAll,
     testVerifyNeverErrors? .qed policyAllowNone,
     testVerifyNeverErrors? .cex (policyOverflowError 100),
@@ -189,7 +245,7 @@ def testsForNeverErrors? :=
   ]
 
 def testsForImplies? :=
-  suite "SymCC.implies?" [
+  suite "SymCC.implies?" $ List.flatten [
     testVerifyImplies? .qed [policyAllowNone] [policyAllowAll],
     testVerifyImplies? .cex [policyAllowAll] [policyAllowNone],
     testVerifyImplies? .cex [policyAllowAll] [policyOverflowError 10],
@@ -208,21 +264,21 @@ def testsForImplies? :=
   ]
 
 def testsForAlwaysAllows? :=
-  suite "SymCC.alwaysAllows?" [
+  suite "SymCC.alwaysAllows?" $ List.flatten [
     testVerifyAlwaysAllows? .qed [policyAllowAll],
     testVerifyAlwaysAllows? .cex [policyAllowNone, policyOverflowError 10, policyDatetimeError "1d"],
     testVerifyAlwaysAllows? .qed (policiesAlways .permit),
   ]
 
 def testsForAlwaysDenies? :=
-  suite "SymCC.alwaysDenies?" [
+  suite "SymCC.alwaysDenies?" $ List.flatten [
     testVerifyAlwaysDenies? .qed [policyAllowNone],
     testVerifyAlwaysDenies? .cex [policyAllowNone, policyOverflowError 10, policyDatetimeError "1d"],
     testVerifyAlwaysDenies? .qed (policiesAlways .forbid),
   ]
 
 def testsForEquivalent? :=
-  suite "SymCC.equivalent?" [
+  suite "SymCC.equivalent?" $ List.flatten [
     testVerifyEquivalent? .qed [policyAllowAll] (policiesAlways .permit),
     testVerifyEquivalent? .qed [policyAllowNone] (policiesAlways .forbid),
     testVerifyEquivalent? .cex [policyOverflowError 3] [policyOverflowError 12],
@@ -231,7 +287,7 @@ def testsForEquivalent? :=
   ]
 
 def testsForDisjoint? :=
-  suite "SymCC.disjoint?" [
+  suite "SymCC.disjoint?" $ List.flatten [
     testVerifyDisjoint? .qed [policyAllowAll] (policiesAlways .forbid),
     testVerifyDisjoint? .qed [policyAllowNone] (policiesAlways .permit),
     testVerifyDisjoint? .qed ((policiesAlways .permit).take 2) ((policiesAlways .permit).drop 2),
@@ -242,7 +298,7 @@ def testsForDisjoint? :=
   ]
 
 def testsForEncoder? :=
-  suite "SymCC.Encoder" [
+  suite "SymCC.Encoder" $ List.flatten [
     testVerifyAlwaysAllows? .cex [
       policy "AllowAll" .permit (.binaryApp .eq (.var .principal) (.lit (.entityUID ⟨Photoflash.userType, "\""⟩) ))
     ],

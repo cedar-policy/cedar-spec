@@ -31,7 +31,6 @@ private def likeContext : RecordType :=
   ]
 
 private def likeTypeEnv := BasicTypes.env Map.empty Map.empty likeContext
-private def likeSymEnv  := SymEnv.ofEnv likeTypeEnv
 
 private def x : Expr := .getAttr (.var .context) "x"
 private def y : Expr := .getAttr (.var .context) "y"
@@ -42,33 +41,33 @@ private def justChars : String → Pattern
   | .mk (c :: cs) => (.justChar c) :: (justChars (.mk cs))
 
 def testsForBasicLikeOps :=
-  suite "Like.basic"
+  suite "Like.basic" $ List.flatten
   [
     testVerifyEquivalent "False: x != \"\" && x like \"\""
       (.and
         (.unaryApp .not (.binaryApp .eq x (.lit (.string ""))))
         (.unaryApp (.like []) x))
       (.lit (.bool false))
-      likeSymEnv .unsat,
+      likeTypeEnv .unsat,
 
     testVerifyEquivalent "False: x != \"a\" && x like \"a\""
       (.and
         (.unaryApp .not (.binaryApp .eq x (.lit (.string "a"))))
         (.unaryApp (.like (justChars "a")) x))
       (.lit (.bool false))
-      likeSymEnv .unsat,
+      likeTypeEnv .unsat,
 
     testVerifyEquivalent "True: x != \"a*Cd\" || x like \"a\\*Cd\""
       (.or
         (.unaryApp .not (.binaryApp .eq x (.lit (.string "a*Cd"))))
         (.unaryApp (.like (justChars "a*Cd")) x))
       (.lit (.bool true))
-      likeSymEnv .unsat,
+      likeTypeEnv .unsat,
 
     testVerifyEquivalent "True: x like \"*\""
       (.unaryApp (.like [.star]) x)
       (.lit (.bool true))
-      likeSymEnv .unsat,
+      likeTypeEnv .unsat,
 
     testVerifyEquivalent "True: !(x like \"ab***12\") || x like \"ab*2\""
       (.or
@@ -80,7 +79,7 @@ def testsForBasicLikeOps :=
           (.like [.justChar 'a', .justChar 'b', .star, .justChar '2'])
           x))
       (.lit (.bool true))
-      likeSymEnv .unsat,
+      likeTypeEnv .unsat,
 
     -- Escaping quotes
     testVerifyEquivalent "False: x != \"\"\" && x like \"\"\""
@@ -88,7 +87,7 @@ def testsForBasicLikeOps :=
         (.unaryApp .not (.binaryApp .eq x (.lit (.string "\""))))
         (.unaryApp (.like (justChars "\"")) x))
       (.lit (.bool false))
-      likeSymEnv .unsat,
+      likeTypeEnv .unsat,
 
     -- Escaping Unicode characters
     testVerifyEquivalent "False: x != \"🐼\" && x like \"🐼\""
@@ -96,7 +95,7 @@ def testsForBasicLikeOps :=
         (.unaryApp .not (.binaryApp .eq x (.lit (.string "🐼"))))
         (.unaryApp (.like (justChars "🐼")) x))
       (.lit (.bool false))
-      likeSymEnv .unsat,
+      likeTypeEnv .unsat,
   ]
 
 def tests := [

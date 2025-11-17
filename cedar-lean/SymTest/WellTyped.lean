@@ -177,23 +177,52 @@ private def policyB : Policy := {
       (.lit (.bool true))⟩]
 }
 
-def testFailsOnIllTyped (p : Policy) : TestCase SolverM :=
-  test s!"verifyNeverErrors of {p.id} fails due to type errors"
-    ⟨λ _ => checkEq (verifyNeverErrors p εnv) (.error .typeError)⟩
+/-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/
+def testFailsOnIllTyped (p : Policy) : List (TestCase SolverM) :=
+  [
+    test s!"on the unoptimized path, verifyNeverErrors of {p.id} fails due to type errors"
+      -- on the unoptimized path, verifyNeverErrors fails with .typeError
+      -- (if the caller used `wellTypedPolicy p Γ` rather than `p` directly, as they
+      -- should, then either `wellTypedPolicy` itself would fail-fast, or both
+      -- `wellTypedPolicy` and `verifyNeverErrors` would succeed; see theorem
+      -- `verifyNeverErrors_is_ok_and_sound` in WellTypedVerification.lean.)
+      ⟨λ _ => checkEq (verifyNeverErrors p εnv) (.error .typeError)⟩,
+    test s!"on the optimized path, policy compilation and verifyNeverErrorsOpt of {p.id} succeed"
+      -- on the optimized path, policy compilation and `verifyNeverErrorsOpt` both succeed
+      -- (despite the extensive comments at the top of this file) because it compiles the
+      -- _transformed_ policies produced by the typechecker -- equivalent to if the
+      -- caller in the unoptimized case had passed their policies through `wellTypedPolicy`
+      -- (as they properly should) rather than feeding them to `verifyNeverErrors` directly.
+      ⟨λ _ =>
+        let compileResult := CompiledPolicy.compile p Γ
+        -- no need to actually check that `verifyNeverErrorsOpt` succeeds,
+        -- because it is infallible (doesn't return a Result/Except type). Tests
+        -- in other modules check the end-to-end behavior of the optimized path.
+        checkMatches (compileResult matches .ok _) compileResult⟩,
+  ]
 
-def testSucceedsOnWellTyped (p : Policy) (expected : Bool) : TestCase SolverM :=
-  test s!"checkNeverErrors of (wellTypedPolicy {p.id} Γ) succeeds with outcome '{expected}'"
-    ⟨λ _ => do checkEq (← checkNeverErrors (wellTypedPolicy p Γ).get! εnv) expected⟩
+/-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/
+def testSucceedsOnWellTyped (p : Policy) (expected : Bool) : List (TestCase SolverM) :=
+  let desc := s!"checkNeverErrors of (wellTypedPolicy {p.id} Γ) succeeds with outcome '{expected}'"
+  [
+    test (desc ++ " (unoptimized)")
+      ⟨λ _ => do checkEq (← checkNeverErrors (wellTypedPolicy p Γ).get! εnv) expected⟩,
+    test (desc ++ " (optimized)")
+      ⟨λ _ => do
+        let cp ← CompiledPolicy.compile p Γ |> IO.ofExcept
+        checkEq (← checkNeverErrorsOpt cp) expected
+      ⟩,
+  ]
 
 def testsForIllTyped :=
-  suite "WellTyped.compileFailsOnIllTypedPolicies"
+  suite "WellTyped.compileFailsOnIllTypedPolicies" $ List.flatten
   [
     testFailsOnIllTyped policyA,
     testFailsOnIllTyped policyB,
   ]
 
 def testsForWellTyped :=
-  suite "WellTyped.compileSucceedsOnWellTypedPolicies"
+  suite "WellTyped.compileSucceedsOnWellTypedPolicies" $ List.flatten
   [
     testSucceedsOnWellTyped policyA false,
     testSucceedsOnWellTyped policyB true,
