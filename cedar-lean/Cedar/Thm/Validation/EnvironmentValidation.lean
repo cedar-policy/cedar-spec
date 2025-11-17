@@ -110,7 +110,23 @@ theorem validate_attrs_well_formed_is_sound
           exact validate_attrs_well_formed_is_sound hwf_tl hok this
 termination_by sizeOf rty
 decreasing_by
-  all_goals sorry
+  any_goals
+    have h : rty = hd :: tl := by assumption
+    simp [h]
+    omega
+   -- optional attribute
+  any_goals
+    have h : rty = hd :: tl := by assumption
+    try have hsnd : hd.snd = Qualified.optional attr_ty := by assumption
+    try have hsnd : hd.snd = Qualified.required attr_ty := by assumption
+    calc
+      sizeOf attr_ty < sizeOf hd := by
+        simp [←hhd]
+        simp [e, hsnd]
+        omega
+      _ < sizeOf rty := by
+        simp [h]
+        omega
 
 theorem type_validate_well_formed_is_sound
   {env : TypeEnv} {ty : CedarType}
@@ -143,7 +159,13 @@ theorem type_validate_well_formed_is_sound
 
 termination_by sizeOf ty
 decreasing_by
-  all_goals sorry
+  · rename_i h
+    simp only [h, CedarType.set.sizeOf_spec, Nat.lt_add_left_iff_pos, Nat.lt_add_one]
+  · rename_i h _ _ _ _
+    simp only [h, CedarType.record.sizeOf_spec, gt_iff_lt]
+    simp only [sizeOf, Map._sizeOf_1]
+    generalize List._sizeOf_1 rty.1 = i
+    omega
 end
 
 theorem type_validate_lifted_is_sound
