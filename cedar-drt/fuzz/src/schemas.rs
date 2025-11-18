@@ -325,7 +325,7 @@ impl Equiv for cedar_policy_core::validator::types::AttributeType {
         if lhs.is_required != rhs.is_required {
             return Err("attributes differ in required flag".into());
         }
-        Equiv::equiv(&lhs.attr_type, &rhs.attr_type)
+        Equiv::equiv(lhs.attr_type.as_ref(), rhs.attr_type.as_ref())
     }
 }
 
