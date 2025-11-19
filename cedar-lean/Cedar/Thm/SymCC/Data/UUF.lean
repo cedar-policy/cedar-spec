@@ -24,192 +24,80 @@ open Cedar.Thm
 open Cedar.Spec
 open Cedar.SymCC
 
-theorem attrs_ancs_confusion_prefix {x y: String} :
-  ("attrs[" ++ x).data = ("ancs[" ++ y).data → False := by
+theorem prefix_ne_at_index {p₁ p₂ x y : String} {i : Nat}
+  (h₁ : i < p₁.data.length)
+  (h₂ : i < p₂.data.length)
+  (hₙ : p₁.data[i]? ≠ p₂.data[i]?) :
+  (p₁ ++ x).data ≠ (p₂ ++ y).data := by
   intro h
-  have h₁ : "attrs[".data[1]? = some 't' := rfl
-  have h₂ : "ancs[".data[1]? = some 'n' := rfl
-  have h₃ : "attrs[".data[1]? = "ancs[".data[1]? := by
-    have h_eq : ("attrs[" ++ x).data[1]? = ("ancs[" ++ y).data[1]? := by
-      rw[h]
-    have h_len1 : "attrs[".data.length > 1 := by decide
-    have h_len2 : "ancs[".data.length > 1 := by decide
-    rw [String.data_append, List.getElem?_append_left h_len1] at h_eq
-    rw [String.data_append, List.getElem?_append_left h_len2] at h_eq
-    exact h_eq
-  rw [h₁, h₂] at h₃
-  simp at h₃
+  have hᵢ := congrArg (fun l => l[i]?) h
+  simp only at hᵢ
+  rw [String.data_append, String.data_append] at hᵢ
+  rw [List.getElem?_append_left h₁] at hᵢ
+  rw [List.getElem?_append_left h₂] at hᵢ
+  contradiction
 
-theorem attrs_tagKeys_confusion_prefix {x y: String} :
-  ("attrs[" ++ x).data = ("tagKeys[" ++ y).data → False := by
-  intro h
-  have h₁ : "attrs[".data[0]? = some 'a' := rfl
-  have h₂ : "tagKeys[".data[0]? = some 't' := rfl
-  have h₃ : "attrs[".data[0]? = "tagKeys[".data[0]? := by
-    have h_eq : ("attrs[" ++ x).data[0]? = ("tagKeys[" ++ y).data[0]? := by
-      rw[h]
-    have h_len1 : "attrs[".data.length > 0 := by decide
-    have h_len2 : "tagKeys[".data.length > 0 := by decide
-    rw [String.data_append, List.getElem?_append_left h_len1] at h_eq
-    rw [String.data_append, List.getElem?_append_left h_len2] at h_eq
-    exact h_eq
-  rw [h₁, h₂] at h₃
-  simp at h₃
+macro "gen_prefix_no_confusion" name:ident p₁:str p₂:str i:num : command => do
+  let newName := Lean.mkIdent (name.getId.appendAfter "_no_confusion_prefix")
+  `(theorem $newName {x y : String} : ($p₁ ++ x).data ≠ ($p₂ ++ y).data := by
+      apply prefix_ne_at_index (i := $i)
+      · decide
+      · decide
+      · decide
+   )
 
-theorem attrs_tagVals_confusion_prefix {x y: String} :
-  ("attrs[" ++ x).data = ("tagVals[" ++ y).data → False := by
-  intro h
-  have h₁ : "attrs[".data[0]? = some 'a' := rfl
-  have h₂ : "tagVals[".data[0]? = some 't' := rfl
-  have h₃ : "attrs[".data[0]? = "tagVals[".data[0]? := by
-    have h_eq : ("attrs[" ++ x).data[0]? = ("tagVals[" ++ y).data[0]? := by
-      rw[h]
-    have h_len1 : "attrs[".data.length > 0 := by decide
-    have h_len2 : "tagVals[".data.length > 0 := by decide
-    rw [String.data_append, List.getElem?_append_left h_len1] at h_eq
-    rw [String.data_append, List.getElem?_append_left h_len2] at h_eq
-    exact h_eq
-  rw [h₁, h₂] at h₃
-  simp at h₃
-
-theorem tagVals_tagKeys_confusion_prefix {x y: String} :
-  ("tagVals[" ++ x).data = ("tagKeys[" ++ y).data → False := by
-  intro h
-  have h₁ : "tagVals[".data[3]? = some 'V' := rfl
-  have h₂ : "tagKeys[".data[3]? = some 'K' := rfl
-  have h₃ : "tagVals[".data[3]? = "tagKeys[".data[3]? := by
-    have h_eq : ("tagVals[" ++ x).data[3]? = ("tagKeys[" ++ y).data[3]? := by
-      rw[h]
-    have h_len1 : "tagVals[".data.length > 3 := by decide
-    have h_len2 : "tagKeys[".data.length > 3 := by decide
-    rw [String.data_append, List.getElem?_append_left h_len1] at h_eq
-    rw [String.data_append, List.getElem?_append_left h_len2] at h_eq
-    exact h_eq
-  rw [h₁, h₂] at h₃
-  simp at h₃
-
-theorem tagKeys_ancs_confusion_prefix {x y: String} :
-  ("tagKeys[" ++ x).data = ("ancs[" ++ y).data → False := by
-  intro h
-  have h₁ : "tagKeys[".data[0]? = some 't' := rfl
-  have h₂ : "ancs[".data[0]? = some 'a' := rfl
-  have h₃ : "tagKeys[".data[0]? = "ancs[".data[0]? := by
-    have h_eq : ("tagKeys[" ++ x).data[0]? = ("ancs[" ++ y).data[0]? := by
-      rw[h]
-    have h_len1 : "tagKeys[".data.length > 0 := by decide
-    have h_len2 : "ancs[".data.length > 0 := by decide
-    rw [String.data_append, List.getElem?_append_left h_len1] at h_eq
-    rw [String.data_append, List.getElem?_append_left h_len2] at h_eq
-    exact h_eq
-  rw [h₁, h₂] at h₃
-  simp at h₃
-
-theorem tagVals_ancs_confusion_prefix {x y: String} :
-  ("tagVals[" ++ x).data = ("ancs[" ++ y).data → False := by
-  intro h
-  have h₁ : "tagVals[".data[0]? = some 't' := rfl
-  have h₂ : "ancs[".data[0]? = some 'a' := rfl
-  have h₃ : "tagVals[".data[0]? = "ancs[".data[0]? := by
-    have h_eq : ("tagVals[" ++ x).data[0]? = ("ancs[" ++ y).data[0]? := by
-      rw[h]
-    have h_len1 : "tagVals[".data.length > 0 := by decide
-    have h_len2 : "ancs[".data.length > 0 := by decide
-    rw [String.data_append, List.getElem?_append_left h_len1] at h_eq
-    rw [String.data_append, List.getElem?_append_left h_len2] at h_eq
-    exact h_eq
-  rw [h₁, h₂] at h₃
-  simp at h₃
+gen_prefix_no_confusion attrs_ancs      "attrs["   "ancs["    1
+gen_prefix_no_confusion attrs_tagKeys   "attrs["   "tagKeys[" 0
+gen_prefix_no_confusion attrs_tagVals   "attrs["   "tagVals[" 0
+gen_prefix_no_confusion tagVals_tagKeys "tagVals[" "tagKeys[" 3
+gen_prefix_no_confusion tagKeys_ancs    "tagKeys[" "ancs["    0
+gen_prefix_no_confusion tagVals_ancs    "tagVals[" "ancs["    0
 
 theorem uuf_attrs_ancs_no_confusion
   {ety₁ ety₂ ancTy} :
   UUF.attrsId ety₁ ≠ UUF.ancsId ety₂ ancTy := by
   apply String.ne_of_data_ne
-  simp only [UUF.attrsId, toString, UUF.ancsId, ne_eq]
-  intro h
-  rw [String.append_assoc] at h
-  have this : ("ancs[" ++ (String.join (List.map (fun s => s ++ "::") ety₂.path) ++ ety₂.id) ++ ", " ++
-        (String.join (List.map (fun s => s ++ "::") ancTy.path) ++ ancTy.id) ++
-      "]") = "ancs[" ++ ((String.join (List.map (fun s => s ++ "::") ety₂.path) ++ ety₂.id) ++ ", " ++
-        (String.join (List.map (fun s => s ++ "::") ancTy.path) ++ ancTy.id) ++
-      "]") := by
-      rfl
-  rw [this] at h
-  exact attrs_ancs_confusion_prefix h
+  simp only [UUF.attrsId, toString, UUF.ancsId, String.append_assoc]
+  exact attrs_ancs_no_confusion_prefix
 
 theorem uuf_attrs_tag_keys_no_confusion
   {ety₁ ety₂} :
   UUF.attrsId ety₁ ≠ UUF.tagKeysId ety₂
 := by
   apply String.ne_of_data_ne
-  simp only [UUF.attrsId, UUF.tagKeysId, toString, ne_eq]
-  intro h
-  rw [String.append_assoc] at h
-  have this : "tagKeys[" ++ (String.join (List.map (fun s => s ++ "::") ety₂.path) ++ ety₂.id) ++ "]" =
-    "tagKeys[" ++ ((String.join (List.map (fun s => s ++ "::") ety₂.path) ++ ety₂.id) ++ "]") := by
-    rfl
-  rw [this] at h
-  exact attrs_tagKeys_confusion_prefix h
+  simp only [UUF.attrsId, UUF.tagKeysId, toString, String.append_assoc]
+  exact attrs_tagKeys_no_confusion_prefix
 
 theorem uuf_attrs_tag_vals_no_confusion
   {ety₁ ety₂} :
   UUF.attrsId ety₁ ≠ UUF.tagValsId ety₂
 := by
   apply String.ne_of_data_ne
-  simp only [UUF.attrsId, UUF.tagValsId, toString, ne_eq]
-  intro h
-  rw [String.append_assoc] at h
-  have this : "tagVals[" ++ (String.join (List.map (fun s => s ++ "::") ety₂.path) ++ ety₂.id) ++ "]" =
-    "tagVals[" ++ ((String.join (List.map (fun s => s ++ "::") ety₂.path) ++ ety₂.id) ++ "]") := by
-    rfl
-  rw [this] at h
-  exact attrs_tagVals_confusion_prefix h
+  simp only [UUF.attrsId, UUF.tagValsId, toString, String.append_assoc]
+  exact attrs_tagVals_no_confusion_prefix
 
 theorem uuf_tag_vals_tag_keys_no_confusion
   {ety₁ ety₂} :
   UUF.tagValsId ety₁ ≠ UUF.tagKeysId ety₂
 := by
   apply String.ne_of_data_ne
-  simp only [UUF.tagValsId, UUF.tagKeysId, toString, ne_eq]
-  intro h
-  rw [String.append_assoc] at h
-  have this : "tagKeys[" ++ (String.join (List.map (fun s => s ++ "::") ety₂.path) ++ ety₂.id) ++ "]" =
-    "tagKeys[" ++ ((String.join (List.map (fun s => s ++ "::") ety₂.path) ++ ety₂.id) ++ "]") := by
-    rfl
-  rw [this] at h
-  exact tagVals_tagKeys_confusion_prefix h
+  simp only [UUF.tagValsId, UUF.tagKeysId, toString, String.append_assoc]
+  exact tagVals_tagKeys_no_confusion_prefix
 
 theorem uuf_tag_keys_ancs_no_confusion
   {ety₁ ety₂ ancTy} :
   UUF.tagKeysId ety₁ ≠ UUF.ancsId ety₂ ancTy
 := by
   apply String.ne_of_data_ne
-  simp only [UUF.tagKeysId, UUF.ancsId, toString, ne_eq]
-  intro h
-  rw [String.append_assoc] at h
-  have this : ("ancs[" ++ (String.join (List.map (fun s => s ++ "::") ety₂.path) ++ ety₂.id) ++ ", " ++
-        (String.join (List.map (fun s => s ++ "::") ancTy.path) ++ ancTy.id) ++
-      "]") = "ancs[" ++ ((String.join (List.map (fun s => s ++ "::") ety₂.path) ++ ety₂.id) ++ ", " ++
-        (String.join (List.map (fun s => s ++ "::") ancTy.path) ++ ancTy.id) ++
-      "]") := by
-      rfl
-  rw [this] at h
-  exact tagKeys_ancs_confusion_prefix h
+  simp only [UUF.tagKeysId, UUF.ancsId, toString, String.append_assoc]
+  exact tagKeys_ancs_no_confusion_prefix
 
 theorem uuf_tag_vals_ancs_no_confusion
   {ety₁ ety₂ ancTy} :
   UUF.tagValsId ety₁ ≠ UUF.ancsId ety₂ ancTy
 := by
   apply String.ne_of_data_ne
-  simp only [UUF.tagValsId, UUF.ancsId, toString, ne_eq]
-  intro h
-  rw [String.append_assoc] at h
-  have this : ("ancs[" ++ (String.join (List.map (fun s => s ++ "::") ety₂.path) ++ ety₂.id) ++ ", " ++
-        (String.join (List.map (fun s => s ++ "::") ancTy.path) ++ ancTy.id) ++
-      "]") = "ancs[" ++ ((String.join (List.map (fun s => s ++ "::") ety₂.path) ++ ety₂.id) ++ ", " ++
-        (String.join (List.map (fun s => s ++ "::") ancTy.path) ++ ancTy.id) ++
-      "]") := by
-      rfl
-  rw [this] at h
-  exact tagVals_ancs_confusion_prefix h
+  simp only [UUF.tagValsId, UUF.ancsId, toString, String.append_assoc]
+  exact tagVals_ancs_no_confusion_prefix
 
 end Cedar.Thm
