@@ -26,9 +26,8 @@ open Cedar.Spec
 private def testWildcardMatch (str : String) (pat : Pattern) (expected : Bool) : TestCase IO :=
   test s!"{expected}: {str} like {reprStr pat}" ⟨λ _ => checkEq (wildcardMatch str pat) expected⟩
 
-private def justChars : String → Pattern
-  | .mk [] => []
-  | .mk (c::cs) => (.justChar c) :: (justChars (.mk cs))
+private def justChars (str : String) : Pattern :=
+  str.data.map (fun c => .justChar c)
 
 def testsForWildcardMatch :=
   suite "wildcardMatch"
