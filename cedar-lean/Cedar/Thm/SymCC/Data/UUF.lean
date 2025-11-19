@@ -32,9 +32,8 @@ theorem prefix_ne_at_index {p₁ p₂ x y : String} {i : Nat}
   intro h
   have hᵢ := congrArg (fun l => l[i]?) h
   simp only at hᵢ
-  rw [String.data_append, String.data_append] at hᵢ
-  rw [List.getElem?_append_left h₁] at hᵢ
-  rw [List.getElem?_append_left h₂] at hᵢ
+  rw [String.data_append, String.data_append,
+      List.getElem?_append_left h₁, List.getElem?_append_left h₂] at hᵢ
   contradiction
 
 macro "gen_prefix_no_confusion" name:ident p₁:str p₂:str i:num : command => do
@@ -46,12 +45,12 @@ macro "gen_prefix_no_confusion" name:ident p₁:str p₂:str i:num : command => 
       · decide
    )
 
-gen_prefix_no_confusion attrs_ancs      "attrs["   "ancs["    1
-gen_prefix_no_confusion attrs_tagKeys   "attrs["   "tagKeys[" 0
-gen_prefix_no_confusion attrs_tagVals   "attrs["   "tagVals[" 0
-gen_prefix_no_confusion tagVals_tagKeys "tagVals[" "tagKeys[" 3
-gen_prefix_no_confusion tagKeys_ancs    "tagKeys[" "ancs["    0
-gen_prefix_no_confusion tagVals_ancs    "tagVals[" "ancs["    0
+gen_prefix_no_confusion attrs_ancs        "attrs["   "ancs["    1
+gen_prefix_no_confusion attrs_tag_keys    "attrs["   "tagKeys[" 0
+gen_prefix_no_confusion attrs_tag_vals    "attrs["   "tagVals[" 0
+gen_prefix_no_confusion tag_vals_tag_keys "tagVals[" "tagKeys[" 3
+gen_prefix_no_confusion tag_keys_ancs     "tagKeys[" "ancs["    0
+gen_prefix_no_confusion tag_vals_ancs     "tagVals[" "ancs["    0
 
 theorem uuf_attrs_ancs_no_confusion
   {ety₁ ety₂ ancTy} :
@@ -66,7 +65,7 @@ theorem uuf_attrs_tag_keys_no_confusion
 := by
   apply String.ne_of_data_ne
   simp only [UUF.attrsId, UUF.tagKeysId, toString, String.append_assoc]
-  exact attrs_tagKeys_no_confusion_prefix
+  exact attrs_tag_keys_no_confusion_prefix
 
 theorem uuf_attrs_tag_vals_no_confusion
   {ety₁ ety₂} :
@@ -74,7 +73,7 @@ theorem uuf_attrs_tag_vals_no_confusion
 := by
   apply String.ne_of_data_ne
   simp only [UUF.attrsId, UUF.tagValsId, toString, String.append_assoc]
-  exact attrs_tagVals_no_confusion_prefix
+  exact attrs_tag_vals_no_confusion_prefix
 
 theorem uuf_tag_vals_tag_keys_no_confusion
   {ety₁ ety₂} :
@@ -82,7 +81,7 @@ theorem uuf_tag_vals_tag_keys_no_confusion
 := by
   apply String.ne_of_data_ne
   simp only [UUF.tagValsId, UUF.tagKeysId, toString, String.append_assoc]
-  exact tagVals_tagKeys_no_confusion_prefix
+  exact tag_vals_tag_keys_no_confusion_prefix
 
 theorem uuf_tag_keys_ancs_no_confusion
   {ety₁ ety₂ ancTy} :
@@ -90,7 +89,7 @@ theorem uuf_tag_keys_ancs_no_confusion
 := by
   apply String.ne_of_data_ne
   simp only [UUF.tagKeysId, UUF.ancsId, toString, String.append_assoc]
-  exact tagKeys_ancs_no_confusion_prefix
+  exact tag_keys_ancs_no_confusion_prefix
 
 theorem uuf_tag_vals_ancs_no_confusion
   {ety₁ ety₂ ancTy} :
@@ -98,6 +97,6 @@ theorem uuf_tag_vals_ancs_no_confusion
 := by
   apply String.ne_of_data_ne
   simp only [UUF.tagValsId, UUF.ancsId, toString, String.append_assoc]
-  exact tagVals_ancs_no_confusion_prefix
+  exact tag_vals_ancs_no_confusion_prefix
 
 end Cedar.Thm
