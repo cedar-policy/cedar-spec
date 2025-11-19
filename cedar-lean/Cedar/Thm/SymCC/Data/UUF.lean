@@ -54,7 +54,8 @@ gen_prefix_no_confusion tag_vals_ancs     "tagVals[" "ancs["    0
 
 theorem uuf_attrs_ancs_no_confusion
   {ety₁ ety₂ ancTy} :
-  UUF.attrsId ety₁ ≠ UUF.ancsId ety₂ ancTy := by
+  UUF.attrsId ety₁ ≠ UUF.ancsId ety₂ ancTy
+:= by
   apply String.ne_of_data_ne
   simp only [UUF.attrsId, toString, UUF.ancsId, String.append_assoc]
   exact attrs_ancs_no_confusion_prefix
