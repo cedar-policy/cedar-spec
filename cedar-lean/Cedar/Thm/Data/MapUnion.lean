@@ -92,6 +92,37 @@ theorem mapUnion_wf {α β} [LT α] [StrictLT α] [DecidableLT α] {f : β → S
     simp only [List.foldl_cons]
     exact ih _ (Set.union_wf _ _)
 
+theorem mapUnion_empty {α β} [LT α] [StrictLT α] [DecidableLT α] {f : β → Set α} :
+  [].mapUnion f = ∅
+:= by
+  simp only [List.mapUnion, EmptyCollection.emptyCollection, List.foldl_nil]
+
+private theorem foldl_union_init {α β} [LT α] [StrictLT α] [DecidableLT α] {f : β → Set α} {xs : List β} {a b : Set α} :
+  List.foldl (λ acc x => acc ∪ f x) (a ∪ b) xs = a ∪ List.foldl (λ acc x => acc ∪ f x) b xs
+:= by
+  induction xs generalizing a b
+  case nil =>
+    simp only [List.foldl_nil]
+  case cons hd tl ih =>
+    simp only [List.foldl_cons]
+    rw [Set.union_assoc]
+    rw [ih (a := a) (b := b ∪ f hd)]
+
+theorem mapUnion_cons {α β} [LT α] [StrictLT α] [DecidableLT α] {f : β → Set α} {hd : β} {tl : List β} :
+  (∀ b, (f b).WellFormed) →
+  (hd :: tl).mapUnion f = f hd ∪ tl.mapUnion f
+:= by
+  intro hwf
+  simp only [List.mapUnion, EmptyCollection.emptyCollection, List.foldl_cons]
+  rw [Set.union_empty_left (hwf hd)]
+  rw [← Set.union_empty_left (hwf hd)]
+  rw [foldl_union_init (a := Set.empty) (b := f hd)]
+  rw [← foldl_union_init (a := Set.empty ∪ f hd) (b := Set.empty)]
+  have h : Set.empty ∪ f hd ∪ Set.empty = Set.empty ∪ f hd := by
+    rw [Set.union_empty_right (Set.union_wf _ _)]
+  rw [h]
+  rw [foldl_union_init (a := Set.empty) (b := f hd)]
+
 private theorem mem_foldl_union_iff_mem_or_exists {α β} [LT α] [StrictLT α] [DecidableLT α] {f : β → Set α} {xs : List β} {init : Set α} {a : α} :
   a ∈ List.foldl (λ as b => as ∪ f b) init xs ↔ (a ∈ init ∨ ∃ s ∈ xs, a ∈ f s)
 := by
@@ -191,6 +222,35 @@ theorem mapUnion_eq_mapUnion_id_map {α β} [LT α] [StrictLT α] [DecidableLT �
   case cons hd tl ih =>
     simp only [List.foldl_cons, id_eq, List.map_cons]
     apply ih
+
+private theorem foldl_union_append {α β} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {g : β → Set α} {xs ys : List β} {a : Set α} :
+  List.foldl (λ acc b => acc ∪ g b) a (xs.append ys) = List.foldl (λ acc b => acc ∪ g b) (List.foldl (λ acc b => acc ∪ g b) a xs) ys
+:= by
+  induction xs generalizing a
+  case nil =>
+    simp only [List.foldl_nil]
+    rfl
+  case cons xhd xtl ih =>
+    simp only [List.append, List.foldl_cons]
+    rw [ih]
+
+theorem mapUnion_append {α β} [LT α] [StrictLT α] [DecidableLT α] {f : β → Set α} {xs ys : List β} :
+  (∀ b, (f b).WellFormed) →
+  (xs ++ ys).mapUnion f = xs.mapUnion f ++ ys.mapUnion f
+:= by
+  intro hwf
+  induction xs
+  case nil =>
+    simp only [List.nil_append, mapUnion_empty]
+    change _ = Set.empty ∪ ys.mapUnion f
+    rw [Set.union_empty_left]
+    exact mapUnion_wf
+  case cons hd tl ih =>
+    simp only [List.cons_append]
+    rw [mapUnion_cons hwf, mapUnion_cons hwf, ih]
+    change _ ∪ (_ ∪ _) = (_ ∪ _) ∪ _
+    symm
+    apply Set.union_assoc
 
 private theorem foldl_union_swap_front {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] (x₁ x₂ : Set α) {xs : List (Set α)} {a : Set α}:
   (x₁ :: x₂ :: xs).foldl (· ∪ ·) a = (x₂ :: x₁ :: xs).foldl (· ∪ ·) a

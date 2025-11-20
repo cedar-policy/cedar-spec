@@ -15,6 +15,7 @@
 -/
 
 import Cedar.SymCC.Enforcer
+import Cedar.Thm.Data.LT
 import Cedar.Thm.Data.MapUnion
 import Cedar.Thm.SymCC.Env.SWF
 import Cedar.Thm.SymCC.Enforcer.Asserts
@@ -27,6 +28,29 @@ This file proves properties of the `footprints` function in `Cedar/SymCC/Enforce
 namespace Cedar.SymCC
 
 open Data Spec SymCC Factory
+
+def footprint_ofEntity_wf :
+  (footprint.ofEntity x εnv).WellFormed
+:= by
+  simp [footprint.ofEntity]
+  split
+  · split <;> simp [Set.singleton_wf, Set.empty_wf]
+  · exact Set.empty_wf
+
+def footprint_ofBranch_wf :
+  ft₂.WellFormed →
+  ft₃.WellFormed →
+  (footprint.ofBranch εnv x ft₁ ft₂ ft₃).WellFormed
+:= by
+  intro h₂ h₃
+  simp [footprint.ofBranch]
+  split <;> simp [h₂, h₃, Set.empty_wf, Set.union_wf]
+
+def footprint_wf (x : Expr) (εnv : SymEnv) :
+  (footprint x εnv).WellFormed
+:= by
+  cases x
+  all_goals simp [footprint, footprint_ofEntity_wf, footprint_ofBranch_wf, footprint_wf, Set.empty_wf, Set.mapUnion_wf, Set.union_wf]
 
 def SymEntities.SameOn (εs : SymEntities) (ft : Set Term) (I₁ I₂ : Interpretation) : Prop :=
   ∀ ety δ,
@@ -273,6 +297,19 @@ theorem mem_footprints_wf {xs : List Expr} {t : Term} {εnv : SymEnv}
   simp only [mem_footprints_iff] at hin
   replace ⟨x, hinₓ, hin⟩ := hin
   exact mem_footprint_wf (And.intro hwε (hvr x hinₓ)) hin
+
+theorem footprints_singleton {x : Expr} {εnv : SymEnv} :
+  footprints [x] εnv = footprint x εnv
+:= by
+  simp [SymCC.footprints, List.mapUnion, EmptyCollection.emptyCollection]
+  rw [Data.Set.union_empty_left (footprint_wf x εnv)]
+
+theorem footprints_append {xs₁ xs₂ : List Expr} {εnv : SymEnv} :
+  footprints (xs₁ ++ xs₂) εnv = footprints xs₁ εnv ++ footprints xs₂ εnv
+:= by
+  simp [footprints]
+  apply Data.Set.mapUnion_append
+  intro x ; apply footprint_wf
 
 theorem footprint_subset_footprints {x : Expr} {xs : List Expr} {εnv : SymEnv} :
   x ∈ xs → footprint x εnv ⊆ footprints xs εnv
