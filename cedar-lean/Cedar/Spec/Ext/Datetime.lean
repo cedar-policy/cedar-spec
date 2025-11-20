@@ -78,7 +78,7 @@ def datetime? (i: Int) : Option Datetime :=
   Int64.ofInt? i
 
 def dateContainsLeapSeconds (str: String) : Bool :=
-  str.length >= 20 && String.Pos.Raw.get? str ⟨17⟩ == some '6' && String.Pos.Raw.get? str ⟨18⟩ == some '0'
+  str.length >= 20 && str.get? ⟨17⟩ == some '6' && str.get? ⟨18⟩ == some '0'
 
 /--
   Check that the minutes for the timezone offset are in bounds (<60). We
@@ -103,21 +103,21 @@ def tzOffsetMinsLt60 (str : String) : Bool :=
   than expected.  https://github.com/leanprover/lean4/issues/7478
 -/
 def checkComponentLen (str : String) : Bool :=
-  match str.splitToList (· == 'T') with
+  match str.split (· == 'T') with
   | [date] => checkDateComponentLen date
   | [date, timeMsOffset] => checkDateComponentLen date && checkTimeMsOffsetComponentLen timeMsOffset
   | _ => false
   where
     checkDateComponentLen (str : String) : Bool :=
-      match str.splitToList (· == '-') with
+      match str.split (· == '-') with
       | [year, month, day] => year.length == 4 && month.length == 2 && day.length == 2
       | _ => false
     checkTimeMsOffsetComponentLen (str : String) : Bool :=
-      match str.splitToList (λ c => c == '.' || c == '+' || c == '-' || c == 'Z') with
+      match str.split (λ c => c == '.' || c == '+' || c == '-' || c == 'Z') with
       | time :: _ => checkTimeLen time
       | _ => false
     checkTimeLen (str : String) : Bool :=
-      match str.splitToList (· == ':') with
+      match str.split (· == ':') with
       | [h, m, s] => h.length == 2 && m.length == 2 && s.length == 2
       | _ => false
 

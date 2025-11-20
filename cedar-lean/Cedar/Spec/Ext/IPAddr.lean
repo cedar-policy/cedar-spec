@@ -149,7 +149,7 @@ private def parseNumV4 (str : String) : Option (BitVec 8) :=
   else .none
 
 private def parseSegsV4 (str : String) : Option IPv4Addr :=
-  match str.splitToList (· = '.') with
+  match str.split (· = '.') with
   | [s₀, s₁, s₂, s₃] => do
     let a₀ ← parseNumV4 s₀
     let a₁ ← parseNumV4 s₁
@@ -159,7 +159,7 @@ private def parseSegsV4 (str : String) : Option IPv4Addr :=
   | _ => .none
 
 private def parseIPv4Net (str : String) : Option IPNet :=
-  match str.splitToList (· = '/') with
+  match str.split (· = '/') with
   | strV4 :: rest => do
     let pre ←
       match rest with
@@ -193,7 +193,7 @@ private def parseNumV6 (str : String) : Option (BitVec 16) :=
 private def parseNumSegsV6 (str : String) : Option (List (BitVec 16)) :=
   if str.isEmpty
   then .some []
-  else (str.splitToList (· = ':')).mapM parseNumV6
+  else (str.split (· = ':')).mapM parseNumV6
 
 private def parseSegsV6 (str : String) : Option IPv6Addr := do
   let segs ←
@@ -213,7 +213,7 @@ private def parseSegsV6 (str : String) : Option IPv6Addr := do
   | _ => .none
 
 private def parseIPv6Net (str : String) : Option IPNet :=
-  match str.splitToList (· = '/') with
+  match str.split (· = '/') with
   | strV6 :: rest => do
     let pre ←
       match rest with

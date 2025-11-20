@@ -18,9 +18,9 @@ import Lake
 open Lake DSL
 
 meta if get_config? env = some "dev" then -- dev is so not everyone has to build it
-require "leanprover" / "doc-gen4" @ git "v4.25.0"
+require "leanprover" / "doc-gen4" @ git "v4.24.0"
 
-require "leanprover-community" / "batteries" @ git "v4.25.0"
+require "leanprover-community" / "batteries" @ git "v4.24.0"
 
 package Cedar
 
