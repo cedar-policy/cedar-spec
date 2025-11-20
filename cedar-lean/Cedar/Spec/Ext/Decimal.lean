@@ -42,7 +42,7 @@ def decimal? (i : Int) : Option Decimal :=
   Int64.ofInt? i
 
 def parse (str : String) : Option Decimal :=
-  match str.splitToList (· = '.') with
+  match str.split (· = '.') with
   | ["-", _] => .none -- String.toInt? "-" == some 0
   | [left, right] =>
     let rlen := right.length
