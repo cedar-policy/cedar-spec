@@ -506,3 +506,153 @@ theorem disjoint?_eqv_disjointOpt?_ok {ps₁ ps₂ : Policies} {cps₁ cps₂ : 
   simp [compiled_policies_eq_wtps hcps₁ hwps₁, compiled_policies_eq_wtps hcps₂ hwps₂]
   simp [verifyDisjointOpt_eqv_verifyDisjoint_ok hcps₁ hcps₂ hwps₁ hwps₂] at h₁
   subst asserts ; rfl
+
+/--
+This theorem covers the "happy path" -- showing that if optimized policy
+compilation succeeds, then `wellTypedPolicies` succeeds and `checkNeverErrors` and
+`checkNeverErrorsOpt?` are equivalent.
+-/
+theorem checkNeverErrors_eqv_checkNeverErrorsOpt_ok {p : Policy} {cp : CompiledPolicy} {Γ : Validation.TypeEnv} :
+  Γ.WellFormed →
+  CompiledPolicy.compile p Γ = .ok cp →
+  ∃ wp,
+    wellTypedPolicy p Γ = .ok wp ∧
+    checkNeverErrorsOpt cp = checkNeverErrors wp (SymEnv.ofTypeEnv Γ)
+:= by
+  simp [checkNeverErrors, checkNeverErrorsOpt]
+  simp [checkUnsat]
+  intro hwf h₀
+  have ⟨wp, h₁⟩ := compile_ok_then_exists_wtp h₀
+  exists wp ; apply And.intro h₁
+  have ⟨asserts, h₂⟩ := verifyNeverErrors_is_ok hwf h₁
+  simp [h₂]
+  simp [cp_compile_produces_the_right_env h₀]
+  simp [verifyNeverErrorsOpt_eqv_verifyNeverErrors_ok h₀ h₁] at h₂
+  subst asserts ; rfl
+
+/--
+This theorem covers the "happy path" -- showing that if optimized policy
+compilation succeeds, then `wellTypedPolicies` succeeds and `checkImplies` and
+`checkImpliesOpt` are equivalent.
+-/
+theorem checkImpliesOpt_eqv_checkImplies_ok {ps₁ ps₂ : Policies} {cps₁ cps₂ : CompiledPolicies} {Γ : Validation.TypeEnv} :
+  Γ.WellFormed →
+  CompiledPolicies.compile ps₁ Γ = .ok cps₁ →
+  CompiledPolicies.compile ps₂ Γ = .ok cps₂ →
+  ∃ wps₁ wps₂,
+    wellTypedPolicies ps₁ Γ = .ok wps₁ ∧
+    wellTypedPolicies ps₂ Γ = .ok wps₂ ∧
+    checkImpliesOpt cps₁ cps₂ = checkImplies wps₁ wps₂ (SymEnv.ofTypeEnv Γ)
+:= by
+  simp [checkImplies, checkImpliesOpt]
+  simp [checkUnsat]
+  intro hwf hcps₁ hcps₂
+  have ⟨wps₁, hwps₁⟩ := compile_ok_then_exists_wtps hcps₁
+  exists wps₁ ; apply And.intro hwps₁
+  have ⟨wps₂, hwps₂⟩ := compile_ok_then_exists_wtps hcps₂
+  exists wps₂ ; apply And.intro hwps₂
+  have ⟨asserts, h₁⟩ := verifyImplies_is_ok hwf hwps₁ hwps₂
+  simp [h₁]
+  simp [cps_compile_produces_the_right_env hcps₁]
+  simp [verifyImpliesOpt_eqv_verifyImplies_ok hcps₁ hcps₂ hwps₁ hwps₂] at h₁
+  subst asserts ; rfl
+
+/--
+This theorem covers the "happy path" -- showing that if optimized policy
+compilation succeeds, then `wellTypedPolicies` succeeds and `checkAlwaysAllows` and
+`checkAlwaysAllowsOpt` are equivalent.
+-/
+theorem checkAlwaysAllowsOpt_eqv_checkAlwaysAllows_ok {ps : Policies} {cps : CompiledPolicies} {Γ : Validation.TypeEnv} :
+  Γ.WellFormed →
+  CompiledPolicies.compile ps Γ = .ok cps →
+  ∃ wps,
+    wellTypedPolicies ps Γ = .ok wps ∧
+    checkAlwaysAllowsOpt cps = checkAlwaysAllows wps (SymEnv.ofTypeEnv Γ)
+:= by
+  simp [checkAlwaysAllows, checkAlwaysAllowsOpt]
+  simp [checkUnsat]
+  intro hwf hcps
+  have ⟨wps, hwps⟩ := compile_ok_then_exists_wtps hcps
+  exists wps ; apply And.intro hwps
+  have ⟨asserts, h₁⟩ := verifyAlwaysAllows_is_ok hwf hwps
+  simp [h₁]
+  simp [cps_compile_produces_the_right_env hcps]
+  simp [verifyAlwaysAllowsOpt_eqv_verifyAlwaysAllows_ok hcps hwps] at h₁
+  subst asserts ; rfl
+
+/--
+This theorem covers the "happy path" -- showing that if optimized policy
+compilation succeeds, then `wellTypedPolicies` succeeds and `checkAlwaysDenies` and
+`checkAlwaysDeniesOpt` are equivalent.
+-/
+theorem checkAlwaysDeniesOpt_eqv_checkAlwaysDenies_ok {ps : Policies} {cps : CompiledPolicies} {Γ : Validation.TypeEnv} :
+  Γ.WellFormed →
+  CompiledPolicies.compile ps Γ = .ok cps →
+  ∃ wps,
+    wellTypedPolicies ps Γ = .ok wps ∧
+    checkAlwaysDeniesOpt cps = checkAlwaysDenies wps (SymEnv.ofTypeEnv Γ)
+:= by
+  simp [checkAlwaysDenies, checkAlwaysDeniesOpt]
+  simp [checkUnsat]
+  intro hwf hcps
+  have ⟨wps, hwps⟩ := compile_ok_then_exists_wtps hcps
+  exists wps ; apply And.intro hwps
+  have ⟨asserts, h₁⟩ := verifyAlwaysDenies_is_ok hwf hwps
+  simp [h₁]
+  simp [cps_compile_produces_the_right_env hcps]
+  simp [verifyAlwaysDeniesOpt_eqv_verifyAlwaysDenies_ok hcps hwps] at h₁
+  subst asserts ; rfl
+
+/--
+This theorem covers the "happy path" -- showing that if optimized policy
+compilation succeeds, then `wellTypedPolicies` succeeds and `checkEquivalent` and
+`checkEquivalentOpt` are equivalent.
+-/
+theorem checkEquivalent_eqv_checkEquivalentOpt_ok {ps₁ ps₂ : Policies} {cps₁ cps₂ : CompiledPolicies} {Γ : Validation.TypeEnv} :
+  Γ.WellFormed →
+  CompiledPolicies.compile ps₁ Γ = .ok cps₁ →
+  CompiledPolicies.compile ps₂ Γ = .ok cps₂ →
+  ∃ wps₁ wps₂,
+    wellTypedPolicies ps₁ Γ = .ok wps₁ ∧
+    wellTypedPolicies ps₂ Γ = .ok wps₂ ∧
+    checkEquivalentOpt cps₁ cps₂ = checkEquivalent wps₁ wps₂ (SymEnv.ofTypeEnv Γ)
+:= by
+  simp [checkEquivalent, checkEquivalentOpt]
+  simp [checkUnsat]
+  intro hwf hcps₁ hcps₂
+  have ⟨wps₁, hwps₁⟩ := compile_ok_then_exists_wtps hcps₁
+  exists wps₁ ; apply And.intro hwps₁
+  have ⟨wps₂, hwps₂⟩ := compile_ok_then_exists_wtps hcps₂
+  exists wps₂ ; apply And.intro hwps₂
+  have ⟨asserts, h₁⟩ := verifyEquivalent_is_ok hwf hwps₁ hwps₂
+  simp [h₁]
+  simp [cps_compile_produces_the_right_env hcps₁]
+  simp [verifyEquivalentOpt_eqv_verifyEquivalent_ok hcps₁ hcps₂ hwps₁ hwps₂] at h₁
+  subst asserts ; rfl
+
+/--
+This theorem covers the "happy path" -- showing that if optimized policy
+compilation succeeds, then `wellTypedPolicies` succeeds and `checkDisjoint` and
+`checkDisjointOpt` are equivalent.
+-/
+theorem checkDisjoint_eqv_checkDisjointOpt_ok {ps₁ ps₂ : Policies} {cps₁ cps₂ : CompiledPolicies} {Γ : Validation.TypeEnv} :
+  Γ.WellFormed →
+  CompiledPolicies.compile ps₁ Γ = .ok cps₁ →
+  CompiledPolicies.compile ps₂ Γ = .ok cps₂ →
+  ∃ wps₁ wps₂,
+    wellTypedPolicies ps₁ Γ = .ok wps₁ ∧
+    wellTypedPolicies ps₂ Γ = .ok wps₂ ∧
+    checkDisjointOpt cps₁ cps₂ = checkDisjoint wps₁ wps₂ (SymEnv.ofTypeEnv Γ)
+:= by
+  simp [checkDisjoint, checkDisjointOpt]
+  simp [checkUnsat]
+  intro hwf hcps₁ hcps₂
+  have ⟨wps₁, hwps₁⟩ := compile_ok_then_exists_wtps hcps₁
+  exists wps₁ ; apply And.intro hwps₁
+  have ⟨wps₂, hwps₂⟩ := compile_ok_then_exists_wtps hcps₂
+  exists wps₂ ; apply And.intro hwps₂
+  have ⟨asserts, h₁⟩ := verifyDisjoint_is_ok hwf hwps₁ hwps₂
+  simp [h₁]
+  simp [cps_compile_produces_the_right_env hcps₁]
+  simp [verifyDisjointOpt_eqv_verifyDisjoint_ok hcps₁ hcps₂ hwps₁ hwps₂] at h₁
+  subst asserts ; rfl
