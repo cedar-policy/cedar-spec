@@ -101,19 +101,11 @@ A `CompiledPolicies` that represents the policyset that allows all requests in
 the `εnv`.
 -/
 def CompiledPolicies.allowAll (εnv : SymEnv) : CompiledPolicies :=
-  let allowAll : Policy := {
-    id := "allowAll",
-    effect := .permit,
-    principalScope := .principalScope .any,
-    actionScope := .actionScope .any,
-    resourceScope := .resourceScope .any,
-    condition := [],
-  }
-  let footprint := SymCC.footprint allowAll.toExpr εnv
+  let footprint := SymCC.footprint verifyAlwaysAllows.allowAll.toExpr εnv
   {
     term := .bool true
     εnv
-    policies := [allowAll]
+    policies := [verifyAlwaysAllows.allowAll]
     footprint
     acyclicity := footprint.map (SymCC.acyclicity · εnv.entities)
   }

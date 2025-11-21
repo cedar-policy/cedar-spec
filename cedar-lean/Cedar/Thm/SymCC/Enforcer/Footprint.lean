@@ -298,6 +298,11 @@ theorem mem_footprints_wf {xs : List Expr} {t : Term} {εnv : SymEnv}
   replace ⟨x, hinₓ, hin⟩ := hin
   exact mem_footprint_wf (And.intro hwε (hvr x hinₓ)) hin
 
+theorem footprints_empty {εnv : SymEnv} :
+  footprints [] εnv = ∅
+:= by
+  simp [footprints, Set.mapUnion_empty]
+
 theorem footprints_singleton {x : Expr} {εnv : SymEnv} :
   footprints [x] εnv = footprint x εnv
 := by

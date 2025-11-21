@@ -19,6 +19,7 @@ import Cedar.SymCCOpt
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.Set
 import Cedar.Thm.SymCC.Authorizer
+import Cedar.Thm.SymCC.Opt.AllowDeny
 import Cedar.Thm.SymCC.Opt.CompiledPolicies
 import Cedar.Thm.WellTypedVerification
 
@@ -233,6 +234,43 @@ theorem verifyImpliesOpt_eqv_verifyImplies_ok {ps₁ ps₂ wps₁ wps₂ : Polic
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
+compilation succeeds, then `verifyAlwaysAllows` and `verifyAlwaysAllowsOpt` are
+equivalent.
+-/
+theorem verifyAlwaysAllowsOpt_eqv_verifyAlwaysAllows_ok {ps wps : Policies} {cps : CompiledPolicies} {Γ : Validation.TypeEnv} :
+  CompiledPolicies.compile ps Γ = .ok cps →
+  wellTypedPolicies ps Γ = .ok wps →
+  verifyAlwaysAllows wps (SymEnv.ofTypeEnv Γ) = .ok (verifyAlwaysAllowsOpt cps)
+:= by
+  simp [verifyAlwaysAllows, verifyAlwaysAllowsOpt]
+  intro hcps hwps
+  apply verifyImpliesOpt_eqv_verifyImplies_ok _ hcps (wellTypedPolicies_allowAll Γ) hwps
+  simp [CompiledPolicies.compile, Except.mapError, do_eq_ok]
+  simp [wellTypedPolicies_allowAll, isAuthorized_allowAll]
+  simp [CompiledPolicies.allowAll, cps_compile_produces_the_right_env hcps]
+  simp [footprints_singleton]
+
+/--
+This theorem covers the "happy path" -- showing that if optimized policy
+compilation succeeds, then `verifyAlwaysAllows` and `verifyAlwaysAllowsOpt` are
+equivalent.
+-/
+theorem verifyAlwaysDeniesOpt_eqv_verifyAlwaysDenies_ok {ps wps : Policies} {cps : CompiledPolicies} {Γ : Validation.TypeEnv} :
+  CompiledPolicies.compile ps Γ = .ok cps →
+  wellTypedPolicies ps Γ = .ok wps →
+  verifyAlwaysDenies wps (SymEnv.ofTypeEnv Γ) = .ok (verifyAlwaysDeniesOpt cps)
+:= by
+  simp [verifyAlwaysDenies, verifyAlwaysDeniesOpt]
+  intro hcps hwps
+  apply verifyImpliesOpt_eqv_verifyImplies_ok hcps _ hwps _ (ps₂ := [])
+  simp [CompiledPolicies.compile, Except.mapError, do_eq_ok]
+  simp [wellTypedPolicies_empty, isAuthorized_empty]
+  simp [CompiledPolicies.denyAll, cps_compile_produces_the_right_env hcps]
+  simp [footprints_empty, EmptyCollection.emptyCollection, Data.Set.map_empty]
+  simp [wellTypedPolicies_empty]
+
+/--
+This theorem covers the "happy path" -- showing that if optimized policy
 compilation succeeds, then `verifyEquivalent` and `verifyEquivalentOpt` are
 equivalent.
 -/
@@ -363,6 +401,54 @@ theorem impliesOpt?_eqv_implies?_ok {ps₁ ps₂ : Policies} {cps₁ cps₂ : Co
   simp [cps_compile_produces_the_right_env hcps₁]
   simp [compiled_policies_eq_wtps hcps₁ hwps₁, compiled_policies_eq_wtps hcps₂ hwps₂]
   simp [verifyImpliesOpt_eqv_verifyImplies_ok hcps₁ hcps₂ hwps₁ hwps₂] at h₁
+  subst asserts ; rfl
+
+/--
+This theorem covers the "happy path" -- showing that if optimized policy
+compilation succeeds, then `wellTypedPolicies` succeeds and `alwaysAllows?` and
+`alwaysAllowsOpt?` are equivalent.
+-/
+theorem alwaysAllowsOpt?_eqv_alwaysAllows?_ok {ps : Policies} {cps : CompiledPolicies} {Γ : Validation.TypeEnv} :
+  Γ.WellFormed →
+  CompiledPolicies.compile ps Γ = .ok cps →
+  ∃ wps,
+    wellTypedPolicies ps Γ = .ok wps ∧
+    alwaysAllowsOpt? cps = alwaysAllows? wps (SymEnv.ofTypeEnv Γ)
+:= by
+  simp [alwaysAllows?, alwaysAllowsOpt?]
+  simp [sat?]
+  intro hwf hcps
+  have ⟨wps, hwps⟩ := compile_ok_then_exists_wtps hcps
+  exists wps ; apply And.intro hwps
+  have ⟨asserts, h₁⟩ := verifyAlwaysAllows_is_ok hwf hwps
+  simp [h₁]
+  simp [cps_compile_produces_the_right_env hcps]
+  simp [compiled_policies_eq_wtps hcps hwps]
+  simp [verifyAlwaysAllowsOpt_eqv_verifyAlwaysAllows_ok hcps hwps] at h₁
+  subst asserts ; rfl
+
+/--
+This theorem covers the "happy path" -- showing that if optimized policy
+compilation succeeds, then `wellTypedPolicies` succeeds and `alwaysDenies?` and
+`alwaysDeniesOpt?` are equivalent.
+-/
+theorem alwaysDeniesOpt?_eqv_alwaysDenies?_ok {ps : Policies} {cps : CompiledPolicies} {Γ : Validation.TypeEnv} :
+  Γ.WellFormed →
+  CompiledPolicies.compile ps Γ = .ok cps →
+  ∃ wps,
+    wellTypedPolicies ps Γ = .ok wps ∧
+    alwaysDeniesOpt? cps = alwaysDenies? wps (SymEnv.ofTypeEnv Γ)
+:= by
+  simp [alwaysDenies?, alwaysDeniesOpt?]
+  simp [sat?]
+  intro hwf hcps
+  have ⟨wps, hwps⟩ := compile_ok_then_exists_wtps hcps
+  exists wps ; apply And.intro hwps
+  have ⟨asserts, h₁⟩ := verifyAlwaysDenies_is_ok hwf hwps
+  simp [h₁]
+  simp [cps_compile_produces_the_right_env hcps]
+  simp [compiled_policies_eq_wtps hcps hwps]
+  simp [verifyAlwaysDeniesOpt_eqv_verifyAlwaysDenies_ok hcps hwps] at h₁
   subst asserts ; rfl
 
 /--
