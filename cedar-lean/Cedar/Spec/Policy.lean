@@ -136,6 +136,16 @@ def Scope.bound : Scope → Option EntityUID
   | .isMem _ uid => .some uid
   | _            => .none
 
+/-- The trivial allow-all policy -/
+def Policy.allowAll : Policy := {
+    id             := "allowAll",
+    effect         := .permit,
+    principalScope := .principalScope .any,
+    actionScope    := .actionScope .any,
+    resourceScope  := .resourceScope .any,
+    condition      := []
+}
+
 ----- Derivations -----
 
 deriving instance Repr, DecidableEq, Inhabited for Effect

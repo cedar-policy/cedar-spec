@@ -75,13 +75,24 @@ Returns asserts that are unsatisfiable iff `ps` allows all inputs in `εnv`.
 def verifyAlwaysAllows (ps : Policies) (εnv : SymEnv) : Result Asserts := do
   verifyImplies [allowAll] ps εnv
 where
+  -- This policy chosen not because it's readable or optimized, but because it
+  -- is the policy produced by `wellTypedPolicy Policy.allowAll Γ`
   allowAll : Policy := {
     id             := "allowAll",
     effect         := .permit,
     principalScope := .principalScope .any,
     actionScope    := .actionScope .any,
     resourceScope  := .resourceScope .any,
-    condition      := []
+    condition      := [{
+      kind := .when,
+      body := Expr.and
+        (.lit (.bool true))
+        (Expr.and
+          (.lit (.bool true))
+          (Expr.and
+            (.lit (.bool true))
+            (.lit (.bool true))))
+    }]
   }
 
 /--

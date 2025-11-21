@@ -128,7 +128,7 @@ theorem isAuthorized_allowAll_is_ok (Γ : TypeEnv) :
   isAuthorized [verifyAlwaysAllows.allowAll] (SymEnv.ofEnv Γ) = .ok (.prim (.bool .true))
 := by
   simp [SymCC.isAuthorized, SymCC.satisfiedPolicies, SymCC.compileWithEffect, verifyAlwaysAllows.allowAll]
-  simp [Policy.toExpr, PrincipalScope.toExpr, ActionScope.toExpr, ResourceScope.toExpr, Scope.toExpr, Conditions.toExpr]
+  simp [Policy.toExpr, PrincipalScope.toExpr, ActionScope.toExpr, ResourceScope.toExpr, Scope.toExpr, Conditions.toExpr, Condition.toExpr]
   simp [Factory.and, Factory.anyTrue, Factory.not, Factory.or]
   simp [do_eq_ok, Factory.someOf]
   exists (Term.prim (.bool true)).some
