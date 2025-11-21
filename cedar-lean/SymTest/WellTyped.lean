@@ -206,7 +206,10 @@ def testSucceedsOnWellTyped (p : Policy) (expected : Bool) : List (TestCase Solv
   let desc := s!"checkNeverErrors of (wellTypedPolicy {p.id} Γ) succeeds with outcome '{expected}'"
   [
     test (desc ++ " (unoptimized)")
-      ⟨λ _ => do checkEq (← checkNeverErrors (wellTypedPolicy p Γ).get! εnv) expected⟩,
+      ⟨λ _ => do
+        let wp ← wellTypedPolicy p Γ |> IO.ofExcept
+        checkEq (← checkNeverErrors wp εnv) expected
+      ⟩,
     test (desc ++ " (optimized)")
       ⟨λ _ => do
         let cp ← CompiledPolicy.compile p Γ |> IO.ofExcept

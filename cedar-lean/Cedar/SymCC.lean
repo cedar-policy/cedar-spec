@@ -49,9 +49,9 @@ policy `p` may result in type errors---that is, the compiler rejecting the
 policy because it does not satisfy the `WellTyped` constraints that are assumed
 by the compiler, and enforced by the typechecker through policy transformation.
 -/
-def wellTypedPolicy (p : Policy) (Γ : Cedar.Validation.TypeEnv) : Option Policy := do
-  let tx ← (Cedar.Validation.typecheckPolicy p Γ).toOption
-  .some {
+def wellTypedPolicy (p : Policy) (Γ : Cedar.Validation.TypeEnv) : Except Validation.ValidationError Policy := do
+  let tx ← Cedar.Validation.typecheckPolicy p Γ
+  .ok {
     id             := p.id,
     effect         := p.effect,
     principalScope := .principalScope .any,
@@ -74,7 +74,7 @@ policies `ps` may result in type errors---that is, the compiler rejecting the
 policies because they don't satisfy the `WellTyped` constraints that are assumed
 by the compiler, and enforced by the typechecker through policy transformation.
 -/
-def wellTypedPolicies (ps : Policies) (Γ : Cedar.Validation.TypeEnv) : Option Policies :=
+def wellTypedPolicies (ps : Policies) (Γ : Cedar.Validation.TypeEnv) : Except Validation.ValidationError Policies :=
   ps.mapM (wellTypedPolicy · Γ)
 
 ----- Slow verification checks that extract models -----
@@ -110,11 +110,12 @@ def checkSatAsserts (asserts : Asserts) (εnv : SymEnv) : SolverM (Option Interp
     | .unknown => throw (IO.userError s!"Solver returned unknown.")
 
 /--
-Given policies `ps` (in their post-typecheck `Expr` forms), some `asserts`, and
-the corresponding symbolic environment `εnv`, calls the SMT solver (if
-necessary) on an SMTLib encoding of `asserts` and returns `none` if the result is
-unsatisfiable. Otherwise returns `some env` containing a counterexample environment
-such that evaluating `ps` in `env` violates the property verified by `asserts`.
+Given policies `ps` (in their post-typecheck forms), some `asserts`, and the
+corresponding symbolic environment `εnv`, calls the SMT solver (if necessary) on
+an SMTLib encoding of `asserts` and returns `none` if the result is
+unsatisfiable. Otherwise returns `some env` containing a counterexample
+environment such that evaluating `ps` in `env` violates the property verified by
+`asserts`.
 
 The `asserts` are expected to be well-formed with respect to `εnv` according to
 `Cedar.SymCC.Term.WellFormed`. They must encode a property of policies `pc`.
@@ -123,11 +124,11 @@ Specifically, for each term `t ∈ asserts`, there must be a set of expressions
 `t` is a function of the meaning of `xs`. This ensures that findings generated
 by `solve` are sound and complete.
 -/
-def satAsserts? (ps : List Expr) (asserts : Asserts) (εnv : SymEnv) : SolverM (Option Env) := do
+def satAsserts? (ps : Policies) (asserts : Asserts) (εnv : SymEnv) : SolverM (Option Env) := do
   match ← checkSatAsserts asserts εnv with
   | .none   => pure none
   | .some I =>
-    match εnv.extract? ps I with
+    match εnv.extract? (ps.map Policy.toExpr) I with
     | .some env => pure (some env)
     | .none     => throw (IO.userError s!"Extraction failed.")
 
@@ -150,7 +151,7 @@ This call resets the solver.
 -/
 def sat? (ps : Policies) (vc : SymEnv → Result Asserts) (εnv : SymEnv) : SolverM (Option Env) :=
   match vc εnv with
-  | .ok asserts => satAsserts? (ps.map Policy.toExpr) asserts εnv
+  | .ok asserts => satAsserts? ps asserts εnv
   | .error err => throw (IO.userError s!"SymCC failed: {reprStr err}.")
 
 /--
