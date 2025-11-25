@@ -52,7 +52,7 @@ def parse (str : String) : Option Decimal :=
       | .some l, .some r =>
         let l' := l * (Int.pow 10 DECIMAL_DIGITS)
         let r' := r * (Int.pow 10 (DECIMAL_DIGITS - rlen))
-        let i  := if l ≥ 0 then l' + r' else l' - r'
+        let i  := if !left.startsWith "-" then l' + r' else l' - r'
         decimal? i
       | _, _ => .none
     else .none
