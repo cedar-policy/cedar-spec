@@ -66,8 +66,25 @@ def testsForInvalidStrings :=
     testInvalid "-922337203685477.5809" "overflow"
   ]
 
-def tests := [testsForValidStrings, testsForInvalidStrings]
+private def testOp (str : String) (op: Cedar.Spec.Ext.Decimal → Cedar.Spec.Ext.Decimal → Bool) (lhs: String) (rhs: String) (expected: Bool) : TestCase IO :=
+  test str ⟨λ _ => checkEq parseAndApplyOp (.some expected)⟩
+where parseAndApplyOp :=
+  match parse lhs, parse rhs with
+    | .some lhs, .some rhs => Option.some (op lhs rhs)
+    | _, _ => .none
 
+def testOps :=
+  suite "Decimal ops"
+  [
+    testOp "!(0.23 < -0.23)" (· < ·) "0.23" "-0.23" false,
+    testOp "!(-0.0023 < -0.23)" (· < ·) "-0.0023" "-0.23" false,
+    testOp "-0.23 != 0.23" (· != · ) "-0.23" "0.23" true,
+    testOp "-0.23 < -0.0023" (· < · ) "-0.23" "-0.0023" true,
+    testOp "-0.0001 < 0.0" (· < · ) "-0.0001" "0.0" true,
+    testOp "-1.0000 < -0.9999" (· < ·) "-1.0000" "-0.9999" true
+  ]
+
+def tests := [testsForValidStrings, testsForInvalidStrings, testOps]
 -- Uncomment for interactive debugging
 -- #eval TestSuite.runAll tests
 
