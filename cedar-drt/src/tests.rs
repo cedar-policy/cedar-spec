@@ -155,7 +155,7 @@ pub fn run_val_test(
     compare_validation_results(
         policies,
         &schema,
-        custom_impl.validation_comparison_mode(),
+        ValidationComparisonMode::AgreeOnAll,
         rust_res,
         definitional_res,
     );
@@ -176,7 +176,7 @@ pub fn run_level_val_test(
     compare_validation_results(
         policies,
         &schema,
-        custom_impl.validation_comparison_mode(),
+        ValidationComparisonMode::AgreeOnAll,
         rust_res,
         definitional_res,
     );
