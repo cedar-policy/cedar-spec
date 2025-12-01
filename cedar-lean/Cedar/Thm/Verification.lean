@@ -75,6 +75,50 @@ theorem verifyNeverErrors_is_complete {p : Policy} {εnv : SymEnv} {asserts : As
   exact verifyEvaluate_is_complete verifyNeverErrors_wbeq
 
 /--
+The `verifyAlwaysMatches` analysis is sound: if the assertions
+`verifyAlwaysMatches p εnv` are unsatisfiable for the policy `p` and the
+strongly well-formed symbolic environment `εnv`, then the evaluator will return
+`.ok true` when applied to `p` and any strongly well-formed concrete environment
+`env ∈ᵢ εnv`.
+-/
+theorem verifyAlwaysMatches_is_sound {p : Policy} {εnv : SymEnv} {asserts : Asserts} :
+  εnv.StronglyWellFormedForPolicy p →
+  verifyAlwaysMatches p εnv = .ok asserts →
+  εnv ⊭ asserts →
+  ∀ env,
+    env ∈ᵢ εnv →
+    env.StronglyWellFormedForPolicy p →
+    evaluate p.toExpr env.request env.entities = .ok true
+:= by
+  simp only [verifyAlwaysMatches]
+  have := verifyEvaluate_is_sound verifyAlwaysMatches_wbeq (p := p) (εnv := εnv) (asserts := asserts)
+  simp only [beq_iff_eq] at this
+  exact this
+
+/--
+Alternate definition of soundness for alwaysMatches:
+
+For a singleton policyset, if symcc says the policy alwaysMatches, then the spec
+authorizer should say it always appears in determiningPolicies
+-/
+theorem verifyAlwaysMatches_is_sound' {p : Policy} {εnv : SymEnv} {asserts : Asserts} :
+  εnv.StronglyWellFormedForPolicy p →
+  verifyAlwaysMatches p εnv = .ok asserts →
+  εnv ⊭ asserts →
+  ∀ env,
+    env ∈ᵢ εnv →
+    env.StronglyWellFormedForPolicy p →
+    p.id ∈ (Spec.isAuthorized env.request env.entities [p]).determiningPolicies
+:= by
+  intro h₁ h₂ h₃ env h₄ h₅
+  have := verifyAlwaysMatches_is_sound h₁ h₂ h₃ env h₄ h₅
+  simp only [Spec.isAuthorized, Data.Set.isEmpty, Spec.satisfiedPolicies, satisfiedWithEffect,
+    satisfied, Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq, List.filterMap_cons, this, and_true,
+    List.filterMap_nil, Bool.not_eq_eq_eq_not, Bool.not_true, beq_eq_false_iff_ne, ne_eq]
+  cases p.effect
+  all_goals simp [Data.Set.make_nil, Data.Set.make_singleton_nonempty, ← Data.Set.make_mem]
+
+/--
 The `verifyEquivalent` analysis is sound: if the assertions
 `verifyEquivalent ps₁ ps₂ εnv` are unsatisfiable for the policies `ps₁` and `ps₂`
 and the strongly well-formed symbolic environment `εnv`, then the authorizer
