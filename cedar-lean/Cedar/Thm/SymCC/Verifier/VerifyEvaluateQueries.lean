@@ -49,4 +49,14 @@ theorem verifyNeverErrors_wbeq :
       simp only [pe_isSome_some, same_bool_def]
   simp only [WellBehavedEvaluateQuery, hwo, hi, hs, and_self]
 
+theorem verifyAlwaysMatches_wbeq :
+  WellBehavedEvaluateQuery (eq · (⊙true)) (λ r => r == .ok true)
+:= by
+  sorry
+
+theorem verifyNeverMatches_wbeq :
+  WellBehavedEvaluateQuery (λ t => not (eq t (⊙true))) (λ r => r != .ok true)
+:= by
+  sorry
+
 end Cedar.Thm

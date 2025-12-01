@@ -90,6 +90,62 @@ theorem verifyNeverErrors_is_ok_and_complete {p p' : Policy} {Γ : TypeEnv} :
   simp only [←wellTypedPolicy_preserves_evaluation hinst hwt] at hres
   exists env
 
+/-- Concrete version of `verifyAlwaysMatches_is_sound`. -/
+theorem verifyAlwaysMatches_is_ok_and_sound {p p' : Policy} {Γ : TypeEnv} :
+  Γ.WellFormed →
+  wellTypedPolicy p Γ = .ok p' →
+  ∃ asserts,
+    verifyAlwaysMatches p' (SymEnv.ofEnv Γ) = .ok asserts ∧
+    (SymEnv.ofEnv Γ ⊭ asserts →
+      ∀ env : Env,
+        InstanceOfWellFormedEnvironment env.request env.entities Γ →
+        env.StronglyWellFormedForPolicy p' →
+        evaluate p.toExpr env.request env.entities = .ok (.prim (.bool true)))
+:= by
+  sorry
+
+/-- Concrete version of `verifyAlwaysMatches_is_complete`. -/
+theorem verifyAlwaysMatches_is_ok_and_complete {p p' : Policy} {Γ : TypeEnv} :
+  Γ.WellFormed →
+  wellTypedPolicy p Γ = .ok p' →
+  ∃ asserts,
+    verifyAlwaysMatches p' (SymEnv.ofEnv Γ) = .ok asserts ∧
+    (SymEnv.ofEnv Γ ⊧ asserts →
+      ∃ env : Env,
+        InstanceOfWellFormedEnvironment env.request env.entities Γ ∧
+        env.StronglyWellFormedForPolicy p' ∧
+        evaluate p.toExpr env.request env.entities ≠ .ok (.prim (.bool true)))
+:= by
+  sorry
+
+/-- Concrete version of `verifyNeverMatches_is_sound`. -/
+theorem verifyNeverMatches_is_ok_and_sound {p p' : Policy} {Γ : TypeEnv} :
+  Γ.WellFormed →
+  wellTypedPolicy p Γ = .ok p' →
+  ∃ asserts,
+    verifyNeverMatches p' (SymEnv.ofEnv Γ) = .ok asserts ∧
+    (SymEnv.ofEnv Γ ⊭ asserts →
+      ∀ env : Env,
+        InstanceOfWellFormedEnvironment env.request env.entities Γ →
+        env.StronglyWellFormedForPolicy p' →
+        evaluate p.toExpr env.request env.entities ≠ .ok (.prim (.bool true)))
+:= by
+  sorry
+
+/-- Concrete version of `verifyNeverMatches_is_complete`. -/
+theorem verifyNeverMatches_is_ok_and_complete {p p' : Policy} {Γ : TypeEnv} :
+  Γ.WellFormed →
+  wellTypedPolicy p Γ = .ok p' →
+  ∃ asserts,
+    verifyNeverMatches p' (SymEnv.ofEnv Γ) = .ok asserts ∧
+    (SymEnv.ofEnv Γ ⊧ asserts →
+      ∃ env : Env,
+        InstanceOfWellFormedEnvironment env.request env.entities Γ ∧
+        env.StronglyWellFormedForPolicy p' ∧
+        evaluate p.toExpr env.request env.entities = .ok (.prim (.bool true)))
+:= by
+  sorry
+
 /-- Concrete version of `verifyEquivalent_is_sound`. -/
 theorem verifyEquivalent_is_ok_and_sound {ps₁ ps₁' ps₂ ps₂' : Policies} {Γ : TypeEnv} :
   Γ.WellFormed →
