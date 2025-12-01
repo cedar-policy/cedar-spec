@@ -61,6 +61,22 @@ def verifyNeverErrorsOpt (p : CompiledPolicy) : Asserts :=
   verifyEvaluateOpt isSome p
 
 /--
+Returns asserts that are unsatisfiable iff `p` matches all inputs in the `εnv`
+it was compiled for.  If the asserts are satisfiable, then there is some input
+in `εnv` which `p` doesn't match.
+-/
+def verifyAlwaysMatchesOpt (p : CompiledPolicy) : Result Asserts :=
+  verifyEvaluateOpt (eq · (⊙true)) p
+
+/--
+Returns asserts that are unsatisfiable iff `p` matches no inputs in `εnv`.
+If the asserts are satisfiable, then there is some input in `εnv` which `p`
+does match.
+-/
+def verifyNeverMatchesOpt (p : CompiledPolicy) : Result Asserts :=
+  verifyEvaluateOpt (λ t => not (eq t (⊙true))) p
+
+/--
 Returns asserts that are unsatisfiable iff the authorization decision of `ps₁`
 implies that of `ps₂` for every input in the `εnv` that the policysets were
 compiled for.

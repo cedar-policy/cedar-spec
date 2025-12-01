@@ -162,6 +162,37 @@ def neverErrors? (p : Policy) (εnv : SymEnv) : SolverM (Option Env) :=
   sat? [p] (verifyNeverErrors p) εnv
 
 /--
+Returns `none` iff `p` matches all well-formed inputs in `εnv`. That is,
+if `p` is a `permit` policy, it allows all inputs in `εnv`, or if `p` is a
+`forbid` policy, it denies all inputs in `εnv`.
+Otherwise returns an input `some env` that is not-matched by `p`.
+
+Compare with `alwaysAllows?`, which takes a policyset (which could consist of a
+single policy, or more) and determines whether it _allows_ all well-formed
+inputs in an `εnv`. This function differs from `alwaysAllows` on a singleton
+policyset in how it treats `forbid` policies -- while `alwaysAllows` trivially
+doesn't hold for any policyset containing only `forbid` policies,
+`alwaysMatches` does hold if the `forbid` policy explicitly denies all inputs in
+the `εnv`.
+-/
+def alwaysMatches? (p : Policy) (εnv : SymEnv) : SolverM (Option Env) :=
+  sat? [p] (verifyAlwaysMatches p) εnv
+
+/--
+Returns `none` iff `p` matches no well-formed inputs in `εnv`.
+Otherwise returns an input `some env` that is matched by `p`.
+
+Compare with `alwaysDenies`, which takes a policyset (which could consist of a
+single policy, or more) and determines whether it _denies_ all well-formed
+inputs in an `εnv`. This function differs from `alwaysDenies` on a singleton
+policyset in how it treats `forbid` policies -- while `alwaysDenies` trivially
+holds for any policyset containing only `forbid` policies, `neverMatches` only
+holds if the `forbid` policy explicitly denies no inputs in the `εnv`.
+-/
+def neverMatches? (p : Policy) (εnv : SymEnv) : SolverM (Option Env) :=
+  sat? [p] (verifyNeverMatches p) εnv
+
+/--
 Returns `none` iff the authorization decision of `ps₁` implies that of `ps₂` for
 every well-formed input in `εnv`. That is, every input allowed by `ps₁` is
 allowed by `ps₂`; `ps₂` is either more permissive than, or equivalent to, `ps₁`.
@@ -241,6 +272,36 @@ Returns true iff `p` does not error on any well-formed input in `εnv`.
 -/
 def checkNeverErrors (p : Policy) (εnv : SymEnv) : SolverM Bool :=
   checkUnsat (verifyNeverErrors p) εnv
+
+/--
+Returns true iff `p` matches all well-formed inputs in `εnv`. That is,
+if `p` is a `permit` policy, it allows all inputs in `εnv`, or if `p` is a
+`forbid` policy, it denies all inputs in `εnv`.
+
+Compare with `checkAlwaysAllows`, which takes a policyset (which could consist of a
+single policy, or more) and determines whether it _allows_ all well-formed
+inputs in an `εnv`. This function differs from `checkAlwaysAllows` on a
+singleton policyset in how it treats `forbid` policies -- while
+`checkAlwaysAllows` trivially doesn't hold for any policyset containing only
+`forbid` policies, `checkAlwaysMatches` does hold if the `forbid` policy
+explicitly denies all inputs in the `εnv`.
+-/
+def checkAlwaysMatches (p : Policy) (εnv : SymEnv) : SolverM Bool :=
+  checkUnsat (verifyAlwaysMatches p) εnv
+
+/--
+Returns true iff `p` matches no well-formed inputs in `εnv`.
+
+Compare with `checkAlwaysDenies`, which takes a policyset (which could consist
+of a single policy, or more) and determines whether it _denies_ all well-formed
+inputs in an `εnv`. This function differs from `checkAlwaysDenies` on a
+singleton policyset in how it treats `forbid` policies -- while
+`checkAlwaysDenies` trivially holds for any policyset containing only `forbid`
+policies, `checkNeverMatches` only holds if the `forbid` policy explicitly
+denies no inputs in the `εnv`.
+-/
+def checkNeverMatches (p : Policy) (εnv : SymEnv) : SolverM Bool :=
+  checkUnsat (verifyNeverMatches p) εnv
 
 /--
 Returns true iff the authorization decision of `ps₁` implies that of `ps₂` for

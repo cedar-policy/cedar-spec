@@ -62,6 +62,24 @@ def verifyNeverErrors (p : Policy) (εnv : SymEnv) : Result Asserts :=
   verifyEvaluate isSome p εnv
 
 /--
+Returns asserts that are unsatisfiable iff `p` matches all inputs in `εnv`.
+If the asserts are satisfiable, then there is some input in `εnv` which `p`
+doesn't match.
+-/
+def verifyAlwaysMatches (p : Policy) (εnv : SymEnv) : Result Asserts :=
+  -- never errors, _and_ is always true
+  verifyEvaluate (eq · (⊙true)) p εnv
+
+/--
+Returns asserts that are unsatisfiable iff `p` matches no inputs in `εnv`.
+If the asserts are satisfiable, then there is some input in `εnv` which `p`
+does match.
+-/
+def verifyNeverMatches (p : Policy) (εnv : SymEnv) : Result Asserts :=
+  -- always false _or_ error, i.e., just never equal to ⊙true
+  verifyEvaluate (λ t => not (eq t (⊙true))) p εnv
+
+/--
 Returns asserts that are unsatisfiable iff the authorization decision of `ps₁`
 implies that of `ps₂` for every input in `εnv`. In other words, every input
 allowed by `ps₁` is allowed by `ps₂`.

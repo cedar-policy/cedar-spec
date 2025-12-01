@@ -67,7 +67,7 @@ def CompiledPolicy.compile (p : Policy) (Γ : Validation.TypeEnv) : Except Compi
 /--
 Represents a symbolically compiled policyset. This can be fed into the various
 functions in SymCCOpt.lean for efficient solver queries (that don't have to
-repeat symbolic computation).
+repeat symbolic compilation).
 -/
 structure CompiledPolicies where
   /-- typechecked policies compiled to a single `Term` of type .bool representing the authorization decision -/

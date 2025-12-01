@@ -36,6 +36,37 @@ def neverErrorsOpt? (p : CompiledPolicy) : SolverM (Option Env) :=
   satAsserts? [p.policy] (verifyNeverErrorsOpt p) p.εnv
 
 /--
+Returns `none` iff `p` matches all well-formed inputs in `εnv`. That is,
+if `p` is a `permit` policy, it allows all inputs in `εnv`, or if `p` is a
+`forbid` policy, it denies all inputs in `εnv`.
+Otherwise returns an input `some env` that is not-matched by `p`.
+
+Compare with `alwaysAllowsOpt?`, which takes a policyset (which could consist of a
+single policy, or more) and determines whether it _allows_ all well-formed
+inputs in an `εnv`. This function differs from `alwaysAllowsOpt` on a singleton
+policyset in how it treats `forbid` policies -- while `alwaysAllowsOpt` trivially
+doesn't hold for any policyset containing only `forbid` policies,
+`alwaysMatchesOpt` does hold if the `forbid` policy explicitly denies all inputs in
+the `εnv`.
+-/
+def alwaysMatchesOpt? (p : CompiledPolicy) : SolverM (Option Env) :=
+  satAsserts? [p.policy] (verifyAlwaysMatchesOpt p) p.εnv
+
+/--
+Returns `none` iff `p` matches no well-formed inputs in `εnv`.
+Otherwise returns an input `some env` that is matched by `p`.
+
+Compare with `alwaysDeniesOpt`, which takes a policyset (which could consist of a
+single policy, or more) and determines whether it _denies_ all well-formed
+inputs in an `εnv`. This function differs from `alwaysDeniesOpt` on a singleton
+policyset in how it treats `forbid` policies -- while `alwaysDeniesOpt` trivially
+holds for any policyset containing only `forbid` policies, `neverMatchesOpt` only
+holds if the `forbid` policy explicitly denies no inputs in the `εnv`.
+-/
+def neverMatchesOpt? (p : CompiledPolicy) : SolverM (Option Env) :=
+  satAsserts? [p.policy] (verifyNeverMatchesOpt p) p.εnv
+
+/--
 Returns `none` iff the authorization decision of `ps₁` implies that of `ps₂` for
 every well-formed input in the `εnv` that the policysets were compiled for.
 (Caller guarantees that `ps₁` and `ps₂` were compiled for the same `εnv`.)
@@ -90,6 +121,38 @@ compiled for.
 -/
 def checkNeverErrorsOpt (p : CompiledPolicy) : SolverM Bool :=
   checkUnsatAsserts (verifyNeverErrorsOpt p) p.εnv
+
+/--
+Returns `none` iff `p` matches all well-formed inputs in `εnv`. That is,
+if `p` is a `permit` policy, it allows all inputs in `εnv`, or if `p` is a
+`forbid` policy, it denies all inputs in `εnv`.
+Otherwise returns an input `some env` that is not-matched by `p`.
+
+Compare with `checkAlwaysAllowsOpt`, which takes a policyset (which could
+consist of a single policy, or more) and determines whether it _allows_ all
+well-formed inputs in an `εnv`. This function differs from
+`checkAlwaysAllowsOpt` on a singleton policyset in how it treats `forbid`
+policies -- while `checkAlwaysAllowsOpt` trivially doesn't hold for any
+policyset containing only `forbid` policies, `checkAlwaysMatchesOpt` does hold
+if the `forbid` policy explicitly denies all inputs in the `εnv`.
+-/
+def checkAlwaysMatchesOpt (p : CompiledPolicy) : SolverM (Option Env) :=
+  satAsserts? [p.policy] (verifyAlwaysMatchesOpt p) p.εnv
+
+/--
+Returns `none` iff `p` matches no well-formed inputs in `εnv`.
+Otherwise returns an input `some env` that is matched by `p`.
+
+Compare with `checkAlwaysDeniesOpt`, which takes a policyset (which could
+consist of a single policy, or more) and determines whether it _denies_ all
+well-formed inputs in an `εnv`. This function differs from
+`checkAlwaysDeniesOpt` on a singleton policyset in how it treats `forbid`
+policies -- while `checkAlwaysDeniesOpt` trivially holds for any policyset
+containing only `forbid` policies, `checkNeverMatchesOpt` only holds if the
+`forbid` policy explicitly denies no inputs in the `εnv`.
+-/
+def checkNeverMatchesOpt (p : CompiledPolicy) : SolverM (Option Env) :=
+  satAsserts? [p.policy] (verifyNeverMatchesOpt p) p.εnv
 
 /--
 Returns true iff the authorization decision of `ps₁` implies that of `ps₂` for
