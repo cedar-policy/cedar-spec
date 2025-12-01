@@ -121,7 +121,7 @@ theorem verifyAlwaysMatches_is_ok {p p' : Policy} {Γ : TypeEnv}
   (hwt : wellTypedPolicy p Γ = .ok p') :
   ∃ asserts, verifyAlwaysMatches p' (SymEnv.ofEnv Γ) = .ok asserts
 := by
-  sorry
+  exact verifyEvaluate_is_ok hwf hwt
 
 /-- `verifyNeverMatches` succeeds on sufficiently well-formed inputs. -/
 theorem verifyNeverMatches_is_ok {p p' : Policy} {Γ : TypeEnv}
@@ -129,7 +129,7 @@ theorem verifyNeverMatches_is_ok {p p' : Policy} {Γ : TypeEnv}
   (hwt : wellTypedPolicy p Γ = .ok p') :
   ∃ asserts, verifyNeverMatches p' (SymEnv.ofEnv Γ) = .ok asserts
 := by
-  sorry
+  exact verifyEvaluate_is_ok hwf hwt
 
 /-- `verifyImplies` succeeds on sufficiently well-formed inputs. -/
 theorem verifyImplies_is_ok {ps₁ ps₁' ps₂ ps₂' : Policies} {Γ : TypeEnv}
