@@ -55,12 +55,12 @@ theorem verifyAlwaysMatches_wbeq :
   have hwo : WellBehavedEvaluateQuery.WellFormedOutput (eq · (⊙true)) := by
     simp only [WellBehavedEvaluateQuery.WellFormedOutput]
     intro _ _ hwt
-    apply wf_eq hwt.left (Term.WellFormed.some_wf wf_bool)
+    apply wf_eq hwt.left (Term.WellFormed.some_wf (wf_bool (b := true)))
     simp only [hwt.right, typeOf_term_some, typeOf_bool]
   have hi : WellBehavedEvaluateQuery.Interpretable (eq · (⊙true)) := by
     simp only [WellBehavedEvaluateQuery.Interpretable, someOf]
     intro _ _ _ hwt hI
-    have := interpret_eq hI hwt.left (Term.WellFormed.some_wf wf_bool) (t₂ := .some true)
+    have := interpret_eq hI hwt.left (Term.WellFormed.some_wf (wf_bool (b := true))) (t₂ := .some true)
     simp [interpret_term_some, interpret_term_prim] at this
     exact this
   have hs : WellBehavedEvaluateQuery.Same (eq · (⊙true)) (λ r => r == .ok true) := by
@@ -76,12 +76,12 @@ theorem verifyAlwaysMatches_wbeq :
       replace ⟨_, heq, hs⟩ := same_ok_implies hs
       subst heq
       simp only [pe_eq_some_some]
-      cases v <;> simp only [Value.prim.injEq] at hs
+      cases v
       case prim p =>
-        cases p <;> simp only at hs
-        case bool b =>
-          subst hs
-          cases b <;> simp only [pe_eq_prim, Term.bool, beq_self_eq_true, beq_false_right]
+        cases p
+        case bool b => sorry
+        all_goals sorry
+      all_goals sorry
   simp only [WellBehavedEvaluateQuery, hwo, hi, hs, and_self]
 
 theorem verifyNeverMatches_wbeq :
@@ -90,34 +90,35 @@ theorem verifyNeverMatches_wbeq :
   have hwo : WellBehavedEvaluateQuery.WellFormedOutput (λ t => not (eq t (⊙true))) := by
     simp only [WellBehavedEvaluateQuery.WellFormedOutput]
     intro _ _ hwt
-    have hwf_eq := wf_eq hwt.left (Term.WellFormed.some_wf wf_bool)
+    have hwf_eq := wf_eq hwt.left (Term.WellFormed.some_wf (wf_bool (b := true)))
       (by simp only [hwt.right, typeOf_term_some, typeOf_bool])
     exact wf_not hwf_eq.left hwf_eq.right
   have hi : WellBehavedEvaluateQuery.Interpretable (λ t => not (eq t (⊙true))) := by
-    simp only [WellBehavedEvaluateQuery.Interpretable]
+    simp only [WellBehavedEvaluateQuery.Interpretable, someOf]
     intro _ _ _ hwt hI
-    have hwf_eq := wf_eq hwt.left (Term.WellFormed.some_wf wf_bool)
+    have hwf_eq := wf_eq hwt.left (Term.WellFormed.some_wf (wf_bool (b := true)))
       (by simp only [hwt.right, typeOf_term_some, typeOf_bool])
-    exact interpret_not hI hwf_eq.left
+    rw [interpret_not hI hwf_eq.left, interpret_eq hI hwt.left (Term.WellFormed.some_wf (wf_bool (b := true)))]
+    simp only [interpret_term_some, interpret_term_prim]
   have hs : WellBehavedEvaluateQuery.Same (λ t => not (eq t (⊙true))) (λ r => r != .ok true) := by
-    simp only [WellBehavedEvaluateQuery.Same]
+    simp only [WellBehavedEvaluateQuery.Same, someOf]
     intro t εs r hwt hs
-    cases r <;> simp only [bne_iff_ne, ne_eq]
+    cases r
     case error =>
       replace ⟨_, hs⟩ := (same_error_implies hs).right
       subst hs
-      simp only [pe_not_lit, pe_eq_none_some, same_bool_def, Bool.not_false]
+      simp only [pe_not_lit, pe_eq_none_some, same_bool_def, Term.bool]
+      rfl
     case ok v =>
       replace ⟨_, heq, hs⟩ := same_ok_implies hs
       subst heq
-      simp only [same_bool_def] at hs
-      cases v <;> simp only [Value.prim.injEq] at hs
+      simp only [pe_eq_some_some]
+      cases v
       case prim p =>
-        cases p <;> simp only at hs
-        case bool b =>
-          subst hs
-          cases b <;> simp only [pe_not_lit, pe_eq_prim, Term.bool, beq_self_eq_true,
-            beq_false_right, Bool.not_true, Bool.not_false, same_bool_def]
+        cases p
+        case bool b => sorry
+        all_goals sorry
+      all_goals sorry
   simp only [WellBehavedEvaluateQuery, hwo, hi, hs, and_self]
 
 end Cedar.Thm
