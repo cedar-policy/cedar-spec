@@ -65,7 +65,7 @@ Returns asserts that are unsatisfiable iff `p` matches all inputs in the `εnv`
 it was compiled for.  If the asserts are satisfiable, then there is some input
 in `εnv` which `p` doesn't match.
 -/
-def verifyAlwaysMatchesOpt (p : CompiledPolicy) : Result Asserts :=
+def verifyAlwaysMatchesOpt (p : CompiledPolicy) : Asserts :=
   verifyEvaluateOpt (eq · (⊙true)) p
 
 /--
@@ -73,7 +73,7 @@ Returns asserts that are unsatisfiable iff `p` matches no inputs in `εnv`.
 If the asserts are satisfiable, then there is some input in `εnv` which `p`
 does match.
 -/
-def verifyNeverMatchesOpt (p : CompiledPolicy) : Result Asserts :=
+def verifyNeverMatchesOpt (p : CompiledPolicy) : Asserts :=
   verifyEvaluateOpt (λ t => not (eq t (⊙true))) p
 
 /--

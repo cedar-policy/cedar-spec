@@ -109,9 +109,10 @@ theorem verifyAlwaysMatches_is_ok_and_sound {p p' : Policy} {Γ : TypeEnv} :
   simp only [hok, true_and]
   intros hunsat env hinst hwf_env
   simp only [wellTypedPolicy_preserves_evaluation hinst hwt]
-  apply verifyEvaluate_is_sound verifyAlwaysMatches_wbeq hwf_εnv hok hunsat env
-  · exact ofEnv_soundness hwf_env.1 hinst
-  · exact hwf_env
+  have := verifyEvaluate_is_sound verifyAlwaysMatches_wbeq hwf_εnv hok hunsat env
+  simp [beq_iff_eq] at this
+  apply this _ hwf_env
+  exact ofEnv_soundness hwf_env.1 hinst
 
 /-- Concrete version of `verifyAlwaysMatches_is_complete`. -/
 theorem verifyAlwaysMatches_is_ok_and_complete {p p' : Policy} {Γ : TypeEnv} :
@@ -136,6 +137,8 @@ theorem verifyAlwaysMatches_is_ok_and_complete {p p' : Policy} {Γ : TypeEnv} :
   have := wellTypedPolicy_preserves_evaluation hinst hwt
   simp only [←wellTypedPolicy_preserves_evaluation hinst hwt] at hres
   exists env
+  simp [this] at hres
+  simp [*]
 
 /-- Concrete version of `verifyNeverMatches_is_sound`. -/
 theorem verifyNeverMatches_is_ok_and_sound {p p' : Policy} {Γ : TypeEnv} :
@@ -156,9 +159,10 @@ theorem verifyNeverMatches_is_ok_and_sound {p p' : Policy} {Γ : TypeEnv} :
   simp only [hok, true_and]
   intros hunsat env hinst hwf_env
   simp only [wellTypedPolicy_preserves_evaluation hinst hwt]
-  apply verifyEvaluate_is_sound verifyNeverMatches_wbeq hwf_εnv hok hunsat env
-  · exact ofEnv_soundness hwf_env.1 hinst
-  · exact hwf_env
+  have := verifyEvaluate_is_sound verifyNeverMatches_wbeq hwf_εnv hok hunsat env
+  simp only [bne_iff_ne] at this
+  apply this _ hwf_env
+  exact ofEnv_soundness hwf_env.1 hinst
 
 /-- Concrete version of `verifyNeverMatches_is_complete`. -/
 theorem verifyNeverMatches_is_ok_and_complete {p p' : Policy} {Γ : TypeEnv} :
@@ -183,6 +187,8 @@ theorem verifyNeverMatches_is_ok_and_complete {p p' : Policy} {Γ : TypeEnv} :
   have := wellTypedPolicy_preserves_evaluation hinst hwt
   simp only [←wellTypedPolicy_preserves_evaluation hinst hwt] at hres
   exists env
+  simp [this] at hres
+  simp [*]
 
 /-- Concrete version of `verifyEquivalent_is_sound`. -/
 theorem verifyEquivalent_is_ok_and_sound {ps₁ ps₁' ps₂ ps₂' : Policies} {Γ : TypeEnv} :

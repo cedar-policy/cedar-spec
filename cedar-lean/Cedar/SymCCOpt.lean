@@ -136,8 +136,8 @@ policies -- while `checkAlwaysAllowsOpt` trivially doesn't hold for any
 policyset containing only `forbid` policies, `checkAlwaysMatchesOpt` does hold
 if the `forbid` policy explicitly denies all inputs in the `εnv`.
 -/
-def checkAlwaysMatchesOpt (p : CompiledPolicy) : SolverM (Option Env) :=
-  satAsserts? [p.policy] (verifyAlwaysMatchesOpt p) p.εnv
+def checkAlwaysMatchesOpt (p : CompiledPolicy) : SolverM Bool :=
+  checkUnsatAsserts (verifyAlwaysMatchesOpt p) p.εnv
 
 /--
 Returns `none` iff `p` matches no well-formed inputs in `εnv`.
@@ -151,8 +151,8 @@ policies -- while `checkAlwaysDeniesOpt` trivially holds for any policyset
 containing only `forbid` policies, `checkNeverMatchesOpt` only holds if the
 `forbid` policy explicitly denies no inputs in the `εnv`.
 -/
-def checkNeverMatchesOpt (p : CompiledPolicy) : SolverM (Option Env) :=
-  satAsserts? [p.policy] (verifyNeverMatchesOpt p) p.εnv
+def checkNeverMatchesOpt (p : CompiledPolicy) : SolverM Bool :=
+  checkUnsatAsserts (verifyNeverMatchesOpt p) p.εnv
 
 /--
 Returns true iff the authorization decision of `ps₁` implies that of `ps₂` for
