@@ -186,7 +186,10 @@ theorem verifyNeverMatches_is_sound {p : Policy} {εnv : SymEnv} {asserts : Asse
     env.StronglyWellFormedForPolicy p →
     evaluate p.toExpr env.request env.entities ≠ .ok true
 := by
-  sorry
+  simp only [verifyNeverMatches]
+  have := verifyEvaluate_is_sound verifyNeverMatches_wbeq (p := p) (εnv := εnv) (asserts := asserts)
+  simp only [bne_iff_ne, ne_eq] at this
+  exact this
 
 /--
 Alternate definition of soundness for neverMatches:
@@ -203,7 +206,12 @@ theorem verifyNeverMatches_is_sound' {p : Policy} {εnv : SymEnv} {asserts : Ass
     env.StronglyWellFormedForPolicy p →
     p.id ∉ (Spec.isAuthorized env.request env.entities [p]).determiningPolicies
 := by
-  sorry
+  intro h₁ h₂ h₃ env h₄ h₅
+  have := verifyNeverMatches_is_sound h₁ h₂ h₃ env h₄ h₅
+  simp only [Spec.isAuthorized, Data.Set.isEmpty, Spec.satisfiedPolicies, satisfiedWithEffect,
+    satisfied, Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq, List.filterMap_cons,
+    List.filterMap_nil, Bool.not_eq_eq_eq_not, Bool.not_true, beq_eq_false_iff_ne, ne_eq]
+  cases p.effect <;> simp [Data.Set.make_nil, Data.Set.empty_no_elts, this]
 
 /--
 The `verifyNeverMatches` analysis is complete: if the assertions
@@ -222,7 +230,15 @@ theorem verifyNeverMatches_is_complete {p : Policy} {εnv : SymEnv} {asserts : A
     Env.EnumCompleteFor env εnv ∧
     evaluate p.toExpr env.request env.entities = .ok true
 := by
-  sorry
+  intro h₁ h₂ h₃
+  unfold verifyNeverMatches at h₂
+  have ⟨env, h₄, h₅, h₆, h₇⟩ := verifyEvaluate_is_complete verifyNeverMatches_wbeq h₁ h₂ h₃
+  exists env
+  have : evaluate p.toExpr env.request env.entities = .ok true := by
+    cases heval : evaluate p.toExpr env.request env.entities
+    · simp [bne, heval] at h₇
+    · simp [bne, heval] at h₇; simp [h₇]
+  exact ⟨h₄, h₅, h₆, this⟩
 
 /--
 Alternate definition of completeness for neverMatches:
@@ -241,7 +257,16 @@ theorem verifyNeverMatches_is_complete' {p : Policy} {εnv : SymEnv} {asserts : 
     Env.EnumCompleteFor env εnv ∧
     p.id ∈ (Spec.isAuthorized env.request env.entities [p]).determiningPolicies
 := by
-  sorry
+  intro h₁ h₂ h₃
+  have ⟨env, h₄, h₅, h₆, h₇⟩ := verifyNeverMatches_is_complete h₁ h₂ h₃
+  exists env
+  apply And.intro h₄
+  apply And.intro h₅
+  apply And.intro h₆
+  simp only [Spec.isAuthorized, Data.Set.isEmpty, Spec.satisfiedPolicies, satisfiedWithEffect,
+    satisfied, Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq, List.filterMap_cons, h₇, and_true,
+    List.filterMap_nil, Bool.not_eq_eq_eq_not, Bool.not_true, beq_eq_false_iff_ne, ne_eq]
+  cases p.effect <;> simp [Data.Set.make_nil, Data.Set.make_singleton_nonempty, ← Data.Set.make_mem]
 
 /--
 The `verifyEquivalent` analysis is sound: if the assertions
