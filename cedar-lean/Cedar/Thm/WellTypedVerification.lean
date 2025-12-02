@@ -90,6 +90,106 @@ theorem verifyNeverErrors_is_ok_and_complete {p p' : Policy} {Γ : TypeEnv} :
   simp only [←wellTypedPolicy_preserves_evaluation hinst hwt] at hres
   exists env
 
+/-- Concrete version of `verifyAlwaysMatches_is_sound`. -/
+theorem verifyAlwaysMatches_is_ok_and_sound {p p' : Policy} {Γ : TypeEnv} :
+  Γ.WellFormed →
+  wellTypedPolicy p Γ = .ok p' →
+  ∃ asserts,
+    verifyAlwaysMatches p' (SymEnv.ofEnv Γ) = .ok asserts ∧
+    (SymEnv.ofEnv Γ ⊭ asserts →
+      ∀ env : Env,
+        InstanceOfWellFormedEnvironment env.request env.entities Γ →
+        env.StronglyWellFormedForPolicy p' →
+        evaluate p.toExpr env.request env.entities = .ok (.prim (.bool true)))
+:= by
+  intros hwf hwt
+  have hwf_εnv := ofEnv_swf_for_policy hwf hwt
+  have ⟨asserts, hok⟩ := verifyAlwaysMatches_is_ok hwf hwt
+  exists asserts
+  simp only [hok, true_and]
+  intros hunsat env hinst hwf_env
+  simp only [wellTypedPolicy_preserves_evaluation hinst hwt]
+  have := verifyEvaluate_is_sound verifyAlwaysMatches_wbeq hwf_εnv hok hunsat env
+  simp [beq_iff_eq] at this
+  apply this _ hwf_env
+  exact ofEnv_soundness hwf_env.1 hinst
+
+/-- Concrete version of `verifyAlwaysMatches_is_complete`. -/
+theorem verifyAlwaysMatches_is_ok_and_complete {p p' : Policy} {Γ : TypeEnv} :
+  Γ.WellFormed →
+  wellTypedPolicy p Γ = .ok p' →
+  ∃ asserts,
+    verifyAlwaysMatches p' (SymEnv.ofEnv Γ) = .ok asserts ∧
+    (SymEnv.ofEnv Γ ⊧ asserts →
+      ∃ env : Env,
+        InstanceOfWellFormedEnvironment env.request env.entities Γ ∧
+        env.StronglyWellFormedForPolicy p' ∧
+        evaluate p.toExpr env.request env.entities ≠ .ok (.prim (.bool true)))
+:= by
+  intros hwf hwt
+  have hwf_εnv := ofEnv_swf_for_policy hwf hwt
+  have ⟨asserts, hok⟩ := verifyAlwaysMatches_is_ok hwf hwt
+  exists asserts
+  simp only [hok, true_and]
+  intros hsat
+  have ⟨env, hmodel, hswf_env, henum_comp, hres⟩ := verifyEvaluate_is_complete verifyAlwaysMatches_wbeq hwf_εnv hok hsat
+  have hinst := ofEnv_completeness hwf hswf_env.1 henum_comp hmodel
+  have := wellTypedPolicy_preserves_evaluation hinst hwt
+  simp only [←wellTypedPolicy_preserves_evaluation hinst hwt] at hres
+  exists env
+  simp [this] at hres
+  simp [*]
+
+/-- Concrete version of `verifyNeverMatches_is_sound`. -/
+theorem verifyNeverMatches_is_ok_and_sound {p p' : Policy} {Γ : TypeEnv} :
+  Γ.WellFormed →
+  wellTypedPolicy p Γ = .ok p' →
+  ∃ asserts,
+    verifyNeverMatches p' (SymEnv.ofEnv Γ) = .ok asserts ∧
+    (SymEnv.ofEnv Γ ⊭ asserts →
+      ∀ env : Env,
+        InstanceOfWellFormedEnvironment env.request env.entities Γ →
+        env.StronglyWellFormedForPolicy p' →
+        evaluate p.toExpr env.request env.entities ≠ .ok (.prim (.bool true)))
+:= by
+  intros hwf hwt
+  have hwf_εnv := ofEnv_swf_for_policy hwf hwt
+  have ⟨asserts, hok⟩ := verifyNeverMatches_is_ok hwf hwt
+  exists asserts
+  simp only [hok, true_and]
+  intros hunsat env hinst hwf_env
+  simp only [wellTypedPolicy_preserves_evaluation hinst hwt]
+  have := verifyEvaluate_is_sound verifyNeverMatches_wbeq hwf_εnv hok hunsat env
+  simp only [bne_iff_ne] at this
+  apply this _ hwf_env
+  exact ofEnv_soundness hwf_env.1 hinst
+
+/-- Concrete version of `verifyNeverMatches_is_complete`. -/
+theorem verifyNeverMatches_is_ok_and_complete {p p' : Policy} {Γ : TypeEnv} :
+  Γ.WellFormed →
+  wellTypedPolicy p Γ = .ok p' →
+  ∃ asserts,
+    verifyNeverMatches p' (SymEnv.ofEnv Γ) = .ok asserts ∧
+    (SymEnv.ofEnv Γ ⊧ asserts →
+      ∃ env : Env,
+        InstanceOfWellFormedEnvironment env.request env.entities Γ ∧
+        env.StronglyWellFormedForPolicy p' ∧
+        evaluate p.toExpr env.request env.entities = .ok (.prim (.bool true)))
+:= by
+  intros hwf hwt
+  have hwf_εnv := ofEnv_swf_for_policy hwf hwt
+  have ⟨asserts, hok⟩ := verifyNeverMatches_is_ok hwf hwt
+  exists asserts
+  simp only [hok, true_and]
+  intros hsat
+  have ⟨env, hmodel, hswf_env, henum_comp, hres⟩ := verifyEvaluate_is_complete verifyNeverMatches_wbeq hwf_εnv hok hsat
+  have hinst := ofEnv_completeness hwf hswf_env.1 henum_comp hmodel
+  have := wellTypedPolicy_preserves_evaluation hinst hwt
+  simp only [←wellTypedPolicy_preserves_evaluation hinst hwt] at hres
+  exists env
+  simp [this] at hres
+  simp [*]
+
 /-- Concrete version of `verifyEquivalent_is_sound`. -/
 theorem verifyEquivalent_is_ok_and_sound {ps₁ ps₁' ps₂ ps₂' : Policies} {Γ : TypeEnv} :
   Γ.WellFormed →

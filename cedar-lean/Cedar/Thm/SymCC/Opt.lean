@@ -219,6 +219,32 @@ theorem verifyNeverErrorsOpt_eqv_verifyNeverErrors_ok {p wp : Policy} {cp : Comp
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
+compilation succeeds, then `verifyAlwaysMatches` and `verifyAlwaysMatchesOpt` are
+equivalent.
+-/
+theorem verifyAlwaysMatchesOpt_eqv_verifyAlwaysMatches_ok {p wp : Policy} {cp : CompiledPolicy} {Γ : Validation.TypeEnv} :
+  CompiledPolicy.compile p Γ = .ok cp →
+  wellTypedPolicy p Γ = .ok wp →
+  verifyAlwaysMatches wp (SymEnv.ofTypeEnv Γ) = .ok (verifyAlwaysMatchesOpt cp)
+:= by
+  simp [verifyAlwaysMatches, verifyAlwaysMatchesOpt]
+  exact verifyEvaluateOpt_eqv_verifyEvaluate_ok
+
+/--
+This theorem covers the "happy path" -- showing that if optimized policy
+compilation succeeds, then `verifyNeverMatches` and `verifyNeverMatchesOpt` are
+equivalent.
+-/
+theorem verifyNeverMatchesOpt_eqv_verifyNeverMatches_ok {p wp : Policy} {cp : CompiledPolicy} {Γ : Validation.TypeEnv} :
+  CompiledPolicy.compile p Γ = .ok cp →
+  wellTypedPolicy p Γ = .ok wp →
+  verifyNeverMatches wp (SymEnv.ofTypeEnv Γ) = .ok (verifyNeverMatchesOpt cp)
+:= by
+  simp [verifyNeverMatches, verifyNeverMatchesOpt]
+  exact verifyEvaluateOpt_eqv_verifyEvaluate_ok
+
+/--
+This theorem covers the "happy path" -- showing that if optimized policy
 compilation succeeds, then `verifyImplies` and `verifyImpliesOpt` are
 equivalent.
 -/
@@ -442,6 +468,54 @@ theorem neverErrorsOpt?_eqv_neverErrors?_ok {p : Policy} {cp : CompiledPolicy} {
   subst asserts ; rfl
 
 /--
+This theorem covers the "happy path" -- showing that if optimized policy
+compilation succeeds, then `wellTypedPolicy` succeeds and `alwaysMatches?` and
+`alwaysMatchesOpt?` are equivalent.
+-/
+theorem alwaysMatchesOpt?_eqv_alwaysMatches?_ok {p : Policy} {cp : CompiledPolicy} {Γ : Validation.TypeEnv} :
+  Γ.WellFormed →
+  CompiledPolicy.compile p Γ = .ok cp →
+  ∃ wp,
+    wellTypedPolicy p Γ = .ok wp ∧
+    alwaysMatchesOpt? cp = alwaysMatches? wp (SymEnv.ofTypeEnv Γ)
+:= by
+  simp [alwaysMatches?, alwaysMatchesOpt?]
+  simp [sat?]
+  intro hwf h₀
+  have ⟨wp, h₁⟩ := compile_ok_then_exists_wtp hwf h₀
+  exists wp ; apply And.intro h₁
+  have ⟨asserts, h₂⟩ := verifyAlwaysMatches_is_ok hwf h₁
+  simp [h₂]
+  simp [cp_compile_produces_the_right_env h₀]
+  simp [compiled_policy_eq_wtp h₀ h₁]
+  simp [verifyAlwaysMatchesOpt_eqv_verifyAlwaysMatches_ok h₀ h₁] at h₂
+  subst asserts ; rfl
+
+/--
+This theorem covers the "happy path" -- showing that if optimized policy
+compilation succeeds, then `wellTypedPolicy` succeeds and `neverMatches?` and
+`neverMatchesOpt?` are equivalent.
+-/
+theorem neverMatchesOpt?_eqv_neverMatches?_ok {p : Policy} {cp : CompiledPolicy} {Γ : Validation.TypeEnv} :
+  Γ.WellFormed →
+  CompiledPolicy.compile p Γ = .ok cp →
+  ∃ wp,
+    wellTypedPolicy p Γ = .ok wp ∧
+    neverMatchesOpt? cp = neverMatches? wp (SymEnv.ofTypeEnv Γ)
+:= by
+  simp [neverMatches?, neverMatchesOpt?]
+  simp [sat?]
+  intro hwf h₀
+  have ⟨wp, h₁⟩ := compile_ok_then_exists_wtp hwf h₀
+  exists wp ; apply And.intro h₁
+  have ⟨asserts, h₂⟩ := verifyNeverMatches_is_ok hwf h₁
+  simp [h₂]
+  simp [cp_compile_produces_the_right_env h₀]
+  simp [compiled_policy_eq_wtp h₀ h₁]
+  simp [verifyNeverMatchesOpt_eqv_verifyNeverMatches_ok h₀ h₁] at h₂
+  subst asserts ; rfl
+
+/--
 Full equivalence for `neverErrors?` and `neverErrorsOpt?`, including both the
 `.ok` and `.error` cases
 -/
@@ -460,6 +534,68 @@ theorem neverErrorsOpt?_eqv_neverErrors? {p : Policy} {Γ : Validation.TypeEnv} 
   case ok cp =>
     intro hwf
     have ⟨wp, hwp, h⟩ := neverErrorsOpt?_eqv_neverErrors?_ok hwf hcp
+    simp [Except.mapError, hwp, h]
+  case error e =>
+    simp [Except.mapError]
+    cases hwp : wellTypedPolicy p Γ
+    case error e' =>
+      simp [CompiledPolicy.compile, Except.mapError, hwp] at hcp
+      simp [hcp]
+    case ok wp =>
+      intro hwf
+      have h := compile_ok_iff_welltypedpolicy_ok hwf (p := p)
+      simp [hcp, hwp, Except.isOk, Except.toBool] at h
+
+/--
+Full equivalence for `alwaysMatches?` and `alwaysMatchesOpt?`, including both the
+`.ok` and `.error` cases
+-/
+theorem alwaysMatchesOpt?_eqv_alwaysMatches? {p : Policy} {Γ : Validation.TypeEnv} :
+  Γ.WellFormed →
+  (do
+    let cp ← CompiledPolicy.compile p Γ
+    pure $ alwaysMatchesOpt? cp
+  ) =
+  (do
+    let wp ← wellTypedPolicy p Γ |>.mapError .validationError
+    pure $ alwaysMatches? wp (SymEnv.ofTypeEnv Γ)
+  )
+:= by
+  cases hcp : CompiledPolicy.compile p Γ
+  case ok cp =>
+    intro hwf
+    have ⟨wp, hwp, h⟩ := alwaysMatchesOpt?_eqv_alwaysMatches?_ok hwf hcp
+    simp [Except.mapError, hwp, h]
+  case error e =>
+    simp [Except.mapError]
+    cases hwp : wellTypedPolicy p Γ
+    case error e' =>
+      simp [CompiledPolicy.compile, Except.mapError, hwp] at hcp
+      simp [hcp]
+    case ok wp =>
+      intro hwf
+      have h := compile_ok_iff_welltypedpolicy_ok hwf (p := p)
+      simp [hcp, hwp, Except.isOk, Except.toBool] at h
+
+/--
+Full equivalence for `neverMatches?` and `neverMatchesOpt?`, including both the
+`.ok` and `.error` cases
+-/
+theorem neverMatchesOpt?_eqv_neverMatches? {p : Policy} {Γ : Validation.TypeEnv} :
+  Γ.WellFormed →
+  (do
+    let cp ← CompiledPolicy.compile p Γ
+    pure $ neverMatchesOpt? cp
+  ) =
+  (do
+    let wp ← wellTypedPolicy p Γ |>.mapError .validationError
+    pure $ neverMatches? wp (SymEnv.ofTypeEnv Γ)
+  )
+:= by
+  cases hcp : CompiledPolicy.compile p Γ
+  case ok cp =>
+    intro hwf
+    have ⟨wp, hwp, h⟩ := neverMatchesOpt?_eqv_neverMatches?_ok hwf hcp
     simp [Except.mapError, hwp, h]
   case error e =>
     simp [Except.mapError]
@@ -797,6 +933,52 @@ theorem checkNeverErrorsOpt_eqv_checkNeverErrors_ok {p : Policy} {cp : CompiledP
   subst asserts ; rfl
 
 /--
+This theorem covers the "happy path" -- showing that if optimized policy
+compilation succeeds, then `wellTypedPolicy` succeeds and `checkAlwaysMatches` and
+`checkAlwaysMatchesOpt` are equivalent.
+-/
+theorem checkAlwaysMatchesOpt_eqv_checkAlwaysMatches_ok {p : Policy} {cp : CompiledPolicy} {Γ : Validation.TypeEnv} :
+  Γ.WellFormed →
+  CompiledPolicy.compile p Γ = .ok cp →
+  ∃ wp,
+    wellTypedPolicy p Γ = .ok wp ∧
+    checkAlwaysMatchesOpt cp = checkAlwaysMatches wp (SymEnv.ofTypeEnv Γ)
+:= by
+  simp [checkAlwaysMatches, checkAlwaysMatchesOpt]
+  simp [checkUnsat]
+  intro hwf h₀
+  have ⟨wp, h₁⟩ := compile_ok_then_exists_wtp hwf h₀
+  exists wp ; apply And.intro h₁
+  have ⟨asserts, h₂⟩ := verifyAlwaysMatches_is_ok hwf h₁
+  simp [h₂]
+  simp [cp_compile_produces_the_right_env h₀]
+  simp [verifyAlwaysMatchesOpt_eqv_verifyAlwaysMatches_ok h₀ h₁] at h₂
+  subst asserts ; rfl
+
+/--
+This theorem covers the "happy path" -- showing that if optimized policy
+compilation succeeds, then `wellTypedPolicy` succeeds and `checkNeverMatches` and
+`checkNeverMatchesOpt` are equivalent.
+-/
+theorem checkNeverMatchesOpt_eqv_checkNeverMatches_ok {p : Policy} {cp : CompiledPolicy} {Γ : Validation.TypeEnv} :
+  Γ.WellFormed →
+  CompiledPolicy.compile p Γ = .ok cp →
+  ∃ wp,
+    wellTypedPolicy p Γ = .ok wp ∧
+    checkNeverMatchesOpt cp = checkNeverMatches wp (SymEnv.ofTypeEnv Γ)
+:= by
+  simp [checkNeverMatches, checkNeverMatchesOpt]
+  simp [checkUnsat]
+  intro hwf h₀
+  have ⟨wp, h₁⟩ := compile_ok_then_exists_wtp hwf h₀
+  exists wp ; apply And.intro h₁
+  have ⟨asserts, h₂⟩ := verifyNeverMatches_is_ok hwf h₁
+  simp [h₂]
+  simp [cp_compile_produces_the_right_env h₀]
+  simp [verifyNeverMatchesOpt_eqv_verifyNeverMatches_ok h₀ h₁] at h₂
+  subst asserts ; rfl
+
+/--
 Full equivalence for checkNeverErrors` and `checkNeverErrorsOpt`, including both the
 `.ok` and `.error` cases
 -/
@@ -815,6 +997,68 @@ theorem checkNeverErrorsOpt_eqv_checkNeverErrors {p : Policy} {Γ : Validation.T
   case ok cp =>
     intro hwf
     have ⟨wp, hwp, h⟩ := checkNeverErrorsOpt_eqv_checkNeverErrors_ok hwf hcp
+    simp [Except.mapError, hwp, h]
+  case error e =>
+    simp [Except.mapError]
+    cases hwp : wellTypedPolicy p Γ
+    case error e' =>
+      simp [CompiledPolicy.compile, Except.mapError, hwp] at hcp
+      simp [hcp]
+    case ok wp =>
+      intro hwf
+      have h := compile_ok_iff_welltypedpolicy_ok hwf (p := p)
+      simp [hcp, hwp, Except.isOk, Except.toBool] at h
+
+/--
+Full equivalence for `checkAlwaysMatches` and `checkAlwaysMatchesOpt`, including both the
+`.ok` and `.error` cases
+-/
+theorem checkAlwaysMatchesOpt_eqv_checkAlwaysMatches {p : Policy} {Γ : Validation.TypeEnv} :
+  Γ.WellFormed →
+  (do
+    let cp ← CompiledPolicy.compile p Γ
+    pure $ checkAlwaysMatchesOpt cp
+  ) =
+  (do
+    let wp ← wellTypedPolicy p Γ |>.mapError .validationError
+    pure $ checkAlwaysMatches wp (SymEnv.ofTypeEnv Γ)
+  )
+:= by
+  cases hcp : CompiledPolicy.compile p Γ
+  case ok cp =>
+    intro hwf
+    have ⟨wp, hwp, h⟩ := checkAlwaysMatchesOpt_eqv_checkAlwaysMatches_ok hwf hcp
+    simp [Except.mapError, hwp, h]
+  case error e =>
+    simp [Except.mapError]
+    cases hwp : wellTypedPolicy p Γ
+    case error e' =>
+      simp [CompiledPolicy.compile, Except.mapError, hwp] at hcp
+      simp [hcp]
+    case ok wp =>
+      intro hwf
+      have h := compile_ok_iff_welltypedpolicy_ok hwf (p := p)
+      simp [hcp, hwp, Except.isOk, Except.toBool] at h
+
+/--
+Full equivalence for `checkNeverMatches` and `checkNeverMatchesOpt`, including both the
+`.ok` and `.error` cases
+-/
+theorem checkNeverMatchesOpt_eqv_checkNeverMatches {p : Policy} {Γ : Validation.TypeEnv} :
+  Γ.WellFormed →
+  (do
+    let cp ← CompiledPolicy.compile p Γ
+    pure $ checkNeverMatchesOpt cp
+  ) =
+  (do
+    let wp ← wellTypedPolicy p Γ |>.mapError .validationError
+    pure $ checkNeverMatches wp (SymEnv.ofTypeEnv Γ)
+  )
+:= by
+  cases hcp : CompiledPolicy.compile p Γ
+  case ok cp =>
+    intro hwf
+    have ⟨wp, hwp, h⟩ := checkNeverMatchesOpt_eqv_checkNeverMatches_ok hwf hcp
     simp [Except.mapError, hwp, h]
   case error e =>
     simp [Except.mapError]
