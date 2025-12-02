@@ -135,7 +135,12 @@ theorem verifyAlwaysMatches_is_complete {p : Policy} {εnv : SymEnv} {asserts : 
     Env.EnumCompleteFor env εnv ∧
     evaluate p.toExpr env.request env.entities ≠ .ok true
 := by
-  sorry
+  intro h₁ h₂ h₃
+  unfold verifyAlwaysMatches at h₂
+  have ⟨env, h₄, h₅, h₆, h₇⟩ := verifyEvaluate_is_complete verifyAlwaysMatches_wbeq h₁ h₂ h₃
+  exists env
+  rw [beq_eq_false_iff_ne, ne_eq] at h₇
+  exact ⟨h₄, h₅, h₆, h₇⟩
 
 /--
 Alternate definition of completeness for alwaysMatches:
@@ -154,7 +159,16 @@ theorem verifyAlwaysMatches_is_complete' {p : Policy} {εnv : SymEnv} {asserts :
     Env.EnumCompleteFor env εnv ∧
     p.id ∉ (Spec.isAuthorized env.request env.entities [p]).determiningPolicies
 := by
-  sorry
+  intro h₁ h₂ h₃
+  have ⟨env, h₄, h₅, h₆, h₇⟩ := verifyAlwaysMatches_is_complete h₁ h₂ h₃
+  exists env
+  apply And.intro h₄
+  apply And.intro h₅
+  apply And.intro h₆
+  simp only [Spec.isAuthorized, Data.Set.isEmpty, Spec.satisfiedPolicies, satisfiedWithEffect,
+    satisfied, Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq, List.filterMap_cons,
+    List.filterMap_nil, Bool.not_eq_eq_eq_not, Bool.not_true, beq_eq_false_iff_ne, ne_eq]
+  cases p.effect <;> simp [Data.Set.make_nil, Data.Set.empty_no_elts, h₇]
 
 /--
 The `verifyEquivalent` analysis is sound: if the assertions
