@@ -76,7 +76,7 @@ If the asserts are satisfiable, then there is some input in `εnv` which `p`
 does match.
 -/
 def verifyNeverMatches (p : Policy) (εnv : SymEnv) : Result Asserts :=
-  -- always false _or_ error, i.e., just never equal to ⊙true
+  -- always evaluates to ⊙false _or_ error; i.e., never evaluates to ⊙true
   verifyEvaluate (λ t => not (eq t (⊙true))) p εnv
 
 /--
