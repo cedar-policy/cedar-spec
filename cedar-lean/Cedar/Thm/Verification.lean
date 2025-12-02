@@ -171,6 +171,79 @@ theorem verifyAlwaysMatches_is_complete' {p : Policy} {εnv : SymEnv} {asserts :
   cases p.effect <;> simp [Data.Set.make_nil, Data.Set.empty_no_elts, h₇]
 
 /--
+The `verifyNeverMatches` analysis is sound: if the assertions
+`verifyNeverMatches p εnv` are unsatisfiable for the policy `p` and the
+strongly well-formed symbolic environment `εnv`, then the evaluator will never
+return `.ok true` when applied to `p` and any strongly well-formed concrete
+environment `env ∈ᵢ εnv`.
+-/
+theorem verifyNeverMatches_is_sound {p : Policy} {εnv : SymEnv} {asserts : Asserts} :
+  εnv.StronglyWellFormedForPolicy p →
+  verifyNeverMatches p εnv = .ok asserts →
+  εnv ⊭ asserts →
+  ∀ env,
+    env ∈ᵢ εnv →
+    env.StronglyWellFormedForPolicy p →
+    evaluate p.toExpr env.request env.entities ≠ .ok true
+:= by
+  sorry
+
+/--
+Alternate definition of soundness for neverMatches:
+
+For a singleton policyset, if symcc says the policy neverMatches, then the spec
+authorizer should say it never appears in determiningPolicies.
+-/
+theorem verifyNeverMatches_is_sound' {p : Policy} {εnv : SymEnv} {asserts : Asserts} :
+  εnv.StronglyWellFormedForPolicy p →
+  verifyNeverMatches p εnv = .ok asserts →
+  εnv ⊭ asserts →
+  ∀ env,
+    env ∈ᵢ εnv →
+    env.StronglyWellFormedForPolicy p →
+    p.id ∉ (Spec.isAuthorized env.request env.entities [p]).determiningPolicies
+:= by
+  sorry
+
+/--
+The `verifyNeverMatches` analysis is complete: if the assertions
+`verifyNeverMatches p εnv` are satisfiable for the policy `p` and the
+strongly well-formed symbolic environment `εnv`, then there exists a
+strongly well-formed concrete environment `env ∈ᵢ εnv` such that the evaluator
+will return `.ok true` when applied to `p` and `env`.
+-/
+theorem verifyNeverMatches_is_complete {p : Policy} {εnv : SymEnv} {asserts : Asserts} :
+  εnv.StronglyWellFormedForPolicy p →
+  verifyNeverMatches p εnv = .ok asserts →
+  εnv ⊧ asserts →
+  ∃ env,
+    env ∈ᵢ εnv ∧
+    env.StronglyWellFormedForPolicy p ∧
+    Env.EnumCompleteFor env εnv ∧
+    evaluate p.toExpr env.request env.entities = .ok true
+:= by
+  sorry
+
+/--
+Alternate definition of completeness for neverMatches:
+
+For a singleton policyset, if symcc says the policy does not neverMatch, then
+there exists a concrete environment where the policy appears in
+determiningPolicies.
+-/
+theorem verifyNeverMatches_is_complete' {p : Policy} {εnv : SymEnv} {asserts : Asserts} :
+  εnv.StronglyWellFormedForPolicy p →
+  verifyNeverMatches p εnv = .ok asserts →
+  εnv ⊧ asserts →
+  ∃ env,
+    env ∈ᵢ εnv ∧
+    env.StronglyWellFormedForPolicy p ∧
+    Env.EnumCompleteFor env εnv ∧
+    p.id ∈ (Spec.isAuthorized env.request env.entities [p]).determiningPolicies
+:= by
+  sorry
+
+/--
 The `verifyEquivalent` analysis is sound: if the assertions
 `verifyEquivalent ps₁ ps₂ εnv` are unsatisfiable for the policies `ps₁` and `ps₂`
 and the strongly well-formed symbolic environment `εnv`, then the authorizer
