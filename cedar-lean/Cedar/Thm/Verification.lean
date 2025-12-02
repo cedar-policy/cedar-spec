@@ -119,6 +119,44 @@ theorem verifyAlwaysMatches_is_sound' {p : Policy} {εnv : SymEnv} {asserts : As
   all_goals simp [Data.Set.make_nil, Data.Set.make_singleton_nonempty, ← Data.Set.make_mem]
 
 /--
+The `verifyAlwaysMatches` analysis is complete: if the assertions
+`verifyAlwaysMatches p εnv` are satisfiable for the policy `p` and the
+strongly well-formed symbolic environment `εnv`, then there exists a
+strongly well-formed concrete environment `env ∈ᵢ εnv` such that the evaluator
+will not return `.ok true` when applied to `p` and `env`.
+-/
+theorem verifyAlwaysMatches_is_complete {p : Policy} {εnv : SymEnv} {asserts : Asserts} :
+  εnv.StronglyWellFormedForPolicy p →
+  verifyAlwaysMatches p εnv = .ok asserts →
+  εnv ⊧ asserts →
+  ∃ env,
+    env ∈ᵢ εnv ∧
+    env.StronglyWellFormedForPolicy p ∧
+    Env.EnumCompleteFor env εnv ∧
+    evaluate p.toExpr env.request env.entities ≠ .ok true
+:= by
+  sorry
+
+/--
+Alternate definition of completeness for alwaysMatches:
+
+For a singleton policyset, if symcc says the policy does not alwaysMatch, then
+there exists a concrete environment where the policy does not appear in
+determiningPolicies.
+-/
+theorem verifyAlwaysMatches_is_complete' {p : Policy} {εnv : SymEnv} {asserts : Asserts} :
+  εnv.StronglyWellFormedForPolicy p →
+  verifyAlwaysMatches p εnv = .ok asserts →
+  εnv ⊧ asserts →
+  ∃ env,
+    env ∈ᵢ εnv ∧
+    env.StronglyWellFormedForPolicy p ∧
+    Env.EnumCompleteFor env εnv ∧
+    p.id ∉ (Spec.isAuthorized env.request env.entities [p]).determiningPolicies
+:= by
+  sorry
+
+/--
 The `verifyEquivalent` analysis is sound: if the assertions
 `verifyEquivalent ps₁ ps₂ εnv` are unsatisfiable for the policies `ps₁` and `ps₂`
 and the strongly well-formed symbolic environment `εnv`, then the authorizer
