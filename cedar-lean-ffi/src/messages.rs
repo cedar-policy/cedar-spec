@@ -477,7 +477,7 @@ impl proto::TermPrim {
             datatypes::TermPrim::Bitvec(bv) => {
                 proto::term_prim::Prim::Bitvec(proto::Bitvec::new(bv))
             }
-            datatypes::TermPrim::String(s) => proto::term_prim::Prim::String(s.clone()),
+            datatypes::TermPrim::String(s) => proto::term_prim::Prim::String(s.to_string()),
             datatypes::TermPrim::Entity(euid) => {
                 proto::term_prim::Prim::Entity(cedar_policy::proto::models::EntityUid::from(euid))
             }
