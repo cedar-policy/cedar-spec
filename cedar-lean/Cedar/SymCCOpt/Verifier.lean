@@ -37,7 +37,15 @@ as a `Term` of type .option .bool, satisfies `φ` on all inputs drawn from the
 See also `verifyNeverErrorsOpt`.
 -/
 def verifyEvaluateOpt (φ : Term → Term) (p : CompiledPolicy) : Asserts :=
-  (enforceCompiledPolicy p).elts ++ [not (φ p.term)]
+  -- As an optimization here in `SymCCOpt`:
+  -- Our callers only pass relatively simple functions as `φ`.
+  -- We expect that `enforceCompiledPolicy` is much more expensive to compute than `φ`.
+  -- So, we first compute the assert involving `φ`. If that is constant-false, we
+  -- can just return constant-false and not compute `enforceCompiledPolicy`; the
+  -- resulting asserts are equivalent.
+  match not (φ p.term) with
+  | .prim (.bool false) => [false]
+  | assert => (enforceCompiledPolicy p).elts ++ [assert]
 
 /--
 Returns asserts that are unsatisfiable iff the authorization decisions produced
@@ -50,7 +58,15 @@ See also `verifyAlwaysAllowsOpt`, `verifyAlwaysDeniesOpt`, `verifyImpliesOpt`,
 -/
 def verifyIsAuthorizedOpt (φ : Term → Term → Term) (ps₁ ps₂ : CompiledPolicies) : Asserts :=
   assert! ps₁.εnv = ps₂.εnv
-  (enforcePairCompiledPolicies ps₁ ps₂).elts ++ [not (φ ps₁.term ps₂.term)]
+  -- As an optimization here in `SymCCOpt`:
+  -- Our callers only pass relatively simple functions as `φ`.
+  -- We expect that `enforcePairCompiledPolicies` is much more expensive to compute than `φ`.
+  -- So, we first compute the assert involving `φ`. If that is constant-false,
+  -- we can just return constant-false and not compute
+  -- `enforcePairCompiledPolicies`; the resulting asserts are equivalent.
+  match not (φ ps₁.term ps₂.term) with
+  | .prim (.bool false) => [false]
+  | assert => (enforcePairCompiledPolicies ps₁ ps₂).elts ++ [assert]
 
 /--
 Returns asserts that are unsatisfiable iff `p` does not error on any input in
