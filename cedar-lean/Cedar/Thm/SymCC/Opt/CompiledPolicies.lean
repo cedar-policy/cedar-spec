@@ -30,6 +30,36 @@ namespace Cedar.Thm
 open Cedar.Spec Cedar.SymCC
 
 /--
+Lemma about the behavior of `wellTypedPolicy` vs `wellTypedPolicies`
+-/
+private theorem wellTypedPolicy_wellTypedPolicies {p : Policy} {Γ : Validation.TypeEnv} :
+  wellTypedPolicies [p] Γ = (wellTypedPolicy p Γ).map λ x => [x]
+:= by
+  simp [wellTypedPolicies, Except.map, pure, Except.pure]
+  cases wellTypedPolicy p Γ <;> simp
+
+/--
+Toplevel theorem about the correctness of `CompiledPolicy.intoCompiledPolicies`
+
+Compiling to a `CompiledPolicy` and then using `intoCompiledPolicies` should give
+exactly the same result as compiling with `CompiledPolicies.compile` directly
+-/
+theorem intoCompiledPolicies_correctness {p : Policy} {Γ : Validation.TypeEnv} :
+  (do
+    let cp ← CompiledPolicy.compile p Γ
+    pure cp.intoCompiledPolicies
+  ) = CompiledPolicies.compile [p] Γ
+:= by
+  simp [CompiledPolicy.compile, CompiledPolicies.compile, CompiledPolicy.intoCompiledPolicies, wellTypedPolicy_wellTypedPolicies, Except.mapError, Except.map]
+  cases wellTypedPolicy p Γ <;> simp
+  case ok p' =>
+  simp [SymCC.isAuthorized, SymCC.satisfiedPolicies, SymCC.compileWithEffect]
+  cases p'.effect <;> simp [Factory.anyTrue, Factory.or, Factory.not, Factory.and]
+  all_goals {
+    cases compile p'.toExpr (SymEnv.ofEnv Γ) <;> simp [footprints_singleton]
+  }
+
+/--
 The `.policy` of a `CompiledPolicy` is exactly the policy produced by `wellTypedPolicy`
 -/
 theorem compiled_policy_eq_wtp {p wp : Policy} {cp : CompiledPolicy} {Γ : Validation.TypeEnv} :
