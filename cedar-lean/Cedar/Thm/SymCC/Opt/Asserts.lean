@@ -15,6 +15,7 @@
 -/
 
 import Cedar.SymCC
+import Cedar.Thm.Data.List.Basic
 
 namespace Cedar.Thm
 
