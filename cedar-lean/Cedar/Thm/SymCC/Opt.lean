@@ -20,6 +20,7 @@ import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.Set
 import Cedar.Thm.SymCC.Authorizer
 import Cedar.Thm.SymCC.Opt.AllowDeny
+import Cedar.Thm.SymCC.Opt.Asserts
 import Cedar.Thm.SymCC.Opt.CompiledPolicies
 import Cedar.Thm.WellTypedVerification
 
@@ -173,14 +174,18 @@ equivalent.
 theorem verifyEvaluateOpt_eqv_verifyEvaluate_ok {p wp : Policy} {cp : CompiledPolicy} {Γ : Validation.TypeEnv} {φ : Term → Term} :
   CompiledPolicy.compile p Γ = .ok cp →
   wellTypedPolicy p Γ = .ok wp →
-  verifyEvaluate φ wp (SymEnv.ofTypeEnv Γ) = .ok (verifyEvaluateOpt φ cp)
+  verifyEvaluate φ wp (SymEnv.ofTypeEnv Γ) ~ .ok (verifyEvaluateOpt φ cp)
 := by
-  simp [verifyEvaluate, verifyEvaluateOpt]
-  simp [do_eq_ok]
+  simp [verifyEvaluate, verifyEvaluateOpt, ResultAssertsEquiv]
   intro h₀ h₁
   simp [enforceCompiledPolicy_eqv_enforce_ok h₀ h₁]
-  exists cp.term ; simp
-  exact (cp_compile_produces_the_right_term h₀ h₁).symm
+  cases h₂ : compile wp.toExpr (SymEnv.ofTypeEnv Γ) <;> simp
+  case error e => simp_all [CompiledPolicy.compile, Except.mapError]
+  case ok t =>
+    have h₃ := (cp_compile_produces_the_right_term h₀ h₁).symm ; simp [h₂] at h₃ ; subst t
+    split <;> rename_i hnot
+    · apply Asserts.Equiv.constantFalse <;> simp [hnot]
+    · apply Asserts.Equiv.rfl
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
@@ -192,17 +197,25 @@ theorem verifyIsAuthorizedOpt_eqv_verifyIsAuthorized_ok {ps₁ ps₂ wps₁ wps�
   CompiledPolicies.compile ps₂ Γ = .ok cps₂ →
   wellTypedPolicies ps₁ Γ = .ok wps₁ →
   wellTypedPolicies ps₂ Γ = .ok wps₂ →
-  verifyIsAuthorized φ wps₁ wps₂ (SymEnv.ofTypeEnv Γ) = .ok (verifyIsAuthorizedOpt φ cps₁ cps₂)
+  verifyIsAuthorized φ wps₁ wps₂ (SymEnv.ofTypeEnv Γ) ~ .ok (verifyIsAuthorizedOpt φ cps₁ cps₂)
 := by
-  simp [verifyIsAuthorized, verifyIsAuthorizedOpt]
-  simp [do_eq_ok]
+  simp [verifyIsAuthorized, verifyIsAuthorizedOpt, ResultAssertsEquiv]
   intro hcps₁ hcps₂ hwps₁ hwps₂
   simp [enforcePairCompiledPolicies_eqv_enforce_ok hcps₁ hcps₂ hwps₁ hwps₂]
   have henvs : cps₁.εnv = cps₂.εnv := by
     simp [cps_compile_produces_the_right_env hcps₁, cps_compile_produces_the_right_env hcps₂]
   simp [henvs]
-  exists cps₁.term ; simp [cps_compile_produces_the_right_term hcps₁ hwps₁]
-  exists cps₂.term ; simp [cps_compile_produces_the_right_term hcps₂ hwps₂]
+  cases h₁ : SymCC.isAuthorized wps₁ (SymEnv.ofTypeEnv Γ) <;> simp
+  case error e => simp_all [CompiledPolicies.compile, SymCC.isAuthorized, SymCC.satisfiedPolicies, SymCC.compileWithEffect, Except.mapError]
+  case ok t =>
+    have h₃ := (cps_compile_produces_the_right_term hcps₁ hwps₁).symm ; simp [h₁] at h₃ ; subst t
+    cases h₂ : SymCC.isAuthorized wps₂ (SymEnv.ofTypeEnv Γ) <;> simp
+    case error e => simp_all [CompiledPolicies.compile, SymCC.isAuthorized, SymCC.satisfiedPolicies, SymCC.compileWithEffect, Except.mapError]
+    case ok t =>
+      have h₃ := (cps_compile_produces_the_right_term hcps₂ hwps₂).symm ; simp [h₂] at h₃ ; subst t
+      split <;> rename_i hnot
+      · apply Asserts.Equiv.constantFalse <;> simp [hnot]
+      · apply Asserts.Equiv.rfl
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
@@ -212,7 +225,7 @@ equivalent.
 theorem verifyNeverErrorsOpt_eqv_verifyNeverErrors_ok {p wp : Policy} {cp : CompiledPolicy} {Γ : Validation.TypeEnv} :
   CompiledPolicy.compile p Γ = .ok cp →
   wellTypedPolicy p Γ = .ok wp →
-  verifyNeverErrors wp (SymEnv.ofTypeEnv Γ) = .ok (verifyNeverErrorsOpt cp)
+  verifyNeverErrors wp (SymEnv.ofTypeEnv Γ) ~ .ok (verifyNeverErrorsOpt cp)
 := by
   simp [verifyNeverErrors, verifyNeverErrorsOpt]
   exact verifyEvaluateOpt_eqv_verifyEvaluate_ok
@@ -225,7 +238,7 @@ equivalent.
 theorem verifyAlwaysMatchesOpt_eqv_verifyAlwaysMatches_ok {p wp : Policy} {cp : CompiledPolicy} {Γ : Validation.TypeEnv} :
   CompiledPolicy.compile p Γ = .ok cp →
   wellTypedPolicy p Γ = .ok wp →
-  verifyAlwaysMatches wp (SymEnv.ofTypeEnv Γ) = .ok (verifyAlwaysMatchesOpt cp)
+  verifyAlwaysMatches wp (SymEnv.ofTypeEnv Γ) ~ .ok (verifyAlwaysMatchesOpt cp)
 := by
   simp [verifyAlwaysMatches, verifyAlwaysMatchesOpt]
   exact verifyEvaluateOpt_eqv_verifyEvaluate_ok
@@ -238,7 +251,7 @@ equivalent.
 theorem verifyNeverMatchesOpt_eqv_verifyNeverMatches_ok {p wp : Policy} {cp : CompiledPolicy} {Γ : Validation.TypeEnv} :
   CompiledPolicy.compile p Γ = .ok cp →
   wellTypedPolicy p Γ = .ok wp →
-  verifyNeverMatches wp (SymEnv.ofTypeEnv Γ) = .ok (verifyNeverMatchesOpt cp)
+  verifyNeverMatches wp (SymEnv.ofTypeEnv Γ) ~ .ok (verifyNeverMatchesOpt cp)
 := by
   simp [verifyNeverMatches, verifyNeverMatchesOpt]
   exact verifyEvaluateOpt_eqv_verifyEvaluate_ok
@@ -253,7 +266,7 @@ theorem verifyImpliesOpt_eqv_verifyImplies_ok {ps₁ ps₂ wps₁ wps₂ : Polic
   CompiledPolicies.compile ps₂ Γ = .ok cps₂ →
   wellTypedPolicies ps₁ Γ = .ok wps₁ →
   wellTypedPolicies ps₂ Γ = .ok wps₂ →
-  verifyImplies wps₁ wps₂ (SymEnv.ofTypeEnv Γ) = .ok (verifyImpliesOpt cps₁ cps₂)
+  verifyImplies wps₁ wps₂ (SymEnv.ofTypeEnv Γ) ~ .ok (verifyImpliesOpt cps₁ cps₂)
 := by
   simp [verifyImplies, verifyImpliesOpt]
   exact verifyIsAuthorizedOpt_eqv_verifyIsAuthorized_ok
@@ -266,7 +279,7 @@ equivalent.
 theorem verifyAlwaysAllowsOpt_eqv_verifyAlwaysAllows_ok {ps wps : Policies} {cps : CompiledPolicies} {Γ : Validation.TypeEnv} :
   CompiledPolicies.compile ps Γ = .ok cps →
   wellTypedPolicies ps Γ = .ok wps →
-  verifyAlwaysAllows wps (SymEnv.ofTypeEnv Γ) = .ok (verifyAlwaysAllowsOpt cps)
+  verifyAlwaysAllows wps (SymEnv.ofTypeEnv Γ) ~ .ok (verifyAlwaysAllowsOpt cps)
 := by
   simp [verifyAlwaysAllows, verifyAlwaysAllowsOpt]
   intro hcps hwps
@@ -284,7 +297,7 @@ equivalent.
 theorem verifyAlwaysDeniesOpt_eqv_verifyAlwaysDenies_ok {ps wps : Policies} {cps : CompiledPolicies} {Γ : Validation.TypeEnv} :
   CompiledPolicies.compile ps Γ = .ok cps →
   wellTypedPolicies ps Γ = .ok wps →
-  verifyAlwaysDenies wps (SymEnv.ofTypeEnv Γ) = .ok (verifyAlwaysDeniesOpt cps)
+  verifyAlwaysDenies wps (SymEnv.ofTypeEnv Γ) ~ .ok (verifyAlwaysDeniesOpt cps)
 := by
   simp [verifyAlwaysDenies, verifyAlwaysDeniesOpt]
   intro hcps hwps
@@ -305,7 +318,7 @@ theorem verifyEquivalentOpt_eqv_verifyEquivalent_ok {ps₁ ps₂ wps₁ wps₂ :
   CompiledPolicies.compile ps₂ Γ = .ok cps₂ →
   wellTypedPolicies ps₁ Γ = .ok wps₁ →
   wellTypedPolicies ps₂ Γ = .ok wps₂ →
-  verifyEquivalent wps₁ wps₂ (SymEnv.ofTypeEnv Γ) = .ok (verifyEquivalentOpt cps₁ cps₂)
+  verifyEquivalent wps₁ wps₂ (SymEnv.ofTypeEnv Γ) ~ .ok (verifyEquivalentOpt cps₁ cps₂)
 := by
   simp [verifyEquivalent, verifyEquivalentOpt]
   exact verifyIsAuthorizedOpt_eqv_verifyIsAuthorized_ok
@@ -320,7 +333,7 @@ theorem verifyDisjointOpt_eqv_verifyDisjoint_ok {ps₁ ps₂ wps₁ wps₂ : Pol
   CompiledPolicies.compile ps₂ Γ = .ok cps₂ →
   wellTypedPolicies ps₁ Γ = .ok wps₁ →
   wellTypedPolicies ps₂ Γ = .ok wps₂ →
-  verifyDisjoint wps₁ wps₂ (SymEnv.ofTypeEnv Γ) = .ok (verifyDisjointOpt cps₁ cps₂)
+  verifyDisjoint wps₁ wps₂ (SymEnv.ofTypeEnv Γ) ~ .ok (verifyDisjointOpt cps₁ cps₂)
 := by
   simp [verifyDisjoint, verifyDisjointOpt]
   exact verifyIsAuthorizedOpt_eqv_verifyIsAuthorized_ok
@@ -464,8 +477,9 @@ theorem neverErrorsOpt?_eqv_neverErrors?_ok {p : Policy} {cp : CompiledPolicy} {
   simp [h₂]
   simp [cp_compile_produces_the_right_env h₀]
   simp [compiled_policy_eq_wtp h₀ h₁]
-  simp [verifyNeverErrorsOpt_eqv_verifyNeverErrors_ok h₀ h₁] at h₂
-  subst asserts ; rfl
+  have := verifyNeverErrorsOpt_eqv_verifyNeverErrors_ok h₀ h₁
+  simp [h₂, ResultAssertsEquiv] at this
+  exact Asserts.Equiv.satAsserts? [wp] _ (Asserts.Equiv.symm this)
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
@@ -488,8 +502,9 @@ theorem alwaysMatchesOpt?_eqv_alwaysMatches?_ok {p : Policy} {cp : CompiledPolic
   simp [h₂]
   simp [cp_compile_produces_the_right_env h₀]
   simp [compiled_policy_eq_wtp h₀ h₁]
-  simp [verifyAlwaysMatchesOpt_eqv_verifyAlwaysMatches_ok h₀ h₁] at h₂
-  subst asserts ; rfl
+  have := verifyAlwaysMatchesOpt_eqv_verifyAlwaysMatches_ok h₀ h₁
+  simp [h₂, ResultAssertsEquiv] at this
+  exact Asserts.Equiv.satAsserts? [wp] _ (Asserts.Equiv.symm this)
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
@@ -512,8 +527,9 @@ theorem neverMatchesOpt?_eqv_neverMatches?_ok {p : Policy} {cp : CompiledPolicy}
   simp [h₂]
   simp [cp_compile_produces_the_right_env h₀]
   simp [compiled_policy_eq_wtp h₀ h₁]
-  simp [verifyNeverMatchesOpt_eqv_verifyNeverMatches_ok h₀ h₁] at h₂
-  subst asserts ; rfl
+  have := verifyNeverMatchesOpt_eqv_verifyNeverMatches_ok h₀ h₁
+  simp [h₂, ResultAssertsEquiv] at this
+  exact Asserts.Equiv.satAsserts? [wp] _ (Asserts.Equiv.symm this)
 
 /--
 Full equivalence for `neverErrors?` and `neverErrorsOpt?`, including both the
@@ -633,8 +649,9 @@ theorem impliesOpt?_eqv_implies?_ok {ps₁ ps₂ : Policies} {cps₁ cps₂ : Co
   simp [h₁]
   simp [cps_compile_produces_the_right_env hcps₁]
   simp [compiled_policies_eq_wtps hcps₁ hwps₁, compiled_policies_eq_wtps hcps₂ hwps₂]
-  simp [verifyImpliesOpt_eqv_verifyImplies_ok hcps₁ hcps₂ hwps₁ hwps₂] at h₁
-  subst asserts ; rfl
+  have := verifyImpliesOpt_eqv_verifyImplies_ok hcps₁ hcps₂ hwps₁ hwps₂
+  simp [h₁, ResultAssertsEquiv] at this
+  exact Asserts.Equiv.satAsserts? _ _ (Asserts.Equiv.symm this)
 
 /--
 Full equivalence for `implies?` and `impliesOpt?`, including both the
@@ -694,8 +711,9 @@ theorem alwaysAllowsOpt?_eqv_alwaysAllows?_ok {ps : Policies} {cps : CompiledPol
   simp [h₁]
   simp [cps_compile_produces_the_right_env hcps]
   simp [compiled_policies_eq_wtps hcps hwps]
-  simp [verifyAlwaysAllowsOpt_eqv_verifyAlwaysAllows_ok hcps hwps] at h₁
-  subst asserts ; rfl
+  have := verifyAlwaysAllowsOpt_eqv_verifyAlwaysAllows_ok hcps hwps
+  simp [h₁, ResultAssertsEquiv] at this
+  exact Asserts.Equiv.satAsserts? _ _ (Asserts.Equiv.symm this)
 
 /--
 Full equivalence for `alwaysAllows?` and `alwaysAllowsOpt?`, including both the
@@ -747,8 +765,9 @@ theorem alwaysDeniesOpt?_eqv_alwaysDenies?_ok {ps : Policies} {cps : CompiledPol
   simp [h₁]
   simp [cps_compile_produces_the_right_env hcps]
   simp [compiled_policies_eq_wtps hcps hwps]
-  simp [verifyAlwaysDeniesOpt_eqv_verifyAlwaysDenies_ok hcps hwps] at h₁
-  subst asserts ; rfl
+  have := verifyAlwaysDeniesOpt_eqv_verifyAlwaysDenies_ok hcps hwps
+  simp [h₁, ResultAssertsEquiv] at this
+  exact Asserts.Equiv.satAsserts? _ _ (Asserts.Equiv.symm this)
 
 /--
 Full equivalence for `alwaysDenies?` and `alwaysDeniesOpt?`, including both the
@@ -804,8 +823,9 @@ theorem equivalentOpt?_eqv_equivalent?_ok {ps₁ ps₂ : Policies} {cps₁ cps�
   simp [h₁]
   simp [cps_compile_produces_the_right_env hcps₁]
   simp [compiled_policies_eq_wtps hcps₁ hwps₁, compiled_policies_eq_wtps hcps₂ hwps₂]
-  simp [verifyEquivalentOpt_eqv_verifyEquivalent_ok hcps₁ hcps₂ hwps₁ hwps₂] at h₁
-  subst asserts ; rfl
+  have := verifyEquivalentOpt_eqv_verifyEquivalent_ok hcps₁ hcps₂ hwps₁ hwps₂
+  simp [h₁, ResultAssertsEquiv] at this
+  exact Asserts.Equiv.satAsserts? _ _ (Asserts.Equiv.symm this)
 
 /--
 Full equivalence for `equivalent?` and `equivalentOpt?`, including both the
@@ -869,8 +889,9 @@ theorem disjointOpt?_eqv_disjoint?_ok {ps₁ ps₂ : Policies} {cps₁ cps₂ : 
   simp [h₁]
   simp [cps_compile_produces_the_right_env hcps₁]
   simp [compiled_policies_eq_wtps hcps₁ hwps₁, compiled_policies_eq_wtps hcps₂ hwps₂]
-  simp [verifyDisjointOpt_eqv_verifyDisjoint_ok hcps₁ hcps₂ hwps₁ hwps₂] at h₁
-  subst asserts ; rfl
+  have := verifyDisjointOpt_eqv_verifyDisjoint_ok hcps₁ hcps₂ hwps₁ hwps₂
+  simp [h₁, ResultAssertsEquiv] at this
+  exact Asserts.Equiv.satAsserts? _ _ (Asserts.Equiv.symm this)
 
 /--
 Full equivalence for `disjoint?` and `disjointOpt?`, including both the
@@ -929,8 +950,9 @@ theorem checkNeverErrorsOpt_eqv_checkNeverErrors_ok {p : Policy} {cp : CompiledP
   have ⟨asserts, h₂⟩ := verifyNeverErrors_is_ok hwf h₁
   simp [h₂]
   simp [cp_compile_produces_the_right_env h₀]
-  simp [verifyNeverErrorsOpt_eqv_verifyNeverErrors_ok h₀ h₁] at h₂
-  subst asserts ; rfl
+  have := verifyNeverErrorsOpt_eqv_verifyNeverErrors_ok h₀ h₁
+  simp [h₂, ResultAssertsEquiv] at this
+  exact Asserts.Equiv.checkUnsatAsserts (Asserts.Equiv.symm this)
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
@@ -952,8 +974,9 @@ theorem checkAlwaysMatchesOpt_eqv_checkAlwaysMatches_ok {p : Policy} {cp : Compi
   have ⟨asserts, h₂⟩ := verifyAlwaysMatches_is_ok hwf h₁
   simp [h₂]
   simp [cp_compile_produces_the_right_env h₀]
-  simp [verifyAlwaysMatchesOpt_eqv_verifyAlwaysMatches_ok h₀ h₁] at h₂
-  subst asserts ; rfl
+  have := verifyAlwaysMatchesOpt_eqv_verifyAlwaysMatches_ok h₀ h₁
+  simp [h₂, ResultAssertsEquiv] at this
+  exact Asserts.Equiv.checkUnsatAsserts (Asserts.Equiv.symm this)
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
@@ -975,8 +998,9 @@ theorem checkNeverMatchesOpt_eqv_checkNeverMatches_ok {p : Policy} {cp : Compile
   have ⟨asserts, h₂⟩ := verifyNeverMatches_is_ok hwf h₁
   simp [h₂]
   simp [cp_compile_produces_the_right_env h₀]
-  simp [verifyNeverMatchesOpt_eqv_verifyNeverMatches_ok h₀ h₁] at h₂
-  subst asserts ; rfl
+  have := verifyNeverMatchesOpt_eqv_verifyNeverMatches_ok h₀ h₁
+  simp [h₂, ResultAssertsEquiv] at this
+  exact Asserts.Equiv.checkUnsatAsserts (Asserts.Equiv.symm this)
 
 /--
 Full equivalence for checkNeverErrors` and `checkNeverErrorsOpt`, including both the
@@ -1095,8 +1119,9 @@ theorem checkImpliesOpt_eqv_checkImplies_ok {ps₁ ps₂ : Policies} {cps₁ cps
   have ⟨asserts, h₁⟩ := verifyImplies_is_ok hwf hwps₁ hwps₂
   simp [h₁]
   simp [cps_compile_produces_the_right_env hcps₁]
-  simp [verifyImpliesOpt_eqv_verifyImplies_ok hcps₁ hcps₂ hwps₁ hwps₂] at h₁
-  subst asserts ; rfl
+  have := verifyImpliesOpt_eqv_verifyImplies_ok hcps₁ hcps₂ hwps₁ hwps₂
+  simp [h₁, ResultAssertsEquiv] at this
+  exact Asserts.Equiv.checkUnsatAsserts (Asserts.Equiv.symm this)
 
 /--
 Full equivalence for `checkImplies` and `checkImpliesOpt`, including both the
@@ -1155,8 +1180,9 @@ theorem checkAlwaysAllowsOpt_eqv_checkAlwaysAllows_ok {ps : Policies} {cps : Com
   have ⟨asserts, h₁⟩ := verifyAlwaysAllows_is_ok hwf hwps
   simp [h₁]
   simp [cps_compile_produces_the_right_env hcps]
-  simp [verifyAlwaysAllowsOpt_eqv_verifyAlwaysAllows_ok hcps hwps] at h₁
-  subst asserts ; rfl
+  have := verifyAlwaysAllowsOpt_eqv_verifyAlwaysAllows_ok hcps hwps
+  simp [h₁, ResultAssertsEquiv] at this
+  exact Asserts.Equiv.checkUnsatAsserts (Asserts.Equiv.symm this)
 
 /--
 Full equivalence for `checkAlwaysAllows` and `checkAlwaysAllowsOpt`, including both the
@@ -1207,8 +1233,9 @@ theorem checkAlwaysDeniesOpt_eqv_checkAlwaysDenies_ok {ps : Policies} {cps : Com
   have ⟨asserts, h₁⟩ := verifyAlwaysDenies_is_ok hwf hwps
   simp [h₁]
   simp [cps_compile_produces_the_right_env hcps]
-  simp [verifyAlwaysDeniesOpt_eqv_verifyAlwaysDenies_ok hcps hwps] at h₁
-  subst asserts ; rfl
+  have := verifyAlwaysDeniesOpt_eqv_verifyAlwaysDenies_ok hcps hwps
+  simp [h₁, ResultAssertsEquiv] at this
+  exact Asserts.Equiv.checkUnsatAsserts (Asserts.Equiv.symm this)
 
 /--
 Full equivalence for `checkAlwaysDenies` and `checkAlwaysDeniesOpt`, including both the
@@ -1263,8 +1290,9 @@ theorem checkEquivalentOpt_eqv_checkEquivalent_ok {ps₁ ps₂ : Policies} {cps�
   have ⟨asserts, h₁⟩ := verifyEquivalent_is_ok hwf hwps₁ hwps₂
   simp [h₁]
   simp [cps_compile_produces_the_right_env hcps₁]
-  simp [verifyEquivalentOpt_eqv_verifyEquivalent_ok hcps₁ hcps₂ hwps₁ hwps₂] at h₁
-  subst asserts ; rfl
+  have := verifyEquivalentOpt_eqv_verifyEquivalent_ok hcps₁ hcps₂ hwps₁ hwps₂
+  simp [h₁, ResultAssertsEquiv] at this
+  exact Asserts.Equiv.checkUnsatAsserts (Asserts.Equiv.symm this)
 
 /--
 Full equivalence for `checkEquivalent` and `checkEquivalentOpt`, including both the
@@ -1327,8 +1355,9 @@ theorem checkDisjointOpt_eqv_checkDisjoint_ok {ps₁ ps₂ : Policies} {cps₁ c
   have ⟨asserts, h₁⟩ := verifyDisjoint_is_ok hwf hwps₁ hwps₂
   simp [h₁]
   simp [cps_compile_produces_the_right_env hcps₁]
-  simp [verifyDisjointOpt_eqv_verifyDisjoint_ok hcps₁ hcps₂ hwps₁ hwps₂] at h₁
-  subst asserts ; rfl
+  have := verifyDisjointOpt_eqv_verifyDisjoint_ok hcps₁ hcps₂ hwps₁ hwps₂
+  simp [h₁, ResultAssertsEquiv] at this
+  exact Asserts.Equiv.checkUnsatAsserts (Asserts.Equiv.symm this)
 
 /--
 Full equivalence for `checkDisjoint` and `checkDisjointOpt`, including both the
