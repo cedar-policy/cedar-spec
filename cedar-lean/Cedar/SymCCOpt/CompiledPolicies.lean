@@ -122,3 +122,25 @@ def CompiledPolicies.denyAll (εnv : SymEnv) : CompiledPolicies :=
     footprint := Set.empty
     acyclicity := Set.empty
   }
+
+/--
+Convert a `CompiledPolicy` to a `CompiledPolicies` representing a singleton
+policyset with just that policy.
+
+This function is intended to be much more efficient than re-compiling with
+`CompiledPolicies.compile`.
+-/
+def CompiledPolicy.intoCompiledPolicies (cp : CompiledPolicy) : CompiledPolicies :=
+  {
+    term := match cp.policy.effect with
+      | .forbid =>
+          -- a singleton pset with only a forbid policy, always denies everything
+          false
+      | .permit =>
+          -- a singleton pset with only a permit policy, allows iff that policy evaluates to ⊙true
+          Factory.eq cp.term (Factory.someOf true)
+    εnv := cp.εnv
+    policies := [cp.policy]
+    footprint := cp.footprint -- the footprint of a singleton policyset is the same as the footprint of the policy
+    acyclicity := cp.acyclicity -- the acyclicity constraints for a singleton policyset are the same as the acyclicity constraints for the policy
+  }
