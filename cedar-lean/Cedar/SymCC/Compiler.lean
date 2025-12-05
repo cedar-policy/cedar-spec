@@ -69,7 +69,7 @@ ty₂ can never be equal.  For now, we make this determination only for primitiv
 types, to match validator behavior.  We can make this determination more often
 if needed. In general, we cannot decide if two terms of different set types are
 never equal because they could both evaluate to the empty set and would be
-considered equal under Cedar's dynamic semantics. Returns a type error if we
+considered equal under Cedar's dynamic semantics. Returns a type error if the
 types are unequal and not known to be always unequal.
 -/
 def reducibleEq (ty₁ ty₂ : TermType) : Result Bool :=

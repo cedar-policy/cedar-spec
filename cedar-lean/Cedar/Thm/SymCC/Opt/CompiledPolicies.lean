@@ -18,7 +18,8 @@ import Cedar.SymCC
 import Cedar.SymCCOpt
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.Set
-import Cedar.Thm.SymCC.Authorizer
+import Cedar.Thm.SymCC.Opt.Authorizer
+import Cedar.Thm.SymCC.Opt.Compiler
 import Cedar.Thm.WellTypedVerification
 
 /-!
@@ -53,10 +54,14 @@ theorem intoCompiledPolicies_correctness {p : Policy} {Γ : Validation.TypeEnv} 
   simp [CompiledPolicy.compile, CompiledPolicies.compile, CompiledPolicy.intoCompiledPolicies, wellTypedPolicy_wellTypedPolicies, Except.mapError, Except.map]
   cases wellTypedPolicy p Γ <;> simp
   case ok p' =>
-  simp [SymCC.isAuthorized, SymCC.satisfiedPolicies, SymCC.compileWithEffect]
+  simp [Opt.isAuthorized, Opt.satisfiedPolicies, Opt.compileWithEffect]
   cases p'.effect <;> simp [Factory.anyTrue, Factory.or, Factory.not, Factory.and]
   all_goals {
-    cases compile p'.toExpr (SymEnv.ofEnv Γ) <;> simp [footprints_singleton]
+    cases h : Opt.compile p'.toExpr (SymEnv.ofEnv Γ) <;> simp [Data.Set.mapUnion_empty]
+    have hwf := Opt.compile_footprint_wf h
+    simp [EmptyCollection.emptyCollection, Data.Set.union_empty_right Data.Set.mapUnion_wf, Data.Set.union_empty_left Data.Set.mapUnion_wf]
+    rw [Data.Set.mapUnion_cons (by simp [hwf])]
+    simp [Data.Set.mapUnion_empty, EmptyCollection.emptyCollection, Data.Set.union_empty_right hwf]
   }
 
 /--
@@ -105,11 +110,13 @@ theorem cp_compile_produces_the_right_term {p wp : Policy} {cp : CompiledPolicy}
   cp.term = SymCC.compile wp.toExpr (SymEnv.ofTypeEnv Γ)
 := by
   simp [CompiledPolicy.compile, do_eq_ok, Except.mapError]
-  intro p' h₀ t h₁ h₂ h₃ ; subst cp ; simp only
+  intro p' h₀ res h₁ h₂ h₃ ; subst cp ; simp only
+  rw [Opt.compile.correctness] at h₁
   split at h₀ <;> simp at h₀
   subst p' ; rename_i wp' h₂
   simp [h₂] at h₃ ; subst wp'
-  split at h₁ <;> simp_all
+  cases hcomp : SymCC.compile wp.toExpr (SymEnv.ofTypeEnv Γ) <;> simp [hcomp] at h₁ ⊢
+  case ok t => subst res ; simp
 
 theorem cps_compile_produces_the_right_term {ps wps : Policies} {cps : CompiledPolicies} {Γ : Validation.TypeEnv} :
   CompiledPolicies.compile ps Γ = .ok cps →
@@ -117,11 +124,14 @@ theorem cps_compile_produces_the_right_term {ps wps : Policies} {cps : CompiledP
   cps.term = SymCC.isAuthorized wps (SymEnv.ofTypeEnv Γ)
 := by
   simp [CompiledPolicies.compile, do_eq_ok, Except.mapError]
-  intro ps' h₀ t h₁ h₂ h₃ ; subst cps ; simp only
+  intro ps' h₀ res h₁ h₂ h₃ ; subst cps ; simp only
+  rw [Opt.isAuthorized.correctness] at h₁
   split at h₀ <;> simp at h₀
   subst ps' ; rename_i wps' h₂
   simp [h₂] at h₃ ; subst wps'
-  split at h₁ <;> simp_all
+  simp_do_let SymCC.isAuthorized wps _ at h₁
+  simp only [Except.ok.injEq] at h₁ ; subst res
+  simp
 
 theorem cp_compile_produces_the_right_footprint {p : Policy} {cp : CompiledPolicy} {Γ : Validation.TypeEnv} :
   CompiledPolicy.compile p Γ = .ok cp →
@@ -129,6 +139,12 @@ theorem cp_compile_produces_the_right_footprint {p : Policy} {cp : CompiledPolic
 := by
   simp [CompiledPolicy.compile, do_eq_ok]
   intro p h₀ t h₁ h₂ ; subst cp
+  simp_all only [Except.mapError]
+  rw [Opt.compile.correctness] at h₁
+  split at h₁ <;> simp at h₁
+  subst t ; rename_i res h₁
+  simp_do_let SymCC.compile p.toExpr (SymEnv.ofEnv Γ) at h₁
+  simp only [Except.ok.injEq] at h₁ ; subst res
   simp
 
 theorem cps_compile_produces_the_right_footprint {ps : Policies} {cps : CompiledPolicies} {Γ : Validation.TypeEnv} :
@@ -137,6 +153,12 @@ theorem cps_compile_produces_the_right_footprint {ps : Policies} {cps : Compiled
 := by
   simp [CompiledPolicies.compile, do_eq_ok]
   intro ps h₀ t h₁ h₂ ; subst cps
+  simp_all only [Except.mapError]
+  rw [Opt.isAuthorized.correctness] at h₁
+  split at h₁ <;> simp at h₁
+  subst t ; rename_i res h₁
+  simp_do_let SymCC.isAuthorized ps (SymEnv.ofEnv Γ) at h₁
+  simp only [Except.ok.injEq] at h₁ ; subst res
   simp
 
 theorem cp_compile_produces_the_right_acyclicity {p : Policy} {cp : CompiledPolicy} {Γ : Validation.TypeEnv} :
@@ -147,7 +169,8 @@ theorem cp_compile_produces_the_right_acyclicity {p : Policy} {cp : CompiledPoli
   simp [CompiledPolicy.compile]
   simp [do_eq_ok, hf]
   intro p h₀ t h₁ h₂ ; subst cp
-  simp
+  simp only at *
+  congr
 
 theorem cps_compile_produces_the_right_acyclicity {ps : Policies} {cps : CompiledPolicies} {Γ : Validation.TypeEnv} :
   CompiledPolicies.compile ps Γ = .ok cps →
@@ -157,4 +180,5 @@ theorem cps_compile_produces_the_right_acyclicity {ps : Policies} {cps : Compile
   simp [CompiledPolicies.compile]
   simp [do_eq_ok, hf]
   intro ps h₀ t h₁ h₂ ; subst cps
-  simp
+  simp only at *
+  congr

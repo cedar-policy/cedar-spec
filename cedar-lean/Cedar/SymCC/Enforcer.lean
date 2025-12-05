@@ -40,8 +40,7 @@ open Cedar.Data
 open Cedar.Spec
 open Factory
 
-
-/-
+/--
 Returns the terms corresponding to subexpressions of `x` of the following form:
 
   * A variable term with an entity type
@@ -81,13 +80,13 @@ where
     | .ok _                     => ft₁ ∪ ft₂ ∪ ft₃
     | .error _                  => Set.empty
 
-/-
+/--
 Returns the set of Terms corresponding to the footprints of xs.
 -/
 def footprints (xs : List Expr) (εnv : SymEnv) : Set Term :=
   xs.mapUnion (footprint · εnv)
 
-/-
+/--
 Returns the acyclicity constraint for the given term.
 -/
 def acyclicity (t : Term) (εs : SymEntities) : Term :=
@@ -100,7 +99,7 @@ def acyclicity (t : Term) (εs : SymEntities) : Term :=
     | .none   => true
   | _ => true
 
-/-
+/--
 Returns the transitivity constraint for the given term.
 -/
 def transitivity (t₁ t₂ : Term) (εs : SymEntities) : Term :=
@@ -126,7 +125,7 @@ where
   areAncestors t₂' (anc₂ : Map EntityType UnaryFunction) t₁' ety₁ :=
     anc₂.kvs.foldl (λ acc ⟨ety₃, f₂₃⟩ => and acc (areAncestorsOfType t₂' f₂₃ ety₃ t₁' ety₁)) (.prim (.bool true))
 
-/-
+/--
 Returns the ground acyclicity and transitivity assumptions for xs and env.
 -/
 def enforce (xs : List Expr) (εnv : SymEnv) : Set Term :=

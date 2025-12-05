@@ -52,6 +52,11 @@ def footprint_wf (x : Expr) (εnv : SymEnv) :
   cases x
   all_goals simp [footprint, footprint_ofEntity_wf, footprint_ofBranch_wf, footprint_wf, Set.empty_wf, Set.mapUnion_wf, Set.union_wf]
 
+def footprints_wf (xs : List Expr) (εnv : SymEnv) :
+  (footprints xs εnv).WellFormed
+:= by
+  simp [footprints, Data.Set.mapUnion_wf]
+
 def SymEntities.SameOn (εs : SymEntities) (ft : Set Term) (I₁ I₂ : Interpretation) : Prop :=
   ∀ ety δ,
     εs.find? ety = some δ →
@@ -314,7 +319,7 @@ theorem footprints_append {xs₁ xs₂ : List Expr} {εnv : SymEnv} :
 := by
   simp [footprints]
   apply Data.Set.mapUnion_append
-  intro x ; apply footprint_wf
+  intro x _ ; apply footprint_wf
 
 theorem footprint_subset_footprints {x : Expr} {xs : List Expr} {εnv : SymEnv} :
   x ∈ xs → footprint x εnv ⊆ footprints xs εnv

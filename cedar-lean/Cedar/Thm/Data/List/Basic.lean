@@ -96,6 +96,10 @@ theorem dup_head_equiv (x : α) (xs : List α) :
   x :: x :: xs ≡ x :: xs
 := by unfold List.Equiv; simp [List.subset_def]
 
+theorem dup_head_equiv' {x : α} {xs : List α} :
+  x ∈ xs → x :: xs ≡ xs
+:= by simp [List.Equiv]
+
 theorem swap_cons_cons_equiv (x₁ x₂ : α) (xs : List α) :
   x₁ :: x₂ :: xs ≡ x₂ :: x₁ :: xs
 := by

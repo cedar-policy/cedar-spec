@@ -239,7 +239,10 @@ theorem verifyEvaluateOpt_eqv_verifyEvaluate_ok {p wp : Policy} {cp : CompiledPo
   intro h₀ h₁
   simp [enforceCompiledPolicy_eqv_enforce_ok h₀ h₁]
   cases h₂ : compile wp.toExpr (SymEnv.ofTypeEnv Γ) <;> simp
-  case error e => simp_all [CompiledPolicy.compile, Except.mapError]
+  case error e =>
+    simp only [CompiledPolicy.compile, Except.mapError, h₁, Except.bind_ok] at h₀
+    rw [Opt.compile.correctness] at h₀
+    simp [h₂] at h₀
   case ok t =>
     have h₃ := (cp_compile_produces_the_right_term h₀ h₁).symm ; simp [h₂] at h₃ ; subst t
     split <;> rename_i hnot
@@ -265,11 +268,17 @@ theorem verifyEvaluatePairOpt_eqv_verifyEvaluatePair_ok {p₁ p₂ wp₁ wp₂ :
   simp [henv]
   simp [enforcePairCompiledPolicy_eqv_enforce_ok h₀ h₁ h₂ h₃]
   cases h₄ : compile wp₁.toExpr (SymEnv.ofTypeEnv Γ) <;> simp
-  case error e => simp_all [CompiledPolicy.compile, Except.mapError]
+  case error e =>
+    simp only [CompiledPolicy.compile, Except.mapError, h₂, Except.bind_ok] at h₀
+    rw [Opt.compile.correctness] at h₀
+    simp [h₄] at h₀
   case ok t₁ =>
     have h₅ := (cp_compile_produces_the_right_term h₀ h₂).symm ; simp [h₄] at h₅ ; subst t₁
     cases h₆ : compile wp₂.toExpr (SymEnv.ofTypeEnv Γ) <;> simp
-    case error e => simp_all [CompiledPolicy.compile, Except.mapError]
+    case error e =>
+      simp only [CompiledPolicy.compile, Except.mapError, h₃, Except.bind_ok] at h₁
+      rw [Opt.compile.correctness] at h₁
+      simp [h₆] at h₁
     case ok t₂ =>
       have h₇ := (cp_compile_produces_the_right_term h₁ h₃).symm ; simp [h₆] at h₇ ; subst t₂
       split <;> rename_i hnot
@@ -295,11 +304,17 @@ theorem verifyIsAuthorizedOpt_eqv_verifyIsAuthorized_ok {ps₁ ps₂ wps₁ wps�
     simp [cps_compile_produces_the_right_env hcps₁, cps_compile_produces_the_right_env hcps₂]
   simp [henvs]
   cases h₁ : SymCC.isAuthorized wps₁ (SymEnv.ofTypeEnv Γ) <;> simp
-  case error e => simp_all [CompiledPolicies.compile, SymCC.isAuthorized, SymCC.satisfiedPolicies, SymCC.compileWithEffect, Except.mapError]
+  case error e =>
+    simp_all only [CompiledPolicies.compile, Except.mapError, Except.bind_ok]
+    rw [Opt.isAuthorized.correctness] at hcps₁
+    simp [h₁] at hcps₁
   case ok t =>
     have h₃ := (cps_compile_produces_the_right_term hcps₁ hwps₁).symm ; simp [h₁] at h₃ ; subst t
     cases h₂ : SymCC.isAuthorized wps₂ (SymEnv.ofTypeEnv Γ) <;> simp
-    case error e => simp_all [CompiledPolicies.compile, SymCC.isAuthorized, SymCC.satisfiedPolicies, SymCC.compileWithEffect, Except.mapError]
+    case error e =>
+      simp_all only [CompiledPolicies.compile, Except.mapError, Except.bind_ok]
+      rw [Opt.isAuthorized.correctness] at hcps₂
+      simp [h₂] at hcps₂
     case ok t =>
       have h₃ := (cps_compile_produces_the_right_term hcps₂ hwps₂).symm ; simp [h₂] at h₃ ; subst t
       split <;> rename_i hnot
@@ -418,10 +433,9 @@ theorem verifyAlwaysAllowsOpt_eqv_verifyAlwaysAllows_ok {ps wps : Policies} {cps
   simp [verifyAlwaysAllows, verifyAlwaysAllowsOpt]
   intro hcps hwps
   apply verifyImpliesOpt_eqv_verifyImplies_ok _ hcps (wellTypedPolicies_allowAll Γ) hwps
-  simp [CompiledPolicies.compile, Except.mapError, do_eq_ok]
-  simp [wellTypedPolicies_allowAll, isAuthorized_allowAll]
-  simp [CompiledPolicies.allowAll, cps_compile_produces_the_right_env hcps]
-  simp [footprints_singleton]
+  simp [CompiledPolicies.compile, Except.mapError, do_eq_ok, wellTypedPolicies_allowAll]
+  rw [Opt.isAuthorized.correctness]
+  simp [isAuthorized_allowAll, CompiledPolicies.allowAll, cps_compile_produces_the_right_env hcps, footprints_singleton]
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
@@ -436,9 +450,9 @@ theorem verifyAlwaysDeniesOpt_eqv_verifyAlwaysDenies_ok {ps wps : Policies} {cps
   simp [verifyAlwaysDenies, verifyAlwaysDeniesOpt]
   intro hcps hwps
   apply verifyImpliesOpt_eqv_verifyImplies_ok hcps _ hwps _ (ps₂ := [])
-  simp [CompiledPolicies.compile, Except.mapError, do_eq_ok]
-  simp [wellTypedPolicies_empty, isAuthorized_empty]
-  simp [CompiledPolicies.denyAll, cps_compile_produces_the_right_env hcps]
+  simp [CompiledPolicies.compile, Except.mapError, do_eq_ok, wellTypedPolicies_empty]
+  rw [Opt.isAuthorized.correctness]
+  simp [isAuthorized_empty, CompiledPolicies.denyAll, cps_compile_produces_the_right_env hcps]
   simp [footprints_empty, EmptyCollection.emptyCollection, Data.Set.map_empty]
   simp [wellTypedPolicies_empty]
 
@@ -521,6 +535,7 @@ theorem compile_ok_iff_welltypedpolicy_ok {p : Policy} {Γ : Validation.TypeEnv}
   cases h₀ : wellTypedPolicy p Γ <;> simp
   case ok wp =>
     intro hwf
+    rw [Opt.compile.correctness]
     have ⟨tx, htxwt, htx⟩ := wellTypedPolicy_ok_implies_well_typed_expr h₀
     have ⟨t, ht, _⟩ := compile_well_typed hwf htxwt
     simp_all
@@ -548,6 +563,8 @@ theorem compile_ok_iff_welltypedpolicies_ok {ps : Policies} {Γ : Validation.Typ
     subst e
     rename_i e h
     simp [wellTypedPolicies] at hwp
+    rw [Opt.isAuthorized.correctness] at h
+    simp only [do_error] at h
     replace ⟨wp, hwp', h⟩ := isAuthorized_eq_error h
     replace ⟨p, hp, hwp⟩ := List.mapM_ok_implies_all_from_ok hwp wp hwp'
     have ⟨tx, htxwt, htx⟩ := wellTypedPolicy_ok_implies_well_typed_expr hwp
