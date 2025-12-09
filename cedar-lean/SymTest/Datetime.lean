@@ -34,7 +34,6 @@ private def durationContext : RecordType :=
   ]
 
 private def durationTypeEnv := BasicTypes.env Map.empty Map.empty durationContext
-private def durationSymEnv  := SymEnv.ofEnv durationTypeEnv
 
 private def x : Expr := .getAttr (.var .context) "x"
 private def y : Expr := .getAttr (.var .context) "y"
@@ -47,20 +46,20 @@ def durLit (str : String) : Expr :=
 private def testValidConstructor (str : String) (rep : Int) : TestCase SolverM :=
   testCompile str
     (durLit str)
-    durationSymEnv
+    (SymEnv.ofTypeEnv durationTypeEnv)
     (.ok (.some (.prim (.ext (.duration (Ext.Datetime.duration? rep).get!)))))
 
 private def testInvalidConstructor (str : String) (msg : String) : TestCase SolverM :=
   testCompile s!"{str} [{msg}]"
     (durLit str)
-    durationSymEnv
+    (SymEnv.ofTypeEnv durationTypeEnv)
     (.error .typeError)
 
-private def testValidConversion (test_name : String) (expr : Expr) (res : Int64) : TestCase SolverM :=
+private def testValidConversion (test_name : String) (expr : Expr) (res : Int64) : List (TestCase SolverM) :=
   testVerifyEquivalent test_name
     (.binaryApp .eq expr (.lit (.int res)))
     (.lit (.bool true))
-    durationSymEnv .unsat
+    durationTypeEnv .unsat
 
 def testsForDurationConstructor :=
   suite "Duration.duration"
@@ -109,136 +108,136 @@ def testsForDurationConstructor :=
   ]
 
 def testsForDurationComparisonOperations :=
-  suite "Duration.comparisons"
+  suite "Duration.comparisons" $ List.flatten
   [
     testVerifyEquivalent "True: x <= 9223372036854775807ms"
       (.binaryApp .lessEq x (durLit "9223372036854775807ms"))
       (.lit (.bool true))
-      durationSymEnv .unsat,
+      durationTypeEnv .unsat,
 
     testVerifyEquivalent "True: !(9223372036854775807ms < x)"
       (.unaryApp .not (.binaryApp .less (durLit "9223372036854775807ms") x))
       (.lit (.bool true))
-      durationSymEnv .unsat,
+      durationTypeEnv .unsat,
 
     testVerifyEquivalent "True: -9223372036854775808ms <= x"
       (.binaryApp .lessEq (durLit "-9223372036854775808ms") x)
       (.lit (.bool true))
-      durationSymEnv .unsat,
+      durationTypeEnv .unsat,
 
     testVerifyEquivalent "True: !(x < -9223372036854775808ms)"
       (.unaryApp .not (.binaryApp .less x (durLit "-9223372036854775808ms")))
       (.lit (.bool true))
-      durationSymEnv .unsat,
+      durationTypeEnv .unsat,
 
     testVerifyEquivalent "True: x <= x"
       (.binaryApp .lessEq x x)
       (.lit (.bool true))
-      durationSymEnv .unsat,
+      durationTypeEnv .unsat,
 
     testVerifyEquivalent "True: x <= y ∨ y <= x"
       (.or (.binaryApp .lessEq x y) (.binaryApp .lessEq y x))
       (.lit (.bool true))
-      durationSymEnv .unsat,
+      durationTypeEnv .unsat,
 
     testVerifyEquivalent "False: x < x"
       (.binaryApp .less x x)
       (.lit (.bool false))
-      durationSymEnv .unsat,
+      durationTypeEnv .unsat,
 
     testVerifyEquivalent "False: x < y ∧ y < x"
       (.and (.binaryApp .less x y) (.binaryApp .less y x))
       (.lit (.bool false))
-      durationSymEnv .unsat,
+      durationTypeEnv .unsat,
 
     testVerifyEquivalent "Implies: !(x = y) ===> x < y ∨ y < x"
       (.unaryApp .not (.binaryApp .eq x y))
       (.or (.binaryApp .less x y) (.binaryApp .less y x))
-      durationSymEnv .unsat,
+      durationTypeEnv .unsat,
 
     testVerifyImplies "Implies: x != 9223372036854775807ms ===> x < 9223372036854775807ms"
       (.unaryApp .not (.binaryApp .eq x (durLit "9223372036854775807ms")))
       (.binaryApp .less x (durLit "9223372036854775807ms"))
-      durationSymEnv .unsat,
+      durationTypeEnv .unsat,
 
     testVerifyImplies "Implies: x != -9223372036854775808ms ===> -9223372036854775808ms < x"
       (.unaryApp .not (.binaryApp .eq x (durLit "-9223372036854775808ms")))
       (.binaryApp .less (durLit "-9223372036854775808ms") x)
-      durationSymEnv .unsat,
+      durationTypeEnv .unsat,
 
     testVerifyImplies "Implies: x < y ===> !(y <= x)"
       (.binaryApp .less x y)
       (.unaryApp .not (.binaryApp .lessEq y x))
-      durationSymEnv .unsat,
+      durationTypeEnv .unsat,
 
     testVerifyImplies "Implies: !(y <= x) ===> x < y"
       (.unaryApp .not (.binaryApp .lessEq y x))
       (.binaryApp .less x y)
-      durationSymEnv .unsat,
+      durationTypeEnv .unsat,
 
     testVerifyImplies "Implies: x <= y ===> !(y < x)"
       (.binaryApp .lessEq x y)
       (.unaryApp .not (.binaryApp .less y x))
-      durationSymEnv .unsat,
+      durationTypeEnv .unsat,
 
     testVerifyImplies "Implies: !(y < x) ===> x <= y"
       (.unaryApp .not (.binaryApp .less y x))
       (.binaryApp .lessEq x y)
-      durationSymEnv .unsat,
+      durationTypeEnv .unsat,
 
     testVerifyImplies "Implies: x < y ===> x <= y"
       (.binaryApp .less x y)
       (.binaryApp .lessEq x y)
-      durationSymEnv .unsat,
+      durationTypeEnv .unsat,
 
     testVerifyImplies "Implies: x = y ===> x <= y"
       (.binaryApp .eq x y)
       (.binaryApp .lessEq x y)
-      durationSymEnv .unsat,
+      durationTypeEnv .unsat,
 
     testVerifyImplies "Implies: x <= y ===> x = y ∨ x < y"
       (.binaryApp .lessEq x y)
       (.or (.binaryApp .eq x y) (.binaryApp .less x y))
-      durationSymEnv .unsat,
+      durationTypeEnv .unsat,
 
     testVerifyImplies "Implies: x <= y ∧ !(x = y) ===> x < y"
       (.and (.binaryApp .lessEq x y) (.unaryApp .not (.binaryApp .eq x y)))
       (.binaryApp .less x y)
-      durationSymEnv .unsat,
+      durationTypeEnv .unsat,
 
     testVerifyImplies "Implies: x < y ===> !(x = y)"
       (.binaryApp .less x y)
       (.unaryApp .not (.binaryApp .eq x y))
-      durationSymEnv .unsat,
+      durationTypeEnv .unsat,
 
     testVerifyImplies "Implies: x <= y ∧ y <= x ===> y = x"
       (.and (.binaryApp .lessEq x y) (.binaryApp .lessEq y x))
       (.binaryApp .eq x y)
-      durationSymEnv .unsat,
+      durationTypeEnv .unsat,
 
     testVerifyImplies "Implies: x <= y ∧ y <= z ===> x <= z"
       (.and (.binaryApp .lessEq x y) (.binaryApp .lessEq y z))
       (.binaryApp .lessEq x z)
-      durationSymEnv .unsat,
+      durationTypeEnv .unsat,
 
     testVerifyImplies "Implies: x < y ∧ y < z ===> x < z"
       (.and (.binaryApp .less x y) (.binaryApp .less y z))
       (.binaryApp .lessEq x z)
-      durationSymEnv .unsat,
+      durationTypeEnv .unsat,
 
     testVerifyImplies "Implies: x < y ∧ y <= z ===> x < z"
       (.and (.binaryApp .less x y) (.binaryApp .lessEq y z))
       (.binaryApp .lessEq x z)
-      durationSymEnv .unsat,
+      durationTypeEnv .unsat,
 
     testVerifyImplies "Implies: x <= y ∧ y < z ===> x < z"
       (.and (.binaryApp .lessEq x y) (.binaryApp .less y z))
       (.binaryApp .lessEq x z)
-      durationSymEnv .unsat,
+      durationTypeEnv .unsat,
   ]
 
 def testsForDurationConversions :=
-  suite "Duration.conversions"
+  suite "Duration.conversions" $ List.flatten
   [
     testValidConversion "Testcase: Duration(0ms).toMilliseconds == 0"
       (.call .toMilliseconds [(durLit "0ms")])
@@ -347,22 +346,22 @@ def testsForDurationConversions :=
     testVerifyEquivalent "SAT: x.toMilliseconds = 1000 * x.toSeconds"
       (.binaryApp .eq (.call .toMilliseconds [x]) (.binaryApp .mul (.lit (.int 1000)) (.call .toSeconds [x])))
       (.lit (.bool true))
-      durationSymEnv .sat,
+      durationTypeEnv .sat,
 
     testVerifyEquivalent "SAT: x.toSeconds = 60 * x.toMinutes"
       (.binaryApp .eq (.call .toSeconds [x]) (.binaryApp .mul (.lit (.int 60)) (.call .toMinutes [x])))
       (.lit (.bool true))
-      durationSymEnv .sat,
+      durationTypeEnv .sat,
 
     testVerifyEquivalent "SAT: x.toMinutes = 60 * x.toHours"
       (.binaryApp .eq (.call .toMinutes [x]) (.binaryApp .mul (.lit (.int 60)) (.call .toHours [x])))
       (.lit (.bool true))
-      durationSymEnv .sat,
+      durationTypeEnv .sat,
 
     testVerifyEquivalent "SAT: x.toHours = 24 * x.toDays"
       (.binaryApp .eq (.call .toHours [x]) (.binaryApp .mul (.lit (.int 24)) (.call .toDays [x])))
       (.lit (.bool true))
-      durationSymEnv .sat
+      durationTypeEnv .sat
   ]
 
 end Duration
@@ -485,142 +484,142 @@ private def MIN_DT : Expr := (.call .offset [dtLit "1970-01-01", Duration.durLit
 private def MAX_DT : Expr := (.call .offset [dtLit "1970-01-01", Duration.durLit "9223372036854775807ms"])
 
 def testsForDatetimeComparators :=
-  suite "Datetime.comparators"
+  suite "Datetime.comparators" $ List.flatten
   [
     testVerifyEquivalent "True: dt1 <= MAX_DT"
       (.binaryApp .lessEq dt1 MAX_DT)
       (.lit (.bool true))
-      datetimeSymEnv .unsat,
+      datetimeTypeEnv .unsat,
 
     testVerifyEquivalent "True: !(MAX_DT < dt1)"
       (.unaryApp .not (.binaryApp .less MAX_DT dt1))
       (.lit (.bool true))
-      datetimeSymEnv .unsat,
+      datetimeTypeEnv .unsat,
 
     testVerifyEquivalent "True: offset MIN_DT <= dt1"
       (.binaryApp .lessEq MIN_DT dt1)
       (.lit (.bool true))
-      datetimeSymEnv .unsat,
+      datetimeTypeEnv .unsat,
 
     testVerifyEquivalent "True: !(dt1 < offset MIN_DT)"
       (.unaryApp .not (.binaryApp .less dt1 MIN_DT))
       (.lit (.bool true))
-      datetimeSymEnv .unsat,
+      datetimeTypeEnv .unsat,
 
     testVerifyEquivalent "True: dt1 <= dt1"
       (.binaryApp .lessEq dt1 dt1)
       (.lit (.bool true))
-      datetimeSymEnv .unsat,
+      datetimeTypeEnv .unsat,
 
     testVerifyEquivalent "True: dt1 <= dt2 ∨ dt2 <= dt1"
       (.or (.binaryApp .lessEq dt1 dt2) (.binaryApp .lessEq dt2 dt1))
       (.lit (.bool true))
-      datetimeSymEnv .unsat,
+      datetimeTypeEnv .unsat,
 
     testVerifyEquivalent "False: dt1 < dt1"
       (.binaryApp .less dt1 dt1)
       (.lit (.bool false))
-      datetimeSymEnv .unsat,
+      datetimeTypeEnv .unsat,
 
     testVerifyEquivalent "False: dt1 < dt2 ∧ dt2 < dt1"
       (.and (.binaryApp .less dt1 dt2) (.binaryApp .less dt2 dt1))
       (.lit (.bool false))
-      datetimeSymEnv .unsat,
+      datetimeTypeEnv .unsat,
 
     testVerifyEquivalent "Implies: !(dt1 = dt2) ===> dt1 < dt2 ∨ dt2 < dt1"
       (.unaryApp .not (.binaryApp .eq dt1 dt2))
       (.or (.binaryApp .less dt1 dt2) (.binaryApp .less dt2 dt1))
-      datetimeSymEnv .unsat,
+      datetimeTypeEnv .unsat,
 
     testVerifyImplies "Implies: dt1 != MAX_DT ===> dt1 < MAX_DT"
       (.unaryApp .not (.binaryApp .eq dt1 MAX_DT))
       (.binaryApp .less dt1 MAX_DT)
-      datetimeSymEnv .unsat,
+      datetimeTypeEnv .unsat,
 
     testVerifyImplies "Implies: dt1 != MIN_DT ===> MIN_DT < dt1"
       (.unaryApp .not (.binaryApp .eq dt1 MIN_DT))
       (.binaryApp .less MIN_DT dt1)
-      datetimeSymEnv .unsat,
+      datetimeTypeEnv .unsat,
 
     testVerifyImplies "Implies: dt1 < dt2 ===> !(dt2 <= dt1)"
       (.binaryApp .less dt1 dt2)
       (.unaryApp .not (.binaryApp .lessEq dt2 dt1))
-      datetimeSymEnv .unsat,
+      datetimeTypeEnv .unsat,
 
     testVerifyImplies "Implies: !(dt2 <= dt1) ===> dt1 < dt2"
       (.unaryApp .not (.binaryApp .lessEq dt2 dt1))
       (.binaryApp .less dt1 dt2)
-      datetimeSymEnv .unsat,
+      datetimeTypeEnv .unsat,
 
     testVerifyImplies "Implies: dt1 <= dt2 ===> !(dt2 < dt1)"
       (.binaryApp .lessEq dt1 dt2)
       (.unaryApp .not (.binaryApp .less dt2 dt1))
-      datetimeSymEnv .unsat,
+      datetimeTypeEnv .unsat,
 
     testVerifyImplies "Implies: !(dt2 < dt1) ===> dt1 <= dt2"
       (.unaryApp .not (.binaryApp .less dt2 dt1))
       (.binaryApp .lessEq dt1 dt2)
-      datetimeSymEnv .unsat,
+      datetimeTypeEnv .unsat,
 
     testVerifyImplies "Implies: dt1 < dt2 ===> dt1 <= dt2"
       (.binaryApp .less dt1 dt2)
       (.binaryApp .lessEq dt1 dt2)
-      datetimeSymEnv .unsat,
+      datetimeTypeEnv .unsat,
 
     testVerifyImplies "Implies: dt1 = dt2 ===> dt1 <= dt2"
       (.binaryApp .eq dt1 dt2)
       (.binaryApp .lessEq dt1 dt2)
-      datetimeSymEnv .unsat,
+      datetimeTypeEnv .unsat,
 
     testVerifyImplies "Implies: dt1 <= dt2 ===> dt1 = dt2 ∨ dt1 < dt2"
       (.binaryApp .lessEq dt1 dt2)
       (.or (.binaryApp .eq dt1 dt2) (.binaryApp .less dt1 dt2))
-      datetimeSymEnv .unsat,
+      datetimeTypeEnv .unsat,
 
     testVerifyImplies "Implies: dt1 <= dt2 ∧ !(dt1 = dt2) ===> dt1 < dt2"
       (.and (.binaryApp .lessEq dt1 dt2) (.unaryApp .not (.binaryApp .eq dt1 dt2)))
       (.binaryApp .less dt1 dt2)
-      datetimeSymEnv .unsat,
+      datetimeTypeEnv .unsat,
 
     testVerifyImplies "Implies: dt1 < dt2 ===> !(dt1 = dt2)"
       (.binaryApp .less dt1 dt2)
       (.unaryApp .not (.binaryApp .eq dt1 dt2))
-      datetimeSymEnv .unsat,
+      datetimeTypeEnv .unsat,
 
     testVerifyImplies "Implies: dt1 <= dt2 ∧ dt2 <= dt1 ===> dt1 = dt2"
       (.and (.binaryApp .lessEq dt1 dt2) (.binaryApp .lessEq dt2 dt1))
       (.binaryApp .eq dt1 dt2)
-      datetimeSymEnv .unsat,
+      datetimeTypeEnv .unsat,
 
     testVerifyImplies "Implies: dt1 <= dt2 ∧ dt2 <= dt3 ===> dt1 <= dt3"
       (.and (.binaryApp .lessEq dt1 dt2) (.binaryApp .lessEq dt2 dt3))
       (.binaryApp .lessEq dt1 dt2)
-      datetimeSymEnv .unsat,
+      datetimeTypeEnv .unsat,
 
     testVerifyImplies "Implies: dt1 < dt2 ∧ dt2 < dt3 ===> dt1 < dt3"
       (.and (.binaryApp .less dt1 dt2) (.binaryApp .less dt2 dt3))
       (.binaryApp .lessEq dt1 dt3)
-      datetimeSymEnv .unsat,
+      datetimeTypeEnv .unsat,
 
     testVerifyImplies "Implies: dt1 < dt2 ∧ dt2 <= dt3 ===> dt1 < dt3"
       (.and (.binaryApp .less dt1 dt2) (.binaryApp .lessEq dt2 dt3))
       (.binaryApp .lessEq dt1 dt3)
-      datetimeSymEnv .unsat,
+      datetimeTypeEnv .unsat,
 
     testVerifyImplies "Implies: dt1 <= dt2 ∧ dt2 < dt3 ===> dt1 < dt3"
       (.and (.binaryApp .lessEq dt1 dt2) (.binaryApp .less dt2 dt3))
       (.binaryApp .lessEq dt1 dt3)
-      datetimeSymEnv .unsat,
+      datetimeTypeEnv .unsat,
   ]
 
-private def testOffset (dt₁ dur dt₂ : String) : TestCase SolverM :=
+private def testOffset (dt₁ dur dt₂ : String) : List (TestCase SolverM) :=
   testVerifyEquivalent s!"{dt₁} + {dur} -> {dt₂}"
     (.binaryApp .eq (.call .offset [dtLit dt₁, Duration.durLit dur]) (dtLit dt₂))
     (.lit (.bool true))
-    datetimeSymEnv .unsat
+    datetimeTypeEnv .unsat
 
 def testsForOffset :=
-  suite "Datetime.offset"
+  suite "Datetime.offset" $ List.flatten
   [
     testOffset "2024-10-15" "0ms" "2024-10-15",
     testOffset "2024-10-15" "1ms" "2024-10-15T00:00:00.001Z",
@@ -631,14 +630,14 @@ def testsForOffset :=
     testOffset "2021-04-03T12:01:00Z" "365d" "2022-04-03T12:01:00Z"
   ]
 
-private def testDurationSince (dt₁ dt₂ dur : String) : TestCase SolverM :=
+private def testDurationSince (dt₁ dt₂ dur : String) : List (TestCase SolverM) :=
   testVerifyEquivalent s!"{dt₁} - {dt₂} -> {dur}"
     (.binaryApp .eq (.call .durationSince [dtLit dt₁, dtLit dt₂]) (Duration.durLit dur))
     (.lit (.bool true))
-    datetimeSymEnv .unsat
+    datetimeTypeEnv .unsat
 
 def testsForDurationSince :=
-  suite "Datetime.durationSince"
+  suite "Datetime.durationSince" $ List.flatten
   [
     testDurationSince "2024-10-15" "2024-10-15"  "0ms",
     testDurationSince "2024-10-15" "2024-10-15T00:00:00.001Z" "-1ms",
@@ -654,7 +653,7 @@ def testsForDurationSince :=
         (.call .durationSince [.call .offset [dt1, dur1], dt1])
         dur1
       )
-      datetimeSymEnv .unsat,
+      datetimeTypeEnv .unsat,
 
     testVerifyImplies "Implies: -9223372036854775808ms <= durationSince dt2 dt1 <= 9223372036854775807ms ===> offset dt1 (durationSince dt2 dt1) == dt2"
       (.and
@@ -665,47 +664,47 @@ def testsForDurationSince :=
         (.call .offset [dt1, (.call .durationSince [dt2, dt1])])
         dt2
       )
-      datetimeSymEnv .unsat,
+      datetimeTypeEnv .unsat,
 
     testVerifyImplies "Implies: durationSince dt1 dt2 == 0ms ===> dt1 == dt2"
       (.binaryApp .eq (.call .durationSince [dt1, dt2]) (Duration.durLit "0ms"))
       (.binaryApp .eq dt1 dt2)
-      datetimeSymEnv .unsat,
+      datetimeTypeEnv .unsat,
 
     testVerifyImplies "Implies: durationSince dt1 dt2 < 0ms ===> dt1 < dt2"
       (.binaryApp .less (.call .durationSince [dt1, dt2]) (Duration.durLit "0ms"))
       (.binaryApp .less dt1 dt2)
-      datetimeSymEnv .unsat,
+      datetimeTypeEnv .unsat,
 
     testVerifyImplies "Implies: 0ms < durationSince dt1 dt2 ===> dt2 < dt1"
       (.binaryApp .less (Duration.durLit "0ms") (.call .durationSince [dt1, dt2]))
       (.binaryApp .less dt2 dt1)
-      datetimeSymEnv .unsat,
+      datetimeTypeEnv .unsat,
 
     testVerifyImplies "Implies: offset dt1 dur1 == dt1 ===> dur1 == 0ms"
       (.binaryApp .eq (.call .offset [dt1, dur1]) dt1)
       (.binaryApp .eq dur1 (Duration.durLit "0ms"))
-      datetimeSymEnv .unsat,
+      datetimeTypeEnv .unsat,
 
     testVerifyImplies "Implies: offset dt1 dur1 < dt1 ===> dur1 < 0ms"
       (.binaryApp .eq (.call .offset [dt1, dur1]) dt1)
       (.binaryApp .eq dur1 (Duration.durLit "0ms"))
-      datetimeSymEnv .unsat,
+      datetimeTypeEnv .unsat,
 
     testVerifyImplies "Implies: dt1 < offset dt1 dur1 ===>  0ms < dur1"
       (.binaryApp .eq dt1 (.call .offset [dt1, dur1]))
       (.binaryApp .eq (Duration.durLit "0ms") dur1)
-      datetimeSymEnv .unsat,
+      datetimeTypeEnv .unsat,
   ]
 
-private def testToDate (dt₁ dt₂ : String) : TestCase SolverM :=
+private def testToDate (dt₁ dt₂ : String) : List (TestCase SolverM) :=
   testVerifyEquivalent s!"toDate {dt₁} -> {dt₂}"
     (.binaryApp .eq (.call .toDate [dtLit dt₁]) (dtLit dt₂))
     (.lit (.bool true))
-    datetimeSymEnv .unsat
+    datetimeTypeEnv .unsat
 
 def TestsForToDate :=
-  suite "Datetime.toDate"
+  suite "Datetime.toDate" $ List.flatten
   [
     testToDate "2024-10-15" "2024-10-15",
     testToDate "2024-10-15T00:00:01Z" "2024-10-15",
@@ -715,14 +714,14 @@ def TestsForToDate :=
     testToDate "1969-12-31T23:59:59Z" "1969-12-31",
   ]
 
-private def testToTime (dt dur : String) : TestCase SolverM :=
+private def testToTime (dt dur : String) : List (TestCase SolverM) :=
   testVerifyEquivalent s!"toTime {dt} -> {dur}"
     (.binaryApp .eq (.call .toTime [dtLit dt]) (Duration.durLit dur))
     (.lit (.bool true))
-    datetimeSymEnv .unsat
+    datetimeTypeEnv .unsat
 
 def TestsForToTime :=
-  suite "Datetime.toTime"
+  suite "Datetime.toTime" $ List.flatten
   [
     testToTime "2024-10-15" "0ms",
     testToTime "2024-10-15T00:00:00.001Z" "1ms",

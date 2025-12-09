@@ -145,6 +145,22 @@ deriving instance Repr, DecidableEq, Inhabited, Lean.ToJson for EntityUID
 deriving instance Repr, DecidableEq, Inhabited for Prim
 deriving instance Repr, Inhabited for Value
 
+instance [BEq α] [BEq ε] [LawfulBEq α] [LawfulBEq ε] : LawfulBEq (Except ε α) where
+  rfl := by
+    intro a
+    cases a <;> simp only [BEq.beq] <;> exact beq_iff_eq.mpr rfl
+  eq_of_beq := by
+    intro a b h
+    cases a <;> cases b <;> simp only [BEq.beq] at h
+    case error.error e1 e2 =>
+      congr
+      exact beq_iff_eq.mp h
+    case error.ok => contradiction
+    case ok.error => contradiction
+    case ok.ok v1 v2 =>
+      congr
+      exact beq_iff_eq.mp h
+
 mutual
 
 def decValue (v₁ v₂ : Value) : Decidable (v₁ = v₂) := by

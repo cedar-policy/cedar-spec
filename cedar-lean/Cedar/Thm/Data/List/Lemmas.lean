@@ -800,6 +800,26 @@ theorem mapM_error_implies_exists_error {α β γ} {f : α → Except γ β} {xs
   rw [← List.mapM'_eq_mapM]
   exact mapM'_error_implies_exists_error
 
+theorem filterMapM_error_implies_exists_error {α β ε} {f : α → Except ε (Option β)} {xs : List α} {e : ε} :
+  List.filterMapM f xs = .error e → ∃ x ∈ xs, f x = .error e
+:= by
+  cases xs
+  case nil => simp [filterMapM_nil, pure, Except.pure]
+  case cons xhd xtl =>
+    simp [filterMapM_cons]
+    cases f xhd <;> simp
+    case error e' => intro h ; simp [h]
+    case ok b =>
+      cases h₀ : filterMapM f xtl <;> simp
+      case ok bs => intro h ; split at h <;> simp at h
+      case error e' =>
+        intro h ; split at h
+        all_goals {
+          simp at h
+          subst e'
+          exact filterMapM_error_implies_exists_error h₀
+        }
+
 /--
   If applying `f` to any of `xs` produces an error, then `xs.mapM' f` must also
   produce an error (not necessarily the same error)

@@ -30,7 +30,6 @@ private def hasContext : RecordType :=
   ]
 
 private def hasTypeEnv := BasicTypes.env Map.empty Map.empty hasContext
-private def hasSymEnv  := SymEnv.ofEnv hasTypeEnv
 
 private def getₐ : Expr := .getAttr (.var .context) "a"
 private def getₓ : Expr := .getAttr (.var .context) "x"
@@ -39,33 +38,53 @@ private def hasₐ : Expr := .hasAttr (.var .context) "a"
 private def hasₓ : Expr := .hasAttr (.var .context) "x"
 
 def testsForBasicHasOps :=
-  suite "Has.basic"
+  suite "Has.basic" $ List.flatten
   [
     testVerifyEquivalent "True: context has x"
       hasₓ
       (.lit (.bool true))
-      hasSymEnv .unsat,
+      hasTypeEnv .unsat,
 
-    testVerifyNoError "Error: context.a"
-      getₐ
-      hasSymEnv .sat,
+    [testFailsCompilePolicy "Error: context.a" getₐ hasTypeEnv],
+    [testFailsCompilePolicies "Error: context.a" getₐ hasTypeEnv],
 
     testVerifyNoError "Okay: context has a && context.a"
       (.and hasₐ getₐ)
-      hasSymEnv .unsat,
+      hasTypeEnv .unsat,
 
-    testVerifyNoError "Okay: !(!(context has a)) && context.a"
+    -- this policy never errors at runtime, but our current validator is not
+    -- powerful enough to validate this policy.
+    -- however, if you were to feed this policy directly to the symbolic
+    -- compiler (that is, if compilation did not require typechecking first --
+    -- see also the notes in SymTest/WellTyped.lean), the symbolic compiler
+    -- would correctly handle this policy and `testVerifyNoError` would confirm
+    -- it never errors
+    [testFailsCompilePolicy "Error: !(!(context has a)) && context.a"
       (.and (.unaryApp .not (.unaryApp .not hasₐ)) getₐ)
-      hasSymEnv .unsat,
+      hasTypeEnv],
 
-    testVerifyNoError "Okay: !(context has a) || context.a"
+    -- this policy never errors at runtime, but our current validator is not
+    -- powerful enough to validate this policy.
+    -- however, if you were to feed this policy directly to the symbolic
+    -- compiler (that is, if compilation did not require typechecking first --
+    -- see also the notes in SymTest/WellTyped.lean), the symbolic compiler
+    -- would correctly handle this policy and `testVerifyNoError` would confirm
+    -- it never errors
+    [testFailsCompilePolicy "Error: !(context has a) || context.a"
       (.or (.unaryApp .not hasₐ) getₐ)
-      hasSymEnv .unsat,
+      hasTypeEnv],
 
-    testVerifyEquivalent "Equivalent: (context.x == context has a) && (context.x && context.a) <==> context.x && context has a && context.a"
+    -- this policy never errors at runtime, but our current validator is not
+    -- powerful enough to validate this policy.
+    -- however, if you were to feed this policy directly to the symbolic
+    -- compiler (that is, if compilation did not require typechecking first --
+    -- see also the notes in SymTest/WellTyped.lean), the symbolic compiler
+    -- would correctly handle this policy and `testVerifyEquivalent` would give
+    -- the Equivalent result
+    [testFailsCompilePolicy "Error: (context.x == context has a) && (context.x && context.a)"
       (.and (.binaryApp .eq getₓ hasₐ) (.and getₓ getₐ))
-      (.and getₓ (.and hasₐ getₐ))
-      hasSymEnv .unsat,
+      -- would be equivalent to: (.and getₐ (.and hasₐ getₐ))
+      hasTypeEnv],
   ]
 
 def tests := [

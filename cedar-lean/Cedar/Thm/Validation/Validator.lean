@@ -20,6 +20,8 @@ import Cedar.Validation
 import Cedar.Thm.Validation.Typechecker
 import Cedar.Thm.Data
 import Cedar.Thm.Validation.SubstituteAction
+import Cedar.Thm.Validation.WellTyped.Definition
+import Cedar.Thm.Validation.WellTyped.Typechecking
 
 namespace Cedar.Thm
 
@@ -48,7 +50,20 @@ theorem action_matches_env {env : TypeEnv} {request : Request} {entities : Entit
   obtain ⟨_, ⟨ _, h₁, _, _ ⟩, _⟩ := h₀
   exact h₁
 
-theorem typecheck_policy_is_sound (policy : Policy) (env : TypeEnv) (tx : TypedExpr) (request : Request) (entities : Entities) :
+theorem typecheck_policy_produces_wt {policy : Policy} {Γ : TypeEnv} {tx : TypedExpr} :
+  typecheckPolicy policy Γ = .ok tx →
+  TypedExpr.WellTyped Γ tx.liftBoolTypes
+:= by
+  simp [typecheckPolicy]
+  intro h₁
+  split at h₁
+  · split at h₁ <;> simp at h₁
+    subst tx
+    rename_i tx cp h₁ h₂
+    exact typechecked_is_well_typed_after_lifting h₁
+  · simp at h₁
+
+theorem typecheck_policy_is_sound {policy : Policy} {env : TypeEnv} {tx : TypedExpr} {request : Request} {entities : Entities} :
   InstanceOfWellFormedEnvironment request entities env →
   typecheckPolicy policy env = .ok tx →
   ∃ b : Bool, EvaluatesTo policy.toExpr request entities b
@@ -84,6 +99,6 @@ theorem typecheck_policy_with_environments_is_sound (policy : Policy) (schema : 
     have h₄ := List.forall₂_implies_all_left h₃
     specialize h₄ env h₀
     obtain ⟨tx, ⟨_, h₅⟩⟩ := h₄
-    exact typecheck_policy_is_sound policy env tx request entities h₁ h₅
+    exact typecheck_policy_is_sound h₁ h₅
 
 end Cedar.Thm

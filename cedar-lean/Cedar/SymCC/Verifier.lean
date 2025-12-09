@@ -62,6 +62,24 @@ def verifyNeverErrors (p : Policy) (εnv : SymEnv) : Result Asserts :=
   verifyEvaluate isSome p εnv
 
 /--
+Returns asserts that are unsatisfiable iff `p` matches all inputs in `εnv`.
+If the asserts are satisfiable, then there is some input in `εnv` which `p`
+doesn't match.
+-/
+def verifyAlwaysMatches (p : Policy) (εnv : SymEnv) : Result Asserts :=
+  -- never errors, _and_ is always true
+  verifyEvaluate (eq · (⊙true)) p εnv
+
+/--
+Returns asserts that are unsatisfiable iff `p` matches no inputs in `εnv`.
+If the asserts are satisfiable, then there is some input in `εnv` which `p`
+does match.
+-/
+def verifyNeverMatches (p : Policy) (εnv : SymEnv) : Result Asserts :=
+  -- always evaluates to ⊙false _or_ error; i.e., never evaluates to ⊙true
+  verifyEvaluate (λ t => not (eq t (⊙true))) p εnv
+
+/--
 Returns asserts that are unsatisfiable iff the authorization decision of `ps₁`
 implies that of `ps₂` for every input in `εnv`. In other words, every input
 allowed by `ps₁` is allowed by `ps₂`.
@@ -75,13 +93,24 @@ Returns asserts that are unsatisfiable iff `ps` allows all inputs in `εnv`.
 def verifyAlwaysAllows (ps : Policies) (εnv : SymEnv) : Result Asserts := do
   verifyImplies [allowAll] ps εnv
 where
+  -- This policy chosen not because it's readable or optimized, but because it
+  -- is the policy produced by `wellTypedPolicy Policy.allowAll Γ`
   allowAll : Policy := {
     id             := "allowAll",
     effect         := .permit,
     principalScope := .principalScope .any,
     actionScope    := .actionScope .any,
     resourceScope  := .resourceScope .any,
-    condition      := []
+    condition      := [{
+      kind := .when,
+      body := Expr.and
+        (.lit (.bool true))
+        (Expr.and
+          (.lit (.bool true))
+          (Expr.and
+            (.lit (.bool true))
+            (.lit (.bool true))))
+    }]
   }
 
 /--

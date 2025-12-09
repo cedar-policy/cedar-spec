@@ -193,11 +193,13 @@ structure RequestType where
   action : EntityUID
   resource : EntityType
   context : RecordType
+deriving Inhabited
 
 structure TypeEnv where
   ets : EntitySchema
   acts : ActionSchema
   reqty : RequestType
+deriving Inhabited
 
 def ActionSchema.maybeDescendentOf (as : ActionSchema) (ety₁ ety₂ : EntityType) : Bool :=
   as.kvs.any λ (act, entry) => act.ty = ety₁ && entry.ancestors.any (EntityUID.ty · == ety₂)

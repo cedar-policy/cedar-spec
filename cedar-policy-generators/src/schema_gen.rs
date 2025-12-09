@@ -54,14 +54,18 @@ impl From<types::Type> for abac::Type {
                     (
                         a,
                         QualifiedType {
-                            ty: ty.attr_type.into(),
+                            ty: ty.attr_type.as_ref().clone().into(),
                             required: ty.is_required,
                         },
                     )
                 }))
             }
             types::Type::Set { element_type } => Self::Set(Box::new(
-                (*element_type.expect("validated schema shouldn't contain such type")).into(),
+                element_type
+                    .expect("validated schema shouldn't contain such type")
+                    .as_ref()
+                    .clone()
+                    .into(),
             )),
             types::Type::ExtensionType { name } if name.to_string() == "datetime" => Self::DateTime,
             types::Type::ExtensionType { name } if name.to_string() == "duration" => Self::Duration,
@@ -309,7 +313,7 @@ impl<'a> ValidatorSchema<'a> {
         let mut attributes = IndexMap::new();
         for et in core_schema.entity_types() {
             for (attr, ty) in et.attributes().iter() {
-                let attr_type = abac::Type::from(ty.attr_type.clone());
+                let attr_type = abac::Type::from(ty.attr_type.as_ref().clone());
                 attributes
                     .entry(attr_type)
                     .or_insert_with(Vec::new)
@@ -435,7 +439,7 @@ impl SchemaGen for ValidatorSchema<'_> {
                         (
                             a.clone(),
                             QualifiedType {
-                                ty: q.attr_type.clone().into(),
+                                ty: q.attr_type.as_ref().clone().into(),
                                 required: q.is_required,
                             },
                         )

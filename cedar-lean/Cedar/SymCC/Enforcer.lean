@@ -130,9 +130,9 @@ where
 Returns the ground acyclicity and transitivity assumptions for xs and env.
 -/
 def enforce (xs : List Expr) (εnv : SymEnv) : Set Term :=
-  let (Set.mk ts) := footprints xs εnv
-  let ac := ts.map (acyclicity · εnv.entities)
-  let tr := ts.mapUnion (λ t => ts.map (transitivity t · εnv.entities))
+  let ts := footprints xs εnv
+  let ac := ts.elts.map (acyclicity · εnv.entities)
+  let tr := ts.elts.mapUnion (λ t => ts.elts.map (transitivity t · εnv.entities))
   Set.make (ac ∪ tr)
 
 namespace Cedar.SymCC

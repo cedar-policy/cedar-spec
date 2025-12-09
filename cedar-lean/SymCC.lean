@@ -15,5 +15,6 @@
 -/
 
 import Cedar.SymCC
+import Cedar.SymCCOpt
 import Cedar.Thm.SymbolicCompilation
 import Cedar.Thm.Verification

@@ -28,8 +28,8 @@ private def ctx : RecordType :=
     ("key", .required .string)
   ]
 
-private def noTagsEnv := SymEnv.ofEnv (BasicTypes.env Map.empty Map.empty ctx)
-private def tagsEnv := SymEnv.ofEnv (BasicTypes.env Map.empty Map.empty ctx (.some (.bool .anyBool)))
+private def noTagsEnv := BasicTypes.env Map.empty Map.empty ctx
+private def tagsEnv := BasicTypes.env Map.empty Map.empty ctx (.some (.bool .anyBool))
 
 private def hasₐ : Expr := .binaryApp .hasTag (.var .principal) (.lit (.string "a"))
 private def hasₖ : Expr := .binaryApp .hasTag (.var .principal) (.getAttr (.var .context) "key")
@@ -38,12 +38,12 @@ private def getₐ : Expr := .binaryApp .getTag (.var .principal) (.lit (.string
 private def getₖ : Expr := .binaryApp .getTag (.var .principal) (.getAttr (.var .context) "key")
 
 def testsForTagOps :=
-  suite "Tags.basic"
+  suite "Tags.basic" $ List.flatten
   [
-    testCompile "False: principal.hasTag(\"a\")"
+    [testCompile "False: principal.hasTag(\"a\")"
       hasₐ
-      noTagsEnv
-      (.ok (.some false)),
+      (SymEnv.ofTypeEnv noTagsEnv)
+      (.ok (.some false))],
 
     testVerifyNoError "No error: principal.hasTag(\"a\")"
       hasₐ
@@ -53,30 +53,48 @@ def testsForTagOps :=
       hasₖ
       tagsEnv .unsat,
 
-    testVerifyNoError "Error: principal.getTag(\"a\")"
-      getₐ
-      tagsEnv .sat,
+    [testFailsCompilePolicy "Error: principal.getTag(\"a\")" getₐ tagsEnv],
+    [testFailsCompilePolicies "Error: principal.getTag(\"a\")" getₐ tagsEnv],
+    [testFailsCompilePolicy "Error: principal.getTag(context.key)" getₖ tagsEnv],
+    [testFailsCompilePolicies "Error: principal.getTag(context.key)" getₖ tagsEnv],
 
-    testVerifyNoError "Error: principal.getTag(context.key)"
-      getₖ
-      tagsEnv .sat,
-
-    testVerifyNoError "Okay: principal.hasTag(\"a\") && principal.getTag(\"a\")"
+    testVerifyNoError "Error: principal.hasTag(\"a\") && principal.getTag(\"a\")"
       (.and hasₐ getₐ)
       tagsEnv .unsat,
 
-    testVerifyNoError "Okay: !(!(principal.hasTag(\"a\"))) && principal.getTag(\"a\")"
+    -- this policy never errors at runtime, but our current validator is not
+    -- powerful enough to validate this policy.
+    -- however, if you were to feed this policy directly to the symbolic
+    -- compiler (that is, if compilation did not require typechecking first --
+    -- see also the notes in SymTest/WellTyped.lean), the symbolic compiler would
+    -- correctly handle this policy and `testVerifyNoError` would confirm it
+    -- never errors
+    [testFailsCompilePolicy "Okay: !(!(principal.hasTag(\"a\"))) && principal.getTag(\"a\")"
       (.and (.unaryApp .not (.unaryApp .not hasₐ)) getₐ)
-      tagsEnv .unsat,
+      tagsEnv],
 
-    testVerifyNoError "Okay: !(principal.hasTag(\"a\")) || principal.getTag(\"a\")"
+    -- this policy never errors at runtime, but our current validator is not
+    -- powerful enough to validate this policy.
+    -- however, if you were to feed this policy directly to the symbolic
+    -- compiler (that is, if compilation did not require typechecking first --
+    -- see also the notes in SymTest/WellTyped.lean), the symbolic compiler would
+    -- correctly handle this policy and `testVerifyNoError` would confirm it
+    -- never errors
+    [testFailsCompilePolicy "Okay: !(principal.hasTag(\"a\")) || principal.getTag(\"a\")"
       (.or (.unaryApp .not hasₐ) getₐ)
-      tagsEnv .unsat,
+      tagsEnv],
 
-    testVerifyEquivalent "Equivalent: (context.key == \"a\") && (principal.hasTag(context.key) && principal.getTag(\"a\")) <==> (context.key == \"a\") && principal.hasTag(\"a\") && principal.getTag(\"a\")"
+    -- this policy never errors at runtime, but our current validator is not
+    -- powerful enough to validate this policy.
+    -- however, if you were to feed this policy directly to the symbolic
+    -- compiler (that is, if compilation did not require typechecking first --
+    -- see also the notes in SymTest/WellTyped.lean), the symbolic compiler would
+    -- correctly handle this policy and `testVerifyEquivalent` would give
+    -- the Equivalent result
+    [testFailsCompilePolicy "Equivalent: (context.key == \"a\") && (principal.hasTag(context.key) && principal.getTag(\"a\")) <==> (context.key == \"a\") && principal.hasTag(\"a\") && principal.getTag(\"a\")"
       (.and (.binaryApp .eq  (.getAttr (.var .context) "key") (.lit (.string "a"))) (.and hasₖ getₐ))
-      (.and (.binaryApp .eq  (.getAttr (.var .context) "key") (.lit (.string "a"))) (.and hasₐ getₐ))
-      tagsEnv .unsat,
+      -- would be equivalent to (.and (.binaryApp .eq  (.getAttr (.var .context) "key") (.lit (.string "a"))) (.and hasₐ getₐ))
+      tagsEnv],
   ]
 
 def tests := [
