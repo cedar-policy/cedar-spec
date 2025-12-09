@@ -391,7 +391,7 @@ pub enum Ext {
 pub enum TermPrim {
     Bool(bool),
     Bitvec(Bitvec),
-    String(String),
+    String(SmolStr),
     Entity(#[serde(deserialize_with = "deserialize_entity_uid")] EntityUid),
     Ext(Ext),
 }

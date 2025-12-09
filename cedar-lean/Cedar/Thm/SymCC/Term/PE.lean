@@ -232,6 +232,10 @@ theorem pe_eq_none_some {t : Term} {ty : TermType} :
   Factory.eq (Term.none ty) (Term.some t) = .prim (.bool false)
 := by simp [Factory.eq]
 
+theorem pe_eq_some_some {t₁ t₂ : Term} :
+  Factory.eq (Term.some t₁) (Term.some t₂) = Factory.eq.simplify t₁ t₂
+:= by simp [Factory.eq]
+
 theorem pe_eq_simplify_lit {t₁ t₂ : Term} :
   t₁.isLiteral → t₂.isLiteral →
   Term.isLiteral (Factory.eq.simplify t₁ t₂) ∧

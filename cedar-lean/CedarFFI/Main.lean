@@ -179,9 +179,7 @@ def parseCheckPolicyReq (schema : Cedar.Validation.Schema) (req : ByteArray) (re
     | none => .error s!"failed to get environment from requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource})"
     | some env => .ok env
   let _ ← env.validateWellFormed |>.mapError (s!"failed to validate environment (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource}): {·}")
-  let well_typed_policy ← match wellTypedPolicy policy env with
-    | none => .error s!"failed to validate policy for requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource})"
-    | some policy => .ok policy
+  let well_typed_policy ← wellTypedPolicy policy env |>.mapError (s!"failed to validate policy for requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource}): {·}")
   return (if return_original then policy else well_typed_policy, SymEnv.ofTypeEnv env)
 
 /--
@@ -201,9 +199,7 @@ def parseCheckPoliciesReq (schema : Cedar.Validation.Schema) (req : ByteArray) (
   let env ← match schema.environment? request.principal request.resource request.action with
     | none => .error s!"failed to get environment from requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource})"
     | some env => .ok env
-  let well_typed_policies ← match wellTypedPolicies policySet env with
-    | none => .error s!"failed to validate policy for requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource})"
-    | some policies => .ok policies
+  let well_typed_policies ← wellTypedPolicies policySet env |>.mapError (s!"failed to validate policy for requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource}): {·}")
   return (if return_original then policySet else well_typed_policies, SymEnv.ofTypeEnv env)
 
 /--
@@ -224,9 +220,8 @@ def parseComparePolicySetsReq (schema : Cedar.Validation.Schema) (req : ByteArra
   let env ← match schema.environment? request.principal request.resource request.action with
     | none => .error s!"failed to get environment from requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource})"
     | some env => .ok env
-  let (well_typed_src_policies, well_typed_tgt_policies) ← match wellTypedPolicies srcPolicySet env, wellTypedPolicies tgtPolicySet env with
-    | none, _ | _, none => .error s!"failed to validate policy for requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource})"
-    | some src, some tgt => .ok (src, tgt)
+  let well_typed_src_policies ← wellTypedPolicies srcPolicySet env |>.mapError (s!"failed to validate src policies for requestEnv (PrincipalType : {request.principal}, ActionName: {request.action}, ResourceType: {request.resource}): {·}")
+  let well_typed_tgt_policies ← wellTypedPolicies tgtPolicySet env |>.mapError (s!"failed to validate tgt policies for requestEnv (PrincipalType : {request.principal}, ActionName: {request.action}, ResourceType: {request.resource}): {·}")
   return if return_original then (srcPolicySet, tgtPolicySet, SymEnv.ofTypeEnv env) else (well_typed_src_policies, well_typed_tgt_policies, SymEnv.ofTypeEnv env)
 
 

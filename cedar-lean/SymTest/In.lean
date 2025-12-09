@@ -31,7 +31,7 @@ private def context₁ : RecordType :=
     ("z", .required (.entity albumType))
   ]
 
-private def symEnv₁ := SymEnv.ofEnv (env viewAlbum context₁)
+private def typeEnv₁ := env viewAlbum context₁
 
 private def x : Expr := .getAttr (.var .context) "x"
 private def y : Expr := .getAttr (.var .context) "y"
@@ -47,7 +47,7 @@ private def context₂ : RecordType :=
     ("zs", .required (.set (.entity albumType)))
   ]
 
-private def symEnv₂ := SymEnv.ofEnv (env viewAlbum context₂)
+private def typeEnv₂ := env viewAlbum context₂
 
 private def xs : Expr := .getAttr (.var .context) "xs"
 private def ys : Expr := .getAttr (.var .context) "ys"
@@ -62,7 +62,7 @@ private def context₃ : RecordType :=
     ("photoAct", .required (.entity photoActionType)),
     ("photoActs", .required (.set (.entity photoActionType)))
   ]
-private def symEnv₃ := SymEnv.ofEnv (env readPhoto context₃)
+private def typeEnv₃ := env readPhoto context₃
 
 private def photoAct : Expr := .getAttr (.var .context) "photoAct"
 private def photoActs : Expr := .getAttr (.var .context) "photoActs"
@@ -70,7 +70,7 @@ private def photoActs : Expr := .getAttr (.var .context) "photoActs"
 
 
 def testsForInOnEntities :=
-  suite "In.basic"
+  suite "In.basic" $ List.flatten
   [
     testVerifyEquivalent s!"False: Album::'X' in Album::'Y' && Album::'Y' in Album::'X' && Album::'X' != Album::'Y'"
       (.and
@@ -79,7 +79,7 @@ def testsForInOnEntities :=
           (.binaryApp .mem ay ax)
           (.unaryApp .not (.binaryApp .eq ax ay))))
       (.lit (.bool false))
-      symEnv₁ .unsat,
+      typeEnv₁ .unsat,
 
     testVerifyEquivalent "False: x in y && y in x && x != y"
       (.and
@@ -88,7 +88,7 @@ def testsForInOnEntities :=
           (.binaryApp .mem y x)
           (.unaryApp .not (.binaryApp .eq x y))))
       (.lit (.bool false))
-      symEnv₁ .unsat,
+      typeEnv₁ .unsat,
 
     testVerifyEquivalent "False: x in y && y in z && x !in z"
       (.and
@@ -97,7 +97,7 @@ def testsForInOnEntities :=
           (.binaryApp .mem y z)
           (.unaryApp .not (.binaryApp .mem x z))))
       (.lit (.bool false))
-      symEnv₁ .unsat,
+      typeEnv₁ .unsat,
 
     testVerifyEquivalent "True: if x in y && y in z then x in z else false"
       (.ite
@@ -107,28 +107,28 @@ def testsForInOnEntities :=
         (.binaryApp .mem x z)
         (.lit (.bool true)))
       (.lit (.bool true))
-      symEnv₁ .unsat,
+      typeEnv₁ .unsat,
 
     testVerifyImplies "Implies: x in (if x in y then z else Album::'Z') ==> x in z || x in Album::'Z'"
       (.binaryApp .mem x (.ite (.binaryApp .mem x y) z az))
       (.or
         (.binaryApp .mem x z)
         (.binaryApp .mem x az))
-      symEnv₁ .unsat,
+      typeEnv₁ .unsat,
   ]
 
 def testsForInOnEntitySets :=
-  suite "In.set"
+  suite "In.set" $ List.flatten
   [
     testVerifyEquivalent "True: x in [z, y, x]"
       (.binaryApp .mem x (.set [z, y, x]))
       (.lit (.bool true))
-      symEnv₁ .unsat,
+      typeEnv₁ .unsat,
 
     testVerifyImplies "Implies: x in (if x in y then z else Album::'Z') ==> x in [z, Album::'Z']"
       (.binaryApp .mem x (.ite (.binaryApp .mem x y) z az))
       (.binaryApp .mem x (.set [z, az]))
-      symEnv₁ .unsat,
+      typeEnv₁ .unsat,
 
     testVerifyEquivalent "True: x in {bar : true, foo : [z, y, x]}.foo"
       (.binaryApp .mem x
@@ -138,7 +138,7 @@ def testsForInOnEntitySets :=
             ("foo", (.set [z, y, x]))])
           "foo"))
       (.lit (.bool true))
-      symEnv₁ .unsat,
+      typeEnv₁ .unsat,
 
     testVerifyEquivalent "False: x in [y] && y in [x] && x != y"
       (.and
@@ -147,7 +147,7 @@ def testsForInOnEntitySets :=
           (.binaryApp .mem y (.set [x]))
           (.unaryApp .not (.binaryApp .eq x y))))
       (.lit (.bool false))
-      symEnv₁ .unsat,
+      typeEnv₁ .unsat,
 
     testVerifyEquivalent "False: x in [Album::'X'] && Album::'X' in [x] && x != Album::'X'"
       (.and
@@ -156,7 +156,7 @@ def testsForInOnEntitySets :=
           (.binaryApp .mem ax (.set [x]))
           (.unaryApp .not (.binaryApp .eq x ax))))
       (.lit (.bool false))
-      symEnv₁ .unsat,
+      typeEnv₁ .unsat,
 
     testVerifyEquivalent "False: x in [y] && y in [z] && x !in z"
       (.and
@@ -165,7 +165,7 @@ def testsForInOnEntitySets :=
           (.binaryApp .mem y (.set [z]))
           (.unaryApp .not (.binaryApp .mem x z))))
       (.lit (.bool false))
-      symEnv₁ .unsat,
+      typeEnv₁ .unsat,
 
     testVerifyEquivalent "False: x in [y] && y in [z] && x !in [z]"
       (.and
@@ -174,7 +174,7 @@ def testsForInOnEntitySets :=
           (.binaryApp .mem y (.set [z]))
           (.unaryApp .not (.binaryApp .mem x (.set [z])))))
       (.lit (.bool false))
-      symEnv₁ .unsat,
+      typeEnv₁ .unsat,
 
     testVerifyEquivalent "False: x in y && y in ys && x !in ys"
       (.and
@@ -183,43 +183,43 @@ def testsForInOnEntitySets :=
           (.binaryApp .mem y ys)
           (.unaryApp .not (.binaryApp .mem x ys))))
       (.lit (.bool false))
-      symEnv₂ .unsat,
+      typeEnv₂ .unsat,
 
     testVerifyEquivalent "Equivalent: x in y <==> x in [y]"
       (.binaryApp .mem x y)
       (.binaryApp .mem x (.set [y]))
-      symEnv₂ .unsat,
+      typeEnv₂ .unsat,
 
     testVerifyImplies "Implies: xs.contains(x) ==> x in xs"
       (.binaryApp .contains xs x)
       (.binaryApp .mem x xs)
-      symEnv₂ .unsat,
+      typeEnv₂ .unsat,
 
     testVerifyImplies "Implies: xs.contains(x) && ys.contains(x) ==> xs.containsAny(ys)"
       (.and
         (.binaryApp .contains xs x)
         (.binaryApp .contains ys x))
       (.binaryApp .containsAny xs ys)
-      symEnv₂ .unsat,
+      typeEnv₂ .unsat,
 
     testVerifyImplies "Implies: xs.containsAll([x]) ==> x in xs"
       (.binaryApp .containsAll xs (.set [x]))
       (.binaryApp .mem x xs)
-      symEnv₂ .unsat,
+      typeEnv₂ .unsat,
 
     testVerifyImplies "Implies: xs.containsAll([z, y]) && x in [y, z] ==> x in xs"
       (.and
         (.binaryApp .containsAll xs (.set [z, y]))
         (.binaryApp .mem x (.set [y, z])))
       (.binaryApp .mem x xs)
-      symEnv₂ .unsat,
+      typeEnv₂ .unsat,
 
     testVerifyImplies "Implies: xs.containsAll(ys) && x in ys ==> x in xs"
       (.and
         (.binaryApp .containsAll xs ys)
         (.binaryApp .mem x ys))
       (.binaryApp .mem x xs)
-      symEnv₂ .unsat,
+      typeEnv₂ .unsat,
 
     testVerifyImplies "Implies: xs.containsAll(ys) && ys.containsAll(zs) && x in zs ==> x in xs"
       (.and
@@ -228,12 +228,12 @@ def testsForInOnEntitySets :=
           (.binaryApp .containsAll ys zs)
           (.binaryApp .mem x zs)))
       (.binaryApp .mem x xs)
-      symEnv₂ .unsat,
+      typeEnv₂ .unsat,
 
     testVerifyImplies "Implies: xs.containsAny([x]) ==> x in xs"
       (.binaryApp .containsAny xs (.set [x]))
       (.binaryApp .mem x xs)
-      symEnv₂ .unsat,
+      typeEnv₂ .unsat,
 
     testVerifyImplies "Implies: xs.containsAny([z, y]) && x in y && x in z ==> x in xs"
       (.and
@@ -242,17 +242,17 @@ def testsForInOnEntitySets :=
           (.binaryApp .mem x y)
           (.binaryApp .mem x z)))
       (.binaryApp .mem x xs)
-      symEnv₂ .unsat,
+      typeEnv₂ .unsat,
   ]
 
-private def testVerifyActionIn (left right : EntityUID) (outcome : Bool): TestCase SolverM :=
+private def testVerifyActionIn (left right : EntityUID) (outcome : Bool): List (TestCase SolverM) :=
   testVerifyEquivalent s!"{outcome}: {left} in {right}"
     (.binaryApp .mem (.lit (.entityUID left)) (.lit (.entityUID right)))
     (.lit (.bool outcome))
-    symEnv₃ .unsat
+    typeEnv₃ .unsat
 
 def testsForInOnActions :=
-  suite "In.action"
+  suite "In.action" $ List.flatten
   [
     testVerifyActionIn readPhoto readPhoto true,
     testVerifyActionIn readPhoto editPhoto true,
@@ -265,27 +265,27 @@ def testsForInOnActions :=
     testVerifyEquivalent s!"True: action in {readPhoto}"
       (.binaryApp .mem (.var .action) (.lit (.entityUID readPhoto)))
       (.lit (.bool true))
-      symEnv₃ .unsat,
+      typeEnv₃ .unsat,
 
     testVerifyEquivalent s!"True: action in {editPhoto}"
       (.binaryApp .mem (.var .action) (.lit (.entityUID editPhoto)))
       (.lit (.bool true))
-      symEnv₃ .unsat,
+      typeEnv₃ .unsat,
 
     testVerifyEquivalent s!"False: action in {viewAlbum}"
       (.binaryApp .mem (.var .action) (.lit (.entityUID viewAlbum)))
       (.lit (.bool false))
-      symEnv₃ .unsat,
+      typeEnv₃ .unsat,
 
     testVerifyImplies s!"Implies: photoAct in {readPhoto} ==> photoAct in {editPhoto}"
       (.binaryApp .mem photoAct (.lit (.entityUID readPhoto)))
       (.binaryApp .mem photoAct (.lit (.entityUID editPhoto)))
-      symEnv₃ .unsat,
+      typeEnv₃ .unsat,
 
     testVerifyImplies s!"Implies: photoAct in {updatePhoto} ==> photoAct in {editPhoto}"
       (.binaryApp .mem photoAct (.lit (.entityUID updatePhoto)))
       (.binaryApp .mem photoAct (.lit (.entityUID editPhoto)))
-      symEnv₃ .unsat,
+      typeEnv₃ .unsat,
 
     testVerifyImplies s!"Implies: photoAct in {editPhoto} && photoAct != {editPhoto} ==> photoAct in [{readPhoto}, {updatePhoto}]"
       (.and
@@ -295,17 +295,17 @@ def testsForInOnActions :=
         (.set [
           (.lit (.entityUID readPhoto)),
           (.lit (.entityUID updatePhoto))]))
-      symEnv₃ .unsat,
+      typeEnv₃ .unsat,
 
     testVerifyImplies s!"Implies: photoActs.contains({editPhoto}) ==> {readPhoto} in photoActs"
       (.binaryApp .contains photoActs (.lit (.entityUID editPhoto)))
       (.binaryApp .mem (.lit (.entityUID readPhoto)) photoActs)
-      symEnv₃ .unsat,
+      typeEnv₃ .unsat,
 
     testVerifyImplies s!"Implies: photoActs.contains({editPhoto}) ==> action in photoActs"
       (.binaryApp .contains photoActs (.lit (.entityUID editPhoto)))
       (.binaryApp .mem (.var .action) photoActs)
-      symEnv₃ .unsat,
+      typeEnv₃ .unsat,
   ]
 
 def tests := [

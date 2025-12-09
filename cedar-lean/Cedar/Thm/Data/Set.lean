@@ -137,6 +137,12 @@ theorem empty_wf {α : Type u} [LT α] [DecidableLT α] :
   unfold WellFormed toList empty make List.canonicalize
   rfl
 
+theorem map_empty [LT β] [DecidableLT β] (f : α → β) :
+  Set.empty.map f = Set.empty
+:= by
+  simp [Set.map, empty_eq_mk_empty, Set.elts, Set.make, List.canonicalize_nil]
+
+
 /-! ### isEmpty -/
 
 theorem make_empty [DecidableEq α] [LT α] [DecidableLT α] (xs : List α) :
@@ -205,6 +211,11 @@ theorem empty_iff_not_exists [DecidableEq α] (s : Set α) :
 
 
 /-! ### singleton -/
+
+theorem singleton_wf [DecidableEq α] [LT α] [DecidableLT α] (a : α) :
+  WellFormed (Set.singleton a)
+:= by
+  simp [singleton, WellFormed, make, toList, List.canonicalize, List.insertCanonical_singleton]
 
 theorem mem_singleton_iff_eq [DecidableEq α] (a b : α) :
   a ∈ Set.singleton b ↔ a = b
@@ -275,10 +286,20 @@ theorem elts_make_equiv [LT α] [DecidableLT α] [StrictLT α] {xs : List α} :
   · rw [in_list_iff_in_set, ← make_mem]
     exact h₁
 
+theorem make_nil [LT α] [DecidableLT α] [StrictLT α] :
+  Set.make [] (α := α) = Set.empty
+:= by
+  simp [make, List.canonicalize_nil, empty]
+
 theorem elts_make_nil [LT α] [DecidableLT α] [StrictLT α] :
   Set.elts (Set.make ([] : List α)) = []
 := by
   simp [make, elts, List.canonicalize_nil]
+
+theorem make_singleton_nonempty [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] (a : α) :
+  Set.make [a] ≠ Set.empty
+:= by
+  simp [make, empty, List.canonicalize, List.insertCanonical_not_nil _ a []]
 
 def eq_means_eqv [LT α] [DecidableLT α] [StrictLT α] {s₁ s₂ : Set α} :
   WellFormed s₁ → WellFormed s₂ →
@@ -658,5 +679,13 @@ theorem wellFormed_correct {α} [LT α] [StrictLT α] [DecidableLT α] {s : Set 
     apply List.isSorted_correct.mp
     apply (wf_iff_sorted s).mp
     exact h
+
+/-! ### map -/
+
+/-- Analogue of `List.mem_map` but for sets -/
+theorem mem_map [LT α] [DecidableLT α] [StrictLT α] [LT β] [DecidableLT β] [StrictLT β] (b : β) (f : α → β) (s : Set α) :
+  b ∈ s.map f ↔ ∃ a ∈ s, f a = b
+:= by
+  simp [Set.map, ← Set.make_mem, Set.in_list_iff_in_set]
 
 end Cedar.Data.Set

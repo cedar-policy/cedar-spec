@@ -1373,36 +1373,31 @@ decreasing_by
     have := List.sizeOf_lt_of_mem hmem_tx
     omega
 
-theorem wellTypedPolicy_some_implies_valid_refs
+theorem wellTypedPolicy_ok_implies_valid_refs
   {Γ : TypeEnv} {p p' : Policy}
   (hwf : Γ.WellFormed)
-  (hsome : wellTypedPolicy p Γ = .some p') :
+  (hok : wellTypedPolicy p Γ = .ok p') :
   p'.toExpr.ValidRefs ((SymEnv.ofEnv Γ).entities.isValidEntityUID ·)
 := by
-  simp only [
-    wellTypedPolicy,
-    bind, Option.bind,
-  ] at hsome
-  split at hsome
+  simp only [wellTypedPolicy, bind, Except.bind] at hok
+  split at hok
   contradiction
   rename_i tx hwt
-  simp only [Option.some.injEq] at hsome
+  simp only [Except.ok.injEq] at hok ; subst p'
   simp only [
-    ←hsome, Policy.toExpr, Conditions.toExpr,
+    Policy.toExpr, Conditions.toExpr,
     List.foldl, List.reverse, List.reverseAux,
   ]
-  any_goals repeat constructor
+  repeat constructor
   simp only [Condition.toExpr]
   simp only [typecheckPolicy] at hwt
   split at hwt
   · rename_i tx' _ hty
     split at hwt
-    · simp only [Except.toOption, Option.some.injEq] at hwt
+    · simp only [Except.ok.injEq] at hwt ; subst tx'
       have := typechecked_is_well_typed_after_lifting hty
-      simp only [hwt] at this
       have := ofEnv_entities_valid_refs_for_wt_expr hwf this
-      have := ValidRefs_invariant_under_liftBoolTypes this
-      exact this
+      exact ValidRefs_invariant_under_liftBoolTypes this
     · contradiction
   · contradiction
 
@@ -1951,18 +1946,18 @@ theorem ofEnv_swf_for_expr
 theorem ofEnv_swf_for_policy
   {Γ : TypeEnv} {p p' : Policy}
   (hwf : Γ.WellFormed)
-  (hsome : wellTypedPolicy p Γ = .some p') :
+  (hwt : wellTypedPolicy p Γ = .ok p') :
   (SymEnv.ofEnv Γ).StronglyWellFormedForPolicy p'
 := by
   constructor
   · exact ofEnv_is_swf hwf
-  · exact wellTypedPolicy_some_implies_valid_refs hwf hsome
+  · exact wellTypedPolicy_ok_implies_valid_refs hwf hwt
 
 /-- Similar to `ofEnv_swf_for_expr` but for `StronglyWellFormedForPolicies`. -/
 theorem ofEnv_swf_for_policies
   {Γ : TypeEnv} {ps ps' : Policies}
   (hwf : Γ.WellFormed)
-  (hsome : wellTypedPolicies ps Γ = .some ps') :
+  (hwt : wellTypedPolicies ps Γ = .ok ps') :
   (SymEnv.ofEnv Γ).StronglyWellFormedForPolicies ps'
 := by
   simp only [
@@ -1973,8 +1968,8 @@ theorem ofEnv_swf_for_policies
   · exact ofEnv_is_swf hwf
   · intros tx hmem_tx
     have ⟨p', hmem_p', hp'⟩ := List.mem_map.mp hmem_tx
-    simp only [wellTypedPolicies] at hsome
-    have ⟨p, hmem_p, hp⟩ := List.mapM_some_implies_all_from_some hsome p' hmem_p'
+    simp only [wellTypedPolicies] at hwt
+    have ⟨p, hmem_p, hp⟩ := List.mapM_ok_implies_all_from_ok hwt p' hmem_p'
     have ⟨_, h⟩ := ofEnv_swf_for_policy hwf hp
     simp only [hp'] at h
     exact h
