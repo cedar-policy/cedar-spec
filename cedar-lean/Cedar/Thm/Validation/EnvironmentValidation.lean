@@ -114,7 +114,7 @@ decreasing_by
     have h : rty = hd :: tl := by assumption
     simp [h]
     omega
-  -- optional attribute
+   -- optional attribute
   any_goals
     have h : rty = hd :: tl := by assumption
     try have hsnd : hd.snd = Qualified.optional attr_ty := by assumption
@@ -136,36 +136,36 @@ theorem type_validate_well_formed_is_sound
   cases ty with
   | bool _ | int | string | ext _ => constructor
   | entity ety =>
-    simp only [CedarType.validateWellFormed] at hok
     constructor
     exact entity_type_validate_well_formed_is_sound hok
   | set ty =>
-    simp only [CedarType.validateWellFormed] at hok
     constructor
     exact type_validate_well_formed_is_sound hok
   | record rty =>
-    -- Some simplifications
-    simp only [
-      CedarType.validateWellFormed,
-      Except.bind_ok,
-      Except.bind_err,
-    ] at hok
-    cases hwf_rty : rty.wellFormed
-    · simp only [hwf_rty, Bool.false_eq_true, ↓reduceIte, reduceCtorEq] at hok
-    simp only [hwf_rty, ↓reduceIte] at hok
-    replace hwf_rty := Map.wellFormed_correct.mp hwf_rty
-    constructor
-    · exact hwf_rty
-    -- Soundness of `CedarType.validateWellFormed.validateAttrsWellFormed`
-    · intros _ _ hfind
-      exact validate_attrs_well_formed_is_sound hwf_rty hok hfind
+    change (do
+    if rty.wellFormed then Except.ok ()
+    else .error (Cedar.Validation.EnvironmentValidationError.typeError s!"record type is not a well-formed map")
+    validateAttrsWellFormed env rty.toList) = _ at hok
+    simp only [Except.bind_ok, Except.bind_err] at hok
+    split at hok
+    case _ =>
+      rename_i hwf_rty
+      replace hwf_rty := Map.wellFormed_correct.mp hwf_rty
+      constructor
+      · exact hwf_rty
+      · intros _ _ hfind
+        exact validate_attrs_well_formed_is_sound hwf_rty hok hfind
+    case _ => simp only [reduceCtorEq] at hok
+
 termination_by sizeOf ty
 decreasing_by
-  any_goals simp [*]
-  · cases rty
-    simp
+  · rename_i h
+    simp only [h, CedarType.set.sizeOf_spec, Nat.lt_add_left_iff_pos, Nat.lt_add_one]
+  · rename_i h _ _ _ _
+    simp only [h, CedarType.record.sizeOf_spec]
+    simp only [sizeOf, Map._sizeOf_1]
+    generalize List._sizeOf_1 rty.1 = i
     omega
-
 end
 
 theorem type_validate_lifted_is_sound

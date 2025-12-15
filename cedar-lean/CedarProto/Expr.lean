@@ -141,7 +141,7 @@ def mergeWildcard (_ : PatElem) (x : Wildcard) : PatElem :=
 @[inline]
 def mergeC (_ : PatElem) (x2 : String) : PatElem :=
   -- With a single character we'll perform replacement
-  match x2.data with
+  match x2.toList with
   | [c2] => .justChar c2
   | _    => panic!("Only expected a single character in PatElem")
 

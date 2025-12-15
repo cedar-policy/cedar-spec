@@ -40,7 +40,7 @@ def runAndTime (f : Unit → α) : BaseIO (Timed α) := do
   let start ← IO.monoNanosNow
   let result := f ()
   let stop ← IO.monoNanosNow
-  .ok {
+  return {
     data := result,
     duration := stop - start
   }
@@ -49,7 +49,7 @@ def runAndTimeIO (f : IO α) : IO (Timed α) := do
   let start ← IO.monoNanosNow
   let result ← f
   let stop ← IO.monoNanosNow
-  .ok {
+  return {
     data := result,
     duration := stop - start
   }
