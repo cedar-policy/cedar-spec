@@ -171,7 +171,7 @@ def encodeString (s : String) : IO String := do
       else if 32 ≤ c.toNat ∧ c.toNat ≤ 126 then return s!"{c}"
       else
         if c.toNat ≤ smtLibMaxCodePoint then
-          return "\\u{" ++ String.mk (Nat.toDigits 16 c.toNat) ++ "}"
+          return "\\u{" ++ String.ofList (Nat.toDigits 16 c.toNat) ++ "}"
         else
           -- Invalid code point for SMT-LIB
           throw (IO.userError s!"Code point {c.toNat} not supported in SMT-LIB: {s}")

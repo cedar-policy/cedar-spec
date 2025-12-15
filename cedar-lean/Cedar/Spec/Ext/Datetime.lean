@@ -227,7 +227,7 @@ def parseUnit? (isNegative : Bool) (str : String) (suffix : String) : Option (In
     if digits.isEmpty
     then none
     else do
-      let nUnsignedUnits ← String.toNat? (String.mk digits)
+      let nUnsignedUnits ← String.toNat? (String.ofList digits)
       let units ← if isNegative
         then durationUnits? (Int.negOfNat nUnsignedUnits) suffix
         else durationUnits? (Int.ofNat nUnsignedUnits) suffix

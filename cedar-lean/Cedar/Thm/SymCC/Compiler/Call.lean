@@ -222,7 +222,7 @@ private theorem pe_datetime_toDate_sDiv_ms_sub_1 (dt : Ext.Datetime) :
   (dt.val.toUInt64.toBitVec.sdiv 86400000#64).toInt - Int.ofNat 1 =
   ((dt.val.toUInt64.toBitVec.sdiv 86400000#64).sub 1#64).toInt
 := by
-  simp only [Int.ofNat_eq_coe, BitVec.sub_eq, BitVec.toInt_sub,
+  simp only [Int.ofNat_eq_natCast, BitVec.sub_eq, BitVec.toInt_sub,
     BitVec.reduceToInt, Nat.reducePow]
   symm
   apply @Int.bmod_bounded_eq_self 63

@@ -608,7 +608,6 @@ theorem conversion_preserves_typedness:
 termination_by sizeOf expr
 decreasing_by
   all_goals (
-    simp
     rename_i a b d d _e _f _g _ _i _j _k _l _m _n _o
     (first
      | rename_i p r _s; rw [r]; simp; omega

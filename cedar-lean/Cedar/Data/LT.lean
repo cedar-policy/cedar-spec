@@ -223,7 +223,7 @@ instance Char.strictLT : StrictLT Char where
     intro h₁
     apply UInt32.strictLT.connected
     by_contra h₂
-    have h₄ : a = b := by apply Char.eq_of_val_eq h₂
+    have h₄ : a = b := by apply Char.ext h₂
     contradiction
 
 instance String.strictLT : StrictLT String where

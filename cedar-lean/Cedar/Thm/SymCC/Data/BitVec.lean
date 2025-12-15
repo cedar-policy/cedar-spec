@@ -84,7 +84,7 @@ theorem signedMax_eq_INT64_MAX :
 theorem toInt_ofInt_64 {bv : BitVec 64} :
   BitVec.ofInt 64 (BitVec.toInt bv) = bv
 := by
-  simp only [BitVec.ofInt, BitVec.toInt, Nat.reducePow, Int.ofNat_eq_coe, toNat_eq, toNat_ofNatLT]
+  simp only [BitVec.ofInt, BitVec.toInt, Nat.reducePow, Int.ofNat_eq_natCast, toNat_eq, toNat_ofNatLT]
   generalize hn : BitVec.toNat bv = n
   have heq : (n : Int) % 18446744073709551616 = n := by omega
   split
@@ -157,7 +157,7 @@ theorem mul_eq_toInt_mul_ofInt_64 {bv₁ bv₂ : BitVec 64} :
   bv₁ * bv₂ = BitVec.ofInt 64 (BitVec.toInt bv₁ * BitVec.toInt bv₂)
 := by
   simp only [mul_def, Fin.mul_def, val_toFin, Nat.reducePow, BitVec.ofInt, BitVec.ofNatLT,
-    BitVec.toInt, Int.ofNat_eq_coe, ofFin.injEq, Fin.mk.injEq]
+    BitVec.toInt, Int.ofNat_eq_natCast, ofFin.injEq, Fin.mk.injEq]
   generalize h₁ : BitVec.toNat bv₁ = n₁
   generalize h₂ : BitVec.toNat bv₂ = n₂
   have h₄ : (n₁ : Int) % 18446744073709551616 = (n₁ : Int) := by omega
@@ -205,7 +205,7 @@ private theorem mul_left_tdiv_right_pos_le {i₁ i₂ : Int}
   replace h₁ := Int.eq_ofNat_of_zero_le h₁
   replace h₂ := Int.eq_ofNat_of_zero_le h₂
   cases h₁ ; cases h₂ ; rename_i n₁ h₁ n₂ h₂; subst h₁ h₂
-  simp only [Int.tdiv, Int.ofNat_eq_coe, Int.ofNat_mul_ofNat,
+  simp only [Int.tdiv, Int.ofNat_eq_natCast, Int.ofNat_mul_ofNat,
     Int.ofNat_le, Nat.mul_div_le]
 
 private theorem le_mul_left_tdiv_right_neg {i₁ i₂ : Int}
@@ -299,7 +299,7 @@ theorem sdiv_pos_lt_INT64_MAX {bv₁ bv₂ : BitVec 64}
     case zero => simp only [Nat.zero_div, Int.cast_ofNat_Int, Int.reduceLT]
     case succ n₁ =>
       have h₄ : 9223372036854775807 = Int.ofNat 9223372036854775807 := by rfl
-      simp only [h₄, Int.ofNat_eq_coe, Int.ofNat_lt]
+      simp only [h₄, Int.ofNat_eq_natCast, Int.ofNat_lt]
       exact Nat.lt_of_lt_of_le (Nat.div_lt_self (Nat.zero_lt_succ n₁) h) h₃
   case true =>
     replace h₁ := msb_true_implies_neg_msb_eq h₁
@@ -331,11 +331,11 @@ theorem sdiv_pos_lt_INT64_MAX {bv₁ bv₂ : BitVec 64}
       cases h₁ : decide ((Int.ofNat (18446744073709551616 - 9223372036854775808 / n₂ % 18446744073709551616)) % Int.ofNat (2 ^ 64) < (Int.ofNat (2 ^ 64) + 1) / 2) == true
       case false =>
         simp only [beq_eq_false_iff_ne, ne_eq] at h₁
-        simp only [decide_eq_true_eq, Int.ofNat_eq_coe] at h₁
+        simp only [decide_eq_true_eq, Int.ofNat_eq_natCast] at h₁
         omega
       case true =>
         replace h₀ : n₂ < 2^63 := by omega
-        simp only [beq_true, decide_eq_true_eq, Int.ofNat_eq_coe] at h₁
+        simp only [beq_true, decide_eq_true_eq, Int.ofNat_eq_natCast] at h₁
         simp only [← Int.not_le]
         intro h₂
         simp only [← Int.not_le] at h₁
@@ -352,8 +352,8 @@ theorem sdiv_pos_lt_INT64_MAX {bv₁ bv₂ : BitVec 64}
           simp only [Nat.reducePow, Nat.reduceLT]
         have h₃ : 2^64  - (2^63 / n₂) < 2^64 := by omega
         have h₄ : ((Int.ofNat (2^64)) + 1) / 2 = Int.ofNat ((2^64 + 1) / 2) := by
-          simp only [Int.ofNat_eq_coe, Int.natCast_ediv, Int.natCast_add]; rfl
-        simp only [Int.ofNat_eq_coe] at h₄
+          simp only [Int.ofNat_eq_natCast, Int.natCast_ediv, Int.natCast_add]; rfl
+        simp only [Int.ofNat_eq_natCast] at h₄
         simp only [Int.ofNat_mod_ofNat]
         simp only [Nat.mod_eq_of_lt h₂, Nat.mod_eq_of_lt h₃]
         simp only [h₄, Int.ofNat_le]
@@ -376,7 +376,7 @@ theorem sdiv_pos_gt_INT64_MIN {bv₁ bv₂ : BitVec 64}
   case false =>
     simp only [BitVec.udiv_eq , BitVec.toInt_udiv_of_msb h₁]
     simp only [← Int.natCast_ediv]
-    exact Int.lt_of_lt_of_le (Int.sign_eq_neg_one_iff_neg.mp rfl) (Int.ofNat_zero_le (bv₁.toNat / bv₂.toNat))
+    exact Int.lt_of_lt_of_le (Int.sign_eq_neg_one_iff_neg.mp rfl) (Int.natCast_nonneg (bv₁.toNat / bv₂.toNat))
   case true =>
     cases msb_true_implies_neg_msb_eq h₁
     case inl h₂ =>
@@ -417,9 +417,9 @@ private theorem BitVec.msb_true_toNat_eq_neg_toInt {bv : BitVec 64} {n : Nat}
     have h₂ : Int.ofNat (bv.toNat) ≤ Int.ofNat (2^64) := by
       apply Int.le_of_sub_nonneg
       apply Int.le_trans
-      exact Int.ofNat_zero_le n.succ
-      simp only [h₁, Int.ofNat_eq_coe, Int.le_refl]
-    simp only [Int.ofNat_eq_coe, Int.ofNat_le] at h₂
+      exact Int.natCast_nonneg n.succ
+      simp only [h₁, Int.ofNat_eq_natCast, Int.le_refl]
+    simp only [Int.ofNat_eq_natCast, Int.ofNat_le] at h₂
     simp only [← Int.ofNat_sub h₂, Int.ofNat_inj] at h₁
     simp only [h₀, ← h₁]
 
@@ -443,7 +443,7 @@ theorem toInt_sdiv_eq_tdiv_toInt {bv₁ bv₂ : BitVec 64}
       simp only [BitVec.udiv_eq, BitVec.toInt_udiv_of_msb hmsb₁, hn₁, hn₂]
       simp only [BitVec.toInt_eq_toNat_of_msb hmsb₁] at hn₁
       simp only [BitVec.toInt_eq_toNat_of_msb hmsb₂] at hn₂
-      simp only [hn₁, hn₂, Int.tdiv, Int.ofNat_eq_coe, Int.natCast_ediv]
+      simp only [hn₁, hn₂, Int.tdiv, Int.ofNat_eq_natCast, Int.natCast_ediv]
     case true =>
       have hi₂ : bv₂.toInt < 0 := by
         simp only [BitVec.msb_eq_toInt, decide_eq_true_iff] at hmsb₂
@@ -487,7 +487,7 @@ theorem toInt_sdiv_eq_tdiv_toInt {bv₁ bv₂ : BitVec 64}
           simp only [BitVec.neg_eq, BitVec.neg_eq_zero_iff] at h₄
           simp only [BitVec.toNat_eq, BitVec.udiv_def, BitVec.toNat_ofNat, Nat.zero_mod] at h₄
           simp only [Nat.mod_eq_of_lt h₅] at h₄
-          simp only [← Int.ofNat_zero, ← h₄, Int.ofNat_eq_coe, h₁, hn₂]
+          simp only [← Int.ofNat_zero, ← h₄, Int.ofNat_eq_natCast, h₁, hn₂]
         case inr h₄ =>
           replace ⟨h₄, h₆⟩ := h₄
           replace h₆ := Int.ne_of_lt h₆
@@ -497,14 +497,14 @@ theorem toInt_sdiv_eq_tdiv_toInt {bv₁ bv₂ : BitVec 64}
           simp only [BitVec.udiv_eq, BitVec.neg_eq, BitVec.toInt_neg_of_ne_intMin h₆, Int.neg_inj]
           simp only [BitVec.neg_eq] at h₃
           simp only [BitVec.toInt_eq_toNat_of_msb h₃]
-          simp only [Int.ofNat_eq_coe, Int.ofNat_inj, BitVec.udiv_def, BitVec.toNat_ofNat]
+          simp only [Int.ofNat_eq_natCast, Int.ofNat_inj, BitVec.udiv_def, BitVec.toNat_ofNat]
           simp only [Nat.mod_eq_of_lt h₅]
           simp only [h₁, hn₂]
       case true =>
         simp only [beq_iff_eq] at h₂; subst h₂
         simp only [BitVec.neg_eq, BitVec.udiv_eq, BitVec.udiv_one, BitVec.neg_neg, hn₁, ← hn₂]
         simp only [BitVec.toNat_ofNat, Nat.one_mod_two_pow (by exact Nat.zero_lt_succ 64)]
-        simp only [Int.negSucc_eq, Nat.succ_eq_add_one, Nat.div_one, Int.ofNat_eq_coe,
+        simp only [Int.negSucc_eq, Nat.succ_eq_add_one, Nat.div_one, Int.ofNat_eq_natCast,
           Int.natCast_add, Int.cast_ofNat_Int]
     case true =>
       have hi₂ : bv₂.toInt < 0 := by
@@ -531,7 +531,7 @@ theorem sdiv_pos_bounded {bv₁ bv₂ : BitVec 64}
   case' false =>
     simp only [decide_eq_false_iff_not, Int.not_le] at h₃
     have ⟨n₁, hn₁⟩ := Int.eq_negSucc_of_lt_zero h₃; subst hn₁
-    simp only [Int.tdiv, Nat.succ_eq_add_one, Int.ofNat_eq_coe, Int.natCast_ediv]
+    simp only [Int.tdiv, Nat.succ_eq_add_one, Int.ofNat_eq_natCast, Int.natCast_ediv]
     simp only [Int.negSucc_eq] at h₁ h₂ h₃
     apply And.intro
     case left =>
@@ -543,12 +543,12 @@ theorem sdiv_pos_bounded {bv₁ bv₂ : BitVec 64}
       apply @Int.le_trans _ 0
       apply Int.neg_le_of_neg_le
       simp only [Int.neg_zero]
-      apply Int.ofNat_zero_le
-      apply Int.ofNat_zero_le
+      apply Int.natCast_nonneg
+      apply Int.natCast_nonneg
   case true =>
     simp only [decide_eq_true_eq] at h₃
     have ⟨n₁, hn₁⟩ := Int.eq_ofNat_of_zero_le h₃; subst hn₁
-    simp only [Int.tdiv, Nat.succ_eq_add_one, Int.ofNat_eq_coe, Int.neg_natCast_le_natCast,
+    simp only [Int.tdiv, Nat.succ_eq_add_one, Int.ofNat_eq_natCast, Int.neg_natCast_le_natCast,
       Int.ofNat_le, true_and, ge_iff_le]
     simp only [Int.ofNat_le] at h₂
     simp only [Int.natCast_pos] at h₀
@@ -597,27 +597,27 @@ theorem Int.bmod_bounded_eq_self {n : Nat} {i : Int}
     simp only [Int.negSucc_eq] at hlow
     replace hlow := Int.le_of_neg_le_neg hlow
     have hlow' : Int.ofNat (n₀ + 1) ≤ Int.ofNat (2^n) := by
-      simp only [ofNat_eq_coe]
+      simp only [Int.ofNat_eq_natCast]
       apply Int.le_trans hlow
       simp only [Int.natCast_pow, cast_ofNat_Int, Int.le_refl]
     have h₀ : n₀.succ < 2^(n+1) := by
-      simp only [ofNat_eq_coe, Int.ofNat_le] at hlow'
+      simp only [Int.ofNat_eq_natCast, Int.ofNat_le] at hlow'
       omega
     simp only [Nat.mod_eq_of_lt (Nat.lt_of_succ_lt h₀)]
     simp only [Int.subNatNat_of_le (Nat.le_of_lt h₀)]
     have h₁ : ((Int.ofNat (2^(n + 1))) + 1) / 2 = Int.ofNat (2 ^ n) := by
-      simp only [ofNat_eq_coe]; omega
-    simp only [Int.ofNat_eq_coe] at h₁
+      simp only [Int.ofNat_eq_natCast]; omega
+    simp only [Int.ofNat_eq_natCast] at h₁
     simp only [h₁]; clear h₁
-    simp only [Int.ofNat_eq_coe, Int.ofNat_le] at hlow'
+    simp only [Int.ofNat_eq_natCast, Int.ofNat_le] at hlow'
     omega
   case true =>
     simp only [beq_true, decide_eq_true_eq] at h₀
     simp only [Int.bmod, Int.emod_def]
     have h₁ : i < Int.ofNat (2^(n+1)) := by
-      simp only [ofNat_eq_coe, Int.natCast_pow, cast_ofNat_Int]; omega
+      simp only [Int.ofNat_eq_natCast, Int.natCast_pow, cast_ofNat_Int]; omega
     have h₂ : i / Int.ofNat (2^(n+1)) = 0 := by exact Int.ediv_eq_zero_of_lt h₀ h₁
-    simp only [← Int.ofNat_eq_coe, h₂, Int.mul_zero, Int.sub_zero]
+    simp only [← Int.ofNat_eq_natCast, h₂, Int.mul_zero, Int.sub_zero]
     have h₄ : (2 ^ n) - 1 < (Int.ofNat (2 ^ (n + 1)) + 1) / 2 := by
-      simp only [ofNat_eq_coe, Int.natCast_pow, cast_ofNat_Int]; omega
+      simp only [Int.ofNat_eq_natCast, Int.natCast_pow, cast_ofNat_Int]; omega
     simp only [Int.lt_of_le_of_lt hhigh h₄, ↓reduceIte]

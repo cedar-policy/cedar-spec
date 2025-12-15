@@ -162,7 +162,7 @@ decreasing_by
   · rename_i h
     simp only [h, CedarType.set.sizeOf_spec, Nat.lt_add_left_iff_pos, Nat.lt_add_one]
   · rename_i h _ _ _ _
-    simp only [h, CedarType.record.sizeOf_spec, gt_iff_lt]
+    simp only [h, CedarType.record.sizeOf_spec]
     simp only [sizeOf, Map._sizeOf_1]
     generalize List._sizeOf_1 rty.1 = i
     omega
