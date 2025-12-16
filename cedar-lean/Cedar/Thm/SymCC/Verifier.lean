@@ -16,5 +16,7 @@
 
 import Cedar.Thm.SymCC.Verifier.VerifyEvaluate
 import Cedar.Thm.SymCC.Verifier.VerifyEvaluateQueries
+import Cedar.Thm.SymCC.Verifier.VerifyEvaluatePair
+import Cedar.Thm.SymCC.Verifier.VerifyEvaluatePairQueries
 import Cedar.Thm.SymCC.Verifier.VerifyIsAuthorized
 import Cedar.Thm.SymCC.Verifier.VerifyIsAuthorizedQueries

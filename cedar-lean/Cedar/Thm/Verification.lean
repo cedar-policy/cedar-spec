@@ -269,6 +269,177 @@ theorem verifyNeverMatches_is_complete' {p : Policy} {εnv : SymEnv} {asserts : 
   cases p.effect <;> simp [Data.Set.make_nil, Data.Set.make_singleton_nonempty, ← Data.Set.make_mem]
 
 /--
+The `verifyMatchesEquivalent` analysis is sound: if the assertions
+`verifyMatchesEquivalent p₁ p₂ εnv` are unsatisfiable for the policies `p₁` and `p₂`
+and the strongly well-formed symbolic environment `εnv`, then the policies
+will have the same matching behavior (both match or both don't match) when
+applied to any strongly well-formed concrete environment `env ∈ᵢ εnv`.
+-/
+theorem verifyMatchesEquivalent_is_sound {p₁ p₂ : Policy} {εnv : SymEnv} {asserts : Asserts} :
+  εnv.StronglyWellFormedForPolicy p₁ →
+  εnv.StronglyWellFormedForPolicy p₂ →
+  verifyMatchesEquivalent p₁ p₂ εnv = .ok asserts →
+  εnv ⊭ asserts →
+  ∀ env,
+    env ∈ᵢ εnv →
+    env.StronglyWellFormedForPolicy p₁ →
+    env.StronglyWellFormedForPolicy p₂ →
+    (evaluate p₁.toExpr env.request env.entities = .ok true) =
+    (evaluate p₂.toExpr env.request env.entities = .ok true)
+:= by
+  intro h₁ h₂ h₃ h₄ env h₅ h₆ h₇
+  have h_sound := verifyEvaluatePair_is_sound verifyMatchesEquivalent_wbepq h₁ h₂ h₃ h₄ env h₅ h₆ h₇
+  rw [beq_iff_eq] at h_sound
+  cases hev₁ : (evaluate p₁.toExpr env.request env.entities == .ok (.prim (.bool true)))
+  · simp only [hev₁, Bool.false_eq, beq_eq_false_iff_ne, ne_eq] at h_sound
+    simp only [beq_eq_false_iff_ne, ne_eq] at hev₁
+    simp [*]
+  · simp only [hev₁, Bool.true_eq, beq_iff_eq] at h_sound
+    simp only [beq_iff_eq] at hev₁
+    simp [*]
+
+/--
+The `verifyMatchesEquivalent` analysis is complete: if the assertions
+`verifyMatchesEquivalent p₁ p₂ εnv` are satisfiable for the policies `p₁` and `p₂`
+and the strongly well-formed symbolic environment `εnv`, then there exists a
+strongly well-formed concrete environment `env ∈ᵢ εnv` such that the policies
+will have different matching behavior (one matches and the other doesn't) when
+applied to `env`.
+-/
+theorem verifyMatchesEquivalent_is_complete {p₁ p₂ : Policy} {εnv : SymEnv} {asserts : Asserts} :
+  εnv.StronglyWellFormedForPolicy p₁ →
+  εnv.StronglyWellFormedForPolicy p₂ →
+  verifyMatchesEquivalent p₁ p₂ εnv = .ok asserts →
+  εnv ⊧ asserts →
+  ∃ env,
+    env ∈ᵢ εnv ∧
+    env.StronglyWellFormedForPolicy p₁ ∧
+    env.StronglyWellFormedForPolicy p₂ ∧
+    Env.EnumCompleteFor env εnv ∧
+    (evaluate p₁.toExpr env.request env.entities = .ok true) ≠
+    (evaluate p₂.toExpr env.request env.entities = .ok true)
+:= by
+  intro h₁ h₂ h₃ h₄
+  have ⟨env, h₅, h₆, h₇, h₈, h₉⟩ := verifyEvaluatePair_is_complete verifyMatchesEquivalent_wbepq h₁ h₂ h₃ h₄
+  exists env
+  simp only [beq_eq_false_iff_ne, ne_eq] at h₉
+  apply And.intro h₅
+  apply And.intro h₆
+  apply And.intro h₇
+  apply And.intro h₈
+  cases hev₁ : evaluate p₁.toExpr env.request env.entities == .ok (.prim (.bool true))
+  · simp only [hev₁, Bool.false_eq, beq_eq_false_iff_ne, ne_eq, Decidable.not_not] at h₉
+    simp only [beq_eq_false_iff_ne, ne_eq] at hev₁
+    simp [*]
+  · simp only [hev₁, Bool.true_eq, beq_iff_eq] at h₉
+    simp only [beq_iff_eq] at hev₁
+    simp [*]
+
+/--
+The `verifyMatchesImplies` analysis is sound: if the assertions
+`verifyMatchesImplies p₁ p₂ εnv` are unsatisfiable for the policies `p₁` and `p₂`
+and the strongly well-formed symbolic environment `εnv`, then if `p₁` matches
+in any strongly well-formed concrete environment `env ∈ᵢ εnv`, then `p₂` also matches.
+-/
+theorem verifyMatchesImplies_is_sound {p₁ p₂ : Policy} {εnv : SymEnv} {asserts : Asserts} :
+  εnv.StronglyWellFormedForPolicy p₁ →
+  εnv.StronglyWellFormedForPolicy p₂ →
+  verifyMatchesImplies p₁ p₂ εnv = .ok asserts →
+  εnv ⊭ asserts →
+  ∀ env,
+    env ∈ᵢ εnv →
+    env.StronglyWellFormedForPolicy p₁ →
+    env.StronglyWellFormedForPolicy p₂ →
+    evaluate p₁.toExpr env.request env.entities = .ok true →
+    evaluate p₂.toExpr env.request env.entities = .ok true
+:= by
+  intro h₁ h₂ h₃ h₄ env h₅ h₆ h₇ h₈
+  have := verifyEvaluatePair_is_sound verifyMatchesImplies_wbepq h₁ h₂ h₃ h₄ env h₅ h₆ h₇
+  simp only [Bool.or_eq_true, bne_iff_ne, ne_eq, beq_iff_eq] at this
+  cases this with
+  | inl h => contradiction
+  | inr h => exact h
+
+/--
+The `verifyMatchesImplies` analysis is complete: if the assertions
+`verifyMatchesImplies p₁ p₂ εnv` are satisfiable for the policies `p₁` and `p₂`
+and the strongly well-formed symbolic environment `εnv`, then there exists a
+strongly well-formed concrete environment `env ∈ᵢ εnv` such that `p₁` matches
+but `p₂` does not match in `env`.
+-/
+theorem verifyMatchesImplies_is_complete {p₁ p₂ : Policy} {εnv : SymEnv} {asserts : Asserts} :
+  εnv.StronglyWellFormedForPolicy p₁ →
+  εnv.StronglyWellFormedForPolicy p₂ →
+  verifyMatchesImplies p₁ p₂ εnv = .ok asserts →
+  εnv ⊧ asserts →
+  ∃ env,
+    env ∈ᵢ εnv ∧
+    env.StronglyWellFormedForPolicy p₁ ∧
+    env.StronglyWellFormedForPolicy p₂ ∧
+    Env.EnumCompleteFor env εnv ∧
+    evaluate p₁.toExpr env.request env.entities = .ok true ∧
+    evaluate p₂.toExpr env.request env.entities ≠ .ok true
+:= by
+  intro h₁ h₂ h₃ h₄
+  have ⟨env, h₅, h₆, h₇, h₈, h₉⟩ := verifyEvaluatePair_is_complete verifyMatchesImplies_wbepq h₁ h₂ h₃ h₄
+  exists env
+  rw [Bool.or_eq_false_iff] at h₉
+  simp_all
+
+/--
+The `verifyMatchesDisjoint` analysis is sound: if the assertions
+`verifyMatchesDisjoint p₁ p₂ εnv` are unsatisfiable for the policies `p₁` and `p₂`
+and the strongly well-formed symbolic environment `εnv`, then the policies
+cannot both match in any strongly well-formed concrete environment `env ∈ᵢ εnv`.
+-/
+theorem verifyMatchesDisjoint_is_sound {p₁ p₂ : Policy} {εnv : SymEnv} {asserts : Asserts} :
+  εnv.StronglyWellFormedForPolicy p₁ →
+  εnv.StronglyWellFormedForPolicy p₂ →
+  verifyMatchesDisjoint p₁ p₂ εnv = .ok asserts →
+  εnv ⊭ asserts →
+  ∀ env,
+    env ∈ᵢ εnv →
+    env.StronglyWellFormedForPolicy p₁ →
+    env.StronglyWellFormedForPolicy p₂ →
+    ¬ (evaluate p₁.toExpr env.request env.entities = .ok true ∧
+       evaluate p₂.toExpr env.request env.entities = .ok true)
+:= by
+  intro h₁ h₂ h₃ h₄ env h₅ h₆ h₇
+  have := verifyEvaluatePair_is_sound verifyMatchesDisjoint_wbepq h₁ h₂ h₃ h₄ env h₅ h₆ h₇
+  simp only [Bool.not_and, Bool.or_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true,
+    beq_eq_false_iff_ne, ne_eq] at this
+  cases this with
+  | inl h => simp [h]
+  | inr h => simp [h]
+
+/--
+The `verifyMatchesDisjoint` analysis is complete: if the assertions
+`verifyMatchesDisjoint p₁ p₂ εnv` are satisfiable for the policies `p₁` and `p₂`
+and the strongly well-formed symbolic environment `εnv`, then there exists a
+strongly well-formed concrete environment `env ∈ᵢ εnv` such that both policies
+match in `env`.
+-/
+theorem verifyMatchesDisjoint_is_complete {p₁ p₂ : Policy} {εnv : SymEnv} {asserts : Asserts} :
+  εnv.StronglyWellFormedForPolicy p₁ →
+  εnv.StronglyWellFormedForPolicy p₂ →
+  verifyMatchesDisjoint p₁ p₂ εnv = .ok asserts →
+  εnv ⊧ asserts →
+  ∃ env,
+    env ∈ᵢ εnv ∧
+    env.StronglyWellFormedForPolicy p₁ ∧
+    env.StronglyWellFormedForPolicy p₂ ∧
+    Env.EnumCompleteFor env εnv ∧
+    evaluate p₁.toExpr env.request env.entities = .ok true ∧
+    evaluate p₂.toExpr env.request env.entities = .ok true
+:= by
+  intro h₁ h₂ h₃ h₄
+  have ⟨env, h₅, h₆, h₇, h₈, h₉⟩ := verifyEvaluatePair_is_complete verifyMatchesDisjoint_wbepq h₁ h₂ h₃ h₄
+  exists env
+  simp only [Bool.not_and, Bool.or_eq_false_iff, Bool.not_eq_eq_eq_not, Bool.not_false,
+    beq_iff_eq] at h₉
+  simp [*]
+
+/--
 The `verifyEquivalent` analysis is sound: if the assertions
 `verifyEquivalent ps₁ ps₂ εnv` are unsatisfiable for the policies `ps₁` and `ps₂`
 and the strongly well-formed symbolic environment `εnv`, then the authorizer
@@ -504,6 +675,5 @@ theorem verifyAlwaysAllows_is_complete {ps₁ : Policies} {εnv : SymEnv} {asser
   exists env
   rw [allows_eq_allowAll_implies _ env]
   simp [h]
-
 
 end Cedar.Thm

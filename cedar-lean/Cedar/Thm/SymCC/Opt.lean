@@ -17,6 +17,7 @@
 import Cedar.SymCC
 import Cedar.SymCCOpt
 import Cedar.Thm.Data.Control
+import Cedar.Thm.Data.MapUnion
 import Cedar.Thm.Data.Set
 import Cedar.Thm.SymCC.Authorizer
 import Cedar.Thm.SymCC.Opt.AllowDeny
@@ -31,7 +32,7 @@ interface in SymCC.
 
 namespace Cedar.Thm
 
-open Cedar.Spec Cedar.SymCC
+open Cedar.Spec Cedar.SymCC List
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
@@ -91,6 +92,64 @@ theorem enforceCompiledPolicy_eqv_enforce_ok {p wp : Policy} {cp : CompiledPolic
       simp [Data.Set.mem_mapUnion_iff_mem_exists, hs]
       exists t
       simp [Data.Set.in_list_iff_in_set, Data.Set.mem_mapUnion_iff_mem_exists, ht']
+
+/--
+This theorem covers the "happy path" -- showing that if optimized policy
+compilation succeeds, then `enforce` and `enforcePairCompiledPolicy` are
+equivalent.
+-/
+theorem enforcePairCompiledPolicy_eqv_enforce_ok {p₁ p₂ wp₁ wp₂ : Policy} {cp₁ cp₂ : CompiledPolicy} {Γ : Validation.TypeEnv} :
+  CompiledPolicy.compile p₁ Γ = .ok cp₁ →
+  CompiledPolicy.compile p₂ Γ = .ok cp₂ →
+  wellTypedPolicy p₁ Γ = .ok wp₁ →
+  wellTypedPolicy p₂ Γ = .ok wp₂ →
+  enforce [wp₁.toExpr, wp₂.toExpr] (SymEnv.ofTypeEnv Γ) = enforcePairCompiledPolicy cp₁ cp₂
+:= by
+  simp [enforce, enforcePairCompiledPolicy]
+  intro h₀ h₁ h₂ h₃
+  simp [
+    cp_compile_produces_the_right_env h₀,
+    cp_compile_produces_the_right_env h₁,
+    cp_compile_produces_the_right_footprint h₀,
+    cp_compile_produces_the_right_footprint h₁,
+    cp_compile_produces_the_right_acyclicity h₀,
+    cp_compile_produces_the_right_acyclicity h₁,
+    compiled_policy_eq_wtp h₀ h₂,
+    compiled_policy_eq_wtp h₁ h₃,
+  ]
+  have h_split : [wp₁.toExpr, wp₂.toExpr] = [wp₁.toExpr] ++ [wp₂.toExpr] := by simp
+  rw [h_split, footprints_append, footprints_singleton, footprints_singleton]
+  simp [Data.Set.make_make_eqv, List.Equiv, List.subset_def]
+  constructor
+  · intro t₁ h₁
+    cases h₁ <;> rename_i h₁
+    · replace ⟨t₂, h₁, htemp⟩ := h₁ ; subst t₁
+      simp [Data.Set.in_list_iff_in_set] at *
+      change t₂ ∈ _ ∪ _ at h₁
+      rw [Data.Set.mem_union_iff_mem_or] at h₁
+      cases h₁ <;> rename_i h₁
+      case' inl => left
+      case' inr => right ; left
+      all_goals {
+        simp [Data.Set.mem_map]
+        exists t₂
+      }
+    · right ; right
+      simp [*]
+  · intro t₁ h₁
+    cases h₁ <;> rename_i h₁ <;> try (cases h₁ <;> rename_i h₁)
+    case right.inr.inr => right ; exact h₁
+    case' right.inl | right.inr.inl =>
+      left
+      simp [Data.Set.in_list_iff_in_set, Data.Set.mem_map] at h₁
+      replace ⟨t₂, h₁, htemp⟩ := h₁ ; subst t₁
+      exists t₂
+      simp [Data.Set.in_list_iff_in_set, HAppend.hAppend]
+      change t₂ ∈ _ ∪ _
+      rw [Data.Set.mem_union_iff_mem_or]
+    case' right.inl => left
+    case' right.inr.inl => right
+    all_goals exact h₁
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
@@ -189,6 +248,36 @@ theorem verifyEvaluateOpt_eqv_verifyEvaluate_ok {p wp : Policy} {cp : CompiledPo
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
+compilation succeeds, then `verifyEvaluatePair` and `verifyEvaluatePairOpt` are
+equivalent.
+-/
+theorem verifyEvaluatePairOpt_eqv_verifyEvaluatePair_ok {p₁ p₂ wp₁ wp₂ : Policy} {cp₁ cp₂ : CompiledPolicy} {Γ : Validation.TypeEnv} {φ : Term → Term → Term} :
+  CompiledPolicy.compile p₁ Γ = .ok cp₁ →
+  CompiledPolicy.compile p₂ Γ = .ok cp₂ →
+  wellTypedPolicy p₁ Γ = .ok wp₁ →
+  wellTypedPolicy p₂ Γ = .ok wp₂ →
+  verifyEvaluatePair φ wp₁ wp₂ (SymEnv.ofTypeEnv Γ) ~ .ok (verifyEvaluatePairOpt φ cp₁ cp₂)
+:= by
+  simp [verifyEvaluatePair, verifyEvaluatePairOpt, ResultAssertsEquiv]
+  intro h₀ h₁ h₂ h₃
+  have henv : cp₁.εnv = cp₂.εnv := by
+    simp [cp_compile_produces_the_right_env h₀, cp_compile_produces_the_right_env h₁]
+  simp [henv]
+  simp [enforcePairCompiledPolicy_eqv_enforce_ok h₀ h₁ h₂ h₃]
+  cases h₄ : compile wp₁.toExpr (SymEnv.ofTypeEnv Γ) <;> simp
+  case error e => simp_all [CompiledPolicy.compile, Except.mapError]
+  case ok t₁ =>
+    have h₅ := (cp_compile_produces_the_right_term h₀ h₂).symm ; simp [h₄] at h₅ ; subst t₁
+    cases h₆ : compile wp₂.toExpr (SymEnv.ofTypeEnv Γ) <;> simp
+    case error e => simp_all [CompiledPolicy.compile, Except.mapError]
+    case ok t₂ =>
+      have h₇ := (cp_compile_produces_the_right_term h₁ h₃).symm ; simp [h₆] at h₇ ; subst t₂
+      split <;> rename_i hnot
+      · apply Asserts.Equiv.constantFalse <;> simp [hnot]
+      · apply Asserts.Equiv.rfl
+
+/--
+This theorem covers the "happy path" -- showing that if optimized policy
 compilation succeeds, then `verifyIsAuthorized` and `verifyIsAuthorizedOpt` are
 equivalent.
 -/
@@ -255,6 +344,51 @@ theorem verifyNeverMatchesOpt_eqv_verifyNeverMatches_ok {p wp : Policy} {cp : Co
 := by
   simp [verifyNeverMatches, verifyNeverMatchesOpt]
   exact verifyEvaluateOpt_eqv_verifyEvaluate_ok
+
+/--
+This theorem covers the "happy path" -- showing that if optimized policy
+compilation succeeds, then `verifyMatchesEquivalent` and
+`verifyMatchesEquivalentOpt` are equivalent.
+-/
+theorem verifyMatchesEquivalentOpt_eqv_verifyMatchesEquivalent_ok {p₁ p₂ wp₁ wp₂ : Policy} {cp₁ cp₂ : CompiledPolicy} {Γ : Validation.TypeEnv} :
+  CompiledPolicy.compile p₁ Γ = .ok cp₁ →
+  CompiledPolicy.compile p₂ Γ = .ok cp₂ →
+  wellTypedPolicy p₁ Γ = .ok wp₁ →
+  wellTypedPolicy p₂ Γ = .ok wp₂ →
+  verifyMatchesEquivalent wp₁ wp₂ (SymEnv.ofTypeEnv Γ) ~ .ok (verifyMatchesEquivalentOpt cp₁ cp₂)
+:= by
+  simp [verifyMatchesEquivalent, verifyMatchesEquivalentOpt]
+  exact verifyEvaluatePairOpt_eqv_verifyEvaluatePair_ok
+
+/--
+This theorem covers the "happy path" -- showing that if optimized policy
+compilation succeeds, then `verifyMatchesImplies` and
+`verifyMatchesImpliesOpt` are equivalent.
+-/
+theorem verifyMatchesImpliesOpt_eqv_verifyMatchesImplies_ok {p₁ p₂ wp₁ wp₂ : Policy} {cp₁ cp₂ : CompiledPolicy} {Γ : Validation.TypeEnv} :
+  CompiledPolicy.compile p₁ Γ = .ok cp₁ →
+  CompiledPolicy.compile p₂ Γ = .ok cp₂ →
+  wellTypedPolicy p₁ Γ = .ok wp₁ →
+  wellTypedPolicy p₂ Γ = .ok wp₂ →
+  verifyMatchesImplies wp₁ wp₂ (SymEnv.ofTypeEnv Γ) ~ .ok (verifyMatchesImpliesOpt cp₁ cp₂)
+:= by
+  simp [verifyMatchesImplies, verifyMatchesImpliesOpt]
+  exact verifyEvaluatePairOpt_eqv_verifyEvaluatePair_ok
+
+/--
+This theorem covers the "happy path" -- showing that if optimized policy
+compilation succeeds, then `verifyMatchesDisjoint` and
+`verifyMatchesDisjointOpt` are equivalent.
+-/
+theorem verifyMatchesDisjointOpt_eqv_verifyMatchesDisjoint_ok {p₁ p₂ wp₁ wp₂ : Policy} {cp₁ cp₂ : CompiledPolicy} {Γ : Validation.TypeEnv} :
+  CompiledPolicy.compile p₁ Γ = .ok cp₁ →
+  CompiledPolicy.compile p₂ Γ = .ok cp₂ →
+  wellTypedPolicy p₁ Γ = .ok wp₁ →
+  wellTypedPolicy p₂ Γ = .ok wp₂ →
+  verifyMatchesDisjoint wp₁ wp₂ (SymEnv.ofTypeEnv Γ) ~ .ok (verifyMatchesDisjointOpt cp₁ cp₂)
+:= by
+  simp [verifyMatchesDisjoint, verifyMatchesDisjointOpt]
+  exact verifyEvaluatePairOpt_eqv_verifyEvaluatePair_ok
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
@@ -532,6 +666,78 @@ theorem neverMatchesOpt?_eqv_neverMatches?_ok {p : Policy} {cp : CompiledPolicy}
   exact Asserts.Equiv.satAsserts? [wp] _ (Asserts.Equiv.symm this)
 
 /--
+This theorem covers the "happy path" -- showing that if optimized policy
+compilation succeeds, then `wellTypedPolicy` succeeds and `matchesEquivalent?` and
+`matchesEquivalentOpt?` are equivalent.
+-/
+theorem matchesEquivalentOpt?_eqv_matchesEquivalent?_ok {p₁ p₂ wp₁ wp₂ : Policy} {cp₁ cp₂ : CompiledPolicy} {Γ : Validation.TypeEnv} :
+  Γ.WellFormed →
+  CompiledPolicy.compile p₁ Γ = .ok cp₁ →
+  CompiledPolicy.compile p₂ Γ = .ok cp₂ →
+  wellTypedPolicy p₁ Γ = .ok wp₁ →
+  wellTypedPolicy p₂ Γ = .ok wp₂ →
+  matchesEquivalentOpt? cp₁ cp₂ = matchesEquivalent? wp₁ wp₂ (SymEnv.ofTypeEnv Γ)
+:= by
+  simp only [matchesEquivalent?, matchesEquivalentOpt?]
+  simp only [sat?]
+  intro hwf h₀ h₁ h₂ h₃
+  have ⟨asserts, h₄⟩ := verifyMatchesEquivalent_is_ok hwf h₂ h₃
+  simp only [h₄]
+  simp only [cp_compile_produces_the_right_env h₀]
+  simp only [compiled_policy_eq_wtp h₀ h₂, compiled_policy_eq_wtp h₁ h₃]
+  have := verifyMatchesEquivalentOpt_eqv_verifyMatchesEquivalent_ok h₀ h₁ h₂ h₃
+  simp only [h₄, ResultAssertsEquiv] at this
+  exact Asserts.Equiv.satAsserts? [wp₁, wp₂] _ (Asserts.Equiv.symm this)
+
+/--
+This theorem covers the "happy path" -- showing that if optimized policy
+compilation succeeds, then `wellTypedPolicy` succeeds and `matchesImplies?` and
+`matchesImpliesOpt?` are equivalent.
+-/
+theorem matchesImpliesOpt?_eqv_matchesImplies?_ok {p₁ p₂ wp₁ wp₂ : Policy} {cp₁ cp₂ : CompiledPolicy} {Γ : Validation.TypeEnv} :
+  Γ.WellFormed →
+  CompiledPolicy.compile p₁ Γ = .ok cp₁ →
+  CompiledPolicy.compile p₂ Γ = .ok cp₂ →
+  wellTypedPolicy p₁ Γ = .ok wp₁ →
+  wellTypedPolicy p₂ Γ = .ok wp₂ →
+  matchesImpliesOpt? cp₁ cp₂ = matchesImplies? wp₁ wp₂ (SymEnv.ofTypeEnv Γ)
+:= by
+  simp only [matchesImplies?, matchesImpliesOpt?]
+  simp only [sat?]
+  intro hwf h₀ h₁ h₂ h₃
+  have ⟨asserts, h₄⟩ := verifyMatchesImplies_is_ok hwf h₂ h₃
+  simp only [h₄]
+  simp only [cp_compile_produces_the_right_env h₀]
+  simp only [compiled_policy_eq_wtp h₀ h₂, compiled_policy_eq_wtp h₁ h₃]
+  have := verifyMatchesImpliesOpt_eqv_verifyMatchesImplies_ok h₀ h₁ h₂ h₃
+  simp only [h₄, ResultAssertsEquiv] at this
+  exact Asserts.Equiv.satAsserts? [wp₁, wp₂] _ (Asserts.Equiv.symm this)
+
+/--
+This theorem covers the "happy path" -- showing that if optimized policy
+compilation succeeds, then `wellTypedPolicy` succeeds and `matchesDisjoint?` and
+`matchesDisjointOpt?` are equivalent.
+-/
+theorem matchesDisjointOpt?_eqv_matchesDisjoint?_ok {p₁ p₂ wp₁ wp₂ : Policy} {cp₁ cp₂ : CompiledPolicy} {Γ : Validation.TypeEnv} :
+  Γ.WellFormed →
+  CompiledPolicy.compile p₁ Γ = .ok cp₁ →
+  CompiledPolicy.compile p₂ Γ = .ok cp₂ →
+  wellTypedPolicy p₁ Γ = .ok wp₁ →
+  wellTypedPolicy p₂ Γ = .ok wp₂ →
+  matchesDisjointOpt? cp₁ cp₂ = matchesDisjoint? wp₁ wp₂ (SymEnv.ofTypeEnv Γ)
+:= by
+  simp only [matchesDisjoint?, matchesDisjointOpt?]
+  simp only [sat?]
+  intro hwf h₀ h₁ h₂ h₃
+  have ⟨asserts, h₄⟩ := verifyMatchesDisjoint_is_ok hwf h₂ h₃
+  simp only [h₄]
+  simp only [cp_compile_produces_the_right_env h₀]
+  simp only [compiled_policy_eq_wtp h₀ h₂, compiled_policy_eq_wtp h₁ h₃]
+  have := verifyMatchesDisjointOpt_eqv_verifyMatchesDisjoint_ok h₀ h₁ h₂ h₃
+  simp only [h₄, ResultAssertsEquiv] at this
+  exact Asserts.Equiv.satAsserts? [wp₁, wp₂] _ (Asserts.Equiv.symm this)
+
+/--
 Full equivalence for `neverErrors?` and `neverErrorsOpt?`, including both the
 `.ok` and `.error` cases
 -/
@@ -623,6 +829,114 @@ theorem neverMatchesOpt?_eqv_neverMatches? {p : Policy} {Γ : Validation.TypeEnv
       intro hwf
       have h := compile_ok_iff_welltypedpolicy_ok hwf (p := p)
       simp [hcp, hwp, Except.isOk, Except.toBool] at h
+
+/--
+Full equivalence for `matchesEquivalent?` and `matchesEquivalentOpt?`, including both the
+`.ok` and `.error` cases
+-/
+theorem matchesEquivalentOpt?_eqv_matchesEquivalent? {p₁ p₂ : Policy} {Γ : Validation.TypeEnv} :
+  Γ.WellFormed →
+  (do
+    let cp₁ ← CompiledPolicy.compile p₁ Γ
+    let cp₂ ← CompiledPolicy.compile p₂ Γ
+    pure $ matchesEquivalentOpt? cp₁ cp₂
+  ) =
+  (do
+    let wp₁ ← wellTypedPolicy p₁ Γ |>.mapError .validationError
+    let wp₂ ← wellTypedPolicy p₂ Γ |>.mapError .validationError
+    pure $ matchesEquivalent? wp₁ wp₂ (SymEnv.ofTypeEnv Γ)
+  )
+:= by
+  intro hwf
+  have h₁ := compile_ok_iff_welltypedpolicy_ok hwf (p := p₁)
+  have h₂ := compile_ok_iff_welltypedpolicy_ok hwf (p := p₂)
+  cases hcp₁ : CompiledPolicy.compile p₁ Γ
+  <;> cases hcp₂ : CompiledPolicy.compile p₂ Γ
+  <;> cases hwp₁ : wellTypedPolicy p₁ Γ
+  <;> cases hwp₂ : wellTypedPolicy p₂ Γ
+  -- this eliminates all the cases where the behavior of CompiledPolicy.compile is inconsistent
+  -- with the behavior of wellTypedPolicy on the same policy
+  <;> simp_all [Except.mapError, Except.isOk, Except.toBool]
+  case ok.ok.ok.ok cp₁ cp₂ wp₁ wp₂ =>
+    exact matchesEquivalentOpt?_eqv_matchesEquivalent?_ok hwf hcp₁ hcp₂ hwp₁ hwp₂
+  case error.ok.error.ok | error.error.error.error =>
+    simp [CompiledPolicy.compile, Except.mapError, hwp₁] at hcp₁
+    simp [hcp₁]
+  case ok.error.ok.error =>
+    simp [CompiledPolicy.compile, Except.mapError, hwp₂] at hcp₂
+    simp [hcp₂]
+
+/--
+Full equivalence for `matchesImplies?` and `matchesImpliesOpt?`, including both the
+`.ok` and `.error` cases
+-/
+theorem matchesImpliesOpt?_eqv_matchesImplies? {p₁ p₂ : Policy} {Γ : Validation.TypeEnv} :
+  Γ.WellFormed →
+  (do
+    let cp₁ ← CompiledPolicy.compile p₁ Γ
+    let cp₂ ← CompiledPolicy.compile p₂ Γ
+    pure $ matchesImpliesOpt? cp₁ cp₂
+  ) =
+  (do
+    let wp₁ ← wellTypedPolicy p₁ Γ |>.mapError .validationError
+    let wp₂ ← wellTypedPolicy p₂ Γ |>.mapError .validationError
+    pure $ matchesImplies? wp₁ wp₂ (SymEnv.ofTypeEnv Γ)
+  )
+:= by
+  intro hwf
+  have h₁ := compile_ok_iff_welltypedpolicy_ok hwf (p := p₁)
+  have h₂ := compile_ok_iff_welltypedpolicy_ok hwf (p := p₂)
+  cases hcp₁ : CompiledPolicy.compile p₁ Γ
+  <;> cases hcp₂ : CompiledPolicy.compile p₂ Γ
+  <;> cases hwp₁ : wellTypedPolicy p₁ Γ
+  <;> cases hwp₂ : wellTypedPolicy p₂ Γ
+  -- this eliminates all the cases where the behavior of CompiledPolicy.compile is inconsistent
+  -- with the behavior of wellTypedPolicy on the same policy
+  <;> simp_all [Except.mapError, Except.isOk, Except.toBool]
+  case ok.ok.ok.ok cp₁ cp₂ wp₁ wp₂ =>
+    exact matchesImpliesOpt?_eqv_matchesImplies?_ok hwf hcp₁ hcp₂ hwp₁ hwp₂
+  case error.ok.error.ok | error.error.error.error =>
+    simp [CompiledPolicy.compile, Except.mapError, hwp₁] at hcp₁
+    simp [hcp₁]
+  case ok.error.ok.error =>
+    simp [CompiledPolicy.compile, Except.mapError, hwp₂] at hcp₂
+    simp [hcp₂]
+
+/--
+Full equivalence for `matchesDisjoint?` and `matchesDisjointOpt?`, including both the
+`.ok` and `.error` cases
+-/
+theorem matchesDisjointOpt?_eqv_matchesDisjoint? {p₁ p₂ : Policy} {Γ : Validation.TypeEnv} :
+  Γ.WellFormed →
+  (do
+    let cp₁ ← CompiledPolicy.compile p₁ Γ
+    let cp₂ ← CompiledPolicy.compile p₂ Γ
+    pure $ matchesDisjointOpt? cp₁ cp₂
+  ) =
+  (do
+    let wp₁ ← wellTypedPolicy p₁ Γ |>.mapError .validationError
+    let wp₂ ← wellTypedPolicy p₂ Γ |>.mapError .validationError
+    pure $ matchesDisjoint? wp₁ wp₂ (SymEnv.ofTypeEnv Γ)
+  )
+:= by
+  intro hwf
+  have h₁ := compile_ok_iff_welltypedpolicy_ok hwf (p := p₁)
+  have h₂ := compile_ok_iff_welltypedpolicy_ok hwf (p := p₂)
+  cases hcp₁ : CompiledPolicy.compile p₁ Γ
+  <;> cases hcp₂ : CompiledPolicy.compile p₂ Γ
+  <;> cases hwp₁ : wellTypedPolicy p₁ Γ
+  <;> cases hwp₂ : wellTypedPolicy p₂ Γ
+  -- this eliminates all the cases where the behavior of CompiledPolicy.compile is inconsistent
+  -- with the behavior of wellTypedPolicy on the same policy
+  <;> simp_all [Except.mapError, Except.isOk, Except.toBool]
+  case ok.ok.ok.ok cp₁ cp₂ wp₁ wp₂ =>
+    exact matchesDisjointOpt?_eqv_matchesDisjoint?_ok hwf hcp₁ hcp₂ hwp₁ hwp₂
+  case error.ok.error.ok | error.error.error.error =>
+    simp [CompiledPolicy.compile, Except.mapError, hwp₁] at hcp₁
+    simp [hcp₁]
+  case ok.error.ok.error =>
+    simp [CompiledPolicy.compile, Except.mapError, hwp₂] at hcp₂
+    simp [hcp₂]
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
@@ -1003,6 +1317,75 @@ theorem checkNeverMatchesOpt_eqv_checkNeverMatches_ok {p : Policy} {cp : Compile
   exact Asserts.Equiv.checkUnsatAsserts (Asserts.Equiv.symm this)
 
 /--
+This theorem covers the "happy path" -- showing that if optimized policy
+compilation succeeds, then `wellTypedPolicy` succeeds and `checkMatchesEquivalent` and
+`checkMatchesEquivalentOpt` are equivalent.
+-/
+theorem checkMatchesEquivalentOpt_eqv_checkMatchesEquivalent_ok {p₁ p₂ wp₁ wp₂ : Policy} {cp₁ cp₂ : CompiledPolicy} {Γ : Validation.TypeEnv} :
+  Γ.WellFormed →
+  CompiledPolicy.compile p₁ Γ = .ok cp₁ →
+  CompiledPolicy.compile p₂ Γ = .ok cp₂ →
+  wellTypedPolicy p₁ Γ = .ok wp₁ →
+  wellTypedPolicy p₂ Γ = .ok wp₂ →
+  checkMatchesEquivalentOpt cp₁ cp₂ = checkMatchesEquivalent wp₁ wp₂ (SymEnv.ofTypeEnv Γ)
+:= by
+  simp [checkMatchesEquivalent, checkMatchesEquivalentOpt]
+  simp [checkUnsat]
+  intro hwf h₀ h₁ h₂ h₃
+  have ⟨asserts, h₄⟩ := verifyMatchesEquivalent_is_ok hwf h₂ h₃
+  simp [h₄]
+  simp [cp_compile_produces_the_right_env h₀]
+  have := verifyMatchesEquivalentOpt_eqv_verifyMatchesEquivalent_ok h₀ h₁ h₂ h₃
+  simp [h₄, ResultAssertsEquiv] at this
+  exact Asserts.Equiv.checkUnsatAsserts (Asserts.Equiv.symm this)
+
+/--
+This theorem covers the "happy path" -- showing that if optimized policy
+compilation succeeds, then `wellTypedPolicy` succeeds and `checkMatchesImplies` and
+`checkMatchesImpliesOpt` are equivalent.
+-/
+theorem checkMatchesImpliesOpt_eqv_checkMatchesImplies_ok {p₁ p₂ wp₁ wp₂ : Policy} {cp₁ cp₂ : CompiledPolicy} {Γ : Validation.TypeEnv} :
+  Γ.WellFormed →
+  CompiledPolicy.compile p₁ Γ = .ok cp₁ →
+  CompiledPolicy.compile p₂ Γ = .ok cp₂ →
+  wellTypedPolicy p₁ Γ = .ok wp₁ →
+  wellTypedPolicy p₂ Γ = .ok wp₂ →
+  checkMatchesImpliesOpt cp₁ cp₂ = checkMatchesImplies wp₁ wp₂ (SymEnv.ofTypeEnv Γ)
+:= by
+  simp [checkMatchesImplies, checkMatchesImpliesOpt]
+  simp [checkUnsat]
+  intro hwf h₀ h₁ h₂ h₃
+  have ⟨asserts, h₄⟩ := verifyMatchesImplies_is_ok hwf h₂ h₃
+  simp [h₄]
+  simp [cp_compile_produces_the_right_env h₀]
+  have := verifyMatchesImpliesOpt_eqv_verifyMatchesImplies_ok h₀ h₁ h₂ h₃
+  simp [h₄, ResultAssertsEquiv] at this
+  exact Asserts.Equiv.checkUnsatAsserts (Asserts.Equiv.symm this)
+
+/--
+This theorem covers the "happy path" -- showing that if optimized policy
+compilation succeeds, then `wellTypedPolicy` succeeds and `checkMatchesDisjoint` and
+`checkMatchesDisjointOpt` are equivalent.
+-/
+theorem checkMatchesDisjointOpt_eqv_checkMatchesDisjoint_ok {p₁ p₂ wp₁ wp₂ : Policy} {cp₁ cp₂ : CompiledPolicy} {Γ : Validation.TypeEnv} :
+  Γ.WellFormed →
+  CompiledPolicy.compile p₁ Γ = .ok cp₁ →
+  CompiledPolicy.compile p₂ Γ = .ok cp₂ →
+  wellTypedPolicy p₁ Γ = .ok wp₁ →
+  wellTypedPolicy p₂ Γ = .ok wp₂ →
+  checkMatchesDisjointOpt cp₁ cp₂ = checkMatchesDisjoint wp₁ wp₂ (SymEnv.ofTypeEnv Γ)
+:= by
+  simp [checkMatchesDisjoint, checkMatchesDisjointOpt]
+  simp [checkUnsat]
+  intro hwf h₀ h₁ h₂ h₃
+  have ⟨asserts, h₄⟩ := verifyMatchesDisjoint_is_ok hwf h₂ h₃
+  simp [h₄]
+  simp [cp_compile_produces_the_right_env h₀]
+  have := verifyMatchesDisjointOpt_eqv_verifyMatchesDisjoint_ok h₀ h₁ h₂ h₃
+  simp [h₄, ResultAssertsEquiv] at this
+  exact Asserts.Equiv.checkUnsatAsserts (Asserts.Equiv.symm this)
+
+/--
 Full equivalence for checkNeverErrors` and `checkNeverErrorsOpt`, including both the
 `.ok` and `.error` cases
 -/
@@ -1094,6 +1477,114 @@ theorem checkNeverMatchesOpt_eqv_checkNeverMatches {p : Policy} {Γ : Validation
       intro hwf
       have h := compile_ok_iff_welltypedpolicy_ok hwf (p := p)
       simp [hcp, hwp, Except.isOk, Except.toBool] at h
+
+/--
+Full equivalence for `checkMatchesEquivalent` and `checkMatchesEquivalentOpt`, including both the
+`.ok` and `.error` cases
+-/
+theorem checkMatchesEquivalentOpt_eqv_checkMatchesEquivalent {p₁ p₂ : Policy} {Γ : Validation.TypeEnv} :
+  Γ.WellFormed →
+  (do
+    let cp₁ ← CompiledPolicy.compile p₁ Γ
+    let cp₂ ← CompiledPolicy.compile p₂ Γ
+    pure $ checkMatchesEquivalentOpt cp₁ cp₂
+  ) =
+  (do
+    let wp₁ ← wellTypedPolicy p₁ Γ |>.mapError .validationError
+    let wp₂ ← wellTypedPolicy p₂ Γ |>.mapError .validationError
+    pure $ checkMatchesEquivalent wp₁ wp₂ (SymEnv.ofTypeEnv Γ)
+  )
+:= by
+  intro hwf
+  have h₁ := compile_ok_iff_welltypedpolicy_ok hwf (p := p₁)
+  have h₂ := compile_ok_iff_welltypedpolicy_ok hwf (p := p₂)
+  cases hcp₁ : CompiledPolicy.compile p₁ Γ
+  <;> cases hcp₂ : CompiledPolicy.compile p₂ Γ
+  <;> cases hwp₁ : wellTypedPolicy p₁ Γ
+  <;> cases hwp₂ : wellTypedPolicy p₂ Γ
+  -- this eliminates all the cases where the behavior of CompiledPolicy.compile is inconsistent
+  -- with the behavior of wellTypedPolicy on the same policy
+  <;> simp_all [Except.mapError, Except.isOk, Except.toBool]
+  case ok.ok.ok.ok cp₁ cp₂ wp₁ wp₂ =>
+    exact checkMatchesEquivalentOpt_eqv_checkMatchesEquivalent_ok hwf hcp₁ hcp₂ hwp₁ hwp₂
+  case error.ok.error.ok | error.error.error.error =>
+    simp [CompiledPolicy.compile, Except.mapError, hwp₁] at hcp₁
+    simp [hcp₁]
+  case ok.error.ok.error =>
+    simp [CompiledPolicy.compile, Except.mapError, hwp₂] at hcp₂
+    simp [hcp₂]
+
+/--
+Full equivalence for `checkMatchesImplies` and `checkMatchesImpliesOpt`, including both the
+`.ok` and `.error` cases
+-/
+theorem checkMatchesImpliesOpt_eqv_checkMatchesImplies {p₁ p₂ : Policy} {Γ : Validation.TypeEnv} :
+  Γ.WellFormed →
+  (do
+    let cp₁ ← CompiledPolicy.compile p₁ Γ
+    let cp₂ ← CompiledPolicy.compile p₂ Γ
+    pure $ checkMatchesImpliesOpt cp₁ cp₂
+  ) =
+  (do
+    let wp₁ ← wellTypedPolicy p₁ Γ |>.mapError .validationError
+    let wp₂ ← wellTypedPolicy p₂ Γ |>.mapError .validationError
+    pure $ checkMatchesImplies wp₁ wp₂ (SymEnv.ofTypeEnv Γ)
+  )
+:= by
+  intro hwf
+  have h₁ := compile_ok_iff_welltypedpolicy_ok hwf (p := p₁)
+  have h₂ := compile_ok_iff_welltypedpolicy_ok hwf (p := p₂)
+  cases hcp₁ : CompiledPolicy.compile p₁ Γ
+  <;> cases hcp₂ : CompiledPolicy.compile p₂ Γ
+  <;> cases hwp₁ : wellTypedPolicy p₁ Γ
+  <;> cases hwp₂ : wellTypedPolicy p₂ Γ
+  -- this eliminates all the cases where the behavior of CompiledPolicy.compile is inconsistent
+  -- with the behavior of wellTypedPolicy on the same policy
+  <;> simp_all [Except.mapError, Except.isOk, Except.toBool]
+  case ok.ok.ok.ok cp₁ cp₂ wp₁ wp₂ =>
+    exact checkMatchesImpliesOpt_eqv_checkMatchesImplies_ok hwf hcp₁ hcp₂ hwp₁ hwp₂
+  case error.ok.error.ok | error.error.error.error =>
+    simp [CompiledPolicy.compile, Except.mapError, hwp₁] at hcp₁
+    simp [hcp₁]
+  case ok.error.ok.error =>
+    simp [CompiledPolicy.compile, Except.mapError, hwp₂] at hcp₂
+    simp [hcp₂]
+
+/--
+Full equivalence for `checkMatchesDisjoint` and `checkMatchesDisjointOpt`, including both the
+`.ok` and `.error` cases
+-/
+theorem checkMatchesDisjointOpt_eqv_checkMatchesDisjoint {p₁ p₂ : Policy} {Γ : Validation.TypeEnv} :
+  Γ.WellFormed →
+  (do
+    let cp₁ ← CompiledPolicy.compile p₁ Γ
+    let cp₂ ← CompiledPolicy.compile p₂ Γ
+    pure $ checkMatchesDisjointOpt cp₁ cp₂
+  ) =
+  (do
+    let wp₁ ← wellTypedPolicy p₁ Γ |>.mapError .validationError
+    let wp₂ ← wellTypedPolicy p₂ Γ |>.mapError .validationError
+    pure $ checkMatchesDisjoint wp₁ wp₂ (SymEnv.ofTypeEnv Γ)
+  )
+:= by
+  intro hwf
+  have h₁ := compile_ok_iff_welltypedpolicy_ok hwf (p := p₁)
+  have h₂ := compile_ok_iff_welltypedpolicy_ok hwf (p := p₂)
+  cases hcp₁ : CompiledPolicy.compile p₁ Γ
+  <;> cases hcp₂ : CompiledPolicy.compile p₂ Γ
+  <;> cases hwp₁ : wellTypedPolicy p₁ Γ
+  <;> cases hwp₂ : wellTypedPolicy p₂ Γ
+  -- this eliminates all the cases where the behavior of CompiledPolicy.compile is inconsistent
+  -- with the behavior of wellTypedPolicy on the same policy
+  <;> simp_all [Except.mapError, Except.isOk, Except.toBool]
+  case ok.ok.ok.ok cp₁ cp₂ wp₁ wp₂ =>
+    exact checkMatchesDisjointOpt_eqv_checkMatchesDisjoint_ok hwf hcp₁ hcp₂ hwp₁ hwp₂
+  case error.ok.error.ok | error.error.error.error =>
+    simp [CompiledPolicy.compile, Except.mapError, hwp₁] at hcp₁
+    simp [hcp₁]
+  case ok.error.ok.error =>
+    simp [CompiledPolicy.compile, Except.mapError, hwp₂] at hcp₂
+    simp [hcp₂]
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
@@ -1395,3 +1886,5 @@ theorem checkDisjointOpt_eqv_checkDisjoint {ps₁ ps₂ : Policies} {Γ : Valida
   case ok.error.ok.error =>
     simp [CompiledPolicies.compile, Except.mapError, hwps₂] at hcps₂
     simp [hcps₂]
+
+end Cedar.Thm

@@ -34,12 +34,25 @@ abbrev Asserts := List Term
 /--
 Returns asserts that are unsatisfiable iff the evaluation of `p`, represented as
 a Term of type .option .bool, satisfies `φ` on all inputs drawn from `εnv`.  See also
-`verifyNeverErrors`.
+`verifyNeverErrors`, `verifyAlwaysMatches`, and `verifyNeverMatches`.
 -/
 def verifyEvaluate (φ : Term → Term) (p : Policy) (εnv : SymEnv) : Result Asserts := do
   let x := p.toExpr
   let t ← compile x εnv
   (enforce [x] εnv).elts ++ [not (φ t)]
+
+/--
+Returns asserts that are unsatisfiable iff the evaluation of `p₁` and `p₂`,
+represented as Terms of type .option .bool, satisfy `φ` on all inputs drawn from
+`εnv`. See also `verifyMatchesImplies`, `verifyMatchesEquivalent`, and
+`verifyMatchesDisjoint`.
+-/
+def verifyEvaluatePair (φ : Term → Term → Term) (p₁ p₂ : Policy) (εnv : SymEnv) : Result Asserts := do
+  let x₁ := p₁.toExpr
+  let x₂ := p₂.toExpr
+  let t₁ ← compile x₁ εnv
+  let t₂ ← compile x₂ εnv
+  (enforce [x₁, x₂] εnv).elts ++ [not (φ t₁ t₂)]
 
 /--
 Returns asserts that are unsatisfiable iff the authorization decisions produced
@@ -78,6 +91,44 @@ does match.
 def verifyNeverMatches (p : Policy) (εnv : SymEnv) : Result Asserts :=
   -- always evaluates to ⊙false _or_ error; i.e., never evaluates to ⊙true
   verifyEvaluate (λ t => not (eq t (⊙true))) p εnv
+
+/--
+Returns asserts that are unsatisfiable iff `p₁` and `p₂` match exactly the same
+set of inputs in `εnv`.
+-/
+def verifyMatchesEquivalent (p₁ p₂ : Policy) (εnv : SymEnv) : Result Asserts :=
+  verifyEvaluatePair (λ t₁ t₂ =>
+    let t₁matches := eq t₁ (⊙true)
+    let t₂matches := eq t₂ (⊙true)
+    eq t₁matches t₂matches)
+    p₁ p₂ εnv
+
+/--
+Returns asserts that are unsatisfiable iff `p₁` matching implies that `p₂`
+matches, for every input in `εnv`. In other words, for every request where `p₁`
+matches, `p₂` also matches.
+-/
+def verifyMatchesImplies (p₁ p₂ : Policy) (εnv : SymEnv) : Result Asserts :=
+  verifyEvaluatePair (λ t₁ t₂ =>
+    let t₁matches := eq t₁ (⊙true)
+    let t₂matches := eq t₂ (⊙true)
+    implies t₁matches t₂matches)
+    p₁ p₂ εnv
+
+/--
+Returns asserts that are unsatisfiable iff there is no input in `εnv` that is
+matched by both `p₁` and `p₂`. In other words, the sets of inputs matched by
+`p₁` and `p₂` are disjoint. If this query is satisfiable, then there is at
+least one input that is matched by both `p₁` and `p₂`.
+-/
+def verifyMatchesDisjoint (p₁ p₂ : Policy) (εnv : SymEnv) : Result Asserts :=
+  verifyEvaluatePair (λ t₁ t₂ =>
+    let t₁matches := eq t₁ (⊙true)
+    let t₂matches := eq t₂ (⊙true)
+    disjoint t₁matches t₂matches)
+    p₁ p₂ εnv
+where
+  disjoint (t₁ t₂ : Term) := not (and t₁ t₂)
 
 /--
 Returns asserts that are unsatisfiable iff the authorization decision of `ps₁`

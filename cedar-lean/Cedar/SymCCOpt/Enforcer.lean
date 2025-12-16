@@ -36,6 +36,16 @@ def enforceCompiledPolicies (cps : CompiledPolicies) : Set Term :=
   Set.make (cps.acyclicity.elts ++ tr)
 
 /--
+Returns the ground acyclicity and transitivity assumptions for a pair of `CompiledPolicy`.
+Caller guarantees that `cp₁` and `cp₂` were compiled for the same `εnv`.
+-/
+def enforcePairCompiledPolicy (cp₁ : CompiledPolicy) (cp₂ : CompiledPolicy) : Set Term :=
+  assert! cp₁.εnv = cp₂.εnv
+  let footprint := cp₁.footprint ++ cp₂.footprint
+  let tr := footprint.elts.mapUnion (λ t => footprint.elts.map (transitivity t · cp₁.εnv.entities))
+  Set.make (cp₁.acyclicity.elts ++ cp₂.acyclicity.elts ++ tr)
+
+/--
 Returns the ground acyclicity and transitivity assumptions for a pair of `CompiledPolicies`.
 Caller guarantees that `cps₁` and `cps₂` were compiled for the same `εnv`.
 -/
