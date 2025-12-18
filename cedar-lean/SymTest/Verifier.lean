@@ -27,6 +27,10 @@ namespace SymTest.Verifier
 
 open Cedar Spec Validation Data UnitTest SymCC
 
+/--
+`property` is the property which we have a counterexample _to_. Thus, the
+`property` function is expected to return `false` on the counterexample.
+-/
 private def testVerifyCex (desc : String) (query : SolverM (Option Env)) (property : Env → Bool) : TestCase SolverM :=
   test desc ⟨λ _ => do
     match ← query with
@@ -68,6 +72,20 @@ when { !(resource == resource) };
 -/
 private def policyAllowNone := -- simplifed to false by SymCC
   policy "AllowNone" .permit (.unaryApp .not (.binaryApp .eq (.var .resource) (.var .resource)))
+
+/-
+forbid (principal, action, resource)
+when { principal == principal };
+-/
+private def policyForbidAll :=
+  policy "ForbidAll" .forbid (.binaryApp .eq (.var .principal) (.var .principal))
+
+/-
+forbid (principal, action, resource)
+when { !(resource == resource) };
+-/
+private def policyForbidNone :=
+  policy "ForbidNone" .forbid (.unaryApp .not (.binaryApp .eq (.var .resource) (.var .resource)))
 
 /-
 permit (principal, action, resource)
@@ -146,6 +164,107 @@ private def testVerifyNeverErrors? (expected : Finding) (p : Policy) : List (Tes
       testVerifyQed (desc ++ " (unoptimized)") (neverErrors? p εnvRead),
       testVerifyQed (desc ++ " (optimized)") (do neverErrorsOpt? (← cp))
     ]
+
+/-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/
+private def testVerifyAlwaysMatches? (expected : Finding) (p : Policy) : List (TestCase SolverM) :=
+  let desc := s!"[{expected}] alwaysMatches? {p.id}"
+  let cp := CompiledPolicy.compile p typeEnvRead |> IO.ofExcept
+  match expected with
+  | .cex => [
+      testVerifyCex (desc ++ " (unoptimized)") (alwaysMatches? p εnvRead)
+        (λ env => evaluate p.toExpr env.request env.entities = .ok true),
+      testVerifyCex (desc ++ " (optimized)") (do alwaysMatchesOpt? (← cp))
+        (λ env => evaluate p.toExpr env.request env.entities = .ok true),
+    ]
+  | .qed => [
+      testVerifyQed (desc ++ " (unoptimized)") (alwaysMatches? p εnvRead),
+      testVerifyQed (desc ++ " (optimized)") (do alwaysMatchesOpt? (← cp))
+    ]
+
+/-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/
+private def testVerifyNeverMatches? (expected : Finding) (p : Policy) : List (TestCase SolverM) :=
+  let desc := s!"[{expected}] neverMatches? {p.id}"
+  let cp := CompiledPolicy.compile p typeEnvRead |> IO.ofExcept
+  match expected with
+  | .cex => [
+      testVerifyCex (desc ++ " (unoptimized)") (neverMatches? p εnvRead)
+        (λ env => evaluate p.toExpr env.request env.entities ≠ .ok true),
+      testVerifyCex (desc ++ " (optimized)") (do neverMatchesOpt? (← cp))
+        (λ env => evaluate p.toExpr env.request env.entities ≠ .ok true),
+    ]
+  | .qed => [
+      testVerifyQed (desc ++ " (unoptimized)") (neverMatches? p εnvRead),
+      testVerifyQed (desc ++ " (optimized)") (do neverMatchesOpt? (← cp))
+    ]
+
+/-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/
+private def testVerifyMatchesEquivalent? (expected : Finding) (p₁ p₂ : Policy) : List (TestCase SolverM) :=
+  let desc := s!"[{expected}] matchesEquivalent? {p₁.id} {p₂.id}"
+  let cp₁ := CompiledPolicy.compile p₁ typeEnvRead |> IO.ofExcept
+  let cp₂ := CompiledPolicy.compile p₂ typeEnvRead |> IO.ofExcept
+  match expected with
+  | .cex => [
+    testVerifyCex (desc ++ " (unoptimized)") (matchesEquivalent? p₁ p₂ εnvRead)
+      (λ env =>
+        let p₁matches := evaluate p₁.toExpr env.request env.entities == .ok true
+        let p₂matches := evaluate p₂.toExpr env.request env.entities == .ok true
+        p₁matches = p₂matches),
+    testVerifyCex (desc ++ " (unoptimized)") (do matchesEquivalentOpt? (← cp₁) (← cp₂))
+      (λ env =>
+        let p₁matches := evaluate p₁.toExpr env.request env.entities == .ok true
+        let p₂matches := evaluate p₂.toExpr env.request env.entities == .ok true
+        p₁matches = p₂matches),
+    ]
+  | .qed => [
+      testVerifyQed (desc ++ " (unoptimized)") (matchesEquivalent? p₁ p₂ εnvRead),
+      testVerifyQed (desc ++ " (optimized)") (do matchesEquivalentOpt? (← cp₁) (← cp₂))
+  ]
+
+/-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/
+private def testVerifyMatchesImplies? (expected : Finding) (p₁ p₂ : Policy) : List (TestCase SolverM) :=
+  let desc := s!"[{expected}] matchesImplies? {p₁.id} {p₂.id}"
+  let cp₁ := CompiledPolicy.compile p₁ typeEnvRead |> IO.ofExcept
+  let cp₂ := CompiledPolicy.compile p₂ typeEnvRead |> IO.ofExcept
+  match expected with
+  | .cex => [
+    testVerifyCex (desc ++ " (unoptimized)") (matchesImplies? p₁ p₂ εnvRead)
+      (λ env =>
+        let p₁matches := evaluate p₁.toExpr env.request env.entities == .ok true
+        let p₂matches := evaluate p₂.toExpr env.request env.entities == .ok true
+        p₁matches → p₂matches),
+    testVerifyCex (desc ++ " (unoptimized)") (do matchesImpliesOpt? (← cp₁) (← cp₂))
+      (λ env =>
+        let p₁matches := evaluate p₁.toExpr env.request env.entities == .ok true
+        let p₂matches := evaluate p₂.toExpr env.request env.entities == .ok true
+        p₁matches → p₂matches),
+    ]
+  | .qed => [
+      testVerifyQed (desc ++ " (unoptimized)") (matchesImplies? p₁ p₂ εnvRead),
+      testVerifyQed (desc ++ " (optimized)") (do matchesImpliesOpt? (← cp₁) (← cp₂))
+  ]
+
+/-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/
+private def testVerifyMatchesDisjoint? (expected : Finding) (p₁ p₂ : Policy) : List (TestCase SolverM) :=
+  let desc := s!"[{expected}] matchesDisjoint? {p₁.id} {p₂.id}"
+  let cp₁ := CompiledPolicy.compile p₁ typeEnvRead |> IO.ofExcept
+  let cp₂ := CompiledPolicy.compile p₂ typeEnvRead |> IO.ofExcept
+  match expected with
+  | .cex => [
+    testVerifyCex (desc ++ " (unoptimized)") (matchesDisjoint? p₁ p₂ εnvRead)
+      (λ env =>
+        let p₁matches := evaluate p₁.toExpr env.request env.entities == .ok true
+        let p₂matches := evaluate p₂.toExpr env.request env.entities == .ok true
+        ¬p₁matches ∨ ¬p₂matches),
+    testVerifyCex (desc ++ " (unoptimized)") (do matchesDisjointOpt? (← cp₁) (← cp₂))
+      (λ env =>
+        let p₁matches := evaluate p₁.toExpr env.request env.entities == .ok true
+        let p₂matches := evaluate p₂.toExpr env.request env.entities == .ok true
+        ¬p₁matches ∨ ¬p₂matches),
+    ]
+  | .qed => [
+      testVerifyQed (desc ++ " (unoptimized)") (matchesDisjoint? p₁ p₂ εnvRead),
+      testVerifyQed (desc ++ " (optimized)") (do matchesDisjointOpt? (← cp₁) (← cp₂))
+  ]
 
 private def authorize (ps : Policies) (env : Env) : Bool :=
   (Spec.isAuthorized env.request env.entities ps).decision matches .allow
@@ -240,14 +359,63 @@ def testsForNeverErrors? :=
   suite "SymCC.neverErrors?" $ List.flatten [
     testVerifyNeverErrors? .qed policyAllowAll,
     testVerifyNeverErrors? .qed policyAllowNone,
+    testVerifyNeverErrors? .qed policyForbidAll,
+    testVerifyNeverErrors? .qed policyForbidNone,
     testVerifyNeverErrors? .cex (policyOverflowError 100),
     testVerifyNeverErrors? .cex (policyDatetimeError "1d"),
   ]
 
+def testsForAlwaysMatches? :=
+  suite "SymCC.alwaysMatches?" $ List.flatten [
+    testVerifyAlwaysMatches? .qed policyAllowAll,
+    testVerifyAlwaysMatches? .qed policyForbidAll,
+    testVerifyAlwaysMatches? .cex policyAllowNone,
+    testVerifyAlwaysMatches? .cex policyForbidNone,
+    testVerifyAlwaysMatches? .cex (policyOverflowError 100),
+  ]
+
+def testsForNeverMatches? :=
+  suite "SymCC.neverMatches?" $ List.flatten [
+    testVerifyNeverMatches? .cex policyAllowAll,
+    testVerifyNeverMatches? .cex policyForbidAll,
+    testVerifyNeverMatches? .qed policyAllowNone,
+    testVerifyNeverMatches? .qed policyForbidNone,
+    testVerifyNeverMatches? .cex (policyOverflowError 100),
+  ]
+
+def testsForMatchesEquivalent? :=
+  suite "SymCC.matchesEquivalent?" $ List.flatten [
+    testVerifyMatchesEquivalent? .qed policyAllowAll policyAllowAll,
+    testVerifyMatchesEquivalent? .qed policyForbidAll policyForbidAll,
+    testVerifyMatchesEquivalent? .qed policyAllowAll policyForbidAll, -- matches-equivalent, but not equivalent
+    testVerifyMatchesEquivalent? .qed policyForbidAll policyAllowAll,
+    testVerifyMatchesEquivalent? .cex policyAllowAll policyAllowNone,
+    testVerifyMatchesEquivalent? .cex policyForbidAll policyAllowNone, -- equivalent, but not matches-equivalent
+  ]
+
+def testsForMatchesImplies? :=
+  suite "SymCC.matchesImplies?" $ List.flatten [
+    testVerifyMatchesImplies? .qed policyAllowAll policyAllowAll,
+    testVerifyMatchesImplies? .qed policyAllowNone policyAllowAll,
+    testVerifyMatchesImplies? .cex policyAllowAll policyAllowNone,
+    testVerifyMatchesImplies? .qed policyAllowAll policyForbidAll, -- matches-implies, but not implies
+    testVerifyMatchesImplies? .cex policyForbidAll policyAllowNone, -- implies, but not matches-implies
+  ]
+
+def testsForMatchesDisjoint? :=
+  suite "SymCC.matchesDisjoint?" $ List.flatten [
+    testVerifyMatchesDisjoint? .qed policyAllowAll policyAllowNone,
+    testVerifyMatchesDisjoint? .qed policyForbidAll policyForbidNone,
+    testVerifyMatchesDisjoint? .cex policyForbidAll policyForbidAll, -- disjoint, but not matches-disjoint
+  ]
+
 def testsForImplies? :=
   suite "SymCC.implies?" $ List.flatten [
+    testVerifyImplies? .qed [policyAllowAll] [policyAllowAll],
     testVerifyImplies? .qed [policyAllowNone] [policyAllowAll],
     testVerifyImplies? .cex [policyAllowAll] [policyAllowNone],
+    testVerifyImplies? .cex [policyAllowAll] [policyForbidAll], -- matches-implies, but not implies
+    testVerifyImplies? .qed [policyForbidAll] [policyAllowNone], -- implies, but not matches-implies
     testVerifyImplies? .cex [policyAllowAll] [policyOverflowError 10],
     testVerifyImplies? .qed [policyOverflowError 10] [policyOverflowError 11],
     testVerifyImplies? .qed [policyDatetimeError "2d"] [policyDatetimeError "1d"],
@@ -266,19 +434,31 @@ def testsForImplies? :=
 def testsForAlwaysAllows? :=
   suite "SymCC.alwaysAllows?" $ List.flatten [
     testVerifyAlwaysAllows? .qed [policyAllowAll],
+    testVerifyAlwaysAllows? .cex [policyAllowNone],
+    testVerifyAlwaysAllows? .cex [policyForbidAll],
     testVerifyAlwaysAllows? .cex [policyAllowNone, policyOverflowError 10, policyDatetimeError "1d"],
     testVerifyAlwaysAllows? .qed (policiesAlways .permit),
+    testVerifyAlwaysAllows? .cex (policiesAlways .forbid),
   ]
 
 def testsForAlwaysDenies? :=
   suite "SymCC.alwaysDenies?" $ List.flatten [
+    testVerifyAlwaysDenies? .cex [policyAllowAll],
     testVerifyAlwaysDenies? .qed [policyAllowNone],
+    testVerifyAlwaysDenies? .qed [policyForbidAll],
     testVerifyAlwaysDenies? .cex [policyAllowNone, policyOverflowError 10, policyDatetimeError "1d"],
+    testVerifyAlwaysDenies? .cex (policiesAlways .permit),
     testVerifyAlwaysDenies? .qed (policiesAlways .forbid),
   ]
 
 def testsForEquivalent? :=
   suite "SymCC.equivalent?" $ List.flatten [
+    testVerifyEquivalent? .qed [policyAllowAll] [policyAllowAll],
+    testVerifyEquivalent? .qed [policyForbidAll] [policyForbidAll],
+    testVerifyEquivalent? .cex [policyAllowAll] [policyForbidAll], -- matches-equivalent, but not equivalent
+    testVerifyEquivalent? .cex [policyForbidAll] [policyAllowAll],
+    testVerifyEquivalent? .cex [policyAllowAll] [policyAllowNone],
+    testVerifyEquivalent? .qed [policyForbidAll] [policyAllowNone], -- equivalent, but not matches-equivalent
     testVerifyEquivalent? .qed [policyAllowAll] (policiesAlways .permit),
     testVerifyEquivalent? .qed [policyAllowNone] (policiesAlways .forbid),
     testVerifyEquivalent? .cex [policyOverflowError 3] [policyOverflowError 12],
@@ -310,6 +490,11 @@ def testsForEncoder? :=
 def tests := [
   testTrivialPolicies,
   testsForNeverErrors?,
+  testsForAlwaysMatches?,
+  testsForNeverMatches?,
+  testsForMatchesEquivalent?,
+  testsForMatchesImplies?,
+  testsForMatchesDisjoint?,
   testsForImplies?,
   testsForAlwaysAllows?,
   testsForAlwaysDenies?,
