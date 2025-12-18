@@ -550,6 +550,6 @@ impl GeneratedLinkedPolicy {
         }
         let template_id = cedar_policy::PolicyId::new(self.template_id);
         let policy_id = cedar_policy::PolicyId::new(self.id);
-        policyset.link(template_id, policy_id, vals.into()).unwrap();
+        policyset.link(template_id, policy_id, vals).unwrap();
     }
 }
