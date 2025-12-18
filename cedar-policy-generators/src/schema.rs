@@ -26,7 +26,6 @@ use crate::request::Request;
 use crate::schema_gen::SchemaGen;
 use crate::settings::ABACSettings;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
-use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
 use cedar_policy_core::ast::{self, Effect, EntityType, EntityUID, PolicyID, UnreservedId};
 use cedar_policy_core::est;

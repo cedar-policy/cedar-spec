@@ -59,7 +59,7 @@ macro_rules! accum {
 macro_rules! gen {
     ($u:expr, $($ws:expr => $vs:expr),+) => {
         {
-            let x = $u.int_in_range::<u8>(0..=(($crate::accum!($([$ws => $vs])+)-1)))?;
+            let x = $u.int_in_range::<u8>(0..=($crate::accum!($([$ws => $vs])+)-1))?;
             $crate::gen_inner!(x, $([$ws => $vs])+)
         }
     };
@@ -71,7 +71,7 @@ macro_rules! gen {
 macro_rules! uniform {
     ($u:expr, $($es:expr),+) => {
         {
-            let x = $u.int_in_range::<u8>(0..=(($crate::accum!($([1 => $es])+)-1)))?;
+            let x = $u.int_in_range::<u8>(0..=($crate::accum!($([1 => $es])+)-1))?;
             $crate::gen_inner!(x, $([1 => $es])+)
         }
     };
