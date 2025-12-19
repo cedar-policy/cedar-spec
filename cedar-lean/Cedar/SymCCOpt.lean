@@ -67,6 +67,63 @@ def neverMatchesOpt? (p : CompiledPolicy) : SolverM (Option Env) :=
   satAsserts? [p.policy] (verifyNeverMatchesOpt p) p.εnv
 
 /--
+Returns `none` iff `p₁` and `p₂` match exactly the same set of well-formed
+inputs in the `εnv` they were compiled for.
+(Caller guarantees that `p₁` and `p₂` were compiled for the same `εnv`.)
+Otherwise returns an input `some env` on which `p₁` and `p₂`
+have different matching behavior (one matches and the other does not).
+
+Compare with `equivalentOpt?`, which takes two policysets (which could consist of a
+single policy, or more) and determines whether the _authorization behavior_ of
+those policysets is equivalent for well-formed inputs in `εnv`. This function
+differs from `equivalentOpt?` on singleton policysets in how it treats `forbid`
+policies -- while `equivalentOpt?` trivially holds for any pair of `forbid` policies
+(as they both always-deny), `matchesEquivalentOpt?` only holds if the two policies
+match exactly the same set of inputs. Also, a nontrivial `permit` and nontrivial
+`forbid` policy can be `matchesEquivalentOpt?`, but can never be `equivalentOpt?`.
+-/
+def matchesEquivalentOpt? (p₁ p₂ : CompiledPolicy) : SolverM (Option Env) :=
+  satAsserts? [p₁.policy, p₂.policy] (verifyMatchesEquivalentOpt p₁ p₂) p₁.εnv
+
+/--
+Returns `none` iff `p₁` matching implies that `p₂` matches, for every
+well-formed input in the `εnv` they were compiled for.
+(Caller guarantees that `p₁` and `p₂` were compiled for the same `εnv`.)
+That is, for every request where `p₁` matches, `p₂` also matches.
+Otherwise returns an input `some env` that is matched by `p₁` but
+not-matched by `p₂`.
+
+Compare with `impliesOpt?`, which takes two policysets (which could consist of a
+single policy, or more) and determines whether the _authorization decision_ of
+the first implies that of the second. This function differs from `impliesOpt?` on
+singleton policysets in how it treats `forbid` policies -- while for `impliesOpt?`,
+any `forbid` policy trivially implies any `permit` policy (as always-deny always
+implies any policy), for `matchesImpliesOpt?`, a `forbid` policy may or may not
+imply a `permit` policy, and a `permit` policy may or may not imply a `forbid`
+policy.
+-/
+def matchesImpliesOpt? (p₁ p₂ : CompiledPolicy) : SolverM (Option Env) :=
+  satAsserts? [p₁.policy, p₂.policy] (verifyMatchesImpliesOpt p₁ p₂) p₁.εnv
+
+/--
+Returns `none` iff there is no well-formed input in the `εnv` they were compiled
+for that is matched by both `p₁` and `p₂`.
+(Caller guarantees that `p₁` and `p₂` were compiled for the same `εnv`.)
+Otherwise returns an input `some env` that is matched by both `p₁` and `p₂`.
+This checks that the sets of inputs matched by `p₁` and `p₂` are disjoint.
+
+Compare with `disjointOpt?`, which takes two policysets (which could consist of a
+single policy, or more) and determines whether the _authorization behavior_ of
+those policysets are disjoint. This function differs from `disjointOpt?` on
+singleton policysets in how it treats `forbid` policies -- while for
+`disjointOpt?`, any `forbid` policy is trivially disjoint from any other policy (as
+it allows nothing), `matchesDisjointOpt?` considers whether the `forbid` policy may
+_match_ (rather than _allow_) any input that is matched by the other policy.
+-/
+def matchesDisjointOpt? (p₁ p₂ : CompiledPolicy) : SolverM (Option Env) :=
+  satAsserts? [p₁.policy, p₂.policy] (verifyMatchesDisjointOpt p₁ p₂) p₁.εnv
+
+/--
 Returns `none` iff the authorization decision of `ps₁` implies that of `ps₂` for
 every well-formed input in the `εnv` that the policysets were compiled for.
 (Caller guarantees that `ps₁` and `ps₂` were compiled for the same `εnv`.)
@@ -153,6 +210,59 @@ containing only `forbid` policies, `checkNeverMatchesOpt` only holds if the
 -/
 def checkNeverMatchesOpt (p : CompiledPolicy) : SolverM Bool :=
   checkUnsatAsserts (verifyNeverMatchesOpt p) p.εnv
+
+/--
+Returns true iff `p₁` and `p₂` match exactly the same set of well-formed
+inputs in the `εnv` they were compiled for.
+(Caller guarantees that `p₁` and `p₂` were compiled for the same `εnv`.)
+
+Compare with `checkEquivalentOpt`, which takes two policysets (which could consist of a
+single policy, or more) and determines whether the _authorization behavior_ of
+those policysets is equivalent for well-formed inputs in `εnv`. This function
+differs from `checkEquivalentOpt` on singleton policysets in how it treats `forbid`
+policies -- while `checkEquivalentOpt` trivially holds for any pair of `forbid` policies
+(as they both always-deny), `checkMatchesEquivalentOpt` only holds if the two policies
+match exactly the same set of inputs. Also, a nontrivial `permit` and nontrivial
+`forbid` policy can be `checkMatchesEquivalentOpt`, but can never be `checkEquivalentOpt`.
+-/
+def checkMatchesEquivalentOpt (p₁ p₂ : CompiledPolicy) : SolverM Bool :=
+  checkUnsatAsserts (verifyMatchesEquivalentOpt p₁ p₂) p₁.εnv
+
+/--
+Returns true iff `p₁` matching implies that `p₂` matches, for every
+well-formed input in the `εnv` they were compiled for.
+(Caller guarantees that `p₁` and `p₂` were compiled for the same `εnv`.)
+That is, for every request where `p₁` matches, `p₂` also matches.
+
+Compare with `checkImpliesOpt`, which takes two policysets (which could consist of
+a single policy, or more) and determines whether the _authorization decision_ of
+the first implies that of the second. This function differs from `checkImpliesOpt`
+on singleton policysets in how it treats `forbid` policies -- while for
+`checkImpliesOpt`, any `forbid` policy trivially implies any `permit` policy (as
+always-deny always implies any policy), for `checkMatchesImpliesOpt`, a `forbid`
+policy may or may not imply a `permit` policy, and a `permit` policy may or may
+not imply a `forbid` policy.
+-/
+def checkMatchesImpliesOpt (p₁ p₂ : CompiledPolicy) : SolverM Bool :=
+  checkUnsatAsserts (verifyMatchesImpliesOpt p₁ p₂) p₁.εnv
+
+/--
+Returns true iff there is no well-formed input in the `εnv` they were compiled
+for that is matched by both `p₁` and `p₂`.
+(Caller guarantees that `p₁` and `p₂` were compiled for the same `εnv`.)
+This checks that the sets of inputs matched by `p₁` and `p₂` are disjoint.
+
+Compare with `checkDisjointOpt`, which takes two policysets (which could consist of
+a single policy, or more) and determines whether the _authorization behavior_ of
+those policysets are disjoint. This function differs from `checkDisjointOpt` on
+singleton policysets in how it treats `forbid` policies -- while for
+`checkDisjointOpt`, any `forbid` policy is trivially disjoint from any other policy
+(as it allows nothing), `checkMatchesDisjointOpt` considers whether the `forbid`
+policy may _match_ (rather than _allow_) any input that is matched by the other
+policy.
+-/
+def checkMatchesDisjointOpt (p₁ p₂ : CompiledPolicy) : SolverM Bool :=
+  checkUnsatAsserts (verifyMatchesDisjointOpt p₁ p₂) p₁.εnv
 
 /--
 Returns true iff the authorization decision of `ps₁` implies that of `ps₂` for

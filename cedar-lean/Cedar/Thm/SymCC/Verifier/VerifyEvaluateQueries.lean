@@ -24,7 +24,7 @@ namespace Cedar.Thm
 
 open Data Spec SymCC Factory
 
-private theorem value_type_bool_implies_bool {v : Value} {t : Term} :
+theorem value_type_bool_implies_bool {v : Value} {t : Term} :
   v ∼ t → t.typeOf = .bool → ∃ b, v = .prim (.bool b)
 := by
   intro hs hty

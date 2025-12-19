@@ -37,7 +37,7 @@ private def y : Expr := .getAttr (.var .context) "y"
 private def z : Expr := .getAttr (.var .context) "z"
 
 private def justChars (str : String) : Pattern :=
-  str.data.map (fun c => .justChar c)
+  str.toList.map (λ c => .justChar c)
 
 def testsForBasicLikeOps :=
   suite "Like.basic" $ List.flatten

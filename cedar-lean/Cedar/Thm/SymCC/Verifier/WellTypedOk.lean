@@ -35,6 +35,21 @@ theorem verifyEvaluate_is_ok {φ : Term → Term} {p p' : Policy} {Γ : TypeEnv}
   simp only [heq_tx] at hok
   simp [hok]
 
+/-- `verifyEvaluatePair` succeeds on sufficiently well-formed inputs. -/
+theorem verifyEvaluatePair_is_ok {φ : Term → Term → Term} {p₁ p₁' p₂ p₂' : Policy} {Γ : TypeEnv}
+  (hwf : Γ.WellFormed)
+  (hwt₁ : wellTypedPolicy p₁ Γ = .ok p₁')
+  (hwt₂ : wellTypedPolicy p₂ Γ = .ok p₂') :
+  ∃ asserts, verifyEvaluatePair φ p₁' p₂' (SymEnv.ofEnv Γ) = .ok asserts
+:= by
+  have ⟨tx₁, hwt_tx₁, heq_tx₁⟩ := wellTypedPolicy_ok_implies_well_typed_expr hwt₁
+  have ⟨tx₂, hwt_tx₂, heq_tx₂⟩ := wellTypedPolicy_ok_implies_well_typed_expr hwt₂
+  simp only [verifyEvaluatePair]
+  have ⟨_, hok₁, _⟩ := compile_well_typed hwf hwt_tx₁
+  have ⟨_, hok₂, _⟩ := compile_well_typed hwf hwt_tx₂
+  simp only [heq_tx₁, heq_tx₂] at hok₁ hok₂
+  simp [hok₁, hok₂]
+
 /-- `compileWithEffect` succeeds on sufficiently well-formed inputs. -/
 theorem compileWithEffect_is_ok (effect : Effect) {p p' : Policy} {Γ : TypeEnv}
   (hwf : Γ.WellFormed)
@@ -130,6 +145,33 @@ theorem verifyNeverMatches_is_ok {p p' : Policy} {Γ : TypeEnv}
   ∃ asserts, verifyNeverMatches p' (SymEnv.ofEnv Γ) = .ok asserts
 := by
   exact verifyEvaluate_is_ok hwf hwt
+
+/-- `verifyMatchesEquivalent` succeeds on sufficiently well-formed inputs. -/
+theorem verifyMatchesEquivalent_is_ok {p₁ p₁' p₂ p₂' : Policy} {Γ : TypeEnv}
+  (hwf : Γ.WellFormed)
+  (hwt₁ : wellTypedPolicy p₁ Γ = .ok p₁')
+  (hwt₂ : wellTypedPolicy p₂ Γ = .ok p₂') :
+  ∃ asserts, verifyMatchesEquivalent p₁' p₂' (SymEnv.ofEnv Γ) = .ok asserts
+:= by
+  exact verifyEvaluatePair_is_ok hwf hwt₁ hwt₂
+
+/-- `verifyMatchesImplies` succeeds on sufficiently well-formed inputs. -/
+theorem verifyMatchesImplies_is_ok {p₁ p₁' p₂ p₂' : Policy} {Γ : TypeEnv}
+  (hwf : Γ.WellFormed)
+  (hwt₁ : wellTypedPolicy p₁ Γ = .ok p₁')
+  (hwt₂ : wellTypedPolicy p₂ Γ = .ok p₂') :
+  ∃ asserts, verifyMatchesImplies p₁' p₂' (SymEnv.ofEnv Γ) = .ok asserts
+:= by
+  exact verifyEvaluatePair_is_ok hwf hwt₁ hwt₂
+
+/-- `verifyMatchesDisjoint` succeeds on sufficiently well-formed inputs. -/
+theorem verifyMatchesDisjoint_is_ok {p₁ p₁' p₂ p₂' : Policy} {Γ : TypeEnv}
+  (hwf : Γ.WellFormed)
+  (hwt₁ : wellTypedPolicy p₁ Γ = .ok p₁')
+  (hwt₂ : wellTypedPolicy p₂ Γ = .ok p₂') :
+  ∃ asserts, verifyMatchesDisjoint p₁' p₂' (SymEnv.ofEnv Γ) = .ok asserts
+:= by
+  exact verifyEvaluatePair_is_ok hwf hwt₁ hwt₂
 
 /-- `verifyImplies` succeeds on sufficiently well-formed inputs. -/
 theorem verifyImplies_is_ok {ps₁ ps₁' ps₂ ps₂' : Policies} {Γ : TypeEnv}

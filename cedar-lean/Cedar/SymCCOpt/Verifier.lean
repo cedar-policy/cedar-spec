@@ -48,6 +48,27 @@ def verifyEvaluateOpt (φ : Term → Term) (p : CompiledPolicy) : Asserts :=
   | assert => (enforceCompiledPolicy p).elts ++ [assert]
 
 /--
+Returns asserts that are unsatisfiable iff the evaluation of `p₁` and `p₂`,
+represented as `Term`s of type .option .bool, satisfy `φ` on all inputs drawn
+from the `εnv` that the policies were compiled for.
+(Caller guarantees that `p₁` and `p₂` were compiled for the same `εnv`.)
+
+See also `verifyMatchesImpliesOpt`, `verifyMatchesEquivalentOpt`, and
+`verifyMatchesDisjointOpt`.
+-/
+def verifyEvaluatePairOpt (φ : Term → Term → Term) (p₁ p₂ : CompiledPolicy) : Asserts :=
+  assert! p₁.εnv = p₂.εnv
+  -- As an optimization here in `SymCCOpt`:
+  -- Our callers only pass relatively simple functions as `φ`.
+  -- We expect that `enforcePairCompiledPolicy` is much more expensive to compute than `φ`.
+  -- So, we first compute the assert involving `φ`. If that is constant-false,
+  -- we can just return constant-false and not compute
+  -- `enforcePairCompiledPolicy`; the resulting asserts are equivalent.
+  match not (φ p₁.term p₂.term) with
+  | .prim (.bool false) => [false]
+  | assert => (enforcePairCompiledPolicy p₁ p₂).elts ++ [assert]
+
+/--
 Returns asserts that are unsatisfiable iff the authorization decisions produced
 by `ps₁` and `ps₂`, represented as `Term`s of type .bool, satisfy `φ` on all
 inputs drawn from the `εnv` that the policysets were compiled for.
@@ -91,6 +112,50 @@ does match.
 -/
 def verifyNeverMatchesOpt (p : CompiledPolicy) : Asserts :=
   verifyEvaluateOpt (λ t => not (eq t (⊙true))) p
+
+/--
+Returns asserts that are unsatisfiable iff `p₁` and `p₂` match exactly the same
+set of inputs in the `εnv` they were compiled for.
+(Caller guarantees that `p₁` and `p₂` were compiled for the same `εnv`.)
+If the asserts are satisfiable, then there is some input in `εnv` on which `p₁`
+and `p₂` have different matching behavior.
+-/
+def verifyMatchesEquivalentOpt (p₁ p₂ : CompiledPolicy) : Asserts :=
+  verifyEvaluatePairOpt (λ t₁ t₂ =>
+    let t₁matches := eq t₁ (⊙true)
+    let t₂matches := eq t₂ (⊙true)
+    eq t₁matches t₂matches)
+    p₁ p₂
+
+/--
+Returns asserts that are unsatisfiable iff `p₁` matching implies that `p₂`
+matches, for every input in the `εnv` they were compiled for.
+(Caller guarantees that `p₁` and `p₂` were compiled for the same `εnv`.)
+If the asserts are satisfiable, then there is some input in `εnv` that is
+matched by `p₁` but not matched by `p₂`.
+-/
+def verifyMatchesImpliesOpt (p₁ p₂ : CompiledPolicy) : Asserts :=
+  verifyEvaluatePairOpt (λ t₁ t₂ =>
+    let t₁matches := eq t₁ (⊙true)
+    let t₂matches := eq t₂ (⊙true)
+    implies t₁matches t₂matches)
+    p₁ p₂
+
+/--
+Returns asserts that are unsatisfiable iff there is no input in the `εnv` they
+were compiled for that is matched by both `p₁` and `p₂`.
+(Caller guarantees that `p₁` and `p₂` were compiled for the same `εnv`.)
+If the asserts are satisfiable, then there is some input in `εnv` that is
+matched by both `p₁` and `p₂`.
+-/
+def verifyMatchesDisjointOpt (p₁ p₂ : CompiledPolicy) : Asserts :=
+  verifyEvaluatePairOpt (λ t₁ t₂ =>
+    let t₁matches := eq t₁ (⊙true)
+    let t₂matches := eq t₂ (⊙true)
+    disjoint t₁matches t₂matches)
+    p₁ p₂
+where
+  disjoint (t₁ t₂ : Term) := not (and t₁ t₂)
 
 /--
 Returns asserts that are unsatisfiable iff the authorization decision of `ps₁`
