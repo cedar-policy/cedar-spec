@@ -19,7 +19,7 @@ cedar-testing = { path = "../../cedar/cedar-testing", version = "4.4.0" }
 cedar-policy-generators = { path = "../../cedar-policy-generators", version = "4.0.0", features = ["cedar-policy"] }
 clap = { version = "4.0", features = ["derive"], optional = true }
 log = "0.4"
-logos = "0.15.0"
+logos = "0.16.0"
 itertools = "0.14.0"
 miette = "7.1.0"
 prost = "0.14"
