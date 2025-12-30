@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#![expect(deprecated, reason = "Fuzz target testing deprecated feature.")]
+
 #![no_main]
 use cedar_drt::logger::initialize_log;
 use cedar_drt_inner::{abac::FuzzTargetInput, fuzz_target};

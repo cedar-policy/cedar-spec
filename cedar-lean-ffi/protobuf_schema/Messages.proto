@@ -31,12 +31,6 @@ message AuthorizationRequest {
     cedar_policy_core.Entities entities = 3;
 }
 
-message EvaluationRequest {
-    cedar_policy_core.Expr expr = 1;
-    cedar_policy_core.Request request = 2;
-    cedar_policy_core.Entities entities = 3;
-}
-
 message EvaluationRequestChecked {
     cedar_policy_core.Expr expr = 1;
     cedar_policy_core.Request request = 2;
