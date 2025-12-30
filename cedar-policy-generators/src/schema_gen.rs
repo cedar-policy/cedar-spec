@@ -42,24 +42,22 @@ impl From<types::Type> for abac::Type {
             types::Type::Never => {
                 unreachable!("validated schema shouldn't contain such type variant")
             }
-            types::Type::EntityOrRecord(types::EntityRecordKind::AnyEntity) => {
+            types::Type::Entity(types::EntityKind::AnyEntity) => {
                 unreachable!("validated schema shouldn't contain such type variant")
             }
-            types::Type::EntityOrRecord(types::EntityRecordKind::Entity(lub)) => Self::Entity(
+            types::Type::Entity(types::EntityKind::Entity(lub)) => Self::Entity(
                 lub.into_single_entity()
                     .expect("should contain just one element"),
             ),
-            types::Type::EntityOrRecord(types::EntityRecordKind::Record { attrs, .. }) => {
-                Self::record(attrs.into_iter().map(|(a, ty)| {
-                    (
-                        a,
-                        QualifiedType {
-                            ty: ty.attr_type.as_ref().clone().into(),
-                            required: ty.is_required,
-                        },
-                    )
-                }))
-            }
+            types::Type::Record { attrs, .. } => Self::record(attrs.into_iter().map(|(a, ty)| {
+                (
+                    a,
+                    QualifiedType {
+                        ty: ty.attr_type.as_ref().clone().into(),
+                        required: ty.is_required,
+                    },
+                )
+            })),
             types::Type::Set { element_type } => Self::Set(Box::new(
                 element_type
                     .expect("validated schema shouldn't contain such type")
