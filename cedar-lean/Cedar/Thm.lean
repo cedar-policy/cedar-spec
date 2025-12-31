@@ -22,4 +22,8 @@ import Cedar.Thm.Typechecking
 import Cedar.Thm.Validation
 import Cedar.Thm.WellTyped
 import Cedar.Thm.TPE
+-- TODO move BatchedEvaluator to own folder
+-- TODO prove termination and remove BatchedTermination here
+import Cedar.Thm.TPE.BatchedEvaluator
+import Cedar.Thm.TPE.BatchedTermination
 import Cedar.Thm.WellTypedVerification
