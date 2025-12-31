@@ -27,13 +27,13 @@ jobs:
 
     steps:
       - name: Checkout cedar-spec
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: cedar-policy/cedar-spec
           ref: ${{ inputs.cedar_spec_ref }}
           path: ./cedar-spec
       - name: checkout cedar
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: cedar-policy/cedar
           path: ./cedar-spec/cedar
@@ -42,7 +42,7 @@ jobs:
         working-directory: ./cedar-spec/cedar
         run: rm -rf cedar-integration-tests # blast the current content
       - name: Checkout cedar-integration-tests
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: cedar-policy/cedar-integration-tests
           ref: ${{ inputs.cedar_integration_tests_ref }}

@@ -28,13 +28,13 @@ jobs:
           sudo rm -rf /usr/share/dotnet
           sudo rm -rf /usr/share/swift
       - name: Checkout cedar-spec
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: cedar-policy/cedar-spec
           ref: ${{ inputs.cedar_spec_ref }}
           path: ./cedar-spec
       - name: checkout cedar
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: cedar-policy/cedar
           path: ./cedar-spec/cedar
