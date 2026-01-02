@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-mod prt;
-#[cfg(not(feature = "prt"))]
 pub use libfuzzer_sys::fuzz_target;
 
 pub mod abac;

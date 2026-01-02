@@ -17,15 +17,12 @@ cedar-policy-formatter = "4.4.0"
 cedar-policy-symcc = "*"
 cedar-testing = { path = "../../cedar/cedar-testing", version = "4.4.0" }
 cedar-policy-generators = { path = "../../cedar-policy-generators", version = "4.0.0", features = ["cedar-policy"] }
-clap = { version = "4.0", features = ["derive"], optional = true }
 log = "0.4"
 logos = "0.16.0"
 itertools = "0.14.0"
 miette = "7.1.0"
 prost = "0.14"
 rand = { version = "0.9", features = ["small_rng"] }
-rand_chacha = { version = "0.9", optional = true }
-rayon = { version = "1.5", optional = true }
 ref-cast = "1.0"
 regex = "1"
 serde = "1.0"
@@ -38,7 +35,6 @@ tokio = { version = "1.0", features = ["full"] } # for symcc targets
 libc = "0.2.177"
 
 [features]
-prt = ["dep:rayon", "dep:clap", "dep:rand_chacha"]
 input-generation = []
 
 [patch.crates-io]
