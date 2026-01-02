@@ -138,7 +138,11 @@ def compileApp₂ (op₂ : BinaryOp) (arg₁ arg₂ : CompileResult) (εs : SymE
   -- the binaryOp term (if any) (particularly relevant for `getTag`)
   let argsFootprint := arg₁.footprint ∪ arg₂.footprint
   -- mimicking the behavior of the unoptimized compiler in how the direct
-  -- footprint for the binaryOp term itself is computed
+  -- footprint for the binaryOp term itself is computed.
+  -- Assuming everything is well-typed, this will be ∅ in all cases except `getTag` (because none of
+  -- the other binary operators can have entity type), but we still add this in every case because:
+  -- (1) we want the two compilers to agree even on non-well-typed inputs, for ease of proofs; and
+  -- (2) the unoptimized compiler adds this
   let binaryOpFootprint := λ term => directFootprint (ifSome arg₁.term (ifSome arg₂.term term))
   -- for the rest of this function, we consider only the `option.get`-ed args.
   -- see detailed note in the toplevel optimized `compile` function below.
@@ -146,48 +150,48 @@ def compileApp₂ (op₂ : BinaryOp) (arg₁ arg₂ : CompileResult) (εs : SymE
   let t₂ := option.get arg₂.term
   match op₂, t₁.typeOf, t₂.typeOf with
   | .eq, ty₁, ty₂                           => let term := if (← reducibleEq ty₁ ty₂) then ⊙eq t₁ t₂ else ⊙false
-                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term } -- assuming everything is well-typed, the `binaryOpFootprint` term here will be ∅, but: (1) we want the two compilers to agree even on non-well-typed inputs, for ease of proofs; and (2) the unoptimized compiler adds this term
+                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
   | .less, .bitvec 64, .bitvec 64           => let term := ⊙bvslt t₁ t₂
-                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term } -- assuming everything is well-typed, the `binaryOpFootprint` term here will be ∅, but: (1) we want the two compilers to agree even on non-well-typed inputs, for ease of proofs; and (2) the unoptimized compiler adds this term
+                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
   | .less, .ext .datetime, .ext .datetime   => let term := ⊙bvslt (ext.datetime.val t₁) (ext.datetime.val t₂)
-                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term } -- assuming everything is well-typed, the `binaryOpFootprint` term here will be ∅, but: (1) we want the two compilers to agree even on non-well-typed inputs, for ease of proofs; and (2) the unoptimized compiler adds this term
+                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
   | .less, .ext .duration, .ext .duration   => let term := ⊙bvslt (ext.duration.val t₁) (ext.duration.val t₂)
-                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term } -- assuming everything is well-typed, the `binaryOpFootprint` term here will be ∅, but: (1) we want the two compilers to agree even on non-well-typed inputs, for ease of proofs; and (2) the unoptimized compiler adds this term
+                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
   | .lessEq, .bitvec 64, .bitvec 64         => let term := ⊙bvsle t₁ t₂
-                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term } -- assuming everything is well-typed, the `binaryOpFootprint` term here will be ∅, but: (1) we want the two compilers to agree even on non-well-typed inputs, for ease of proofs; and (2) the unoptimized compiler adds this term
+                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
   | .lessEq, .ext .datetime, .ext .datetime => let term := ⊙bvsle (ext.datetime.val t₁) (ext.datetime.val t₂)
-                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term } -- assuming everything is well-typed, the `binaryOpFootprint` term here will be ∅, but: (1) we want the two compilers to agree even on non-well-typed inputs, for ease of proofs; and (2) the unoptimized compiler adds this term
+                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
   | .lessEq, .ext .duration, .ext .duration => let term := ⊙bvsle (ext.duration.val t₁) (ext.duration.val t₂)
-                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term } -- assuming everything is well-typed, the `binaryOpFootprint` term here will be ∅, but: (1) we want the two compilers to agree even on non-well-typed inputs, for ease of proofs; and (2) the unoptimized compiler adds this term
+                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
   | .add, .bitvec 64, .bitvec 64            => let term := ifFalse (bvsaddo t₁ t₂) (bvadd t₁ t₂)
-                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term } -- assuming everything is well-typed, the `binaryOpFootprint` term here will be ∅, but: (1) we want the two compilers to agree even on non-well-typed inputs, for ease of proofs; and (2) the unoptimized compiler adds this term
+                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
   | .sub, .bitvec 64, .bitvec 64            => let term := ifFalse (bvssubo t₁ t₂) (bvsub t₁ t₂)
-                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term } -- assuming everything is well-typed, the `binaryOpFootprint` term here will be ∅, but: (1) we want the two compilers to agree even on non-well-typed inputs, for ease of proofs; and (2) the unoptimized compiler adds this term
+                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
   | .mul, .bitvec 64, .bitvec 64            => let term := ifFalse (bvsmulo t₁ t₂) (bvmul t₁ t₂)
-                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term } -- assuming everything is well-typed, the `binaryOpFootprint` term here will be ∅, but: (1) we want the two compilers to agree even on non-well-typed inputs, for ease of proofs; and (2) the unoptimized compiler adds this term
+                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
   | .contains, .set ty₁, ty₂                => if ty₁ = ty₂
                                                 then
                                                   let term := ⊙set.member t₂ t₁
-                                                  .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term } -- assuming everything is well-typed, the `binaryOpFootprint` term here will be ∅, but: (1) we want the two compilers to agree even on non-well-typed inputs, for ease of proofs; and (2) the unoptimized compiler adds this term
+                                                  .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
                                                 else .error .typeError
   | .containsAll, .set ty₁, .set ty₂        => if ty₁ = ty₂
                                                 then
                                                   let term := ⊙set.subset t₂ t₁
-                                                  .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term } -- assuming everything is well-typed, the `binaryOpFootprint` term here will be ∅, but: (1) we want the two compilers to agree even on non-well-typed inputs, for ease of proofs; and (2) the unoptimized compiler adds this term
+                                                  .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
                                                 else .error .typeError
   | .containsAny, .set ty₁, .set ty₂        => if ty₁ = ty₂
                                                 then
                                                   let term := ⊙set.intersects t₁ t₂
-                                                  .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term } -- assuming everything is well-typed, the `binaryOpFootprint` term here will be ∅, but: (1) we want the two compilers to agree even on non-well-typed inputs, for ease of proofs; and (2) the unoptimized compiler adds this term
+                                                  .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
                                                 else .error .typeError
   | .mem, .entity ety₁, .entity ety₂        => let term := ⊙compileInₑ t₁ t₂ (εs.ancestorsOfType ety₁ ety₂)
-                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term } -- assuming everything is well-typed, the `binaryOpFootprint` term here will be ∅, but: (1) we want the two compilers to agree even on non-well-typed inputs, for ease of proofs; and (2) the unoptimized compiler adds this term
+                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
   | .mem, .entity ety₁, .set (.entity ety₂) => let term := ⊙compileInₛ t₁ t₂ (εs.ancestorsOfType ety₁ ety₂)
-                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term } -- assuming everything is well-typed, the `binaryOpFootprint` term here will be ∅, but: (1) we want the two compilers to agree even on non-well-typed inputs, for ease of proofs; and (2) the unoptimized compiler adds this term
+                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
   | .hasTag, .entity ety, .string           => let term ← compileHasTag t₁ t₂ (εs.tags ety)
-                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term } -- assuming everything is well-typed, the `binaryOpFootprint` term here will be ∅, but: (1) we want the two compilers to agree even on non-well-typed inputs, for ease of proofs; and (2) the unoptimized compiler adds this term
+                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
   | .getTag, .entity ety, .string           => let term ← compileGetTag t₁ t₂ (εs.tags ety)
-                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term } -- in this `getTag` case, the `binaryOpFootprint` term could actually be nonempty, in the case where the tags are entity-typed
+                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
   | _, _, _                                 => .error .typeError
 
 def compileHasAttr (arg : CompileResult) (a : Attr) (εs : SymEntities) : Result CompileResult := do
