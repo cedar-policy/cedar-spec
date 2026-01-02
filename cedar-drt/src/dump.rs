@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-use cedar_policy::{AuthorizationError, Policy, ValidationError};
+use cedar_policy::{AuthorizationError, Policy};
 use cedar_policy_core::entities::TypeAndId;
 
 use cedar_testing::cedar_test_impl::RustEngine;
