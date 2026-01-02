@@ -17,8 +17,6 @@
 #![no_main]
 
 use cedar_drt_inner::{fuzz_target, validation_drt};
-#[cfg(feature = "prt")]
-use libfuzzer_sys::arbitrary::{Arbitrary, Unstructured};
 
 // Non-type-directed fuzzing of (strict) validation.
 fuzz_target!(|input: validation_drt::FuzzTargetInput<false>| validation_drt::fuzz_target(input));

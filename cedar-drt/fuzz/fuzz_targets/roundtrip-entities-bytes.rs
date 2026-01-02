@@ -17,8 +17,6 @@
 #![no_main]
 
 use cedar_drt_inner::{fuzz_target, roundtrip_entities};
-#[cfg(feature = "prt")]
-use libfuzzer_sys::arbitrary::{Arbitrary, Unstructured};
 
 use cedar_policy::Entities;
 

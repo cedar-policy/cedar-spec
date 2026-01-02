@@ -17,8 +17,6 @@
 #![no_main]
 use cedar_drt::{check_policy_set_equivalence, policy_set_to_text};
 use cedar_drt_inner::fuzz_target;
-#[cfg(feature = "prt")]
-use libfuzzer_sys::arbitrary::{Arbitrary, Unstructured};
 
 use cedar_policy_core::est::PolicySetFromJsonError;
 use thiserror::Error;

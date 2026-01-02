@@ -69,9 +69,9 @@ macro_rules! fuzz_target {
                     let mut bytes: Vec<u8> = vec![0; size];
                     // generate randomized data
                     rng.fill_bytes(&mut bytes);
-                    let mut u = Unstructured::new(&bytes);
+                    let mut u = libfuzzer_sys::arbitrary::Unstructured::new(&bytes);
                     // create a randomized structured input
-                    let data = <$dty as Arbitrary>::arbitrary(&mut u);
+                    let data = <$dty as libfuzzer_sys::arbitrary::Arbitrary>::arbitrary(&mut u);
                     log::info!("total cost: {}", size - u.len());
 
                     // ``fail fast'' if the construction is unsucessful

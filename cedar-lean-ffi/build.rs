@@ -58,6 +58,7 @@ fn main() {
     println!("cargo:rerun-if-changed={lean_dir}");
     println!("cargo:rerun-if-changed={CEDAR_LEAN_DIR}/.lake/packages/batteries/.lake/build/lib");
 
+    println!("cargo:rerun-if-changed=./protobuf_schema");
     let mut config = prost_build::Config::new();
     config.extern_path(".cedar_policy_core", "::cedar_policy::proto::models");
     config.extern_path(".cedar_policy_validator", "::cedar_policy::proto::models");
