@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 #![no_main]
-use cedar_drt::{tests::run_auth_test, CedarLeanEngine};
+use cedar_drt::tests::run_auth_test;
 use cedar_drt_inner::fuzz_target;
 
+use cedar_lean_ffi::CedarLeanFfi;
 use cedar_policy::{Context, Entities, Policy, PolicySet, Request};
 use cedar_policy_core::ast;
 
@@ -126,7 +127,7 @@ fuzz_target!(|input: AuthorizerInputAbstractEvaluator| {
     )
     .expect("we aren't doing request validation here, so new() can't fail");
 
-    let lean_engine = CedarLeanEngine::new();
+    let lean_engine = CedarLeanFfi::new();
 
     // Check agreement with definitional engine. Note that run_auth_test returns
     // the result of the call to is_authorized.

@@ -35,6 +35,8 @@ use lean_sys::{
 
 use std::sync::Once;
 
+mod test_implementation;
+
 // Import and signal RUST to link the exported Lean FFI code (which are C functions at this point)
 #[allow(clippy::duplicated_attributes)]
 #[link(name = "Cedar", kind = "static")]

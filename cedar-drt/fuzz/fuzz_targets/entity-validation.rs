@@ -18,10 +18,10 @@
 use cedar_drt::{
     logger::{initialize_log, TOTAL_MSG},
     tests::run_ent_val_test,
-    CedarLeanEngine,
 };
 use cedar_drt_inner::fuzz_target;
 
+use cedar_lean_ffi::CedarLeanFfi;
 use cedar_policy::{Entities, Schema};
 use cedar_testing::cedar_test_impl::time_function;
 
@@ -69,7 +69,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
 
-    let engine = CedarLeanEngine::new();
+    let engine = CedarLeanFfi::new();
 
     // generate a schema
     if let Ok(schema) = Schema::try_from(input.schema) {

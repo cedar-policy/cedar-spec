@@ -15,15 +15,16 @@
  */
 
 #![no_main]
-use cedar_drt::{logger::initialize_log, CedarLeanEngine};
+use cedar_drt::logger::initialize_log;
 use cedar_drt_inner::{abac::FuzzTargetInput, fuzz_target};
 
+use cedar_lean_ffi::CedarLeanFfi;
 use cedar_policy::{Policy, PolicySet, Schema, TestEntityLoader};
 
 // This target tests a property that batched evaluation, if succeeds, should
 // produce the same authorization decision based on the Lean model output
 fuzz_target!(|input: FuzzTargetInput<true>| {
-    let ffi = CedarLeanEngine::new();
+    let ffi = CedarLeanFfi::new();
     initialize_log();
 
     if let Ok(schema) = Schema::try_from(input.schema) {
@@ -43,7 +44,7 @@ fuzz_target!(|input: FuzzTargetInput<true>| {
             if let Ok(rust_decision) =
                 policyset.is_authorized_batched(&req, &schema, &mut loader, iteration)
             {
-                match ffi.get_ffi().batched_evaluation(
+                match ffi.batched_evaluation(
                     &policy,
                     &schema,
                     &req,
