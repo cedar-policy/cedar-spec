@@ -15,13 +15,14 @@
  */
 
 #![no_main]
-use cedar_drt::{logger::initialize_log, CedarLeanEngine};
+use cedar_drt::logger::initialize_log;
 
 use cedar_drt_inner::{
     fuzz_target,
     symcc::{compile_policies, total_action_request_env_limit},
 };
 
+use cedar_lean_ffi::CedarLeanFfi;
 use cedar_policy::{Policy, PolicySet, Schema};
 
 use cedar_policy_generators::{
@@ -101,8 +102,7 @@ fn smtlib_of_check_asserts(rust_asserts: &WellFormedAsserts<'_>) -> Result<Strin
 // cspell:ignore symcc
 fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
-    let len_engine = CedarLeanEngine::new();
-    let lean_ffi = len_engine.get_ffi();
+    let lean_ffi = CedarLeanFfi::new();
     let mut policyset = PolicySet::new();
     let policy: Policy = input.policy.into();
     policyset.add(policy.clone()).unwrap();

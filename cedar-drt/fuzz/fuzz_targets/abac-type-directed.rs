@@ -19,11 +19,11 @@ use cedar_drt::{
     dump::dump,
     logger::{initialize_log, TOTAL_MSG},
     tests::run_auth_test,
-    CedarLeanEngine,
 };
 
 use cedar_drt_inner::{abac::FuzzTargetInput, fuzz_target};
 
+use cedar_lean_ffi::CedarLeanFfi;
 use cedar_policy::{Authorizer, Policy, PolicyId, PolicySet, SchemaFragment};
 use cedar_testing::cedar_test_impl::time_function;
 
@@ -33,7 +33,7 @@ use std::convert::TryFrom;
 // Type-directed fuzzing of ABAC hierarchy/policy/requests.
 fuzz_target!(|input: FuzzTargetInput<true>| {
     initialize_log();
-    let lean_engine = CedarLeanEngine::new();
+    let lean_engine = CedarLeanFfi::new();
     let mut policyset = PolicySet::new();
     let policy: Policy = input.policy.into();
     policyset.add(policy.clone()).unwrap();
