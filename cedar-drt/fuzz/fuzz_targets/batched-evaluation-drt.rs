@@ -44,13 +44,7 @@ fuzz_target!(|input: FuzzTargetInput<true>| {
             if let Ok(rust_decision) =
                 policyset.is_authorized_batched(&req, &schema, &mut loader, iteration)
             {
-                match ffi.batched_evaluation(
-                    &policy,
-                    &schema,
-                    &req,
-                    &input.entities,
-                    iteration,
-                ) {
+                match ffi.batched_evaluation(&policy, &schema, &req, &input.entities, iteration) {
                     Ok(lean_decision) => {
                         assert_eq!(lean_decision, Some(rust_decision));
                     }
