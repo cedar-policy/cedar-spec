@@ -16,6 +16,8 @@
 
 import Cedar.Spec
 import Cedar.SymCC
+import Cedar.SymCCOpt.Authorizer
+import Cedar.SymCCOpt.Compiler
 import Cedar.Validation.Validator
 
 namespace Cedar.SymCC
@@ -59,8 +61,7 @@ Then, it runs the symbolic compiler to produce a compiled policy.
 def CompiledPolicy.compile (p : Policy) (Γ : Validation.TypeEnv) : Except CompiledPolicyError CompiledPolicy := do
   let policy ← wellTypedPolicy p Γ |>.mapError .validationError
   let εnv := SymEnv.ofEnv Γ
-  let term ← SymCC.compile policy.toExpr εnv |>.mapError .symCCError
-  let footprint := SymCC.footprint policy.toExpr εnv
+  let { term, footprint } ← Opt.compile policy.toExpr εnv |>.mapError .symCCError
   let acyclicity := footprint.map (SymCC.acyclicity · εnv.entities)
   .ok { term, εnv, policy, footprint, acyclicity }
 
@@ -91,8 +92,7 @@ Then, it runs the symbolic compiler to produce a compiled policy.
 def CompiledPolicies.compile (ps : Policies) (Γ : Validation.TypeEnv) : Except CompiledPolicyError CompiledPolicies := do
   let policies ← wellTypedPolicies ps Γ |>.mapError .validationError
   let εnv := SymEnv.ofEnv Γ
-  let term ← isAuthorized policies εnv |>.mapError .symCCError
-  let footprint := SymCC.footprints (policies.map Policy.toExpr) εnv
+  let { term, footprint } ← Opt.isAuthorized policies εnv |>.mapError .symCCError
   let acyclicity := footprint.map (SymCC.acyclicity · εnv.entities)
   .ok { term, εnv, policies, footprint, acyclicity }
 

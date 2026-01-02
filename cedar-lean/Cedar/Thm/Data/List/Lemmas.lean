@@ -71,6 +71,21 @@ theorem map_congr {f g : α → β} : ∀ {l : List α},
     rw [map, map, h₁, map_congr h₂]
 
 /--
+Similar to the standard library's `map_eq_singleton_iff`, but for doubleton.
+
+We could probably make this an iff but currently don't need to.
+-/
+theorem map_eq_doubleton {f : α → β} {xs : List α} {y₁ y₂ : β} :
+  xs.map f = [y₁, y₂] →
+  ∃ x₁ x₂, xs = [x₁, x₂]
+:= by
+  rw [List.map.eq_def]
+  split <;> simp
+  · rename_i tl
+    intro h x₁ _ _ ; subst y₁ y₂ tl
+    exists x₁
+
+/--
   Copied from Mathlib. We can delete this if it gets added to Batteries.
 -/
 theorem map_pmap_subtype
