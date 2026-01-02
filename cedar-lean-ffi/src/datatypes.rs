@@ -6,6 +6,7 @@ use thiserror::Error;
 
 use std::char::CharTryFromError;
 use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::num::{NonZeroU32, NonZeroU8};
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -350,7 +351,7 @@ pub enum ExtType {
 pub enum TermPrimType {
     Bool,
     Bitvec {
-        n: u8,
+        n: NonZeroU8,
     },
     String,
     Entity {
@@ -444,6 +445,8 @@ pub enum TermConversionError {
     ParseBigInt(#[from] ParseBigIntError),
     #[error(transparent)]
     ConstructBV(#[from] cedar_policy_symcc::err::BitVecError),
+    #[error("bitvec had zero width")]
+    ZeroWidthBV,
 }
 
 impl TryFrom<PatElem> for cedar_policy_core::ast::PatternElem {
@@ -527,7 +530,8 @@ impl TryFrom<Bitvec> for cedar_policy_symcc::bitvec::BitVec {
     type Error = TermConversionError;
 
     fn try_from(value: Bitvec) -> Result<Self, Self::Error> {
-        Ok(Self::of_nat(value.width.into(), value.val.parse()?)?)
+        let width = NonZeroU32::new(value.width.into()).ok_or(TermConversionError::ZeroWidthBV)?;
+        Ok(Self::of_nat(width, value.val.parse()?))
     }
 }
 
@@ -715,7 +719,7 @@ impl From<cedar_policy_symcc::bitvec::BitVec> for Bitvec {
     fn from(value: cedar_policy_symcc::bitvec::BitVec) -> Self {
         Self {
             // PANIC SAFETY: `value.width()` should not overflow `u8`
-            width: value.width().try_into().unwrap(),
+            width: value.width().get().try_into().unwrap(),
             val: value.to_nat().to_string(),
         }
     }
@@ -725,7 +729,7 @@ impl From<cedar_policy_symcc::term::TermPrim> for TermPrim {
     fn from(value: cedar_policy_symcc::term::TermPrim) -> Self {
         match value {
             cedar_policy_symcc::term::TermPrim::Bitvec(bv) => Self::Bitvec(Bitvec {
-                width: bv.width().try_into().unwrap(),
+                width: bv.width().get().try_into().unwrap(),
                 val: bv.to_nat().to_string(),
             }),
             cedar_policy_symcc::term::TermPrim::Bool(b) => Self::Bool(b),
@@ -903,7 +907,7 @@ mod deserialization {
         assert_eq!(bv.val, "9223372036854775808");
         let bv =
             cedar_policy_symcc::bitvec::BitVec::try_from(bv).expect("conversion should succeed");
-        assert_eq!(bv.width(), 64);
+        assert_eq!(bv.width().get(), 64);
         assert_eq!(bv.to_nat().to_string(), "9223372036854775808");
     }
 

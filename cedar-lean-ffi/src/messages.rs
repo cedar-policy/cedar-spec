@@ -374,7 +374,7 @@ impl proto::TermPrimType {
     pub(crate) fn new(pty: &datatypes::TermPrimType) -> Self {
         let prim_type = match pty {
             datatypes::TermPrimType::Bitvec { n } => {
-                proto::term_prim_type::PrimType::Bitvec(*n as u32)
+                proto::term_prim_type::PrimType::Bitvec(n.get() as u32)
             }
             datatypes::TermPrimType::Entity { ety } => proto::term_prim_type::PrimType::Entity(
                 cedar_policy::proto::models::Name::from(ety),
