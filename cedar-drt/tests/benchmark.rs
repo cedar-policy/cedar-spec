@@ -19,16 +19,13 @@
 
 #![cfg(feature = "integration-testing")]
 
-mod integration_tests;
-
-use cedar_drt::CedarLeanEngine;
 use cedar_policy::{Entities, PolicySet, Request, Schema, ValidationMode};
 use cedar_testing::cedar_test_impl::{time_function, CedarTestImplementation, RustEngine};
 use cedar_testing::integration_testing::{
     parse_entities_from_test, parse_policies_from_test, parse_request_from_test,
     parse_schema_from_test, resolve_integration_test_path, JsonTest,
 };
-use integration_tests::get_corpus_tests;
+use cedar_testing::test_files::get_corpus_tests;
 use statrs::statistics::{Data, OrderStatistics};
 use std::{collections::HashMap, path::Path};
 
@@ -79,7 +76,7 @@ fn p99(data: Vec<f64>) -> f64 {
 fn get_authorization_timing_results(
     custom_impl: &dyn CedarTestImplementation,
 ) -> HashMap<&str, Vec<f64>> {
-    let tests = get_corpus_tests();
+    let tests = get_corpus_tests("");
     let mut results = HashMap::new();
     results.insert("total", Vec::new());
     results.insert("authorize", Vec::new());
@@ -120,7 +117,7 @@ fn get_authorization_timing_results(
 fn get_validation_timing_results(
     custom_impl: &dyn CedarTestImplementation,
 ) -> HashMap<&str, Vec<f64>> {
-    let tests = get_corpus_tests();
+    let tests = get_corpus_tests("");
     let mut results = HashMap::new();
     results.insert("total", Vec::new());
     results.insert("validate", Vec::new());

@@ -24,7 +24,6 @@ cargo_metadata = "0.20.0"
 
 [dev-dependencies]
 cool_asserts = "2.0.3"
-walkdir = "2.4"
 rstest = "0.26.1"
 
 [profile.release]
