@@ -19,12 +19,13 @@
 
 #![cfg(feature = "integration-testing")]
 
+use cedar_lean_ffi::CedarLeanFfi;
 use cedar_testing::cedar_test_impl::CedarTestImplementation;
 use cedar_testing::integration_testing::{
     perform_integration_test_from_json_custom, resolve_integration_test_path,
 };
 
-use cedar_drt::CedarLeanEngine;
+use rstest::rstest;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
@@ -54,7 +55,7 @@ pub fn get_integration_tests() -> impl Iterator<Item = PathBuf> {
 }
 
 /// Pull out the relevant tests in `corpus_test_folder()`
-pub fn get_corpus_tests() -> impl Iterator<Item = PathBuf> {
+pub fn get_corpus_tests(prefix: &str) -> impl Iterator<Item = PathBuf> + '_ {
     let tests_folder = resolve_integration_test_path(corpus_test_folder());
     WalkDir::new(&tests_folder)
         .into_iter()
@@ -62,13 +63,13 @@ pub fn get_corpus_tests() -> impl Iterator<Item = PathBuf> {
             e.expect("failed to access file in corpus_tests. Maybe you haven't unpacked `corpus-tests.tar.gz`")
                 .into_path()
         })
-        .filter(|p| {
+        .filter(move |p| {
             let filename = p
                 .file_name()
                 .expect("didn't expect subdirectories in corpus-tests")
                 .to_str()
                 .expect("expected filenames to be valid UTF-8");
-            filename.ends_with(".json") && !filename.ends_with(".entities.json")
+            filename.starts_with(prefix) && filename.ends_with(".json") && !filename.ends_with(".entities.json")
         })
 }
 
@@ -82,13 +83,23 @@ fn run_integration_tests(custom_impl: &impl CedarTestImplementation) {
     run_tests(custom_impl, get_integration_tests());
 }
 
-fn run_corpus_tests(custom_impl: &impl CedarTestImplementation) {
-    run_tests(custom_impl, get_corpus_tests());
+fn run_corpus_tests(custom_impl: &impl CedarTestImplementation, prefix: &str) {
+    run_tests(custom_impl, get_corpus_tests(prefix));
 }
 
 #[test]
-fn integration_tests_on_def_impl() {
-    let lean_def_impl = CedarLeanEngine::new();
+fn integration_tests_() {
+    let lean_def_impl = CedarLeanFfi::new();
     run_integration_tests(&lean_def_impl);
-    run_corpus_tests(&lean_def_impl);
+}
+
+#[rstest]
+fn corpus_tests(
+    #[values(
+        "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"
+    )]
+    prefix: &str,
+) {
+    let lean_def_impl = CedarLeanFfi::new();
+    run_corpus_tests(&lean_def_impl, prefix);
 }

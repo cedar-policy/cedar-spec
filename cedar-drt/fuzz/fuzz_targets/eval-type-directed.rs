@@ -18,10 +18,10 @@
 use cedar_drt::{
     logger::initialize_log,
     tests::{drop_some_entities, run_eval_test},
-    CedarLeanEngine,
 };
 use cedar_drt_inner::fuzz_target;
 
+use cedar_lean_ffi::CedarLeanFfi;
 use cedar_policy::Entities;
 use cedar_policy_core::ast::Expr;
 use cedar_policy_generators::hierarchy::HierarchyGenerator;
@@ -105,7 +105,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 // Type-directed fuzzing of expression evaluation.
 fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
-    let def_impl = CedarLeanEngine::new();
+    let def_impl = CedarLeanFfi::new();
     debug!("Schema: {}\n", input.schema.schemafile_string());
     debug!("expr: {}\n", input.expression);
     debug!("Entities: {}\n", input.entities.as_ref());

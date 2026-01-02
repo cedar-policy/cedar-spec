@@ -15,9 +15,10 @@
  */
 
 #![no_main]
-use cedar_drt::{tests::run_level_val_test, CedarLeanEngine};
+use cedar_drt::tests::run_level_val_test;
 use cedar_drt_inner::fuzz_target;
 
+use cedar_lean_ffi::CedarLeanFfi;
 use cedar_policy::{Policy, PolicySet, Schema, ValidationMode};
 
 use cedar_policy_generators::{
@@ -69,7 +70,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 }
 
 fuzz_target!(|input: FuzzTargetInput| {
-    let def_impl = CedarLeanEngine::new();
+    let def_impl = CedarLeanFfi::new();
 
     if let Ok(schema) = Schema::try_from(input.schema) {
         let policy = Policy::from(input.policy);
