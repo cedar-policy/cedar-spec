@@ -88,7 +88,7 @@ fn run_corpus_tests(custom_impl: &impl CedarTestImplementation, prefix: &str) {
 }
 
 #[test]
-fn integration_tests_() {
+fn integration_tests() {
     let lean_def_impl = CedarLeanFfi::new();
     run_integration_tests(&lean_def_impl);
 }
