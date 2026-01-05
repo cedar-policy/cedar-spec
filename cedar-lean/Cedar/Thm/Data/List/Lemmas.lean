@@ -1896,34 +1896,18 @@ theorem mem_map_iff_find? [BEq β] [LawfulBEq β] {k : β} {f : α → β} {kvs 
   k ∈ List.map f kvs ↔
   (List.find? (fun x => f x == k) kvs).isSome
 := by
-  cases kvs
-  · simp
-  · simp only [List.find?]
-    split
-    · rename_i h
-      simp only [beq_iff_eq] at h
-      simp only [List.map_cons, List.mem_cons, Option.isSome_some, iff_true]
-      exact .inl h.symm
-    · simp only [Option.isSome, List.map_cons, List.mem_cons, List.mem_map]
-      constructor
-      · rename_i h₁
-        intro h₂
-        split <;> try rfl
-        rename_i h₃
-        simp only [beq_eq_false_iff_ne, ne_eq] at h₁
-        cases h₂ <;> try (rename_i h₂ ; simp only [h₂, not_true_eq_false] at h₁)
-        rename_i h₄
-        have ⟨e, he₁, he₂⟩ := h₄
-        replace h₃ := List.find?_eq_none.mp h₃ e he₁
-        simp only [beq_iff_eq] at h₃
-        contradiction
-      · rename_i h ; clear h
-        split <;> (intro h₁ ; try contradiction)
-        rename_i v h₂
-        have h₃ := List.mem_of_find?_eq_some h₂
-        replace h₂ := List.find?_some h₂
-        simp only [beq_iff_eq] at h₂
-        right ; exists v
+  constructor
+  · intro h
+    rw [List.mem_map] at h
+    obtain ⟨x, hx_mem, hx_eq⟩ := h
+    subst hx_eq
+    rw [List.find?_isSome]
+    exact ⟨x, hx_mem, by simp⟩
+  · intro h
+    rw [List.find?_isSome] at h
+    obtain ⟨x, hx_mem, hx_prop⟩ := h
+    rw [List.mem_map]
+    exact ⟨x, hx_mem, by simpa using hx_prop⟩
 
 theorem mem_implies_find?
   {l : List α} {k : α} {f : α → Bool}
