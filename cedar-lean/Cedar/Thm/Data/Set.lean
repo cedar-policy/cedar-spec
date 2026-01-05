@@ -105,7 +105,7 @@ theorem mem_cons_of_mem {α : Type u} (a : α) (hd : α) (tl : List α) :
   apply List.mem_cons_of_mem hd h₁
 
 theorem mem_cons {a : α} {hd : α} {tl : List α} :
-  a ∈ Set.mk (hd :: tl) → a = hd ∨ a ∈ tl
+  a ∈ Set.mk (hd :: tl) ↔ a = hd ∨ a ∈ tl
 := by
   simp [← in_list_iff_in_mk]
 
@@ -687,5 +687,38 @@ theorem mem_map [LT α] [DecidableLT α] [StrictLT α] [LT β] [DecidableLT β] 
   b ∈ s.map f ↔ ∃ a ∈ s, f a = b
 := by
   simp [Set.map, ← Set.make_mem, Set.in_list_iff_in_set]
+
+/-! ### filter and differences -/
+
+theorem filter_wf [LT α] [DecidableLT α] [StrictLT α] (p : α → Bool) (s : Set α) :
+  WellFormed s →
+  WellFormed (s.filter p)
+:= by
+  simp only [Set.filter, wf_iff_sorted]
+  apply List.filter_sortedBy
+
+theorem mem_filter [LT α] [DecidableLT α] [StrictLT α] (p : α → Bool) (s : Set α) (e : α):
+  e ∈ s.filter p ↔ (e ∈ s ∧ p e)
+:= by
+  simp only [filter]
+  rw [←in_list_iff_in_mk, ←in_list_iff_in_set]
+  simp [List.mem_filter]
+
+theorem difference_wf [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] (s₁ s₂ : Set α) :
+  WellFormed s₁ →
+  WellFormed (s₁.difference s₂)
+:= by apply filter_wf
+
+theorem mem_difference [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] (s₁ s₂ : Set α) (e : α):
+  e ∈ s₁.difference s₂ ↔ (e ∈ s₁ ∧ e ∉ s₂)
+:= by simp [difference, mem_filter, ←not_contains_prop_bool_equiv]
+
+theorem difference_subset [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] (s₁ s₂ : Set α) :
+  (s₁.difference s₂) ⊆ s₁
+:= by
+  rw [subset_def]
+  intro s
+  rw [mem_difference]
+  exact And.left
 
 end Cedar.Data.Set

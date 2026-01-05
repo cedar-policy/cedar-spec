@@ -179,6 +179,19 @@ theorem in_list_in_values {k : α} {v : β} {m : Map α β} :
   intro h₁
   exists (k, v)
 
+theorem in_keys_iff_in_map {k : α} {m : Map α β} :
+  k ∈ m.keys ↔ k ∈ m
+:= by simp only [Membership.mem, Map.keys]
+
+theorem in_keys_iff_contains [BEq α] [LawfulBEq α] {k : α} {m : Map α β} :
+  (k ∈ m.keys ↔ m.contains k)
+:= by
+  have h_mem_list := List.mem_map_iff_find? (k := k) (f := Prod.fst) (kvs := m.kvs)
+  simp only [Membership.mem] at h_mem_list
+  simp only [Membership.mem, Map.keys, Map.contains, Map.find?]
+  rw [h_mem_list]
+  cases h : List.find? (λ x => x.fst == k) m.kvs <;> simp
+
 /-- kinda the converse of `in_list_in_values` -/
 theorem in_values_exists_key {m : Map α β} {v : β} :
   v ∈ m.values → ∃ k, (k, v) ∈ m.kvs
@@ -216,6 +229,10 @@ theorem not_contains_of_empty {α β} [BEq α] (k : α) :
   ¬ (Map.empty : Map α β).contains k
 := by simp [contains, empty, find?, List.find?]
 
+theorem not_find?_of_empty [BEq α] {k : α} :
+  (Map.empty : Map α β).find? k = none
+:= by simp [Map.empty, Map.find?, List.find?]
+
 /-! ### make and mk -/
 
 theorem make_wf [LT α] [StrictLT α] [DecidableLT α] (xs : List (α × β)) :
@@ -241,6 +258,12 @@ theorem make_eq_mk [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)}
     simp only [make, mk.injEq] at h
     rw [← h]
     exact List.canonicalize_sortedBy _ _
+
+theorem make_singleton [LT α] [DecidableLT α] [StrictLT α] (k : α) (v : β) :
+  Map.make [(k, v)] = Map.mk [(k, v)]
+:= by
+  rw [←make_eq_mk]
+  exact List.SortedBy.cons_nil
 
 /--
   Note that the converse of this is not true:
@@ -345,6 +368,22 @@ theorem make_of_make_is_id [LT α] [DecidableLT α] [StrictLT α] (xs : List (α
   exact h₁
 
 /-! ### find?, findOrErr, and mapOnValues -/
+
+theorem singleton_find? [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] (k : α) (v : β) :
+  (Map.make [(k, v)]).find? k = .some v
+:= by simp [Map.find?, Map.kvs, Map.make_singleton]
+
+theorem singleton_contains  [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] (k k' : α) (v : β) :
+  (Map.make [(k', v)]).contains k ↔ k' == k
+:= by
+  simp only [Map.make_singleton, Map.contains_iff_some_find?, Map.find?, Map.kvs, List.find?_singleton, beq_iff_eq]
+  split <;> rename_i h_eq
+  · replace h_eq : k' = k :=
+      Option.ite_none_right_eq_some.mp h_eq|>.left
+    simp [h_eq]
+  · replace h_eq : k' ≠ k := by
+      simpa using h_eq
+    simp [h_eq]
 
 /--
   Converse is available at `in_list_iff_find?_some` (requires `wf` though)
@@ -512,6 +551,7 @@ theorem list_find?_some_iff_map_find?_some {α β: Type} [BEq α] [LawfulBEq α]
       simp
     case h_2 =>
       contradiction
+
 
 theorem list_find?_mapM_implies_exists_mapped {α β γ : Type} [BEq α] [LawfulBEq α] {ls : List (α × β)} (fn : β → Option γ) {ys: List (α × γ)} {k: α} {x : β} :
   List.mapM (fun x =>
@@ -1706,5 +1746,122 @@ theorem find?_append
   . simp
     cases List.find? (fun x => x.fst == k) m₂.kvs <;> simp
   . simp
+
+theorem contains_append
+  [LT α] [StrictLT α] [DecidableLT α][DecidableEq α] {m₁ m₂ : Map α β} {k : α} :
+  (m₁ ++ m₂).contains k ↔ m₁.contains k ∨ m₂.contains k
+:= by
+  have h₁ := Map.find?_append (m₁ := m₁) (m₂ := m₂) (k := k)
+  simp only [Option.or] at h₁
+  simp only [Map.contains]
+  split at h₁
+  all_goals
+    rename_i h₂
+    simp [h₁, h₂]
+
+theorem find?_append_right
+  [LT α] [StrictLT α] [DecidableEq α] [DecidableLT α]
+  {m₁ m₂ : Map α β} {k : α} :
+  m₁.contains k = false → (m₁ ++ m₂).find? k = m₂.find? k
+:= by
+  rw [Map.find?_append]
+  intro h₁
+  replace h₁ : m₁.find? k = none := by
+    simpa [Map.contains] using h₁
+  simp [h₁]
+
+theorem find?_append_left
+  [LT α] [StrictLT α] [DecidableEq α] [DecidableLT α]
+  {m₁ m₂ : Map α β} {k : α} :
+  m₂.contains k = false → (m₁ ++ m₂).find? k = m₁.find? k
+:= by
+  rw [Map.find?_append]
+  intro h₁
+  replace h₁ : m₂.find? k = none := by
+    simpa [Map.contains] using h₁
+  simp [h₁]
+
+theorem find?_filter_if_find? {α : Type u} {β : Type v} [BEq α] [LawfulBEq α]
+  {k : α} {val : β} {m : Map α β} {p : α → β → Bool} :
+  m.find? k = some val → p k val = true →
+  ((m.filter p).find? k = some val)
+:= by
+  simp only [Map.find?, Map.filter, Map.kvs]
+  intro h₁ h₂
+  split at h₁
+  · rename_i k' v' h₃
+    injection h₁ with h₁; subst h₁
+    have hk : k' = k := by
+      simpa using List.find?_some h₃
+    subst hk
+    have h₄ := List.find?_filter_if_find? p h₃ h₂
+    cases h₅ : List.find? (fun x => x.fst == k') (m.kvs.filter (fun kv => p kv.fst kv.snd))
+    case none =>
+      replace h₅ : (k', v') ∈ m.kvs → p k' v' = true → k' ≠ k' := by
+        simp only [List.find?_filter, beq_iff_eq, Bool.decide_and, Bool.decide_eq_true, List.find?_eq_none, Bool.and_eq_true, not_and, Prod.forall] at h₅
+        exact h₅ k' v'
+      simp only [List.find?_filter] at h₄
+      have h_mem_kv : (k', v') ∈ m.kvs :=
+        List.mem_of_find?_eq_some h₄
+      have h_p_kv : p k' v' = true := by
+        simpa using List.find?_some h₄
+      specialize h₅ h_mem_kv h_p_kv
+      contradiction
+    case some kv =>
+      have : kv = (k', v') := by
+        have := h₄
+        rw [h₅] at this
+        injection this
+      cases kv
+      simp only [Prod.mk.injEq] at this
+      simp only [this.right]
+  · contradiction
+
+theorem find?_filter_iff_find {α : Type u} {β : Type v} [BEq α] [LawfulBEq α] [DecidableEq α] [LT α] [StrictLT α] [DecidableLT α]
+  {k : α} {val : β} {m : Map α β} {p : α → β → Bool} :
+  m.WellFormed →
+  ((m.find? k = some val ∧ p k val = true) ↔ ((m.filter p).find? k = some val))
+:= by
+  intro h_wf
+  constructor
+  · simp only [and_imp]
+    exact Map.find?_filter_if_find?
+  · simp only [Map.find?, Map.filter]
+    intro h₁
+    split at h₁ <;> try contradiction
+    rename_i k' v' h₂
+    injection h₁ with h₁ ; subst h₁
+    have hk : k' = k := by
+      simpa using List.find?_some h₂
+    subst hk
+    have h_sorted := Map.wf_iff_sorted.mp h_wf
+    have h_find_kvs := List.find?_filter_sorted k' v' m.kvs p h_sorted h₂
+    simp [h_find_kvs]
+
+theorem filter_contains_if_find_matching {α : Type u} {β : Type v} [BEq α] [LawfulBEq α]
+  {k : α} {m : Map α β} {p : α → β → Bool} :
+  (∃ v, m.find? k = some v ∧ p k v = true) → (m.filter p).contains k
+:= by
+  intro ⟨v, hfind, hpred⟩
+  rw [Map.contains_iff_some_find?]
+  exists v
+  exact Map.find?_filter_if_find? hfind hpred
+
+theorem find_matching_iff_filter_contains {α : Type u} {β : Type v} [BEq α] [LawfulBEq α] [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α]
+  {k : α} {m : Map α β} (p : α → β → Bool) :
+  m.WellFormed →
+  ((∃ v, m.find? k = some v ∧ p k v = true) ↔ (m.filter p).contains k)
+:= by
+  intro h_wf
+  have h_find? := λ v =>
+    Map.find?_filter_iff_find (p := p) (val := v) (k := k) h_wf
+  simp [Map.contains_iff_some_find?, h_find?]
+
+theorem filter_not_contains {α : Type u} {β : Type v} [BEq α] [LawfulBEq α] (k : α) (m : Map α β) :
+  (m.filter (λ k' _ => k' != k)|>.contains k) = false
+:= by
+  have h_none : List.find? (fun a => false) m.1 = none := by
+    simp [List.find?_eq_none]
+  simp [h_none, Map.contains, Map.find?, Map.kvs, Map.filter]
 
 end Cedar.Data.Map
