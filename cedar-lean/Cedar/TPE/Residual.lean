@@ -79,6 +79,17 @@ def Residual.typeOf : Residual → CedarType
   | .call _ _ ty
   | .error ty => ty
 
+-- Assumes the residual is well typed, so there can be no type errors.
+-- Implements only enough for scope expressions for proof of concept.
+def Residual.errorFree : Residual → Bool
+  | .val _ _ => true
+  | .var _ _ => true
+  | .binaryApp .eq x₁ x₂ _ => x₁.errorFree && x₂.errorFree
+  | .binaryApp .mem x₁ x₂ _ => x₁.errorFree && x₂.errorFree
+  | .unaryApp (.is _) x₁ _ => x₁.errorFree
+  | .and x₁ x₂ _ => x₁.errorFree && x₂.errorFree
+  | _ => false
+
 -- The interpreter of `Residual` that defines its semantics
 def Residual.evaluate (x : Residual) (req : Request) (es: Entities) : Result Value :=
   match x with

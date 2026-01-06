@@ -63,6 +63,8 @@ def and : Residual → Residual → CedarType → Residual
   | .val false _, _, _ => false
   | .error _, _, ty    => .error ty
   | l, .val true _, _  => l
+  | l, .val false rty, ty  =>
+    if l.errorFree then false else .and l (.val false rty) ty
   | l, r, ty           => .and l r ty
 
 def or : Residual → Residual → CedarType → Residual
