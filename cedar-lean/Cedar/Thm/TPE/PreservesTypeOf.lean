@@ -57,6 +57,8 @@ private theorem partial_eval_preserves_typeof_and {env : TypeEnv} {a b : Residua
       unfold TPE.and at heq
     all_goals
       split at heq
+    any_goals
+      split at heq
 
     any_goals
       contradiction
@@ -77,12 +79,18 @@ private theorem partial_eval_preserves_typeof_and {env : TypeEnv} {a b : Residua
     case h_2 =>
       injection heq with h₅ h₆
       rw [h₆]
-    case h_5 =>
+    case h_5.isTrue =>
+      injection heq with h₅ h₆
+      rw [h₆]
+    case h_5.isFalse =>
       injection heq with h₅ h₆ h₇
       rw [h₇]
     case h_3 =>
       injection heq with h₅
       rw [h₅]
+    case h_6 =>
+      injection heq with h₅ h₆ h₇
+      rw [h₇]
 
 private theorem partial_eval_preserves_typeof_or {env : TypeEnv} {a b : Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities}
   (ih_a : PEPreservesTypeOf env a req preq es pes)
