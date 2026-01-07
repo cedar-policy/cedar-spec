@@ -1565,6 +1565,13 @@ theorem forM_ok_implies_all_ok' {α β : Type} {xs : List α} {f : α → Except
   xs.forM f = Except.ok () → (∀ x ∈ xs, f x = Except.ok ())
 := forM_ok_implies_all_ok xs f
 
+theorem all_ok_implies_forM_ok {α β : Type} (xs : List α) (f : α → Except β Unit) :
+   (∀ x ∈ xs, f x = Except.ok ()) → xs.forM f = Except.ok ()
+:= by
+  intro hall
+  have ⟨ys, h₁⟩ := @List.all_ok_implies_mapM_ok _ _ _ f xs (by grind)
+  exact mapM_forM _ _ _ h₁
+
 /-! ### removeAll -/
 
 theorem removeAll_singleton_cons_of_neq [DecidableEq α] (x y : α) (xs : List α) :
@@ -1885,6 +1892,23 @@ theorem mem_of_map_implies_exists_unmapped
         assumption
       . rw [h₃]
 
+theorem mem_map_iff_find? [BEq β] [LawfulBEq β] {k : β} {f : α → β} {kvs : List α} :
+  k ∈ List.map f kvs ↔
+  (List.find? (fun x => f x == k) kvs).isSome
+:= by
+  constructor
+  · intro h
+    rw [List.mem_map] at h
+    obtain ⟨x, hx_mem, hx_eq⟩ := h
+    subst hx_eq
+    rw [List.find?_isSome]
+    exact ⟨x, hx_mem, by simp⟩
+  · intro h
+    rw [List.find?_isSome] at h
+    obtain ⟨x, hx_mem, hx_prop⟩ := h
+    rw [List.mem_map]
+    exact ⟨x, hx_mem, by simpa using hx_prop⟩
+
 theorem mem_implies_find?
   {l : List α} {k : α} {f : α → Bool}
   (hmem : k ∈ l)
@@ -1929,5 +1953,61 @@ theorem filterMap_eq_filterMap
     · exact ih
     · simp only [cons.injEq, true_and]
       exact ih
+
+theorem find?_filter_if_find? {α : Type u} {β : Type v} [BEq α] [LawfulBEq α] {k : α} {val : β} {l : List (α × β)} (p : α → β → Bool) :
+  List.find? (fun x => x.fst == k) l = some (k, val) → p k val = true →
+  List.find? (fun x => x.fst == k) (l.filter (fun kv => p kv.fst kv.snd)) = some (k, val)
+:= by
+  intro hfind hpred
+  cases l
+  · simp at hfind
+  · simp only [List.find?] at hfind
+    split at hfind
+    · injection hfind with hfind
+      simp [hfind, hpred]
+    · rename_i heq
+      have ih := List.find?_filter_if_find? p hfind hpred
+      simp only [List.filter]
+      split
+      · simp [List.find?, heq, ih]
+      · exact ih
+
+theorem find?_filter_sorted {α : Type u} {β : Type v} [BEq α] [LawfulBEq α] [DecidableEq α] [LT α] [Cedar.Data.StrictLT α] [DecidableLT α]
+  (k : α) (val : β) (l : List (α × β)) (p : α → β → Bool) :
+  l.SortedBy Prod.fst →
+  List.find? (fun x => x.fst == k) (l.filter (fun kv => p kv.fst kv.snd)) = some (k, val) →
+  List.find? (fun x => x.fst == k) l = some (k, val) ∧ p k val = true
+:= by
+  intro h_sorted h_find
+  cases l
+  case nil =>
+    simp at h_find
+  case cons h t =>
+    simp only [List.find?_filter, beq_iff_eq,  List.find?_cons_eq_some] at h_find
+    cases h_find
+    case inl h_left =>
+      replace ⟨h_left, h_kv⟩ := h_left
+      subst h_kv
+      replace h_left : p k val = true := by
+        simpa using h_left
+      simp [h_left]
+    case inr h_right =>
+      by_cases h_k : h.fst = k
+      · subst h_k
+        and_intros
+        · have h_uniq := λ x y (h₁ : x ∈ h :: t) (h₂ : y ∈ h :: t) =>
+            List.mem_of_sortedBy_unique h_sorted h₁ h₂
+          replace h_right := List.mem_of_find?_eq_some h_right.right
+          simp only [Prod.forall, List.mem_cons, Prod.mk.injEq] at h_uniq
+          have ⟨_, h_val⟩ := h_uniq h.fst val h.fst h.snd (.inr h_right) (.inl $ Eq.refl _) (Eq.refl _)
+          simp [h_val]
+        · replace h_right := List.find?_some h_right.right
+          simpa using h_right
+      · have h_find : List.find? (λ x => x.fst == k) (List.filter (λ ⟨k, v⟩  => p k v) t) = some (k, val) := by
+          simp only [Bool.decide_and, Bool.decide_eq_true] at h_right
+          simp [h_right.right]
+        have ih := List.find?_filter_sorted k val t p (List.tail_sortedBy h_sorted) h_find
+        simp only [ih, List.find?_cons_eq_some, Bool.not_eq_eq_eq_not, Bool.not_true, beq_eq_false_iff_ne, and_true]
+        exact .inr h_k
 
 end List

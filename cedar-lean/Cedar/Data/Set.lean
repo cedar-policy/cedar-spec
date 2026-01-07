@@ -85,6 +85,10 @@ instance [LT α] [DecidableLT α] : HAppend (Set α) (Set α) (Set α) where
 def filter {α} (f : α → Bool) (s : Set α) : Set α :=
   Set.mk (s.elts.filter f)            -- well-formed by construction
 
+/-- s₁ \ s₂. -/
+def difference {α} [LT α] [DecidableLT α] [DecidableEq α] (s₁ s₂ : Set α) : Set α :=
+  s₁.filter (!s₂.contains ·)
+
 /-- Maps `f` to `s`.-/
 def map {α β} [LT β] [DecidableLT β] (f : α → β) (s : Set α) : Set β :=
   make (s.elts.map f)                 -- enforce well-formedness
