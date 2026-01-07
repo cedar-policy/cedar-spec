@@ -65,4 +65,4 @@ jobs:
       - name: Run integration tests
         working-directory: ./cedar-spec/cedar-lean-ffi
         shell: bash
-        run: source ~/.profile && source set_env_vars.sh && cargo test --features "integration-testing" -- --nocapture
+        run: source ~/.profile && source set_env_vars.sh && cargo test --features "integration-testing" -- --nocapture integration_tests corpus_tests
