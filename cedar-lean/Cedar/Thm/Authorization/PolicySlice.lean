@@ -35,6 +35,51 @@ def IsSoundPolicySlice (req : Request) (entities : Entities) (slice policies : P
     policy ∉ slice →
     ¬ satisfied policy req entities ∧ ¬ hasError policy req entities
 
+theorem sound_slice_transitive :
+  IsSoundPolicySlice r es slice₁ ps →
+  IsSoundPolicySlice r es slice₂ slice₁ →
+  IsSoundPolicySlice r es slice₂ ps
+:= by
+  intro ⟨h_slice₁_sub, h_slice₁_sound⟩ ⟨h_slice₂_sub, h_slice₂_sound⟩
+  constructor
+  · exact List.Subset.trans h_slice₂_sub h_slice₁_sub
+  · intro p h_mem_ps h_mem_slice₂
+    by_cases h_mem_slice₁ : p ∈ slice₁
+    case pos =>
+      exact h_slice₂_sound p h_mem_slice₁ h_mem_slice₂
+    case neg =>
+      exact h_slice₁_sound p h_mem_ps h_mem_slice₁
+
+/--
+Alternate definition of soundness for policy slicing. Rather than showing
+that a policy doesn't evaluate to `true` or error, we can show that it
+does evaluate to `false`.
+-/
+def IsSoundPolicySliceFalseDef (req : Request) (entities : Entities) (slice policies : Policies) : Prop :=
+  slice ⊆ policies ∧
+  ∀ policy ∈ policies,
+    policy ∉ slice →
+    (evaluate policy.toExpr req entities) = .ok false
+
+theorem is_sound_policy_slice_def_equiv {req : Request} {entities : Entities} {slice policies : Policies} :
+  IsSoundPolicySlice req entities slice policies ↔ IsSoundPolicySliceFalseDef req entities slice policies
+:= by
+  simp only [IsSoundPolicySlice, IsSoundPolicySliceFalseDef, and_congr_right_iff]
+  intros h_subset
+  constructor
+  · intro h_sound p h_mem_ps h_nmem_slice
+    have ⟨h_not_true, h_not_err⟩ := h_sound p h_mem_ps h_nmem_slice
+    have h_eval := policy_produces_bool_or_error p req entities
+    split at h_eval
+    · clear h_eval ; rename_i h_eval
+      simpa [h_eval, satisfied] using h_not_true
+    · clear h_eval ; rename_i h_eval
+      simp [h_eval, hasError] at h_not_err
+    · contradiction
+  · intro h_sound p h_mem_ps h_nmem_slice
+    have h_false := h_sound p h_mem_ps h_nmem_slice
+    simp [h_false, satisfied, hasError]
+
 /--
 A bound is sound for a given policy if the bound is satisfied for every request
 and entities for which the policy is satisfied or for which the policy produces

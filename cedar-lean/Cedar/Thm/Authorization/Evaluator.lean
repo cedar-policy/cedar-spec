@@ -27,6 +27,56 @@ namespace Cedar.Thm
 open Cedar.Spec
 open Cedar.Data
 
+/- some shorthand to make things easier to read and write -/
+/--
+  `producesBool` means the expression evaluates to a bool (and not an error)
+-/
+def producesBool (e : Expr) (request : Request) (entities : Entities) : Prop :=
+  match (evaluate e request entities) with
+  | .ok (.prim (.bool _)) => true
+  | _ => false
+/--
+  `producesNonBool` means the expression evaluates to a non-bool (and not an error)
+-/
+def producesNonBool (e : Expr) (request : Request) (entities : Entities) : Prop :=
+  match (evaluate e request entities) with
+  | .ok (.prim (.bool _)) => false
+  | .error _ => false
+  | _ => true
+
+theorem and_bool_operands_is_boolean_and {b₁ b₂ : Bool} {e₁ e₂ : Expr} {request : Request} {entities : Entities} :
+  evaluate e₁ request entities = .ok b₁ →
+  evaluate e₂ request entities = .ok b₂ →
+  evaluate (Expr.and e₁ e₂) request entities = .ok (b₁ && b₂)
+:= by
+  intro h₁ h₂
+  simp [h₁, h₂, evaluate, Result.as, Coe.coe, Value.asBool]
+  split
+  · subst b₁
+    simp
+  · rename_i hb₁
+    simp at hb₁
+    subst hb₁
+    simp
+
+theorem left_false_implies_and_false {e₁ e₂ : Expr} {request : Request} {entities : Entities} :
+  evaluate e₁ request entities = .ok false →
+  evaluate (Expr.and e₁ e₂) request entities = .ok false
+:= by
+  intro h₁
+  simp [h₁, evaluate, Result.as, Coe.coe, Value.asBool]
+
+theorem left_bool_right_false_implies_and_false {e₁ e₂ : Expr} {request : Request} {entities : Entities} :
+  producesBool e₁ request entities →
+  evaluate e₂ request entities = .ok false →
+  evaluate (Expr.and e₁ e₂) request entities = .ok false
+:= by
+  intro h₁ h₂
+  simp only [producesBool] at h₁
+  split at h₁ <;> try contradiction
+  clear h₁ ; rename_i h₁
+  have h₃ := and_bool_operands_is_boolean_and h₁ h₂
+  simp only [h₃, Bool.and_false]
 
 theorem and_true_implies_left_true {e₁ e₂ : Expr} {request : Request} {entities : Entities} :
   evaluate (Expr.and e₁ e₂) request entities = .ok true →
@@ -71,23 +121,6 @@ theorem and_true_implies_right_true {e₁ e₂ : Expr} {request : Request} {enti
           simp only [Except.map_ok, Except.ok.injEq, Value.prim.injEq, Prim.bool.injEq,
             Bool.false_eq_true] at h₁
         case true => rfl
-
-/- some shorthand to make things easier to read and write -/
-/--
-  `producesBool` means the expression evaluates to a bool (and not an error)
--/
-def producesBool (e : Expr) (request : Request) (entities : Entities) : Prop :=
-  match (evaluate e request entities) with
-  | .ok (.prim (.bool _)) => true
-  | _ => false
-/--
-  `producesNonBool` means the expression evaluates to a non-bool (and not an error)
--/
-def producesNonBool (e : Expr) (request : Request) (entities : Entities) : Prop :=
-  match (evaluate e request entities) with
-  | .ok (.prim (.bool _)) => false
-  | .error _ => false
-  | _ => true
 
 /--
   If an `and` expression results in an error, it's because either:

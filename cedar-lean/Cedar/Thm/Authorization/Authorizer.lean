@@ -412,6 +412,33 @@ theorem resource_scope_does_not_throw (policy : Policy) (request : Request) (ent
   have h₁ := resource_scope_produces_boolean policy request entities
   simp [producesBool, h] at h₁
 
+theorem principal_scope_false_then_policy_false {p : Policy}
+  (hp: evaluate p.principalScope.toExpr req entities = .ok false) :
+  evaluate p.toExpr req entities = .ok false
+:= by
+  unfold Policy.toExpr
+  exact left_false_implies_and_false hp
+
+theorem action_scope_false_then_policy_false {p : Policy}
+  (ha: evaluate p.actionScope.toExpr req entities = .ok false) :
+  evaluate p.toExpr req entities = .ok false
+:= by
+  unfold Policy.toExpr
+  have hp := principal_scope_produces_boolean p req entities
+  apply left_bool_right_false_implies_and_false hp
+  exact left_false_implies_and_false ha
+
+theorem resource_scope_false_then_policy_false {p : Policy}
+  (hr : evaluate p.resourceScope.toExpr req entities = .ok false) :
+  evaluate p.toExpr req entities = .ok false
+:= by
+  unfold Policy.toExpr
+  have hp := principal_scope_produces_boolean p req entities
+  apply left_bool_right_false_implies_and_false hp
+  have ha := action_scope_produces_boolean p req entities
+  apply left_bool_right_false_implies_and_false ha
+  exact left_false_implies_and_false hr
+
 /--
   For a policy to throw an error, we must have at least gotten past the scope,
   so the scope constraints must have been satisfied.
