@@ -14,36 +14,23 @@
  * limitations under the License.
  */
 
+//! Implements `CedarTestImplementation` for `CedarLeanFfi` to support
+//! intergration and corpus testing of the Lean implementation.
+
+use miette::miette;
+use std::collections::HashMap;
+
 use cedar_policy::{
     ffi, Entities, EvalResult, Expression, PolicySet, Request, Schema, ValidationMode,
 };
-
 use cedar_testing::cedar_test_impl::{
     CedarTestImplementation, ErrorComparisonMode, Micros, TestResponse, TestResult,
     TestValidationResult, ValidationComparisonMode,
 };
 
-use cedar_lean_ffi::{CedarLeanFfi, TimedResult, ValidationResponse};
-use miette::miette;
-use std::collections::HashMap;
+use crate::{CedarLeanFfi, TimedResult, ValidationResponse};
 
-pub struct CedarLeanEngine {
-    lean_ffi: CedarLeanFfi,
-}
-
-impl Default for CedarLeanEngine {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl CedarLeanEngine {
-    pub fn new() -> Self {
-        Self {
-            lean_ffi: CedarLeanFfi::new(),
-        }
-    }
-
+impl CedarLeanFfi {
     fn validation_to_test_result(
         lean_validation_response: TimedResult<ValidationResponse>,
     ) -> TestResult<TestValidationResult> {
@@ -72,23 +59,16 @@ impl CedarLeanEngine {
             TestValidationResult { errors, ..res }
         })
     }
-
-    pub fn get_ffi(&self) -> &CedarLeanFfi {
-        &self.lean_ffi
-    }
 }
 
-impl CedarTestImplementation for CedarLeanEngine {
+impl CedarTestImplementation for CedarLeanFfi {
     fn is_authorized(
         &self,
         request: &Request,
         policies: &PolicySet,
         entities: &Entities,
     ) -> TestResult<TestResponse> {
-        match self
-            .lean_ffi
-            .is_authorized_timed(policies, entities, request)
-        {
+        match self.is_authorized_timed(policies, entities, request) {
             Ok(timed_resp) => {
                 let errors = timed_resp
                     .result()
@@ -129,10 +109,7 @@ impl CedarTestImplementation for CedarLeanEngine {
         expected: Option<EvalResult>,
     ) -> TestResult<bool> {
         let expected = expected.map(Expression::from);
-        match self
-            .lean_ffi
-            .check_evaluate(expr, entities, request, expected.as_ref())
-        {
+        match self.check_evaluate(expr, entities, request, expected.as_ref()) {
             Ok(b) => TestResult::Success(b),
             Err(e) => TestResult::Failure(e.to_string()),
         }
@@ -150,7 +127,7 @@ impl CedarTestImplementation for CedarLeanEngine {
             ValidationMode::Strict,
             "Lean definitional validator only supports `Strict` mode"
         );
-        match self.lean_ffi.validate_timed(policies, schema, &mode) {
+        match self.validate_timed(policies, schema, &mode) {
             Ok(timed_result) => {
                 Self::filter_warnings(Self::validation_to_test_result(timed_result))
             }
@@ -171,7 +148,7 @@ impl CedarTestImplementation for CedarLeanEngine {
             ValidationMode::Strict,
             "Lean definitional validator only supports `Strict` mode"
         );
-        match self.lean_ffi.level_validate_timed(policies, schema, level) {
+        match self.level_validate_timed(policies, schema, level) {
             Ok(timed_result) => {
                 Self::filter_warnings(Self::validation_to_test_result(timed_result))
             }
@@ -184,7 +161,7 @@ impl CedarTestImplementation for CedarLeanEngine {
         schema: &Schema,
         request: &Request,
     ) -> TestResult<TestValidationResult> {
-        match self.lean_ffi.validate_request_timed(schema, request) {
+        match self.validate_request_timed(schema, request) {
             Ok(timed_result) => {
                 Self::filter_warnings(Self::validation_to_test_result(timed_result))
             }
@@ -197,7 +174,7 @@ impl CedarTestImplementation for CedarLeanEngine {
         schema: &Schema,
         entities: &Entities,
     ) -> TestResult<TestValidationResult> {
-        match self.lean_ffi.validate_entities_timed(schema, entities) {
+        match self.validate_entities_timed(schema, entities) {
             Ok(timed_result) => {
                 Self::filter_warnings(Self::validation_to_test_result(timed_result))
             }

@@ -15,10 +15,11 @@
  */
 
 #![no_main]
-use cedar_drt::{logger::initialize_log, CedarLeanEngine};
+use cedar_drt::logger::initialize_log;
 
 use cedar_drt_inner::{fuzz_target, symcc::total_action_request_env_limit};
 
+use cedar_lean_ffi::CedarLeanFfi;
 use cedar_policy::{Policy, PolicySet, Schema};
 
 use cedar_policy_generators::{
@@ -72,8 +73,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 // Fuzzing Target to show that Asserts/Term Serialization/Deserialization does not effect the final SMTLib script produced
 fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
-    let lean_engine = CedarLeanEngine::new();
-    let lean_ffi = lean_engine.get_ffi();
+    let lean_ffi = CedarLeanFfi::new();
     let mut policyset = PolicySet::new();
     let policy: Policy = input.policy.into();
     policyset.add(policy.clone()).unwrap();

@@ -27,7 +27,6 @@ overflow-checks = true
 integration-testing = []
 
 [dev-dependencies]
-walkdir = "2.4"
 statrs = "0.18"
 
 [patch.crates-io]

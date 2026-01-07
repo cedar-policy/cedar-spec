@@ -39,16 +39,16 @@ jobs:
           path: ./cedar-spec/cedar
           ref: ${{ inputs.cedar_policy_ref }}
       - name: Delete old integration tests
-        working-directory: ./cedar-spec/cedar
+        working-directory: ./cedar-spec
         run: rm -rf cedar-integration-tests # blast the current content
       - name: Checkout cedar-integration-tests
         uses: actions/checkout@v6
         with:
           repository: cedar-policy/cedar-integration-tests
           ref: ${{ inputs.cedar_integration_tests_ref }}
-          path: ./cedar-spec/cedar/cedar-integration-tests
+          path: ./cedar-spec/cedar-integration-tests
       - name: Decompress corpus tests
-        working-directory: ./cedar-spec/cedar/cedar-integration-tests
+        working-directory: ./cedar-spec/cedar-integration-tests
         run: tar xzf corpus-tests.tar.gz
       - name: Install Lean
         shell: bash
@@ -61,8 +61,8 @@ jobs:
         run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
       - name: Build Lean libraries
         working-directory: ./cedar-spec/cedar-lean
-        run: source ~/.profile && ../cedar-drt/build_lean_lib.sh
+        run: source ~/.profile && ../cedar-lean-ffi/build_lean_lib.sh
       - name: Run integration tests
-        working-directory: ./cedar-spec/cedar-drt
+        working-directory: ./cedar-spec/cedar-lean-ffi
         shell: bash
-        run: source ~/.profile && source set_env_vars.sh && cargo test --features "integration-testing" -- --nocapture
+        run: source ~/.profile && source set_env_vars.sh && cargo test --features "integration-testing" -- --nocapture integration_tests corpus_tests

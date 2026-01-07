@@ -19,11 +19,11 @@ use cedar_drt::{
     dump::dump,
     logger::{initialize_log, TOTAL_MSG},
     tests::run_auth_test,
-    CedarLeanEngine,
 };
 
 use cedar_drt_inner::{abac::FuzzTargetInput, fuzz_target};
 
+use cedar_lean_ffi::CedarLeanFfi;
 use cedar_policy::{Authorizer, Policy, PolicyId, PolicySet, Request, SchemaFragment};
 
 use cedar_testing::cedar_test_impl::time_function;
@@ -45,7 +45,7 @@ fuzz_target!(|input: FuzzTargetInput<false>| {
         .map(Request::from)
         .collect::<Vec<_>>();
 
-    let lean_engine = CedarLeanEngine::new();
+    let lean_engine = CedarLeanFfi::new();
 
     for request in requests.iter() {
         debug!("Request: {request}");

@@ -19,10 +19,10 @@
 use cedar_drt::{
     logger::{initialize_log, TOTAL_MSG},
     tests::run_auth_test,
-    CedarLeanEngine,
 };
 use cedar_drt_inner::fuzz_target;
 
+use cedar_lean_ffi::CedarLeanFfi;
 use cedar_policy::{Entities, Policy, PolicySet, Request, Template};
 
 use cedar_policy_core::{ast, extensions::Extensions};
@@ -192,7 +192,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
     if let Ok(entities) = Entities::try_from(input.hierarchy) {
-        let lean_engine = CedarLeanEngine::new();
+        let lean_engine = CedarLeanFfi::new();
         let mut policy_set = PolicySet::new();
         for pg in input.policy_groups {
             match pg {

@@ -17,9 +17,9 @@
 use cedar_drt::{
     logger::{initialize_log, TOTAL_MSG},
     tests::run_val_test,
-    CedarLeanEngine,
 };
 
+use cedar_lean_ffi::CedarLeanFfi;
 use cedar_policy::{Policy, PolicySet, Schema, ValidationMode};
 
 use cedar_policy_generators::{
@@ -73,7 +73,7 @@ impl<'a, const TYPE_DIRECTED: bool> Arbitrary<'a> for FuzzTargetInput<TYPE_DIREC
 
 pub fn fuzz_target<const TYPE_DIRECTED: bool>(input: FuzzTargetInput<TYPE_DIRECTED>) {
     initialize_log();
-    let def_impl = CedarLeanEngine::new();
+    let def_impl = CedarLeanFfi::new();
 
     // generate a schema
     if let Ok(schema) = Schema::try_from(input.schema) {
