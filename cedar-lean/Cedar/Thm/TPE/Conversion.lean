@@ -16,9 +16,7 @@
 
 
 import Cedar.TPE
-import Cedar.Thm.TPE.Soundness
-import Cedar.Thm.Validation.WellTyped.Definition
-import Cedar.Thm.Validation.WellTyped.ResidualDefinition
+import Cedar.Thm.WellTyped.Residual.Definition
 import Cedar.Thm.Data.List.Lemmas
 
 /-!

@@ -14,8 +14,8 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.Validation.WellTyped.Definition
-import Cedar.Thm.Validation.WellTyped.TypeLifting
+import Cedar.Thm.WellTyped.Expr.Definition
+import Cedar.Thm.WellTyped.Expr.TypeLifting
 
 /-!
 This file contains expression-kind-specific lemmas of the theorem `typechecked_is_well_typed_after_lifting`

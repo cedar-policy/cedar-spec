@@ -20,8 +20,8 @@ import Cedar.Validation
 import Cedar.Thm.Validation.Typechecker
 import Cedar.Thm.Data
 import Cedar.Thm.Validation.SubstituteAction
-import Cedar.Thm.Validation.WellTyped.Definition
-import Cedar.Thm.Validation.WellTyped.Typechecking
+import Cedar.Thm.WellTyped.Expr.Definition
+import Cedar.Thm.WellTyped.Expr.Typechecking
 
 namespace Cedar.Thm
 
