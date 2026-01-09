@@ -40,7 +40,7 @@ theorem reachable_attr_step {n : Nat} {euid euid' : EntityUID} {start : Set Enti
   case in_start n' hi =>
     have he₄ : euid' ∈ ed.sliceEUIDs := by
       suffices h : ∃ v ∈ ed.attrs.values, euid' ∈ v.sliceEUIDs by
-        simp [h, EntityData.sliceEUIDs, Set.mem_union_iff_mem_or, Set.mem_mapUnion_iff_mem_exists]
+        simp [h, EntityData.sliceEUIDs, Set.mem_union_iff_mem_or, List.mem_mapUnion_iff_mem_exists]
       cases he₂
       rename_i v a path ha hv
       exists v

@@ -1529,7 +1529,7 @@ theorem in_ancsUDF_implies_in_ancestors
       Factory.setOf,
     ] at hmem
     unfold Term.entityUIDs at hmem
-    have ⟨s, hmem_s, hmem_uid'⟩ := (Set.mem_mapUnion_iff_mem_exists _).mp hmem
+    have ⟨s, hmem_s, hmem_uid'⟩ := (List.mem_mapUnion_iff_mem_exists _).mp hmem
     replace ⟨s, hmem_s⟩ := s
     have := (Set.make_mem _ _).mpr hmem_s
     have ⟨anc', hmem_anc', hanc'⟩ := List.mem_filterMap.mp this
@@ -1559,7 +1559,7 @@ theorem in_ancestors_implies_in_ancsUDF
     Factory.setOf,
   ]
   unfold Term.entityUIDs
-  apply (Set.mem_mapUnion_iff_mem_exists _).mpr
+  apply (List.mem_mapUnion_iff_mem_exists _).mpr
   simp only [List.mem_attach, true_and, Subtype.exists, exists_prop]
   exists .prim (.entity uid')
   constructor
@@ -1650,7 +1650,7 @@ theorem ofEnv_entities_is_transitive
   -- Case: `uid₁`: standard; `uid₂`: standard
   -- Case: `uid₁`: action; `uid₂`: standard
   any_goals
-    have ⟨⟨ety, f_anc⟩, hmem_ety_f_anc, hmem_uid₁⟩ := (Set.mem_mapUnion_iff_mem_exists _).mp huid_anc₂
+    have ⟨⟨ety, f_anc⟩, hmem_ety_f_anc, hmem_uid₁⟩ := (List.mem_mapUnion_iff_mem_exists _).mp huid_anc₂
     simp only [SymEntityData.ofStandardEntityType ] at hmem_ety_f_anc
     have := Map.make_mem_list_mem hmem_ety_f_anc
     replace ⟨ancTy, hmem_ancTy, heq_ancTy⟩ := List.mem_map.mp this
@@ -1663,7 +1663,7 @@ theorem ofEnv_entities_is_transitive
     ] at hmem_uid₁
     contradiction
   -- Case: `uid₁`: standard; `uid₂`: action
-  · have ⟨⟨ety, f_anc⟩, hmem_ety_f_anc, hmem_uid₂⟩ := (Set.mem_mapUnion_iff_mem_exists _).mp hanc
+  · have ⟨⟨ety, f_anc⟩, hmem_ety_f_anc, hmem_uid₂⟩ := (List.mem_mapUnion_iff_mem_exists _).mp hanc
     simp only [SymEntityData.ofStandardEntityType ] at hmem_ety_f_anc
     have := Map.make_mem_list_mem hmem_ety_f_anc
     replace ⟨ancTy, hmem_ancTy, heq_ancTy⟩ := List.mem_map.mp this
@@ -1676,8 +1676,8 @@ theorem ofEnv_entities_is_transitive
     ] at hmem_uid₂
     contradiction
   -- Case: `uid₁`: action; `uid₂`: action
-  · have ⟨⟨ety₁, f_anc₁⟩, hmem_ety_f_anc₁, hmem_uid₁⟩ := (Set.mem_mapUnion_iff_mem_exists _).mp hanc
-    have ⟨⟨ety₂, f_anc₂⟩, hmem_ety_f_anc₂, hmem_uid₂⟩ := (Set.mem_mapUnion_iff_mem_exists _).mp huid_anc₂
+  · have ⟨⟨ety₁, f_anc₁⟩, hmem_ety_f_anc₁, hmem_uid₁⟩ := (List.mem_mapUnion_iff_mem_exists _).mp hanc
+    have ⟨⟨ety₂, f_anc₂⟩, hmem_ety_f_anc₂, hmem_uid₂⟩ := (List.mem_mapUnion_iff_mem_exists _).mp huid_anc₂
     have := Map.make_mem_list_mem hmem_ety_f_anc₁
     replace ⟨ancTy₁, hmem_ancTy₁, heq_ancTy₁⟩ := List.mem_map.mp this
     simp only [Prod.mk.injEq] at heq_ancTy₁
@@ -1727,7 +1727,7 @@ theorem ofEnv_entities_is_transitive
       hδ₁, heq_ety₁,
       SymEntityData.ofActionType,
     ]
-    apply (Set.mem_mapUnion_iff_mem_exists _).mpr
+    apply (List.mem_mapUnion_iff_mem_exists _).mpr
     exists (uid.ty, SymEntityData.ofActionType.ancsUDF uid₁.ty Γ.acts uid.ty)
     constructor
     · apply (Map.in_list_iff_find?_some (Map.make_wf _)).mpr

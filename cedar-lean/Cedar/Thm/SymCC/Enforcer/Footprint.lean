@@ -50,12 +50,14 @@ def footprint_wf (x : Expr) (εnv : SymEnv) :
   (footprint x εnv).WellFormed
 := by
   cases x
-  all_goals simp [footprint, footprint_ofEntity_wf, footprint_ofBranch_wf, footprint_wf, Set.empty_wf, Set.mapUnion_wf, Set.union_wf]
+  all_goals simp [footprint, footprint_ofEntity_wf, footprint_ofBranch_wf, footprint_wf,
+    List.mapUnion₁_eq_mapUnion (footprint · εnv), List.mapUnion₂_eq_mapUnion (λ x => footprint x.snd εnv),
+    Set.empty_wf, List.mapUnion_wf, Set.union_wf]
 
 def footprints_wf (xs : List Expr) (εnv : SymEnv) :
   (footprints xs εnv).WellFormed
 := by
-  simp [footprints, Data.Set.mapUnion_wf]
+  simp [footprints, List.mapUnion_wf]
 
 def SymEntities.SameOn (εs : SymEntities) (ft : Set Term) (I₁ I₂ : Interpretation) : Prop :=
   ∀ ety δ,
@@ -83,7 +85,7 @@ open Data Spec SymCC Factory
 theorem mem_footprints_iff {xs : List Expr} {εnv : SymEnv} {t : Term} :
   t ∈ footprints xs εnv ↔ ∃ x ∈ xs, t ∈ footprint x εnv
 := by
-  simp only [footprints, Set.mem_mapUnion_iff_mem_exists]
+  simp only [footprints, List.mem_mapUnion_iff_mem_exists]
 
 private theorem mem_footprint_ofBranch_mem {x : Expr} {t : Term} {εnv : SymEnv} {ft₁ ft₂ ft₃ : Set Term}
   (hin : t ∈ footprint.ofBranch εnv x ft₁ ft₂ ft₃) :
@@ -161,13 +163,12 @@ theorem mem_footprint_option_entity {x : Expr} {εnv : SymEnv} {t : Term} :
   case case8 ih | case9 ih =>
     exact ih hin
   case case10 _ _ ih | case11 _ ih =>
-    simp only [List.attach_def, List.mapUnion_pmap_subtype (footprint · εnv),
-      Set.mem_mapUnion_iff_mem_exists] at hin
+    simp only [List.mapUnion₁_eq_mapUnion (footprint · εnv), List.mem_mapUnion_iff_mem_exists] at hin
     replace ⟨xᵢ, hinᵢ, hin⟩ := hin
     exact ih xᵢ hinᵢ hin
   case case12 _ ih =>
-    simp only [List.attach₂, List.mapUnion_pmap_subtype λ y : Attr × Expr => footprint y.snd εnv,
-      Set.mem_mapUnion_iff_mem_exists] at hin
+    simp only [List.mapUnion₂_eq_mapUnion λ y : Attr × Expr => footprint y.snd εnv,
+      List.mem_mapUnion_iff_mem_exists] at hin
     replace ⟨(aᵢ, xᵢ), hinᵢ, hin⟩ := hin
     simp only at hin ih
     exact ih aᵢ xᵢ (List.sizeOf_attach₂ hinᵢ) hin
@@ -235,15 +236,15 @@ private theorem mem_footprint_exists_wf_prop {p : Expr → Prop} {x : Expr} {t�
     replace hwε := wf_εnv_for_set_implies hwε
     replace hwe := hset hp
   case case10 _ _ ih | case11 _ ih =>
-    simp only [List.attach_def, List.mapUnion_pmap_subtype (footprint · εnv),
-      Set.mem_mapUnion_iff_mem_exists] at hin
+    simp only [List.mapUnion₁_eq_mapUnion (footprint · εnv),
+      List.mem_mapUnion_iff_mem_exists] at hin
     replace ⟨xᵢ, hinᵢ, hin⟩ := hin
     exact ih xᵢ hinᵢ (hwε xᵢ hinᵢ) (hwe xᵢ hinᵢ) hin
   case case12 _ ih =>
     replace hwε := wf_εnv_for_record_implies hwε
     replace hwe := hrec hp
-    simp only [List.attach₂, List.mapUnion_pmap_subtype λ y : Attr × Expr => footprint y.snd εnv,
-      Set.mem_mapUnion_iff_mem_exists] at hin
+    simp only [List.mapUnion₂_eq_mapUnion λ y : Attr × Expr => footprint y.snd εnv,
+      List.mem_mapUnion_iff_mem_exists] at hin
     replace ⟨(aᵢ, xᵢ), hinᵢ, hin⟩ := hin
     simp only at hin ih
     exact ih aᵢ xᵢ (List.sizeOf_attach₂ hinᵢ) (hwε _ hinᵢ) (hwe _ hinᵢ) hin
@@ -306,19 +307,18 @@ theorem mem_footprints_wf {xs : List Expr} {t : Term} {εnv : SymEnv}
 theorem footprints_empty {εnv : SymEnv} :
   footprints [] εnv = ∅
 := by
-  simp [footprints, Set.mapUnion_empty]
+  simp [footprints, List.mapUnion_nil]
 
 theorem footprints_singleton {x : Expr} {εnv : SymEnv} :
   footprints [x] εnv = footprint x εnv
 := by
-  simp [SymCC.footprints, List.mapUnion, EmptyCollection.emptyCollection]
-  rw [Data.Set.union_empty_left (footprint_wf x εnv)]
+  simp [SymCC.footprints, List.mapUnion_singleton (f := (footprint · εnv)) (by simp [footprint_wf])]
 
 theorem footprints_append {xs₁ xs₂ : List Expr} {εnv : SymEnv} :
   footprints (xs₁ ++ xs₂) εnv = footprints xs₁ εnv ++ footprints xs₂ εnv
 := by
   simp [footprints]
-  apply Data.Set.mapUnion_append
+  apply List.mapUnion_append
   intro x _ ; apply footprint_wf
 
 theorem footprint_subset_footprints {x : Expr} {xs : List Expr} {εnv : SymEnv} :

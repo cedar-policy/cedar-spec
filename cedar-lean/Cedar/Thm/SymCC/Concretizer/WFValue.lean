@@ -30,13 +30,13 @@ theorem value_set_entityUIDs_def {vs : Set Value} :
   (Value.set vs).entityUIDs = vs.elts.mapUnion Value.entityUIDs
 := by
   unfold Value.entityUIDs
-  simp only [List.attach_def, List.mapUnion_pmap_subtype]
+  simp only [List.mapUnion₁_eq_mapUnion]
 
 theorem value_record_entityUIDs_def {avs : Map Attr Value} :
   (Value.record avs).entityUIDs = avs.kvs.mapUnion λ (_, v) => v.entityUIDs
 := by
   rw [Value.entityUIDs]
-  simp only [List.attach₃, List.mapUnion_pmap_subtype λ av : Attr × Value => av.snd.entityUIDs]
+  simp only [List.mapUnion₃_eq_mapUnion λ av : Attr × Value => av.snd.entityUIDs]
 
 theorem value_ws_closed_implies_wf {v : Value} {es : Entities} :
   v.WellStructured →
@@ -59,7 +59,7 @@ theorem value_ws_closed_implies_wf {v : Value} {es : Entities} :
     intro uid huid
     apply hca uid
     simp only [value_set_entityUIDs_def]
-    apply Set.mem_mem_implies_mem_mapUnion huid
+    apply List.mem_mem_implies_mem_mapUnion huid
     exact (Set.in_list_iff_in_set _ _).mp hv
   case record_ws h₂ ih =>
     apply Value.WellFormed.record_wf _ h₂
@@ -67,7 +67,7 @@ theorem value_ws_closed_implies_wf {v : Value} {es : Entities} :
     apply ih a v hf
     intro uid huid
     apply hca uid
-    simp only [value_record_entityUIDs_def, Set.mem_mapUnion_iff_mem_exists]
+    simp only [value_record_entityUIDs_def, List.mem_mapUnion_iff_mem_exists]
     exists (a, v)
     simp only [huid, and_true]
     exact Map.find?_mem_toList hf
@@ -236,8 +236,8 @@ private theorem term_set_value?_some_implies_eq_entityUIDs {ts : List Term} {ty 
   replace ⟨vs, hm, hv⟩ := term_set_value?_some_implies hv
   subst hv
   unfold Value.entityUIDs
-  simp only [Term.entityUIDs, List.attach_def, List.mapUnion_pmap_subtype, Set.make]
-  apply Set.map_eqv_implies_mapUnion_eq
+  simp only [Term.entityUIDs, List.mapUnion₁_eq_mapUnion, Set.make]
+  apply List.map_eqv_implies_mapUnion_eq
   simp only [List.Equiv, List.subset_def, List.mem_map, forall_exists_index, and_imp,
     forall_apply_eq_imp_iff₂]
   constructor
@@ -265,11 +265,11 @@ private theorem term_record_value?_some_implies_eq_entityUIDs {ats : List (Attr 
   replace ⟨avs, hm, hv⟩ := term_record_value?_some_implies hv
   subst hv
   simp only [Term.entityUIDs, Value.entityUIDs,
-    ← List.mapM_some_eq_filterMap hm, List.attach₃,
-    List.mapUnion_pmap_subtype (λ x : Attr × Term => x.snd.entityUIDs),
-    List.mapUnion_pmap_subtype (λ x : Attr × Value => x.snd.entityUIDs),
-    List.filterMap_filterMap, Set.mapUnion_filterMap]
-  apply Set.mapUnion_congr
+    ← List.mapM_some_eq_filterMap hm,
+    List.mapUnion₃_eq_mapUnion (λ x : Attr × Term => x.snd.entityUIDs),
+    List.mapUnion₃_eq_mapUnion (λ x : Attr × Value => x.snd.entityUIDs),
+    List.filterMap_filterMap, List.mapUnion_filterMap]
+  apply List.mapUnion_congr
   intro (aᵢ, tᵢ) hin
   replace ⟨(a', vopt), hm, hv⟩ := List.mapM_some_implies_all_some hm (aᵢ, tᵢ) hin
   simp only at hv

@@ -22,7 +22,9 @@ import Cedar.Thm.Data.Set
 # Lemmas about List.mapUnion operator
 -/
 
-/-! ### List.mapUnion applied to lists of lists -/
+open Cedar.Data
+
+/-! ### List.mapUnion generically (`f` returning any collection type) -/
 
 namespace List
 
@@ -39,55 +41,26 @@ theorem mapUnion_pmap_subtype
   simp only [mapUnion]
   rw [foldl_pmap_subtype λ a b => a ∪ f b]
 
-theorem mapUnion_attach [Union β] [EmptyCollection β] (f : α → β) (as : List α) :
-  List.mapUnion (λ x : { a : α // a ∈ as } => f x.val) (as.attach) = List.mapUnion f as
+theorem mapUnion₁_eq_mapUnion [Union β] [EmptyCollection β] (f : α → β) (as : List α) :
+  as.mapUnion₁ (λ x : { a : α // a ∈ as } => f x.val) = as.mapUnion f
 := by
   apply mapUnion_pmap_subtype
 
-/--
-Like `map_attach₂`, but for mapUnion. See notes there
--/
-theorem mapUnion_attach₂ [SizeOf α] [SizeOf β] [Union γ] [EmptyCollection γ] (f : (α × β) → γ) (xs : List (α × β)) :
-  xs.attach₂.mapUnion (λ x : { x : α × β // sizeOf x.snd < 1 + sizeOf xs } => f x.1) =
-  xs.mapUnion f
+theorem mapUnion₂_eq_mapUnion [SizeOf α] [SizeOf β] [Union γ] [EmptyCollection γ] (f : (α × β) → γ) (xs : List (α × β)) :
+  xs.mapUnion₂ (λ x : { x : α × β // sizeOf x.snd < 1 + sizeOf xs } => f x.1) = xs.mapUnion f
 := by
-  simp only [attach₂, mapUnion_pmap_subtype]
+  simp only [mapUnion₂, attach₂, mapUnion_pmap_subtype]
 
-private theorem mem_foldl_union_iff_mem_or_exists {α β} [DecidableEq α] {f : β → List α} {xs : List β} {init : List α} {a : α} :
-  a ∈ List.foldl (λ as b => as ∪ f b) init xs ↔ (a ∈ init ∨ ∃ s ∈ xs, a ∈ f s)
+theorem mapUnion₃_eq_mapUnion [SizeOf α] [SizeOf β] [Union γ] [EmptyCollection γ] (f : (α × β) → γ) (xs : List (α × β)) :
+  xs.mapUnion₃ (λ x : { x : α × β // sizeOf x.snd < 1 + (1 + sizeOf xs) } => f x.1) = xs.mapUnion f
 := by
-  induction xs generalizing init
-  case nil =>
-    simp only [List.foldl_nil, List.not_mem_nil, false_and, exists_false, or_false]
-  case cons hd tl ih =>
-    simp only [List.foldl_cons, List.mem_cons, exists_eq_or_imp]
-    specialize @ih (init ∪ f hd)
-    constructor <;> intro h
-    case mp =>
-      replace ih := ih.mp h
-      rw [List.mem_union_iff, or_assoc] at ih
-      exact ih
-    case mpr =>
-      rw [← or_assoc, ← List.mem_union_iff] at h
-      exact ih.mpr h
+  simp only [mapUnion₃, attach₃, mapUnion_pmap_subtype]
 
-theorem mem_mapUnion_iff_mem_exists {α β} [DecidableEq α] {f : β → List α} {xs : List β} :
-  ∀ e, e ∈ xs.mapUnion f ↔ ∃ s ∈ xs, e ∈ f s
-:= by
-  intro e
-  simp only [List.mapUnion, EmptyCollection.emptyCollection]
-  cases xs
-  case nil =>
-    simp only [foldl_nil, not_mem_nil, false_and, exists_false]
-  case cons xhd xtl ih =>
-    simp only [foldl_cons, nil_union, mem_cons, exists_eq_or_imp]
-    exact mem_foldl_union_iff_mem_or_exists
+theorem mapUnion_nil [Union β] [EmptyCollection β] (f : α → β) :
+  [].mapUnion f = ∅
+:= by simp [List.mapUnion]
 
-end List
-
-/-! ### List.mapUnion applied to lists of sets -/
-
-namespace Cedar.Data.Set
+/-! ### List.mapUnion for sets (`f` returning `Set`) -/
 
 theorem mapUnion_wf {α β} [LT α] [StrictLT α] [DecidableLT α] {f : β → Set α} {xs : List β} :
   (xs.mapUnion f).WellFormed
@@ -105,11 +78,6 @@ theorem mapUnion_wf {α β} [LT α] [StrictLT α] [DecidableLT α] {f : β → S
   case cons xhd xtl ih =>
     simp only [List.foldl_cons]
     exact ih _ (Set.union_wf _ _)
-
-theorem mapUnion_empty {α β} [LT α] [StrictLT α] [DecidableLT α] {f : β → Set α} :
-  [].mapUnion f = ∅
-:= by
-  simp only [List.mapUnion, EmptyCollection.emptyCollection, List.foldl_nil]
 
 private theorem foldl_union_init {α β} [LT α] [StrictLT α] [DecidableLT α] {f : β → Set α} {xs : List β} {a b : Set α} :
   List.foldl (λ acc x => acc ∪ f x) (a ∪ b) xs = a ∪ List.foldl (λ acc x => acc ∪ f x) b xs
@@ -140,10 +108,9 @@ theorem mapUnion_cons {α β} [LT α] [StrictLT α] [DecidableLT α] {f : β →
 theorem mapUnion_singleton {α β} [LT α] [StrictLT α] [DecidableLT α] {f : β → Set α} {x : β} :
   (f x).WellFormed → [x].mapUnion f = f x
 := by
-  intro h ; simp [List.mapUnion, EmptyCollection.emptyCollection, Data.Set.union_empty_left h]
+  intro h ; simp [List.mapUnion, EmptyCollection.emptyCollection, Set.union_empty_left h]
 
 theorem mapUnion_map [LT α] [StrictLT α] [DecidableLT α] {f : β → Set α} {g : γ → β} {xs : List γ} :
-  (∀ b, (f b).WellFormed) →
   List.mapUnion f (xs.map g) = xs.mapUnion (f ∘ g)
 := by
   simp [List.mapUnion, List.foldl_map]
@@ -173,11 +140,11 @@ theorem mem_mapUnion_iff_mem_exists {α β} [LT α] [StrictLT α] [DecidableLT �
   simp only [List.mapUnion, EmptyCollection.emptyCollection]
   cases xs
   case nil =>
-    simp only [List.foldl_nil, empty_no_elts, List.not_mem_nil,
+    simp only [List.foldl_nil, Set.empty_no_elts, List.not_mem_nil,
       false_and, exists_false]
   case cons hd tl =>
-    have h : e ∈ f hd ↔ e ∈ (empty ∪ f hd) := by
-      simp only [mem_union_iff_mem_or, empty_no_elts, false_or]
+    have h : e ∈ f hd ↔ e ∈ (Set.empty ∪ f hd) := by
+      simp only [Set.mem_union_iff_mem_or, Set.empty_no_elts, false_or]
     simp only [List.foldl_cons, List.mem_cons, exists_eq_or_imp, h, mem_foldl_union_iff_mem_or_exists]
 
 theorem mem_mem_implies_mem_mapUnion {α β} [LT α] [StrictLT α] [DecidableLT α] {f : β → Set α} {xs : List β} {e : α} {s : β} :
@@ -190,7 +157,7 @@ theorem mem_mem_implies_mem_mapUnion {α β} [LT α] [StrictLT α] [DecidableLT 
 theorem mem_implies_subset_mapUnion {α β} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] (f : β → Set α) {xs : List β} {s : β} :
   s ∈ xs → f s ⊆ xs.mapUnion f
 := by
-  simp only [subset_def]
+  simp only [Set.subset_def]
   intro hs a ha
   exact mem_mem_implies_mem_mapUnion ha hs
 
@@ -266,7 +233,7 @@ theorem mapUnion_append {α β} [LT α] [StrictLT α] [DecidableLT α] {f : β �
   intro hwf
   induction xs
   case nil =>
-    simp only [List.nil_append, mapUnion_empty]
+    simp only [List.nil_append, List.mapUnion_nil]
     change _ = Set.empty ∪ ys.mapUnion f
     rw [Set.union_empty_left]
     exact mapUnion_wf
@@ -401,4 +368,4 @@ theorem map_eqv_implies_mapUnion_eq {α β γ} [LT α] [StrictLT α] [DecidableL
   simp only [List.mapUnion, id_eq]
   exact eqv_implies_foldl_union_eq hm
 
-end Cedar.Data.Set
+end List

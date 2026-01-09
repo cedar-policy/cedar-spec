@@ -42,9 +42,9 @@ theorem var_entity_reachable {var : Var} {v : Value} {n : Nat} {request : Reques
     case principal | action | resource => simp
     case context v a path hf' hv =>
       suffices h : ∃ kv ∈ request.context.kvs, euid ∈ kv.snd.sliceEUIDs by
-        unfold Value.sliceEUIDs List.attach₃
+        unfold Value.sliceEUIDs
         right
-        simpa [List.mapUnion_pmap_subtype  (·.snd.sliceEUIDs) request.context.kvs, Set.mem_mapUnion_iff_mem_exists] using h
+        simpa [List.mapUnion₃_eq_mapUnion (·.snd.sliceEUIDs) request.context.kvs, List.mem_mapUnion_iff_mem_exists] using h
       exists (a, v)
       constructor
       · exact Map.find?_mem_toList hf'

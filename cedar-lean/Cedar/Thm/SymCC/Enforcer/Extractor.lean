@@ -34,7 +34,7 @@ open Data Spec SymCC Factory
 private theorem footprintUIDs_wf {xs : List Expr} {εnv : SymEnv} {I : Interpretation} :
   (Interpretation.repair.footprintUIDs (footprints xs εnv) I).WellFormed
 := by
-  simp only [Interpretation.repair.footprintUIDs, Set.mapUnion_wf]
+  simp only [Interpretation.repair.footprintUIDs, List.mapUnion_wf]
 
 private theorem footprintUIDs_valid {xs : List Expr} {εnv : SymEnv} {I : Interpretation}
   (hwε : εnv.WellFormed)
@@ -44,7 +44,7 @@ private theorem footprintUIDs_valid {xs : List Expr} {εnv : SymEnv} {I : Interp
 := by
   simp only [Interpretation.repair.footprintUIDs]
   intro uid hin
-  simp only [Set.mem_mapUnion_iff_mem_exists, Function.comp_apply] at hin
+  simp only [List.mem_mapUnion_iff_mem_exists, Function.comp_apply] at hin
   replace ⟨t, hinₓ, hin⟩ := hin
   rw [Set.in_list_iff_in_set, mem_footprints_iff] at hinₓ
   replace ⟨x, hinₓ, hinₜ⟩ := hinₓ
@@ -238,13 +238,13 @@ private theorem footprintAncestors_eq {xs : List Expr} {ety ancTy : EntityType} 
   apply Map.mem_toList_find?
   · simp only [Map.wf_iff_sorted, Map.toList, Map.kvs]
     rw [@List.map_eq_implies_sortedBy _ _ _ _ _ _ id _ εnv.entities.uufAncestors.elts]
-    · simp only [SymEntities.uufAncestors, ← Set.wf_iff_sorted, Set.mapUnion_wf]
+    · simp only [SymEntities.uufAncestors, ← Set.wf_iff_sorted, List.mapUnion_wf]
     · simp only [List.map_map]
       apply List.map_congr
       simp only [Function.comp_apply, id_eq, implies_true]
   · simp only [Map.toList, Map.kvs, List.mem_map, Prod.mk.injEq]
     exists f
-    simp only [SymEntities.uufAncestors, Set.in_list_iff_in_set, Set.mem_mapUnion_iff_mem_exists,
+    simp only [SymEntities.uufAncestors, Set.in_list_iff_in_set, List.mem_mapUnion_iff_mem_exists,
       Function.comp_apply, and_self, and_true]
     exists (ety, δ)
     replace hδ := Map.find?_mem_toList hδ
@@ -327,7 +327,7 @@ theorem mem_footprintUIDs_mem_footprints {uid : EntityUID} {xs : List Expr} {εn
   (hin : uid ∈ Interpretation.repair.footprintUIDs (footprints xs εnv) I) :
   ∃ t ∈ footprints xs εnv, t.interpret I = Term.some (Term.entity uid)
 := by
-  simp only [Interpretation.repair.footprintUIDs, Set.mem_mapUnion_iff_mem_exists,
+  simp only [Interpretation.repair.footprintUIDs, List.mem_mapUnion_iff_mem_exists,
     Set.in_list_iff_in_set, Function.comp_apply] at hin
   replace ⟨t, hinₜ, hin⟩ := hin
   have hinₜ' := hinₜ
@@ -348,7 +348,7 @@ theorem mem_mem_footprints_footprintUIDs {t : Term} {uid : EntityUID} {xs : List
   (ht  : t.interpret I = Term.some (Term.entity uid)) :
   uid ∈ Interpretation.repair.footprintUIDs (footprints xs εnv) I
 := by
-  simp only [Interpretation.repair.footprintUIDs, Set.mem_mapUnion_iff_mem_exists, Function.comp_apply]
+  simp only [Interpretation.repair.footprintUIDs, List.mem_mapUnion_iff_mem_exists, Function.comp_apply]
   exists t
   simp only [Set.in_list_iff_in_set, hin, ht, Term.entityUIDs, TermPrim.entityUIDs,
     Set.mem_singleton, and_self]
@@ -395,7 +395,7 @@ private theorem type_of_ancestor_uuf_eq {εnv : SymEnv} {f : UUF}
   (hf : f ∈ εnv.entities.uufAncestors) :
   ∃ ety aty, f.arg = .entity ety ∧ f.out = .set (.entity aty)
 := by
-  simp only [SymEntities.uufAncestors, Set.mem_mapUnion_iff_mem_exists,
+  simp only [SymEntities.uufAncestors, List.mem_mapUnion_iff_mem_exists,
     Function.comp_apply] at hf
   replace ⟨(ety, δ), hδ, hf⟩ := hf
   simp only [SymEntityData.uufAncestors, ← Set.make_mem, List.mem_filterMap, Function.comp_apply] at hf
@@ -484,7 +484,7 @@ theorem sym_entities_entityUIDs_include_enums
   uid ∈ (SymEnv.interpret I εnv).entities.entityUIDs
 := by
   simp only [SymEntities.entityUIDs]
-  apply (Set.mem_mapUnion_iff_mem_exists uid).mpr
+  apply (List.mem_mapUnion_iff_mem_exists uid).mpr
   exists (uid.ty, SymEntityData.interpret I δ)
   constructor
   · simp only [SymEnv.interpret, SymEntities.interpret]

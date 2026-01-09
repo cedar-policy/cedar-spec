@@ -93,16 +93,27 @@ def mapM₃ {m : Type u → Type v} [Monad m] {γ : Type u} [SizeOf α] [SizeOf 
   (xs : List (α × β)) (f : { x : α × β // sizeOf x.snd < 1 + (1 + sizeOf xs) } → m γ) : m (List γ) :=
   xs.attach₃.mapM f
 
+/--
+Generalization of `List.flatMap` from the standard library:
+works for `f` returning various collection types, not just `List`.
+
+That said, if your `f` does return `List`, you may want to use `flatMap`
+instead, as there is a large library of lemmas about it in the standard library.
+-/
 def mapUnion {α β} [Union α] [EmptyCollection α] (f : β → α) (bs : List β) : α :=
   bs.foldl (λ a b => a ∪ f b) ∅
 
 def mapUnion₁ {α β} [Union α] [EmptyCollection α]
   (xs : List β) (f : {x : β // x ∈ xs} → α) : α :=
-  xs.attach.foldl (λ a b => a ∪ f b) ∅
+  xs.attach.mapUnion f
 
 def mapUnion₂ {α β γ} [Union α] [EmptyCollection α] [SizeOf β] [SizeOf γ]
   (xs : List (β × γ)) (f : {x : β × γ // sizeOf x.snd < 1 + sizeOf xs} → α) : α :=
-  xs.attach₂.foldl (λ a b => a ∪ f b) ∅
+  xs.attach₂.mapUnion f
+
+def mapUnion₃ [Union α] [EmptyCollection α] [SizeOf β] [SizeOf γ]
+  (xs : List (β × γ)) (f : {x : β × γ // sizeOf x.snd < 1 + (1 + sizeOf xs) } → α) : α :=
+  xs.attach₃.mapUnion f
 
 def isSortedBy {α β} [LT β] [DecidableLT β] (l : List α) (f : α → β) : Bool :=
   match l with

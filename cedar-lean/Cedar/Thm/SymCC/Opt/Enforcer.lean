@@ -52,16 +52,15 @@ theorem enforceCompiledPolicy_eqv_enforce_ok {p wp : Policy} {cp : CompiledPolic
       rename_i h₂
       replace ⟨t', h₂, ht⟩ := h₂ ; subst t ; rename Term => t
       rw [Data.Set.in_list_iff_in_set] at *
-      rw [Data.Set.mem_mapUnion_iff_mem_exists] at h₂
+      rw [List.mem_mapUnion_iff_mem_exists] at h₂
       replace ⟨s, hs, h₂⟩ := h₂
       simp at hs ; subst s
       simp [Data.Set.mem_map]
       exists t
     · right
       rename_i h₂
-      simp [List.mem_mapUnion_iff_mem_exists] at *
       replace ⟨s, hs, t', ht', h₂⟩ := h₂ ; subst t ; rename Term => t
-      simp [Data.Set.in_list_iff_in_set, Data.Set.mem_mapUnion_iff_mem_exists] at *
+      simp [Data.Set.in_list_iff_in_set, List.mem_mapUnion_iff_mem_exists] at *
       exists s
       simp [hs]
       exists t
@@ -72,18 +71,16 @@ theorem enforceCompiledPolicy_eqv_enforce_ok {p wp : Policy} {cp : CompiledPolic
       simp [Data.Set.in_list_iff_in_set, Data.Set.mem_map] at h₂
       replace ⟨t', ht', h₂⟩ := h₂ ; subst t ; rename Term => t
       exists t
-      simp [Data.Set.in_list_iff_in_set, Data.Set.mem_mapUnion_iff_mem_exists]
+      simp [Data.Set.in_list_iff_in_set, List.mem_mapUnion_iff_mem_exists]
       exact ht'
     · right
       rename_i h₂
-      rw [List.mem_mapUnion_iff_mem_exists] at *
-      simp only [List.mem_map] at *
       replace ⟨s, hs, t', ht', h₂⟩ := h₂ ; subst t ; rename Term => t
       exists s
       rw [Data.Set.in_list_iff_in_set] at *
-      simp [Data.Set.mem_mapUnion_iff_mem_exists, hs]
+      simp [List.mem_mapUnion_iff_mem_exists, hs]
       exists t
-      simp [Data.Set.in_list_iff_in_set, Data.Set.mem_mapUnion_iff_mem_exists, ht']
+      simp [Data.Set.in_list_iff_in_set, List.mem_mapUnion_iff_mem_exists, ht']
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
@@ -183,11 +180,11 @@ theorem enforcePairCompiledPolicies_eqv_enforce_ok {ps₁ ps₂ wps₁ wps₂ : 
       case' inr => right ; left
       all_goals {
         simp [footprints] at h₁
-        rw [Data.Set.mem_mapUnion_iff_mem_exists] at h₁
+        rw [List.mem_mapUnion_iff_mem_exists] at h₁
         replace ⟨x, h₁, h₂⟩ := h₁
         simp [Data.Set.mem_map]
         exists t₂
-        simp [Data.Set.mem_mapUnion_iff_mem_exists]
+        simp [List.mem_mapUnion_iff_mem_exists]
         exists x
         apply And.intro _ h₂
         rw [List.mem_map] at h₁

@@ -229,56 +229,56 @@ private theorem Opt.compileCall.correctness (xfn : ExtFun) (ress : List Opt.Comp
   all_goals first
   | simp only [Opt.compileCall₀.correctness] | simp only [Opt.compileCall₁.correctness] | simp only [Opt.compileCall₂.correctness] | simp only [Opt.compileCallWithError₁.correctness] | simp only [Opt.compileCallWithError₂.correctness] | symm
   · rename_i res ; simp_do_let SymCC.compileCall₀ Ext.Decimal.decimal res.term
-    rw [Data.Set.mapUnion_singleton (by apply hwf res (by simp))]
+    rw [List.mapUnion_singleton (by apply hwf res (by simp))]
   · rename_i res₁ res₂ ; simp_do_let SymCC.compileCall₂ _ Decimal.lessThan res₁.term res₂.term
-    rw [Data.Set.mapUnion_cons hwf]
-    rw [Data.Set.mapUnion_singleton (by apply hwf res₂ (by simp))]
+    rw [List.mapUnion_cons hwf]
+    rw [List.mapUnion_singleton (by apply hwf res₂ (by simp))]
   · rename_i res₁ res₂ ; simp_do_let SymCC.compileCall₂ _ Decimal.lessThanOrEqual res₁.term res₂.term
-    rw [Data.Set.mapUnion_cons hwf]
-    rw [Data.Set.mapUnion_singleton (by apply hwf res₂ (by simp))]
+    rw [List.mapUnion_cons hwf]
+    rw [List.mapUnion_singleton (by apply hwf res₂ (by simp))]
   · rename_i res₁ res₂ ; simp_do_let SymCC.compileCall₂ _ Decimal.greaterThan res₁.term res₂.term
-    rw [Data.Set.mapUnion_cons hwf]
-    rw [Data.Set.mapUnion_singleton (by apply hwf res₂ (by simp))]
+    rw [List.mapUnion_cons hwf]
+    rw [List.mapUnion_singleton (by apply hwf res₂ (by simp))]
   · rename_i res₁ res₂ ; simp_do_let SymCC.compileCall₂ _ Decimal.greaterThanOrEqual res₁.term res₂.term
-    rw [Data.Set.mapUnion_cons hwf]
-    rw [Data.Set.mapUnion_singleton (by apply hwf res₂ (by simp))]
+    rw [List.mapUnion_cons hwf]
+    rw [List.mapUnion_singleton (by apply hwf res₂ (by simp))]
   · rename_i res ; simp_do_let SymCC.compileCall₀ Ext.IPAddr.ip res.term
-    rw [Data.Set.mapUnion_singleton (by apply hwf res (by simp))]
+    rw [List.mapUnion_singleton (by apply hwf res (by simp))]
   · rename_i res ; simp_do_let SymCC.compileCall₁ _ IPAddr.isIpv4 res.term
-    rw [Data.Set.mapUnion_singleton (by apply hwf res (by simp))]
+    rw [List.mapUnion_singleton (by apply hwf res (by simp))]
   · rename_i res ; simp_do_let SymCC.compileCall₁ _ IPAddr.isIpv6 res.term
-    rw [Data.Set.mapUnion_singleton (by apply hwf res (by simp))]
+    rw [List.mapUnion_singleton (by apply hwf res (by simp))]
   · rename_i res ; simp_do_let SymCC.compileCall₁ _ IPAddr.isLoopback res.term
-    rw [Data.Set.mapUnion_singleton (by apply hwf res (by simp))]
+    rw [List.mapUnion_singleton (by apply hwf res (by simp))]
   · rename_i res ; simp_do_let SymCC.compileCall₁ _ IPAddr.isMulticast res.term
-    rw [Data.Set.mapUnion_singleton (by apply hwf res (by simp))]
+    rw [List.mapUnion_singleton (by apply hwf res (by simp))]
   · rename_i res₁ res₂ ; simp_do_let SymCC.compileCall₂ _ IPAddr.isInRange res₁.term res₂.term
-    rw [Data.Set.mapUnion_cons hwf]
-    rw [Data.Set.mapUnion_singleton (by apply hwf res₂ (by simp))]
+    rw [List.mapUnion_cons hwf]
+    rw [List.mapUnion_singleton (by apply hwf res₂ (by simp))]
   · rename_i res ; simp_do_let SymCC.compileCall₀ Ext.Datetime.datetime res.term
-    rw [Data.Set.mapUnion_singleton (by apply hwf res (by simp))]
+    rw [List.mapUnion_singleton (by apply hwf res (by simp))]
   · rename_i res ; simp_do_let SymCC.compileCall₀ Ext.Datetime.duration res.term
-    rw [Data.Set.mapUnion_singleton (by apply hwf res (by simp))]
+    rw [List.mapUnion_singleton (by apply hwf res (by simp))]
   · rename_i res₁ res₂ ; simp_do_let SymCC.compileCallWithError₂ _ _ Datetime.offset res₁.term res₂.term
-    rw [Data.Set.mapUnion_cons hwf]
-    rw [Data.Set.mapUnion_singleton (by apply hwf res₂ (by simp))]
+    rw [List.mapUnion_cons hwf]
+    rw [List.mapUnion_singleton (by apply hwf res₂ (by simp))]
   · rename_i res₁ res₂ ; simp_do_let SymCC.compileCallWithError₂ _ _ Datetime.durationSince res₁.term res₂.term
-    rw [Data.Set.mapUnion_cons hwf]
-    rw [Data.Set.mapUnion_singleton (by apply hwf res₂ (by simp))]
+    rw [List.mapUnion_cons hwf]
+    rw [List.mapUnion_singleton (by apply hwf res₂ (by simp))]
   · rename_i res ; simp_do_let SymCC.compileCallWithError₁ _ Datetime.toDate res.term
-    rw [Data.Set.mapUnion_singleton (by apply hwf res (by simp))]
+    rw [List.mapUnion_singleton (by apply hwf res (by simp))]
   · rename_i res ; simp_do_let SymCC.compileCall₁ _ Datetime.toTime res.term
-    rw [Data.Set.mapUnion_singleton (by apply hwf res (by simp))]
+    rw [List.mapUnion_singleton (by apply hwf res (by simp))]
   · rename_i res ; simp_do_let SymCC.compileCall₁ _ Duration.toMilliseconds res.term
-    rw [Data.Set.mapUnion_singleton (by apply hwf res (by simp))]
+    rw [List.mapUnion_singleton (by apply hwf res (by simp))]
   · rename_i res ; simp_do_let SymCC.compileCall₁ _ Duration.toSeconds res.term
-    rw [Data.Set.mapUnion_singleton (by apply hwf res (by simp))]
+    rw [List.mapUnion_singleton (by apply hwf res (by simp))]
   · rename_i res ; simp_do_let SymCC.compileCall₁ _ Duration.toMinutes res.term
-    rw [Data.Set.mapUnion_singleton (by apply hwf res (by simp))]
+    rw [List.mapUnion_singleton (by apply hwf res (by simp))]
   · rename_i res ; simp_do_let SymCC.compileCall₁ _ Duration.toHours res.term
-    rw [Data.Set.mapUnion_singleton (by apply hwf res (by simp))]
+    rw [List.mapUnion_singleton (by apply hwf res (by simp))]
   · rename_i res ; simp_do_let SymCC.compileCall₁ _ Duration.toDays res.term
-    rw [Data.Set.mapUnion_singleton (by apply hwf res (by simp))]
+    rw [List.mapUnion_singleton (by apply hwf res (by simp))]
   · rw [do_error]
     split <;> simp_all
     all_goals {
@@ -522,14 +522,14 @@ theorem Opt.compile_footprint_wf {x : Expr} {εnv : SymEnv} {res : Opt.CompileRe
       · simp
       · split
         · split <;> simp
-          intro h ; subst res ; simp [Data.Set.mapUnion_wf]
+          intro h ; subst res ; simp [List.mapUnion_wf]
         · simp
   case record axs =>
     rw [do_eq_ok]
     intro h ; replace ⟨aress, haress, h⟩ := h
     simp at h ; subst res
     -- we could make the remainder of this case a separate lemma `Opt.compileRecord_footprint_wf`, but leaving it inline for now
-    simp [Opt.compileRecord, Data.Set.mapUnion_wf]
+    simp [Opt.compileRecord, List.mapUnion_wf]
   case call xfn args =>
     rw [List.mapM₁_eq_mapM (Opt.compile · εnv)]
     simp_do_let args.mapM (Opt.compile · εnv)
@@ -954,7 +954,7 @@ theorem Opt.compile.correctness.set (ls : List Expr) (εnv : SymEnv) :
 := by
   simp [Opt.compile, SymCC.compile, footprint]
   rw [List.mapM₁_eq_mapM (Opt.compile · εnv), List.mapM₁_eq_mapM (SymCC.compile · εnv)]
-  rw [List.mapUnion_attach (footprint · εnv)]
+  rw [List.mapUnion₁_eq_mapUnion (footprint · εnv)]
   simp_do_let ls.mapM (Opt.compile · εnv) <;> rename_i hmap₁
   <;> simp_do_let ls.mapM (SymCC.compile · εnv) <;> rename_i hmap₂
   case error.error e₁ e₂ =>
@@ -989,7 +989,7 @@ theorem Opt.compile.correctness.set (ls : List Expr) (εnv : SymEnv) :
       exact Opt.compile.correctness x εnv
     )
     subst ts₂ ; simp
-    apply Data.Set.map_eqv_implies_mapUnion_eq (by simp [h₂, List.Equiv.refl])
+    apply List.map_eqv_implies_mapUnion_eq (by simp [h₂, List.Equiv.refl])
 termination_by 1 + 2 * sizeOf ls
 
 /--
@@ -1005,7 +1005,7 @@ theorem Opt.compile.correctness.record (m : List (Attr × Expr)) (εnv : SymEnv)
   simp [Opt.compile, SymCC.compile, footprint]
   simp only [List.mapM₂_eq_mapM (λ x => do Except.ok (x.fst, ← Opt.compile x.snd εnv)) m]
   simp only [List.mapM₂_eq_mapM (λ x => do Except.ok (x.fst, ← SymCC.compile x.snd εnv)) m]
-  rw [List.mapUnion_attach₂ (λ x => footprint x.snd εnv)]
+  rw [List.mapUnion₂_eq_mapUnion (λ x => footprint x.snd εnv)]
   simp_do_let m.mapM (m := SymCC.Result) _ <;> rename_i hmap₁
   <;> simp_do_let m.mapM (m := SymCC.Result) _ <;> rename_i hmap₂
   case error.error e₁ e₂ =>
@@ -1043,7 +1043,7 @@ theorem Opt.compile.correctness.record (m : List (Attr × Expr)) (εnv : SymEnv)
       exact Opt.compile.correctness pair.snd εnv
     )
     subst ts₂ ; simp
-    apply Data.Set.map_eqv_implies_mapUnion_eq (by simp [h₂, List.Equiv.refl])
+    apply List.map_eqv_implies_mapUnion_eq (by simp [h₂, List.Equiv.refl])
 termination_by 1 + 2 * sizeOf m
 
 /--
@@ -1058,7 +1058,7 @@ theorem Opt.compile.correctness.call (xfn : ExtFun) (args : List Expr) (εnv : S
 := by
   simp [Opt.compile, SymCC.compile, footprint]
   rw [List.mapM₁_eq_mapM (Opt.compile · εnv), List.mapM₁_eq_mapM (SymCC.compile · εnv)]
-  rw [List.mapUnion_attach (footprint · εnv)]
+  rw [List.mapUnion₁_eq_mapUnion (footprint · εnv)]
   simp_do_let args.mapM (Opt.compile · εnv) <;> rename_i hmap₁
   <;> simp_do_let args.mapM (SymCC.compile · εnv) <;> rename_i hmap₂
   case error.error e₁ e₂ =>
@@ -1093,7 +1093,7 @@ theorem Opt.compile.correctness.call (xfn : ExtFun) (args : List Expr) (εnv : S
         exact Opt.compile.correctness x εnv
       )
       subst ts₂ ; simp
-      apply Data.Set.map_eqv_implies_mapUnion_eq (by simp [h₂, List.Equiv.refl])
+      apply List.map_eqv_implies_mapUnion_eq (by simp [h₂, List.Equiv.refl])
     case hwf =>
       intro res hres
       have ⟨arg, harg, h₁⟩ := List.mapM_ok_implies_all_from_ok hmap₁ res hres

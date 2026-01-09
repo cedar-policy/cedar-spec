@@ -194,7 +194,7 @@ private theorem concretize?_some_InSymAncestors {uid anc : EntityUID} {δ : SymE
   SameEntityData.InSymAncestors uid δ anc
 := by
   simp only [SameEntityData.InSymAncestors]
-  simp only [Set.mem_mapUnion_iff_mem_exists, id_eq] at hin
+  simp only [List.mem_mapUnion_iff_mem_exists, id_eq] at hin
   replace ⟨s, hin⟩ := hin
   replace ha := List.mapM_some_implies_all_from_some ha
   specialize ha s hin.left
@@ -239,7 +239,7 @@ private theorem concretize?_some_InAncestors {uid : EntityUID} {δ : SymEntityDa
   subst heq
   exists anc
   replace hin : anc ∈ id s := by simp only [id_eq, hin]
-  simp only [Set.mem_mem_implies_mem_mapUnion hin hs, and_self]
+  simp only [List.mem_mem_implies_mem_mapUnion hin hs, and_self]
 
 theorem concretize?_taggedValueFor_some_implies {tuid : Term} {tag tag' : Tag} {v : Value} {τs : SymTags} :
   SymEntityData.concretize?.taggedValueFor τs tuid tag = some (tag', v) →

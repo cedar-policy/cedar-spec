@@ -42,13 +42,13 @@ theorem cp_extractOpt?_eqv_extract? {cps : List CompiledPolicy} {I : Interpretat
     replace ⟨hεnv', hεnv⟩ := hεnv ; subst εnv'
     simp_all only [reduceCtorEq, not_false_eq_true, List.map_cons, Function.comp_apply, footprints]
     congr 3
-    rw [Data.Set.mapUnion_cons]
-    · rw [Data.Set.mapUnion_cons]
+    rw [List.mapUnion_cons]
+    · rw [List.mapUnion_cons]
       · congr 1
         · replace ⟨p, Γ, hcompile⟩ := hcompile { term, εnv, policy, footprint, acyclicity } (by simp)
           apply cp_compile_produces_the_right_footprint hcompile
-        · rw [Data.Set.mapUnion_map (footprint_wf · εnv)]
-          apply Data.Set.mapUnion_congr
+        · rw [List.mapUnion_map]
+          apply List.mapUnion_congr
           intro cp hcp
           replace ⟨p, Γ, hcompile⟩ := hcompile cp (by simp [hcp])
           simp [cp_compile_produces_the_right_footprint hcompile, hεnv cp hcp]
@@ -83,41 +83,39 @@ theorem cps_extractOpt?_eqv_extract? {cpss : List CompiledPolicies} {I : Interpr
     congr 3
     · grind
     · replace ⟨⟨ps, Γ, hcompile⟩, hcompile'⟩ := hcompile
-      rw [Data.Set.mapUnion_cons]
-      · rw [Data.Set.mapUnion_append (by simp [footprint_wf])]
-        rw [Data.Set.mapUnion_map (by simp [footprint_wf])]
-        rw [Data.Set.mapUnion_map (by simp [footprint_wf])]
+      rw [List.mapUnion_cons]
+      · rw [List.mapUnion_append (by simp [footprint_wf])]
+        rw [List.mapUnion_map, List.mapUnion_map]
         simp only [Union.union, HAppend.hAppend]
         congr 1
         · have := cps_compile_produces_the_right_footprint hcompile ; simp at this ; subst footprint
           simp only [footprints]
-          apply Data.Set.mapUnion_map (by simp [footprint_wf])
-        · rw [← Data.Set.eq_means_eqv Data.Set.mapUnion_wf Data.Set.mapUnion_wf]
+          apply List.mapUnion_map
+        · rw [← Data.Set.eq_means_eqv List.mapUnion_wf List.mapUnion_wf]
           simp [List.Equiv, List.subset_def]
           constructor
           · intro t
             simp only [Data.Set.in_list_iff_in_set]
-            simp only [Data.Set.mem_mapUnion_iff_mem_exists t, List.mem_flatMap,
+            simp only [List.mem_mapUnion_iff_mem_exists t, List.mem_flatMap,
               Function.comp_apply, forall_exists_index, and_imp]
             intro cps hcps ht
             replace ⟨ps', Γ', hcompile'⟩ := hcompile' cps hcps
             have hfoot := cps_compile_produces_the_right_footprint hcompile'
             simp only [footprints] at hfoot
-            rw [Data.Set.mapUnion_map (by simp [footprint_wf])] at hfoot
-            rw [← Data.Set.eq_means_eqv] at hfoot
+            rw [List.mapUnion_map, ← Data.Set.eq_means_eqv] at hfoot
             · simp [List.Equiv, List.subset_def, Data.Set.in_list_iff_in_set] at hfoot
               replace ⟨hfoot, hfoot'⟩ := hfoot
               specialize hfoot ht
-              rw [Data.Set.mem_mapUnion_iff_mem_exists] at hfoot
+              rw [List.mem_mapUnion_iff_mem_exists] at hfoot
               replace ⟨p, hp, hfoot⟩ := hfoot
               exists p
               rw [hεnv cps hcps] at *
               grind
-            · simp [hfoot, Data.Set.mapUnion_wf]
-            · simp [Data.Set.mapUnion_wf]
+            · simp [hfoot, List.mapUnion_wf]
+            · simp [List.mapUnion_wf]
           · intro t
             simp only [Data.Set.in_list_iff_in_set]
-            simp only [Data.Set.mem_mapUnion_iff_mem_exists t, List.mem_flatMap,
+            simp only [List.mem_mapUnion_iff_mem_exists t, List.mem_flatMap,
               Function.comp_apply, forall_exists_index, and_imp]
             intro p cps hcps hp ht
             exists cps
@@ -125,7 +123,7 @@ theorem cps_extractOpt?_eqv_extract? {cpss : List CompiledPolicies} {I : Interpr
             have hfoot := cps_compile_produces_the_right_footprint hcompile'
             simp only [hcps, hfoot, footprints, true_and]
             rw [hεnv cps hcps] at *
-            apply Data.Set.mem_mem_implies_mem_mapUnion (s := p.toExpr) ht
+            apply List.mem_mem_implies_mem_mapUnion (s := p.toExpr) ht
             simp only [List.mem_map]
             exists p
       · intro cps hcps

@@ -162,21 +162,21 @@ theorem wf_term_implies_valid_uids {t : Term} {εs : SymEntities} :
     exact wf_term_implies_valid_uids hwf uid hin
   case set ts _ =>
     cases ts ; rename_i ts
-    simp only [List.attach_def, List.mapUnion_pmap_subtype Term.entityUIDs] at hin
-    rw [Set.mem_mapUnion_iff_mem_exists] at hin
+    simp only [List.mapUnion₁_eq_mapUnion Term.entityUIDs] at hin
+    rw [List.mem_mapUnion_iff_mem_exists] at hin
     replace ⟨t', hin', hin⟩ := hin
     replace hwf := wf_term_set_implies_wf_elt hwf hin'
     exact wf_term_implies_valid_uids hwf uid hin
   case record ats =>
     cases ats ; rename_i ats
-    simp only [List.attach₃, List.mapUnion_pmap_subtype λ x : Attr × Term => x.snd.entityUIDs] at hin
-    rw [Set.mem_mapUnion_iff_mem_exists] at hin
+    simp only [List.mapUnion₃_eq_mapUnion λ x : Attr × Term => x.snd.entityUIDs] at hin
+    rw [List.mem_mapUnion_iff_mem_exists] at hin
     replace ⟨at', hin', hin⟩ := hin
     replace hwf := wf_term_record_implies_wf_value hwf hin'
     exact wf_term_implies_valid_uids hwf uid hin
   case app ts _ =>
-    simp only [List.attach_def, List.mapUnion_pmap_subtype Term.entityUIDs] at hin
-    rw [Set.mem_mapUnion_iff_mem_exists] at hin
+    simp only [List.mapUnion₁_eq_mapUnion Term.entityUIDs] at hin
+    rw [List.mem_mapUnion_iff_mem_exists] at hin
     replace ⟨t', hin', hin⟩ := hin
     cases hwf ; rename_i hwf _
     specialize hwf t' hin'
@@ -250,12 +250,12 @@ private theorem valid_refs_implies_valid_uids {x : Expr} {εs : SymEntities} :
     · exact ih₂ hin
     · exact ih₃ hin
   case set_valid ih | call_valid ih =>
-    simp only [List.attach_def, List.mapUnion_pmap_subtype, Set.mem_mapUnion_iff_mem_exists] at hin
+    simp only [List.mapUnion₁_eq_mapUnion, List.mem_mapUnion_iff_mem_exists] at hin
     replace ⟨x', hin', hin⟩ := hin
     exact ih x' hin' hin
   case record_valid ih =>
-    simp only [List.attach₂, List.mapUnion_pmap_subtype λ x : Attr × Expr => x.snd.entityUIDs,
-      Set.mem_mapUnion_iff_mem_exists] at hin
+    simp only [List.mapUnion₂_eq_mapUnion λ x : Attr × Expr => x.snd.entityUIDs,
+      List.mem_mapUnion_iff_mem_exists] at hin
     replace ⟨ax', hin', hin⟩ := hin
     exact ih ax' hin' hin
 
@@ -288,7 +288,7 @@ private theorem wf_uf_implies_valid_uids {uf : UnaryFunction} {εs : SymEntities
     simp only [UnaryFunction.WellFormed, UDF.WellFormed] at hwf
     rcases hin with hin | hin
     · exact wf_term_implies_valid_uids hwf.left.left _ hin
-    · rw [Set.mem_mapUnion_iff_mem_exists] at hin
+    · rw [List.mem_mapUnion_iff_mem_exists] at hin
       replace ⟨(tᵢ, tₒ), hin, hin'⟩ := hin
       simp only [Set.mem_union_iff_mem_or] at hin'
       replace hwf := hwf.right.right.right tᵢ tₒ hin
@@ -310,7 +310,7 @@ private theorem wf_δ_implies_ancs_valid_uids {δ : SymEntityData} {ety : Entity
 := by
   intro hwδ uid hin
   simp only [SymEntityData.entityUIDs.ancs] at hin
-  rw [Set.mem_mapUnion_iff_mem_exists] at hin
+  rw [List.mem_mapUnion_iff_mem_exists] at hin
   replace ⟨(ancTy, ancF), hin', hin⟩ := hin
   simp only at hin
   rw [Map.in_list_iff_find?_some hwδ.right.right.right.right.left] at hin'
@@ -349,7 +349,7 @@ private theorem wf_εs_implies_valid_uids {εs : SymEntities} :
 := by
   intro hwε uid hin
   simp only [SymEntities.entityUIDs] at hin
-  rw [Set.mem_mapUnion_iff_mem_exists] at hin
+  rw [List.mem_mapUnion_iff_mem_exists] at hin
   replace ⟨(ety, δ), hin', hin⟩ := hin
   simp at hin
   replace ⟨hwm, hwε⟩ := hwε
