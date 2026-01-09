@@ -57,7 +57,7 @@ def SymEntities.uufAncestors (εs : SymEntities) : Set UUF :=
 
 def UUF.repairAncestors (fts : Set EntityUID) (I : Interpretation) (f : UUF) : UDF :=
   let udf := I.funs f
-  ⟨udf.arg, udf.out, table udf,  default udf⟩
+  ⟨udf.arg, udf.out, table udf, default udf⟩
 where
   entry (udf : UDF) (uid : EntityUID) : Option (Term × Term) :=
     let t := Term.entity uid
@@ -69,19 +69,17 @@ where
     | .set ty => .set Set.empty ty
     | _       => udf.default
 
-def Interpretation.repair (xs : List Expr) (εnv : SymEnv) (I : Interpretation) : Interpretation :=
+def Interpretation.repair (footprint : Set Term) (εnv : SymEnv) (I : Interpretation) : Interpretation :=
   ⟨I.vars, funs, I.partials⟩
   where
     footprintUIDs : Set EntityUID :=
-      (footprints xs εnv).elts.mapUnion (Term.entityUIDs ∘ (Term.interpret I))
+      footprint.elts.mapUnion (Term.entityUIDs ∘ (Term.interpret I))
     footprintAncestors : Map UUF UDF :=
-      let fts := footprintUIDs
-      Map.mk (εnv.entities.uufAncestors.elts.map λ f => (f, f.repairAncestors fts I))
+      Map.mk (εnv.entities.uufAncestors.elts.map λ f => (f, f.repairAncestors footprintUIDs I))
     funs : UUF → UDF :=
-      let ftAncs := footprintAncestors
-      λ f => if let .some udf := ftAncs.find? f then udf else I.funs f
+      λ f => if let .some udf := footprintAncestors.find? f then udf else I.funs f
 
 def SymEnv.extract? (xs : List Expr) (I : Interpretation) (εnv : SymEnv) : Option Env :=
-  concretize? (Expr.set xs) (εnv.interpret (I.repair xs εnv))
+  concretize? (Expr.set xs) (εnv.interpret (I.repair (footprints xs εnv) εnv))
 
 end Cedar.SymCC

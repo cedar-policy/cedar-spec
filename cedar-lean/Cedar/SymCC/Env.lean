@@ -54,11 +54,23 @@ reduction to SMT. The symbolic store also carries a representation of the
 into multiple maps, one for each pair of an entity type and its ancestor type.
 -/
 
+/-- Represents the entity data for _all entities_ of a _single type_ -/
 structure SymEntityData where
   attrs : UnaryFunction
+  /--
+  Let `t₁` be the entity type which this `SymEntityData` represents the data for.
+  Let `t₂` be an entity type in this map's keys.
+  The `UnaryFunction` here maps entities of type `t₁` to
+  the set of entities of type `t₂` which are ancestors of that entity.
+  (Of course, the `UnaryFunction` is on SMT-level values, so the domain is
+  essentially `t₁`-typed `Term`s, and the output is essentially a
+  `Set<t₂>`-typed `Term`.)
+  -/
   ancestors : Map EntityType UnaryFunction
-  members : Option (Set String) -- specifies EIDs of enum members, if applicable
-  tags : Option SymTags         -- specifies tags, if applicable
+  /-- Specifies the EIDs of enum members for this entity type, if applicable -/
+  members : Option (Set String)
+  /-- `none` means this entity type has no tags -/
+  tags : Option SymTags
 
 def SymTags.isLiteral (τs : SymTags) : Bool :=
   τs.keys.isLiteral &&

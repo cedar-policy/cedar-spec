@@ -181,7 +181,7 @@ local macro "simp_not_mem_footprint" hwε:ident hI:ident hδ:ident hf:ident happ
 private theorem acyclic_implies_Acyclic {xs : List Expr} {env : Env} {εnv : SymEnv} {I : Interpretation}
   (hsε : εnv.StronglyWellFormedForAll xs)
   (hI  : I.WellFormed εnv.entities)
-  (heq : env ∼ εnv.interpret (Interpretation.repair xs εnv I))
+  (heq : env ∼ εnv.interpret (Interpretation.repair (footprints xs εnv) εnv I))
   (hok : ∀ t ∈ acyclic (footprints xs εnv) εnv.entities, Term.interpret I t = true) :
   env.entities.Acyclic
 := by
@@ -192,7 +192,7 @@ private theorem acyclic_implies_Acyclic {xs : List Expr} {env : Env} {εnv : Sym
   cases f
   case uuf f =>
     have hwε := swf_εnv_implies_wf hsε.left
-    cases hft : (Interpretation.repair.footprintUIDs xs εnv I).contains uid
+    cases hft : (Interpretation.repair.footprintUIDs (footprints xs εnv) I).contains uid
     case false =>
       simp_not_mem_footprint hwε hI hδ hf heq hinᵤ hft
     case true =>
@@ -302,22 +302,22 @@ private theorem transitive_implies_Transitive_uuf_uuf
   {xs : List Expr} {env : Env} {εnv : SymEnv} {I : Interpretation}
   (hsε : εnv.StronglyWellFormedForAll xs)
   (hI  : I.WellFormed εnv.entities)
-  (heq : env ∼ εnv.interpret (I.repair xs εnv))
+  (heq : env ∼ εnv.interpret (I.repair (footprints xs εnv) εnv))
   (hok : ∀ t ∈ transitive (footprints xs εnv) εnv.entities, t.interpret I = true)
   (hd₁ : Map.find? env.entities uid₁ = some d₁)
   (hδ₁ : Map.find? εnv.entities uid₁.ty = some δ₁)
   (hf₁ : δ₁.ancestors.find? uid₂.ty = some (.uuf f₁₂))
-  (heq₁ : app ((UnaryFunction.uuf f₁₂).interpret (I.repair xs εnv)) (.entity uid₁) = .set ts₁₂ (.entity uid₂.ty))
+  (heq₁ : app ((UnaryFunction.uuf f₁₂).interpret (I.repair (footprints xs εnv) εnv)) (.entity uid₁) = .set ts₁₂ (.entity uid₂.ty))
   (hu₂₁ : Term.entity uid₂ ∈ ts₁₂)
   (hδ₂ : Map.find? εnv.entities uid₂.ty = some δ₂)
   (hf₂ : δ₂.ancestors.find? uid₃.ty = some (.uuf f₂₃))
-  (heq₂ : app ((UnaryFunction.uuf f₂₃).interpret (I.repair xs εnv)) (.entity uid₂) = .set ts₂₃ (.entity uid₃.ty))
+  (heq₂ : app ((UnaryFunction.uuf f₂₃).interpret (I.repair (footprints xs εnv) εnv)) (.entity uid₂) = .set ts₂₃ (.entity uid₃.ty))
   (hu₃₂ : Term.entity uid₃ ∈ ts₂₃) :
   uid₃ ∈ d₁.ancestors
 := by
   have hwε := swf_εnv_implies_wf hsε.left
-  cases hft₁ : (Interpretation.repair.footprintUIDs xs εnv I).contains uid₁ <;>
-  cases hft₂ : (Interpretation.repair.footprintUIDs xs εnv I).contains uid₂
+  cases hft₁ : (Interpretation.repair.footprintUIDs (footprints xs εnv) I).contains uid₁ <;>
+  cases hft₂ : (Interpretation.repair.footprintUIDs (footprints xs εnv) I).contains uid₂
   case false.false | false.true =>
     simp_not_mem_footprint hwε hI hδ₁ hf₁ heq₁ hu₂₁ hft₁
   case true.false =>
@@ -393,7 +393,7 @@ private theorem transitive_implies_Transitive_udf_udf
 private theorem transitive_implies_Transitive {xs : List Expr} {env : Env} {εnv : SymEnv} {I : Interpretation}
   (hsε : εnv.StronglyWellFormedForAll xs)
   (hI  : I.WellFormed εnv.entities)
-  (heq : env ∼ εnv.interpret (I.repair xs εnv))
+  (heq : env ∼ εnv.interpret (I.repair (footprints xs εnv) εnv))
   (hok : ∀ t ∈ transitive (footprints xs εnv) εnv.entities, t.interpret I = true) :
   env.entities.Transitive
 := by
@@ -445,7 +445,7 @@ theorem enforce_satisfiedBy_implies_swf_extract? {xs : List Expr} {εnv : SymEnv
   have hwε := swf_εnv_implies_wf hsε.left
   have hI' := repair_wf hwε hsε.right hI
   have ⟨env', hcex, heq, hwe, hvr⟩ := extract?_env_wf_same hwε hsε.right hI
-  exists I.repair xs εnv, env'
+  exists I.repair (footprints xs εnv) εnv, env'
   simp only [hcex, hI', heq, true_and]
   constructor
   · constructor
