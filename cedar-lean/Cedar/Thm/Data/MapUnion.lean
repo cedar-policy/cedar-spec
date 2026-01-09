@@ -142,6 +142,12 @@ theorem mapUnion_singleton {α β} [LT α] [StrictLT α] [DecidableLT α] {f : �
 := by
   intro h ; simp [List.mapUnion, EmptyCollection.emptyCollection, Data.Set.union_empty_left h]
 
+theorem mapUnion_map [LT α] [StrictLT α] [DecidableLT α] {f : β → Set α} {g : γ → β} {xs : List γ} :
+  (∀ b, (f b).WellFormed) →
+  List.mapUnion f (xs.map g) = xs.mapUnion (f ∘ g)
+:= by
+  simp [List.mapUnion, List.foldl_map]
+
 private theorem mem_foldl_union_iff_mem_or_exists {α β} [LT α] [StrictLT α] [DecidableLT α] {f : β → Set α} {xs : List β} {init : Set α} {a : α} :
   a ∈ List.foldl (λ as b => as ∪ f b) init xs ↔ (a ∈ init ∨ ∃ s ∈ xs, a ∈ f s)
 := by

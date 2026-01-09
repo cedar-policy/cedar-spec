@@ -32,7 +32,7 @@ namespace Cedar.Thm
 open Data Spec SymCC Factory
 
 private theorem footprintUIDs_wf {xs : List Expr} {εnv : SymEnv} {I : Interpretation} :
-  (Interpretation.repair.footprintUIDs xs εnv I).WellFormed
+  (Interpretation.repair.footprintUIDs (footprints xs εnv) I).WellFormed
 := by
   simp only [Interpretation.repair.footprintUIDs, Set.mapUnion_wf]
 
@@ -40,7 +40,7 @@ private theorem footprintUIDs_valid {xs : List Expr} {εnv : SymEnv} {I : Interp
   (hwε : εnv.WellFormed)
   (hvr : ∀ (x : Expr), x ∈ xs → εnv.entities.ValidRefsFor x)
   (hI : I.WellFormed εnv.entities) :
-  ∀ uid ∈ Interpretation.repair.footprintUIDs xs εnv I, εnv.entities.isValidEntityUID uid
+  ∀ uid ∈ Interpretation.repair.footprintUIDs (footprints xs εnv) I, εnv.entities.isValidEntityUID uid
 := by
   simp only [Interpretation.repair.footprintUIDs]
   intro uid hin
@@ -154,7 +154,7 @@ theorem repair_wf {xs : List Expr} {εnv : SymEnv} {I : Interpretation} :
   εnv.WellFormed →
   (∀ x ∈ xs, εnv.entities.ValidRefsFor x) →
   I.WellFormed εnv.entities →
-  (I.repair xs εnv).WellFormed εnv.entities
+  (I.repair (footprints xs εnv) εnv).WellFormed εnv.entities
 := by
   intro hwε hvr hI
   simp only [Interpretation.repair]
@@ -196,9 +196,9 @@ theorem repair_env_wf_same {xs : List Expr} {εnv : SymEnv} {I : Interpretation}
   εnv.WellFormed →
   (∀ x ∈ xs, εnv.entities.ValidRefsFor x) →
   I.WellFormed εnv.entities →
-  (I.repair xs εnv).WellFormed εnv.entities ∧
+  (I.repair (footprints xs εnv) εnv).WellFormed εnv.entities ∧
   ∃ env : Env,
-    env ∼ εnv.interpret (I.repair xs εnv) ∧
+    env ∼ εnv.interpret (I.repair (footprints xs εnv) εnv) ∧
     env.WellFormed ∧
     ∀ x ∈ xs, env.entities.ValidRefsFor x
 := by
@@ -212,7 +212,7 @@ theorem extract?_env_wf_same {xs : List Expr} {εnv : SymEnv} {I : Interpretatio
   I.WellFormed εnv.entities →
   ∃ env : Env,
     εnv.extract? xs I = .some env ∧
-    env ∼ εnv.interpret (I.repair xs εnv) ∧
+    env ∼ εnv.interpret (I.repair (footprints xs εnv) εnv) ∧
     env.WellFormed ∧
     ∀ x ∈ xs, env.entities.ValidRefsFor x
 := by
@@ -231,8 +231,8 @@ theorem extract?_env_wf_same {xs : List Expr} {εnv : SymEnv} {I : Interpretatio
 private theorem footprintAncestors_eq {xs : List Expr} {ety ancTy : EntityType} {f : UUF} {δ : SymEntityData} {εnv : SymEnv} {I : Interpretation}
   (hδ  : Map.find? εnv.entities ety = some δ)
   (hf  : δ.ancestors.find? ancTy = some (UnaryFunction.uuf f)) :
-  (Interpretation.repair.footprintAncestors xs εnv I).find? f =
-  .some (f.repairAncestors (Interpretation.repair.footprintUIDs xs εnv I) I)
+  (Interpretation.repair.footprintAncestors (footprints xs εnv) εnv I).find? f =
+  .some (f.repairAncestors (Interpretation.repair.footprintUIDs (footprints xs εnv) I) I)
 := by
   simp only [Interpretation.repair.footprintAncestors]
   apply Map.mem_toList_find?
@@ -275,8 +275,8 @@ theorem not_mem_footprintUIDs_implies_empty_ancs {uid : EntityUID} {ety : Entity
   (hI  : I.WellFormed εnv.entities)
   (hδ  : Map.find? εnv.entities uid.ty = some δ)
   (hf  : δ.ancestors.find? ety = some (UnaryFunction.uuf f))
-  (hft : ¬uid ∈ Interpretation.repair.footprintUIDs xs εnv I) :
-  app ((UnaryFunction.uuf f).interpret (I.repair xs εnv)) (Term.entity uid) =
+  (hft : ¬uid ∈ Interpretation.repair.footprintUIDs (footprints xs εnv) I) :
+  app ((UnaryFunction.uuf f).interpret (I.repair (footprints xs εnv) εnv)) (Term.entity uid) =
   Term.set Set.empty (TermType.entity ety)
 := by
   simp only [app, UnaryFunction.interpret, Interpretation.repair, Interpretation.repair.funs,
@@ -307,8 +307,8 @@ theorem mem_footprintUIDs_implies_eq_ancs {uid : EntityUID} {ety : EntityType} {
   (hI  : I.WellFormed εnv.entities)
   (hδ  : Map.find? εnv.entities uid.ty = some δ)
   (hf  : δ.ancestors.find? ety = some (UnaryFunction.uuf f))
-  (hft : uid ∈ Interpretation.repair.footprintUIDs xs εnv I) :
-  app ((UnaryFunction.uuf f).interpret (I.repair xs εnv)) (Term.entity uid) =
+  (hft : uid ∈ Interpretation.repair.footprintUIDs (footprints xs εnv) I) :
+  app ((UnaryFunction.uuf f).interpret (I.repair (footprints xs εnv) εnv)) (Term.entity uid) =
   app ((UnaryFunction.uuf f).interpret I) (Term.entity uid)
 := by
   rw [app.eq_def]
@@ -324,7 +324,7 @@ theorem mem_footprintUIDs_mem_footprints {uid : EntityUID} {xs : List Expr} {εn
   (hwε : εnv.WellFormed)
   (hvr : ∀ x ∈ xs, εnv.entities.ValidRefsFor x)
   (hI  : I.WellFormed εnv.entities)
-  (hin : uid ∈ Interpretation.repair.footprintUIDs xs εnv I) :
+  (hin : uid ∈ Interpretation.repair.footprintUIDs (footprints xs εnv) I) :
   ∃ t ∈ footprints xs εnv, t.interpret I = Term.some (Term.entity uid)
 := by
   simp only [Interpretation.repair.footprintUIDs, Set.mem_mapUnion_iff_mem_exists,
@@ -346,7 +346,7 @@ theorem mem_footprintUIDs_mem_footprints {uid : EntityUID} {xs : List Expr} {εn
 theorem mem_mem_footprints_footprintUIDs {t : Term} {uid : EntityUID} {xs : List Expr} {εnv : SymEnv} {I : Interpretation}
   (hin : t ∈ footprints xs εnv)
   (ht  : t.interpret I = Term.some (Term.entity uid)) :
-  uid ∈ Interpretation.repair.footprintUIDs xs εnv I
+  uid ∈ Interpretation.repair.footprintUIDs (footprints xs εnv) I
 := by
   simp only [Interpretation.repair.footprintUIDs, Set.mem_mapUnion_iff_mem_exists, Function.comp_apply]
   exists t
@@ -356,17 +356,17 @@ theorem mem_mem_footprints_footprintUIDs {t : Term} {uid : EntityUID} {xs : List
 private theorem interpret_term_isBasic_repair_eq (xs : List Expr) {t : Term} {εnv : SymEnv} (I : Interpretation)
   (hwt : t.WellFormed εnv.entities)
   (hbt : t.isBasic) :
-  t.interpret I = t.interpret (I.repair xs εnv)
+  t.interpret I = t.interpret (I.repair (footprints xs εnv) εnv)
 := by
   simp only [Term.isBasic] at hbt
   split at hbt
   · simp only [interpret_term_var, Interpretation.repair]
   · simp only [interpret_term_lit_id I (And.intro hwt hbt),
-      interpret_term_lit_id (I.repair xs εnv) (And.intro hwt hbt)]
+      interpret_term_lit_id (I.repair (footprints xs εnv) εnv) (And.intro hwt hbt)]
 
 private theorem interpret_request_repair_eq {xs : List Expr} {εnv : SymEnv} {I : Interpretation}
   (hwε : εnv.request.StronglyWellFormed εnv.entities) :
-  εnv.request.interpret I = εnv.request.interpret (Interpretation.repair xs εnv I)
+  εnv.request.interpret I = εnv.request.interpret (Interpretation.repair (footprints xs εnv) εnv I)
 := by
   have ⟨hwtp, _, hwta, _, hwtr, _, hwtc, _⟩ := hwε.left
   have ⟨hbtp, hbta, hbtr, hbtc⟩ := hwε.right
@@ -415,7 +415,7 @@ private theorem type_of_ancestor_uuf_eq {εnv : SymEnv} {f : UUF}
 private theorem interpret_attrs_repair_eq  {εnv : SymEnv} {ety : EntityType} {δ : SymEntityData} (xs : List Expr) (I : Interpretation)
   (hwε : εnv.entities.WellFormed)
   (hδ : Map.find? εnv.entities ety = some δ) :
-  δ.attrs.interpret I = δ.attrs.interpret (I.repair xs εnv)
+  δ.attrs.interpret I = δ.attrs.interpret (I.repair (footprints xs εnv) εnv)
 := by
   cases hf : δ.attrs <;>
   simp only [UnaryFunction.interpret, UnaryFunction.udf.injEq]
@@ -432,7 +432,7 @@ private theorem interpret_tags_repair_eq  {εnv : SymEnv} {ety : EntityType} {δ
   (hwε : εnv.entities.WellFormed)
   (hδ : Map.find? εnv.entities ety = some δ)
   (hτs : δ.tags = some τs) :
-  τs.interpret I = τs.interpret (I.repair xs εnv)
+  τs.interpret I = τs.interpret (I.repair (footprints xs εnv) εnv)
 := by
   simp only [SymTags.interpret, Interpretation.repair, SymTags.mk.injEq]
   have hwδ := hwε.right ety δ hδ
@@ -457,7 +457,7 @@ private theorem interpret_tags_repair_eq  {εnv : SymEnv} {ety : EntityType} {δ
 theorem εnv_same_on_footprints {xs : List Expr} {εnv : SymEnv} {I : Interpretation}
   (hsε : εnv.StronglyWellFormedForAll xs)
   (hI  : I.WellFormed εnv.entities) :
-  εnv.SameOn (footprints xs εnv) I (I.repair xs εnv)
+  εnv.SameOn (footprints xs εnv) I (I.repair (footprints xs εnv) εnv)
 := by
   constructor
   · exact interpret_request_repair_eq hsε.left.left
@@ -519,7 +519,7 @@ theorem extract?_implies_enum_complete
   simp only [Option.some.injEq] at hext
   simp only [hext, Env.EnumCompleteFor]
   intros uid δ eids hfind_uid_ty heids heid
-  have huid := sym_entities_entityUIDs_include_enums (Interpretation.repair exprs εnv I) hfind_uid_ty heids heid
+  have huid := sym_entities_entityUIDs_include_enums (Interpretation.repair (footprints exprs εnv) εnv I) hfind_uid_ty heids heid
   replace ⟨eds, heds, hents⟩ := concretize?_εs_some_eq hents
   simp only [←hents]
   have ⟨⟨uid', data⟩, hmem_uid'_data, huid'⟩

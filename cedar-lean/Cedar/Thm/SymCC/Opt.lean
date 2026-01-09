@@ -22,6 +22,7 @@ import Cedar.Thm.Data.Set
 import Cedar.Thm.SymCC.Authorizer
 import Cedar.Thm.SymCC.Opt.Asserts
 import Cedar.Thm.SymCC.Opt.CompiledPolicies
+import Cedar.Thm.SymCC.Opt.Extractor
 import Cedar.Thm.SymCC.Opt.Verifier
 import Cedar.Thm.WellTypedVerification
 
@@ -32,7 +33,7 @@ interface in SymCC.
 
 namespace Cedar.Thm
 
-open Cedar.Spec Cedar.SymCC List
+open Cedar.Spec Cedar.SymCC
 
 /--
 If `SymCC.satisfiedPolicies` fails, that must be because `SymCC.compile` failed
@@ -157,6 +158,135 @@ theorem compile_ok_then_exists_wtps {ps : Policies} {cps : CompiledPolicies} {Γ
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
+compilation succeeds, then `satAsserts?` and `satAssertsOpt?'` are equivalent.
+-/
+theorem satAssertsOpt?'_eqv_satAsserts?_ok {ps wps : Policies} {cps : List CompiledPolicy} {Γ : Validation.TypeEnv} :
+  ps.length = cps.length →
+  cps ≠ [] →
+  ps.mapM (CompiledPolicy.compile · Γ) = .ok cps →
+  ps.mapM (wellTypedPolicy · Γ) = .ok wps →
+  satAsserts? wps asserts (SymEnv.ofTypeEnv Γ) = satAssertsOpt?' cps asserts
+:= by
+  intro hlen
+  simp [satAsserts?, satAssertsOpt?']
+  intro hnil hcps hwps
+  have hεnv : ∀ cp ∈ cps, cp.εnv = SymEnv.ofTypeEnv Γ := by
+    intro cp hcp
+    replace ⟨p, hp, hcps⟩ := List.mapM_ok_implies_all_from_ok hcps cp hcp
+    exact cp_compile_produces_the_right_env hcps
+  revert hnil
+  cases cps <;> simp
+  case cons cp cps =>
+  cases ps <;> simp at *
+  case cons p ps =>
+  simp [do_eq_ok] at hwps hcps
+  replace ⟨wp, hwp, hwps⟩ := hwps
+  simp [Functor.map, Except.map] at hwps
+  split at hwps <;> simp at hwps
+  subst wps ; rename_i wps hwps
+  replace ⟨cp', hcp', hcps⟩ := hcps
+  simp [Functor.map, Except.map] at hcps
+  split at hcps <;> simp at hcps
+  replace ⟨hcps, htemp⟩ := hcps ; subst cp' htemp ; rename_i cps hcps ; have hcp := hcp' ; clear hcp'
+  rw [cp_compile_produces_the_right_env hcp]
+  congr
+  funext I
+  cases I <;> simp only
+  case some I =>
+  suffices SymEnv.extract? ((wp :: wps).map Policy.toExpr) I (SymEnv.ofTypeEnv Γ) = CompiledPolicy.extractOpt? (cp :: cps) I by rw [this] ; rfl
+  rw [cp_extractOpt?_eqv_extract? (εnv := cp.εnv) (by simp)]
+  · congr 1
+    · simp only [List.map_cons, Function.comp_apply, List.cons.injEq]
+      simp only [compiled_policy_eq_wtp hcp hwp, true_and]
+      rw [← List.forall₂_iff_map_eq]
+      apply List.Forall₂.imp (R := λ a b => a = CompiledPolicy.policy b)
+      · intro a b h ; subst h ; simp
+      · rw [List.mapM_ok_iff_forall₂] at hcps hwps
+        apply List.forall₂_trans_ish hwps hcps
+        intro p wp cp hwp hcp
+        exact (compiled_policy_eq_wtp hcp hwp).symm
+    · simp [cp_compile_produces_the_right_env hcp]
+  · intro cp' hcp'
+    cases hcp'
+    · rfl
+    · rename_i hcp'
+      replace ⟨hεnv, hεnv'⟩ := hεnv
+      simp [hεnv, hεnv' cp' hcp']
+  · intro cp' hcp'
+    cases hcp'
+    · exists p, Γ
+    · rename_i hcp'
+      replace ⟨p', hp', hcps⟩ := List.mapM_ok_implies_all_from_ok hcps cp' hcp'
+      exists p', Γ
+
+/--
+This theorem covers the "happy path" -- showing that if optimized policy
+compilation succeeds, then `satAsserts?` and `satAssertsOpt?` are equivalent.
+-/
+theorem satAssertsOpt?_eqv_satAsserts?_ok {pss wpss : List Policies} {cpss : List CompiledPolicies} {Γ : Validation.TypeEnv} :
+  pss.length = cpss.length →
+  cpss ≠ [] →
+  pss.mapM (CompiledPolicies.compile · Γ) = .ok cpss →
+  pss.mapM (wellTypedPolicies · Γ) = .ok wpss →
+  satAsserts? wpss.flatten asserts (SymEnv.ofTypeEnv Γ) = satAssertsOpt? cpss asserts
+:= by
+  intro hlen
+  simp [satAsserts?, satAssertsOpt?]
+  intro hnil hcpss hwpss
+  have hεnv : ∀ cps ∈ cpss, cps.εnv = SymEnv.ofTypeEnv Γ := by
+    intro cps hcps
+    replace ⟨ps, hps, hcpss⟩ := List.mapM_ok_implies_all_from_ok hcpss cps hcps
+    exact cps_compile_produces_the_right_env hcpss
+  revert hnil
+  cases cpss <;> simp
+  case cons cps cpss =>
+  cases pss <;> simp at *
+  case cons ps pss =>
+  simp [do_eq_ok] at hwpss hcpss
+  replace ⟨wps, hwps, hwpss⟩ := hwpss
+  simp [Functor.map, Except.map] at hwpss
+  split at hwpss <;> simp at hwpss
+  subst wpss ; rename_i wpss hwpss
+  replace ⟨cps', hcps', hcpss⟩ := hcpss
+  simp [Functor.map, Except.map] at hcpss
+  split at hcpss <;> simp at hcpss
+  replace ⟨hcpss, htemp⟩ := hcpss ; subst cps' htemp ; rename_i cpss hcpss ; have hcps := hcps' ; clear hcps'
+  rw [cps_compile_produces_the_right_env hcps]
+  congr
+  funext I
+  cases I <;> simp only
+  case some I =>
+  suffices SymEnv.extract? (List.map (List.map Policy.toExpr) (wps :: wpss)).flatten I (SymEnv.ofTypeEnv Γ) = CompiledPolicies.extractOpt? (cps :: cpss) I by rw [this] ; rfl
+  rw [cps_extractOpt?_eqv_extract? (εnv := cps.εnv) (by simp)]
+  · congr 1
+    · simp only [List.map_cons, List.flatten_cons, List.flatMap_cons, List.map_append]
+      congr 2
+      · simp [compiled_policies_eq_wtps hcps hwps]
+      · simp [List.flatMap]
+        congr 1
+        rw [← List.forall₂_iff_map_eq]
+        apply List.Forall₂.imp (R := λ a b => a = CompiledPolicies.policies b)
+        · intro a b h ; subst h ; simp
+        · rw [List.mapM_ok_iff_forall₂] at hcpss hwpss
+          apply List.forall₂_trans_ish hwpss hcpss
+          intro ps wps cps hwps hcps
+          exact (compiled_policies_eq_wtps hcps hwps).symm
+    · simp [cps_compile_produces_the_right_env hcps]
+  · intro cps' hcps'
+    cases hcps'
+    · rfl
+    · rename_i hcps'
+      replace ⟨hεnv, hεnv'⟩ := hεnv
+      simp [hεnv, hεnv' cps' hcps']
+  · intro cps' hcps'
+    cases hcps'
+    · exists ps, Γ
+    · rename_i hcps'
+      replace ⟨ps', hps', hcpss⟩ := List.mapM_ok_implies_all_from_ok hcpss cps' hcps'
+      exists ps', Γ
+
+/--
+This theorem covers the "happy path" -- showing that if optimized policy
 compilation succeeds, then `wellTypedPolicy` succeeds and `neverErrors?` and
 `neverErrorsOpt?` are equivalent.
 -/
@@ -174,11 +304,12 @@ theorem neverErrorsOpt?_eqv_neverErrors?_ok {p : Policy} {cp : CompiledPolicy} {
   exists wp ; apply And.intro h₁
   have ⟨asserts, h₂⟩ := verifyNeverErrors_is_ok hwf h₁
   simp [h₂]
-  simp [cp_compile_produces_the_right_env h₀]
-  simp [compiled_policy_eq_wtp h₀ h₁]
-  have := verifyNeverErrorsOpt_eqv_verifyNeverErrors_ok h₀ h₁
-  simp [h₂, ResultAssertsEquiv] at this
-  exact Asserts.Equiv.satAsserts? [wp] _ (Asserts.Equiv.symm this)
+  rw [← satAssertsOpt?'_eqv_satAsserts?_ok (ps := [p]) (cps := [cp]) (by simp) (by simp)]
+  · have := verifyNeverErrorsOpt_eqv_verifyNeverErrors_ok h₀ h₁
+    simp [h₂, ResultAssertsEquiv] at this
+    exact Asserts.Equiv.satAsserts? [wp] _ (Asserts.Equiv.symm this)
+  · simp [pure, Except.pure, h₀]
+  · simp [pure, Except.pure, h₁]
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
@@ -199,11 +330,12 @@ theorem alwaysMatchesOpt?_eqv_alwaysMatches?_ok {p : Policy} {cp : CompiledPolic
   exists wp ; apply And.intro h₁
   have ⟨asserts, h₂⟩ := verifyAlwaysMatches_is_ok hwf h₁
   simp [h₂]
-  simp [cp_compile_produces_the_right_env h₀]
-  simp [compiled_policy_eq_wtp h₀ h₁]
-  have := verifyAlwaysMatchesOpt_eqv_verifyAlwaysMatches_ok h₀ h₁
-  simp [h₂, ResultAssertsEquiv] at this
-  exact Asserts.Equiv.satAsserts? [wp] _ (Asserts.Equiv.symm this)
+  rw [← satAssertsOpt?'_eqv_satAsserts?_ok (ps := [p]) (cps := [cp]) (by simp) (by simp)]
+  · have := verifyAlwaysMatchesOpt_eqv_verifyAlwaysMatches_ok h₀ h₁
+    simp [h₂, ResultAssertsEquiv] at this
+    exact Asserts.Equiv.satAsserts? [wp] _ (Asserts.Equiv.symm this)
+  · simp [pure, Except.pure, h₀]
+  · simp [pure, Except.pure, h₁]
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
@@ -224,11 +356,12 @@ theorem neverMatchesOpt?_eqv_neverMatches?_ok {p : Policy} {cp : CompiledPolicy}
   exists wp ; apply And.intro h₁
   have ⟨asserts, h₂⟩ := verifyNeverMatches_is_ok hwf h₁
   simp [h₂]
-  simp [cp_compile_produces_the_right_env h₀]
-  simp [compiled_policy_eq_wtp h₀ h₁]
-  have := verifyNeverMatchesOpt_eqv_verifyNeverMatches_ok h₀ h₁
-  simp [h₂, ResultAssertsEquiv] at this
-  exact Asserts.Equiv.satAsserts? [wp] _ (Asserts.Equiv.symm this)
+  rw [← satAssertsOpt?'_eqv_satAsserts?_ok (ps := [p]) (cps := [cp]) (by simp) (by simp)]
+  · have := verifyNeverMatchesOpt_eqv_verifyNeverMatches_ok h₀ h₁
+    simp [h₂, ResultAssertsEquiv] at this
+    exact Asserts.Equiv.satAsserts? [wp] _ (Asserts.Equiv.symm this)
+  · simp [pure, Except.pure, h₀]
+  · simp [pure, Except.pure, h₁]
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
@@ -248,11 +381,12 @@ theorem matchesEquivalentOpt?_eqv_matchesEquivalent?_ok {p₁ p₂ wp₁ wp₂ :
   intro hwf h₀ h₁ h₂ h₃
   have ⟨asserts, h₄⟩ := verifyMatchesEquivalent_is_ok hwf h₂ h₃
   simp only [h₄]
-  simp only [cp_compile_produces_the_right_env h₀]
-  simp only [compiled_policy_eq_wtp h₀ h₂, compiled_policy_eq_wtp h₁ h₃]
-  have := verifyMatchesEquivalentOpt_eqv_verifyMatchesEquivalent_ok h₀ h₁ h₂ h₃
-  simp only [h₄, ResultAssertsEquiv] at this
-  exact Asserts.Equiv.satAsserts? [wp₁, wp₂] _ (Asserts.Equiv.symm this)
+  rw [← satAssertsOpt?'_eqv_satAsserts?_ok (ps := [p₁, p₂]) (cps := [cp₁, cp₂]) (by simp) (by simp)]
+  · have := verifyMatchesEquivalentOpt_eqv_verifyMatchesEquivalent_ok h₀ h₁ h₂ h₃
+    simp [h₄, ResultAssertsEquiv] at this
+    exact Asserts.Equiv.satAsserts? [wp₁, wp₂] _ (Asserts.Equiv.symm this)
+  · simp [pure, Except.pure, h₀, h₁]
+  · simp [pure, Except.pure, h₂, h₃]
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
@@ -272,11 +406,12 @@ theorem matchesImpliesOpt?_eqv_matchesImplies?_ok {p₁ p₂ wp₁ wp₂ : Polic
   intro hwf h₀ h₁ h₂ h₃
   have ⟨asserts, h₄⟩ := verifyMatchesImplies_is_ok hwf h₂ h₃
   simp only [h₄]
-  simp only [cp_compile_produces_the_right_env h₀]
-  simp only [compiled_policy_eq_wtp h₀ h₂, compiled_policy_eq_wtp h₁ h₃]
-  have := verifyMatchesImpliesOpt_eqv_verifyMatchesImplies_ok h₀ h₁ h₂ h₃
-  simp only [h₄, ResultAssertsEquiv] at this
-  exact Asserts.Equiv.satAsserts? [wp₁, wp₂] _ (Asserts.Equiv.symm this)
+  rw [← satAssertsOpt?'_eqv_satAsserts?_ok (ps := [p₁, p₂]) (cps := [cp₁, cp₂]) (by simp) (by simp)]
+  · have := verifyMatchesImpliesOpt_eqv_verifyMatchesImplies_ok h₀ h₁ h₂ h₃
+    simp [h₄, ResultAssertsEquiv] at this
+    exact Asserts.Equiv.satAsserts? [wp₁, wp₂] _ (Asserts.Equiv.symm this)
+  · simp [pure, Except.pure, h₀, h₁]
+  · simp [pure, Except.pure, h₂, h₃]
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
@@ -296,11 +431,12 @@ theorem matchesDisjointOpt?_eqv_matchesDisjoint?_ok {p₁ p₂ wp₁ wp₂ : Pol
   intro hwf h₀ h₁ h₂ h₃
   have ⟨asserts, h₄⟩ := verifyMatchesDisjoint_is_ok hwf h₂ h₃
   simp only [h₄]
-  simp only [cp_compile_produces_the_right_env h₀]
-  simp only [compiled_policy_eq_wtp h₀ h₂, compiled_policy_eq_wtp h₁ h₃]
-  have := verifyMatchesDisjointOpt_eqv_verifyMatchesDisjoint_ok h₀ h₁ h₂ h₃
-  simp only [h₄, ResultAssertsEquiv] at this
-  exact Asserts.Equiv.satAsserts? [wp₁, wp₂] _ (Asserts.Equiv.symm this)
+  rw [← satAssertsOpt?'_eqv_satAsserts?_ok (ps := [p₁, p₂]) (cps := [cp₁, cp₂]) (by simp) (by simp)]
+  · have := verifyMatchesDisjointOpt_eqv_verifyMatchesDisjoint_ok h₀ h₁ h₂ h₃
+    simp [h₄, ResultAssertsEquiv] at this
+    exact Asserts.Equiv.satAsserts? [wp₁, wp₂] _ (Asserts.Equiv.symm this)
+  · simp [pure, Except.pure, h₀, h₁]
+  · simp [pure, Except.pure, h₂, h₃]
 
 /--
 Full equivalence for `neverErrors?` and `neverErrorsOpt?`, including both the
@@ -526,11 +662,13 @@ theorem impliesOpt?_eqv_implies?_ok {ps₁ ps₂ : Policies} {cps₁ cps₂ : Co
   exists wps₂ ; apply And.intro hwps₂
   have ⟨asserts, h₁⟩ := verifyImplies_is_ok hwf hwps₁ hwps₂
   simp [h₁]
-  simp [cps_compile_produces_the_right_env hcps₁]
-  simp [compiled_policies_eq_wtps hcps₁ hwps₁, compiled_policies_eq_wtps hcps₂ hwps₂]
-  have := verifyImpliesOpt_eqv_verifyImplies_ok hcps₁ hcps₂ hwps₁ hwps₂
-  simp [h₁, ResultAssertsEquiv] at this
-  exact Asserts.Equiv.satAsserts? _ _ (Asserts.Equiv.symm this)
+  rw [← satAssertsOpt?_eqv_satAsserts?_ok (pss := [ps₁, ps₂]) (wpss := [wps₁, wps₂]) (cpss := [cps₁, cps₂]) (by simp) (by simp)]
+  · have := verifyImpliesOpt_eqv_verifyImplies_ok hcps₁ hcps₂ hwps₁ hwps₂
+    simp [h₁, ResultAssertsEquiv] at this
+    simp only [List.flatten, List.append_eq, List.append_nil]
+    exact Asserts.Equiv.satAsserts? (wps₁ ++ wps₂) _ (Asserts.Equiv.symm this)
+  · simp [pure, Except.pure, hcps₁, hcps₂]
+  · simp [pure, Except.pure, hwps₁, hwps₂]
 
 /--
 Full equivalence for `implies?` and `impliesOpt?`, including both the
@@ -588,11 +726,13 @@ theorem alwaysAllowsOpt?_eqv_alwaysAllows?_ok {ps : Policies} {cps : CompiledPol
   exists wps ; apply And.intro hwps
   have ⟨asserts, h₁⟩ := verifyAlwaysAllows_is_ok hwf hwps
   simp [h₁]
-  simp [cps_compile_produces_the_right_env hcps]
-  simp [compiled_policies_eq_wtps hcps hwps]
-  have := verifyAlwaysAllowsOpt_eqv_verifyAlwaysAllows_ok hcps hwps
-  simp [h₁, ResultAssertsEquiv] at this
-  exact Asserts.Equiv.satAsserts? _ _ (Asserts.Equiv.symm this)
+  rw [← satAssertsOpt?_eqv_satAsserts?_ok (pss := [ps]) (wpss := [wps]) (cpss := [cps]) (Γ := Γ) (by simp) (by simp)]
+  · have := verifyAlwaysAllowsOpt_eqv_verifyAlwaysAllows_ok hcps hwps
+    simp [h₁, ResultAssertsEquiv] at this
+    simp only [List.flatten, List.append_eq, List.append_nil]
+    exact Asserts.Equiv.satAsserts? wps _ (Asserts.Equiv.symm this)
+  · simp [pure, Except.pure, hcps]
+  · simp [pure, Except.pure, hwps]
 
 /--
 Full equivalence for `alwaysAllows?` and `alwaysAllowsOpt?`, including both the
@@ -642,11 +782,13 @@ theorem alwaysDeniesOpt?_eqv_alwaysDenies?_ok {ps : Policies} {cps : CompiledPol
   exists wps ; apply And.intro hwps
   have ⟨asserts, h₁⟩ := verifyAlwaysDenies_is_ok hwf hwps
   simp [h₁]
-  simp [cps_compile_produces_the_right_env hcps]
-  simp [compiled_policies_eq_wtps hcps hwps]
-  have := verifyAlwaysDeniesOpt_eqv_verifyAlwaysDenies_ok hcps hwps
-  simp [h₁, ResultAssertsEquiv] at this
-  exact Asserts.Equiv.satAsserts? _ _ (Asserts.Equiv.symm this)
+  rw [← satAssertsOpt?_eqv_satAsserts?_ok (pss := [ps]) (wpss := [wps]) (cpss := [cps]) (Γ := Γ) (by simp) (by simp)]
+  · have := verifyAlwaysDeniesOpt_eqv_verifyAlwaysDenies_ok hcps hwps
+    simp [h₁, ResultAssertsEquiv] at this
+    simp only [List.flatten, List.append_eq, List.append_nil]
+    exact Asserts.Equiv.satAsserts? wps _ (Asserts.Equiv.symm this)
+  · simp [pure, Except.pure, hcps]
+  · simp [pure, Except.pure, hwps]
 
 /--
 Full equivalence for `alwaysDenies?` and `alwaysDeniesOpt?`, including both the
@@ -700,11 +842,13 @@ theorem equivalentOpt?_eqv_equivalent?_ok {ps₁ ps₂ : Policies} {cps₁ cps�
   exists wps₂ ; apply And.intro hwps₂
   have ⟨asserts, h₁⟩ := verifyEquivalent_is_ok hwf hwps₁ hwps₂
   simp [h₁]
-  simp [cps_compile_produces_the_right_env hcps₁]
-  simp [compiled_policies_eq_wtps hcps₁ hwps₁, compiled_policies_eq_wtps hcps₂ hwps₂]
-  have := verifyEquivalentOpt_eqv_verifyEquivalent_ok hcps₁ hcps₂ hwps₁ hwps₂
-  simp [h₁, ResultAssertsEquiv] at this
-  exact Asserts.Equiv.satAsserts? _ _ (Asserts.Equiv.symm this)
+  rw [← satAssertsOpt?_eqv_satAsserts?_ok (pss := [ps₁, ps₂]) (wpss := [wps₁, wps₂]) (cpss := [cps₁, cps₂]) (by simp) (by simp)]
+  · have := verifyEquivalentOpt_eqv_verifyEquivalent_ok hcps₁ hcps₂ hwps₁ hwps₂
+    simp [h₁, ResultAssertsEquiv] at this
+    simp only [List.flatten, List.append_eq, List.append_nil]
+    exact Asserts.Equiv.satAsserts? (wps₁ ++ wps₂) _ (Asserts.Equiv.symm this)
+  · simp [pure, Except.pure, hcps₁, hcps₂]
+  · simp [pure, Except.pure, hwps₁, hwps₂]
 
 /--
 Full equivalence for `equivalent?` and `equivalentOpt?`, including both the
@@ -766,11 +910,13 @@ theorem disjointOpt?_eqv_disjoint?_ok {ps₁ ps₂ : Policies} {cps₁ cps₂ : 
   exists wps₂ ; apply And.intro hwps₂
   have ⟨asserts, h₁⟩ := verifyDisjoint_is_ok hwf hwps₁ hwps₂
   simp [h₁]
-  simp [cps_compile_produces_the_right_env hcps₁]
-  simp [compiled_policies_eq_wtps hcps₁ hwps₁, compiled_policies_eq_wtps hcps₂ hwps₂]
-  have := verifyDisjointOpt_eqv_verifyDisjoint_ok hcps₁ hcps₂ hwps₁ hwps₂
-  simp [h₁, ResultAssertsEquiv] at this
-  exact Asserts.Equiv.satAsserts? _ _ (Asserts.Equiv.symm this)
+  rw [← satAssertsOpt?_eqv_satAsserts?_ok (pss := [ps₁, ps₂]) (wpss := [wps₁, wps₂]) (cpss := [cps₁, cps₂]) (by simp) (by simp)]
+  · have := verifyDisjointOpt_eqv_verifyDisjoint_ok hcps₁ hcps₂ hwps₁ hwps₂
+    simp [h₁, ResultAssertsEquiv] at this
+    simp only [List.flatten, List.append_eq, List.append_nil]
+    exact Asserts.Equiv.satAsserts? (wps₁ ++ wps₂) _ (Asserts.Equiv.symm this)
+  · simp [pure, Except.pure, hcps₁, hcps₂]
+  · simp [pure, Except.pure, hwps₁, hwps₂]
 
 /--
 Full equivalence for `disjoint?` and `disjointOpt?`, including both the
