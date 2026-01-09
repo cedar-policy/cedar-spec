@@ -1,5 +1,5 @@
-import Cedar.Thm.Validation.WellTyped.Definition
-import Cedar.Thm.Validation.WellTyped.ResidualDefinition
+import Cedar.Thm.WellTyped.Expr.Definition
+import Cedar.Thm.WellTyped.Residual.Definition
 import Cedar.Thm.SymCC.Compiler.WF
 import Cedar.Thm.SymCC.Env.ofEnv
 import Cedar.Thm.SymCC.Env.WF

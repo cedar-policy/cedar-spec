@@ -22,7 +22,7 @@ import SymTest.Util
 This file contains unit tests that show the symbolic compiler (`compile`) does
 not error on policies that are well-typed according to the `WellTyped`
 constraints established by Cedar's typechecker; see
-`Cedar.Thm.Validation.WellTyped.Definition` and `Cedar.Thm.WellTyped` for
+`Cedar.Thm.WellTyped.Expr.Definition` and `Cedar.Thm.WellTyped` for
 details.  We also include tests that show that the symbolic compiler can error
 on policies that do not satisfy `WellTyped` constraints .
 

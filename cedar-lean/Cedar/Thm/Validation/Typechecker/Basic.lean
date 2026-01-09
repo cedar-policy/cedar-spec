@@ -18,7 +18,7 @@ import Cedar.Spec
 import Cedar.Validation
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Validation.Typechecker.Types
-import Cedar.Thm.Validation.WellTyped.WF
+import Cedar.Thm.WellTyped.Expr.WF
 
 /-!
 This file contains useful definitions and lemmas about the `Typechecker` functions.

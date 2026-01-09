@@ -14,9 +14,9 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.Validation.WellTyped.ResidualDefinition
+import Cedar.Thm.WellTyped.Residual.Definition
 import Cedar.TPE.Residual
-import Cedar.Thm.Validation.WellTyped.Typechecking
+import Cedar.Thm.WellTyped.Expr.Typechecking
 import Cedar.Data.Map
 import Cedar.Thm.Validation.Typechecker.Record
 import Cedar.Thm.Data.List.Lemmas

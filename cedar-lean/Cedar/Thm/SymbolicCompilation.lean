@@ -19,7 +19,7 @@ import Cedar.Thm.SymCC.Authorizer
 import Cedar.Thm.SymCC.Concretizer
 import Cedar.Thm.SymCC.Compiler
 import Cedar.Thm.SymCC.Compiler.WellTyped
-import Cedar.Thm.Validation.WellTyped.Definition
+import Cedar.Thm.WellTyped.Expr.Definition
 import Cedar.Thm.Validation.Typechecker.WF
 
 /-!
