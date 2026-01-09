@@ -96,6 +96,17 @@ theorem error_free_spec (r : Residual) : r.errorFree = true ↔ r.ErrorFree := b
       rename_i h₁ h₂
       exact .intro h₁ h₂
 
+-- FIXME: This theorem isn't quite correct. There's a bit of a hang up with
+-- optional attributes and tags. The `WellTyped` property of a residual doesn't
+-- have enough information to conclude that these expression never error (it
+-- doesn't say anything about the capabilities tracked during typechecking).
+--
+-- We probably could bake capabilities into the residual but TBH that doesn't
+-- sound fun. Instead I'm hoping we can ignore this case because `getTag` and
+-- `.` are both possibly erroring operations regardless of capabilities due to
+-- the possibility of a missing entity. I'm not sure how `hasTag` and `has` fit
+-- into this. They never error under any circumstance, so I can probably ignore
+-- them entirely.
 theorem well_typed_residual_eval {r : Residual} :
   InstanceOfWellFormedEnvironment req es env →
   Residual.WellTyped env r →
