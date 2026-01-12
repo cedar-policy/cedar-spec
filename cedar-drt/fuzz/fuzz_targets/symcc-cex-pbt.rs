@@ -139,10 +139,11 @@ fn get_cex(
         .await;
 
         let always_allow_result = match always_allow_result {
-            // Propagate any error errors because we shouldn't continue running
+            // Propagate any solver errors because we shouldn't continue running
             // the solver if it errors
             Ok(Err(cedar_policy_symcc::err::Error::SolverError(err))) => Err(CexError::Solver(err)),
-            // Encoding errors are benign
+            // Encoding errors are benign -- SMTLIB doesn't support full unicode
+            // but our generators generate full unicode
             Ok(Err(cedar_policy_symcc::err::Error::EncodeError(
                 cedar_policy_symcc::err::EncodeError::EncodeStringFailed(_),
             )))
@@ -182,14 +183,10 @@ fn get_cex(
     })
 }
 
-fn reproduce(env: &Env, policies: &PolicySet) -> bool {
-    let authorizer = Authorizer::new();
-    matches!(
-        authorizer
-            .is_authorized(&env.request, policies, &env.entities)
-            .decision(),
-        Decision::Allow
-    )
+fn reproduce(env: &Env, policies: &PolicySet) -> Decision {
+    Authorizer::new()
+        .is_authorized(&env.request, policies, &env.entities)
+        .decision()
 }
 
 // Fuzzing target checking that counterexamples generated are true counterexamples
@@ -223,22 +220,14 @@ fuzz_target!(|input: FuzzTargetInput| {
                 ) {
                     match get_cex(&always_allows_asserts, &always_denies_asserts) {
                         Ok((Some(env_deny), Some(env_allow))) => {
-                            if reproduce(&env_deny, &policyset) {
-                                panic!("Rust SymCC a wrong counterexample: authorization should deny but allow");
-                            }
-                            if !reproduce(&env_allow, &policyset) {
-                                panic!("Rust SymCC a wrong counterexample: authorization should allow but deny");
-                            }
+                            assert_eq!(reproduce(&env_deny, &policyset), Decision::Deny, "Rust SymCC returned a wrong counterexample");
+                            assert_eq!(reproduce(&env_allow, &policyset), Decision::Allow, "Rust SymCC returned a wrong counterexample");
                         }
                         Ok((Some(env_deny), None)) => {
-                            if reproduce(&env_deny, &policyset) {
-                                panic!("Rust SymCC a wrong counterexample: authorization should deny but allow");
-                            }
+                            assert_eq!(reproduce(&env_deny, &policyset), Decision::Deny, "Rust SymCC returned a wrong counterexample")
                         }
                         Ok((None, Some(env_allow))) => {
-                            if !reproduce(&env_allow, &policyset) {
-                                panic!("Rust SymCC a wrong counterexample: authorization should allow but deny");
-                            }
+                            assert_eq!(reproduce(&env_allow, &policyset), Decision::Allow, "Rust SymCC returned a wrong counterexample");
                         }
                         Ok((None, None)) => {}
                         Err(CexError::Solver(err)) => {
@@ -247,7 +236,7 @@ fuzz_target!(|input: FuzzTargetInput| {
                         Err(CexError::Timeout(err)) => {
                             panic!("Solver timed out: {err}");
                         }
-                        Err(CexError::Other(err)) => panic!("failing to run checksat: {err}"),
+                        Err(CexError::Other(err)) => panic!("failed to run checksat: {err}"),
                     }
                 }
             }
