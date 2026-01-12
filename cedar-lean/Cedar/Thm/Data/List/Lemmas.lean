@@ -412,6 +412,26 @@ theorem forall₂_eq_implies_filterMap
     have := hp hd₁ hd₂ hhd
     simp only [this, ih]
 
+/-- kind of a transitivity property, if you squint -/
+theorem forall₂_trans_ish {xs : List α} {ys : List β} {zs : List γ} {Q : α → β → Prop} {R : α → γ → Prop} {S : β → γ → Prop}
+  (h₁ : List.Forall₂ Q xs ys)
+  (h₂ : List.Forall₂ R xs zs) :
+  (∀ {a b c}, Q a b → R a c → S b c) →
+  List.Forall₂ S ys zs
+:= by
+  intro h
+  induction h₁ generalizing zs with
+  | nil => simp [forall₂_nil_left_iff] at h₂ ; simp [h₂]
+  | cons hhd₁ htl₁ ih =>
+    rename_i xhd yhd xtl ytl
+    cases h₂ with
+    | cons hhd₂ htl₂ =>
+      rename_i zhd ztl
+      specialize @ih ztl
+      apply Forall₂.cons
+      · exact h hhd₁ hhd₂
+      · exact ih htl₂
+
 /-! ### mapM, mapM', mapM₁, and mapM₂ -/
 
 theorem mapM_some {xs : List α} :
@@ -481,6 +501,34 @@ theorem mapM_head_tail {α β γ} {f : α → Except β γ} {x : α} {xs : List 
   simp only [Except.bind_ok, Except.bind_err, false_implies, reduceCtorEq]
   cases _ : mapM' f xs <;>
   simp [pure, Except.pure]
+
+theorem mapM'_preserves_length :
+  List.mapM' f xs = Except.ok ys →
+  xs.length = ys.length
+:= by
+  cases xs
+  case nil =>
+    simp only [mapM'_nil, pure, Except.pure, Except.ok.injEq, nil_eq, length_nil]
+    intro h ; subst h ; simp
+  case cons xhd xtl =>
+    simp only [mapM'_cons, bind_pure_comp, length_cons]
+    cases f xhd
+    case error => simp
+    case ok yhd =>
+      simp only [Functor.map, Except.map, Except.bind_ok]
+      cases ih : mapM' f xtl
+      case error => simp
+      case ok ytl =>
+        simp only [Except.ok.injEq]
+        intro h ; subst ys
+        simp [mapM'_preserves_length ih]
+
+theorem mapM_preserves_length :
+  List.mapM f xs = Except.ok ys →
+  xs.length = ys.length
+:= by
+  rw [← mapM'_eq_mapM]
+  exact mapM'_preserves_length
 
 theorem not_mem_implies_not_mem_mapM_key_id {α β : Type} {ks : List α} {kvs : List (α × β)} {fn : α → Option β} {k: α}
   (hm : ks.mapM (λ k => do (k, ←fn k)) = some kvs)
