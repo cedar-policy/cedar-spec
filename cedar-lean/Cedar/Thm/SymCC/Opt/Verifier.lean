@@ -239,7 +239,7 @@ theorem verifyAlwaysAllowsOpt_eqv_verifyAlwaysAllows_ok {ps wps : Policies} {cps
   apply verifyImpliesOpt_eqv_verifyImplies_ok _ hcps (wellTypedPolicies_allowAll Γ) hwps
   simp [CompiledPolicies.compile, Except.mapError, do_eq_ok, wellTypedPolicies_allowAll]
   rw [Opt.isAuthorized.correctness]
-  simp [isAuthorized_allowAll, CompiledPolicies.allowAll, cps_compile_produces_the_right_env hcps, footprints_singleton]
+  simp [isAuthorized_allowAll, footprint_allowAll, CompiledPolicies.allowAll, cps_compile_produces_the_right_env hcps, footprints_singleton, Data.Set.map_empty]
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
