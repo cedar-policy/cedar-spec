@@ -14,9 +14,20 @@
  limitations under the License.
 -/
 
-import Cedar.Data
-import Cedar.Spec
-import Cedar.Thm
-import Cedar.Validation
-import Cedar.TPE
-import Cedar.PQ
+import Cedar.Spec.Request
+import Cedar.Spec.Entities
+import Cedar.Spec.Policy
+
+namespace Cedar.PQ
+
+open Cedar.Data
+open Cedar.Spec
+
+structure ResourcesForPrincipalRequest where
+  principal : EntityUID
+  action : EntityUID
+  resourceType : EntityType
+  context : Map Attr Value
+
+def ResourcesForPrincipalRequest.req (pq : ResourcesForPrincipalRequest) (resource : EntityUID) : Request :=
+  Request.mk pq.principal pq.action resource pq.context

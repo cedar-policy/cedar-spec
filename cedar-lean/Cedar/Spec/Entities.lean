@@ -43,6 +43,10 @@ public def Entities.ancestors (es : Entities) (uid : EntityUID) : Result (Set En
   .ok d.ancestors
 
 @[expose]
+public def Entities.descendantsOrEmpty (es : Entities) (uid : EntityUID) : Set EntityUID :=
+  Set.mk $ es.toList.filter (·.snd.ancestors.contains uid) |> .map (·.fst)
+
+@[expose]
 public def Entities.ancestorsOrEmpty (es : Entities) (uid : EntityUID) : Set EntityUID :=
   match es.find? uid with
   | some d => d.ancestors
