@@ -19,7 +19,7 @@ use cedar_drt::logger::initialize_log;
 
 use cedar_drt_inner::{
     fuzz_target,
-    symcc::{total_action_request_env_limit, PolicySetPairTask, ValidationTask},
+    symcc::{total_action_request_env_limit, PolicySetPair, PolicySetPairTask, ValidationTask},
 };
 
 use cedar_policy::{PolicySet, Schema};
@@ -84,14 +84,16 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 
 fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
-    let mut policy_set1 = PolicySet::new();
-    policy_set1.add(input.policy1.into()).unwrap();
-    let mut policy_set2 = PolicySet::new();
-    policy_set2.add(input.policy2.into()).unwrap();
+    let mut pset1 = PolicySet::new();
+    pset1.add(input.policy1.into()).unwrap();
+    let mut pset2 = PolicySet::new();
+    pset2.add(input.policy2.into()).unwrap();
     // Attempt to convert the generator schema to an actual schema.
     if let Ok(schema) = Schema::try_from(input.schema) {
         RUNTIME
-            .block_on(PolicySetPairTask::CheckImplies.check_ok(schema, (policy_set1, policy_set2)))
+            .block_on(
+                PolicySetPairTask::CheckImplies.check_ok(schema, PolicySetPair { pset1, pset2 }),
+            )
             .unwrap();
     }
 });
