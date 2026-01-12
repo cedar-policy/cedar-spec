@@ -220,14 +220,30 @@ fuzz_target!(|input: FuzzTargetInput| {
                 ) {
                     match get_cex(&always_allows_asserts, &always_denies_asserts) {
                         Ok((Some(env_deny), Some(env_allow))) => {
-                            assert_eq!(reproduce(&env_deny, &policyset), Decision::Deny, "Rust SymCC returned a wrong counterexample");
-                            assert_eq!(reproduce(&env_allow, &policyset), Decision::Allow, "Rust SymCC returned a wrong counterexample");
+                            assert_eq!(
+                                reproduce(&env_deny, &policyset),
+                                Decision::Deny,
+                                "Rust SymCC returned a wrong counterexample"
+                            );
+                            assert_eq!(
+                                reproduce(&env_allow, &policyset),
+                                Decision::Allow,
+                                "Rust SymCC returned a wrong counterexample"
+                            );
                         }
                         Ok((Some(env_deny), None)) => {
-                            assert_eq!(reproduce(&env_deny, &policyset), Decision::Deny, "Rust SymCC returned a wrong counterexample")
+                            assert_eq!(
+                                reproduce(&env_deny, &policyset),
+                                Decision::Deny,
+                                "Rust SymCC returned a wrong counterexample"
+                            )
                         }
                         Ok((None, Some(env_allow))) => {
-                            assert_eq!(reproduce(&env_allow, &policyset), Decision::Allow, "Rust SymCC returned a wrong counterexample");
+                            assert_eq!(
+                                reproduce(&env_allow, &policyset),
+                                Decision::Allow,
+                                "Rust SymCC returned a wrong counterexample"
+                            );
                         }
                         Ok((None, None)) => {}
                         Err(CexError::Solver(err)) => {

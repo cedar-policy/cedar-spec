@@ -16,7 +16,10 @@
 
 use cedar_policy::{Policy, PolicySet, RequestEnv, Schema};
 use cedar_policy_symcc::{
-    Asserts, CedarSymCompiler, CompiledPolicies, CompiledPolicy, SymEnv, WellFormedAsserts, WellTypedPolicies, err::{EncodeError, Error}, solver::LocalSolver
+    err::{EncodeError, Error},
+    solver::LocalSolver,
+    Asserts, CedarSymCompiler, CompiledPolicies, CompiledPolicy, SymEnv, WellFormedAsserts,
+    WellTypedPolicies,
 };
 use log::warn;
 use std::fmt::Display;
@@ -239,7 +242,12 @@ pub struct PolicySetPair {
 
 impl Display for PolicySetPair {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "pset1:\n{pset1}\n\npset2:\n{pset2}\n", pset1 = self.pset1, pset2 = self.pset2)
+        writeln!(
+            f,
+            "pset1:\n{pset1}\n\npset2:\n{pset2}\n",
+            pset1 = self.pset1,
+            pset2 = self.pset2
+        )
     }
 }
 
@@ -254,8 +262,8 @@ impl ValidationTask for PolicySetPairTask {
         raw_input: &Self::RawInput,
     ) -> Result<Self::CompiledInput, Box<cedar_policy_symcc::err::Error>> {
         Ok((
-          CompiledPolicies::compile(&raw_input.pset1, env, schema)?,
-          CompiledPolicies::compile(&raw_input.pset2, env, schema)?,
+            CompiledPolicies::compile(&raw_input.pset1, env, schema)?,
+            CompiledPolicies::compile(&raw_input.pset2, env, schema)?,
         ))
     }
 
@@ -266,9 +274,7 @@ impl ValidationTask for PolicySetPairTask {
     ) -> Result<bool, cedar_policy_symcc::err::Error> {
         match self {
             PolicySetPairTask::CheckImplies => compiler.check_implies_opt(pset1, pset2).await,
-            PolicySetPairTask::CheckEquivalent => {
-                compiler.check_equivalent_opt(pset1, pset2).await
-            }
+            PolicySetPairTask::CheckEquivalent => compiler.check_equivalent_opt(pset1, pset2).await,
             PolicySetPairTask::CheckDisjoint => compiler.check_disjoint_opt(pset1, pset2).await,
         }
     }
