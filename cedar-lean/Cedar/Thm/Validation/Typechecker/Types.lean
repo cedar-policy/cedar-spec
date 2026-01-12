@@ -275,7 +275,7 @@ theorem instance_of_duration_type_is_duration {env : TypeEnv} {v₁ : Value} :
 
 theorem instance_of_set_type_is_set {env : TypeEnv} {v : Value} {ty : CedarType} :
   InstanceOfType env v (.set ty) →
-  ∃ s, v = .set s
+  ∃ s, v = .set s ∧ (∀ ev ∈ s, InstanceOfType env ev ty)
 := by
   intro h₁
   cases h₁

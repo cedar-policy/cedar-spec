@@ -468,9 +468,8 @@ theorem type_of_mem_is_soundₛ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilit
   replace ⟨euid, hty₁, hty₁'⟩ := instance_of_entity_type_is_entity hty₁
   subst hty₁ hty₁'
   rw [hl₄] at hty₂
-  have ⟨vs, hset⟩ := instance_of_set_type_is_set hty₂
+  have ⟨vs, hset, _⟩ := instance_of_set_type_is_set hty₂
   subst hset
-  cases vs ; rename_i vs
   simp only [apply₂, inₛ]
   simp only [Set.mapOrErr, Set.elts]
   have ⟨euids, h₇, hty₇⟩ := entity_set_type_implies_set_of_entities hty₂

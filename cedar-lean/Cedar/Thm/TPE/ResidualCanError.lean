@@ -27,6 +27,7 @@ inductive Residual.ErrorFree : Residual → Prop where
   | eq :  Residual.ErrorFree x₁ → Residual.ErrorFree x₂ → Residual.ErrorFree (.binaryApp .eq x₁ x₂ ty)
   | is : Residual.ErrorFree x₁ → Residual.ErrorFree (.unaryApp (.is _) x₁ ty)
   | and : Residual.ErrorFree x₁ → Residual.ErrorFree x₂ → Residual.ErrorFree (.and x₁ x₂ ty)
+  | set : (∀ r ∈ rs, Residual.ErrorFree r) → Residual.ErrorFree (.set rs ty)
   -- TODO: Can extend to accept everything that doesn't do arithmetic,
   -- attribute/tag/hierarchy access, or an extension call.
 
@@ -95,8 +96,11 @@ theorem error_free_spec (r : Residual) : r.errorFree = true ↔ r.ErrorFree := b
       cases h
       rename_i h₁ h₂
       exact .intro h₁ h₂
+  case set rs _ =>
+    simp [Residual.errorFree]
+    sorry
 
--- I don't need this theorem ATM. Leaving not in case I think I need it again
+-- I don't need this theorem atm. Leaving not in case I think I need it again
 -- later.
 --
 -- NOTE: This theorem isn't quite correct. There's a bit of a hang up with
@@ -110,14 +114,14 @@ theorem error_free_spec (r : Residual) : r.errorFree = true ↔ r.ErrorFree := b
 -- the possibility of a missing entity. I'm not sure how `hasTag` and `has` fit
 -- into this. They never error under any circumstance, so I can probably ignore
 -- them entirely.
-theorem well_typed_residual_eval {r : Residual} :
-  InstanceOfWellFormedEnvironment req es env →
-  Residual.WellTyped env r →
-  (r.evaluate req es) = .error .entityDoesNotExist ∨
-  (r.evaluate req es) = .error .extensionError ∨
-  (r.evaluate req es) = .error .arithBoundsError ∨
-  ∃ v, (r.evaluate req es) = .ok v
-:= by sorry -- by typechecker soundness
+-- theorem well_typed_residual_eval {r : Residual} :
+--   InstanceOfWellFormedEnvironment req es env →
+--   Residual.WellTyped env r →
+--   (r.evaluate req es) = .error .entityDoesNotExist ∨
+--   (r.evaluate req es) = .error .extensionError ∨
+--   (r.evaluate req es) = .error .arithBoundsError ∨
+--   ∃ v, (r.evaluate req es) = .ok v
+-- := by sorry -- by typechecker soundness
 
 theorem error_free_evaluate_ok {r : Residual} :
   InstanceOfWellFormedEnvironment req es env →
@@ -155,8 +159,66 @@ theorem error_free_evaluate_ok {r : Residual} :
       contradiction
     any_goals
       rfl
-    · sorry
-    · sorry
+    · simp [inₛ] at heval'
+      rename_i vs _
+      cases h_euids : Data.Set.mapOrErr Value.asEntityUID vs Error.typeError <;> simp [h_euids] at heval'
+      subst heval'
+      unfold Data.Set.mapOrErr at h_euids
+      split at h_euids <;> try contradiction
+      simp at h_euids
+      subst h_euids
+      rename_i h_err
+      replace ⟨x, h_err⟩ := List.mapM_error_implies_exists_error h_err
+      have hty₁ := residual_well_typed_is_sound hwf hwt₁ ih₁
+      have hty₂ := residual_well_typed_is_sound hwf hwt₂ ih₂
+      cases hwt
+      · rename_i _ hety₂
+        rw [hety₂] at hty₂
+        replace ⟨_, hty₂⟩ := instance_of_entity_type_is_entity hty₂
+        simp at hty₂
+      · rename_i hety₁ hety₂
+        rw [hety₁] at hty₁
+        replace ⟨_, hty₁⟩ := instance_of_entity_type_is_entity hty₁
+        rw [hety₂] at hty₂
+        replace ⟨_, hty₂, _⟩ := instance_of_set_type_is_set hty₂
+        simp at hty₂
+        subst hty₂
+        simp at hty₁
+        replace ⟨hty₁, hty₁'⟩ := hty₁
+        subst hty₁ hty₁'
+        simp [*] at *
+        have h_elem_euid : ∀ v ∈ vs, v.asEntityUID.isOk := by
+          intro v hv
+          have hty₂ := residual_well_typed_is_sound hwf hwt₂ ih₂
+          rw [hety₂] at hty₂
+          replace ⟨_, hty₂, h_ety⟩ := instance_of_set_type_is_set hty₂
+          simp at hty₂
+          subst hty₂
+          specialize h_ety v hv
+          replace ⟨_, h_ety⟩ := instance_of_entity_type_is_entity h_ety
+          simp [*] at *
+          simp [Except.isOk, Except.toBool, Value.asEntityUID]
+        specialize h_elem_euid x h_err.left
+        rw [h_err.right] at h_elem_euid
+        simp [Except.isOk, Except.toBool] at h_elem_euid
+    · simp [*] at *
+      subst heval'
+      rename_i h_not_entity h_not_set _ _
+      have hty₁ := residual_well_typed_is_sound hwf hwt₁ ih₁
+      have hty₂ := residual_well_typed_is_sound hwf hwt₂ ih₂
+      cases hwt
+      · rename_i hety₁ hety₂
+        rw [hety₁] at hty₁
+        replace ⟨_, hty₁⟩ := instance_of_entity_type_is_entity hty₁
+        rw [hety₂] at hty₂
+        replace ⟨_, hty₂⟩ := instance_of_entity_type_is_entity hty₂
+        simp [hty₂, hty₁] at h_not_entity
+      · rename_i hety₁ hety₂
+        rw [hety₁] at hty₁
+        replace ⟨_, hty₁⟩ := instance_of_entity_type_is_entity hty₁
+        rw [hety₂] at hty₂
+        replace ⟨_, hty₂, _⟩ := instance_of_set_type_is_set hty₂
+        simp [hty₁, hty₂] at h_not_set
   · simp [Residual.evaluate, Except.isOk, Except.toBool, apply₂]
     rename_i x₁ x₂ _ he₁ he₂
     cases hwt
@@ -220,5 +282,29 @@ theorem error_free_evaluate_ok {r : Residual} :
         subst hb
         rename_i h_not_bool
         simp at h_not_bool
+  · rename_i rs ty hrs₁
+    cases hwt
+    rename_i ty hwt _ _
+    simp [Residual.evaluate, Except.isOk, Except.toBool]
+    split <;> try rfl
+    rename_i herr
+    cases hrs₂ : rs.mapM₁ fun x => x.val.evaluate req es  <;> simp [hrs₂] at herr
+    subst herr
+    replace ⟨_, ⟨_, hrs₂⟩⟩ := List.mapM_error_implies_exists_error hrs₂
+    rename_i r _
+    specialize hrs₁ r.val r.property
+    specialize hwt r.val r.property
+    have : sizeOf r.val  < sizeOf (Residual.set rs ty) :=  by
+      have := List.sizeOf_lt_of_mem r.property
+      simp only [Residual.set.sizeOf_spec, gt_iff_lt]
+      omega
+    have ih := error_free_evaluate_ok hwf hwt hrs₁
+    rw [hrs₂] at ih
+    simp [Except.isOk, Except.toBool] at ih
+termination_by r
+decreasing_by
+  all_goals
+    simp [*] at *
+    omega
 
 end Cedar.Thm

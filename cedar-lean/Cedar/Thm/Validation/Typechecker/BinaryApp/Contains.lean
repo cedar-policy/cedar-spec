@@ -77,7 +77,7 @@ theorem type_of_contains_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} 
   replace ⟨ihl₂, ih₄⟩ := ih₂
   rw [eq_comm] at ihl₁ ihl₂; subst ihl₁ ihl₂
   rw [htl₁] at ih₃
-  have ⟨s₁, ih₁⟩ := instance_of_set_type_is_set ih₃
+  have ⟨s₁, ih₁, _⟩ := instance_of_set_type_is_set ih₃
   subst ih₁
   simp [apply₂]
   apply bool_is_instance_of_anyBool

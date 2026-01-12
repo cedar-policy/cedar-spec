@@ -198,7 +198,7 @@ theorem type_of_isEmpty_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env :
   rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
   case inr.inr.inr =>
     rw [hl₄] at h₇
-    have ⟨s, h₈⟩ := instance_of_set_type_is_set h₇
+    have ⟨s, h₈, _⟩ := instance_of_set_type_is_set h₇
     subst h₈
     simp [apply₁]
     apply InstanceOfType.instance_of_bool
