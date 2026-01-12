@@ -96,7 +96,10 @@ theorem error_free_spec (r : Residual) : r.errorFree = true ↔ r.ErrorFree := b
       rename_i h₁ h₂
       exact .intro h₁ h₂
 
--- FIXME: This theorem isn't quite correct. There's a bit of a hang up with
+-- I don't need this theorem ATM. Leaving not in case I think I need it again
+-- later.
+--
+-- NOTE: This theorem isn't quite correct. There's a bit of a hang up with
 -- optional attributes and tags. The `WellTyped` property of a residual doesn't
 -- have enough information to conclude that these expression never error (it
 -- doesn't say anything about the capabilities tracked during typechecking).
@@ -123,7 +126,6 @@ theorem error_free_evaluate_ok {r : Residual} :
   (r.evaluate req es).isOk
 := by
   intro hwf hwt h₂
-  have heval := well_typed_residual_eval hwf hwt
   cases h₂
   · -- val case
     simp [Residual.evaluate, Except.isOk, Except.toBool]
@@ -170,20 +172,25 @@ theorem error_free_evaluate_ok {r : Residual} :
   · -- is case
     simp [Residual.evaluate, Except.isOk, Except.toBool]
     rename_i x₁ _ he₁
-    cases hwt with
-    | unaryApp hwt₁ hwt =>
-      have ih₁ := error_free_evaluate_ok hwf hwt₁ he₁
-      simp [Except.isOk, Except.toBool] at ih₁
-      split at ih₁ <;> try contradiction
-      clear ih₁ ; rename_i ih₁
-      simp [ih₁, apply₁]
-      split <;> try rfl
-      rename_i heval'
-      split at heval' <;> try contradiction
-      simp at heval'
-      subst heval'
-      cases hwt
-      simp [Residual.evaluate, ih₁, apply₁]  at heval
+    cases hwt
+    rename_i hwt₁ hwt
+    have ih₁ := error_free_evaluate_ok hwf hwt₁ he₁
+    simp [Except.isOk, Except.toBool] at ih₁
+    split at ih₁ <;> try contradiction
+    clear ih₁ ; rename_i ih₁
+    simp [ih₁, apply₁]
+    split <;> try rfl
+    rename_i heval'
+    split at heval' <;> try contradiction
+    rename_i h_not_entity
+    simp at heval'
+    subst heval'
+    cases hwt
+    rename_i hty₁
+    have hty₁' := residual_well_typed_is_sound hwf hwt₁ ih₁
+    rw [hty₁] at hty₁'
+    have ⟨_, h_entity⟩ := instance_of_entity_type_is_entity hty₁'
+    simp [h_entity] at h_not_entity
   · simp [Residual.evaluate, Except.isOk, Except.toBool]
     rename_i x₁ x₂ _ he₁ he₂
     cases hwt with
