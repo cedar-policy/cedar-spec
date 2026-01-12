@@ -98,7 +98,17 @@ theorem error_free_spec (r : Residual) : r.errorFree = true ↔ r.ErrorFree := b
       exact .intro h₁ h₂
   case set rs _ =>
     simp [Residual.errorFree]
-    sorry
+    have ih : ∀ r ∈ rs, r.errorFree = true ↔ r.ErrorFree := by
+      intro r hr
+      exact error_free_spec r
+    constructor
+    · intro h
+      exact .set λ r hr => (ih r hr).mp (h r hr)
+    · intro h r hr
+      rw [ih r hr]
+      cases h
+      rename_i h
+      exact h r hr
 
 -- I don't need this theorem atm. Leaving not in case I think I need it again
 -- later.
