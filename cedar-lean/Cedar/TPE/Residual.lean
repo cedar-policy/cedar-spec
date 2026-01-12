@@ -88,6 +88,7 @@ def Residual.errorFree : Residual → Bool
   | .binaryApp .mem x₁ x₂ _ => x₁.errorFree && x₂.errorFree
   | .unaryApp (.is _) x₁ _ => x₁.errorFree
   | .and x₁ x₂ _ => x₁.errorFree && x₂.errorFree
+  | .or x₁ x₂ _ => x₁.errorFree && x₂.errorFree
   | .set xs _ => xs.attach.all λ x =>
     have : sizeOf x.val < sizeOf xs :=
       List.sizeOf_lt_of_mem x.property

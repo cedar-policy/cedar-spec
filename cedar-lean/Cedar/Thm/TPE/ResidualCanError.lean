@@ -27,6 +27,7 @@ inductive Residual.ErrorFree : Residual → Prop where
   | eq :  Residual.ErrorFree x₁ → Residual.ErrorFree x₂ → Residual.ErrorFree (.binaryApp .eq x₁ x₂ ty)
   | is : Residual.ErrorFree x₁ → Residual.ErrorFree (.unaryApp (.is _) x₁ ty)
   | and : Residual.ErrorFree x₁ → Residual.ErrorFree x₂ → Residual.ErrorFree (.and x₁ x₂ ty)
+  | or : Residual.ErrorFree x₁ → Residual.ErrorFree x₂ → Residual.ErrorFree (.or x₁ x₂ ty)
   | set : (∀ r ∈ rs, Residual.ErrorFree r) → Residual.ErrorFree (.set rs ty)
   -- TODO: Can extend to accept everything that doesn't do arithmetic,
   -- attribute/tag/hierarchy access, or an extension call.
@@ -92,6 +93,18 @@ theorem error_free_spec (r : Residual) : r.errorFree = true ↔ r.ErrorFree := b
     constructor
     · intro ⟨h₁, h₂⟩
       exact .and h₁ h₂
+    · intro h
+      cases h
+      rename_i h₁ h₂
+      exact .intro h₁ h₂
+  case or x₁ x₂ _ =>
+    simp only [Residual.errorFree, Bool.and_eq_true]
+    have ih₁ := error_free_spec x₁
+    have ih₂ := error_free_spec x₂
+    rw [ih₁, ih₂]
+    constructor
+    · intro ⟨h₁, h₂⟩
+      exact .or h₁ h₂
     · intro h
       cases h
       rename_i h₁ h₂
@@ -292,6 +305,39 @@ theorem error_free_evaluate_ok {r : Residual} :
         subst hb
         rename_i h_not_bool
         simp at h_not_bool
+  · simp [Residual.evaluate, Except.isOk, Except.toBool]
+    rename_i x₁ x₂ _ he₁ he₂
+    cases hwt with
+    | or hwt₁ hwt₂ hty₁ hty₂ =>
+      have ih₁ := error_free_evaluate_ok hwf hwt₁ he₁
+      have ih₂ := error_free_evaluate_ok hwf hwt₂ he₂
+      simp [Except.isOk, Except.toBool] at ih₁ ih₂
+      split at ih₁ <;> try contradiction
+      clear ih₁ ; rename_i ih₁
+      split at ih₂ <;> try contradiction
+      clear ih₂ ; rename_i ih₂
+      simp [ih₁, ih₂, Result.as, Coe.coe, Value.asBool]
+      split <;> try rfl
+      rename_i heval'
+      split at heval'
+      · have hwts₁ := residual_well_typed_is_sound hwf hwt₁ ih₁
+        rw [hty₁] at hwts₁
+        have ⟨_, hb⟩ := instance_of_anyBool_is_bool hwts₁
+        subst hb
+        simp at heval'
+      · simp at heval'
+        split at heval'
+        · have hwts₂ := residual_well_typed_is_sound hwf hwt₂ ih₂
+          rw [hty₂] at hwts₂
+          have ⟨_, hb⟩ := instance_of_anyBool_is_bool hwts₂
+          subst hb
+          simp at heval'
+        · have hwts₁ := residual_well_typed_is_sound hwf hwt₁ ih₁
+          rw [hty₁] at hwts₁
+          have ⟨_, hb⟩ := instance_of_anyBool_is_bool hwts₁
+          subst hb
+          rename_i h_not_bool
+          simp at h_not_bool
   · rename_i rs ty hrs₁
     cases hwt
     rename_i ty hwt _ _
