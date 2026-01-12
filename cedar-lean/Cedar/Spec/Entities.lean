@@ -39,6 +39,9 @@ def Entities.ancestors (es : Entities) (uid : EntityUID) : Result (Set EntityUID
   let d ← es.findOrErr uid .entityDoesNotExist
   .ok d.ancestors
 
+def Entities.descendantsOrEmpty (es : Entities) (uid : EntityUID) : Set EntityUID :=
+  Set.mk $ es.kvs.filter (·.snd.ancestors.contains uid) |> .map (·.fst)
+
 def Entities.ancestorsOrEmpty (es : Entities) (uid : EntityUID) : Set EntityUID :=
   match es.find? uid with
   | some d => d.ancestors
