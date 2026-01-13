@@ -182,3 +182,14 @@ theorem cps_compile_produces_the_right_acyclicity {ps : Policies} {cps : Compile
   intro ps h₀ t h₁ h₂ ; subst cps
   simp only at *
   congr
+
+theorem flatMap_allPolicies_policy {cps : List CompiledPolicy} :
+  List.flatMap CompiledPolicyₛ.allPolicies (cps.map CompiledPolicyₛ.policy) = cps.map CompiledPolicy.policy
+:= by
+  simp only [List.flatMap_map]
+  simp [CompiledPolicyₛ.allPolicies, List.map_eq_flatMap]
+
+theorem flatMap_allPolicies_policies {cpss : List CompiledPolicies} :
+  List.flatMap CompiledPolicyₛ.allPolicies (cpss.map CompiledPolicyₛ.policies) = cpss.flatMap CompiledPolicies.policies
+:= by
+  simp [List.flatMap_map, CompiledPolicyₛ.allPolicies]

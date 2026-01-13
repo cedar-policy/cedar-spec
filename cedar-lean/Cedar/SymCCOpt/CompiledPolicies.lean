@@ -143,3 +143,23 @@ def CompiledPolicy.intoCompiledPolicies (cp : CompiledPolicy) : CompiledPolicies
     footprint := cp.footprint -- the footprint of a singleton policyset is the same as the footprint of the policy
     acyclicity := cp.acyclicity -- the acyclicity constraints for a singleton policyset are the same as the acyclicity constraints for the policy
   }
+
+/--
+Represents a `CompiledPolicy` or a `CompiledPolicies`, for APIs that don't care
+which one they get.
+-/
+inductive CompiledPolicyₛ where
+  | policy (cp : CompiledPolicy)
+  | policies (cps : CompiledPolicies)
+
+def CompiledPolicyₛ.allPolicies : CompiledPolicyₛ → Policies
+  | .policy cp => [cp.policy]
+  | .policies cps => cps.policies
+
+def CompiledPolicyₛ.footprint : CompiledPolicyₛ → Set Term
+  | .policy cp => cp.footprint
+  | .policies cps => cps.footprint
+
+def CompiledPolicyₛ.εnv : CompiledPolicyₛ → SymEnv
+  | .policy cp => cp.εnv
+  | .policies cps => cps.εnv
