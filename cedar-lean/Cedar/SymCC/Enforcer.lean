@@ -66,8 +66,8 @@ def footprint (x : Expr) (εnv : SymEnv) : Set Term :=
   | .hasAttr x₁ _
   | .unaryApp _ x₁     => footprint x₁ εnv
   | .call _ xs
-  | .set xs            => xs.attach.mapUnion (λ ⟨xᵢ, _⟩ => footprint xᵢ εnv)
-  | .record axs        => axs.attach₂.mapUnion (λ ⟨(_, xᵢ), _⟩ => footprint xᵢ εnv)
+  | .set xs            => xs.mapUnion₁ (λ ⟨xᵢ, _⟩ => footprint xᵢ εnv)
+  | .record axs        => axs.mapUnion₂ (λ ⟨(_, xᵢ), _⟩ => footprint xᵢ εnv)
 where
   ofEntity : Set Term :=
     match compile x εnv with
@@ -131,7 +131,7 @@ Returns the ground acyclicity and transitivity assumptions for xs and env.
 def enforce (xs : List Expr) (εnv : SymEnv) : Set Term :=
   let ts := footprints xs εnv
   let ac := ts.elts.map (acyclicity · εnv.entities)
-  let tr := ts.elts.mapUnion (λ t => ts.elts.map (transitivity t · εnv.entities))
+  let tr := ts.elts.flatMap (λ t => ts.elts.map (transitivity t · εnv.entities))
   Set.make (ac ∪ tr)
 
 namespace Cedar.SymCC

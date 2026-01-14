@@ -38,8 +38,8 @@ def Prim.entityUIDs : Prim → Set EntityUID
 
 def Value.entityUIDs : Value → Set EntityUID
   | .prim p              => p.entityUIDs
-  | .set (Set.mk vs)     => vs.attach.mapUnion (λ ⟨v, _⟩ => v.entityUIDs)
-  | .record (Map.mk avs) => avs.attach₃.mapUnion (λ ⟨(_, v), _⟩ => v.entityUIDs)
+  | .set (Set.mk vs)     => vs.mapUnion₁ (λ ⟨v, _⟩ => v.entityUIDs)
+  | .record (Map.mk avs) => avs.mapUnion₃ (λ ⟨(_, v), _⟩ => v.entityUIDs)
   | .ext _               => Set.empty
 
 def Value.entityUID? : Value → Option EntityUID
@@ -81,8 +81,8 @@ def Expr.entityUIDs : Expr → Set EntityUID
   | .getAttr x₁ _
   | .hasAttr x₁ _      => x₁.entityUIDs
   | .set xs
-  | .call _ xs         => xs.attach.mapUnion (λ ⟨x, _⟩ => x.entityUIDs)
-  | .record axs        => axs.attach₂.mapUnion (λ ⟨(_, x), _⟩ => x.entityUIDs)
+  | .call _ xs         => xs.mapUnion₁ (λ ⟨x, _⟩ => x.entityUIDs)
+  | .record axs        => axs.mapUnion₂ (λ ⟨(_, x), _⟩ => x.entityUIDs)
 
 end Cedar.Spec
 
@@ -143,9 +143,9 @@ def Term.entityUIDs : Term → Set EntityUID
   | .none _              => Set.empty
   | .prim p              => p.entityUIDs
   | .some t              => t.entityUIDs
-  | .set (Set.mk ts) _   => ts.attach.mapUnion (λ ⟨t, _⟩ => t.entityUIDs)
-  | .record (Map.mk ats) => ats.attach₃.mapUnion (λ ⟨(_, t), _⟩ => t.entityUIDs)
-  | .app _ ts _          => ts.attach.mapUnion (λ ⟨t, _⟩ => t.entityUIDs)
+  | .set (Set.mk ts) _   => ts.mapUnion₁ (λ ⟨t, _⟩ => t.entityUIDs)
+  | .record (Map.mk ats) => ats.mapUnion₃ (λ ⟨(_, t), _⟩ => t.entityUIDs)
+  | .app _ ts _          => ts.mapUnion₁ (λ ⟨t, _⟩ => t.entityUIDs)
 
 def Term.entityUID? : Term → Option EntityUID
   | .prim (.entity uid) => .some uid

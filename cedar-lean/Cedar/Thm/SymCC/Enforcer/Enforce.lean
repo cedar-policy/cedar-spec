@@ -36,7 +36,7 @@ private def acyclic (ft : Set Term) (εs : SymEntities) : List Term :=
   ft.elts.map (acyclicity · εs)
 
 private def transitive (ft : Set Term) (εs : SymEntities) : List Term :=
-  ft.elts.mapUnion (λ t => ft.elts.map (transitivity t · εs))
+  ft.elts.flatMap (λ t => ft.elts.map (transitivity t · εs))
 
 private theorem enforce_def {xs : List Expr} {εnv : SymEnv} :
   enforce xs εnv =
@@ -72,7 +72,7 @@ private theorem swf_implies_transitive {xs : List Expr} {env : Env} {εnv : SymE
   (hin : t ∈ transitive (footprints xs εnv) εnv.entities) :
   Term.interpret I t = Term.prim (TermPrim.bool true)
 := by
-  simp only [transitive, List.mem_mapUnion_iff_mem_exists] at hin
+  simp only [transitive, List.exists_iff_mem_flatMap] at hin
   replace ⟨t₁, hin₁, hin⟩ := hin
   simp only [List.mem_map] at hin
   replace ⟨t₂, hin₂, hin⟩ := hin
@@ -131,7 +131,7 @@ private theorem mem_terms_mem_entityUIDs {uid : EntityUID} {ts : Set Term} :
 := by
   intro hin
   unfold Term.entityUIDs
-  simp only [List.attach_def, List.mapUnion_pmap_subtype, Set.mem_mapUnion_iff_mem_exists]
+  simp only [List.mapUnion₁_eq_mapUnion, List.mem_mapUnion_iff_mem_exists]
   exists Term.entity uid
   simp only [Set.in_list_iff_in_set, hin, Term.entityUIDs, TermPrim.entityUIDs,
     Set.mem_singleton_iff_eq, and_self]
@@ -143,7 +143,7 @@ private theorem mem_entityUIDs_mem_terms {uid : EntityUID} {ts : Set Term} {ety 
 := by
   intro ⟨hwf, hlit⟩ hin
   unfold Term.entityUIDs at hin
-  simp only [List.attach_def, List.mapUnion_pmap_subtype, Set.mem_mapUnion_iff_mem_exists] at hin
+  simp only [List.mapUnion₁_eq_mapUnion, List.mem_mapUnion_iff_mem_exists] at hin
   replace ⟨t, hinₜ, hin⟩ := hin
   have hwt := wf_term_set_implies_wf_elt hwf hinₜ
   have hty := wf_term_set_implies_typeOf_elt hwf hinₜ
@@ -327,7 +327,7 @@ private theorem transitive_implies_Transitive_uuf_uuf
     have ⟨t₁, hin₁, ht₁⟩ := mem_footprintUIDs_mem_footprints hwε hsε.right hI hft₁
     have ⟨t₂, hin₂, ht₂⟩ := mem_footprintUIDs_mem_footprints hwε hsε.right hI hft₂
     specialize hok (transitivity t₁ t₂ εnv.entities)
-    simp only [transitive, List.mem_mapUnion_iff_mem_exists, List.mem_map, forall_exists_index, and_imp] at hok
+    simp only [transitive, List.exists_iff_mem_flatMap, List.mem_map, forall_exists_index, and_imp] at hok
     specialize hok t₁ hin₁ t₂ hin₂ rfl
     simp only [mem_footprintUIDs_implies_eq_ancs hwε hI hδ₁ hf₁ hft₁] at heq₁
     simp only [mem_footprintUIDs_implies_eq_ancs hwε hI hδ₂ hf₂ hft₂] at heq₂
@@ -366,11 +366,11 @@ private theorem transitive_implies_Transitive_udf_udf
   uid₃ ∈ d₁.ancestors
 := by
   have htr := hsε.right.right.right.left uid₁ δ₁ uid₂ δ₂ hδ₁ hδ₂
-  simp only [SymEntityData.knownAncestors, Set.mem_mapUnion_iff_mem_exists, forall_exists_index, and_imp] at htr
+  simp only [SymEntityData.knownAncestors, List.mem_mapUnion_iff_mem_exists, forall_exists_index, and_imp] at htr
   specialize htr (uid₂.ty, .udf f₁₂) (Map.find?_mem_toList hf₁)
   simp only [SymEntityData.knownAncestors.ancs, heq₁, mem_terms_mem_entityUIDs hu₂₁, Set.subset_def, true_implies] at htr
   specialize htr uid₃
-  simp only [Set.mem_mapUnion_iff_mem_exists, forall_exists_index, and_imp] at htr
+  simp only [List.mem_mapUnion_iff_mem_exists, forall_exists_index, and_imp] at htr
   specialize htr (uid₃.ty, .udf f₂₃) (Map.find?_mem_toList hf₂)
   simp only [SymEntityData.knownAncestors.ancs, heq₂, mem_terms_mem_entityUIDs hu₃₂, true_implies] at htr
   replace ⟨(ety₃, f₁₃), hin₁₃, htr⟩ := htr

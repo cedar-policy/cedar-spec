@@ -159,24 +159,24 @@ private theorem expr_entityUIDs_valid_refs {x : Expr} {uids : Set EntityUID} {es
   case case9 ih =>          -- hasAttr
     exact Expr.ValidRefs.hasAttr_valid (ih hsub)
   case case10 ih =>         -- set
-    simp only [List.attach_def, List.mapUnion_pmap_subtype] at hsub
+    simp only [List.mapUnion₁_eq_mapUnion] at hsub
     apply Expr.ValidRefs.set_valid
     intro xᵢ hᵢ
-    have hsubᵢ := Set.mem_implies_subset_mapUnion Expr.entityUIDs hᵢ
+    have hsubᵢ := List.mem_implies_subset_mapUnion Expr.entityUIDs hᵢ
     replace hsubᵢ := Set.subset_trans hsubᵢ hsub
     exact ih xᵢ hᵢ hsubᵢ
   case case11 ih =>         -- call
-    simp only [List.attach_def, List.mapUnion_pmap_subtype] at hsub
+    simp only [List.mapUnion₁_eq_mapUnion] at hsub
     apply Expr.ValidRefs.call_valid
     intro xᵢ hᵢ
-    have hsubᵢ := Set.mem_implies_subset_mapUnion Expr.entityUIDs hᵢ
+    have hsubᵢ := List.mem_implies_subset_mapUnion Expr.entityUIDs hᵢ
     replace hsubᵢ := Set.subset_trans hsubᵢ hsub
     exact ih xᵢ hᵢ hsubᵢ
   case case12 ih =>         -- record
-    simp only [List.attach₂, List.mapUnion_pmap_subtype λ x : Attr × Expr => x.snd.entityUIDs] at hsub
+    simp only [List.mapUnion₂_eq_mapUnion λ x : Attr × Expr => x.snd.entityUIDs] at hsub
     apply Expr.ValidRefs.record_valid
     intro (aᵢ, xᵢ) hᵢ
-    have hsubᵢ := Set.mem_implies_subset_mapUnion (λ x : Attr × Expr => x.snd.entityUIDs) hᵢ
+    have hsubᵢ := List.mem_implies_subset_mapUnion (λ x : Attr × Expr => x.snd.entityUIDs) hᵢ
     replace hsubᵢ := Set.subset_trans hsubᵢ hsub
     simp only at hsubᵢ
     apply ih aᵢ xᵢ _ hsubᵢ
@@ -265,10 +265,10 @@ private theorem app_value?_some_implies_entityUIDs {f : UnaryFunction} {t : Term
   · simp only [← hv]
     rename_i t' heq
     rw [Set.union_comm]
-    apply @Set.subset_trans _ _ _ (f.table.kvs.mapUnion (λ x => x.fst.entityUIDs ∪ x.snd.entityUIDs)) _ _ (Set.subset_union _ _)
+    apply Set.subset_trans (s₂ := f.table.kvs.mapUnion (λ x => x.fst.entityUIDs ∪ x.snd.entityUIDs)) _ (Set.subset_union _ _)
     simp only [Set.subset_def]
     intro uid hin
-    rw [Set.mem_mapUnion_iff_mem_exists]
+    rw [List.mem_mapUnion_iff_mem_exists]
     exists (t, t')
     constructor
     · exact Map.find?_mem_toList heq
@@ -329,22 +329,22 @@ private theorem concretize?_δ_ancs_some_implies_entityUIDs {uid : EntityUID} {�
   (List.mapUnion id ancs).WellFormed ∧
   List.mapUnion id ancs ⊆ SymEntityData.entityUIDs.ancs δ
 := by
-  simp only [Set.mapUnion_wf, SymEntityData.entityUIDs.ancs, true_and]
-  simp only [← List.mapM_some_eq_filterMap hs, Set.mapUnion_filterMap, Set.subset_def]
+  simp only [List.mapUnion_wf, SymEntityData.entityUIDs.ancs, true_and]
+  simp only [← List.mapM_some_eq_filterMap hs, List.mapUnion_filterMap, Set.subset_def]
   intro uid' hin
-  rw [Set.mem_mapUnion_iff_mem_exists] at hin
+  rw [List.mem_mapUnion_iff_mem_exists] at hin
   replace ⟨(ety, uf), hin, hinᵤ⟩ := hin
   replace ⟨anc, _, hs⟩ := List.mapM_some_implies_all_some hs _ hin
   simp only at hs
   simp only [hs, Option.mapD_some, id_eq] at hinᵤ
-  rw [Set.mem_mapUnion_iff_mem_exists]
+  rw [List.mem_mapUnion_iff_mem_exists]
   exists (ety, uf)
   simp only [hin, true_and]
   replace hs := term_setOfEntityUIDs?_some_value? hs
   apply Set.mem_subset_mem _ (app_value?_some_implies_entityUIDs hs hwu.right)
   unfold Value.entityUIDs
-  simp only [List.attach_def, List.mapUnion_pmap_subtype]
-  rw [Set.mapUnion_eq_mapUnion_id_map, Set.mem_mapUnion_iff_mem_exists]
+  simp only [List.mapUnion₁_eq_mapUnion]
+  rw [List.mapUnion_eq_mapUnion_id_map, List.mem_mapUnion_iff_mem_exists]
   exists (Set.singleton uid')
   simp only [List.mem_map, id_eq, Set.mem_singleton, and_true]
   exists uid'
@@ -408,9 +408,9 @@ private theorem concretize?_δ_tags_some_implies_ws_entityUIDs {uid : EntityUID}
   cases hτs : δ.tags <;> simp only [hτs, Option.some.injEq] at hs
   case none =>
     subst hs
-    simp only [Map.empty, value_record_entityUIDs_def, List.mapUnion,
-      EmptyCollection.emptyCollection, Map.kvs, List.foldl_nil, Set.subset_def, Set.empty_no_elts,
-      false_implies, implies_true, and_true]
+    simp only [Map.empty, value_record_entityUIDs_def, Map.kvs, List.mapUnion_nil,
+      EmptyCollection.emptyCollection, Set.subset_def, Set.empty_no_elts, false_implies,
+      implies_true, and_true]
     apply Value.WellStructured.record_ws
     · intro a v hf
       replace hf := Map.find?_mem_toList hf
@@ -443,7 +443,7 @@ private theorem concretize?_δ_tags_some_implies_ws_entityUIDs {uid : EntityUID}
     · simp only [value_record_entityUIDs_def, Map.kvs, SymEntityData.entityUIDs.tags, hτs,
         Set.subset_def]
       intro uid' hin
-      rw [Set.mem_mapUnion_iff_mem_exists] at hin
+      rw [List.mem_mapUnion_iff_mem_exists] at hin
       replace ⟨(t, v), hin, hin'⟩ := hin
       simp only at hin'
       replace ⟨t', htvs, heq⟩ := List.mapM_some_implies_all_from_some htvs (t, v) hin
@@ -495,7 +495,7 @@ private theorem δ_entityUIDs_subset_εs_entityUIDs {ety : EntityType} {δ : Sym
   simp only [SymEntities.entityUIDs]
   have h : SymEntityData.entityUIDs ety δ = (λ x => SymEntityData.entityUIDs x.fst x.snd) (ety, δ) := by simp only
   rw [h]
-  apply Set.mem_implies_subset_mapUnion (λ x : EntityType × SymEntityData => SymEntityData.entityUIDs x.fst x.snd)
+  apply List.mem_implies_subset_mapUnion (λ x : EntityType × SymEntityData => SymEntityData.entityUIDs x.fst x.snd)
   exact Map.find?_mem_toList hf
 
 private theorem concretize?_εs_wf {uids : Set EntityUID} {es : Entities} {εs : SymEntities} :

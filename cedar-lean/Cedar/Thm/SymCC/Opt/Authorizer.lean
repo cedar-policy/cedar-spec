@@ -124,9 +124,9 @@ theorem Opt.satisfiedPolicies.correctness (effect : Effect) (ps : Policies) (εn
   case ok ress hress =>
     specialize this ress
     simp_all [Except.map, ← this.left, footprints]
-    conv => lhs ; rw [Data.Set.mapUnion_eq_mapUnion_id_map]
-    simp [this, Data.Set.mapUnion_filterMap]
-    apply Data.Set.mapUnion_congr
+    conv => lhs ; rw [List.mapUnion_eq_mapUnion_id_map]
+    simp [this, List.mapUnion_filterMap]
+    apply List.mapUnion_congr
     intro p hp
     simp only [Option.mapD, id_eq]
     grind
@@ -156,8 +156,8 @@ theorem Opt.isAuthorized.correctness (ps : Policies) (εnv : SymEnv) :
   simp_do_let SymCC.satisfiedPolicies .permit ps εnv ; rename_i pt hpermit
   simp only [Except.ok.injEq, Opt.CompileResult.mk.injEq, true_and]
   simp [footprints]
-  rw [Data.Set.mapUnion_union_mapUnion]
-  · apply Data.Set.map_eqv_implies_mapUnion_eq
+  rw [List.mapUnion_union_mapUnion]
+  · apply List.map_eqv_implies_mapUnion_eq
     simp [List.Equiv, List.subset_def]
     constructor
     intro ts h₁

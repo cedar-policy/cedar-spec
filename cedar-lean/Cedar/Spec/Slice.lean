@@ -29,7 +29,7 @@ open Cedar.Data
 
 def Value.sliceEUIDs : Value → Set EntityUID
   | .prim (.entityUID uid) => Set.singleton uid
-  | .record (Map.mk avs) => avs.attach₃.mapUnion λ e => e.val.snd.sliceEUIDs
+  | .record (Map.mk avs) => avs.mapUnion₃ λ e => e.val.snd.sliceEUIDs
   | .prim _ | set _ | .ext _ => ∅
 
 def EntityData.sliceEUIDs (ed : EntityData) : Set EntityUID :=
@@ -49,5 +49,5 @@ where
     | 0 => ∅
     | level + 1 =>
       let eds := work.elts.filterMap es.find?
-      let slice := List.mapUnion id $ eds.map (λ ed => sliceAtLevel ed.sliceEUIDs level)
+      let slice := eds.mapUnion λ ed => sliceAtLevel ed.sliceEUIDs level
       work ∪ slice

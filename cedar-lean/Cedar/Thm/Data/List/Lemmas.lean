@@ -156,6 +156,17 @@ theorem map_attach₃_snd [SizeOf α] [SizeOf β] {xs : List (α × β)} (f : β
 := by
   simp [attach₃, map_pmap_subtype_snd]
 
+/-! ### flatMap -/
+
+/--
+As of this writing, the standard-library lemma `List.exists_of_mem_flatMap` is a
+`→`, but it's trivial to extend it to `↔` and makes some things easier, so we do
+that here
+-/
+theorem exists_iff_mem_flatMap {α β} [DecidableEq β] {f : α → List β} {xs : List α} {b : β} :
+  b ∈ List.flatMap f xs ↔ ∃ a ∈ xs, b ∈ f a
+:= by grind
+
 /-! ### Forall₂ -/
 
 /--

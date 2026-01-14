@@ -820,7 +820,7 @@ private theorem compile_interpret_on_footprint_ihs {xs : List Expr} {ts : List T
   (hI₁ : I₁.WellFormed εnv.entities)
   (hI₂ : I₂.WellFormed εnv.entities)
   (hsm : εnv.SameOn ft I₁ I₂)
-  (hft : List.mapUnion (fun x => footprint x εnv) xs ⊆ ft)
+  (hft : xs.mapUnion (footprint · εnv) ⊆ ft)
   (hok : ∀ t ∈ ts, ∃ x ∈ xs, compile x εnv = .ok t)
   (ih  : ∀ x ∈ xs, CompileInterpretOnFootprint x ft εnv I₁ I₂) :
   ∀ t ∈ ts, t.interpret I₁ = t.interpret I₂
@@ -828,7 +828,7 @@ private theorem compile_interpret_on_footprint_ihs {xs : List Expr} {ts : List T
   intro t ht
   replace ⟨x, hx, hok⟩ := hok t ht
   apply ih x hx (hwε x hx) hI₁ hI₂ hsm _ hok
-  exact Set.subset_trans (Set.mem_implies_subset_mapUnion (footprint · εnv) hx) hft
+  exact Set.subset_trans (List.mem_implies_subset_mapUnion (footprint · εnv) hx) hft
 
 private theorem compile_interpret_set_on_footprint {xs : List Expr} {ft : Set Term} {εnv : SymEnv} {I₁ I₂ : Interpretation} {t : Term}
   (hwε : εnv.WellFormedFor (.set xs))
@@ -841,7 +841,7 @@ private theorem compile_interpret_set_on_footprint {xs : List Expr} {ft : Set Te
   t.interpret I₁ = t.interpret I₂
 := by
   replace hwε := wf_εnv_for_set_implies hwε
-  simp only [footprint, List.attach_def, List.mapUnion_pmap_subtype (footprint · εnv) ] at hft
+  simp only [footprint, List.mapUnion₁_eq_mapUnion (footprint · εnv)] at hft
   replace ⟨ts, ha, hok⟩ := compile_set_ok_implies hok
   replace ⟨ty, hd, tl, heq, hty, hok⟩ := compileSet_ok_implies hok
   subst hok
@@ -896,10 +896,10 @@ private theorem compile_interpret_record_on_footprint {axs : List (Attr × Expr)
     CompileInterpretOnFootprint x₁ ft εnv I₁ I₂) :
   t.interpret I₁ = t.interpret I₂
 := by
-  simp only [footprint, List.attach₂, List.mapUnion_pmap_subtype (λ x : Attr × Expr => footprint x.snd εnv)] at hft
+  simp only [footprint, List.mapUnion₂_eq_mapUnion (λ x : Attr × Expr => footprint x.snd εnv)] at hft
   replace hft : ∀ ax ∈ axs, footprint ax.snd εnv ⊆ ft := by
     intro x hx
-    have h := Set.mem_implies_subset_mapUnion (fun x : Attr × Expr => footprint x.snd εnv) hx
+    have h := List.mem_implies_subset_mapUnion (fun x : Attr × Expr => footprint x.snd εnv) hx
     simp only at h
     exact Set.subset_trans h hft
   replace hwε := wf_εnv_for_record_implies hwε
@@ -937,7 +937,7 @@ private theorem compile_interpret_call_on_footprint {xfn : ExtFun} {xs : List Ex
   (ih  : ∀ x ∈ xs, CompileInterpretOnFootprint x ft εnv I₁ I₂) :
   t.interpret I₁ = t.interpret I₂
 := by
-  simp only [footprint, List.attach_def, List.mapUnion_pmap_subtype (footprint · εnv) ] at hft
+  simp only [footprint, List.mapUnion₁_eq_mapUnion (footprint · εnv)] at hft
   replace hwε := wf_εnv_for_call_implies hwε
   replace ⟨ts, ha, hok⟩ := compile_call_ok_implies hok
   have hwts := compile_wfs hwε ha

@@ -224,7 +224,7 @@ theorem in_work_then_in_slice {entities : Entities} {work : Set EntityUID} {euid
   : euid ∈ Entities.sliceAtLevel.sliceAtLevel entities work (n + 1)
 := by
   simp only [Entities.sliceAtLevel.sliceAtLevel]
-  let slice' := ((List.filterMap (Map.find? entities) work.elts).map λ ed => Entities.sliceAtLevel.sliceAtLevel entities ed.sliceEUIDs n).mapUnion id
+  let slice' := (work.elts.filterMap (Map.find? entities)).mapUnion λ ed => Entities.sliceAtLevel.sliceAtLevel entities ed.sliceEUIDs n
   have ⟨ _, hc ⟩ := Set.mem_union_iff_mem_or work slice' euid
   apply hc
   simp [hw]
@@ -243,17 +243,14 @@ theorem slice_contains_reachable {n: Nat} {work : Set EntityUID} {euid : EntityU
     exact in_work_then_in_slice hw
   case step ed euid' hf hi hw =>
     simp only [Entities.sliceAtLevel.sliceAtLevel]
-    let slice' := ((List.filterMap (Map.find? entities) work.elts).map λ ed => Entities.sliceAtLevel.sliceAtLevel entities ed.sliceEUIDs n).mapUnion id
+    let slice' := (work.elts.filterMap (Map.find? entities)).mapUnion λ ed => Entities.sliceAtLevel.sliceAtLevel entities ed.sliceEUIDs n
     rw [Set.mem_union_iff_mem_or]
     right
     cases n
     case _ => cases hw
     case _ n' =>
-      simp only [Set.mem_mapUnion_iff_mem_exists, List.mem_map, List.mem_filterMap]
-      exists Entities.sliceAtLevel.sliceAtLevel entities ed.sliceEUIDs (n' + 1)
+      simp only [List.mem_mapUnion_iff_mem_exists, List.mem_filterMap]
+      exists ed
       and_intros
-      · exists ed
-        and_intros
-        · exists euid'
-        · rfl
+      · exists euid'
       · exact slice_contains_reachable hw
