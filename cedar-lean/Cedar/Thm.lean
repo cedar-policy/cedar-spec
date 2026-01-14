@@ -22,4 +22,5 @@ import Cedar.Thm.Typechecking
 import Cedar.Thm.Validation
 import Cedar.Thm.WellTyped
 import Cedar.Thm.TPE
+import Cedar.Thm.PQ
 import Cedar.Thm.WellTypedVerification
