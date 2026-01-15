@@ -20,12 +20,19 @@ import Cedar.Thm.TPE.Input
 
 namespace Cedar.Spec
 
+inductive BinaryOp.CanOverflow : BinaryOp → Prop where
+  | add : BinaryOp.CanOverflow .add
+  | sub : BinaryOp.CanOverflow .sub
+  | mul : BinaryOp.CanOverflow .mul
+
+inductive UnaryOp.CanOverflow : UnaryOp → Prop where
+  | neg : UnaryOp.CanOverflow .neg
+
 inductive Residual.ErrorFree : Residual → Prop where
   | val : Residual.ErrorFree (.val v ty)
   | var : Residual.ErrorFree (.var v ty)
-  | mem : Residual.ErrorFree x₁ → Residual.ErrorFree x₂ → Residual.ErrorFree (.binaryApp .mem x₁ x₂ ty)
-  | eq :  Residual.ErrorFree x₁ → Residual.ErrorFree x₂ → Residual.ErrorFree (.binaryApp .eq x₁ x₂ ty)
-  | is : Residual.ErrorFree x₁ → Residual.ErrorFree (.unaryApp (.is _) x₁ ty)
+  | unary : ¬ op.CanOverflow → Residual.ErrorFree x₁ → Residual.ErrorFree (.unaryApp op x₁ ty)
+  | binary : ¬ op.CanOverflow → Residual.ErrorFree x₁ → Residual.ErrorFree x₂ → Residual.ErrorFree (.binaryApp op x₁ x₂ ty)
   | and : Residual.ErrorFree x₁ → Residual.ErrorFree x₂ → Residual.ErrorFree (.and x₁ x₂ ty)
   | or : Residual.ErrorFree x₁ → Residual.ErrorFree x₂ → Residual.ErrorFree (.or x₁ x₂ ty)
   | set : (∀ r ∈ rs, Residual.ErrorFree r) → Residual.ErrorFree (.set rs ty)
@@ -38,6 +45,29 @@ namespace Cedar.Thm
 
 open Cedar.Spec
 open Cedar.Validation
+
+theorem BinaryOp.can_overflow_spec (op : BinaryOp) : op.canOverflow = true ↔ op.CanOverflow := by
+  unfold BinaryOp.canOverflow
+  split
+  case h_1 | h_2 | h_3 =>
+    simp only [true_iff]
+    constructor
+  case h_4 =>
+    simp only [Bool.false_eq_true, false_iff]
+    intro h
+    cases h <;> simp at *
+
+theorem UnaryOp.can_overflow_spec (op : UnaryOp) : op.canOverflow = true ↔ op.CanOverflow := by
+  unfold UnaryOp.canOverflow
+  split
+  case h_1 =>
+    simp only [true_iff]
+    constructor
+  case h_2 =>
+    simp only [Bool.false_eq_true, false_iff]
+    intro h
+    cases h
+    simp at *
 
 theorem error_free_spec (r : Residual) : r.errorFree = true ↔ r.ErrorFree := by
   cases r
@@ -52,44 +82,30 @@ theorem error_free_spec (r : Residual) : r.errorFree = true ↔ r.ErrorFree := b
     simp only [Residual.errorFree, true_iff]
     constructor
   case binaryApp op x₁ x₂ _ =>
-    cases op
-    all_goals
-      simp only [Residual.errorFree, Bool.false_eq_true, Bool.and_eq_true, false_iff ]
-    any_goals
-      intro hc
-      cases hc
-    all_goals
-      have ih₁ := error_free_spec x₁
-      have ih₂ := error_free_spec x₂
-      rw [ih₁, ih₂]
-      constructor
-      · intro ⟨h₁, h₂⟩
-        constructor <;> assumption
-      · intro h
-        cases h
-        rename_i h₁ h₂
-        exact .intro h₁ h₂
-  case unaryApp op x₁ _ =>
-    cases op
-    all_goals
-      simp only [Residual.errorFree, Bool.false_eq_true, false_iff]
-    any_goals
-      intro hc
-      cases hc
-    have ih₁ := error_free_spec x₁
-    rw [ih₁]
+    simp only [Residual.errorFree, Bool.and_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true]
+    have hop : op.canOverflow = false ↔ ¬ op.CanOverflow := by
+      grind [BinaryOp.can_overflow_spec]
+    rw [hop, error_free_spec x₁, error_free_spec x₂]
     constructor
-    · intro h₁
-      exact .is h₁
+    · intro ⟨⟨h₁, h₂⟩, h₃⟩
+      constructor <;> assumption
     · intro h
       cases h
-      rename_i h
-      exact h
+      and_intros <;> assumption
+  case unaryApp op x₁ _ =>
+    simp only [Residual.errorFree, Bool.and_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true]
+    have hop : op.canOverflow = false ↔ ¬ op.CanOverflow := by
+      grind [UnaryOp.can_overflow_spec]
+    rw [hop, error_free_spec x₁]
+    constructor
+    · intro ⟨h₁, h₂⟩
+      constructor <;> assumption
+    · intro h
+      cases h
+      and_intros <;> assumption
   case and x₁ x₂ _ =>
     simp only [Residual.errorFree, Bool.and_eq_true]
-    have ih₁ := error_free_spec x₁
-    have ih₂ := error_free_spec x₂
-    rw [ih₁, ih₂]
+    rw [error_free_spec x₁, error_free_spec x₂]
     constructor
     · intro ⟨h₁, h₂⟩
       exact .and h₁ h₂
@@ -99,9 +115,7 @@ theorem error_free_spec (r : Residual) : r.errorFree = true ↔ r.ErrorFree := b
       exact .intro h₁ h₂
   case or x₁ x₂ _ =>
     simp only [Residual.errorFree, Bool.and_eq_true]
-    have ih₁ := error_free_spec x₁
-    have ih₂ := error_free_spec x₂
-    rw [ih₁, ih₂]
+    rw [error_free_spec x₁, error_free_spec x₂]
     constructor
     · intro ⟨h₁, h₂⟩
       exact .or h₁ h₂
@@ -154,129 +168,157 @@ theorem error_free_evaluate_ok {r : Residual} :
 := by
   intro hwf hwt h₂
   cases h₂
-  · -- val case
-    simp [Residual.evaluate, Except.isOk, Except.toBool]
-  · -- var case
+  case val => simp [Residual.evaluate, Except.isOk, Except.toBool]
+  case var =>
     rename_i v _
     cases v <;>
     simp [Residual.evaluate, Except.isOk, Except.toBool]
-  · -- mem case
-    simp [Residual.evaluate, Except.isOk, Except.toBool]
-    rename_i x₁ x₂ _ he₁ he₂
-    cases hwt
-    rename_i hwt₁ hwt₂ hwt
-    have ih₁ := error_free_evaluate_ok hwf hwt₁ he₁
-    have ih₂ := error_free_evaluate_ok hwf hwt₂ he₂
-    simp [Except.isOk, Except.toBool] at ih₁ ih₂
-    split at ih₁ <;> try contradiction
-    clear ih₁ ; rename_i ih₁
-    split at ih₂ <;> try contradiction
-    clear ih₂ ; rename_i ih₂
-    simp [ih₁, ih₂]
-    simp [apply₂]
-    split
-    all_goals
-      rename_i heval'
-      split at heval'
-    any_goals
-      contradiction
-    any_goals
-      rfl
-    · simp [inₛ] at heval'
-      rename_i vs _
-      cases h_euids : Data.Set.mapOrErr Value.asEntityUID vs Error.typeError <;> simp [h_euids] at heval'
-      subst heval'
-      unfold Data.Set.mapOrErr at h_euids
-      split at h_euids <;> try contradiction
-      simp at h_euids
-      subst h_euids
-      rename_i h_err
-      replace ⟨x, h_err⟩ := List.mapM_error_implies_exists_error h_err
-      have hty₁ := residual_well_typed_is_sound hwf hwt₁ ih₁
-      have hty₂ := residual_well_typed_is_sound hwf hwt₂ ih₂
+  case unary =>
+    rename_i op _ _ _
+    cases op
+    case neg =>
+      rename_i hop
+      exact False.elim (hop (by constructor))
+    case not | isEmpty | like pattern | is ty =>
+      simp [Residual.evaluate, Except.isOk, Except.toBool]
+      rename_i x₁ _ he₁ _
       cases hwt
-      · rename_i _ hety₂
-        rw [hety₂] at hty₂
-        replace ⟨_, hty₂⟩ := instance_of_entity_type_is_entity hty₂
-        simp at hty₂
-      · rename_i hety₁ hety₂
-        rw [hety₁] at hty₁
-        replace ⟨_, hty₁⟩ := instance_of_entity_type_is_entity hty₁
-        rw [hety₂] at hty₂
-        replace ⟨_, hty₂, _⟩ := instance_of_set_type_is_set hty₂
-        simp at hty₂
-        subst hty₂
-        simp at hty₁
-        replace ⟨hty₁, hty₁'⟩ := hty₁
-        subst hty₁ hty₁'
-        simp [*] at *
-        have h_elem_euid : ∀ v ∈ vs, v.asEntityUID.isOk := by
-          intro v hv
-          have hty₂ := residual_well_typed_is_sound hwf hwt₂ ih₂
+      rename_i hwt₁ hwt
+      have ih₁ := error_free_evaluate_ok hwf hwt₁ he₁
+      simp [Except.isOk, Except.toBool] at ih₁
+      split at ih₁ <;> try contradiction
+      clear ih₁ ; rename_i ih₁
+      simp [ih₁, apply₁]
+      split <;> try rfl
+
+      rename_i heval'
+      split at heval' <;> try contradiction
+      rename_i h_not_bool h_not_int h_not_set h_not_string h_not_entity
+      injections heval'
+      subst heval'
+
+      cases hwt
+      rename_i hty₁
+      have hty₁' := residual_well_typed_is_sound hwf hwt₁ ih₁
+      rw [hty₁] at hty₁'
+      first
+        | have ⟨_, h_val⟩ := instance_of_anyBool_is_bool hty₁'
+          simp [h_val] at h_not_bool
+        | have ⟨_, h_val⟩ := instance_of_set_type_is_set hty₁'
+          simp [h_val] at h_not_set
+        | have ⟨_, h_val⟩ := instance_of_string_is_string hty₁'
+          simp [h_val] at h_not_string
+        | have ⟨_, h_val⟩ := instance_of_entity_type_is_entity hty₁'
+          simp [h_val] at h_not_entity
+  case binary =>
+    rename_i op _ _ _ _
+    cases op
+    case getTag =>
+      -- forgot to add this to the error enum
+      sorry
+    case mul | add | sub =>
+      rename_i hop
+      exact False.elim (hop (by constructor))
+    case mem =>
+      simp [Residual.evaluate, Except.isOk, Except.toBool]
+      rename_i x₁ x₂ _ he₁ he₂ _
+      cases hwt
+      rename_i hwt₁ hwt₂ hwt
+      have ih₁ := error_free_evaluate_ok hwf hwt₁ he₁
+      have ih₂ := error_free_evaluate_ok hwf hwt₂ he₂
+      simp [Except.isOk, Except.toBool] at ih₁ ih₂
+      split at ih₁ <;> try contradiction
+      clear ih₁ ; rename_i ih₁
+      split at ih₂ <;> try contradiction
+      clear ih₂ ; rename_i ih₂
+      simp [ih₁, ih₂]
+      simp [apply₂]
+      split
+      all_goals
+        rename_i heval'
+        split at heval'
+      any_goals
+        contradiction
+      any_goals
+        rfl
+      · simp [inₛ] at heval'
+        rename_i vs _
+        cases h_euids : Data.Set.mapOrErr Value.asEntityUID vs Error.typeError <;> simp [h_euids] at heval'
+        subst heval'
+        unfold Data.Set.mapOrErr at h_euids
+        split at h_euids <;> try contradiction
+        simp at h_euids
+        subst h_euids
+        rename_i h_err
+        replace ⟨x, h_err⟩ := List.mapM_error_implies_exists_error h_err
+        have hty₁ := residual_well_typed_is_sound hwf hwt₁ ih₁
+        have hty₂ := residual_well_typed_is_sound hwf hwt₂ ih₂
+        cases hwt
+        · rename_i _ hety₂
           rw [hety₂] at hty₂
-          replace ⟨_, hty₂, h_ety⟩ := instance_of_set_type_is_set hty₂
+          replace ⟨_, hty₂⟩ := instance_of_entity_type_is_entity hty₂
+          simp at hty₂
+        · rename_i hety₁ hety₂
+          rw [hety₁] at hty₁
+          replace ⟨_, hty₁⟩ := instance_of_entity_type_is_entity hty₁
+          rw [hety₂] at hty₂
+          replace ⟨_, hty₂, _⟩ := instance_of_set_type_is_set hty₂
           simp at hty₂
           subst hty₂
-          specialize h_ety v hv
-          replace ⟨_, h_ety⟩ := instance_of_entity_type_is_entity h_ety
+          simp at hty₁
+          replace ⟨hty₁, hty₁'⟩ := hty₁
+          subst hty₁ hty₁'
           simp [*] at *
-          simp [Except.isOk, Except.toBool, Value.asEntityUID]
-        specialize h_elem_euid x h_err.left
-        rw [h_err.right] at h_elem_euid
-        simp [Except.isOk, Except.toBool] at h_elem_euid
-    · simp [*] at *
-      subst heval'
-      rename_i h_not_entity h_not_set _ _
-      have hty₁ := residual_well_typed_is_sound hwf hwt₁ ih₁
-      have hty₂ := residual_well_typed_is_sound hwf hwt₂ ih₂
+          have h_elem_euid : ∀ v ∈ vs, v.asEntityUID.isOk := by
+            intro v hv
+            have hty₂ := residual_well_typed_is_sound hwf hwt₂ ih₂
+            rw [hety₂] at hty₂
+            replace ⟨_, hty₂, h_ety⟩ := instance_of_set_type_is_set hty₂
+            simp at hty₂
+            subst hty₂
+            specialize h_ety v hv
+            replace ⟨_, h_ety⟩ := instance_of_entity_type_is_entity h_ety
+            simp [*] at *
+            simp [Except.isOk, Except.toBool, Value.asEntityUID]
+          specialize h_elem_euid x h_err.left
+          rw [h_err.right] at h_elem_euid
+          simp [Except.isOk, Except.toBool] at h_elem_euid
+      · simp [*] at *
+        subst heval'
+        rename_i h_not_entity h_not_set _ _
+        have hty₁ := residual_well_typed_is_sound hwf hwt₁ ih₁
+        have hty₂ := residual_well_typed_is_sound hwf hwt₂ ih₂
+        cases hwt
+        · rename_i hety₁ hety₂
+          rw [hety₁] at hty₁
+          replace ⟨_, hty₁⟩ := instance_of_entity_type_is_entity hty₁
+          rw [hety₂] at hty₂
+          replace ⟨_, hty₂⟩ := instance_of_entity_type_is_entity hty₂
+          simp [hty₂, hty₁] at h_not_entity
+        · rename_i hety₁ hety₂
+          rw [hety₁] at hty₁
+          replace ⟨_, hty₁⟩ := instance_of_entity_type_is_entity hty₁
+          rw [hety₂] at hty₂
+          replace ⟨_, hty₂, _⟩ := instance_of_set_type_is_set hty₂
+          simp [hty₁, hty₂] at h_not_set
+    case eq =>
+      simp [Residual.evaluate, Except.isOk, Except.toBool, apply₂]
+      rename_i x₁ x₂ _ he₁ he₂ _
       cases hwt
-      · rename_i hety₁ hety₂
-        rw [hety₁] at hty₁
-        replace ⟨_, hty₁⟩ := instance_of_entity_type_is_entity hty₁
-        rw [hety₂] at hty₂
-        replace ⟨_, hty₂⟩ := instance_of_entity_type_is_entity hty₂
-        simp [hty₂, hty₁] at h_not_entity
-      · rename_i hety₁ hety₂
-        rw [hety₁] at hty₁
-        replace ⟨_, hty₁⟩ := instance_of_entity_type_is_entity hty₁
-        rw [hety₂] at hty₂
-        replace ⟨_, hty₂, _⟩ := instance_of_set_type_is_set hty₂
-        simp [hty₁, hty₂] at h_not_set
-  · simp [Residual.evaluate, Except.isOk, Except.toBool, apply₂]
-    rename_i x₁ x₂ _ he₁ he₂
-    cases hwt
-    rename_i hwt₁ hwt₂ hwt
-    have ih₁ := error_free_evaluate_ok hwf hwt₁ he₁
-    have ih₂ := error_free_evaluate_ok hwf hwt₂ he₂
-    simp only [Except.isOk, Except.toBool] at ih₁ ih₂
-    split at ih₁ <;> try contradiction
-    clear ih₁ ; rename_i ih₁
-    split at ih₂ <;> try contradiction
-    clear ih₂ ; rename_i ih₂
-    simp [ih₁, ih₂]
-  · -- is case
+      rename_i hwt₁ hwt₂ hwt
+      have ih₁ := error_free_evaluate_ok hwf hwt₁ he₁
+      have ih₂ := error_free_evaluate_ok hwf hwt₂ he₂
+      simp only [Except.isOk, Except.toBool] at ih₁ ih₂
+      split at ih₁ <;> try contradiction
+      clear ih₁ ; rename_i ih₁
+      split at ih₂ <;> try contradiction
+      clear ih₂ ; rename_i ih₂
+      simp [ih₁, ih₂]
+
+    all_goals
+      sorry
+  case and =>
     simp [Residual.evaluate, Except.isOk, Except.toBool]
-    rename_i x₁ _ he₁
-    cases hwt
-    rename_i hwt₁ hwt
-    have ih₁ := error_free_evaluate_ok hwf hwt₁ he₁
-    simp [Except.isOk, Except.toBool] at ih₁
-    split at ih₁ <;> try contradiction
-    clear ih₁ ; rename_i ih₁
-    simp [ih₁, apply₁]
-    split <;> try rfl
-    rename_i heval'
-    split at heval' <;> try contradiction
-    rename_i h_not_entity
-    simp at heval'
-    subst heval'
-    cases hwt
-    rename_i hty₁
-    have hty₁' := residual_well_typed_is_sound hwf hwt₁ ih₁
-    rw [hty₁] at hty₁'
-    have ⟨_, h_entity⟩ := instance_of_entity_type_is_entity hty₁'
-    simp [h_entity] at h_not_entity
-  · simp [Residual.evaluate, Except.isOk, Except.toBool]
     rename_i x₁ x₂ _ he₁ he₂
     cases hwt with
     | and hwt₁ hwt₂ hty₁ hty₂ =>
@@ -305,7 +347,8 @@ theorem error_free_evaluate_ok {r : Residual} :
         subst hb
         rename_i h_not_bool
         simp at h_not_bool
-  · simp [Residual.evaluate, Except.isOk, Except.toBool]
+  case or =>
+    simp [Residual.evaluate, Except.isOk, Except.toBool]
     rename_i x₁ x₂ _ he₁ he₂
     cases hwt with
     | or hwt₁ hwt₂ hty₁ hty₂ =>
@@ -320,25 +363,21 @@ theorem error_free_evaluate_ok {r : Residual} :
       split <;> try rfl
       rename_i heval'
       split at heval'
+      · simp at heval'
+        have hwts₂ := residual_well_typed_is_sound hwf hwt₂ ih₂
+        rw [hty₂] at hwts₂
+        have ⟨_, hb⟩ := instance_of_anyBool_is_bool hwts₂
+        subst hb
+        simp only [Except.map_ok] at heval'
+        split at heval' <;> contradiction
       · have hwts₁ := residual_well_typed_is_sound hwf hwt₁ ih₁
         rw [hty₁] at hwts₁
         have ⟨_, hb⟩ := instance_of_anyBool_is_bool hwts₁
         subst hb
-        simp at heval'
-      · simp at heval'
-        split at heval'
-        · have hwts₂ := residual_well_typed_is_sound hwf hwt₂ ih₂
-          rw [hty₂] at hwts₂
-          have ⟨_, hb⟩ := instance_of_anyBool_is_bool hwts₂
-          subst hb
-          simp at heval'
-        · have hwts₁ := residual_well_typed_is_sound hwf hwt₁ ih₁
-          rw [hty₁] at hwts₁
-          have ⟨_, hb⟩ := instance_of_anyBool_is_bool hwts₁
-          subst hb
-          rename_i h_not_bool
-          simp at h_not_bool
-  · rename_i rs ty hrs₁
+        rename_i h_not_bool
+        simp at h_not_bool
+  case set =>
+    rename_i rs ty hrs₁
     cases hwt
     rename_i ty hwt _ _
     simp [Residual.evaluate, Except.isOk, Except.toBool]

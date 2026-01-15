@@ -79,14 +79,22 @@ def Residual.typeOf : Residual → CedarType
   | .call _ _ ty
   | .error ty => ty
 
+
+def BinaryOp.canOverflow : BinaryOp → Bool
+  | .add | .sub | .mul => true
+  | _ => false
+
+def UnaryOp.canOverflow : UnaryOp → Bool
+  | .neg => true
+  | _ => false
+
 -- Assumes the residual is well typed, so there can be no type errors.
 -- Implements only enough for scope expressions for proof of concept.
 def Residual.errorFree : Residual → Bool
   | .val _ _ => true
   | .var _ _ => true
-  | .binaryApp .eq x₁ x₂ _ => x₁.errorFree && x₂.errorFree
-  | .binaryApp .mem x₁ x₂ _ => x₁.errorFree && x₂.errorFree
-  | .unaryApp (.is _) x₁ _ => x₁.errorFree
+  | .binaryApp op x₁ x₂ _ => !op.canOverflow && x₁.errorFree && x₂.errorFree
+  | .unaryApp op x₁ _ =>  !op.canOverflow && x₁.errorFree
   | .and x₁ x₂ _ => x₁.errorFree && x₂.errorFree
   | .or x₁ x₂ _ => x₁.errorFree && x₂.errorFree
   | .set xs _ => xs.attach.all λ x =>
