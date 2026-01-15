@@ -213,161 +213,77 @@ theorem error_free_evaluate_ok {r : Residual} :
           simp [h_val] at h_not_entity
   case binary =>
     rename_i op _ _ _ _
-    cases op
+    simp [Residual.evaluate, Except.isOk, Except.toBool]
+    rename_i he₁ he₂
+    cases hwt
+    rename_i hwt₁ hwt₂ hwt
+    have ih₁ := error_free_evaluate_ok hwf hwt₁ he₁
+    have ih₂ := error_free_evaluate_ok hwf hwt₂ he₂
+    simp only [Except.isOk, Except.toBool] at ih₁ ih₂
+    split at ih₁ <;> try contradiction
+    clear ih₁ ; rename_i ih₁
+    split at ih₂ <;> try contradiction
+    clear ih₂ ; rename_i ih₂
+    simp [ih₁, ih₂]
+    cases hwt
     case mul | add | sub | getTag =>
-      rename_i hop
+      rename_i hop _ _
       exact False.elim (hop (by constructor))
-    case mem =>
-      simp [Residual.evaluate, Except.isOk, Except.toBool]
-      rename_i x₁ x₂ _ he₁ he₂ _
-      cases hwt
-      rename_i hwt₁ hwt₂ hwt
-      have ih₁ := error_free_evaluate_ok hwf hwt₁ he₁
-      have ih₂ := error_free_evaluate_ok hwf hwt₂ he₂
-      simp [Except.isOk, Except.toBool] at ih₁ ih₂
-      split at ih₁ <;> try contradiction
-      clear ih₁ ; rename_i ih₁
-      split at ih₂ <;> try contradiction
-      clear ih₂ ; rename_i ih₂
-      simp [ih₁, ih₂]
-      simp [apply₂]
-      split
-      all_goals
-        rename_i heval'
-        split at heval'
-      any_goals
-        contradiction
-      any_goals
-        rfl
-      · simp [inₛ] at heval'
-        rename_i vs _
-        cases h_euids : Data.Set.mapOrErr Value.asEntityUID vs Error.typeError <;> simp [h_euids] at heval'
-        subst heval'
+    case memₛ hety₁ hety₂ =>
+      have hty₁ := residual_well_typed_is_sound hwf hwt₁ ih₁
+      have hty₂ := residual_well_typed_is_sound hwf hwt₂ ih₂
+      rw [hety₁] at hty₁
+      replace ⟨_, hty₁⟩ := instance_of_entity_type_is_entity hty₁
+      rw [hety₂] at hty₂
+      replace ⟨_, hty₂, htys⟩ := instance_of_set_type_is_set hty₂
+      subst hty₂
+      replace ⟨hty₁, hty₁'⟩ := hty₁
+      subst hty₁ hty₁'
+      simp only [apply₂, inₛ]
+      split <;> try rfl
+      rename_i vs _ _ heval
+      cases h_euids : Data.Set.mapOrErr Value.asEntityUID vs Error.typeError
+      · have h_elem_euid : ∀ v ∈ vs, ∃ v', v.asEntityUID = .ok v' := by
+          intro v hv
+          replace ⟨_, h_ety⟩ := instance_of_entity_type_is_entity $ htys v hv
+          simp [h_ety, Value.asEntityUID]
         unfold Data.Set.mapOrErr at h_euids
         split at h_euids <;> try contradiction
-        simp at h_euids
-        subst h_euids
         rename_i h_err
         replace ⟨x, h_err⟩ := List.mapM_error_implies_exists_error h_err
-        have hty₁ := residual_well_typed_is_sound hwf hwt₁ ih₁
-        have hty₂ := residual_well_typed_is_sound hwf hwt₂ ih₂
-        cases hwt
-        · rename_i _ hety₂
-          rw [hety₂] at hty₂
-          replace ⟨_, hty₂⟩ := instance_of_entity_type_is_entity hty₂
-          simp at hty₂
-        · rename_i hety₁ hety₂
-          rw [hety₁] at hty₁
-          replace ⟨_, hty₁⟩ := instance_of_entity_type_is_entity hty₁
-          rw [hety₂] at hty₂
-          replace ⟨_, hty₂, _⟩ := instance_of_set_type_is_set hty₂
-          simp at hty₂
-          subst hty₂
-          simp at hty₁
-          replace ⟨hty₁, hty₁'⟩ := hty₁
-          subst hty₁ hty₁'
-          simp [*] at *
-          have h_elem_euid : ∀ v ∈ vs, v.asEntityUID.isOk := by
-            intro v hv
-            have hty₂ := residual_well_typed_is_sound hwf hwt₂ ih₂
-            rw [hety₂] at hty₂
-            replace ⟨_, hty₂, h_ety⟩ := instance_of_set_type_is_set hty₂
-            simp at hty₂
-            subst hty₂
-            specialize h_ety v hv
-            replace ⟨_, h_ety⟩ := instance_of_entity_type_is_entity h_ety
-            simp [*] at *
-            simp [Except.isOk, Except.toBool, Value.asEntityUID]
-          specialize h_elem_euid x h_err.left
-          rw [h_err.right] at h_elem_euid
-          simp [Except.isOk, Except.toBool] at h_elem_euid
-      · simp [*] at *
-        subst heval'
-        rename_i h_not_entity h_not_set _ _
-        have hty₁ := residual_well_typed_is_sound hwf hwt₁ ih₁
-        have hty₂ := residual_well_typed_is_sound hwf hwt₂ ih₂
-        cases hwt
-        · rename_i hety₁ hety₂
-          rw [hety₁] at hty₁
-          replace ⟨_, hty₁⟩ := instance_of_entity_type_is_entity hty₁
-          rw [hety₂] at hty₂
-          replace ⟨_, hty₂⟩ := instance_of_entity_type_is_entity hty₂
-          simp [hty₂, hty₁] at h_not_entity
-        · rename_i hety₁ hety₂
-          rw [hety₁] at hty₁
-          replace ⟨_, hty₁⟩ := instance_of_entity_type_is_entity hty₁
-          rw [hety₂] at hty₂
-          replace ⟨_, hty₂, _⟩ := instance_of_set_type_is_set hty₂
-          simp [hty₁, hty₂] at h_not_set
-    case eq =>
-      simp [Residual.evaluate, Except.isOk, Except.toBool, apply₂]
-      rename_i x₁ x₂ _ he₁ he₂ _
-      cases hwt
-      rename_i hwt₁ hwt₂ hwt
-      have ih₁ := error_free_evaluate_ok hwf hwt₁ he₁
-      have ih₂ := error_free_evaluate_ok hwf hwt₂ he₂
-      simp only [Except.isOk, Except.toBool] at ih₁ ih₂
-      split at ih₁ <;> try contradiction
-      clear ih₁ ; rename_i ih₁
-      split at ih₂ <;> try contradiction
-      clear ih₂ ; rename_i ih₂
-      simp [ih₁, ih₂]
-    case contains =>
-      simp [Residual.evaluate, Except.isOk, Except.toBool]
-      rename_i x₁ x₂ _ he₁ he₂ _
-      cases hwt
-      rename_i hwt₁ hwt₂ hwt
-      have ih₁ := error_free_evaluate_ok hwf hwt₁ he₁
-      have ih₂ := error_free_evaluate_ok hwf hwt₂ he₂
-      simp only [Except.isOk, Except.toBool] at ih₁ ih₂
-      split at ih₁ <;> try contradiction
-      clear ih₁ ; rename_i ih₁
-      split at ih₂ <;> try contradiction
-      clear ih₂ ; rename_i ih₂
-      simp [ih₁, ih₂]
-      cases hwt
-      rename_i hty₁
+        specialize h_elem_euid x h_err.left
+        simp [h_err.right] at h_elem_euid
+      · simp [h_euids] at heval
+    case eq | eq_val | eq_entity =>
+      simp [apply₂]
+    case contains hty₁ =>
       have hty₁' := residual_well_typed_is_sound hwf hwt₁ ih₁
       rw [hty₁] at hty₁'
       have ⟨_, h_val₁⟩ := instance_of_set_type_is_set hty₁'
       simp [apply₂, h_val₁]
     all_goals
-      simp [Residual.evaluate, Except.isOk, Except.toBool]
-      rename_i x₁ x₂ _ he₁ he₂ _
-      cases hwt
-      rename_i hwt₁ hwt₂ hwt
-      have ih₁ := error_free_evaluate_ok hwf hwt₁ he₁
-      have ih₂ := error_free_evaluate_ok hwf hwt₂ he₂
-      simp only [Except.isOk, Except.toBool] at ih₁ ih₂
-      split at ih₁ <;> try contradiction
-      clear ih₁ ; rename_i ih₁
-      split at ih₂ <;> try contradiction
-      clear ih₂ ; rename_i ih₂
-      simp [ih₁, ih₂]
-      cases hwt
-      all_goals
-        rename_i hty₁ hty₂
-        have hty₁' := residual_well_typed_is_sound hwf hwt₁ ih₁
-        have hty₂' := residual_well_typed_is_sound hwf hwt₂ ih₂
-        rw [hty₁] at hty₁'
-        rw [hty₂] at hty₂'
-        first
-          | have ⟨_, h_val₁⟩ := instance_of_set_type_is_set hty₁'
-          | have ⟨_, h_val₁⟩ := instance_of_string_is_string hty₁'
-          | have ⟨_, h_val₁⟩ := instance_of_entity_type_is_entity hty₁'
-          | have ⟨_, h_val₁⟩ := instance_of_decimal_type_is_decimal hty₁'
-          | have ⟨_, h_val₁⟩ := instance_of_datetime_type_is_datetime hty₁'
-          | have ⟨_, h_val₁⟩ := instance_of_duration_type_is_duration hty₁'
-          | have ⟨_, h_val₁⟩ := instance_of_int_is_int hty₁'
-        first
-          | have ⟨_, h_val₂⟩ := instance_of_set_type_is_set hty₂'
-          | have ⟨_, h_val₂⟩ := instance_of_string_is_string hty₂'
-          | have ⟨_, h_val₂⟩ := instance_of_entity_type_is_entity hty₂'
-          | have ⟨_, h_val₂⟩ := instance_of_decimal_type_is_decimal hty₂'
-          | have ⟨_, h_val₂⟩ := instance_of_datetime_type_is_datetime hty₂'
-          | have ⟨_, h_val₂⟩ := instance_of_duration_type_is_duration hty₂'
-          | have ⟨_, h_val₂⟩ := instance_of_int_is_int hty₂'
-        simp [apply₂, hasTag, h_val₁, h_val₂]
+      rename_i hty₁ hty₂
+      have hty₁' := residual_well_typed_is_sound hwf hwt₁ ih₁
+      rw [hty₁] at hty₁'
+      first
+        | have ⟨_, h_val₁⟩ := instance_of_set_type_is_set hty₁'
+        | have ⟨_, h_val₁⟩ := instance_of_string_is_string hty₁'
+        | have ⟨_, h_val₁⟩ := instance_of_entity_type_is_entity hty₁'
+        | have ⟨_, h_val₁⟩ := instance_of_decimal_type_is_decimal hty₁'
+        | have ⟨_, h_val₁⟩ := instance_of_datetime_type_is_datetime hty₁'
+        | have ⟨_, h_val₁⟩ := instance_of_duration_type_is_duration hty₁'
+        | have ⟨_, h_val₁⟩ := instance_of_int_is_int hty₁'
+      have hty₂' := residual_well_typed_is_sound hwf hwt₂ ih₂
+      rw [hty₂] at hty₂'
+      first
+        | have ⟨_, h_val₂⟩ := instance_of_set_type_is_set hty₂'
+        | have ⟨_, h_val₂⟩ := instance_of_string_is_string hty₂'
+        | have ⟨_, h_val₂⟩ := instance_of_entity_type_is_entity hty₂'
+        | have ⟨_, h_val₂⟩ := instance_of_decimal_type_is_decimal hty₂'
+        | have ⟨_, h_val₂⟩ := instance_of_datetime_type_is_datetime hty₂'
+        | have ⟨_, h_val₂⟩ := instance_of_duration_type_is_duration hty₂'
+        | have ⟨_, h_val₂⟩ := instance_of_int_is_int hty₂'
+      simp [apply₂, hasTag, h_val₁, h_val₂]
   case and =>
     simp [Residual.evaluate, Except.isOk, Except.toBool]
     rename_i x₁ x₂ _ he₁ he₂
