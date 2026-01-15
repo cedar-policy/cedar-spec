@@ -24,6 +24,7 @@ inductive BinaryOp.CanOverflow : BinaryOp → Prop where
   | add : BinaryOp.CanOverflow .add
   | sub : BinaryOp.CanOverflow .sub
   | mul : BinaryOp.CanOverflow .mul
+  | getTag : BinaryOp.CanOverflow .getTag
 
 inductive UnaryOp.CanOverflow : UnaryOp → Prop where
   | neg : UnaryOp.CanOverflow .neg
@@ -49,10 +50,10 @@ open Cedar.Validation
 theorem BinaryOp.can_overflow_spec (op : BinaryOp) : op.canOverflow = true ↔ op.CanOverflow := by
   unfold BinaryOp.canOverflow
   split
-  case h_1 | h_2 | h_3 =>
+  case h_1 | h_2 | h_3 | h_4 =>
     simp only [true_iff]
     constructor
-  case h_4 =>
+  case h_5 =>
     simp only [Bool.false_eq_true, false_iff]
     intro h
     cases h <;> simp at *
@@ -213,10 +214,7 @@ theorem error_free_evaluate_ok {r : Residual} :
   case binary =>
     rename_i op _ _ _ _
     cases op
-    case getTag =>
-      -- forgot to add this to the error enum
-      sorry
-    case mul | add | sub =>
+    case mul | add | sub | getTag =>
       rename_i hop
       exact False.elim (hop (by constructor))
     case mem =>
@@ -314,9 +312,62 @@ theorem error_free_evaluate_ok {r : Residual} :
       split at ih₂ <;> try contradiction
       clear ih₂ ; rename_i ih₂
       simp [ih₁, ih₂]
-
+    case contains =>
+      simp [Residual.evaluate, Except.isOk, Except.toBool]
+      rename_i x₁ x₂ _ he₁ he₂ _
+      cases hwt
+      rename_i hwt₁ hwt₂ hwt
+      have ih₁ := error_free_evaluate_ok hwf hwt₁ he₁
+      have ih₂ := error_free_evaluate_ok hwf hwt₂ he₂
+      simp only [Except.isOk, Except.toBool] at ih₁ ih₂
+      split at ih₁ <;> try contradiction
+      clear ih₁ ; rename_i ih₁
+      split at ih₂ <;> try contradiction
+      clear ih₂ ; rename_i ih₂
+      simp [ih₁, ih₂]
+      cases hwt
+      rename_i hty₁
+      have hty₁' := residual_well_typed_is_sound hwf hwt₁ ih₁
+      rw [hty₁] at hty₁'
+      have ⟨_, h_val₁⟩ := instance_of_set_type_is_set hty₁'
+      simp [apply₂, h_val₁]
     all_goals
-      sorry
+      simp [Residual.evaluate, Except.isOk, Except.toBool]
+      rename_i x₁ x₂ _ he₁ he₂ _
+      cases hwt
+      rename_i hwt₁ hwt₂ hwt
+      have ih₁ := error_free_evaluate_ok hwf hwt₁ he₁
+      have ih₂ := error_free_evaluate_ok hwf hwt₂ he₂
+      simp only [Except.isOk, Except.toBool] at ih₁ ih₂
+      split at ih₁ <;> try contradiction
+      clear ih₁ ; rename_i ih₁
+      split at ih₂ <;> try contradiction
+      clear ih₂ ; rename_i ih₂
+      simp [ih₁, ih₂]
+      cases hwt
+      all_goals
+        rename_i hty₁ hty₂
+        have hty₁' := residual_well_typed_is_sound hwf hwt₁ ih₁
+        have hty₂' := residual_well_typed_is_sound hwf hwt₂ ih₂
+        rw [hty₁] at hty₁'
+        rw [hty₂] at hty₂'
+        first
+          | have ⟨_, h_val₁⟩ := instance_of_set_type_is_set hty₁'
+          | have ⟨_, h_val₁⟩ := instance_of_string_is_string hty₁'
+          | have ⟨_, h_val₁⟩ := instance_of_entity_type_is_entity hty₁'
+          | have ⟨_, h_val₁⟩ := instance_of_decimal_type_is_decimal hty₁'
+          | have ⟨_, h_val₁⟩ := instance_of_datetime_type_is_datetime hty₁'
+          | have ⟨_, h_val₁⟩ := instance_of_duration_type_is_duration hty₁'
+          | have ⟨_, h_val₁⟩ := instance_of_int_is_int hty₁'
+        first
+          | have ⟨_, h_val₂⟩ := instance_of_set_type_is_set hty₂'
+          | have ⟨_, h_val₂⟩ := instance_of_string_is_string hty₂'
+          | have ⟨_, h_val₂⟩ := instance_of_entity_type_is_entity hty₂'
+          | have ⟨_, h_val₂⟩ := instance_of_decimal_type_is_decimal hty₂'
+          | have ⟨_, h_val₂⟩ := instance_of_datetime_type_is_datetime hty₂'
+          | have ⟨_, h_val₂⟩ := instance_of_duration_type_is_duration hty₂'
+          | have ⟨_, h_val₂⟩ := instance_of_int_is_int hty₂'
+        simp [apply₂, hasTag, h_val₁, h_val₂]
   case and =>
     simp [Residual.evaluate, Except.isOk, Except.toBool]
     rename_i x₁ x₂ _ he₁ he₂

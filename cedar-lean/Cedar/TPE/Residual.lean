@@ -81,7 +81,7 @@ def Residual.typeOf : Residual → CedarType
 
 
 def BinaryOp.canOverflow : BinaryOp → Bool
-  | .add | .sub | .mul => true
+  | .add | .sub | .mul | .getTag => true
   | _ => false
 
 def UnaryOp.canOverflow : UnaryOp → Bool
