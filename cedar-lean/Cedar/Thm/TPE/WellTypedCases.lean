@@ -315,6 +315,11 @@ theorem partial_eval_well_typed_or {env : TypeEnv} {a b : Residual} {ty : CedarT
     . exact h_b_wt
     . apply Residual.WellTyped.error
     . exact h_a_wt
+    . split
+      case isTrue =>
+        sorry
+      case isFalse =>
+        sorry
     . apply Residual.WellTyped.or
       · exact h_a_wt
       · exact h_b_wt

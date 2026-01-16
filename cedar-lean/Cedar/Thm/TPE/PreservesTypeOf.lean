@@ -103,15 +103,25 @@ private theorem partial_eval_preserves_typeof_or {env : TypeEnv} {a b : Residual
   cases h_wt with
   | or h₁ h₂ h₃ h₄ =>
     split
-    any_goals
+    all_goals
       rename Residual => x
       rename CedarType => ty
       rename_i heq
       unfold TPE.or at heq
+    all_goals
+      split at heq
+    any_goals
       split at heq
 
-    any_goals contradiction
+    any_goals
+      contradiction
 
+    any_goals
+      have h₅ := ih_a h_wf h_ref h₁
+      rw [h₃] at h₅
+      rw [heq] at h₅
+      simp only [Residual.typeOf] at h₅
+      exact h₅
     any_goals
       have h₅ := ih_b h_wf h_ref h₂
       rw [heq] at h₅
@@ -119,17 +129,21 @@ private theorem partial_eval_preserves_typeof_or {env : TypeEnv} {a b : Residual
       simp only [Residual.typeOf] at h₅
       exact h₅
 
-    any_goals
-      have h₅ := ih_a h_wf h_ref h₁
-      rw [heq] at h₅
-      rw [h₃] at h₅
-      simp only [Residual.typeOf] at h₅
-      exact h₅
-
-    case h_1 | h_5 | h_3 =>
+    case h_1 =>
+      injection heq with h₅ h₆
+      rw [h₆]
+    case h_5.isTrue =>
+      injection heq with h₅ h₆
+      rw [h₆]
+    case h_5.isFalse =>
+      injection heq with h₅ h₆ h₇
+      rw [h₇]
+    case h_3 =>
       injection heq with h₅
-      rename CedarType.bool BoolType.anyBool = ty => h₅
       rw [h₅]
+    case h_6 =>
+      injection heq with h₅ h₆ h₇
+      rw [h₇]
 
 private theorem partial_eval_preserves_typeof_ite {env : TypeEnv} {c t e : Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities}
   (ih_t : PEPreservesTypeOf env t req preq es pes)
