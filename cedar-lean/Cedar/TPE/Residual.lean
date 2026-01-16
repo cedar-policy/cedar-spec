@@ -97,10 +97,17 @@ def Residual.errorFree : Residual → Bool
   | .unaryApp op x₁ _ =>  !op.canOverflow && x₁.errorFree
   | .and x₁ x₂ _ => x₁.errorFree && x₂.errorFree
   | .or x₁ x₂ _ => x₁.errorFree && x₂.errorFree
+  | ite x₁ x₂ x₃ _ =>
+    x₁.errorFree && x₂.errorFree && x₃.errorFree
+  | hasAttr x₁ _ _ =>
+    x₁.errorFree
   | .set xs _ => xs.attach.all λ x =>
     have : sizeOf x.val < sizeOf xs :=
       List.sizeOf_lt_of_mem x.property
     x.val.errorFree
+  | record xs _ =>
+    xs.attach₂.all λ ax =>
+      ax.val.snd.errorFree
   | _ => false
 
 -- The interpreter of `Residual` that defines its semantics
