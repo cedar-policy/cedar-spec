@@ -316,10 +316,19 @@ theorem partial_eval_well_typed_or {env : TypeEnv} {a b : Residual} {ty : CedarT
     . apply Residual.WellTyped.error
     . exact h_a_wt
     . split
-      case isTrue =>
-        sorry
-      case isFalse =>
-        sorry
+      · exact well_typed_bool
+      · rename_i bty h_eval_b _ _ _ _
+        replace h_ty_b : bty = CedarType.bool BoolType.anyBool := by
+          replace h_ty_b' := partial_eval_preserves_typeof h_wf h_ref h_b
+          simp only [h_eval_b, h_ty_b] at h_ty_b'
+          simpa [Residual.typeOf] using h_ty_b'
+        apply Residual.WellTyped.or
+        · exact h_a_wt
+        · rw [h_ty_b]
+          exact well_typed_bool
+        · rw [partial_eval_preserves_typeof h_wf h_ref h_a]
+          exact h_ty_a
+        · simp [h_ty_b, Residual.typeOf]
     . apply Residual.WellTyped.or
       · exact h_a_wt
       · exact h_b_wt

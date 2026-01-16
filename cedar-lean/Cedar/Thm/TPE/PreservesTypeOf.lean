@@ -76,19 +76,13 @@ private theorem partial_eval_preserves_typeof_and {env : TypeEnv} {a b : Residua
       simp only [Residual.typeOf] at h₅
       exact h₅
 
-    case h_2 =>
-      injection heq with h₅ h₆
-      rw [h₆]
-    case h_5.isTrue =>
-      injection heq with h₅ h₆
-      rw [h₆]
-    case h_5.isFalse =>
-      injection heq with h₅ h₆ h₇
-      rw [h₇]
     case h_3 =>
       injection heq with h₅
       rw [h₅]
-    case h_6 =>
+    case h_5.isTrue | h_2 =>
+      injection heq with h₅ h₆
+      rw [h₆]
+    case h_5.isFalse | h_6 =>
       injection heq with h₅ h₆ h₇
       rw [h₇]
 
@@ -129,19 +123,13 @@ private theorem partial_eval_preserves_typeof_or {env : TypeEnv} {a b : Residual
       simp only [Residual.typeOf] at h₅
       exact h₅
 
-    case h_1 =>
-      injection heq with h₅ h₆
-      rw [h₆]
-    case h_5.isTrue =>
-      injection heq with h₅ h₆
-      rw [h₆]
-    case h_5.isFalse =>
-      injection heq with h₅ h₆ h₇
-      rw [h₇]
     case h_3 =>
       injection heq with h₅
       rw [h₅]
-    case h_6 =>
+    case h_5.isTrue | h_1 =>
+      injection heq with h₅ h₆
+      rw [h₆]
+    case h_5.isFalse | h_6 =>
       injection heq with h₅ h₆ h₇
       rw [h₇]
 
