@@ -59,7 +59,7 @@ theorem BinaryOp.can_overflow_spec (op : BinaryOp) : op.canOverflow = true ↔ o
   case h_5 =>
     simp only [Bool.false_eq_true, false_iff]
     intro h
-    cases h <;> simp at *
+    cases h <;> contradiction
 
 theorem UnaryOp.can_overflow_spec (op : UnaryOp) : op.canOverflow = true ↔ op.CanOverflow := by
   unfold UnaryOp.canOverflow
@@ -71,7 +71,7 @@ theorem UnaryOp.can_overflow_spec (op : UnaryOp) : op.canOverflow = true ↔ op.
     simp only [Bool.false_eq_true, false_iff]
     intro h
     cases h
-    simp at *
+    contradiction
 
 theorem error_free_spec (r : Residual) : r.errorFree = true ↔ r.ErrorFree := by
   cases r
@@ -147,7 +147,7 @@ theorem error_free_spec (r : Residual) : r.errorFree = true ↔ r.ErrorFree := b
       cases h
       assumption
   case set rs ty =>
-    simp [Residual.errorFree]
+    simp only [Residual.errorFree, List.all_subtype, List.unattach_attach, List.all_eq_true]
     have ih : ∀ r ∈ rs, r.errorFree = true ↔ r.ErrorFree := by
       intro r hr
       have : sizeOf r  < sizeOf (Residual.set rs ty) :=  by
@@ -164,7 +164,7 @@ theorem error_free_spec (r : Residual) : r.errorFree = true ↔ r.ErrorFree := b
       rename_i h
       exact h r hr
   case record axs ty =>
-    simp [Residual.errorFree]
+    simp only [Residual.errorFree, List.all_eq_true, Subtype.forall, Prod.forall]
     have ih : ∀ ax ∈ axs, ax.snd.errorFree = true ↔ ax.snd.ErrorFree := by
       intro ax hax
       have : sizeOf ax.snd  < sizeOf (Residual.record axs ty) :=  by
@@ -180,7 +180,8 @@ theorem error_free_spec (r : Residual) : r.errorFree = true ↔ r.ErrorFree := b
       rw [←ih]
       exact h ax.fst ax.snd (by simp [List.sizeOf_snd_lt_sizeOf_list hax]) (by grind [List.attach₂])
     · intro h₁ a x hax h₂
-      specialize ih (a, x) (by grind [List.attach₂])
+      replace hax : (a, x) ∈ axs := by grind [List.attach₂]
+      specialize ih (a, x) hax
       rw [ih]
       cases h₁
       rename_i h₁
@@ -189,7 +190,7 @@ termination_by r
 decreasing_by
   all_goals
     simp [*] at *
-    try omega
+    omega
 
 theorem error_free_evaluate_ok {r : Residual} :
   InstanceOfWellFormedEnvironment req es env →
@@ -305,7 +306,7 @@ theorem error_free_evaluate_ok {r : Residual} :
         | have ⟨_, h_val₂⟩ := instance_of_int_is_int hty₂'
       simp [apply₂, hasTag, h_val₁, h_val₂]
   case and | or =>
-    simp [Residual.evaluate]
+    simp only [Residual.evaluate]
     rw [Except.isOk_iff_exists]
     rename_i x₁ x₂ _ he₁ he₂
     cases hwt
@@ -321,7 +322,7 @@ theorem error_free_evaluate_ok {r : Residual} :
     rw [hty₂] at hwts₂
     have ⟨_, hb₂⟩ := instance_of_anyBool_is_bool hwts₂
     simp only [hb₁, hb₂, Result.as, Coe.coe, Value.asBool, Except.bind_ok]
-    split <;> simp
+    split <;> simp [pure, Except.pure]
   case ite =>
     unfold Residual.evaluate
     rw [Except.isOk_iff_exists]
@@ -344,7 +345,7 @@ theorem error_free_evaluate_ok {r : Residual} :
     cases hwt
     rename_i ty hwt _ _
     cases hrs₂ : rs.mapM₁ fun x => x.val.evaluate req es <;>
-      simp [Except.bind_err, Except.bind_ok, reduceCtorEq, exists_const, Except.ok.injEq, exists_eq']
+      simp only [Except.bind_err, Except.bind_ok, reduceCtorEq, exists_const, Except.ok.injEq, exists_eq']
     replace ⟨_, ⟨_, hrs₂⟩⟩ := List.mapM_error_implies_exists_error hrs₂
     rename_i r _
     specialize hrs₁ r.val r.property
