@@ -30,33 +30,14 @@ open Cedar.Spec
 open Cedar.Validation
 
 /--
-Determines if a policy is discretionary. A policy is discretionary if:
-- Principal scope is eq, mem, or isMem
-- Action scope is eq
-- Resource scope is eq
-- No `when` or `unless` conditions
--/
-def isPolicyDiscretionary (p : Policy) : Bool :=
-  (match p.principalScope.scope with
-  | .eq _ | .mem _ | .isMem _ _ => true
-  | _ => false) &&
-  (match p.actionScope with
-  | .actionScope (.eq _) => true
-  | _ => false) &&
-  (match p.resourceScope.scope with
-  | .eq _ => true
-  | _ => false) &&
-  p.condition == []
-
-/-- Checks if all policies in a list are discretionary. -/
-def arePoliciesDiscretionary (policies : Policies) : Bool :=
-  policies.all isPolicyDiscretionary
-
-/--
-Filters policies to those that apply to a specific principal and resource type.
+Filters discretionary policies to those that apply to a specific principal and resource type.
 Returns policies where:
 - The resource scope matches the given resource type
 - The principal scope includes the given principal (directly or through groups)
+
+Note that this function assumes policies are discretionary and will give
+incorrect results for policies with a different form. Most obviously, it never
+selects policy  with the `.any` constraint on the principal or resource.
 -/
 def policiesForPrincipalAndResourceType
   (ps : Policies)
@@ -88,8 +69,14 @@ def policiesByResource (ps : Policies) : Map EntityUID Policies :=
     | _ => m
 
 /--
-Computes the set of resources that a principal can access for discretionary policies.
-This is the main entry point for discretionary access control queries.
+Assuming that `ps` is a discretionary policy set, computes the set of resources
+that a principal can access.
+
+It is the callers responsibility to ensure that `ps` contains only discretionary
+policies. Any policies with an unexpected shape will lead to an incorrect
+result.
+
+This condition can be checked with `arePoliciesDiscretionary`.
 -/
 def discretionaryResourcesForPrincipal
   (pq : ResourcesForPrincipalRequest)
@@ -102,5 +89,28 @@ def discretionaryResourcesForPrincipal
   let resource_policy_map := policiesByResource principal_policies
   Map.keys ∘ resource_policy_map.filter $
     λ resource rps => (isAuthorized (pq.req resource) es rps).decision == .allow
+
+/--
+Determines if a policy is discretionary. A policy is discretionary if:
+- Principal scope is eq, mem, or isMem
+- Action scope is eq
+- Resource scope is eq
+- No `when` or `unless` conditions
+-/
+def isPolicyDiscretionary (p : Policy) : Bool :=
+  (match p.principalScope.scope with
+  | .eq _ | .mem _ | .isMem _ _ => true
+  | _ => false) &&
+  (match p.actionScope with
+  | .actionScope (.eq _) => true
+  | _ => false) &&
+  (match p.resourceScope.scope with
+  | .eq _ => true
+  | _ => false) &&
+  p.condition == []
+
+/-- Checks if all policies in a list are discretionary. -/
+def arePoliciesDiscretionary (policies : Policies) : Bool :=
+  policies.all isPolicyDiscretionary
 
 end Cedar.PQ

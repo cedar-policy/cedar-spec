@@ -26,12 +26,13 @@ open Cedar.Spec
 open Cedar.Validation
 
 /--
-  If this is an RBAC policy, i.e., it constraints the resource to be `in` or
-  `==` to a concrete entity in the policy scope, return a list of entities which
-  it could apply to. It may or may not actually apply to those resources
-  depending on the policy condition and the exact authorization request made.
-  Returns `None` for non-rbac policies, indicating that all resources might be
-  authorized.
+  If this policy is a `permit` policy constrains the resource to be `in` or `==`
+  to a concrete entity in the policy scope, return a list of entities which it
+  could apply to. It may or may not actually apply to those resources depending
+  on the policy condition and the exact authorization request made.  If it's a
+  `forbid` policy, return an empty list since the policy can never authorize any
+  request.  Returns `None` for other policies, indicating that any resources
+  might be authorized.
 -/
 def resource_candidates_for_policy (p : Policy) (es : Entities) : Option (List EntityUID) :=
   match p.effect with
@@ -45,25 +46,25 @@ def resource_candidates_for_policy (p : Policy) (es : Entities) : Option (List E
 /--
   Apply `resource_candidates_for_policy` across all policies in the policy
   store. A resources is returned if access to it might be authorized by any
-  policy in the store. If any policy return `None`, indicating that it is
-  non-rbac, then the whole policy store is non-rbac, meaning all resources might
-  be authorized, and this function also returns `None`.
+  policy in the store. If any policy return `None`, indicating that it does not
+  constrain the resource, then we assume all resources might be authorized, and
+  this function also returns `None`.
 -/
 def resource_candidates_for_policies (ps : Policies) (es : Entities) : Option (List EntityUID) :=
-  (ps.mapM (resource_candidates_for_policy · es)).map List.flatten
+  ps.mapM (resource_candidates_for_policy · es)|>.map List.flatten
 
 /--
   Computes the resources candidates that must be checked for a
   resources-for-principals permissions query.
 
-  For rbac policy sets, this takes the candidates as determined by
-  `resources_candidates_for_policies` and additionally filters them to include
-  only entities which have the requested resource type and are present in the
-  entity store.
+  If all policies contains have a resource constraint, this takes the candidates
+  as determined by `resources_candidates_for_policies` and additionally filters
+  them to include only entities which have the requested resource type and are
+  present in the entity store.
 
-  For non-rbac policy sets (where `resources_candidates_for_policies` returns
-  `None`), this assumes all entities need to be checked, so it only filters
-  candidates based on their entity type.
+  If any policy does not have a resource constraint (`resources_candidates_for_policies` returns `None`),
+  this assumes all entities need to be checked, so it only filters candidates
+  based on their entity type.
 -/
 def resource_candidates (pq : ResourcesForPrincipalRequest) (ps : Policies) (es : Entities): Set EntityUID :=
   let candidates := resource_candidates_for_policies ps es
