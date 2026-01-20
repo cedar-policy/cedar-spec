@@ -88,9 +88,9 @@ theorem Asserts.Equiv.satAsserts? {a₁ a₂ : Asserts} (ps : Policies) (εnv : 
 /--
 Equivalent `Asserts` produce the same output in `satAssertsOpt?`
 -/
-theorem Asserts.Equiv.satAssertsOpt? {a₁ a₂ : Asserts} (cpₛs : List CompiledPolicyₛ) :
+theorem Asserts.Equiv.satAssertsOpt? {a₁ a₂ : Asserts} (cpss : List CompiledPolicies) :
   a₁ ~ a₂ →
-  satAssertsOpt? cpₛs a₁ = satAssertsOpt? cpₛs a₂
+  satAssertsOpt? cpss a₁ = satAssertsOpt? cpss a₂
 := by
   intro heqv
   simp only [SymCC.satAssertsOpt?]

@@ -77,17 +77,17 @@ inputs drawn from the `εnv` that the policysets were compiled for.
 See also `verifyAlwaysAllowsOpt`, `verifyAlwaysDeniesOpt`, `verifyImpliesOpt`,
 `verifyEquivalentOpt`, and `verifyDisjointOpt`.
 -/
-def verifyIsAuthorizedOpt (φ : Term → Term → Term) (ps₁ ps₂ : CompiledPolicies) : Asserts :=
+def verifyIsAuthorizedOpt (φ : Term → Term → Term) (ps₁ ps₂ : CompiledPolicySet) : Asserts :=
   assert! ps₁.εnv = ps₂.εnv
   -- As an optimization here in `SymCCOpt`:
   -- Our callers only pass relatively simple functions as `φ`.
-  -- We expect that `enforcePairCompiledPolicies` is much more expensive to compute than `φ`.
+  -- We expect that `enforcePairCompiledPolicySet` is much more expensive to compute than `φ`.
   -- So, we first compute the assert involving `φ`. If that is constant-false,
   -- we can just return constant-false and not compute
-  -- `enforcePairCompiledPolicies`; the resulting asserts are equivalent.
+  -- `enforcePairCompiledPolicySet`; the resulting asserts are equivalent.
   match not (φ ps₁.term ps₂.term) with
   | .prim (.bool false) => [false]
-  | assert => (enforcePairCompiledPolicies ps₁ ps₂).elts ++ [assert]
+  | assert => (enforcePairCompiledPolicySet ps₁ ps₂).elts ++ [assert]
 
 /--
 Returns asserts that are unsatisfiable iff `p` does not error on any input in
@@ -164,22 +164,22 @@ compiled for.
 (Caller guarantees that `ps₁` and `ps₂` were compiled for the same `εnv`.)
 In other words, every input allowed by `ps₁` is allowed by `ps₂`.
 -/
-def verifyImpliesOpt (ps₁ ps₂ : CompiledPolicies) : Asserts :=
+def verifyImpliesOpt (ps₁ ps₂ : CompiledPolicySet) : Asserts :=
   verifyIsAuthorizedOpt implies ps₁ ps₂
 
 /--
 Returns asserts that are unsatisfiable iff `ps` allows all inputs in the `εnv`
 it was compiled for.
 -/
-def verifyAlwaysAllowsOpt (ps : CompiledPolicies) : Asserts :=
-  verifyImpliesOpt (CompiledPolicies.allowAll ps.εnv) ps
+def verifyAlwaysAllowsOpt (ps : CompiledPolicySet) : Asserts :=
+  verifyImpliesOpt (CompiledPolicySet.allowAll ps.εnv) ps
 
 /--
 Returns asserts that are unsatisfiable iff `ps` denies all inputs in the `εnv`
 it was compiled for.
 -/
-def verifyAlwaysDeniesOpt (ps : CompiledPolicies) : Asserts :=
-  verifyImpliesOpt ps (CompiledPolicies.denyAll ps.εnv)
+def verifyAlwaysDeniesOpt (ps : CompiledPolicySet) : Asserts :=
+  verifyImpliesOpt ps (CompiledPolicySet.denyAll ps.εnv)
 
 /--
 Returns asserts that are unsatisfiable iff `ps₁` and `ps₂` produce the same
@@ -187,7 +187,7 @@ authorization decision on all inputs in the `εnv` that the policysets were
 compiled for.
 (Caller guarantees that `ps₁` and `ps₂` were compiled for the same `εnv`.)
 -/
-def verifyEquivalentOpt (ps₁ ps₂ : CompiledPolicies) : Asserts :=
+def verifyEquivalentOpt (ps₁ ps₂ : CompiledPolicySet) : Asserts :=
   verifyIsAuthorizedOpt eq ps₁ ps₂
 
 /--
@@ -198,7 +198,7 @@ This checks that the authorization semantics of `ps₁` and `ps₂` are disjoint
 If this query is satisfiable, then there is at least one input in this `εnv` that
 is allowed by both `ps₁` and `ps₂`.
 -/
-def verifyDisjointOpt (ps₁ ps₂ : CompiledPolicies) : Asserts :=
+def verifyDisjointOpt (ps₁ ps₂ : CompiledPolicySet) : Asserts :=
   verifyIsAuthorizedOpt disjoint ps₁ ps₂
 where
   disjoint (t₁ t₂ : Term) := not (and t₁ t₂)

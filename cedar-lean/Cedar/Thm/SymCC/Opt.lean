@@ -90,18 +90,18 @@ theorem compile_ok_iff_welltypedpolicy_ok {p : Policy} {Γ : Validation.TypeEnv}
     simp_all
 
 /--
-`CompiledPolicies.compile` succeeds iff `wellTypedPolicies` succeeds
+`CompiledPolicySet.compile` succeeds iff `wellTypedPolicies` succeeds
 
 Note: `Γ.WellFormed` is technically only required for the reverse direction
 -/
 theorem compile_ok_iff_welltypedpolicies_ok {ps : Policies} {Γ : Validation.TypeEnv} :
   Γ.WellFormed → (
-  Except.isOk (CompiledPolicies.compile ps Γ) ↔
+  Except.isOk (CompiledPolicySet.compile ps Γ) ↔
   Except.isOk (wellTypedPolicies ps Γ)
   )
 := by
   simp [Except.isOk, Except.toBool]
-  simp [CompiledPolicies.compile, Except.mapError]
+  simp [CompiledPolicySet.compile, Except.mapError]
   cases hwp : wellTypedPolicies ps Γ <;> simp
   case ok wps =>
     intro hwf
@@ -139,19 +139,19 @@ theorem compile_ok_then_exists_wtp {p : Policy} {cp : CompiledPolicy} {Γ : Vali
   exact h₁
 
 /--
-If `CompiledPolicies.compile` succeeds, then `wellTypedPolicies` succeeds
+If `CompiledPolicySet.compile` succeeds, then `wellTypedPolicies` succeeds
 
 Note: Can be proved without `Γ.WellFormed`
 -/
-theorem compile_ok_then_exists_wtps {ps : Policies} {cps : CompiledPolicies} {Γ : Validation.TypeEnv} :
+theorem compile_ok_then_exists_wtps {ps : Policies} {cpset : CompiledPolicySet} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicies.compile ps Γ = .ok cps →
+  CompiledPolicySet.compile ps Γ = .ok cpset →
   ∃ wps, wellTypedPolicies ps Γ = .ok wps
 := by
   intro hwf h₀
   have h₁ := (compile_ok_iff_welltypedpolicies_ok hwf).mp (by
     simp [Except.isOk_iff_exists]
-    exists cps
+    exists cpset
   )
   simp [Except.isOk_iff_exists] at h₁
   exact h₁
@@ -166,7 +166,7 @@ theorem cp_satAssertsOpt?_eqv_satAsserts?_ok {ps wps : Policies} {cps : List Com
   cps ≠ [] →
   ps.mapM (CompiledPolicy.compile · Γ) = .ok cps →
   ps.mapM (wellTypedPolicy · Γ) = .ok wps →
-  satAsserts? wps asserts (SymEnv.ofTypeEnv Γ) = satAssertsOpt? (cps.map CompiledPolicyₛ.policy) asserts
+  satAsserts? wps asserts (SymEnv.ofTypeEnv Γ) = satAssertsOpt? (cps.map CompiledPolicies.policy) asserts
 := by
   intro hlen
   simp [satAsserts?, satAssertsOpt?]
@@ -189,121 +189,121 @@ theorem cp_satAssertsOpt?_eqv_satAsserts?_ok {ps wps : Policies} {cps : List Com
   simp [Functor.map, Except.map] at hcps
   split at hcps <;> simp at hcps
   replace ⟨hcps, htemp⟩ := hcps ; subst cp' htemp ; rename_i cps hcps ; have hcp := hcp' ; clear hcp'
-  simp only [CompiledPolicyₛ.εnv]
+  simp only [CompiledPolicies.εnv]
   rw [cp_compile_produces_the_right_env hcp]
   congr
   funext I
   cases I <;> simp only
   case some I =>
-  suffices SymEnv.extract? ((wp :: wps).map Policy.toExpr) I (SymEnv.ofTypeEnv Γ) = extractOpt? (.policy cp :: cps.map CompiledPolicyₛ.policy) I by rw [this] ; rfl
+  suffices SymEnv.extract? ((wp :: wps).map Policy.toExpr) I (SymEnv.ofTypeEnv Γ) = extractOpt? (.policy cp :: cps.map CompiledPolicies.policy) I by rw [this] ; rfl
   rw [extractOpt?_eqv_extract? (εnv := cp.εnv) (by simp)]
   · congr 1
-    · simp only [List.map_cons, List.flatMap_cons, CompiledPolicyₛ.allPolicies,
+    · simp only [List.map_cons, List.flatMap_cons, CompiledPolicies.allPolicies,
         List.cons_append, List.nil_append, List.cons.injEq]
       simp only [flatMap_allPolicies_policy, List.map_map]
-      simp only [compiled_policy_eq_wtp hcp hwp, true_and]
+      simp only [cp_compile_produces_the_right_policy hcp hwp, true_and]
       rw [← List.forall₂_iff_map_eq]
       apply List.Forall₂.imp (R := λ a b => a = b.policy)
       · intro a b h ; subst a ; simp
       · rw [List.mapM_ok_iff_forall₂] at hcps hwps
         apply List.forall₂_trans_ish hwps hcps
         intro p wp cp hwp hcp
-        exact (compiled_policy_eq_wtp hcp hwp).symm
+        exact (cp_compile_produces_the_right_policy hcp hwp).symm
     · simp [cp_compile_produces_the_right_env hcp]
-  · intro cpₛ hcpₛ
-    cases hcpₛ
+  · intro cps' hcps'
+    cases hcps'
     · rfl
-    · rename_i hcpₛ
-      change cpₛ ∈ cps.map CompiledPolicyₛ.policy at hcpₛ
-      simp only [List.mem_map] at hcpₛ
-      replace ⟨cp', hcp', hcpₛ⟩ := hcpₛ ; subst cpₛ
+    · rename_i hcps'
+      change cps' ∈ cps.map CompiledPolicies.policy at hcps'
+      simp only [List.mem_map] at hcps'
+      replace ⟨cp', hcp', hcps'⟩ := hcps' ; subst cps'
       replace ⟨hεnv, hεnv'⟩ := hεnv
-      simp [CompiledPolicyₛ.εnv, hεnv, hεnv' cp' hcp']
-  · intro cpₛ hcpₛ
-    cases hcpₛ
+      simp [CompiledPolicies.εnv, hεnv, hεnv' cp' hcp']
+  · intro cps' hcps'
+    cases hcps'
     · exists p, Γ
-    · rename_i hcpₛ
-      change cpₛ ∈ cps.map CompiledPolicyₛ.policy at hcpₛ
-      simp only [List.mem_map] at hcpₛ
-      replace ⟨cp', hcp', hcpₛ⟩ := hcpₛ ; subst cpₛ
+    · rename_i hcps'
+      change cps' ∈ cps.map CompiledPolicies.policy at hcps'
+      simp only [List.mem_map] at hcps'
+      replace ⟨cp', hcp', hcps'⟩ := hcps' ; subst cps'
       simp only
       replace ⟨p', hp', hcps⟩ := List.mapM_ok_implies_all_from_ok hcps cp' hcp'
       exists p', Γ
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
-compilation with `CompiledPolicies.compile` succeeds, then `satAsserts?` and
+compilation with `CompiledPolicySet.compile` succeeds, then `satAsserts?` and
 `satAssertsOpt?` are equivalent.
 -/
-theorem cps_satAssertsOpt?_eqv_satAsserts?_ok {pss wpss : List Policies} {cpss : List CompiledPolicies} {Γ : Validation.TypeEnv} :
-  pss.length = cpss.length →
-  cpss ≠ [] →
-  pss.mapM (CompiledPolicies.compile · Γ) = .ok cpss →
+theorem cpset_satAssertsOpt?_eqv_satAsserts?_ok {pss wpss : List Policies} {cpsets : List CompiledPolicySet} {Γ : Validation.TypeEnv} :
+  pss.length = cpsets.length →
+  cpsets ≠ [] →
+  pss.mapM (CompiledPolicySet.compile · Γ) = .ok cpsets →
   pss.mapM (wellTypedPolicies · Γ) = .ok wpss →
-  satAsserts? wpss.flatten asserts (SymEnv.ofTypeEnv Γ) = satAssertsOpt? (cpss.map CompiledPolicyₛ.policies) asserts
+  satAsserts? wpss.flatten asserts (SymEnv.ofTypeEnv Γ) = satAssertsOpt? (cpsets.map CompiledPolicies.pset) asserts
 := by
   intro hlen
   simp [satAsserts?, satAssertsOpt?]
-  intro hnil hcpss hwpss
-  have hεnv : ∀ cps ∈ cpss, cps.εnv = SymEnv.ofTypeEnv Γ := by
-    intro cps hcps
-    replace ⟨ps, hps, hcpss⟩ := List.mapM_ok_implies_all_from_ok hcpss cps hcps
-    exact cps_compile_produces_the_right_env hcpss
+  intro hnil hcpsets hwpss
+  have hεnv : ∀ cpset ∈ cpsets, cpset.εnv = SymEnv.ofTypeEnv Γ := by
+    intro cpset hcpset
+    replace ⟨ps, hps, hcpsets⟩ := List.mapM_ok_implies_all_from_ok hcpsets cpset hcpset
+    exact cpset_compile_produces_the_right_env hcpsets
   revert hnil
-  cases cpss <;> simp
-  case cons cps cpss =>
+  cases cpsets <;> simp
+  case cons cpset cpsets =>
   cases pss <;> simp at *
   case cons ps pss =>
-  simp [do_eq_ok] at hwpss hcpss
+  simp [do_eq_ok] at hwpss hcpsets
   replace ⟨wps, hwps, hwpss⟩ := hwpss
   simp [Functor.map, Except.map] at hwpss
   split at hwpss <;> simp at hwpss
   subst wpss ; rename_i wpss hwpss
-  replace ⟨cps', hcps', hcpss⟩ := hcpss
-  simp [Functor.map, Except.map] at hcpss
-  split at hcpss <;> simp at hcpss
-  replace ⟨hcpss, htemp⟩ := hcpss ; subst cps' htemp ; rename_i cpss hcpss ; have hcps := hcps' ; clear hcps'
-  simp only [CompiledPolicyₛ.εnv]
-  rw [cps_compile_produces_the_right_env hcps]
+  replace ⟨cpset', hcpset', hcpsets⟩ := hcpsets
+  simp [Functor.map, Except.map] at hcpsets
+  split at hcpsets <;> simp at hcpsets
+  replace ⟨hcpsets, htemp⟩ := hcpsets ; subst cpset' htemp ; rename_i cpsets hcpsets ; have hcpset := hcpset' ; clear hcpset'
+  simp only [CompiledPolicies.εnv]
+  rw [cpset_compile_produces_the_right_env hcpset]
   congr
   funext I
   cases I <;> simp only
   case some I =>
-  suffices SymEnv.extract? (List.map (List.map Policy.toExpr) (wps :: wpss)).flatten I (SymEnv.ofTypeEnv Γ) = extractOpt? (.policies cps :: cpss.map CompiledPolicyₛ.policies) I by rw [this] ; rfl
-  rw [extractOpt?_eqv_extract? (εnv := cps.εnv) (by simp)]
+  suffices SymEnv.extract? (List.map (List.map Policy.toExpr) (wps :: wpss)).flatten I (SymEnv.ofTypeEnv Γ) = extractOpt? (.pset cpset :: cpsets.map CompiledPolicies.pset) I by rw [this] ; rfl
+  rw [extractOpt?_eqv_extract? (εnv := cpset.εnv) (by simp)]
   · congr 1
-    · simp only [List.map_cons, List.flatten_cons, List.flatMap_cons, CompiledPolicyₛ.allPolicies,
+    · simp only [List.map_cons, List.flatten_cons, List.flatMap_cons, CompiledPolicies.allPolicies,
         List.map_append]
       simp only [flatMap_allPolicies_policies]
       congr 2
-      · simp [compiled_policies_eq_wtps hcps hwps]
+      · simp [cpset_compile_produces_the_right_policies hcpset hwps]
       · simp [List.flatMap]
         congr 1
         rw [← List.forall₂_iff_map_eq]
-        apply List.Forall₂.imp (R := λ a b => a = CompiledPolicies.policies b)
+        apply List.Forall₂.imp (R := λ a b => a = CompiledPolicySet.policies b)
         · intro a b h ; subst h ; simp
-        · rw [List.mapM_ok_iff_forall₂] at hcpss hwpss
-          apply List.forall₂_trans_ish hwpss hcpss
-          intro ps wps cps hwps hcps
-          exact (compiled_policies_eq_wtps hcps hwps).symm
-    · simp [cps_compile_produces_the_right_env hcps]
-  · intro cpₛ hcpₛ
-    cases hcpₛ
+        · rw [List.mapM_ok_iff_forall₂] at hcpsets hwpss
+          apply List.forall₂_trans_ish hwpss hcpsets
+          intro ps wps cpset hwps hcpset
+          exact (cpset_compile_produces_the_right_policies hcpset hwps).symm
+    · simp [cpset_compile_produces_the_right_env hcpset]
+  · intro cps hcps
+    cases hcps
     · rfl
-    · rename_i hcpₛ
-      change cpₛ ∈ cpss.map CompiledPolicyₛ.policies at hcpₛ
-      simp only [List.mem_map] at hcpₛ
-      replace ⟨cps', hcps', hcpₛ⟩ := hcpₛ ; subst cpₛ
+    · rename_i hcps
+      change cps ∈ cpsets.map CompiledPolicies.pset at hcps
+      simp only [List.mem_map] at hcps
+      replace ⟨cpset', hcpset', hcps⟩ := hcps ; subst cps
       replace ⟨hεnv, hεnv'⟩ := hεnv
-      simp [CompiledPolicyₛ.εnv, hεnv, hεnv' cps' hcps']
-  · intro cpₛ hcpₛ
-    cases hcpₛ
+      simp [CompiledPolicies.εnv, hεnv, hεnv' cpset' hcpset']
+  · intro cps hcps
+    cases hcps
     · exists ps, Γ
-    · rename_i hcpₛ
-      change cpₛ ∈ cpss.map CompiledPolicyₛ.policies at hcpₛ
-      simp only [List.mem_map] at hcpₛ
-      replace ⟨cps', hcps', hcpₛ⟩ := hcpₛ ; subst cpₛ
-      replace ⟨ps', hps', hcpss⟩ := List.mapM_ok_implies_all_from_ok hcpss cps' hcps'
+    · rename_i hcps
+      change cps ∈ cpsets.map CompiledPolicies.pset at hcps
+      simp only [List.mem_map] at hcps
+      replace ⟨cpset', hcpset', hcps⟩ := hcps ; subst cps
+      replace ⟨ps', hps', hcpsets⟩ := List.mapM_ok_implies_all_from_ok hcpsets cpset' hcpset'
       exists ps', Γ
 
 /--
@@ -665,31 +665,31 @@ This theorem covers the "happy path" -- showing that if optimized policy
 compilation succeeds, then `wellTypedPolicies` succeeds and `implies?` and
 `impliesOpt?` are equivalent.
 -/
-theorem impliesOpt?_eqv_implies?_ok {ps₁ ps₂ : Policies} {cps₁ cps₂ : CompiledPolicies} {Γ : Validation.TypeEnv} :
+theorem impliesOpt?_eqv_implies?_ok {ps₁ ps₂ : Policies} {cpset₁ cpset₂ : CompiledPolicySet} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicies.compile ps₁ Γ = .ok cps₁ →
-  CompiledPolicies.compile ps₂ Γ = .ok cps₂ →
+  CompiledPolicySet.compile ps₁ Γ = .ok cpset₁ →
+  CompiledPolicySet.compile ps₂ Γ = .ok cpset₂ →
   ∃ wps₁ wps₂,
     wellTypedPolicies ps₁ Γ = .ok wps₁ ∧
     wellTypedPolicies ps₂ Γ = .ok wps₂ ∧
-    impliesOpt? cps₁ cps₂ = implies? wps₁ wps₂ (SymEnv.ofTypeEnv Γ)
+    impliesOpt? cpset₁ cpset₂ = implies? wps₁ wps₂ (SymEnv.ofTypeEnv Γ)
 := by
   simp [implies?, impliesOpt?]
   simp [sat?]
-  intro hwf hcps₁ hcps₂
-  have ⟨wps₁, hwps₁⟩ := compile_ok_then_exists_wtps hwf hcps₁
+  intro hwf hcpset₁ hcpset₂
+  have ⟨wps₁, hwps₁⟩ := compile_ok_then_exists_wtps hwf hcpset₁
   exists wps₁ ; apply And.intro hwps₁
-  have ⟨wps₂, hwps₂⟩ := compile_ok_then_exists_wtps hwf hcps₂
+  have ⟨wps₂, hwps₂⟩ := compile_ok_then_exists_wtps hwf hcpset₂
   exists wps₂ ; apply And.intro hwps₂
   have ⟨asserts, h₁⟩ := verifyImplies_is_ok hwf hwps₁ hwps₂
   simp [h₁]
-  have := cps_satAssertsOpt?_eqv_satAsserts?_ok (pss := [ps₁, ps₂]) (wpss := [wps₁, wps₂]) (cpss := [cps₁, cps₂]) (asserts := asserts) (Γ := Γ) (by simp) (by simp)
+  have := cpset_satAssertsOpt?_eqv_satAsserts?_ok (pss := [ps₁, ps₂]) (wpss := [wps₁, wps₂]) (cpsets := [cpset₁, cpset₂]) (asserts := asserts) (Γ := Γ) (by simp) (by simp)
   simp only [List.flatten_cons, List.flatten_nil, List.append_nil, List.map_cons, List.map_nil] at this
   rw [this] ; clear this
-  · have := verifyImpliesOpt_eqv_verifyImplies_ok hcps₁ hcps₂ hwps₁ hwps₂
+  · have := verifyImpliesOpt_eqv_verifyImplies_ok hcpset₁ hcpset₂ hwps₁ hwps₂
     simp [h₁, ResultAssertsEquiv] at this
-    exact Asserts.Equiv.satAssertsOpt? [.policies cps₁, .policies cps₂] (Asserts.Equiv.symm this)
-  · simp [hcps₁, hcps₂]
+    exact Asserts.Equiv.satAssertsOpt? [.pset cpset₁, .pset cpset₂] (Asserts.Equiv.symm this)
+  · simp [hcpset₁, hcpset₂]
   · simp [hwps₁, hwps₂]
 
 /--
@@ -699,9 +699,9 @@ Full equivalence for `implies?` and `impliesOpt?`, including both the
 theorem impliesOpt?_eqv_implies? {ps₁ ps₂ : Policies} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
   (do
-    let cps₁ ← CompiledPolicies.compile ps₁ Γ
-    let cps₂ ← CompiledPolicies.compile ps₂ Γ
-    pure $ impliesOpt? cps₁ cps₂
+    let cpset₁ ← CompiledPolicySet.compile ps₁ Γ
+    let cpset₂ ← CompiledPolicySet.compile ps₂ Γ
+    pure $ impliesOpt? cpset₁ cpset₂
   ) =
   (do
     let wps₁ ← wellTypedPolicies ps₁ Γ |>.mapError .validationError
@@ -712,49 +712,49 @@ theorem impliesOpt?_eqv_implies? {ps₁ ps₂ : Policies} {Γ : Validation.TypeE
   intro hwf
   have h₁ := compile_ok_iff_welltypedpolicies_ok hwf (ps := ps₁)
   have h₂ := compile_ok_iff_welltypedpolicies_ok hwf (ps := ps₂)
-  cases hcps₁ : CompiledPolicies.compile ps₁ Γ
-  <;> cases hcps₂ : CompiledPolicies.compile ps₂ Γ
+  cases hcpset₁ : CompiledPolicySet.compile ps₁ Γ
+  <;> cases hcpset₂ : CompiledPolicySet.compile ps₂ Γ
   <;> cases hwps₁ : wellTypedPolicies ps₁ Γ
   <;> cases hwps₂ : wellTypedPolicies ps₂ Γ
-  -- this eliminates all the cases where the behavior of CompiledPolicies.compile is inconsistent
+  -- this eliminates all the cases where the behavior of CompiledPolicySet.compile is inconsistent
   -- with the behavior of wellTypedPolicies on the same policyset
   <;> simp_all [Except.mapError, Except.isOk, Except.toBool]
-  case ok.ok.ok.ok cps₁ cps₂ wps₁ wps₂ =>
-    have ⟨wps₁', wps₂', hwps₁', hwps₂', h⟩ := impliesOpt?_eqv_implies?_ok hwf hcps₁ hcps₂
+  case ok.ok.ok.ok cpset₁ cpset₂ wps₁ wps₂ =>
+    have ⟨wps₁', wps₂', hwps₁', hwps₂', h⟩ := impliesOpt?_eqv_implies?_ok hwf hcpset₁ hcpset₂
     simp_all
   case error.ok.error.ok | error.error.error.error =>
-    simp [CompiledPolicies.compile, Except.mapError, hwps₁] at hcps₁
-    simp [hcps₁]
+    simp [CompiledPolicySet.compile, Except.mapError, hwps₁] at hcpset₁
+    simp [hcpset₁]
   case ok.error.ok.error =>
-    simp [CompiledPolicies.compile, Except.mapError, hwps₂] at hcps₂
-    simp [hcps₂]
+    simp [CompiledPolicySet.compile, Except.mapError, hwps₂] at hcpset₂
+    simp [hcpset₂]
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
 compilation succeeds, then `wellTypedPolicies` succeeds and `alwaysAllows?` and
 `alwaysAllowsOpt?` are equivalent.
 -/
-theorem alwaysAllowsOpt?_eqv_alwaysAllows?_ok {ps : Policies} {cps : CompiledPolicies} {Γ : Validation.TypeEnv} :
+theorem alwaysAllowsOpt?_eqv_alwaysAllows?_ok {ps : Policies} {cpset : CompiledPolicySet} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicies.compile ps Γ = .ok cps →
+  CompiledPolicySet.compile ps Γ = .ok cpset →
   ∃ wps,
     wellTypedPolicies ps Γ = .ok wps ∧
-    alwaysAllowsOpt? cps = alwaysAllows? wps (SymEnv.ofTypeEnv Γ)
+    alwaysAllowsOpt? cpset = alwaysAllows? wps (SymEnv.ofTypeEnv Γ)
 := by
   simp [alwaysAllows?, alwaysAllowsOpt?]
   simp [sat?]
-  intro hwf hcps
-  have ⟨wps, hwps⟩ := compile_ok_then_exists_wtps hwf hcps
+  intro hwf hcpset
+  have ⟨wps, hwps⟩ := compile_ok_then_exists_wtps hwf hcpset
   exists wps ; apply And.intro hwps
   have ⟨asserts, h₁⟩ := verifyAlwaysAllows_is_ok hwf hwps
   simp [h₁]
-  have := cps_satAssertsOpt?_eqv_satAsserts?_ok (pss := [ps]) (wpss := [wps]) (cpss := [cps]) (asserts := asserts) (Γ := Γ) (by simp) (by simp)
+  have := cpset_satAssertsOpt?_eqv_satAsserts?_ok (pss := [ps]) (wpss := [wps]) (cpsets := [cpset]) (asserts := asserts) (Γ := Γ) (by simp) (by simp)
   simp only [List.flatten_cons, List.flatten_nil, List.append_nil, List.map_cons, List.map_nil] at this
   rw [this] ; clear this
-  · have := verifyAlwaysAllowsOpt_eqv_verifyAlwaysAllows_ok hcps hwps
+  · have := verifyAlwaysAllowsOpt_eqv_verifyAlwaysAllows_ok hcpset hwps
     simp [h₁, ResultAssertsEquiv] at this
-    exact Asserts.Equiv.satAssertsOpt? [.policies cps] (Asserts.Equiv.symm this)
-  · simp [hcps]
+    exact Asserts.Equiv.satAssertsOpt? [.pset cpset] (Asserts.Equiv.symm this)
+  · simp [hcpset]
   · simp [hwps]
 
 /--
@@ -764,8 +764,8 @@ Full equivalence for `alwaysAllows?` and `alwaysAllowsOpt?`, including both the
 theorem alwaysAllowsOpt?_eqv_alwaysAllows? {ps : Policies} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
   (do
-    let cps ← CompiledPolicies.compile ps Γ
-    pure $ alwaysAllowsOpt? cps
+    let cpset ← CompiledPolicySet.compile ps Γ
+    pure $ alwaysAllowsOpt? cpset
   ) =
   (do
     let wps ← wellTypedPolicies ps Γ |>.mapError .validationError
@@ -774,44 +774,44 @@ theorem alwaysAllowsOpt?_eqv_alwaysAllows? {ps : Policies} {Γ : Validation.Type
 := by
   intro hwf
   have h₁ := compile_ok_iff_welltypedpolicies_ok hwf (ps := ps)
-  cases hcps : CompiledPolicies.compile ps Γ
+  cases hcpset : CompiledPolicySet.compile ps Γ
   <;> cases hwps : wellTypedPolicies ps Γ
-  -- this eliminates all the cases where the behavior of CompiledPolicies.compile is inconsistent
+  -- this eliminates all the cases where the behavior of CompiledPolicySet.compile is inconsistent
   -- with the behavior of wellTypedPolicies on the same policyset
   <;> simp_all [Except.mapError, Except.isOk, Except.toBool]
-  case ok.ok cps wps =>
-    have ⟨wps', hwps', h⟩ := alwaysAllowsOpt?_eqv_alwaysAllows?_ok hwf hcps
+  case ok.ok cpset wps =>
+    have ⟨wps', hwps', h⟩ := alwaysAllowsOpt?_eqv_alwaysAllows?_ok hwf hcpset
     simp_all
   case error.error =>
-    simp [CompiledPolicies.compile, Except.mapError, hwps] at hcps
-    simp [hcps]
+    simp [CompiledPolicySet.compile, Except.mapError, hwps] at hcpset
+    simp [hcpset]
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
 compilation succeeds, then `wellTypedPolicies` succeeds and `alwaysDenies?` and
 `alwaysDeniesOpt?` are equivalent.
 -/
-theorem alwaysDeniesOpt?_eqv_alwaysDenies?_ok {ps : Policies} {cps : CompiledPolicies} {Γ : Validation.TypeEnv} :
+theorem alwaysDeniesOpt?_eqv_alwaysDenies?_ok {ps : Policies} {cpset : CompiledPolicySet} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicies.compile ps Γ = .ok cps →
+  CompiledPolicySet.compile ps Γ = .ok cpset →
   ∃ wps,
     wellTypedPolicies ps Γ = .ok wps ∧
-    alwaysDeniesOpt? cps = alwaysDenies? wps (SymEnv.ofTypeEnv Γ)
+    alwaysDeniesOpt? cpset = alwaysDenies? wps (SymEnv.ofTypeEnv Γ)
 := by
   simp [alwaysDenies?, alwaysDeniesOpt?]
   simp [sat?]
-  intro hwf hcps
-  have ⟨wps, hwps⟩ := compile_ok_then_exists_wtps hwf hcps
+  intro hwf hcpset
+  have ⟨wps, hwps⟩ := compile_ok_then_exists_wtps hwf hcpset
   exists wps ; apply And.intro hwps
   have ⟨asserts, h₁⟩ := verifyAlwaysDenies_is_ok hwf hwps
   simp [h₁]
-  have := cps_satAssertsOpt?_eqv_satAsserts?_ok (pss := [ps]) (wpss := [wps]) (cpss := [cps]) (asserts := asserts) (Γ := Γ) (by simp) (by simp)
+  have := cpset_satAssertsOpt?_eqv_satAsserts?_ok (pss := [ps]) (wpss := [wps]) (cpsets := [cpset]) (asserts := asserts) (Γ := Γ) (by simp) (by simp)
   simp only [List.flatten_cons, List.flatten_nil, List.append_nil, List.map_cons, List.map_nil] at this
   rw [this] ; clear this
-  · have := verifyAlwaysDeniesOpt_eqv_verifyAlwaysDenies_ok hcps hwps
+  · have := verifyAlwaysDeniesOpt_eqv_verifyAlwaysDenies_ok hcpset hwps
     simp [h₁, ResultAssertsEquiv] at this
-    exact Asserts.Equiv.satAssertsOpt? [.policies cps] (Asserts.Equiv.symm this)
-  · simp [hcps]
+    exact Asserts.Equiv.satAssertsOpt? [.pset cpset] (Asserts.Equiv.symm this)
+  · simp [hcpset]
   · simp [hwps]
 
 /--
@@ -821,8 +821,8 @@ Full equivalence for `alwaysDenies?` and `alwaysDeniesOpt?`, including both the
 theorem alwaysDeniesOpt?_eqv_alwaysDenies? {ps : Policies} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
   (do
-    let cps ← CompiledPolicies.compile ps Γ
-    pure $ alwaysDeniesOpt? cps
+    let cpset ← CompiledPolicySet.compile ps Γ
+    pure $ alwaysDeniesOpt? cpset
   ) =
   (do
     let wps ← wellTypedPolicies ps Γ |>.mapError .validationError
@@ -831,48 +831,48 @@ theorem alwaysDeniesOpt?_eqv_alwaysDenies? {ps : Policies} {Γ : Validation.Type
 := by
   intro hwf
   have h₁ := compile_ok_iff_welltypedpolicies_ok hwf (ps := ps)
-  cases hcps : CompiledPolicies.compile ps Γ
+  cases hcpset : CompiledPolicySet.compile ps Γ
   <;> cases hwps : wellTypedPolicies ps Γ
-  -- this eliminates all the cases where the behavior of CompiledPolicies.compile is inconsistent
+  -- this eliminates all the cases where the behavior of CompiledPolicySet.compile is inconsistent
   -- with the behavior of wellTypedPolicies on the same policyset
   <;> simp_all [Except.mapError, Except.isOk, Except.toBool]
-  case ok.ok cps wps =>
-    have ⟨wps', hwps', h⟩ := alwaysDeniesOpt?_eqv_alwaysDenies?_ok hwf hcps
+  case ok.ok cpset wps =>
+    have ⟨wps', hwps', h⟩ := alwaysDeniesOpt?_eqv_alwaysDenies?_ok hwf hcpset
     simp_all
   case error.error =>
-    simp [CompiledPolicies.compile, Except.mapError, hwps] at hcps
-    simp [hcps]
+    simp [CompiledPolicySet.compile, Except.mapError, hwps] at hcpset
+    simp [hcpset]
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
 compilation succeeds, then `wellTypedPolicies` succeeds and `equivalent?` and
 `equivalentOpt?` are equivalent.
 -/
-theorem equivalentOpt?_eqv_equivalent?_ok {ps₁ ps₂ : Policies} {cps₁ cps₂ : CompiledPolicies} {Γ : Validation.TypeEnv} :
+theorem equivalentOpt?_eqv_equivalent?_ok {ps₁ ps₂ : Policies} {cpset₁ cpset₂ : CompiledPolicySet} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicies.compile ps₁ Γ = .ok cps₁ →
-  CompiledPolicies.compile ps₂ Γ = .ok cps₂ →
+  CompiledPolicySet.compile ps₁ Γ = .ok cpset₁ →
+  CompiledPolicySet.compile ps₂ Γ = .ok cpset₂ →
   ∃ wps₁ wps₂,
     wellTypedPolicies ps₁ Γ = .ok wps₁ ∧
     wellTypedPolicies ps₂ Γ = .ok wps₂ ∧
-    equivalentOpt? cps₁ cps₂ = equivalent? wps₁ wps₂ (SymEnv.ofTypeEnv Γ)
+    equivalentOpt? cpset₁ cpset₂ = equivalent? wps₁ wps₂ (SymEnv.ofTypeEnv Γ)
 := by
   simp [equivalent?, equivalentOpt?]
   simp [sat?]
-  intro hwf hcps₁ hcps₂
-  have ⟨wps₁, hwps₁⟩ := compile_ok_then_exists_wtps hwf hcps₁
+  intro hwf hcpset₁ hcpset₂
+  have ⟨wps₁, hwps₁⟩ := compile_ok_then_exists_wtps hwf hcpset₁
   exists wps₁ ; apply And.intro hwps₁
-  have ⟨wps₂, hwps₂⟩ := compile_ok_then_exists_wtps hwf hcps₂
+  have ⟨wps₂, hwps₂⟩ := compile_ok_then_exists_wtps hwf hcpset₂
   exists wps₂ ; apply And.intro hwps₂
   have ⟨asserts, h₁⟩ := verifyEquivalent_is_ok hwf hwps₁ hwps₂
   simp [h₁]
-  have := cps_satAssertsOpt?_eqv_satAsserts?_ok (pss := [ps₁, ps₂]) (wpss := [wps₁, wps₂]) (cpss := [cps₁, cps₂]) (asserts := asserts) (Γ := Γ) (by simp) (by simp)
+  have := cpset_satAssertsOpt?_eqv_satAsserts?_ok (pss := [ps₁, ps₂]) (wpss := [wps₁, wps₂]) (cpsets := [cpset₁, cpset₂]) (asserts := asserts) (Γ := Γ) (by simp) (by simp)
   simp only [List.flatten_cons, List.flatten_nil, List.append_nil, List.map_cons, List.map_nil] at this
   rw [this] ; clear this
-  · have := verifyEquivalentOpt_eqv_verifyEquivalent_ok hcps₁ hcps₂ hwps₁ hwps₂
+  · have := verifyEquivalentOpt_eqv_verifyEquivalent_ok hcpset₁ hcpset₂ hwps₁ hwps₂
     simp [h₁, ResultAssertsEquiv] at this
-    exact Asserts.Equiv.satAssertsOpt? [.policies cps₁, .policies cps₂] (Asserts.Equiv.symm this)
-  · simp [hcps₁, hcps₂]
+    exact Asserts.Equiv.satAssertsOpt? [.pset cpset₁, .pset cpset₂] (Asserts.Equiv.symm this)
+  · simp [hcpset₁, hcpset₂]
   · simp [hwps₁, hwps₂]
 
 /--
@@ -882,9 +882,9 @@ Full equivalence for `equivalent?` and `equivalentOpt?`, including both the
 theorem equivalentOpt?_eqv_equivalent? {ps₁ ps₂ : Policies} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
   (do
-    let cps₁ ← CompiledPolicies.compile ps₁ Γ
-    let cps₂ ← CompiledPolicies.compile ps₂ Γ
-    pure $ equivalentOpt? cps₁ cps₂
+    let cpset₁ ← CompiledPolicySet.compile ps₁ Γ
+    let cpset₂ ← CompiledPolicySet.compile ps₂ Γ
+    pure $ equivalentOpt? cpset₁ cpset₂
   ) =
   (do
     let wps₁ ← wellTypedPolicies ps₁ Γ |>.mapError .validationError
@@ -895,53 +895,53 @@ theorem equivalentOpt?_eqv_equivalent? {ps₁ ps₂ : Policies} {Γ : Validation
   intro hwf
   have h₁ := compile_ok_iff_welltypedpolicies_ok hwf (ps := ps₁)
   have h₂ := compile_ok_iff_welltypedpolicies_ok hwf (ps := ps₂)
-  cases hcps₁ : CompiledPolicies.compile ps₁ Γ
-  <;> cases hcps₂ : CompiledPolicies.compile ps₂ Γ
+  cases hcpset₁ : CompiledPolicySet.compile ps₁ Γ
+  <;> cases hcpset₂ : CompiledPolicySet.compile ps₂ Γ
   <;> cases hwps₁ : wellTypedPolicies ps₁ Γ
   <;> cases hwps₂ : wellTypedPolicies ps₂ Γ
-  -- this eliminates all the cases where the behavior of CompiledPolicies.compile is inconsistent
+  -- this eliminates all the cases where the behavior of CompiledPolicySet.compile is inconsistent
   -- with the behavior of wellTypedPolicies on the same policyset
   <;> simp_all [Except.mapError, Except.isOk, Except.toBool]
-  case ok.ok.ok.ok cps₁ cps₂ wps₁ wps₂ =>
-    have ⟨wps₁', wps₂', hwps₁', hwps₂', h⟩ := equivalentOpt?_eqv_equivalent?_ok hwf hcps₁ hcps₂
+  case ok.ok.ok.ok cpset₁ cpset₂ wps₁ wps₂ =>
+    have ⟨wps₁', wps₂', hwps₁', hwps₂', h⟩ := equivalentOpt?_eqv_equivalent?_ok hwf hcpset₁ hcpset₂
     simp_all
   case error.ok.error.ok | error.error.error.error =>
-    simp [CompiledPolicies.compile, Except.mapError, hwps₁] at hcps₁
-    simp [hcps₁]
+    simp [CompiledPolicySet.compile, Except.mapError, hwps₁] at hcpset₁
+    simp [hcpset₁]
   case ok.error.ok.error =>
-    simp [CompiledPolicies.compile, Except.mapError, hwps₂] at hcps₂
-    simp [hcps₂]
+    simp [CompiledPolicySet.compile, Except.mapError, hwps₂] at hcpset₂
+    simp [hcpset₂]
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
 compilation succeeds, then `wellTypedPolicies` succeeds and `disjoint?` and
 `disjointOpt?` are equivalent.
 -/
-theorem disjointOpt?_eqv_disjoint?_ok {ps₁ ps₂ : Policies} {cps₁ cps₂ : CompiledPolicies} {Γ : Validation.TypeEnv} :
+theorem disjointOpt?_eqv_disjoint?_ok {ps₁ ps₂ : Policies} {cpset₁ cpset₂ : CompiledPolicySet} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicies.compile ps₁ Γ = .ok cps₁ →
-  CompiledPolicies.compile ps₂ Γ = .ok cps₂ →
+  CompiledPolicySet.compile ps₁ Γ = .ok cpset₁ →
+  CompiledPolicySet.compile ps₂ Γ = .ok cpset₂ →
   ∃ wps₁ wps₂,
     wellTypedPolicies ps₁ Γ = .ok wps₁ ∧
     wellTypedPolicies ps₂ Γ = .ok wps₂ ∧
-    disjointOpt? cps₁ cps₂ = disjoint? wps₁ wps₂ (SymEnv.ofTypeEnv Γ)
+    disjointOpt? cpset₁ cpset₂ = disjoint? wps₁ wps₂ (SymEnv.ofTypeEnv Γ)
 := by
   simp [disjoint?, disjointOpt?]
   simp [sat?]
-  intro hwf hcps₁ hcps₂
-  have ⟨wps₁, hwps₁⟩ := compile_ok_then_exists_wtps hwf hcps₁
+  intro hwf hcpset₁ hcpset₂
+  have ⟨wps₁, hwps₁⟩ := compile_ok_then_exists_wtps hwf hcpset₁
   exists wps₁ ; apply And.intro hwps₁
-  have ⟨wps₂, hwps₂⟩ := compile_ok_then_exists_wtps hwf hcps₂
+  have ⟨wps₂, hwps₂⟩ := compile_ok_then_exists_wtps hwf hcpset₂
   exists wps₂ ; apply And.intro hwps₂
   have ⟨asserts, h₁⟩ := verifyDisjoint_is_ok hwf hwps₁ hwps₂
   simp [h₁]
-  have := cps_satAssertsOpt?_eqv_satAsserts?_ok (pss := [ps₁, ps₂]) (wpss := [wps₁, wps₂]) (cpss := [cps₁, cps₂]) (asserts := asserts) (Γ := Γ) (by simp) (by simp)
+  have := cpset_satAssertsOpt?_eqv_satAsserts?_ok (pss := [ps₁, ps₂]) (wpss := [wps₁, wps₂]) (cpsets := [cpset₁, cpset₂]) (asserts := asserts) (Γ := Γ) (by simp) (by simp)
   simp only [List.flatten_cons, List.flatten_nil, List.append_nil, List.map_cons, List.map_nil] at this
   rw [this] ; clear this
-  · have := verifyDisjointOpt_eqv_verifyDisjoint_ok hcps₁ hcps₂ hwps₁ hwps₂
+  · have := verifyDisjointOpt_eqv_verifyDisjoint_ok hcpset₁ hcpset₂ hwps₁ hwps₂
     simp [h₁, ResultAssertsEquiv] at this
-    exact Asserts.Equiv.satAssertsOpt? [.policies cps₁, .policies cps₂] (Asserts.Equiv.symm this)
-  · simp [hcps₁, hcps₂]
+    exact Asserts.Equiv.satAssertsOpt? [.pset cpset₁, .pset cpset₂] (Asserts.Equiv.symm this)
+  · simp [hcpset₁, hcpset₂]
   · simp [hwps₁, hwps₂]
 
 /--
@@ -951,9 +951,9 @@ Full equivalence for `disjoint?` and `disjointOpt?`, including both the
 theorem disjointOpt?_eqv_disjoint? {ps₁ ps₂ : Policies} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
   (do
-    let cps₁ ← CompiledPolicies.compile ps₁ Γ
-    let cps₂ ← CompiledPolicies.compile ps₂ Γ
-    pure $ disjointOpt? cps₁ cps₂
+    let cpset₁ ← CompiledPolicySet.compile ps₁ Γ
+    let cpset₂ ← CompiledPolicySet.compile ps₂ Γ
+    pure $ disjointOpt? cpset₁ cpset₂
   ) =
   (do
     let wps₁ ← wellTypedPolicies ps₁ Γ |>.mapError .validationError
@@ -964,22 +964,22 @@ theorem disjointOpt?_eqv_disjoint? {ps₁ ps₂ : Policies} {Γ : Validation.Typ
   intro hwf
   have h₁ := compile_ok_iff_welltypedpolicies_ok hwf (ps := ps₁)
   have h₂ := compile_ok_iff_welltypedpolicies_ok hwf (ps := ps₂)
-  cases hcps₁ : CompiledPolicies.compile ps₁ Γ
-  <;> cases hcps₂ : CompiledPolicies.compile ps₂ Γ
+  cases hcpset₁ : CompiledPolicySet.compile ps₁ Γ
+  <;> cases hcpset₂ : CompiledPolicySet.compile ps₂ Γ
   <;> cases hwps₁ : wellTypedPolicies ps₁ Γ
   <;> cases hwps₂ : wellTypedPolicies ps₂ Γ
-  -- this eliminates all the cases where the behavior of CompiledPolicies.compile is inconsistent
+  -- this eliminates all the cases where the behavior of CompiledPolicySet.compile is inconsistent
   -- with the behavior of wellTypedPolicies on the same policyset
   <;> simp_all [Except.mapError, Except.isOk, Except.toBool]
-  case ok.ok.ok.ok cps₁ cps₂ wps₁ wps₂ =>
-    have ⟨wps₁', wps₂', hwps₁', hwps₂', h⟩ := disjointOpt?_eqv_disjoint?_ok hwf hcps₁ hcps₂
+  case ok.ok.ok.ok cpset₁ cpset₂ wps₁ wps₂ =>
+    have ⟨wps₁', wps₂', hwps₁', hwps₂', h⟩ := disjointOpt?_eqv_disjoint?_ok hwf hcpset₁ hcpset₂
     simp_all
   case error.ok.error.ok | error.error.error.error =>
-    simp [CompiledPolicies.compile, Except.mapError, hwps₁] at hcps₁
-    simp [hcps₁]
+    simp [CompiledPolicySet.compile, Except.mapError, hwps₁] at hcpset₁
+    simp [hcpset₁]
   case ok.error.ok.error =>
-    simp [CompiledPolicies.compile, Except.mapError, hwps₂] at hcps₂
-    simp [hcps₂]
+    simp [CompiledPolicySet.compile, Except.mapError, hwps₂] at hcpset₂
+    simp [hcpset₂]
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
@@ -1328,26 +1328,26 @@ This theorem covers the "happy path" -- showing that if optimized policy
 compilation succeeds, then `wellTypedPolicies` succeeds and `checkImplies` and
 `checkImpliesOpt` are equivalent.
 -/
-theorem checkImpliesOpt_eqv_checkImplies_ok {ps₁ ps₂ : Policies} {cps₁ cps₂ : CompiledPolicies} {Γ : Validation.TypeEnv} :
+theorem checkImpliesOpt_eqv_checkImplies_ok {ps₁ ps₂ : Policies} {cpset₁ cpset₂ : CompiledPolicySet} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicies.compile ps₁ Γ = .ok cps₁ →
-  CompiledPolicies.compile ps₂ Γ = .ok cps₂ →
+  CompiledPolicySet.compile ps₁ Γ = .ok cpset₁ →
+  CompiledPolicySet.compile ps₂ Γ = .ok cpset₂ →
   ∃ wps₁ wps₂,
     wellTypedPolicies ps₁ Γ = .ok wps₁ ∧
     wellTypedPolicies ps₂ Γ = .ok wps₂ ∧
-    checkImpliesOpt cps₁ cps₂ = checkImplies wps₁ wps₂ (SymEnv.ofTypeEnv Γ)
+    checkImpliesOpt cpset₁ cpset₂ = checkImplies wps₁ wps₂ (SymEnv.ofTypeEnv Γ)
 := by
   simp [checkImplies, checkImpliesOpt]
   simp [checkUnsat]
-  intro hwf hcps₁ hcps₂
-  have ⟨wps₁, hwps₁⟩ := compile_ok_then_exists_wtps hwf hcps₁
+  intro hwf hcpset₁ hcpset₂
+  have ⟨wps₁, hwps₁⟩ := compile_ok_then_exists_wtps hwf hcpset₁
   exists wps₁ ; apply And.intro hwps₁
-  have ⟨wps₂, hwps₂⟩ := compile_ok_then_exists_wtps hwf hcps₂
+  have ⟨wps₂, hwps₂⟩ := compile_ok_then_exists_wtps hwf hcpset₂
   exists wps₂ ; apply And.intro hwps₂
   have ⟨asserts, h₁⟩ := verifyImplies_is_ok hwf hwps₁ hwps₂
   simp [h₁]
-  simp [cps_compile_produces_the_right_env hcps₁]
-  have := verifyImpliesOpt_eqv_verifyImplies_ok hcps₁ hcps₂ hwps₁ hwps₂
+  simp [cpset_compile_produces_the_right_env hcpset₁]
+  have := verifyImpliesOpt_eqv_verifyImplies_ok hcpset₁ hcpset₂ hwps₁ hwps₂
   simp [h₁, ResultAssertsEquiv] at this
   exact Asserts.Equiv.checkUnsatAsserts (Asserts.Equiv.symm this)
 
@@ -1358,9 +1358,9 @@ Full equivalence for `checkImplies` and `checkImpliesOpt`, including both the
 theorem checkImpliesOpt_eqv_checkImplies {ps₁ ps₂ : Policies} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
   (do
-    let cps₁ ← CompiledPolicies.compile ps₁ Γ
-    let cps₂ ← CompiledPolicies.compile ps₂ Γ
-    pure $ checkImpliesOpt cps₁ cps₂
+    let cpset₁ ← CompiledPolicySet.compile ps₁ Γ
+    let cpset₂ ← CompiledPolicySet.compile ps₂ Γ
+    pure $ checkImpliesOpt cpset₁ cpset₂
   ) =
   (do
     let wps₁ ← wellTypedPolicies ps₁ Γ |>.mapError .validationError
@@ -1371,44 +1371,44 @@ theorem checkImpliesOpt_eqv_checkImplies {ps₁ ps₂ : Policies} {Γ : Validati
   intro hwf
   have h₁ := compile_ok_iff_welltypedpolicies_ok hwf (ps := ps₁)
   have h₂ := compile_ok_iff_welltypedpolicies_ok hwf (ps := ps₂)
-  cases hcps₁ : CompiledPolicies.compile ps₁ Γ
-  <;> cases hcps₂ : CompiledPolicies.compile ps₂ Γ
+  cases hcpset₁ : CompiledPolicySet.compile ps₁ Γ
+  <;> cases hcpset₂ : CompiledPolicySet.compile ps₂ Γ
   <;> cases hwps₁ : wellTypedPolicies ps₁ Γ
   <;> cases hwps₂ : wellTypedPolicies ps₂ Γ
-  -- this eliminates all the cases where the behavior of CompiledPolicies.compile is inconsistent
+  -- this eliminates all the cases where the behavior of CompiledPolicySet.compile is inconsistent
   -- with the behavior of wellTypedPolicies on the same policyset
   <;> simp_all [Except.mapError, Except.isOk, Except.toBool]
-  case ok.ok.ok.ok cps₁ cps₂ wps₁ wps₂ =>
-    have ⟨wps₁', wps₂', hwps₁', hwps₂', h⟩ := checkImpliesOpt_eqv_checkImplies_ok hwf hcps₁ hcps₂
+  case ok.ok.ok.ok cpset₁ cpset₂ wps₁ wps₂ =>
+    have ⟨wps₁', wps₂', hwps₁', hwps₂', h⟩ := checkImpliesOpt_eqv_checkImplies_ok hwf hcpset₁ hcpset₂
     simp_all
   case error.ok.error.ok | error.error.error.error =>
-    simp [CompiledPolicies.compile, Except.mapError, hwps₁] at hcps₁
-    simp [hcps₁]
+    simp [CompiledPolicySet.compile, Except.mapError, hwps₁] at hcpset₁
+    simp [hcpset₁]
   case ok.error.ok.error =>
-    simp [CompiledPolicies.compile, Except.mapError, hwps₂] at hcps₂
-    simp [hcps₂]
+    simp [CompiledPolicySet.compile, Except.mapError, hwps₂] at hcpset₂
+    simp [hcpset₂]
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
 compilation succeeds, then `wellTypedPolicies` succeeds and `checkAlwaysAllows` and
 `checkAlwaysAllowsOpt` are equivalent.
 -/
-theorem checkAlwaysAllowsOpt_eqv_checkAlwaysAllows_ok {ps : Policies} {cps : CompiledPolicies} {Γ : Validation.TypeEnv} :
+theorem checkAlwaysAllowsOpt_eqv_checkAlwaysAllows_ok {ps : Policies} {cpset : CompiledPolicySet} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicies.compile ps Γ = .ok cps →
+  CompiledPolicySet.compile ps Γ = .ok cpset →
   ∃ wps,
     wellTypedPolicies ps Γ = .ok wps ∧
-    checkAlwaysAllowsOpt cps = checkAlwaysAllows wps (SymEnv.ofTypeEnv Γ)
+    checkAlwaysAllowsOpt cpset = checkAlwaysAllows wps (SymEnv.ofTypeEnv Γ)
 := by
   simp [checkAlwaysAllows, checkAlwaysAllowsOpt]
   simp [checkUnsat]
-  intro hwf hcps
-  have ⟨wps, hwps⟩ := compile_ok_then_exists_wtps hwf hcps
+  intro hwf hcpset
+  have ⟨wps, hwps⟩ := compile_ok_then_exists_wtps hwf hcpset
   exists wps ; apply And.intro hwps
   have ⟨asserts, h₁⟩ := verifyAlwaysAllows_is_ok hwf hwps
   simp [h₁]
-  simp [cps_compile_produces_the_right_env hcps]
-  have := verifyAlwaysAllowsOpt_eqv_verifyAlwaysAllows_ok hcps hwps
+  simp [cpset_compile_produces_the_right_env hcpset]
+  have := verifyAlwaysAllowsOpt_eqv_verifyAlwaysAllows_ok hcpset hwps
   simp [h₁, ResultAssertsEquiv] at this
   exact Asserts.Equiv.checkUnsatAsserts (Asserts.Equiv.symm this)
 
@@ -1419,8 +1419,8 @@ Full equivalence for `checkAlwaysAllows` and `checkAlwaysAllowsOpt`, including b
 theorem checkAlwaysAllowsOpt_eqv_checkAlwaysAllows {ps : Policies} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
   (do
-    let cps ← CompiledPolicies.compile ps Γ
-    pure $ checkAlwaysAllowsOpt cps
+    let cpset ← CompiledPolicySet.compile ps Γ
+    pure $ checkAlwaysAllowsOpt cpset
   ) =
   (do
     let wps ← wellTypedPolicies ps Γ |>.mapError .validationError
@@ -1429,39 +1429,39 @@ theorem checkAlwaysAllowsOpt_eqv_checkAlwaysAllows {ps : Policies} {Γ : Validat
 := by
   intro hwf
   have h₁ := compile_ok_iff_welltypedpolicies_ok hwf (ps := ps)
-  cases hcps : CompiledPolicies.compile ps Γ
+  cases hcpset : CompiledPolicySet.compile ps Γ
   <;> cases hwps : wellTypedPolicies ps Γ
-  -- this eliminates all the cases where the behavior of CompiledPolicies.compile is inconsistent
+  -- this eliminates all the cases where the behavior of CompiledPolicySet.compile is inconsistent
   -- with the behavior of wellTypedPolicies on the same policyset
   <;> simp_all [Except.mapError, Except.isOk, Except.toBool]
-  case ok.ok cps wps =>
-    have ⟨wps', hwps', h⟩ := checkAlwaysAllowsOpt_eqv_checkAlwaysAllows_ok hwf hcps
+  case ok.ok cpset wps =>
+    have ⟨wps', hwps', h⟩ := checkAlwaysAllowsOpt_eqv_checkAlwaysAllows_ok hwf hcpset
     simp_all
   case error.error =>
-    simp [CompiledPolicies.compile, Except.mapError, hwps] at hcps
-    simp [hcps]
+    simp [CompiledPolicySet.compile, Except.mapError, hwps] at hcpset
+    simp [hcpset]
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
 compilation succeeds, then `wellTypedPolicies` succeeds and `checkAlwaysDenies` and
 `checkAlwaysDeniesOpt` are equivalent.
 -/
-theorem checkAlwaysDeniesOpt_eqv_checkAlwaysDenies_ok {ps : Policies} {cps : CompiledPolicies} {Γ : Validation.TypeEnv} :
+theorem checkAlwaysDeniesOpt_eqv_checkAlwaysDenies_ok {ps : Policies} {cpset : CompiledPolicySet} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicies.compile ps Γ = .ok cps →
+  CompiledPolicySet.compile ps Γ = .ok cpset →
   ∃ wps,
     wellTypedPolicies ps Γ = .ok wps ∧
-    checkAlwaysDeniesOpt cps = checkAlwaysDenies wps (SymEnv.ofTypeEnv Γ)
+    checkAlwaysDeniesOpt cpset = checkAlwaysDenies wps (SymEnv.ofTypeEnv Γ)
 := by
   simp [checkAlwaysDenies, checkAlwaysDeniesOpt]
   simp [checkUnsat]
-  intro hwf hcps
-  have ⟨wps, hwps⟩ := compile_ok_then_exists_wtps hwf hcps
+  intro hwf hcpset
+  have ⟨wps, hwps⟩ := compile_ok_then_exists_wtps hwf hcpset
   exists wps ; apply And.intro hwps
   have ⟨asserts, h₁⟩ := verifyAlwaysDenies_is_ok hwf hwps
   simp [h₁]
-  simp [cps_compile_produces_the_right_env hcps]
-  have := verifyAlwaysDeniesOpt_eqv_verifyAlwaysDenies_ok hcps hwps
+  simp [cpset_compile_produces_the_right_env hcpset]
+  have := verifyAlwaysDeniesOpt_eqv_verifyAlwaysDenies_ok hcpset hwps
   simp [h₁, ResultAssertsEquiv] at this
   exact Asserts.Equiv.checkUnsatAsserts (Asserts.Equiv.symm this)
 
@@ -1472,8 +1472,8 @@ Full equivalence for `checkAlwaysDenies` and `checkAlwaysDeniesOpt`, including b
 theorem checkAlwaysDeniesOpt_eqv_checkAlwaysDenies {ps : Policies} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
   (do
-    let cps ← CompiledPolicies.compile ps Γ
-    pure $ checkAlwaysDeniesOpt cps
+    let cpset ← CompiledPolicySet.compile ps Γ
+    pure $ checkAlwaysDeniesOpt cpset
   ) =
   (do
     let wps ← wellTypedPolicies ps Γ |>.mapError .validationError
@@ -1482,43 +1482,43 @@ theorem checkAlwaysDeniesOpt_eqv_checkAlwaysDenies {ps : Policies} {Γ : Validat
 := by
   intro hwf
   have h₁ := compile_ok_iff_welltypedpolicies_ok hwf (ps := ps)
-  cases hcps : CompiledPolicies.compile ps Γ
+  cases hcpset : CompiledPolicySet.compile ps Γ
   <;> cases hwps : wellTypedPolicies ps Γ
-  -- this eliminates all the cases where the behavior of CompiledPolicies.compile is inconsistent
+  -- this eliminates all the cases where the behavior of CompiledPolicySet.compile is inconsistent
   -- with the behavior of wellTypedPolicies on the same policyset
   <;> simp_all [Except.mapError, Except.isOk, Except.toBool]
-  case ok.ok cps wps =>
-    have ⟨wps', hwps', h⟩ := checkAlwaysDeniesOpt_eqv_checkAlwaysDenies_ok hwf hcps
+  case ok.ok cpset wps =>
+    have ⟨wps', hwps', h⟩ := checkAlwaysDeniesOpt_eqv_checkAlwaysDenies_ok hwf hcpset
     simp_all
   case error.error =>
-    simp [CompiledPolicies.compile, Except.mapError, hwps] at hcps
-    simp [hcps]
+    simp [CompiledPolicySet.compile, Except.mapError, hwps] at hcpset
+    simp [hcpset]
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
 compilation succeeds, then `wellTypedPolicies` succeeds and `checkEquivalent` and
 `checkEquivalentOpt` are equivalent.
 -/
-theorem checkEquivalentOpt_eqv_checkEquivalent_ok {ps₁ ps₂ : Policies} {cps₁ cps₂ : CompiledPolicies} {Γ : Validation.TypeEnv} :
+theorem checkEquivalentOpt_eqv_checkEquivalent_ok {ps₁ ps₂ : Policies} {cpset₁ cpset₂ : CompiledPolicySet} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicies.compile ps₁ Γ = .ok cps₁ →
-  CompiledPolicies.compile ps₂ Γ = .ok cps₂ →
+  CompiledPolicySet.compile ps₁ Γ = .ok cpset₁ →
+  CompiledPolicySet.compile ps₂ Γ = .ok cpset₂ →
   ∃ wps₁ wps₂,
     wellTypedPolicies ps₁ Γ = .ok wps₁ ∧
     wellTypedPolicies ps₂ Γ = .ok wps₂ ∧
-    checkEquivalentOpt cps₁ cps₂ = checkEquivalent wps₁ wps₂ (SymEnv.ofTypeEnv Γ)
+    checkEquivalentOpt cpset₁ cpset₂ = checkEquivalent wps₁ wps₂ (SymEnv.ofTypeEnv Γ)
 := by
   simp [checkEquivalent, checkEquivalentOpt]
   simp [checkUnsat]
-  intro hwf hcps₁ hcps₂
-  have ⟨wps₁, hwps₁⟩ := compile_ok_then_exists_wtps hwf hcps₁
+  intro hwf hcpset₁ hcpset₂
+  have ⟨wps₁, hwps₁⟩ := compile_ok_then_exists_wtps hwf hcpset₁
   exists wps₁ ; apply And.intro hwps₁
-  have ⟨wps₂, hwps₂⟩ := compile_ok_then_exists_wtps hwf hcps₂
+  have ⟨wps₂, hwps₂⟩ := compile_ok_then_exists_wtps hwf hcpset₂
   exists wps₂ ; apply And.intro hwps₂
   have ⟨asserts, h₁⟩ := verifyEquivalent_is_ok hwf hwps₁ hwps₂
   simp [h₁]
-  simp [cps_compile_produces_the_right_env hcps₁]
-  have := verifyEquivalentOpt_eqv_verifyEquivalent_ok hcps₁ hcps₂ hwps₁ hwps₂
+  simp [cpset_compile_produces_the_right_env hcpset₁]
+  have := verifyEquivalentOpt_eqv_verifyEquivalent_ok hcpset₁ hcpset₂ hwps₁ hwps₂
   simp [h₁, ResultAssertsEquiv] at this
   exact Asserts.Equiv.checkUnsatAsserts (Asserts.Equiv.symm this)
 
@@ -1529,9 +1529,9 @@ Full equivalence for `checkEquivalent` and `checkEquivalentOpt`, including both 
 theorem checkEquivalentOpt_eqv_checkEquivalent {ps₁ ps₂ : Policies} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
   (do
-    let cps₁ ← CompiledPolicies.compile ps₁ Γ
-    let cps₂ ← CompiledPolicies.compile ps₂ Γ
-    pure $ checkEquivalentOpt cps₁ cps₂
+    let cpset₁ ← CompiledPolicySet.compile ps₁ Γ
+    let cpset₂ ← CompiledPolicySet.compile ps₂ Γ
+    pure $ checkEquivalentOpt cpset₁ cpset₂
   ) =
   (do
     let wps₁ ← wellTypedPolicies ps₁ Γ |>.mapError .validationError
@@ -1542,48 +1542,48 @@ theorem checkEquivalentOpt_eqv_checkEquivalent {ps₁ ps₂ : Policies} {Γ : Va
   intro hwf
   have h₁ := compile_ok_iff_welltypedpolicies_ok hwf (ps := ps₁)
   have h₂ := compile_ok_iff_welltypedpolicies_ok hwf (ps := ps₂)
-  cases hcps₁ : CompiledPolicies.compile ps₁ Γ
-  <;> cases hcps₂ : CompiledPolicies.compile ps₂ Γ
+  cases hcpset₁ : CompiledPolicySet.compile ps₁ Γ
+  <;> cases hcpset₂ : CompiledPolicySet.compile ps₂ Γ
   <;> cases hwps₁ : wellTypedPolicies ps₁ Γ
   <;> cases hwps₂ : wellTypedPolicies ps₂ Γ
-  -- this eliminates all the cases where the behavior of CompiledPolicies.compile is inconsistent
+  -- this eliminates all the cases where the behavior of CompiledPolicySet.compile is inconsistent
   -- with the behavior of wellTypedPolicies on the same policyset
   <;> simp_all [Except.mapError, Except.isOk, Except.toBool]
-  case ok.ok.ok.ok cps₁ cps₂ wps₁ wps₂ =>
-    have ⟨wps₁', wps₂', hwps₁', hwps₂', h⟩ := checkEquivalentOpt_eqv_checkEquivalent_ok hwf hcps₁ hcps₂
+  case ok.ok.ok.ok cpset₁ cpset₂ wps₁ wps₂ =>
+    have ⟨wps₁', wps₂', hwps₁', hwps₂', h⟩ := checkEquivalentOpt_eqv_checkEquivalent_ok hwf hcpset₁ hcpset₂
     simp_all
   case error.ok.error.ok | error.error.error.error =>
-    simp [CompiledPolicies.compile, Except.mapError, hwps₁] at hcps₁
-    simp [hcps₁]
+    simp [CompiledPolicySet.compile, Except.mapError, hwps₁] at hcpset₁
+    simp [hcpset₁]
   case ok.error.ok.error =>
-    simp [CompiledPolicies.compile, Except.mapError, hwps₂] at hcps₂
-    simp [hcps₂]
+    simp [CompiledPolicySet.compile, Except.mapError, hwps₂] at hcpset₂
+    simp [hcpset₂]
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
 compilation succeeds, then `wellTypedPolicies` succeeds and `checkDisjoint` and
 `checkDisjointOpt` are equivalent.
 -/
-theorem checkDisjointOpt_eqv_checkDisjoint_ok {ps₁ ps₂ : Policies} {cps₁ cps₂ : CompiledPolicies} {Γ : Validation.TypeEnv} :
+theorem checkDisjointOpt_eqv_checkDisjoint_ok {ps₁ ps₂ : Policies} {cpset₁ cpset₂ : CompiledPolicySet} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicies.compile ps₁ Γ = .ok cps₁ →
-  CompiledPolicies.compile ps₂ Γ = .ok cps₂ →
+  CompiledPolicySet.compile ps₁ Γ = .ok cpset₁ →
+  CompiledPolicySet.compile ps₂ Γ = .ok cpset₂ →
   ∃ wps₁ wps₂,
     wellTypedPolicies ps₁ Γ = .ok wps₁ ∧
     wellTypedPolicies ps₂ Γ = .ok wps₂ ∧
-    checkDisjointOpt cps₁ cps₂ = checkDisjoint wps₁ wps₂ (SymEnv.ofTypeEnv Γ)
+    checkDisjointOpt cpset₁ cpset₂ = checkDisjoint wps₁ wps₂ (SymEnv.ofTypeEnv Γ)
 := by
   simp [checkDisjoint, checkDisjointOpt]
   simp [checkUnsat]
-  intro hwf hcps₁ hcps₂
-  have ⟨wps₁, hwps₁⟩ := compile_ok_then_exists_wtps hwf hcps₁
+  intro hwf hcpset₁ hcpset₂
+  have ⟨wps₁, hwps₁⟩ := compile_ok_then_exists_wtps hwf hcpset₁
   exists wps₁ ; apply And.intro hwps₁
-  have ⟨wps₂, hwps₂⟩ := compile_ok_then_exists_wtps hwf hcps₂
+  have ⟨wps₂, hwps₂⟩ := compile_ok_then_exists_wtps hwf hcpset₂
   exists wps₂ ; apply And.intro hwps₂
   have ⟨asserts, h₁⟩ := verifyDisjoint_is_ok hwf hwps₁ hwps₂
   simp [h₁]
-  simp [cps_compile_produces_the_right_env hcps₁]
-  have := verifyDisjointOpt_eqv_verifyDisjoint_ok hcps₁ hcps₂ hwps₁ hwps₂
+  simp [cpset_compile_produces_the_right_env hcpset₁]
+  have := verifyDisjointOpt_eqv_verifyDisjoint_ok hcpset₁ hcpset₂ hwps₁ hwps₂
   simp [h₁, ResultAssertsEquiv] at this
   exact Asserts.Equiv.checkUnsatAsserts (Asserts.Equiv.symm this)
 
@@ -1594,9 +1594,9 @@ Full equivalence for `checkDisjoint` and `checkDisjointOpt`, including both the
 theorem checkDisjointOpt_eqv_checkDisjoint {ps₁ ps₂ : Policies} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
   (do
-    let cps₁ ← CompiledPolicies.compile ps₁ Γ
-    let cps₂ ← CompiledPolicies.compile ps₂ Γ
-    pure $ checkDisjointOpt cps₁ cps₂
+    let cpset₁ ← CompiledPolicySet.compile ps₁ Γ
+    let cpset₂ ← CompiledPolicySet.compile ps₂ Γ
+    pure $ checkDisjointOpt cpset₁ cpset₂
   ) =
   (do
     let wps₁ ← wellTypedPolicies ps₁ Γ |>.mapError .validationError
@@ -1607,21 +1607,21 @@ theorem checkDisjointOpt_eqv_checkDisjoint {ps₁ ps₂ : Policies} {Γ : Valida
   intro hwf
   have h₁ := compile_ok_iff_welltypedpolicies_ok hwf (ps := ps₁)
   have h₂ := compile_ok_iff_welltypedpolicies_ok hwf (ps := ps₂)
-  cases hcps₁ : CompiledPolicies.compile ps₁ Γ
-  <;> cases hcps₂ : CompiledPolicies.compile ps₂ Γ
+  cases hcpset₁ : CompiledPolicySet.compile ps₁ Γ
+  <;> cases hcpset₂ : CompiledPolicySet.compile ps₂ Γ
   <;> cases hwps₁ : wellTypedPolicies ps₁ Γ
   <;> cases hwps₂ : wellTypedPolicies ps₂ Γ
-  -- this eliminates all the cases where the behavior of CompiledPolicies.compile is inconsistent
+  -- this eliminates all the cases where the behavior of CompiledPolicySet.compile is inconsistent
   -- with the behavior of wellTypedPolicies on the same policyset
   <;> simp_all [Except.mapError, Except.isOk, Except.toBool]
-  case ok.ok.ok.ok cps₁ cps₂ wps₁ wps₂ =>
-    have ⟨wps₁', wps₂', hwps₁', hwps₂', h⟩ := checkDisjointOpt_eqv_checkDisjoint_ok hwf hcps₁ hcps₂
+  case ok.ok.ok.ok cpset₁ cpset₂ wps₁ wps₂ =>
+    have ⟨wps₁', wps₂', hwps₁', hwps₂', h⟩ := checkDisjointOpt_eqv_checkDisjoint_ok hwf hcpset₁ hcpset₂
     simp_all
   case error.ok.error.ok | error.error.error.error =>
-    simp [CompiledPolicies.compile, Except.mapError, hwps₁] at hcps₁
-    simp [hcps₁]
+    simp [CompiledPolicySet.compile, Except.mapError, hwps₁] at hcpset₁
+    simp [hcpset₁]
   case ok.error.ok.error =>
-    simp [CompiledPolicies.compile, Except.mapError, hwps₂] at hcps₂
-    simp [hcps₂]
+    simp [CompiledPolicySet.compile, Except.mapError, hwps₂] at hcpset₂
+    simp [hcpset₂]
 
 end Cedar.Thm

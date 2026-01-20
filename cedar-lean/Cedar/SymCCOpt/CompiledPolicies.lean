@@ -70,7 +70,7 @@ Represents a symbolically compiled policyset. This can be fed into the various
 functions in SymCCOpt.lean for efficient solver queries (that don't have to
 repeat symbolic compilation).
 -/
-structure CompiledPolicies where
+structure CompiledPolicySet where
   /-- typechecked policies compiled to a single `Term` of type .bool representing the authorization decision -/
   term : Term
   /-- `SymEnv` representing the environment these policies were compiled for -/
@@ -89,7 +89,7 @@ This function calls the Cedar typechecker on each `p ∈ ps` to obtain a policy 
 that is semantically equivalent to `p` and well-typed with respect to `Γ`.
 Then, it runs the symbolic compiler to produce a compiled policy.
 -/
-def CompiledPolicies.compile (ps : Policies) (Γ : Validation.TypeEnv) : Except CompiledPolicyError CompiledPolicies := do
+def CompiledPolicySet.compile (ps : Policies) (Γ : Validation.TypeEnv) : Except CompiledPolicyError CompiledPolicySet := do
   let policies ← wellTypedPolicies ps Γ |>.mapError .validationError
   let εnv := SymEnv.ofEnv Γ
   let { term, footprint } ← Opt.isAuthorized policies εnv |>.mapError .symCCError
@@ -97,10 +97,10 @@ def CompiledPolicies.compile (ps : Policies) (Γ : Validation.TypeEnv) : Except 
   .ok { term, εnv, policies, footprint, acyclicity }
 
 /--
-A `CompiledPolicies` that represents the policyset that allows all requests in
+A `CompiledPolicySet` that represents the policyset that allows all requests in
 the `εnv`.
 -/
-def CompiledPolicies.allowAll (εnv : SymEnv) : CompiledPolicies :=
+def CompiledPolicySet.allowAll (εnv : SymEnv) : CompiledPolicySet :=
   {
     term := .bool true
     εnv
@@ -110,10 +110,10 @@ def CompiledPolicies.allowAll (εnv : SymEnv) : CompiledPolicies :=
   }
 
 /--
-A `CompiledPolicies` that represents the policyset that denies all requests in
+A `CompiledPolicySet` that represents the policyset that denies all requests in
 the `εnv`.
 -/
-def CompiledPolicies.denyAll (εnv : SymEnv) : CompiledPolicies :=
+def CompiledPolicySet.denyAll (εnv : SymEnv) : CompiledPolicySet :=
   {
     term := .bool false
     εnv
@@ -123,13 +123,13 @@ def CompiledPolicies.denyAll (εnv : SymEnv) : CompiledPolicies :=
   }
 
 /--
-Convert a `CompiledPolicy` to a `CompiledPolicies` representing a singleton
+Convert a `CompiledPolicy` to a `CompiledPolicySet` representing a singleton
 policyset with just that policy.
 
 This function is intended to be much more efficient than re-compiling with
-`CompiledPolicies.compile`.
+`CompiledPolicySet.compile`.
 -/
-def CompiledPolicy.intoCompiledPolicies (cp : CompiledPolicy) : CompiledPolicies :=
+def CompiledPolicy.intoCompiledPolicySet (cp : CompiledPolicy) : CompiledPolicySet :=
   {
     term := match cp.policy.effect with
       | .forbid =>
@@ -145,21 +145,21 @@ def CompiledPolicy.intoCompiledPolicies (cp : CompiledPolicy) : CompiledPolicies
   }
 
 /--
-Represents a `CompiledPolicy` or a `CompiledPolicies`, for APIs that don't care
+Represents a `CompiledPolicy` or a `CompiledPolicySet`, for APIs that don't care
 which one they get.
 -/
-inductive CompiledPolicyₛ where
+inductive CompiledPolicies where
   | policy (cp : CompiledPolicy)
-  | policies (cps : CompiledPolicies)
+  | pset (cpset : CompiledPolicySet)
 
-def CompiledPolicyₛ.allPolicies : CompiledPolicyₛ → Policies
+def CompiledPolicies.allPolicies : CompiledPolicies → Policies
   | .policy cp => [cp.policy]
-  | .policies cps => cps.policies
+  | .pset cpset => cpset.policies
 
-def CompiledPolicyₛ.footprint : CompiledPolicyₛ → Set Term
+def CompiledPolicies.footprint : CompiledPolicies → Set Term
   | .policy cp => cp.footprint
-  | .policies cps => cps.footprint
+  | .pset cpset => cpset.footprint
 
-def CompiledPolicyₛ.εnv : CompiledPolicyₛ → SymEnv
+def CompiledPolicies.εnv : CompiledPolicies → SymEnv
   | .policy cp => cp.εnv
-  | .policies cps => cps.εnv
+  | .pset cpset => cpset.εnv

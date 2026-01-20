@@ -94,33 +94,33 @@ This theorem covers the "happy path" -- showing that if optimized policy
 compilation succeeds, then `verifyIsAuthorized` and `verifyIsAuthorizedOpt` are
 equivalent.
 -/
-theorem verifyIsAuthorizedOpt_eqv_verifyIsAuthorized_ok {ps₁ ps₂ wps₁ wps₂ : Policies} {cps₁ cps₂ : CompiledPolicies} {Γ : Validation.TypeEnv} {φ : Term → Term → Term} :
-  CompiledPolicies.compile ps₁ Γ = .ok cps₁ →
-  CompiledPolicies.compile ps₂ Γ = .ok cps₂ →
+theorem verifyIsAuthorizedOpt_eqv_verifyIsAuthorized_ok {ps₁ ps₂ wps₁ wps₂ : Policies} {cpset₁ cpset₂ : CompiledPolicySet} {Γ : Validation.TypeEnv} {φ : Term → Term → Term} :
+  CompiledPolicySet.compile ps₁ Γ = .ok cpset₁ →
+  CompiledPolicySet.compile ps₂ Γ = .ok cpset₂ →
   wellTypedPolicies ps₁ Γ = .ok wps₁ →
   wellTypedPolicies ps₂ Γ = .ok wps₂ →
-  verifyIsAuthorized φ wps₁ wps₂ (SymEnv.ofTypeEnv Γ) ~ .ok (verifyIsAuthorizedOpt φ cps₁ cps₂)
+  verifyIsAuthorized φ wps₁ wps₂ (SymEnv.ofTypeEnv Γ) ~ .ok (verifyIsAuthorizedOpt φ cpset₁ cpset₂)
 := by
   simp [verifyIsAuthorized, verifyIsAuthorizedOpt, ResultAssertsEquiv]
-  intro hcps₁ hcps₂ hwps₁ hwps₂
-  simp [enforcePairCompiledPolicies_eqv_enforce_ok hcps₁ hcps₂ hwps₁ hwps₂]
-  have henvs : cps₁.εnv = cps₂.εnv := by
-    simp [cps_compile_produces_the_right_env hcps₁, cps_compile_produces_the_right_env hcps₂]
+  intro hcpset₁ hcpset₂ hwps₁ hwps₂
+  simp [enforcePairCompiledPolicySet_eqv_enforce_ok hcpset₁ hcpset₂ hwps₁ hwps₂]
+  have henvs : cpset₁.εnv = cpset₂.εnv := by
+    simp [cpset_compile_produces_the_right_env hcpset₁, cpset_compile_produces_the_right_env hcpset₂]
   simp [henvs]
   cases h₁ : SymCC.isAuthorized wps₁ (SymEnv.ofTypeEnv Γ) <;> simp
   case error e =>
-    simp_all only [CompiledPolicies.compile, Except.mapError, Except.bind_ok]
-    rw [Opt.isAuthorized.correctness] at hcps₁
-    simp [h₁] at hcps₁
+    simp_all only [CompiledPolicySet.compile, Except.mapError, Except.bind_ok]
+    rw [Opt.isAuthorized.correctness] at hcpset₁
+    simp [h₁] at hcpset₁
   case ok t =>
-    have h₃ := (cps_compile_produces_the_right_term hcps₁ hwps₁).symm ; simp [h₁] at h₃ ; subst t
+    have h₃ := (cpset_compile_produces_the_right_term hcpset₁ hwps₁).symm ; simp [h₁] at h₃ ; subst t
     cases h₂ : SymCC.isAuthorized wps₂ (SymEnv.ofTypeEnv Γ) <;> simp
     case error e =>
-      simp_all only [CompiledPolicies.compile, Except.mapError, Except.bind_ok]
-      rw [Opt.isAuthorized.correctness] at hcps₂
-      simp [h₂] at hcps₂
+      simp_all only [CompiledPolicySet.compile, Except.mapError, Except.bind_ok]
+      rw [Opt.isAuthorized.correctness] at hcpset₂
+      simp [h₂] at hcpset₂
     case ok t =>
-      have h₃ := (cps_compile_produces_the_right_term hcps₂ hwps₂).symm ; simp [h₂] at h₃ ; subst t
+      have h₃ := (cpset_compile_produces_the_right_term hcpset₂ hwps₂).symm ; simp [h₂] at h₃ ; subst t
       split <;> rename_i hnot
       · apply Asserts.Equiv.constantFalse <;> simp [hnot]
       · apply Asserts.Equiv.rfl
@@ -214,12 +214,12 @@ This theorem covers the "happy path" -- showing that if optimized policy
 compilation succeeds, then `verifyImplies` and `verifyImpliesOpt` are
 equivalent.
 -/
-theorem verifyImpliesOpt_eqv_verifyImplies_ok {ps₁ ps₂ wps₁ wps₂ : Policies} {cps₁ cps₂ : CompiledPolicies} {Γ : Validation.TypeEnv} :
-  CompiledPolicies.compile ps₁ Γ = .ok cps₁ →
-  CompiledPolicies.compile ps₂ Γ = .ok cps₂ →
+theorem verifyImpliesOpt_eqv_verifyImplies_ok {ps₁ ps₂ wps₁ wps₂ : Policies} {cpset₁ cpset₂ : CompiledPolicySet} {Γ : Validation.TypeEnv} :
+  CompiledPolicySet.compile ps₁ Γ = .ok cpset₁ →
+  CompiledPolicySet.compile ps₂ Γ = .ok cpset₂ →
   wellTypedPolicies ps₁ Γ = .ok wps₁ →
   wellTypedPolicies ps₂ Γ = .ok wps₂ →
-  verifyImplies wps₁ wps₂ (SymEnv.ofTypeEnv Γ) ~ .ok (verifyImpliesOpt cps₁ cps₂)
+  verifyImplies wps₁ wps₂ (SymEnv.ofTypeEnv Γ) ~ .ok (verifyImpliesOpt cpset₁ cpset₂)
 := by
   simp [verifyImplies, verifyImpliesOpt]
   exact verifyIsAuthorizedOpt_eqv_verifyIsAuthorized_ok
@@ -229,34 +229,34 @@ This theorem covers the "happy path" -- showing that if optimized policy
 compilation succeeds, then `verifyAlwaysAllows` and `verifyAlwaysAllowsOpt` are
 equivalent.
 -/
-theorem verifyAlwaysAllowsOpt_eqv_verifyAlwaysAllows_ok {ps wps : Policies} {cps : CompiledPolicies} {Γ : Validation.TypeEnv} :
-  CompiledPolicies.compile ps Γ = .ok cps →
+theorem verifyAlwaysAllowsOpt_eqv_verifyAlwaysAllows_ok {ps wps : Policies} {cpset : CompiledPolicySet} {Γ : Validation.TypeEnv} :
+  CompiledPolicySet.compile ps Γ = .ok cpset →
   wellTypedPolicies ps Γ = .ok wps →
-  verifyAlwaysAllows wps (SymEnv.ofTypeEnv Γ) ~ .ok (verifyAlwaysAllowsOpt cps)
+  verifyAlwaysAllows wps (SymEnv.ofTypeEnv Γ) ~ .ok (verifyAlwaysAllowsOpt cpset)
 := by
   simp [verifyAlwaysAllows, verifyAlwaysAllowsOpt]
-  intro hcps hwps
-  apply verifyImpliesOpt_eqv_verifyImplies_ok _ hcps (wellTypedPolicies_allowAll Γ) hwps
-  simp [CompiledPolicies.compile, Except.mapError, do_eq_ok, wellTypedPolicies_allowAll]
+  intro hcpset hwps
+  apply verifyImpliesOpt_eqv_verifyImplies_ok _ hcpset (wellTypedPolicies_allowAll Γ) hwps
+  simp [CompiledPolicySet.compile, Except.mapError, do_eq_ok, wellTypedPolicies_allowAll]
   rw [Opt.isAuthorized.correctness]
-  simp [isAuthorized_allowAll, footprint_allowAll, CompiledPolicies.allowAll, cps_compile_produces_the_right_env hcps, footprints_singleton, Data.Set.map_empty]
+  simp [isAuthorized_allowAll, footprint_allowAll, CompiledPolicySet.allowAll, cpset_compile_produces_the_right_env hcpset, footprints_singleton, Data.Set.map_empty]
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
 compilation succeeds, then `verifyAlwaysAllows` and `verifyAlwaysAllowsOpt` are
 equivalent.
 -/
-theorem verifyAlwaysDeniesOpt_eqv_verifyAlwaysDenies_ok {ps wps : Policies} {cps : CompiledPolicies} {Γ : Validation.TypeEnv} :
-  CompiledPolicies.compile ps Γ = .ok cps →
+theorem verifyAlwaysDeniesOpt_eqv_verifyAlwaysDenies_ok {ps wps : Policies} {cpset : CompiledPolicySet} {Γ : Validation.TypeEnv} :
+  CompiledPolicySet.compile ps Γ = .ok cpset →
   wellTypedPolicies ps Γ = .ok wps →
-  verifyAlwaysDenies wps (SymEnv.ofTypeEnv Γ) ~ .ok (verifyAlwaysDeniesOpt cps)
+  verifyAlwaysDenies wps (SymEnv.ofTypeEnv Γ) ~ .ok (verifyAlwaysDeniesOpt cpset)
 := by
   simp [verifyAlwaysDenies, verifyAlwaysDeniesOpt]
-  intro hcps hwps
-  apply verifyImpliesOpt_eqv_verifyImplies_ok hcps _ hwps _ (ps₂ := [])
-  simp [CompiledPolicies.compile, Except.mapError, do_eq_ok, wellTypedPolicies_empty]
+  intro hcpset hwps
+  apply verifyImpliesOpt_eqv_verifyImplies_ok hcpset _ hwps _ (ps₂ := [])
+  simp [CompiledPolicySet.compile, Except.mapError, do_eq_ok, wellTypedPolicies_empty]
   rw [Opt.isAuthorized.correctness]
-  simp [isAuthorized_empty, CompiledPolicies.denyAll, cps_compile_produces_the_right_env hcps]
+  simp [isAuthorized_empty, CompiledPolicySet.denyAll, cpset_compile_produces_the_right_env hcpset]
   simp [footprints_empty, EmptyCollection.emptyCollection, Data.Set.map_empty]
   simp [wellTypedPolicies_empty]
 
@@ -265,12 +265,12 @@ This theorem covers the "happy path" -- showing that if optimized policy
 compilation succeeds, then `verifyEquivalent` and `verifyEquivalentOpt` are
 equivalent.
 -/
-theorem verifyEquivalentOpt_eqv_verifyEquivalent_ok {ps₁ ps₂ wps₁ wps₂ : Policies} {cps₁ cps₂ : CompiledPolicies} {Γ : Validation.TypeEnv} :
-  CompiledPolicies.compile ps₁ Γ = .ok cps₁ →
-  CompiledPolicies.compile ps₂ Γ = .ok cps₂ →
+theorem verifyEquivalentOpt_eqv_verifyEquivalent_ok {ps₁ ps₂ wps₁ wps₂ : Policies} {cpset₁ cpset₂ : CompiledPolicySet} {Γ : Validation.TypeEnv} :
+  CompiledPolicySet.compile ps₁ Γ = .ok cpset₁ →
+  CompiledPolicySet.compile ps₂ Γ = .ok cpset₂ →
   wellTypedPolicies ps₁ Γ = .ok wps₁ →
   wellTypedPolicies ps₂ Γ = .ok wps₂ →
-  verifyEquivalent wps₁ wps₂ (SymEnv.ofTypeEnv Γ) ~ .ok (verifyEquivalentOpt cps₁ cps₂)
+  verifyEquivalent wps₁ wps₂ (SymEnv.ofTypeEnv Γ) ~ .ok (verifyEquivalentOpt cpset₁ cpset₂)
 := by
   simp [verifyEquivalent, verifyEquivalentOpt]
   exact verifyIsAuthorizedOpt_eqv_verifyIsAuthorized_ok
@@ -280,12 +280,12 @@ This theorem covers the "happy path" -- showing that if optimized policy
 compilation succeeds, then `verifyDisjoint` and `verifyDisjointOpt` are
 equivalent.
 -/
-theorem verifyDisjointOpt_eqv_verifyDisjoint_ok {ps₁ ps₂ wps₁ wps₂ : Policies} {cps₁ cps₂ : CompiledPolicies} {Γ : Validation.TypeEnv} :
-  CompiledPolicies.compile ps₁ Γ = .ok cps₁ →
-  CompiledPolicies.compile ps₂ Γ = .ok cps₂ →
+theorem verifyDisjointOpt_eqv_verifyDisjoint_ok {ps₁ ps₂ wps₁ wps₂ : Policies} {cpset₁ cpset₂ : CompiledPolicySet} {Γ : Validation.TypeEnv} :
+  CompiledPolicySet.compile ps₁ Γ = .ok cpset₁ →
+  CompiledPolicySet.compile ps₂ Γ = .ok cpset₂ →
   wellTypedPolicies ps₁ Γ = .ok wps₁ →
   wellTypedPolicies ps₂ Γ = .ok wps₂ →
-  verifyDisjoint wps₁ wps₂ (SymEnv.ofTypeEnv Γ) ~ .ok (verifyDisjointOpt cps₁ cps₂)
+  verifyDisjoint wps₁ wps₂ (SymEnv.ofTypeEnv Γ) ~ .ok (verifyDisjointOpt cpset₁ cpset₂)
 := by
   simp [verifyDisjoint, verifyDisjointOpt]
   exact verifyIsAuthorizedOpt_eqv_verifyIsAuthorized_ok

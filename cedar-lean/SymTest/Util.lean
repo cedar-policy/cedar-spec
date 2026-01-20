@@ -59,15 +59,15 @@ private def Policy.permit (x : Expr) : Policy := {
 private def CompiledPolicy.permit (x : Expr) (Γ : Validation.TypeEnv) : Except CompiledPolicyError CompiledPolicy :=
   CompiledPolicy.compile (Policy.permit x) Γ
 
-private def CompiledPolicies.permit (x : Expr) (Γ : Validation.TypeEnv) : Except CompiledPolicyError CompiledPolicies :=
-  CompiledPolicies.compile [Policy.permit x] Γ
+private def CompiledPolicySet.permit (x : Expr) (Γ : Validation.TypeEnv) : Except CompiledPolicyError CompiledPolicySet :=
+  CompiledPolicySet.compile [Policy.permit x] Γ
 
 def testFailsCompilePolicy (desc : String) (x : Expr) (Γ : Validation.TypeEnv) : TestCase SolverM :=
   let compileResult := CompiledPolicy.compile (Policy.permit x) Γ
   test desc ⟨λ _ => checkMatches (compileResult matches .error _) compileResult⟩
 
 def testFailsCompilePolicies (desc : String) (x : Expr) (Γ : Validation.TypeEnv) : TestCase SolverM :=
-  let compileResult := CompiledPolicies.compile [Policy.permit x] Γ
+  let compileResult := CompiledPolicySet.compile [Policy.permit x] Γ
   test desc ⟨λ _ => checkMatches (compileResult matches .error _) compileResult⟩
 
 /-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/
@@ -86,9 +86,9 @@ def testVerifyImplies (desc : String) (x₁ x₂ : Expr) (Γ : Validation.TypeEn
   [
     test (desc ++ " (unoptimized)") ⟨λ _ => expected.check (verifyImplies [(Policy.permit x₁)] [(Policy.permit x₂)]) εnv⟩,
     test (desc ++ " (optimized)") ⟨λ _ => do
-      let cps₁ ← CompiledPolicies.permit x₁ Γ |> IO.ofExcept
-      let cps₂ ← CompiledPolicies.permit x₂ Γ |> IO.ofExcept
-      expected.checkAsserts (verifyImpliesOpt cps₁ cps₂) εnv⟩,
+      let cpset₁ ← CompiledPolicySet.permit x₁ Γ |> IO.ofExcept
+      let cpset₂ ← CompiledPolicySet.permit x₂ Γ |> IO.ofExcept
+      expected.checkAsserts (verifyImpliesOpt cpset₁ cpset₂) εnv⟩,
   ]
 
 /-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/
@@ -97,9 +97,9 @@ def testVerifyEquivalent (desc : String) (x₁ x₂ : Expr) (Γ : Validation.Typ
   [
     test (desc ++ " (unoptimized)") ⟨λ _ => expected.check (verifyEquivalent [(Policy.permit x₁)] [(Policy.permit x₂)]) εnv⟩,
     test (desc ++ " (optimized)") ⟨λ _ => do
-      let cps₁ ← CompiledPolicies.permit x₁ Γ |> IO.ofExcept
-      let cps₂ ← CompiledPolicies.permit x₂ Γ |> IO.ofExcept
-      expected.checkAsserts (verifyEquivalentOpt cps₁ cps₂) εnv⟩,
+      let cpset₁ ← CompiledPolicySet.permit x₁ Γ |> IO.ofExcept
+      let cpset₂ ← CompiledPolicySet.permit x₂ Γ |> IO.ofExcept
+      expected.checkAsserts (verifyEquivalentOpt cpset₁ cpset₂) εnv⟩,
   ]
 
 def testCompile (desc : String) (x : Expr) (εnv : SymEnv) (expected : SymCC.Result Term) : TestCase SolverM :=

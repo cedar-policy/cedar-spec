@@ -41,7 +41,7 @@ theorem enforceCompiledPolicy_eqv_enforce_ok {p wp : Policy} {cp : CompiledPolic
     cp_compile_produces_the_right_env h₀,
     cp_compile_produces_the_right_footprint h₀,
     cp_compile_produces_the_right_acyclicity h₀,
-    compiled_policy_eq_wtp h₀ h₁,
+    cp_compile_produces_the_right_policy h₀ h₁,
   ]
   simp [footprints]
   simp [Data.Set.make_make_eqv, List.Equiv, List.subset_def]
@@ -103,8 +103,8 @@ theorem enforcePairCompiledPolicy_eqv_enforce_ok {p₁ p₂ wp₁ wp₂ : Policy
     cp_compile_produces_the_right_footprint h₁,
     cp_compile_produces_the_right_acyclicity h₀,
     cp_compile_produces_the_right_acyclicity h₁,
-    compiled_policy_eq_wtp h₀ h₂,
-    compiled_policy_eq_wtp h₁ h₃,
+    cp_compile_produces_the_right_policy h₀ h₂,
+    cp_compile_produces_the_right_policy h₁ h₃,
   ]
   have h_split : [wp₁.toExpr, wp₂.toExpr] = [wp₁.toExpr] ++ [wp₂.toExpr] := by simp
   rw [h_split, footprints_append, footprints_singleton, footprints_singleton]
@@ -142,27 +142,27 @@ theorem enforcePairCompiledPolicy_eqv_enforce_ok {p₁ p₂ wp₁ wp₂ : Policy
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
-compilation succeeds, then `enforce` and `enforcePairCompiledPolicies` are
+compilation succeeds, then `enforce` and `enforcePairCompiledPolicySet` are
 equivalent.
 -/
-theorem enforcePairCompiledPolicies_eqv_enforce_ok {ps₁ ps₂ wps₁ wps₂ : Policies} {cps₁ cps₂ : CompiledPolicies} {Γ : Validation.TypeEnv} :
-  CompiledPolicies.compile ps₁ Γ = .ok cps₁ →
-  CompiledPolicies.compile ps₂ Γ = .ok cps₂ →
+theorem enforcePairCompiledPolicySet_eqv_enforce_ok {ps₁ ps₂ wps₁ wps₂ : Policies} {cpset₁ cpset₂ : CompiledPolicySet} {Γ : Validation.TypeEnv} :
+  CompiledPolicySet.compile ps₁ Γ = .ok cpset₁ →
+  CompiledPolicySet.compile ps₂ Γ = .ok cpset₂ →
   wellTypedPolicies ps₁ Γ = .ok wps₁ →
   wellTypedPolicies ps₂ Γ = .ok wps₂ →
-  enforce (wps₁.map Policy.toExpr ++ wps₂.map Policy.toExpr) (SymEnv.ofTypeEnv Γ) = enforcePairCompiledPolicies cps₁ cps₂
+  enforce (wps₁.map Policy.toExpr ++ wps₂.map Policy.toExpr) (SymEnv.ofTypeEnv Γ) = enforcePairCompiledPolicySet cpset₁ cpset₂
 := by
-  simp [enforce, enforcePairCompiledPolicies]
-  intro hcps₁ hcps₂ hwps₁ hwps₂
+  simp [enforce, enforcePairCompiledPolicySet]
+  intro hcpset₁ hcpset₂ hwps₁ hwps₂
   simp [
-    cps_compile_produces_the_right_env hcps₁,
-    cps_compile_produces_the_right_env hcps₂,
-    cps_compile_produces_the_right_footprint hcps₁,
-    cps_compile_produces_the_right_footprint hcps₂,
-    cps_compile_produces_the_right_acyclicity hcps₁,
-    cps_compile_produces_the_right_acyclicity hcps₂,
-    compiled_policies_eq_wtps hcps₁ hwps₁,
-    compiled_policies_eq_wtps hcps₂ hwps₂,
+    cpset_compile_produces_the_right_env hcpset₁,
+    cpset_compile_produces_the_right_env hcpset₂,
+    cpset_compile_produces_the_right_footprint hcpset₁,
+    cpset_compile_produces_the_right_footprint hcpset₂,
+    cpset_compile_produces_the_right_acyclicity hcpset₁,
+    cpset_compile_produces_the_right_acyclicity hcpset₂,
+    cpset_compile_produces_the_right_policies hcpset₁ hwps₁,
+    cpset_compile_produces_the_right_policies hcpset₂ hwps₂,
   ]
   simp [footprints_append]
   rw [Data.Set.make_make_eqv]
