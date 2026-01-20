@@ -93,10 +93,14 @@ def UnaryOp.canError : UnaryOp → Bool
 def Residual.errorFree : Residual → Bool
   | .val _ _ => true
   | .var _ _ => true
-  | .binaryApp op x₁ x₂ _ => !op.canError && x₁.errorFree && x₂.errorFree
-  | .unaryApp op x₁ _ =>  !op.canError && x₁.errorFree
-  | .and x₁ x₂ _ => x₁.errorFree && x₂.errorFree
-  | .or x₁ x₂ _ => x₁.errorFree && x₂.errorFree
+  | .binaryApp op x₁ x₂ _ =>
+    !op.canError && x₁.errorFree && x₂.errorFree
+  | .unaryApp op x₁ _ =>
+    !op.canError && x₁.errorFree
+  | .and x₁ x₂ _ =>
+    x₁.errorFree && x₂.errorFree
+  | .or x₁ x₂ _ =>
+    x₁.errorFree && x₂.errorFree
   | ite x₁ x₂ x₃ _ =>
     x₁.errorFree && x₂.errorFree && x₃.errorFree
   | hasAttr x₁ _ _ =>
