@@ -89,7 +89,6 @@ def UnaryOp.canError : UnaryOp → Bool
   | _ => false
 
 -- Assumes the residual is well typed, so there can be no type errors.
--- Implements only enough for scope expressions for proof of concept.
 def Residual.errorFree : Residual → Bool
   | .val _ _ => true
   | .var _ _ => true
