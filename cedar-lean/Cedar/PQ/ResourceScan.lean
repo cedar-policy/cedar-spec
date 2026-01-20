@@ -19,13 +19,13 @@ import Cedar.PQ.ResourceScan.PolicySlice
 import Cedar.PQ.ResourceScan.ResourceCandidates
 
 /-!
-This file defines a permission query algorithm for Cedar policy by iterating
-over the possible resource.
+This file defines a permission query algorithm for Cedar policies by iterating
+over the possible resources.
 
 The algorithm includes three optimizations:
-1. Policy slicing is used to evaluate only relevant policies given the principal
-   and resource type.
-2. Resources candidates are selected based on what could possibly be authorized
+1. Policy slicing to evaluate only relevant policies given the principal and
+   resource type.
+2. Resource candidate selection based on what could possibly be authorized
    given the resources in the policy scopes. This optimization only applies when
    all policy constrain the resource. Otherwise, it fall back to checking every
    resource.
