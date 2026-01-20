@@ -26,60 +26,60 @@ namespace Cedar.Thm
 
 open Cedar.Spec Cedar.SymCC
 
-theorem extractOpt?_eqv_extract? {cpₛs : List CompiledPolicyₛ} {I : Interpretation} {εnv : SymEnv} :
-  cpₛs ≠ [] →
-  (∀ cpₛ ∈ cpₛs, cpₛ.εnv = εnv) →
-  -- the `CompiledPolicyₛ` at least have to be constructed with `CompiledPolicy.compile` or `CompiledPolicies.compile`, even though we don't care about the original uncompiled policies
-  (∀ cpₛ ∈ cpₛs, match cpₛ with
+theorem extractOpt?_eqv_extract? {cpsets : List CompiledPolicies} {I : Interpretation} {εnv : SymEnv} :
+  cpsets ≠ [] →
+  (∀ cpset ∈ cpsets, cpset.εnv = εnv) →
+  -- the `CompiledPolicies` at least have to be constructed with `CompiledPolicy.compile` or `CompiledPolicySet.compile`, even though we don't care about the original uncompiled policies
+  (∀ cpset ∈ cpsets, match cpset with
     | .policy cp => ∃ p Γ, CompiledPolicy.compile p Γ = .ok cp
-    | .policies cps => ∃ ps Γ, CompiledPolicies.compile ps Γ = .ok cps
+    | .pset cpset => ∃ ps Γ, CompiledPolicySet.compile ps Γ = .ok cpset
   ) →
-  extractOpt? cpₛs I = SymEnv.extract? ((cpₛs.flatMap CompiledPolicyₛ.allPolicies).map Policy.toExpr) I εnv
+  extractOpt? cpsets I = SymEnv.extract? ((cpsets.flatMap CompiledPolicies.allPolicies).map Policy.toExpr) I εnv
 := by
   simp [extractOpt?, SymEnv.extract?]
   intro hnil hεnv hcompile
-  simp only [CompiledPolicyₛ.εnv] at hεnv
+  simp only [CompiledPolicies.εnv] at hεnv
   split <;> simp_all only [reduceCtorEq, not_true_eq_false, not_false_eq_true, List.mem_cons,
     forall_eq_or_imp, List.flatMap_cons, List.map_append, footprints]
-  rename_i cpₛ cpₛs
+  rename_i cps cpss
   replace ⟨hεnv', hεnv⟩ := hεnv
   congr 3
-  cases cpₛ <;> simp_all only [CompiledPolicyₛ.allPolicies, List.map_cons, List.map_nil,
+  cases cps <;> simp_all only [CompiledPolicies.allPolicies, List.map_cons, List.map_nil,
     List.cons_append, List.nil_append]
   all_goals {
     subst εnv
-    first | rename CompiledPolicy => cp | rename CompiledPolicies => cps
+    first | rename CompiledPolicy => cp | rename CompiledPolicySet => cps
     replace ⟨⟨p, Γ, hcompile⟩, hcompile'⟩ := hcompile ; try rename Policies => ps
     rw [List.mapUnion_cons]
-    · simp only [CompiledPolicyₛ.footprint]
+    · simp only [CompiledPolicies.footprint]
       first
       | rw [List.mapUnion_cons (by simp [footprint_wf])]
       | rw [List.mapUnion_append (by simp [footprint_wf])]
       congr 1
       · first
         | apply cp_compile_produces_the_right_footprint hcompile
-        | apply cps_compile_produces_the_right_footprint hcompile
+        | apply cpset_compile_produces_the_right_footprint hcompile
       · rw [List.mapUnion_map]
         rw [← Data.Set.eq_means_eqv List.mapUnion_wf List.mapUnion_wf]
         simp only [List.Equiv, List.subset_def, Data.Set.in_list_iff_in_set,
           List.mem_mapUnion_iff_mem_exists, List.mem_flatMap, Function.comp_apply,
           forall_exists_index, and_imp]
         constructor
-        · intro t cpₛ hcpₛ ht
-          specialize hcompile' cpₛ hcpₛ
+        · intro t cps hcps ht
+          specialize hcompile' cps hcps
           split at hcompile'
-          · rename_i cpₛ cp
+          · rename_i cps cp
             replace ⟨p', Γ', hcompile'⟩ := hcompile'
             have hfoot := cp_compile_produces_the_right_footprint hcompile'
-            simp [CompiledPolicyₛ.footprint, hfoot] at ht
+            simp [CompiledPolicies.footprint, hfoot] at ht
             exists cp.policy
-            specialize hεnv (.policy cp) hcpₛ ; simp only at hεnv ; rw [← hεnv]
+            specialize hεnv (.policy cp) hcps ; simp only at hεnv ; rw [← hεnv]
             simp only [ht, and_true]
             exists .policy cp
-            simp [hcpₛ, CompiledPolicyₛ.allPolicies]
-          · rename_i cpₛ cps
+            simp [hcps, CompiledPolicies.allPolicies]
+          · rename_i cps cpset
             replace ⟨ps', Γ', hcompile'⟩ := hcompile'
-            have hfoot := cps_compile_produces_the_right_footprint hcompile'
+            have hfoot := cpset_compile_produces_the_right_footprint hcompile'
             simp only [footprints, List.mapUnion_map] at hfoot
             rw [← Data.Set.eq_means_eqv] at hfoot
             · simp only [List.Equiv, List.subset_def, Data.Set.in_list_iff_in_set] at hfoot
@@ -88,47 +88,47 @@ theorem extractOpt?_eqv_extract? {cpₛs : List CompiledPolicyₛ} {I : Interpre
               rw [List.mem_mapUnion_iff_mem_exists] at hfoot
               replace ⟨p, hp, hfoot⟩ := hfoot
               exists p
-              specialize hεnv (.policies cps) hcpₛ ; simp only at hεnv ; rw [← hεnv]
+              specialize hεnv (.pset cpset) hcps ; simp only at hεnv ; rw [← hεnv]
               simp only [Function.comp_apply] at hfoot
               simp only [hfoot, and_true]
-              exists .policies cps
+              exists .pset cpset
             · simp [hfoot, List.mapUnion_wf]
             · simp [List.mapUnion_wf]
-        · intro t p cpₛ hcpₛ hp ht
-          exists cpₛ
-          specialize hcompile' cpₛ hcpₛ
+        · intro t p cps hcps hp ht
+          exists cps
+          specialize hcompile' cps hcps
           split at hcompile'
-          · rename_i cpₛ cp
-            simp only [CompiledPolicyₛ.allPolicies, List.mem_cons, List.not_mem_nil,
+          · rename_i cps cp
+            simp only [CompiledPolicies.allPolicies, List.mem_cons, List.not_mem_nil,
               or_false] at hp ; subst p
             replace ⟨p', Γ', hcompile'⟩ := hcompile'
             have hfoot := cp_compile_produces_the_right_footprint hcompile'
-            simp only [hcpₛ, CompiledPolicyₛ.footprint, hfoot, true_and]
-            specialize hεnv (.policy cp) hcpₛ ; simp only at hεnv ; rw [← hεnv] at ht
+            simp only [hcps, CompiledPolicies.footprint, hfoot, true_and]
+            specialize hεnv (.policy cp) hcps ; simp only at hεnv ; rw [← hεnv] at ht
             exact ht
-          · rename_i cpₛ cps
-            simp only [CompiledPolicyₛ.allPolicies] at hp
+          · rename_i cps cpset
+            simp only [CompiledPolicies.allPolicies] at hp
             replace ⟨ps', Γ', hcompile'⟩ := hcompile'
-            have hfoot := cps_compile_produces_the_right_footprint hcompile'
-            simp only [hcpₛ, CompiledPolicyₛ.footprint, hfoot, footprints, true_and]
-            specialize hεnv (.policies cps) hcpₛ ; simp only at hεnv ; rw [← hεnv] at ht
+            have hfoot := cpset_compile_produces_the_right_footprint hcompile'
+            simp only [hcps, CompiledPolicies.footprint, hfoot, footprints, true_and]
+            specialize hεnv (.pset cpset) hcps ; simp only at hεnv ; rw [← hεnv] at ht
             apply List.mem_mem_implies_mem_mapUnion (s := p.toExpr) ht
             simp only [List.mem_map]
             exists p
-    · intro cpₛ hcpₛ
-      cases hcpₛ
+    · intro cps hcps
+      cases hcps
       · first
         | have := cp_compile_produces_the_right_footprint hcompile
-        | have := cps_compile_produces_the_right_footprint hcompile
+        | have := cpset_compile_produces_the_right_footprint hcompile
         simp only at this
-        simp [CompiledPolicyₛ.footprint, this, footprint_wf, footprints_wf]
-      · rename_i hcpₛ
-        specialize hcompile' cpₛ hcpₛ
+        simp [CompiledPolicies.footprint, this, footprint_wf, footprints_wf]
+      · rename_i hcps
+        specialize hcompile' cps hcps
         split at hcompile'
-        · rename_i cpₛ cp
+        · rename_i cps cp
           replace ⟨p, Γ, hcompile'⟩ := hcompile'
-          simp [CompiledPolicyₛ.footprint, cp_compile_produces_the_right_footprint hcompile', footprint_wf]
-        · rename_i cpₛ cps
+          simp [CompiledPolicies.footprint, cp_compile_produces_the_right_footprint hcompile', footprint_wf]
+        · rename_i cps cps
           replace ⟨ps, Γ, hcompile'⟩ := hcompile'
-          simp [CompiledPolicyₛ.footprint, cps_compile_produces_the_right_footprint hcompile', footprints_wf]
+          simp [CompiledPolicies.footprint, cpset_compile_produces_the_right_footprint hcompile', footprints_wf]
   }

@@ -29,11 +29,11 @@ def enforceCompiledPolicy (cp : CompiledPolicy) : Set Term :=
   Set.make (cp.acyclicity.elts ++ tr)
 
 /--
-Returns the ground acyclicity and transitivity assumptions for a single `CompiledPolicies`.
+Returns the ground acyclicity and transitivity assumptions for a single `CompiledPolicySet`.
 -/
-def enforceCompiledPolicies (cps : CompiledPolicies) : Set Term :=
-  let tr := cps.footprint.elts.flatMap (λ t => cps.footprint.elts.map (transitivity t · cps.εnv.entities))
-  Set.make (cps.acyclicity.elts ++ tr)
+def enforceCompiledPolicySet (cpset : CompiledPolicySet) : Set Term :=
+  let tr := cpset.footprint.elts.flatMap (λ t => cpset.footprint.elts.map (transitivity t · cpset.εnv.entities))
+  Set.make (cpset.acyclicity.elts ++ tr)
 
 /--
 Returns the ground acyclicity and transitivity assumptions for a pair of `CompiledPolicy`.
@@ -46,13 +46,13 @@ def enforcePairCompiledPolicy (cp₁ : CompiledPolicy) (cp₂ : CompiledPolicy) 
   Set.make (cp₁.acyclicity.elts ++ cp₂.acyclicity.elts ++ tr)
 
 /--
-Returns the ground acyclicity and transitivity assumptions for a pair of `CompiledPolicies`.
-Caller guarantees that `cps₁` and `cps₂` were compiled for the same `εnv`.
+Returns the ground acyclicity and transitivity assumptions for a pair of `CompiledPolicySet`.
+Caller guarantees that `cpset₁` and `cpset₂` were compiled for the same `εnv`.
 -/
-def enforcePairCompiledPolicies (cps₁ : CompiledPolicies) (cps₂ : CompiledPolicies) : Set Term :=
-  assert! cps₁.εnv = cps₂.εnv
-  let footprint := cps₁.footprint ++ cps₂.footprint
-  let tr := footprint.elts.flatMap (λ t => footprint.elts.map (transitivity t · cps₁.εnv.entities))
-  Set.make (cps₁.acyclicity.elts ++ cps₂.acyclicity.elts ++ tr)
+def enforcePairCompiledPolicySet (cpset₁ : CompiledPolicySet) (cpset₂ : CompiledPolicySet) : Set Term :=
+  assert! cpset₁.εnv = cpset₂.εnv
+  let footprint := cpset₁.footprint ++ cpset₂.footprint
+  let tr := footprint.elts.flatMap (λ t => footprint.elts.map (transitivity t · cpset₁.εnv.entities))
+  Set.make (cpset₁.acyclicity.elts ++ cpset₂.acyclicity.elts ++ tr)
 
 namespace Cedar.SymCC

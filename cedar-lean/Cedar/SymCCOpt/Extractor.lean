@@ -35,15 +35,15 @@ open Data Factory Spec
 /--
 Optimized version of `extract?` in `SymCC/Extractor.lean`.
 
-Caller guarantees that all of the `CompiledPolicy`s and/or `CompiledPolicies` were compiled for the same `εnv`.
+Caller guarantees that all of the `CompiledPolicy`s and/or `CompiledPolicySet`s were compiled for the same `εnv`.
 -/
-def extractOpt? (cpₛs : List CompiledPolicyₛ) (I : Interpretation) : Option Env :=
-  match cpₛs with
+def extractOpt? (cpss : List CompiledPolicies) (I : Interpretation) : Option Env :=
+  match cpss with
   | [] => none
-  | cpₛ :: _ =>
-    let ps := cpₛs.flatMap CompiledPolicyₛ.allPolicies
-    let footprint := cpₛs.mapUnion CompiledPolicyₛ.footprint
-    let εnv := cpₛ.εnv
+  | cps :: _ =>
+    let ps := cpss.flatMap CompiledPolicies.allPolicies
+    let footprint := cpss.mapUnion CompiledPolicies.footprint
+    let εnv := cps.εnv
     SymEnv.concretize? (Expr.set (ps.map Policy.toExpr)) (εnv.interpret (I.repair footprint εnv))
 
 end Cedar.SymCC

@@ -272,81 +272,81 @@ private def authorize (ps : Policies) (env : Env) : Bool :=
 /-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/
 private def testVerifyImplies? (expected : Finding) (ps₁ ps₂ : Policies) : List (TestCase SolverM) :=
   let desc := s!"[{expected}] implies? [{ps₁.map Policy.id}] [{ps₂.map Policy.id}]"
-  let cps₁ := CompiledPolicies.compile ps₁ typeEnvRead |> IO.ofExcept
-  let cps₂ := CompiledPolicies.compile ps₂ typeEnvRead |> IO.ofExcept
+  let cpset₁ := CompiledPolicySet.compile ps₁ typeEnvRead |> IO.ofExcept
+  let cpset₂ := CompiledPolicySet.compile ps₂ typeEnvRead |> IO.ofExcept
   match expected with
   | .cex => [
       testVerifyCex (desc ++ " (unoptimized)") (implies? ps₁ ps₂ εnvRead)
         (λ env => !(authorize ps₁ env) || (authorize ps₂ env)),
-      testVerifyCex (desc ++ " (optimized)") (do impliesOpt? (← cps₁) (← cps₂))
+      testVerifyCex (desc ++ " (optimized)") (do impliesOpt? (← cpset₁) (← cpset₂))
         (λ env => !(authorize ps₁ env) || (authorize ps₂ env)),
     ]
   | .qed => [
       testVerifyQed (desc ++ " (unoptimized)") (implies? ps₁ ps₂ εnvRead),
-      testVerifyQed (desc ++ " (optimized)") (do impliesOpt? (← cps₁) (← cps₂))
+      testVerifyQed (desc ++ " (optimized)") (do impliesOpt? (← cpset₁) (← cpset₂))
     ]
 
 /-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/
 private def testVerifyAlwaysAllows? (expected : Finding) (ps : Policies) : List (TestCase SolverM) :=
   let desc := s!"[{expected}] alwaysAllows? [{ps.map Policy.id}]"
-  let cps := CompiledPolicies.compile ps typeEnvRead |> IO.ofExcept
+  let cpset := CompiledPolicySet.compile ps typeEnvRead |> IO.ofExcept
   match expected with
   | .cex => [
       testVerifyCex (desc ++ " (unoptimized)") (alwaysAllows? ps εnvRead)
         (λ env => authorize ps env = true),
-      testVerifyCex (desc ++ " (optimized)") (do alwaysAllowsOpt? (← cps))
+      testVerifyCex (desc ++ " (optimized)") (do alwaysAllowsOpt? (← cpset))
         (λ env => authorize ps env = true),
     ]
   | .qed => [
       testVerifyQed (desc ++ " (unoptimized)") (alwaysAllows? ps εnvRead),
-      testVerifyQed (desc ++ " (optimized)") (do alwaysAllowsOpt? (← cps)),
+      testVerifyQed (desc ++ " (optimized)") (do alwaysAllowsOpt? (← cpset)),
     ]
 
 private def testVerifyAlwaysDenies? (expected : Finding) (ps : Policies) : List (TestCase SolverM) :=
   let desc := s!"[{expected}] alwaysDenies? [{ps.map Policy.id}]"
-  let cps := CompiledPolicies.compile ps typeEnvRead |> IO.ofExcept
+  let cpset := CompiledPolicySet.compile ps typeEnvRead |> IO.ofExcept
   match expected with
   | .cex => [
       testVerifyCex (desc ++ " (unoptimized)") (alwaysDenies? ps εnvRead)
         (λ env => authorize ps env = false),
-      testVerifyCex (desc ++ " (optimized)") (do alwaysDeniesOpt? (← cps))
+      testVerifyCex (desc ++ " (optimized)") (do alwaysDeniesOpt? (← cpset))
         (λ env => authorize ps env = false),
     ]
   | .qed => [
       testVerifyQed (desc ++ " (unoptimized)") (alwaysDenies? ps εnvRead),
-      testVerifyQed (desc ++ " (optimized)") (do alwaysDeniesOpt? (← cps)),
+      testVerifyQed (desc ++ " (optimized)") (do alwaysDeniesOpt? (← cpset)),
     ]
 
 private def testVerifyEquivalent? (expected : Finding) (ps₁ ps₂ : Policies) : List (TestCase SolverM) :=
   let desc := s!"[{expected}] equivalent? [{ps₁.map Policy.id}] [{ps₂.map Policy.id}]"
-  let cps₁ := CompiledPolicies.compile ps₁ typeEnvRead |> IO.ofExcept
-  let cps₂ := CompiledPolicies.compile ps₂ typeEnvRead |> IO.ofExcept
+  let cpset₁ := CompiledPolicySet.compile ps₁ typeEnvRead |> IO.ofExcept
+  let cpset₂ := CompiledPolicySet.compile ps₂ typeEnvRead |> IO.ofExcept
   match expected with
   | .cex => [
       testVerifyCex (desc ++ " (unoptimized)") (equivalent? ps₁ ps₂ εnvRead)
         (λ env => (authorize ps₁ env) = (authorize ps₂ env)),
-      testVerifyCex (desc ++ " (optimized)") (do equivalentOpt? (← cps₁) (← cps₂))
+      testVerifyCex (desc ++ " (optimized)") (do equivalentOpt? (← cpset₁) (← cpset₂))
         (λ env => (authorize ps₁ env) = (authorize ps₂ env)),
     ]
   | .qed => [
       testVerifyQed (desc ++ " (unoptimized)") (equivalent? ps₁ ps₂ εnvRead),
-      testVerifyQed (desc ++ " (optimized)") (do equivalentOpt? (← cps₁) (← cps₂)),
+      testVerifyQed (desc ++ " (optimized)") (do equivalentOpt? (← cpset₁) (← cpset₂)),
     ]
 
 private def testVerifyDisjoint? (expected : Finding) (ps₁ ps₂ : Policies) : List (TestCase SolverM) :=
   let desc := s!"[{expected}] disjoint? [{ps₁.map Policy.id}] [{ps₂.map Policy.id}]"
-  let cps₁ := CompiledPolicies.compile ps₁ typeEnvRead |> IO.ofExcept
-  let cps₂ := CompiledPolicies.compile ps₂ typeEnvRead |> IO.ofExcept
+  let cpset₁ := CompiledPolicySet.compile ps₁ typeEnvRead |> IO.ofExcept
+  let cpset₂ := CompiledPolicySet.compile ps₂ typeEnvRead |> IO.ofExcept
   match expected with
   | .cex => [
       testVerifyCex (desc ++ " (unoptimized)") (disjoint? ps₁ ps₂ εnvRead)
         (λ env => (authorize ps₁ env) != true || (authorize ps₂ env) != true),
-      testVerifyCex (desc ++ " (optimized)") (do disjointOpt? (← cps₁) (← cps₂))
+      testVerifyCex (desc ++ " (optimized)") (do disjointOpt? (← cpset₁) (← cpset₂))
         (λ env => (authorize ps₁ env) != true || (authorize ps₂ env) != true),
     ]
   | .qed => [
       testVerifyQed (desc ++ " (unoptimized)") (disjoint? ps₁ ps₂ εnvRead),
-      testVerifyQed (desc ++ " (optimized)") (do disjointOpt? (← cps₁) (← cps₂)),
+      testVerifyQed (desc ++ " (optimized)") (do disjointOpt? (← cpset₁) (← cpset₂)),
     ]
 
 def testTrivialPolicies :=
