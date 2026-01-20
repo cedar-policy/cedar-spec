@@ -15,6 +15,7 @@
 -/
 
 import Cedar.SymCC
+import Cedar.SymCCOpt
 import Cedar.Thm.Data.List.Basic
 
 namespace Cedar.Thm
@@ -83,3 +84,14 @@ theorem Asserts.Equiv.satAsserts? {a₁ a₂ : Asserts} (ps : Policies) (εnv : 
 := by
   intro heqv
   simp [SymCC.satAsserts?, Asserts.Equiv.checkSatAsserts εnv heqv]
+
+/--
+Equivalent `Asserts` produce the same output in `satAssertsOpt?`
+-/
+theorem Asserts.Equiv.satAssertsOpt? {a₁ a₂ : Asserts} (cpₛs : List CompiledPolicyₛ) :
+  a₁ ~ a₂ →
+  satAssertsOpt? cpₛs a₁ = satAssertsOpt? cpₛs a₂
+:= by
+  intro heqv
+  simp only [SymCC.satAssertsOpt?]
+  split <;> simp [Asserts.Equiv.checkSatAsserts _ heqv]

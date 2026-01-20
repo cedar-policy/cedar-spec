@@ -33,28 +33,17 @@ namespace Cedar.SymCC
 open Data Factory Spec
 
 /--
-Caller guarantees that all of the `CompiledPolicies` were compiled for the same `εnv`.
--/
-def CompiledPolicies.extractOpt? (cps : List CompiledPolicies) (I : Interpretation) : Option Env :=
-  match cps with
-  | [] => none
-  | { εnv, .. } :: _ =>
-    let ps := List.flatten $ cps.map CompiledPolicies.policies
-    let footprint := cps.mapUnion CompiledPolicies.footprint
-    SymEnv.concretize? (Expr.set (ps.map Policy.toExpr)) (εnv.interpret (I.repair footprint εnv))
+Optimized version of `extract?` in `SymCC/Extractor.lean`.
 
-/--
-Like `CompiledPolicies.extractOpt?`, but takes a list of `CompiledPolicy` rather
-than `CompiledPolicies`.
-
-Caller guarantees that all of the `CompiledPolicy`s were compiled for the same `εnv`.
+Caller guarantees that all of the `CompiledPolicy`s and/or `CompiledPolicies` were compiled for the same `εnv`.
 -/
-def CompiledPolicy.extractOpt? (cps : List CompiledPolicy) (I : Interpretation) : Option Env :=
-  match cps with
+def extractOpt? (cpₛs : List CompiledPolicyₛ) (I : Interpretation) : Option Env :=
+  match cpₛs with
   | [] => none
-  | { εnv, .. } :: _ =>
-    let ps := cps.map CompiledPolicy.policy
-    let footprint := cps.mapUnion CompiledPolicy.footprint
+  | cpₛ :: _ =>
+    let ps := cpₛs.flatMap CompiledPolicyₛ.allPolicies
+    let footprint := cpₛs.mapUnion CompiledPolicyₛ.footprint
+    let εnv := cpₛ.εnv
     SymEnv.concretize? (Expr.set (ps.map Policy.toExpr)) (εnv.interpret (I.repair footprint εnv))
 
 end Cedar.SymCC
