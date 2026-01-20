@@ -46,45 +46,30 @@ private theorem partial_eval_preserves_typeof_and {env : TypeEnv} {a b : Residua
 := by
   unfold PEPreservesTypeOf
   intros h_wf h_ref h_wt
-  simp only [Residual.typeOf, TPE.evaluate]
-  cases h_wt with
-  | and h₁ h₂ h₃ h₄ =>
-    split
-    all_goals
-      rename Residual => x
-      rename CedarType => ty
-      rename_i heq
-      unfold TPE.and at heq
-    all_goals
-      split at heq
-    any_goals
-      split at heq
-
-    any_goals
-      contradiction
-
-    any_goals
-      have h₅ := ih_a h_wf h_ref h₁
-      rw [h₃] at h₅
-      rw [heq] at h₅
-      simp only [Residual.typeOf] at h₅
-      exact h₅
-    any_goals
-      have h₅ := ih_b h_wf h_ref h₂
-      rw [heq] at h₅
-      rw [h₄] at h₅
-      simp only [Residual.typeOf] at h₅
-      exact h₅
-
-    case h_3 =>
-      injection heq with h₅
-      rw [h₅]
-    case h_5.isTrue | h_2 =>
-      injection heq with h₅ h₆
-      rw [h₆]
-    case h_5.isFalse | h_6 =>
-      injection heq with h₅ h₆ h₇
-      rw [h₇]
+  rw [(by simp [Residual.typeOf] : (a.and b ty).typeOf = ty)]
+  simp [TPE.evaluate, TPE.and]
+  split
+  any_goals
+    simp [Residual.typeOf]
+    done
+  · cases h_wt
+    rename_i h_bwt h_bty
+    replace ih_b := ih_b h_wf h_ref h_bwt
+    rw [h_bty] at ih_b
+    exact ih_b
+  · simp only [Residual.typeOf]
+    cases h_wt
+    rfl
+  · cases h_wt
+    rename_i h_awt h_aty _ _
+    replace ih_a := ih_a h_wf h_ref h_awt
+    rw [h_aty] at ih_a
+    exact ih_a
+  · split
+    · simp only [Residual.typeOf]
+      cases h_wt
+      rfl
+    · simp [Residual.typeOf]
 
 private theorem partial_eval_preserves_typeof_or {env : TypeEnv} {a b : Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities}
   (ih_a : PEPreservesTypeOf env a req preq es pes)
@@ -93,45 +78,30 @@ private theorem partial_eval_preserves_typeof_or {env : TypeEnv} {a b : Residual
 := by
   unfold PEPreservesTypeOf
   intros h_wf h_ref h_wt
-  simp only [Residual.typeOf, TPE.evaluate]
-  cases h_wt with
-  | or h₁ h₂ h₃ h₄ =>
-    split
-    all_goals
-      rename Residual => x
-      rename CedarType => ty
-      rename_i heq
-      unfold TPE.or at heq
-    all_goals
-      split at heq
-    any_goals
-      split at heq
-
-    any_goals
-      contradiction
-
-    any_goals
-      have h₅ := ih_a h_wf h_ref h₁
-      rw [h₃] at h₅
-      rw [heq] at h₅
-      simp only [Residual.typeOf] at h₅
-      exact h₅
-    any_goals
-      have h₅ := ih_b h_wf h_ref h₂
-      rw [heq] at h₅
-      rw [h₄] at h₅
-      simp only [Residual.typeOf] at h₅
-      exact h₅
-
-    case h_3 =>
-      injection heq with h₅
-      rw [h₅]
-    case h_5.isTrue | h_1 =>
-      injection heq with h₅ h₆
-      rw [h₆]
-    case h_5.isFalse | h_6 =>
-      injection heq with h₅ h₆ h₇
-      rw [h₇]
+  rw [(by simp [Residual.typeOf] : (a.or b ty).typeOf = ty)]
+  simp [TPE.evaluate, TPE.or]
+  split
+  any_goals
+    simp [Residual.typeOf]
+    done
+  · simp only [Residual.typeOf]
+    cases h_wt
+    rfl
+  · cases h_wt
+    rename_i h_bwt h_bty
+    replace ih_b := ih_b h_wf h_ref h_bwt
+    rw [h_bty] at ih_b
+    exact ih_b
+  · cases h_wt
+    rename_i h_awt h_aty _ _
+    replace ih_a := ih_a h_wf h_ref h_awt
+    rw [h_aty] at ih_a
+    exact ih_a
+  · split
+    · simp only [Residual.typeOf]
+      cases h_wt
+      rfl
+    · simp [Residual.typeOf]
 
 private theorem partial_eval_preserves_typeof_ite {env : TypeEnv} {c t e : Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities}
   (ih_t : PEPreservesTypeOf env t req preq es pes)
