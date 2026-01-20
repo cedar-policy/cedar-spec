@@ -80,11 +80,11 @@ def Residual.typeOf : Residual → CedarType
   | .error ty => ty
 
 
-def BinaryOp.canOverflow : BinaryOp → Bool
+def BinaryOp.canError : BinaryOp → Bool
   | .add | .sub | .mul | .getTag => true
   | _ => false
 
-def UnaryOp.canOverflow : UnaryOp → Bool
+def UnaryOp.canError : UnaryOp → Bool
   | .neg => true
   | _ => false
 
@@ -93,8 +93,8 @@ def UnaryOp.canOverflow : UnaryOp → Bool
 def Residual.errorFree : Residual → Bool
   | .val _ _ => true
   | .var _ _ => true
-  | .binaryApp op x₁ x₂ _ => !op.canOverflow && x₁.errorFree && x₂.errorFree
-  | .unaryApp op x₁ _ =>  !op.canOverflow && x₁.errorFree
+  | .binaryApp op x₁ x₂ _ => !op.canError && x₁.errorFree && x₂.errorFree
+  | .unaryApp op x₁ _ =>  !op.canError && x₁.errorFree
   | .and x₁ x₂ _ => x₁.errorFree && x₂.errorFree
   | .or x₁ x₂ _ => x₁.errorFree && x₂.errorFree
   | ite x₁ x₂ x₃ _ =>

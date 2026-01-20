@@ -18,7 +18,7 @@ import Cedar.TPE
 import Cedar.Spec
 import Cedar.Validation
 import Cedar.Thm.TPE.Input
-import Cedar.Thm.TPE.ResidualCanError
+import Cedar.Thm.TPE.ErrorFree
 import Cedar.Thm.TPE.WellTyped
 import Cedar.Thm.Validation
 import Cedar.Thm.WellTyped
@@ -307,7 +307,7 @@ theorem partial_evaluate_is_sound_and
         rename_i h₇
         simp [Residual.evaluate] at h₇
         subst h₇
-        rw [error_free_spec] at h₆
+        rw [Residual.error_free_spec] at h₆
         have h₇ : Residual.WellTyped env (TPE.evaluate x₁ preq pes) :=
           partial_eval_preserves_well_typed h₂ h₄ hᵢ₁
         have h₈ := error_free_evaluate_ok h₂ h₇ h₆
@@ -510,7 +510,7 @@ theorem partial_evaluate_is_sound_or
         rename_i h₇
         simp [Residual.evaluate] at h₇
         subst h₇
-        rw [error_free_spec] at h₆
+        rw [Residual.error_free_spec] at h₆
         have h₇ : Residual.WellTyped env (TPE.evaluate x₁ preq pes) :=
           partial_eval_preserves_well_typed h₂ h₄ hᵢ₁
         have h₈ := error_free_evaluate_ok h₂ h₇ h₆

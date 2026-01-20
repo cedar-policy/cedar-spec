@@ -20,28 +20,26 @@ import Cedar.Thm.TPE.Input
 
 namespace Cedar.Spec
 
-inductive BinaryOp.CanOverflow : BinaryOp → Prop where
-  | add : BinaryOp.CanOverflow .add
-  | sub : BinaryOp.CanOverflow .sub
-  | mul : BinaryOp.CanOverflow .mul
-  | getTag : BinaryOp.CanOverflow .getTag
+inductive BinaryOp.CanError : BinaryOp → Prop where
+  | add : BinaryOp.CanError .add
+  | sub : BinaryOp.CanError .sub
+  | mul : BinaryOp.CanError .mul
+  | getTag : BinaryOp.CanError .getTag
 
-inductive UnaryOp.CanOverflow : UnaryOp → Prop where
-  | neg : UnaryOp.CanOverflow .neg
+inductive UnaryOp.CanError : UnaryOp → Prop where
+  | neg : UnaryOp.CanError .neg
 
 inductive Residual.ErrorFree : Residual → Prop where
   | val : Residual.ErrorFree (.val v ty)
   | var : Residual.ErrorFree (.var v ty)
-  | unary : ¬ op.CanOverflow → Residual.ErrorFree x₁ → Residual.ErrorFree (.unaryApp op x₁ ty)
-  | binary : ¬ op.CanOverflow → Residual.ErrorFree x₁ → Residual.ErrorFree x₂ → Residual.ErrorFree (.binaryApp op x₁ x₂ ty)
+  | unary : ¬ op.CanError → Residual.ErrorFree x₁ → Residual.ErrorFree (.unaryApp op x₁ ty)
+  | binary : ¬ op.CanError → Residual.ErrorFree x₁ → Residual.ErrorFree x₂ → Residual.ErrorFree (.binaryApp op x₁ x₂ ty)
   | and : Residual.ErrorFree x₁ → Residual.ErrorFree x₂ → Residual.ErrorFree (.and x₁ x₂ ty)
   | or : Residual.ErrorFree x₁ → Residual.ErrorFree x₂ → Residual.ErrorFree (.or x₁ x₂ ty)
   | ite : Residual.ErrorFree x₁ → Residual.ErrorFree x₂ → Residual.ErrorFree x₃ → Residual.ErrorFree (.ite x₁ x₂ x₃ ty)
   | hasAttr : Residual.ErrorFree x₁ → Residual.ErrorFree (.hasAttr x₁ attr ty)
   | set : (∀ r ∈ rs, Residual.ErrorFree r) → Residual.ErrorFree (.set rs ty)
   | record : (∀ ax ∈ axs, Residual.ErrorFree ax.snd) → Residual.ErrorFree (.record axs ty)
-  -- TODO: Can extend to accept everything that doesn't do arithmetic,
-  -- attribute/tag/hierarchy access, or an extension call.
 
 end Cedar.Spec
 
@@ -50,8 +48,8 @@ namespace Cedar.Thm
 open Cedar.Spec
 open Cedar.Validation
 
-theorem BinaryOp.can_overflow_spec (op : BinaryOp) : op.canOverflow = true ↔ op.CanOverflow := by
-  unfold BinaryOp.canOverflow
+theorem BinaryOp.can_error_spec (op : BinaryOp) : op.canError = true ↔ op.CanError := by
+  unfold BinaryOp.canError
   split
   case h_1 | h_2 | h_3 | h_4 =>
     simp only [true_iff]
@@ -61,8 +59,8 @@ theorem BinaryOp.can_overflow_spec (op : BinaryOp) : op.canOverflow = true ↔ o
     intro h
     cases h <;> contradiction
 
-theorem UnaryOp.can_overflow_spec (op : UnaryOp) : op.canOverflow = true ↔ op.CanOverflow := by
-  unfold UnaryOp.canOverflow
+theorem UnaryOp.can_error_spec (op : UnaryOp) : op.canError = true ↔ op.CanError := by
+  unfold UnaryOp.canError
   split
   case h_1 =>
     simp only [true_iff]
@@ -73,7 +71,7 @@ theorem UnaryOp.can_overflow_spec (op : UnaryOp) : op.canOverflow = true ↔ op.
     cases h
     contradiction
 
-theorem error_free_spec (r : Residual) : r.errorFree = true ↔ r.ErrorFree := by
+theorem Residual.error_free_spec (r : Residual) : r.errorFree = true ↔ r.ErrorFree := by
   cases r
   any_goals
     simp only [Residual.errorFree, Bool.false_eq_true, false_iff]
@@ -87,8 +85,8 @@ theorem error_free_spec (r : Residual) : r.errorFree = true ↔ r.ErrorFree := b
     constructor
   case binaryApp op x₁ x₂ _ =>
     simp only [Residual.errorFree, Bool.and_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true]
-    have hop : op.canOverflow = false ↔ ¬ op.CanOverflow := by
-      grind [BinaryOp.can_overflow_spec]
+    have hop : op.canError = false ↔ ¬ op.CanError := by
+      grind [BinaryOp.can_error_spec]
     rw [hop, error_free_spec x₁, error_free_spec x₂]
     constructor
     · intro ⟨⟨h₁, h₂⟩, h₃⟩
@@ -98,8 +96,8 @@ theorem error_free_spec (r : Residual) : r.errorFree = true ↔ r.ErrorFree := b
       and_intros <;> assumption
   case unaryApp op x₁ _ =>
     simp only [Residual.errorFree, Bool.and_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true]
-    have hop : op.canOverflow = false ↔ ¬ op.CanOverflow := by
-      grind [UnaryOp.can_overflow_spec]
+    have hop : op.canError = false ↔ ¬ op.CanError := by
+      grind [UnaryOp.can_error_spec]
     rw [hop, error_free_spec x₁]
     constructor
     · intro ⟨h₁, h₂⟩
