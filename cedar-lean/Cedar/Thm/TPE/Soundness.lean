@@ -226,7 +226,7 @@ theorem partial_evaluate_is_sound_and
 {pes : PartialEntities}
 {env : TypeEnv}
 (h₂ : InstanceOfWellFormedEnvironment req es env)
-(h₄ : RequestAndEntitiesRefine req es preq pes)
+(h₃ : RequestAndEntitiesRefine req es preq pes)
 (hᵢ₁ : Residual.WellTyped env x₁)
 (hᵢ₂ : Residual.WellTyped env x₂)
 (hᵢ₃ : x₁.typeOf = CedarType.bool BoolType.anyBool)
@@ -309,7 +309,7 @@ theorem partial_evaluate_is_sound_and
         subst h₇
         rw [Residual.error_free_spec] at h₆
         have h₇ : Residual.WellTyped env (TPE.evaluate x₁ preq pes) :=
-          partial_eval_preserves_well_typed h₂ h₄ hᵢ₁
+          partial_eval_preserves_well_typed h₂ h₃ hᵢ₁
         have h₈ := error_free_evaluate_ok h₂ h₇ h₆
         simp [Except.isOk, Except.toBool] at h₈
         split at h₈ <;> try contradiction
@@ -431,7 +431,7 @@ theorem partial_evaluate_is_sound_or
 {pes : PartialEntities}
 {env : TypeEnv}
 (h₂ : InstanceOfWellFormedEnvironment req es env)
-(h₄ : RequestAndEntitiesRefine req es preq pes)
+(h₃ : RequestAndEntitiesRefine req es preq pes)
 (hᵢ₁ : Residual.WellTyped env x₁)
 (hᵢ₂ : Residual.WellTyped env x₂)
 (hᵢ₃ : x₁.typeOf = CedarType.bool BoolType.anyBool)
@@ -512,7 +512,7 @@ theorem partial_evaluate_is_sound_or
         subst h₇
         rw [Residual.error_free_spec] at h₆
         have h₇ : Residual.WellTyped env (TPE.evaluate x₁ preq pes) :=
-          partial_eval_preserves_well_typed h₂ h₄ hᵢ₁
+          partial_eval_preserves_well_typed h₂ h₃ hᵢ₁
         have h₈ := error_free_evaluate_ok h₂ h₇ h₆
         simp [Except.isOk, Except.toBool] at h₈
         split at h₈ <;> try contradiction
