@@ -19,7 +19,7 @@ use cedar_drt::logger::initialize_log;
 
 use cedar_drt_inner::{
     fuzz_target,
-    symcc::{compile_policies, local_solver, total_action_request_env_limit},
+    symcc::{local_solver, total_action_request_env_limit},
 };
 
 use cedar_policy::{Authorizer, Decision, Policy, PolicySet, Schema};
@@ -38,8 +38,8 @@ use tokio::{
 };
 
 use cedar_policy_symcc::{
-    compile_always_allows, compile_always_denies, err::SolverError, solver::LocalSolver,
-    CedarSymCompiler, Env, SymEnv, WellFormedAsserts,
+    always_allows_asserts, always_denies_asserts, err::SolverError, solver::LocalSolver,
+    CedarSymCompiler, CompiledPolicies, Env, WellFormedAsserts,
 };
 
 use std::sync::LazyLock;
@@ -200,60 +200,43 @@ fuzz_target!(|input: FuzzTargetInput| {
 
     if let Ok(schema) = Schema::try_from(input.schema) {
         for req_env in schema.request_envs() {
-            if let Ok(sym_env) = SymEnv::new(&schema, &req_env) {
-                // We let Rust to drive the term generation as it's faster than Lean
-                if let (Ok(always_allows_asserts), Ok(always_denies_asserts)) = (
-                    compile_policies(
-                        compile_always_allows,
-                        &sym_env,
-                        &policyset,
-                        &req_env,
-                        &schema,
-                    ),
-                    compile_policies(
-                        compile_always_denies,
-                        &sym_env,
-                        &policyset,
-                        &req_env,
-                        &schema,
-                    ),
-                ) {
-                    match get_cex(&always_allows_asserts, &always_denies_asserts) {
-                        Ok((Some(env_deny), Some(env_allow))) => {
-                            assert_eq!(
-                                reproduce(&env_deny, &policyset),
-                                Decision::Deny,
-                                "Rust SymCC returned a wrong counterexample"
-                            );
-                            assert_eq!(
-                                reproduce(&env_allow, &policyset),
-                                Decision::Allow,
-                                "Rust SymCC returned a wrong counterexample"
-                            );
-                        }
-                        Ok((Some(env_deny), None)) => {
-                            assert_eq!(
-                                reproduce(&env_deny, &policyset),
-                                Decision::Deny,
-                                "Rust SymCC returned a wrong counterexample"
-                            )
-                        }
-                        Ok((None, Some(env_allow))) => {
-                            assert_eq!(
-                                reproduce(&env_allow, &policyset),
-                                Decision::Allow,
-                                "Rust SymCC returned a wrong counterexample"
-                            );
-                        }
-                        Ok((None, None)) => {}
-                        Err(CexError::Solver(err)) => {
-                            panic!("Error running solver: {err}");
-                        }
-                        Err(CexError::Timeout(err)) => {
-                            panic!("Solver timed out: {err}");
-                        }
-                        Err(CexError::Other(err)) => panic!("failed to run checksat: {err}"),
+            // We let Rust compile the policies as it's faster than Lean
+            if let Ok(cps) = CompiledPolicies::compile(&policyset, &req_env, &schema) {
+                match get_cex(&always_allows_asserts(&cps), &always_denies_asserts(&cps)) {
+                    Ok((Some(env_deny), Some(env_allow))) => {
+                        assert_eq!(
+                            reproduce(&env_deny, &policyset),
+                            Decision::Deny,
+                            "Rust SymCC returned a wrong counterexample"
+                        );
+                        assert_eq!(
+                            reproduce(&env_allow, &policyset),
+                            Decision::Allow,
+                            "Rust SymCC returned a wrong counterexample"
+                        );
                     }
+                    Ok((Some(env_deny), None)) => {
+                        assert_eq!(
+                            reproduce(&env_deny, &policyset),
+                            Decision::Deny,
+                            "Rust SymCC returned a wrong counterexample"
+                        )
+                    }
+                    Ok((None, Some(env_allow))) => {
+                        assert_eq!(
+                            reproduce(&env_allow, &policyset),
+                            Decision::Allow,
+                            "Rust SymCC returned a wrong counterexample"
+                        );
+                    }
+                    Ok((None, None)) => {}
+                    Err(CexError::Solver(err)) => {
+                        panic!("Error running solver: {err}");
+                    }
+                    Err(CexError::Timeout(err)) => {
+                        panic!("Solver timed out: {err}");
+                    }
+                    Err(CexError::Other(err)) => panic!("failed to run checksat: {err}"),
                 }
             }
         }
