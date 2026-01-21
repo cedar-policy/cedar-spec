@@ -250,6 +250,19 @@ private def safeTimedSolve {α} (solver: IO Solver) (vcs : SolverM α) : IO (Exc
 opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except String (Timed α))
 
 /--
+  `req`: binary protobuf for a `CheckAsserts`
+
+  returns JSON encoded string that encodes
+  1.) .error err_message if there was in error in parsing or running the solver
+  2.) .ok { data := true, duration := <encode+solve_time> } if the solver could prove `asserts` hold
+  3.) .ok { data := false, duration := <encode+solve_time> } if the solver could prove `asserts` do not hold
+-/
+@[export runCheckAsserts] unsafe def runCheckAsserts (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
+  runFfiM do
+    let (asserts, εnv) ← parseCheckAssertsReq schema req
+    timedSolve Solver.cvc5 (checkUnsat (λ _ => .ok asserts) εnv)
+
+/--
   `req`: binary protobuf for an `CheckPolicyRequest`
 
   returns JSON encoded string that encodes
@@ -445,6 +458,24 @@ private def ignoreOutput (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : Solve
     | .sat     => pure ()
     | .unknown => pure ()
 
+private def printAsserts (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : FfiM (Timed Unit) :=
+  do
+    let stdOut ← IO.getStdout
+    let solver ← Solver.streamWriter stdOut
+    timedSolve (pure solver) (ignoreOutput asserts εnv)
+
+/--
+  `req`: binary protobuf for a `CheckAsserts`
+
+  returns JSON encoded string that encodes
+  1.) .error err_message if there was in error in parsing or encoding the vcs
+  2.) .ok {data := (), duration := <encode+print_time>} if the vcs were successfully printed to stdout in SMTLib format
+-/
+@[export printCheckAsserts] unsafe def printCheckAsserts (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
+  runFfiM do
+    let (asserts, εnv) ← parseCheckAssertsReq schema req
+    printAsserts asserts εnv
+
 /--
   `req`: binary protobuf for an `CheckPolicyRequest`
 
@@ -457,10 +488,7 @@ private def ignoreOutput (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : Solve
 @[export printCheckNeverErrors] unsafe def printCheckNeverErrors (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
     let (_, cp) ← parseCheckPolicyReq schema req
-    let stdOut ← IO.getStdout
-    let solver ← Solver.streamWriter stdOut
-    let vcs := ignoreOutput (verifyNeverErrorsOpt cp) cp.εnv
-    timedSolve (pure solver) vcs
+    printAsserts (verifyNeverErrorsOpt cp) cp.εnv
 
 /--
   `req`: binary protobuf for an `CheckPolicySetRequest`
@@ -474,10 +502,7 @@ private def ignoreOutput (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : Solve
 @[export printCheckAlwaysAllows] unsafe def printCheckAlwaysAllows (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
     let (_, cpset) ← parseCheckPoliciesReq schema req
-    let stdOut ← IO.getStdout
-    let solver ← Solver.streamWriter stdOut
-    let vcs := ignoreOutput (verifyAlwaysAllowsOpt cpset) cpset.εnv
-    timedSolve (pure solver) vcs
+    printAsserts (verifyAlwaysAllowsOpt cpset) cpset.εnv
 
 /--
   `req`: binary protobuf for an `CheckPolicySetRequest`
@@ -491,10 +516,7 @@ private def ignoreOutput (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : Solve
 @[export printCheckAlwaysDenies] unsafe def printCheckAlwaysDenies (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
     let (_, cpset) ← parseCheckPoliciesReq schema req
-    let stdOut ← IO.getStdout
-    let solver ← Solver.streamWriter stdOut
-    let vcs := ignoreOutput (verifyAlwaysDeniesOpt cpset) cpset.εnv
-    timedSolve (pure solver) vcs
+    printAsserts (verifyAlwaysDeniesOpt cpset) cpset.εnv
 
 /--
   `req`: binary protobuf for an `CheckPolicySetRequest`
@@ -508,10 +530,7 @@ private def ignoreOutput (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : Solve
 @[export printCheckEquivalent] unsafe def printCheckEquivalent (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
     let (_, _, cpset₁, cpset₂) ← parseComparePolicySetsReq schema req
-    let stdOut ← IO.getStdout
-    let solver ← Solver.streamWriter stdOut
-    let vcs := ignoreOutput (verifyEquivalentOpt cpset₁ cpset₂) cpset₁.εnv -- cpset₁ and cpset₂ will have the same εnv
-    timedSolve (pure solver) vcs
+    printAsserts (verifyEquivalentOpt cpset₁ cpset₂) cpset₁.εnv -- cpset₁ and cpset₂ will have the same εnv
 
 /--
   `req`: binary protobuf for an `CheckPolicySetRequest`
@@ -525,10 +544,7 @@ private def ignoreOutput (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : Solve
 @[export printCheckImplies] unsafe def printCheckImplies (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
     let (_, _, cpset₁, cpset₂) ← parseComparePolicySetsReq schema req
-    let stdOut ← IO.getStdout
-    let solver ← Solver.streamWriter stdOut
-    let vcs := ignoreOutput (verifyImpliesOpt cpset₁ cpset₂) cpset₁.εnv -- cpset₁ and cpset₂ will have the same εnv
-    timedSolve (pure solver) vcs
+    printAsserts (verifyImpliesOpt cpset₁ cpset₂) cpset₁.εnv -- cpset₁ and cpset₂ will have the same εnv
 
 /--
   `req`: binary protobuf for an `CheckPolicySetRequest`
@@ -542,55 +558,7 @@ private def ignoreOutput (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : Solve
 @[export printCheckDisjoint] unsafe def printCheckDisjoint (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
     let (_, _, cpset₁, cpset₂) ← parseComparePolicySetsReq schema req
-    let stdOut ← IO.getStdout
-    let solver ← Solver.streamWriter stdOut
-    let vcs := ignoreOutput (verifyDisjointOpt cpset₁ cpset₂) cpset₁.εnv -- cpset₁ and cpset₂ will have the same εnv
-    timedSolve (pure solver) vcs
-
-/--
-  `req`: binary protobuf for a `CheckAsserts`
-
-  returns JSON encoded string that encodes
-  1.) .error err_message if there was in error in parsing or running the solver
-  2.) .ok { data := true, duration := <encode+solve_time> } if the solver could prove `asserts` hold
-  3.) .ok { data := false, duration := <encode+solve_time> } if the solver could prove `asserts` do not hold
--/
-@[export runCheckAsserts] unsafe def runCheckAsserts (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
-  runFfiM do
-    let (asserts, εnv) ← parseCheckAssertsReq schema req
-    timedSolve Solver.cvc5 (checkUnsat (λ _ => .ok asserts) εnv)
-
-/--
-  `req`: binary protobuf for a `CheckAsserts`
-
-  returns JSON encoded string that encodes
-  1.) .error err_message if there was in error in parsing or encoding the vcs
-  2.) .ok {data := (), duration := <encode+print_time>} if the vcs were successfully printed to stdout in SMTLib format
--/
-@[export printCheckAsserts] unsafe def printCheckAsserts (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
-  runFfiM do
-    let (asserts, εnv) ← parseCheckAssertsReq schema req
-    let stdOut ← IO.getStdout
-    let solver ← Solver.streamWriter stdOut
-    timedSolve (pure solver) (ignoreOutput asserts εnv)
-
-/--
-  `req`: binary protobuf for a `CheckAsserts`
-
-  returns JSON encoded string that encodes
-  1.) .error err_message if there was in error in parsing or encoding the vcs
-  2.) .ok {data := SMTLib-Script, duration := encode_time} where SMTLib-Script is a
-      string containing the SMTLib script encoding the verification query
--/
-@[export smtLibOfCheckAsserts] unsafe def smtLibOfCheckAsserts (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
-  runFfiM do
-    let (asserts, εnv) ← parseCheckAssertsReq schema req
-    let buffer ← IO.mkRef ⟨ByteArray.empty, 0⟩
-    let solver ← Solver.bufferWriter buffer
-    let r ← timedSolve (pure solver) (ignoreOutput asserts εnv)
-    let inner ← buffer.swap ⟨ByteArray.empty, 0⟩
-    let data  := (String.fromUTF8? inner.data).getD ""
-    return ({ data := data, duration := r.duration } : Timed String)
+    printAsserts (verifyDisjointOpt cpset₁ cpset₂) cpset₁.εnv -- cpset₁ and cpset₂ will have the same εnv
 
 /--
   `req`: binary protobuf for an `CheckPolicyRequest`
@@ -742,6 +710,28 @@ private def ignoreOutput (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : Solve
     let (pset₁, pset₂, cpset₁, _) ← parseComparePolicySetsReq schema req
     runAndTime (λ () => verifyDisjoint pset₁ pset₂ cpset₁.εnv) -- cpset₁ and cpset₂ will have the same εnv
 
+private def smtLibOf (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : FfiM (Timed String) :=
+  do
+    let buffer ← IO.mkRef ⟨ByteArray.empty, 0⟩
+    let solver ← Solver.bufferWriter buffer
+    let r ← timedSolve (pure solver) (ignoreOutput asserts εnv)
+    let inner_buffer ← buffer.swap ⟨ByteArray.empty, 0⟩
+    let data := (String.fromUTF8? inner_buffer.data).getD ""
+    return ({ data := data, duration := r.duration } : Timed String)
+
+/--
+  `req`: binary protobuf for a `CheckAsserts`
+
+  returns JSON encoded string that encodes
+  1.) .error err_message if there was in error in parsing or encoding the vcs
+  2.) .ok {data := SMTLib-Script, duration := encode_time} where SMTLib-Script is a
+      string containing the SMTLib script encoding the verification query
+-/
+@[export smtLibOfCheckAsserts] unsafe def smtLibOfCheckAsserts (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
+  runFfiM do
+    let (asserts, εnv) ← parseCheckAssertsReq schema req
+    smtLibOf asserts εnv
+
 /--
   `req`: binary protobuf for an `CheckPolicyRequest`
 
@@ -753,13 +743,7 @@ private def ignoreOutput (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : Solve
 @[export smtLibOfCheckNeverErrors] unsafe def smtLibOfCheckNeverErrors (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
     let (_, cp) ← parseCheckPolicyReq schema req
-    let buffer ← IO.mkRef ⟨ByteArray.empty, 0⟩
-    let solver ← Solver.bufferWriter buffer
-    let vcs := ignoreOutput (verifyNeverErrorsOpt cp) cp.εnv
-    let r ← timedSolve (pure solver) vcs
-    let inner_buffer ← buffer.swap ⟨ByteArray.empty, 0⟩
-    let data := (String.fromUTF8? inner_buffer.data).getD ""
-    return ({ data := data, duration := r.duration } : Timed String)
+    smtLibOf (verifyNeverErrorsOpt cp) cp.εnv
 
 /--
   `req`: binary protobuf for an `CheckPolicySetRequest`
@@ -772,13 +756,7 @@ private def ignoreOutput (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : Solve
 @[export smtLibOfCheckAlwaysAllows] unsafe def smtLibOfCheckAlwaysAllows (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
     let (_, cpset) ← parseCheckPoliciesReq schema req
-    let buffer ← IO.mkRef ⟨ByteArray.empty, 0⟩
-    let solver ← Solver.bufferWriter buffer
-    let vcs := ignoreOutput (verifyAlwaysAllowsOpt cpset) cpset.εnv
-    let r ← timedSolve (pure solver) vcs
-    let inner_buffer ← buffer.swap ⟨ByteArray.empty, 0⟩
-    let data := (String.fromUTF8? inner_buffer.data).getD ""
-    return ({ data := data, duration := r.duration } : Timed String)
+    smtLibOf (verifyAlwaysAllowsOpt cpset) cpset.εnv
 
 /--
   `req`: binary protobuf for an `CheckPolicySetRequest`
@@ -791,13 +769,7 @@ private def ignoreOutput (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : Solve
 @[export smtLibOfCheckAlwaysDenies] unsafe def smtLibOfCheckAlwaysDenies (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
     let (_, cpset) ← parseCheckPoliciesReq schema req
-    let buffer ← IO.mkRef ⟨ByteArray.empty, 0⟩
-    let solver ← Solver.bufferWriter buffer
-    let vcs := ignoreOutput (verifyAlwaysDeniesOpt cpset) cpset.εnv
-    let r ← timedSolve (pure solver) vcs
-    let inner_buffer ← buffer.swap ⟨ByteArray.empty, 0⟩
-    let data := (String.fromUTF8? inner_buffer.data).getD ""
-    return ({ data := data, duration := r.duration } : Timed String)
+    smtLibOf (verifyAlwaysDeniesOpt cpset) cpset.εnv
 
 /--
   `req`: binary protobuf for an `CheckPolicySetRequest`
@@ -810,13 +782,7 @@ private def ignoreOutput (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : Solve
 @[export smtLibOfCheckEquivalent] unsafe def smtLibOfCheckEquivalent (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
     let (_, _, cpset₁, cpset₂) ← parseComparePolicySetsReq schema req
-    let buffer ← IO.mkRef ⟨ByteArray.empty, 0⟩
-    let solver ← Solver.bufferWriter buffer
-    let vcs := ignoreOutput (verifyEquivalentOpt cpset₁ cpset₂) cpset₁.εnv -- cpset₁ and cpset₂ will have the same εnv
-    let r ← timedSolve (pure solver) vcs
-    let inner_buffer ← buffer.swap ⟨ByteArray.empty, 0⟩
-    let data := (String.fromUTF8? inner_buffer.data).getD ""
-    return ({ data := data, duration := r.duration } : Timed String)
+    smtLibOf (verifyEquivalentOpt cpset₁ cpset₂) cpset₁.εnv -- cpset₁ and cpset₂ will have the same εnv
 
 /--
   `req`: binary protobuf for an `CheckPolicySetRequest`
@@ -829,13 +795,7 @@ private def ignoreOutput (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : Solve
 @[export smtLibOfCheckImplies] unsafe def smtLibOfCheckImplies (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
     let (_, _, cpset₁, cpset₂) ← parseComparePolicySetsReq schema req
-    let buffer ← IO.mkRef ⟨ByteArray.empty, 0⟩
-    let solver ← Solver.bufferWriter buffer
-    let vcs := ignoreOutput (verifyImpliesOpt cpset₁ cpset₂) cpset₁.εnv -- cpset₁ and cpset₂ will have the same εnv
-    let r ← timedSolve (pure solver) vcs
-    let inner_buffer ← buffer.swap ⟨ByteArray.empty, 0⟩
-    let data := (String.fromUTF8? inner_buffer.data).getD ""
-    return ({ data := data, duration := r.duration } : Timed String)
+    smtLibOf (verifyImpliesOpt cpset₁ cpset₂) cpset₁.εnv -- cpset₁ and cpset₂ will have the same εnv
 
 /--
   `req`: binary protobuf for an `CheckPolicySetRequest`
@@ -848,13 +808,7 @@ private def ignoreOutput (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : Solve
 @[export smtLibOfCheckDisjoint] unsafe def smtLibOfCheckDisjoint (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
   runFfiM do
     let (_, _, cpset₁, cpset₂) ← parseComparePolicySetsReq schema req
-    let buffer ← IO.mkRef ⟨ByteArray.empty, 0⟩
-    let solver ← Solver.bufferWriter buffer
-    let vcs := ignoreOutput (verifyDisjointOpt cpset₁ cpset₂) cpset₁.εnv -- cpset₁ and cpset₂ will have the same εnv
-    let r ← timedSolve (pure solver) vcs
-    let inner_buffer ← buffer.swap ⟨ByteArray.empty, 0⟩
-    let data := (String.fromUTF8? inner_buffer.data).getD ""
-    return ({ data := data, duration := r.duration } : Timed String)
+    smtLibOf (verifyDisjointOpt cpset₁ cpset₂) cpset₁.εnv -- cpset₁ and cpset₂ will have the same εnv
 
 /--
   `req`: binary protobuf for an `BatchedEvaluationRequest`
