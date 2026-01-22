@@ -22,6 +22,7 @@ import Cedar.Thm.TPE.Conversion
 import Cedar.Thm.TPE.Soundness
 import Cedar.Thm.TPE.PreservesTypeOf
 import Cedar.Thm.TPE.WellTyped
+import Cedar.Thm.TPE.WellTypedCases
 import Cedar.Thm.Validation
 
 /-!
