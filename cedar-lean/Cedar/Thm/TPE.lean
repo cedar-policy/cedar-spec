@@ -25,6 +25,7 @@ import Cedar.Thm.TPE.PreservesTypeOf
 import Cedar.Thm.TPE.Policy
 import Cedar.Thm.TPE.Authorizer
 import Cedar.Thm.TPE.WellTyped
+import Cedar.Thm.TPE.WellTypedCases
 import Cedar.Thm.Validation
 import Cedar.Thm.Authorization
 

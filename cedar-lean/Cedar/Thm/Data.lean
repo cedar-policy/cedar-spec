@@ -14,6 +14,8 @@
  limitations under the License.
 -/
 
+import Cedar.Thm.Data.Applicative
+import Cedar.Thm.Data.Option
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.List
 import Cedar.Thm.Data.LT

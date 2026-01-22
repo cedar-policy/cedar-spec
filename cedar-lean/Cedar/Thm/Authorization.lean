@@ -16,6 +16,8 @@
 
 import Cedar.Spec
 import Cedar.Thm.Authorization.Authorizer
+import Cedar.Thm.Authorization.PolicySlice
+import Cedar.Thm.Authorization.Evaluator
 
 /-! This file contains basic theorems about Cedar's authorizer. -/
 
