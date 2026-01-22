@@ -18,43 +18,11 @@ use cedar_policy::{Policy, PolicySet, RequestEnv, Schema};
 use cedar_policy_symcc::{
     err::{EncodeError, Error},
     solver::LocalSolver,
-    Asserts, CedarSymCompiler, CompiledPolicies, CompiledPolicy, SymEnv, WellFormedAsserts,
-    WellTypedPolicies,
+    CedarSymCompiler, CompiledPolicies, CompiledPolicy,
 };
 use log::warn;
 use std::fmt::Display;
 use tokio::process::Command;
-
-/// Compile a well-typed policy set to `WellFormedAsserts`
-pub fn compile_well_typed_policies(
-    func: impl for<'a> Fn(
-        &WellTypedPolicies,
-        &'a SymEnv,
-    ) -> cedar_policy_symcc::err::Result<WellFormedAsserts<'a>>,
-    policy: &WellTypedPolicies,
-    schema: &Schema,
-    req_env: &RequestEnv,
-) -> Result<Asserts, String> {
-    let sym_env = SymEnv::new(schema, req_env).map_err(|err| err.to_string())?;
-    let asserts = func(policy, &sym_env).map_err(|err| err.to_string())?;
-    Ok(asserts.asserts().clone())
-}
-
-/// Compile a policy set to `WellFormedAsserts`
-pub fn compile_policies<'a>(
-    func: impl for<'b> Fn(
-        &WellTypedPolicies,
-        &'b SymEnv,
-    ) -> cedar_policy_symcc::err::Result<WellFormedAsserts<'b>>,
-    sym_env: &'a SymEnv,
-    policyset: &PolicySet,
-    req_env: &RequestEnv,
-    schema: &Schema,
-) -> Result<WellFormedAsserts<'a>, String> {
-    let well_typed_policies = WellTypedPolicies::from_policies(policyset, req_env, schema)
-        .map_err(|err| err.to_string())?;
-    func(&well_typed_policies, sym_env).map_err(|err| err.to_string())
-}
 
 /// The limit on the total number of request envs specific to symcc
 pub const fn total_action_request_env_limit() -> usize {

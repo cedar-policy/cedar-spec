@@ -17,10 +17,7 @@
 #![no_main]
 use cedar_drt::logger::initialize_log;
 
-use cedar_drt_inner::{
-    fuzz_target,
-    symcc::{compile_policies, total_action_request_env_limit},
-};
+use cedar_drt_inner::{fuzz_target, symcc::total_action_request_env_limit};
 
 use cedar_lean_ffi::CedarLeanFfi;
 use cedar_policy::{Policy, PolicySet, Schema};
@@ -35,7 +32,8 @@ use log::debug;
 use std::convert::TryFrom;
 
 use cedar_policy_symcc::{
-    compile_always_allows, solver::WriterSolver, CedarSymCompiler, SymEnv, WellFormedAsserts,
+    always_allows_asserts, solver::WriterSolver, CedarSymCompiler, CompiledPolicies,
+    WellFormedAsserts,
 };
 
 use std::sync::LazyLock;
@@ -112,44 +110,33 @@ fuzz_target!(|input: FuzzTargetInput| {
     if let Ok(schema) = Schema::try_from(input.schema) {
         let lean_schema = lean_ffi.load_lean_schema_object(&schema).unwrap();
         for req_env in schema.request_envs() {
-            if let Ok(sym_env) = SymEnv::new(&schema, &req_env) {
-                // We let Rust to drive the term generation as it's faster than Lean
-                if let Ok(rust_asserts) = compile_policies(
-                    compile_always_allows,
-                    &sym_env,
-                    &policyset,
-                    &req_env,
-                    &schema,
+            // We let Rust compile the policies as it's faster than Lean
+            if let Ok(cps) = CompiledPolicies::compile(&policyset, &req_env, &schema) {
+                let rust_asserts = always_allows_asserts(&cps);
+                let lean_asserts: Vec<_> = rust_asserts
+                    .asserts()
+                    .iter()
+                    .map(|assert| assert.clone().into())
+                    .collect();
+                debug!("Lean asserts: {lean_asserts:#?}");
+                match (
+                    smtlib_of_check_asserts(&rust_asserts),
+                    lean_ffi.smtlib_of_check_asserts(&lean_asserts, lean_schema.clone(), &req_env),
                 ) {
-                    let lean_asserts: Vec<_> = rust_asserts
-                        .asserts()
-                        .iter()
-                        .map(|assert| assert.clone().into())
-                        .collect();
-                    debug!("Lean asserts: {lean_asserts:#?}");
-                    match (
-                        smtlib_of_check_asserts(&rust_asserts),
-                        lean_ffi.smtlib_of_check_asserts(
-                            &lean_asserts,
-                            lean_schema.clone(),
-                            &req_env,
-                        ),
-                    ) {
-                        (Ok(rust_smtlib), Ok(lean_smtlib)) => {
-                            similar_asserts::assert_eq!(
-                                rust_smtlib,
-                                lean_smtlib,
-                                "Rust:\n{rust_smtlib}\nLean:\n{lean_smtlib}"
-                            );
-                        }
-                        (Ok(_), Err(e)) => {
-                            panic!("Lean encoding should succeed: {e}");
-                        }
-                        (Err(e), Ok(_)) => {
-                            panic!("Rust encoding should succeed: {e}");
-                        }
-                        (Err(_), Err(_)) => {}
+                    (Ok(rust_smtlib), Ok(lean_smtlib)) => {
+                        similar_asserts::assert_eq!(
+                            rust_smtlib,
+                            lean_smtlib,
+                            "Rust:\n{rust_smtlib}\nLean:\n{lean_smtlib}"
+                        );
                     }
+                    (Ok(_), Err(e)) => {
+                        panic!("Lean encoding should succeed: {e}");
+                    }
+                    (Err(e), Ok(_)) => {
+                        panic!("Rust encoding should succeed: {e}");
+                    }
+                    (Err(_), Err(_)) => {}
                 }
             }
         }
