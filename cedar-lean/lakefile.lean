@@ -75,7 +75,7 @@ partial def checkThmFile (module : String) (paths : List System.FilePath) : IO N
       let file_name := file.fileName
       if file_name.endsWith ".lean" then
         let subModule := s!"{module}.{file_name.dropRight 5}"
-        let expectedImport := s!"import {subModule}"
+        let expectedImport := s!"import {subModule}\n"
         if contents.all λ content => (content.replace expectedImport "" == content) then
           IO.println s!"{path} missing import: {expectedImport}"
           exitCode := 1
