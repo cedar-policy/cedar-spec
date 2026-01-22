@@ -170,7 +170,7 @@ fn print_summary(auth_times: HashMap<&str, Vec<f64>>, val_times: HashMap<&str, V
 // called `integration_tests_on_def_impl()`, in integration_tests.rs.
 fn print_timing_results() {
     let rust_impl = RustEngine::new();
-    let lean_impl = CedarLeanEngine::new();
+    let lean_ffi = cedar_lean_ffi::CedarLeanFfi::new();
 
     println!("Running Rust implementation...");
     let auth_times = get_authorization_timing_results(&rust_impl);
@@ -178,7 +178,7 @@ fn print_timing_results() {
     print_summary(auth_times, val_times);
 
     println!("Running Lean implementation...");
-    let auth_times = get_authorization_timing_results(&lean_impl);
-    let val_times = get_validation_timing_results(&lean_impl);
+    let auth_times = get_authorization_timing_results(&lean_ffi);
+    let val_times = get_validation_timing_results(&lean_ffi);
     print_summary(auth_times, val_times);
 }

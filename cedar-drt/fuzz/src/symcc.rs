@@ -14,17 +14,19 @@
  * limitations under the License.
  */
 
+use cedar_lean_ffi::{CedarLeanFfi, FfiError, LeanSchema};
 use cedar_policy::{Policy, PolicySet, RequestEnv, Schema};
 use cedar_policy_generators::{
     abac::ABACPolicy, hierarchy::HierarchyGenerator, schema, schema_gen::SchemaGen,
     settings::ABACSettings,
 };
 use cedar_policy_symcc::{
-    CedarSymCompiler, CompiledPolicy, CompiledPolicySet,
+    CedarSymCompiler, CedarSymCompiler, CompiledPolicy, CompiledPolicy, CompiledPolicySet,
+    CompiledPolicySet, WellFormedAsserts,
     err::{EncodeError, Error},
-    solver::LocalSolver,
+    solver::{LocalSolver, WriterSolver},
+    term::Term,
 };
-use libfuzzer_sys::arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
 use log::warn;
 use std::fmt::Display;
 use tokio::process::Command;
@@ -52,6 +54,69 @@ pub fn local_solver() -> Result<cedar_policy_symcc::solver::LocalSolver, String>
         });
     }
     cedar_policy_symcc::solver::LocalSolver::from_command(&mut cmd).map_err(|err| err.to_string())
+}
+
+pub async fn smtlib_of_check_asserts(
+    rust_asserts: &WellFormedAsserts<'_>,
+) -> Result<String, String> {
+    let mut solver = CedarSymCompiler::new(WriterSolver {
+        w: Vec::<u8>::new(),
+    })
+    .expect("solver construction should succeed");
+    match solver.check_sat(rust_asserts).await {
+        Ok(_) | Err(cedar_policy_symcc::err::Error::SolverUnknown) => {
+            Ok(String::from_utf8(std::mem::take(&mut solver.solver_mut().w)).unwrap())
+        }
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+#[track_caller]
+pub fn lean_smtlib_of_check_asserts(
+    rust_asserts: &WellFormedAsserts<'_>,
+    lean_ffi: &CedarLeanFfi,
+    lean_schema: LeanSchema,
+    req_env: &RequestEnv,
+) -> Result<String, FfiError> {
+    let lean_asserts: Vec<_> = rust_asserts
+        .asserts()
+        .iter()
+        .map(|assert| assert.clone().into())
+        .collect();
+    debug!("Lean asserts: {lean_asserts:#?}");
+    lean_ffi.smtlib_of_check_asserts(&lean_asserts, lean_schema, req_env)
+}
+
+#[track_caller]
+pub fn assert_smtlib_scripts_match<E1: Display, E2: Display>(
+    rust_smtlib: Result<String, E1>,
+    lean_smtlib: Result<String, E2>,
+) {
+    match (rust_smtlib, lean_smtlib) {
+        (Ok(rust), Ok(lean)) => {
+            similar_asserts::assert_eq!(rust, lean, "Rust:\n{rust}\nLean:\n{lean}")
+        }
+        (Ok(_), Err(e)) => panic!("Lean encoding should succeed: {e}"),
+        (Err(e), Ok(_)) => panic!("Rust encoding should succeed: {e}"),
+        (Err(_), Err(_)) => {}
+    }
+}
+
+#[track_caller]
+pub fn assert_that_asserts_match(
+    rust_asserts: WellFormedAsserts<'_>,
+    lean_asserts: impl IntoIterator<Item = cedar_lean_ffi::Term>,
+) {
+    let lean_asserts = lean_asserts
+        .into_iter()
+        .map(|t| Term::try_from(t).expect("term conversion should succeed"))
+        .collect::<BTreeSet<_>>();
+    let rust_asserts = BTreeSet::from_iter(rust_asserts.asserts().as_ref().iter().cloned());
+    similar_asserts::assert_eq!(
+        lean_asserts,
+        rust_asserts,
+        "Lean terms: {lean_asserts:?}, Rust terms: {rust_asserts:?}"
+    );
 }
 
 /// Settings shared by all SymCC fuzz targets that use `FuzzTargetInput`s
