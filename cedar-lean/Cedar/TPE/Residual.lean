@@ -79,6 +79,40 @@ def Residual.typeOf : Residual → CedarType
   | .call _ _ ty
   | .error ty => ty
 
+
+def BinaryOp.canError : BinaryOp → Bool
+  | .add | .sub | .mul | .getTag => true
+  | _ => false
+
+def UnaryOp.canError : UnaryOp → Bool
+  | .neg => true
+  | _ => false
+
+-- Assumes the residual is well typed, so there can be no type errors.
+def Residual.errorFree : Residual → Bool
+  | .val _ _ => true
+  | .var _ _ => true
+  | .binaryApp op x₁ x₂ _ =>
+    !op.canError && x₁.errorFree && x₂.errorFree
+  | .unaryApp op x₁ _ =>
+    !op.canError && x₁.errorFree
+  | .and x₁ x₂ _ =>
+    x₁.errorFree && x₂.errorFree
+  | .or x₁ x₂ _ =>
+    x₁.errorFree && x₂.errorFree
+  | ite x₁ x₂ x₃ _ =>
+    x₁.errorFree && x₂.errorFree && x₃.errorFree
+  | hasAttr x₁ _ _ =>
+    x₁.errorFree
+  | .set xs _ => xs.attach.all λ x =>
+    have : sizeOf x.val < sizeOf xs :=
+      List.sizeOf_lt_of_mem x.property
+    x.val.errorFree
+  | record xs _ =>
+    xs.attach₂.all λ ax =>
+      ax.val.snd.errorFree
+  | _ => false
+
 -- The interpreter of `Residual` that defines its semantics
 def Residual.evaluate (x : Residual) (req : Request) (es: Entities) : Result Value :=
   match x with

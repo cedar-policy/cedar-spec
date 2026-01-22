@@ -250,6 +250,13 @@ theorem partial_eval_well_typed_error {env : TypeEnv} {ty : CedarType} {req : Re
   simp only [TPE.evaluate]
   exact h_wt
 
+theorem well_typed_bool { env : TypeEnv} {b : Bool}:
+ Residual.WellTyped env (.val (.prim (.bool b)) (CedarType.bool BoolType.anyBool))
+:= by
+  apply Residual.WellTyped.val
+  apply InstanceOfType.instance_of_bool
+  simp [InstanceOfBoolType]
+
 /--
 Helper theorem: Partial evaluation preserves well-typedness for and residuals.
 -/
@@ -265,11 +272,23 @@ theorem partial_eval_well_typed_and {env : TypeEnv} {a b : Residual} {ty : Cedar
     unfold TPE.and
     split
     . exact h_b_wt
-    . apply Residual.WellTyped.val
-      apply InstanceOfType.instance_of_bool false BoolType.anyBool
-      simp [InstanceOfBoolType]
+    . exact well_typed_bool
     . apply Residual.WellTyped.error
     . exact h_a_wt
+    · split
+      · exact well_typed_bool
+      · rename_i bty h_eval_b _ _ _ _
+        replace h_ty_b : bty = CedarType.bool BoolType.anyBool := by
+          replace h_ty_b' := partial_eval_preserves_typeof h_wf h_ref h_b
+          simp only [h_eval_b, h_ty_b] at h_ty_b'
+          simpa [Residual.typeOf] using h_ty_b'
+        apply Residual.WellTyped.and
+        · exact h_a_wt
+        · rw [h_ty_b]
+          exact well_typed_bool
+        · rw [partial_eval_preserves_typeof h_wf h_ref h_a]
+          exact h_ty_a
+        · simp [h_ty_b, Residual.typeOf]
     . apply Residual.WellTyped.and
       · exact h_a_wt
       · exact h_b_wt
@@ -292,12 +311,24 @@ theorem partial_eval_well_typed_or {env : TypeEnv} {a b : Residual} {ty : CedarT
   | or h_a h_b h_ty_a h_ty_b =>
     unfold TPE.or
     split
-    . apply Residual.WellTyped.val
-      apply InstanceOfType.instance_of_bool true BoolType.anyBool
-      simp [InstanceOfBoolType]
+    . exact well_typed_bool
     . exact h_b_wt
     . apply Residual.WellTyped.error
     . exact h_a_wt
+    . split
+      · exact well_typed_bool
+      · rename_i bty h_eval_b _ _ _ _
+        replace h_ty_b : bty = CedarType.bool BoolType.anyBool := by
+          replace h_ty_b' := partial_eval_preserves_typeof h_wf h_ref h_b
+          simp only [h_eval_b, h_ty_b] at h_ty_b'
+          simpa [Residual.typeOf] using h_ty_b'
+        apply Residual.WellTyped.or
+        · exact h_a_wt
+        · rw [h_ty_b]
+          exact well_typed_bool
+        · rw [partial_eval_preserves_typeof h_wf h_ref h_a]
+          exact h_ty_a
+        · simp [h_ty_b, Residual.typeOf]
     . apply Residual.WellTyped.or
       · exact h_a_wt
       · exact h_b_wt
@@ -360,15 +391,13 @@ theorem partial_eval_well_typed_unaryApp {env : TypeEnv} {op : UnaryOp} {expr : 
         case h_2 =>
           apply Residual.WellTyped.error
         case h_1 v ty ox x v₂ heq =>
-          apply Residual.WellTyped.val
           unfold Spec.apply₁ at heq
           split at heq
           any_goals
             cases h_op
             simp only [Except.toOption, Option.some.injEq] at heq
             rw [← heq]
-            apply InstanceOfType.instance_of_bool
-            simp [InstanceOfBoolType]
+            exact well_typed_bool
           case h_2 =>
             simp only [Except.toOption, intOrErr] at heq
             rename Int64 => i
@@ -379,6 +408,7 @@ theorem partial_eval_well_typed_unaryApp {env : TypeEnv} {op : UnaryOp} {expr : 
               simp only [Option.some.injEq] at heq
               rw [← heq]
               cases h_op
+              apply Residual.WellTyped.val
               apply InstanceOfType.instance_of_int
           case h_6 =>
            contradiction
@@ -832,7 +862,6 @@ theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List
       split
       case h_1 x₂ v =>
         simp only [someOrError, Except.toOption]
-        apply Residual.WellTyped.val
         rw [List.mapM_some_iff_forall₂, List.forall₂_singleton_right_iff] at h₁
         rcases h₁ with ⟨x₃, h₁, h₅⟩
         unfold Residual.asValue at h₁
@@ -853,25 +882,21 @@ theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List
         cases ih
         cases h₃
         first
-        | apply InstanceOfType.instance_of_ext
+        | apply Residual.WellTyped.val
+          apply InstanceOfType.instance_of_ext
           simp [InstanceOfExtType]
-        | apply InstanceOfType.instance_of_bool
-          simp [InstanceOfBoolType]
+        | exact well_typed_bool
       case h_2 x₂ h₄ =>
         simp only [someOrError, Except.toOption]
         first
         | apply Residual.WellTyped.error
-        | apply Residual.WellTyped.val
-          cases h₃
-          apply InstanceOfType.instance_of_bool
-          simp [InstanceOfBoolType]
+        | cases h₃
+          exact well_typed_bool
     case h_2 | h_3 | h_4 | h_5 =>
       rename_i xf vs d₁ d₂
       simp only [someOrError, Except.toOption]
       cases h₃
-      apply Residual.WellTyped.val
-      apply InstanceOfType.instance_of_bool
-      simp [InstanceOfBoolType]
+      exact well_typed_bool
     case h_11 | h_14 | h_15 =>
       rename ExtFun => xf
       rename List Value => vs
@@ -885,7 +910,6 @@ theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List
       split
       case h_1 x₂ v =>
         simp only [someOrError, Except.toOption]
-        apply Residual.WellTyped.val
         rw [List.mapM_some_iff_forall₂, List.forall₂_pair_right_iff] at h₁
         rcases h₁ with ⟨x₃, x₄, h₁, h₅, h₆⟩
 
@@ -907,24 +931,20 @@ theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List
         cases ih
         cases h₃
         first
-        | apply InstanceOfType.instance_of_ext
+        | apply Residual.WellTyped.val
+          apply InstanceOfType.instance_of_ext
           simp [InstanceOfExtType]
-        | apply InstanceOfType.instance_of_bool
-          simp [InstanceOfBoolType]
+        | exact well_typed_bool
       case h_2 x₂ h₄ =>
         simp only [someOrError, Except.toOption]
         first
         | apply Residual.WellTyped.error
-        | apply Residual.WellTyped.val
-          cases h₃
-          apply InstanceOfType.instance_of_bool
-          simp [InstanceOfBoolType]
+        | cases h₃
+          exact well_typed_bool
       try case h_3 x₂ v =>
         simp only [someOrError, Except.toOption]
         cases h₃
-        apply Residual.WellTyped.val
-        apply InstanceOfType.instance_of_bool
-        simp [InstanceOfBoolType]
+        exact well_typed_bool
     case h_17 | h_18 | h_19 | h_20 | h_21 | h_22 =>
       simp only [someOrError, Except.toOption, Ext.Datetime.toTime, ge_iff_le, beq_iff_eq]
       rw [List.mapM_some_iff_forall₂, List.forall₂_singleton_right_iff] at h₁
@@ -1005,10 +1025,7 @@ theorem partial_eval_well_typed_hasAttr {env : TypeEnv} {expr : Residual} {attr 
   case h_2 r₁ h₁ =>
     split
     case h_1 x m h₂ =>
-      apply Residual.WellTyped.val
-      apply InstanceOfType.instance_of_bool
-      unfold InstanceOfBoolType
-      simp
+      exact well_typed_bool
     case h_2 x h₂ =>
       cases h_wt
       case hasAttr_entity ety  h₅ h₆ =>
@@ -1098,10 +1115,8 @@ theorem partial_eval_well_typed_app₂_values_hasTag :
       . contradiction
     . contradiction
   . simp only [someOrSelf, Option.bind_some]
-    apply Residual.WellTyped.val
     cases h_op
-    . apply InstanceOfType.instance_of_bool
-      simp [InstanceOfBoolType]
+    exact well_typed_bool
 
 
 theorem partial_eval_well_typed_app₂_values_getTag :
@@ -1392,13 +1407,9 @@ theorem partial_eval_well_typed_app₂_values :
   split
 
   any_goals
-    apply Residual.WellTyped.val
     cases h_op
     all_goals
-      apply InstanceOfType.instance_of_bool
-      unfold InstanceOfBoolType
-      split <;> try simp only
-      contradiction
+      exact well_typed_bool
   case h_8 | h_9 | h_10 =>
     simp only [Option.pure_def, Option.bind_eq_bind, Option.bind]
     split
@@ -1420,11 +1431,9 @@ theorem partial_eval_well_typed_app₂_values :
       apply partial_eval_well_typed_app₂_values_mem ih₁ ih₂ h₁ h₂ h_wf h_ref h_wt₂
     case h_2 =>
       simp only [someOrSelf]
-      apply Residual.WellTyped.val
       cases h_op
       all_goals
-        apply InstanceOfType.instance_of_bool
-        simp [InstanceOfBoolType]
+        exact well_typed_bool
   case h_16 v1 v2 id1 id2 =>
     simp only [Option.pure_def, Option.bind_eq_bind, apply₂.self]
     apply partial_eval_well_typed_app₂_values_hasTag ih₁ ih₂ h₁ h₂ h_wf h_ref h_wt₂

@@ -84,8 +84,8 @@ theorem type_of_containsA_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c
   rw [eq_comm] at ihl₁ ihl₂; subst ihl₁ ihl₂
   rw [htl₁] at ih₃
   rw [htl₂] at ih₄
-  have ⟨s₁, ih₁⟩ := instance_of_set_type_is_set ih₃
-  have ⟨s₂, ih₂⟩ := instance_of_set_type_is_set ih₄
+  have ⟨s₁, ih₁, _⟩ := instance_of_set_type_is_set ih₃
+  have ⟨s₂, ih₂, _⟩ := instance_of_set_type_is_set ih₄
   subst ih₁ ih₂
   rcases h₀ with h₀ | h₀
   all_goals {
