@@ -24,7 +24,7 @@ use cedar_policy_generators::{
     abac::ABACPolicy, hierarchy::HierarchyGenerator, schema, schema_gen::SchemaGen,
     settings::ABACSettings,
 };
-use cedar_policy_symcc::{always_allows_asserts, term::Term, CompiledPolicies};
+use cedar_policy_symcc::{always_allows_asserts, term::Term, CompiledPolicySet};
 
 use libfuzzer_sys::arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
 use log::debug;
@@ -83,7 +83,7 @@ fuzz_target!(|input: FuzzTargetInput| {
             // rust_passes_validation => lean_passes_validation
             // So, we run the Rust validator first and obtain a well-typed
             // policy. This policy should be also well-typed according to Lean.
-            if let Ok(compiled_policies) = CompiledPolicies::compile(&policyset, &req_env, &schema)
+            if let Ok(compiled_policies) = CompiledPolicySet::compile(&policyset, &req_env, &schema)
             {
                 let rust_asserts = always_allows_asserts(&compiled_policies);
                 // We use `asserts_of_check_always_allows_on_original` instead

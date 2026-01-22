@@ -16,14 +16,12 @@
 
 #![no_main]
 use cedar_drt::logger::initialize_log;
-
 use cedar_drt_inner::{
     fuzz_target,
     symcc::{local_solver, total_action_request_env_limit},
 };
 
 use cedar_policy::{Authorizer, Decision, Policy, PolicySet, Schema};
-
 use cedar_policy_generators::{
     abac::ABACPolicy, hierarchy::HierarchyGenerator, schema, schema_gen::SchemaGen,
     settings::ABACSettings,
@@ -39,7 +37,7 @@ use tokio::{
 
 use cedar_policy_symcc::{
     always_allows_asserts, always_denies_asserts, err::SolverError, solver::LocalSolver,
-    CedarSymCompiler, CompiledPolicies, Env, WellFormedAsserts,
+    CedarSymCompiler, CompiledPolicySet, Env, WellFormedAsserts,
 };
 
 use std::sync::LazyLock;
@@ -201,7 +199,7 @@ fuzz_target!(|input: FuzzTargetInput| {
     if let Ok(schema) = Schema::try_from(input.schema) {
         for req_env in schema.request_envs() {
             // We let Rust compile the policies as it's faster than Lean
-            if let Ok(cps) = CompiledPolicies::compile(&policyset, &req_env, &schema) {
+            if let Ok(cps) = CompiledPolicySet::compile(&policyset, &req_env, &schema) {
                 match get_cex(&always_allows_asserts(&cps), &always_denies_asserts(&cps)) {
                     Ok((Some(env_deny), Some(env_allow))) => {
                         assert_eq!(

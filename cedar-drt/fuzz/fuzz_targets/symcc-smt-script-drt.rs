@@ -16,12 +16,10 @@
 
 #![no_main]
 use cedar_drt::logger::initialize_log;
-
 use cedar_drt_inner::{fuzz_target, symcc::total_action_request_env_limit};
 
 use cedar_lean_ffi::CedarLeanFfi;
 use cedar_policy::{Policy, PolicySet, Schema};
-
 use cedar_policy_generators::{
     abac::ABACPolicy, hierarchy::HierarchyGenerator, schema, schema_gen::SchemaGen,
     settings::ABACSettings,
@@ -32,7 +30,7 @@ use log::debug;
 use std::convert::TryFrom;
 
 use cedar_policy_symcc::{
-    always_allows_asserts, solver::WriterSolver, CedarSymCompiler, CompiledPolicies,
+    always_allows_asserts, solver::WriterSolver, CedarSymCompiler, CompiledPolicySet,
     WellFormedAsserts,
 };
 
@@ -111,7 +109,7 @@ fuzz_target!(|input: FuzzTargetInput| {
         let lean_schema = lean_ffi.load_lean_schema_object(&schema).unwrap();
         for req_env in schema.request_envs() {
             // We let Rust compile the policies as it's faster than Lean
-            if let Ok(cps) = CompiledPolicies::compile(&policyset, &req_env, &schema) {
+            if let Ok(cps) = CompiledPolicySet::compile(&policyset, &req_env, &schema) {
                 let rust_asserts = always_allows_asserts(&cps);
                 let lean_asserts: Vec<_> = rust_asserts
                     .asserts()
