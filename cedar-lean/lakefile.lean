@@ -63,13 +63,11 @@ lean_exe Cli where
   root := `Cli.Main
 
 -- Check that a .lean file imports all files in its corresponding directory
-partial def checkThmFile (module : String) (path : System.FilePath)  (altPath : Option System.FilePath := none) : IO Nat := do
+partial def checkThmFile (module : String) (paths : List System.FilePath) : IO Nat := do
+  let path := paths.head!
   let dir := path.withExtension ""
   if ← dir.isDir then
-    let content ← IO.FS.readFile path
-    let altContent ← match altPath with
-    | .some altPath => pure ∘ some $ ← IO.FS.readFile altPath
-    | .none => pure none
+    let contents ← paths.mapM IO.FS.readFile
     let mod_files ← dir.readDir
     let mut exitCode := 0
 
@@ -78,10 +76,10 @@ partial def checkThmFile (module : String) (path : System.FilePath)  (altPath : 
       if file_name.endsWith ".lean" then
         let subModule := s!"{module}.{file_name.dropRight 5}"
         let expectedImport := s!"import {subModule}"
-        if content.replace expectedImport "" == content && altContent.all λ altContent => (altContent.replace expectedImport "" == altContent) then
+        if contents.all λ content => (content.replace expectedImport "" == content) then
           IO.println s!"{path} missing import: {expectedImport}"
           exitCode := 1
-        let subExitCode ← checkThmFile subModule (dir / file_name)
+        let subExitCode ← checkThmFile subModule [dir / file_name]
         if subExitCode != 0 then
           exitCode := subExitCode
 
@@ -98,5 +96,5 @@ USAGE:
 -/
 @[lint_driver]
 script checkThm do
-  let exitCode ← checkThmFile "Cedar.Thm" ⟨"Cedar/Thm.lean"⟩ (some ⟨"SymCC.lean"⟩)
+  let exitCode ← checkThmFile "Cedar.Thm" [⟨"Cedar/Thm.lean"⟩, ⟨"SymCC.lean"⟩]
   return ⟨exitCode⟩
