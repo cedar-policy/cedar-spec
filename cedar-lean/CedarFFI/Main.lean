@@ -600,7 +600,8 @@ private def ignoreOutput (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : Solve
 @[export assertsOfCheckNeverErrors] unsafe def assertsOfCheckNeverErrors (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
   runFfiM do
     let (_, cp) ← parseCheckPolicyReq schema req
-    runAndTime (λ () => verifyNeverErrorsOpt cp)
+    -- for backwards compatibility, we provide a λ that returns Result, even though verify*Opt functions return Asserts directly
+    runAndTime (λ () => (.ok $ verifyNeverErrorsOpt cp : Cedar.SymCC.Result Cedar.SymCC.Asserts))
 
 /--
   `req`: binary protobuf for an `CheckPolicyRequest`
@@ -624,7 +625,8 @@ private def ignoreOutput (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : Solve
 @[export assertsOfCheckAlwaysAllows] unsafe def assertsOfCheckAlwaysAllows (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
   runFfiM do
     let (_, cpset) ← parseCheckPoliciesReq schema req
-    runAndTime (λ () => verifyAlwaysAllowsOpt cpset)
+    -- for backwards compatibility, we provide a λ that returns Result, even though verify*Opt functions return Asserts directly
+    runAndTime (λ () => (.ok $ verifyAlwaysAllowsOpt cpset : Cedar.SymCC.Result Cedar.SymCC.Asserts))
 
 /--
   `req`: binary protobuf for an `CheckPoliciesRequest`
@@ -648,7 +650,8 @@ private def ignoreOutput (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : Solve
 @[export assertsOfCheckAlwaysDenies] unsafe def assertsOfCheckAlwaysDenies (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
   runFfiM do
     let (_, cpset) ← parseCheckPoliciesReq schema req
-    runAndTime (λ () => verifyAlwaysDeniesOpt cpset)
+    -- for backwards compatibility, we provide a λ that returns Result, even though verify*Opt functions return Asserts directly
+    runAndTime (λ () => (.ok $ verifyAlwaysDeniesOpt cpset : Cedar.SymCC.Result Cedar.SymCC.Asserts))
 
 /--
   `req`: binary protobuf for an `CheckPoliciesRequest`
@@ -672,7 +675,8 @@ private def ignoreOutput (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : Solve
 @[export assertsOfCheckEquivalent] unsafe def assertsOfCheckEquivalent (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
   runFfiM do
     let (_, _, cpset₁, cpset₂) ← parseComparePolicySetsReq schema req
-    runAndTime (λ () => verifyEquivalentOpt cpset₁ cpset₂)
+    -- for backwards compatibility, we provide a λ that returns Result, even though verify*Opt functions return Asserts directly
+    runAndTime (λ () => (.ok $ verifyEquivalentOpt cpset₁ cpset₂ : Cedar.SymCC.Result Cedar.SymCC.Asserts))
 
 /--
   `req`: binary protobuf for an `ComparePolicySetsRequest`
@@ -696,7 +700,8 @@ private def ignoreOutput (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : Solve
 @[export assertsOfCheckImplies] unsafe def assertsOfCheckImplies (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
   runFfiM do
     let (_, _, cpset₁, cpset₂) ← parseComparePolicySetsReq schema req
-    runAndTime (λ () => verifyImpliesOpt cpset₁ cpset₂)
+    -- for backwards compatibility, we provide a λ that returns Result, even though verify*Opt functions return Asserts directly
+    runAndTime (λ () => (.ok $ verifyImpliesOpt cpset₁ cpset₂ : Cedar.SymCC.Result Cedar.SymCC.Asserts))
 
 /--
   `req`: binary protobuf for an `ComparePolicySetsRequest`
@@ -720,7 +725,8 @@ private def ignoreOutput (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : Solve
 @[export assertsOfCheckDisjoint] unsafe def assertsOfCheckDisjoint (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
   runFfiM do
     let (_, _, cpset₁, cpset₂) ← parseComparePolicySetsReq schema req
-    runAndTime (λ () => verifyDisjointOpt cpset₁ cpset₂)
+    -- for backwards compatibility, we provide a λ that returns Result, even though verify*Opt functions return Asserts directly
+    runAndTime (λ () => (.ok $ verifyDisjointOpt cpset₁ cpset₂ : Cedar.SymCC.Result Cedar.SymCC.Asserts))
 
 /--
   `req`: binary protobuf for an `ComparePolicySetsRequest`
