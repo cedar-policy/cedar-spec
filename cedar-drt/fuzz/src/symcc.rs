@@ -18,7 +18,7 @@ use cedar_policy::{Policy, PolicySet, RequestEnv, Schema};
 use cedar_policy_symcc::{
     err::{EncodeError, Error},
     solver::LocalSolver,
-    CedarSymCompiler, CompiledPolicies, CompiledPolicy,
+    CedarSymCompiler, CompiledPolicy, CompiledPolicySet,
 };
 use log::warn;
 use std::fmt::Display;
@@ -144,7 +144,7 @@ pub enum PolicySetTask {
 
 impl ValidationTask for PolicySetTask {
     type RawInput = PolicySet;
-    type CompiledInput = CompiledPolicies;
+    type CompiledInput = CompiledPolicySet;
 
     fn compile(
         &self,
@@ -152,7 +152,7 @@ impl ValidationTask for PolicySetTask {
         env: &RequestEnv,
         raw_input: &Self::RawInput,
     ) -> Result<Self::CompiledInput, Box<cedar_policy_symcc::err::Error>> {
-        CompiledPolicies::compile(raw_input, env, schema).map_err(Box::new)
+        CompiledPolicySet::compile(raw_input, env, schema).map_err(Box::new)
     }
 
     async fn execute(
@@ -221,7 +221,7 @@ impl Display for PolicySetPair {
 
 impl ValidationTask for PolicySetPairTask {
     type RawInput = PolicySetPair;
-    type CompiledInput = (CompiledPolicies, CompiledPolicies);
+    type CompiledInput = (CompiledPolicySet, CompiledPolicySet);
 
     fn compile(
         &self,
@@ -230,8 +230,8 @@ impl ValidationTask for PolicySetPairTask {
         raw_input: &Self::RawInput,
     ) -> Result<Self::CompiledInput, Box<cedar_policy_symcc::err::Error>> {
         Ok((
-            CompiledPolicies::compile(&raw_input.pset1, env, schema)?,
-            CompiledPolicies::compile(&raw_input.pset2, env, schema)?,
+            CompiledPolicySet::compile(&raw_input.pset1, env, schema)?,
+            CompiledPolicySet::compile(&raw_input.pset2, env, schema)?,
         ))
     }
 
