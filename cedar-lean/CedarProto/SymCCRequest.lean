@@ -138,6 +138,30 @@ instance : Message CheckPolicySetRequest where
 
 end CheckPolicySetRequest
 
+structure ComparePoliciesRequest where
+  policy1 : Spec.Policy
+  policy2 : Spec.Policy
+  request : Validation.Proto.RequestEnv
+deriving Inhabited
+
+namespace ComparePoliciesRequest
+
+instance : Message ComparePoliciesRequest where
+  parseField (t : Proto.Tag) := do
+    match t.fieldNum with
+    | 1 => parseFieldElement t policy1 (update policy1)
+    | 2 => parseFieldElement t policy2 (update policy2)
+    | 3 => parseFieldElement t request (update request)
+    | _ => let _ ← t.wireType.skip ; pure ignore
+
+  merge x y := {
+    policy1 := Field.merge x.policy1 y.policy1
+    policy2 := Field.merge x.policy2 y.policy2
+    request := Field.merge x.request y.request
+  }
+
+end ComparePoliciesRequest
+
 structure ComparePolicySetsRequest where
   srcPolicySet : Spec.Policies
   tgtPolicySet : Spec.Policies

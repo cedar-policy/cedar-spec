@@ -36,6 +36,7 @@ open Cedar.SymCC
 open Cedar.TPE
 open Cedar.Validation
 open Cedar.Proto
+open Cedar
 open Proto
 
 abbrev FfiM α := ExceptT String IO α
@@ -222,6 +223,24 @@ def parseComparePolicySetsReq (schema : Cedar.Validation.Schema) (req : ByteArra
   let cpTgtPolicySet ← CompiledPolicySet.compile tgtPolicySet env |>.mapError (s!"failed to validate tgt policies for requestEnv (PrincipalType : {request.principal}, ActionName: {request.action}, ResourceType: {request.resource}): {·}")
   return (srcPolicySet, tgtPolicySet, cpSrcPolicySet, cpTgtPolicySet)
 
+/--
+  `req`: binary protobuf for a `ComparePoliciesRequest`
+
+  Upon success returns both original (pre-typechecked) policies and both compiled policies
+-/
+def parseComparePoliciesReq (schema : Cedar.Validation.Schema) (req : ByteArray) : Except String (Spec.Policy × Spec.Policy × CompiledPolicy × CompiledPolicy) := do
+  let req ← (@Message.interpret? ComparePoliciesRequest) req |>.mapError (s!"failed to parse input: {·}")
+  let p₁ := req.policy1
+  let p₂ := req.policy2
+  let request := req.request
+  let env ← match schema.environment? request.principal request.resource request.action with
+    | none => .error s!"failed to get environment from requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource})"
+    | some env => .ok env
+  let cp₁ ← CompiledPolicy.compile p₁ env |>.mapError (s!"failed to validate first policy for requestEnv (PrincipalType : {request.principal}, ActionName: {request.action}, ResourceType: {request.resource}): {·}")
+  let cp₂ ← CompiledPolicy.compile p₂ env |>.mapError (s!"failed to validate first policy for requestEnv (PrincipalType : {request.principal}, ActionName: {request.action}, ResourceType: {request.resource}): {·}")
+  return (p₁, p₂, cp₁, cp₂)
+
+
 def parseCheckAssertsReq (schema : Cedar.Validation.Schema) (proto : ByteArray) : Except String (Cedar.SymCC.Asserts × SymEnv) := do
   let req ← (@Message.interpret? CheckAssertsRequest) proto |>.mapError (s!"failed to parse input: {·}")
   let asserts := req.asserts
@@ -235,7 +254,6 @@ def parseCheckAssertsReq (schema : Cedar.Validation.Schema) (proto : ByteArray) 
   Run `solver` on `vcs` without exposing the IO monad to the calling code
 -/
 private def safeSolve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except String α) := do vcs |>.run (←solver)
-
 
 @[implemented_by safeSolve]
 opaque solve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except String α)
@@ -291,6 +309,66 @@ opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except Stri
   runFfiM do
     let (_, cp) ← parseCheckPolicyReq schema req
     timedSolve Solver.cvc5 (neverErrorsOpt? cp)
+
+/--
+  `req`: binary protobuf for an `CheckPolicyRequest`
+
+  returns JSON encoded string that encodes
+  1.) .error err_message if there was in error in parsing or running the solver
+  2.) .ok { data := true, duration := <encode+solve_time> } if the solver could prove `req` holds
+  3.) .ok { data := false, duration := <encode+solve_time> } if the solver could prove `req` does not hold
+
+  Note that the time includes the encoder and solver but _not_ policy compilation to Term
+-/
+@[export runCheckAlwaysMatches] unsafe def runCheckAlwaysMatches (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
+  runFfiM do
+    let (_, cp) ← parseCheckPolicyReq schema req
+    timedSolve Solver.cvc5 (checkAlwaysMatchesOpt cp)
+
+/--
+  `req`: binary protobuf for an `CheckPolicyRequest`
+
+  returns JSON encoded string that encodes
+  1.) .error err_message if there was in error in parsing or running the solver
+  2.) .ok { data := null, duration := <encode+solve_time> } if the solver could prove `req` holds
+  3.) .ok { data := {request: ..., entities: ...}, duration := <encode+solve_time> } if the solver could prove `req` does not hold
+
+  Note that the time includes the encoder and solver but _not_ policy compilation to Term
+-/
+@[export runCheckAlwaysMatchesWithCex] unsafe def runCheckAlwaysMatchesWithCex (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
+  runFfiM do
+    let (_, cp) ← parseCheckPolicyReq schema req
+    timedSolve Solver.cvc5 (alwaysMatchesOpt? cp)
+
+/--
+  `req`: binary protobuf for an `CheckPolicyRequest`
+
+  returns JSON encoded string that encodes
+  1.) .error err_message if there was in error in parsing or running the solver
+  2.) .ok { data := true, duration := <encode+solve_time> } if the solver could prove `req` holds
+  3.) .ok { data := false, duration := <encode+solve_time> } if the solver could prove `req` does not hold
+
+  Note that the time includes the encoder and solver but _not_ policy compilation to Term
+-/
+@[export runCheckNeverMatches] unsafe def runCheckNeverMatches (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
+  runFfiM do
+    let (_, cp) ← parseCheckPolicyReq schema req
+    timedSolve Solver.cvc5 (checkNeverMatchesOpt cp)
+
+/--
+  `req`: binary protobuf for an `CheckPolicyRequest`
+
+  returns JSON encoded string that encodes
+  1.) .error err_message if there was in error in parsing or running the solver
+  2.) .ok { data := null, duration := <encode+solve_time> } if the solver could prove `req` holds
+  3.) .ok { data := {request: ..., entities: ...}, duration := <encode+solve_time> } if the solver could prove `req` does not hold
+
+  Note that the time includes the encoder and solver but _not_ policy compilation to Term
+-/
+@[export runCheckNeverMatchesWithCex] unsafe def runCheckNeverMatchesWithCex (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
+  runFfiM do
+    let (_, cp) ← parseCheckPolicyReq schema req
+    timedSolve Solver.cvc5 (neverMatchesOpt? cp)
 
 /--
   `req`: binary protobuf for an `CheckPolicySetRequest`
@@ -443,6 +521,96 @@ opaque timedSolve {α} (solver : IO Solver) (vcs : SolverM α) : IO (Except Stri
     timedSolve Solver.cvc5 (disjointOpt? cpset₁ cpset₂)
 
 /--
+  `req`: binary protobuf for an `ComparePoliciesRequest`
+
+  returns JSON encoded string that encodes
+  1.) .error err_message if there was in error in parsing or running the solver
+  2.) .ok { data := true, duration := <encode+solve_time> } if the solver could prove `req` holds
+  3.) .ok { data := false, duration := <encode+solve_time> } if the solver could prove `req` does not hold
+
+  Note that the time includes the encoder and solver but _not_ policy compilation to Term
+-/
+@[export runCheckMatchesEquivalent] unsafe def runCheckMatchesEquivalent (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
+  runFfiM do
+    let (_, _, cp₁, cp₂) ← parseComparePoliciesReq schema req
+    timedSolve Solver.cvc5 (checkMatchesEquivalentOpt cp₁ cp₂)
+
+/--
+  `req`: binary protobuf for an `ComparePoliciesRequest`
+
+  returns JSON encoded string that encodes
+  1.) .error err_message if there was in error in parsing or running the solver
+  2.) .ok { data := null, duration := <encode+solve_time> } if the solver could prove `req` holds
+  3.) .ok { data := {request: ..., entities: ...}, duration := <encode+solve_time> } if the solver could prove `req` does not hold
+
+  Note that the time includes the encoder and solver but _not_ policy compilation to Term
+-/
+@[export runCheckMatchesEquivalentWithCex] unsafe def runCheckMatchesEquivalentWithCex (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
+  runFfiM do
+    let (_, _, cp₁, cp₂) ← parseComparePoliciesReq schema req
+    timedSolve Solver.cvc5 (matchesEquivalentOpt? cp₁ cp₂)
+
+/--
+  `req`: binary protobuf for an `ComparePoliciesRequest`
+
+  returns JSON encoded string that encodes
+  1.) .error err_message if there was in error in parsing or running the solver
+  2.) .ok { data := true, duration := <encode+solve_time> } if the solver could prove `req` holds
+  3.) .ok { data := false, duration := <encode+solve_time> } if the solver could prove `req` does not hold
+
+  Note that the time includes the encoder and solver but _not_ policy compilation to Term
+-/
+@[export runCheckMatchesImplies] unsafe def runCheckMatchesImplies (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
+  runFfiM do
+    let (_, _, cp₁, cp₂) ← parseComparePoliciesReq schema req
+    timedSolve Solver.cvc5 (checkMatchesImpliesOpt cp₁ cp₂)
+
+/--
+  `req`: binary protobuf for an `ComparePoliciesRequest`
+
+  returns JSON encoded string that encodes
+  1.) .error err_message if there was in error in parsing or running the solver
+  2.) .ok { data := null, duration := <encode+solve_time> } if the solver could prove `req` holds
+  3.) .ok { data := {request: ..., entities: ...}, duration := <encode+solve_time> } if the solver could prove `req` does not hold
+
+  Note that the time includes the encoder and solver but _not_ policy compilation to Term
+-/
+@[export runCheckMatchesImpliesWithCex] unsafe def runCheckMatchesImpliesWithCex (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
+  runFfiM do
+    let (_, _, cp₁, cp₂) ← parseComparePoliciesReq schema req
+    timedSolve Solver.cvc5 (matchesImpliesOpt? cp₁ cp₂)
+
+/--
+  `req`: binary protobuf for an `ComparePoliciesRequest`
+
+  returns JSON encoded string that encodes
+  1.) .error err_message if there was in error in parsing or running the solver
+  2.) .ok { data := true, duration := <encode+solve_time> } if the solver could prove `req` holds
+  3.) .ok { data := false, duration := <encode+solve_time> } if the solver could prove `req` does not hold
+
+  Note that the time includes the encoder and solver but _not_ policy compilation to Term
+-/
+@[export runCheckMatchesDisjoint] unsafe def runCheckMatchesDisjoint (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
+  runFfiM do
+    let (_, _, cp₁, cp₂) ← parseComparePoliciesReq schema req
+    timedSolve Solver.cvc5 (checkMatchesDisjointOpt cp₁ cp₂)
+
+/--
+  `req`: binary protobuf for an `ComparePoliciesRequest`
+
+  returns JSON encoded string that encodes
+  1.) .error err_message if there was in error in parsing or running the solver
+  2.) .ok { data := null, duration := <encode+solve_time> } if the solver could prove `req` holds
+  3.) .ok { data := {request: ..., entities: ...}, duration := <encode+solve_time> } if the solver could prove `req` does not hold
+
+  Note that the time includes the encoder and solver but _not_ policy compilation to Term
+-/
+@[export runCheckMatchesDisjointWithCex] unsafe def runCheckMatchesDisjointWithCex (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
+  runFfiM do
+    let (_, _, cp₁, cp₂) ← parseComparePoliciesReq schema req
+    timedSolve Solver.cvc5 (matchesDisjointOpt? cp₁ cp₂)
+
+/--
   Auxillary function that encodes and runs the solver on the generated VCs. Useful for
   running the File or Buffer based solvers to print or stringify the SMTLib representation
   of the VCs.
@@ -491,6 +659,34 @@ private def printAsserts (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : FfiM 
     printAsserts (verifyNeverErrorsOpt cp) cp.εnv
 
 /--
+  `req`: binary protobuf for an `CheckPolicyRequest`
+
+  returns JSON encoded string that encodes
+  1.) .error err_message if there was in error in parsing or encoding the vcs
+  2.) .ok {data := (), duration := <encode+print_time>} if the vcs were successfully printed to stdout in SMTLib format
+
+  Note that the time includes the encoder and printing but _not_ policy compilation to Term
+-/
+@[export printCheckAlwaysMatches] unsafe def printCheckAlwaysMatches (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
+  runFfiM do
+    let (_, cp) ← parseCheckPolicyReq schema req
+    printAsserts (verifyAlwaysMatchesOpt cp) cp.εnv
+
+/--
+  `req`: binary protobuf for an `CheckPolicyRequest`
+
+  returns JSON encoded string that encodes
+  1.) .error err_message if there was in error in parsing or encoding the vcs
+  2.) .ok {data := (), duration := <encode+print_time>} if the vcs were successfully printed to stdout in SMTLib format
+
+  Note that the time includes the encoder and printing but _not_ policy compilation to Term
+-/
+@[export printCheckNeverMatches] unsafe def printCheckNeverMatches (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
+  runFfiM do
+    let (_, cp) ← parseCheckPolicyReq schema req
+    printAsserts (verifyNeverMatchesOpt cp) cp.εnv
+
+/--
   `req`: binary protobuf for an `CheckPolicySetRequest`
 
   returns JSON encoded string that encodes
@@ -519,7 +715,7 @@ private def printAsserts (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : FfiM 
     printAsserts (verifyAlwaysDeniesOpt cpset) cpset.εnv
 
 /--
-  `req`: binary protobuf for an `CheckPolicySetRequest`
+  `req`: binary protobuf for an `ComparePolicySetsRequest`
 
   returns JSON encoded string that encodes
   1.) .error err_message if there was in error in parsing or encoding the vcs
@@ -533,7 +729,7 @@ private def printAsserts (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : FfiM 
     printAsserts (verifyEquivalentOpt cpset₁ cpset₂) cpset₁.εnv -- cpset₁ and cpset₂ will have the same εnv
 
 /--
-  `req`: binary protobuf for an `CheckPolicySetRequest`
+  `req`: binary protobuf for an `ComparePolicySetsRequest`
 
   returns JSON encoded string that encodes
   1.) .error err_message if there was in error in parsing or encoding the vcs
@@ -547,7 +743,7 @@ private def printAsserts (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : FfiM 
     printAsserts (verifyImpliesOpt cpset₁ cpset₂) cpset₁.εnv -- cpset₁ and cpset₂ will have the same εnv
 
 /--
-  `req`: binary protobuf for an `CheckPolicySetRequest`
+  `req`: binary protobuf for an `ComparePolicySetsRequest`
 
   returns JSON encoded string that encodes
   1.) .error err_message if there was in error in parsing or encoding the vcs
@@ -559,6 +755,48 @@ private def printAsserts (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : FfiM 
   runFfiM do
     let (_, _, cpset₁, cpset₂) ← parseComparePolicySetsReq schema req
     printAsserts (verifyDisjointOpt cpset₁ cpset₂) cpset₁.εnv -- cpset₁ and cpset₂ will have the same εnv
+
+/--
+  `req`: binary protobuf for an `ComparePoliciesRequest`
+
+  returns JSON encoded string that encodes
+  1.) .error err_message if there was in error in parsing or encoding the vcs
+  2.) .ok {data := (), duration := <encode+print_time>} if the vcs were successfully printed to stdout in SMTLib format
+
+  Note that the time includes the encoder and printing but _not_ policy compilation to Term
+-/
+@[export printCheckMatchesEquivalent] unsafe def printCheckMatchesEquivalent (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
+  runFfiM do
+    let (_, _, cp₁, cp₂) ← parseComparePoliciesReq schema req
+    printAsserts (verifyMatchesEquivalentOpt cp₁ cp₂) cp₁.εnv -- cp₁ and cp₂ will have the same εnv
+
+/--
+  `req`: binary protobuf for an `ComparePoliciesRequest`
+
+  returns JSON encoded string that encodes
+  1.) .error err_message if there was in error in parsing or encoding the vcs
+  2.) .ok {data := (), duration := <encode+print_time>} if the vcs were successfully printed to stdout in SMTLib format
+
+  Note that the time includes the encoder and printing but _not_ policy compilation to Term
+-/
+@[export printCheckMatchesImplies] unsafe def printCheckMatchesImplies (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
+  runFfiM do
+    let (_, _, cp₁, cp₂) ← parseComparePoliciesReq schema req
+    printAsserts (verifyMatchesImpliesOpt cp₁ cp₂) cp₁.εnv -- cp₁ and cp₂ will have the same εnv
+
+/--
+  `req`: binary protobuf for an `ComparePoliciesRequest`
+
+  returns JSON encoded string that encodes
+  1.) .error err_message if there was in error in parsing or encoding the vcs
+  2.) .ok {data := (), duration := <encode+print_time>} if the vcs were successfully printed to stdout in SMTLib format
+
+  Note that the time includes the encoder and printing but _not_ policy compilation to Term
+-/
+@[export printCheckMatchesDisjoint] unsafe def printCheckMatchesDisjoint (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
+  runFfiM do
+    let (_, _, cp₁, cp₂) ← parseComparePoliciesReq schema req
+    printAsserts (verifyMatchesDisjointOpt cp₁ cp₂) cp₁.εnv -- cp₁ and cp₂ will have the same εnv
 
 /--
   `req`: binary protobuf for an `CheckPolicyRequest`
@@ -584,6 +822,56 @@ private def printAsserts (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : FfiM 
   runFfiM do
     let (policy, cp) ← parseCheckPolicyReq schema req
     runAndTime (λ () => verifyNeverErrors policy cp.εnv)
+
+/--
+  `req`: binary protobuf for an `CheckPolicyRequest`
+
+  returns JSON encoded of the term generated by `verifyAlwaysMatches`
+-/
+@[export assertsOfCheckAlwaysMatches] unsafe def assertsOfCheckAlwaysMatches (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
+  runFfiM do
+    let (_, cp) ← parseCheckPolicyReq schema req
+    -- for backwards compatibility, we provide a λ that returns Result, even though verify*Opt functions return Asserts directly
+    runAndTime (λ () => (.ok $ verifyAlwaysMatchesOpt cp : Cedar.SymCC.Result Cedar.SymCC.Asserts))
+
+/--
+  `req`: binary protobuf for an `CheckPolicyRequest`
+
+  returns JSON encoded of the term generated by `verifyAlwaysMatches` on the deserialized policy
+
+  this DOES NOT use the optimized interface (which requires you to compile the
+  typechecked policy, not the original deserialized policy), so it is
+  inefficient. Callers should migrate to `assertsOfCheckAlwaysMatches` if/when possible
+-/
+@[export assertsOfCheckAlwaysMatchesOnOriginal] unsafe def assertsOfCheckAlwaysMatchesOnOriginal (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
+  runFfiM do
+    let (policy, cp) ← parseCheckPolicyReq schema req
+    runAndTime (λ () => verifyAlwaysMatches policy cp.εnv)
+
+/--
+  `req`: binary protobuf for an `CheckPolicyRequest`
+
+  returns JSON encoded of the term generated by `verifyNeverMatches`
+-/
+@[export assertsOfCheckNeverMatches] unsafe def assertsOfCheckNeverMatches (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
+  runFfiM do
+    let (_, cp) ← parseCheckPolicyReq schema req
+    -- for backwards compatibility, we provide a λ that returns Result, even though verify*Opt functions return Asserts directly
+    runAndTime (λ () => (.ok $ verifyNeverMatchesOpt cp : Cedar.SymCC.Result Cedar.SymCC.Asserts))
+
+/--
+  `req`: binary protobuf for an `CheckPolicyRequest`
+
+  returns JSON encoded of the term generated by `verifyNeverMatches` on the deserialized policy
+
+  this DOES NOT use the optimized interface (which requires you to compile the
+  typechecked policy, not the original deserialized policy), so it is
+  inefficient. Callers should migrate to `assertsOfCheckNeverMatches` if/when possible
+-/
+@[export assertsOfCheckNeverMatchesOnOriginal] unsafe def assertsOfCheckNeverMatchesOnOriginal (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
+  runFfiM do
+    let (policy, cp) ← parseCheckPolicyReq schema req
+    runAndTime (λ () => verifyNeverMatches policy cp.εnv)
 
 /--
   `req`: binary protobuf for an `CheckPoliciesRequest`
@@ -710,6 +998,81 @@ private def printAsserts (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : FfiM 
     let (pset₁, pset₂, cpset₁, _) ← parseComparePolicySetsReq schema req
     runAndTime (λ () => verifyDisjoint pset₁ pset₂ cpset₁.εnv) -- cpset₁ and cpset₂ will have the same εnv
 
+/--
+  `req`: binary protobuf for an `ComparePoliciesRequest`
+
+  returns JSON encoded of the term generated by `verifyMatchesEquivalent`
+-/
+@[export assertsOfCheckMatchesEquivalent] unsafe def assertsOfCheckMatchesEquivalent (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
+  runFfiM do
+    let (_, _, cp₁, cp₂) ← parseComparePoliciesReq schema req
+    -- for backwards compatibility, we provide a λ that returns Result, even though verify*Opt functions return Asserts directly
+    runAndTime (λ () => (.ok $ verifyMatchesEquivalentOpt cp₁ cp₂ : Cedar.SymCC.Result Cedar.SymCC.Asserts))
+
+/--
+  `req`: binary protobuf for an `ComparePoliciesRequest`
+
+  returns JSON encoded of the term generated by `verifyMatchesEquivalent` on deserialized policy sets
+
+  this DOES NOT use the optimized interface (which requires you to compile the
+  typechecked psets, not the original deserialized psets), so it is
+  inefficient. Callers should migrate to `assertsOfCheckMatchesEquivalent` if/when possible
+-/
+@[export assertsOfCheckMatchesEquivalentOnOriginal] unsafe def assertsOfCheckMatchesEquivalentOnOriginal (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
+  runFfiM do
+    let (pset₁, pset₂, cp₁, _) ← parseComparePoliciesReq schema req
+    runAndTime (λ () => verifyMatchesEquivalent pset₁ pset₂ cp₁.εnv) -- cp₁ and cp₂ will have the same εnv
+
+/--
+  `req`: binary protobuf for an `ComparePoliciesRequest`
+
+  returns JSON encoded of the term generated by `verifyMatchesImplies`
+-/
+@[export assertsOfCheckMatchesImplies] unsafe def assertsOfCheckMatchesImplies (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
+  runFfiM do
+    let (_, _, cp₁, cp₂) ← parseComparePoliciesReq schema req
+    -- for backwards compatibility, we provide a λ that returns Result, even though verify*Opt functions return Asserts directly
+    runAndTime (λ () => (.ok $ verifyMatchesImpliesOpt cp₁ cp₂ : Cedar.SymCC.Result Cedar.SymCC.Asserts))
+
+/--
+  `req`: binary protobuf for an `ComparePoliciesRequest`
+
+  returns JSON encoded of the term generated by `verifyMatchesImplies` on deserialized policy sets
+
+  this DOES NOT use the optimized interface (which requires you to compile the
+  typechecked psets, not the original deserialized psets), so it is
+  inefficient. Callers should migrate to `assertsOfCheckMatchesImplies` if/when possible
+-/
+@[export assertsOfCheckMatchesImpliesOnOriginal] unsafe def assertsOfCheckMatchesImpliesOnOriginal (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
+  runFfiM do
+    let (pset₁, pset₂, cp₁, _) ← parseComparePoliciesReq schema req
+    runAndTime (λ () => verifyMatchesImplies pset₁ pset₂ cp₁.εnv) -- cp₁ and cp₂ will have the same εnv
+
+/--
+  `req`: binary protobuf for an `ComparePoliciesRequest`
+
+  returns JSON encoded of the term generated by `verifyMatchesDisjoint`
+-/
+@[export assertsOfCheckMatchesDisjoint] unsafe def assertsOfCheckMatchesDisjoint (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
+  runFfiM do
+    let (_, _, cp₁, cp₂) ← parseComparePoliciesReq schema req
+    -- for backwards compatibility, we provide a λ that returns Result, even though verify*Opt functions return Asserts directly
+    runAndTime (λ () => (.ok $ verifyMatchesDisjointOpt cp₁ cp₂ : Cedar.SymCC.Result Cedar.SymCC.Asserts))
+
+/--
+  `req`: binary protobuf for an `ComparePoliciesRequest`
+
+  returns JSON encoded of the term generated by `verifyMatchesDisjoint` on deserialized policy sets
+
+  this DOES NOT use the optimized interface (which requires you to compile the
+  typechecked psets, not the original deserialized psets), so it is
+  inefficient. Callers should migrate to `assertsOfCheckMatchesDisjoint` if/when possible
+-/
+@[export assertsOfCheckMatchesDisjointOnOriginal] unsafe def assertsOfCheckMatchesDisjointOnOriginal (schema : Cedar.Validation.Schema) (req: ByteArray) : String :=
+  runFfiM do
+    let (pset₁, pset₂, cp₁, _) ← parseComparePoliciesReq schema req
+    runAndTime (λ () => verifyMatchesDisjoint pset₁ pset₂ cp₁.εnv) -- cp₁ and cp₂ will have the same εnv
+
 private def smtLibOf (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : FfiM (Timed String) :=
   do
     let buffer ← IO.mkRef ⟨ByteArray.empty, 0⟩
@@ -746,6 +1109,32 @@ private def smtLibOf (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : FfiM (Tim
     smtLibOf (verifyNeverErrorsOpt cp) cp.εnv
 
 /--
+  `req`: binary protobuf for an `CheckPolicyRequest`
+
+  returns JSON encoded string that encodes
+  1.) .error err_message if there was in error in parsing or encoding the vcs
+  2.) .ok {data := SMTLib-Script, duration := encode_time} where SMTLib-Script is a
+      string containing the SMTLib script encoding the verification query
+-/
+@[export smtLibOfCheckAlwaysMatches] unsafe def smtLibOfCheckAlwaysMatches (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
+  runFfiM do
+    let (_, cp) ← parseCheckPolicyReq schema req
+    smtLibOf (verifyAlwaysMatchesOpt cp) cp.εnv
+
+/--
+  `req`: binary protobuf for an `CheckPolicyRequest`
+
+  returns JSON encoded string that encodes
+  1.) .error err_message if there was in error in parsing or encoding the vcs
+  2.) .ok {data := SMTLib-Script, duration := encode_time} where SMTLib-Script is a
+      string containing the SMTLib script encoding the verification query
+-/
+@[export smtLibOfCheckNeverMatches] unsafe def smtLibOfCheckNeverMatches (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
+  runFfiM do
+    let (_, cp) ← parseCheckPolicyReq schema req
+    smtLibOf (verifyNeverMatchesOpt cp) cp.εnv
+
+/--
   `req`: binary protobuf for an `CheckPolicySetRequest`
 
   returns JSON encoded string that encodes
@@ -772,7 +1161,7 @@ private def smtLibOf (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : FfiM (Tim
     smtLibOf (verifyAlwaysDeniesOpt cpset) cpset.εnv
 
 /--
-  `req`: binary protobuf for an `CheckPolicySetRequest`
+  `req`: binary protobuf for an `ComparePolicySetsRequest`
 
   returns JSON encoded string that encodes
   1.) .error err_message if there was in error in parsing or encoding the vcs
@@ -785,7 +1174,7 @@ private def smtLibOf (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : FfiM (Tim
     smtLibOf (verifyEquivalentOpt cpset₁ cpset₂) cpset₁.εnv -- cpset₁ and cpset₂ will have the same εnv
 
 /--
-  `req`: binary protobuf for an `CheckPolicySetRequest`
+  `req`: binary protobuf for an `ComparePolicySetsRequest`
 
   returns JSON encoded string that encodes
   1.) .error err_message if there was in error in parsing or encoding the vcs
@@ -798,7 +1187,7 @@ private def smtLibOf (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : FfiM (Tim
     smtLibOf (verifyImpliesOpt cpset₁ cpset₂) cpset₁.εnv -- cpset₁ and cpset₂ will have the same εnv
 
 /--
-  `req`: binary protobuf for an `CheckPolicySetRequest`
+  `req`: binary protobuf for an `ComparePolicySetsRequest`
 
   returns JSON encoded string that encodes
   1.) .error err_message if there was in error in parsing or encoding the vcs
@@ -809,6 +1198,45 @@ private def smtLibOf (asserts : Cedar.SymCC.Asserts) (εnv : SymEnv) : FfiM (Tim
   runFfiM do
     let (_, _, cpset₁, cpset₂) ← parseComparePolicySetsReq schema req
     smtLibOf (verifyDisjointOpt cpset₁ cpset₂) cpset₁.εnv -- cpset₁ and cpset₂ will have the same εnv
+
+/--
+  `req`: binary protobuf for an `ComparePoliciesRequest`
+
+  returns JSON encoded string that encodes
+  1.) .error err_message if there was in error in parsing or encoding the vcs
+  2.) .ok {data := SMTLib-Script, duration := encode_time} where SMTLib-Script is a
+      string containing the SMTLib script encoding the verification query
+-/
+@[export smtLibOfCheckMatchesEquivalent] unsafe def smtLibOfCheckMatchesEquivalent (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
+  runFfiM do
+    let (_, _, cp₁, cp₂) ← parseComparePoliciesReq schema req
+    smtLibOf (verifyMatchesEquivalentOpt cp₁ cp₂) cp₁.εnv -- cp₁ and cp₂ will have the same εnv
+
+/--
+  `req`: binary protobuf for an `ComparePoliciesRequest`
+
+  returns JSON encoded string that encodes
+  1.) .error err_message if there was in error in parsing or encoding the vcs
+  2.) .ok {data := SMTLib-Script, duration := encode_time} where SMTLib-Script is a
+      string containing the SMTLib script encoding the verification query
+-/
+@[export smtLibOfCheckMatchesImplies] unsafe def smtLibOfCheckMatchesImplies (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
+  runFfiM do
+    let (_, _, cp₁, cp₂) ← parseComparePoliciesReq schema req
+    smtLibOf (verifyMatchesImpliesOpt cp₁ cp₂) cp₁.εnv -- cp₁ and cp₂ will have the same εnv
+
+/--
+  `req`: binary protobuf for an `ComparePoliciesRequest`
+
+  returns JSON encoded string that encodes
+  1.) .error err_message if there was in error in parsing or encoding the vcs
+  2.) .ok {data := SMTLib-Script, duration := encode_time} where SMTLib-Script is a
+      string containing the SMTLib script encoding the verification query
+-/
+@[export smtLibOfCheckMatchesDisjoint] unsafe def smtLibOfCheckMatchesDisjoint (schema : Cedar.Validation.Schema) (req : ByteArray) : String :=
+  runFfiM do
+    let (_, _, cp₁, cp₂) ← parseComparePoliciesReq schema req
+    smtLibOf (verifyMatchesDisjointOpt cp₁ cp₂) cp₁.εnv -- cp₁ and cp₂ will have the same εnv
 
 /--
   `req`: binary protobuf for an `BatchedEvaluationRequest`
