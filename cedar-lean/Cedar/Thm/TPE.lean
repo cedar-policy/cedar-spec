@@ -15,6 +15,7 @@
 -/
 
 import Cedar.TPE
+import Cedar.TPE.Authorizer
 import Cedar.Spec
 import Cedar.Validation
 import Cedar.Thm.TPE.Input
@@ -169,4 +170,95 @@ theorem partial_evaluate_policy_is_sound
   subst old_residual
   congr
   apply conversion_preserves_evaluation
+
+/-- Re-authorization soundness: The result of reauthorizing a partial
+authorization response with concrete request and entities is equivalent to
+directly authorizing with the concrete request and entities.
+-/
+theorem reauthorize_is_sound
+  {schema : Schema}
+  {policies : List Policy}
+  {req : Request}
+  {es : Entities}
+  {preq : PartialRequest}
+  {pes : PartialEntities}
+  {response : TPE.Response} :
+  isValidAndConsistent schema req es preq pes = Except.ok () →
+  TPE.isAuthorized schema policies preq pes = Except.ok response →
+  response.reauthorize req es = Spec.isAuthorized req es policies
+:= by
+  intro hv h_auth
+
+  simp only [TPE.isAuthorized] at h_auth
+  cases h_auth₁ : List.mapM (fun p => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes) policies <;> simp [h_auth₁] at h_auth
+  rename_i residuals
+  subst h_auth
+
+  rw [List.mapM_ok_iff_forall₂] at h_auth₁
+  have h_auth₂ := List.forall₂_implies_all_left h_auth₁
+  replace h_auth₁ := List.forall₂_implies_all_right h_auth₁
+
+  have equiv_satisfied : ∀ effect,
+    TPE.Response.reauthorize.satisfiedPolicies effect residuals req es =
+    Spec.satisfiedPolicies effect policies req es := by
+    intro effect
+    simp [Response.reauthorize.satisfiedPolicies, satisfiedPolicies, satisfiedWithEffect, Response.reauthorize.satisfiedWithEffect]
+    rw [←Data.Set.subset_iff_eq (Data.Set.make_wf _) (Data.Set.make_wf _)]
+    simp [Data.Set.subset_def, ←Data.Set.make_mem, List.mem_filterMap]
+    and_intros
+    · intro pid rp h₁ h₂ h₃ h₄
+      replace ⟨p, h_auth₁, h_auth₂⟩ := h_auth₁ rp h₁
+      cases h_auth₃ : evaluatePolicy schema p preq pes <;> simp [h_auth₃] at h_auth₂
+      simp only [← h_auth₂] at h₁ h₂ h₃ h₄
+      subst h₄ h₂
+      exists p
+      simp only [h_auth₁, true_and, and_true, satisfied, decide_eq_true_eq]
+      simp only [Response.reauthorize.satisfied, decide_eq_true_eq] at h₃
+      exact to_option_right_ok (partial_evaluate_policy_is_sound h_auth₃ hv) h₃
+    · intro pid p h₁ h₂ h₃ h₄
+      replace ⟨rp, h_auth₁, h_auth₂⟩ := h_auth₂ _ h₁
+      exists rp
+      simp only [h_auth₁, true_and]
+      cases h_auth₃ : evaluatePolicy schema p preq pes <;> simp [h_auth₃] at h_auth₂
+      subst h_auth₂
+      simp only [h₂, Response.reauthorize.satisfied, decide_eq_true_eq, true_and, h₄, and_true]
+      rename_i r
+      simp only [satisfied, decide_eq_true_eq] at h₃
+      exact to_option_left_ok (partial_evaluate_policy_is_sound h_auth₃ hv) h₃
+
+  have equiv_errors :
+    TPE.Response.reauthorize.errorPolicies residuals req es =
+    Spec.errorPolicies policies req es := by
+    simp [Spec.errorPolicies, TPE.Response.reauthorize.errorPolicies, Response.reauthorize.errored, Spec.errored]
+    rw [←Data.Set.subset_iff_eq (Data.Set.make_wf _) (Data.Set.make_wf _)]
+    simp [Data.Set.subset_def, ←Data.Set.make_mem, List.mem_filterMap]
+    and_intros
+    · intro pid rp h₁ h₂ h₃
+      replace ⟨p, h_auth₁, h_auth₂⟩ := h_auth₁ rp h₁
+      cases h_auth₃ : evaluatePolicy schema p preq pes <;> simp [h_auth₃] at h_auth₂
+      simp only [←h_auth₂] at h₁ h₂ h₃
+      simp only [Response.reauthorize.hasError] at h₂
+      split at h₂ <;> simp only [Bool.false_eq_true] at h₂
+      rename_i h₃
+      replace ⟨_, h_auth₃⟩ : ∃ e, Spec.evaluate p.toExpr req es = Except.error e := by
+        replace h_auth₃ := partial_evaluate_policy_is_sound h_auth₃ hv
+        rw [h₃] at h_auth₃
+        exact to_option_right_err h_auth₃
+      grind [hasError]
+    · intro pid p h₁ h₂ h₃
+      replace ⟨_, _, h_auth₂⟩ := h_auth₂ _ h₁
+      cases h_auth₃ : evaluatePolicy schema p preq pes <;>
+        simp only [h_auth₃, Except.map_error, reduceCtorEq, Except.map_ok, Except.ok.injEq] at h_auth₂
+      rename_i r
+      replace ⟨_, h_auth₃⟩ : ∃ e, r.evaluate req es = Except.error e := by
+        replace h_auth₃ := partial_evaluate_policy_is_sound h_auth₃ hv
+        have ⟨_, h₃⟩ : ∃ e, Spec.evaluate p.toExpr req es = Except.error e := by
+          grind [hasError]
+        rw [h₃] at h_auth₃
+        exact to_option_left_err h_auth₃
+      grind [Response.reauthorize.hasError]
+
+  simp [TPE.isAuthorized.isAuthorizedFromResiduals, Response.reauthorize, Spec.isAuthorized,
+        equiv_satisfied .forbid, equiv_satisfied .permit, equiv_errors]
+
 end Cedar.Thm
