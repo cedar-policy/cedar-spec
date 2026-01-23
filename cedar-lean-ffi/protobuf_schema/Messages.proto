@@ -78,6 +78,12 @@ message CheckPolicySetRequest {
     RequestEnv request = 3;
 }
 
+message ComparePoliciesRequest {
+    Policy policy1 = 1;
+    Policy policy2 = 2;
+    RequestEnv request = 3;
+}
+
 message ComparePolicySetsRequest {
     cedar_policy_core.PolicySet srcPolicySet = 1;
     cedar_policy_core.PolicySet tgtPolicySet = 2;

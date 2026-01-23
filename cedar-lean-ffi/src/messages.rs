@@ -95,6 +95,30 @@ impl From<&CheckPolicySetRequest> for proto::CheckPolicySetRequest {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) struct ComparePoliciesRequest {
+    pub(crate) src_policy: Policy,
+    pub(crate) tgt_policy: Policy,
+    pub(crate) request: RequestEnv,
+}
+
+impl proto::ComparePoliciesRequest {
+    pub(crate) fn new(src_policy: &Policy, tgt_policy: &Policy, request: &RequestEnv) -> Self {
+        Self {
+            policy1: Some(proto::Policy::from(src_policy)),
+            policy2: Some(proto::Policy::from(tgt_policy)),
+            request: Some(proto::RequestEnv::from(request)),
+        }
+    }
+}
+
+/// Serialize the symcc request arguments to a ProtoBuf message
+impl From<&ComparePoliciesRequest> for proto::ComparePoliciesRequest {
+    fn from(req: &ComparePoliciesRequest) -> Self {
+        Self::new(&req.src_policy, &req.tgt_policy, &req.request)
+    }
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct ComparePolicySetsRequest {
     pub(crate) src_policyset: PolicySet,
     pub(crate) tgt_policyset: PolicySet,

@@ -13,6 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#![expect(
+    dead_code,
+    reason = "declares a broad array of FFI functions, some of which are not currently used in any fuzz targets but are declared for completeness"
+)]
+
 use crate::datatypes::{
     AuthorizationResponse, AuthorizationResponseInner, Env, ResultDef, Term, TimedDef, TimedResult,
     ValidationResponse,
@@ -37,7 +43,7 @@ use std::sync::Once;
 
 mod test_implementation;
 
-// Import and signal RUST to link the exported Lean FFI code (which are C functions at this point)
+// Import and signal Rust to link the exported Lean FFI code (which are C functions at this point)
 #[allow(clippy::duplicated_attributes)]
 #[link(name = "Cedar", kind = "static")]
 #[link(name = "Cedar_SymCC", kind = "static")]
@@ -48,6 +54,16 @@ mod test_implementation;
 extern "C" {
     fn runCheckNeverErrors(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn runCheckNeverErrorsWithCex(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn runCheckAlwaysMatches(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
+    fn runCheckAlwaysMatchesWithCex(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn runCheckNeverMatches(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
+    fn runCheckNeverMatchesWithCex(
         schema: *mut lean_object,
         req: *mut lean_object,
     ) -> *mut lean_object;
@@ -71,15 +87,57 @@ extern "C" {
     fn runCheckDisjoint(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn runCheckDisjointWithCex(schema: *mut lean_object, req: *mut lean_object)
         -> *mut lean_object;
+    fn runCheckMatchesEquivalent(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn runCheckMatchesEquivalentWithCex(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn runCheckMatchesImplies(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
+    fn runCheckMatchesImpliesWithCex(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn runCheckMatchesDisjoint(schema: *mut lean_object, req: *mut lean_object)
+        -> *mut lean_object;
+    fn runCheckMatchesDisjointWithCex(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
 
     fn printCheckNeverErrors(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
+    fn printCheckAlwaysMatches(schema: *mut lean_object, req: *mut lean_object)
+        -> *mut lean_object;
+    fn printCheckNeverMatches(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn printCheckAlwaysAllows(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn printCheckAlwaysDenies(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn printCheckEquivalent(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn printCheckImplies(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn printCheckDisjoint(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
+    fn printCheckMatchesEquivalent(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn printCheckMatchesImplies(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn printCheckMatchesDisjoint(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
 
     fn smtLibOfCheckNeverErrors(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn smtLibOfCheckAlwaysMatches(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn smtLibOfCheckNeverMatches(
         schema: *mut lean_object,
         req: *mut lean_object,
     ) -> *mut lean_object;
@@ -95,6 +153,18 @@ extern "C" {
         -> *mut lean_object;
     fn smtLibOfCheckImplies(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn smtLibOfCheckDisjoint(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
+    fn smtLibOfCheckMatchesEquivalent(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn smtLibOfCheckMatchesImplies(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn smtLibOfCheckMatchesDisjoint(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
 
     fn isAuthorized(req: *mut lean_object) -> *mut lean_object;
     fn validate(req: *mut lean_object) -> *mut lean_object;
@@ -116,6 +186,22 @@ extern "C" {
         req: *mut lean_object,
     ) -> *mut lean_object;
     fn assertsOfCheckNeverErrorsOnOriginal(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn assertsOfCheckAlwaysMatches(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn assertsOfCheckAlwaysMatchesOnOriginal(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn assertsOfCheckNeverMatches(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn assertsOfCheckNeverMatchesOnOriginal(
         schema: *mut lean_object,
         req: *mut lean_object,
     ) -> *mut lean_object;
@@ -150,6 +236,30 @@ extern "C" {
     ) -> *mut lean_object;
     fn assertsOfCheckDisjoint(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn assertsOfCheckDisjointOnOriginal(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn assertsOfCheckMatchesEquivalent(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn assertsOfCheckMatchesEquivalentOnOriginal(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn assertsOfCheckMatchesImplies(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn assertsOfCheckMatchesImpliesOnOriginal(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn assertsOfCheckMatchesDisjoint(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn assertsOfCheckMatchesDisjointOnOriginal(
         schema: *mut lean_object,
         req: *mut lean_object,
     ) -> *mut lean_object;
@@ -257,6 +367,53 @@ macro_rules! checkPolicySet_func {
         ) -> Result<$ret_ty, FfiError> {
             Ok(self
                 .$timed_func_name(policyset, schema, request_env)?
+                .take_result())
+        }
+    };
+}
+
+/// A macro which converts symcc-request to protobuf, calls the lean code, then deserializes the output
+macro_rules! comparePolicies_func {
+    // Pattern for function identifier
+    ($timed_func_name:ident, $untimed_func_name:ident, $lean_func_name:ident, $transform:ident, $ret_ty:ty) => {
+        comparePolicies_func!(@internal $timed_func_name, $untimed_func_name, $lean_func_name, $transform, $ret_ty);
+    };
+    // Pattern for closure expression
+    ($timed_func_name:ident, $untimed_func_name:ident, $lean_func_name:ident, $transform:expr, $ret_ty:ty) => {
+        comparePolicies_func!(@internal $timed_func_name, $untimed_func_name, $lean_func_name, $transform, $ret_ty);
+    };
+    // Internal implementation
+    (@internal $timed_func_name:ident, $untimed_func_name:ident, $lean_func_name:ident, $transform:expr, $ret_ty:ty) => {
+        pub fn $timed_func_name(
+            &self,
+            src_policy: &Policy,
+            tgt_policy: &Policy,
+            schema: LeanSchema,
+            request_env: &RequestEnv,
+        ) -> Result<TimedResult<$ret_ty>, FfiError> {
+            let response = unsafe { call_lean_ffi_takes_obj_and_protobuf(
+                $lean_func_name,
+                schema.0,
+                &proto::ComparePoliciesRequest::new(
+                    src_policy,
+                    tgt_policy,
+                    request_env,
+                ),
+            )};
+            match response.as_borrowed().deserialize_into()? {
+                ResultDef::Ok(t) => Ok(TimedResult::from_def(t).transform($transform)),
+                ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
+            }
+        }
+        pub fn $untimed_func_name(
+            &self,
+            src_policy: &Policy,
+            tgt_policy: &Policy,
+            schema: LeanSchema,
+            request_env: &RequestEnv,
+        ) -> Result<$ret_ty, FfiError> {
+            Ok(self
+                .$timed_func_name(src_policy, tgt_policy, schema, request_env)?
                 .take_result())
         }
     };
@@ -560,6 +717,38 @@ impl CedarLeanFfi {
         Result<Vec<Term>, String>
     );
 
+    checkPolicy_func!(
+        asserts_of_check_always_matches_timed,
+        asserts_of_check_always_matches,
+        assertsOfCheckAlwaysMatches,
+        ResultDef::to_result,
+        Result<Vec<Term>, String>
+    );
+
+    checkPolicy_func!(
+        asserts_of_check_always_matches_on_original_timed,
+        asserts_of_check_always_matches_on_original,
+        assertsOfCheckAlwaysMatchesOnOriginal,
+        ResultDef::to_result,
+        Result<Vec<Term>, String>
+    );
+
+    checkPolicy_func!(
+        asserts_of_check_never_matches_timed,
+        asserts_of_check_never_matches,
+        assertsOfCheckNeverMatches,
+        ResultDef::to_result,
+        Result<Vec<Term>, String>
+    );
+
+    checkPolicy_func!(
+        asserts_of_check_never_matches_on_original_timed,
+        asserts_of_check_never_matches_on_original,
+        assertsOfCheckNeverMatchesOnOriginal,
+        ResultDef::to_result,
+        Result<Vec<Term>, String>
+    );
+
     checkPolicySet_func!(
         asserts_of_check_always_allows_timed,
         asserts_of_check_always_allows,
@@ -636,6 +825,54 @@ impl CedarLeanFfi {
         asserts_of_check_disjoint_on_original_timed,
         asserts_of_check_disjoint_on_original,
         assertsOfCheckDisjointOnOriginal,
+        ResultDef::to_result,
+        Result<Vec<Term>, String>
+    );
+
+    comparePolicies_func!(
+        asserts_of_check_matches_equivalent_timed,
+        asserts_of_check_matches_equivalent,
+        assertsOfCheckMatchesEquivalent,
+        ResultDef::to_result,
+        Result<Vec<Term>, String>
+    );
+
+    comparePolicies_func!(
+        asserts_of_check_matches_equivalent_on_original_timed,
+        asserts_of_check_matches_equivalent_on_original,
+        assertsOfCheckMatchesEquivalentOnOriginal,
+        ResultDef::to_result,
+        Result<Vec<Term>, String>
+    );
+
+    comparePolicies_func!(
+        asserts_of_check_matches_implies_timed,
+        asserts_of_check_matches_implies,
+        assertsOfCheckMatchesImplies,
+        ResultDef::to_result,
+        Result<Vec<Term>, String>
+    );
+
+    comparePolicies_func!(
+        asserts_of_check_matches_implies_on_original_timed,
+        asserts_of_check_matches_implies_on_original,
+        assertsOfCheckMatchesImpliesOnOriginal,
+        ResultDef::to_result,
+        Result<Vec<Term>, String>
+    );
+
+    comparePolicies_func!(
+        asserts_of_check_matches_disjoint_timed,
+        asserts_of_check_matches_disjoint,
+        assertsOfCheckMatchesDisjoint,
+        ResultDef::to_result,
+        Result<Vec<Term>, String>
+    );
+
+    comparePolicies_func!(
+        asserts_of_check_matches_disjoint_on_original_timed,
+        asserts_of_check_matches_disjoint_on_original,
+        assertsOfCheckMatchesDisjointOnOriginal,
         ResultDef::to_result,
         Result<Vec<Term>, String>
     );
