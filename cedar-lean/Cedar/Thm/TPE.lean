@@ -31,6 +31,7 @@ This file defines the main theorem of TPE soundness and its associated lemmas.
 
 namespace Cedar.Thm
 
+open Cedar.Data
 open Cedar.TPE
 open Cedar.Spec
 open Cedar.Validation
@@ -260,5 +261,146 @@ theorem reauthorize_is_sound
 
   simp [TPE.isAuthorized.isAuthorizedFromResiduals, Response.reauthorize, Spec.isAuthorized,
         equiv_satisfied .forbid, equiv_satisfied .permit, equiv_errors]
+
+theorem partial_authorize_decision_is_sound
+  {schema : Schema}
+  {policies : List Policy}
+  {req : Request}
+  {es : Entities}
+  {preq : PartialRequest}
+  {pes : PartialEntities}
+  {response : TPE.Response}
+  {decision : Decision} :
+  TPE.isAuthorized schema policies preq pes = Except.ok response →
+  isValidAndConsistent schema req es preq pes = Except.ok () →
+  (response.decision = some decision → (Spec.isAuthorized req es policies).decision = decision)
+:= by
+   intro h₁ h₂
+   simp [TPE.isAuthorized] at h₁
+   cases h₃ : List.mapM (fun p => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes) policies <;> simp [h₃] at h₁
+   rename_i rps
+
+   rw [List.mapM_ok_iff_forall₂] at h₃
+   have h₄ := List.forall₂_implies_all_left h₃
+   replace h₃ := List.forall₂_implies_all_right h₃
+
+   simp [isAuthorized.isAuthorizedFromResiduals] at h₁
+   split at h₁ <;> simp [←h₁]
+   all_goals
+    intro h₅
+    subst h₅
+   · have h_forbid : ¬ (isAuthorized.satisfiedPolicies .forbid rps).isEmpty := by grind
+     rw [Set.non_empty_iff_exists] at h_forbid
+     replace ⟨_, h_forbid⟩ := h_forbid
+     simp [isAuthorized.satisfiedPolicies] at h_forbid
+     rw [←Set.make_mem] at h_forbid
+     simp [List.mem_filterMap] at h_forbid
+     simp [ResidualPolicy.satisfiedWithEffect, ResidualPolicy.satisfied, Residual.isTrue] at h_forbid
+     have ⟨rp, h_forbid₁, ⟨ h_forbid₂, h_forbid₃⟩, h_forbid₄⟩ := h_forbid
+     split at h_forbid₃ <;> try contradiction
+     rename_i h_forbid₅
+     specialize h₃ rp h_forbid₁
+     have ⟨p, hp₁, hp₂⟩ := h₃ ; clear h₃
+     cases hp₃ : evaluatePolicy schema p preq pes <;> simp [hp₃] at hp₂
+     subst hp₂
+     simp at h_forbid₂ h_forbid₃ h_forbid₄ h_forbid₅
+     subst h_forbid₄ h_forbid₅
+     have h_auth₃ := partial_evaluate_policy_is_sound hp₃ h₂
+     simp [Residual.evaluate] at h_auth₃
+     replace h_auth₃ := to_option_right_ok' h_auth₃
+     simp [Spec.isAuthorized]
+     have h_forbid : (satisfiedPolicies Effect.forbid policies req es).isEmpty = false := by
+       simp [satisfiedPolicies]
+       suffices h : ¬ (Set.make (List.filterMap (fun x => satisfiedWithEffect Effect.forbid x req es) policies)).isEmpty by simp [h]
+       rw [Set.non_empty_iff_exists]
+       exists p.id
+       rw [←Set.make_mem]
+       rw [List.mem_filterMap]
+       exists p
+       simp [hp₁]
+       simp [satisfiedWithEffect, h_forbid₂, satisfied, h_auth₃]
+     simp [h_forbid]
+   · -- There are no satisfied or residual permit polices after TPE.
+     -- Use this to show that in concrete authorizer `(satisfiedPolicies Effect.permit policies req es).isEmpty = true`
+     -- which implies the concrete decision is deny (matching the TPE authorizer)
+     sorry
+   · -- These is at least on satisfied permit. Use this to show `(satisfiedPolicies Effect.permit policies req es).isEmpty = false`
+     -- There are no satisfied forbids. Use this to show `(satisfiedPolicies Effect.forbid policies req es).isEmpty = true`
+     -- This implies these concrete decision is allow.
+    sorry
+
+theorem partial_authorize_satisfied_permits_is_sound
+  {schema : Schema}
+  {policies : List Policy}
+  {req : Request}
+  {es : Entities}
+  {preq : PartialRequest}
+  {pes : PartialEntities}
+  {response : TPE.Response}
+  {decision : Decision} :
+  TPE.isAuthorized schema policies preq pes = Except.ok response →
+  isValidAndConsistent schema req es preq pes = Except.ok () →
+  response.decision = some .allow →
+  response.satisfiedPermits ⊆ (Spec.isAuthorized req es policies).determiningPolicies
+:= by
+   intro h₁ h₂
+   simp [TPE.isAuthorized] at h₁
+   cases h₃ : List.mapM (fun p => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes) policies <;> simp [h₃] at h₁
+   rename_i rps
+
+   simp [isAuthorized.isAuthorizedFromResiduals] at h₁
+   split at h₁ <;> simp [←h₁]
+   rw [List.mapM_ok_iff_forall₂] at h₃
+   have h₄ := List.forall₂_implies_all_left h₃
+   replace h₃ := List.forall₂_implies_all_right h₃
+
+
+   simp [isAuthorized.satisfiedPolicies]
+   simp [Spec.isAuthorized]
+   split <;> simp [satisfiedPolicies]
+   · sorry
+   · sorry
+
+-- theorem partial_authorize_is_sound
+--   {schema : Schema}
+--   {policies : List Policy}
+--   {req : Request}
+--   {es : Entities}
+--   {preq : PartialRequest}
+--   {pes : PartialEntities}
+--   {response : TPE.Response}
+--   {decision : Decision} :
+--   TPE.isAuthorized schema policies preq pes = Except.ok response →
+--   isValidAndConsistent schema req es preq pes = Except.ok () →
+--   (response.errorForbids ∪ response.errorPermits) ⊆ (Spec.isAuthorized req es policies).erroringPolicies ∧
+--   (response.decision = some decision → (Spec.isAuthorized req es policies).decision = decision) ∧
+--   (response.decision = some .allow → response.satisfiedPermits ⊆ (Spec.isAuthorized req es policies).determiningPolicies) ∧
+--   (response.decision = some .deny → response.satisfiedForbids ⊆ (Spec.isAuthorized req es policies).determiningPolicies) ∧
+--   (response.satisfiedForbids ⊆ (Spec.isAuthorized req es policies).determiningPolicies ∨ response.satisfiedPermits ⊆ (Spec.isAuthorized req es policies).determiningPolicies)
+-- := by
+--   intro h₁ h₂
+--   simp [TPE.isAuthorized] at h₁
+--   cases h₃ : List.mapM (fun p => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes) policies <;> simp [h₃] at h₁
+--   rename_i rps
+--
+--   simp [isAuthorized.isAuthorizedFromResiduals] at h₁
+--   split at h₁ <;> simp [←h₁]
+--   · sorry
+--   · sorry
+--   · sorry
+--   · sorry
+--   · sorry
+--
+--   subst h₁
+--
+--   rw [List.mapM_ok_iff_forall₂] at h₃
+--   have h₄ := List.forall₂_implies_all_left h₃
+--   replace h₃ := List.forall₂_implies_all_right h₃
+--
+--
+--
+--
+--
+--   sorry
 
 end Cedar.Thm
