@@ -24,6 +24,7 @@ import Cedar.Thm.TPE.Soundness
 import Cedar.Thm.TPE.PreservesTypeOf
 import Cedar.Thm.TPE.WellTyped
 import Cedar.Thm.Validation
+import Cedar.Thm.Authorization
 
 /-!
 This file defines the main theorem of TPE soundness and its associated lemmas.
@@ -275,58 +276,149 @@ theorem partial_authorize_decision_is_sound
   isValidAndConsistent schema req es preq pes = Except.ok () →
   (response.decision = some decision → (Spec.isAuthorized req es policies).decision = decision)
 := by
-   intro h₁ h₂
-   simp [TPE.isAuthorized] at h₁
-   cases h₃ : List.mapM (fun p => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes) policies <;> simp [h₃] at h₁
-   rename_i rps
+  intro h₁ h₂
+  simp [TPE.isAuthorized] at h₁
+  cases h₃ : List.mapM (fun p => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes) policies <;> simp [h₃] at h₁
+  rename_i rps
 
-   rw [List.mapM_ok_iff_forall₂] at h₃
-   have h₄ := List.forall₂_implies_all_left h₃
-   replace h₃ := List.forall₂_implies_all_right h₃
+  rw [List.mapM_ok_iff_forall₂] at h₃
+  have h₄ := List.forall₂_implies_all_left h₃
+  replace h₃ := List.forall₂_implies_all_right h₃
 
-   simp [isAuthorized.isAuthorizedFromResiduals] at h₁
-   split at h₁ <;> simp [←h₁]
-   all_goals
-    intro h₅
-    subst h₅
-   · have h_forbid : ¬ (isAuthorized.satisfiedPolicies .forbid rps).isEmpty := by grind
-     rw [Set.non_empty_iff_exists] at h_forbid
-     replace ⟨_, h_forbid⟩ := h_forbid
-     simp [isAuthorized.satisfiedPolicies] at h_forbid
-     rw [←Set.make_mem] at h_forbid
-     simp [List.mem_filterMap] at h_forbid
-     simp [ResidualPolicy.satisfiedWithEffect, ResidualPolicy.satisfied, Residual.isTrue] at h_forbid
-     have ⟨rp, h_forbid₁, ⟨ h_forbid₂, h_forbid₃⟩, h_forbid₄⟩ := h_forbid
-     split at h_forbid₃ <;> try contradiction
-     rename_i h_forbid₅
-     specialize h₃ rp h_forbid₁
-     have ⟨p, hp₁, hp₂⟩ := h₃ ; clear h₃
-     cases hp₃ : evaluatePolicy schema p preq pes <;> simp [hp₃] at hp₂
-     subst hp₂
-     simp at h_forbid₂ h_forbid₃ h_forbid₄ h_forbid₅
-     subst h_forbid₄ h_forbid₅
-     have h_auth₃ := partial_evaluate_policy_is_sound hp₃ h₂
-     simp [Residual.evaluate] at h_auth₃
-     replace h_auth₃ := to_option_right_ok' h_auth₃
-     simp [Spec.isAuthorized]
-     have h_forbid : (satisfiedPolicies Effect.forbid policies req es).isEmpty = false := by
-       simp [satisfiedPolicies]
-       suffices h : ¬ (Set.make (List.filterMap (fun x => satisfiedWithEffect Effect.forbid x req es) policies)).isEmpty by simp [h]
-       rw [Set.non_empty_iff_exists]
-       exists p.id
-       rw [←Set.make_mem]
-       rw [List.mem_filterMap]
-       exists p
-       simp [hp₁]
-       simp [satisfiedWithEffect, h_forbid₂, satisfied, h_auth₃]
-     simp [h_forbid]
-   · -- There are no satisfied or residual permit polices after TPE.
-     -- Use this to show that in concrete authorizer `(satisfiedPolicies Effect.permit policies req es).isEmpty = true`
-     -- which implies the concrete decision is deny (matching the TPE authorizer)
-     sorry
-   · -- These is at least on satisfied permit. Use this to show `(satisfiedPolicies Effect.permit policies req es).isEmpty = false`
-     -- There are no satisfied forbids. Use this to show `(satisfiedPolicies Effect.forbid policies req es).isEmpty = true`
-     -- This implies these concrete decision is allow.
+  simp [isAuthorized.isAuthorizedFromResiduals] at h₁
+  split at h₁ <;> simp [←h₁]
+  all_goals
+   intro h₅
+   subst h₅
+  · have ⟨rp, ty, hf₁, hf₂, hf₅⟩ :
+      ∃ (rp : ResidualPolicy) (ty : CedarType),
+        rp ∈ rps ∧
+        rp.effect = .forbid ∧
+        rp.residual = .val (.prim (.bool true)) ty
+    := by
+      have hf : ¬ (isAuthorized.satisfiedPolicies .forbid rps).isEmpty := by grind
+      rw [Set.non_empty_iff_exists] at hf
+      replace ⟨_, hf⟩ := hf
+      simp [isAuthorized.satisfiedPolicies] at hf
+      rw [←Set.make_mem] at hf
+      simp [List.mem_filterMap] at hf
+      simp [ResidualPolicy.satisfiedWithEffect, ResidualPolicy.satisfied, Residual.isTrue] at hf
+      have ⟨rp, hf₁, ⟨ hf₂, hf₃⟩, hf₄⟩ := hf ; clear hf
+      split at hf₃ <;> try contradiction
+      rename_i hf₅
+      exists rp
+      simp [hf₁, hf₂, hf₅]
+
+    have ⟨p, hp₁, hp₂, hp₃⟩ :
+      ∃ (p : Policy),
+        p ∈ policies ∧
+        p.effect = .forbid ∧
+        evaluatePolicy schema p preq pes = .ok (.val (.prim (.bool true)) ty)
+    := by
+      have ⟨p, hp₁, hp₂⟩ := h₃ rp hf₁
+      cases hp₃ : evaluatePolicy schema p preq pes <;>
+       simp only [hp₃, Except.map_error, Except.map_ok, reduceCtorEq, Except.ok.injEq] at hp₂
+      subst hp₂
+      subst hf₅
+      exists p
+
+    apply forbid_trumps_permit
+    exists p
+    and_intros
+    · exact hp₁
+    · exact hp₂
+    · have ha := partial_evaluate_policy_is_sound hp₃ h₂
+      simp only [Residual.evaluate] at ha
+      simpa [satisfied] using to_option_right_ok' ha
+  · have hp :
+      ∀ rp ∈ rps,
+       rp.effect = .permit →
+       ∃ ty,
+       rp.residual = .val (.prim (.bool false)) ty ∨
+       rp.residual = .error ty
+    := by
+      intro rp
+      intro hr₁ hr₂
+      have hp₁ : (isAuthorized.satisfiedPolicies .permit rps).isEmpty := by grind
+      have hp₂ : (isAuthorized.residualPolicies .permit rps).isEmpty := by grind
+      simp [Set.empty_iff_not_exists] at hp₁ hp₂
+      simp [isAuthorized.satisfiedPolicies] at hp₁
+      simp [isAuthorized.residualPolicies] at hp₂
+      simp [←Set.make_mem] at hp₁ hp₂
+      simp [ResidualPolicy.satisfiedWithEffect, ResidualPolicy.satisfied, Residual.isTrue] at hp₁
+      simp [ResidualPolicy.residualWithEffect, ResidualPolicy.isResidual, ResidualPolicy.satisfied, Residual.isTrue, ResidualPolicy.isFalse, Residual.isFalse, ResidualPolicy.hasError, Residual.isError] at hp₂
+      grind
+
+    apply default_deny
+    simp [IsExplicitlyPermitted, HasSatisfiedEffect, satisfied]
+    intro p hp₁ hp₂ h
+
+    replace ⟨rp, h₅, h₄⟩ := h₄ p hp₁
+    cases he : evaluatePolicy schema p preq pes <;>
+     simp [he] at h₄
+
+    rename_i r
+    replace ⟨_, hp⟩ :
+      ∃ ty,
+      r = Residual.val (Value.prim (Prim.bool false)) ty ∨
+      r = Residual.error ty
+    := by
+      specialize hp rp h₅
+      rw [←h₄] at hp
+      specialize hp hp₂
+      simpa using hp
+
+    have ha : r.evaluate req es = Except.ok (Value.prim (Prim.bool true)) :=
+      to_option_left_ok (partial_evaluate_policy_is_sound he h₂) h
+
+    cases hp
+    · rename_i hp
+      simp only at hp
+      simp [hp, Residual.evaluate] at ha
+    · rename_i hp
+      subst hp
+      simp [Residual.evaluate] at ha
+  · have ⟨rp, ty, hf₁, hf₂, hf₅⟩ :
+      ∃ (rp : ResidualPolicy) (ty : CedarType),
+        rp ∈ rps ∧
+        rp.effect = .permit ∧
+        rp.residual = .val (.prim (.bool true)) ty
+    := by
+      have hf : ¬ (isAuthorized.satisfiedPolicies .permit rps).isEmpty := by grind
+      rw [Set.non_empty_iff_exists] at hf
+      replace ⟨_, hf⟩ := hf
+      simp [isAuthorized.satisfiedPolicies] at hf
+      rw [←Set.make_mem] at hf
+      simp [List.mem_filterMap] at hf
+      simp [ResidualPolicy.satisfiedWithEffect, ResidualPolicy.satisfied, Residual.isTrue] at hf
+      have ⟨rp, hf₁, ⟨ hf₂, hf₃⟩, hf₄⟩ := hf ; clear hf
+      split at hf₃ <;> try contradiction
+      rename_i hf₅
+      exists rp
+      simp [hf₁, hf₂, hf₅]
+
+    have hp :
+      ∀ rp ∈ rps,
+       rp.effect = .forbid →
+       ∃ ty,
+       rp.residual = .val (.prim (.bool false)) ty ∨
+       rp.residual = .error ty
+    := by
+      intro rp
+      intro hr₁ hr₂
+      have hp₁ : (isAuthorized.satisfiedPolicies .forbid rps).isEmpty := by grind
+      have hp₂ : (isAuthorized.residualPolicies .forbid rps).isEmpty := by grind
+      simp [Set.empty_iff_not_exists] at hp₁ hp₂
+      simp [isAuthorized.satisfiedPolicies] at hp₁
+      simp [isAuthorized.residualPolicies] at hp₂
+      simp [←Set.make_mem] at hp₁ hp₂
+      simp [ResidualPolicy.satisfiedWithEffect, ResidualPolicy.satisfied, Residual.isTrue] at hp₁
+      simp [ResidualPolicy.residualWithEffect, ResidualPolicy.isResidual, ResidualPolicy.satisfied, Residual.isTrue, ResidualPolicy.isFalse, Residual.isFalse, ResidualPolicy.hasError, Residual.isError] at hp₂
+      grind
+
+    -- There is at least one satisfied permit. Use this to show `(satisfiedPolicies Effect.permit policies req es).isEmpty = false`
+    -- There are no satisfied or residual forbids. Use this to show `(satisfiedPolicies Effect.forbid policies req es).isEmpty = true`
+    -- This implies the concrete decision is allow.
     sorry
 
 theorem partial_authorize_satisfied_permits_is_sound
@@ -353,7 +445,6 @@ theorem partial_authorize_satisfied_permits_is_sound
    rw [List.mapM_ok_iff_forall₂] at h₃
    have h₄ := List.forall₂_implies_all_left h₃
    replace h₃ := List.forall₂_implies_all_right h₃
-
 
    simp [isAuthorized.satisfiedPolicies]
    simp [Spec.isAuthorized]
