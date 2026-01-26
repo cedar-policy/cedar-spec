@@ -307,6 +307,87 @@ theorem empty_policies_have_false_or_error_residuals
   simp [ResidualPolicy.residualWithEffect, ResidualPolicy.isResidual, ResidualPolicy.satisfied, Residual.isTrue, ResidualPolicy.isFalse, Residual.isFalse, ResidualPolicy.hasError, Residual.isError] at h_residual_empty
   grind
 
+theorem no_satisfied_effect_from_empty_policies
+  {schema : Schema}
+  {policies : List Policy}
+  {req : Request}
+  {es : Entities}
+  {preq : PartialRequest}
+  {pes : PartialEntities}
+  {rps : List ResidualPolicy}
+  {effect : Effect}
+  (h₂ : isValidAndConsistent schema req es preq pes = Except.ok ())
+  (h₃ : List.Forall₂ (λ p rp => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes = .ok rp) policies rps)
+  (hf : ∀ rp ∈ rps, rp.effect = effect → ∃ ty, rp.residual = .val (.prim (.bool false)) ty ∨ rp.residual = .error ty) :
+  ¬HasSatisfiedEffect effect req es policies
+:= by
+  simp [HasSatisfiedEffect, satisfied]
+  intro p hp₁ hp₂ h
+  replace ⟨rp, h₅, h₄⟩ := List.forall₂_implies_all_left h₃ p hp₁
+  cases he : evaluatePolicy schema p preq pes <;> simp [he] at h₄
+  rename_i r
+
+  replace ⟨_, hp⟩ :
+    ∃ ty, r = Residual.val (Value.prim (Prim.bool false)) ty ∨ r = Residual.error ty := by
+    specialize hf rp h₅
+    rw [←h₄] at hf
+    specialize hf hp₂
+    simpa using hf
+
+  have ha : r.evaluate req es = Except.ok (Value.prim (Prim.bool true)) :=
+    to_option_left_ok (partial_evaluate_policy_is_sound he h₂) h
+
+  cases hp
+  · rename_i hp; simp only at hp; simp [hp, Residual.evaluate] at ha
+  · rename_i hp; subst hp; simp [Residual.evaluate] at ha
+
+theorem true_policy_if_true_residual
+  {schema : Schema}
+  {policies : List Policy}
+  {preq : PartialRequest}
+  {pes : PartialEntities}
+  {rps : List ResidualPolicy}
+  {rp : ResidualPolicy}
+  {ty : CedarType}
+  {effect : Effect}
+  (h₃ : List.Forall₂ (fun p rp => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes = Except.ok rp) policies rps)
+  (hrp₁ : rp ∈ rps)
+  (hrp₂ : rp.effect = effect)
+  (hrp₅ : rp.residual = .val (.prim (.bool true)) ty) :
+  ∃ (p : Policy),
+    p ∈ policies ∧
+    p.effect = effect ∧
+    evaluatePolicy schema p preq pes = .ok (.val (.prim (.bool true)) ty)
+:= by
+  have ⟨p, hp₁, hp₂⟩ := List.forall₂_implies_all_right h₃ rp hrp₁
+  cases hp₃ : evaluatePolicy schema p preq pes <;>
+   simp only [hp₃, Except.map_error, Except.map_ok, reduceCtorEq, Except.ok.injEq] at hp₂
+  subst hp₂; subst hrp₅
+  exists p
+
+theorem has_satisfied_effect_from_true_policy
+  {schema : Schema}
+  {req : Request}
+  {es : Entities}
+  {preq : PartialRequest}
+  {pes : PartialEntities}
+  {policies : List Policy}
+  {p : Policy}
+  {ty : CedarType}
+  {effect : Effect}
+  (h₂ : isValidAndConsistent schema req es preq pes = Except.ok ())
+  (hp₁ : p ∈ policies)
+  (hp₂ : p.effect = effect)
+  (hp₃ : evaluatePolicy schema p preq pes = .ok (.val (.prim (.bool true)) ty)) :
+  HasSatisfiedEffect effect req es policies := by
+  exists p
+  and_intros
+  · exact hp₁
+  · exact hp₂
+  · have ha := partial_evaluate_policy_is_sound hp₃ h₂
+    simp only [Residual.evaluate] at ha
+    simpa [satisfied] using to_option_right_ok' ha
+
 theorem non_empty_satisfied_policies_have_true_residual
   (effect : Effect)
   (rps : List ResidualPolicy)
@@ -347,116 +428,43 @@ theorem partial_authorize_decision_is_sound
   rename_i rps
 
   rw [List.mapM_ok_iff_forall₂] at h₃
-  have h₄ := List.forall₂_implies_all_left h₃
-  replace h₃ := List.forall₂_implies_all_right h₃
   simp [isAuthorized.isAuthorizedFromResiduals] at h₁
   split at h₁ <;> simp [←h₁]
   all_goals intro h₅; subst h₅
   -- Deny (satisfied forbid exists)
   · have hf : ¬ (isAuthorized.satisfiedPolicies .forbid rps).isEmpty := by grind
     have ⟨rp, ty, hf₁, hf₂, hf₅⟩ := non_empty_satisfied_policies_have_true_residual .forbid rps hf
-    have ⟨p, hp₁, hp₂, hp₃⟩ :
-      ∃ (p : Policy),
-        p ∈ policies ∧
-        p.effect = .forbid ∧
-        evaluatePolicy schema p preq pes = .ok (.val (.prim (.bool true)) ty) := by
-      have ⟨p, hp₁, hp₂⟩ := h₃ rp hf₁
-      cases hp₃ : evaluatePolicy schema p preq pes <;>
-       simp only [hp₃, Except.map_error, Except.map_ok, reduceCtorEq, Except.ok.injEq] at hp₂
-      subst hp₂; subst hf₅
-      exists p
-
-    have h_permit : HasSatisfiedEffect Effect.forbid req es policies := by
-      exists p
-      and_intros
-      · exact hp₁
-      · exact hp₂
-      · have ha := partial_evaluate_policy_is_sound hp₃ h₂
-        simp only [Residual.evaluate] at ha
-        simpa [satisfied] using to_option_right_ok' ha
+    have ⟨p, hp₁, hp₂, hp₃⟩ := true_policy_if_true_residual h₃ hf₁ hf₂ hf₅
+    have h_forbid : HasSatisfiedEffect Effect.forbid req es policies :=
+      has_satisfied_effect_from_true_policy h₂ hp₁ hp₂ hp₃
 
     apply forbid_trumps_permit
     unfold IsExplicitlyForbidden
-    exact h_permit
+    exact h_forbid
 
   -- Deny (no satisfied permits)
   · have hp₁ : (isAuthorized.satisfiedPolicies .permit rps).isEmpty := by grind
     have hp₂ : (isAuthorized.residualPolicies .permit rps).isEmpty := by grind
     have hp := empty_policies_have_false_or_error_residuals .permit rps hp₁ hp₂
-
-    have h_not_permit : ¬HasSatisfiedEffect Effect.permit req es policies := by
-      simp [HasSatisfiedEffect, satisfied]
-      intro p hp₁ hp₂ h
-      replace ⟨rp, h₅, h₄⟩ := h₄ p hp₁
-      cases he : evaluatePolicy schema p preq pes <;> simp [he] at h₄
-      rename_i r
-
-      replace ⟨_, hp⟩ :
-        ∃ ty, r = Residual.val (Value.prim (Prim.bool false)) ty ∨ r = Residual.error ty := by
-        specialize hp rp h₅
-        rw [←h₄] at hp
-        specialize hp hp₂
-        simpa using hp
-
-      have ha : r.evaluate req es = Except.ok (Value.prim (Prim.bool true)) :=
-        to_option_left_ok (partial_evaluate_policy_is_sound he h₂) h
-
-      cases hp
-      · rename_i hp; simp only at hp; simp [hp, Residual.evaluate] at ha
-      · rename_i hp; subst hp; simp [Residual.evaluate] at ha
+    have h_not_permit : ¬HasSatisfiedEffect Effect.permit req es policies :=
+      no_satisfied_effect_from_empty_policies h₂ h₃ hp
 
     apply default_deny
     unfold IsExplicitlyPermitted
     exact h_not_permit
 
   -- Allow (satisfied permit exists, no satisfied/residual forbids)
-  · have hf : ¬ (isAuthorized.satisfiedPolicies .permit rps).isEmpty := by grind
-    have ⟨rp, ty, hp₁, hp₂, hp₅⟩ := non_empty_satisfied_policies_have_true_residual .permit rps hf
-
-    have hf₁ : (isAuthorized.satisfiedPolicies .forbid rps).isEmpty := by grind
+  · have hf₁ : (isAuthorized.satisfiedPolicies .forbid rps).isEmpty := by grind
     have hf₂ : (isAuthorized.residualPolicies .forbid rps).isEmpty := by grind
     have hf := empty_policies_have_false_or_error_residuals .forbid rps hf₁ hf₂
+    have h_not_forbid : ¬HasSatisfiedEffect Effect.forbid req es policies :=
+      no_satisfied_effect_from_empty_policies h₂ h₃ hf
 
-    have h_not_forbid : ¬HasSatisfiedEffect Effect.forbid req es policies := by
-      simp [HasSatisfiedEffect, satisfied]
-      intro p hp₁ hp₂ h
-      replace ⟨rp, h₅, h₄⟩ := h₄ p hp₁
-      cases he : evaluatePolicy schema p preq pes <;> simp [he] at h₄
-      rename_i r
-
-      replace ⟨_, hp⟩ :
-        ∃ ty, r = Residual.val (Value.prim (Prim.bool false)) ty ∨ r = Residual.error ty := by
-        specialize hf rp h₅
-        rw [←h₄] at hf
-        specialize hf hp₂
-        simpa using hf
-
-      have ha : r.evaluate req es = Except.ok (Value.prim (Prim.bool true)) :=
-        to_option_left_ok (partial_evaluate_policy_is_sound he h₂) h
-
-      cases hp
-      · rename_i hp; simp only at hp; simp [hp, Residual.evaluate] at ha
-      · rename_i hp; subst hp; simp [Residual.evaluate] at ha
-
-    have ⟨p, hp₁, hp₂, hp₃⟩ :
-      ∃ (p : Policy),
-        p ∈ policies ∧
-        p.effect = .permit ∧
-        evaluatePolicy schema p preq pes = .ok (.val (.prim (.bool true)) ty) := by
-      have ⟨p, hp₁, hp₂⟩ := h₃ rp hp₁
-      cases hp₃ : evaluatePolicy schema p preq pes <;>
-       simp only [hp₃, Except.map_error, Except.map_ok, reduceCtorEq, Except.ok.injEq] at hp₂
-      subst hp₂; subst hp₅
-      exists p
-
-    have h_permit : HasSatisfiedEffect Effect.permit req es policies := by
-      exists p
-      and_intros
-      · exact hp₁
-      · exact hp₂
-      · have ha := partial_evaluate_policy_is_sound hp₃ h₂
-        simp only [Residual.evaluate] at ha
-        simpa [satisfied] using to_option_right_ok' ha
+    have hp : ¬ (isAuthorized.satisfiedPolicies .permit rps).isEmpty := by grind
+    have ⟨rp, ty, hp₁, hp₂, hp₅⟩ := non_empty_satisfied_policies_have_true_residual .permit rps hp
+    have ⟨p, hp₁, hp₂, hp₃⟩ := true_policy_if_true_residual h₃ hp₁ hp₂ hp₅
+    have h_permit : HasSatisfiedEffect Effect.permit req es policies :=
+      has_satisfied_effect_from_true_policy h₂ hp₁ hp₂ hp₃
 
     apply (allowed_iff_explicitly_permitted_and_not_denied _ _ _).mp
     unfold IsExplicitlyPermitted IsExplicitlyForbidden
