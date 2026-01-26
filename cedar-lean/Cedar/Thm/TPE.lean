@@ -341,6 +341,45 @@ theorem no_satisfied_effect_from_empty_policies
   · rename_i hp; simp only at hp; simp [hp, Residual.evaluate] at ha
   · rename_i hp; subst hp; simp [Residual.evaluate] at ha
 
+theorem no_satisfied_effect_from_empty_satisfied_and_residual_policies
+  {schema : Schema}
+  {policies : List Policy}
+  {req : Request}
+  {es : Entities}
+  {preq : PartialRequest}
+  {pes : PartialEntities}
+  {rps : List ResidualPolicy}
+  {effect : Effect}
+  (h₂ : isValidAndConsistent schema req es preq pes = Except.ok ())
+  (h₃ : List.Forall₂ (fun p rp => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes = Except.ok rp) policies rps)
+  (h_satisfied_empty : (isAuthorized.satisfiedPolicies effect rps).isEmpty)
+  (h_residual_empty : (isAuthorized.residualPolicies effect rps).isEmpty) :
+  ¬HasSatisfiedEffect effect req es policies
+:= by
+  have hf := empty_policies_have_false_or_error_residuals effect rps h_satisfied_empty h_residual_empty
+  exact no_satisfied_effect_from_empty_policies h₂ h₃ hf
+
+theorem non_empty_satisfied_policies_have_true_residual
+  (effect : Effect)
+  (rps : List ResidualPolicy)
+  (h_satisfied_non_empty : ¬ (isAuthorized.satisfiedPolicies effect rps).isEmpty) :
+  ∃ (rp : ResidualPolicy) (ty : CedarType),
+    rp ∈ rps ∧
+    rp.effect = effect ∧
+    rp.residual = .val (.prim (.bool true)) ty
+:= by
+  rw [Set.non_empty_iff_exists] at h_satisfied_non_empty
+  replace ⟨_, hf⟩ := h_satisfied_non_empty
+  simp [isAuthorized.satisfiedPolicies] at hf
+  rw [←Set.make_mem] at hf
+  simp [List.mem_filterMap] at hf
+  simp [ResidualPolicy.satisfiedWithEffect, ResidualPolicy.satisfied, Residual.isTrue] at hf
+  have ⟨rp, hf₁, ⟨ hf₂, hf₃⟩, hf₄⟩ := hf ; clear hf
+  split at hf₃ <;> try contradiction
+  rename_i hf₅
+  exists rp
+  simp [hf₁, hf₂, hf₅]
+
 theorem true_policy_if_true_residual
   {schema : Schema}
   {policies : List Policy}
@@ -388,26 +427,22 @@ theorem has_satisfied_effect_from_true_policy
     simp only [Residual.evaluate] at ha
     simpa [satisfied] using to_option_right_ok' ha
 
-theorem non_empty_satisfied_policies_have_true_residual
-  (effect : Effect)
-  (rps : List ResidualPolicy)
-  (h_satisfied_non_empty : ¬ (isAuthorized.satisfiedPolicies effect rps).isEmpty) :
-  ∃ (rp : ResidualPolicy) (ty : CedarType),
-    rp ∈ rps ∧
-    rp.effect = effect ∧
-    rp.residual = .val (.prim (.bool true)) ty
-:= by
-  rw [Set.non_empty_iff_exists] at h_satisfied_non_empty
-  replace ⟨_, hf⟩ := h_satisfied_non_empty
-  simp [isAuthorized.satisfiedPolicies] at hf
-  rw [←Set.make_mem] at hf
-  simp [List.mem_filterMap] at hf
-  simp [ResidualPolicy.satisfiedWithEffect, ResidualPolicy.satisfied, Residual.isTrue] at hf
-  have ⟨rp, hf₁, ⟨ hf₂, hf₃⟩, hf₄⟩ := hf ; clear hf
-  split at hf₃ <;> try contradiction
-  rename_i hf₅
-  exists rp
-  simp [hf₁, hf₂, hf₅]
+theorem has_satisfied_effect_from_non_empty_satisfied_policies
+  {schema : Schema}
+  {policies : List Policy}
+  {req : Request}
+  {es : Entities}
+  {preq : PartialRequest}
+  {pes : PartialEntities}
+  {rps : List ResidualPolicy}
+  {effect : Effect}
+  (h₂ : isValidAndConsistent schema req es preq pes = Except.ok ())
+  (h₃ : List.Forall₂ (fun p rp => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes = Except.ok rp) policies rps)
+  (h_non_empty : ¬(isAuthorized.satisfiedPolicies effect rps).isEmpty) :
+  HasSatisfiedEffect effect req es policies := by
+  have ⟨rp, ty, hp₁, hp₂, hp₅⟩ := non_empty_satisfied_policies_have_true_residual effect rps h_non_empty
+  have ⟨p, hp₁, hp₂, hp₃⟩ := true_policy_if_true_residual h₃ hp₁ hp₂ hp₅
+  exact has_satisfied_effect_from_true_policy h₂ hp₁ hp₂ hp₃
 
 theorem partial_authorize_decision_is_sound
   {schema : Schema}
@@ -433,10 +468,8 @@ theorem partial_authorize_decision_is_sound
   all_goals intro h₅; subst h₅
   -- Deny (satisfied forbid exists)
   · have hf : ¬ (isAuthorized.satisfiedPolicies .forbid rps).isEmpty := by grind
-    have ⟨rp, ty, hf₁, hf₂, hf₅⟩ := non_empty_satisfied_policies_have_true_residual .forbid rps hf
-    have ⟨p, hp₁, hp₂, hp₃⟩ := true_policy_if_true_residual h₃ hf₁ hf₂ hf₅
     have h_forbid : HasSatisfiedEffect Effect.forbid req es policies :=
-      has_satisfied_effect_from_true_policy h₂ hp₁ hp₂ hp₃
+      has_satisfied_effect_from_non_empty_satisfied_policies h₂ h₃ hf
 
     apply forbid_trumps_permit
     unfold IsExplicitlyForbidden
@@ -445,9 +478,8 @@ theorem partial_authorize_decision_is_sound
   -- Deny (no satisfied permits)
   · have hp₁ : (isAuthorized.satisfiedPolicies .permit rps).isEmpty := by grind
     have hp₂ : (isAuthorized.residualPolicies .permit rps).isEmpty := by grind
-    have hp := empty_policies_have_false_or_error_residuals .permit rps hp₁ hp₂
     have h_not_permit : ¬HasSatisfiedEffect Effect.permit req es policies :=
-      no_satisfied_effect_from_empty_policies h₂ h₃ hp
+      no_satisfied_effect_from_empty_satisfied_and_residual_policies h₂ h₃ hp₁ hp₂
 
     apply default_deny
     unfold IsExplicitlyPermitted
@@ -456,15 +488,12 @@ theorem partial_authorize_decision_is_sound
   -- Allow (satisfied permit exists, no satisfied/residual forbids)
   · have hf₁ : (isAuthorized.satisfiedPolicies .forbid rps).isEmpty := by grind
     have hf₂ : (isAuthorized.residualPolicies .forbid rps).isEmpty := by grind
-    have hf := empty_policies_have_false_or_error_residuals .forbid rps hf₁ hf₂
     have h_not_forbid : ¬HasSatisfiedEffect Effect.forbid req es policies :=
-      no_satisfied_effect_from_empty_policies h₂ h₃ hf
+      no_satisfied_effect_from_empty_satisfied_and_residual_policies h₂ h₃ hf₁ hf₂
 
     have hp : ¬ (isAuthorized.satisfiedPolicies .permit rps).isEmpty := by grind
-    have ⟨rp, ty, hp₁, hp₂, hp₅⟩ := non_empty_satisfied_policies_have_true_residual .permit rps hp
-    have ⟨p, hp₁, hp₂, hp₃⟩ := true_policy_if_true_residual h₃ hp₁ hp₂ hp₅
     have h_permit : HasSatisfiedEffect Effect.permit req es policies :=
-      has_satisfied_effect_from_true_policy h₂ hp₁ hp₂ hp₃
+      has_satisfied_effect_from_non_empty_satisfied_policies h₂ h₃ hp
 
     apply (allowed_iff_explicitly_permitted_and_not_denied _ _ _).mp
     unfold IsExplicitlyPermitted IsExplicitlyForbidden
