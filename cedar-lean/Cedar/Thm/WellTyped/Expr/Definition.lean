@@ -13,9 +13,9 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
+
 import Cedar.Validation.TypedExpr
 import Cedar.Spec.Ext
--- import Cedar.Thm.Validation
 
 /-!
 This file contains well-typedness definitions of `TypedExpr`
