@@ -277,7 +277,7 @@ theorem reauthorize_is_sound
   intro hv h_auth
 
   simp only [TPE.isAuthorized] at h_auth
-  cases h_auth₁ : List.mapM (fun p => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes) policies <;> simp [h_auth₁] at h_auth
+  cases h_auth₁ : List.mapM (λ p => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes) policies <;> simp [h_auth₁] at h_auth
   rename_i residuals
   subst h_auth
 
@@ -297,7 +297,7 @@ theorem no_satisfied_effect_if_empty_satisfied_and_residual_policies
   {rps : List ResidualPolicy}
   {effect : Effect}
   (h₂ : isValidAndConsistent schema req es preq pes = Except.ok ())
-  (h₃ : List.Forall₂ (fun p rp => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes = Except.ok rp) policies rps)
+  (h₃ : List.Forall₂ (λ p rp => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes = Except.ok rp) policies rps)
   (h_satisfied_empty : (isAuthorized.satisfiedPolicies effect rps).isEmpty)
   (h_residual_empty : (isAuthorized.residualPolicies effect rps).isEmpty) :
   ¬HasSatisfiedEffect effect req es policies
@@ -309,14 +309,15 @@ theorem no_satisfied_effect_if_empty_satisfied_and_residual_policies
   rename_i r
 
   replace ⟨_, hp⟩ :
-    ∃ ty, r = Residual.val (Value.prim (Prim.bool false)) ty ∨ r = Residual.error ty
+    ∃ ty, r = .val (.prim (.bool false)) ty ∨ r = .error ty
   := by
-    simp [Set.empty_iff_not_exists] at h_satisfied_empty h_residual_empty
-    simp [isAuthorized.satisfiedPolicies] at h_satisfied_empty
-    simp [isAuthorized.residualPolicies] at h_residual_empty
-    simp [←Set.make_mem] at h_satisfied_empty h_residual_empty
-    simp [ResidualPolicy.satisfiedWithEffect, ResidualPolicy.satisfied, Residual.isTrue] at h_satisfied_empty
-    simp [ResidualPolicy.residualWithEffect, ResidualPolicy.isResidual, ResidualPolicy.satisfied, Residual.isTrue, ResidualPolicy.isFalse, Residual.isFalse, ResidualPolicy.hasError, Residual.isError] at h_residual_empty
+    simp only [isAuthorized.satisfiedPolicies, Set.empty_iff_not_exists, ← Set.make_mem,
+      List.mem_filterMap, ResidualPolicy.satisfiedWithEffect, ResidualPolicy.satisfied,
+      Residual.isTrue, Option.ite_none_right_eq_some] at h_satisfied_empty
+    simp only [isAuthorized.residualPolicies, Set.empty_iff_not_exists, ← Set.make_mem,
+      List.mem_filterMap, ResidualPolicy.residualWithEffect, ResidualPolicy.isResidual,
+      ResidualPolicy.satisfied, Residual.isTrue, ResidualPolicy.isFalse, Residual.isFalse,
+      ResidualPolicy.hasError, Residual.isError, Option.ite_none_right_eq_some, not_exists] at h_residual_empty
     grind
 
   have ha : r.evaluate req es = Except.ok (Value.prim (Prim.bool true)) :=
@@ -336,7 +337,7 @@ theorem satisfied_effect_if_non_empty_satisfied_policies
   {rps : List ResidualPolicy}
   {effect : Effect}
   (h₂ : isValidAndConsistent schema req es preq pes = Except.ok ())
-  (h₃ : List.Forall₂ (fun p rp => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes = Except.ok rp) policies rps)
+  (h₃ : List.Forall₂ (λ p rp => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes = Except.ok rp) policies rps)
   (h_non_empty : ¬(isAuthorized.satisfiedPolicies effect rps).isEmpty) :
   HasSatisfiedEffect effect req es policies
 := by
@@ -374,17 +375,24 @@ theorem partial_authorize_decision_is_sound
   {decision : Decision} :
   TPE.isAuthorized schema policies preq pes = Except.ok response →
   isValidAndConsistent schema req es preq pes = Except.ok () →
-  (response.decision = some decision → (Spec.isAuthorized req es policies).decision = decision) := by
+  response.decision = some decision →
+  (Spec.isAuthorized req es policies).decision = decision
+:= by
   intro h₁ h₂
-  simp [TPE.isAuthorized] at h₁
-  cases h₃ : List.mapM (fun p => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes) policies <;>
+  simp only [TPE.isAuthorized] at h₁
+
+  cases h₃ : List.mapM (λ p => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes) policies <;>
     simp [h₃] at h₁
   rename_i rps
 
   rw [List.mapM_ok_iff_forall₂] at h₃
   simp [isAuthorized.isAuthorizedFromResiduals] at h₁
-  split at h₁ <;> simp [←h₁]
-  all_goals intro h₅; subst h₅
+  split at h₁ <;>
+    simp only [← h₁, reduceCtorEq, false_implies]
+  all_goals
+    intro h₅
+    simp only [Option.some.injEq] at h₅
+    subst h₅
   -- Deny (satisfied forbid exists)
   · have hf : ¬ (isAuthorized.satisfiedPolicies .forbid rps).isEmpty := by grind
     have h_forbid : HasSatisfiedEffect Effect.forbid req es policies :=
@@ -418,10 +426,267 @@ theorem partial_authorize_decision_is_sound
     unfold IsExplicitlyPermitted IsExplicitlyForbidden
     exact .intro h_permit h_not_forbid
 
--- Other properties of partial auth:
---   (response.errorForbids ∪ response.errorPermits) ⊆ (Spec.isAuthorized req es policies).erroringPolicies
---   (response.decision = some .allow → response.satisfiedPermits ⊆ (Spec.isAuthorized req es policies).determiningPolicies)
---   (response.decision = some .deny → response.satisfiedForbids ⊆ (Spec.isAuthorized req es policies).determiningPolicies)
---   (response.satisfiedForbids ⊆ (Spec.isAuthorized req es policies).determiningPolicies ∨ response.satisfiedPermits ⊆ (Spec.isAuthorized req es policies).determiningPolicies)
+
+theorem partial_authorize_error_policies_is_sound
+  {schema : Schema}
+  {policies : List Policy}
+  {req : Request}
+  {es : Entities}
+  {preq : PartialRequest}
+  {pes : PartialEntities}
+  (effect : Effect) :
+  List.Forall₂ (λ p rp => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes = Except.ok rp) policies rps →
+  isValidAndConsistent schema req es preq pes = Except.ok () →
+  isAuthorized.errorPolicies effect rps ⊆ (Spec.isAuthorized req es policies).erroringPolicies
+:= by
+  intro h₁ h₂
+  have h₄ : (Spec.isAuthorized req es policies).erroringPolicies =  errorPolicies policies req es :=
+    by grind [Spec.isAuthorized]
+  simp only [errorPolicies, errored, hasError] at h₄
+  simp only [h₄, isAuthorized.errorPolicies, Set.subset_def, ← Set.make_mem, List.mem_filterMap,
+    ResidualPolicy.erroredWithEffect, ResidualPolicy.hasError, Residual.isError, Bool.and_eq_true,
+    beq_iff_eq, Option.ite_none_right_eq_some, Option.some.injEq, forall_exists_index, and_imp]
+  intro pid rp hrp hef herr hpid
+
+  have ⟨p, hp₁, hp₂⟩ := List.forall₂_implies_all_right h₁ rp hrp
+  cases hp₃ : evaluatePolicy schema p preq pes <;>
+   simp only [hp₃, Except.map_error, Except.map_ok, reduceCtorEq, Except.ok.injEq] at hp₂
+
+  exists p
+  and_intros
+  · exact hp₁
+  · replace ⟨_, ha⟩ : ∃ e, Spec.evaluate p.toExpr req es = .error e := by
+      rename_i r
+      replace ⟨_, herr⟩ : ∃ ty, r = .error ty := by grind
+      have ha := partial_evaluate_policy_is_sound hp₃ h₂
+      simp only [herr, Residual.evaluate] at ha
+      exact to_option_right_err ha
+    simp [ha]
+  · simpa [←hp₂] using hpid
+
+theorem partial_authorize_erroring_policies_is_sound
+  {schema : Schema}
+  {policies : List Policy}
+  {req : Request}
+  {es : Entities}
+  {preq : PartialRequest}
+  {pes : PartialEntities}
+  {response : TPE.Response} :
+  TPE.isAuthorized schema policies preq pes = Except.ok response →
+  isValidAndConsistent schema req es preq pes = Except.ok () →
+  (response.errorForbids ∪ response.errorPermits) ⊆ (Spec.isAuthorized req es policies).erroringPolicies
+:= by
+  intro h₁ h₂
+  simp only [TPE.isAuthorized] at h₁
+
+  cases h₃ : List.mapM (λ p => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes) policies <;>
+    simp [h₃] at h₁
+  rename_i rps
+  rw [List.mapM_ok_iff_forall₂] at h₃
+  subst response
+
+  have h_err_permit := partial_authorize_error_policies_is_sound .permit h₃ h₂
+  have h_err_forbid := partial_authorize_error_policies_is_sound .forbid h₃ h₂
+  rw [Set.union_subset]
+  exact .intro h_err_forbid h_err_permit
+
+theorem partial_authorize_allow_determining_policies_is_sound
+  {schema : Schema}
+  {policies : List Policy}
+  {req : Request}
+  {es : Entities}
+  {preq : PartialRequest}
+  {pes : PartialEntities}
+  {response : TPE.Response} :
+  TPE.isAuthorized schema policies preq pes = Except.ok response →
+  isValidAndConsistent schema req es preq pes = Except.ok () →
+  response.decision = some .allow →
+  response.satisfiedPermits ⊆ (Spec.isAuthorized req es policies).determiningPolicies ∧
+  (response.satisfiedForbids ∩ (Spec.isAuthorized req es policies).determiningPolicies).isEmpty
+:= by
+  intro h₁ h₂ h_allow
+  simp only [TPE.isAuthorized] at h₁
+
+  have h_allow' : (Spec.isAuthorized req es policies).decision = .allow :=
+    partial_authorize_decision_is_sound h₁ h₂ h_allow
+  replace h_allow' : (satisfiedPolicies Effect.forbid policies req es).isEmpty ∧ ¬ (satisfiedPolicies Effect.permit policies req es).isEmpty := by
+    grind [Spec.isAuthorized]
+  simp only [Spec.isAuthorized, h_allow', Bool.not_false, Bool.and_self, ↓reduceIte]
+
+  cases h₃ : List.mapM (λ p => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes) policies <;>
+    simp [h₃] at h₁
+  rename_i rps
+  rw [List.mapM_ok_iff_forall₂] at h₃
+  subst response
+
+  constructor
+  · simp [isAuthorized.isAuthorizedFromResiduals, isAuthorized.satisfiedPolicies,
+      satisfiedPolicies, satisfiedWithEffect, satisfied, Bool.and_eq_true,
+      decide_eq_true_eq, Set.subset_def, ← Set.make_mem, List.mem_filterMap,
+      ResidualPolicy.satisfiedWithEffect, ResidualPolicy.satisfied, Residual.isTrue,
+      Option.ite_none_right_eq_some, forall_exists_index, and_imp]
+    intro pid rp hrp heff hs hpid
+    split at hs <;> try contradiction
+
+    have ⟨p, hp₁, hp₂⟩ := List.forall₂_implies_all_right h₃ rp hrp
+    cases hp₃ : evaluatePolicy schema p preq pes <;>
+     simp only [hp₃, Except.map_error, Except.map_ok, reduceCtorEq, Except.ok.injEq] at hp₂
+
+    exists p
+    and_intros
+    · exact hp₁
+    · rw [←hp₂] at heff
+      exact heff
+    · rename_i ty hr r
+      replace hr : r = .val (.prim (.bool true)) ty := by grind
+      have ha := partial_evaluate_policy_is_sound hp₃ h₂
+      simp only [hr, Residual.evaluate] at ha
+      exact to_option_right_ok' ha
+    · rw [←hp₂] at hpid
+      exact hpid
+  · simp [isAuthorized.isAuthorizedFromResiduals, isAuthorized.satisfiedPolicies,
+      satisfiedPolicies, satisfiedWithEffect, satisfied, Bool.and_eq_true,
+      decide_eq_true_eq, ← Set.make_mem, List.mem_filterMap,
+      ResidualPolicy.satisfiedWithEffect, ResidualPolicy.satisfied, Residual.isTrue,
+      Option.ite_none_right_eq_some, forall_exists_index, and_imp, Set.empty_iff_not_exists, Set.mem_inter_iff]
+    intro pid rp hrp heff hs hpid p hp heff' heval hpid'
+    suffices h_deny : ¬ (satisfiedPolicies Effect.forbid policies req es).isEmpty by
+      simp [h_deny] at h_allow'
+
+    split at hs <;> try contradiction
+    have ⟨p, hp₁, hp₂⟩ := List.forall₂_implies_all_right h₃ rp hrp
+    cases hp₃ : evaluatePolicy schema p preq pes <;>
+      simp only [hp₃, Except.map_error, Except.map_ok, reduceCtorEq, Except.ok.injEq] at hp₂
+    rename_i ty hr r
+    replace hr : r = .val (.prim (.bool true)) ty := by grind
+    have ha := partial_evaluate_policy_is_sound hp₃ h₂
+    simp only [hr, Residual.evaluate] at ha
+    replace ha := to_option_right_ok' ha
+    rw [Set.non_empty_iff_exists]
+    simp only [satisfiedPolicies, satisfiedWithEffect, satisfied, Bool.and_eq_true,
+      ← Set.make_mem, List.mem_filterMap, Option.ite_none_right_eq_some, Option.some.injEq]
+    grind
+
+theorem partial_authorize_deny_determining_policies_is_sound
+  {schema : Schema}
+  {policies : List Policy}
+  {req : Request}
+  {es : Entities}
+  {preq : PartialRequest}
+  {pes : PartialEntities}
+  {response : TPE.Response} :
+  TPE.isAuthorized schema policies preq pes = Except.ok response →
+  isValidAndConsistent schema req es preq pes = Except.ok () →
+  response.decision = some .deny →
+  response.satisfiedForbids ⊆ (Spec.isAuthorized req es policies).determiningPolicies ∧
+  (response.satisfiedPermits ∩ (Spec.isAuthorized req es policies).determiningPolicies).isEmpty
+:= by
+  intro h₁ h₂ h_deny
+  simp only [TPE.isAuthorized] at h₁
+
+  have h_deny : (Spec.isAuthorized req es policies).decision = .deny :=
+    partial_authorize_decision_is_sound h₁ h₂ h_deny
+  have h_deny' : ¬ ((satisfiedPolicies Effect.forbid policies req es).isEmpty = true ∧ (satisfiedPolicies Effect.permit policies req es).isEmpty = false) := by
+    grind [Spec.isAuthorized]
+  simp only [Spec.isAuthorized, Bool.and_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true, h_deny', ↓reduceIte]
+
+
+  cases h₃ : List.mapM (λ p => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes) policies <;>
+    simp [h₃] at h₁
+  rename_i rps
+  rw [List.mapM_ok_iff_forall₂] at h₃
+  subst response
+
+  constructor
+  · simp [isAuthorized.isAuthorizedFromResiduals, isAuthorized.satisfiedPolicies,
+      satisfiedPolicies, satisfiedWithEffect, satisfied, Bool.and_eq_true,
+      decide_eq_true_eq, Set.subset_def, ← Set.make_mem, List.mem_filterMap,
+      ResidualPolicy.satisfiedWithEffect, ResidualPolicy.satisfied, Residual.isTrue,
+      Option.ite_none_right_eq_some, forall_exists_index, and_imp]
+    intro pid rp hrp heff hs hpid
+    split at hs <;> try contradiction
+
+    have ⟨p, hp₁, hp₂⟩ := List.forall₂_implies_all_right h₃ rp hrp
+    cases hp₃ : evaluatePolicy schema p preq pes <;>
+     simp only [hp₃, Except.map_error, Except.map_ok, reduceCtorEq, Except.ok.injEq] at hp₂
+
+    exists p
+    and_intros
+    · exact hp₁
+    · rw [←hp₂] at heff
+      exact heff
+    · rename_i ty hr r
+      replace hr : r = .val (.prim (.bool true)) ty := by grind
+      have ha := partial_evaluate_policy_is_sound hp₃ h₂
+      simp only [hr, Residual.evaluate] at ha
+      exact to_option_right_ok' ha
+    · rw [←hp₂] at hpid
+      exact hpid
+  · -- We proved this was impossible in the  `decision = allow` by showing that a
+    -- satisfied forbid policy would force `decision = deny`. In this case we
+    -- can have have a satisfied permit, but here we might also have a satisfied
+    -- forbid, so we cannot show the decision must be a `deny`.
+    have : ∀ p : Policy, p.id ∈ (isAuthorized.isAuthorizedFromResiduals rps).satisfiedPermits → p.effect = .permit := by
+      sorry
+    have : ∀ p : Policy, p.id ∈ satisfiedPolicies Effect.forbid policies req es → p.effect = .forbid := by
+      sorry
+    -- I would like to prove this by showing that the intersection of
+    -- `satisfiedPermits` and `satisfiedPolicies Effect.forbid` must be empty
+    -- because no policy can be other a `permit` and `forbid` policy. I do not
+    -- think this will work because we do not enforce that policy ids are unique
+    -- (`policies : List Policy`, not `Set Policy`), so we may have a satisfied
+    -- permit that shares an id with a satisfied forbid.
+    sorry
+
+theorem partial_authorize_none_determining_policies_is_sound
+  {schema : Schema}
+  {policies : List Policy}
+  {req : Request}
+  {es : Entities}
+  {preq : PartialRequest}
+  {pes : PartialEntities}
+  {response : TPE.Response} :
+  TPE.isAuthorized schema policies preq pes = Except.ok response →
+  isValidAndConsistent schema req es preq pes = Except.ok () →
+  (response.satisfiedForbids ⊆ (Spec.isAuthorized req es policies).determiningPolicies ∨ response.satisfiedPermits ⊆ (Spec.isAuthorized req es policies).determiningPolicies)
+:= by
+  intro h₁ h₂
+
+  cases hd : response.decision
+  case none =>
+    simp only [TPE.isAuthorized] at h₁
+
+    -- have h_deny : (Spec.isAuthorized req es policies).decision = .deny :=
+    --   partial_authorize_decision_is_sound h₁ h₂ h_deny
+    -- have h_deny' : ¬ ((satisfiedPolicies Effect.forbid policies req es).isEmpty = true ∧ (satisfiedPolicies Effect.permit policies req es).isEmpty = false) := by
+    --   grind [Spec.isAuthorized]
+    -- simp only [Spec.isAuthorized, Bool.and_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true, h_deny', ↓reduceIte]
+
+    cases h₃ : List.mapM (λ p => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes) policies <;>
+      simp [h₃] at h₁
+    rename_i rps
+    rw [List.mapM_ok_iff_forall₂] at h₃
+    subst response
+
+    have ⟨_, h₄⟩ : ∃ e, (Spec.isAuthorized req es policies).determiningPolicies = satisfiedPolicies e policies req es := by
+      simp only [Spec.isAuthorized]
+      split <;> grind
+    rw [h₄]
+
+    simp [isAuthorized.isAuthorizedFromResiduals, isAuthorized.satisfiedPolicies,
+        satisfiedPolicies, satisfiedWithEffect, satisfied, Bool.and_eq_true,
+        decide_eq_true_eq, Set.subset_def, ← Set.make_mem, List.mem_filterMap,
+        ResidualPolicy.satisfiedWithEffect, ResidualPolicy.satisfied, Residual.isTrue,
+        Option.ite_none_right_eq_some, forall_exists_index, and_imp]
+
+    sorry
+  case some d =>
+    cases hd' : d <;> subst hd'
+    case allow =>
+      have h := partial_authorize_allow_determining_policies_is_sound h₁ h₂ hd
+      exact .inr h.left
+    case deny =>
+      have h := partial_authorize_deny_determining_policies_is_sound h₁ h₂ hd
+      exact .inl h.left
 
 end Cedar.Thm
