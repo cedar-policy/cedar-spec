@@ -34,7 +34,7 @@ open Cedar.Spec
 open Cedar.Validation
 open Cedar.Thm
 
-/-- The main theorem of TPE: Evaluating a result residual is equivalent to
+/-- Policy evaluation soundness for TPE: Evaluating a result residual is equivalent to
 evaluating the input policy, given valid and consistent requests and entities.
 The equivalence is w.r.t authorization results. That is, the evaluation results
 are strictly equal when they are `.ok` or both errors (captured by
