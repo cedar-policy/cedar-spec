@@ -20,7 +20,7 @@ use cedar_drt::check_for_internal_errors;
 use cedar_drt_inner::fuzz_target;
 
 use cedar_policy_core::parser::parse_policyset;
-use cedar_policy_formatter::{policies_str_to_pretty, Config};
+use cedar_policy_formatter::{Config, policies_str_to_pretty};
 
 fuzz_target!(|input: String| {
     match parse_policyset(&input) {

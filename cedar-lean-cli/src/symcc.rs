@@ -613,7 +613,10 @@ fn print_check_disjoint_results(
     } else if open_req_env.is_any() {
         println!("Source PolicySet is disjoint with Target PolicySet for some request signatures")
     } else {
-        println!("Source PolicySet is disjoint with Target PolicySet for some request signatures where {}", open_req_env)
+        println!(
+            "Source PolicySet is disjoint with Target PolicySet for some request signatures where {}",
+            open_req_env
+        )
     }
 
     println!();

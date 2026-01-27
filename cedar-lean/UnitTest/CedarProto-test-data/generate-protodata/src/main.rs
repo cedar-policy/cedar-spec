@@ -1,7 +1,7 @@
-use cedar_policy::{
-    proto::traits::Protobuf, Entities, Entity, Expression, PolicyId, PolicySet, Request, Schema,
-};
 use cedar_policy::{Context, EntityUid, Policy, RestrictedExpression, SlotId};
+use cedar_policy::{
+    Entities, Entity, Expression, PolicyId, PolicySet, Request, Schema, proto::traits::Protobuf,
+};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;

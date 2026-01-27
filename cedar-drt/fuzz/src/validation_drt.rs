@@ -15,7 +15,7 @@
  */
 
 use cedar_drt::{
-    logger::{initialize_log, TOTAL_MSG},
+    logger::{TOTAL_MSG, initialize_log},
     tests::run_val_test,
 };
 

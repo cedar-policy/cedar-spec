@@ -18,20 +18,20 @@
 use cedar_drt::logger::initialize_log;
 use cedar_drt_inner::{
     fuzz_target,
-    symcc::{local_solver, SinglePolicyFuzzTargetInput},
+    symcc::{SinglePolicyFuzzTargetInput, local_solver},
 };
 
 use cedar_policy::{Authorizer, Decision, Policy, PolicySet, Schema};
 use cedar_policy_symcc::{
-    always_allows_asserts, always_denies_asserts, err::SolverError, solver::LocalSolver,
-    CedarSymCompiler, CompiledPolicySet, Env, WellFormedAsserts,
+    CedarSymCompiler, CompiledPolicySet, Env, WellFormedAsserts, always_allows_asserts,
+    always_denies_asserts, err::SolverError, solver::LocalSolver,
 };
 
 use log::debug;
 use std::{convert::TryFrom, sync::LazyLock};
 use tokio::{
     sync::{Mutex, MutexGuard},
-    time::{error::Elapsed, timeout, Duration},
+    time::{Duration, error::Elapsed, timeout},
 };
 
 static RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {

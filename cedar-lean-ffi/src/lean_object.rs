@@ -19,7 +19,7 @@
 use prost::Message;
 use serde::Deserialize;
 use std::{
-    ffi::{c_char, c_uint, CStr},
+    ffi::{CStr, c_char, c_uint},
     marker::PhantomData,
     str::Utf8Error,
 };

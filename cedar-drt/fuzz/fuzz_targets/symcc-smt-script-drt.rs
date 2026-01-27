@@ -21,8 +21,8 @@ use cedar_drt_inner::{fuzz_target, symcc::SinglePolicyFuzzTargetInput};
 use cedar_lean_ffi::CedarLeanFfi;
 use cedar_policy::{Policy, PolicySet, Schema};
 use cedar_policy_symcc::{
-    always_allows_asserts, solver::WriterSolver, CedarSymCompiler, CompiledPolicySet,
-    WellFormedAsserts,
+    CedarSymCompiler, CompiledPolicySet, WellFormedAsserts, always_allows_asserts,
+    solver::WriterSolver,
 };
 
 use log::debug;

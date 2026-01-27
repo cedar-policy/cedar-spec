@@ -18,7 +18,7 @@
 use cedar_drt_inner::{fuzz_target, schemas::equivalence_check};
 
 use cedar_policy_core::extensions::Extensions;
-use cedar_policy_core::validator::{json_schema, RawName, ValidatorSchema};
+use cedar_policy_core::validator::{RawName, ValidatorSchema, json_schema};
 use similar_asserts::SimpleDiff;
 
 // Natural String -> json_schema::Fragment -> JSON String -> json_schema::Fragment

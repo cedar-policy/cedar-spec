@@ -1,6 +1,6 @@
 [package]
 name = "cedar-drt"
-edition = "2021"
+edition = "2024"
 version = "4.4.0"
 publish = false
 

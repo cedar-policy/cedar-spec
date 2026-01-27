@@ -20,10 +20,10 @@
 #![cfg(feature = "integration-testing")]
 
 use cedar_policy::{Entities, PolicySet, Request, Schema, ValidationMode};
-use cedar_testing::cedar_test_impl::{time_function, CedarTestImplementation, RustEngine};
+use cedar_testing::cedar_test_impl::{CedarTestImplementation, RustEngine, time_function};
 use cedar_testing::integration_testing::{
-    parse_entities_from_test, parse_policies_from_test, parse_request_from_test,
-    parse_schema_from_test, resolve_integration_test_path, JsonTest,
+    JsonTest, parse_entities_from_test, parse_policies_from_test, parse_request_from_test,
+    parse_schema_from_test, resolve_integration_test_path,
 };
 use cedar_testing::test_files::get_corpus_tests;
 use statrs::statistics::{Data, OrderStatistics};
@@ -164,10 +164,10 @@ fn print_summary(auth_times: HashMap<&str, Vec<f64>>, val_times: HashMap<&str, V
 
 #[test]
 #[ignore] // doesn't test anything, just prints timing results -- run this on
-          // demand but not in CI.
-          // note that actual Lean functionality on the corpus tests is tested
-          // by a test called `integration_tests_on_def_impl()`, in
-          // integration_tests.rs.
+// demand but not in CI.
+// note that actual Lean functionality on the corpus tests is tested
+// by a test called `integration_tests_on_def_impl()`, in
+// integration_tests.rs.
 fn print_timing_results() {
     let rust_impl = RustEngine::new();
     let lean_impl = CedarLeanEngine::new();
