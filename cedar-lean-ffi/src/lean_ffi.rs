@@ -45,7 +45,7 @@ mod test_implementation;
 #[link(name = "CedarProto", kind = "static")]
 #[link(name = "Batteries", kind = "static")]
 #[link(name = "CedarFFI", kind = "static")]
-extern "C" {
+unsafe extern "C" {
     fn runCheckNeverErrors(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn runCheckNeverErrorsWithCex(
         schema: *mut lean_object,
@@ -1859,7 +1859,7 @@ mod test {
     location: String,
   };
   // A tax-preparing professional
-  entity Professional = { 
+  entity Professional = {
     assigned_orgs: Set<orgInfo>,
     location: String,
   };
@@ -1869,7 +1869,7 @@ mod test {
     location: String,
     owner: Client,
   };
-  // A client 
+  // A client
   entity Client = {
     organization: String
   };

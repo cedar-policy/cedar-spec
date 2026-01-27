@@ -230,7 +230,7 @@ pub unsafe fn call_lean_ffi_function(
     func: unsafe extern "C" fn(*mut lean_object) -> *mut lean_object,
     arg: OwnedLeanObject,
 ) -> OwnedLeanObject {
-    let ret = OwnedLeanObject(func(arg.0));
+    let ret = unsafe { OwnedLeanObject(func(arg.0)) };
     // Since `func` "takes ownership" of `arg`, we need to not decrement the
     // refcount on `arg` ourselves when it is dropped. So we `mem::forget` it to
     // prevent the `Drop` impl from running. Effectively, Lean has dropped it
@@ -244,7 +244,7 @@ pub unsafe fn call_lean_ffi_bi_function(
     arg0: OwnedLeanObject,
     arg1: OwnedLeanObject,
 ) -> OwnedLeanObject {
-    let ret = OwnedLeanObject(func(arg0.0, arg1.0));
+    let ret = unsafe { OwnedLeanObject(func(arg0.0, arg1.0)) };
     // Since `func` "takes ownership" of `arg`, we need to not decrement the
     // refcount on `arg` ourselves when it is dropped. So we `mem::forget` it to
     // prevent the `Drop` impl from running. Effectively, Lean has dropped it
@@ -261,7 +261,7 @@ pub unsafe fn call_lean_ffi_takes_protobuf(
     arg: &impl Message,
 ) -> OwnedLeanObject {
     let arg = OwnedLeanObject::new_array_from_buf(&arg.encode_to_vec());
-    call_lean_ffi_function(func, arg)
+    unsafe { call_lean_ffi_function(func, arg) }
 }
 
 pub unsafe fn call_lean_ffi_takes_obj_and_protobuf(
@@ -270,5 +270,5 @@ pub unsafe fn call_lean_ffi_takes_obj_and_protobuf(
     arg1: &impl Message,
 ) -> OwnedLeanObject {
     let arg1 = OwnedLeanObject::new_array_from_buf(&arg1.encode_to_vec());
-    call_lean_ffi_bi_function(func, arg0, arg1)
+    unsafe { call_lean_ffi_bi_function(func, arg0, arg1) }
 }
