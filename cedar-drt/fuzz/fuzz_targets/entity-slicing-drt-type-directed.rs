@@ -20,8 +20,8 @@ use cedar_drt::logger::initialize_log;
 use cedar_drt_inner::{abac::FuzzTargetInput, fuzz_target};
 
 use cedar_policy::{
-    compute_entity_manifest, Authorizer, Entities, EntityManifestError, Policy, PolicySet, Request,
-    Schema, Validator,
+    Authorizer, Entities, EntityManifestError, Policy, PolicySet, Request, Schema, Validator,
+    compute_entity_manifest,
 };
 
 use log::debug;

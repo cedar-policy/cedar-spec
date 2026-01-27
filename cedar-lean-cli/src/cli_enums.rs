@@ -169,7 +169,9 @@ impl From<RequestArgs> for RequestArgsEnum {
                         resource: r,
                         context,
                     },
-                    (_, _, _) => panic!("Error parsing args. Principal, Action, and Resource are required if request_file is not provided"),
+                    (_, _, _) => panic!(
+                        "Error parsing args. Principal, Action, and Resource are required if request_file is not provided"
+                    ),
                 }
             }
         }

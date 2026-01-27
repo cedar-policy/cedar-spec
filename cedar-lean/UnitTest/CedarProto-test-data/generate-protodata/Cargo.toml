@@ -1,10 +1,10 @@
 [package]
 name = "generate-protodata"
-rust-version = "1.77"
+rust-version = "1.85"
 version = "4.1.0"
 homepage = "https://cedarpolicy.com"
 license = "Apache-2.0"
-edition = "2021"
+edition = "2024"
 repository = "https://github.com/cedar-policy/cedar-spec"
 
 [dependencies]

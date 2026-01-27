@@ -6,7 +6,7 @@ use thiserror::Error;
 
 use std::char::CharTryFromError;
 use std::collections::{BTreeMap, BTreeSet, HashSet};
-use std::num::{NonZeroU32, NonZeroU8};
+use std::num::{NonZeroU8, NonZeroU32};
 use std::str::FromStr;
 use std::sync::Arc;
 

@@ -25,7 +25,7 @@ use crate::datatypes::{
 };
 use crate::err::FfiError;
 use crate::lean_object::{
-    call_lean_ffi_takes_obj_and_protobuf, call_lean_ffi_takes_protobuf, OwnedLeanObject,
+    OwnedLeanObject, call_lean_ffi_takes_obj_and_protobuf, call_lean_ffi_takes_protobuf,
 };
 use crate::messages::*;
 
@@ -51,7 +51,7 @@ mod test_implementation;
 #[link(name = "CedarProto", kind = "static")]
 #[link(name = "Batteries", kind = "static")]
 #[link(name = "CedarFFI", kind = "static")]
-extern "C" {
+unsafe extern "C" {
     fn runCheckNeverErrors(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn runCheckNeverErrorsWithCex(
         schema: *mut lean_object,
@@ -86,7 +86,7 @@ extern "C" {
     fn runCheckImpliesWithCex(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn runCheckDisjoint(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn runCheckDisjointWithCex(schema: *mut lean_object, req: *mut lean_object)
-        -> *mut lean_object;
+    -> *mut lean_object;
     fn runCheckMatchesEquivalent(
         schema: *mut lean_object,
         req: *mut lean_object,
@@ -101,7 +101,7 @@ extern "C" {
         req: *mut lean_object,
     ) -> *mut lean_object;
     fn runCheckMatchesDisjoint(schema: *mut lean_object, req: *mut lean_object)
-        -> *mut lean_object;
+    -> *mut lean_object;
     fn runCheckMatchesDisjointWithCex(
         schema: *mut lean_object,
         req: *mut lean_object,
@@ -109,7 +109,7 @@ extern "C" {
 
     fn printCheckNeverErrors(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn printCheckAlwaysMatches(schema: *mut lean_object, req: *mut lean_object)
-        -> *mut lean_object;
+    -> *mut lean_object;
     fn printCheckNeverMatches(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn printCheckAlwaysAllows(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn printCheckAlwaysDenies(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
@@ -150,7 +150,7 @@ extern "C" {
         req: *mut lean_object,
     ) -> *mut lean_object;
     fn smtLibOfCheckEquivalent(schema: *mut lean_object, req: *mut lean_object)
-        -> *mut lean_object;
+    -> *mut lean_object;
     fn smtLibOfCheckImplies(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn smtLibOfCheckDisjoint(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn smtLibOfCheckMatchesEquivalent(
@@ -1216,7 +1216,7 @@ mod test {
     #[link(name = "CedarProto", kind = "static")]
     #[link(name = "Batteries", kind = "static")]
     #[link(name = "CedarFFI", kind = "static")]
-    extern "C" {}
+    unsafe extern "C" {}
 
     use cedar_policy::{
         Context, Entities, Entity, EntityTypeName, EntityUid, Expression, Policy, PolicyId,
@@ -1229,9 +1229,9 @@ mod test {
     use std::str::FromStr;
 
     use crate::{
+        CedarLeanFfi, TimedResult, ValidationResponse,
         lean_ffi::{ffiTestExceptErr, ffiTestExceptOk, ffiTestString},
         lean_object::LeanObject,
-        CedarLeanFfi, TimedResult, ValidationResponse,
     };
 
     impl CedarLeanFfi {
@@ -2096,7 +2096,7 @@ mod test {
     location: String,
   };
   // A tax-preparing professional
-  entity Professional = { 
+  entity Professional = {
     assigned_orgs: Set<orgInfo>,
     location: String,
   };
@@ -2106,7 +2106,7 @@ mod test {
     location: String,
     owner: Client,
   };
-  // A client 
+  // A client
   entity Client = {
     organization: String
   };
@@ -2269,12 +2269,13 @@ action "" appliesTo {
         .unwrap();
         let request_env = request_env("N", "Action::\"\"", "V");
         let ffi = CedarLeanFfi::new();
-        assert!(!ffi
-            .run_check_always_denies(
+        assert!(
+            !ffi.run_check_always_denies(
                 &pset,
                 ffi.load_lean_schema_object(&schema).unwrap(),
                 &request_env
             )
-            .unwrap());
+            .unwrap()
+        );
     }
 }

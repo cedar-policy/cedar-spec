@@ -18,7 +18,7 @@ use cedar_policy::{AuthorizationError, Policy};
 use cedar_policy_core::entities::TypeAndId;
 
 use cedar_testing::cedar_test_impl::RustEngine;
-use cedar_testing::integration_testing::{perform_integration_test, JsonRequest, JsonTest};
+use cedar_testing::integration_testing::{JsonRequest, JsonTest, perform_integration_test};
 use std::{io::Write, path::Path, str::FromStr};
 
 /// Dump testcase to a directory.

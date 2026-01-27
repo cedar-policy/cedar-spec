@@ -21,6 +21,3 @@ indexmap = { version = "2.12.0", features = ["arbitrary"] }
 
 [features]
 cedar-policy = ["dep:cedar-policy"]
-
-[dev.dependencies]
-rand = "0.8.5"

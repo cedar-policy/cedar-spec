@@ -20,7 +20,7 @@ use cedar_drt_inner::{fuzz_target, schemas::equivalence_check};
 use cedar_policy_core::validator::json_schema;
 use cedar_policy_core::{ast, extensions::Extensions};
 use cedar_policy_generators::{
-    schema::downgrade_frag_to_raw, schema::Schema, settings::ABACSettings,
+    schema::Schema, schema::downgrade_frag_to_raw, settings::ABACSettings,
 };
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use std::collections::BTreeMap;
@@ -64,7 +64,9 @@ fuzz_target!(|i: Input| {
     let json = serde_json::to_value(raw_schema.clone()).unwrap();
     let json_ast = json_schema::Fragment::from_json_value(json).unwrap();
     if let Err(e) = equivalence_check(&raw_schema, &json_ast) {
-        panic!("JSON roundtrip failed: {e}\nOrig:\n```\n{raw_schema}\n```\nRoundtripped:\n```\n{json_ast}\n```");
+        panic!(
+            "JSON roundtrip failed: {e}\nOrig:\n```\n{raw_schema}\n```\nRoundtripped:\n```\n{json_ast}\n```"
+        );
     }
     let src = json_ast.to_cedarschema().unwrap();
     let (final_ast, _) =
