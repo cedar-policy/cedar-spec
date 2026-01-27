@@ -21,7 +21,7 @@ use miette::miette;
 use std::collections::HashMap;
 
 use cedar_policy::{
-    ffi, Entities, EvalResult, Expression, PolicySet, Request, Schema, ValidationMode,
+    Entities, EvalResult, Expression, PolicySet, Request, Schema, ValidationMode, ffi,
 };
 use cedar_testing::cedar_test_impl::{
     CedarTestImplementation, ErrorComparisonMode, Micros, TestResponse, TestResult,

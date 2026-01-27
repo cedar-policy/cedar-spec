@@ -23,7 +23,7 @@ use cedar_policy::{
 use itertools::Itertools;
 use miette::WrapErr;
 use serde::Serialize;
-use serde_json::{from_str, Value};
+use serde_json::{Value, from_str};
 use std::collections::HashSet;
 use std::{fs::read_to_string, path::PathBuf, str::FromStr};
 
@@ -196,7 +196,7 @@ impl OpenRequestEnv {
                 for principal_type in principal_types {
                     match &self.principal_type {
                         Some(req_principal_type) if req_principal_type != principal_type => {
-                            continue
+                            continue;
                         }
                         _ => (),
                     };
@@ -204,7 +204,7 @@ impl OpenRequestEnv {
                         for resource_type in resource_types {
                             match &self.resource_type {
                                 Some(req_resource_type) if req_resource_type != resource_type => {
-                                    continue
+                                    continue;
                                 }
                                 _ => (),
                             };

@@ -20,7 +20,7 @@ use cedar_drt_inner::{fuzz_target, symcc::SinglePolicyFuzzTargetInput};
 
 use cedar_lean_ffi::CedarLeanFfi;
 use cedar_policy::{Policy, PolicySet, Schema};
-use cedar_policy_symcc::{always_allows_asserts, term::Term, CompiledPolicySet};
+use cedar_policy_symcc::{CompiledPolicySet, always_allows_asserts, term::Term};
 
 use log::debug;
 use std::{collections::BTreeSet, convert::TryFrom};

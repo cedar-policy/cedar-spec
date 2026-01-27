@@ -1,4 +1,4 @@
-use assert_cmd::{cargo, Command};
+use assert_cmd::{Command, cargo};
 use std::path::{Path, PathBuf};
 
 fn check_output<P: AsRef<Path>>(cmd: &mut Command, expected_output_file: P, should_error: bool) {

@@ -20,7 +20,7 @@ use cedar_drt_inner::fuzz_target;
 
 use cedar_policy_core::ast::{Pattern, PatternElem};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Result, Unstructured};
-use regex::{escape, Regex};
+use regex::{Regex, escape};
 
 /// Input expected by this fuzz target:
 /// A pattern and a string that matches it

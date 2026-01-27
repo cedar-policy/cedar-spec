@@ -23,7 +23,7 @@ use cedar_drt_inner::fuzz_target;
 use cedar_policy_core::ast::{StaticPolicy, Template};
 use cedar_policy_core::parser::{self, parse_policy};
 use cedar_policy_formatter::token::{Comment, Token, WrappedToken};
-use cedar_policy_formatter::{policies_str_to_pretty, Config};
+use cedar_policy_formatter::{Config, policies_str_to_pretty};
 use cedar_policy_generators::schema_gen::SchemaGen;
 use cedar_policy_generators::{
     abac::ABACPolicy, hierarchy::HierarchyGenerator, schema::Schema, settings::ABACSettings,
@@ -127,9 +127,13 @@ fn round_trip(p: &StaticPolicy, seed: u64) -> Result<StaticPolicy, Box<parser::e
                     )
                 );
                 if formatted_policy_str.contains(u) {
-                    panic!("It looks like we skipped over comment `{u}`. The formatter might have reordered the comment")
+                    panic!(
+                        "It looks like we skipped over comment `{u}`. The formatter might have reordered the comment"
+                    )
                 } else {
-                    panic!("Failed to find comment `{u}` anywhere. The formatter might have dropped the comment")
+                    panic!(
+                        "Failed to find comment `{u}` anywhere. The formatter might have dropped the comment"
+                    )
                 }
             }
         }

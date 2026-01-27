@@ -45,7 +45,10 @@ pub fn check_is_authorized(
     }
     if !auth_response.erroring_policies().is_empty() {
         println!();
-        println!("The following policies did not contribute to the decision as they errored during evaluation: {}", auth_response.erroring_policies().iter().join(" "));
+        println!(
+            "The following policies did not contribute to the decision as they errored during evaluation: {}",
+            auth_response.erroring_policies().iter().join(" ")
+        );
     }
     Ok(())
 }

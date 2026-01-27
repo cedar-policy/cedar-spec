@@ -16,7 +16,7 @@
 
 #![no_main]
 use cedar_drt::{
-    logger::{initialize_log, TOTAL_MSG},
+    logger::{TOTAL_MSG, initialize_log},
     tests::run_ent_val_test,
 };
 use cedar_drt_inner::fuzz_target;
