@@ -18,29 +18,21 @@
 use cedar_drt::logger::initialize_log;
 use cedar_drt_inner::{
     fuzz_target,
-    symcc::{local_solver, total_action_request_env_limit},
+    symcc::{local_solver, SinglePolicyFuzzTargetInput},
 };
 
 use cedar_policy::{Authorizer, Decision, Policy, PolicySet, Schema};
-use cedar_policy_generators::{
-    abac::ABACPolicy, hierarchy::HierarchyGenerator, schema, schema_gen::SchemaGen,
-    settings::ABACSettings,
-};
-
-use libfuzzer_sys::arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
-use log::debug;
-use std::convert::TryFrom;
-use tokio::{
-    sync::{Mutex, MutexGuard},
-    time::{error::Elapsed, timeout, Duration},
-};
-
 use cedar_policy_symcc::{
     always_allows_asserts, always_denies_asserts, err::SolverError, solver::LocalSolver,
     CedarSymCompiler, CompiledPolicySet, Env, WellFormedAsserts,
 };
 
-use std::sync::LazyLock;
+use log::debug;
+use std::{convert::TryFrom, sync::LazyLock};
+use tokio::{
+    sync::{Mutex, MutexGuard},
+    time::{error::Elapsed, timeout, Duration},
+};
 
 static RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
     tokio::runtime::Builder::new_current_thread()
@@ -76,42 +68,6 @@ async fn get_solver() -> MutexGuard<'static, Solver> {
         guard.usage_count = 0;
     }
     guard
-}
-
-/// Input expected by this fuzz target
-#[derive(Debug, Clone)]
-pub struct FuzzTargetInput {
-    /// generated schema
-    pub schema: schema::Schema,
-    /// generated policy
-    pub policy: ABACPolicy,
-}
-
-/// settings for this fuzz target
-const SETTINGS: ABACSettings = ABACSettings {
-    max_depth: 3,
-    max_width: 3,
-    total_action_request_env_limit: total_action_request_env_limit(),
-    ..ABACSettings::type_directed()
-};
-
-impl<'a> Arbitrary<'a> for FuzzTargetInput {
-    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        let schema = schema::Schema::arbitrary(SETTINGS.clone(), u)?;
-        let hierarchy = schema.arbitrary_hierarchy(u)?;
-        let policy = schema.arbitrary_policy(&hierarchy, u)?;
-
-        Ok(Self { schema, policy })
-    }
-
-    fn try_size_hint(
-        depth: usize,
-    ) -> std::result::Result<(usize, Option<usize>), MaxRecursionReached> {
-        Ok(arbitrary::size_hint::and_all(&[
-            schema::Schema::arbitrary_size_hint(depth)?,
-            HierarchyGenerator::size_hint(depth),
-        ]))
-    }
 }
 
 #[derive(Debug)]
@@ -188,7 +144,7 @@ fn reproduce(env: &Env, policies: &PolicySet) -> Decision {
 }
 
 // Fuzzing target checking that counterexamples generated are true counterexamples
-fuzz_target!(|input: FuzzTargetInput| {
+fuzz_target!(|input: SinglePolicyFuzzTargetInput| {
     initialize_log();
     let mut policyset = PolicySet::new();
     let policy: Policy = input.policy.into();

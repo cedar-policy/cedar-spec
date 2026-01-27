@@ -15,17 +15,22 @@
  */
 
 use cedar_policy::{Policy, PolicySet, RequestEnv, Schema};
+use cedar_policy_generators::{
+    abac::ABACPolicy, hierarchy::HierarchyGenerator, schema, schema_gen::SchemaGen,
+    settings::ABACSettings,
+};
 use cedar_policy_symcc::{
     err::{EncodeError, Error},
     solver::LocalSolver,
     CedarSymCompiler, CompiledPolicy, CompiledPolicySet,
 };
+use libfuzzer_sys::arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
 use log::warn;
 use std::fmt::Display;
 use tokio::process::Command;
 
 /// The limit on the total number of request envs specific to symcc
-pub const fn total_action_request_env_limit() -> usize {
+const fn total_action_request_env_limit() -> usize {
     128
 }
 
@@ -47,6 +52,78 @@ pub fn local_solver() -> Result<cedar_policy_symcc::solver::LocalSolver, String>
         });
     }
     cedar_policy_symcc::solver::LocalSolver::from_command(&mut cmd).map_err(|err| err.to_string())
+}
+
+/// Settings shared by all SymCC fuzz targets that use `FuzzTargetInput`s
+/// declared in this file.
+const SETTINGS: ABACSettings = ABACSettings {
+    max_depth: 3,
+    max_width: 3,
+    total_action_request_env_limit: total_action_request_env_limit(),
+    ..ABACSettings::type_directed()
+};
+
+/// Input to SymCC fuzz targets that need a single policy.
+#[derive(Debug, Clone)]
+pub struct SinglePolicyFuzzTargetInput {
+    /// generated schema
+    pub schema: schema::Schema,
+    /// generated policy
+    pub policy: ABACPolicy,
+}
+
+impl<'a> Arbitrary<'a> for SinglePolicyFuzzTargetInput {
+    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
+        let schema = schema::Schema::arbitrary(SETTINGS.clone(), u)?;
+        let hierarchy = schema.arbitrary_hierarchy(u)?;
+        let policy = schema.arbitrary_policy(&hierarchy, u)?;
+
+        Ok(Self { schema, policy })
+    }
+
+    fn try_size_hint(
+        depth: usize,
+    ) -> std::result::Result<(usize, Option<usize>), MaxRecursionReached> {
+        Ok(arbitrary::size_hint::and_all(&[
+            schema::Schema::arbitrary_size_hint(depth)?,
+            HierarchyGenerator::size_hint(depth),
+        ]))
+    }
+}
+
+/// Input to SymCC fuzz targets that need two individual policies.
+#[derive(Debug, Clone)]
+pub struct TwoPolicyFuzzTargetInput {
+    /// generated schema
+    pub schema: schema::Schema,
+    /// generated policy
+    pub policy1: ABACPolicy,
+    /// generated policy
+    pub policy2: ABACPolicy,
+}
+
+impl<'a> Arbitrary<'a> for TwoPolicyFuzzTargetInput {
+    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
+        let schema = schema::Schema::arbitrary(SETTINGS.clone(), u)?;
+        let hierarchy = schema.arbitrary_hierarchy(u)?;
+        let policy1 = schema.arbitrary_policy(&hierarchy, u)?;
+        let policy2 = schema.arbitrary_policy(&hierarchy, u)?;
+
+        Ok(Self {
+            schema,
+            policy1,
+            policy2,
+        })
+    }
+
+    fn try_size_hint(
+        depth: usize,
+    ) -> std::result::Result<(usize, Option<usize>), MaxRecursionReached> {
+        Ok(arbitrary::size_hint::and_all(&[
+            schema::Schema::arbitrary_size_hint(depth)?,
+            HierarchyGenerator::size_hint(depth),
+        ]))
+    }
 }
 
 pub trait ValidationTask: Sync {

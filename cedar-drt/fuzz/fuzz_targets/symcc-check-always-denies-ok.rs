@@ -19,17 +19,11 @@ use cedar_drt::logger::initialize_log;
 
 use cedar_drt_inner::{
     fuzz_target,
-    symcc::{total_action_request_env_limit, PolicySetTask, ValidationTask},
+    symcc::{PolicySetTask, SinglePolicyFuzzTargetInput, ValidationTask},
 };
 
 use cedar_policy::{PolicySet, Schema};
 
-use cedar_policy_generators::{
-    abac::ABACPolicy, hierarchy::HierarchyGenerator, schema, schema_gen::SchemaGen,
-    settings::ABACSettings,
-};
-
-use libfuzzer_sys::arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
 use std::convert::TryFrom;
 use std::sync::LazyLock;
 
@@ -40,42 +34,7 @@ static RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
         .unwrap()
 });
 
-/// Input expected by this fuzz target.
-#[derive(Debug, Clone)]
-pub struct FuzzTargetInput {
-    /// generated schema
-    pub schema: schema::Schema,
-    /// generated policy
-    pub policy: ABACPolicy,
-}
-
-/// Settings for this fuzz target.
-const SETTINGS: ABACSettings = ABACSettings {
-    max_depth: 3,
-    max_width: 3,
-    total_action_request_env_limit: total_action_request_env_limit(),
-    ..ABACSettings::type_directed()
-};
-
-impl<'a> Arbitrary<'a> for FuzzTargetInput {
-    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        let schema = schema::Schema::arbitrary(SETTINGS.clone(), u)?;
-        let hierarchy = schema.arbitrary_hierarchy(u)?;
-        let policy = schema.arbitrary_policy(&hierarchy, u)?;
-        Ok(Self { schema, policy })
-    }
-
-    fn try_size_hint(
-        depth: usize,
-    ) -> std::result::Result<(usize, Option<usize>), MaxRecursionReached> {
-        Ok(arbitrary::size_hint::and_all(&[
-            schema::Schema::arbitrary_size_hint(depth)?,
-            HierarchyGenerator::size_hint(depth),
-        ]))
-    }
-}
-
-fuzz_target!(|input: FuzzTargetInput| {
+fuzz_target!(|input: SinglePolicyFuzzTargetInput| {
     initialize_log();
     let mut policy_set = PolicySet::new();
     policy_set.add(input.policy.into()).unwrap();
