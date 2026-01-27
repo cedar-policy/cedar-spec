@@ -21,14 +21,14 @@ use cedar_policy_generators::{
     settings::ABACSettings,
 };
 use cedar_policy_symcc::{
-    CedarSymCompiler, CedarSymCompiler, CompiledPolicy, CompiledPolicy, CompiledPolicySet,
-    CompiledPolicySet, WellFormedAsserts,
+    CedarSymCompiler, CompiledPolicy, CompiledPolicySet, WellFormedAsserts,
     err::{EncodeError, Error},
     solver::{LocalSolver, WriterSolver},
     term::Term,
 };
-use log::warn;
-use std::fmt::Display;
+use libfuzzer_sys::arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
+use log::{debug, warn};
+use std::{collections::BTreeSet, fmt::Display};
 use tokio::process::Command;
 
 /// The limit on the total number of request envs specific to symcc
