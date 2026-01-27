@@ -62,7 +62,9 @@ pub enum ExecError {
         file_name: PathBuf,
         error: Box<dyn std::error::Error>,
     },
-    #[error("Error while attempting to use id annotations as policy ids in while parsing {content_type:?} from {file_name}: {error}")]
+    #[error(
+        "Error while attempting to use id annotations as policy ids in while parsing {content_type:?} from {file_name}: {error}"
+    )]
     RenameIdError {
         content_type: ContentType,
         file_name: PathBuf,

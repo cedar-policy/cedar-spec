@@ -25,7 +25,7 @@ use cedar_lean_ffi::CedarLeanFfi;
 use cedar_policy::Entities;
 use cedar_policy_core::ast::Expr;
 use cedar_policy_generators::hierarchy::HierarchyGenerator;
-use cedar_policy_generators::schema::{arbitrary_schematype_with_bounded_depth, Schema};
+use cedar_policy_generators::schema::{Schema, arbitrary_schematype_with_bounded_depth};
 use cedar_policy_generators::settings::ABACSettings;
 use cedar_policy_generators::{abac::ABACRequest, schema::schematype_to_type};
 use cedar_policy_generators::{err::Error, schema_gen::SchemaGen};

@@ -44,17 +44,33 @@ fuzz_target!(|input: SinglePolicyFuzzTargetInput| {
             {
                 Ok(smtlib1) => {
                     // Get intermediate term representation of the Asserts / Verification conditions from Lean
-                    match lean_ffi.asserts_of_check_always_allows(&policyset, lean_schema.clone(), &req_env) {
+                    match lean_ffi.asserts_of_check_always_allows(
+                        &policyset,
+                        lean_schema.clone(),
+                        &req_env,
+                    ) {
                         Ok(Ok(asserts)) => {
                             // Compute SMTLib script from the intermediate Assertions
-                            match lean_ffi.smtlib_of_check_asserts(&asserts, lean_schema.clone(), &req_env) {
+                            match lean_ffi.smtlib_of_check_asserts(
+                                &asserts,
+                                lean_schema.clone(),
+                                &req_env,
+                            ) {
                                 // The smtlib scripts should be identical. Otherwise serialization/deserialization may have altered the assertions
-                                Ok(smtlib2) => assert_eq!(Direct: smtlib1, Roundtripped: smtlib2, "Mismatch between direct smtlib and roundtripped term smtlib for {req_env:?}"),
-                                Err(e) => panic!("Roundtripped errored when direct smtlib request did not error. Error: {e}"),
+                                Ok(smtlib2) => {
+                                    assert_eq!(Direct: smtlib1, Roundtripped: smtlib2, "Mismatch between direct smtlib and roundtripped term smtlib for {req_env:?}")
+                                }
+                                Err(e) => panic!(
+                                    "Roundtripped errored when direct smtlib request did not error. Error: {e}"
+                                ),
                             }
                         }
-                        Ok(Err(s)) => panic!("Roundtrip errored when direct smtlib result did not error. Error: {s}"),
-                        Err(e) => panic!("Roundtripped errored when direct smtlib request did not error. Error: {e}"),
+                        Ok(Err(s)) => panic!(
+                            "Roundtrip errored when direct smtlib result did not error. Error: {s}"
+                        ),
+                        Err(e) => panic!(
+                            "Roundtripped errored when direct smtlib request did not error. Error: {e}"
+                        ),
                     }
                 }
                 // The policy/schema produced an error in Lean
@@ -70,7 +86,9 @@ fuzz_target!(|input: SinglePolicyFuzzTargetInput| {
                                 .smtlib_of_check_asserts(&asserts, lean_schema.clone(), &req_env)
                                 .is_ok()
                             {
-                                panic!("Roundtripped did not error when direct smtlib request errored. Error: {e}")
+                                panic!(
+                                    "Roundtripped did not error when direct smtlib request errored. Error: {e}"
+                                )
                             }
                         }
                         Ok(Err(_)) => (),

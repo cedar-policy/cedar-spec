@@ -15,10 +15,10 @@
  */
 
 use cedar_policy_core::ast::{Id, InternalName, Name};
-use cedar_policy_core::validator::json_schema;
-use cedar_policy_core::validator::json_schema::EntityTypeKind;
 use cedar_policy_core::validator::RawName;
 use cedar_policy_core::validator::ValidatorEntityTypeKind;
+use cedar_policy_core::validator::json_schema;
+use cedar_policy_core::validator::json_schema::EntityTypeKind;
 use itertools::Itertools;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 

@@ -20,7 +20,7 @@ use cedar_drt_inner::{fuzz_target, schemas};
 use cedar_policy_core::ast;
 use cedar_policy_core::validator::json_schema;
 use cedar_policy_generators::{
-    schema::{downgrade_frag_to_raw, Schema},
+    schema::{Schema, downgrade_frag_to_raw},
     settings::ABACSettings,
 };
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
