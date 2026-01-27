@@ -979,7 +979,7 @@ mod test {
     #[link(name = "CedarProto", kind = "static")]
     #[link(name = "Batteries", kind = "static")]
     #[link(name = "CedarFFI", kind = "static")]
-    extern "C" {}
+    unsafe extern "C" {}
 
     use cedar_policy::{
         Context, Entities, Entity, EntityTypeName, EntityUid, Expression, Policy, PolicyId,
