@@ -27,4 +27,4 @@ pub use datatypes::{
     TermPrimType, TermType, TermVar, Uuf,
 };
 pub use err::FfiError;
-pub use lean_ffi::CedarLeanFfi;
+pub use lean_ffi::{CedarLeanFfi, LeanSchema};
