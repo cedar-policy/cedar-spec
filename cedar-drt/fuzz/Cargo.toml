@@ -257,8 +257,20 @@ test = false
 doc = false
 
 [[bin]]
+name = "symcc-term-drt-always-allows-multipolicy"
+path = "fuzz_targets/symcc-term-drt-always-allows-multipolicy.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "symcc-term-drt-always-denies"
 path = "fuzz_targets/symcc-term-drt-always-denies.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "symcc-term-drt-always-denies-multipolicy"
+path = "fuzz_targets/symcc-term-drt-always-denies-multipolicy.rs"
 test = false
 doc = false
 
@@ -269,14 +281,32 @@ test = false
 doc = false
 
 [[bin]]
+name = "symcc-term-drt-equivalent-multipolicy"
+path = "fuzz_targets/symcc-term-drt-equivalent-multipolicy.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "symcc-term-drt-implies"
 path = "fuzz_targets/symcc-term-drt-implies.rs"
 test = false
 doc = false
 
 [[bin]]
+name = "symcc-term-drt-implies-multipolicy"
+path = "fuzz_targets/symcc-term-drt-implies-multipolicy.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "symcc-term-drt-disjoint"
 path = "fuzz_targets/symcc-term-drt-disjoint.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "symcc-term-drt-disjoint-multipolicy"
+path = "fuzz_targets/symcc-term-drt-disjoint-multipolicy.rs"
 test = false
 doc = false
 

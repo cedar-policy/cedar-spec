@@ -17,7 +17,10 @@
 use cedar_lean_ffi::{CedarLeanFfi, FfiError, LeanSchema};
 use cedar_policy::{Policy, PolicySet, RequestEnv, Schema};
 use cedar_policy_generators::{
-    abac::ABACPolicy, hierarchy::HierarchyGenerator, schema, schema_gen::SchemaGen,
+    abac::ABACPolicy,
+    hierarchy::{Hierarchy, HierarchyGenerator},
+    schema,
+    schema_gen::SchemaGen,
     settings::ABACSettings,
 };
 use cedar_policy_symcc::{
@@ -156,6 +159,47 @@ impl<'a> Arbitrary<'a> for SinglePolicyFuzzTargetInput {
     }
 }
 
+fn arbitrary_policies(
+    schema: &schema::Schema,
+    hierarchy: &Hierarchy,
+    u: &mut Unstructured<'_>,
+) -> arbitrary::Result<Vec<ABACPolicy>> {
+    let len = u.arbitrary_len::<usize>()?;
+    let mut policies: Vec<ABACPolicy> = Vec::with_capacity(len);
+    for _ in 0..len {
+        policies.push(schema.arbitrary_policy(&hierarchy, u)?);
+    }
+    Ok(policies)
+}
+
+/// Input to SymCC fuzz targets that need a single policyset (containing 0 or more policies).
+#[derive(Debug, Clone)]
+pub struct SinglePolicySetFuzzTargetInput {
+    /// generated schema
+    pub schema: schema::Schema,
+    /// generated policyset
+    pub pset: Vec<ABACPolicy>,
+}
+
+impl<'a> Arbitrary<'a> for SinglePolicySetFuzzTargetInput {
+    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
+        let schema = schema::Schema::arbitrary(SETTINGS.clone(), u)?;
+        let hierarchy = schema.arbitrary_hierarchy(u)?;
+        let pset = arbitrary_policies(&schema, &hierarchy, u)?;
+
+        Ok(Self { schema, pset })
+    }
+
+    fn try_size_hint(
+        depth: usize,
+    ) -> std::result::Result<(usize, Option<usize>), MaxRecursionReached> {
+        Ok(arbitrary::size_hint::and_all(&[
+            schema::Schema::arbitrary_size_hint(depth)?,
+            HierarchyGenerator::size_hint(depth),
+        ]))
+    }
+}
+
 /// Input to SymCC fuzz targets that need two individual policies.
 #[derive(Debug, Clone)]
 pub struct TwoPolicyFuzzTargetInput {
@@ -178,6 +222,41 @@ impl<'a> Arbitrary<'a> for TwoPolicyFuzzTargetInput {
             schema,
             policy1,
             policy2,
+        })
+    }
+
+    fn try_size_hint(
+        depth: usize,
+    ) -> std::result::Result<(usize, Option<usize>), MaxRecursionReached> {
+        Ok(arbitrary::size_hint::and_all(&[
+            schema::Schema::arbitrary_size_hint(depth)?,
+            HierarchyGenerator::size_hint(depth),
+        ]))
+    }
+}
+
+/// Input to SymCC fuzz targets that need two policysets (each containing 0 or more policies).
+#[derive(Debug, Clone)]
+pub struct TwoPolicySetFuzzTargetInput {
+    /// generated schema
+    pub schema: schema::Schema,
+    /// generated policyset
+    pub pset1: Vec<ABACPolicy>,
+    /// generated policyset
+    pub pset2: Vec<ABACPolicy>,
+}
+
+impl<'a> Arbitrary<'a> for TwoPolicySetFuzzTargetInput {
+    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
+        let schema = schema::Schema::arbitrary(SETTINGS.clone(), u)?;
+        let hierarchy = schema.arbitrary_hierarchy(u)?;
+        let pset1 = arbitrary_policies(&schema, &hierarchy, u)?;
+        let pset2 = arbitrary_policies(&schema, &hierarchy, u)?;
+
+        Ok(Self {
+            schema,
+            pset1,
+            pset2,
         })
     }
 
