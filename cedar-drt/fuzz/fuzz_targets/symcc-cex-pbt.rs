@@ -22,16 +22,13 @@ use cedar_drt_inner::{
 };
 
 use cedar_policy::{Authorizer, Decision, Policy, PolicySet, Schema};
-use cedar_policy_symcc::{
-    CedarSymCompiler, CompiledPolicySet, Env, WellFormedAsserts, always_allows_asserts,
-    always_denies_asserts, err::SolverError, solver::LocalSolver,
-};
+use cedar_policy_symcc::{CedarSymCompiler, CompiledPolicySet, Env, solver::LocalSolver};
 
 use log::debug;
-use std::{convert::TryFrom, sync::LazyLock};
+use std::{convert::TryFrom, future::Future, sync::LazyLock};
 use tokio::{
     sync::{Mutex, MutexGuard},
-    time::{Duration, error::Elapsed, timeout},
+    time::{Duration, timeout},
 };
 
 static RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
@@ -40,6 +37,9 @@ static RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
         .build()
         .unwrap()
 });
+
+/// Solver timeout used for this target
+const TIMEOUT_DUR: Duration = Duration::from_secs(60);
 
 struct Solver {
     local_solver: CedarSymCompiler<LocalSolver>,
@@ -70,71 +70,35 @@ async fn get_solver() -> MutexGuard<'static, Solver> {
     guard
 }
 
-#[derive(Debug)]
-enum CexError {
-    Solver(SolverError),
-    Timeout(Elapsed),
-    Other(String),
-}
-
-fn get_cex(
-    always_allows_asserts: &WellFormedAsserts<'_>,
-    always_denies_asserts: &WellFormedAsserts<'_>,
-) -> Result<(Option<Env>, Option<Env>), CexError> {
-    // TODO: wrap a single run in a function
-    RUNTIME.block_on(async {
-        let always_allow_result = timeout(
-            Duration::from_secs(60),
-            get_solver()
-                .await
-                .local_solver
-                .check_sat(always_allows_asserts),
-        )
-        .await;
-
-        let always_allow_result = match always_allow_result {
-            // Propagate any solver errors because we shouldn't continue running
-            // the solver if it errors
-            Ok(Err(cedar_policy_symcc::err::Error::SolverError(err))) => Err(CexError::Solver(err)),
+/// Run the given future (producing `Result<Option<Env>>`), and return the
+/// counterexample if one was successfully generated.
+///
+/// Panics on unexpected errors. Ignores certain expected errors, returning
+/// `None`. Also returns `None` if the property holds and there is no
+/// counterexample.
+async fn get_cex(
+    f: impl Future<Output = cedar_policy_symcc::err::Result<Option<Env>>>,
+) -> Option<Env> {
+    match timeout(TIMEOUT_DUR, f).await {
+        Ok(Ok(None)) => None, // successfully executed, no counterexample because the property holds
+        Ok(Ok(Some(cex))) => Some(cex),
+        Err(err) => panic!(
+            "found a slow unit (solver took more than {secs:.2} sec) probably worth investigating: {err}",
+            secs = TIMEOUT_DUR.as_secs_f32()
+        ),
+        Ok(Err(cedar_policy_symcc::err::Error::SolverError(err))) => panic!("solver failed: {err}"),
+        Ok(Err(cedar_policy_symcc::err::Error::EncodeError(
+            cedar_policy_symcc::err::EncodeError::EncodeStringFailed(_),
+        )))
+        | Ok(Err(cedar_policy_symcc::err::Error::EncodeError(
+            cedar_policy_symcc::err::EncodeError::EncodePatternFailed(_),
+        ))) => {
             // Encoding errors are benign -- SMTLIB doesn't support full unicode
             // but our generators generate full unicode
-            Ok(Err(cedar_policy_symcc::err::Error::EncodeError(
-                cedar_policy_symcc::err::EncodeError::EncodeStringFailed(_),
-            )))
-            | Ok(Err(cedar_policy_symcc::err::Error::EncodeError(
-                cedar_policy_symcc::err::EncodeError::EncodePatternFailed(_),
-            ))) => Ok(None),
-            // Propagate any other errors
-            Ok(Err(err)) => Err(CexError::Other(err.to_string())),
-            Ok(Ok(env)) => Ok(env),
-            // If timed out, propagate this error because we now have a
-            // long-running solver and should not continue sending scripts
-            Err(err) => Err(CexError::Timeout(err)),
-        }?;
-
-        let always_deny_result = timeout(
-            Duration::from_secs(60),
-            get_solver()
-                .await
-                .local_solver
-                .check_sat(always_denies_asserts),
-        )
-        .await;
-
-        let always_deny_result = match always_deny_result {
-            Ok(Err(cedar_policy_symcc::err::Error::SolverError(err))) => Err(CexError::Solver(err)),
-            Ok(Err(cedar_policy_symcc::err::Error::EncodeError(
-                cedar_policy_symcc::err::EncodeError::EncodeStringFailed(_),
-            )))
-            | Ok(Err(cedar_policy_symcc::err::Error::EncodeError(
-                cedar_policy_symcc::err::EncodeError::EncodePatternFailed(_),
-            ))) => Ok(None),
-            Ok(Err(err)) => Err(CexError::Other(err.to_string())),
-            Ok(Ok(env)) => Ok(env),
-            Err(err) => Err(CexError::Timeout(err)),
-        }?;
-        Ok((always_allow_result, always_deny_result))
-    })
+            None
+        }
+        Ok(Err(err)) => panic!("{err}"), // other errors are unexpected
+    }
 }
 
 fn reproduce(env: &Env, policies: &PolicySet) -> Decision {
@@ -154,44 +118,25 @@ fuzz_target!(|input: SinglePolicyFuzzTargetInput| {
 
     if let Ok(schema) = Schema::try_from(input.schema) {
         for req_env in schema.request_envs() {
-            // We let Rust compile the policies as it's faster than Lean
+            // We let Rust compile the policies as it's faster than Lean.
+            // also note that we do the compilation (and reproduction) while _not_ holding the `get_solver()` lock
             if let Ok(cps) = CompiledPolicySet::compile(&policyset, &req_env, &schema) {
-                match get_cex(&always_allows_asserts(&cps), &always_denies_asserts(&cps)) {
-                    Ok((Some(env_deny), Some(env_allow))) => {
+                RUNTIME.block_on(async {
+                    if let Some(cex) = get_cex(get_solver().await.local_solver.check_always_allows_with_counterexample_opt(&cps)).await {
                         assert_eq!(
-                            reproduce(&env_deny, &policyset),
+                            reproduce(&cex, &policyset),
                             Decision::Deny,
-                            "Rust SymCC returned a wrong counterexample"
+                            "Rust SymCC counterexample for AlwaysAllows was expected to produce Deny but did not"
                         );
+                    }
+                    if let Some(cex) = get_cex(get_solver().await.local_solver.check_always_denies_with_counterexample_opt(&cps)).await {
                         assert_eq!(
-                            reproduce(&env_allow, &policyset),
+                            reproduce(&cex, &policyset),
                             Decision::Allow,
-                            "Rust SymCC returned a wrong counterexample"
+                            "Rust SymCC counterexample for AlwaysDenies was expected to produce Allow but did not"
                         );
                     }
-                    Ok((Some(env_deny), None)) => {
-                        assert_eq!(
-                            reproduce(&env_deny, &policyset),
-                            Decision::Deny,
-                            "Rust SymCC returned a wrong counterexample"
-                        )
-                    }
-                    Ok((None, Some(env_allow))) => {
-                        assert_eq!(
-                            reproduce(&env_allow, &policyset),
-                            Decision::Allow,
-                            "Rust SymCC returned a wrong counterexample"
-                        );
-                    }
-                    Ok((None, None)) => {}
-                    Err(CexError::Solver(err)) => {
-                        panic!("Error running solver: {err}");
-                    }
-                    Err(CexError::Timeout(err)) => {
-                        panic!("Solver timed out: {err}");
-                    }
-                    Err(CexError::Other(err)) => panic!("failed to run checksat: {err}"),
-                }
+                });
             }
         }
     }
