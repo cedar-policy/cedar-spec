@@ -46,12 +46,6 @@ fuzz_target!(|input: TwoPolicyFuzzTargetInput| {
     if let Ok(schema) = Schema::try_from(input.schema) {
         let lean_schema = lean_ffi.load_lean_schema_object(&schema).unwrap();
         for req_env in schema.request_envs() {
-            // The validator DRT property we've been testing is that
-            // rust_passes_validation => lean_passes_validation
-            // So, we run the Rust validator first (as part of `compile()`) and
-            // obtain post-typecheck, well-typed policies (available as
-            // `.policies()` on the `CompiledPolicySet`.) These policies should
-            // be also well-typed according to Lean.
             if let Ok(cpset1) = CompiledPolicySet::compile(&policyset1, &req_env, &schema)
                 && let Ok(cpset2) = CompiledPolicySet::compile(&policyset2, &req_env, &schema)
             {
