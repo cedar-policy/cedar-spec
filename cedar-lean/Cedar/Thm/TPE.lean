@@ -31,7 +31,8 @@ import Cedar.Thm.Authorization
 /-!
 This file defines the main theorem of TPE soundness for authorization.
 
-Significant lemmas proving soundness of policy and expression evaluation are in `Cedar.Thm.TPE.Soundness`.
+Significant lemmas proving soundness of policy and expression evaluation are in
+`Cedar.Thm.TPE.Policy` and `Cedar.Thm.TPE.Soundness`.
 -/
 
 namespace Cedar.Thm
