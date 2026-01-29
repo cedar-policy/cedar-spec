@@ -31,8 +31,17 @@ use cedar_policy_symcc::{
 };
 use libfuzzer_sys::arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
 use log::{debug, warn};
-use std::{collections::BTreeSet, fmt::Display};
+use std::{collections::BTreeSet, fmt::Display, sync::LazyLock};
 use tokio::process::Command;
+
+/// Tokio runtime used by all SymCC fuzz targets that need one. Note that it
+/// runs tasks on only a single OS thread.
+pub static RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+});
 
 /// The limit on the total number of request envs specific to symcc
 const fn total_action_request_env_limit() -> usize {

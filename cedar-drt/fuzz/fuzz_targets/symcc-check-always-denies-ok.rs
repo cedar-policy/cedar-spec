@@ -18,16 +18,8 @@
 use cedar_drt::logger::initialize_log;
 use cedar_drt_inner::{
     fuzz_target,
-    symcc::{PolicySetTask, SinglePolicyFuzzTargetInput, ValidationTask},
+    symcc::{PolicySetTask, RUNTIME, SinglePolicyFuzzTargetInput, ValidationTask},
 };
-use std::sync::LazyLock;
-
-static RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap()
-});
 
 fuzz_target!(|input: SinglePolicyFuzzTargetInput| {
     initialize_log();

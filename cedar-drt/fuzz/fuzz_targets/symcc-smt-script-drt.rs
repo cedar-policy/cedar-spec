@@ -19,21 +19,12 @@ use cedar_drt::logger::initialize_log;
 use cedar_drt_inner::{
     fuzz_target,
     symcc::{
-        SinglePolicyFuzzTargetInput, assert_smtlib_scripts_match, lean_smtlib_of_check_asserts,
-        smtlib_of_check_asserts,
+        RUNTIME, SinglePolicyFuzzTargetInput, assert_smtlib_scripts_match,
+        lean_smtlib_of_check_asserts, smtlib_of_check_asserts,
     },
 };
 use cedar_lean_ffi::CedarLeanFfi;
 use cedar_policy_symcc::{CompiledPolicySet, always_allows_asserts};
-
-use std::sync::LazyLock;
-
-static RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap()
-});
 
 // Fuzz target checking that the Rust and Lean implementations produce the same
 // SMTLIB scripts for a given set of `Term`s (in this case, `Term`s generated as

@@ -18,7 +18,7 @@
 use cedar_drt::logger::initialize_log;
 use cedar_drt_inner::{
     fuzz_target,
-    symcc::{SinglePolicyFuzzTargetInput, local_solver},
+    symcc::{RUNTIME, SinglePolicyFuzzTargetInput, local_solver},
 };
 
 use cedar_policy::{Authorizer, Decision, PolicySet};
@@ -32,13 +32,6 @@ use tokio::{
     sync::{Mutex, MutexGuard},
     time::{Duration, error::Elapsed, timeout},
 };
-
-static RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap()
-});
 
 struct Solver {
     local_solver: CedarSymCompiler<LocalSolver>,
