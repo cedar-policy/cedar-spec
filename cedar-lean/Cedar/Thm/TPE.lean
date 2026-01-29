@@ -15,158 +15,260 @@
 -/
 
 import Cedar.TPE
+import Cedar.TPE.Authorizer
 import Cedar.Spec
 import Cedar.Validation
 import Cedar.Thm.TPE.Input
 import Cedar.Thm.TPE.Conversion
 import Cedar.Thm.TPE.Soundness
 import Cedar.Thm.TPE.PreservesTypeOf
+import Cedar.Thm.TPE.Policy
+import Cedar.Thm.TPE.Authorizer
 import Cedar.Thm.TPE.WellTyped
 import Cedar.Thm.Validation
+import Cedar.Thm.Authorization
 
 /-!
-This file defines the main theorem of TPE soundness and its associated lemmas.
+This file defines the main theorem of TPE soundness for authorization.
+
+Significant lemmas proving soundness of policy and expression evaluation are in
+`Cedar.Thm.TPE.Policy` and `Cedar.Thm.TPE.Soundness`.
 -/
 
 namespace Cedar.Thm
 
+open Cedar.Data
 open Cedar.TPE
 open Cedar.Spec
 open Cedar.Validation
 open Cedar.Thm
 
-/-- The main lemma: Evaluating a residual derived from partially evaluating
-a well-typed expression is equivalent to that of evaluating the original
-expression, provided that requests and entities are consistent. The equivalency
-is defined using `Except.toOption`.
+/-- Main re-authorization soundness theorem: The result of reauthorizing a
+partial authorization response with concrete request and entities is equivalent
+to directly authorizing with the concrete request and entities.
 -/
-theorem partial_evaluate_is_sound
-  {x : Residual}
+theorem reauthorize_is_sound
+  {schema : Schema}
+  {policies : List Policy}
   {req : Request}
   {es : Entities}
   {preq : PartialRequest}
   {pes : PartialEntities}
-  {env : TypeEnv} :
-  Residual.WellTyped env x →
-  InstanceOfWellFormedEnvironment req es env →
-  RequestAndEntitiesRefine req es preq pes →
-  (x.evaluate req es).toOption = ((Cedar.TPE.evaluate x preq pes).evaluate req es).toOption
+  {response : TPE.Response} :
+  isValidAndConsistent schema req es preq pes = Except.ok () →
+  TPE.isAuthorized schema policies preq pes = Except.ok response →
+  response.reauthorize req es = Spec.isAuthorized req es policies
 := by
-  intro h₁ h₂ h₃
-  induction h₁
-  case val =>
-    exact partial_evaluate_is_sound_val
-  case var =>
-    exact partial_evaluate_is_sound_var h₃
-  case ite x₁ x₂ x₃ hwt _ _ hₜ _ hᵢ₁ hᵢ₂ hᵢ₃ =>
-    exact partial_evaluate_is_sound_ite h₂ hwt hₜ hᵢ₁ hᵢ₂ hᵢ₃
-  case and x₁ x₂ hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ hᵢ₆ =>
-    exact partial_evaluate_is_sound_and h₂ h₃ hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ hᵢ₆
-  case or x₁ x₂ hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ hᵢ₆ =>
-    exact partial_evaluate_is_sound_or h₂ h₃ hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ hᵢ₆
-  case unaryApp op₁ x₁ ty hᵢ₁ =>
-    exact partial_evaluate_is_sound_unary_app hᵢ₁
-  case binaryApp op₂ x₁ x₂ ty _ hwt howt hᵢ₁ hᵢ₂ =>
-    exact partial_evaluate_is_sound_binary_app h₂ h₃ hwt howt hᵢ₁ hᵢ₂
-  case hasAttr_entity ety x₁ attr hᵢ₁ =>
-    exact partial_evaluate_is_sound_has_attr h₃ hᵢ₁
-  case hasAttr_record rty x₁ attr hᵢ₁ =>
-    exact partial_evaluate_is_sound_has_attr h₃ hᵢ₁
-  case getAttr_entity ety rty x₁ attr ty hᵢ₁ =>
-    exact partial_evaluate_is_sound_get_attr h₃ hᵢ₁
-  case getAttr_record rty x₁ attr ty hᵢ₁ =>
-    exact partial_evaluate_is_sound_get_attr h₃ hᵢ₁
-  case set ls ty hᵢ₁ =>
-    exact partial_evaluate_is_sound_set hᵢ₁
-  case record rty m hᵢ₁ hᵢ₁ =>
-    exact partial_evaluate_is_sound_record hᵢ₁
-  case call xfn args ty hᵢ₁ =>
-    exact partial_evaluate_is_sound_call hᵢ₁
-  case error ty =>
-    exact partial_evaluate_is_sound_error
+  intro hv h_auth
 
-/-- The main theorem of TPE: Evaluating a result residual is equivalent to
-evaluating the input policy, given valid and consistent requests and entities.
-The equivalence is w.r.t authorization results. That is, the evaluation results
-are strictly equal when they are `.ok` or both errors (captured by
-`Except.toOption`). We do not care if the error types match because they do not
-impact authorization results. As a matter of fact, they do not match because all
-errors encountered during TPE are represented by an `error` residual, whose
-interpretation always produces an `extensionError`.
+  simp only [TPE.isAuthorized] at h_auth
+  cases h_auth₁ : List.mapM (λ p => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes) policies <;> simp [h_auth₁] at h_auth
+  rename_i residuals
+  subst h_auth
+
+  rw [List.mapM_ok_iff_forall₂] at h_auth₁
+  have equiv_satisfied := reauthorize_satisfied_policies_equiv hv h_auth₁
+  have equiv_errors := reauthorize_error_policies_equiv hv h_auth₁
+  simp [TPE.isAuthorized.isAuthorizedFromResiduals, Response.reauthorize, Spec.isAuthorized,
+        equiv_satisfied .forbid, equiv_satisfied .permit, equiv_errors]
+
+/-- Main partial authorization soundness theorem: If partial authorization
+returns a decision, then concrete authorization will reach the same.
 -/
-theorem partial_evaluate_policy_is_sound
+theorem partial_authorize_decision_is_sound
   {schema : Schema}
-  {residual : Residual}
-  {policy : Policy}
+  {policies : List Policy}
   {req : Request}
   {es : Entities}
   {preq : PartialRequest}
-  {pes : PartialEntities} :
-  evaluatePolicy schema policy preq pes = .ok residual   →
-  isValidAndConsistent schema req es preq pes = .ok () →
-  (Spec.evaluate policy.toExpr req es).toOption = (Residual.evaluate residual req es).toOption
+  {pes : PartialEntities}
+  {response : TPE.Response}
+  {decision : Decision} :
+  TPE.isAuthorized schema policies preq pes = Except.ok response →
+  isValidAndConsistent schema req es preq pes = Except.ok () →
+  response.decision = some decision →
+  (Spec.isAuthorized req es policies).decision = decision
 := by
   intro h₁ h₂
-  have h₃ := consistent_checks_ensure_refinement h₂
-  simp [evaluatePolicy] at h₁
-  split at h₁ <;> try cases h₁
-  split at h₁ <;> try cases h₁
-  simp [do_ok_eq_ok] at h₁
-  rcases h₁ with ⟨_, ⟨_, h₁₁⟩, h₁₂⟩
-  simp [Except.mapError] at h₁₁
-  split at h₁₁ <;> try cases h₁₁
-  rename_i env heq₁ _ ty _ _ heq₂
-  simp [isValidAndConsistent] at h₂
-  split at h₂ <;> try cases h₂
-  rename_i heq₃
-  simp [heq₁] at heq₃
-  subst heq₃
-  have ⟨h₂₁, h₂₂⟩ := do_eq_ok₂ h₂
-  simp only [isValidAndConsistent.requestIsConsistent, Bool.or_eq_true, Bool.not_eq_eq_eq_not,
-    Bool.not_true, Bool.and_eq_true, decide_eq_true_eq] at h₂₁
-  split at h₂₁ <;> try cases h₂₁
-  rename_i heq₃
-  simp only [not_or, Bool.not_eq_false] at heq₃
-  rcases heq₃ with ⟨_, heq₃⟩
-  simp only [isValidAndConsistent.entitiesIsConsistent, Bool.or_eq_true, Bool.not_eq_eq_eq_not,
-    Bool.not_true] at h₂₂
-  split at h₂₂ <;> try cases h₂₂
-  rename_i heq₄
-  simp only [not_or, Bool.not_eq_false] at heq₄
-  rcases heq₄ with ⟨_, heq₄⟩
-  simp [Except.isOk, Except.toBool] at heq₄
-  split at heq₄ <;> cases heq₄
-  rename_i heq₄
-  simp only [bind, Except.bind, isValidAndConsistent.envIsWellFormed, Bool.not_eq_eq_eq_not,
-    Bool.not_true] at h₂₂
-  split at h₂₂ <;> try cases h₂₂
-  simp only [ite_eq_right_iff, reduceCtorEq, imp_false, Bool.not_eq_false] at h₂₂
-  have heq₅ := h₂₂
-  simp [Except.isOk, Except.toBool] at heq₅
-  split at heq₅ <;> cases heq₅
-  rename_i heq₅
-  have h₄ := instance_of_well_formed_env heq₅ heq₃ heq₄
-  have h₅ := typechecked_is_well_typed_after_lifting heq₂
-  let old_residual := (TypedExpr.toResidual ty.liftBoolTypes)
+  simp only [TPE.isAuthorized] at h₁
 
-  have h₉ : Residual.WellTyped env old_residual := by {
-    have h := conversion_preserves_typedness h₅
-    exact h
-  }
-  have h₆ := partial_evaluate_is_sound h₉ h₄ h₃
-  subst h₁₂
-  have h₇ := type_of_preserves_evaluation_results (empty_capabilities_invariant req es) h₄ heq₂
-  have h₈ : Spec.evaluate (substituteAction env.reqty.action policy.toExpr) req es = Spec.evaluate policy.toExpr req es := by
-    simp [InstanceOfWellFormedEnvironment] at h₄
-    rcases h₄ with ⟨_, h₄, _⟩
-    simp [InstanceOfRequestType] at h₄
-    rcases h₄ with ⟨_, h₄, _⟩
-    rw [←h₄]
-    exact substitute_action_preserves_evaluation policy.toExpr req es
-  simp [h₈] at h₇
-  rw [h₇, type_lifting_preserves_expr]
-  rw [← h₆]
-  subst old_residual
-  congr
-  apply conversion_preserves_evaluation
+  cases h₃ : List.mapM (λ p => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes) policies <;>
+    simp [h₃] at h₁
+  rename_i rps
+
+  rw [List.mapM_ok_iff_forall₂] at h₃
+  simp [isAuthorized.isAuthorizedFromResiduals] at h₁
+  split at h₁ <;>
+    simp only [← h₁, reduceCtorEq, false_implies]
+  all_goals
+    intro h₅
+    simp only [Option.some.injEq] at h₅
+    subst h₅
+  -- Deny (satisfied forbid exists)
+  · have hf : ¬ (isAuthorized.satisfiedPolicies .forbid rps).isEmpty := by grind
+    have h_forbid : HasSatisfiedEffect Effect.forbid req es policies :=
+      satisfied_effect_if_non_empty_satisfied_policies h₂ h₃ hf
+
+    apply forbid_trumps_permit
+    unfold IsExplicitlyForbidden
+    exact h_forbid
+
+  -- Deny (no satisfied permits)
+  · have hp₁ : (isAuthorized.satisfiedPolicies .permit rps).isEmpty := by grind
+    have hp₂ : (isAuthorized.residualPolicies .permit rps).isEmpty := by grind
+    have h_not_permit : ¬HasSatisfiedEffect Effect.permit req es policies :=
+      no_satisfied_effect_if_empty_satisfied_and_residual_policies h₂ h₃ hp₁ hp₂
+
+    apply default_deny
+    unfold IsExplicitlyPermitted
+    exact h_not_permit
+
+  -- Allow (satisfied permit exists, no satisfied/residual forbids)
+  · have hf₁ : (isAuthorized.satisfiedPolicies .forbid rps).isEmpty := by grind
+    have hf₂ : (isAuthorized.residualPolicies .forbid rps).isEmpty := by grind
+    have h_not_forbid : ¬HasSatisfiedEffect Effect.forbid req es policies :=
+      no_satisfied_effect_if_empty_satisfied_and_residual_policies h₂ h₃ hf₁ hf₂
+
+    have hp : ¬ (isAuthorized.satisfiedPolicies .permit rps).isEmpty := by grind
+    have h_permit : HasSatisfiedEffect Effect.permit req es policies :=
+      satisfied_effect_if_non_empty_satisfied_policies h₂ h₃ hp
+
+    apply (allowed_iff_explicitly_permitted_and_not_denied _ _ _).mp
+    unfold IsExplicitlyPermitted IsExplicitlyForbidden
+    exact .intro h_permit h_not_forbid
+
+/-- All policies reported as erroring after partial authorization will appear in
+the set of erroring policies after concrete authorization.  -/
+theorem partial_authorize_erroring_policies_is_sound
+  {schema : Schema}
+  {policies : List Policy}
+  {req : Request}
+  {es : Entities}
+  {preq : PartialRequest}
+  {pes : PartialEntities}
+  {response : TPE.Response} :
+  TPE.isAuthorized schema policies preq pes = Except.ok response →
+  isValidAndConsistent schema req es preq pes = Except.ok () →
+  (response.errorForbids ∪ response.errorPermits) ⊆ (Spec.isAuthorized req es policies).erroringPolicies
+:= by
+  intro h₁ h₂
+  simp only [TPE.isAuthorized] at h₁
+
+  cases h₃ : List.mapM (λ p => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes) policies <;>
+    simp [h₃] at h₁
+  rename_i rps
+  rw [List.mapM_ok_iff_forall₂] at h₃
+  subst response
+
+  have h_err_permit := partial_authorize_error_policies_is_sound .permit h₃ h₂
+  have h_err_forbid := partial_authorize_error_policies_is_sound .forbid h₃ h₂
+  rw [Set.union_subset]
+  exact .intro h_err_forbid h_err_permit
+
+/-- If the result of concrete authorization is `allow`, then all `permit`
+policies satisfied after partial authorization are determining policies.-/
+theorem partial_authorize_allow_determining_policies_is_sound
+  {schema : Schema}
+  {policies : List Policy}
+  {req : Request}
+  {es : Entities}
+  {preq : PartialRequest}
+  {pes : PartialEntities}
+  {response : TPE.Response} :
+  TPE.isAuthorized schema policies preq pes = Except.ok response →
+  isValidAndConsistent schema req es preq pes = Except.ok () →
+  (Spec.isAuthorized req es policies).decision = .allow →
+  response.satisfiedPermits ⊆ (Spec.isAuthorized req es policies).determiningPolicies
+:= by
+  intro h₁ h₂ h_allow
+  simp only [TPE.isAuthorized] at h₁
+
+  replace h_allow' : (satisfiedPolicies Effect.forbid policies req es).isEmpty ∧ ¬ (satisfiedPolicies Effect.permit policies req es).isEmpty := by
+    grind [Spec.isAuthorized]
+  simp only [Spec.isAuthorized, h_allow', Bool.not_false, Bool.and_self, ↓reduceIte]
+
+  cases h₃ : List.mapM (λ p => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes) policies <;>
+    simp [h₃] at h₁
+  rename_i rps
+  rw [List.mapM_ok_iff_forall₂] at h₃
+  subst response
+
+  simp [isAuthorized.isAuthorizedFromResiduals, isAuthorized.satisfiedPolicies,
+    satisfiedPolicies, satisfiedWithEffect, satisfied, Bool.and_eq_true,
+    decide_eq_true_eq, Set.subset_def, ← Set.make_mem, List.mem_filterMap,
+    ResidualPolicy.satisfiedWithEffect, ResidualPolicy.satisfied, Residual.isTrue,
+    Option.ite_none_right_eq_some, forall_exists_index, and_imp]
+  intro pid rp hrp heff hs hpid
+  split at hs <;> try contradiction
+
+  have ⟨p, hp₁, hp₂⟩ := List.forall₂_implies_all_right h₃ rp hrp
+  cases hp₃ : evaluatePolicy schema p preq pes <;>
+   simp only [hp₃, Except.map_error, Except.map_ok, reduceCtorEq, Except.ok.injEq] at hp₂
+
+  exists p
+  and_intros
+  · exact hp₁
+  · rw [←hp₂] at heff
+    exact heff
+  · rename_i ty hr r
+    replace hr : r = .val (.prim (.bool true)) ty := by grind
+    have ha := partial_evaluate_policy_is_sound hp₃ h₂
+    simp only [hr, Residual.evaluate] at ha
+    exact to_option_right_ok' ha
+  · rw [←hp₂] at hpid
+    exact hpid
+
+/-- If the result of concrete authorization is `deny`, then all `forbid`
+policies satisfied after partial authorization are determining policies.-/
+theorem partial_authorize_deny_determining_policies_is_sound
+  {schema : Schema}
+  {policies : List Policy}
+  {req : Request}
+  {es : Entities}
+  {preq : PartialRequest}
+  {pes : PartialEntities}
+  {response : TPE.Response} :
+  TPE.isAuthorized schema policies preq pes = Except.ok response →
+  isValidAndConsistent schema req es preq pes = Except.ok () →
+  (Spec.isAuthorized req es policies).decision = .deny →
+  response.satisfiedForbids ⊆ (Spec.isAuthorized req es policies).determiningPolicies
+:= by
+  intro h₁ h₂ h_deny
+  simp only [TPE.isAuthorized] at h₁
+
+  have h_deny' : ¬ ((satisfiedPolicies Effect.forbid policies req es).isEmpty = true ∧ (satisfiedPolicies Effect.permit policies req es).isEmpty = false) := by
+    grind [Spec.isAuthorized]
+  simp only [Spec.isAuthorized, Bool.and_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true, h_deny', ↓reduceIte]
+
+  cases h₃ : List.mapM (λ p => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes) policies <;>
+    simp [h₃] at h₁
+  rename_i rps
+  rw [List.mapM_ok_iff_forall₂] at h₃
+  subst response
+
+  simp [isAuthorized.isAuthorizedFromResiduals, isAuthorized.satisfiedPolicies,
+    satisfiedPolicies, satisfiedWithEffect, satisfied, Bool.and_eq_true,
+    decide_eq_true_eq, Set.subset_def, ← Set.make_mem, List.mem_filterMap,
+    ResidualPolicy.satisfiedWithEffect, ResidualPolicy.satisfied, Residual.isTrue,
+    Option.ite_none_right_eq_some, forall_exists_index, and_imp]
+  intro pid rp hrp heff hs hpid
+  split at hs <;> try contradiction
+
+  have ⟨p, hp₁, hp₂⟩ := List.forall₂_implies_all_right h₃ rp hrp
+  cases hp₃ : evaluatePolicy schema p preq pes <;>
+   simp only [hp₃, Except.map_error, Except.map_ok, reduceCtorEq, Except.ok.injEq] at hp₂
+
+  exists p
+  and_intros
+  · exact hp₁
+  · rw [←hp₂] at heff
+    exact heff
+  · rename_i ty hr r
+    replace hr : r = .val (.prim (.bool true)) ty := by grind
+    have ha := partial_evaluate_policy_is_sound hp₃ h₂
+    simp only [hr, Residual.evaluate] at ha
+    exact to_option_right_ok' ha
+  · rw [←hp₂] at hpid
+    exact hpid
+
 end Cedar.Thm
