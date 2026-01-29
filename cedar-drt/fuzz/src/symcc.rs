@@ -135,9 +135,24 @@ const SETTINGS: ABACSettings = ABACSettings {
 #[derive(Debug, Clone)]
 pub struct SinglePolicyFuzzTargetInput {
     /// generated schema
-    pub schema: schema::Schema,
+    schema: schema::Schema,
     /// generated policy
-    pub policy: ABACPolicy,
+    policy: ABACPolicy,
+}
+
+impl SinglePolicyFuzzTargetInput {
+    /// Get the `cedar_policy::Schema` and `cedar_policy::Policy` that were generated
+    pub fn into_inputs(self) -> Result<(Schema, Policy), cedar_policy::SchemaError> {
+        Ok((Schema::try_from(self.schema)?, self.policy.into()))
+    }
+
+    /// Get the `cedar_policy::Schema` and singleton `cedar_policy::PolicySet` that were generated
+    pub fn into_inputs_as_pset(self) -> Result<(Schema, PolicySet), cedar_policy::SchemaError> {
+        let mut pset = PolicySet::new();
+        pset.add(self.policy.into())
+            .expect("creating a singleton policyset should not fail");
+        Ok((Schema::try_from(self.schema)?, pset))
+    }
 }
 
 impl<'a> Arbitrary<'a> for SinglePolicyFuzzTargetInput {
@@ -176,9 +191,20 @@ fn arbitrary_policies(
 #[derive(Debug, Clone)]
 pub struct SinglePolicySetFuzzTargetInput {
     /// generated schema
-    pub schema: schema::Schema,
+    schema: schema::Schema,
     /// generated policyset
-    pub pset: Vec<ABACPolicy>,
+    pset: Vec<ABACPolicy>,
+}
+
+impl SinglePolicySetFuzzTargetInput {
+    /// Get the `cedar_policy::Schema` and `cedar_policy::PolicySet` that were generated
+    pub fn into_inputs(self) -> Result<(Schema, PolicySet), cedar_policy::SchemaError> {
+        Ok((
+            Schema::try_from(self.schema)?,
+            PolicySet::from_policies(self.pset.into_iter().map(Into::into))
+                .expect("creating a policyset from the generated policies should not fail"),
+        ))
+    }
 }
 
 impl<'a> Arbitrary<'a> for SinglePolicySetFuzzTargetInput {
@@ -204,11 +230,37 @@ impl<'a> Arbitrary<'a> for SinglePolicySetFuzzTargetInput {
 #[derive(Debug, Clone)]
 pub struct TwoPolicyFuzzTargetInput {
     /// generated schema
-    pub schema: schema::Schema,
+    schema: schema::Schema,
     /// generated policy
-    pub policy1: ABACPolicy,
+    policy1: ABACPolicy,
     /// generated policy
-    pub policy2: ABACPolicy,
+    policy2: ABACPolicy,
+}
+
+impl TwoPolicyFuzzTargetInput {
+    /// Get the `cedar_policy::Schema` and both `cedar_policy::Policy`s that were generated
+    pub fn into_inputs(self) -> Result<(Schema, Policy, Policy), cedar_policy::SchemaError> {
+        Ok((
+            Schema::try_from(self.schema)?,
+            self.policy1.into(),
+            self.policy2.into(),
+        ))
+    }
+
+    /// Get the `cedar_policy::Schema` and both singleton `cedar_policy::PolicySet`s that were generated
+    pub fn into_inputs_as_psets(
+        self,
+    ) -> Result<(Schema, PolicySet, PolicySet), cedar_policy::SchemaError> {
+        let mut pset1 = PolicySet::new();
+        pset1
+            .add(self.policy1.into())
+            .expect("creating a singleton policyset should not fail");
+        let mut pset2 = PolicySet::new();
+        pset2
+            .add(self.policy2.into())
+            .expect("creating a singleton policyset should not fail");
+        Ok((Schema::try_from(self.schema)?, pset1, pset2))
+    }
 }
 
 impl<'a> Arbitrary<'a> for TwoPolicyFuzzTargetInput {
@@ -239,11 +291,24 @@ impl<'a> Arbitrary<'a> for TwoPolicyFuzzTargetInput {
 #[derive(Debug, Clone)]
 pub struct TwoPolicySetFuzzTargetInput {
     /// generated schema
-    pub schema: schema::Schema,
+    schema: schema::Schema,
     /// generated policyset
-    pub pset1: Vec<ABACPolicy>,
+    pset1: Vec<ABACPolicy>,
     /// generated policyset
-    pub pset2: Vec<ABACPolicy>,
+    pset2: Vec<ABACPolicy>,
+}
+
+impl TwoPolicySetFuzzTargetInput {
+    /// Get the `cedar_policy::Schema` and both `cedar_policy::PolicySet`s that were generated
+    pub fn into_inputs(self) -> Result<(Schema, PolicySet, PolicySet), cedar_policy::SchemaError> {
+        Ok((
+            Schema::try_from(self.schema)?,
+            PolicySet::from_policies(self.pset1.into_iter().map(Into::into))
+                .expect("creating a policyset from the generated policies should not fail"),
+            PolicySet::from_policies(self.pset2.into_iter().map(Into::into))
+                .expect("creating a policyset from the generated policies should not fail"),
+        ))
+    }
 }
 
 impl<'a> Arbitrary<'a> for TwoPolicySetFuzzTargetInput {

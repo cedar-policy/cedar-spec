@@ -23,13 +23,9 @@ use cedar_drt_inner::{
         smtlib_of_check_asserts,
     },
 };
-
 use cedar_lean_ffi::CedarLeanFfi;
-use cedar_policy::{Policy, PolicySet, Schema};
 use cedar_policy_symcc::{CompiledPolicySet, always_allows_asserts};
 
-use log::debug;
-use std::convert::TryFrom;
 use std::sync::LazyLock;
 
 static RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
@@ -44,14 +40,8 @@ static RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
 // asserts for AlwaysAllows on an arbitrary policy)
 fuzz_target!(|input: SinglePolicyFuzzTargetInput| {
     initialize_log();
-    let lean_ffi = CedarLeanFfi::new();
-    let mut policyset = PolicySet::new();
-    let policy: Policy = input.policy.into();
-    policyset.add(policy.clone()).unwrap();
-    debug!("Schema: {}\n", input.schema.schemafile_string());
-    debug!("Policies: {policy}\n");
-
-    if let Ok(schema) = Schema::try_from(input.schema) {
+    if let Ok((schema, policyset)) = input.into_inputs_as_pset() {
+        let lean_ffi = CedarLeanFfi::new();
         let lean_schema = lean_ffi.load_lean_schema_object(&schema).unwrap();
         for req_env in schema.request_envs() {
             // We let Rust compile the policies as it's faster than Lean
