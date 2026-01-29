@@ -16,30 +16,17 @@
 
 #![no_main]
 use cedar_drt::logger::initialize_log;
-
 use cedar_drt_inner::{
     fuzz_target,
-    symcc::{PolicyTask, SinglePolicyFuzzTargetInput, ValidationTask},
+    symcc::{PolicyTask, RUNTIME, SinglePolicyFuzzTargetInput, ValidationTask},
 };
-
-use cedar_policy::Schema;
-
-use std::convert::TryFrom;
-use std::sync::LazyLock;
-
-static RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap()
-});
 
 fuzz_target!(|input: SinglePolicyFuzzTargetInput| {
     initialize_log();
     // Attempt to convert the generator schema to an actual schema.
-    if let Ok(schema) = Schema::try_from(input.schema) {
+    if let Ok((schema, policy)) = input.into_inputs() {
         RUNTIME
-            .block_on(PolicyTask::CheckNeverErrors.check_ok(schema, input.policy.into()))
+            .block_on(PolicyTask::CheckNeverErrors.check_ok(schema, policy))
             .unwrap();
     }
 });

@@ -251,8 +251,98 @@ test = false
 doc = false
 
 [[bin]]
-name = "symcc-term-drt"
-path = "fuzz_targets/symcc-term-drt.rs"
+name = "symcc-term-drt-always-allows"
+path = "fuzz_targets/symcc-term-drt-always-allows.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "symcc-term-drt-always-allows-multipolicy"
+path = "fuzz_targets/symcc-term-drt-always-allows-multipolicy.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "symcc-term-drt-always-denies"
+path = "fuzz_targets/symcc-term-drt-always-denies.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "symcc-term-drt-always-denies-multipolicy"
+path = "fuzz_targets/symcc-term-drt-always-denies-multipolicy.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "symcc-term-drt-equivalent"
+path = "fuzz_targets/symcc-term-drt-equivalent.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "symcc-term-drt-equivalent-multipolicy"
+path = "fuzz_targets/symcc-term-drt-equivalent-multipolicy.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "symcc-term-drt-implies"
+path = "fuzz_targets/symcc-term-drt-implies.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "symcc-term-drt-implies-multipolicy"
+path = "fuzz_targets/symcc-term-drt-implies-multipolicy.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "symcc-term-drt-disjoint"
+path = "fuzz_targets/symcc-term-drt-disjoint.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "symcc-term-drt-disjoint-multipolicy"
+path = "fuzz_targets/symcc-term-drt-disjoint-multipolicy.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "symcc-term-drt-always-matches"
+path = "fuzz_targets/symcc-term-drt-always-matches.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "symcc-term-drt-never-matches"
+path = "fuzz_targets/symcc-term-drt-never-matches.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "symcc-term-drt-matches-equivalent"
+path = "fuzz_targets/symcc-term-drt-matches-equivalent.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "symcc-term-drt-matches-implies"
+path = "fuzz_targets/symcc-term-drt-matches-implies.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "symcc-term-drt-matches-disjoint"
+path = "fuzz_targets/symcc-term-drt-matches-disjoint.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "symcc-term-drt-never-errors"
+path = "fuzz_targets/symcc-term-drt-never-errors.rs"
 test = false
 doc = false
 

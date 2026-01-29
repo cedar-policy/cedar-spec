@@ -16,32 +16,14 @@
 
 #![no_main]
 use cedar_drt::logger::initialize_log;
-
 use cedar_drt_inner::{
     fuzz_target,
-    symcc::{PolicySetPair, PolicySetPairTask, TwoPolicyFuzzTargetInput, ValidationTask},
+    symcc::{PolicySetPair, PolicySetPairTask, RUNTIME, TwoPolicyFuzzTargetInput, ValidationTask},
 };
-
-use cedar_policy::{PolicySet, Schema};
-
-use std::convert::TryFrom;
-use std::sync::LazyLock;
-
-static RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap()
-});
 
 fuzz_target!(|input: TwoPolicyFuzzTargetInput| {
     initialize_log();
-    let mut pset1 = PolicySet::new();
-    pset1.add(input.policy1.into()).unwrap();
-    let mut pset2 = PolicySet::new();
-    pset2.add(input.policy2.into()).unwrap();
-    // Attempt to convert the generator schema to an actual schema.
-    if let Ok(schema) = Schema::try_from(input.schema) {
+    if let Ok((schema, pset1, pset2)) = input.into_inputs_as_psets() {
         RUNTIME
             .block_on(
                 PolicySetPairTask::CheckImplies.check_ok(schema, PolicySetPair { pset1, pset2 }),

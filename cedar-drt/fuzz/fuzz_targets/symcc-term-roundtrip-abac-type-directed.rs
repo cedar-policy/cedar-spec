@@ -16,27 +16,15 @@
 
 #![no_main]
 use cedar_drt::logger::initialize_log;
-
 use cedar_drt_inner::{fuzz_target, symcc::SinglePolicyFuzzTargetInput};
-
 use cedar_lean_ffi::CedarLeanFfi;
-use cedar_policy::{Policy, PolicySet, Schema};
-
-use log::debug;
 use similar_asserts::assert_eq;
-use std::convert::TryFrom;
 
 // Fuzzing Target to show that Asserts/Term Serialization/Deserialization does not effect the final SMTLib script produced
 fuzz_target!(|input: SinglePolicyFuzzTargetInput| {
     initialize_log();
-    let lean_ffi = CedarLeanFfi::new();
-    let mut policyset = PolicySet::new();
-    let policy: Policy = input.policy.into();
-    policyset.add(policy.clone()).unwrap();
-    debug!("Schema: {}\n", input.schema.schemafile_string());
-    debug!("Policies: {policyset}\n");
-
-    if let Ok(schema) = Schema::try_from(input.schema) {
+    if let Ok((schema, policyset)) = input.into_inputs_as_pset() {
+        let lean_ffi = CedarLeanFfi::new();
         let lean_schema = lean_ffi.load_lean_schema_object(&schema).unwrap();
         for req_env in schema.request_envs() {
             // Compute's SMTLib Script Directly in one-pass from Lean

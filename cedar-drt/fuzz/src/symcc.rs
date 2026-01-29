@@ -14,20 +14,34 @@
  * limitations under the License.
  */
 
+use cedar_lean_ffi::{CedarLeanFfi, FfiError, LeanSchema};
 use cedar_policy::{Policy, PolicySet, RequestEnv, Schema};
 use cedar_policy_generators::{
-    abac::ABACPolicy, hierarchy::HierarchyGenerator, schema, schema_gen::SchemaGen,
+    abac::ABACPolicy,
+    hierarchy::{Hierarchy, HierarchyGenerator},
+    schema,
+    schema_gen::SchemaGen,
     settings::ABACSettings,
 };
 use cedar_policy_symcc::{
-    CedarSymCompiler, CompiledPolicy, CompiledPolicySet,
+    CedarSymCompiler, CompiledPolicy, CompiledPolicySet, WellFormedAsserts,
     err::{EncodeError, Error},
-    solver::LocalSolver,
+    solver::{LocalSolver, WriterSolver},
+    term::Term,
 };
 use libfuzzer_sys::arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
-use log::warn;
-use std::fmt::Display;
+use log::{debug, warn};
+use std::{collections::BTreeSet, fmt::Display, sync::LazyLock};
 use tokio::process::Command;
+
+/// Tokio runtime used by all SymCC fuzz targets that need one. Note that it
+/// runs tasks on only a single OS thread.
+pub static RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+});
 
 /// The limit on the total number of request envs specific to symcc
 const fn total_action_request_env_limit() -> usize {
@@ -54,6 +68,69 @@ pub fn local_solver() -> Result<cedar_policy_symcc::solver::LocalSolver, String>
     cedar_policy_symcc::solver::LocalSolver::from_command(&mut cmd).map_err(|err| err.to_string())
 }
 
+pub async fn smtlib_of_check_asserts(
+    rust_asserts: &WellFormedAsserts<'_>,
+) -> Result<String, String> {
+    let mut solver = CedarSymCompiler::new(WriterSolver {
+        w: Vec::<u8>::new(),
+    })
+    .expect("solver construction should succeed");
+    match solver.check_sat(rust_asserts).await {
+        Ok(_) | Err(cedar_policy_symcc::err::Error::SolverUnknown) => {
+            Ok(String::from_utf8(std::mem::take(&mut solver.solver_mut().w)).unwrap())
+        }
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+#[track_caller]
+pub fn lean_smtlib_of_check_asserts(
+    rust_asserts: &WellFormedAsserts<'_>,
+    lean_ffi: &CedarLeanFfi,
+    lean_schema: LeanSchema,
+    req_env: &RequestEnv,
+) -> Result<String, FfiError> {
+    let lean_asserts: Vec<_> = rust_asserts
+        .asserts()
+        .iter()
+        .map(|assert| assert.clone().into())
+        .collect();
+    debug!("Lean asserts: {lean_asserts:#?}");
+    lean_ffi.smtlib_of_check_asserts(&lean_asserts, lean_schema, req_env)
+}
+
+#[track_caller]
+pub fn assert_smtlib_scripts_match<E1: Display, E2: Display>(
+    rust_smtlib: Result<String, E1>,
+    lean_smtlib: Result<String, E2>,
+) {
+    match (rust_smtlib, lean_smtlib) {
+        (Ok(rust), Ok(lean)) => {
+            similar_asserts::assert_eq!(rust, lean, "Rust:\n{rust}\nLean:\n{lean}")
+        }
+        (Ok(_), Err(e)) => panic!("Lean encoding should succeed: {e}"),
+        (Err(e), Ok(_)) => panic!("Rust encoding should succeed: {e}"),
+        (Err(_), Err(_)) => {}
+    }
+}
+
+#[track_caller]
+pub fn assert_that_asserts_match(
+    rust_asserts: WellFormedAsserts<'_>,
+    lean_asserts: impl IntoIterator<Item = cedar_lean_ffi::Term>,
+) {
+    let lean_asserts = lean_asserts
+        .into_iter()
+        .map(|t| Term::try_from(t).expect("term conversion should succeed"))
+        .collect::<BTreeSet<_>>();
+    let rust_asserts = BTreeSet::from_iter(rust_asserts.asserts().as_ref().iter().cloned());
+    similar_asserts::assert_eq!(
+        lean_asserts,
+        rust_asserts,
+        "Lean terms: {lean_asserts:?}, Rust terms: {rust_asserts:?}"
+    );
+}
+
 /// Settings shared by all SymCC fuzz targets that use `FuzzTargetInput`s
 /// declared in this file.
 const SETTINGS: ABACSettings = ABACSettings {
@@ -67,9 +144,24 @@ const SETTINGS: ABACSettings = ABACSettings {
 #[derive(Debug, Clone)]
 pub struct SinglePolicyFuzzTargetInput {
     /// generated schema
-    pub schema: schema::Schema,
+    schema: schema::Schema,
     /// generated policy
-    pub policy: ABACPolicy,
+    policy: ABACPolicy,
+}
+
+impl SinglePolicyFuzzTargetInput {
+    /// Get the `cedar_policy::Schema` and `cedar_policy::Policy` that were generated
+    pub fn into_inputs(self) -> Result<(Schema, Policy), cedar_policy::SchemaError> {
+        Ok((Schema::try_from(self.schema)?, self.policy.into()))
+    }
+
+    /// Get the `cedar_policy::Schema` and singleton `cedar_policy::PolicySet` that were generated
+    pub fn into_inputs_as_pset(self) -> Result<(Schema, PolicySet), cedar_policy::SchemaError> {
+        let mut pset = PolicySet::new();
+        pset.add(self.policy.into())
+            .expect("creating a singleton policyset should not fail");
+        Ok((Schema::try_from(self.schema)?, pset))
+    }
 }
 
 impl<'a> Arbitrary<'a> for SinglePolicyFuzzTargetInput {
@@ -91,15 +183,93 @@ impl<'a> Arbitrary<'a> for SinglePolicyFuzzTargetInput {
     }
 }
 
+fn arbitrary_policies(
+    schema: &schema::Schema,
+    hierarchy: &Hierarchy,
+    u: &mut Unstructured<'_>,
+) -> arbitrary::Result<Vec<ABACPolicy>> {
+    let len = u.arbitrary_len::<usize>()?;
+    let mut policies: Vec<ABACPolicy> = Vec::with_capacity(len);
+    for _ in 0..len {
+        policies.push(schema.arbitrary_policy(&hierarchy, u)?);
+    }
+    Ok(policies)
+}
+
+/// Input to SymCC fuzz targets that need a single policyset (containing 0 or more policies).
+#[derive(Debug, Clone)]
+pub struct SinglePolicySetFuzzTargetInput {
+    /// generated schema
+    schema: schema::Schema,
+    /// generated policyset
+    pset: Vec<ABACPolicy>,
+}
+
+impl SinglePolicySetFuzzTargetInput {
+    /// Get the `cedar_policy::Schema` and `cedar_policy::PolicySet` that were generated
+    pub fn into_inputs(self) -> Result<(Schema, PolicySet), cedar_policy::SchemaError> {
+        Ok((
+            Schema::try_from(self.schema)?,
+            PolicySet::from_policies(self.pset.into_iter().map(Into::into))
+                .expect("creating a policyset from the generated policies should not fail"),
+        ))
+    }
+}
+
+impl<'a> Arbitrary<'a> for SinglePolicySetFuzzTargetInput {
+    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
+        let schema = schema::Schema::arbitrary(SETTINGS.clone(), u)?;
+        let hierarchy = schema.arbitrary_hierarchy(u)?;
+        let pset = arbitrary_policies(&schema, &hierarchy, u)?;
+
+        Ok(Self { schema, pset })
+    }
+
+    fn try_size_hint(
+        depth: usize,
+    ) -> std::result::Result<(usize, Option<usize>), MaxRecursionReached> {
+        Ok(arbitrary::size_hint::and_all(&[
+            schema::Schema::arbitrary_size_hint(depth)?,
+            HierarchyGenerator::size_hint(depth),
+        ]))
+    }
+}
+
 /// Input to SymCC fuzz targets that need two individual policies.
 #[derive(Debug, Clone)]
 pub struct TwoPolicyFuzzTargetInput {
     /// generated schema
-    pub schema: schema::Schema,
+    schema: schema::Schema,
     /// generated policy
-    pub policy1: ABACPolicy,
+    policy1: ABACPolicy,
     /// generated policy
-    pub policy2: ABACPolicy,
+    policy2: ABACPolicy,
+}
+
+impl TwoPolicyFuzzTargetInput {
+    /// Get the `cedar_policy::Schema` and both `cedar_policy::Policy`s that were generated
+    pub fn into_inputs(self) -> Result<(Schema, Policy, Policy), cedar_policy::SchemaError> {
+        Ok((
+            Schema::try_from(self.schema)?,
+            self.policy1.into(),
+            self.policy2.into(),
+        ))
+    }
+
+    /// Get the `cedar_policy::Schema` and both singleton `cedar_policy::PolicySet`s that were generated
+    pub fn into_inputs_as_psets(
+        self,
+    ) -> Result<(Schema, PolicySet, PolicySet), cedar_policy::SchemaError> {
+        let mut pset1 = PolicySet::new();
+        pset1
+            .add(self.policy1.into())
+            .expect("creating a singleton policyset should not fail");
+        let mut pset2 = PolicySet::new();
+        pset2
+            .add(self.policy2.into())
+            .expect("creating a singleton policyset should not fail");
+        Ok((Schema::try_from(self.schema)?, pset1, pset2))
+    }
 }
 
 impl<'a> Arbitrary<'a> for TwoPolicyFuzzTargetInput {
@@ -113,6 +283,54 @@ impl<'a> Arbitrary<'a> for TwoPolicyFuzzTargetInput {
             schema,
             policy1,
             policy2,
+        })
+    }
+
+    fn try_size_hint(
+        depth: usize,
+    ) -> std::result::Result<(usize, Option<usize>), MaxRecursionReached> {
+        Ok(arbitrary::size_hint::and_all(&[
+            schema::Schema::arbitrary_size_hint(depth)?,
+            HierarchyGenerator::size_hint(depth),
+        ]))
+    }
+}
+
+/// Input to SymCC fuzz targets that need two policysets (each containing 0 or more policies).
+#[derive(Debug, Clone)]
+pub struct TwoPolicySetFuzzTargetInput {
+    /// generated schema
+    schema: schema::Schema,
+    /// generated policyset
+    pset1: Vec<ABACPolicy>,
+    /// generated policyset
+    pset2: Vec<ABACPolicy>,
+}
+
+impl TwoPolicySetFuzzTargetInput {
+    /// Get the `cedar_policy::Schema` and both `cedar_policy::PolicySet`s that were generated
+    pub fn into_inputs(self) -> Result<(Schema, PolicySet, PolicySet), cedar_policy::SchemaError> {
+        Ok((
+            Schema::try_from(self.schema)?,
+            PolicySet::from_policies(self.pset1.into_iter().map(Into::into))
+                .expect("creating a policyset from the generated policies should not fail"),
+            PolicySet::from_policies(self.pset2.into_iter().map(Into::into))
+                .expect("creating a policyset from the generated policies should not fail"),
+        ))
+    }
+}
+
+impl<'a> Arbitrary<'a> for TwoPolicySetFuzzTargetInput {
+    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
+        let schema = schema::Schema::arbitrary(SETTINGS.clone(), u)?;
+        let hierarchy = schema.arbitrary_hierarchy(u)?;
+        let pset1 = arbitrary_policies(&schema, &hierarchy, u)?;
+        let pset2 = arbitrary_policies(&schema, &hierarchy, u)?;
+
+        Ok(Self {
+            schema,
+            pset1,
+            pset2,
         })
     }
 

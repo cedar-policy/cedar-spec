@@ -18,25 +18,15 @@
 use cedar_drt::logger::initialize_log;
 use cedar_drt_inner::{
     fuzz_target,
-    symcc::{SinglePolicyFuzzTargetInput, local_solver},
+    symcc::{RUNTIME, SinglePolicyFuzzTargetInput, local_solver},
 };
-
-use cedar_policy::{Authorizer, Decision, Policy, PolicySet, Schema};
+use cedar_policy::{Authorizer, Decision, PolicySet};
 use cedar_policy_symcc::{CedarSymCompiler, CompiledPolicySet, Env, solver::LocalSolver};
-
-use log::debug;
-use std::{convert::TryFrom, future::Future, sync::LazyLock};
+use std::{future::Future, sync::LazyLock};
 use tokio::{
     sync::{Mutex, MutexGuard},
     time::{Duration, timeout},
 };
-
-static RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap()
-});
 
 /// Solver timeout used for this target
 const TIMEOUT_DUR: Duration = Duration::from_secs(60);
@@ -110,13 +100,7 @@ fn reproduce(env: &Env, policies: &PolicySet) -> Decision {
 // Fuzzing target checking that counterexamples generated are true counterexamples
 fuzz_target!(|input: SinglePolicyFuzzTargetInput| {
     initialize_log();
-    let mut policyset = PolicySet::new();
-    let policy: Policy = input.policy.into();
-    policyset.add(policy.clone()).unwrap();
-    debug!("Schema: {}\n", input.schema.schemafile_string());
-    debug!("Policies: {policy}\n");
-
-    if let Ok(schema) = Schema::try_from(input.schema) {
+    if let Ok((schema, policyset)) = input.into_inputs_as_pset() {
         for req_env in schema.request_envs() {
             // We let Rust compile the policies as it's faster than Lean.
             // also note that we do the compilation (and reproduction) while _not_ holding the `get_solver()` lock
