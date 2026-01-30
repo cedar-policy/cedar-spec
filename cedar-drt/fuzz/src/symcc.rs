@@ -16,6 +16,7 @@
 
 use cedar_lean_ffi::{CedarLeanFfi, FfiError, LeanSchema};
 use cedar_policy::{Policy, PolicySet, RequestEnv, Schema};
+use cedar_policy_core::ast::PolicyID;
 use cedar_policy_generators::{
     abac::ABACPolicy,
     hierarchy::{Hierarchy, HierarchyGenerator},
@@ -192,6 +193,28 @@ fn arbitrary_policies(
     let mut policies: Vec<ABACPolicy> = Vec::with_capacity(len);
     for _ in 0..len {
         policies.push(schema.arbitrary_policy(&hierarchy, u)?);
+    }
+    // we want to ensure that the policies all have unique IDs.
+    // to avoid mutating-while-iterating, we collect a list of updates we need to make:
+    // an entry in `updates` indicates we need to update the policy at the given index to have the given policy ID.
+    let mut updates: Vec<(usize, PolicyID)> = Vec::new();
+    for (idx, id) in policies.iter().map(|p| p.0.id()).enumerate() {
+        for (other_idx, _) in policies
+            .iter()
+            .enumerate()
+            .skip(idx + 1)
+            .filter(|(_, p)| p.0.id() == id)
+        {
+            // If we find a policy with a duplicate ID, append `_{idx}` to its ID.
+            // This is highly likely, but not guaranteed, to be a unique ID --
+            // we could get very unlucky, and the new ID could be a duplicate of a
+            // _different_ policy's ID.
+            updates.push((other_idx, PolicyID::from_string(format!("{id}_{idx}"))));
+        }
+    }
+    // now apply the updates
+    for (idx, id) in updates {
+        policies[idx].0.set_id(id);
     }
     Ok(policies)
 }
