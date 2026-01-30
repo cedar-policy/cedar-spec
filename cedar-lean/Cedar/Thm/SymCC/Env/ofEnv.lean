@@ -548,7 +548,7 @@ where
   decreasing_by
     any_goals
       calc
-        sizeOf attr_ty < sizeOf hd.snd := by simp [*]
+        sizeOf attr_ty < sizeOf hd.snd := by simp [h, sizeOf, Qualified._sizeOf_1]
         _ < sizeOf hd := by
           cases hd
           simp
