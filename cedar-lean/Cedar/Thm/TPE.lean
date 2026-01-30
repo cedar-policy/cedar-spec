@@ -137,6 +137,27 @@ theorem partial_authorize_decision_is_sound
     unfold IsExplicitlyPermitted IsExplicitlyForbidden
     exact .intro h_permit h_not_forbid
 
+/-- Trivial composition of the first two soundness theorems directly relating
+the decision of partial authorization and subsequent re-authorization.-/
+theorem partial_re_authorize_decision_eq
+  {schema : Schema}
+  {policies : List Policy}
+  {req : Request}
+  {es : Entities}
+  {preq : PartialRequest}
+  {pes : PartialEntities}
+  {response : TPE.Response}
+  {decision : Decision} :
+  TPE.isAuthorized schema policies preq pes = Except.ok response →
+  isValidAndConsistent schema req es preq pes = Except.ok () →
+  response.decision = some decision →
+  (response.reauthorize req es).decision = decision
+:= by
+  intro h₁ h₂ h₃
+  have h₄ := partial_authorize_decision_is_sound h₁ h₂ h₃
+  have h₅ := reauthorize_is_sound h₂ h₁
+  simp [h₅, h₄]
+
 /-- All policies reported as erroring after partial authorization will appear in
 the set of erroring policies after concrete authorization.  -/
 theorem partial_authorize_erroring_policies_is_sound
