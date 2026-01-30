@@ -503,7 +503,7 @@ impl proto::TermPrim {
             }
             datatypes::TermPrim::String(s) => proto::term_prim::Prim::String(s.to_string()),
             datatypes::TermPrim::Entity(euid) => {
-                proto::term_prim::Prim::Entity(cedar_policy::proto::models::EntityUid::from(euid))
+                proto::term_prim::Prim::Entity(cedar_policy::proto::models::EntityUid::from(&cedar_policy::EntityUid::from(euid.clone())))
             }
             datatypes::TermPrim::Ext(ext) => proto::term_prim::Prim::Ext(proto::Ext::new(ext)),
         };

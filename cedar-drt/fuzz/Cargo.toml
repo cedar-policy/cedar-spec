@@ -359,6 +359,12 @@ test = false
 doc = false
 
 [[bin]]
+name = "symcc-cex-drt"
+path = "fuzz_targets/symcc-cex-drt.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "input-generation"
 path = "fuzz_targets/input-generation.rs"
 test = false

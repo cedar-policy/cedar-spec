@@ -25,7 +25,7 @@ use crate::datatypes::{
 };
 use crate::err::FfiError;
 use crate::lean_object::{
-    OwnedLeanObject, call_lean_ffi_takes_obj_and_protobuf, call_lean_ffi_takes_protobuf,
+    OwnedLeanObject, call_lean_ffi_takes_obj_and_protobuf, call_lean_ffi_takes_protobuf, call_lean_ffi_takes_obj_protobuf_and_string,
 };
 use crate::messages::*;
 
@@ -57,36 +57,67 @@ unsafe extern "C" {
         schema: *mut lean_object,
         req: *mut lean_object,
     ) -> *mut lean_object;
+    fn runCheckNeverErrorsWithCexGivenRawModel(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+        raw_model: *mut lean_object,
+    ) -> *mut lean_object;
     fn runCheckAlwaysMatches(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn runCheckAlwaysMatchesWithCex(
         schema: *mut lean_object,
         req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn runCheckAlwaysMatchesWithCexGivenRawModel(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+        raw_model: *mut lean_object,
     ) -> *mut lean_object;
     fn runCheckNeverMatches(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn runCheckNeverMatchesWithCex(
         schema: *mut lean_object,
         req: *mut lean_object,
     ) -> *mut lean_object;
+    fn runCheckNeverMatchesWithCexGivenRawModel(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+        raw_model: *mut lean_object,
+    ) -> *mut lean_object;
     fn runCheckAlwaysAllows(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn runCheckAlwaysAllowsWithCex(
         schema: *mut lean_object,
         req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn runCheckAlwaysAllowsWithCexGivenRawModel(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+        raw_model: *mut lean_object,
     ) -> *mut lean_object;
     fn runCheckAlwaysDenies(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn runCheckAlwaysDeniesWithCex(
         schema: *mut lean_object,
         req: *mut lean_object,
     ) -> *mut lean_object;
+    fn runCheckAlwaysDeniesWithCexGivenRawModel(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+        raw_model: *mut lean_object,
+    ) -> *mut lean_object;
     fn runCheckEquivalent(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn runCheckEquivalentWithCex(
         schema: *mut lean_object,
         req: *mut lean_object,
     ) -> *mut lean_object;
+    fn runCheckEquivalentWithCexGivenRawModel(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+        raw_model: *mut lean_object,
+    ) -> *mut lean_object;
     fn runCheckImplies(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn runCheckImpliesWithCex(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
+    fn runCheckImpliesWithCexGivenRawModel(schema: *mut lean_object, req: *mut lean_object, raw_model: *mut lean_object) -> *mut lean_object;
     fn runCheckDisjoint(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
-    fn runCheckDisjointWithCex(schema: *mut lean_object, req: *mut lean_object)
-    -> *mut lean_object;
+    fn runCheckDisjointWithCex(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
+    fn runCheckDisjointWithCexGivenRawModel(schema: *mut lean_object, req: *mut lean_object, raw_model: *mut lean_object) -> *mut lean_object;
     fn runCheckMatchesEquivalent(
         schema: *mut lean_object,
         req: *mut lean_object,
@@ -95,16 +126,31 @@ unsafe extern "C" {
         schema: *mut lean_object,
         req: *mut lean_object,
     ) -> *mut lean_object;
+    fn runCheckMatchesEquivalentWithCexGivenRawModel(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+        raw_model: *mut lean_object,
+    ) -> *mut lean_object;
     fn runCheckMatchesImplies(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn runCheckMatchesImpliesWithCex(
         schema: *mut lean_object,
         req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn runCheckMatchesImpliesWithCexGivenRawModel(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+        raw_model: *mut lean_object,
     ) -> *mut lean_object;
     fn runCheckMatchesDisjoint(schema: *mut lean_object, req: *mut lean_object)
     -> *mut lean_object;
     fn runCheckMatchesDisjointWithCex(
         schema: *mut lean_object,
         req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn runCheckMatchesDisjointWithCexGivenRawModel(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+        raw_model: *mut lean_object,
     ) -> *mut lean_object;
 
     fn printCheckNeverErrors(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
@@ -422,6 +468,58 @@ macro_rules! comparePolicySet_func {
     };
 }
 
+/// A macro which converts symcc-request to protobuf, calls the lean code, then deserializes the output
+///
+/// We could easily create the `*GivenRawModel` variants of the other macros, but today we only need this one
+macro_rules! comparePolicySetGivenRawModel_func {
+    // Pattern for function identifier
+    ($timed_func_name:ident, $untimed_func_name:ident, $lean_func_name:ident, $transform:ident, $ret_ty:ty) => {
+        comparePolicySetGivenRawModel_func!(@internal $timed_func_name, $untimed_func_name, $lean_func_name, $transform, $ret_ty);
+    };
+    // Pattern for closure expression
+    ($timed_func_name:ident, $untimed_func_name:ident, $lean_func_name:ident, $transform:expr, $ret_ty:ty) => {
+        comparePolicySetGivenRawModel_func!(@internal $timed_func_name, $untimed_func_name, $lean_func_name, $transform, $ret_ty);
+    };
+    // Internal implementation
+    (@internal $timed_func_name:ident, $untimed_func_name:ident, $lean_func_name:ident, $transform:expr, $ret_ty:ty) => {
+        pub fn $timed_func_name(
+            &self,
+            src_policyset: &PolicySet,
+            tgt_policyset: &PolicySet,
+            schema: LeanSchema,
+            request_env: &RequestEnv,
+            raw_model: &str,
+        ) -> Result<TimedResult<$ret_ty>, FfiError> {
+            let response = unsafe { call_lean_ffi_takes_obj_protobuf_and_string(
+                $lean_func_name,
+                schema.0,
+                &proto::ComparePolicySetsRequest::new(
+                    src_policyset,
+                    tgt_policyset,
+                    request_env,
+                ),
+                raw_model,
+            )};
+            match response.as_borrowed().deserialize_into()? {
+                ResultDef::Ok(t) => Ok(TimedResult::from_def(t).transform($transform)),
+                ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
+            }
+        }
+        pub fn $untimed_func_name(
+            &self,
+            src_policyset: &PolicySet,
+            tgt_policyset: &PolicySet,
+            schema: LeanSchema,
+            request_env: &RequestEnv,
+            raw_model: &str,
+        ) -> Result<$ret_ty, FfiError> {
+            Ok(self
+                .$timed_func_name(src_policyset, tgt_policyset, schema, request_env, raw_model)?
+                .take_result())
+        }
+    };
+}
+
 macro_rules! checkAsserts_func {
     // Pattern for function identifier
     (&timed_func_name:ident, $untimed_func_name:ident, $lean_func_name:ident, $transform:ident, $ret_ty:ty) => {
@@ -552,6 +650,14 @@ impl CedarLeanFfi {
         Option<Env>
     );
 
+    comparePolicySetGivenRawModel_func!(
+        run_check_equivalent_with_cex_given_raw_model_timed,
+        run_check_equivalent_with_cex_given_raw_model,
+        runCheckEquivalentWithCexGivenRawModel,
+        |x| x,
+        Env
+    );
+
     comparePolicySet_func!(
         run_check_implies_timed,
         run_check_implies,
@@ -568,6 +674,14 @@ impl CedarLeanFfi {
         Option<Env>
     );
 
+    comparePolicySetGivenRawModel_func!(
+        run_check_implies_with_cex_given_raw_model_timed,
+        run_check_implies_with_cex_given_raw_model,
+        runCheckImpliesWithCexGivenRawModel,
+        |x| x,
+        Env
+    );
+
     comparePolicySet_func!(
         run_check_disjoint_timed,
         run_check_disjoint,
@@ -582,6 +696,14 @@ impl CedarLeanFfi {
         runCheckDisjointWithCex,
         |x| x,
         Option<Env>
+    );
+
+    comparePolicySetGivenRawModel_func!(
+        run_check_disjoint_with_cex_given_raw_model_timed,
+        run_check_disjoint_with_cex_given_raw_model,
+        runCheckDisjointWithCexGivenRawModel,
+        |x| x,
+        Env
     );
 
     // Adds each of the print_(symcc-command) to call the corresponding lean function

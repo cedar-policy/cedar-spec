@@ -23,7 +23,7 @@ mod messages;
 pub use datatypes::{AuthorizationResponse, TimedResult, ValidationResponse};
 // Term and associated types
 pub use datatypes::{
-    Bitvec, Cidr, Datetime, Decimal, Duration, Ext, ExtOp, ExtType, IpAddr, Op, Term, TermPrim,
+    Bitvec, Cidr, Datetime, Decimal, Duration, Env, Ext, ExtOp, ExtType, IpAddr, Op, Term, TermPrim,
     TermPrimType, TermType, TermVar, Uuf,
 };
 pub use err::FfiError;
