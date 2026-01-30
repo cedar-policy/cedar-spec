@@ -199,7 +199,12 @@ fn arbitrary_policies(
     // an entry in `updates` indicates we need to update the policy at the given index to have the given policy ID.
     let mut updates: Vec<(usize, PolicyID)> = Vec::new();
     for (idx, id) in policies.iter().map(|p| p.0.id()).enumerate() {
-        for (other_idx, _) in policies.iter().enumerate().skip(idx + 1).filter(|(_, p)| p.0.id() == id) {
+        for (other_idx, _) in policies
+            .iter()
+            .enumerate()
+            .skip(idx + 1)
+            .filter(|(_, p)| p.0.id() == id)
+        {
             // If we find a policy with a duplicate ID, append `_{idx}` to its ID.
             // This is highly likely, but not guaranteed, to be a unique ID --
             // we could get very unlucky, and the new ID could be a duplicate of a
