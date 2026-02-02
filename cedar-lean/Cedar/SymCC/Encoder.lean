@@ -74,6 +74,7 @@ structure EncoderState where
   types : RBMap TermType String (compareOfLessAndEq · ·)
   uufs  : RBMap UUF String (compareOfLessAndEq · ·)
   enums : RBMap EntityType (List String) (compareOfLessAndEq · ·)
+deriving Repr
 
 def EncoderState.init (εnv : SymEnv) : EncoderState :=
   let enums := εnv.entities.toList.filterMap λ (ety, d) => do (ety, (← d.members).toList)
