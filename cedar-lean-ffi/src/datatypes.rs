@@ -345,12 +345,17 @@ impl From<Decimal> for RestrictedExpression {
         // note this assumes the Lean represents the decimal value `v` as the integer `10000 * v`
         let neg = if decimal.0 < 0 { "-" } else { "" };
         let absval = i64::abs(decimal.0);
-        let left  = absval / 10000;
+        let left = absval / 10000;
         let right = absval % 10000;
-        let right = if right < 10 { format!(".000{right}") }
-            else if right < 100 { format!(".00{right}") }
-            else if right < 1000 { format!(".0{right}") }
-            else { format!(".{right}") };
+        let right = if right < 10 {
+            format!(".000{right}")
+        } else if right < 100 {
+            format!(".00{right}")
+        } else if right < 1000 {
+            format!(".0{right}")
+        } else {
+            format!(".{right}")
+        };
         RestrictedExpression::new_decimal(format!("{neg}{left}{right}"))
     }
 }
@@ -422,14 +427,14 @@ impl TryFrom<Datetime> for RestrictedExpression {
         );
         let millis_since_epoch = cedar_policy_core::ast::RestrictedExpr::call_extension_fn(
             Name::parse_unqualified_name("duration")?,
-            [cedar_policy_core::ast::RestrictedExpr::val(format!("{}ms", dt.val))]
+            [cedar_policy_core::ast::RestrictedExpr::val(format!(
+                "{}ms",
+                dt.val
+            ))],
         );
         let core_rexpr = cedar_policy_core::ast::RestrictedExpr::call_extension_fn(
             Name::parse_unqualified_name("offset")?,
-            [
-                epoch,
-                millis_since_epoch,
-            ],
+            [epoch, millis_since_epoch],
         );
         Ok(core_rexpr.into())
     }
@@ -1008,27 +1013,53 @@ pub enum Prim {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Value {
-    Prim { p: Prim },
-    Set { s: Vec<Value> },
-    /// Lean gives us a JSON array of pairs, not a JSON object (map)
-    Record { m: Vec<(String, Value)> },
-    Ext { x: Ext },
+    Prim {
+        p: Prim,
+    },
+    Set {
+        s: Vec<Value>,
+    },
+    Record {
+        /// Lean gives us a JSON array of pairs, not a JSON object (map)
+        m: Vec<(String, Value)>,
+    },
+    Ext {
+        x: Ext,
+    },
 }
 
 impl TryFrom<Value> for RestrictedExpression {
     type Error = Box<dyn miette::Diagnostic>;
     fn try_from(value: Value) -> Result<Self, Self::Error> {
         match value {
-            Value::Prim { p: Prim::Bool(b)} => Ok(RestrictedExpression::new_bool(b)),
+            Value::Prim { p: Prim::Bool(b) } => Ok(RestrictedExpression::new_bool(b)),
             Value::Prim { p: Prim::Int(i) } => Ok(RestrictedExpression::new_long(i)),
             Value::Prim { p: Prim::String(s) } => Ok(RestrictedExpression::new_string(s)),
-            Value::Prim { p: Prim::EntityUid(euid) } => Ok(RestrictedExpression::new_entity_uid(euid.into())),
-            Value::Set { s } => Ok(RestrictedExpression::new_set(s.into_iter().map(TryInto::try_into).collect::<Result<Vec<_>, _>>()?)),
-            Value::Record { m } => Ok(RestrictedExpression::new_record(m.into_iter().map(|(k, v)| Ok((k, v.try_into()?))).collect::<Result<Vec<_>, Box<dyn miette::Diagnostic>>>()?)?),
-            Value::Ext { x: Ext::Decimal { d } } => Ok(d.into()),
-            Value::Ext { x: Ext::Ipaddr { ip } } => Ok(ip.into()),
-            Value::Ext { x: Ext::Datetime { dt } } => Ok(dt.try_into()?),
-            Value::Ext { x: Ext::Duration { dur } } => Ok(dur.into()),
+            Value::Prim {
+                p: Prim::EntityUid(euid),
+            } => Ok(RestrictedExpression::new_entity_uid(euid.into())),
+            Value::Set { s } => Ok(RestrictedExpression::new_set(
+                s.into_iter()
+                    .map(TryInto::try_into)
+                    .collect::<Result<Vec<_>, _>>()?,
+            )),
+            Value::Record { m } => Ok(RestrictedExpression::new_record(
+                m.into_iter()
+                    .map(|(k, v)| Ok((k, v.try_into()?)))
+                    .collect::<Result<Vec<_>, Box<dyn miette::Diagnostic>>>()?,
+            )?),
+            Value::Ext {
+                x: Ext::Decimal { d },
+            } => Ok(d.into()),
+            Value::Ext {
+                x: Ext::Ipaddr { ip },
+            } => Ok(ip.into()),
+            Value::Ext {
+                x: Ext::Datetime { dt },
+            } => Ok(dt.try_into()?),
+            Value::Ext {
+                x: Ext::Duration { dur },
+            } => Ok(dur.into()),
         }
     }
 }
@@ -1049,10 +1080,12 @@ impl TryFrom<Request> for cedar_policy::Request {
             req.principal.into(),
             req.action.into(),
             req.resource.into(),
-            cedar_policy::Context::from_pairs(req.context
-                .into_iter()
-                .map(|(k, v)| Ok((k, v.try_into()?)))
-                .collect::<Result<Vec<_>, Box<dyn miette::Diagnostic>>>()?)?,
+            cedar_policy::Context::from_pairs(
+                req.context
+                    .into_iter()
+                    .map(|(k, v)| Ok((k, v.try_into()?)))
+                    .collect::<Result<Vec<_>, Box<dyn miette::Diagnostic>>>()?,
+            )?,
             None,
         )?)
     }
@@ -1089,9 +1122,15 @@ impl TryFrom<Env> for cedar_policy_symcc::Env {
                     .map(|(uid, ed)| {
                         Ok(cedar_policy::Entity::new_with_tags(
                             uid.into(),
-                            ed.attrs.into_iter().map(|(k, v)| Ok((k, v.try_into()?))).collect::<Result<Vec<_>, Box<dyn miette::Diagnostic>>>()?,
+                            ed.attrs
+                                .into_iter()
+                                .map(|(k, v)| Ok((k, v.try_into()?)))
+                                .collect::<Result<Vec<_>, Box<dyn miette::Diagnostic>>>()?,
                             ed.ancestors.into_iter().map(|uid| uid.into()),
-                            ed.tags.into_iter().map(|(k, v)| Ok((k, v.try_into()?))).collect::<Result<Vec<_>, Box<dyn miette::Diagnostic>>>()?,
+                            ed.tags
+                                .into_iter()
+                                .map(|(k, v)| Ok((k, v.try_into()?)))
+                                .collect::<Result<Vec<_>, Box<dyn miette::Diagnostic>>>()?,
                         )?)
                     })
                     .collect::<Result<Vec<_>, Box<dyn miette::Diagnostic>>>()?,

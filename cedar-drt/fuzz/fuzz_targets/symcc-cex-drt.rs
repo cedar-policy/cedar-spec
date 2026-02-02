@@ -49,7 +49,8 @@ fuzz_target!(|input: TwoPolicyFuzzTargetInput| {
                         // important that we `take()`, replacing the solver's raw_model with `None`,
                         // so that if a future `get_cex()` ends up not calling the solver at all,
                         // the solver will correctly report that `get_model()` was never called
-                        let raw_model = std::mem::take(&mut solver_guard.symcc.solver_mut().raw_model);
+                        let raw_model =
+                            std::mem::take(&mut solver_guard.symcc.solver_mut().raw_model);
                         // release the solver for someone else to use, while we call Lean.
                         // note that we do this _after_ we get the raw model, so that we
                         // hold the solver lock while calling `get_cex` and getting the raw

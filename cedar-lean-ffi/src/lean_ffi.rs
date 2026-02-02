@@ -25,7 +25,8 @@ use crate::datatypes::{
 };
 use crate::err::FfiError;
 use crate::lean_object::{
-    OwnedLeanObject, call_lean_ffi_takes_obj_and_protobuf, call_lean_ffi_takes_protobuf, call_lean_ffi_takes_obj_protobuf_and_string,
+    OwnedLeanObject, call_lean_ffi_takes_obj_and_protobuf,
+    call_lean_ffi_takes_obj_protobuf_and_string, call_lean_ffi_takes_protobuf,
 };
 use crate::messages::*;
 
@@ -114,10 +115,19 @@ unsafe extern "C" {
     ) -> *mut lean_object;
     fn runCheckImplies(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn runCheckImpliesWithCex(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
-    fn runCheckImpliesWithCexGivenRawModel(schema: *mut lean_object, req: *mut lean_object, raw_model: *mut lean_object) -> *mut lean_object;
+    fn runCheckImpliesWithCexGivenRawModel(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+        raw_model: *mut lean_object,
+    ) -> *mut lean_object;
     fn runCheckDisjoint(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
-    fn runCheckDisjointWithCex(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
-    fn runCheckDisjointWithCexGivenRawModel(schema: *mut lean_object, req: *mut lean_object, raw_model: *mut lean_object) -> *mut lean_object;
+    fn runCheckDisjointWithCex(schema: *mut lean_object, req: *mut lean_object)
+    -> *mut lean_object;
+    fn runCheckDisjointWithCexGivenRawModel(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+        raw_model: *mut lean_object,
+    ) -> *mut lean_object;
     fn runCheckMatchesEquivalent(
         schema: *mut lean_object,
         req: *mut lean_object,

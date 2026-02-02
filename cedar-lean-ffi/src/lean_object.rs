@@ -255,7 +255,11 @@ pub unsafe fn call_lean_ffi_bi_function(
 }
 
 pub unsafe fn call_lean_ffi_tri_function(
-    func: unsafe extern "C" fn(*mut lean_object, *mut lean_object, *mut lean_object) -> *mut lean_object,
+    func: unsafe extern "C" fn(
+        *mut lean_object,
+        *mut lean_object,
+        *mut lean_object,
+    ) -> *mut lean_object,
     arg0: OwnedLeanObject,
     arg1: OwnedLeanObject,
     arg2: OwnedLeanObject,
@@ -291,7 +295,11 @@ pub unsafe fn call_lean_ffi_takes_obj_and_protobuf(
 }
 
 pub unsafe fn call_lean_ffi_takes_obj_protobuf_and_string(
-    func: unsafe extern "C" fn(*mut lean_object, *mut lean_object, *mut lean_object) -> *mut lean_object,
+    func: unsafe extern "C" fn(
+        *mut lean_object,
+        *mut lean_object,
+        *mut lean_object,
+    ) -> *mut lean_object,
     arg0: OwnedLeanObject,
     arg1: &impl Message,
     arg2: &str,
