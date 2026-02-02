@@ -110,7 +110,7 @@ Options:
 The `analyze` command provides two sub-commands `policies` and `compare`.
 
 * The `policies` command will analyze a single policyset and present a set of findings about each policy within the policyset.
-* The `compare` command takes two policysets `source` and `target` and determines for each "type" of request if the `source` policyset is equivalent, less permissive, more permissive, or incomparable to the `target` policyset (in terms of the requests allowed by each policyset).
+* The `compare` command takes two policysets and determines for each "type" of request if the first policyset is equivalent, less permissive, more permissive, or incomparable to the second policyset (in terms of the requests allowed by each policyset).
 
 ```
 > cedar-lean-cli analyze --help
@@ -120,7 +120,7 @@ Usage: cedar-lean-cli analyze <COMMAND>
 
 Commands:
   policies  Analyze a PolicySet
-  compare   Compare the source PolicySet against the target PolicySet
+  compare   Compare two PolicySets
   help      Print this message or the help of the given subcommand(s)
 
 Options:
@@ -136,18 +136,18 @@ The `analyze policies` command presents five findings: if a policy is vacuous, i
 
 * A policy is vacous if either (1) it applies to all requests (allows all) or (2) it applies to no requests (allows none).
 * A set of policies are redundant with each other if every policy within the set are equivalent (allows the same set of authorization requests).
-* A permit policy `src` is shadowed by a permit policy `tgt` if every request allowed by `src` is allowed by `tgt` and `src` and `tgt` are not redundant.
-* A permit policy `src` is overriden by a forbid policy `tgt` if every request allowed by `src` is denied by `tgt`.
-* A forbid policy `src` is shaddowed by a forbid policy `tgt` if every request denied by `src` is denied by `tgt` and `src` and `tgt` are not redundant.
+* A permit policy `policy1` is shadowed by a permit policy `policy2` if every request allowed by `policy1` is allowed by `policy2` and `policy1` and `policy2` are not redundant.
+* A permit policy `policy1` is overriden by a forbid policy `policy2` if every request allowed by `policy1` is denied by `policy2`.
+* A forbid policy `policy1` is shaddowed by a forbid policy `policy2` if every request denied by `policy1` is denied by `policy2` and `policy1` and `policy2` are not redundant.
 
 #### Analyze Compare
 
-The `analyze compare` command compares a `src` policyset to a `tgt` policyset per request "type". For each type, it determines if `src` is equivalent to `tgt`, if `src` is less permissive than `tgt`, if `src` is more permissive than `tgt`, or if `src` and `tgt` are incomparable.
+The `analyze compare` command compares two policysets (`pset1` and `pset2`) per request "type". For each type, it determines if `pset` is equivalent to `pset2`, if `pset1` is less permissive than `pset2`, if `pset1` is more permissive than `pset2`, or if `pset1` and `pset2` are incomparable.
 
-* `src` is equivalent to `tgt`: the set of authorizations allowed by `src` and `tgt` are identical
-* `src` is less permissive than `tgt`: the set of authorization requests allowed by `src` is a strict subset of the requests allowed by `tgt`.
-* `src` is more permissive than `tgt`: the set of authorization requests allowed by `src` is a strict superset of the requests allowed by `tgt`.
-* `src` is incomparable with `tgt`: there is no relation between the sets of authorization requests allowed by `src` and `tgt`.
+* `pset1` is equivalent to `pset2`: the set of authorizations allowed by `pset1` and `pset2` are identical
+* `pset1` is less permissive than `pset2`: the set of authorization requests allowed by `pset1` is a strict subset of the requests allowed by `pset2`.
+* `pset1` is more permissive than `pset2`: the set of authorization requests allowed by `pset1` is a strict superset of the requests allowed by `pset2`.
+* `pset1` is incomparable to `pset2`: none of the above options apply. That is, there is some authorization request allowed by `pset1` and not `pset2`, and some other authorization request allowed by `pset2` and not `pset1`.
 
 ### Symbolic Compilation
 
@@ -156,9 +156,9 @@ The `symcc` command provides an interface to access Cedar's Symbolic Compiler. T
 * `check-never-errors`: Checks if a policy will never throw an error during evaluation.
 * `check-always-allows`: Checks if a policy allows all authorization requests.
 * `check-always-denies`: Checks if a policy denies all authorization requests.
-* `check-equivalent`: Compares two policy sets `source` and `target`; Checks if `source` and `target` allow the same set of authorization requests.
-* `check-implies`: Compares two policy sets `source` and `target`; Checks if every authorization request allowed by `source` is also allowed by `target`.
-* `check-disjoint`:Compares two policy sets `source` and `target`; Checks if `source` and `taget` allow disjoint sets of authorization requests.
+* `check-equivalent`: Compares two policy sets `pset1` and `pset2`; Checks if `pset1` and `pset2` allow the same set of authorization requests.
+* `check-implies`: Compares two policy sets `pset1` and `pset2`; Checks if every authorization request allowed by `pset1` is also allowed by `pset2`.
+* `check-disjoint`: Compares two policy sets `pset1` and `pset2`; Checks if `pset1` and `pset2` allow disjoint sets of authorization requests.
 
 ```
 > cedar-lean-cli symcc --help
@@ -170,9 +170,9 @@ Commands:
   check-never-errors   Check if the provided Policy never errors
   check-always-allows  Check if the provided PolicySet allows all authorization requests
   check-always-denies  Check if the provided PolicySet denies all authorization requests
-  check-equivalent     Check if the source and target PolicySets are equivalent
-  check-implies        Check if the target PolicySet authorizes all requests that the source PolicySet authorizes
-  check-disjoint       Check if the source and target PolicySets are disjoint (there is no authorization request that both PolicySets allow)
+  check-equivalent     Check if two PolicySets are equivalent
+  check-implies        Check if one PolicySet authorizes all requests that another PolicySet authorizes
+  check-disjoint       Check if two PolicySets are disjoint (there is no authorization request that both PolicySets allow)
   help                 Print this message or the help of the given subcommand(s)
 
 Options:
