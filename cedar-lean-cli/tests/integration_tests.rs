@@ -1,5 +1,4 @@
 use assert_cmd::{Command, cargo};
-use std::path::Path;
 
 #[track_caller]
 fn cmd_output(cmd: &mut Command, should_error: bool) -> String {

@@ -2,8 +2,29 @@
 source: tests/integration_tests.rs
 expression: "cmd_output(&mut\ncargo::cargo_bin_cmd!().current_dir(\"examples/analyze/globs\").arg(\"analyze\").arg(\"compare\").arg(\"a_star.cedar\").arg(\"star_a.cedar\").arg(\"policies.cedarschema\"),\nfalse,)"
 ---
-+---------------+------------+--------------+----------------------------------+
-| PrincipalType | ActionName | ResourceType | Result                           |
-+---------------+------------+--------------+----------------------------------+
-| User          | view       | Thing        | pset1 is incomparable with pset2 |
-+---------------+------------+--------------+----------------------------------+
++---------------+------------+--------------+----------------------------------------------------------------------------------------------------------+
+| PrincipalType | ActionName | ResourceType | Result                                                                                                   |
++---------------+------------+--------------+----------------------------------------------------------------------------------------------------------+
+| User          | view       | Thing        | pset1 is incomparable with pset2                                                                         |
+|               |            |              | Example where pset1 is more permissive: principal: User::"", action: Action::"view", resource: Thing::"" |
+|               |            |              | context: {                                                                                               |
+|               |            |              |   str1: "aA",                                                                                            |
+|               |            |              |   str2: "B",                                                                                             |
+|               |            |              | }                                                                                                        |
+|               |            |              | entities: [                                                                                              |
+|               |            |              |   Action::"view",                                                                                        |
+|               |            |              |   Thing::"",                                                                                             |
+|               |            |              |   User::"",                                                                                              |
+|               |            |              | ]                                                                                                        |
+|               |            |              |                                                                                                          |
+|               |            |              | Example where pset1 is less permissive: principal: User::"", action: Action::"view", resource: Thing::"" |
+|               |            |              | context: {                                                                                               |
+|               |            |              |   str1: "Aa",                                                                                            |
+|               |            |              |   str2: "B",                                                                                             |
+|               |            |              | }                                                                                                        |
+|               |            |              | entities: [                                                                                              |
+|               |            |              |   Action::"view",                                                                                        |
+|               |            |              |   Thing::"",                                                                                             |
+|               |            |              |   User::"",                                                                                              |
+|               |            |              | ]                                                                                                        |
++---------------+------------+--------------+----------------------------------------------------------------------------------------------------------+

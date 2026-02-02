@@ -1,7 +1,8 @@
-use cedar_policy::{Decision, EntityId, EntityTypeName, PolicyId, RestrictedExpression};
+use cedar_policy::{Decision, EntityId, EntityTypeName, ParseErrors, PolicyId, RestrictedExpression};
 use cedar_policy_core::ast::Name;
 use num_bigint::ParseBigIntError;
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, TryFromInto};
 use smol_str::SmolStr;
 use thiserror::Error;
 
@@ -16,19 +17,19 @@ use crate::FfiError;
 /*************************************** Lean return types ***************************************/
 
 /// List type
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct ListDef<T> {
     pub(crate) l: Vec<T>,
 }
 
 /// Set Type
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct SetDef<T> {
     pub(crate) mk: ListDef<T>,
 }
 
 /// Lean type: Except String T
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub(crate) enum ResultDef<T> {
     /// Successful execution
     #[serde(rename = "ok")]
@@ -47,7 +48,7 @@ impl<T> ResultDef<T> {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct TimedDef<T> {
     pub(crate) data: T,
     pub(crate) duration: u128,
@@ -63,7 +64,7 @@ pub(crate) struct AuthorizationResponseInner {
     pub(crate) erroring_policies: SetDef<String>,
 }
 
-#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub(crate) enum OptionDef<T> {
     #[serde(rename = "none")]
     None,
@@ -80,15 +81,37 @@ impl<T> From<OptionDef<T>> for Option<T> {
     }
 }
 
-#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub(crate) struct NameDef {
     id: SmolStr,
     path: Vec<SmolStr>,
 }
 
-#[derive(Debug, Deserialize, Clone, PartialEq, Eq, PartialOrd, Ord)]
+impl TryFrom<NameDef> for EntityTypeName {
+    type Error = ParseErrors;
+    fn try_from(name: NameDef) -> Result<Self, Self::Error> {
+        let mut result = name.path.join("::");
+        if !result.is_empty() {
+            result.push_str("::");
+        }
+        result.push_str(&name.id);
+        EntityTypeName::from_str(&result)
+    }
+}
+
+impl From<EntityTypeName> for NameDef {
+    fn from(etn: EntityTypeName) -> Self {
+        Self {
+            id: SmolStr::new(etn.basename()),
+            path: etn.namespace_components().map(SmolStr::new).collect(),
+        }
+    }
+}
+
+#[serde_as]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct EntityUid {
-    #[serde(deserialize_with = "deserialize_entity_type_name")]
+    #[serde_as(as = "TryFromInto<NameDef>")]
     ty: EntityTypeName,
     eid: SmolStr,
 }
@@ -109,20 +132,10 @@ impl From<cedar_policy::EntityUid> for EntityUid {
     }
 }
 
-/********************************** Deserialization Helpers **********************************/
-
-// Helper function to deserialize NameDef into an EntityTypeName
-fn deserialize_entity_type_name<'de, D>(deserializer: D) -> Result<EntityTypeName, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let name_def = NameDef::deserialize(deserializer)?;
-    let mut result = name_def.path.join("::");
-    if !result.is_empty() {
-        result.push_str("::");
+impl std::fmt::Display for EntityUid {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        cedar_policy::EntityUid::from(self.clone()).fmt(f)
     }
-    result.push_str(&name_def.id);
-    EntityTypeName::from_str(&result).map_err(serde::de::Error::custom)
 }
 
 /********************************** Publicly Exported Types **********************************/
@@ -310,7 +323,7 @@ pub enum Op {
     Ext(ExtOp),
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Bitvec {
     #[serde(rename = "size")]
     pub width: u8,
@@ -337,7 +350,7 @@ impl Bitvec {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Decimal(pub i64);
 
 impl From<Decimal> for RestrictedExpression {
@@ -360,14 +373,14 @@ impl From<Decimal> for RestrictedExpression {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Cidr {
     pub addr: Bitvec,
     #[serde(rename = "pre")]
     pub prefix: Option<Bitvec>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum IpAddr {
     V4(Cidr),
     V6(Cidr),
@@ -412,7 +425,7 @@ impl From<IpAddr> for RestrictedExpression {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Datetime {
     pub val: i64,
 }
@@ -440,7 +453,7 @@ impl TryFrom<Datetime> for RestrictedExpression {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Duration {
     pub val: i64,
 }
@@ -452,7 +465,7 @@ impl From<Duration> for RestrictedExpression {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ExtType {
     IpAddr,
@@ -461,6 +474,7 @@ pub enum ExtType {
     Duration,
 }
 
+#[serde_as]
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum TermPrimType {
@@ -470,7 +484,7 @@ pub enum TermPrimType {
     },
     String,
     Entity {
-        #[serde(deserialize_with = "deserialize_entity_type_name")]
+        #[serde_as(as = "TryFromInto<NameDef>")]
         ety: EntityTypeName,
     },
     Ext {
@@ -493,7 +507,7 @@ pub struct TermVar {
     pub ty: TermType,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Ext {
     Decimal { d: Decimal },
@@ -1000,7 +1014,7 @@ impl From<cedar_policy_symcc::term::Term> for Term {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Prim {
     Bool(bool),
@@ -1010,7 +1024,7 @@ pub enum Prim {
     EntityUid(EntityUid),
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Value {
     Prim {
@@ -1064,7 +1078,7 @@ impl TryFrom<Value> for RestrictedExpression {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Request {
     pub principal: EntityUid,
     pub action: EntityUid,
@@ -1091,17 +1105,17 @@ impl TryFrom<Request> for cedar_policy::Request {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct EntityData {
     /// Lean gives us a JSON array of pairs, not a JSON object (map)
-    attrs: Vec<(String, Value)>,
-    ancestors: Vec<EntityUid>,
+    pub attrs: Vec<(String, Value)>,
+    pub ancestors: Vec<EntityUid>,
     /// Lean gives us a JSON array of pairs, not a JSON object (map)
-    tags: Vec<(String, Value)>,
+    pub tags: Vec<(String, Value)>,
 }
 
 /// Represent a counterexample
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Env {
     /// The request
     pub request: Request,
