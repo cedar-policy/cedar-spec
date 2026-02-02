@@ -32,7 +32,11 @@ use cedar_policy_symcc::{
 };
 use libfuzzer_sys::arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
 use log::{debug, warn};
-use std::{collections::BTreeSet, fmt::Display, sync::LazyLock};
+use std::{
+    collections::{BTreeSet, HashSet},
+    fmt::Display,
+    sync::LazyLock,
+};
 use tokio::process::Command;
 
 /// Tokio runtime used by all SymCC fuzz targets that need one. Note that it
@@ -195,21 +199,25 @@ fn arbitrary_policies(
         policies.push(schema.arbitrary_policy(&hierarchy, u)?);
     }
     // we want to ensure that the policies all have unique IDs.
+    // this will be a list of policy IDs that we have seen (and will ensure there are no duplicates of)
+    let mut seen = HashSet::with_capacity(policies.len());
     // to avoid mutating-while-iterating, we collect a list of updates we need to make:
     // an entry in `updates` indicates we need to update the policy at the given index to have the given policy ID.
     let mut updates: Vec<(usize, PolicyID)> = Vec::new();
     for (idx, id) in policies.iter().map(|p| p.0.id()).enumerate() {
-        for (other_idx, _) in policies
-            .iter()
-            .enumerate()
-            .skip(idx + 1)
-            .filter(|(_, p)| p.0.id() == id)
-        {
-            // If we find a policy with a duplicate ID, append `_{idx}` to its ID.
-            // This is highly likely, but not guaranteed, to be a unique ID --
-            // we could get very unlucky, and the new ID could be a duplicate of a
-            // _different_ policy's ID.
-            updates.push((other_idx, PolicyID::from_string(format!("{id}_{idx}"))));
+        if !seen.insert(id.clone()) {
+            // If we've seen this ID already, we need to change it.
+            // We'll do this by appending `_{idx}` to the ID.
+            let mut new_id = format!("{id}_{idx}");
+            while !seen.insert(PolicyID::from_string(new_id.clone())) {
+                // uh-oh -- the policyid we just tried is _also_ already-seen.
+                // we'll try again by appending `*` to the ID.
+                new_id.push('*');
+            }
+            // the above loop can run at most `policies.len()` iterations.
+            // now that it's done, we know that `new_id` is unique, and we've marked it as `seen`.
+            // we will assign it to the policy that originally had the conflicting ID.
+            updates.push((idx, PolicyID::from_string(new_id)));
         }
     }
     // now apply the updates
