@@ -1,6 +1,0 @@
-Found 1 request environment specific warnings:
-+---------------+--------------+--------------+----------------------------------------------+
-| PrincipalType | ActionName   | ResourceType | Findings                                     |
-+---------------+--------------+--------------+----------------------------------------------+
-| User          | DownloadFile | Document     | Policy `any-own` shadowed by `download-file` |
-+---------------+--------------+--------------+----------------------------------------------+

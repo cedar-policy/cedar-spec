@@ -1,0 +1,18 @@
+---
+source: tests/integration_tests.rs
+expression: "cmd_output(&mut\ncargo::cargo_bin_cmd!().current_dir(\"examples/analyze/view_box\").arg(\"analyze\").arg(\"policies\").arg(\"policies5.cedar\").arg(\"policies.cedarschema\"),\nfalse,)"
+---
+Found 2 vacuous policies:
+Policy `policy1` applies to all authorization requests.
+Policy `policy2` applies to no authorization requests.
+
+Found 4 request environment specific warnings:
++---------------+------------+--------------+----------------------------------------+
+| PrincipalType | ActionName | ResourceType | Findings                               |
++---------------+------------+--------------+----------------------------------------+
+| User          | view       | Box          | Policy `policy0` shadowed by `policy1` |
+|               |            |              | Policy `policy3` shadowed by `policy1` |
++---------------+------------+--------------+----------------------------------------+
+| User          | view       | Thing        | Policy `policy0` shadowed by `policy1` |
+|               |            |              | Policy `policy3` shadowed by `policy1` |
++---------------+------------+--------------+----------------------------------------+

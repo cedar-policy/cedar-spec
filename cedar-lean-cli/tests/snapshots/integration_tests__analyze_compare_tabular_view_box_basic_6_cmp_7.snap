@@ -1,0 +1,11 @@
+---
+source: tests/integration_tests.rs
+expression: "cmd_output(&mut\ncargo::cargo_bin_cmd!().current_dir(\"examples/analyze/view_box\").arg(\"analyze\").arg(\"compare\").arg(\"policies6.cedar\").arg(\"policies7.cedar\").arg(\"policies.cedarschema\"),\nfalse,)"
+---
++---------------+------------+--------------+-------------------------------------+
+| PrincipalType | ActionName | ResourceType | Result                              |
++---------------+------------+--------------+-------------------------------------+
+| User          | view       | Box          | pset1 is less permissive than pset2 |
++---------------+------------+--------------+-------------------------------------+
+| User          | view       | Thing        | pset1 is less permissive than pset2 |
++---------------+------------+--------------+-------------------------------------+
