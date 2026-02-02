@@ -194,7 +194,7 @@ instance : Coe α (Result α) where
   coe := Except.ok
 
 def SExpr.fail {α β} [Repr α] (expected : String) (actual : α) : Result β :=
-  .error s!"expected {expected}, given {reprStr actual}"
+  .error s!"expected {expected}, but got {reprStr actual}"
 
 partial def SExpr.decodeType (types : IdMap TermType) : SExpr → Result TermType
   | .symbol ty => atomic ty
@@ -334,7 +334,7 @@ def SExpr.decodeModel (ids : IdMaps) : SExpr → Result (VarMap × UUFMap)
         else if let .some f := ids.uufs.find? id then
           uufs := (f, (← SExpr.decodeUUFBinding f ids xs)) :: uufs
         else
-          fail "valid variable or UUF id" id
+          fail s!"valid variable or UUF id (we know of {ids.vars.size} vars and {ids.uufs.size} UUF ids)" id
       | other =>
         fail "define-fun" other
     (vars.toRBMap (compareOfLessAndEq · ·), uufs.toRBMap (compareOfLessAndEq · ·))

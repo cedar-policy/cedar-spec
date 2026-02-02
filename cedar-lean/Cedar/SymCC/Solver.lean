@@ -88,7 +88,7 @@ def cvc5 : IO Solver := do
 /--
   Returns a solver that writes all issued commands to the given stream `s`.
   Commands that produce output, such as `checkSat`, write the command to `s` and
-  return values that are sound according to the SMTLIb spec (but generally not
+  return values that are sound according to the SMTLib spec (but generally not
   useful). For example, `Solver.checkSat` returns `Decision.unknown`. This
   function expects `s` to be write-enabled.
 -/
@@ -98,7 +98,7 @@ def streamWriter (s : IO.FS.Stream) : IO Solver :=
 /--
   Returns a solver that writes all issued commands to the given file handle `h`.
   Commands that produce output, such as `checkSat`, write the command to `h` and
-  return values that are sound according to the SMTLIb spec (but generally not
+  return values that are sound according to the SMTLib spec (but generally not
   useful). For example, `Solver.checkSat` returns `Decision.unknown`. This
   function expects `h` to be write-enabled.
 -/
@@ -108,11 +108,20 @@ def fileWriter (h : IO.FS.Handle) : IO Solver :=
 /--
   Returns a solver that writes all issued commands to the given buffer `b`.
   Commands that produce output, such as `checkSat`, write the command to `b` and
-  return values that are sound according to the SMTLIb spec (but generally not
+  return values that are sound according to the SMTLib spec (but generally not
   useful). For example, `Solver.checkSat` returns `Decision.unknown`.
 -/
 def bufferWriter (b : IO.Ref IO.FS.Stream.Buffer) : IO Solver :=
   return ⟨IO.FS.Stream.ofBuffer b, .none⟩
+
+/--
+  Returns a solver that drops/ignores all issued commands.
+  Commands that produce output, such as `checkSat`, return values that are sound
+  according to the SMTLib spec (but generally not useful). For example,
+  `Solver.checkSat` returns `Decision.unknown`.
+-/
+def dummy : IO Solver :=
+  return ⟨IO.FS.Stream.ofHandle (← IO.FS.Handle.mk (.mk "/dev/null") IO.FS.Mode.write), .none⟩
 
 private def emitln (str : String) : SolverM Unit := do
   -- dbg_trace "{str}" -- uncomment to see input sent to the solver
