@@ -34,6 +34,48 @@ open Cedar.Spec
 open Cedar.Validation
 open Cedar.Thm
 
+theorem isValidAndConsistent_implies_InstanceOfWellFormedEnvironment
+  {schema : Schema}
+  {req : Request}
+  {es : Entities}
+  {preq : PartialRequest}
+  {pes : PartialEntities} :
+  isValidAndConsistent schema req es preq pes = .ok () →
+  ∃ env, schema.environment? preq.principal.ty preq.resource.ty preq.action = some env ∧
+        InstanceOfWellFormedEnvironment req es env
+:= by
+  intro hvalid
+  simp only [isValidAndConsistent] at hvalid
+  split at hvalid <;> try contradiction
+  rename_i env henv
+  have ⟨hvalid₁, hvalid₂⟩ := do_eq_ok₂ hvalid
+  replace ⟨hvalid₂, hvalid₃⟩ := do_eq_ok₂ hvalid₂
+
+  have hreq : requestMatchesEnvironment env req = true := by
+    simp only [isValidAndConsistent.requestIsConsistent, Bool.or_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true] at hvalid₁
+    split at hvalid₁ <;> try contradiction
+    clear hvalid₁ ; rename_i hvalid₁
+    simp only [not_or, Bool.not_eq_false] at hvalid₁
+    exact hvalid₁.right
+
+  have hent : entitiesMatchEnvironment env es = .ok () := by
+    simp only [isValidAndConsistent.entitiesIsConsistent, Bool.or_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true] at hvalid₂
+    split at hvalid₂ <;> try contradiction
+    rename_i hvalid₃
+    simp only [Except.isOk, Except.toBool, not_or, Bool.not_eq_false] at hvalid₃
+    replace hvalid₃ := hvalid₃.right
+    split at hvalid₃ <;> trivial
+
+  have hwf : env.validateWellFormed = .ok () := by
+    simp only [isValidAndConsistent.envIsWellFormed, Bool.not_eq_eq_eq_not, Bool.not_true] at hvalid₃
+    split at hvalid₃ <;> try contradiction
+    clear hvalid₃; rename_i hvalid₃
+    simp only [Except.isOk, Except.toBool, Bool.not_eq_false] at hvalid₃
+    split at hvalid₃ <;> trivial
+
+  exists env
+  exact .intro henv (instance_of_well_formed_env hwf hreq hent)
+
 /-- Policy evaluation soundness for TPE: Evaluating a result residual is equivalent to
 evaluating the input policy, given valid and consistent requests and entities.
 The equivalence is w.r.t authorization results. That is, the evaluation results
@@ -55,56 +97,34 @@ theorem partial_evaluate_policy_is_sound
   isValidAndConsistent schema req es preq pes = .ok () →
   (Spec.evaluate policy.toExpr req es).toOption = (Residual.evaluate residual req es).toOption
 := by
-  intro h₁ h₂
-  have h₃ := consistent_checks_ensure_refinement h₂
-  simp [evaluatePolicy] at h₁
-  split at h₁ <;> try cases h₁
-  split at h₁ <;> try cases h₁
-  simp [do_ok_eq_ok] at h₁
-  rcases h₁ with ⟨_, ⟨_, h₁₁⟩, h₁₂⟩
-  simp [Except.mapError] at h₁₁
-  split at h₁₁ <;> try cases h₁₁
-  rename_i env heq₁ _ ty _ _ heq₂
-  simp [isValidAndConsistent] at h₂
-  split at h₂ <;> try cases h₂
-  rename_i heq₃
-  simp [heq₁] at heq₃
-  subst heq₃
-  have ⟨h₂₁, h₂₂⟩ := do_eq_ok₂ h₂
-  simp only [isValidAndConsistent.requestIsConsistent, Bool.or_eq_true, Bool.not_eq_eq_eq_not,
-    Bool.not_true, Bool.and_eq_true, decide_eq_true_eq] at h₂₁
-  split at h₂₁ <;> try cases h₂₁
-  rename_i heq₃
-  simp only [not_or, Bool.not_eq_false] at heq₃
-  rcases heq₃ with ⟨_, heq₃⟩
-  simp only [isValidAndConsistent.entitiesIsConsistent, Bool.or_eq_true, Bool.not_eq_eq_eq_not,
-    Bool.not_true] at h₂₂
-  split at h₂₂ <;> try cases h₂₂
-  rename_i heq₄
-  simp only [not_or, Bool.not_eq_false] at heq₄
-  rcases heq₄ with ⟨_, heq₄⟩
-  simp [Except.isOk, Except.toBool] at heq₄
-  split at heq₄ <;> cases heq₄
-  rename_i heq₄
-  simp only [bind, Except.bind, isValidAndConsistent.envIsWellFormed, Bool.not_eq_eq_eq_not,
-    Bool.not_true] at h₂₂
-  split at h₂₂ <;> try cases h₂₂
-  simp only [ite_eq_right_iff, reduceCtorEq, imp_false, Bool.not_eq_false] at h₂₂
-  have heq₅ := h₂₂
-  simp [Except.isOk, Except.toBool] at heq₅
-  split at heq₅ <;> cases heq₅
-  rename_i heq₅
-  have h₄ := instance_of_well_formed_env heq₅ heq₃ heq₄
-  have h₅ := typechecked_is_well_typed_after_lifting heq₂
-  let old_residual := (TypedExpr.toResidual ty.liftBoolTypes)
+  intro heval hvalid
+  have hvalid' := consistent_checks_ensure_refinement hvalid
 
-  have h₉ : Residual.WellTyped env old_residual := by {
-    have h := conversion_preserves_typedness h₅
-    exact h
-  }
-  have h₆ := partial_evaluate_is_sound h₉ h₄ h₃
-  subst h₁₂
-  have h₇ := type_of_preserves_evaluation_results (empty_capabilities_invariant req es) h₄ heq₂
+  obtain ⟨env, tx, _, henv, htx, rfl⟩ : ∃ env ty c,
+    schema.environment? preq.principal.ty preq.resource.ty preq.action = some env ∧
+    typeOf (substituteAction env.reqty.action policy.toExpr) [] env = Except.ok (ty, c) ∧
+    TPE.evaluate ty.liftBoolTypes.toResidual preq pes = residual
+  := by
+    simp only [evaluatePolicy] at heval
+    split at heval <;> try contradiction
+    rename_i henv
+    split at heval <;> try contradiction
+    simp only [List.empty_eq, do_ok_eq_ok, Prod.exists, exists_and_right] at heval
+    rcases heval with ⟨_, ⟨_, heval₁⟩, heval₂⟩
+    simp only [Except.mapError] at heval₁
+    split at heval₁ <;> try contradiction
+    cases heval₁
+    rename_i hty
+    simp [henv, hty, heval₂]
+
+  have ⟨env', henv', h₄⟩ := isValidAndConsistent_implies_InstanceOfWellFormedEnvironment hvalid
+  obtain rfl : env = env' := by
+    simpa [henv] using henv'
+
+  have htx' : Residual.WellTyped env (TypedExpr.toResidual tx.liftBoolTypes) :=
+    conversion_preserves_typedness ∘ typechecked_is_well_typed_after_lifting $ htx
+  have h₆ := partial_evaluate_is_sound htx' h₄ hvalid'
+  have h₇ := type_of_preserves_evaluation_results (empty_capabilities_invariant req es) h₄ htx
   have h₈ : Spec.evaluate (substituteAction env.reqty.action policy.toExpr) req es = Spec.evaluate policy.toExpr req es := by
     simp [InstanceOfWellFormedEnvironment] at h₄
     rcases h₄ with ⟨_, h₄, _⟩
@@ -113,8 +133,5 @@ theorem partial_evaluate_policy_is_sound
     rw [←h₄]
     exact substitute_action_preserves_evaluation policy.toExpr req es
   simp [h₈] at h₇
-  rw [h₇, type_lifting_preserves_expr]
-  rw [← h₆]
-  subst old_residual
-  congr
-  apply conversion_preserves_evaluation
+  rw [h₇, ←h₆, type_lifting_preserves_expr]
+  simp [conversion_preserves_evaluation]
