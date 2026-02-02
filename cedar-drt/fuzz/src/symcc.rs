@@ -406,6 +406,9 @@ impl solver::Solver for WrappedLocalSolver {
 
 pub struct SymCCWithUsageLimit {
     pub symcc: CedarSymCompiler<WrappedLocalSolver>,
+    /// Maximum number of `CedarSymCompiler` calls (more specifically, calls of
+    /// `get_solver()`, not all of which are actual solver interactions) before
+    /// we kill the solver process and start a new one
     usage_count: usize,
 }
 
