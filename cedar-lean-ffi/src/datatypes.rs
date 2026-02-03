@@ -104,7 +104,7 @@ impl From<cedar_policy::EntityUid> for EntityUid {
     fn from(euid: cedar_policy::EntityUid) -> Self {
         Self {
             ty: euid.type_name().clone(),
-            eid: euid.id().escaped(),
+            eid: euid.id().unescaped().into(),
         }
     }
 }

@@ -260,7 +260,10 @@ def encodePattern : Pattern → EncoderM String
 
 def defineEntity (tyEnc : String) (entity : EntityUID) : EncoderM String := do
   match (← get).enums.find? entity.ty with
-  | .some members => return s!"{enumId tyEnc (members.idxOf entity.eid)}"
+  | .some members =>
+    match members.idxOf? entity.eid with
+    | .some enum_idx => return s!"{enumId tyEnc enum_idx}"
+    | .none          => throw (IO.userError s!"Unknown enum member `{entity.eid}`, expected one of {members}")
   | .none         => defineTerm tyEnc s!"({tyEnc} \"{← encodeString entity.eid}\")"
 
 private def indexOfAttr (a : Attr) : TermType → EncoderM Nat
