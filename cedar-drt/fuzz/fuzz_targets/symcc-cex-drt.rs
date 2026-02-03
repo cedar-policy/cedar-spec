@@ -27,7 +27,7 @@ use cedar_policy_symcc::CompiledPolicySet;
 // Fuzz target checking that the Rust and Lean implementations produce the same
 // counterexamples for SAT results (in this case, for Implies queries on
 // arbitrary policies)
-fuzz_target!(|input: TwoPolicyFuzzTargetInput| {
+fuzz_target!(|input: TwoPolicyFuzzTargetInput<32>| {
     initialize_log();
     if let Ok((schema, policyset1, policyset2)) = input.into_inputs_as_psets() {
         let lean_ffi = CedarLeanFfi::new();

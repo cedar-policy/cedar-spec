@@ -27,7 +27,7 @@ use cedar_policy_symcc::{CompiledPolicySet, disjoint_asserts};
 // implementations for Disjoint are equivalent. Uses policysets containing
 // multiple policies, unlike `symcc-term-drt-disjoint` which tests with
 // singleton policysets.
-fuzz_target!(|input: TwoPolicySetFuzzTargetInput| {
+fuzz_target!(|input: TwoPolicySetFuzzTargetInput<32>| {
     initialize_log();
     if let Ok((schema, policyset1, policyset2)) = input.into_inputs() {
         let lean_ffi = CedarLeanFfi::new();

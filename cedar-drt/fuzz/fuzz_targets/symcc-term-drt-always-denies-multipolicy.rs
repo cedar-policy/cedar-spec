@@ -27,7 +27,7 @@ use cedar_policy_symcc::{CompiledPolicySet, always_denies_asserts};
 // implementations for AlwaysDenies are equivalent. Uses policysets containing
 // multiple policies, unlike `symcc-term-drt-always-denies` which tests with
 // singleton policysets.
-fuzz_target!(|input: SinglePolicySetFuzzTargetInput| {
+fuzz_target!(|input: SinglePolicySetFuzzTargetInput<32>| {
     initialize_log();
     if let Ok((schema, policyset)) = input.into_inputs() {
         let lean_ffi = CedarLeanFfi::new();

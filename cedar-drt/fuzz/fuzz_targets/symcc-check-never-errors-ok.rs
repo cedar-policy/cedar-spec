@@ -21,7 +21,7 @@ use cedar_drt_inner::{
     symcc::{PolicyTask, RUNTIME, SinglePolicyFuzzTargetInput, ValidationTask},
 };
 
-fuzz_target!(|input: SinglePolicyFuzzTargetInput| {
+fuzz_target!(|input: SinglePolicyFuzzTargetInput<128>| {
     initialize_log();
     // Attempt to convert the generator schema to an actual schema.
     if let Ok((schema, policy)) = input.into_inputs() {
