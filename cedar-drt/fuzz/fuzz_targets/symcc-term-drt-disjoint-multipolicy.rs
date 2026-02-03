@@ -39,8 +39,8 @@ fuzz_target!(|input: TwoPolicySetFuzzTargetInput<32>| {
                 let rust_asserts = disjoint_asserts(&cpset1, &cpset2);
                 let lean_asserts = lean_ffi
                     .asserts_of_check_disjoint(
-                        &cpset1.policies().clone().try_into().unwrap(),
-                        &cpset2.policies().clone().try_into().unwrap(),
+                        &policyset1,
+                        &policyset2,
                         lean_schema.clone(),
                         &req_env,
                     )

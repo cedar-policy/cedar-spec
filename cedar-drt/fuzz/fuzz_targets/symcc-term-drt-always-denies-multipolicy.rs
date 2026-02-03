@@ -37,11 +37,7 @@ fuzz_target!(|input: SinglePolicySetFuzzTargetInput<32>| {
             {
                 let rust_asserts = always_denies_asserts(&compiled_policies);
                 let lean_asserts = lean_ffi
-                    .asserts_of_check_always_denies(
-                        &compiled_policies.policies().clone().try_into().unwrap(),
-                        lean_schema.clone(),
-                        &req_env,
-                    )
+                    .asserts_of_check_always_denies(&policyset, lean_schema.clone(), &req_env)
                     // should succeed on the post-typecheck policies that were successfully produced by `CompiledPolicySet::compile()`
                     .unwrap()
                     .unwrap();
