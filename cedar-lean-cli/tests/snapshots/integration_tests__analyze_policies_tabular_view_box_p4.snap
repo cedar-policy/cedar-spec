@@ -3,8 +3,8 @@ source: tests/integration_tests.rs
 expression: "cmd_output(&mut\ncargo::cargo_bin_cmd!().current_dir(\"examples/analyze/view_box\").arg(\"analyze\").arg(\"policies\").arg(\"policies4.cedar\").arg(\"policies.cedarschema\"),\nfalse,)"
 ---
 Found 1 request environment specific warnings:
-+---------------+------------+--------------+----------------------------------------+
-| PrincipalType | ActionName | ResourceType | Findings                               |
-+---------------+------------+--------------+----------------------------------------+
-| User          | view       | Box          | Policy `policy0` shadowed by `policy3` |
-+---------------+------------+--------------+----------------------------------------+
++---------------+------------+--------------+-----------------------------------------+
+| PrincipalType | ActionName | ResourceType | Findings                                |
++---------------+------------+--------------+-----------------------------------------+
+| User          | view       | Box          | Policy `policy0` overriden by `policy3` |
++---------------+------------+--------------+-----------------------------------------+
