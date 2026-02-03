@@ -29,7 +29,7 @@ use cedar_policy_symcc::{CompiledPolicySet, always_allows_asserts};
 // Fuzz target checking that the Rust and Lean implementations produce the same
 // SMTLIB scripts for a given set of `Term`s (in this case, `Term`s generated as
 // asserts for AlwaysAllows on an arbitrary policy)
-fuzz_target!(|input: SinglePolicyFuzzTargetInput| {
+fuzz_target!(|input: SinglePolicyFuzzTargetInput<128>| {
     initialize_log();
     if let Ok((schema, policyset)) = input.into_inputs_as_pset() {
         let lean_ffi = CedarLeanFfi::new();

@@ -52,11 +52,6 @@ pub static RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
         .unwrap()
 });
 
-/// The limit on the total number of request envs specific to symcc
-const fn total_action_request_env_limit() -> usize {
-    128
-}
-
 /// Create a local solver suited for fuzzing
 fn local_solver() -> Result<LocalSolver, String> {
     let path = std::env::var("CVC5").unwrap_or_else(|_| "cvc5".into());
@@ -142,23 +137,28 @@ pub fn assert_that_asserts_match(
 
 /// Settings shared by all SymCC fuzz targets that use `FuzzTargetInput`s
 /// declared in this file.
-const SETTINGS: ABACSettings = ABACSettings {
-    max_depth: 3,
-    max_width: 3,
-    total_action_request_env_limit: total_action_request_env_limit(),
-    ..ABACSettings::type_directed()
-};
+const fn settings(total_action_request_env_limit: usize) -> ABACSettings {
+    ABACSettings {
+        max_depth: 3,
+        max_width: 3,
+        total_action_request_env_limit,
+        ..ABACSettings::type_directed()
+    }
+}
 
 /// Input to SymCC fuzz targets that need a single policy.
+///
+/// The parameter MAX_REQUEST_ENVS is the limit on the number of request envs
+/// the schema may define.
 #[derive(Debug, Clone)]
-pub struct SinglePolicyFuzzTargetInput {
+pub struct SinglePolicyFuzzTargetInput<const MAX_REQUEST_ENVS: usize> {
     /// generated schema
     schema: schema::Schema,
     /// generated policy
     policy: ABACPolicy,
 }
 
-impl SinglePolicyFuzzTargetInput {
+impl<const MAX_REQUEST_ENVS: usize> SinglePolicyFuzzTargetInput<MAX_REQUEST_ENVS> {
     /// Get the `cedar_policy::Schema` and `cedar_policy::Policy` that were generated
     pub fn into_inputs(self) -> Result<(Schema, Policy), cedar_policy::SchemaError> {
         Ok((Schema::try_from(self.schema)?, self.policy.into()))
@@ -173,9 +173,11 @@ impl SinglePolicyFuzzTargetInput {
     }
 }
 
-impl<'a> Arbitrary<'a> for SinglePolicyFuzzTargetInput {
+impl<'a, const MAX_REQUEST_ENVS: usize> Arbitrary<'a>
+    for SinglePolicyFuzzTargetInput<MAX_REQUEST_ENVS>
+{
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        let schema = schema::Schema::arbitrary(SETTINGS.clone(), u)?;
+        let schema = schema::Schema::arbitrary(settings(MAX_REQUEST_ENVS), u)?;
         let hierarchy = schema.arbitrary_hierarchy(u)?;
         let policy = schema.arbitrary_policy(&hierarchy, u)?;
 
@@ -233,14 +235,14 @@ fn arbitrary_policies(
 
 /// Input to SymCC fuzz targets that need a single policyset (containing 0 or more policies).
 #[derive(Debug, Clone)]
-pub struct SinglePolicySetFuzzTargetInput {
+pub struct SinglePolicySetFuzzTargetInput<const MAX_REQUEST_ENVS: usize> {
     /// generated schema
     schema: schema::Schema,
     /// generated policyset
     pset: Vec<ABACPolicy>,
 }
 
-impl SinglePolicySetFuzzTargetInput {
+impl<const MAX_REQUEST_ENVS: usize> SinglePolicySetFuzzTargetInput<MAX_REQUEST_ENVS> {
     /// Get the `cedar_policy::Schema` and `cedar_policy::PolicySet` that were generated
     pub fn into_inputs(self) -> Result<(Schema, PolicySet), cedar_policy::SchemaError> {
         Ok((
@@ -251,9 +253,11 @@ impl SinglePolicySetFuzzTargetInput {
     }
 }
 
-impl<'a> Arbitrary<'a> for SinglePolicySetFuzzTargetInput {
+impl<'a, const MAX_REQUEST_ENVS: usize> Arbitrary<'a>
+    for SinglePolicySetFuzzTargetInput<MAX_REQUEST_ENVS>
+{
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        let schema = schema::Schema::arbitrary(SETTINGS.clone(), u)?;
+        let schema = schema::Schema::arbitrary(settings(MAX_REQUEST_ENVS), u)?;
         let hierarchy = schema.arbitrary_hierarchy(u)?;
         let pset = arbitrary_policies(&schema, &hierarchy, u)?;
 
@@ -272,7 +276,7 @@ impl<'a> Arbitrary<'a> for SinglePolicySetFuzzTargetInput {
 
 /// Input to SymCC fuzz targets that need two individual policies.
 #[derive(Debug, Clone)]
-pub struct TwoPolicyFuzzTargetInput {
+pub struct TwoPolicyFuzzTargetInput<const MAX_REQUEST_ENVS: usize> {
     /// generated schema
     schema: schema::Schema,
     /// generated policy
@@ -281,7 +285,7 @@ pub struct TwoPolicyFuzzTargetInput {
     policy2: ABACPolicy,
 }
 
-impl TwoPolicyFuzzTargetInput {
+impl<const MAX_REQUEST_ENVS: usize> TwoPolicyFuzzTargetInput<MAX_REQUEST_ENVS> {
     /// Get the `cedar_policy::Schema` and both `cedar_policy::Policy`s that were generated
     pub fn into_inputs(self) -> Result<(Schema, Policy, Policy), cedar_policy::SchemaError> {
         Ok((
@@ -307,9 +311,11 @@ impl TwoPolicyFuzzTargetInput {
     }
 }
 
-impl<'a> Arbitrary<'a> for TwoPolicyFuzzTargetInput {
+impl<'a, const MAX_REQUEST_ENVS: usize> Arbitrary<'a>
+    for TwoPolicyFuzzTargetInput<MAX_REQUEST_ENVS>
+{
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        let schema = schema::Schema::arbitrary(SETTINGS.clone(), u)?;
+        let schema = schema::Schema::arbitrary(settings(MAX_REQUEST_ENVS), u)?;
         let hierarchy = schema.arbitrary_hierarchy(u)?;
         let policy1 = schema.arbitrary_policy(&hierarchy, u)?;
         let policy2 = schema.arbitrary_policy(&hierarchy, u)?;
@@ -333,7 +339,7 @@ impl<'a> Arbitrary<'a> for TwoPolicyFuzzTargetInput {
 
 /// Input to SymCC fuzz targets that need two policysets (each containing 0 or more policies).
 #[derive(Debug, Clone)]
-pub struct TwoPolicySetFuzzTargetInput {
+pub struct TwoPolicySetFuzzTargetInput<const MAX_REQUEST_ENVS: usize> {
     /// generated schema
     schema: schema::Schema,
     /// generated policyset
@@ -342,7 +348,7 @@ pub struct TwoPolicySetFuzzTargetInput {
     pset2: Vec<ABACPolicy>,
 }
 
-impl TwoPolicySetFuzzTargetInput {
+impl<const MAX_REQUEST_ENVS: usize> TwoPolicySetFuzzTargetInput<MAX_REQUEST_ENVS> {
     /// Get the `cedar_policy::Schema` and both `cedar_policy::PolicySet`s that were generated
     pub fn into_inputs(self) -> Result<(Schema, PolicySet, PolicySet), cedar_policy::SchemaError> {
         Ok((
@@ -355,9 +361,11 @@ impl TwoPolicySetFuzzTargetInput {
     }
 }
 
-impl<'a> Arbitrary<'a> for TwoPolicySetFuzzTargetInput {
+impl<'a, const MAX_REQUEST_ENVS: usize> Arbitrary<'a>
+    for TwoPolicySetFuzzTargetInput<MAX_REQUEST_ENVS>
+{
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        let schema = schema::Schema::arbitrary(SETTINGS.clone(), u)?;
+        let schema = schema::Schema::arbitrary(settings(MAX_REQUEST_ENVS), u)?;
         let hierarchy = schema.arbitrary_hierarchy(u)?;
         let pset1 = arbitrary_policies(&schema, &hierarchy, u)?;
         let pset2 = arbitrary_policies(&schema, &hierarchy, u)?;

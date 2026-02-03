@@ -29,7 +29,7 @@ use tokio::{
 };
 
 // Fuzzing target checking that counterexamples generated are true counterexamples
-fuzz_target!(|input: SinglePolicyFuzzTargetInput| {
+fuzz_target!(|input: SinglePolicyFuzzTargetInput<128>| {
     initialize_log();
     if let Ok((schema, policyset)) = input.into_inputs_as_pset() {
         for req_env in schema.request_envs() {

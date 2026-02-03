@@ -21,7 +21,7 @@ use cedar_drt_inner::{
     symcc::{PolicySetPair, PolicySetPairTask, RUNTIME, TwoPolicyFuzzTargetInput, ValidationTask},
 };
 
-fuzz_target!(|input: TwoPolicyFuzzTargetInput| {
+fuzz_target!(|input: TwoPolicyFuzzTargetInput<128>| {
     initialize_log();
     if let Ok((schema, pset1, pset2)) = input.into_inputs_as_psets() {
         RUNTIME
