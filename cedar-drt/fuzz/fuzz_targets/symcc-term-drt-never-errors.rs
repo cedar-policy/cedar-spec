@@ -34,11 +34,7 @@ fuzz_target!(|input: SinglePolicyFuzzTargetInput<32>| {
             if let Ok(cp) = CompiledPolicy::compile(&policy, &req_env, &schema) {
                 let rust_asserts = never_errors_asserts(&cp);
                 let lean_asserts = lean_ffi
-                    .asserts_of_check_never_errors(
-                        &cp.policy().clone().try_into().unwrap(),
-                        lean_schema.clone(),
-                        &req_env,
-                    )
+                    .asserts_of_check_never_errors(&policy, lean_schema.clone(), &req_env)
                     // should succeed on the post-typecheck policies that were successfully produced by `CompiledPolicy::compile()`
                     .unwrap()
                     .unwrap();
