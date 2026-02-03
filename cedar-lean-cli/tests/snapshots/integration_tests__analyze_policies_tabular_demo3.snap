@@ -1,0 +1,10 @@
+---
+source: tests/integration_tests.rs
+expression: "cmd_output(&mut\ncargo::cargo_bin_cmd!().current_dir(\"examples/analyze/file_share_demo\").arg(\"analyze\").arg(\"policies\").arg(\"policies3.cedar\").arg(\"policies.cedarschema\"),\nfalse,)"
+---
+Found 1 request environment specific warnings:
++---------------+--------------+--------------+----------------------------------------------+
+| PrincipalType | ActionName   | ResourceType | Findings                                     |
++---------------+--------------+--------------+----------------------------------------------+
+| User          | DownloadFile | Document     | Policy `any-own` shadowed by `download-file` |
++---------------+--------------+--------------+----------------------------------------------+

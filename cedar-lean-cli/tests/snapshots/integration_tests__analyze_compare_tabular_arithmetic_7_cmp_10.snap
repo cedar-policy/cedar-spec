@@ -1,0 +1,9 @@
+---
+source: tests/integration_tests.rs
+expression: "cmd_output(&mut\ncargo::cargo_bin_cmd!().current_dir(\"examples/analyze/arithmetic\").arg(\"analyze\").arg(\"compare\").arg(\"policies7.cedar\").arg(\"policies10.cedar\").arg(\"policies.cedarschema\"),\nfalse,)"
+---
++---------------+------------+--------------+------------------------------+
+| PrincipalType | ActionName | ResourceType | Result                       |
++---------------+------------+--------------+------------------------------+
+| User          | view       | Thing        | pset1 is equivalent to pset2 |
++---------------+------------+--------------+------------------------------+

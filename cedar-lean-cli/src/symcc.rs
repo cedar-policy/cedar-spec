@@ -72,8 +72,8 @@ pub fn run_check_always_denies(
 
 /// Run lean backend for analysis `check-equivalent`
 pub fn run_check_equivalent(
-    src_policyset: PolicySet,
-    tgt_policyset: PolicySet,
+    pset1: PolicySet,
+    pset2: PolicySet,
     schema: Schema,
     request_env: &OpenRequestEnv,
 ) -> Result<(), ExecError> {
@@ -82,22 +82,17 @@ pub fn run_check_equivalent(
     let schema = lean_context.load_lean_schema_object(&schema)?;
     let mut results = Vec::new();
     for req_env in req_envs.iter() {
-        results.push(lean_context.run_check_equivalent(
-            &src_policyset,
-            &tgt_policyset,
-            schema.clone(),
-            req_env,
-        )?);
+        results.push(lean_context.run_check_equivalent(&pset1, &pset2, schema.clone(), req_env)?);
     }
     print_check_equivalent_results(&results, &req_envs, request_env);
     Ok(())
 }
 
 /// Run lean backend for analysis `check-implies`
-/// Checks if Src => Tgt---i.e., If every request allowed by src is also allowed by tgt
+/// Checks if pset1 => pset2 --- i.e., If every request allowed by pset1 is also allowed by pset2
 pub fn run_check_implies(
-    src_policyset: PolicySet,
-    tgt_policyset: PolicySet,
+    pset1: PolicySet,
+    pset2: PolicySet,
     schema: Schema,
     request_env: &OpenRequestEnv,
 ) -> Result<(), ExecError> {
@@ -106,20 +101,15 @@ pub fn run_check_implies(
     let schema = lean_context.load_lean_schema_object(&schema)?;
     let mut results = Vec::new();
     for req_env in req_envs.iter() {
-        results.push(lean_context.run_check_implies(
-            &src_policyset,
-            &tgt_policyset,
-            schema.clone(),
-            req_env,
-        )?);
+        results.push(lean_context.run_check_implies(&pset1, &pset2, schema.clone(), req_env)?);
     }
     print_check_implies_results(&results, &req_envs, request_env);
     Ok(())
 }
 /// Run lean backend for analysis `check-denies`
 pub fn run_check_disjoint(
-    src_policyset: PolicySet,
-    tgt_policyset: PolicySet,
+    pset1: PolicySet,
+    pset2: PolicySet,
     schema: Schema,
     request_env: &OpenRequestEnv,
 ) -> Result<(), ExecError> {
@@ -128,12 +118,7 @@ pub fn run_check_disjoint(
     let schema = lean_context.load_lean_schema_object(&schema)?;
     let mut results = Vec::new();
     for req_env in req_envs.iter() {
-        results.push(lean_context.run_check_disjoint(
-            &src_policyset,
-            &tgt_policyset,
-            schema.clone(),
-            req_env,
-        )?);
+        results.push(lean_context.run_check_disjoint(&pset1, &pset2, schema.clone(), req_env)?);
     }
     print_check_disjoint_results(&results, &req_envs, request_env);
     Ok(())
@@ -207,8 +192,8 @@ pub fn print_check_always_denies(
 
 /// Prints to stdout the SMTLib script produced by the lean backend for analysis `check-equivalent`
 pub fn print_check_equivalent(
-    src_policyset: PolicySet,
-    tgt_policyset: PolicySet,
+    pset1: PolicySet,
+    pset2: PolicySet,
     schema: Schema,
     request_env: &OpenRequestEnv,
 ) -> Result<(), ExecError> {
@@ -222,12 +207,7 @@ pub fn print_check_equivalent(
             ReqEnv::Env(req_env.clone())
         );
         println!(";;");
-        lean_context.print_check_equivalent(
-            &src_policyset,
-            &tgt_policyset,
-            schema.clone(),
-            &req_env,
-        )?;
+        lean_context.print_check_equivalent(&pset1, &pset2, schema.clone(), &req_env)?;
         println!();
     }
     Ok(())
@@ -235,8 +215,8 @@ pub fn print_check_equivalent(
 
 /// Prints to stdout the SMTLib script produced by the lean backend for analysis `check-implies`
 pub fn print_check_implies(
-    src_policyset: PolicySet,
-    tgt_policyset: PolicySet,
+    pset1: PolicySet,
+    pset2: PolicySet,
     schema: Schema,
     request_env: &OpenRequestEnv,
 ) -> Result<(), ExecError> {
@@ -250,12 +230,7 @@ pub fn print_check_implies(
             ReqEnv::Env(req_env.clone())
         );
         println!(";;");
-        lean_context.print_check_implies(
-            &src_policyset,
-            &tgt_policyset,
-            schema.clone(),
-            &req_env,
-        )?;
+        lean_context.print_check_implies(&pset1, &pset2, schema.clone(), &req_env)?;
         println!();
     }
     Ok(())
@@ -263,8 +238,8 @@ pub fn print_check_implies(
 
 /// Prints to stdout the SMTLib script produced by the lean backend for analysis `check-disjoint`
 pub fn print_check_disjoint(
-    src_policyset: PolicySet,
-    tgt_policyset: PolicySet,
+    pset1: PolicySet,
+    pset2: PolicySet,
     schema: Schema,
     request_env: &OpenRequestEnv,
 ) -> Result<(), ExecError> {
@@ -278,12 +253,7 @@ pub fn print_check_disjoint(
             ReqEnv::Env(req_env.clone())
         );
         println!(";;");
-        lean_context.print_check_disjoint(
-            &src_policyset,
-            &tgt_policyset,
-            schema.clone(),
-            &req_env,
-        )?;
+        lean_context.print_check_disjoint(&pset1, &pset2, schema.clone(), &req_env)?;
         println!();
     }
     Ok(())
@@ -498,27 +468,24 @@ fn print_check_equivalent_results(
 ) {
     if results.iter().all(|r| *r) {
         if open_req_env.is_any() {
-            println!("Source and Target PolicySets are equivalent")
+            println!("PolicySets are equivalent")
         } else {
-            println!(
-                "Source and Target PolicySets are equivalent when {}",
-                open_req_env
-            )
+            println!("PolicySets are equivalent when {}", open_req_env)
         }
     } else if results.iter().all(|r| !*r) {
         if open_req_env.is_any() {
-            println!("Source and Target PolicySets are not equivalent")
+            println!("PolicySets are not equivalent")
         } else {
             println!(
-                "Source and Target PolicySets are not equivalent for all requests when {}",
+                "PolicySets are not equivalent for all requests when {}",
                 open_req_env
             )
         }
     } else if open_req_env.is_any() {
-        println!("Source and Target PolicySets are not equivalent for some signatures")
+        println!("PolicySets are not equivalent for some signatures")
     } else {
         println!(
-            "Source and Target PolicySets are not equivalent for some request signatures where {}",
+            "PolicySets are not equivalent for some request signatures where {}",
             open_req_env
         )
     }
@@ -548,27 +515,24 @@ fn print_check_implies_results(
 ) {
     if results.iter().all(|r| *r) {
         if open_req_env.is_any() {
-            println!("Source PolicySet implies Target PolicySet")
+            println!("pset1 implies pset2")
         } else {
-            println!(
-                "Source PolicySet implies Target PolicySet when {}",
-                open_req_env
-            )
+            println!("pset1 implies pset2 when {}", open_req_env)
         }
     } else if results.iter().all(|r| !*r) {
         if open_req_env.is_any() {
-            println!("Source PolicySet does not imply Target PolicySet")
+            println!("pset1 does not imply pset2")
         } else {
             println!(
-                "Source PolicySet does not imply Target PolicySet for all requests where {}",
+                "pset1 does not imply pset2 for all requests where {}",
                 open_req_env
             )
         }
     } else if open_req_env.is_any() {
-        println!("Source PolicySet implies Target PolicySet for some request signatures")
+        println!("pset1 implies pset1 for some request signatures")
     } else {
         println!(
-            "Source PolicySet implies Target PolicySet for some request signatures where {}",
+            "pset1 implies pset2 for some request signatures where {}",
             open_req_env
         )
     }
@@ -594,27 +558,24 @@ fn print_check_disjoint_results(
 ) {
     if results.iter().all(|r| *r) {
         if open_req_env.is_any() {
-            println!("Source PolicySet is disjoint with Target PolicySet")
+            println!("pset1 is disjoint with pset2")
         } else {
-            println!(
-                "Source PolicySet is disjoint with Target PolicySet when {}",
-                open_req_env
-            )
+            println!("pset1 is disjoint with pset2 when {}", open_req_env)
         }
     } else if results.iter().all(|r| !*r) {
         if open_req_env.is_any() {
-            println!("Source PolicySet is not disjoint with Target PolicySet")
+            println!("pset1 is not disjoint with pset2")
         } else {
             println!(
-                "Source PolicySet is not disjoint with Target PolicySet for all requests where {}",
+                "pset1 is not disjoint with pset2 for all requests where {}",
                 open_req_env
             )
         }
     } else if open_req_env.is_any() {
-        println!("Source PolicySet is disjoint with Target PolicySet for some request signatures")
+        println!("pset1 is disjoint with pset2 for some request signatures")
     } else {
         println!(
-            "Source PolicySet is disjoint with Target PolicySet for some request signatures where {}",
+            "pset1 is disjoint with pset2 for some request signatures where {}",
             open_req_env
         )
     }
