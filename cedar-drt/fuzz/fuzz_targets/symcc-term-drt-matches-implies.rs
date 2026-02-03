@@ -37,8 +37,8 @@ fuzz_target!(|input: TwoPolicyFuzzTargetInput<32>| {
                 let rust_asserts = matches_implies_asserts(&cp1, &cp2);
                 let lean_asserts = lean_ffi
                     .asserts_of_check_matches_implies(
-                        &cp1.policy().clone().try_into().unwrap(),
-                        &cp2.policy().clone().try_into().unwrap(),
+                        &policy1,
+                        &policy2,
                         lean_schema.clone(),
                         &req_env,
                     )
