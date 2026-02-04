@@ -19,6 +19,7 @@ use cedar_policy::{Authorizer, Policy, PolicySet, RequestEnv, Schema};
 use cedar_policy_core::ast::PolicyID;
 use cedar_policy_generators::{
     abac::ABACPolicy,
+    accum, r#gen as weighted_generate, gen_inner,
     hierarchy::{Hierarchy, HierarchyGenerator},
     schema,
     schema_gen::SchemaGen,
@@ -199,7 +200,19 @@ fn arbitrary_policies(
     hierarchy: &Hierarchy,
     u: &mut Unstructured<'_>,
 ) -> arbitrary::Result<Vec<ABACPolicy>> {
-    let len = u.arbitrary_len::<usize>()?;
+    let len = weighted_generate!(u,
+        1 => 0, // very rarely, try the empty-policyset case
+        0 => 1, // other targets cover the single-policy case
+        50 => 2,
+        40 => 3,
+        30 => 4,
+        20 => 5,
+        10 => 6,
+        8 => 7,
+        6 => 8,
+        4 => 9,
+        2 => 10
+    );
     let mut policies: Vec<ABACPolicy> = Vec::with_capacity(len);
     for _ in 0..len {
         policies.push(schema.arbitrary_policy(&hierarchy, u)?);
