@@ -19,9 +19,7 @@ use cedar_policy::{Authorizer, Policy, PolicySet, RequestEnv, Schema};
 use cedar_policy_core::ast::PolicyID;
 use cedar_policy_generators::{
     abac::ABACPolicy,
-    accum,
-    r#gen as weighted_generate,
-    gen_inner,
+    accum, r#gen as weighted_generate, gen_inner,
     hierarchy::{Hierarchy, HierarchyGenerator},
     schema,
     schema_gen::SchemaGen,
