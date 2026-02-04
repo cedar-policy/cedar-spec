@@ -13,10 +13,10 @@ Found 10 request environment specific warnings:
 | A             | comment    | D            | Policy `policy12` shadowed by `policy0`                   |
 +---------------+------------+--------------+-----------------------------------------------------------+
 | A             | create     | D            | Redundant Policies: `policy2` and `policy6`               |
-|               |            |              | Policy `policy7` overriden by `policy2`                   |
-|               |            |              | Policy `policy7` overriden by `policy6`                   |
+|               |            |              | Policy `policy7` shadowed by `policy2`                    |
+|               |            |              | Policy `policy7` shadowed by `policy6`                    |
 +---------------+------------+--------------+-----------------------------------------------------------+
-| A             | create     | E            | Policy `policy7` overriden by `policy2`                   |
+| A             | create     | E            | Policy `policy7` shadowed by `policy2`                    |
 +---------------+------------+--------------+-----------------------------------------------------------+
 | B             | comment    | D            | Policy `policy12` shadowed by `policy0`                   |
 +---------------+------------+--------------+-----------------------------------------------------------+

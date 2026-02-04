@@ -295,8 +295,8 @@ impl AnalyzePolicyFindings {
                 req_env.clone(),
                 sig_redundant_findings,
                 sig_permit_shadowed_findings,
-                sig_permit_overriden_findings,
                 sig_forbid_shadowed_findings,
+                sig_permit_overriden_findings,
             );
 
             // if there was actually something for this signature
