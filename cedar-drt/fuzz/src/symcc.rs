@@ -130,21 +130,25 @@ pub fn assert_that_asserts_match(
         .collect::<BTreeSet<_>>();
     let rust_asserts = BTreeSet::from_iter(rust_asserts.asserts().as_ref().iter().cloned());
 
-    // first check that the pretty-printed representations of both Term lists are equal.
-    // if there's a discrepancy, it will be easier to debug if we look at the difference
-    // between pretty-printed representations.
-    let pretty_lean_asserts = lean_asserts.iter().join("\n");
-    let pretty_rust_asserts = rust_asserts.iter().join("\n");
-    similar_asserts::assert_eq!(pretty_lean_asserts, pretty_rust_asserts);
+    if lean_asserts != rust_asserts {
+        // we have a DRT failure, just need to determine the most helpful way to report it
 
-    // now check that the actual Terms are equal. This checks the parts of the
-    // Term structures that aren't represented in the pretty-printed part, e.g.,
-    // some type information.
-    similar_asserts::assert_eq!(
-        lean_asserts,
-        rust_asserts,
-        "\n\nLean terms:\n{pretty_lean_asserts}\n\nRust terms:\n{pretty_rust_asserts}\n\n",
-    );
+        // first check whether the pretty-printed representations of both Term lists are equal.
+        // if there's a discrepancy, it will be easier to debug if we look at the difference
+        // between pretty-printed representations.
+        let pretty_lean_asserts = lean_asserts.iter().join("\n");
+        let pretty_rust_asserts = rust_asserts.iter().join("\n");
+        similar_asserts::assert_eq!(pretty_lean_asserts, pretty_rust_asserts);
+
+        // if we get here, the Terms are not equal but their pretty-printed representations are.
+        // The discrepancy must be in the parts of the Term structures that aren't represented
+        // in the pretty-printed part, e.g., type information.
+        similar_asserts::assert_eq!(
+            lean_asserts,
+            rust_asserts,
+            "\n\nLean terms:\n{pretty_lean_asserts}\n\nRust terms:\n{pretty_rust_asserts}\n\n",
+        );
+    }
 }
 
 /// Settings shared by all SymCC fuzz targets that use `FuzzTargetInput`s
