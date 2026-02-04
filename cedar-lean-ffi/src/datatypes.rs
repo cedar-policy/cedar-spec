@@ -1,8 +1,10 @@
-use cedar_policy::{Decision, EntityId, EntityTypeName, ParseErrors, PolicyId, RestrictedExpression};
+use cedar_policy::{
+    Decision, EntityId, EntityTypeName, ParseErrors, PolicyId, RestrictedExpression,
+};
 use cedar_policy_core::ast::Name;
 use num_bigint::ParseBigIntError;
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, TryFromInto};
+use serde_with::{TryFromInto, serde_as};
 use smol_str::SmolStr;
 use thiserror::Error;
 

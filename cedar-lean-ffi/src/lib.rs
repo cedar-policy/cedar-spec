@@ -23,8 +23,8 @@ mod messages;
 pub use datatypes::{AuthorizationResponse, TimedResult, ValidationResponse};
 // Term, Env, and associated types
 pub use datatypes::{
-    Bitvec, Cidr, Datetime, Decimal, Duration, EntityData, EntityUid, Env, Ext, ExtOp, ExtType, IpAddr, Op, Term,
-    TermPrim, TermPrimType, TermType, TermVar, Uuf, Value,
+    Bitvec, Cidr, Datetime, Decimal, Duration, EntityData, EntityUid, Env, Ext, ExtOp, ExtType,
+    IpAddr, Op, Term, TermPrim, TermPrimType, TermType, TermVar, Uuf, Value,
 };
 pub use err::FfiError;
 pub use lean_ffi::{CedarLeanFfi, LeanSchema};
