@@ -118,6 +118,30 @@ theorem allowed_iff_explicitly_permitted_and_not_denied (request : Request) (ent
     exact .intro h₃ h₂
 
 /--
+A request is denied if and only if it is explicitly denied or it is not explicitly permitted.
+-/
+theorem denied_iff_explicitly_denied_or_not_permitted (request: Request) (entities : Entities) (policies: Policies) :
+  (IsExplicitlyForbidden request entities policies ∨ ¬ IsExplicitlyPermitted request entities policies) ↔
+    (isAuthorized request entities policies).decision = .deny
+  := by
+  apply Iff.intro
+  · intro h
+    cases h
+    case inl => rw [forbid_trumps_permit]; assumption
+    case inr => rw [default_deny]; assumption
+  · intro h
+    by_cases h₁ : (IsExplicitlyForbidden request entities policies)
+    · exact Or.inl h₁
+    · right
+      rw [explicitly_forbidden_iff_satisfying_forbid] at h₁
+      rw [explicitly_permitted_iff_satisfying_permit]
+      unfold isAuthorized at h
+      simp [h₁] at h
+      split at h
+      · simp at h
+      · assumption
+
+/--
 Order and duplicate independence: isAuthorized produces the same result
 regardless of policy order or duplicates.
 -/
@@ -131,4 +155,31 @@ theorem order_and_dup_independent (request : Request) (entities : Entities) (pol
   have he := errorPolicies_order_and_dup_independent request entities h
   simp [isAuthorized, hf, hp, he]
 
+/--
+Adding a permit policy won't change an Allow decision.
+-/
+theorem unchanged_allow_when_add_permit (request: Request) (entities: Entities) (policies: Policies) (policy₂: Policy) :
+  policy₂.effect = .permit →
+  (isAuthorized request entities policies).decision = .allow →
+  (isAuthorized request entities (policy₂ :: policies)).decision = .allow
+:= by
+  intro h₁ h₂
+  rw [← allowed_iff_explicitly_permitted_and_not_denied] at *
+  unfold IsExplicitlyPermitted IsExplicitlyForbidden HasSatisfiedEffect at *
+  simp [h₂, h₁]
+
+/--
+Adding a forbid policy won't change a Deny decision.
+-/
+theorem unchanged_deny_when_add_forbid (request : Request) (entities: Entities) (policies: Policies) (policy₂: Policy) :
+  policy₂.effect = .forbid →
+  (isAuthorized request entities policies).decision = .deny →
+  (isAuthorized request entities (policy₂ :: policies)).decision = .deny
+  := by
+  intro h₁ h₂
+  rw [← denied_iff_explicitly_denied_or_not_permitted] at *
+  unfold IsExplicitlyPermitted IsExplicitlyForbidden HasSatisfiedEffect at *
+  simp only [not_exists, not_and, Bool.not_eq_true] at h₂
+  simp only [List.mem_cons, exists_eq_or_imp, h₁, true_and, reduceCtorEq, false_and, false_or, not_exists, not_and, Bool.not_eq_true]
+  exact h₂.elim (fun hb => Or.inl (Or.inr hb)) Or.inr
 end Cedar.Thm
