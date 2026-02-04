@@ -267,7 +267,10 @@ def defineEntity (tyEnc : String) (entity : EntityUID) : EncoderM String := do
   | .none         => defineTerm tyEnc s!"({tyEnc} \"{← encodeString entity.eid}\")"
 
 private def indexOfAttr (a : Attr) : TermType → EncoderM Nat
-  | .record (.mk rty) => return rty.findIdx (Prod.fst · = a)
+  | .record (.mk rty) =>
+    match rty.findIdx? (Prod.fst · = a) with
+    | .some attr_idx => return attr_idx
+    | .none          => throw (IO.userError s!"Unknown record attribute `{a}`")
   | ty                => throw (IO.userError s!"Bad term: (record.get {a} {reprStr ty})")
 
 def defineRecordGet (tyEnc a tEnc : String) (ty : TermType) : EncoderM String := do
