@@ -723,7 +723,11 @@ fn display_entity(
     if let Some(attrs) = NonEmpty::collect(edata.attrs.iter()) {
         write!(f, " {{\n")?;
         for (k, v) in attrs.iter() {
-            write!(f, "{prefix}  {k}: ")?;
+            if cedar_policy_core::ast::is_normalized_ident(k) {
+                write!(f, "{prefix}  {k}: ")?;
+            } else {
+                write!(f, "{prefix}  \"{}\": ", k.escape_debug())?;
+            }
             display_value(f, v)?;
             write!(f, ",\n")?;
         }
@@ -732,7 +736,11 @@ fn display_entity(
     if let Some(tags) = NonEmpty::collect(edata.tags.iter()) {
         write!(f, " tags {{\n")?;
         for (k, v) in tags.iter() {
-            write!(f, "{prefix}  {k}: ")?;
+            if cedar_policy_core::ast::is_normalized_ident(k) {
+                write!(f, "{prefix}  {k}: ")?;
+            } else {
+                write!(f, "{prefix}  \"{}\": ", k.escape_debug())?;
+            }
             display_value(f, v)?;
             write!(f, ",\n")?;
         }
@@ -758,14 +766,22 @@ impl std::fmt::Display for ExampleEnv {
             0 => (),
             1 => {
                 let (k, v) = self.0.request.context.first().unwrap();
-                write!(f, "\ncontext: {{ {k}: ")?;
+                if cedar_policy_core::ast::is_normalized_ident(k) {
+                    write!(f, "\ncontext: {{ {k}: ")?;
+                } else {
+                    write!(f, "\ncontext: {{ \"{}\": ", k.escape_debug())?;
+                }
                 display_value(f, v)?;
                 write!(f, " }}")?;
             }
             _ => {
                 writeln!(f, "\ncontext: {{")?;
                 for (k, v) in self.0.request.context.iter() {
-                    write!(f, "  {k}: ")?;
+                    if cedar_policy_core::ast::is_normalized_ident(k) {
+                        write!(f, "  {k}: ")?;
+                    } else {
+                        write!(f, "  \"{}\": ", k.escape_debug())?;
+                    }
                     display_value(f, v)?;
                     write!(f, ",\n")?;
                 }
