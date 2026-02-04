@@ -31,6 +31,7 @@ use cedar_policy_symcc::{
     solver::{self, LocalSolver, SolverError, WriterSolver},
     term::Term,
 };
+use itertools::Itertools;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
 use log::{debug, warn};
 use std::{
@@ -129,11 +130,26 @@ pub fn assert_that_asserts_match(
         .map(|t| Term::try_from(t).expect("term conversion should succeed"))
         .collect::<BTreeSet<_>>();
     let rust_asserts = BTreeSet::from_iter(rust_asserts.asserts().as_ref().iter().cloned());
-    similar_asserts::assert_eq!(
-        lean_asserts,
-        rust_asserts,
-        "Lean terms: {lean_asserts:?}, Rust terms: {rust_asserts:?}"
-    );
+
+    if lean_asserts != rust_asserts {
+        // we have a DRT failure, just need to determine the most helpful way to report it
+
+        // first check whether the pretty-printed representations of both Term lists are equal.
+        // if there's a discrepancy, it will be easier to debug if we look at the difference
+        // between pretty-printed representations.
+        let pretty_lean_asserts = lean_asserts.iter().join("\n");
+        let pretty_rust_asserts = rust_asserts.iter().join("\n");
+        similar_asserts::assert_eq!(pretty_lean_asserts, pretty_rust_asserts);
+
+        // if we get here, the Terms are not equal but their pretty-printed representations are.
+        // The discrepancy must be in the parts of the Term structures that aren't represented
+        // in the pretty-printed part, e.g., type information.
+        similar_asserts::assert_eq!(
+            lean_asserts,
+            rust_asserts,
+            "\n\nLean terms:\n{pretty_lean_asserts}\n\nRust terms:\n{pretty_rust_asserts}\n\n",
+        );
+    }
 }
 
 /// Settings shared by all SymCC fuzz targets that use `FuzzTargetInput`s
