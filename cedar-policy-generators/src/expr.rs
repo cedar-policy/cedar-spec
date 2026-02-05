@@ -367,16 +367,16 @@ impl ExprGenerator<'_> {
                         )),
                         // Binary comparisons expressions (>, >=, <, and <=)
                         4 => {
-                            let cmp_ty = gen!(u,
-                                1 => Type::long(),
-                                1 => Type::datetime(),
-                                1 => Type::duration()
+                            let cmp_ty = uniform!(u,
+                                Type::long(),
+                                Type::datetime(),
+                                Type::duration()
                             );
-                            let cmp_op = gen!(u,
-                                1 => ast::Expr::greater,
-                                1 => ast::Expr::greatereq,
-                                1 => ast::Expr::less,
-                                1 => ast::Expr::lesseq
+                            let cmp_op = uniform!(u,
+                                ast::Expr::greater,
+                                ast::Expr::greatereq,
+                                ast::Expr::less,
+                                ast::Expr::lesseq
                             );
                             Ok(cmp_op(
                                 self.generate_expr_for_type(&cmp_ty, max_depth - 1, u)?,
