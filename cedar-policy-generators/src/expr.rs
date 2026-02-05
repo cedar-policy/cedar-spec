@@ -365,58 +365,24 @@ impl ExprGenerator<'_> {
                                 u,
                             )?,
                         )),
-                        // < expression
-                        1 => Ok(ast::Expr::less(
-                            self.generate_expr_for_type(
-                                &Type::long(),
-                                max_depth - 1,
-                                u,
-                            )?,
-                            self.generate_expr_for_type(
-                                &Type::long(),
-                                max_depth - 1,
-                                u,
-                            )?,
-                        )),
-                        // <= expression
-                        1 => Ok(ast::Expr::lesseq(
-                            self.generate_expr_for_type(
-                                &Type::long(),
-                                max_depth - 1,
-                                u,
-                            )?,
-                            self.generate_expr_for_type(
-                                &Type::long(),
-                                max_depth - 1,
-                                u,
-                            )?,
-                        )),
-                        // > expression
-                        1 => Ok(ast::Expr::greater(
-                            self.generate_expr_for_type(
-                                &Type::long(),
-                                max_depth - 1,
-                                u,
-                            )?,
-                            self.generate_expr_for_type(
-                                &Type::long(),
-                                max_depth - 1,
-                                u,
-                            )?,
-                        )),
-                        // >= expression
-                        1 => Ok(ast::Expr::greatereq(
-                            self.generate_expr_for_type(
-                                &Type::long(),
-                                max_depth - 1,
-                                u,
-                            )?,
-                            self.generate_expr_for_type(
-                                &Type::long(),
-                                max_depth - 1,
-                                u,
-                            )?,
-                        )),
+                        // Binary comparisons expressions (>, >=, <, and <=)
+                        4 => {
+                            let cmp_ty = gen!(u,
+                                1 => Type::long(),
+                                1 => Type::datetime(),
+                                1 => Type::duration()
+                            );
+                            let cmp_op = gen!(u,
+                                1 => ast::Expr::greater,
+                                1 => ast::Expr::greatereq,
+                                1 => ast::Expr::less,
+                                1 => ast::Expr::lesseq
+                            );
+                            Ok(cmp_op(
+                                self.generate_expr_for_type(&cmp_ty, max_depth - 1, u)?,
+                                self.generate_expr_for_type(&cmp_ty, max_depth - 1, u)?,
+                            ))
+                        },
                         // in expression, non-set form
                         11 => {
                             let ety1 = self.schema.arbitrary_entity_type(u)?;
