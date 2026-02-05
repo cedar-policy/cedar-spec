@@ -2,10 +2,92 @@
 source: tests/integration_tests.rs
 expression: "cmd_output(&mut\ncargo::cargo_bin_cmd!().current_dir(\"examples/analyze/view_box\").arg(\"analyze\").arg(\"compare\").arg(\"policies6.cedar\").arg(\"policies8.cedar\").arg(\"policies.cedarschema\"),\nfalse,)"
 ---
-+---------------+------------+--------------+----------------------------------+
-| PrincipalType | ActionName | ResourceType | Result                           |
-+---------------+------------+--------------+----------------------------------+
-| User          | view       | Box          | pset1 is incomparable with pset2 |
-+---------------+------------+--------------+----------------------------------+
-| User          | view       | Thing        | pset1 is incomparable with pset2 |
-+---------------+------------+--------------+----------------------------------+
++---------------+------------+--------------+-------------------------------------------------------------------------------------------------------------------+
+| PrincipalType | ActionName | ResourceType | Result                                                                                                            |
++---------------+------------+--------------+-------------------------------------------------------------------------------------------------------------------+
+| User          | view       | Box          | pset1 is incomparable with pset2                                                                                  |
+|               |            |              | Example where pset1 is more permissive: principal: User::"amelia", action: Action::"view", resource: Box::""      |
+|               |            |              | context: { n1: "" }                                                                                               |
+|               |            |              | entities: [                                                                                                       |
+|               |            |              |   Account::"",                                                                                                    |
+|               |            |              |   Action::"view",                                                                                                 |
+|               |            |              |   Box::"" {                                                                                                       |
+|               |            |              |     description: "",                                                                                              |
+|               |            |              |     owner: User::"",                                                                                              |
+|               |            |              |     private: false,                                                                                               |
+|               |            |              |   },                                                                                                              |
+|               |            |              |   User::"" {                                                                                                      |
+|               |            |              |     account: Account::"",                                                                                         |
+|               |            |              |   },                                                                                                              |
+|               |            |              |   User::"amelia" {                                                                                                |
+|               |            |              |     account: Account::"",                                                                                         |
+|               |            |              |   },                                                                                                              |
+|               |            |              |   User::"catherine" {                                                                                             |
+|               |            |              |     account: Account::"",                                                                                         |
+|               |            |              |   },                                                                                                              |
+|               |            |              | ]                                                                                                                 |
+|               |            |              |                                                                                                                   |
+|               |            |              | Example where pset1 is less permissive: principal: User::"catherine", action: Action::"view", resource: Box::""   |
+|               |            |              | context: { n1: "" }                                                                                               |
+|               |            |              | entities: [                                                                                                       |
+|               |            |              |   Account::"",                                                                                                    |
+|               |            |              |   Action::"view",                                                                                                 |
+|               |            |              |   Box::"" {                                                                                                       |
+|               |            |              |     description: "",                                                                                              |
+|               |            |              |     owner: User::"",                                                                                              |
+|               |            |              |     private: false,                                                                                               |
+|               |            |              |   },                                                                                                              |
+|               |            |              |   User::"" {                                                                                                      |
+|               |            |              |     account: Account::"",                                                                                         |
+|               |            |              |   },                                                                                                              |
+|               |            |              |   User::"amelia" {                                                                                                |
+|               |            |              |     account: Account::"",                                                                                         |
+|               |            |              |   },                                                                                                              |
+|               |            |              |   User::"catherine" {                                                                                             |
+|               |            |              |     account: Account::"",                                                                                         |
+|               |            |              |   },                                                                                                              |
+|               |            |              | ]                                                                                                                 |
++---------------+------------+--------------+-------------------------------------------------------------------------------------------------------------------+
+| User          | view       | Thing        | pset1 is incomparable with pset2                                                                                  |
+|               |            |              | Example where pset1 is more permissive: principal: User::"amelia", action: Action::"view", resource: Thing::""    |
+|               |            |              | context: { n1: "" }                                                                                               |
+|               |            |              | entities: [                                                                                                       |
+|               |            |              |   Account::"",                                                                                                    |
+|               |            |              |   Action::"view",                                                                                                 |
+|               |            |              |   Thing::"" {                                                                                                     |
+|               |            |              |     description: "",                                                                                              |
+|               |            |              |     owner: User::"",                                                                                              |
+|               |            |              |     private: false,                                                                                               |
+|               |            |              |   },                                                                                                              |
+|               |            |              |   User::"" {                                                                                                      |
+|               |            |              |     account: Account::"",                                                                                         |
+|               |            |              |   },                                                                                                              |
+|               |            |              |   User::"amelia" {                                                                                                |
+|               |            |              |     account: Account::"",                                                                                         |
+|               |            |              |   },                                                                                                              |
+|               |            |              |   User::"catherine" {                                                                                             |
+|               |            |              |     account: Account::"",                                                                                         |
+|               |            |              |   },                                                                                                              |
+|               |            |              | ]                                                                                                                 |
+|               |            |              |                                                                                                                   |
+|               |            |              | Example where pset1 is less permissive: principal: User::"catherine", action: Action::"view", resource: Thing::"" |
+|               |            |              | context: { n1: "" }                                                                                               |
+|               |            |              | entities: [                                                                                                       |
+|               |            |              |   Account::"",                                                                                                    |
+|               |            |              |   Action::"view",                                                                                                 |
+|               |            |              |   Thing::"" {                                                                                                     |
+|               |            |              |     description: "",                                                                                              |
+|               |            |              |     owner: User::"",                                                                                              |
+|               |            |              |     private: false,                                                                                               |
+|               |            |              |   },                                                                                                              |
+|               |            |              |   User::"" {                                                                                                      |
+|               |            |              |     account: Account::"",                                                                                         |
+|               |            |              |   },                                                                                                              |
+|               |            |              |   User::"amelia" {                                                                                                |
+|               |            |              |     account: Account::"",                                                                                         |
+|               |            |              |   },                                                                                                              |
+|               |            |              |   User::"catherine" {                                                                                             |
+|               |            |              |     account: Account::"",                                                                                         |
+|               |            |              |   },                                                                                                              |
+|               |            |              | ]                                                                                                                 |
++---------------+------------+--------------+-------------------------------------------------------------------------------------------------------------------+

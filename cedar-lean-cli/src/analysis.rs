@@ -16,8 +16,9 @@
 use crate::util::{AnalyzePolicyFindingsSer, OpenRequestEnv};
 use crate::{err::ExecError, util::RequestEnvSer};
 use cedar_lean_ffi::CedarLeanFfi;
-use cedar_policy::{Effect, Policy, PolicyId, PolicySet, RequestEnv, Schema};
+use cedar_policy::{Effect, Policy, PolicyId, PolicySet, RequestEnv, RestrictedExpression, Schema};
 use itertools::Itertools;
+use nonempty::NonEmpty;
 use prettytable::{Attr, Cell, Row, Table};
 use serde::Serialize;
 use std::{
@@ -491,10 +492,14 @@ fn vacuity_result(
 /// Represents if policy1 is shadowed by policy2 or vice versa
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum ShadowingResult {
-    Equivalent,      // policies are non vacuous and allow the same requests
-    Policy1Shadows2, // policies are non vacuous and policy1 allows strictly more requests than policy2
-    Policy2Shadows1, // policies are non vacuous and policy2 allows strictly more requests than policy1
-    NoResult, // at least one policy is vacuous, or the policies allow incomparable sets of requests
+    /// policies are non vacuous and allow the same requests
+    Equivalent,
+    /// policies are non vacuous and policy1 allows strictly more requests than policy2
+    Policy1Shadows2,
+    /// policies are non vacuous and policy2 allows strictly more requests than policy1
+    Policy2Shadows1,
+    /// at least one policy is vacuous, or the policies allow incomparable sets of requests
+    NoResult,
 }
 
 /// Compute Redudant and Shadowed relationship between `policy1` and `policy2` (per environment)
@@ -698,26 +703,142 @@ fn update_findings<T>(
     }
 }
 
+fn display_value(f: &mut std::fmt::Formatter<'_>, v: &cedar_lean_ffi::Value) -> std::fmt::Result {
+    let rexpr = RestrictedExpression::try_from(v.clone()).unwrap();
+    let core_rexpr: &cedar_policy_core::ast::RestrictedExpr = rexpr.as_ref();
+    write!(f, "{core_rexpr}")
+}
+
+/// `prefix`: printed at the beginning of each line, including the first
+fn display_entity(
+    f: &mut std::fmt::Formatter<'_>,
+    uid: &cedar_lean_ffi::EntityUid,
+    edata: &cedar_lean_ffi::EntityData,
+    prefix: &str,
+) -> std::fmt::Result {
+    write!(f, "{prefix}{uid}")?;
+    if let Some(ancs) = NonEmpty::collect(edata.ancestors.iter()) {
+        write!(f, " in [{ancs}]", ancs = ancs.iter().join(", "))?;
+    }
+    if let Some(attrs) = NonEmpty::collect(edata.attrs.iter()) {
+        write!(f, " {{\n")?;
+        for (k, v) in attrs.iter() {
+            if cedar_policy_core::ast::is_normalized_ident(k) {
+                write!(f, "{prefix}  {k}: ")?;
+            } else {
+                write!(f, "{prefix}  \"{}\": ", k.escape_debug())?;
+            }
+            display_value(f, v)?;
+            write!(f, ",\n")?;
+        }
+        write!(f, "{prefix}}}")?;
+    }
+    if let Some(tags) = NonEmpty::collect(edata.tags.iter()) {
+        write!(f, " tags {{\n")?;
+        for (k, v) in tags.iter() {
+            if cedar_policy_core::ast::is_normalized_ident(k) {
+                write!(f, "{prefix}  {k}: ")?;
+            } else {
+                write!(f, "{prefix}  \"{}\": ", k.escape_debug())?;
+            }
+            display_value(f, v)?;
+            write!(f, ",\n")?;
+        }
+        write!(f, "{prefix}}}")?;
+    }
+    Ok(())
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(transparent)]
+struct ExampleEnv(cedar_lean_ffi::Env);
+
+impl std::fmt::Display for ExampleEnv {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "principal: {p}, action: {a}, resource: {r}",
+            p = self.0.request.principal,
+            a = self.0.request.action,
+            r = self.0.request.resource,
+        )?;
+        match self.0.request.context.len() {
+            0 => (),
+            1 => {
+                let (k, v) = self.0.request.context.first().unwrap();
+                if cedar_policy_core::ast::is_normalized_ident(k) {
+                    write!(f, "\ncontext: {{ {k}: ")?;
+                } else {
+                    write!(f, "\ncontext: {{ \"{}\": ", k.escape_debug())?;
+                }
+                display_value(f, v)?;
+                write!(f, " }}")?;
+            }
+            _ => {
+                writeln!(f, "\ncontext: {{")?;
+                for (k, v) in self.0.request.context.iter() {
+                    if cedar_policy_core::ast::is_normalized_ident(k) {
+                        write!(f, "  {k}: ")?;
+                    } else {
+                        write!(f, "  \"{}\": ", k.escape_debug())?;
+                    }
+                    display_value(f, v)?;
+                    write!(f, ",\n")?;
+                }
+                write!(f, "}}")?;
+            }
+        }
+        match self.0.entities.len() {
+            0 => (),
+            _ => {
+                writeln!(f, "\nentities: [")?;
+                for (uid, edata) in self.0.entities.iter() {
+                    display_entity(f, uid, edata, "  ")?;
+                    writeln!(f, ",")?;
+                }
+                write!(f, "]")?;
+            }
+        }
+        writeln!(f)
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 enum PolicySetComparisonStatus {
-    MorePermissive,
-    LessPermissive,
+    MorePermissive {
+        /// Env where the first policyset allows and the second denies
+        example: ExampleEnv,
+    },
+    LessPermissive {
+        /// Env where the first policyset denies and the second allows
+        example: ExampleEnv,
+    },
     Equivalent,
-    Incomparable,
+    Incomparable {
+        /// Env where the first policyset allows and the second denies
+        more_permissive_example: ExampleEnv,
+        /// Env where the first policyset denies and the second allows
+        less_permissive_example: ExampleEnv,
+    },
 }
 
 impl PolicySetComparisonStatus {
     fn print(self) -> String {
         match self {
-            PolicySetComparisonStatus::MorePermissive => {
-                String::from("pset1 is more permissive than pset2")
+            PolicySetComparisonStatus::MorePermissive { example } => {
+                format!("pset1 is more permissive than pset2\nExample: {example}")
             }
-            PolicySetComparisonStatus::LessPermissive => {
-                String::from("pset1 is less permissive than pset2")
+            PolicySetComparisonStatus::LessPermissive { example } => {
+                format!("pset1 is less permissive than pset2\nExample: {example}")
             }
             PolicySetComparisonStatus::Equivalent => String::from("pset1 is equivalent to pset2"),
-            PolicySetComparisonStatus::Incomparable => {
-                String::from("pset1 is incomparable with pset2")
+            PolicySetComparisonStatus::Incomparable {
+                more_permissive_example,
+                less_permissive_example,
+            } => {
+                format!(
+                    "pset1 is incomparable with pset2\nExample where pset1 is more permissive: {more_permissive_example}\nExample where pset1 is less permissive: {less_permissive_example}"
+                )
             }
         }
     }
@@ -757,20 +878,27 @@ pub fn compare_policysets(
     json_output: bool,
 ) -> Result<(), ExecError> {
     let req_envs = OpenRequestEnv::any().to_request_envs(&schema)?;
-    let lean_context = CedarLeanFfi::new();
-    let schema = lean_context.load_lean_schema_object(&schema)?;
+    let lean_ffi = CedarLeanFfi::new();
+    let schema = lean_ffi.load_lean_schema_object(&schema)?;
     let comparison_results: Vec<PolicySetComparisonResult> = req_envs
         .iter()
         .map(|req_env| -> Result<PolicySetComparisonResult, ExecError> {
             let fwd_implies =
-                lean_context.run_check_implies(&pset1, &pset2, schema.clone(), req_env)?;
+                lean_ffi.run_check_implies_with_cex(&pset1, &pset2, schema.clone(), req_env)?;
             let bwd_implies =
-                lean_context.run_check_implies(&pset2, &pset1, schema.clone(), req_env)?;
+                lean_ffi.run_check_implies_with_cex(&pset2, &pset1, schema.clone(), req_env)?;
             let status = match (fwd_implies, bwd_implies) {
-                (true, true) => PolicySetComparisonStatus::Equivalent,
-                (true, false) => PolicySetComparisonStatus::LessPermissive,
-                (false, true) => PolicySetComparisonStatus::MorePermissive,
-                (false, false) => PolicySetComparisonStatus::Incomparable,
+                (None, None) => PolicySetComparisonStatus::Equivalent,
+                (None, Some(cex)) => PolicySetComparisonStatus::LessPermissive {
+                    example: ExampleEnv(cex),
+                },
+                (Some(cex), None) => PolicySetComparisonStatus::MorePermissive {
+                    example: ExampleEnv(cex),
+                },
+                (Some(more_cex), Some(less_cex)) => PolicySetComparisonStatus::Incomparable {
+                    more_permissive_example: ExampleEnv(more_cex),
+                    less_permissive_example: ExampleEnv(less_cex),
+                },
             };
             Ok(PolicySetComparisonResult {
                 req_env: RequestEnvSer::new(req_env),

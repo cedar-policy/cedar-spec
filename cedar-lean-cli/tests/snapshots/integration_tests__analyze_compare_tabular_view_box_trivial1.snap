@@ -2,10 +2,38 @@
 source: tests/integration_tests.rs
 expression: "cmd_output(&mut\ncargo::cargo_bin_cmd!().current_dir(\"examples/analyze/view_box\").arg(\"analyze\").arg(\"compare\").arg(\"permit_all.cedar\").arg(\"deny_all.cedar\").arg(\"policies.cedarschema\"),\nfalse,)"
 ---
-+---------------+------------+--------------+-------------------------------------+
-| PrincipalType | ActionName | ResourceType | Result                              |
-+---------------+------------+--------------+-------------------------------------+
-| User          | view       | Box          | pset1 is more permissive than pset2 |
-+---------------+------------+--------------+-------------------------------------+
-| User          | view       | Thing        | pset1 is more permissive than pset2 |
-+---------------+------------+--------------+-------------------------------------+
++---------------+------------+--------------+---------------------------------------------------------------------------+
+| PrincipalType | ActionName | ResourceType | Result                                                                    |
++---------------+------------+--------------+---------------------------------------------------------------------------+
+| User          | view       | Box          | pset1 is more permissive than pset2                                       |
+|               |            |              | Example: principal: User::"", action: Action::"view", resource: Box::""   |
+|               |            |              | context: { n1: "" }                                                       |
+|               |            |              | entities: [                                                               |
+|               |            |              |   Account::"",                                                            |
+|               |            |              |   Action::"view",                                                         |
+|               |            |              |   Box::"" {                                                               |
+|               |            |              |     description: "",                                                      |
+|               |            |              |     owner: User::"",                                                      |
+|               |            |              |     private: false,                                                       |
+|               |            |              |   },                                                                      |
+|               |            |              |   User::"" {                                                              |
+|               |            |              |     account: Account::"",                                                 |
+|               |            |              |   },                                                                      |
+|               |            |              | ]                                                                         |
++---------------+------------+--------------+---------------------------------------------------------------------------+
+| User          | view       | Thing        | pset1 is more permissive than pset2                                       |
+|               |            |              | Example: principal: User::"", action: Action::"view", resource: Thing::"" |
+|               |            |              | context: { n1: "" }                                                       |
+|               |            |              | entities: [                                                               |
+|               |            |              |   Account::"",                                                            |
+|               |            |              |   Action::"view",                                                         |
+|               |            |              |   Thing::"" {                                                             |
+|               |            |              |     description: "",                                                      |
+|               |            |              |     owner: User::"",                                                      |
+|               |            |              |     private: false,                                                       |
+|               |            |              |   },                                                                      |
+|               |            |              |   User::"" {                                                              |
+|               |            |              |     account: Account::"",                                                 |
+|               |            |              |   },                                                                      |
+|               |            |              | ]                                                                         |
++---------------+------------+--------------+---------------------------------------------------------------------------+

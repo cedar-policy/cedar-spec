@@ -2,8 +2,18 @@
 source: tests/integration_tests.rs
 expression: "cmd_output(&mut\ncargo::cargo_bin_cmd!().current_dir(\"examples/analyze/globs\").arg(\"analyze\").arg(\"compare\").arg(\"a_a_star.cedar\").arg(\"a_star_non_a.cedar\").arg(\"policies.cedarschema\"),\nfalse,)"
 ---
-+---------------+------------+--------------+-------------------------------------+
-| PrincipalType | ActionName | ResourceType | Result                              |
-+---------------+------------+--------------+-------------------------------------+
-| User          | view       | Thing        | pset1 is less permissive than pset2 |
-+---------------+------------+--------------+-------------------------------------+
++---------------+------------+--------------+---------------------------------------------------------------------------+
+| PrincipalType | ActionName | ResourceType | Result                                                                    |
++---------------+------------+--------------+---------------------------------------------------------------------------+
+| User          | view       | Thing        | pset1 is less permissive than pset2                                       |
+|               |            |              | Example: principal: User::"", action: Action::"view", resource: Thing::"" |
+|               |            |              | context: {                                                                |
+|               |            |              |   str1: "aA",                                                             |
+|               |            |              |   str2: "B",                                                              |
+|               |            |              | }                                                                         |
+|               |            |              | entities: [                                                               |
+|               |            |              |   Action::"view",                                                         |
+|               |            |              |   Thing::"",                                                              |
+|               |            |              |   User::"",                                                               |
+|               |            |              | ]                                                                         |
++---------------+------------+--------------+---------------------------------------------------------------------------+

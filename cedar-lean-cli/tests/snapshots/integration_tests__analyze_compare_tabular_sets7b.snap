@@ -2,8 +2,59 @@
 source: tests/integration_tests.rs
 expression: "cmd_output(&mut\ncargo::cargo_bin_cmd!().current_dir(\"examples/analyze/sets\").arg(\"analyze\").arg(\"compare\").arg(\"src7.cedar\").arg(\"tgt7b.cedar\").arg(\"policies.cedarschema\"),\nfalse,)"
 ---
-+---------------+------------+--------------+----------------------------------+
-| PrincipalType | ActionName | ResourceType | Result                           |
-+---------------+------------+--------------+----------------------------------+
-| User          | view       | Thing        | pset1 is incomparable with pset2 |
-+---------------+------------+--------------+----------------------------------+
++---------------+------------+--------------+----------------------------------------------------------------------------------------------------------+
+| PrincipalType | ActionName | ResourceType | Result                                                                                                   |
++---------------+------------+--------------+----------------------------------------------------------------------------------------------------------+
+| User          | view       | Thing        | pset1 is incomparable with pset2                                                                         |
+|               |            |              | Example where pset1 is more permissive: principal: User::"", action: Action::"view", resource: Thing::"" |
+|               |            |              | context: {                                                                                               |
+|               |            |              |   n1: <integer>,                                                                                              |
+|               |            |              |   n2: <integer>,                                                                                              |
+|               |            |              |   ns: [],                                                                                                |
+|               |            |              |   thing1: Thing::"A",                                                                                    |
+|               |            |              |   thing2: Thing::"B",                                                                                    |
+|               |            |              |   thing3: Thing::"C",                                                                                    |
+|               |            |              |   things: [Thing::""],                                                                                   |
+|               |            |              |   things1: [Thing::"D"],                                                                                 |
+|               |            |              |   things2: [Thing::"D"],                                                                                 |
+|               |            |              |   user1: User::"",                                                                                       |
+|               |            |              |   user2: User::"A",                                                                                      |
+|               |            |              |   users: [],                                                                                             |
+|               |            |              | }                                                                                                        |
+|               |            |              | entities: [                                                                                              |
+|               |            |              |   Action::"view",                                                                                        |
+|               |            |              |   Thing::"" in [Thing::"D"],                                                                             |
+|               |            |              |   Thing::"A",                                                                                            |
+|               |            |              |   Thing::"B",                                                                                            |
+|               |            |              |   Thing::"C",                                                                                            |
+|               |            |              |   Thing::"D",                                                                                            |
+|               |            |              |   User::"",                                                                                              |
+|               |            |              |   User::"A",                                                                                             |
+|               |            |              | ]                                                                                                        |
+|               |            |              |                                                                                                          |
+|               |            |              | Example where pset1 is less permissive: principal: User::"", action: Action::"view", resource: Thing::"" |
+|               |            |              | context: {                                                                                               |
+|               |            |              |   n1: <integer>,                                                                                              |
+|               |            |              |   n2: <integer>,                                                                                              |
+|               |            |              |   ns: [],                                                                                                |
+|               |            |              |   thing1: Thing::"A",                                                                                    |
+|               |            |              |   thing2: Thing::"B",                                                                                    |
+|               |            |              |   thing3: Thing::"C",                                                                                    |
+|               |            |              |   things: [Thing::"A"],                                                                                  |
+|               |            |              |   things1: [Thing::""],                                                                                  |
+|               |            |              |   things2: [Thing::"D"],                                                                                 |
+|               |            |              |   user1: User::"",                                                                                       |
+|               |            |              |   user2: User::"A",                                                                                      |
+|               |            |              |   users: [],                                                                                             |
+|               |            |              | }                                                                                                        |
+|               |            |              | entities: [                                                                                              |
+|               |            |              |   Action::"view",                                                                                        |
+|               |            |              |   Thing::"" in [Thing::"D"],                                                                             |
+|               |            |              |   Thing::"A",                                                                                            |
+|               |            |              |   Thing::"B",                                                                                            |
+|               |            |              |   Thing::"C",                                                                                            |
+|               |            |              |   Thing::"D",                                                                                            |
+|               |            |              |   User::"",                                                                                              |
+|               |            |              |   User::"A",                                                                                             |
+|               |            |              | ]                                                                                                        |
++---------------+------------+--------------+----------------------------------------------------------------------------------------------------------+
