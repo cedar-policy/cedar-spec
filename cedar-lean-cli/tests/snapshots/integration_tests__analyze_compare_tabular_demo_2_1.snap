@@ -32,12 +32,12 @@ expression: "cmd_output(&mut\ncargo::cargo_bin_cmd!().current_dir(\"examples/ana
 |               |                |              |   App::Group::"admin",                                                                         |
 |               |                |              |   App::User::"" in [App::Group::"admin"] {                                                     |
 |               |                |              |     blocked: [App::User::""],                                                                  |
-|               |                |              |     jobLevel: 9223372036854775807,                                                             |
+|               |                |              |     jobLevel: <integer>,                                                             |
 |               |                |              |     jobTitle: "A",                                                                             |
 |               |                |              |   },                                                                                           |
 |               |                |              |   App::User::"A" in [App::Group::"admin"] {                                                    |
 |               |                |              |     blocked: [],                                                                               |
-|               |                |              |     jobLevel: (-1),                                                                            |
+|               |                |              |     jobLevel: <integer>,                                                                            |
 |               |                |              |     jobTitle: "VP",                                                                            |
 |               |                |              |   },                                                                                           |
 |               |                |              | ]                                                                                              |

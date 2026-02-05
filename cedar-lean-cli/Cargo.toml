@@ -19,7 +19,7 @@ thiserror = "2.0"
 
 [dev-dependencies]
 assert_cmd = "2.0.17"
-insta = "1.46"
+insta = { version = "1.46", features = ["filters"] }
 
 # https://insta.rs/docs/quickstart/ recommends compiling `insta` and `similar` in release mode
 [profile.dev.package]

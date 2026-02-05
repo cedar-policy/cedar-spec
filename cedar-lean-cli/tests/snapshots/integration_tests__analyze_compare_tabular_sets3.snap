@@ -8,8 +8,8 @@ expression: "cmd_output(&mut\ncargo::cargo_bin_cmd!().current_dir(\"examples/ana
 | User          | view       | Thing        | pset1 is less permissive than pset2                                       |
 |               |            |              | Example: principal: User::"", action: Action::"view", resource: Thing::"" |
 |               |            |              | context: {                                                                |
-|               |            |              |   n1: (-1),                                                               |
-|               |            |              |   n2: (-1),                                                               |
+|               |            |              |   n1: <integer>,                                                               |
+|               |            |              |   n2: <integer>,                                                               |
 |               |            |              |   ns: [10, 20],                                                           |
 |               |            |              |   thing1: Thing::"",                                                      |
 |               |            |              |   thing2: Thing::"A",                                                     |

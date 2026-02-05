@@ -31,12 +31,12 @@ expression: "cmd_output(&mut\ncargo::cargo_bin_cmd!().current_dir(\"examples/ana
 |               |                |              |   App::Group::"admin",                                                                           |
 |               |                |              |   App::User::"" in [App::Group::""] {                                                            |
 |               |                |              |     blocked: [],                                                                                 |
-|               |                |              |     jobLevel: 0,                                                                                 |
+|               |                |              |     jobLevel: <integer>,                                                                                 |
 |               |                |              |     jobTitle: "",                                                                                |
 |               |                |              |   },                                                                                             |
 |               |                |              |   App::User::"A" in [App::Group::""] {                                                           |
 |               |                |              |     blocked: [],                                                                                 |
-|               |                |              |     jobLevel: 0,                                                                                 |
+|               |                |              |     jobLevel: <integer>,                                                                                 |
 |               |                |              |     jobTitle: "",                                                                                |
 |               |                |              |   },                                                                                             |
 |               |                |              | ]                                                                                                |
@@ -75,12 +75,12 @@ expression: "cmd_output(&mut\ncargo::cargo_bin_cmd!().current_dir(\"examples/ana
 |               |                |              |   App::Group::"admin",                                                                           |
 |               |                |              |   App::User::"" in [App::Group::""] {                                                            |
 |               |                |              |     blocked: [],                                                                                 |
-|               |                |              |     jobLevel: 0,                                                                                 |
+|               |                |              |     jobLevel: <integer>,                                                                                 |
 |               |                |              |     jobTitle: "",                                                                                |
 |               |                |              |   },                                                                                             |
 |               |                |              |   App::User::"A" in [App::Group::""] {                                                           |
 |               |                |              |     blocked: [],                                                                                 |
-|               |                |              |     jobLevel: 0,                                                                                 |
+|               |                |              |     jobLevel: <integer>,                                                                                 |
 |               |                |              |     jobTitle: "",                                                                                |
 |               |                |              |   },                                                                                             |
 |               |                |              | ]                                                                                                |

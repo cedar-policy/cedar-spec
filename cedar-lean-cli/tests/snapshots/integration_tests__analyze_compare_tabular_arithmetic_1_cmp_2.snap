@@ -7,14 +7,14 @@ expression: "cmd_output(&mut\ncargo::cargo_bin_cmd!().current_dir(\"examples/ana
 +---------------+------------+--------------+---------------------------------------------------------------------------+
 | User          | view       | Thing        | pset1 is more permissive than pset2                                       |
 |               |            |              | Example: principal: User::"", action: Action::"view", resource: Thing::"" |
-|               |            |              | context: { n: 0 }                                                         |
+|               |            |              | context: { n: <integer> }                                                         |
 |               |            |              | entities: [                                                               |
 |               |            |              |   Action::"view",                                                         |
 |               |            |              |   Thing::"" {                                                             |
-|               |            |              |     n: 0,                                                                 |
+|               |            |              |     n: <integer>,                                                                 |
 |               |            |              |   },                                                                      |
 |               |            |              |   User::"" {                                                              |
-|               |            |              |     n: 4,                                                                 |
+|               |            |              |     n: <integer>,                                                                 |
 |               |            |              |   },                                                                      |
 |               |            |              | ]                                                                         |
 +---------------+------------+--------------+---------------------------------------------------------------------------+

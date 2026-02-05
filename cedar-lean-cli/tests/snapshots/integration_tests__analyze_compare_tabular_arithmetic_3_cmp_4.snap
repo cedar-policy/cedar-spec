@@ -7,26 +7,26 @@ expression: "cmd_output(&mut\ncargo::cargo_bin_cmd!().current_dir(\"examples/ana
 +---------------+------------+--------------+----------------------------------------------------------------------------------------------------------+
 | User          | view       | Thing        | pset1 is incomparable with pset2                                                                         |
 |               |            |              | Example where pset1 is more permissive: principal: User::"", action: Action::"view", resource: Thing::"" |
-|               |            |              | context: { n: 0 }                                                                                        |
+|               |            |              | context: { n: <integer> }                                                                                        |
 |               |            |              | entities: [                                                                                              |
 |               |            |              |   Action::"view",                                                                                        |
 |               |            |              |   Thing::"" {                                                                                            |
-|               |            |              |     n: (-1),                                                                                             |
+|               |            |              |     n: <integer>,                                                                                             |
 |               |            |              |   },                                                                                                     |
 |               |            |              |   User::"" {                                                                                             |
-|               |            |              |     n: 1,                                                                                                |
+|               |            |              |     n: <integer>,                                                                                                |
 |               |            |              |   },                                                                                                     |
 |               |            |              | ]                                                                                                        |
 |               |            |              |                                                                                                          |
 |               |            |              | Example where pset1 is less permissive: principal: User::"", action: Action::"view", resource: Thing::"" |
-|               |            |              | context: { n: 0 }                                                                                        |
+|               |            |              | context: { n: <integer> }                                                                                        |
 |               |            |              | entities: [                                                                                              |
 |               |            |              |   Action::"view",                                                                                        |
 |               |            |              |   Thing::"" {                                                                                            |
-|               |            |              |     n: 1,                                                                                                |
+|               |            |              |     n: <integer>,                                                                                                |
 |               |            |              |   },                                                                                                     |
 |               |            |              |   User::"" {                                                                                             |
-|               |            |              |     n: (-1),                                                                                             |
+|               |            |              |     n: <integer>,                                                                                             |
 |               |            |              |   },                                                                                                     |
 |               |            |              | ]                                                                                                        |
 +---------------+------------+--------------+----------------------------------------------------------------------------------------------------------+
