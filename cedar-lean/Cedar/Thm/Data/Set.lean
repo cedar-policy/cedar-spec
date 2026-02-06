@@ -470,6 +470,14 @@ theorem union_wf [LT α] [DecidableLT α] [StrictLT α] (s₁ s₂ : Set α) :
 := by
   simp only [Union.union, union, make_wf]
 
+theorem make_cons_eq_singleton_union [LT α] [DecidableLT α] [StrictLT α] (a : α) (L : List α) :
+  Set.make (a :: L) = Set.singleton a ∪ Set.make L := by
+  rw [← eq_means_eqv (make_wf _) (union_wf _ _)]
+  simp only [make, singleton, Union.union, union, elts]
+  rw [List.canonicalize_cons]
+  · apply List.Equiv.refl
+  · simp [List.canonicalize_idempotent]
+
 theorem mem_union_iff_mem_or [LT α] [DecidableLT α] [StrictLT α] (s₁ s₂ : Set α) :
   ∀ a, a ∈ s₁ ∪ s₂ ↔ (a ∈ s₁ ∨ a ∈ s₂)
 := by
