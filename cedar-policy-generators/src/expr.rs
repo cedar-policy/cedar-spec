@@ -321,24 +321,6 @@ impl ExprGenerator<'_> {
                             max_depth - 1,
                             u,
                         )?)),
-                        // if-then-else expression, where both arms are bools
-                        5 => Ok(ast::Expr::ite(
-                            self.generate_expr_for_type(
-                                &Type::bool(),
-                                max_depth - 1,
-                                u,
-                            )?,
-                            self.generate_expr_for_type(
-                                &Type::bool(),
-                                max_depth - 1,
-                                u,
-                            )?,
-                            self.generate_expr_for_type(
-                                &Type::bool(),
-                                max_depth - 1,
-                                u,
-                            )?,
-                        )),
                         // && expression
                         5 => Ok(ast::Expr::and(
                             self.generate_expr_for_type(
@@ -494,61 +476,6 @@ impl ExprGenerator<'_> {
                                     ety_r,
                                 ))
                         },
-                        // extension function that returns bool
-                        2 => self.generate_ext_func_call_for_type(
-                            &Type::bool(),
-                            max_depth - 1,
-                            u,
-                        ),
-                        // getting an attr (on an entity) with type bool
-                        1 => {
-                            let (entity_type, attr_name) = self.schema.arbitrary_attr_for_type(
-                                &Type::Bool,
-                                u,
-                            )?;
-                            Ok(ast::Expr::get_attr(
-                                self.generate_expr_for_type(
-                                    &Type::Entity(entity_type.clone()),
-                                    max_depth - 1,
-                                    u,
-                                )?,
-                                attr_name.clone(),
-                            ))
-                        },
-                        // getting an attr (on a record) with type bool
-                        1 => {
-                            let attr_name = self.constant_pool.arbitrary_string_constant(u)?;
-                            Ok(ast::Expr::get_attr(
-                                self.generate_expr_for_type(
-                                    &record_type_with_attr(
-                                        attr_name.clone(),
-                                        Type::Bool,
-                                    ),
-                                    max_depth - 1,
-                                    u,
-                                )?,
-                                attr_name,
-                            ))
-                        },
-                        // getting an entity tag with type bool
-                        1 => {
-                            let entity_type = self.schema.arbitrary_entity_type_with_tag_type(
-                                &Type::Bool,
-                                u,
-                            )?;
-                            Ok(ast::Expr::get_tag(
-                                self.generate_expr_for_type(
-                                    &Type::Entity(entity_type),
-                                    max_depth - 1,
-                                    u,
-                                )?,
-                                self.generate_expr_for_type(
-                                    &Type::String,
-                                    max_depth - 1,
-                                    u,
-                                )?,
-                            ))
-                        },
                         // has expression on an entity, for a (possibly optional) attribute the entity does have in the schema
                         2 => {
                             let ety = self.schema.arbitrary_entity_type(u)?;
@@ -592,7 +519,17 @@ impl ExprGenerator<'_> {
                                 u,
                             )?,
                             self.constant_pool.arbitrary_string_constant(u)?,
-                        )))
+                        )),
+                        // extension function that returns bool
+                        2 => self.generate_ext_func_call_for_type(&Type::Bool, max_depth - 1, u),
+                        // if-then-else expression, where both arms are bools
+                        5 => self.generate_ite_for_type(&Type::Bool, max_depth, u),
+                        // getting an attr (on an entity) with type bool
+                        1 => self.generate_get_entity_attr_for_type(&Type::Bool, max_depth, u),
+                        // getting an attr (on a record) with type bool
+                        1 => self.generate_get_record_attr_for_type(&Type::Bool, max_depth, u),
+                        // getting an entity tag with type bool
+                        1 => self.generate_get_tag_for_type(&Type::Bool, max_depth, u))
                     }
                 }
                 Type::Long => {
@@ -608,24 +545,6 @@ impl ExprGenerator<'_> {
                         // say, a 90% chance to recurse every time
                         16 => Ok(ast::Expr::val(
                             self.constant_pool.arbitrary_int_constant(u)?,
-                        )),
-                        // if-then-else expression, where both arms are longs
-                        5 => Ok(ast::Expr::ite(
-                            self.generate_expr_for_type(
-                                &Type::bool(),
-                                max_depth - 1,
-                                u,
-                            )?,
-                            self.generate_expr_for_type(
-                                &Type::long(),
-                                max_depth - 1,
-                                u,
-                            )?,
-                            self.generate_expr_for_type(
-                                &Type::long(),
-                                max_depth - 1,
-                                u,
-                            )?,
                         )),
                         // + expression
                         1 => Ok(ast::Expr::add(
@@ -673,60 +592,15 @@ impl ExprGenerator<'_> {
                             u,
                         )?)),
                         // extension function that returns a long
-                        1 => self.generate_ext_func_call_for_type(
-                            &Type::long(),
-                            max_depth - 1,
-                            u,
-                        ),
+                        1 => self.generate_ext_func_call_for_type(&Type::Long, max_depth - 1, u),
+                        // if-then-else expression, where both arms are longs
+                        5 => self.generate_ite_for_type(&Type::Long, max_depth, u),
                         // getting an attr (on an entity) with type long
-                        4 => {
-                            let (entity_type, attr_name) = self.schema.arbitrary_attr_for_type(
-                                &Type::Long,
-                                u,
-                            )?;
-                            Ok(ast::Expr::get_attr(
-                                self.generate_expr_for_type(
-                                    &Type::Entity(entity_type.clone()),
-                                    max_depth - 1,
-                                    u,
-                                )?,
-                                attr_name.clone(),
-                            ))
-                        },
+                        4 => self.generate_get_entity_attr_for_type(&Type::Long, max_depth, u),
                         // getting an attr (on a record) with type long
-                        4 => {
-                            let attr_name = self.constant_pool.arbitrary_string_constant(u)?;
-                            Ok(ast::Expr::get_attr(
-                                self.generate_expr_for_type(
-                                    &record_type_with_attr(
-                                        attr_name.clone(),
-                                        Type::Long,
-                                    ),
-                                    max_depth - 1,
-                                    u,
-                                )?,
-                                attr_name,
-                            ))
-                        },
+                        4 => self.generate_get_record_attr_for_type(&Type::Long, max_depth, u),
                         // getting an entity tag with type long
-                        3 => {
-                            let entity_type = self.schema.arbitrary_entity_type_with_tag_type(
-                                &Type::Long,
-                                u,
-                            )?;
-                            Ok(ast::Expr::get_tag(
-                                self.generate_expr_for_type(
-                                    &Type::Entity(entity_type),
-                                    max_depth - 1,
-                                    u,
-                                )?,
-                                self.generate_expr_for_type(
-                                    &Type::String,
-                                    max_depth - 1,
-                                    u,
-                                )?,
-                            ))
-                        })
+                        3 => self.generate_get_tag_for_type(&Type::Long, max_depth, u))
                     }
                 }
                 Type::String => {
@@ -744,78 +618,15 @@ impl ExprGenerator<'_> {
                             self.constant_pool.arbitrary_string_constant(u)?,
                         )),
                         // if-then-else expression, where both arms are strings
-                        5 => Ok(ast::Expr::ite(
-                            self.generate_expr_for_type(
-                                &Type::bool(),
-                                max_depth - 1,
-                                u,
-                            )?,
-                            self.generate_expr_for_type(
-                                &Type::string(),
-                                max_depth - 1,
-                                u,
-                            )?,
-                            self.generate_expr_for_type(
-                                &Type::string(),
-                                max_depth - 1,
-                                u,
-                            )?,
-                        )),
+                        5 => self.generate_ite_for_type(&Type::String, max_depth, u),
                         // extension function that returns a string
-                        1 => self.generate_ext_func_call_for_type(
-                            &Type::string(),
-                            max_depth - 1,
-                            u,
-                        ),
+                        1 => self.generate_ext_func_call_for_type(&Type::String, max_depth - 1, u),
                         // getting an attr (on an entity) with type string
-                        4 => {
-                            let (entity_type, attr_name) = self.schema.arbitrary_attr_for_type(
-                                &Type::String,
-                                u,
-                            )?;
-                            Ok(ast::Expr::get_attr(
-                                self.generate_expr_for_type(
-                                    &Type::Entity(entity_type.clone()),
-                                    max_depth - 1,
-                                    u,
-                                )?,
-                                attr_name.clone(),
-                            ))
-                        },
+                        4 => self.generate_get_entity_attr_for_type(&Type::String, max_depth, u),
                         // getting an attr (on a record) with type string
-                        4 => {
-                            let attr_name = self.constant_pool.arbitrary_string_constant(u)?;
-                            Ok(ast::Expr::get_attr(
-                                self.generate_expr_for_type(
-                                    &record_type_with_attr(
-                                        attr_name.clone(),
-                                        Type::String,
-                                    ),
-                                    max_depth - 1,
-                                    u,
-                                )?,
-                                attr_name,
-                            ))
-                        },
+                        4 => self.generate_get_record_attr_for_type(&Type::String, max_depth, u),
                         // getting an entity tag with type string
-                        3 => {
-                            let entity_type = self.schema.arbitrary_entity_type_with_tag_type(
-                                &Type::String,
-                                u,
-                            )?;
-                            Ok(ast::Expr::get_tag(
-                                self.generate_expr_for_type(
-                                    &Type::Entity(entity_type),
-                                    max_depth - 1,
-                                    u,
-                                )?,
-                                self.generate_expr_for_type(
-                                    &Type::String,
-                                    max_depth - 1,
-                                    u,
-                                )?,
-                            ))
-                        })
+                        3 => self.generate_get_tag_for_type(&Type::String, max_depth, u))
                     }
                 }
                 Type::Set(target_element_ty) => {
@@ -842,74 +653,15 @@ impl ExprGenerator<'_> {
                             Ok(ast::Expr::set(l))
                         },
                         // if-then-else expression, where both arms are (appropriate) sets
-                        2 => Ok(ast::Expr::ite(
-                            self.generate_expr_for_type(
-                                &Type::bool(),
-                                max_depth - 1,
-                                u,
-                            )?,
-                            self.generate_expr_for_type(
-                                target_type,
-                                max_depth - 1,
-                                u,
-                            )?,
-                            self.generate_expr_for_type(
-                                target_type,
-                                max_depth - 1,
-                                u,
-                            )?,
-                        )),
+                        2 => self.generate_ite_for_type(target_type, max_depth, u),
                         // extension function that returns an (appropriate) set
-                        1 => self.generate_ext_func_call_for_type(
-                            target_type,
-                            max_depth - 1,
-                            u,
-                        ),
+                        1 => self.generate_ext_func_call_for_type(target_type, max_depth - 1, u),
                         // getting an attr (on an entity) with the appropriate set type
-                        4 => {
-                            let (entity_type, attr_name) =
-                                self.schema.arbitrary_attr_for_type(target_type, u)?;
-                            Ok(ast::Expr::get_attr(
-                                self.generate_expr_for_type(
-                                    &Type::Entity(entity_type.clone()),
-                                    max_depth - 1,
-                                    u,
-                                )?,
-                                attr_name.clone(),
-                            ))
-                        },
+                        4 => self.generate_get_entity_attr_for_type(target_type, max_depth, u),
                         // getting an attr (on a record) with the appropriate set type
-                        3 => {
-                            let attr_name: SmolStr =
-                                self.constant_pool.arbitrary_string_constant(u)?;
-                            Ok(ast::Expr::get_attr(
-                                self.generate_expr_for_type(
-                                    &record_type_with_attr(attr_name.clone(), target_type.clone()),
-                                    max_depth - 1,
-                                    u,
-                                )?,
-                                attr_name,
-                            ))
-                        },
+                        3 => self.generate_get_record_attr_for_type(target_type, max_depth, u),
                         // getting an entity tag with the appropriate set type
-                        3 => {
-                            let entity_type = self.schema.arbitrary_entity_type_with_tag_type(
-                                target_type,
-                                u,
-                            )?;
-                            Ok(ast::Expr::get_tag(
-                                self.generate_expr_for_type(
-                                    &Type::Entity(entity_type),
-                                    max_depth - 1,
-                                    u,
-                                )?,
-                                self.generate_expr_for_type(
-                                    &Type::String,
-                                    max_depth - 1,
-                                    u,
-                                )?,
-                            ))
-                        })
+                        3 => self.generate_get_tag_for_type(target_type, max_depth, u))
                     }
                 }
                 Type::Record(m) => {
@@ -929,78 +681,15 @@ impl ExprGenerator<'_> {
                             Ok(ast::Expr::record(r).expect("can't have duplicate keys because `r` was already a HashMap"))
                         },
                         // if-then-else expression, where both arms are records
-                        2 => Ok(ast::Expr::ite(
-                            self.generate_expr_for_type(
-                                &Type::bool(),
-                                max_depth - 1,
-                                u,
-                            )?,
-                            self.generate_expr_for_type(
-                                target_type,
-                                max_depth - 1,
-                                u,
-                            )?,
-                            self.generate_expr_for_type(
-                                target_type,
-                                max_depth - 1,
-                                u,
-                            )?,
-                        )),
+                        2 => self.generate_ite_for_type(target_type, max_depth, u),
                         // extension function that returns a record
-                        1 => self.generate_ext_func_call_for_type(
-                            target_type,
-                            max_depth - 1,
-                            u,
-                        ),
+                        1 => self.generate_ext_func_call_for_type(target_type, max_depth - 1, u,),
                         // getting an attr (on an entity) with type record
-                        4 => {
-                            let (entity_type, attr_name) = self.schema.arbitrary_attr_for_type(
-                                &Type::Record(BTreeMap::default()),
-                                u,
-                            )?;
-                            Ok(ast::Expr::get_attr(
-                                self.generate_expr_for_type(
-                                    &Type::Entity(entity_type.clone()),
-                                    max_depth - 1,
-                                    u,
-                                )?,
-                                attr_name.clone(),
-                            ))
-                        },
+                        4 => self.generate_get_entity_attr_for_type(target_type, max_depth, u),
                         // getting an attr (on a record) with type record
-                        3 => {
-                            let attr_name = self.constant_pool.arbitrary_string_constant(u)?;
-                            Ok(ast::Expr::get_attr(
-                                self.generate_expr_for_type(
-                                    &record_type_with_attr(
-                                        attr_name.clone(),
-                                        Type::Record(BTreeMap::default()),
-                                    ),
-                                    max_depth - 1,
-                                    u,
-                                )?,
-                                attr_name,
-                            ))
-                        },
+                        3 => self.generate_get_record_attr_for_type(target_type, max_depth, u),
                         // getting an entity tag with type record
-                        3 => {
-                            let entity_type = self.schema.arbitrary_entity_type_with_tag_type(
-                                target_type,
-                                u,
-                            )?;
-                            Ok(ast::Expr::get_tag(
-                                self.generate_expr_for_type(
-                                    &Type::Entity(entity_type),
-                                    max_depth - 1,
-                                    u,
-                                )?,
-                                self.generate_expr_for_type(
-                                    &Type::String,
-                                    max_depth - 1,
-                                    u,
-                                )?,
-                            ))
-                        })
+                        3 => self.generate_get_tag_for_type(target_type, max_depth, u))
                     }
                 }
                 Type::Entity(ety) => {
@@ -1024,80 +713,15 @@ impl ExprGenerator<'_> {
                         // `resource`
                         6 => Ok(ast::Expr::var(ast::Var::Resource)),
                         // if-then-else expression, where both arms are entities
-                        2 => Ok(ast::Expr::ite(
-                            self.generate_expr_for_type(
-                                &Type::bool(),
-                                max_depth - 1,
-                                u,
-                            )?,
-                            self.generate_expr_for_type(
-                                target_type,
-                                max_depth - 1,
-                                u,
-                            )?,
-                            self.generate_expr_for_type(
-                                target_type,
-                                max_depth - 1,
-                                u,
-                            )?,
-                        )),
+                        2 => self.generate_ite_for_type(target_type, max_depth, u),
                         // extension function that returns an entity
-                        1 => self.generate_ext_func_call_for_type(
-                            target_type,
-                            max_depth - 1,
-                            u,
-                        ),
+                        1 => self.generate_ext_func_call_for_type(target_type, max_depth - 1, u,),
                         // getting an attr (on an entity) with type entity
-                        6 => {
-                            let (entity_type, attr_name) = self.schema.arbitrary_attr_for_type(
-                                &Type::Entity(self.schema.arbitrary_entity_type(u)?),
-                                u,
-                            )?;
-                            Ok(ast::Expr::get_attr(
-                                self.generate_expr_for_type(
-                                    &Type::Entity(entity_type.clone()),
-                                    max_depth - 1,
-                                    u,
-                                )?,
-                                attr_name.clone(),
-                            ))
-                        },
+                        6 => self.generate_get_entity_attr_for_type(target_type, max_depth, u),
                         // getting an attr (on a record) with type entity
-                        5 => {
-                            let attr_name = self.constant_pool.arbitrary_string_constant(u)?;
-                            Ok(ast::Expr::get_attr(
-                                self.generate_expr_for_type(
-                                    &record_type_with_attr(
-                                        attr_name.clone(),
-                                        Type::Entity(
-                                            self.schema.arbitrary_entity_type(u)?,
-                                        ),
-                                    ),
-                                    max_depth - 1,
-                                    u,
-                                )?,
-                                attr_name,
-                            ))
-                        },
+                        5 => self.generate_get_record_attr_for_type(target_type, max_depth, u),
                         // getting an entity tag with type entity
-                        5 => {
-                            let entity_type = self.schema.arbitrary_entity_type_with_tag_type(
-                                &Type::Entity(self.schema.arbitrary_entity_type(u)?),
-                                u,
-                            )?;
-                            Ok(ast::Expr::get_tag(
-                                self.generate_expr_for_type(
-                                    &Type::Entity(entity_type.clone()),
-                                    max_depth - 1,
-                                    u,
-                                )?,
-                                self.generate_expr_for_type(
-                                    &Type::String,
-                                    max_depth - 1,
-                                    u,
-                                )?,
-                            ))
-                        })
+                        5 => self.generate_get_tag_for_type(target_type, max_depth, u))
                     }
                 }
                 Type::IPAddr | Type::Decimal | Type::DateTime | Type::Duration => {
@@ -1116,82 +740,77 @@ impl ExprGenerator<'_> {
                     } else {
                         gen!(u,
                         // if-then-else expression, where both arms are extension types
-                        2 => Ok(ast::Expr::ite(
-                            self.generate_expr_for_type(
-                                &Type::bool(),
-                                max_depth - 1,
-                                u,
-                            )?,
-                            self.generate_expr_for_type(
-                                target_type,
-                                max_depth - 1,
-                                u,
-                            )?,
-                            self.generate_expr_for_type(
-                                target_type,
-                                max_depth - 1,
-                                u,
-                            )?,
-                        )),
+                        2 => self.generate_ite_for_type(target_type, max_depth, u),
                         // extension function that returns an extension type
-                        9 => self.generate_ext_func_call_for_type(
-                            target_type,
-                            max_depth - 1,
-                            u,
-                        ),
+                        9 => self.generate_ext_func_call_for_type(target_type, max_depth - 1, u,),
                         // getting an attr (on an entity) with extension type
-                        2 => {
-                            let (entity_type, attr_name) = self.schema.arbitrary_attr_for_type(
-                                target_type,
-                                u,
-                            )?;
-                            Ok(ast::Expr::get_attr(
-                                self.generate_expr_for_type(
-                                    &Type::Entity(entity_type.clone()),
-                                    max_depth - 1,
-                                    u,
-                                )?,
-                                attr_name.clone(),
-                            ))
-                        },
+                        2 => self.generate_get_entity_attr_for_type(target_type, max_depth, u),
                         // getting an attr (on a record) with extension type
-                        2 => {
-                            let attr_name = self.constant_pool.arbitrary_string_constant(u)?;
-                            Ok(ast::Expr::get_attr(
-                                self.generate_expr_for_type(
-                                    &record_type_with_attr(
-                                        attr_name.clone(),
-                                        target_type.clone(),
-                                    ),
-                                    max_depth - 1,
-                                    u,
-                                )?,
-                                attr_name,
-                            ))
-                        },
+                        2 => self.generate_get_record_attr_for_type(target_type, max_depth, u),
                         // getting an entity tag with extension type
-                        5 => {
-                            let entity_type = self.schema.arbitrary_entity_type_with_tag_type(
-                                target_type,
-                                u,
-                            )?;
-                            Ok(ast::Expr::get_tag(
-                                self.generate_expr_for_type(
-                                    &Type::Entity(entity_type),
-                                    max_depth - 1,
-                                    u,
-                                )?,
-                                self.generate_expr_for_type(
-                                    &Type::String,
-                                    max_depth - 1,
-                                    u,
-                                )?,
-                            ))
-                        })
+                        5 => self.generate_get_tag_for_type(target_type, max_depth, u))
                     }
                 }
             }
         }
+    }
+
+    fn generate_ite_for_type(
+        &self,
+        target_type: &Type,
+        max_depth: usize,
+        u: &mut Unstructured<'_>,
+    ) -> Result<ast::Expr> {
+        Ok(ast::Expr::ite(
+            self.generate_expr_for_type(&Type::bool(), max_depth - 1, u)?,
+            self.generate_expr_for_type(target_type, max_depth - 1, u)?,
+            self.generate_expr_for_type(target_type, max_depth - 1, u)?,
+        ))
+    }
+
+    fn generate_get_entity_attr_for_type(
+        &self,
+        target_type: &Type,
+        max_depth: usize,
+        u: &mut Unstructured<'_>,
+    ) -> Result<ast::Expr> {
+        let (entity_type, attr_name) = self.schema.arbitrary_attr_for_type(target_type, u)?;
+        Ok(ast::Expr::get_attr(
+            self.generate_expr_for_type(&Type::Entity(entity_type.clone()), max_depth - 1, u)?,
+            attr_name.clone(),
+        ))
+    }
+
+    fn generate_get_record_attr_for_type(
+        &self,
+        target_type: &Type,
+        max_depth: usize,
+        u: &mut Unstructured<'_>,
+    ) -> Result<ast::Expr> {
+        let attr_name = self.constant_pool.arbitrary_string_constant(u)?;
+        Ok(ast::Expr::get_attr(
+            self.generate_expr_for_type(
+                &record_type_with_attr(attr_name.clone(), target_type.clone()),
+                max_depth - 1,
+                u,
+            )?,
+            attr_name,
+        ))
+    }
+
+    fn generate_get_tag_for_type(
+        &self,
+        target_type: &Type,
+        max_depth: usize,
+        u: &mut Unstructured<'_>,
+    ) -> Result<ast::Expr> {
+        let entity_type = self
+            .schema
+            .arbitrary_entity_type_with_tag_type(target_type, u)?;
+        Ok(ast::Expr::get_tag(
+            self.generate_expr_for_type(&Type::Entity(entity_type), max_depth - 1, u)?,
+            self.generate_expr_for_type(&Type::String, max_depth - 1, u)?,
+        ))
     }
 
     /// get an arbitrary constant of a given type, as an expression.
