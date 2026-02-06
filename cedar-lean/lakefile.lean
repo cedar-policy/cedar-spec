@@ -62,8 +62,33 @@ lean_exe CedarSymTests where
 lean_exe Cli where
   root := `Cli.Main
 
+-- Check that a .lean file imports all files in its corresponding directory
+partial def checkThmFile (module : String) (paths : List System.FilePath) : IO Nat := do
+  let path := paths.head!
+  let dir := path.withExtension ""
+  if ← dir.isDir then
+    let contents ← paths.mapM IO.FS.readFile
+    let mod_files ← dir.readDir
+    let mut exitCode := 0
+
+    for file in mod_files.toList do
+      let file_name := file.fileName
+      if file_name.endsWith ".lean" then
+        let subModule := s!"{module}.{file_name.dropRight 5}"
+        let expectedImport := s!"import {subModule}\n"
+        if contents.all λ content => (content.replace expectedImport "" == content) then
+          IO.println s!"{path} missing import: {expectedImport}"
+          exitCode := 1
+        let subExitCode ← checkThmFile subModule [dir / file_name]
+        if subExitCode != 0 then
+          exitCode := subExitCode
+
+    return exitCode
+  else
+    return 0
+
 /--
-Check that Cedar.Thm imports all top level proofs.
+Check that Cedar.Thm imports all top level proofs recursively.
 
 USAGE:
   lake run checkThm
@@ -71,14 +96,5 @@ USAGE:
 -/
 @[lint_driver]
 script checkThm do
-  let thm ← IO.FS.readFile ⟨"Cedar/Thm.lean"⟩
-  let symcc ← IO.FS.readFile ⟨"SymCC.lean"⟩
-  let dir ← System.FilePath.readDir ⟨"Cedar/Thm/"⟩
-  for entry in dir.toList do
-    let fn := entry.fileName
-    if fn.endsWith ".lean" then
-      let ln := s!"import Cedar.Thm.{fn.dropRight 5}\n"
-      if thm.replace ln "" == thm && symcc.replace ln "" == symcc then
-        IO.println s!"Neither Cedar.Thm nor SymCC imports Cedar/Thm/{fn}"
-        return 1
-  return 0
+  let exitCode ← checkThmFile "Cedar.Thm" [⟨"Cedar/Thm.lean"⟩, ⟨"SymCC.lean"⟩]
+  return ⟨exitCode⟩
