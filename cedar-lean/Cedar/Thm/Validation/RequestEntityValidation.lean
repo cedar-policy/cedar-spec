@@ -34,10 +34,10 @@ theorem instance_of_ext_type_refl {ext : Ext} {extty : ExtType} :
   cases h₁ : ext <;> cases h₂ : extty <;> subst h₁ <;> subst h₂ <;> simp only [Bool.false_eq_true] at *
 
 theorem instance_of_type_refl {v : Value} {ty : CedarType} {env : TypeEnv} :
-  instanceOfType v ty env = true → InstanceOfType env v ty
+  Value.instanceOfType v ty env = true → InstanceOfType env v ty
 := by
   intro h₀
-  unfold instanceOfType at h₀
+  unfold Value.instanceOfType at h₀
   cases v with
   | prim p =>
     cases p with

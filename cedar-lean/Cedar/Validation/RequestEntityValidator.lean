@@ -64,7 +64,7 @@ match rty.find? k with
     | .some qty => if qty.isRequired then r.contains k else true
     | _ => true
 
-public def instanceOfType (v : Value) (ty : CedarType) (env : TypeEnv) : Bool :=
+public def Value.instanceOfType (v : Value) (ty : CedarType) (env : TypeEnv) : Bool :=
   match v, ty with
   | .prim (.bool b), .bool bty => instanceOfBoolType b bty
   | .prim (.int _), .int => true
@@ -94,7 +94,7 @@ public def instanceOfRequestType (request : Request) (env : TypeEnv) : Bool :=
   instanceOfEntityType request.principal env.reqty.principal env &&
   request.action == env.reqty.action &&
   instanceOfEntityType request.resource env.reqty.resource env &&
-  instanceOfType request.context (.record env.reqty.context) env
+  Value.instanceOfType request.context (.record env.reqty.context) env
 
 /--
 For every entity in the store,
@@ -115,11 +115,11 @@ public def instanceOfSchema (entities : Entities) (env : TypeEnv) : EntityValida
 where
   instanceOfEntityTags (data : EntityData) (entry : EntitySchemaEntry) : Bool :=
     match entry.tags? with
-    | .some tty => data.tags.values.all (instanceOfType · tty env)
+    | .some tty => data.tags.values.all (Value.instanceOfType · tty env)
     | .none     => data.tags == Map.empty
   instanceOfEntitySchemaEntry uid data entry :=
     if entry.isValidEntityEID uid.eid then
-      if instanceOfType data.attrs (.record entry.attrs) env then
+      if Value.instanceOfType data.attrs (.record entry.attrs) env then
         if data.ancestors.all (λ ancestor =>
           entry.ancestors.contains ancestor.ty &&
           instanceOfEntityType ancestor ancestor.ty env) then

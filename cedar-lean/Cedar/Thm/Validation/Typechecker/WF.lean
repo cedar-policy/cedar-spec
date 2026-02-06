@@ -120,8 +120,8 @@ def EntitySchema.WellFormed (env : TypeEnv) (ets : EntitySchema) : Prop :=
   Map.WellFormed ets ∧
   ∀ ety entry, ets.find? ety = some entry → entry.WellFormed env
 
-def EntityUID.WellFormed (env : TypeEnv) (uid : EntityUID) : Prop :=
-  env.ets.isValidEntityUID uid ∨ env.acts.contains uid
+def EntityUID.WellFormed (ets : EntitySchema) (acts : ActionSchema) (uid : EntityUID) : Prop :=
+  ets.isValidEntityUID uid ∨ acts.contains uid
 
 def ActionSchemaEntry.WellFormed (env : TypeEnv) (entry : ActionSchemaEntry) : Prop :=
   -- Well-formed as `Map`/`Set`s
@@ -307,7 +307,7 @@ theorem wf_env_implies_attrs_lifted {env : TypeEnv} {ety : EntityType} {attrs : 
 
 theorem wf_env_implies_action_wf {env : TypeEnv}
   (hwf : env.WellFormed) :
-  EntityUID.WellFormed env env.reqty.action
+  EntityUID.WellFormed env.ets env.acts env.reqty.action
 := by
   have ⟨_, _, hwf_req⟩ := hwf
   have ⟨_, hact, _⟩ := hwf_req
