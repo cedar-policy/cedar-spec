@@ -182,4 +182,59 @@ theorem unchanged_deny_when_add_forbid (request : Request) (entities: Entities) 
   simp only [not_exists, not_and, Bool.not_eq_true] at h₂
   simp only [List.mem_cons, exists_eq_or_imp, h₁, true_and, reduceCtorEq, false_and, false_or, not_exists, not_and, Bool.not_eq_true]
   exact h₂.elim (fun hb => Or.inl (Or.inr hb)) Or.inr
+
+
+/--
+The determining policies of a allow/deny decision are exactly the satisfied policies of permit/forbid resp.
+-/
+theorem determiningPolicies_of (request: Request) (entities: Entities) (policies: Policies) :
+  let auth := isAuthorized request entities policies
+  auth.determiningPolicies = satisfiedPolicies (if auth.decision = .allow then .permit else .forbid) policies request entities
+:= by
+  intro auth
+  simp only [auth]
+  unfold isAuthorized
+  simp only [Bool.and_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true]
+  generalize h₁: satisfiedPolicies .forbid policies request entities = forbids
+  generalize h₂: satisfiedPolicies .permit policies request entities = permits
+  split <;> simp [h₁, h₂]
+
+/--
+If P is a determining policy, then adding a new policy resulting in the same decision won't change that.
+-/
+theorem unchanged_determining_when_add_policy_and_decision_unchanged (request: Request) (entities: Entities) (policies: Policies) (policy₀ : Policy) :
+  let auth  := (isAuthorized request entities policies)
+  let auth' := (isAuthorized request entities (policy₀ :: policies))
+  auth.decision = auth'.decision → auth.determiningPolicies ⊆ auth'.determiningPolicies
+  := by
+  intro auth auth' h₀
+  have subset_lemma : ∀ effect, satisfiedPolicies effect policies request entities ⊆
+                                 satisfiedPolicies effect (policy₀ :: policies) request entities := by
+    intro effect
+    unfold satisfiedPolicies
+    rw [List.filterMap_cons]
+    cases satisfiedWithEffect effect policy₀ request entities
+    · simp only [Set.subset_def, imp_self, implies_true]
+    · rw [Set.make_cons_eq_singleton_union, Set.union_comm]; apply Set.subset_union
+  rw [determiningPolicies_of request entities policies,
+      determiningPolicies_of request entities (policy₀ :: policies)]
+  simp only [h₀, auth]
+  apply subset_lemma
+
+/--
+If P is an erroring policy, then adding another policy won’t change that (even if the decision changes).
+-/
+theorem unchanged_erroring_when_add_policy (request: Request) (entities: Entities) (policies : Policies) (policy₀ : Policy) :
+  (isAuthorized request entities policies).erroringPolicies ⊆ (isAuthorized request entities (policy₀ :: policies)).erroringPolicies
+  := by
+  unfold isAuthorized
+  simp only [Bool.and_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true]
+  split <;> split
+  all_goals {
+    unfold errorPolicies
+    simp only [List.filterMap_cons]
+    cases errored policy₀ request entities
+    · simp only [Set.subset_def, imp_self, implies_true]
+    · rw [Set.make_cons_eq_singleton_union, Set.union_comm]; apply Set.subset_union
+  }
 end Cedar.Thm
