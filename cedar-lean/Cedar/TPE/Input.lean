@@ -34,6 +34,21 @@ structure PartialEntityUID where
 def PartialEntityUID.asEntityUID (self : PartialEntityUID) : Option EntityUID :=
   self.id.map (⟨self.ty, ·⟩)
 
+inductive PartialAttribute (T : Type _) where
+  | present (val : T)               -- Known present, known value
+  | absent (ty : CedarType)         -- Known absent, no value
+  | presentUnknown (ty : CedarType) -- Known present, unknown value
+  | unknown (ty : CedarType)        -- Unknown present, unknown value
+
+inductive PartialValue where
+  | prim (p : Prim)
+  | set (s : Set Value) -- Per Emina's design, sets cannot have partial values. TODO: understand why
+  | record (m : Map Attr (PartialAttribute PartialValue))
+  | ext (x : Ext)
+
+abbrev PartialAttributes := Option (Map Attr (PartialAttribute PartialValue))
+abbrev PartialTags := Option (Map Tag (PartialAttribute PartialValue))
+
 structure PartialRequest where
   principal : PartialEntityUID
   action    : EntityUID
@@ -41,14 +56,13 @@ structure PartialRequest where
   -- We don't need type annotation here because the value of `context` can only
   -- be accessed via evaluating a `TypedExpr`, which allows us to obtain a
   -- (typed) `Residual`
-  context   : Option (Map Attr Value)
-
+  context   : PartialAttributes
 
 -- We don't need type annotations here following the rationale above
 structure PartialEntityData where
-  attrs     : Option (Map Attr Value)
+  attrs     : PartialAttributes
   ancestors : Option (Set EntityUID)
-  tags      : Option (Map Attr Value)
+  tags      : PartialTags
 
 abbrev MaybeEntityData := Option EntityData
 
@@ -68,14 +82,56 @@ def PartialEntities.get (es : PartialEntities) (uid : EntityUID) (f : PartialEnt
 
 def PartialEntities.ancestors (es : PartialEntities) (uid : EntityUID) : Option (Set EntityUID) := es.get uid PartialEntityData.ancestors
 
-def PartialEntities.tags (es : PartialEntities) (uid : EntityUID) : Option (Map Tag Value) := es.get uid PartialEntityData.tags
+def PartialEntities.tags (es : PartialEntities) (uid : EntityUID) : PartialTags := es.get uid PartialEntityData.tags
 
-def PartialEntities.attrs (es : PartialEntities) (uid : EntityUID) : Option (Map Tag Value) := es.get uid PartialEntityData.attrs
-
-
+def PartialEntities.attrs (es : PartialEntities) (uid : EntityUID) : PartialAttributes := es.get uid PartialEntityData.attrs
 
 def partialIsValid {α} (o : Option α) (f : α → Bool) : Bool :=
   (o.map f).getD true
+
+def requiredAttributePresent (r : Map Attr (PartialAttribute PartialValue)) (rty : Map Attr (Qualified CedarType)) (k : Attr) :=
+  match rty.find? k with
+  | .some qty =>
+    !qty.isRequired ||
+    match r.find? k with
+    | .some (.present _)
+    | .some (.presentUnknown _)
+    | .some (.unknown _) => true
+    | .some (.absent _) | .none => false
+  | _ => true
+
+def PartialValue.instanceOfType (v : PartialValue) (ty : CedarType) (env : TypeEnv) : Bool :=
+  match v, ty with
+  | .prim (.bool b), .bool bty => instanceOfBoolType b bty
+  | .prim (.int _), .int => true
+  | .prim (.string _), .string => true
+  | .prim (.entityUID e), .entity ety => instanceOfEntityType e ety env
+  | .set s, .set ty => s.elts.attach.all (λ ⟨v, _⟩ => Value.instanceOfType v ty env)
+  | .record r, .record rty =>
+    -- TODO: possibly want to accept `.absent`
+    r.kvs.all (λ (k, _) => rty.contains k) &&
+    (r.kvs.attach₂.all (λ ⟨(k, v), _⟩ => (match rty.find? k with
+        | .some qty =>
+          match v with
+          | .present v => instanceOfType v qty.getType env
+          | .absent ty
+          | .presentUnknown ty
+          | .unknown ty => ty == qty.getType
+        | _ => true))) &&
+    rty.kvs.all (λ (k, _) => requiredAttributePresent r rty k)
+  | .ext x, .ext xty => instanceOfExtType x xty
+  | _, _ => false
+    termination_by v
+    decreasing_by
+      all_goals simp_wf
+      case _ h₁ =>
+        have := Set.sizeOf_lt_of_mem h₁
+        omega
+      case _ h₁ =>
+        cases r
+        simp only [Map.kvs] at h₁
+        simp only [Map.mk.sizeOf_spec]
+        omega
 
 def requestIsValid (env : TypeEnv) (req : PartialRequest) : Bool :=
   (partialIsValid req.principal.asEntityUID λ principal =>
@@ -84,7 +140,7 @@ def requestIsValid (env : TypeEnv) (req : PartialRequest) : Bool :=
   (partialIsValid req.resource.asEntityUID λ resource =>
     instanceOfEntityType resource env.reqty.resource env) &&
   (partialIsValid req.context λ m =>
-    instanceOfType (.record m) (.record env.reqty.context) env)
+    PartialValue.instanceOfType (.record m) (.record env.reqty.context) env)
 
 def entitiesIsValid (env : TypeEnv) (es : PartialEntities) : Bool :=
   (es.toList.all entityIsValid) && (env.acts.toList.all instanceOfActionSchema)
@@ -99,10 +155,10 @@ where
         ancestors.all (λ ancestor =>
         entry.ancestors.contains ancestor.ty &&
         instanceOfEntityType ancestor ancestor.ty env)) &&
-      (partialIsValid attrs (instanceOfType · (.record entry.attrs) env)) &&
+      (partialIsValid attrs (PartialValue.instanceOfType · (.record entry.attrs) env)) &&
       (partialIsValid tags λ tags =>
         match entry.tags? with
-        | .some tty => tags.values.all (instanceOfType · tty env)
+        | .some tty => tags.values.all (PartialValue.instanceOfType · tty env)
         | .none     => tags == Map.empty)
     | .none       => false
   instanceOfActionSchema p :=
