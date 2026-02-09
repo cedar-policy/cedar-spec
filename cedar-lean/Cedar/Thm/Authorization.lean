@@ -237,4 +237,35 @@ theorem unchanged_erroring_when_add_policy (request: Request) (entities: Entitie
     · simp only [Set.subset_def, imp_self, implies_true]
     · rw [Set.make_cons_eq_singleton_union, Set.union_comm]; apply Set.subset_union
   }
+
+/--
+Determining policies and erroring policies of an isAuthorized response are disjoint when input policy IDs are unique.
+-/
+theorem determining_erroring_disjoint_when_unique_ids (request : Request) (entities : Entities) (policies : Policies) :
+  (∀ p₁ p₂, p₁ ∈ policies → p₂ ∈ policies → p₁.id = p₂.id → p₁ = p₂) →
+    ((isAuthorized request entities policies).determiningPolicies ∩ (isAuthorized request entities policies).erroringPolicies).isEmpty
+:= by
+  intro
+  rw [Set.empty_iff_not_exists]
+  simp only [Set.mem_inter_iff, not_exists, not_and]
+  rw [determiningPolicies_of]
+  intro _ h_det h_err
+  unfold isAuthorized satisfiedPolicies errorPolicies satisfiedWithEffect errored at *
+  simp only [
+    Bool.and_eq_true, beq_iff_eq, apply_ite, ite_self, ← Set.make_mem, List.mem_filterMap, Option.ite_none_right_eq_some, Option.some.injEq
+  ] at *
+  -- Extract the determining policy
+  obtain ⟨p₁, _, ⟨_, _⟩, _⟩ := h_det
+  -- Extract the erroring policy, and the fact that it is erroring
+  obtain ⟨p₂, _, h₂, _⟩ := h_err
+  -- They're the same policy, leading to a contradiction
+  have heq : p₁ = p₂ := by grind
+  subst heq
+  have l₁ : ∀ p, hasError p request entities → ¬satisfied p request entities := by
+    unfold satisfied hasError
+    intro
+    split <;> rename_i _ s <;> simp [s]
+  have : ¬satisfied _ request entities := l₁ _ h₂
+  contradiction
+
 end Cedar.Thm
