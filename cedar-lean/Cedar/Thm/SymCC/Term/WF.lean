@@ -839,6 +839,11 @@ theorem wf_bvneg {εs : SymEntities} {t : Term} {n : Nat}
   split
   case h_1 => simp [wf_bv, typeOf_bv, typeOf_bv_width h₂]
   case h_2 =>
+    simp only [Term.typeOf] at h₂
+    cases h₁; rename_i h₁ h₃
+    cases h₃; rename_i h₃
+    simp [h₁, h₂, h₃]
+  case h_3 =>
     simp [Term.typeOf, h₂]
     exact Term.WellFormed.app_wf (wf_arg h₁) (Op.WellTyped.bvneg_wt h₂)
 

@@ -151,6 +151,7 @@ def app : UnaryFunction → Term → Term
 
 def bvneg : Term → Term
   | .prim (.bitvec b)  => b.neg
+  | .app .bvneg [t] _  => t
   | t                  => .app .bvneg [t] t.typeOf
 
 def bvapp (op : Op) (fn : ∀ {n}, BitVec n → BitVec n → BitVec n) (t₁ t₂ : Term) : Term :=
