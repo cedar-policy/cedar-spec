@@ -259,6 +259,147 @@ pub fn print_check_disjoint(
     Ok(())
 }
 
+/// Prints to stdout the term produced by the lean backend for analysis `check-never-errors`
+pub fn asserts_of_check_never_errors(
+    policy: Policy,
+    schema: Schema,
+    request_env: &OpenRequestEnv,
+) -> Result<(), ExecError> {
+    let lean_context = CedarLeanFfi::new();
+    let req_envs = request_env.to_request_envs(&schema)?;
+    let schema = lean_context.load_lean_schema_object(&schema)?;
+    for req_env in req_envs {
+        let terms = lean_context
+            .asserts_of_check_never_errors(&policy, schema.clone(), &req_env)?
+            .map_err(|e| ExecError::InternalAnalysisError {
+                error: Box::new(std::io::Error::new(std::io::ErrorKind::Other, e)),
+            })?;
+        for term in terms {
+            let term: cedar_policy_symcc::term::Term = term.try_into()?;
+            println!("{}", term);
+        }
+    }
+    Ok(())
+}
+
+/// Prints to stdout the term produced by the lean backend for analysis `check-always-allows`
+pub fn asserts_of_check_always_allows(
+    policyset: PolicySet,
+    schema: Schema,
+    request_env: &OpenRequestEnv,
+) -> Result<(), ExecError> {
+    let lean_context = CedarLeanFfi::new();
+    let req_envs = request_env.to_request_envs(&schema)?;
+    let schema = lean_context.load_lean_schema_object(&schema)?;
+    for req_env in req_envs {
+        let terms = lean_context
+            .asserts_of_check_always_allows(&policyset, schema.clone(), &req_env)?
+            .map_err(|e| ExecError::InternalAnalysisError {
+                error: Box::new(std::io::Error::new(std::io::ErrorKind::Other, e)),
+            })?;
+        for term in terms {
+            let term: cedar_policy_symcc::term::Term = term.try_into()?;
+            println!("{}", term);
+        }
+    }
+    Ok(())
+}
+
+/// Prints to stdout the term produced by the lean backend for analysis `check-always-denies`
+pub fn asserts_of_check_always_denies(
+    policyset: PolicySet,
+    schema: Schema,
+    request_env: &OpenRequestEnv,
+) -> Result<(), ExecError> {
+    let lean_context = CedarLeanFfi::new();
+    let req_envs = request_env.to_request_envs(&schema)?;
+    let schema = lean_context.load_lean_schema_object(&schema)?;
+    for req_env in req_envs {
+        let terms = lean_context
+            .asserts_of_check_always_denies(&policyset, schema.clone(), &req_env)?
+            .map_err(|e| ExecError::InternalAnalysisError {
+                error: Box::new(std::io::Error::new(std::io::ErrorKind::Other, e)),
+            })?;
+        for term in terms {
+            let term: cedar_policy_symcc::term::Term = term.try_into()?;
+            println!("{}", term);
+        }
+    }
+    Ok(())
+}
+
+/// Prints to stdout the term produced by the lean backend for analysis `check-equivalent`
+pub fn asserts_of_check_equivalent(
+    pset1: PolicySet,
+    pset2: PolicySet,
+    schema: Schema,
+    request_env: &OpenRequestEnv,
+) -> Result<(), ExecError> {
+    let lean_context = CedarLeanFfi::new();
+    let req_envs = request_env.to_request_envs(&schema)?;
+    let schema = lean_context.load_lean_schema_object(&schema)?;
+    for req_env in req_envs {
+        let terms = lean_context
+            .asserts_of_check_equivalent(&pset1, &pset2, schema.clone(), &req_env)?
+            .map_err(|e| ExecError::InternalAnalysisError {
+                error: Box::new(std::io::Error::new(std::io::ErrorKind::Other, e)),
+            })?;
+        for term in terms {
+            let term: cedar_policy_symcc::term::Term = term.try_into()?;
+            println!("{}", term);
+        }
+    }
+    Ok(())
+}
+
+/// Prints to stdout the term produced by the lean backend for analysis `check-implies`
+pub fn asserts_of_check_implies(
+    pset1: PolicySet,
+    pset2: PolicySet,
+    schema: Schema,
+    request_env: &OpenRequestEnv,
+) -> Result<(), ExecError> {
+    let lean_context = CedarLeanFfi::new();
+    let req_envs = request_env.to_request_envs(&schema)?;
+    let schema = lean_context.load_lean_schema_object(&schema)?;
+    for req_env in req_envs {
+        let terms = lean_context
+            .asserts_of_check_implies(&pset1, &pset2, schema.clone(), &req_env)?
+            .map_err(|e| ExecError::InternalAnalysisError {
+                error: Box::new(std::io::Error::new(std::io::ErrorKind::Other, e)),
+            })?;
+        for term in terms {
+            let term: cedar_policy_symcc::term::Term = term.try_into()?;
+            println!("{}", term);
+        }
+    }
+    Ok(())
+}
+
+/// Prints to stdout the term produced by the lean backend for analysis `check-disjoint`
+pub fn asserts_of_check_disjoint(
+    pset1: PolicySet,
+    pset2: PolicySet,
+    schema: Schema,
+    request_env: &OpenRequestEnv,
+) -> Result<(), ExecError> {
+    let lean_context = CedarLeanFfi::new();
+    let req_envs = request_env.to_request_envs(&schema)?;
+    let schema = lean_context.load_lean_schema_object(&schema)?;
+    for req_env in req_envs {
+        let terms = lean_context
+            .asserts_of_check_disjoint(&pset1, &pset2, schema.clone(), &req_env)?
+            .map_err(|e| ExecError::InternalAnalysisError {
+                error: Box::new(std::io::Error::new(std::io::ErrorKind::Other, e)),
+            })?;
+        for term in terms {
+            let term: cedar_policy_symcc::term::Term = term.try_into()?;
+            println!("{}", term);
+        }
+    }
+    Ok(())
+}
+
 /***************************************************************************************************
  * Functions to pretty print results
  ***************************************************************************************************/

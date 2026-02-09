@@ -103,4 +103,6 @@ pub enum ExecError {
     },
     #[error(transparent)]
     LeanFFIError(#[from] cedar_lean_ffi::FfiError),
+    #[error(transparent)]
+    TermConversionError(#[from] cedar_lean_ffi::TermConversionError),
 }

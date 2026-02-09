@@ -148,6 +148,9 @@ impl SymCCCommands {
                     ModeEnum::PrintSMTLib => {
                         symcc::print_check_never_errors(policy, schema, &req_env)
                     }
+                    ModeEnum::PrintTerm => {
+                        symcc::asserts_of_check_never_errors(policy, schema, &req_env)
+                    }
                 }
             }
             Self::CheckAlwaysAllows {
@@ -165,6 +168,9 @@ impl SymCCCommands {
                     ModeEnum::PrintSMTLib => {
                         symcc::print_check_always_allows(policyset, schema, &req_env)
                     }
+                    ModeEnum::PrintTerm => {
+                        symcc::asserts_of_check_always_allows(policyset, schema, &req_env)
+                    }
                 }
             }
             Self::CheckAlwaysDenies {
@@ -181,6 +187,9 @@ impl SymCCCommands {
                     }
                     ModeEnum::PrintSMTLib => {
                         symcc::print_check_always_denies(policyset, schema, &req_env)
+                    }
+                    ModeEnum::PrintTerm => {
+                        symcc::asserts_of_check_always_denies(policyset, schema, &req_env)
                     }
                 }
             }
@@ -200,6 +209,9 @@ impl SymCCCommands {
                     ModeEnum::PrintSMTLib => {
                         symcc::print_check_equivalent(pset1, pset2, schema, &req_env)
                     }
+                    ModeEnum::PrintTerm => {
+                        symcc::asserts_of_check_equivalent(pset1, pset2, schema, &req_env)
+                    }
                 }
             }
             Self::CheckImplies {
@@ -218,6 +230,9 @@ impl SymCCCommands {
                     ModeEnum::PrintSMTLib => {
                         symcc::print_check_implies(pset1, pset2, schema, &req_env)
                     }
+                    ModeEnum::PrintTerm => {
+                        symcc::asserts_of_check_implies(pset1, pset2, schema, &req_env)
+                    }
                 }
             }
             Self::CheckDisjoint {
@@ -235,6 +250,9 @@ impl SymCCCommands {
                     }
                     ModeEnum::PrintSMTLib => {
                         symcc::print_check_disjoint(pset1, pset2, schema, &req_env)
+                    }
+                    ModeEnum::PrintTerm => {
+                        symcc::asserts_of_check_disjoint(pset1, pset2, schema, &req_env)
                     }
                 }
             }

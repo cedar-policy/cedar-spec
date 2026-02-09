@@ -22,6 +22,7 @@ mod messages;
 
 pub use datatypes::{AuthorizationResponse, TimedResult, ValidationResponse};
 // Term, Env, and associated types
+pub use datatypes::TermConversionError;
 pub use datatypes::{
     Bitvec, Cidr, Datetime, Decimal, Duration, EntityData, EntityUid, Env, Ext, ExtOp, ExtType,
     IpAddr, Op, Term, TermPrim, TermPrimType, TermType, TermVar, Uuf, Value,

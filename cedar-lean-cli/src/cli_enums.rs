@@ -62,16 +62,20 @@ pub(crate) struct ComparePolicySetAnalysisArgs {
 #[clap(next_help_heading = "Execution Modes")]
 pub(crate) struct Mode {
     /// Run the SMT formula produced by the provided backend encoder via CVC5 [default]
-    #[arg(long, conflicts_with_all = ["print_smtlib"], global=true)]
+    #[arg(long, conflicts_with_all = ["print_smtlib", "print_term"], global=true)]
     run_analysis: bool,
     /// Print the SMT formula produced by the provided backend
-    #[arg(long, conflicts_with_all = ["run_analysis"], global=true)]
+    #[arg(long, conflicts_with_all = ["run_analysis", "print_term"], global=true)]
     print_smtlib: bool,
+    /// Print the intermediate terms produced by Symcc
+    #[arg(long, conflicts_with_all = ["run_analysis", "print_smtlib"], global=true)]
+    print_term: bool,
 }
 
 pub(crate) enum ModeEnum {
     RunAnalysis,
     PrintSMTLib,
+    PrintTerm,
 }
 
 impl From<Mode> for ModeEnum {
@@ -83,6 +87,9 @@ impl From<Mode> for ModeEnum {
         }
         if mode.print_smtlib {
             return ModeEnum::PrintSMTLib;
+        }
+        if mode.print_term {
+            return ModeEnum::PrintTerm;
         }
         ModeEnum::RunAnalysis
     }
