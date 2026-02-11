@@ -1165,24 +1165,28 @@ impl Schema {
         }
 
         // same for actions
-        let action_names: IndexSet<String> = u
-            .arbitrary()
-            .map_err(|e| while_doing("generating action names".into(), e))?;
-        let action_names: IndexSet<SmolStr> = action_names.into_iter().map(SmolStr::from).collect();
-        let action_names: Vec<SmolStr> = action_names
-            .into_iter()
-            .filter(|n| {
-                !n.contains('\"')
-                    && !n.contains('\\')
-                    && !n.contains('\0')
-                    && !n.contains('\r')
-                    && !n.contains('\n')
-            })
-            .collect();
-        // we want there to be at least one valid Action
-        let action_names = if action_names.is_empty() {
-            vec!["action".into()]
-        } else {
+        let action_names = {
+            let action_names: IndexSet<SmolStr> = u
+                .arbitrary()
+                .map_err(|e| while_doing("generating action names".into(), e))?;
+            let action_names: Vec<SmolStr> = action_names
+                .into_iter()
+                .filter(|n| {
+                    !n.contains('\"')
+                        && !n.contains('\\')
+                        && !n.contains('\0')
+                        && !n.contains('\r')
+                        && !n.contains('\n')
+                })
+                .collect();
+            // we want there to be at least one valid Action
+            let mut action_names = if action_names.is_empty() {
+                vec!["action".into()]
+            } else {
+                action_names
+            };
+            // enforce the limit on max number of actions
+            action_names.truncate(settings.max_actions);
             action_names
         };
         let mut principal_types: IndexSet<ast::InternalName> = IndexSet::new();
