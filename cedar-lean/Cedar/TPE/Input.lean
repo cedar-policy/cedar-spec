@@ -40,11 +40,55 @@ inductive PartialAttribute (T : Type _) where
   | presentUnknown (ty : CedarType) -- Known present, unknown value
   | unknown (ty : CedarType)        -- Unknown present, unknown value
 
+deriving instance Repr, DecidableEq, Inhabited for PartialAttribute
+
+def PartialAttribute.mustBePresent : PartialAttribute T → Bool
+| present _ | presentUnknown _ => true
+| absent _ | unknown _ => false
+
 inductive PartialValue where
   | prim (p : Prim)
   | set (s : Set Value) -- Per Emina's design, sets cannot have partial values. TODO: understand why
   | record (m : Map Attr (PartialAttribute PartialValue))
   | ext (x : Ext)
+
+deriving instance Repr, Inhabited for PartialValue
+instance : DecidableEq PartialValue := by sorry
+
+def PartialValue.asEntityUID : PartialValue → Result EntityUID
+  | .prim (.entityUID uid) => .ok uid
+  | _ => .error Error.typeError
+
+def PartialValue.asSet : PartialValue → Result (Data.Set Value)
+  | .set s => .ok s
+  | _ => .error Error.typeError
+
+def PartialValue.asBool : PartialValue → Result Bool
+  | .prim (.bool b) => .ok b
+  | _ => .error Error.typeError
+
+def PartialValue.asString : PartialValue →  Result String
+  | .prim (.string s) => .ok s
+  | _ => .error Error.typeError
+
+def PartialValue.asInt : PartialValue →  Result Int64
+  | .prim (.int i) => .ok i
+  | _ => .error Error.typeError
+
+instance : Coe PartialValue (Result Bool) where
+  coe v := v.asBool
+
+instance : Coe PartialValue (Result Int64) where
+  coe v := v.asInt
+
+instance : Coe PartialValue (Result String) where
+  coe v := v.asString
+
+instance : Coe PartialValue (Result EntityUID) where
+  coe v := v.asEntityUID
+
+instance : Coe PartialValue (Result (Data.Set Value)) where
+  coe v := v.asSet
 
 abbrev PartialAttributes := Option (Map Attr (PartialAttribute PartialValue))
 abbrev PartialTags := Option (Map Tag (PartialAttribute PartialValue))
@@ -92,6 +136,9 @@ def partialIsValid {α} (o : Option α) (f : α → Bool) : Bool :=
 def requiredAttributePresent (r : Map Attr (PartialAttribute PartialValue)) (rty : Map Attr (Qualified CedarType)) (k : Attr) :=
   match rty.find? k with
   | .some qty =>
+    -- TODO: if the expected qty is optional. Then do we need to not .none?
+    -- .none might be ambiguous
+    -- should be an error
     !qty.isRequired ||
     match r.find? k with
     | .some (.present _)
@@ -108,7 +155,6 @@ def PartialValue.instanceOfType (v : PartialValue) (ty : CedarType) (env : TypeE
   | .prim (.entityUID e), .entity ety => instanceOfEntityType e ety env
   | .set s, .set ty => s.elts.attach.all (λ ⟨v, _⟩ => Value.instanceOfType v ty env)
   | .record r, .record rty =>
-    -- TODO: possibly want to accept `.absent`
     r.kvs.all (λ (k, _) => rty.contains k) &&
     (r.kvs.attach₂.all (λ ⟨(k, v), _⟩ => (match rty.find? k with
         | .some qty =>
@@ -125,13 +171,7 @@ def PartialValue.instanceOfType (v : PartialValue) (ty : CedarType) (env : TypeE
     decreasing_by
       all_goals simp_wf
       case _ h₁ =>
-        have := Set.sizeOf_lt_of_mem h₁
-        omega
-      case _ h₁ =>
-        cases r
-        simp only [Map.kvs] at h₁
-        simp only [Map.mk.sizeOf_spec]
-        omega
+        sorry
 
 def requestIsValid (env : TypeEnv) (req : PartialRequest) : Bool :=
   (partialIsValid req.principal.asEntityUID λ principal =>
@@ -155,10 +195,15 @@ where
         ancestors.all (λ ancestor =>
         entry.ancestors.contains ancestor.ty &&
         instanceOfEntityType ancestor ancestor.ty env)) &&
-      (partialIsValid attrs (PartialValue.instanceOfType · (.record entry.attrs) env)) &&
+      (partialIsValid attrs (λ attrs => PartialValue.instanceOfType (.record attrs)  (.record entry.attrs) env)) &&
       (partialIsValid tags λ tags =>
         match entry.tags? with
-        | .some tty => tags.values.all (PartialValue.instanceOfType · tty env)
+        | .some tty => tags.values.all (λ v =>
+          match v with
+          | .present v => PartialValue.instanceOfType v tty env
+          | .absent ty
+          | .presentUnknown ty
+          | .unknown ty => ty == tty)
         | .none     => tags == Map.empty)
     | .none       => false
   instanceOfActionSchema p :=
@@ -181,6 +226,34 @@ def isValidAndConsistent (schema : Schema) (req₁ : Request) (es₁ : Entities)
   | .some env => do requestIsConsistent env; entitiesIsConsistent env; envIsWellFormed env
   | .none => .error .invalidEnvironment
 where
+  valueIsConsistent (env : TypeEnv) (v : Value) (pv : PartialValue) :=
+    match v, pv with
+    | .prim p, .prim p' => p == p'
+    | .ext x, .ext x' => x == x'
+    | .set s, .set s' => s == s'
+    | .record a, .record a' =>
+      (a'.kvs.attach₂.all λ kv=>
+        match a.find? kv.val.fst, kv.val.snd with
+        | .some v, .present v' =>
+          valueIsConsistent env v v'
+        | .some v, .unknown ty
+        | .some v, .presentUnknown ty => Value.instanceOfType v ty env
+        | .some v, .absent _ => false
+        | .none, .present _
+        | .none, .presentUnknown _ => false
+        | .none, .unknown _
+        | .none, .absent _ => true) &&
+      (a.kvs.all λ (k, v) =>
+        match a'.find? k with
+        | .some (.present _)
+        | .some (.unknown _)
+        | .some (.presentUnknown _) => true
+        | .some (.absent _)
+        | .none => false)
+    | _, _ => false
+  termination_by pv
+  decreasing_by sorry
+
   requestIsConsistent env :=
   if !requestIsValid env req₂ || !requestMatchesEnvironment env req₁
   then
@@ -191,7 +264,7 @@ where
     if partialIsValid p₂.asEntityUID (· = p₁) &&
       a₁ = a₂ &&
       partialIsValid r₂.asEntityUID (· = r₁) &&
-      partialIsValid c₂ (· = c₁)
+      partialIsValid c₂ (λ c₂ => valueIsConsistent env (.record c₁) (.record c₂))
     then
       .ok ()
     else
@@ -201,17 +274,17 @@ where
     then
       .error .typeError
     else
-      if entitiesMatch then
+      if entitiesMatch env then
         .ok ()
       else
         .error .entitiesDoNotMatch
-  entitiesMatch :=
+  entitiesMatch env :=
       es₂.kvs.all λ (a₂, e₂) => match es₁.find? a₂ with
         | .some e₁ =>
           let ⟨attrs₁, ancestors₁, tags₁⟩ := e₁
-          partialIsValid e₂.attrs (· = attrs₁) &&
+          partialIsValid e₂.attrs (λ a₂ => valueIsConsistent env (.record attrs₁) (.record a₂)) &&
           partialIsValid e₂.ancestors (· = ancestors₁) &&
-          partialIsValid e₂.tags (· = tags₁)
+          partialIsValid e₂.tags (λ t₂ => valueIsConsistent env (.record tags₁) (.record t₂))
         | .none => false
   envIsWellFormed env : Except ConcretizationError Unit :=
     if !env.validateWellFormed.isOk
@@ -219,7 +292,6 @@ where
       .error .typeError
     else
       .ok ()
-
 
 end Cedar.TPE
 
@@ -230,18 +302,35 @@ open Cedar.Spec
 open Cedar.Validation
 open Cedar.TPE
 
+def Value.asPartialValue : Value → PartialValue
+  | .prim p => .prim p
+  | .ext x => .ext x
+  | .set s => .set s
+  | .record as => .record ∘ Map.mk $ as.kvs.attach₂.map λ kv => (kv.val.fst, .present kv.val.snd.asPartialValue)
+decreasing_by
+  have : sizeOf as.kvs < sizeOf as := by
+    simp only [Map.sizeOf_lt_of_kvs]
+  simp only [record.sizeOf_spec, gt_iff_lt]
+  omega
+
+instance : Coe Bool PartialValue where
+  coe b := .prim (.bool b)
+
+instance {α : Type _} [Coe α Value] : Coe α PartialValue where
+  coe v := Value.asPartialValue v
+
 def Request.asPartialRequest (req : Request) : PartialRequest :=
   { principal := { ty := req.principal.ty, id := .some req.principal.eid }
   , action    := req.action
   , resource  := { ty := req.resource.ty, id := .some req.resource.eid }
-  , context   := req.context }
+  , context   := .some ∘ Map.mk $ req.context.kvs.attach₂.map λ kv => (kv.val.fst, .present kv.val.snd.asPartialValue) }
 
 open Cedar.TPE
 
 def EntityData.asPartial (data : EntityData) : PartialEntityData :=
-  { attrs := (.some data.attrs)
+  { attrs := (.some ∘ Map.mk $ data.attrs.kvs.attach₂.map λ kv => (kv.val.fst, .present kv.val.snd.asPartialValue))
   , ancestors := (.some data.ancestors)
-  , tags := (.some data.tags)}
+  , tags := (.some ∘ Map.mk $ data.tags.kvs.attach₂.map λ kv => (kv.val.fst, .present kv.val.snd.asPartialValue))}
 
 def Entities.asPartial (entities: Entities) : PartialEntities :=
   entities.mapOnValues EntityData.asPartial

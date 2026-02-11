@@ -34,12 +34,12 @@ instance : Coe Spec.Error Error where
   coe := Error.evaluation
 
 /- Convert an optional value to a residual: Return `.error ty` when it's none -/
-def someOrError : Option Value → CedarType → Residual
+def someOrError : Option PartialValue → CedarType → Residual
   | .some v, ty => .val v ty
   | .none,   ty => .error ty
 
 /- Convert an optional value to a residual: Return `self` when it's none -/
-def someOrSelf : Option Value → CedarType → Residual → Residual
+def someOrSelf : Option PartialValue → CedarType → Residual → Residual
   | .some v, ty, _   => .val v ty
   | .none,   _, self => self
 
@@ -77,12 +77,24 @@ def or : Residual → Residual → CedarType → Residual
   | l, r, ty           => .or l r ty
 
 def apply₁ (op₁ : UnaryOp) (r : Residual) (ty : CedarType) : Residual :=
-  match r with
-  | .error _ => .error ty
-  | _ =>
-    match r.asValue with
-    | .some v => someOrError (Spec.apply₁ op₁ v).toOption ty
-    | .none   => .unaryApp op₁ r ty
+  match r.asPartialValue with
+  | .some v =>
+    match op₁, v with
+    | .not, .prim (.bool b) =>
+      .val (!b) ty
+    | .neg, .prim (.int i) =>
+      someOrError (i.neg?) ty
+    | .isEmpty, .set s =>
+      .val s.isEmpty ty
+    | .like p, .prim (.string s) =>
+      .val (wildcardMatch s p) ty
+    | .is ety, .prim (.entityUID uid) =>
+      .val (ety == uid.ty) ty
+    | _, _ => .error ty
+  | .none =>
+    match r with
+    | .error _ => .error ty
+    | _ => .unaryApp op₁ r ty
 
 def inₑ (uid₁ uid₂ : EntityUID) (es : PartialEntities) : Option Bool :=
   if uid₁ = uid₂ then .some true else (es.ancestors uid₁).map (Set.contains · uid₂)
@@ -95,11 +107,15 @@ def hasTag (uid : EntityUID) (tag : String) (es : PartialEntities) : Option Bool
 
 def getTag (uid : EntityUID) (tag : String) (es : PartialEntities) (ty : CedarType) : Residual :=
   match es.tags uid with
-  | .some tags => someOrError (tags.find? tag) ty
+  | .some tags =>
+    match tags.find? tag with
+    | .some (.present tv) => .val tv ty
+    | .some _ => .binaryApp .getTag uid tag ty
+    | .none => .error ty
   | .none => .binaryApp .getTag uid tag ty
 
 def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (ty : CedarType) : Residual :=
-  match r₁.asValue, r₂.asValue with
+  match r₁.asPartialValue, r₂.asPartialValue with
   | .some v₁, .some v₂ =>
     match op₂, v₁, v₂ with
     | .eq, _, _ =>
@@ -123,7 +139,7 @@ def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (t
     | .mul, .prim (.int i), .prim (.int j) =>
       someOrError (i.mul? j) ty
     | .contains, .set vs₁, _ =>
-      .val (vs₁.contains v₂) ty
+      .val (vs₁.any λ v => v.asPartialValue == v₂) ty
     | .containsAll, .set vs₁, .set vs₂ =>
       .val (vs₂.subset vs₁) ty
     | .containsAny, .set vs₁, .set vs₂ =>
@@ -145,7 +161,7 @@ def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (t
   self := .binaryApp op₂ r₁ r₂ ty
 
 
-def attrsOf (r : Residual) (lookup : EntityUID → Option (Map Attr Value)) : Option (Map Attr Value) :=
+def attrsOf (r : Residual) (lookup : EntityUID → PartialAttributes) : PartialAttributes :=
   match r with
   | .val (.record m) _              => .some m
   | .val (.prim (.entityUID uid)) _ => lookup uid
@@ -156,7 +172,12 @@ def hasAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : 
   | .error _ => .error ty
   | _ =>
     match attrsOf r es.attrs with
-    | .some m => m.contains a
+    | .some m =>
+      match m.find? a with
+      | .none
+      | .some (.absent _) => false
+      | .some (.presentUnknown _) | .some (.present _) => true
+      | .some (.unknown _) => .hasAttr r a ty
     | .none   => .hasAttr r a ty
 
 def getAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : Residual :=
@@ -164,11 +185,16 @@ def getAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : 
   | .error _ => .error ty
   | _ =>
     match attrsOf r es.attrs with
-    | .some m => someOrError (m.find? a) ty
+    | .some m => match m.find? a with
+      | some (.present pv)  => .val pv ty
+      | some (.absent _)
+      | none => .error ty
+      | some (.presentUnknown _)
+      | some (.unknown _) => .getAttr r a ty
     | .none   => .getAttr r a ty
 
 def set (rs : List Residual) (ty : CedarType) : Residual :=
-  match rs.mapM Residual.asValue with
+  match rs.mapM Residual.asPartialValue with
   | .some xs => .val (.set (Set.make xs)) ty
   | .none    => if rs.any Residual.isError then .error ty else .set rs ty
 

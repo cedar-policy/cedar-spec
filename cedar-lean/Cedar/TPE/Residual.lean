@@ -17,9 +17,11 @@
 import Cedar.Spec.Expr
 import Cedar.Spec.Value
 import Cedar.Validation.TypedExpr
+import Cedar.TPE.Input
 
 namespace Cedar.Spec
 
+open Cedar.TPE
 open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
@@ -29,7 +31,7 @@ open Cedar.Validation
 inductive Residual where
   -- val contains values obtained by TPE
   -- We don't need `prim` like `TypedExpr` because these expressions should've been reduced to `val`
-  | val (v : Value) (ty : CedarType)
+  | val (v : PartialValue) (ty : CedarType)
   | var (v : Var)  (ty : CedarType)
   | ite (cond : Residual) (thenExpr : Residual) (elseExpr : Residual)  (ty : CedarType)
   | and (a : Residual) (b : Residual)  (ty : CedarType)
@@ -45,20 +47,19 @@ inductive Residual where
 deriving Repr, Inhabited
 
 instance : Coe Bool Residual where
-  coe b := .val (Prim.bool b) (.bool .anyBool)
+  coe b := .val (.prim (Prim.bool b)) (.bool .anyBool)
 
 instance : Coe String Residual where
-  coe s := .val (Prim.string s) .string
+  coe s := .val (.prim (Prim.string s)) .string
 
 instance : Coe EntityUID Residual where
-  coe uid := .val (Prim.entityUID uid) (.entity uid.ty)
+  coe uid := .val (.prim (Prim.entityUID uid)) (.entity uid.ty)
 
-def Residual.asValue : Residual → Option Value
+def Residual.asPartialValue : Residual → Option PartialValue
   | .val v _ => .some v
   | _        => .none
 
-def Value.toResidual (v : Value) (ty : CedarType) : Residual :=
-  .val v ty
+--  .val v ty
 
 def Residual.isError : Residual → Bool
   | .error _ => true
@@ -114,7 +115,7 @@ def Residual.errorFree : Residual → Bool
   | _ => false
 
 -- The interpreter of `Residual` that defines its semantics
-def Residual.evaluate (x : Residual) (req : Request) (es: Entities) : Result Value :=
+def Residual.evaluate (x : Residual) (req : Request) (es: Entities) : Result TPE.PartialValue :=
   match x with
   | .val v _ => .ok v
   | .var v _ =>
@@ -135,26 +136,33 @@ def Residual.evaluate (x : Residual) (req : Request) (es: Entities) : Result Val
     if b then .ok b else (y.evaluate req es).as Bool
   | .unaryApp op e _ => do
     let v ← e.evaluate req es
-    apply₁ op v
+    -- apply₁ op v
+    sorry
   | .binaryApp op x y _ => do
     let v₁ ← evaluate x req es
     let v₂ ← evaluate y req es
-    apply₂ op v₁ v₂ es
+    -- apply₂ op v₁ v₂ es
+    sorry
   | .hasAttr e a _ => do
     let v ← e.evaluate req es
-    Cedar.Spec.hasAttr v a es
+    -- Cedar.Spec.hasAttr v a es
+    sorry
   | .getAttr e a _ => do
     let v ← e.evaluate req es
-    Cedar.Spec.getAttr v a es
+    -- Cedar.Spec.getAttr v a es
+    sorry
   | .set xs _ => do
     let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => evaluate x₁ req es)
-    .ok (Set.make vs)
+    sorry
+    -- .ok (Set.make vs)
   | .record axs _ => do
     let avs ← axs.mapM₂ (fun ⟨(a₁, x₁), _⟩ => bindAttr a₁ (evaluate x₁ req es))
-    .ok (Map.make avs)
+    sorry
+    -- .ok (Map.make avs)
   | .call xfn xs _ => do
     let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => evaluate x₁ req es)
-    Cedar.Spec.call xfn vs
+    sorry
+    -- Cedar.Spec.call xfn vs
   | .error _ => .error .extensionError
 termination_by x
 decreasing_by
