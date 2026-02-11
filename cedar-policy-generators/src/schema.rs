@@ -1192,11 +1192,7 @@ impl Schema {
                                  u: &mut Unstructured<'_>|
          -> Result<Vec<ast::InternalName>> {
             // Pre-select the number of entity types (minimum 1), then randomly select that many indices
-            let num = u
-                .int_in_range(
-                    1..=std::cmp::min(entity_types.len(), settings.per_action_request_env_limit),
-                )
-                .unwrap();
+            let num = u.int_in_range(1..=entity_types.len()).unwrap();
             let mut indices: Vec<usize> = (0..entity_types.len()).collect();
             let mut selected_indices = Vec::with_capacity(num);
 
@@ -1242,17 +1238,9 @@ impl Schema {
                             } else {
                                 principal_and_resource_types_exist = true;
                             }
-                            let req_env_num =
+                            // Fail fast if we've exceeded the limit on total request envs
+                            total_req_env_num +=
                                 picked_principal_types.len() * picked_resource_types.len();
-                            // Fail fast if the number of request environment
-                            // number is too large
-                            if req_env_num > settings.per_action_request_env_limit {
-                                return Err(Error::TooManyReqEnvsPerAction(
-                                    req_env_num,
-                                    settings.per_action_request_env_limit,
-                                ));
-                            }
-                            total_req_env_num += req_env_num;
                             if total_req_env_num > settings.total_action_request_env_limit {
                                 return Err(Error::TooManyReqEnvs(
                                     total_req_env_num,

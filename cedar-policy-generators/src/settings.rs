@@ -86,12 +86,6 @@ pub struct ABACSettings {
     /// Flag to enable/disable action constraints in forms of `in` operations
     pub enable_action_in_constraints: bool,
 
-    /// An upper bound on the number of request environment a schema can
-    /// produce per action
-    /// See https://github.com/cedar-policy/cedar-spec/issues/610 for the
-    /// motivation why we want this limit
-    pub per_action_request_env_limit: usize,
-
     /// An upper bound on the total number of request environment a schema can
     /// produce
     pub total_action_request_env_limit: usize,
@@ -111,7 +105,6 @@ impl ABACSettings {
             enable_arbitrary_func_call: true,
             enable_unknowns: false,
             enable_action_in_constraints: true,
-            per_action_request_env_limit: 128,
             total_action_request_env_limit: 1024,
         }
     }
