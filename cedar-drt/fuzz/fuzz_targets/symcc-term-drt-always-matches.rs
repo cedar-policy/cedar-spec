@@ -15,6 +15,7 @@
  */
 
 #![no_main]
+
 use cedar_drt::logger::initialize_log;
 use cedar_drt_inner::{
     fuzz_target,
