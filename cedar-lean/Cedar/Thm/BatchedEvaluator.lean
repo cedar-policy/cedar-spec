@@ -29,7 +29,7 @@ in the code base at the moment.
 -/
 abbrev EntityLoader.WellBehaved (store: Entities) (loader: EntityLoader) : Prop :=
   ∀ s, s ⊆ (loader s).keys ∧
-       EntitiesRefine store ((loader s).mapOnValues EntityDataOption.asPartial)
+       EntitiesRefine store ((loader s).mapOnValues MaybeEntityData.asPartial)
 
 theorem as_partial_request_refines {req : Request} :
   RequestRefines req req.asPartialRequest := by
@@ -51,12 +51,12 @@ theorem any_refines_empty_entities :
   intro a e₂ h₁
   contradiction
 
--- Helper lemma for map append refinementSlicedEntities
+-- Helper lemma for map append refinement
 theorem entities_refine_append (es : Entities) (m1 m2 : PartialEntities) :
   EntitiesRefine es m1 → EntitiesRefine es m2 → EntitiesRefine es (m2 ++ m1) := by
   intro h1 h2
   unfold EntitiesRefine
-  intro a e₂ h_findSlicedEntities
+  intro a e₂ h_find
   rw [Map.find?_append] at h_find
   cases h_case : m2.find? a with
   | some e₂' =>
@@ -67,21 +67,21 @@ theorem entities_refine_append (es : Entities) (m1 m2 : PartialEntities) :
     rw [h_eq]
     exact h2 a e₂' h_case
   | none =>
-    have h_find1 : m1.find? a = some e₂ := byMaybeEntityData.asPartial
+    have h_find1 : m1.find? a = some e₂ := by
       rw [h_case] at h_find
-      simp only [Option.none_or] at h_fMaybeEntityData.asPartial
-      rw [h_find]MaybeEntityData.asPartial
+      simp only [Option.none_or] at h_find
+      rw [h_find]
     exact h1 a e₂ h_find1
 
 
 theorem direct_request_and_entities_refine (req : Request) (es : Entities) :
   RequestAndEntitiesRefine req es req.asPartialRequest es.asPartial := by
   constructor
-  · exact as_partiaMaybeEntityData.asPartial_refines
+  · exact as_partial_request_refines
   · unfold EntitiesRefine Entities.asPartial
     intro uid data₂ h_find
     have h_mapOnValues := Map.find?_mapOnValues_some' EntityData.asPartial h_find
-    obtain ⟨data₁, h_find₁, h_eq⟩ := h_MaybeEntityData.asPartial
+    obtain ⟨data₁, h_find₁, h_eq⟩ := h_mapOnValues
     exists data₁
     exact ⟨h_find₁,
            by rw [h_eq]; apply PartialIsValid.some; rfl,
@@ -105,8 +105,8 @@ theorem batched_eval_loop_eq_evaluate
   case h_1 => simp only
   case h_2 iters n=>
     let toLoad := (Set.filter (fun uid => (Map.find? current_store uid).isNone) x.allLiteralUIDs)
-    let newEntities := ((loader toLoad).mapOnValues EntityDataOption.asPartial)
-    let newStore :=SlicedEntitiesrent_store
+    let newEntities := ((loader toLoad).mapOnValues MaybeEntityData.asPartial)
+    let newStore := newEntities ++ current_store
 
     have h₀₂ := h₀
     specialize h₀₂ toLoad
@@ -120,7 +120,7 @@ theorem batched_eval_loop_eq_evaluate
         · unfold RequestAndEntitiesRefine at h₂
           exact h₂.right
         · apply h₅
-    let newRes := SlicedEntitiesasPartialRequest newStore
+    let newRes := TPE.evaluate x req.asPartialRequest newStore
     have h₇ : (Residual.evaluate newRes req es).toOption = (Residual.evaluate x req es).toOption := by
       subst newRes
       rw [← partial_evaluate_is_sound h₁ h₃ h₆]
