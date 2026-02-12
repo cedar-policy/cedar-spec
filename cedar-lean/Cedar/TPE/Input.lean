@@ -48,18 +48,111 @@ def PartialAttribute.mustBePresent : PartialAttribute T → Bool
 
 inductive PartialValue where
   | prim (p : Prim)
-  | set (s : Set Value) -- Per Emina's design, sets cannot have partial values. TODO: understand why
+  | set (s : Set PartialValue) -- Per Emina's design, sets cannot have partial values. TODO: understand why
   | record (m : Map Attr (PartialAttribute PartialValue))
   | ext (x : Ext)
 
 deriving instance Repr, Inhabited for PartialValue
-instance : DecidableEq PartialValue := by sorry
+
+mutual
+def PartialValue.lt : PartialValue → PartialValue → Bool
+  | .prim p₁, .prim p₂ => p₁ < p₂
+  | .set (.mk vs₁), .set (.mk vs₂) => PartialValues.lt vs₁ vs₂
+  | .record (.mk avs₁), .record (.mk avs₂) => PartialValueAttrs.lt avs₁ avs₂
+  | .ext x₁, .ext x₂ => x₁ < x₂
+  | .prim _, _ => true
+  | .set _, .prim _ => false
+  | .set _, _ => true
+  | .record _, .prim _ => false
+  | .record _, .set _ => false
+  | .record _, _ => true
+  | .ext _, _ => false
+
+def PartialValues.lt : List PartialValue → List PartialValue → Bool
+  | [], [] => false
+  | [], _ => true
+  | _, [] => false
+  | v₁ :: vs₁, v₂ :: vs₂ =>
+    PartialValue.lt v₁ v₂ || (match decPartialValue v₁ v₂ with | isTrue _ => PartialValues.lt vs₁ vs₂ | isFalse _ => false)
+
+def PartialValueAttrs.lt : List (Attr × PartialAttribute PartialValue) → List (Attr × PartialAttribute PartialValue) → Bool
+  | [], [] => false
+  | [], _ => true
+  | _, [] => false
+  | (a₁, v₁) :: avs₁, (a₂, v₂) :: avs₂ =>
+    a₁ < a₂ || (match decEq a₁ a₂, decPartialAttribute v₁ v₂ with
+                | isTrue _, isTrue _ => PartialValueAttrs.lt avs₁ avs₂
+                | _, _ => false)
+
+def decPartialAttribute (a₁ a₂ : PartialAttribute PartialValue) : Decidable (a₁ = a₂) := by
+  cases a₁ <;> cases a₂ <;>
+  try { apply isFalse ; intro h ; injection h }
+  case present.present v₁ v₂ =>
+    exact match decPartialValue v₁ v₂ with
+    | isTrue h => isTrue (by rw [h])
+    | isFalse _ => isFalse (by intro h; injection h; contradiction)
+  case absent.absent t₁ t₂ | presentUnknown.presentUnknown t₁ t₂ | unknown.unknown t₁ t₂ =>
+    exact match decEq t₁ t₂ with
+    | isTrue h => isTrue (by rw [h])
+    | isFalse _ => isFalse (by intro h; injection h; contradiction)
+
+def decPartialValue (v₁ v₂ : PartialValue) : Decidable (v₁ = v₂) := by
+  cases v₁ <;> cases v₂ <;>
+  try { apply isFalse ; intro h ; injection h }
+  case prim.prim w₁ w₂ | ext.ext w₁ w₂ =>
+    exact match decEq w₁ w₂ with
+    | isTrue h => isTrue (by rw [h])
+    | isFalse _ => isFalse (by intro h; injection h; contradiction)
+  case set.set s₁ s₂ =>
+    cases s₁ ; cases s₂ ; rename_i s₁ s₂
+    exact match decPartialValueList s₁ s₂ with
+    | isTrue h => isTrue (by rw [h])
+    | isFalse h₁ => isFalse (by intro h₂; simp [h₁] at h₂)
+  case record.record r₁ r₂ =>
+    cases r₁ ; cases r₂ ; rename_i r₁ r₂
+    exact match decProdAttrPartialAttributeList r₁ r₂ with
+    | isTrue h => isTrue (by rw [h])
+    | isFalse h₁ => isFalse (by intro h₂; simp [h₁] at h₂)
+
+def decPartialValueList (vs₁ vs₂ : List PartialValue) : Decidable (vs₁ = vs₂) :=
+  match vs₁, vs₂ with
+  | [], [] => isTrue rfl
+  | _::_, [] | [], _::_ => isFalse (by intro; contradiction)
+  | v₁ :: vs₁, v₂ :: vs₂ =>
+    match decPartialValue v₁ v₂, decPartialValueList vs₁ vs₂ with
+    | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
+    | isFalse _ , _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
+
+def decProdAttrPartialAttributeList (avs₁ avs₂ : List (Attr × PartialAttribute PartialValue)) : Decidable (avs₁ = avs₂):=
+  match avs₁, avs₂ with
+  | [], [] => isTrue rfl
+  | _::_, [] | [], _::_ => isFalse (by intro; contradiction)
+  | (a₁, v₁) :: vs₁, (a₂, v₂) :: vs₂ =>
+    match decEq a₁ a₂, decPartialAttribute v₁ v₂, decProdAttrPartialAttributeList vs₁ vs₂ with
+    | isTrue h₁, isTrue h₂, isTrue h₃ => isTrue (by rw [h₁, h₂, h₃])
+    | isFalse _, _, _ | _, isFalse _, _ | _, _, isFalse _ =>
+      isFalse (by simp; intros; first | contradiction | assumption)
+end
+
+instance : DecidableEq PartialValue := decPartialValue
+instance : LT PartialValue := ⟨fun x y => PartialValue.lt x y⟩
+instance : DecidableLT PartialValue := (if h : PartialValue.lt · · then isTrue h else isFalse h)
+
+def PartialValue.asValue : PartialValue → Option Value
+  | .record as => (Value.record ∘ Map.make) <$> as.kvs.mapM₂ λ kv =>
+    match kv.val.snd with
+    | .present pv => do some (kv.val.fst, ←pv.asValue)
+    | _ => none -- TODO: allow .absent
+  | .prim p   => .some p
+  | .set es   => (Value.set ∘ Set.make) <$> es.elts.mapM₁ λ e => e.val.asValue
+  | .ext x    => .some (.ext x)
+decreasing_by all_goals sorry
 
 def PartialValue.asEntityUID : PartialValue → Result EntityUID
   | .prim (.entityUID uid) => .ok uid
   | _ => .error Error.typeError
 
-def PartialValue.asSet : PartialValue → Result (Data.Set Value)
+def PartialValue.asSet : PartialValue → Result (Data.Set PartialValue)
   | .set s => .ok s
   | _ => .error Error.typeError
 
@@ -87,7 +180,7 @@ instance : Coe PartialValue (Result String) where
 instance : Coe PartialValue (Result EntityUID) where
   coe v := v.asEntityUID
 
-instance : Coe PartialValue (Result (Data.Set Value)) where
+instance : Coe PartialValue (Result (Data.Set PartialValue)) where
   coe v := v.asSet
 
 abbrev PartialAttributes := Option (Map Attr (PartialAttribute PartialValue))
@@ -153,7 +246,7 @@ def PartialValue.instanceOfType (v : PartialValue) (ty : CedarType) (env : TypeE
   | .prim (.int _), .int => true
   | .prim (.string _), .string => true
   | .prim (.entityUID e), .entity ety => instanceOfEntityType e ety env
-  | .set s, .set ty => s.elts.attach.all (λ ⟨v, _⟩ => Value.instanceOfType v ty env)
+  | .set s, .set ty => s.elts.attach.all (λ ⟨v, _⟩ => instanceOfType v ty env)
   | .record r, .record rty =>
     r.kvs.all (λ (k, _) => rty.contains k) &&
     (r.kvs.attach₂.all (λ ⟨(k, v), _⟩ => (match rty.find? k with
@@ -168,10 +261,7 @@ def PartialValue.instanceOfType (v : PartialValue) (ty : CedarType) (env : TypeE
   | .ext x, .ext xty => instanceOfExtType x xty
   | _, _ => false
     termination_by v
-    decreasing_by
-      all_goals simp_wf
-      case _ h₁ =>
-        sorry
+    decreasing_by all_goals sorry
 
 def requestIsValid (env : TypeEnv) (req : PartialRequest) : Bool :=
   (partialIsValid req.principal.asEntityUID λ principal =>
@@ -230,7 +320,13 @@ where
     match v, pv with
     | .prim p, .prim p' => p == p'
     | .ext x, .ext x' => x == x'
-    | .set s, .set s' => s == s'
+    | .set s, .set s' =>
+      -- TODO: probably annoying to prove. Shouldn't need to handle because I
+      -- shouldn't need to support partial values in sets, but it's useful for
+      -- `evaluate : Residual → PartialValue` where I might have to represent
+      -- the result of a set literal containing a partial value.
+      s.elts.length == s'.elts.length &&
+      (s.elts.zip s'.elts).all λ (e, e') => valueIsConsistent env e e'
     | .record a, .record a' =>
       (a'.kvs.attach₂.all λ kv=>
         match a.find? kv.val.fst, kv.val.snd with
@@ -252,7 +348,7 @@ where
         | .none => false)
     | _, _ => false
   termination_by pv
-  decreasing_by sorry
+  decreasing_by all_goals sorry
 
   requestIsConsistent env :=
   if !requestIsValid env req₂ || !requestMatchesEnvironment env req₁
@@ -305,13 +401,14 @@ open Cedar.TPE
 def Value.asPartialValue : Value → PartialValue
   | .prim p => .prim p
   | .ext x => .ext x
-  | .set s => .set s
+  | .set s => .set (s.map λ e => e.asPartialValue)
   | .record as => .record ∘ Map.mk $ as.kvs.attach₂.map λ kv => (kv.val.fst, .present kv.val.snd.asPartialValue)
 decreasing_by
-  have : sizeOf as.kvs < sizeOf as := by
-    simp only [Map.sizeOf_lt_of_kvs]
-  simp only [record.sizeOf_spec, gt_iff_lt]
-  omega
+  all_goals sorry
+  --have : sizeOf as.kvs < sizeOf as := by
+  --  simp only [Map.sizeOf_lt_of_kvs]
+  --simp only [record.sizeOf_spec, gt_iff_lt]
+  --omega
 
 instance : Coe Bool PartialValue where
   coe b := .prim (.bool b)

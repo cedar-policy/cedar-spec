@@ -115,7 +115,7 @@ def getTag (uid : EntityUID) (tag : String) (es : PartialEntities) (ty : CedarTy
   | .none => .binaryApp .getTag uid tag ty
 
 def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (ty : CedarType) : Residual :=
-  match r₁.asPartialValue, r₂.asPartialValue with
+  match r₁.asValue, r₂.asValue with
   | .some v₁, .some v₂ =>
     match op₂, v₁, v₂ with
     | .eq, _, _ =>
@@ -139,7 +139,7 @@ def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (t
     | .mul, .prim (.int i), .prim (.int j) =>
       someOrError (i.mul? j) ty
     | .contains, .set vs₁, _ =>
-      .val (vs₁.any λ v => v.asPartialValue == v₂) ty
+      .val (vs₁.contains v₂) ty
     | .containsAll, .set vs₁, .set vs₂ =>
       .val (vs₂.subset vs₁) ty
     | .containsAny, .set vs₁, .set vs₂ =>
@@ -199,13 +199,13 @@ def set (rs : List Residual) (ty : CedarType) : Residual :=
   | .none    => if rs.any Residual.isError then .error ty else .set rs ty
 
 def record (m : List (Attr × Residual)) (ty : CedarType) : Residual :=
-  match m.mapM λ (a, r₁) => bindAttr a r₁.asValue with
+  match m.mapM λ (a, r₁) => bindAttr a (r₁.asPartialValue.map (λ r => PartialAttribute.present r)) with
   | .some xs => .val (.record (Map.make xs)) ty
   | .none    => if m.any λ (_, r₁) => r₁.isError then .error ty else .record m ty
 
 def call (xfn : ExtFun) (rs : List Residual) (ty : CedarType) : Residual :=
   match rs.mapM Residual.asValue with
-  | .some xs => someOrError (Spec.call xfn xs).toOption ty
+  | .some xs => someOrError ((Spec.call xfn xs).toOption.map Value.asPartialValue) ty
   | .none    => if rs.any Residual.isError then .error ty else .call xfn rs ty
 
 def evaluate

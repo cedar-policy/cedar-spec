@@ -59,7 +59,8 @@ def Residual.asPartialValue : Residual → Option PartialValue
   | .val v _ => .some v
   | _        => .none
 
---  .val v ty
+def Residual.asValue :=
+  Residual.asPartialValue >=> PartialValue.asValue
 
 def Residual.isError : Residual → Bool
   | .error _ => true
