@@ -1165,24 +1165,28 @@ impl Schema {
         }
 
         // same for actions
-        let action_names: IndexSet<String> = u
-            .arbitrary()
-            .map_err(|e| while_doing("generating action names".into(), e))?;
-        let action_names: IndexSet<SmolStr> = action_names.into_iter().map(SmolStr::from).collect();
-        let action_names: Vec<SmolStr> = action_names
-            .into_iter()
-            .filter(|n| {
-                !n.contains('\"')
-                    && !n.contains('\\')
-                    && !n.contains('\0')
-                    && !n.contains('\r')
-                    && !n.contains('\n')
-            })
-            .collect();
-        // we want there to be at least one valid Action
-        let action_names = if action_names.is_empty() {
-            vec!["action".into()]
-        } else {
+        let action_names = {
+            let action_names: IndexSet<SmolStr> = u
+                .arbitrary()
+                .map_err(|e| while_doing("generating action names".into(), e))?;
+            let action_names: Vec<SmolStr> = action_names
+                .into_iter()
+                .filter(|n| {
+                    !n.contains('\"')
+                        && !n.contains('\\')
+                        && !n.contains('\0')
+                        && !n.contains('\r')
+                        && !n.contains('\n')
+                })
+                .collect();
+            // we want there to be at least one valid Action
+            let mut action_names = if action_names.is_empty() {
+                vec!["action".into()]
+            } else {
+                action_names
+            };
+            // enforce the limit on max number of actions
+            action_names.truncate(settings.max_actions);
             action_names
         };
         let mut principal_types: IndexSet<ast::InternalName> = IndexSet::new();
@@ -1192,11 +1196,7 @@ impl Schema {
                                  u: &mut Unstructured<'_>|
          -> Result<Vec<ast::InternalName>> {
             // Pre-select the number of entity types (minimum 1), then randomly select that many indices
-            let num = u
-                .int_in_range(
-                    1..=std::cmp::min(entity_types.len(), settings.per_action_request_env_limit),
-                )
-                .unwrap();
+            let num = u.int_in_range(1..=entity_types.len()).unwrap();
             let mut indices: Vec<usize> = (0..entity_types.len()).collect();
             let mut selected_indices = Vec::with_capacity(num);
 
@@ -1242,17 +1242,9 @@ impl Schema {
                             } else {
                                 principal_and_resource_types_exist = true;
                             }
-                            let req_env_num =
+                            // Fail fast if we've exceeded the limit on total request envs
+                            total_req_env_num +=
                                 picked_principal_types.len() * picked_resource_types.len();
-                            // Fail fast if the number of request environment
-                            // number is too large
-                            if req_env_num > settings.per_action_request_env_limit {
-                                return Err(Error::TooManyReqEnvsPerAction(
-                                    req_env_num,
-                                    settings.per_action_request_env_limit,
-                                ));
-                            }
-                            total_req_env_num += req_env_num;
                             if total_req_env_num > settings.total_action_request_env_limit {
                                 return Err(Error::TooManyReqEnvs(
                                     total_req_env_num,

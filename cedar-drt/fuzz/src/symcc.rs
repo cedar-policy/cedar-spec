@@ -152,30 +152,42 @@ pub fn assert_that_asserts_match(
     }
 }
 
+/// Limit on the number of request envs the schema may define. We also do not
+/// allow the number of _actions_ to exceed that number, even in schemas that
+/// comply with the request env limit (e.g., because most actions have no
+/// `appliesTo` and therefore no request envs).  As of this writing, Lean
+/// performance for many targets is cubic in the number of actions / request
+/// envs, just considering that `ActionSchema.validateWellFormed` is at least
+/// quadratic in the number of actions (if actions have "large" ancestor lists)
+/// and that we call it once per request env.
+pub type MaxRequestEnvs = usize;
+
 /// Settings shared by all SymCC fuzz targets that use `FuzzTargetInput`s
 /// declared in this file.
-const fn settings(total_action_request_env_limit: usize) -> ABACSettings {
+///
+/// See comments on the `MaxRequestEnvs` type.
+const fn settings(max_request_envs: MaxRequestEnvs) -> ABACSettings {
     ABACSettings {
         max_depth: 3,
         max_width: 3,
-        total_action_request_env_limit,
+        total_action_request_env_limit: max_request_envs,
+        max_actions: max_request_envs,
         ..ABACSettings::type_directed()
     }
 }
 
 /// Input to SymCC fuzz targets that need a single policy.
 ///
-/// The parameter MAX_REQUEST_ENVS is the limit on the number of request envs
-/// the schema may define.
+/// See comments on the `MaxRequestEnvs` type.
 #[derive(Debug, Clone)]
-pub struct SinglePolicyFuzzTargetInput<const MAX_REQUEST_ENVS: usize> {
+pub struct SinglePolicyFuzzTargetInput<const MAX_REQUEST_ENVS: MaxRequestEnvs> {
     /// generated schema
     schema: schema::Schema,
     /// generated policy
     policy: ABACPolicy,
 }
 
-impl<const MAX_REQUEST_ENVS: usize> SinglePolicyFuzzTargetInput<MAX_REQUEST_ENVS> {
+impl<const MAX_REQUEST_ENVS: MaxRequestEnvs> SinglePolicyFuzzTargetInput<MAX_REQUEST_ENVS> {
     /// Get the `cedar_policy::Schema` and `cedar_policy::Policy` that were generated
     pub fn into_inputs(self) -> Result<(Schema, Policy), cedar_policy::SchemaError> {
         Ok((Schema::try_from(self.schema)?, self.policy.into()))
@@ -190,7 +202,7 @@ impl<const MAX_REQUEST_ENVS: usize> SinglePolicyFuzzTargetInput<MAX_REQUEST_ENVS
     }
 }
 
-impl<'a, const MAX_REQUEST_ENVS: usize> Arbitrary<'a>
+impl<'a, const MAX_REQUEST_ENVS: MaxRequestEnvs> Arbitrary<'a>
     for SinglePolicyFuzzTargetInput<MAX_REQUEST_ENVS>
 {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
@@ -263,15 +275,17 @@ fn arbitrary_policies(
 }
 
 /// Input to SymCC fuzz targets that need a single policyset (containing 0 or more policies).
+///
+/// See comments on the `MaxRequestEnvs` type.
 #[derive(Debug, Clone)]
-pub struct SinglePolicySetFuzzTargetInput<const MAX_REQUEST_ENVS: usize> {
+pub struct SinglePolicySetFuzzTargetInput<const MAX_REQUEST_ENVS: MaxRequestEnvs> {
     /// generated schema
     schema: schema::Schema,
     /// generated policyset
     pset: Vec<ABACPolicy>,
 }
 
-impl<const MAX_REQUEST_ENVS: usize> SinglePolicySetFuzzTargetInput<MAX_REQUEST_ENVS> {
+impl<const MAX_REQUEST_ENVS: MaxRequestEnvs> SinglePolicySetFuzzTargetInput<MAX_REQUEST_ENVS> {
     /// Get the `cedar_policy::Schema` and `cedar_policy::PolicySet` that were generated
     pub fn into_inputs(self) -> Result<(Schema, PolicySet), cedar_policy::SchemaError> {
         Ok((
@@ -282,7 +296,7 @@ impl<const MAX_REQUEST_ENVS: usize> SinglePolicySetFuzzTargetInput<MAX_REQUEST_E
     }
 }
 
-impl<'a, const MAX_REQUEST_ENVS: usize> Arbitrary<'a>
+impl<'a, const MAX_REQUEST_ENVS: MaxRequestEnvs> Arbitrary<'a>
     for SinglePolicySetFuzzTargetInput<MAX_REQUEST_ENVS>
 {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
@@ -304,8 +318,10 @@ impl<'a, const MAX_REQUEST_ENVS: usize> Arbitrary<'a>
 }
 
 /// Input to SymCC fuzz targets that need two individual policies.
+///
+/// See comments on the `MaxRequestEnvs` type.
 #[derive(Debug, Clone)]
-pub struct TwoPolicyFuzzTargetInput<const MAX_REQUEST_ENVS: usize> {
+pub struct TwoPolicyFuzzTargetInput<const MAX_REQUEST_ENVS: MaxRequestEnvs> {
     /// generated schema
     schema: schema::Schema,
     /// generated policy
@@ -314,7 +330,7 @@ pub struct TwoPolicyFuzzTargetInput<const MAX_REQUEST_ENVS: usize> {
     policy2: ABACPolicy,
 }
 
-impl<const MAX_REQUEST_ENVS: usize> TwoPolicyFuzzTargetInput<MAX_REQUEST_ENVS> {
+impl<const MAX_REQUEST_ENVS: MaxRequestEnvs> TwoPolicyFuzzTargetInput<MAX_REQUEST_ENVS> {
     /// Get the `cedar_policy::Schema` and both `cedar_policy::Policy`s that were generated
     pub fn into_inputs(self) -> Result<(Schema, Policy, Policy), cedar_policy::SchemaError> {
         Ok((
@@ -340,7 +356,7 @@ impl<const MAX_REQUEST_ENVS: usize> TwoPolicyFuzzTargetInput<MAX_REQUEST_ENVS> {
     }
 }
 
-impl<'a, const MAX_REQUEST_ENVS: usize> Arbitrary<'a>
+impl<'a, const MAX_REQUEST_ENVS: MaxRequestEnvs> Arbitrary<'a>
     for TwoPolicyFuzzTargetInput<MAX_REQUEST_ENVS>
 {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
@@ -367,8 +383,10 @@ impl<'a, const MAX_REQUEST_ENVS: usize> Arbitrary<'a>
 }
 
 /// Input to SymCC fuzz targets that need two policysets (each containing 0 or more policies).
+///
+/// See comments on the `MaxRequestEnvs` type.
 #[derive(Debug, Clone)]
-pub struct TwoPolicySetFuzzTargetInput<const MAX_REQUEST_ENVS: usize> {
+pub struct TwoPolicySetFuzzTargetInput<const MAX_REQUEST_ENVS: MaxRequestEnvs> {
     /// generated schema
     schema: schema::Schema,
     /// generated policyset
@@ -377,7 +395,7 @@ pub struct TwoPolicySetFuzzTargetInput<const MAX_REQUEST_ENVS: usize> {
     pset2: Vec<ABACPolicy>,
 }
 
-impl<const MAX_REQUEST_ENVS: usize> TwoPolicySetFuzzTargetInput<MAX_REQUEST_ENVS> {
+impl<const MAX_REQUEST_ENVS: MaxRequestEnvs> TwoPolicySetFuzzTargetInput<MAX_REQUEST_ENVS> {
     /// Get the `cedar_policy::Schema` and both `cedar_policy::PolicySet`s that were generated
     pub fn into_inputs(self) -> Result<(Schema, PolicySet, PolicySet), cedar_policy::SchemaError> {
         Ok((
@@ -390,7 +408,7 @@ impl<const MAX_REQUEST_ENVS: usize> TwoPolicySetFuzzTargetInput<MAX_REQUEST_ENVS
     }
 }
 
-impl<'a, const MAX_REQUEST_ENVS: usize> Arbitrary<'a>
+impl<'a, const MAX_REQUEST_ENVS: MaxRequestEnvs> Arbitrary<'a>
     for TwoPolicySetFuzzTargetInput<MAX_REQUEST_ENVS>
 {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {

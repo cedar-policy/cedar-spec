@@ -77,10 +77,6 @@ pub enum Error {
     #[error(transparent)]
     OtherArbitrary(arbitrary::Error),
     /// Error thrown when the generator produces a schema that has too many
-    /// valid request environments per action
-    #[error("Too many request environments per action: {} vs upper bound {}", .0, .1)]
-    TooManyReqEnvsPerAction(usize, usize),
-    /// Error thrown when the generator produces a schema that has too many
     /// valid request environments
     #[error("Too many request environments: {} vs upper bound {}", .0, .1)]
     TooManyReqEnvs(usize, usize),
@@ -103,7 +99,6 @@ impl From<Error> for arbitrary::Error {
             Error::ContextError(_) => arbitrary::Error::IncorrectFormat,
             Error::SchemaError(_) => arbitrary::Error::IncorrectFormat,
             Error::OtherArbitrary(e) => e,
-            Error::TooManyReqEnvsPerAction(..) => arbitrary::Error::IncorrectFormat,
             Error::TooManyReqEnvs(..) => arbitrary::Error::IncorrectFormat,
         }
     }
