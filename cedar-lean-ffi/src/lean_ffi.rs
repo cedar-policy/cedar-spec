@@ -612,6 +612,38 @@ impl CedarLeanFfi {
         Option<Env>
     );
 
+    checkPolicy_func!(
+        run_check_always_matches_timed,
+        run_check_always_matches,
+        runCheckAlwaysMatches,
+        |x| x,
+        bool
+    );
+
+    checkPolicy_func!(
+        run_check_always_matches_with_cex_timed,
+        run_check_always_matches_with_cex,
+        runCheckAlwaysMatchesWithCex,
+        |x| x,
+        Option<Env>
+    );
+
+    checkPolicy_func!(
+        run_check_never_matches_timed,
+        run_check_never_matches,
+        runCheckNeverMatches,
+        |x| x,
+        bool
+    );
+
+    checkPolicy_func!(
+        run_check_never_matches_with_cex_timed,
+        run_check_never_matches_with_cex,
+        runCheckNeverMatchesWithCex,
+        |x| x,
+        Option<Env>
+    );
+
     checkPolicySet_func!(
         run_check_always_allows_timed,
         run_check_always_allows,
@@ -714,6 +746,54 @@ impl CedarLeanFfi {
         runCheckDisjointWithCexGivenRawModel,
         |x| x,
         Env
+    );
+
+    comparePolicies_func!(
+        run_check_matches_equivalent_timed,
+        run_check_matches_equivalent,
+        runCheckMatchesEquivalent,
+        |x| x,
+        bool
+    );
+
+    comparePolicies_func!(
+        run_check_matches_equivalent_with_cex_timed,
+        run_check_matches_equivalent_with_cex,
+        runCheckMatchesEquivalentWithCex,
+        |x| x,
+        Option<Env>
+    );
+
+    comparePolicies_func!(
+        run_check_matches_implies_timed,
+        run_check_matches_implies,
+        runCheckMatchesImplies,
+        |x| x,
+        bool
+    );
+
+    comparePolicies_func!(
+        run_check_matches_implies_with_cex_timed,
+        run_check_matches_implies_with_cex,
+        runCheckMatchesImpliesWithCex,
+        |x| x,
+        Option<Env>
+    );
+
+    comparePolicies_func!(
+        run_check_matches_disjoint_timed,
+        run_check_matches_disjoint,
+        runCheckMatchesDisjoint,
+        |x| x,
+        bool
+    );
+
+    comparePolicies_func!(
+        run_check_matches_disjoint_with_cex_timed,
+        run_check_matches_disjoint_with_cex,
+        runCheckMatchesDisjointWithCex,
+        |x| x,
+        Option<Env>
     );
 
     // Adds each of the print_(symcc-command) to call the corresponding lean function
