@@ -519,4 +519,14 @@ theorem wf_env_implies_ancestors_of_action_is_action
   have ⟨_, _, _, _, _, hancs, _⟩ := hwf_entry
   exact hancs
 
+theorem env_in_schema_ets_eq {schema : Schema} :
+  env ∈ schema.environments →
+  env.ets = schema.ets
+:= by unfold Schema.environments; grind
+
+theorem env_in_schema_acts_eq {schema : Schema} :
+  env ∈ schema.environments →
+  env.acts = schema.acts
+:= by unfold Schema.environments; grind
+
 end Cedar.Validation

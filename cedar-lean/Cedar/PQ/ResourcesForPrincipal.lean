@@ -14,13 +14,20 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.Data
-import Cedar.Thm.Authorization
-import Cedar.Thm.PolicySlice
-import Cedar.Thm.SymCC.Opt
-import Cedar.Thm.Typechecking
-import Cedar.Thm.Validation
-import Cedar.Thm.WellTyped
-import Cedar.Thm.TPE
-import Cedar.Thm.PQ
-import Cedar.Thm.WellTypedVerification
+import Cedar.Spec.Request
+import Cedar.Spec.Entities
+import Cedar.Spec.Policy
+
+namespace Cedar.PQ
+
+open Cedar.Data
+open Cedar.Spec
+
+structure ResourcesForPrincipalRequest where
+  principal : EntityUID
+  action : EntityUID
+  resourceType : EntityType
+  context : Map Attr Value
+
+def ResourcesForPrincipalRequest.req (pq : ResourcesForPrincipalRequest) (resource : EntityUID) : Request :=
+  Request.mk pq.principal pq.action resource pq.context
