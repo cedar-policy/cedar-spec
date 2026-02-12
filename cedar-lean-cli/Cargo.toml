@@ -5,7 +5,14 @@ version = "4.4.0"
 publish = false
 
 [dependencies]
-cedar-policy = { version = "*", path = "../cedar/cedar-policy" }
+# for cedar-policy, here on this release branch we need to depend on the
+# crates.io-released version, and not the local in-tree version (representing
+# the tip of the release/4.9.x branch), because cedar-lean-ffi itself depends on
+# the crates.io-released version of cedar-policy.
+# This is unfortunate because it means that our CI isn't testing cedar-lean-cli
+# against the tip of release/4.9.x for cedar-policy, including any patches that
+# may have been applied since the last release.
+cedar-policy = "=4.9.0"
 cedar-lean-ffi = { version = "*", path = "../cedar-lean-ffi" }
 clap = { version = "4.5.36", features = ["derive"] }
 serde = "1"

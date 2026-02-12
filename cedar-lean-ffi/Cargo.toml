@@ -5,8 +5,15 @@ version = "4.5.0"
 publish = false
 
 [dependencies]
-cedar-policy = { version = "*", path = "../cedar/cedar-policy", features = ["protobufs"] }
-cedar-policy-core = { version = "*", path = "../cedar/cedar-policy-core" }
+# for cedar-policy and cedar-policy-core, here on this release branch we need to
+# depend on the crates.io-released version, and not the local in-tree version
+# (representing the tip of the release/4.9.x branch), because cedar-policy-symcc
+# itself depends on the crates.io-released versions of these crates.
+# This is unfortunate because it means that our CI isn't testing cedar-lean-ffi
+# against the tip of release/4.9.x for cedar-policy, including any patches that
+# may have been applied since the last release.
+cedar-policy = { version = "=4.9.0", features = ["protobufs"] }
+cedar-policy-core = { version = "=4.9.0", path = "../cedar/cedar-policy-core" }
 cedar-policy-symcc = { version = "*", path = "../cedar/cedar-policy-symcc" }
 cedar-testing = { version = "*", path = "../cedar/cedar-testing"}
 lean-sys = { version = "0.0.9", default-features = false }
