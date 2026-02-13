@@ -18,9 +18,9 @@ import Lake
 open Lake DSL
 
 meta if get_config? env = some "dev" then -- dev is so not everyone has to build it
-require "leanprover" / "doc-gen4" @ git "v4.26.0"
+require "leanprover" / "doc-gen4" @ git "v4.27.0"
 
-require "leanprover-community" / "batteries" @ git "v4.26.0"
+require "leanprover-community" / "batteries" @ git "v4.27.0"
 
 package Cedar
 
@@ -74,7 +74,7 @@ partial def checkThmFile (module : String) (paths : List System.FilePath) : IO N
     for file in mod_files.toList do
       let file_name := file.fileName
       if file_name.endsWith ".lean" then
-        let subModule := s!"{module}.{file_name.dropRight 5}"
+        let subModule := s!"{module}.{file_name.dropEnd 5}"
         let expectedImport := s!"import {subModule}\n"
         if contents.all λ content => (content.replace expectedImport "" == content) then
           IO.println s!"{path} missing import: {expectedImport}"

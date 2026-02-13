@@ -33,10 +33,11 @@ We provide a CLI for CedarLean in [cedar-lean-cli](../cedar-lean-cli). You can f
 
 ## Updating the Lean toolchain
 
-To change the version of Lean used, you will need to update two files:
+To change the version of Lean used, you will need to update three files:
 
 * `lean-toolchain` controls the Lean version. You can find all available versions [here](https://github.com/leanprover/lean4/releases).
 * `lakefile.lean` lists the project dependencies. Make sure that `batteries` and `doc-gen4` are pinned to commits that match the Lean version.
+* `lake-manifest.json`, which will be automatically updated by running `lake update` after updating the previous two files.
 
 ## Contributing
 

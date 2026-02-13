@@ -46,12 +46,12 @@ mod test_implementation;
 
 // Import and signal Rust to link the exported Lean FFI code (which are C functions at this point)
 #[allow(clippy::duplicated_attributes)]
-#[link(name = "Cedar", kind = "static")]
-#[link(name = "Cedar_SymCC", kind = "static")]
-#[link(name = "Protobuf", kind = "static")]
-#[link(name = "CedarProto", kind = "static")]
-#[link(name = "Batteries", kind = "static")]
-#[link(name = "CedarFFI", kind = "static")]
+#[link(name = "Cedar_Cedar", kind = "static")]
+#[link(name = "Cedar_Cedar_SymCC", kind = "static")]
+#[link(name = "Cedar_Protobuf", kind = "static")]
+#[link(name = "Cedar_CedarProto", kind = "static")]
+#[link(name = "batteries_Batteries", kind = "static")]
+#[link(name = "Cedar_CedarFFI", kind = "static")]
 unsafe extern "C" {
     fn runCheckNeverErrors(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn runCheckNeverErrorsWithCex(
@@ -278,7 +278,7 @@ unsafe extern "C" {
 
     fn batchedEvaluateFFI(req: *mut lean_object) -> *mut lean_object;
 
-    fn initialize_CedarFFI(builtin: u8, ob: *mut lean_object) -> *mut lean_object;
+    fn initialize_Cedar_CedarFFI(builtin: u8, ob: *mut lean_object) -> *mut lean_object;
 
     fn loadProtobufSchema(req: *mut lean_object) -> *mut lean_object;
 
@@ -576,7 +576,7 @@ impl CedarLeanFfi {
                 // following: https://lean-lang.org/lean4/doc/dev/ffi.html
                 lean_initialize_runtime_module_locked();
                 let builtin: u8 = 1;
-                let res = initialize_CedarFFI(builtin, lean_io_mk_world());
+                let res = initialize_Cedar_CedarFFI(builtin, lean_io_mk_world());
                 if lean_io_result_is_ok(res) {
                     lean_dec_ref(res);
                 } else {
@@ -1290,12 +1290,12 @@ impl Drop for CedarLeanFfi {
 mod test {
     /***************** Copy Extern Block so that Tests are also linked with lean code *****************/
     #[allow(clippy::duplicated_attributes)]
-    #[link(name = "Cedar", kind = "static")]
-    #[link(name = "Cedar_SymCC", kind = "static")]
-    #[link(name = "Protobuf", kind = "static")]
-    #[link(name = "CedarProto", kind = "static")]
-    #[link(name = "Batteries", kind = "static")]
-    #[link(name = "CedarFFI", kind = "static")]
+    #[link(name = "Cedar_Cedar", kind = "static")]
+    #[link(name = "Cedar_Cedar_SymCC", kind = "static")]
+    #[link(name = "Cedar_Protobuf", kind = "static")]
+    #[link(name = "Cedar_CedarProto", kind = "static")]
+    #[link(name = "batteries_Batteries", kind = "static")]
+    #[link(name = "Cedar_CedarFFI", kind = "static")]
     unsafe extern "C" {}
 
     use cedar_policy::{

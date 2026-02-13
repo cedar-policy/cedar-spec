@@ -93,7 +93,7 @@ def tzOffsetMinsLt60 (str : String) : Bool :=
   str.endsWith "Z" ||
   -- `DateWithOffset` or `DateWithOffsetAndMillis` offset is last 4 chars.
   -- Minutes component is last two chars.
-  match (str.takeRight 2).toNat? with
+  match (str.takeEnd 2).toNat? with
   | .some minsOffset => minsOffset < 60
   | .none => false
 
@@ -215,14 +215,14 @@ def unitsToMilliseconds (days hours minutes second milliseconds: Int) : Int :=
 
 def isNegativeDuration (str: String) : Bool × String :=
   match str.front with
-  | '-' => (true, str.drop 1)
+  | '-' => (true, str.drop 1|>.copy)
   | _   => (false, str)
 
 def parseUnit? (isNegative : Bool) (str : String) (suffix : String) : Option (Int × String) :=
   if str.endsWith suffix
   then
-    let newStr := str.dropRight suffix.length
-    let newStrList := newStr.toList
+    let newStr := str.dropEnd suffix.length
+    let newStrList := newStr.copy.toList
     let digits := ((newStrList.reverse).takeWhile Char.isDigit).reverse
     if digits.isEmpty
     then none
@@ -231,7 +231,7 @@ def parseUnit? (isNegative : Bool) (str : String) (suffix : String) : Option (In
       let units ← if isNegative
         then durationUnits? (Int.negOfNat nUnsignedUnits) suffix
         else durationUnits? (Int.ofNat nUnsignedUnits) suffix
-      some (units, newStr.dropRight digits.length)
+      some (units, newStr.dropEnd digits.length|>.copy)
   else
     some (0, str)
 
