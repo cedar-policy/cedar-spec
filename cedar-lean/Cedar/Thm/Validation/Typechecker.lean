@@ -25,6 +25,10 @@ import Cedar.Thm.Validation.Typechecker.Record
 import Cedar.Thm.Validation.Typechecker.Set
 import Cedar.Thm.Validation.Typechecker.Or
 import Cedar.Thm.Validation.Typechecker.UnaryApp
+import Cedar.Thm.Validation.Typechecker.LUB
+import Cedar.Thm.Validation.Typechecker.WF
+import Cedar.Thm.Validation.Typechecker.Basic
+import Cedar.Thm.Validation.Typechecker.Types
 
 /-!
 This file contains useful definitions and lemmas about the `Typechecker` functions.

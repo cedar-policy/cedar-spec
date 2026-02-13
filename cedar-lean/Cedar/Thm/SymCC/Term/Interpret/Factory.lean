@@ -659,10 +659,48 @@ theorem interpret_bvnego {εs : SymEntities} {I : Interpretation} {t : Term} {n 
   (Factory.bvnego t).interpret I = Factory.bvnego (t.interpret I)
 := by show_interpret_unary_op Factory.bvnego wfl_of_type_bitvec_is_bitvec interpret_term_app_bvnego
 
+theorem interpret_bvneg_inv {εs : SymEntities} {I : Interpretation} {t : Term} {n : Nat} :
+ I.WellFormed εs → t.WellFormed εs → t.typeOf = .bitvec n →
+ bvneg (Term.interpret I t) = Term.prim (TermPrim.bitvec bv) →
+ Term.interpret I t = Term.prim (TermPrim.bitvec (-bv))
+:= by
+  intro h₁ h₂ h₃ h₄
+  simp only [bvneg] at h₄
+  split at h₄
+  · rename_i h₅
+    simp only [Term.prim.injEq, TermPrim.bitvec.injEq, h₅] at h₄ ⊢
+    replace ⟨h₄, h₆⟩ := h₄
+    subst h₄
+    simp [←eq_of_heq h₆]
+  · rename_i h₅
+    have ⟨_, h₆⟩ : ∃ (bv : BitVec n), Term.interpret I t = Term.prim (TermPrim.bitvec bv) := by
+      have ⟨hwf₁, hwf₂⟩ := interpret_term_wfl h₁ h₂
+      simp only [h₃] at hwf₂
+      simp [wfl_of_type_bitvec_is_bitvec hwf₁ hwf₂]
+    simp [h₆] at h₅
+  · contradiction
+
 theorem interpret_bvneg {εs : SymEntities} {I : Interpretation} {t : Term} {n : Nat} :
   I.WellFormed εs → t.WellFormed εs → t.typeOf = .bitvec n →
   (Factory.bvneg t).interpret I = Factory.bvneg (t.interpret I)
-:= by show_interpret_unary_op Factory.bvneg wfl_of_type_bitvec_is_bitvec interpret_term_app_bvneg
+:= by
+  intro h₁ h₂ h₃
+  conv => lhs; unfold Factory.bvneg
+  split
+  · simp only [Factory.bvneg, interpret_term_prim]
+  · rename_i t' _
+    have ⟨hwf₁, hwf₂⟩ := interpret_term_wfl h₁ h₂
+    cases h₂; rename_i hwf hwt
+    cases hwt; rename_i ht'
+    replace hwf : Term.WellFormed εs t' := by
+      simpa using hwf
+    rw [interpret_term_app_bvneg] at ⊢ hwf₁ hwf₂
+    simp only [Term.typeOf] at hwf₂
+    have ⟨bv, h⟩ := wfl_of_type_bitvec_is_bitvec hwf₁ hwf₂
+    rw [h]
+    simp only [bvneg, BitVec.neg_eq]
+    exact interpret_bvneg_inv h₁ hwf ht' h
+  · exact interpret_term_app_bvneg
 
 local macro "show_interpret_bvop" op_fun:ident pe_fun:ident interpret_op_thm:ident : tactic => do
  `(tactic| (

@@ -27,7 +27,7 @@ use cedar_policy_symcc::{CompiledPolicySet, equivalent_asserts};
 // implementations for Equivalent are equivalent. Uses policysets containing
 // multiple policies, unlike `symcc-term-drt-equivalent` which tests with
 // singleton policysets.
-fuzz_target!(|input: TwoPolicySetFuzzTargetInput| {
+fuzz_target!(|input: TwoPolicySetFuzzTargetInput<32>| {
     initialize_log();
     if let Ok((schema, policyset1, policyset2)) = input.into_inputs() {
         let lean_ffi = CedarLeanFfi::new();
@@ -39,8 +39,8 @@ fuzz_target!(|input: TwoPolicySetFuzzTargetInput| {
                 let rust_asserts = equivalent_asserts(&cpset1, &cpset2);
                 let lean_asserts = lean_ffi
                     .asserts_of_check_equivalent(
-                        &cpset1.policies().clone().try_into().unwrap(),
-                        &cpset2.policies().clone().try_into().unwrap(),
+                        &policyset1,
+                        &policyset2,
                         lean_schema.clone(),
                         &req_env,
                     )

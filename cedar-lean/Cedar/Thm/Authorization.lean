@@ -16,6 +16,8 @@
 
 import Cedar.Spec
 import Cedar.Thm.Authorization.Authorizer
+import Cedar.Thm.Authorization.PolicySlice
+import Cedar.Thm.Authorization.Evaluator
 
 /-! This file contains basic theorems about Cedar's authorizer. -/
 
@@ -118,6 +120,30 @@ theorem allowed_iff_explicitly_permitted_and_not_denied (request : Request) (ent
     exact .intro h₃ h₂
 
 /--
+A request is denied if and only if it is explicitly denied or it is not explicitly permitted.
+-/
+theorem denied_iff_explicitly_denied_or_not_permitted (request: Request) (entities : Entities) (policies: Policies) :
+  (IsExplicitlyForbidden request entities policies ∨ ¬ IsExplicitlyPermitted request entities policies) ↔
+    (isAuthorized request entities policies).decision = .deny
+  := by
+  apply Iff.intro
+  · intro h
+    cases h
+    case inl => rw [forbid_trumps_permit]; assumption
+    case inr => rw [default_deny]; assumption
+  · intro h
+    by_cases h₁ : (IsExplicitlyForbidden request entities policies)
+    · exact Or.inl h₁
+    · right
+      rw [explicitly_forbidden_iff_satisfying_forbid] at h₁
+      rw [explicitly_permitted_iff_satisfying_permit]
+      unfold isAuthorized at h
+      simp [h₁] at h
+      split at h
+      · simp at h
+      · assumption
+
+/--
 Order and duplicate independence: isAuthorized produces the same result
 regardless of policy order or duplicates.
 -/
@@ -130,5 +156,118 @@ theorem order_and_dup_independent (request : Request) (entities : Entities) (pol
   have hp := satisfiedPolicies_order_and_dup_independent .permit request entities h
   have he := errorPolicies_order_and_dup_independent request entities h
   simp [isAuthorized, hf, hp, he]
+
+/--
+Adding a permit policy won't change an Allow decision.
+-/
+theorem unchanged_allow_when_add_permit (request: Request) (entities: Entities) (policies: Policies) (policy₂: Policy) :
+  policy₂.effect = .permit →
+  (isAuthorized request entities policies).decision = .allow →
+  (isAuthorized request entities (policy₂ :: policies)).decision = .allow
+:= by
+  intro h₁ h₂
+  rw [← allowed_iff_explicitly_permitted_and_not_denied] at *
+  unfold IsExplicitlyPermitted IsExplicitlyForbidden HasSatisfiedEffect at *
+  simp [h₂, h₁]
+
+/--
+Adding a forbid policy won't change a Deny decision.
+-/
+theorem unchanged_deny_when_add_forbid (request : Request) (entities: Entities) (policies: Policies) (policy₂: Policy) :
+  policy₂.effect = .forbid →
+  (isAuthorized request entities policies).decision = .deny →
+  (isAuthorized request entities (policy₂ :: policies)).decision = .deny
+  := by
+  intro h₁ h₂
+  rw [← denied_iff_explicitly_denied_or_not_permitted] at *
+  unfold IsExplicitlyPermitted IsExplicitlyForbidden HasSatisfiedEffect at *
+  simp only [not_exists, not_and, Bool.not_eq_true] at h₂
+  simp only [List.mem_cons, exists_eq_or_imp, h₁, true_and, reduceCtorEq, false_and, false_or, not_exists, not_and, Bool.not_eq_true]
+  exact h₂.elim (fun hb => Or.inl (Or.inr hb)) Or.inr
+
+
+/--
+The determining policies of a allow/deny decision are exactly the satisfied policies of permit/forbid resp.
+-/
+theorem determiningPolicies_of (request: Request) (entities: Entities) (policies: Policies) :
+  let auth := isAuthorized request entities policies
+  auth.determiningPolicies = satisfiedPolicies (if auth.decision = .allow then .permit else .forbid) policies request entities
+:= by
+  intro auth
+  simp only [auth]
+  unfold isAuthorized
+  simp only [Bool.and_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true]
+  generalize h₁: satisfiedPolicies .forbid policies request entities = forbids
+  generalize h₂: satisfiedPolicies .permit policies request entities = permits
+  split <;> simp [h₁, h₂]
+
+/--
+If P is a determining policy, then adding a new policy resulting in the same decision won't change that.
+-/
+theorem unchanged_determining_when_add_policy_and_decision_unchanged (request: Request) (entities: Entities) (policies: Policies) (policy₀ : Policy) :
+  let auth  := (isAuthorized request entities policies)
+  let auth' := (isAuthorized request entities (policy₀ :: policies))
+  auth.decision = auth'.decision → auth.determiningPolicies ⊆ auth'.determiningPolicies
+  := by
+  intro auth auth' h₀
+  have subset_lemma : ∀ effect, satisfiedPolicies effect policies request entities ⊆
+                                 satisfiedPolicies effect (policy₀ :: policies) request entities := by
+    intro effect
+    unfold satisfiedPolicies
+    rw [List.filterMap_cons]
+    cases satisfiedWithEffect effect policy₀ request entities
+    · simp only [Set.subset_def, imp_self, implies_true]
+    · rw [Set.make_cons_eq_singleton_union, Set.union_comm]; apply Set.subset_union
+  rw [determiningPolicies_of request entities policies,
+      determiningPolicies_of request entities (policy₀ :: policies)]
+  simp only [h₀, auth]
+  apply subset_lemma
+
+/--
+If P is an erroring policy, then adding another policy won’t change that (even if the decision changes).
+-/
+theorem unchanged_erroring_when_add_policy (request: Request) (entities: Entities) (policies : Policies) (policy₀ : Policy) :
+  (isAuthorized request entities policies).erroringPolicies ⊆ (isAuthorized request entities (policy₀ :: policies)).erroringPolicies
+  := by
+  unfold isAuthorized
+  simp only [Bool.and_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true]
+  split <;> split
+  all_goals {
+    unfold errorPolicies
+    simp only [List.filterMap_cons]
+    cases errored policy₀ request entities
+    · simp only [Set.subset_def, imp_self, implies_true]
+    · rw [Set.make_cons_eq_singleton_union, Set.union_comm]; apply Set.subset_union
+  }
+
+/--
+Determining policies and erroring policies of an isAuthorized response are disjoint when input policy IDs are unique.
+-/
+theorem determining_erroring_disjoint_when_unique_ids (request : Request) (entities : Entities) (policies : Policies) :
+  (∀ p₁ p₂, p₁ ∈ policies → p₂ ∈ policies → p₁.id = p₂.id → p₁ = p₂) →
+    ((isAuthorized request entities policies).determiningPolicies ∩ (isAuthorized request entities policies).erroringPolicies).isEmpty
+:= by
+  intro
+  rw [Set.empty_iff_not_exists]
+  simp only [Set.mem_inter_iff, not_exists, not_and]
+  rw [determiningPolicies_of]
+  intro _ h_det h_err
+  unfold isAuthorized satisfiedPolicies errorPolicies satisfiedWithEffect errored at *
+  simp only [
+    Bool.and_eq_true, beq_iff_eq, apply_ite, ite_self, ← Set.make_mem, List.mem_filterMap, Option.ite_none_right_eq_some, Option.some.injEq
+  ] at *
+  -- Extract the determining policy
+  obtain ⟨p₁, _, ⟨_, _⟩, _⟩ := h_det
+  -- Extract the erroring policy, and the fact that it is erroring
+  obtain ⟨p₂, _, h₂, _⟩ := h_err
+  -- They're the same policy, leading to a contradiction
+  have heq : p₁ = p₂ := by grind
+  subst heq
+  have l₁ : ∀ p, hasError p request entities → ¬satisfied p request entities := by
+    unfold satisfied hasError
+    intro
+    split <;> rename_i _ s <;> simp [s]
+  have : ¬satisfied _ request entities := l₁ _ h₂
+  contradiction
 
 end Cedar.Thm

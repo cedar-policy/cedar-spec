@@ -1,0 +1,32 @@
+---
+source: tests/integration_tests.rs
+expression: "cmd_output(&mut\ncargo::cargo_bin_cmd!().current_dir(\"examples/analyze/sets\").arg(\"analyze\").arg(\"compare\").arg(\"src5.cedar\").arg(\"tgt5a.cedar\").arg(\"policies.cedarschema\"),\nfalse,)"
+---
++---------------+------------+--------------+---------------------------------------------------------------------------+
+| PrincipalType | ActionName | ResourceType | Result                                                                    |
++---------------+------------+--------------+---------------------------------------------------------------------------+
+| User          | view       | Thing        | pset1 is more permissive than pset2                                       |
+|               |            |              | Example: principal: User::"", action: Action::"view", resource: Thing::"" |
+|               |            |              | context: {                                                                |
+|               |            |              |   n1: <integer>,                                                               |
+|               |            |              |   n2: <integer>,                                                               |
+|               |            |              |   ns: [],                                                                 |
+|               |            |              |   thing1: Thing::"A",                                                     |
+|               |            |              |   thing2: Thing::"B",                                                     |
+|               |            |              |   thing3: Thing::"",                                                      |
+|               |            |              |   things: [Thing::"A"],                                                   |
+|               |            |              |   things1: [Thing::""],                                                   |
+|               |            |              |   things2: [Thing::"", Thing::"A"],                                       |
+|               |            |              |   user1: User::"",                                                        |
+|               |            |              |   user2: User::"A",                                                       |
+|               |            |              |   users: [],                                                              |
+|               |            |              | }                                                                         |
+|               |            |              | entities: [                                                               |
+|               |            |              |   Action::"view",                                                         |
+|               |            |              |   Thing::"",                                                              |
+|               |            |              |   Thing::"A",                                                             |
+|               |            |              |   Thing::"B",                                                             |
+|               |            |              |   User::"",                                                               |
+|               |            |              |   User::"A",                                                              |
+|               |            |              | ]                                                                         |
++---------------+------------+--------------+---------------------------------------------------------------------------+

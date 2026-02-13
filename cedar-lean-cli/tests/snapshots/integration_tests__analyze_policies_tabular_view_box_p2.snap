@@ -1,0 +1,12 @@
+---
+source: tests/integration_tests.rs
+expression: "cmd_output(&mut\ncargo::cargo_bin_cmd!().current_dir(\"examples/analyze/view_box\").arg(\"analyze\").arg(\"policies\").arg(\"policies2.cedar\").arg(\"policies.cedarschema\"),\nfalse,)"
+---
+Found 2 request environment specific warnings:
++---------------+------------+--------------+----------------------------------------+
+| PrincipalType | ActionName | ResourceType | Findings                               |
++---------------+------------+--------------+----------------------------------------+
+| User          | view       | Box          | Policy `policy1` shadowed by `policy0` |
++---------------+------------+--------------+----------------------------------------+
+| User          | view       | Thing        | Policy `policy1` shadowed by `policy0` |
++---------------+------------+--------------+----------------------------------------+

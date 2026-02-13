@@ -1,0 +1,89 @@
+---
+source: tests/integration_tests.rs
+expression: "cmd_output(&mut\ncargo::cargo_bin_cmd!().current_dir(\"examples/analyze/file_share_demo\").arg(\"analyze\").arg(\"compare\").arg(\"policies3.cedar\").arg(\"policies2.cedar\").arg(\"policies.cedarschema\"),\nfalse,)"
+---
++---------------+----------------+--------------+--------------------------------------------------------------------------------------------------+
+| PrincipalType | ActionName     | ResourceType | Result                                                                                           |
++---------------+----------------+--------------+--------------------------------------------------------------------------------------------------+
+| User          | AddEditor      | Document     | pset1 is equivalent to pset2                                                                     |
++---------------+----------------+--------------+--------------------------------------------------------------------------------------------------+
+| User          | AddReader      | Document     | pset1 is more permissive than pset2                                                              |
+|               |                |              | Example: principal: App::User::"", action: App::Action::"AddReader", resource: App::Document::"" |
+|               |                |              | entities: [                                                                                      |
+|               |                |              |   App::Action::"AddEditor",                                                                      |
+|               |                |              |   App::Action::"AddReader",                                                                      |
+|               |                |              |   App::Action::"CreateDocument",                                                                 |
+|               |                |              |   App::Action::"CreateGroup",                                                                    |
+|               |                |              |   App::Action::"CreateUser",                                                                     |
+|               |                |              |   App::Action::"DeleteUser",                                                                     |
+|               |                |              |   App::Action::"DownloadFile",                                                                   |
+|               |                |              |   App::Action::"EditFile",                                                                       |
+|               |                |              |   App::Action::"ViewFile",                                                                       |
+|               |                |              |   App::Document::"" {                                                                            |
+|               |                |              |     dataClassification: "",                                                                      |
+|               |                |              |     editors: App::Group::"",                                                                     |
+|               |                |              |     owner: App::User::"A",                                                                       |
+|               |                |              |     readers: App::Group::"A",                                                                    |
+|               |                |              |   },                                                                                             |
+|               |                |              |   App::Group::"",                                                                                |
+|               |                |              |   App::Group::"A",                                                                               |
+|               |                |              |   App::Group::"Security",                                                                        |
+|               |                |              |   App::Group::"admin",                                                                           |
+|               |                |              |   App::User::"" in [App::Group::""] {                                                            |
+|               |                |              |     blocked: [],                                                                                 |
+|               |                |              |     jobLevel: <integer>,                                                                                 |
+|               |                |              |     jobTitle: "",                                                                                |
+|               |                |              |   },                                                                                             |
+|               |                |              |   App::User::"A" in [App::Group::""] {                                                           |
+|               |                |              |     blocked: [],                                                                                 |
+|               |                |              |     jobLevel: <integer>,                                                                                 |
+|               |                |              |     jobTitle: "",                                                                                |
+|               |                |              |   },                                                                                             |
+|               |                |              | ]                                                                                                |
++---------------+----------------+--------------+--------------------------------------------------------------------------------------------------+
+| User          | CreateDocument | Drive        | pset1 is equivalent to pset2                                                                     |
++---------------+----------------+--------------+--------------------------------------------------------------------------------------------------+
+| User          | CreateGroup    | Drive        | pset1 is equivalent to pset2                                                                     |
++---------------+----------------+--------------+--------------------------------------------------------------------------------------------------+
+| User          | CreateUser     | Drive        | pset1 is equivalent to pset2                                                                     |
++---------------+----------------+--------------+--------------------------------------------------------------------------------------------------+
+| User          | DeleteUser     | User         | pset1 is equivalent to pset2                                                                     |
++---------------+----------------+--------------+--------------------------------------------------------------------------------------------------+
+| User          | DownloadFile   | Document     | pset1 is equivalent to pset2                                                                     |
++---------------+----------------+--------------+--------------------------------------------------------------------------------------------------+
+| User          | EditFile       | Document     | pset1 is more permissive than pset2                                                              |
+|               |                |              | Example: principal: App::User::"", action: App::Action::"EditFile", resource: App::Document::""  |
+|               |                |              | entities: [                                                                                      |
+|               |                |              |   App::Action::"AddEditor",                                                                      |
+|               |                |              |   App::Action::"AddReader",                                                                      |
+|               |                |              |   App::Action::"CreateDocument",                                                                 |
+|               |                |              |   App::Action::"CreateGroup",                                                                    |
+|               |                |              |   App::Action::"CreateUser",                                                                     |
+|               |                |              |   App::Action::"DeleteUser",                                                                     |
+|               |                |              |   App::Action::"DownloadFile",                                                                   |
+|               |                |              |   App::Action::"EditFile",                                                                       |
+|               |                |              |   App::Action::"ViewFile",                                                                       |
+|               |                |              |   App::Document::"" {                                                                            |
+|               |                |              |     dataClassification: "",                                                                      |
+|               |                |              |     editors: App::Group::"",                                                                     |
+|               |                |              |     owner: App::User::"A",                                                                       |
+|               |                |              |     readers: App::Group::"A",                                                                    |
+|               |                |              |   },                                                                                             |
+|               |                |              |   App::Group::"",                                                                                |
+|               |                |              |   App::Group::"A",                                                                               |
+|               |                |              |   App::Group::"Security",                                                                        |
+|               |                |              |   App::Group::"admin",                                                                           |
+|               |                |              |   App::User::"" in [App::Group::""] {                                                            |
+|               |                |              |     blocked: [],                                                                                 |
+|               |                |              |     jobLevel: <integer>,                                                                                 |
+|               |                |              |     jobTitle: "",                                                                                |
+|               |                |              |   },                                                                                             |
+|               |                |              |   App::User::"A" in [App::Group::""] {                                                           |
+|               |                |              |     blocked: [],                                                                                 |
+|               |                |              |     jobLevel: <integer>,                                                                                 |
+|               |                |              |     jobTitle: "",                                                                                |
+|               |                |              |   },                                                                                             |
+|               |                |              | ]                                                                                                |
++---------------+----------------+--------------+--------------------------------------------------------------------------------------------------+
+| User          | ViewFile       | Document     | pset1 is equivalent to pset2                                                                     |
++---------------+----------------+--------------+--------------------------------------------------------------------------------------------------+

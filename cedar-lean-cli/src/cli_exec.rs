@@ -119,11 +119,11 @@ impl AnalysisCommands {
                 analysis::analyze_policyset(policyset, schema, json_output)
             }
             Self::Compare { args } => {
-                let src_policyset = util::parse_policyset(&args.source_policyset_file)?;
-                let tgt_policyset = util::parse_policyset(&args.target_policyset_file)?;
+                let pset1 = util::parse_policyset(&args.pset1_file)?;
+                let pset2 = util::parse_policyset(&args.pset2_file)?;
                 let schema = util::parse_schema(&args.schema_file)?;
                 let json_output = args.json_output;
-                analysis::compare_policysets(src_policyset, tgt_policyset, schema, json_output)
+                analysis::compare_policysets(pset1, pset2, schema, json_output)
             }
         }
     }
@@ -189,20 +189,17 @@ impl SymCCCommands {
                 mode,
                 req_env,
             } => {
-                let src_policyset = util::parse_policyset(&args.source_policyset_file)?;
-                let tgt_policyset = util::parse_policyset(&args.target_policyset_file)?;
+                let pset1 = util::parse_policyset(&args.pset1_file)?;
+                let pset2 = util::parse_policyset(&args.pset2_file)?;
                 let schema = util::parse_schema(&args.schema_file)?;
                 let req_env = OpenRequestEnv::from_request_args(req_env)?;
                 match ModeEnum::from(mode) {
                     ModeEnum::RunAnalysis => {
-                        symcc::run_check_equivalent(src_policyset, tgt_policyset, schema, &req_env)
+                        symcc::run_check_equivalent(pset1, pset2, schema, &req_env)
                     }
-                    ModeEnum::PrintSMTLib => symcc::print_check_equivalent(
-                        src_policyset,
-                        tgt_policyset,
-                        schema,
-                        &req_env,
-                    ),
+                    ModeEnum::PrintSMTLib => {
+                        symcc::print_check_equivalent(pset1, pset2, schema, &req_env)
+                    }
                 }
             }
             Self::CheckImplies {
@@ -210,16 +207,16 @@ impl SymCCCommands {
                 mode,
                 req_env,
             } => {
-                let src_policyset = util::parse_policyset(&args.source_policyset_file)?;
-                let tgt_policyset = util::parse_policyset(&args.target_policyset_file)?;
+                let pset1 = util::parse_policyset(&args.pset1_file)?;
+                let pset2 = util::parse_policyset(&args.pset2_file)?;
                 let schema = util::parse_schema(&args.schema_file)?;
                 let req_env = OpenRequestEnv::from_request_args(req_env)?;
                 match ModeEnum::from(mode) {
                     ModeEnum::RunAnalysis => {
-                        symcc::run_check_implies(src_policyset, tgt_policyset, schema, &req_env)
+                        symcc::run_check_implies(pset1, pset2, schema, &req_env)
                     }
                     ModeEnum::PrintSMTLib => {
-                        symcc::print_check_implies(src_policyset, tgt_policyset, schema, &req_env)
+                        symcc::print_check_implies(pset1, pset2, schema, &req_env)
                     }
                 }
             }
@@ -228,16 +225,16 @@ impl SymCCCommands {
                 mode,
                 req_env,
             } => {
-                let src_policyset = util::parse_policyset(&args.source_policyset_file)?;
-                let tgt_policyset = util::parse_policyset(&args.target_policyset_file)?;
+                let pset1 = util::parse_policyset(&args.pset1_file)?;
+                let pset2 = util::parse_policyset(&args.pset2_file)?;
                 let schema = util::parse_schema(&args.schema_file)?;
                 let req_env = OpenRequestEnv::from_request_args(req_env)?;
                 match ModeEnum::from(mode) {
                     ModeEnum::RunAnalysis => {
-                        symcc::run_check_disjoint(src_policyset, tgt_policyset, schema, &req_env)
+                        symcc::run_check_disjoint(pset1, pset2, schema, &req_env)
                     }
                     ModeEnum::PrintSMTLib => {
-                        symcc::print_check_disjoint(src_policyset, tgt_policyset, schema, &req_env)
+                        symcc::print_check_disjoint(pset1, pset2, schema, &req_env)
                     }
                 }
             }

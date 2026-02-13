@@ -1,6 +1,10 @@
-use cedar_policy::{Decision, EntityId, EntityTypeName, EntityUid, PolicyId};
+use cedar_policy::{
+    Decision, EntityId, EntityTypeName, ParseErrors, PolicyId, RestrictedExpression,
+};
+use cedar_policy_core::ast::Name;
 use num_bigint::ParseBigIntError;
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Serialize};
+use serde_with::{TryFromInto, serde_as};
 use smol_str::SmolStr;
 use thiserror::Error;
 
@@ -15,19 +19,19 @@ use crate::FfiError;
 /*************************************** Lean return types ***************************************/
 
 /// List type
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct ListDef<T> {
     pub(crate) l: Vec<T>,
 }
 
 /// Set Type
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct SetDef<T> {
     pub(crate) mk: ListDef<T>,
 }
 
 /// Lean type: Except String T
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub(crate) enum ResultDef<T> {
     /// Successful execution
     #[serde(rename = "ok")]
@@ -46,7 +50,7 @@ impl<T> ResultDef<T> {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct TimedDef<T> {
     pub(crate) data: T,
     pub(crate) duration: u128,
@@ -62,7 +66,7 @@ pub(crate) struct AuthorizationResponseInner {
     pub(crate) erroring_policies: SetDef<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub(crate) enum OptionDef<T> {
     #[serde(rename = "none")]
     None,
@@ -79,43 +83,61 @@ impl<T> From<OptionDef<T>> for Option<T> {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub(crate) struct NameDef {
     id: SmolStr,
     path: Vec<SmolStr>,
 }
 
-#[derive(Debug, Deserialize)]
-pub(crate) struct EntityUidDef {
-    #[serde(deserialize_with = "deserialize_entity_type_name")]
+impl TryFrom<NameDef> for EntityTypeName {
+    type Error = ParseErrors;
+    fn try_from(name: NameDef) -> Result<Self, Self::Error> {
+        let mut result = name.path.join("::");
+        if !result.is_empty() {
+            result.push_str("::");
+        }
+        result.push_str(&name.id);
+        EntityTypeName::from_str(&result)
+    }
+}
+
+impl From<EntityTypeName> for NameDef {
+    fn from(etn: EntityTypeName) -> Self {
+        Self {
+            id: SmolStr::new(etn.basename()),
+            path: etn.namespace_components().map(SmolStr::new).collect(),
+        }
+    }
+}
+
+#[serde_as]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct EntityUid {
+    #[serde_as(as = "TryFromInto<NameDef>")]
     ty: EntityTypeName,
     eid: SmolStr,
 }
 
-/********************************** Deserialization Helpers **********************************/
-
-// Helper function to deserialize NameDef into an EntityTypeName
-fn deserialize_entity_type_name<'de, D>(deserializer: D) -> Result<EntityTypeName, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let name_def = NameDef::deserialize(deserializer)?;
-    let mut result = name_def.path.join("::");
-    if !result.is_empty() {
-        result.push_str("::");
+impl From<EntityUid> for cedar_policy::EntityUid {
+    fn from(euid: EntityUid) -> Self {
+        let eid = EntityId::new(euid.eid);
+        cedar_policy::EntityUid::from_type_name_and_id(euid.ty, eid)
     }
-    result.push_str(&name_def.id);
-    EntityTypeName::from_str(&result).map_err(serde::de::Error::custom)
 }
 
-// Helper function to deserialize EntityUidDef into an EntityUid
-fn deserialize_entity_uid<'de, D>(deserializer: D) -> Result<EntityUid, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let euid_def = EntityUidDef::deserialize(deserializer)?;
-    let eid = EntityId::new(euid_def.eid);
-    Ok(EntityUid::from_type_name_and_id(euid_def.ty, eid))
+impl From<cedar_policy::EntityUid> for EntityUid {
+    fn from(euid: cedar_policy::EntityUid) -> Self {
+        Self {
+            ty: euid.type_name().clone(),
+            eid: euid.id().unescaped().into(),
+        }
+    }
+}
+
+impl std::fmt::Display for EntityUid {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        cedar_policy::EntityUid::from(self.clone()).fmt(f)
+    }
 }
 
 /********************************** Publicly Exported Types **********************************/
@@ -303,41 +325,149 @@ pub enum Op {
     Ext(ExtOp),
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Bitvec {
     #[serde(rename = "size")]
     pub width: u8,
+    /// String representation of the bitvector value (as Lean `Nat`)
     #[serde(rename = "value")]
     pub val: String,
 }
 
-#[derive(Debug, Deserialize)]
+impl Bitvec {
+    /// Assuming the `Bitvec` is (up to) 64-bit, get the value as a `u64`
+    ///
+    /// Panics if the `Bitvec` was larger than 64-bit
+    fn as_u64(&self) -> u64 {
+        assert!(self.width <= 64, "width was too large: {}", self.width);
+        self.val.parse().expect("should be a valid u64 value")
+    }
+
+    /// Assuming the `Bitvec` is 128-bit, get the value as a `u128`
+    ///
+    /// Panics if the `Bitvec` was not 128-bit
+    fn as_u128(&self) -> u128 {
+        assert!(self.width <= 128, "width was too large: {}", self.width);
+        self.val.parse().expect("should be a valid u128 value")
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Decimal(pub i64);
 
-#[derive(Debug, Deserialize)]
+impl From<Decimal> for RestrictedExpression {
+    fn from(decimal: Decimal) -> Self {
+        // note this assumes the Lean represents the decimal value `v` as the integer `10000 * v`
+        let neg = if decimal.0 < 0 { "-" } else { "" };
+        let absval = i64::abs(decimal.0);
+        let left = absval / 10000;
+        let right = absval % 10000;
+        let right = if right < 10 {
+            format!(".000{right}")
+        } else if right < 100 {
+            format!(".00{right}")
+        } else if right < 1000 {
+            format!(".0{right}")
+        } else {
+            format!(".{right}")
+        };
+        RestrictedExpression::new_decimal(format!("{neg}{left}{right}"))
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Cidr {
     pub addr: Bitvec,
     #[serde(rename = "pre")]
     pub prefix: Option<Bitvec>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum IpAddr {
     V4(Cidr),
     V6(Cidr),
 }
 
-#[derive(Debug, Deserialize)]
+impl From<IpAddr> for RestrictedExpression {
+    fn from(ip: IpAddr) -> Self {
+        match ip {
+            IpAddr::V4(cidr) => {
+                let addr = cidr.addr.as_u64();
+                let mut addr = format!(
+                    "{a0}.{a1}.{a2}.{a3}",
+                    a0 = (addr >> 24) & 0xFF,
+                    a1 = (addr >> 16) & 0xFF,
+                    a2 = (addr >> 8) & 0xFF,
+                    a3 = addr & 0xFF,
+                );
+                if let Some(prefix) = cidr.prefix {
+                    addr.push_str(&format!("/{}", prefix.as_u64()));
+                }
+                RestrictedExpression::new_ip(addr)
+            }
+            IpAddr::V6(cidr) => {
+                let addr = cidr.addr.as_u128();
+                let mut addr = format!(
+                    "{a0:x}:{a1:x}:{a2:x}:{a3:x}:{a4:x}:{a5:x}:{a6:x}:{a7:x}",
+                    a0 = (addr >> 112) & 0xFFFF,
+                    a1 = (addr >> 96) & 0xFFFF,
+                    a2 = (addr >> 80) & 0xFFFF,
+                    a3 = (addr >> 64) & 0xFFFF,
+                    a4 = (addr >> 48) & 0xFFFF,
+                    a5 = (addr >> 32) & 0xFFFF,
+                    a6 = (addr >> 16) & 0xFFFF,
+                    a7 = addr & 0xFFFF,
+                );
+                if let Some(prefix) = cidr.prefix {
+                    addr.push_str(&format!("/{}", prefix.as_u64()));
+                }
+                RestrictedExpression::new_ip(addr)
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Datetime {
     pub val: i64,
 }
 
-#[derive(Debug, Deserialize)]
+impl TryFrom<Datetime> for RestrictedExpression {
+    type Error = cedar_policy_core::parser::err::ParseErrors;
+    fn try_from(dt: Datetime) -> Result<Self, Self::Error> {
+        // note this assumes the Lean represents datetimes as milliseconds since Unix epoch
+        let epoch = cedar_policy_core::ast::RestrictedExpr::call_extension_fn(
+            Name::parse_unqualified_name("datetime")?,
+            [cedar_policy_core::ast::RestrictedExpr::val("1970-01-01")],
+        );
+        let millis_since_epoch = cedar_policy_core::ast::RestrictedExpr::call_extension_fn(
+            Name::parse_unqualified_name("duration")?,
+            [cedar_policy_core::ast::RestrictedExpr::val(format!(
+                "{}ms",
+                dt.val
+            ))],
+        );
+        let core_rexpr = cedar_policy_core::ast::RestrictedExpr::call_extension_fn(
+            Name::parse_unqualified_name("offset")?,
+            [epoch, millis_since_epoch],
+        );
+        Ok(core_rexpr.into())
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Duration {
     pub val: i64,
 }
 
-#[derive(Debug, Deserialize)]
+impl From<Duration> for RestrictedExpression {
+    fn from(dur: Duration) -> Self {
+        // note this assumes the Lean represents durations as milliseconds
+        RestrictedExpression::new_duration(format!("{}ms", dur.val))
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ExtType {
     IpAddr,
@@ -346,6 +476,7 @@ pub enum ExtType {
     Duration,
 }
 
+#[serde_as]
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum TermPrimType {
@@ -355,7 +486,7 @@ pub enum TermPrimType {
     },
     String,
     Entity {
-        #[serde(deserialize_with = "deserialize_entity_type_name")]
+        #[serde_as(as = "TryFromInto<NameDef>")]
         ety: EntityTypeName,
     },
     Ext {
@@ -378,7 +509,7 @@ pub struct TermVar {
     pub ty: TermType,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Ext {
     Decimal { d: Decimal },
@@ -393,7 +524,7 @@ pub enum TermPrim {
     Bool(bool),
     Bitvec(Bitvec),
     String(SmolStr),
-    Entity(#[serde(deserialize_with = "deserialize_entity_uid")] EntityUid),
+    Entity(EntityUid),
     Ext(Ext),
 }
 
@@ -582,7 +713,7 @@ impl TryFrom<TermPrim> for cedar_policy_symcc::term::TermPrim {
         Ok(match value {
             TermPrim::Bitvec(bv) => Self::Bitvec(bv.try_into()?),
             TermPrim::Bool(b) => Self::Bool(b),
-            TermPrim::Entity(uid) => Self::Entity(uid),
+            TermPrim::Entity(uid) => Self::Entity(uid.into()),
             TermPrim::Ext(ext) => Self::Ext(ext.try_into()?),
             TermPrim::String(s) => Self::String(s),
         })
@@ -733,7 +864,7 @@ impl From<cedar_policy_symcc::term::TermPrim> for TermPrim {
                 val: bv.to_nat().to_string(),
             }),
             cedar_policy_symcc::term::TermPrim::Bool(b) => Self::Bool(b),
-            cedar_policy_symcc::term::TermPrim::Entity(uid) => Self::Entity(uid),
+            cedar_policy_symcc::term::TermPrim::Entity(uid) => Self::Entity(uid.into()),
             cedar_policy_symcc::term::TermPrim::Ext(ext) => Self::Ext(match ext {
                 cedar_policy_symcc::ext::Ext::Datetime { dt } => Ext::Datetime {
                     dt: Datetime { val: dt.into() },
@@ -885,13 +1016,144 @@ impl From<cedar_policy_symcc::term::Term> for Term {
     }
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Prim {
+    Bool(bool),
+    Int(i64),
+    String(String),
+    #[serde(rename = "entityUID")]
+    EntityUid(EntityUid),
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Value {
+    Prim {
+        p: Prim,
+    },
+    Set {
+        s: Vec<Value>,
+    },
+    Record {
+        /// Lean gives us a JSON array of pairs, not a JSON object (map)
+        m: Vec<(String, Value)>,
+    },
+    Ext {
+        x: Ext,
+    },
+}
+
+impl TryFrom<Value> for RestrictedExpression {
+    type Error = Box<dyn miette::Diagnostic>;
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        match value {
+            Value::Prim { p: Prim::Bool(b) } => Ok(RestrictedExpression::new_bool(b)),
+            Value::Prim { p: Prim::Int(i) } => Ok(RestrictedExpression::new_long(i)),
+            Value::Prim { p: Prim::String(s) } => Ok(RestrictedExpression::new_string(s)),
+            Value::Prim {
+                p: Prim::EntityUid(euid),
+            } => Ok(RestrictedExpression::new_entity_uid(euid.into())),
+            Value::Set { s } => Ok(RestrictedExpression::new_set(
+                s.into_iter()
+                    .map(TryInto::try_into)
+                    .collect::<Result<Vec<_>, _>>()?,
+            )),
+            Value::Record { m } => Ok(RestrictedExpression::new_record(
+                m.into_iter()
+                    .map(|(k, v)| Ok((k, v.try_into()?)))
+                    .collect::<Result<Vec<_>, Box<dyn miette::Diagnostic>>>()?,
+            )?),
+            Value::Ext {
+                x: Ext::Decimal { d },
+            } => Ok(d.into()),
+            Value::Ext {
+                x: Ext::Ipaddr { ip },
+            } => Ok(ip.into()),
+            Value::Ext {
+                x: Ext::Datetime { dt },
+            } => Ok(dt.try_into()?),
+            Value::Ext {
+                x: Ext::Duration { dur },
+            } => Ok(dur.into()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Request {
+    pub principal: EntityUid,
+    pub action: EntityUid,
+    pub resource: EntityUid,
+    /// Lean gives us a JSON array of pairs, not a JSON object (map)
+    pub context: Vec<(String, Value)>,
+}
+
+impl TryFrom<Request> for cedar_policy::Request {
+    type Error = Box<dyn miette::Diagnostic>;
+    fn try_from(req: Request) -> Result<Self, Self::Error> {
+        Ok(Self::new(
+            req.principal.into(),
+            req.action.into(),
+            req.resource.into(),
+            cedar_policy::Context::from_pairs(
+                req.context
+                    .into_iter()
+                    .map(|(k, v)| Ok((k, v.try_into()?)))
+                    .collect::<Result<Vec<_>, Box<dyn miette::Diagnostic>>>()?,
+            )?,
+            None,
+        )?)
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct EntityData {
+    /// Lean gives us a JSON array of pairs, not a JSON object (map)
+    pub attrs: Vec<(String, Value)>,
+    pub ancestors: Vec<EntityUid>,
+    /// Lean gives us a JSON array of pairs, not a JSON object (map)
+    pub tags: Vec<(String, Value)>,
+}
+
 /// Represent a counterexample
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Env {
     /// The request
-    pub request: serde_json::Value,
+    pub request: Request,
     /// The entities
-    pub entities: serde_json::Value,
+    ///
+    /// Lean gives us a JSON array of pairs, not a JSON object (map)
+    pub entities: Vec<(EntityUid, EntityData)>,
+}
+
+impl TryFrom<Env> for cedar_policy_symcc::Env {
+    type Error = Box<dyn miette::Diagnostic>;
+    fn try_from(env: Env) -> Result<Self, Self::Error> {
+        Ok(Self {
+            request: env.request.try_into()?,
+            entities: cedar_policy::Entities::from_entities(
+                env.entities
+                    .into_iter()
+                    .map(|(uid, ed)| {
+                        Ok(cedar_policy::Entity::new_with_tags(
+                            uid.into(),
+                            ed.attrs
+                                .into_iter()
+                                .map(|(k, v)| Ok((k, v.try_into()?)))
+                                .collect::<Result<Vec<_>, Box<dyn miette::Diagnostic>>>()?,
+                            ed.ancestors.into_iter().map(|uid| uid.into()),
+                            ed.tags
+                                .into_iter()
+                                .map(|(k, v)| Ok((k, v.try_into()?)))
+                                .collect::<Result<Vec<_>, Box<dyn miette::Diagnostic>>>()?,
+                        )?)
+                    })
+                    .collect::<Result<Vec<_>, Box<dyn miette::Diagnostic>>>()?,
+                None,
+            )?,
+        })
+    }
 }
 
 #[cfg(test)]

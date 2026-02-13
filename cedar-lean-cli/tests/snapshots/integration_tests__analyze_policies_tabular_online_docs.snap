@@ -1,0 +1,27 @@
+---
+source: tests/integration_tests.rs
+expression: "cmd_output(&mut\ncargo::cargo_bin_cmd!().current_dir(\"examples/analyze/online_docs\").arg(\"analyze\").arg(\"policies\").arg(\"policies.cedar\").arg(\"policies.cedarschema\"),\nfalse,)"
+---
+Found 2 vacuous policies:
+Policy `policy3` applies to no authorization requests.
+Policy `policy4` applies to no authorization requests.
+
+Found 10 request environment specific warnings:
++---------------+------------+--------------+-----------------------------------------------------------+
+| PrincipalType | ActionName | ResourceType | Findings                                                  |
++---------------+------------+--------------+-----------------------------------------------------------+
+| A             | comment    | D            | Policy `policy12` shadowed by `policy0`                   |
++---------------+------------+--------------+-----------------------------------------------------------+
+| A             | create     | D            | Redundant Policies: `policy2` and `policy6`               |
+|               |            |              | Policy `policy7` shadowed by `policy2`                    |
+|               |            |              | Policy `policy7` shadowed by `policy6`                    |
++---------------+------------+--------------+-----------------------------------------------------------+
+| A             | create     | E            | Policy `policy7` shadowed by `policy2`                    |
++---------------+------------+--------------+-----------------------------------------------------------+
+| B             | comment    | D            | Policy `policy12` shadowed by `policy0`                   |
++---------------+------------+--------------+-----------------------------------------------------------+
+| C             | comment    | D            | Redundant Policies: ``policy0`, `policy1``, and `policy5` |
+|               |            |              | Policy `policy12` shadowed by `policy0`                   |
+|               |            |              | Policy `policy12` shadowed by `policy1`                   |
+|               |            |              | Policy `policy12` shadowed by `policy5`                   |
++---------------+------------+--------------+-----------------------------------------------------------+

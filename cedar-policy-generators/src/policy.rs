@@ -129,6 +129,17 @@ impl GeneratedPolicy {
             PrincipalOrResourceConstraint::arbitrary_size_hint(allow_slots, depth),
         ])
     }
+
+    /// Get the `PolicyID` of the policy
+    pub fn id(&self) -> &PolicyID {
+        &self.id
+    }
+
+    /// Change the `PolicyID` of the policy
+    pub fn set_id(&mut self, id: PolicyID) {
+        self.id = id;
+    }
+
     /// Does the policy have (a nonzero number of) slots
     pub fn has_slots(&self) -> bool {
         self.principal_constraint.has_slot() || self.resource_constraint.has_slot()

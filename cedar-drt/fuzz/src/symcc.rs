@@ -15,24 +15,35 @@
  */
 
 use cedar_lean_ffi::{CedarLeanFfi, FfiError, LeanSchema};
-use cedar_policy::{Policy, PolicySet, RequestEnv, Schema};
+use cedar_policy::{Authorizer, Policy, PolicySet, RequestEnv, Schema};
+use cedar_policy_core::ast::PolicyID;
 use cedar_policy_generators::{
     abac::ABACPolicy,
+    accum, r#gen as weighted_generate, gen_inner,
     hierarchy::{Hierarchy, HierarchyGenerator},
     schema,
     schema_gen::SchemaGen,
     settings::ABACSettings,
 };
 use cedar_policy_symcc::{
-    CedarSymCompiler, CompiledPolicy, CompiledPolicySet, WellFormedAsserts,
+    CedarSymCompiler, CompiledPolicy, CompiledPolicySet, Env, WellFormedAsserts,
     err::{EncodeError, Error},
-    solver::{LocalSolver, WriterSolver},
+    solver::{self, LocalSolver, SolverError, WriterSolver},
     term::Term,
 };
+use itertools::Itertools;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
 use log::{debug, warn};
-use std::{collections::BTreeSet, fmt::Display, sync::LazyLock};
-use tokio::process::Command;
+use std::{
+    collections::{BTreeSet, HashSet},
+    fmt::Display,
+    sync::LazyLock,
+};
+use tokio::{
+    process::Command,
+    sync::{Mutex, MutexGuard},
+    time::{Duration, timeout},
+};
 
 /// Tokio runtime used by all SymCC fuzz targets that need one. Note that it
 /// runs tasks on only a single OS thread.
@@ -43,13 +54,8 @@ pub static RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
         .unwrap()
 });
 
-/// The limit on the total number of request envs specific to symcc
-const fn total_action_request_env_limit() -> usize {
-    128
-}
-
 /// Create a local solver suited for fuzzing
-pub fn local_solver() -> Result<cedar_policy_symcc::solver::LocalSolver, String> {
+fn local_solver() -> Result<LocalSolver, String> {
     let path = std::env::var("CVC5").unwrap_or_else(|_| "cvc5".into());
     let mut cmd = Command::new(path);
     // Do not set `tlimit` here and let tokio's `timeout` function handle timeout
@@ -65,7 +71,7 @@ pub fn local_solver() -> Result<cedar_policy_symcc::solver::LocalSolver, String>
             Ok(())
         });
     }
-    cedar_policy_symcc::solver::LocalSolver::from_command(&mut cmd).map_err(|err| err.to_string())
+    LocalSolver::from_command(&mut cmd).map_err(|err| err.to_string())
 }
 
 pub async fn smtlib_of_check_asserts(
@@ -76,7 +82,7 @@ pub async fn smtlib_of_check_asserts(
     })
     .expect("solver construction should succeed");
     match solver.check_sat(rust_asserts).await {
-        Ok(_) | Err(cedar_policy_symcc::err::Error::SolverUnknown) => {
+        Ok(_) | Err(Error::SolverUnknown) => {
             Ok(String::from_utf8(std::mem::take(&mut solver.solver_mut().w)).unwrap())
         }
         Err(e) => Err(e.to_string()),
@@ -124,32 +130,64 @@ pub fn assert_that_asserts_match(
         .map(|t| Term::try_from(t).expect("term conversion should succeed"))
         .collect::<BTreeSet<_>>();
     let rust_asserts = BTreeSet::from_iter(rust_asserts.asserts().as_ref().iter().cloned());
-    similar_asserts::assert_eq!(
-        lean_asserts,
-        rust_asserts,
-        "Lean terms: {lean_asserts:?}, Rust terms: {rust_asserts:?}"
-    );
+
+    if lean_asserts != rust_asserts {
+        // we have a DRT failure, just need to determine the most helpful way to report it
+
+        // first check whether the pretty-printed representations of both Term lists are equal.
+        // if there's a discrepancy, it will be easier to debug if we look at the difference
+        // between pretty-printed representations.
+        let pretty_lean_asserts = lean_asserts.iter().join("\n");
+        let pretty_rust_asserts = rust_asserts.iter().join("\n");
+        similar_asserts::assert_eq!(pretty_lean_asserts, pretty_rust_asserts);
+
+        // if we get here, the Terms are not equal but their pretty-printed representations are.
+        // The discrepancy must be in the parts of the Term structures that aren't represented
+        // in the pretty-printed part, e.g., type information.
+        similar_asserts::assert_eq!(
+            lean_asserts,
+            rust_asserts,
+            "\n\nLean terms:\n{pretty_lean_asserts}\n\nRust terms:\n{pretty_rust_asserts}\n\n",
+        );
+    }
 }
+
+/// Limit on the number of request envs the schema may define. We also do not
+/// allow the number of _actions_ to exceed that number, even in schemas that
+/// comply with the request env limit (e.g., because most actions have no
+/// `appliesTo` and therefore no request envs).  As of this writing, Lean
+/// performance for many targets is cubic in the number of actions / request
+/// envs, just considering that `ActionSchema.validateWellFormed` is at least
+/// quadratic in the number of actions (if actions have "large" ancestor lists)
+/// and that we call it once per request env.
+pub type MaxRequestEnvs = usize;
 
 /// Settings shared by all SymCC fuzz targets that use `FuzzTargetInput`s
 /// declared in this file.
-const SETTINGS: ABACSettings = ABACSettings {
-    max_depth: 3,
-    max_width: 3,
-    total_action_request_env_limit: total_action_request_env_limit(),
-    ..ABACSettings::type_directed()
-};
+///
+/// See comments on the `MaxRequestEnvs` type.
+const fn settings(max_request_envs: MaxRequestEnvs) -> ABACSettings {
+    ABACSettings {
+        max_depth: 3,
+        max_width: 3,
+        total_action_request_env_limit: max_request_envs,
+        max_actions: max_request_envs,
+        ..ABACSettings::type_directed()
+    }
+}
 
 /// Input to SymCC fuzz targets that need a single policy.
+///
+/// See comments on the `MaxRequestEnvs` type.
 #[derive(Debug, Clone)]
-pub struct SinglePolicyFuzzTargetInput {
+pub struct SinglePolicyFuzzTargetInput<const MAX_REQUEST_ENVS: MaxRequestEnvs> {
     /// generated schema
     schema: schema::Schema,
     /// generated policy
     policy: ABACPolicy,
 }
 
-impl SinglePolicyFuzzTargetInput {
+impl<const MAX_REQUEST_ENVS: MaxRequestEnvs> SinglePolicyFuzzTargetInput<MAX_REQUEST_ENVS> {
     /// Get the `cedar_policy::Schema` and `cedar_policy::Policy` that were generated
     pub fn into_inputs(self) -> Result<(Schema, Policy), cedar_policy::SchemaError> {
         Ok((Schema::try_from(self.schema)?, self.policy.into()))
@@ -164,9 +202,11 @@ impl SinglePolicyFuzzTargetInput {
     }
 }
 
-impl<'a> Arbitrary<'a> for SinglePolicyFuzzTargetInput {
+impl<'a, const MAX_REQUEST_ENVS: MaxRequestEnvs> Arbitrary<'a>
+    for SinglePolicyFuzzTargetInput<MAX_REQUEST_ENVS>
+{
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        let schema = schema::Schema::arbitrary(SETTINGS.clone(), u)?;
+        let schema = schema::Schema::arbitrary(settings(MAX_REQUEST_ENVS), u)?;
         let hierarchy = schema.arbitrary_hierarchy(u)?;
         let policy = schema.arbitrary_policy(&hierarchy, u)?;
 
@@ -188,24 +228,64 @@ fn arbitrary_policies(
     hierarchy: &Hierarchy,
     u: &mut Unstructured<'_>,
 ) -> arbitrary::Result<Vec<ABACPolicy>> {
-    let len = u.arbitrary_len::<usize>()?;
+    let len = weighted_generate!(u,
+        1 => 0, // very rarely, try the empty-policyset case
+        0 => 1, // other targets cover the single-policy case
+        50 => 2,
+        40 => 3,
+        30 => 4,
+        20 => 5,
+        10 => 6,
+        8 => 7,
+        6 => 8,
+        4 => 9,
+        2 => 10
+    );
     let mut policies: Vec<ABACPolicy> = Vec::with_capacity(len);
     for _ in 0..len {
         policies.push(schema.arbitrary_policy(&hierarchy, u)?);
+    }
+    // we want to ensure that the policies all have unique IDs.
+    // this will be a list of policy IDs that we have seen (and will ensure there are no duplicates of)
+    let mut seen = HashSet::with_capacity(policies.len());
+    // to avoid mutating-while-iterating, we collect a list of updates we need to make:
+    // an entry in `updates` indicates we need to update the policy at the given index to have the given policy ID.
+    let mut updates: Vec<(usize, PolicyID)> = Vec::new();
+    for (idx, id) in policies.iter().map(|p| p.0.id()).enumerate() {
+        if !seen.insert(id.clone()) {
+            // If we've seen this ID already, we need to change it.
+            // We'll do this by appending `_{idx}` to the ID.
+            let mut new_id = format!("{id}_{idx}");
+            while !seen.insert(PolicyID::from_string(new_id.clone())) {
+                // uh-oh -- the policyid we just tried is _also_ already-seen.
+                // we'll try again by appending `*` to the ID.
+                new_id.push('*');
+            }
+            // the above loop can run at most `policies.len()` iterations.
+            // now that it's done, we know that `new_id` is unique, and we've marked it as `seen`.
+            // we will assign it to the policy that originally had the conflicting ID.
+            updates.push((idx, PolicyID::from_string(new_id)));
+        }
+    }
+    // now apply the updates
+    for (idx, id) in updates {
+        policies[idx].0.set_id(id);
     }
     Ok(policies)
 }
 
 /// Input to SymCC fuzz targets that need a single policyset (containing 0 or more policies).
+///
+/// See comments on the `MaxRequestEnvs` type.
 #[derive(Debug, Clone)]
-pub struct SinglePolicySetFuzzTargetInput {
+pub struct SinglePolicySetFuzzTargetInput<const MAX_REQUEST_ENVS: MaxRequestEnvs> {
     /// generated schema
     schema: schema::Schema,
     /// generated policyset
     pset: Vec<ABACPolicy>,
 }
 
-impl SinglePolicySetFuzzTargetInput {
+impl<const MAX_REQUEST_ENVS: MaxRequestEnvs> SinglePolicySetFuzzTargetInput<MAX_REQUEST_ENVS> {
     /// Get the `cedar_policy::Schema` and `cedar_policy::PolicySet` that were generated
     pub fn into_inputs(self) -> Result<(Schema, PolicySet), cedar_policy::SchemaError> {
         Ok((
@@ -216,9 +296,11 @@ impl SinglePolicySetFuzzTargetInput {
     }
 }
 
-impl<'a> Arbitrary<'a> for SinglePolicySetFuzzTargetInput {
+impl<'a, const MAX_REQUEST_ENVS: MaxRequestEnvs> Arbitrary<'a>
+    for SinglePolicySetFuzzTargetInput<MAX_REQUEST_ENVS>
+{
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        let schema = schema::Schema::arbitrary(SETTINGS.clone(), u)?;
+        let schema = schema::Schema::arbitrary(settings(MAX_REQUEST_ENVS), u)?;
         let hierarchy = schema.arbitrary_hierarchy(u)?;
         let pset = arbitrary_policies(&schema, &hierarchy, u)?;
 
@@ -236,8 +318,10 @@ impl<'a> Arbitrary<'a> for SinglePolicySetFuzzTargetInput {
 }
 
 /// Input to SymCC fuzz targets that need two individual policies.
+///
+/// See comments on the `MaxRequestEnvs` type.
 #[derive(Debug, Clone)]
-pub struct TwoPolicyFuzzTargetInput {
+pub struct TwoPolicyFuzzTargetInput<const MAX_REQUEST_ENVS: MaxRequestEnvs> {
     /// generated schema
     schema: schema::Schema,
     /// generated policy
@@ -246,7 +330,7 @@ pub struct TwoPolicyFuzzTargetInput {
     policy2: ABACPolicy,
 }
 
-impl TwoPolicyFuzzTargetInput {
+impl<const MAX_REQUEST_ENVS: MaxRequestEnvs> TwoPolicyFuzzTargetInput<MAX_REQUEST_ENVS> {
     /// Get the `cedar_policy::Schema` and both `cedar_policy::Policy`s that were generated
     pub fn into_inputs(self) -> Result<(Schema, Policy, Policy), cedar_policy::SchemaError> {
         Ok((
@@ -272,9 +356,11 @@ impl TwoPolicyFuzzTargetInput {
     }
 }
 
-impl<'a> Arbitrary<'a> for TwoPolicyFuzzTargetInput {
+impl<'a, const MAX_REQUEST_ENVS: MaxRequestEnvs> Arbitrary<'a>
+    for TwoPolicyFuzzTargetInput<MAX_REQUEST_ENVS>
+{
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        let schema = schema::Schema::arbitrary(SETTINGS.clone(), u)?;
+        let schema = schema::Schema::arbitrary(settings(MAX_REQUEST_ENVS), u)?;
         let hierarchy = schema.arbitrary_hierarchy(u)?;
         let policy1 = schema.arbitrary_policy(&hierarchy, u)?;
         let policy2 = schema.arbitrary_policy(&hierarchy, u)?;
@@ -297,8 +383,10 @@ impl<'a> Arbitrary<'a> for TwoPolicyFuzzTargetInput {
 }
 
 /// Input to SymCC fuzz targets that need two policysets (each containing 0 or more policies).
+///
+/// See comments on the `MaxRequestEnvs` type.
 #[derive(Debug, Clone)]
-pub struct TwoPolicySetFuzzTargetInput {
+pub struct TwoPolicySetFuzzTargetInput<const MAX_REQUEST_ENVS: MaxRequestEnvs> {
     /// generated schema
     schema: schema::Schema,
     /// generated policyset
@@ -307,7 +395,7 @@ pub struct TwoPolicySetFuzzTargetInput {
     pset2: Vec<ABACPolicy>,
 }
 
-impl TwoPolicySetFuzzTargetInput {
+impl<const MAX_REQUEST_ENVS: MaxRequestEnvs> TwoPolicySetFuzzTargetInput<MAX_REQUEST_ENVS> {
     /// Get the `cedar_policy::Schema` and both `cedar_policy::PolicySet`s that were generated
     pub fn into_inputs(self) -> Result<(Schema, PolicySet, PolicySet), cedar_policy::SchemaError> {
         Ok((
@@ -320,9 +408,11 @@ impl TwoPolicySetFuzzTargetInput {
     }
 }
 
-impl<'a> Arbitrary<'a> for TwoPolicySetFuzzTargetInput {
+impl<'a, const MAX_REQUEST_ENVS: MaxRequestEnvs> Arbitrary<'a>
+    for TwoPolicySetFuzzTargetInput<MAX_REQUEST_ENVS>
+{
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        let schema = schema::Schema::arbitrary(SETTINGS.clone(), u)?;
+        let schema = schema::Schema::arbitrary(settings(MAX_REQUEST_ENVS), u)?;
         let hierarchy = schema.arbitrary_hierarchy(u)?;
         let pset1 = arbitrary_policies(&schema, &hierarchy, u)?;
         let pset2 = arbitrary_policies(&schema, &hierarchy, u)?;
@@ -344,6 +434,113 @@ impl<'a> Arbitrary<'a> for TwoPolicySetFuzzTargetInput {
     }
 }
 
+/// For DRT purposes we use a wrapper around `LocalSolver` that allows us to
+/// also inspect the raw model if we want
+pub struct WrappedLocalSolver {
+    pub solver: LocalSolver,
+    /// Copy of the raw model generated by the most recent call to `get_model()`.
+    ///
+    /// If `get_model()` returned `Ok(None)`, or if `get_model()` has never been
+    /// called, this will be `None`.
+    pub raw_model: Option<String>,
+}
+
+impl WrappedLocalSolver {
+    fn new(solver: LocalSolver) -> Self {
+        Self {
+            solver,
+            raw_model: None,
+        }
+    }
+}
+
+impl solver::Solver for WrappedLocalSolver {
+    fn smtlib_input(&mut self) -> &mut (dyn tokio::io::AsyncWrite + Unpin + Send) {
+        self.solver.smtlib_input()
+    }
+    async fn check_sat(&mut self) -> Result<solver::Decision, SolverError> {
+        self.solver.check_sat().await
+    }
+    async fn get_model(&mut self) -> Result<Option<String>, SolverError> {
+        self.raw_model = self.solver.get_model().await?;
+        Ok(self.raw_model.clone())
+    }
+}
+
+pub struct SymCCWithUsageLimit {
+    pub symcc: CedarSymCompiler<WrappedLocalSolver>,
+    /// Maximum number of `CedarSymCompiler` calls (more specifically, calls of
+    /// `get_solver()`, not all of which are actual solver interactions) before
+    /// we kill the solver process and start a new one
+    usage_count: usize,
+}
+
+impl SymCCWithUsageLimit {
+    const SOLVER_USAGE_LIMIT: usize = 10_000;
+}
+
+fn new_symcc() -> CedarSymCompiler<WrappedLocalSolver> {
+    let solver = local_solver().expect("CVC5 should exist");
+    CedarSymCompiler::new(WrappedLocalSolver::new(solver))
+        .expect("CedarSymCompiler construction should succeed")
+}
+
+static SOLVER: LazyLock<Mutex<SymCCWithUsageLimit>> = LazyLock::new(|| {
+    Mutex::new(SymCCWithUsageLimit {
+        symcc: new_symcc(),
+        usage_count: 0,
+    })
+});
+
+pub async fn get_solver() -> MutexGuard<'static, SymCCWithUsageLimit> {
+    let mut guard = SOLVER.lock().await;
+    guard.usage_count += 1;
+    if guard.usage_count >= SymCCWithUsageLimit::SOLVER_USAGE_LIMIT {
+        let _ = guard.symcc.solver_mut().solver.clean_up().await;
+        guard.symcc = new_symcc();
+        guard.usage_count = 0;
+    }
+    guard
+}
+
+/// Solver timeout used for `get_cex()`
+const TIMEOUT_DUR: Duration = Duration::from_secs(60);
+
+/// Run the given future (producing `Result<Option<Env>>`), and return the
+/// counterexample if one was successfully generated.
+///
+/// Panics on unexpected errors. Ignores certain expected errors, returning
+/// `None`. Also returns `None` if the property holds and there is no
+/// counterexample.
+pub async fn get_cex(
+    f: impl Future<Output = cedar_policy_symcc::err::Result<Option<Env>>>,
+) -> Option<Env> {
+    match timeout(TIMEOUT_DUR, f).await {
+        Ok(Ok(None)) => None, // successfully executed, no counterexample because the property holds
+        Ok(Ok(Some(cex))) => Some(cex),
+        Err(err) => panic!(
+            "found a slow unit (solver took more than {secs:.2} sec) probably worth investigating: {err}",
+            secs = TIMEOUT_DUR.as_secs_f32()
+        ),
+        Ok(Err(Error::SolverError(err))) => panic!("solver failed: {err}"),
+        Ok(Err(Error::EncodeError(EncodeError::EncodeStringFailed(_))))
+        | Ok(Err(Error::EncodeError(EncodeError::EncodePatternFailed(_)))) => {
+            // Encoding errors are benign -- SMTLIB doesn't support full unicode
+            // but our generators generate full unicode
+            None
+        }
+        Ok(Err(err)) => panic!("{err}"), // other errors are unexpected
+    }
+}
+
+/// Return the `Decision` produced by the Cedar (Rust) authorizer on the given
+/// `policies` given a concrete `Env`
+pub fn reproduce(env: &Env, policies: &PolicySet) -> cedar_policy::Decision {
+    Authorizer::new()
+        .is_authorized(&env.request, policies, &env.entities)
+        .decision()
+}
+
 pub trait ValidationTask: Sync {
     type RawInput: Send + Sync + Display;
     type CompiledInput: Send;
@@ -354,27 +551,25 @@ pub trait ValidationTask: Sync {
         schema: &Schema,
         env: &RequestEnv,
         raw_input: &Self::RawInput,
-    ) -> Result<Self::CompiledInput, Box<cedar_policy_symcc::err::Error>>;
+    ) -> Result<Self::CompiledInput, Box<Error>>;
 
     /// Executes this task.
     fn execute(
         &self,
         compiler: &mut CedarSymCompiler<LocalSolver>,
         input: &Self::CompiledInput,
-    ) -> impl std::future::Future<Output = Result<bool, cedar_policy_symcc::err::Error>> + Send;
+    ) -> impl std::future::Future<Output = Result<bool, Error>> + Send;
 
     /// Checks that when this task is performed on input that successfully compiles, it either times out or produces a value.
     fn check_ok(
         &self,
         schema: Schema,
         raw_input: Self::RawInput,
-    ) -> impl std::future::Future<Output = Result<(), Box<cedar_policy_symcc::err::Error>>> + Send
-    {
+    ) -> impl std::future::Future<Output = Result<(), Box<Error>>> + Send {
         async move {
             // Use LocalSolver::cvc5_with_args to remove the timeout.
-            let solver =
-                cedar_policy_symcc::solver::LocalSolver::cvc5_with_args(Vec::<String>::new())
-                    .map_err(|e| Box::new(e.into()))?;
+            let solver = LocalSolver::cvc5_with_args(Vec::<String>::new())
+                .map_err(|e| Box::new(e.into()))?;
             let mut compiler = CedarSymCompiler::new(solver)?;
             let check_result = self
                 .check_ok_inner(&mut compiler, &schema, &raw_input)
@@ -402,11 +597,10 @@ pub trait ValidationTask: Sync {
 
     fn check_ok_inner(
         &self,
-        compiler: &mut CedarSymCompiler<cedar_policy_symcc::solver::LocalSolver>,
+        compiler: &mut CedarSymCompiler<LocalSolver>,
         schema: &Schema,
         raw_input: &Self::RawInput,
-    ) -> impl std::future::Future<Output = Result<(), Box<cedar_policy_symcc::err::Error>>> + Send
-    {
+    ) -> impl std::future::Future<Output = Result<(), Box<Error>>> + Send {
         async move {
             for env in schema.request_envs() {
                 // Compilation should succeed for inputs generated by our generators, but for now if compilation returns an error we just warn-and-skip.
@@ -451,7 +645,7 @@ impl ValidationTask for PolicySetTask {
         schema: &Schema,
         env: &RequestEnv,
         raw_input: &Self::RawInput,
-    ) -> Result<Self::CompiledInput, Box<cedar_policy_symcc::err::Error>> {
+    ) -> Result<Self::CompiledInput, Box<Error>> {
         CompiledPolicySet::compile(raw_input, env, schema).map_err(Box::new)
     }
 
@@ -459,7 +653,7 @@ impl ValidationTask for PolicySetTask {
         &self,
         compiler: &mut CedarSymCompiler<LocalSolver>,
         input: &Self::CompiledInput,
-    ) -> Result<bool, cedar_policy_symcc::err::Error> {
+    ) -> Result<bool, Error> {
         match self {
             Self::CheckAlwaysAllows => compiler.check_always_allows_opt(input).await,
             Self::CheckAlwaysDenies => compiler.check_always_denies_opt(input).await,
@@ -481,7 +675,7 @@ impl ValidationTask for PolicyTask {
         schema: &Schema,
         env: &RequestEnv,
         raw_input: &Self::RawInput,
-    ) -> Result<Self::CompiledInput, Box<cedar_policy_symcc::err::Error>> {
+    ) -> Result<Self::CompiledInput, Box<Error>> {
         CompiledPolicy::compile(raw_input, env, schema).map_err(Box::new)
     }
 
@@ -489,7 +683,7 @@ impl ValidationTask for PolicyTask {
         &self,
         compiler: &mut CedarSymCompiler<LocalSolver>,
         input: &Self::CompiledInput,
-    ) -> Result<bool, cedar_policy_symcc::err::Error> {
+    ) -> Result<bool, Error> {
         match self {
             Self::CheckNeverErrors => compiler.check_never_errors_opt(input).await,
         }
@@ -528,7 +722,7 @@ impl ValidationTask for PolicySetPairTask {
         schema: &Schema,
         env: &RequestEnv,
         raw_input: &Self::RawInput,
-    ) -> Result<Self::CompiledInput, Box<cedar_policy_symcc::err::Error>> {
+    ) -> Result<Self::CompiledInput, Box<Error>> {
         Ok((
             CompiledPolicySet::compile(&raw_input.pset1, env, schema)?,
             CompiledPolicySet::compile(&raw_input.pset2, env, schema)?,
@@ -539,7 +733,7 @@ impl ValidationTask for PolicySetPairTask {
         &self,
         compiler: &mut CedarSymCompiler<LocalSolver>,
         (pset1, pset2): &Self::CompiledInput,
-    ) -> Result<bool, cedar_policy_symcc::err::Error> {
+    ) -> Result<bool, Error> {
         match self {
             PolicySetPairTask::CheckImplies => compiler.check_implies_opt(pset1, pset2).await,
             PolicySetPairTask::CheckEquivalent => compiler.check_equivalent_opt(pset1, pset2).await,

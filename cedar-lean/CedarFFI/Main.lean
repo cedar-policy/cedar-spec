@@ -164,13 +164,14 @@ unsafe def runFfiM {α : Type} [Lean.ToJson α] (m : FfiM α) : String :=
 /--
   `req`: binary protobuf for an `CheckPolicyRequest`
 
-  Upon success returns the original (pre-typecheck) policy and the compiled policy
+  Upon success returns the compiled policy
+
   Returns a failure if
   1.) Protobuf message could not be parsed
   2.) The requestEnv of `req` is not consistent with the schema of `req`
   3.) The policy of `req` is not well-typed for the requestEnv of `req`
 -/
-def parseCheckPolicyReq (schema : Schema) (req : ByteArray) : Except String (Policy × CompiledPolicy) := do
+def parseCheckPolicyReq (schema : Schema) (req : ByteArray) : Except String CompiledPolicy := do
   let req ← (@Proto.Message.interpret? Proto.CheckPolicyRequest) req |>.mapError (s!"failed to parse input: {·}")
   let policy := req.policy
   let request := req.request
@@ -179,37 +180,38 @@ def parseCheckPolicyReq (schema : Schema) (req : ByteArray) : Except String (Pol
     | some env => .ok env
   let _ ← env.validateWellFormed |>.mapError (s!"failed to validate environment (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource}): {·}")
   let cp ← CompiledPolicy.compile policy env |>.mapError (s!"failed to compile policy for requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource}): {·}")
-  return (policy, cp)
+  return cp
 
 /--
   `req`: binary protobuf for an `CheckPolicySetRequest`
 
-  Upon success returns the original (pre-typecheck) policies and the compiled policyset
+  Upon success returns the compiled policyset
+
   Returns a failure if
   1.) Protobuf message could not be parsed
   2.) The requestEnv of `req` is not consistent with the schema of `req`
   3.) Any policy of the policySet of `req` is not well-typed for the requestEnv of `req`
 -/
-def parseCheckPoliciesReq (schema : Schema) (req : ByteArray) : Except String (Policies × CompiledPolicySet) := do
+def parseCheckPoliciesReq (schema : Schema) (req : ByteArray) : Except String CompiledPolicySet := do
   let req ← (@Proto.Message.interpret? Proto.CheckPolicySetRequest) req |>.mapError (s!"failed to parse input: {·}")
   let policySet := req.policySet
   let request := req.request
   let env ← match schema.environment? request.principal request.resource request.action with
     | none => .error s!"failed to get environment from requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource})"
     | some env => .ok env
-  let cpset ← CompiledPolicySet.compile policySet env |>.mapError (s!"failed to validate policy for requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource}): {·}")
-  return (policySet, cpset)
+  CompiledPolicySet.compile policySet env |>.mapError (s!"failed to validate policy for requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource}): {·}")
 
 /--
   `req`: binary protobuf for an `CheckPolicySetRequest`
 
-  Upon success returns both original (pre-typechecked) policysets and both compiled policysets
+  Upon success returns both compiled policysets
+
   Returns a failure if
   1.) Protobuf message could not be parsed
   2.) The requestEnv of `req` is not consistent with the schema of `req`
   3.) Any policy of the source or target PolicySets of `req` is not well-typed for the requestEnv of `req`
 -/
-def parseComparePolicySetsReq (schema : Schema) (req : ByteArray) : Except String (Policies × Policies × CompiledPolicySet × CompiledPolicySet) := do
+def parseComparePolicySetsReq (schema : Schema) (req : ByteArray) : Except String (CompiledPolicySet × CompiledPolicySet) := do
   let req ← (@Proto.Message.interpret? Proto.ComparePolicySetsRequest) req |>.mapError (s!"failed to parse input: {·}")
   let srcPolicySet := req.srcPolicySet
   let tgtPolicySet := req.tgtPolicySet
@@ -219,14 +221,14 @@ def parseComparePolicySetsReq (schema : Schema) (req : ByteArray) : Except Strin
     | some env => .ok env
   let cpSrcPolicySet ← CompiledPolicySet.compile srcPolicySet env |>.mapError (s!"failed to validate src policies for requestEnv (PrincipalType : {request.principal}, ActionName: {request.action}, ResourceType: {request.resource}): {·}")
   let cpTgtPolicySet ← CompiledPolicySet.compile tgtPolicySet env |>.mapError (s!"failed to validate tgt policies for requestEnv (PrincipalType : {request.principal}, ActionName: {request.action}, ResourceType: {request.resource}): {·}")
-  return (srcPolicySet, tgtPolicySet, cpSrcPolicySet, cpTgtPolicySet)
+  return (cpSrcPolicySet, cpTgtPolicySet)
 
 /--
   `req`: binary protobuf for a `ComparePoliciesRequest`
 
-  Upon success returns both original (pre-typechecked) policies and both compiled policies
+  Upon success returns both compiled policies
 -/
-def parseComparePoliciesReq (schema : Schema) (req : ByteArray) : Except String (Spec.Policy × Spec.Policy × CompiledPolicy × CompiledPolicy) := do
+def parseComparePoliciesReq (schema : Schema) (req : ByteArray) : Except String (CompiledPolicy × CompiledPolicy) := do
   let req ← (@Proto.Message.interpret? Proto.ComparePoliciesRequest) req |>.mapError (s!"failed to parse input: {·}")
   let p₁ := req.policy1
   let p₂ := req.policy2
@@ -236,7 +238,7 @@ def parseComparePoliciesReq (schema : Schema) (req : ByteArray) : Except String 
     | some env => .ok env
   let cp₁ ← CompiledPolicy.compile p₁ env |>.mapError (s!"failed to validate first policy for requestEnv (PrincipalType : {request.principal}, ActionName: {request.action}, ResourceType: {request.resource}): {·}")
   let cp₂ ← CompiledPolicy.compile p₂ env |>.mapError (s!"failed to validate first policy for requestEnv (PrincipalType : {request.principal}, ActionName: {request.action}, ResourceType: {request.resource}): {·}")
-  return (p₁, p₂, cp₁, cp₂)
+  return (cp₁, cp₂)
 
 /--
   `req`: binary protobuf for a `CheckAssertsRequest`
@@ -325,29 +327,25 @@ structure SymCCPrimitive where
   `req`: binary protobuf for the appropriate request shape (depends on
   primitive: `CheckPolicyRequest`, `ComparePoliciesRequest`, etc)
 
+  Assumes that the solver produces SAT with the given raw model, on `req`. (Does not invoke the solver.)
+  Returns the `Env` computed by Lean.
+  Intended for differential-testing specifically the decoder+extractor+concretizer components
+  (everything in the path from raw model to `Env`)
+
+  Note that the time in the `Timed` includes the encoder and decoder but _not_ policy compilation to Term
+  -/
+  runWithCexGivenRawModel : Schema → (req : ByteArray) → (rawModel : ByteArray) → FfiM (Timed Env)
+
+  /--
+  `req`: binary protobuf for the appropriate request shape (depends on
+  primitive: `CheckPolicyRequest`, `ComparePoliciesRequest`, etc)
+
   returns the `Asserts` computed for the request (but does not encode them to SMTLib or invoke a solver)
 
   Note that the time in the `Timed` does _not_ include policy compilation to
   Term, so, the work actually being timed is pretty trivial
   -/
   asserts : Schema → (req : ByteArray) → FfiM (Timed (SymCC.Result Asserts))
-
-  /--
-  `req`: binary protobuf for the appropriate request shape (depends on
-  primitive: `CheckPolicyRequest`, `ComparePoliciesRequest`, etc)
-
-  returns the `Asserts` computed by running the UNOPTIMIZED compiler on the
-  _original deserialized_ policy (not the post-typecheck, well-typed policy).
-  Does not encode them to SMTLib or invoke a solver.
-
-  This DOES NOT use the optimized interface (which requires you to compile the
-  typechecked policy, not the original deserialized policy), so it is
-  inefficient. Callers should migrate to `asserts` functions if/when possible
-
-  For this function (only), the time in the `Timed` _does_ include policy
-  compilation to Term (via the unoptimized compiler)
-  -/
-  assertsOnOriginal : Schema → (req : ByteArray) → FfiM (Timed (SymCC.Result Asserts))
 
   /--
   `req`: binary protobuf for the appropriate request shape (depends on
@@ -374,26 +372,31 @@ def SymCCPrimitive.singlePolicy
   (solveFn        : CompiledPolicy → SolverM Bool)
   (solveWithCexFn : CompiledPolicy → SolverM (Option Env))
   (verifyFn       : CompiledPolicy → Asserts)
-  (verifyUnoptFn  : Policy → SymEnv → SymCC.Result Asserts)
 : SymCCPrimitive := {
   run := λ (schema : Schema) (req : ByteArray) => do
-    let (_, cp) ← parseCheckPolicyReq schema req
+    let cp ← parseCheckPolicyReq schema req
     timedSolve Solver.cvc5 (solveFn cp)
   runWithCex := λ (schema : Schema) (req : ByteArray) => do
-    let (_, cp) ← parseCheckPolicyReq schema req
+    let cp ← parseCheckPolicyReq schema req
     timedSolve Solver.cvc5 (solveWithCexFn cp)
+  runWithCexGivenRawModel := λ (schema : Schema) (req : ByteArray) (rawModel : ByteArray) => do
+    let cp ← parseCheckPolicyReq schema req
+    timedSolve Solver.dummy (do
+      let encoderState ← Encoder.encode (verifyFn cp) cp.εnv (produceModels := true)
+      let interp ← IO.ofExcept $ Decoder.decode (String.fromUTF8! rawModel) encoderState
+      match extractOpt? [.policy cp] interp with
+      | none => IO.ofExcept (.error "expected an Env but got `none`")
+      | some env => pure env
+    )
   asserts := λ (schema : Schema) (req : ByteArray) => do
-    let (_, cp) ← parseCheckPolicyReq schema req
+    let cp ← parseCheckPolicyReq schema req
     -- for backwards compatibility, we provide a λ that returns Result, even though `verifyFn` returns Asserts directly
     runAndTime (λ () => .ok $ verifyFn cp)
-  assertsOnOriginal := λ (schema : Schema) (req : ByteArray) => do
-    let (policy, cp) ← parseCheckPolicyReq schema req
-    runAndTime (λ () => verifyUnoptFn policy cp.εnv)
   smtLib := λ (schema : Schema) (req : ByteArray) => do
-    let (_, cp) ← parseCheckPolicyReq schema req
+    let cp ← parseCheckPolicyReq schema req
     smtLibOf (verifyFn cp) cp.εnv
   printToStdout := λ (schema : Schema) (req : ByteArray) => do
-    let (_, cp) ← parseCheckPolicyReq schema req
+    let cp ← parseCheckPolicyReq schema req
     printAsserts (verifyFn cp) cp.εnv
 }
 
@@ -402,26 +405,31 @@ def SymCCPrimitive.twoPolicy
   (solveFn        : CompiledPolicy → CompiledPolicy → SolverM Bool)
   (solveWithCexFn : CompiledPolicy → CompiledPolicy → SolverM (Option Env))
   (verifyFn       : CompiledPolicy → CompiledPolicy → Asserts)
-  (verifyUnoptFn  : Policy → Policy → SymEnv → SymCC.Result Asserts)
 : SymCCPrimitive := {
   run := λ (schema : Schema) (req : ByteArray) => do
-    let (_, _, cp₁, cp₂) ← parseComparePoliciesReq schema req
+    let (cp₁, cp₂) ← parseComparePoliciesReq schema req
     timedSolve Solver.cvc5 (solveFn cp₁ cp₂)
   runWithCex := λ (schema : Schema) (req : ByteArray) => do
-    let (_, _, cp₁, cp₂) ← parseComparePoliciesReq schema req
+    let (cp₁, cp₂) ← parseComparePoliciesReq schema req
     timedSolve Solver.cvc5 (solveWithCexFn cp₁ cp₂)
+  runWithCexGivenRawModel := λ (schema : Schema) (req : ByteArray) (rawModel : ByteArray) => do
+    let (cp₁, cp₂) ← parseComparePoliciesReq schema req
+    timedSolve Solver.dummy (do
+      let encoderState ← Encoder.encode (verifyFn cp₁ cp₂) cp₁.εnv (produceModels := true) -- cp₁ and cp₂ will have the same εnv
+      let interp ← IO.ofExcept $ Decoder.decode (String.fromUTF8! rawModel) encoderState
+      match extractOpt? [.policy cp₁, .policy cp₂] interp with
+      | none => IO.ofExcept (.error "expected an Env but got `none`")
+      | some env => pure env
+    )
   asserts := λ (schema : Schema) (req : ByteArray) => do
-    let (_, _, cp₁, cp₂) ← parseComparePoliciesReq schema req
+    let (cp₁, cp₂) ← parseComparePoliciesReq schema req
     -- for backwards compatibility, we provide a λ that returns Result, even though `verifyFn` returns Asserts directly
     runAndTime (λ () => .ok $ verifyFn cp₁ cp₂)
-  assertsOnOriginal := λ (schema : Schema) (req : ByteArray) => do
-    let (p₁, p₂, cp₁, _) ← parseComparePoliciesReq schema req
-    runAndTime (λ () => verifyUnoptFn p₁ p₂ cp₁.εnv) -- cp₁ and cp₂ will have the same εnv
   smtLib := λ (schema : Schema) (req : ByteArray) => do
-    let (_, _, cp₁, cp₂) ← parseComparePoliciesReq schema req
+    let (cp₁, cp₂) ← parseComparePoliciesReq schema req
     smtLibOf (verifyFn cp₁ cp₂) cp₁.εnv -- cp₁ and cp₂ will have the same εnv
   printToStdout := λ (schema : Schema) (req : ByteArray) => do
-    let (_, _, cp₁, cp₂) ← parseComparePoliciesReq schema req
+    let (cp₁, cp₂) ← parseComparePoliciesReq schema req
     printAsserts (verifyFn cp₁ cp₂) cp₁.εnv -- cp₁ and cp₂ will have the same εnv
 }
 
@@ -430,26 +438,31 @@ def SymCCPrimitive.singlePolicySet
   (solveFn        : CompiledPolicySet → SolverM Bool)
   (solveWithCexFn : CompiledPolicySet → SolverM (Option Env))
   (verifyFn       : CompiledPolicySet → Asserts)
-  (verifyUnoptFn  : Policies → SymEnv → SymCC.Result Asserts)
 : SymCCPrimitive := {
   run := λ (schema : Schema) (req : ByteArray) => do
-    let (_, cpset) ← parseCheckPoliciesReq schema req
+    let cpset ← parseCheckPoliciesReq schema req
     timedSolve Solver.cvc5 (solveFn cpset)
   runWithCex := λ (schema : Schema) (req : ByteArray) => do
-    let (_, cpset) ← parseCheckPoliciesReq schema req
+    let cpset ← parseCheckPoliciesReq schema req
     timedSolve Solver.cvc5 (solveWithCexFn cpset)
+  runWithCexGivenRawModel := λ (schema : Schema) (req : ByteArray) (rawModel : ByteArray) => do
+    let cpset ← parseCheckPoliciesReq schema req
+    timedSolve Solver.dummy (do
+      let encoderState ← Encoder.encode (verifyFn cpset) cpset.εnv (produceModels := true)
+      let interp ← IO.ofExcept $ Decoder.decode (String.fromUTF8! rawModel) encoderState
+      match extractOpt? [.pset cpset] interp with
+      | none => IO.ofExcept (.error "expected an Env but got `none`")
+      | some env => pure env
+    )
   asserts := λ (schema : Schema) (req : ByteArray) => do
-    let (_, cpset) ← parseCheckPoliciesReq schema req
+    let cpset ← parseCheckPoliciesReq schema req
     -- for backwards compatibility, we provide a λ that returns Result, even though `verifyFn` returns Asserts directly
     runAndTime (λ () => .ok $ verifyFn cpset)
-  assertsOnOriginal := λ (schema : Schema) (req : ByteArray) => do
-    let (pset, cpset) ← parseCheckPoliciesReq schema req
-    runAndTime (λ () => verifyUnoptFn pset cpset.εnv)
   smtLib := λ (schema : Schema) (req : ByteArray) => do
-    let (_, cpset) ← parseCheckPoliciesReq schema req
+    let cpset ← parseCheckPoliciesReq schema req
     smtLibOf (verifyFn cpset) cpset.εnv
   printToStdout := λ (schema : Schema) (req : ByteArray) => do
-    let (_, cpset) ← parseCheckPoliciesReq schema req
+    let cpset ← parseCheckPoliciesReq schema req
     printAsserts (verifyFn cpset) cpset.εnv
 }
 
@@ -458,40 +471,45 @@ def SymCCPrimitive.twoPolicySet
   (solveFn        : CompiledPolicySet → CompiledPolicySet → SolverM Bool)
   (solveWithCexFn : CompiledPolicySet → CompiledPolicySet → SolverM (Option Env))
   (verifyFn       : CompiledPolicySet → CompiledPolicySet → Asserts)
-  (verifyUnoptFn  : Policies → Policies → SymEnv → SymCC.Result Asserts)
 : SymCCPrimitive := {
   run := λ (schema : Schema) (req : ByteArray) => do
-    let (_, _, cpset₁, cpset₂) ← parseComparePolicySetsReq schema req
+    let (cpset₁, cpset₂) ← parseComparePolicySetsReq schema req
     timedSolve Solver.cvc5 (solveFn cpset₁ cpset₂)
   runWithCex := λ (schema : Schema) (req : ByteArray) => do
-    let (_, _, cpset₁, cpset₂) ← parseComparePolicySetsReq schema req
+    let (cpset₁, cpset₂) ← parseComparePolicySetsReq schema req
     timedSolve Solver.cvc5 (solveWithCexFn cpset₁ cpset₂)
+  runWithCexGivenRawModel := λ (schema : Schema) (req : ByteArray) (rawModel : ByteArray) => do
+    let (cpset₁, cpset₂) ← parseComparePolicySetsReq schema req
+    timedSolve Solver.dummy (do
+      let encoderState ← Encoder.encode (verifyFn cpset₁ cpset₂) cpset₁.εnv (produceModels := true) -- cpset₁ and cpset₂ will have the same εnv
+      let interp ← IO.ofExcept $ Decoder.decode (String.fromUTF8! rawModel) encoderState
+      match extractOpt? [.pset cpset₁, .pset cpset₂] interp with
+      | none => IO.ofExcept (.error "expected an Env but got `none`")
+      | some env => pure env
+    )
   asserts := λ (schema : Schema) (req : ByteArray) => do
-    let (_, _, cpset₁, cpset₂) ← parseComparePolicySetsReq schema req
+    let (cpset₁, cpset₂) ← parseComparePolicySetsReq schema req
     -- for backwards compatibility, we provide a λ that returns Result, even though `verifyFn` returns Asserts directly
     runAndTime (λ () => .ok $ verifyFn cpset₁ cpset₂)
-  assertsOnOriginal := λ (schema : Schema) (req : ByteArray) => do
-    let (pset₁, pset₂, cpset₁, _) ← parseComparePolicySetsReq schema req
-    runAndTime (λ () => verifyUnoptFn pset₁ pset₂ cpset₁.εnv) -- cpset₁ and cpset₂ will have the same εnv
   smtLib := λ (schema : Schema) (req : ByteArray) => do
-    let (_, _, cpset₁, cpset₂) ← parseComparePolicySetsReq schema req
+    let (cpset₁, cpset₂) ← parseComparePolicySetsReq schema req
     smtLibOf (verifyFn cpset₁ cpset₂) cpset₁.εnv -- cpset₁ and cpset₂ will have the same εnv
   printToStdout := λ (schema : Schema) (req : ByteArray) => do
-    let (_, _, cpset₁, cpset₂) ← parseComparePolicySetsReq schema req
+    let (cpset₁, cpset₂) ← parseComparePolicySetsReq schema req
     printAsserts (verifyFn cpset₁ cpset₂) cpset₁.εnv -- cpset₁ and cpset₂ will have the same εnv
 }
 
-def SymCCPrimitive.neverErrors       := SymCCPrimitive.singlePolicy    checkNeverErrorsOpt       neverErrorsOpt?        verifyNeverErrorsOpt        verifyNeverErrors
-def SymCCPrimitive.alwaysMatches     := SymCCPrimitive.singlePolicy    checkAlwaysMatchesOpt     alwaysMatchesOpt?      verifyAlwaysMatchesOpt      verifyAlwaysMatches
-def SymCCPrimitive.neverMatches      := SymCCPrimitive.singlePolicy    checkNeverMatchesOpt      neverMatchesOpt?       verifyNeverMatchesOpt       verifyNeverMatches
-def SymCCPrimitive.matchesEquivalent := SymCCPrimitive.twoPolicy       checkMatchesEquivalentOpt matchesEquivalentOpt?  verifyMatchesEquivalentOpt  verifyMatchesEquivalent
-def SymCCPrimitive.matchesImplies    := SymCCPrimitive.twoPolicy       checkMatchesImpliesOpt    matchesImpliesOpt?     verifyMatchesImpliesOpt     verifyMatchesImplies
-def SymCCPrimitive.matchesDisjoint   := SymCCPrimitive.twoPolicy       checkMatchesDisjointOpt   matchesDisjointOpt?    verifyMatchesDisjointOpt    verifyMatchesDisjoint
-def SymCCPrimitive.alwaysAllows      := SymCCPrimitive.singlePolicySet checkAlwaysAllowsOpt      alwaysAllowsOpt?       verifyAlwaysAllowsOpt       verifyAlwaysAllows
-def SymCCPrimitive.alwaysDenies      := SymCCPrimitive.singlePolicySet checkAlwaysDeniesOpt      alwaysDeniesOpt?       verifyAlwaysDeniesOpt       verifyAlwaysDenies
-def SymCCPrimitive.equivalent        := SymCCPrimitive.twoPolicySet    checkEquivalentOpt        equivalentOpt?         verifyEquivalentOpt         verifyEquivalent
-def SymCCPrimitive.implies           := SymCCPrimitive.twoPolicySet    checkImpliesOpt           impliesOpt?            verifyImpliesOpt            verifyImplies
-def SymCCPrimitive.disjoint          := SymCCPrimitive.twoPolicySet    checkDisjointOpt          disjointOpt?           verifyDisjointOpt           verifyDisjoint
+def SymCCPrimitive.neverErrors       := SymCCPrimitive.singlePolicy    checkNeverErrorsOpt       neverErrorsOpt?        verifyNeverErrorsOpt
+def SymCCPrimitive.alwaysMatches     := SymCCPrimitive.singlePolicy    checkAlwaysMatchesOpt     alwaysMatchesOpt?      verifyAlwaysMatchesOpt
+def SymCCPrimitive.neverMatches      := SymCCPrimitive.singlePolicy    checkNeverMatchesOpt      neverMatchesOpt?       verifyNeverMatchesOpt
+def SymCCPrimitive.matchesEquivalent := SymCCPrimitive.twoPolicy       checkMatchesEquivalentOpt matchesEquivalentOpt?  verifyMatchesEquivalentOpt
+def SymCCPrimitive.matchesImplies    := SymCCPrimitive.twoPolicy       checkMatchesImpliesOpt    matchesImpliesOpt?     verifyMatchesImpliesOpt
+def SymCCPrimitive.matchesDisjoint   := SymCCPrimitive.twoPolicy       checkMatchesDisjointOpt   matchesDisjointOpt?    verifyMatchesDisjointOpt
+def SymCCPrimitive.alwaysAllows      := SymCCPrimitive.singlePolicySet checkAlwaysAllowsOpt      alwaysAllowsOpt?       verifyAlwaysAllowsOpt
+def SymCCPrimitive.alwaysDenies      := SymCCPrimitive.singlePolicySet checkAlwaysDeniesOpt      alwaysDeniesOpt?       verifyAlwaysDeniesOpt
+def SymCCPrimitive.equivalent        := SymCCPrimitive.twoPolicySet    checkEquivalentOpt        equivalentOpt?         verifyEquivalentOpt
+def SymCCPrimitive.implies           := SymCCPrimitive.twoPolicySet    checkImpliesOpt           impliesOpt?            verifyImpliesOpt
+def SymCCPrimitive.disjoint          := SymCCPrimitive.twoPolicySet    checkDisjointOpt          disjointOpt?           verifyDisjointOpt
 
 /-- the `SymCCPrimitive` for `CheckAsserts` -/
 def SymCCPrimitive.assertsPrim : SymCCPrimitive := {
@@ -499,10 +517,10 @@ def SymCCPrimitive.assertsPrim : SymCCPrimitive := {
     let (asserts, εnv) ← parseCheckAssertsReq schema req
     timedSolve Solver.cvc5 (checkUnsat (λ _ => .ok asserts) εnv)
   runWithCex := λ _ _ => .error s!"Counterexample generation not supported for CheckAsserts"
+  runWithCexGivenRawModel := λ _ _ _ => .error s!"Counterexample generation not supported for CheckAsserts"
   asserts := λ (schema : Schema) (req : ByteArray) => do
     let (asserts, _) ← parseCheckAssertsReq schema req
     runAndTime (λ () => .ok asserts)
-  assertsOnOriginal := λ _ _ => .error s!"assertsOnOriginal not supported for CheckAsserts"
   smtLib := λ (schema : Schema) (req : ByteArray) => do
     let (asserts, εnv) ← parseCheckAssertsReq schema req
     smtLibOf asserts εnv
@@ -604,6 +622,49 @@ Note that the time includes the encoder and solver but _not_ policy compilation 
 
 /-
 -------
+Each of the following `run*WithCexGivenRawModel` functions returns a JSON encoded string that encodes
+  1.) .error err_message if there was an error in parsing or computing the `Env`
+  2.) .ok { data := {request: ..., entities: ...}, duration := <encode+decode_time> } if there was no error
+
+Note that the time includes the encoder and decoder but _not_ policy compilation to Term
+-------
+-/
+
+@[export runCheckNeverErrorsWithCexGivenRawModel] unsafe def runCheckNeverErrorsWithCexGivenRawModel (schema : Schema) (req : ByteArray) (rawModel : ByteArray) : String :=
+  runFfiM $ SymCCPrimitive.neverErrors.runWithCexGivenRawModel schema req rawModel
+
+@[export runCheckAlwaysMatchesWithCexGivenRawModel] unsafe def runCheckAlwaysMatchesWithCexGivenRawModel (schema : Schema) (req : ByteArray) (rawModel : ByteArray) : String :=
+  runFfiM $ SymCCPrimitive.alwaysMatches.runWithCexGivenRawModel schema req rawModel
+
+@[export runCheckNeverMatchesWithCexGivenRawModel] unsafe def runCheckNeverMatchesWithCexGivenRawModel (schema : Schema) (req : ByteArray) (rawModel : ByteArray) : String :=
+  runFfiM $ SymCCPrimitive.neverMatches.runWithCexGivenRawModel schema req rawModel
+
+@[export runCheckMatchesEquivalentWithCexGivenRawModel] unsafe def runCheckMatchesEquivalentWithCexGivenRawModel (schema : Schema) (req : ByteArray) (rawModel : ByteArray) : String :=
+  runFfiM $ SymCCPrimitive.matchesEquivalent.runWithCexGivenRawModel schema req rawModel
+
+@[export runCheckMatchesImpliesWithCexGivenRawModel] unsafe def runCheckMatchesImpliesWithCexGivenRawModel (schema : Schema) (req : ByteArray) (rawModel : ByteArray) : String :=
+  runFfiM $ SymCCPrimitive.matchesImplies.runWithCexGivenRawModel schema req rawModel
+
+@[export runCheckMatchesDisjointWithCexGivenRawModel] unsafe def runCheckMatchesDisjointWithCexGivenRawModel (schema : Schema) (req : ByteArray) (rawModel : ByteArray) : String :=
+  runFfiM $ SymCCPrimitive.matchesDisjoint.runWithCexGivenRawModel schema req rawModel
+
+@[export runCheckAlwaysAllowsWithCexGivenRawModel] unsafe def runCheckAlwaysAllowsWithCexGivenRawModel (schema : Schema) (req : ByteArray) (rawModel : ByteArray) : String :=
+  runFfiM $ SymCCPrimitive.alwaysAllows.runWithCexGivenRawModel schema req rawModel
+
+@[export runCheckAlwaysDeniesWithCexGivenRawModel] unsafe def runCheckAlwaysDeniesWithCexGivenRawModel (schema : Schema) (req : ByteArray) (rawModel : ByteArray) : String :=
+  runFfiM $ SymCCPrimitive.alwaysDenies.runWithCexGivenRawModel schema req rawModel
+
+@[export runCheckEquivalentWithCexGivenRawModel] unsafe def runCheckEquivalentWithCexGivenRawModel (schema : Schema) (req : ByteArray) (rawModel : ByteArray) : String :=
+  runFfiM $ SymCCPrimitive.equivalent.runWithCexGivenRawModel schema req rawModel
+
+@[export runCheckImpliesWithCexGivenRawModel] unsafe def runCheckImpliesWithCexGivenRawModel (schema : Schema) (req : ByteArray) (rawModel : ByteArray) : String :=
+  runFfiM $ SymCCPrimitive.implies.runWithCexGivenRawModel schema req rawModel
+
+@[export runCheckDisjointWithCexGivenRawModel] unsafe def runCheckDisjointWithCexGivenRawModel (schema : Schema) (req : ByteArray) (rawModel : ByteArray) : String :=
+  runFfiM $ SymCCPrimitive.disjoint.runWithCexGivenRawModel schema req rawModel
+
+/-
+-------
 Each of the following `print*` functions returns a JSON encoded string that encodes
   1.) .error err_message if there was an error in parsing or encoding the vcs
   2.) .ok { data := (), duration := <encode+print_time> } if the vcs were successfully printed to stdout in SMTLib format
@@ -690,56 +751,6 @@ Note that the time does _not_ include policy compilation to Term, so, the work a
 
 @[export assertsOfCheckMatchesDisjoint] unsafe def assertsOfCheckMatchesDisjoint (schema : Schema) (req: ByteArray) : String :=
   runFfiM $ SymCCPrimitive.matchesDisjoint.asserts schema req
-
-/-
--------
-Each of the following `assertsOf*OnOriginal` functions returns a JSON encoded string that encodes
-  1.) .error err_message if there was an error in parsing or generating the vcs
-  2.) .ok { data := <encoding>, duration := ... } where <encoding> is the JSON encoding of the VCs (Asserts/Terms) computed for the request
-
-  This returns the `Asserts` computed by running the UNOPTIMIZED compiler on the
-  _original deserialized_ policy (not the post-typecheck, well-typed policy).
-  This DOES NOT use the optimized interface (which requires you to compile the
-  typechecked policy, not the original deserialized policy), so it is
-  inefficient. Callers should migrate to `assertsOf*` functions if/when possible.
-
-  For these functions (only), the time _does_ include policy compilation to Term
-  (via the unoptimized compiler)
--------
--/
-
-@[export assertsOfCheckNeverErrorsOnOriginal] unsafe def assertsOfCheckNeverErrorsOnOriginal (schema : Schema) (req: ByteArray) : String :=
-  runFfiM $ SymCCPrimitive.neverErrors.assertsOnOriginal schema req
-
-@[export assertsOfCheckAlwaysMatchesOnOriginal] unsafe def assertsOfCheckAlwaysMatchesOnOriginal (schema : Schema) (req: ByteArray) : String :=
-  runFfiM $ SymCCPrimitive.alwaysMatches.assertsOnOriginal schema req
-
-@[export assertsOfCheckNeverMatchesOnOriginal] unsafe def assertsOfCheckNeverMatchesOnOriginal (schema : Schema) (req: ByteArray) : String :=
-  runFfiM $ SymCCPrimitive.neverMatches.assertsOnOriginal schema req
-
-@[export assertsOfCheckAlwaysAllowsOnOriginal] unsafe def assertsOfCheckAlwaysAllowsOnOriginal (schema : Schema) (req: ByteArray) : String :=
-  runFfiM $ SymCCPrimitive.alwaysAllows.assertsOnOriginal schema req
-
-@[export assertsOfCheckAlwaysDeniesOnOriginal] unsafe def assertsOfCheckAlwaysDeniesOnOriginal (schema : Schema) (req: ByteArray) : String :=
-  runFfiM $ SymCCPrimitive.alwaysDenies.assertsOnOriginal schema req
-
-@[export assertsOfCheckEquivalentOnOriginal] unsafe def assertsOfCheckEquivalentOnOriginal (schema : Schema) (req: ByteArray) : String :=
-  runFfiM $ SymCCPrimitive.equivalent.assertsOnOriginal schema req
-
-@[export assertsOfCheckImpliesOnOriginal] unsafe def assertsOfCheckImpliesOnOriginal (schema : Schema) (req: ByteArray) : String :=
-  runFfiM $ SymCCPrimitive.implies.assertsOnOriginal schema req
-
-@[export assertsOfCheckDisjointOnOriginal] unsafe def assertsOfCheckDisjointOnOriginal (schema : Schema) (req: ByteArray) : String :=
-  runFfiM $ SymCCPrimitive.disjoint.assertsOnOriginal schema req
-
-@[export assertsOfCheckMatchesEquivalentOnOriginal] unsafe def assertsOfCheckMatchesEquivalentOnOriginal (schema : Schema) (req: ByteArray) : String :=
-  runFfiM $ SymCCPrimitive.matchesEquivalent.assertsOnOriginal schema req
-
-@[export assertsOfCheckMatchesImpliesOnOriginal] unsafe def assertsOfCheckMatchesImpliesOnOriginal (schema : Schema) (req: ByteArray) : String :=
-  runFfiM $ SymCCPrimitive.matchesImplies.assertsOnOriginal schema req
-
-@[export assertsOfCheckMatchesDisjointOnOriginal] unsafe def assertsOfCheckMatchesDisjointOnOriginal (schema : Schema) (req: ByteArray) : String :=
-  runFfiM $ SymCCPrimitive.matchesDisjoint.assertsOnOriginal schema req
 
 /-
 -------

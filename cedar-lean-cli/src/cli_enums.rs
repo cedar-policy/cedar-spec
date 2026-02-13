@@ -46,10 +46,10 @@ pub(crate) struct PolicySetAnalysisArgs {
 pub(crate) struct ComparePolicySetAnalysisArgs {
     /// A file containing the first PolicySet to be analyzed
     #[clap(required = true)]
-    pub(crate) source_policyset_file: PathBuf,
+    pub(crate) pset1_file: PathBuf,
     /// A file containing the second PolicySet to be analyzed
     #[clap(required = true)]
-    pub(crate) target_policyset_file: PathBuf,
+    pub(crate) pset2_file: PathBuf,
     /// A file containing the schema for which the PolicySet(s) are to be analyzed against
     #[clap(required = true)]
     pub(crate) schema_file: PathBuf,
@@ -319,7 +319,7 @@ pub(crate) enum SymCCCommands {
         #[clap(flatten)]
         req_env: RequestEnvArgs,
     },
-    /// Check if the source and target PolicySets are equivalent
+    /// Check if the two PolicySets are equivalent
     CheckEquivalent {
         #[clap(flatten)]
         args: ComparePolicySetAnalysisArgs,
@@ -328,7 +328,7 @@ pub(crate) enum SymCCCommands {
         #[clap(flatten)]
         req_env: RequestEnvArgs,
     },
-    /// Check if the target PolicySet authorizes all requests that the source PolicySet authorizes
+    /// Check if every request allowed by `pset1` is also allowed by `pset2`
     CheckImplies {
         #[clap(flatten)]
         args: ComparePolicySetAnalysisArgs,
@@ -337,7 +337,7 @@ pub(crate) enum SymCCCommands {
         #[clap(flatten)]
         req_env: RequestEnvArgs,
     },
-    /// Check if the source and target PolicySets are disjoint (there is no authorization request that both PolicySets allow)
+    /// Check if two PolicySets are disjoint (there is no authorization request that both PolicySets allow)
     CheckDisjoint {
         #[clap(flatten)]
         args: ComparePolicySetAnalysisArgs,
@@ -356,7 +356,7 @@ pub(crate) enum AnalysisCommands {
         #[clap(flatten)]
         args: PolicySetAnalysisArgs,
     },
-    /// Compare the source PolicySet against the target PolicySet
+    /// Compare two PolicySets
     Compare {
         #[clap(flatten)]
         args: ComparePolicySetAnalysisArgs,

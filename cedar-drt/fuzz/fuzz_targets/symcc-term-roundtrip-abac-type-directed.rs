@@ -21,7 +21,7 @@ use cedar_lean_ffi::CedarLeanFfi;
 use similar_asserts::assert_eq;
 
 // Fuzzing Target to show that Asserts/Term Serialization/Deserialization does not effect the final SMTLib script produced
-fuzz_target!(|input: SinglePolicyFuzzTargetInput| {
+fuzz_target!(|input: SinglePolicyFuzzTargetInput<128>| {
     initialize_log();
     if let Ok((schema, policyset)) = input.into_inputs_as_pset() {
         let lean_ffi = CedarLeanFfi::new();

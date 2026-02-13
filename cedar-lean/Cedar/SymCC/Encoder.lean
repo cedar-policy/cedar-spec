@@ -74,6 +74,7 @@ structure EncoderState where
   types : RBMap TermType String (compareOfLessAndEq · ·)
   uufs  : RBMap UUF String (compareOfLessAndEq · ·)
   enums : RBMap EntityType (List String) (compareOfLessAndEq · ·)
+deriving Repr
 
 def EncoderState.init (εnv : SymEnv) : EncoderState :=
   let enums := εnv.entities.toList.filterMap λ (ety, d) => do (ety, (← d.members).toList)
@@ -259,11 +260,17 @@ def encodePattern : Pattern → EncoderM String
 
 def defineEntity (tyEnc : String) (entity : EntityUID) : EncoderM String := do
   match (← get).enums.find? entity.ty with
-  | .some members => return s!"{enumId tyEnc (members.idxOf entity.eid)}"
+  | .some members =>
+    match members.idxOf? entity.eid with
+    | .some enum_idx => return s!"{enumId tyEnc enum_idx}"
+    | .none          => throw (IO.userError s!"Unknown enum member `{entity.eid}`, expected one of {members}")
   | .none         => defineTerm tyEnc s!"({tyEnc} \"{← encodeString entity.eid}\")"
 
 private def indexOfAttr (a : Attr) : TermType → EncoderM Nat
-  | .record (.mk rty) => return rty.findIdx (Prod.fst · = a)
+  | .record (.mk rty) =>
+    match rty.findIdx? (Prod.fst · = a) with
+    | .some attr_idx => return attr_idx
+    | .none          => throw (IO.userError s!"Unknown record attribute `{a}`")
   | ty                => throw (IO.userError s!"Bad term: (record.get {a} {reprStr ty})")
 
 def defineRecordGet (tyEnc a tEnc : String) (ty : TermType) : EncoderM String := do

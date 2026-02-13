@@ -27,7 +27,7 @@ use cedar_policy_symcc::{CompiledPolicySet, always_denies_asserts};
 // implementations for AlwaysDenies are equivalent. Uses policysets containing
 // multiple policies, unlike `symcc-term-drt-always-denies` which tests with
 // singleton policysets.
-fuzz_target!(|input: SinglePolicySetFuzzTargetInput| {
+fuzz_target!(|input: SinglePolicySetFuzzTargetInput<32>| {
     initialize_log();
     if let Ok((schema, policyset)) = input.into_inputs() {
         let lean_ffi = CedarLeanFfi::new();
@@ -37,11 +37,7 @@ fuzz_target!(|input: SinglePolicySetFuzzTargetInput| {
             {
                 let rust_asserts = always_denies_asserts(&compiled_policies);
                 let lean_asserts = lean_ffi
-                    .asserts_of_check_always_denies(
-                        &compiled_policies.policies().clone().try_into().unwrap(),
-                        lean_schema.clone(),
-                        &req_env,
-                    )
+                    .asserts_of_check_always_denies(&policyset, lean_schema.clone(), &req_env)
                     // should succeed on the post-typecheck policies that were successfully produced by `CompiledPolicySet::compile()`
                     .unwrap()
                     .unwrap();

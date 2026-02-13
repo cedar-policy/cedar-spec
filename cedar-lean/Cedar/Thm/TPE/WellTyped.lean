@@ -18,7 +18,7 @@ import Cedar.TPE
 import Cedar.Thm.TPE.Input
 import Cedar.Thm.TPE.PreservesTypeOf
 import Cedar.Thm.TPE.WellTypedCases
-import Cedar.Thm.Validation.WellTyped.ResidualDefinition
+import Cedar.Thm.WellTyped.Residual.Definition
 import Cedar.Thm.Data.List
 import Cedar.Thm.Data.Map
 

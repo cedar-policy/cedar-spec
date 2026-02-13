@@ -25,6 +25,8 @@ import Cedar.Thm.TPE.PreservesTypeOf
 import Cedar.Thm.TPE.Policy
 import Cedar.Thm.TPE.Authorizer
 import Cedar.Thm.TPE.WellTyped
+import Cedar.Thm.TPE.WellTypedCases
+import Cedar.Thm.TPE.ErrorFree
 import Cedar.Thm.Validation
 import Cedar.Thm.Authorization
 
@@ -137,6 +139,27 @@ theorem partial_authorize_decision_is_sound
     unfold IsExplicitlyPermitted IsExplicitlyForbidden
     exact .intro h_permit h_not_forbid
 
+/-- Trivial composition of the first two soundness theorems directly relating
+the decision of partial authorization and subsequent re-authorization.-/
+theorem partial_re_authorize_decision_eq
+  {schema : Schema}
+  {policies : List Policy}
+  {req : Request}
+  {es : Entities}
+  {preq : PartialRequest}
+  {pes : PartialEntities}
+  {response : TPE.Response}
+  {decision : Decision} :
+  TPE.isAuthorized schema policies preq pes = Except.ok response →
+  isValidAndConsistent schema req es preq pes = Except.ok () →
+  response.decision = some decision →
+  (response.reauthorize req es).decision = decision
+:= by
+  intro h₁ h₂ h₃
+  have h₄ := partial_authorize_decision_is_sound h₁ h₂ h₃
+  have h₅ := reauthorize_is_sound h₂ h₁
+  simp [h₅, h₄]
+
 /-- All policies reported as erroring after partial authorization will appear in
 the set of erroring policies after concrete authorization.  -/
 theorem partial_authorize_erroring_policies_is_sound
@@ -218,9 +241,9 @@ theorem partial_authorize_allow_determining_policies_is_sound
   · rw [←hp₂] at hpid
     exact hpid
 
-/-- If the result of concrete authorization is `deny`, then all `forbid`
-policies satisfied after partial authorization are determining policies.-/
-theorem partial_authorize_deny_determining_policies_is_sound
+/-- We can prove a stronger theorem for `satisfiedForbid`:
+because `forbid_trumps_permit` any satisfied forbid policy will always be determining.-/
+theorem partial_authorize_satisfied_forbid_is_determining
   {schema : Schema}
   {policies : List Policy}
   {req : Request}
@@ -230,45 +253,51 @@ theorem partial_authorize_deny_determining_policies_is_sound
   {response : TPE.Response} :
   TPE.isAuthorized schema policies preq pes = Except.ok response →
   isValidAndConsistent schema req es preq pes = Except.ok () →
-  (Spec.isAuthorized req es policies).decision = .deny →
   response.satisfiedForbids ⊆ (Spec.isAuthorized req es policies).determiningPolicies
 := by
-  intro h₁ h₂ h_deny
+  intro h₁ h₂
   simp only [TPE.isAuthorized] at h₁
 
-  have h_deny' : ¬ ((satisfiedPolicies Effect.forbid policies req es).isEmpty = true ∧ (satisfiedPolicies Effect.permit policies req es).isEmpty = false) := by
-    grind [Spec.isAuthorized]
-  simp only [Spec.isAuthorized, Bool.and_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true, h_deny', ↓reduceIte]
-
   cases h₃ : List.mapM (λ p => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes) policies <;>
-    simp [h₃] at h₁
+    simp only [bind_pure_comp, h₃, Except.map_ok, Except.map_error, Except.ok.injEq, reduceCtorEq] at h₁
   rename_i rps
   rw [List.mapM_ok_iff_forall₂] at h₃
   subst response
 
-  simp [isAuthorized.isAuthorizedFromResiduals, isAuthorized.satisfiedPolicies,
-    satisfiedPolicies, satisfiedWithEffect, satisfied, Bool.and_eq_true,
-    decide_eq_true_eq, Set.subset_def, ← Set.make_mem, List.mem_filterMap,
-    ResidualPolicy.satisfiedWithEffect, ResidualPolicy.satisfied, Residual.isTrue,
-    Option.ite_none_right_eq_some, forall_exists_index, and_imp]
+  simp only [isAuthorized.isAuthorizedFromResiduals, isAuthorized.satisfiedPolicies, Set.subset_def,
+    ← Set.make_mem, List.mem_filterMap, ResidualPolicy.satisfiedWithEffect,
+    ResidualPolicy.satisfied, Residual.isTrue, Bool.and_eq_true, beq_iff_eq,
+    Option.ite_none_right_eq_some, Option.some.injEq, forall_exists_index, and_imp]
   intro pid rp hrp heff hs hpid
   split at hs <;> try contradiction
 
   have ⟨p, hp₁, hp₂⟩ := List.forall₂_implies_all_right h₃ rp hrp
   cases hp₃ : evaluatePolicy schema p preq pes <;>
-   simp only [hp₃, Except.map_error, Except.map_ok, reduceCtorEq, Except.ok.injEq] at hp₂
+    simp only [hp₃, Except.map_error, Except.map_ok, reduceCtorEq, Except.ok.injEq] at hp₂
+  rename_i ty hr r
 
-  exists p
-  and_intros
-  · exact hp₁
-  · rw [←hp₂] at heff
-    exact heff
-  · rename_i ty hr r
+  have ha : Spec.evaluate p.toExpr req es = .ok (.prim (.bool true)) := by
     replace hr : r = .val (.prim (.bool true)) ty := by grind
     have ha := partial_evaluate_policy_is_sound hp₃ h₂
     simp only [hr, Residual.evaluate] at ha
     exact to_option_right_ok' ha
-  · rw [←hp₂] at hpid
-    exact hpid
+
+  suffices h : pid ∈ satisfiedPolicies Effect.forbid policies req es by
+    have hd : IsExplicitlyForbidden req es policies := by
+      exists p
+      and_intros <;> grind [satisfied]
+    replace hd : (Spec.isAuthorized req es policies).decision = .deny :=
+      forbid_trumps_permit _ _ _ hd
+    grind [Spec.isAuthorized]
+
+  simp only [satisfiedPolicies, satisfiedWithEffect, satisfied, Bool.and_eq_true, beq_iff_eq,
+    decide_eq_true_eq, ← Set.make_mem, List.mem_filterMap, Option.ite_none_right_eq_some,
+    Option.some.injEq]
+  exists p
+  and_intros
+  · exact hp₁
+  · simpa [←hp₂] using heff
+  · exact ha
+  · simpa [←hp₂] using hpid
 
 end Cedar.Thm

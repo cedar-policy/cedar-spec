@@ -25,7 +25,8 @@ use crate::datatypes::{
 };
 use crate::err::FfiError;
 use crate::lean_object::{
-    OwnedLeanObject, call_lean_ffi_takes_obj_and_protobuf, call_lean_ffi_takes_protobuf,
+    OwnedLeanObject, call_lean_ffi_takes_obj_and_protobuf,
+    call_lean_ffi_takes_obj_protobuf_and_string, call_lean_ffi_takes_protobuf,
 };
 use crate::messages::*;
 
@@ -57,36 +58,76 @@ unsafe extern "C" {
         schema: *mut lean_object,
         req: *mut lean_object,
     ) -> *mut lean_object;
+    fn runCheckNeverErrorsWithCexGivenRawModel(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+        raw_model: *mut lean_object,
+    ) -> *mut lean_object;
     fn runCheckAlwaysMatches(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn runCheckAlwaysMatchesWithCex(
         schema: *mut lean_object,
         req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn runCheckAlwaysMatchesWithCexGivenRawModel(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+        raw_model: *mut lean_object,
     ) -> *mut lean_object;
     fn runCheckNeverMatches(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn runCheckNeverMatchesWithCex(
         schema: *mut lean_object,
         req: *mut lean_object,
     ) -> *mut lean_object;
+    fn runCheckNeverMatchesWithCexGivenRawModel(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+        raw_model: *mut lean_object,
+    ) -> *mut lean_object;
     fn runCheckAlwaysAllows(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn runCheckAlwaysAllowsWithCex(
         schema: *mut lean_object,
         req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn runCheckAlwaysAllowsWithCexGivenRawModel(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+        raw_model: *mut lean_object,
     ) -> *mut lean_object;
     fn runCheckAlwaysDenies(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn runCheckAlwaysDeniesWithCex(
         schema: *mut lean_object,
         req: *mut lean_object,
     ) -> *mut lean_object;
+    fn runCheckAlwaysDeniesWithCexGivenRawModel(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+        raw_model: *mut lean_object,
+    ) -> *mut lean_object;
     fn runCheckEquivalent(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn runCheckEquivalentWithCex(
         schema: *mut lean_object,
         req: *mut lean_object,
     ) -> *mut lean_object;
+    fn runCheckEquivalentWithCexGivenRawModel(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+        raw_model: *mut lean_object,
+    ) -> *mut lean_object;
     fn runCheckImplies(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn runCheckImpliesWithCex(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
+    fn runCheckImpliesWithCexGivenRawModel(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+        raw_model: *mut lean_object,
+    ) -> *mut lean_object;
     fn runCheckDisjoint(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn runCheckDisjointWithCex(schema: *mut lean_object, req: *mut lean_object)
     -> *mut lean_object;
+    fn runCheckDisjointWithCexGivenRawModel(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+        raw_model: *mut lean_object,
+    ) -> *mut lean_object;
     fn runCheckMatchesEquivalent(
         schema: *mut lean_object,
         req: *mut lean_object,
@@ -95,16 +136,31 @@ unsafe extern "C" {
         schema: *mut lean_object,
         req: *mut lean_object,
     ) -> *mut lean_object;
+    fn runCheckMatchesEquivalentWithCexGivenRawModel(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+        raw_model: *mut lean_object,
+    ) -> *mut lean_object;
     fn runCheckMatchesImplies(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
     fn runCheckMatchesImpliesWithCex(
         schema: *mut lean_object,
         req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn runCheckMatchesImpliesWithCexGivenRawModel(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+        raw_model: *mut lean_object,
     ) -> *mut lean_object;
     fn runCheckMatchesDisjoint(schema: *mut lean_object, req: *mut lean_object)
     -> *mut lean_object;
     fn runCheckMatchesDisjointWithCex(
         schema: *mut lean_object,
         req: *mut lean_object,
+    ) -> *mut lean_object;
+    fn runCheckMatchesDisjointWithCexGivenRawModel(
+        schema: *mut lean_object,
+        req: *mut lean_object,
+        raw_model: *mut lean_object,
     ) -> *mut lean_object;
 
     fn printCheckNeverErrors(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
@@ -185,15 +241,7 @@ unsafe extern "C" {
         schema: *mut lean_object,
         req: *mut lean_object,
     ) -> *mut lean_object;
-    fn assertsOfCheckNeverErrorsOnOriginal(
-        schema: *mut lean_object,
-        req: *mut lean_object,
-    ) -> *mut lean_object;
     fn assertsOfCheckAlwaysMatches(
-        schema: *mut lean_object,
-        req: *mut lean_object,
-    ) -> *mut lean_object;
-    fn assertsOfCheckAlwaysMatchesOnOriginal(
         schema: *mut lean_object,
         req: *mut lean_object,
     ) -> *mut lean_object;
@@ -201,15 +249,7 @@ unsafe extern "C" {
         schema: *mut lean_object,
         req: *mut lean_object,
     ) -> *mut lean_object;
-    fn assertsOfCheckNeverMatchesOnOriginal(
-        schema: *mut lean_object,
-        req: *mut lean_object,
-    ) -> *mut lean_object;
     fn assertsOfCheckAlwaysAllows(
-        schema: *mut lean_object,
-        req: *mut lean_object,
-    ) -> *mut lean_object;
-    fn assertsOfCheckAlwaysAllowsOnOriginal(
         schema: *mut lean_object,
         req: *mut lean_object,
     ) -> *mut lean_object;
@@ -217,33 +257,13 @@ unsafe extern "C" {
         schema: *mut lean_object,
         req: *mut lean_object,
     ) -> *mut lean_object;
-    fn assertsOfCheckAlwaysDeniesOnOriginal(
-        schema: *mut lean_object,
-        req: *mut lean_object,
-    ) -> *mut lean_object;
     fn assertsOfCheckEquivalent(
         schema: *mut lean_object,
         req: *mut lean_object,
     ) -> *mut lean_object;
-    fn assertsOfCheckEquivalentOnOriginal(
-        schema: *mut lean_object,
-        req: *mut lean_object,
-    ) -> *mut lean_object;
     fn assertsOfCheckImplies(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
-    fn assertsOfCheckImpliesOnOriginal(
-        schema: *mut lean_object,
-        req: *mut lean_object,
-    ) -> *mut lean_object;
     fn assertsOfCheckDisjoint(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
-    fn assertsOfCheckDisjointOnOriginal(
-        schema: *mut lean_object,
-        req: *mut lean_object,
-    ) -> *mut lean_object;
     fn assertsOfCheckMatchesEquivalent(
-        schema: *mut lean_object,
-        req: *mut lean_object,
-    ) -> *mut lean_object;
-    fn assertsOfCheckMatchesEquivalentOnOriginal(
         schema: *mut lean_object,
         req: *mut lean_object,
     ) -> *mut lean_object;
@@ -251,15 +271,7 @@ unsafe extern "C" {
         schema: *mut lean_object,
         req: *mut lean_object,
     ) -> *mut lean_object;
-    fn assertsOfCheckMatchesImpliesOnOriginal(
-        schema: *mut lean_object,
-        req: *mut lean_object,
-    ) -> *mut lean_object;
     fn assertsOfCheckMatchesDisjoint(
-        schema: *mut lean_object,
-        req: *mut lean_object,
-    ) -> *mut lean_object;
-    fn assertsOfCheckMatchesDisjointOnOriginal(
         schema: *mut lean_object,
         req: *mut lean_object,
     ) -> *mut lean_object;
@@ -466,6 +478,58 @@ macro_rules! comparePolicySet_func {
     };
 }
 
+/// A macro which converts symcc-request to protobuf, calls the lean code, then deserializes the output
+///
+/// We could easily create the `*GivenRawModel` variants of the other macros, but today we only need this one
+macro_rules! comparePolicySetGivenRawModel_func {
+    // Pattern for function identifier
+    ($timed_func_name:ident, $untimed_func_name:ident, $lean_func_name:ident, $transform:ident, $ret_ty:ty) => {
+        comparePolicySetGivenRawModel_func!(@internal $timed_func_name, $untimed_func_name, $lean_func_name, $transform, $ret_ty);
+    };
+    // Pattern for closure expression
+    ($timed_func_name:ident, $untimed_func_name:ident, $lean_func_name:ident, $transform:expr, $ret_ty:ty) => {
+        comparePolicySetGivenRawModel_func!(@internal $timed_func_name, $untimed_func_name, $lean_func_name, $transform, $ret_ty);
+    };
+    // Internal implementation
+    (@internal $timed_func_name:ident, $untimed_func_name:ident, $lean_func_name:ident, $transform:expr, $ret_ty:ty) => {
+        pub fn $timed_func_name(
+            &self,
+            src_policyset: &PolicySet,
+            tgt_policyset: &PolicySet,
+            schema: LeanSchema,
+            request_env: &RequestEnv,
+            raw_model: &str,
+        ) -> Result<TimedResult<$ret_ty>, FfiError> {
+            let response = unsafe { call_lean_ffi_takes_obj_protobuf_and_string(
+                $lean_func_name,
+                schema.0,
+                &proto::ComparePolicySetsRequest::new(
+                    src_policyset,
+                    tgt_policyset,
+                    request_env,
+                ),
+                raw_model,
+            )};
+            match response.as_borrowed().deserialize_into()? {
+                ResultDef::Ok(t) => Ok(TimedResult::from_def(t).transform($transform)),
+                ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
+            }
+        }
+        pub fn $untimed_func_name(
+            &self,
+            src_policyset: &PolicySet,
+            tgt_policyset: &PolicySet,
+            schema: LeanSchema,
+            request_env: &RequestEnv,
+            raw_model: &str,
+        ) -> Result<$ret_ty, FfiError> {
+            Ok(self
+                .$timed_func_name(src_policyset, tgt_policyset, schema, request_env, raw_model)?
+                .take_result())
+        }
+    };
+}
+
 macro_rules! checkAsserts_func {
     // Pattern for function identifier
     (&timed_func_name:ident, $untimed_func_name:ident, $lean_func_name:ident, $transform:ident, $ret_ty:ty) => {
@@ -548,6 +612,38 @@ impl CedarLeanFfi {
         Option<Env>
     );
 
+    checkPolicy_func!(
+        run_check_always_matches_timed,
+        run_check_always_matches,
+        runCheckAlwaysMatches,
+        |x| x,
+        bool
+    );
+
+    checkPolicy_func!(
+        run_check_always_matches_with_cex_timed,
+        run_check_always_matches_with_cex,
+        runCheckAlwaysMatchesWithCex,
+        |x| x,
+        Option<Env>
+    );
+
+    checkPolicy_func!(
+        run_check_never_matches_timed,
+        run_check_never_matches,
+        runCheckNeverMatches,
+        |x| x,
+        bool
+    );
+
+    checkPolicy_func!(
+        run_check_never_matches_with_cex_timed,
+        run_check_never_matches_with_cex,
+        runCheckNeverMatchesWithCex,
+        |x| x,
+        Option<Env>
+    );
+
     checkPolicySet_func!(
         run_check_always_allows_timed,
         run_check_always_allows,
@@ -596,6 +692,14 @@ impl CedarLeanFfi {
         Option<Env>
     );
 
+    comparePolicySetGivenRawModel_func!(
+        run_check_equivalent_with_cex_given_raw_model_timed,
+        run_check_equivalent_with_cex_given_raw_model,
+        runCheckEquivalentWithCexGivenRawModel,
+        |x| x,
+        Env
+    );
+
     comparePolicySet_func!(
         run_check_implies_timed,
         run_check_implies,
@@ -612,6 +716,14 @@ impl CedarLeanFfi {
         Option<Env>
     );
 
+    comparePolicySetGivenRawModel_func!(
+        run_check_implies_with_cex_given_raw_model_timed,
+        run_check_implies_with_cex_given_raw_model,
+        runCheckImpliesWithCexGivenRawModel,
+        |x| x,
+        Env
+    );
+
     comparePolicySet_func!(
         run_check_disjoint_timed,
         run_check_disjoint,
@@ -624,6 +736,62 @@ impl CedarLeanFfi {
         run_check_disjoint_with_cex_timed,
         run_check_disjoint_with_cex,
         runCheckDisjointWithCex,
+        |x| x,
+        Option<Env>
+    );
+
+    comparePolicySetGivenRawModel_func!(
+        run_check_disjoint_with_cex_given_raw_model_timed,
+        run_check_disjoint_with_cex_given_raw_model,
+        runCheckDisjointWithCexGivenRawModel,
+        |x| x,
+        Env
+    );
+
+    comparePolicies_func!(
+        run_check_matches_equivalent_timed,
+        run_check_matches_equivalent,
+        runCheckMatchesEquivalent,
+        |x| x,
+        bool
+    );
+
+    comparePolicies_func!(
+        run_check_matches_equivalent_with_cex_timed,
+        run_check_matches_equivalent_with_cex,
+        runCheckMatchesEquivalentWithCex,
+        |x| x,
+        Option<Env>
+    );
+
+    comparePolicies_func!(
+        run_check_matches_implies_timed,
+        run_check_matches_implies,
+        runCheckMatchesImplies,
+        |x| x,
+        bool
+    );
+
+    comparePolicies_func!(
+        run_check_matches_implies_with_cex_timed,
+        run_check_matches_implies_with_cex,
+        runCheckMatchesImpliesWithCex,
+        |x| x,
+        Option<Env>
+    );
+
+    comparePolicies_func!(
+        run_check_matches_disjoint_timed,
+        run_check_matches_disjoint,
+        runCheckMatchesDisjoint,
+        |x| x,
+        bool
+    );
+
+    comparePolicies_func!(
+        run_check_matches_disjoint_with_cex_timed,
+        run_check_matches_disjoint_with_cex,
+        runCheckMatchesDisjointWithCex,
         |x| x,
         Option<Env>
     );
@@ -710,14 +878,6 @@ impl CedarLeanFfi {
     );
 
     checkPolicy_func!(
-        asserts_of_check_never_errors_on_original_timed,
-        asserts_of_check_never_errors_on_original,
-        assertsOfCheckNeverErrorsOnOriginal,
-        ResultDef::to_result,
-        Result<Vec<Term>, String>
-    );
-
-    checkPolicy_func!(
         asserts_of_check_always_matches_timed,
         asserts_of_check_always_matches,
         assertsOfCheckAlwaysMatches,
@@ -726,25 +886,9 @@ impl CedarLeanFfi {
     );
 
     checkPolicy_func!(
-        asserts_of_check_always_matches_on_original_timed,
-        asserts_of_check_always_matches_on_original,
-        assertsOfCheckAlwaysMatchesOnOriginal,
-        ResultDef::to_result,
-        Result<Vec<Term>, String>
-    );
-
-    checkPolicy_func!(
         asserts_of_check_never_matches_timed,
         asserts_of_check_never_matches,
         assertsOfCheckNeverMatches,
-        ResultDef::to_result,
-        Result<Vec<Term>, String>
-    );
-
-    checkPolicy_func!(
-        asserts_of_check_never_matches_on_original_timed,
-        asserts_of_check_never_matches_on_original,
-        assertsOfCheckNeverMatchesOnOriginal,
         ResultDef::to_result,
         Result<Vec<Term>, String>
     );
@@ -758,25 +902,9 @@ impl CedarLeanFfi {
     );
 
     checkPolicySet_func!(
-        asserts_of_check_always_allows_on_original_timed,
-        asserts_of_check_always_allows_on_original,
-        assertsOfCheckAlwaysAllowsOnOriginal,
-        ResultDef::to_result,
-        Result<Vec<Term>, String>
-    );
-
-    checkPolicySet_func!(
         asserts_of_check_always_denies_timed,
         asserts_of_check_always_denies,
         assertsOfCheckAlwaysDenies,
-        ResultDef::to_result,
-        Result<Vec<Term>, String>
-    );
-
-    checkPolicySet_func!(
-        asserts_of_check_always_denies_on_original_timed,
-        asserts_of_check_always_denies_on_original,
-        assertsOfCheckAlwaysDeniesOnOriginal,
         ResultDef::to_result,
         Result<Vec<Term>, String>
     );
@@ -790,14 +918,6 @@ impl CedarLeanFfi {
     );
 
     comparePolicySet_func!(
-        asserts_of_check_equivalent_on_original_timed,
-        asserts_of_check_equivalent_on_original,
-        assertsOfCheckEquivalentOnOriginal,
-        ResultDef::to_result,
-        Result<Vec<Term>, String>
-    );
-
-    comparePolicySet_func!(
         asserts_of_check_implies_timed,
         asserts_of_check_implies,
         assertsOfCheckImplies,
@@ -806,25 +926,9 @@ impl CedarLeanFfi {
     );
 
     comparePolicySet_func!(
-        asserts_of_check_implies_on_original_timed,
-        asserts_of_check_implies_on_original,
-        assertsOfCheckImpliesOnOriginal,
-        ResultDef::to_result,
-        Result<Vec<Term>, String>
-    );
-
-    comparePolicySet_func!(
         asserts_of_check_disjoint_timed,
         asserts_of_check_disjoint,
         assertsOfCheckDisjoint,
-        ResultDef::to_result,
-        Result<Vec<Term>, String>
-    );
-
-    comparePolicySet_func!(
-        asserts_of_check_disjoint_on_original_timed,
-        asserts_of_check_disjoint_on_original,
-        assertsOfCheckDisjointOnOriginal,
         ResultDef::to_result,
         Result<Vec<Term>, String>
     );
@@ -838,14 +942,6 @@ impl CedarLeanFfi {
     );
 
     comparePolicies_func!(
-        asserts_of_check_matches_equivalent_on_original_timed,
-        asserts_of_check_matches_equivalent_on_original,
-        assertsOfCheckMatchesEquivalentOnOriginal,
-        ResultDef::to_result,
-        Result<Vec<Term>, String>
-    );
-
-    comparePolicies_func!(
         asserts_of_check_matches_implies_timed,
         asserts_of_check_matches_implies,
         assertsOfCheckMatchesImplies,
@@ -854,25 +950,9 @@ impl CedarLeanFfi {
     );
 
     comparePolicies_func!(
-        asserts_of_check_matches_implies_on_original_timed,
-        asserts_of_check_matches_implies_on_original,
-        assertsOfCheckMatchesImpliesOnOriginal,
-        ResultDef::to_result,
-        Result<Vec<Term>, String>
-    );
-
-    comparePolicies_func!(
         asserts_of_check_matches_disjoint_timed,
         asserts_of_check_matches_disjoint,
         assertsOfCheckMatchesDisjoint,
-        ResultDef::to_result,
-        Result<Vec<Term>, String>
-    );
-
-    comparePolicies_func!(
-        asserts_of_check_matches_disjoint_on_original_timed,
-        asserts_of_check_matches_disjoint_on_original,
-        assertsOfCheckMatchesDisjointOnOriginal,
         ResultDef::to_result,
         Result<Vec<Term>, String>
     );

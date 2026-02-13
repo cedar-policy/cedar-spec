@@ -1,0 +1,17 @@
+---
+source: tests/integration_tests.rs
+expression: "cmd_output(&mut\ncargo::cargo_bin_cmd!().current_dir(\"examples/analyze/file_share_demo\").arg(\"analyze\").arg(\"policies\").arg(\"policies1.cedar\").arg(\"policies.cedarschema\"),\nfalse,)"
+---
+Found 1 vacuous policies:
+Policy `admin-delete` applies to no authorization requests.
+
+Found 3 request environment specific warnings:
++---------------+--------------+--------------+----------------------------------------------+
+| PrincipalType | ActionName   | ResourceType | Findings                                     |
++---------------+--------------+--------------+----------------------------------------------+
+| User          | AddReader    | Document     | Policy `edit-file` shadowed by `any-own`     |
++---------------+--------------+--------------+----------------------------------------------+
+| User          | DownloadFile | Document     | Policy `any-own` shadowed by `download-file` |
++---------------+--------------+--------------+----------------------------------------------+
+| User          | EditFile     | Document     | Policy `edit-file` shadowed by `any-own`     |
++---------------+--------------+--------------+----------------------------------------------+
