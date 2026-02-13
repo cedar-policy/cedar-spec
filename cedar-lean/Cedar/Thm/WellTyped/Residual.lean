@@ -14,6 +14,7 @@
  limitations under the License.
 -/
 
+import Cedar.Thm.WellTyped.Residual.Definition
 import Cedar.Thm.WellTyped.Residual.Soundness
 import Cedar.Thm.WellTyped.Expr.Typechecking
 import Cedar.TPE.Residual

@@ -20,6 +20,10 @@ import Cedar.TPE.Residual
 import Cedar.Thm.TPE.Conversion
 import Cedar.Data.Map
 
+import Cedar.Thm.WellTyped.Expr.Definition
+import Cedar.Thm.WellTyped.Expr.TypeLifting
+import Cedar.Thm.WellTyped.Expr.WF
+
 /-!
 This file contains well-typedness theorems of `TypedExpr`
 -/
