@@ -132,8 +132,9 @@ pub fn run_auth_test(
             assert_eq!(
                 rust_res_for_comparison,
                 definitional_res.response,
-                "Mismatch for {request}\nPolicies:\n{policies}\nEntities:\n{}",
-                entities.as_ref()
+                "Mismatch for {request}, with error comparison mode {ecmode:?}\nPolicies:\n{policies}\nEntities:\n{es}",
+                ecmode = custom_impl.error_comparison_mode(),
+                es = entities.as_ref(),
             );
             rust_res
         }
