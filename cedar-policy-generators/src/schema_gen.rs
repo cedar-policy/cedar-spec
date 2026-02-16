@@ -28,17 +28,9 @@ use smol_str::SmolStr;
 impl From<types::Type> for abac::Type {
     fn from(ty: types::Type) -> Self {
         match ty {
-            types::Type::False
-            | types::Type::True
-            | types::Type::Primitive {
-                primitive_type: types::Primitive::Bool,
-            } => Self::Bool,
-            types::Type::Primitive {
-                primitive_type: types::Primitive::Long,
-            } => Self::Long,
-            types::Type::Primitive {
-                primitive_type: types::Primitive::String,
-            } => Self::String,
+            types::Type::Bool(_) => Self::Bool,
+            types::Type::Long => Self::Long,
+            types::Type::String => Self::String,
             types::Type::Never => {
                 unreachable!("validated schema shouldn't contain such type variant")
             }
