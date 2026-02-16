@@ -48,6 +48,10 @@ def parse (str : String) : Option Decimal :=
     let rlen := right.length
     if 0 < rlen ∧ rlen ≤ DECIMAL_DIGITS
     then
+      -- String.toInt? has undocumented behavior (well, undocumented as of this writing)
+      -- that it ignores `_` characters. We want to disallow strings with `_` characters
+      -- per the Cedar spec.
+      if left.contains '_' ∨ right.contains '_' then .none else
       match String.toInt? left, String.toNat? right with
       | .some l, .some r =>
         let l' := l * (Int.pow 10 DECIMAL_DIGITS)
