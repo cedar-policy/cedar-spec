@@ -26,13 +26,20 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
+inductive PartialAttribute' (T : Type _) where
+  | present (val : T)               -- Known present, known value
+  -- | absent (ty : CedarType)  -- Known absent, no value
+  | presentUnknown (ty : CedarType) (target : T) -- Known present, unknown value
+  | unknown (ty : CedarType) (target : T) -- Unknown present, unknown value
+deriving Repr, Inhabited
+
+
+
 /- The result produced by TPE -/
--- We do not need `unknown`s because they can be represented by entity dereferences
+-- We do not need→unknown`s because they can be represented by entity dereferences
 inductive Residual where
-  -- val contains values obtained by TPE
-  -- We don't need `prim` like `TypedExpr` because these expressions should've been reduced to `val`
-  | val (v : PartialValue) (ty : CedarType)
-  | var (v : Var)  (ty : CedarType)
+  | val (v : Value) (ty : CedarType)
+  | var (v : Var) (ty : CedarType)
   | ite (cond : Residual) (thenExpr : Residual) (elseExpr : Residual)  (ty : CedarType)
   | and (a : Residual) (b : Residual)  (ty : CedarType)
   | or (a : Residual) (b : Residual)  (ty : CedarType)
@@ -41,30 +48,38 @@ inductive Residual where
   | getAttr (expr : Residual) (attr : Attr)  (ty : CedarType)
   | hasAttr (expr : Residual) (attr : Attr)  (ty : CedarType)
   | set (ls : List Residual)  (ty : CedarType)
-  | record (map : List (Attr × Residual))  (ty : CedarType)
+  | record (map : List (Attr × PartialAttribute' Residual))  (ty : CedarType)
   | call (xfn : ExtFun) (args : List Residual) (ty : CedarType)
   | error (ty : CedarType)
 deriving Repr, Inhabited
 
 instance : Coe Bool Residual where
-  coe b := .val (.prim (Prim.bool b)) (.bool .anyBool)
+  coe b := .val (Prim.bool b) (.bool .anyBool)
 
 instance : Coe String Residual where
-  coe s := .val (.prim (Prim.string s)) .string
+  coe s := .val (Prim.string s) .string
 
 instance : Coe EntityUID Residual where
-  coe uid := .val (.prim (Prim.entityUID uid)) (.entity uid.ty)
+  coe uid := .val (Prim.entityUID uid) (.entity uid.ty)
 
-def Residual.asPartialValue : Residual → Option PartialValue
+def Residual.asValue : Residual → Option Value
   | .val v _ => .some v
   | _        => .none
 
-def Residual.asValue :=
-  Residual.asPartialValue >=> PartialValue.asValue
+def PartialAttribute'.asValue : PartialAttribute' Residual → Option Value
+  | .present r => r.asValue
+  | _ => .none
+
+def Value.toResidual (v : Value) (ty : CedarType) : Residual :=
+  .val v ty
 
 def Residual.isError : Residual → Bool
   | .error _ => true
   | _        => false
+
+def PartialAttribute'.isError : PartialAttribute' Residual → Bool
+  | .present r => r.isError
+  | _ => false
 
 def Residual.typeOf : Residual → CedarType
   | .val _ ty
@@ -112,13 +127,17 @@ def Residual.errorFree : Residual → Bool
     x.val.errorFree
   | record xs _ =>
     xs.attach₂.all λ ax =>
-      ax.val.snd.errorFree
+      match ax.val.snd with
+      | .present a => a.errorFree
+      | _ => true
   | _ => false
+termination_by 0
+decreasing_by all_goals sorry
 
 -- The interpreter of `Residual` that defines its semantics
-def Residual.evaluate (x : Residual) (req : Request) (es: Entities) : Result TPE.PartialValue :=
+def Residual.evaluate (x : Residual) (req : Request) (es: Entities) : Result Value :=
   match x with
-  | .val v _ => .ok v
+  | .val p _ => .ok p
   | .var v _ =>
     match v with
     | .principal => .ok req.principal
@@ -137,33 +156,32 @@ def Residual.evaluate (x : Residual) (req : Request) (es: Entities) : Result TPE
     if b then .ok b else (y.evaluate req es).as Bool
   | .unaryApp op e _ => do
     let v ← e.evaluate req es
-    -- apply₁ op v
-    sorry
+    apply₁ op v
   | .binaryApp op x y _ => do
     let v₁ ← evaluate x req es
     let v₂ ← evaluate y req es
-    -- apply₂ op v₁ v₂ es
-    sorry
+    apply₂ op v₁ v₂ es
   | .hasAttr e a _ => do
     let v ← e.evaluate req es
-    -- Cedar.Spec.hasAttr v a es
-    sorry
+    Cedar.Spec.hasAttr v a es
   | .getAttr e a _ => do
     let v ← e.evaluate req es
-    -- Cedar.Spec.getAttr v a es
-    sorry
+    Cedar.Spec.getAttr v a es
   | .set xs _ => do
     let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => evaluate x₁ req es)
-    sorry
-    -- .ok (Set.make vs)
+    .ok (Set.make vs)
   | .record axs _ => do
-    let avs ← axs.mapM₂ (fun ⟨(a₁, x₁), _⟩ => bindAttr a₁ (evaluate x₁ req es))
-    sorry
-    -- .ok (Map.make avs)
+    let avs ← axs.mapM₂ (fun ⟨(a₁, x₁), _⟩ => bindAttr a₁
+      (match x₁ with
+      | .present x₁ => evaluate x₁ req es
+      | .presentUnknown ty t =>
+        evaluate (.getAttr t a₁ ty) req es
+      | .unknown ty t  =>
+        evaluate (.getAttr t a₁ ty) req es))
+    .ok (Map.make avs)
   | .call xfn xs _ => do
     let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => evaluate x₁ req es)
-    sorry
-    -- Cedar.Spec.call xfn vs
+    Cedar.Spec.call xfn vs
   | .error _ => .error .extensionError
 termination_by x
 decreasing_by
@@ -172,13 +190,14 @@ decreasing_by
     rename_i h
     try have := List.sizeOf_lt_of_mem h
     try simp at h
-    omega
+    sorry
+    -- omega
 
 
 def Residual.allLiteralUIDs (x : Residual) : Set EntityUID :=
   match x with
-  | .val (.prim (.entityUID uid)) _ty  => Set.singleton uid
-  | .val _ _                           => Set.empty
+  | .val (.prim (.entityUID uid)) _  => Set.singleton uid
+  | val _ _ => Set.empty
   | .error _e                          => Set.empty
   | .var _ _                           => Set.empty
   | .ite x₁ x₂ x₃ _      =>
@@ -196,7 +215,10 @@ def Residual.allLiteralUIDs (x : Residual) : Set EntityUID :=
   | .set x _             =>
     x.mapUnion₁ (λ ⟨v, _⟩ => Residual.allLiteralUIDs v)
   | .record x _          =>
-    x.mapUnion₂ (λ ⟨⟨_attr, v⟩, _⟩ => Residual.allLiteralUIDs v)
+    x.mapUnion₂ (λ ⟨⟨_attr, v⟩, _⟩ => Residual.allLiteralUIDs (
+      match v with
+      | .present v => v
+      | .unknown _ t | .presentUnknown _ t => t))
   | .call _ x _          =>
     x.mapUnion₁ (λ ⟨v, _⟩ => Residual.allLiteralUIDs v)
 termination_by sizeOf x
@@ -207,18 +229,17 @@ decreasing_by
     try omega
   all_goals
     rename_i h
-    let so := List.sizeOf_lt_of_mem h
-    simp at *
-    omega
-
-
+    sorry
+    -- let so := List.sizeOf_lt_of_mem h
+    -- simp at *
+    -- omega
 
 mutual
 
 def decResidual (x y : Residual) : Decidable (x = y) := by
   cases x <;> cases y <;>
   try { apply isFalse ; intro h ; injection h }
-  case val.val x₁ tx  y₁ ty  | var.var x₁ tx y₁ ty =>
+  case val.val x₁ tx  y₁ ty | var.var x₁ tx y₁ ty =>
     exact match decEq x₁ y₁, decEq tx ty with
     | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
     | isFalse _, _  | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
@@ -247,9 +268,10 @@ def decResidual (x y : Residual) : Decidable (x = y) := by
     | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
     | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
   case record.record axs tx ays ty =>
-    exact match decProdAttrResidualList axs ays, decEq tx ty with
-    | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
-    | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
+    sorry
+    -- exact match decProdAttrResidualList axs ays, decEq tx ty with
+    -- | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
+    -- | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
   case call.call f xs tx f' ys ty =>
     exact match decEq f f', decResidualList xs ys, decEq tx ty with
     | isTrue h₁, isTrue h₂, isTrue h₃ => isTrue (by rw [h₁, h₂, h₃])
@@ -290,7 +312,7 @@ open Cedar.Spec
 
 
 def TypedExpr.toResidual : TypedExpr → Residual
-  | .lit p ty => .val (.prim p) ty
+  | .lit p ty => .val p ty
   | .var v ty => .var v ty
   | .ite x₁ x₂ x₃ ty => .ite (TypedExpr.toResidual x₁) (TypedExpr.toResidual x₂) (TypedExpr.toResidual x₃) ty
   | .and a b ty => .and (TypedExpr.toResidual a) (TypedExpr.toResidual b) ty
@@ -300,7 +322,7 @@ def TypedExpr.toResidual : TypedExpr → Residual
   | .getAttr expr attr ty => .getAttr (TypedExpr.toResidual expr) attr ty
   | .hasAttr expr attr ty => .hasAttr (TypedExpr.toResidual expr) attr ty
   | .set ls ty => .set (ls.map₁ (λ ⟨e, _⟩ => TypedExpr.toResidual e)) ty
-  | .record ls ty => .record (ls.attach₂.map (λ ⟨(a, e), _⟩ => (a, TypedExpr.toResidual e))) ty
+  | .record ls ty => .record (ls.attach₂.map (λ ⟨(a, e), _⟩ => (a, .present (TypedExpr.toResidual e)))) ty
   | .call xfn args ty => .call xfn (args.map₁ (λ ⟨e, _⟩ => TypedExpr.toResidual e)) ty
 decreasing_by
   all_goals (simp_wf ; try omega)

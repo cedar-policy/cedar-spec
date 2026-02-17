@@ -33,13 +33,39 @@ deriving Repr, Inhabited, DecidableEq
 instance : Coe Spec.Error Error where
   coe := Error.evaluation
 
+-- Invariant `pv.instanceOfType tgt.typeOf` for relevant type env
+-- It might be better to represent `tgt` with some more restricted structure.
+-- Something like
+-- inductive AccessPath where
+--  | context
+--  | entityUID (uid : EntityUID)
+--  | getAttr (p : AccessPath) (a : Attr)
+--  | getTag (p : AccessPath) (t : Tag)
+def PartialValue.asResidual (pv : PartialValue) (tgt : Residual) : Residual :=
+  match pv with
+  | prim p => .val p tgt.typeOf
+  | set s => .val s tgt.typeOf
+  | ext x => .val x tgt.typeOf
+  | record as => .record (as.kvs.map₁ λ kv => (kv.val.1,
+    match kv.val.2 with
+    | .present v =>
+      -- Using `.bool .anyBool` as a junk value. Case should be impossible for well-typed policies and requests
+      let aty := match tgt.typeOf with
+        | .record rty => rty.find? kv.val.fst|>.map Qualified.getType|>.getD (.bool .anyBool)
+        | _ => (.bool .anyBool)
+      .present (v.asResidual (.getAttr tgt kv.val.fst aty))
+    | .unknown ty => .unknown ty tgt
+    | .presentUnknown ty => .presentUnknown ty tgt)) tgt.typeOf
+termination_by pv
+decreasing_by sorry
+
 /- Convert an optional value to a residual: Return `.error ty` when it's none -/
-def someOrError : Option PartialValue → CedarType → Residual
+def someOrError : Option Value → CedarType → Residual
   | .some v, ty => .val v ty
   | .none,   ty => .error ty
 
 /- Convert an optional value to a residual: Return `self` when it's none -/
-def someOrSelf : Option PartialValue → CedarType → Residual → Residual
+def someOrSelf : Option Value → CedarType → Residual → Residual
   | .some v, ty, _   => .val v ty
   | .none,   _, self => self
 
@@ -48,7 +74,7 @@ def varₚ (req : PartialRequest) (var : Var) (ty : CedarType) : Residual :=
   | .principal => varₒ req.principal.asEntityUID
   | .resource  => varₒ req.resource.asEntityUID
   | .action    => varₒ req.action
-  | .context   => varₒ (req.context.map (.record ·))
+  | .context   => req.context >>= (PartialValue.record · |>.asResidual (.var .context ty))|>.getD (.var .context ty)
 where
   varₒ := (someOrSelf · ty (.var var ty))
 
@@ -77,7 +103,7 @@ def or : Residual → Residual → CedarType → Residual
   | l, r, ty           => .or l r ty
 
 def apply₁ (op₁ : UnaryOp) (r : Residual) (ty : CedarType) : Residual :=
-  match r.asPartialValue with
+  match r.asValue with
   | .some v =>
     match op₁, v with
     | .not, .prim (.bool b) =>
@@ -109,7 +135,7 @@ def getTag (uid : EntityUID) (tag : String) (es : PartialEntities) (ty : CedarTy
   match es.tags uid with
   | .some tags =>
     match tags.find? tag with
-    | .some (.present tv) => .val tv ty
+    | .some (.present tv) => tv.asResidual (.binaryApp .getTag uid tag ty)
     | .some _ => .binaryApp .getTag uid tag ty
     | .none => .error ty
   | .none => .binaryApp .getTag uid tag ty
@@ -160,52 +186,47 @@ def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (t
   where
   self := .binaryApp op₂ r₁ r₂ ty
 
-
-def attrsOf (r : Residual) (lookup : EntityUID → PartialAttributes) : PartialAttributes :=
-  match r with
-  | .val (.record m) _              => .some m
-  | .val (.prim (.entityUID uid)) _ => lookup uid
-  | _                               => none
-
 def hasAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : Residual :=
   match r with
   | .error _ => .error ty
-  | _ =>
-    match attrsOf r es.attrs with
+  | .val (.record m) _ => m.find? a|>.isSome
+  | .val (.prim (.entityUID uid)) _ =>
+    match es.attrs uid with
     | .some m =>
       match m.find? a with
-      | .none
-      | .some (.absent _) => false
+      | .none => false
       | .some (.presentUnknown _) | .some (.present _) => true
       | .some (.unknown _) => .hasAttr r a ty
     | .none   => .hasAttr r a ty
+  | _ => .hasAttr r a ty
 
 def getAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : Residual :=
   match r with
   | .error _ => .error ty
-  | _ =>
-    match attrsOf r es.attrs with
-    | .some m => match m.find? a with
-      | some (.present pv)  => .val pv ty
-      | some (.absent _)
-      | none => .error ty
-      | some (.presentUnknown _)
-      | some (.unknown _) => .getAttr r a ty
+  | .val (.record m) _ => someOrError (m.find? a) ty
+  | .val (.prim (.entityUID uid)) _ =>
+    match es.attrs uid with
+    | .some m =>
+      match m.find? a with
+      | .none => .error ty
+      | .some (.present pv) => pv.asResidual (.getAttr r a ty)
+      | .some (.presentUnknown _) | .some (.unknown _) => .getAttr r a ty
     | .none   => .getAttr r a ty
+  | _ => .getAttr r a ty
 
 def set (rs : List Residual) (ty : CedarType) : Residual :=
-  match rs.mapM Residual.asPartialValue with
+  match rs.mapM Residual.asValue with
   | .some xs => .val (.set (Set.make xs)) ty
   | .none    => if rs.any Residual.isError then .error ty else .set rs ty
 
-def record (m : List (Attr × Residual)) (ty : CedarType) : Residual :=
-  match m.mapM λ (a, r₁) => bindAttr a (r₁.asPartialValue.map (λ r => PartialAttribute.present r)) with
+def record (m : List (Attr × PartialAttribute' Residual)) (ty : CedarType) : Residual :=
+  match m.mapM λ (a, r₁) => bindAttr a r₁.asValue with
   | .some xs => .val (.record (Map.make xs)) ty
   | .none    => if m.any λ (_, r₁) => r₁.isError then .error ty else .record m ty
 
 def call (xfn : ExtFun) (rs : List Residual) (ty : CedarType) : Residual :=
   match rs.mapM Residual.asValue with
-  | .some xs => someOrError ((Spec.call xfn xs).toOption.map Value.asPartialValue) ty
+  | .some xs => someOrError (Spec.call xfn xs).toOption ty
   | .none    => if rs.any Residual.isError then .error ty else .call xfn rs ty
 
 def evaluate
@@ -233,7 +254,11 @@ def evaluate
   | .set xs ty =>
     set (xs.map₁ (λ ⟨x₁, _⟩ => evaluate x₁ req es)) ty
   | .record axs ty =>
-    record (axs.map₁ (λ ⟨(a, x₁), _⟩ => (a, (evaluate x₁ req es)))) ty
+    record (axs.map₁ (λ ⟨(a, x₁), _⟩ => (a,
+      match x₁ with
+      | .present x₁ => .present (evaluate x₁ req es)
+      | .unknown ty t => .unknown ty t
+      | .presentUnknown ty t => .presentUnknown ty t))) ty
   | .call xfn xs ty =>
     call xfn (xs.map₁ (λ ⟨x₁, _⟩ => evaluate x₁ req es)) ty
 termination_by x
