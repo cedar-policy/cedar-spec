@@ -14,11 +14,16 @@
  limitations under the License.
 -/
 
-import Cedar.Data.Map
+module
+
+public import Cedar.Data.Map
+public import Cedar.Data.LT
+import all Cedar.Data.Map -- inside this module, we're allowed to unfold defs in Cedar.Data.Map that are not normally exposed
+import all Cedar.Data.List -- TODO should fix this, but currently, some proofs in this module rely on unfolding definitions like `canonicalize` from Cedar.Data.List. Ideally we should not be unfolding `canonicalize` but only using lemmas about it from Thm/Data/List/Canonical.lean.
 import Cedar.Data.SizeOf
 import Cedar.Thm.Data.Control
-import Cedar.Thm.Data.List
-import Cedar.Thm.Data.Set
+public import Cedar.Thm.Data.List
+public import Cedar.Thm.Data.Set
 
 /-!
 # Map properties
@@ -31,16 +36,16 @@ namespace Cedar.Data.Map
 
 /-! ### Well-formed maps -/
 
-def WellFormed {α β} [LT α] [DecidableLT α] (m : Map α β) :=
+public def WellFormed {α β} [LT α] [DecidableLT α] (m : Map α β) :=
   m = Map.make m.toList
 
-theorem if_wellformed_then_exists_make [LT α] [DecidableLT α] (m : Map α β) :
+public theorem if_wellformed_then_exists_make [LT α] [DecidableLT α] (m : Map α β) :
   WellFormed m → ∃ list, m = Map.make list
 := by
   intro h₁
   exists m.kvs
 
-theorem wf_iff_sorted {α β} [LT α] [DecidableLT α] [StrictLT α] {m : Map α β} :
+public theorem wf_iff_sorted {α β} [LT α] [DecidableLT α] [StrictLT α] {m : Map α β} :
   m.WellFormed ↔ m.toList.SortedBy Prod.fst
 := by
   constructor
@@ -55,7 +60,7 @@ theorem wf_iff_sorted {α β} [LT α] [DecidableLT α] [StrictLT α] {m : Map α
     replace h := List.sortedBy_implies_canonicalize_eq h
     rw [WellFormed, toList, kvs, make, h]
 
-theorem wf_implies_tail_wf {α β} [LT α] [DecidableLT α] [StrictLT α]
+public theorem wf_implies_tail_wf {α β} [LT α] [DecidableLT α] [StrictLT α]
   {hd : α × β} {tl : List (α × β)}
   (hwf : (mk (hd :: tl)).WellFormed) :
   (mk tl).WellFormed
@@ -63,22 +68,22 @@ theorem wf_implies_tail_wf {α β} [LT α] [DecidableLT α] [StrictLT α]
   have := wf_iff_sorted.mp hwf
   cases tl with
   | nil =>
-    simp [Map.WellFormed, Map.toList, Map.kvs, make, List.canonicalize]
+    simp [Map.WellFormed, Map.toList, Map.kvs, make, List.canonicalize_nil]
   | cons hd2 tl =>
     apply wf_iff_sorted.mpr
     cases this
     simp only [Map.toList, Map.kvs]
     assumption
 
-theorem wf_empty {α β} [LT α] [DecidableLT α] :
+public theorem wf_empty {α β} [LT α] [DecidableLT α] :
   (Map.empty : Map α β).WellFormed
-:= by simp [Map.WellFormed, Map.make, Map.empty, List.canonicalize, Map.toList]
+:= by simp [Map.WellFormed, Map.make, Map.empty, Map.kvs, List.canonicalize_nil, Map.toList]
 
 /--
   In well-formed maps, if there are two pairs with the same key, then they have
   the same value
 -/
-theorem key_maps_to_one_value [DecidableEq α] [LT α] [DecidableLT α] [StrictLT α] (k : α) (v₁ v₂ : β) (m : Map α β) :
+public theorem key_maps_to_one_value [DecidableEq α] [LT α] [DecidableLT α] [StrictLT α] (k : α) (v₁ v₂ : β) (m : Map α β) :
   m.WellFormed →
   (k, v₁) ∈ m.kvs →
   (k, v₂) ∈ m.kvs →
@@ -97,7 +102,7 @@ theorem key_maps_to_one_value [DecidableEq α] [LT α] [DecidableLT α] [StrictL
 
   Surprisingly this is not a one-line proof.
 -/
-theorem eq_iff_kvs_eq {m₁ m₂ : Map α β} :
+public theorem eq_iff_kvs_eq {m₁ m₂ : Map α β} :
   m₁.kvs = m₂.kvs ↔ m₁ = m₂
 := by
   constructor
@@ -113,7 +118,7 @@ theorem eq_iff_kvs_eq {m₁ m₂ : Map α β} :
   If two well-formed maps have equivalent (k,v) sets, then the maps are actually
   equal
 -/
-theorem eq_iff_kvs_equiv [LT α] [DecidableLT α] [StrictLT α] {m₁ m₂ : Map α β}
+public theorem eq_iff_kvs_equiv [LT α] [DecidableLT α] [StrictLT α] {m₁ m₂ : Map α β}
   (wf₁ : m₁.WellFormed)
   (wf₂ : m₂.WellFormed) :
   m₁.kvs ≡ m₂.kvs ↔ m₁ = m₂
@@ -131,7 +136,7 @@ theorem eq_iff_kvs_equiv [LT α] [DecidableLT α] [StrictLT α] {m₁ m₂ : Map
 
 /-! ### contains, mem, kvs, keys, values -/
 
-theorem keys_wf [LT α] [DecidableLT α] [StrictLT α] (m : Map α β) :
+public theorem keys_wf [LT α] [DecidableLT α] [StrictLT α] (m : Map α β) :
   m.WellFormed → m.keys.WellFormed
 := by
   unfold keys
@@ -144,7 +149,7 @@ theorem keys_wf [LT α] [DecidableLT α] [StrictLT α] (m : Map α β) :
   apply List.map_congr
   simp only [Function.comp_apply, id_eq, implies_true]
 
-theorem kvs_nil_iff_empty {m : Map α β} :
+public theorem kvs_nil_iff_empty {m : Map α β} :
   m.kvs = [] ↔ m = Map.empty
 := by
   unfold kvs empty
@@ -154,36 +159,36 @@ theorem kvs_nil_iff_empty {m : Map α β} :
     | mk ((k, v) :: kvs) => trivial
   case mpr => simp [h]
 
-theorem mk_kvs_id (m : Map α β) :
+public theorem mk_kvs_id (m : Map α β) :
   mk m.kvs = m
 := by simp only [kvs]
 
-theorem in_list_in_map {α : Type u} (k : α) (v : β) (m : Map α β) :
+public theorem in_list_in_map {α : Type u} (k : α) (v : β) (m : Map α β) :
   (k, v) ∈ m.kvs → k ∈ m
 := by
   intro h₀
   have h₁ : k ∈ (List.map Prod.fst m.kvs) := by simp only [List.mem_map] ; exists (k, v)
   apply h₁
 
-theorem in_list_in_keys {k : α} {v : β} {m : Map α β} :
+public theorem in_list_in_keys {k : α} {v : β} {m : Map α β} :
   (k, v) ∈ m.kvs → k ∈ m.keys
 := by
   intro h₀
   simp [keys, ← Set.in_list_iff_in_mk]
   exists v
 
-theorem in_list_in_values {k : α} {v : β} {m : Map α β} :
+public theorem in_list_in_values {k : α} {v : β} {m : Map α β} :
   (k, v) ∈ m.kvs → v ∈ m.values
 := by
   simp only [values, List.mem_map]
   intro h₁
   exists (k, v)
 
-theorem in_keys_iff_in_map {k : α} {m : Map α β} :
+public theorem in_keys_iff_in_map {k : α} {m : Map α β} :
   k ∈ m.keys ↔ k ∈ m
 := by simp only [Membership.mem, Map.keys]
 
-theorem in_keys_iff_contains [BEq α] [LawfulBEq α] {k : α} {m : Map α β} :
+public theorem in_keys_iff_contains [BEq α] [LawfulBEq α] {k : α} {m : Map α β} :
   (k ∈ m.keys ↔ m.contains k)
 := by
   have h_mem_list := List.mem_map_iff_find? (k := k) (f := Prod.fst) (kvs := m.kvs)
@@ -193,7 +198,7 @@ theorem in_keys_iff_contains [BEq α] [LawfulBEq α] {k : α} {m : Map α β} :
   cases h : List.find? (λ x => x.fst == k) m.kvs <;> simp
 
 /-- kinda the converse of `in_list_in_values` -/
-theorem in_values_exists_key {m : Map α β} {v : β} :
+public theorem in_values_exists_key {m : Map α β} {v : β} :
   v ∈ m.values → ∃ k, (k, v) ∈ m.kvs
 := by
   simp only [values, List.mem_map, forall_exists_index, and_imp]
@@ -201,12 +206,12 @@ theorem in_values_exists_key {m : Map α β} {v : β} :
   subst h₂
   exists k
 
-theorem in_keys_exists_value {m : Map α β} {k : α} :
+public theorem in_keys_exists_value {m : Map α β} {k : α} :
   k ∈ m.keys → ∃ v, (k, v) ∈ m.kvs
 := by
   simp [keys, ← Set.in_list_iff_in_mk]
 
-theorem values_cons {m : Map α β} :
+public theorem values_cons {m : Map α β} :
   m.kvs = (k, v) :: tl →
   m.values = v :: (mk tl).values
 := by
@@ -214,33 +219,33 @@ theorem values_cons {m : Map α β} :
   intro h₁
   simp [h₁]
 
-theorem contains_iff_some_find? {α β} [BEq α] {m : Map α β} {k : α} :
+public theorem contains_iff_some_find? {α β} [BEq α] {m : Map α β} {k : α} :
   m.contains k ↔ ∃ v, m.find? k = .some v
 := by simp [contains, Option.isSome_iff_exists]
 
-theorem find?_some_implies_contains {α β} [BEq α] {m : Map α β} {k : α} {v : β} :
+public theorem find?_some_implies_contains {α β} [BEq α] {m : Map α β} {k : α} {v : β} :
   m.find? k = .some v → m.contains k
 := by
   intros h
   apply contains_iff_some_find?.mpr
   simp [h]
 
-theorem not_contains_of_empty {α β} [BEq α] (k : α) :
+public theorem not_contains_of_empty {α β} [BEq α] (k : α) :
   ¬ (Map.empty : Map α β).contains k
 := by simp [contains, empty, find?, List.find?]
 
-theorem not_find?_of_empty [BEq α] {k : α} :
+public theorem not_find?_of_empty [BEq α] {k : α} :
   (Map.empty : Map α β).find? k = none
 := by simp [Map.empty, Map.find?, List.find?]
 
 /-! ### make and mk -/
 
-theorem make_wf [LT α] [StrictLT α] [DecidableLT α] (xs : List (α × β)) :
+public theorem make_wf [LT α] [StrictLT α] [DecidableLT α] (xs : List (α × β)) :
   WellFormed (Map.make xs)
 := by
   simp only [WellFormed, make, toList, kvs, List.canonicalize_idempotent]
 
-theorem mk_wf [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
+public theorem mk_wf [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
   xs.SortedBy Prod.fst → (Map.mk xs).WellFormed
 := by
   intro h
@@ -248,7 +253,7 @@ theorem mk_wf [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
   rw [← h, WellFormed, make, toList, kvs]
   simp only [List.canonicalize_idempotent]
 
-theorem make_eq_mk [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
+public theorem make_eq_mk [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
   xs.SortedBy Prod.fst ↔ Map.make xs = Map.mk xs
 := by
   constructor <;> intro h
@@ -259,7 +264,7 @@ theorem make_eq_mk [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)}
     rw [← h]
     exact List.canonicalize_sortedBy _ _
 
-theorem make_singleton [LT α] [DecidableLT α] [StrictLT α] (k : α) (v : β) :
+public theorem make_singleton [LT α] [DecidableLT α] [StrictLT α] (k : α) (v : β) :
   Map.make [(k, v)] = Map.mk [(k, v)]
 := by
   rw [←make_eq_mk]
@@ -272,7 +277,7 @@ theorem make_singleton [LT α] [DecidableLT α] [StrictLT α] (k : α) (v : β) 
 
   For a limited converse, see `mem_list_mem_make` below.
 -/
-theorem make_mem_list_mem [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
+public theorem make_mem_list_mem [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
   x ∈ (Map.make xs).kvs → x ∈ xs
 := by
   simp only [kvs, make]
@@ -281,42 +286,10 @@ theorem make_mem_list_mem [LT α] [StrictLT α] [DecidableLT α] {xs : List (α 
   simp only [List.subset_def] at h₂
   exact h₂ h₁
 
-private theorem insertCanonical_preserves_find_other_element
-  [LT α] [DecidableLT α] [BEq α] [StrictLT α]
-  (k : α)
-  (x : (α × β)) (xs : List (α × β))  :
-  (x.fst == k) = false →
-  (List.insertCanonical Prod.fst x xs).find? (λ x => x.fst == k) =
-  xs.find? (λ x => x.fst == k)
-:= by
-  intro h₁
-  unfold List.insertCanonical
-  split
-  . simp
-    assumption
-  . simp
-    split
-    . simp [List.find?]
-      rw [h₁]
-    . split
-      . unfold List.find?
-        rename_i tl h₂ h₃
-        have ih := insertCanonical_preserves_find_other_element k x tl h₁
-        rw [ih]
-      . unfold List.find?
-        rw [h₁]
-        simp
-        rename_i hd₂ tl₂ h₂ h₃
-        rename LT α => i₁
-        rename StrictLT α => i₂
-        have h₄ := @StrictLT.if_not_lt_gt_then_eq α i₁ i₂ x.fst hd₂.fst h₂ h₃
-        rw [← h₄]
-        rw [h₁]
-
 /--
   Very similar to `make_mem_list_mem` above
 -/
-theorem mem_values_make [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
+public theorem mem_values_make [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
   v ∈ (Map.make xs).values → v ∈ xs.map Prod.snd
 := by
   -- despite the similarity to `make_mem_list_mem`, the proof does not currently
@@ -335,7 +308,7 @@ theorem mem_values_make [LT α] [StrictLT α] [DecidableLT α] {xs : List (α ×
   This limited converse of `make_mem_list_mem` requires that the input list is
   SortedBy Prod.fst.
 -/
-theorem mem_list_mem_make [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
+public theorem mem_list_mem_make [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
   xs.SortedBy Prod.fst →
   x ∈ xs → x ∈ (Map.make xs).kvs
 := by
@@ -345,7 +318,7 @@ theorem mem_list_mem_make [LT α] [StrictLT α] [DecidableLT α] {xs : List (α 
   rw [← h₃] at h₂
   exact h₂
 
-theorem make_nil_is_empty {α β} [LT α] [DecidableLT α] :
+public theorem make_nil_is_empty {α β} [LT α] [DecidableLT α] :
   (Map.make [] : Map α β) = Map.empty
 := by simp [make, empty, List.canonicalize_nil]
 
@@ -353,13 +326,13 @@ theorem make_nil_is_empty {α β} [LT α] [DecidableLT α] :
   Note that the converse of this is not true:
   counterexample `xs = [(1, false)]`, `ys = []`, `ab = (1, false)`.
 -/
-theorem make_cons [LT α] [DecidableLT α] {xs ys : List (α × β)} {ab : α × β} :
+public theorem make_cons [LT α] [DecidableLT α] {xs ys : List (α × β)} {ab : α × β} :
   make xs = make ys → make (ab :: xs) = make (ab :: ys)
 := by
   simp only [make, mk.injEq]
   apply List.canonicalize_cons
 
-theorem make_of_make_is_id [LT α] [DecidableLT α] [StrictLT α] (xs : List (α × β)) :
+public theorem make_of_make_is_id [LT α] [DecidableLT α] [StrictLT α] (xs : List (α × β)) :
   Map.make (Map.kvs (Map.make xs)) = Map.make xs
 := by
   simp only [make, mk.injEq]
@@ -369,11 +342,11 @@ theorem make_of_make_is_id [LT α] [DecidableLT α] [StrictLT α] (xs : List (α
 
 /-! ### find?, findOrErr, and mapOnValues -/
 
-theorem singleton_find? [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] (k : α) (v : β) :
+public theorem singleton_find? [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] (k : α) (v : β) :
   (Map.make [(k, v)]).find? k = .some v
 := by simp [Map.find?, Map.kvs, Map.make_singleton]
 
-theorem singleton_contains  [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] (k k' : α) (v : β) :
+public theorem singleton_contains  [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] (k k' : α) (v : β) :
   (Map.make [(k', v)]).contains k ↔ k' == k
 := by
   simp only [Map.make_singleton, Map.contains_iff_some_find?, Map.find?, Map.kvs, List.find?_singleton, beq_iff_eq]
@@ -390,7 +363,7 @@ theorem singleton_contains  [LT α] [DecidableLT α] [StrictLT α] [DecidableEq 
 
   Inverse is available at `find?_notmem_keys` (requires `wf` though)
 -/
-theorem find?_mem_toList {α β} [LT α] [DecidableLT α] [DecidableEq α] {m : Map α β} {k : α} {v : β}
+public theorem find?_mem_toList {α β} [LT α] [DecidableLT α] [DecidableEq α] {m : Map α β} {k : α} {v : β}
   (h₁ : m.find? k = .some v) :
   (k, v) ∈ m.toList
 := by
@@ -406,7 +379,7 @@ theorem find?_mem_toList {α β} [LT α] [DecidableLT α] [DecidableEq α] {m : 
   The `mpr` direction of this does not need the `wf` precondition and, in fact,
   is available separately as `find?_mem_toList` above
 -/
-theorem in_list_iff_find?_some [DecidableEq α] [LT α] [DecidableLT α] [StrictLT α] {k : α} {v : β} {m : Map α β}
+public theorem in_list_iff_find?_some [DecidableEq α] [LT α] [DecidableLT α] [StrictLT α] {k : α} {v : β} {m : Map α β}
   (wf : m.WellFormed) :
   (k, v) ∈ m.kvs ↔ m.find? k = some v
 := by
@@ -431,7 +404,7 @@ theorem in_list_iff_find?_some [DecidableEq α] [LT α] [DecidableLT α] [Strict
   case mpr => exact find?_mem_toList
 
 /-- Inverse of `find?_mem_toList`, except that this requires `wf` -/
-theorem find?_notmem_keys [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {k : α}
+public theorem find?_notmem_keys [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {k : α}
   (wf : m.WellFormed) :
   m.find? k = none ↔ k ∉ m.keys
 := by
@@ -456,11 +429,11 @@ theorem find?_notmem_keys [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α
       replace h₂ := List.mem_of_find?_eq_some h₂
       exact in_list_in_keys h₂
 
-theorem find?_none_all_absent [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {k : α} :
+public theorem find?_none_all_absent [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {k : α} :
   m.find? k = none → ∀ v, ¬ (k, v) ∈ m.kvs
 := by
   intro hn v
-  by_contra hc
+  false_or_by_contra ; rename_i hc
   simp only [find?] at hn
   cases hf : List.find? (fun x => x.fst == k) m.kvs <;>
   simp only [hf, reduceCtorEq] at hn
@@ -468,7 +441,7 @@ theorem find?_none_all_absent [LT α] [DecidableLT α] [StrictLT α] [DecidableE
   specialize hf (k, v) hc
   simp only [not_true_eq_false] at hf
 
-theorem in_list_implies_contains {α β}
+public theorem in_list_implies_contains {α β}
   [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α]
   {m : Map α β} {k : α} {v : β} :
   (k, v) ∈ m.kvs → m.contains k
@@ -482,7 +455,7 @@ theorem in_list_implies_contains {α β}
     apply contains_iff_some_find?.mpr
     simp [hfind]
 
-theorem all_absent_find?_none [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {k : α} :
+public theorem all_absent_find?_none [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {k : α} :
   (∀ v, (k, v) ∉ m.kvs) → m.find? k = none
 := by
   cases h₁ : m.kvs
@@ -510,12 +483,12 @@ theorem all_absent_find?_none [LT α] [DecidableLT α] [StrictLT α] [DecidableE
     have ih := all_absent_find?_none hi₂
     simpa [Map.find?, Map.kvs] using ih
 
-theorem find?_none_iff_all_absent [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {k : α} :
+public theorem find?_none_iff_all_absent [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {k : α} :
   m.find? k = none ↔ ∀ v, ¬ (k, v) ∈ m.kvs
 := Iff.intro find?_none_all_absent all_absent_find?_none
 
 
-theorem list_find?_some_iff_map_find?_some {α β: Type} [BEq α] [LawfulBEq α] {l: List (α × β)} {k : α} {v : β} :
+public theorem list_find?_some_iff_map_find?_some {α β: Type} [BEq α] [LawfulBEq α] {l: List (α × β)} {k : α} {v : β} :
   l.find? (λ x => x.1 == k) = .some (k, v) ↔
   (Map.mk l).find? k = .some v
 := by
@@ -553,7 +526,7 @@ theorem list_find?_some_iff_map_find?_some {α β: Type} [BEq α] [LawfulBEq α]
       contradiction
 
 
-theorem list_find?_mapM_implies_exists_mapped {α β γ : Type} [BEq α] [LawfulBEq α] {ls : List (α × β)} (fn : β → Option γ) {ys: List (α × γ)} {k: α} {x : β} :
+public theorem list_find?_mapM_implies_exists_mapped {α β γ : Type} [BEq α] [LawfulBEq α] {ls : List (α × β)} (fn : β → Option γ) {ys: List (α × γ)} {k: α} {x : β} :
   List.mapM (fun x =>
               (fn x.2).bind
                 (fun v => some (x.fst, v))) ls = some ys →
@@ -601,7 +574,7 @@ theorem list_find?_mapM_implies_exists_mapped {α β γ : Type} [BEq α] [Lawful
       exact list_find?_mapM_implies_exists_mapped fn h₄ h₂
 
 
-theorem list_find?_mapM_implies_exists_unmapped {α β γ : Type} [BEq α] [LawfulBEq α] {ls : List (α × β)} (fn : β → Option γ) {ys: List (α × γ)} {k: α} {y: γ} :
+public theorem list_find?_mapM_implies_exists_unmapped {α β γ : Type} [BEq α] [LawfulBEq α] {ls : List (α × β)} (fn : β → Option γ) {ys: List (α × γ)} {k: α} {y: γ} :
   List.mapM (fun x =>
               (fn x.2).bind
                 (fun v => some (x.fst, v))) ls = some ys →
@@ -654,7 +627,7 @@ theorem list_find?_mapM_implies_exists_unmapped {α β γ : Type} [BEq α] [Lawf
       exact list_find?_mapM_implies_exists_unmapped fn h₄ h₂
 
 
-theorem find?_mapM_key_id {α β : Type} [BEq α] [LawfulBEq α] {ks : List α} {kvs : List (α × β)} {fn : α → Option β} {k: α}
+public theorem find?_mapM_key_id {α β : Type} [BEq α] [LawfulBEq α] {ks : List α} {kvs : List (α × β)} {fn : α → Option β} {k: α}
   (h₁ : ks.mapM (λ k => do (k, ←fn k)) = some kvs)
   (h₂ : k ∈ ks) :
   (Map.mk kvs).find? k = fn k
@@ -679,7 +652,7 @@ theorem find?_mapM_key_id {α β : Type} [BEq α] [LawfulBEq α] {ks : List α} 
     · simp only [beq_iff_eq] at h₃
       simp [h₃, ←hf]
 
-theorem find?_filterMap_key_id {α β : Type} [BEq α] [LawfulBEq α] {ks : List α} {fn : α → Option β} {k: α}
+public theorem find?_filterMap_key_id {α β : Type} [BEq α] [LawfulBEq α] {ks : List α} {fn : α → Option β} {k: α}
   (h₂ : k ∈ ks) :
   (Map.mk (ks.filterMap (λ k => do (k, ←fn k)))).find? k = fn k
 := by
@@ -692,7 +665,7 @@ theorem find?_filterMap_key_id {α β : Type} [BEq α] [LawfulBEq α] {ks : List
     rw [h₄]
     exact h₃
 
-theorem filterMap_key_id_key_none_implies_find?_none {α β : Type} [DecidableEq α] [LT α] [StrictLT α] [DecidableLT α] {ks : List α} {fn : α → Option β} {k: α}
+public theorem filterMap_key_id_key_none_implies_find?_none {α β : Type} [DecidableEq α] [LT α] [StrictLT α] [DecidableLT α] {ks : List α} {fn : α → Option β} {k: α}
   (h₁ : fn k = none) :
   (Map.make (ks.filterMap (λ k => do some (k, ←fn k)))).find? k = none
 := by
@@ -739,7 +712,7 @@ theorem mapM_key_id_key_none_implies_find?_none {α β : Type} [DecidableEq α] 
     have h₄ := List.in_canonicalize_in_list hl'
     exact List.not_mem_implies_not_mem_mapM_key_id h₂ h₃ v h₄
 
-theorem mapOnValues_wf [DecidableEq α] [LT α] [DecidableLT α] [StrictLT α] {f : β → γ} {m : Map α β} :
+public theorem mapOnValues_wf [DecidableEq α] [LT α] [DecidableLT α] [StrictLT α] {f : β → γ} {m : Map α β} :
   m.WellFormed ↔ (m.mapOnValues f).WellFormed
 := by
   simp only [wf_iff_sorted, toList]
@@ -748,18 +721,18 @@ theorem mapOnValues_wf [DecidableEq α] [LT α] [DecidableLT α] [StrictLT α] {
   apply List.map_congr
   simp
 
-theorem mapOnValues_empty {α β γ} [LT α] [DecidableLT α] [DecidableEq α] {f : β → γ} :
+public theorem mapOnValues_empty {α β γ} [LT α] [DecidableLT α] [DecidableEq α] {f : β → γ} :
   (empty : Map α β).mapOnValues f = empty
 := by
   simp [mapOnValues, empty]
 
-theorem find?_mapOnValues {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) (m : Map α β) (k : α)  :
+public theorem find?_mapOnValues {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) (m : Map α β) (k : α)  :
   (m.find? k).map f = (m.mapOnValues f).find? k
 := by
   simp only [find?, kvs, mapOnValues, ← List.find?_pair_map]
   cases m.1.find? (λ x => x.fst == k) <;> simp only [Option.map_none, Option.map_some]
 
-theorem find?_mapOnValues_some {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) {m : Map α β} {k : α} {v : β} :
+public theorem find?_mapOnValues_some {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) {m : Map α β} {k : α} {v : β} :
   m.find? k = .some v →
   (m.mapOnValues f).find? k = .some (f v)
 := by
@@ -767,7 +740,7 @@ theorem find?_mapOnValues_some {α β γ} [LT α] [DecidableLT α] [DecidableEq 
   rw [← find?_mapOnValues]
   simp [Option.map, h₁]
 
-theorem find?_mapOnValues_some' {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) {m : Map α β} {k : α} {v : γ} :
+public theorem find?_mapOnValues_some' {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) {m : Map α β} {k : α} {v : γ} :
   (m.mapOnValues f).find? k = .some v →
   (∃ v', m.find? k = .some v' ∧ v = f v')
 := by
@@ -789,7 +762,7 @@ theorem find?_mapOnValues_some' {α β γ} [LT α] [DecidableLT α] [DecidableEq
       subst heq
       rfl
 
-theorem find?_mapOnValues_none {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) {m : Map α β} {k : α} :
+public theorem find?_mapOnValues_none {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) {m : Map α β} {k : α} :
   m.find? k = .none →
   (m.mapOnValues f).find? k = .none
 := by
@@ -797,7 +770,7 @@ theorem find?_mapOnValues_none {α β γ} [LT α] [DecidableLT α] [DecidableEq 
   rw [← find?_mapOnValues]
   simp [Option.map, h₁]
 
-theorem mapOnValues_eq_make_map {α β γ} [LT α] [StrictLT α] [DecidableLT α] (f : β → γ) {m : Map α β}
+public theorem mapOnValues_eq_make_map {α β γ} [LT α] [StrictLT α] [DecidableLT α] (f : β → γ) {m : Map α β}
   (wf : m.WellFormed) :
   m.mapOnValues f = Map.make (m.toList.map λ kv => (kv.fst, f kv.snd))
 := by
@@ -807,7 +780,7 @@ theorem mapOnValues_eq_make_map {α β γ} [LT α] [StrictLT α] [DecidableLT α
   have h₁ : Prod.map id f = (λ (x : α × β) => (x.fst, f x.snd)) := by unfold Prod.map ; simp only [id_eq]
   simp only [← h₁, ← List.canonicalize_of_map_fst, List.canonicalize_idempotent]
 
-theorem mem_toList_find? {α β} [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {k : α} {v : β}
+public theorem mem_toList_find? {α β} [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {k : α} {v : β}
   (h₁ : m.WellFormed)
   (h₂ : (k, v) ∈ m.toList) :
   m.find? k = .some v
@@ -824,7 +797,7 @@ theorem mem_toList_find? {α β} [LT α] [DecidableLT α] [StrictLT α] [Decidab
   simp only at h
   simp only [find?, kvs, h]
 
-theorem mapOnValues_contains {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) {m : Map α β} {k : α} :
+public theorem mapOnValues_contains {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) {m : Map α β} {k : α} :
   Map.contains m k = Map.contains (Map.mapOnValues f m) k
 := by
   simp only [contains, Option.isSome]
@@ -832,7 +805,7 @@ theorem mapOnValues_contains {α β γ} [LT α] [DecidableLT α] [DecidableEq α
   · simp [find?_mapOnValues_some f h]
   · simp [find?_mapOnValues_none f h]
 
-theorem keys_mapOnValues [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] (f : β → γ) (m : Map α β) :
+public theorem keys_mapOnValues [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] (f : β → γ) (m : Map α β) :
   (m.mapOnValues f).keys = m.keys
 := by
   unfold mapOnValues keys kvs
@@ -843,7 +816,7 @@ theorem keys_mapOnValues [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α]
     simp only [List.map_cons, Function.comp_apply, List.cons.injEq, true_and]
     exact ih
 
-theorem values_mapOnValues [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {f : β → γ} {m : Map α β} :
+public theorem values_mapOnValues [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {f : β → γ} {m : Map α β} :
   (m.mapOnValues f).values = m.values.map f
 := by
   unfold mapOnValues values kvs
@@ -854,27 +827,27 @@ theorem values_mapOnValues [LT α] [StrictLT α] [DecidableLT α] [DecidableEq �
     exact ih
 
 /-- `findOrErr` cannot return any error other than `e` -/
-theorem findOrErr_returns [DecidableEq α] (m : Map α β) (k : α) (e : Error) :
+public theorem findOrErr_returns [DecidableEq α] (m : Map α β) (k : α) (e : Error) :
   (∃ v, m.findOrErr k e = .ok v) ∨
   m.findOrErr k e = .error e
 := by
   unfold findOrErr
   cases m.find? k <;> simp
 
-theorem findOrErr_mapOnValues [LT α] [DecidableLT α] [DecidableEq α] {f : β → γ} {m : Map α β} {k : α} {e : Error} :
+public theorem findOrErr_mapOnValues [LT α] [DecidableLT α] [DecidableEq α] {f : β → γ} {m : Map α β} {k : α} {e : Error} :
   (m.mapOnValues f).findOrErr k e = (m.findOrErr k e).map f
 := by
   unfold findOrErr
   rw [← find?_mapOnValues]
   cases m.find? k <;> simp [Except.map]
 
-theorem findOrErr_ok_iff_find?_some [LT α] [DecidableLT α] [DecidableEq α] {m : Map α β} {k : α} {v : β} {e : Error} :
+public theorem findOrErr_ok_iff_find?_some [LT α] [DecidableLT α] [DecidableEq α] {m : Map α β} {k : α} {v : β} {e : Error} :
   m.findOrErr k e = .ok v ↔ m.find? k = some v
 := by
   unfold findOrErr
   cases m.find? k <;> simp only [Except.ok.injEq, Option.some.injEq, reduceCtorEq]
 
-theorem findOrErr_err_iff_find?_none [LT α] [DecidableLT α] [DecidableEq α] {m : Map α β} {k : α} {e : Error} :
+public theorem findOrErr_err_iff_find?_none [LT α] [DecidableLT α] [DecidableEq α] {m : Map α β} {k : α} {e : Error} :
   m.findOrErr k e = .error e ↔ m.find? k = none
 := by
   unfold findOrErr
@@ -884,7 +857,7 @@ theorem findOrErr_err_iff_find?_none [LT α] [DecidableLT α] [DecidableEq α] {
   The converse requires the `wf` precondition, and is available in
   `findOrErr_ok_iff_in_kvs` below
 -/
-theorem findOrErr_ok_implies_in_kvs [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {k : α} {v : β} {e : Error} :
+public theorem findOrErr_ok_implies_in_kvs [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {k : α} {v : β} {e : Error} :
   m.findOrErr k e = .ok v → (k, v) ∈ m.kvs
 := by
   simp only [findOrErr_ok_iff_find?_some]
@@ -894,7 +867,7 @@ theorem findOrErr_ok_implies_in_kvs [LT α] [DecidableLT α] [StrictLT α] [Deci
   The `mp` direction of this does not need the `wf` precondition and, in fact,
   is available separately as `findOrErr_ok_implies_in_kvs` above
 -/
-theorem findOrErr_ok_iff_in_kvs [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {k : α} {v : β} {e : Error}
+public theorem findOrErr_ok_iff_in_kvs [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {k : α} {v : β} {e : Error}
   (wf : m.WellFormed) :
   m.findOrErr k e = .ok v ↔ (k, v) ∈ m.kvs
 := by
@@ -908,7 +881,7 @@ theorem findOrErr_ok_iff_in_kvs [LT α] [DecidableLT α] [StrictLT α] [Decidabl
   The converse requires the `wf` precondition, and is available in
   `find?_some_iff_in_values` below
 -/
-theorem find?_some_implies_in_values [LT α] [DecidableLT α] [DecidableEq α] {m : Map α β} {k : α} {v : β} :
+public theorem find?_some_implies_in_values [LT α] [DecidableLT α] [DecidableEq α] {m : Map α β} {k : α} {v : β} :
   m.find? k = .some v → v ∈ m.values
 := by
   intro h₁
@@ -921,7 +894,7 @@ theorem find?_some_implies_in_values [LT α] [DecidableLT α] [DecidableEq α] {
   The converse requires the `wf` precondition, and is available in
   `findOrErr_ok_iff_in_values` below
 -/
-theorem findOrErr_ok_implies_in_values [LT α] [DecidableLT α] [DecidableEq α] {m : Map α β} {k : α} {v : β} {e : Error} :
+public theorem findOrErr_ok_implies_in_values [LT α] [DecidableLT α] [DecidableEq α] {m : Map α β} {k : α} {v : β} {e : Error} :
   m.findOrErr k e = .ok v → v ∈ m.values
 := by
   simp only [findOrErr_ok_iff_find?_some]
@@ -931,7 +904,7 @@ theorem findOrErr_ok_implies_in_values [LT α] [DecidableLT α] [DecidableEq α]
   The `mp` direction of this does not need the `wf` precondition and, in fact,
   is available separately as `find?_some_implies_in_values` above
 -/
-theorem find?_some_iff_in_values [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {v : β}
+public theorem find?_some_iff_in_values [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {v : β}
   (wf : m.WellFormed) :
   (∃ k, m.find? k = .some v) ↔ v ∈ m.values
 := by
@@ -952,14 +925,14 @@ theorem find?_some_iff_in_values [LT α] [DecidableLT α] [StrictLT α] [Decidab
   The `mp` direction of this does not need the `wf` precondition and, in fact,
   is available separately as `findOrErr_ok_implies_in_values` above
 -/
-theorem findOrErr_ok_iff_in_values [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {v : β} {e : Error}
+public theorem findOrErr_ok_iff_in_values [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {v : β} {e : Error}
   (wf : m.WellFormed) :
   (∃ k, m.findOrErr k e = .ok v) ↔ v ∈ m.values
 := by
   simp only [findOrErr_ok_iff_find?_some]
   exact find?_some_iff_in_values wf
 
-theorem findOrErr_err_iff_not_in_keys [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {k : α} {e : Error}
+public theorem findOrErr_err_iff_not_in_keys [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {k : α} {e : Error}
   (wf : m.WellFormed) :
   m.findOrErr k e = .error e ↔ k ∉ m.keys
 := by
@@ -970,7 +943,7 @@ theorem findOrErr_err_iff_not_in_keys [LT α] [DecidableLT α] [StrictLT α] [De
   The converse requires two extra preconditions (`m` is `WellFormed` and `f` is
   injective) and is available as `in_mapOnValues_in_kvs`
 -/
-theorem in_kvs_in_mapOnValues [LT α] [DecidableLT α] [DecidableEq α] {f : β → γ} {m : Map α β} {k : α} {v : β} :
+public theorem in_kvs_in_mapOnValues [LT α] [DecidableLT α] [DecidableEq α] {f : β → γ} {m : Map α β} {k : α} {v : β} :
   (k, v) ∈ m.kvs → (k, f v) ∈ (m.mapOnValues f).kvs
 := by
   unfold mapOnValues
@@ -985,7 +958,7 @@ theorem in_kvs_in_mapOnValues [LT α] [DecidableLT α] [DecidableEq α] {f : β 
   Proves something like:
     Data.Map.findOrErr es uid Error.entityDoesNotExist = .error .entityDoesNotExist
 -/
-theorem find?_none_iff_findorErr_errors [LT α] [DecidableLT α] [DecidableEq α] {m : Map α β} {k : α} (e : Error) :
+public theorem find?_none_iff_findorErr_errors [LT α] [DecidableLT α] [DecidableEq α] {m : Map α β} {k : α} (e : Error) :
   m.find? k = none ↔ m.findOrErr k e = .error e
 := by
   constructor
@@ -1005,7 +978,7 @@ theorem find?_none_iff_findorErr_errors [LT α] [DecidableLT α] [DecidableEq α
   Converse of `in_kvs_in_mapOnValues`; requires the extra preconditions that `m`
   is `WellFormed` and `f` is injective
 -/
-theorem in_mapOnValues_in_kvs [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {f : β → γ} {m : Map α β} {k : α} {v : β}
+public theorem in_mapOnValues_in_kvs [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {f : β → γ} {m : Map α β} {k : α} {v : β}
   (wf : m.WellFormed) :
   (k, f v) ∈ (m.mapOnValues f).kvs →
   (∀ v', f v = f v' → v = v') → -- require f to be injective
@@ -1024,7 +997,7 @@ theorem in_mapOnValues_in_kvs [LT α] [DecidableLT α] [StrictLT α] [DecidableE
 /--
   Slightly different formulation of `in_mapOnValues_in_kvs`
 -/
-theorem in_mapOnValues_in_kvs' [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {f : β → γ} {m : Map α β} {k : α} {v' : γ}
+public theorem in_mapOnValues_in_kvs' [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {f : β → γ} {m : Map α β} {k : α} {v' : γ}
   (wf : m.WellFormed) :
   (k, v') ∈ (m.mapOnValues f).kvs →
   ∃ v, f v = v' ∧ (k, v) ∈ m.kvs
@@ -1044,7 +1017,7 @@ theorem in_mapOnValues_in_kvs' [LT α] [DecidableLT α] [StrictLT α] [Decidable
   and we want the even stronger property that it not only preserves the key-set,
   but also the key-order. (We'll use this to prove `mapMOnValues_some_wf`.)
 -/
-theorem mapMOnValues_preserves_keys [LT α] [DecidableLT α] [StrictLT α] {f : β → Option γ} {m₁ : Map α β} {m₂ : Map α γ} :
+public theorem mapMOnValues_preserves_keys [LT α] [DecidableLT α] [StrictLT α] {f : β → Option γ} {m₁ : Map α β} {m₂ : Map α γ} :
   m₁.mapMOnValues f = some m₂ →
   m₁.kvs.map Prod.fst = m₂.kvs.map Prod.fst
 := by
@@ -1072,7 +1045,7 @@ theorem mapMOnValues_preserves_keys [LT α] [DecidableLT α] [StrictLT α] {f : 
     specialize ih h₄
     simp only [ih, and_self]
 
-theorem mapMOnValues_some_wf [LT α] [DecidableLT α] [StrictLT α] {f : β → Option γ} {m₁ : Map α β} {m₂ : Map α γ} :
+public theorem mapMOnValues_some_wf [LT α] [DecidableLT α] [StrictLT α] {f : β → Option γ} {m₁ : Map α β} {m₂ : Map α γ} :
   m₁.WellFormed →
   (m₁.mapMOnValues f = some m₂) →
   m₂.WellFormed
@@ -1106,7 +1079,7 @@ theorem mapMOnValues_some_wf_alt_proof [LT α] [DecidableLT α] [StrictLT α] {f
   cases h₂ : f v <;> simp [h₂] at h₁
   exact h₁.left
 
-theorem mapMOnValues_ok_wf [LT α] [DecidableLT α] [StrictLT α] {f : β → Except ε γ} {m₁ : Map α β} {m₂ : Map α γ} :
+public theorem mapMOnValues_ok_wf [LT α] [DecidableLT α] [StrictLT α] {f : β → Except ε γ} {m₁ : Map α β} {m₂ : Map α γ} :
   m₁.WellFormed →
   (m₁.mapMOnValues f = .ok m₂) →
   m₂.WellFormed
@@ -1127,12 +1100,12 @@ theorem mapMOnValues_ok_wf [LT α] [DecidableLT α] [StrictLT α] {f : β → Ex
     cases h₂ : f v <;> simp [h₂] at h₁
     exact h₁.left
 
-theorem mapMOnValues_nil [LT α] [DecidableLT α] {f : β → Option γ} :
+public theorem mapMOnValues_nil [LT α] [DecidableLT α] {f : β → Option γ} :
   (Map.empty : Map α β).mapMOnValues f = some Map.empty
 := by
   simp [mapMOnValues, empty, kvs, List.mapM_nil]
 
-theorem mapMOnValues_cons {α : Type 0} [LT α] [DecidableLT α] {f : β → Option γ} {m : Map α β} {k : α} {v : β} {tl : List (α × β)}:
+public theorem mapMOnValues_cons {α : Type 0} [LT α] [DecidableLT α] {f : β → Option γ} {m : Map α β} {k : α} {v : β} {tl : List (α × β)}:
   m.kvs = (k, v) :: tl →
   (m.mapMOnValues f = do
     let v' ← f v
@@ -1184,7 +1157,7 @@ theorem mapMOnValues_some_implies_forall₂ [LT α] [DecidableLT α] {f : β →
   simp only [true_and]
   exact h₂
 
-theorem mapMOnValues_some_implies_all_some {α : Type 0} [LT α] [DecidableLT α] {f : β → Option γ} {m₁ : Map α β} {m₂ : Map α γ} :
+public theorem mapMOnValues_some_implies_all_some {α : Type 0} [LT α] [DecidableLT α] {f : β → Option γ} {m₁ : Map α β} {m₂ : Map α γ} :
   m₁.mapMOnValues f = some m₂ →
   ∀ kv ∈ m₁.kvs, ∃ v, (kv.fst, v) ∈ m₂.kvs ∧ f kv.snd = some v
 := by
@@ -1222,7 +1195,7 @@ theorem mapMOnValues_some_implies_all_some_alt_proof [LT α] [DecidableLT α] {f
     subst a'
     exists g
 
-theorem mapMOnValues_some_implies_all_from_some [LT α] [DecidableLT α] {f : β → Option γ} {m₁ : Map α β} {m₂ : Map α γ} :
+public theorem mapMOnValues_some_implies_all_from_some [LT α] [DecidableLT α] {f : β → Option γ} {m₁ : Map α β} {m₂ : Map α γ} :
   m₁.mapMOnValues f = some m₂ →
   ∀ kv ∈ m₂.kvs, ∃ v, (kv.fst, v) ∈ m₁.kvs ∧ f v = kv.snd
 := by
@@ -1260,7 +1233,7 @@ theorem mapMOnValues_some_implies_all_from_some_alt_proof [LT α] [DecidableLT �
     subst a'
     exists b
 
-theorem mapMOnValues_none_iff_exists_none {α : Type 0} [LT α] [DecidableLT α] {f : β → Option γ} {m : Map α β} :
+public theorem mapMOnValues_none_iff_exists_none {α : Type 0} [LT α] [DecidableLT α] {f : β → Option γ} {m : Map α β} :
   m.mapMOnValues f = none ↔ ∃ v ∈ m.values, f v = none
 := by
   constructor
@@ -1282,7 +1255,7 @@ theorem mapMOnValues_none_iff_exists_none {α : Type 0} [LT α] [DecidableLT α]
         specialize h₁ yhd h₃
         have := sizeOf_lt_of_tl h₂ -- required for Lean to allow the following recursive call
         apply mapMOnValues_none_iff_exists_none.mp
-        by_contra h₄
+        false_or_by_contra ; rename_i h₄
         rw [← ne_eq] at h₄
         replace ⟨ytl, h₄⟩ := Option.ne_none_iff_exists'.mp h₄
         exact h₁ ytl h₄
@@ -1312,7 +1285,7 @@ termination_by m
 
   But for a limited converse, see `all_ok_implies_mapMOnValues_ok`
 -/
-theorem mapMOnValues_ok_implies_all_ok [LT α] [DecidableLT α] {f : β → Except ε γ} {m₁ : Map α β} {m₂ : Map α γ} :
+public theorem mapMOnValues_ok_implies_all_ok [LT α] [DecidableLT α] {f : β → Except ε γ} {m₁ : Map α β} {m₂ : Map α γ} :
   m₁.mapMOnValues f = .ok m₂ →
   ∀ kv ∈ m₁.kvs, ∃ v, (kv.fst, v) ∈ m₂.kvs ∧ f kv.snd = .ok v
 := by
@@ -1331,7 +1304,7 @@ theorem mapMOnValues_ok_implies_all_ok [LT α] [DecidableLT α] {f : β → Exce
     replace ⟨h₄, h₄'⟩ := h₄ ; subst a' g ; rename_i g
     exists g
 
-theorem mapMOnValues_ok_implies_all_from_ok [LT α] [DecidableLT α] {f : β → Except ε γ} {m₁ : Map α β} {m₂ : Map α γ} :
+public theorem mapMOnValues_ok_implies_all_from_ok [LT α] [DecidableLT α] {f : β → Except ε γ} {m₁ : Map α β} {m₂ : Map α γ} :
   m₁.mapMOnValues f = .ok m₂ →
   ∀ kv ∈ m₂.kvs, ∃ v, (kv.fst, v) ∈ m₁.kvs ∧ f v = .ok kv.snd
 := by
@@ -1350,7 +1323,7 @@ theorem mapMOnValues_ok_implies_all_from_ok [LT α] [DecidableLT α] {f : β →
     replace ⟨h₄, h₄'⟩ := h₄ ; subst a' g ; rename_i g
     exists b
 
-theorem all_ok_implies_mapMOnValues_ok [LT α] [DecidableLT α] {f : β → Except ε γ} {m₁ : Map α β} :
+public theorem all_ok_implies_mapMOnValues_ok [LT α] [DecidableLT α] {f : β → Except ε γ} {m₁ : Map α β} :
   (∀ kv ∈ m₁.kvs, ∃ v, f kv.snd = .ok v) →
   ∃ m₂, m₁.mapMOnValues f = .ok m₂
 := by
@@ -1366,7 +1339,7 @@ theorem all_ok_implies_mapMOnValues_ok [LT α] [DecidableLT α] {f : β → Exce
     replace ⟨v', h₁⟩ := h₁ (k, v) hkv
     simp only [h₁, Except.bind_ok, reduceCtorEq] at h₂
 
-theorem mapMOnValues_error_implies_exists_error [LT α] [DecidableLT α] {f : β → Except ε γ} {m : Map α β} {e : ε} :
+public theorem mapMOnValues_error_implies_exists_error [LT α] [DecidableLT α] {f : β → Except ε γ} {m : Map α β} {e : ε} :
   m.mapMOnValues f = .error e → ∃ v ∈ m.values, f v = .error e
 := by
   simp only [mapMOnValues, pure, Except.pure]
@@ -1377,7 +1350,7 @@ theorem mapMOnValues_error_implies_exists_error [LT α] [DecidableLT α] {f : β
   have h_values := in_list_in_values hkv
   exists v
 
-theorem wellFormed_correct {α β} [LT α] [StrictLT α] [DecidableLT α] {m : Map α β} :
+public theorem wellFormed_correct {α β} [LT α] [StrictLT α] [DecidableLT α] {m : Map α β} :
   m.wellFormed = true ↔ m.WellFormed
 := by
   constructor
@@ -1450,12 +1423,7 @@ private theorem map_make_find?_in_tail
         simp [Map.find?, List.find?]
         cases h₆: hd₂.fst == k
         case false =>
-          simp
-          have h₇ : (hd.fst == k) = false := by
-            simp
-            assumption
-          have h₈ := insertCanonical_preserves_find_other_element k hd tl₂ h₇
-          rw [h₈]
+          rw [List.insertCanonical_preserves_find_other_element k hd tl₂ (by simp [*])]
         case true =>
           simp
       case isFalse h₅ =>
@@ -1465,7 +1433,7 @@ private theorem map_make_find?_in_tail
         have h₈ : (hd.fst == k) = false := by simp; assumption
         rw [h₈]
 
-theorem make_find?_eq_list_find?
+public theorem make_find?_eq_list_find?
   [DecidableEq α] [LT α] [DecidableLT α]
   [Cedar.Data.StrictLT α]
   {l : List (α × β)}
@@ -1489,7 +1457,7 @@ theorem make_find?_eq_list_find?
       rw [make_find?_eq_list_find?]
 
 
-theorem list_find?_iff_make_find?
+public theorem list_find?_iff_make_find?
   [DecidableEq α] [LT α] [DecidableLT α]
   [Cedar.Data.StrictLT α]
   {l : List (α × β)}
@@ -1510,7 +1478,7 @@ theorem list_find?_iff_make_find?
     rw [h₂] at h
     exact h
 
-theorem list_find?_iff_mk_find?
+public theorem list_find?_iff_mk_find?
   [DecidableEq α] [LT α] [DecidableLT α]
   [Cedar.Data.StrictLT α]
   {l : List (α × β)}
@@ -1539,7 +1507,7 @@ theorem list_find?_iff_mk_find?
 If a key exists in `l₂` but not in `l₁`,
 then `Map.make (l₁ ++ l₂)` contains that key.
 -/
-theorem map_make_append_find_disjoint
+public theorem map_make_append_find_disjoint
   [LT α] [StrictLT α] [DecidableEq α] [DecidableLT α]
   [SizeOf α] [SizeOf β]
   {l₁ : List (α × β)} {l₂ : List (α × β)} {k : α}
@@ -1579,7 +1547,7 @@ theorem map_make_append_find_disjoint
     simp at this
   | inr h => exact h
 
-theorem make_map_values_find
+public theorem make_map_values_find
   [DecidableEq α] [LT α] [DecidableLT α]
   [Cedar.Data.StrictLT α]
   {l : List α}
@@ -1598,7 +1566,7 @@ theorem make_map_values_find
   simp
   rw [List.find?_exact_iff_mem.mpr hfind]
 
-theorem map_toList_findSome?
+public theorem map_toList_findSome?
   [BEq α] [LawfulBEq α]
   {m : Map α β} {k : α} {v : β} {v' : γ}
   {f : α × β → Option γ}
@@ -1646,7 +1614,7 @@ theorem map_toList_findSome?
         · exact ih heq
   · contradiction
 
-theorem map_find?_to_list_find?
+public theorem map_find?_to_list_find?
   [BEq α] [LawfulBEq α]
   {m : Map α β} {k : α} {v : β}
   (hfind : Map.find? m k = .some v) :
@@ -1663,7 +1631,7 @@ theorem map_find?_to_list_find?
   · contradiction
 
 /-- A variant of `map_make_append_find_disjoint`. -/
-theorem map_make_append_find_disjoint'
+public theorem map_make_append_find_disjoint'
   [LT α] [StrictLT α] [DecidableEq α] [DecidableLT α]
   [SizeOf α] [SizeOf β]
   {l₁ : List (α × β)} {l₂ : List (α × β)} {k : α} {v : β}
@@ -1680,7 +1648,7 @@ theorem map_make_append_find_disjoint'
   simp only [Prod.mk.injEq, true_and, forall_const] at this
   simp only [this, hfind_k]
 
-theorem map_find?_implies_find?_weaker_pred
+public theorem map_find?_implies_find?_weaker_pred
   [BEq α] [LawfulBEq α]
   {m : Map α β} {k : α} {v : β} {f : α × β → Bool}
   (hfind : Map.find? m k = .some v)
@@ -1709,7 +1677,7 @@ theorem map_find?_implies_find?_weaker_pred
         simp [hkv] at heq
       · exact hfind
 
-theorem map_keys_empty_implies_map_empty
+public theorem map_keys_empty_implies_map_empty
   {m : Map α β}
   (h : m.keys.toList = []) :
   m = (Map.mk [])
@@ -1721,7 +1689,7 @@ theorem map_keys_empty_implies_map_empty
     simp only [Map.keys, List.map, Set.toList, Set.elts] at h
     contradiction
 
-theorem toList_congr
+public theorem toList_congr
   {m₁ m₂ : Map α β}
   (h : m₁.toList = m₂.toList) :
   m₁ = m₂
@@ -1731,7 +1699,7 @@ theorem toList_congr
   simp only [Map.toList, Map.kvs] at h
   simp [h]
 
-theorem find?_append
+public theorem find?_append
   [LT α] [StrictLT α] [DecidableEq α] [DecidableLT α]
   {m₁ m₂ : Map α β} {k : α}:
   (m₁ ++ m₂).find? k = (m₁.find? k).or (m₂.find? k)
@@ -1747,7 +1715,7 @@ theorem find?_append
     cases List.find? (fun x => x.fst == k) m₂.kvs <;> simp
   . simp
 
-theorem contains_append
+public theorem contains_append
   [LT α] [StrictLT α] [DecidableLT α][DecidableEq α] {m₁ m₂ : Map α β} {k : α} :
   (m₁ ++ m₂).contains k ↔ m₁.contains k ∨ m₂.contains k
 := by
@@ -1759,7 +1727,7 @@ theorem contains_append
     rename_i h₂
     simp [h₁, h₂]
 
-theorem find?_append_right
+public theorem find?_append_right
   [LT α] [StrictLT α] [DecidableEq α] [DecidableLT α]
   {m₁ m₂ : Map α β} {k : α} :
   m₁.contains k = false → (m₁ ++ m₂).find? k = m₂.find? k
@@ -1770,7 +1738,7 @@ theorem find?_append_right
     simpa [Map.contains] using h₁
   simp [h₁]
 
-theorem find?_append_left
+public theorem find?_append_left
   [LT α] [StrictLT α] [DecidableEq α] [DecidableLT α]
   {m₁ m₂ : Map α β} {k : α} :
   m₂.contains k = false → (m₁ ++ m₂).find? k = m₁.find? k
@@ -1781,7 +1749,7 @@ theorem find?_append_left
     simpa [Map.contains] using h₁
   simp [h₁]
 
-theorem find?_filter_if_find? {α : Type u} {β : Type v} [BEq α] [LawfulBEq α]
+public theorem find?_filter_if_find? {α : Type u} {β : Type v} [BEq α] [LawfulBEq α]
   {k : α} {val : β} {m : Map α β} {p : α → β → Bool} :
   m.find? k = some val → p k val = true →
   ((m.filter p).find? k = some val)
@@ -1817,7 +1785,7 @@ theorem find?_filter_if_find? {α : Type u} {β : Type v} [BEq α] [LawfulBEq α
       simp only [this.right]
   · contradiction
 
-theorem find?_filter_iff_find {α : Type u} {β : Type v} [BEq α] [LawfulBEq α] [DecidableEq α] [LT α] [StrictLT α] [DecidableLT α]
+public theorem find?_filter_iff_find {α : Type u} {β : Type v} [BEq α] [LawfulBEq α] [DecidableEq α] [LT α] [StrictLT α] [DecidableLT α]
   {k : α} {val : β} {m : Map α β} {p : α → β → Bool} :
   m.WellFormed →
   ((m.find? k = some val ∧ p k val = true) ↔ ((m.filter p).find? k = some val))
@@ -1838,7 +1806,7 @@ theorem find?_filter_iff_find {α : Type u} {β : Type v} [BEq α] [LawfulBEq α
     have h_find_kvs := List.find?_filter_sorted k' v' m.kvs p h_sorted h₂
     simp [h_find_kvs]
 
-theorem filter_contains_if_find_matching {α : Type u} {β : Type v} [BEq α] [LawfulBEq α]
+public theorem filter_contains_if_find_matching {α : Type u} {β : Type v} [BEq α] [LawfulBEq α]
   {k : α} {m : Map α β} {p : α → β → Bool} :
   (∃ v, m.find? k = some v ∧ p k v = true) → (m.filter p).contains k
 := by
@@ -1847,7 +1815,7 @@ theorem filter_contains_if_find_matching {α : Type u} {β : Type v} [BEq α] [L
   exists v
   exact Map.find?_filter_if_find? hfind hpred
 
-theorem find_matching_iff_filter_contains {α : Type u} {β : Type v} [BEq α] [LawfulBEq α] [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α]
+public theorem find_matching_iff_filter_contains {α : Type u} {β : Type v} [BEq α] [LawfulBEq α] [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α]
   {k : α} {m : Map α β} (p : α → β → Bool) :
   m.WellFormed →
   ((∃ v, m.find? k = some v ∧ p k v = true) ↔ (m.filter p).contains k)
@@ -1857,7 +1825,7 @@ theorem find_matching_iff_filter_contains {α : Type u} {β : Type v} [BEq α] [
     Map.find?_filter_iff_find (p := p) (val := v) (k := k) h_wf
   simp [Map.contains_iff_some_find?, h_find?]
 
-theorem filter_not_contains {α : Type u} {β : Type v} [BEq α] [LawfulBEq α] (k : α) (m : Map α β) :
+public theorem filter_not_contains {α : Type u} {β : Type v} [BEq α] [LawfulBEq α] (k : α) (m : Map α β) :
   (m.filter (λ k' _ => k' != k)|>.contains k) = false
 := by
   have h_none : List.find? (fun a => false) m.1 = none := by

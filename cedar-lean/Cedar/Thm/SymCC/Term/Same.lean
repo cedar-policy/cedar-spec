@@ -185,8 +185,7 @@ theorem same_value_implies_lit {v : Value} {t : Term} :
       List.all_eq_true]
     intro x h₂
     unfold Term.value? at h₁
-    simp only [List.mapM₂, List.attach₂,
-      List.mapM_pmap_subtype (λ (x : Attr × Term) => Term.value?.attrValue? x.fst x.snd),
+    simp only [List.mapM₂_eq_mapM (λ (x : Attr × Term) => Term.value?.attrValue? x.fst x.snd),
       Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at h₁
     replace ⟨avs, h₁, _⟩ := h₁
     rw [← List.mapM'_eq_mapM] at h₁
@@ -623,8 +622,7 @@ theorem record_value?_mapM' {rt : Map Attr Term} {rv : Map Attr Value}
   unfold Term.value? at hr
   simp only [Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq, Value.record.injEq] at hr
   replace ⟨avs, hr, hv⟩ := hr
-  simp only [List.mapM₂, List.attach₂,
-    List.mapM_pmap_subtype (fun (x : Attr × Term) => Term.value?.attrValue? x.fst x.snd)] at hr
+  simp only [List.mapM₂_eq_mapM λ (x : Attr × Term) => Term.value?.attrValue? x.fst x.snd] at hr
   rw [← List.mapM'_eq_mapM] at hr
   exists avs
 
@@ -843,8 +841,7 @@ theorem record_value?_some_implies {ats : List (Attr × Term)} {avs : List (Attr
   simp only [Term.value?, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq,
     Value.record.injEq, Map.mk.injEq] at hv
   replace ⟨avs', hv⟩ := hv
-  rw [List.mapM₂, List.attach₂,
-    List.mapM_pmap_subtype λ (x : Attr × Term) => Term.value?.attrValue? x.fst x.snd,
+  rw [List.mapM₂_eq_mapM λ (x : Attr × Term) => Term.value?.attrValue? x.fst x.snd,
     ← List.mapM'_eq_mapM] at hv
   exists avs'
 
@@ -854,9 +851,8 @@ theorem record_value?_some_implied_by {ats : List (Attr × Term)} {avs : List (A
   (Term.record (Map.mk ats)).value? = some (Value.record (Map.mk avs))
 := by
   intro h₁ h₂
-  simp only [Term.value?, List.mapM₂, List.attach₂,
-    List.mapM_pmap_subtype λ (x : Attr × Term) => Term.value?.attrValue? x.fst x.snd, ←
-    List.mapM'_eq_mapM, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq,
+  simp only [Term.value?, List.mapM₂_eq_mapM λ (x : Attr × Term) => Term.value?.attrValue? x.fst x.snd,
+    ← List.mapM'_eq_mapM, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq,
     Value.record.injEq, Map.mk.injEq, h₁]
   exists avs'
 
@@ -1198,8 +1194,7 @@ theorem term_value?_exists {t : Term} {ty : Validation.CedarType} {εs : SymEnti
     replace ⟨avs, ih⟩ := List.all_some_implies_mapM_some ih
     exists Value.record (Map.mk (List.filterMap (fun x => Option.map (Prod.mk x.fst) x.snd) avs))
     exists avs
-    simp only [List.mapM₂, List.attach₂,
-      List.mapM_pmap_subtype λ (x : Attr × Term) => Term.value?.attrValue? x.fst x.snd,
+    simp only [List.mapM₂_eq_mapM λ (x : Attr × Term) => Term.value?.attrValue? x.fst x.snd,
       ih, and_true]
 termination_by t
 decreasing_by

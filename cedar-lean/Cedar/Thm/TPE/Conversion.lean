@@ -129,12 +129,8 @@ theorem conversion_preserves_evaluation (te : TypedExpr) (req : Request) (es : E
     simp [TypedExpr.toResidual, Spec.evaluate, Residual.evaluate]
     congr 1
     rw [List.map₁_eq_map, List.map₁_eq_map]
-
-
-    dsimp only [List.attachWith, List.mapM₁, List.attach, List.attach₂, List.mapM₂, List.mapM₁, List.map₁, List.attach]
-    rw [List.mapM_pmap_subtype (fun x => Spec.evaluate x req es)]
-    rw [List.mapM_pmap_subtype (fun x => x.evaluate req es) (List.map TypedExpr.toResidual ls) (List.attach._proof_1 (List.map TypedExpr.toResidual ls))]
-
+    rw [List.mapM₁_eq_mapM (Spec.evaluate · req es)]
+    rw [List.mapM₁_eq_mapM (Residual.evaluate · req es)]
     rw [List.mapM_map, List.mapM_map]
     rw [List.forall₂_implies_mapM_eq]
     apply conversion_preserves_evaluation_forall2
@@ -142,12 +138,10 @@ theorem conversion_preserves_evaluation (te : TypedExpr) (req : Request) (es : E
     unfold TypedExpr.toExpr
     simp [TypedExpr.toResidual, Spec.evaluate, Residual.evaluate]
     congr 1
-
-    dsimp only [List.attachWith, List.mapM₁, List.attach, List.attach₂, List.mapM₂, List.mapM₁, List.map₁, List.attach]
-    rw [List.mapM_pmap_subtype (fun x => bindAttr x.fst (Spec.evaluate x.snd req es)) (List.map (fun x => (x.1.fst, x.1.snd.toExpr)) (List.pmap Subtype.mk map fun x => List.sizeOf_snd_lt_sizeOf_list))]
-    rw [List.map_pmap_subtype (fun x => (x.fst, x.snd.toExpr)) map]
-    rw [List.map_pmap_subtype (fun x => (x.fst, TypedExpr.toResidual x.snd)) map]
-    rw [List.mapM_pmap_subtype (fun x => bindAttr x.fst (x.snd.evaluate req es)) (List.map (fun x => (x.fst, TypedExpr.toResidual x.snd)) map)]
+    rw [List.mapM₂_eq_mapM λ x => bindAttr x.fst (Spec.evaluate x.snd req es)]
+    rw [List.map₂_eq_map_snd TypedExpr.toExpr]
+    rw [List.map₂_eq_map_snd TypedExpr.toResidual]
+    rw [List.mapM₂_eq_mapM λ x => bindAttr x.fst (Residual.evaluate x.snd req es)]
     unfold bindAttr
     rw [List.mapM_map, List.mapM_map]
     simp
@@ -156,11 +150,8 @@ theorem conversion_preserves_evaluation (te : TypedExpr) (req : Request) (es : E
   | call xfn args ty =>
     simp [TypedExpr.toExpr, TypedExpr.toResidual, Spec.evaluate, Residual.evaluate]
     congr 1
-    dsimp only [List.attachWith, List.mapM₁, List.attach, List.attach₂, List.mapM₂, List.mapM₁, List.map₁, List.attach]
-    rw [List.map_pmap_subtype]
-    rw [List.map_pmap_subtype]
-    rw [List.mapM_pmap_subtype (fun x => x.evaluate req es) (List.map TypedExpr.toResidual args)]
-    rw [List.mapM_pmap_subtype (fun x => Spec.evaluate x req es)]
+    rw [List.map₁_eq_map, List.map₁_eq_map]
+    rw [List.mapM₁_eq_mapM (Spec.evaluate · req es), List.mapM₁_eq_mapM (Residual.evaluate · req es)]
     rw [List.mapM_map, List.mapM_map]
     rw [List.forall₂_implies_mapM_eq]
     apply conversion_preserves_evaluation_forall2
@@ -455,8 +446,8 @@ theorem conversion_preserves_typedness:
     simp [TypedExpr.toResidual] at h ⊢
     cases h with
     | record h₁ h₂ =>
-      dsimp only [List.attachWith, List.mapM₁, List.attach, List.attach₂, List.mapM₂, List.mapM₁, List.map₁, List.attach]
-      rw [List.map_pmap_subtype (fun x => (x.fst, TypedExpr.toResidual x.snd)) m]
+      rw [List.map₂_eq_map_snd TypedExpr.toResidual]
+      simp only
       apply Residual.WellTyped.record
       · intro k v hkv
         simp [List.mem_map] at hkv

@@ -178,7 +178,7 @@ theorem compile_interpret_record {axs : List (Attr × Expr)} {εnv : SymEnv} {I 
   replace hwε := wf_εnv_for_record_implies hwε
   have hwφ := compile_attr_expr_wfs hwε hok
   replace ih := compile_interpret_ihs hI hwε ih hok
-  simp only [compile, List.mapM₂, List.attach₂, List.mapM_pmap_subtype λ (p : Attr × Expr) => match p with | (a₁, x₁) => do .ok (a₁, ← compile x₁ (SymEnv.interpret I εnv))]
+  simp only [compile, List.mapM₂_eq_mapM λ (p : Attr × Expr) => match p with | (a₁, x₁) => do .ok (a₁, ← compile x₁ (SymEnv.interpret I εnv))]
   simp_do_let (axs.mapM λ (a₁, x₁) => do .ok (a₁, ← compile x₁ (SymEnv.interpret I εnv)))
   case error he =>
     replace ⟨ax, hmem, he⟩ := List.mapM_error_implies_exists_error he
@@ -297,10 +297,9 @@ theorem compile_evaluate_record {axs : List (Attr × Expr)} {env : Env} {εnv : 
   replace hwε := wf_εnv_for_record_implies hwε
   replace hwe := wf_env_for_record_implies hwe
   replace ih := compile_evaluate_ihs heq hwe hwε ih hok
-  simp only [compileRecord, someOf, evaluate, List.mapM₂, List.attach₂,
-    List.mapM_pmap_subtype λ (p : Attr × Expr) =>
-      bindAttr p.fst (evaluate p.snd env.request env.entities)]
-  simp_do_let (List.mapM (fun p => bindAttr p.fst (evaluate p.snd env.request env.entities)) axs)
+  simp only [compileRecord, someOf, evaluate,
+      List.mapM₂_eq_mapM λ (p : Attr × Expr) => bindAttr p.fst (evaluate p.snd env.request env.entities)]
+  simp_do_let (axs.mapM λ p => bindAttr p.fst (evaluate p.snd env.request env.entities))
   case error he =>
     replace ⟨px, hx, he⟩ := List.mapM_error_implies_exists_error he
     replace ⟨pt, ht, ih⟩ := List.forall₂_implies_all_left ih px hx

@@ -152,7 +152,7 @@ def termToJson : Term → Lean.Json
   | .record m =>
     Lean.Json.mkObj [
       ("record",
-        Lean.Json.arr (m.kvs.attach₂.map (fun ⟨(k,v), _⟩ =>
+        Lean.Json.arr (m.kvs.map₂ (fun ⟨(k,v), _⟩ =>
           Lean.Json.arr [Lean.Json.str k, termToJson v].toArray)).toArray)
     ]
   | .app op args retTy =>

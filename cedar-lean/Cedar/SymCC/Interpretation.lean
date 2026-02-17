@@ -136,13 +136,13 @@ def Term.interpret (I : Interpretation) : Term → Term
   | .none ty            => noneOf ty
   | .some t             => someOf (t.interpret I)
   | .set (Set.mk ts) ty =>
-    let ts' := ts.attach.map (λ ⟨t, _⟩ => t.interpret I)
+    let ts' := ts.map₁ (λ ⟨t, _⟩ => t.interpret I)
     setOf ts' ty
   | .app op ts ty       =>
-    let ts' := ts.attach.map (λ ⟨t, _⟩ => t.interpret I)
+    let ts' := ts.map₁ (λ ⟨t, _⟩ => t.interpret I)
     op.interpret I ts' ty
   | .record (.mk ats)   =>
-    let ats' := ats.attach₃.map (λ ⟨(aᵢ, tᵢ), _⟩ => (aᵢ, tᵢ.interpret I))
+    let ats' := ats.map₃ (λ ⟨(aᵢ, tᵢ), _⟩ => (aᵢ, tᵢ.interpret I))
     recordOf ats'
 
 def SymRequest.interpret (I : Interpretation) (req : SymRequest)  : SymRequest :=

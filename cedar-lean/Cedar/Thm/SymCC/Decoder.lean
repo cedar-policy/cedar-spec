@@ -77,6 +77,7 @@ theorem default_lit_wf
     cases rty with | mk attrs =>
     cases hwf_ty with | record_wf hwf_rty hwf_rty_map =>
     simp only [Decoder.defaultLit]
+    simp only [List.map₂_eq_map λ x => (x.fst, Decoder.defaultLit eidOf x.snd)]
     constructor
     · intros attr t hmem_attr_t
       simp only [Map.toList, Map.kvs] at hmem_attr_t
@@ -84,15 +85,12 @@ theorem default_lit_wf
       simp only [Prod.mk.injEq] at h
       simp only [←h.2]
       apply default_lit_wf _ hwf_eidOf
-      apply hwf_rty attr_ty.1.1
-      simp only [List.attach₂] at hmem_attr_ty
-      have ⟨attr_ty₁, hmem_attr_ty₁, heq⟩ := List.mem_pmap.mp hmem_attr_ty
-      cases attr_ty₁ with | mk a b =>
-      simp only [←heq]
-      exact (Map.in_list_iff_find?_some hwf_rty_map).mp hmem_attr_ty₁
-    · simp only [List.map_attach₂ (λ x => (x.fst, Decoder.defaultLit eidOf x.snd))]
-      apply Map.mapOnValues_wf.mp
-      exact hwf_rty_map
+      apply hwf_rty attr_ty.1
+      cases attr_ty with | mk a b =>
+      simp only at h ; replace ⟨h, h'⟩ := h ; subst h h'
+      apply (Map.in_list_iff_find?_some hwf_rty_map).mp
+      simp [hmem_attr_ty]
+    · exact Map.mapOnValues_wf.mp hwf_rty_map
 termination_by sizeOf ty
 decreasing_by
   have : ty = TermType.record rty := by assumption
@@ -100,10 +98,8 @@ decreasing_by
   have : rty = Map.mk attrs := by assumption
   simp only [this]
   simp
-  have h := attr_ty.property
-  calc
-    sizeOf attr_ty.1.snd < 1 + sizeOf attrs := by assumption
-    _ < 1 + (1 + sizeOf attrs) := by omega
+  have := List.sizeOf_snd_lt_sizeOf_list hmem_attr_ty
+  omega
 
 theorem default_lit_is_lit
   {eidOf : EntityType → String} {ty : TermType} :
@@ -117,7 +113,7 @@ theorem default_lit_is_lit
   | record rty =>
     cases rty with | mk attrs =>
     simp only [Decoder.defaultLit, Term.isLiteral]
-    rw [List.map_attach₂ (λ x => (x.fst, Decoder.defaultLit eidOf x.snd))]
+    rw [List.map₂_eq_map (λ x => (x.fst, Decoder.defaultLit eidOf x.snd))]
     simp only [List.attach₃]
     rw [List.all_pmap_subtype
       (λ x => x.snd.isLiteral)
@@ -157,8 +153,8 @@ theorem default_lit_well_typed
     cases rty with | mk attrs =>
     simp only [Decoder.defaultLit, Term.typeOf]
     congr
-    rw [List.map_attach₂ (λ x => (x.fst, Decoder.defaultLit eidOf x.snd))]
-    simp only [List.map_attach₃_snd]
+    rw [List.map₂_eq_map (λ x => (x.fst, Decoder.defaultLit eidOf x.snd))]
+    simp only [List.map₃_eq_map_snd]
     simp only [List.map_map]
     unfold Function.comp
     simp only

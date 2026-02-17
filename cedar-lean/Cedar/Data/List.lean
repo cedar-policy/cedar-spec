@@ -14,6 +14,8 @@
  limitations under the License.
 -/
 
+module
+
 import Cedar.Data.LT
 import Batteries.Data.List
 
@@ -29,7 +31,7 @@ open Cedar.Data
 
 ----- Definitions -----
 
-def insertCanonical [LT β] [DecidableLT β] (f : α → β) (x : α) (xs : List α) : List α :=
+public def insertCanonical [LT β] [DecidableLT β] (f : α → β) (x : α) (xs : List α) : List α :=
   match xs with
   | [] => [x]
   | hd :: tl =>
@@ -46,11 +48,11 @@ If the ordering relation < on β is strict, then `canonicalize` returns a
 canonical representation of the input list, which is sorted and free of
 duplicates.
 -/
-def canonicalize [LT β] [DecidableLT β] (f : α → β) : List α → List α
+public def canonicalize [LT β] [DecidableLT β] (f : α → β) : List α → List α
   | [] => []
   | hd :: tl => insertCanonical f hd (canonicalize f tl)
 
-theorem sizeOf_snd_lt_sizeOf_list {α : Type u} {β : Type v} [SizeOf α] [SizeOf β] {x : α × β} {xs : List (α × β)} :
+public theorem sizeOf_snd_lt_sizeOf_list {α : Type u} {β : Type v} [SizeOf α] [SizeOf β] {x : α × β} {xs : List (α × β)} :
   x ∈ xs → sizeOf x.snd < 1 + sizeOf xs
 := by
   intro h
@@ -64,12 +66,12 @@ theorem sizeOf_snd_lt_sizeOf_list {α : Type u} {β : Type v} [SizeOf α] [SizeO
     exact Nat.one_pos
   · exact List.sizeOf_lt_of_mem h
 
-def attach₂ {α : Type u} {β : Type v} [SizeOf α] [SizeOf β] (xs : List (α × β)) :
+public def attach₂ {α : Type u} {β : Type v} [SizeOf α] [SizeOf β] (xs : List (α × β)) :
 List { x : α × β // sizeOf x.snd < 1 + sizeOf xs } :=
   xs.pmap Subtype.mk
   (λ _ => sizeOf_snd_lt_sizeOf_list)
 
-def attach₃ {α : Type u} {β : Type v} [SizeOf α] [SizeOf β] (xs : List (α × β)) :
+public def attach₃ {α : Type u} {β : Type v} [SizeOf α] [SizeOf β] (xs : List (α × β)) :
 List { x : α × β // sizeOf x.snd < 1 + (1 + sizeOf xs) } :=
   xs.pmap Subtype.mk
   (λ x => by
@@ -78,18 +80,24 @@ List { x : α × β // sizeOf x.snd < 1 + (1 + sizeOf xs) } :=
     apply Nat.lt_add_right
     apply List.sizeOf_snd_lt_sizeOf_list h)
 
-def map₁ {α : Type w} {β : Type u} (xs : List α) (f : {x : α // x ∈ xs} → β) : List β :=
+public def map₁ {α : Type w} {β : Type u} (xs : List α) (f : {x : α // x ∈ xs} → β) : List β :=
   xs.attach.map f
 
-def mapM₁ {m : Type u → Type v} [Monad m] {α : Type w} {β : Type u}
+public def map₂ {α : Type w} {β : Type u} [SizeOf α] [SizeOf β] (xs : List (α × β)) (f : {x : α × β // sizeOf x.snd < 1 + sizeOf xs} → γ) : List γ :=
+  xs.attach₂.map f
+
+public def map₃ {α : Type w} {β : Type u} [SizeOf α] [SizeOf β] (xs : List (α × β)) (f : {x : α × β // sizeOf x.snd < 1 + (1 + sizeOf xs)} → γ) : List γ :=
+  xs.attach₃.map f
+
+public def mapM₁ {m : Type u → Type v} [Monad m] {α : Type w} {β : Type u}
   (xs : List α) (f : {x : α // x ∈ xs} → m β) : m (List β) :=
   xs.attach.mapM f
 
-def mapM₂ {m : Type u → Type v} [Monad m] {γ : Type u} [SizeOf α] [SizeOf β]
+public def mapM₂ {m : Type u → Type v} [Monad m] {γ : Type u} [SizeOf α] [SizeOf β]
   (xs : List (α × β)) (f : {x : α × β // sizeOf x.snd < 1 + sizeOf xs} → m γ) : m (List γ) :=
   xs.attach₂.mapM f
 
-def mapM₃ {m : Type u → Type v} [Monad m] {γ : Type u} [SizeOf α] [SizeOf β]
+public def mapM₃ {m : Type u → Type v} [Monad m] {γ : Type u} [SizeOf α] [SizeOf β]
   (xs : List (α × β)) (f : { x : α × β // sizeOf x.snd < 1 + (1 + sizeOf xs) } → m γ) : m (List γ) :=
   xs.attach₃.mapM f
 
@@ -100,22 +108,22 @@ works for `f` returning various collection types, not just `List`.
 That said, if your `f` does return `List`, you may want to use `flatMap`
 instead, as there is a large library of lemmas about it in the standard library.
 -/
-def mapUnion {α β} [Union α] [EmptyCollection α] (f : β → α) (bs : List β) : α :=
+public def mapUnion {α β} [Union α] [EmptyCollection α] (f : β → α) (bs : List β) : α :=
   bs.foldl (λ a b => a ∪ f b) ∅
 
-def mapUnion₁ {α β} [Union α] [EmptyCollection α]
+public def mapUnion₁ {α β} [Union α] [EmptyCollection α]
   (xs : List β) (f : {x : β // x ∈ xs} → α) : α :=
   xs.attach.mapUnion f
 
-def mapUnion₂ {α β γ} [Union α] [EmptyCollection α] [SizeOf β] [SizeOf γ]
+public def mapUnion₂ {α β γ} [Union α] [EmptyCollection α] [SizeOf β] [SizeOf γ]
   (xs : List (β × γ)) (f : {x : β × γ // sizeOf x.snd < 1 + sizeOf xs} → α) : α :=
   xs.attach₂.mapUnion f
 
-def mapUnion₃ [Union α] [EmptyCollection α] [SizeOf β] [SizeOf γ]
+public def mapUnion₃ [Union α] [EmptyCollection α] [SizeOf β] [SizeOf γ]
   (xs : List (β × γ)) (f : {x : β × γ // sizeOf x.snd < 1 + (1 + sizeOf xs) } → α) : α :=
   xs.attach₃.mapUnion f
 
-def isSortedBy {α β} [LT β] [DecidableLT β] (l : List α) (f : α → β) : Bool :=
+public def isSortedBy {α β} [LT β] [DecidableLT β] (l : List α) (f : α → β) : Bool :=
   match l with
   | [] => true
   | [_] => true
@@ -125,7 +133,7 @@ def isSortedBy {α β} [LT β] [DecidableLT β] (l : List α) (f : α → β) : 
     else
       false
 
-def isSorted {α} [LT α] [DecidableLT α] (l : List α) : Bool :=
+public def isSorted {α} [LT α] [DecidableLT α] (l : List α) : Bool :=
   match l with
   | [] => true
   | [_] => true

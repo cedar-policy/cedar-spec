@@ -1329,8 +1329,8 @@ theorem typechecked_is_well_typed_after_lifting_record
   typeOf (Expr.record axs) c₁ env = Except.ok (ty, c₂) → TypedExpr.WellTyped env ty.liftBoolTypes
 := by
   intro h₃
-  simp [typeOf, List.mapM₂, List.attach₂] at h₃
-  rw [List.mapM_pmap_subtype (fun (x : Attr × Expr) => Except.map (fun x_1 => (x.fst, x_1.fst)) (typeOf x.snd c₁ env))] at h₃
+  simp only [typeOf, List.empty_eq] at h₃
+  rw [List.mapM₂_eq_mapM λ (x : Attr × Expr) => Except.map (fun x_1 => (x.fst, x_1.fst)) (typeOf x.snd c₁ env)] at h₃
   generalize hᵢ : List.mapM (fun x => Except.map (fun x_1 => (x.fst, x_1.fst)) (typeOf x.snd c₁ env)) axs = res
   cases res <;> simp [hᵢ, ok] at h₃
   rename_i tys
@@ -1339,7 +1339,7 @@ theorem typechecked_is_well_typed_after_lifting_record
   simp only [TypedExpr.liftBoolTypes]
   constructor
   · intro k v h₂
-    simp [List.map_attach₂ (fun (x : Attr × TypedExpr) => (x.fst, x.snd.liftBoolTypes))] at h₂
+    simp [List.map₂_eq_map λ (x : Attr × TypedExpr) => (x.fst, x.snd.liftBoolTypes)] at h₂
     rcases h₂ with ⟨a₁, x₁, h₂, h₃, h₆⟩
     simp [List.mapM_ok_iff_forall₂] at hᵢ
     rcases List.forall₂_implies_all_right hᵢ (a₁, x₁) h₂ with ⟨ax, h₄, h₅⟩
@@ -1351,7 +1351,7 @@ theorem typechecked_is_well_typed_after_lifting_record
     subst h₆
     subst h₅
     exact hᵢ₁
-  · simp only [List.map_attach₂ (fun (x : Attr × TypedExpr) => (x.fst, x.snd.liftBoolTypes))]
+  · simp only [List.map₂_eq_map λ (x : Attr × TypedExpr) => (x.fst, x.snd.liftBoolTypes)]
     exact record_lifting_make
 
 /-- The type checker produces typed expressions that are well-typed after type

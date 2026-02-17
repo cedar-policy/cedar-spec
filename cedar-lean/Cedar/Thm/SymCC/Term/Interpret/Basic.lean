@@ -50,8 +50,7 @@ theorem interpret_term_set {I : Interpretation} {s : Set Term} {ty : TermType} :
   Term.set (Set.make (s.elts.map (Term.interpret I))) ty
 := by
   cases s
-  simp only [Term.interpret, setOf, List.attach_def,
-    List.map_pmap_subtype (λ t => Term.interpret I t)]
+  simp only [Term.interpret, setOf, List.map₁_eq_map (Term.interpret I ·)]
 
 theorem interpret_term_set_empty {ty : TermType} :
   Term.interpret I (Term.set (Set.mk []) ty) = Term.set (Set.mk []) ty
@@ -63,8 +62,7 @@ theorem interpret_term_record {I : Interpretation} {r : Map Attr Term} :
   Term.record (Map.make (r.kvs.map λ (a, t) => (a, t.interpret I)))
 := by
   cases r
-  simp only [Term.interpret, recordOf, List.attach₃,
-    List.map_pmap_subtype (λ (x : (Attr × Term)) => (x.fst, x.snd.interpret I))]
+  simp only [Term.interpret, recordOf, List.map₃_eq_map λ (x : (Attr × Term)) => (x.fst, x.snd.interpret I)]
 
 /--
 This tactic discharges proofs in lemmas of the form `interpret_term_app_*`,
@@ -75,7 +73,7 @@ local syntax "simp_interpret_term_app" : tactic
 local macro_rules
 | `(tactic| simp_interpret_term_app) =>
   `(tactic|
-    simp only [Term.interpret, List.attach_def, List.pmap, List.map_cons, List.map_nil] ;
+    simp only [Term.interpret, List.map₁_eq_map, List.map_cons, List.map_nil] ;
     simp only [Op.interpret] -- Faster proof when this is a separate simp
     )
 

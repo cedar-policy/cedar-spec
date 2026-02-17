@@ -377,8 +377,7 @@ theorem evaluate_entity_set_eqv {vs : List Value} {euids euids' : List EntityUID
   simp only [evaluate] at h₁
   cases h₃ : List.mapM₁ (List.map (Expr.lit ∘ Prim.entityUID) euids') fun x => evaluate x.val request entities <;> simp [h₃] at h₁
   rename_i vs'
-  simp only [List.mapM₁, List.attach_def,
-    List.mapM_pmap_subtype (evaluate · request entities)] at h₃
+  simp only [List.mapM₁_eq_mapM (evaluate · request entities)] at h₃
   rw [←List.mapM'_eq_mapM, ←List.map_map] at h₃
   replace h₃ := mapM'_eval_lits_eq_prims h₃
   rw [List.map_map] at h₃

@@ -352,19 +352,13 @@ private theorem CompileWellTypedCondition.eliminate_record
   cases hwt with | record hwt =>
   cases hrefs with | record_valid hrefs =>
   constructor
-  · any_goals assumption
-  · constructor;
-    · apply hwt; assumption
-    · constructor
-      · assumption
-      · simp at hrefs
-        apply hrefs a x.toExpr a x
-        simp only [hx, List.attach₂, List.mem_pmap, Subtype.mk.injEq, exists_prop, exists_eq_right]
-        any_goals rfl
-        have e : x = (a, x).snd := by rfl
-        rw [e]
-        apply List.sizeOf_snd_lt_sizeOf_list
-        exact hx
+  · exact hεnv
+  · apply And.intro (hwt a x hx)
+    constructor
+    · assumption
+    · simp only [List.map₂_eq_map_snd TypedExpr.toExpr, List.mem_map, Prod.exists,
+        forall_exists_index, and_imp, Prod.forall, Prod.mk.injEq] at hrefs
+      exact hrefs a x.toExpr a x (by simp [hx]) rfl rfl
 
 /--
 CompileWellTypedCondition decomposes for call
@@ -1228,18 +1222,13 @@ theorem compile_well_typed_record
 := by
   have ⟨hεnv, hwt, hwf_εnv, hrefs⟩ := hcond
   simp only [CompileWellTyped, TypedExpr.toExpr, compile, compileRecord]
-  -- Strip one layer of mapM₂
-  simp only [List.mapM₂_eq_mapM
-    (fun x => do Except.ok (x.fst, ← compile x.snd εnv))
-    (List.map (fun x => (x.1.fst, x.1.snd.toExpr)) xs.attach₂)]
-  -- Strip off the second later of mapM₂
-  simp only [List.mapM_map, Function.comp_def]
-  have e := List.mapM₂_eq_mapM
-    (fun x => do Except.ok (x.fst, ← compile x.snd.toExpr εnv))
-    xs
-  simp only [List.mapM₂] at e
-  simp only [e]
-  clear e
+  simp only [do_eq_ok, Except.ok.injEq]
+  -- Strip mapM₂
+  change ∃ (t : Term), (∃ (ats : List (Attr × Term)),
+    ((xs.map₂ _).mapM₂ (λ x => compile x.val.snd εnv |>.bind λ t => Except.ok (x.val.fst, t))) = Except.ok ats ∧ _) ∧ t.typeOf = _
+  rw [List.mapM₂_eq_mapM λ x => compile x.snd εnv |>.bind λ t => Except.ok (x.fst, t)]
+  -- Strip map₂
+  simp only [List.map₂_eq_map_snd, List.mapM_map, Function.comp_def]
   -- Compilation of all fields succeeds
   have ⟨tcomp_xs, hcomp_xs⟩ :
     ∃ ats : List (Attr × Term),
@@ -1314,7 +1303,8 @@ theorem compile_well_typed_record
     simp only [hwf_comp_x, true_and]
     apply (wf_option_get hwf_comp_x hty_comp_x).left
   -- Prove some typing obligations
-  simp only [hcomp_xs, Factory.someOf, Except.bind_ok, Except.ok.injEq, exists_eq_left']
+  change xs.mapM (λ x => compile x.snd.toExpr εnv |>.bind λ t => Except.ok (x.fst, t)) = .ok tcomp_xs at hcomp_xs
+  simp only [hcomp_xs, Factory.someOf, Except.ok.injEq, exists_eq_left']
   apply (wf_ifAllSome (εs := εnv.entities) ?_ ?_ ?_).right
   · intros g hg
     exact (hwf_comp_xs g hg).left
@@ -1337,9 +1327,7 @@ theorem compile_well_typed_record
     ]
     simp only [ofRecordType_as_map rty.1]
     simp only [hrty, Data.Map.make]
-    simp only [List.attach₃]
-    simp only [List.map_pmap]
-    simp only [List.pmap_eq_map]
+    simp only [List.map₃_eq_map_snd Term.typeOf]
     apply List.forall₂_iff_map_eq.mp
     apply List.Forall₂.imp
     rotate_left

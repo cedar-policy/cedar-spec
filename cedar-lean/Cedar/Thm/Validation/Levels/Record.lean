@@ -47,21 +47,21 @@ theorem level_based_slicing_is_sound_record_attrs {rxs : List (Attr × Expr)} {n
     let v ← (evaluate x.1.snd request (entities.sliceAtLevel request n))
     Except.ok (x.1.fst, v))
 := by
+  simp only [List.mapM₂_eq_mapM (λ x : (Attr × Expr) => do let v ← evaluate x.snd request entities; .ok (x.fst, v))]
+  simp only [List.mapM₂_eq_mapM (λ x : (Attr × Expr) => do let v ← evaluate x.snd request (entities.sliceAtLevel request n); .ok (x.fst, v))]
   cases ht
-  case nil =>
-    simp [List.attach₂, List.mapM₂]
-  case cons x tx rxs' txs' htx ht =>
+  case nil => simp
+  case cons rx tx rxtl txtl htx htl =>
     simp only [List.mem_cons, forall_eq_or_imp] at ih hl
     replace ⟨ ihx, ih ⟩ := ih
     replace ⟨ hlx, hl ⟩ := hl
     replace ⟨ _, _, htx ⟩ := htx
     specialize ihx hc hr htx hlx
-    simp only [←ihx, List.mapM₂, List.attach₂, List.pmap_cons, List.mapM_cons]
-    cases he₁ : evaluate x.snd request entities <;> simp only [Except.bind_err, Except.bind_ok]
-    have ih' := level_based_slicing_is_sound_record_attrs hc hr ht hl ih
-    simp only [List.mapM₂, List.attach₂] at ih'
-    simp only [List.mapM_pmap_subtype (λ x : (Attr × Expr) => do let v ← evaluate x.snd request entities; .ok (x.fst, v)) rxs'] at ih' ⊢
-    simp only [List.mapM_pmap_subtype (λ x : (Attr × Expr) => do let v ← evaluate x.snd request (entities.sliceAtLevel request n); .ok (x.fst, v)) rxs'] at ih' ⊢
+    simp only [List.mapM_cons, ←ihx]
+    have ih' := level_based_slicing_is_sound_record_attrs hc hr htl hl ih
+    cases he₁ : evaluate rx.snd request entities <;> simp only [Except.bind_err, Except.bind_ok]
+    simp only [List.mapM₂_eq_mapM (λ x : (Attr × Expr) => do let v ← evaluate x.snd request entities; .ok (x.fst, v))] at ih'
+    simp only [List.mapM₂_eq_mapM (λ x : (Attr × Expr) => do let v ← evaluate x.snd request (entities.sliceAtLevel request n); .ok (x.fst, v))] at ih'
     rw [ih']
 
 theorem level_based_slicing_is_sound_record {rxs : List (Attr × Expr)} {n : Nat} {c₀ c₁: Capabilities} {env : TypeEnv} {request : Request} {entities : Entities}

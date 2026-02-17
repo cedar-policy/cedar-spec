@@ -99,13 +99,13 @@ theorem substitute_action_nil_set : ∀ (uid : EntityUID),
   substituteAction uid (.set []) = .set []
 := by
   intro uid
-  simp only [substituteAction, mapOnVars, List.attach_def, List.pmap, List.map_nil]
+  simp only [substituteAction, mapOnVars, List.map₁_eq_map, List.map_nil]
 
 theorem substitute_action_cons_set : ∀ (h : Expr) (t : List Expr) (uid : EntityUID),
   substituteAction uid (.set (h :: t)) = .set ((substituteAction uid h) :: t.map (substituteAction uid))
 := by
   intro h t uid
-  simp only [substituteAction, mapOnVars, List.attach_def, List.map_pmap_subtype, List.map_cons]
+  simp only [substituteAction, mapOnVars, List.map₁_eq_map, List.map_cons]
   simp only [Expr.set.injEq, List.cons.injEq, true_and]
   unfold substituteAction
   simp only
@@ -123,7 +123,7 @@ theorem substitute_action_preserves_evaluation_set {xs : List Expr} {request : R
     have h₁ := ih₁ h
     simp only [h₀, List.mem_cons, true_or, true_implies] at h₁
     rw [substitute_action_cons_set]
-    simp only [evaluate, List.mapM₁, List.attach_def, List.mapM_pmap_subtype (fun x => evaluate x request entities)]
+    simp only [evaluate, List.mapM₁_eq_mapM (evaluate · request entities)]
     simp only [List.mapM_cons, bind_assoc, pure_bind]
     rw [h₁]
     simp only [List.mapM_map, Function.comp_def]
@@ -137,14 +137,14 @@ theorem substitute_action_nil_record : ∀ (uid : EntityUID),
   substituteAction uid (.record []) = .record []
 := by
   intro uid
-  simp only [substituteAction, mapOnVars, List.attach₂, List.pmap, List.map_nil]
+  simp only [substituteAction, mapOnVars, List.map₂_eq_map_snd, List.map_nil]
 
 theorem substitute_action_cons_record : ∀ (ax : Attr × Expr) (axs : List (Attr × Expr)) (uid : EntityUID),
   substituteAction uid (.record (ax :: axs)) =
   .record ((ax.fst, substituteAction uid ax.snd) :: axs.map (fun (a, e) => (a, substituteAction uid e)))
 := by
   intro h t uid
-  simp only [substituteAction, mapOnVars, List.attach₂, List.map_pmap_subtype_snd, List.map_cons]
+  simp only [substituteAction, mapOnVars, List.map₂_eq_map_snd, List.map_cons]
 
 theorem substitute_action_preserves_evaluation_record {axs : List (Attr × Expr)} {request : Request} {entities : Entities}
 (ih₁ : ∀ axᵢ, axᵢ ∈ axs → SubstituteActionPreservesEvaluation axᵢ.snd request entities) :
@@ -159,7 +159,7 @@ theorem substitute_action_preserves_evaluation_record {axs : List (Attr × Expr)
     have h₁ := ih₁ hd
     simp only [h₀, List.mem_cons, true_or, true_implies] at h₁
     rw [substitute_action_cons_record]
-    simp only [evaluate, List.mapM₂, List.attach₂, List.mapM_pmap_subtype (fun (a, e) => bindAttr a (evaluate e request entities))]
+    simp only [evaluate, List.mapM₂_eq_mapM λ (a, e) => bindAttr a (evaluate e request entities)]
     simp only [bindAttr]
     simp only [List.mapM_cons, bind_assoc, pure_bind]
     rw [h₁]
@@ -182,14 +182,13 @@ theorem substitute_action_nil_call : ∀ (uid : EntityUID) (xfn : ExtFun),
   substituteAction uid (.call xfn []) = .call xfn [] :=
 by
   intro uid
-  simp only [substituteAction, mapOnVars, List.attach_def, List.pmap, List.map_nil, implies_true]
-
+  simp only [substituteAction, mapOnVars, List.map₁_eq_map, List.map_nil, implies_true]
 
 theorem substitute_action_cons_call : ∀ (x : Expr) (xs : List Expr) (uid : EntityUID) (xfn : ExtFun),
   substituteAction uid (.call xfn (x :: xs)) = .call xfn ((substituteAction uid x) :: xs.map (substituteAction uid)) :=
 by
   intro h t uid
-  simp only [substituteAction, mapOnVars, List.attach_def, List.map_pmap_subtype, List.map_cons]
+  simp only [substituteAction, mapOnVars, List.map₁_eq_map, List.map_cons]
   simp only [Expr.call.injEq, List.cons.injEq, true_and, forall_const]
   unfold substituteAction
   simp only
@@ -208,7 +207,7 @@ theorem substitute_action_preserves_evaluation_call {xfn : ExtFun} {xs : List Ex
     have h₁ := ih₁ h
     simp only [h₀, List.mem_cons, true_or, true_implies] at h₁
     rw [substitute_action_cons_call]
-    simp only [evaluate, List.mapM₁, List.attach_def, List.mapM_pmap_subtype (fun x => evaluate x request entities)]
+    simp only [evaluate, List.mapM₁_eq_mapM (evaluate · request entities)]
     simp only [List.mapM_cons, bind_assoc, pure_bind]
     rw [h₁]
     simp only [List.mapM_map, Function.comp_def]

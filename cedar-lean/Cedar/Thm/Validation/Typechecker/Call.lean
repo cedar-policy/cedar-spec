@@ -37,12 +37,11 @@ match xs with
   subst htxs
   constructor
 | x :: xs => by
-  simp only [List.mapM₁, List.attach, List.attachWith, List.pmap_cons, List.mapM_cons, bind_pure_comp] at htxs
+  simp only [List.mapM₁_eq_mapM λ x => justType (typeOf x c env), List.mapM_cons, bind_pure_comp] at htxs
   cases htx : justType (typeOf x c env) <;> simp only [htx, Except.bind_err, reduceCtorEq] at htxs
   simp only [justType, Except.map] at htx
   split at htx <;> simp only [reduceCtorEq, Except.ok.injEq] at htx
   subst htx
-  simp only [List.mapM_pmap_subtype (fun x => justType (typeOf x c env))] at htxs
   cases htxs' : List.mapM (fun x => justType (typeOf x c env)) xs <;>
     simp only [htxs', Except.map_error, Except.map_ok, Except.bind_ok, reduceCtorEq, Except.ok.injEq] at htxs
   subst txs
@@ -438,16 +437,15 @@ theorem typeOf_of_unary_call_inversion {xs : List Expr} {c : Capabilities} {env 
     xs = [x₁] ∧
     (typeOf x₁ c env).typeOf = .ok (ty₁.typeOf, c₁)
 := by
-  simp only [List.mapM₁] at h₁
+  simp only [List.mapM₁_eq_mapM λ x => justType (typeOf x c env)] at h₁
   cases xs
   case nil =>
-    simp only [List.mapM, List.attach_nil, List.mapM.loop, pure, Except.pure, List.reverse_nil,
+    simp only [List.mapM, List.mapM.loop, pure, Except.pure, List.reverse_nil,
       Except.ok.injEq, List.ne_cons_self] at h₁
   case cons hd₁ tl₁ =>
     cases tl₁
     case nil =>
-      simp only [List.attach_cons, List.attach_nil, List.map_nil, List.mapM_cons, List.mapM_nil,
-        bind_pure_comp, map_pure] at h₁
+      simp only [List.mapM_cons, List.mapM_nil, bind_pure_comp, map_pure] at h₁
       cases h₂ : justType (typeOf hd₁ c env)
       · simp_all only [justType, List.cons.injEq, and_true, exists_and_left, exists_eq_left', Except.map_error]
         simp at h₁
@@ -458,8 +456,7 @@ theorem typeOf_of_unary_call_inversion {xs : List Expr} {c : Capabilities} {env 
         <;> simp only [justType, h₁, Except.map, Except.ok.injEq, reduceCtorEq] at h₂
         simp [h₂, ResultType.typeOf, Except.map.eq_2]
     case cons hd₂ tl₂ =>
-      simp only [List.attach_def, List.pmap, List.mapM_cons,
-        List.mapM_pmap_subtype (fun x => justType (typeOf x c env)), bind_assoc, pure_bind] at h₁
+      simp only [List.mapM_cons, bind_assoc, pure_bind] at h₁
       rw [justType, Except.map.eq_def] at h₁
       split at h₁ <;> simp at h₁
       rw [justType, Except.map.eq_def] at h₁

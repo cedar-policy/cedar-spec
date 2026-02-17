@@ -96,8 +96,7 @@ theorem typeOf_term_record_eq  {r : Map Attr Term}  :
   TermType.record (Map.mk (List.map (fun (x : Attr × Term) => (x.fst, Term.typeOf x.snd)) r.1))
 := by
   rw [Term.typeOf]
-  simp only [List.attach₃,
-    List.map_pmap_subtype (fun (x : Attr × Term) => (x.fst, Term.typeOf x.snd))]
+  simp only [List.map₃_eq_map λ (x : Attr × Term) => (x.fst, Term.typeOf x.snd)]
 
 theorem typeOf_term_record_is_record_type {r : Map Attr Term} :
   ∃ rty, (Term.record r).typeOf = TermType.record rty
@@ -244,7 +243,7 @@ private theorem type_of_wf_term_record_is_wf {εs : SymEntities} {r : Map Attr T
   TermType.WellFormed εs (Term.typeOf (Term.record r))
 := by
   unfold Term.typeOf
-  simp only [List.attach₃, List.map_pmap_subtype (fun (x : Attr × Term) => (x.fst, Term.typeOf x.snd))]
+  rw [List.map₃_eq_map λ (x : Attr × Term) => (x.fst, Term.typeOf x.snd)]
   apply TermType.WellFormed.record_wf
   case h₁ =>
     intro a ty h
@@ -344,10 +343,7 @@ theorem typeOf_term_record_cedarType?_some_implies_attr_cedarType?_some {a : Att
   simp only [TermType.cedarType?,
     Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at hty
   replace ⟨atys, hty, _⟩ := hty
-  simp only [List.mapM₃, List.attach₃,
-    List.mapM_pmap_subtype λ (x : Attr × TermType) =>
-    (TermType.cedarType?.qualifiedType? x.snd).bind
-    λ qty => some (x.fst, qty)] at hty
+  rw [List.mapM₃_eq_mapM λ (x : Attr × TermType) => (TermType.cedarType?.qualifiedType? x.snd).bind λ qty => some (x.fst, qty)] at hty
   replace hty := List.mapM_some_implies_all_some hty (a, t.typeOf)
   simp only [List.mem_map, Prod.mk.injEq, Option.bind_eq_some_iff, Option.some.injEq,
     forall_exists_index, and_imp] at hty

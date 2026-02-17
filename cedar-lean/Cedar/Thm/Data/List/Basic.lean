@@ -14,10 +14,13 @@
  limitations under the License.
 -/
 
-import Cedar.Data.List
-import Cedar.Data.LT
+module
+
+public import Cedar.Data.List
+import all Cedar.Data.List -- inside this module, we're allowed to unfold defs in Cedar.Data.List that are not normally exposed
+public import Cedar.Data.LT
 import Cedar.Thm.Data.Control
-import Batteries.Logic
+public import Batteries.Data.List.Basic
 
 /-!
 
@@ -33,20 +36,21 @@ open Cedar.Data
 
 /-! ### Equiv -/
 
-def Equiv {α} (a b : List α) : Prop :=
+@[expose]
+public def Equiv {α} (a b : List α) : Prop :=
   a ⊆ b ∧ b ⊆ a
 
 infix:50 " ≡ " => Equiv
 
-theorem Equiv.refl {a : List α} :
+public theorem Equiv.refl {a : List α} :
   a ≡ a
 := by unfold List.Equiv; simp only [Subset.refl, and_self]
 
-theorem Equiv.symm {a b : List α} :
+public theorem Equiv.symm {a b : List α} :
   a ≡ b → b ≡ a
 := by unfold List.Equiv; simp only [and_imp]; intro h₁ h₂; simp [h₁, h₂]
 
-theorem Equiv.trans {a b c : List α} :
+public theorem Equiv.trans {a b c : List α} :
   a ≡ b → b ≡ c → a ≡ c
 := by
   unfold List.Equiv
@@ -56,7 +60,7 @@ theorem Equiv.trans {a b c : List α} :
   exact List.Subset.trans h₁ h₃
   exact List.Subset.trans h₄ h₂
 
-theorem equiv_nil (xs : List α) :
+public theorem equiv_nil (xs : List α) :
   xs ≡ [] ↔ xs = []
 := by
   constructor <;> intro h
@@ -66,7 +70,7 @@ theorem equiv_nil (xs : List α) :
   · subst h
     exact Equiv.refl
 
-theorem cons_equiv_cons (x : α) (xs ys : List α) :
+public theorem cons_equiv_cons (x : α) (xs ys : List α) :
   xs ≡ ys → x :: xs ≡ x :: ys
 := by
   unfold List.Equiv
@@ -77,7 +81,7 @@ theorem cons_equiv_cons (x : α) (xs ys : List α) :
     apply List.cons_subset_cons; assumption
   }
 
-theorem cons_equiv_implies_equiv (x : α) (xs ys : List α) :
+public theorem cons_equiv_implies_equiv (x : α) (xs ys : List α) :
   x :: xs ≡ x :: ys → x ∉ xs → x ∉ ys → xs ≡ ys
 := by
   simp [List.Equiv, List.subset_def]
@@ -92,15 +96,15 @@ theorem cons_equiv_implies_equiv (x : α) (xs ys : List α) :
     · exact h₃
   }
 
-theorem dup_head_equiv (x : α) (xs : List α) :
+public theorem dup_head_equiv (x : α) (xs : List α) :
   x :: x :: xs ≡ x :: xs
 := by unfold List.Equiv; simp [List.subset_def]
 
-theorem dup_head_equiv' {x : α} {xs : List α} :
+public theorem dup_head_equiv' {x : α} {xs : List α} :
   x ∈ xs → x :: xs ≡ xs
 := by simp [List.Equiv]
 
-theorem swap_cons_cons_equiv (x₁ x₂ : α) (xs : List α) :
+public theorem swap_cons_cons_equiv (x₁ x₂ : α) (xs : List α) :
   x₁ :: x₂ :: xs ≡ x₂ :: x₁ :: xs
 := by
   unfold List.Equiv
@@ -108,7 +112,7 @@ theorem swap_cons_cons_equiv (x₁ x₂ : α) (xs : List α) :
   apply And.intro
   all_goals { intro a h₁; simp [h₁] }
 
-theorem filter_equiv (f : α → Bool) (xs ys : List α) :
+public theorem filter_equiv (f : α → Bool) (xs ys : List α) :
   xs ≡ ys → xs.filter f ≡ ys.filter f
 := by
   simp only [Equiv, subset_def, and_imp]
@@ -119,7 +123,7 @@ theorem filter_equiv (f : α → Bool) (xs ys : List α) :
   exact And.intro (h₁ h₃.left) h₃.right
   exact And.intro (h₂ h₃.left) h₃.right
 
-theorem map_equiv (f : α → β) (xs ys : List α) :
+public theorem map_equiv (f : α → β) (xs ys : List α) :
   xs ≡ ys → xs.map f ≡ ys.map f
 := by
   intro h
@@ -134,7 +138,7 @@ theorem map_equiv (f : α → β) (xs ys : List α) :
   · exact a h
   · exact b h
 
-theorem filterMap_equiv (f : α → Option β) (xs ys : List α) :
+public theorem filterMap_equiv (f : α → Option β) (xs ys : List α) :
   xs ≡ ys → xs.filterMap f ≡ ys.filterMap f
 := by
   simp only [Equiv, subset_def, mem_filterMap, forall_exists_index, and_imp]
@@ -146,12 +150,12 @@ theorem filterMap_equiv (f : α → Option β) (xs ys : List α) :
   · exact h₁ h₃
   · exact h₂ h₃
 
-theorem append_swap_equiv (xs ys : List α) :
+public theorem append_swap_equiv (xs ys : List α) :
   xs ++ ys ≡ ys ++ xs
 := by
   simp only [Equiv, append_subset, subset_append_right, subset_append_left, and_self]
 
-theorem append_left_equiv (xs ys zs : List α) :
+public theorem append_left_equiv (xs ys zs : List α) :
   xs ≡ ys → xs ++ zs ≡ ys ++ zs
 := by
   simp only [Equiv, append_subset, subset_append_right, and_true, and_imp]
@@ -161,7 +165,7 @@ theorem append_left_equiv (xs ys zs : List α) :
   · simp only [h₁ h₃, true_or]
   · simp only [h₂ h₃, true_or]
 
-theorem append_right_equiv (xs ys zs : List α) :
+public theorem append_right_equiv (xs ys zs : List α) :
   ys ≡ zs → xs ++ ys ≡ xs ++ zs
 := by
   simp only [Equiv, append_subset, subset_append_left, true_and, and_imp]
@@ -173,7 +177,7 @@ theorem append_right_equiv (xs ys zs : List α) :
 
 /-! ### Sorted -/
 
-inductive SortedBy [LT β] (f : α → β) : List α → Prop where
+public inductive SortedBy [LT β] (f : α → β) : List α → Prop where
   | nil : SortedBy f []
   | cons_nil {x} : SortedBy f (x :: nil)
   | cons_cons {x y ys} :
@@ -181,16 +185,16 @@ inductive SortedBy [LT β] (f : α → β) : List α → Prop where
       SortedBy f (y :: ys) →
       SortedBy f (x :: y :: ys)
 
-abbrev Sorted [LT α] (xs : List α) := SortedBy id xs
+public abbrev Sorted [LT α] (xs : List α) := SortedBy id xs
 
-theorem tail_sortedBy [LT β] {f : α → β} {x : α} {xs : List α} :
+public theorem tail_sortedBy [LT β] {f : α → β} {x : α} {xs : List α} :
   SortedBy f (x :: xs) → SortedBy f xs
 := by
   intro h₁; cases h₁
   exact SortedBy.nil
   assumption
 
-theorem sortedBy_implies_head_lt_tail [LT β] [StrictLT β] {f : α → β} {x : α} {xs : List α} :
+public theorem sortedBy_implies_head_lt_tail [LT β] [StrictLT β] {f : α → β} {x : α} {xs : List α} :
   SortedBy f (x :: xs) → ∀ y, y ∈ xs → f x < f y
 := by
   intro h₁ y h₂
@@ -209,7 +213,7 @@ theorem sortedBy_implies_head_lt_tail [LT β] [StrictLT β] {f : α → β} {x :
           apply SortedBy.cons_cons _ h₅
           exact StrictLT.transitive (f x) (f hd) (f hd') h₃ h₆
 
-theorem sortedBy_equiv_implies_head_eq [LT β] [StrictLT β] (f : α → β) {x y : α} {xs ys : List α} :
+public theorem sortedBy_equiv_implies_head_eq [LT β] [StrictLT β] (f : α → β) {x y : α} {xs ys : List α} :
   SortedBy f (x :: xs) →
   SortedBy f (y :: ys) →
   (x :: xs) ≡ (y :: ys) →
@@ -227,7 +231,7 @@ theorem sortedBy_equiv_implies_head_eq [LT β] [StrictLT β] (f : α → β) {x 
     have hc₃ := StrictLT.asymmetric (f x) (f y) hc₁
     contradiction
 
-theorem sortedBy_equiv_implies_tail_subset [LT β] [StrictLT β] (f : α → β) {x : α} {xs ys : List α} :
+public theorem sortedBy_equiv_implies_tail_subset [LT β] [StrictLT β] (f : α → β) {x : α} {xs ys : List α} :
   SortedBy f (x :: xs) →
   SortedBy f (x :: ys) →
   (x :: xs) ⊆ (x :: ys) →
@@ -246,7 +250,7 @@ theorem sortedBy_equiv_implies_tail_subset [LT β] [StrictLT β] (f : α → β)
     contradiction
   · assumption
 
-theorem sortedBy_equiv_implies_tail_equiv [LT β] [StrictLT β] (f : α → β) {x : α} {xs ys : List α} :
+public theorem sortedBy_equiv_implies_tail_equiv [LT β] [StrictLT β] (f : α → β) {x : α} {xs ys : List α} :
   SortedBy f (x :: xs) →
   SortedBy f (x :: ys) →
   (x :: xs) ≡ (x :: ys) →
@@ -259,7 +263,7 @@ theorem sortedBy_equiv_implies_tail_equiv [LT β] [StrictLT β] (f : α → β) 
   exact sortedBy_equiv_implies_tail_subset f h₁ h₂ h₃
   exact sortedBy_equiv_implies_tail_subset f h₂ h₁ h₄
 
-theorem sortedBy_equiv_implies_eq [LT β] [StrictLT β] (f : α → β) {xs ys : List α} :
+public theorem sortedBy_equiv_implies_eq [LT β] [StrictLT β] (f : α → β) {xs ys : List α} :
   SortedBy f xs → SortedBy f ys → xs ≡ ys → xs = ys
 := by
   intro h₁ h₂ h₃
@@ -285,7 +289,7 @@ theorem sortedBy_equiv_implies_eq [LT β] [StrictLT β] (f : α → β) {xs ys :
       exact (tail_sortedBy h₂)
       exact (sortedBy_equiv_implies_tail_equiv f h₁ h₂ h₃)
 
-theorem sortedBy_cons [LT β] [StrictLT β] {f : α → β} {x : α} {ys : List α} :
+public theorem sortedBy_cons [LT β] [StrictLT β] {f : α → β} {x : α} {ys : List α} :
   SortedBy f ys →
   (∀ y, y ∈ ys → f x < f y) →
   SortedBy f (x :: ys)
@@ -298,7 +302,7 @@ theorem sortedBy_cons [LT β] [StrictLT β] {f : α → β} {x : α} {ys : List 
     apply h₂
     simp only [mem_cons, true_or]
 
-theorem mem_of_sortedBy_unique {α β} [LT β] [StrictLT β] [DecidableLT β] [DecidableEq β]
+public theorem mem_of_sortedBy_unique {α β} [LT β] [StrictLT β] [DecidableLT β] [DecidableEq β]
   {f : α → β} {x y : α} {xs : List α} :
   xs.SortedBy f → x ∈ xs → y ∈ xs → f x = f y →
   x = y
@@ -321,7 +325,7 @@ theorem mem_of_sortedBy_unique {α β} [LT β] [StrictLT β] [DecidableLT β] [D
       simp only [hf, StrictLT.irreflexive] at hlt
     · exact ih hx hy
 
-theorem mem_of_sortedBy_implies_find? {α β} [LT β] [StrictLT β] [DecidableLT β] [DecidableEq β]
+public theorem mem_of_sortedBy_implies_find? {α β} [LT β] [StrictLT β] [DecidableLT β] [DecidableEq β]
   {f : α → β} {x : α} {xs : List α} :
   x ∈ xs → xs.SortedBy f →
   xs.find? (fun y => f y == f x) = x
@@ -345,7 +349,7 @@ theorem mem_of_sortedBy_implies_find? {α β} [LT β] [StrictLT β] [DecidableLT
       · simp only [h₁, not_true_eq_false] at heq
       · exact ih h₁ (tail_sortedBy h₂)
 
-theorem map_eq_implies_sortedBy [LT β] [StrictLT β] {f : α → β} {g : γ → β} {xs : List α} {ys : List γ} :
+public theorem map_eq_implies_sortedBy [LT β] [StrictLT β] {f : α → β} {g : γ → β} {xs : List α} {ys : List γ} :
   xs.map f = ys.map g →
   (SortedBy f xs ↔ SortedBy g ys)
 := by
@@ -388,7 +392,7 @@ theorem map_eq_implies_sortedBy [LT β] [StrictLT β] {f : α → β} {g : γ �
           apply sortedBy_implies_head_lt_tail h₂
           simp only [mem_cons, true_or]
 
-theorem filter_sortedBy [LT β] [StrictLT β] [DecidableLT β] {f : α → β} (p : α → Bool) {xs : List α} :
+public theorem filter_sortedBy [LT β] [StrictLT β] [DecidableLT β] {f : α → β} (p : α → Bool) {xs : List α} :
   SortedBy f xs → SortedBy f (xs.filter p)
 := by
   intro h₁
@@ -405,7 +409,7 @@ theorem filter_sortedBy [LT β] [StrictLT β] [DecidableLT β] {f : α → β} (
       exact h₂.left
     · exact ih
 
-theorem filterMap_sortedBy [LT β] [StrictLT β] [DecidableLT β] {f : α → β} {g : α → Option γ} {f' : γ → β} {xs : List α} :
+public theorem filterMap_sortedBy [LT β] [StrictLT β] [DecidableLT β] {f : α → β} {g : α → Option γ} {f' : γ → β} {xs : List α} :
   (∀ x y, g x = some y → f x = f' y) →
   SortedBy f xs →
   SortedBy f' (xs.filterMap g)
@@ -432,7 +436,7 @@ theorem filterMap_sortedBy [LT β] [StrictLT β] [DecidableLT β] {f : α → β
         rw [← h₁ x hd' hgx]
         exact sortedBy_implies_head_lt_tail h₂ x hx
 
-theorem filterMap_key_id_sortedBy_key {α β : Type} [LT α] [StrictLT α] [DecidableLT α] {ks : List α} {fn : α → Option β}
+public theorem filterMap_key_id_sortedBy_key {α β : Type} [LT α] [StrictLT α] [DecidableLT α] {ks : List α} {fn : α → Option β}
   (hs : ks.Sorted) :
   (ks.filterMap (λ k => do (some (k, ←fn k)))).SortedBy Prod.fst
 := by
@@ -445,7 +449,7 @@ theorem filterMap_key_id_sortedBy_key {α β : Type} [LT α] [StrictLT α] [Deci
     simp only [hk, Option.bind_some_fun, Option.some.injEq] at hf
     simp [←hf]
 
-theorem find?_filterMap_key_id {α β : Type} [BEq α] [LawfulBEq α] {ks : List α} {fn : α → Option β} {k: α}
+public theorem find?_filterMap_key_id {α β : Type} [BEq α] [LawfulBEq α] {ks : List α} {fn : α → Option β} {k: α}
   (h₂ : k ∈ ks) :
   ((ks.filterMap (λ k => do (k, ←fn k))).find? (λ ⟨k', _⟩ => k' == k)).map Prod.snd = fn k
 := by
@@ -467,7 +471,7 @@ theorem find?_filterMap_key_id {α β : Type} [BEq α] [LawfulBEq α] {ks : List
       · simpa [hk] using h₃
     simp [hk]
 
-theorem mapM_key_id_sortedBy_key {α β : Type} [LT α] {ks : List α} {kvs : List (α × β)} {fn : α → Option β}
+public theorem mapM_key_id_sortedBy_key {α β : Type} [LT α] {ks : List α} {kvs : List (α × β)} {fn : α → Option β}
   (hm : ks.mapM (λ k => do (some (k, ←fn k))) = some kvs)
   (hs : ks.Sorted) :
   kvs.SortedBy Prod.fst
@@ -503,7 +507,7 @@ theorem mapM_key_id_sortedBy_key {α β : Type} [LT α] {ks : List α} {kvs : Li
     exact List.SortedBy.cons_cons hlt hs
 
 
-theorem isSortedBy_correct {α β} [LT β] [DecidableLT β] {l : List α} {f : α → β} :
+public theorem isSortedBy_correct {α β} [LT β] [DecidableLT β] {l : List α} {f : α → β} :
   l.SortedBy f ↔ l.isSortedBy f
 := by
   cases l with
@@ -528,7 +532,7 @@ theorem isSortedBy_correct {α β} [LT β] [DecidableLT β] {l : List α} {f : �
         exact h.1
         exact List.isSortedBy_correct.mpr h.2
 
-theorem isSorted_correct {α} [LT α] [DecidableLT α] {l : List α} :
+public theorem isSorted_correct {α} [LT α] [DecidableLT α] {l : List α} :
   l.Sorted ↔ l.isSorted
 := by
   cases l with
@@ -556,10 +560,11 @@ theorem isSorted_correct {α} [LT α] [DecidableLT α] {l : List α} :
 
 /-! ### Forallᵥ -/
 
-def Forallᵥ {α β γ} (p : β → γ → Prop) (kvs₁ : List (α × β)) (kvs₂ : List (α × γ)) : Prop :=
+@[expose]
+public def Forallᵥ {α β γ} (p : β → γ → Prop) (kvs₁ : List (α × β)) (kvs₂ : List (α × γ)) : Prop :=
   List.Forall₂ (λ kv₁ kv₂ => kv₁.fst = kv₂.fst ∧ p kv₁.snd kv₂.snd) kvs₁ kvs₂
 
-theorem forallᵥ_def {α β γ} {p : β → γ → Prop} {kvs₁ : List (α × β)} {kvs₂ : List (α × γ)} :
+public theorem forallᵥ_def {α β γ} {p : β → γ → Prop} {kvs₁ : List (α × β)} {kvs₂ : List (α × γ)} :
   List.Forallᵥ p kvs₁ kvs₂ = List.Forall₂ (λ kv₁ kv₂ => kv₁.fst = kv₂.fst ∧ p kv₁.snd kv₂.snd) kvs₁ kvs₂
 := by simp only [Forallᵥ]
 

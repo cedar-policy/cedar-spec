@@ -235,7 +235,7 @@ theorem substitute_action_preserves_valid_refs
       rename_i hrefs
       constructor
       intros attr_expr' hmem_attr_expr'
-      simp only [List.map_attach₂_snd] at hmem_attr_expr'
+      simp only [List.map₂_eq_map_snd] at hmem_attr_expr'
       have ⟨attr_expr, hmem_attr_expr, hattr_expr⟩ := List.mem_map.mp hmem_attr_expr'
       specialize hrefs attr_expr hmem_attr_expr
       simp only [←hattr_expr]
@@ -248,7 +248,7 @@ theorem substitute_action_preserves_valid_refs
       specialize hrefs (attr_expr.fst, (substituteAction request.action attr_expr.snd))
       apply (substitute_action_preserves_valid_refs hinst).mpr
       apply hrefs
-      simp only [List.map_attach₂_snd]
+      simp only [List.map₂_eq_map_snd]
       apply List.mem_map.mpr
       exists attr_expr
 termination_by sizeOf expr

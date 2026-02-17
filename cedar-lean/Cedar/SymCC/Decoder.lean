@@ -361,7 +361,7 @@ def defaultLit (eidOf : EntityType → String) : TermType → Term
   | .option ty           => .none ty
   | .set ty              => .set Set.empty ty
   | .record (Map.mk tys) =>
-    let ts := tys.attach₂.map λ ⟨(a, ty), _⟩ => (a, defaultLit eidOf ty)
+    let ts := tys.map₂ λ ⟨(a, ty), _⟩ => (a, defaultLit eidOf ty)
     .record (Map.mk ts)
 termination_by ty => sizeOf ty
 decreasing_by simp_wf ; simp at * ; omega

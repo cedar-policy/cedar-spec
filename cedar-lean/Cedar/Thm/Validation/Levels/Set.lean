@@ -45,7 +45,6 @@ theorem level_based_slicing_is_sound_set {xs : List Expr} {n : Nat} {c₀ c₁: 
     specialize hl tx htxs
     exact ih x hx hc hr htx hl
 
-  simp only [evaluate, List.mapM₁, List.attach, List.attachWith]
-  simp only [List.mapM_pmap_subtype (λ x : Expr => evaluate x request entities) xs]
-  simp only [List.mapM_pmap_subtype (λ x : Expr => evaluate x request (entities.sliceAtLevel request n)) xs]
+  simp only [evaluate, xs.mapM₁_eq_mapM (evaluate · request entities)]
+  simp only [xs.mapM₁_eq_mapM (evaluate · request (entities.sliceAtLevel request n))]
   rw [List.mapM_congr he]

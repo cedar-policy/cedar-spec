@@ -74,7 +74,7 @@ theorem value_symbolize?_well_typed
     simp only [Option.some.injEq] at hsym
     simp only [←hsym, Term.typeOf, TermType.ofType]
     congr
-    simp only [List.map_attach₃_snd]
+    simp only [List.map₃_eq_map_snd]
     simp only [ofRecordType_as_map]
     have :
       List.Forall₂

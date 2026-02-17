@@ -269,7 +269,7 @@ private theorem ofType_typeOf_pullback
     cases hwf_ty with | record_wf hwf_ty_rec_map hwf_ty_rec =>
     cases hwf_t with | record_wf hwf_rec heq_ty_rec =>
     simp only [←hval]
-    simp only [List.map_attach₃_snd] at heq_ty
+    simp only [List.map₃_eq_map_snd] at heq_ty
     constructor
     · intros attr hcont_attr
       have ⟨v, hfind_v⟩ := Map.contains_iff_some_find?.mp hcont_attr
@@ -694,23 +694,17 @@ private theorem ofEnv_entity_completeness_standard_inst_tags
         (.uuf vals_uuf)
         (Factory.tagOf (Term.entity uid) (Term.string k)))
     := by
-      simp only [
+      simp [
         Term.interpret, Op.interpret,
-        List.attach_cons, List.attach_nil,
-        List.map_nil,
-        List.map_cons,
         UnaryFunction.interpret,
+        Factory.app, Factory.tagOf, Factory.recordOf,
+        List.map₁_eq_map (Term.interpret I ·),
         hvals_uuf,
-        Factory.app,
-        Factory.tagOf,
-        Factory.recordOf,
+        Term.isLiteral,
+        List.map₃, List.attach₃,
         Map.make,
-        List.canonicalize,
-        List.attach₃,
-        List.pmap,
-        List.insertCanonical,
+        List.canonicalize, List.insertCanonical,
       ]
-      simp
     -- Prove that the tag lookup term is well-formed and well-typed
     have hwf_tag_lookup:
       Term.WellFormed (SymEnv.ofEnv Γ).entities
@@ -753,6 +747,7 @@ private theorem ofEnv_entity_completeness_standard_inst_tags
       · simp only [
           Factory.tagOf,
           Term.typeOf,
+          List.map₃,
           List.attach₃,
           List.pmap,
           List.map,
@@ -932,7 +927,8 @@ private theorem ofEnv_entity_completeness_enum
     · constructor
       · simp only [Map.toList, Map.kvs, List.not_mem_nil, false_implies, implies_true]
       · exact Map.wf_empty
-    · simp [Term.typeOf, List.attach₃, TermType.ofType, Map.empty, TermType.ofRecordType]
+    · rw [Term.typeOf, List.map₃_eq_map_snd Term.typeOf]
+      simp [TermType.ofType, Map.empty, TermType.ofRecordType]
   · intros anc hmem_data_anc
     have := hanc₁ anc hmem_data_anc
     simp [
@@ -998,24 +994,20 @@ private theorem ofEnv_entity_completeness_action
   have ⟨hsame_attrs, hanc₁, hanc₂, _, hsame_tags⟩ := hsame_δ
   have hwf_acts := wf_env_implies_wf_acts_map hwf_Γ
   and_intros
-  · have : Map.mk [] = data.attrs
-    := by
-      simp [
-        hδ, hδ',
-        Factory.app, SymEntityData.interpret,
-        UnaryFunction.interpret,
-        SymEntityData.ofActionType,
-        SymEntityData.emptyAttrs, Map.empty,
-        Option.map_none,
-        Term.isLiteral, ↓reduceIte, Map.find?,
-        Map.kvs, List.find?_nil,
-        SameValues,
-        Term.value?,
-        List.mapM₂,
-        List.attach₂,
-      ] at hsame_attrs
-      exact hsame_attrs
-    exact Eq.symm this
+  · symm
+    simp [
+      hδ, hδ',
+      Factory.app, SymEntityData.interpret, UnaryFunction.interpret,
+      SymEntityData.ofActionType, SymEntityData.emptyAttrs,
+      Map.empty, Map.kvs, Map.find?, List.find?_nil,
+      Option.map_none,
+      Term.isLiteral, ↓reduceIte,
+      SameValues,
+      Term.value?,
+    ] at hsame_attrs
+    change ([].mapM₂ fun x => Term.value?.attrValue? x.1.fst x.1.snd).bind _ = _ at hsame_attrs
+    rw [[].mapM₂_eq_mapM λ (x : Attr × Term) => Term.value?.attrValue? x.fst x.snd] at hsame_attrs
+    simpa using hsame_attrs
   · simp only [
       hδ, hδ',
       SameTags,

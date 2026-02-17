@@ -46,15 +46,13 @@ theorem type_of_set_tail
     simp only [typeOf]
     cases tl
     case nil =>
-      simp only [List.mapM₁, List.attach_def, List.pmap, List.mapM_cons,
+      simp only [List.mapM₁_eq_mapM λ x => justType (typeOf x c env), List.mapM_cons,
         bind_assoc, pure_bind] at h₁
-      simp only [List.mapM_pmap_subtype (fun x => justType (typeOf x c env))] at h₁
       cases h₄ : justType (typeOf xhd c env) <;> simp [h₄] at h₁
       cases h₅ : justType (typeOf xhd' c env) <;> simp [h₅] at h₁
       cases h₆ : List.mapM (fun x => justType (typeOf x c env)) xtl' <;> simp [h₆] at h₁
     case cons hd' tl' =>
-      simp only [List.mapM₁, List.attach_def] at h₁
-      rw [List.mapM_pmap_subtype (fun x => justType (typeOf x c env))] at h₁
+      simp only [List.mapM₁_eq_mapM λ x => justType (typeOf x c env)] at h₁
       have h₁ := List.mapM_head_tail h₁
       rw [←List.mapM₁_eq_mapM] at h₁
       simp only [h₁, typeOfSet, List.empty_eq, Except.bind_ok]
@@ -104,11 +102,10 @@ theorem type_of_set_inversion {xs : List Expr} {c c' : Capabilities} {env : Type
   intro x h₄
   cases h₄
   case head xtl =>
-    simp only [List.mapM₁, List.attach_def, List.pmap, List.mapM_cons] at h₂
+    simp only [List.mapM₁_eq_mapM λ x => justType (typeOf x c env), List.mapM_cons] at h₂
     rcases h₅ : justType (typeOf x c env) <;>
     simp only [h₅, Except.bind_err, reduceCtorEq] at h₂
-    simp only [List.mapM_pmap_subtype (fun x => justType (typeOf x c env)), Except.bind_ok] at h₂
-    rcases h₆ : List.mapM (fun x => justType (typeOf x c env)) xtl <;>
+    rcases h₆ : xtl.mapM λ x => justType (typeOf x c env) <;>
     simp only [h₆, pure, Except.pure, Except.bind_err, Except.bind_ok, Except.ok.injEq, List.cons.injEq, reduceCtorEq] at h₂
     have ⟨hl₂, hr₂⟩ := h₂ ; subst hl₂ hr₂
     rename_i hdty tlty
@@ -246,8 +243,7 @@ theorem type_of_set_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : 
   have ⟨h₆, txs, ty, h₄, h₅⟩ := type_of_set_inversion h₃
   subst h₆ ; rw [h₄]
   apply And.intro empty_guarded_capabilities_invariant
-  simp only [EvaluatesTo, evaluate, List.mapM₁, List.attach_def,
-    List.mapM_pmap_subtype (evaluate · request entities)]
+  simp only [EvaluatesTo, evaluate, List.mapM₁_eq_mapM (evaluate · request entities)]
   replace h₅ : ∀ xᵢ ∈ xs, ∃ tx c', typeOf xᵢ c₁ env = .ok (tx, c') ∧ (tx.typeOf ⊔ ty) = some ty := by
     intros x h₁
     replace ⟨txᵢ, cᵢ, h₅⟩ := h₅ x h₁

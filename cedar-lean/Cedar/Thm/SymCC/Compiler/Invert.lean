@@ -548,8 +548,7 @@ theorem compile_record_ok_implies {axs : List (Attr × Expr)} {εnv : SymEnv} {t
   simp only [compile] at hok
   simp_do_let (axs.mapM₂ (λ ⟨(a₁, x₁), _⟩ => do .ok (a₁, ← compile x₁ εnv))) at hok
   rename_i ats hts
-  simp only [List.mapM₂, List.attach₂,
-    List.mapM_pmap_subtype λ (p : Attr × Expr) => do
+  simp only [List.mapM₂_eq_mapM λ (p : Attr × Expr) => do
       .ok (p.fst, ← compile p.snd εnv),
     List.mapM_ok_iff_forall₂] at hts
   simp only [Except.ok.injEq] at hok
