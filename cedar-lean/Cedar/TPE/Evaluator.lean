@@ -41,7 +41,7 @@ instance : Coe Spec.Error Error where
 --  | entityUID (uid : EntityUID)
 --  | getAttr (p : AccessPath) (a : Attr)
 --  | getTag (p : AccessPath) (t : Tag)
-def PartialValue.asResidual (pv : PartialValue) (tgt : Residual) : Residual :=
+partial def PartialValue.asResidual (pv : PartialValue) (tgt : Residual) : Residual :=
   match pv with
   | prim p => .val p tgt.typeOf
   | set s => .val s tgt.typeOf
@@ -57,7 +57,7 @@ def PartialValue.asResidual (pv : PartialValue) (tgt : Residual) : Residual :=
     | .unknown ty => .unknown ty tgt
     | .presentUnknown ty => .presentUnknown ty tgt)) tgt.typeOf
 termination_by pv
-decreasing_by sorry
+-- decreasing_by sorry
 
 /- Convert an optional value to a residual: Return `.error ty` when it's none -/
 def someOrError : Option Value → CedarType → Residual
@@ -301,5 +301,62 @@ def evaluatePolicy (schema : Schema)
           .ok (evaluate te.liftBoolTypes.toResidual req es)
       else .error .invalidRequestOrEntities
     | .none => .error .invalidEnvironment
+
+-- Basic tests
+private def emptyReq : PartialRequest := ⟨⟨default, none⟩, default, ⟨default, none⟩, none⟩
+private def emptyEs : PartialEntities := default
+
+#guard evaluate (.val true (.bool .anyBool)) emptyReq emptyEs = .val true (.bool .anyBool)
+#guard evaluate (.binaryApp .eq (.val (.prim (.int 1)) .int) (.val (.prim (.int 1)) .int) (.bool .anyBool)) emptyReq emptyEs = .val true (.bool .anyBool)
+
+-- Attribute access on unknown entity
+private def ety : EntityType := ⟨"User", []⟩
+#guard evaluate (.hasAttr (.var .principal (.entity ety)) "role" (.bool .anyBool)) emptyReq emptyEs = .hasAttr (.var .principal (.entity ety)) "role" (.bool .anyBool)
+#guard evaluate (.getAttr (.var .principal (.entity ety)) "role" .string) emptyReq emptyEs = .getAttr (.var .principal (.entity ety)) "role" .string
+#guard evaluate (.getAttr (.var .resource (.entity ety)) "owner" (.entity ety)) emptyReq emptyEs = .getAttr (.var .resource (.entity ety)) "owner" (.entity ety)
+
+-- Partially known entity data
+private def uid : EntityUID := ⟨ety, "alice"⟩
+private def partialEs : PartialEntities := Map.make [(uid, ⟨
+  some (Map.make [
+    ("name", PartialAttribute.present (PartialValue.prim (.string "Alice"))),
+    ("role", PartialAttribute.unknown .string)
+  ]),
+  none,
+  none
+⟩)]
+
+#guard evaluate (.hasAttr (.val (.prim (.entityUID uid)) (.entity ety)) "name" (.bool .anyBool)) emptyReq partialEs = .val true (.bool .anyBool)
+#guard evaluate (.getAttr (.val (.prim (.entityUID uid)) (.entity ety)) "name" .string) emptyReq partialEs = .val (.prim (.string "Alice")) .string
+#guard evaluate (.hasAttr (.val (.prim (.entityUID uid)) (.entity ety)) "role" (.bool .anyBool)) emptyReq partialEs = .hasAttr (.val (.prim (.entityUID uid)) (.entity ety)) "role" (.bool .anyBool)
+#guard evaluate (.getAttr (.val (.prim (.entityUID uid)) (.entity ety)) "role" .string) emptyReq partialEs = .getAttr (.val (.prim (.entityUID uid)) (.entity ety)) "role" .string
+#guard evaluate (.hasAttr (.val (.prim (.entityUID uid)) (.entity ety)) "missing" (.bool .anyBool)) emptyReq partialEs = .val false (.bool .anyBool)
+
+-- Nested unknown attribute access
+private def uid2 : EntityUID := ⟨ety, "bob"⟩
+private def partialEs2 : PartialEntities := Map.make [(uid2, ⟨
+  some (Map.make [("manager", PartialAttribute.unknown (.entity ety))]),
+  none,
+  none
+⟩)]
+
+#guard evaluate (.getAttr (.val (.prim (.entityUID uid2)) (.entity ety)) "manager" (.entity ety)) emptyReq partialEs2 = .getAttr (.val (.prim (.entityUID uid2)) (.entity ety)) "manager" (.entity ety)
+#guard evaluate (.getAttr (.getAttr (.val (.prim (.entityUID uid2)) (.entity ety)) "manager" (.entity ety)) "name" .string) emptyReq partialEs2 = .getAttr (.getAttr (.val (.prim (.entityUID uid2)) (.entity ety)) "manager" (.entity ety)) "name" .string
+
+-- Present record with mixed known/unknown attributes
+private def uid3 : EntityUID := ⟨ety, "charlie"⟩
+private def partialEs3 : PartialEntities := Map.make [(uid3, ⟨
+  some (Map.make [("profile", PartialAttribute.present (PartialValue.record (Map.make [
+    ("email", PartialAttribute.present (PartialValue.prim (.string "charlie@example.com"))),
+    ("age", PartialAttribute.unknown .int)
+  ])))]),
+  none,
+  none
+⟩)]
+
+private def recTy : CedarType := .record (Map.make [("email", .required .string), ("age", .required .int)])
+private def getProfile := evaluate (.getAttr (.val (.prim (.entityUID uid3)) (.entity ety)) "profile" recTy) emptyReq partialEs3
+#eval (evaluate (.getAttr getProfile "email" .string) emptyReq partialEs3)
+#eval (evaluate (.getAttr getProfile "age" .int) emptyReq partialEs3)
 
 end Cedar.TPE

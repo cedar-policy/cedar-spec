@@ -106,7 +106,7 @@ def UnaryOp.canError : UnaryOp → Bool
   | _ => false
 
 -- Assumes the residual is well typed, so there can be no type errors.
-def Residual.errorFree : Residual → Bool
+partial def Residual.errorFree : Residual → Bool
   | .val _ _ => true
   | .var _ _ => true
   | .binaryApp op x₁ x₂ _ =>
@@ -132,10 +132,10 @@ def Residual.errorFree : Residual → Bool
       | _ => true
   | _ => false
 termination_by 0
-decreasing_by all_goals sorry
+-- decreasing_by all_goals sorry
 
 -- The interpreter of `Residual` that defines its semantics
-def Residual.evaluate (x : Residual) (req : Request) (es: Entities) : Result Value :=
+partial def Residual.evaluate (x : Residual) (req : Request) (es: Entities) : Result Value :=
   match x with
   | .val p _ => .ok p
   | .var v _ =>
@@ -190,11 +190,11 @@ decreasing_by
     rename_i h
     try have := List.sizeOf_lt_of_mem h
     try simp at h
-    sorry
+    -- sorry
     -- omega
 
 
-def Residual.allLiteralUIDs (x : Residual) : Set EntityUID :=
+partial def Residual.allLiteralUIDs (x : Residual) : Set EntityUID :=
   match x with
   | .val (.prim (.entityUID uid)) _  => Set.singleton uid
   | val _ _ => Set.empty
@@ -229,7 +229,7 @@ decreasing_by
     try omega
   all_goals
     rename_i h
-    sorry
+    -- sorry
     -- let so := List.sizeOf_lt_of_mem h
     -- simp at *
     -- omega
@@ -268,10 +268,9 @@ def decResidual (x y : Residual) : Decidable (x = y) := by
     | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
     | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
   case record.record axs tx ays ty =>
-    sorry
-    -- exact match decProdAttrResidualList axs ays, decEq tx ty with
-    -- | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
-    -- | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
+    exact match decProdAttrResidualList axs ays, decEq tx ty with
+    | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
+    | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
   case call.call f xs tx f' ys ty =>
     exact match decEq f f', decResidualList xs ys, decEq tx ty with
     | isTrue h₁, isTrue h₂, isTrue h₃ => isTrue (by rw [h₁, h₂, h₃])
@@ -281,15 +280,41 @@ def decResidual (x y : Residual) : Decidable (x = y) := by
     | isTrue h₁ => isTrue (by rw [h₁])
     | isFalse _ => isFalse (by intro h; injection h; contradiction)
 
-def decProdAttrResidualList (axs ays : List (Prod Attr Residual)) : Decidable (axs = ays) :=
+def decProdAttrResidualList (axs ays : List (Prod Attr (PartialAttribute' Residual))) : Decidable (axs = ays) :=
   match axs, ays with
   | [], [] => isTrue rfl
   | _::_, [] | [], _::_ => isFalse (by intro; contradiction)
-  | (a, x)::axs, (a', y)::ays =>
-    match decEq a a', decResidual x y, decProdAttrResidualList axs ays with
-    | isTrue h₁, isTrue h₂, isTrue h₃ => isTrue (by rw [h₁, h₂, h₃])
-    | isFalse _, _, _ | _, isFalse _, _ | _, _, isFalse _ =>
-      isFalse (by simp; intros; first | contradiction | assumption)
+  | (a, x)::axs, (a', y)::ays => by
+    simp only [List.cons.injEq, Prod.mk.injEq]
+    have h₁ : Decidable (x = y) := by
+      cases x <;> cases y
+      case present.present =>
+        rename_i x y
+        simp only [PartialAttribute'.present.injEq]
+        exact decResidual x y
+      case unknown.unknown =>
+        simp only [PartialAttribute'.unknown.injEq]
+        rename_i x _ y
+        have := decResidual x y
+        apply instDecidableAnd
+      case presentUnknown.presentUnknown =>
+        simp only [PartialAttribute'.presentUnknown.injEq]
+        rename_i x _ y
+        have := decResidual x y
+        apply instDecidableAnd
+      all_goals
+        simp only [reduceCtorEq]
+        exact instDecidableFalse
+    cases h₁ <;> cases decProdAttrResidualList axs ays
+    case isTrue.isTrue =>
+      rename_i h₁ h₂
+      subst h₁ h₂
+      simp only [and_true]
+      apply String.decEq
+    all_goals
+      rename_i h₁ h₂
+      simp only [h₁, h₂]
+      exact instDecidableAnd
 
 def decResidualList (xs ys : List Residual) : Decidable (xs = ys) :=
   match xs, ys with
@@ -331,5 +356,6 @@ decreasing_by
     try simp at h
     try replace h := List.sizeOf_lt_of_mem h
     omega
+
 
 end Cedar.Validation
