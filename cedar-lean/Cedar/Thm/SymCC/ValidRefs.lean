@@ -488,7 +488,7 @@ theorem typeOf_preserves_valid_refs_record
   simp only [←hty.1, TypedExpr.toExpr]
   constructor
   intros attr_expr' hmem_attr_expr'
-  simp only [List.map_attach₂_snd] at hmem_attr_expr'
+  simp only [List.map₂_eq_map_snd] at hmem_attr_expr'
   have ⟨⟨attr, tx⟩, hmem_attr_tx, hattr_tx⟩ := List.mem_map.mp hmem_attr_expr'
   simp only at hattr_tx
   simp only [←hattr_tx]

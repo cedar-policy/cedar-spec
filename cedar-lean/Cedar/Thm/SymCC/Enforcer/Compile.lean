@@ -626,8 +626,9 @@ private theorem compile_interpret_binaryApp_on_footprint {op₂ : BinaryOp} {x�
         simp only [interpret_entities_ancestorsOfType_none hancs]
       case some f =>
         simp only [interpret_entities_ancestorsOfType_some hancs]
-        repeat apply congr_arg
-        exact heqf ety₂ f hancs }
+        specialize heqf ety₂ f hancs
+        congr 2
+    }
   case less =>
     rcases compileApp₂_less_ok_implies hok with ⟨hty₁, hty₂, hok⟩ | ⟨hty₁, hty₂, hok⟩ | ⟨hty₁, hty₂, hok⟩
     all_goals(

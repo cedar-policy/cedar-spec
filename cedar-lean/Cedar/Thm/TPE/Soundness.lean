@@ -1034,8 +1034,7 @@ theorem partial_evaluate_is_sound_record
     List.any_map, List.any_eq_true, Function.comp_apply, Prod.exists]
   split
   case _ vs heq =>
-    simp only [Residual.evaluate, List.mapM₂, List.attach₂,
-      List.mapM_pmap_subtype (fun (x : Attr × Residual) => bindAttr x.fst (x.snd.evaluate req es))]
+    simp only [Residual.evaluate, List.mapM₂_eq_mapM λ x => bindAttr x.fst (Residual.evaluate x.snd req es)]
     have : (Except.ok (Value.record (Data.Map.make vs)) : Except Spec.Error Value).toOption = .some (Value.record (Data.Map.make vs)) := by
       simp only [Except.toOption]
     rw [this]
@@ -1074,8 +1073,9 @@ theorem partial_evaluate_is_sound_record
     exact h₁
   split
   case _ h₁ =>
-    simp only [List.map₁, List.any_map, List.any_eq_true, List.mem_attach, Function.comp_apply,
-      true_and, Subtype.exists, exists_prop, Prod.exists] at h₁
+    simp only [
+      List.map₁_eq_map λ (x : Attr × Residual) => (x.fst, TPE.evaluate x.snd preq pes),
+      List.any_map, List.any_eq_true, Function.comp_apply, Prod.exists] at h₁
     rcases h₁ with ⟨k, v, h₂, h₃⟩
     simp [Residual.isError] at h₃
     split at h₃ <;> simp at h₃
@@ -1083,17 +1083,16 @@ theorem partial_evaluate_is_sound_record
     specialize hᵢ₁ k v h₂
     simp [heq, Residual.evaluate] at hᵢ₁
     rcases to_option_right_err hᵢ₁ with ⟨err, hᵢ₁⟩
-    simp only [Residual.evaluate, List.mapM₂, List.attach₂,
-      List.mapM_pmap_subtype (fun (x : Attr × Residual) => bindAttr x.fst (x.snd.evaluate req es))]
+    simp only [Residual.evaluate, List.mapM₂_eq_mapM λ x => bindAttr x.fst (Residual.evaluate x.snd req es)]
     have : (fun (x: Attr × Residual) => bindAttr x.fst (x.snd.evaluate req es)) (k, v) = .error err := by
       simp only [bindAttr, hᵢ₁, bind_pure_comp, Except.map_error]
     have h₄ := @List.element_error_implies_mapM_error _ _ _ _ _ (fun (x: Attr × Residual) => bindAttr x.fst (x.snd.evaluate req es)) _ h₂ this
     rcases h₄ with ⟨_, h₄⟩
     simp [h₄, Except.toOption]
   case _ =>
-    simp [Residual.evaluate, List.mapM₂, List.attach₂,
-      List.mapM_pmap_subtype (fun (x : Attr × Residual) => bindAttr x.fst (x.snd.evaluate req es)),
-      List.mapM_map, Function.comp_def]
+    simp only [Residual.evaluate,
+      List.mapM₂_eq_mapM λ x => bindAttr x.fst (Residual.evaluate x.snd req es), List.mapM_map,
+      Function.comp_def]
     apply to_option_eq_do₁
     have : ∀ x,
       x ∈ m →

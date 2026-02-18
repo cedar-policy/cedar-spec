@@ -59,18 +59,9 @@ theorem type_lifting_preserves_expr (x : TypedExpr) :
     exact λ x _ => type_lifting_preserves_expr x
   case record m _ =>
     simp only [Expr.record.injEq]
-    have : m.attach₂.map (λ x => (x.1.fst, x.1.snd.toExpr)) =
-      m.map λ x => (x.fst, x.snd.toExpr) := by
-      exact List.map_attach₂ λ x : Attr × TypedExpr => (x.fst, x.snd.toExpr)
-    rw [this]
-    have : m.attach₂.map (λ x => (x.1.fst, x.1.snd.liftBoolTypes)) =
-      m.map λ x => (x.fst, x.snd.liftBoolTypes) := by
-      exact List.map_attach₂ λ x : Attr × TypedExpr => (x.fst, x.snd.liftBoolTypes)
-    rw [this]
-    have : (List.map (λ x => (x.fst, x.snd.liftBoolTypes)) m).attach₂.map (λ x => (x.1.fst, x.1.snd.toExpr)) =
-      (List.map (λ x => (x.fst, x.snd.liftBoolTypes)) m).map (λ x => (x.fst, x.snd.toExpr)) := by
-      exact List.map_attach₂ λ x : Attr × TypedExpr => (x.fst, x.snd.toExpr)
-    rw [this]
+    rw [List.map₂_eq_map λ x : Attr × TypedExpr => (x.fst, x.snd.toExpr)]
+    rw [List.map₂_eq_map λ x : Attr × TypedExpr => (x.fst, x.snd.liftBoolTypes)]
+    rw [List.map₂_eq_map λ x : Attr × TypedExpr => (x.fst, x.snd.toExpr)]
     simp only [List.map_map, List.map_inj_left, Function.comp_apply, Prod.mk.injEq, true_and,
       Prod.forall]
     exact λ _ x _ => type_lifting_preserves_expr x

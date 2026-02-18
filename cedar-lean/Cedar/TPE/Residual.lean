@@ -291,7 +291,7 @@ def TypedExpr.toResidual : TypedExpr → Residual
   | .getAttr expr attr ty => .getAttr (TypedExpr.toResidual expr) attr ty
   | .hasAttr expr attr ty => .hasAttr (TypedExpr.toResidual expr) attr ty
   | .set ls ty => .set (ls.map₁ (λ ⟨e, _⟩ => TypedExpr.toResidual e)) ty
-  | .record ls ty => .record (ls.attach₂.map (λ ⟨(a, e), _⟩ => (a, TypedExpr.toResidual e))) ty
+  | .record ls ty => .record (ls.map₂ (λ ⟨(a, e), _⟩ => (a, TypedExpr.toResidual e))) ty
   | .call xfn args ty => .call xfn (args.map₁ (λ ⟨e, _⟩ => TypedExpr.toResidual e)) ty
 decreasing_by
   all_goals (simp_wf ; try omega)

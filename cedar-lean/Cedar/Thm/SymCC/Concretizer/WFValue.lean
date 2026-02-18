@@ -118,8 +118,7 @@ private theorem term_record_value?_some_implies {ats : List (Attr × Term)} {v :
     Value.record (Map.mk (List.filterMap (λ x => Option.map (Prod.mk x.fst) x.snd) avs)) = v
 := by
   intro h
-  simp only [Term.value?, List.mapM₂, List.attach₂,
-    List.mapM_pmap_subtype (λ x : Attr × Term => Term.value?.attrValue? x.fst x.snd),
+  simp only [Term.value?, List.mapM₂_eq_mapM λ x : Attr × Term => Term.value?.attrValue? x.fst x.snd,
     Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at h
   exact h
 

@@ -285,10 +285,8 @@ private theorem pe_datetime_toDate {dt : Ext.Datetime}:
           BitVec.reduceToInt, Option.pure_def, Option.bind_some_fun, Term.some.injEq,
           Term.prim.injEq, TermPrim.ext.injEq, Ext.datetime.injEq, Ext.Datetime.mk.injEq]
         simp only [Int64.ofIntChecked, Int64.ofInt]
-        apply congr_arg ; apply congr_arg
-        have h₆ : (86400000 : Int) = (86400000#64).toInt := by
-          simp only [BitVec.toInt, BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod,
-            Nat.reduceMul, Nat.reduceLT, ↓reduceIte, Int.cast_ofNat_Int]
+        congr
+        have h₆ : (86400000 : Int) = (86400000#64).toInt := by decide
         simp only [h₆, ← BitVec.mul_toInt_eq_toInt_mul (And.intro h₄ h₅), BitVec.ofInt_toInt]
         simp only [BitVec.sub_eq, BitVec.mul_eq]
       case true =>

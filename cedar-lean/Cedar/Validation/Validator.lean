@@ -176,13 +176,13 @@ def mapOnVars (f : Var → Expr) : Expr → Expr
     let x₁ := mapOnVars f x₁
     .getAttr x₁ a
   | .set xs =>
-    let xs := xs.attach.map (λ ⟨x, _⟩ => mapOnVars f x)
+    let xs := xs.map₁ (λ ⟨x, _⟩ => mapOnVars f x)
     .set xs
   | .record axs =>
-    let axs := axs.attach₂.map (λ ⟨(a, x), _⟩ => (a, mapOnVars f x))
+    let axs := axs.map₂ (λ ⟨(a, x), _⟩ => (a, mapOnVars f x))
     .record axs
   | .call xfn xs =>
-    let xs := xs.attach.map (λ ⟨x, _⟩ => mapOnVars f x)
+    let xs := xs.map₁ (λ ⟨x, _⟩ => mapOnVars f x)
     .call xfn xs
 
 /- Substitute `action` variable for a literal EUID to improve typechecking precision. -/

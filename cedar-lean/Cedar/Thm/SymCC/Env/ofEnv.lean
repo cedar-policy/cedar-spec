@@ -778,8 +778,8 @@ theorem ofEnumEntityType_is_wf
     ]
     intros _ _ _ h
     simp [List.attach₃] at h
-  · simp only [Term.typeOf, List.nil.sizeOf_spec, Nat.reduceAdd, List.attach₃, List.pmap_nil,
-    List.map_nil]
+  · rw [Term.typeOf, List.map₃_eq_map_snd Term.typeOf]
+    simp
   · simp only [Map.WellFormed, Map.make, Map.toList, List.canonicalize]
   · intros _ _ h
     contradiction
@@ -1009,14 +1009,12 @@ theorem ofActionType_is_wf
       simp [Map.toList, Map.kvs] at h
     · simp [Map.WellFormed, Map.make, List.canonicalize, Map.toList]
   · simp [Term.isLiteral, List.attach₃]
-  · simp [Term.typeOf, List.attach₃]
+  · rw [Term.typeOf, List.map₃_eq_map_snd Term.typeOf]
+    simp
   · simp [Map.WellFormed, Map.make, List.canonicalize, Map.toList]
   · intros; contradiction
-  · simp [
-      TermType.isCedarRecordType,
-      TermType.cedarType?,
-      List.mapM₃, List.attach₃,
-    ]
+  · simp only [TermType.isCedarRecordType, TermType.cedarType?]
+    grind
   -- Symbolic ancestors are well-formed
   · intros anc sym_anc_f hfind_anc
     have := Map.find?_mem_toList hfind_anc
@@ -1224,8 +1222,8 @@ theorem ofEnv_entities_valid_refs_for_wt_expr
     simp only [TypedExpr.toExpr]
     constructor
     intros attr hmem_attr
-    simp only [List.attach₂, List.map_pmap] at hmem_attr
-    have ⟨attr', hmem_attr', hattr'⟩ := List.mem_pmap.mp hmem_attr
+    rw [List.map₂_eq_map λ x => (x.fst, TypedExpr.toExpr x.snd)] at hmem_attr
+    have ⟨attr', hmem_attr', hattr'⟩ := List.mem_map.mp hmem_attr
     cases attr with | _ fst snd =>
     simp only [Prod.mk.injEq] at hattr'
     simp only [←hattr']
@@ -1344,9 +1342,9 @@ theorem ValidRefs_invariant_under_liftBoolTypes
     cases hrefs with | record_valid h =>
     constructor
     intros attr hmem_attr
-    simp only [List.map_attach₂_snd] at hmem_attr
+    simp only [List.map₂_eq_map_snd] at hmem_attr h
     simp only [
-      List.map_attach₂_snd, List.map_map, List.mem_map,
+      List.map_map, List.mem_map,
       Function.comp_apply, Prod.exists,
       forall_exists_index, and_imp,
       Prod.forall, Prod.mk.injEq,

@@ -83,8 +83,7 @@ theorem type_of_record_inversion {axs : List (Attr × Expr)} {c c' : Capabilitie
   simp [h₁]
   exists rty
   simp [←h₁]
-  simp [List.mapM₂, List.attach₂] at h₂
-  simp [List.mapM_pmap_subtype (fun (x : Attr × Expr) => Except.map (fun x₁ : (TypedExpr × Capabilities) => (x.fst, x₁.fst)) (typeOf x.snd c env))] at h₂
+  simp [List.mapM₂_eq_mapM λ (x : Attr × Expr) => Except.map (fun x₁ : (TypedExpr × Capabilities) => (x.fst, x₁.fst)) (typeOf x.snd c env)] at h₂
   exact type_of_record_inversion_forall h₂
 
 theorem mk_vals_instance_of_mk_types₁ {env : TypeEnv} {a : Attr} {avs : List (Attr × Value)} {rty : List (Attr × QualifiedType)}
@@ -308,9 +307,8 @@ theorem type_of_record_is_sound {axs : List (Attr × Expr)} {c₁ c₂ : Capabil
   apply And.intro empty_guarded_capabilities_invariant
   simp only [EvaluatesTo, evaluate]
   simp only [do_ok_eq_ok, do_error]
-  simp only [List.mapM₂, List.attach₂]
   let f := fun (x : Attr × Expr) => bindAttr x.fst (evaluate x.snd request entities)
-  rw [List.mapM_pmap_subtype f]
+  rw [List.mapM₂_eq_mapM f]
   cases h₅ : (axs.mapM f) <;> simp
   case error err =>
     rename_i h₄

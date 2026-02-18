@@ -14,7 +14,13 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.Data.List.Basic
+module
+
+public import Cedar.Data.List
+import all Cedar.Data.List -- inside this module, we're allowed to unfold defs in Cedar.Data.List that are not normally exposed
+import Cedar.Thm.Data.Control
+public import Cedar.Thm.Data.List.Basic
+public import Batteries.Data.List.Basic
 
 /-!
 
@@ -28,7 +34,7 @@ namespace List
 
 /-! ### any -/
 
-theorem any_of_mem {f : α → Bool} {x : α} {xs : List α}
+public theorem any_of_mem {f : α → Bool} {x : α} {xs : List α}
   (h₁ : x ∈ xs)
   (h₂ : f x) :
   any xs f = true
@@ -47,7 +53,7 @@ theorem any_of_mem {f : α → Bool} {x : α} {xs : List α}
 /--
   Copied from Mathlib. We can delete this if it gets added to Batteries.
 -/
-theorem all_pmap_subtype
+public theorem all_pmap_subtype
   {p : α → Prop}
   (f : α → Bool)
   (as : List α)
@@ -63,7 +69,7 @@ theorem all_pmap_subtype
 /--
   Copied from Mathlib. We can delete this if it gets added to Batteries.
 -/
-theorem map_congr {f g : α → β} : ∀ {l : List α},
+public theorem map_congr {f g : α → β} : ∀ {l : List α},
   (∀ x ∈ l, f x = g x) → map f l = map g l
   | [], _ => rfl
   | a :: l, h => by
@@ -75,7 +81,7 @@ Similar to the standard library's `map_eq_singleton_iff`, but for doubleton.
 
 We could probably make this an iff but currently don't need to.
 -/
-theorem map_eq_doubleton {f : α → β} {xs : List α} {y₁ y₂ : β} :
+public theorem map_eq_doubleton {f : α → β} {xs : List α} {y₁ y₂ : β} :
   xs.map f = [y₁, y₂] →
   ∃ x₁ x₂, xs = [x₁, x₂]
 := by
@@ -88,7 +94,7 @@ theorem map_eq_doubleton {f : α → β} {xs : List α} {y₁ y₂ : β} :
 /--
   Copied from Mathlib. We can delete this if it gets added to Batteries.
 -/
-theorem map_pmap_subtype
+public theorem map_pmap_subtype
   {p : α → Prop}
   (f : α → β)
   (as : List α)
@@ -106,7 +112,7 @@ theorem map_pmap_subtype
   the application of `f` is not the outermost AST node of the function,
   basically)
 -/
-theorem map_pmap_subtype_snd
+public theorem map_pmap_subtype_snd
   {p : (α × β) → Prop}
   (f : β → γ)
   (xs : List (α × β))
@@ -117,44 +123,50 @@ theorem map_pmap_subtype_snd
 := by
   induction xs <;> simp [*]
 
-theorem attach_def {as : List α} :
+public theorem attach_def {as : List α} :
   as.attach = pmap Subtype.mk as λ _ => id
 := by
   simp [attach, attachWith]
 
-theorem map₁_eq_map (f : α → β) (as : List α) :
+public theorem map₁_eq_map (f : α → β) (as : List α) :
   as.map₁ (λ x : {x // x ∈ as} => f x.val) =
   as.map f
 := by
   simp only [map₁, attach_def, map_pmap_subtype]
 
 
-theorem map_attach₂ {α : Type u} {β : Type v} [SizeOf α] [SizeOf β] {xs : List (α × β)} (f : (α × β) → γ) :
-  xs.attach₂.map (λ x : { x : α × β // sizeOf x.snd < 1 + sizeOf xs } => f x.1) =
+public theorem map₂_eq_map {α : Type u} {β : Type v} [SizeOf α] [SizeOf β] {xs : List (α × β)} (f : (α × β) → γ) :
+  xs.map₂ (λ x : { x : α × β // sizeOf x.snd < 1 + sizeOf xs } => f x.1) =
   xs.map f
 := by
-  simp only [attach₂, map_pmap_subtype]
+  simp only [map₂, attach₂, map_pmap_subtype]
+
+public theorem map₃_eq_map {α : Type u} {β : Type v} [SizeOf α] [SizeOf β] {xs : List (α × β)} (f : (α × β) → γ) :
+  xs.map₃ (λ x : { x : α × β // sizeOf x.snd < 1 + (1 + sizeOf xs) } => f x.1) =
+  xs.map f
+:= by
+  simp only [map₃, attach₃, map_pmap_subtype]
 
 /--
-  Not actually a special case of `map_attach₂` -- you can use this in places you
-  can't use `map_attach₂` because the LHS function (being mapped) doesn't fit
-  the `map_attach₂` form but does fit this form (where the application of `f` is
+  Not actually a special case of `map₂_eq_map` -- you can use this in places you
+  can't use `map₂_eq_map` because the LHS function (being mapped) doesn't fit
+  the `map₂_eq_map` form but does fit this form (where the application of `f` is
   not the outermost AST node of the function, basically)
 -/
-theorem map_attach₂_snd {α : Type u} {β : Type v} [SizeOf α] [SizeOf β] {xs : List (α × β)} (f : β → γ) :
-  xs.attach₂.map (λ x : {x : α × β // sizeOf x.snd < 1 + sizeOf xs } => match x with | ⟨(a, b), _⟩ => (a, f b)) =
+public theorem map₂_eq_map_snd {α : Type u} {β : Type v} [SizeOf α] [SizeOf β] {xs : List (α × β)} (f : β → γ) :
+  xs.map₂ (λ x : {x : α × β // sizeOf x.snd < 1 + sizeOf xs } => match x with | ⟨(a, b), _⟩ => (a, f b)) =
   xs.map λ (a, b) => (a, f b)
 := by
-  simp [attach₂, map_pmap_subtype_snd]
+  simp [map₂, attach₂, map_pmap_subtype_snd]
 
 /--
-  same as `map_attach₂_snd` but for `attach₃`
+  same as `map₂_eq_map_snd` but for `map₃`
 -/
-theorem map_attach₃_snd [SizeOf α] [SizeOf β] {xs : List (α × β)} (f : β → γ) :
-  xs.attach₃.map (λ x : {x : α × β // sizeOf x.snd < 1 + (1 + sizeOf xs) } => match x with | ⟨(a, b), _⟩ => (a, f b)) =
+public theorem map₃_eq_map_snd [SizeOf α] [SizeOf β] {xs : List (α × β)} (f : β → γ) :
+  xs.map₃ (λ x : {x : α × β // sizeOf x.snd < 1 + (1 + sizeOf xs) } => match x with | ⟨(a, b), _⟩ => (a, f b)) =
   xs.map λ (a, b) => (a, f b)
 := by
-  simp [attach₃, map_pmap_subtype_snd]
+  simp [map₃, attach₃, map_pmap_subtype_snd]
 
 /-! ### flatMap -/
 
@@ -163,7 +175,7 @@ As of this writing, the standard-library lemma `List.exists_of_mem_flatMap` is a
 `→`, but it's trivial to extend it to `↔` and makes some things easier, so we do
 that here
 -/
-theorem exists_iff_mem_flatMap {α β} [DecidableEq β] {f : α → List β} {xs : List α} {b : β} :
+public theorem exists_iff_mem_flatMap {α β} [DecidableEq β] {f : α → List β} {xs : List α} {b : β} :
   b ∈ List.flatMap f xs ↔ ∃ a ∈ xs, b ∈ f a
 := by grind
 
@@ -172,25 +184,25 @@ theorem exists_iff_mem_flatMap {α β} [DecidableEq β] {f : α → List β} {xs
 /--
   Copied from Mathlib
 -/
-theorem forall₂_nil_left_iff {l} : Forall₂ R nil l ↔ l = nil :=
+public theorem forall₂_nil_left_iff {l} : Forall₂ R nil l ↔ l = nil :=
   ⟨fun H => by cases H; rfl, by rintro rfl; exact Forall₂.nil⟩
 
 /--
   Copied from Mathlib
 -/
-theorem forall₂_nil_right_iff {l} : Forall₂ R l nil ↔ l = nil :=
+public theorem forall₂_nil_right_iff {l} : Forall₂ R l nil ↔ l = nil :=
   ⟨fun H => by cases H; rfl, by rintro rfl; exact Forall₂.nil⟩
 
 /--
   Copied from Mathlib
 -/
-theorem Forall₂.imp (H : ∀ a b, R a b → S a b) {l₁ l₂} (h : Forall₂ R l₁ l₂) : Forall₂ S l₁ l₂ := by
+public theorem Forall₂.imp (H : ∀ a b, R a b → S a b) {l₁ l₂} (h : Forall₂ R l₁ l₂) : Forall₂ S l₁ l₂ := by
   induction h <;> constructor <;> solve_by_elim
 
 /--
   Copied from Mathlib
 -/
-theorem forall₂_cons_left_iff {a l u} :
+public theorem forall₂_cons_left_iff {a l u} :
     Forall₂ R (a :: l) u ↔ ∃ b u', R a b ∧ Forall₂ R l u' ∧ u = b :: u' :=
   Iff.intro
     (fun h =>
@@ -203,7 +215,7 @@ theorem forall₂_cons_left_iff {a l u} :
 /--
   Copied from Mathlib
 -/
-theorem forall₂_cons_right_iff {b l u} :
+public theorem forall₂_cons_right_iff {b l u} :
     Forall₂ R u (b :: l) ↔ ∃ a u', R a b ∧ Forall₂ R u' l ∧ u = a :: u' :=
   Iff.intro
     (fun h =>
@@ -213,7 +225,7 @@ theorem forall₂_cons_right_iff {b l u} :
     match u, h with
     | _, ⟨_, _, h₁, h₂, rfl⟩ => Forall₂.cons h₁ h₂
 
-theorem forall₂_singleton_right_iff {α β} {R : α → β → Prop} {xs : List α} {y : β} :
+public theorem forall₂_singleton_right_iff {α β} {R : α → β → Prop} {xs : List α} {y : β} :
   Forall₂ R xs [y] ↔ ∃ x, R x y ∧ xs = [x]
 := by
   constructor <;> intro h
@@ -227,7 +239,7 @@ theorem forall₂_singleton_right_iff {α β} {R : α → β → Prop} {xs : Lis
     subst hxs
     exact Forall₂.cons h Forall₂.nil
 
-theorem forall₂_pair_right_iff {α β} {R : α → β → Prop} {xs : List α} {y₁ y₂ : β} :
+public theorem forall₂_pair_right_iff {α β} {R : α → β → Prop} {xs : List α} {y₁ y₂ : β} :
   Forall₂ R xs [y₁, y₂] ↔ ∃ x₁ x₂, R x₁ y₁ ∧ R x₂ y₂ ∧ xs = [x₁, x₂]
 := by
   constructor <;> intro h
@@ -246,7 +258,7 @@ theorem forall₂_pair_right_iff {α β} {R : α → β → Prop} {xs : List α}
   Note the converse is not true:
   counterexample `R` is `=`, `xs` is `[1]`, `ys` is `[1, 2]`
 -/
-theorem forall₂_implies_all_left {α β} {R : α → β → Prop} {xs : List α} {ys : List β} :
+public theorem forall₂_implies_all_left {α β} {R : α → β → Prop} {xs : List α} {ys : List β} :
   List.Forall₂ R xs ys →
   ∀ x ∈ xs, ∃ y ∈ ys, R x y
 := by
@@ -265,7 +277,7 @@ theorem forall₂_implies_all_left {α β} {R : α → β → Prop} {xs : List �
       exists y
       simp only [mem_cons, ih, or_true, and_self]
 
-theorem forall₂_implies_all_right {α β} {R : α → β → Prop} {xs : List α} {ys : List β} :
+public theorem forall₂_implies_all_right {α β} {R : α → β → Prop} {xs : List α} {ys : List β} :
   List.Forall₂ R xs ys →
   ∀ y ∈ ys, ∃ x ∈ xs, R x y
 := by
@@ -284,7 +296,7 @@ theorem forall₂_implies_all_right {α β} {R : α → β → Prop} {xs : List 
       exists x
       simp only [mem_cons, ih, or_true, and_self]
 
-theorem forall₂_iff_map_eq {α β γ} {f : α → γ} {g : β → γ} {xs : List α} {ys : List β} :
+public theorem forall₂_iff_map_eq {α β γ} {f : α → γ} {g : β → γ} {xs : List α} {ys : List β} :
   List.Forall₂ (λ x y => f x = g y) xs ys ↔
   xs.map f = ys.map g
 := by
@@ -305,7 +317,7 @@ theorem forall₂_iff_map_eq {α β γ} {f : α → γ} {g : β → γ} {xs : Li
       exists xhd, xtl
       simp only [h.left, ih h.right, and_self]
 
-theorem forall₂_fun_subset_implies {R : α → β → Prop} {xs xs' : List α} {ys ys' : List β} :
+public theorem forall₂_fun_subset_implies {R : α → β → Prop} {xs xs' : List α} {ys ys' : List β} :
   List.Forall₂ R xs ys →
   List.Forall₂ R xs' ys' →
   (∀ {x y y'}, R x y → R x y' → y = y') →
@@ -325,7 +337,7 @@ theorem forall₂_fun_subset_implies {R : α → β → Prop} {xs xs' : List α}
 The converse (ys ≡ ys' → xs ≡ xs') doesn't hold without requiring R to be
 injective (as well as functional).
 -/
-theorem forall₂_fun_equiv_implies {R : α → β → Prop} {xs xs' : List α} {ys ys' : List β} :
+public theorem forall₂_fun_equiv_implies {R : α → β → Prop} {xs xs' : List α} {ys ys' : List β} :
   List.Forall₂ R xs ys →
   List.Forall₂ R xs' ys' →
   (∀ {x y y'}, R x y → R x y' → y = y') →
@@ -339,7 +351,7 @@ theorem forall₂_fun_equiv_implies {R : α → β → Prop} {xs xs' : List α} 
   · exact forall₂_fun_subset_implies ha ha' hf heqv
   · exact forall₂_fun_subset_implies ha' ha hf heqv'
 
-theorem map_preserves_forall₂
+public theorem map_preserves_forall₂
   {f : α → α'}
   {g : β → β'}
   {p₁ : α → β → Prop}
@@ -358,7 +370,7 @@ theorem map_preserves_forall₂
     assumption
     assumption
 
-theorem forall₂_swap
+public theorem forall₂_swap
   {R : α → β → Prop} {xs : List α} {ys : List β}
   (hforall₂ : List.Forall₂ (λ y x => R x y) ys xs) :
   List.Forall₂ R xs ys
@@ -375,7 +387,7 @@ Applying `mapM` on the RHS list of `Forall₂`
 leads to new `Forall₂` relation if certain
 conditions are met.
 -/
-theorem forall₂_compose_mapM_right
+public theorem forall₂_compose_mapM_right
   {l₁ : List α} {l₂ : List β} {l₃ : List γ}
   {R₁ : α → β → Prop}
   {R₂ : α → γ → Prop}
@@ -408,7 +420,7 @@ theorem forall₂_compose_mapM_right
     · specialize ih hmapM_tl
       exact ih
 
-theorem forall₂_eq_implies_filterMap
+public theorem forall₂_eq_implies_filterMap
   {l₁ : List α} {l₂ : List β} {p : α → β → Prop}
   {f : α → Option β}
   (h : List.Forall₂ p l₁ l₂)
@@ -424,7 +436,7 @@ theorem forall₂_eq_implies_filterMap
     simp only [this, ih]
 
 /-- kind of a transitivity property, if you squint -/
-theorem forall₂_trans_ish {xs : List α} {ys : List β} {zs : List γ} {Q : α → β → Prop} {R : α → γ → Prop} {S : β → γ → Prop}
+public theorem forall₂_trans_ish {xs : List α} {ys : List β} {zs : List γ} {Q : α → β → Prop} {R : α → γ → Prop} {S : β → γ → Prop}
   (h₁ : List.Forall₂ Q xs ys)
   (h₂ : List.Forall₂ R xs zs) :
   (∀ {a b c}, Q a b → R a c → S b c) →
@@ -445,7 +457,7 @@ theorem forall₂_trans_ish {xs : List α} {ys : List β} {zs : List γ} {Q : α
 
 /-! ### mapM, mapM', mapM₁, and mapM₂ -/
 
-theorem mapM_some {xs : List α} :
+public theorem mapM_some {xs : List α} :
   xs.mapM some = some xs
 := by
   -- Probably could be proved as a corollary of `mapM_pure`, but I couldn't
@@ -454,6 +466,7 @@ theorem mapM_some {xs : List α} :
   case nil => simp only [mapM_nil, Option.pure_def]
   case cons hd tl ih => simp [ih]
 
+-- not public: you should be able to use the higher-level lemmas below
 theorem mapM_pmap_subtype [Monad m] [LawfulMonad m]
   {p : α → Prop}
   (f : α → m β)
@@ -466,7 +479,7 @@ theorem mapM_pmap_subtype [Monad m] [LawfulMonad m]
   rw [←List.mapM'_eq_mapM]
   induction as <;> simp [*]
 
-theorem mapM₁_eq_mapM [Monad m] [LawfulMonad m]
+public theorem mapM₁_eq_mapM [Monad m] [LawfulMonad m]
   (f : α → m β)
   (as : List α) :
   List.mapM₁ as (λ x : { x // x ∈ as } => f x.val) =
@@ -474,15 +487,15 @@ theorem mapM₁_eq_mapM [Monad m] [LawfulMonad m]
 := by
   simp only [mapM₁, attach_def, mapM_pmap_subtype]
 
-theorem mapM₂_eq_mapM [Monad m] [LawfulMonad m] [SizeOf α] [SizeOf β]
+public theorem mapM₂_eq_mapM [Monad m] [LawfulMonad m] [SizeOf α] [SizeOf β]
   (f : (α × β) → m γ)
   (as : List (α × β)) :
-  List.mapM₂ as (λ x : { x // sizeOf x.snd < 1 + sizeOf as } => f x.val) =
+  List.mapM₂ as (λ x : { _x // _ } => f x.val) =
   List.mapM f as
 := by
   simp only [mapM₂, attach₂, mapM_pmap_subtype]
 
-theorem mapM₃_eq_mapM [Monad m] [LawfulMonad m] [SizeOf α] [SizeOf β]
+public theorem mapM₃_eq_mapM [Monad m] [LawfulMonad m] [SizeOf α] [SizeOf β]
   (f : (α × β) → m γ)
   (as : List (α × β)) :
   List.mapM₃ as (λ x : { x // sizeOf x.snd < 1 + (1 + sizeOf as) } => f x.val) =
@@ -490,7 +503,7 @@ theorem mapM₃_eq_mapM [Monad m] [LawfulMonad m] [SizeOf α] [SizeOf β]
 := by
   simp only [mapM₃, attach₃, mapM_pmap_subtype]
 
-theorem mapM_implies_nil {f : α → Except β γ} {as : List α}
+public theorem mapM_implies_nil {f : α → Except β γ} {as : List α}
   (h₁ : List.mapM f as = Except.ok []) :
   as = []
 := by
@@ -503,7 +516,7 @@ theorem mapM_implies_nil {f : α → Except β γ} {as : List α}
     cases h₃ : List.mapM' f tl <;>
     simp [h₃, pure, Except.pure] at h₁
 
-theorem mapM_head_tail {α β γ} {f : α → Except β γ} {x : α} {xs : List α} {y : γ} {ys : List γ} :
+public theorem mapM_head_tail {α β γ} {f : α → Except β γ} {x : α} {xs : List α} {y : γ} {ys : List γ} :
   (List.mapM f (x :: xs)) = Except.ok (y :: ys) →
   (List.mapM f xs) = Except.ok ys
 := by
@@ -513,7 +526,7 @@ theorem mapM_head_tail {α β γ} {f : α → Except β γ} {x : α} {xs : List 
   cases _ : mapM' f xs <;>
   simp [pure, Except.pure]
 
-theorem mapM'_preserves_length :
+public theorem mapM'_preserves_length :
   List.mapM' f xs = Except.ok ys →
   xs.length = ys.length
 := by
@@ -534,14 +547,14 @@ theorem mapM'_preserves_length :
         intro h ; subst ys
         simp [mapM'_preserves_length ih]
 
-theorem mapM_preserves_length :
+public theorem mapM_preserves_length :
   List.mapM f xs = Except.ok ys →
   xs.length = ys.length
 := by
   rw [← mapM'_eq_mapM]
   exact mapM'_preserves_length
 
-theorem not_mem_implies_not_mem_mapM_key_id {α β : Type} {ks : List α} {kvs : List (α × β)} {fn : α → Option β} {k: α}
+public theorem not_mem_implies_not_mem_mapM_key_id {α β : Type} {ks : List α} {kvs : List (α × β)} {fn : α → Option β} {k: α}
   (hm : ks.mapM (λ k => do (k, ←fn k)) = some kvs)
   (hl : k ∉ ks) :
   ∀ v, (k, v) ∉ kvs
@@ -564,7 +577,7 @@ theorem not_mem_implies_not_mem_mapM_key_id {α β : Type} {ks : List α} {kvs :
       replace hl : k ∉ tail := (hl $ List.Mem.tail _ ·)
       exact not_mem_implies_not_mem_mapM_key_id  hm₂ hl _ ht'
 
-theorem mapM'_ok_iff_forall₂ {α β γ} {f : α → Except γ β} {xs : List α} {ys : List β} :
+public theorem mapM'_ok_iff_forall₂ {α β γ} {f : α → Except γ β} {xs : List α} {ys : List β} :
   List.mapM' f xs = .ok ys ↔
   List.Forall₂ (λ x y => f x = .ok y) xs ys
 := by
@@ -607,7 +620,7 @@ theorem mapM'_ok_iff_forall₂ {α β γ} {f : α → Except γ β} {xs : List �
         simp only [ih, Except.bind_ok]
 
 /-- Copy of mapM'_ok_iff_forall₂ but for option instead of exception -/
-theorem mapM'_some_iff_forall₂ {α β} {f : α → Option β} {xs : List α} {ys : List β} :
+public theorem mapM'_some_iff_forall₂ {α β} {f : α → Option β} {xs : List α} {ys : List β} :
   List.mapM' f xs = .some ys ↔
   List.Forall₂ (λ x y => f x = .some y) xs ys
 := by
@@ -667,14 +680,14 @@ theorem mapM'_some_iff_forall₂ {α β} {f : α → Option β} {xs : List α} {
 
 
 
-theorem mapM_ok_iff_forall₂ {α β γ} {f : α → Except γ β} {xs : List α} {ys : List β} :
+public theorem mapM_ok_iff_forall₂ {α β γ} {f : α → Except γ β} {xs : List α} {ys : List β} :
   List.mapM f xs = .ok ys ↔
   List.Forall₂ (λ x y => f x = .ok y) xs ys
 := by
   rw [← List.mapM'_eq_mapM]
   exact mapM'_ok_iff_forall₂
 
-theorem mapM_some_iff_forall₂ {α β} {f : α → Option β} {xs : List α} {ys : List β} :
+public theorem mapM_some_iff_forall₂ {α β} {f : α → Option β} {xs : List α} {ys : List β} :
   List.mapM f xs = .some ys ↔
   List.Forall₂ (λ x y => f x = .some y) xs ys
 := by
@@ -687,7 +700,7 @@ of a `f` through `List.mapM`. This is slightly stronger
 than the forward direction of `mapM_ok_iff_forall₂`
 since it allowed an extra `x ∈ xs` condition in `h`.
 -/
-theorem mapM_implies_forall₂
+public theorem mapM_implies_forall₂
   {f : α → Except ε β}
   {p : α → β → Prop}
   {xs : List α} {ys : List β}
@@ -721,7 +734,7 @@ theorem mapM_implies_forall₂
 /--
 Same as `mapM_implies_forall₂` but for `Option`
 -/
-theorem mapM_implies_forall₂_option
+public theorem mapM_implies_forall₂_option
   {f : α → Option β}
   {p : α → β → Prop}
   {xs : List α} {ys : List β}
@@ -759,21 +772,21 @@ theorem mapM_implies_forall₂_option
 
   But for a limited converse, see `all_ok_implies_mapM'_ok`
 -/
-theorem mapM'_ok_implies_all_ok {α β γ} {f : α → Except γ β} {xs : List α} {ys : List β} :
+public theorem mapM'_ok_implies_all_ok {α β γ} {f : α → Except γ β} {xs : List α} {ys : List β} :
   List.mapM' f xs = .ok ys →
   ∀ x ∈ xs, ∃ y ∈ ys, f x = .ok y
 := by
   intro h
   exact forall₂_implies_all_left (mapM'_ok_iff_forall₂.mp h)
 
-theorem mapM_ok_implies_all_ok {α β γ} {f : α → Except γ β} {xs : List α} {ys : List β} :
+public theorem mapM_ok_implies_all_ok {α β γ} {f : α → Except γ β} {xs : List α} {ys : List β} :
   List.mapM f xs = .ok ys →
   ∀ x ∈ xs, ∃ y ∈ ys, f x = .ok y
 := by
   rw [← List.mapM'_eq_mapM]
   exact mapM'_ok_implies_all_ok
 
-theorem all_ok_implies_mapM'_ok {α β γ} {f : α → Except γ β} {xs : List α} :
+public theorem all_ok_implies_mapM'_ok {α β γ} {f : α → Except γ β} {xs : List α} :
   (∀ x ∈ xs, ∃ y, f x = .ok y) →
   ∃ ys, List.mapM' f xs = .ok ys
 := by
@@ -787,7 +800,7 @@ theorem all_ok_implies_mapM'_ok {α β γ} {f : α → Except γ β} {xs : List 
     exists yhd :: ytl
     simp [h₁, ih, pure, Except.pure]
 
-theorem all_ok_implies_mapM_ok {α β γ} {f : α → Except γ β} {xs : List α} :
+public theorem all_ok_implies_mapM_ok {α β γ} {f : α → Except γ β} {xs : List α} :
   (∀ x ∈ xs, ∃ y, f x = .ok y) →
   ∃ ys, List.mapM f xs = .ok ys
 := by
@@ -800,21 +813,21 @@ theorem all_ok_implies_mapM_ok {α β γ} {f : α → Except γ β} {xs : List �
 
   But for a limited converse, see `all_from_ok_implies_mapM'_ok`
 -/
-theorem mapM'_ok_implies_all_from_ok {α β γ} {f : α → Except γ β} {xs : List α} {ys : List β} :
+public theorem mapM'_ok_implies_all_from_ok {α β γ} {f : α → Except γ β} {xs : List α} {ys : List β} :
   List.mapM' f xs = .ok ys →
   ∀ y ∈ ys, ∃ x ∈ xs, f x = .ok y
 := by
   intro h
   exact forall₂_implies_all_right (mapM'_ok_iff_forall₂.mp h)
 
-theorem mapM_ok_implies_all_from_ok {α β γ} {f : α → Except γ β} {xs : List α} {ys : List β} :
+public theorem mapM_ok_implies_all_from_ok {α β γ} {f : α → Except γ β} {xs : List α} {ys : List β} :
   List.mapM f xs = .ok ys →
   ∀ y ∈ ys, ∃ x ∈ xs, f x = .ok y
 := by
   rw [← List.mapM'_eq_mapM]
   exact mapM'_ok_implies_all_from_ok
 
-theorem all_from_ok_implies_mapM'_ok {α β γ} {f : α → Except γ β} {ys : List β} :
+public theorem all_from_ok_implies_mapM'_ok {α β γ} {f : α → Except γ β} {ys : List β} :
   (∀ y ∈ ys, ∃ x, f x = .ok y) →
   ∃ xs, List.mapM' f xs = .ok ys
 := by
@@ -828,7 +841,7 @@ theorem all_from_ok_implies_mapM'_ok {α β γ} {f : α → Except γ β} {ys : 
     exists xhd :: xtl
     simp [h₁, ih, pure, Except.pure]
 
-theorem all_from_ok_implies_mapM_ok {α β γ} {f : α → Except γ β} {ys : List β} :
+public theorem all_from_ok_implies_mapM_ok {α β γ} {f : α → Except γ β} {ys : List β} :
   (∀ y ∈ ys, ∃ x, f x = .ok y) →
   ∃ xs, List.mapM f xs = .ok ys
 := by
@@ -844,7 +857,7 @@ theorem all_from_ok_implies_mapM_ok {α β γ} {f : α → Except γ β} {ys : L
 
   But for a limited converse, see `element_error_implies_mapM_error`
 -/
-theorem mapM'_error_implies_exists_error {α β γ} {f : α → Except γ β} {xs : List α} {e : γ} :
+public theorem mapM'_error_implies_exists_error {α β γ} {f : α → Except γ β} {xs : List α} {e : γ} :
   List.mapM' f xs = .error e → ∃ x ∈ xs, f x = .error e
 := by
   intro h₁
@@ -868,13 +881,13 @@ theorem mapM'_error_implies_exists_error {α β γ} {f : α → Except γ β} {x
       exists x
       simp only [mem_cons, h₃, or_true, and_self]
 
-theorem mapM_error_implies_exists_error {α β γ} {f : α → Except γ β} {xs : List α} {e : γ} :
+public theorem mapM_error_implies_exists_error {α β γ} {f : α → Except γ β} {xs : List α} {e : γ} :
   List.mapM f xs = .error e → ∃ x ∈ xs, f x = .error e
 := by
   rw [← List.mapM'_eq_mapM]
   exact mapM'_error_implies_exists_error
 
-theorem filterMapM_error_implies_exists_error {α β ε} {f : α → Except ε (Option β)} {xs : List α} {e : ε} :
+public theorem filterMapM_error_implies_exists_error {α β ε} {f : α → Except ε (Option β)} {xs : List α} {e : ε} :
   List.filterMapM f xs = .error e → ∃ x ∈ xs, f x = .error e
 := by
   cases xs
@@ -900,7 +913,7 @@ theorem filterMapM_error_implies_exists_error {α β ε} {f : α → Except ε (
 
   Limited converse of `mapM'_error_implies_exists_error`
 -/
-theorem element_error_implies_mapM'_error {x : α} {xs : List α} {f : α → Except ε β} {e : ε} :
+public theorem element_error_implies_mapM'_error {x : α} {xs : List α} {f : α → Except ε β} {e : ε} :
   x ∈ xs →
   f x = .error e →
   ∃ e', xs.mapM' f = .error e'
@@ -911,7 +924,7 @@ theorem element_error_implies_mapM'_error {x : α} {xs : List α} {f : α → Ex
     replace ⟨pval, _, h₃⟩ := mapM'_ok_implies_all_ok h₃ x h₁
     simp [h₂] at h₃
 
-theorem element_error_implies_mapM_error {x : α} {xs : List α} {f : α → Except ε β} {e : ε} :
+public theorem element_error_implies_mapM_error {x : α} {xs : List α} {f : α → Except ε β} {e : ε} :
   x ∈ xs →
   f x = .error e →
   ∃ e', xs.mapM f = .error e'
@@ -919,7 +932,7 @@ theorem element_error_implies_mapM_error {x : α} {xs : List α} {f : α → Exc
   rw [← List.mapM'_eq_mapM]
   exact element_error_implies_mapM'_error
 
-theorem mapM'_ok_eq_filterMap {α β} {f : α → Except ε β} {xs : List α} {ys : List β} :
+public theorem mapM'_ok_eq_filterMap {α β} {f : α → Except ε β} {xs : List α} {ys : List β} :
   xs.mapM' f = .ok ys →
   xs.filterMap (λ x => match f x with | .ok y => some y | .error _ => none) = ys
 := by
@@ -938,7 +951,7 @@ theorem mapM'_ok_eq_filterMap {α β} {f : α → Except ε β} {xs : List α} {
         subst ys
         simp only [ih h₃]
 
-theorem mapM_ok_eq_filterMap {α β} {f : α → Except ε β} {xs : List α} {ys : List β} :
+public theorem mapM_ok_eq_filterMap {α β} {f : α → Except ε β} {xs : List α} {ys : List β} :
   xs.mapM f = .ok ys →
   xs.filterMap (λ x => match f x with | .ok y => some y | .error _ => none) = ys
 := by
@@ -951,21 +964,21 @@ theorem mapM_ok_eq_filterMap {α β} {f : α → Except ε β} {xs : List α} {y
 
   But for a limited converse, see `all_some_implies_mapM'_some`
 -/
-theorem mapM'_some_implies_all_some {α β} {f : α → Option β} {xs : List α} {ys : List β} :
+public theorem mapM'_some_implies_all_some {α β} {f : α → Option β} {xs : List α} {ys : List β} :
   List.mapM' f xs = .some ys →
   ∀ x ∈ xs, ∃ y ∈ ys, f x = .some y
 := by
   intro h
   exact forall₂_implies_all_left (mapM'_some_iff_forall₂.mp h)
 
-theorem mapM_some_implies_all_some {α β} {f : α → Option β} {xs : List α} {ys : List β} :
+public theorem mapM_some_implies_all_some {α β} {f : α → Option β} {xs : List α} {ys : List β} :
   List.mapM f xs = .some ys →
   ∀ x ∈ xs, ∃ y ∈ ys, f x = .some y
 := by
   rw [← List.mapM'_eq_mapM]
   exact mapM'_some_implies_all_some
 
-theorem mem_mapM_some_implies_exists_unmapped_helper {α β} {y : β} {f : α → Option β} {xs : List α} {ys : List β} :
+public theorem mem_mapM_some_implies_exists_unmapped_helper {α β} {y : β} {f : α → Option β} {xs : List α} {ys : List β} :
   Forall₂ (fun x y => f x = some y) xs ys →
   y ∈ ys →
   (∃ x, x ∈ xs ∧ f x = some y) :=
@@ -991,7 +1004,7 @@ theorem mem_mapM_some_implies_exists_unmapped_helper {α β} {y : β} {f : α �
         exact ih₁
       . exact ih₂
 
-theorem mem_mapM_some_implies_exists_unmapped {α β} {y : β} {f : α → Option β} {xs : List α} {ys : List β} :
+public theorem mem_mapM_some_implies_exists_unmapped {α β} {y : β} {f : α → Option β} {xs : List α} {ys : List β} :
   List.mapM f xs = some ys →
   y ∈ ys →
   ∃ x, x ∈ xs ∧ f x = .some y := by
@@ -1001,7 +1014,7 @@ theorem mem_mapM_some_implies_exists_unmapped {α β} {y : β} {f : α → Optio
 
 
 
-theorem all_some_implies_mapM'_some {α β} {f : α → Option β} {xs : List α} :
+public theorem all_some_implies_mapM'_some {α β} {f : α → Option β} {xs : List α} :
   (∀ x ∈ xs, ∃ y, f x = some y) →
   ∃ ys, List.mapM' f xs = some ys
 := by
@@ -1015,7 +1028,7 @@ theorem all_some_implies_mapM'_some {α β} {f : α → Option β} {xs : List α
     exists yhd :: ytl
     simp [h₁, ih, pure]
 
-theorem all_some_implies_mapM_some {α β} {f : α → Option β} {xs : List α} :
+public theorem all_some_implies_mapM_some {α β} {f : α → Option β} {xs : List α} :
   (∀ x ∈ xs, ∃ y, f x = some y) →
   ∃ ys, List.mapM f xs = some ys
 := by
@@ -1028,21 +1041,21 @@ theorem all_some_implies_mapM_some {α β} {f : α → Option β} {xs : List α}
 
   But for a limited converse, see `all_from_some_implies_mapM'_some`
 -/
-theorem mapM'_some_implies_all_from_some {α β} {f : α → Option β} {xs : List α} {ys : List β} :
+public theorem mapM'_some_implies_all_from_some {α β} {f : α → Option β} {xs : List α} {ys : List β} :
   List.mapM' f xs = .some ys →
   ∀ y ∈ ys, ∃ x ∈ xs, f x = .some y
 := by
   intro h
   exact forall₂_implies_all_right (mapM'_some_iff_forall₂.mp h)
 
-theorem mapM_some_implies_all_from_some {α β} {f : α → Option β} {xs : List α} {ys : List β} :
+public theorem mapM_some_implies_all_from_some {α β} {f : α → Option β} {xs : List α} {ys : List β} :
   List.mapM f xs = .some ys →
   ∀ y ∈ ys, ∃ x ∈ xs, f x = .some y
 := by
   rw [← List.mapM'_eq_mapM]
   exact mapM'_some_implies_all_from_some
 
-theorem all_from_some_implies_mapM'_some {α β} {f : α → Option β} {ys : List β} :
+public theorem all_from_some_implies_mapM'_some {α β} {f : α → Option β} {ys : List β} :
   (∀ y ∈ ys, ∃ x, f x = some y) →
   ∃ xs, List.mapM' f xs = some ys
 := by
@@ -1056,7 +1069,7 @@ theorem all_from_some_implies_mapM'_some {α β} {f : α → Option β} {ys : Li
     exists xhd :: xtl
     simp [h₁, ih, pure]
 
-theorem all_from_some_implies_mapM_some {α β} {f : α → Option β} {ys : List β} :
+public theorem all_from_some_implies_mapM_some {α β} {f : α → Option β} {ys : List β} :
   (∀ y ∈ ys, ∃ x, f x = some y) →
   ∃ xs, List.mapM f xs = some ys
 := by
@@ -1065,7 +1078,7 @@ theorem all_from_some_implies_mapM_some {α β} {f : α → Option β} {ys : Lis
   rw [List.mapM'_eq_mapM] at h₂
   exists xs
 
-theorem mapM'_none_iff_exists_none {α β} {f : α → Option β} {xs : List α} :
+public theorem mapM'_none_iff_exists_none {α β} {f : α → Option β} {xs : List α} :
   List.mapM' f xs = none ↔ ∃ x ∈ xs, f x = none
 := by
   constructor
@@ -1079,7 +1092,7 @@ theorem mapM'_none_iff_exists_none {α β} {f : α → Option β} {xs : List α}
         simp only [mapM'_cons, h₂, Option.pure_def, Option.bind_eq_bind, Option.bind_some_fun,
           Option.bind_eq_none_iff, reduceCtorEq] at h₁
         apply mapM'_none_iff_exists_none.mp
-        by_contra h₃
+        false_or_by_contra ; rename_i h₃
         rw [← ne_eq] at h₃
         replace ⟨ytl, h₃⟩ := Option.ne_none_iff_exists'.mp h₃
         exact h₁ ytl h₃
@@ -1096,13 +1109,13 @@ theorem mapM'_none_iff_exists_none {α β} {f : α → Option β} {xs : List α}
         replace ⟨y, _, h₅⟩ := h₄ x h₁
         simp [h₂] at h₅
 
-theorem mapM_none_iff_exists_none {α β} {f : α → Option β} {xs : List α} :
+public theorem mapM_none_iff_exists_none {α β} {f : α → Option β} {xs : List α} :
   List.mapM f xs = none ↔ ∃ x ∈ xs, f x = none
 := by
   rw [← List.mapM'_eq_mapM]
   exact mapM'_none_iff_exists_none
 
-theorem mapM'_some_eq_filterMap {α β} {f : α → Option β} {xs : List α} {ys : List β} :
+public theorem mapM'_some_eq_filterMap {α β} {f : α → Option β} {xs : List α} {ys : List β} :
   List.mapM' f xs = .some ys →
   List.filterMap f xs = ys
 := by
@@ -1120,14 +1133,14 @@ theorem mapM'_some_eq_filterMap {α β} {f : α → Option β} {xs : List α} {y
     simp only [h, cons.injEq, true_and]
     exact ih hm
 
-theorem mapM_some_eq_filterMap {α β} {f : α → Option β} {xs : List α} {ys : List β} :
+public theorem mapM_some_eq_filterMap {α β} {f : α → Option β} {xs : List α} {ys : List β} :
   List.mapM f xs = .some ys →
   List.filterMap f xs = ys
 := by
   rw [← List.mapM'_eq_mapM]
   exact mapM'_some_eq_filterMap
 
-theorem mapM'_some_subset {f : α → Option β} {xs xs' : List α} {ys : List β} :
+public theorem mapM'_some_subset {f : α → Option β} {xs xs' : List α} {ys : List β} :
   xs.mapM' f = some ys →
   xs' ⊆ xs →
   ∃ ys', xs'.mapM' f = some ys'
@@ -1147,7 +1160,7 @@ theorem mapM'_some_subset {f : α → Option β} {xs xs' : List α} {ys : List �
     exists (yhd' :: ytl'), yhd'
     simp only [hm, ih, Option.some.injEq, cons.injEq, true_and, exists_eq_right, and_self]
 
-theorem mapM_some_subset {f : α → Option β} {xs xs' : List α} {ys : List β} :
+public theorem mapM_some_subset {f : α → Option β} {xs xs' : List α} {ys : List β} :
   xs.mapM f = some ys →
   xs' ⊆ xs →
   ∃ ys', xs'.mapM f = some ys'
@@ -1155,7 +1168,7 @@ theorem mapM_some_subset {f : α → Option β} {xs xs' : List α} {ys : List β
   simp only [← mapM'_eq_mapM]
   exact mapM'_some_subset
 
-theorem forall₂_implies_mapM_eq {α₁ α₂ β ε} {xs : List α₁} {ys : List α₂} (f : α₁ → Except ε β) (g : α₂ → Except ε β):
+public theorem forall₂_implies_mapM_eq {α₁ α₂ β ε} {xs : List α₁} {ys : List α₂} (f : α₁ → Except ε β) (g : α₂ → Except ε β):
   List.Forall₂ (fun x y => f x = g y) xs ys →
   List.mapM f xs =
   List.mapM g ys
@@ -1169,7 +1182,7 @@ theorem forall₂_implies_mapM_eq {α₁ α₂ β ε} {xs : List α₁} {ys : Li
 /--
   our own variant of map_congr, for mapM'
 -/
-theorem mapM'_congr [Monad m] [LawfulMonad m] {f g : α → m β} : ∀ {l : List α},
+public theorem mapM'_congr [Monad m] [LawfulMonad m] {f g : α → m β} : ∀ {l : List α},
   (∀ x ∈ l, f x = g x) → mapM' f l = mapM' g l
   | [], _ => rfl
   | a :: l, h => by
@@ -1179,7 +1192,7 @@ theorem mapM'_congr [Monad m] [LawfulMonad m] {f g : α → m β} : ∀ {l : Lis
 /--
   our own variant of map_congr, for mapM
 -/
-theorem mapM_congr [Monad m] [LawfulMonad m] {f g : α → m β} : ∀ {l : List α},
+public theorem mapM_congr [Monad m] [LawfulMonad m] {f g : α → m β} : ∀ {l : List α},
   (∀ x ∈ l, f x = g x) → mapM f l = mapM g l
 := by
   intro l
@@ -1188,7 +1201,7 @@ theorem mapM_congr [Monad m] [LawfulMonad m] {f g : α → m β} : ∀ {l : List
 
 /-! ### foldl -/
 
-theorem foldl_pmap_subtype
+public theorem foldl_pmap_subtype
   {p : α → Prop}
   (f : β → α → β)
   (as : List α)
@@ -1202,7 +1215,7 @@ theorem foldl_pmap_subtype
   case nil => simp only [pmap, foldl_nil]
   case cons ih => apply ih
 
-theorem foldl_congr {f g : β → α → β} {init : β} {l : List α} :
+public theorem foldl_congr {f g : β → α → β} {init : β} {l : List α} :
   (∀ b x, x ∈ l → f b x = g b x) → foldl f init l = foldl g init l
 := by
   intro h
@@ -1219,7 +1232,7 @@ theorem foldl_congr {f g : β → α → β} {init : β} {l : List α} :
 
 /-! ### foldlM -/
 
-theorem foldlM_of_assoc_some (f : α → α → Option α) (x₀ x₁ x₂ x₃ : α) (xs : List α)
+public theorem foldlM_of_assoc_some (f : α → α → Option α) (x₀ x₁ x₂ x₃ : α) (xs : List α)
   (h₁ : ∀ x₁ x₂ x₃,
     (do let x₄ ← f x₁ x₂ ; f x₄ x₃) =
     (do let x₄ ← f x₂ x₃ ; f x₁ x₄))
@@ -1254,7 +1267,7 @@ theorem foldlM_of_assoc_some (f : α → α → Option α) (x₀ x₁ x₂ x₃ 
       simp only [h₂, h₁₀, Option.bind_some] at h₁
       simp [←h₁, h₇]
 
-theorem foldlM_of_assoc_none' (f : α → α → Option α) (x₀ x₁ x₂ : α) (xs : List α)
+public theorem foldlM_of_assoc_none' (f : α → α → Option α) (x₀ x₁ x₂ : α) (xs : List α)
   (h₁ : ∀ x₁ x₂ x₃,
     (do let x₄ ← f x₁ x₂ ; f x₄ x₃) =
     (do let x₄ ← f x₂ x₃ ; f x₁ x₄))
@@ -1276,7 +1289,7 @@ theorem foldlM_of_assoc_none' (f : α → α → Option α) (x₀ x₁ x₂ : α
     simp only [h₂, h₅, Option.bind_none_fun, Option.bind_some_fun] at h₁
     simp [h₁]
 
-theorem foldlM_of_assoc_none (f : α → α → Option α) (x₀ x₁ x₂ : α) (xs : List α)
+public theorem foldlM_of_assoc_none (f : α → α → Option α) (x₀ x₁ x₂ : α) (xs : List α)
   (h₁ : ∀ x₁ x₂ x₃,
     (do let x₄ ← f x₁ x₂ ; f x₄ x₃) =
     (do let x₄ ← f x₂ x₃ ; f x₁ x₄))
@@ -1310,7 +1323,7 @@ theorem foldlM_of_assoc_none (f : α → α → Option α) (x₀ x₁ x₂ : α)
       simp only [h₂, h₆, Option.bind_some_fun] at h₁₀
       simp [←h₁₀, h₉]
 
-theorem foldlM_of_assoc (f : α → α → Option α) (x₀ x₁ : α) (xs : List α)
+public theorem foldlM_of_assoc (f : α → α → Option α) (x₀ x₁ : α) (xs : List α)
   (h₁ : ∀ x₁ x₂ x₃,
     (do let x₄ ← f x₁ x₂ ; f x₄ x₃) =
     (do let x₄ ← f x₂ x₃ ; f x₁ x₄) ) :
@@ -1340,7 +1353,7 @@ theorem foldlM_of_assoc (f : α → α → Option α) (x₀ x₁ : α) (xs : Lis
 
 /-! ### find? -/
 
-theorem find?_pair_map {α β γ} [BEq α] (f : β → γ) (xs : List (α × β)) (k : α)  :
+public theorem find?_pair_map {α β γ} [BEq α] (f : β → γ) (xs : List (α × β)) (k : α)  :
   Option.map (λ x => (x.fst, f x.snd)) (List.find? (λ x => x.fst == k) xs)  =
   List.find? (λ x => x.fst == k) (List.map (λ x => (x.fst, f x.snd)) xs)
 := by
@@ -1367,7 +1380,7 @@ theorem find?_pair_map {α β γ} [BEq α] (f : β → γ) (xs : List (α × β)
       simp only [h₁, forall_const] at h₃
       simp [h₂, h₃]
 
-theorem find?_fst_map_implies_find? {α β γ} [BEq α] {f : β → γ} {xs : List (α × β)} {k : α} {fx : α × γ}:
+public theorem find?_fst_map_implies_find? {α β γ} [BEq α] {f : β → γ} {xs : List (α × β)} {k : α} {fx : α × γ}:
   List.find? (λ x => x.fst == k) (List.map (Prod.map id f) xs) = .some fx  →
   ∃ x, xs.find? (λ x => x.fst == k) = .some x ∧ fx = Prod.map id f x
 := by
@@ -1387,7 +1400,7 @@ theorem find?_fst_map_implies_find? {α β γ} [BEq α] {f : β → γ} {xs : Li
       simp only [Prod.map, id_eq] at heq
       simp [heq, ih]
 
-theorem find?_implies_find?_fst_map
+public theorem find?_implies_find?_fst_map
   {α β γ} [BEq α] [ReflBEq α]
   {l : List (α × β)}
   {k : α} {v : β}
@@ -1407,7 +1420,7 @@ theorem find?_implies_find?_fst_map
       simp only [List.find?]
       simp [ih, h]
 
-theorem find?_implies_append_find?
+public theorem find?_implies_append_find?
   {a b : List α}
   {v : α}
   {f : α → Bool}
@@ -1416,7 +1429,7 @@ theorem find?_implies_append_find?
 := by
   simp [List.find?_append, h]
 
-theorem not_find?_some_iff_find?_none {α} {p : α → Bool} {xs : List α} :
+public theorem not_find?_some_iff_find?_none {α} {p : α → Bool} {xs : List α} :
   (∀ x ∈ xs, ¬xs.find? p = .some x) ↔ xs.find? p = .none
 := by
   rw [List.find?_eq_none]
@@ -1430,7 +1443,7 @@ theorem not_find?_some_iff_find?_none {α} {p : α → Bool} {xs : List α} :
       simp only [mem_cons] at hx
       rcases hx with hx | hx
       case inl =>
-        by_contra hc
+        false_or_by_contra ; rename_i hc
         subst hx
         specialize h x
         simp only [mem_cons, true_or, true_implies] at h
@@ -1448,12 +1461,12 @@ theorem not_find?_some_iff_find?_none {α} {p : α → Bool} {xs : List α} :
         · exact h
   case mpr =>
     intro h x hx
-    by_contra hc
+    false_or_by_contra ; rename_i hc
     replace hc := List.find?_some hc
     specialize h x hx
     contradiction
 
-theorem find?_exact_iff_mem {α} [DecidableEq α] {l : List α}  {v : α}:
+public theorem find?_exact_iff_mem {α} [DecidableEq α] {l : List α}  {v : α}:
   (l.find? (λ x => x == v) = some v) ↔ v ∈ l := by
   constructor
   case mp =>
@@ -1485,14 +1498,14 @@ theorem find?_exact_iff_mem {α} [DecidableEq α] {l : List α}  {v : α}:
 /--
   our own variant of map_congr, for filterMap
 -/
-theorem filterMap_congr {f g : α → Option β} : ∀ {l : List α},
+public theorem filterMap_congr {f g : α → Option β} : ∀ {l : List α},
   (∀ x ∈ l, f x = g x) → filterMap f l = filterMap g l
   | [], _ => rfl
   | a :: l, h => by
     let ⟨h₁, h₂⟩ := forall_mem_cons.1 h
     rw [filterMap, filterMap, h₁, filterMap_congr h₂]
 
-theorem filterMap_empty_iff_all_none {f : α → Option β} {xs : List α} :
+public theorem filterMap_empty_iff_all_none {f : α → Option β} {xs : List α} :
   xs.filterMap f = [] ↔ ∀ x ∈ xs, f x = none
 := by
   constructor
@@ -1526,7 +1539,7 @@ theorem filterMap_empty_iff_all_none {f : α → Option β} {xs : List α} :
         simp only [mem_cons, true_or, forall_const] at h₁
         simp [h₁] at h₂
 
-theorem filterMap_nonempty_iff_exists_some {f : α → Option β} {xs : List α} :
+public theorem filterMap_nonempty_iff_exists_some {f : α → Option β} {xs : List α} :
   xs.filterMap f ≠ [] ↔ ∃ x ∈ xs, (f x).isSome
 := by
   constructor
@@ -1543,7 +1556,7 @@ theorem filterMap_nonempty_iff_exists_some {f : α → Option β} {xs : List α}
     specialize h₂ x h₁
     simp [h₂, Option.isSome] at h₃
 
-theorem f_implies_g_then_subset {f g : α → Option β} {xs : List α} :
+public theorem f_implies_g_then_subset {f g : α → Option β} {xs : List α} :
   (∀ a b, f a = some b → g a = some b) →
   xs.filterMap f ⊆ xs.filterMap g
 := by
@@ -1556,7 +1569,7 @@ theorem f_implies_g_then_subset {f g : α → Option β} {xs : List α} :
 
 /-! ### forM and mapM -/
 
-theorem mapM_forM {α β : Type} (f : α → Except β PUnit) (xs : List α) (ys : List PUnit) :
+public theorem mapM_forM {α β : Type} (f : α → Except β PUnit) (xs : List α) (ys : List PUnit) :
   xs.mapM f = Except.ok ys → xs.forM f = Except.ok ()
 := by
   intro h₀
@@ -1583,7 +1596,7 @@ theorem mapM_forM {α β : Type} (f : α → Except β PUnit) (xs : List α) (ys
         apply ih yt
         assumption
 
-theorem forM_mapM {α β : Type} (f : α → Except β PUnit) (xs : List α) :
+public theorem forM_mapM {α β : Type} (f : α → Except β PUnit) (xs : List α) :
   xs.forM f = Except.ok () → ∃ ys, xs.mapM f = Except.ok ys
 := by
   intro h₁
@@ -1611,7 +1624,7 @@ theorem forM_mapM {α β : Type} (f : α → Except β PUnit) (xs : List α) :
       exists (y' :: ys)
 
 
-theorem forM_ok_implies_all_ok {α β : Type} (xs : List α) (f : α → Except β Unit) :
+public theorem forM_ok_implies_all_ok {α β : Type} (xs : List α) (f : α → Except β Unit) :
   xs.forM f = Except.ok () → (∀ x ∈ xs, f x = Except.ok ())
 := by
   intro h₀ x xin
@@ -1620,11 +1633,11 @@ theorem forM_ok_implies_all_ok {α β : Type} (xs : List α) (f : α → Except 
   obtain ⟨_, _, h₅⟩ := h₂ xin
   exact h₅
 
-theorem forM_ok_implies_all_ok' {α β : Type} {xs : List α} {f : α → Except β Unit} :
+public theorem forM_ok_implies_all_ok' {α β : Type} {xs : List α} {f : α → Except β Unit} :
   xs.forM f = Except.ok () → (∀ x ∈ xs, f x = Except.ok ())
 := forM_ok_implies_all_ok xs f
 
-theorem all_ok_implies_forM_ok {α β : Type} (xs : List α) (f : α → Except β Unit) :
+public theorem all_ok_implies_forM_ok {α β : Type} (xs : List α) (f : α → Except β Unit) :
    (∀ x ∈ xs, f x = Except.ok ()) → xs.forM f = Except.ok ()
 := by
   intro hall
@@ -1633,7 +1646,7 @@ theorem all_ok_implies_forM_ok {α β : Type} (xs : List α) (f : α → Except 
 
 /-! ### removeAll -/
 
-theorem removeAll_singleton_cons_of_neq [DecidableEq α] (x y : α) (xs : List α) :
+public theorem removeAll_singleton_cons_of_neq [DecidableEq α] (x y : α) (xs : List α) :
   x ≠ y → (x :: xs).removeAll [y] = x :: (xs.removeAll [y])
 := by
   intro _
@@ -1642,20 +1655,20 @@ theorem removeAll_singleton_cons_of_neq [DecidableEq α] (x y : α) (xs : List �
   intro _
   contradiction
 
-theorem removeAll_singleton_cons_of_eq [DecidableEq α] (x : α) (xs : List α) :
+public theorem removeAll_singleton_cons_of_eq [DecidableEq α] (x : α) (xs : List α) :
   (x :: xs).removeAll [x] = xs.removeAll [x]
 := by
   simp only [removeAll, elem_eq_mem, mem_singleton, decide_true, Bool.not_true, Bool.false_eq_true,
     not_false_eq_true, filter_cons_of_neg]
 
-theorem mem_removeAll_singleton_of_eq [DecidableEq α] (x : α) (xs : List α) :
+public theorem mem_removeAll_singleton_of_eq [DecidableEq α] (x : α) (xs : List α) :
   x ∉ xs.removeAll [x]
 := by
   simp only [removeAll, elem_eq_mem, mem_singleton]
-  by_contra h
+  false_or_by_contra ; rename_i h
   simp only [mem_filter, decide_true, Bool.not_true, Bool.false_eq_true, and_false] at h
 
-theorem removeAll_singleton_equiv [DecidableEq α] (x : α) (xs : List α) :
+public theorem removeAll_singleton_equiv [DecidableEq α] (x : α) (xs : List α) :
   x :: xs ≡ x :: (xs.removeAll [x])
 := by
   induction xs
@@ -1678,7 +1691,7 @@ theorem removeAll_singleton_equiv [DecidableEq α] (x : α) (xs : List α) :
       simp only [removeAll_singleton_cons_of_eq]
       exact List.Equiv.trans (dup_head_equiv x xtl) ih
 
-theorem length_removeAll_le {α : Type u_1} [BEq α] (xs ys : List α) :
+public theorem length_removeAll_le {α : Type u_1} [BEq α] (xs ys : List α) :
   (xs.removeAll ys).length ≤ xs.length
 := by
   simp only [removeAll]
@@ -1687,7 +1700,7 @@ theorem length_removeAll_le {α : Type u_1} [BEq α] (xs ys : List α) :
 
 /- #### Mem -/
 
-theorem mem_pmap_subtype
+public theorem mem_pmap_subtype
   {p : α → Prop}
   (as : List α)
   (h : ∀ a, a ∈ as → p a)
@@ -1698,7 +1711,7 @@ theorem mem_pmap_subtype
 := by
   induction as <;> simp [*]
 
-theorem find?_compose {α β} (f : α → β) (p₁ : β → Bool) (p₂ : α → Bool) {xs : List α} :
+public theorem find?_compose {α β} (f : α → β) (p₁ : β → Bool) (p₂ : α → Bool) {xs : List α} :
   (∀ x, (p₁ ∘ f) x = p₂ x) →
   List.find? (p₁ ∘ f) xs = List.find? p₂ xs
 := by
@@ -1717,7 +1730,7 @@ theorem find?_compose {α β} (f : α → β) (p₁ : β → Bool) (p₂ : α �
       simp only [Function.comp_apply, heq₁, heq₂, Bool.false_eq_true] at hₐ
     case _ => exact h hₐ
 
-theorem mem_implies_mem_eraseDups
+public theorem mem_implies_mem_eraseDups
   [BEq α] [LawfulBEq α]
   {xs : List α} {x : α}
   (hmem : x ∈ xs) :
@@ -1748,7 +1761,7 @@ decreasing_by
     _ < xs.length := by
       simp [*]
 
-theorem mem_eraseDups_implies_mem
+public theorem mem_eraseDups_implies_mem
   [BEq α] [LawfulBEq α]
   {xs : List α} {x : α}
   (hmem : x ∈ xs.eraseDups) :
@@ -1774,7 +1787,7 @@ decreasing_by
     _ < xs.length := by
       simp [*]
 
-theorem mem_iff_mem_eraseDups
+public theorem mem_iff_mem_eraseDups
   [BEq α] [LawfulBEq α]
   {xs : List α} {x : α} :
   x ∈ xs ↔ x ∈ xs.eraseDups
@@ -1784,7 +1797,7 @@ theorem mem_iff_mem_eraseDups
   · apply mem_eraseDups_implies_mem
 
 /-- `mapM` preserves `SortedBy` if the keys are preserved -/
-theorem mapM_preserves_SortedBy
+public theorem mapM_preserves_SortedBy
   [LT γ]
   {l₁ : List α} {l₂ : List β}
   {f : α → Option β}
@@ -1819,7 +1832,7 @@ theorem mapM_preserves_SortedBy
           · assumption
         · exact hrst'
 
-theorem map_restricted_id
+public theorem map_restricted_id
   {l : List α}
   {f : α → α}
   (hf : ∀ x ∈ l, f x = x) :
@@ -1837,7 +1850,7 @@ theorem map_restricted_id
       apply hf
       simp [hmem_x]
 
-theorem findSome?_unique
+public theorem findSome?_unique
   [BEq α] [LawfulBEq α]
   {l : List α} {x : α} {y : β}
   {f : α → Option β}
@@ -1863,7 +1876,7 @@ theorem findSome?_unique
         exists v'
       · exact ih hfind
 
-theorem find?_unique_entry
+public theorem find?_unique_entry
   {l : List α}
   {f : α → Bool}
   {v : α}
@@ -1894,7 +1907,7 @@ theorem find?_unique_entry
           exact hf x this
         · exact hmem
 
-theorem find?_stronger_pred
+public theorem find?_stronger_pred
   {l : List α} {v : α}
   {f : α → Bool}
   {g : α → Bool}
@@ -1927,7 +1940,7 @@ theorem find?_stronger_pred
       simp only [this, Option.some.injEq] at hfind
       exact hfind
 
-theorem mem_of_map_implies_exists_unmapped
+public theorem mem_of_map_implies_exists_unmapped
   {l : List α} {v₂ : β} {f : α → β}:
   v₂ ∈ (List.map f l) →
   ∃v₁, v₁ ∈ l ∧ v₂ = f v₁
@@ -1951,7 +1964,7 @@ theorem mem_of_map_implies_exists_unmapped
         assumption
       . rw [h₃]
 
-theorem mem_map_iff_find? [BEq β] [LawfulBEq β] {k : β} {f : α → β} {kvs : List α} :
+public theorem mem_map_iff_find? [BEq β] [LawfulBEq β] {k : β} {f : α → β} {kvs : List α} :
   k ∈ List.map f kvs ↔
   (List.find? (fun x => f x == k) kvs).isSome
 := by
@@ -1968,7 +1981,7 @@ theorem mem_map_iff_find? [BEq β] [LawfulBEq β] {k : β} {f : α → β} {kvs 
     rw [List.mem_map]
     exact ⟨x, hx_mem, by simpa using hx_prop⟩
 
-theorem mem_implies_find?
+public theorem mem_implies_find?
   {l : List α} {k : α} {f : α → Bool}
   (hmem : k ∈ l)
   (hk : f k)
@@ -1994,7 +2007,7 @@ theorem mem_implies_find?
         simp only [true_and]
         exact ih hmem
 
-theorem filterMap_eq_filterMap
+public theorem filterMap_eq_filterMap
   {l₁ : List α} {l₂ : List β}
   {p : α → β → Prop} {f₁ : α → Option γ} {f₂ : β → Option γ}
   (h : List.Forall₂ p l₁ l₂)
@@ -2013,7 +2026,7 @@ theorem filterMap_eq_filterMap
     · simp only [cons.injEq, true_and]
       exact ih
 
-theorem find?_filter_if_find? {α : Type u} {β : Type v} [BEq α] [LawfulBEq α] {k : α} {val : β} {l : List (α × β)} (p : α → β → Bool) :
+public theorem find?_filter_if_find? {α : Type u} {β : Type v} [BEq α] [LawfulBEq α] {k : α} {val : β} {l : List (α × β)} (p : α → β → Bool) :
   List.find? (fun x => x.fst == k) l = some (k, val) → p k val = true →
   List.find? (fun x => x.fst == k) (l.filter (fun kv => p kv.fst kv.snd)) = some (k, val)
 := by
@@ -2031,7 +2044,7 @@ theorem find?_filter_if_find? {α : Type u} {β : Type v} [BEq α] [LawfulBEq α
       · simp [List.find?, heq, ih]
       · exact ih
 
-theorem find?_filter_sorted {α : Type u} {β : Type v} [BEq α] [LawfulBEq α] [DecidableEq α] [LT α] [Cedar.Data.StrictLT α] [DecidableLT α]
+public theorem find?_filter_sorted {α : Type u} {β : Type v} [BEq α] [LawfulBEq α] [DecidableEq α] [LT α] [Cedar.Data.StrictLT α] [DecidableLT α]
   (k : α) (val : β) (l : List (α × β)) (p : α → β → Bool) :
   l.SortedBy Prod.fst →
   List.find? (fun x => x.fst == k) (l.filter (fun kv => p kv.fst kv.snd)) = some (k, val) →

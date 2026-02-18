@@ -1107,8 +1107,7 @@ private theorem evaluate_record_wf {env : Env} {v : Value} {axs : List (Attr × 
   rename_i vs hvs
   simp only [Except.ok.injEq] at hok
   subst hok
-  simp only [List.mapM₂, List.attach₂,
-    List.mapM_pmap_subtype (λ (x : Attr × Expr) => bindAttr x.fst (evaluate x.snd env.request env.entities))] at hvs
+  simp only [List.mapM₂_eq_mapM λ (x : Attr × Expr) => bindAttr x.fst (evaluate x.snd env.request env.entities)] at hvs
   rw [← List.mapM'_eq_mapM] at hvs
   apply Value.WellFormed.record_wf _ (Map.make_wf vs)
   intro a v hv

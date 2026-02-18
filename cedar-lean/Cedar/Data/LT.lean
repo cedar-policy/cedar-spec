@@ -14,6 +14,8 @@
  limitations under the License.
 -/
 
+module
+
 import Init.Classical
 import Batteries.Tactic.Init
 import Batteries.Data.String
@@ -25,19 +27,19 @@ This file contains utilities for working with strict and decidable LT relations.
 
 namespace Cedar.Data
 
-class StrictLT (α) [LT α] : Prop where
+public class StrictLT (α) [LT α] : Prop where
   asymmetric : ∀ (a b : α), a < b → ¬ b < a
   transitive : ∀ (a b c : α), a < b → b < c → a < c
   connected  : ∀ (a b : α), a ≠ b → (a < b ∨ b < a)
 
-theorem StrictLT.irreflexive [LT α] [StrictLT α] (x : α) :
+public theorem StrictLT.irreflexive [LT α] [StrictLT α] (x : α) :
   ¬ x < x
 := by
   by_contra h₁
   have h₂ := StrictLT.asymmetric x x h₁
   contradiction
 
-theorem StrictLT.if_not_lt_gt_then_eq [LT α] [StrictLT α] (x y : α) :
+public theorem StrictLT.if_not_lt_gt_then_eq [LT α] [StrictLT α] (x y : α) :
   ¬ x < y → ¬ y < x → x = y
 := by
   intro h₁ h₂
@@ -45,7 +47,7 @@ theorem StrictLT.if_not_lt_gt_then_eq [LT α] [StrictLT α] (x y : α) :
   have h₄ := StrictLT.connected x y h₃
   simp [h₁, h₂] at h₄
 
-theorem StrictLT.if_not_lt_eq_then_gt [LT α] [StrictLT α] (x y : α) :
+public theorem StrictLT.if_not_lt_eq_then_gt [LT α] [StrictLT α] (x y : α) :
   ¬ x < y → ¬ x = y → x > y
 := by
   intro h₁ h₂
@@ -53,7 +55,7 @@ theorem StrictLT.if_not_lt_eq_then_gt [LT α] [StrictLT α] (x y : α) :
   have h₄ := StrictLT.connected x y h₂
   simp [h₁, h₃] at h₄
 
-theorem StrictLT.not_eq [LT α] [StrictLT α] (x y : α) :
+public theorem StrictLT.not_eq [LT α] [StrictLT α] (x y : α) :
   x < y → ¬ x = y
 := by
   intro h₁
@@ -75,14 +77,14 @@ theorem List.lt_cons_cases [LT α] [DecidableLT α] {x y : α} {xs ys : List α}
   intro h₁
   cases h₁ <;> simp_all [lex_lt, Decidable.em]
 
-theorem List.cons_lt_cons [LT α] [StrictLT α] (x : α) (xs ys : List α) :
+public theorem List.cons_lt_cons [LT α] [StrictLT α] (x : α) (xs ys : List α) :
   xs < ys → x :: xs < x :: ys
 := by
   intro h₁
   apply List.Lex.cons
   simp only [lex_lt, h₁]
 
-theorem List.slt_irrefl [LT α] [StrictLT α] [DecidableLT α] (xs : List α) :
+public theorem List.slt_irrefl [LT α] [StrictLT α] [DecidableLT α] (xs : List α) :
   ¬ xs < xs
 := by
   induction xs
@@ -93,7 +95,7 @@ theorem List.slt_irrefl [LT α] [StrictLT α] [DecidableLT α] (xs : List α) :
     simp [StrictLT.irreflexive hd] at h₁
     contradiction
 
-theorem List.slt_trans [LT α] [StrictLT α] {xs ys zs : List α} :
+public theorem List.slt_trans [LT α] [StrictLT α] {xs ys zs : List α} :
   xs < ys → ys < zs → xs < zs
 := by
   intro h₁ h₂
@@ -112,7 +114,7 @@ theorem List.slt_trans [LT α] [StrictLT α] {xs ys zs : List α} :
       apply List.Lex.cons
       exact List.slt_trans h₃ h₆
 
-theorem List.slt_asymm [LT α] [StrictLT α] [DecidableLT α] {xs ys : List α} :
+public theorem List.slt_asymm [LT α] [StrictLT α] [DecidableLT α] {xs ys : List α} :
   xs < ys → ¬ ys < xs
 := by
   intro h₁
@@ -129,7 +131,7 @@ theorem List.slt_asymm [LT α] [StrictLT α] [DecidableLT α] {xs ys : List α} 
       have h₄ := List.slt_irrefl (hd :: tl)
       contradiction
 
-theorem List.lt_conn [LT α] [StrictLT α] {xs ys : List α} :
+public theorem List.lt_conn [LT α] [StrictLT α] {xs ys : List α} :
   xs ≠ ys → (xs < ys ∨ ys < xs)
 := by
   intro h₁
@@ -168,22 +170,22 @@ theorem List.lt_conn [LT α] [StrictLT α] {xs ys : List α} :
         apply List.Lex.rel
         exact StrictLT.if_not_lt_eq_then_gt xhd yhd h₄ h₅
 
-instance List.strictLT (α) [LT α] [StrictLT α] [DecidableLT α] : StrictLT (List α) where
+public instance List.strictLT (α) [LT α] [StrictLT α] [DecidableLT α] : StrictLT (List α) where
   asymmetric _ _   := List.slt_asymm
   transitive _ _ _ := List.slt_trans
   connected  _ _   := List.lt_conn
 
-def Bool.lt (a b : Bool) : Bool := match a,b with
+public def Bool.lt (a b : Bool) : Bool := match a,b with
   | false, true => true
   | _, _ => false
 
-instance : LT Bool where
+public instance : LT Bool where
   lt a b := Bool.lt a b
 
-instance Bool.decLt (a b : Bool) : Decidable (a < b) :=
+public instance Bool.decLt (a b : Bool) : Decidable (a < b) :=
   if h : Bool.lt a b then isTrue h else isFalse h
 
-instance Bool.strictLT : StrictLT Bool where
+public instance Bool.strictLT : StrictLT Bool where
   asymmetric a b   := by
     simp [LT.lt, Bool.lt]
     split <;> simp
@@ -198,17 +200,17 @@ instance Bool.strictLT : StrictLT Bool where
     · simp only [false_eq_true, imp_false, Decidable.not_not]
       cases a <;> cases b <;> simp at *
 
-instance Nat.strictLT : StrictLT Nat where
+public instance Nat.strictLT : StrictLT Nat where
   asymmetric a b   := Nat.lt_asymm
   transitive a b c := Nat.lt_trans
   connected  a b   := by omega
 
-instance Int.strictLT : StrictLT Int where
+public instance Int.strictLT : StrictLT Int where
   asymmetric a b   := by omega
   transitive a b c := Int.lt_trans
   connected  a b   := by omega
 
-instance UInt32.strictLT : StrictLT UInt32 where
+public instance UInt32.strictLT : StrictLT UInt32 where
   asymmetric a b   := by apply Nat.strictLT.asymmetric
   transitive a b c := by apply Nat.strictLT.transitive
   connected  a b   := by
@@ -216,7 +218,7 @@ instance UInt32.strictLT : StrictLT UInt32 where
       toNat_toBitVec, Nat.succ_eq_add_one, Nat.le_eq]
     apply StrictLT.connected
 
-instance Char.strictLT : StrictLT Char where
+public instance Char.strictLT : StrictLT Char where
   asymmetric a b   := by apply UInt32.strictLT.asymmetric
   transitive a b c := by apply UInt32.strictLT.transitive
   connected  a b   := by
@@ -226,7 +228,7 @@ instance Char.strictLT : StrictLT Char where
     have h₄ : a = b := by apply Char.ext h₂
     contradiction
 
-instance String.strictLT : StrictLT String where
+public instance String.strictLT : StrictLT String where
   asymmetric a b   := by
     simp [String.lt_iff]
     have h : StrictLT (List Char) := by apply List.strictLT

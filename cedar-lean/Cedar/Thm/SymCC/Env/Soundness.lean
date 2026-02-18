@@ -768,13 +768,11 @@ private theorem env_symbolize?_same_entity_data_enum
         simp only [h] at h₁
         have := h₁ attr.1
         simp [Map.contains, Map.find?, List.find?] at this
-    simp [
-      hemp_data_attrs,
-      SameValues,
-      Term.value?,
-      List.mapM₂,
-      List.attach₂,
-    ]
+    simp only [SameValues, Term.value?, List.nil.sizeOf_spec, Nat.reduceAdd, Option.bind_eq_bind,
+      hemp_data_attrs]
+    change ([].mapM₂ fun x => Term.value?.attrValue? x.1.fst x.1.snd).bind _ = _
+    rw [[].mapM₂_eq_mapM λ x => Term.value?.attrValue? x.fst x.snd]
+    simp
   · simp only [hemp_data_ancs]
     intros anc hmem_anc
     contradiction
@@ -942,14 +940,11 @@ private theorem env_symbolize?_same_entities_action
       Term.isLiteral,
       ↓reduceIte,
     ]
-    simp [
-      hattrs_emp,
-      SameValues,
-      Term.value?,
-      List.attach₂,
-      List.mapM₂,
-      Map.empty,
-    ]
+    simp only [SameValues, Term.value?, List.nil.sizeOf_spec, Nat.reduceAdd, Option.bind_eq_bind,
+      hattrs_emp, Map.empty]
+    change ([].mapM₂ fun x => Term.value?.attrValue? x.1.fst x.1.snd).bind _ = _
+    rw [[].mapM₂_eq_mapM λ x => Term.value?.attrValue? x.fst x.snd]
+    simp
   -- Same ancestor map
   · intros anc hmem_anc
     simp only [SameEntityData.InSymAncestors]
@@ -1495,11 +1490,11 @@ private theorem env_symbolize?_tags_wf
               Map.kvs, List.insertCanonical,
             ]
         · simp [Term.isLiteral, List.all, List.attach₃, List.pmap]
-        · simp only [
+        · simp [
             Term.typeOf, TermPrim.typeOf,
             heq_ety,
             TermType.tagFor, EntityTag.mk,
-            List.attach₃, List.map, List.pmap,
+            List.map₃, List.attach₃, List.map, List.pmap,
           ]
         · apply value_symbolize?_wf hinst hwf_tagTy hwf_val hwt_val hsym_val
         · apply value_symbolize?_is_lit hsym_val

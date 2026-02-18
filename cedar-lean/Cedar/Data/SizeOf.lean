@@ -14,8 +14,10 @@
  limitations under the License.
 -/
 
-import Cedar.Data.Map
-import Cedar.Data.Set
+module
+
+public import Cedar.Data.Map
+public import Cedar.Data.Set
 
 /-!
   Lemmas involving `sizeOf`, which are located here rather than in `Cedar/Thm`
@@ -28,7 +30,7 @@ namespace Cedar.Data.Map
 
 /-! ## Map -/
 
-theorem sizeOf_lt_of_value [SizeOf α] [SizeOf β] {m : Map α β} {k : α} {v : β}
+public theorem sizeOf_lt_of_value [SizeOf α] [SizeOf β] {m : Map α β} {k : α} {v : β}
   (h : (k, v) ∈ m.1) :
   sizeOf v < sizeOf m
 := by
@@ -42,7 +44,7 @@ theorem sizeOf_lt_of_value [SizeOf α] [SizeOf β] {m : Map α β} {k : α} {v :
     omega
   omega
 
-theorem sizeOf_lt_of_kvs [SizeOf α] [SizeOf β] (m : Map α β) :
+public theorem sizeOf_lt_of_kvs [SizeOf α] [SizeOf β] (m : Map α β) :
   sizeOf m.kvs < sizeOf m
 := by
   unfold kvs
@@ -50,7 +52,7 @@ theorem sizeOf_lt_of_kvs [SizeOf α] [SizeOf β] (m : Map α β) :
   generalize sizeOf m.1 = s
   omega
 
-theorem sizeOf_lt_of_tl [SizeOf α] [SizeOf β] {m : Map α β} {tl : List (α × β)}
+public theorem sizeOf_lt_of_tl [SizeOf α] [SizeOf β] {m : Map α β} {tl : List (α × β)}
   (h : m.kvs = (k, v) :: tl) :
   1 + sizeOf tl < sizeOf m
 := by
@@ -66,7 +68,7 @@ namespace Cedar.Data.Set
 
 /-! ## Set -/
 
-theorem sizeOf_lt_of_mem [SizeOf α] {s : Set α}
+public theorem sizeOf_lt_of_mem [SizeOf α] {s : Set α}
   (h : a ∈ s) :
   sizeOf a < sizeOf s
 := by
@@ -77,7 +79,7 @@ theorem sizeOf_lt_of_mem [SizeOf α] {s : Set α}
     omega
   omega
 
-theorem sizeOf_lt_of_elts [SizeOf α] {s : Set α} :
+public theorem sizeOf_lt_of_elts [SizeOf α] {s : Set α} :
   sizeOf s.elts < sizeOf s
 := by
   simp only [elts]

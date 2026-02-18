@@ -592,9 +592,7 @@ theorem residual_well_typed_is_sound_record
   simp only [Residual.evaluate, do_ok_eq_ok] at h₃
   obtain ⟨r, h₄, h₅⟩ := h₃
   subst h₅
-  simp only [List.mapM₂, List.attach₂] at h₄
-  simp only [List.mapM_pmap_subtype
-      (fun (x : Attr × Residual) => bindAttr x.fst (Residual.evaluate x.snd request entities))] at h₄
+  simp only [List.mapM₂_eq_mapM λ (x : Attr × Residual) => bindAttr x.fst (Residual.evaluate x.snd request entities)] at h₄
   simp only [bindAttr, bind_pure_comp, List.mapM_ok_iff_forall₂] at h₄
   let rty' := (List.map
       (fun x =>

@@ -243,8 +243,7 @@ theorem record_value_contains_evaluated_attrs {rxs : List (Attr × Expr)} {rvs :
   rename_i rvs'
   replace he₁ : List.Forallᵥ (λ x y => evaluate x request entities = Except.ok y) rxs rvs' := by
     simp only [List.forallᵥ_def]
-    rw [List.mapM₂, List.attach₂] at he₁
-    rw [List.mapM_pmap_subtype λ (x : Attr × Expr) => bindAttr x.fst (evaluate x.snd request entities)] at he₁
+    rw [List.mapM₂_eq_mapM λ (x : Attr × Expr) => bindAttr x.fst (evaluate x.snd request entities)] at he₁
     rw [List.mapM_ok_iff_forall₂] at he₁
     apply List.Forall₂.imp _ he₁
     intro x y h

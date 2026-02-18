@@ -137,7 +137,7 @@ def TypedExpr.toExpr : TypedExpr → Expr
   | getAttr expr attr _ => Expr.getAttr expr.toExpr attr
   | hasAttr expr attr _ => Expr.hasAttr expr.toExpr attr
   | set ls _ => Expr.set $ ls.map₁ (λ ⟨e, _⟩  => e.toExpr)
-  | record ls _ => Expr.record $ ls.attach₂.map (λ ⟨(a, e), _⟩  => (a, e.toExpr))
+  | record ls _ => Expr.record $ ls.map₂ (λ ⟨(a, e), _⟩  => (a, e.toExpr))
   | call xfn args _ => Expr.call xfn $ args.map₁ (λ ⟨e, _⟩ => e.toExpr)
 decreasing_by
   all_goals (simp_wf ; try omega)
@@ -158,7 +158,7 @@ def TypedExpr.liftBoolTypes : TypedExpr → TypedExpr
   | .getAttr expr attr ty => .getAttr expr.liftBoolTypes attr ty.liftBoolTypes
   | .hasAttr expr attr ty => .hasAttr expr.liftBoolTypes attr ty.liftBoolTypes
   | .set ls ty => .set (ls.map₁ (λ ⟨e, _⟩ => e.liftBoolTypes)) ty.liftBoolTypes
-  | .record ls ty => .record (ls.attach₂.map (λ ⟨(a, e), _⟩ => (a, e.liftBoolTypes))) ty.liftBoolTypes
+  | .record ls ty => .record (ls.map₂ (λ ⟨(a, e), _⟩ => (a, e.liftBoolTypes))) ty.liftBoolTypes
   | .call xfn args ty => .call xfn (args.map₁ (λ ⟨e, _⟩ => e.liftBoolTypes)) ty.liftBoolTypes
 decreasing_by
   all_goals (simp_wf ; try omega)
