@@ -498,7 +498,7 @@ where
     cases hwf with | record_wf hwf_rty hwf_attrs =>
     simp [
       ←Map.in_list_iff_find?_some hwf_rty,
-      Map.kvs,
+      Map.toList,
     ] at hwf_attrs
     cases hrty : rty with
     | nil => constructor
@@ -791,7 +791,7 @@ theorem ofEnumEntityType_is_wf
       List.attach₃,
     ]
   · intros _ _ h
-    simp only [Map.find?, Map.kvs, List.find?_nil, reduceCtorEq] at h
+    simp only [Map.find?, Map.toList, List.find?_nil, reduceCtorEq] at h
   · simp only [Map.WellFormed, Map.make, Map.toList, List.canonicalize]
   · intros _ h
     contradiction
@@ -1600,7 +1600,7 @@ theorem ofEnv_entities_is_acyclic
         Prod.mk.injEq,
         SymEntityData.ofStandardEntityType.ancsUUF,
       ] at h
-    · simp [Map.empty, Map.find?, Map.kvs] at hfind_udf_ancs
+    · simp [Map.empty, Map.find?, Map.toList] at hfind_udf_ancs
   | inr hmem_acts =>
     have ⟨ety, hmem_ety, hsym_act⟩ := List.mem_map.mp hmem_acts
     simp only [Prod.mk.injEq, SymEntityData.ofActionType] at hsym_act
@@ -1789,7 +1789,7 @@ theorem ofEnv_entities_is_partitioned
           SymEntityData.ConcreteAncestors,
         ]
         intros ancTy f hfind_f
-        simp [Map.empty, Map.find?, Map.kvs] at hfind_f
+        simp [Map.empty, Map.find?, Map.toList] at hfind_f
     | inr hfind_acts =>
       have ⟨uid, entry, heq_ety, hfind_uid, hact⟩ := hfind_acts
       simp only [
@@ -1829,7 +1829,7 @@ theorem ofEnv_entities_is_partitioned
         SymEntityData.ofActionType,
       ] at hanc
     any_goals
-      try · simp [Map.empty, Map.find?, Map.kvs] at hanc
+      try · simp [Map.empty, Map.find?, Map.toList] at hanc
     -- entry₁: standard; entry₂: enum
     · have hancs_std_only := wf_env_implies_ancestors_of_standard_ety_is_standard hwf hfind_entry₁ ety₂
       simp only [SymEntityData.ofStandardEntityType] at hanc

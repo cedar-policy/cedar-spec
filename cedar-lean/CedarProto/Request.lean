@@ -73,7 +73,7 @@ def Request.merge (x y : Request) : Request := {
   principal := Field.merge x.principal y.principal
   action    := Field.merge x.action    y.action
   resource  := Field.merge x.resource  y.resource
-  context   := match x.context.kvs, y.context.kvs with
+  context   := match x.context.toList, y.context.toList with
   -- avoid sort if either is empty
   | [], _ => y.context
   | _, [] => x.context

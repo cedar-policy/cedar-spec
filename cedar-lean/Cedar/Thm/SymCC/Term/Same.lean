@@ -710,7 +710,7 @@ theorem record_value?_find?_optional_none {a : Attr} {ty : TermType} {rt : Map A
   subst hv
   replace hr := List.mapM'_some_eq_filterMap hr
   subst hr
-  simp only [Map.find?, Map.kvs]
+  simp only [Map.find?, Map.toList]
   split <;> simp only [reduceCtorEq]
   rename_i heq
   have heq' := List.find?_some heq
@@ -742,7 +742,7 @@ theorem record_value?_find?_none {a : Attr} {rt : Map Attr Term} {rv : Map Attr 
   subst hv
   replace hr := List.mapM'_some_eq_filterMap hr
   subst hr
-  simp only [Map.find?, Map.kvs]
+  simp only [Map.find?, Map.toList]
   split <;> simp only [reduceCtorEq]
   rename_i heq
   have heq' := List.find?_some heq
@@ -752,7 +752,7 @@ theorem record_value?_find?_none {a : Attr} {rt : Map Attr Term} {rv : Map Attr 
   simp only [List.mem_filterMap, Option.map_eq_some_iff, Prod.mk.injEq,
     exists_eq_right_right] at heq
   replace ⟨_, ⟨p, hmem', heq⟩, _, hfst⟩ := heq
-  simp only [Map.find?, Map.kvs] at hf
+  simp only [Map.find?, Map.toList] at hf
   split at hf <;> simp only [reduceCtorEq] at hf
   rename_i h
   apply h p.fst p.snd
@@ -995,7 +995,7 @@ private theorem record_value?_eq {rv : Map Attr Value} {r₁ r₂ : Map Attr Ter
   simp only [Map.mk.injEq] at *
   rw [← hty₂] at hty₁ ; clear hty₂
   rw [Map.wf_iff_sorted] at hw₁ hw₂
-  simp only [Map.toList, Map.kvs] at hw₁ hw₂
+  simp only [Map.toList, Map.toList] at hw₁ hw₂
   exact record_value?_eq' hw₁ hw₂ hty₁ hv₁ hv₂ ih₁ ih₂
 
 private theorem same_value_inj' {t₁ t₂ : Term} {v : Value} {εs : SymEntities} :

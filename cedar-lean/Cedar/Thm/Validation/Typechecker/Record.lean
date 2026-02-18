@@ -101,7 +101,7 @@ theorem mk_vals_instance_of_mk_types₁ {env : TypeEnv} {a : Attr} {avs : List (
     cases h₅ : rhd.fst == a <;> simp [h₅] at *
     cases h₆ : List.find? (fun x => x.fst == a) atl <;> simp [h₆] at h₂
     have h₇ := @mk_vals_instance_of_mk_types₁ env a atl rtl h₄
-    simp [Map.contains, Map.find?, Map.kvs, h₆] at h₇
+    simp [Map.contains, Map.find?, Map.toList, h₆] at h₇
     exact h₇
 
 theorem mk_vals_instance_of_mk_types₂ {env : TypeEnv} {a : Attr} {v : Value} {qty : QualifiedType} {avs : List (Attr × Value)} {rtx : List (Attr × QualifiedType)}
@@ -123,7 +123,7 @@ theorem mk_vals_instance_of_mk_types₂ {env : TypeEnv} {a : Attr} {v : Value} {
       exact hr₄
     case false =>
       apply @mk_vals_instance_of_mk_types₂ env a v qty atl rtl h₅ <;>
-      simp [Map.find?, Map.kvs, h₂, h₃]
+      simp [Map.find?, Map.toList, h₂, h₃]
 
 theorem mk_vals_instance_of_mk_types₃ {env : TypeEnv} {a : Attr} {qty : QualifiedType} {avs : List (Attr × Value)} {rtx : List (Attr × QualifiedType)}
   (h₁ : List.Forall₂ (AttrValueHasAttrType (env := env)) avs rtx)
@@ -141,7 +141,7 @@ theorem mk_vals_instance_of_mk_types₃ {env : TypeEnv} {a : Attr} {qty : Qualif
     cases h₆ : rhd.fst == a <;> simp [h₆] at h₂ ⊢
     cases h₇ : rtl.find? λ (a', _) => a' == a <;> simp [h₇] at h₂
     have h₈ := @mk_vals_instance_of_mk_types₃ env a qty atl rtl h₅
-    simp [Map.find?, Map.kvs, h₇, h₂, Map.contains] at h₈
+    simp [Map.find?, Map.toList, h₇, h₂, Map.contains] at h₈
     exact h₈
 
 theorem mk_vals_instance_of_mk_types {env : TypeEnv} {avs : List (Attr × Value)} {rty : List (Attr × QualifiedType)}
@@ -177,7 +177,7 @@ theorem find_mk_xs_find_mk_txs {axs : List (Attr × Expr)} {atxs : List (Attr ×
       subst h₂
       rename_i ax
       have h₉ := @find_mk_xs_find_mk_txs c env a ax.snd axt athl h₅
-      simp [h₈, Map.find?, Map.kvs] at h₉
+      simp [h₈, Map.find?, Map.toList] at h₉
       exact h₉
     · subst h₂
       simp [h₆]

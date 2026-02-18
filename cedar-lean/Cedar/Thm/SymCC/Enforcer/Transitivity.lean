@@ -140,7 +140,7 @@ private theorem wf_foldl_and {α} {xs : List α} {f : α → Term} {init : Term}
 private theorem mem_ancestors_implies_ancestorsOfType {ety₁ ety₂ : EntityType} {ancs : Map EntityType UnaryFunction} {f : UnaryFunction} {εs : SymEntities}
   (hwε : εs.WellFormed)
   (hanc : εs.ancestors ety₁ = some ancs)
-  (hin : (ety₂, f) ∈ ancs.kvs) :
+  (hin : (ety₂, f) ∈ ancs.toList) :
   εs.ancestorsOfType ety₁ ety₂ = some f
 := by
   simp only [SymEntities.ancestorsOfType, Option.bind_eq_bind, Option.bind_eq_some_iff]
@@ -304,7 +304,7 @@ private theorem interpret_transitivity_areAncestors {t₁ t₂ : Term} {ety₁ e
     intro (ety₃, f₂₃) hin
     have hf₂₃ := mem_ancestors_implies_ancestorsOfType hwε hanc₂ hin
     exact wf_transitivity_areAncestorsOfType hwε hwt₁ hwt₂ hty₁ hty₂ hf₂₃
-  simp only [transitivity.areAncestors, Map.kvs, interpret_foldl_and f hI hwa wf_bool typeOf_bool,
+  simp only [transitivity.areAncestors, Map.toList, interpret_foldl_and f hI hwa wf_bool typeOf_bool,
     Map.mapOnValues, List.foldl_map, f, interpret_term_prim]
   apply List.foldl_congr
   intro _ _ hin
@@ -616,7 +616,7 @@ theorem interpret_transitivity_implies_transitive
     simp only [heq₁] at hwl₁₂
     rw [← Set.contains_prop_bool_equiv] at hin₁
     simp only [pe_set_member hwl₁₂.left.right term_prim_is_lit, hin₁, pe_implies_true_left] at htr
-    simp only [transitivity.areAncestors, Map.kvs, Map.mapOnValues, pe_foldl_and_true_iff,
+    simp only [transitivity.areAncestors, Map.toList, Map.mapOnValues, pe_foldl_and_true_iff,
       List.mem_map, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂] at htr
     specialize htr (uid₃.ty, .uuf f₂₃) (Map.find?_mem_toList hf₂)
     simp only [transitivity.areAncestorsOfType] at htr

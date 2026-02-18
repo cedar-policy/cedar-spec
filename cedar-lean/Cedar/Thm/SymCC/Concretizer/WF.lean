@@ -78,7 +78,7 @@ private theorem concretize?_εs_some_implies_closed {uids : Set EntityUID} {εs 
     apply concretize?_mapM_entityData?_wf_some_implies_sortedBy _ hs
     simp [← Set.wf_iff_sorted]
     apply Set.union_wf
-  simp only [Map.find?, Map.kvs, Map.make, List.sortedBy_implies_canonicalize_eq hsrt]
+  simp only [Map.find?, Map.toList, Map.make, List.sortedBy_implies_canonicalize_eq hsrt]
   have hin' : uid ∈ uids ∪ εs.entityUIDs := by
     simp only [hin]
   replace ⟨ed, hin', hs⟩ := List.mapM_some_implies_all_some hs uid hin'
@@ -265,7 +265,7 @@ private theorem app_value?_some_implies_entityUIDs {f : UnaryFunction} {t : Term
   · simp only [← hv]
     rename_i t' heq
     rw [Set.union_comm]
-    apply Set.subset_trans (s₂ := f.table.kvs.mapUnion (λ x => x.fst.entityUIDs ∪ x.snd.entityUIDs)) _ (Set.subset_union _ _)
+    apply Set.subset_trans (s₂ := f.table.toList.mapUnion (λ x => x.fst.entityUIDs ∪ x.snd.entityUIDs)) _ (Set.subset_union _ _)
     simp only [Set.subset_def]
     intro uid hin
     rw [List.mem_mapUnion_iff_mem_exists]
@@ -325,7 +325,7 @@ private theorem term_setOfEntityUIDs?_some_value? {t : Term} {uids : Set EntityU
 
 private theorem concretize?_δ_ancs_some_implies_entityUIDs {uid : EntityUID} {δ : SymEntityData} {ancs : List (Set EntityUID)} {εs : SymEntities}
   (hwu : Term.WellFormedLiteral εs (Term.entity uid))
-  (hs : List.mapM (λ x => (app x.snd (Term.entity uid)).setOfEntityUIDs?) δ.ancestors.kvs = some ancs) :
+  (hs : List.mapM (λ x => (app x.snd (Term.entity uid)).setOfEntityUIDs?) δ.ancestors.toList = some ancs) :
   (List.mapUnion id ancs).WellFormed ∧
   List.mapUnion id ancs ⊆ SymEntityData.entityUIDs.ancs δ
 := by
@@ -408,14 +408,14 @@ private theorem concretize?_δ_tags_some_implies_ws_entityUIDs {uid : EntityUID}
   cases hτs : δ.tags <;> simp only [hτs, Option.some.injEq] at hs
   case none =>
     subst hs
-    simp only [Map.empty, value_record_entityUIDs_def, Map.kvs, List.mapUnion_nil,
+    simp only [Map.empty, value_record_entityUIDs_def, Map.toList, List.mapUnion_nil,
       EmptyCollection.emptyCollection, Set.subset_def, Set.empty_no_elts, false_implies,
       implies_true, and_true]
     apply Value.WellStructured.record_ws
     · intro a v hf
       replace hf := Map.find?_mem_toList hf
-      simp only [Map.toList, Map.kvs, List.not_mem_nil] at hf
-    · simp only [Map.WellFormed, Map.make, Map.toList, Map.kvs, List.canonicalize_nil]
+      simp only [Map.toList, Map.toList, List.not_mem_nil] at hf
+    · simp only [Map.WellFormed, Map.make, Map.toList, Map.toList, List.canonicalize_nil]
   case some τs =>
     simp only [Option.bind] at hs
     split at hs <;> simp only [reduceCtorEq] at hs
@@ -428,7 +428,7 @@ private theorem concretize?_δ_tags_some_implies_ws_entityUIDs {uid : EntityUID}
     · apply Value.WellStructured.record_ws
       · intro t v hf
         replace hf := Map.find?_mem_toList hf
-        simp only [Map.toList, Map.kvs] at hf
+        simp only [Map.toList, Map.toList] at hf
         replace ⟨t', htvs, heq⟩ := List.mapM_some_implies_all_from_some htvs (t, v) hf
         replace ⟨heq', heq⟩ := concretize?_taggedValueFor_some_implies heq
         rw [eq_comm] at heq' ; subst heq'
@@ -440,7 +440,7 @@ private theorem concretize?_δ_tags_some_implies_ws_entityUIDs {uid : EntityUID}
         have hws := term_setOfTags?_some_wf hks
         rw [Set.wf_iff_sorted] at hws
         exact mapM_concretize?_taggedValueFor_some_sorted htvs hws
-    · simp only [value_record_entityUIDs_def, Map.kvs, SymEntityData.entityUIDs.tags, hτs,
+    · simp only [value_record_entityUIDs_def, Map.toList, SymEntityData.entityUIDs.tags, hτs,
         Set.subset_def]
       intro uid' hin
       rw [List.mem_mapUnion_iff_mem_exists] at hin

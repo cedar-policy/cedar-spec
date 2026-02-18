@@ -36,7 +36,7 @@ partial def mkWf : Cedar.Spec.Expr → Cedar.Spec.Expr
   | .set xs => .set (xs.map mkWf)
   | .record pairs =>
     let m := Map.make (pairs.map λ (k, v) => (k, v.mkWf))
-    .record m.kvs
+    .record m.toList
   | .call xfn xs => .call xfn (xs.map mkWf)
 end Cedar.Spec.Expr
 

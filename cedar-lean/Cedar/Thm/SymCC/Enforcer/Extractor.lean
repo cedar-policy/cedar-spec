@@ -488,7 +488,7 @@ theorem sym_entities_entityUIDs_include_enums
   exists (uid.ty, SymEntityData.interpret I δ)
   constructor
   · simp only [SymEnv.interpret, SymEntities.interpret]
-    apply Map.in_kvs_in_mapOnValues
+    apply Map.in_toList_in_mapOnValues
     exact Map.find?_mem_toList hfind_uid_ty
   · simp only [SymEntityData.entityUIDs, SymEntityData.interpret]
     apply (Set.mem_union_iff_mem_or _ _ uid).mpr; left

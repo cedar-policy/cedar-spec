@@ -110,7 +110,7 @@ theorem typeOf_term_record_attr_value {r : Map Attr Term} {rty : Map Attr TermTy
   ∃ t, r.find? a = .some t ∧ t.typeOf = ty
 := by
   rw [typeOf_term_record_eq] at h₁
-  simp [Map.find?, Map.kvs] at *
+  simp [Map.find?, Map.toList] at *
   subst h₁
   split at h₂ <;> simp only [Option.some.injEq, reduceCtorEq] at h₂
   subst h₂
@@ -131,7 +131,7 @@ theorem typeOf_term_record_attr_value_none {r : Map Attr Term} {rty : Map Attr T
   r.find? a = none
 := by
   rw [typeOf_term_record_eq] at h₁
-  simp [Map.find?, Map.kvs] at *
+  simp [Map.find?, Map.toList] at *
   subst h₁
   split at h₂ <;> simp only [reduceCtorEq] at h₂
   rename_i h₃
@@ -146,7 +146,7 @@ theorem typeOf_term_record_attr_value_typeOf {r : Map Attr Term} {a : Attr} {t :
   rty.find? a = .some t.typeOf
 := by
   rw [typeOf_term_record_eq] at h₁
-  simp [Map.find?, Map.kvs] at *
+  simp [Map.find?, Map.toList] at *
   subst h₁
   have hmv : (r.mapOnValues Term.typeOf) = Map.mk (List.map (fun x => (x.fst, Term.typeOf x.snd)) r.1) := by
     simp only [Map.mapOnValues]
@@ -247,7 +247,7 @@ private theorem type_of_wf_term_record_is_wf {εs : SymEntities} {r : Map Attr T
   apply TermType.WellFormed.record_wf
   case h₁ =>
     intro a ty h
-    simp only [Map.find?, Map.kvs] at h
+    simp only [Map.find?, Map.toList] at h
     rw [←List.find?_pair_map, eq_comm] at h
     split at h <;> simp only [Option.some.injEq, reduceCtorEq] at h
     subst h

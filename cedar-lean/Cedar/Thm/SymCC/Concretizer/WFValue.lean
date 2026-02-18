@@ -33,7 +33,7 @@ theorem value_set_entityUIDs_def {vs : Set Value} :
   simp only [List.mapUnion₁_eq_mapUnion]
 
 theorem value_record_entityUIDs_def {avs : Map Attr Value} :
-  (Value.record avs).entityUIDs = avs.kvs.mapUnion λ (_, v) => v.entityUIDs
+  (Value.record avs).entityUIDs = avs.toList.mapUnion λ (_, v) => v.entityUIDs
 := by
   rw [Value.entityUIDs]
   simp only [List.mapUnion₃_eq_mapUnion λ av : Attr × Value => av.snd.entityUIDs]

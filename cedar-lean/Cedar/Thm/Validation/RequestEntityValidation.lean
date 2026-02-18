@@ -88,7 +88,7 @@ theorem instance_of_type_refl {v : Value} {ty : CedarType} {env : TypeEnv} :
       apply h₂ (Map.find?_mem_toList h₁)
       intro k v qty h₁ h₂
       have ⟨⟨_, h₄⟩, _⟩ := h₀
-      have h₆ : sizeOf (k,v).snd < 1 + sizeOf r.kvs
+      have h₆ : sizeOf (k,v).snd < 1 + sizeOf r.toList
       := by
         have hin := Map.find?_mem_toList h₁
         simp only

@@ -68,7 +68,7 @@ theorem lubRecord_find_implies_find {a : Attr} {qty : QualifiedType} {rty rty₁
     Map.find? (Map.mk rty₂) a = .some qty₂ ∧
     lubQualifiedType qty₁ qty₂ = .some qty)
 := by
-  simp [Map.find?, Map.kvs] at *
+  simp [Map.find?, Map.toList] at *
   induction h₁
   case nil => simp [List.find?] at h₂
   case cons a' hd hd₁ hd₂ tl tl₁ tl₂ h₃ _ ih =>
@@ -89,7 +89,7 @@ theorem lubRecord_find_implied_by_find_left {a : Attr} {qty₁ : QualifiedType} 
     Map.find? (Map.mk rty) a = .some qty ∧
     lubQualifiedType qty₁ qty₂ = .some qty)
 := by
-  simp [Map.find?, Map.kvs] at *
+  simp [Map.find?, Map.toList] at *
   induction h₁
   case nil => simp [List.find?] at h₂
   case cons a' hd hd₁ hd₂ tl tl₁ tl₂ h₃ _ ih =>

@@ -152,7 +152,7 @@ theorem lifted_type_is_lifted (ty : CedarType) :
     split
     case _ heq =>
       have : rty = (Data.Map.mk []) := by
-        simp [Data.Map.kvs_nil_iff_empty, Data.Map.empty] at heq
+        simp [Data.Map.toList_nil_iff_empty, Data.Map.empty] at heq
         exact heq
       simp [this]
       exact Lifted.record_nil
@@ -343,7 +343,7 @@ theorem type_lifting_preserves_instance_of_type {env : TypeEnv} {v : Value} {ty 
 theorem lift_bool_types_record_eq_map_on_values {rty : Data.Map Attr QualifiedType} :
   Data.Map.mk (CedarType.liftBoolTypesRecord rty.1) = rty.mapOnValues QualifiedType.liftBoolTypes
 := by
-  simp [Data.Map.mapOnValues, Data.Map.kvs]
+  simp [Data.Map.mapOnValues, Data.Map.toList]
   induction rty.1 <;> simp [CedarType.liftBoolTypesRecord]
   rename_i hᵢ
   exact hᵢ

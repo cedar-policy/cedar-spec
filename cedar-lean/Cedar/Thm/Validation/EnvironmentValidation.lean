@@ -48,12 +48,12 @@ theorem entity_type_validate_well_formed_is_sound
     exists uid
     simp only [heq, and_true]
     simp only [Map.toList] at hacts
-    have : (List.find? (fun x => x.fst == uid) (Map.kvs env.acts)).isSome
+    have : (List.find? (fun x => x.fst == uid) (Map.toList env.acts)).isSome
     := by
       apply List.find?_isSome.mpr
       exists (uid, entry)
       simp [hacts]
-    cases h : List.find? (fun x => x.fst == uid) (Map.kvs env.acts)
+    cases h : List.find? (fun x => x.fst == uid) (Map.toList env.acts)
     · simp [h] at this
     · simp [ActionSchema.contains, Map.find?, h]
   · simp only [true_or]
@@ -78,7 +78,7 @@ theorem validate_attrs_well_formed_is_sound
       · contradiction
       · rename_i hwf_hd
         have := (Map.in_list_iff_find?_some hwf).mpr hfind
-        simp only [Map.kvs, List.mem_cons] at this
+        simp only [Map.toList, List.mem_cons] at this
         cases this with
         | inl hhd =>
           have e : qty = hd.snd := by simp [← hhd]
@@ -96,7 +96,7 @@ theorem validate_attrs_well_formed_is_sound
       · contradiction
       · rename_i hwf_hd
         have := (Map.in_list_iff_find?_some hwf).mpr hfind
-        simp only [Map.kvs, List.mem_cons] at this
+        simp only [Map.toList, List.mem_cons] at this
         cases this with
         | inl hhd =>
           have e : qty = hd.snd := by simp [← hhd]

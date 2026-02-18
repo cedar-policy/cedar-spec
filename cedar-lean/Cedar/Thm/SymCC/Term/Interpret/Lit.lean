@@ -54,7 +54,7 @@ private theorem interpret_term_record_lit_id {εs : SymEntities} {I : Interpreta
   (ih : ∀ (a : Attr) (t : Term), (a, t) ∈ r.1 → Term.interpret I t = t) :
   Term.interpret I (Term.record r) = Term.record r
 := by
-  simp [interpret_term_record, Map.kvs]
+  simp [interpret_term_record, Map.toList]
   have h₄ : List.map (fun x => (x.fst, Term.interpret I x.snd)) r.1 = List.map id r.1 := by
     apply List.map_congr
     intro x h₂
@@ -128,7 +128,7 @@ private theorem interpret_term_record_lit {I : Interpretation} {r : Map Attr Ter
     List.all_pmap_subtype λ (x : Attr × Term) => Term.isLiteral x.snd,
     List.all_eq_true]
   intro x h₁
-  simp only [Map.make, Map.kvs] at h₁
+  simp only [Map.make, Map.toList] at h₁
   have h₂ := List.canonicalize_subseteq Prod.fst (List.map (fun x => (x.fst, Term.interpret I x.snd)) r.1)
   simp only [List.subset_def] at h₂
   specialize h₂ h₁

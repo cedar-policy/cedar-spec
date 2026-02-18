@@ -70,7 +70,7 @@ where
       have := Map.find?_mem_toList _h
       have := List.sizeOf_lt_of_mem this
       cases rec
-      simp [Map.toList, Map.kvs] at this ⊢
+      simp [Map.toList, Map.toList] at this ⊢
       omega
 
 /--

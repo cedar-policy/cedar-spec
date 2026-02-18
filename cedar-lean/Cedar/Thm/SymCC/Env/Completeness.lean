@@ -452,7 +452,7 @@ private theorem ofType_typeOf_pullback
         rename_i v'' hv''
         simp only [Option.some.injEq] at hv'
         apply Map.in_list_implies_contains (v := v'')
-        simp only [Map.kvs]
+        simp only [Map.toList]
         apply List.mem_filterMap.mpr
         exists v'
         simp only [hfind_v', true_and]
@@ -643,7 +643,7 @@ private theorem ofEnv_entity_completeness_standard_inst_tags
     · simp [
         Map.WellFormed, Map.make,
         List.canonicalize, Map.toList,
-        Map.kvs, List.insertCanonical,
+        Map.toList, List.insertCanonical,
       ]
   cases htagTy : entry.tags with
   | none =>

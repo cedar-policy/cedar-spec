@@ -1248,7 +1248,7 @@ private theorem default_udf_wf
     exact default_lit_is_lit
   · simp only
     exact default_lit_well_typed
-  · simp [Map.empty, Map.WellFormed, Map.toList, Map.kvs, Map.make, List.canonicalize]
+  · simp [Map.empty, Map.WellFormed, Map.toList, Map.toList, Map.make, List.canonicalize]
   · simp only
     intros _ _ h
     simp [Map.empty, Map.toList, Map.kvs] at h

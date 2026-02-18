@@ -205,14 +205,14 @@ theorem wf_record_type_cons {env : TypeEnv}
       cases this with
       | cons_nil => constructor
       | cons_cons =>
-        simp only [Map.toList, Map.kvs]
+        simp only [Map.toList, Map.toList]
         assumption
     · intros attr qty hfound
       have hfound := Map.find?_mem_toList hfound
       simp only [Map.toList, Map.kvs] at hfound
       have : (Map.mk (hd :: tl)).find? attr = some qty := by
         apply (Map.in_list_iff_find?_some ?_).mp
-        · simp [Map.kvs, hfound]
+        · simp [Map.toList, hfound]
         · simp only [Map.WellFormed]
           assumption
       exact hwf_tys attr qty this

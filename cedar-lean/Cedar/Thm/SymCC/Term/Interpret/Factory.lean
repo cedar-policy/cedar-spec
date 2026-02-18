@@ -550,7 +550,7 @@ private theorem interpret_app_foldr {εs : SymEntities} {I : Interpretation} {t 
     (List.find? (fun x => x.fst == Term.interpret I t) f.table.1).map Prod.snd =
     Map.find? f.table (Term.interpret I t)
   := by
-    simp only [Option.map, Map.find?, Map.kvs]
+    simp only [Option.map, Map.find?, Map.toList]
     split <;> rename_i heq <;> simp only [heq]
   rw [← h₄]
   simp only [Map.toList, Map.kvs]
@@ -1071,7 +1071,7 @@ theorem interpret_recordOf {I : Interpretation} {ats : List (Attr × Term)} :
     unfold Prod.map id
     simp only
   simp only [recordOf, interpret_term_record, h, Term.record.injEq]
-  simp only [Map.make, Map.kvs, List.canonicalize_of_map_fst, List.canonicalize_idempotent]
+  simp only [Map.make, Map.toList, List.canonicalize_of_map_fst, List.canonicalize_idempotent]
 
 theorem interpret_ext_decimal_val {I : Interpretation} {t : Term} :
   Term.interpret I (ext.decimal.val t) = ext.decimal.val (t.interpret I)
@@ -1191,7 +1191,7 @@ theorem interpret_ext_duration_ofBitVec {I : Interpretation} {t : Term} :
 theorem interpret_tagOf {I : Interpretation} {t₁ t₂ : Term} :
   (tagOf t₁ t₂).interpret I = tagOf (t₁.interpret I) (t₂.interpret I)
 := by
-  simp only [tagOf, EntityTag.mk, interpret_term_record, Map.make, Map.kvs, List.map_cons,
+  simp only [tagOf, EntityTag.mk, interpret_term_record, Map.make, Map.toList, List.map_cons,
     List.map_nil, List.canonicalize, List.insertCanonical, String.reduceLT, ↓reduceIte]
 
 end Cedar.Thm

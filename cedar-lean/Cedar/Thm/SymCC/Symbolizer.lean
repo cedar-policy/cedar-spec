@@ -722,7 +722,7 @@ theorem value?_symbolize?_id
         have := hrec_mem_implies_rty_mem attr.fst this
         have ⟨attr', hfind_attr'⟩ := Map.contains_iff_some_find?.mp this
         have hmem_attr' := (Map.in_list_iff_find?_some hwf_rty_map).mpr hfind_attr'
-        simp only [Map.kvs] at hmem_attr'
+        simp only [Map.toList] at hmem_attr'
         have ⟨sym_attr, hmem_sym_attr, hsym_attr⟩ :=
           List.mapM_some_implies_all_some hsym_attrs (attr.fst, attr') hmem_attr'
         have ⟨val_sym_attr, hmem_val_sym_attr, hval_sym_attr⟩ :=

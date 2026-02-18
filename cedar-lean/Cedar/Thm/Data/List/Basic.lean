@@ -560,7 +560,6 @@ public theorem isSorted_correct {α} [LT α] [DecidableLT α] {l : List α} :
 
 /-! ### Forallᵥ -/
 
-@[expose]
 public def Forallᵥ {α β γ} (p : β → γ → Prop) (kvs₁ : List (α × β)) (kvs₂ : List (α × γ)) : Prop :=
   List.Forall₂ (λ kv₁ kv₂ => kv₁.fst = kv₂.fst ∧ p kv₁.snd kv₂.snd) kvs₁ kvs₂
 
