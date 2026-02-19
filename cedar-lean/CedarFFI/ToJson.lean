@@ -171,7 +171,7 @@ decreasing_by
     omega
   case _ h₁ =>
     cases m
-    simp only [Map.toList] at h₁
+    simp only [Map.toList_mk_id] at h₁
     simp only [Map.mk.sizeOf_spec]
     omega
   case _ h₁ =>

@@ -31,9 +31,8 @@ theorem ofEnv_preserves_entity
   (hfind : Map.find? Γ.ets ety = some entry) :
   Map.find? εnv.entities ety = some (SymEntityData.ofEntityType ety entry)
 := by
-  simp [hεnv, Map.find?, SymEnv.ofEnv, SymEntities.ofSchema, Map.toList]
-  simp [Map.find?] at hfind
-  -- Simplify hfind
+  simp only [Map.find?, hεnv, SymEnv.ofEnv, SymEntities.ofSchema]
+  simp only [Map.find?] at hfind
   split at hfind
   case _ _ _ hfind2 =>
     simp only [Option.some.injEq] at hfind
@@ -184,7 +183,6 @@ theorem ofSchema_find?_ets
     = .some (ety, entry)
   := by
     simp only [Map.find?] at hfind_ety
-    simp only [Map.toList]
     split at hfind_ety
     · rename_i heq
       simp only [Option.some.injEq] at hfind_ety
@@ -231,9 +229,7 @@ theorem ofSchema_find?_acts
       := by
         cases h : List.find? (fun x => x.fst == uid.ty) (Map.toList Γ.ets) with
         | none => rfl
-        | some =>
-          simp only [Map.toList] at h
-          simp [h] at hnot_find_ets
+        | some => simp [h] at hnot_find_ets
       simp [this]
     · apply List.find?_isSome.mpr
       simp only [
@@ -323,7 +319,7 @@ theorem ofEnv_preserves_entity_attr
     εnv.entities.attrs ety = .some attrs ∧
     UnaryFunction.WellFormed εnv.entities attrs ∧
     attrs.argType = .entity ety ∧
-    attrs.outType = .record (Map.mk (TermType.ofRecordType rty.1))
+    attrs.outType = .record (Map.mk (TermType.ofRecordType rty.toList))
 := by
   simp only [EntitySchema.attrs?, Map.find?, Option.map_eq_some_iff] at hattrs_exists
   split at hattrs_exists
@@ -365,7 +361,7 @@ theorem ofEnv_preserves_entity_attr
           TermType.record.injEq, Map.mk.injEq,
         ]
         simp only [EntitySchemaEntry.attrs] at hattrs_exists
-        simp [hattrs_exists]
+        simp [hattrs_exists, Map.deprecated_toList_def] -- `Map.deprecated_toList_def` is required because `TermType.ofType` is defined using `Data.Map` internals
       -- Enum entity types
       · simp only [← hattrs_exists2, UnaryFunction.outType, TermType.ofType, TermType.record.injEq]
         simp only [EntitySchemaEntry.attrs] at hattrs_exists
@@ -409,18 +405,14 @@ theorem ofType_wf
     constructor
     · intros attr attr_ty hfind_attr
       have := Map.find?_mem_toList hfind_attr
-      simp only [Map.toList, Map.kvs] at this
-      have ⟨entry, hmem_entry, heq_entry⟩ := List.mem_map.mp this
-      simp only [Prod.mk.injEq] at heq_entry
-      have ⟨heq_attr, heq_attr_ty⟩ := heq_entry
-      have hfind := hwf_attrs attr entry.snd
-      have := (Map.in_list_iff_find?_some hwf_rty).mp hmem_entry
-      simp only [heq_attr] at this
+      simp only [Map.toList_mk_id, List.mem_map, Prod.mk.injEq, Prod.exists] at this
+      replace ⟨a, qty, hmem, _, this⟩ := this ; subst a attr_ty
+      have hfind := hwf_attrs attr qty
+      have := (Map.in_list_iff_find?_some hwf_rty).mp hmem
       specialize hfind this
-      simp only [←heq_attr_ty]
-      cases hsnd : entry.snd with
+      cases hqty : qty with
       | optional attr_ty' | required attr_ty' =>
-        simp only [hsnd, TermType.ofQualifiedType] at hfind ⊢
+        simp only [hqty, TermType.ofQualifiedType] at hfind ⊢
         cases hfind with | _ hfind =>
         try constructor
         exact ofType_wf hwf hfind
@@ -433,13 +425,12 @@ decreasing_by
     have h1 : ty = CedarType.record rty := by assumption
     simp [h1]
     calc
-      sizeOf attr_ty' < sizeOf entry.snd := by simp [hsnd]
-      _ < sizeOf entry := by
-        cases entry
-        simp
-        omega
+      sizeOf attr_ty' < sizeOf qty := by simp [hqty]
+      _ < sizeOf (a, qty) := by simp ; omega
       _ < sizeOf rty.1 := by
-        simp [List.sizeOf_lt_of_mem hmem_entry]
+        subst a
+        rename (attr, qty) ∈ rty.1 => hqtymem
+        exact List.sizeOf_lt_of_mem hqtymem
       _ < sizeOf rty := by
         cases rty
         simp
@@ -479,7 +470,7 @@ theorem wf_ofType_right_inverse_cedarType?
           fun t => some (x.fst, t))]
     have := ofRecordType_forall₂ rty.1 hwf_ty
     have := List.mapM_some_iff_forall₂.mpr this
-    simp [this, RecordType.liftBoolTypes]
+    simp [this, RecordType.liftBoolTypes, Map.deprecated_toList_def] -- `Map.deprecated_toList_def` is required because `TermType.ofType` is defined using `Data.Map` internals
 termination_by sizeOf ty
 decreasing_by
   simp [*]
@@ -496,10 +487,7 @@ where
       (TermType.ofRecordType rty) (CedarType.liftBoolTypesRecord rty)
   := by
     cases hwf with | record_wf hwf_rty hwf_attrs =>
-    simp [
-      ←Map.in_list_iff_find?_some hwf_rty,
-      Map.toList,
-    ] at hwf_attrs
+    simp only [← Map.in_list_iff_find?_some hwf_rty, Map.toList_mk_id] at hwf_attrs
     cases hrty : rty with
     | nil => constructor
     | cons hd tl =>
@@ -727,11 +715,8 @@ theorem ofStandardEntityType_is_wf
         constructor
         · intros attr attr_ty hfind_attr
           have := Map.find?_mem_toList hfind_attr
-          simp only [
-            Map.toList, Map.kvs, List.mem_cons,
-            Prod.mk.injEq, List.not_mem_nil,
-            or_false,
-          ] at this
+          simp only [Map.toList_mk_id, List.mem_cons, Prod.mk.injEq, List.not_mem_nil,
+            or_false] at this
           cases this with
           | inl h =>
             simp only [h.2]
@@ -739,11 +724,7 @@ theorem ofStandardEntityType_is_wf
           | inr h =>
             simp only [h.2]
             constructor
-        · simp [
-            Map.WellFormed, Map.toList, Map.kvs,
-            Map.make, List.canonicalize,
-            List.insertCanonical,
-          ]
+        · simp [Map.WellFormed, Map.make, List.canonicalize, List.insertCanonical]
       · exact ofType_wf hwf hwf_tags
       · simp only [
           TermType.isCedarType,
@@ -762,14 +743,11 @@ theorem ofEnumEntityType_is_wf
     (SymEntityData.ofEnumEntityType ety eids)
 := by
   and_intros
-  all_goals simp only [
-    SymEntityData.ofEnumEntityType,
-    Map.empty, Map.toList, Map.kvs,
-  ]
+  all_goals simp only [SymEntityData.ofEnumEntityType, Map.empty, Option.some.injEq, reduceCtorEq,
+    Bool.not_eq_true, forall_eq', Map.toList_mk_id, List.not_mem_nil, false_implies, implies_true]
   · constructor
-    · intros _ _ h
-      simp only [Map.toList, Map.kvs, List.not_mem_nil] at h
-    · simp only [Map.WellFormed, Map.make, Map.toList, List.canonicalize]
+    · intro _ _ h ; simp at h
+    · simp [Map.WellFormed, Map.make, List.canonicalize]
   · simp only [
       Term.isLiteral,
       List.nil.sizeOf_spec, Nat.reduceAdd,
@@ -781,8 +759,6 @@ theorem ofEnumEntityType_is_wf
   · rw [Term.typeOf, List.map₃_eq_map_snd Term.typeOf]
     simp
   · simp only [Map.WellFormed, Map.make, Map.toList, List.canonicalize]
-  · intros _ _ h
-    contradiction
   · simp only [UnaryFunction.argType, SymEntityData.emptyAttrs, TermType.ofType]
   · simp [
       UnaryFunction.outType, SymEntityData.emptyAttrs,
@@ -790,11 +766,9 @@ theorem ofEnumEntityType_is_wf
       Map.empty, TermType.cedarType?, List.mapM₃,
       List.attach₃,
     ]
-  · intros _ _ h
-    simp only [Map.find?, Map.toList, List.find?_nil, reduceCtorEq] at h
-  · simp only [Map.WellFormed, Map.make, Map.toList, List.canonicalize]
-  · intros _ h
-    contradiction
+  · intro _ _ h
+    simp [Map.find?] at h
+  · simp [Map.WellFormed, Map.make, List.canonicalize]
   · have ⟨_, h⟩ := wf_env_implies_wf_entity_entry hwf hfind
     simp [h]
 
@@ -999,19 +973,18 @@ theorem ofActionType_is_wf
   any_goals simp only [
     SymEntityData.ofActionType,
     SymEntityData.emptyAttrs,
-    Map.empty, Map.toList, Map.kvs,
+    Map.empty,
     UnaryFunction.argType,
     UnaryFunction.outType,
     TermType.ofType,
   ]
   · constructor
-    · intros _ _ h
-      simp [Map.toList, Map.kvs] at h
-    · simp [Map.WellFormed, Map.make, List.canonicalize, Map.toList]
+    · intro _ _ h ; simp at h
+    · simp [Map.WellFormed, Map.make, List.canonicalize]
   · simp [Term.isLiteral, List.attach₃]
   · rw [Term.typeOf, List.map₃_eq_map_snd Term.typeOf]
     simp
-  · simp [Map.WellFormed, Map.make, List.canonicalize, Map.toList]
+  · simp [Map.WellFormed, Map.make, List.canonicalize]
   · intros; contradiction
   · simp only [TermType.isCedarRecordType, TermType.cedarType?]
     grind
@@ -1600,7 +1573,7 @@ theorem ofEnv_entities_is_acyclic
         Prod.mk.injEq,
         SymEntityData.ofStandardEntityType.ancsUUF,
       ] at h
-    · simp [Map.empty, Map.find?, Map.toList] at hfind_udf_ancs
+    · simp [Map.empty, Map.find?] at hfind_udf_ancs
   | inr hmem_acts =>
     have ⟨ety, hmem_ety, hsym_act⟩ := List.mem_map.mp hmem_acts
     simp only [Prod.mk.injEq, SymEntityData.ofActionType] at hsym_act
@@ -1789,7 +1762,7 @@ theorem ofEnv_entities_is_partitioned
           SymEntityData.ConcreteAncestors,
         ]
         intros ancTy f hfind_f
-        simp [Map.empty, Map.find?, Map.toList] at hfind_f
+        simp [Map.empty, Map.find?] at hfind_f
     | inr hfind_acts =>
       have ⟨uid, entry, heq_ety, hfind_uid, hact⟩ := hfind_acts
       simp only [
@@ -1829,7 +1802,7 @@ theorem ofEnv_entities_is_partitioned
         SymEntityData.ofActionType,
       ] at hanc
     any_goals
-      try · simp [Map.empty, Map.find?, Map.toList] at hanc
+      try · simp [Map.empty, Map.find?] at hanc
     -- entry₁: standard; entry₂: enum
     · have hancs_std_only := wf_env_implies_ancestors_of_standard_ety_is_standard hwf hfind_entry₁ ety₂
       simp only [SymEntityData.ofStandardEntityType] at hanc

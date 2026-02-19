@@ -1943,12 +1943,11 @@ theorem wf_tagOf {εs : SymEntities} {t₁ t₂ : Term} {ety : EntityType}
   constructor
   · apply Term.WellFormed.record_wf
     · intro a t hin
-      simp only [Map.toList, Map.kvs, List.mem_cons, Prod.mk.injEq, List.not_mem_nil, or_false] at hin
+      simp only [Map.toList_mk_id, List.mem_cons, Prod.mk.injEq, List.not_mem_nil, or_false] at hin
       rcases hin with ⟨_, hin⟩ | ⟨_, hin⟩ <;>
       subst hin <;>
       assumption
-    · simp only [Map.WellFormed, Map.make, Map.toList, Map.kvs, List.canonicalize,
-      List.insertCanonical, String.reduceLT, ↓reduceIte]
+    · simp [Map.WellFormed, Map.make, List.canonicalize, List.insertCanonical, String.reduceLT]
   · simp only [typeOf_term_record_eq, List.map_cons, hty₁, hty₂, List.map_nil]
 
 theorem wf_tags_getTag! {εs : SymEntities} {τs : SymTags} {t₁ t₂ : Term} {ety : EntityType}

@@ -334,7 +334,7 @@ private theorem concretize?_some_same_tags {uid : EntityUID} {δ : SymEntityData
       constructor
       · exact mapM_concretize?_taggedValueFor_some_implies_contains_tag_true heq hkeqv hs
       · replace hs := Map.find?_mem_toList hs
-        simp [Map.toList, Map.kvs] at hs
+        simp only [Map.toList_mk_id] at hs
         replace ⟨tag', _, heq⟩ := List.mapM_some_implies_all_from_some heq (tag, val) hs
         replace ⟨heq', heq⟩ := concretize?_taggedValueFor_some_implies heq
         subst heq'
@@ -381,7 +381,7 @@ private theorem concretize?_some_same_entities {uids : Set EntityUID} {es : Enti
   replace ⟨es', hs, heq⟩ := hs
   subst heq
   replace hf := Map.find?_mem_toList hf
-  simp only [Map.toList, Map.kvs, Map.make] at hf
+  simp only [Map.make] at hf
   replace hf := List.in_canonicalize_in_list hf
   replace ⟨_, _, hs⟩ := List.mapM_some_implies_all_from_some hs (uid, d) hf
   simp only [SymEntities.concretize?.entityData?, Option.bind_eq_bind, Option.bind_eq_some_iff,

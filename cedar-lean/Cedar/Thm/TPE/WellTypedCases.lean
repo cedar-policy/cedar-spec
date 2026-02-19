@@ -109,9 +109,9 @@ theorem find_lifted_type {attr ty₁ ty₂} {m: RecordType} :
   Map.find? m.liftBoolTypes attr = some ty₂ →
   ty₂ = ty₁.liftBoolTypes
 := by
-  simp only [Map.find?, Map.toList]
+  simp only [Map.find?]
   intro h₁ h₂
-  cases h₃: m.1
+  cases h₃: m.toList
   case nil =>
     rw [h₃] at h₁
     simp at h₁
@@ -119,7 +119,7 @@ theorem find_lifted_type {attr ty₁ ty₂} {m: RecordType} :
     rw [h₃] at h₁
     unfold RecordType.liftBoolTypes at h₂
     rw [h₃] at h₂
-    simp only [CedarType.liftBoolTypesRecord, List.find?] at h₂
+    simp only [CedarType.liftBoolTypesRecord, Map.toList_mk_id, List.find?] at h₂
     cases h₄ : hd.fst == attr
     case false =>
       simp only [List.find?] at h₁
@@ -550,8 +550,7 @@ theorem partial_eval_well_typed_record {env : TypeEnv} {ls : List (Attr × Resid
 
       have h₇_new : ((Map.mk ls).mapOnValues (λ x => Qualified.required x.typeOf)).find? k = some qty := by
         unfold Map.mapOnValues
-        simp only [Map.toList]
-        simp only [Map.find?]
+        simp only [Map.find?, Map.toList_mk_id]
         rw [h₇]
 
       have h₉_new := Map.find?_mapOnValues_some' (fun x: Residual => Qualified.required x.typeOf) h₇_new
@@ -587,8 +586,7 @@ theorem partial_eval_well_typed_record {env : TypeEnv} {ls : List (Attr × Resid
       subst ty₁
       replace h₄ : ((Map.mk ls).mapOnValues (λ x => Qualified.required x.typeOf)).find? k = some qty := by
         unfold Map.mapOnValues
-        simp only [Map.toList]
-        simp only [Map.find?]
+        simp only [Map.find?, Map.toList_mk_id]
         rw [← Map.list_find?_iff_make_find?] at h₄
         rw [h₄]
       have h₅ := Map.find?_mapOnValues_some' (α := Attr) (fun x: Residual => Qualified.required x.typeOf) h₄
@@ -786,7 +784,7 @@ theorem partial_eval_well_typed_getAttr {env : TypeEnv} {expr : Residual} {attr 
                   unfold InstanceOfActionSchemaEntry at h₂₃
                   rcases h₂₃ with ⟨e₃, h₂₃, _, _⟩
                   rw [e₃] at h₁₂
-                  simp [Map.empty, Map.find?, Map.toList] at h₁₂
+                  simp [Map.empty, Map.find?] at h₁₂
         case getAttr_record rty h₄ h₅ h₆ =>
           have h₇ := partial_eval_preserves_typeof h_wf h_ref h₄
           rw [h₃] at h₇
@@ -1185,7 +1183,7 @@ theorem partial_eval_well_typed_app₂_values_getTag :
         rename EntitySchemaEntry => w
         cases h₁₈: w.tags? <;> rw [h₁₈] at h₁₇ <;> simp only at h₁₇
         . rw [h₁₇] at h₁₃
-          simp [Data.Map.empty, Data.Map.toList] at h₁₃
+          simp [Data.Map.empty] at h₁₃
         . have h₁₈ : v₃ ∈ e.tags.values := by {
             have h₁₉ := List.mem_of_find?_eq_some h₁₃
             have h₂₀ := Map.in_list_in_values h₁₉
@@ -1240,7 +1238,7 @@ theorem partial_eval_well_typed_app₂_values_getTag :
         unfold InstanceOfActionSchemaEntry at h₁₆
         rcases h₁₆ with ⟨_, h₁₇, _, _, _⟩
         rw [h₁₇] at h₁₃
-        simp [Data.Map.empty, Data.Map.toList] at h₁₃
+        simp at h₁₃
     . apply Residual.WellTyped.error
   . apply Residual.WellTyped.binaryApp
     . unfold Residual.asValue at h₁
@@ -1251,16 +1249,14 @@ theorem partial_eval_well_typed_app₂_values_getTag :
       rw [h₃] at ih₁
       rw [h₁] at ih₁
       have h_ety_eq : ty = (CedarType.entity id₁.ty) := by {
-            have h₄ := partial_eval_preserves_typeof h_wf h_ref h_expr1
-            cases ih₁
-            rename_i h₅
-            cases h₅
-            rename EntityType => ty₂
-            rename_i h₅
-            unfold InstanceOfEntityType at h₅
-            rcases h₅ with ⟨h₅, _⟩
-            rw [h₅]
-          }
+        have h₄ := partial_eval_preserves_typeof h_wf h_ref h_expr1
+        cases ih₁
+        rename_i h₅
+        cases h₅
+        rename_i h₅
+        unfold InstanceOfEntityType at h₅
+        rw [h₅.left]
+      }
       rw [h_ety_eq] at ih₁
       exact ih₁
     . apply Residual.WellTyped.val

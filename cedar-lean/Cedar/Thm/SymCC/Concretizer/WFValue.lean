@@ -158,10 +158,9 @@ private theorem term_record_value?_some_implies_ws {ats : List (Attr × Term)} {
   case h₁ =>
     intro a' v' hf
     replace hf := Map.find?_mem_toList hf
-    simp only [Map.toList, Map.kvs, List.mem_filterMap, Option.map_eq_some_iff, Prod.mk.injEq,
-      exists_eq_right_right] at hf
-    replace ⟨(aᵥ, vᵢ), hf, h₂, h₁⟩ := hf
-    simp only at h₁ h₂ ; subst h₁ h₂
+    simp only [Map.toList_mk_id, List.mem_filterMap, Option.map_eq_some_iff, Prod.mk.injEq,
+      exists_eq_right_right, Prod.exists] at hf
+    replace ⟨aᵥ, vᵢ, hf, h₂, h₁⟩ := hf ; subst a' vᵢ
     replace ⟨(aₜ, tᵢ), hin, hm⟩ := List.mapM_some_implies_all_from_some hm (aᵥ, v') hf
     simp only at hm
     have ha := value?_attrValue?_fst hm
@@ -177,9 +176,9 @@ private theorem term_record_value?_some_implies_ws {ats : List (Attr × Term)} {
       subst heq
       exact ih aₜ t' (term_record_value?_sizeOf_some hin) (wf_term_some_implies hw) _ hm
   case h₂ =>
-    simp only [Map.wf_iff_sorted, Map.toList, Map.kvs]
+    simp only [Map.wf_iff_sorted]
     replace hw := wf_term_record_implies_wf_map hw
-    simp only [Map.wf_iff_sorted, Map.toList, Map.kvs] at hw
+    simp only [Map.wf_iff_sorted] at hw
     replace hm := List.mapM_some_eq_filterMap hm
     replace hw : avs.SortedBy Prod.fst := by
       rw [← hm]
@@ -263,7 +262,7 @@ private theorem term_record_value?_some_implies_eq_entityUIDs {ats : List (Attr 
 := by
   replace ⟨avs, hm, hv⟩ := term_record_value?_some_implies hv
   subst hv
-  simp only [Term.entityUIDs, Value.entityUIDs,
+  simp only [Term.entityUIDs, Value.entityUIDs, Map.toList_mk_id,
     ← List.mapM_some_eq_filterMap hm,
     List.mapUnion₃_eq_mapUnion (λ x : Attr × Term => x.snd.entityUIDs),
     List.mapUnion₃_eq_mapUnion (λ x : Attr × Value => x.snd.entityUIDs),

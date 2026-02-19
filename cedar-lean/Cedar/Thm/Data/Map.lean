@@ -129,7 +129,7 @@ public theorem eq_iff_toList_equiv [LT α] [DecidableLT α] [StrictLT α] {m₁ 
     subst h₁
     exact List.Equiv.refl
 
-/-! ### contains, mem, toList, keys, values -/
+/-! ### empty, contains, mem, toList, keys, values -/
 
 public theorem keys_wf [LT α] [DecidableLT α] [StrictLT α] (m : Map α β) :
   m.WellFormed → m.keys.WellFormed
@@ -143,6 +143,11 @@ public theorem keys_wf [LT α] [DecidableLT α] [StrictLT α] (m : Map α β) :
   simp only [List.map_map]
   apply List.map_congr
   simp only [Function.comp_apply, id_eq, implies_true]
+
+@[simp]
+public theorem toList_empty {α β} :
+  (Map.empty : Map α β).toList = []
+:= by simp [empty, toList]
 
 @[simp]
 public theorem toList_nil_iff_empty {m : Map α β} :
@@ -164,6 +169,16 @@ public theorem mk_toList_id (m : Map α β) :
 public theorem toList_mk_id (kvs : List (α × β)) :
   (mk kvs).toList = kvs
 := by simp only [toList, Map.kvs]
+
+/--
+As a crutch to accommodate some pre-existing usage, we provide this theorem. But
+TODO in the future we should transition users of this theorem to instead use
+public theorems about `toList` and not have to expose the internals of
+`Data.Map`.
+-/
+public theorem deprecated_toList_def (m : Map α β) :
+  m.toList = m.1
+:= by simp [toList]
 
 public theorem in_list_in_map {α : Type u} (k : α) (v : β) (m : Map α β) :
   (k, v) ∈ m.toList → k ∈ m
@@ -346,6 +361,11 @@ public theorem make_of_make_is_id [LT α] [DecidableLT α] [StrictLT α] (xs : L
   exact h₁
 
 /-! ### find?, findOrErr, and mapOnValues -/
+
+@[simp]
+public theorem find?_empty {α β} [DecidableEq α] (k : α) :
+  (Map.empty : Map α β).find? k = none
+:= by simp [Map.find?, Map.empty]
 
 @[simp]
 public theorem singleton_find? [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] (k : α) (v : β) :
@@ -1633,7 +1653,7 @@ public theorem map_find?_implies_find?_weaker_pred
 := by
   replace hfind := map_find?_to_list_find? hfind
   cases m with | mk m =>
-  simp? at hfind ⊢
+  simp only [toList_mk_id] at hfind ⊢
   induction m with
   | nil => contradiction
   | cons hd tl ih =>
@@ -1655,7 +1675,7 @@ public theorem map_find?_implies_find?_weaker_pred
 public theorem map_keys_empty_implies_map_empty
   {m : Map α β}
   (h : m.keys.toList = []) :
-  m = (Map.mk [])
+  m = Map.empty
 := by
   cases m with | mk m =>
   cases m with

@@ -39,7 +39,7 @@ def Prim.entityUIDs : Prim → Set EntityUID
 def Value.entityUIDs : Value → Set EntityUID
   | .prim p              => p.entityUIDs
   | .set (Set.mk vs)     => vs.mapUnion₁ (λ ⟨v, _⟩ => v.entityUIDs)
-  | .record (Map.mk avs) => avs.mapUnion₃ (λ ⟨(_, v), _⟩ => v.entityUIDs)
+  | .record avs          => avs.toList.mapUnion₃ (λ ⟨(_, v), _⟩ => v.entityUIDs)
   | .ext _               => Set.empty
 
 def Value.entityUID? : Value → Option EntityUID

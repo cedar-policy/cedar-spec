@@ -91,6 +91,9 @@ public def size {α β} (m : Map α β) : Nat :=
 public def mapOnValues {α β γ} (f : β → γ) (m : Map α β) : Map α γ :=
   Map.mk (m.toList.map (λ (k, v) => (k, f v)))
 
+public def mapOnValues₃ {α β γ} (f : β → γ) (m : Map α β) : Map α γ :=
+  Map.mk (m.toList.map₃ (λ ⟨(k, v), _⟩ => (k, f v)))
+
 public def mapOnKeys {α β γ} [LT γ] [DecidableLT γ] (f : α → γ) (m : Map α β) : Map γ β :=
   Map.make (m.toList.map (λ (k, v) => (f k, v)))
 

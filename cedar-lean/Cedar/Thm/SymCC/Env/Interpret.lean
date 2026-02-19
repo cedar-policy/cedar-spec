@@ -294,21 +294,22 @@ theorem interpret_εnv_lit {εnv : SymEnv} {I : Interpretation} :
       interpret_term_lit hI hwr, interpret_term_lit hI hwc, Bool.and_self]
   case right =>
     simp only [SymEntities.isLiteral, SymEntities.interpret, List.all_eq_true]
-    simp only [Map.toList, Map.kvs, Map.mapOnValues, List.mem_map, forall_exists_index, and_imp,
-      forall_apply_eq_imp_iff₂]
-    intro tyδ hin
+    simp only [Map.mapOnValues, Map.toList_mk_id, List.mem_map, Prod.exists, forall_exists_index,
+      and_imp, Prod.forall, Prod.mk.injEq]
+    intro tyδ styδ ty sty hin hty ; subst tyδ
     rw [Map.in_list_iff_find?_some hw.right.left] at hin
-    replace hw := hw.right.right tyδ.1 tyδ.2 hin
+    replace hw := hw.right.right ty sty hin
     simp only [SymEntityData.isLiteral, SymEntityData.interpret, Bool.and_eq_true, List.all_eq_true]
+    intro h ; subst h
     constructor
     · constructor
       · exact interpret_uf_lit hI hw.left
-      · simp only [Map.toList, Map.kvs, Map.mapOnValues, List.mem_map, forall_exists_index, and_imp,
-        forall_apply_eq_imp_iff₂]
-        intro tyf hin'
+      · simp only [Map.mapOnValues, Map.toList_mk_id, List.mem_map, Prod.exists,
+          forall_exists_index, and_imp, Prod.forall, Prod.mk.injEq]
+        intro ty' tyf' ty'' tyf hin' _ _ ; subst tyf' ty''
         replace hw := hw.right.right.right
         rw [Map.in_list_iff_find?_some hw.right.left] at hin'
-        have hwl := hw.left tyf.1 tyf.2 hin'
+        have hwl := hw.left ty' tyf hin'
         exact interpret_uf_lit hI hwl.left
     · simp only [Option.all]
       split <;> try rfl

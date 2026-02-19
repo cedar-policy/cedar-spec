@@ -93,7 +93,7 @@ theorem mk_vals_instance_of_mk_types₁ {env : TypeEnv} {a : Attr} {avs : List (
 := by
   cases avs <;> cases rty <;> cases h₁
   case nil =>
-    simp [Map.contains, Map.find?, List.find?] at h₂
+    simp [Map.contains, Map.find?] at h₂
   case cons ahd atl rhd rtl h₃ h₄ =>
     simp [Map.contains, Map.find?, List.find?] at *
     simp [AttrValueHasAttrType] at h₃
@@ -111,8 +111,7 @@ theorem mk_vals_instance_of_mk_types₂ {env : TypeEnv} {a : Attr} {v : Value} {
   InstanceOfType env v (Qualified.getType qty)
 := by
   cases avs <;> cases rtx <;> cases h₁
-  case nil =>
-    simp [Map.find?, List.find?] at h₂
+  case nil => simp [Map.find?] at h₂
   case cons ahd atl rhd rtl h₄ h₅ =>
     simp [Map.find?, List.find?] at h₂ h₃
     simp [AttrValueHasAttrType] at h₄
@@ -131,8 +130,7 @@ theorem mk_vals_instance_of_mk_types₃ {env : TypeEnv} {a : Attr} {qty : Qualif
   Map.contains (Map.mk avs) a = true
 := by
   cases avs <;> cases rtx <;> cases h₁
-  case nil =>
-    simp [Map.find?, List.find?] at h₂
+  case nil => simp [Map.find?] at h₂
   case cons ahd atl rhd rtl h₄ h₅ =>
     simp [Map.contains, Map.find?, List.find?]
     simp [Map.find?, List.find?] at h₂
@@ -165,8 +163,7 @@ theorem find_mk_xs_find_mk_txs {axs : List (Attr × Expr)} {atxs : List (Attr ×
   ∃ tx c', (Map.mk atxs).find? a = some tx ∧ typeOf x c env = .ok (tx, c')
 := by
   cases axs <;> cases atxs <;> cases h₁
-  case nil =>
-    simp [Map.find?, List.find?] at h₂
+  case nil => simp [Map.find?] at h₂
   case cons axh axt atxh athl h₄ h₅ =>
     simp [Map.find?, List.find?]
     simp [Map.find?, List.find?] at h₂

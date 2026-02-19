@@ -93,7 +93,7 @@ theorem instance_of_type_refl {v : Value} {ty : CedarType} {env : TypeEnv} :
         have hin := Map.find?_mem_toList h₁
         simp only
         replace hin := List.sizeOf_lt_of_mem hin
-        simp only [Prod.mk.sizeOf_spec, Map.toList] at hin
+        simp only [Prod.mk.sizeOf_spec] at hin
         omega
       specialize h₄ ⟨(k, v), h₆⟩
       simp only [List.attach₂, List.mem_pmap_subtype] at h₄
@@ -141,9 +141,9 @@ decreasing_by
   case _ h₉ _ _ _ _ _ _ =>
     subst h₉
     have h₁ := Map.find?_mem_toList h₁
-    simp only [Map.toList, Map.kvs] at h₁
     simp only [Value.record.sizeOf_spec, gt_iff_lt]
     have := Map.sizeOf_lt_of_value h₁
+    simp only [Map.mk_toList_id] at this
     omega
 
 theorem instance_of_request_type_refl {request : Request} {env : TypeEnv}:

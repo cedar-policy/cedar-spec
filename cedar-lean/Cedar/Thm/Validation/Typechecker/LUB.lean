@@ -68,7 +68,7 @@ theorem lubRecord_find_implies_find {a : Attr} {qty : QualifiedType} {rty rty₁
     Map.find? (Map.mk rty₂) a = .some qty₂ ∧
     lubQualifiedType qty₁ qty₂ = .some qty)
 := by
-  simp [Map.find?, Map.toList] at *
+  simp only [Map.find?, Map.toList_mk_id, exists_and_left] at *
   induction h₁
   case nil => simp [List.find?] at h₂
   case cons a' hd hd₁ hd₂ tl tl₁ tl₂ h₃ _ ih =>

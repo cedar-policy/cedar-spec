@@ -1136,7 +1136,6 @@ theorem pe_record_get_wfl {εs : SymEntities} {a : Attr} {t : Term} {ty : TermTy
   subst h₄
   have ⟨t', h₄⟩ := typeOf_term_record_attr_value h₂ h₃
   have h₅ := Map.find?_mem_toList h₄.left
-  simp only [Map.toList, Map.kvs] at h₅
   simp only [record.get, h₄.left]
   exact lit_term_record_implies_lit_value h₁.right h₅
 

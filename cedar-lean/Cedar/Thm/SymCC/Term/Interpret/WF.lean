@@ -120,7 +120,7 @@ theorem interpret_term_record_wf {εs : SymEntities} {I : Interpretation} {r : M
     case h₂ => exact Map.make_wf (List.map (fun x => (x.fst, Term.interpret I x.snd)) (Map.toList r))
   case right =>
     replace h₁ := wf_term_record_implies_wf_map h₁
-    rw [←Map.toList, ←Map.mapOnValues_eq_make_map (Term.interpret I) h₁]
+    rw [←Map.mapOnValues_eq_make_map (Term.interpret I) h₁]
     unfold Term.typeOf
     simp only [Map.mapOnValues, Map.toList, TermType.record.injEq, Map.mk.injEq,
       List.map₃_eq_map λ (x : Attr × Term) => (x.fst, Term.typeOf x.snd), List.map_map]

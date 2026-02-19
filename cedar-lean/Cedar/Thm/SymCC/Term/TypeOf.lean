@@ -91,7 +91,7 @@ theorem typeOf_term_prim_ext_duration {d : Ext.Datetime.Duration} :
   (Term.prim (.ext (.duration d))).typeOf = TermType.ext Validation.ExtType.duration
 := by simp only [Term.typeOf, TermPrim.typeOf]
 
-theorem typeOf_term_record_eq  {r : Map Attr Term}  :
+theorem typeOf_term_record_eq  {r : Map Attr Term} :
   Term.typeOf (Term.record r) =
   TermType.record (Map.mk (List.map (fun (x : Attr × Term) => (x.fst, Term.typeOf x.snd)) r.1))
 := by
@@ -146,10 +146,14 @@ theorem typeOf_term_record_attr_value_typeOf {r : Map Attr Term} {a : Attr} {t :
   rty.find? a = .some t.typeOf
 := by
   rw [typeOf_term_record_eq] at h₁
-  simp [Map.find?, Map.toList] at *
+  simp only [TermType.record.injEq] at *
   subst h₁
   have hmv : (r.mapOnValues Term.typeOf) = Map.mk (List.map (fun x => (x.fst, Term.typeOf x.snd)) r.1) := by
-    simp only [Map.mapOnValues]
+    simp only [Map.mapOnValues, Map.deprecated_toList_def]
+    -- unfortunately, Term.typeOf is defined using Data.Map internals.
+    -- to avoid depending on `Map.deprecated_toList_def`, we'll have
+    -- to redefine `Term.typeOf`, probably using `Map.mapOnValues` for
+    -- the `record` case.
   rw [← hmv]
   exact Map.find?_mapOnValues_some _ h₂
 
@@ -257,11 +261,11 @@ private theorem type_of_wf_term_record_is_wf {εs : SymEntities} {r : Map Attr T
     replace heq := List.mem_of_find?_eq_some heq
     have haxt : axt = (axt.fst, axt.snd) := by simp only
     specialize ih axt.fst axt.snd
-    simp only [← haxt, Map.toList, Map.kvs, heq, heq', forall_const] at ih
+    simp only [Map.deprecated_toList_def, ← haxt, heq, heq', forall_const] at ih
     exact ih
   case h₂ =>
     simp only [Map.WellFormed] at *
-    simp only [Map.make, Map.toList, Map.kvs, Map.mk.injEq] at *
+    simp only [Map.make, Map.mk.injEq, Map.deprecated_toList_def] at *
     have hmap : (fun (x : Attr × Term) => (x.fst, Term.typeOf x.snd)) = Prod.map id Term.typeOf := by
       apply funext ; intro x  ; simp [Prod.map]
     simp only [hmap, List.canonicalize_of_map_fst r.1 Term.typeOf]

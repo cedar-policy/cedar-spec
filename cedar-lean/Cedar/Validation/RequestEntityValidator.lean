@@ -79,8 +79,7 @@ def instanceOfType (v : Value) (ty : CedarType) (env : TypeEnv) : Bool :=
         omega
       case _ h₁ =>
         cases r
-        simp only [Map.toList] at h₁
-        simp only [Map.mk.sizeOf_spec]
+        simp only [Map.toList_mk_id, Map.mk.sizeOf_spec] at *
         omega
 
 def instanceOfRequestType (request : Request) (env : TypeEnv) : Bool :=
