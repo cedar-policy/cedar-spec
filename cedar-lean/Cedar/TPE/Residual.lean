@@ -26,19 +26,22 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-inductive PartialAttribute' (T : Type _) where
-  | present (val : T)               -- Known present, known value
-  -- | absent (ty : CedarType)  -- Known absent, no value
-  | presentUnknown (ty : CedarType) (target : T) -- Known present, unknown value
-  | unknown (ty : CedarType) (target : T) -- Unknown present, unknown value
-deriving Repr, Inhabited
-
-
+-- inductive PartialAttribute' (T : Type _) where
+--   | present (val : T)               -- Known present, known value
+--   | unknown (ty : CedarType) (target : T) -- Unknown present, unknown value
+-- deriving Repr, Inhabited, BEq
+--
+-- inductive PartialValue' where
+--   | prim (p : Prim)
+--   | set (s : Set Value)
+--   | record (m : Map Attr (PartialAttribute' PartialValue'))
+--   | ext (x : Ext)
 
 /- The result produced by TPE -/
--- We do not need→unknown`s because they can be represented by entity dereferences
+-- We do not need unknown`s because they can be represented by entity dereferences
 inductive Residual where
-  | val (v : Value) (ty : CedarType)
+  | access (p : AccessPath) (ty : CedarType)
+  | val (v : PartialValue) (ty : CedarType)
   | var (v : Var) (ty : CedarType)
   | ite (cond : Residual) (thenExpr : Residual) (elseExpr : Residual)  (ty : CedarType)
   | and (a : Residual) (b : Residual)  (ty : CedarType)
@@ -48,10 +51,10 @@ inductive Residual where
   | getAttr (expr : Residual) (attr : Attr)  (ty : CedarType)
   | hasAttr (expr : Residual) (attr : Attr)  (ty : CedarType)
   | set (ls : List Residual)  (ty : CedarType)
-  | record (map : List (Attr × PartialAttribute' Residual))  (ty : CedarType)
+  | record (map : List (Attr × Residual))  (ty : CedarType)
   | call (xfn : ExtFun) (args : List Residual) (ty : CedarType)
   | error (ty : CedarType)
-deriving Repr, Inhabited
+deriving Repr, Inhabited, BEq
 
 instance : Coe Bool Residual where
   coe b := .val (Prim.bool b) (.bool .anyBool)
@@ -62,26 +65,34 @@ instance : Coe String Residual where
 instance : Coe EntityUID Residual where
   coe uid := .val (Prim.entityUID uid) (.entity uid.ty)
 
-def Residual.asValue : Residual → Option Value
+def Residual.asPartialValue : Residual → Option PartialValue
   | .val v _ => .some v
   | _        => .none
 
-def PartialAttribute'.asValue : PartialAttribute' Residual → Option Value
-  | .present r => r.asValue
-  | _ => .none
+def Residual.asValue :=
+  Residual.asPartialValue >=> PartialValue.asValue
 
-def Value.toResidual (v : Value) (ty : CedarType) : Residual :=
-  .val v ty
+-- def Residual.asValue : Residual → Option Value
+--   | .val v _ => .some v
+--   | _        => .none
+--
+-- def PartialAttribute'.asValue : PartialAttribute' Residual → Option Value
+--   | .present r => r.asValue
+--   | _ => .none
+--
+-- def Value.toResidual (v : Value) (ty : CedarType) : Residual :=
+--   .val v ty
 
 def Residual.isError : Residual → Bool
   | .error _ => true
   | _        => false
 
-def PartialAttribute'.isError : PartialAttribute' Residual → Bool
-  | .present r => r.isError
-  | _ => false
+-- def PartialAttribute'.isError : PartialAttribute' Residual → Bool
+--   | .present r => r.isError
+--   | _ => false
 
 def Residual.typeOf : Residual → CedarType
+  | .access _ ty
   | .val _ ty
   | .var _ ty
   | .ite _ _ _ ty
@@ -106,7 +117,10 @@ def UnaryOp.canError : UnaryOp → Bool
   | _ => false
 
 -- Assumes the residual is well typed, so there can be no type errors.
-partial def Residual.errorFree : Residual → Bool
+def Residual.errorFree : Residual → Bool
+  -- TODO: Evaluating a nested unknown attribute may result in an
+  -- entity-does-not exist error or tag-not-found error, but both of these
+  -- should be ruled out by the entity consistency condition.
   | .val _ _ => true
   | .var _ _ => true
   | .binaryApp op x₁ x₂ _ =>
@@ -126,18 +140,43 @@ partial def Residual.errorFree : Residual → Bool
       List.sizeOf_lt_of_mem x.property
     x.val.errorFree
   | record xs _ =>
-    xs.attach₂.all λ ax =>
-      match ax.val.snd with
-      | .present a => a.errorFree
-      | _ => true
+    xs.attach₂.all (·.val.snd.errorFree)
   | _ => false
-termination_by 0
+-- termination_by 0
 -- decreasing_by all_goals sorry
 
+def AccessPath.evaluate (ap : AccessPath) (req : Request) (es : Entities) : Result Value :=
+  match ap with
+  | .context => .ok req.context
+  | .entityUID uid => .ok uid
+  | .getAttr ap' a => do
+    let v ← AccessPath.evaluate ap' req es
+    Cedar.Spec.getAttr v a es
+  | .getTag ap' t => do
+    let v ← AccessPath.evaluate ap' req es
+    match v with
+    | .prim (.entityUID v) => Cedar.Spec.getTag v t es
+    | _ => .error .typeError
+
+partial def PartialValue.evaluate (pv : PartialValue) (req : Request) (es : Entities) : Result Value :=
+  match pv with
+  | .prim p => .ok p
+  | .set s => .ok s
+  | .ext e => .ok e
+  | .record r => do
+    let t ← r.kvs.mapM₂ (λ v =>
+    bindAttr v.val.fst (match v.val.snd with
+      | .present v' =>
+        PartialValue.evaluate v' req es
+      | .unknown p _ => AccessPath.evaluate p req es))
+    .ok ∘ .record ∘ Map.make $ t
+termination_by pv
+
 -- The interpreter of `Residual` that defines its semantics
-partial def Residual.evaluate (x : Residual) (req : Request) (es: Entities) : Result Value :=
+def Residual.evaluate (x : Residual) (req : Request) (es: Entities) : Result Value :=
   match x with
-  | .val p _ => .ok p
+  | .val p _ => PartialValue.evaluate p req es
+  | .access p _ => AccessPath.evaluate p req es
   | .var v _ =>
     match v with
     | .principal => .ok req.principal
@@ -171,13 +210,7 @@ partial def Residual.evaluate (x : Residual) (req : Request) (es: Entities) : Re
     let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => evaluate x₁ req es)
     .ok (Set.make vs)
   | .record axs _ => do
-    let avs ← axs.mapM₂ (fun ⟨(a₁, x₁), _⟩ => bindAttr a₁
-      (match x₁ with
-      | .present x₁ => evaluate x₁ req es
-      | .presentUnknown ty t =>
-        evaluate (.getAttr t a₁ ty) req es
-      | .unknown ty t  =>
-        evaluate (.getAttr t a₁ ty) req es))
+    let avs ← axs.mapM₂ (fun ⟨(a₁, x₁), _⟩ => bindAttr a₁ (evaluate x₁ req es))
     .ok (Map.make avs)
   | .call xfn xs _ => do
     let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => evaluate x₁ req es)
@@ -190,14 +223,27 @@ decreasing_by
     rename_i h
     try have := List.sizeOf_lt_of_mem h
     try simp at h
-    -- sorry
-    -- omega
+    omega
 
+def AccessPath.allLiteralUIDs : AccessPath → Set EntityUID
+  | .context => Set.empty
+  | .entityUID uid =>  Set.singleton uid
+  | .getAttr p _ => AccessPath.allLiteralUIDs p
+  | .getTag p _ => AccessPath.allLiteralUIDs p
 
-partial def Residual.allLiteralUIDs (x : Residual) : Set EntityUID :=
+partial def PartialValue.allLiteralUIDs : PartialValue → Set EntityUID
+  | .prim (.entityUID uid)  => Set.singleton uid
+  -- TODO: original function wouldn't look inside record value like `{f: User::"alice"}`
+  | .record m => m.kvs.mapUnion₂ (λ ⟨⟨_attr, v⟩, _⟩ =>
+    match v with
+    | .present v' => PartialValue.allLiteralUIDs v'
+    | .unknown p _ => AccessPath.allLiteralUIDs p)
+  | .prim _  | .set _ | .ext _ => Set.empty
+
+def Residual.allLiteralUIDs (x : Residual) : Set EntityUID :=
   match x with
-  | .val (.prim (.entityUID uid)) _  => Set.singleton uid
-  | val _ _ => Set.empty
+  | .val v _ => PartialValue.allLiteralUIDs v
+  | .access p _ => AccessPath.allLiteralUIDs p
   | .error _e                          => Set.empty
   | .var _ _                           => Set.empty
   | .ite x₁ x₂ x₃ _      =>
@@ -215,10 +261,7 @@ partial def Residual.allLiteralUIDs (x : Residual) : Set EntityUID :=
   | .set x _             =>
     x.mapUnion₁ (λ ⟨v, _⟩ => Residual.allLiteralUIDs v)
   | .record x _          =>
-    x.mapUnion₂ (λ ⟨⟨_attr, v⟩, _⟩ => Residual.allLiteralUIDs (
-      match v with
-      | .present v => v
-      | .unknown _ t | .presentUnknown _ t => t))
+    x.mapUnion₂ (λ ⟨⟨_attr, v⟩, _⟩ => Residual.allLiteralUIDs v)
   | .call _ x _          =>
     x.mapUnion₁ (λ ⟨v, _⟩ => Residual.allLiteralUIDs v)
 termination_by sizeOf x
@@ -229,17 +272,16 @@ decreasing_by
     try omega
   all_goals
     rename_i h
-    -- sorry
-    -- let so := List.sizeOf_lt_of_mem h
-    -- simp at *
-    -- omega
+    let so := List.sizeOf_lt_of_mem h
+    simp at *
+    omega
 
 mutual
 
 def decResidual (x y : Residual) : Decidable (x = y) := by
   cases x <;> cases y <;>
   try { apply isFalse ; intro h ; injection h }
-  case val.val x₁ tx  y₁ ty | var.var x₁ tx y₁ ty =>
+  case val.val x₁ tx  y₁ ty | var.var x₁ tx y₁ ty | access.access x₁ tx y₁ ty =>
     exact match decEq x₁ y₁, decEq tx ty with
     | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
     | isFalse _, _  | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
@@ -280,31 +322,13 @@ def decResidual (x y : Residual) : Decidable (x = y) := by
     | isTrue h₁ => isTrue (by rw [h₁])
     | isFalse _ => isFalse (by intro h; injection h; contradiction)
 
-def decProdAttrResidualList (axs ays : List (Prod Attr (PartialAttribute' Residual))) : Decidable (axs = ays) :=
+def decProdAttrResidualList (axs ays : List (Prod Attr Residual)) : Decidable (axs = ays) :=
   match axs, ays with
   | [], [] => isTrue rfl
   | _::_, [] | [], _::_ => isFalse (by intro; contradiction)
   | (a, x)::axs, (a', y)::ays => by
     simp only [List.cons.injEq, Prod.mk.injEq]
-    have h₁ : Decidable (x = y) := by
-      cases x <;> cases y
-      case present.present =>
-        rename_i x y
-        simp only [PartialAttribute'.present.injEq]
-        exact decResidual x y
-      case unknown.unknown =>
-        simp only [PartialAttribute'.unknown.injEq]
-        rename_i x _ y
-        have := decResidual x y
-        apply instDecidableAnd
-      case presentUnknown.presentUnknown =>
-        simp only [PartialAttribute'.presentUnknown.injEq]
-        rename_i x _ y
-        have := decResidual x y
-        apply instDecidableAnd
-      all_goals
-        simp only [reduceCtorEq]
-        exact instDecidableFalse
+    have h₁ : Decidable (x = y) := decResidual x y
     cases h₁ <;> cases decProdAttrResidualList axs ays
     case isTrue.isTrue =>
       rename_i h₁ h₂
@@ -347,7 +371,7 @@ def TypedExpr.toResidual : TypedExpr → Residual
   | .getAttr expr attr ty => .getAttr (TypedExpr.toResidual expr) attr ty
   | .hasAttr expr attr ty => .hasAttr (TypedExpr.toResidual expr) attr ty
   | .set ls ty => .set (ls.map₁ (λ ⟨e, _⟩ => TypedExpr.toResidual e)) ty
-  | .record ls ty => .record (ls.attach₂.map (λ ⟨(a, e), _⟩ => (a, .present (TypedExpr.toResidual e)))) ty
+  | .record ls ty => .record (ls.attach₂.map (λ ⟨(a, e), _⟩ => (a, TypedExpr.toResidual e))) ty
   | .call xfn args ty => .call xfn (args.map₁ (λ ⟨e, _⟩ => TypedExpr.toResidual e)) ty
 decreasing_by
   all_goals (simp_wf ; try omega)

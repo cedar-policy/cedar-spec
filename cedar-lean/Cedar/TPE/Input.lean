@@ -34,39 +34,84 @@ structure PartialEntityUID where
 def PartialEntityUID.asEntityUID (self : PartialEntityUID) : Option EntityUID :=
   self.id.map (⟨self.ty, ·⟩)
 
+inductive AccessPath where
+ | context
+ | entityUID (uid : EntityUID)
+ | getAttr (p : AccessPath) (a : Attr)
+ | getTag (p : AccessPath) (t : Tag)
+deriving instance Repr, DecidableEq, Inhabited for AccessPath
+
 inductive PartialAttribute (T : Type _) where
-  | present (val : T)               -- Known present, known value
-  -- | absent (ty : CedarType)         -- Known absent, no value
-  | presentUnknown (ty : CedarType) -- Known present, unknown value
-  | unknown (ty : CedarType)        -- Unknown present, unknown value
-
+  | present (val : T)
+  | unknown (p: AccessPath) (ty : CedarType)
 deriving instance Repr, DecidableEq, Inhabited for PartialAttribute
-
-def PartialAttribute.mustBePresent : PartialAttribute T → Bool
-| present _ | presentUnknown _ => true
-| unknown _ => false
 
 inductive PartialValue where
   | prim (p : Prim)
-  | set (s : Set Value) -- Per Emina's design, sets cannot have partial values. TODO: understand why
+  | set (s : Set Value)
   | record (m : Map Attr (PartialAttribute PartialValue))
   | ext (x : Ext)
-
 deriving instance Repr, Inhabited for PartialValue
 
-instance : DecidableEq PartialValue := sorry
-instance : LT PartialValue := sorry
-instance : DecidableLT PartialValue := sorry
+mutual
 
-def PartialValue.asValue : PartialValue → Option Value
+def decPValue (v₁ v₂ : PartialValue) : Decidable (v₁ = v₂) := by
+  cases v₁ <;> cases v₂ <;>
+  try { apply isFalse ; intro h ; injection h }
+  case prim.prim w₁ w₂ | ext.ext w₁ w₂ =>
+    exact match decEq w₁ w₂ with
+    | isTrue h => isTrue (by rw [h])
+    | isFalse _ => isFalse (by intro h; injection h; contradiction)
+  case set.set s₁ s₂ =>
+    cases s₁ ; cases s₂ ; rename_i s₁ s₂
+    exact match decValueList s₁ s₂ with
+    | isTrue h => isTrue (by rw [h])
+    | isFalse h₁ => isFalse (by intro h₂; simp [h₁] at h₂)
+  case record.record r₁ r₂ =>
+    cases r₁ ; cases r₂ ; rename_i r₁ r₂
+    exact match decProdAttrPValueList r₁ r₂ with
+    | isTrue h => isTrue (by rw [h])
+    | isFalse h₁ => isFalse (by intro h₂; simp [h₁] at h₂)
+
+def decProdAttrPValueList (avs₁ avs₂ : List (Attr × PartialAttribute PartialValue)) : Decidable (avs₁ = avs₂):=
+  match avs₁, avs₂ with
+  | [], [] => isTrue rfl
+  | _::_, [] | [], _::_ => isFalse (by intro; contradiction)
+  | (a₁, v₁) :: vs₁, (a₂, v₂) :: vs₂ =>
+    have decV : Decidable (Eq v₁ v₂) := by
+      cases v₁ <;> cases v₂
+      case present.present =>
+        simp only [PartialAttribute.present.injEq]
+        apply decPValue
+      case unknown.unknown =>
+        simp only [PartialAttribute.unknown.injEq]
+        exact instDecidableAnd
+      all_goals
+        simp only [reduceCtorEq]
+        exact instDecidableFalse
+    match decEq a₁ a₂, decV, decProdAttrPValueList vs₁ vs₂ with
+    | isTrue h₁, isTrue h₂, isTrue h₃ => isTrue (by rw [h₁, h₂, h₃])
+    | isFalse _, _, _ | _, isFalse _, _ | _, _, isFalse _ =>
+      isFalse (by simp; intros; first | contradiction | assumption)
+
+end
+
+
+instance : DecidableEq PartialValue := decPValue
+
+
+
+-- instance : LT PartialValue := sorry
+-- instance : DecidableLT PartialValue := sorry
+
+partial def PartialValue.asValue : PartialValue → Option Value
   | .record as => (Value.record ∘ Map.make) <$> as.kvs.mapM₂ λ kv =>
     match kv.val.snd with
     | .present pv => do some (kv.val.fst, ←pv.asValue)
-    | _ => none -- TODO: allow .absent
+    | _ => none
   | .prim p   => .some p
   | .set es   => .some (.set es)
   | .ext x    => .some (.ext x)
-decreasing_by all_goals sorry
 
 def PartialValue.asEntityUID : PartialValue → Result EntityUID
   | .prim (.entityUID uid) => .ok uid
@@ -148,19 +193,10 @@ def partialIsValid {α} (o : Option α) (f : α → Bool) : Bool :=
 
 def requiredAttributePresent (r : Map Attr (PartialAttribute PartialValue)) (rty : Map Attr (Qualified CedarType)) (k : Attr) :=
   match rty.find? k with
-  | .some qty =>
-    -- TODO: if the expected qty is optional. Then do we need to not .none?
-    -- .none might be ambiguous
-    -- should be an error
-    !qty.isRequired ||
-    match r.find? k with
-    | .some (.present _)
-    | .some (.presentUnknown _)
-    | .some (.unknown _) => true
-    | .none => false
+  | .some qty => !qty.isRequired || (r.find? k|>.isSome)
   | _ => true
 
-def PartialValue.instanceOfType (v : PartialValue) (ty : CedarType) (env : TypeEnv) : Bool :=
+partial def PartialValue.instanceOfType (v : PartialValue) (ty : CedarType) (env : TypeEnv) : Bool :=
   match v, ty with
   | .prim (.bool b), .bool bty => instanceOfBoolType b bty
   | .prim (.int _), .int => true
@@ -173,14 +209,12 @@ def PartialValue.instanceOfType (v : PartialValue) (ty : CedarType) (env : TypeE
         | .some qty =>
           match v with
           | .present v => instanceOfType v qty.getType env
-          | .presentUnknown ty
-          | .unknown ty => ty == qty.getType
+          | .unknown _ ty => ty == qty.getType
         | _ => true))) &&
     rty.kvs.all (λ (k, _) => requiredAttributePresent r rty k)
   | .ext x, .ext xty => instanceOfExtType x xty
   | _, _ => false
     termination_by v
-    decreasing_by all_goals sorry
 
 def requestIsValid (env : TypeEnv) (req : PartialRequest) : Bool :=
   (partialIsValid req.principal.asEntityUID λ principal =>
@@ -210,8 +244,7 @@ where
         | .some tty => tags.values.all (λ v =>
           match v with
           | .present v => PartialValue.instanceOfType v tty env
-          | .presentUnknown ty
-          | .unknown ty => ty == tty)
+          | .unknown _attr ty => ty == tty)
         | .none     => tags == Map.empty)
     | .none       => false
   instanceOfActionSchema p :=
@@ -229,7 +262,7 @@ inductive ConcretizationError
   | entitiesDoNotMatch
   | invalidEnvironment
 
-def isValidAndConsistent (schema : Schema) (req₁ : Request) (es₁ : Entities) (req₂ : PartialRequest) (es₂ : PartialEntities) : Except ConcretizationError Unit :=
+partial def isValidAndConsistent (schema : Schema) (req₁ : Request) (es₁ : Entities) (req₂ : PartialRequest) (es₂ : PartialEntities) : Except ConcretizationError Unit :=
   match schema.environment? req₂.principal.ty req₂.resource.ty req₂.action with
   | .some env => do requestIsConsistent env; entitiesIsConsistent env; envIsWellFormed env
   | .none => .error .invalidEnvironment
@@ -244,20 +277,12 @@ where
         match a.find? kv.val.fst, kv.val.snd with
         | .some v, .present v' =>
           valueIsConsistent env v v'
-        | .some v, .unknown ty
-        | .some v, .presentUnknown ty => Value.instanceOfType v ty env
-        | .none, .present _
-        | .none, .presentUnknown _ => false
-        | .none, .unknown _ => true) &&
-      (a.kvs.all λ (k, v) =>
-        match a'.find? k with
-        | .some (.present _)
-        | .some (.unknown _)
-        | .some (.presentUnknown _) => true
-        | .none => false)
+        | .some v, .unknown _ ty => Value.instanceOfType v ty env
+        | .none, .present _ => false
+        | .none, .unknown _ _ => true) &&
+      (a.kvs.all λ (k, v) => a'.find? k|>.isSome)
     | _, _ => false
   termination_by pv
-  decreasing_by all_goals sorry
 
   requestIsConsistent env :=
   if !requestIsValid env req₂ || !requestMatchesEnvironment env req₁
@@ -307,13 +332,12 @@ open Cedar.Spec
 open Cedar.Validation
 open Cedar.TPE
 
-def Value.asPartialValue : Value → PartialValue
+partial def Value.asPartialValue : Value → PartialValue
   | .prim p => .prim p
   | .ext x => .ext x
   | .set s => .set s
   | .record as => .record ∘ Map.mk $ as.kvs.attach₂.map λ kv => (kv.val.fst, .present kv.val.snd.asPartialValue)
-decreasing_by
-  all_goals sorry
+-- decreasing_by
   --have : sizeOf as.kvs < sizeOf as := by
   --  simp only [Map.sizeOf_lt_of_kvs]
   --simp only [record.sizeOf_spec, gt_iff_lt]
@@ -340,6 +364,7 @@ def EntityData.asPartial (data : EntityData) : PartialEntityData :=
 
 def Entities.asPartial (entities: Entities) : PartialEntities :=
   entities.mapOnValues EntityData.asPartial
+
 
 
 end Cedar.Spec
