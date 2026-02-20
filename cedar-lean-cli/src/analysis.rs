@@ -15,7 +15,7 @@
  */
 use crate::util::{AnalyzePolicyFindingsSer, OpenRequestEnv};
 use crate::{err::ExecError, util::RequestEnvSer};
-use cedar_lean_ffi::CedarLeanFfi;
+use cedar_lean_ffi::{CedarLeanFfi, FfiError, LeanSchema};
 use cedar_policy::{Effect, Policy, PolicyId, PolicySet, RequestEnv, RestrictedExpression, Schema};
 use itertools::Itertools;
 use nonempty::NonEmpty;
@@ -26,151 +26,174 @@ use std::{
     iter::zip,
 };
 
-/// Analyze a Cedar `PolicySet` with respect to a given Cedar `Schema` and print the findings
-pub fn analyze_policyset(
-    policy_set: PolicySet,
-    schema: Schema,
+pub struct Analyzer<'a> {
+    /// `CedarLeanFfi`, initialized once and used for many calls
+    lean_ffi: CedarLeanFfi,
+    /// Rust schema object
+    schema: &'a Schema,
+    /// Lean schema object, parsed/deserialized once and used for many calls
+    lean_schema: LeanSchema,
+    /// Whether to output in JSON
     json_output: bool,
-) -> Result<(), ExecError> {
-    let mut policy_vacuity_results = HashMap::new();
+}
 
-    let req_envs = OpenRequestEnv::any().to_request_envs(&schema)?;
-    let policies: Vec<&Policy> = policy_set.policies().collect();
-
-    for policy in policies.iter() {
-        let pvr = policy_vacuous(policy, &schema, &req_envs)?;
-        policy_vacuity_results.insert(policy.id().clone(), pvr);
+impl<'a> Analyzer<'a> {
+    pub fn new(schema: &'a Schema, json_output: bool) -> Result<Self, FfiError> {
+        let lean_ffi = CedarLeanFfi::new();
+        let lean_schema = lean_ffi.load_lean_schema_object(schema)?;
+        Ok(Self {
+            lean_ffi,
+            schema,
+            lean_schema,
+            json_output,
+        })
     }
 
-    // p1 |-> [envF_1, envF_2, ..., envF_n] and p2 \in envF_i then p1 and p2 are equivalent for the ith request environment
-    let mut redundant_findings: HashMap<PolicyId, Vec<HashSet<PolicyId>>> = HashMap::new();
-    // p1 |-> [envF_1, envF_2, ..., envF_n] and p2 \in envF_i then p2 shadows p1 for the ith request environment
-    let mut permit_shadowed_by_permit_findings: HashMap<PolicyId, Vec<HashSet<PolicyId>>> =
-        HashMap::new();
-    // p1 |-> [envF_1, envF_2, ..., envF_n] and p2 \in envF_i then p2 overrides p1 for the ith request environment
-    let mut permit_overriden_by_forbid_findings: HashMap<PolicyId, Vec<HashSet<PolicyId>>> =
-        HashMap::new();
-    // p1 |-> [envF_1, envF_2, ..., envF_n] and p2 \in envF_i then p2 shadows p1 for the ith request environment
-    let mut forbid_shadowed_by_forbid_findigns: HashMap<PolicyId, Vec<HashSet<PolicyId>>> =
-        HashMap::new();
+    /// Change the `json_output` setting without reconstructing an entire new `Analyzer`
+    pub fn set_json_output(&mut self, json_output: bool) {
+        self.json_output = json_output;
+    }
 
-    let policyset_vacuity_results = policyset_vacuous(&policy_set, &schema, &req_envs)?;
+    /// Analyze a Cedar `PolicySet` with respect to the `Analyzer`'s `Schema` and print the findings
+    pub fn analyze_policyset(&self, policy_set: PolicySet) -> Result<(), ExecError> {
+        let mut policy_vacuity_results = HashMap::new();
 
-    for [policy1, policy2] in policies.iter().array_combinations() {
-        let svr = policy_vacuity_results
-            .get(policy1.id())
-            .expect("Vacuousness of policy1 not precomputed");
-        let tvr = policy_vacuity_results
-            .get(policy2.id())
-            .expect("Vacuousness of policy2 not precomputed");
-        match (policy1.effect(), policy2.effect()) {
-            (Effect::Permit, Effect::Permit) => {
-                let shadowing_results = compute_permit_shadowing_result(
-                    policy1, svr, policy2, tvr, &schema, &req_envs,
-                )?;
-                update_findings(
-                    policy1.id(),
-                    policy2.id(),
-                    &shadowing_results,
-                    &mut redundant_findings,
-                    ShadowingResult::Equivalent,
-                );
-                update_findings(
-                    policy2.id(),
-                    policy1.id(),
-                    &shadowing_results,
-                    &mut redundant_findings,
-                    ShadowingResult::Equivalent,
-                );
-                update_findings(
-                    policy1.id(),
-                    policy2.id(),
-                    &shadowing_results,
-                    &mut permit_shadowed_by_permit_findings,
-                    ShadowingResult::Policy2Shadows1,
-                );
-                update_findings(
-                    policy2.id(),
-                    policy1.id(),
-                    &shadowing_results,
-                    &mut permit_shadowed_by_permit_findings,
-                    ShadowingResult::Policy1Shadows2,
-                );
-            }
-            (Effect::Permit, Effect::Forbid) => {
-                let override_results = compute_forbid_overrides_shadow_result(
-                    policy2, tvr, policy1, svr, &schema, &req_envs,
-                )?;
-                update_findings(
-                    policy1.id(),
-                    policy2.id(),
-                    &override_results,
-                    &mut permit_overriden_by_forbid_findings,
-                    OverrideResult::Overrides,
-                );
-            }
-            (Effect::Forbid, Effect::Permit) => {
-                let override_results = compute_forbid_overrides_shadow_result(
-                    policy1, svr, policy2, tvr, &schema, &req_envs,
-                )?;
-                update_findings(
-                    policy2.id(),
-                    policy1.id(),
-                    &override_results,
-                    &mut permit_overriden_by_forbid_findings,
-                    OverrideResult::Overrides,
-                );
-            }
-            (Effect::Forbid, Effect::Forbid) => {
-                let shadowing_results = compute_forbid_shadowing_result(
-                    policy1, svr, policy2, tvr, &schema, &req_envs,
-                )?;
-                update_findings(
-                    policy1.id(),
-                    policy2.id(),
-                    &shadowing_results,
-                    &mut redundant_findings,
-                    ShadowingResult::Equivalent,
-                );
-                update_findings(
-                    policy2.id(),
-                    policy1.id(),
-                    &shadowing_results,
-                    &mut redundant_findings,
-                    ShadowingResult::Equivalent,
-                );
-                update_findings(
-                    policy1.id(),
-                    policy2.id(),
-                    &shadowing_results,
-                    &mut forbid_shadowed_by_forbid_findigns,
-                    ShadowingResult::Policy2Shadows1,
-                );
-                update_findings(
-                    policy2.id(),
-                    policy1.id(),
-                    &shadowing_results,
-                    &mut forbid_shadowed_by_forbid_findigns,
-                    ShadowingResult::Policy1Shadows2,
-                );
+        let req_envs = OpenRequestEnv::any().to_request_envs(&self.schema)?;
+        let policies: Vec<&Policy> = policy_set.policies().collect();
+
+        for policy in policies.iter() {
+            let pvr = self.policy_vacuous(policy, &req_envs)?;
+            policy_vacuity_results.insert(policy.id().clone(), pvr);
+        }
+
+        // p1 |-> [envF_1, envF_2, ..., envF_n] and p2 \in envF_i then p1 and p2 are equivalent for the ith request environment
+        let mut redundant_findings: HashMap<PolicyId, Vec<HashSet<PolicyId>>> = HashMap::new();
+        // p1 |-> [envF_1, envF_2, ..., envF_n] and p2 \in envF_i then p2 shadows p1 for the ith request environment
+        let mut permit_shadowed_by_permit_findings: HashMap<PolicyId, Vec<HashSet<PolicyId>>> =
+            HashMap::new();
+        // p1 |-> [envF_1, envF_2, ..., envF_n] and p2 \in envF_i then p2 overrides p1 for the ith request environment
+        let mut permit_overriden_by_forbid_findings: HashMap<PolicyId, Vec<HashSet<PolicyId>>> =
+            HashMap::new();
+        // p1 |-> [envF_1, envF_2, ..., envF_n] and p2 \in envF_i then p2 shadows p1 for the ith request environment
+        let mut forbid_shadowed_by_forbid_findigns: HashMap<PolicyId, Vec<HashSet<PolicyId>>> =
+            HashMap::new();
+
+        let policyset_vacuity_results = self.policyset_vacuous(&policy_set, &req_envs)?;
+
+        for [policy1, policy2] in policies.iter().array_combinations() {
+            let svr = policy_vacuity_results
+                .get(policy1.id())
+                .expect("Vacuousness of policy1 not precomputed");
+            let tvr = policy_vacuity_results
+                .get(policy2.id())
+                .expect("Vacuousness of policy2 not precomputed");
+            match (policy1.effect(), policy2.effect()) {
+                (Effect::Permit, Effect::Permit) => {
+                    let shadowing_results = self
+                        .compute_permit_shadowing_result(policy1, svr, policy2, tvr, &req_envs)?;
+                    update_findings(
+                        policy1.id(),
+                        policy2.id(),
+                        &shadowing_results,
+                        &mut redundant_findings,
+                        ShadowingResult::Equivalent,
+                    );
+                    update_findings(
+                        policy2.id(),
+                        policy1.id(),
+                        &shadowing_results,
+                        &mut redundant_findings,
+                        ShadowingResult::Equivalent,
+                    );
+                    update_findings(
+                        policy1.id(),
+                        policy2.id(),
+                        &shadowing_results,
+                        &mut permit_shadowed_by_permit_findings,
+                        ShadowingResult::Policy2Shadows1,
+                    );
+                    update_findings(
+                        policy2.id(),
+                        policy1.id(),
+                        &shadowing_results,
+                        &mut permit_shadowed_by_permit_findings,
+                        ShadowingResult::Policy1Shadows2,
+                    );
+                }
+                (Effect::Permit, Effect::Forbid) => {
+                    let override_results = self.compute_forbid_overrides_shadow_result(
+                        policy2, tvr, policy1, svr, &req_envs,
+                    )?;
+                    update_findings(
+                        policy1.id(),
+                        policy2.id(),
+                        &override_results,
+                        &mut permit_overriden_by_forbid_findings,
+                        OverrideResult::Overrides,
+                    );
+                }
+                (Effect::Forbid, Effect::Permit) => {
+                    let override_results = self.compute_forbid_overrides_shadow_result(
+                        policy1, svr, policy2, tvr, &req_envs,
+                    )?;
+                    update_findings(
+                        policy2.id(),
+                        policy1.id(),
+                        &override_results,
+                        &mut permit_overriden_by_forbid_findings,
+                        OverrideResult::Overrides,
+                    );
+                }
+                (Effect::Forbid, Effect::Forbid) => {
+                    let shadowing_results = self
+                        .compute_forbid_shadowing_result(policy1, svr, policy2, tvr, &req_envs)?;
+                    update_findings(
+                        policy1.id(),
+                        policy2.id(),
+                        &shadowing_results,
+                        &mut redundant_findings,
+                        ShadowingResult::Equivalent,
+                    );
+                    update_findings(
+                        policy2.id(),
+                        policy1.id(),
+                        &shadowing_results,
+                        &mut redundant_findings,
+                        ShadowingResult::Equivalent,
+                    );
+                    update_findings(
+                        policy1.id(),
+                        policy2.id(),
+                        &shadowing_results,
+                        &mut forbid_shadowed_by_forbid_findigns,
+                        ShadowingResult::Policy2Shadows1,
+                    );
+                    update_findings(
+                        policy2.id(),
+                        policy1.id(),
+                        &shadowing_results,
+                        &mut forbid_shadowed_by_forbid_findigns,
+                        ShadowingResult::Policy1Shadows2,
+                    );
+                }
             }
         }
+        let findings = AnalyzePolicyFindings::new(
+            req_envs,
+            policyset_vacuity_results,
+            policy_vacuity_results,
+            redundant_findings,
+            permit_shadowed_by_permit_findings,
+            permit_overriden_by_forbid_findings,
+            forbid_shadowed_by_forbid_findigns,
+        );
+        if self.json_output {
+            findings.print_json(&policy_set);
+        } else {
+            findings.print_table();
+        }
+        Ok(())
     }
-    let findings = AnalyzePolicyFindings::new(
-        req_envs,
-        policyset_vacuity_results,
-        policy_vacuity_results,
-        redundant_findings,
-        permit_shadowed_by_permit_findings,
-        permit_overriden_by_forbid_findings,
-        forbid_shadowed_by_forbid_findigns,
-    );
-    if json_output {
-        findings.print_json(&policy_set);
-    } else {
-        findings.print_table();
-    }
-    Ok(())
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -449,47 +472,60 @@ fn vacuous_finding_from_results(results: &[VacuityResult]) -> VacuityResult {
     }
 }
 
-/// Is a given PolicySet vacuous (per request environment)
-fn policyset_vacuous(
-    policyset: &PolicySet,
-    schema: &Schema,
-    req_envs: &Vec<RequestEnv>,
-) -> Result<Vec<VacuityResult>, ExecError> {
-    let mut vr = Vec::new();
+impl<'a> Analyzer<'a> {
+    /// Is a given PolicySet vacuous (per request environment)
+    fn policyset_vacuous(
+        &self,
+        policyset: &PolicySet,
+        req_envs: &Vec<RequestEnv>,
+    ) -> Result<Vec<VacuityResult>, ExecError> {
+        let mut vr = Vec::new();
 
-    let lean_context = CedarLeanFfi::new();
-    let schema = lean_context.load_lean_schema_object(schema)?;
-    for req_env in req_envs {
-        if lean_context.run_check_always_allows(policyset, schema.clone(), req_env)? {
-            vr.push(VacuityResult::MatchesAll);
-        } else if lean_context.run_check_always_denies(policyset, schema.clone(), req_env)? {
-            vr.push(VacuityResult::MatchesNone);
-        } else {
-            vr.push(VacuityResult::MatchesSome);
+        for req_env in req_envs {
+            if self.lean_ffi.run_check_always_allows(
+                policyset,
+                self.lean_schema.clone(),
+                req_env,
+            )? {
+                vr.push(VacuityResult::MatchesAll);
+            } else if self.lean_ffi.run_check_always_denies(
+                policyset,
+                self.lean_schema.clone(),
+                req_env,
+            )? {
+                vr.push(VacuityResult::MatchesNone);
+            } else {
+                vr.push(VacuityResult::MatchesSome);
+            }
         }
+        Ok(vr)
     }
-    Ok(vr)
-}
 
-/// Is a given Policy vacuous (per request environment)
-fn policy_vacuous(
-    policy: &Policy,
-    schema: &Schema,
-    req_envs: &Vec<RequestEnv>,
-) -> Result<Vec<VacuityResult>, ExecError> {
-    let mut vr = Vec::new();
-    let lean_context = CedarLeanFfi::new();
-    let schema = lean_context.load_lean_schema_object(schema)?;
-    for req_env in req_envs {
-        if lean_context.run_check_always_matches(policy, schema.clone(), req_env)? {
-            vr.push(VacuityResult::MatchesAll);
-        } else if lean_context.run_check_never_matches(policy, schema.clone(), req_env)? {
-            vr.push(VacuityResult::MatchesNone);
-        } else {
-            vr.push(VacuityResult::MatchesSome);
+    /// Is a given Policy vacuous (per request environment)
+    fn policy_vacuous(
+        &self,
+        policy: &Policy,
+        req_envs: &Vec<RequestEnv>,
+    ) -> Result<Vec<VacuityResult>, ExecError> {
+        let mut vr = Vec::new();
+        for req_env in req_envs {
+            if self
+                .lean_ffi
+                .run_check_always_matches(policy, self.lean_schema.clone(), req_env)?
+            {
+                vr.push(VacuityResult::MatchesAll);
+            } else if self.lean_ffi.run_check_never_matches(
+                policy,
+                self.lean_schema.clone(),
+                req_env,
+            )? {
+                vr.push(VacuityResult::MatchesNone);
+            } else {
+                vr.push(VacuityResult::MatchesSome);
+            }
         }
+        Ok(vr)
     }
-    Ok(vr)
 }
 
 /// Represents if policy1 is shadowed by policy2 or vice versa
@@ -505,61 +541,69 @@ enum ShadowingResult {
     NoResult,
 }
 
-/// Compute Redudant and Shadowed relationship between `policy1` and `policy2` (per environment)
-fn compute_permit_shadowing_result(
-    policy1: &Policy,
-    policy1_vacuity_results: &Vec<VacuityResult>,
-    policy2: &Policy,
-    policy2_vacuity_results: &Vec<VacuityResult>,
-    schema: &Schema,
-    req_envs: &Vec<RequestEnv>,
-) -> Result<Vec<ShadowingResult>, ExecError> {
-    let mut results = Vec::new();
-    let pset1 = PolicySet::from_policies([policy1.to_owned()]).map_err(|err| {
-        ExecError::PolicyIntoPolicySetError {
-            error: Box::new(err),
-        }
-    })?;
-    let pset2 = PolicySet::from_policies([policy2.to_owned()]).map_err(|err| {
-        ExecError::PolicyIntoPolicySetError {
-            error: Box::new(err),
-        }
-    })?;
+impl<'a> Analyzer<'a> {
+    /// Compute Redudant and Shadowed relationship between `policy1` and `policy2` (per environment)
+    fn compute_permit_shadowing_result(
+        &self,
+        policy1: &Policy,
+        policy1_vacuity_results: &Vec<VacuityResult>,
+        policy2: &Policy,
+        policy2_vacuity_results: &Vec<VacuityResult>,
+        req_envs: &Vec<RequestEnv>,
+    ) -> Result<Vec<ShadowingResult>, ExecError> {
+        let mut results = Vec::new();
+        let pset1 = PolicySet::from_policies([policy1.to_owned()]).map_err(|err| {
+            ExecError::PolicyIntoPolicySetError {
+                error: Box::new(err),
+            }
+        })?;
+        let pset2 = PolicySet::from_policies([policy2.to_owned()]).map_err(|err| {
+            ExecError::PolicyIntoPolicySetError {
+                error: Box::new(err),
+            }
+        })?;
 
-    let lean_context = CedarLeanFfi::new();
-    let schema = lean_context.load_lean_schema_object(schema)?;
-    for ((vr1, vr2), req_env) in zip(
-        zip(policy1_vacuity_results, policy2_vacuity_results),
-        req_envs,
-    ) {
-        match (vr1, vr2) {
-            (VacuityResult::MatchesNone, _) | (_, VacuityResult::MatchesNone) => {
-                results.push(ShadowingResult::NoResult)
-            }
-            (VacuityResult::MatchesAll, VacuityResult::MatchesAll) => {
-                results.push(ShadowingResult::Equivalent)
-            }
-            (VacuityResult::MatchesAll, VacuityResult::MatchesSome) => {
-                results.push(ShadowingResult::Policy1Shadows2)
-            }
-            (VacuityResult::MatchesSome, VacuityResult::MatchesAll) => {
-                results.push(ShadowingResult::Policy2Shadows1)
-            }
-            (VacuityResult::MatchesSome, VacuityResult::MatchesSome) => {
-                let policy1shadows2 =
-                    lean_context.run_check_implies(&pset1, &pset2, schema.clone(), req_env)?;
-                let policy2shadows1 =
-                    lean_context.run_check_implies(&pset2, &pset1, schema.clone(), req_env)?;
-                match (policy1shadows2, policy2shadows1) {
-                    (true, true) => results.push(ShadowingResult::Equivalent),
-                    (true, false) => results.push(ShadowingResult::Policy2Shadows1),
-                    (false, true) => results.push(ShadowingResult::Policy1Shadows2),
-                    (false, false) => results.push(ShadowingResult::NoResult),
+        for ((vr1, vr2), req_env) in zip(
+            zip(policy1_vacuity_results, policy2_vacuity_results),
+            req_envs,
+        ) {
+            match (vr1, vr2) {
+                (VacuityResult::MatchesNone, _) | (_, VacuityResult::MatchesNone) => {
+                    results.push(ShadowingResult::NoResult)
+                }
+                (VacuityResult::MatchesAll, VacuityResult::MatchesAll) => {
+                    results.push(ShadowingResult::Equivalent)
+                }
+                (VacuityResult::MatchesAll, VacuityResult::MatchesSome) => {
+                    results.push(ShadowingResult::Policy1Shadows2)
+                }
+                (VacuityResult::MatchesSome, VacuityResult::MatchesAll) => {
+                    results.push(ShadowingResult::Policy2Shadows1)
+                }
+                (VacuityResult::MatchesSome, VacuityResult::MatchesSome) => {
+                    let policy1shadows2 = self.lean_ffi.run_check_implies(
+                        &pset1,
+                        &pset2,
+                        self.lean_schema.clone(),
+                        req_env,
+                    )?;
+                    let policy2shadows1 = self.lean_ffi.run_check_implies(
+                        &pset2,
+                        &pset1,
+                        self.lean_schema.clone(),
+                        req_env,
+                    )?;
+                    match (policy1shadows2, policy2shadows1) {
+                        (true, true) => results.push(ShadowingResult::Equivalent),
+                        (true, false) => results.push(ShadowingResult::Policy2Shadows1),
+                        (false, true) => results.push(ShadowingResult::Policy1Shadows2),
+                        (false, false) => results.push(ShadowingResult::NoResult),
+                    }
                 }
             }
         }
+        Ok(results)
     }
-    Ok(results)
 }
 
 /// Represents if the Forbid policy overrides the Permit policy
@@ -569,92 +613,89 @@ enum OverrideResult {
     NoResult, // Either the Forbid or Permit policy is vacuous or there is a request allowed by the Permit policy that is not forbidden by the Forbid policy
 }
 
-/// Determine if forbid policy overrides permit policy (per environment)
-fn compute_forbid_overrides_shadow_result(
-    forbid_policy: &Policy,
-    forbid_vacuous_results: &Vec<VacuityResult>,
-    permit_policy: &Policy,
-    permit_vacuous_results: &Vec<VacuityResult>,
-    schema: &Schema,
-    req_envs: &Vec<RequestEnv>,
-) -> Result<Vec<OverrideResult>, ExecError> {
-    let mut results = Vec::new();
-
-    let lean_context = CedarLeanFfi::new();
-    let schema = lean_context.load_lean_schema_object(schema)?;
-    for ((forbid_vr, permit_vr), req_env) in zip(
-        zip(forbid_vacuous_results, permit_vacuous_results),
-        req_envs,
-    ) {
-        match (forbid_vr, permit_vr) {
+impl<'a> Analyzer<'a> {
+    /// Determine if forbid policy overrides permit policy (per environment)
+    fn compute_forbid_overrides_shadow_result(
+        &self,
+        forbid_policy: &Policy,
+        forbid_vacuous_results: &Vec<VacuityResult>,
+        permit_policy: &Policy,
+        permit_vacuous_results: &Vec<VacuityResult>,
+        req_envs: &Vec<RequestEnv>,
+    ) -> Result<Vec<OverrideResult>, ExecError> {
+        let mut results = Vec::new();
+        for ((forbid_vr, permit_vr), req_env) in zip(
+            zip(forbid_vacuous_results, permit_vacuous_results),
+            req_envs,
+        ) {
+            match (forbid_vr, permit_vr) {
             (VacuityResult::MatchesNone, _) | (VacuityResult::MatchesAll, _) |                                          // forbid policy is vacuous: does not apply or denies all
             (_, VacuityResult::MatchesNone) | (_, VacuityResult::MatchesAll) => results.push(OverrideResult::NoResult), // permit policy is vacuous: does not apply or allows all (no need to check overriding)
             _ => {
-                if lean_context.run_check_matches_implies(&permit_policy, &forbid_policy, schema.clone(), req_env)? {
+                if self.lean_ffi.run_check_matches_implies(&permit_policy, &forbid_policy, self.lean_schema.clone(), req_env)? {
                     results.push(OverrideResult::Overrides); // Every request allowed by permit is denied by forbid
                 } else {
                     results.push(OverrideResult::NoResult);  // some request allowed by permit is not denied by forbid
                 }
             }
         }
+        }
+        Ok(results)
     }
-    Ok(results)
-}
 
-/// Compute Shadowing (and redundancy) relationship between two policies (per request environment)
-fn compute_forbid_shadowing_result(
-    policy1: &Policy,
-    policy1_vacuity_results: &Vec<VacuityResult>,
-    policy2: &Policy,
-    policy2_vacuity_results: &Vec<VacuityResult>,
-    schema: &Schema,
-    req_envs: &Vec<RequestEnv>,
-) -> Result<Vec<ShadowingResult>, ExecError> {
-    let mut results = Vec::new();
+    /// Compute Shadowing (and redundancy) relationship between two policies (per request environment)
+    fn compute_forbid_shadowing_result(
+        &self,
+        policy1: &Policy,
+        policy1_vacuity_results: &Vec<VacuityResult>,
+        policy2: &Policy,
+        policy2_vacuity_results: &Vec<VacuityResult>,
+        req_envs: &Vec<RequestEnv>,
+    ) -> Result<Vec<ShadowingResult>, ExecError> {
+        let mut results = Vec::new();
 
-    let lean_context = CedarLeanFfi::new();
-    let schema = lean_context.load_lean_schema_object(schema)?;
-    for ((vr1, vr2), req_env) in zip(
-        zip(policy1_vacuity_results, policy2_vacuity_results),
-        req_envs,
-    ) {
-        // Forbid vacuity results are computed on them as if they were permit policies
-        match (vr1, vr2) {
-            (VacuityResult::MatchesNone, _) | (_, VacuityResult::MatchesNone) => {
-                results.push(ShadowingResult::NoResult) // One of the two policies is vacuous
-            }
-            (VacuityResult::MatchesAll, VacuityResult::MatchesAll) => {
-                results.push(ShadowingResult::Equivalent) // Both policies deny all requests
-            }
-            (VacuityResult::MatchesAll, VacuityResult::MatchesSome) => {
-                results.push(ShadowingResult::Policy1Shadows2) // policy1 denies all requests, policy2 denies some
-            }
-            (VacuityResult::MatchesSome, VacuityResult::MatchesAll) => {
-                results.push(ShadowingResult::Policy2Shadows1) // policy2 denies all requests, policy1 denies some
-            }
-            (VacuityResult::MatchesSome, VacuityResult::MatchesSome) => {
-                let policy1shadows2 = lean_context.run_check_matches_implies(
-                    &policy1,
-                    &policy2,
-                    schema.clone(),
-                    req_env,
-                )?;
-                let policy2shadows1 = lean_context.run_check_matches_implies(
-                    &policy2,
-                    &policy1,
-                    schema.clone(),
-                    req_env,
-                )?;
-                match (policy1shadows2, policy2shadows1) {
-                    (true, true) => results.push(ShadowingResult::Equivalent), // Equivalent
-                    (true, false) => results.push(ShadowingResult::Policy2Shadows1), // policy2 denies strictly more than policy1
-                    (false, true) => results.push(ShadowingResult::Policy1Shadows2), // policy1 denies strictly more than policy2
-                    (false, false) => results.push(ShadowingResult::NoResult),       // Incomparable
+        for ((vr1, vr2), req_env) in zip(
+            zip(policy1_vacuity_results, policy2_vacuity_results),
+            req_envs,
+        ) {
+            // Forbid vacuity results are computed on them as if they were permit policies
+            match (vr1, vr2) {
+                (VacuityResult::MatchesNone, _) | (_, VacuityResult::MatchesNone) => {
+                    results.push(ShadowingResult::NoResult) // One of the two policies is vacuous
+                }
+                (VacuityResult::MatchesAll, VacuityResult::MatchesAll) => {
+                    results.push(ShadowingResult::Equivalent) // Both policies deny all requests
+                }
+                (VacuityResult::MatchesAll, VacuityResult::MatchesSome) => {
+                    results.push(ShadowingResult::Policy1Shadows2) // policy1 denies all requests, policy2 denies some
+                }
+                (VacuityResult::MatchesSome, VacuityResult::MatchesAll) => {
+                    results.push(ShadowingResult::Policy2Shadows1) // policy2 denies all requests, policy1 denies some
+                }
+                (VacuityResult::MatchesSome, VacuityResult::MatchesSome) => {
+                    let policy1shadows2 = self.lean_ffi.run_check_matches_implies(
+                        &policy1,
+                        &policy2,
+                        self.lean_schema.clone(),
+                        req_env,
+                    )?;
+                    let policy2shadows1 = self.lean_ffi.run_check_matches_implies(
+                        &policy2,
+                        &policy1,
+                        self.lean_schema.clone(),
+                        req_env,
+                    )?;
+                    match (policy1shadows2, policy2shadows1) {
+                        (true, true) => results.push(ShadowingResult::Equivalent), // Equivalent
+                        (true, false) => results.push(ShadowingResult::Policy2Shadows1), // policy2 denies strictly more than policy1
+                        (false, true) => results.push(ShadowingResult::Policy1Shadows2), // policy1 denies strictly more than policy2
+                        (false, false) => results.push(ShadowingResult::NoResult), // Incomparable
+                    }
                 }
             }
         }
+        Ok(results)
     }
-    Ok(results)
 }
 
 /// if results[j] == result_filter then update the findings such that pid2 \in envF_i where pid1 |-> [envF_1, ..., envF_n]
@@ -847,47 +888,50 @@ fn print_compare_results(results: &[PolicySetComparisonResult]) {
     }
     table.printstd();
 }
-/// Compare `pset1` to `pset2` and print results
-pub fn compare_policysets(
-    pset1: PolicySet,
-    pset2: PolicySet,
-    schema: Schema,
-    json_output: bool,
-) -> Result<(), ExecError> {
-    let req_envs = OpenRequestEnv::any().to_request_envs(&schema)?;
-    let lean_ffi = CedarLeanFfi::new();
-    let schema = lean_ffi.load_lean_schema_object(&schema)?;
-    let comparison_results: Vec<PolicySetComparisonResult> = req_envs
-        .iter()
-        .map(|req_env| -> Result<PolicySetComparisonResult, ExecError> {
-            let fwd_implies =
-                lean_ffi.run_check_implies_with_cex(&pset1, &pset2, schema.clone(), req_env)?;
-            let bwd_implies =
-                lean_ffi.run_check_implies_with_cex(&pset2, &pset1, schema.clone(), req_env)?;
-            let status = match (fwd_implies, bwd_implies) {
-                (None, None) => PolicySetComparisonStatus::Equivalent,
-                (None, Some(cex)) => PolicySetComparisonStatus::LessPermissive {
-                    example: ExampleEnv(cex),
-                },
-                (Some(cex), None) => PolicySetComparisonStatus::MorePermissive {
-                    example: ExampleEnv(cex),
-                },
-                (Some(more_cex), Some(less_cex)) => PolicySetComparisonStatus::Incomparable {
-                    more_permissive_example: ExampleEnv(more_cex),
-                    less_permissive_example: ExampleEnv(less_cex),
-                },
-            };
-            Ok(PolicySetComparisonResult {
-                req_env: RequestEnvSer::new(req_env),
-                status,
+
+impl<'a> Analyzer<'a> {
+    /// Compare `pset1` to `pset2` and print results
+    pub fn compare_policysets(&self, pset1: PolicySet, pset2: PolicySet) -> Result<(), ExecError> {
+        let req_envs = OpenRequestEnv::any().to_request_envs(&self.schema)?;
+        let comparison_results: Vec<PolicySetComparisonResult> = req_envs
+            .iter()
+            .map(|req_env| -> Result<PolicySetComparisonResult, ExecError> {
+                let fwd_implies = self.lean_ffi.run_check_implies_with_cex(
+                    &pset1,
+                    &pset2,
+                    self.lean_schema.clone(),
+                    req_env,
+                )?;
+                let bwd_implies = self.lean_ffi.run_check_implies_with_cex(
+                    &pset2,
+                    &pset1,
+                    self.lean_schema.clone(),
+                    req_env,
+                )?;
+                let status = match (fwd_implies, bwd_implies) {
+                    (None, None) => PolicySetComparisonStatus::Equivalent,
+                    (None, Some(cex)) => PolicySetComparisonStatus::LessPermissive {
+                        example: ExampleEnv(cex),
+                    },
+                    (Some(cex), None) => PolicySetComparisonStatus::MorePermissive {
+                        example: ExampleEnv(cex),
+                    },
+                    (Some(more_cex), Some(less_cex)) => PolicySetComparisonStatus::Incomparable {
+                        more_permissive_example: ExampleEnv(more_cex),
+                        less_permissive_example: ExampleEnv(less_cex),
+                    },
+                };
+                Ok(PolicySetComparisonResult {
+                    req_env: RequestEnvSer::new(req_env),
+                    status,
+                })
             })
-        })
-        .collect::<Result<Vec<PolicySetComparisonResult>, ExecError>>()?;
-    if json_output {
-        let json = serde_json::to_string_pretty(&comparison_results).unwrap();
-        println!("{}", json);
-    } else {
-        print_compare_results(&comparison_results);
+            .collect::<Result<Vec<PolicySetComparisonResult>, ExecError>>()?;
+        if self.json_output {
+            serde_json::to_writer_pretty(std::io::stdout(), &comparison_results).unwrap();
+        } else {
+            print_compare_results(&comparison_results);
+        }
+        Ok(())
     }
-    Ok(())
 }
