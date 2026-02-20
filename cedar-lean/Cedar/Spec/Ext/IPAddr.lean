@@ -14,6 +14,8 @@
  limitations under the License.
 -/
 
+import Cedar.Spec.Ext.Util
+
 /-! This file defines Cedar IpAddr values and functions. -/
 
 namespace Cedar.Spec.Ext
@@ -136,7 +138,7 @@ private def parsePrefixNat (str : String) (digits : Nat) (size : Nat) : Option (
   let len := str.length
   if 0 < len && len ≤ digits && (str.startsWith "0" → str = "0")
   then do
-    let n ← str.toNat?
+    let n ← toNat?' str
     if n ≤ size then .some (Fin.ofNat (size+1) n) else .none
   else .none
 
@@ -144,7 +146,7 @@ private def parseNumV4 (str : String) : Option (BitVec 8) :=
   let len := str.length
   if 0 < len && len ≤ 3 && (str.startsWith "0" → str = "0")
   then do
-    let n ← str.toNat?
+    let n ← toNat?' str
     if n ≤ 0xff then .some n else .none
   else .none
 

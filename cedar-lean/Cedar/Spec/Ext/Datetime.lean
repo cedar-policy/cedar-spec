@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Data.Int64
+import Cedar.Spec.Ext.Util
 import Std.Time
 import Std.Time.Format
 
@@ -227,7 +228,7 @@ def parseUnit? (isNegative : Bool) (str : String) (suffix : String) : Option (In
     if digits.isEmpty
     then none
     else do
-      let nUnsignedUnits ← String.toNat? (String.ofList digits)
+      let nUnsignedUnits ← toNat?' (String.ofList digits)
       let units ← if isNegative
         then durationUnits? (Int.negOfNat nUnsignedUnits) suffix
         else durationUnits? (Int.ofNat nUnsignedUnits) suffix
