@@ -78,7 +78,7 @@ private theorem no_tags_type_implies_no_tags {uid : EntityUID} {env : TypeEnv} {
       · simp only [h₁, map_empty_contains_instance_of_ff]
     | inr h₁ =>
       replace ⟨_, h₁, ⟨e, _⟩⟩ := h₁
-      simp only [h₁, Map.empty, Map.contains, Map.find?, Map.kvs, List.find?, Option.isSome]
+      simp only [h₁, Map.empty, Map.contains, Map.find?, Map.toList, List.find?, Option.isSome]
       constructor
       constructor
   · exact map_empty_contains_instance_of_ff
@@ -98,7 +98,7 @@ private theorem no_type_implies_no_tags {uid : EntityUID} {env : TypeEnv} {entit
       simp only [h₁, reduceCtorEq] at h₂
     | inr h₁ =>
       replace ⟨_, h₁, ⟨e, _⟩⟩ := h₁
-      simp only [h₁, Map.empty, Map.contains, Map.find?, Map.kvs, List.find?, Option.isSome]
+      simp only [h₁, Map.empty, Map.contains, Map.find?, Map.toList, List.find?, Option.isSome]
       constructor
       constructor
   · exact map_empty_contains_instance_of_ff

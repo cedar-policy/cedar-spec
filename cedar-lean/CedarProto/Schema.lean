@@ -132,7 +132,7 @@ namespace Cedar.Validation.Schema
 --   acts : ActionSchema
 
 private def mergeMaps {α β} [LT α] [DecidableLT α] [BEq α] (x1 x2 : Data.Map α β) : Data.Map α β :=
-  match x1.kvs, x2.kvs with
+  match x1.toList, x2.toList with
   | [], _      => x2
   | _, []      => x1
   | kvs1, kvs2 => Data.Map.mk $ (List.merge kvs1 kvs2 (·.1 == ·.1)).eraseRepsBy (·.1 == ·.1)

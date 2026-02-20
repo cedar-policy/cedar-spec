@@ -94,7 +94,7 @@ decreasing_by
     rename_i hmem
     have h := List.sizeOf_lt_of_mem hmem
     cases rty
-    simp [Map.toList, Map.kvs] at h ⊢
+    simp at h ⊢
     omega
 
 def StandardSchemaEntry.validateWellFormed (env : TypeEnv) (entry : StandardSchemaEntry) : EnvironmentValidationResult :=

@@ -51,17 +51,17 @@ private theorem interpret_term_set_lit_id {εs : SymEntities} {I : Interpretatio
 
 private theorem interpret_term_record_lit_id {εs : SymEntities} {I : Interpretation} {r: Map Attr Term}
   (h₁ : Term.WellFormed εs (Term.record r))
-  (ih : ∀ (a : Attr) (t : Term), (a, t) ∈ r.1 → Term.interpret I t = t) :
+  (ih : ∀ (a : Attr) (t : Term), (a, t) ∈ r.toList → Term.interpret I t = t) :
   Term.interpret I (Term.record r) = Term.record r
 := by
-  simp [interpret_term_record, Map.kvs]
-  have h₄ : List.map (fun x => (x.fst, Term.interpret I x.snd)) r.1 = List.map id r.1 := by
+  simp [interpret_term_record, Map.toList]
+  have h₄ : List.map (fun x => (x.fst, Term.interpret I x.snd)) r.toList = List.map id r.toList := by
     apply List.map_congr
     intro x h₂
     simp only [id_eq, ih x.fst x.snd h₂]
   simp only [List.map_id] at h₄
   replace h₂ := wf_term_record_implies_wf_map h₁
-  simp only [Map.WellFormed, Map.toList, Map.kvs] at h₂
+  simp only [Map.WellFormed] at h₂
   rw [← h₄, eq_comm] at h₂
   exact h₂
 
@@ -128,17 +128,16 @@ private theorem interpret_term_record_lit {I : Interpretation} {r : Map Attr Ter
     List.all_pmap_subtype λ (x : Attr × Term) => Term.isLiteral x.snd,
     List.all_eq_true]
   intro x h₁
-  simp only [Map.make, Map.kvs] at h₁
-  have h₂ := List.canonicalize_subseteq Prod.fst (List.map (fun x => (x.fst, Term.interpret I x.snd)) r.1)
+  simp only [Map.make] at h₁
+  have h₂ := List.canonicalize_subseteq Prod.fst (r.toList.map λ x => (x.fst, Term.interpret I x.snd))
   simp only [List.subset_def] at h₂
   specialize h₂ h₁
   simp only [List.mem_map] at h₂
   replace ⟨x', h₁, h₂⟩ := h₂
   subst h₂
   simp only
-  have h₂ : (x'.fst, x'.snd) = x' := by simp only
   apply ih x'.fst x'.snd
-  simp only [h₂, Map.toList, Map.kvs, h₁]
+  simp [h₁]
 
 private theorem interpret_wf_is_wfl {εs : SymEntities} {I : Interpretation} {t : Term} {ty : TermType} :
   Interpretation.WellFormed I εs →

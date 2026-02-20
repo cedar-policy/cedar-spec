@@ -123,7 +123,7 @@ where
     | .some f₁₃ => set.subset (app f₂₃ t₂') (app f₁₃ t₁') -- f₂₃ t₂' ⊆ f₁₃ t₁'
     | .none     => set.isEmpty (app f₂₃ t₂')              -- f₁₃ t₁' = ∅
   areAncestors t₂' (anc₂ : Map EntityType UnaryFunction) t₁' ety₁ :=
-    anc₂.kvs.foldl (λ acc ⟨ety₃, f₂₃⟩ => and acc (areAncestorsOfType t₂' f₂₃ ety₃ t₁' ety₁)) (.prim (.bool true))
+    anc₂.toList.foldl (λ acc ⟨ety₃, f₂₃⟩ => and acc (areAncestorsOfType t₂' f₂₃ ety₃ t₁' ety₁)) (.prim (.bool true))
 
 /--
 Returns the ground acyclicity and transitivity assumptions for xs and env.

@@ -159,7 +159,7 @@ def SymEntities.Acyclic (εs : SymEntities) : Prop :=
     uid ∉ (app (.udf f) (.entity uid)).entityUIDs
 
 def SymEntityData.knownAncestors (uid : EntityUID) (δ : SymEntityData) : Set EntityUID :=
-  δ.ancestors.kvs.mapUnion ancs
+  δ.ancestors.toList.mapUnion ancs
 where
   ancs : (EntityType × UnaryFunction) → Set EntityUID
   | (_, .uuf _) => Set.empty

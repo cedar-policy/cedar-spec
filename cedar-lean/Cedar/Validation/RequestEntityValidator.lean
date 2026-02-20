@@ -64,11 +64,11 @@ def instanceOfType (v : Value) (ty : CedarType) (env : TypeEnv) : Bool :=
   | .prim (.entityUID e), .entity ety => instanceOfEntityType e ety env
   | .set s, .set ty => s.elts.attach.all (λ ⟨v, _⟩ => instanceOfType v ty env)
   | .record r, .record rty =>
-    r.kvs.all (λ (k, _) => rty.contains k) &&
-    (r.kvs.attach₂.all (λ ⟨(k, v), _⟩ => (match rty.find? k with
+    r.toList.all (λ (k, _) => rty.contains k) &&
+    (r.toList.attach₂.all (λ ⟨(k, v), _⟩ => (match rty.find? k with
         | .some qty => instanceOfType v qty.getType env
         | _ => true))) &&
-    rty.kvs.all (λ (k, _) => requiredAttributePresent r rty k)
+    rty.toList.all (λ (k, _) => requiredAttributePresent r rty k)
   | .ext x, .ext xty => instanceOfExtType x xty
   | _, _ => false
     termination_by v
@@ -79,8 +79,7 @@ def instanceOfType (v : Value) (ty : CedarType) (env : TypeEnv) : Bool :=
         omega
       case _ h₁ =>
         cases r
-        simp only [Map.kvs] at h₁
-        simp only [Map.mk.sizeOf_spec]
+        simp only [Map.toList_mk_id, Map.mk.sizeOf_spec] at *
         omega
 
 def instanceOfRequestType (request : Request) (env : TypeEnv) : Bool :=

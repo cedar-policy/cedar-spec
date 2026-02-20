@@ -1112,7 +1112,7 @@ private theorem evaluate_record_wf {env : Env} {v : Value} {axs : List (Attr × 
   apply Value.WellFormed.record_wf _ (Map.make_wf vs)
   intro a v hv
   replace hv := Map.find?_mem_toList hv
-  simp only [Map.toList, Map.kvs, Map.make] at hv
+  simp only [Map.make] at hv
   have hv' := List.canonicalize_subseteq Prod.fst vs
   rw [List.subset_def] at hv'
   replace hv' := hv' hv

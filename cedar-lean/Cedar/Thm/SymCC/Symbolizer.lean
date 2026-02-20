@@ -162,7 +162,7 @@ decreasing_by
     replace h₁ := Map.find?_mem_toList h₁
     cases rec
     have := List.sizeOf_lt_of_mem h₁
-    simp [Map.toList, Map.kvs] at this ⊢
+    simp at this ⊢
     omega
 
 /-- The results of `symbolize?` is not Term.none. -/
@@ -300,7 +300,7 @@ theorem value_symbolize?_wf
         List.mapM_some_implies_all_from_some hsym_attrs (attr, t) hmem_attr_t
       simp only [Value.symbolize?.symbolizeAttr?] at hsym_attr_term
       simp only [bind, Option.bind] at hsym_attr_term
-      simp [Map.toList, Map.kvs] at hmem_attr_t
+      simp only [Map.toList_mk_id] at hmem_attr_t
       split at hsym_attr_term
       · simp only [Option.some.injEq, Prod.mk.injEq] at hsym_attr_term
         simp only [←hsym_attr_term.2]
@@ -383,9 +383,9 @@ decreasing_by
     simp at h₄
     simp [←h₄] at h₃
     have := Map.find?_mem_toList h₃
-    simp [Map.toList, Map.kvs] at this
+    simp only [Map.toList_mk_id] at this
     have := List.sizeOf_lt_of_mem this
-    simp at this
+    simp only [Prod.mk.sizeOf_spec] at this
     omega
 
 /--
@@ -622,11 +622,8 @@ theorem value?_symbolize?_id
       intros attr hmem_attr
       have ⟨sym_attr, opt_val_sym_attrs, h, _⟩ := value?_symbolize?_attr_id hmem_attr
       simp [h]
-    simp only [
-      Option.bind, Map.toList, Map.kvs, hsym_attrs,
-      Option.some.injEq, exists_eq_left',
-      Term.value?,
-    ]
+    simp only [Option.bind, Map.toList_mk_id, hsym_attrs, Option.some.injEq, exists_eq_left',
+      Term.value?, Option.bind_eq_bind]
     have ⟨val_sym_attrs, hval_sym_attrs⟩ :
       ∃ avs,
         List.mapM (fun x => Term.value?.attrValue? x.fst x.snd) sym_attrs
@@ -642,7 +639,6 @@ theorem value?_symbolize?_id
     simp only [
       List.mapM₂_eq_mapM (λ x => Term.value?.attrValue? x.fst x.snd) _,
       hval_sym_attrs,
-      Option.bind_some_fun,
       Option.some.injEq, Value.record.injEq,
     ]
     congr
@@ -722,7 +718,7 @@ theorem value?_symbolize?_id
         have := hrec_mem_implies_rty_mem attr.fst this
         have ⟨attr', hfind_attr'⟩ := Map.contains_iff_some_find?.mp this
         have hmem_attr' := (Map.in_list_iff_find?_some hwf_rty_map).mpr hfind_attr'
-        simp only [Map.kvs] at hmem_attr'
+        simp only [Map.toList] at hmem_attr'
         have ⟨sym_attr, hmem_sym_attr, hsym_attr⟩ :=
           List.mapM_some_implies_all_some hsym_attrs (attr.fst, attr') hmem_attr'
         have ⟨val_sym_attr, hmem_val_sym_attr, hval_sym_attr⟩ :=
@@ -748,9 +744,9 @@ decreasing_by
     rename (Map.mk rec_map).find? attr.fst = some v' => h₃
     simp [h₁, h₂]
     have := Map.find?_mem_toList h₃
-    simp only [Map.toList, Map.kvs] at this
+    simp only [Map.toList_mk_id] at this
     have := List.sizeOf_lt_of_mem this
-    simp at this
+    simp only [Prod.mk.sizeOf_spec] at this
     omega
 
 theorem value_symbolize?_is_lit
@@ -842,7 +838,8 @@ decreasing_by
     have := Map.find?_mem_toList h₃
     cases rec
     have := List.sizeOf_lt_of_mem this
-    simp [Map.toList, Map.kvs] at this ⊢
+    simp only [Prod.mk.sizeOf_spec, Map.toList_mk_id, Value.record.sizeOf_spec, Map.mk.sizeOf_spec,
+      gt_iff_lt] at this ⊢
     omega
 
 end Cedar.Thm

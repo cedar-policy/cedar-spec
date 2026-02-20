@@ -146,7 +146,7 @@ unsafe def runFfiM {α : Type} [Lean.ToJson α] (m : FfiM α) : String :=
   runFfiM do
     let v ← (@Proto.Message.interpret? Proto.EntityValidationRequest) req |>.mapError (s!"failed to parse input: {·}")
     let actionEntities := (v.schema.acts.mapOnValues actionSchemaEntryToEntityData)
-    let entities := Data.Map.make (v.entities.kvs ++ actionEntities.kvs)
+    let entities := Data.Map.make (v.entities.toList ++ actionEntities.toList)
     runAndTime (λ () => validateEntities v.schema entities)
 
 /--

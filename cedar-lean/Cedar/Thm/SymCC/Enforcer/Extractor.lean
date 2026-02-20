@@ -78,7 +78,7 @@ private theorem repairAncestors_table_wf {uids : Set EntityUID} {f : UDF} :
 := by
   intro hw
   rw [Set.wf_iff_sorted] at hw
-  simp only [UUF.repairAncestors.table, Map.wf_iff_sorted, Map.toList, Map.kvs]
+  simp only [UUF.repairAncestors.table, Map.wf_iff_sorted]
   generalize h : uids.elts = elts
   simp only [h] at hw
   clear h
@@ -137,7 +137,7 @@ private theorem repairAncestors_wf {uids : Set EntityUID} {f : UDF} {εs : SymEn
 := by
   simp only [UDF.WellFormed, repairAncestors_default_wfl hwf.left hwf.right.left, repairAncestors_table_wf hwu, true_and]
   intro tᵢ tₒ hin
-  simp only [Map.toList, Map.kvs, UUF.repairAncestors.table, List.mem_filterMap] at hin
+  simp only [UUF.repairAncestors.table, Map.toList_mk_id, List.mem_filterMap] at hin
   replace ⟨uid, hin, heq⟩ := hin
   rw [Set.in_list_iff_in_set] at hin
   simp only [UUF.repairAncestors.entry, Option.ite_none_right_eq_some, Option.some.injEq, Prod.mk.injEq] at heq
@@ -168,7 +168,7 @@ theorem repair_wf {xs : List Expr} {εnv : SymEnv} {I : Interpretation} :
   rename_i f' hf
   simp only [Interpretation.repair.footprintAncestors] at hf
   replace hf := Map.find?_mem_toList hf
-  simp only [Map.toList, Map.kvs, List.mem_map, Prod.mk.injEq] at hf
+  simp only [Map.toList_mk_id, List.mem_map, Prod.mk.injEq] at hf
   replace ⟨_, hin, hf', hf⟩ := hf
   rw [eq_comm] at hf'
   subst hf' hf
@@ -236,20 +236,19 @@ private theorem footprintAncestors_eq {xs : List Expr} {ety ancTy : EntityType} 
 := by
   simp only [Interpretation.repair.footprintAncestors]
   apply Map.mem_toList_find?
-  · simp only [Map.wf_iff_sorted, Map.toList, Map.kvs]
+  · simp only [Map.wf_iff_sorted, Map.toList_mk_id]
     rw [@List.map_eq_implies_sortedBy _ _ _ _ _ _ id _ εnv.entities.uufAncestors.elts]
     · simp only [SymEntities.uufAncestors, ← Set.wf_iff_sorted, List.mapUnion_wf]
     · simp only [List.map_map]
       apply List.map_congr
       simp only [Function.comp_apply, id_eq, implies_true]
-  · simp only [Map.toList, Map.kvs, List.mem_map, Prod.mk.injEq]
+  · simp only [Map.toList_mk_id, List.mem_map, Prod.mk.injEq]
     exists f
     simp only [SymEntities.uufAncestors, Set.in_list_iff_in_set, List.mem_mapUnion_iff_mem_exists,
       Function.comp_apply, and_self, and_true]
     exists (ety, δ)
     replace hδ := Map.find?_mem_toList hδ
     replace hf := Map.find?_mem_toList hf
-    simp only [Map.toList] at hδ hf
     simp only [hδ, SymEntityData.uufAncestors, ← Set.make_mem, List.mem_filterMap,
       Function.comp_apply, true_and]
     exists (ancTy, UnaryFunction.uuf f)
@@ -262,7 +261,7 @@ private theorem not_mem_uids_implies_repairAncestors_find?_none {uid : EntityUID
   simp only [Option.ne_none_iff_isSome, Option.isSome_iff_exists] at hc
   replace ⟨t, hc⟩ := hc
   replace hc := Map.find?_mem_toList hc
-  simp only [Map.toList, Map.kvs, UUF.repairAncestors, UUF.repairAncestors.table, List.mem_filterMap,
+  simp only [UUF.repairAncestors, UUF.repairAncestors.table, Map.toList_mk_id, List.mem_filterMap,
     UUF.repairAncestors.entry, Option.ite_none_right_eq_some, Option.some.injEq, Prod.mk.injEq,
     Term.prim.injEq, TermPrim.entity.injEq] at hc
   replace ⟨uid', hc, _, heq, _⟩ := hc
@@ -297,7 +296,7 @@ private theorem mem_uids_implies_repairAncestors_find?_eq {uid : EntityUID} {uid
   app (UnaryFunction.udf (I.funs f)) (Term.entity uid)
 := by
   apply Map.mem_toList_find? (repairAncestors_table_wf hwu)
-  simp only [Map.toList, Map.kvs, UUF.repairAncestors.table, List.mem_filterMap]
+  simp only [UUF.repairAncestors.table, Map.toList_mk_id, List.mem_filterMap]
   exists uid
   simp only [Set.in_list_iff_in_set, hft, UUF.repairAncestors.entry, typeOf_term_prim_entity, hty,
     ↓reduceIte, and_self]
@@ -384,7 +383,7 @@ private theorem interpret_non_ancestor_uuf_repair_eq {εnv : SymEnv} {f : UUF} (
   split <;> try rfl
   rename_i heq
   replace heq := Map.find?_mem_toList heq
-  simp only [Map.toList, Map.kvs, List.mem_map, Prod.mk.injEq] at heq
+  simp only [Map.toList_mk_id, List.mem_map, Prod.mk.injEq] at heq
   replace ⟨f', hf', heq, _⟩ := heq
   subst heq
   rw [Set.in_list_iff_in_set] at hf'
@@ -488,7 +487,7 @@ theorem sym_entities_entityUIDs_include_enums
   exists (uid.ty, SymEntityData.interpret I δ)
   constructor
   · simp only [SymEnv.interpret, SymEntities.interpret]
-    apply Map.in_kvs_in_mapOnValues
+    apply Map.in_toList_in_mapOnValues
     exact Map.find?_mem_toList hfind_uid_ty
   · simp only [SymEntityData.entityUIDs, SymEntityData.interpret]
     apply (Set.mem_union_iff_mem_or _ _ uid).mpr; left

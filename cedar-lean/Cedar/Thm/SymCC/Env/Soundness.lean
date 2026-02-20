@@ -365,8 +365,7 @@ private theorem env_symbolize?_same_entity_data_standard_same_tag
             apply (Set.make_empty _).mpr
             simp [heq, Set.isEmpty, Set.empty]
           have := List.map_eq_nil_iff.mp this
-          have := Map.map_keys_empty_implies_map_empty this
-          simp only [this, Map.find?, List.find?]
+          simp [Map.map_keys_empty_implies_map_empty this]
         · rename_i s _ _ heq
           simp only [Term.set.injEq] at heq
           replace heq := heq.1
@@ -427,7 +426,7 @@ private theorem env_symbolize?_same_entity_data_standard_same_tag
             simp [heq, Set.isEmpty, Set.empty]
           have := List.map_eq_nil_iff.mp this
           have := Map.map_keys_empty_implies_map_empty this
-          simp [this, Map.find?, List.find?] at hfind_tag
+          simp [this, Map.find?] at hfind_tag
         · rename_i s _ _ heq
           simp only [Term.set.injEq] at heq
           replace heq := heq.1
@@ -753,13 +752,13 @@ private theorem env_symbolize?_same_entity_data_enum
       Factory.app,
       Term.isLiteral,
       ↓reduceIte,
-      Map.empty,
       Map.find?,
-      List.find?
+      Map.toList_empty,
+      List.find?_nil,
     ]
-    simp only [EntitySchemaEntry.attrs, Map.empty] at hwt_data_attrs
+    simp only [EntitySchemaEntry.attrs] at hwt_data_attrs
     cases hwt_data_attrs with | instance_of_record rec rty h₁ h₂ h₃ =>
-    have hemp_data_attrs : data.attrs = (Map.mk [])
+    have hemp_data_attrs : data.attrs = Map.empty
     := by
       cases h : data.attrs with | mk attrs =>
       cases attrs with
@@ -767,9 +766,9 @@ private theorem env_symbolize?_same_entity_data_enum
       | cons attr attrs =>
         simp only [h] at h₁
         have := h₁ attr.1
-        simp [Map.contains, Map.find?, List.find?] at this
-    simp only [SameValues, Term.value?, List.nil.sizeOf_spec, Nat.reduceAdd, Option.bind_eq_bind,
-      hemp_data_attrs]
+        simp [Map.contains, Map.find?] at this
+    simp only [SameValues, Map.empty, Term.value?, List.nil.sizeOf_spec, Nat.reduceAdd,
+      Option.bind_eq_bind, hemp_data_attrs]
     change ([].mapM₂ fun x => Term.value?.attrValue? x.1.fst x.1.snd).bind _ = _
     rw [[].mapM₂_eq_mapM λ x => Term.value?.attrValue? x.fst x.snd]
     simp
@@ -777,7 +776,7 @@ private theorem env_symbolize?_same_entity_data_enum
     intros anc hmem_anc
     contradiction
   · intros ancTy ancUF
-    simp [Map.empty, Map.mapOnValues, List.map, Map.find?, List.find?]
+    simp [Map.mapOnValues, Map.find?]
   · intros mems hmems
     simp only [Option.some.injEq] at hmems
     simp only [←hmems]
@@ -932,14 +931,7 @@ private theorem env_symbolize?_same_entities_action
     ]
   -- Prove obligations of `SameEntityData`
   and_intros
-  · simp only [
-      Factory.app,
-      Map.empty,
-      Map.find?,
-      List.find?,
-      Term.isLiteral,
-      ↓reduceIte,
-    ]
+  · simp only [Factory.app, Map.find?_empty, Term.isLiteral, ↓reduceIte]
     simp only [SameValues, Term.value?, List.nil.sizeOf_spec, Nat.reduceAdd, Option.bind_eq_bind,
       hattrs_emp, Map.empty]
     change ([].mapM₂ fun x => Term.value?.attrValue? x.1.fst x.1.snd).bind _ = _
@@ -1248,10 +1240,8 @@ private theorem default_udf_wf
     exact default_lit_is_lit
   · simp only
     exact default_lit_well_typed
-  · simp [Map.empty, Map.WellFormed, Map.toList, Map.kvs, Map.make, List.canonicalize]
-  · simp only
-    intros _ _ h
-    simp [Map.empty, Map.toList, Map.kvs] at h
+  · simp [Map.empty, Map.WellFormed, Map.make, List.canonicalize]
+  · simp
   · simp only
   · simp only
 
@@ -1464,15 +1454,12 @@ private theorem env_symbolize?_tags_wf
             exact h val (Map.in_list_in_values hmem_tag_val)
           | inr this =>
             have ⟨_, htag_emp, _⟩ := this
-            simp [htag_emp, Map.empty, Map.toList, Map.kvs] at hmem_tag_val
+            simp [htag_emp] at hmem_tag_val
         and_intros
         · constructor
           · intros a t hmem_a_t
-            simp only [
-              Map.toList, Map.kvs,
-              List.mem_cons, Prod.mk.injEq,
-              List.not_mem_nil, or_false,
-            ] at hmem_a_t
+            simp only [Map.toList_mk_id, List.mem_cons, Prod.mk.injEq, List.not_mem_nil,
+              or_false] at hmem_a_t
             cases hmem_a_t with
             | inl hmem_a_t =>
               simp only [hmem_a_t]
@@ -1484,11 +1471,7 @@ private theorem env_symbolize?_tags_wf
               simp only [hmem_a_t]
               constructor
               constructor
-          · simp [
-              Map.WellFormed, Map.make,
-              List.canonicalize, Map.toList,
-              Map.kvs, List.insertCanonical,
-            ]
+          · simp [Map.WellFormed, Map.make, List.canonicalize, List.insertCanonical]
         · simp [Term.isLiteral, List.all, List.attach₃, List.pmap]
         · simp [
             Term.typeOf, TermPrim.typeOf,

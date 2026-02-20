@@ -31,7 +31,7 @@ def merge (v1 : Value) (v2 : Value) : Value :=
   | .prim (.string s1), .prim (.string s2) => .prim (.string (Field.merge s1 s2))
   | .prim (.entityUID _), .prim (.entityUID e2) => .prim (.entityUID e2) -- todo: is this correct
   | .set s1, .set s2 => Cedar.Data.Set.make (s1.elts ++ s2.elts)
-  | .record m1, .record m2 => Cedar.Data.Map.make (m1.kvs ++ m2.kvs)
+  | .record m1, .record m2 => Cedar.Data.Map.make (m1.toList ++ m2.toList)
   | .ext _, .ext _ => panic!("merge for Value.ext is not yet implemented")
   | _, _ => v2
 

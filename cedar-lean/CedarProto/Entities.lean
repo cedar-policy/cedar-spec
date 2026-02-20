@@ -71,10 +71,10 @@ namespace Cedar.Spec
 
 def Entities.merge (x y : Entities) : Entities :=
   -- avoid sorting if either is empty
-  match x.kvs, y.kvs with
+  match x.toList, y.toList with
   | [], _ => y
   | _, [] => x
-  | _, _  => Data.Map.make (x.kvs ++ y.kvs)
+  | _, _  => Data.Map.make (x.toList ++ y.toList)
 
 instance : Field Entities := Field.fromInterField Proto.Entities.toEntities Entities.merge
 

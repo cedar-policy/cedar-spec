@@ -97,12 +97,12 @@ def QualifiedType.liftBoolTypes : QualifiedType → QualifiedType
   | .optional ty => .optional ty.liftBoolTypes
   | .required ty => .required ty.liftBoolTypes
 
-def CedarType.liftBoolTypesRecord :  List (Attr × QualifiedType) → List (Attr × QualifiedType)
+def CedarType.liftBoolTypesRecord : List (Attr × QualifiedType) → List (Attr × QualifiedType)
   | [] => []
   | (a, ty)::l => (a, ty.liftBoolTypes)::(CedarType.liftBoolTypesRecord l)
 
 def RecordType.liftBoolTypes (rty : RecordType) : RecordType :=
-  .mk (CedarType.liftBoolTypesRecord rty.1)
+  .mk (CedarType.liftBoolTypesRecord rty.toList)
 
 def CedarType.liftBoolTypes : CedarType → CedarType
   | .bool bty => .bool bty.lift
@@ -202,7 +202,7 @@ structure TypeEnv where
 deriving Inhabited
 
 def ActionSchema.maybeDescendentOf (as : ActionSchema) (ety₁ ety₂ : EntityType) : Bool :=
-  as.kvs.any λ (act, entry) => act.ty = ety₁ && entry.ancestors.any (EntityUID.ty · == ety₂)
+  as.toList.any λ (act, entry) => act.ty = ety₁ && entry.ancestors.any (EntityUID.ty · == ety₂)
 
 def TypeEnv.descendentOf (env : TypeEnv) (ety₁ ety₂ : EntityType) : Bool :=
   if ety₁ = ety₂

@@ -56,7 +56,7 @@ theorem in_val_then_val_slice {v path euid}
     cases hv
     simp [Value.sliceEUIDs, Set.mem_singleton]
   case record attrs =>
-    suffices h : ∃ kv ∈ attrs.kvs, euid ∈ kv.snd.sliceEUIDs by
+    suffices h : ∃ kv ∈ attrs.toList, euid ∈ kv.snd.sliceEUIDs by
       unfold Value.sliceEUIDs
       simpa [
         List.mem_mapUnion_iff_mem_exists,

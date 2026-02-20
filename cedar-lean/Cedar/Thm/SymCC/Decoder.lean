@@ -80,14 +80,12 @@ theorem default_lit_wf
     simp only [List.map₂_eq_map λ x => (x.fst, Decoder.defaultLit eidOf x.snd)]
     constructor
     · intros attr t hmem_attr_t
-      simp only [Map.toList, Map.kvs] at hmem_attr_t
-      have ⟨attr_ty, hmem_attr_ty, h⟩ := List.mem_map.mp hmem_attr_t
+      simp only [Map.toList_mk_id] at hmem_attr_t
+      have ⟨⟨attr, attr_ty⟩, hmem_attr_ty, h⟩ := List.mem_map.mp hmem_attr_t
       simp only [Prod.mk.injEq] at h
-      simp only [←h.2]
+      replace ⟨h, h'⟩ := h ; subst h h'
       apply default_lit_wf _ hwf_eidOf
-      apply hwf_rty attr_ty.1
-      cases attr_ty with | mk a b =>
-      simp only at h ; replace ⟨h, h'⟩ := h ; subst h h'
+      apply hwf_rty attr
       apply (Map.in_list_iff_find?_some hwf_rty_map).mp
       simp [hmem_attr_ty]
     · exact Map.mapOnValues_wf.mp hwf_rty_map
@@ -97,8 +95,8 @@ decreasing_by
   simp only [this]
   have : rty = Map.mk attrs := by assumption
   simp only [this]
-  simp
   have := List.sizeOf_snd_lt_sizeOf_list hmem_attr_ty
+  simp at *
   omega
 
 theorem default_lit_is_lit

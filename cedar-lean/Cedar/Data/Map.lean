@@ -37,7 +37,7 @@ deriving Repr, DecidableEq, Inhabited
 
 namespace Map
 
-public abbrev kvs  {α : Type u} {β : Type v} (m : Map α β) := m.1
+private abbrev kvs {α : Type u} {β : Type v} (m : Map α β) := m.1
 
 ----- Definitions -----
 
@@ -51,18 +51,17 @@ public def empty {α β} : Map α β := .mk []
 /-- Returns an ordered and duplicate free list provided the given map is well-formed. -/
 public def toList {α : Type u} {β : Type v} (m : Map α β) : List (Prod α β) := m.kvs
 
-
 /-- Returns the keys of `m` as a set. -/
 public def keys {α β} (m : Map α β) : Set α :=
-  Set.mk (m.kvs.map Prod.fst) -- well-formed by construction
+  Set.mk (m.toList.map Prod.fst) -- well-formed by construction
 
 /-- Returns the values of `m` as a list. -/
 public def values {α β} (m : Map α β) : List β :=
-  m.kvs.map Prod.snd
+  m.toList.map Prod.snd
 
 /-- Returns the binding for `k` in `m`, if any. -/
 public def find? {α β} [BEq α] (m : Map α β) (k : α) : Option β :=
-  match m.kvs.find? (λ ⟨k', _⟩ => k' == k) with
+  match m.toList.find? (λ ⟨k', _⟩ => k' == k) with
   | some (_, v) => some v
   | _           => none
 
@@ -84,23 +83,26 @@ public def find! {α β} [Repr α] [BEq α] [Inhabited β] (m : Map α β) (k : 
 
 /-- Filters `m` using `f`. -/
 public def filter {α β} (f : α → β → Bool) (m : Map α β) : Map α β :=
-  Map.mk (m.kvs.filter (λ ⟨k, v⟩ => f k v))
+  Map.mk (m.toList.filter (λ ⟨k, v⟩ => f k v))
 
 public def size {α β} (m : Map α β) : Nat :=
-  m.kvs.length
+  m.toList.length
 
 public def mapOnValues {α β γ} (f : β → γ) (m : Map α β) : Map α γ :=
-  Map.mk (m.kvs.map (λ (k, v) => (k, f v)))
+  Map.mk (m.toList.map (λ (k, v) => (k, f v)))
+
+public def mapOnValues₃ {α β γ} (f : β → γ) (m : Map α β) : Map α γ :=
+  Map.mk (m.toList.map₃ (λ ⟨(k, v), _⟩ => (k, f v)))
 
 public def mapOnKeys {α β γ} [LT γ] [DecidableLT γ] (f : α → γ) (m : Map α β) : Map γ β :=
-  Map.make (m.kvs.map (λ (k, v) => (f k, v)))
+  Map.make (m.toList.map (λ (k, v) => (f k, v)))
 
 public def mapMOnValues {α β γ} [LT α] [DecidableLT α] [Monad m] (f : β → m γ) (map : Map α β) : m (Map α γ) := do
-  let kvs ← map.kvs.mapM (λ (k, v) => f v >>= λ v' => pure (k, v'))
+  let kvs ← map.toList.mapM (λ (k, v) => f v >>= λ v' => pure (k, v'))
   pure (Map.mk kvs)
 
 public def mapMOnKeys {α β γ} [LT γ] [DecidableLT γ] [Monad m] (f : α → m γ) (map : Map α β) : m (Map γ β) := do
-  let kvs ← map.kvs.mapM (λ (k, v) => f k >>= λ k' => pure (k', v))
+  let kvs ← map.toList.mapM (λ (k, v) => f k >>= λ k' => pure (k', v))
   pure (Map.make kvs)
 
 public def wellFormed {α β} [LT α] [DecidableLT α] (m : Map α β) : Bool :=
@@ -109,17 +111,17 @@ public def wellFormed {α β} [LT α] [DecidableLT α] (m : Map α β) : Bool :=
 ----- Instances -----
 
 public instance [LT (Prod α β)] : LT (Map α β) where
-  lt a b := a.kvs < b.kvs
+  lt a b := a.1 < b.1
 
 public instance decLt [LT (Prod α β)] [DecidableEq (Prod α β)] [DecidableLT (Prod α β)] : (n m : Map α β) → Decidable (n < m)
   | .mk nkvs, .mk mkvs => List.decidableLT nkvs mkvs
 
 -- enables ∈ notation for map keys
 public instance : Membership α (Map α β) where
-  mem m a := List.Mem a (m.kvs.map Prod.fst)
+  mem m a := List.Mem a (m.toList.map Prod.fst)
 
 public instance [LT α] [DecidableLT α] : HAppend (Map α β) (Map α β) (Map α β) where
-  hAppend a b := Map.make (a.kvs ++ b.kvs)
+  hAppend a b := Map.make (a.toList ++ b.toList)
 
 end Map
 

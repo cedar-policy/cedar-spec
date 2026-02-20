@@ -47,7 +47,7 @@ theorem as_partial_request_refines {req : Request} :
 
 theorem any_refines_empty_entities :
   EntitiesRefine es Data.Map.empty := by
-  simp only [EntitiesRefine, Data.Map.empty, Data.Map.find?, Map.kvs]
+  simp only [EntitiesRefine, Data.Map.empty, Data.Map.find?, Map.toList]
   intro a e₂ h₁
   contradiction
 

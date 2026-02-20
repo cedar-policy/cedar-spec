@@ -274,9 +274,10 @@ private theorem ofType_typeOf_pullback
     · intros attr hcont_attr
       have ⟨v, hfind_v⟩ := Map.contains_iff_some_find?.mp hcont_attr
       have hmem_v := Map.find?_mem_toList hfind_v
-      simp only [Map.toList, Map.kvs] at hmem_v
-      have ⟨attr_v, hmem_attr_v, hattr_v⟩ := List.mem_filterMap.mp hmem_v
-      have ⟨attr_t', hmem_attr_t', hattr_t'⟩ := List.mapM_some_implies_all_from_some hval_rec attr_v hmem_attr_v
+      simp only [Map.toList_mk_id, List.mem_filterMap, Option.map_eq_some_iff, Prod.mk.injEq,
+        exists_eq_right_right, Prod.exists] at hmem_v
+      replace ⟨a, v', hmem_v, _, _⟩ := hmem_v ; subst a v'
+      have ⟨attr_t', hmem_attr_t', hattr_t'⟩ := List.mapM_some_implies_all_from_some hval_rec (attr, some v) hmem_v
       have : (attr_t'.fst, attr_t'.snd.typeOf) ∈ TermType.ofRecordType ty_rec
       := by
         simp only [←heq_ty]
@@ -284,27 +285,28 @@ private theorem ofType_typeOf_pullback
         exists attr_t'
       simp only [ofRecordType_as_map ty_rec] at this
       have ⟨attr_ty, hmem_attr_ty, hattr_ty⟩ := List.mem_map.mp this
+      /-
       have : attr = attr_v.fst := by
         simp only [Option.map] at hattr_v
         split at hattr_v
         · simp only [Option.some.injEq, Prod.mk.injEq] at hattr_v
           simp [hattr_v.1]
         · contradiction
+      -/
       have : attr = attr_t'.fst := by
-        simp only [this]
         unfold Term.value?.attrValue? at hattr_t'
         split at hattr_t'
         · simp only [bind, Option.bind] at hattr_t'
           split at hattr_t'
           contradiction
-          simp only [Option.some.injEq] at hattr_t'
-          simp only [←hattr_t']
-        · simp only [Option.some.injEq] at hattr_t'
+          simp only [Option.some.injEq, Prod.mk.injEq] at hattr_t'
+          have ⟨_, _⟩ := hattr_t' ; subst attr v ; rfl
+        · simp only [Option.some.injEq, Prod.mk.injEq] at hattr_t'
           simp only [←hattr_t']
         · simp only [bind, Option.bind] at hattr_t'
           split at hattr_t'
           contradiction
-          simp only [Option.some.injEq] at hattr_t'
+          simp only [Option.some.injEq, Prod.mk.injEq] at hattr_t'
           simp only [←hattr_t']
       have : attr = attr_ty.fst := by
         simp only [this]
@@ -452,7 +454,7 @@ private theorem ofType_typeOf_pullback
         rename_i v'' hv''
         simp only [Option.some.injEq] at hv'
         apply Map.in_list_implies_contains (v := v'')
-        simp only [Map.kvs]
+        simp only [Map.toList]
         apply List.mem_filterMap.mpr
         exists v'
         simp only [hfind_v', true_and]
@@ -643,7 +645,7 @@ private theorem ofEnv_entity_completeness_standard_inst_tags
     · simp [
         Map.WellFormed, Map.make,
         List.canonicalize, Map.toList,
-        Map.kvs, List.insertCanonical,
+        Map.toList, List.insertCanonical,
       ]
   cases htagTy : entry.tags with
   | none =>
@@ -729,7 +731,7 @@ private theorem ofEnv_entity_completeness_standard_inst_tags
       · simp only [Factory.tagOf]
         constructor
         · intros a t h
-          simp only [Map.toList, Map.kvs, List.mem_cons, Prod.mk.injEq, List.not_mem_nil,
+          simp only [Map.toList_mk_id, List.mem_cons, Prod.mk.injEq, List.not_mem_nil,
             or_false] at h
           cases h with
           | inl h =>
@@ -739,17 +741,11 @@ private theorem ofEnv_entity_completeness_standard_inst_tags
           | inr h =>
             simp only [h.2, Term.string]
             repeat constructor
-        · simp [
-            Map.WellFormed, Map.make,
-            List.canonicalize, Map.toList,
-            Map.kvs, List.insertCanonical,
-          ]
+        · simp [Map.WellFormed, Map.make, List.canonicalize, List.insertCanonical]
       · simp only [
           Factory.tagOf,
           Term.typeOf,
-          List.map₃,
-          List.attach₃,
-          List.pmap,
+          List.map₃_eq_map λ x => (x.fst, Term.typeOf x.snd),
           List.map,
           TermPrim.typeOf,
           ←hvals_uuf,
@@ -913,19 +909,20 @@ private theorem ofEnv_entity_completeness_enum
       Factory.app,
       Term.isLiteral,
       ↓reduceIte,
-      Map.empty,
       Map.find?,
-      List.find?,
+      Option.map_none,
+      Map.toList_empty,
+      List.find?_nil,
     ] at hsame_attrs
     simp only [EntitySchemaEntry.attrs]
     apply ofType_typeOf_pullback hwf_Γ _ _ _ _ hsame_attrs
     · constructor
       · exact Map.wf_empty
-      · simp only [Map.find?, Map.empty, List.find?, reduceCtorEq, false_implies, implies_true]
+      · simp [Map.find?]
     · constructor
-      simp only [Map.toList, Map.kvs, Map.empty, List.not_mem_nil, false_implies, implies_true]
+      simp
     · constructor
-      · simp only [Map.toList, Map.kvs, List.not_mem_nil, false_implies, implies_true]
+      · simp
       · exact Map.wf_empty
     · rw [Term.typeOf, List.map₃_eq_map_snd Term.typeOf]
       simp [TermType.ofType, Map.empty, TermType.ofRecordType]
@@ -938,11 +935,8 @@ private theorem ofEnv_entity_completeness_enum
       SymEntityData.ofEnumEntityType,
       SymEntityData.interpret,
       UnaryFunction.interpret,
-      Map.empty,
       Map.mapOnValues,
-      List.map,
       Map.find?,
-      List.find?,
     ] at this
   · simp only [
       SameTags,
@@ -995,11 +989,11 @@ private theorem ofEnv_entity_completeness_action
   have hwf_acts := wf_env_implies_wf_acts_map hwf_Γ
   and_intros
   · symm
-    simp [
+    simp only [
       hδ, hδ',
       Factory.app, SymEntityData.interpret, UnaryFunction.interpret,
       SymEntityData.ofActionType, SymEntityData.emptyAttrs,
-      Map.empty, Map.kvs, Map.find?, List.find?_nil,
+      Map.find?, Map.empty, Map.toList_mk_id, List.find?_nil,
       Option.map_none,
       Term.isLiteral, ↓reduceIte,
       SameValues,

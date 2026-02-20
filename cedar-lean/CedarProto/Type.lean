@@ -251,7 +251,7 @@ end Cedar.Validation.Proto
 
 namespace Cedar.Validation
 
-def RecordType.merge (r₁ r₂ : RecordType) : RecordType := Cedar.Data.Map.make (r₁.kvs ++ r₂.kvs)
+def RecordType.merge (r₁ r₂ : RecordType) : RecordType := Cedar.Data.Map.make (r₁.toList ++ r₂.toList)
 instance : Field RecordType := Field.fromInterFieldFallible Proto.RecordType.toRecordType RecordType.merge
 
 end Cedar.Validation

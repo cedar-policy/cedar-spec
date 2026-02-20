@@ -471,7 +471,6 @@ theorem interpret_record_get {εs : SymEntities} (I : Interpretation) {t : Term}
     simp only [h₅.left, record.get, interpret_term_record]
     have h₆ := wf_term_record_implies_wf_map h₂
     have h₇ := Map.mapOnValues_eq_make_map (Term.interpret I) h₆
-    unfold Map.toList at h₇
     rw [← h₇, Map.find?_mapOnValues_some (Term.interpret I) h₅.left]
   case h_2 =>
     split
@@ -550,11 +549,10 @@ private theorem interpret_app_foldr {εs : SymEntities} {I : Interpretation} {t 
     (List.find? (fun x => x.fst == Term.interpret I t) f.table.1).map Prod.snd =
     Map.find? f.table (Term.interpret I t)
   := by
-    simp only [Option.map, Map.find?, Map.kvs]
+    simp only [Option.map, Map.find?, Map.toList]
     split <;> rename_i heq <;> simp only [heq]
   rw [← h₄]
-  simp only [Map.toList, Map.kvs]
-  simp only [UnaryFunction.WellFormed, UDF.WellFormed, Map.toList, Map.kvs] at h₂
+  simp only [UnaryFunction.WellFormed, UDF.WellFormed] at h₂
   apply interpret_app_foldr' h₀ h₁ h₂.left
   intro tᵢ tₒ hin
   have h₅ := h₂.right.right.right tᵢ tₒ hin
@@ -1071,7 +1069,7 @@ theorem interpret_recordOf {I : Interpretation} {ats : List (Attr × Term)} :
     unfold Prod.map id
     simp only
   simp only [recordOf, interpret_term_record, h, Term.record.injEq]
-  simp only [Map.make, Map.kvs, List.canonicalize_of_map_fst, List.canonicalize_idempotent]
+  simp [Map.make, List.canonicalize_of_map_fst, List.canonicalize_idempotent]
 
 theorem interpret_ext_decimal_val {I : Interpretation} {t : Term} :
   Term.interpret I (ext.decimal.val t) = ext.decimal.val (t.interpret I)
@@ -1191,7 +1189,7 @@ theorem interpret_ext_duration_ofBitVec {I : Interpretation} {t : Term} :
 theorem interpret_tagOf {I : Interpretation} {t₁ t₂ : Term} :
   (tagOf t₁ t₂).interpret I = tagOf (t₁.interpret I) (t₂.interpret I)
 := by
-  simp only [tagOf, EntityTag.mk, interpret_term_record, Map.make, Map.kvs, List.map_cons,
-    List.map_nil, List.canonicalize, List.insertCanonical, String.reduceLT, ↓reduceIte]
+  simp [tagOf, EntityTag.mk, interpret_term_record, Map.make, List.canonicalize,
+    List.insertCanonical, String.reduceLT]
 
 end Cedar.Thm

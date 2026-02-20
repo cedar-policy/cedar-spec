@@ -50,10 +50,10 @@ def UnaryFunction.uuf? : UnaryFunction → Option UUF
   | _      => .none
 
 def SymEntityData.uufAncestors (δ : SymEntityData) : Set UUF :=
-  Set.make (δ.ancestors.kvs.filterMap (UnaryFunction.uuf? ∘ Prod.snd))
+  Set.make (δ.ancestors.toList.filterMap (UnaryFunction.uuf? ∘ Prod.snd))
 
 def SymEntities.uufAncestors (εs : SymEntities) : Set UUF :=
-  εs.kvs.mapUnion (SymEntityData.uufAncestors ∘ Prod.snd)
+  εs.toList.mapUnion (SymEntityData.uufAncestors ∘ Prod.snd)
 
 def UUF.repairAncestors (fts : Set EntityUID) (I : Interpretation) (f : UUF) : UDF :=
   let udf := I.funs f
