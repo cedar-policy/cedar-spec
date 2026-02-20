@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Data.Int64
+import Cedar.Spec.Ext.Util
 
 /-! This file defines Cedar decimal values and functions. -/
 
@@ -48,11 +49,7 @@ def parse (str : String) : Option Decimal :=
     let rlen := right.length
     if 0 < rlen ∧ rlen ≤ DECIMAL_DIGITS
     then
-      -- String.toInt? has undocumented behavior (well, undocumented as of this writing)
-      -- that it allows `_` characters in certain positions in the representation of an
-      -- integer. We want to disallow strings with `_` characters per the Cedar spec.
-      if left.contains '_' ∨ right.contains '_' then .none else
-      match String.toInt? left, String.toNat? right with
+      match toInt?' left, toNat?' right with
       | .some l, .some r =>
         let l' := l * (Int.pow 10 DECIMAL_DIGITS)
         let r' := r * (Int.pow 10 (DECIMAL_DIGITS - rlen))
