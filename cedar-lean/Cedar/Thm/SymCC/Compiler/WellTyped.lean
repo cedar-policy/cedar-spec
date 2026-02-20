@@ -138,21 +138,16 @@ mutual
   private theorem ofRecordType_eq_ofRecordType_liftBool
     (recs : List (Attr × QualifiedType)) :
     TermType.ofRecordType recs =
-    TermType.ofRecordType (CedarType.liftBoolTypesRecord recs)
+    TermType.ofRecordType (recs.map (λ (k, v) => (k, QualifiedType.liftBoolTypes v)))
   := by
     cases recs with
-    | nil => simp [TermType.ofRecordType, CedarType.liftBoolTypesRecord]
-    | cons _ tail =>
-      simp only [
-        TermType.ofRecordType,
-        CedarType.liftBoolTypesRecord,
-        List.cons.injEq,
-        Prod.mk.injEq,
-        true_and,
-      ]
+    | nil => simp [TermType.ofRecordType]
+    | cons hd tail =>
+      simp only [List.map, TermType.ofRecordType, List.cons.injEq]
       constructor
-      apply ofQualifiedType_eq_ofQualifiedType_liftBool
-      apply ofRecordType_eq_ofRecordType_liftBool tail
+      · simp only [Prod.mk.injEq, true_and]
+        apply ofQualifiedType_eq_ofQualifiedType_liftBool
+      · apply ofRecordType_eq_ofRecordType_liftBool tail
 
   private theorem ofType_eq_ofType_liftBool
     (ty : CedarType) :
@@ -168,8 +163,10 @@ mutual
       simp [TermType.ofType, CedarType.liftBoolTypes]
       apply ofType_eq_ofType_liftBool ty
     | record rty =>
-      simp [TermType.ofType, CedarType.liftBoolTypes, RecordType.liftBoolTypes]
-      apply ofRecordType_eq_ofRecordType_liftBool
+      simp only [TermType.ofType, CedarType.liftBoolTypes, RecordType.liftBoolTypes,
+        Data.Map.mapOnValues₂_eq_mapOnValues, Data.Map.mapOnValues, Data.Map.kvs,
+        TermType.record.injEq, Data.Map.mk.injEq]
+      exact ofRecordType_eq_ofRecordType_liftBool rty.1
 end
 
 theorem isCedarRecordType_implies_isRecordType
@@ -449,12 +446,14 @@ theorem compile_well_typed_var {v : Var} {ty : CedarType} {Γ : TypeEnv} {εnv :
       ↓reduceIte, Except.ok.injEq,
       CedarType.liftBoolTypes,
       RecordType.liftBoolTypes,
+      Data.Map.mapOnValues₂_eq_mapOnValues,
+      Data.Map.mapOnValues, Data.Map.kvs,
       TermType.ofType, exists_eq_left',
       Term.typeOf, TermType.option.injEq,
       TermType.record.injEq,
       Data.Map.mk.injEq,
     ]
-    apply ofRecordType_eq_ofRecordType_liftBool
+    exact ofRecordType_eq_ofRecordType_liftBool _
     apply hcontext
 
 theorem compile_well_typed_ite
@@ -889,8 +888,8 @@ theorem compile_well_typed_getAttr
       -- Finally, show that TermType is agnostic to `rty2` and `rty2.liftBoolTypes`
       · have ⟨_, h1, h2⟩ := ofRecordType_preserves_attr henv_attr_lookup hty_env_attr
         have hlift := ofRecordType_eq_ofRecordType_liftBool rty2.1
-        simp only [RecordType.liftBoolTypes] at hrty_rty2
-        simp only at hlift
+        rw [lift_bool_types_record_eq_map_on_values] at hrty_rty2
+        simp only [Data.Map.mapOnValues, Data.Map.kvs] at hrty_rty2
         simp only [← hrty_rty2, ← hlift] at h1
         simp only [h1, Option.some.injEq, exists_eq_left']
         split at h2 <;> simp [h2]

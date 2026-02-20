@@ -117,14 +117,18 @@ theorem find_lifted_type {attr ty₁ ty₂} {m: RecordType} :
     simp at h₁
   case cons hd tl =>
     rw [h₃] at h₁
-    unfold RecordType.liftBoolTypes at h₂
-    rw [h₃] at h₂
-    simp only [CedarType.liftBoolTypesRecord, List.find?] at h₂
+    rw [lift_bool_types_record_eq_map_on_values, Data.Map.mapOnValues, Data.Map.kvs, h₃] at h₂
+    simp only [List.map, List.find?] at h₂
     cases h₄ : hd.fst == attr
     case false =>
       simp only [List.find?] at h₁
-      rw [h₄] at h₁ h₂
-      exact find_lifted_type h₁ h₂
+      rw [h₄] at h₁
+      simp only [h₄] at h₂
+      have h₂' : Map.find? (RecordType.liftBoolTypes (Map.mk tl)) attr = some ty₂ := by
+        simp only [lift_bool_types_record_eq_map_on_values, Data.Map.mapOnValues, Data.Map.kvs,
+          Map.find?, Map.kvs]
+        exact h₂
+      exact find_lifted_type h₁ h₂'
     case true =>
       simp only [List.find?] at h₁
       rw [h₄] at h₁ h₂

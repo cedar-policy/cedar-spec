@@ -826,6 +826,11 @@ public theorem values_mapOnValues [LT α] [StrictLT α] [DecidableLT α] [Decida
     simp only [List.map_cons, List.cons.injEq, true_and]
     exact ih
 
+public theorem mapOnValues₂_eq_mapOnValues {α β γ} [SizeOf α] [SizeOf β] (m : Map α β) (f : β → γ) :
+  m.mapOnValues₂ (λ x : { x : β // sizeOf x < sizeOf m } => f x.1) = m.mapOnValues f
+:= by
+  simp only [mapOnValues₂, mapOnValues, List.map₂_eq_map_snd f, toList]
+
 /-- `findOrErr` cannot return any error other than `e` -/
 public theorem findOrErr_returns [DecidableEq α] (m : Map α β) (k : α) (e : Error) :
   (∃ v, m.findOrErr k e = .ok v) ∨

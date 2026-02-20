@@ -479,21 +479,20 @@ theorem wf_ofType_right_inverse_cedarType?
           fun t => some (x.fst, t))]
     have := ofRecordType_forall₂ rty.1 hwf_ty
     have := List.mapM_some_iff_forall₂.mpr this
-    simp [this, RecordType.liftBoolTypes]
+    simp only [this, RecordType.liftBoolTypes, Data.Map.mapOnValues₂_eq_mapOnValues,
+      Data.Map.mapOnValues, Data.Map.kvs, Option.bind_some]
 termination_by sizeOf ty
 decreasing_by
-  simp [*]
-  simp [*]
-  cases rty
-  simp
-  omega
+  all_goals simp [*]
+  all_goals (try omega)
+  all_goals (try (cases rty; simp; omega))
 where
   ofRecordType_forall₂
     (rty : List (Attr × QualifiedType))
     (hwf : CedarType.WellFormed Γ (CedarType.record (Map.mk rty))) :
     List.Forall₂ (fun x y =>
       ((TermType.cedarType?.qualifiedType? x.snd).bind fun t => some (x.fst, t)) = some y)
-      (TermType.ofRecordType rty) (CedarType.liftBoolTypesRecord rty)
+      (TermType.ofRecordType rty) (rty.map (λ (k, v) => (k, QualifiedType.liftBoolTypes v)))
   := by
     cases hwf with | record_wf hwf_rty hwf_attrs =>
     simp [
@@ -518,14 +517,14 @@ where
           ]
           simp only [
             Option.bind_some_fun, Option.bind_some,
-            QualifiedType.liftBoolTypes,
+            h, QualifiedType.liftBoolTypes,
           ]
         | required attr_ty =>
           simp only [h] at hwf_hd_snd
           cases hwf_hd_snd with | required_wf hwf_hd_snd =>
           simp only [
             TermType.ofQualifiedType,
-            QualifiedType.liftBoolTypes,
+            h, QualifiedType.liftBoolTypes,
           ]
           unfold TermType.cedarType?.qualifiedType?
           split

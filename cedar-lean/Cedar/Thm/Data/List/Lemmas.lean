@@ -134,7 +134,6 @@ public theorem map₁_eq_map (f : α → β) (as : List α) :
 := by
   simp only [map₁, attach_def, map_pmap_subtype]
 
-
 public theorem map₂_eq_map {α : Type u} {β : Type v} [SizeOf α] [SizeOf β] {xs : List (α × β)} (f : (α × β) → γ) :
   xs.map₂ (λ x : { x : α × β // sizeOf x.snd < 1 + sizeOf xs } => f x.1) =
   xs.map f

@@ -97,12 +97,8 @@ def QualifiedType.liftBoolTypes : QualifiedType → QualifiedType
   | .optional ty => .optional ty.liftBoolTypes
   | .required ty => .required ty.liftBoolTypes
 
-def CedarType.liftBoolTypesRecord :  List (Attr × QualifiedType) → List (Attr × QualifiedType)
-  | [] => []
-  | (a, ty)::l => (a, ty.liftBoolTypes)::(CedarType.liftBoolTypesRecord l)
-
-def RecordType.liftBoolTypes (rty : RecordType) : RecordType :=
-  .mk (CedarType.liftBoolTypesRecord rty.1)
+def RecordType.liftBoolTypes : RecordType → RecordType
+  | rty => rty.mapOnValues₂ λ ⟨v, _⟩ => v.liftBoolTypes
 
 def CedarType.liftBoolTypes : CedarType → CedarType
   | .bool bty => .bool bty.lift

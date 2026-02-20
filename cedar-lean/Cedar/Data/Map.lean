@@ -103,6 +103,20 @@ public def mapMOnKeys {α β γ} [LT γ] [DecidableLT γ] [Monad m] (f : α → 
   let kvs ← map.kvs.mapM (λ (k, v) => f k >>= λ k' => pure (k', v))
   pure (Map.make kvs)
 
+private theorem sizeOf_toList_lt_map {α β} [SizeOf α] [SizeOf β] (m : Map α β) :
+  sizeOf m.toList < sizeOf m
+:= by
+  unfold toList kvs
+  conv => rhs ; unfold sizeOf _sizeOf_inst _sizeOf_1 ; simp only
+  generalize sizeOf m.1 = s
+  omega
+
+public def mapOnValues₂ {α β γ} [SizeOf α] [SizeOf β] (m : Map α β) (f : {x : β // sizeOf x < sizeOf m} → γ) : Map α γ :=
+  Map.mk (m.toList.map₂ (λ ⟨(k, v), h⟩ => (k, f ⟨v, by
+    have := sizeOf_toList_lt_map m
+    simp only at *
+    omega⟩)))
+
 public def wellFormed {α β} [LT α] [DecidableLT α] (m : Map α β) : Bool :=
   m.toList.isSortedBy Prod.fst
 

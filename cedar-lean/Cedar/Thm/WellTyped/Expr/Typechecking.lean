@@ -65,14 +65,16 @@ theorem typechecked_is_well_typed_after_lifting_var
 := by
   intro h₂
   simp only [typeOf, typeOfVar] at h₂
-  split at h₂ <;>
-  {
-    simp only [List.empty_eq, Function.comp_apply] at h₂
-    rcases h₂ with ⟨h₂, _⟩
-    simp [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes]
-    constructor
-    constructor
-  }
+  split at h₂
+  all_goals simp only [List.empty_eq, Function.comp_apply] at h₂
+  all_goals rcases h₂ with ⟨rfl, _⟩
+  all_goals simp only [TypedExpr.liftBoolTypes]
+  -- principal, action, resource: entity types where liftBoolTypes is identity
+  · simp only [CedarType.liftBoolTypes]; constructor; constructor
+  · simp only [CedarType.liftBoolTypes]; constructor; constructor
+  · simp only [CedarType.liftBoolTypes]; constructor; constructor
+  -- context: liftBoolTypes (.record ...) must stay folded
+  · constructor; constructor
 
 theorem typechecked_is_well_typed_after_lifting_ite
 {cond thenExpr elseExpr : Expr}
@@ -728,7 +730,7 @@ theorem typechecked_is_well_typed_after_lifting_get_attr_in_record
 {rty : Data.Map Attr (Qualified CedarType)}
 {a : CedarType}
 (h₃ : getAttrInRecord tc.fst.typeOf rty x₁ attr c₁ = Except.ok (a, c₂)) :
-  Option.map Qualified.getType ((Data.Map.mk (CedarType.liftBoolTypesRecord rty.1)).find? attr) = some a.liftBoolTypes
+  Option.map Qualified.getType ((RecordType.liftBoolTypes rty).find? attr) = some a.liftBoolTypes
 := by
   simp
   simp [getAttrInRecord] at h₃
@@ -781,7 +783,7 @@ theorem typechecked_is_well_typed_after_lifting_get_attr
       rcases h₃ with ⟨a, h₃₁, h₃₂⟩
       subst h₃₂
       simp only [TypedExpr.liftBoolTypes]
-      apply @TypedExpr.WellTyped.getAttr_record _ (.mk (CedarType.liftBoolTypesRecord rty.1))
+      apply @TypedExpr.WellTyped.getAttr_record _ (RecordType.liftBoolTypes rty)
       · exact hᵢ₁ hᵢ
       · simp only [type_of_after_lifted_is_lifted, heq, CedarType.liftBoolTypes,
         RecordType.liftBoolTypes]
@@ -793,7 +795,7 @@ theorem typechecked_is_well_typed_after_lifting_get_attr
         rcases h₃ with ⟨a, h₃₁, h₃₂⟩
         subst h₃₂
         simp [TypedExpr.liftBoolTypes]
-        apply @TypedExpr.WellTyped.getAttr_entity _ ety (.mk (CedarType.liftBoolTypesRecord rty.1))
+        apply @TypedExpr.WellTyped.getAttr_entity _ ety (RecordType.liftBoolTypes rty)
         · exact hᵢ₁ hᵢ
         · simp [type_of_after_lifted_is_lifted, heq, CedarType.liftBoolTypes]
         · simp [heq₁, RecordType.liftBoolTypes]
@@ -1279,17 +1281,12 @@ theorem typechecked_is_well_typed_after_lifting_set
   · simp only [bne_iff_ne, ne_eq, reduceCtorEq, not_false_eq_true]
 
 theorem record_lifting_make {tys : List (Attr × TypedExpr)} :
-  Data.Map.mk
-    (CedarType.liftBoolTypesRecord
-      (List.canonicalize Prod.fst (List.map (fun x => (x.fst, Qualified.required x.snd.typeOf)) tys))) =
+  RecordType.liftBoolTypes
+    (Data.Map.make (List.map (fun x => (x.fst, Qualified.required x.snd.typeOf)) tys)) =
   Data.Map.make
     (List.map (fun x => (x.fst, Qualified.required x.snd.typeOf))
       (List.map (fun x => (x.fst, x.snd.liftBoolTypes)) tys))
 := by
-  have : (List.canonicalize Prod.fst (List.map (λ x => (x.fst, Qualified.required x.snd.typeOf)) tys)) =
-         (Data.Map.make (List.map (λ x => (x.fst, Qualified.required x.snd.typeOf)) tys)).1 := by
-    simp only [Data.Map.make]
-  rw [this]
   simp only [lift_bool_types_record_eq_map_on_values]
   rw [Data.Map.mapOnValues_eq_make_map QualifiedType.liftBoolTypes]
   simp only [Data.Map.toList, Data.Map.kvs, List.map_map]
@@ -1336,7 +1333,7 @@ theorem typechecked_is_well_typed_after_lifting_record
   rename_i tys
   rcases h₃ with ⟨h₃, _⟩
   subst h₃
-  simp only [TypedExpr.liftBoolTypes]
+  simp only [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes]
   constructor
   · intro k v h₂
     simp [List.map₂_eq_map λ (x : Attr × TypedExpr) => (x.fst, x.snd.liftBoolTypes)] at h₂
