@@ -115,15 +115,15 @@ impl AnalysisCommands {
             Self::Policies { args } => {
                 let policyset = util::parse_policyset(&args.policyset_file)?;
                 let schema = util::parse_schema(&args.schema_file)?;
-                let json_output = args.json_output;
-                analysis::analyze_policyset(policyset, schema, json_output)
+                let analyzer = analysis::Analyzer::new(&schema, args.json_output)?;
+                analyzer.analyze_policyset(policyset)
             }
             Self::Compare { args } => {
                 let pset1 = util::parse_policyset(&args.pset1_file)?;
                 let pset2 = util::parse_policyset(&args.pset2_file)?;
                 let schema = util::parse_schema(&args.schema_file)?;
-                let json_output = args.json_output;
-                analysis::compare_policysets(pset1, pset2, schema, json_output)
+                let analyzer = analysis::Analyzer::new(&schema, args.json_output)?;
+                analyzer.compare_policysets(pset1, pset2)
             }
         }
     }
