@@ -242,7 +242,7 @@ theorem partial_authorize_allow_determining_policies_is_sound
     exact hpid
 
 /-- If the result of concrete authorization is `deny`, then any permit policies
-satisfied after partial authorization cannot be determining polices.  -/
+satisfied after partial authorization cannot be determining policies.  -/
 theorem partial_authorize_satisfied_permits_not_determining_if_deny
   {schema : Schema}
   {policies : List Policy}
@@ -278,7 +278,7 @@ theorem partial_authorize_satisfied_permits_not_determining_if_deny
   grind [PolicyIdsUnique]
 
 /-- Like `partial_authorize_allow_determining_policies_is_sound` for `forbid`
-policies, but we can can prove a stronger theorem because of `forbid_trumps_permit`.
+policies, but we can prove a stronger theorem because of `forbid_trumps_permit`.
 Any forbid policy satisfied after partial evaluation will always be determining.-/
 theorem partial_authorize_satisfied_forbid_is_determining
   {schema : Schema}
