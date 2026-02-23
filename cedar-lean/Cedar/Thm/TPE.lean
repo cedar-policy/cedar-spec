@@ -241,8 +241,45 @@ theorem partial_authorize_allow_determining_policies_is_sound
   · rw [←hp₂] at hpid
     exact hpid
 
-/-- We can prove a stronger theorem for `satisfiedForbid`:
-because `forbid_trumps_permit` any satisfied forbid policy will always be determining.-/
+/-- If the result of concrete authorization is `deny`, then any permit policies
+satisfied after partial authorization cannot be determining polices.  -/
+theorem partial_authorize_satisfied_permits_not_determining_if_deny
+  {schema : Schema}
+  {policies : List Policy}
+  {req : Request}
+  {es : Entities}
+  {preq : PartialRequest}
+  {pes : PartialEntities}
+  {response : TPE.Response} :
+  TPE.isAuthorized schema policies preq pes = Except.ok response →
+  isValidAndConsistent schema req es preq pes = Except.ok () →
+  (Spec.isAuthorized req es policies).decision = .deny →
+  PolicyIdsUnique policies →
+  (response.satisfiedPermits ∩ (Spec.isAuthorized req es policies).determiningPolicies).isEmpty
+:= by
+  intro h₁ h₂ h₃ h₄
+  simp only [Set.empty_iff_not_exists, Set.mem_inter_iff, not_exists, not_and]
+  intro pid hp₁ hp₂
+
+  have hsatisfied : ∀ effect, (pid ∈ satisfiedPolicies effect policies req es ↔ (∃ policy, policy.id = pid ∧ policy ∈ policies ∧ policy.effect = effect ∧ satisfied policy req es)) := by
+    simp only [satisfiedPolicies, satisfiedWithEffect, ←Set.make_mem]
+    grind [PolicyIdsUnique]
+
+  replace hp₂ : ∃ policy, policy.id = pid ∧ policy ∈ policies ∧ policy.effect = .forbid ∧ satisfied policy req es := by
+    have hd := determiningPolicies_of req es policies
+    simpa [hd, h₃, hsatisfied] using hp₂
+
+  have hp₃ : ∃ policy, policy.id = pid ∧ policy ∈ policies ∧ policy.effect = .permit ∧ satisfied policy req es := by
+    have hpermits := partial_authorize_satisfied_permits_is_sound h₁ h₂
+    rw [Set.subset_def] at hpermits
+    rw [←hsatisfied]
+    exact hpermits pid hp₁
+
+  grind [PolicyIdsUnique]
+
+/-- Like `partial_authorize_allow_determining_policies_is_sound` for `forbid`
+policies, but we can can prove a stronger theorem because of `forbid_trumps_permit`.
+Any forbid policy satisfied after partial evaluation will always be determining.-/
 theorem partial_authorize_satisfied_forbid_is_determining
   {schema : Schema}
   {policies : List Policy}
@@ -299,5 +336,28 @@ theorem partial_authorize_satisfied_forbid_is_determining
   · simpa [←hp₂] using heff
   · exact ha
   · simpa [←hp₂] using hpid
+
+/-- Like `partial_authorize_satisfied_permits_not_determining_if_deny` for
+`forbid` policies, but we can prove a stronger theorem because any satisfied
+forbid causes the decision to be `deny`.  If the result of concrete
+authorization is `allow`, then there can be no satisfied forbid policies after
+partial authorization. -/
+theorem partial_authorize_no_satisfied_forbids_if_allow
+  {schema : Schema}
+  {policies : List Policy}
+  {req : Request}
+  {es : Entities}
+  {preq : PartialRequest}
+  {pes : PartialEntities}
+  {response : TPE.Response} :
+  TPE.isAuthorized schema policies preq pes = Except.ok response →
+  isValidAndConsistent schema req es preq pes = Except.ok () →
+  (Spec.isAuthorized req es policies).decision = .allow →
+  response.satisfiedForbids.isEmpty
+:= by
+  intro h₁ h₂ h₃
+  rw [←allowed_iff_explicitly_permitted_and_not_denied] at h₃
+  apply Set.superset_empty_subset_empty (partial_authorize_satisfied_forbids_is_sound h₁ h₂)
+  simpa [explicitly_forbidden_iff_satisfying_forbid] using h₃.right
 
 end Cedar.Thm
