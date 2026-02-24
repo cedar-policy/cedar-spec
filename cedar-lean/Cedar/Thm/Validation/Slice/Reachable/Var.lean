@@ -41,10 +41,11 @@ theorem var_entity_reachable {var : Var} {v : Value} {n : Nat} {request : Reques
     cases var <;> simp only [evaluate, Except.ok.injEq] at he <;> subst he <;> cases ha
     case principal | action | resource => simp
     case context v a path hf' hv =>
-      suffices h : ∃ kv ∈ request.context.kvs, euid ∈ kv.snd.sliceEUIDs by
+      suffices h : ∃ kv ∈ request.context.toList, euid ∈ kv.snd.sliceEUIDs by
         unfold Value.sliceEUIDs
         right
-        simpa [List.mapUnion₃_eq_mapUnion (·.snd.sliceEUIDs) request.context.kvs, List.mem_mapUnion_iff_mem_exists] using h
+        simp only [Map.deprecated_toList_def, Prod.exists] at h -- `Map.deprecated_toList_def` is currently necessary because `Value.sliceEUIDs` is defined using `Data.Map` internals
+        simpa [List.mapUnion₃_eq_mapUnion λ (x : Attr × Value) => (x.snd.sliceEUIDs), List.mem_mapUnion_iff_mem_exists] using h
       exists (a, v)
       constructor
       · exact Map.find?_mem_toList hf'

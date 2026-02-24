@@ -1289,13 +1289,13 @@ theorem record_lifting_make {tys : List (Attr × TypedExpr)} :
 := by
   simp only [lift_bool_types_record_eq_map_on_values]
   rw [Data.Map.mapOnValues_eq_make_map QualifiedType.liftBoolTypes]
-  simp only [Data.Map.toList, Data.Map.kvs, List.map_map]
+  simp only [List.map_map]
   · simp only [Data.Map.make, Data.Map.mk.injEq]
     have : (λ (x : Attr × TypedExpr) => (x.fst, Qualified.required x.snd.typeOf)) =
            (Prod.map id (λ (tx : TypedExpr) => Qualified.required tx.typeOf)) := by
       unfold Prod.map
       simp only [id_eq]
-    simp only [this, List.canonicalize_of_map_fst, List.map_map]
+    simp only [this, List.canonicalize_of_map_fst, Data.Map.toList_mk_id, List.map_map]
     have : ((λ (kv : Attr × QualifiedType) => (kv.fst, kv.snd.liftBoolTypes)) ∘ Prod.map id (λ (tx : TypedExpr) => Qualified.required tx.typeOf)) =
            (Prod.map id (λ (tx : TypedExpr) => QualifiedType.liftBoolTypes (Qualified.required tx.typeOf))) := by
       unfold Prod.map

@@ -144,20 +144,25 @@ theorem lifted_type_is_lifted (ty : CedarType) :
   case record rty =>
     simp only [RecordType.liftBoolTypes]
     rw [Data.Map.mapOnValues₂_eq_mapOnValues]
-    simp only [Data.Map.mapOnValues, Data.Map.kvs]
-    exact lifted_record_is_lifted rty.1
+    simp only [Data.Map.mapOnValues]
+    cases rty
+    case mk atys =>
+    simp only [Data.Map.toList_mk_id]
+    cases atys
+    case nil => simp [Lifted.record_nil]
+    case cons aty atys =>
+      obtain ⟨k, qty⟩ := aty
+      simp only [List.map_cons]
+      cases qty with
+      | optional ty' =>
+        simp only [QualifiedType.liftBoolTypes]
+        have hᵢ := lifted_type_is_lifted ty'
+        exact Lifted.record_fst_optional hᵢ (lifted_record_is_lifted atys)
+      | required ty' =>
+        simp only [QualifiedType.liftBoolTypes]
+        have hᵢ := lifted_type_is_lifted ty'
+        exact Lifted.record_fst_required hᵢ (lifted_record_is_lifted atys)
   termination_by sizeOf ty
-  decreasing_by
-    all_goals simp_wf
-    all_goals (try omega)
-    all_goals
-      rename_i h
-      subst h
-      rename_i rty _ _
-      cases rty
-      simp
-      omega
-
 end
 
 theorem lifted_type_is_super_type {ty₁ ty₂ : CedarType} :
@@ -294,7 +299,7 @@ theorem lifted_type_is_top {ty₁ ty₂ : CedarType} :
       simp [h₂] at h₁
       simp only [CedarType.liftBoolTypes, RecordType.liftBoolTypes, CedarType.record.injEq]
       rw [Data.Map.mapOnValues₂_eq_mapOnValues, Data.Map.mapOnValues₂_eq_mapOnValues]
-      simp only [Data.Map.mapOnValues, Data.Map.kvs, Data.Map.mk.injEq]
+      simp only [Data.Map.mapOnValues, Data.Map.mk.injEq]
       exact lifted_record_type_is_top (lubRecordType_is_lub_of_record_types h₁)
     case _ =>
       split at heq
@@ -400,13 +405,15 @@ theorem wf_type_iff_wf_liftBoolTypes {env : TypeEnv} :
     all_goals simp_wf
     all_goals
       first
-      | (have hmem := Data.Map.find?_mem_toList hfound'
-         simp [Data.Map.toList, Data.Map.kvs] at hmem
-         have h := List.sizeOf_snd_lt_sizeOf_list hmem
-         simp at h; omega)
-      | (have hmem := Data.Map.find?_mem_toList hfound
-         simp [Data.Map.toList, Data.Map.kvs] at hmem
-         have h := List.sizeOf_snd_lt_sizeOf_list hmem
-         simp at h; omega)
+      | have hmem := Data.Map.find?_mem_toList hfound'
+        simp only [Data.Map.toList_mk_id] at hmem
+        have h := List.sizeOf_snd_lt_sizeOf_list hmem
+        simp at h
+        omega
+      | have hmem := Data.Map.find?_mem_toList hfound
+        simp only [Data.Map.toList_mk_id] at hmem
+        have h := List.sizeOf_snd_lt_sizeOf_list hmem
+        simp at h
+        omega
 
 end Cedar.Thm

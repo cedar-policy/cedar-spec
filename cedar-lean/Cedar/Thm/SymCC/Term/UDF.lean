@@ -84,10 +84,7 @@ theorem map_make_filterMap_find?_none
   ] at heq_k''
   have := Map.in_list_implies_contains hmem_kv
   have := Map.contains_iff_some_find?.mp this
-  have heq_m : Map.mk m.toList = m := by
-    cases m
-    rfl
-  simp [heq_k'', heq_m, hfind] at this
+  simp [heq_k'', hfind] at this
 
 /--
 Simplifying `Factory.app` on a `UDF` with a table
@@ -138,7 +135,8 @@ theorem map_make_filterMap_flatten_find?
   rw [← Map.list_find?_iff_make_find?]
   simp only [List.find?_flatten]
   cases m with | mk l =>
-  simp only [Map.toList, Map.kvs, Map.find?] at *
+  simp only [List.find?_isSome, beq_iff_eq, Prod.exists, exists_and_right, exists_eq_right,
+    forall_exists_index, and_imp, Prod.forall, Map.find?, Map.toList_mk_id] at *
   split at hfind
   rotate_left; contradiction
   rename_i heq
@@ -162,13 +160,18 @@ theorem map_make_filterMap_flatten_find?
       · exact ih heq
       · rename_i l' hhd
         simp only [beq_eq_false_iff_ne, ne_eq] at hne_hd_key
-        have := hf hd
+        have := hf hd.fst hd.snd
         have :
           (∃ l, f hd = some l ∧ (List.find? (fun x => x.fst == k') l).isSome = true) → False
         := by
           intros h
+          replace ⟨l, h, h'⟩ := h
           apply hne_hd_key
-          apply this h
+          apply this l h
+          simp_all only [forall_const, Option.some.injEq, imp_false, forall_eq', List.find?_isSome,
+            beq_iff_eq, Prod.exists, exists_and_right, exists_eq_right, exists_false]
+          rw [List.find?_isSome] at h'
+          simp_all
         simp only [
           imp_false, not_exists, not_and,
         ] at this

@@ -86,12 +86,11 @@ theorem ofRecordType_preserves_attr
 := by
   cases rty with | mk rty_1 =>
   induction rty_1
-  case nil =>
-    simp [Data.Map.find?, List.find?] at hattr_exists
+  case nil => simp [Data.Map.find?] at hattr_exists
   case cons head tail ih =>
     have ⟨k, v⟩ := head
-    simp only [Data.Map.find?, TermType.ofRecordType, List.find?, Bool.not_eq_true]
-    simp only [Data.Map.find?, List.find?, Bool.not_eq_true] at hattr_exists ih
+    simp only [Data.Map.find?, List.find?, TermType.ofRecordType, Data.Map.toList_mk_id, Bool.not_eq_true]
+    simp only [Data.Map.find?, List.find?, Data.Map.toList_mk_id, Bool.not_eq_true] at hattr_exists ih
     cases e : k == attr
     case false =>
       simp only [e] at ⊢ hattr_exists
@@ -164,9 +163,9 @@ mutual
       apply ofType_eq_ofType_liftBool ty
     | record rty =>
       simp only [TermType.ofType, CedarType.liftBoolTypes, RecordType.liftBoolTypes,
-        Data.Map.mapOnValues₂_eq_mapOnValues, Data.Map.mapOnValues, Data.Map.kvs,
+        Data.Map.mapOnValues₂_eq_mapOnValues, Data.Map.mapOnValues,
         TermType.record.injEq, Data.Map.mk.injEq]
-      exact ofRecordType_eq_ofRecordType_liftBool rty.1
+      exact ofRecordType_eq_ofRecordType_liftBool rty.toList
 end
 
 theorem isCedarRecordType_implies_isRecordType
@@ -447,7 +446,7 @@ theorem compile_well_typed_var {v : Var} {ty : CedarType} {Γ : TypeEnv} {εnv :
       CedarType.liftBoolTypes,
       RecordType.liftBoolTypes,
       Data.Map.mapOnValues₂_eq_mapOnValues,
-      Data.Map.mapOnValues, Data.Map.kvs,
+      Data.Map.mapOnValues,
       TermType.ofType, exists_eq_left',
       Term.typeOf, TermType.option.injEq,
       TermType.record.injEq,
@@ -878,7 +877,7 @@ theorem compile_well_typed_getAttr
         Option.some.injEq, exists_and_left,
         exists_eq_left', true_and,
       ]
-      exists (Data.Map.mk (TermType.ofRecordType rty2.1))
+      exists (Data.Map.mk (TermType.ofRecordType rty2.toList))
       constructor
       -- Types of symbolic attrs are correct
       · simp only [← h4]
@@ -887,9 +886,9 @@ theorem compile_well_typed_getAttr
         apply h2
       -- Finally, show that TermType is agnostic to `rty2` and `rty2.liftBoolTypes`
       · have ⟨_, h1, h2⟩ := ofRecordType_preserves_attr henv_attr_lookup hty_env_attr
-        have hlift := ofRecordType_eq_ofRecordType_liftBool rty2.1
+        have hlift := ofRecordType_eq_ofRecordType_liftBool rty2.toList
         rw [lift_bool_types_record_eq_map_on_values] at hrty_rty2
-        simp only [Data.Map.mapOnValues, Data.Map.kvs] at hrty_rty2
+        simp only [Data.Map.mapOnValues] at hrty_rty2
         simp only [← hrty_rty2, ← hlift] at h1
         simp only [h1, Option.some.injEq, exists_eq_left']
         split at h2 <;> simp [h2]

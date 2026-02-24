@@ -47,13 +47,12 @@ theorem entity_type_validate_well_formed_is_sound
     simp only [Bool.false_eq_true, false_or]
     exists uid
     simp only [heq, and_true]
-    simp only [Map.toList] at hacts
-    have : (List.find? (fun x => x.fst == uid) (Map.kvs env.acts)).isSome
+    have : (List.find? (fun x => x.fst == uid) (Map.toList env.acts)).isSome
     := by
       apply List.find?_isSome.mpr
       exists (uid, entry)
       simp [hacts]
-    cases h : List.find? (fun x => x.fst == uid) (Map.kvs env.acts)
+    cases h : List.find? (fun x => x.fst == uid) (Map.toList env.acts)
     · simp [h] at this
     · simp [ActionSchema.contains, Map.find?, h]
   · simp only [true_or]
@@ -68,7 +67,7 @@ theorem validate_attrs_well_formed_is_sound
   QualifiedType.WellFormed env qty
 := by
   cases rty with
-  | nil => simp [Map.find?, List.find?] at hfind
+  | nil => simp [Map.find?] at hfind
   | cons hd tl =>
     simp only [validateAttrsWellFormed] at hok
     cases h : hd.snd with
@@ -78,7 +77,7 @@ theorem validate_attrs_well_formed_is_sound
       · contradiction
       · rename_i hwf_hd
         have := (Map.in_list_iff_find?_some hwf).mpr hfind
-        simp only [Map.kvs, List.mem_cons] at this
+        simp only [Map.toList_mk_id, List.mem_cons] at this
         cases this with
         | inl hhd =>
           have e : qty = hd.snd := by simp [← hhd]
@@ -96,7 +95,7 @@ theorem validate_attrs_well_formed_is_sound
       · contradiction
       · rename_i hwf_hd
         have := (Map.in_list_iff_find?_some hwf).mpr hfind
-        simp only [Map.kvs, List.mem_cons] at this
+        simp only [Map.toList_mk_id, List.mem_cons] at this
         cases this with
         | inl hhd =>
           have e : qty = hd.snd := by simp [← hhd]
@@ -207,11 +206,11 @@ decreasing_by
     simp [h]
   all_goals
     rename ty = CedarType.record rty => h
-    simp [h]
+    simp only [h, CedarType.record.sizeOf_spec]
     rename (attr, qty) ∈ rty.toList => hmem
     have := List.sizeOf_lt_of_mem hmem
     cases rty
-    simp [Map.toList, Map.kvs] at this ⊢
+    simp at this ⊢
     omega
 
 theorem standard_schema_entry_validate_well_formed_is_sound

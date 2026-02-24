@@ -185,7 +185,7 @@ theorem type_of_hasAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
     | inr h₂ =>
       -- Action entity always have empty attributes
       have ⟨h₉, _⟩ := h₂
-      simp only [h₉, Map.contains, Map.find?, Map.empty, Map.kvs]
+      simp only [h₉, Map.contains, Map.find?, Map.empty, Map.toList]
       constructor
 
 theorem type_of_hasAttr_is_sound {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilities} {env : TypeEnv} {ty : TypedExpr} {request : Request} {entities : Entities}

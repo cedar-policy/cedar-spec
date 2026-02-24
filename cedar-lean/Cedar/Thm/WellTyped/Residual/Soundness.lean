@@ -349,7 +349,7 @@ InstanceOfType env v (Residual.binaryApp op₂ x₁ x₂ ty).typeOf
             exact type_lifting_preserves_instance_of_type h₆
           | inr h₁ =>
             replace ⟨_, h₆, entry₁, _⟩ := h₁
-            simp only [← hᵢ, h₆, Data.Map.empty, Data.Map.find?, List.find?] at heq
+            simp only [← hᵢ, h₆] at heq
             contradiction
         · simp only [reduceCtorEq, false_and, exists_const] at hᵢ
       · cases h₃
@@ -457,7 +457,7 @@ InstanceOfType env v (Residual.getAttr x₁ attr ty).typeOf
       · cases h₇
     | inr h₁ =>
       have ⟨h₁, _, ⟨entry, _⟩⟩ := h₁
-      simp only [h₁, Data.Map.empty, Data.Map.find?, List.find?] at h₇
+      simp only [h₁, Data.Map.find?] at h₇
       contradiction
   · simp only [Except.bind_err, reduceCtorEq] at h₇
 

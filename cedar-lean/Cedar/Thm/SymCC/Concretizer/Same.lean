@@ -189,7 +189,7 @@ private theorem concretize?_some_same_requests {r : Request} {ρ : SymRequest} :
 private theorem concretize?_some_InSymAncestors {uid anc : EntityUID} {δ : SymEntityData} {εs : SymEntities} {ancs : List (Set EntityUID)}
   (hwδ : SymEntityData.WellFormed εs uid.ty δ)
   (hwt : Term.WellFormedLiteral εs (Term.entity uid))
-  (ha : List.mapM (λ tyf => (app tyf.snd (Term.entity uid)).setOfEntityUIDs?) δ.ancestors.kvs = some ancs)
+  (ha : List.mapM (λ tyf => (app tyf.snd (Term.entity uid)).setOfEntityUIDs?) δ.ancestors.toList = some ancs)
   (hin : anc ∈ List.mapUnion id ancs) :
   SameEntityData.InSymAncestors uid δ anc
 := by
@@ -220,7 +220,7 @@ private theorem concretize?_some_InAncestors {uid : EntityUID} {δ : SymEntityDa
   (hf : δ.ancestors.find? ancTy = some ancUF)
   (hwδ : SymEntityData.WellFormed εs uid.ty δ)
   (hwt : Term.WellFormedLiteral εs (Term.entity uid))
-  (ha : List.mapM (λ tyf => (app tyf.snd (Term.entity uid)).setOfEntityUIDs?) δ.ancestors.kvs = some ancs) :
+  (ha : List.mapM (λ tyf => (app tyf.snd (Term.entity uid)).setOfEntityUIDs?) δ.ancestors.toList = some ancs) :
   SameEntityData.InAncestors uid { attrs := attrs, ancestors := List.mapUnion id ancs, tags := tags } ancUF ancTy
 := by
   simp only [SameEntityData.InAncestors]
@@ -273,7 +273,7 @@ private theorem mapM_concretize?_taggedValueFor_none_implies_contains_tag_false
   replace heq := (concretize?_taggedValueFor_some_implies heq).left
   subst heq
   replace hn := Map.find?_none_all_absent hn val
-  simp only [Map.kvs] at hn
+  simp only [Map.toList] at hn
   contradiction
 
 private theorem mapM_concretize?_taggedValueFor_some_implies_contains_tag_true
@@ -286,7 +286,7 @@ private theorem mapM_concretize?_taggedValueFor_some_implies_contains_tag_true
 := by
   simp only [Set.contains_prop_bool_equiv]
   replace hs := Map.find?_mem_toList hs
-  simp only [Map.toList, Map.kvs] at hs
+  simp only [Map.toList, Map.toList] at hs
   replace ⟨tag', hin', heq⟩ := List.mapM_some_implies_all_from_some heq (tag, val) hs
   replace heq := (concretize?_taggedValueFor_some_implies heq).left
   subst heq
@@ -334,7 +334,7 @@ private theorem concretize?_some_same_tags {uid : EntityUID} {δ : SymEntityData
       constructor
       · exact mapM_concretize?_taggedValueFor_some_implies_contains_tag_true heq hkeqv hs
       · replace hs := Map.find?_mem_toList hs
-        simp [Map.toList, Map.kvs] at hs
+        simp only [Map.toList_mk_id] at hs
         replace ⟨tag', _, heq⟩ := List.mapM_some_implies_all_from_some heq (tag, val) hs
         replace ⟨heq', heq⟩ := concretize?_taggedValueFor_some_implies heq
         subst heq'
@@ -381,7 +381,7 @@ private theorem concretize?_some_same_entities {uids : Set EntityUID} {es : Enti
   replace ⟨es', hs, heq⟩ := hs
   subst heq
   replace hf := Map.find?_mem_toList hf
-  simp only [Map.toList, Map.kvs, Map.make] at hf
+  simp only [Map.make] at hf
   replace hf := List.in_canonicalize_in_list hf
   replace ⟨_, _, hs⟩ := List.mapM_some_implies_all_from_some hs (uid, d) hf
   simp only [SymEntities.concretize?.entityData?, Option.bind_eq_bind, Option.bind_eq_some_iff,

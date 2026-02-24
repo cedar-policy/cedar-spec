@@ -190,7 +190,7 @@ theorem wf_record_type_cons {env : TypeEnv}
   simp only [Map.WellFormed] at hwf_map
   constructor
   · have := hwf_tys hd.fst hd.snd
-    simp only [Map.find?, List.find?, BEq.rfl, forall_const] at this
+    simp only [Map.find?, Map.toList_mk_id, BEq.rfl, List.find?_cons_of_pos, forall_const] at this
     cases e : hd.snd
     all_goals
       simp only [e] at *
@@ -205,16 +205,16 @@ theorem wf_record_type_cons {env : TypeEnv}
       cases this with
       | cons_nil => constructor
       | cons_cons =>
-        simp only [Map.toList, Map.kvs]
+        simp only [Map.toList, Map.toList]
         assumption
     · intros attr qty hfound
       have hfound := Map.find?_mem_toList hfound
-      simp only [Map.toList, Map.kvs] at hfound
+      simp only [Map.toList_mk_id] at hfound
       have : (Map.mk (hd :: tl)).find? attr = some qty := by
         apply (Map.in_list_iff_find?_some ?_).mp
-        · simp [Map.kvs, hfound]
+        · simp [hfound]
         · simp only [Map.WellFormed]
-          assumption
+          exact hwf_map
       exact hwf_tys attr qty this
 
 theorem wf_record_implies_wf_attr {env : TypeEnv} {rty : RecordType} {attr : Attr} {qty : QualifiedType}
@@ -283,8 +283,8 @@ theorem wf_env_implies_wf_attrs {env : TypeEnv} {ety : EntityType} {attrs : Reco
   · simp only [EntitySchemaEntry.attrs] at hattrs
     simp only [← hattrs, Map.empty]
     constructor
-    . simp [Map.WellFormed, Map.toList, Map.kvs, Map.make, List.canonicalize]
-    · simp [Map.find?, List.find?]
+    . simp [Map.WellFormed, Map.make, List.canonicalize]
+    · simp [Map.find?]
 
 theorem wf_env_implies_attrs_lifted {env : TypeEnv} {ety : EntityType} {attrs : RecordType}
   (hwf : env.WellFormed)
@@ -303,7 +303,7 @@ theorem wf_env_implies_attrs_lifted {env : TypeEnv} {ety : EntityType} {attrs : 
   · simp only [EntitySchemaEntry.attrs] at hattrs
     simp only [← hattrs, Map.empty]
     constructor
-    simp [Map.toList, Map.kvs]
+    simp
 
 theorem wf_env_implies_action_wf {env : TypeEnv}
   (hwf : env.WellFormed) :

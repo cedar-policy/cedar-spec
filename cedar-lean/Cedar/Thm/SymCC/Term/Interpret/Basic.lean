@@ -59,10 +59,10 @@ theorem interpret_term_set_empty {ty : TermType} :
 
 theorem interpret_term_record {I : Interpretation} {r : Map Attr Term} :
   (Term.record r).interpret I =
-  Term.record (Map.make (r.kvs.map λ (a, t) => (a, t.interpret I)))
+  Term.record (Map.make (r.toList.map λ (a, t) => (a, t.interpret I)))
 := by
   cases r
-  simp only [Term.interpret, recordOf, List.map₃_eq_map λ (x : (Attr × Term)) => (x.fst, x.snd.interpret I)]
+  simp [Term.interpret, recordOf, List.map₃_eq_map λ (x : (Attr × Term)) => (x.fst, x.snd.interpret I)]
 
 /--
 This tactic discharges proofs in lemmas of the form `interpret_term_app_*`,
