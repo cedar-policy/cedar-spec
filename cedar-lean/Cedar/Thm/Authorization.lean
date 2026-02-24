@@ -26,6 +26,9 @@ namespace Cedar.Thm
 open Cedar.Data
 open Cedar.Spec
 
+def PolicyIdsUnique (policies : Policies) :=
+  ∀ p₁ ∈ policies, ∀ p₂ ∈ policies, p₁.id = p₂.id → p₁ = p₂
+
 def HasSatisfiedEffect (effect : Effect) (request : Request) (entities : Entities) (policies : Policies) : Prop :=
   ∃ (policy : Policy),
     policy ∈ policies ∧
@@ -244,7 +247,7 @@ theorem unchanged_erroring_when_add_policy (request: Request) (entities: Entitie
 Determining policies and erroring policies of an isAuthorized response are disjoint when input policy IDs are unique.
 -/
 theorem determining_erroring_disjoint_when_unique_ids (request : Request) (entities : Entities) (policies : Policies) :
-  (∀ p₁ p₂, p₁ ∈ policies → p₂ ∈ policies → p₁.id = p₂.id → p₁ = p₂) →
+  PolicyIdsUnique policies →
     ((isAuthorized request entities policies).determiningPolicies ∩ (isAuthorized request entities policies).erroringPolicies).isEmpty
 := by
   intro
@@ -261,7 +264,7 @@ theorem determining_erroring_disjoint_when_unique_ids (request : Request) (entit
   -- Extract the erroring policy, and the fact that it is erroring
   obtain ⟨p₂, _, h₂, _⟩ := h_err
   -- They're the same policy, leading to a contradiction
-  have heq : p₁ = p₂ := by grind
+  have heq : p₁ = p₂ := by grind [PolicyIdsUnique]
   subst heq
   have l₁ : ∀ p, hasError p request entities → ¬satisfied p request entities := by
     unfold satisfied hasError
