@@ -84,10 +84,7 @@ theorem map_make_filterMap_find?_none
   ] at heq_k''
   have := Map.in_list_implies_contains hmem_kv
   have := Map.contains_iff_some_find?.mp this
-  have heq_m : Map.mk m.toList = m := by
-    cases m
-    rfl
-  simp [heq_k'', heq_m, hfind] at this
+  simp [heq_k'', hfind] at this
 
 /--
 Simplifying `Factory.app` on a `UDF` with a table

@@ -431,7 +431,7 @@ theorem instance_of_record_nil {env : TypeEnv} :
   InstanceOfType env (Value.record (Map.mk [])) (CedarType.record (Map.mk []))
 := by
   apply InstanceOfType.instance_of_record <;>
-  simp [Map.contains, Map.find?, List.find?]
+  simp [Map.contains, Map.find?]
 
 theorem instance_of_record_cons {env : TypeEnv} {hd : Attr × Qualified CedarType} {tl : List (Attr × Qualified CedarType)} {rhd : Value} {rtl : List (Attr × Value)}
   (h₁ : InstanceOfType env rhd (Qualified.getType hd.snd))
