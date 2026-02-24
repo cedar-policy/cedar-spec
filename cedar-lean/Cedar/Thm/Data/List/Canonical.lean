@@ -279,7 +279,7 @@ public theorem insertCanonical_preserves_forallᵥ {α β γ} [LT α] [StrictLT 
   (h₂ : Forallᵥ p kvs₁ kvs₂) :
   Forallᵥ p (insertCanonical Prod.fst kv₁ kvs₁) (insertCanonical Prod.fst kv₂ kvs₂)
 := by
-  simp only [Forallᵥ] at *
+  simp only [forallᵥ_def] at *
   cases h₂
   case nil =>
     simp only [insertCanonical_singleton, forall₂_cons, Forall₂.nil, and_true]
@@ -296,6 +296,7 @@ public theorem insertCanonical_preserves_forallᵥ {α β γ} [LT α] [StrictLT 
       split
       · contradiction
       · apply Forall₂.cons (by exact h₃)
+        rw [← forallᵥ_def] at *
         exact insertCanonical_preserves_forallᵥ h₁ h₄
     · simp only [h₁, h₃] at h₅ h₆
       split
@@ -506,14 +507,15 @@ public theorem canonicalize_preserves_forallᵥ {α β γ} [LT α] [StrictLT α]
   List.Forallᵥ p kvs₁ kvs₂ →
   List.Forallᵥ p (List.canonicalize Prod.fst kvs₁) (List.canonicalize Prod.fst kvs₂)
 := by
-  simp only [Forallᵥ]
+  simp only [forallᵥ_def]
   intro h₁
   cases h₁
   case nil => simp [canonicalize_nil]
   case cons hd₁ hd₂ tl₁ tl₂ h₂ h₃ =>
     simp only [canonicalize]
-    have h₄ := canonicalize_preserves_forallᵥ p tl₁ tl₂ h₃
-    apply insertCanonical_preserves_forallᵥ h₂ h₄
+    rw [← forallᵥ_def] at *
+    apply insertCanonical_preserves_forallᵥ h₂
+    exact canonicalize_preserves_forallᵥ p tl₁ tl₂ h₃
 
 public theorem canonicalize_of_map_fst {α β γ} [LT α] [StrictLT α] [DecidableLT α] (xs : List (α × β)) (f : β → γ) :
   List.canonicalize Prod.fst (List.map (Prod.map id f) xs) =

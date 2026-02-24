@@ -79,12 +79,12 @@ deriving instance Inhabited for TemplateLinkedPolicy
 def TemplateLinkedPolicy.merge (x y : TemplateLinkedPolicy) : TemplateLinkedPolicy := {
   templateId := Field.merge x.templateId y.templateId
   id := Field.merge x.id y.id
-  slotEnv := 
-    match x.slotEnv.kvs, y.slotEnv.kvs with
+  slotEnv :=
+    match x.slotEnv.toList, y.slotEnv.toList with
     -- avoid sort if either are empty
     | [], _      => y.slotEnv
     | _, []      => x.slotEnv
-    | xkvs, ykvs => Data.Map.make $ xkvs ++ ykvs
+    | xtoList, ytoList => Data.Map.make $ xtoList ++ ytoList
 }
 
 instance : Field TemplateLinkedPolicy := Field.fromInterField (Proto.Policy.toTemplateLinkedPolicy) TemplateLinkedPolicy.merge

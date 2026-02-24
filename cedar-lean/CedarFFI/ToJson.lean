@@ -152,7 +152,7 @@ def termToJson : Term → Lean.Json
   | .record m =>
     Lean.Json.mkObj [
       ("record",
-        Lean.Json.arr (m.kvs.map₂ (fun ⟨(k,v), _⟩ =>
+        Lean.Json.arr (m.toList.map₂ (fun ⟨(k,v), _⟩ =>
           Lean.Json.arr [Lean.Json.str k, termToJson v].toArray)).toArray)
     ]
   | .app op args retTy =>
@@ -171,7 +171,7 @@ decreasing_by
     omega
   case _ h₁ =>
     cases m
-    simp only [Map.kvs] at h₁
+    simp only [Map.toList_mk_id] at h₁
     simp only [Map.mk.sizeOf_spec]
     omega
   case _ h₁ =>

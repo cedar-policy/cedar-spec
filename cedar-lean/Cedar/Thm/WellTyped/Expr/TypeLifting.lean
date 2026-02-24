@@ -152,15 +152,12 @@ theorem lifted_type_is_lifted (ty : CedarType) :
     split
     case _ heq =>
       have : rty = (Data.Map.mk []) := by
-        simp [Data.Map.kvs_nil_iff_empty, Data.Map.empty] at heq
-        exact heq
-      simp [this]
-      exact Lifted.record_nil
+        simpa [Data.Map.toList_nil_iff_empty, Data.Map.empty] using heq
+      simp [this, Lifted.record_nil]
     case _ a qt l heq =>
       have : rty = (Data.Map.mk ((a, qt)::l)) := by
         cases rty
-        simp at heq
-        simp [heq]
+        simpa using heq
       simp [this]
       clear this
       unfold QualifiedType.liftBoolTypes
@@ -341,12 +338,11 @@ theorem type_lifting_preserves_instance_of_type {env : TypeEnv} {v : Value} {ty 
   case _ => cases h'
 
 theorem lift_bool_types_record_eq_map_on_values {rty : Data.Map Attr QualifiedType} :
-  Data.Map.mk (CedarType.liftBoolTypesRecord rty.1) = rty.mapOnValues QualifiedType.liftBoolTypes
+  Data.Map.mk (CedarType.liftBoolTypesRecord rty.toList) = rty.mapOnValues QualifiedType.liftBoolTypes
 := by
-  simp [Data.Map.mapOnValues, Data.Map.kvs]
-  induction rty.1 <;> simp [CedarType.liftBoolTypesRecord]
-  rename_i hᵢ
-  exact hᵢ
+  simp only [Data.Map.mapOnValues, Data.Map.mk.injEq]
+  induction rty.toList <;> simp [CedarType.liftBoolTypesRecord]
+  assumption
 
 theorem wf_type_iff_wf_liftBoolTypes {env : TypeEnv} :
   ∀ {ty : CedarType},
@@ -409,14 +405,14 @@ theorem wf_type_iff_wf_liftBoolTypes {env : TypeEnv} :
     any_goals simp
     any_goals
       have hmem := Data.Map.find?_mem_toList hfound'
-      simp [Data.Map.toList, Data.Map.kvs] at hmem
+      simp only [Data.Map.toList_mk_id] at hmem
       have h := List.sizeOf_snd_lt_sizeOf_list hmem
       simp at h
       omega
 
     any_goals
       have hmem := Data.Map.find?_mem_toList hfound
-      simp [Data.Map.toList, Data.Map.kvs] at hmem
+      simp only [Data.Map.toList_mk_id] at hmem
       have h := List.sizeOf_snd_lt_sizeOf_list hmem
       simp at h
       omega

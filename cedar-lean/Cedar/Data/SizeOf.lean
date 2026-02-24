@@ -17,6 +17,7 @@
 module
 
 public import Cedar.Data.Map
+import all Cedar.Data.Map -- allow accessing internals of Cedar.Data.Map, necessary for sizeOf calculations
 public import Cedar.Data.Set
 
 /-!
@@ -44,21 +45,21 @@ public theorem sizeOf_lt_of_value [SizeOf α] [SizeOf β] {m : Map α β} {k : �
     omega
   omega
 
-public theorem sizeOf_lt_of_kvs [SizeOf α] [SizeOf β] (m : Map α β) :
-  sizeOf m.kvs < sizeOf m
+public theorem sizeOf_lt_of_toList [SizeOf α] [SizeOf β] (m : Map α β) :
+  sizeOf m.toList < sizeOf m
 := by
-  unfold kvs
+  unfold toList kvs
   conv => rhs ; unfold sizeOf _sizeOf_inst _sizeOf_1 ; simp only
   generalize sizeOf m.1 = s
   omega
 
 public theorem sizeOf_lt_of_tl [SizeOf α] [SizeOf β] {m : Map α β} {tl : List (α × β)}
-  (h : m.kvs = (k, v) :: tl) :
+  (h : m.toList = (k, v) :: tl) :
   1 + sizeOf tl < sizeOf m
 := by
   conv => rhs ; unfold sizeOf _sizeOf_inst _sizeOf_1
   simp only
-  unfold kvs at h
+  unfold toList at h
   simp only [h, List.cons.sizeOf_spec, Prod.mk.sizeOf_spec]
   omega
 

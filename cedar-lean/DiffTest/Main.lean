@@ -142,7 +142,7 @@ def runAndTimeIO (f : IO α) : IO (Timed α) := do
     | .error e => .error s!"validateEntitiesDRT: failed to parse input: {e}"
     | .ok v => do
         let actionEntities := (v.schema.acts.mapOnValues actionSchemaEntryToEntityData)
-        let entities := Cedar.Data.Map.make (v.entities.kvs ++ actionEntities.kvs)
+        let entities := Cedar.Data.Map.make (v.entities.toList ++ actionEntities.toList)
         let result := runAndTime (λ () => Cedar.Validation.validateEntities v.schema entities )
         .ok (unsafeBaseIO result)
   toString (Lean.toJson result)

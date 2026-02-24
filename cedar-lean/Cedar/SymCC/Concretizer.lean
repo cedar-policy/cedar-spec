@@ -39,7 +39,7 @@ def Prim.entityUIDs : Prim → Set EntityUID
 def Value.entityUIDs : Value → Set EntityUID
   | .prim p              => p.entityUIDs
   | .set (Set.mk vs)     => vs.mapUnion₁ (λ ⟨v, _⟩ => v.entityUIDs)
-  | .record (Map.mk avs) => avs.mapUnion₃ (λ ⟨(_, v), _⟩ => v.entityUIDs)
+  | .record avs          => avs.toList.mapUnion₃ (λ ⟨(_, v), _⟩ => v.entityUIDs)
   | .ext _               => Set.empty
 
 def Value.entityUID? : Value → Option EntityUID
@@ -60,7 +60,7 @@ def EntityData.entityUIDs (d : EntityData) : Set EntityUID :=
   d.ancestors ∪ (Value.record d.attrs).entityUIDs ∪ (Value.record d.tags).entityUIDs
 
 def Entities.entityUIDs (es : Entities) : Set EntityUID :=
-  es.kvs.mapUnion (λ (uid, d) => (Set.singleton uid) ∪ d.entityUIDs)
+  es.toList.mapUnion (λ (uid, d) => (Set.singleton uid) ∪ d.entityUIDs)
 
 structure Env where
   request : Request
@@ -171,7 +171,7 @@ def SymRequest.entityUIDs (ρ : SymRequest) : Set EntityUID :=
 
 def UDF.entityUIDs (f : UDF) : Set EntityUID :=
   f.default.entityUIDs ∪
-  f.table.kvs.mapUnion (λ (tᵢ, tₒ) => tᵢ.entityUIDs ∪ tₒ.entityUIDs)
+  f.table.toList.mapUnion (λ (tᵢ, tₒ) => tᵢ.entityUIDs ∪ tₒ.entityUIDs)
 
 def UnaryFunction.entityUIDs : UnaryFunction → Set EntityUID
   | .uuf _ => Set.empty
@@ -184,13 +184,13 @@ where
     | .none      => Set.empty
     | .some eids => Set.make (eids.elts.map (EntityUID.mk ety))
   attrs := δ.attrs.entityUIDs
-  ancs  := δ.ancestors.kvs.mapUnion (λ (_, f) => f.entityUIDs)
+  ancs  := δ.ancestors.toList.mapUnion (λ (_, f) => f.entityUIDs)
   tags  := match δ.tags with
     | .none      => Set.empty
     | .some τs   => τs.vals.entityUIDs
 
 def SymEntities.entityUIDs (εs : SymEntities) : Set EntityUID :=
-  εs.kvs.mapUnion λ (ety, δ) => δ.entityUIDs ety
+  εs.toList.mapUnion λ (ety, δ) => δ.entityUIDs ety
 
 def SymEnv.entityUIDs (εnv : SymEnv) : Set EntityUID :=
   εnv.request.entityUIDs ∪ εnv.entities.entityUIDs
@@ -206,7 +206,7 @@ def SymRequest.concretize? (ρ : SymRequest) : Option Request := do
 def SymEntityData.concretize? (uid : EntityUID) (δ : SymEntityData) : Option EntityData := do
   let tuid  ← if isValidEntityUID then .some (Term.entity uid) else .none
   let attrs ← (app δ.attrs tuid).recordValue?
-  let ancs  ← δ.ancestors.kvs.mapM (λ (_, f) => (app f tuid).setOfEntityUIDs?)
+  let ancs  ← δ.ancestors.toList.mapM (λ (_, f) => (app f tuid).setOfEntityUIDs?)
   .some ⟨attrs, ancs.mapUnion id, ← (tags tuid)⟩
   where
     isValidEntityUID :=

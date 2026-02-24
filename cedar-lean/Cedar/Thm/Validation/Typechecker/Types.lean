@@ -431,7 +431,7 @@ theorem instance_of_record_nil {env : TypeEnv} :
   InstanceOfType env (Value.record (Map.mk [])) (CedarType.record (Map.mk []))
 := by
   apply InstanceOfType.instance_of_record <;>
-  simp [Map.contains, Map.find?, List.find?]
+  simp [Map.contains, Map.find?]
 
 theorem instance_of_record_cons {env : TypeEnv} {hd : Attr × Qualified CedarType} {tl : List (Attr × Qualified CedarType)} {rhd : Value} {rtl : List (Attr × Value)}
   (h₁ : InstanceOfType env rhd (Qualified.getType hd.snd))
@@ -444,14 +444,14 @@ theorem instance_of_record_cons {env : TypeEnv} {hd : Attr × Qualified CedarTyp
     intro a
     specialize h₂ a
     simp [Map.contains, Map.find?, List.find?]
-    simp [Map.contains, Map.find?, Map.kvs] at h₂
+    simp [Map.contains, Map.find?, Map.toList] at h₂
     cases h₅ : hd.fst == a <;> simp
     exact h₂
   case h₂ =>
     intro a v qty
     specialize h₃ a v qty
     simp [Map.find?, List.find?]
-    simp [Map.find?, Map.kvs] at h₃
+    simp [Map.find?, Map.toList] at h₃
     cases h₅ : hd.fst == a <;> simp
     case false => exact h₃
     case true =>
@@ -462,7 +462,7 @@ theorem instance_of_record_cons {env : TypeEnv} {hd : Attr × Qualified CedarTyp
     intro a qty
     specialize h₄ a qty
     simp [Map.contains, Map.find?, List.find?]
-    simp [Map.contains, Map.find?, Map.kvs] at h₄
+    simp [Map.contains, Map.find?, Map.toList] at h₄
     cases h₅ : hd.fst == a <;> simp
     exact h₄
 
@@ -602,7 +602,7 @@ theorem sizeOf_attr_type_lt_sizeOf_record_type {a : Attr} {qty : QualifiedType }
     case h₁ =>
       apply @Nat.lt_trans _ (sizeOf rty)
       case h₁ =>
-        simp [Map.find?, Map.kvs] at h₂
+        simp [Map.find?, Map.toList] at h₂
         split at h₂ <;> simp at h₂
         rename_i a' qty' h₃ ; rw [eq_comm] at h₂ ; subst h₂
         have h₄ := List.mem_of_find?_eq_some h₃

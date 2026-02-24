@@ -17,6 +17,7 @@
 import Cedar.Spec
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.List
+import Cedar.Thm.Data.Map
 
 /-!
 This file contains useful lemmas about the `Evaluator` functions.
@@ -240,6 +241,7 @@ theorem record_value_contains_evaluated_attrs {rxs : List (Attr × Expr)} {rvs :
   simp only [evaluate] at he
   cases he₁ : rxs.mapM₂ fun x => bindAttr x.1.fst (evaluate x.1.snd request entities) <;>
     simp only [he₁, Except.bind_err, reduceCtorEq, Except.bind_ok, Except.ok.injEq, Value.record.injEq] at he
+  subst rvs
   rename_i rvs'
   replace he₁ : List.Forallᵥ (λ x y => evaluate x request entities = Except.ok y) rxs rvs' := by
     simp only [List.forallᵥ_def]
@@ -257,11 +259,11 @@ theorem record_value_contains_evaluated_attrs {rxs : List (Attr × Expr)} {rvs :
     split at hfv <;> simp only [Option.some.injEq, reduceCtorEq] at hfv
     subst hfv
     rename_i a' _ hfv
-    rw [←he, (by simpa using List.find?_some hfv : a' = a)] at hfv
+    rw [(by simpa using List.find?_some hfv : a' = a)] at hfv
     exact hfv
-  have ⟨(_, x), he₂, he₃, he₄⟩ := List.forall₂_implies_all_right he₁ (a, av) (List.mem_of_find?_eq_some hfv)
+  have ⟨(a', x), he₂, he₃, he₄⟩ := List.forall₂_implies_all_right he₁ (a, av) (List.mem_of_find?_eq_some hfv)
   subst he₃
   exists x
-  simp only [List.mem_of_sortedBy_implies_find? he₂ (List.canonicalize_sortedBy _ _), he₄, Map.make, Map.find?, and_self]
+  simp [List.mem_of_sortedBy_implies_find? he₂ (List.canonicalize_sortedBy _ _), he₄, Map.make, Map.find?, and_self]
 
 end Cedar.Thm

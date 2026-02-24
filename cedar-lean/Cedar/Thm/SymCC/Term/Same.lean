@@ -602,9 +602,9 @@ private abbrev attrValue?' :=
 
 private theorem filterMap_attrValue?'_wf {rt : Map Attr Term}
   (hw  : rt.WellFormed) :
-  Map.WellFormed (Map.mk (List.filterMap attrValue?' rt.1))
+  Map.WellFormed (Map.mk (rt.toList.filterMap attrValue?'))
 := by
-  rw [Map.wf_iff_sorted, Map.toList, Map.kvs] at hw
+  rw [Map.wf_iff_sorted] at hw
   replace hw : (List.filterMap attrValue?' rt.1).SortedBy Prod.fst := by
     apply List.filterMap_sortedBy _ hw
     intro x y hfx
@@ -616,7 +616,7 @@ private theorem filterMap_attrValue?'_wf {rt : Map Attr Term}
 theorem record_value?_mapM' {rt : Map Attr Term} {rv : Map Attr Value}
   (hr : Term.value? (Term.record rt) = some (Value.record rv)) :
   ∃ avs,
-    List.mapM' (fun x => Term.value?.attrValue? x.fst x.snd) rt.1 = some avs ∧
+    rt.toList.mapM' (fun x => Term.value?.attrValue? x.fst x.snd) = some avs ∧
     Map.mk (List.filterMap (fun x => Option.map (Prod.mk x.fst) x.snd) avs) = rv
 := by
   unfold Term.value? at hr
@@ -628,7 +628,7 @@ theorem record_value?_mapM' {rt : Map Attr Term} {rv : Map Attr Value}
 
 theorem record_value_find? {a : Attr} {tₐ : Term} {rt : Map Attr Term} {avs : List (Attr × Option Value)}
   (hf : Map.find? rt a = some tₐ)
-  (hr : List.mapM' (fun x => Term.value?.attrValue? x.fst x.snd) rt.1 = some avs) :
+  (hr : rt.toList.mapM' (λ x => Term.value?.attrValue? x.fst x.snd) = some avs) :
   ∃ av, av ∈ avs ∧ Term.value?.attrValue? a tₐ = some av
 := by
   have hr' := List.mapM'_some_implies_all_some hr
@@ -653,9 +653,8 @@ theorem record_value?_find?_required {a : Attr} {tₐ : Term} {rt : Map Attr Ter
   replace hr := List.mapM'_some_eq_filterMap hr
   subst hr
   replace hf := Map.find?_mem_toList hf
-  simp only [Map.toList, Map.kvs] at hf
-  replace hmem : (a, vₐ) ∈ List.filterMap (fun x => Option.map (Prod.mk x.fst) x.snd)
-    (List.filterMap (fun x => Term.value?.attrValue? x.fst x.snd) rt.1) := by
+  replace hmem : (a, vₐ) ∈ List.filterMap (λ x => Option.map (Prod.mk x.fst) x.snd)
+    (rt.toList.filterMap λ x => Term.value?.attrValue? x.fst x.snd) := by
     simp only [List.mem_filterMap, Option.map_eq_some_iff, Prod.mk.injEq, exists_eq_right_right]
     exists (a, some vₐ)
     simp only [and_self, and_true]
@@ -665,7 +664,9 @@ theorem record_value?_find?_required {a : Attr} {tₐ : Term} {rt : Map Attr Ter
   simp only [List.filterMap_filterMap] at *
   replace hw := filterMap_attrValue?'_wf hw
   apply Map.mem_toList_find? hw
-  simp only [Map.toList, Map.kvs, hmem]
+  simp only [imp_false, List.mem_filterMap, Prod.exists, Map.toList_mk_id] at *
+  replace ⟨a', t', hf', hmem⟩ := hmem
+  exists a', t'
 
 theorem record_value?_find?_optional_some {a : Attr} {tₐ : Term} {rt : Map Attr Term} {rv : Map Attr Value}
   (hw : rt.WellFormed)
@@ -683,9 +684,8 @@ theorem record_value?_find?_optional_some {a : Attr} {tₐ : Term} {rt : Map Att
   replace hr := List.mapM'_some_eq_filterMap hr
   subst hr
   replace hf := Map.find?_mem_toList hf
-  simp only [Map.toList, Map.kvs] at hf
   replace hmem : (a, vₐ) ∈ List.filterMap (fun x => Option.map (Prod.mk x.fst) x.snd)
-    (List.filterMap (fun x => Term.value?.attrValue? x.fst x.snd) rt.1) := by
+    (List.filterMap (fun x => Term.value?.attrValue? x.fst x.snd) rt.toList) := by
     simp only [List.mem_filterMap, Option.map_eq_some_iff, Prod.mk.injEq, exists_eq_right_right]
     exists (a, some vₐ)
     simp only [and_self, and_true]
@@ -694,7 +694,7 @@ theorem record_value?_find?_optional_some {a : Attr} {tₐ : Term} {rt : Map Att
   simp only [List.filterMap_filterMap] at *
   replace hw := filterMap_attrValue?'_wf hw
   apply Map.mem_toList_find? hw
-  simp only [Map.toList, Map.kvs, hmem]
+  simp only [Map.toList_mk_id, hmem]
 
 theorem record_value?_find?_optional_none {a : Attr} {ty : TermType} {rt : Map Attr Term} {rv : Map Attr Value}
   (hw : rt.WellFormed)
@@ -702,7 +702,7 @@ theorem record_value?_find?_optional_none {a : Attr} {ty : TermType} {rt : Map A
   (hr : Term.value? (Term.record rt) = some (Value.record rv)) :
   Map.find? rv a = none
 := by
-  rw [Map.wf_iff_sorted, Map.toList, Map.kvs] at hw
+  rw [Map.wf_iff_sorted] at hw
   replace ⟨avs, hr, hv⟩ := record_value?_mapM' hr
   replace ⟨av, hmem, hr'⟩ := record_value_find? hf hr
   replace ⟨_, hr'⟩ := value?_attrValue?_none_optional hr'
@@ -710,26 +710,27 @@ theorem record_value?_find?_optional_none {a : Attr} {ty : TermType} {rt : Map A
   subst hv
   replace hr := List.mapM'_some_eq_filterMap hr
   subst hr
-  simp only [Map.find?, Map.kvs]
+  simp only [Map.find?]
   split <;> simp only [reduceCtorEq]
   rename_i heq
   have heq' := List.find?_some heq
   rw [beq_iff_eq, eq_comm] at heq'
   subst heq'
   replace heq := List.mem_of_find?_eq_some heq
-  simp only [List.mem_filterMap, Option.map_eq_some_iff, Prod.mk.injEq, exists_eq_right_right] at heq
-  replace ⟨_, ⟨p', hmem', heq⟩, hsnd, hfst⟩ := heq
+  simp only [Map.toList_mk_id, List.mem_filterMap, Prod.exists, Option.map_eq_some_iff,
+    Prod.mk.injEq, exists_eq_right_right] at heq
+  replace ⟨a'', v'', ⟨a', t', hmem', heq⟩, _, _⟩ := heq ; subst a'' v''
   simp only [List.mem_filterMap] at hmem
   replace ⟨p, hmem, ha⟩ := hmem
-  have h : p' = p := by
+  have h : (a', t') = p := by
     replace ha := value?_attrValue?_fst ha
     simp only at ha
     replace heq := value?_attrValue?_fst heq
-    simp only [hfst, ←ha] at heq
+    simp only [←ha] at heq
     exact List.mem_of_sortedBy_unique hw hmem' hmem heq
   subst h
   simp only [heq, Option.some.injEq] at ha
-  simp only [ha, reduceCtorEq] at hsnd
+  simp_all
 
 theorem record_value?_find?_none {a : Attr} {rt : Map Attr Term} {rv : Map Attr Value}
   (hw : rt.WellFormed)
@@ -737,29 +738,28 @@ theorem record_value?_find?_none {a : Attr} {rt : Map Attr Term} {rv : Map Attr 
   (hr : Term.value? (Term.record rt) = some (Value.record rv)) :
   Map.find? rv a = none
 := by
-  rw [Map.wf_iff_sorted, Map.toList, Map.kvs] at hw
+  rw [Map.wf_iff_sorted] at hw
   replace ⟨avs, hr, hv⟩ := record_value?_mapM' hr
   subst hv
   replace hr := List.mapM'_some_eq_filterMap hr
   subst hr
-  simp only [Map.find?, Map.kvs]
+  simp only [Map.find?]
   split <;> simp only [reduceCtorEq]
   rename_i heq
   have heq' := List.find?_some heq
   rw [beq_iff_eq, eq_comm] at heq'
   subst heq'
   replace heq := List.mem_of_find?_eq_some heq
-  simp only [List.mem_filterMap, Option.map_eq_some_iff, Prod.mk.injEq,
-    exists_eq_right_right] at heq
-  replace ⟨_, ⟨p, hmem', heq⟩, _, hfst⟩ := heq
-  simp only [Map.find?, Map.kvs] at hf
+  simp only [Map.toList_mk_id, List.mem_filterMap, Prod.exists, Option.map_eq_some_iff,
+    Prod.mk.injEq, exists_eq_right_right] at heq
+  replace ⟨a'', v'', ⟨a', t', hmem', heq⟩, _, _⟩ := heq ; subst a'' v''
+  simp only [Map.find?] at hf
   split at hf <;> simp only [reduceCtorEq] at hf
   rename_i h
-  apply h p.fst p.snd
+  apply h a' t'
   replace heq := value?_attrValue?_fst heq
-  replace hmem' := List.mem_of_sortedBy_implies_find? hmem' hw
-  simp only [heq, hfst] at hmem'
-  exact hmem'
+  subst a'
+  exact List.mem_of_sortedBy_implies_find? hmem' hw
 
 theorem same_prim_value_inj {v : Value} {p : TermPrim} {t : Term} :
   v ∼ (Term.prim p) → v ∼ t → (Term.prim p) = t
@@ -894,8 +894,7 @@ private theorem record_value?_head_none {a : Attr} {t : Term} {ats : List (Attr 
   rw [hm, ← Map.wf_iff_sorted] at hw
   replace ⟨ty, ha⟩ := value?_attrValue?_none_implies_none ha
   subst ha
-  have hf : Map.find? (Map.mk ((a, Term.none ty) :: ats)) a = some (Term.none ty) := by
-    simp only [Map.find?, List.find?, beq_self_eq_true]
+  have hf : Map.find? (Map.mk ((a, Term.none ty) :: ats)) a = some (Term.none ty) := by simp [Map.find?]
   exact record_value?_find?_optional_none hw hf hv'
 
 
@@ -942,11 +941,11 @@ private theorem record_value?_eq' {rv : List (Attr × Value)} {r₁ r₂ : List 
   case none.some =>
     have hc := record_value?_head_none hw₁ hv₁ hv₁'.left
     replace ⟨_, avs', hv₂', _⟩ := hv₂'
-    simp only [Map.find?, hv₂', List.find?, beq_self_eq_true, reduceCtorEq] at hc
+    simp [Map.find?, hv₂'] at hc
   case some.none =>
     have hc := record_value?_head_none hw₂ hv₂ hv₂'.left
     replace ⟨_, avs', hv₁', _⟩ := hv₁'
-    simp only [Map.find?, hv₁', List.find?, beq_self_eq_true, reduceCtorEq] at hc
+    simp [Map.find?, hv₁'] at hc
   case some.some v₁ v₂ =>
     replace ⟨hva₁, ⟨avs₁', hv₁', htl₁⟩⟩ := hv₁'
     replace ⟨hva₂, avs₂', hv₂', htl₂⟩ := hv₂'
@@ -995,7 +994,7 @@ private theorem record_value?_eq {rv : Map Attr Value} {r₁ r₂ : Map Attr Ter
   simp only [Map.mk.injEq] at *
   rw [← hty₂] at hty₁ ; clear hty₂
   rw [Map.wf_iff_sorted] at hw₁ hw₂
-  simp only [Map.toList, Map.kvs] at hw₁ hw₂
+  simp only [Map.toList, Map.toList] at hw₁ hw₂
   exact record_value?_eq' hw₁ hw₂ hty₁ hv₁ hv₂ ih₁ ih₂
 
 private theorem same_value_inj' {t₁ t₂ : Term} {v : Value} {εs : SymEntities} :

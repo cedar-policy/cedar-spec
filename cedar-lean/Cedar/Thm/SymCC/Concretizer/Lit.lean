@@ -433,7 +433,7 @@ private theorem concretize?_wfl_δ_implies_some {uid : EntityUID} {δ : SymEntit
   simp only [SymEntityData.isLiteral, Bool.and_eq_true, List.all_eq_true] at hlit
   have hlit₁ := pe_app_wfl' hvu hwδ.left hlit.left.left
   have ⟨r, hr⟩ := wfl_term_isCedarRecordType_implies_recordValue?_some (And.intro hwf₁ hlit₁) hty₁
-  have h : ∀ anc ∈ δ.ancestors.kvs, ∃ uids, (app anc.snd (.entity uid)).setOfEntityUIDs? = some uids := by
+  have h : ∀ anc ∈ δ.ancestors.toList, ∃ uids, (app anc.snd (.entity uid)).setOfEntityUIDs? = some uids := by
     intro (ancTy, ancF) hin
     have hlit₂ := hlit.left.right (ancTy, ancF) hin
     simp only at hlit₂

@@ -150,7 +150,7 @@ where
       else
         .error .entitiesDoNotMatch
   entitiesMatch :=
-      es₂.kvs.all λ (a₂, e₂) => match es₁.find? a₂ with
+      es₂.toList.all λ (a₂, e₂) => match es₁.find? a₂ with
         | .some e₁ =>
           let ⟨attrs₁, ancestors₁, tags₁⟩ := e₁
           partialIsValid e₂.attrs (· = attrs₁) &&
