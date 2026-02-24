@@ -504,7 +504,7 @@ pub async fn get_solver() -> MutexGuard<'static, SymCCWithUsageLimit> {
 }
 
 /// Solver timeout used for `get_cex()`
-const TIMEOUT_DUR: Duration = Duration::from_secs(60);
+const TIMEOUT_DUR: Duration = Duration::from_secs(300);
 
 /// Run the given future (producing `Result<Option<Env>>`), and return the
 /// counterexample if one was successfully generated.
