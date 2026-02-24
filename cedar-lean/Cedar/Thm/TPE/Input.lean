@@ -54,11 +54,34 @@ theorem partial_is_valid_rfl (f : α → Bool) (p : α → Prop) (o : Option α)
   case _ =>
     constructor
 
+mutual
+
+inductive AttributesRefines : TypeEnv → List (Attr × Value) → List (Attr × PartialAttribute PartialValue) → Prop
+  | nil : ∀ env, AttributesRefines env [] []
+  | cons_present : ∀ env a v v' t t',
+    ValueRefines env v v' → AttributesRefines env t t' →
+    AttributesRefines env ((a, v) :: t) ((a, .present v') :: t')
+  | cons_unknown : ∀ env a v ty t t',
+    InstanceOfType env v ty  → AttributesRefines env t t' →
+    AttributesRefines env ((a, v) :: t) ((a, .unknown p ty) :: t')
+  | cons_unknown_neq : ∀ env a a' v ty t t',
+    a ≠ a' → AttributesRefines env ((a, v) :: t) t' →
+    AttributesRefines env ((a, v) :: t) ((a', .unknown p ty) :: t')
+
+inductive ValueRefines : TypeEnv → Value → PartialValue → Prop
+  | prim : ∀ env p, ValueRefines env (.prim p) (.prim p)
+  | ext : ∀ env e, ValueRefines env (.ext e) (.ext e)
+  | set : ∀ env vs, ValueRefines env (.set vs) (.set vs)
+  | record : ∀ env a a',
+    AttributesRefines env a a' →
+    ValueRefines env (.record (.mk a)) (.record (.mk a'))
+end
+
 def RequestRefines (req : Request) (preq : PartialRequest) : Prop :=
   PartialIsValid (· = req.principal) preq.principal.asEntityUID ∧
   req.action = preq.action ∧
   PartialIsValid (· = req.resource) preq.resource.asEntityUID  ∧
-  PartialIsValid (· = req.context) preq.context
+  PartialIsValid (ValueRefines env req.context) preq.context
 
 def EntitiesRefine (es : Entities) (pes : PartialEntities) : Prop :=
    ∀ a e₂, pes.find? a = some e₂ → (∃ e₁, es.find? a = some e₁ ∧

@@ -141,11 +141,6 @@ def getTag (uid : EntityUID) (tag : String) (es : PartialEntities) (ty : CedarTy
     | .none => .error ty
   | .none => .binaryApp .getTag uid tag ty
 
--- def eq (pv₁ pv₂ : PartialValue) (ty : CedarType) : Residual :=
---   match pv₁, pv₂ with
---   | .record _, .record _ => .binaryApp .eq (.val pv₁) (.val pv₂) ty
---   | _, _ => pv₁ == pv₂
-
 def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (ty : CedarType) : Residual :=
   match r₁.asPartialValue, r₂.asPartialValue with
   | .some v₁, .some v₂ =>
@@ -196,12 +191,17 @@ def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (t
   where
   self := .binaryApp op₂ r₁ r₂ ty
 
+def attrsOf (pv : PartialValue) (es : PartialEntities) : Option (Map Attr (PartialAttribute PartialValue)) :=
+  match pv with
+  | .record m => .some m
+  | .prim (.entityUID uid) => es.attrs uid
+  | _ => none
+
 def hasAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : Residual :=
   match r with
   | .error _ => .error ty
-  | .val (.record m) _ => m.find? a|>.isSome
-  | .val (.prim (.entityUID uid)) _ =>
-    match es.attrs uid with
+  | .val v _ =>
+    match attrsOf v es with
     | .some m =>
       match m.find? a with
       | .none => false
@@ -213,13 +213,8 @@ def hasAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : 
 def getAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : Residual :=
   match r with
   | .error _ => .error ty
-  | .val (.record m) _ =>
-    match m.find? a with
-    | .none => .error ty
-    | .some (.present pv) => pv.asResidual ty
-    | .some (.unknown p ty) => .access p ty
-  | .val (.prim (.entityUID uid)) _ =>
-    match es.attrs uid with
+  | .val v _ =>
+    match attrsOf v es with
     | .some m =>
       match m.find? a with
       | .none => .error ty
@@ -254,22 +249,14 @@ def evaluate_path (p : AccessPath)
   | .entityUID uid => .some uid
   | .getAttr p a  => do
     let v ← evaluate_path p req es
-    match v with
-    | .record m =>
+    match attrsOf v es with
+    | .some m =>
       match m.find? a with
       | .none => .none
       | .some (.present pv) => .some pv
       | .some (.unknown _ _) => .none
-    | .prim (.entityUID uid) =>
-      match es.attrs uid with
-      | .some m =>
-        match m.find? a with
-        | .none => .none
-        | .some (.present pv) => .some pv
-        | .some (.unknown _ _) => .none
-      | .none   => .none
-    | _ => .none
-  | .getTag p t => .none -- TODO
+    | .none   => .none
+  | .getTag _ _ => .none -- TODO
 
 def evaluate
   (x : Residual)
@@ -390,15 +377,17 @@ private def uid3 : EntityUID := ⟨ety, "charlie"⟩
 private def partialEs3 : PartialEntities := Map.make [(uid3, ⟨
   some (Map.make [("profile", PartialAttribute.present (PartialValue.record (Map.make [
     ("email", PartialAttribute.present (PartialValue.prim (.string "charlie@example.com"))),
-    ("age", PartialAttribute.unknown (.getAttr (.getAttr (.entityUID uid3) "profile") "age") .int)
+    ("age", PartialAttribute.unknown (.getAttr (.getAttr (.entityUID uid3) "profile") "age") .int),
+    ("other", PartialAttribute.unknown (.getAttr (.getAttr (.entityUID uid3) "foo") "bar") .int)
   ])))]),
   none,
   none
 ⟩)]
 
 private def recTy : CedarType := .record (Map.make [("email", .required .string), ("age", .required .int)])
-private def getProfile := evaluate (.getAttr (.val (.prim (.entityUID uid3)) (.entity ety)) "profile" recTy) emptyReq partialEs3
+private def getProfile := Residual.getAttr (.val (.prim (.entityUID uid3)) (.entity ety)) "profile" recTy
 #eval (evaluate (.getAttr getProfile "email" .string) emptyReq partialEs3)
 #eval (evaluate (.getAttr getProfile "age" .int) emptyReq partialEs3)
+#eval (evaluate (.hasAttr getProfile "age" (.bool .anyBool)) emptyReq partialEs3)
 
 end Cedar.TPE
