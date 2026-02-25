@@ -36,7 +36,7 @@ open Cedar.Spec
 open Cedar.Validation
 open Cedar.Thm
 
-theorem reauthorize_satisfied_policies_equiv
+private theorem reauthorize_satisfied_policies_equiv'
   {schema : Schema}
   {policies : List Policy}
   {req : Request}
@@ -77,7 +77,7 @@ theorem reauthorize_satisfied_policies_equiv
     simp only [satisfied, decide_eq_true_eq] at h₃
     exact to_option_left_ok (partial_evaluate_policy_is_sound h_auth₃ hv) h₃
 
-theorem reauthorize_error_policies_equiv
+private theorem reauthorize_error_policies_equiv'
   {schema : Schema}
   {policies : List Policy}
   {req : Request}
@@ -120,6 +120,38 @@ theorem reauthorize_error_policies_equiv
       rw [h₃] at h_auth₃
       exact to_option_left_err h_auth₃
     grind [Response.reauthorize.hasError]
+theorem reauthorize_satisfied_policies_equiv
+  {schema : Schema}
+  {policies : List Policy}
+  {req : Request}
+  {es : Entities}
+  {preq : PartialRequest}
+  {pes : PartialEntities}
+  {response : TPE.Response}
+  (hv : isValidAndConsistent schema req es preq pes = Except.ok ())
+  (h_auth : TPE.isAuthorized schema policies preq pes = Except.ok response) :
+  ∀ effect,
+    TPE.Response.reauthorize.satisfiedPolicies effect response.residuals req es = Spec.satisfiedPolicies effect policies req es
+:= by
+  have ⟨rps, h_forall, h_resp⟩ := tpe_isAuthorized_forall₂ h_auth
+  subst h_resp
+  exact reauthorize_satisfied_policies_equiv' hv h_forall
+
+theorem reauthorize_error_policies_equiv
+  {schema : Schema}
+  {policies : List Policy}
+  {req : Request}
+  {es : Entities}
+  {preq : PartialRequest}
+  {pes : PartialEntities}
+  {response : TPE.Response}
+  (hv : isValidAndConsistent schema req es preq pes = Except.ok ())
+  (h_auth : TPE.isAuthorized schema policies preq pes = Except.ok response) :
+  TPE.Response.reauthorize.errorPolicies response.residuals req es = Spec.errorPolicies policies req es
+:= by
+  have ⟨rps, h_forall, h_resp⟩ := tpe_isAuthorized_forall₂ h_auth
+  subst h_resp
+  exact reauthorize_error_policies_equiv' hv h_forall
 
 theorem no_satisfied_effect_if_empty_satisfied_and_residual_policies
   {schema : Schema}
@@ -128,14 +160,17 @@ theorem no_satisfied_effect_if_empty_satisfied_and_residual_policies
   {es : Entities}
   {preq : PartialRequest}
   {pes : PartialEntities}
-  {rps : List ResidualPolicy}
+  {response : TPE.Response}
   {effect : Effect}
+  (h₁ : TPE.isAuthorized schema policies preq pes = Except.ok response)
   (h₂ : isValidAndConsistent schema req es preq pes = Except.ok ())
-  (h₃ : List.Forall₂ (λ p rp => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes = Except.ok rp) policies rps)
-  (h_satisfied_empty : (isAuthorized.satisfiedPolicies effect rps).isEmpty)
-  (h_residual_empty : (isAuthorized.residualPolicies effect rps).isEmpty) :
+  (h_satisfied_empty : (isAuthorized.satisfiedPolicies effect response.residuals).isEmpty)
+  (h_residual_empty : (isAuthorized.residualPolicies effect response.residuals).isEmpty) :
   ¬HasSatisfiedEffect effect req es policies
 := by
+  have ⟨rps, h₃, h₄⟩ := tpe_isAuthorized_forall₂ h₁
+  subst h₄
+  simp only [isAuthorized.isAuthorizedFromResiduals] at h_satisfied_empty h_residual_empty
   simp [HasSatisfiedEffect, satisfied]
   intro p hp₁ hp₂ h
   have ⟨rp, h₅, r, he, hrp⟩ := forall₂_policy_to_residual h₃ hp₁
@@ -166,13 +201,16 @@ theorem satisfied_effect_if_non_empty_satisfied_policies
   {es : Entities}
   {preq : PartialRequest}
   {pes : PartialEntities}
-  {rps : List ResidualPolicy}
+  {response : TPE.Response}
   {effect : Effect}
+  (h₁ : TPE.isAuthorized schema policies preq pes = Except.ok response)
   (h₂ : isValidAndConsistent schema req es preq pes = Except.ok ())
-  (h₃ : List.Forall₂ (λ p rp => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes = Except.ok rp) policies rps)
-  (h_non_empty : ¬(isAuthorized.satisfiedPolicies effect rps).isEmpty) :
+  (h_non_empty : ¬(isAuthorized.satisfiedPolicies effect response.residuals).isEmpty) :
   HasSatisfiedEffect effect req es policies
 := by
+  have ⟨rps, h₃, h₄⟩ := tpe_isAuthorized_forall₂ h₁
+  subst h₄
+  simp only [isAuthorized.isAuthorizedFromResiduals] at h_non_empty
   rw [Set.non_empty_iff_exists] at h_non_empty
   replace ⟨_, hf⟩ := h_non_empty
   simp [isAuthorized.satisfiedPolicies] at hf
@@ -191,7 +229,6 @@ theorem satisfied_effect_if_non_empty_satisfied_policies
   · exact hp₁
   · rw [hp₂] at hf₂; exact hf₂
   · simpa [satisfied] using residual_true_implies_policy_satisfied hp₃ h₂ (by simp [Residual.isTrue])
-
 theorem partial_authorize_error_policies_is_sound
   {schema : Schema}
   {policies : List Policy}
@@ -199,21 +236,25 @@ theorem partial_authorize_error_policies_is_sound
   {es : Entities}
   {preq : PartialRequest}
   {pes : PartialEntities}
+  {response : TPE.Response}
   (effect : Effect) :
-  List.Forall₂ (λ p rp => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes = Except.ok rp) policies rps →
+  TPE.isAuthorized schema policies preq pes = Except.ok response →
   isValidAndConsistent schema req es preq pes = Except.ok () →
-  isAuthorized.errorPolicies effect rps ⊆ (Spec.isAuthorized req es policies).erroringPolicies
+  isAuthorized.errorPolicies effect response.residuals ⊆ (Spec.isAuthorized req es policies).erroringPolicies
 := by
   intro h₁ h₂
-  have h₄ : (Spec.isAuthorized req es policies).erroringPolicies =  errorPolicies policies req es :=
+  have ⟨rps, h₃, h₄⟩ := tpe_isAuthorized_forall₂ h₁
+  subst h₄
+  simp only [isAuthorized.isAuthorizedFromResiduals]
+  have h₅ : (Spec.isAuthorized req es policies).erroringPolicies = errorPolicies policies req es :=
     by grind [Spec.isAuthorized]
-  simp only [errorPolicies, errored, hasError] at h₄
-  simp only [h₄, isAuthorized.errorPolicies, Set.subset_def, ← Set.make_mem, List.mem_filterMap,
+  simp only [errorPolicies, errored, hasError] at h₅
+  simp only [h₅, isAuthorized.errorPolicies, Set.subset_def, ← Set.make_mem, List.mem_filterMap,
     ResidualPolicy.erroredWithEffect, ResidualPolicy.hasError, Residual.isError, Bool.and_eq_true,
     beq_iff_eq, Option.ite_none_right_eq_some, Option.some.injEq, forall_exists_index, and_imp]
   intro pid rp hrp hef herr hpid
 
-  have ⟨p, hp₁, r, hp₃, hp₂⟩ := forall₂_residual_to_policy h₁ hrp
+  have ⟨p, hp₁, r, hp₃, hp₂⟩ := forall₂_residual_to_policy h₃ hrp
 
   exists p
   and_intros
@@ -229,19 +270,23 @@ theorem partial_authorize_satisfied_policies_is_sound
   {es : Entities}
   {preq : PartialRequest}
   {pes : PartialEntities}
+  {response : TPE.Response}
   (effect : Effect) :
-  List.Forall₂ (λ p rp => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes = Except.ok rp) policies rps →
+  TPE.isAuthorized schema policies preq pes = Except.ok response →
   isValidAndConsistent schema req es preq pes = Except.ok () →
-  isAuthorized.satisfiedPolicies effect rps ⊆ Spec.satisfiedPolicies effect policies req es
+  isAuthorized.satisfiedPolicies effect response.residuals ⊆ Spec.satisfiedPolicies effect policies req es
 := by
   intro h₁ h₂
+  have ⟨rps, h₃, h₄⟩ := tpe_isAuthorized_forall₂ h₁
+  subst h₄
+  simp only [isAuthorized.isAuthorizedFromResiduals]
   simp only [isAuthorized.satisfiedPolicies, satisfiedPolicies, satisfiedWithEffect,
     Bool.and_eq_true, beq_iff_eq, Set.subset_def, ← Set.make_mem, List.mem_filterMap,
     ResidualPolicy.satisfiedWithEffect, ResidualPolicy.satisfied, Option.ite_none_right_eq_some,
     Option.some.injEq, forall_exists_index, and_imp]
   intro pid rp hrp hef htrue hpid
 
-  have ⟨p, hp₁, r, hp₃, hp₂⟩ := forall₂_residual_to_policy h₁ hrp
+  have ⟨p, hp₁, r, hp₃, hp₂⟩ := forall₂_residual_to_policy h₃ hrp
 
   exists p
   and_intros
@@ -257,16 +302,17 @@ theorem partial_authorize_satisfied_forbids_is_sound
   {req : Request}
   {es : Entities}
   {preq : PartialRequest}
-  {pes : PartialEntities} :
+  {pes : PartialEntities}
+  {response : TPE.Response} :
   TPE.isAuthorized schema policies preq pes = Except.ok response →
   isValidAndConsistent schema req es preq pes = Except.ok () →
   response.satisfiedForbids ⊆ Spec.satisfiedPolicies .forbid policies req es
 := by
   intro h₁ h₂
-  have ⟨rps, h₃, h₄⟩ := tpe_isAuthorized_forall₂ h₁
+  have ⟨rps, _, h₄⟩ := tpe_isAuthorized_forall₂ h₁
   subst h₄
   simp only [isAuthorized.isAuthorizedFromResiduals]
-  exact partial_authorize_satisfied_policies_is_sound .forbid h₃ h₂
+  exact partial_authorize_satisfied_policies_is_sound .forbid h₁ h₂
 
 theorem partial_authorize_satisfied_permits_is_sound
   {schema : Schema}
@@ -274,13 +320,108 @@ theorem partial_authorize_satisfied_permits_is_sound
   {req : Request}
   {es : Entities}
   {preq : PartialRequest}
-  {pes : PartialEntities} :
+  {pes : PartialEntities}
+  {response : TPE.Response} :
   TPE.isAuthorized schema policies preq pes = Except.ok response →
   isValidAndConsistent schema req es preq pes = Except.ok () →
   response.satisfiedPermits ⊆ Spec.satisfiedPolicies .permit policies req es
 := by
   intro h₁ h₂
+  have ⟨rps, _, h₄⟩ := tpe_isAuthorized_forall₂ h₁
+  subst h₄
+  simp only [isAuthorized.isAuthorizedFromResiduals]
+  exact partial_authorize_satisfied_policies_is_sound .permit h₁ h₂
+
+/-- Completeness for satisfied policies: if a concrete policy is satisfied,
+its ID appears in either the satisfied or residual bucket of the response
+for the matching effect. -/
+theorem satisfied_policy_in_satisfied_or_residual
+  {schema : Schema}
+  {policies : List Policy}
+  {req : Request}
+  {es : Entities}
+  {preq : PartialRequest}
+  {pes : PartialEntities}
+  {response : TPE.Response}
+  {p : Policy}
+  (h₁ : TPE.isAuthorized schema policies preq pes = Except.ok response)
+  (h₂ : isValidAndConsistent schema req es preq pes = Except.ok ())
+  (h_mem : p ∈ policies)
+  (h_sat : satisfied p req es) :
+  p.id ∈ isAuthorized.satisfiedPolicies p.effect response.residuals ∪
+         isAuthorized.residualPolicies p.effect response.residuals
+:= by
   have ⟨rps, h₃, h₄⟩ := tpe_isAuthorized_forall₂ h₁
   subst h₄
   simp only [isAuthorized.isAuthorizedFromResiduals]
-  exact partial_authorize_satisfied_policies_is_sound .permit h₃ h₂
+  have ⟨rp, hrp₁, r, hrp₃, hrp₂⟩ := forall₂_policy_to_residual h₃ h_mem
+  subst hrp₂
+  replace h_sat : Spec.evaluate p.toExpr req es = .ok (.prim (.bool true)) := by grind [satisfied]
+  have ha := policy_satisfied_implies_residual_eval_true hrp₃ h₂ h_sat
+  rw [Set.mem_union_iff_mem_or]
+  by_cases h_true : r.isTrue
+  · left
+    simp only [isAuthorized.satisfiedPolicies, ← Set.make_mem, List.mem_filterMap,
+      ResidualPolicy.satisfiedWithEffect, ResidualPolicy.satisfied,
+      Bool.and_eq_true, beq_iff_eq, Option.ite_none_right_eq_some, Option.some.injEq]
+    exact ⟨⟨p.id, p.effect, r⟩, hrp₁, ⟨rfl, h_true⟩, rfl⟩
+  · right
+    have h_not_false : r.isFalse = false := by
+      simp only [Bool.eq_false_iff]; intro h_false
+      cases r <;> simp [Residual.isFalse] at h_false; simp [Residual.evaluate] at ha; grind
+    have h_not_err : r.isError = false := by
+      simp only [Bool.eq_false_iff]; intro h_err
+      cases r <;> simp [Residual.isError] at h_err; simp [Residual.evaluate] at ha
+    simp only [isAuthorized.residualPolicies, ← Set.make_mem, List.mem_filterMap,
+      ResidualPolicy.residualWithEffect, Bool.and_eq_true, beq_iff_eq,
+      Option.ite_none_right_eq_some, Option.some.injEq]
+    refine ⟨⟨p.id, p.effect, r⟩, hrp₁, ⟨rfl, ?_⟩, rfl⟩
+    simp [ResidualPolicy.isResidual, ResidualPolicy.satisfied, ResidualPolicy.isFalse,
+      ResidualPolicy.hasError, h_true, h_not_false, h_not_err]
+
+/-- Completeness for errored policies: if a concrete policy errors,
+its ID appears in either the error or residual bucket of the response. -/
+theorem errored_policy_in_error_or_residual
+  {schema : Schema}
+  {policies : List Policy}
+  {req : Request}
+  {es : Entities}
+  {preq : PartialRequest}
+  {pes : PartialEntities}
+  {response : TPE.Response}
+  {p : Policy}
+  (h₁ : TPE.isAuthorized schema policies preq pes = Except.ok response)
+  (h₂ : isValidAndConsistent schema req es preq pes = Except.ok ())
+  (h_mem : p ∈ policies)
+  (h_err : ∃ e, Spec.evaluate p.toExpr req es = .error e) :
+  p.id ∈ isAuthorized.errorPolicies p.effect response.residuals ∪
+         isAuthorized.residualPolicies p.effect response.residuals
+:= by
+  have ⟨rps, h₃, h₄⟩ := tpe_isAuthorized_forall₂ h₁
+  subst h₄
+  simp only [isAuthorized.isAuthorizedFromResiduals]
+  have ⟨rp, hrp₁, r, hrp₃, hrp₂⟩ := forall₂_policy_to_residual h₃ h_mem
+  subst hrp₂
+  have ⟨_, hr⟩ := policy_error_implies_residual_eval_error hrp₃ h₂ h_err
+  rw [Set.mem_union_iff_mem_or]
+  by_cases h_isErr : r.isError
+  · left
+    simp only [isAuthorized.errorPolicies, ← Set.make_mem, List.mem_filterMap,
+      ResidualPolicy.erroredWithEffect, ResidualPolicy.hasError,
+      Bool.and_eq_true, beq_iff_eq, Option.ite_none_right_eq_some, Option.some.injEq]
+    exact ⟨⟨p.id, p.effect, r⟩, hrp₁, ⟨rfl, h_isErr⟩, rfl⟩
+  · right
+    have h_not_sat : r.isTrue = false := by
+      simp only [Bool.eq_false_iff]; intro h_sat
+      cases r <;> simp [Residual.isTrue] at h_sat; simp [Residual.evaluate] at hr
+    have h_not_false : r.isFalse = false := by
+      simp only [Bool.eq_false_iff]; intro h_false
+      cases r <;> simp [Residual.isFalse] at h_false; simp [Residual.evaluate] at hr
+    simp only [isAuthorized.residualPolicies, ← Set.make_mem, List.mem_filterMap,
+      ResidualPolicy.residualWithEffect, Bool.and_eq_true, beq_iff_eq,
+      Option.ite_none_right_eq_some, Option.some.injEq]
+    refine ⟨⟨p.id, p.effect, r⟩, hrp₁, ⟨rfl, ?_⟩, rfl⟩
+    simp [ResidualPolicy.isResidual, ResidualPolicy.satisfied, ResidualPolicy.isFalse,
+      ResidualPolicy.hasError, h_not_sat, h_not_false, h_isErr]
+
+end Cedar.Thm
