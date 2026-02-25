@@ -168,12 +168,13 @@ theorem no_satisfied_effect_if_empty_satisfied_and_residual_policies
   (h_residual_empty : (isAuthorized.residualPolicies effect response.residuals).isEmpty) :
   ¬HasSatisfiedEffect effect req es policies
 := by
-  have ⟨rps, h₃, h₄⟩ := tpe_isAuthorized_forall₂ h₁
+  have ⟨rps, _, h₄⟩ := tpe_isAuthorized_forall₂ h₁
   subst h₄
   simp only [isAuthorized.isAuthorizedFromResiduals] at h_satisfied_empty h_residual_empty
   simp [HasSatisfiedEffect, satisfied]
   intro p hp₁ hp₂ h
-  have ⟨rp, h₅, r, he, hrp⟩ := forall₂_policy_to_residual h₃ hp₁
+  have ⟨rp, h₅, r, he, hrp⟩ := policy_to_residual h₁ hp₁
+  simp only [isAuthorized.isAuthorizedFromResiduals] at h₅
 
   replace ⟨_, hp⟩ :
     ∃ ty, r = .val (.prim (.bool false)) ty ∨ r = .error ty
@@ -208,7 +209,7 @@ theorem satisfied_effect_if_non_empty_satisfied_policies
   (h_non_empty : ¬(isAuthorized.satisfiedPolicies effect response.residuals).isEmpty) :
   HasSatisfiedEffect effect req es policies
 := by
-  have ⟨rps, h₃, h₄⟩ := tpe_isAuthorized_forall₂ h₁
+  have ⟨rps, _, h₄⟩ := tpe_isAuthorized_forall₂ h₁
   subst h₄
   simp only [isAuthorized.isAuthorizedFromResiduals] at h_non_empty
   rw [Set.non_empty_iff_exists] at h_non_empty
@@ -221,7 +222,7 @@ theorem satisfied_effect_if_non_empty_satisfied_policies
   split at hf₃ <;> try contradiction
   rename_i hf₅
 
-  have ⟨p, hp₁, r, hp₃, hp₂⟩ := forall₂_residual_to_policy h₃ hf₁
+  have ⟨p, hp₁, r, hp₃, hp₂⟩ := residual_to_policy h₁ hf₁
   rw [hp₂] at hf₅; subst hf₅
 
   exists p
@@ -243,7 +244,7 @@ theorem partial_authorize_error_policies_is_sound
   isAuthorized.errorPolicies effect response.residuals ⊆ (Spec.isAuthorized req es policies).erroringPolicies
 := by
   intro h₁ h₂
-  have ⟨rps, h₃, h₄⟩ := tpe_isAuthorized_forall₂ h₁
+  have ⟨rps, _, h₄⟩ := tpe_isAuthorized_forall₂ h₁
   subst h₄
   simp only [isAuthorized.isAuthorizedFromResiduals]
   have h₅ : (Spec.isAuthorized req es policies).erroringPolicies = errorPolicies policies req es :=
@@ -254,7 +255,7 @@ theorem partial_authorize_error_policies_is_sound
     beq_iff_eq, Option.ite_none_right_eq_some, Option.some.injEq, forall_exists_index, and_imp]
   intro pid rp hrp hef herr hpid
 
-  have ⟨p, hp₁, r, hp₃, hp₂⟩ := forall₂_residual_to_policy h₃ hrp
+  have ⟨p, hp₁, r, hp₃, hp₂⟩ := residual_to_policy h₁ hrp
 
   exists p
   and_intros
@@ -277,7 +278,7 @@ theorem partial_authorize_satisfied_policies_is_sound
   isAuthorized.satisfiedPolicies effect response.residuals ⊆ Spec.satisfiedPolicies effect policies req es
 := by
   intro h₁ h₂
-  have ⟨rps, h₃, h₄⟩ := tpe_isAuthorized_forall₂ h₁
+  have ⟨rps, _, h₄⟩ := tpe_isAuthorized_forall₂ h₁
   subst h₄
   simp only [isAuthorized.isAuthorizedFromResiduals]
   simp only [isAuthorized.satisfiedPolicies, satisfiedPolicies, satisfiedWithEffect,
@@ -286,7 +287,7 @@ theorem partial_authorize_satisfied_policies_is_sound
     Option.some.injEq, forall_exists_index, and_imp]
   intro pid rp hrp hef htrue hpid
 
-  have ⟨p, hp₁, r, hp₃, hp₂⟩ := forall₂_residual_to_policy h₃ hrp
+  have ⟨p, hp₁, r, hp₃, hp₂⟩ := residual_to_policy h₁ hrp
 
   exists p
   and_intros
@@ -351,10 +352,10 @@ theorem satisfied_policy_in_satisfied_or_residual
   p.id ∈ isAuthorized.satisfiedPolicies p.effect response.residuals ∪
          isAuthorized.residualPolicies p.effect response.residuals
 := by
-  have ⟨rps, h₃, h₄⟩ := tpe_isAuthorized_forall₂ h₁
+  have ⟨rps, _, h₄⟩ := tpe_isAuthorized_forall₂ h₁
   subst h₄
   simp only [isAuthorized.isAuthorizedFromResiduals]
-  have ⟨rp, hrp₁, r, hrp₃, hrp₂⟩ := forall₂_policy_to_residual h₃ h_mem
+  have ⟨rp, hrp₁, r, hrp₃, hrp₂⟩ := policy_to_residual h₁ h_mem
   subst hrp₂
   replace h_sat : Spec.evaluate p.toExpr req es = .ok (.prim (.bool true)) := by grind [satisfied]
   have ha := policy_satisfied_implies_residual_eval_true hrp₃ h₂ h_sat
@@ -397,10 +398,10 @@ theorem errored_policy_in_error_or_residual
   p.id ∈ isAuthorized.errorPolicies p.effect response.residuals ∪
          isAuthorized.residualPolicies p.effect response.residuals
 := by
-  have ⟨rps, h₃, h₄⟩ := tpe_isAuthorized_forall₂ h₁
+  have ⟨rps, _, h₄⟩ := tpe_isAuthorized_forall₂ h₁
   subst h₄
   simp only [isAuthorized.isAuthorizedFromResiduals]
-  have ⟨rp, hrp₁, r, hrp₃, hrp₂⟩ := forall₂_policy_to_residual h₃ h_mem
+  have ⟨rp, hrp₁, r, hrp₃, hrp₂⟩ := policy_to_residual h₁ h_mem
   subst hrp₂
   have ⟨_, hr⟩ := policy_error_implies_residual_eval_error hrp₃ h₂ h_err
   rw [Set.mem_union_iff_mem_or]

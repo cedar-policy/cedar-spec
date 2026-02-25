@@ -181,40 +181,46 @@ theorem residual_satisfied_iff_policy_satisfied
   (h_valid : isValidAndConsistent schema req es preq pes = .ok ()) :
   (Spec.evaluate p.toExpr req es).toOption = (r.evaluate req es).toOption
 := partial_evaluate_policy_is_sound h_eval h_valid
-/-- Given the `Forall₂` relationship from partial authorization, if a residual
-policy `rp` is in the residual list, then there exists a corresponding policy
-`p` in the original list with matching id and effect, and `evaluatePolicy`
-produced the residual. -/
-theorem forall₂_residual_to_policy
+/-- If `TPE.isAuthorized` succeeds and a residual policy `rp` is in the
+response's residual list, then there exists a corresponding policy `p` in the
+original list with matching id and effect, and `evaluatePolicy` produced the
+residual. -/
+theorem residual_to_policy
   {schema : Schema}
   {policies : List Policy}
-  {rps : List ResidualPolicy}
   {preq : PartialRequest}
   {pes : PartialEntities}
+  {response : TPE.Response}
   {rp : ResidualPolicy}
-  (h_forall : List.Forall₂ (λ p rp => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes = Except.ok rp) policies rps)
-  (h_mem : rp ∈ rps) :
+  (h_auth : TPE.isAuthorized schema policies preq pes = Except.ok response)
+  (h_mem : rp ∈ response.residuals) :
   ∃ p ∈ policies, ∃ r, evaluatePolicy schema p preq pes = .ok r ∧ rp = ⟨p.id, p.effect, r⟩
 := by
+  have ⟨rps, h_forall, h_resp⟩ := tpe_isAuthorized_forall₂ h_auth
+  subst h_resp
+  simp only [isAuthorized.isAuthorizedFromResiduals] at h_mem
   have ⟨p, hp₁, hp₂⟩ := List.forall₂_implies_all_right h_forall rp h_mem
   cases hp₃ : evaluatePolicy schema p preq pes <;>
     simp only [hp₃, Except.map_error, Except.map_ok, reduceCtorEq, Except.ok.injEq] at hp₂
   exact ⟨p, hp₁, _, hp₃, hp₂.symm⟩
 
-/-- Given the `Forall₂` relationship from partial authorization, if a policy
-`p` is in the original list, then there exists a corresponding residual policy
-in the residual list, and `evaluatePolicy` produced the residual. -/
-theorem forall₂_policy_to_residual
+/-- If `TPE.isAuthorized` succeeds and a policy `p` is in the original list,
+then there exists a corresponding residual policy in the response's residual
+list, and `evaluatePolicy` produced the residual. -/
+theorem policy_to_residual
   {schema : Schema}
   {policies : List Policy}
-  {rps : List ResidualPolicy}
   {preq : PartialRequest}
   {pes : PartialEntities}
+  {response : TPE.Response}
   {p : Policy}
-  (h_forall : List.Forall₂ (λ p rp => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes = Except.ok rp) policies rps)
+  (h_auth : TPE.isAuthorized schema policies preq pes = Except.ok response)
   (h_mem : p ∈ policies) :
-  ∃ rp ∈ rps, ∃ r, evaluatePolicy schema p preq pes = .ok r ∧ rp = ⟨p.id, p.effect, r⟩
+  ∃ rp ∈ response.residuals, ∃ r, evaluatePolicy schema p preq pes = .ok r ∧ rp = ⟨p.id, p.effect, r⟩
 := by
+  have ⟨rps, h_forall, h_resp⟩ := tpe_isAuthorized_forall₂ h_auth
+  subst h_resp
+  simp only [isAuthorized.isAuthorizedFromResiduals]
   have ⟨rp, hrp₁, hrp₂⟩ := List.forall₂_implies_all_left h_forall p h_mem
   cases hrp₃ : evaluatePolicy schema p preq pes <;>
     simp only [hrp₃, Except.map_error, Except.map_ok, reduceCtorEq, Except.ok.injEq] at hrp₂
