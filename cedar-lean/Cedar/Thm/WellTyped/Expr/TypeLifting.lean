@@ -110,23 +110,18 @@ inductive Lifted : CedarType → CedarType → Prop
 
 mutual
 
-theorem lifted_record_is_lifted (m : List (Attr × QualifiedType)) :
-  Lifted (.record (.mk m)) (.record (.mk (CedarType.liftBoolTypesRecord m)))
+private theorem lifted_record_is_lifted (m : List (Attr × QualifiedType)) :
+  Lifted (.record (.mk m)) (.record (.mk (m.map (λ (k, v) => (k, QualifiedType.liftBoolTypes v)))))
 := by
-  unfold CedarType.liftBoolTypesRecord
-  split
-  case _ => exact Lifted.record_nil
-  case _ qty l =>
-    unfold QualifiedType.liftBoolTypes
-    split
-    case _ ty =>
-      have hᵢ₁ := lifted_type_is_lifted ty
-      have hᵢ₂ := lifted_record_is_lifted l
-      exact Lifted.record_fst_optional hᵢ₁ hᵢ₂
-    case _ ty =>
-      have hᵢ₁ := lifted_type_is_lifted ty
-      have hᵢ₂ := lifted_record_is_lifted l
-      exact Lifted.record_fst_required hᵢ₁ hᵢ₂
+  match m with
+  | [] => exact Lifted.record_nil
+  | (k, .optional ty) :: tl =>
+    simp only [List.map, QualifiedType.liftBoolTypes]
+    exact Lifted.record_fst_optional (lifted_type_is_lifted ty) (lifted_record_is_lifted tl)
+  | (k, .required ty) :: tl =>
+    simp only [List.map, QualifiedType.liftBoolTypes]
+    exact Lifted.record_fst_required (lifted_type_is_lifted ty) (lifted_record_is_lifted tl)
+  termination_by sizeOf m
 
 theorem lifted_type_is_lifted (ty : CedarType) :
   Lifted ty ty.liftBoolTypes
@@ -148,26 +143,26 @@ theorem lifted_type_is_lifted (ty : CedarType) :
     exact Lifted.set this
   case record rty =>
     simp only [RecordType.liftBoolTypes]
-    unfold CedarType.liftBoolTypesRecord
-    split
-    case _ heq =>
-      have : rty = (Data.Map.mk []) := by
-        simpa [Data.Map.toList_nil_iff_empty, Data.Map.empty] using heq
-      simp [this, Lifted.record_nil]
-    case _ a qt l heq =>
-      have : rty = (Data.Map.mk ((a, qt)::l)) := by
-        cases rty
-        simpa using heq
-      simp [this]
-      clear this
-      unfold QualifiedType.liftBoolTypes
-      split
-      case _ ty' =>
+    rw [Data.Map.mapOnValues₂_eq_mapOnValues]
+    simp only [Data.Map.mapOnValues]
+    cases rty
+    case mk atys =>
+    simp only [Data.Map.toList_mk_id]
+    cases atys
+    case nil => simp [Lifted.record_nil]
+    case cons aty atys =>
+      obtain ⟨k, qty⟩ := aty
+      simp only [List.map_cons]
+      cases qty with
+      | optional ty' =>
+        simp only [QualifiedType.liftBoolTypes]
         have hᵢ := lifted_type_is_lifted ty'
-        exact Lifted.record_fst_optional hᵢ (lifted_record_is_lifted l)
-      case _ ty' =>
+        exact Lifted.record_fst_optional hᵢ (lifted_record_is_lifted atys)
+      | required ty' =>
+        simp only [QualifiedType.liftBoolTypes]
         have hᵢ := lifted_type_is_lifted ty'
-        exact Lifted.record_fst_required hᵢ (lifted_record_is_lifted l)
+        exact Lifted.record_fst_required hᵢ (lifted_record_is_lifted atys)
+  termination_by sizeOf ty
 end
 
 theorem lifted_type_is_super_type {ty₁ ty₂ : CedarType} :
@@ -238,39 +233,42 @@ theorem lifted_type_is_super_type {ty₁ ty₂ : CedarType} :
             List.cons.injEq, Prod.mk.injEq, Qualified.required.injEq, true_and, and_true, hᵢ₁]
       case _ => cases hᵢ₂
     case _ => cases hᵢ₁
+
 mutual
 
 theorem lifted_record_type_is_top {r₁ r₂ : List (Attr × Qualified CedarType)} :
   IsLubOfRecordTypes r₂ r₁ r₂ →
-  CedarType.liftBoolTypesRecord r₁ = CedarType.liftBoolTypesRecord r₂
+  r₁.map (λ (k, v) => (k, QualifiedType.liftBoolTypes v)) =
+  r₂.map (λ (k, v) => (k, QualifiedType.liftBoolTypes v))
 := by
   intro h
   cases h
   case nil => simp
   case cons h₁ h₂ =>
-    simp [CedarType.liftBoolTypesRecord]
-    simp [lifted_record_type_is_top h₂]
-    unfold lubQualifiedType at h₁
-    split at h₁
-    case _ ty₁ ty₂ =>
-      simp only [do_some] at h₁
-      rcases h₁ with ⟨a, h₁₁, h₁₂⟩
-      simp at h₁₂
-      simp [h₁₂] at h₁₁
-      simp [QualifiedType.liftBoolTypes]
-      have : ty₁ ⊑ ty₂ := by
-        simp [subty, h₁₁]
-      exact lifted_type_is_top this
-    case _ ty₁ ty₂ =>
-      simp only [do_some] at h₁
-      rcases h₁ with ⟨a, h₁₁, h₁₂⟩
-      simp at h₁₂
-      simp [h₁₂] at h₁₁
-      simp [QualifiedType.liftBoolTypes]
-      have : ty₁ ⊑ ty₂ := by
-        simp [subty, h₁₁]
-      exact lifted_type_is_top this
-    case _ => cases h₁
+    simp only [List.map, List.cons.injEq]
+    constructor
+    · unfold lubQualifiedType at h₁
+      split at h₁
+      case _ ty₁ ty₂ =>
+        simp only [do_some] at h₁
+        rcases h₁ with ⟨a, h₁₁, h₁₂⟩
+        simp at h₁₂
+        simp [h₁₂] at h₁₁
+        simp only [QualifiedType.liftBoolTypes, Prod.mk.injEq, true_and]
+        have : ty₁ ⊑ ty₂ := by
+          simp [subty, h₁₁]
+        exact congrArg Qualified.optional (lifted_type_is_top this)
+      case _ ty₁ ty₂ =>
+        simp only [do_some] at h₁
+        rcases h₁ with ⟨a, h₁₁, h₁₂⟩
+        simp at h₁₂
+        simp [h₁₂] at h₁₁
+        simp only [QualifiedType.liftBoolTypes, Prod.mk.injEq, true_and]
+        have : ty₁ ⊑ ty₂ := by
+          simp [subty, h₁₁]
+        exact congrArg Qualified.required (lifted_type_is_top this)
+      case _ => cases h₁
+    · exact lifted_record_type_is_top h₂
 
 theorem lifted_type_is_top {ty₁ ty₂ : CedarType} :
   ty₁ ⊑ ty₂ →
@@ -299,8 +297,9 @@ theorem lifted_type_is_top {ty₁ ty₂ : CedarType} :
       rcases heq with ⟨_, h₁, h₂⟩
       simp [h] at h₂
       simp [h₂] at h₁
-      simp only [CedarType.liftBoolTypes, RecordType.liftBoolTypes, CedarType.record.injEq,
-        Data.Map.mk.injEq]
+      simp only [CedarType.liftBoolTypes, RecordType.liftBoolTypes, CedarType.record.injEq]
+      rw [Data.Map.mapOnValues₂_eq_mapOnValues, Data.Map.mapOnValues₂_eq_mapOnValues]
+      simp only [Data.Map.mapOnValues, Data.Map.mk.injEq]
       exact lifted_record_type_is_top (lubRecordType_is_lub_of_record_types h₁)
     case _ =>
       split at heq
@@ -338,22 +337,22 @@ theorem type_lifting_preserves_instance_of_type {env : TypeEnv} {v : Value} {ty 
   case _ => cases h'
 
 theorem lift_bool_types_record_eq_map_on_values {rty : Data.Map Attr QualifiedType} :
-  Data.Map.mk (CedarType.liftBoolTypesRecord rty.toList) = rty.mapOnValues QualifiedType.liftBoolTypes
+  RecordType.liftBoolTypes rty = rty.mapOnValues QualifiedType.liftBoolTypes
 := by
-  simp only [Data.Map.mapOnValues, Data.Map.mk.injEq]
-  induction rty.toList <;> simp [CedarType.liftBoolTypesRecord]
-  assumption
+  simp only [RecordType.liftBoolTypes, Data.Map.mapOnValues₂_eq_mapOnValues]
 
 theorem wf_type_iff_wf_liftBoolTypes {env : TypeEnv} :
   ∀ {ty : CedarType},
   CedarType.WellFormed env ty ↔ CedarType.WellFormed env ty.liftBoolTypes
-| .bool _
-| .int
-| .string
+| .bool _ => by
+  simp only [CedarType.liftBoolTypes, BoolType.lift]
+  exact ⟨fun _ => .bool_wf, fun _ => .bool_wf⟩
+| .int => by
+  simp only [CedarType.liftBoolTypes]
+| .string => by
+  simp only [CedarType.liftBoolTypes]
 | .ext _ => by
-  constructor
-  · intros; constructor
-  · intros; constructor
+  simp only [CedarType.liftBoolTypes]
 | .entity _ => by simp only [CedarType.liftBoolTypes]
 | .set ty => by
   simp only [CedarType.liftBoolTypes]
@@ -369,7 +368,7 @@ theorem wf_type_iff_wf_liftBoolTypes {env : TypeEnv} :
 | .record rty => by
   cases rty with | mk rty =>
   simp only [CedarType.liftBoolTypes, RecordType.liftBoolTypes]
-  rw [lift_bool_types_record_eq_map_on_values]
+  rw [Data.Map.mapOnValues₂_eq_mapOnValues]
   constructor
   · intros h
     cases h with | record_wf _ hwf_attr =>
@@ -377,16 +376,16 @@ theorem wf_type_iff_wf_liftBoolTypes {env : TypeEnv} :
     · apply Data.Map.mapOnValues_wf.mp
       assumption
     · intros attr qty hfound
-
       have ⟨qty', hfound', heq⟩ := Data.Map.find?_mapOnValues_some' QualifiedType.liftBoolTypes hfound
-      have := hwf_attr attr qty' hfound'
-      simp only [heq]
-      cases qty'
-      all_goals
-        constructor
-        cases this
-        apply wf_type_iff_wf_liftBoolTypes.mp
-        assumption
+      have hwf := hwf_attr attr qty' hfound'
+      subst heq
+      cases qty' with
+      | optional ty =>
+        simp only [QualifiedType.liftBoolTypes]
+        exact .optional_wf (wf_type_iff_wf_liftBoolTypes.mp (by cases hwf; assumption))
+      | required ty =>
+        simp only [QualifiedType.liftBoolTypes]
+        exact .required_wf (wf_type_iff_wf_liftBoolTypes.mp (by cases hwf; assumption))
   · intros h
     cases h with | record_wf _ hwf_attr =>
     constructor
@@ -394,27 +393,27 @@ theorem wf_type_iff_wf_liftBoolTypes {env : TypeEnv} :
       assumption
     · intros attr qty hfound
       have hfound' := Data.Map.find?_mapOnValues_some QualifiedType.liftBoolTypes hfound
-      have := hwf_attr attr qty.liftBoolTypes hfound'
-      cases qty
-      all_goals
-        constructor
-        cases this
-        apply wf_type_iff_wf_liftBoolTypes.mpr
-        assumption
+      have hwf := hwf_attr attr (QualifiedType.liftBoolTypes qty) hfound'
+      cases qty with
+      | optional ty =>
+        simp only [QualifiedType.liftBoolTypes] at hwf
+        exact .optional_wf (wf_type_iff_wf_liftBoolTypes.mpr (by cases hwf; assumption))
+      | required ty =>
+        simp only [QualifiedType.liftBoolTypes] at hwf
+        exact .required_wf (wf_type_iff_wf_liftBoolTypes.mpr (by cases hwf; assumption))
   decreasing_by
-    any_goals simp
-    any_goals
-      have hmem := Data.Map.find?_mem_toList hfound'
-      simp only [Data.Map.toList_mk_id] at hmem
-      have h := List.sizeOf_snd_lt_sizeOf_list hmem
-      simp at h
-      omega
-
-    any_goals
-      have hmem := Data.Map.find?_mem_toList hfound
-      simp only [Data.Map.toList_mk_id] at hmem
-      have h := List.sizeOf_snd_lt_sizeOf_list hmem
-      simp at h
-      omega
+    all_goals simp_wf
+    all_goals
+      first
+      | have hmem := Data.Map.find?_mem_toList hfound'
+        simp only [Data.Map.toList_mk_id] at hmem
+        have h := List.sizeOf_snd_lt_sizeOf_list hmem
+        simp at h
+        omega
+      | have hmem := Data.Map.find?_mem_toList hfound
+        simp only [Data.Map.toList_mk_id] at hmem
+        have h := List.sizeOf_snd_lt_sizeOf_list hmem
+        simp at h
+        omega
 
 end Cedar.Thm

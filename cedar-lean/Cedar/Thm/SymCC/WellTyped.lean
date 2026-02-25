@@ -67,8 +67,7 @@ theorem wellTypedPolicy_ok_implies_exists_typed_exprs
       := by
         have := lifted_type_is_top hwt_bool
         simp only [←type_of_after_lifted_is_lifted] at this
-        simp only [this]
-        rfl
+        simp only [this, CedarType.liftBoolTypes, BoolType.lift]
       -- Construct a `TypedExpr` for the condition
       -- TODO: this has likely been done somewhere else?
       generalize htx'' :
