@@ -22,6 +22,7 @@ import Cedar.Validation
 import Cedar.Thm.TPE.Input
 import Cedar.Thm.TPE.Conversion
 import Cedar.Thm.TPE.Policy
+import Cedar.Thm.TPE.PolicySoundness
 import Cedar.Thm.TPE.PreservesTypeOf
 import Cedar.Thm.TPE.WellTyped
 import Cedar.Thm.Validation
@@ -137,9 +138,7 @@ theorem no_satisfied_effect_if_empty_satisfied_and_residual_policies
 := by
   simp [HasSatisfiedEffect, satisfied]
   intro p hp₁ hp₂ h
-  replace ⟨rp, h₅, h₄⟩ := List.forall₂_implies_all_left h₃ p hp₁
-  cases he : evaluatePolicy schema p preq pes <;> simp [he] at h₄
-  rename_i r
+  have ⟨rp, h₅, r, he, hrp⟩ := forall₂_policy_to_residual h₃ hp₁
 
   replace ⟨_, hp⟩ :
     ∃ ty, r = .val (.prim (.bool false)) ty ∨ r = .error ty
@@ -154,7 +153,7 @@ theorem no_satisfied_effect_if_empty_satisfied_and_residual_policies
     grind
 
   have ha : r.evaluate req es = Except.ok (Value.prim (Prim.bool true)) :=
-    to_option_left_ok (partial_evaluate_policy_is_sound he h₂) h
+    policy_satisfied_implies_residual_eval_true he h₂ h
 
   cases hp
   · rename_i hp; simp only at hp; simp [hp, Residual.evaluate] at ha
@@ -184,18 +183,14 @@ theorem satisfied_effect_if_non_empty_satisfied_policies
   split at hf₃ <;> try contradiction
   rename_i hf₅
 
-  have ⟨p, hp₁, hp₂⟩ := List.forall₂_implies_all_right h₃ rp hf₁
-  cases hp₃ : evaluatePolicy schema p preq pes <;>
-   simp only [hp₃, Except.map_error, Except.map_ok, reduceCtorEq, Except.ok.injEq] at hp₂
-  subst hp₂; subst hf₅
+  have ⟨p, hp₁, r, hp₃, hp₂⟩ := forall₂_residual_to_policy h₃ hf₁
+  rw [hp₂] at hf₅; subst hf₅
 
   exists p
   and_intros
   · exact hp₁
-  · exact hf₂
-  · have ha := partial_evaluate_policy_is_sound hp₃ h₂
-    simp only [Residual.evaluate] at ha
-    simpa [satisfied] using to_option_right_ok' ha
+  · rw [hp₂] at hf₂; exact hf₂
+  · simpa [satisfied] using residual_true_implies_policy_satisfied hp₃ h₂ (by simp [Residual.isTrue])
 
 theorem partial_authorize_error_policies_is_sound
   {schema : Schema}
@@ -218,21 +213,14 @@ theorem partial_authorize_error_policies_is_sound
     beq_iff_eq, Option.ite_none_right_eq_some, Option.some.injEq, forall_exists_index, and_imp]
   intro pid rp hrp hef herr hpid
 
-  have ⟨p, hp₁, hp₂⟩ := List.forall₂_implies_all_right h₁ rp hrp
-  cases hp₃ : evaluatePolicy schema p preq pes <;>
-   simp only [hp₃, Except.map_error, Except.map_ok, reduceCtorEq, Except.ok.injEq] at hp₂
+  have ⟨p, hp₁, r, hp₃, hp₂⟩ := forall₂_residual_to_policy h₁ hrp
 
   exists p
   and_intros
   · exact hp₁
-  · replace ⟨_, ha⟩ : ∃ e, Spec.evaluate p.toExpr req es = .error e := by
-      rename_i r
-      replace ⟨_, herr⟩ : ∃ ty, r = .error ty := by grind
-      have ha := partial_evaluate_policy_is_sound hp₃ h₂
-      simp only [herr, Residual.evaluate] at ha
-      exact to_option_right_err ha
+  · have ⟨_, ha⟩ := residual_error_implies_policy_error hp₃ h₂ (by rw [hp₂] at herr; exact herr)
     simp [ha]
-  · simpa [←hp₂] using hpid
+  · simp [hp₂] at hpid; exact hpid
 
 theorem partial_authorize_satisfied_policies_is_sound
   {schema : Schema}
@@ -253,28 +241,15 @@ theorem partial_authorize_satisfied_policies_is_sound
     Option.some.injEq, forall_exists_index, and_imp]
   intro pid rp hrp hef htrue hpid
 
-  have ⟨p, hp₁, hp₂⟩ := List.forall₂_implies_all_right h₁ rp hrp
-  cases hp₃ : evaluatePolicy schema p preq pes <;>
-   simp only [hp₃, Except.map_error, Except.map_ok, reduceCtorEq, Except.ok.injEq] at hp₂
+  have ⟨p, hp₁, r, hp₃, hp₂⟩ := forall₂_residual_to_policy h₁ hrp
 
   exists p
   and_intros
   · exact hp₁
-  · simpa [←hp₂] using hef
-  · replace htrue : Spec.evaluate p.toExpr req es = .ok (.prim (.bool true)) := by
-      rename_i r
-      replace ⟨_, htrue⟩ : ∃ ty, r = .val true ty := by
-        simp only [Residual.isTrue] at htrue
-        grind
-      have ha := partial_evaluate_policy_is_sound hp₃ h₂
-      simp only [htrue, Residual.evaluate, Except.toOption] at ha
-      split at ha <;> try contradiction
-      simp only [Option.some.injEq] at ha
-      rw [←ha]
-      assumption
-    simp only [satisfied, decide_eq_true_eq]
-    exact htrue
-  · simpa [←hp₂] using hpid
+  · simp [hp₂] at hef; exact hef
+  · simp only [satisfied, decide_eq_true_eq]
+    exact residual_true_implies_policy_satisfied hp₃ h₂ (by rw [hp₂] at htrue; exact htrue)
+  · simp [hp₂] at hpid; exact hpid
 
 theorem partial_authorize_satisfied_forbids_is_sound
   {schema : Schema}
@@ -288,12 +263,8 @@ theorem partial_authorize_satisfied_forbids_is_sound
   response.satisfiedForbids ⊆ Spec.satisfiedPolicies .forbid policies req es
 := by
   intro h₁ h₂
-  simp only [TPE.isAuthorized] at h₁
-  cases h₃ : List.mapM (λ p => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes) policies <;>
-    simp only [bind_pure_comp, h₃, Except.map_ok, Except.map_error, Except.ok.injEq, reduceCtorEq] at h₁
-  rw [List.mapM_ok_iff_forall₂] at h₃
-  subst response
-
+  have ⟨rps, h₃, h₄⟩ := tpe_isAuthorized_forall₂ h₁
+  subst h₄
   simp only [isAuthorized.isAuthorizedFromResiduals]
   exact partial_authorize_satisfied_policies_is_sound .forbid h₃ h₂
 
@@ -309,11 +280,7 @@ theorem partial_authorize_satisfied_permits_is_sound
   response.satisfiedPermits ⊆ Spec.satisfiedPolicies .permit policies req es
 := by
   intro h₁ h₂
-  simp only [TPE.isAuthorized] at h₁
-  cases h₃ : List.mapM (λ p => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes) policies <;>
-    simp only [bind_pure_comp, h₃, Except.map_ok, Except.map_error, Except.ok.injEq, reduceCtorEq] at h₁
-  rw [List.mapM_ok_iff_forall₂] at h₃
-  subst response
-
+  have ⟨rps, h₃, h₄⟩ := tpe_isAuthorized_forall₂ h₁
+  subst h₄
   simp only [isAuthorized.isAuthorizedFromResiduals]
   exact partial_authorize_satisfied_policies_is_sound .permit h₃ h₂
