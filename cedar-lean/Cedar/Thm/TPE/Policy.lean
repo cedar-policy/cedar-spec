@@ -118,3 +118,108 @@ theorem partial_evaluate_policy_is_sound
   subst old_residual
   congr
   apply conversion_preserves_evaluation
+
+/-! ### Useful Corollaries to policy evaluation soundness  -/
+
+theorem residual_true_implies_policy_satisfied
+  {schema : Schema}
+  {p : Policy}
+  {r : Residual}
+  {req : Request}
+  {es : Entities}
+  {preq : PartialRequest}
+  {pes : PartialEntities}
+  (h_eval : evaluatePolicy schema p preq pes = .ok r)
+  (h_valid : isValidAndConsistent schema req es preq pes = .ok ())
+  (h_true : r.isTrue) :
+  satisfied p req es
+:= by
+  have ⟨ty, hr⟩ : ∃ ty, r = .val true ty := by
+    simp only [Residual.isTrue] at h_true; grind
+  have ha := partial_evaluate_policy_is_sound h_eval h_valid
+  simp only [hr, Residual.evaluate] at ha
+  simp only [satisfied, decide_eq_true_eq]
+  exact to_option_right_ok' ha
+
+theorem policy_satisfied_iff_residual_eval_true
+  {schema : Schema}
+  {p : Policy}
+  {r : Residual}
+  {req : Request}
+  {es : Entities}
+  {preq : PartialRequest}
+  {pes : PartialEntities}
+  (h_eval : evaluatePolicy schema p preq pes = .ok r)
+  (h_valid : isValidAndConsistent schema req es preq pes = .ok ()) :
+  satisfied p req es ↔ r.evaluate req es = .ok true
+:= by
+  have ha := partial_evaluate_policy_is_sound h_eval h_valid
+  simp only [satisfied, decide_eq_true_eq]
+  simp [Except.toOption] at ha
+  cases he₁ : Spec.evaluate p.toExpr req es  <;>
+  cases he₂ : r.evaluate req es
+  all_goals grind
+
+theorem residual_error_implies_policy_error
+  {schema : Schema}
+  {p : Policy}
+  {r : Residual}
+  {req : Request}
+  {es : Entities}
+  {preq : PartialRequest}
+  {pes : PartialEntities}
+  (h_eval : evaluatePolicy schema p preq pes = .ok r)
+  (h_valid : isValidAndConsistent schema req es preq pes = .ok ())
+  (h_err : r.isError) :
+  hasError p req es
+:= by
+  have ⟨ty, hr⟩ : ∃ ty, r = .error ty := by
+    simp only [Residual.isError] at h_err; grind
+  have ha := partial_evaluate_policy_is_sound h_eval h_valid
+  simp only [hr, Residual.evaluate] at ha
+  simp only [hasError]
+  split <;> try rfl
+  rename_i h_ok
+  have h_err' := to_option_right_err ha
+  simp [h_ok] at h_err'
+
+theorem policy_error_iff_residual_eval_error
+  {schema : Schema}
+  {p : Policy}
+  {r : Residual}
+  {req : Request}
+  {es : Entities}
+  {preq : PartialRequest}
+  {pes : PartialEntities}
+  (h_eval : evaluatePolicy schema p preq pes = .ok r)
+  (h_valid : isValidAndConsistent schema req es preq pes = .ok ()) :
+  hasError p req es ↔ (∃ e, r.evaluate req es = .error e)
+:= by
+  have ha := partial_evaluate_policy_is_sound h_eval h_valid
+  simp only [hasError]
+  simp [Except.toOption] at ha
+  cases he₁ : Spec.evaluate p.toExpr req es  <;>
+  cases he₂ : r.evaluate req es
+  all_goals grind
+
+theorem residual_false_implies_policy_not_satisfied
+  {schema : Schema}
+  {p : Policy}
+  {r : Residual}
+  {req : Request}
+  {es : Entities}
+  {preq : PartialRequest}
+  {pes : PartialEntities}
+  (h_eval : evaluatePolicy schema p preq pes = .ok r)
+  (h_valid : isValidAndConsistent schema req es preq pes = .ok ())
+  (h_false : r.isFalse) :
+  ¬ satisfied p req es
+:= by
+  have ⟨ty, hr⟩ : ∃ ty, r = .val (.prim (.bool false)) ty := by
+    simp only [Residual.isFalse] at h_false; grind
+  have ha := partial_evaluate_policy_is_sound h_eval h_valid
+  simp only [hr, Residual.evaluate] at ha
+  simp only [satisfied, decide_eq_true_eq]
+  intro h_sat
+  rw [h_sat] at ha
+  simp [Except.toOption] at ha

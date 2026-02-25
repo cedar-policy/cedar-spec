@@ -23,7 +23,6 @@ import Cedar.Thm.TPE.Conversion
 import Cedar.Thm.TPE.Soundness
 import Cedar.Thm.TPE.PreservesTypeOf
 import Cedar.Thm.TPE.Policy
-import Cedar.Thm.TPE.PolicySoundness
 import Cedar.Thm.TPE.Authorizer
 import Cedar.Thm.TPE.WellTyped
 import Cedar.Thm.TPE.WellTypedCases
@@ -63,8 +62,7 @@ theorem reauthorize_is_sound
   response.reauthorize req es = Spec.isAuthorized req es policies
 := by
   intro hv h_auth
-  have ⟨_, _, h_resp⟩ := tpe_isAuthorized_forall₂ h_auth
-  subst h_resp
+  obtain ⟨_, rfl⟩ := is_authorized_has_residuals h_auth
   have equiv_satisfied := reauthorize_satisfied_policies_equiv hv h_auth
   have equiv_errors := reauthorize_error_policies_equiv hv h_auth
   simp only [isAuthorized.isAuthorizedFromResiduals] at equiv_satisfied equiv_errors
@@ -89,8 +87,7 @@ theorem partial_authorize_decision_is_sound
   (Spec.isAuthorized req es policies).decision = decision
 := by
   intro h₁ h₂
-  have ⟨rps, h₃, h₅⟩ := tpe_isAuthorized_forall₂ h₁
-  subst h₅
+  obtain ⟨rps, rfl⟩ := is_authorized_has_residuals h₁
   simp only [isAuthorized.isAuthorizedFromResiduals]
   intro h₄
   split at h₄ <;> simp only [reduceCtorEq, Option.some.injEq] at h₄
@@ -151,8 +148,7 @@ theorem partial_authorize_erroring_policies_is_sound
   (response.errorForbids ∪ response.errorPermits) ⊆ (Spec.isAuthorized req es policies).erroringPolicies
 := by
   intro h₁ h₂
-  have ⟨_, _, h₄⟩ := tpe_isAuthorized_forall₂ h₁
-  subst h₄
+  obtain ⟨_, rfl⟩ := is_authorized_has_residuals h₁
   have h_err_permit := partial_authorize_error_policies_is_sound .permit h₁ h₂
   have h_err_forbid := partial_authorize_error_policies_is_sound .forbid h₁ h₂
   rw [Set.union_subset]
@@ -282,19 +278,17 @@ theorem partial_authorize_erroring_policies_is_complete
   (Spec.isAuthorized req es policies).erroringPolicies ⊆ (response.errorForbids ∪ response.errorPermits ∪ response.residualPermits ∪ response.residualForbids)
 := by
   intro h₁ h₂
-  have ⟨_, _, h₄⟩ := tpe_isAuthorized_forall₂ h₁
-  subst h₄
+  obtain ⟨_, rfl⟩ := is_authorized_has_residuals h₁
 
   have h₅ : (Spec.isAuthorized req es policies).erroringPolicies = errorPolicies policies req es :=
     by grind [Spec.isAuthorized]
-  simp only [errorPolicies, errored, hasError] at h₅
+  simp only [errorPolicies, errored] at h₅
   simp only [h₅, isAuthorized.isAuthorizedFromResiduals, Set.subset_def, ← Set.make_mem,
     List.mem_filterMap, Option.ite_none_right_eq_some, Option.some.injEq,
     forall_exists_index, and_imp]
   intro pid p hp₁ herr hpid
 
-  replace ⟨_, herr⟩ : ∃ e, Spec.evaluate p.toExpr req es = .error e := by grind
-  have h_in := errored_policy_in_error_or_residual h₁ h₂ hp₁ ⟨_, herr⟩
+  have h_in := errored_policy_in_error_or_residual h₁ h₂ hp₁ herr
   simp only [isAuthorized.isAuthorizedFromResiduals] at h_in
   subst hpid
   rw [Set.mem_union_iff_mem_or] at h_in
@@ -317,8 +311,7 @@ theorem partial_authorize_determining_policies_is_complete_allow
   (Spec.isAuthorized req es policies).determiningPolicies ⊆ (response.satisfiedPermits ∪ response.residualPermits)
 := by
   intro h₁ h₂ h_allow
-  have ⟨_, _, h₄⟩ := tpe_isAuthorized_forall₂ h₁
-  subst h₄
+  obtain ⟨_, rfl⟩ := is_authorized_has_residuals h₁
 
   have h_allow_det : (Spec.isAuthorized req es policies).determiningPolicies = satisfiedPolicies .permit policies req es := by
     grind [Spec.isAuthorized]
@@ -348,8 +341,7 @@ theorem partial_authorize_determining_policies_is_complete_deny
   (Spec.isAuthorized req es policies).determiningPolicies ⊆ (response.satisfiedForbids ∪ response.residualForbids)
 := by
   intro h₁ h₂ h_deny
-  have ⟨_, _, h₄⟩ := tpe_isAuthorized_forall₂ h₁
-  subst h₄
+  obtain ⟨_, rfl⟩ := is_authorized_has_residuals h₁
 
   have h_deny_det : (Spec.isAuthorized req es policies).determiningPolicies = satisfiedPolicies .forbid policies req es := by
     grind [Spec.isAuthorized]
