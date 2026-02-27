@@ -14,9 +14,13 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.Data.List
-import Cedar.Thm.Data.Option
-import Cedar.Thm.Data.Set
+module
+
+public import Cedar.Thm.Data.List
+public import Cedar.Thm.Data.Option
+public import Cedar.Thm.Data.Set
+
+import all Cedar.Data.List -- proving things about `List.mapUnion` requires access to the definition of `List.mapUnion`, which is normally opaque
 
 /-!
 # Lemmas about List.mapUnion operator
@@ -41,28 +45,29 @@ theorem mapUnion_pmap_subtype
   simp only [mapUnion]
   rw [foldl_pmap_subtype λ a b => a ∪ f b]
 
-theorem mapUnion₁_eq_mapUnion [Union β] [EmptyCollection β] (f : α → β) (as : List α) :
+public theorem mapUnion₁_eq_mapUnion [Union β] [EmptyCollection β] (f : α → β) (as : List α) :
   as.mapUnion₁ (λ x : { a : α // a ∈ as } => f x.val) = as.mapUnion f
 := by
   apply mapUnion_pmap_subtype
 
-theorem mapUnion₂_eq_mapUnion [SizeOf α] [SizeOf β] [Union γ] [EmptyCollection γ] (f : (α × β) → γ) (xs : List (α × β)) :
+public theorem mapUnion₂_eq_mapUnion [SizeOf α] [SizeOf β] [Union γ] [EmptyCollection γ] (f : (α × β) → γ) (xs : List (α × β)) :
   xs.mapUnion₂ (λ x : { x : α × β // sizeOf x.snd < 1 + sizeOf xs } => f x.1) = xs.mapUnion f
 := by
   simp only [mapUnion₂, attach₂, mapUnion_pmap_subtype]
 
-theorem mapUnion₃_eq_mapUnion [SizeOf α] [SizeOf β] [Union γ] [EmptyCollection γ] (f : (α × β) → γ) (xs : List (α × β)) :
+public theorem mapUnion₃_eq_mapUnion [SizeOf α] [SizeOf β] [Union γ] [EmptyCollection γ] (f : (α × β) → γ) (xs : List (α × β)) :
   xs.mapUnion₃ (λ x : { x : α × β // sizeOf x.snd < 1 + (1 + sizeOf xs) } => f x.1) = xs.mapUnion f
 := by
   simp only [mapUnion₃, attach₃, mapUnion_pmap_subtype]
 
-theorem mapUnion_nil [Union β] [EmptyCollection β] (f : α → β) :
+@[simp]
+public theorem mapUnion_nil [Union β] [EmptyCollection β] (f : α → β) :
   [].mapUnion f = ∅
 := by simp [List.mapUnion]
 
 /-! ### List.mapUnion for sets (`f` returning `Set`) -/
 
-theorem mapUnion_wf {α β} [LT α] [StrictLT α] [DecidableLT α] {f : β → Set α} {xs : List β} :
+public theorem mapUnion_wf {α β} [LT α] [StrictLT α] [DecidableLT α] {f : β → Set α} {xs : List β} :
   (xs.mapUnion f).WellFormed
 := by
   simp only [List.mapUnion]
@@ -90,7 +95,7 @@ private theorem foldl_union_init {α β} [LT α] [StrictLT α] [DecidableLT α] 
     rw [Set.union_assoc]
     rw [ih (a := a) (b := b ∪ f hd)]
 
-theorem mapUnion_cons {α β} [LT α] [StrictLT α] [DecidableLT α] {f : β → Set α} {hd : β} {tl : List β} :
+public theorem mapUnion_cons {α β} [LT α] [StrictLT α] [DecidableLT α] {f : β → Set α} {hd : β} {tl : List β} :
   (∀ b ∈ hd :: tl, (f b).WellFormed) →
   (hd :: tl).mapUnion f = f hd ∪ tl.mapUnion f
 := by
@@ -105,12 +110,14 @@ theorem mapUnion_cons {α β} [LT α] [StrictLT α] [DecidableLT α] {f : β →
   rw [h]
   rw [foldl_union_init (a := Set.empty) (b := f hd)]
 
-theorem mapUnion_singleton {α β} [LT α] [StrictLT α] [DecidableLT α] {f : β → Set α} {x : β} :
+@[simp]
+public theorem mapUnion_singleton {α β} [LT α] [StrictLT α] [DecidableLT α] {f : β → Set α} {x : β} :
   (f x).WellFormed → [x].mapUnion f = f x
 := by
   intro h ; simp [List.mapUnion, EmptyCollection.emptyCollection, Set.union_empty_left h]
 
-theorem mapUnion_map [LT α] [StrictLT α] [DecidableLT α] {f : β → Set α} {g : γ → β} {xs : List γ} :
+@[simp]
+public theorem mapUnion_map [LT α] [StrictLT α] [DecidableLT α] {f : β → Set α} {g : γ → β} {xs : List γ} :
   List.mapUnion f (xs.map g) = xs.mapUnion (f ∘ g)
 := by
   simp [List.mapUnion, List.foldl_map]
@@ -133,7 +140,7 @@ private theorem mem_foldl_union_iff_mem_or_exists {α β} [LT α] [StrictLT α] 
       rw [← or_assoc, ← Set.mem_union_iff_mem_or] at h
       exact ih.mpr h
 
-theorem mem_mapUnion_iff_mem_exists {α β} [LT α] [StrictLT α] [DecidableLT α] {f : β → Set α} {xs : List β} :
+public theorem mem_mapUnion_iff_mem_exists {α β} [LT α] [StrictLT α] [DecidableLT α] {f : β → Set α} {xs : List β} :
   ∀ e, e ∈ xs.mapUnion f ↔ ∃ s ∈ xs, e ∈ f s
 := by
   intro e
@@ -147,21 +154,22 @@ theorem mem_mapUnion_iff_mem_exists {α β} [LT α] [StrictLT α] [DecidableLT �
       simp only [Set.mem_union_iff_mem_or, Set.empty_no_elts, false_or]
     simp only [List.foldl_cons, List.mem_cons, exists_eq_or_imp, h, mem_foldl_union_iff_mem_or_exists]
 
-theorem mem_mem_implies_mem_mapUnion {α β} [LT α] [StrictLT α] [DecidableLT α] {f : β → Set α} {xs : List β} {e : α} {s : β} :
+public theorem mem_mem_implies_mem_mapUnion {α β} [LT α] [StrictLT α] [DecidableLT α] {f : β → Set α} {xs : List β} {e : α} {s : β} :
   e ∈ f s → s ∈ xs → e ∈ xs.mapUnion f
 := by
   intro he hs
   rw [mem_mapUnion_iff_mem_exists]
   exists s
 
-theorem mem_implies_subset_mapUnion {α β} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] (f : β → Set α) {xs : List β} {s : β} :
+public theorem mem_implies_subset_mapUnion {α β} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] (f : β → Set α) {xs : List β} {s : β} :
   s ∈ xs → f s ⊆ xs.mapUnion f
 := by
   simp only [Set.subset_def]
   intro hs a ha
   exact mem_mem_implies_mem_mapUnion ha hs
 
-theorem mapUnion_filterMap {α β γ} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {f : β → Set α} {g : γ → Option β} {xs : List γ} :
+@[simp]
+public theorem mapUnion_filterMap {α β γ} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {f : β → Set α} {g : γ → Option β} {xs : List γ} :
   (xs.filterMap g).mapUnion f =
   xs.mapUnion λ x => (g x).mapD f Set.empty
 := by
@@ -185,7 +193,7 @@ theorem mapUnion_filterMap {α β γ} [LT α] [StrictLT α] [DecidableLT α] [De
       apply ih
       apply Set.union_empty_right (Set.union_wf _ _)
 
-theorem mapUnion_congr {α β} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] (f g : β → Set α) {xs : List β} :
+public theorem mapUnion_congr {α β} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] (f g : β → Set α) {xs : List β} :
   (∀ b ∈ xs, f b = g b) → xs.mapUnion f = xs.mapUnion g
 := by
   intro h
@@ -203,7 +211,7 @@ theorem mapUnion_congr {α β} [LT α] [StrictLT α] [DecidableLT α] [Decidable
     apply h
     simp only [List.mem_cons, htl, or_true]
 
-theorem mapUnion_eq_mapUnion_id_map {α β} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] (f : β → Set α) {xs : List β} :
+public theorem mapUnion_eq_mapUnion_id_map {α β} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] (f : β → Set α) {xs : List β} :
   xs.mapUnion f = (xs.map f).mapUnion id
 := by
   simp only [List.mapUnion]
@@ -226,7 +234,7 @@ private theorem foldl_union_append {α β} [LT α] [StrictLT α] [DecidableLT α
     simp only [List.append, List.foldl_cons]
     rw [ih]
 
-theorem mapUnion_append {α β} [LT α] [StrictLT α] [DecidableLT α] {f : β → Set α} {xs ys : List β} :
+public theorem mapUnion_append {α β} [LT α] [StrictLT α] [DecidableLT α] {f : β → Set α} {xs ys : List β} :
   (∀ b ∈ (xs ++ ys), (f b).WellFormed) →
   (xs ++ ys).mapUnion f = xs.mapUnion f ++ ys.mapUnion f
 := by
@@ -249,13 +257,44 @@ theorem mapUnion_append {α β} [LT α] [StrictLT α] [DecidableLT α] {f : β �
       cases hb <;> simp [*]
     · intro b hb ; apply hwf b ; simp [hb]
 
-theorem mapUnion_union_mapUnion {α β} [LT α] [StrictLT α] [DecidableLT α] (f : β → Set α) (xs ys : List β) :
+/-- Corollary of `mapUnion_append`, stated in reverse for some reason, and using `∪` instead of `++` (which are synonyms in the case of Data.Set) -/
+public theorem mapUnion_union_mapUnion {α β} [LT α] [StrictLT α] [DecidableLT α] (f : β → Set α) (xs ys : List β) :
   (∀ b ∈ (xs ++ ys), (f b).WellFormed) →
   List.mapUnion f xs ∪ List.mapUnion f ys = List.mapUnion f (xs ++ ys)
 := by
   intro h
   symm
   exact mapUnion_append h
+
+/--
+`mapUnion_union_mapUnion` applies when you have the same function `f` and different input lists.
+`mapUnion_union_mapUnion'` applies when you have different functions `f`/`g` and the same input list.
+-/
+public theorem mapUnion_union_mapUnion' {α β} [LT α] [StrictLT α] [DecidableLT α] {f g : β → Set α} {xs : List β} :
+  (∀ x ∈ xs, (f x).WellFormed ∧ (g x).WellFormed) →
+  List.mapUnion f xs ∪ List.mapUnion g xs = List.mapUnion (λ x => f x ∪ g x) xs
+:= by
+  cases xs
+  case nil => simp [mapUnion, EmptyCollection.emptyCollection, Set.union_empty_left Set.empty_wf]
+  case cons hd tl =>
+    intro wf
+    simp only [mem_cons, forall_eq_or_imp] at wf
+    replace ⟨⟨fwf, gwf⟩, tlwf⟩ := wf ; clear wf
+    rw [mapUnion_cons, mapUnion_cons, mapUnion_cons]
+    · have ih := mapUnion_union_mapUnion' tlwf
+      rw [Set.union_assoc]
+      conv => lhs ; rhs ; rw [← Set.union_assoc] ; lhs ; rw [Set.union_comm]
+      conv => lhs ; rhs ; rw [Set.union_assoc, ih]
+      simp [Set.union_assoc]
+    · intro b hb ; cases hb
+      · exact Set.union_wf _ _
+      · exact Set.union_wf _ _
+    · intro b hb ; cases hb
+      case head => exact gwf
+      case tail htl => exact (tlwf b htl).right
+    · intro b hb ; cases hb
+      case head => exact fwf
+      case tail htl => exact (tlwf b htl).left
 
 private theorem foldl_union_swap_front {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] (x₁ x₂ : Set α) {xs : List (Set α)} {a : Set α}:
   (x₁ :: x₂ :: xs).foldl (· ∪ ·) a = (x₂ :: x₁ :: xs).foldl (· ∪ ·) a
@@ -288,7 +327,7 @@ private theorem foldl_union_comm {α} [LT α] [StrictLT α] [DecidableLT α] [De
     simp only [List.cons_append, List.foldl_cons, List.nil_append]
     exact foldl_union_comm
 
-theorem mapUnion_comm {α β} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {f : β → Set α} {xs ys : List β} :
+public theorem mapUnion_comm {α β} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {f : β → Set α} {xs ys : List β} :
   (xs ++ ys).mapUnion f = (ys ++ xs).mapUnion f
 := by
   rw [mapUnion_eq_mapUnion_id_map, eq_comm, mapUnion_eq_mapUnion_id_map, eq_comm]
@@ -360,7 +399,7 @@ decreasing_by
 
 -- Note that the converse doesn't hold. For example, let f = g = id,
 -- xs = [{a}, {b}], and ys = [{a, b}]
-theorem map_eqv_implies_mapUnion_eq {α β γ} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {f : β → Set α} {g : γ → Set α} {xs : List β} {ys : List γ} :
+public theorem map_eqv_implies_mapUnion_eq {α β γ} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {f : β → Set α} {g : γ → Set α} {xs : List β} {ys : List γ} :
   xs.map f ≡ ys.map g → xs.mapUnion f = ys.mapUnion g
 := by
   intro hm

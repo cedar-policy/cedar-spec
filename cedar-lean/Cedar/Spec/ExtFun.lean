@@ -14,7 +14,9 @@
  limitations under the License.
 -/
 
-import Cedar.Spec.Value
+module
+
+public import Cedar.Spec.Value
 
 /-! This file defines Cedar extension functions. -/
 
@@ -25,7 +27,7 @@ open Option
 
 ----- Definitions -----
 
-inductive ExtFun where
+public inductive ExtFun where
   | decimal             ----- Decimal functions -----
   | lessThan
   | lessThanOrEqual
@@ -49,11 +51,12 @@ inductive ExtFun where
   | toHours
   | toDays
 
-def res {α} [Coe α Ext] : Option α → Result Value
+@[expose]
+public def res {α} [Coe α Ext] : Option α → Result Value
   | some v => .ok v
   | none   => .error .extensionError
 
-def call : ExtFun → List Value → Result Value
+public def call : ExtFun → List Value → Result Value
   | .decimal, [.prim (.string s)]               => res (Decimal.decimal s)
   | .lessThan,
     [.ext (.decimal d₁), .ext (.decimal d₂)]    => .ok (d₁ < d₂ : Bool)

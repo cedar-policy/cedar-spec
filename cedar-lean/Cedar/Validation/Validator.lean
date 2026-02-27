@@ -14,7 +14,9 @@
  limitations under the License.
 -/
 
-import Cedar.Validation.Typechecker
+module
+
+public import Cedar.Validation.Typechecker
 import Cedar.Validation.Levels
 
 /-! This file defines the Cedar validator. -/
@@ -43,7 +45,7 @@ def ActionSchemaEntry.requestTypes (action : EntityUID) (entry : ActionSchemaEnt
     reqtys ++ acc) ∅
 
 /-- Return every schema-defined environment. -/
-def Schema.environments (schema : Schema) : List TypeEnv :=
+public def Schema.environments (schema : Schema) : List TypeEnv :=
   let requestTypes : List RequestType :=
     schema.acts.toList.foldl (fun acc (action,entry) => entry.requestTypes action ++ acc) ∅
   requestTypes.map ({
@@ -60,7 +62,7 @@ def Schema.environments (schema : Schema) : List TypeEnv :=
   that the `action` was declared in the schema, but there are no valid
   environments for it
 -/
-def Schema.environmentsForAction? (schema : Schema) (action : EntityUID) : Option (List TypeEnv) := do
+public def Schema.environmentsForAction? (schema : Schema) (action : EntityUID) : Option (List TypeEnv) := do
   let ase ← schema.acts.find? action
   let p_r_pairs := List.productTR ase.appliesToPrincipal.elts ase.appliesToResource.elts
   some $ p_r_pairs.map λ (principal, resource) => {
@@ -78,7 +80,7 @@ def Schema.environmentsForAction? (schema : Schema) (action : EntityUID) : Optio
   Return the environment for the particular (p,a,r) tuple, or `none` if this
   is not a valid tuple in this schema
 -/
-def Schema.environment? (schema : Schema) (principal resource : EntityType) (action : EntityUID) : Option TypeEnv := do
+public def Schema.environment? (schema : Schema) (principal resource : EntityType) (action : EntityUID) : Option TypeEnv := do
   let ase ← schema.acts.find? action
   match ase.appliesToPrincipal.contains principal, ase.appliesToResource.contains resource with
   | true, true => some {
@@ -93,19 +95,19 @@ def Schema.environment? (schema : Schema) (principal resource : EntityType) (act
   }
   | _, _ => none -- principal and/or resource type are invalid for that action
 
-inductive ValidationError where
+public inductive ValidationError where
   | typeError (pid : PolicyID) (error : TypeError)
   | levelError (pid : PolicyID)
   | impossiblePolicy (pid : PolicyID)
 deriving Repr, BEq
 
-instance : ToString ValidationError where
+public instance : ToString ValidationError where
   toString
   | .typeError pid error => s!"typeError for {pid}: {repr error}"
   | .levelError pid => s!"levelError for {pid}"
   | .impossiblePolicy pid => s!"impossiblePolicy: {pid}"
 
-abbrev ValidationResult := Except ValidationError Unit
+public abbrev ValidationResult := Except ValidationError Unit
 
 /-!
 Check that all referenced entity types, actions, and enum entities are declared
@@ -115,7 +117,7 @@ undefined entity types that the Lean typechecker ignores due to short-circuiting
 We include this validation pass so that the validators behave exactly the same,
 but we don't need to prove anything about it for soundness.
 -/
-def checkEntities (schema : Schema) : Expr → Except TypeError Unit
+public def checkEntities (schema : Schema) : Expr → Except TypeError Unit
   | .lit (.entityUID uid) =>
     if schema.ets.isValidEntityUID uid || schema.acts.contains uid
     then .ok ()
@@ -146,7 +148,7 @@ def checkEntities (schema : Schema) : Expr → Except TypeError Unit
   | .record axs =>
     axs.attach₂.forM (checkEntities schema ·.val.snd)
 
-def mapOnVars (f : Var → Expr) : Expr → Expr
+public def mapOnVars (f : Var → Expr) : Expr → Expr
   | .lit l => .lit l
   | .var var => f var
   | .ite x₁ x₂ x₃ =>
@@ -186,7 +188,7 @@ def mapOnVars (f : Var → Expr) : Expr → Expr
     .call xfn xs
 
 /- Substitute `action` variable for a literal EUID to improve typechecking precision. -/
-def substituteAction (uid : EntityUID) (expr : Expr) : Expr :=
+public def substituteAction (uid : EntityUID) (expr : Expr) : Expr :=
   let f (var : Var) : Expr :=
     match var with
     | .action => .lit (.entityUID uid)
@@ -194,7 +196,7 @@ def substituteAction (uid : EntityUID) (expr : Expr) : Expr :=
   mapOnVars f expr
 
 /-- Check that a policy is Boolean-typed. -/
-def typecheckPolicy (policy : Policy) (env : TypeEnv) : Except ValidationError TypedExpr :=
+public def typecheckPolicy (policy : Policy) (env : TypeEnv) : Except ValidationError TypedExpr :=
   let expr := substituteAction env.reqty.action policy.toExpr
   match typeOf expr ∅ env with
   | .ok (tx, _) =>
@@ -203,18 +205,18 @@ def typecheckPolicy (policy : Policy) (env : TypeEnv) : Except ValidationError T
     else .error (.typeError policy.id (.unexpectedType tx.typeOf))
   | .error e => .error (.typeError policy.id e)
 
-def typecheckPolicyWithLevel (policy : Policy) (level : Nat) (env : TypeEnv) : Except ValidationError TypedExpr := do
+public def typecheckPolicyWithLevel (policy : Policy) (level : Nat) (env : TypeEnv) : Except ValidationError TypedExpr := do
   let tx ← typecheckPolicy policy env
   if tx.checkLevel env level then
     .ok tx
   else
     .error (.levelError policy.id)
 
-def allFalse (txs : List TypedExpr) : Bool :=
+public def allFalse (txs : List TypedExpr) : Bool :=
   txs.all (TypedExpr.typeOf · == .bool .ff)
 
 /-- Check a policy under multiple environments. -/
-def typecheckPolicyWithEnvironments (tc : Policy → TypeEnv → Except ValidationError TypedExpr) (policy : Policy) (schema : Schema) : ValidationResult := do
+public def typecheckPolicyWithEnvironments (tc : Policy → TypeEnv → Except ValidationError TypedExpr) (policy : Policy) (schema : Schema) : ValidationResult := do
   (checkEntities schema policy.toExpr).mapError (.typeError policy.id)
   let policyTypes ← schema.environments.mapM (tc policy)
   if allFalse policyTypes then .error (.impossiblePolicy policy.id) else .ok ()
@@ -223,14 +225,14 @@ def typecheckPolicyWithEnvironments (tc : Policy → TypeEnv → Except Validati
 Analyze a set of policies to check that all are boolean-typed, and that
 none are guaranteed to be false under all possible environments.
 -/
-def validate (policies : Policies) (schema : Schema) : ValidationResult := do
+public def validate (policies : Policies) (schema : Schema) : ValidationResult := do
   policies.forM (typecheckPolicyWithEnvironments typecheckPolicy · schema)
 
 /--
 Analyze a set of policies to check that all are boolean-typed, and that
 none are guaranteed to be false under all possible environments.
 -/
-def validateWithLevel (policies : Policies) (schema : Schema) (level : Nat) : ValidationResult :=
+public def validateWithLevel (policies : Policies) (schema : Schema) (level : Nat) : ValidationResult :=
   policies.forM (typecheckPolicyWithEnvironments (typecheckPolicyWithLevel · level) · schema)
 
 ----- Derivations -----
@@ -241,7 +243,7 @@ deriving instance Repr for ValidationError
 Lossy serialization of errors to Json. This serialization provides some extra
 information to DRT without having to derive `Lean.ToJson` for `Expr` and `CedarType`.
 -/
-def validationErrorToJson : ValidationError → Lean.Json
+public def validationErrorToJson : ValidationError → Lean.Json
   | .typeError _ (.lubErr _ _) => "lubErr"
   | .typeError _ (.unexpectedType _) => "unexpectedType"
   | .typeError _ (.attrNotFound _ _) => "attrNotFound"
@@ -253,12 +255,12 @@ def validationErrorToJson : ValidationError → Lean.Json
   | .levelError _ => "levelError"
   | .impossiblePolicy _ => "impossiblePolicy"
 
-instance : Lean.ToJson ValidationError where
+public instance : Lean.ToJson ValidationError where
   toJson := validationErrorToJson
 
 -- Used to serialize `ValidationResult`
 deriving instance Lean.ToJson for Except
-instance : Lean.ToJson Unit where
+public instance : Lean.ToJson Unit where
   toJson := λ _ => Lean.Json.null
 
 end Cedar.Validation

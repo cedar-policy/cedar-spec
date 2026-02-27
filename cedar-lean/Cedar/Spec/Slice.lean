@@ -14,9 +14,11 @@
  limitations under the License.
 -/
 
+module
+
 import Cedar.Spec.Value
-import Cedar.Spec.Entities
-import Cedar.Spec.Request
+public import Cedar.Spec.Entities
+public import Cedar.Spec.Request
 import Cedar.Data.SizeOf
 
 /-!
@@ -27,20 +29,21 @@ namespace Cedar.Spec
 
 open Cedar.Data
 
-def Value.sliceEUIDs : Value → Set EntityUID
+public def Value.sliceEUIDs : Value → Set EntityUID
   | .prim (.entityUID uid) => Set.singleton uid
   | .record (Map.mk avs) => avs.mapUnion₃ λ e => e.val.snd.sliceEUIDs
   | .prim _ | set _ | .ext _ => ∅
 
-def EntityData.sliceEUIDs (ed : EntityData) : Set EntityUID :=
+public def EntityData.sliceEUIDs (ed : EntityData) : Set EntityUID :=
   ed.attrs.values.mapUnion Value.sliceEUIDs ∪
   ed.tags.values.mapUnion Value.sliceEUIDs
 
-def Request.sliceEUIDs (r : Request) : Set EntityUID :=
+public def Request.sliceEUIDs (r : Request) : Set EntityUID :=
   Set.make [r.principal, r.action, r.resource] ∪
   (Value.record r.context).sliceEUIDs
 
-def Entities.sliceAtLevel (es : Entities) (r : Request) (level : Nat) : Entities :=
+@[expose]
+public def Entities.sliceAtLevel (es : Entities) (r : Request) (level : Nat) : Entities :=
   let slice := sliceAtLevel r.sliceEUIDs level
   let slice := slice.elts.filterMap λ e => do some (e, ←(es.find? e))
   Map.make slice

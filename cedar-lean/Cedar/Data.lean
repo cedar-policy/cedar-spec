@@ -14,6 +14,8 @@
  limitations under the License.
 -/
 
-import Cedar.Data.Int64
-import Cedar.Data.Set
-import Cedar.Data.Map
+module
+
+public import Cedar.Data.Int64
+public import Cedar.Data.Set
+public import Cedar.Data.Map

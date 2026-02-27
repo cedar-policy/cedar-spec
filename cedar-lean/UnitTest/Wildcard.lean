@@ -27,7 +27,7 @@ private def testWildcardMatch (str : String) (pat : Pattern) (expected : Bool) :
   test s!"{expected}: {str} like {reprStr pat}" ⟨λ _ => checkEq (wildcardMatch str pat) expected⟩
 
 private def justChars (str : String) : Pattern :=
-  str.data.map (fun c => .justChar c)
+  str.toList.map .justChar
 
 def testsForWildcardMatch :=
   suite "wildcardMatch"

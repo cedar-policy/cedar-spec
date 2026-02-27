@@ -14,8 +14,11 @@
  limitations under the License.
 -/
 
-import Cedar.Spec.Policy
+module
+
+public import Cedar.Spec.Policy
 import Lean.Data.Json.FromToJson
+
 /-!
 This file defines Cedar responses.
 -/
@@ -26,11 +29,11 @@ open Cedar.Data
 
 ----- Definitions -----
 
-inductive Decision where
+public inductive Decision where
   | allow
   | deny
 
-structure Response where
+public structure Response where
   decision : Decision
   determiningPolicies : Set PolicyID
   erroringPolicies : Set PolicyID

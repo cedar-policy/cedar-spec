@@ -16,7 +16,7 @@
 
 module
 
-import Cedar.Data.LT
+public import Cedar.Data.LT
 import Batteries.Data.List
 
 /-!

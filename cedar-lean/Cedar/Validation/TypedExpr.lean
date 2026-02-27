@@ -14,8 +14,10 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
-import Cedar.Validation.Types
+module
+
+public import Cedar.Spec
+public import Cedar.Validation.Types
 
 /-!
 This file defines a type annotated version of the Cedar AST
@@ -31,7 +33,7 @@ A type annotated Cedar AST. This should have exactly the same variants as the
 unannotated `Expr` data type, but each variant carries an additional `ty` that
 stores the type of the expression.
 -/
-inductive TypedExpr where
+public inductive TypedExpr where
   | lit (p : Prim) (ty : CedarType)
   | var (v : Var) (ty : CedarType)
   | ite (cond : TypedExpr) (thenExpr : TypedExpr) (elseExpr : TypedExpr) (ty : CedarType)
@@ -50,7 +52,7 @@ deriving instance Repr, Inhabited for TypedExpr
 
 mutual
 
-def decTypedExpr (x y : TypedExpr) : Decidable (x = y) := by
+public def decTypedExpr (x y : TypedExpr) : Decidable (x = y) := by
   cases x <;> cases y <;>
   try { apply isFalse ; intro h ; injection h }
   case lit.lit x₁ tx  y₁ ty  | var.var x₁ tx y₁ ty =>
@@ -110,9 +112,9 @@ def decExprList (xs ys : List TypedExpr) : Decidable (xs = ys) :=
     | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
 end
 
-instance : DecidableEq TypedExpr := decTypedExpr
+public instance : DecidableEq TypedExpr := decTypedExpr
 
-def TypedExpr.typeOf : TypedExpr → CedarType
+public def TypedExpr.typeOf : TypedExpr → CedarType
   | lit _ ty
   | var _ ty
   | ite _ _ _ ty
@@ -126,7 +128,7 @@ def TypedExpr.typeOf : TypedExpr → CedarType
   | record _ ty
   | call _ _ ty => ty
 
-def TypedExpr.toExpr : TypedExpr → Expr
+public def TypedExpr.toExpr : TypedExpr → Expr
   | lit p _ => Expr.lit p
   | var v _ => Expr.var v
   | ite cond thenExpr elseExpr _ => Expr.ite cond.toExpr thenExpr.toExpr elseExpr.toExpr
@@ -147,7 +149,7 @@ decreasing_by
     try replace h := List.sizeOf_lt_of_mem h
     omega
 
-def TypedExpr.liftBoolTypes : TypedExpr → TypedExpr
+public def TypedExpr.liftBoolTypes : TypedExpr → TypedExpr
   | .lit p ty => .lit p ty.liftBoolTypes
   | .var v ty =>  .var v ty.liftBoolTypes
   | .ite cond thenExpr elseExpr ty => .ite cond.liftBoolTypes thenExpr.liftBoolTypes elseExpr.liftBoolTypes ty.liftBoolTypes

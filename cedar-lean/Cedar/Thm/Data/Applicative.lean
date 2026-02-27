@@ -14,6 +14,7 @@
  limitations under the License.
 -/
 
+module
 
 macro "unfold_applicative" : tactic => do
   `(tactic | (
@@ -27,7 +28,7 @@ macro "unfold_applicative" : tactic => do
   simp
   ))
 
-theorem applicative_none  {α β : Type} (f : Option (α → β)) (o : Option α) :
+public theorem applicative_none  {α β : Type} (f : Option (α → β)) (o : Option α) :
   f = none →
   f <*> o = none
   := by
@@ -35,7 +36,7 @@ theorem applicative_none  {α β : Type} (f : Option (α → β)) (o : Option α
   rw [h]
   unfold_applicative
 
-theorem applicative_of_none {α β : Type} (f : Option (α → β )) (o : Option α) :
+public theorem applicative_of_none {α β : Type} (f : Option (α → β )) (o : Option α) :
   o = none →
   f <*> o = none
   := by
@@ -43,13 +44,12 @@ theorem applicative_of_none {α β : Type} (f : Option (α → β )) (o : Option
   rw [h]
   unfold_applicative
 
-
-theorem applicative_some {α β : Type} (f' : α → β) (v : α) :
+public theorem applicative_some {α β : Type} (f' : α → β) (v : α) :
   (some f') <*> (some v) = some (f' v)
   := by
   unfold_applicative
 
-theorem applicative_step {α β : Type} (f : α →  β) (x : α) :
+public theorem applicative_step {α β : Type} (f : α →  β) (x : α) :
   (some f) <*> (some x) = some (f x)
   := by
   apply applicative_some

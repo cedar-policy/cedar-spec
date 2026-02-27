@@ -14,8 +14,16 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
+module
+
+public import Cedar.Spec
 import Cedar.Data.Int64
+
+-- needs to unfold various `.lt` definitions, that are normally opaque
+import all Cedar.Spec.Ext.Datetime
+import all Cedar.Spec.Ext.IPAddr
+import all Cedar.Spec.Ext
+import all Cedar.Spec.Value
 
 /-!
 This file contains proofs that the less-than (`<`) relation on Cedar values is strict.
@@ -37,7 +45,7 @@ end Decide
 
 ----- `<` is strict on `IPNetPrefix` -----
 
-instance IPNetPrefix.strictLT {w} : StrictLT (Ext.IPAddr.IPNetPrefix w) where
+public instance IPNetPrefix.strictLT {w} : StrictLT (Ext.IPAddr.IPNetPrefix w) where
   asymmetric a b  := by
     simp only [LT.lt]
     unfold Ext.IPAddr.IPNetPrefix.lt Ext.IPAddr.IPNetPrefix.toNat Ext.IPAddr.ADDR_SIZE
@@ -64,12 +72,12 @@ instance IPNetPrefix.strictLT {w} : StrictLT (Ext.IPAddr.IPNetPrefix w) where
 
 ----- `<` is strict on `CIDR` -----
 
-instance CIDR.strictLT {w} : StrictLT (Ext.IPAddr.CIDR w) where
+public instance CIDR.strictLT {w} : StrictLT (Ext.IPAddr.CIDR w) where
   asymmetric a b   := by
     simp only [LT.lt]
     simp only [Ext.IPAddr.CIDR.lt, Bool.or_eq_true, decide_eq_true_eq, Bool.and_eq_true]
     intro h₁
-    by_contra h₂
+    false_or_by_contra ; rename_i h₂
     rcases h₁ with h₁ | ⟨h₁, h₃⟩
     · bv_omega
     · simp only [h₁, true_and] at h₂
@@ -104,7 +112,7 @@ instance CIDR.strictLT {w} : StrictLT (Ext.IPAddr.CIDR w) where
 
 ----- `<` is strict on `IPNet` -----
 
-instance IPNet.strictLT : StrictLT Ext.IPAddr.IPNet where
+public instance IPNet.strictLT : StrictLT Ext.IPAddr.IPNet where
   asymmetric a b   := by
     simp only [LT.lt]
     unfold Ext.IPAddr.IPNet.lt
@@ -129,7 +137,7 @@ instance IPNet.strictLT : StrictLT Ext.IPAddr.IPNet where
 
 ----- `<` is strict on `Datetime` -----
 
-instance Datetime.strictLT : StrictLT Ext.Datetime where
+public instance Datetime.strictLT : StrictLT Ext.Datetime where
   asymmetric a b   := by
     simp only [LT.lt]
     unfold Ext.Datetime.lt
@@ -150,7 +158,7 @@ instance Datetime.strictLT : StrictLT Ext.Datetime where
 
 ----- `<` is strict on `Duration` -----
 
-instance Duration.strictLT : StrictLT Ext.Datetime.Duration where
+public instance Duration.strictLT : StrictLT Ext.Datetime.Duration where
   asymmetric a b   := by
     simp only [LT.lt]
     unfold Ext.Datetime.Duration.lt
@@ -171,7 +179,7 @@ instance Duration.strictLT : StrictLT Ext.Datetime.Duration where
 
 ----- `<` is strict on `Ext` -----
 
-instance Ext.strictLT : StrictLT Ext where
+public instance Ext.strictLT : StrictLT Ext where
   asymmetric a b   := by
     cases a <;> cases b <;> simp [LT.lt, Ext.lt] <;>
     rename_i x₁ x₂ <;> intro h₁
@@ -235,7 +243,7 @@ instance Ext.strictLT : StrictLT Ext where
 
 ----- `<` is strict on `Name` -----
 
-instance Name.strictLT : StrictLT Name where
+public instance Name.strictLT : StrictLT Name where
   asymmetric a b   := by
     simp only [LT.lt, Bool.not_eq_true]
     simp only [Name.lt, decide_eq_true_eq, decide_eq_false_iff_not, List.not_lt]
@@ -249,7 +257,7 @@ instance Name.strictLT : StrictLT Name where
     simp only [Name.lt, decide_eq_true_eq]
     intro h₁
     apply List.lt_conn
-    by_contra h₂
+    false_or_by_contra ; rename_i h₂
     simp at h₂
     cases a; cases b
     simp at *
@@ -263,7 +271,7 @@ theorem EntityUID.lt_asymm {a b : EntityUID} :
   simp only [LT.lt] -- keep this separate so as not to over-simplify
   simp only [EntityUID.lt, decide_eq_true_eq, not_or, not_and]
   intro h₁
-  by_contra h₂
+  false_or_by_contra ; rename_i h₂
   simp only [not_and, not_imp, Classical.not_not] at h₂
   have h₃ := Name.strictLT.asymmetric a.ty b.ty
   simp only at h₃
@@ -313,7 +321,7 @@ theorem EntityUID.lt_conn {a b : EntityUID} :
     have h₃ := Name.strictLT.connected ty₁ ty₂ h₂
     rcases h₃ with h₃ | h₃ <;> simp [h₃]
 
-instance EntityUID.strictLT : StrictLT EntityUID where
+public instance EntityUID.strictLT : StrictLT EntityUID where
   asymmetric _ _   := EntityUID.lt_asymm
   transitive _ _ _ := EntityUID.lt_trans
   connected _ _    := EntityUID.lt_conn
@@ -350,7 +358,7 @@ theorem Prim.lt_conn {a b : Prim} :
   case string s₁ s₂        => exact (String.strictLT.connected s₁ s₂)
   case entityUID uid₁ uid₂ => exact (EntityUID.strictLT.connected uid₁ uid₂)
 
-instance Prim.strictLT : StrictLT Prim where
+public instance Prim.strictLT : StrictLT Prim where
   asymmetric a b   := by exact Prim.lt_asymm
   transitive a b c := by exact Prim.lt_trans
   connected  a b   := by exact Prim.lt_conn
@@ -407,7 +415,7 @@ theorem Value.lt_not_eq {x y : Value} :
   x < y → ¬ x = y
 := by
   intro h₁
-  by_contra h₂
+  false_or_by_contra ; rename_i h₂
   subst h₂
   have h₃ := Value.lt_irrefl x
   contradiction
@@ -622,7 +630,7 @@ theorem ValueAttrs.lt_conn {vs₁ vs₂ : List (Attr × Value)}
 
 end
 
-instance Value.strictLT : StrictLT Value where
+public instance Value.strictLT : StrictLT Value where
   asymmetric a b   := by exact Value.lt_asymm
   transitive a b c := by exact Value.lt_trans
   connected  a b   := by exact Value.lt_conn

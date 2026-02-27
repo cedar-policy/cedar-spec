@@ -14,21 +14,25 @@
  limitations under the License.
 -/
 
+module
+
 /-!
 # Additional Option functions and lemmas
 -/
 
 namespace Option
 
-def mapD {α β} (f : α → β) (default : β) : Option α → β
+public def mapD {α β} (f : α → β) (default : β) : Option α → β
   | .some a => f a
   | .none   => default
 
-theorem mapD_some {α β} (f : α → β) (default : β) (a : α) :
+@[simp]
+public theorem mapD_some {α β} (f : α → β) (default : β) (a : α) :
   (Option.some a).mapD f default = f a
 := by simp only [mapD]
 
-theorem mapD_none {α β} (f : α → β) (default : β) :
+@[simp]
+public theorem mapD_none {α β} (f : α → β) (default : β) :
   Option.none.mapD f default = default
 := by simp only [mapD]
 

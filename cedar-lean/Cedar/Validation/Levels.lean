@@ -14,10 +14,12 @@
  limitations under the License.
 -/
 
-import Cedar.Validation.TypedExpr
+module
+
+public import Cedar.Validation.TypedExpr
 import Cedar.Validation.Typechecker
 import Cedar.Thm.Data.Map
-import Cedar.Spec.Policy
+public import Cedar.Spec.Policy
 
 /-!
 This file defines a level checking of a type-annotated AST. Level checking
@@ -52,7 +54,7 @@ This functions takes two additional arguments not required by `checkLevel`
   value, eventually reaching an attribute that has an entity value. This allows
   allows more permissive level checking on record attributes that aren't accessed.
 -/
-def TypedExpr.checkEntityAccessLevel (tx : TypedExpr) (env : TypeEnv) (n nmax : Nat) (path : List Attr) : Bool :=
+public def TypedExpr.checkEntityAccessLevel (tx : TypedExpr) (env : TypeEnv) (n nmax : Nat) (path : List Attr) : Bool :=
   match tx, path with
   | .var _ _, _ => true
   | .lit (.entityUID euid) _, _ =>
@@ -92,7 +94,7 @@ a simple recursive traversal of the AST. For entity dereferencing expressions,
 it calls to `checkEntityAccessLevel` which ensures that expression is valid
 specifically in an entity access position
 -/
-def TypedExpr.checkLevel (tx : TypedExpr) (env : TypeEnv) (n : Nat) : Bool :=
+public def TypedExpr.checkLevel (tx : TypedExpr) (env : TypeEnv) (n : Nat) : Bool :=
   match tx with
   | .lit _ _ => true
   | .var _ _ => true
@@ -131,7 +133,7 @@ def TypedExpr.checkLevel (tx : TypedExpr) (env : TypeEnv) (n : Nat) : Bool :=
 
  end
 
-def typecheckAtLevel (policy : Policy) (env : TypeEnv) (n : Nat) : Bool :=
+public def typecheckAtLevel (policy : Policy) (env : TypeEnv) (n : Nat) : Bool :=
   match typeOf policy.toExpr ∅ env with
   | .ok (tx, _) => tx.checkLevel env n
   | _           => false

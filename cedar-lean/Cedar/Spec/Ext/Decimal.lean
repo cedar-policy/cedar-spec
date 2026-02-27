@@ -14,7 +14,9 @@
  limitations under the License.
 -/
 
-import Cedar.Data.Int64
+module
+
+public import Cedar.Data.Int64
 import Cedar.Spec.Ext.Util
 
 /-! This file defines Cedar decimal values and functions. -/
@@ -33,16 +35,17 @@ We restrict the number of the digits after the decimal point to 4.
 
 def DECIMAL_DIGITS : Nat := 4
 
-abbrev Decimal := Int64
+public abbrev Decimal := Int64
 
 namespace Decimal
 
 ----- Definitions -----
 
-def decimal? (i : Int) : Option Decimal :=
+/-- Create a `Decimal` from an `Int` representing its internal encoding. Most callers should use higher-level constructors, e.g., `Decimal.parse` -/
+public def decimal? (i : Int) : Option Decimal :=
   Int64.ofInt? i
 
-def parse (str : String) : Option Decimal :=
+public def parse (str : String) : Option Decimal :=
   match str.splitToList (· = '.') with
   | ["-", _] => .none -- String.toInt? "-" == some 0
   | [left, right] =>
@@ -73,7 +76,7 @@ instance : ToString Decimal where
       else s!".{right}"
     s!"{neg}{left}{right}"
 
-abbrev decimal := parse
+public abbrev decimal := parse
 
 end Decimal
 

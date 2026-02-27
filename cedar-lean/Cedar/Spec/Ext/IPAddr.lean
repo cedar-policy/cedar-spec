@@ -14,6 +14,8 @@
  limitations under the License.
 -/
 
+module
+
 import Cedar.Spec.Ext.Util
 
 /-! This file defines Cedar IpAddr values and functions. -/
@@ -26,23 +28,23 @@ open BitVec
 
 ----- IPv4Addr and IPv6Addr -----
 
-abbrev ADDR_SIZE (w : Nat) := 2 ^ w
+public abbrev ADDR_SIZE (w : Nat) := 2 ^ w
 
-abbrev V4_WIDTH := 5
-abbrev V6_WIDTH := 7
+public abbrev V4_WIDTH := 5
+public abbrev V6_WIDTH := 7
 abbrev V4_SIZE := ADDR_SIZE V4_WIDTH
 abbrev V6_SIZE := ADDR_SIZE V6_WIDTH
 
-abbrev IPNetAddr (w : Nat) := BitVec (ADDR_SIZE w)
+public abbrev IPNetAddr (w : Nat) := BitVec (ADDR_SIZE w)
 
 /--
 IPv4 address: a 32 bit number partitioned into 4 groups. a0 is most signifcant
 and a3 is the least significant. In other words, the number represented is
 a0++a1++a2++a3.
 --/
-abbrev IPv4Addr := IPNetAddr V4_WIDTH
+public abbrev IPv4Addr := IPNetAddr V4_WIDTH
 
-def IPv4Addr.mk (a₀ a₁ a₂ a₃ : BitVec 8) : IPv4Addr :=
+public def IPv4Addr.mk (a₀ a₁ a₂ a₃ : BitVec 8) : IPv4Addr :=
   a₀ ++ a₁ ++ a₂ ++ a₃
 
 /--
@@ -50,21 +52,21 @@ IPv6 address: a 128 bit number partitioned into 8 groups. a0 is most signifcant
 and a7 is the least significant. In other words, the number represented is
 a0++a1++a2++a3++a4++a5++a6++a7.
 --/
-abbrev IPv6Addr := IPNetAddr V6_WIDTH
+public abbrev IPv6Addr := IPNetAddr V6_WIDTH
 
-def IPv6Addr.mk (a₀ a₁ a₂ a₃ a₄ a₅ a₆ a₇ : BitVec 16) : IPv6Addr :=
+public def IPv6Addr.mk (a₀ a₁ a₂ a₃ a₄ a₅ a₆ a₇ : BitVec 16) : IPv6Addr :=
   a₀ ++ a₁ ++ a₂ ++ a₃ ++ a₄ ++ a₅ ++ a₆ ++ a₇
 
 ----- IPNetPrefix, CIDR, and IPNet -----
 
-abbrev IPNetPrefix (n : Nat) := Option (BitVec n)
-abbrev IPv4Prefix := IPNetPrefix V4_WIDTH
-abbrev IPv6Prefix := IPNetPrefix V6_WIDTH
+public abbrev IPNetPrefix (n : Nat) := Option (BitVec n)
+public abbrev IPv4Prefix := IPNetPrefix V4_WIDTH
+public abbrev IPv6Prefix := IPNetPrefix V6_WIDTH
 
 def IPNetPrefix.ofNat (w : Nat) (pre : Nat) : IPNetPrefix w :=
   if pre < ADDR_SIZE w then .some pre else .none
 
-def IPNetPrefix.toNat {w} : IPNetPrefix w → Nat
+public def IPNetPrefix.toNat {w} : IPNetPrefix w → Nat
   | .none         => ADDR_SIZE w
   | .some preSize => preSize.toNat
 
@@ -77,60 +79,60 @@ instance : CoeOut (IPNetPrefix w) Nat where
 instance instOfNat : OfNat (IPNetPrefix w) n
   where ofNat := IPNetPrefix.ofNat w n
 
-structure CIDR (w : Nat) where
+public structure CIDR (w : Nat) where
   addr : IPNetAddr w
   pre  : IPNetPrefix w  -- We use "pre" because "prefix" is a keyword in Lean
 
-def CIDR.subnetWidth {w} (cidr : CIDR w) : BitVec (ADDR_SIZE w) :=
+public def CIDR.subnetWidth {w} (cidr : CIDR w) : BitVec (ADDR_SIZE w) :=
   let n := ADDR_SIZE w
   match cidr.pre with
   | .none            => 0#n
   | .some prefixSize => n - (prefixSize.zeroExtend n)
 
-def CIDR.range {w} (cidr : CIDR w) : (IPNetAddr w) × (IPNetAddr w) :=
+public def CIDR.range {w} (cidr : CIDR w) : (IPNetAddr w) × (IPNetAddr w) :=
   let n := ADDR_SIZE w
   let width := cidr.subnetWidth
   let lo := (cidr.addr >>> width) <<< width
   let hi := lo + (1#n <<< width) - 1#n
   (lo, hi)
 
-def CIDR.inRange {w} (cidr₁ cidr₂ : CIDR w) : Bool :=
+public def CIDR.inRange {w} (cidr₁ cidr₂ : CIDR w) : Bool :=
   let r₁ := cidr₁.range
   let r₂ := cidr₂.range
   r₂.2 ≥ r₁.2 && r₁.1 ≥ r₂.1
 
-inductive IPNet where
+public inductive IPNet where
   | V4 : CIDR V4_WIDTH → IPNet
   | V6 : CIDR V6_WIDTH → IPNet
 
-def IPNet.isV4 : IPNet → Bool
+public def IPNet.isV4 : IPNet → Bool
   | .V4 _ => true
   | _     => false
 
-def IPNet.isV6 : IPNet → Bool
+public def IPNet.isV6 : IPNet → Bool
   | .V6 _ => true
   | _     => false
 
-def IPNet.inRange : IPNet → IPNet → Bool
+public def IPNet.inRange : IPNet → IPNet → Bool
   | .V4 cidr₁, .V4 cidr₂
   | .V6 cidr₁, .V6 cidr₂ => cidr₁.inRange cidr₂
   | _, _                 => false
 
 def LOOP_BACK_ADDRESS_V4 := IPv4Addr.mk 127 0 0 0
 def LOOP_BACK_ADDRESS_V6 := IPv6Addr.mk 0 0 0 0 0 0 0 1
-def LOOP_BACK_CIDR_V4    := CIDR.mk LOOP_BACK_ADDRESS_V4 8
-def LOOP_BACK_CIDR_V6    := CIDR.mk LOOP_BACK_ADDRESS_V6 128
+public def LOOP_BACK_CIDR_V4 := CIDR.mk LOOP_BACK_ADDRESS_V4 8
+public def LOOP_BACK_CIDR_V6 := CIDR.mk LOOP_BACK_ADDRESS_V6 128
 
 def MULTICAST_ADDRESS_V4 := IPv4Addr.mk 224 0 0 0
 def MULTICAST_ADDRESS_V6 := IPv6Addr.mk 65280 0 0 0 0 0 0 0
-def MULTICAST_CIDR_V4    := CIDR.mk MULTICAST_ADDRESS_V4 4
-def MULTICAST_CIDR_V6    := CIDR.mk MULTICAST_ADDRESS_V6 8
+public def MULTICAST_CIDR_V4 := CIDR.mk MULTICAST_ADDRESS_V4 4
+public def MULTICAST_CIDR_V6 := CIDR.mk MULTICAST_ADDRESS_V6 8
 
-def IPNet.isLoopback : IPNet → Bool
+public def IPNet.isLoopback : IPNet → Bool
   | .V4 cidr => cidr.inRange LOOP_BACK_CIDR_V4
   | .V6 cidr => cidr.inRange LOOP_BACK_CIDR_V6
 
-def IPNet.isMulticast : IPNet → Bool
+public def IPNet.isMulticast : IPNet → Bool
   | .V4 cidr => cidr.inRange MULTICAST_CIDR_V4
   | .V6 cidr => cidr.inRange MULTICAST_CIDR_V6
 
@@ -226,45 +228,45 @@ private def parseIPv6Net (str : String) : Option IPNet :=
     .some (IPNet.V6 ⟨v6, pre⟩)
   | _ => .none
 
-def parse (str : String) : Option IPNet :=
+private def parse (str : String) : Option IPNet :=
   let ip := parseIPv4Net str
   if ip.isSome then ip else parseIPv6Net str
 
-def ip (str : String) : Option IPNet := parse str
+public def ip (str : String) : Option IPNet := parse str
 
 ----- IPNet deriviations -----
 
 deriving instance Repr, DecidableEq, Inhabited for CIDR
 deriving instance Repr, DecidableEq, Inhabited for IPNet
 
-def IPNetPrefix.lt {w} (p₁ p₂ : IPNetPrefix w) : Bool :=
+public def IPNetPrefix.lt {w} (p₁ p₂ : IPNetPrefix w) : Bool :=
   p₁.toNat < p₂.toNat
 
-instance {w} : LT (IPNetPrefix w) where
+public instance {w} : LT (IPNetPrefix w) where
   lt := λ d₁ d₂ => IPNetPrefix.lt d₁ d₂
 
-instance IPNetPrefix.decLt {w} (d₁ d₂ : IPNetPrefix w) : Decidable (d₁ < d₂) :=
+public instance IPNetPrefix.decLt {w} (d₁ d₂ : IPNetPrefix w) : Decidable (d₁ < d₂) :=
   if h : IPNetPrefix.lt d₁ d₂ then isTrue h else isFalse h
 
-def CIDR.lt {w} (cidr₁ cidr₂ : CIDR w) : Bool :=
+public def CIDR.lt {w} (cidr₁ cidr₂ : CIDR w) : Bool :=
   cidr₁.addr < cidr₂.addr || (cidr₁.addr = cidr₂.addr && cidr₁.pre < cidr₂.pre)
 
-instance {w} : LT (CIDR w) where
+public instance {w} : LT (CIDR w) where
   lt := λ d₁ d₂ => CIDR.lt d₁ d₂
 
-instance CIDR.decLt {w} (d₁ d₂ : CIDR w) : Decidable (d₁ < d₂) :=
+public instance CIDR.decLt {w} (d₁ d₂ : CIDR w) : Decidable (d₁ < d₂) :=
   if h : CIDR.lt d₁ d₂ then isTrue h else isFalse h
 
-def IPNet.lt : IPNet → IPNet → Bool
+public def IPNet.lt : IPNet → IPNet → Bool
   | .V4 _, .V6 _         => true
   | .V6 _, .V4 _         => false
   | .V4 cidr₁, .V4 cidr₂
   | .V6 cidr₁, .V6 cidr₂ => cidr₁ < cidr₂
 
-instance : LT IPNet where
+public instance : LT IPNet where
   lt := fun d₁ d₂ => IPNet.lt d₁ d₂
 
-instance IPNet.decLt (d₁ d₂ : IPNet) : Decidable (d₁ < d₂) :=
+public instance IPNet.decLt (d₁ d₂ : IPNet) : Decidable (d₁ < d₂) :=
   if h : IPNet.lt d₁ d₂ then isTrue h else isFalse h
 
 -- as of this writing, only handles nats up to 0xffff
