@@ -14,29 +14,29 @@
  limitations under the License.
 -/
 
-import Cedar.Spec.Ext.Decimal
-import Cedar.Spec.Ext.IPAddr
-import Cedar.Spec.Ext.Datetime
+module
+
+public import Cedar.Spec.Ext.Decimal
+public import Cedar.Spec.Ext.IPAddr
+public import Cedar.Spec.Ext.Datetime
 
 /-! This file defines Cedar extension values. -/
 
 namespace Cedar.Spec
 
-open Cedar.Spec.Ext
-
 ----- Definitions -----
 
-abbrev IPAddr := IPAddr.IPNet
-abbrev Duration := Datetime.Duration
+public abbrev IPAddr := Ext.IPAddr.IPNet
+public abbrev Duration := Ext.Datetime.Duration
 
-inductive Ext where
-  | decimal (d : Decimal)
+public inductive Ext where
+  | decimal (d : Ext.Decimal)
   | ipaddr (ip : IPAddr)
-  | datetime (dt : Datetime)
+  | datetime (dt : Ext.Datetime)
   | duration (dur: Duration)
 
 /-- Ordering on extension types: .decimal < .ipaddr < .datetime < .duration -/
-def Ext.lt : Ext → Ext → Bool
+public def Ext.lt : Ext → Ext → Bool
   | .decimal d₁, .decimal d₂ => d₁ < d₂
   | .ipaddr ip₁, .ipaddr ip₂ => ip₁ < ip₂
   | .datetime d₁, .datetime d₂ => d₁ < d₂
@@ -51,22 +51,22 @@ def Ext.lt : Ext → Ext → Bool
 
 deriving instance Repr, DecidableEq, Inhabited for Ext
 
-instance : LT Ext where
+public instance : LT Ext where
 lt := fun x y => Ext.lt x y
 
-instance Ext.decLt (x y : Ext) : Decidable (x < y) :=
+public instance Ext.decLt (x y : Ext) : Decidable (x < y) :=
 if  h : Ext.lt x y then isTrue h else isFalse h
 
-instance : Coe Decimal Ext where
+public instance : Coe Ext.Decimal Ext where
   coe d := .decimal d
 
-instance : Coe IPAddr Ext where
+public instance : Coe IPAddr Ext where
   coe a := .ipaddr a
 
-instance : Coe Datetime Ext where
+public instance : Coe Ext.Datetime Ext where
   coe dt := .datetime dt
 
-instance : Coe Duration Ext where
+public instance : Coe Duration Ext where
   coe dur := .duration dur
 
 end Cedar.Spec

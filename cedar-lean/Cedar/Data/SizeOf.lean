@@ -48,7 +48,7 @@ public theorem sizeOf_lt_of_value [SizeOf α] [SizeOf β] {m : Map α β} {k : �
 public theorem sizeOf_lt_of_toList [SizeOf α] [SizeOf β] (m : Map α β) :
   sizeOf m.toList < sizeOf m
 := by
-  unfold toList kvs
+  unfold toList
   conv => rhs ; unfold sizeOf _sizeOf_inst _sizeOf_1 ; simp only
   generalize sizeOf m.1 = s
   omega

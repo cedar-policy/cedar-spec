@@ -69,13 +69,14 @@ theorem validate_attrs_well_formed_is_sound
   cases rty with
   | nil => simp [Map.find?] at hfind
   | cons hd tl =>
-    simp only [validateAttrsWellFormed] at hok
+    unfold validateAttrsWellFormed at hok
     cases h : hd.snd with
     | optional attr_ty =>
       simp only [h, bind, Except.bind] at hok
       split at hok
       · contradiction
       · rename_i hwf_hd
+        simp only [QualifiedType.validateWellFormed] at hwf_hd
         have := (Map.in_list_iff_find?_some hwf).mpr hfind
         simp only [Map.toList_mk_id, List.mem_cons] at this
         cases this with
@@ -85,8 +86,7 @@ theorem validate_attrs_well_formed_is_sound
           constructor
           exact type_validate_well_formed_is_sound hwf_hd
         | inr htl =>
-          have hwf_tl : (Map.mk tl).WellFormed
-          := Map.wf_implies_tail_wf hwf
+          have hwf_tl : (Map.mk tl).WellFormed := Map.wf_implies_tail_wf hwf
           have := (Map.in_list_iff_find?_some hwf_tl).mp htl
           exact validate_attrs_well_formed_is_sound hwf_tl hok this
     | required attr_ty =>
@@ -94,6 +94,7 @@ theorem validate_attrs_well_formed_is_sound
       split at hok
       · contradiction
       · rename_i hwf_hd
+        simp only [QualifiedType.validateWellFormed] at hwf_hd
         have := (Map.in_list_iff_find?_some hwf).mpr hfind
         simp only [Map.toList_mk_id, List.mem_cons] at this
         cases this with
@@ -109,23 +110,17 @@ theorem validate_attrs_well_formed_is_sound
           exact validate_attrs_well_formed_is_sound hwf_tl hok this
 termination_by sizeOf rty
 decreasing_by
-  any_goals
-    have h : rty = hd :: tl := by assumption
-    simp [h]
+  all_goals simp_wf
+  all_goals subst_vars
+  all_goals simp only [List.cons.sizeOf_spec]
+  · cases hd
+    simp_all [Prod.mk.sizeOf_spec]
     omega
-   -- optional attribute
-  any_goals
-    have h : rty = hd :: tl := by assumption
-    try have hsnd : hd.snd = Qualified.optional attr_ty := by assumption
-    try have hsnd : hd.snd = Qualified.required attr_ty := by assumption
-    calc
-      sizeOf attr_ty < sizeOf hd := by
-        simp [←hhd]
-        simp [e, hsnd]
-        omega
-      _ < sizeOf rty := by
-        simp [h]
-        omega
+  · omega
+  · cases hd
+    simp_all [Prod.mk.sizeOf_spec]
+    omega
+  · omega
 
 theorem type_validate_well_formed_is_sound
   {env : TypeEnv} {ty : CedarType}
@@ -135,12 +130,15 @@ theorem type_validate_well_formed_is_sound
   cases ty with
   | bool _ | int | string | ext _ => constructor
   | entity ety =>
+    simp only [CedarType.validateWellFormed] at hok
     constructor
     exact entity_type_validate_well_formed_is_sound hok
   | set ty =>
+    simp only [CedarType.validateWellFormed] at hok
     constructor
     exact type_validate_well_formed_is_sound hok
   | record rty =>
+    simp only [CedarType.validateWellFormed] at hok
     change (do
     if rty.wellFormed then Except.ok ()
     else .error (Cedar.Validation.EnvironmentValidationError.typeError s!"record type is not a well-formed map")

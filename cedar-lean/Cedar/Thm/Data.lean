@@ -14,11 +14,13 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.Data.Applicative
-import Cedar.Thm.Data.Option
-import Cedar.Thm.Data.Control
-import Cedar.Thm.Data.List
-import Cedar.Thm.Data.LT
-import Cedar.Thm.Data.Map
-import Cedar.Thm.Data.Set
-import Cedar.Thm.Data.MapUnion
+module
+
+public import Cedar.Thm.Data.Applicative
+public import Cedar.Thm.Data.Option
+public import Cedar.Thm.Data.Control
+public import Cedar.Thm.Data.List
+public import Cedar.Thm.Data.LT
+public import Cedar.Thm.Data.Map
+public import Cedar.Thm.Data.Set
+public import Cedar.Thm.Data.MapUnion

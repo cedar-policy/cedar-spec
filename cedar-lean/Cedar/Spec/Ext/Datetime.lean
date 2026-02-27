@@ -14,7 +14,9 @@
  limitations under the License.
 -/
 
-import Cedar.Data.Int64
+module
+
+public import Cedar.Data.Int64
 import Cedar.Spec.Ext.Util
 import Std.Time
 import Std.Time.Format
@@ -39,28 +41,28 @@ open Cedar.Data
   The datetime type does not provide a way to create a datetime from a Unix timestamp.
   One of the readable formats listed above must be used instead.
 -/
-structure Datetime where
+public structure Datetime where
   val : Int64
 
-def Datetime.lt (d₁ d₂ : Datetime) : Bool :=
+public def Datetime.lt (d₁ d₂ : Datetime) : Bool :=
   d₁.val < d₂.val
 
-def Datetime.le (d₁ d₂ : Datetime) : Bool :=
+public def Datetime.le (d₁ d₂ : Datetime) : Bool :=
   d₁.val ≤ d₂.val
 
-instance : LT Datetime where
+public instance : LT Datetime where
   lt := fun d₁ d₂ => Datetime.lt d₁ d₂
 
-instance : LE Datetime where
+public instance : LE Datetime where
   le := fun d₁ d₂ => Datetime.le d₁ d₂
 
-instance Datetime.decLt (d₁ d₂ : Datetime) : Decidable (d₁ < d₂) :=
+public instance Datetime.decLt (d₁ d₂ : Datetime) : Decidable (d₁ < d₂) :=
   if h : Datetime.lt d₁ d₂ then isTrue h else isFalse h
 
-instance Datetime.decLe (d₁ d₂ : Datetime) : Decidable (d₁ ≤ d₂) :=
+public instance Datetime.decLe (d₁ d₂ : Datetime) : Decidable (d₁ ≤ d₂) :=
   if h : Datetime.le d₁ d₂ then isTrue h else isFalse h
 
-instance : Coe Int64 Datetime where
+public instance : Coe Int64 Datetime where
   coe i := Datetime.mk i
 
 deriving instance Repr, Inhabited, DecidableEq for Datetime
@@ -75,7 +77,7 @@ def DateUTCWithMillis : Std.Time.GenericFormat .any := datespec("yyyy-MM-dd'T'HH
 def DateWithOffset : Std.Time.GenericFormat .any := datespec("yyyy-MM-dd'T'HH:mm:ssxx")
 def DateWithOffsetAndMillis : Std.Time.GenericFormat .any := datespec("yyyy-MM-dd'T'HH:mm:ss.SSSxx")
 
-def datetime? (i: Int) : Option Datetime :=
+public def datetime? (i: Int) : Option Datetime :=
   Int64.ofInt? i
 
 def dateContainsLeapSeconds (str: String) : Bool :=
@@ -122,7 +124,7 @@ def checkComponentLen (str : String) : Bool :=
       | [h, m, s] => h.length == 2 && m.length == 2 && s.length == 2
       | _ => false
 
-def parse (str: String) : Option Datetime := do
+public def parse (str: String) : Option Datetime := do
   if dateContainsLeapSeconds str then failure
   if !checkComponentLen str then failure
   if !tzOffsetMinsLt60 str then failure
@@ -138,7 +140,7 @@ def parse (str: String) : Option Datetime := do
   then datetime? zonedTime.toTimestamp.toMillisecondsSinceUnixEpoch.toInt
   else none
 
-abbrev datetime := parse
+public abbrev datetime := parse
 
 /--
   A duration value is measured in milliseconds and constructed from a duration string.
@@ -156,36 +158,40 @@ abbrev datetime := parse
 
   A duration may be negative. Negative duration strings must begin with `-`.
 -/
-structure Duration where
+public structure Duration where
   val : Int64
 
 deriving instance Repr, Inhabited, DecidableEq for Duration
 
-def Duration.lt (d₁ d₂ : Duration) : Bool :=
+public def Duration.lt (d₁ d₂ : Duration) : Bool :=
   d₁.val < d₂.val
 
-def Duration.le (d₁ d₂ : Duration) : Bool :=
+public def Duration.le (d₁ d₂ : Duration) : Bool :=
   d₁.val ≤ d₂.val
 
-instance : LT Duration where
+public instance : LT Duration where
   lt := fun d₁ d₂ => Duration.lt d₁ d₂
 
-instance : LE Duration where
+public instance : LE Duration where
   le := fun d₁ d₂ => Duration.le d₁ d₂
 
-instance Duration.decLt (d₁ d₂ : Duration) : Decidable (d₁ < d₂) :=
+public instance Duration.decLt (d₁ d₂ : Duration) : Decidable (d₁ < d₂) :=
   if h : Duration.lt d₁ d₂ then isTrue h else isFalse h
 
-instance Duration.decLe (d₁ d₂ : Duration) : Decidable (d₁ ≤ d₂) :=
+public instance Duration.decLe (d₁ d₂ : Duration) : Decidable (d₁ ≤ d₂) :=
   if h : Duration.le d₁ d₂ then isTrue h else isFalse h
 
-instance : Coe Int64 Duration where
+public instance : Coe Int64 Duration where
   coe i := Duration.mk i
 
-def MILLISECONDS_PER_SECOND: Int := 1000
-def MILLISECONDS_PER_MINUTE: Int := 60000
-def MILLISECONDS_PER_HOUR: Int := 3600000
-def MILLISECONDS_PER_DAY: Int := 86400000
+@[expose]
+public def MILLISECONDS_PER_SECOND: Int := 1000
+@[expose]
+public def MILLISECONDS_PER_MINUTE: Int := 60000
+@[expose]
+public def MILLISECONDS_PER_HOUR: Int := 3600000
+@[expose]
+public def MILLISECONDS_PER_DAY: Int := 86400000
 
 ----- Definitions -----
 
@@ -247,21 +253,21 @@ def parseDuration? (isNegative : Bool) (str : String) : Option Duration := do
   then duration? (days + hours + minutes + seconds + milliseconds)
   else none
 
-def Duration.parse (str : String) : Option Duration :=
+public def Duration.parse (str : String) : Option Duration :=
   let (isNegative, restStr) := isNegativeDuration str
   parseDuration? isNegative restStr
 
 deriving instance Repr for Duration
 
-abbrev duration := Duration.parse
+public abbrev duration := Duration.parse
 
-def offset (datetime: Datetime) (duration: Duration) : Option Datetime :=
+public def offset (datetime: Datetime) (duration: Duration) : Option Datetime :=
   Int64.add? datetime.val duration.val
 
-def durationSince (datetime other: Datetime) : Option Duration :=
+public def durationSince (datetime other: Datetime) : Option Duration :=
   Int64.sub? datetime.val other.val
 
-def toDate (datetime: Datetime) : Option Datetime :=
+public def toDate (datetime: Datetime) : Option Datetime :=
   let millisPerDayI64 := Int64.ofIntChecked MILLISECONDS_PER_DAY (by decide)
   if datetime.val >= 0
   then datetime? (millisPerDayI64 * (datetime.val.div millisPerDayI64))
@@ -269,7 +275,7 @@ def toDate (datetime: Datetime) : Option Datetime :=
        then datetime
        else datetime? (((datetime.val.div millisPerDayI64) - 1) * millisPerDayI64)
 
-def toTime (datetime: Datetime) : Duration :=
+public def toTime (datetime: Datetime) : Duration :=
   let millisPerDayI64 := Int64.ofIntChecked MILLISECONDS_PER_DAY (by decide)
   if datetime.val >= 0
   then datetime.val.mod millisPerDayI64
@@ -278,19 +284,19 @@ def toTime (datetime: Datetime) : Duration :=
        then rem
        else (rem + millisPerDayI64)
 
-def Duration.toMilliseconds (duration: Duration) : Int64 :=
+public def Duration.toMilliseconds (duration: Duration) : Int64 :=
   duration.val
 
-def Duration.toSeconds (duration: Duration) : Int64 :=
+public def Duration.toSeconds (duration: Duration) : Int64 :=
   duration.toMilliseconds / 1000
 
-def Duration.toMinutes (duration: Duration) : Int64 :=
+public def Duration.toMinutes (duration: Duration) : Int64 :=
   duration.toSeconds / 60
 
-def Duration.toHours (duration: Duration) : Int64 :=
+public def Duration.toHours (duration: Duration) : Int64 :=
   duration.toMinutes / 60
 
-def Duration.toDays (duration: Duration) : Int64 :=
+public def Duration.toDays (duration: Duration) : Int64 :=
   duration.toHours / 24
 
 end Datetime

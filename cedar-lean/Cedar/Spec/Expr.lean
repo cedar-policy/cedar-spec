@@ -14,10 +14,12 @@
  limitations under the License.
 -/
 
-import Cedar.Data
+module
+
+public import Cedar.Data
 import Cedar.Data.SizeOf
-import Cedar.Spec.ExtFun
-import Cedar.Spec.Wildcard
+public import Cedar.Spec.ExtFun
+public import Cedar.Spec.Wildcard
 
 /-! This file defines abstract syntax for Cedar expressions. -/
 
@@ -27,20 +29,20 @@ open Cedar.Data
 
 ----- Definitions -----
 
-inductive Var where
+public inductive Var where
   | principal
   | action
   | resource
   | context
 
-inductive UnaryOp where
+public inductive UnaryOp where
   | not
   | neg
   | isEmpty
   | like (p : Pattern)
   | is (ety : EntityType)
 
-inductive BinaryOp where
+public inductive BinaryOp where
   | eq
   | mem -- represents Cedar's in operator
   | hasTag
@@ -54,7 +56,7 @@ inductive BinaryOp where
   | containsAll
   | containsAny
 
-inductive Expr where
+public inductive Expr where
   | lit (p : Prim)
   | var (v : Var)
   | ite (cond : Expr) (thenExpr : Expr) (elseExpr : Expr)
@@ -80,7 +82,7 @@ mutual
 -- We should be able to get rid of this manual deriviation eventually.
 -- There is work in progress on making these mutual derivations automatic.
 
-def decExpr (x y : Expr) : Decidable (x = y) := by
+public def decExpr (x y : Expr) : Decidable (x = y) := by
   cases x <;> cases y <;>
   try { apply isFalse ; intro h ; injection h }
   case lit.lit x₁ y₁ | var.var x₁ y₁ =>
@@ -140,6 +142,6 @@ def decExprList (xs ys : List Expr) : Decidable (xs = ys) :=
     | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
 end
 
-instance : DecidableEq Expr := decExpr
+public instance : DecidableEq Expr := decExpr
 
 end Cedar.Spec

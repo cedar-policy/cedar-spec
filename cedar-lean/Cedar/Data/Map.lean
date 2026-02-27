@@ -37,8 +37,6 @@ deriving Repr, DecidableEq, Inhabited
 
 namespace Map
 
-private abbrev kvs {α : Type u} {β : Type v} (m : Map α β) := m.1
-
 ----- Definitions -----
 
 /-- Creates a well-formed map from the given list of pairs. -/
@@ -49,7 +47,7 @@ public def make {α β} [LT α] [DecidableLT α] (kvs : List (α × β)) : Map �
 public def empty {α β} : Map α β := .mk []
 
 /-- Returns an ordered and duplicate free list provided the given map is well-formed. -/
-public def toList {α : Type u} {β : Type v} (m : Map α β) : List (Prod α β) := m.kvs
+public def toList {α : Type u} {β : Type v} (m : Map α β) : List (Prod α β) := m.1
 
 /-- Returns the keys of `m` as a set. -/
 public def keys {α β} (m : Map α β) : Set α :=
@@ -60,6 +58,7 @@ public def values {α β} (m : Map α β) : List β :=
   m.toList.map Prod.snd
 
 /-- Returns the binding for `k` in `m`, if any. -/
+@[expose]
 public def find? {α β} [BEq α] (m : Map α β) (k : α) : Option β :=
   match m.toList.find? (λ ⟨k', _⟩ => k' == k) with
   | some (_, v) => some v
@@ -91,9 +90,6 @@ public def size {α β} (m : Map α β) : Nat :=
 public def mapOnValues {α β γ} (f : β → γ) (m : Map α β) : Map α γ :=
   Map.mk (m.toList.map (λ (k, v) => (k, f v)))
 
-public def mapOnValues₃ {α β γ} (f : β → γ) (m : Map α β) : Map α γ :=
-  Map.mk (m.toList.map₃ (λ ⟨(k, v), _⟩ => (k, f v)))
-
 public def mapOnKeys {α β γ} [LT γ] [DecidableLT γ] (f : α → γ) (m : Map α β) : Map γ β :=
   Map.make (m.toList.map (λ (k, v) => (f k, v)))
 
@@ -108,9 +104,8 @@ public def mapMOnKeys {α β γ} [LT γ] [DecidableLT γ] [Monad m] (f : α → 
 private theorem sizeOf_toList_lt_map {α β} [SizeOf α] [SizeOf β] (m : Map α β) :
   sizeOf m.toList < sizeOf m
 := by
-  unfold toList kvs
+  unfold toList
   conv => rhs ; unfold sizeOf _sizeOf_inst _sizeOf_1 ; simp only
-  generalize sizeOf m.1 = s
   omega
 
 public def mapOnValues₂ {α β γ} [SizeOf α] [SizeOf β] (m : Map α β) (f : {x : β // sizeOf x < sizeOf m} → γ) : Map α γ :=
