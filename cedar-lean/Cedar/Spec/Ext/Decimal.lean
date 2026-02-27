@@ -41,7 +41,8 @@ namespace Decimal
 
 ----- Definitions -----
 
-def decimal? (i : Int) : Option Decimal :=
+/-- Create a `Decimal` from an `Int` representing its internal encoding. Most callers should use higher-level constructors, e.g., `Decimal.parse` -/
+public def decimal? (i : Int) : Option Decimal :=
   Int64.ofInt? i
 
 public def parse (str : String) : Option Decimal :=

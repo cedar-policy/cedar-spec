@@ -44,7 +44,7 @@ a0++a1++a2++a3.
 --/
 public abbrev IPv4Addr := IPNetAddr V4_WIDTH
 
-def IPv4Addr.mk (a₀ a₁ a₂ a₃ : BitVec 8) : IPv4Addr :=
+public def IPv4Addr.mk (a₀ a₁ a₂ a₃ : BitVec 8) : IPv4Addr :=
   a₀ ++ a₁ ++ a₂ ++ a₃
 
 /--
@@ -54,7 +54,7 @@ a0++a1++a2++a3++a4++a5++a6++a7.
 --/
 public abbrev IPv6Addr := IPNetAddr V6_WIDTH
 
-def IPv6Addr.mk (a₀ a₁ a₂ a₃ a₄ a₅ a₆ a₇ : BitVec 16) : IPv6Addr :=
+public def IPv6Addr.mk (a₀ a₁ a₂ a₃ a₄ a₅ a₆ a₇ : BitVec 16) : IPv6Addr :=
   a₀ ++ a₁ ++ a₂ ++ a₃ ++ a₄ ++ a₅ ++ a₆ ++ a₇
 
 ----- IPNetPrefix, CIDR, and IPNet -----
@@ -228,7 +228,7 @@ private def parseIPv6Net (str : String) : Option IPNet :=
     .some (IPNet.V6 ⟨v6, pre⟩)
   | _ => .none
 
-def parse (str : String) : Option IPNet :=
+private def parse (str : String) : Option IPNet :=
   let ip := parseIPv4Net str
   if ip.isSome then ip else parseIPv6Net str
 

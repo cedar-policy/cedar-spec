@@ -195,7 +195,8 @@ public def MILLISECONDS_PER_DAY: Int := 86400000
 
 ----- Definitions -----
 
-def duration? (i: Int) : Option Duration :=
+/-- Create a `Duration` from an `Int` representing its internal encoding. Most callers should use higher-level constructors, e.g., `Duration.parse` -/
+public def duration? (i: Int) : Option Duration :=
   Int64.ofInt? i
 
 def Duration.neg? (d : Duration) : Option Duration :=
