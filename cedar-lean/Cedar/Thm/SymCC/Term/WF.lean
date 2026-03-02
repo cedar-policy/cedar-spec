@@ -611,9 +611,11 @@ theorem wf_some_setOf_map {εs : SymEntities} {f : Term → Term} {ts : List Ter
 
 theorem wf_recordOf {εs : SymEntities} {ats : List (Attr × Term)}
   (h₁ : ∀ a t, (a, t) ∈ ats → t.WellFormed εs) :
-  (recordOf ats).WellFormed εs
+  (recordOf ats).WellFormed εs ∧
+  ∃ rty, (recordOf ats).typeOf = .record rty
 := by
-  simp only [recordOf]
+  unfold Term.typeOf
+  simp only [recordOf, TermType.record.injEq, exists_eq', and_true]
   apply Term.WellFormed.record_wf _ (Map.make_wf ats)
   intro a t ht
   simp only [Map.toList] at ht
@@ -622,7 +624,8 @@ theorem wf_recordOf {εs : SymEntities} {ats : List (Attr × Term)}
 
 theorem wf_recordOf_map {εs : SymEntities} {f : Term → Term} {ats : List (Attr × Term)}
   (hwf : ∀ a t, (a, t) ∈ ats → (f t).WellFormed εs) :
-  (recordOf (ats.map (Prod.map id f))).WellFormed εs
+  (recordOf (ats.map (Prod.map id f))).WellFormed εs ∧
+  ∃ rty, (recordOf (ats.map (Prod.map id f))).typeOf = .record rty
 := by
   apply wf_recordOf
   intro a t h
@@ -639,7 +642,7 @@ theorem wf_some_recordOf_map {εs : SymEntities} {f : Term → Term} {ats : List
   ∃ ty, (Term.some (recordOf (ats.map (Prod.map id f)))).typeOf = .option ty
 := by
   simp only [typeOf_term_some, TermType.option.injEq, exists_eq', and_true]
-  exact Term.WellFormed.some_wf (wf_recordOf_map hwf)
+  exact Term.WellFormed.some_wf (wf_recordOf_map hwf).left
 
 theorem wf_not {εs : SymEntities} {t : Term}
   (h₁ : t.WellFormed εs)
@@ -1585,20 +1588,51 @@ theorem wf_anyNone {εs : SymEntities} {gs : List Term} :
   specialize hwf t hin
   exact wf_isNone hwf
 
-theorem wf_ifAllSome {εs : SymEntities} {gs : List Term} {t : Term} {ty : TermType} :
+theorem wf_ifAllSome {εs : SymEntities} {gs : List Term} {t : Term} :
+  (∀ g ∈ gs, g.WellFormed εs) →
+  t.WellFormed εs →
+  (ifAllSome gs t).WellFormed εs ∧
+    if TermType.isOptionType t.typeOf then
+      (ifAllSome gs t).typeOf = t.typeOf
+    else
+      (ifAllSome gs t).typeOf = (TermType.option t.typeOf)
+:= by
+  intro h₁ h₂
+  split
+  case isTrue h₃ =>
+    replace ⟨ty, h₃⟩ : ∃ ty, t.typeOf = .option ty := by
+      unfold TermType.isOptionType at h₃
+      split at h₃ <;> try contradiction
+      rename_i h₄
+      exact ⟨_, h₄⟩
+    simp only [ifAllSome, h₃, noneOf]
+    have h₄ := @typeOf_term_none ty
+    simp only [← h₄]
+    have h₅ := wf_anyNone h₁
+    have h₆ := typeOf_wf_term_is_wf h₂
+    rw [h₃] at h₆ ; cases h₆ ; rename_i h₆
+    exact wf_ite h₅.left (Term.WellFormed.none_wf h₆) h₂ h₅.right (by simp only [h₄, h₃])
+  case isFalse h₃ =>
+    have h₃ : ∀ ty, t.typeOf ≠ .option ty := by
+      intro _ h₄
+      simp [h₄, TermType.isOptionType] at h₃
+    simp only [ifAllSome]
+    have h₄ := wf_anyNone h₁
+    exact wf_ifFalse h₄.left h₂ h₄.right
+
+theorem wf_ifAllSome_option {εs : SymEntities} {gs : List Term} {t : Term} {ty : TermType}:
   (∀ g ∈ gs, g.WellFormed εs) →
   t.WellFormed εs →
   t.typeOf = .option ty →
-  (ifAllSome gs t).WellFormed εs ∧ (ifAllSome gs t).typeOf = .option ty
-:= by
-  intro h₁ h₂ h₃
-  simp only [ifAllSome, h₃, noneOf]
-  have h₄ := @typeOf_term_none ty
-  simp only [← h₄]
-  have h₅ := wf_anyNone h₁
-  have h₆ := typeOf_wf_term_is_wf h₂
-  rw [h₃] at h₆ ; cases h₆ ; rename_i h₆
-  exact wf_ite h₅.left (Term.WellFormed.none_wf h₆) h₂ h₅.right (by simp only [h₄, h₃])
+  (ifAllSome gs t).WellFormed εs ∧ (ifAllSome gs t).typeOf = t.typeOf
+:= by sorry
+
+theorem wf_ifAllSome_ne_option {εs : SymEntities} {gs : List Term} {t : Term} :
+  (∀ g ∈ gs, g.WellFormed εs) →
+  t.WellFormed εs →
+  (∀ ty, t.typeOf ≠ .option ty) →
+  (ifAllSome gs t).WellFormed εs ∧ (ifAllSome gs t).typeOf = t.typeOf
+:= by sorry
 
 theorem wf_bvaddChecked {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (h₁ : t₁.WellFormed εs)

@@ -183,12 +183,12 @@ def compileSet (ts : List Term) : Result Term := do
       match t.typeOf with
       | .option ty =>
         if ts.all (Term.typeOf · = .option ty)
-        then ifAllSome ts (⊙setOf (ts.map option.get) ty)
+        then ifAllSome ts (setOf (ts.map option.get) ty)
         else .error .typeError
       | _ => .error .typeError
 
 def compileRecord (ats : List (Attr × Term)) : Term :=
-  ifAllSome (ats.map Prod.snd) (⊙recordOf (ats.map (Prod.map id option.get)))
+  ifAllSome (ats.map Prod.snd) (recordOf (ats.map (Prod.map id option.get)))
 
 def compileCall₀ {α} [Coe α Ext] (mk : String → Option α) : Term → Result Term
   | .some (.prim (.string s)) =>

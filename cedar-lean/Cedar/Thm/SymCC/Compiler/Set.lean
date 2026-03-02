@@ -136,7 +136,7 @@ theorem compile_interpret_set {xs : List Expr} {εnv : SymEnv} {I : Interpretati
         decide_eq_true_eq, List.map_cons]
       split
       case isTrue =>
-        simp only [Except.ok.injEq, someOf]
+        simp only [Except.ok.injEq]
         rw [List.forall₂_iff_map_eq] at ih
         simp only [List.map_cons, List.map_id', List.cons.injEq] at ih
         replace ⟨ih, ihₜ⟩ := ih ; subst ih ihₜ

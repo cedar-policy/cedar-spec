@@ -585,9 +585,12 @@ private theorem compile_set_wf {xs : List Expr} {εnv : SymEnv} {t : Term}
     simp only [ih x heq.left (hwf x heq.left) heq.right]
   have hwo := wf_option_get_mem_of_type hwf hty
   have hwty := typeOf_option_wf_terms_is_wf hcons hwf hty
-  have hwfs := wf_some_setOf_map hwo hwty
-  have hwa := wf_ifAllSome hwf hwfs.left hwfs.right
-  simp only [hwa, TermType.option.injEq, exists_eq', and_self]
+  have hwfs := wf_setOf_map hwo hwty
+  have h_not_option : (setOf (List.map option.get ts) ty).typeOf.isOptionType = false := by
+    simp [hwfs.right, TermType.isOptionType]
+  have hwa := wf_ifAllSome hwf hwfs.left
+  simp only [h_not_option, Bool.false_eq_true, ↓reduceIte] at hwa
+  simp [hwa]
 
 private theorem compile_record_wf {axs : List (Attr × Expr)} {εnv : SymEnv} {t : Term}
   (hwf : SymEnv.WellFormedFor εnv (Expr.record axs))
@@ -608,9 +611,12 @@ private theorem compile_record_wf {axs : List (Attr × Expr)} {εnv : SymEnv} {t
     simp only [ih a x h' (hwf (a, x) h') heq, and_self]
   replace hwf := wf_prods_option_implies_wf_prods ih
   have hwg := wf_prods_implies_wf_map_snd hwf
-  have ⟨hwo, ty, hty⟩ := wf_some_recordOf_map (wf_option_get_mem_of_type_snd ih)
-  have hwa := wf_ifAllSome hwg hwo hty
-  simp only [someOf, hwa, TermType.option.injEq, exists_eq', and_self]
+  have ⟨hwfr, rty, hrty⟩ := wf_recordOf_map (wf_option_get_mem_of_type_snd ih)
+  have h_option :  (recordOf (List.map (Prod.map id option.get) ats)).typeOf.isOptionType = false := by
+    simp [hrty, TermType.isOptionType]
+  have hwa := wf_ifAllSome hwg hwfr
+  simp only [h_option, Bool.false_eq_true, ↓reduceIte] at hwa
+  simp [hwa]
 
 local macro "simp_compileCall₁'_wf" hwf:ident hok:ident compile_call_thm:ident wf_call_thm:ident : tactic => do
   `(tactic| (

@@ -512,14 +512,14 @@ theorem compileSet_ok_implies {ts : List Term} {t : Term}
   ∃ ty hd tl,
     ts = hd :: tl ∧
     (∀ t ∈ ts, t.typeOf = .option ty) ∧
-    t = ifAllSome ts (Term.some (setOf (ts.map option.get) ty))
+    t = ifAllSome ts (setOf (ts.map option.get) ty)
 := by
   simp only [compileSet, List.all_eq_true, decide_eq_true_eq] at hok
   split at hok <;> simp only [List.mem_cons, forall_eq_or_imp, List.map_cons, reduceCtorEq] at hok
   simp only [List.mem_cons, forall_eq_or_imp]
   split at hok <;> try (simp only [reduceCtorEq] at hok)
   rename_i hd tl _ ty _
-  split at hok <;> simp only [Except.ok.injEq, someOf, reduceCtorEq] at hok
+  split at hok <;> simp only [Except.ok.injEq, reduceCtorEq] at hok
   rename_i heq
   exists ty, hd, tl
   simp only [heq.left, true_and, List.map_cons,

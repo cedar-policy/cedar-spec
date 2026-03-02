@@ -279,7 +279,7 @@ def compileSet (args : List CompileResult) : Result CompileResult := do
         let terms := args.map CompileResult.term
         if terms.all (Term.typeOf · = .option ty)
         then .ok {
-          term := ifAllSome terms (⊙setOf (terms.map option.get) ty)
+          term := ifAllSome terms (setOf (terms.map option.get) ty)
           footprint := args.mapUnion CompileResult.footprint
         }
         else .error .typeError
@@ -288,7 +288,7 @@ def compileSet (args : List CompileResult) : Result CompileResult := do
 def compileRecord (ats : List (Attr × CompileResult)) : CompileResult :=
   let terms := ats.map λ ⟨_, { term, .. }⟩ => term
   {
-    term := ifAllSome terms (⊙recordOf (ats.map (Prod.map id (λ { term, .. } => option.get term))))
+    term := ifAllSome terms (recordOf (ats.map (Prod.map id (λ { term, .. } => option.get term))))
     footprint := ats.mapUnion λ ⟨_, { footprint, .. }⟩ => footprint
   }
 
