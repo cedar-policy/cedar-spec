@@ -85,7 +85,7 @@ instance : Lean.ToJson Op where
   | .bvudiv => Lean.Json.str "bvudiv"
   | .bvsrem => Lean.Json.str "bvsrem"
   | .bvsmod => Lean.Json.str "bvsmod"
-  | .bvumod => Lean.Json.str "bvumod"
+  | .bvurem => Lean.Json.str "bvurem"
   | .bvshl => Lean.Json.str "bvshl"
   | .bvlshr => Lean.Json.str "bvlshr"
   | .bvslt => Lean.Json.str "bvslt"

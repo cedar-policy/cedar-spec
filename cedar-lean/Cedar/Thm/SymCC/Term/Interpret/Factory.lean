@@ -759,9 +759,9 @@ theorem interpret_bvsmod {I : Interpretation} {t₁ t₂ : Term} :
   (Factory.bvsmod t₁ t₂).interpret I = Factory.bvsmod (t₁.interpret I) (t₂.interpret I)
 := by show_interpret_bvop bvsmod bvapp interpret_term_app_bvsmod
 
-theorem interpret_bvumod {I : Interpretation} {t₁ t₂ : Term} :
-  (Factory.bvumod t₁ t₂).interpret I = Factory.bvumod (t₁.interpret I) (t₂.interpret I)
-:= by show_interpret_bvop bvumod bvapp interpret_term_app_bvumod
+theorem interpret_bvurem {I : Interpretation} {t₁ t₂ : Term} :
+  (Factory.bvurem t₁ t₂).interpret I = Factory.bvurem (t₁.interpret I) (t₂.interpret I)
+:= by show_interpret_bvop bvurem bvapp interpret_term_app_bvurem
 
 theorem interpret_bvshl {I : Interpretation} {t₁ t₂ : Term} :
   (Factory.bvshl t₁ t₂).interpret I = Factory.bvshl (t₁.interpret I) (t₂.interpret I)

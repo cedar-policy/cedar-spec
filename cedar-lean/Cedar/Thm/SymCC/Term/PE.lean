@@ -638,11 +638,11 @@ theorem pe_bvsmod_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
   Term.isLiteral (Factory.bvsmod t₁ t₂) = true
 := by show_pe_binary_wfl bvsmod bvapp wfl_of_type_bitvec_is_bitvec
 
-theorem pe_bvumod_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
+theorem pe_bvurem_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
   Term.WellFormedLiteral εs t₁ → Term.typeOf t₁ = TermType.bitvec n →
   Term.WellFormedLiteral εs t₂ → Term.typeOf t₂ = TermType.bitvec n →
-  Term.isLiteral (Factory.bvumod t₁ t₂) = true
-:= by show_pe_binary_wfl bvumod bvapp wfl_of_type_bitvec_is_bitvec
+  Term.isLiteral (Factory.bvurem t₁ t₂) = true
+:= by show_pe_binary_wfl bvurem bvapp wfl_of_type_bitvec_is_bitvec
 
 theorem pe_bvshl_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
   Term.WellFormedLiteral εs t₁ → Term.typeOf t₁ = TermType.bitvec n →
@@ -747,12 +747,12 @@ theorem pe_bvsmod {n : Nat} {bv₁ bv₂ : BitVec n} :
   Term.prim (TermPrim.bitvec (BitVec.smod bv₁ bv₂))
 := by simp only [bvsmod, bvapp, BitVec.ofNat_toNat, BitVec.setWidth_eq]
 
-theorem pe_bvumod {n : Nat} {bv₁ bv₂ : BitVec n} :
-  Factory.bvumod
+theorem pe_bvurem {n : Nat} {bv₁ bv₂ : BitVec n} :
+  Factory.bvurem
     (Term.prim (TermPrim.bitvec bv₁))
     (Term.prim (TermPrim.bitvec bv₂)) =
   Term.prim (TermPrim.bitvec (BitVec.umod bv₁ bv₂))
-:= by simp only [bvumod, bvapp, BitVec.ofNat_toNat, BitVec.setWidth_eq]
+:= by simp only [bvurem, bvapp, BitVec.ofNat_toNat, BitVec.setWidth_eq]
 
 theorem pe_bvlshr {n : Nat} {bv₁ bv₂ : BitVec n} :
   Factory.bvlshr

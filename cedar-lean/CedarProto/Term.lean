@@ -119,7 +119,7 @@ inductive BaseOp where
   | bvudiv
   | bvsrem
   | bvsmod
-  | bvumod
+  | bvurem
   | bvshl
   | bvlshr
   | bvslt
@@ -153,7 +153,7 @@ namespace BaseOp
     | 10 => .ok .bvudiv
     | 11 => .ok .bvsrem
     | 12 => .ok .bvsmod
-    | 13 => .ok .bvumod
+    | 13 => .ok .bvurem
     | 14 => .ok .bvshl
     | 15 => .ok .bvlshr
     | 16 => .ok .bvslt
@@ -191,7 +191,7 @@ namespace BaseOp
     | .bvudiv => .bvudiv
     | .bvsrem => .bvsrem
     | .bvsmod => .bvsmod
-    | .bvumod => .bvumod
+    | .bvurem => .bvurem
     | .bvshl => .bvshl
     | .bvlshr => .bvlshr
     | .bvslt => .bvslt

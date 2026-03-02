@@ -420,7 +420,7 @@ theorem wt_op_same_domain {εs₁ εs₂ : SymEntities} {op : Op} {ts : List Ter
   case bvudiv_wt h h'     => exact Op.WellTyped.bvudiv_wt h h'
   case bvsrem_wt h h'     => exact Op.WellTyped.bvsrem_wt h h'
   case bvsmod_wt h h'     => exact Op.WellTyped.bvsmod_wt h h'
-  case bvumod_wt h h'     => exact Op.WellTyped.bvumod_wt h h'
+  case bvurem_wt h h'     => exact Op.WellTyped.bvurem_wt h h'
   case bvshl_wt h h'      => exact Op.WellTyped.bvshl_wt h h'
   case bvlshr_wt h h'     => exact Op.WellTyped.bvlshr_wt h h'
   case bvsaddo_wt h h'    => exact Op.WellTyped.bvsaddo_wt h h'
