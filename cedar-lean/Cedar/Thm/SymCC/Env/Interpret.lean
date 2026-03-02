@@ -41,10 +41,7 @@ theorem interpret_entities_find?_some {εs : SymEntities} {I : Interpretation} {
 theorem interpret_entities_find?_none {εs : SymEntities} {I : Interpretation} {ety : EntityType}
   (h₁ : εs.find? ety = .none) :
   (εs.interpret I).find? ety = .none
-:= by
-  simp [SymEntities.interpret]
-  apply Map.find?_mapOnValues_none
-  exact h₁
+:= by simp [SymEntities.interpret, h₁]
 
 theorem interpret_entities_isValidEntityUID (εs : SymEntities) (I : Interpretation) (uid : EntityUID) :
   εs.isValidEntityUID uid = (εs.interpret I).isValidEntityUID uid
@@ -100,7 +97,7 @@ theorem interpret_entities_ancestorsOfType_none {εs : SymEntities} {ety ancTy :
     replace h₃ := interpret_entities_ancestors_some I h₃
     simp only [h₃, Option.some.injEq] at h₂
     subst h₂
-    exact Map.find?_mapOnValues_none _ h₁
+    exact (Map.find?_mapOnValues_none _).mpr h₁
 
 theorem interpret_entities_ancestorsOfType_some {εs : SymEntities} {ety ancTy : EntityType} {I : Interpretation} {f : UnaryFunction} :
   εs.ancestorsOfType ety ancTy = .some f →
@@ -172,7 +169,7 @@ theorem interpret_εdata_wf {εs : SymEntities} {I : Interpretation} {ety : Enti
   · intro pty f h₇
     cases h : Map.find? εd.ancestors pty
     case none =>
-      replace h := Map.find?_mapOnValues_none (UnaryFunction.interpret I) h
+      rw [← Map.find?_mapOnValues_none (UnaryFunction.interpret I)] at h
       simp only [h, reduceCtorEq] at h₇
     case some f' =>
       have h' := Map.find?_mapOnValues_some (UnaryFunction.interpret I) h
@@ -200,7 +197,7 @@ theorem interpret_εntities_wf {εs : SymEntities} {I : Interpretation} :
   have h₁ := h₀.right ety
   cases h₄ : (Map.find? εs ety)
   case none =>
-    replace h₄ := Map.find?_mapOnValues_none (SymEntityData.interpret I) h₄
+    rw [← Map.find?_mapOnValues_none (SymEntityData.interpret I)] at h₄
     simp only [h₃, reduceCtorEq] at h₄
   case some d' =>
     specialize h₁ d' h₄

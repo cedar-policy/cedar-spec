@@ -9,6 +9,7 @@ import Cedar.Thm.SymCC.Term.WF
 import Cedar.Thm.SymCC.Term.Lit
 import Cedar.Thm.SymCC.Term.UDF
 import Cedar.Thm.Data.List.Lemmas
+import Cedar.Thm.Data.Map
 
 /-!
 This file contains some facts about `SymEnv.ofEnv`.
@@ -742,22 +743,24 @@ theorem ofEnumEntityType_is_wf
     (SymEntityData.ofEnumEntityType ety eids)
 := by
   and_intros
-  all_goals simp only [SymEntityData.ofEnumEntityType, Map.empty, Option.some.injEq, reduceCtorEq,
-    Bool.not_eq_true, forall_eq', Map.toList_mk_id, List.not_mem_nil, false_implies, implies_true]
+  all_goals simp only [SymEntityData.ofEnumEntityType, Option.some.injEq, reduceCtorEq,
+    Map.toList_empty, Map.not_find?_of_empty, reduceCtorEq, Bool.not_eq_true, forall_eq',
+    List.not_mem_nil, false_implies, implies_true]
   · constructor
     · intro _ _ h ; simp at h
-    · simp [Map.WellFormed, Map.make, List.canonicalize]
+    · exact Map.wf_empty
   · simp only [
       Term.isLiteral,
+      Map.empty,
       List.nil.sizeOf_spec, Nat.reduceAdd,
       List.all_eq_true,
       Subtype.forall, Prod.forall,
     ]
     intros _ _ _ h
     simp [List.attach₃] at h
-  · rw [Term.typeOf, List.map₃_eq_map_snd Term.typeOf]
+  · rw [Term.typeOf, Map.mapOnValues₂_eq_mapOnValues]
     simp
-  · simp only [Map.WellFormed, Map.make, Map.toList, List.canonicalize]
+  · exact Map.wf_empty
   · simp only [UnaryFunction.argType, SymEntityData.emptyAttrs, TermType.ofType]
   · simp [
       UnaryFunction.outType, SymEntityData.emptyAttrs,
@@ -765,9 +768,7 @@ theorem ofEnumEntityType_is_wf
       Map.empty, TermType.cedarType?, List.mapM₃,
       List.attach₃,
     ]
-  · intro _ _ h
-    simp [Map.find?] at h
-  · simp [Map.WellFormed, Map.make, List.canonicalize]
+  · exact Map.wf_empty
   · have ⟨_, h⟩ := wf_env_implies_wf_entity_entry hwf hfind
     simp [h]
 
@@ -972,20 +973,18 @@ theorem ofActionType_is_wf
   any_goals simp only [
     SymEntityData.ofActionType,
     SymEntityData.emptyAttrs,
-    Map.empty,
     UnaryFunction.argType,
     UnaryFunction.outType,
     TermType.ofType,
   ]
   · constructor
     · intro _ _ h ; simp at h
-    · simp [Map.WellFormed, Map.make, List.canonicalize]
-  · simp [Term.isLiteral, List.attach₃]
-  · rw [Term.typeOf, List.map₃_eq_map_snd Term.typeOf]
-    simp
-  · simp [Map.WellFormed, Map.make, List.canonicalize]
+    · exact Map.wf_empty
+  · simp [Map.empty, Term.isLiteral, List.attach₃]
+  · simp [Term.typeOf, Map.mapOnValues₂_eq_mapOnValues]
+  · exact Map.wf_empty
   · intros; contradiction
-  · simp only [TermType.isCedarRecordType, TermType.cedarType?]
+  · simp only [TermType.isCedarRecordType, TermType.cedarType?, Map.empty]
     grind
   -- Symbolic ancestors are well-formed
   · intros anc sym_anc_f hfind_anc

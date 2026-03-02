@@ -102,8 +102,8 @@ private theorem compile_interpret_record_ifAllSome_none {εs : SymEntities} {I :
   Term.typeOf (recordOf (List.map (Prod.map id (option.get ∘ Term.interpret I)) ats)) =
   Term.typeOf (recordOf (List.map (Prod.map id (Term.interpret I ∘ option.get)) ats))
 := by
-  simp only [recordOf, Map.make, List.canonicalize_of_map_fst, typeOf_term_record_eq, List.map_map,
-    TermType.record.injEq, Map.mk.injEq]
+  simp only [recordOf, Map.make, Map.mapOnValues, Map.toList_mk_id, List.canonicalize_of_map_fst,
+    typeOf_term_record_eq, List.map_map, TermType.record.injEq, Map.mk.injEq]
   apply List.map_congr
   intro p hp
   replace hp := List.in_canonicalize_in_list hp

@@ -152,8 +152,8 @@ theorem default_lit_well_typed
     simp only [Decoder.defaultLit, Term.typeOf]
     congr
     rw [List.map₂_eq_map (λ x => (x.fst, Decoder.defaultLit eidOf x.snd))]
-    simp only [List.map₃_eq_map_snd]
-    simp only [List.map_map]
+    simp only [Map.mapOnValues₂_eq_mapOnValues _ Term.typeOf]
+    simp only [Map.mapOnValues, Map.toList_mk_id, List.map_map, Map.mk.injEq]
     unfold Function.comp
     simp only
     apply List.map_restricted_id

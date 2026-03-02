@@ -39,7 +39,6 @@ theorem value_type_bool_implies_bool {v : Value} {t : Term} :
     all_goals simp_all [Term.value?, TermPrim.value?, Term.typeOf, TermPrim.typeOf]
     case ext x => split at hty <;> simp_all
   all_goals simp_all [Term.value?, Term.typeOf]
-  case record m => cases m ; simp_all [Term.value?, Term.typeOf]
 
 theorem verifyNeverErrors_wbeq :
   WellBehavedEvaluateQuery isSome Except.isOk

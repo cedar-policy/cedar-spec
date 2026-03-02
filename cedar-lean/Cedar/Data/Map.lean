@@ -114,6 +114,13 @@ public def mapOnValues₂ {α β γ} [SizeOf α] [SizeOf β] (m : Map α β) (f 
     simp only at *
     omega⟩)))
 
+public def mapMOnValues₂ {α β γ} [SizeOf α] [SizeOf β] [Monad m] (map : Map α β) (f : {x : β // sizeOf x < sizeOf map} → m γ) : m (Map α γ) := do
+  let kvs ← map.toList.mapM₂ (λ ⟨(k, v), h⟩ => do pure (k, ← f ⟨v, by
+    have := sizeOf_toList_lt_map map
+    simp only at *
+    omega⟩))
+  pure (Map.mk kvs)
+
 public def wellFormed {α β} [LT α] [DecidableLT α] (m : Map α β) : Bool :=
   m.toList.isSortedBy Prod.fst
 

@@ -1473,11 +1473,13 @@ private theorem env_symbolize?_tags_wf
               constructor
           · simp [Map.WellFormed, Map.make, List.canonicalize, List.insertCanonical]
         · simp [Term.isLiteral, List.all, List.attach₃, List.pmap]
-        · simp [
+        · simp only [Term.typeOf]
+          rw [Map.mapOnValues₂_eq_mapOnValues _ Term.typeOf]
+          simp [
+            Map.mapOnValues,
             Term.typeOf, TermPrim.typeOf,
             heq_ety,
             TermType.tagFor, EntityTag.mk,
-            List.map₃, List.attach₃, List.map, List.pmap,
           ]
         · apply value_symbolize?_wf hinst hwf_tagTy hwf_val hwt_val hsym_val
         · apply value_symbolize?_is_lit hsym_val

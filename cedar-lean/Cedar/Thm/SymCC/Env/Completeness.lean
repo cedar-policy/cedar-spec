@@ -263,13 +263,13 @@ private theorem ofType_typeOf_pullback
     unfold TermType.ofType at heq_ty
     split at heq_ty
     any_goals contradiction
-    simp only [TermType.record.injEq, Map.mk.injEq] at heq_ty
+    rw [Map.mapOnValues₂_eq_mapOnValues] at heq_ty
+    simp only [Map.mapOnValues, Map.toList_mk_id, TermType.record.injEq, Map.mk.injEq] at heq_ty
     rename_i ty_rec
     cases hlift_ty with | record_lifted hlift_ty_rec =>
     cases hwf_ty with | record_wf hwf_ty_rec_map hwf_ty_rec =>
     cases hwf_t with | record_wf hwf_rec heq_ty_rec =>
     simp only [←hval]
-    simp only [List.map₃_eq_map_snd] at heq_ty
     constructor
     · intros attr hcont_attr
       have ⟨v, hfind_v⟩ := Map.contains_iff_some_find?.mp hcont_attr
@@ -744,10 +744,9 @@ private theorem ofEnv_entity_completeness_standard_inst_tags
         · simp [Map.WellFormed, Map.make, List.canonicalize, List.insertCanonical]
       · simp only [
           Factory.tagOf,
-          Term.typeOf,
-          List.map₃_eq_map λ x => (x.fst, Term.typeOf x.snd),
+          Term.typeOf, TermPrim.typeOf,
+          Map.mapOnValues₂_eq_mapOnValues _ Term.typeOf, Map.mapOnValues, Map.toList_mk_id,
           List.map,
-          TermPrim.typeOf,
           ←hvals_uuf,
         ]
         simp only [
@@ -924,8 +923,9 @@ private theorem ofEnv_entity_completeness_enum
     · constructor
       · simp
       · exact Map.wf_empty
-    · rw [Term.typeOf, List.map₃_eq_map_snd Term.typeOf]
-      simp [TermType.ofType, Map.empty, TermType.ofRecordType]
+    · simp only [Term.typeOf, Map.mapOnValues₂_eq_mapOnValues _ Term.typeOf, Map.mapOnValues_empty,
+        TermType.ofType, TermType.record.injEq]
+      simp [Map.empty, TermType.ofRecordType]
   · intros anc hmem_data_anc
     have := hanc₁ anc hmem_data_anc
     simp [
