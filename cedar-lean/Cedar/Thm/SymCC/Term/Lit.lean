@@ -110,9 +110,6 @@ theorem wfl_of_type_bool_is_bool {εs : SymEntities} {t : Term} :
       rename_i heq <;>
       simp only [TermPrim.ext.injEq, reduceCtorEq] at heq <;>
       simp only [TermType.prim.injEq, reduceCtorEq] at h₂
-  case record r =>
-    have ⟨_, h₄⟩ := @typeOf_term_record_is_record_type r
-    simp only [h₂, reduceCtorEq] at h₄
 
 theorem wfl_of_type_bool_is_true_or_false {εs : SymEntities} {t : Term} :
   t.WellFormedLiteral εs →
@@ -150,9 +147,6 @@ theorem wfl_of_type_bitvec_is_bitvec {εs : SymEntities} {t : Term} {n : Nat} :
       rename_i heq <;>
       simp only [TermPrim.ext.injEq, reduceCtorEq] at heq <;>
       simp only [TermType.prim.injEq, reduceCtorEq] at h₂
-  case record r =>
-    have ⟨_, h₄⟩ := @typeOf_term_record_is_record_type r
-    simp only [h₂, reduceCtorEq] at h₄
 
 theorem wfl_of_type_datetime_is_datetime {εs : SymEntities} {t : Term}:
   t.WellFormedLiteral εs →
@@ -175,9 +169,6 @@ theorem wfl_of_type_datetime_is_datetime {εs : SymEntities} {t : Term}:
       rename_i heq <;> simp at *
       rename_i dt
       exists dt
-  case record r =>
-    have ⟨_, h₄⟩ := @typeOf_term_record_is_record_type r
-    simp only [h₂, reduceCtorEq] at h₄
 
 theorem wfl_of_type_duration_is_duration {εs : SymEntities} {t : Term}:
   t.WellFormedLiteral εs →
@@ -200,9 +191,6 @@ theorem wfl_of_type_duration_is_duration {εs : SymEntities} {t : Term}:
       rename_i heq <;> simp at *
       rename_i dur
       exists dur
-  case record r =>
-    have ⟨_, h₄⟩ := @typeOf_term_record_is_record_type r
-    simp only [h₂, reduceCtorEq] at h₄
 
 theorem wfl_of_type_string_is_string {εs : SymEntities} {t : Term} :
   t.WellFormedLiteral εs →
@@ -227,9 +215,6 @@ theorem wfl_of_type_string_is_string {εs : SymEntities} {t : Term} :
       rename_i heq <;>
       simp only [TermPrim.ext.injEq, reduceCtorEq] at heq <;>
       simp only [TermType.prim.injEq, reduceCtorEq] at h₂
-  case record r =>
-    have ⟨_, h₄⟩ := @typeOf_term_record_is_record_type r
-    simp only [h₂, reduceCtorEq] at h₄
 
 theorem wfl_of_type_entity_is_entity {εs : SymEntities} {t : Term} {ety : EntityType} :
   t.WellFormedLiteral εs →
@@ -256,9 +241,6 @@ theorem wfl_of_type_entity_is_entity {εs : SymEntities} {t : Term} {ety : Entit
       rename_i heq <;>
       simp only [TermPrim.ext.injEq, reduceCtorEq] at heq <;>
       simp only [TermType.prim.injEq, reduceCtorEq] at h₂
-  case record r =>
-    have ⟨_, h₄⟩ := @typeOf_term_record_is_record_type r
-    simp only [h₂, reduceCtorEq] at h₄
 
 theorem wfl_of_type_set_is_set {εs : SymEntities} {t : Term} {ty : TermType} :
   t.WellFormedLiteral εs →
@@ -284,9 +266,6 @@ theorem wfl_of_type_set_is_set {εs : SymEntities} {t : Term} {ty : TermType} :
     simp [Term.typeOf] at h₂
     subst h₂
     exists s
-  case record r =>
-    have ⟨_, h₄⟩ := @typeOf_term_record_is_record_type r
-    simp only [h₂, reduceCtorEq] at h₄
 
 theorem wfl_of_type_record_is_record {εs : SymEntities} {t : Term} {rty : Map Attr TermType} :
   t.WellFormedLiteral εs →
@@ -322,9 +301,6 @@ local macro "simp_wfl_of_type_ext" t:term : tactic => do
         rename_i x <;>
         simp only [TermType.ext, TermType.prim.injEq, TermPrimType.ext.injEq, reduceCtorEq] at h₂
         exists x
-    case record r =>
-      have ⟨_, h₄⟩ := @typeOf_term_record_is_record_type r
-      simp only [h₂, reduceCtorEq] at h₄
     ))
 
 theorem wfl_of_type_ext_decimal_is_ext_decimal {εs : SymEntities} {t : Term} :
@@ -372,9 +348,6 @@ theorem wfl_of_type_option_is_option {εs : SymEntities} {t : Term} {ty : TermTy
     simp [Term.typeOf, TermPrim.typeOf] at h₂
     split at h₂ <;>
     simp only [reduceCtorEq] at h₂
-  case record r =>
-    have ⟨_, h₄⟩ := @typeOf_term_record_is_record_type r
-    simp only [h₂, reduceCtorEq] at h₄
 
 theorem wfl_of_prim_type_is_prim {εs : SymEntities} {t : Term} {pty : TermPrimType} :
   t.WellFormedLiteral εs →
@@ -388,8 +361,5 @@ theorem wfl_of_prim_type_is_prim {εs : SymEntities} {t : Term} {pty : TermPrimT
   try {simp only [Term.typeOf, reduceCtorEq] at h₂}
   case prim p =>
     exists p
-  case record r =>
-    have ⟨_, h₄⟩ := @typeOf_term_record_is_record_type r
-    simp only [h₂, reduceCtorEq] at h₄
 
 end Cedar.Thm

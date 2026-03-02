@@ -787,13 +787,11 @@ public theorem find?_mapOnValues_some' {α β γ} [LT α] [DecidableLT α] [Deci
       subst heq
       rfl
 
+@[simp]
 public theorem find?_mapOnValues_none {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) {m : Map α β} {k : α} :
-  m.find? k = .none →
-  (m.mapOnValues f).find? k = .none
-:= by
-  intro h₁
-  rw [← find?_mapOnValues]
-  simp [Option.map, h₁]
+  (m.mapOnValues f).find? k = .none ↔
+  m.find? k = .none
+:= by simp [← find?_mapOnValues]
 
 public theorem mapOnValues_eq_make_map {α β γ} [LT α] [StrictLT α] [DecidableLT α] (f : β → γ) {m : Map α β}
   (wf : m.WellFormed) :
@@ -828,7 +826,7 @@ public theorem mapOnValues_contains {α β γ} [LT α] [DecidableLT α] [Decidab
   simp only [contains, Option.isSome]
   split <;> rename_i h
   · simp [find?_mapOnValues_some f h]
-  · simp [find?_mapOnValues_none f h]
+  · simp [(find?_mapOnValues_none f).mpr h]
 
 @[simp]
 public theorem keys_mapOnValues [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] (f : β → γ) (m : Map α β) :

@@ -1,3 +1,4 @@
+import Cedar.Thm.Data.Map
 import Cedar.Thm.WellTyped.Expr.Definition
 import Cedar.Thm.WellTyped.Residual.Definition
 import Cedar.Thm.SymCC.Compiler.WF
@@ -12,6 +13,7 @@ with the correct term type on well-typed expressions.
 
 namespace Cedar.Thm
 
+open Cedar.Data
 open Cedar.Spec
 open Cedar.Thm
 open Cedar.Validation
@@ -1321,11 +1323,10 @@ theorem compile_well_typed_record
       Factory.recordOf, Data.Map.make, Term.typeOf,
       TypedExpr.typeOf, TermType.ofType,
       TermType.option.injEq, TermType.record.injEq,
-      Data.Map.mk.injEq,
     ]
-    simp only [ofRecordType_as_map rty.1]
+    rw [Map.mapOnValues₂_eq_mapOnValues _ Term.typeOf]
+    simp only [Map.mapOnValues, Map.toList_mk_id, ofRecordType_as_map rty.1, Map.mk.injEq]
     simp only [hrty, Data.Map.make]
-    simp only [List.map₃_eq_map_snd Term.typeOf]
     apply List.forall₂_iff_map_eq.mp
     apply List.Forall₂.imp
     rotate_left

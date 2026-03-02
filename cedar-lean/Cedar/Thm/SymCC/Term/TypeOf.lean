@@ -40,10 +40,7 @@ theorem typeOf_bv {n : Nat} {bv : BitVec n} :
 theorem typeOf_bv_width {n m : Nat} {bv : BitVec m} :
   Term.typeOf (Term.prim (TermPrim.bitvec bv)) = TermType.bitvec n →
   m = n
-:= by
-  intro h₁
-  simp [Term.typeOf, TermPrim.typeOf, BitVec.width] at h₁
-  exact h₁
+:= by simp [Term.typeOf, TermPrim.typeOf, BitVec.width]
 
 theorem typeOf_term_none (ty : TermType) :
   Term.typeOf (Term.none ty) = TermType.option ty
@@ -93,10 +90,9 @@ theorem typeOf_term_prim_ext_duration {d : Ext.Datetime.Duration} :
 
 theorem typeOf_term_record_eq  {r : Map Attr Term} :
   Term.typeOf (Term.record r) =
-  TermType.record (Map.mk (List.map (fun (x : Attr × Term) => (x.fst, Term.typeOf x.snd)) r.1))
+  TermType.record (r.mapOnValues Term.typeOf)
 := by
-  rw [Term.typeOf]
-  simp only [List.map₃_eq_map λ (x : Attr × Term) => (x.fst, Term.typeOf x.snd)]
+  simp only [Term.typeOf, Map.mapOnValues₂_eq_mapOnValues]
 
 theorem typeOf_term_record_is_record_type {r : Map Attr Term} :
   ∃ rty, (Term.record r).typeOf = TermType.record rty
@@ -110,20 +106,11 @@ theorem typeOf_term_record_attr_value {r : Map Attr Term} {rty : Map Attr TermTy
   ∃ t, r.find? a = .some t ∧ t.typeOf = ty
 := by
   rw [typeOf_term_record_eq] at h₁
-  simp [Map.find?, Map.toList] at *
+  simp only [TermType.record.injEq] at *
   subst h₁
-  split at h₂ <;> simp only [Option.some.injEq, reduceCtorEq] at h₂
-  subst h₂
-  rename_i a' ty h₂
-  have h₃ := List.find?_some h₂ ; simp at h₃ ; subst h₃
-  have h₄ : Prod.map id Term.typeOf = (fun (x : Attr × Term) => (x.fst, Term.typeOf x.snd)) := by
-    apply funext ; intro x ; simp only [Prod.map, id_eq]
-  rw [←h₄] at h₂
-  replace ⟨x, h₂⟩ := List.find?_fst_map_implies_find? h₂
-  exists x.snd
-  simp only [h₂, true_and]
-  simp only [Prod.map, id_eq, Prod.mk.injEq] at h₂
-  simp only [h₂]
+  replace ⟨t, h₂, _⟩ := Map.find?_mapOnValues_some' _ h₂
+  subst ty
+  exists t
 
 theorem typeOf_term_record_attr_value_none {r : Map Attr Term} {rty : Map Attr TermType} {a : Attr}
   (h₁ : (Term.record r).typeOf = TermType.record rty)
@@ -131,14 +118,10 @@ theorem typeOf_term_record_attr_value_none {r : Map Attr Term} {rty : Map Attr T
   r.find? a = none
 := by
   rw [typeOf_term_record_eq] at h₁
-  simp [Map.find?, Map.toList] at *
+  simp only [TermType.record.injEq] at *
   subst h₁
-  split at h₂ <;> simp only [reduceCtorEq] at h₂
-  rename_i h₃
-  split <;> simp only [reduceCtorEq]
-  rename_i a t h₄
-  apply h₃ a t.typeOf
-  rw [← List.find?_pair_map, h₄, Option.map]
+  rw [Map.find?_mapOnValues_none Term.typeOf] at h₂
+  exact h₂
 
 theorem typeOf_term_record_attr_value_typeOf {r : Map Attr Term} {a : Attr} {t : Term}
   (h₁ : (Term.record r).typeOf = TermType.record rty)
@@ -148,13 +131,6 @@ theorem typeOf_term_record_attr_value_typeOf {r : Map Attr Term} {a : Attr} {t :
   rw [typeOf_term_record_eq] at h₁
   simp only [TermType.record.injEq] at *
   subst h₁
-  have hmv : (r.mapOnValues Term.typeOf) = Map.mk (List.map (fun x => (x.fst, Term.typeOf x.snd)) r.1) := by
-    simp only [Map.mapOnValues, Map.deprecated_toList_def]
-    -- unfortunately, Term.typeOf is defined using Data.Map internals.
-    -- to avoid depending on `Map.deprecated_toList_def`, we'll have
-    -- to redefine `Term.typeOf`, probably using `Map.mapOnValues` for
-    -- the `record` case.
-  rw [← hmv]
   exact Map.find?_mapOnValues_some _ h₂
 
 theorem typeOf_term_record_attr_value_eq {r₁ r₂ : Map Attr Term} {rty : Map Attr TermType} {a : Attr} {t₁ t₂ : Term}
@@ -172,9 +148,7 @@ theorem typeOf_term_record_attr_value_eq {r₁ r₂ : Map Attr Term} {rty : Map 
 theorem typeOf_term_record_tail {a : Attr} {t₁ t₂ : Term} {tl₁ tl₂ : List (Attr × Term)} :
   Term.typeOf (Term.record (Map.mk ((a, t₁) :: tl₁))) = Term.typeOf (Term.record (Map.mk ((a, t₂) :: tl₂))) →
   Term.typeOf (Term.record (Map.mk tl₁)) = Term.typeOf (Term.record (Map.mk tl₂))
-:= by
-  simp only [typeOf_term_record_eq, List.map_cons, TermType.record.injEq, Map.mk.injEq,
-    List.cons.injEq, Prod.mk.injEq, true_and, and_imp, imp_self, implies_true]
+:= by simp [typeOf_term_record_eq, Map.mapOnValues]
 
 private theorem validEntityUID_implies_validEntityType {εs : SymEntities} {uid : EntityUID} :
   SymEntities.isValidEntityUID εs uid = true →
@@ -247,30 +221,16 @@ private theorem type_of_wf_term_record_is_wf {εs : SymEntities} {r : Map Attr T
   TermType.WellFormed εs (Term.typeOf (Term.record r))
 := by
   unfold Term.typeOf
-  rw [List.map₃_eq_map λ (x : Attr × Term) => (x.fst, Term.typeOf x.snd)]
+  rw [Map.mapOnValues₂_eq_mapOnValues]
   apply TermType.WellFormed.record_wf
   case h₁ =>
     intro a ty h
-    simp only [Map.find?, Map.toList] at h
-    rw [←List.find?_pair_map, eq_comm] at h
-    split at h <;> simp only [Option.some.injEq, reduceCtorEq] at h
-    subst h
-    rename_i heq
-    simp only [Option.map_eq_some_iff, Prod.mk.injEq] at heq
-    replace ⟨axt, heq, _, heq'⟩ := heq
-    replace heq := List.mem_of_find?_eq_some heq
-    have haxt : axt = (axt.fst, axt.snd) := by simp only
-    specialize ih axt.fst axt.snd
-    simp only [Map.deprecated_toList_def, ← haxt, heq, heq', forall_const] at ih
-    exact ih
+    replace ⟨t, h, _⟩ := Map.find?_mapOnValues_some' _ h
+    subst ty
+    apply ih a
+    exact Map.find?_mem_toList h
   case h₂ =>
-    simp only [Map.WellFormed] at *
-    simp only [Map.make, Map.mk.injEq, Map.deprecated_toList_def] at *
-    have hmap : (fun (x : Attr × Term) => (x.fst, Term.typeOf x.snd)) = Prod.map id Term.typeOf := by
-      apply funext ; intro x  ; simp [Prod.map]
-    simp only [hmap, List.canonicalize_of_map_fst r.1 Term.typeOf]
-    rw [hwf]
-    simp only [List.canonicalize_idempotent Prod.fst r.1]
+    exact Map.mapOnValues_wf.mp hwf
 
 theorem typeOf_wf_term_is_wf {εs : SymEntities} {t : Term} :
   t.WellFormed εs →
@@ -335,29 +295,32 @@ theorem isCedarRecordType_implies_term_record_type {ty : TermType} :
       exists rty
   case h_2 => contradiction
 
-theorem typeOf_term_record_cedarType?_some_implies_attr_cedarType?_some {a : Attr} {t : Term} {r : List (Attr × Term)} {ty : Validation.CedarType} :
-  (Term.record (Map.mk r)).typeOf.cedarType? = some ty →
-  (a, t) ∈ r →
+theorem typeOf_term_record_cedarType?_some_implies_attr_cedarType?_some {a : Attr} {t : Term} {r : Map Attr Term} {ty : Validation.CedarType} :
+  r.WellFormed →
+  (Term.record r).typeOf.cedarType? = some ty →
+  (a, t) ∈ r.toList →
   ∃ (tty : TermType) (cty : Validation.CedarType),
     tty.cedarType? = some cty ∧
     (t.typeOf = tty ∨ t.typeOf = .option tty)
 := by
-  intro hty hin
+  intro hwf hty hin
   simp only [typeOf_term_record_eq] at hty
-  simp only [TermType.cedarType?,
-    Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at hty
+  unfold TermType.cedarType? at hty
+  rw [do_some] at hty
   replace ⟨atys, hty, _⟩ := hty
+  subst ty
+  simp only [Map.mapOnValues, Map.toList, Option.bind_eq_bind] at hty
   rw [List.mapM₃_eq_mapM λ (x : Attr × TermType) => (TermType.cedarType?.qualifiedType? x.snd).bind λ qty => some (x.fst, qty)] at hty
-  replace hty := List.mapM_some_implies_all_some hty (a, t.typeOf)
-  simp only [List.mem_map, Prod.mk.injEq, Option.bind_eq_some_iff, Option.some.injEq,
-    forall_exists_index, and_imp] at hty
-  specialize hty (a, t) hin
-  simp only [true_implies] at hty
-  have ⟨_, _, _, hty, _⟩ := hty
+  simp only [List.mapM_map] at hty
+  replace hty := List.mapM_some_implies_all_some hty (a, t)
+  specialize hty (by simp [Map.toList] at hin ; simp [hin])
+  replace ⟨⟨a', qty⟩, haty, hty⟩ := hty
+  simp only [Function.comp_apply] at hty
   unfold TermType.cedarType?.qualifiedType? at hty
   split at hty <;>
-  simp only [Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at hty <;>
-  replace ⟨cty, hty⟩ := hty
+  simp only [Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq, Prod.mk.injEq,
+    exists_eq_right_right] at hty <;>
+  replace ⟨⟨cty, hty, _⟩, _⟩ := hty <;> subst a' qty
   · rename_i tty heq
     exists tty, cty
     simp only [hty, heq, or_true, and_self]

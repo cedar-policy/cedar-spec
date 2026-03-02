@@ -1948,7 +1948,7 @@ theorem wf_tagOf {εs : SymEntities} {t₁ t₂ : Term} {ety : EntityType}
       subst hin <;>
       assumption
     · simp [Map.WellFormed, Map.make, List.canonicalize, List.insertCanonical, String.reduceLT]
-  · simp only [typeOf_term_record_eq, List.map_cons, hty₁, hty₂, List.map_nil]
+  · simp [typeOf_term_record_eq, hty₁, hty₂, Map.mapOnValues]
 
 theorem wf_tags_getTag! {εs : SymEntities} {τs : SymTags} {t₁ t₂ : Term} {ety : EntityType}
   (hwτ : τs.WellFormed εs ety)

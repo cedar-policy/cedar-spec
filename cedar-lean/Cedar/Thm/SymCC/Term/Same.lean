@@ -909,7 +909,8 @@ private theorem record_value?_eq' {rv : List (Attr × Value)} {r₁ r₂ : List 
   r₁ = r₂
 := by
   have htyₘ := hty
-  simp only [typeOf_term_record_eq, TermType.record.injEq, Map.mk.injEq] at htyₘ
+  simp only [typeOf_term_record_eq, Map.mapOnValues, Map.toList_mk_id, TermType.record.injEq,
+    Map.mk.injEq] at htyₘ
   cases r₁ <;> cases r₂ <;>
   simp only [List.cons.injEq, reduceCtorEq] <;>
   simp only [List.map_nil, List.map_cons, List.cons.injEq, Prod.mk.injEq, reduceCtorEq] at htyₘ
@@ -1104,11 +1105,11 @@ private theorem prim_value?_exists {p : TermPrim} {ty : Validation.CedarType} {�
   subst heq
   simp only [BitVec.int64?, ↓reduceIte, Option.some.injEq, exists_eq_left', exists_eq']
 
-private theorem wfl_isCedarRecordType_implies_attr_wfl_cedarType? {a : Attr} {t : Term} {r : List (Attr × Term)} {ty : Validation.CedarType} :
-  Term.WellFormed εs (Term.record (Map.mk r)) →
-  (Term.record (Map.mk r)).isLiteral →
-  (Term.record (Map.mk r)).typeOf.cedarType? = some ty →
-  (a, t) ∈ r →
+private theorem wfl_isCedarRecordType_implies_attr_wfl_cedarType? {a : Attr} {t : Term} {r : Map Attr Term} {ty : Validation.CedarType} :
+  Term.WellFormed εs (Term.record r) →
+  (Term.record r).isLiteral →
+  (Term.record r).typeOf.cedarType? = some ty →
+  (a, t) ∈ r.toList →
   ∃ (cty : Validation.CedarType),
     match t with
     | .none tty => tty.cedarType? = .some cty
@@ -1116,7 +1117,7 @@ private theorem wfl_isCedarRecordType_implies_attr_wfl_cedarType? {a : Attr} {t 
     | _         => t.WellFormedLiteral εs ∧ t.typeOf.cedarType? = .some cty
 := by
   intro hwf hlit hcty hin
-  have ⟨tty, cty, hcty', hty⟩ := typeOf_term_record_cedarType?_some_implies_attr_cedarType?_some hcty hin
+  have ⟨tty, cty, hcty', hty⟩ := typeOf_term_record_cedarType?_some_implies_attr_cedarType?_some (by cases hwf ; assumption) hcty hin
   have hwf' := wf_term_record_implies_wf_value hwf hin
   have hlit' := lit_term_record_implies_lit_value hlit hin
   exists cty
@@ -1177,8 +1178,7 @@ theorem term_value?_exists {t : Term} {ty : Validation.CedarType} {εs : SymEnti
     exists (Value.set (Set.make vs)), vs
     simp only [List.mapM₁_eq_mapM, ih, and_self]
   case record ats =>
-    cases ats ; rename_i ats
-    have ih : ∀ p, p ∈ ats → ∃ aov, Term.value?.attrValue? p.1 p.2 = some aov := by
+    have ih : ∀ p, p ∈ ats.toList → ∃ aov, Term.value?.attrValue? p.1 p.2 = some aov := by
       intro (a', t') hin
       have ⟨cty, ht⟩ := wfl_isCedarRecordType_implies_attr_wfl_cedarType? hwf hlit hcty hin
       split at ht
@@ -1193,29 +1193,23 @@ theorem term_value?_exists {t : Term} {ty : Validation.CedarType} {εs : SymEnti
     replace ⟨avs, ih⟩ := List.all_some_implies_mapM_some ih
     exists Value.record (Map.mk (List.filterMap (fun x => Option.map (Prod.mk x.fst) x.snd) avs))
     exists avs
-    simp only [List.mapM₂_eq_mapM λ (x : Attr × Term) => Term.value?.attrValue? x.fst x.snd,
-      ih, and_true]
+    simp only [List.mapM₂_eq_mapM λ (x : Attr × Term) => Term.value?.attrValue? x.fst x.snd, and_true]
+    simpa [Map.toList] using ih
 termination_by t
 decreasing_by
-  all_goals (simp_wf)
-  · rename_i h _ _ _ _ _ _ ; subst h
-    rename_i h ; subst h
-    simp only [Term.set.sizeOf_spec, Set.mk.sizeOf_spec]
-    have _ := List.sizeOf_lt_of_mem hin
+  all_goals simp_wf
+  · have _ := List.sizeOf_lt_of_mem hin
+    simp_all only [Term.set.sizeOf_spec, Set.mk.sizeOf_spec]
     omega
-  · rename_i h ; subst h
-    rename_i h _ _ _ ; subst h
-    rename_i h ; subst h
-    simp only [Term.record.sizeOf_spec, Map.mk.sizeOf_spec]
-    have hs := List.sizeOf_lt_of_mem hin
-    simp only [Prod.mk.sizeOf_spec, Term.some.sizeOf_spec] at hs
+  · subst_eqs
+    have hs := Map.sizeOf_lt_of_value hin
+    simp only [Map.mk_toList_id, Term.some.sizeOf_spec] at hs
+    simp only [Term.record.sizeOf_spec]
     omega
-  · rename_i h _ _ ; subst h
-    rename_i h _ _ _ _ _ ; subst h
-    rename_i h ; subst h
-    simp only [Term.record.sizeOf_spec, Map.mk.sizeOf_spec]
-    have hs := List.sizeOf_lt_of_mem hin
-    simp only [Prod.mk.sizeOf_spec] at hs
+  · subst_eqs
+    have hs := Map.sizeOf_lt_of_value hin
+    simp only [Map.mk_toList_id] at hs
+    simp only [Term.record.sizeOf_spec]
     omega
 
 end Cedar.Thm

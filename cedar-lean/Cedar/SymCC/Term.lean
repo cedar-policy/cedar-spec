@@ -83,8 +83,7 @@ def Term.typeOf : Term → TermType
   | .some t       => .option t.typeOf
   | .app _ _ ty   => ty
   | .set _ ty     => .set ty
-  | .record (Map.mk atrs) =>
-    .record (Map.mk (atrs.map₃ λ ⟨(a, t), _⟩ => (a, t.typeOf)))
+  | .record atrs  => .record (atrs.mapOnValues₂ λ ⟨t, _⟩ => t.typeOf)
 
 def Term.isLiteral : Term → Bool
   | .prim _
