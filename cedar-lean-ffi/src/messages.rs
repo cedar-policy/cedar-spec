@@ -774,7 +774,7 @@ mod test {
 
         let policyset_proto = check_policyset_proto.policy_set.unwrap();
         let rt_policyset =
-            PolicySet::try_from(&policyset_proto).expect("Failed to roundtrip policy");
+            PolicySet::try_from(policyset_proto).expect("Failed to roundtrip policy");
         let request_proto = check_policyset_proto.request.unwrap();
 
         assert_eq!(policyset, rt_policyset);
@@ -821,10 +821,10 @@ mod test {
 
         let src_policyset_proto = compare_policyset_proto.src_policy_set.unwrap();
         let rt_src_policyset =
-            PolicySet::try_from(&src_policyset_proto).expect("Failed to roundtrip policy");
+            PolicySet::try_from(src_policyset_proto).expect("Failed to roundtrip policy");
         let tgt_policyset_proto = compare_policyset_proto.tgt_policy_set.unwrap();
         let rt_tgt_policyset =
-            PolicySet::try_from(&tgt_policyset_proto).expect("Failed to roundtrip policy");
+            PolicySet::try_from(tgt_policyset_proto).expect("Failed to roundtrip policy");
         let request_proto = compare_policyset_proto.request.unwrap();
 
         assert_eq!(src_policyset, rt_src_policyset);
@@ -863,10 +863,10 @@ mod test {
             .expect("Failed to decode protobuf Authorization Request");
         assert_eq!(authorization_pre_proto, authorization_proto);
 
-        let rt_policyset = PolicySet::try_from(&authorization_proto.policies.unwrap())
+        let rt_policyset = PolicySet::try_from(authorization_proto.policies.unwrap())
             .expect("Failed to round-trip policies");
-        let rt_entities = Entities::from(&authorization_proto.entities.unwrap());
-        let rt_request = Request::from(&authorization_proto.request.unwrap());
+        let rt_entities = Entities::from(authorization_proto.entities.unwrap());
+        let rt_request = Request::from(authorization_proto.request.unwrap());
 
         assert_eq!(policyset, rt_policyset);
         assert_eq!(entities, rt_entities);
@@ -931,9 +931,9 @@ mod test {
                 .expect("Failed to decode protobuf validation request");
         assert_eq!(validation_request_pre_proto, validation_request_proto);
 
-        let rt_pset = PolicySet::try_from(&validation_request_proto.policies.unwrap())
+        let rt_pset = PolicySet::try_from(validation_request_proto.policies.unwrap())
             .expect("Failed to roundtrip PolicySet");
-        let rt_schema = Schema::from(&validation_request_proto.schema.unwrap());
+        let rt_schema = Schema::from(validation_request_proto.schema.unwrap());
 
         assert_eq!(policyset, rt_pset);
 
@@ -968,9 +968,9 @@ mod test {
                 .expect("Failed to decode protobuf level validation request");
         assert_eq!(validation_request_pre_proto, validation_request_proto);
 
-        let rt_pset = PolicySet::try_from(&validation_request_proto.policies.unwrap())
+        let rt_pset = PolicySet::try_from(validation_request_proto.policies.unwrap())
             .expect("Failed to roundtrip PolicySet");
-        let rt_schema = Schema::from(&validation_request_proto.schema.unwrap());
+        let rt_schema = Schema::from(validation_request_proto.schema.unwrap());
 
         assert_eq!(policyset, rt_pset);
 
@@ -1002,8 +1002,8 @@ mod test {
                 .expect("Failed to decode protobuf entity validation request");
         assert_eq!(validation_request_pre_proto, validation_request_proto);
 
-        let rt_schema = Schema::from(&validation_request_proto.schema.unwrap());
-        let rt_entities = Entities::from(&validation_request_proto.entities.unwrap());
+        let rt_schema = Schema::from(validation_request_proto.schema.unwrap());
+        let rt_entities = Entities::from(validation_request_proto.entities.unwrap());
 
         // Need to collect into a collection that is either unordered or is first sorted
         assert_eq!(
@@ -1038,8 +1038,8 @@ mod test {
                 .expect("Failed to decode protobuf request validation request");
         assert_eq!(validation_request_pre_proto, validation_request_proto);
 
-        let rt_schema = Schema::from(&validation_request_proto.schema.unwrap());
-        let rt_request = Request::from(&validation_request_proto.request.unwrap());
+        let rt_schema = Schema::from(validation_request_proto.schema.unwrap());
+        let rt_request = Request::from(validation_request_proto.request.unwrap());
 
         // Need to collect into a collection that is either unordered or is first sorted
         assert_eq!(
