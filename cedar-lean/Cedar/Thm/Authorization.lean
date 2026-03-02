@@ -273,4 +273,40 @@ theorem determining_erroring_disjoint_when_unique_ids (request : Request) (entit
   have : ¬satisfied _ request entities := l₁ _ h₂
   contradiction
 
+theorem satisfied_policy_iff_has_satisfied_effect {effect : Effect} {request : Request} {entities : Entities} {policies : Policies} :
+  HasSatisfiedEffect effect request entities policies ↔ (satisfiedPolicy? effect policies request entities).isSome
+:= by
+  rw [satisfied_iff_satisfiedPolicies_non_empty]
+  unfold satisfiedPolicies satisfiedPolicy?
+  simp only [Bool.eq_false_iff, Set.non_empty_iff_exists]
+  simp [exists_comm, ←Option.isSome_iff_exists, List.findSome?_isSome_iff, ←Set.make_mem]
+
+theorem satisfied_permit_iff_explicitly_permitted {request : Request} {entities : Entities} {policies : Policies} :
+  IsExplicitlyPermitted request entities policies ↔ (satisfiedPolicy? .permit policies request entities).isSome
+:= satisfied_policy_iff_has_satisfied_effect
+
+theorem satisfied_forbid_iff_explicitly_forbidden {request : Request} {entities : Entities} {policies : Policies} :
+  IsExplicitlyForbidden request entities policies ↔ (satisfiedPolicy? .forbid policies request entities).isSome
+:= satisfied_policy_iff_has_satisfied_effect
+
+theorem short_circuit_authorization_decision_eq (request : Request) (entities : Entities) (policies : Policies) :
+  (isAuthorized request entities policies).decision = isAuthorizedShortCircuit request entities policies
+:= by
+  cases h_auth : (isAuthorized request entities policies).decision
+  case allow =>
+    have h_auth' := allowed_iff_explicitly_permitted_and_not_denied request entities policies
+    rw [satisfied_forbid_iff_explicitly_forbidden] at h_auth'
+    rw [satisfied_permit_iff_explicitly_permitted] at h_auth'
+    rw [←h_auth'] at h_auth
+    simp [isAuthorizedShortCircuit, h_auth]
+  case deny =>
+    have h_auth' := denied_iff_explicitly_denied_or_not_permitted request entities policies
+    rw [satisfied_forbid_iff_explicitly_forbidden] at h_auth'
+    rw [satisfied_permit_iff_explicitly_permitted] at h_auth'
+    rw [←h_auth'] at h_auth
+    cases h_auth
+    all_goals
+      rename_i h_auth
+      simp [isAuthorizedShortCircuit, h_auth]
+
 end Cedar.Thm

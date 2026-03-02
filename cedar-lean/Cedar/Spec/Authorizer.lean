@@ -61,4 +61,25 @@ public def isAuthorized (req : Request) (entities : Entities) (policies : Polici
   then { decision := .allow, determiningPolicies := permits, erroringPolicies }
   else { decision := .deny,  determiningPolicies := forbids, erroringPolicies }
 
+public def satisfiedPolicy? (effect : Effect) (policies : Policies) (req : Request) (entities : Entities) : Option PolicyID :=
+  policies.findSome? (satisfiedWithEffect effect · req entities)
+
+/--
+  An alternative short-circuiting authorization algorithm. While the standard
+  authorization algorithm always evaluates all policies to return the complete
+  sets of determining and erroring policies, some use cases may only needs the
+  `allow` or `deny` decision. In this case we can stop after satisfying a single
+  forbid policy, or after ensuring no forbid policies apply and satisfying a
+  single permit policy.
+-/
+public def isAuthorizedShortCircuit (req : Request) (entities : Entities) (policies : Policies) : Decision :=
+  let forbid := satisfiedPolicy? .forbid policies req entities
+  if forbid.isSome
+  then .deny
+  else
+    let permit := satisfiedPolicy? .permit policies req entities
+    if permit.isSome
+    then .allow
+    else .deny
+
 end Cedar.Spec
