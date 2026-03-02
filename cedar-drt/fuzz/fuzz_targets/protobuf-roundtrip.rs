@@ -97,8 +97,8 @@ fn roundtrip_policies(policies: PolicySet) {
     let buf = policies_proto.encode_to_vec();
     let roundtripped_proto = proto::models::PolicySet::decode(&buf[..])
         .expect("Failed to deserialize PolicySet from proto");
-    let roundtripped = PolicySet::try_from(roundtripped_proto)
-        .expect("Failed to convert from proto to PolicySet");
+    let roundtripped =
+        PolicySet::try_from(roundtripped_proto).expect("Failed to convert from proto to PolicySet");
     assert_eq!(policies, roundtripped);
 }
 
