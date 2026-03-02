@@ -14,7 +14,10 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
+module
+
+public import Cedar.Data
+public import Cedar.Spec
 import Cedar.Thm.Data
 
 namespace Cedar.Validation
@@ -23,51 +26,54 @@ open Cedar.Spec
 
 ----- Definitions -----
 
-inductive BoolType where
+public inductive BoolType where
   | anyBool
   | tt
   | ff
 deriving Repr
 
-def BoolType.not : BoolType → BoolType
+@[expose]
+public def BoolType.not : BoolType → BoolType
   | .anyBool => .anyBool
   | .tt => .ff
   | .ff => .tt
 
-def BoolType.lift : BoolType → BoolType
+public def BoolType.lift : BoolType → BoolType
   | _ => .anyBool
 
-inductive ExtType where
+public inductive ExtType where
   | ipAddr
   | decimal
   | datetime
   | duration
 deriving Repr
 
-inductive Qualified (α : Type u) where
+public inductive Qualified (α : Type u) where
   | optional (a : α)
   | required (a : α)
 deriving Repr
 
 namespace Qualified
 
-instance [Inhabited α] : Inhabited (Qualified α) where
+public instance [Inhabited α] : Inhabited (Qualified α) where
   default := .required default
 
-def getType {α} : Qualified α → α
+@[expose]
+public def getType {α} : Qualified α → α
   | optional a => a
   | required a => a
 
-def isRequired {α} : Qualified α → Bool
+@[expose]
+public def isRequired {α} : Qualified α → Bool
   | optional _ => false
   | required _ => true
 
 -- effectively making Qualified a functor
-def map {α β} (f : α → β) : Qualified α → Qualified β
+public def map {α β} (f : α → β) : Qualified α → Qualified β
   | optional a => optional (f a)
   | required a => required (f a)
 
-def transpose {α ε} : Qualified (Except ε α) → Except ε (Qualified α)
+public def transpose {α ε} : Qualified (Except ε α) → Except ε (Qualified α)
   | optional (.ok a) => .ok (optional a)
   | required (.ok a) => .ok (required a)
   | optional (.error e) => .error e
@@ -75,7 +81,7 @@ def transpose {α ε} : Qualified (Except ε α) → Except ε (Qualified α)
 
 end Qualified
 
-inductive CedarType where
+public inductive CedarType where
   | bool (bty : BoolType)
   | int
   | string
@@ -85,122 +91,122 @@ inductive CedarType where
   | ext (xty : ExtType)
 deriving Repr
 
-instance : Inhabited CedarType where
+public instance : Inhabited CedarType where
   default := .int
 
-abbrev QualifiedType := Qualified CedarType
+public abbrev QualifiedType := Qualified CedarType
 
-abbrev RecordType := Map Attr QualifiedType
+public abbrev RecordType := Map Attr QualifiedType
 
 mutual
-def QualifiedType.liftBoolTypes : QualifiedType → QualifiedType
+public def QualifiedType.liftBoolTypes : QualifiedType → QualifiedType
   | .optional ty => .optional ty.liftBoolTypes
   | .required ty => .required ty.liftBoolTypes
 
-def RecordType.liftBoolTypes : RecordType → RecordType
+public def RecordType.liftBoolTypes : RecordType → RecordType
   | rty => rty.mapOnValues₂ λ ⟨v, _⟩ => v.liftBoolTypes
 
-def CedarType.liftBoolTypes : CedarType → CedarType
+public def CedarType.liftBoolTypes : CedarType → CedarType
   | .bool bty => .bool bty.lift
   | .set s => .set s.liftBoolTypes
   | .record rty => .record (RecordType.liftBoolTypes rty)
   | ty => ty
 end
 
-structure StandardSchemaEntry where
+public structure StandardSchemaEntry where
   ancestors : Cedar.Data.Set EntityType
   attrs : RecordType
   tags : Option CedarType
 
-inductive EntitySchemaEntry where
+public inductive EntitySchemaEntry where
   | standard (ty: StandardSchemaEntry)
   | enum (eids: Set String)
 
-def EntitySchemaEntry.isValidEntityEID (entry: EntitySchemaEntry) (eid: String): Bool :=
+public def EntitySchemaEntry.isValidEntityEID (entry: EntitySchemaEntry) (eid: String): Bool :=
   match entry with
   | .standard _ => true
   | .enum eids => eids.contains eid
 
-def EntitySchemaEntry.tags? : EntitySchemaEntry → Option CedarType
+public def EntitySchemaEntry.tags? : EntitySchemaEntry → Option CedarType
   | .standard ty => ty.tags
   | .enum _ => none
 
-def EntitySchemaEntry.attrs : EntitySchemaEntry → RecordType
+public def EntitySchemaEntry.attrs : EntitySchemaEntry → RecordType
   | .standard ty => ty.attrs
   | .enum _ => Map.empty
 
-def EntitySchemaEntry.ancestors : EntitySchemaEntry → Set EntityType
+public def EntitySchemaEntry.ancestors : EntitySchemaEntry → Set EntityType
   | .standard ty => ty.ancestors
   | .enum _ => Set.empty
 
-def EntitySchemaEntry.isStandard : EntitySchemaEntry → Bool
+public def EntitySchemaEntry.isStandard : EntitySchemaEntry → Bool
   | .standard _ => true
   | .enum _     => false
 
-abbrev EntitySchema := Map EntityType EntitySchemaEntry
+public abbrev EntitySchema := Map EntityType EntitySchemaEntry
 
-def EntitySchema.entityTypeMembers? (ets: EntitySchema) (et: EntityType) : Option (Set String) :=
+public def EntitySchema.entityTypeMembers? (ets: EntitySchema) (et: EntityType) : Option (Set String) :=
   match ets.find? et with
   | .some (.enum eids) => .some eids
   | _ => .none
 
-def EntitySchema.isValidEntityUID (ets : EntitySchema) (uid : EntityUID) : Bool :=
+public def EntitySchema.isValidEntityUID (ets : EntitySchema) (uid : EntityUID) : Bool :=
   match ets.find? uid.ty with
   | .some entry => entry.isValidEntityEID uid.eid
   | .none   => false
 
-def EntitySchema.contains (ets : EntitySchema) (ety : EntityType) : Bool :=
+public def EntitySchema.contains (ets : EntitySchema) (ety : EntityType) : Bool :=
   (ets.find? ety).isSome
 
-def EntitySchema.attrs? (ets : EntitySchema) (ety : EntityType) : Option RecordType :=
+public def EntitySchema.attrs? (ets : EntitySchema) (ety : EntityType) : Option RecordType :=
   (ets.find? ety).map EntitySchemaEntry.attrs
 
-def EntitySchema.tags? (ets : EntitySchema) (ety : EntityType) : Option (Option CedarType) :=
+public def EntitySchema.tags? (ets : EntitySchema) (ety : EntityType) : Option (Option CedarType) :=
   (ets.find? ety).map EntitySchemaEntry.tags?
 
-structure ActionSchemaEntry where
+public structure ActionSchemaEntry where
   appliesToPrincipal : Set EntityType
   appliesToResource : Set EntityType
   ancestors : Set EntityUID
   context : RecordType
 deriving Repr, Inhabited
 
-abbrev ActionSchema := Map EntityUID ActionSchemaEntry
+public abbrev ActionSchema := Map EntityUID ActionSchemaEntry
 
-def ActionSchema.actionType? (acts: ActionSchema) (ety : EntityType) : Bool :=
+public def ActionSchema.actionType? (acts: ActionSchema) (ety : EntityType) : Bool :=
   acts.keys.any (EntityUID.ty · == ety)
 
-def ActionSchema.contains (as : ActionSchema) (uid : EntityUID) : Bool :=
+public def ActionSchema.contains (as : ActionSchema) (uid : EntityUID) : Bool :=
   (as.find? uid).isSome
 
-def ActionSchema.descendentOf (as : ActionSchema)  (uid₁ uid₂ : EntityUID) : Bool :=
+public def ActionSchema.descendentOf (as : ActionSchema)  (uid₁ uid₂ : EntityUID) : Bool :=
   if uid₁ == uid₂
   then true
   else match as.find? uid₁ with
     | .some entry => entry.ancestors.contains uid₂
     | .none => false
 
-structure Schema where
+public structure Schema where
   ets : EntitySchema
   acts : ActionSchema
 
-structure RequestType where
+public structure RequestType where
   principal : EntityType
   action : EntityUID
   resource : EntityType
   context : RecordType
 deriving Inhabited
 
-structure TypeEnv where
+public structure TypeEnv where
   ets : EntitySchema
   acts : ActionSchema
   reqty : RequestType
 deriving Inhabited
 
-def ActionSchema.maybeDescendentOf (as : ActionSchema) (ety₁ ety₂ : EntityType) : Bool :=
+public def ActionSchema.maybeDescendentOf (as : ActionSchema) (ety₁ ety₂ : EntityType) : Bool :=
   as.toList.any λ (act, entry) => act.ty = ety₁ && entry.ancestors.any (EntityUID.ty · == ety₂)
 
-def TypeEnv.descendentOf (env : TypeEnv) (ety₁ ety₂ : EntityType) : Bool :=
+public def TypeEnv.descendentOf (env : TypeEnv) (ety₁ ety₂ : EntityType) : Bool :=
   if ety₁ = ety₂
   then true
   else match env.ets.find? ety₁ with
@@ -220,7 +226,7 @@ deriving instance Repr for Schema
 
 mutual
 
-def decCedarType (a b : CedarType) : Decidable (a = b) := by
+public def decCedarType (a b : CedarType) : Decidable (a = b) := by
   cases a <;> cases b
   case string.string => apply isTrue (by rfl)
   case int.int => apply isTrue (by rfl)
@@ -287,11 +293,11 @@ def decAttrQualifiedCedarTypeMap (as bs : Map Attr QualifiedType) : Decidable (a
 
 end
 
-instance : DecidableEq CedarType := decCedarType
+public instance : DecidableEq CedarType := decCedarType
 
 deriving instance DecidableEq for StandardSchemaEntry
 
-def decEntitySchemaEntry (e₁ e₂: EntitySchemaEntry) : Decidable (e₁ = e₂) := by
+public def decEntitySchemaEntry (e₁ e₂: EntitySchemaEntry) : Decidable (e₁ = e₂) := by
   cases e₁ <;> cases e₂
   case standard.standard t₁ t₂ =>
     exact match decEq t₁ t₂ with
@@ -307,6 +313,6 @@ def decEntitySchemaEntry (e₁ e₂: EntitySchemaEntry) : Decidable (e₁ = e₂
     injection h
   }
 
-instance : DecidableEq EntitySchemaEntry := decEntitySchemaEntry
+public instance : DecidableEq EntitySchemaEntry := decEntitySchemaEntry
 
 end Cedar.Validation

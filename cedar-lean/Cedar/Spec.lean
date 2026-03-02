@@ -14,15 +14,17 @@
  limitations under the License.
 -/
 
-import Cedar.Spec.Authorizer
-import Cedar.Spec.Entities
-import Cedar.Spec.Evaluator
-import Cedar.Spec.Expr
-import Cedar.Spec.Ext
-import Cedar.Spec.Policy
-import Cedar.Spec.Request
-import Cedar.Spec.Response
-import Cedar.Spec.Slice
-import Cedar.Spec.Template
-import Cedar.Spec.Value
-import Cedar.Spec.Wildcard
+module
+
+public import Cedar.Spec.Authorizer
+public import Cedar.Spec.Entities
+public import Cedar.Spec.Evaluator
+public import Cedar.Spec.Expr
+public import Cedar.Spec.Ext
+public import Cedar.Spec.Policy
+public import Cedar.Spec.Request
+public import Cedar.Spec.Response
+public import Cedar.Spec.Slice
+public import Cedar.Spec.Template
+public import Cedar.Spec.Value
+public import Cedar.Spec.Wildcard

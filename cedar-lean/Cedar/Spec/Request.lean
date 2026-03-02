@@ -14,8 +14,10 @@
  limitations under the License.
 -/
 
-import Cedar.Data.Map
-import Cedar.Spec.Value
+module
+
+public import Cedar.Data.Map
+public import Cedar.Spec.Value
 
 /-!
 This file defines Cedar requests.
@@ -25,7 +27,7 @@ namespace Cedar.Spec
 
 open Cedar.Data
 
-structure Request where
+public structure Request where
   principal : EntityUID
   action : EntityUID
   resource : EntityUID

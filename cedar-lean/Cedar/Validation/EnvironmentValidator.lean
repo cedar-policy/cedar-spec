@@ -14,8 +14,12 @@
  limitations under the License.
 -/
 
-import Cedar.Validation.Validator
-import Cedar.Validation.Typechecker
+module
+
+import Cedar.Data.SizeOf
+import Cedar.Thm.Data.Map -- `Map.toList_mk_id` needed for a termination proof
+public import Cedar.Validation.Validator
+public import Cedar.Validation.Typechecker
 
 /-!
 This file contains the executable version of `TypeEnv.WellFormed`
@@ -28,36 +32,39 @@ open Cedar.Data
 open Cedar.Validation
 open Cedar.Spec
 
-inductive EnvironmentValidationError where
+public inductive EnvironmentValidationError where
 | typeError (msg : String)
 
-instance : ToString EnvironmentValidationError where
+public instance : ToString EnvironmentValidationError where
   toString err :=
     match err with
     | .typeError msg => s!"type error: {msg}"
 
-abbrev EnvironmentValidationResult := Except EnvironmentValidationError Unit
+public abbrev EnvironmentValidationResult := Except EnvironmentValidationError Unit
 
-def EntityType.validateWellFormed (env : TypeEnv) (ety : EntityType) : EnvironmentValidationResult :=
+public def EntityType.validateWellFormed (env : TypeEnv) (ety : EntityType) : EnvironmentValidationResult :=
   if env.ets.contains ety then .ok ()
   else if env.acts.toList.any λ (uid, _) => uid.ty == ety then .ok ()
   else .error (.typeError s!"entity type {ety} is not defined in the schema")
 
 mutual
 
-def QualifiedType.validateWellFormed (env : TypeEnv) (qty : QualifiedType) : EnvironmentValidationResult :=
+public def QualifiedType.validateWellFormed (env : TypeEnv) (qty : QualifiedType) : EnvironmentValidationResult :=
   match qty with
   | .optional ty => ty.validateWellFormed env
   | .required ty => ty.validateWellFormed env
+termination_by sizeOf qty
 
-def validateAttrsWellFormed (env : TypeEnv) (rty : List (Attr × QualifiedType)) : EnvironmentValidationResult :=
+@[expose]
+public def validateAttrsWellFormed (env : TypeEnv) (rty : List (Attr × QualifiedType)) : EnvironmentValidationResult :=
   match rty with
   | [] => .ok ()
   | (_, qty) :: rest => do
     qty.validateWellFormed env
     validateAttrsWellFormed env rest
+termination_by sizeOf rty
 
-def CedarType.validateWellFormed (env : TypeEnv) (ty : CedarType) : EnvironmentValidationResult :=
+public def CedarType.validateWellFormed (env : TypeEnv) (ty : CedarType) : EnvironmentValidationResult :=
   match ty with
   | .bool _ => .ok ()
   | .int => .ok ()
@@ -70,10 +77,15 @@ def CedarType.validateWellFormed (env : TypeEnv) (ty : CedarType) : EnvironmentV
     -- Check each attribute type
     validateAttrsWellFormed env rty.toList
   | .ext _ => .ok ()
+termination_by sizeOf ty
+decreasing_by
+  all_goals simp_wf
+  · have := Map.sizeOf_lt_of_toList rty
+    omega
 
 end
 
-def CedarType.validateLifted (ty : CedarType) : EnvironmentValidationResult :=
+public def CedarType.validateLifted (ty : CedarType) : EnvironmentValidationResult :=
   match ty with
   | .bool .anyBool => .ok ()
   | .bool _ => .error (.typeError s!"bool type is not lifted")
@@ -94,10 +106,11 @@ decreasing_by
     rename_i hmem
     have h := List.sizeOf_lt_of_mem hmem
     cases rty
-    simp at h ⊢
+    simp only [Prod.mk.sizeOf_spec, Qualified.optional.sizeOf_spec, Qualified.required.sizeOf_spec,
+      Map.toList_mk_id, Map.mk.sizeOf_spec, gt_iff_lt] at h ⊢
     omega
 
-def StandardSchemaEntry.validateWellFormed (env : TypeEnv) (entry : StandardSchemaEntry) : EnvironmentValidationResult :=
+public def StandardSchemaEntry.validateWellFormed (env : TypeEnv) (entry : StandardSchemaEntry) : EnvironmentValidationResult :=
   do
     if entry.ancestors.wellFormed then .ok ()
     else .error (.typeError s!"ancestors set is not well-formed")
@@ -118,7 +131,7 @@ def StandardSchemaEntry.validateWellFormed (env : TypeEnv) (entry : StandardSche
       ty.validateLifted
     | .none => .ok ()
 
-def EntitySchemaEntry.validateWellFormed (env : TypeEnv) (entry : EntitySchemaEntry) : EnvironmentValidationResult :=
+public def EntitySchemaEntry.validateWellFormed (env : TypeEnv) (entry : EntitySchemaEntry) : EnvironmentValidationResult :=
   match entry with
   | .standard entry => entry.validateWellFormed env
   | .enum es => do
@@ -127,14 +140,14 @@ def EntitySchemaEntry.validateWellFormed (env : TypeEnv) (entry : EntitySchemaEn
     if es.isEmpty then .error (.typeError s!"enum entity is empty")
     else .ok ()
 
-def EntitySchema.validateWellFormed (env : TypeEnv) (ets : EntitySchema) : EnvironmentValidationResult :=
+public def EntitySchema.validateWellFormed (env : TypeEnv) (ets : EntitySchema) : EnvironmentValidationResult :=
   do
     if Map.wellFormed ets then .ok ()
     else .error (.typeError s!"entity schema is not a well-formed map")
     ets.toList.forM λ (_, entry) =>
       entry.validateWellFormed env
 
-def ActionSchemaEntry.validateWellFormed (env : TypeEnv) (entry : ActionSchemaEntry) : EnvironmentValidationResult :=
+public def ActionSchemaEntry.validateWellFormed (env : TypeEnv) (entry : ActionSchemaEntry) : EnvironmentValidationResult :=
   do
     if entry.appliesToPrincipal.wellFormed then .ok ()
     else .error (.typeError s!"appliesToPrincipal set is not well-formed")
@@ -153,13 +166,13 @@ def ActionSchemaEntry.validateWellFormed (env : TypeEnv) (entry : ActionSchemaEn
     (CedarType.record entry.context).validateWellFormed env
     (CedarType.record entry.context).validateLifted
 
-def ActionSchema.validateAcyclicActionHierarchy (acts : ActionSchema) : EnvironmentValidationResult :=
+public def ActionSchema.validateAcyclicActionHierarchy (acts : ActionSchema) : EnvironmentValidationResult :=
   acts.toList.forM λ (uid, entry) => do
     if entry.ancestors.contains uid then
       .error (.typeError s!"action hierarchy is cyclic at {uid}")
     else .ok ()
 
-def ActionSchema.validateTransitiveActionHierarchy (acts : ActionSchema) : EnvironmentValidationResult :=
+public def ActionSchema.validateTransitiveActionHierarchy (acts : ActionSchema) : EnvironmentValidationResult :=
   acts.toList.forM λ (uid₁, entry₁) => do
     acts.toList.forM λ (uid₂, entry₂) => do
       if entry₁.ancestors.contains uid₂ then
@@ -168,7 +181,7 @@ def ActionSchema.validateTransitiveActionHierarchy (acts : ActionSchema) : Envir
           .error (.typeError s!"action hierarchy is not transitive from {uid₁} to {uid₂}")
       else .ok ()
 
-def ActionSchema.validateWellFormed (env : TypeEnv) (acts : ActionSchema) : EnvironmentValidationResult :=
+public def ActionSchema.validateWellFormed (env : TypeEnv) (acts : ActionSchema) : EnvironmentValidationResult :=
   do
     if Map.wellFormed acts then .ok ()
     else
@@ -181,7 +194,7 @@ def ActionSchema.validateWellFormed (env : TypeEnv) (acts : ActionSchema) : Envi
     acts.validateAcyclicActionHierarchy
     acts.validateTransitiveActionHierarchy
 
-def RequestType.validateWellFormed (env : TypeEnv) (reqty : RequestType) : EnvironmentValidationResult :=
+public def RequestType.validateWellFormed (env : TypeEnv) (reqty : RequestType) : EnvironmentValidationResult :=
   match env.acts.find? reqty.action with
   | some entry => do
     if entry.appliesToPrincipal.contains reqty.principal then .ok ()
@@ -195,14 +208,14 @@ def RequestType.validateWellFormed (env : TypeEnv) (reqty : RequestType) : Envir
       .error (.typeError s!"action {reqty.action} context type does not match schema")
   | none => .error (.typeError s!"action {reqty.action} does not exist in schema")
 
-def TypeEnv.validateWellFormed (env : TypeEnv) : EnvironmentValidationResult := do
+public def TypeEnv.validateWellFormed (env : TypeEnv) : EnvironmentValidationResult := do
   env.ets.validateWellFormed env
   env.acts.validateWellFormed env
   env.reqty.validateWellFormed env
 
 -- TODO: Can be optimized, as `TypeEnv.validateWellFormed`
 --       mostly only depends on the schema part of the environment.
-def Schema.validateWellFormed (schema : Schema) : EnvironmentValidationResult :=
+public def Schema.validateWellFormed (schema : Schema) : EnvironmentValidationResult :=
   schema.environments.forM TypeEnv.validateWellFormed
 
 end Cedar.Validation

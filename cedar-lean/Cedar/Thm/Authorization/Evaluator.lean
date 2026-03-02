@@ -254,16 +254,18 @@ theorem record_value_contains_evaluated_attrs {rxs : List (Attr × Expr)} {rvs :
     simp only [pure, Except.pure, Except.ok.injEq] at h
     simp only [←h, and_self]
   replace he₁ := List.canonicalize_preserves_forallᵥ _ _ _ he₁
-  have hfv : List.find? (λ x => x.fst == a) (List.canonicalize Prod.fst rvs') = some (a, av) := by
+  have hfv : List.find? (λ x => x.fst == a) (Map.make rvs').toList = some (a, av) := by
     simp only [Map.find?] at hfv
     split at hfv <;> simp only [Option.some.injEq, reduceCtorEq] at hfv
     subst hfv
     rename_i a' _ hfv
     rw [(by simpa using List.find?_some hfv : a' = a)] at hfv
     exact hfv
-  have ⟨(a', x), he₂, he₃, he₄⟩ := List.forall₂_implies_all_right he₁ (a, av) (List.mem_of_find?_eq_some hfv)
-  subst he₃
+  rw [List.forallᵥ_def] at he₁
+  rw [Map.toList_make_eq_canonicalize] at hfv
+  have ⟨(a', x), he₂, he₃⟩ := List.forall₂_implies_all_right he₁ (a, av) (List.mem_of_find?_eq_some hfv)
+  simp only at he₃ ; replace ⟨_, he₃⟩ := he₃ ; subst a'
   exists x
-  simp [List.mem_of_sortedBy_implies_find? he₂ (List.canonicalize_sortedBy _ _), he₄, Map.make, Map.find?, and_self]
+  simp [Map.find?, Map.toList_make_eq_canonicalize, List.mem_of_sortedBy_implies_find? he₂ (List.canonicalize_sortedBy _ _), he₃]
 
 end Cedar.Thm

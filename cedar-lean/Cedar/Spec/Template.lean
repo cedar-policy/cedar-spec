@@ -14,7 +14,9 @@
  limitations under the License.
 -/
 
-import Cedar.Spec.Policy
+module
+
+public import Cedar.Spec.Policy
 
 /-!
   This file defines abstract syntax for Cedar policy templates. In general,
@@ -29,14 +31,14 @@ open Cedar.Data
 
 ----- Definitions -----
 
-abbrev SlotID := String
+public abbrev SlotID := String
 
-inductive EntityUIDOrSlot where
+public inductive EntityUIDOrSlot where
   | entityUID (entity : EntityUID)
   | slot (id : SlotID)
 deriving Repr, DecidableEq
 
-inductive ScopeTemplate where
+public inductive ScopeTemplate where
   | any
   | eq (entityOrSlot : EntityUIDOrSlot)
   | mem (entityOrSlot : EntityUIDOrSlot)
@@ -44,17 +46,17 @@ inductive ScopeTemplate where
   | isMem (ety : EntityType) (entityOrSlot : EntityUIDOrSlot)
 deriving Repr, DecidableEq
 
-inductive PrincipalScopeTemplate where
+public inductive PrincipalScopeTemplate where
   | principalScope (scope : ScopeTemplate)
 deriving Repr, DecidableEq
 
-inductive ResourceScopeTemplate where
+public inductive ResourceScopeTemplate where
   | resourceScope (scope : ScopeTemplate)
 deriving Repr, DecidableEq
 
-abbrev TemplateID := String
+public abbrev TemplateID := String
 
-structure Template where
+public structure Template where
   effect : Effect
   principalScope : PrincipalScopeTemplate
   actionScope : ActionScope
@@ -62,13 +64,13 @@ structure Template where
   condition : Conditions
 deriving Repr, DecidableEq
 
-abbrev Templates := Map TemplateID Template
+public abbrev Templates := Map TemplateID Template
 
-abbrev SlotEnv := Map SlotID EntityUID
+public abbrev SlotEnv := Map SlotID EntityUID
 
-def SlotEnv.empty : SlotEnv := Map.empty
+public def SlotEnv.empty : SlotEnv := Map.empty
 
-structure TemplateLinkedPolicy where
+public structure TemplateLinkedPolicy where
   /-- ID of the link, which for static policies will match the `templateId` -/
   id : PolicyID
   /-- ID of the template, which for static policies will match the `id` -/
@@ -76,7 +78,7 @@ structure TemplateLinkedPolicy where
   slotEnv : SlotEnv
 deriving Repr
 
-abbrev TemplateLinkedPolicies := List TemplateLinkedPolicy
+public abbrev TemplateLinkedPolicies := List TemplateLinkedPolicy
 
 def EntityUIDOrSlot.link? (slotEnv : SlotEnv) : EntityUIDOrSlot → Except String EntityUID
   | entityUID entity => .ok entity
@@ -105,7 +107,7 @@ def ResourceScopeTemplate.link? (slotEnv : SlotEnv) : ResourceScopeTemplate → 
     let s ← s.link? slotEnv
     .ok (.resourceScope s)
 
-def Template.link? (template : Template) (id : PolicyID) (slotEnv : SlotEnv) : Except String Policy := do
+public def Template.link? (template : Template) (id : PolicyID) (slotEnv : SlotEnv) : Except String Policy := do
   let principalScope ← template.principalScope.link? slotEnv
   let resourceScope ← template.resourceScope.link? slotEnv
   .ok {
@@ -121,7 +123,7 @@ def linkPolicy? (templates : Templates) (link : TemplateLinkedPolicy) : Except S
   let template ← templates.findOrErr link.templateId s!"templateId {link.templateId} not found"
   template.link? link.id link.slotEnv
 
-def link? (templates : Templates) (links : TemplateLinkedPolicies) : Except String Policies :=
+public def link? (templates : Templates) (links : TemplateLinkedPolicies) : Except String Policies :=
   links.mapM (linkPolicy? templates)
 
 end Cedar.Spec

@@ -14,7 +14,9 @@
  limitations under the License.
 -/
 
-import Cedar.Data.LT
+module
+
+public import Cedar.Data.LT
 
 /-!
 This file defines a signed 64-bit integer datatype similar to Rust's `i64`
@@ -23,28 +25,30 @@ by adding checked arithmetic operations to Lean's Int64 datatype.
 
 namespace Int64
 
-def MIN : Int := -9223372036854775808
-def MAX : Int :=  9223372036854775807
+@[expose]
+public def MIN : Int := -9223372036854775808
+@[expose]
+public def MAX : Int :=  9223372036854775807
 
 ----- Definitions -----
 
-def ofIntChecked (i : Int) (_ : MIN ≤ i ∧ i ≤ MAX) : Int64 :=
+public def ofIntChecked (i : Int) (_ : MIN ≤ i ∧ i ≤ MAX) : Int64 :=
   Int64.ofInt i
 
-def ofInt? (i : Int) : Option Int64 :=
+public def ofInt? (i : Int) : Option Int64 :=
   if h : MIN ≤ i ∧ i ≤ MAX
   then .some (ofIntChecked i h)
   else .none
 
-def add? (i₁ i₂ : Int64) : Option Int64 := ofInt? (i₁.toInt + i₂.toInt)
+public def add? (i₁ i₂ : Int64) : Option Int64 := ofInt? (i₁.toInt + i₂.toInt)
 
-def sub? (i₁ i₂ : Int64) : Option Int64 := ofInt? (i₁.toInt - i₂.toInt)
+public def sub? (i₁ i₂ : Int64) : Option Int64 := ofInt? (i₁.toInt - i₂.toInt)
 
-def mul? (i₁ i₂ : Int64) : Option Int64 := ofInt? (i₁.toInt * i₂.toInt)
+public def mul? (i₁ i₂ : Int64) : Option Int64 := ofInt? (i₁.toInt * i₂.toInt)
 
-def neg? (i₁ : Int64) : Option Int64 := ofInt? (- i₁.toInt)
+public def neg? (i₁ : Int64) : Option Int64 := ofInt? (- i₁.toInt)
 
-def natAbs (i₁ : Int64) : Nat := i₁.toInt.natAbs
+public def natAbs (i₁ : Int64) : Nat := i₁.toInt.natAbs
 
 ----- Derivations -----
 
@@ -64,7 +68,7 @@ theorem le_def_toInt {i₁ i₂ : Int64} : i₁ ≤ i₂ ↔ i₁.toInt ≤ i₂
 
 deriving instance Repr for Int64
 
-instance strictLT : Cedar.Data.StrictLT Int64 where
+public instance strictLT : Cedar.Data.StrictLT Int64 where
   asymmetric a b   := by
     simp [Int64.lt_def_toInt]
     omega
@@ -75,7 +79,7 @@ instance strictLT : Cedar.Data.StrictLT Int64 where
     simp [Int64.lt_def_toInt, Int64.ext_iff]
     omega
 
-instance : Coe Int64 Int where
+public instance : Coe Int64 Int where
   coe i := i.toInt
 
 end Int64

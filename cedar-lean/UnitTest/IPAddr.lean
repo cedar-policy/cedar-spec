@@ -23,14 +23,14 @@ namespace UnitTest.IPAddr
 
 open Cedar.Spec.Ext.IPAddr
 
-theorem test1 : toString ((parse "192.168.0.1/32").get!) = "192.168.0.1/32" := by native_decide
-theorem test2 : toString ((parse "0.0.0.0/1").get!) = "0.0.0.0/1" := by native_decide
-theorem test3 : toString ((parse "8.8.8.8/24").get!) = "8.8.8.8/24" := by native_decide
-theorem test4 : toString ((parse "1:2:3:4:a:b:c:d/128").get!) = "0001:0002:0003:0004:000a:000b:000c:000d/128" := by native_decide
-theorem test5 : toString ((parse "1:22:333:4444:a:bb:ccc:dddd/128").get!) = "0001:0022:0333:4444:000a:00bb:0ccc:dddd/128" := by native_decide
-theorem test6 : toString ((parse "7:70:700:7000::a00/128").get!) = "0007:0070:0700:7000:0000:0000:0000:0a00/128" := by native_decide
-theorem test7 : toString ((parse "::ffff/128").get!) = "0000:0000:0000:0000:0000:0000:0000:ffff/128" := by native_decide
-theorem test8 : toString ((parse "ffff::/4").get!) = "ffff:0000:0000:0000:0000:0000:0000:0000/4" := by native_decide
+theorem test1 : toString ((ip "192.168.0.1/32").get!) = "192.168.0.1/32" := by native_decide
+theorem test2 : toString ((ip "0.0.0.0/1").get!) = "0.0.0.0/1" := by native_decide
+theorem test3 : toString ((ip "8.8.8.8/24").get!) = "8.8.8.8/24" := by native_decide
+theorem test4 : toString ((ip "1:2:3:4:a:b:c:d/128").get!) = "0001:0002:0003:0004:000a:000b:000c:000d/128" := by native_decide
+theorem test5 : toString ((ip "1:22:333:4444:a:bb:ccc:dddd/128").get!) = "0001:0022:0333:4444:000a:00bb:0ccc:dddd/128" := by native_decide
+theorem test6 : toString ((ip "7:70:700:7000::a00/128").get!) = "0007:0070:0700:7000:0000:0000:0000:0a00/128" := by native_decide
+theorem test7 : toString ((ip "::ffff/128").get!) = "0000:0000:0000:0000:0000:0000:0000:ffff/128" := by native_decide
+theorem test8 : toString ((ip "ffff::/4").get!) = "ffff:0000:0000:0000:0000:0000:0000:0000/4" := by native_decide
 
 private def ipv4 (a₀ a₁ a₂ a₃ : BitVec 8) (pre : Nat) : IPNet :=
   IPNet.V4 ⟨IPv4Addr.mk a₀ a₁ a₂ a₃, pre⟩
@@ -38,24 +38,24 @@ private def ipv4 (a₀ a₁ a₂ a₃ : BitVec 8) (pre : Nat) : IPNet :=
 private def ipv6 (a₀ a₁ a₂ a₃ a₄ a₅ a₆ a₇ : BitVec 16) (pre : Nat) : IPNet :=
   IPNet.V6 ⟨IPv6Addr.mk a₀ a₁ a₂ a₃ a₄ a₅ a₆ a₇, pre⟩
 
-private def testValid (str : String) (ip : IPNet) : TestCase IO :=
-  test str ⟨λ _ => checkEq (parse str) ip⟩
+private def testValid (str : String) (expected : IPNet) : TestCase IO :=
+  test str ⟨λ _ => checkEq (ip str) expected⟩
 
 def testsForValidStrings :=
   suite "IPAddr.parse for valid strings"
   [
-    testValid "127.0.0.1" (ipv4 127 0 0 1 V4_SIZE),
+    testValid "127.0.0.1" (ipv4 127 0 0 1 32),
     testValid "127.3.4.1/2" (ipv4 127 3 4 1 2),
-    testValid "::" (ipv6 0 0 0 0 0 0 0 0 V6_SIZE),
+    testValid "::" (ipv6 0 0 0 0 0 0 0 0 128),
     testValid "::/5" (ipv6 0 0 0 0 0 0 0 0 5),
-    testValid "a::" (ipv6 0xa 0 0 0 0 0 0 0 V6_SIZE),
-    testValid "::f" (ipv6 0 0 0 0 0 0 0 0xf V6_SIZE),
-    testValid "F:AE::F:5:F:F:0" (ipv6 0xf 0xae 0 0xf 0x5 0xf 0xf 0 V6_SIZE),
+    testValid "a::" (ipv6 0xa 0 0 0 0 0 0 0 128),
+    testValid "::f" (ipv6 0 0 0 0 0 0 0 0xf 128),
+    testValid "F:AE::F:5:F:F:0" (ipv6 0xf 0xae 0 0xf 0x5 0xf 0xf 0 128),
     testValid "a::f/120" (ipv6 0xa 0 0 0 0 0 0 0xf 120)
   ]
 
 private def testInvalid (str : String) (msg : String) : TestCase IO :=
-  test s!"{str} [{msg}]" ⟨λ _ => checkEq (parse str) .none⟩
+  test s!"{str} [{msg}]" ⟨λ _ => checkEq (ip str) .none⟩
 
 def testsForInvalidStrings :=
   suite "IPAddr.parse for invalid strings"
@@ -82,7 +82,7 @@ def testsForInvalidStrings :=
   ]
 
 private def parse! (str : String) : IPNet :=
-  match parse str with
+  match ip str with
   | .some ip => ip
   | .none => panic! s!"not a valid IP address {str}"
 

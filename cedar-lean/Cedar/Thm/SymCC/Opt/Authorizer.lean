@@ -17,6 +17,7 @@
 import Cedar.SymCC.Authorizer
 import Cedar.SymCC.Enforcer
 import Cedar.SymCCOpt.Authorizer
+import Cedar.Thm.Data.MapUnion
 import Cedar.Thm.SymCC.Data.LT
 import Cedar.Thm.SymCC.Enforcer
 import Cedar.Thm.SymCC.Opt.Compiler
@@ -155,26 +156,12 @@ theorem Opt.isAuthorized.correctness (ps : Policies) (εnv : SymEnv) :
   simp_do_let SymCC.satisfiedPolicies .forbid ps εnv ; rename_i ft hforbid
   simp_do_let SymCC.satisfiedPolicies .permit ps εnv ; rename_i pt hpermit
   simp only [Except.ok.injEq, Opt.CompileResult.mk.injEq, true_and]
-  simp [footprints]
-  rw [List.mapUnion_union_mapUnion]
-  · apply List.map_eqv_implies_mapUnion_eq
-    simp [List.Equiv, List.subset_def]
-    constructor
-    intro ts h₁
-    cases h₁ <;> rename_i h₁
-    · replace ⟨x, ⟨p, hp, h₁, hx⟩, h₂⟩ := h₁
-      subst x ts
-      exists p
-    · replace ⟨x, ⟨p, hp, h₁, hx⟩, h₂⟩ := h₁
-      subst x ts
-      exists p
-    · intro p hp
-      cases heff : p.effect
-      case' permit => left
-      case' forbid => right
-      all_goals {
-        exists p.toExpr
-        simp only [and_true]
-        exists p
-      }
-  · simp [footprint_wf]
+  simp only [footprints, List.mapUnion_filterMap, List.mapUnion_map]
+  rw [List.mapUnion_union_mapUnion']
+  · apply List.mapUnion_congr
+    intro p hp
+    cases p.effect <;> simp only [reduceCtorEq, ↓reduceIte, Option.mapD_none, Option.mapD_some, Function.comp_apply]
+    · exact Data.Set.union_empty_right (footprint_wf _ _)
+    · exact Data.Set.union_empty_left (footprint_wf _ _)
+  · intro p hp
+    cases p.effect <;> simp [Data.Set.empty_wf, footprint_wf _ _]

@@ -127,8 +127,7 @@ theorem TermPrimType.lt_trans (a b c : TermPrimType) :
   case ext xty₁ xty₂ xty₃ =>
     simp only [TermPrimType.lt, LT.lt, ExtType.lt, Bool.not_eq_true] at *
     cases xty₁ <;> cases xty₂ <;> cases xty₃ <;>
-    simp only [Decide.decide_eq_true_eq] at * <;>
-    trivial
+    simp at *
 
 theorem TermPrimType.lt_conn {a b : TermPrimType} :
   a ≠ b → (a < b ∨ b < a)

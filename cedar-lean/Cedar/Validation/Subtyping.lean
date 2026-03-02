@@ -14,25 +14,27 @@
  limitations under the License.
 -/
 
-import Cedar.Validation.Types
-import Cedar.Spec
+module
+
+public import Cedar.Validation.Types
+public import Cedar.Spec
 
 namespace Cedar.Validation
 
 open Cedar.Data
 open Cedar.Spec
 
-def lubBool (b₁ b₂ : BoolType) : BoolType :=
+public def lubBool (b₁ b₂ : BoolType) : BoolType :=
   if b₁ = b₂ then b₁ else .anyBool
 
 mutual
-  def lubQualifiedType (q₁ q₂ : QualifiedType) : Option QualifiedType :=
+  public def lubQualifiedType (q₁ q₂ : QualifiedType) : Option QualifiedType :=
     match q₁, q₂ with
     | .optional ty₁, .optional ty₂ => do let ty ← lub? ty₁ ty₂; .some (.optional ty)
     | .required ty₁, .required ty₂ => do let ty ← lub? ty₁ ty₂; .some (.required ty)
     | _, _ => .none
 
-  def lubRecordType (ty₁ ty₂ : List (Attr × QualifiedType)) : Option (List (Attr × QualifiedType)) :=
+  public def lubRecordType (ty₁ ty₂ : List (Attr × QualifiedType)) : Option (List (Attr × QualifiedType)) :=
     match ty₁, ty₂ with
     | [], [] => .some []
     | (k₁, v₁)::r₁, (k₂, v₂)::r₂ =>
@@ -45,7 +47,7 @@ mutual
     | _, _ => .none
 
 
-  def lub? (ty₁ ty₂ : CedarType) : Option CedarType :=
+  public def lub? (ty₁ ty₂ : CedarType) : Option CedarType :=
     match ty₁, ty₂ with
     | .bool b₁, .bool b₂ => .some (.bool (lubBool b₁ b₂))
     | .set s₁, .set s₂ => do
@@ -57,7 +59,7 @@ mutual
     | _, _ => if ty₁ = ty₂ then .some ty₁ else  .none
 end
 
-def subty (ty₁ ty₂ : CedarType) : Bool :=
+public def subty (ty₁ ty₂ : CedarType) : Bool :=
   match lub? ty₁ ty₂ with
   | .some ty => ty = ty₂
   | .none    => false

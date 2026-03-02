@@ -14,7 +14,9 @@
  limitations under the License.
 -/
 
-import Cedar.Spec.Expr
+module
+
+public import Cedar.Spec.Expr
 
 /-! This file defines abstract syntax for Cedar policies. -/
 
@@ -22,21 +24,21 @@ namespace Cedar.Spec
 
 ----- Definitions -----
 
-inductive Effect where
+public inductive Effect where
   | permit
   | forbid
 
-inductive Scope where
+public inductive Scope where
   | any
   | eq (entity : EntityUID)
   | mem (entity : EntityUID)
   | is (ety : EntityType)
   | isMem (ety : EntityType) (entity : EntityUID)
 
-inductive PrincipalScope where
+public inductive PrincipalScope where
   | principalScope (scope : Scope)
 
-inductive ResourceScope where
+public inductive ResourceScope where
   | resourceScope (scope : Scope)
 
 /--
@@ -48,23 +50,23 @@ properties of Cedar; it is done in the concrete grammar for usability (since
 `is` constraints on actions can be expressed using groups instead). We're
 choosing the more liberal modeling here for uniformity and simplicity.
 -/
-inductive ActionScope where
+public inductive ActionScope where
   | actionScope (scope : Scope)
   | actionInAny (ls : List EntityUID)
 
-abbrev PolicyID := String
+public abbrev PolicyID := String
 
-inductive ConditionKind where
+public inductive ConditionKind where
   | when
   | unless
 
-structure Condition where
+public structure Condition where
   kind : ConditionKind
   body : Expr
 
-abbrev Conditions := List Condition
+public abbrev Conditions := List Condition
 
-structure Policy where
+public structure Policy where
   id : PolicyID
   effect : Effect
   principalScope : PrincipalScope
@@ -72,25 +74,24 @@ structure Policy where
   resourceScope : ResourceScope
   condition : Conditions
 
+public abbrev Policies := List Policy
 
-abbrev Policies := List Policy
-
-def PrincipalScope.scope : PrincipalScope → Scope
+public def PrincipalScope.scope : PrincipalScope → Scope
   | .principalScope s => s
 
-def ResourceScope.scope : ResourceScope → Scope
+public def ResourceScope.scope : ResourceScope → Scope
   | .resourceScope s => s
 
-def Var.eqEntityUID (v : Var) (uid : EntityUID) : Expr :=
+public def Var.eqEntityUID (v : Var) (uid : EntityUID) : Expr :=
   .binaryApp .eq (.var v) (.lit (.entityUID uid))
 
-def Var.inEntityUID (v : Var) (uid : EntityUID) : Expr :=
+public def Var.inEntityUID (v : Var) (uid : EntityUID) : Expr :=
   .binaryApp .mem (.var v) (.lit (.entityUID uid))
 
-def Var.isEntityType (v : Var) (ety : EntityType) : Expr :=
+public def Var.isEntityType (v : Var) (ety : EntityType) : Expr :=
   .unaryApp (.is ety) (.var v)
 
-def Scope.toExpr (s : Scope) (v : Var) : Expr :=
+public def Scope.toExpr (s : Scope) (v : Var) : Expr :=
   match s with
   | .any           => .lit (.bool true)
   | .eq uid        => v.eqEntityUID uid
@@ -98,30 +99,31 @@ def Scope.toExpr (s : Scope) (v : Var) : Expr :=
   | .is ety        => v.isEntityType ety
   | .isMem ety uid => .and (v.isEntityType ety) (v.inEntityUID uid)
 
-def PrincipalScope.toExpr : PrincipalScope → Expr
+public def PrincipalScope.toExpr : PrincipalScope → Expr
   | .principalScope s => s.toExpr .principal
 
-def ResourceScope.toExpr : ResourceScope → Expr
+public def ResourceScope.toExpr : ResourceScope → Expr
   | .resourceScope s => s.toExpr .resource
 
-def ActionScope.toExpr : ActionScope → Expr
+public def ActionScope.toExpr : ActionScope → Expr
   | .actionScope s => s.toExpr .action
   | .actionInAny es =>
     let exprs := es.map (fun e => .lit (.entityUID e))
     .binaryApp (.mem) (.var .action) (.set exprs)
 
-def Condition.toExpr (c : Condition) : Expr :=
+public def Condition.toExpr (c : Condition) : Expr :=
   match c.kind with
   | .when => c.body
   | .unless => Expr.unaryApp .not c.body
 
 -- Conditions are evaluated top to bottom, and short circuit
-def Conditions.toExpr (cs : Conditions) : Expr :=
+public def Conditions.toExpr (cs : Conditions) : Expr :=
   match cs.reverse with
   | [] => Expr.lit (Prim.bool true)
   | c :: cs => cs.foldl (λ expr c => .and (c.toExpr) expr) c.toExpr
 
-def Policy.toExpr (p : Policy) : Expr :=
+@[expose]
+public def Policy.toExpr (p : Policy) : Expr :=
   .and
     p.principalScope.toExpr
     (.and
@@ -130,14 +132,14 @@ def Policy.toExpr (p : Policy) : Expr :=
         p.resourceScope.toExpr
         p.condition.toExpr))
 
-def Scope.bound : Scope → Option EntityUID
+public def Scope.bound : Scope → Option EntityUID
   | .eq uid      => .some uid
   | .mem uid     => .some uid
   | .isMem _ uid => .some uid
   | _            => .none
 
 /-- The trivial allow-all policy -/
-def Policy.allowAll : Policy := {
+public def Policy.allowAll : Policy := {
     id             := "allowAll",
     effect         := .permit,
     principalScope := .principalScope .any,

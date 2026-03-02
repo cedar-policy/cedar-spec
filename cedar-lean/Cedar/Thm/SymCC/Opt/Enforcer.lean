@@ -179,16 +179,13 @@ theorem enforcePairCompiledPolicySet_eqv_enforce_ok {ps₁ ps₂ wps₁ wps₂ :
       case' inl => left
       case' inr => right ; left
       all_goals {
-        simp [footprints] at h₁
+        simp only [footprints, List.mapUnion_map] at h₁
         rw [List.mem_mapUnion_iff_mem_exists] at h₁
         replace ⟨x, h₁, h₂⟩ := h₁
-        simp [Data.Set.mem_map]
+        simp only [Data.Set.mem_map]
         exists t₂
-        simp [List.mem_mapUnion_iff_mem_exists]
+        simp only [List.mem_mapUnion_iff_mem_exists, Function.comp_apply, and_true]
         exists x
-        apply And.intro _ h₂
-        rw [List.mem_map] at h₁
-        exact h₁
       }
     · right ; right
       simp [*]

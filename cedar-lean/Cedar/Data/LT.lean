@@ -18,8 +18,8 @@ module
 
 import Init.Classical
 import Batteries.Tactic.Init
-import Batteries.Data.String
-import Batteries.Data.UInt
+public import Batteries.Data.String
+public import Batteries.Data.UInt
 
 /-!
 This file contains utilities for working with strict and decidable LT relations.

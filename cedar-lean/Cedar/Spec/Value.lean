@@ -14,8 +14,10 @@
  limitations under the License.
 -/
 
-import Cedar.Data
-import Cedar.Spec.Ext
+module
+
+public import Cedar.Data
+public import Cedar.Spec.Ext
 
 /-! This file defines Cedar values and results. -/
 
@@ -25,7 +27,7 @@ open Cedar.Data
 
 ----- Definitions -----
 
-inductive Error where
+public inductive Error where
   | entityDoesNotExist
   | attrDoesNotExist
   | tagDoesNotExist
@@ -33,38 +35,38 @@ inductive Error where
   | arithBoundsError
   | extensionError
 
-abbrev Result (α) := Except Error α
+public abbrev Result (α) := Except Error α
 
-abbrev Id := String
+public abbrev Id := String
 
-structure Name where
+public structure Name where
   id : Id
   path : List Id
 
-instance : ToString Name where
+public instance : ToString Name where
   toString n := String.join (n.path.map λ s => s!"{s}::") ++ n.id
 
-abbrev EntityType := Name
+public abbrev EntityType := Name
 
-instance : ToString EntityType where
+public instance : ToString EntityType where
   toString ety := let n : Name := ety ; ToString.toString n
 
-structure EntityUID where
+public structure EntityUID where
   ty : EntityType
   eid : String
 
-instance : ToString EntityUID where
+public instance : ToString EntityUID where
   toString euid := s!"{euid.ty}::\"{euid.eid}\""
 
-inductive Prim where
+public inductive Prim where
   | bool (b : Bool)
   | int (i : Int64)
   | string (s : String)
   | entityUID (uid : EntityUID)
 
-abbrev Attr := String
+public abbrev Attr := String
 
-inductive Value where
+public inductive Value where
   | prim (p : Prim)
   | set (s : Set Value)
   | record (m : Map Attr Value)
@@ -72,67 +74,73 @@ inductive Value where
 
 ----- Coercions -----
 
-def Value.asEntityUID : Value → Result EntityUID
+@[expose]
+public def Value.asEntityUID : Value → Result EntityUID
   | .prim (.entityUID uid) => .ok uid
   | _ => .error Error.typeError
 
-def Value.asSet : Value → Result (Data.Set Value)
+@[expose]
+public def Value.asSet : Value → Result (Data.Set Value)
   | .set s => .ok s
   | _ => .error Error.typeError
 
-def Value.asBool : Value → Result Bool
+@[expose]
+public def Value.asBool : Value → Result Bool
   | .prim (.bool b) => .ok b
   | _ => .error Error.typeError
 
-def Value.asString : Value →  Result String
+@[expose]
+public def Value.asString : Value →  Result String
   | .prim (.string s) => .ok s
   | _ => .error Error.typeError
 
-def Value.asInt : Value →  Result Int64
+@[expose]
+public def Value.asInt : Value →  Result Int64
   | .prim (.int i) => .ok i
   | _ => .error Error.typeError
 
-def Result.as {α} (β) [Coe α (Result β)] : Result α → Result β
+@[expose]
+public def Result.as {α} (β) [Coe α (Result β)] : Result α → Result β
   | .ok v    => v
   | .error e => .error e
 
-instance : Coe Bool Value where
+public instance : Coe Bool Value where
   coe b := .prim (.bool b)
 
-instance : Coe Int64 Value where
+public instance : Coe Int64 Value where
   coe i := .prim (.int i)
 
-instance : Coe String Value where
+public instance : Coe String Value where
   coe s := .prim (.string s)
 
-instance : Coe EntityUID Value where
+public instance : Coe EntityUID Value where
   coe e := .prim (.entityUID e)
 
-instance : Coe Prim Value where
+public instance : Coe Prim Value where
   coe p := .prim p
 
-instance : Coe Ext Value where
+public instance : Coe Ext Value where
   coe x := .ext x
 
-instance : Coe (Data.Set Value) Value where
+public instance : Coe (Data.Set Value) Value where
   coe s := .set s
 
-instance : Coe (Map Attr Value) Value where
+public instance : Coe (Map Attr Value) Value where
   coe r := .record r
 
-instance : Coe Value (Result Bool) where
+public instance : Coe Value (Result Bool) where
   coe v := v.asBool
 
-instance : Coe Value (Result Int64) where
+public instance : Coe Value (Result Int64) where
   coe v := v.asInt
 
-instance : Coe Value (Result String) where
+public instance : Coe Value (Result String) where
   coe v := v.asString
 
-instance : Coe Value (Result EntityUID) where
+public instance : Coe Value (Result EntityUID) where
   coe v := v.asEntityUID
 
-instance : Coe Value (Result (Data.Set Value)) where
+public instance : Coe Value (Result (Data.Set Value)) where
   coe v := v.asSet
 
 ----- Derivations -----
@@ -145,7 +153,7 @@ deriving instance Repr, DecidableEq, Inhabited, Lean.ToJson for EntityUID
 deriving instance Repr, DecidableEq, Inhabited for Prim
 deriving instance Repr, Inhabited for Value
 
-instance [BEq α] [BEq ε] [LawfulBEq α] [LawfulBEq ε] : LawfulBEq (Except ε α) where
+public instance [BEq α] [BEq ε] [LawfulBEq α] [LawfulBEq ε] : LawfulBEq (Except ε α) where
   rfl := by
     intro a
     cases a <;> simp only [BEq.beq] <;> exact beq_iff_eq.mpr rfl
@@ -163,7 +171,7 @@ instance [BEq α] [BEq ε] [LawfulBEq α] [LawfulBEq ε] : LawfulBEq (Except ε 
 
 mutual
 
-def decValue (v₁ v₂ : Value) : Decidable (v₁ = v₂) := by
+public def decValue (v₁ v₂ : Value) : Decidable (v₁ = v₂) := by
   cases v₁ <;> cases v₂ <;>
   try { apply isFalse ; intro h ; injection h }
   case prim.prim w₁ w₂ | ext.ext w₁ w₂ =>
@@ -202,28 +210,28 @@ def decProdAttrValueList (avs₁ avs₂ : List (Attr × Value)) : Decidable (avs
 
 end
 
-instance : DecidableEq Value :=
+public instance : DecidableEq Value :=
   decValue
 
-def Name.lt (a b : Name) : Bool :=
+public def Name.lt (a b : Name) : Bool :=
   (a.id :: a.path) < (b.id :: b.path)
 
-instance : LT Name where
+public instance : LT Name where
   lt a b := Name.lt a b
 
-instance Name.decLt (a b : Name) : Decidable (a < b) :=
+public instance Name.decLt (a b : Name) : Decidable (a < b) :=
   if h : Name.lt a b then isTrue h else isFalse h
 
-def EntityUID.lt (a b : EntityUID) : Bool :=
+public def EntityUID.lt (a b : EntityUID) : Bool :=
   (a.ty < b.ty) ∨ (a.ty = b.ty ∧ a.eid < b.eid)
 
-instance : LT EntityUID where
+public instance : LT EntityUID where
   lt a b := EntityUID.lt a b
 
-instance EntityUID.decLt (a b : EntityUID) : Decidable (a < b) :=
+public instance EntityUID.decLt (a b : EntityUID) : Decidable (a < b) :=
   if h : EntityUID.lt a b then isTrue h else isFalse h
 
-def Prim.lt : Prim → Prim → Bool
+public def Prim.lt : Prim → Prim → Bool
   | .bool b₁, .bool b₂ => b₁ < b₂
   | .int i₁, .int i₂ => i₁ < i₂
   | .string s₁, .string s₂ => s₁ < s₂
@@ -236,14 +244,14 @@ def Prim.lt : Prim → Prim → Bool
   | .string _, .entityUID _ => true
   | _, _ => false
 
-instance : LT Prim where
+public instance : LT Prim where
   lt := fun x y => Prim.lt x y
 
-instance Prim.decLt (a b : Prim) : Decidable (a < b) :=
+public instance Prim.decLt (a b : Prim) : Decidable (a < b) :=
   if h : Prim.lt a b then isTrue h else isFalse h
 
 mutual
-def Value.lt : Value → Value → Bool
+public def Value.lt : Value → Value → Bool
   | .prim p₁, .prim p₂ => p₁ < p₂
   | .set (.mk vs₁), .set (.mk vs₂) => Values.lt vs₁ vs₂
   | .record (.mk avs₁), .record (.mk avs₂) => ValueAttrs.lt avs₁ avs₂
@@ -262,14 +270,14 @@ def Value.lt : Value → Value → Bool
   | .ext _, .record _ => false
 termination_by v₁ _ => sizeOf v₁
 
-def Values.lt : List Value → List Value → Bool
+public def Values.lt : List Value → List Value → Bool
   | [], [] => false
   | [], _ => true
   | _, [] => false
   | v₁ :: vs₁, v₂ :: vs₂ => Value.lt v₁ v₂ || (v₁ = v₂ && Values.lt vs₁ vs₂)
 termination_by vs₁ _ => sizeOf vs₁
 
-def ValueAttrs.lt : List (Attr × Value) → List (Attr × Value) → Bool
+public def ValueAttrs.lt : List (Attr × Value) → List (Attr × Value) → Bool
   | [], [] => false
   | [], _ => true
   | _, [] => false
@@ -279,10 +287,10 @@ def ValueAttrs.lt : List (Attr × Value) → List (Attr × Value) → Bool
 termination_by avs₁ _ => sizeOf avs₁
 end
 
-instance : LT Value where
+public instance : LT Value where
   lt := fun x y => Value.lt x y
 
-instance Value.decLt (a b : Value) : Decidable (a < b) :=
+public instance Value.decLt (a b : Value) : Decidable (a < b) :=
   if h : Value.lt a b then isTrue h else isFalse h
 
 end Cedar.Spec

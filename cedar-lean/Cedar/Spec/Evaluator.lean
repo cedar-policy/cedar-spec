@@ -14,10 +14,12 @@
  limitations under the License.
 -/
 
-import Cedar.Spec.Entities
-import Cedar.Spec.Expr
-import Cedar.Spec.ExtFun
-import Cedar.Spec.Request
+module
+
+public import Cedar.Spec.Entities
+public import Cedar.Spec.Expr
+public import Cedar.Spec.ExtFun
+public import Cedar.Spec.Request
 
 /-! This file defines the semantics of Cedar operators and expressions. -/
 
@@ -26,11 +28,14 @@ namespace Cedar.Spec
 open Cedar.Data
 open Error
 
-def intOrErr : Option Int64 → Result Value
+-- remainder of the file is all `@[expose]`d
+@[expose] public section
+
+public def intOrErr : Option Int64 → Result Value
   | .some i => .ok (.prim (.int i))
   | .none   => .error .arithBoundsError
 
-def apply₁ : UnaryOp → Value → Result Value
+public def apply₁ : UnaryOp → Value → Result Value
   | .not,     .prim (.bool b)        => .ok !b
   | .neg,     .prim (.int i)         => intOrErr i.neg?
   | .isEmpty, .set s                 => .ok s.isEmpty
@@ -38,20 +43,20 @@ def apply₁ : UnaryOp → Value → Result Value
   | .is ety,  .prim (.entityUID uid) => .ok (ety == uid.ty)
   | _, _                             => .error .typeError
 
-def inₑ (uid₁ uid₂ : EntityUID) (es : Entities) : Bool :=
+public def inₑ (uid₁ uid₂ : EntityUID) (es : Entities) : Bool :=
   uid₁ == uid₂ || (es.ancestorsOrEmpty uid₁).contains uid₂
 
-def inₛ (uid : EntityUID) (vs : Set Value) (es : Entities) : Result Value := do
+public def inₛ (uid : EntityUID) (vs : Set Value) (es : Entities) : Result Value := do
   let uids ← vs.mapOrErr Value.asEntityUID .typeError
   .ok (uids.any (inₑ uid · es))
 
-def hasTag (uid : EntityUID) (tag : String) (es : Entities) : Result Value :=
+public def hasTag (uid : EntityUID) (tag : String) (es : Entities) : Result Value :=
   .ok ((es.tagsOrEmpty uid).contains tag)
 
-def getTag (uid : EntityUID) (tag : String) (es : Entities) : Result Value := do
+public def getTag (uid : EntityUID) (tag : String) (es : Entities) : Result Value := do
   (← es.tags uid).findOrErr tag .tagDoesNotExist
 
-def apply₂ (op₂ : BinaryOp) (v₁ v₂ : Value) (es : Entities) : Result Value :=
+public def apply₂ (op₂ : BinaryOp) (v₁ v₂ : Value) (es : Entities) : Result Value :=
   match op₂, v₁, v₂ with
   | .eq, _, _                                              => .ok (v₁ == v₂)
   | .less,   .prim (.int i), .prim (.int j)                => .ok ((i < j): Bool)
@@ -72,25 +77,25 @@ def apply₂ (op₂ : BinaryOp) (v₁ v₂ : Value) (es : Entities) : Result Val
   | .getTag, .prim (.entityUID uid₁), .prim (.string tag)  => getTag uid₁ tag es
   | _, _, _                                                => .error .typeError
 
-def attrsOf (v : Value) (lookup : EntityUID → Result (Map Attr Value)) : Result (Map Attr Value) :=
+public def attrsOf (v : Value) (lookup : EntityUID → Result (Map Attr Value)) : Result (Map Attr Value) :=
   match v with
   | .record r              => .ok r
   | .prim (.entityUID uid) => lookup uid
   | _                      => .error typeError
 
-def hasAttr (v : Value) (a : Attr) (es : Entities) : Result Value := do
+public def hasAttr (v : Value) (a : Attr) (es : Entities) : Result Value := do
   let r ← attrsOf v (fun uid => .ok (es.attrsOrEmpty uid))
   .ok (r.contains a)
 
-def getAttr (v : Value) (a : Attr) (es : Entities) : Result Value := do
+public def getAttr (v : Value) (a : Attr) (es : Entities) : Result Value := do
   let r ← attrsOf v es.attrs
   r.findOrErr a attrDoesNotExist
 
-def bindAttr [Monad m] (a : Attr) (res : m α) : m (Attr × α) := do
+public def bindAttr [Monad m] (a : Attr) (res : m α) : m (Attr × α) := do
   let v ← res
   pure (a, v)
 
-def evaluate (x : Expr) (req : Request) (es : Entities) : Result Value :=
+public def evaluate (x : Expr) (req : Request) (es : Entities) : Result Value :=
   match x with
   | .lit l           => .ok l
   | .var v           => match v with
@@ -129,5 +134,7 @@ def evaluate (x : Expr) (req : Request) (es : Entities) : Result Value :=
   | .call xfn xs     => do
     let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => evaluate x₁ req es)
     call xfn vs
+
+end
 
 end Cedar.Spec

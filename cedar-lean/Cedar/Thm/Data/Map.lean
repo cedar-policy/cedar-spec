@@ -52,13 +52,13 @@ public theorem wf_iff_sorted {α β} [LT α] [DecidableLT α] [StrictLT α] {m :
   case mp =>
     intro h
     rw [WellFormed, make] at h
-    rw [h, toList, kvs]
+    rw [h, toList]
     simp only [List.canonicalize_sortedBy]
   case mpr =>
     intro h
-    rw [toList, kvs] at *
+    rw [toList] at *
     replace h := List.sortedBy_implies_canonicalize_eq h
-    rw [WellFormed, toList, kvs, make, h]
+    rw [WellFormed, toList, make, h]
 
 public theorem wf_implies_tail_wf {α β} [LT α] [DecidableLT α] [StrictLT α]
   {hd : α × β} {tl : List (α × β)}
@@ -68,16 +68,16 @@ public theorem wf_implies_tail_wf {α β} [LT α] [DecidableLT α] [StrictLT α]
   have := wf_iff_sorted.mp hwf
   cases tl with
   | nil =>
-    simp [Map.WellFormed, Map.toList, Map.kvs, make, List.canonicalize_nil]
+    simp [Map.WellFormed, Map.toList, make, List.canonicalize_nil]
   | cons hd2 tl =>
     apply wf_iff_sorted.mpr
     cases this
-    simp only [Map.toList, Map.kvs]
+    simp only [Map.toList]
     assumption
 
 public theorem wf_empty {α β} [LT α] [DecidableLT α] :
   (Map.empty : Map α β).WellFormed
-:= by simp [Map.WellFormed, Map.make, Map.empty, Map.kvs, List.canonicalize_nil, Map.toList]
+:= by simp [Map.WellFormed, Map.make, Map.empty, List.canonicalize_nil, Map.toList]
 
 /--
   In well-formed maps, if there are two pairs with the same key, then they have
@@ -106,7 +106,7 @@ public theorem eq_iff_toList_eq {m₁ m₂ : Map α β} :
 := by
   cases m₁ with | mk m₁
   cases m₂ with | mk m₂
-  simp [Map.toList, Map.kvs]
+  simp [Map.toList]
 
 /--
   If two well-formed maps have equivalent (k,v) sets, then the maps are actually
@@ -153,7 +153,7 @@ public theorem toList_empty {α β} :
 public theorem toList_nil_iff_empty {m : Map α β} :
   m.toList = [] ↔ m = Map.empty
 := by
-  unfold toList kvs empty
+  unfold toList empty
   constructor <;> intro h
   case mp => match m with
     | mk [] => trivial
@@ -163,12 +163,12 @@ public theorem toList_nil_iff_empty {m : Map α β} :
 @[simp]
 public theorem mk_toList_id (m : Map α β) :
   mk m.toList = m
-:= by simp only [toList, kvs]
+:= by simp only [toList]
 
 @[simp]
 public theorem toList_mk_id (kvs : List (α × β)) :
   (mk kvs).toList = kvs
-:= by simp only [toList, Map.kvs]
+:= by simp only [toList]
 
 /--
 As a crutch to accommodate some pre-existing usage, we provide this theorem. But
@@ -232,7 +232,7 @@ public theorem values_cons {m : Map α β} :
   m.toList = (k, v) :: tl →
   m.values = v :: (mk tl).values
 := by
-  unfold values toList kvs
+  unfold values toList
   intro h₁
   simp [h₁]
 
@@ -247,28 +247,28 @@ public theorem find?_some_implies_contains {α β} [BEq α] {m : Map α β} {k :
   apply contains_iff_some_find?.mpr
   simp [h]
 
-public theorem not_contains_of_empty {α β} [BEq α] (k : α) :
-  ¬ (Map.empty : Map α β).contains k
-:= by simp [contains, empty, find?, toList, List.find?]
-
 @[simp]
 public theorem not_find?_of_empty [BEq α] {k : α} :
   (Map.empty : Map α β).find? k = none
-:= by simp [Map.empty, Map.find?, toList, List.find?]
+:= by simp [empty, find?, toList]
+
+public theorem not_contains_of_empty {α β} [BEq α] (k : α) :
+  ¬ (Map.empty : Map α β).contains k
+:= by simp [contains, not_find?_of_empty]
 
 /-! ### make and mk -/
 
 public theorem make_wf [LT α] [StrictLT α] [DecidableLT α] (xs : List (α × β)) :
   WellFormed (Map.make xs)
 := by
-  simp only [WellFormed, make, toList, kvs, List.canonicalize_idempotent]
+  simp only [WellFormed, make, toList, List.canonicalize_idempotent]
 
 public theorem mk_wf [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
   xs.SortedBy Prod.fst → (Map.mk xs).WellFormed
 := by
   intro h
   replace h := List.sortedBy_implies_canonicalize_eq h
-  rw [← h, WellFormed, make, toList, kvs]
+  rw [← h, WellFormed, make, toList]
   simp only [List.canonicalize_idempotent]
 
 public theorem make_eq_mk [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
@@ -281,6 +281,10 @@ public theorem make_eq_mk [LT α] [StrictLT α] [DecidableLT α] {xs : List (α 
     simp only [make, mk.injEq] at h
     rw [← h]
     exact List.canonicalize_sortedBy _ _
+
+public theorem toList_make_eq_canonicalize [LT α] [StrictLT α] [DecidableLT α] (xs : List (α × β)) :
+  (Map.make xs).toList = List.canonicalize Prod.fst xs
+:= by simp [make, toList]
 
 public theorem make_singleton [LT α] [DecidableLT α] [StrictLT α] (k : α) (v : β) :
   Map.make [(k, v)] = Map.mk [(k, v)]
@@ -394,7 +398,7 @@ public theorem find?_mem_toList {α β} [LT α] [DecidableLT α] [DecidableEq α
   (h₁ : m.find? k = .some v) :
   (k, v) ∈ m.toList
 := by
-  unfold toList kvs find? at *
+  unfold toList find? at *
   split at h₁ <;> simp only [Option.some.injEq, reduceCtorEq] at h₁
   subst h₁
   rename_i h₂
@@ -737,7 +741,7 @@ public theorem mapOnValues_wf [DecidableEq α] [LT α] [DecidableLT α] [StrictL
 := by
   simp only [wf_iff_sorted, toList]
   apply List.map_eq_implies_sortedBy
-  simp only [kvs, mapOnValues, List.map_map]
+  simp only [mapOnValues, List.map_map]
   apply List.map_congr
   simp
 
@@ -750,7 +754,7 @@ public theorem mapOnValues_empty {α β γ} [LT α] [DecidableLT α] [DecidableE
 public theorem find?_mapOnValues {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) (m : Map α β) (k : α)  :
   (m.find? k).map f = (m.mapOnValues f).find? k
 := by
-  simp only [find?, toList, kvs, mapOnValues, ← List.find?_pair_map]
+  simp only [find?, toList, mapOnValues, ← List.find?_pair_map]
   cases m.1.find? (λ x => x.fst == k) <;> simp only [Option.map_none, Option.map_some]
 
 public theorem find?_mapOnValues_some {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) {m : Map α β} {k : α} {v : β} :
@@ -796,7 +800,7 @@ public theorem mapOnValues_eq_make_map {α β γ} [LT α] [StrictLT α] [Decidab
   m.mapOnValues f = Map.make (m.toList.map λ kv => (kv.fst, f kv.snd))
 := by
   unfold WellFormed at wf
-  simp only [make, toList, kvs, mapOnValues, mk.injEq] at *
+  simp only [make, toList, mapOnValues, mk.injEq] at *
   rw [wf] ; simp only ; rw [eq_comm]
   have h₁ : Prod.map id f = (λ (x : α × β) => (x.fst, f x.snd)) := by unfold Prod.map ; simp only [id_eq]
   simp only [← h₁, ← List.canonicalize_of_map_fst, List.canonicalize_idempotent]
@@ -810,7 +814,7 @@ public theorem mem_toList_find? {α β} [LT α] [DecidableLT α] [StrictLT α] [
   generalize hm : toList m = l
   rw [hm] at h₁ h₂
   subst h₁
-  simp only [toList, kvs] at hm
+  simp only [toList] at hm
   rw [hm]
   have hsrt := List.canonicalize_sortedBy Prod.fst l
   rw [hm] at hsrt
@@ -1072,7 +1076,7 @@ theorem mapMOnValues_some_wf_alt_proof [LT α] [DecidableLT α] [StrictLT α] {f
   simp only [mapMOnValues, Option.pure_def, do_some] at h₁
   replace ⟨xs, h₁, h₂⟩ := h₁
   subst h₂
-  simp [kvs]
+  simp only
   replace h₁ := List.mapM_some_eq_filterMap h₁
   subst h₁
   apply List.filterMap_sortedBy _ wf
@@ -1093,7 +1097,7 @@ public theorem mapMOnValues_ok_wf [LT α] [DecidableLT α] [StrictLT α] {f : β
   <;> simp [h₂] at h₁
   case ok kv =>
     subst m₂
-    simp [kvs]
+    simp only
     replace h₂ := List.mapM_ok_eq_filterMap h₂
     subst h₂
     apply List.filterMap_sortedBy _ wf

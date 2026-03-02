@@ -14,36 +14,44 @@
  limitations under the License.
 -/
 
-/- This file includes boolean definitions for the propositions declared in `Cedar/Thm/Validation/Typechecker/Types.lean`.-/
+module
+
+import Cedar.Data.SizeOf
+import Cedar.Thm.Data.Map -- `Map.toList_mk_id` needed in a termination proof
 import Cedar.Validation.Validator
-import Cedar.Validation.Typechecker
+public import Cedar.Validation.Typechecker
+public import Lean.Data.Json.Basic
+public import Lean.Data.Json.FromToJson.Basic
+
+/-! This file includes boolean definitions for the propositions declared in `Cedar/Thm/Validation/Typechecker/Types.lean`. -/
+
 namespace Cedar.Validation
 
 open Cedar.Spec
 open Cedar.Data
 
-inductive RequestValidationError where
+public inductive RequestValidationError where
 | typeError (msg : String)
 
-abbrev RequestValidationResult := Except RequestValidationError Unit
+public abbrev RequestValidationResult := Except RequestValidationError Unit
 
-inductive EntityValidationError where
+public inductive EntityValidationError where
 | typeError (msg : String)
 
-abbrev EntityValidationResult := Except EntityValidationError Unit
+public abbrev EntityValidationResult := Except EntityValidationError Unit
 
-def instanceOfBoolType (b : Bool) (bty : BoolType) : Bool :=
+public def instanceOfBoolType (b : Bool) (bty : BoolType) : Bool :=
   match b, bty with
   | true, .tt => true
   | false, .ff => true
   | _, .anyBool => true
   | _, _ => false
 
-def instanceOfEntityType (e : EntityUID) (ety : EntityType) (env : TypeEnv) : Bool :=
+public def instanceOfEntityType (e : EntityUID) (ety : EntityType) (env : TypeEnv) : Bool :=
   ety == e.ty &&
   (env.ets.isValidEntityUID e || env.acts.contains e)
 
-def instanceOfExtType (ext : Ext) (extty: ExtType) : Bool :=
+public def instanceOfExtType (ext : Ext) (extty: ExtType) : Bool :=
 match ext, extty with
   | .decimal _, .decimal => true
   | .ipaddr _, .ipAddr => true
@@ -51,12 +59,12 @@ match ext, extty with
   | .duration _, .duration => true
   | _, _ => false
 
-def requiredAttributePresent (r : Map Attr Value) (rty : Map Attr (Qualified CedarType)) (k : Attr) :=
+public def requiredAttributePresent (r : Map Attr Value) (rty : Map Attr (Qualified CedarType)) (k : Attr) :=
 match rty.find? k with
     | .some qty => if qty.isRequired then r.contains k else true
     | _ => true
 
-def instanceOfType (v : Value) (ty : CedarType) (env : TypeEnv) : Bool :=
+public def instanceOfType (v : Value) (ty : CedarType) (env : TypeEnv) : Bool :=
   match v, ty with
   | .prim (.bool b), .bool bty => instanceOfBoolType b bty
   | .prim (.int _), .int => true
@@ -82,7 +90,7 @@ def instanceOfType (v : Value) (ty : CedarType) (env : TypeEnv) : Bool :=
         simp only [Map.toList_mk_id, Map.mk.sizeOf_spec] at *
         omega
 
-def instanceOfRequestType (request : Request) (env : TypeEnv) : Bool :=
+public def instanceOfRequestType (request : Request) (env : TypeEnv) : Bool :=
   instanceOfEntityType request.principal env.reqty.principal env &&
   request.action == env.reqty.action &&
   instanceOfEntityType request.resource env.reqty.resource env &&
@@ -99,7 +107,8 @@ For every entity in the store,
 For every action in the entity store, the action's ancestors are consistent
 with the ancestor information in the action store.
 -/
-def instanceOfSchema (entities : Entities) (env : TypeEnv) : EntityValidationResult :=
+@[expose]
+public def instanceOfSchema (entities : Entities) (env : TypeEnv) : EntityValidationResult :=
   do
     entities.toList.forM λ (uid, data) => instanceOfSchemaEntry uid data
     env.acts.toList.forM λ (uid, _) => actionExists uid
@@ -137,37 +146,37 @@ where
     if entities.contains uid then .ok ()
     else .error (.typeError s!"action entity {uid} does not exist")
 
-def requestMatchesEnvironment (env : TypeEnv) (request : Request) : Bool := instanceOfRequestType request env
+public def requestMatchesEnvironment (env : TypeEnv) (request : Request) : Bool := instanceOfRequestType request env
 
-def validateRequest (schema : Schema) (request : Request) : RequestValidationResult :=
+public def validateRequest (schema : Schema) (request : Request) : RequestValidationResult :=
   if ((schema.environments.any (requestMatchesEnvironment · request)))
   then .ok ()
   else .error (.typeError "request could not be validated in any environment")
 
-def entitiesMatchEnvironment (env : TypeEnv) (entities : Entities) : EntityValidationResult :=
+public def entitiesMatchEnvironment (env : TypeEnv) (entities : Entities) : EntityValidationResult :=
   instanceOfSchema entities env
 
-def actionSchemaEntryToEntityData (ase : ActionSchemaEntry) : EntityData := {
+public def actionSchemaEntryToEntityData (ase : ActionSchemaEntry) : EntityData := {
   ancestors := ase.ancestors,
   attrs := Map.empty,
   tags := Map.empty
 }
 
-def validateEntities (schema : Schema) (entities : Entities) : EntityValidationResult :=
+public def validateEntities (schema : Schema) (entities : Entities) : EntityValidationResult :=
   schema.environments.forM (entitiesMatchEnvironment · entities)
 
 -- json
 
-def entityValidationErrorToJson : EntityValidationError → Lean.Json
+public def entityValidationErrorToJson : EntityValidationError → Lean.Json
   | .typeError x => x
 
-instance : Lean.ToJson EntityValidationError where
+public instance : Lean.ToJson EntityValidationError where
   toJson := entityValidationErrorToJson
 
-def requestValidationErrorToJson : RequestValidationError → Lean.Json
+public def requestValidationErrorToJson : RequestValidationError → Lean.Json
   | .typeError x => x
 
-instance : Lean.ToJson RequestValidationError where
+public instance : Lean.ToJson RequestValidationError where
   toJson := requestValidationErrorToJson
 
 
