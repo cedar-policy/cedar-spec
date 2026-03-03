@@ -27,6 +27,30 @@ public import Cedar.Data.Set
   `Cedar/Partial` from depending on lemmas in `Cedar/Thm`.
 -/
 
+/-! ## List -/
+
+namespace Cedar.Data.List
+
+public theorem sizeOf_attach₂ [SizeOf α] [SizeOf β] {a : α} {b : β} {l : List (α × β)} :
+  (a, b) ∈ l → sizeOf (a, b).snd < 1 + sizeOf l
+:= by
+  intro hin
+  simp only
+  replace hin := List.sizeOf_lt_of_mem hin
+  simp only [Prod.mk.sizeOf_spec] at hin
+  omega
+
+public theorem sizeOf_attach₃ [SizeOf α] [SizeOf β] {a : α} {b : β} {l : List (α × β)} :
+  (a, b) ∈ l → sizeOf (a, b).snd < 1 + (1 + sizeOf l)
+:= by
+  intro hin
+  simp only
+  replace hin := List.sizeOf_lt_of_mem hin
+  simp only [Prod.mk.sizeOf_spec] at hin
+  omega
+
+end Cedar.Data.List
+
 namespace Cedar.Data.Map
 
 /-! ## Map -/
