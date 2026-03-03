@@ -20,13 +20,8 @@ use cedar_drt_inner::{
     fuzz_target,
     symcc::{RUNTIME, SinglePolicyFuzzTargetInput, get_cex, get_solver, reproduce},
 };
-use cedar_policy::{Authorizer, Decision, PolicySet};
-use cedar_policy_symcc::{CedarSymCompiler, CompiledPolicySet, Env, solver::LocalSolver};
-use std::{future::Future, sync::LazyLock};
-use tokio::{
-    sync::{Mutex, MutexGuard},
-    time::{Duration, timeout},
-};
+use cedar_policy::Decision;
+use cedar_policy_symcc::CompiledPolicySet;
 
 // Fuzzing target checking that counterexamples generated are true counterexamples
 fuzz_target!(|input: SinglePolicyFuzzTargetInput<128>| {
