@@ -17,5 +17,4 @@
 import Cedar.Thm.SymCC.Data.Basic
 import Cedar.Thm.SymCC.Data.BitVec
 import Cedar.Thm.SymCC.Data.Hierarchy
-import Cedar.Thm.SymCC.Data.List
 import Cedar.Thm.SymCC.Data.LT

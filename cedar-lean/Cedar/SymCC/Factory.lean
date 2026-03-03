@@ -48,6 +48,7 @@ namespace Factory
 def noneOf (ty : TermType) : Term := .none ty
 
 def someOf (t : Term) : Term := .some t
+prefix:0 "⊙" => someOf
 
 def setOf (ts : List Term) (ty : TermType) : Term := .set (Set.make ts) ty
 

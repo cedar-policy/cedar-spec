@@ -36,8 +36,6 @@ namespace Cedar.SymCC
 open Cedar.Data Cedar.Spec Cedar.Validation
 open Factory
 
-prefix:0 "⊙" => someOf
-
 def compilePrim (p : Prim) (εs : SymEntities) : Result Term :=
   match p with
   | .bool b        => ⊙b
