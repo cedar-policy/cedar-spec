@@ -311,7 +311,7 @@ impl proto::op::BaseOp {
             datatypes::Op::Bvudiv => proto::op::BaseOp::Bvudiv,
             datatypes::Op::Bvsrem => proto::op::BaseOp::Bvsrem,
             datatypes::Op::Bvsmod => proto::op::BaseOp::Bvsmod,
-            datatypes::Op::Bvumod => proto::op::BaseOp::Bvumod,
+            datatypes::Op::Bvurem => proto::op::BaseOp::Bvurem,
             datatypes::Op::Bvshl => proto::op::BaseOp::Bvshl,
             datatypes::Op::Bvlshr => proto::op::BaseOp::Bvlshr,
             datatypes::Op::Bvslt => proto::op::BaseOp::Bvslt,

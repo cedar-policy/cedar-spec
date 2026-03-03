@@ -392,10 +392,10 @@ inductive Op.WellTyped (εs : SymEntities) : Op → List Term → TermType → P
     (h₁ : t₁.typeOf = .bitvec n)
     (h₂ : t₂.typeOf = .bitvec n) :
     WellTyped εs .bvsmod [t₁, t₂] (.bitvec n)
-  | bvumod_wt {t₁ t₂ : Term} {n : Nat}
+  | bvurem_wt {t₁ t₂ : Term} {n : Nat}
     (h₁ : t₁.typeOf = .bitvec n)
     (h₂ : t₂.typeOf = .bitvec n) :
-    WellTyped εs .bvumod [t₁, t₂] (.bitvec n)
+    WellTyped εs .bvurem [t₁, t₂] (.bitvec n)
   | bvshl_wt {t₁ t₂ : Term} {n : Nat}
     (h₁ : t₁.typeOf = .bitvec n)
     (h₂ : t₂.typeOf = .bitvec n) :

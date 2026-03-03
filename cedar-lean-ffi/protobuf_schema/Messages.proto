@@ -145,7 +145,7 @@ message Op {
         Bvudiv = 10;
         Bvsrem = 11;
         Bvsmod = 12;
-        Bvumod = 13;
+        Bvurem = 13;
         Bvshl = 14;
         Bvlshr = 15;
         Bvslt = 16;
