@@ -458,6 +458,9 @@ impl solver::Solver for WrappedLocalSolver {
     fn smtlib_input(&mut self) -> &mut (dyn tokio::io::AsyncWrite + Unpin + Send) {
         self.solver.smtlib_input()
     }
+    async fn enable_models(&mut self) -> Result<()> {
+        self.solver.enable_models().await
+    }
     async fn check_sat(&mut self) -> Result<solver::Decision, SolverError> {
         self.solver.check_sat().await
     }
