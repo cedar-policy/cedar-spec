@@ -74,7 +74,7 @@ inductive Op : Type where
   | bvudiv  -- unsigned bit-vector division
   | bvsrem  -- signed remainder (remainder of division rounded towards zero) (copies sign from dividend)
   | bvsmod  -- signed modulus (remainder of division rounded towards negative infinity) (copies sign from divisor)
-  | bvumod  -- unsigned modulus
+  | bvurem  -- unsigned modulus
   | bvshl
   | bvlshr
   | bvslt
@@ -148,7 +148,7 @@ def Op.mkName : Op → String
   | .bvudiv        => "bvudiv"
   | .bvsrem        => "bvsrem"
   | .bvsmod        => "bvsmod"
-  | .bvumod        => "bvurem"
+  | .bvurem        => "bvurem"
   | .bvshl         => "bvshl"
   | .bvlshr        => "bvlshr"
   | .bvslt         => "bvslt"

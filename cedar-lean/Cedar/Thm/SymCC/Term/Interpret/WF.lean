@@ -371,11 +371,11 @@ private theorem interpret_term_app_wf_bvsmod {εs : SymEntities} {I : Interpreta
   InterpretTermWF εs I (Term.app .bvsmod ts ty)
 := by show_interpret_term_app_wf_binary h₁ ih interpret_term_app_bvsmod wf_term_app_bvsmod wf_bvsmod
 
-private theorem interpret_term_app_wf_bvumod {εs : SymEntities} {I : Interpretation} {ts : List Term} {ty : TermType}
-  (h₁ : Term.WellFormed εs (Term.app .bvumod ts ty))
+private theorem interpret_term_app_wf_bvurem {εs : SymEntities} {I : Interpretation} {ts : List Term} {ty : TermType}
+  (h₁ : Term.WellFormed εs (Term.app .bvurem ts ty))
   (ih : ∀ (t : Term), t ∈ ts → InterpretTermWF εs I t) :
-  InterpretTermWF εs I (Term.app .bvumod ts ty)
-:= by show_interpret_term_app_wf_binary h₁ ih interpret_term_app_bvumod wf_term_app_bvumod wf_bvumod
+  InterpretTermWF εs I (Term.app .bvurem ts ty)
+:= by show_interpret_term_app_wf_binary h₁ ih interpret_term_app_bvurem wf_term_app_bvurem wf_bvurem
 
 private theorem interpret_term_app_wf_bvshl {εs : SymEntities} {I : Interpretation} {ts : List Term} {ty : TermType}
   (h₁ : Term.WellFormed εs (Term.app .bvshl ts ty))
@@ -508,7 +508,7 @@ theorem interpret_term_app_wf {εs : SymEntities} {I : Interpretation} {op : Op}
   | .bvudiv            => exact interpret_term_app_wf_bvudiv h₁ ih
   | .bvsrem            => exact interpret_term_app_wf_bvsrem h₁ ih
   | .bvsmod            => exact interpret_term_app_wf_bvsmod h₁ ih
-  | .bvumod            => exact interpret_term_app_wf_bvumod h₁ ih
+  | .bvurem            => exact interpret_term_app_wf_bvurem h₁ ih
   | .bvshl             => exact interpret_term_app_wf_bvshl h₁ ih
   | .bvlshr            => exact interpret_term_app_wf_bvlshr h₁ ih
   | .bvsaddo           => exact interpret_term_app_wf_bvsaddo h₁ ih

@@ -249,8 +249,8 @@ private theorem interpret_term_app_lit {εs : SymEntities} {I : Interpretation} 
     show_interpret_term_app_binary_lit t₁ t₂ hI hwf h₁ h₂ ih interpret_term_app_bvsrem pe_bvsrem_wfl
   case bvsmod_wt t₁ t₂ _ h₁ h₂ =>
     show_interpret_term_app_binary_lit t₁ t₂ hI hwf h₁ h₂ ih interpret_term_app_bvsmod pe_bvsmod_wfl
-  case bvumod_wt t₁ t₂ _ h₁ h₂ =>
-    show_interpret_term_app_binary_lit t₁ t₂ hI hwf h₁ h₂ ih interpret_term_app_bvumod pe_bvumod_wfl
+  case bvurem_wt t₁ t₂ _ h₁ h₂ =>
+    show_interpret_term_app_binary_lit t₁ t₂ hI hwf h₁ h₂ ih interpret_term_app_bvurem pe_bvurem_wfl
   case bvshl_wt t₁ t₂ _ h₁ h₂ =>
     show_interpret_term_app_binary_lit t₁ t₂ hI hwf h₁ h₂ ih interpret_term_app_bvshl pe_bvshl_wfl
   case bvlshr_wt t₁ t₂ _ h₁ h₂ =>
