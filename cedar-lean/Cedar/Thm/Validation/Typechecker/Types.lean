@@ -481,84 +481,41 @@ theorem sizeOf_attribute_lt_sizeOf_qualified (aqty : Attr × Qualified CedarType
       omega
   }
 
-theorem type_is_inhabited {env : TypeEnv} {ty : CedarType}
-  (hwf_env : env.WellFormed)
-  (hwf : ty.WellFormed env) :
-  ∃ v, InstanceOfType env v ty
-:= by
-  match ty with
-  | .bool bty =>
-    have ⟨b, h₁⟩ := bool_type_is_inhabited bty
-    exists (.prim (.bool b))
-    apply InstanceOfType.instance_of_bool _ _ h₁
-  | .int =>
-    exists (.prim (.int default))
-    apply InstanceOfType.instance_of_int
-  | .string =>
-    exists (.prim (.string default))
-    apply InstanceOfType.instance_of_string
-  | .entity ety =>
-    cases hwf with | entity_wf hwf_ety =>
-    have ⟨euid, h₁⟩ := entity_type_is_inhabited hwf_env hwf_ety
-    exists (.prim (.entityUID euid))
-    apply InstanceOfType.instance_of_entity _ _ h₁
-  | .set ty₁ =>
-    exists (.set Set.empty)
-    apply InstanceOfType.instance_of_set
-    intro v₁ h₁
-    have h₂ := Set.in_set_means_list_non_empty v₁ Set.empty h₁
-    simp [Set.empty, Set.elts] at h₂
-  | .ext xty =>
-    have ⟨x, h₁⟩ := ext_type_is_inhabited xty
-    exists (.ext x)
-    apply InstanceOfType.instance_of_ext _ _ h₁
-  | .record (Map.mk rty) =>
-    cases rty
-    case nil =>
-      exists (.record (Map.mk []))
-      exact instance_of_record_nil
-    case cons hd tl =>
-      have _ : sizeOf hd.snd.getType < 1 + (1 + (1 + sizeOf hd + sizeOf tl)) := by -- termination
-        apply @Nat.lt_trans _ (1 + (1 + sizeOf hd + sizeOf tl)) <;>
-        try { simp [←Nat.succ_eq_one_add] }
-        apply @Nat.lt_trans _ (1 + sizeOf hd + sizeOf tl) <;>
-        try { simp [←Nat.succ_eq_one_add] }
-        apply @Nat.lt_trans _ (sizeOf hd + sizeOf tl)
-        case h₁ =>
-          apply Nat.lt_add_right
-          apply sizeOf_attribute_lt_sizeOf_qualified
-        case a =>
-          simp [Nat.add_assoc]
-      have ⟨hwf_hd, hwf_tl⟩ := wf_record_type_cons hwf
-      have ⟨rhd, h₂⟩ := type_is_inhabited hwf_env hwf_hd
-      have ⟨vtl, h₃⟩ := type_is_inhabited hwf_env hwf_tl
-      have ⟨mtl, h₄⟩ := instance_of_record_type_is_record h₃
-      subst h₄ ; cases mtl ; rename_i rtl
-      exists (.record (Map.mk ((hd.fst, rhd) :: rtl)))
-      exact instance_of_record_cons h₂ h₃
-
 theorem type_is_inhabited_bool {env : TypeEnv} {bty : BoolType} :
   ∃ v, InstanceOfType env v (.bool bty)
 := by
   have ⟨v, h⟩ := bool_type_is_inhabited bty
   exists v
-  constructor
-  assumption
+  exact InstanceOfType.instance_of_bool _ _ h
 
 theorem type_is_inhabited_int {env : TypeEnv} :
   ∃ v, InstanceOfType env v CedarType.int
 := by
   exists (.prim (.int default))
-  apply InstanceOfType.instance_of_int
+  exact InstanceOfType.instance_of_int
+
+theorem type_is_inhabited_string {env : TypeEnv} :
+  ∃ v, InstanceOfType env v CedarType.string
+:= by
+  exists (.prim (.string default))
+  exact InstanceOfType.instance_of_string
+
+theorem type_is_inhabited_entity {env : TypeEnv} {ety : EntityType} :
+  env.WellFormed → CedarType.WellFormed env (.entity ety) →
+  ∃ v, InstanceOfType env v (.entity ety)
+:= by
+  intro hwf_env hwf
+  cases hwf with | entity_wf hwf_ety =>
+  have ⟨euid, h₁⟩ := entity_type_is_inhabited hwf_env hwf_ety
+  exists (.prim (.entityUID euid))
+  exact InstanceOfType.instance_of_entity _ _ h₁
 
 theorem type_is_inhabited_set {env : TypeEnv} {ty : CedarType} :
   ∃ v, InstanceOfType env v (.set ty)
 := by
   exists (.set Set.empty)
   apply InstanceOfType.instance_of_set
-  intro v₁ h₁
-  have h₂ := Set.in_set_means_list_non_empty v₁ Set.empty h₁
-  simp [Set.empty, Set.elts] at h₂
+  exact (False.elim $ Set.empty_no_elts · ·)
 
 theorem type_is_inhabited_ext {env : TypeEnv} {xty : ExtType} :
   ∃ v, InstanceOfType env v (.ext xty)
@@ -566,6 +523,54 @@ theorem type_is_inhabited_ext {env : TypeEnv} {xty : ExtType} :
   have ⟨x, h₁⟩ := ext_type_is_inhabited xty
   exists (.ext x)
   apply InstanceOfType.instance_of_ext _ _ h₁
+
+theorem type_is_inhabited_record {env : TypeEnv} {rty : List (Attr × Qualified CedarType) }
+  (hwf : (CedarType.record (Map.mk rty)).WellFormed env)
+  (ih_ty : ∀ aty ∈ rty, aty.snd.getType.WellFormed env → ∃ v, InstanceOfType env v aty.snd.getType) :
+  ∃ v, InstanceOfType env v (.record (Map.mk rty))
+:= by
+  cases rty
+  case nil =>
+    exists (.record (Map.mk []))
+    exact instance_of_record_nil
+  case cons hd tl =>
+    have ⟨hwf_hd, hwf_tl⟩ := wf_record_type_cons hwf
+    simp only [List.mem_cons, forall_eq_or_imp] at ih_ty
+    have ⟨rhd, h₂⟩ := ih_ty.left hwf_hd
+    have ⟨vtl, h₃⟩ := type_is_inhabited_record hwf_tl ih_ty.right
+    have ⟨mtl, h₄⟩ := instance_of_record_type_is_record h₃
+    subst h₄ ; cases mtl ; rename_i rtl
+    exists (.record (Map.mk ((hd.fst, rhd) :: rtl)))
+    exact instance_of_record_cons h₂ h₃
+
+theorem type_is_inhabited {env : TypeEnv} {ty : CedarType}
+  (hwf_env : env.WellFormed)
+  (hwf : ty.WellFormed env) :
+  ∃ v, InstanceOfType env v ty
+:= by
+  match ty with
+  | .bool bty =>
+    exact type_is_inhabited_bool
+  | .int =>
+    exact type_is_inhabited_int
+  | .string =>
+    exact type_is_inhabited_string
+  | .entity ety =>
+    exact type_is_inhabited_entity hwf_env hwf
+  | .set ty₁ =>
+    exact type_is_inhabited_set
+  | .ext xty =>
+    exact type_is_inhabited_ext
+  | .record (Map.mk rty) =>
+    have ih : ∀ aty ∈ rty, aty.snd.getType.WellFormed env → ∃ v, InstanceOfType env v aty.snd.getType := by
+      intro aty hart hwf
+      have _ : sizeOf aty.snd.getType < (1 + (1 + sizeOf rty)) := by
+        suffices h : sizeOf aty.snd.getType < sizeOf rty by omega
+        exact Nat.lt_trans
+          (sizeOf_attribute_lt_sizeOf_qualified aty)
+          (List.sizeOf_lt_of_mem hart)
+      exact type_is_inhabited hwf_env hwf
+    exact type_is_inhabited_record hwf ih
 
 theorem instance_of_lubBool_left {env : TypeEnv} {v : Value} {bty₁ bty₂ : BoolType} :
   InstanceOfType env v (CedarType.bool bty₁) →
