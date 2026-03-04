@@ -14,9 +14,11 @@
  limitations under the License.
 -/
 
-import Cedar.SymCC.Enforcer
-import Cedar.SymCC.Authorizer
-import Cedar.SymCC.Compiler
+module
+
+public import Cedar.SymCC.Enforcer -- TODO: this import need not be public
+public import Cedar.SymCC.Authorizer -- TODO: this import need not be public
+public import Cedar.SymCC.Compiler -- TODO: this import need not be public
 
 /-!
 This file contains `verify*` functions that use the Cedar symbolic compiler,
@@ -24,6 +26,8 @@ authorizer, and hierarchy enforcer to generate a list of `Asserts`. These are
 boolean terms whose conjunction is unsatisfiable if and only if the verified
 property holds.
 -/
+
+@[expose] public section -- TODO: make the public interface more granular/intentional, instead of having everything public and exposed
 
 namespace Cedar.SymCC
 

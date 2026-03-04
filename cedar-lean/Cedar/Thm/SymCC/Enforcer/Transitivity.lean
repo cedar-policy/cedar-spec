@@ -420,7 +420,7 @@ private theorem wfl_ancestors_implies_wfl_term_entity {uid  : EntityUID} {ety : 
   Term.WellFormedLiteral εs t ∧ t.typeOf = TermType.entity ety
 := by
   replace hlit₃ := lit_term_set_implies_lit_elt hlit hin
-  have hws := wf_app_anc hwε hwt (by simp only [Term.typeOf, TermPrim.typeOf]) hanc
+  have hws := wf_app_anc hwε hwt typeOf_term_prim_entity hanc
   simp only [heq] at hws
   have hwt₃ := wf_term_set_implies_wf_elt hws.left hin
   have hty₃ := wf_term_set_implies_typeOf_elt hws.left hin

@@ -14,8 +14,10 @@
  limitations under the License.
 -/
 
+module
+
 import Cedar.Spec
-import Cedar.SymCC.Function
+public import Cedar.SymCC.Function
 
 /-!
 This file defines an API for construcing well-formed Terms. In this basic
@@ -45,30 +47,31 @@ namespace Factory
 
 ---------- Term constructors ----------
 
-def noneOf (ty : TermType) : Term := .none ty
+public def noneOf (ty : TermType) : Term := .none ty
 
-def someOf (t : Term) : Term := .some t
+public def someOf (t : Term) : Term := .some t
 prefix:0 "⊙" => someOf
 
-def setOf (ts : List Term) (ty : TermType) : Term := .set (Set.make ts) ty
+public def setOf (ts : List Term) (ty : TermType) : Term := .set (Set.make ts) ty
 
-def recordOf (ats : List (Attr × Term)) : Term := .record (Map.make ats)
+public def recordOf (ats : List (Attr × Term)) : Term := .record (Map.make ats)
 
-def tagOf (entity tag : Term) : Term := .record (EntityTag.mk entity tag)
+public def tagOf (entity tag : Term) : Term := .record (EntityTag.mk entity tag)
 
 ---------- SMTLib core theory of equality with uninterpreted functions (`UF`) ----------
 
-def not : Term → Term
+public def not : Term → Term
   | .prim (.bool b)  => ! b
   | .app .not [t'] _ => t'
   | t                => .app .not [t] .bool
 
-def opposites : Term → Term → Bool
+-- TODO: make private once Term/WF.lean and Thm/.../Factory.lean become `module`s able to `import all` this file (they need access to internals here)
+public def opposites : Term → Term → Bool
   | t₁, .app .not [t₂] _
   | .app .not [t₁] _, t₂ => t₁ = t₂
   | _, _                 => false
 
-def and (t₁ t₂ : Term) : Term :=
+public def and (t₁ t₂ : Term) : Term :=
   if t₁ = t₂ || t₂ = true
   then t₁
   else if t₁ = true
@@ -77,7 +80,7 @@ def and (t₁ t₂ : Term) : Term :=
   then false
   else .app .and [t₁, t₂] .bool
 
-def or (t₁ t₂ : Term) : Term :=
+public def or (t₁ t₂ : Term) : Term :=
   if t₁ = t₂ || t₂ = false
   then t₁
   else if t₁ = false
@@ -86,10 +89,11 @@ def or (t₁ t₂ : Term) : Term :=
   then true
   else .app .or [t₁, t₂] .bool
 
-def implies (t₁ t₂ : Term) : Term :=
+public def implies (t₁ t₂ : Term) : Term :=
   or (not t₁) t₂
 
-def eq (t₁ t₂ : Term) : Term :=
+@[expose] -- TODO: remove `@[expose]` once Term/WF.lean and Thm/.../Factory.lean become `module`s able to `import all` this file (they need access to internals here)
+public def eq (t₁ t₂ : Term) : Term :=
   match t₁, t₂ with
   | .some t₁', .some t₂' => simplify t₁' t₂'
   | .some _, .none _     => false
@@ -111,7 +115,8 @@ where
     then not t₁
     else .app .eq [t₁, t₂] .bool
 
-def ite (t₁ t₂ t₃ : Term) : Term :=
+@[expose] -- TODO: remove `@[expose]` once Term/WF.lean and Thm/.../Factory.lean become `module`s able to `import all` this file (they need access to internals here)
+public def ite (t₁ t₂ t₃ : Term) : Term :=
   match t₂, t₃ with
   | .some t₂', .some t₃' => .some (simplify t₂' t₃')
   | _, _                 => simplify t₂ t₃
@@ -134,7 +139,7 @@ both literals and non-literal terms. The latter will result in the creation of a
 chained `ite` expression that encodes the semantics of table lookup on an
 unknown value.
 -/
-def app : UnaryFunction → Term → Term
+public def app : UnaryFunction → Term → Term
   | .uuf f, t => .app (.uuf f) [t] f.out
   | .udf f, t =>
   if t.isLiteral
@@ -150,61 +155,64 @@ def app : UnaryFunction → Term → Term
 -- approach is sufficient for the strong PE property we care about:  if given a
 -- fully concrete input, the symbolic compiler returns a fully concrete output.
 
-def bvneg : Term → Term
+public def bvneg : Term → Term
   | .prim (.bitvec b)  => b.neg
   | .app .bvneg [t] _  => t
   | t                  => .app .bvneg [t] t.typeOf
 
-def bvapp (op : Op) (fn : ∀ {n}, BitVec n → BitVec n → BitVec n) (t₁ t₂ : Term) : Term :=
+-- TODO: make private once Term/WF.lean and Thm/.../Factory.lean become `module`s able to `import all` this file (they need access to internals here)
+public def bvapp (op : Op) (fn : ∀ {n}, BitVec n → BitVec n → BitVec n) (t₁ t₂ : Term) : Term :=
   match t₁, t₂ with
   | .prim (@TermPrim.bitvec n b₁), .prim (.bitvec b₂) =>
     fn b₁ (BitVec.ofNat n b₂.toNat)
   | _, _ =>
     .app op [t₁, t₂] t₁.typeOf
 
-def bvadd := bvapp .bvadd BitVec.add
-def bvsub := bvapp .bvsub BitVec.sub
-def bvmul := bvapp .bvmul BitVec.mul
-def bvsdiv := bvapp .bvsdiv BitVec.smtSDiv
-def bvudiv := bvapp .bvudiv BitVec.smtUDiv
-def bvsrem := bvapp .bvsrem BitVec.srem
-def bvsmod := bvapp .bvsmod BitVec.smod
-def bvurem := bvapp .bvurem BitVec.umod
+public def bvadd := bvapp .bvadd BitVec.add
+public def bvsub := bvapp .bvsub BitVec.sub
+public def bvmul := bvapp .bvmul BitVec.mul
+public def bvsdiv := bvapp .bvsdiv BitVec.smtSDiv
+public def bvudiv := bvapp .bvudiv BitVec.smtUDiv
+public def bvsrem := bvapp .bvsrem BitVec.srem
+public def bvsmod := bvapp .bvsmod BitVec.smod
+public def bvurem := bvapp .bvurem BitVec.umod
 
-def bvshl  := bvapp .bvshl (λ b₁ b₂ => b₁ <<< b₂)
-def bvlshr := bvapp .bvlshr (λ b₁ b₂ => b₁ >>> b₂)
+public def bvshl  := bvapp .bvshl (λ b₁ b₂ => b₁ <<< b₂)
+public def bvlshr := bvapp .bvlshr (λ b₁ b₂ => b₁ >>> b₂)
 
-def bvcmp (op : Op) (fn : ∀ {n}, BitVec n → BitVec n → Bool) (t₁ t₂ : Term) : Term :=
+-- TODO: make private once Term/WF.lean and Thm/.../Factory.lean become `module`s able to `import all` this file (they need access to internals here)
+public def bvcmp (op : Op) (fn : ∀ {n}, BitVec n → BitVec n → Bool) (t₁ t₂ : Term) : Term :=
   match t₁, t₂ with
   | .prim (@TermPrim.bitvec n b₁), .prim (.bitvec b₂) =>
     fn b₁ (BitVec.ofNat n b₂.toNat)
   | _, _ =>
     .app op [t₁, t₂] .bool
 
-def bvslt := bvcmp .bvslt BitVec.slt
-def bvsle := bvcmp .bvsle BitVec.sle
-def bvult := bvcmp .bvult BitVec.ult
-def bvule := bvcmp .bvule BitVec.ule
+public def bvslt := bvcmp .bvslt BitVec.slt
+public def bvsle := bvcmp .bvsle BitVec.sle
+public def bvult := bvcmp .bvult BitVec.ult
+public def bvule := bvcmp .bvule BitVec.ule
 
-def bvnego : Term → Term
+public def bvnego : Term → Term
   | .prim (@TermPrim.bitvec n b₁) => BitVec.overflows n (-b₁.toInt)
   | t                             => .app .bvnego [t] .bool
 
-def bvso (op : Op) (fn : Int → Int → Int) (t₁ t₂ : Term) : Term :=
+-- TODO: make private once Term/WF.lean and Thm/.../Factory.lean become `module`s able to `import all` this file (they need access to internals here)
+public def bvso (op : Op) (fn : Int → Int → Int) (t₁ t₂ : Term) : Term :=
   match t₁, t₂ with
   | .prim (@TermPrim.bitvec n b₁), .prim (.bitvec b₂) =>
     BitVec.overflows n (fn b₁.toInt b₂.toInt)
   | _, _ => .app op [t₁, t₂] .bool
 
-def bvsaddo := bvso .bvsaddo (· + ·)
-def bvssubo := bvso .bvssubo (· - ·)
-def bvsmulo := bvso .bvsmulo (· * ·)
+public def bvsaddo := bvso .bvsaddo (· + ·)
+public def bvssubo := bvso .bvssubo (· - ·)
+public def bvsmulo := bvso .bvsmulo (· * ·)
 
 /-
 Note that BitVec defines zero_extend differently from SMTLib,
 so we compensate for the difference in partial evaluation.
 -/
-def zero_extend (n : Nat) : Term → Term
+public def zero_extend (n : Nat) : Term → Term
   | .prim (@TermPrim.bitvec m b) =>
     BitVec.zeroExtend (n + m) b
   | t =>
@@ -215,7 +223,7 @@ def zero_extend (n : Nat) : Term → Term
 
 ---------- CVC theory of finite sets (`FS`) ----------
 
-def set.member (t ts : Term) : Term :=
+public def set.member (t ts : Term) : Term :=
   match ts with
   | .set (Set.mk []) _ => false
   | .set s _ =>
@@ -224,7 +232,7 @@ def set.member (t ts : Term) : Term :=
     else .app Op.set.member [t, ts] .bool
   | _ => .app Op.set.member [t, ts] .bool
 
-def set.subset (sub sup : Term) : Term :=
+public def set.subset (sub sup : Term) : Term :=
   if sub = sup
   then true
   else match sub, sup with
@@ -235,7 +243,7 @@ def set.subset (sub sup : Term) : Term :=
       else .app Op.set.subset [sub, sup] .bool
     | _, _ => .app Op.set.subset [sub, sup] .bool
 
-def set.inter (ts₁ ts₂ : Term) : Term :=
+public def set.inter (ts₁ ts₂ : Term) : Term :=
   if ts₁ = ts₂
   then ts₁
   else match ts₁, ts₂ with
@@ -247,7 +255,7 @@ def set.inter (ts₁ ts₂ : Term) : Term :=
       else .app Op.set.inter [ts₁, ts₂] (.set ty)
     | _, _ => .app Op.set.inter [ts₁, ts₂] ts₁.typeOf
 
-def set.isEmpty : Term → Term
+public def set.isEmpty : Term → Term
   | .set (Set.mk []) _     => true
   | .set (Set.mk (_::_)) _ => false
   | ts =>
@@ -255,19 +263,19 @@ def set.isEmpty : Term → Term
     | .set ty => eq ts (.set (Set.mk []) ty)
     | _       => false
 
-def set.intersects (ts₁ ts₂ : Term) : Term :=
+public def set.intersects (ts₁ ts₂ : Term) : Term :=
   not (set.isEmpty (set.inter ts₁ ts₂))
 
 ---------- Core ADT operators with a trusted mapping to SMT ----------
 
-def option.get : Term → Term
+public def option.get : Term → Term
   | .some t  => t
   | t        =>
     match t.typeOf with
     | .option ty => .app Op.option.get [t] ty
     | _          => t
 
-def record.get (t : Term) (a : Attr) : Term :=
+public def record.get (t : Term) (a : Attr) : Term :=
   match t with
   | .record r => if let some tₐ := r.find? a then tₐ else t
   | _         =>
@@ -275,62 +283,62 @@ def record.get (t : Term) (a : Attr) : Term :=
     | .record rty => if let some ty := rty.find? a then .app (Op.record.get a) [t] ty else t
     | _           => t
 
-def string.like (t : Term) (p : Pattern) : Term :=
+public def string.like (t : Term) (p : Pattern) : Term :=
   match t with
   | .prim (.string s) => wildcardMatch s p
   | _                 => .app (Op.string.like p) [t] .bool
 
 ---------- Extension ADT operators with a trusted mapping to SMT ----------
 
-def ext.decimal.val : Term → Term
+public def ext.decimal.val : Term → Term
   | .prim (.ext (.decimal d)) => d
   | t                         => .app (.ext ExtOp.decimal.val) [t] (.bitvec 64)
 
-def ext.ipaddr.isV4 : Term → Term
+public def ext.ipaddr.isV4 : Term → Term
   | .prim (.ext (.ipaddr ip)) => ip.isV4
   | t                         => .app (.ext ExtOp.ipaddr.isV4) [t] .bool
 
-def ext.ipaddr.addrV4 : Term → Term
+public def ext.ipaddr.addrV4 : Term → Term
   | .prim (.ext (.ipaddr (.V4 ⟨v4, _⟩))) => v4
   | t                                    => .app (.ext ExtOp.ipaddr.addrV4) [t] (.bitvec 32)
 
-def ext.ipaddr.prefixV4 : Term → Term
+public def ext.ipaddr.prefixV4 : Term → Term
   | .prim (.ext (.ipaddr (.V4 ⟨_, p4⟩))) =>
     match p4 with
     | .none     => noneOf (.bitvec 5)
     | .some pre => someOf pre
   | t => .app (.ext ExtOp.ipaddr.prefixV4) [t] (.option (.bitvec 5))
 
-def ext.ipaddr.addrV6 : Term → Term
+public def ext.ipaddr.addrV6 : Term → Term
   | .prim (.ext (.ipaddr (.V6 ⟨v6, _⟩))) => v6
   | t                                    => .app (.ext ExtOp.ipaddr.addrV6) [t] (.bitvec 128)
 
-def ext.ipaddr.prefixV6 : Term → Term
+public def ext.ipaddr.prefixV6 : Term → Term
   | .prim (.ext (.ipaddr (.V6 ⟨_, p6⟩))) =>
     match p6 with
     | .none     => noneOf (.bitvec 7)
     | .some pre => someOf pre
   | t => .app (.ext ExtOp.ipaddr.prefixV6) [t] (.option (.bitvec 7))
 
-def ext.datetime.val : Term → Term
+public def ext.datetime.val : Term → Term
   | .prim (.ext (.datetime d)) => d.val
   | t                          => .app (.ext ExtOp.datetime.val) [t] (.bitvec 64)
 
-def ext.datetime.ofBitVec : Term -> Term
+public def ext.datetime.ofBitVec : Term -> Term
   | .prim (@TermPrim.bitvec 64 bv) => .prim (.ext (.datetime (Int64.ofInt bv.toInt)))
   | t                              => .app (.ext ExtOp.datetime.ofBitVec) [t] (.ext .datetime)
 
-def ext.duration.val : Term → Term
+public def ext.duration.val : Term → Term
   | .prim (.ext (.duration d)) => d.val
   | t                          => .app (.ext ExtOp.duration.val) [t] (.bitvec 64)
 
-def ext.duration.ofBitVec : Term -> Term
+public def ext.duration.ofBitVec : Term -> Term
   | .prim (@TermPrim.bitvec 64 bv) => .prim (.ext (.duration (Int64.ofInt bv.toInt)))
   | t                              => .app (.ext ExtOp.duration.ofBitVec) [t] (.ext .duration)
 
 ---------- Helper functions for constructing compound terms ----------
 
-def isNone : Term → Term
+public def isNone : Term → Term
   | .none _  => true
   | .some _  => false
   | .app .ite [_, .some _, .some _] _ => false
@@ -341,34 +349,34 @@ def isNone : Term → Term
     | .option ty => eq t (.none ty)
     | _          => false
 
-def isSome (t : Term) : Term :=
+public def isSome (t : Term) : Term :=
   not (isNone t)
 
-def ifFalse (g t : Term) : Term :=
+public def ifFalse (g t : Term) : Term :=
   ite g (noneOf t.typeOf) (someOf t)
 
-def ifTrue (g t : Term) : Term :=
+public def ifTrue (g t : Term) : Term :=
   ite g (someOf t) (noneOf t.typeOf)
 
-def ifSome (g t : Term) : Term :=
+public def ifSome (g t : Term) : Term :=
   if let .option ty := t.typeOf
   then ite (isNone g) (noneOf ty) t
   else ifFalse (isNone g) t
 
-def anyTrue (f : Term → Term) (ts : List Term) : Term :=
+public def anyTrue (f : Term → Term) (ts : List Term) : Term :=
   ts.foldl (λ acc t => or (f t) acc) false
 
-def anyNone (gs : List Term) : Term := anyTrue isNone gs
+public def anyNone (gs : List Term) : Term := anyTrue isNone gs
 
-def ifAllSome (gs : List Term) (t : Term) : Term :=
+public def ifAllSome (gs : List Term) (t : Term) : Term :=
   let g := anyNone gs
   if let .option ty := t.typeOf
   then ite g (noneOf ty) t
   else ifFalse g t
 
-def bvaddChecked t₁ t₂ := ifFalse (bvsaddo t₁ t₂) (bvadd t₁ t₂)
-def bvsubChecked t₁ t₂ := ifFalse (bvssubo t₁ t₂) (bvsub t₁ t₂)
-def bvmulChecked t₁ t₂ := ifFalse (bvsmulo t₁ t₂) (bvmul t₁ t₂)
+public def bvaddChecked t₁ t₂ := ifFalse (bvsaddo t₁ t₂) (bvadd t₁ t₂)
+public def bvsubChecked t₁ t₂ := ifFalse (bvssubo t₁ t₂) (bvsub t₁ t₂)
+public def bvmulChecked t₁ t₂ := ifFalse (bvsmulo t₁ t₂) (bvmul t₁ t₂)
 
 end Factory
 

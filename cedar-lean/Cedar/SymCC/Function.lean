@@ -14,8 +14,10 @@
  limitations under the License.
 -/
 
+module
+
 import Cedar.Spec
-import Cedar.SymCC.Term
+public import Cedar.SymCC.Term
 
 /-!
 This file defines an ADT that represents unary functions over terms. These
@@ -35,7 +37,7 @@ open Cedar.Spec
 open Cedar.Data
 
 
-structure UDF where -- unary defined function
+public structure UDF where -- unary defined function
   arg : TermType
   out : TermType
   table : Map Term Term
@@ -43,31 +45,33 @@ structure UDF where -- unary defined function
 
 deriving instance Repr, DecidableEq, Inhabited for UDF
 
-inductive UnaryFunction : Type where
+public inductive UnaryFunction : Type where
   | uuf : UUF → UnaryFunction
   | udf : UDF → UnaryFunction
 
-def UnaryFunction.argType : UnaryFunction → TermType
+public def UnaryFunction.argType : UnaryFunction → TermType
   | .uuf f => f.arg
   | .udf f => f.arg
 
-def UnaryFunction.outType : UnaryFunction → TermType
+public def UnaryFunction.outType : UnaryFunction → TermType
   | .uuf f => f.out
   | .udf f => f.out
 
-def UnaryFunction.isUUF : UnaryFunction → Bool
+@[inline]
+public def UnaryFunction.isUUF : UnaryFunction → Bool
   | .uuf _ => true
   | .udf _ => false
 
-def UnaryFunction.isUDF : UnaryFunction → Bool
+@[inline]
+public def UnaryFunction.isUDF : UnaryFunction → Bool
   | .udf _ => true
   | .uuf _ => false
 
-def UDF.isLiteral (f : UDF) : Bool :=
+public def UDF.isLiteral (f : UDF) : Bool :=
   f.default.isLiteral &&
   f.table.toList.all λ (tᵢ, tₒ) => tᵢ.isLiteral && tₒ.isLiteral
 
-def UnaryFunction.isLiteral : UnaryFunction → Bool
+public def UnaryFunction.isLiteral : UnaryFunction → Bool
   | .udf f => f.isLiteral
   | .uuf _ => false
 

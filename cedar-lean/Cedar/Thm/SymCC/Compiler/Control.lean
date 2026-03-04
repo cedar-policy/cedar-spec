@@ -310,7 +310,7 @@ theorem compile_interpret_and {x₁ x₂ : Expr} {εnv : SymEnv} {I : Interpreta
     have hite := @wf_ite
       εnv.entities (option.get t₁) t₂ (Term.some (Term.prim (TermPrim.bool false)))
       hopt.left hwφ₂.left (Term.WellFormed.some_wf wf_bool)
-      hopt.right (by simp only [Term.typeOf, TermPrim.typeOf, ht₂])
+      hopt.right (by simp only [Term.typeOf, typeOf_bool, ht₂])
     split
     case h_1 heq =>
       simp only [heq, h₃, Except.ok.injEq]
@@ -343,7 +343,7 @@ theorem compile_interpret_and {x₁ x₂ : Expr} {εnv : SymEnv} {I : Interpreta
         replace hwφ₂ := (interpret_term_wf h₁ hwφ₂.left).left
 
         have ht' : Term.typeOf (Term.interpret I t₂) = Term.typeOf (Term.some (Term.prim (TermPrim.bool false))) := by
-          simp only [Term.typeOf, TermPrim.typeOf, ht₂']
+          simp only [Term.typeOf, typeOf_bool, ht₂']
 
         have hto := wf_ite hoptI.left hwφ₂ (Term.WellFormed.some_wf wf_bool) hoptI.right ht'
         have hto' := wf_ite hoptI'.left hwφ₂ (Term.WellFormed.some_wf wf_bool) hoptI'.right ht'
@@ -466,7 +466,7 @@ theorem compile_interpret_or {x₁ x₂ : Expr} {εnv : SymEnv} {I : Interpretat
     have hite := @wf_ite
       εnv.entities (option.get t₁) (Term.some (Term.prim (TermPrim.bool true))) t₂
       hopt.left (Term.WellFormed.some_wf wf_bool) hwφ₂.left
-      hopt.right (by simp only [Term.typeOf, TermPrim.typeOf, ht₂])
+      hopt.right (by simp only [Term.typeOf, typeOf_bool, ht₂])
     split
     case h_1 heq =>
       simp only [heq, h₃, Except.ok.injEq]
@@ -499,7 +499,7 @@ theorem compile_interpret_or {x₁ x₂ : Expr} {εnv : SymEnv} {I : Interpretat
         replace hwφ₂ := (interpret_term_wf h₁ hwφ₂.left).left
 
         have ht' : Term.typeOf (Term.some (Term.prim (TermPrim.bool true))) = Term.typeOf (Term.interpret I t₂) := by
-          simp only [Term.typeOf, TermPrim.typeOf, ht₂']
+          simp only [Term.typeOf, typeOf_bool, ht₂']
 
         have hto := wf_ite hoptI.left (Term.WellFormed.some_wf wf_bool) hwφ₂ hoptI.right ht'
         have hto' := wf_ite hoptI'.left (Term.WellFormed.some_wf wf_bool) hwφ₂ hoptI'.right ht'

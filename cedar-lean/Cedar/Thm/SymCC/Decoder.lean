@@ -14,8 +14,10 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.SymCC.Env.WF
 import Cedar.SymCC.Decoder
+import Cedar.Thm.SymCC.Data
+import Cedar.Thm.SymCC.Env.WF
+import Cedar.Thm.SymCC.Term.TypeOf
 
 /-! Some facts about `default*` -/
 
@@ -140,9 +142,9 @@ theorem default_lit_well_typed
     | ext x =>
       cases x
       all_goals
-        simp only [Decoder.defaultLit, Decoder.defaultPrim, Term.typeOf, TermPrim.typeOf, Decoder.defaultExt]
+        simp [Decoder.defaultLit, Decoder.defaultPrim, Decoder.defaultExt, typeOf_term_prim_ext_datetime, typeOf_term_prim_ext_duration, typeOf_term_prim_ext_decimal, typeOf_term_prim_ext_ipaddr]
     | _ =>
-      simp only [Decoder.defaultLit, Decoder.defaultPrim, Term.typeOf, TermPrim.typeOf, BitVec.width]
+      simp [Decoder.defaultLit, Decoder.defaultPrim, typeOf_bool, typeOf_bv, typeOf_term_prim_string, typeOf_term_prim_entity]
   | option =>
     simp only [Decoder.defaultLit, Term.typeOf]
   | set =>

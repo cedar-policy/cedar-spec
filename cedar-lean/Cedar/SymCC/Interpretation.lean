@@ -14,8 +14,13 @@
  limitations under the License.
 -/
 
+module
+
 import Cedar.Spec
-import Cedar.SymCC.Env
+public import Cedar.SymCC.Env
+public import Cedar.SymCC.Factory -- TODO: this need not be a public import
+public import Cedar.SymCC.Function
+public import Cedar.SymCC.Term
 
 /-!
 
@@ -29,6 +34,8 @@ When a symbolic structure (such as a term, request, function, or entities) is
 interpreted with respect to an Interpretation, the result is a literal symbolic
 structure.
 -/
+
+@[expose] public section -- TODO: make the public interface more granular/intentional, instead of having everything public and exposed
 
 namespace Cedar.SymCC
 

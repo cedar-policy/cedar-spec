@@ -14,10 +14,12 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
-import Cedar.SymCC.Data
+module
+
+public import Cedar.Spec
+public import Cedar.SymCC.Data
 import Cedar.SymCC.Result
-import Cedar.Validation.Types
+public import Cedar.Validation.Types
 
 /-!
 This file defines the types of Cedar Terms.  See `Term.lean` for the
@@ -30,55 +32,61 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-inductive TermPrimType where
+public inductive TermPrimType where
   | bool
   | bitvec (n : Nat)
   | string
   | entity (ety : EntityType)
   | ext (xty : ExtType)
 
-inductive TermType where
+public inductive TermType where
   | prim (pty : TermPrimType)
   | option (ty : TermType)
   | set (ty : TermType)
   | record (rty : Map Attr TermType)
 
-abbrev TermType.bool : TermType := .prim .bool
-abbrev TermType.bitvec (n : Nat) : TermType := .prim (.bitvec n)
-abbrev TermType.string : TermType := .prim .string
-abbrev TermType.entity (ety : EntityType) : TermType := .prim (.entity ety)
-abbrev TermType.ext (xty : ExtType) : TermType := .prim (.ext xty)
+public abbrev TermType.bool : TermType := .prim .bool
+public abbrev TermType.bitvec (n : Nat) : TermType := .prim (.bitvec n)
+public abbrev TermType.string : TermType := .prim .string
+public abbrev TermType.entity (ety : EntityType) : TermType := .prim (.entity ety)
+public abbrev TermType.ext (xty : ExtType) : TermType := .prim (.ext xty)
 
-abbrev TermType.tagFor (ety : EntityType) : TermType :=
+public abbrev TermType.tagFor (ety : EntityType) : TermType :=
   .record (EntityTag.mk (.entity ety) .string)
 
-def TermType.isPrimType : TermType → Bool
+@[inline]
+public def TermType.isPrimType : TermType → Bool
   | .prim _ => true
   | _       => false
 
-def TermType.isEntityType : TermType → Bool
+@[inline]
+public def TermType.isEntityType : TermType → Bool
   | .prim (.entity _) => true
   | _                 => false
 
-def TermType.isBitVecType : TermType → Bool
+@[inline]
+public def TermType.isBitVecType : TermType → Bool
   | .prim (.bitvec _) => true
   | _                 => false
 
-def TermType.isRecordType : TermType → Bool
+@[inline]
+public def TermType.isRecordType : TermType → Bool
   | .record _ => true
   | _         => false
 
-def TermType.isOptionType : TermType → Bool
+@[inline]
+public def TermType.isOptionType : TermType → Bool
   | .option _ => true
   | _         => false
 
-def TermType.isOptionEntityType : TermType → Bool
+@[inline]
+public def TermType.isOptionEntityType : TermType → Bool
   | .option (.entity _) => true
   | _                   => false
 
 mutual
 
-def TermType.ofType (ty : CedarType) : TermType :=
+public def TermType.ofType (ty : CedarType) : TermType :=
   match ty with
   | .bool _           => .prim (.bool)
   | .int              => .prim (.bitvec 64)
@@ -88,11 +96,11 @@ def TermType.ofType (ty : CedarType) : TermType :=
   | .set ty           => .set (ofType ty)
   | .record (.mk rty) => .record (.mk (ofRecordType rty))
 
-def TermType.ofRecordType : List (Attr × QualifiedType) → List (Attr × TermType)
+public def TermType.ofRecordType : List (Attr × QualifiedType) → List (Attr × TermType)
   | [] => []
   | (a, qty)::rty => (a, ofQualifiedType qty) :: ofRecordType rty
 
-def TermType.ofQualifiedType : QualifiedType → TermType
+public def TermType.ofQualifiedType : QualifiedType → TermType
   | .optional ty => .option (ofType ty)
   | .required ty => ofType ty
 
@@ -103,7 +111,7 @@ deriving instance Repr, Inhabited for TermType
 
 mutual
 
-def TermType.hasDecEq (ty₁ ty₂ : TermType) : Decidable (ty₁ = ty₂) := by
+public def TermType.hasDecEq (ty₁ ty₂ : TermType) : Decidable (ty₁ = ty₂) := by
   cases ty₁ <;> cases ty₂ <;>
   try { apply isFalse ; intro h ; injection h }
   case prim.prim v₁ v₂ =>
@@ -133,16 +141,16 @@ def TermType.hasListProdDec (atys₁ atys₂ : List (Attr × TermType)) : Decida
 
 end
 
-instance : DecidableEq TermType := TermType.hasDecEq
+public instance : DecidableEq TermType := TermType.hasDecEq
 
-def TermPrimType.mkName : TermPrimType → String
+public def TermPrimType.mkName : TermPrimType → String
   | .bool     => "bool"
   | .bitvec _ => "bitvec"
   | .string   => "string"
   | .entity _ => "entity"
   | .ext _    => "ext"
 
-def TermType.mkName : TermType → String
+public def TermType.mkName : TermType → String
   | .prim _   => "prim"
   | .option _ => "option"
   | .set _    => "set"
@@ -151,7 +159,7 @@ def TermType.mkName : TermType → String
 end Cedar.SymCC
 namespace Cedar.Validation
 
-def ExtType.lt : ExtType → ExtType → Bool
+public def ExtType.lt : ExtType → ExtType → Bool
   | .decimal, .ipAddr    => true
   | .decimal, .datetime  => true
   | .decimal, .duration  => true
@@ -160,10 +168,10 @@ def ExtType.lt : ExtType → ExtType → Bool
   | .datetime, .duration => true
   | _, _                 => false
 
-instance : LT ExtType where
+public instance : LT ExtType where
   lt := fun x y => ExtType.lt x y
 
-instance ExtType.decLt (x y : ExtType) : Decidable (x < y) :=
+public instance ExtType.decLt (x y : ExtType) : Decidable (x < y) :=
   if h : ExtType.lt x y then isTrue h else isFalse h
 
 end Cedar.Validation
@@ -173,21 +181,21 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-def TermPrimType.lt : TermPrimType → TermPrimType → Bool
+public def TermPrimType.lt : TermPrimType → TermPrimType → Bool
   | .bitvec n₁, .bitvec n₂     => n₁ < n₂
   | .entity ety₁, .entity ety₂ => ety₁ < ety₂
   | .ext xty₁, .ext xty₂       => xty₁ < xty₂
   | ty₁, ty₂                   => ty₁.mkName < ty₂.mkName
 
-instance : LT TermPrimType where
+public instance : LT TermPrimType where
   lt := fun x y => TermPrimType.lt x y
 
-instance TermPrimType.decLt (x y : TermPrimType) : Decidable (x < y) :=
+public instance TermPrimType.decLt (x y : TermPrimType) : Decidable (x < y) :=
   if h : TermPrimType.lt x y then isTrue h else isFalse h
 
 mutual
 
-def TermType.lt : TermType → TermType → Bool
+public def TermType.lt : TermType → TermType → Bool
   | .prim pty₁, .prim pty₂                 => pty₁ < pty₂
   | .option ty₁, .option ty₂               => TermType.lt ty₁ ty₂
   | .set ty₁, .set ty₂                     => TermType.lt ty₁ ty₂
@@ -206,10 +214,10 @@ termination_by atys _ => sizeOf atys
 
 end
 
-instance : LT TermType where
+public instance : LT TermType where
   lt := fun x y => TermType.lt x y
 
-instance TermType.decLt (x y : TermType) : Decidable (x < y) :=
+public instance TermType.decLt (x y : TermType) : Decidable (x < y) :=
   if h : TermType.lt x y then isTrue h else isFalse h
 
 end Cedar.SymCC

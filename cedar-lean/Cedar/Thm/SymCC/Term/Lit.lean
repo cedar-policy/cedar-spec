@@ -100,16 +100,14 @@ theorem wfl_of_type_bool_is_bool {εs : SymEntities} {t : Term} :
   case prim p =>
     cases p <;>
     simp only [
-      Term.typeOf, TermPrim.typeOf, TermType.bool,
-      TermType.bitvec, TermType.string, TermType.entity,
-      TermType.ext, TermType.prim.injEq, reduceCtorEq] at h₂
+      typeOf_bool, typeOf_bv, typeOf_term_prim_string, typeOf_term_prim_entity,
+      TermType.bool, TermType.bitvec, TermType.string, TermType.entity,
+      TermType.prim.injEq, reduceCtorEq] at h₂
     case bool b =>
       exists b
-    case ext =>
-      split at h₂ <;>
-      rename_i heq <;>
-      simp only [TermPrim.ext.injEq, reduceCtorEq] at heq <;>
-      simp only [TermType.prim.injEq, reduceCtorEq] at h₂
+    case ext ext =>
+      cases ext <;>
+      simp [typeOf_term_prim_ext_datetime, typeOf_term_prim_ext_decimal, typeOf_term_prim_ext_duration, typeOf_term_prim_ext_ipaddr] at h₂
 
 theorem wfl_of_type_bool_is_true_or_false {εs : SymEntities} {t : Term} :
   t.WellFormedLiteral εs →
@@ -118,9 +116,7 @@ theorem wfl_of_type_bool_is_true_or_false {εs : SymEntities} {t : Term} :
 := by
   intro h₁ h₂
   have ⟨b, h₃⟩ := wfl_of_type_bool_is_bool h₁ h₂
-  subst h₃
-  cases b <;>
-  simp only [Term.prim.injEq, TermPrim.bool.injEq, or_true, or_false, reduceCtorEq]
+  simp [h₃]
 
 theorem wfl_of_type_bitvec_is_bitvec {εs : SymEntities} {t : Term} {n : Nat} :
   t.WellFormedLiteral εs →
@@ -135,18 +131,16 @@ theorem wfl_of_type_bitvec_is_bitvec {εs : SymEntities} {t : Term} {n : Nat} :
   case prim p =>
     cases p <;>
     simp only [
-      Term.typeOf, TermPrim.typeOf, TermType.bool,
-      TermType.bitvec, TermType.string, TermType.entity,
-      TermType.ext, TermType.prim.injEq, reduceCtorEq] at h₂
+      typeOf_bool, typeOf_bv, typeOf_term_prim_string, typeOf_term_prim_entity,
+      TermType.bool, TermType.bitvec, TermType.string, TermType.entity,
+      TermType.prim.injEq, reduceCtorEq] at h₂
     case bitvec m bv =>
-      simp only [BitVec.width, TermPrimType.bitvec.injEq] at h₂
+      simp only [TermPrimType.bitvec.injEq] at h₂
       subst h₂
       exists bv
-    case ext =>
-      split at h₂ <;>
-      rename_i heq <;>
-      simp only [TermPrim.ext.injEq, reduceCtorEq] at heq <;>
-      simp only [TermType.prim.injEq, reduceCtorEq] at h₂
+    case ext ext =>
+      cases ext <;>
+      simp [typeOf_term_prim_ext_datetime, typeOf_term_prim_ext_decimal, typeOf_term_prim_ext_duration, typeOf_term_prim_ext_ipaddr] at h₂
 
 theorem wfl_of_type_datetime_is_datetime {εs : SymEntities} {t : Term}:
   t.WellFormedLiteral εs →
@@ -159,16 +153,12 @@ theorem wfl_of_type_datetime_is_datetime {εs : SymEntities} {t : Term}:
   try {simp only [Term.isLiteral, reduceCtorEq] at h₃} <;>
   try {simp only [Term.typeOf, reduceCtorEq] at h₂}
   case prim p =>
-    cases p <;>
-    simp only [
-      Term.typeOf, TermPrim.typeOf, TermType.bool,
-      TermType.bitvec, TermType.string, TermType.entity,
-      TermType.ext, TermType.prim.injEq, reduceCtorEq] at h₂
-    case ext =>
-      split at h₂ <;>
-      rename_i heq <;> simp at *
-      rename_i dt
-      exists dt
+    cases p
+    case ext ext =>
+      cases ext <;>
+      simp [typeOf_term_prim_ext_datetime, typeOf_term_prim_ext_decimal, typeOf_term_prim_ext_duration, typeOf_term_prim_ext_ipaddr] at h₂ ⊢
+    all_goals
+      simp [typeOf_bool, typeOf_bv, typeOf_term_prim_string, typeOf_term_prim_entity] at h₂
 
 theorem wfl_of_type_duration_is_duration {εs : SymEntities} {t : Term}:
   t.WellFormedLiteral εs →
@@ -181,16 +171,12 @@ theorem wfl_of_type_duration_is_duration {εs : SymEntities} {t : Term}:
   try {simp only [Term.isLiteral, reduceCtorEq] at h₃} <;>
   try {simp only [Term.typeOf, reduceCtorEq] at h₂}
   case prim p =>
-    cases p <;>
-    simp only [
-      Term.typeOf, TermPrim.typeOf, TermType.bool,
-      TermType.bitvec, TermType.string, TermType.entity,
-      TermType.ext, TermType.prim.injEq, reduceCtorEq] at h₂
-    case ext =>
-      split at h₂ <;>
-      rename_i heq <;> simp at *
-      rename_i dur
-      exists dur
+    cases p
+    case ext ext =>
+      cases ext <;>
+      simp [typeOf_term_prim_ext_datetime, typeOf_term_prim_ext_decimal, typeOf_term_prim_ext_duration, typeOf_term_prim_ext_ipaddr] at h₂ ⊢
+    all_goals
+      simp [typeOf_bool, typeOf_bv, typeOf_term_prim_string, typeOf_term_prim_entity] at h₂
 
 theorem wfl_of_type_string_is_string {εs : SymEntities} {t : Term} :
   t.WellFormedLiteral εs →
@@ -205,16 +191,14 @@ theorem wfl_of_type_string_is_string {εs : SymEntities} {t : Term} :
   case prim p =>
     cases p <;>
     simp only [
-      Term.typeOf, TermPrim.typeOf, TermType.bool,
-      TermType.bitvec, TermType.string, TermType.entity,
-      TermType.ext, TermType.prim.injEq, reduceCtorEq] at h₂
+      typeOf_bool, typeOf_bv, typeOf_term_prim_string, typeOf_term_prim_entity,
+      TermType.bool, TermType.bitvec, TermType.string, TermType.entity,
+      TermType.prim.injEq, reduceCtorEq] at h₂
     case string s =>
       exists s
-    case ext =>
-      split at h₂ <;>
-      rename_i heq <;>
-      simp only [TermPrim.ext.injEq, reduceCtorEq] at heq <;>
-      simp only [TermType.prim.injEq, reduceCtorEq] at h₂
+    case ext ext =>
+      cases ext <;>
+      simp [typeOf_term_prim_ext_datetime, typeOf_term_prim_ext_decimal, typeOf_term_prim_ext_duration, typeOf_term_prim_ext_ipaddr] at h₂
 
 theorem wfl_of_type_entity_is_entity {εs : SymEntities} {t : Term} {ety : EntityType} :
   t.WellFormedLiteral εs →
@@ -229,18 +213,16 @@ theorem wfl_of_type_entity_is_entity {εs : SymEntities} {t : Term} {ety : Entit
   case prim p =>
     cases p <;>
     simp only [
-      Term.typeOf, TermPrim.typeOf, TermType.bool,
-      TermType.bitvec, TermType.string, TermType.entity,
-      TermType.ext, TermType.prim.injEq, reduceCtorEq] at h₂
+      typeOf_bool, typeOf_bv, typeOf_term_prim_string, typeOf_term_prim_entity,
+      TermType.bool, TermType.bitvec, TermType.string, TermType.entity,
+      TermType.prim.injEq, reduceCtorEq] at h₂
     case entity uid =>
       exists uid
       simp only [TermPrimType.entity.injEq] at h₂
       simp only [h₂, and_self]
-    case ext =>
-      split at h₂ <;>
-      rename_i heq <;>
-      simp only [TermPrim.ext.injEq, reduceCtorEq] at heq <;>
-      simp only [TermType.prim.injEq, reduceCtorEq] at h₂
+    case ext ext =>
+      cases ext <;>
+      simp [typeOf_term_prim_ext_datetime, typeOf_term_prim_ext_decimal, typeOf_term_prim_ext_duration, typeOf_term_prim_ext_ipaddr] at h₂
 
 theorem wfl_of_type_set_is_set {εs : SymEntities} {t : Term} {ty : TermType} :
   t.WellFormedLiteral εs →
@@ -253,15 +235,12 @@ theorem wfl_of_type_set_is_set {εs : SymEntities} {t : Term} {ty : TermType} :
   try {simp only [Term.isLiteral, reduceCtorEq] at h₃} <;>
   try {simp only [Term.typeOf, reduceCtorEq] at h₂}
   case prim p =>
-    cases p <;>
-    simp only [
-      Term.typeOf, TermPrim.typeOf, TermType.bool,
-      TermType.bitvec, TermType.string, TermType.entity,
-      TermType.ext, reduceCtorEq] at h₂
-    case ext x =>
-      cases x <;>
-      rename_i x <;>
-      simp only [reduceCtorEq] at h₂
+    cases p
+    case ext ext =>
+      cases ext <;>
+      simp [typeOf_term_prim_ext_datetime, typeOf_term_prim_ext_decimal, typeOf_term_prim_ext_duration, typeOf_term_prim_ext_ipaddr] at h₂
+    all_goals
+      simp [typeOf_bool, typeOf_bv, typeOf_term_prim_string, typeOf_term_prim_entity] at h₂
   case set s _ =>
     simp [Term.typeOf] at h₂
     subst h₂
@@ -278,10 +257,14 @@ theorem wfl_of_type_record_is_record {εs : SymEntities} {t : Term} {rty : Map A
   try {simp only [Term.isLiteral, reduceCtorEq] at h₃} <;>
   try {simp only [Term.typeOf, reduceCtorEq] at h₂}
   case prim p =>
-    cases p <;>
-    simp only [Term.typeOf, TermPrim.typeOf, reduceCtorEq] at h₂
-    split at h₂ <;> simp only [reduceCtorEq] at h₂
-  case record r => exists r
+    cases p
+    case ext ext =>
+      cases ext <;>
+      simp [typeOf_term_prim_ext_datetime, typeOf_term_prim_ext_decimal, typeOf_term_prim_ext_duration, typeOf_term_prim_ext_ipaddr] at h₂
+    all_goals
+      simp [typeOf_bool, typeOf_bv, typeOf_term_prim_string, typeOf_term_prim_entity] at h₂
+  case record r =>
+    exists r
 
 local macro "simp_wfl_of_type_ext" t:term : tactic => do
  `(tactic| (
@@ -291,16 +274,15 @@ local macro "simp_wfl_of_type_ext" t:term : tactic => do
     try {simp only [Term.isLiteral, reduceCtorEq] at h₃} <;>
     try {simp only [Term.typeOf, reduceCtorEq] at h₂}
     case prim p =>
-      cases p <;>
-      simp only [
-        Term.typeOf, TermPrim.typeOf, TermType.bool,
-        TermType.bitvec, TermType.string, TermType.entity,
-        TermType.ext, TermType.prim.injEq, reduceCtorEq] at h₂
-      case ext x =>
-        cases x <;>
-        rename_i x <;>
-        simp only [TermType.ext, TermType.prim.injEq, TermPrimType.ext.injEq, reduceCtorEq] at h₂
-        exists x
+      cases p
+      case ext ext =>
+        cases ext <;>
+        simp only [
+          typeOf_term_prim_ext_datetime, typeOf_term_prim_ext_decimal, typeOf_term_prim_ext_duration, typeOf_term_prim_ext_ipaddr,
+          TermType.prim.injEq, TermPrimType.ext.injEq, reduceCtorEq] at h₂
+        case _ val => exists val
+      all_goals
+        simp [typeOf_bool, typeOf_bv, typeOf_term_prim_string, typeOf_term_prim_entity] at h₂
     ))
 
 theorem wfl_of_type_ext_decimal_is_ext_decimal {εs : SymEntities} {t : Term} :
@@ -344,10 +326,12 @@ theorem wfl_of_type_option_is_option {εs : SymEntities} {t : Term} {ty : TermTy
     simp only [Term.typeOf, TermType.option.injEq] at h₂
     simp only [← h₂, Term.some.injEq, exists_eq_left', or_true]
   case prim p =>
-    cases p <;>
-    simp [Term.typeOf, TermPrim.typeOf] at h₂
-    split at h₂ <;>
-    simp only [reduceCtorEq] at h₂
+    cases p
+    case ext ext =>
+      cases ext <;>
+      simp [typeOf_term_prim_ext_datetime, typeOf_term_prim_ext_decimal, typeOf_term_prim_ext_duration, typeOf_term_prim_ext_ipaddr] at h₂
+    all_goals
+      simp [typeOf_bool, typeOf_bv, typeOf_term_prim_string, typeOf_term_prim_entity] at h₂
 
 theorem wfl_of_prim_type_is_prim {εs : SymEntities} {t : Term} {pty : TermPrimType} :
   t.WellFormedLiteral εs →

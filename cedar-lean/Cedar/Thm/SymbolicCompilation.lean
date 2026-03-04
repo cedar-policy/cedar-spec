@@ -253,10 +253,10 @@ private theorem typeOf_ite.simplify {c t f : Term} :
   · split
     · exists fty
     · split
-      · simp [Term.typeOf, TermPrim.typeOf] at ht
-      · simp [Term.typeOf, TermPrim.typeOf] at ht
-      · simp [Term.typeOf, TermPrim.typeOf] at hf
-      · simp [Term.typeOf, TermPrim.typeOf] at ht
+      · simp [typeOf_bool] at ht
+      · simp [typeOf_bool] at ht
+      · simp [typeOf_bool] at hf
+      · simp [typeOf_bool] at ht
       · simp [Term.typeOf] ; exists tty
 
 /--

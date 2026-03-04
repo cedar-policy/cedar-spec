@@ -1313,7 +1313,7 @@ private theorem env_symbolize?_attrs_wf
       apply env_valid_uid_implies_sym_env_valid_uid hinst
       exact Map.in_list_implies_contains hmem_uid_data
     · simp only [Term.isLiteral]
-    · simp only [Term.typeOf, TermPrim.typeOf, TermType.ofType, heq_ety]
+    · simp only [typeOf_term_prim_entity, TermType.ofType, heq_ety]
     · apply value_symbolize?_wf hinst hwf_attrs_ty hwf_attrs hwt_attrs hsym_attrs
     · apply value_symbolize?_is_lit hsym_attrs
     · apply value_symbolize?_well_typed hwf_attrs_ty hwt_attrs hsym_attrs
@@ -1376,7 +1376,7 @@ private theorem env_symbolize?_tags_wf
           apply env_valid_uid_implies_sym_env_valid_uid hinst
           exact Map.in_list_implies_contains hmem_uid_data
         · simp only [Term.isLiteral]
-        · simp only [Term.typeOf, TermPrim.typeOf, TermType.ofType, heq_ety]
+        · simp only [typeOf_term_prim_entity, TermType.ofType, heq_ety]
         · constructor
           · intros t hmem_t
             replace hmem_t := (Set.make_mem _ _).mpr hmem_t
@@ -1387,8 +1387,7 @@ private theorem env_symbolize?_tags_wf
           · intros t hmem_t
             replace hmem_t := (Set.make_mem _ _).mpr hmem_t
             have ⟨_, _, h⟩ := List.mem_map.mp hmem_t
-            simp only [←h]
-            simp only [Term.typeOf, TermPrim.typeOf]
+            simp only [←h, typeOf_term_prim_string]
           · constructor
           · exact Set.make_wf _
         · unfold Term.isLiteral
@@ -1477,7 +1476,7 @@ private theorem env_symbolize?_tags_wf
           rw [Map.mapOnValues₂_eq_mapOnValues _ Term.typeOf]
           simp [
             Map.mapOnValues,
-            Term.typeOf, TermPrim.typeOf,
+            typeOf_term_prim_entity, typeOf_term_prim_string,
             heq_ety,
             TermType.tagFor, EntityTag.mk,
           ]
@@ -1536,7 +1535,7 @@ private theorem env_symbolize?_ancs_wf
       apply env_valid_uid_implies_sym_env_valid_uid hinst
       exact Map.in_list_implies_contains hmem_uid_data
     · simp only [Term.isLiteral]
-    · simp only [Term.typeOf, TermPrim.typeOf, TermType.ofType, heq_ety]
+    · simp only [typeOf_term_prim_entity, TermType.ofType, heq_ety]
     · constructor
       · intros t hmem_t
         replace hmem_t := (Set.make_mem _ _).mpr hmem_t
@@ -1551,7 +1550,7 @@ private theorem env_symbolize?_ancs_wf
         replace hmem_t := (Set.make_mem _ _).mpr hmem_t
         have ⟨anc, hmem_anc, h⟩ := List.mem_filterMap.mp hmem_t
         simp only [Option.ite_none_right_eq_some, Option.some.injEq] at h
-        simp only [←h, Term.typeOf, TermPrim.typeOf]
+        simp only [←h, typeOf_term_prim_entity]
       · constructor
         apply ofEnv_wf_entity hwf_Γ
         apply wf_env_implies_wf_ancestor hwf_Γ hfind_entry hmem_ancs

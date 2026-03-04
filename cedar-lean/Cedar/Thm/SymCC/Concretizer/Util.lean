@@ -81,7 +81,7 @@ theorem wf_δ_implies_wf_app_attrs {uid : EntityUID} {δ : SymEntityData} {εs :
 := by
   intro hwδ hwu
   apply wf_app hwu _ hwδ.left
-  simp only [Term.typeOf, TermPrim.typeOf, hwδ.right.left]
+  simp only [typeOf_term_prim_entity, hwδ.right.left]
 
 theorem wf_δ_implies_wf_app_ancs {uid : EntityUID} {δ : SymEntityData} {εs : SymEntities} {ancTy : EntityType} {ancUF : UnaryFunction} :
   δ.WellFormed εs uid.ty →
@@ -94,7 +94,7 @@ theorem wf_δ_implies_wf_app_ancs {uid : EntityUID} {δ : SymEntityData} {εs : 
   replace hwδ := hwδ.right.right.right.left ancTy ancUF hf
   rw [← hwδ.right.right]
   apply wf_app hwu _ hwδ.left
-  simp only [Term.typeOf, TermPrim.typeOf, hwδ.right.left]
+  simp only [typeOf_term_prim_entity, hwδ.right.left]
 
 theorem wf_δ_implies_wf_app_tags_keys {uid : EntityUID} {δ : SymEntityData} {τs : SymTags} :
   δ.WellFormed εs uid.ty →
@@ -107,7 +107,7 @@ theorem wf_δ_implies_wf_app_tags_keys {uid : EntityUID} {δ : SymEntityData} {�
   replace hwδ := hwδ.right.right.right.right.right.left τs hτs
   rw [← hwδ.right.right.left]
   apply wf_app hwu _ hwδ.left
-  simp only [Term.typeOf, TermPrim.typeOf, hwδ.right.left]
+  simp only [typeOf_term_prim_entity, hwδ.right.left]
 
 theorem lit_tagOf (uid : EntityUID) (tag : Tag) :
   (tagOf (Term.entity uid) (Term.string tag)).isLiteral

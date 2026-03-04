@@ -751,6 +751,12 @@ public theorem mapOnValues_empty {α β γ} [LT α] [DecidableLT α] [DecidableE
 := by
   simp [mapOnValues, empty]
 
+public theorem mapOnValues_tail {f : β → γ} {hd₁ hd₂ : α × β} {tl₁ tl₂ : List (α × β)} :
+  Map.mapOnValues f (Map.mk (hd₁ :: tl₁)) = Map.mapOnValues f (Map.mk (hd₂ :: tl₂)) →
+  Map.mapOnValues f (Map.mk tl₁) = Map.mapOnValues f (Map.mk tl₂)
+:= by
+  simp [mapOnValues]
+
 public theorem find?_mapOnValues {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) (m : Map α β) (k : α)  :
   (m.find? k).map f = (m.mapOnValues f).find? k
 := by
@@ -1019,6 +1025,26 @@ public theorem in_mapOnValues_in_toList' [LT α] [DecidableLT α] [StrictLT α] 
 
 /-! ### mapMOnValues -/
 
+public theorem mapMOnValues₂_eq_mapMOnValues {α β γ : Type 0} [LT α] [DecidableLT α] [SizeOf α] [SizeOf β] [Monad m] [LawfulMonad m] (map : Map α β) (f : β → m γ) :
+  map.mapMOnValues₂ (λ x : { x : β // sizeOf x < sizeOf map } => f x.1) = map.mapMOnValues f
+:= by
+  simp only [mapMOnValues₂, mapMOnValues, List.mapM₂_eq_map_snd f, toList]
+
+@[simp]
+public theorem mapMOnValues_empty [LT α] [DecidableLT α] [Monad m] [LawfulMonad m] (f : β → m γ) :
+  (empty : Map α β).mapMOnValues f = pure empty
+:= by simp [mapMOnValues, empty]
+
+@[simp]
+public theorem mapMOnValues_mapOnValues [LT α] [DecidableLT α] [Monad m] [LawfulMonad m] (map : Map α β) (f : β → γ) (g : γ → m φ) :
+  mapMOnValues g (map.mapOnValues f) = map.mapMOnValues (g ∘ f)
+:= by
+  simp only [mapMOnValues, mapOnValues, toList]
+  congr 1
+  rw [show (fun x : α × β => (x.fst, f x.snd)) = Prod.map id f from by ext ⟨a, b⟩ <;> rfl]
+  rw [List.mapM_map]
+  rfl
+
 /--
   This is not stated in terms of `Map.keys` because `Map.keys` produces a `Set`,
   and we want the even stronger property that it not only preserves the key-set,
@@ -1103,11 +1129,6 @@ public theorem mapMOnValues_ok_wf [LT α] [DecidableLT α] [StrictLT α] {f : β
     simp only at *
     cases h₂ : f v <;> simp [h₂] at h₁
     exact h₁.left
-
-public theorem mapMOnValues_nil [LT α] [DecidableLT α] {f : β → Option γ} :
-  (Map.empty : Map α β).mapMOnValues f = some Map.empty
-:= by
-  simp [mapMOnValues, empty, List.mapM_nil]
 
 public theorem mapMOnValues_cons {α : Type 0} [LT α] [DecidableLT α] {f : β → Option γ} {m : Map α β} {k : α} {v : β} {tl : List (α × β)}:
   m.toList = (k, v) :: tl →
@@ -1246,7 +1267,7 @@ public theorem mapMOnValues_none_iff_exists_none {α : Type 0} [LT α] [Decidabl
     cases h₂ : m.toList <;> simp only at h₁
     case nil =>
       rw [toList_nil_iff_empty] at h₂ ; subst h₂
-      simp [mapMOnValues_nil] at h₁
+      simp at h₁
     case cons hd tl =>
       have (khd, vhd) := hd ; clear hd
       simp only [values_cons h₂, List.mem_cons, exists_eq_or_imp]

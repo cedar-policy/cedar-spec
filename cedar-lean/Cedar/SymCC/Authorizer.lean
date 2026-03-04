@@ -14,8 +14,13 @@
  limitations under the License.
 -/
 
+module
+
+public import Cedar.Spec
 import Cedar.SymCC.Enforcer
+public import Cedar.SymCC.Env
 import Cedar.SymCC.Compiler
+public import Cedar.SymCC.Result
 
 /-!
 
@@ -33,16 +38,18 @@ namespace Cedar.SymCC
 
 open Factory Cedar.Spec
 
-def compileWithEffect (effect : Effect) (policy : Policy) (εnv : SymEnv) : Result (Option Term) :=
+-- TODO: make `private` once files like AllowDeny.lean are made `module`s and can `import all` this file (they prove things about these functions and need access to internals in this file)
+public def compileWithEffect (effect : Effect) (policy : Policy) (εnv : SymEnv) : Result (Option Term) :=
   if policy.effect == effect
   then compile policy.toExpr εnv
   else .ok .none
 
-def satisfiedPolicies (effect : Effect) (policies : Policies) (εnv : SymEnv) : Result Term := do
+-- TODO: make `private` once files like AllowDeny.lean are made `module`s and can `import all` this file (they prove things about these functions and need access to internals in this file)
+public def satisfiedPolicies (effect : Effect) (policies : Policies) (εnv : SymEnv) : Result Term := do
   let ts ← policies.filterMapM (compileWithEffect effect · εnv)
   anyTrue (eq · (someOf true)) ts
 
-def isAuthorized (policies : Policies) (εnv : SymEnv) : Result Term := do
+public def isAuthorized (policies : Policies) (εnv : SymEnv) : Result Term := do
   let forbids ← satisfiedPolicies .forbid policies εnv
   let permits ← satisfiedPolicies .permit policies εnv
   and permits (not forbids)

@@ -49,12 +49,12 @@ private theorem compileApp₁_implies_apply₁ {op₁ : UnaryOp} {v₁ : Value} 
     simp only [ih, hr.right, bvnego, bvneg, hi, Int64.neg?, Int64.ofInt?]
     split <;> rename_i h
     case isTrue =>
-      simp only [Same.same, SameResults, intOrErr, BitVec.overflows_false_64 h, BitVec.neg_eq,
-        pe_ifFalse_false]
+      simp only [Same.same, SameResults, intOrErr, BitVec.overflows_false_64.mp h,
+        BitVec.neg_eq, pe_ifFalse_false]
       apply same_implies_same_value
       exact same_int h (BitVec.neg_toInt_eq_neg_64 h hi)
     case isFalse =>
-      simp only [Same.same, SameResults, intOrErr, BitVec.overflows_true_64 h,
+      simp only [Same.same, SameResults, intOrErr, BitVec.overflows_true_64.mp h,
         pe_ifFalse_true, ne_eq, not_false_eq_true, reduceCtorEq]
   case like =>
     have ⟨_, h⟩ := wfl_of_type_string_is_string hwfl hr.left

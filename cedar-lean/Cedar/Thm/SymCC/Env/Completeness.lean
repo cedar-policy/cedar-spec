@@ -106,7 +106,7 @@ private theorem ofType_typeOf_pullback_prim
 := by
   cases p with
   | bool b =>
-    simp only [Term.typeOf, TermPrim.typeOf, TermType.bool] at heq_ty
+    simp only [typeOf_bool, TermType.bool] at heq_ty
     unfold TermType.ofType at heq_ty
     split at heq_ty
     rename_i bty
@@ -118,7 +118,7 @@ private theorem ofType_typeOf_pullback_prim
     simp [InstanceOfBoolType]
   | bitvec bv =>
     rename_i n
-    simp only [Term.typeOf, TermPrim.typeOf, TermType.bitvec, BitVec.width] at heq_ty
+    simp only [typeOf_bv, TermType.bitvec] at heq_ty
     unfold TermType.ofType at heq_ty
     split at heq_ty
     any_goals simp only [TermType.prim.injEq, TermPrimType.bitvec.injEq, reduceCtorEq] at heq_ty
@@ -130,7 +130,7 @@ private theorem ofType_typeOf_pullback_prim
     simp only [←hval]
     constructor
   | string =>
-    simp only [Term.typeOf, TermPrim.typeOf, TermType.string] at heq_ty
+    simp only [typeOf_term_prim_string, TermType.string] at heq_ty
     unfold TermType.ofType at heq_ty
     split at heq_ty
     any_goals simp only [TermType.prim.injEq, reduceCtorEq] at heq_ty
@@ -138,7 +138,7 @@ private theorem ofType_typeOf_pullback_prim
     simp only [←hval]
     constructor
   | entity uid =>
-    simp only [Term.typeOf, TermPrim.typeOf, TermType.entity] at heq_ty
+    simp only [typeOf_term_prim_entity, TermType.entity] at heq_ty
     unfold TermType.ofType at heq_ty
     split at heq_ty
     any_goals simp only [TermType.prim.injEq, TermPrimType.entity.injEq, reduceCtorEq] at heq_ty
@@ -149,19 +149,16 @@ private theorem ofType_typeOf_pullback_prim
     cases hwf_t with | prim_wf hwf_t =>
     cases hwf_t with | entity_wf hwf_t =>
     exact sym_entities_is_valid_entity_uid_implies_entity_uid_wf hwf_Γ hwf_t
-  | ext =>
-    simp only [Term.typeOf, TermPrim.typeOf] at heq_ty
-    split at heq_ty
-    any_goals contradiction
+  | ext ext =>
+    cases ext
     all_goals
+      simp only [typeOf_term_prim_ext_datetime, typeOf_term_prim_ext_decimal, typeOf_term_prim_ext_duration, typeOf_term_prim_ext_ipaddr] at heq_ty
       unfold TermType.ofType at heq_ty
-      rename_i hp
       split at heq_ty
       any_goals simp only [TermType.prim.injEq, reduceCtorEq] at heq_ty
       simp only [Term.value?, TermPrim.value?, Option.some.injEq] at hval
       injection heq_ty with heq_ty
-      injection hp with hp
-      simp only [←hval, ←heq_ty, hp]
+      simp only [←hval, ←heq_ty]
       constructor
       simp only [InstanceOfExtType]
 
@@ -174,12 +171,11 @@ private theorem value?_some_implies_typeOf_not_option
   cases t with
   | prim p =>
     cases p with
-    | ext =>
-      simp only [Term.typeOf, TermPrim.typeOf] at hopt
-      split at hopt
-      all_goals contradiction
+    | ext ext =>
+      cases ext <;>
+      simp [typeOf_term_prim_ext_datetime, typeOf_term_prim_ext_decimal, typeOf_term_prim_ext_duration, typeOf_term_prim_ext_ipaddr] at hopt
     | _ =>
-      simp only [Term.typeOf, TermPrim.typeOf] at hopt
+      simp only [typeOf_bool, typeOf_bv, typeOf_term_prim_string, typeOf_term_prim_entity] at hopt
       contradiction
   | record =>
     unfold Term.typeOf at hopt
@@ -519,7 +515,7 @@ private theorem ofEnv_request_completeness
   and_intros
   -- Well-formed symbolic principal => well-formed concrete principal
   · have ⟨_, hwt_I_princ⟩ := interpret_term_wf hwf_I hwf_sym_princ
-    simp only [hsame_I_princ, Term.typeOf, TermPrim.typeOf] at hwt_I_princ
+    simp only [hsame_I_princ, typeOf_term_prim_entity] at hwt_I_princ
     simp only [
       SymEnv.ofEnv,
       SymRequest.ofRequestType,
@@ -543,7 +539,7 @@ private theorem ofEnv_request_completeness
     simp [hsame_I_act]
   -- Well-formed symbolic resource => well-formed concrete resource
   · have ⟨_, hwt_I_res⟩ := interpret_term_wf hwf_I hwf_sym_res
-    simp only [hsame_I_res, Term.typeOf, TermPrim.typeOf] at hwt_I_res
+    simp only [hsame_I_res, typeOf_term_prim_entity] at hwt_I_res
     simp only [
       SymEnv.ofEnv,
       SymRequest.ofRequestType,
@@ -744,7 +740,7 @@ private theorem ofEnv_entity_completeness_standard_inst_tags
         · simp [Map.WellFormed, Map.make, List.canonicalize, List.insertCanonical]
       · simp only [
           Factory.tagOf,
-          Term.typeOf, TermPrim.typeOf,
+          Term.typeOf, typeOf_term_prim_string, typeOf_term_prim_entity,
           Map.mapOnValues₂_eq_mapOnValues _ Term.typeOf, Map.mapOnValues, Map.toList_mk_id,
           List.map,
           ←hvals_uuf,
@@ -841,7 +837,7 @@ private theorem ofEnv_entity_completeness_standard
         constructor
         exact hvalid_uid
       · simp only [UnaryFunction.argType, ←hudf_arg]
-        simp only [←huuf, Term.typeOf, TermPrim.typeOf, TermType.ofType]
+        simp only [←huuf, typeOf_term_prim_entity, TermType.ofType]
       · exact hwf_udf
     simp only [huuf] at hsame_attrs
     apply ofType_typeOf_pullback hwf_Γ _ _ _ _ hsame_attrs

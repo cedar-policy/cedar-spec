@@ -69,6 +69,19 @@ public theorem sizeOf_lt_of_value [SizeOf α] [SizeOf β] {m : Map α β} {k : �
     omega
   omega
 
+public theorem sizeOf_lt_of_find? [SizeOf α] [SizeOf β] [DecidableEq α] {m : Map α β} {k : α} {v : β}
+  (h : m.find? k = some v) :
+  sizeOf v < sizeOf m
+:= by
+  simp only [find?, toList] at h
+  split at h <;> simp only [Option.some.injEq, reduceCtorEq] at h
+  subst v
+  rename_i h
+  replace h := List.mem_of_find?_eq_some h
+  have := List.sizeOf_lt_of_mem h
+  simp_all only [sizeOf, Prod._sizeOf_1, _sizeOf_1]
+  omega
+
 public theorem sizeOf_lt_of_toList [SizeOf α] [SizeOf β] (m : Map α β) :
   sizeOf m.toList < sizeOf m
 := by

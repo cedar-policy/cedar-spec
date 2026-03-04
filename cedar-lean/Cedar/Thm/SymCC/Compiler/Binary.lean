@@ -531,12 +531,12 @@ private theorem compileApp₂_add_implies_apply₂ {t₁ t₂ t₃ : Term} {v₁
     BitVec.setWidth_eq, BitVec.add_eq]
   split
   case isTrue h =>
-    simp only [Same.same, SameResults, intOrErr, ih₁, ih₂, BitVec.overflows_false_64 h, pe_ifFalse_false]
+    simp only [Same.same, SameResults, intOrErr, ih₁, ih₂, BitVec.overflows_false_64.mp h, pe_ifFalse_false]
     apply same_implies_same_value
     apply same_int
     exact BitVec.add_toInt_eq_add_64 h ih₁ ih₂
   case isFalse h =>
-    simp only [Same.same, SameResults, intOrErr, ih₁, ih₂, BitVec.overflows_true_64 h,
+    simp only [Same.same, SameResults, intOrErr, ih₁, ih₂, BitVec.overflows_true_64.mp h,
       pe_ifFalse_true, ne_eq, not_false_eq_true, reduceCtorEq]
 
 private theorem compileApp₂_sub_implies_apply₂ {t₁ t₂ t₃ : Term} {v₁ v₂ : Value}
@@ -552,12 +552,12 @@ private theorem compileApp₂_sub_implies_apply₂ {t₁ t₂ t₃ : Term} {v₁
     BitVec.setWidth_eq]
   split
   case isTrue h =>
-    simp only [Same.same, SameResults, intOrErr, ih₁, ih₂, BitVec.overflows_false_64 h, pe_ifFalse_false]
+    simp only [Same.same, SameResults, intOrErr, ih₁, ih₂, BitVec.overflows_false_64.mp h, pe_ifFalse_false]
     apply same_implies_same_value
     apply same_int
     exact BitVec.sub_toInt_eq_sub_64 h ih₁ ih₂
   case isFalse h =>
-    simp only [Same.same, SameResults, intOrErr, ih₁, ih₂, BitVec.overflows_true_64 h,
+    simp only [Same.same, SameResults, intOrErr, ih₁, ih₂, BitVec.overflows_true_64.mp h,
       pe_ifFalse_true, ne_eq, not_false_eq_true, reduceCtorEq]
 
 private theorem compileApp₂_mul_implies_apply₂ {t₁ t₂ t₃ : Term} {v₁ v₂ : Value}
@@ -573,12 +573,12 @@ private theorem compileApp₂_mul_implies_apply₂ {t₁ t₂ t₃ : Term} {v₁
     BitVec.setWidth_eq]
   split
   case isTrue h =>
-    simp only [Same.same, SameResults, intOrErr, ih₁, ih₂, BitVec.overflows_false_64 h, pe_ifFalse_false]
+    simp only [Same.same, SameResults, intOrErr, ih₁, ih₂, BitVec.overflows_false_64.mp h, pe_ifFalse_false]
     apply same_implies_same_value
     apply same_int
     exact BitVec.mul_toInt_eq_mul_64 h ih₁ ih₂
   case isFalse h =>
-    simp only [Same.same, SameResults, intOrErr, ih₁, ih₂, BitVec.overflows_true_64 h,
+    simp only [Same.same, SameResults, intOrErr, ih₁, ih₂, BitVec.overflows_true_64.mp h,
       pe_ifFalse_true, ne_eq, not_false_eq_true, reduceCtorEq]
 
 private theorem same_set_mem {εs : SymEntities} {ts : Set Term} {vs : Set Value} {t : Term} {v : Value}
@@ -979,7 +979,7 @@ private theorem entities_type_eq {εs : SymEntities} {ety : EntityType} {ts : Li
   replace ht := @List.mem_map_of_mem _ _ _ _ (fun uid => Term.prim (TermPrim.entity uid)) ht
   simp only [← hts, Set.in_list_iff_in_mk] at ht
   replace ht := wf_term_set_implies_typeOf_elt hwφ ht
-  simp only [Term.typeOf, TermPrim.typeOf, TermType.prim.injEq, TermPrimType.entity.injEq] at ht
+  simp only [typeOf_term_prim_entity, TermType.prim.injEq, TermPrimType.entity.injEq] at ht
   exact ht
 
 private theorem compileInₛ_eq_any_inₑ_none {es : Entities} {εs : SymEntities} {ety₂ : EntityType} {e₁ : EntityUID} {uids : List EntityUID}

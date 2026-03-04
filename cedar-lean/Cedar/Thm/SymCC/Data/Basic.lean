@@ -14,12 +14,18 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
-import Cedar.SymCC
+module
+
+public import Cedar.Spec
+public import Cedar.SymCC.Concretizer
+public import Cedar.SymCC.Env
+import Cedar.SymCC.Factory
+public import Cedar.SymCC.Interpretation
+public import Cedar.SymCC.Verifier
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.List
-import Cedar.Thm.Data.Set
-import Cedar.Thm.Data.Map
+public import Cedar.Thm.Data.Set
+public import Cedar.Thm.Data.Map
 import Cedar.Thm.SymCC.Data.BitVec
 
 /-!
@@ -84,11 +90,11 @@ open Data
 
 ------ Well-formed concrete structures ------
 
-def Prim.WellFormed (es : Entities) : Prim → Prop
+public def Prim.WellFormed (es : Entities) : Prim → Prop
   | .entityUID uid => es.contains uid
   | _              => true
 
-inductive Value.WellFormed (es : Entities) : Value → Prop
+public inductive Value.WellFormed (es : Entities) : Value → Prop
   | prim_wf {p : Prim}
     (h₁ : p.WellFormed es) :
     WellFormed es (.prim p)
@@ -103,28 +109,28 @@ inductive Value.WellFormed (es : Entities) : Value → Prop
   | ext_wf {xv : Ext} :
     WellFormed es (.ext xv)
 
-def Request.WellFormed (es : Entities) (req : Request) : Prop :=
+public def Request.WellFormed (es : Entities) (req : Request) : Prop :=
   es.contains req.principal ∧
   es.contains req.action ∧
   es.contains req.resource ∧
   (Value.record req.context).WellFormed es
 
-def EntityData.WellFormed (es : Entities) (d : EntityData) : Prop :=
+public def EntityData.WellFormed (es : Entities) (d : EntityData) : Prop :=
   (Value.record d.attrs).WellFormed es ∧
   d.ancestors.WellFormed ∧
   (∀ uid, uid ∈ d.ancestors → es.contains uid) ∧
   d.tags.WellFormed ∧
   (∀ t v, d.tags.find? t = some v → v.WellFormed es)
 
-def Entities.WellFormed (es : Entities) : Prop :=
+public def Entities.WellFormed (es : Entities) : Prop :=
   Map.WellFormed es ∧
   ∀ uid d, es.find? uid = .some d → d.WellFormed es
 
-def Prim.ValidRef (validRef : EntityUID → Prop) : Prim → Prop
+public def Prim.ValidRef (validRef : EntityUID → Prop) : Prim → Prop
   | .entityUID uid => validRef uid
   | _              => True
 
-inductive Expr.ValidRefs (validRef : EntityUID → Prop) : Expr → Prop
+public inductive Expr.ValidRefs (validRef : EntityUID → Prop) : Expr → Prop
   | lit_valid {p : Prim}
     (h₁ : p.ValidRef validRef) :
     ValidRefs validRef (.lit p)
@@ -166,22 +172,22 @@ inductive Expr.ValidRefs (validRef : EntityUID → Prop) : Expr → Prop
     (h₁ : ∀ x ∈ xs, ValidRefs validRef x) :
     ValidRefs validRef (.call xfn xs)
 
-def Env.WellFormed (env : Env) : Prop :=
+public def Env.WellFormed (env : Env) : Prop :=
   env.request.WellFormed env.entities ∧
   env.entities.WellFormed
 
-abbrev Entities.ValidRefsFor (es : Entities) (x : Expr) : Prop :=
+public abbrev Entities.ValidRefsFor (es : Entities) (x : Expr) : Prop :=
   x.ValidRefs (λ uid => es.contains uid)
 
-def Env.WellFormedFor (env : Env) (x : Expr) : Prop :=
+public def Env.WellFormedFor (env : Env) (x : Expr) : Prop :=
   env.WellFormed ∧ env.entities.ValidRefsFor x
 
-def Env.WellFormedForPolicies (env : Env) (ps : Policies) : Prop :=
+public def Env.WellFormedForPolicies (env : Env) (ps : Policies) : Prop :=
   env.WellFormed ∧ ∀ p ∈ ps, env.entities.ValidRefsFor p.toExpr
 
 ------ Well-structured values ------
 
-inductive Value.WellStructured : Value → Prop
+public inductive Value.WellStructured : Value → Prop
   | prim_ws {p : Prim} :
     WellStructured (.prim p)
   | set_ws {s : Set Value}
@@ -195,37 +201,36 @@ inductive Value.WellStructured : Value → Prop
   | ext_ws {xv : Ext} :
     WellStructured (.ext xv)
 
-def Entities.ClosedFor (es : Entities) (uids : Set EntityUID) : Prop :=
+public def Entities.ClosedFor (es : Entities) (uids : Set EntityUID) : Prop :=
   ∀ uid ∈ uids, es.contains uid
 
 ------ Utilites ------
 
-abbrev Outcome (α) := Except Unit α
+public abbrev Outcome (α) := Except Unit α
 
-def SameOutcomes (res : Result Value) (out : Outcome Value) : Prop :=
+public def SameOutcomes (res : Result Value) (out : Outcome Value) : Prop :=
   match res, out with
   | .ok v₁,   .ok v₂    => v₁ = v₂
   | .error e, .error () => e ≠ .entityDoesNotExist
   | _, _                => False
 
-def SameDecisions (resp : Response) (dec : Decision) : Prop :=
+public def SameDecisions (resp : Response) (dec : Decision) : Prop :=
   resp.decision = dec
 
 /--
-The notation typeclass for the heterogenous sameness (equivalence) relation.
+The notation typeclass for the heterogeneous sameness (equivalence) relation.
 This enables the notation `a ∼ b : Prop` where `a : α`, `b : β`.
 -/
-class Same (α : Type u) (β : Type v) where
+public class Same (α : Type u) (β : Type v) where
   /-- `a ∼ b` relates `a` and `b`. The meaning of this notation is type-dependent. -/
   same : α → β → Prop
 
-
 infix:100 " ∼ " => Same.same
 
-instance : Same (Result Value) (Outcome Value) where
+public instance : Same (Result Value) (Outcome Value) where
   same := SameOutcomes
 
-instance : Same Response Decision where
+public instance : Same Response Decision where
   same := SameDecisions
 
 end Cedar.Spec
@@ -236,15 +241,16 @@ open Data Factory Spec Validation
 
 ------ Well-formed (literal) symbolic structures ------
 
-def TermType.cedarType? : TermType → Option CedarType
+@[expose] -- TODO: could provide sufficient theorems about this function in this file such that callers can rely on only the theorems and not on unfolding this defn
+public def TermType.cedarType? : TermType → Option CedarType
   | .bool             => .some (.bool .anyBool)
   | .bitvec 64        => .some .int
   | .string           => .some .string
   | .entity ety       => .some (.entity ety)
   | .set ty           => do .some (.set (← ty.cedarType?))
-  | .record (.mk rty) => do
-    let crty ← rty.mapM₃ λ ⟨(aᵢ, tyᵢ), _⟩ => do .some (aᵢ, ← qualifiedType? tyᵢ)
-    .some (.record (Map.mk crty))
+  | .record rty       => do
+    let crty ← rty.mapMOnValues₂ λ ⟨tyᵢ, _⟩ => qualifiedType? tyᵢ
+    .some (.record crty)
   | .ext xty          => .some (.ext xty)
   | _                 => .none
 where
@@ -252,15 +258,39 @@ where
     | .option ty => do Qualified.optional (← ty.cedarType?)
     | ty         => do Qualified.required (← ty.cedarType?)
 
-def TermType.isCedarRecordType (ty : TermType) : Bool :=
+public def TermType.isCedarRecordType (ty : TermType) : Bool :=
   match ty.cedarType? with
   | .some (.record _) => true
   | _                 => false
 
-def TermType.isCedarType (ty : TermType) : Bool :=
+public theorem isCedarRecordType_implies_term_record_type {ty : TermType} :
+  ty.isCedarRecordType → ∃ rty, ty = .record rty
+:= by
+  simp only [TermType.isCedarRecordType]
+  split
+  case h_1 heq =>
+    unfold TermType.cedarType? at heq
+    cases ty <;> simp only [Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq,
+      Validation.CedarType.record.injEq, and_false, exists_const, reduceCtorEq] at heq
+    case prim pty =>
+      cases pty <;> try { simp only [Option.some.injEq, reduceCtorEq] at heq  }
+      case bitvec m =>
+        by_cases h : m = 64
+        case pos =>
+          subst h
+          simp only [Option.some.injEq, reduceCtorEq] at heq
+        case neg =>
+          split at heq <;> simp only [Option.bind_eq_some_iff, Option.some.injEq,
+            Validation.CedarType.record.injEq, and_false, exists_const, reduceCtorEq] at heq
+          rename_i heq'
+          simp only [reduceCtorEq] at heq'
+    case record rty => simp
+  case h_2 => simp
+
+public def TermType.isCedarType (ty : TermType) : Bool :=
   ty.cedarType?.isSome
 
-inductive TermType.WellFormed (εs : SymEntities) : TermType → Prop
+public inductive TermType.WellFormed (εs : SymEntities) : TermType → Prop
   | bool_wf :
     WellFormed εs .bool
   | bitvec_wf {n : Nat} :
@@ -283,7 +313,7 @@ inductive TermType.WellFormed (εs : SymEntities) : TermType → Prop
   | ext_wf {xty : ExtType} :
     WellFormed εs (.ext xty)
 
-inductive TermPrim.WellFormed (εs : SymEntities) : TermPrim → Prop
+public inductive TermPrim.WellFormed (εs : SymEntities) : TermPrim → Prop
   | bool_wf {b : Bool} :
     WellFormed εs (.bool b)
   | bitvec_wf {n : Nat} {bv : BitVec n} :
@@ -296,10 +326,11 @@ inductive TermPrim.WellFormed (εs : SymEntities) : TermPrim → Prop
   | ext_wf {x : Ext} :
     WellFormed εs (.ext x)
 
-def TermVar.WellFormed (εs : SymEntities) (v : TermVar) : Prop :=
+@[expose]
+public def TermVar.WellFormed (εs : SymEntities) (v : TermVar) : Prop :=
   v.ty.WellFormed εs
 
-inductive ExtOp.WellTyped : ExtOp → List Term → TermType → Prop
+public inductive ExtOp.WellTyped : ExtOp → List Term → TermType → Prop
   | decimal.val_wt {t : Term}
     (h₁ : t.typeOf = (.ext .decimal)) :
     WellTyped ExtOp.decimal.val [t] (.bitvec 64)
@@ -331,11 +362,12 @@ inductive ExtOp.WellTyped : ExtOp → List Term → TermType → Prop
     (h₁ : t.typeOf = (.bitvec 64)) :
     WellTyped duration.ofBitVec [t] (.ext .duration)
 
-def UUF.WellFormed (εs : SymEntities) (f : UUF) : Prop :=
+@[expose]
+public def UUF.WellFormed (εs : SymEntities) (f : UUF) : Prop :=
   f.arg.WellFormed εs ∧
   f.out.WellFormed εs
 
-inductive Op.WellTyped (εs : SymEntities) : Op → List Term → TermType → Prop
+public inductive Op.WellTyped (εs : SymEntities) : Op → List Term → TermType → Prop
   | not_wt {t : Term}
     (h₁ : t.typeOf = .bool) :
     WellTyped εs .not [t] .bool
@@ -460,7 +492,7 @@ inductive Op.WellTyped (εs : SymEntities) : Op → List Term → TermType → P
     (h₁ : xop.WellTyped ts ty) :
     WellTyped εs (.ext xop) ts ty
 
-inductive Term.WellFormed (εs : SymEntities) : Term → Prop
+public inductive Term.WellFormed (εs : SymEntities) : Term → Prop
   | prim_wf {p : TermPrim}
     (h₁ : p.WellFormed εs) :
     WellFormed εs (.prim p)
@@ -488,10 +520,10 @@ inductive Term.WellFormed (εs : SymEntities) : Term → Prop
     (h₂ : r.WellFormed):
     WellFormed εs (.record r)
 
-def Term.WellFormedLiteral (εs : SymEntities) (t : Term) : Prop :=
+public def Term.WellFormedLiteral (εs : SymEntities) (t : Term) : Prop :=
   t.WellFormed εs ∧ t.isLiteral
 
-def UDF.WellFormed (εs : SymEntities) (f : UDF) : Prop :=
+public def UDF.WellFormed (εs : SymEntities) (f : UDF) : Prop :=
   f.default.WellFormedLiteral εs ∧
   f.default.typeOf = f.out ∧
   f.table.WellFormed ∧
@@ -501,11 +533,11 @@ def UDF.WellFormed (εs : SymEntities) (f : UDF) : Prop :=
      tₒ.WellFormedLiteral εs ∧
      tₒ.typeOf = f.out)
 
-def UnaryFunction.WellFormed (εs : SymEntities) : UnaryFunction → Prop
+public def UnaryFunction.WellFormed (εs : SymEntities) : UnaryFunction → Prop
   | .uuf f => f.WellFormed εs
   | .udf f => f.WellFormed εs
 
-def SymRequest.WellFormed (εs : SymEntities) (req : SymRequest) : Prop :=
+public def SymRequest.WellFormed (εs : SymEntities) (req : SymRequest) : Prop :=
   req.principal.WellFormed εs ∧
   req.principal.typeOf.isEntityType ∧
   req.action.WellFormed εs ∧
@@ -515,7 +547,7 @@ def SymRequest.WellFormed (εs : SymEntities) (req : SymRequest) : Prop :=
   req.context.WellFormed εs ∧
   req.context.typeOf.isCedarRecordType
 
-def SymTags.WellFormed (εs : SymEntities) (ety : EntityType) (τs : SymTags) : Prop :=
+public def SymTags.WellFormed (εs : SymEntities) (ety : EntityType) (τs : SymTags) : Prop :=
   τs.keys.WellFormed εs ∧
   τs.keys.argType = .entity ety ∧
   τs.keys.outType = .set .string ∧
@@ -523,7 +555,7 @@ def SymTags.WellFormed (εs : SymEntities) (ety : EntityType) (τs : SymTags) : 
   τs.vals.argType = TermType.tagFor ety ∧
   τs.vals.outType.isCedarType
 
-def SymEntityData.WellFormed (εs : SymEntities) (ety : EntityType) (d : SymEntityData) : Prop :=
+public def SymEntityData.WellFormed (εs : SymEntities) (ety : EntityType) (d : SymEntityData) : Prop :=
   d.attrs.WellFormed εs ∧
   d.attrs.argType = .entity ety ∧
   d.attrs.outType.isCedarRecordType ∧
@@ -535,59 +567,59 @@ def SymEntityData.WellFormed (εs : SymEntities) (ety : EntityType) (d : SymEnti
   (∀ τs, d.tags = some τs → τs.WellFormed εs ety) ∧
   (∀ mems, d.members = some mems → ¬ mems.isEmpty)
 
-def SymEntities.WellFormed (εs : SymEntities) : Prop :=
+public def SymEntities.WellFormed (εs : SymEntities) : Prop :=
   Map.WellFormed εs ∧
   ∀ ety d, εs.find? ety = some d → d.WellFormed εs ety
 
-def SymEnv.WellFormed (εnv : SymEnv) : Prop :=
+public def SymEnv.WellFormed (εnv : SymEnv) : Prop :=
   εnv.request.WellFormed εnv.entities ∧
   εnv.entities.WellFormed
 
-abbrev SymEntities.ValidRefsFor (εs : SymEntities) (x : Expr) : Prop :=
+public abbrev SymEntities.ValidRefsFor (εs : SymEntities) (x : Expr) : Prop :=
   x.ValidRefs (εs.isValidEntityUID ·)
 
-def SymEnv.WellFormedFor (εnv : SymEnv) (x : Expr) : Prop :=
+public def SymEnv.WellFormedFor (εnv : SymEnv) (x : Expr) : Prop :=
   εnv.WellFormed ∧ εnv.entities.ValidRefsFor x
 
-def SymEnv.WellFormedLiteralFor (εnv : SymEnv) (x : Expr) : Prop :=
+public def SymEnv.WellFormedLiteralFor (εnv : SymEnv) (x : Expr) : Prop :=
   εnv.WellFormedFor x ∧ εnv.isLiteral
 
-def SymEnv.WellFormedForPolicies (εnv : SymEnv) (ps : Policies) : Prop :=
+public def SymEnv.WellFormedForPolicies (εnv : SymEnv) (ps : Policies) : Prop :=
   εnv.WellFormed ∧ ∀ p ∈ ps, εnv.entities.ValidRefsFor p.toExpr
 
-def Asserts.WellFormed (εs : SymEntities) (asserts : Asserts) : Prop :=
+public def Asserts.WellFormed (εs : SymEntities) (asserts : Asserts) : Prop :=
   ∀ t ∈ asserts, t.WellFormed εs ∧ t.typeOf = .bool
 
 ------ Relating concrete and symbolic structures ------
 
-def SameValues (v : Value) (t : Term) : Prop :=
+public def SameValues (v : Value) (t : Term) : Prop :=
   t.value? = .some v
 
-def SameOutcomes : Outcome Value → Term → Prop
+public def SameOutcomes : Outcome Value → Term → Prop
   | .ok v, .some t     => SameValues v t
   | .error _, .none _  => True
   | _, _               => False
 
-def SameResults : Spec.Result Value → Term → Prop
+public def SameResults : Spec.Result Value → Term → Prop
   | .ok v, .some t     => SameValues v t
   | .error e, .none _  => e ≠ .entityDoesNotExist
   | _, _               => False
 
-def SameDecisions : Spec.Decision → Term → Prop
+public def SameDecisions : Spec.Decision → Term → Prop
   | .allow, .bool true
   | .deny,  .bool false => True
   | _, _                => False
 
-def SameResponses (resp : Response) (t : Term) : Prop :=
+public def SameResponses (resp : Response) (t : Term) : Prop :=
   SameDecisions resp.decision t
 
-def SameRequests (req : Request) (ρeq : SymRequest) : Prop :=
+public def SameRequests (req : Request) (ρeq : SymRequest) : Prop :=
    ρeq.principal = .prim (.entity req.principal) ∧
    ρeq.action = .prim (.entity req.action) ∧
    ρeq.resource = .prim (.entity req.resource) ∧
    SameValues (.record req.context) ρeq.context
 
-def SameTags (uid : EntityUID) (d : EntityData) (δ : SymEntityData) : Prop :=
+public def SameTags (uid : EntityUID) (d : EntityData) (δ : SymEntityData) : Prop :=
   match δ.tags with
   | .none    => d.tags = Map.empty
   | .some τs =>
@@ -596,7 +628,8 @@ def SameTags (uid : EntityUID) (d : EntityData) (δ : SymEntityData) : Prop :=
       τs.hasTag (.entity uid) (.string tag) = true ∧
       SameValues val (τs.getTag! (.entity uid) (.string tag)))
 
-def SameEntityData (uid : EntityUID) (d : EntityData) (δ : SymEntityData) : Prop :=
+@[expose]
+public def SameEntityData (uid : EntityUID) (d : EntityData) (δ : SymEntityData) : Prop :=
   SameValues (.record d.attrs) (app δ.attrs uid) ∧
   (∀ anc, anc ∈ d.ancestors → InSymAncestors anc) ∧
   (∀ ancTy ancUF, δ.ancestors.find? ancTy = .some ancUF → InAncestors ancUF ancTy) ∧
@@ -612,46 +645,46 @@ where
       app ancUF uid = .set ts (.entity ancTy) ∧
       ∀ t ∈ ts, ∃ anc, t = .prim (.entity anc) ∧ anc ∈ d.ancestors
 
-def SameEntities (es : Entities) (εs : SymEntities) : Prop :=
+public def SameEntities (es : Entities) (εs : SymEntities) : Prop :=
   ∀ uid d,
     es.find? uid = .some d →
     ∃ δ,
       εs.find? uid.ty = .some δ ∧
       SameEntityData uid d δ
 
-def SameEnvs (env : Env) (εnv : SymEnv) : Prop :=
+public def SameEnvs (env : Env) (εnv : SymEnv) : Prop :=
   SameRequests env.request εnv.request ∧
   SameEntities env.entities εnv.entities
 
-instance : Same (Outcome Value) Term where
+public instance : Same (Outcome Value) Term where
   same := SameOutcomes
 
-instance : Same (Spec.Result Value) Term where
+public instance : Same (Spec.Result Value) Term where
   same := SameResults
 
-instance : Same Value Term where
+public instance : Same Value Term where
   same := SameValues
 
-instance : Same Spec.Decision Term where
+public instance : Same Spec.Decision Term where
   same := SameDecisions
 
-instance : Same Response Term where
+public instance : Same Response Term where
   same := SameResponses
 
-instance : Same Request SymRequest where
+public instance : Same Request SymRequest where
   same := SameRequests
 
-instance : Same Entities SymEntities where
+public instance : Same Entities SymEntities where
   same := SameEntities
 
-instance : Same Env SymEnv where
+public instance : Same Env SymEnv where
   same := SameEnvs
 
 
 
 ------ Well-formed interpretations ------
 
-inductive Term.WellFormedPartialApp (εs : SymEntities) : Term → Prop
+public inductive Term.WellFormedPartialApp (εs : SymEntities) : Term → Prop
   | none_wfp {ty : TermType}
     (h₁ : ty.WellFormed εs) :
     Term.WellFormedPartialApp εs (Term.app Op.option.get [.none ty] ty)
@@ -668,7 +701,8 @@ inductive Term.WellFormedPartialApp (εs : SymEntities) : Term → Prop
     (h₁ : ¬ ip.isV6) :
     Term.WellFormedPartialApp εs (Term.app (.ext ExtOp.ipaddr.prefixV6) [.prim (.ext (.ipaddr ip))] (.option (.bitvec 7)))
 
-def Interpretation.WellFormed (I : Interpretation) (εs : SymEntities) : Prop :=
+@[expose]
+public def Interpretation.WellFormed (I : Interpretation) (εs : SymEntities) : Prop :=
   (∀ v, v.WellFormed εs → WellFormedVarInterpretation v (I.vars v)) ∧
   (∀ f, f.WellFormed εs → WellFormedUUFInterpretation f (I.funs f)) ∧
   (∀ t, t.WellFormedPartialApp εs → WellFormedPartialAppInterpretation t (I.partials t))
@@ -684,13 +718,13 @@ where
     out.WellFormedLiteral εs ∧
     out.typeOf = t.typeOf
 
-def Asserts.satisfiedBy (I : Interpretation) (asserts : Asserts) : Bool :=
+public def Asserts.satisfiedBy (I : Interpretation) (asserts : Asserts) : Bool :=
   asserts.all λ t => t.interpret I = true
 
-def Asserts.Satisfiable (env : SymEnv) (asserts : Asserts) : Prop :=
+public def Asserts.Satisfiable (env : SymEnv) (asserts : Asserts) : Prop :=
   ∃ I, I.WellFormed env.entities ∧ asserts.satisfiedBy I
 
-def Asserts.Unsatisfiable (env : SymEnv) (asserts : Asserts) : Prop :=
+public def Asserts.Unsatisfiable (env : SymEnv) (asserts : Asserts) : Prop :=
   ¬ asserts.Satisfiable env
 
 infix:100 " ⊧ " => Asserts.Satisfiable
@@ -699,19 +733,19 @@ infix:100 " ⊭ " => Asserts.Unsatisfiable
 
 ------ Relating concrete structures to symbolic structures via interpretations ------
 
-structure Term.Outcome (εnv : SymEnv) where
+public structure Term.Outcome (εnv : SymEnv) where
   term : Term
 deriving Repr, DecidableEq
 
-instance instCoeTermOutcome {εnv} : CoeOut (Term.Outcome εnv) Term where
+public instance instCoeTermOutcome {εnv} : CoeOut (Term.Outcome εnv) Term where
   coe t := t.term
 
-def memOfTermOutcome {α} {εnv} [Same α Term] (o : α) (o' : Term.Outcome εnv) : Prop :=
+public def memOfTermOutcome {α} {εnv} [Same α Term] (o : α) (o' : Term.Outcome εnv) : Prop :=
   ∃ I, I.WellFormed εnv.entities ∧ o ∼ (o'.term.interpret I)
 
 infixl:50 "∈ₒ" => memOfTermOutcome
 
-def memOfSymEnv (env : Env) (εnv : SymEnv) : Prop :=
+public def memOfSymEnv (env : Env) (εnv : SymEnv) : Prop :=
   ∃ I, I.WellFormed εnv.entities ∧ env ∼ (εnv.interpret I)
 
 infixl:50 "∈ᵢ" => memOfSymEnv
@@ -723,7 +757,7 @@ completeness (of `SymEnv.ofEnv`) and satisfied by the
 concretizer, but it's not required for the soundness, so
 we keep it as a separate definition here.
 -/
-def Env.EnumCompleteFor (env : Env) (εnv : SymEnv) : Prop :=
+public def Env.EnumCompleteFor (env : Env) (εnv : SymEnv) : Prop :=
   ∀ (uid : EntityUID) (δ : SymEntityData) (eids : Set String),
     εnv.entities.find? uid.ty = .some δ →
     δ.members = .some eids →

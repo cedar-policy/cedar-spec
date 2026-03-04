@@ -72,6 +72,16 @@ public inductive Value where
   | record (m : Map Attr Value)
   | ext (x : Ext)
 
+----- SizeOf -----
+
+public theorem Value.sizeOf_set' (s : Set Value) :
+  sizeOf (Value.set s) = 1 + sizeOf s
+:= by simp [Value.set.sizeOf_spec]
+
+public theorem Value.sizeOf_record' (m : Map Attr Value) :
+  sizeOf (Value.record m) = 1 + sizeOf m
+:= by simp [Value.record.sizeOf_spec]
+
 ----- Coercions -----
 
 @[expose]

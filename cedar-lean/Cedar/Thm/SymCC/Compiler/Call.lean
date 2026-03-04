@@ -292,7 +292,7 @@ private theorem pe_datetime_toDate {dt : Ext.Datetime}:
       case true =>
         simp only [← BitVec.Int64_ofInt?_eq_none_iff_overflows] at h₄
         simp only [@BitVec.smtSDiv_eq_sdiv _ _ 86400000#64 (by simp only [BitVec.ofNat_eq_ofNat, ne_eq, BitVec.reduceEq, not_false_eq_true])] at *
-        simp only [pe_ifFalse_true, Term.typeOf, TermPrim.typeOf, h₃, h₄]
+        simp only [pe_ifFalse_true, typeOf_term_prim_ext_datetime, h₃, h₄]
         simp only [Option.pure_def, Option.bind_none_fun]
     case true =>
       simp only [pe_ite_true, Int64.toBitVec]

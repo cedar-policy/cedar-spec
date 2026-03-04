@@ -402,8 +402,9 @@ theorem compile_well_typed_lit {p : Prim} {tx : CedarType} {Γ : TypeEnv} {εnv 
     simp [
       TermType.ofType,
       Term.typeOf,
-      TermPrim.typeOf,
-      BitVec.width,
+      typeOf_bool,
+      typeOf_bv,
+      typeOf_term_prim_string,
     ]
   | entityUID =>
     simp only [Prim.ValidRef] at hrefs
@@ -411,7 +412,7 @@ theorem compile_well_typed_lit {p : Prim} {tx : CedarType} {Γ : TypeEnv} {εnv 
       hrefs,
       TermType.ofType,
       Term.typeOf,
-      TermPrim.typeOf,
+      typeOf_term_prim_entity,
     ]
 
 theorem compile_well_typed_var {v : Var} {ty : CedarType} {Γ : TypeEnv} {εnv : SymEnv}
@@ -431,31 +432,37 @@ theorem compile_well_typed_var {v : Var} {ty : CedarType} {Γ : TypeEnv} {εnv :
     TermType.ofType,
     compile,
     compileVar,
-    Term.typeOf,
     Factory.someOf,
     TypedExpr.typeOf,
-  ] at ⊢ hprincipal hresource hcontext
+  ]
+  all_goals simp only [
+    hεnv,
+    SymEnv.ofEnv,
+    SymRequest.ofRequestType,
+    TermType.ofType,
+    Term.typeOf,
+  ] at hprincipal hresource hcontext
   case principal =>
-    simp only [hprincipal, ↓reduceIte, Except.ok.injEq, exists_eq_left', Term.typeOf]
+    simp [hprincipal, Term.typeOf]
   case action =>
-    simp only [TermType.isEntityType, TermPrim.typeOf, ↓reduceIte, Except.ok.injEq, exists_eq_left', Term.typeOf]
+    simp [TermType.isEntityType, typeOf_term_prim_entity, typeOf_term_some]
   case resource =>
-    simp only [hresource, ↓reduceIte, Except.ok.injEq, exists_eq_left', Term.typeOf]
+    simp [hresource, Term.typeOf]
   case context =>
     rw [isCedarRecordType_implies_isRecordType]
-    simp only [
-      ↓reduceIte, Except.ok.injEq,
-      CedarType.liftBoolTypes,
-      RecordType.liftBoolTypes,
-      Data.Map.mapOnValues₂_eq_mapOnValues,
-      Data.Map.mapOnValues,
-      TermType.ofType, exists_eq_left',
-      Term.typeOf, TermType.option.injEq,
-      TermType.record.injEq,
-      Data.Map.mk.injEq,
-    ]
-    exact ofRecordType_eq_ofRecordType_liftBool _
-    apply hcontext
+    · simp only [
+        ↓reduceIte, Except.ok.injEq,
+        CedarType.liftBoolTypes,
+        RecordType.liftBoolTypes,
+        Data.Map.mapOnValues₂_eq_mapOnValues,
+        Data.Map.mapOnValues,
+        TermType.ofType, exists_eq_left',
+        Term.typeOf, TermType.option.injEq,
+        TermType.record.injEq,
+        Data.Map.mk.injEq,
+      ]
+      exact ofRecordType_eq_ofRecordType_liftBool _
+    · simp [Term.typeOf, hcontext]
 
 theorem compile_well_typed_ite
   {a : TypedExpr} {b : TypedExpr} {c : TypedExpr} {ty : CedarType}
@@ -543,7 +550,7 @@ theorem compile_well_typed_or_and
     ]
     split
     · apply Exists.intro; constructor; rfl
-      simp [Term.typeOf, TermPrim.typeOf, TermType.ofType, TypedExpr.typeOf]
+      simp [Term.typeOf, typeOf_bool, TermType.ofType, TypedExpr.typeOf]
     · apply Exists.intro; constructor; rfl
       apply typeOf_ifSome_option
       apply wf_typeOf_ite
@@ -553,7 +560,7 @@ theorem compile_well_typed_or_and
       simp [
         TermType.ofType,
         Term.typeOf,
-        TermPrim.typeOf,
+        typeOf_bool,
         Factory.someOf,
         TypedExpr.typeOf,
       ]
@@ -611,7 +618,7 @@ theorem compile_well_typed_unaryApp
       TypedExpr.typeOf,
       TermType.ofType,
       Term.typeOf,
-      TermPrim.typeOf,
+      typeOf_bool,
     ]
   case isEmpty elem_ty hty_expr =>
     simp only [hty_expr, TermType.ofType] at hty_comp_expr hty_get_comp_expr
@@ -623,8 +630,8 @@ theorem compile_well_typed_unaryApp
       TermType.option.injEq,
     ]
     split
-    · simp [Term.typeOf, TermPrim.typeOf]
-    · simp [Term.typeOf, TermPrim.typeOf]
+    · simp [typeOf_bool]
+    · simp [typeOf_bool]
     · simp [hty_get_comp_expr]
       apply (wf_eq ?_ ?_ ?_).right
       any_goals assumption
@@ -1045,18 +1052,12 @@ theorem compile_well_typed_hasAttr
     case _ =>
       simp only [Except.bind_ok, Except.ok.injEq, exists_eq_left']
       apply typeOf_ifSome_option
-      simp [
-        Factory.someOf, TermType.ofType, TypedExpr.typeOf, Term.typeOf,
-        TermPrim.typeOf,
-      ]
+      simp [Factory.someOf, TermType.ofType, TypedExpr.typeOf, Term.typeOf, typeOf_bool]
     -- Attribute does not exist
     case _ =>
       simp only [Except.bind_ok, Except.ok.injEq, exists_eq_left']
       apply typeOf_ifSome_option
-      simp [
-        Factory.someOf, TermType.ofType, TypedExpr.typeOf, Term.typeOf,
-        TermPrim.typeOf,
-      ]
+      simp [Factory.someOf, TermType.ofType, TypedExpr.typeOf, Term.typeOf, typeOf_bool]
   case hasAttr_record rty hwt_expr hty_expr =>
     simp only [
       hty_get_comp_expr, hty_expr, hcomp_expr,
@@ -1083,11 +1084,11 @@ theorem compile_well_typed_hasAttr
     -- Required attribute
     case _ hattr_exists =>
       apply typeOf_ifSome_option
-      simp only [Factory.someOf, Term.typeOf, TermPrim.typeOf, TypedExpr.typeOf, TermType.ofType]
+      simp only [Factory.someOf, Term.typeOf, typeOf_bool, TypedExpr.typeOf, TermType.ofType]
     -- Attribute does not exist
     case _ =>
       apply typeOf_ifSome_option
-      simp only [Factory.someOf, Term.typeOf, TermPrim.typeOf, TypedExpr.typeOf, TermType.ofType]
+      simp only [Factory.someOf, Term.typeOf, typeOf_bool, TypedExpr.typeOf, TermType.ofType]
 
 theorem compile_well_typed_set
   {xs : List TypedExpr} {ty : CedarType}
@@ -1389,8 +1390,12 @@ theorem compile_well_typed_call
         ← hcomp_xs, ← hcomp_x1, ← hparse,
         compileCall₀,
         Factory.someOf,
-        Term.typeOf,
-        TermPrim.typeOf,
+        typeOf_term_some,
+        Coe.coe,
+        typeOf_term_prim_ext_datetime,
+        typeOf_term_prim_ext_decimal,
+        typeOf_term_prim_ext_duration,
+        typeOf_term_prim_ext_ipaddr,
         TermType.ofType,
         TypedExpr.typeOf,
       ]

@@ -14,26 +14,28 @@
  limitations under the License.
 -/
 
+module
+
 /-!
 This file defines the Result type for symbolic compilation.
 -/
 
 namespace Cedar.SymCC
 
-inductive Error where
+public inductive Error where
   | noSuchEntityType
   | noSuchAttribute
   | typeError
   | unsupportedError
 
-abbrev Result (α) := Except Error α
+public abbrev Result (α) := Except Error α
 
 deriving instance Repr, DecidableEq, Inhabited for Error
 
-@[simp, inline] instance coeResult : Coe α (Result α)  where
+@[simp, inline] public instance coeResult : Coe α (Result α) where
   coe a := .ok a
 
-instance : ToString Error where
+public instance : ToString Error where
   toString e := match e with
   | .noSuchEntityType => "noSuchEntityType"
   | .noSuchAttribute => "noSuchAttribute"

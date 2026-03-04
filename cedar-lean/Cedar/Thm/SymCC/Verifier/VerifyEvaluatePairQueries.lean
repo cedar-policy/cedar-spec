@@ -56,18 +56,18 @@ theorem verifyMatchesEquivalent_wbepq :
     simp only [WellBehavedEvaluatePairQuery.WellFormedOutput]
     intro t₁ t₂ εs ⟨hwt₁, hty₁, hwt₂, hty₂⟩
     have hwf₁ := wf_eq hwt₁ (Term.WellFormed.some_wf (wf_bool (b := true)))
-      (by rw [hty₁]; simp only [typeOf_term_some, Term.typeOf, TermPrim.typeOf])
+      (by rw [hty₁]; simp only [typeOf_term_some, typeOf_bool])
     have hwf₂ := wf_eq hwt₂ (Term.WellFormed.some_wf (wf_bool (b := true)))
-      (by rw [hty₂]; simp only [typeOf_term_some, Term.typeOf, TermPrim.typeOf])
+      (by rw [hty₂]; simp only [typeOf_term_some, typeOf_bool])
     exact wf_eq hwf₁.left hwf₂.left (by simp only [someOf]; rw [hwf₁.right, hwf₂.right])
   constructor
   · -- Interpretable
     simp only [WellBehavedEvaluatePairQuery.Interpretable]
     intro t₁ t₂ εs I ⟨hwt₁, hty₁, hwt₂, hty₂⟩ hwI
     have hwf₁ := wf_eq hwt₁ (Term.WellFormed.some_wf (wf_bool (b := true)))
-      (by rw [hty₁]; simp only [typeOf_term_some, Term.typeOf, TermPrim.typeOf])
+      (by rw [hty₁]; simp only [typeOf_term_some, typeOf_bool])
     have hwf₂ := wf_eq hwt₂ (Term.WellFormed.some_wf (wf_bool (b := true)))
-      (by rw [hty₂]; simp only [typeOf_term_some, Term.typeOf, TermPrim.typeOf])
+      (by rw [hty₂]; simp only [typeOf_term_some, typeOf_bool])
     simp only [someOf]
     rw [interpret_eq hwI hwf₁.left hwf₂.left,
         interpret_eq hwI hwt₁ (Term.WellFormed.some_wf (wf_bool (b := true))),
@@ -159,9 +159,9 @@ theorem verifyMatchesImplies_wbepq :
     simp only [WellBehavedEvaluatePairQuery.WellFormedOutput]
     intro t₁ t₂ εs ⟨hwt₁, hty₁, hwt₂, hty₂⟩
     have hwf₁ := wf_eq hwt₁ (Term.WellFormed.some_wf (wf_bool (b := true)))
-      (by rw [hty₁]; simp only [typeOf_term_some, Term.typeOf, TermPrim.typeOf])
+      (by rw [hty₁]; simp only [typeOf_term_some, typeOf_bool])
     have hwf₂ := wf_eq hwt₂ (Term.WellFormed.some_wf (wf_bool (b := true)))
-      (by rw [hty₂]; simp only [typeOf_term_some, Term.typeOf, TermPrim.typeOf])
+      (by rw [hty₂]; simp only [typeOf_term_some, typeOf_bool])
     simp only [implies]
     have hwf_not := wf_not hwf₁.left hwf₁.right
     exact wf_or hwf_not.left hwf₂.left hwf_not.right hwf₂.right
@@ -170,9 +170,9 @@ theorem verifyMatchesImplies_wbepq :
     simp only [WellBehavedEvaluatePairQuery.Interpretable]
     intro t₁ t₂ εs I ⟨hwt₁, hty₁, hwt₂, hty₂⟩ hwI
     have hwf₁ := wf_eq hwt₁ (Term.WellFormed.some_wf (wf_bool (b := true)))
-      (by rw [hty₁]; simp only [typeOf_term_some, Term.typeOf, TermPrim.typeOf])
+      (by rw [hty₁]; simp only [typeOf_term_some, typeOf_bool])
     have hwf₂ := wf_eq hwt₂ (Term.WellFormed.some_wf (wf_bool (b := true)))
-      (by rw [hty₂]; simp only [typeOf_term_some, Term.typeOf, TermPrim.typeOf])
+      (by rw [hty₂]; simp only [typeOf_term_some, typeOf_bool])
     have hwf_not := wf_not hwf₁.left hwf₁.right
     simp only [implies, someOf]
     rw [interpret_or hwI hwf_not.left hwf₂.left hwf_not.right hwf₂.right,
@@ -257,9 +257,9 @@ theorem verifyMatchesDisjoint_wbepq :
     simp only [WellBehavedEvaluatePairQuery.WellFormedOutput]
     intro t₁ t₂ εs ⟨hwt₁, hty₁, hwt₂, hty₂⟩
     have hwf₁ := wf_eq hwt₁ (Term.WellFormed.some_wf (wf_bool (b := true)))
-      (by rw [hty₁]; simp only [typeOf_term_some, Term.typeOf, TermPrim.typeOf])
+      (by rw [hty₁]; simp only [typeOf_term_some, typeOf_bool])
     have hwf₂ := wf_eq hwt₂ (Term.WellFormed.some_wf (wf_bool (b := true)))
-      (by rw [hty₂]; simp only [typeOf_term_some, Term.typeOf, TermPrim.typeOf])
+      (by rw [hty₂]; simp only [typeOf_term_some, typeOf_bool])
     have hwf_and := wf_and hwf₁.left hwf₂.left hwf₁.right hwf₂.right
     exact wf_not hwf_and.left hwf_and.right
   constructor
@@ -267,9 +267,9 @@ theorem verifyMatchesDisjoint_wbepq :
     simp only [WellBehavedEvaluatePairQuery.Interpretable]
     intro t₁ t₂ εs I ⟨hwt₁, hty₁, hwt₂, hty₂⟩ hwI
     have hwf₁ := wf_eq hwt₁ (Term.WellFormed.some_wf (wf_bool (b := true)))
-      (by rw [hty₁]; simp only [typeOf_term_some, Term.typeOf, TermPrim.typeOf])
+      (by rw [hty₁]; simp only [typeOf_term_some, typeOf_bool])
     have hwf₂ := wf_eq hwt₂ (Term.WellFormed.some_wf (wf_bool (b := true)))
-      (by rw [hty₂]; simp only [typeOf_term_some, Term.typeOf, TermPrim.typeOf])
+      (by rw [hty₂]; simp only [typeOf_term_some, typeOf_bool])
     have hwf_and := wf_and hwf₁.left hwf₂.left hwf₁.right hwf₂.right
     simp only [someOf]
     rw [interpret_not hwI hwf_and.left,

@@ -14,9 +14,13 @@
  limitations under the License.
 -/
 
-import Cedar.SymCC.Env
-import Cedar.SymCC.ExtFun
-import Cedar.SymCC.Factory
+module
+
+public import Cedar.Spec
+public import Cedar.SymCC.Env
+public import Cedar.SymCC.ExtFun
+public import Cedar.SymCC.Factory -- TODO: this need not be a public import
+public import Cedar.SymCC.Result
 
 /-!
 
@@ -30,6 +34,8 @@ encoding of the input expression's semantics with respect to the given
 environment: using this Term for verification will neither miss bugs
 (soundness) nor produce false positives (completeness).
 -/
+
+@[expose] public section -- TODO: make the public interface more granular/intentional, instead of having everything public and exposed
 
 namespace Cedar.SymCC
 

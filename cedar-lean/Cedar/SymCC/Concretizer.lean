@@ -14,7 +14,13 @@
  limitations under the License.
 -/
 
-import Cedar.SymCC.Env
+module
+
+public import Cedar.Data.SizeOf
+public import Cedar.Spec
+public import Cedar.SymCC.Env
+public import Cedar.SymCC.Factory -- TODO: this need not be a public import
+public import Cedar.SymCC.Term
 
 /-!
 # Concretizing symbolic environments
@@ -27,6 +33,8 @@ complete.
 
 See Cedar.Thm.SymbolicCompilation for a statement of the completeness theorem.
 -/
+
+@[expose] public section -- TODO: make the public interface more granular/intentional, instead of having everything public and exposed
 
 namespace Cedar.Spec
 
@@ -41,6 +49,16 @@ def Value.entityUIDs : Value → Set EntityUID
   | .set (Set.mk vs)     => vs.mapUnion₁ (λ ⟨v, _⟩ => v.entityUIDs)
   | .record avs          => avs.toList.mapUnion₃ (λ ⟨(_, v), _⟩ => v.entityUIDs)
   | .ext _               => Set.empty
+termination_by v => sizeOf v
+decreasing_by
+  all_goals simp_wf
+  · rename_i h
+    have := List.sizeOf_lt_of_mem h
+    omega
+  · rename_i h
+    have := Map.sizeOf_lt_of_toList avs
+    simp at *
+    omega
 
 def Value.entityUID? : Value → Option EntityUID
   | .prim (.entityUID uid) => .some uid
