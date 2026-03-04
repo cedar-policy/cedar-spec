@@ -618,7 +618,10 @@ public theorem mapM'_ok_iff_forall₂ {α β γ} {f : α → Except γ β} {xs :
         specialize ih h₃
         simp only [ih, Except.bind_ok]
 
-/-- Copy of mapM'_ok_iff_forall₂ but for option instead of exception -/
+/--
+Equivalent of `mapM'_ok_iff_forall₂` for `Option` instead of `Except`.
+`mapM'` over `Option` succeeds iff inputs and outputs are pointwise related by `f`.
+-/
 public theorem mapM'_some_iff_forall₂ {α β} {f : α → Option β} {xs : List α} {ys : List β} :
   List.mapM' f xs = .some ys ↔
   List.Forall₂ (λ x y => f x = .some y) xs ys
@@ -628,36 +631,15 @@ public theorem mapM'_some_iff_forall₂ {α β} {f : α → Option β} {xs : Lis
     intro h₁
     induction xs generalizing ys
     case nil =>
-      simp only [mapM'_nil, pure] at h₁
-      injection h₁; rename_i h₁
+      simp only [mapM'_nil, pure, Option.some.injEq] at h₁
       subst h₁
       exact List.Forall₂.nil
     case cons xhd xtl ih =>
-      simp only [mapM'_cons, pure] at h₁
-      cases h₂ : f xhd <;>
-      simp only [h₂, Option.bind_eq_bind, Option.bind, Option.bind_none_fun, reduceCtorEq] at h₁
-      rename_i yhd
-      cases mapM' f xtl
-      · split at h₁
-        . contradiction
-        . simp at h₁
-          rename_i a h₂
-          rw [← h₁]
-          specialize ih h₂
-          apply Forall₂.cons
-          . rename_i h₃ h₄ h₅
-            exact h₃
-          . exact ih
-      · split at h₁
-        . contradiction
-        . simp at h₁
-          rename_i a h₂
-          rw [← h₁]
-          specialize ih h₂
-          apply Forall₂.cons
-          . rename_i h₃ h₄ h₅ h₆
-            exact h₃
-          . exact ih
+      simp only [mapM'_cons, Option.pure_def, Option.bind_eq_bind,
+        Option.bind_eq_some_iff, Option.some.injEq] at h₁
+      replace ⟨yhd, h₂, ytl, h₃, h₄⟩ := h₁
+      subst h₄
+      exact List.Forall₂.cons h₂ (ih h₃)
   case mpr =>
     intro h₁
     induction xs generalizing ys
@@ -665,19 +647,11 @@ public theorem mapM'_some_iff_forall₂ {α β} {f : α → Option β} {xs : Lis
       simp only [forall₂_nil_left_iff] at h₁
       simp only [mapM'_nil, pure, h₁]
     case cons xhd xtl ih =>
-      simp only [mapM'_cons, pure]
+      simp only [mapM'_cons, Option.pure_def, Option.bind_eq_bind,
+        Option.bind_eq_some_iff, Option.some.injEq]
       replace ⟨yhd, ytl, h₁, h₃, h₄⟩ := forall₂_cons_left_iff.mp h₁
       subst ys
-      cases h₂ : f xhd
-      case none => simp [h₁] at h₂
-      case some y' =>
-        simp [h₁] at h₂
-        specialize ih h₃
-        simp only [ih]
-        simp [Option.bind_some_fun, Option.some.injEq, cons.injEq, and_true]
-        rw [h₂]
-
-
+      exact ⟨yhd, h₁, ytl, ih h₃, rfl⟩
 
 public theorem mapM_ok_iff_forall₂ {α β γ} {f : α → Except γ β} {xs : List α} {ys : List β} :
   List.mapM f xs = .ok ys ↔
@@ -694,10 +668,9 @@ public theorem mapM_some_iff_forall₂ {α β} {f : α → Option β} {xs : List
   exact mapM'_some_iff_forall₂
 
 /--
-Introduces `forall₂` through the input output relation
-of a `f` through `List.mapM`. This is slightly stronger
-than the forward direction of `mapM_ok_iff_forall₂`
-since it allowed an extra `x ∈ xs` condition in `h`.
+Introduces `Forall₂` through the input/output relation of `f` through `List.mapM`.
+This is slightly stronger than the forward direction of `mapM_ok_iff_forall₂`
+since it allows an extra `x ∈ xs` condition in `h`.
 -/
 public theorem mapM_implies_forall₂
   {f : α → Except ε β}
@@ -707,31 +680,25 @@ public theorem mapM_implies_forall₂
   (hmapM : List.mapM f xs = .ok ys) :
   List.Forall₂ p xs ys
 := by
-  induction xs generalizing ys
-  case nil =>
-    simp only [mapM, mapM.loop, pure, Except.pure, reverse_nil, Except.ok.injEq, nil_eq] at hmapM
-    simp [hmapM]
-  case cons xhd xtl ih =>
-    simp only [mapM_cons, Bind.bind, Except.bind, pure, Except.pure] at hmapM
-    split at hmapM
-    contradiction
-    split at hmapM
-    contradiction
-    simp only [Except.ok.injEq] at hmapM
-    simp only [← hmapM, forall₂_cons]
-    constructor
-    · apply h
-      simp only [mem_cons, true_or]
-      assumption
-    · apply ih
-      intros
-      apply h
-      simp only [mem_cons, or_true, *]
-      assumption
-      assumption
+  have hf := mapM_ok_iff_forall₂.mp hmapM
+  have hmem := forall₂_implies_all_left hf
+  induction xs generalizing ys with
+  | nil =>
+    rw [forall₂_nil_left_iff] at hf
+    subst hf ; exact Forall₂.nil
+  | cons xhd xtl ih =>
+    replace ⟨yhd, ytl, hhd, htl, heq⟩ := forall₂_cons_left_iff.mp hf
+    subst heq
+    apply Forall₂.cons
+    · exact h _ _ (mem_cons_self ..) hhd
+    · exact ih (fun x y hx => h x y (mem_cons_of_mem _ hx))
+        (mapM_ok_iff_forall₂.mpr htl) htl
+        (forall₂_implies_all_left htl)
 
 /--
-Same as `mapM_implies_forall₂` but for `Option`
+Same as `mapM_implies_forall₂` but for `Option`.
+Introduces `Forall₂` through the input/output relation of `f` through `List.mapM`,
+with an extra `x ∈ xs` condition in `h`.
 -/
 public theorem mapM_implies_forall₂_option
   {f : α → Option β}
@@ -741,29 +708,18 @@ public theorem mapM_implies_forall₂_option
   (hmapM : List.mapM f xs = .some ys) :
   List.Forall₂ p xs ys
 := by
-  induction xs generalizing ys
-  case nil =>
-    simp only [mapM, mapM.loop, pure, reverse_nil, Option.some.injEq, nil_eq] at hmapM
-    simp [hmapM]
-  case cons xhd xtl ih =>
-    simp only [mapM_cons, bind, Option.bind, pure] at hmapM
-    split at hmapM
-    contradiction
-    simp only at hmapM
-    split at hmapM
-    contradiction
-    simp only [Option.some.injEq] at hmapM
-    simp only [← hmapM, forall₂_cons]
-    constructor
-    · apply h
-      simp only [mem_cons, true_or]
-      assumption
-    · apply ih
-      intros
-      apply h
-      simp only [mem_cons, or_true, *]
-      assumption
-      assumption
+  have hf := mapM_some_iff_forall₂.mp hmapM
+  induction xs generalizing ys with
+  | nil =>
+    rw [forall₂_nil_left_iff] at hf
+    subst hf ; exact Forall₂.nil
+  | cons xhd xtl ih =>
+    replace ⟨yhd, ytl, hhd, htl, heq⟩ := forall₂_cons_left_iff.mp hf
+    subst heq
+    apply Forall₂.cons
+    · exact h _ _ (mem_cons_self ..) hhd
+    · exact ih (fun x y hx => h x y (mem_cons_of_mem _ hx))
+        (mapM_some_iff_forall₂.mpr htl) htl
 
 /--
   Note that the converse is not true:
@@ -976,42 +932,6 @@ public theorem mapM_some_implies_all_some {α β} {f : α → Option β} {xs : L
 := by
   rw [← List.mapM'_eq_mapM]
   exact mapM'_some_implies_all_some
-
-public theorem mem_mapM_some_implies_exists_unmapped_helper {α β} {y : β} {f : α → Option β} {xs : List α} {ys : List β} :
-  Forall₂ (fun x y => f x = some y) xs ys →
-  y ∈ ys →
-  (∃ x, x ∈ xs ∧ f x = some y) :=
-  by
-  intro h₁ h₂
-  cases h₁
-  case nil => contradiction
-  case cons a b l₁ l₂ h₃ h₄ =>
-    simp at h₂
-    cases h₂
-    case inl h₅ =>
-      exists a
-      simp
-      rw [h₅]
-      exact h₃
-    case inr h₅ =>
-      have ih := mem_mapM_some_implies_exists_unmapped_helper h₄ h₅
-      rcases ih with ⟨x, ih₁, ih₂⟩
-      exists x
-      constructor
-      . simp
-        right
-        exact ih₁
-      . exact ih₂
-
-public theorem mem_mapM_some_implies_exists_unmapped {α β} {y : β} {f : α → Option β} {xs : List α} {ys : List β} :
-  List.mapM f xs = some ys →
-  y ∈ ys →
-  ∃ x, x ∈ xs ∧ f x = .some y := by
-  intro h₁ h₂
-  rw [mapM_some_iff_forall₂] at h₁
-  apply mem_mapM_some_implies_exists_unmapped_helper h₁ h₂
-
-
 
 public theorem all_some_implies_mapM'_some {α β} {f : α → Option β} {xs : List α} :
   (∀ x ∈ xs, ∃ y, f x = some y) →
@@ -1623,7 +1543,10 @@ public theorem forM_mapM {α β : Type} (f : α → Except β PUnit) (xs : List 
       exists (y' :: ys)
 
 
-public theorem forM_ok_implies_all_ok {α β : Type} (xs : List α) (f : α → Except β Unit) :
+/--
+If `forM` succeeds, then `f` succeeds on every element.
+-/
+public theorem forM_ok_implies_all_ok {α β : Type} {xs : List α} {f : α → Except β Unit} :
   xs.forM f = Except.ok () → (∀ x ∈ xs, f x = Except.ok ())
 := by
   intro h₀ x xin
@@ -1631,10 +1554,6 @@ public theorem forM_ok_implies_all_ok {α β : Type} (xs : List α) (f : α → 
   have h₂ := List.mapM_ok_implies_all_ok h₁ x
   obtain ⟨_, _, h₅⟩ := h₂ xin
   exact h₅
-
-public theorem forM_ok_implies_all_ok' {α β : Type} {xs : List α} {f : α → Except β Unit} :
-  xs.forM f = Except.ok () → (∀ x ∈ xs, f x = Except.ok ())
-:= forM_ok_implies_all_ok xs f
 
 public theorem all_ok_implies_forM_ok {α β : Type} (xs : List α) (f : α → Except β Unit) :
    (∀ x ∈ xs, f x = Except.ok ()) → xs.forM f = Except.ok ()
@@ -1938,30 +1857,6 @@ public theorem find?_stronger_pred
       simp only [List.find?] at hfind
       simp only [this, Option.some.injEq] at hfind
       exact hfind
-
-public theorem mem_of_map_implies_exists_unmapped
-  {l : List α} {v₂ : β} {f : α → β}:
-  v₂ ∈ (List.map f l) →
-  ∃v₁, v₁ ∈ l ∧ v₂ = f v₁
-:= by
-  cases l
-  . simp
-  case cons hd tl =>
-    intro h₁
-    simp [map] at h₁
-    cases h₁
-    case inl h₂ =>
-      exists hd
-      simp
-      assumption
-    case inr h₂ =>
-      rcases h₂ with ⟨v₁, h₂, h₃⟩
-      exists v₁
-      simp
-      constructor
-      . right
-        assumption
-      . rw [h₃]
 
 public theorem mem_map_iff_find? [BEq β] [LawfulBEq β] {k : β} {f : α → β} {kvs : List α} :
   k ∈ List.map f kvs ↔

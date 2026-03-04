@@ -175,7 +175,7 @@ theorem instance_of_schema_refl {entities : Entities} {env : TypeEnv} :
   rw [h₁] at h₀₁
   constructor
   · intro uid data h₂
-    have h₀ := List.forM_ok_implies_all_ok (Map.toList entities) f h₀₁ (uid, data)
+    have h₀ := List.forM_ok_implies_all_ok h₀₁ (uid, data)
     replace h₀ := h₀ (Map.find?_mem_toList h₂)
     rw [← h₁] at h₀
     simp only [
@@ -238,7 +238,7 @@ theorem instance_of_schema_refl {entities : Entities} {env : TypeEnv} :
       instanceOfSchema.actionExists entities x.fst) = f
     rw [h₁] at h₀
     intro uid entry h₂
-    replace h₀ := List.forM_ok_implies_all_ok (Map.toList env.acts) f h₀ (uid, entry)
+    replace h₀ := List.forM_ok_implies_all_ok h₀ (uid, entry)
     replace h₀ := h₀ (Map.find?_mem_toList h₂)
     rw [← h₁] at h₀
     simp only [instanceOfSchema.actionExists] at h₀
@@ -281,6 +281,6 @@ theorem request_and_entities_validate_implies_instance_of_wf_schema (schema : Sc
   exists env
   apply And.intro h₁
   apply instance_of_well_formed_env
-  simp only [List.forM_ok_implies_all_ok schema.environments TypeEnv.validateWellFormed h₀ env h₁]
+  simp only [List.forM_ok_implies_all_ok h₀ env h₁]
   assumption
-  simp only [List.forM_ok_implies_all_ok schema.environments (entitiesMatchEnvironment · entities) h₂ env h₁]
+  simp only [List.forM_ok_implies_all_ok h₂ env h₁]

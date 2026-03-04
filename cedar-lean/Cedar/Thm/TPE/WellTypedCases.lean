@@ -445,7 +445,7 @@ theorem partial_eval_well_typed_set {env : TypeEnv} {ls : List Residual} {ty : C
     unfold List.map₁ List.attach List.attachWith at h₃
     rw [List.map_pmap_subtype (fun x => TPE.evaluate x preq pes), List.mapM_map] at h₃
     rw [← Set.make_mem] at h₄
-    have h₅ := List.mem_mapM_some_implies_exists_unmapped h₃ h₄
+    have h₅ := List.mapM_some_implies_all_from_some h₃ _ h₄
     rcases h₅ with ⟨y, h₆, h₇⟩
     specialize h₀ y h₆
     let h₈ := partial_eval_preserves_typeof h_wf h_ref h₀
@@ -607,16 +607,11 @@ theorem partial_eval_well_typed_record {env : TypeEnv} {ls : List (Attr × Resid
     case isFalse h₃ =>
       apply Residual.WellTyped.record
       . intros k v h₄
-        have h₅ := List.mem_of_map_implies_exists_unmapped h₄
-        rcases h₅ with ⟨p, h₅, h₆⟩
-        cases p ; rename_i k₂ v₂
+        have ⟨⟨_, _⟩, h₅, h₆⟩ := List.mem_map.mp h₄
         simp only [Prod.mk.injEq] at h₆
-        rcases h₆ with ⟨h₆, h₇⟩
-        rw [← h₆] at h₅
-        specialize h₀ k v₂ h₅
-        have ih := h_ls_wt k v₂ h₅
-        rw [h₇]
-        assumption
+        rw [h₆.left] at h₅
+        rw [←h₆.right]
+        exact h_ls_wt _ _ h₅
       . rw [h₁]
         simp only [List.map_map]
         unfold Function.comp
@@ -981,12 +976,9 @@ theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List
       apply Residual.WellTyped.call
       case call.h₁ =>
         intro r h₃
-        have h₄ := List.mem_of_map_implies_exists_unmapped h₃
-        rcases h₄ with ⟨r₂, h₄, h₅⟩
-        specialize h₁ r₂ h₄
-        have ih := h_args_wt r₂ h₄
-        rw [h₅]
-        exact ih
+        have ⟨_, h₄, h₅⟩ := List.mem_map.mp h₃
+        rw [← h₅]
+        exact h_args_wt _ h₄
       case call.h₂ =>
         apply ext_well_typed_after_map h₂
         case a =>

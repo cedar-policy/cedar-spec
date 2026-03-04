@@ -185,7 +185,7 @@ theorem type_validate_lifted_is_sound
     simp only [CedarType.validateLifted] at hok
     constructor
     intros attr qty hmem
-    have := List.forM_ok_implies_all_ok _ _ hok ⟨(attr, qty), hmem⟩
+    have := List.forM_ok_implies_all_ok hok ⟨(attr, qty), hmem⟩
     specialize this (List.mem_attach rty.toList ⟨(attr, qty), hmem⟩)
     simp only at this
     cases qty with

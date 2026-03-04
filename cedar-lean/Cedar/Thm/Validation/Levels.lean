@@ -152,7 +152,7 @@ theorem validate_with_level_is_sound_wf {ps : Policies} {schema : Schema} {n : N
   isAuthorized request entities ps = isAuthorized request (entities.sliceAtLevel request n) ps
 := by
   have hsound : ∀ p ∈ ps, evaluate p.toExpr request entities = evaluate p.toExpr request (entities.sliceAtLevel request n) := by
-    replace htl := List.forM_ok_implies_all_ok _ _ htl
+    replace htl := List.forM_ok_implies_all_ok htl
     intro p hp
     exact typecheck_policy_at_level_with_environments_is_sound hwf (htl p hp)
   exact is_authorized_congr_evaluate hsound

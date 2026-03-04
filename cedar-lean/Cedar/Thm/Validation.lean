@@ -75,8 +75,7 @@ theorem validation_is_sound (policies : Policies) (schema : Schema) (request : R
         subst h₅
         exact h₄
       | inr h₅ =>
-        apply List.forM_ok_implies_all_ok t' (typecheckPolicyWithEnvironments _ · schema)
-        repeat assumption
+        exact List.forM_ok_implies_all_ok h₀ policy h₅
 
 /--
 If a set of policies is well-typed and validates at a level `n`, then any
