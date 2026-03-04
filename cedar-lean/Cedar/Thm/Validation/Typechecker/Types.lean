@@ -525,7 +525,6 @@ theorem type_is_inhabited_ext {env : TypeEnv} {xty : ExtType} :
   apply InstanceOfType.instance_of_ext _ _ h₁
 
 theorem type_is_inhabited_record {env : TypeEnv} {rty : List (Attr × Qualified CedarType) }
-  (hwf_env : env.WellFormed)
   (hwf : (CedarType.record (Map.mk rty)).WellFormed env)
   (ih_ty : ∀ aty ∈ rty, aty.snd.getType.WellFormed env → ∃ v, InstanceOfType env v aty.snd.getType) :
   ∃ v, InstanceOfType env v (.record (Map.mk rty))
@@ -538,7 +537,7 @@ theorem type_is_inhabited_record {env : TypeEnv} {rty : List (Attr × Qualified 
     have ⟨hwf_hd, hwf_tl⟩ := wf_record_type_cons hwf
     simp only [List.mem_cons, forall_eq_or_imp] at ih_ty
     have ⟨rhd, h₂⟩ := ih_ty.left hwf_hd
-    have ⟨vtl, h₃⟩ := type_is_inhabited_record hwf_env hwf_tl ih_ty.right
+    have ⟨vtl, h₃⟩ := type_is_inhabited_record hwf_tl ih_ty.right
     have ⟨mtl, h₄⟩ := instance_of_record_type_is_record h₃
     subst h₄ ; cases mtl ; rename_i rtl
     exists (.record (Map.mk ((hd.fst, rhd) :: rtl)))
@@ -571,7 +570,7 @@ theorem type_is_inhabited {env : TypeEnv} {ty : CedarType}
           (sizeOf_attribute_lt_sizeOf_qualified aty)
           (List.sizeOf_lt_of_mem hart)
       exact type_is_inhabited hwf_env hwf
-    exact type_is_inhabited_record hwf_env hwf ih
+    exact type_is_inhabited_record hwf ih
 
 theorem instance_of_lubBool_left {env : TypeEnv} {v : Value} {bty₁ bty₂ : BoolType} :
   InstanceOfType env v (CedarType.bool bty₁) →
