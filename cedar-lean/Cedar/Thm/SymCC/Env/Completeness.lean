@@ -331,7 +331,7 @@ private theorem ofType_typeOf_pullback
         = (Map.mapOnValues Term.typeOf (Map.mk rec_map)).toList
       := by rfl
       simp only [this] at heq_ty
-      replace heq_ty := Map.toList_congr heq_ty
+      replace heq_ty := Map.eq_iff_toList_eq.mp heq_ty
     · intros attr val qty hfind_val hfind_qty
       have hwf_ty' := hwf_ty_rec attr qty hfind_qty
       have hlift_ty' := hlift_ty_rec attr qty (Map.find?_mem_toList hfind_qty)

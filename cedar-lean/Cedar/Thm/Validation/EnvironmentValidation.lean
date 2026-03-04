@@ -228,7 +228,7 @@ theorem standard_schema_entry_validate_well_formed_is_sound
   split at hok
   contradiction
   rename_i hwf_anc_tys
-  have := List.forM_ok_implies_all_ok' hwf_anc_tys
+  have := List.forM_ok_implies_all_ok hwf_anc_tys
   constructor
   intros anc hmem_anc
   specialize this anc hmem_anc
@@ -300,7 +300,7 @@ theorem entity_schema_validate_well_formed_is_sound
     List.forM_eq_forM, Except.bind_ok,
   ] at hok
   simp only [Map.wellFormed_correct.mp hwf_ets, true_and]
-  have := List.forM_ok_implies_all_ok' hok
+  have := List.forM_ok_implies_all_ok hok
   intros ety entry hfind
   specialize this (ety, entry) (Map.find?_mem_toList hfind)
   exact entity_schema_entry_validate_well_formed_is_sound this
@@ -336,7 +336,7 @@ theorem action_schema_entry_validate_well_formed_is_sound
   split at hok
   contradiction
   rename_i hwf_princ_tys
-  have := List.forM_ok_implies_all_ok' hwf_princ_tys
+  have := List.forM_ok_implies_all_ok hwf_princ_tys
   constructor
   intros ety hmem_princ
   specialize this ety (List.contains_iff_mem.mp hmem_princ)
@@ -345,7 +345,7 @@ theorem action_schema_entry_validate_well_formed_is_sound
   split at hok
   contradiction
   rename_i hwf_res_tys
-  have := List.forM_ok_implies_all_ok' hwf_res_tys
+  have := List.forM_ok_implies_all_ok hwf_res_tys
   constructor
   intros ety hmem_res
   specialize this ety (List.contains_iff_mem.mp hmem_res)
@@ -354,7 +354,7 @@ theorem action_schema_entry_validate_well_formed_is_sound
   split at hok
   contradiction
   rename_i hwf_anc
-  have := List.forM_ok_implies_all_ok' hwf_anc
+  have := List.forM_ok_implies_all_ok hwf_anc
   constructor
   intros uid hmem_anc
   specialize this uid hmem_anc
@@ -375,7 +375,7 @@ theorem action_schema_validate_acyclic_action_hierarchy_is_sound
 := by
   simp only [ActionSchema.AcyclicActionHierarchy]
   simp only [ActionSchema.validateAcyclicActionHierarchy] at hok
-  have := List.forM_ok_implies_all_ok' hok
+  have := List.forM_ok_implies_all_ok hok
   intros uid entry h
   specialize this (uid, entry) (Map.find?_mem_toList h)
   split at this
@@ -397,10 +397,10 @@ theorem action_schema_validate_transitive_action_hierarchy_is_sound
 := by
   simp only [ActionSchema.TransitiveActionHierarchy]
   simp only [ActionSchema.validateTransitiveActionHierarchy] at hok
-  have := List.forM_ok_implies_all_ok' hok
+  have := List.forM_ok_implies_all_ok hok
   intros uid₁ entry₁ uid₂ entry₂ hmem₁ hmem₂
   specialize this (uid₁, entry₁) (Map.find?_mem_toList hmem₁)
-  have := List.forM_ok_implies_all_ok' this
+  have := List.forM_ok_implies_all_ok this
   specialize this (uid₂, entry₂) (Map.find?_mem_toList hmem₂)
   intros hanc
   simp only [
@@ -432,7 +432,7 @@ theorem action_schema_validate_well_formed_is_sound
   split at hok
   contradiction
   rename_i hwf_acts
-  have := List.forM_ok_implies_all_ok' hwf_acts
+  have := List.forM_ok_implies_all_ok hwf_acts
   constructor
   · intros uid entry hfind
     specialize this (uid, entry) (Map.find?_mem_toList hfind)

@@ -70,17 +70,7 @@ public theorem contains_prop_bool_equiv [DecidableEq α] {v : α} {s : Set α} :
 public theorem not_contains_prop_bool_equiv [DecidableEq α] {v : α} {s : Set α} :
   s.contains v = false ↔ v ∉ s
 := by
-  constructor
-  · intros h hn
-    have := Set.contains_prop_bool_equiv.mpr hn
-    simp [h] at this
-  · intros h
-    cases hn : s.contains v with
-    | true =>
-      have := h (Set.contains_prop_bool_equiv.mp hn)
-      contradiction
-    | false =>
-      rfl
+  rw [← Bool.not_eq_true, contains_prop_bool_equiv]
 
 public theorem in_list_iff_in_set {α : Type u} (v : α) (s : Set α) :
   v ∈ s.elts ↔ v ∈ s
@@ -112,14 +102,6 @@ public theorem mem_cons {a : α} {hd : α} {tl : List α} :
   a ∈ Set.mk (hd :: tl) ↔ a = hd ∨ a ∈ tl
 := by
   simp [← in_list_iff_in_mk]
-
-public theorem in_set_means_list_non_empty {α : Type u} (v : α) (s : Set α) :
-  v ∈ s.elts → ¬(s.elts = [])
-:= by
-  intros h0 h1
-  rw [List.eq_nil_iff_forall_not_mem] at h1
-  specialize h1 v
-  contradiction
 
 /-! ### empty -/
 
@@ -199,19 +181,12 @@ public theorem empty_iff_not_exists [DecidableEq α] (s : Set α) :
   simp only [isEmpty, empty, beq_iff_eq, not_exists]
   constructor
   case mp =>
-    intro h₁
-    subst h₁
-    apply List.not_mem_nil
+    intro h₁ ; subst h₁ ; exact λ _ => List.not_mem_nil
   case mpr =>
     intro h₁
-    match s with
-    | mk xs =>
-      rw [mk.injEq]
-      rw [List.eq_nil_iff_forall_not_mem]
-      intro x
-      specialize h₁ x
-      rw [in_list_iff_in_mk]
-      assumption
+    cases s with | mk xs =>
+    simp only [mk.injEq, List.eq_nil_iff_forall_not_mem]
+    intro x ; rw [in_list_iff_in_mk] ; exact h₁ x
 
 
 /-! ### singleton -/
@@ -250,12 +225,9 @@ public theorem make_mem [LT α] [DecidableLT α] [StrictLT α] (x : α) (xs : Li
   x ∈ xs ↔ x ∈ Set.make xs
 := by
   simp only [make, Membership.mem]
-  have h₁ := List.canonicalize_equiv xs
-  simp only [List.Equiv, List.subset_def] at h₁
-  have ⟨h₁, h₂⟩ := h₁
-  constructor <;> intro h₃
-  case mp => exact h₁ h₃
-  case mpr => exact h₂ h₃
+  have h := List.canonicalize_equiv xs
+  simp only [List.Equiv, List.subset_def] at h
+  exact ⟨h.left, h.right⟩
 
 public theorem make_mk_eqv [LT α] [DecidableLT α] [StrictLT α] {xs ys : List α} :
   Set.make xs = Set.mk ys → xs ≡ ys
@@ -460,15 +432,8 @@ public theorem intersects_def {α} [LT α] [StrictLT α] [DecidableLT α] [Decid
 public theorem intersects_iff_exists {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {s₁ s₂ : Set α} :
  s₁.intersects s₂ ↔ ∃ a, a ∈ s₁ ∧ a ∈ s₂
 := by
-  constructor <;> intro h
-  case mp =>
-    simp only [Set.intersects_def, Set.non_empty_iff_exists, Set.mem_inter_iff] at h
-    exact h
-  case mpr =>
-    replace ⟨a, h⟩ := h
-    rw [← Set.mem_inter_iff] at h
-    simp only [Set.intersects_def, Set.non_empty_iff_exists]
-    exists a
+  rw [intersects_def, non_empty_iff_exists]
+  simp only [mem_inter_iff]
 
 public theorem union_wf [LT α] [DecidableLT α] [StrictLT α] (s₁ s₂ : Set α) :
   WellFormed (s₁ ∪ s₂)
@@ -605,13 +570,9 @@ public theorem subset_def [DecidableEq α] {s₁ s₂ : Set α} :
 public theorem superset_empty_subset_empty [DecidableEq α] {s₁ s₂ : Set α} :
   s₁ ⊆ s₂ → s₂.isEmpty → s₁.isEmpty
 := by
-  repeat rw [Set.empty_iff_not_exists]
-  intro h₁ h₂ h₃
-  rw [subset_def] at h₁
-  replace ⟨a, h₃⟩ := h₃
-  apply h₂
-  exists a
-  exact h₁ a h₃
+  simp only [empty_iff_not_exists, subset_def, not_exists]
+  intro h₁ h₂ a h₃
+  exact h₂ a (h₁ a h₃)
 
 public theorem subset_iff_subset_elts [DecidableEq α] {s₁ s₂ : Set α} :
   s₁ ⊆ s₂ ↔ s₁.elts ⊆ s₂.elts

@@ -314,17 +314,10 @@ public theorem make_mem_list_mem [LT α] [StrictLT α] [DecidableLT α] {xs : Li
 public theorem mem_values_make [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
   v ∈ (Map.make xs).values → v ∈ xs.map Prod.snd
 := by
-  -- despite the similarity to `make_mem_list_mem`, the proof does not currently
-  -- use `make_mem_list_mem`
-  simp only [values, make]
-  simp only [List.mem_map, forall_exists_index, and_imp]
+  simp only [values, List.mem_map, forall_exists_index, and_imp]
   intro (k, v) h₁ h₂
-  exists (k, v)
   subst h₂
-  simp only [and_true]
-  have h₂ := List.canonicalize_subseteq Prod.fst xs
-  simp only [List.subset_def] at h₂
-  exact h₂ h₁
+  exact ⟨(k, v), make_mem_list_mem h₁, rfl⟩
 
 /--
   This limited converse of `make_mem_list_mem` requires that the input list is
@@ -974,14 +967,6 @@ public theorem in_toList_in_mapOnValues [LT α] [DecidableLT α] [DecidableEq α
   exists k, v
 
 /--
-  TODO: This is redundant with `findOrErr_err_iff_find?_none`
--/
-public theorem find?_none_iff_findorErr_errors [LT α] [DecidableLT α] [DecidableEq α] {m : Map α β} {k : α} (e : Error) :
-  m.find? k = none ↔ m.findOrErr k e = .error e
-:= by
-  exact findOrErr_err_iff_find?_none.symm
-
-/--
   Converse of `in_toList_in_mapOnValues`; requires the extra preconditions that `m`
   is `WellFormed` and `f` is injective
 -/
@@ -1058,30 +1043,6 @@ public theorem mapMOnValues_some_wf [LT α] [DecidableLT α] [StrictLT α] {f : 
   intro wf h₁
   have h₂ := mapMOnValues_preserves_keys h₁
   exact (List.map_eq_implies_sortedBy h₂).mp wf
-
-/--
-  Alternate proof of `mapMOnValues_some_wf`, that relies on
-  `List.mapM_some_eq_filterMap` instead of `mapMOnValues_preserves_keys`. Which do
-  we prefer?
--/
-theorem mapMOnValues_some_wf_alt_proof [LT α] [DecidableLT α] [StrictLT α] {f : β → Option γ} {m₁ : Map α β} {m₂ : Map α γ} :
-  m₁.WellFormed →
-  (m₁.mapMOnValues f = some m₂) →
-  m₂.WellFormed
-:= by
-  simp only [wf_iff_sorted, toList]
-  intro wf h₁
-  simp only [mapMOnValues, Option.pure_def, do_some] at h₁
-  replace ⟨xs, h₁, h₂⟩ := h₁
-  subst h₂
-  simp only
-  replace h₁ := List.mapM_some_eq_filterMap h₁
-  subst h₁
-  apply List.filterMap_sortedBy _ wf
-  intro (k, v) (k', v') h₁
-  simp only at *
-  cases h₂ : f v <;> simp [h₂] at h₁
-  exact h₁.left
 
 public theorem mapMOnValues_ok_wf [LT α] [DecidableLT α] [StrictLT α] {f : β → Except ε γ} {m₁ : Map α β} {m₂ : Map α γ} :
   m₁.WellFormed →
@@ -1173,32 +1134,6 @@ public theorem mapMOnValues_some_implies_all_some {α : Type 0} [LT α] [Decidab
   subst k'
   exists v'
 
-/--
-  alternate proof of `mapMOnValues_some_implies_all_some`, which instead of
-  relying on `mapMOnValues_some_implies_forall₂`, relies on
-  `List.mapM_some_implies_all_some`.  Which do we prefer?
--/
-theorem mapMOnValues_some_implies_all_some_alt_proof [LT α] [DecidableLT α] {f : β → Option γ} {m₁ : Map α β} {m₂ : Map α γ} :
-  m₁.mapMOnValues f = some m₂ →
-  ∀ kv ∈ m₁.toList, ∃ v, (kv.fst, v) ∈ m₂.toList ∧ f kv.snd = some v
-:= by
-  unfold mapMOnValues
-  intro h₁ kv h₂
-  cases h₃ : m₁.toList.mapM (λ x => match x with | (k, v) => do let v' ← f v ; pure (k, v'))
-  <;> rw [h₃] at h₁
-  <;> simp only [Option.pure_def, Option.bind_some_fun, Option.bind_none_fun, Option.some.injEq, reduceCtorEq] at h₁
-  case some ags =>
-    subst h₁
-    have (a, b) := kv ; clear kv
-    simp only
-    replace h₃ := List.mapM_some_implies_all_some h₃
-    replace ⟨(a', g), h₃, h₄⟩ := h₃ (a, b) h₂
-    simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq,
-      Prod.mk.injEq, exists_eq_right_right] at h₄
-    replace ⟨h₄, h₄'⟩ := h₄
-    subst a'
-    exists g
-
 public theorem mapMOnValues_some_implies_all_from_some [LT α] [DecidableLT α] {f : β → Option γ} {m₁ : Map α β} {m₂ : Map α γ} :
   m₁.mapMOnValues f = some m₂ →
   ∀ kv ∈ m₂.toList, ∃ v, (kv.fst, v) ∈ m₁.toList ∧ f v = kv.snd
@@ -1210,32 +1145,6 @@ public theorem mapMOnValues_some_implies_all_from_some [LT α] [DecidableLT α] 
   simp only at *
   subst k'
   exists v'
-
-/--
-  alternate proof of `mapMOnValues_some_implies_all_from_some`, which instead of
-  relying on `mapMOnValues_some_implies_forall₂`, relies on
-  `List.mapM_some_implies_all_from_some`. Which do we prefer?
--/
-theorem mapMOnValues_some_implies_all_from_some_alt_proof [LT α] [DecidableLT α] {f : β → Option γ} {m₁ : Map α β} {m₂ : Map α γ} :
-  m₁.mapMOnValues f = some m₂ →
-  ∀ kv ∈ m₂.toList, ∃ v, (kv.fst, v) ∈ m₁.toList ∧ f v = kv.snd
-:= by
-  unfold mapMOnValues
-  intro h₁ kv h₂
-  cases h₃ : m₁.toList.mapM (λ x => match x with | (k, v) => do let v' ← f v ; pure (k, v'))
-  <;> rw [h₃] at h₁
-  <;> simp only [Option.pure_def, Option.bind_some_fun, Option.bind_none_fun, Option.some.injEq, reduceCtorEq] at h₁
-  case some ags =>
-    subst h₁
-    have (a, g) := kv ; clear kv
-    simp only
-    replace h₃ := List.mapM_some_implies_all_from_some h₃
-    replace ⟨(a', b), h₃, h₄⟩ := h₃ (a, g) h₂
-    simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq,
-      Prod.mk.injEq, exists_eq_right_right] at h₄
-    replace ⟨h₄, h₄'⟩ := h₄
-    subst a'
-    exists b
 
 public theorem mapMOnValues_none_iff_exists_none {α : Type 0} [LT α] [DecidableLT α] {f : β → Option γ} {m : Map α β} :
   m.mapMOnValues f = none ↔ ∃ v ∈ m.values, f v = none
@@ -1690,14 +1599,6 @@ public theorem map_keys_empty_implies_map_empty
   | cons hd tl =>
     simp only [Map.keys, Set.toList, Set.elts] at h
     contradiction
-
-/-- TODO: This is redundant with `eq_iff_toList_eq` -/
-public theorem toList_congr
-  {m₁ m₂ : Map α β}
-  (h : m₁.toList = m₂.toList) :
-  m₁ = m₂
-:= by
-  exact eq_iff_toList_eq.mp h
 
 @[simp]
 public theorem find?_append
