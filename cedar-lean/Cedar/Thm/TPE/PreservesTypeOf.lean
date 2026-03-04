@@ -28,29 +28,22 @@ open Cedar.Spec
 open Cedar.Validation
 open Cedar.TPE
 
-abbrev PEPreservesTypeOf (env : TypeEnv)
-  (res : Residual)
-  (req : Request)
-  (preq : PartialRequest)
-  (es : Entities)
-  (pes : PartialEntities) : Prop :=
-  InstanceOfWellFormedEnvironment req es env →
-  RequestAndEntitiesRefine req es preq pes →
-  Residual.WellTyped env res →
-  (TPE.evaluate res preq pes).typeOf = res.typeOf
+abbrev PEPreservesTypeOf (res : Residual) : Prop :=
+  ∀ {env : TypeEnv} , Residual.WellTyped env res →
+    ∀ (preq : PartialRequest) (pes : PartialEntities),
+      (TPE.evaluate res preq pes).typeOf = res.typeOf
 
-private theorem partial_eval_preserves_typeof_and {env : TypeEnv} {a b : Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities}
-  (ih_a : PEPreservesTypeOf env a req preq es pes)
-  (ih_b : PEPreservesTypeOf env b req preq es pes) :
-  PEPreservesTypeOf env (Residual.and a b ty) req preq es pes
+private theorem partial_eval_preserves_typeof_and {a b : Residual} {ty : CedarType}
+  (ih_a : PEPreservesTypeOf a)
+  (ih_b : PEPreservesTypeOf b) :
+  PEPreservesTypeOf (Residual.and a b ty)
 := by
-  unfold PEPreservesTypeOf
-  intros h_wf h_ref h_wt
+  intro env h_wt preq pes
   simp only [TPE.evaluate, TPE.and]
   split
   · cases h_wt
     rename_i h_bwt h_bty
-    replace ih_b := ih_b h_wf h_ref h_bwt
+    specialize ih_b h_bwt preq pes
     rw [h_bty] at ih_b
     exact ih_b
   · simp only [Residual.typeOf]
@@ -59,7 +52,7 @@ private theorem partial_eval_preserves_typeof_and {env : TypeEnv} {a b : Residua
   · simp [Residual.typeOf]
   · cases h_wt
     rename_i h_awt h_aty _ _
-    replace ih_a := ih_a h_wf h_ref h_awt
+    specialize ih_a h_awt preq pes
     rw [h_aty] at ih_a
     exact ih_a
   · split
@@ -69,13 +62,12 @@ private theorem partial_eval_preserves_typeof_and {env : TypeEnv} {a b : Residua
     · simp [Residual.typeOf]
   · simp [Residual.typeOf]
 
-private theorem partial_eval_preserves_typeof_or {env : TypeEnv} {a b : Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities}
-  (ih_a : PEPreservesTypeOf env a req preq es pes)
-  (ih_b : PEPreservesTypeOf env b req preq es pes) :
-  PEPreservesTypeOf env (Residual.or a b ty) req preq es pes
+private theorem partial_eval_preserves_typeof_or {a b : Residual} {ty : CedarType}
+  (ih_a : PEPreservesTypeOf a)
+  (ih_b : PEPreservesTypeOf b) :
+  PEPreservesTypeOf (Residual.or a b ty)
 := by
-  unfold PEPreservesTypeOf
-  intros h_wf h_ref h_wt
+  intro env h_wt preq pes
   simp only [TPE.evaluate, TPE.or]
   split
   · simp only [Residual.typeOf]
@@ -83,13 +75,13 @@ private theorem partial_eval_preserves_typeof_or {env : TypeEnv} {a b : Residual
     rfl
   · cases h_wt
     rename_i h_bwt h_bty
-    replace ih_b := ih_b h_wf h_ref h_bwt
+    specialize ih_b h_bwt preq pes
     rw [h_bty] at ih_b
     exact ih_b
   · simp [Residual.typeOf]
   · cases h_wt
     rename_i h_awt h_aty _ _
-    replace ih_a := ih_a h_wf h_ref h_awt
+    specialize ih_a h_awt preq pes
     rw [h_aty] at ih_a
     exact ih_a
   · split
@@ -99,30 +91,28 @@ private theorem partial_eval_preserves_typeof_or {env : TypeEnv} {a b : Residual
     · simp [Residual.typeOf]
   · simp [Residual.typeOf]
 
-private theorem partial_eval_preserves_typeof_ite {env : TypeEnv} {c t e : Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities}
-  (ih_t : PEPreservesTypeOf env t req preq es pes)
-  (ih_e : PEPreservesTypeOf env e req preq es pes) :
-  PEPreservesTypeOf env (Residual.ite c t e ty) req preq es pes
+private theorem partial_eval_preserves_typeof_ite {c t e : Residual} {ty : CedarType}
+  (ih_t : PEPreservesTypeOf t)
+  (ih_e : PEPreservesTypeOf e) :
+  PEPreservesTypeOf (Residual.ite c t e ty)
 := by
-  unfold PEPreservesTypeOf
-  intros h_wf h_ref h_wt
+  intro env h_wt preq pes
   simp only [TPE.evaluate, TPE.ite]
   split
   · cases h_wt
     split
     · rename_i h_twt _ _ _
-      exact ih_t h_wf h_ref h_twt
+      exact ih_t h_twt preq pes
     · rename_i h_ewt h_teq _
       rw [h_teq]
-      exact ih_e h_wf h_ref h_ewt
+      exact ih_e h_ewt preq pes
   · simp [Residual.typeOf]
   · simp [Residual.typeOf]
 
-private theorem partial_eval_preserves_typeof_unaryApp {env : TypeEnv} {op : UnaryOp} {e : Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
-  PEPreservesTypeOf env (Residual.unaryApp op e ty) req preq es pes
+private theorem partial_eval_preserves_typeof_unaryApp {op : UnaryOp} {e : Residual} {ty : CedarType} :
+  PEPreservesTypeOf (Residual.unaryApp op e ty)
 := by
-  unfold PEPreservesTypeOf
-  intros h_wf h_ref h_wt
+  intro env h_wt preq pes
   simp only [TPE.evaluate, TPE.apply₁]
   split
   . simp [Residual.typeOf]
@@ -139,17 +129,14 @@ private theorem partial_eval_preserves_typeof_unaryApp {env : TypeEnv} {op : Una
       case h_2 =>
         rename Int64 => i
         cases h₃ : i.neg?
-
         all_goals
           simp [intOrErr]
     . simp [Residual.typeOf]
 
-private theorem partial_eval_preserves_typeof_binaryApp {env : TypeEnv} {op : BinaryOp} {e1 e2 : Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities}
-  (ih_e1 : PEPreservesTypeOf env e1 req preq es pes) :
-  PEPreservesTypeOf env (Residual.binaryApp op e1 e2 ty) req preq es pes
+private theorem partial_eval_preserves_typeof_binaryApp {op : BinaryOp} {e1 e2 : Residual} {ty : CedarType} :
+  PEPreservesTypeOf (Residual.binaryApp op e1 e2 ty)
 := by
-  unfold PEPreservesTypeOf
-  intros h_wf h_ref h_wt
+  intro env h_wt preq pes
   simp only [TPE.evaluate, TPE.apply₂, Option.pure_def, Option.bind_eq_bind]
   split
   case h_1 =>
@@ -182,7 +169,6 @@ private theorem partial_eval_preserves_typeof_binaryApp {env : TypeEnv} {op : Bi
     case h_17 uid₁ tag _ _ =>
       cases h_wt with
       | binaryApp h₆ h₇ h₈ =>
-      have ih := ih_e1 h_wf h_ref h₆
       unfold TPE.getTag
       cases pes.tags uid₁
       case binaryApp.none =>
@@ -196,11 +182,10 @@ private theorem partial_eval_preserves_typeof_binaryApp {env : TypeEnv} {op : Bi
     · simp [Residual.typeOf]
     · simp [apply₂.self, Residual.typeOf]
 
-private theorem partial_eval_preserves_typeof_call {env : TypeEnv} {xfn : ExtFun} {args : List Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
-  PEPreservesTypeOf env (Residual.call xfn args ty) req preq es pes
+private theorem partial_eval_preserves_typeof_call {xfn : ExtFun} {args : List Residual} {ty : CedarType} :
+  PEPreservesTypeOf (Residual.call xfn args ty)
 := by
-  unfold PEPreservesTypeOf
-  intros h_wf h_ref h_wt
+  intro env h_wt preq pes
   simp only [TPE.evaluate, TPE.call]
   split
   · simp only [someOrError]
@@ -211,11 +196,10 @@ private theorem partial_eval_preserves_typeof_call {env : TypeEnv} {xfn : ExtFun
     · simp [Residual.typeOf]
     · simp [Residual.typeOf]
 
-private theorem partial_eval_preserves_typeof_getAttr {env : TypeEnv} {expr : Residual} {attr : Attr} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
-  PEPreservesTypeOf env (Residual.getAttr expr attr ty) req preq es pes
+private theorem partial_eval_preserves_typeof_getAttr {expr : Residual} {attr : Attr} {ty : CedarType} :
+  PEPreservesTypeOf (Residual.getAttr expr attr ty)
 := by
-  unfold PEPreservesTypeOf
-  intros h_wf h_ref h_wt
+  intro env h_wt preq pes
   simp only [TPE.evaluate, TPE.getAttr]
   split
   . simp [Residual.typeOf]
@@ -226,11 +210,10 @@ private theorem partial_eval_preserves_typeof_getAttr {env : TypeEnv} {expr : Re
       . simp [Residual.typeOf]
     . simp [Residual.typeOf]
 
-private theorem partial_eval_preserves_typeof_hasAttr {env : TypeEnv} {expr : Residual} {attr : Attr} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
-  PEPreservesTypeOf env (Residual.hasAttr expr attr ty) req preq es pes
+private theorem partial_eval_preserves_typeof_hasAttr {expr : Residual} {attr : Attr} {ty : CedarType} :
+  PEPreservesTypeOf (Residual.hasAttr expr attr ty)
 := by
-  unfold PEPreservesTypeOf
-  intros h_wf h_ref h_wt
+  intro env h_wt preq pes
   simp only [TPE.evaluate, TPE.hasAttr]
   split
   . simp [Residual.typeOf]
@@ -240,11 +223,10 @@ private theorem partial_eval_preserves_typeof_hasAttr {env : TypeEnv} {expr : Re
       . simp [Residual.typeOf]
     . simp [Residual.typeOf]
 
-private theorem partial_eval_preserves_typeof_set {env : TypeEnv} {ls : List Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
-  PEPreservesTypeOf env (Residual.set ls ty) req preq es pes
+private theorem partial_eval_preserves_typeof_set {ls : List Residual} {ty : CedarType} :
+  PEPreservesTypeOf (Residual.set ls ty)
 := by
-  unfold PEPreservesTypeOf
-  intros h_wf h_ref h_wt
+  intro env h_wt preq pes
   simp only [TPE.evaluate, TPE.set]
   split
   · simp [Residual.typeOf]
@@ -252,11 +234,10 @@ private theorem partial_eval_preserves_typeof_set {env : TypeEnv} {ls : List Res
     · simp [Residual.typeOf]
     · simp [Residual.typeOf]
 
-private theorem partial_eval_preserves_typeof_record {env : TypeEnv} {ls : List (Attr × Residual)} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
-  PEPreservesTypeOf env (Residual.record ls ty) req preq es pes
+private theorem partial_eval_preserves_typeof_record {ls : List (Attr × Residual)} {ty : CedarType} :
+  PEPreservesTypeOf (Residual.record ls ty)
 := by
-  unfold PEPreservesTypeOf
-  intros h_wf h_ref h_wt
+  intro env h_wt preq pes
   simp only [TPE.evaluate, TPE.record]
   split
   · simp [Residual.typeOf]
@@ -270,26 +251,15 @@ Theorem: TPE.evaluate preserves the typeOf property.
 If a residual has a certain type, then partially evaluating it produces
 a residual with the same type.
 -/
-theorem partial_eval_preserves_typeof
-  {env : TypeEnv}
-  {res : Residual}
-  {req : Request}
-  {preq : PartialRequest}
-  {es : Entities}
-  {pes : PartialEntities} :
-  InstanceOfWellFormedEnvironment req es env →
-  RequestAndEntitiesRefine req es preq pes →
-  Residual.WellTyped env res →
-  (TPE.evaluate res preq pes).typeOf = res.typeOf
+theorem partial_eval_preserves_typeof :
+  ∀ res, PEPreservesTypeOf res
 := by
-  intro h_wf h_ref h_wt
-  have h_ref₂ := h_ref
-  unfold RequestAndEntitiesRefine at h_ref₂
-  rcases h_ref₂ with ⟨h_rref, h_eref⟩
-  cases h₁: res with
+  intro res env h_wt
+  cases res with
   | val v ty =>
     simp [TPE.evaluate, Residual.typeOf]
   | var v ty =>
+    intro preq pes
     simp only [Residual.typeOf, TPE.evaluate]
     unfold varₚ
     simp only [varₚ.varₒ, someOrSelf]
@@ -303,70 +273,28 @@ theorem partial_eval_preserves_typeof
   | error ty =>
     simp [TPE.evaluate, Residual.typeOf]
   | and a b ty =>
-    apply partial_eval_preserves_typeof_and
-    · exact fun h_wf h_ref h_wt => partial_eval_preserves_typeof h_wf h_ref h_wt
-    · exact fun h_wf h_ref h_wt => partial_eval_preserves_typeof h_wf h_ref h_wt
-    · exact h_wf
-    · exact h_ref
-    · rw [← h₁]
-      exact h_wt
+    exact partial_eval_preserves_typeof_and
+      (partial_eval_preserves_typeof a) (partial_eval_preserves_typeof b)
+      h_wt
   | or a b ty =>
-    apply partial_eval_preserves_typeof_or
-    · exact fun h_wf h_ref h_wt => partial_eval_preserves_typeof h_wf h_ref h_wt
-    · exact fun h_wf h_ref h_wt => partial_eval_preserves_typeof h_wf h_ref h_wt
-    · exact h_wf
-    · exact h_ref
-    · rw [← h₁]
-      exact h_wt
+    exact partial_eval_preserves_typeof_or
+      (partial_eval_preserves_typeof a) (partial_eval_preserves_typeof b)
+      h_wt
   | ite c t e ty =>
-    apply partial_eval_preserves_typeof_ite
-    · exact fun h_wf h_ref h_wt => partial_eval_preserves_typeof h_wf h_ref h_wt
-    · exact fun h_wf h_ref h_wt => partial_eval_preserves_typeof h_wf h_ref h_wt
-    · exact h_wf
-    · exact h_ref
-    · rw [← h₁]
-      exact h_wt
+    exact partial_eval_preserves_typeof_ite
+      (partial_eval_preserves_typeof t) (partial_eval_preserves_typeof e)
+      h_wt
   | unaryApp op e ty =>
-    apply partial_eval_preserves_typeof_unaryApp
-    · exact h_wf
-    · exact h_ref
-    · rw [← h₁]
-      exact h_wt
+    exact partial_eval_preserves_typeof_unaryApp h_wt
   | binaryApp op e1 e2 ty =>
-    apply partial_eval_preserves_typeof_binaryApp
-    · exact fun h_wf h_ref h_wt => partial_eval_preserves_typeof h_wf h_ref h_wt
-    · exact h_wf
-    · exact h_ref
-    · rw [← h₁]
-      exact h_wt
+    exact partial_eval_preserves_typeof_binaryApp h_wt
   | call xfn args ty =>
-    apply partial_eval_preserves_typeof_call
-    · exact h_wf
-    · exact h_ref
-    · rw [← h₁]
-      exact h_wt
+    exact partial_eval_preserves_typeof_call h_wt
   | getAttr expr attr ty =>
-    apply partial_eval_preserves_typeof_getAttr
-    · exact h_wf
-    · exact h_ref
-    · rw [← h₁]
-      exact h_wt
+    exact partial_eval_preserves_typeof_getAttr h_wt
   | hasAttr expr attr ty =>
-    apply partial_eval_preserves_typeof_hasAttr
-    · exact h_wf
-    · exact h_ref
-    · rw [← h₁]
-      exact h_wt
+    exact partial_eval_preserves_typeof_hasAttr h_wt
   | set ls ty =>
-    apply partial_eval_preserves_typeof_set
-    · exact h_wf
-    · exact h_ref
-    · rw [← h₁]
-      exact h_wt
+    exact partial_eval_preserves_typeof_set h_wt
   | record ls ty =>
-    apply partial_eval_preserves_typeof_record
-    · exact h_wf
-    · exact h_ref
-    · rw [← h₁]
-      exact h_wt
-termination_by sizeOf res
+    exact partial_eval_preserves_typeof_record h_wt
