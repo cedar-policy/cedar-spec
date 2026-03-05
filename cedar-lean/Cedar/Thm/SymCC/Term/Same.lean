@@ -20,6 +20,7 @@ import Cedar.Thm.Data
 import Cedar.Thm.SymCC.Data
 import Cedar.Thm.SymCC.Tactics
 import Cedar.Thm.SymCC.Term.PE
+import Cedar.Thm.SymCC.Term.TypeOf
 
 /-!
 # Properties of the `Same` predicate on Terms
@@ -1085,26 +1086,6 @@ theorem same_value_inj {t₁ t₂ : Term} {v : Value} {εs : SymEntities} :
   rw [← Term.some.injEq]
   exact same_value_inj' hw₁ hw₂ hty h₁ h₂
 
-private theorem prim_value?_exists {p : TermPrim} {ty : Validation.CedarType} {εs : SymEntities} :
-  p.WellFormed εs →
-  p.typeOf.cedarType? = .some ty →
-  ∃ (v : Value), p.value? = some v
-:= by
-  intro hw hty
-  cases p <;>
-  simp only [TermPrim.value?, Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some_iff,
-    Option.some.injEq, exists_eq']
-  simp only [TermPrim.typeOf] at hty
-  unfold TermType.cedarType? at hty
-  split at hty <;>
-  simp only [Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq, reduceCtorEq] at hty <;>
-  rename_i heq <;>
-  simp only [TermType.prim.injEq, TermPrimType.bitvec.injEq, reduceCtorEq] at heq
-  rename_i bv _
-  simp only [BitVec.width] at heq
-  subst heq
-  simp only [BitVec.int64?, ↓reduceIte, Option.some.injEq, exists_eq_left', exists_eq']
-
 private theorem wfl_isCedarRecordType_implies_attr_wfl_cedarType? {a : Attr} {t : Term} {r : Map Attr Term} {ty : Validation.CedarType} :
   Term.WellFormed εs (Term.record r) →
   (Term.record r).isLiteral →
@@ -1159,9 +1140,20 @@ theorem term_value?_exists {t : Term} {ty : Validation.CedarType} {εs : SymEnti
   case none | some =>
     simp only [Term.typeOf, TermType.cedarType?, reduceCtorEq] at hcty
   case prim =>
-    cases hwf ; rename_i hwf
-    simp only [Term.typeOf] at hcty
-    exact prim_value?_exists hwf hcty
+    cases hwf ; rename_i p hwf
+    cases p
+    case bitvec bv =>
+      simp [typeOf_bv] at hcty
+      simp [TermPrim.value?, BitVec.int64?]
+      split <;> simp only [Option.bind_none, Option.bind_some, Option.some.injEq, reduceCtorEq, exists_const, exists_eq']
+      unfold TermType.cedarType? at hcty
+      split at hcty <;> simp at *
+      contradiction
+    case ext ext =>
+      cases ext <;>
+      simp [TermPrim.value?]
+    all_goals
+      simp [TermPrim.value?]
   case set ts sty =>
     cases ts ; rename_i ts
     simp only [Term.typeOf, TermType.cedarType?, Option.bind_eq_bind, Option.bind_eq_some_iff,

@@ -14,6 +14,12 @@
  limitations under the License.
 -/
 
+module
+
+public import Cedar.Spec
+public import Cedar.SymCC.Concretizer
+public import Cedar.SymCC.Env
+import Cedar.SymCC.Factory
 import Cedar.Thm.SymCC.Data.Basic
 
 /-!
@@ -83,58 +89,58 @@ namespace Cedar.Spec
 
 open Data
 
-def Entities.Acyclic (es : Entities) : Prop :=
+public def Entities.Acyclic (es : Entities) : Prop :=
   ∀ uid d, es.find? uid = .some d → uid ∉ d.ancestors
 
-def Entities.Transitive (es : Entities) : Prop :=
+public def Entities.Transitive (es : Entities) : Prop :=
   ∀ uid₁ d₁ uid₂ d₂,
     es.find? uid₁ = .some d₁ →
     es.find? uid₂ = .some d₂ →
     uid₂ ∈ d₁.ancestors →
     d₂.ancestors ⊆ d₁.ancestors
 
-def Entities.Hierarchical (es : Entities) : Prop :=
+public def Entities.Hierarchical (es : Entities) : Prop :=
   es.Acyclic ∧ es.Transitive
 
-def Entities.StronglyWellFormed (es : Entities) : Prop :=
+public def Entities.StronglyWellFormed (es : Entities) : Prop :=
   es.WellFormed ∧ es.Hierarchical
 
-def Env.StronglyWellFormed (env : Env) : Prop :=
+public def Env.StronglyWellFormed (env : Env) : Prop :=
   env.request.WellFormed env.entities ∧
   env.entities.StronglyWellFormed
 
-def Env.StronglyWellFormedFor (env : Env) (x : Expr) : Prop :=
+public def Env.StronglyWellFormedFor (env : Env) (x : Expr) : Prop :=
   env.StronglyWellFormed ∧
   env.entities.ValidRefsFor x
 
-def Env.StronglyWellFormedForAll (env : Env) (xs : List Expr) : Prop :=
+public def Env.StronglyWellFormedForAll (env : Env) (xs : List Expr) : Prop :=
   env.StronglyWellFormed ∧
   ∀ x ∈ xs, env.entities.ValidRefsFor x
 
-def Env.StronglyWellFormedForPolicy (env : Env) (p : Policy) : Prop :=
+public def Env.StronglyWellFormedForPolicy (env : Env) (p : Policy) : Prop :=
   env.StronglyWellFormedFor p.toExpr
 
-def Env.StronglyWellFormedForPolicies (env : Env) (ps : Policies) : Prop :=
+public def Env.StronglyWellFormedForPolicies (env : Env) (ps : Policies) : Prop :=
   env.StronglyWellFormedForAll (ps.map Policy.toExpr)
 
 end Cedar.Spec
 
 namespace Cedar.SymCC
 
-open Data Factory Spec
+open Data Spec
 
-def SymEntityData.isEnum (δ : SymEntityData) : Bool :=
+public def SymEntityData.isEnum (δ : SymEntityData) : Bool :=
   δ.members.isSome
 
-def SymEntityData.ConcreteAncestors (δ : SymEntityData) : Prop :=
+public def SymEntityData.ConcreteAncestors (δ : SymEntityData) : Prop :=
   ∀ ancTy f, δ.ancestors.find? ancTy = .some f → f.isUDF
 
-def SymEntityData.SymbolicAncestors (δ : SymEntityData) : Prop :=
+public def SymEntityData.SymbolicAncestors (δ : SymEntityData) : Prop :=
   ∀ ancTy f, δ.ancestors.find? ancTy = .some f → f.isUUF
 
 -- The ancestors for an entity type must either be fully specified (for enums)
 -- or fully unconstrained (for other entity types).
-def SymEntityData.PartitionedAncestors (δ : SymEntityData) : Prop :=
+public def SymEntityData.PartitionedAncestors (δ : SymEntityData) : Prop :=
   if δ.isEnum then δ.ConcreteAncestors else δ.SymbolicAncestors
 
 -- The hierarchy is partitioned among enumerated and non-enumerated types.
@@ -143,7 +149,7 @@ def SymEntityData.PartitionedAncestors (δ : SymEntityData) : Prop :=
 -- functions). Additionally, enumerated types can roll up only to other
 -- enumerated types, while non-enumerated types can roll up only to other
 -- non-enumerated types.
-def SymEntities.Partitioned (εs : SymEntities) : Prop :=
+public def SymEntities.Partitioned (εs : SymEntities) : Prop :=
   (∀ ety δ, εs.find? ety = .some δ →
     δ.PartitionedAncestors) ∧
   (∀ ety₁ δ₁ f₁₂ ety₂ δ₂,
@@ -152,61 +158,62 @@ def SymEntities.Partitioned (εs : SymEntities) : Prop :=
     δ₁.ancestors.find? ety₂ = .some f₁₂ →
     δ₁.isEnum = δ₂.isEnum)
 
-def SymEntities.Acyclic (εs : SymEntities) : Prop :=
+public def SymEntities.Acyclic (εs : SymEntities) : Prop :=
   ∀ (uid : EntityUID) δ f,
     εs.find? uid.ty = .some δ →
     δ.ancestors.find? uid.ty = .some (.udf f) →
-    uid ∉ (app (.udf f) (.entity uid)).entityUIDs
+    uid ∉ (Factory.app (.udf f) (.entity uid)).entityUIDs
 
-def SymEntityData.knownAncestors (uid : EntityUID) (δ : SymEntityData) : Set EntityUID :=
+@[expose]
+public def SymEntityData.knownAncestors (uid : EntityUID) (δ : SymEntityData) : Set EntityUID :=
   δ.ancestors.toList.mapUnion ancs
 where
   ancs : (EntityType × UnaryFunction) → Set EntityUID
   | (_, .uuf _) => Set.empty
-  | (_, .udf f) => (app (.udf f) (.entity uid)).entityUIDs
+  | (_, .udf f) => (Factory.app (.udf f) (.entity uid)).entityUIDs
 
-def SymEntities.Transitive (εs : SymEntities) : Prop :=
+public def SymEntities.Transitive (εs : SymEntities) : Prop :=
   ∀ (uid₁ : EntityUID) δ₁ (uid₂ : EntityUID) δ₂,
     εs.find? uid₁.ty = .some δ₁ →
     εs.find? uid₂.ty = .some δ₂ →
     uid₂ ∈ δ₁.knownAncestors uid₁ →
     δ₂.knownAncestors uid₂ ⊆ δ₁.knownAncestors uid₁
 
-def SymEntities.Hierarchical (εs : SymEntities) : Prop :=
+public def SymEntities.Hierarchical (εs : SymEntities) : Prop :=
   εs.Acyclic ∧ εs.Transitive ∧ εs.Partitioned
 
-def SymEntities.StronglyWellFormed (εs : SymEntities) : Prop :=
+public def SymEntities.StronglyWellFormed (εs : SymEntities) : Prop :=
   εs.WellFormed ∧ εs.Hierarchical
 
-def Term.isBasic : Term → Bool
+public def Term.isBasic : Term → Bool
   | .var _ => true
   | t      => t.isLiteral
 
-def SymRequest.IsBasic (ρ : SymRequest) : Prop :=
+public def SymRequest.IsBasic (ρ : SymRequest) : Prop :=
   ρ.principal.isBasic ∧
   ρ.action.isBasic ∧
   ρ.resource.isBasic ∧
   ρ.context.isBasic
 
-def SymRequest.StronglyWellFormed (ρ : SymRequest) (εs : SymEntities) : Prop :=
+public def SymRequest.StronglyWellFormed (ρ : SymRequest) (εs : SymEntities) : Prop :=
   ρ.WellFormed εs ∧ ρ.IsBasic
 
-def SymEnv.StronglyWellFormed (εnv : SymEnv) : Prop :=
+public def SymEnv.StronglyWellFormed (εnv : SymEnv) : Prop :=
   εnv.request.StronglyWellFormed εnv.entities ∧
   εnv.entities.StronglyWellFormed
 
-def SymEnv.StronglyWellFormedFor (εnv : SymEnv) (x : Expr) : Prop :=
+public def SymEnv.StronglyWellFormedFor (εnv : SymEnv) (x : Expr) : Prop :=
   εnv.StronglyWellFormed ∧
   εnv.entities.ValidRefsFor x
 
-def SymEnv.StronglyWellFormedForAll (εnv : SymEnv) (xs : List Expr) : Prop :=
+public def SymEnv.StronglyWellFormedForAll (εnv : SymEnv) (xs : List Expr) : Prop :=
   εnv.StronglyWellFormed ∧
   ∀ x ∈ xs, εnv.entities.ValidRefsFor x
 
-def SymEnv.StronglyWellFormedForPolicy (εnv : SymEnv) (p : Policy) : Prop :=
+public def SymEnv.StronglyWellFormedForPolicy (εnv : SymEnv) (p : Policy) : Prop :=
   εnv.StronglyWellFormedFor p.toExpr
 
-def SymEnv.StronglyWellFormedForPolicies (εnv : SymEnv) (ps : Policies) : Prop :=
+public def SymEnv.StronglyWellFormedForPolicies (εnv : SymEnv) (ps : Policies) : Prop :=
   εnv.StronglyWellFormedForAll (ps.map Policy.toExpr)
 
 end Cedar.SymCC

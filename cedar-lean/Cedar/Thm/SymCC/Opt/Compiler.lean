@@ -41,7 +41,7 @@ Helper lemma
 private theorem Opt.directFootprint.someFalse :
   Opt.directFootprint (⊙false) = ∅
 := by
-  simp [EmptyCollection.emptyCollection, Opt.directFootprint, Factory.someOf, Term.typeOf, TermPrim.typeOf, TermType.isOptionEntityType]
+  simp [EmptyCollection.emptyCollection, Opt.directFootprint, Factory.someOf, Term.typeOf, typeOf_bool, TermType.isOptionEntityType]
 
 /--
 Correctness lemma for `Opt.compileApp₁`, at least as to the `term`:
@@ -763,8 +763,8 @@ theorem Opt.compile.correctness.lit (p : Prim) (εnv : SymEnv) :
   )
 := by
   simp [Opt.compile, SymCC.compile, footprint]
-  cases p <;> simp [Opt.compilePrim, SymCC.compilePrim, footprint.ofEntity, SymCC.compile, EmptyCollection.emptyCollection, Factory.someOf, TermType.isOptionEntityType, Term.typeOf, TermPrim.typeOf]
-  case entityUID uid => split <;> simp [Term.typeOf, TermPrim.typeOf]
+  cases p <;> simp [Opt.compilePrim, SymCC.compilePrim, footprint.ofEntity, SymCC.compile, EmptyCollection.emptyCollection, Factory.someOf, TermType.isOptionEntityType, Term.typeOf, typeOf_bool, typeOf_bv, typeOf_term_prim_string]
+  case entityUID uid => split <;> simp [Term.typeOf, typeOf_term_prim_entity]
 
 /--
 Correctness theorem for `Opt.compile` -- `var` case

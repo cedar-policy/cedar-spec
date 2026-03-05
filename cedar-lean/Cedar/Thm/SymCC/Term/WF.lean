@@ -14,6 +14,7 @@
  limitations under the License.
 -/
 
+import Cedar.SymCC.Factory
 import Cedar.Thm.SymCC.Data
 import Cedar.Thm.SymCC.Interpretation
 import Cedar.Thm.SymCC.Term.TypeOf
@@ -649,7 +650,7 @@ theorem wf_not {εs : SymEntities} {t : Term}
   simp [Factory.not]
   split
   case h_1 =>
-    simp [Term.typeOf, TermPrim.typeOf, wf_bool]
+    simp [typeOf_bool, wf_bool]
   case h_2 t' ty =>
     simp [Term.typeOf] at h₂ ; subst h₂
     cases h₁
@@ -1339,7 +1340,7 @@ theorem wf_ext_ipaddr_prefixV4 {εs : SymEntities} {t : Term}
   simp only [ext.ipaddr.prefixV4]
   split
   case h_1 =>
-    split <;> simp only [noneOf, someOf, Term.typeOf, TermPrim.typeOf, BitVec.width, and_true]
+    split <;> simp only [noneOf, someOf, Term.typeOf, typeOf_bv, and_true]
     · exact Term.WellFormed.none_wf TermType.WellFormed.bitvec_wf
     · exact Term.WellFormed.some_wf wf_bv
   case h_2 =>
@@ -1395,7 +1396,7 @@ theorem wf_ext_ipaddr_prefixV6 {εs : SymEntities} {t : Term}
   simp [Factory.ext.ipaddr.prefixV6]
   split
   case h_1 =>
-    split <;> simp only [noneOf, someOf, Term.typeOf, TermPrim.typeOf, BitVec.width, and_true]
+    split <;> simp only [noneOf, someOf, Term.typeOf, typeOf_bv, and_true]
     · exact Term.WellFormed.none_wf TermType.WellFormed.bitvec_wf
     · exact Term.WellFormed.some_wf wf_bv
   case h_2 =>
@@ -1436,7 +1437,7 @@ theorem wf_ext_datetime_ofBitVec {εs : SymEntities} {t : Term}
   simp [Factory.ext.datetime.ofBitVec]
   split
   case h_1 =>
-    simp [wf_datetime, Term.typeOf, TermPrim.typeOf]
+    simp [wf_datetime, typeOf_term_prim_ext_datetime]
   case h_2 =>
     simp [Term.typeOf]
     exact Term.WellFormed.app_wf (wf_arg h₁) (Op.WellTyped.ext_wt (ExtOp.WellTyped.datetime.ofBitVec_wt h₂))
@@ -1461,7 +1462,7 @@ theorem wf_ext_duration_ofBitVec {εs : SymEntities} {t : Term}
   simp [Factory.ext.duration.ofBitVec]
   split
   case h_1 =>
-    simp [wf_duration, Term.typeOf, TermPrim.typeOf]
+    simp [wf_duration, typeOf_term_prim_ext_duration]
   case h_2 =>
     simp [Term.typeOf]
     exact Term.WellFormed.app_wf (wf_arg h₁) (Op.WellTyped.ext_wt (ExtOp.WellTyped.duration.ofBitVec_wt h₂))

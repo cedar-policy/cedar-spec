@@ -1,3 +1,4 @@
+import Cedar.SymCC
 import Cedar.Thm.Validation.Typechecker.WF
 import Cedar.Thm.WellTyped.Expr.TypeLifting
 import Cedar.Thm.WellTyped.Expr.Definition
@@ -362,7 +363,7 @@ theorem ofEnv_preserves_entity_attr
           TermType.record.injEq, Map.mk.injEq,
         ]
         simp only [EntitySchemaEntry.attrs] at hattrs_exists
-        simp [hattrs_exists, Map.deprecated_toList_def] -- `Map.deprecated_toList_def` is required because `TermType.ofType` is defined using `Data.Map` internals
+        simp [hattrs_exists, Map.deprecated_toList_def] -- `Map.deprecated_toList_def` is required because `TermType.ofType` is defined using `Map` internals
       -- Enum entity types
       · simp only [← hattrs_exists2, UnaryFunction.outType, TermType.ofType, TermType.record.injEq]
         simp only [EntitySchemaEntry.attrs] at hattrs_exists
@@ -465,14 +466,11 @@ theorem wf_ofType_right_inverse_cedarType?
       TermType.ofType, TermType.cedarType?,
       Option.bind_eq_bind, CedarType.liftBoolTypes,
     ]
-    rw [List.mapM₃_eq_mapM
-        (fun x =>
-          (TermType.cedarType?.qualifiedType? x.snd).bind
-          fun t => some (x.fst, t))]
+    rw [Map.mapMOnValues₂_eq_mapMOnValues _ (TermType.cedarType?.qualifiedType? ·)]
     have := ofRecordType_forall₂ rty.1 hwf_ty
     have := List.mapM_some_iff_forall₂.mpr this
-    simp [this, RecordType.liftBoolTypes, Data.Map.mapOnValues₂_eq_mapOnValues,
-      Data.Map.mapOnValues, Map.deprecated_toList_def] -- `Map.deprecated_toList_def` is required because `TermType.ofType` is defined using `Data.Map` internals
+    simp [this, RecordType.liftBoolTypes, Map.mapOnValues₂_eq_mapOnValues, Map.mapMOnValues,
+      Map.mapOnValues, Map.deprecated_toList_def] -- `Map.deprecated_toList_def` is required because `TermType.ofType` is defined using `Map` internals
 termination_by sizeOf ty
 decreasing_by
   all_goals simp [*]
@@ -578,7 +576,7 @@ theorem ofEnv_request_is_wf
     have ⟨m, hm⟩ := ofActionType_contains_act hwf hwf_act
     simp only [hm]
   -- Action well-typed
-  · simp only [Term.typeOf, TermPrim.typeOf, TermType.isEntityType]
+  · simp only [typeOf_term_prim_entity, TermType.isEntityType]
   -- Resource well-formed
   · constructor
     constructor
@@ -763,10 +761,9 @@ theorem ofEnumEntityType_is_wf
   · exact Map.wf_empty
   · simp only [UnaryFunction.argType, SymEntityData.emptyAttrs, TermType.ofType]
   · simp [
+      Map.mapMOnValues₂_eq_mapMOnValues, Map.mapMOnValues_empty,
       UnaryFunction.outType, SymEntityData.emptyAttrs,
-      TermType.ofType, TermType.isCedarRecordType,
-      Map.empty, TermType.cedarType?, List.mapM₃,
-      List.attach₃,
+      TermType.ofType, TermType.isCedarRecordType, TermType.cedarType?
     ]
   · exact Map.wf_empty
   · have ⟨_, h⟩ := wf_env_implies_wf_entity_entry hwf hfind
@@ -882,7 +879,7 @@ theorem ofActionType_ancsUDF_is_wf
       · simp only [Term.isLiteral]
     constructor
     -- tᵢ has the right type
-    · simp [←h₁, ←hsym, Term.typeOf, TermPrim.typeOf, TermType.ofType]
+    · simp [←h₁, ←hsym, typeOf_term_prim_entity, TermType.ofType]
     -- tₒ is well-formed and has the right type
     simp only [
       ←hsym, TermType.ofType,
@@ -946,7 +943,7 @@ theorem ofActionType_ancsUDF_is_wf
           Option.ite_none_right_eq_some,
           Option.some.injEq,
         ] at hsym
-        simp only [←hsym, Term.typeOf, TermPrim.typeOf]
+        simp only [←hsym, typeOf_term_prim_entity]
       · constructor
         have := List.mem_eraseDups_implies_mem hmem_anc'
         have ⟨_, h₁, h₂⟩ := List.mem_map.mp this

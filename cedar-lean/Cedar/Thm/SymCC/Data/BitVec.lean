@@ -14,9 +14,12 @@
  limitations under the License.
 -/
 
-import Cedar.Data
-import Cedar.SymCC.Data
-import Init.Data.BitVec.Basic
+module
+
+public import Cedar.Data
+public import Cedar.SymCC.Data
+import all Cedar.SymCC.Data -- this file proves things about definitions in Cedar.SymCC.Data, so it needs access to internals of Cedar.SymCC.Data that are not normally exposed
+public import Init.Data.BitVec.Basic
 import Init.Data.Int.DivMod
 
 /-!
@@ -32,14 +35,16 @@ namespace BitVec
 
 open Cedar.Data
 
-theorem toInt_ofInt64_toBitVec {bv : BitVec 64} :
+@[simp]
+public theorem toInt_ofInt64_toBitVec {bv : BitVec 64} :
   (Int64.ofInt bv.toInt).toBitVec = bv
 := by
   simp only [Int64.toBitVec, Int64.ofInt, ofInt_toInt]
 
-theorem Int64_toBitVec_toInt_eq_toInt (x : Int64) : x.toBitVec.toInt = x.toInt := by rfl
+@[simp]
+public theorem Int64_toBitVec_toInt_eq_toInt (x : Int64) : x.toBitVec.toInt = x.toInt := by rfl
 
-theorem eq_iff_UInt64_toInt64_eq_64 {bv₁ bv₂ : BitVec 64} :
+public theorem eq_iff_UInt64_toInt64_eq_64 {bv₁ bv₂ : BitVec 64} :
   bv₁ = bv₂ ↔ (UInt64.toInt64 {toBitVec := bv₁}) = (UInt64.toInt64 {toBitVec := bv₂})
 := by
   constructor <;> intro h₁
@@ -47,41 +52,42 @@ theorem eq_iff_UInt64_toInt64_eq_64 {bv₁ bv₂ : BitVec 64} :
   · simp [UInt64.toInt64] at h₁
     exact h₁
 
-theorem toInt_min_64 {bv : BitVec 64} :
+public theorem toInt_min_64 {bv : BitVec 64} :
   BitVec.signedMin 64 ≤ bv.toInt
 := by
   simp only [signedMin, Nat.succ_sub_succ_eq_sub, Nat.sub_zero, Int.reducePow, Int.reduceNeg,
     BitVec.toInt, Nat.reducePow]
   omega
 
-theorem toInt_max_64 {bv : BitVec 64} :
+public theorem toInt_max_64 {bv : BitVec 64} :
   bv.toInt ≤ BitVec.signedMax 64
 := by
   simp only [BitVec.toInt, Nat.reducePow, signedMax, Nat.succ_sub_succ_eq_sub,
     Nat.sub_zero, Int.reducePow, Int.reduceSub]
   omega
 
-theorem toInt_ge_INT64_MIN (bv : BitVec 64) :
+public theorem toInt_ge_INT64_MIN (bv : BitVec 64) :
   Int64.MIN ≤ bv.toInt
 := by exact toInt_min_64
 
-theorem toInt_le_INT64_MAX (bv : BitVec 64) :
+public theorem toInt_le_INT64_MAX (bv : BitVec 64) :
   bv.toInt ≤ Int64.MAX
 := by exact toInt_max_64
 
-theorem signedMin_eq_INT64_MIN :
+public theorem signedMin_eq_INT64_MIN :
   BitVec.signedMin 64 = Int64.MIN
 := by
   simp only [signedMin, Int64.MIN]
   decide
 
-theorem signedMax_eq_INT64_MAX :
+public theorem signedMax_eq_INT64_MAX :
   BitVec.signedMax 64 = Int64.MAX
 := by
   simp only [signedMax, Int64.MAX]
   decide
 
-theorem toInt_ofInt_64 {bv : BitVec 64} :
+@[simp]
+public theorem toInt_ofInt_64 {bv : BitVec 64} :
   BitVec.ofInt 64 (BitVec.toInt bv) = bv
 := by
   simp only [BitVec.ofInt, BitVec.toInt, Nat.reducePow, Int.ofNat_eq_natCast, toNat_eq, toNat_ofNatLT]
@@ -91,35 +97,28 @@ theorem toInt_ofInt_64 {bv : BitVec 64} :
   · simp only [Int.cast_ofNat_Int, heq, Int.toNat_natCast]
   · simp only [Int.toNat, Int.cast_ofNat_Int, Int.sub_emod_right, heq]
 
-theorem overflows_false_64 {i : Int}
-  (h : Int64.MIN ≤ i ∧ i ≤ Int64.MAX) :
-  BitVec.overflows 64 i = false
+public theorem overflows_false_64 {i : Int} :
+  Int64.MIN ≤ i ∧ i ≤ Int64.MAX ↔ BitVec.overflows 64 i = false
 := by
-  simp only [BitVec.overflows]
-  by_contra hc
-  simp only [signedMin_eq_INT64_MIN, signedMax_eq_INT64_MAX, gt_iff_lt, Bool.not_eq_false,
-    Bool.or_eq_true, decide_eq_true_eq] at hc
+  simp [BitVec.overflows, signedMin_eq_INT64_MIN, signedMax_eq_INT64_MAX]
+
+public theorem overflows_true_64 {i : Int} :
+  ¬ (Int64.MIN ≤ i ∧ i ≤ Int64.MAX) ↔ BitVec.overflows 64 i = true
+:= by
+  simp [BitVec.overflows, signedMin_eq_INT64_MIN, signedMax_eq_INT64_MAX]
   omega
 
-theorem overflows_true_64 {i : Int}
-  (h : ¬ (Int64.MIN ≤ i ∧ i ≤ Int64.MAX)) :
-  BitVec.overflows 64 i = true
-:= by
-  simp only [BitVec.overflows]
-  by_contra hc
-  simp only [signedMin_eq_INT64_MIN, signedMax_eq_INT64_MAX, gt_iff_lt, Bool.or_eq_true,
-    decide_eq_true_eq] at hc
-  omega
-
-theorem Int64_ofInt?_eq_none_iff_overflows {i : Int} :
+public theorem Int64_ofInt?_eq_none_iff_overflows {i : Int} :
   Int64.ofInt? i = none ↔ BitVec.overflows 64 i
 := by
-  simp only [Int64.ofInt?]
-  split <;> rename_i h
-  case isTrue => simp only [reduceCtorEq, overflows_false_64 h, Bool.false_eq_true]
-  case isFalse => simp only [overflows_true_64 h]
+  simp only [← Int64.ofInt?_none_iff]
+  cases h : overflows 64 i
+  case false => simp [overflows_false_64.mpr h, Bool.false_eq_true]
+  case true =>
+    replace h := overflows_true_64.mpr h
+    by_cases Int64.MIN ≤ i <;> simp_all
 
-theorem neg_toInt_eq_neg_64 {bv : BitVec 64} {i : Int64}
+public theorem neg_toInt_eq_neg_64 {bv : BitVec 64} {i : Int64}
   (h₁ : Int64.MIN ≤ -i.toInt ∧ -i.toInt ≤ Int64.MAX)
   (h₂ : BitVec.toInt bv = i.toInt) :
   BitVec.toInt (-bv) = -i.toInt
@@ -129,7 +128,7 @@ theorem neg_toInt_eq_neg_64 {bv : BitVec 64} {i : Int64}
   simp only [Int.reduceNeg, toInt_eq_toNat_cond, Nat.reducePow, toNat_neg, Int.natCast_emod] at *
   split <;> omega
 
-theorem add_toInt_eq_add_64 {bv₁ bv₂ : BitVec 64} {i₁ i₂ : Int64}
+public theorem add_toInt_eq_add_64 {bv₁ bv₂ : BitVec 64} {i₁ i₂ : Int64}
   (h₀ : Int64.MIN ≤ i₁.toInt + i₂.toInt ∧ i₁.toInt + i₂.toInt ≤ Int64.MAX)
   (h₁ : BitVec.toInt bv₁ = i₁.toInt)
   (h₂ : BitVec.toInt bv₂ = i₂.toInt) :
@@ -141,7 +140,7 @@ theorem add_toInt_eq_add_64 {bv₁ bv₂ : BitVec 64} {i₁ i₂ : Int64}
   simp only [toInt_eq_toNat_cond, Nat.reducePow, Int.reduceNeg, toNat_add, Int.natCast_emod, Int.natCast_add] at *
   split <;> omega
 
-theorem sub_toInt_eq_sub_64 {bv₁ bv₂ : BitVec 64} {i₁ i₂ : Int64}
+public theorem sub_toInt_eq_sub_64 {bv₁ bv₂ : BitVec 64} {i₁ i₂ : Int64}
   (h₀ : Int64.MIN ≤ i₁.toInt - i₂.toInt ∧ i₁.toInt - i₂.toInt ≤ Int64.MAX)
   (h₁ : BitVec.toInt bv₁ = i₁.toInt)
   (h₂ : BitVec.toInt bv₂ = i₂.toInt) :
@@ -153,7 +152,7 @@ theorem sub_toInt_eq_sub_64 {bv₁ bv₂ : BitVec 64} {i₁ i₂ : Int64}
   simp only [Int.reduceNeg, toInt_eq_toNat_cond, Nat.reducePow, toNat_sub, Int.natCast_emod, Int.natCast_add] at *
   split <;> omega
 
-theorem mul_eq_toInt_mul_ofInt_64 {bv₁ bv₂ : BitVec 64} :
+public theorem mul_eq_toInt_mul_ofInt_64 {bv₁ bv₂ : BitVec 64} :
   bv₁ * bv₂ = BitVec.ofInt 64 (BitVec.toInt bv₁ * BitVec.toInt bv₂)
 := by
   simp only [mul_def, Fin.mul_def, val_toFin, Nat.reducePow, BitVec.ofInt, BitVec.ofNatLT,
@@ -171,7 +170,7 @@ theorem mul_eq_toInt_mul_ofInt_64 {bv₁ bv₂ : BitVec 64} :
     norm_cast
     simp only [Int.toNat_natCast, Nat.mul_mod_mod, Nat.mod_mul_mod]
 
-theorem mul_toInt_eq_mul_64 {bv₁ bv₂ : BitVec 64} {i₁ i₂ : Int64}
+public theorem mul_toInt_eq_mul_64 {bv₁ bv₂ : BitVec 64} {i₁ i₂ : Int64}
   (h₀ : Int64.MIN ≤ i₁.toInt * i₂.toInt ∧ i₁.toInt * i₂.toInt ≤ Int64.MAX)
   (h₁ : BitVec.toInt bv₁ = i₁.toInt)
   (h₂ : BitVec.toInt bv₂ = i₂.toInt) :
@@ -186,7 +185,7 @@ theorem mul_toInt_eq_mul_64 {bv₁ bv₂ : BitVec 64} {i₁ i₂ : Int64}
   simp only [Int.bmod_def]
   split <;> omega
 
-theorem mul_toInt_eq_toInt_mul {bv₁ bv₂ : BitVec 64}
+public theorem mul_toInt_eq_toInt_mul {bv₁ bv₂ : BitVec 64}
   (h : Int64.MIN ≤ bv₁.toInt * bv₂.toInt ∧ bv₁.toInt * bv₂.toInt ≤ Int64.MAX) :
   BitVec.toInt (bv₁ * bv₂) = bv₁.toInt * bv₂.toInt
 := by
@@ -274,7 +273,7 @@ private theorem msb_false_implies_neg_msb_eq {n : Nat} {bv : BitVec n}
       rw [← BitVec.neg_inj, BitVec.neg_intMin]
       exact h₃
 
-theorem sdiv_pos_lt_INT64_MAX {bv₁ bv₂ : BitVec 64}
+public theorem sdiv_pos_lt_INT64_MAX {bv₁ bv₂ : BitVec 64}
   (h : 1 < bv₂.toInt) :
   (bv₁.sdiv bv₂).toInt < Int64.MAX
 := by
@@ -365,7 +364,7 @@ theorem sdiv_pos_lt_INT64_MAX {bv₁ bv₂ : BitVec 64}
           simp only [Nat.reducePow, Nat.one_mul, Nat.zero_lt_succ]
         omega
 
-theorem sdiv_pos_gt_INT64_MIN {bv₁ bv₂ : BitVec 64}
+public theorem sdiv_pos_gt_INT64_MIN {bv₁ bv₂ : BitVec 64}
   (h : 1 < bv₂.toInt) :
   Int64.MIN < (bv₁.sdiv bv₂).toInt
 := by
@@ -423,7 +422,7 @@ private theorem BitVec.msb_true_toNat_eq_neg_toInt {bv : BitVec 64} {n : Nat}
     simp only [← Int.ofNat_sub h₂, Int.ofNat_inj] at h₁
     simp only [h₀, ← h₁]
 
-theorem toInt_sdiv_eq_tdiv_toInt {bv₁ bv₂ : BitVec 64}
+public theorem toInt_sdiv_eq_tdiv_toInt {bv₁ bv₂ : BitVec 64}
   (h₀ : 0 < bv₂.toInt) :
   BitVec.toInt (bv₁.sdiv bv₂) = bv₁.toInt.tdiv bv₂.toInt
 := by
@@ -512,7 +511,7 @@ theorem toInt_sdiv_eq_tdiv_toInt {bv₁ bv₂ : BitVec 64}
         exact hmsb₂
       omega
 
-theorem sdiv_pos_bounded {bv₁ bv₂ : BitVec 64}
+public theorem sdiv_pos_bounded {bv₁ bv₂ : BitVec 64}
   (h₀ : 0 < bv₂.toInt) :
   Int64.MIN.tdiv bv₂.toInt ≤ (bv₁.sdiv bv₂).toInt ∧ (bv₁.sdiv bv₂).toInt ≤ Int64.MAX.tdiv bv₂.toInt
 := by
@@ -557,7 +556,7 @@ theorem sdiv_pos_bounded {bv₁ bv₂ : BitVec 64}
     apply Nat.le_trans _ h₂
     apply Nat.div_mul_le_self
 
-theorem mul_toInt_sdiv_eq_toInt_mul_sdiv {bv₁ bv₂ : BitVec 64}
+public theorem mul_toInt_sdiv_eq_toInt_mul_sdiv {bv₁ bv₂ : BitVec 64}
   (h : 0 < bv₂.toInt) :
   bv₂.toInt * (bv₁.sdiv bv₂).toInt = (bv₂ * (bv₁.sdiv bv₂)).toInt
 := by
@@ -568,7 +567,7 @@ theorem mul_toInt_sdiv_eq_toInt_mul_sdiv {bv₁ bv₂ : BitVec 64}
   replace hmax := Int.le_trans hmax (mul_left_tdiv_right_pos_le (by simp only [Int64.MAX, Int.reduceLE]) (Int.le_of_lt h))
   symm; exact mul_toInt_eq_toInt_mul (And.intro hmin hmax)
 
-theorem smtSDiv_eq_sdiv {n : Nat} {bv₁ bv₂ : BitVec n}
+public theorem smtSDiv_eq_sdiv {n : Nat} {bv₁ bv₂ : BitVec n}
   (h : bv₂ ≠ 0) :
   bv₁.smtSDiv bv₂ = bv₁.sdiv bv₂
 := by
@@ -576,7 +575,7 @@ theorem smtSDiv_eq_sdiv {n : Nat} {bv₁ bv₂ : BitVec n}
   simp only [smtSDiv_eq, sdiv_eq, smtUDiv_eq, HDiv.hDiv, Div.div]
   simp only [h, ↓reduceIte, udiv_eq, neg_eq_zero_iff]
 
-theorem bvule_iff_le {n : Nat} {bv₁ bv₂ : BitVec n} :
+public theorem bvule_iff_le {n : Nat} {bv₁ bv₂ : BitVec n} :
   bv₁.ule bv₂ = decide (bv₁ ≤ bv₂)
 := by
   simp only [BitVec.ule]
@@ -584,7 +583,7 @@ theorem bvule_iff_le {n : Nat} {bv₁ bv₂ : BitVec n} :
 
 end BitVec
 
-theorem Int.bmod_bounded_eq_self {n : Nat} {i : Int}
+public theorem Int.bmod_bounded_eq_self {n : Nat} {i : Int}
   (hlow : -2^n ≤ i)
   (hhigh : i ≤ 2^n - 1) :
   i.bmod (2^(n + 1)) = i

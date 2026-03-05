@@ -36,8 +36,8 @@ theorem value_type_bool_implies_bool {v : Value} {t : Term} :
       simp only [Term.value?, TermPrim.value?, Option.some.injEq] at hs
       exists b
       simp only [hs]
-    all_goals simp_all [Term.value?, TermPrim.value?, Term.typeOf, TermPrim.typeOf]
-    case ext x => split at hty <;> simp_all
+    all_goals simp_all [Term.value?, TermPrim.value?, typeOf_bv, typeOf_term_prim_string, typeOf_term_prim_entity]
+    case ext x => cases x <;> simp [typeOf_term_prim_ext_datetime, typeOf_term_prim_ext_decimal, typeOf_term_prim_ext_duration, typeOf_term_prim_ext_ipaddr] at hty
   all_goals simp_all [Term.value?, Term.typeOf]
 
 theorem verifyNeverErrors_wbeq :

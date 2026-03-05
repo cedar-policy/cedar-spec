@@ -14,7 +14,10 @@
  limitations under the License.
 -/
 
-import Cedar.SymCC.Tags
+module
+
+public import Cedar.SymCC.Factory -- TODO: once `@[expose]`s are removed, this need not be a public import
+public import Cedar.SymCC.Tags
 
 /-!
 This file defines the ADTs that represent the symbolic environment.
@@ -29,13 +32,13 @@ open Cedar.Data Cedar.Spec Cedar.Validation Factory
 
 -- A symbolic request is analogous to a concrete request. It binds
 -- request variables to Terms.
-structure SymRequest where
+public structure SymRequest where
   principal : Term
   action : Term
   resource : Term
   context : Term
 
-def SymRequest.isLiteral (req : SymRequest) : Bool :=
+public def SymRequest.isLiteral (req : SymRequest) : Bool :=
   req.principal.isLiteral &&
   req.action.isLiteral &&
   req.resource.isLiteral &&
@@ -55,7 +58,7 @@ into multiple maps, one for each pair of an entity type and its ancestor type.
 -/
 
 /-- Represents the entity data for _all entities_ of a _single type_ -/
-structure SymEntityData where
+public structure SymEntityData where
   attrs : UnaryFunction
   /--
   Let `t₁` be the entity type which this `SymEntityData` represents the data for.
@@ -72,68 +75,70 @@ structure SymEntityData where
   /-- `none` means this entity type has no tags -/
   tags : Option SymTags
 
-def SymTags.isLiteral (τs : SymTags) : Bool :=
+public def SymTags.isLiteral (τs : SymTags) : Bool :=
   τs.keys.isLiteral &&
   τs.vals.isLiteral
 
-def SymEntityData.isLiteral (δ : SymEntityData) : Bool :=
+public def SymEntityData.isLiteral (δ : SymEntityData) : Bool :=
   δ.attrs.isLiteral &&
   (δ.ancestors.toList.all λ (_, f) => f.isLiteral) &&
   (δ.tags.all SymTags.isLiteral)
 
 deriving instance Repr, Inhabited, DecidableEq for SymEntityData
 
-abbrev SymEntities := Map EntityType SymEntityData
+public abbrev SymEntities := Map EntityType SymEntityData
 
 deriving instance Repr, Inhabited, DecidableEq for SymEntities
 
-def SymEntities.attrs (εs : SymEntities) (ety : EntityType) : Option UnaryFunction := do
+public def SymEntities.attrs (εs : SymEntities) (ety : EntityType) : Option UnaryFunction := do
   (← εs.find? ety).attrs
 
-def SymEntities.ancestors (εs : SymEntities) (ety : EntityType) : Option (Map EntityType UnaryFunction) := do
+public def SymEntities.ancestors (εs : SymEntities) (ety : EntityType) : Option (Map EntityType UnaryFunction) := do
   (← εs.find? ety).ancestors
 
-def SymEntities.ancestorsOfType (εs : SymEntities) (ety ancTy : EntityType) : Option UnaryFunction := do
+public def SymEntities.ancestorsOfType (εs : SymEntities) (ety ancTy : EntityType) : Option UnaryFunction := do
   (← εs.ancestors ety).find? ancTy
 
-def SymEntities.isValidEntityType (εs : SymEntities) (ety : EntityType) : Bool :=
+public def SymEntities.isValidEntityType (εs : SymEntities) (ety : EntityType) : Bool :=
   εs.contains ety
 
-def SymEntities.isValidEntityUID (εs : SymEntities) (uid : EntityUID) : Bool :=
+public def SymEntities.isValidEntityUID (εs : SymEntities) (uid : EntityUID) : Bool :=
   match εs.find? uid.ty with
   | .some d => if let .some eids := d.members then eids.contains uid.eid else true
   | .none   => false
 
-def SymEntities.tags (εs : SymEntities) (ety : EntityType) : Option (Option SymTags) := do
+public def SymEntities.tags (εs : SymEntities) (ety : EntityType) : Option (Option SymTags) := do
   (εs.find? ety).map SymEntityData.tags
 
-def SymEntities.isLiteral (es : SymEntities) : Bool :=
+public def SymEntities.isLiteral (es : SymEntities) : Bool :=
   es.toList.all λ (_, d) => d.isLiteral
 
-structure SymEnv where
+public structure SymEnv where
   request  : SymRequest
   entities : SymEntities
 
-def SymEnv.isLiteral (env : SymEnv) : Bool :=
+public def SymEnv.isLiteral (env : SymEnv) : Bool :=
   env.request.isLiteral && env.entities.isLiteral
 
 deriving instance Repr, Inhabited, DecidableEq for SymEnv
 
 ----- Functions for constructing symbolic input from a schema -----
 
-def UUF.attrsId (ety : EntityType) : String :=
+public def UUF.attrsId (ety : EntityType) : String :=
   s!"attrs[{toString ety}]"
 
-def UUF.ancsId (ety : EntityType) (ancTy : EntityType) : String :=
+public def UUF.ancsId (ety : EntityType) (ancTy : EntityType) : String :=
   s!"ancs[{toString ety}, {toString ancTy}]"
 
-def UUF.tagKeysId (ety : EntityType) : String :=
+public def UUF.tagKeysId (ety : EntityType) : String :=
   s!"tagKeys[{toString ety}]"
 
-def UUF.tagValsId (ety : EntityType) : String :=
+public def UUF.tagValsId (ety : EntityType) : String :=
   s!"tagVals[{toString ety}]"
 
-def SymEntityData.ofStandardEntityType (ety : EntityType) (sch : StandardSchemaEntry) : SymEntityData :=
+-- TODO: remove `[expose]` (and maybe make entirely private) once files like Thm/.../ofEnv.lean are made `module`s and can thus `import all` this file (it proves things about functions in this file and thus needs access to internals)
+@[expose]
+public def SymEntityData.ofStandardEntityType (ety : EntityType) (sch : StandardSchemaEntry) : SymEntityData :=
   {
     attrs := attrsUUF,
     ancestors := Map.make (sch.ancestors.toList.map λ ancTy => (ancTy, ancsUUF ancTy)),
@@ -166,7 +171,9 @@ where
       }
     }
 
-def SymEntityData.emptyAttrs (ety : EntityType) : UnaryFunction :=
+-- TODO: remove `[expose]` (and maybe make entirely private) once files like Thm/.../ofEnv.lean are made `module`s and can thus `import all` this file (it proves things about functions in this file and thus needs access to internals)
+@[expose]
+public def SymEntityData.emptyAttrs (ety : EntityType) : UnaryFunction :=
   .udf {
     arg := TermType.ofType (.entity ety),
     out := TermType.record Map.empty,
@@ -174,7 +181,9 @@ def SymEntityData.emptyAttrs (ety : EntityType) : UnaryFunction :=
     default := Term.record Map.empty
   }
 
-def SymEntityData.ofEnumEntityType (ety : EntityType) (eids : Set String) : SymEntityData :=
+-- TODO: remove `[expose]` (and maybe make entirely private) once files like Thm/.../ofEnv.lean are made `module`s and can thus `import all` this file (it proves things about functions in this file and thus needs access to internals)
+@[expose]
+public def SymEntityData.ofEnumEntityType (ety : EntityType) (eids : Set String) : SymEntityData :=
   {
     attrs := SymEntityData.emptyAttrs ety,
     ancestors := Map.empty,
@@ -182,11 +191,15 @@ def SymEntityData.ofEnumEntityType (ety : EntityType) (eids : Set String) : SymE
     tags := .none
   }
 
-def SymEntityData.ofEntityType (ety : EntityType) : EntitySchemaEntry → SymEntityData
+-- TODO: remove `[expose]` (and maybe make entirely private) once files like Thm/.../ofEnv.lean are made `module`s and can thus `import all` this file (it proves things about functions in this file and thus needs access to internals)
+@[expose]
+public def SymEntityData.ofEntityType (ety : EntityType) : EntitySchemaEntry → SymEntityData
   | .standard sch => SymEntityData.ofStandardEntityType ety sch
   | .enum eids    => SymEntityData.ofEnumEntityType ety eids
 
-def SymEntityData.ofActionType (actTy : EntityType) (actTys : List EntityType) (sch : ActionSchema) : SymEntityData :=
+-- TODO: remove `[expose]` (and maybe make entirely private) once files like Thm/.../ofEnv.lean are made `module`s and can thus `import all` this file (it proves things about functions in this file and thus needs access to internals)
+@[expose]
+public def SymEntityData.ofActionType (actTy : EntityType) (actTys : List EntityType) (sch : ActionSchema) : SymEntityData :=
   {
     attrs := SymEntityData.emptyAttrs actTy,
     ancestors := Map.make (actTys.map λ ancTy => (ancTy, ancsUDF ancTy)),
@@ -220,7 +233,7 @@ function also assumes `ets` and `ats` declare disjoint sets of types.
 This function assumes that no entity types have tags, and that action types
 have no attributes.
 -/
-def SymEntities.ofSchema (ets : EntitySchema) (acts : ActionSchema) : SymEntities :=
+public def SymEntities.ofSchema (ets : EntitySchema) (acts : ActionSchema) : SymEntities :=
   let eData := ets.toList.map λ (ety, sch) => (ety, SymEntityData.ofEntityType ety sch)
   let actTys := (acts.toList.map λ (act, _) => act.ty).eraseDups
   let aData := actTys.map λ actTy => (actTy, SymEntityData.ofActionType actTy actTys acts)
@@ -229,7 +242,7 @@ def SymEntities.ofSchema (ets : EntitySchema) (acts : ActionSchema) : SymEntitie
 /--
 Creates a symbolic request for the given request type.
 -/
-def SymRequest.ofRequestType (reqTy : RequestType) : SymRequest :=
+public def SymRequest.ofRequestType (reqTy : RequestType) : SymRequest :=
   {
     principal := .var ⟨"principal", TermType.ofType (.entity reqTy.principal)⟩,
     action    := .prim (.entity reqTy.action),
@@ -241,7 +254,7 @@ def SymRequest.ofRequestType (reqTy : RequestType) : SymRequest :=
 Returns a symbolic environment that conforms to the given
 type environment.
 -/
-def SymEnv.ofEnv (tyEnv : TypeEnv) : SymEnv :=
+public def SymEnv.ofEnv (tyEnv : TypeEnv) : SymEnv :=
   {
     request  := SymRequest.ofRequestType tyEnv.reqty,
     entities := SymEntities.ofSchema tyEnv.ets tyEnv.acts

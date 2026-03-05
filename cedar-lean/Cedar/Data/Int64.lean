@@ -40,6 +40,22 @@ public def ofInt? (i : Int) : Option Int64 :=
   then .some (ofIntChecked i h)
   else .none
 
+/-- We don't @[expose] the definition of `ofInt?`; but callers can use this
+theorem, which partially specifies its behavior -/
+public theorem ofInt?_some_iff {i : Int} :
+  MIN ≤ i ∧ i ≤ MAX ↔ (ofInt? i).isSome
+:= by simp [ofInt?]
+
+/-- Corollary of the above -/
+public theorem ofInt?_none_iff {i : Int} :
+  i < MIN ∨ i > MAX ↔ (ofInt? i) = none
+:= by
+  have h := ofInt?_some_iff (i := i)
+  simp_all only [Option.isSome, gt_iff_lt]
+  split at h
+  · simp_all
+  · by_cases i < MIN <;> simp_all
+
 public def add? (i₁ i₂ : Int64) : Option Int64 := ofInt? (i₁.toInt + i₂.toInt)
 
 public def sub? (i₁ i₂ : Int64) : Option Int64 := ofInt? (i₁.toInt - i₂.toInt)

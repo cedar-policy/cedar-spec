@@ -191,7 +191,7 @@ theorem isAuthorized_allowAll_is_ok (Γ : TypeEnv) :
   simp [do_eq_ok, Factory.someOf]
   exists (Term.prim (.bool true)).some
   simp [Factory.eq, Factory.eq.simplify]
-  simp [SymCC.compile, compilePrim, Factory.someOf, compileAnd, Term.typeOf, TermPrim.typeOf, Factory.ifSome, Factory.ite, Factory.ite.simplify, Factory.noneOf, Factory.isNone, Factory.option.get, Factory.and, Factory.or, Factory.eq, Factory.eq.simplify, Factory.not]
+  simp [SymCC.compile, compilePrim, Factory.someOf, compileAnd, Term.typeOf, typeOf_bool, Factory.ifSome, Factory.ite, Factory.ite.simplify, Factory.noneOf, Factory.isNone, Factory.option.get, Factory.and, Factory.or, Factory.eq, Factory.eq.simplify, Factory.not]
 
 /-- `verifyAlwaysAllows` succeeds on sufficiently well-formed inputs. -/
 theorem verifyAlwaysAllows_is_ok {ps ps' : Policies} {Γ : TypeEnv}

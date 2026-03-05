@@ -14,7 +14,9 @@
  limitations under the License.
 -/
 
-import Cedar.SymCC.TermType
+module
+
+public import Cedar.SymCC.TermType
 
 /-!
 This file defines the operators on Cedar Terms. See `Term.lean` for the
@@ -40,12 +42,12 @@ namespace Cedar.SymCC
 
 open Cedar.Spec
 
-structure UUF where         -- uninterpreted unary function
+public structure UUF where         -- uninterpreted unary function
   id : String
   arg : TermType
   out : TermType
 
-inductive ExtOp : Type where -- extension ADT operators
+public inductive ExtOp : Type where -- extension ADT operators
   | decimal.val
   | ipaddr.isV4
   | ipaddr.addrV4
@@ -57,7 +59,7 @@ inductive ExtOp : Type where -- extension ADT operators
   | duration.val
   | duration.ofBitVec
 
-inductive Op : Type where
+public inductive Op : Type where
   ---------- SMTLib core theory of equality with uninterpreted functions (`UF`) ----------
   | not
   | and
@@ -101,15 +103,15 @@ deriving instance Repr, DecidableEq, Inhabited for UUF
 deriving instance Repr, DecidableEq, Inhabited for ExtOp
 deriving instance Repr, DecidableEq, Inhabited for Op
 
-def UUF.lt (uf uf' : UUF) : Bool :=
+public def UUF.lt (uf uf' : UUF) : Bool :=
   uf.id < uf'.id ||
   (uf.id = uf'.id && uf.arg < uf'.arg) ||
   (uf.id = uf'.id && uf.arg = uf'.arg && uf.out < uf'.out)
 
-instance : LT UUF where
+public instance : LT UUF where
   lt := fun x y => UUF.lt x y
 
-instance UUF.decLt (x y : UUF) : Decidable (x < y) :=
+public instance UUF.decLt (x y : UUF) : Decidable (x < y) :=
   if h : UUF.lt x y then isTrue h else isFalse h
 
 def ExtOp.mkName : ExtOp → String
@@ -124,16 +126,16 @@ def ExtOp.mkName : ExtOp → String
   | ExtOp.duration.val      => "duration.val"
   | ExtOp.duration.ofBitVec => "duration.ofBitVec"
 
-def ExtOp.lt : ExtOp → ExtOp → Bool
+public def ExtOp.lt : ExtOp → ExtOp → Bool
   | ty₁, ty₂    => ty₁.mkName < ty₂.mkName
 
-instance : LT ExtOp where
+public instance : LT ExtOp where
   lt := fun x y => ExtOp.lt x y
 
-instance ExtOp.decLt (x y : ExtOp) : Decidable (x < y) :=
+public instance ExtOp.decLt (x y : ExtOp) : Decidable (x < y) :=
   if h : ExtOp.lt x y then isTrue h else isFalse h
 
-def Op.mkName : Op → String
+public def Op.mkName : Op → String
   | .not           => "not"
   | .and           => "and"
   | .or            => "or"
@@ -168,7 +170,7 @@ def Op.mkName : Op → String
   | Op.string.like _ => "string.like"
   | .ext _         => "ext"
 
-def Op.lt : Op → Op → Bool
+public def Op.lt : Op → Op → Bool
   | .uuf f₁, uuf f₂                  => f₁ < f₂
   | .zero_extend n₁, .zero_extend n₂ => n₁ < n₂
   | Op.record.get a₁, Op.record.get a₂   => a₁ < a₂
@@ -176,10 +178,10 @@ def Op.lt : Op → Op → Bool
   | .ext xty₁, .ext xty₂             => xty₁ < xty₂
   | ty₁, ty₂                         => ty₁.mkName < ty₂.mkName
 
-instance : LT Op where
+public instance : LT Op where
   lt := fun x y => Op.lt x y
 
-instance Op.decLt (x y : Op) : Decidable (x < y) :=
+public instance Op.decLt (x y : Op) : Decidable (x < y) :=
   if h : Op.lt x y then isTrue h else isFalse h
 
 end Cedar.SymCC

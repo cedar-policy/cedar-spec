@@ -14,7 +14,12 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.SymCC.Data.Basic
+module
+
+import all Cedar.SymCC.Env -- proving things about internals of SymCC.Env, so need access to internals that are normally not exposed
+import all Cedar.SymCC.Function -- proving things about internals of SymCC.Function, so need access to internals that are normally not exposed
+public import Cedar.Thm.SymCC.Data.Basic
+import all Cedar.Thm.SymCC.Data.Basic -- TODO: better public interface for Data.Basic so that we don't need `import all` here, or maybe we move some of the theorems here into the Data.Basic module if they're about internals of things defined in Data.Basic
 
 /-!
 # Basic properties of well-formed symbolic environments
@@ -22,9 +27,23 @@ import Cedar.Thm.SymCC.Data.Basic
 This file proves basic lemmas about well-formedness predicate on environments.
 --/
 
+@[expose] public section -- TODO: make the public interface more granular/intentional, instead of having everything public and exposed
+
 namespace Cedar.Thm
 
-open Batteries Data Spec SymCC Factory
+open Batteries Data Spec SymCC
+
+theorem validEntityUID_implies_validEntityType {εs : SymEntities} {uid : EntityUID} :
+  εs.isValidEntityUID uid = true →
+  εs.isValidEntityType uid.ty = true
+:= by
+  simp only [SymEntities.isValidEntityUID, SymEntities.isValidEntityType]
+  intro h₁
+  split at h₁ <;> rename_i h₂
+  · rw [Map.contains_iff_some_find?]
+    rename_i εd
+    exists εd
+  · simp at h₁
 
 theorem wf_εnv_for_policies_cons {εnv : SymEnv} {p : Policy} {ps : Policies} :
   εnv.WellFormedForPolicies (p::ps) →
@@ -665,17 +684,5 @@ theorem wf_εnv_implies_attrs_wf
     simp only [Option.bind_some, Option.some.injEq] at hattrs_exists
     simp only [hattrs_exists] at h1 h2 h3
     simp [h1, h2, h3]
-
-theorem wfp_term_implies_wf_ty {εs : SymEntities} {t : Term}
-  (h : Term.WellFormedPartialApp εs t) :
-  t.typeOf.WellFormed εs
-:= by
-  cases h with
-  | none_wfp h =>
-    simp only [Term.typeOf]
-    exact h
-  | _ =>
-    simp only [Term.typeOf]
-    repeat constructor
 
 end Cedar.Thm

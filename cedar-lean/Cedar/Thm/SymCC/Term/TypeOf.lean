@@ -14,10 +14,19 @@
  limitations under the License.
 -/
 
+module
+
 import Cedar.Spec
-import Cedar.SymCC
+public import Cedar.SymCC.Env
+public import Cedar.SymCC.Factory
+import all Cedar.SymCC.Factory -- proving things about Factory functions, so we need access to internals that aren't normally exposed
+public import Cedar.SymCC.Term
+import all Cedar.SymCC.Term -- proving things about Term, so we need access to internals that aren't normally exposed
+import all Cedar.SymCC.TermType -- proving things about TermType, so we need access to internals that aren't normally exposed
 import Cedar.Thm.Data
 import Cedar.Thm.SymCC.Data
+import Cedar.Thm.SymCC.Env.WF
+public import Cedar.Thm.SymCC.Data.Basic
 
 /-!
 # Properties of Terms
@@ -27,80 +36,79 @@ This file contains lemmas about the `typeOf` function on Terms.
 
 namespace Cedar.Thm
 
-open Batteries Data Spec SymCC Factory
+open Data Spec SymCC
 
-theorem typeOf_bool {b : Bool} :
+public theorem typeOf_bool {b : Bool} :
   Term.typeOf (Term.prim (TermPrim.bool b)) = TermType.bool
 := by simp [Term.typeOf, TermPrim.typeOf]
 
-theorem typeOf_bv {n : Nat} {bv : BitVec n} :
+public theorem typeOf_bv {n : Nat} {bv : BitVec n} :
   Term.typeOf (Term.prim (TermPrim.bitvec bv)) = .bitvec n
 := by simp [Term.typeOf, TermPrim.typeOf, BitVec.width]
 
-theorem typeOf_bv_width {n m : Nat} {bv : BitVec m} :
+public theorem typeOf_bv_width {n m : Nat} {bv : BitVec m} :
   Term.typeOf (Term.prim (TermPrim.bitvec bv)) = TermType.bitvec n →
   m = n
 := by simp [Term.typeOf, TermPrim.typeOf, BitVec.width]
 
-theorem typeOf_term_none (ty : TermType) :
+public theorem typeOf_term_none (ty : TermType) :
   Term.typeOf (Term.none ty) = TermType.option ty
 := by simp [Term.typeOf]
 
-theorem typeOf_term_some {t : Term} :
+public theorem typeOf_term_some {t : Term} :
   Term.typeOf (Term.some t) = TermType.option t.typeOf
 := by simp only [Term.typeOf]
 
-theorem typeOf_term_some_iff {t : Term} {ty : TermType} :
+public theorem typeOf_term_some_iff {t : Term} {ty : TermType} :
   t.typeOf = ty ↔
   Term.typeOf (Term.some t) = TermType.option ty
 := by simp only [Term.typeOf, TermType.option.injEq]
 
-theorem typeOf_term_prim_isPrimType (p : TermPrim) :
+public theorem typeOf_term_prim_isPrimType (p : TermPrim) :
   (Term.prim p).typeOf.isPrimType
 := by
   simp only [Term.typeOf, TermPrim.typeOf]
   split <;>
   simp only [TermType.isPrimType]
 
-theorem typeOf_term_prim_entity {uid : EntityUID} :
+public theorem typeOf_term_prim_entity {uid : EntityUID} :
   (Term.entity uid).typeOf = TermType.entity uid.ty
 := by
   simp only [Term.typeOf, TermPrim.typeOf]
 
-theorem typeOf_term_prim_string {s : String} :
+public theorem typeOf_term_prim_string {s : String} :
   (Term.string s).typeOf = TermType.string
 := by
   simp only [Term.typeOf, TermPrim.typeOf]
 
-theorem typeOf_term_prim_ext_decimal {d : Ext.Decimal} :
+public theorem typeOf_term_prim_ext_decimal {d : Ext.Decimal} :
   (Term.prim (.ext (.decimal d))).typeOf = TermType.ext Validation.ExtType.decimal
 := by simp only [Term.typeOf, TermPrim.typeOf]
 
-theorem typeOf_term_prim_ext_ipaddr {ip : Ext.IPAddr.IPNet} :
+public theorem typeOf_term_prim_ext_ipaddr {ip : Ext.IPAddr.IPNet} :
   (Term.prim (.ext (.ipaddr ip))).typeOf = TermType.ext Validation.ExtType.ipAddr
 := by simp only [Term.typeOf, TermPrim.typeOf]
 
-theorem typeOf_term_prim_ext_datetime {d : Ext.Datetime} :
+public theorem typeOf_term_prim_ext_datetime {d : Ext.Datetime} :
   (Term.prim (.ext (.datetime d))).typeOf = TermType.ext Validation.ExtType.datetime
 := by simp only [Term.typeOf, TermPrim.typeOf]
 
-theorem typeOf_term_prim_ext_duration {d : Ext.Datetime.Duration} :
+public theorem typeOf_term_prim_ext_duration {d : Ext.Datetime.Duration} :
   (Term.prim (.ext (.duration d))).typeOf = TermType.ext Validation.ExtType.duration
 := by simp only [Term.typeOf, TermPrim.typeOf]
 
-theorem typeOf_term_record_eq  {r : Map Attr Term} :
+public theorem typeOf_term_record_eq  {r : Map Attr Term} :
   Term.typeOf (Term.record r) =
   TermType.record (r.mapOnValues Term.typeOf)
-:= by
-  simp only [Term.typeOf, Map.mapOnValues₂_eq_mapOnValues]
+:= by simp only [Term.typeOf, Map.mapOnValues₂_eq_mapOnValues]
 
-theorem typeOf_term_record_is_record_type {r : Map Attr Term} :
+public theorem typeOf_term_record_is_record_type {r : Map Attr Term} :
   ∃ rty, (Term.record r).typeOf = TermType.record rty
 := by
   unfold Term.typeOf
   simp only [TermType.record.injEq, exists_eq']
 
-theorem typeOf_term_record_attr_value {r : Map Attr Term} {rty : Map Attr TermType} {a : Attr} {ty : TermType}
+public theorem typeOf_term_record_attr_value {r : Map Attr Term} {rty : Map Attr TermType} {a : Attr} {ty : TermType}
   (h₁ : (Term.record r).typeOf = TermType.record rty)
   (h₂ : rty.find? a = .some ty) :
   ∃ t, r.find? a = .some t ∧ t.typeOf = ty
@@ -112,7 +120,7 @@ theorem typeOf_term_record_attr_value {r : Map Attr Term} {rty : Map Attr TermTy
   subst ty
   exists t
 
-theorem typeOf_term_record_attr_value_none {r : Map Attr Term} {rty : Map Attr TermType} {a : Attr}
+public theorem typeOf_term_record_attr_value_none {r : Map Attr Term} {rty : Map Attr TermType} {a : Attr}
   (h₁ : (Term.record r).typeOf = TermType.record rty)
   (h₂ : rty.find? a = none) :
   r.find? a = none
@@ -123,7 +131,7 @@ theorem typeOf_term_record_attr_value_none {r : Map Attr Term} {rty : Map Attr T
   rw [Map.find?_mapOnValues_none Term.typeOf] at h₂
   exact h₂
 
-theorem typeOf_term_record_attr_value_typeOf {r : Map Attr Term} {a : Attr} {t : Term}
+public theorem typeOf_term_record_attr_value_typeOf {r : Map Attr Term} {a : Attr} {t : Term}
   (h₁ : (Term.record r).typeOf = TermType.record rty)
   (h₂ : r.find? a = .some t) :
   rty.find? a = .some t.typeOf
@@ -133,7 +141,7 @@ theorem typeOf_term_record_attr_value_typeOf {r : Map Attr Term} {a : Attr} {t :
   subst h₁
   exact Map.find?_mapOnValues_some _ h₂
 
-theorem typeOf_term_record_attr_value_eq {r₁ r₂ : Map Attr Term} {rty : Map Attr TermType} {a : Attr} {t₁ t₂ : Term}
+public theorem typeOf_term_record_attr_value_eq {r₁ r₂ : Map Attr Term} {rty : Map Attr TermType} {a : Attr} {t₁ t₂ : Term}
   (hty₁ : (Term.record r₁).typeOf = .record rty)
   (hty₂ : (Term.record r₂).typeOf = .record rty)
   (ht₁ : r₁.find? a = .some t₁)
@@ -145,22 +153,12 @@ theorem typeOf_term_record_attr_value_eq {r₁ r₂ : Map Attr Term} {rty : Map 
   simp only [ht₁, Option.some.injEq] at ht₂
   exact ht₂
 
-theorem typeOf_term_record_tail {a : Attr} {t₁ t₂ : Term} {tl₁ tl₂ : List (Attr × Term)} :
+public theorem typeOf_term_record_tail {a : Attr} {t₁ t₂ : Term} {tl₁ tl₂ : List (Attr × Term)} :
   Term.typeOf (Term.record (Map.mk ((a, t₁) :: tl₁))) = Term.typeOf (Term.record (Map.mk ((a, t₂) :: tl₂))) →
   Term.typeOf (Term.record (Map.mk tl₁)) = Term.typeOf (Term.record (Map.mk tl₂))
-:= by simp [typeOf_term_record_eq, Map.mapOnValues]
-
-private theorem validEntityUID_implies_validEntityType {εs : SymEntities} {uid : EntityUID} :
-  SymEntities.isValidEntityUID εs uid = true →
-  SymEntities.isValidEntityType εs uid.ty = true
 := by
-  simp only [SymEntities.isValidEntityUID, SymEntities.isValidEntityType]
-  intro h₁
-  cases h₂ : Map.find? εs uid.ty <;>
-  simp only [h₂, Bool.false_eq_true] at h₁
-  rw [Map.contains_iff_some_find?]
-  rename_i εd
-  exists εd
+  simp only [typeOf_term_record_eq, TermType.record.injEq]
+  exact Map.mapOnValues_tail (f := Term.typeOf)
 
 private theorem typeOf_wf_term_prim_is_wf {εs : SymEntities} {p : TermPrim} :
   TermPrim.WellFormed εs p →
@@ -232,7 +230,7 @@ private theorem type_of_wf_term_record_is_wf {εs : SymEntities} {r : Map Attr T
   case h₂ =>
     exact Map.mapOnValues_wf.mp hwf
 
-theorem typeOf_wf_term_is_wf {εs : SymEntities} {t : Term} :
+public theorem typeOf_wf_term_is_wf {εs : SymEntities} {t : Term} :
   t.WellFormed εs →
   t.typeOf.WellFormed εs
 := by
@@ -256,7 +254,19 @@ theorem typeOf_wf_term_is_wf {εs : SymEntities} {t : Term} :
   case record_wf h₂ ih =>
     exact type_of_wf_term_record_is_wf h₂ ih
 
-theorem typeOf_option_wf_terms_is_wf {εs : SymEntities} {hd : Term} {tl : List Term} {ts : List Term} {ty : TermType}:
+public theorem wfp_term_implies_wf_ty {εs : SymEntities} {t : Term}
+  (h : Term.WellFormedPartialApp εs t) :
+  t.typeOf.WellFormed εs
+:= by
+  cases h with
+  | none_wfp h =>
+    simp only [Term.typeOf]
+    exact h
+  | _ =>
+    simp only [Term.typeOf]
+    repeat constructor
+
+public theorem typeOf_option_wf_terms_is_wf {εs : SymEntities} {hd : Term} {tl : List Term} {ts : List Term} {ty : TermType}:
   ts = hd :: tl →
   (∀ t ∈ ts, t.WellFormed εs) →
   (∀ t ∈ ts, Term.typeOf t = TermType.option ty) →
@@ -269,33 +279,7 @@ theorem typeOf_option_wf_terms_is_wf {εs : SymEntities} {hd : Term} {tl : List 
   cases hwf
   assumption
 
-theorem isCedarRecordType_implies_term_record_type {ty : TermType} :
-  ty.isCedarRecordType → ∃ rty, ty = .record rty
-:= by
-  intro h
-  simp [TermType.isCedarRecordType] at h
-  split at h
-  case h_1 heq =>
-    unfold TermType.cedarType? at heq
-    cases ty <;> simp only [Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq,
-      Validation.CedarType.record.injEq, and_false, exists_const, reduceCtorEq] at heq
-    case prim pty =>
-      cases pty <;> try { simp only [Option.some.injEq, reduceCtorEq] at heq  }
-      case bitvec m =>
-        by_cases h : m = 64
-        case pos =>
-          subst h
-          simp only [Option.some.injEq, reduceCtorEq] at heq
-        case neg =>
-          split at heq <;> simp only [Option.bind_eq_some_iff, Option.some.injEq,
-            Validation.CedarType.record.injEq, and_false, exists_const, reduceCtorEq] at heq
-          rename_i heq'
-          simp only [reduceCtorEq] at heq'
-    case record rty =>
-      exists rty
-  case h_2 => contradiction
-
-theorem typeOf_term_record_cedarType?_some_implies_attr_cedarType?_some {a : Attr} {t : Term} {r : Map Attr Term} {ty : Validation.CedarType} :
+public theorem typeOf_term_record_cedarType?_some_implies_attr_cedarType?_some {a : Attr} {t : Term} {r : Map Attr Term} {ty : Validation.CedarType} :
   r.WellFormed →
   (Term.record r).typeOf.cedarType? = some ty →
   (a, t) ∈ r.toList →
@@ -309,32 +293,29 @@ theorem typeOf_term_record_cedarType?_some_implies_attr_cedarType?_some {a : Att
   rw [do_some] at hty
   replace ⟨atys, hty, _⟩ := hty
   subst ty
-  simp only [Map.mapOnValues, Map.toList, Option.bind_eq_bind] at hty
-  rw [List.mapM₃_eq_mapM λ (x : Attr × TermType) => (TermType.cedarType?.qualifiedType? x.snd).bind λ qty => some (x.fst, qty)] at hty
-  simp only [List.mapM_map] at hty
-  replace hty := List.mapM_some_implies_all_some hty (a, t)
-  specialize hty (by simp [Map.toList] at hin ; simp [hin])
-  replace ⟨⟨a', qty⟩, haty, hty⟩ := hty
+  rw [Map.mapMOnValues₂_eq_mapMOnValues] at hty
+  simp only [Map.mapMOnValues_mapOnValues] at hty
+  replace hty := Map.mapMOnValues_some_implies_all_some hty (a, t)
+  replace ⟨qty, haty, hty⟩ := hty hin
   simp only [Function.comp_apply] at hty
   unfold TermType.cedarType?.qualifiedType? at hty
   split at hty <;>
-  simp only [Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq, Prod.mk.injEq,
-    exists_eq_right_right] at hty <;>
-  replace ⟨⟨cty, hty, _⟩, _⟩ := hty <;> subst a' qty
+  simp only [Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at hty <;>
+  replace ⟨cty, hty, _⟩ := hty <;> subst qty
   · rename_i tty heq
     exists tty, cty
     simp only [hty, heq, or_true, and_self]
   · exists t.typeOf, cty
     simp only [hty, true_or, and_self]
 
-theorem isPrimType_implies_prim_type {ty : TermType} :
+public theorem isPrimType_implies_prim_type {ty : TermType} :
   ty.isPrimType → ∃ pty, ty = .prim pty
 := by
   simp only [TermType.isPrimType]
   split <;>
   simp only [TermType.prim.injEq, exists_eq', imp_self, false_implies, Bool.false_eq_true]
 
-theorem isEntityType_implies_entity_type {ty : TermType} :
+public theorem isEntityType_implies_entity_type {ty : TermType} :
   ty.isEntityType → ∃ ety, ty = .entity ety
 := by
   simp only [TermType.isEntityType]
@@ -342,7 +323,7 @@ theorem isEntityType_implies_entity_type {ty : TermType} :
   · simp only [TermType.prim.injEq, TermPrimType.entity.injEq, exists_eq', imp_self]
   · simp only [Bool.false_eq_true, false_implies]
 
-theorem isOptionEntityType_implies_option_entity_type {ty : TermType} :
+public theorem isOptionEntityType_implies_option_entity_type {ty : TermType} :
   ty.isOptionEntityType → ∃ ety, ty = .option (.entity ety)
 := by
   simp only [TermType.isOptionEntityType]
@@ -352,30 +333,30 @@ theorem isOptionEntityType_implies_option_entity_type {ty : TermType} :
 
 private theorem typeOf_ite_simplify_option {g t : Term} {ty : TermType} :
   t.typeOf = .option ty →
-  (ite.simplify g (Term.none ty) t).typeOf = ty.option
+  (Factory.ite.simplify g (Term.none ty) t).typeOf = ty.option
 := by
   intro hty
-  simp only [ite.simplify, Bool.or_eq_true, decide_eq_true_eq]
+  simp only [Factory.ite.simplify, Bool.or_eq_true, decide_eq_true_eq]
   split
   · simp only [Term.typeOf]
   · split
     · exact hty
     · split <;> simp [typeOf_bool, Term.typeOf] at *
 
-theorem typeOf_ifSome_option {g t : Term} {ty : TermType} :
+public theorem typeOf_ifSome_option {g t : Term} {ty : TermType} :
   t.typeOf = .option ty →
-  (ifSome g t).typeOf = .option ty
+  (Factory.ifSome g t).typeOf = .option ty
 := by
   intro hty
-  simp only [ifSome, hty, Factory.ite, noneOf]
+  simp only [Factory.ifSome, hty, Factory.ite, Factory.noneOf]
   exact typeOf_ite_simplify_option hty
 
-theorem typeOf_ifAllSome_option_type {gs : List Term} {t : Term} {ty : TermType} :
+public theorem typeOf_ifAllSome_option_type {gs : List Term} {t : Term} {ty : TermType} :
   t.typeOf = .option ty →
-  (ifAllSome gs t).typeOf = .option ty
+  (Factory.ifAllSome gs t).typeOf = .option ty
 := by
   intro hty
-  simp only [ifAllSome, hty, Factory.ite, noneOf]
+  simp only [Factory.ifAllSome, hty, Factory.ite, Factory.noneOf]
   exact typeOf_ite_simplify_option hty
 
 end Cedar.Thm

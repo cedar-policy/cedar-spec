@@ -14,7 +14,10 @@
  limitations under the License.
 -/
 
+module
+
 import Cedar.SymCC.Factory
+public import Cedar.SymCC.Function
 
 /-!
 This file defines the ADT for representing symbolic tags.
@@ -39,17 +42,17 @@ namespace Cedar.SymCC
 
 open Factory
 
-structure SymTags where  -- for EntityType E:
+public structure SymTags where  -- for EntityType E:
   keys : UnaryFunction   --   keys: E -> Set String
   vals : UnaryFunction   --   vals: {"entity" : E, "tag" : String} -> T
 
-def SymTags.hasTag (τs : SymTags) (entity tag : Term) : Term :=
+public def SymTags.hasTag (τs : SymTags) (entity tag : Term) : Term :=
   set.member tag (app τs.keys entity)
 
-def SymTags.getTag! (τs : SymTags) (entity tag : Term) : Term := -- unchecked getTag
+public def SymTags.getTag! (τs : SymTags) (entity tag : Term) : Term := -- unchecked getTag
   app τs.vals (tagOf entity tag)
 
-def SymTags.getTag (τs : SymTags) (entity tag : Term) : Term := -- checked getTag
+public def SymTags.getTag (τs : SymTags) (entity tag : Term) : Term := -- checked getTag
   ifTrue (τs.hasTag entity tag) (τs.getTag! entity tag)
 
 deriving instance Repr, Inhabited, DecidableEq for SymTags

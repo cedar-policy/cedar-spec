@@ -100,7 +100,7 @@ private theorem term_setOfEntityUIDs?_some_exists {t : Term} {uids : Set EntityU
     rw [term_entityUID?_some_iff_eq] at ht
     subst ht
     replace hwt := wf_term_set_implies_typeOf_elt hwt ((Set.in_list_iff_in_mk _ _).mp huids)
-    simp only [Term.typeOf, TermPrim.typeOf, TermType.prim.injEq, TermPrimType.entity.injEq] at hwt
+    simp only [typeOf_term_prim_entity, TermType.prim.injEq, TermPrimType.entity.injEq] at hwt
     exact hwt
 
 theorem term_tag?_some_iff_eq {t : Term} {s : String} :

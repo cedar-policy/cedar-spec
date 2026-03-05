@@ -40,18 +40,10 @@ theorem value_symbolize?_well_typed
   cases hwt_v with
   | instance_of_bool | instance_of_int | instance_of_string =>
     simp only [Value.symbolize?, Prim.symbolize, Option.some.injEq] at hsym
-    simp only [
-      ←hsym, Term.typeOf,
-      TermPrim.typeOf, TermType.ofType,
-      Int64.toBitVec, BitVec.width,
-    ]
+    simp only [←hsym, typeOf_bool, typeOf_bv, typeOf_term_prim_string, TermType.ofType, Int64.toBitVec]
   | instance_of_entity _ _ hwt_ety =>
     simp only [Value.symbolize?, Prim.symbolize, Option.some.injEq] at hsym
-    simp only [
-      ←hsym, Term.typeOf,
-      TermPrim.typeOf, TermType.ofType,
-      hwt_ety.1,
-    ]
+    simp only [←hsym, typeOf_term_prim_entity, TermType.ofType, hwt_ety.1]
   | instance_of_set s =>
     simp only [
       Value.symbolize?,
@@ -144,16 +136,13 @@ theorem value_symbolize?_well_typed
         have := value_symbolize?_well_typed
           hwf_ty' hwt_v' hsym_attr'
         simp [this]
-  | instance_of_ext _ _ hwt_ext =>
+  | instance_of_ext ext _ hwt_ext =>
     simp only [Value.symbolize?, Option.some.injEq] at hsym
-    simp only [
-      ←hsym, Term.typeOf,
-      TermPrim.typeOf, TermType.ofType,
-    ]
-    simp only [InstanceOfExtType] at hwt_ext
-    split at hwt_ext
-    any_goals simp
-    contradiction
+    cases ext
+    all_goals
+      simp only [←hsym, typeOf_term_prim_ext_datetime, typeOf_term_prim_ext_decimal, typeOf_term_prim_ext_duration, typeOf_term_prim_ext_ipaddr, TermType.ofType]
+      simp only [InstanceOfExtType] at hwt_ext
+      split at hwt_ext <;> (try simp) <;> contradiction
 termination_by sizeOf v
 decreasing_by
   all_goals

@@ -14,8 +14,10 @@
  limitations under the License.
 -/
 
+module
+
 import Cedar.SymCC.Env
-import Cedar.SymCC.Factory
+public import Cedar.SymCC.Factory -- TODO: this need not be a public import
 
 /-!
 
@@ -34,6 +36,8 @@ See `Compiler.lean` to see how the symbolic compiler uses this API. See also
 `Factory.lean`.
 
 -/
+
+@[expose] public section -- TODO: make the public interface more granular/intentional, instead of having everything public and exposed
 
 namespace Cedar.SymCC
 

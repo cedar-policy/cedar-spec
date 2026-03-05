@@ -14,11 +14,18 @@
  limitations under the License.
 -/
 
+module
+
 import Cedar.Spec
-import Cedar.SymCC
 import Cedar.Thm.Data
 import Cedar.Thm.Data.LT
 import Cedar.Thm.Data.Control
+
+-- needs to unfold various `.lt` definitions, that are normally opaque
+import all Cedar.Spec.Wildcard
+import all Cedar.SymCC.Op
+import all Cedar.SymCC.Term
+import all Cedar.SymCC.TermType
 
 /-!
 # Strict ordering of Cedar terms

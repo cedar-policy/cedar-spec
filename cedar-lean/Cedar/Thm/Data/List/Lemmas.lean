@@ -478,6 +478,20 @@ theorem mapM_pmap_subtype [Monad m] [LawfulMonad m]
   rw [←List.mapM'_eq_mapM]
   induction as <;> simp [*]
 
+-- not public: you should be able to use the higher-level lemmas below
+theorem mapM_pmap_subtype_snd [Monad m] [LawfulMonad m]
+  {p : (α × β) → Prop}
+  (f : β → m γ)
+  (xs : List (α × β))
+  (h : ∀ pair ∈ xs, p pair)
+  : (List.mapM (λ x : { pair : (α × β) // p pair } => do pure (x.val.fst, ← f x.val.snd))) (List.pmap Subtype.mk xs h)
+    =
+    (xs.mapM λ pair => do pure (pair.fst, ← f pair.snd))
+:= by
+  simp only [bind_pure_comp]
+  rw [← List.mapM'_eq_mapM]
+  induction xs <;> simp [*]
+
 public theorem mapM₁_eq_mapM [Monad m] [LawfulMonad m]
   (f : α → m β)
   (as : List α) :
@@ -493,6 +507,17 @@ public theorem mapM₂_eq_mapM [Monad m] [LawfulMonad m] [SizeOf α] [SizeOf β]
   List.mapM f as
 := by
   simp only [mapM₂, attach₂, mapM_pmap_subtype]
+
+/--
+  See notes on `map₂_eq_map_snd`. This has a similar relationship to `mapM₂_eq_mapM`
+  as `map₂_eq_map_snd` does to `map₂_eq_map`.
+-/
+public theorem mapM₂_eq_map_snd {α : Type u} {β : Type v} [SizeOf α] [SizeOf β] [Monad m] [LawfulMonad m] {xs : List (α × β)} (f : β → m γ) :
+  (xs.mapM₂ (λ x : {x : α × β // sizeOf x.snd < 1 + sizeOf xs } => match x with | ⟨(a, b), _⟩ => do pure (a, ← f b))) =
+  (xs.mapM λ (a, b) => do pure (a, ← f b))
+:= by
+  simp only [mapM₂, attach₂]
+  exact mapM_pmap_subtype_snd f xs _
 
 public theorem mapM₃_eq_mapM [Monad m] [LawfulMonad m] [SizeOf α] [SizeOf β]
   (f : (α × β) → m γ)

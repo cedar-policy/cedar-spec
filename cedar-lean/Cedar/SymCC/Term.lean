@@ -14,9 +14,11 @@
  limitations under the License.
 -/
 
+module
+
 import Cedar.Spec
-import Cedar.SymCC.Data
-import Cedar.SymCC.Op
+public import Cedar.SymCC.Data
+public import Cedar.SymCC.Op
 import Init.Data.BitVec.Basic
 
 /-!
@@ -40,18 +42,18 @@ namespace Cedar.SymCC
 open Cedar.Data
 open Cedar.Spec
 
-structure TermVar where
+public structure TermVar where
   id : String
   ty : TermType
 
-inductive TermPrim : Type where
+public inductive TermPrim : Type where
   | bool   : Bool → TermPrim
   | bitvec : ∀ {n}, BitVec n → TermPrim
   | string : String → TermPrim
   | entity : EntityUID → TermPrim
   | ext    : Ext → TermPrim
 
-inductive Term : Type where
+public inductive Term : Type where
   | prim    : TermPrim → Term
   | var     : TermVar → Term
   | none    : TermType → Term
@@ -60,11 +62,11 @@ inductive Term : Type where
   | record  : Map Attr Term → Term
   | app     : Op → (args: List Term) → (retTy: TermType) → Term
 
-abbrev Term.bool (b : Bool) : Term := .prim (.bool b)
-abbrev Term.bitvec {n : Nat} (bv : BitVec n) : Term := .prim (.bitvec bv)
-abbrev Term.string (s : String) : Term := .prim (.string s)
-abbrev Term.entity (uid : EntityUID) : Term := .prim (.entity uid)
-abbrev Term.ext (xv : Ext) : Term := .prim (.ext xv)
+public abbrev Term.bool (b : Bool) : Term := .prim (.bool b)
+public abbrev Term.bitvec {n : Nat} (bv : BitVec n) : Term := .prim (.bitvec bv)
+public abbrev Term.string (s : String) : Term := .prim (.string s)
+public abbrev Term.entity (uid : EntityUID) : Term := .prim (.entity uid)
+public abbrev Term.ext (xv : Ext) : Term := .prim (.ext xv)
 
 def TermPrim.typeOf : TermPrim → TermType
   | .bool _           => .bool
@@ -76,7 +78,7 @@ def TermPrim.typeOf : TermPrim → TermType
   | .ext (.duration _) => .ext .duration
   | .ext (.datetime _) => .ext .datetime
 
-def Term.typeOf : Term → TermType
+public def Term.typeOf : Term → TermType
   | .prim l       => l.typeOf
   | .var v        => v.ty
   | .none ty      => .option ty
@@ -85,7 +87,7 @@ def Term.typeOf : Term → TermType
   | .set _ ty     => .set ty
   | .record atrs  => .record (atrs.mapOnValues₂ λ ⟨t, _⟩ => t.typeOf)
 
-def Term.isLiteral : Term → Bool
+public def Term.isLiteral : Term → Bool
   | .prim _
   | .none _               => true
   | .some t               => t.isLiteral
@@ -93,25 +95,25 @@ def Term.isLiteral : Term → Bool
   | .record (Map.mk atrs) => atrs.attach₃.all (λ ⟨(_, t), _⟩ => t.isLiteral)
   | _                     => false
 
-instance : Coe Bool Term where
+public instance : Coe Bool Term where
   coe b := .prim (.bool b)
 
-instance : Coe Int64 Term where
+public instance : Coe Int64 Term where
   coe i := .prim (.bitvec i.toBitVec)
 
-instance : CoeOut (BitVec n) Term where
+public instance : CoeOut (BitVec n) Term where
   coe b := .prim (.bitvec b)
 
-instance : Coe String Term where
+public instance : Coe String Term where
   coe s := .prim (.string s)
 
-instance : Coe EntityUID Term where
+public instance : Coe EntityUID Term where
   coe e := .prim (.entity e)
 
-instance : Coe Ext Term where
+public instance : Coe Ext Term where
   coe x := .prim (.ext x)
 
-instance : Coe TermVar Term where
+public instance : Coe TermVar Term where
   coe v := .var v
 
 deriving instance Repr, DecidableEq, Inhabited for TermVar
@@ -120,7 +122,7 @@ deriving instance Repr, Inhabited for Term
 
 mutual
 
-def Term.hasDecEq (t t' : Term) : Decidable (t = t') := by
+public def Term.hasDecEq (t t' : Term) : Decidable (t = t') := by
   cases t <;> cases t' <;>
   try { apply isFalse ; intro h ; injection h }
   case prim.prim v₁ v₂ | none.none v₁ v₂ | var.var v₁ v₂ =>
@@ -172,15 +174,15 @@ def Term.hasListProdDec (ats₁ ats₂ : List (Attr × Term)) : Decidable (ats�
 
 end
 
-instance : DecidableEq Term := Term.hasDecEq
+public instance : DecidableEq Term := Term.hasDecEq
 
-def TermVar.lt (v v' : TermVar) : Bool :=
+public def TermVar.lt (v v' : TermVar) : Bool :=
   v.id < v'.id || (v.id = v'.id && v.ty < v'.ty)
 
-instance : LT TermVar where
+public instance : LT TermVar where
   lt := fun x y => TermVar.lt x y
 
-instance TermVar.decLt (x y : TermVar) : Decidable (x < y) :=
+public instance TermVar.decLt (x y : TermVar) : Decidable (x < y) :=
   if h : TermVar.lt x y then isTrue h else isFalse h
 
 def TermPrim.mkName : TermPrim → String
@@ -190,7 +192,7 @@ def TermPrim.mkName : TermPrim → String
   | .entity _ => "entity"
   | .ext _    => "ext"
 
-def TermPrim.lt : TermPrim → TermPrim → Bool
+public def TermPrim.lt : TermPrim → TermPrim → Bool
   | .bool b₁, .bool b₂         => b₁ < b₂
   | @TermPrim.bitvec n₁ bv₁,
     @TermPrim.bitvec n₂ bv₂    => n₁ < n₂ || (n₁ = n₂ && bv₁.toNat < bv₂.toNat)
@@ -199,10 +201,10 @@ def TermPrim.lt : TermPrim → TermPrim → Bool
   | .ext x₁, .ext x₂           => x₁ < x₂
   | p₁, p₂                     => p₁.mkName < p₂.mkName
 
-instance : LT TermPrim where
+public instance : LT TermPrim where
   lt := fun x y => TermPrim.lt x y
 
-instance TermPrim.decLt (x y : TermPrim) : Decidable (x < y) :=
+public instance TermPrim.decLt (x y : TermPrim) : Decidable (x < y) :=
   if h : TermPrim.lt x y then isTrue h else isFalse h
 
 def Term.mkName : Term → String
@@ -216,7 +218,7 @@ def Term.mkName : Term → String
 
 mutual
 
-def Term.lt : Term → Term → Bool
+public def Term.lt : Term → Term → Bool
   | .prim p₁, .prim p₂                     => p₁ < p₂
   | .var v₁, .var v₂                       => v₁ < v₂
   | .none ty₁, .none ty₂                   => ty₁ < ty₂
@@ -250,10 +252,10 @@ termination_by ats _ => sizeOf ats
 
 end
 
-instance : LT Term where
+public instance : LT Term where
   lt := fun x y => Term.lt x y
 
-instance Term.decLt (x y : Term) : Decidable (x < y) :=
+public instance Term.decLt (x y : Term) : Decidable (x < y) :=
   if h : Term.lt x y then isTrue h else isFalse h
 
 end Cedar.SymCC

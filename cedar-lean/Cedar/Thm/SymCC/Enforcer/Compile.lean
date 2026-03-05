@@ -51,7 +51,7 @@ private theorem compile_isOptionEntityType {x : Expr} {εnv : SymEnv} {I : Inter
   have hty := (interpret_term_wf hI hwt).right
   rw [ht] at hty
   rw [← hty]
-  simp only [TermType.isOptionEntityType, Term.typeOf, TermPrim.typeOf]
+  simp only [TermType.isOptionEntityType, Term.typeOf, typeOf_term_prim_entity]
 
 private theorem typeOf_ifSome_ite_option_bool {t₁ t₂ t₃ : Term} {εs : SymEntities} :
   t₁.WellFormed εs → t₂.WellFormed εs → t₃.WellFormed εs →
@@ -174,7 +174,7 @@ private theorem compile_interpret_lit_in_footprint {p : Prim} {εnv : SymEnv} {I
   cases p <;> simp only [someOf, Except.ok.injEq] at hok
   case bool | int | string =>
     subst hok
-    simp only [TermType.isOptionEntityType, Term.typeOf, TermPrim.typeOf, Bool.false_eq_true] at hty
+    simp only [TermType.isOptionEntityType, Term.typeOf, typeOf_bool, typeOf_bv, typeOf_term_prim_string, Bool.false_eq_true] at hty
   case entityUID uid' =>
     split at hok <;> simp only [Except.ok.injEq, reduceCtorEq] at hok
     subst hok
@@ -183,7 +183,7 @@ private theorem compile_interpret_lit_in_footprint {p : Prim} {εnv : SymEnv} {I
     subst ht
     exists (Term.some (Term.entity uid'))
     simp only [footprint, footprint.ofEntity, hok', TermType.isOptionEntityType, Term.typeOf,
-      TermPrim.typeOf, ↓reduceIte, Set.mem_singleton_iff_eq, interpret_term_some,
+      typeOf_term_prim_entity, ↓reduceIte, Set.mem_singleton_iff_eq, interpret_term_some,
       interpret_term_prim, and_self]
 
 private theorem compile_interpret_var_in_footprint {v : Var} {εnv : SymEnv} {I : Interpretation} {t : Term} {uid : EntityUID}

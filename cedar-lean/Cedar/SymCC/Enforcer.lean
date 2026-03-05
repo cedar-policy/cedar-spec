@@ -14,7 +14,9 @@
  limitations under the License.
 -/
 
-import Cedar.SymCC.Compiler
+module
+
+public import Cedar.SymCC.Compiler -- TODO: this need not be a public import
 
 /-!
 This file defines the algorithm for emitting well-formedness assumptions about
@@ -33,6 +35,8 @@ consists of all subexpressions of `x` that could have an Entity type. The
 grounding procedure computes the footprint, and grounds the acyclicity and
 transitivity constraints on the set of entity terms in the footprint.
 -/
+
+@[expose] public section -- TODO: make the public interface more granular/intentional, instead of having everything public and exposed
 
 namespace Cedar.SymCC
 

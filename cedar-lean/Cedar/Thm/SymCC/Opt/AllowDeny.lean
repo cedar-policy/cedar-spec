@@ -62,7 +62,7 @@ private theorem compile_allowAll (εnv : SymEnv) :
   simp [verifyAlwaysAllows.allowAll]
   simp [Policy.toExpr, PrincipalScope.toExpr, ActionScope.toExpr, ResourceScope.toExpr, Scope.toExpr, Conditions.toExpr, Condition.toExpr]
   simp [compile, compilePrim, compileAnd]
-  simp [pe_ite_true, pe_ifSome_some, pe_option_get_some, Factory.someOf, Term.typeOf, TermPrim.typeOf]
+  simp [pe_ite_true, pe_ifSome_some, pe_option_get_some, Factory.someOf, Term.typeOf, typeOf_bool]
 
 /--
 `SymCC.compile` on a literal bool
@@ -89,4 +89,4 @@ theorem footprint_allowAll (εnv : SymEnv) :
 := by
   simp [verifyAlwaysAllows.allowAll]
   simp [Policy.toExpr, PrincipalScope.toExpr, ActionScope.toExpr, ResourceScope.toExpr, Scope.toExpr, Conditions.toExpr, Condition.toExpr]
-  simp [footprint, footprint.ofBranch, footprint.ofEntity, compile_bool, Factory.someOf, TermType.isOptionEntityType, Term.typeOf, TermPrim.typeOf]
+  simp [footprint, footprint.ofBranch, footprint.ofEntity, compile_bool, Factory.someOf, TermType.isOptionEntityType, Term.typeOf, typeOf_bool]

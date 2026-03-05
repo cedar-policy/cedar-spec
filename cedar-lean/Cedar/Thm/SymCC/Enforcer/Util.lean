@@ -97,7 +97,7 @@ theorem wf_term_interpret_option_entity_implies_wf_typeOf {t : Term} {uid : Enti
   have ⟨hwt', hty'⟩ := interpret_term_wf hI hwt
   have hty := hty'
   rw [eq_comm] at hty
-  simp only [ht, Term.typeOf, TermPrim.typeOf] at hty
+  simp only [ht, Term.typeOf, typeOf_term_prim_entity] at hty
   simp only [hwt', hty, and_self]
 
 end Cedar.Thm
