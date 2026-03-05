@@ -254,12 +254,12 @@ a residual with the same type.
 theorem partial_eval_preserves_typeof :
   ∀ res, PEPreservesTypeOf res
 := by
-  intro res env h_wt
+  intro res env
   cases res with
   | val v ty =>
     simp [TPE.evaluate, Residual.typeOf]
   | var v ty =>
-    intro preq pes
+    intro _ preq
     simp only [Residual.typeOf, TPE.evaluate]
     unfold varₚ
     simp only [varₚ.varₒ, someOrSelf]
@@ -275,26 +275,23 @@ theorem partial_eval_preserves_typeof :
   | and a b ty =>
     exact partial_eval_preserves_typeof_and
       (partial_eval_preserves_typeof a) (partial_eval_preserves_typeof b)
-      h_wt
   | or a b ty =>
     exact partial_eval_preserves_typeof_or
       (partial_eval_preserves_typeof a) (partial_eval_preserves_typeof b)
-      h_wt
   | ite c t e ty =>
     exact partial_eval_preserves_typeof_ite
       (partial_eval_preserves_typeof t) (partial_eval_preserves_typeof e)
-      h_wt
   | unaryApp op e ty =>
-    exact partial_eval_preserves_typeof_unaryApp h_wt
+    exact partial_eval_preserves_typeof_unaryApp
   | binaryApp op e1 e2 ty =>
-    exact partial_eval_preserves_typeof_binaryApp h_wt
+    exact partial_eval_preserves_typeof_binaryApp
   | call xfn args ty =>
-    exact partial_eval_preserves_typeof_call h_wt
+    exact partial_eval_preserves_typeof_call
   | getAttr expr attr ty =>
-    exact partial_eval_preserves_typeof_getAttr h_wt
+    exact partial_eval_preserves_typeof_getAttr
   | hasAttr expr attr ty =>
-    exact partial_eval_preserves_typeof_hasAttr h_wt
+    exact partial_eval_preserves_typeof_hasAttr
   | set ls ty =>
-    exact partial_eval_preserves_typeof_set h_wt
+    exact partial_eval_preserves_typeof_set
   | record ls ty =>
-    exact partial_eval_preserves_typeof_record h_wt
+    exact partial_eval_preserves_typeof_record
