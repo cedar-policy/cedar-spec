@@ -459,8 +459,8 @@ theorem wf_term_app_bvsmod {εs : SymEntities} {ts : List Term} {ty : TermType}
   ∃ n, ty = .bitvec n ∧ WFBinary εs ts ty
 := by invert_wf_term_app_param_binary h₁
 
-theorem wf_term_app_bvumod {εs : SymEntities} {ts : List Term} {ty : TermType}
-  (h₁ : (Term.app .bvumod ts ty).WellFormed εs) :
+theorem wf_term_app_bvurem {εs : SymEntities} {ts : List Term} {ty : TermType}
+  (h₁ : (Term.app .bvurem ts ty).WellFormed εs) :
   ∃ n, ty = .bitvec n ∧ WFBinary εs ts ty
 := by invert_wf_term_app_param_binary h₁
 
@@ -940,13 +940,13 @@ theorem wf_bvsmod {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (bvsmod t₁ t₂).WellFormed εs ∧ (bvsmod t₁ t₂).typeOf = .bitvec n
 := by simp_wf_bv_arith h₁ h₂ h₃ h₄ Factory.bvsmod Op.WellTyped.bvsmod_wt
 
-theorem wf_bvumod {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
+theorem wf_bvurem {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (h₁ : t₁.WellFormed εs)
   (h₂ : t₂.WellFormed εs)
   (h₃ : t₁.typeOf = .bitvec n)
   (h₄ : t₂.typeOf = .bitvec n) :
-  (bvumod t₁ t₂).WellFormed εs ∧ (bvumod t₁ t₂).typeOf = .bitvec n
-:= by simp_wf_bv_arith h₁ h₂ h₃ h₄ Factory.bvumod Op.WellTyped.bvumod_wt
+  (bvurem t₁ t₂).WellFormed εs ∧ (bvurem t₁ t₂).typeOf = .bitvec n
+:= by simp_wf_bv_arith h₁ h₂ h₃ h₄ Factory.bvurem Op.WellTyped.bvurem_wt
 
 theorem wf_bvshl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (h₁ : t₁.WellFormed εs)

@@ -108,7 +108,7 @@ def Op.interpret (I : Interpretation) (op : Op) (ts : List Term) (ty : TermType)
   | .bvsdiv, [t₁, t₂]     => Factory.bvsdiv t₁ t₂
   | .bvsrem, [t₁, t₂]     => Factory.bvsrem t₁ t₂
   | .bvsmod, [t₁, t₂]     => Factory.bvsmod t₁ t₂
-  | .bvumod, [t₁, t₂]     => Factory.bvumod t₁ t₂
+  | .bvurem, [t₁, t₂]     => Factory.bvurem t₁ t₂
   | .bvudiv, [t₁, t₂]     => Factory.bvudiv t₁ t₂
   | .bvshl, [t₁, t₂]      => Factory.bvshl t₁ t₂
   | .bvlshr, [t₁, t₂]     => Factory.bvlshr t₁ t₂

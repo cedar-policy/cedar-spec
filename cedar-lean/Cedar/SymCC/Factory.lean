@@ -167,7 +167,7 @@ def bvsdiv := bvapp .bvsdiv BitVec.smtSDiv
 def bvudiv := bvapp .bvudiv BitVec.smtUDiv
 def bvsrem := bvapp .bvsrem BitVec.srem
 def bvsmod := bvapp .bvsmod BitVec.smod
-def bvumod := bvapp .bvumod BitVec.umod
+def bvurem := bvapp .bvurem BitVec.umod
 
 def bvshl  := bvapp .bvshl (λ b₁ b₂ => b₁ <<< b₂)
 def bvlshr := bvapp .bvlshr (λ b₁ b₂ => b₁ >>> b₂)
