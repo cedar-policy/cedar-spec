@@ -17,10 +17,22 @@
 import Cedar.TPE
 import Cedar.Thm.TPE.Input
 import Cedar.Thm.TPE.PreservesTypeOf
-import Cedar.Thm.TPE.WellTypedCases
 import Cedar.Thm.WellTyped.Residual.Definition
 import Cedar.Thm.Data.List
 import Cedar.Thm.Data.Map
+
+import Cedar.Thm.TPE.WellTyped.Basic
+import Cedar.Thm.TPE.WellTyped.And
+import Cedar.Thm.TPE.WellTyped.Binary
+import Cedar.Thm.TPE.WellTyped.Call
+import Cedar.Thm.TPE.WellTyped.GetAttr
+import Cedar.Thm.TPE.WellTyped.HasAttr
+import Cedar.Thm.TPE.WellTyped.IfThenElse
+import Cedar.Thm.TPE.WellTyped.Or
+import Cedar.Thm.TPE.WellTyped.Record
+import Cedar.Thm.TPE.WellTyped.Set
+import Cedar.Thm.TPE.WellTyped.Unary
+import Cedar.Thm.TPE.WellTyped.Var
 
 /-!
 This file contains theorems about partial evaluation preserving well-typedness of residuals.
@@ -63,7 +75,11 @@ theorem partial_eval_preserves_well_typed
 
   cases hᵣ : res <;> rw [hᵣ] at h_wt
   case val v ty =>
-    exact partial_eval_well_typed_val h_wf h_ref h_wt
+    simp only [TPE.evaluate]
+    exact h_wt
+  case error ty =>
+    simp only [TPE.evaluate]
+    exact h_wt
   case var v ty =>
     exact partial_eval_well_typed_var h_wf h_ref h_wt
   case and a b ty =>
@@ -101,10 +117,7 @@ theorem partial_eval_preserves_well_typed
     | binaryApp h_expr1 h_expr2 h_op =>
       have ih1 : Residual.WellTyped env (TPE.evaluate expr1 preq pes) := partial_eval_preserves_well_typed h_wf h_ref h_expr1
       have ih2 : Residual.WellTyped env (TPE.evaluate expr2 preq pes) := partial_eval_preserves_well_typed h_wf h_ref h_expr2
-
       apply partial_eval_well_typed_app₂ ih1 ih2 h_wf h_ref h_wt₂
-  case error ty =>
-    exact partial_eval_well_typed_error h_wf h_ref h_wt
   case set ls ty =>
     let h_wt₂ := h_wt
     cases h_wt₂
