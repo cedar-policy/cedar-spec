@@ -367,11 +367,6 @@ public theorem make_of_make_is_id [LT α] [DecidableLT α] [StrictLT α] (xs : L
 /-! ### find?, findOrErr, and mapOnValues -/
 
 @[simp]
-public theorem find?_empty {α β} [DecidableEq α] (k : α) :
-  (Map.empty : Map α β).find? k = none
-:= by simp [Map.find?, Map.empty]
-
-@[simp]
 public theorem singleton_find? [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] (k : α) (v : β) :
   (Map.make [(k, v)]).find? k = .some v
 := by simp [Map.find?, Map.make_singleton, toList_mk_id]

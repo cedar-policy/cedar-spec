@@ -123,4 +123,9 @@ theorem consistent_checks_ensure_refinement {schema : Schema} {req : Request} {e
     exact partial_is_valid_rfl (fun x => decide (x = data₁.ancestors)) (fun x => x = data₁.ancestors) data₂.ancestors decide_eq_implies_eq h₂₂
     exact partial_is_valid_rfl (fun x => decide (x = data₁.tags)) (fun x => x = data₁.tags) data₂.tags decide_eq_implies_eq h₂₃
 
+-- def PartialInstanceOfWellFormedEnvironment (request : PartialRequest) (entities : PartialEntities) (env : TypeEnv) : Prop :=
+--   env.WellFormed ∧
+--   InstanceOfRequestType request env ∧
+--   InstanceOfSchema entities env
+
 end Cedar.Thm

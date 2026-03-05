@@ -931,7 +931,7 @@ private theorem env_symbolize?_same_entities_action
     ]
   -- Prove obligations of `SameEntityData`
   and_intros
-  · simp only [Factory.app, Map.find?_empty, Term.isLiteral, ↓reduceIte]
+  · simp only [Factory.app, Map.not_find?_of_empty, Term.isLiteral, ↓reduceIte]
     simp only [SameValues, Term.value?, List.nil.sizeOf_spec, Nat.reduceAdd, Option.bind_eq_bind,
       hattrs_emp, Map.empty]
     change ([].mapM₂ fun x => Term.value?.attrValue? x.1.fst x.1.snd).bind _ = _

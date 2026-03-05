@@ -57,11 +57,7 @@ theorem partial_eval_preserves_well_typed
   Residual.WellTyped env (TPE.evaluate res preq pes)
 := by
   intro h_wf h_ref h_wt
-  unfold RequestAndEntitiesRefine at h_ref
-  rcases h_ref with ⟨h_rref, h_eref⟩
-  have h_ref : RequestAndEntitiesRefine req es preq pes := ⟨h_rref, h_eref⟩
-
-  cases hᵣ : res <;> rw [hᵣ] at h_wt
+  cases res
   case val v ty =>
     exact partial_eval_well_typed_val h_wf h_ref h_wt
   case var v ty =>
@@ -70,39 +66,38 @@ theorem partial_eval_preserves_well_typed
     let h_wt₂ := h_wt
     cases h_wt₂ with
     | and h_a h_b h_ty_a h_ty_b =>
-      have ih_a : Residual.WellTyped env (TPE.evaluate a preq pes) := partial_eval_preserves_well_typed h_wf h_ref h_a
-      have ih_b : Residual.WellTyped env (TPE.evaluate b preq pes) := partial_eval_preserves_well_typed h_wf h_ref h_b
+      have ih_a := partial_eval_preserves_well_typed h_wf h_ref h_a
+      have ih_b := partial_eval_preserves_well_typed h_wf h_ref h_b
       exact partial_eval_well_typed_and ih_a ih_b h_wf h_ref h_wt
   case or a b ty =>
     let h_wt₂ := h_wt
     cases h_wt₂ with
     | or h_a h_b h_ty_a h_ty_b =>
-      have ih_a : Residual.WellTyped env (TPE.evaluate a preq pes) := partial_eval_preserves_well_typed h_wf h_ref h_a
-      have ih_b : Residual.WellTyped env (TPE.evaluate b preq pes) := partial_eval_preserves_well_typed h_wf h_ref h_b
+      have ih_a := partial_eval_preserves_well_typed h_wf h_ref h_a
+      have ih_b := partial_eval_preserves_well_typed h_wf h_ref h_b
       exact partial_eval_well_typed_or ih_a ih_b h_wf h_ref h_wt
   case ite c t e ty =>
     let h_wt₂ := h_wt
     cases h_wt₂ with
     | ite h_c h_t h_e h_ty_c h_ty_t =>
-      have ih_c : Residual.WellTyped env (TPE.evaluate c preq pes) := partial_eval_preserves_well_typed h_wf h_ref h_c
-      have ih_t : Residual.WellTyped env (TPE.evaluate t preq pes) := partial_eval_preserves_well_typed h_wf h_ref h_t
-      have ih_e : Residual.WellTyped env (TPE.evaluate e preq pes) := partial_eval_preserves_well_typed h_wf h_ref h_e
+      have ih_c := partial_eval_preserves_well_typed h_wf h_ref h_c
+      have ih_t := partial_eval_preserves_well_typed h_wf h_ref h_t
+      have ih_e := partial_eval_preserves_well_typed h_wf h_ref h_e
       exact partial_eval_well_typed_ite ih_c ih_t ih_e h_wf h_ref h_wt
   case unaryApp op expr ty =>
     let h_wt₂ := h_wt
     cases h_wt₂ with
     | unaryApp h_expr h_op =>
-      have ih_expr : Residual.WellTyped env (TPE.evaluate expr preq pes) := partial_eval_preserves_well_typed h_wf h_ref h_expr
+      have ih_expr := partial_eval_preserves_well_typed h_wf h_ref h_expr
       exact partial_eval_well_typed_unaryApp ih_expr h_wf h_ref h_wt
   case binaryApp op expr1 expr2 ty =>
     simp [TPE.evaluate]
     have h_wt₂ := h_wt
     cases h_wt with
     | binaryApp h_expr1 h_expr2 h_op =>
-      have ih1 : Residual.WellTyped env (TPE.evaluate expr1 preq pes) := partial_eval_preserves_well_typed h_wf h_ref h_expr1
-      have ih2 : Residual.WellTyped env (TPE.evaluate expr2 preq pes) := partial_eval_preserves_well_typed h_wf h_ref h_expr2
-
-      apply partial_eval_well_typed_app₂ ih1 ih2 h_wf h_ref h_wt₂
+      have ih1 := partial_eval_preserves_well_typed h_wf h_ref h_expr1
+      have ih2 := partial_eval_preserves_well_typed h_wf h_ref h_expr2
+      exact partial_eval_well_typed_app₂ ih1 ih2 h_wf h_ref h_wt₂
   case error ty =>
     exact partial_eval_well_typed_error h_wf h_ref h_wt
   case set ls ty =>
@@ -136,19 +131,19 @@ theorem partial_eval_preserves_well_typed
     let h_wt₂ := h_wt
     cases h_wt₂
     case getAttr_entity ety rty h₄ h₅ h₆ h₇ =>
-      have ih_expr : Residual.WellTyped env (TPE.evaluate expr preq pes) := partial_eval_preserves_well_typed h_wf h_ref h₅
+      have ih_expr := partial_eval_preserves_well_typed h_wf h_ref h₅
       exact partial_eval_well_typed_getAttr ih_expr h_wf h_ref h_wt
     case getAttr_record rty h₄ h₅ h₆ =>
-      have ih_expr : Residual.WellTyped env (TPE.evaluate expr preq pes) := partial_eval_preserves_well_typed h_wf h_ref h₄
+      have ih_expr := partial_eval_preserves_well_typed h_wf h_ref h₄
       exact partial_eval_well_typed_getAttr ih_expr h_wf h_ref h_wt
   case hasAttr expr attr ty =>
     let h_wt₂ := h_wt
     cases h_wt₂
     case hasAttr_entity ety h₅ h₆ =>
-      have ih_expr : Residual.WellTyped env (TPE.evaluate expr preq pes) := partial_eval_preserves_well_typed h_wf h_ref h₅
+      have ih_expr := partial_eval_preserves_well_typed h_wf h_ref h₅
       exact partial_eval_well_typed_hasAttr ih_expr h_wf h_ref h_wt
     case hasAttr_record rty h₆ h₇ =>
-      have ih_expr : Residual.WellTyped env (TPE.evaluate expr preq pes) := partial_eval_preserves_well_typed h_wf h_ref h₆
+      have ih_expr := partial_eval_preserves_well_typed h_wf h_ref h₆
       exact partial_eval_well_typed_hasAttr ih_expr h_wf h_ref h_wt
   case call xfn args ty =>
     let h_wt₂ := h_wt
