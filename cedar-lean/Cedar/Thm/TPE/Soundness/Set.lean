@@ -58,11 +58,9 @@ theorem partial_evaluate_is_sound_set
     simp only [List.mapM₁_eq_mapM (Residual.evaluate · req es), to_option_some, do_ok_eq_ok, Value.set.injEq]
     exists vs
     simp only [and_true]
-    simp [List.mapM_some_iff_forall₂] at heq
-    have : ∀ x y, (TPE.evaluate x preq pes).asValue = some y → (TPE.evaluate x preq pes).evaluate req es = .ok y := by
-      intro x y h
-      rcases as_value_some h with ⟨_, h⟩
-      simp [h, Residual.evaluate]
+    simp only [List.mapM_some_iff_forall₂, Function.comp_apply] at heq
+    have : ∀ x y, (TPE.evaluate x preq pes).asValue = some y → (TPE.evaluate x preq pes).evaluate req es = .ok y :=
+      λ x y => as_value_evaluates_to
     replace heq := List.Forall₂.imp this heq
     clear this
     rw [←List.mapM_ok_iff_forall₂] at heq

@@ -63,11 +63,10 @@ theorem partial_evaluate_is_sound_record
     simp only [List.mapM_map, List.mapM_some_iff_forall₂] at heq
     have : ∀ (x : Attr × Residual) y, bindAttr x.fst (TPE.evaluate x.snd preq pes).asValue = some y → bindAttr x.fst ((TPE.evaluate x.snd preq pes).evaluate req es) = .ok y := by
       intro x y h
-      simp only [bindAttr] at *
+      simp only [bindAttr] at h ⊢
       simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at h
       rcases h with ⟨_, h₁, h₂⟩
-      rcases as_value_some h₁ with ⟨_, h₁⟩
-      simp only [h₁, Residual.evaluate, bind_pure_comp, Except.map_ok, h₂]
+      simp [h₂, as_value_evaluates_to h₁]
     replace heq := List.Forall₂.imp this heq
     clear this
     rw [←List.mapM_ok_iff_forall₂] at heq

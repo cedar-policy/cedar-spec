@@ -54,10 +54,8 @@ theorem partial_evaluate_is_sound_call
   case _ vs heq =>
     simp only [Residual.evaluate, List.mapM₁_eq_mapM (Residual.evaluate · req es), someOrError]
     simp only [List.mapM_some_iff_forall₂] at heq
-    have : ∀ x y, (TPE.evaluate x preq pes).asValue = some y → (TPE.evaluate x preq pes).evaluate req es = .ok y := by
-      intro x y h
-      rcases as_value_some h with ⟨_, h⟩
-      simp [h, Residual.evaluate]
+    have : ∀ x y, (TPE.evaluate x preq pes).asValue = some y → (TPE.evaluate x preq pes).evaluate req es = .ok y :=
+      λ x y => as_value_evaluates_to
     replace heq := List.Forall₂.imp this heq
     clear this
     rw [←List.mapM_ok_iff_forall₂] at heq

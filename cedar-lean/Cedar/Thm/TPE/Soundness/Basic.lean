@@ -36,14 +36,23 @@ open Cedar.Validation
 open Cedar.TPE
 open Cedar.Thm
 
+@[simp]
 theorem as_value_some {r : Residual} {v : Value} :
-  r.asValue = .some v → (∃ ty, r = .val v ty)
+  r.asValue = .some v ↔ (∃ ty, r = .val v ty)
 := by
-  intro h
-  simp only [Residual.asValue] at h
-  split at h <;> simp at h
-  subst h
-  simp only [Residual.val.injEq, true_and, exists_eq']
+  simp only [Residual.asValue]
+  split
+  · simp
+  · rename_i h
+    simp only [reduceCtorEq, false_iff]
+    exact not_exists.mpr (h v)
+
+theorem as_value_evaluates_to {r : Residual} {v : Value} :
+  r.asValue = .some v → r.evaluate req es = Except.ok v
+:= by
+  simp only [as_value_some, forall_exists_index]
+  intro _ hv
+  simp [hv, Residual.evaluate]
 
 theorem anyM_some_implies_any {α} {xs : List α} {b : Bool}  (f : α → Option Bool) (g : α → Bool) :
 (∀ x b, f x = some b → g x = b) → List.anyM f xs = some b → xs.any g = b
