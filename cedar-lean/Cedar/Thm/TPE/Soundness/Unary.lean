@@ -53,12 +53,9 @@ theorem partial_evaluate_is_sound_unary_app
     rcases to_option_right_err hᵢ₁ with ⟨_, hᵢ₁⟩
     simp [Residual.evaluate, hᵢ₁, Except.toOption]
   case _ =>
-    split <;>
-    (rename_i heq; simp [Residual.asValue] at heq; split at heq) <;>
-    simp at heq
-    case _ heq₁ =>
-      subst heq
-      simp [heq₁, Residual.evaluate] at hᵢ₁
+    split
+    case _ heq =>
+      rw [asValue_evaluate_val heq] at hᵢ₁
       replace hᵢ₁ := to_option_right_ok' hᵢ₁
       simp [someOrError, Residual.evaluate, hᵢ₁]
       split
@@ -66,7 +63,7 @@ theorem partial_evaluate_is_sound_unary_app
         simp [to_option_some] at heq₂
         simp [heq₂, Residual.evaluate]
       case _ heq₂ =>
-        rcases to_option_none heq₂ with ⟨_, heq₂⟩
+        rcases to_option_none.mp heq₂ with ⟨_, heq₂⟩
         simp [heq₂, Residual.evaluate, Except.toOption]
     case _ =>
       simp [Residual.evaluate]
