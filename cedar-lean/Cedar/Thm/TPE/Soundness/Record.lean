@@ -64,27 +64,23 @@ theorem partial_evaluate_is_sound_record
     have : ∀ (x : Attr × Residual) y, bindAttr x.fst (TPE.evaluate x.snd preq pes).asValue = some y → bindAttr x.fst ((TPE.evaluate x.snd preq pes).evaluate req es) = .ok y := by
       intro x y h
       simp only [bindAttr] at h ⊢
-      simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at h
-      rcases h with ⟨_, h₁, h₂⟩
-      simp [h₂, as_value_evaluates_to h₁]
+      cases h₁ : (TPE.evaluate x.snd preq pes).asValue <;>
+        simp only [h₁, Option.pure_def, Option.bind_none_fun, reduceCtorEq, Option.bind_some_fun, Option.some.injEq] at h
+      simp [h, asValue_evaluate_val h₁]
     replace heq := List.Forall₂.imp this heq
     clear this
     rw [←List.mapM_ok_iff_forall₂] at heq
-    have : ∀ x,
-      x ∈ m →
+    have : ∀ x ∈ m,
       Except.toOption (bindAttr x.fst ((TPE.evaluate x.snd preq pes).evaluate req es)) =
-      Except.toOption (bindAttr x.fst (x.snd.evaluate req es)) := by
+      Except.toOption (bindAttr x.fst (x.snd.evaluate req es))
+    := by
       intro x h
-      have hrfl : x = (x.fst, x.snd) := by rfl
-      rw [hrfl] at h
       specialize hᵢ₁ x.fst x.snd h
-      simp [bindAttr]
-      symm
-      exact to_option_eq_map (Prod.mk x.fst ·) hᵢ₁
-    have h₁ := to_option_eq_mapM
-      (λ (x : Attr × Residual) => bindAttr x.fst ((TPE.evaluate x.snd preq pes).evaluate req es))
-      (λ x => bindAttr x.fst (x.snd.evaluate req es))
-      this
+      simp only [bindAttr, bind_pure_comp]
+      rw [to_option_distr_fmap]
+      rw [to_option_distr_fmap]
+      rw [hᵢ₁]
+    have h₁ := List.mapM_to_option_congr this
     simp [heq] at h₁
     replace h₁ := to_option_left_ok' h₁
     exact h₁
@@ -94,16 +90,15 @@ theorem partial_evaluate_is_sound_record
       List.map₁_eq_map λ (x : Attr × Residual) => (x.fst, TPE.evaluate x.snd preq pes),
       List.any_map, List.any_eq_true, Function.comp_apply, Prod.exists] at h₁
     rcases h₁ with ⟨k, v, h₂, h₃⟩
-    simp [Residual.isError] at h₃
-    split at h₃ <;> simp at h₃
-    rename_i heq
+    have ⟨tpe_err, h_tpe_err⟩ := isError_evaluate_err h₃ req es
     specialize hᵢ₁ k v h₂
-    simp [heq, Residual.evaluate] at hᵢ₁
+    rw [h_tpe_err] at hᵢ₁
     rcases to_option_right_err hᵢ₁ with ⟨err, hᵢ₁⟩
     simp only [Residual.evaluate, List.mapM₂_eq_mapM λ x => bindAttr x.fst (Residual.evaluate x.snd req es)]
-    have : (fun (x: Attr × Residual) => bindAttr x.fst (x.snd.evaluate req es)) (k, v) = .error err := by
-      simp only [bindAttr, hᵢ₁, bind_pure_comp, Except.map_error]
-    have h₄ := @List.element_error_implies_mapM_error _ _ _ _ _ (fun (x: Attr × Residual) => bindAttr x.fst (x.snd.evaluate req es)) _ h₂ this
+    have h₄ := @List.element_error_implies_mapM_error _ _ _ _ _
+      (fun (x: Attr × Residual) => bindAttr x.fst (x.snd.evaluate req es)) _
+      h₂ (show (fun (x: Attr × Residual) => bindAttr x.fst (x.snd.evaluate req es)) (k, v) = .error err from
+        by simp only [bindAttr, hᵢ₁, bind_pure_comp, Except.map_error])
     rcases h₄ with ⟨_, h₄⟩
     simp [h₄, Except.toOption]
   case _ =>
@@ -111,19 +106,16 @@ theorem partial_evaluate_is_sound_record
       List.mapM₂_eq_mapM λ x => bindAttr x.fst (Residual.evaluate x.snd req es), List.mapM_map,
       Function.comp_def]
     apply to_option_eq_do₁
-    have : ∀ x,
-      x ∈ m →
+    have : ∀ x ∈ m,
       Except.toOption (bindAttr x.fst (x.snd.evaluate req es)) =
-      Except.toOption (bindAttr x.fst ((TPE.evaluate x.snd preq pes).evaluate req es)) := by
+      Except.toOption (bindAttr x.fst ((TPE.evaluate x.snd preq pes).evaluate req es))
+    := by
       intro x h
-      have hrfl : x = (x.fst, x.snd) := by rfl
-      rw [hrfl] at h
       specialize hᵢ₁ x.fst x.snd h
       simp [bindAttr]
-      exact to_option_eq_map (Prod.mk x.fst ·) hᵢ₁
-    exact to_option_eq_mapM
-      (fun (x : Attr × Residual) => bindAttr x.fst (x.snd.evaluate req es))
-      (fun x => bindAttr x.fst ((TPE.evaluate x.snd preq pes).evaluate req es))
-      this
+      rw [to_option_distr_fmap]
+      rw [to_option_distr_fmap]
+      rw [hᵢ₁]
+    exact List.mapM_to_option_congr this
 
 end Cedar.Thm

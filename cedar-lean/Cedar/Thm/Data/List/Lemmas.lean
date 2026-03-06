@@ -956,6 +956,16 @@ public theorem element_error_implies_mapM_error {x : α} {xs : List α} {f : α 
   rw [← List.mapM'_eq_mapM]
   exact element_error_implies_mapM'_error
 
+public theorem element_to_option_none_implies_mapM_none {α β ε} {ls : List α} {x : α}
+  {f : α → Except ε β}
+  (h₁ : x ∈ ls)
+  (h₂ : (f x).toOption = none) :
+  (List.mapM f ls).toOption = none
+:= by
+  rw [to_option_none] at h₂
+  have ⟨_, he⟩ := List.element_error_implies_mapM_error h₁ h₂.choose_spec
+  simp [he, Except.toOption]
+
 public theorem mapM'_ok_eq_filterMap {α β} {f : α → Except ε β} {xs : List α} {ys : List β} :
   xs.mapM' f = .ok ys →
   xs.filterMap (λ x => match f x with | .ok y => some y | .error _ => none) = ys
@@ -1222,6 +1232,32 @@ public theorem mapM_congr [Monad m] [LawfulMonad m] {f g : α → m β} : ∀ {l
   intro l
   rw [← mapM'_eq_mapM, ← mapM'_eq_mapM]
   exact mapM'_congr
+
+public theorem mapM'_to_option_congr {α β ε₁ ε₂} {l : List α} {f: α → Except ε₁ β} {g: α → Except ε₂ β} :
+(∀ x ∈ l, (f x).toOption = (g x).toOption) →
+(List.mapM' f l).toOption = (List.mapM' g l).toOption
+:= by
+  induction l
+  case nil =>
+    simp only [not_mem_nil, false_implies, implies_true, mapM'_nil, forall_const]
+    rfl
+  case cons head tail hᵢ =>
+    intro h
+    let ⟨h₁, h₂⟩ := forall_mem_cons.1 h ; clear h
+    simp only [mapM'_cons, bind_pure_comp]
+    cases h₃ : (f head).toOption <;> rw [h₃] at h₁
+    · simp [do_to_option_none h₁.symm, do_to_option_none h₃]
+    · simp only [do_to_option_some h₃, do_to_option_some h₁.symm]
+      rw [to_option_distr_fmap]
+      rw [to_option_distr_fmap]
+      rw [hᵢ h₂]
+
+public theorem mapM_to_option_congr {α β ε₁ ε₂} {l : List α} {f: α → Except ε₁ β} {g: α → Except ε₂ β} :
+(∀ x ∈ l, (f x).toOption = (g x).toOption) →
+(List.mapM f l).toOption = (List.mapM g l).toOption
+:= by
+  rw [← mapM'_eq_mapM, ← mapM'_eq_mapM]
+  exact mapM'_to_option_congr
 
 /-! ### foldl -/
 
@@ -2105,5 +2141,33 @@ public theorem find?_filter_sorted {α : Type u} {β : Type v} [BEq α] [LawfulB
         have ih := List.find?_filter_sorted k val t p (List.tail_sortedBy h_sorted) h_find
         simp only [ih, List.find?_cons_eq_some, Bool.not_eq_eq_eq_not, Bool.not_true, beq_eq_false_iff_ne, and_true]
         exact .inr h_k
+
+public theorem anyM_some_implies_any {α} {xs : List α} {b : Bool}  (f : α → Option Bool) (g : α → Bool) :
+  (∀ x b, f x = some b → g x = b) → List.anyM f xs = some b → xs.any g = b
+:= by
+  intro h₁ h₂
+  induction xs generalizing b
+  case nil =>
+    simp only [anyM_nil, Option.pure_def, Option.some.injEq, Bool.false_eq] at h₂
+    simp only [any_nil, h₂]
+  case cons head tail hᵢ =>
+    simp only [any_cons]
+    simp only [anyM_cons, Option.pure_def, Option.bind_eq_bind] at h₂
+    generalize h₃ : f head = res
+    cases res <;> simp [h₃] at h₂
+    case some =>
+      split at h₂
+      case _ h₄ =>
+        simp only [Option.some.injEq, Bool.true_eq] at h₂
+        subst h₂ h₄
+        specialize h₁ head true h₃
+        simp only [h₁, Bool.true_or]
+      case _ h₄ =>
+        specialize hᵢ h₂
+        simp only [hᵢ, Bool.or_eq_right_iff_imp]
+        simp only [Bool.not_eq_true] at h₄
+        subst h₄
+        specialize h₁ head false h₃
+        simp only [h₁, Bool.false_eq_true, false_implies]
 
 end List
