@@ -54,7 +54,7 @@ theorem reauthorize_satisfied_policies_equiv
   clear h_auth
   simp [Response.reauthorize.satisfiedPolicies, satisfiedPolicies, satisfiedWithEffect, Response.reauthorize.satisfiedWithEffect]
   rw [←Data.Set.subset_iff_eq (Data.Set.make_wf _) (Data.Set.make_wf _)]
-  simp [Data.Set.subset_def, ←Data.Set.make_mem, List.mem_filterMap]
+  simp [Data.Set.subset_def, Data.Set.mem_make, List.mem_filterMap]
   and_intros
   · intro pid rp h₁ h₂ h₃ h₄
     replace ⟨p, h_auth₁, h_auth₂⟩ := h_auth₁ rp h₁
@@ -93,7 +93,7 @@ theorem reauthorize_error_policies_equiv
   clear h_auth
   simp [Spec.errorPolicies, TPE.Response.reauthorize.errorPolicies, Response.reauthorize.errored, Spec.errored]
   rw [←Data.Set.subset_iff_eq (Data.Set.make_wf _) (Data.Set.make_wf _)]
-  simp [Data.Set.subset_def, ←Data.Set.make_mem, List.mem_filterMap]
+  simp [Data.Set.subset_def, Data.Set.mem_make, List.mem_filterMap]
   and_intros
   · intro pid rp h₁ h₂ h₃
     replace ⟨p, h_auth₁, h_auth₂⟩ := h_auth₁ rp h₁
@@ -144,10 +144,10 @@ theorem no_satisfied_effect_if_empty_satisfied_and_residual_policies
   replace ⟨_, hp⟩ :
     ∃ ty, r = .val (.prim (.bool false)) ty ∨ r = .error ty
   := by
-    simp only [isAuthorized.satisfiedPolicies, Set.empty_iff_not_exists, ← Set.make_mem,
+    simp only [isAuthorized.satisfiedPolicies, Set.empty_iff_not_exists, Set.mem_make,
       List.mem_filterMap, ResidualPolicy.satisfiedWithEffect, ResidualPolicy.satisfied,
       Residual.isTrue, Option.ite_none_right_eq_some] at h_satisfied_empty
-    simp only [isAuthorized.residualPolicies, Set.empty_iff_not_exists, ← Set.make_mem,
+    simp only [isAuthorized.residualPolicies, Set.empty_iff_not_exists, Set.mem_make,
       List.mem_filterMap, ResidualPolicy.residualWithEffect, ResidualPolicy.isResidual,
       ResidualPolicy.satisfied, Residual.isTrue, ResidualPolicy.isFalse, Residual.isFalse,
       ResidualPolicy.hasError, Residual.isError, Option.ite_none_right_eq_some, not_exists] at h_residual_empty
@@ -177,8 +177,6 @@ theorem satisfied_effect_if_non_empty_satisfied_policies
   rw [Set.non_empty_iff_exists] at h_non_empty
   replace ⟨_, hf⟩ := h_non_empty
   simp [isAuthorized.satisfiedPolicies] at hf
-  rw [←Set.make_mem] at hf
-  simp [List.mem_filterMap] at hf
   simp [ResidualPolicy.satisfiedWithEffect, ResidualPolicy.satisfied, Residual.isTrue] at hf
   have ⟨rp, hf₁, ⟨ hf₂, hf₃⟩, hf₄⟩ := hf ; clear hf
   split at hf₃ <;> try contradiction
@@ -213,7 +211,7 @@ theorem partial_authorize_error_policies_is_sound
   have h₄ : (Spec.isAuthorized req es policies).erroringPolicies =  errorPolicies policies req es :=
     by grind [Spec.isAuthorized]
   simp only [errorPolicies, errored, hasError] at h₄
-  simp only [h₄, isAuthorized.errorPolicies, Set.subset_def, ← Set.make_mem, List.mem_filterMap,
+  simp only [h₄, isAuthorized.errorPolicies, Set.subset_def, Set.mem_make, List.mem_filterMap,
     ResidualPolicy.erroredWithEffect, ResidualPolicy.hasError, Residual.isError, Bool.and_eq_true,
     beq_iff_eq, Option.ite_none_right_eq_some, Option.some.injEq, forall_exists_index, and_imp]
   intro pid rp hrp hef herr hpid
@@ -248,7 +246,7 @@ theorem partial_authorize_satisfied_policies_is_sound
 := by
   intro h₁ h₂
   simp only [isAuthorized.satisfiedPolicies, satisfiedPolicies, satisfiedWithEffect,
-    Bool.and_eq_true, beq_iff_eq, Set.subset_def, ← Set.make_mem, List.mem_filterMap,
+    Bool.and_eq_true, beq_iff_eq, Set.subset_def, Set.mem_make, List.mem_filterMap,
     ResidualPolicy.satisfiedWithEffect, ResidualPolicy.satisfied, Option.ite_none_right_eq_some,
     Option.some.injEq, forall_exists_index, and_imp]
   intro pid rp hrp hef htrue hpid

@@ -51,7 +51,7 @@ theorem enforceCompiledPolicy_eqv_enforce_ok {p wp : Policy} {cp : CompiledPolic
     · left
       rename_i h₂
       replace ⟨t', h₂, ht⟩ := h₂ ; subst t ; rename Term => t
-      rw [Data.Set.in_list_iff_in_set] at *
+      rw [Data.Set.mem_elts_iff_mem_set] at *
       rw [List.mem_mapUnion_iff_mem_exists] at h₂
       replace ⟨s, hs, h₂⟩ := h₂
       simp at hs ; subst s
@@ -60,7 +60,7 @@ theorem enforceCompiledPolicy_eqv_enforce_ok {p wp : Policy} {cp : CompiledPolic
     · right
       rename_i h₂
       replace ⟨s, hs, t', ht', h₂⟩ := h₂ ; subst t ; rename Term => t
-      simp [Data.Set.in_list_iff_in_set, List.mem_mapUnion_iff_mem_exists] at *
+      simp [Data.Set.mem_elts_iff_mem_set, List.mem_mapUnion_iff_mem_exists] at *
       exists s
       simp [hs]
       exists t
@@ -68,19 +68,19 @@ theorem enforceCompiledPolicy_eqv_enforce_ok {p wp : Policy} {cp : CompiledPolic
     cases h₂
     · left
       rename_i h₂
-      simp [Data.Set.in_list_iff_in_set, Data.Set.mem_map] at h₂
+      simp [Data.Set.mem_elts_iff_mem_set, Data.Set.mem_map] at h₂
       replace ⟨t', ht', h₂⟩ := h₂ ; subst t ; rename Term => t
       exists t
-      simp [Data.Set.in_list_iff_in_set, List.mem_mapUnion_iff_mem_exists]
+      simp [Data.Set.mem_elts_iff_mem_set, List.mem_mapUnion_iff_mem_exists]
       exact ht'
     · right
       rename_i h₂
       replace ⟨s, hs, t', ht', h₂⟩ := h₂ ; subst t ; rename Term => t
       exists s
-      rw [Data.Set.in_list_iff_in_set] at *
+      rw [Data.Set.mem_elts_iff_mem_set] at *
       simp [List.mem_mapUnion_iff_mem_exists, hs]
       exists t
-      simp [Data.Set.in_list_iff_in_set, List.mem_mapUnion_iff_mem_exists, ht']
+      simp [Data.Set.mem_elts_iff_mem_set, List.mem_mapUnion_iff_mem_exists, ht']
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
@@ -113,16 +113,14 @@ theorem enforcePairCompiledPolicy_eqv_enforce_ok {p₁ p₂ wp₁ wp₂ : Policy
   · intro t₁ h₁
     cases h₁ <;> rename_i h₁
     · replace ⟨t₂, h₁, htemp⟩ := h₁ ; subst t₁
-      simp [Data.Set.in_list_iff_in_set] at *
+      simp only [List.cons_append, List.nil_append, Data.Set.mem_elts_iff_mem_set,
+        Data.Set.mem_map] at *
       change t₂ ∈ _ ∪ _ at h₁
-      rw [Data.Set.mem_union_iff_mem_or] at h₁
+      rw [Data.Set.mem_union] at h₁
       cases h₁ <;> rename_i h₁
       case' inl => left
       case' inr => right ; left
-      all_goals {
-        simp [Data.Set.mem_map]
-        exists t₂
-      }
+      all_goals exists t₂
     · right ; right
       simp [*]
   · intro t₁ h₁
@@ -130,12 +128,12 @@ theorem enforcePairCompiledPolicy_eqv_enforce_ok {p₁ p₂ wp₁ wp₂ : Policy
     case right.inr.inr => right ; exact h₁
     case' right.inl | right.inr.inl =>
       left
-      simp [Data.Set.in_list_iff_in_set, Data.Set.mem_map] at h₁
+      simp [Data.Set.mem_elts_iff_mem_set, Data.Set.mem_map] at h₁
       replace ⟨t₂, h₁, htemp⟩ := h₁ ; subst t₁
       exists t₂
-      simp [Data.Set.in_list_iff_in_set, HAppend.hAppend]
+      simp [Data.Set.mem_elts_iff_mem_set, HAppend.hAppend]
       change t₂ ∈ _ ∪ _
-      rw [Data.Set.mem_union_iff_mem_or]
+      rw [Data.Set.mem_union]
     case' right.inl => left
     case' right.inr.inl => right
     all_goals exact h₁
@@ -171,10 +169,10 @@ theorem enforcePairCompiledPolicySet_eqv_enforce_ok {ps₁ ps₂ wps₁ wps₂ :
   · intro t₁ h₁
     cases h₁ <;> rename_i h₁
     · replace ⟨t₂, h₁, htemp⟩ := h₁ ; subst t₁
-      simp [Data.Set.in_list_iff_in_set] at *
-      simp [footprints]
+      simp only [Data.Set.mem_elts_iff_mem_set, Data.Set.mem_map] at *
+      simp only [footprints, List.mapUnion_map]
       change t₂ ∈ _ ∪ _ at h₁
-      rw [Data.Set.mem_union_iff_mem_or] at h₁
+      rw [Data.Set.mem_union] at h₁
       cases h₁ <;> rename_i h₁
       case' inl => left
       case' inr => right ; left
@@ -182,7 +180,6 @@ theorem enforcePairCompiledPolicySet_eqv_enforce_ok {ps₁ ps₂ wps₁ wps₂ :
         simp only [footprints, List.mapUnion_map] at h₁
         rw [List.mem_mapUnion_iff_mem_exists] at h₁
         replace ⟨x, h₁, h₂⟩ := h₁
-        simp only [Data.Set.mem_map]
         exists t₂
         simp only [List.mem_mapUnion_iff_mem_exists, Function.comp_apply, and_true]
         exists x
@@ -194,14 +191,14 @@ theorem enforcePairCompiledPolicySet_eqv_enforce_ok {ps₁ ps₂ wps₁ wps₂ :
     case right.inr.inr => right ; exact h₁
     case' right.inl | right.inr.inl =>
       left
-      simp [Data.Set.in_list_iff_in_set, Data.Set.mem_map] at h₁
+      simp [Data.Set.mem_elts_iff_mem_set, Data.Set.mem_map] at h₁
       replace ⟨t₂, h₁, htemp⟩ := h₁ ; subst t₁
       simp [mem_footprints_iff] at h₁
       replace ⟨x, ⟨p, hp, htemp⟩, h₁⟩ := h₁ ; subst x
       exists t₂
-      simp [Data.Set.in_list_iff_in_set, HAppend.hAppend]
+      simp [Data.Set.mem_elts_iff_mem_set, HAppend.hAppend]
       change t₂ ∈ _ ∪ _
-      rw [Data.Set.mem_union_iff_mem_or]
+      rw [Data.Set.mem_union]
     case' right.inl => left
     case' right.inr.inl => right
     all_goals {

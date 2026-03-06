@@ -76,7 +76,7 @@ private theorem sym_entities_is_valid_entity_uid_implies_entity_uid_wf
       simp only [SymEntityData.ofActionType, Prod.mk.injEq] at hactTy
       simp only [←hactTy.2, SymEntityData.ofActionType.acts] at huid
       have := Set.contains_prop_bool_equiv.mp huid
-      have := (Set.make_mem _ _).mpr this
+      rw [Set.mem_make] at this
       have ⟨⟨act', entry'⟩, hmem_act', hact'⟩ := List.mem_filterMap.mp this
       simp only [Option.ite_none_right_eq_some, Option.some.injEq] at hact'
       have : act' = uid := by
@@ -242,7 +242,7 @@ private theorem ofType_typeOf_pullback
     constructor
     intros v_ts hmem_v_ts
     have ⟨t', hmem_t', hval_t'⟩ := List.mapM_some_implies_all_from_some
-      hval_ts v_ts ((Set.make_mem _ _).mpr hmem_v_ts)
+      hval_ts v_ts ((Set.mem_make _ _).mp hmem_v_ts)
     have hwf_t' := hwf_ts t' hmem_t'
     apply ofType_typeOf_pullback hwf_Γ hwf_ty_ts hlift_ty_ts hwf_t' _ hval_t'
     have heq_ty_t' := heq_ty_ts t' hmem_t'
@@ -1055,7 +1055,7 @@ private theorem ofEnv_entity_completeness_action
         simp only [Term.set.injEq] at happ_ancUF
         simp only [←happ_ancUF.1] at hmem_anc_ts
         simp only [heq_entry'', hancTy.1] at hmem_anc_ts
-        replace hmem_anc_ts := (Set.make_mem _ _).mpr hmem_anc_ts
+        rw [Set.mem_make] at hmem_anc_ts
         have ⟨ancₜ, hmem_ancₜ, hancₜ⟩ := List.mem_filterMap.mp hmem_anc_ts
         simp only [
           SymEntityData.ofActionType.termOfType?,
@@ -1110,10 +1110,10 @@ private theorem ofEnv_entity_completeness_action
       specialize hmem (.prim (.entity anc))
       simp only [Term.prim.injEq, TermPrim.entity.injEq, exists_eq_left'] at hmem
       apply hmem
-      apply (Set.make_mem _ _).mp
+      rw [Set.mem_make]
       apply List.mem_filterMap.mpr
       exists anc
-      have := (Set.in_list_iff_in_set _ _).mpr hmem_entry_anc
+      have := (Set.mem_elts_iff_mem_set _ _).mpr hmem_entry_anc
       simp only [Set.toList, this, SymEntityData.ofActionType.termOfType?, ↓reduceIte, and_self]
 
 private theorem ofEnv_entity_completeness
@@ -1164,9 +1164,8 @@ private theorem ofEnv_entity_completeness
     simp only [
       hδ', ←heq_δ', SymEntityData.ofActionType, SymEntityData.interpret,
     ] at hmems
-    simp only [Option.some.injEq, forall_eq', SymEntityData.ofActionType.acts] at hmems
-    have := (Set.make_mem _ _).mpr hmems
-    have ⟨⟨uid', entry'⟩, hmem_uid', huid'⟩ := List.mem_filterMap.mp this
+    simp only [Option.some.injEq, forall_eq', SymEntityData.ofActionType.acts, Set.mem_make] at hmems
+    have ⟨⟨uid', entry'⟩, hmem_uid', huid'⟩ := List.mem_filterMap.mp hmems
     have heq_uid' : uid' = uid := by
       cases uid'; cases uid
       simp at huid'
@@ -1230,7 +1229,7 @@ private theorem enum_complete_implies_has_all_actions
       intros heq
       simp only [heq]
   · rfl
-  · apply (Set.make_mem _ _).mp
+  · rw [Set.mem_make]
     simp only [SymEntityData.ofActionType.acts]
     apply List.mem_filterMap.mpr
     exists (uid, entry)

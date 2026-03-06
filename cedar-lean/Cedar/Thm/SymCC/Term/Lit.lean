@@ -39,7 +39,7 @@ theorem lit_term_set_implies_lit_elt {s : Set Term} {ty : TermType} {t : Term} :
   intro h₁ h₂
   unfold Term.isLiteral at h₁
   simp only [List.attach_def, List.all_pmap_subtype Term.isLiteral, List.all_eq_true] at h₁
-  rw [← Set.in_list_iff_in_set] at h₂
+  rw [← Set.mem_elts_iff_mem_set] at h₂
   simp only [Set.elts] at h₂
   exact h₁ t h₂
 
@@ -50,7 +50,7 @@ theorem lit_term_set_impliedBy_lit_elts {s : Set Term} {ty : TermType} :
   unfold Term.isLiteral
   simp only [List.attach_def, List.all_pmap_subtype Term.isLiteral, List.all_eq_true]
   intro t h₂
-  rw [Set.in_list_iff_in_set] at h₂
+  rw [Set.mem_elts_iff_mem_set] at h₂
   exact h₁ t h₂
 
 theorem lit_term_set_cons {hd : Term} {tl : List Term} {ty : TermType} :
@@ -58,13 +58,13 @@ theorem lit_term_set_cons {hd : Term} {tl : List Term} {ty : TermType} :
   (hd.isLiteral ∧ (Term.set (Set.mk tl) ty).isLiteral)
 := by
   intro h₁
-  have h₂ := Set.mem_cons_self hd tl
+  have h₂ := Set.mem_mk_hd hd tl
   simp only [lit_term_set_implies_lit_elt h₁ h₂, true_and]
   apply lit_term_set_impliedBy_lit_elts
   intro t h₃
-  rw [← Set.in_list_iff_in_mk] at h₃
+  rw [← Set.mem_set_iff_mem_mk] at h₃
   replace h₃ := List.mem_cons_of_mem hd h₃
-  rw [Set.in_list_iff_in_set] at h₃
+  rw [Set.mem_elts_iff_mem_set] at h₃
   exact lit_term_set_implies_lit_elt h₁ h₃
 
 theorem lit_term_record_implies_lit_value {r : Map Attr Term} {a : Attr} {t : Term} :

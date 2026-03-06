@@ -60,6 +60,7 @@ public theorem wf_iff_sorted {α} [LT α] [DecidableLT α] [StrictLT α]  (s : S
 
 /-! ### contains and mem -/
 
+@[simp]
 public theorem contains_prop_bool_equiv [DecidableEq α] {v : α} {s : Set α} :
   s.contains v = true ↔ v ∈ s
 := by
@@ -67,6 +68,7 @@ public theorem contains_prop_bool_equiv [DecidableEq α] {v : α} {s : Set α} :
   · exact List.mem_of_elem_eq_true h
   · exact List.elem_eq_true_of_mem h
 
+@[simp]
 public theorem not_contains_prop_bool_equiv [DecidableEq α] {v : α} {s : Set α} :
   s.contains v = false ↔ v ∉ s
 := by
@@ -82,39 +84,40 @@ public theorem not_contains_prop_bool_equiv [DecidableEq α] {v : α} {s : Set �
     | false =>
       rfl
 
-public theorem in_list_iff_in_set {α : Type u} (v : α) (s : Set α) :
+public theorem mem_elts_iff_mem_set {α : Type u} (v : α) (s : Set α) :
   v ∈ s.elts ↔ v ∈ s
 := by
   constructor
   case mp => intro h ; apply h
   case mpr => simp [elts, Membership.mem]
 
-public theorem in_list_iff_in_mk {α : Type u} (v : α) (xs : List α) :
+public theorem mem_set_iff_mem_mk {α : Type u} (v : α) (xs : List α) :
   v ∈ xs ↔ v ∈ mk xs
 := by
   constructor
   case mp => intro h ; apply h
   case mpr => simp [elts, Membership.mem]
 
-public theorem mem_cons_self {α : Type u} (hd : α) (tl : List α) :
+public theorem mem_mk_hd {α : Type u} (hd : α) (tl : List α) :
   hd ∈ Set.mk (hd :: tl)
 := by
   simp only [Membership.mem, elts]
   exact List.mem_cons_self
 
-public theorem mem_cons_of_mem {α : Type u} (a : α) (hd : α) (tl : List α) :
+public theorem mem_mk_tl {α : Type u} (a : α) (hd : α) (tl : List α) :
   a ∈ Set.mk tl → a ∈ Set.mk (hd :: tl)
 := by
   simp only [Membership.mem] ; intro h₁
   apply List.mem_cons_of_mem hd h₁
 
+@[simp]
 public theorem mem_cons {a : α} {hd : α} {tl : List α} :
   a ∈ Set.mk (hd :: tl) ↔ a = hd ∨ a ∈ tl
 := by
-  simp [← in_list_iff_in_mk]
+  simp [← mem_set_iff_mem_mk]
 
-public theorem in_set_means_list_non_empty {α : Type u} (v : α) (s : Set α) :
-  v ∈ s.elts → ¬(s.elts = [])
+public theorem mem_set_implies_elts_non_empty {α : Type u} (v : α) (s : Set α) :
+  v ∈ s → ¬(s.elts = [])
 := by
   intros h0 h1
   rw [List.eq_nil_iff_forall_not_mem] at h1
@@ -123,11 +126,17 @@ public theorem in_set_means_list_non_empty {α : Type u} (v : α) (s : Set α) :
 
 /-! ### empty -/
 
-public theorem empty_eq_mk_empty {α} :
+public theorem empty_eq_mk_nil {α} :
   (Set.empty : Set α) = Set.mk []
 := by simp only [empty]
 
-public theorem empty_no_elts {α : Type u} (v : α) :
+@[simp]
+public theorem elts_empty {α} :
+  (Set.empty : Set α).elts = []
+:= by simp [empty]
+
+/-- Like `List.not_mem_nil`, lifted to Sets -/
+public theorem not_mem_empty {α : Type u} (v : α) :
   ¬ v ∈ Set.empty
 := by
   intro h
@@ -141,37 +150,54 @@ public theorem empty_wf {α : Type u} [LT α] [DecidableLT α] :
   simp [WellFormed, toList, empty, make, elts]
   apply List.canonicalize_nil
 
+@[simp]
 public theorem map_empty [LT β] [DecidableLT β] (f : α → β) :
   Set.empty.map f = Set.empty
 := by
-  simp [Set.map, empty_eq_mk_empty, Set.elts, Set.make, List.canonicalize_nil]
-
+  simp [Set.map, empty_eq_mk_nil, Set.elts, Set.make, List.canonicalize_nil]
 
 /-! ### isEmpty -/
 
-public theorem make_empty [DecidableEq α] [LT α] [DecidableLT α] (xs : List α) :
-  xs = [] ↔ (Set.make xs).isEmpty
+@[simp]
+public theorem isEmpty_empty [LT α] [DecidableLT α] [DecidableEq α] :
+  (Set.empty : Set α).isEmpty
+:= by simp [isEmpty]
+
+public theorem isEmpty_iff_eq_empty [DecidableEq α] {s : Set α} :
+  s.isEmpty ↔ s = Set.empty
+:= by simp [isEmpty]
+
+@[simp]
+public theorem isEmpty_make [DecidableEq α] [LT α] [DecidableLT α] {xs : List α} :
+  (Set.make xs).isEmpty ↔ xs = []
 := by
-  unfold isEmpty; unfold empty; unfold make
+  simp only [isEmpty_iff_eq_empty]
+  unfold empty make
   constructor
-  case mp =>
-    intro h₁ ; subst h₁
-    simp only [beq_iff_eq, mk.injEq]
-    apply List.canonicalize_nil
   case mpr =>
-    intro h₁ ; simp only [beq_iff_eq, mk.injEq] at h₁
+    intro h₁ ; subst h₁
+    simp only [mk.injEq]
+    apply List.canonicalize_nil
+  case mp =>
+    intro h₁ ; simp only [mk.injEq] at h₁
     apply (List.canonicalize_nil' id xs).mpr
     assumption
 
-public theorem make_non_empty [DecidableEq α] [LT α] [DecidableLT α] (xs : List α) :
-  xs ≠ [] ↔ (Set.make xs).isEmpty = false
+@[simp]
+public theorem isEmpty_make_eq_false [DecidableEq α] [LT α] [DecidableLT α] (xs : List α) :
+  (Set.make xs).isEmpty = false ↔ xs ≠ []
 := by
-  unfold isEmpty; unfold empty; unfold make
+  unfold isEmpty empty make
   simp only [beq_eq_false_iff_ne, ne_eq, mk.injEq]
-  apply List.canonicalize_not_nil
+  constructor
+  · intro h₁ h₂ ; subst xs
+    simp [List.canonicalize_nil] at h₁
+  · intro h₁ h₂
+    simp only [← List.canonicalize_nil'] at h₂
+    contradiction
 
 public theorem non_empty_iff_exists [DecidableEq α] (s : Set α) :
-  ¬ s.isEmpty ↔ ∃ a, a ∈ s
+  (¬ s.isEmpty) ↔ ∃ a, a ∈ s
 := by
   simp only [isEmpty, empty, beq_iff_eq]
   constructor
@@ -187,32 +213,20 @@ public theorem non_empty_iff_exists [DecidableEq α] (s : Set α) :
     intro h₁
     replace ⟨a, h₁⟩ := h₁
     intro h₂
-    rw [← in_list_iff_in_set] at h₁
-    cases s
-    simp only [mk.injEq] at h₂
-    subst h₂
-    simp [elts] at h₁
+    rw [← empty_eq_mk_nil] at h₂ ; subst s
+    exact not_mem_empty a h₁
 
+/-- Corollary of `non_empty_iff_exists` -/
 public theorem empty_iff_not_exists [DecidableEq α] (s : Set α) :
   s.isEmpty ↔ ¬ ∃ a, a ∈ s
 := by
-  simp only [isEmpty, empty, beq_iff_eq, not_exists]
   constructor
-  case mp =>
-    intro h₁
-    subst h₁
-    apply List.not_mem_nil
-  case mpr =>
-    intro h₁
-    match s with
-    | mk xs =>
-      rw [mk.injEq]
-      rw [List.eq_nil_iff_forall_not_mem]
-      intro x
-      specialize h₁ x
-      rw [in_list_iff_in_mk]
-      assumption
-
+  · intro h₁ h₂
+    rw [← non_empty_iff_exists] at h₂
+    contradiction
+  · intro h₁ ; by_contra h₂
+    rw [non_empty_iff_exists] at h₂
+    contradiction
 
 /-! ### singleton -/
 
@@ -222,14 +236,15 @@ public theorem singleton_wf [DecidableEq α] [LT α] [DecidableLT α] (a : α) :
   simp [singleton, WellFormed, make, toList, elts]
   rw [List.canonicalize_singleton]
 
-public theorem mem_singleton_iff_eq [DecidableEq α] (a b : α) :
+@[simp]
+public theorem mem_singleton [DecidableEq α] (a b : α) :
   a ∈ Set.singleton b ↔ a = b
 := by
-  simp only [singleton, ← in_list_iff_in_mk, List.mem_singleton]
+  simp only [singleton, ← mem_elts_iff_mem_set, elts, List.mem_singleton]
 
-public theorem mem_singleton [DecidableEq α] (a : α) :
+public theorem mem_singleton_self [DecidableEq α] (a : α) :
   a ∈ Set.singleton a
-:= by simp only [mem_singleton_iff_eq]
+:= by simp only [mem_singleton]
 
 /-! ### make -/
 
@@ -246,16 +261,17 @@ public theorem make_sorted {α} [LT α] [DecidableLT α] [StrictLT α] {xs : Lis
     apply funext ; simp only [id_eq, implies_true]
   simp only [make, hid, List.sortedBy_implies_canonicalize_eq h]
 
-public theorem make_mem [LT α] [DecidableLT α] [StrictLT α] (x : α) (xs : List α) :
-  x ∈ xs ↔ x ∈ Set.make xs
+@[simp]
+public theorem mem_make [LT α] [DecidableLT α] [StrictLT α] (x : α) (xs : List α) :
+  x ∈ Set.make xs ↔ x ∈ xs
 := by
   simp only [make, Membership.mem]
   have h₁ := List.canonicalize_equiv xs
   simp only [List.Equiv, List.subset_def] at h₁
   have ⟨h₁, h₂⟩ := h₁
   constructor <;> intro h₃
-  case mp => exact h₁ h₃
-  case mpr => exact h₂ h₃
+  case mp => exact h₂ h₃
+  case mpr => exact h₁ h₃
 
 public theorem make_mk_eqv [LT α] [DecidableLT α] [StrictLT α] {xs ys : List α} :
   Set.make xs = Set.mk ys → xs ≡ ys
@@ -281,25 +297,28 @@ public theorem make_make_eqv [LT α] [DecidableLT α] [StrictLT α] {xs ys : Lis
     simp only [make, mk.injEq]
     apply List.equiv_implies_canonical_eq _ _ h
 
-public theorem elts_make_equiv [LT α] [DecidableLT α] [StrictLT α] {xs : List α} :
+public theorem elts_make_eqv [LT α] [DecidableLT α] [StrictLT α] {xs : List α} :
   Set.elts (Set.make xs) ≡ xs
 := by
   simp only [List.Equiv, List.subset_def]
   constructor <;> intro a h₁
-  · rw [make_mem, ← in_list_iff_in_set]
+  · rw [← mem_make, ← mem_elts_iff_mem_set]
     exact h₁
-  · rw [in_list_iff_in_set, ← make_mem]
+  · rw [mem_elts_iff_mem_set, mem_make]
     exact h₁
 
+@[simp]
 public theorem make_nil [LT α] [DecidableLT α] [StrictLT α] :
   Set.make [] (α := α) = Set.empty
 := by
   simp [make, List.canonicalize_nil, empty]
 
-public theorem elts_make_nil [LT α] [DecidableLT α] [StrictLT α] :
-  Set.elts (Set.make ([] : List α)) = []
+@[simp]
+public theorem make_eq_empty [LT α] [DecidableLT α] [DecidableEq α] {xs : List α} :
+  Set.make xs = Set.empty ↔ xs = []
 := by
-  simp [make, elts, List.canonicalize_nil]
+  simp only [make, empty, mk.injEq]
+  exact (List.canonicalize_nil' id xs).symm
 
 public theorem make_singleton_nonempty [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] (a : α) :
   Set.make [a] ≠ Set.empty
@@ -308,25 +327,25 @@ public theorem make_singleton_nonempty [LT α] [DecidableLT α] [StrictLT α] [D
 
 public def eq_means_eqv [LT α] [DecidableLT α] [StrictLT α] {s₁ s₂ : Set α} :
   WellFormed s₁ → WellFormed s₂ →
-  (s₁.elts ≡ s₂.elts ↔ s₁ = s₂)
+  (s₁ = s₂ ↔ s₁.elts ≡ s₂.elts)
 := by
   intro h₁ h₂
   constructor
-  case mp =>
+  case mpr =>
     intro h₃
     have ⟨elts₁, h₄⟩ := if_wellformed_then_exists_make s₁ h₁ ; clear h₁
     subst h₄
     have ⟨elts₂, h₄⟩ := if_wellformed_then_exists_make s₂ h₂ ; clear h₂
     subst h₄
     rw [make_make_eqv]
-    apply List.Equiv.trans (List.Equiv.symm (elts_make_equiv (xs := elts₁)))
-    apply List.Equiv.trans h₃ (elts_make_equiv)
-  case mpr =>
-    intro h₃
-    subst h₃
+    apply List.Equiv.trans (List.Equiv.symm (elts_make_eqv (xs := elts₁)))
+    apply List.Equiv.trans h₃ (elts_make_eqv)
+  case mp =>
+    intro h₃ ; subst h₃
     apply List.Equiv.refl
 
-public theorem make_any_iff_any [LT α] [DecidableLT α] [StrictLT α] (f : α → Bool) (xs : List α) :
+@[simp]
+public theorem any_make [LT α] [DecidableLT α] [StrictLT α] (f : α → Bool) (xs : List α) :
   (Set.make xs).any f = xs.any f
 := by
   simp only [make, any]
@@ -347,7 +366,8 @@ public theorem make_any_iff_any [LT α] [DecidableLT α] [StrictLT α] (f : α �
     simp only [h₄, and_true]
     apply hl₁ h₃
 
-public theorem make_of_make_is_id [LT α] [DecidableLT α] [StrictLT α] (xs : List α) :
+@[simp]
+public theorem make_elts_make [LT α] [DecidableLT α] [StrictLT α] (xs : List α) :
   Set.make (Set.elts (Set.make xs)) = Set.make xs
 := by
   simp only [make, mk.injEq]
@@ -355,13 +375,13 @@ public theorem make_of_make_is_id [LT α] [DecidableLT α] [StrictLT α] (xs : L
   unfold id at h₁
   exact h₁
 
-public theorem elts_make_is_id_then_equiv [LT α] [DecidableLT α] [StrictLT α] {xs ys : List α} :
+public theorem elts_make_implies_equiv [LT α] [DecidableLT α] [StrictLT α] {xs ys : List α} :
   Set.elts (Set.make xs) = ys → ys ≡ xs
 := by
   intro h
   rw [← h]; clear h
   rw [← make_make_eqv]
-  exact make_of_make_is_id xs
+  exact make_elts_make xs
 
 /--
   Note that the converse of this is not true:
@@ -380,6 +400,7 @@ public theorem inter_def {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableE
 := by simp only [Inter.inter]
 
 open BEq LawfulBEq in
+@[simp]
 public theorem mem_inter_iff {α} [DecidableEq α] {x : α} {s₁ s₂ : Set α} :
   x ∈ s₁ ∩ s₂ ↔ x ∈ s₁ ∧ x ∈ s₂
 := by
@@ -402,12 +423,14 @@ public theorem inter_wf {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq
   simp only [List.elem_eq_mem]
   exact h₃
 
+@[simp]
 public theorem inter_empty_left {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] (s : Set α) :
  Set.empty ∩ s = Set.empty
 := by
   cases s ; rename_i xs
   simp only [Inter.inter, intersect, List.inter, elts, List.elem_eq_mem, empty, List.filter_nil]
 
+@[simp]
 public theorem inter_empty_right {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] (s : Set α) :
  s ∩ Set.empty = Set.empty
 := by
@@ -415,7 +438,8 @@ public theorem inter_empty_right {α} [LT α] [StrictLT α] [DecidableLT α] [De
   simp only [Inter.inter, intersect, List.inter, elts, empty, List.elem_eq_mem, List.not_mem_nil,
     decide_false, mk.injEq, List.filter_eq_nil_iff, not_false_eq_true, implies_true, reduceCtorEq]
 
-public theorem inter_self_eq {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] (s : Set α) :
+@[simp]
+public theorem inter_self {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] (s : Set α) :
  s ∩ s = s
 := by
   simp only [Inter.inter, intersect, List.inter, elts, List.elem_eq_mem]
@@ -437,17 +461,15 @@ public theorem intersects_def {α} [LT α] [StrictLT α] [DecidableLT α] [Decid
  s₁.intersects s₂ = ¬ (s₁ ∩ s₂).isEmpty
 := by
   simp only [Bool.not_eq_true, eq_iff_iff]
-  simp only [intersects, List.any_eq_true, in_list_iff_in_set, contains_prop_bool_equiv]
+  simp only [intersects, List.any_eq_true, mem_elts_iff_mem_set, contains_prop_bool_equiv]
   constructor
   case mp =>
     intro h
     replace ⟨x, h⟩ := h
     false_or_by_contra ; rename_i hc
     simp only [ne_eq, Bool.not_eq_false] at hc
-    simp only [empty_iff_not_exists, not_exists] at hc
-    specialize hc x
-    have _ := mem_inter_iff.mpr h
-    contradiction
+    simp only [empty_iff_not_exists, mem_inter_iff, not_exists, not_and] at hc
+    exact hc x h.left h.right
   case mpr =>
     intro h
     replace h : ¬ isEmpty (s₁ ∩ s₂) = true := by
@@ -475,31 +497,29 @@ public theorem union_wf [LT α] [DecidableLT α] [StrictLT α] (s₁ s₂ : Set 
 := by
   simp only [Union.union, union, make_wf]
 
-public theorem make_cons_eq_singleton_union [LT α] [DecidableLT α] [StrictLT α] (a : α) (L : List α) :
-  Set.make (a :: L) = Set.singleton a ∪ Set.make L := by
-  rw [← eq_means_eqv (make_wf _) (union_wf _ _)]
+public theorem make_cons_eq_singleton_union [LT α] [DecidableLT α] [StrictLT α] (a : α) (xs : List α) :
+  Set.make (a :: xs) = Set.singleton a ∪ Set.make xs := by
+  rw [eq_means_eqv (make_wf _) (union_wf _ _)]
   simp only [make, singleton, Union.union, union, elts]
   rw [List.canonicalize_cons]
   · apply List.Equiv.refl
   · simp [List.canonicalize_idempotent]
 
-public theorem mem_union_iff_mem_or [LT α] [DecidableLT α] [StrictLT α] (s₁ s₂ : Set α) :
-  ∀ a, a ∈ s₁ ∪ s₂ ↔ (a ∈ s₁ ∨ a ∈ s₂)
+@[simp]
+public theorem mem_union [LT α] [DecidableLT α] [StrictLT α] (s₁ s₂ : Set α) (a : α) :
+  a ∈ s₁ ∪ s₂ ↔ (a ∈ s₁ ∨ a ∈ s₂)
 := by
-  intro a
-  simp only [Union.union, union, make, ← in_list_iff_in_mk]
+  simp only [Union.union, union, make, ← mem_elts_iff_mem_set]
   constructor <;> intro h
   case mp =>
     have hc := (List.canonicalize_equiv (s₁.elts ++ s₂.elts)).right
     simp only [List.subset_def, List.mem_append] at hc
     replace hc := hc h
-    rcases hc with hc | hc <;>
-    simp only [(in_list_iff_in_set _ _).mp hc, true_or, or_true]
+    rcases hc with hc | hc <;> simp [hc]
   case mpr =>
     have hc := (List.canonicalize_equiv (s₁.elts ++ s₂.elts)).left
     simp only [List.append_subset] at hc
     simp only [List.subset_def] at hc
-    simp only [← in_list_iff_in_set] at h
     rcases h with h | h
     · exact hc.left h
     · exact hc.right h
@@ -510,7 +530,7 @@ public theorem prop_union_iff_prop_and [LT α] [DecidableLT α] [StrictLT α] (p
   constructor <;> intro h₁
   case mp =>
     intro a h₂
-    rw [mem_union_iff_mem_or] at h₂
+    rw [mem_union] at h₂
     rcases h₂ with h₂ | h₂
     · exact h₁.left a h₂
     · exact h₁.right a h₂
@@ -519,7 +539,7 @@ public theorem prop_union_iff_prop_and [LT α] [DecidableLT α] [StrictLT α] (p
     all_goals {
       intro a h₂
       specialize h₁ a
-      simp only [mem_union_iff_mem_or, h₂, or_true, true_or, true_implies] at h₁
+      simp only [mem_union, h₂, or_true, true_or, true_implies] at h₁
       exact h₁
     }
 
@@ -534,7 +554,7 @@ public theorem union_comm [LT α] [DecidableLT α] [StrictLT α] (s₁ s₂ : Se
 public theorem union_assoc [LT α] [DecidableLT α] [StrictLT α] (s₁ s₂ s₃ : Set α) :
   (s₁ ∪ s₂) ∪ s₃ = s₁ ∪ (s₂ ∪ s₃)
 := by
-  rw [← eq_means_eqv (union_wf _ _) (union_wf _ _)]
+  rw [eq_means_eqv (union_wf _ _) (union_wf _ _)]
   simp only [Union.union, Set.union, Set.make, Set.elts]
   have h₁ := List.Equiv.symm (List.canonicalize_equiv (List.canonicalize id (s₁.1 ++ s₂.1) ++ s₃.1))
   have h₂ := List.Equiv.symm (List.canonicalize_equiv (s₁.1 ++ List.canonicalize id (s₂.1 ++ s₃.1)))
@@ -568,7 +588,7 @@ public theorem union_idempotent [LT α] [DecidableLT α] [StrictLT α] {s : Set 
   s.WellFormed → s ∪ s = s
 := by
   intro h
-  rw [← eq_means_eqv (union_wf _ _) h]
+  rw [eq_means_eqv (union_wf _ _) h]
   simp only [Union.union, Set.union, Set.make, Set.elts]
   apply List.Equiv.trans (List.Equiv.symm (List.canonicalize_equiv _))
   simp only [List.Equiv, List.append_subset, List.Subset.refl, and_self, List.subset_append_left]
@@ -581,8 +601,8 @@ public theorem elts_subset_then_subset [LT α] [DecidableLT α] [StrictLT α] [D
   simp only [Subset, List.Subset, subset, List.all_eq_true]
   intro h₁ x h₂
   rw [contains_prop_bool_equiv]
-  rw [in_list_iff_in_set] at h₂
-  rw [← make_mem] at *
+  rw [mem_elts_iff_mem_set] at h₂
+  rw [mem_make] at *
   apply h₁ h₂
 
 /--
@@ -594,11 +614,11 @@ public theorem subset_def [DecidableEq α] {s₁ s₂ : Set α} :
   simp only [Subset, subset, List.all_eq_true]
   constructor <;> intro h₁ a h₂ <;> specialize h₁ a
   case mp =>
-    rw [in_list_iff_in_set] at h₁
+    rw [mem_elts_iff_mem_set] at h₁
     rw [contains_prop_bool_equiv] at h₁
     exact h₁ h₂
   case mpr =>
-    rw [in_list_iff_in_set] at h₂
+    rw [mem_elts_iff_mem_set] at h₂
     rw [contains_prop_bool_equiv]
     exact h₁ h₂
 
@@ -616,14 +636,14 @@ public theorem superset_empty_subset_empty [DecidableEq α] {s₁ s₂ : Set α}
 public theorem subset_iff_subset_elts [DecidableEq α] {s₁ s₂ : Set α} :
   s₁ ⊆ s₂ ↔ s₁.elts ⊆ s₂.elts
 := by
-  simp only [subset_def, elts, List.subset_def, in_list_iff_in_set]
+  simp only [subset_def, elts, List.subset_def, mem_elts_iff_mem_set]
 
 public theorem subset_iff_eq [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {s₁ s₂ : Set α} :
   WellFormed s₁ → WellFormed s₂ →
   ((s₁ ⊆ s₂ ∧ s₂ ⊆ s₁) ↔ s₁ = s₂)
 := by
   intro hw₁ hw₂
-  simp only [← (eq_means_eqv hw₁ hw₂), elts, List.Equiv, subset_iff_subset_elts]
+  simp only [eq_means_eqv hw₁ hw₂, elts, List.Equiv, subset_iff_subset_elts]
 
 public theorem subset_trans [DecidableEq α] {s₁ s₂ s₃ : Set α} :
   s₁ ⊆ s₂ → s₂ ⊆ s₃ → s₁ ⊆ s₃
@@ -647,14 +667,14 @@ public theorem mem_subset_mem [DecidableEq α] {a : α} {s₁ s₂ : Set α} :
 public theorem subset_union [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] (s₁ s₂ : Set α) :
   s₁ ⊆ s₁ ∪ s₂
 := by
-  simp only [subset_def, mem_union_iff_mem_or]
+  simp only [subset_def, mem_union]
   intro a hin
   exact Or.inl hin
 
 public theorem union_subset [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {s₁ s₂ s₃ : Set α} :
   s₁ ∪ s₂ ⊆ s₃ ↔ s₁ ⊆ s₃ ∧ s₂ ⊆ s₃
 := by
-  simp only [subset_def, mem_union_iff_mem_or]
+  simp only [subset_def, mem_union]
   constructor
   case mp =>
     intro h
@@ -696,10 +716,11 @@ public theorem wellFormed_correct {α} [LT α] [StrictLT α] [DecidableLT α] {s
 /-! ### map -/
 
 /-- Analogue of `List.mem_map` but for sets -/
+@[simp]
 public theorem mem_map [LT α] [DecidableLT α] [StrictLT α] [LT β] [DecidableLT β] [StrictLT β] (b : β) (f : α → β) (s : Set α) :
   b ∈ s.map f ↔ ∃ a ∈ s, f a = b
 := by
-  simp [Set.map, ← Set.make_mem, Set.in_list_iff_in_set]
+  simp [Set.map, Set.mem_make, Set.mem_elts_iff_mem_set]
 
 /-! ### filter and differences -/
 
@@ -710,18 +731,20 @@ public theorem filter_wf [LT α] [DecidableLT α] [StrictLT α] (p : α → Bool
   simp only [Set.filter, wf_iff_sorted]
   apply List.filter_sortedBy
 
+@[simp]
 public theorem mem_filter [LT α] [DecidableLT α] [StrictLT α] (p : α → Bool) (s : Set α) (e : α):
   e ∈ s.filter p ↔ (e ∈ s ∧ p e)
 := by
   simp only [filter]
-  rw [←in_list_iff_in_mk, ←in_list_iff_in_set]
-  simp [List.mem_filter]
+  rw [← mem_set_iff_mem_mk]
+  simp [List.mem_filter, mem_elts_iff_mem_set]
 
 public theorem difference_wf [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] (s₁ s₂ : Set α) :
   WellFormed s₁ →
   WellFormed (s₁.difference s₂)
 := by apply filter_wf
 
+@[simp]
 public theorem mem_difference [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] (s₁ s₂ : Set α) (e : α):
   e ∈ s₁.difference s₂ ↔ (e ∈ s₁ ∧ e ∉ s₂)
 := by simp [difference, mem_filter, ←not_contains_prop_bool_equiv]

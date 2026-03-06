@@ -798,10 +798,10 @@ theorem set_value?_implies_in_value {vs : Set Value} {ts : Set Term} {ty : TermT
   replace ⟨ts', hv, hvs⟩ := hv
   subst hvs
   simp only [List.mapM₁_eq_mapM Term.value?, ← List.mapM'_eq_mapM] at hv
-  rw [← Set.in_list_iff_in_set] at ht
+  rw [← Set.mem_elts_iff_mem_set] at ht
   replace ⟨v, hv⟩ := List.mapM'_some_implies_all_some hv t ht
   exists v
-  simp only [← Set.make_mem, hv, and_self]
+  simp only [Set.mem_make, hv, and_self]
 
 theorem set_value?_implies_in_term {vs : Set Value} {ts : Set Term} {ty : TermType} :
   Term.value? (Term.set ts ty) = some (Value.set vs) →
@@ -813,9 +813,9 @@ theorem set_value?_implies_in_term {vs : Set Value} {ts : Set Term} {ty : TermTy
   replace ⟨vs', hv, hvs⟩ := hv
   subst hvs
   simp only [List.mapM₁_eq_mapM Term.value?, ← List.mapM'_eq_mapM] at hv
-  rw [← Set.make_mem] at ht
+  rw [Set.mem_make] at ht
   replace ⟨t, hv⟩ := List.mapM'_some_implies_all_from_some hv v ht
-  rw [Set.in_list_iff_in_set] at hv
+  rw [Set.mem_elts_iff_mem_set] at hv
   exists t
 
 private theorem set_value?_eq_implies_subseteq {vs : Set Value} {ts₁ ts₂ : Set Term} {ty : TermType}

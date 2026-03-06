@@ -49,7 +49,7 @@ theorem partial_eval_well_typed_set {env : TypeEnv} {ls : List Residual} {ty : C
     intro v h₄
     unfold List.map₁ List.attach List.attachWith at h₃
     rw [List.map_pmap_subtype (fun x => TPE.evaluate x preq pes), List.mapM_map] at h₃
-    rw [← Set.make_mem] at h₄
+    rw [Set.mem_make] at h₄
     have h₅ := List.mem_mapM_some_implies_exists_unmapped h₃ h₄
     rcases h₅ with ⟨y, h₆, h₇⟩
     specialize h₀ y h₆

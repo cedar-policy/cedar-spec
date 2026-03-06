@@ -1061,7 +1061,7 @@ theorem pe_set_inter_wfl {εs : SymEntities} {t₁ t₂ : Term} {ty : TermType} 
       intro t h₇
       replace h₇ : t ∈ s₁ ∩ s₂ := by
         simp only [Inter.inter]
-        rw [← Set.in_list_iff_in_set]
+        rw [← Set.mem_elts_iff_mem_set]
         simp only [Set.elts, h₇]
       rw [Set.mem_inter_iff] at h₇
       apply lit_term_set_implies_lit_elt h₃.right h₇.right
@@ -1078,14 +1078,14 @@ theorem pe_set_inter {s₁ s₂ : Set Term} {ty : TermType} :
   simp only [set.inter]
   split
   case isTrue h₃ =>
-    have h₄ := Set.inter_self_eq s₂
+    have h₄ := Set.inter_self s₂
     simp only [Inter.inter] at h₄
     simp only [Term.set.injEq, and_true] at h₃
     simp only [h₃, h₄]
   case isFalse =>
     split
     case h_1 heq | h_2 heq _ =>
-      simp only [Term.set.injEq, ← Set.empty_eq_mk_empty] at heq
+      simp only [Term.set.injEq, ← Set.empty_eq_mk_nil] at heq
       simp only [heq, ← Set.inter_def, Set.inter_empty_left, Set.inter_empty_right]
     case h_3 heq₁ heq₂ =>
       simp only [Term.set.injEq] at heq₁ heq₂

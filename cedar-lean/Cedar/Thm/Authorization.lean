@@ -37,7 +37,7 @@ def HasSatisfiedEffect (effect : Effect) (request : Request) (entities : Entitie
 
 theorem satisfied_iff_satisfiedPolicies_non_empty {effect : Effect} {request : Request} {entities : Entities} {policies : Policies} :
   HasSatisfiedEffect effect request entities policies ↔ (satisfiedPolicies effect policies request entities).isEmpty = false
-:= by simp [HasSatisfiedEffect, satisfiedPolicies, satisfiedWithEffect, ←Set.make_non_empty]
+:= by simp [HasSatisfiedEffect, satisfiedPolicies, satisfiedWithEffect]
 
 /--
 A request is explicitly forbidden when there is at least one satisfied forbid policy.
@@ -257,7 +257,7 @@ theorem determining_erroring_disjoint_when_unique_ids (request : Request) (entit
   intro _ h_det h_err
   unfold isAuthorized satisfiedPolicies errorPolicies satisfiedWithEffect errored at *
   simp only [
-    Bool.and_eq_true, beq_iff_eq, apply_ite, ite_self, ← Set.make_mem, List.mem_filterMap, Option.ite_none_right_eq_some, Option.some.injEq
+    Bool.and_eq_true, beq_iff_eq, apply_ite, ite_self, Set.mem_make, List.mem_filterMap, Option.ite_none_right_eq_some, Option.some.injEq
   ] at *
   -- Extract the determining policy
   obtain ⟨p₁, _, ⟨_, _⟩, _⟩ := h_det

@@ -38,7 +38,7 @@ theorem determiningPolicies_wf {policies : Policies} {request : Request} {entiti
     unfold satisfiedPolicies
     simp only [Set.make_make_eqv]
     apply List.Equiv.symm
-    exact Set.elts_make_equiv
+    exact Set.elts_make_eqv
   }
 
 theorem if_hasError_then_exists_error {policy : Policy} {request : Request} {entities : Entities} :
@@ -241,14 +241,13 @@ theorem if_mapM_doesn't_fail_on_list_then_doesn't_fail_on_set [LT α] [Decidable
   replace ⟨bs, h₁⟩ := Except.isOk_iff_exists.mp h₁
   replace h₁ := List.mapM_ok_implies_all_ok h₁
   cases as <;> simp at h₁
-  case nil => simp [Set.elts_make_nil, pure, Except.pure, Except.isOk, Except.toBool]
+  case nil => simp [pure, Except.pure, Except.isOk, Except.toBool]
   case cons ahd atl =>
     replace ⟨⟨b, _, h₁⟩, h₂⟩ := h₁
     apply Except.isOk_iff_exists.mpr
     apply List.all_ok_implies_mapM_ok
     intro a h₃
-    rw [Set.in_list_iff_in_set] at h₃
-    rw [← Set.make_mem] at h₃
+    rw [Set.mem_elts_iff_mem_set, Set.mem_make] at h₃
     rcases List.mem_cons.mp h₃ with h₃ | h₃
     case a.inl => subst h₃ ; exists b
     case a.inr =>
@@ -275,7 +274,7 @@ theorem mapOrErr_value_asEntityUID_on_uids_produces_set (list : List EntityUID) 
     -- in this case, mapping Value.asEntityUID over the set returns .ok
     rw [← List.mapM'_eq_mapM] at h
     replace h := mapM'_asEntityUID_eq_entities h
-    have ⟨h₁, h₂⟩ := Set.elts_make_is_id_then_equiv h; clear h
+    have ⟨h₁, h₂⟩ := Set.elts_make_implies_equiv h; clear h
     rw [Set.make_make_eqv]
     unfold List.Equiv at *
     repeat rw [List.subset_def] at *
@@ -302,12 +301,17 @@ theorem action_in_set_of_euids_produces_boolean (list : List EntityUID) (request
     entities
 := by
   unfold producesBool
-  split <;> simp
-  case h_2 _ h =>
-    simp only [evaluate, apply₂, inₛ, bind_assoc, Except.bind_ok, imp_false, Bool.forall_bool] at h
-    rw [List.mapM₁_eq_mapM (evaluate · request entities)] at h
-    simp only [mapM_evaluate_uids_produces_uids] at h
-    simp [mapOrErr_value_asEntityUID_on_uids_produces_set] at h
+  split <;> simp only [Bool.false_eq_true]
+  case h_2 _ h₁ =>
+    simp only [evaluate, apply₂, inₛ, bind_assoc, Except.bind_ok, imp_false, Bool.forall_bool] at h₁
+    rw [List.mapM₁_eq_mapM (evaluate · request entities)] at h₁
+    simp only [mapM_evaluate_uids_produces_uids] at h₁
+    simp only [Except.bind_ok, mapOrErr_value_asEntityUID_on_uids_produces_set, Set.any_make,
+      Except.ok.injEq, Value.prim.injEq, Prim.bool.injEq, List.any_eq_false, Bool.not_eq_true,
+      Classical.not_forall, Bool.not_eq_false, List.any_eq_true, not_exists, not_and] at h₁
+    replace ⟨⟨uid, huid, h₁⟩, h₂⟩ := h₁
+    specialize h₂ uid huid
+    simp_all
 
 /--
   Lemma: evaluating the principalScope of any policy produces a boolean (and does not error)

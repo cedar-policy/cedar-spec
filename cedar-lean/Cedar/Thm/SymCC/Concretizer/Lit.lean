@@ -137,11 +137,11 @@ private theorem wf_term_prim_implies_valid_uids {t : TermPrim} {εs : SymEntitie
   simp only [TermPrim.entityUIDs] at hin
   split at hin
   · rename_i uid'
-    simp only [Set.mem_singleton_iff_eq] at hin
+    simp only [Set.mem_singleton] at hin
     subst hin
     cases hwf ; rename_i hwf
     exact hwf
-  · have _ := Set.empty_no_elts uid
+  · have _ := Set.not_mem_empty uid
     contradiction
 
 theorem wf_term_implies_valid_uids {t : Term} {εs : SymEntities} :
@@ -152,7 +152,7 @@ theorem wf_term_implies_valid_uids {t : Term} {εs : SymEntities} :
   unfold Term.entityUIDs at hin
   cases t <;> simp only at hin
   case var | none =>
-    have _ := Set.empty_no_elts uid
+    have _ := Set.not_mem_empty uid
     contradiction
   case prim =>
     cases hwf ; rename_i hwf
@@ -210,7 +210,7 @@ private theorem wf_ρ_implies_valid_uids {ρ : SymRequest} {εs : SymEntities} :
   ∀ uid ∈ ρ.entityUIDs, εs.isValidEntityUID uid
 := by
   intro hwρ uid hin
-  simp only [SymRequest.entityUIDs, Set.mem_union_iff_mem_or] at hin
+  simp only [SymRequest.entityUIDs, Set.mem_union] at hin
   have ⟨hp, _, ha, _, hr, _, hc, _⟩ := hwρ
   rcases hin with ((hin | hin) | hin) | hin
   · exact (wf_term_implies_valid_uids hp) uid hin
@@ -225,26 +225,26 @@ private theorem valid_refs_implies_valid_uids {x : Expr} {εs : SymEntities} :
   intro hvr uid hin
   induction hvr <;> simp only [Expr.entityUIDs] at hin
   case var_valid =>
-    have _ := Set.empty_no_elts uid
+    have _ := Set.not_mem_empty uid
     contradiction
   case lit_valid p h =>
     simp only [Prim.entityUIDs] at hin
     split at hin
     · simp only [Prim.ValidRef] at h
-      rw [Set.mem_singleton_iff_eq] at hin
+      rw [Set.mem_singleton] at hin
       subst hin
       exact h
-    · have _ := Set.empty_no_elts uid
+    · have _ := Set.not_mem_empty uid
       contradiction
   case and_valid ih₁ ih₂ | or_valid ih₁ ih₂ | binaryApp_valid ih₁ ih₂ =>
-    rw [Set.mem_union_iff_mem_or] at hin
+    rw [Set.mem_union] at hin
     rcases hin with hin | hin
     · exact ih₁ hin
     · exact ih₂ hin
   case unaryApp_valid ih | hasAttr_valid ih | getAttr_valid ih =>
     exact ih hin
   case ite_valid ih₁ ih₂ ih₃ =>
-    simp only [Set.mem_union_iff_mem_or] at hin
+    simp only [Set.mem_union] at hin
     rcases hin with (hin | hin) | hin
     · exact ih₁ hin
     · exact ih₂ hin
@@ -266,13 +266,13 @@ private theorem εs_find?_δ_implies_mems_valid_uids {δ : SymEntityData} {ety :
   intro hf uid hin
   simp only [SymEntityData.entityUIDs.mems] at hin
   split at hin
-  · have _ := Set.empty_no_elts uid
+  · have _ := Set.not_mem_empty uid
     contradiction
   · rename_i hs
-    simp only [← Set.make_mem, List.mem_map] at hin
+    simp only [Set.mem_make, List.mem_map] at hin
     replace ⟨eid, hin, heq⟩ := hin
     subst heq
-    rw [Set.in_list_iff_in_set] at hin
+    rw [Set.mem_elts_iff_mem_set] at hin
     simp only [SymEntities.isValidEntityUID, hf, hs, Set.contains_prop_bool_equiv, hin]
 
 private theorem wf_uf_implies_valid_uids {uf : UnaryFunction} {εs : SymEntities} :
@@ -282,15 +282,15 @@ private theorem wf_uf_implies_valid_uids {uf : UnaryFunction} {εs : SymEntities
   intro hwf uid hin
   simp only [UnaryFunction.entityUIDs] at hin
   split at hin
-  · have _ := Set.empty_no_elts uid
+  · have _ := Set.not_mem_empty uid
     contradiction
-  · simp only [UDF.entityUIDs, Set.mem_union_iff_mem_or] at hin
+  · simp only [UDF.entityUIDs, Set.mem_union] at hin
     simp only [UnaryFunction.WellFormed, UDF.WellFormed] at hwf
     rcases hin with hin | hin
     · exact wf_term_implies_valid_uids hwf.left.left _ hin
     · rw [List.mem_mapUnion_iff_mem_exists] at hin
       replace ⟨(tᵢ, tₒ), hin, hin'⟩ := hin
-      simp only [Set.mem_union_iff_mem_or] at hin'
+      simp only [Set.mem_union] at hin'
       replace hwf := hwf.right.right.right tᵢ tₒ hin
       rcases hin' with hin' | hin'
       · exact wf_term_implies_valid_uids hwf.left.left _ hin'
@@ -324,7 +324,7 @@ private theorem wf_δ_implies_tags_valid_uids {δ : SymEntityData} {ety : Entity
   intro hwδ uid hin
   simp only [SymEntityData.entityUIDs.tags] at hin
   split at hin
-  · simp only [Set.empty_no_elts] at hin
+  · simp only [Set.not_mem_empty] at hin
   · rename_i τs hτs
     replace hwδ := hwδ.right.right.right.right.right.left τs hτs
     replace hwδ := hwδ.right.right.right.left
@@ -336,7 +336,7 @@ private theorem wf_δ_implies_valid_uids {δ : SymEntityData} {ety : EntityType}
   ∀ uid ∈ δ.entityUIDs ety, εs.isValidEntityUID uid
 := by
   intro hf hwδ uid hin
-  simp only [SymEntityData.entityUIDs, Set.mem_union_iff_mem_or] at hin
+  simp only [SymEntityData.entityUIDs, Set.mem_union] at hin
   rcases hin with ((hin | hin) | hin) | hin
   · exact εs_find?_δ_implies_mems_valid_uids hf _ hin
   · exact wf_δ_implies_attrs_valid_uids hwδ _ hin
@@ -490,7 +490,7 @@ private theorem concretize?_wfl_εs_implies_some {εs : SymEntities} {uids : Set
   replace hvu := (Set.prop_union_iff_prop_and _ _ _).mp (And.intro hvu (wf_εs_implies_valid_uids hwε))
   have h : ∀ uid ∈ (uids ∪ εs.entityUIDs).1, ∃ tyd, SymEntities.concretize?.entityData? εs uid = some tyd := by
     intro uid hin
-    rw [Set.in_list_iff_in_set] at hin
+    rw [Set.mem_elts_iff_mem_set] at hin
     specialize hvu uid hin
     exact concretize?_wfl_εs_implies_entityData?_some hwε hlit hvu
   replace ⟨es, h⟩ := List.all_some_implies_mapM_some h

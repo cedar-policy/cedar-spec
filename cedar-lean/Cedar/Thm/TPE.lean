@@ -217,7 +217,7 @@ theorem partial_authorize_allow_determining_policies_is_sound
 
   simp [isAuthorized.isAuthorizedFromResiduals, isAuthorized.satisfiedPolicies,
     satisfiedPolicies, satisfiedWithEffect, satisfied, Bool.and_eq_true,
-    decide_eq_true_eq, Set.subset_def, ← Set.make_mem, List.mem_filterMap,
+    decide_eq_true_eq, Set.subset_def, Set.mem_make, List.mem_filterMap,
     ResidualPolicy.satisfiedWithEffect, ResidualPolicy.satisfied, Residual.isTrue,
     Option.ite_none_right_eq_some, forall_exists_index, and_imp]
   intro pid rp hrp heff hs hpid
@@ -261,7 +261,7 @@ theorem partial_authorize_satisfied_permits_not_determining_if_deny
   intro pid hp₁ hp₂
 
   have hsatisfied : ∀ effect, (pid ∈ satisfiedPolicies effect policies req es ↔ (∃ policy, policy.id = pid ∧ policy ∈ policies ∧ policy.effect = effect ∧ satisfied policy req es)) := by
-    simp only [satisfiedPolicies, satisfiedWithEffect, ←Set.make_mem]
+    simp only [satisfiedPolicies, satisfiedWithEffect, Set.mem_make]
     grind [PolicyIdsUnique]
 
   replace hp₂ : ∃ policy, policy.id = pid ∧ policy ∈ policies ∧ policy.effect = .forbid ∧ satisfied policy req es := by
@@ -301,7 +301,7 @@ theorem partial_authorize_satisfied_forbid_is_determining
   subst response
 
   simp only [isAuthorized.isAuthorizedFromResiduals, isAuthorized.satisfiedPolicies, Set.subset_def,
-    ← Set.make_mem, List.mem_filterMap, ResidualPolicy.satisfiedWithEffect,
+    Set.mem_make, List.mem_filterMap, ResidualPolicy.satisfiedWithEffect,
     ResidualPolicy.satisfied, Residual.isTrue, Bool.and_eq_true, beq_iff_eq,
     Option.ite_none_right_eq_some, Option.some.injEq, forall_exists_index, and_imp]
   intro pid rp hrp heff hs hpid
@@ -327,7 +327,7 @@ theorem partial_authorize_satisfied_forbid_is_determining
     grind [Spec.isAuthorized]
 
   simp only [satisfiedPolicies, satisfiedWithEffect, satisfied, Bool.and_eq_true, beq_iff_eq,
-    decide_eq_true_eq, ← Set.make_mem, List.mem_filterMap, Option.ite_none_right_eq_some,
+    decide_eq_true_eq, Set.mem_make, List.mem_filterMap, Option.ite_none_right_eq_some,
     Option.some.injEq]
   exists p
   and_intros

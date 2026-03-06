@@ -515,7 +515,7 @@ theorem type_is_inhabited_set {env : TypeEnv} {ty : CedarType} :
 := by
   exists (.set Set.empty)
   apply InstanceOfType.instance_of_set
-  exact (False.elim $ Set.empty_no_elts · ·)
+  exact (False.elim $ Set.not_mem_empty · ·)
 
 theorem type_is_inhabited_ext {env : TypeEnv} {xty : ExtType} :
   ∃ v, InstanceOfType env v (.ext xty)

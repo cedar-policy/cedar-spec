@@ -163,7 +163,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n nmax: Nat} {c c' : Capabilit
   case lit =>
     have hi : euid ∈ request.sliceEUIDs := by
       have hact := checked_eval_entity_lit_is_action hr ht he hl ha
-      simp [hact, Request.sliceEUIDs, Set.mem_union_iff_mem_or, ←Set.make_mem]
+      simp [hact, Request.sliceEUIDs, Set.mem_union, Set.mem_make]
     exact ReachableIn.in_start hi
 
   case var =>
@@ -225,7 +225,7 @@ theorem in_work_then_in_slice {entities : Entities} {work : Set EntityUID} {euid
 := by
   simp only [Entities.sliceAtLevel.sliceAtLevel]
   let slice' := (work.elts.filterMap (Map.find? entities)).mapUnion λ ed => Entities.sliceAtLevel.sliceAtLevel entities ed.sliceEUIDs n
-  have ⟨ _, hc ⟩ := Set.mem_union_iff_mem_or work slice' euid
+  have ⟨ _, hc ⟩ := Set.mem_union work slice' euid
   apply hc
   simp [hw]
 
@@ -244,7 +244,7 @@ theorem slice_contains_reachable {n: Nat} {work : Set EntityUID} {euid : EntityU
   case step ed euid' hf hi hw =>
     simp only [Entities.sliceAtLevel.sliceAtLevel]
     let slice' := (work.elts.filterMap (Map.find? entities)).mapUnion λ ed => Entities.sliceAtLevel.sliceAtLevel entities ed.sliceEUIDs n
-    rw [Set.mem_union_iff_mem_or]
+    rw [Set.mem_union]
     right
     cases n
     case _ => cases hw

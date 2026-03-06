@@ -56,7 +56,7 @@ private theorem swf_implies_acyclic {xs : List Expr} {env : Env} {εnv : SymEnv}
   simp only [acyclic, List.mem_map] at hin
   replace ⟨tₑ, hin, ha⟩ := hin
   subst ha
-  simp only [Set.in_list_iff_in_set, mem_footprints_iff] at hin
+  simp only [Set.mem_elts_iff_mem_set, mem_footprints_iff] at hin
   replace ⟨xᵢ, hinₓ, hin⟩ := hin
   replace hsε := swf_εnv_all_implies_swf_all hsε xᵢ hinₓ
   replace hse := swf_env_all_implies_swf_all hse xᵢ hinₓ
@@ -77,7 +77,7 @@ private theorem swf_implies_transitive {xs : List Expr} {env : Env} {εnv : SymE
   simp only [List.mem_map] at hin
   replace ⟨t₂, hin₂, hin⟩ := hin
   subst hin
-  simp only [Set.in_list_iff_in_set, mem_footprints_iff] at hin₁ hin₂
+  simp only [Set.mem_elts_iff_mem_set, mem_footprints_iff] at hin₁ hin₂
   replace ⟨x₁, hinx₁, hin₁⟩ := hin₁
   replace ⟨x₂, hinx₂, hin₂⟩ := hin₂
   have hsε₁ := swf_εnv_all_implies_swf_all hsε x₁ hinx₁
@@ -104,7 +104,7 @@ theorem enforce_satisfiedBy_swf {xs : List Expr} {env : Env} {εnv : SymEnv} {I 
   rw [asserts_satisfiedBy_true]
   intro t hin
   rw [enforce_def] at ha
-  rw [Set.in_list_iff_in_mk, ← ha, ← Set.make_mem, List.mem_union_iff] at hin
+  rw [Set.mem_set_iff_mem_mk, ← ha, Set.mem_make, List.mem_union_iff] at hin
   rcases hin with hin | hin
   · exact swf_implies_acyclic heq hI hsε hse hin
   · exact swf_implies_transitive heq hI hsε hse hin
@@ -133,8 +133,8 @@ private theorem mem_terms_mem_entityUIDs {uid : EntityUID} {ts : Set Term} :
   unfold Term.entityUIDs
   simp only [List.mapUnion₁_eq_mapUnion, List.mem_mapUnion_iff_mem_exists]
   exists Term.entity uid
-  simp only [Set.in_list_iff_in_set, hin, Term.entityUIDs, TermPrim.entityUIDs,
-    Set.mem_singleton_iff_eq, and_self]
+  simp only [Set.mem_elts_iff_mem_set, hin, Term.entityUIDs, TermPrim.entityUIDs,
+    Set.mem_singleton, and_self]
 
 private theorem mem_entityUIDs_mem_terms {uid : EntityUID} {ts : Set Term} {ety : EntityType} {εs : SymEntities} :
   (Term.set ts (.entity ety)).WellFormedLiteral εs →
@@ -150,9 +150,9 @@ private theorem mem_entityUIDs_mem_terms {uid : EntityUID} {ts : Set Term} {ety 
   have hlt := lit_term_set_implies_lit_elt hlit hinₜ
   have ⟨_, heq, _⟩ := wfl_of_type_entity_is_entity (And.intro hwt hlt) hty
   subst heq
-  simp only [Term.entityUIDs, TermPrim.entityUIDs, Set.mem_singleton_iff_eq] at hin
+  simp only [Term.entityUIDs, TermPrim.entityUIDs, Set.mem_singleton] at hin
   subst hin
-  simp only [← Set.in_list_iff_in_set, hinₜ]
+  simp only [← Set.mem_elts_iff_mem_set, hinₜ]
 
 private theorem same_env_implies_find? {uid₁ uid₂ : EntityUID} {d₁ : EntityData} {env : Env} {εnv : SymEnv} {I : Interpretation}
   (heq : env ∼ εnv.interpret I)
@@ -176,7 +176,7 @@ local macro "simp_not_mem_footprint" hwε:ident hI:ident hδ:ident hf:ident happ
     rw [Bool.eq_false_iff, ne_eq, Set.contains_prop_bool_equiv] at $hft:ident
     simp only [not_mem_footprintUIDs_implies_empty_ancs $hwε $hI $hδ $hf $hft, Term.set.injEq, and_true] at $happ:ident
     subst $happ
-    simp only [Set.empty_no_elts] at $hin:ident))
+    simp only [Set.not_mem_empty] at $hin:ident))
 
 private theorem acyclic_implies_Acyclic {xs : List Expr} {env : Env} {εnv : SymEnv} {I : Interpretation}
   (hsε : εnv.StronglyWellFormedForAll xs)
@@ -187,7 +187,7 @@ private theorem acyclic_implies_Acyclic {xs : List Expr} {env : Env} {εnv : Sym
 := by
   intro uid d hd
   by_contra hin
-  simp only [acyclic, Set.in_list_iff_in_set, List.mem_map, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂] at hok
+  simp only [acyclic, Set.mem_elts_iff_mem_set, List.mem_map, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂] at hok
   have ⟨δ, f, ts, hδ, hf, heq, hinᵤ⟩ := same_env_implies_find? heq hd hin
   cases f
   case uuf f =>
@@ -374,7 +374,7 @@ private theorem transitive_implies_Transitive_udf_udf
   specialize htr (uid₃.ty, .udf f₂₃) (Map.find?_mem_toList hf₂)
   simp only [SymEntityData.knownAncestors.ancs, heq₂, mem_terms_mem_entityUIDs hu₃₂, true_implies] at htr
   replace ⟨(ety₃, f₁₃), hin₁₃, htr⟩ := htr
-  split at htr <;> try simp only [Set.empty_no_elts] at htr
+  split at htr <;> try simp only [Set.not_mem_empty] at htr
   rename_i f₁₃ heq₃
   simp only [Prod.mk.injEq] at heq₃
   replace ⟨heq₃, heq₃'⟩ := heq₃
@@ -424,7 +424,7 @@ private theorem enforce_satisfiedBy_implies_acyclic_and_transitive {xs : List Ex
   all_goals {
     intro t hin
     specialize hsat t
-    rw [Set.in_list_iff_in_mk, ← hok, ← Set.make_mem, List.mem_union_iff] at hsat
+    rw [Set.mem_set_iff_mem_mk, ← hok, Set.mem_make, List.mem_union_iff] at hsat
     simp only [hin, true_or, or_true, true_implies] at hsat
     exact hsat
   }
