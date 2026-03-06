@@ -150,14 +150,14 @@ private theorem satisfiedPolicies_allowAll_permit_nonempty {env : Env} :
   rw [List.filterMap_cons_some (by exact satisfiedWithEffect_allowAll_permit env)]
   simp only [List.filterMap_nil]
   by_contra hc
-  simp only [Bool.not_eq_false, ← Set.make_empty, List.cons_ne_self] at hc
+  simp only [Bool.not_eq_false, Set.isEmpty_make, List.cons_ne_self] at hc
 
 private theorem satisfiedPolicies_allowAll_forbid_empty {env : Env} :
   (satisfiedPolicies .forbid [verifyAlwaysAllows.allowAll] env.request env.entities).isEmpty = true
 := by
   unfold Spec.satisfiedPolicies
   rw [List.filterMap_cons_none (by exact satisfiedWithEffect_allowAll_forbid env)]
-  simp only [List.filterMap_nil, ← Set.make_empty]
+  simp only [List.filterMap_nil, Set.isEmpty_make]
 
 theorem isAuthorized_allowAll_allows (env : Env) :
   (Spec.isAuthorized env.request env.entities [verifyAlwaysAllows.allowAll]).decision = .allow

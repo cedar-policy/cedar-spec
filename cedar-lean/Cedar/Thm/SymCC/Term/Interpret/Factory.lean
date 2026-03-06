@@ -920,7 +920,7 @@ theorem interpret_set_inter  {εs : SymEntities} {I : Interpretation} {t₁ t₂
           rw (config := {occs := .pos [2]}) [← List.map_id' ((Set.intersect s₁ s₂).1)]
           apply List.map_congr
           intro x h
-          rw [Set.in_list_iff_in_set] at h
+          rw [Set.mem_elts_iff_mem_set] at h
           replace h : x ∈ s₁ ∩ s₂ := by simp only [Inter.inter, h]
           rw [Set.mem_inter_iff] at h
           have hlit := lit_term_set_implies_lit_elt heq.left h.left
@@ -1060,7 +1060,7 @@ theorem interpret_setOf {I : Interpretation} {ts : List Term} {ty : TermType} :
   (setOf ts ty).interpret I = setOf (ts.map (Term.interpret I)) ty
 := by
   simp only [setOf, interpret_term_set, Term.set.injEq, and_true, Set.make_make_eqv]
-  exact List.map_equiv (Term.interpret I) (Set.elts (Set.make ts)) ts Set.elts_make_equiv
+  exact List.map_equiv (Term.interpret I) (Set.elts (Set.make ts)) ts Set.elts_make_eqv
 
 theorem interpret_recordOf {I : Interpretation} {ats : List (Attr × Term)} :
   (recordOf ats).interpret I = recordOf (ats.map (Prod.map id (Term.interpret I)))

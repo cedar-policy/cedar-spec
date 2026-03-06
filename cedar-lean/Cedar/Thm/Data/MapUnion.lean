@@ -134,10 +134,10 @@ private theorem mem_foldl_union_iff_mem_or_exists {α β} [LT α] [StrictLT α] 
     constructor <;> intro h
     case mp =>
       replace ih := ih.mp h
-      rw [Set.mem_union_iff_mem_or, or_assoc] at ih
+      rw [Set.mem_union, or_assoc] at ih
       exact ih
     case mpr =>
-      rw [← or_assoc, ← Set.mem_union_iff_mem_or] at h
+      rw [← or_assoc, ← Set.mem_union] at h
       exact ih.mpr h
 
 public theorem mem_mapUnion_iff_mem_exists {α β} [LT α] [StrictLT α] [DecidableLT α] {f : β → Set α} {xs : List β} :
@@ -146,12 +146,9 @@ public theorem mem_mapUnion_iff_mem_exists {α β} [LT α] [StrictLT α] [Decida
   intro e
   simp only [List.mapUnion, EmptyCollection.emptyCollection]
   cases xs
-  case nil =>
-    simp only [List.foldl_nil, Set.empty_no_elts, List.not_mem_nil,
-      false_and, exists_false]
+  case nil => simp [Set.not_mem_empty]
   case cons hd tl =>
-    have h : e ∈ f hd ↔ e ∈ (Set.empty ∪ f hd) := by
-      simp only [Set.mem_union_iff_mem_or, Set.empty_no_elts, false_or]
+    have h : e ∈ f hd ↔ e ∈ (Set.empty ∪ f hd) := by simp [Set.mem_union, Set.not_mem_empty]
     simp only [List.foldl_cons, List.mem_cons, exists_eq_or_imp, h, mem_foldl_union_iff_mem_or_exists]
 
 public theorem mem_mem_implies_mem_mapUnion {α β} [LT α] [StrictLT α] [DecidableLT α] {f : β → Set α} {xs : List β} {e : α} {s : β} :

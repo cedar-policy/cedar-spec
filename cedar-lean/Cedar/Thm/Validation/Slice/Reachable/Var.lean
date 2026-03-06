@@ -37,7 +37,7 @@ theorem var_entity_reachable {var : Var} {v : Value} {n : Nat} {request : Reques
   ReachableIn entities request.sliceEUIDs euid (n + 1)
 := by
   have hi : euid ∈ request.sliceEUIDs := by
-    rw [Request.sliceEUIDs, Set.mem_union_iff_mem_or, ←Set.make_mem]
+    rw [Request.sliceEUIDs, Set.mem_union, Set.mem_make]
     cases var <;> simp only [evaluate, Except.ok.injEq] at he <;> subst he <;> cases ha
     case principal | action | resource => simp
     case context v a path hf' hv =>

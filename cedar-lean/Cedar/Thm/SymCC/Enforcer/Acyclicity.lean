@@ -92,7 +92,7 @@ private theorem swf_implies_acyclic_entity (uid : EntityUID) {es : Entities} :
   simp only [Entities.ancestorsOrEmpty] at hin
   cases hf : Map.find? es uid <;> simp only [hf] at hin
   case none =>
-    have _ := Set.empty_no_elts uid
+    have _ := Set.not_mem_empty uid
     contradiction
   case some d =>
     have _ := hse.right.left uid d hf

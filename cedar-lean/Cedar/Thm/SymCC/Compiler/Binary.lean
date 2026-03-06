@@ -771,7 +771,7 @@ theorem same_entities_ancestors_none_of_type {es : Entities} {εs : SymEntities}
     replace ⟨_, ha, _⟩ := ha
     simp only [ha, reduceCtorEq] at hno
   case h_2 =>
-    exact Set.empty_no_elts e₂
+    exact Set.not_mem_empty e₂
 
 theorem same_entities_ancestors_some_of_type {es : Entities} {εs : SymEntities} {e₁ : EntityUID} {ety₂ : EntityType} {ancs : UnaryFunction}
   (heq : es ∼ εs)
@@ -977,7 +977,7 @@ private theorem entities_type_eq {εs : SymEntities} {ety : EntityType} {ts : Li
 := by
   intro uid ht
   replace ht := @List.mem_map_of_mem _ _ _ _ (fun uid => Term.prim (TermPrim.entity uid)) ht
-  simp only [← hts, Set.in_list_iff_in_mk] at ht
+  simp only [← hts, Set.mem_set_iff_mem_mk] at ht
   replace ht := wf_term_set_implies_typeOf_elt hwφ ht
   simp only [typeOf_term_prim_entity, TermType.prim.injEq, TermPrimType.entity.injEq] at ht
   exact ht
@@ -991,7 +991,7 @@ private theorem compileInₛ_eq_any_inₑ_none {es : Entities} {εs : SymEntitie
   by_contra hc
   simp only [Bool.not_eq_false] at hc
   replace ⟨e₂, ht, hc⟩ := Set.intersects_iff_exists.mp hc
-  rw [← Set.in_list_iff_in_mk] at ht
+  rw [← Set.mem_set_iff_mem_mk] at ht
   specialize hty e₂ ht
   rw [← hty] at ha
   have := same_entities_ancestors_none_of_type heq ha
@@ -1009,7 +1009,7 @@ private theorem compileInₛ_eq_any_inₑ_some {es : Entities} {εs : SymEntitie
   have hlit : (Term.set (Set.mk ts) (TermType.entity ety₂)).isLiteral := by
     apply lit_term_set_impliedBy_lit_elts
     intro t h
-    simp only [hts, ← Set.in_list_iff_in_mk, List.mem_map] at h
+    simp only [hts, ← Set.mem_set_iff_mem_mk, List.mem_map] at h
     replace ⟨_, _, h⟩ := h
     simp only [← h, Term.isLiteral]
   replace ⟨ts', ha, hlit', heq⟩ := same_entities_ancestors_some_of_type heq hwf ha
@@ -1017,7 +1017,7 @@ private theorem compileInₛ_eq_any_inₑ_some {es : Entities} {εs : SymEntitie
   cases h : Set.intersects (Set.mk uids) (Entities.ancestorsOrEmpty es e₁)
   case false =>
     by_contra hc
-    simp only [Bool.not_eq_false, Set.intersects_iff_exists, ← Set.in_list_iff_in_mk] at hc
+    simp only [Bool.not_eq_false, Set.intersects_iff_exists, ← Set.mem_set_iff_mem_mk] at hc
     replace ⟨t, ht, hc⟩ := hc
     simp only [hts, List.mem_map] at ht
     replace ⟨e₂, ht, ht'⟩ := ht
@@ -1029,11 +1029,11 @@ private theorem compileInₛ_eq_any_inₑ_some {es : Entities} {εs : SymEntitie
     simp only [h', reduceCtorEq] at h
   case true =>
     replace ⟨e₂, h', h⟩ := Set.intersects_iff_exists.mp h
-    rw [← Set.in_list_iff_in_mk] at h'
+    rw [← Set.mem_set_iff_mem_mk] at h'
     specialize heq e₂ (hty e₂ h')
     simp only [Set.intersects_iff_exists]
     exists (Term.prim (TermPrim.entity e₂))
-    simp only [hts, ← Set.in_list_iff_in_mk, List.mem_map, Term.prim.injEq,
+    simp only [hts, ← Set.mem_set_iff_mem_mk, List.mem_map, Term.prim.injEq,
       TermPrim.entity.injEq, exists_eq_right, h', heq, h, and_self]
 
 private theorem compileInₛ_eq_any_inₑ {es : Entities} {εs : SymEntities} {ety₂ : EntityType} {e₁ : EntityUID} {ts : List Term} {uids : List EntityUID}
@@ -1050,7 +1050,7 @@ private theorem compileInₛ_eq_any_inₑ {es : Entities} {εs : SymEntities} {e
   by_cases h : e₁ ∈ uids
   case pos =>
     have ht : Term.prim (TermPrim.entity e₁) ∈ Set.mk ts := by
-      simp only [hts, ← Set.in_list_iff_in_mk, List.mem_map, Term.prim.injEq, TermPrim.entity.injEq,
+      simp only [hts, ← Set.mem_set_iff_mem_mk, List.mem_map, Term.prim.injEq, TermPrim.entity.injEq,
       exists_eq_right, h]
     have hty := wf_term_set_implies_typeOf_elt hwφ₂ ht
     rw [← Set.contains_prop_bool_equiv] at ht
@@ -1062,7 +1062,7 @@ private theorem compileInₛ_eq_any_inₑ {es : Entities} {εs : SymEntities} {e
   case neg =>
     have ht : Set.contains (Set.mk ts) (Term.prim (TermPrim.entity e₁)) = false := by
       by_contra hc
-      simp only [hts, Bool.not_eq_false, Set.contains_prop_bool_equiv, ← Set.in_list_iff_in_mk,
+      simp only [hts, Bool.not_eq_false, Set.contains_prop_bool_equiv, ← Set.mem_set_iff_mem_mk,
         List.mem_map, Term.prim.injEq, TermPrim.entity.injEq, exists_eq_right] at hc
       contradiction
     have hv : (List.any uids fun x => inₑ e₁ x es) = (Set.mk uids).intersects (es.ancestorsOrEmpty e₁) := by

@@ -518,7 +518,7 @@ theorem residual_well_typed_is_sound_set
   have h₄ := List.forall₂_implies_all_right h₃₁
   have hₛ : ∀ v, v ∈ (Data.Set.make v₁) → InstanceOfType env v ty := by
     intro v h
-    rw [←Data.Set.make_mem] at h
+    rw [Data.Set.mem_make] at h
     obtain ⟨x, hₓ₁, hₓ₂⟩ := h₄ v h
     have h' := h₁ x hₓ₁ v hₓ₂
     rw [h₂ x hₓ₁] at h'

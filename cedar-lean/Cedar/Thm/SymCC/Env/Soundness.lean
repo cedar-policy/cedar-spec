@@ -304,10 +304,10 @@ private theorem env_symbolize?_same_entity_data_standard_same_tag
     := by
       unfold Term.isLiteral
       apply List.all_eq_true.mpr
-      intros x hmem_x
+      intro x hmem_x
       have hmem_x := x.property
-      have := (Set.make_mem _ _).mpr hmem_x
-      have ⟨_, _, hx⟩ := List.mem_map.mp this
+      rw [Set.mem_set_iff_mem_mk, Set.mem_make] at hmem_x
+      have ⟨_, _, hx⟩ := List.mem_map.mp hmem_x
       simp [←hx, Term.isLiteral]
     simp only [Option.map_some]
     constructor
@@ -339,7 +339,7 @@ private theorem env_symbolize?_same_entity_data_standard_same_tag
           := by
             intros h
             have := Set.contains_prop_bool_equiv.mp h
-            have := (Set.make_mem _ _).mpr this
+            rw [Set.mem_make] at this
             have ⟨_, hmem, heq⟩ := List.mem_map.mp this
             simp only [Term.prim.injEq, TermPrim.string.injEq] at heq
             simp only [heq] at hmem
@@ -362,8 +362,8 @@ private theorem env_symbolize?_same_entity_data_standard_same_tag
           have :
             List.map (fun k => Term.prim (TermPrim.string k)) data.tags.keys.toList = []
           := by
-            apply (Set.make_empty _).mpr
-            simp [heq, Set.isEmpty, Set.empty]
+            simp only [← Set.empty_eq_mk_nil, Set.make_eq_empty] at heq
+            simp [heq]
           have := List.map_eq_nil_iff.mp this
           simp [Map.map_keys_empty_implies_map_empty this]
         · rename_i s _ _ heq
@@ -382,7 +382,7 @@ private theorem env_symbolize?_same_entity_data_standard_same_tag
             have :
               Term.string tag ∈ Set.make (List.map (fun k => Term.prim (TermPrim.string k)) data.tags.keys.toList)
             := by
-              apply (Set.make_mem _ _).mp
+              rw [Set.mem_make]
               apply List.mem_map.mpr
               exists tag
               simp only [and_true]
@@ -422,8 +422,8 @@ private theorem env_symbolize?_same_entity_data_standard_same_tag
           have :
             List.map (fun k => Term.prim (TermPrim.string k)) data.tags.keys.toList = []
           := by
-            apply (Set.make_empty _).mpr
-            simp [heq, Set.isEmpty, Set.empty]
+            rw [← Set.empty_eq_mk_nil, Set.make_eq_empty] at heq
+            simp [heq]
           have := List.map_eq_nil_iff.mp this
           have := Map.map_keys_empty_implies_map_empty this
           simp [this, Map.find?] at hfind_tag
@@ -437,7 +437,7 @@ private theorem env_symbolize?_same_entity_data_standard_same_tag
           ]
           simp only [←heq]
           simp only [Set.contains_prop_bool_equiv]
-          apply (Set.make_mem _ _).mp
+          rw [Set.mem_make]
           apply List.mem_map.mpr
           exists tag
           simp only [and_true]
@@ -663,7 +663,7 @@ private theorem env_symbolize?_same_entity_data_standard
         · simp
         · simp
         · simp only [Term.isLiteral]
-      · apply (Set.make_mem _ _).mp
+      · rw [Set.mem_make]
         apply List.mem_filterMap.mpr
         exists anc
         constructor
@@ -702,8 +702,8 @@ private theorem env_symbolize?_same_entity_data_standard
       · simp
       · simp only [Term.isLiteral]
     · intros anc_term hmem_anc_term
-      have := (Set.make_mem _ _).mpr hmem_anc_term
-      have ⟨anc', hmem_anc', heq⟩ := List.mem_filterMap.mp this
+      rw [Set.mem_make] at hmem_anc_term
+      have ⟨anc', hmem_anc', heq⟩ := List.mem_filterMap.mp hmem_anc_term
       exists anc'
       simp only [Option.ite_none_right_eq_some, Option.some.injEq] at heq
       simp only [←heq, true_and]
@@ -741,7 +741,7 @@ private theorem env_symbolize?_same_entity_data_enum
     | cons anc ancs =>
       simp only [h] at hwt_data_ancs
       have : anc ∈ Set.mk (anc :: ancs) := by
-        apply Set.mem_cons_self
+        apply Set.mem_mk_hd
       have := hwt_data_ancs anc this
       contradiction
   -- Proof obgligations of `SameEntityData`
@@ -976,7 +976,7 @@ private theorem env_symbolize?_same_entities_action
     exists Set.make (entry.ancestors.toList.filterMap
       (SymEntityData.ofActionType.termOfType? anc.ty))
     simp only [hf_ancs_find, true_and]
-    apply (Set.make_mem _ _).mp
+    rw [Set.mem_make]
     apply List.mem_filterMap.mpr
     exists anc
     constructor
@@ -1017,8 +1017,8 @@ private theorem env_symbolize?_same_entities_action
     ]
     simp only [Option.bind_eq_bind, hf_ancs_find, Term.set.injEq, and_true, exists_eq_left']
     intros anc_term hmem_anc_term
-    have hmem_anc_term := (Set.make_mem _ _).mpr hmem_anc_term
-    have ⟨anc, hmem_anc, hanc_term⟩ := List.mem_filterMap.mp hmem_anc_term
+    rw [Set.mem_make] at hmem_anc_term
+    replace ⟨anc, hmem_anc, hanc_term⟩ := List.mem_filterMap.mp hmem_anc_term
     exists anc
     simp only [
       SymEntityData.ofActionType.termOfType?,
@@ -1030,7 +1030,7 @@ private theorem env_symbolize?_same_entities_action
   · intros mems hmems
     simp only [Option.some.injEq] at hmems
     simp only [←hmems]
-    apply (Set.make_mem _ _).mp
+    rw [Set.mem_make]
     simp only [SymEntityData.ofActionType.acts]
     apply List.mem_filterMap.mpr
     exists (uid, entry)
@@ -1124,8 +1124,8 @@ private theorem defaultLitWithDefaultEid_wf
             List.filterMap (fun x => if x.fst.ty = ety then some x.fst.eid else none) (Map.toList Γ.acts)
             = []
           := by
-            apply (Set.make_empty _).mpr
-            simp only [Set.isEmpty, Set.empty, beq_iff_eq, hmembers]
+            rw [← Set.empty_eq_mk_nil, Set.make_eq_empty] at hmembers
+            simp [hmembers]
           have := List.mem_eraseDups_implies_mem hmem_ety'
           have ⟨act, hmem_act, hact_ty⟩ := List.mem_map.mp this
           simp only [h.1] at hact_ty
@@ -1379,13 +1379,13 @@ private theorem env_symbolize?_tags_wf
         · simp only [typeOf_term_prim_entity, TermType.ofType, heq_ety]
         · constructor
           · intros t hmem_t
-            replace hmem_t := (Set.make_mem _ _).mpr hmem_t
+            rw [Set.mem_make] at hmem_t
             have ⟨_, _, h⟩ := List.mem_map.mp hmem_t
             simp only [←h]
             constructor
             constructor
           · intros t hmem_t
-            replace hmem_t := (Set.make_mem _ _).mpr hmem_t
+            rw [Set.mem_make] at hmem_t
             have ⟨_, _, h⟩ := List.mem_map.mp hmem_t
             simp only [←h, typeOf_term_prim_string]
           · constructor
@@ -1395,7 +1395,7 @@ private theorem env_symbolize?_tags_wf
           intros x hmem_x
           simp only
           replace hmem_x := x.property
-          have hmem_x := (Set.make_mem _ _).mpr hmem_x
+          rw [Set.mem_set_iff_mem_mk, Set.mem_make] at hmem_x
           have ⟨_, _, h⟩ := List.mem_map.mp hmem_x
           simp only [←h, Term.isLiteral]
         · simp only [Term.typeOf, TermType.ofType]
@@ -1502,7 +1502,7 @@ private theorem env_symbolize?_ancs_wf
   simp only [Entities.symbolizeAncs?, beq_iff_eq] at hudf
   have ⟨_, anc, _, heq, hudf, _⟩ := List.findSome?_eq_some_iff.mp hudf
   have hmem_ancs : anc ∈ entry.ancestors := by
-    apply (Set.in_list_iff_in_set _ _).mp
+    apply (Set.mem_elts_iff_mem_set _ _).mp
     simp only [Set.toList] at heq
     simp [heq]
   simp only [Option.ite_none_right_eq_some, Option.some.injEq] at hudf
@@ -1538,7 +1538,7 @@ private theorem env_symbolize?_ancs_wf
     · simp only [typeOf_term_prim_entity, TermType.ofType, heq_ety]
     · constructor
       · intros t hmem_t
-        replace hmem_t := (Set.make_mem _ _).mpr hmem_t
+        rw [Set.mem_make] at hmem_t
         have ⟨anc, hmem_anc, h⟩ := List.mem_filterMap.mp hmem_t
         simp only [Option.ite_none_right_eq_some, Option.some.injEq] at h
         simp only [←h]
@@ -1547,7 +1547,7 @@ private theorem env_symbolize?_ancs_wf
         apply env_valid_uid_implies_sym_env_valid_uid hinst
         exact hwf_ancs anc hmem_anc
       · intros t hmem_t
-        replace hmem_t := (Set.make_mem _ _).mpr hmem_t
+        rw [Set.mem_make] at hmem_t
         have ⟨anc, hmem_anc, h⟩ := List.mem_filterMap.mp hmem_t
         simp only [Option.ite_none_right_eq_some, Option.some.injEq] at h
         simp only [←h, typeOf_term_prim_entity]
@@ -1560,7 +1560,7 @@ private theorem env_symbolize?_ancs_wf
       intros x hmem_x
       simp only
       replace hmem_x := x.property
-      have hmem_x := (Set.make_mem _ _).mpr hmem_x
+      rw [Set.mem_set_iff_mem_mk, Set.mem_make] at hmem_x
       have ⟨anc, hmem_anc, h⟩ := List.mem_filterMap.mp hmem_x
       simp only [Option.ite_none_right_eq_some, Option.some.injEq] at h
       simp only [←h, Term.isLiteral]

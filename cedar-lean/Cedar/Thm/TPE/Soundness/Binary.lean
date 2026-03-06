@@ -139,7 +139,7 @@ theorem partial_evaluate_is_sound_binary_app
           rcases instance_of_entity_type_is_entity h₆ with ⟨_, _, h₆⟩
           simp only [Value.asEntityUID, h₆, reduceCtorEq] at h₇₂
         case _ =>
-          simp [Data.Set.make_any_iff_any]
+          simp only [Except.bind_ok, Data.Set.any_make]
           simp [TPE.inₛ, Option.bind_eq_some_iff, Data.Set.toList] at heq₃₁
           rcases heq₃₁ with ⟨vs', heq₃₁, heq₃₂⟩
           rw [List.mapM_some_iff_forall₂] at heq₃₁

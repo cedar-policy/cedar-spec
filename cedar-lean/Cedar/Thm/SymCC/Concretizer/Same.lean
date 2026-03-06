@@ -75,7 +75,7 @@ private theorem term_setOfEntityUIDs?_some_exists {t : Term} {uids : Set EntityU
   simp only [true_and]
   constructor
   case left =>
-    have heq := @Set.elts_make_equiv _ _ _ _ uids
+    have heq := @Set.elts_make_eqv _ _ _ _ uids
     replace heq := List.map_equiv Term.entity _ _ heq
     apply List.Equiv.trans _ (List.Equiv.symm heq)
     simp only [List.Equiv, List.subset_def, List.mem_map, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
@@ -95,11 +95,11 @@ private theorem term_setOfEntityUIDs?_some_exists {t : Term} {uids : Set EntityU
       exact huids
   case right =>
     intro uid hin
-    rw [← Set.make_mem] at hin
+    rw [Set.mem_make] at hin
     replace ⟨t, huids, ht⟩ := List.mapM_some_implies_all_from_some huids uid hin
     rw [term_entityUID?_some_iff_eq] at ht
     subst ht
-    replace hwt := wf_term_set_implies_typeOf_elt hwt ((Set.in_list_iff_in_mk _ _).mp huids)
+    replace hwt := wf_term_set_implies_typeOf_elt hwt ((Set.mem_set_iff_mem_mk _ _).mp huids)
     simp only [typeOf_term_prim_entity, TermType.prim.injEq, TermPrimType.entity.injEq] at hwt
     exact hwt
 
@@ -124,7 +124,7 @@ private theorem term_setOfTags?_some_lit {t : Term} {tags : Set String} :
   rename_i ts ty
   apply lit_term_set_impliedBy_lit_elts
   intro t hin
-  rw [← Set.in_list_iff_in_mk] at hin
+  rw [← Set.mem_set_iff_mem_mk] at hin
   simp only [Option.bind] at hs
   split at hs
   all_goals (simp only [Option.some.injEq, reduceCtorEq] at hs)
@@ -158,15 +158,15 @@ private theorem term_setOfTags?_some_exists {t : Term} {tags : Set String} :
   constructor <;> simp only [List.subset_def, List.mem_map, forall_exists_index, and_imp,
     forall_apply_eq_imp_iff₂]
   · intro t hin
-    rw [Set.in_list_iff_in_set, ← Set.in_list_iff_in_mk] at hin
+    rw [Set.mem_elts_iff_mem_set, ← Set.mem_set_iff_mem_mk] at hin
     replace ⟨s, hin', heq⟩ := List.mapM_some_implies_all_some heq t hin
     rw [term_tag?_some_iff_eq] at heq
     subst heq
     exists s
-    simp only [Set.in_list_iff_in_set, ← Set.make_mem, hin', and_self]
+    simp only [Set.mem_elts_iff_mem_set, Set.mem_make, hin', and_self]
   · intro s hin
-    rw [Set.in_list_iff_in_set, ← Set.in_list_iff_in_mk]
-    rw [Set.in_list_iff_in_set, ← Set.make_mem] at hin
+    rw [Set.mem_elts_iff_mem_set, ← Set.mem_set_iff_mem_mk]
+    rw [Set.mem_elts_iff_mem_set, Set.mem_make] at hin
     replace ⟨t, hin', heq⟩ := List.mapM_some_implies_all_from_some heq s hin
     rw [term_tag?_some_iff_eq] at heq
     subst heq
@@ -210,7 +210,7 @@ private theorem concretize?_some_InSymAncestors {uid anc : EntityUID} {δ : SymE
   exists ts
   simp only [ha, true_and]
   replace heq := heq.right
-  simp only [List.subset_def, Set.in_list_iff_in_set, List.mem_map, forall_exists_index, and_imp,
+  simp only [List.subset_def, Set.mem_elts_iff_mem_set, List.mem_map, forall_exists_index, and_imp,
     forall_apply_eq_imp_iff₂] at heq
   exact heq anc hin.right
 
@@ -234,7 +234,7 @@ private theorem concretize?_some_InAncestors {uid : EntityUID} {δ : SymEntityDa
   simp only [ha, true_and]
   intro t ht
   replace heq := heq.left
-  simp only [List.subset_def, List.mem_map, Set.in_list_iff_in_set] at heq
+  simp only [List.subset_def, List.mem_map, Set.mem_elts_iff_mem_set] at heq
   replace ⟨anc, hin, heq⟩ := heq ht
   subst heq
   exists anc
@@ -262,7 +262,7 @@ private theorem mapM_concretize?_taggedValueFor_none_implies_contains_tag_false
 := by
   by_contra hc
   simp only [Bool.not_eq_false] at hc
-  rw [Set.contains_prop_bool_equiv, ← Set.in_list_iff_in_set] at hc
+  rw [Set.contains_prop_bool_equiv, ← Set.mem_elts_iff_mem_set] at hc
   replace hkeqv := heqv.left
   simp only [List.subset_def, List.mem_map] at hkeqv
   replace ⟨tag, hkeqv⟩ := hkeqv hc
@@ -294,7 +294,7 @@ private theorem mapM_concretize?_taggedValueFor_some_implies_contains_tag_true
   simp only [List.subset_def, List.mem_map, forall_exists_index, and_imp,
     forall_apply_eq_imp_iff₂] at hkeqv
   specialize hkeqv tag' hin'
-  simp only [← Set.in_list_iff_in_set, hkeqv]
+  simp only [← Set.mem_elts_iff_mem_set, hkeqv]
 
 private theorem concretize?_some_same_tags {uid : EntityUID} {δ : SymEntityData} {εs : SymEntities}
   {ancs : List (Set EntityUID)} {attrs : Map Attr Value} {tags : Map String Value}

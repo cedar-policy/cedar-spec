@@ -1943,10 +1943,9 @@ public theorem find?_stronger_pred
   induction l with
   | nil => contradiction
   | cons hd tl ih =>
-    simp only [List.find?]
+    simp only [List.find?] at hfind ⊢
     cases h : g hd with
     | false =>
-      simp only [List.find?] at hfind
       apply ih
       · split at hfind
         · simp only [Option.some.injEq] at hfind
@@ -1960,7 +1959,6 @@ public theorem find?_stronger_pred
     | true =>
       simp only [Option.some.injEq]
       have := hg hd List.mem_cons_self h
-      simp only [List.find?] at hfind
       simp only [this, Option.some.injEq] at hfind
       exact hfind
 

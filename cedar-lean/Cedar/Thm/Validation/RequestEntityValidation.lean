@@ -69,7 +69,7 @@ theorem instance_of_type_refl {v : Value} {ty : CedarType} {env : TypeEnv} :
       apply InstanceOfType.instance_of_set s sty
       simp only [List.all_eq_true] at h₀
       intro v hv
-      simp only [← Set.in_list_iff_in_set] at hv
+      simp only [← Set.mem_elts_iff_mem_set] at hv
       specialize h₀ ⟨v, hv⟩
       simp only [List.attach_def, List.mem_pmap_subtype, hv, true_implies] at h₀
       exact instance_of_type_refl h₀
@@ -207,7 +207,7 @@ theorem instance_of_schema_refl {entities : Entities} {env : TypeEnv} :
         constructor
         · intro anc ancin
           simp only [Set.contains, List.elem_eq_mem] at h₄
-          rw [← Set.in_list_iff_in_set] at ancin
+          rw [← Set.mem_elts_iff_mem_set] at ancin
           replace h₄ := h₄ anc ancin
           simp at h₄
           exact h₄.left

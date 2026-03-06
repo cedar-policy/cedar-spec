@@ -136,7 +136,7 @@ theorem ofActionType_contains_act
     Option.some.injEq, exists_eq_left',
   ]
   apply Set.contains_prop_bool_equiv.mpr
-  apply (Set.make_mem _ _).mp
+  rw [Set.mem_make]
   apply List.mem_filterMap.mpr
   have ⟨entry, hentry⟩ := Map.contains_iff_some_find?.mp hmem
   exists (uid, entry)
@@ -870,7 +870,7 @@ theorem ofActionType_ancsUDF_is_wf
           Set.contains,
         ]
         simp only [List.elem_eq_contains, List.contains_eq_mem, decide_eq_true_eq]
-        apply (Set.make_mem _ _).mp
+        rw [Set.mem_elts_iff_mem_set, Set.mem_make]
         apply List.mem_filterMap.mpr
         exists act_entry
         simp only [↓reduceIte, and_true]
@@ -892,8 +892,8 @@ theorem ofActionType_ancsUDF_is_wf
       simp only [Factory.setOf]
       apply lit_term_set_impliedBy_lit_elts
       intros t hmem_t
-      have := (Set.make_mem _ _).mpr hmem_t
-      have ⟨anc, hanc, hsym⟩ := List.mem_filterMap.mp this
+      rw [Set.mem_make] at hmem_t
+      have ⟨anc, hanc, hsym⟩ := List.mem_filterMap.mp hmem_t
       simp only [
         SymEntityData.ofActionType.termOfType?,
         Option.ite_none_right_eq_some,
@@ -924,7 +924,7 @@ theorem ofActionType_ancsUDF_is_wf
           SymEntityData.ofActionType.acts,
         ]
         apply Set.contains_prop_bool_equiv.mpr
-        apply (Set.make_mem _ _).mp
+        rw [Set.mem_make]
         apply List.mem_filterMap.mpr
         simp only [
           Option.ite_none_right_eq_some,
@@ -998,17 +998,11 @@ theorem ofActionType_is_wf
   · intros; contradiction
   · intros mems h
     simp only [SymEntityData.ofActionType.acts, Option.some.injEq] at h
-    simp only [Bool.not_eq_true, ←h]
-    apply (Set.make_non_empty _).mp
-    simp only [
-      ne_eq, List.filterMap_eq_nil_iff, ite_eq_right_iff,
-      reduceCtorEq, imp_false,
-      Prod.forall, Classical.not_forall,
-      Decidable.not_not
-    ]
-    exists uid
-    exists entry
-    exists (Map.find?_mem_toList hfind)
+    subst mems
+    intro h
+    simp only [Set.isEmpty_make, List.filterMap_eq_nil_iff, ite_eq_right_iff, reduceCtorEq,
+      imp_false, Prod.forall] at h
+    exact h uid entry (Map.find?_mem_toList hfind) rfl
 
 theorem ofEnv_entities_is_wf
   {Γ : TypeEnv}
@@ -1082,7 +1076,7 @@ theorem entity_uid_wf_implies_sym_entities_is_valid_entity_uid
       SymEntityData.ofActionType.acts,
     ]
     apply Set.contains_prop_bool_equiv.mpr
-    apply (Set.make_mem _ _).mp
+    rw [Set.mem_make]
     apply List.mem_filterMap.mpr
     simp only [ActionSchema.contains, Option.isSome] at huid
     split at huid
@@ -1497,20 +1491,18 @@ theorem in_ancsUDF_implies_in_ancestors
     unfold Term.entityUIDs at hmem
     have ⟨s, hmem_s, hmem_uid'⟩ := (List.mem_mapUnion_iff_mem_exists _).mp hmem
     replace ⟨s, hmem_s⟩ := s
-    have := (Set.make_mem _ _).mpr hmem_s
-    have ⟨anc', hmem_anc', hanc'⟩ := List.mem_filterMap.mp this
+    rw [Set.mem_set_iff_mem_mk, Set.mem_make] at hmem_s
+    have ⟨anc', hmem_anc', hanc'⟩ := List.mem_filterMap.mp hmem_s
     simp only [
       SymEntityData.ofActionType.termOfType?,
       Option.ite_none_right_eq_some,
       Option.some.injEq,
     ] at hanc'
     simp only [←hanc'.2, Term.entityUIDs, TermPrim.entityUIDs, Set.singleton] at hmem_uid'
-    have := (Set.mem_singleton_iff_eq _ _).mp hmem_uid'
-    simp only [←this] at hmem_anc'
+    simp only [Set.mem_cons, List.not_mem_nil, or_false] at hmem_uid' ; subst uid'
     exists entry
-    simp only [this, hanc', true_and, true_and]
-    simp only [←this]
-    exact hmem_anc'
+    simp only [Set.toList, Set.mem_elts_iff_mem_set] at hmem_anc'
+    simp [hanc', hmem_anc']
 
 theorem in_ancestors_implies_in_ancsUDF
   {Γ : TypeEnv} {uid uid' : EntityUID} {entry : ActionSchemaEntry}
@@ -1529,14 +1521,14 @@ theorem in_ancestors_implies_in_ancsUDF
   simp only [List.mem_attach, true_and, Subtype.exists, exists_prop]
   exists .prim (.entity uid')
   constructor
-  · apply (Set.make_mem _ _).mp
+  · rw [Set.mem_set_iff_mem_mk, Set.mem_make, Set.toList]
     apply List.mem_filterMap.mpr
     exists uid'
     constructor
     · exact hmem
     · simp [SymEntityData.ofActionType.termOfType?]
   · simp only [Term.entityUIDs, TermPrim.entityUIDs]
-    exact Set.mem_singleton _
+    exact Set.mem_singleton_self _
 
 theorem ofEnv_entities_is_acyclic
   {Γ : TypeEnv}

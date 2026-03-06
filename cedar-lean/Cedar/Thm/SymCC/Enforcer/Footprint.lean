@@ -96,11 +96,11 @@ private theorem mem_footprint_ofBranch_mem {x : Expr} {t : Term} {εnv : SymEnv}
   case h_1 | h_2 =>
     simp only [hin, true_or, or_true]
   case h_3 =>
-    simp only [Set.mem_union_iff_mem_or] at hin
+    simp only [Set.mem_union] at hin
     rw [or_assoc] at hin
     exact hin
   case h_4 =>
-    simp only [Set.empty_no_elts] at hin
+    simp only [Set.not_mem_empty] at hin
 
 private theorem mem_footprint_ofEntity_exists_wf {p : Expr → Prop} {x : Expr} {tₑ : Term} {εnv : SymEnv}
   (hwε : εnv.WellFormedFor x)
@@ -111,9 +111,9 @@ private theorem mem_footprint_ofEntity_exists_wf {p : Expr → Prop} {x : Expr} 
   simp only [footprint.ofEntity] at hin
   split at hin
   split at hin
-  any_goals simp only [Set.empty_no_elts] at hin
+  any_goals simp only [Set.not_mem_empty] at hin
   rename_i hok hty
-  rw [Set.mem_singleton_iff_eq] at hin
+  rw [Set.mem_singleton] at hin
   subst hin
   exists x
 
@@ -124,9 +124,9 @@ private theorem mem_footprint_ofEntity_option_entity {x : Expr} {tₑ : Term} {�
   simp only [footprint.ofEntity] at hin
   split at hin
   split at hin
-  any_goals simp only [Set.empty_no_elts] at hin
+  any_goals simp only [Set.not_mem_empty] at hin
   rename_i hty
-  rw [Set.mem_singleton_iff_eq] at hin
+  rw [Set.mem_singleton] at hin
   subst hin
   exact isOptionEntityType_implies_option_entity_type hty
 
@@ -145,18 +145,18 @@ theorem mem_footprint_option_entity {x : Expr} {εnv : SymEnv} {t : Term} :
     · exact ih₃ hin
   case case4 ih₁ ih₂ | case5 ih₁ ih₂ =>
     replace hin := mem_footprint_ofBranch_mem hin
-    simp only [Set.empty_no_elts, or_false, false_or] at hin
+    simp only [Set.not_mem_empty, or_false, false_or] at hin
     rcases hin with hin | hin
     · exact ih₁ hin
     · exact ih₂ hin
   case case6 ih₁ ih₂ =>
-    simp only [Set.mem_union_iff_mem_or] at hin
+    simp only [Set.mem_union] at hin
     rcases hin with (hin | hin) | hin
     · exact mem_footprint_ofEntity_option_entity hin
     · exact ih₁ hin
     · exact ih₂ hin
   case case7 ih =>
-    rw [Set.mem_union_iff_mem_or] at hin
+    rw [Set.mem_union] at hin
     rcases hin with hin | hin
     · exact mem_footprint_ofEntity_option_entity hin
     · exact ih hin
@@ -208,20 +208,20 @@ private theorem mem_footprint_exists_wf_prop {p : Expr → Prop} {x : Expr} {t�
     have ⟨hwe₁, hwe₂⟩ := hor hp
   case case4 ih₁ ih₂ | case5 ih₁ ih₂ =>
     replace hin := mem_footprint_ofBranch_mem hin
-    simp only [Set.empty_no_elts, or_false, false_or] at hin
+    simp only [Set.not_mem_empty, or_false, false_or] at hin
     rcases hin with hin | hin
     · exact ih₁ hwε₁ hwe₁ hin
     · exact ih₂ hwε₂ hwe₂ hin
   case case6 ih₁ ih₂ =>
     have ⟨hwε₁, hwε₂⟩ := wf_εnv_for_binaryApp_implies hwε
     have ⟨hwe₁, hwe₂⟩ := happ₂ hp
-    simp only [Set.mem_union_iff_mem_or] at hin
+    simp only [Set.mem_union] at hin
     rcases hin with (hin | hin) | hin
     · exact mem_footprint_ofEntity_exists_wf hwε hp hin
     · exact ih₁ hwε₁ hwe₁ hin
     · exact ih₂ hwε₂ hwe₂ hin
   case case7 ih =>
-    rw [Set.mem_union_iff_mem_or] at hin
+    rw [Set.mem_union] at hin
     rcases hin with hin | hin
     · exact mem_footprint_ofEntity_exists_wf hwε hp hin
     · exact ih (wf_εnv_for_getAttr_implies hwε) (hget hp) hin
