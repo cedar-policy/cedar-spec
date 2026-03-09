@@ -1092,7 +1092,7 @@ private theorem evaluate_set_wf {env : Env} {v : Value} {xs : List Expr}
   simp only [List.mapM₁_eq_mapM (λ x => evaluate x env.request env.entities), ← List.mapM'_eq_mapM] at hvs
   apply Value.WellFormed.set_wf _ (Set.make_wf vs)
   intro v hv
-  rw [← Set.make_mem] at hv
+  rw [Set.mem_make] at hv
   replace ⟨x, hx, hvs⟩ := List.mapM'_ok_implies_all_from_ok hvs v hv
   exact ih x hx (wf_env_for_set_implies hwf x hx) hvs
 

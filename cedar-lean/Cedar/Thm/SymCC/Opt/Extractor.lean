@@ -60,8 +60,8 @@ theorem extractOpt?_eqv_extract? {cpsets : List CompiledPolicies} {I : Interpret
         | apply cp_compile_produces_the_right_footprint hcompile
         | apply cpset_compile_produces_the_right_footprint hcompile
       · rw [List.mapUnion_map]
-        rw [← Data.Set.eq_means_eqv List.mapUnion_wf List.mapUnion_wf]
-        simp only [List.Equiv, List.subset_def, Data.Set.in_list_iff_in_set,
+        rw [Data.Set.eq_means_eqv List.mapUnion_wf List.mapUnion_wf]
+        simp only [List.Equiv, List.subset_def, Data.Set.mem_elts_iff_mem_set,
           List.mem_mapUnion_iff_mem_exists, List.mem_flatMap, Function.comp_apply,
           forall_exists_index, and_imp]
         constructor
@@ -81,8 +81,8 @@ theorem extractOpt?_eqv_extract? {cpsets : List CompiledPolicies} {I : Interpret
             replace ⟨ps', Γ', hcompile'⟩ := hcompile'
             have hfoot := cpset_compile_produces_the_right_footprint hcompile'
             simp only [footprints, List.mapUnion_map] at hfoot
-            rw [← Data.Set.eq_means_eqv] at hfoot
-            · simp only [List.Equiv, List.subset_def, Data.Set.in_list_iff_in_set] at hfoot
+            rw [Data.Set.eq_means_eqv] at hfoot
+            · simp only [List.Equiv, List.subset_def, Data.Set.mem_elts_iff_mem_set] at hfoot
               replace ⟨hfoot, hfoot'⟩ := hfoot
               specialize hfoot ht
               rw [List.mem_mapUnion_iff_mem_exists] at hfoot

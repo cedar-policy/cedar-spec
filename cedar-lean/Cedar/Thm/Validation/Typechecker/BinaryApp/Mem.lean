@@ -146,7 +146,6 @@ theorem entity_type_in_false_implies_inₑ_false
   simp [Entities.ancestorsOrEmpty] at h₃
   split at h₃
   case h_1 data h₄ =>
-    rw [Set.contains_prop_bool_equiv] at h₃
     cases h₁.instance_of_schema.1 euid₁ data h₄ with
     | inl h₁ =>
       have ⟨entry, h₂₁, _, _, h₂₂, _⟩ := h₁
@@ -163,7 +162,7 @@ theorem entity_type_in_false_implies_inₑ_false
         all_goals assumption
       · have h₆ := acts_maybeDescendentOf_false_implies_not_ancestor_type hwf h₂ h₄ h₅ euid₂ h₃
         contradiction
-  case h_2 => simp [Set.contains, Set.elts, Set.empty] at h₃
+  case h_2 => simp [Set.not_mem_empty] at h₃
 
 theorem action_type_in_eq_action_inₑ
   (euid₁ euid₂ : EntityUID)
@@ -253,7 +252,7 @@ theorem entity_set_type_implies_set_of_entities {env : TypeEnv} {vs : List Value
     simp only [List.mapM'_cons]
     cases h₁ ; rename_i h₁
     have h₂ := h₁ hd
-    simp [Set.mem_cons_self] at h₂
+    simp only [Set.mem_cons, true_or, forall_const] at h₂
     replace ⟨heuid, hdty, h₂⟩ := instance_of_entity_type_is_entity h₂
     subst h₂
     rw [Value.asEntityUID] ; simp only [Except.bind_ok]
@@ -262,7 +261,7 @@ theorem entity_set_type_implies_set_of_entities {env : TypeEnv} {vs : List Value
       apply InstanceOfType.instance_of_set
       intro v h₃
       apply h₁ v
-      apply Set.mem_cons_of_mem
+      apply Set.mem_mk_tl
       exact h₃
     have ⟨tleuids, h₄, h₅⟩ := entity_set_type_implies_set_of_entities h₃
     simp [h₄, pure, Except.pure, hdty]
@@ -279,7 +278,7 @@ theorem entity_type_in_false_implies_inₛ_false
 := by
   have hwf := h₁
   simp only [TypeEnv.descendentOf] at h₂
-  rw [Set.make_any_iff_any]
+  rw [Set.any_make]
   by_contra h₄
   simp only [Bool.not_eq_false, List.any_eq_true] at h₄
   replace ⟨euid', h₄, h₅⟩ := h₄
@@ -304,7 +303,7 @@ theorem entity_type_in_false_implies_inₛ_false
       specialize h₃ euid' h₄ ; subst h₃
       split at h₂ <;> rename_i h₉ <;> simp [h₁] at h₉
       subst h₉
-      rw [← Set.in_list_iff_in_set] at h₇
+      rw [← Set.mem_elts_iff_mem_set] at h₇
       simp only [Set.contains, Set.elts] at h₂ h₇
       rw [← List.elem_iff] at h₇
       rw [h₂] at h₇
@@ -400,7 +399,7 @@ theorem action_type_in_eq_action_inₛ
   Set.any (fun x => inₑ auid x entities) (Set.make euids) ↔
   ∃ euid, euid ∈ euids' ∧ ActionSchema.descendentOf env.acts auid euid
 := by
-  rw [Set.make_any_iff_any]
+  rw [Set.any_make]
   simp only [ActionSchema.contains] at h₂
   cases h₄ : Map.find? env.acts auid <;> simp [h₄] at h₂
   rename_i entry
@@ -423,7 +422,7 @@ theorem action_type_in_eq_action_inₛ
       simp only [ActionSchema.descendentOf, beq_iff_eq, hfnd, Bool.if_true_left, Bool.or_eq_true,
         decide_eq_true_eq]
       simp only [Entities.ancestorsOrEmpty, hl₁, hr₁] at h₅
-      simp only [h₅, or_true]
+      simp [h₅]
   case some.mpr =>
     rw [List.any_eq_true]
     replace ⟨euid, h₄, h₅⟩ := h₄

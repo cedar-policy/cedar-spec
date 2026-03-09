@@ -71,7 +71,7 @@ private theorem interpret_term_set_wf_aux {I : Interpretation} {s : Set Term} {t
   ∃ t', t' ∈ s ∧ t = t'.interpret I
 := by
   intro h₁
-  simp only [←Set.make_mem, List.mem_map] at h₁
+  simp only [Set.mem_make, List.mem_map] at h₁
   replace ⟨t', h₁, h₂⟩ := h₁
   exists t'
   simp only [h₂, and_true]

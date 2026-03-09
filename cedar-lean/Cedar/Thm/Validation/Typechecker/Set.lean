@@ -256,7 +256,7 @@ theorem type_of_set_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : 
   case ok vs =>
     apply InstanceOfType.instance_of_set
     intro v h₇
-    rw [←Set.make_mem] at h₇
+    rw [Set.mem_make] at h₇
     exact type_of_set_is_sound_ok ih h₁ h₂ h₅ h₆ h₇
 
 /- Used by `type_of_preserves_evaluation_results` -/

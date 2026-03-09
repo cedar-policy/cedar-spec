@@ -183,7 +183,7 @@ private theorem compile_interpret_lit_in_footprint {p : Prim} {εnv : SymEnv} {I
     subst ht
     exists (Term.some (Term.entity uid'))
     simp only [footprint, footprint.ofEntity, hok', TermType.isOptionEntityType, Term.typeOf,
-      typeOf_term_prim_entity, ↓reduceIte, Set.mem_singleton_iff_eq, interpret_term_some,
+      typeOf_term_prim_entity, ↓reduceIte, Set.mem_singleton, interpret_term_some,
       interpret_term_prim, and_self]
 
 private theorem compile_interpret_var_in_footprint {v : Var} {εnv : SymEnv} {I : Interpretation} {t : Term} {uid : EntityUID}
@@ -203,7 +203,7 @@ private theorem compile_interpret_var_in_footprint {v : Var} {εnv : SymEnv} {I 
   subst hok
   case principal | action | resource =>
     simp only [interpret_term_some, Term.some.injEq] at ht
-    simp only [footprint, footprint.ofEntity, hok', hty, ↓reduceIte, Set.mem_singleton_iff_eq,
+    simp only [footprint, footprint.ofEntity, hok', hty, ↓reduceIte, Set.mem_singleton,
       exists_eq_left, interpret_term_some, ht]
   case context hty' =>
     cases h : εnv.request.context.typeOf <;>
@@ -264,7 +264,7 @@ theorem compile_interpret_in_footprint {x : Expr} {εnv : SymEnv} {I : Interpret
       exact ih₃ hwε.right.right hok ht
     · replace ⟨hty₁, t₂, t₃, hok₂, hok₃, hty, hok⟩ := hok
       subst hok
-      simp only [Set.mem_union_iff_mem_or]
+      simp only [Set.mem_union]
       have hwt₁ := (compile_wf hwε.left hok₁).left
       have ⟨hwt₂, _, hty₂⟩ := compile_wf hwε.right.left hok₂
       have hwt₃ := (compile_wf hwε.right.right hok₃).left
@@ -278,7 +278,7 @@ theorem compile_interpret_in_footprint {x : Expr} {εnv : SymEnv} {I : Interpret
         simp only [ih₃, or_true, and_self]
   case case9 =>
     simp only [footprint, footprint.ofEntity, hok, compile_isOptionEntityType hwε hI hok ht,
-      ↓reduceIte, Set.mem_union_iff_mem_or, Set.mem_singleton_iff_eq, exists_eq_or_imp, ht, true_or]
+      ↓reduceIte, Set.mem_union, Set.mem_singleton, exists_eq_or_imp, ht, true_or]
   case' case4 =>
     have hty := typeOf_compile_and_option_bool hwε hok
   case' case5 =>
@@ -289,7 +289,7 @@ theorem compile_interpret_in_footprint {x : Expr} {εnv : SymEnv} {I : Interpret
   case case7 =>
     exists t
     simp [footprint, footprint.ofEntity, hok, compile_isOptionEntityType hwε hI hok ht,
-      ↓reduceIte, Set.mem_union_iff_mem_or, Set.mem_singleton_iff_eq, ht]
+      ↓reduceIte, Set.mem_union, Set.mem_singleton, ht]
   case' case8 =>
     have hty := typeOf_compile_hasAttr_option_bool hwε hok
   case' case10 =>

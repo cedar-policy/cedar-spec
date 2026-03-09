@@ -110,11 +110,11 @@ private theorem interpret_term_set_lit {I : Interpretation} {s : Set Term} {ty: 
   unfold Term.isLiteral
   simp only [List.attach_def, List.all_pmap_subtype Term.isLiteral, List.all_eq_true]
   intro t h₁
-  rw [Set.in_list_iff_in_set, ← Set.make_mem] at h₁
+  rw [Set.mem_elts_iff_mem_set, Set.mem_make] at h₁
   simp only [List.mem_map] at h₁
   replace ⟨t', h₁, h₂⟩ := h₁
   subst h₂
-  rw [Set.in_list_iff_in_set] at h₁
+  rw [Set.mem_elts_iff_mem_set] at h₁
   exact ih t' h₁
 
 private theorem interpret_term_record_lit {I : Interpretation} {r : Map Attr Term}

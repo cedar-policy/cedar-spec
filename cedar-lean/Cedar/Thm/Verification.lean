@@ -115,8 +115,7 @@ theorem verifyAlwaysMatches_is_sound' {p : Policy} {εnv : SymEnv} {asserts : As
   simp only [Spec.isAuthorized, Data.Set.isEmpty, Spec.satisfiedPolicies, satisfiedWithEffect,
     satisfied, Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq, List.filterMap_cons, this, and_true,
     List.filterMap_nil, Bool.not_eq_eq_eq_not, Bool.not_true, beq_eq_false_iff_ne, ne_eq]
-  cases p.effect
-  all_goals simp [Data.Set.make_nil, Data.Set.make_singleton_nonempty, ← Data.Set.make_mem]
+  cases p.effect <;> simp
 
 /--
 The `verifyAlwaysMatches` analysis is complete: if the assertions
@@ -168,7 +167,7 @@ theorem verifyAlwaysMatches_is_complete' {p : Policy} {εnv : SymEnv} {asserts :
   simp only [Spec.isAuthorized, Data.Set.isEmpty, Spec.satisfiedPolicies, satisfiedWithEffect,
     satisfied, Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq, List.filterMap_cons,
     List.filterMap_nil, Bool.not_eq_eq_eq_not, Bool.not_true, beq_eq_false_iff_ne, ne_eq]
-  cases p.effect <;> simp [Data.Set.make_nil, Data.Set.empty_no_elts, h₇]
+  cases p.effect <;> simp [Data.Set.make_nil, Data.Set.not_mem_empty, h₇]
 
 /--
 The `verifyNeverMatches` analysis is sound: if the assertions
@@ -211,7 +210,7 @@ theorem verifyNeverMatches_is_sound' {p : Policy} {εnv : SymEnv} {asserts : Ass
   simp only [Spec.isAuthorized, Data.Set.isEmpty, Spec.satisfiedPolicies, satisfiedWithEffect,
     satisfied, Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq, List.filterMap_cons,
     List.filterMap_nil, Bool.not_eq_eq_eq_not, Bool.not_true, beq_eq_false_iff_ne, ne_eq]
-  cases p.effect <;> simp [Data.Set.make_nil, Data.Set.empty_no_elts, this]
+  cases p.effect <;> simp [Data.Set.make_nil, Data.Set.not_mem_empty, this]
 
 /--
 The `verifyNeverMatches` analysis is complete: if the assertions
@@ -266,7 +265,7 @@ theorem verifyNeverMatches_is_complete' {p : Policy} {εnv : SymEnv} {asserts : 
   simp only [Spec.isAuthorized, Data.Set.isEmpty, Spec.satisfiedPolicies, satisfiedWithEffect,
     satisfied, Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq, List.filterMap_cons, h₇, and_true,
     List.filterMap_nil, Bool.not_eq_eq_eq_not, Bool.not_true, beq_eq_false_iff_ne, ne_eq]
-  cases p.effect <;> simp [Data.Set.make_nil, Data.Set.make_singleton_nonempty, ← Data.Set.make_mem]
+  cases p.effect <;> simp
 
 /--
 The `verifyMatchesEquivalent` analysis is sound: if the assertions

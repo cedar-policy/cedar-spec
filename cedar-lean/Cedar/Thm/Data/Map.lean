@@ -191,7 +191,7 @@ public theorem in_list_in_keys {k : α} {v : β} {m : Map α β} :
   (k, v) ∈ m.toList → k ∈ m.keys
 := by
   intro h₀
-  simp [keys, ← Set.in_list_iff_in_mk]
+  simp [keys, ← Set.mem_set_iff_mem_mk]
   exists v
 
 public theorem in_list_in_values {k : α} {v : β} {m : Map α β} :
@@ -226,7 +226,7 @@ public theorem in_values_exists_key {m : Map α β} {v : β} :
 public theorem in_keys_exists_value {m : Map α β} {k : α} :
   k ∈ m.keys → ∃ v, (k, v) ∈ m.toList
 := by
-  simp [keys, ← Set.in_list_iff_in_mk]
+  simp [keys, ← Set.mem_set_iff_mem_mk]
 
 public theorem values_cons {m : Map α β} :
   m.toList = (k, v) :: tl →

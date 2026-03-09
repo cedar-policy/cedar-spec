@@ -75,11 +75,11 @@ theorem wf_term_set_cons {εs : SymEntities} {hd : Term} {tl : List Term} {ty : 
   (hd.WellFormed εs ∧ hd.typeOf = ty ∧ (Term.set (Set.mk tl) ty).WellFormed εs)
 := by
   intro h₁
-  have h₂ := Set.mem_cons_self hd tl
+  have h₂ := Set.mem_mk_hd hd tl
   simp only [wf_term_set_implies_wf_elt h₁ h₂, wf_term_set_implies_typeOf_elt h₁ h₂, true_and]
   apply Term.WellFormed.set_wf
-  · intro t h₃ ; exact wf_term_set_implies_wf_elt h₁ (Set.mem_cons_of_mem t hd tl h₃)
-  · intro t h₃ ; exact wf_term_set_implies_typeOf_elt h₁ (Set.mem_cons_of_mem t hd tl h₃)
+  · intro t h₃ ; exact wf_term_set_implies_wf_elt h₁ (Set.mem_mk_tl t hd tl h₃)
+  · intro t h₃ ; exact wf_term_set_implies_typeOf_elt h₁ (Set.mem_mk_tl t hd tl h₃)
   · exact wf_term_set_implies_wf_type h₁
   · replace h₁ := wf_term_set_implies_wf_set h₁
     rw [Set.wf_iff_sorted, List.Sorted] at *
@@ -582,7 +582,7 @@ theorem wf_setOf {εs : SymEntities} {ts : List Term} {ty : TermType}
   apply Term.WellFormed.set_wf _ _ h₃ (Set.make_wf ts)
   all_goals {
     intro t hmem
-    rw [← Set.make_mem] at hmem
+    rw [Set.mem_make] at hmem
     simp only [h₁ t hmem, h₂ t hmem]
   }
 
@@ -1145,7 +1145,7 @@ theorem wf_term_set_empty {εs : SymEntities} {ty : TermType}
   apply Term.WellFormed.set_wf _ _ h₁ h₂
   all_goals {
     intro t h
-    have h' := Set.empty_no_elts t
+    have h' := Set.not_mem_empty t
     unfold Set.empty at h'
     contradiction
   }
@@ -1561,7 +1561,6 @@ theorem wf_foldl {α} {εs : SymEntities}
     apply ih
     intro t' t'' h₄ h₅ h₆
     exact h₂ _ _ (by simp only [List.mem_cons, h₄, or_true]) h₅ h₆
-
 
 theorem wf_anyTrue {εs : SymEntities} {f : Term → Term} {ts : List Term} :
   (∀ t ∈ ts, (f t).WellFormed εs ∧ (f t).typeOf = .bool) →

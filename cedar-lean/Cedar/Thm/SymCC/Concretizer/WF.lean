@@ -136,7 +136,7 @@ private theorem expr_entityUIDs_valid_refs {x : Expr} {uids : Set EntityUID} {es
     apply Expr.ValidRefs.lit_valid
     simp only [Prim.ValidRef]
     split <;> try trivial
-    simp only [Prim.entityUIDs, Set.subset_def, Set.mem_singleton_iff_eq, forall_eq] at hsub
+    simp only [Prim.entityUIDs, Set.subset_def, Set.mem_singleton, forall_eq] at hsub
     exact hs _ hsub
   case case2 =>             -- var
     exact Expr.ValidRefs.var_valid
@@ -272,7 +272,7 @@ private theorem app_value?_some_implies_entityUIDs {f : UnaryFunction} {t : Term
     exists (t, t')
     constructor
     · exact Map.find?_mem_toList heq
-    · simp only [Set.mem_union_iff_mem_or, hin, or_true]
+    · simp only [Set.mem_union, hin, or_true]
   · simp only [hv, Set.subset_union]
 
 private theorem concretize?_δ_attrs_some_implies_ws_entityUIDs {uid : EntityUID} {attrs : Map Attr Value} {δ : SymEntityData} {εs : SymEntities}
@@ -310,17 +310,17 @@ private theorem term_setOfEntityUIDs?_some_value? {t : Term} {uids : Set EntityU
       apply List.Forall₂.cons _ ih
       rw [term_entityUID?_some_iff_eq] at h₁
       simp only [h₁, entity_value?]
-  · rw [← Set.eq_means_eqv (Set.make_wf _) (Set.make_wf _)]
-    apply List.Equiv.trans Set.elts_make_equiv
+  · rw [Set.eq_means_eqv (Set.make_wf _) (Set.make_wf _)]
+    apply List.Equiv.trans Set.elts_make_eqv
     apply List.Equiv.symm
-    apply List.Equiv.trans Set.elts_make_equiv
+    apply List.Equiv.trans Set.elts_make_eqv
     simp only [List.Equiv, List.subset_def, List.mem_map, forall_exists_index, and_imp,
       forall_apply_eq_imp_iff₂, Value.prim.injEq, Prim.entityUID.injEq, exists_eq_right]
     subst heq
     constructor <;> intro uid hin
-    · rw [Set.in_list_iff_in_set, ← Set.make_mem] at hin
+    · rw [Set.mem_elts_iff_mem_set, Set.mem_make] at hin
       exact hin
-    · rw [Set.in_list_iff_in_set, ← Set.make_mem]
+    · rw [Set.mem_elts_iff_mem_set, Set.mem_make]
       exact hin
 
 private theorem concretize?_δ_ancs_some_implies_entityUIDs {uid : EntityUID} {δ : SymEntityData} {ancs : List (Set EntityUID)} {εs : SymEntities}
@@ -348,7 +348,7 @@ private theorem concretize?_δ_ancs_some_implies_entityUIDs {uid : EntityUID} {�
   exists (Set.singleton uid')
   simp only [List.mem_map, id_eq, Set.mem_singleton, and_true]
   exists uid'
-  simp only [Set.in_list_iff_in_set, ← Set.make_mem, Value.entityUIDs, Prim.entityUIDs, hinᵤ,
+  simp only [Set.mem_elts_iff_mem_set, Set.mem_make, Value.entityUIDs, Prim.entityUIDs, hinᵤ,
     List.mem_map, Value.prim.injEq, Prim.entityUID.injEq, exists_eq_right, and_self]
 
 private theorem term_setOfTags?_some_wf {t : Term} {tags : Set String} :
@@ -409,7 +409,7 @@ private theorem concretize?_δ_tags_some_implies_ws_entityUIDs {uid : EntityUID}
   case none =>
     subst hs
     simp only [value_record_entityUIDs_def, Map.toList_empty, List.mapUnion_nil,
-      EmptyCollection.emptyCollection, Set.subset_def, Set.empty_no_elts, false_implies,
+      EmptyCollection.emptyCollection, Set.subset_def, Set.not_mem_empty, false_implies,
       implies_true, and_true]
     apply Value.WellStructured.record_ws
     · intro a v hf

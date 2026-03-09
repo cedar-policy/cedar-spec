@@ -46,13 +46,13 @@ private theorem footprintUIDs_valid {xs : List Expr} {εnv : SymEnv} {I : Interp
   intro uid hin
   simp only [List.mem_mapUnion_iff_mem_exists, Function.comp_apply] at hin
   replace ⟨t, hinₓ, hin⟩ := hin
-  rw [Set.in_list_iff_in_set, mem_footprints_iff] at hinₓ
+  rw [Set.mem_elts_iff_mem_set, mem_footprints_iff] at hinₓ
   replace ⟨x, hinₓ, hinₜ⟩ := hinₓ
   have hwf := mem_footprint_wf (And.intro hwε (hvr x hinₓ)) hinₜ
   have ⟨ety, hty⟩ := mem_footprint_option_entity hinₜ
   have heq := interpret_option_entity_term hI hwf hty
   rcases heq with heq | ⟨uid', heq, _⟩ <;> simp only [heq] at hin
-  · simp only [Term.entityUIDs, Set.empty_no_elts] at hin
+  · simp only [Term.entityUIDs, Set.not_mem_empty] at hin
   · apply wf_term_implies_valid_uids _ _ hin
     simp only [← heq, interpret_term_wf hI hwf]
 
@@ -139,7 +139,7 @@ private theorem repairAncestors_wf {uids : Set EntityUID} {f : UDF} {εs : SymEn
   intro tᵢ tₒ hin
   simp only [UUF.repairAncestors.table, Map.toList_mk_id, List.mem_filterMap] at hin
   replace ⟨uid, hin, heq⟩ := hin
-  rw [Set.in_list_iff_in_set] at hin
+  rw [Set.mem_elts_iff_mem_set] at hin
   simp only [UUF.repairAncestors.entry, Option.ite_none_right_eq_some, Option.some.injEq, Prod.mk.injEq] at heq
   replace ⟨hty, heq, heq'⟩ := heq
   subst heq heq'
@@ -244,12 +244,12 @@ private theorem footprintAncestors_eq {xs : List Expr} {ety ancTy : EntityType} 
       simp only [Function.comp_apply, id_eq, implies_true]
   · simp only [Map.toList_mk_id, List.mem_map, Prod.mk.injEq]
     exists f
-    simp only [SymEntities.uufAncestors, Set.in_list_iff_in_set, List.mem_mapUnion_iff_mem_exists,
+    simp only [SymEntities.uufAncestors, Set.mem_elts_iff_mem_set, List.mem_mapUnion_iff_mem_exists,
       Function.comp_apply, and_self, and_true]
     exists (ety, δ)
     replace hδ := Map.find?_mem_toList hδ
     replace hf := Map.find?_mem_toList hf
-    simp only [hδ, SymEntityData.uufAncestors, ← Set.make_mem, List.mem_filterMap,
+    simp only [hδ, SymEntityData.uufAncestors, Set.mem_make, List.mem_filterMap,
       Function.comp_apply, true_and]
     exists (ancTy, UnaryFunction.uuf f)
 
@@ -266,7 +266,7 @@ private theorem not_mem_uids_implies_repairAncestors_find?_none {uid : EntityUID
     Term.prim.injEq, TermPrim.entity.injEq] at hc
   replace ⟨uid', hc, _, heq, _⟩ := hc
   subst heq
-  simp only [Set.in_list_iff_in_set] at hc
+  simp only [Set.mem_elts_iff_mem_set] at hc
   contradiction
 
 theorem not_mem_footprintUIDs_implies_empty_ancs {uid : EntityUID} {ety : EntityType} {f : UUF} {δ : SymEntityData} {xs : List Expr} {εnv : SymEnv} {I : Interpretation}
@@ -298,7 +298,7 @@ private theorem mem_uids_implies_repairAncestors_find?_eq {uid : EntityUID} {uid
   apply Map.mem_toList_find? (repairAncestors_table_wf hwu)
   simp only [UUF.repairAncestors.table, Map.toList_mk_id, List.mem_filterMap]
   exists uid
-  simp only [Set.in_list_iff_in_set, hft, UUF.repairAncestors.entry, typeOf_term_prim_entity, hty,
+  simp only [Set.mem_elts_iff_mem_set, hft, UUF.repairAncestors.entry, typeOf_term_prim_entity, hty,
     ↓reduceIte, and_self]
 
 theorem mem_footprintUIDs_implies_eq_ancs {uid : EntityUID} {ety : EntityType} {f : UUF} {δ : SymEntityData} {xs : List Expr} {εnv : SymEnv} {I : Interpretation}
@@ -327,7 +327,7 @@ theorem mem_footprintUIDs_mem_footprints {uid : EntityUID} {xs : List Expr} {εn
   ∃ t ∈ footprints xs εnv, t.interpret I = Term.some (Term.entity uid)
 := by
   simp only [Interpretation.repair.footprintUIDs, List.mem_mapUnion_iff_mem_exists,
-    Set.in_list_iff_in_set, Function.comp_apply] at hin
+    Set.mem_elts_iff_mem_set, Function.comp_apply] at hin
   replace ⟨t, hinₜ, hin⟩ := hin
   have hinₜ' := hinₜ
   simp only [mem_footprints_iff] at hinₜ
@@ -337,8 +337,8 @@ theorem mem_footprintUIDs_mem_footprints {uid : EntityUID} {xs : List Expr} {εn
   have ht := interpret_option_entity_term hI hwt hty
   rcases ht with ht | ⟨uid', ht, _⟩ <;>
   simp only [ht, Term.entityUIDs] at hin
-  · simp only [Set.empty_no_elts] at hin
-  · simp only [TermPrim.entityUIDs, Set.mem_singleton_iff_eq] at hin
+  · simp only [Set.not_mem_empty] at hin
+  · simp only [TermPrim.entityUIDs, Set.mem_singleton] at hin
     subst hin
     exists t
 
@@ -349,7 +349,7 @@ theorem mem_mem_footprints_footprintUIDs {t : Term} {uid : EntityUID} {xs : List
 := by
   simp only [Interpretation.repair.footprintUIDs, List.mem_mapUnion_iff_mem_exists, Function.comp_apply]
   exists t
-  simp only [Set.in_list_iff_in_set, hin, ht, Term.entityUIDs, TermPrim.entityUIDs,
+  simp only [Set.mem_elts_iff_mem_set, hin, ht, Term.entityUIDs, TermPrim.entityUIDs,
     Set.mem_singleton, and_self]
 
 private theorem interpret_term_isBasic_repair_eq (xs : List Expr) {t : Term} {εnv : SymEnv} (I : Interpretation)
@@ -386,7 +386,7 @@ private theorem interpret_non_ancestor_uuf_repair_eq {εnv : SymEnv} {f : UUF} (
   simp only [Map.toList_mk_id, List.mem_map, Prod.mk.injEq] at heq
   replace ⟨f', hf', heq, _⟩ := heq
   subst heq
-  rw [Set.in_list_iff_in_set] at hf'
+  rw [Set.mem_elts_iff_mem_set] at hf'
   contradiction
 
 private theorem type_of_ancestor_uuf_eq {εnv : SymEnv} {f : UUF}
@@ -397,7 +397,7 @@ private theorem type_of_ancestor_uuf_eq {εnv : SymEnv} {f : UUF}
   simp only [SymEntities.uufAncestors, List.mem_mapUnion_iff_mem_exists,
     Function.comp_apply] at hf
   replace ⟨(ety, δ), hδ, hf⟩ := hf
-  simp only [SymEntityData.uufAncestors, ← Set.make_mem, List.mem_filterMap, Function.comp_apply] at hf
+  simp only [SymEntityData.uufAncestors, Set.mem_make, List.mem_filterMap, Function.comp_apply] at hf
   replace ⟨(aty, f'), hf', hf⟩ := hf
   simp only [UnaryFunction.uuf?] at hf
   split at hf <;> simp only [Option.some.injEq, reduceCtorEq] at hf
@@ -490,11 +490,10 @@ theorem sym_entities_entityUIDs_include_enums
     apply Map.in_toList_in_mapOnValues
     exact Map.find?_mem_toList hfind_uid_ty
   · simp only [SymEntityData.entityUIDs, SymEntityData.interpret]
-    apply (Set.mem_union_iff_mem_or _ _ uid).mpr; left
-    apply (Set.mem_union_iff_mem_or _ _ uid).mpr; left
-    apply (Set.mem_union_iff_mem_or _ _ uid).mpr; left
-    simp only [SymEntityData.entityUIDs.mems, heids]
-    apply (Set.make_mem _ _).mp
+    apply (Set.mem_union _ _ uid).mpr; left
+    apply (Set.mem_union _ _ uid).mpr; left
+    apply (Set.mem_union _ _ uid).mpr; left
+    simp only [SymEntityData.entityUIDs.mems, heids, Set.mem_make]
     apply List.mem_map.mpr
     exists uid.eid
 
@@ -523,7 +522,7 @@ theorem extract?_implies_enum_complete
   simp only [←hents]
   have ⟨⟨uid', data⟩, hmem_uid'_data, huid'⟩
   := List.mapM_some_implies_all_some heds uid
-    ((Set.mem_union_iff_mem_or _ _ uid).mpr (Or.intro_right _ huid))
+    ((Set.mem_union _ _ uid).mpr (Or.intro_right _ huid))
   have ⟨δ, d, hfind_uid_ty, hd, heq_uid'⟩ := concretize?_entityData?_some_eq huid'
   simp only [Prod.mk.injEq] at heq_uid'
   simp only [←heq_uid'.1] at hmem_uid'_data huid'

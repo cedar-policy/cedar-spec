@@ -51,7 +51,7 @@ theorem value_ws_closed_implies_wf {v : Value} {es : Entities} :
     split <;> try trivial
     rename_i uid
     simp only [Value.entityUIDs, Prim.entityUIDs] at hca
-    exact hca uid (Set.mem_singleton uid)
+    exact hca uid (Set.mem_singleton_self uid)
   case set_ws h₂ ih =>
     apply Value.WellFormed.set_wf _ h₂
     intro v hv
@@ -60,7 +60,7 @@ theorem value_ws_closed_implies_wf {v : Value} {es : Entities} :
     apply hca uid
     simp only [value_set_entityUIDs_def]
     apply List.mem_mem_implies_mem_mapUnion huid
-    exact (Set.in_list_iff_in_set _ _).mp hv
+    exact (Set.mem_elts_iff_mem_set _ _).mp hv
   case record_ws h₂ ih =>
     apply Value.WellFormed.record_wf _ h₂
     intro a v hf
@@ -106,7 +106,7 @@ theorem term_set_value?_some_implies_ws {ts : List Term} {ty : TermType} {v : Va
   subst heq
   apply Value.WellStructured.set_ws _ (Set.make_wf _)
   intro vᵢ hin
-  rw [← Set.make_mem] at hin
+  rw [Set.mem_make] at hin
   replace ⟨tᵢ, hv⟩ := List.mapM_some_implies_all_from_some hv vᵢ hin
   replace hw := wf_term_set_implies_wf_elt hw hv.left
   exact ih tᵢ hv.left hw hv.right

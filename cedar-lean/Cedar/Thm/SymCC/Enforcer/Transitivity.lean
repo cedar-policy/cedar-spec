@@ -398,12 +398,12 @@ private theorem swf_implies_entity_transitive {uid₁ uid₂ uid₃ : EntityUID}
   simp only [Entities.ancestorsOrEmpty] at *
   cases hf₁ : Map.find? es uid₁ <;> simp only [hf₁] at hin₁
   case none =>
-    have _ := Set.empty_no_elts uid₂
+    have _ := Set.not_mem_empty uid₂
     contradiction
   case some d₁ =>
     cases hf₂ : Map.find? es uid₂ <;> simp only [hf₂] at hin₂
     case none =>
-      have _ := Set.empty_no_elts uid₃
+      have _ := Set.not_mem_empty uid₃
       contradiction
     case some d₂ =>
       simp only
@@ -640,6 +640,6 @@ theorem interpret_transitivity_implies_transitive
       exists f₁₃, ts₁₃
     · simp only [heq₂, pe_set_isEmpty, Set.isEmpty, Term.prim.injEq, TermPrim.bool.injEq, beq_iff_eq] at htr
       subst htr
-      simp only [Set.empty_no_elts] at hin₂
+      simp only [Set.not_mem_empty] at hin₂
 
 end Cedar.Thm

@@ -249,7 +249,7 @@ theorem value_symbolize?_wf
     · intros t hmem_t
       simp only [List.mapM₁_eq_mapM (λ x => x.symbolize? elem_ty) s'.toList] at hsym_elems
       have ⟨elem, hmem_elem, hsym_elem⟩ := List.mapM_some_implies_all_from_some
-        hsym_elems t ((Set.make_mem _ _).mpr hmem_t)
+        hsym_elems t ((Set.mem_make _ _).mp hmem_t)
       simp only [←heq] at hmem_elem
       have hwf_elem := hwf_elems elem hmem_elem
       cases hwt_v with | instance_of_set _ _ hwt_elem =>
@@ -258,7 +258,7 @@ theorem value_symbolize?_wf
     · intros t hmem_t
       simp only [List.mapM₁_eq_mapM (λ x => x.symbolize? elem_ty) s'.toList] at hsym_elems
       have ⟨elem, hmem_elem, hsym_elem⟩ := List.mapM_some_implies_all_from_some
-        hsym_elems t ((Set.make_mem _ _).mpr hmem_t)
+        hsym_elems t ((Set.mem_make _ _).mp hmem_t)
       simp only [←heq] at hmem_elem
       have hwf_elem := hwf_elems elem hmem_elem
       cases hwt_v with | instance_of_set _ _ hwt_elem =>
@@ -426,7 +426,7 @@ theorem value?_symbolize?_id
       have ⟨elem, hmem_elem, hsym_elem⟩ := List.mapM_some_implies_all_from_some hsym_elems sym_elem hmem_sym_elem
       simp only [Set.toList] at hmem_elem
       exists elem
-      simp only [(Set.in_list_iff_in_set _ _).mp hmem_elem, true_and]
+      simp only [(Set.mem_elts_iff_mem_set _ _).mp hmem_elem, true_and]
       have ⟨sym_elem', hsym_elem', hval_sym_elem'⟩ := value?_symbolize?_id hwf_Γ hwf_elem_ty (hwf_elem elem hmem_elem) (hwt_elem elem hmem_elem)
       have : sym_elem' = sym_elem := by
         simp only [hsym_elem', Option.some.injEq] at hsym_elem
@@ -439,7 +439,7 @@ theorem value?_symbolize?_id
         ∃ val_sym_elem,
           sym_elem.value? = .some val_sym_elem
       := by
-        have hmem_sym_elem := (Set.make_mem _ _).mpr hmem_sym_elem
+        have hmem_sym_elem := (Set.mem_make _ _).mp hmem_sym_elem
         have ⟨elem, hmem_elem, hsym_elem⟩ := List.mapM_some_implies_all_from_some hsym_elems sym_elem hmem_sym_elem
         exists elem
         have ⟨sym_elem', hsym_elem', hval_sym_elem'⟩ := value?_symbolize?_id hwf_Γ hwf_elem_ty (hwf_elem elem hmem_elem) (hwt_elem elem hmem_elem)
@@ -461,7 +461,7 @@ theorem value?_symbolize?_id
       intros val_sym_elem hmem_val_sym_elem
       have ⟨sym_elem', hmem_sym_elem', hval_sym_elem'⟩ := List.mapM_some_implies_all_from_some hval_sym_elems val_sym_elem hmem_val_sym_elem
       exists sym_elem'
-      simp only [(Set.make_mem _ _).mpr hmem_sym_elem', true_and]
+      simp only [(Set.mem_make _ _).mp hmem_sym_elem', true_and]
       simp [hval_sym_elem']
     -- Simplify the goal with the facts above
     simp only [
@@ -477,7 +477,7 @@ theorem value?_symbolize?_id
     constructor
     · apply Set.subset_def.mpr
       intros val_sym_elem hmem_val_sym_elem
-      replace hmem_val_sym_elem := (Set.make_mem _ _).mpr hmem_val_sym_elem
+      replace hmem_val_sym_elem := (Set.mem_make _ _).mp hmem_val_sym_elem
       have ⟨sym_elem, hmem_sym_elem, hval_sym_elem⟩ := hval_sym_elem_inv val_sym_elem hmem_val_sym_elem
       have ⟨elem', hmem_elem', hval_sym_elem'⟩ := hval_sym_elems_id sym_elem hmem_sym_elem
       simp only [hval_sym_elem', Option.some.injEq] at hval_sym_elem
@@ -485,7 +485,7 @@ theorem value?_symbolize?_id
     · apply Set.subset_def.mpr
       intros elem hmem_elem
       have ⟨sym_elem, hmem_sym_elem, hsym_elem⟩ := List.mapM_some_implies_all_some hsym_elems elem hmem_elem
-      replace hmem_sym_elem := (Set.make_mem _ _).mp hmem_sym_elem
+      replace hmem_sym_elem := (Set.mem_make _ _).mpr hmem_sym_elem
       have ⟨val_sym_elem, hmem_val_sym_elem, hval_sym_elem⟩ := List.mapM_some_implies_all_some hval_sym_elems sym_elem hmem_sym_elem
       have ⟨sym_elem', hsym_elem', hval_sym_elem'⟩ := value?_symbolize?_id hwf_Γ hwf_elem_ty (hwf_elem elem hmem_elem) (hwt_elem elem hmem_elem)
       have : sym_elem' = sym_elem := by
@@ -496,7 +496,7 @@ theorem value?_symbolize?_id
         simp only [hval_sym_elem', Option.some.injEq] at hval_sym_elem
         simp [hval_sym_elem]
       simp only [this] at hmem_val_sym_elem
-      exact (Set.make_mem _ _).mp hmem_val_sym_elem
+      exact (Set.mem_make _ _).mpr hmem_val_sym_elem
   | instance_of_record rec rty hrec_mem_implies_rty_mem hwt_rec hrec_required =>
     cases hwf_ty with | record_wf hwf_rty_map hwf_rty =>
     cases hwf_v with | record_wf hwf_rec hwf_rec_map =>
@@ -765,9 +765,9 @@ theorem value_symbolize?_is_lit
     intros x hmem_x
     replace hmem_x := x.property
     simp only [List.mapM₁_eq_mapM (fun x => x.symbolize? ty') elems'.toList] at hsym_elems
-    replace hmem_x := (Set.in_list_iff_in_mk _ _).mp hmem_x
+    replace hmem_x := (Set.mem_set_iff_mem_mk _ _).mp hmem_x
     simp only [←hsym_elems_set] at hmem_x
-    replace hmem_x := (Set.make_mem _ _).mpr hmem_x
+    replace hmem_x := (Set.mem_make _ _).mp hmem_x
     have ⟨sym_elem, _, hsym_elem⟩ := List.mapM_some_implies_all_from_some hsym_elems x.val hmem_x
     exact value_symbolize?_is_lit hsym_elem
   | record rec =>
