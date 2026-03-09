@@ -108,8 +108,7 @@ theorem type_of_call_decimal_is_sound {xs : List Expr} {c₁ c₂ : Capabilities
   exists .ext d
   constructor
   · simp [EvaluatesTo, evaluate, List.mapM₁, List.mapM, List.mapM.loop, call, res, h₅, Coe.coe]
-  · apply InstanceOfType.instance_of_ext
-    simp [InstanceOfExtType]
+  · exact decimal_is_instance_of_decimal
 
 theorem type_of_call_datetime_inversion {xs : List Expr} {c c' : Capabilities} {env : TypeEnv} {ty : TypedExpr}
   (h₁ : typeOf (Expr.call .datetime xs) c env = Except.ok (ty, c')) :
@@ -147,8 +146,7 @@ theorem type_of_call_datetime_is_sound {xs : List Expr} {c₁ c₂ : Capabilitie
   exists .ext dt
   constructor
   · simp [EvaluatesTo, evaluate, List.mapM₁, List.mapM, List.mapM.loop, call, res, h₅, Coe.coe]
-  · apply InstanceOfType.instance_of_ext
-    simp [InstanceOfExtType]
+  · exact datetime_is_instance_of_datetime
 
 theorem type_of_call_duration_inversion {xs : List Expr} {c c' : Capabilities} {env : TypeEnv} {ty : TypedExpr}
   (h₁ : typeOf (Expr.call .duration xs) c env = Except.ok (ty, c')) :
@@ -184,8 +182,7 @@ theorem type_of_call_duration_is_sound {xs : List Expr} {c₁ c₂ : Capabilitie
   exists .ext dt
   constructor
   · simp [EvaluatesTo, evaluate, List.mapM₁, List.mapM, List.mapM.loop, call, res, h₅, Coe.coe]
-  · apply InstanceOfType.instance_of_ext
-    simp [InstanceOfExtType]
+  · exact duration_is_instance_of_duration
 
 theorem type_of_call_ip_inversion {xs : List Expr} {c c' : Capabilities} {env : TypeEnv} {ty : TypedExpr}
   (h₁ : typeOf (Expr.call .ip xs) c env = Except.ok (ty, c')) :
@@ -222,8 +219,7 @@ theorem type_of_call_ip_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {en
   exists .ext ip
   constructor
   · simp [EvaluatesTo, evaluate, List.mapM₁, List.mapM, List.mapM.loop, call, res, h₅, Coe.coe]
-  · apply InstanceOfType.instance_of_ext
-    simp [InstanceOfExtType]
+  · exact ipaddr_is_instance_of_ipaddr
 
 theorem typeOf_of_binary_call_inversion {xs : List Expr} {c : Capabilities} {env : TypeEnv} {ty₁ ty₂ : TypedExpr}
   (h₁ : (xs.mapM₁ fun x => justType (typeOf x.val c env)) = Except.ok [ty₁, ty₂]) :
@@ -521,8 +517,7 @@ theorem type_of_call_toTime_is_sound {xs : List Expr} {c₁ c₂ : Capabilities}
   subst hr₁
   simp only [call, gt_iff_lt, ge_iff_le, Except.bind_ok, reduceCtorEq, Except.ok.injEq, false_or,
     exists_eq_left']
-  apply InstanceOfType.instance_of_ext
-  simp only [InstanceOfExtType]
+  exact duration_is_instance_of_duration
 
 theorem type_of_call_toDate_inversion {xs : List Expr} {c c' : Capabilities} {env : TypeEnv} {ty : TypedExpr}
   (h₁ : typeOf (Expr.call .toDate xs) c env = Except.ok (ty, c')) :
@@ -583,8 +578,7 @@ theorem type_of_call_toDate_is_sound {xs : List Expr} {c₁ c₂ : Capabilities}
   cases dt₁.toDate with
   | some v =>
     simp only [reduceCtorEq, Except.ok.injEq, false_or, exists_eq_left']
-    apply InstanceOfType.instance_of_ext
-    simp [InstanceOfExtType]
+    exact datetime_is_instance_of_datetime
   | none =>
     simp only [Except.error.injEq, reduceCtorEq, or_self, or_false, or_true, true_and]
     apply type_is_inhabited_ext
@@ -664,8 +658,7 @@ theorem type_of_call_offset_is_sound {xs : List Expr} {c₁ c₂ : Capabilities}
     cases dt₁.offset dt₂ with
     | some v =>
       simp only [reduceCtorEq, Except.ok.injEq, false_or, exists_eq_left']
-      apply InstanceOfType.instance_of_ext
-      simp [InstanceOfExtType]
+      exact datetime_is_instance_of_datetime
     | none =>
       simp only [Except.error.injEq, reduceCtorEq, or_self, or_false, or_true, true_and]
       apply type_is_inhabited_ext
@@ -746,8 +739,7 @@ theorem type_of_call_durationSince_is_sound {xs : List Expr} {c₁ c₂ : Capabi
     cases dt₁.durationSince dt₂ with
     | some v =>
       simp only [reduceCtorEq, Except.ok.injEq, false_or, exists_eq_left']
-      apply InstanceOfType.instance_of_ext
-      simp [InstanceOfExtType]
+      exact duration_is_instance_of_duration
     | none =>
       simp only [Except.error.injEq, reduceCtorEq, or_self, or_false, or_true, true_and]
       apply type_is_inhabited_ext

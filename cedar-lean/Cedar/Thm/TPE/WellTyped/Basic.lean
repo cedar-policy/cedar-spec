@@ -44,13 +44,6 @@ abbrev PEWellTyped (env : TypeEnv)
   Residual.WellTyped env r₁ →
   Residual.WellTyped env r₂
 
-theorem well_typed_bool { env : TypeEnv} {b : Bool}:
- Residual.WellTyped env (.val (.prim (.bool b)) (CedarType.bool BoolType.anyBool))
-:= by
-  apply Residual.WellTyped.val
-  apply InstanceOfType.instance_of_bool
-  simp [InstanceOfBoolType]
-
 theorem entity_data_from_partial
   {env : TypeEnv} {req : Request} {es : Entities} {pes : PartialEntities}
   {uid : EntityUID} {pe : PartialEntityData} :

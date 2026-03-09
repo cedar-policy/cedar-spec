@@ -114,8 +114,7 @@ private theorem ofType_typeOf_pullback_prim
     any_goals simp only [TermType.prim.injEq, reduceCtorEq] at heq_ty
     simp only [Term.value?, TermPrim.value?, Option.some.injEq] at hval
     simp only [←hval]
-    constructor
-    simp [InstanceOfBoolType]
+    exact bool_is_instance_of_anyBool _
   | bitvec bv =>
     rename_i n
     simp only [typeOf_bv, TermType.bitvec] at heq_ty

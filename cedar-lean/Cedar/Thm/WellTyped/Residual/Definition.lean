@@ -278,4 +278,20 @@ inductive Residual.WellTyped (env : TypeEnv) : Residual → Prop
 | error {ty : CedarType} :
   WellTyped env (.error ty)
 
+theorem well_typed_bool {env : TypeEnv} {b : Bool}:
+ Residual.WellTyped env (.val (.prim (.bool b)) (CedarType.bool BoolType.anyBool))
+:= Residual.WellTyped.val (bool_is_instance_of_anyBool b)
+
+theorem well_typed_int {env : TypeEnv} {i : Int64}:
+ Residual.WellTyped env (.val (.prim (.int i)) CedarType.int)
+:= Residual.WellTyped.val InstanceOfType.instance_of_int
+
+theorem well_typed_string {env : TypeEnv} {s : String}:
+ Residual.WellTyped env (.val (.prim (.string s)) CedarType.string)
+:= Residual.WellTyped.val InstanceOfType.instance_of_string
+
+theorem well_typed_entity {env : TypeEnv} {e : EntityUID} {ety : EntityType} :
+  InstanceOfEntityType e ety env → Residual.WellTyped env (.val (.prim (.entityUID e)) (.entity ety))
+:= .val ∘ .instance_of_entity _ _
+
 end Cedar.Thm

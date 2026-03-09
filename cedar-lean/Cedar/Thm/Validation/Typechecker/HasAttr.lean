@@ -89,18 +89,17 @@ theorem type_of_hasAttr_is_sound_for_records {x₁ : Expr} {a : Attr} {c₁ c₁
   simp [typeOf, hl₃, h₃, typeOfHasAttr, hasAttrInRecord] at h₂
   split at h₂
   case h_1 =>
-    split at h₂ <;> simp [ok] at h₂ <;>
-    have ⟨hₜ, _⟩ := h₂ <;> simp [←hₜ] <;>
-    apply InstanceOfType.instance_of_bool <;>
-    simp [InstanceOfBoolType]
-    cases h₆ : (Map.contains r a) <;> simp
-    rename_i h₇ _
+    split at h₂ <;> simp [ok] at h₂ <;> simp [←h₂.left]
+    case isFalse => exact bool_is_instance_of_anyBool _
+    cases h₆ : (Map.contains r a)
+    case true => exact true_is_instance_of_tt
+    rename_i h₇
     cases h₇
-    case isTrue.h₁.false.inl _ h₇ =>
+    case inl _ h₇ =>
       simp [CapabilitiesInvariant] at h₁
       replace h₁ := h₁.left x₁ a h₇
       simp [EvaluatesTo, evaluate, h₄, hasAttr, attrsOf, h₆] at h₁
-    case isTrue.h₁.false.inr h₇ _ h₈ =>
+    case inr h₇ h₈ =>
       simp [Qualified.isRequired] at h₈
       split at h₈ <;> simp at h₈
       have h₉ := required_attribute_is_present h₅ h₇
@@ -109,9 +108,8 @@ theorem type_of_hasAttr_is_sound_for_records {x₁ : Expr} {a : Attr} {c₁ c₁
     simp [ok] at h₂
     have ⟨h₂, _⟩ := h₂
     simp [←h₂]
-    apply InstanceOfType.instance_of_bool
-    simp [InstanceOfBoolType]
-    cases h₆ : (Map.contains r a) <;> simp
+    cases h₆ : (Map.contains r a)
+    case false => exact false_is_instance_of_ff
     rename_i _ h₇ _ _
     have h₇ := absent_attribute_is_absent h₅ h₇
     simp [Map.contains_iff_some_find?, h₇] at h₆
@@ -140,10 +138,10 @@ theorem type_of_hasAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
   rename_i _ rty h₇
   split at h₃
   case h_1 =>
-    split at h₃ <;> rcases h₃ with ⟨h₃, _⟩ <;>
-    apply InstanceOfType.instance_of_bool <;>
-    simp [InstanceOfBoolType]
-    cases h₈ : Map.contains (Entities.attrsOrEmpty entities uid) a <;> simp
+    split at h₃ <;> rcases h₃ with ⟨h₃, _⟩
+    case isFalse => exact bool_is_instance_of_anyBool _
+    cases h₈ : Map.contains (Entities.attrsOrEmpty entities uid) a
+    case true => exact true_is_instance_of_tt
     rename_i _ _ _ _  h₉
     simp [CapabilitiesInvariant] at h₁
     replace h₁ := h₁.left x₁ a h₉
@@ -152,9 +150,8 @@ theorem type_of_hasAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
     simp [ok] at h₃
     have ⟨h₃, _⟩ := h₃
     simp [←h₃]
-    apply InstanceOfType.instance_of_bool
-    simp [InstanceOfBoolType]
-    cases h₈ : Map.contains (Entities.attrsOrEmpty entities uid) a <;> simp
+    cases h₈ : Map.contains (Entities.attrsOrEmpty entities uid) a
+    case false => exact false_is_instance_of_ff
     rename_i _ _ h₉ _ _
     simp [Entities.attrsOrEmpty] at h₈
     split at h₈
@@ -170,13 +167,12 @@ theorem type_of_hasAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
     split at h₃ <;> try simp at h₃
     replace ⟨h₃, _⟩ := h₃
     simp [←h₃]
-    apply InstanceOfType.instance_of_bool
     unfold Entities.attrsOrEmpty
     rename_i _ h₇ _ _
     simp [EntitySchema.attrs?] at h₇
     replace ⟨_, _, h₂⟩ := h₂
-    cases h₈ : Map.find? entities uid <;> simp
-    simp [Map.not_contains_of_empty, InstanceOfBoolType]
+    cases h₈ : Map.find? entities uid
+    case none => exact false_is_instance_of_ff
     cases h₂.1 uid _ h₈ with
     | inl h₂ =>
       replace ⟨_, h₈, _⟩ := h₂
@@ -184,9 +180,8 @@ theorem type_of_hasAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
       contradiction
     | inr h₂ =>
       -- Action entity always have empty attributes
-      have ⟨h₉, _⟩ := h₂
-      simp only [h₉, Map.contains, Map.find?, Map.empty, Map.toList]
-      constructor
+      simp only [h₂.left]
+      exact false_is_instance_of_ff
 
 theorem type_of_hasAttr_is_sound {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilities} {env : TypeEnv} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)

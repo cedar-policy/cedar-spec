@@ -172,19 +172,18 @@ theorem conversion_preserves_typedness:
   cases expr with
   | lit p ty' =>
     simp [TypedExpr.toResidual] at h ⊢
-    apply Residual.WellTyped.val
     cases h with
     | lit h₁ =>
       -- Convert Prim.WellTyped to InstanceOfType
       cases h₁ with
       | bool b =>
-        apply InstanceOfType.instance_of_bool
-        simp [InstanceOfBoolType]
+        exact well_typed_bool
       | int i =>
-        apply InstanceOfType.instance_of_int
+        exact well_typed_int
       | string s =>
-        apply InstanceOfType.instance_of_string
+        exact well_typed_string
       | entityUID uid h₁ =>
+        apply Residual.WellTyped.val
         apply InstanceOfType.instance_of_entity
         simp [InstanceOfEntityType]
         unfold EntityUID.WellFormed

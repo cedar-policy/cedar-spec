@@ -72,8 +72,7 @@ theorem partial_eval_well_typed_unaryApp {env : TypeEnv} {op : UnaryOp} {expr : 
               simp only [Option.some.injEq] at heq
               rw [← heq]
               cases h_op
-              apply Residual.WellTyped.val
-              apply InstanceOfType.instance_of_int
+              exact well_typed_int
           case h_6 =>
            contradiction
       | none =>

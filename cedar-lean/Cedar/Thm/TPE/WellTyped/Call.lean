@@ -228,11 +228,11 @@ theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List
       cases ih ; rename_i ih
       cases ih
       cases h₃
-      apply Residual.WellTyped.val
       first
-      | apply InstanceOfType.instance_of_ext
+      | apply Residual.WellTyped.val
+        apply InstanceOfType.instance_of_ext
         simp [InstanceOfExtType]
-      | apply InstanceOfType.instance_of_int
+      | exact well_typed_int
     case h_23 =>
       simp only [someOrError, Except.toOption]
       apply Residual.WellTyped.error
