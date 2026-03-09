@@ -16,6 +16,7 @@
 
 module
 
+import Cedar.Data.SizeOf
 import Cedar.Spec
 public import Cedar.SymCC.Data
 public import Cedar.SymCC.Op
@@ -89,11 +90,21 @@ public def Term.typeOf : Term → TermType
 
 public def Term.isLiteral : Term → Bool
   | .prim _
-  | .none _               => true
-  | .some t               => t.isLiteral
-  | .set (Set.mk ts) _    => ts.attach.all (λ ⟨t, _⟩ => t.isLiteral)
-  | .record (Map.mk atrs) => atrs.attach₃.all (λ ⟨(_, t), _⟩ => t.isLiteral)
-  | _                     => false
+  | .none _      => true
+  | .some t      => t.isLiteral
+  | .set ts _    => ts.all₁ λ ⟨t, _⟩ => t.isLiteral
+  | .record atrs => atrs.toList.attach₂.all λ ⟨(_, t), _⟩ => t.isLiteral
+  | _            => false
+decreasing_by
+  all_goals simp_wf
+  · rename_i h
+    have := Set.sizeOf_lt_of_elts ts
+    have := List.sizeOf_lt_of_mem h
+    omega
+  · rename_i h
+    have := Map.sizeOf_lt_of_toList atrs
+    simp only at *
+    omega
 
 public instance : Coe Bool Term where
   coe b := .prim (.bool b)

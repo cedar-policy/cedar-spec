@@ -775,18 +775,15 @@ theorem value_symbolize?_is_lit
     split at hsym
     any_goals contradiction
     rename_i attrs' rty hattrs'
+    simp only [Value.record.injEq] at hattrs' ; subst attrs'
     simp only [bind, Option.bind] at hsym
     split at hsym
     any_goals contradiction
-    simp only [Option.some.injEq] at hsym
+    simp only [Option.some.injEq] at hsym ; subst t
     rename_i sym_attrs hsym_attrs
-    simp only [←hsym, Term.isLiteral]
-    apply List.all_eq_true.mpr
+    simp only [Term.isLiteral, List.all_attach₂_snd, List.all_eq_true, Map.toList_mk_id]
     intros x hmem_x
-    simp only [List.attach₃] at hmem_x
-    replace ⟨_, hmem_x, h⟩ := List.mem_pmap.mp hmem_x
-    replace hmem_x : x.val ∈ sym_attrs := by simp only [←h, hmem_x]
-    have ⟨sym_elem, _, hsym_elem⟩ := List.mapM_some_implies_all_from_some hsym_attrs x.val hmem_x
+    have ⟨sym_elem, _, hsym_elem⟩ := List.mapM_some_implies_all_from_some hsym_attrs x hmem_x
     simp only [Value.symbolize?.symbolizeAttr?] at hsym_elem
     split at hsym_elem
     · simp only [Option.some.injEq] at hsym_elem
@@ -816,14 +813,11 @@ decreasing_by
     simp [Set.toList, Set.elts] at h₃ ⊢
     have := List.sizeOf_lt_of_mem h₃
     omega
-  any_goals
-    rename v = Value.record rec => h₁
-    rename Value.record rec = Value.record _ => h₂
+  all_goals
+    subst_vars
+    rename Value.record rec = Value.record _ => h₂ ; simp only [Value.record.injEq] at h₂ ; subst h₂
     rename Value => v'
     rename Map.find? _ sym_elem.fst = some _ => h₃
-    simp at h₂
-    simp only [←h₂] at h₃ ⊢
-    simp only [h₁]
     have := Map.find?_mem_toList h₃
     cases rec
     have := List.sizeOf_lt_of_mem this

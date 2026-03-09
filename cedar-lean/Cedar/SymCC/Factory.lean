@@ -256,11 +256,10 @@ public def set.inter (ts₁ ts₂ : Term) : Term :=
     | _, _ => .app Op.set.inter [ts₁, ts₂] ts₁.typeOf
 
 public def set.isEmpty : Term → Term
-  | .set (Set.mk []) _     => true
-  | .set (Set.mk (_::_)) _ => false
+  | .set s _ => s.isEmpty
   | ts =>
     match ts.typeOf with
-    | .set ty => eq ts (.set (Set.mk []) ty)
+    | .set ty => eq ts (.set Set.empty ty)
     | _       => false
 
 public def set.intersects (ts₁ ts₂ : Term) : Term :=

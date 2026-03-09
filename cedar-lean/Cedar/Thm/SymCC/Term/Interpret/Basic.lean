@@ -52,10 +52,16 @@ theorem interpret_term_set {I : Interpretation} {s : Set Term} {ty : TermType} :
   cases s
   simp only [Term.interpret, setOf, List.map₁_eq_map (Term.interpret I ·)]
 
-theorem interpret_term_set_empty {ty : TermType} :
+theorem interpret_term_set_mk_nil {ty : TermType} :
   Term.interpret I (Term.set (Set.mk []) ty) = Term.set (Set.mk []) ty
 := by
   simp only [interpret_term_set, Set.make, Set.elts, List.map_nil, List.canonicalize_nil]
+
+theorem interpret_term_set_empty {ty : TermType} :
+  Term.interpret I (Term.set Set.empty ty) = Term.set Set.empty ty
+:= by
+  rw [Set.empty_eq_mk_nil]
+  exact interpret_term_set_mk_nil
 
 theorem interpret_term_record {I : Interpretation} {r : Map Attr Term} :
   (Term.record r).interpret I =

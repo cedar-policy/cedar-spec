@@ -631,7 +631,6 @@ theorem compile_well_typed_unaryApp
     ]
     split
     · simp [typeOf_bool]
-    · simp [typeOf_bool]
     · simp [hty_get_comp_expr]
       apply (wf_eq ?_ ?_ ?_).right
       any_goals assumption

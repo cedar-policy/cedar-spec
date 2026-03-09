@@ -95,7 +95,7 @@ theorem wf_term_record_implies {εs : SymEntities} {r : Map Attr Term} {a : Attr
 
 theorem wf_term_record_implies_wf_value {εs : SymEntities} {r : Map Attr Term} {a : Attr}
   (h₁ : Term.WellFormed εs (Term.record r))
-  (h₂ : (a, t) ∈ r.1) :
+  (h₂ : (a, t) ∈ r.toList) :
   Term.WellFormed εs t
 := by
   cases h₁ ; rename_i h₃ _
@@ -617,7 +617,6 @@ theorem wf_recordOf {εs : SymEntities} {ats : List (Attr × Term)}
   simp only [recordOf]
   apply Term.WellFormed.record_wf _ (Map.make_wf ats)
   intro a t ht
-  simp only [Map.toList] at ht
   replace ht := Map.make_mem_list_mem ht
   exact h₁ a t ht
 
@@ -1157,8 +1156,8 @@ theorem wf_set_isEmpty {εs : SymEntities} {t₁ : Term} {ty : TermType}
 := by
   simp only [set.isEmpty]
   split
-  case h_1 | h_2 => exact And.intro wf_bool typeOf_bool
-  case h_3 =>
+  case h_1 => exact And.intro wf_bool typeOf_bool
+  case h_2 =>
     split
     case h_1 h =>
       simp [h₂] at h ; subst h

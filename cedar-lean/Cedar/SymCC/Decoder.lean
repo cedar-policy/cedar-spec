@@ -357,14 +357,10 @@ def defaultPrim (eidOf : EntityType → String) : TermPrimType → TermPrim
   | .ext xty    => defaultExt xty
 
 def defaultLit (eidOf : EntityType → String) : TermType → Term
-  | .prim pty            => .prim (defaultPrim eidOf pty)
-  | .option ty           => .none ty
-  | .set ty              => .set Set.empty ty
-  | .record (Map.mk tys) =>
-    let ts := tys.map₂ λ ⟨(a, ty), _⟩ => (a, defaultLit eidOf ty)
-    .record (Map.mk ts)
-termination_by ty => sizeOf ty
-decreasing_by simp_wf ; simp at * ; omega
+  | .prim pty   => .prim (defaultPrim eidOf pty)
+  | .option ty  => .none ty
+  | .set ty     => .set Set.empty ty
+  | .record tys => .record (tys.mapOnValues₂ λ ⟨ty, _⟩ => defaultLit eidOf ty)
 
 def defaultUDF (eidOf : EntityType → String) (f : UUF) : UDF :=
   ⟨f.arg, f.out, Map.empty, defaultLit eidOf f.out⟩

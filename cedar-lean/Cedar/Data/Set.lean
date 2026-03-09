@@ -157,6 +157,14 @@ public instance [DecidableEq α] : Inter (Set α) := ⟨Set.intersect⟩
 -- enables ∪
 public instance [LT α] [DecidableLT α] : Union (Set α) := ⟨Set.union⟩
 
+----- Termination-friendly iterators -----
+
+public def all₁ {α} (s : Set α) (f : {a : α // a ∈ s} → Bool) : Bool :=
+  s.elts.attach.all f
+
+public def any₁ {α} (s : Set α) (f : {a : α // a ∈ s} → Bool) : Bool :=
+  s.elts.attach.any f
+
 end Set
 
 end Cedar.Data

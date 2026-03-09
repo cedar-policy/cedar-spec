@@ -97,6 +97,14 @@ public theorem typeOf_term_prim_ext_duration {d : Ext.Datetime.Duration} :
   (Term.prim (.ext (.duration d))).typeOf = TermType.ext Validation.ExtType.duration
 := by simp only [Term.typeOf, TermPrim.typeOf]
 
+public theorem typeOf_term_var (v : TermVar) :
+  (Term.var v).typeOf = v.ty
+:= by simp [Term.typeOf]
+
+public theorem typeOf_term_set {elts : Set Term} {eltsTy : TermType} :
+  (Term.set elts eltsTy).typeOf = TermType.set eltsTy
+:= by simp [Term.typeOf]
+
 public theorem typeOf_term_record_eq  {r : Map Attr Term} :
   Term.typeOf (Term.record r) =
   TermType.record (r.mapOnValues Term.typeOf)
@@ -159,6 +167,10 @@ public theorem typeOf_term_record_tail {a : Attr} {t₁ t₂ : Term} {tl₁ tl�
 := by
   simp only [typeOf_term_record_eq, TermType.record.injEq]
   exact Map.mapOnValues_tail (f := Term.typeOf)
+
+theorem typeOf_term_app {op : Op} {args : List Term} :
+  Term.typeOf (Term.app op args ty) = ty
+:= by simp [Term.typeOf]
 
 private theorem typeOf_wf_term_prim_is_wf {εs : SymEntities} {p : TermPrim} :
   TermPrim.WellFormed εs p →

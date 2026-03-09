@@ -14,9 +14,11 @@
  limitations under the License.
 -/
 
+import Cedar.Data.SizeOf
 import Cedar.SymCC.Decoder
 import Cedar.Thm.SymCC.Data
 import Cedar.Thm.SymCC.Env.WF
+import Cedar.Thm.SymCC.Term.Lit
 import Cedar.Thm.SymCC.Term.TypeOf
 
 /-! Some facts about `default*` -/
@@ -61,43 +63,36 @@ theorem default_lit_wf
   | option ty' =>
     simp only [Decoder.defaultLit]
     constructor
-    cases hwf_ty
-    assumption
+    cases hwf_ty ; assumption
   | set ty' =>
     simp only [Decoder.defaultLit]
     constructor
     · intros t ht
-      simp only [Set.empty, Membership.mem, Set.elts] at ht
-      contradiction
+      exfalso
+      exact Set.not_mem_empty _ ht
     · intros t ht
-      simp only [Set.empty, Membership.mem, Set.elts] at ht
-      contradiction
-    · cases hwf_ty
-      assumption
+      exfalso
+      exact Set.not_mem_empty _ ht
+    · cases hwf_ty ; assumption
     · exact Set.empty_wf
   | record rty =>
     cases rty with | mk attrs =>
     cases hwf_ty with | record_wf hwf_rty hwf_rty_map =>
     simp only [Decoder.defaultLit]
-    simp only [List.map₂_eq_map λ x => (x.fst, Decoder.defaultLit eidOf x.snd)]
+    simp only [Map.mapOnValues₂_eq_mapOnValues]
     constructor
     · intros attr t hmem_attr_t
-      simp only [Map.toList_mk_id] at hmem_attr_t
-      have ⟨⟨attr, attr_ty⟩, hmem_attr_ty, h⟩ := List.mem_map.mp hmem_attr_t
-      simp only [Prod.mk.injEq] at h
-      replace ⟨h, h'⟩ := h ; subst h h'
+      replace hmem_attr_t := Map.mem_toList_find? (Map.mapOnValues_wf.mp hwf_rty_map) hmem_attr_t
+      replace ⟨attr_ty, hmem_attr_t, _⟩ := Map.find?_mapOnValues_some' _ hmem_attr_t
+      subst t
+      have := Map.sizeOf_lt_of_find? hmem_attr_t
       apply default_lit_wf _ hwf_eidOf
       apply hwf_rty attr
-      apply (Map.in_list_iff_find?_some hwf_rty_map).mp
-      simp [hmem_attr_ty]
+      exact hmem_attr_t
     · exact Map.mapOnValues_wf.mp hwf_rty_map
 termination_by sizeOf ty
 decreasing_by
-  have : ty = TermType.record rty := by assumption
-  simp only [this]
-  have : rty = Map.mk attrs := by assumption
-  simp only [this]
-  have := List.sizeOf_snd_lt_sizeOf_list hmem_attr_ty
+  subst_vars
   simp at *
   omega
 
@@ -109,65 +104,44 @@ theorem default_lit_is_lit
   | prim p =>
     cases p
     all_goals
-      simp only [Decoder.defaultLit, Decoder.defaultPrim, Term.isLiteral]
+      simp [Decoder.defaultLit, Decoder.defaultPrim, Term.isLiteral]
   | record rty =>
-    cases rty with | mk attrs =>
-    simp only [Decoder.defaultLit, Term.isLiteral]
-    rw [List.map₂_eq_map (λ x => (x.fst, Decoder.defaultLit eidOf x.snd))]
-    simp only [List.attach₃]
-    rw [List.all_pmap_subtype
-      (λ x => x.snd.isLiteral)
-      (List.map (fun x => (x.fst, Decoder.defaultLit eidOf x.snd)) attrs)]
-    apply List.all_eq_true.mpr
-    intros attr_term hmem_attr_term
-    have ⟨attr, hmem_attr, hattr_term⟩ := List.mem_map.mp hmem_attr_term
-    simp only [←hattr_term]
+    simp only [Decoder.defaultLit]
+    rw [Map.mapOnValues₂_eq_mapOnValues]
+    rw [isLiteral_record_mapOnValues]
+    intro tty htty
     exact default_lit_is_lit
-  | _ => simp [Decoder.defaultLit, Term.isLiteral, Set.empty]
+  | _ => simp [Decoder.defaultLit, Term.isLiteral]
 termination_by sizeOf ty
 decreasing_by
-  simp
-  have := List.sizeOf_lt_of_mem hmem_attr
-  cases attr
-  simp at this ⊢
+  simp_wf
+  have := Map.sizeOf_lt_of_values htty
   omega
 
-theorem default_lit_well_typed
+public theorem default_lit_well_typed
   {eidOf : EntityType → String} {ty : TermType} :
   (Decoder.defaultLit eidOf ty).typeOf = ty
 := by
   cases ty with
   | prim p =>
     cases p with
-    | ext x =>
-      cases x
-      all_goals
-        simp [Decoder.defaultLit, Decoder.defaultPrim, Decoder.defaultExt, typeOf_term_prim_ext_datetime, typeOf_term_prim_ext_duration, typeOf_term_prim_ext_decimal, typeOf_term_prim_ext_ipaddr]
-    | _ =>
-      simp [Decoder.defaultLit, Decoder.defaultPrim, typeOf_bool, typeOf_bv, typeOf_term_prim_string, typeOf_term_prim_entity]
-  | option =>
-    simp only [Decoder.defaultLit, Term.typeOf]
-  | set =>
-    simp only [Decoder.defaultLit, Term.typeOf]
+    | ext x => cases x <;>
+        simp [Decoder.defaultLit, Decoder.defaultPrim, Decoder.defaultExt, typeOf_term_prim_ext_datetime, typeOf_term_prim_ext_decimal, typeOf_term_prim_ext_duration, typeOf_term_prim_ext_ipaddr]
+    | _ => simp [Decoder.defaultLit, Decoder.defaultPrim, typeOf_bool, typeOf_bv, typeOf_term_prim_string, typeOf_term_prim_entity]
+  | option => simp only [Decoder.defaultLit, typeOf_term_none]
+  | set => simp only [Decoder.defaultLit, typeOf_term_set]
   | record rty =>
-    cases rty with | mk attrs =>
-    simp only [Decoder.defaultLit, Term.typeOf]
+    simp only [Decoder.defaultLit, typeOf_term_record_eq]
     congr
-    rw [List.map₂_eq_map (λ x => (x.fst, Decoder.defaultLit eidOf x.snd))]
-    simp only [Map.mapOnValues₂_eq_mapOnValues _ Term.typeOf]
-    simp only [Map.mapOnValues, Map.toList_mk_id, List.map_map, Map.mk.injEq]
+    rw [Map.mapOnValues₂_eq_mapOnValues, Map.mapOnValues_mapOnValues]
     unfold Function.comp
-    simp only
-    apply List.map_restricted_id
-    intros x hmem_x
-    cases x with | mk a b =>
-    simp only [Prod.mk.injEq, true_and]
+    apply Map.mapOnValues_restricted_id
+    intro tty htty
     exact default_lit_well_typed
 termination_by sizeOf ty
 decreasing_by
-  simp
-  have := List.sizeOf_lt_of_mem hmem_x
-  simp at this ⊢
+  simp_wf
+  have := Map.sizeOf_lt_of_values htty
   omega
 
 end Cedar.Thm
