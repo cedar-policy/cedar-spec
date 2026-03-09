@@ -170,7 +170,7 @@ theorem same_value_implies_lit {v : Value} {t : Term} :
   | .prim p    => simp [Term.isLiteral]
   | .set s _   =>
     unfold Term.isLiteral
-    simp only [List.attach_def, List.all_pmap_subtype Term.isLiteral, List.all_eq_true]
+    simp only [Set.all₁_eq_all, Set.all, List.all_eq_true]
     intro x h₂
     unfold Term.value? at h₁
     simp only [List.mapM₁_eq_mapM Term.value?, Option.bind_eq_bind, Option.bind_eq_some_iff,
@@ -182,32 +182,32 @@ theorem same_value_implies_lit {v : Value} {t : Term} :
     exact same_value_implies_lit (same_value_implies_same h₁)
   | .record r  =>
     unfold Term.isLiteral
-    simp only [List.attach₃, List.all_pmap_subtype (λ (x : Attr × Term) => Term.isLiteral x.snd),
-      List.all_eq_true]
-    intro x h₂
+    simp only [List.all_attach₂_snd, List.all_eq_true, Prod.forall]
+    intro a t h₂
     unfold Term.value? at h₁
     simp only [List.mapM₂_eq_mapM (λ (x : Attr × Term) => Term.value?.attrValue? x.fst x.snd),
       Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at h₁
     replace ⟨avs, h₁, _⟩ := h₁
-    rw [← List.mapM'_eq_mapM] at h₁
-    replace ⟨av', _, h₁⟩ := List.mapM'_some_implies_all_some h₁ x h₂
-    have _ := Map.sizeOf_lt_of_value h₂ -- termination
+    replace ⟨av', _, h₁⟩ := List.mapM_some_implies_all_some h₁ (a, t) h₂
     unfold Term.value?.attrValue? at h₁
     split at h₁
     case h_1 t' heq =>
-      simp only [heq]
+      simp only at heq ; subst t
       cases hv : Term.value? t' <;>
       simp [hv, Option.bind_none_fun, Option.bind_some_fun, Option.some.injEq] at h₁
       simp only [Term.isLiteral]
       rename_i v'
-      have _ : sizeOf t' < sizeOf x.snd := by simp only [heq, Term.some.sizeOf_spec]; omega -- termination
+      have _ : sizeOf t' < sizeOf t'.some := by simp only [Term.some.sizeOf_spec]; omega -- termination
+      have _ : sizeOf t'.some < sizeOf r := Map.sizeOf_lt_of_value h₂
       exact same_value_implies_lit (same_value_implies_same hv)
     case h_2 heq =>
-      simp [heq, Term.isLiteral]
+      simp only [Option.some.injEq] at * ; subst t av'
+      simp [Term.isLiteral]
     case h_3 =>
-      cases hv : Term.value? x.snd <;>
+      cases hv : Term.value? t <;>
       simp [hv, Option.bind_none_fun, Option.bind_some_fun, Option.some.injEq] at h₁
       rename_i v'
+      have _ : sizeOf t < sizeOf r := Map.sizeOf_lt_of_value h₂
       exact same_value_implies_lit (same_value_implies_same hv)
 termination_by sizeOf t
 decreasing_by all_goals (simp_wf ; omega)

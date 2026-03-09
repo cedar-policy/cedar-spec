@@ -747,15 +747,7 @@ theorem ofEnumEntityType_is_wf
   · constructor
     · intro _ _ h ; simp at h
     · exact Map.wf_empty
-  · simp only [
-      Term.isLiteral,
-      Map.empty,
-      List.nil.sizeOf_spec, Nat.reduceAdd,
-      List.all_eq_true,
-      Subtype.forall, Prod.forall,
-    ]
-    intros _ _ _ h
-    simp [List.attach₃] at h
+  · simp only [Map.empty, Term.isLiteral, List.all_attach₂_snd, Map.toList_mk_id, List.all_nil]
   · rw [Term.typeOf, Map.mapOnValues₂_eq_mapOnValues]
     simp
   · exact Map.wf_empty
@@ -832,7 +824,7 @@ theorem ofActionType_ancsUDF_is_wf
       exists act.fst
       simp only [this, Option.isSome, true_and, hact_ty]
     · simp [Set.empty, Set.WellFormed, Set.make, Set.toList, Set.elts, List.canonicalize]
-  · simp [Set.empty, Term.isLiteral]
+  · simp [Term.isLiteral]
   · simp only [Set.empty, TermType.ofType, Term.typeOf]
   · simp only [Map.make_wf]
   · -- WF of the ancestor UDF
@@ -977,7 +969,7 @@ theorem ofActionType_is_wf
   · constructor
     · intro _ _ h ; simp at h
     · exact Map.wf_empty
-  · simp [Map.empty, Term.isLiteral, List.attach₃]
+  · simp [Map.empty, Term.isLiteral]
   · simp [Term.typeOf, Map.mapOnValues₂_eq_mapOnValues]
   · exact Map.wf_empty
   · intros; contradiction

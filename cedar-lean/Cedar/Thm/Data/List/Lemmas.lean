@@ -64,7 +64,7 @@ public theorem all_pmap_subtype
 := by
   induction as <;> simp [*]
 
-/-! ### map and map₁ -/
+/-! ### map, map₁, map₂, map₃, and `attach` variants -/
 
 /--
   Copied from Mathlib. We can delete this if it gets added to Batteries.
@@ -127,6 +127,28 @@ public theorem attach_def {as : List α} :
   as.attach = pmap Subtype.mk as λ _ => id
 := by
   simp [attach, attachWith]
+
+public theorem mem_attach₂ [SizeOf α] [SizeOf β] {as : List (α × β)} {pair : {x : α × β // sizeOf x.snd < 1 + sizeOf as}} :
+  pair ∈ as.attach₂ → (pair.val.fst, pair.val.snd) ∈ as
+:= by
+  simp only [attach₂, mem_pmap, Prod.exists]
+  intro h
+  replace ⟨a, b, h, _⟩ := h ; subst pair
+  simp [h]
+
+@[simp]
+public theorem all_attach₂ [SizeOf α] [SizeOf β] {as : List (α × β)} {f : (α × β) → Bool} :
+  as.attach₂.all (λ ⟨pair, _⟩ => f pair) = as.all f
+:= by
+  unfold attach₂
+  rw [all_pmap_subtype]
+
+@[simp]
+public theorem all_attach₂_snd [SizeOf α] [SizeOf β] {as : List (α × β)} {f : β → Bool} :
+  as.attach₂.all (λ ⟨(_, b), _⟩ => f b) = as.all λ (_, b) => f b
+:= by
+  unfold attach₂
+  simp [all_pmap_subtype λ ((_, b) : α × β) => f b]
 
 public theorem map₁_eq_map (f : α → β) (as : List α) :
   as.map₁ (λ x : {x // x ∈ as} => f x.val) =

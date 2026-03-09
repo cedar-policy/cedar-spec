@@ -70,7 +70,7 @@ public def instanceOfType (v : Value) (ty : CedarType) (env : TypeEnv) : Bool :=
   | .prim (.int _), .int => true
   | .prim (.string _), .string => true
   | .prim (.entityUID e), .entity ety => instanceOfEntityType e ety env
-  | .set s, .set ty => s.elts.attach.all (λ ⟨v, _⟩ => instanceOfType v ty env)
+  | .set s, .set ty => s.all₁ (λ ⟨v, _⟩ => instanceOfType v ty env)
   | .record r, .record rty =>
     r.toList.all (λ (k, _) => rty.contains k) &&
     (r.toList.attach₂.all (λ ⟨(k, v), _⟩ => (match rty.find? k with

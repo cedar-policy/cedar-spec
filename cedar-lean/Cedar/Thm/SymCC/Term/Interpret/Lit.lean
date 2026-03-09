@@ -106,9 +106,8 @@ private theorem interpret_term_set_lit {I : Interpretation} {s : Set Term} {ty: 
   (ih : ∀ (t : Term), t ∈ s → Term.isLiteral (Term.interpret I t) = true) :
   Term.isLiteral (Term.interpret I (Term.set s ty)) = true
 := by
-  simp only [interpret_term_set]
-  unfold Term.isLiteral
-  simp only [List.attach_def, List.all_pmap_subtype Term.isLiteral, List.all_eq_true]
+  simp only [interpret_term_set, Term.isLiteral, Set.all₁_eq_all]
+  simp only [Set.all, List.all_eq_true]
   intro t h₁
   rw [Set.mem_elts_iff_mem_set, Set.mem_make] at h₁
   simp only [List.mem_map] at h₁
@@ -121,22 +120,17 @@ private theorem interpret_term_record_lit {I : Interpretation} {r : Map Attr Ter
   (ih : ∀ (a : Attr) (t : Term), (a, t) ∈ Map.toList r → Term.isLiteral (Term.interpret I t) = true) :
   Term.isLiteral (Term.interpret I (Term.record r)) = true
 := by
-  simp only [interpret_term_record]
-  unfold Term.isLiteral
-  simp only [
-    List.attach₃,
-    List.all_pmap_subtype λ (x : Attr × Term) => Term.isLiteral x.snd,
-    List.all_eq_true]
-  intro x h₁
+  simp only [interpret_term_record, Term.isLiteral, List.all_attach₂_snd, List.all_eq_true,
+    Prod.forall]
+  intro a t h₁
   simp only [Map.make] at h₁
   have h₂ := List.canonicalize_subseteq Prod.fst (r.toList.map λ x => (x.fst, Term.interpret I x.snd))
   simp only [List.subset_def] at h₂
   specialize h₂ h₁
-  simp only [List.mem_map] at h₂
-  replace ⟨x', h₁, h₂⟩ := h₂
-  subst h₂
-  simp only
-  apply ih x'.fst x'.snd
+  simp only [List.mem_map, Prod.mk.injEq, Prod.exists] at h₂
+  replace ⟨a', t', h₁, _, h₂⟩ := h₂
+  subst a' t
+  apply ih a t'
   simp [h₁]
 
 private theorem interpret_wf_is_wfl {εs : SymEntities} {I : Interpretation} {t : Term} {ty : TermType} :

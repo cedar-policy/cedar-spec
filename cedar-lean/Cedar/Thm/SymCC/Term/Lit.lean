@@ -27,31 +27,21 @@ namespace Cedar.Thm
 
 open Batteries Data Spec SymCC Factory
 
-theorem lit_term_set_empty (ty : TermType) :
-  Term.isLiteral (Term.set (Set.mk []) ty)
-:= by
-  unfold Term.isLiteral
-  simp only [List.attach_def, List.pmap, List.all_nil]
+theorem lit_term_set_empty (eltsTy : TermType) :
+  Term.isLiteral (.set Set.empty eltsTy)
+:= by simp [Term.isLiteral, Set.all₁_eq_all]
 
 theorem lit_term_set_implies_lit_elt {s : Set Term} {ty : TermType} {t : Term} :
   (Term.set s ty).isLiteral → t ∈ s → t.isLiteral
 := by
+  simp only [Term.isLiteral, Set.all₁_eq_all, Set.all, List.all_eq_true]
   intro h₁ h₂
-  unfold Term.isLiteral at h₁
-  simp only [List.attach_def, List.all_pmap_subtype Term.isLiteral, List.all_eq_true] at h₁
-  rw [← Set.mem_elts_iff_mem_set] at h₂
-  simp only [Set.elts] at h₂
   exact h₁ t h₂
 
 theorem lit_term_set_impliedBy_lit_elts {s : Set Term} {ty : TermType} :
   (∀ t ∈ s, t.isLiteral) → (Term.set s ty).isLiteral
 := by
-  intro h₁
-  unfold Term.isLiteral
-  simp only [List.attach_def, List.all_pmap_subtype Term.isLiteral, List.all_eq_true]
-  intro t h₂
-  rw [Set.mem_elts_iff_mem_set] at h₂
-  exact h₁ t h₂
+  simp [Term.isLiteral, Set.all, Set.mem_elts_iff_mem_set]
 
 theorem lit_term_set_cons {hd : Term} {tl : List Term} {ty : TermType} :
   (Term.set (Set.mk (hd :: tl)) ty).isLiteral →
@@ -68,12 +58,28 @@ theorem lit_term_set_cons {hd : Term} {tl : List Term} {ty : TermType} :
   exact lit_term_set_implies_lit_elt h₁ h₃
 
 theorem lit_term_record_implies_lit_value {r : Map Attr Term} {a : Attr} {t : Term} :
-  Term.isLiteral (Term.record r) → (a, t) ∈ r.1 → t.isLiteral
+  Term.isLiteral (Term.record r) → (a, t) ∈ r.toList → t.isLiteral
 := by
+  simp only [Term.isLiteral]
+  rw [List.all_attach₂_snd]
+  simp only [List.all_eq_true, Prod.forall]
   intro h₁ h₂
-  unfold Term.isLiteral at h₁
-  simp only [List.attach₃, List.all_pmap_subtype (λ (x : Attr × Term) => Term.isLiteral x.snd), List.all_eq_true] at h₁
-  exact h₁ (a, t) h₂
+  exact h₁ a t h₂
+
+theorem isLiteral_record_mapOnValues {m : Map Attr β} {f : β → Term} :
+  (Term.isLiteral (.record (m.mapOnValues f)) ↔ ∀ v ∈ m.values, (f v).isLiteral)
+:= by
+  constructor
+  · intro h₁ b hb
+    have ⟨a, ha⟩ := Map.in_values_exists_key hb
+    apply lit_term_record_implies_lit_value h₁ (a := a)
+    exact Map.in_toList_in_mapOnValues ha
+  · simp only [Term.isLiteral, List.all_attach₂_snd, List.all_eq_true, Prod.forall]
+    intro h₁ a t h₂
+    replace ⟨b, hb, h₂⟩ := Map.in_mapOnValues_in_toList' h₂
+    subst t
+    apply h₁ b
+    exact Map.in_list_in_values h₂
 
 theorem lit_term_implies_lit_some {t : Term} :
   t.isLiteral → (Term.some t).isLiteral

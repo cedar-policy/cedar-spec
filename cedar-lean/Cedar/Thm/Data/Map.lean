@@ -847,6 +847,23 @@ public theorem values_mapOnValues [LT α] [StrictLT α] [DecidableLT α] [Decida
   unfold mapOnValues values
   induction m.1 <;> simp
 
+@[simp]
+public theorem mapOnValues_mapOnValues [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {f : β → γ} {g : γ → φ} {m : Map α β} :
+  (m.mapOnValues f).mapOnValues g = m.mapOnValues (g ∘ f)
+:= by simp [mapOnValues]
+
+public theorem mapOnValues_restricted_id  {f : β → β} {m : Map α β} :
+  (∀ b ∈ m.values, f b = b) →
+  m.mapOnValues f = m
+:= by
+  simp only [mapOnValues]
+  cases m ; simp only [toList_mk_id, mk.injEq]
+  intro h
+  apply List.map_restricted_id
+  intro pair hpair
+  simp [h pair.snd (Map.in_list_in_values hpair)]
+
+@[simp]
 public theorem mapOnValues₂_eq_mapOnValues {α β γ} [SizeOf α] [SizeOf β] (m : Map α β) (f : β → γ) :
   m.mapOnValues₂ (λ x : { x : β // sizeOf x < sizeOf m } => f x.1) = m.mapOnValues f
 := by
@@ -988,40 +1005,31 @@ public theorem find?_none_iff_findorErr_errors [LT α] [DecidableLT α] [Decidab
   exact findOrErr_err_iff_find?_none.symm
 
 /--
-  Converse of `in_toList_in_mapOnValues`; requires the extra preconditions that `m`
-  is `WellFormed` and `f` is injective
+  Converse of `in_toList_in_mapOnValues`; requires the extra precondition that `f` is injective
 -/
-public theorem in_mapOnValues_in_toList [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {f : β → γ} {m : Map α β} {k : α} {v : β}
-  (wf : m.WellFormed) :
+public theorem in_mapOnValues_in_toList [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {f : β → γ} {m : Map α β} {k : α} {v : β} :
   (k, f v) ∈ (m.mapOnValues f).toList →
   (∀ v', f v = f v' → v = v') → -- require f to be injective
   (k, v) ∈ m.toList
 := by
-  rw [mapOnValues_eq_make_map f wf]
-  unfold toList
-  intro h₁ h_inj
-  replace h₁ := make_mem_list_mem h₁
-  replace ⟨(k', v'), h₁, h₂⟩ := List.mem_map.mp h₁
-  simp only [Prod.mk.injEq] at h₂ ; replace ⟨h₂', h₂⟩ := h₂ ; subst k'
-  specialize h_inj v' h₂.symm
+  simp only [toList, mapOnValues, List.mem_map, Prod.mk.injEq, Prod.exists, forall_exists_index,
+    and_imp]
+  intro a b h₁ _ h₂ h_inj ; subst a
+  specialize h_inj b h₂.symm
   subst h_inj
   exact h₁
 
 /--
   Slightly different formulation of `in_mapOnValues_in_toList`
 -/
-public theorem in_mapOnValues_in_toList' [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {f : β → γ} {m : Map α β} {k : α} {v' : γ}
-  (wf : m.WellFormed) :
+public theorem in_mapOnValues_in_toList' [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {f : β → γ} {m : Map α β} {k : α} {v' : γ} :
   (k, v') ∈ (m.mapOnValues f).toList →
   ∃ v, f v = v' ∧ (k, v) ∈ m.toList
 := by
-  rw [mapOnValues_eq_make_map f wf]
-  unfold toList
-  intro h₁
-  replace h₁ := make_mem_list_mem h₁
-  replace ⟨(k', v'), h₁, h₂⟩ := List.mem_map.mp h₁
-  simp only [Prod.mk.injEq] at h₂ ; replace ⟨h₂', h₂⟩ := h₂ ; subst k' h₂
-  exists v'
+  simp only [mapOnValues, toList, List.mem_map, Prod.mk.injEq, Prod.exists,
+    forall_exists_index, and_imp]
+  intro a b h₁ _ _ ; subst a v'
+  exists b
 
 /-! ### mapMOnValues -/
 

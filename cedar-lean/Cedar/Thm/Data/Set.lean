@@ -156,6 +156,16 @@ public theorem map_empty [LT β] [DecidableLT β] (f : α → β) :
 := by
   simp [Set.map, empty_eq_mk_nil, Set.elts, Set.make, List.canonicalize_nil]
 
+@[simp]
+public theorem all_empty (f : α → Bool) :
+  Set.empty.all f = true
+:= by simp [all]
+
+@[simp]
+public theorem any_empty (f : α → Bool) :
+  Set.empty.any f = false
+:= by simp [any]
+
 /-! ### isEmpty -/
 
 @[simp]
@@ -756,5 +766,17 @@ public theorem difference_subset [LT α] [DecidableLT α] [StrictLT α] [Decidab
   intro s
   rw [mem_difference]
   exact And.left
+
+/-! ### all₁ and any₁ -/
+
+@[simp]
+public theorem all₁_eq_all {s : Set α} {f : α → Bool} :
+  (s.all₁ λ ⟨elt, _⟩ => f elt) = s.all f
+:= by simp [all₁, all]
+
+@[simp]
+public theorem any₁_eq_any {s : Set α} {f : α → Bool} :
+  (s.any₁ λ ⟨elt, _⟩ => f elt) = s.any f
+:= by simp [any₁, any]
 
 end Cedar.Data.Set

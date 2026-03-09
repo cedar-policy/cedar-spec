@@ -67,12 +67,14 @@ theorem instance_of_type_refl {v : Value} {ty : CedarType} {env : TypeEnv} :
     cases ty
     case set sty =>
       apply InstanceOfType.instance_of_set s sty
-      simp only [List.all_eq_true] at h₀
+      split at h₀ <;> simp only [reduceCtorEq, imp_self, implies_true, Value.set.injEq,
+        CedarType.set.injEq, imp_false, forall_apply_eq_imp_iff, forall_eq'] at *
+      subst s sty
+      rw [Set.all₁_eq_all (f := (instanceOfType · _ env))] at h₀
+      simp only [Set.all, List.all_eq_true] at h₀
       intro v hv
-      simp only [← Set.mem_elts_iff_mem_set] at hv
-      specialize h₀ ⟨v, hv⟩
-      simp only [List.attach_def, List.mem_pmap_subtype, hv, true_implies] at h₀
-      exact instance_of_type_refl h₀
+      simp only [Set.mem_elts_iff_mem_set] at h₀
+      exact instance_of_type_refl (h₀ v hv)
     all_goals contradiction
   | record r =>
     cases ty
@@ -133,8 +135,9 @@ decreasing_by
   all_goals
     simp_wf
     simp only [Bool.and_eq_true, List.all_eq_true] at h₀
+    simp only [Value.set.injEq, CedarType.set.injEq, Prod.forall, Subtype.forall] at *
   case _ v' _ _ _ _ h₁ _ _ _ =>
-    subst h₁
+    subst_vars
     simp only [Value.set.sizeOf_spec]
     have := Set.sizeOf_lt_of_mem hv
     omega

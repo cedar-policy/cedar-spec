@@ -949,8 +949,7 @@ theorem pe_set_isEmpty {s : Set Term} {ty : TermType} :
   case nil =>
     simp only [set.isEmpty, Set.isEmpty, Set.empty, beq_self_eq_true]
   case cons =>
-    simp only [set.isEmpty, Set.isEmpty, Set.empty, Term.prim.injEq, TermPrim.bool.injEq,
-      Bool.false_eq, beq_eq_false_iff_ne, ne_eq, Set.mk.injEq, reduceCtorEq, not_false_eq_true]
+    simp only [set.isEmpty, Set.isEmpty, Set.empty]
 
 theorem pe_set_member {t : Term} {s : Set Term} {ty : TermType} :
   (Term.set s ty).isLiteral →
@@ -1056,8 +1055,7 @@ theorem pe_set_inter_wfl {εs : SymEntities} {t₁ t₂ : Term} {ty : TermType} 
     case h_3 h₅ h₆ =>
       simp only [Term.set.injEq] at h₅ h₆
       simp [←h₅, ←h₆, h₁.right, h₃.right]
-      unfold Term.isLiteral
-      simp [List.attach_def, List.all_pmap_subtype Term.isLiteral]
+      simp [Term.isLiteral, Set.all]
       intro t h₇
       replace h₇ : t ∈ s₁ ∩ s₂ := by
         simp only [Inter.inter]
@@ -1102,28 +1100,16 @@ theorem pe_set_intersects {s₁ s₂ : Set Term} {ty : TermType} :
 := by
   intro h₁ h₂
   simp only [set.intersects, pe_set_inter h₁ h₂, set.isEmpty]
-  split
-  case h_1 h₃ =>
-    simp only [Term.set.injEq] at h₃
+  cases h₃ : (s₁.intersect s₂).isEmpty
+  case true =>
     simp only [pe_not_true, Term.prim.injEq, TermPrim.bool.injEq]
     by_contra hc
     rw [eq_comm, Bool.not_eq_false, Set.intersects_def] at hc
-    simp only [Set.isEmpty, Inter.inter, Set.empty, beq_iff_eq] at hc
-    simp only [h₃.left, not_true_eq_false] at hc
-  case h_2 h₃ =>
-    simp only [Term.set.injEq] at h₃
+    contradiction
+  case false =>
     simp only [pe_not_false, Term.prim.injEq, TermPrim.bool.injEq]
     rw [eq_comm, Set.intersects_def]
-    simp only [Set.isEmpty, Inter.inter, h₃.left, Set.empty, beq_iff_eq, Set.mk.injEq, reduceCtorEq,
-      not_false_eq_true]
-  case h_3 h₃ h₄ =>
-    cases h₅ : (Set.intersect s₁ s₂).1
-    case nil =>
-      specialize h₃ ty
-      simp only [← h₅, forall_const] at h₃
-    case cons hd tl =>
-      specialize h₄ hd tl ty
-      simp only [← h₅, forall_const] at h₄
+    simp [Inter.inter, h₃]
 
 theorem pe_record_get_wfl {εs : SymEntities} {a : Attr} {t : Term} {ty : TermType} {rty:  Map Attr TermType} :
   Term.WellFormedLiteral εs t →

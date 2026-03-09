@@ -112,8 +112,6 @@ theorem wf_δ_implies_wf_app_tags_keys {uid : EntityUID} {δ : SymEntityData} {�
 theorem lit_tagOf (uid : EntityUID) (tag : Tag) :
   (tagOf (Term.entity uid) (Term.string tag)).isLiteral
 := by
-  simp only [tagOf, Term.isLiteral, List.cons.sizeOf_spec, Prod.mk.sizeOf_spec,
-    Term.prim.sizeOf_spec, TermPrim.entity.sizeOf_spec, TermPrim.string.sizeOf_spec,
-    List.nil.sizeOf_spec, List.attach₃, List.pmap, List.all_cons, List.all_nil, Bool.and_self]
+  simp [tagOf, Term.isLiteral]
 
 end Cedar.Thm

@@ -838,7 +838,7 @@ theorem interpret_set_member {εs : SymEntities} {I : Interpretation} {t₁ t₂
   simp only [set.member]
   split
   case h_1 =>
-    simp only [interpret_term_prim, interpret_term_set_empty]
+    simp only [interpret_term_prim, interpret_term_set_mk_nil]
   case h_2 =>
     split
     case isTrue hlit =>
@@ -863,7 +863,7 @@ theorem interpret_set_subset  {εs : SymEntities} {I : Interpretation} {t₁ t�
   case isFalse =>
     split
     case h_1 =>
-      simp only [interpret_term_prim, interpret_term_set_empty, ite_self]
+      simp only [interpret_term_prim, interpret_term_set_mk_nil, ite_self]
     case h_2 =>
       split
       case isTrue hneq hlit =>
@@ -889,9 +889,9 @@ theorem interpret_set_inter  {εs : SymEntities} {I : Interpretation} {t₁ t₂
   case isFalse =>
     split
     case h_1 =>
-      simp only [interpret_term_set_empty, ite_self]
+      simp only [interpret_term_set_mk_nil, ite_self]
     case h_2 =>
-      simp only [interpret_term_set_empty]
+      simp only [interpret_term_set_mk_nil]
       split
       case isTrue h =>
         simp only [h]
@@ -943,20 +943,25 @@ theorem interpret_set_isEmpty {εs : SymEntities} {t : Term} {ty : TermType} :
   (set.isEmpty t).interpret I = set.isEmpty (t.interpret I)
 := by
   intro hI hw hty
-  simp [set.isEmpty]
+  rw [set.isEmpty.eq_def]
   split
-  case h_1 =>
-    simp only [interpret_term_prim, interpret_term_set_empty]
-  case h_2 hd tl ty =>
-    have hcons := List.canonicalize_not_nil (fun x => x) (Term.interpret I hd :: List.map (Term.interpret I) tl)
-    simp only [ne_eq, reduceCtorEq, not_false_eq_true, true_iff] at hcons
-    replace ⟨_, _, hcons⟩ := List.exists_cons_of_ne_nil hcons
-    simp only [interpret_term_prim, interpret_term_set, Set.make, Set.elts, List.map_cons, hcons]
-  case h_3 =>
+  case h_1 s eltsTy =>
+    simp only [interpret_term_prim, interpret_term_set, set.isEmpty.eq_def]
+    cases h : (Set.make (s.elts.map (Term.interpret I))).isEmpty
+    case true =>
+      simp only [Set.isEmpty_make, List.map_eq_nil_iff] at h
+      cases s
+      simpa [Set.isEmpty, Set.empty]
+    case false =>
+      simp only [Set.isEmpty_make_eq_false, ne_eq, List.map_eq_nil_iff] at h
+      cases s
+      simpa [Set.isEmpty, Set.empty]
+  case h_2 =>
     have hwt := typeOf_wf_term_is_wf hw
     simp only [hty] at hwt
     cases hwt ; rename_i hwt
     have hwe := wf_term_set_empty hwt
+    rw [← Set.empty_eq_mk_nil] at hwe
     simp only [hty, interpret_eq hI hw hwe.left, interpret_term_set_empty]
     have hwl := interpret_term_wfl hI hw
     simp only [hty] at hwl
@@ -965,11 +970,14 @@ theorem interpret_set_isEmpty {εs : SymEntities} {t : Term} {ty : TermType} :
     simp only [hws] at *
     cases ts
     case nil =>
-      simp only [pe_eq_same]
+      simp only [pe_eq_same, pe_set_isEmpty, Set.isEmpty, Set.empty_eq_mk_nil, beq_self_eq_true]
     case cons hd tl =>
-      simp only [pe_eq_lit hwl.left.right (lit_term_set_empty ty), Term.prim.injEq,
-        TermPrim.bool.injEq, beq_eq_false_iff_ne, ne_eq, Term.set.injEq, Set.mk.injEq, reduceCtorEq,
-        and_true, not_false_eq_true]
+      rw [(pe_eq_lit hwl.left.right (lit_term_set_empty ty)).right, pe_set_isEmpty]
+      simp only [Set.isEmpty, Set.empty]
+      have : (Set.mk (hd :: tl) == Set.mk []) = false := by
+        simp only [beq_eq_false_iff_ne, ne_eq, Set.mk.injEq]
+        exact List.cons_ne_nil _ _
+      simp [this]
 
 theorem interpret_set_intersects {εs : SymEntities} {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
   I.WellFormed εs → t₁.WellFormed εs → t₂.WellFormed εs →

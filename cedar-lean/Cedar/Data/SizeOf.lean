@@ -90,6 +90,14 @@ public theorem sizeOf_lt_of_toList [SizeOf α] [SizeOf β] (m : Map α β) :
   generalize sizeOf m.1 = s
   omega
 
+public theorem sizeOf_lt_of_values [SizeOf α] [SizeOf β] {m : Map α β}
+  (h : b ∈ m.values) :
+  sizeOf b < sizeOf m
+:= by
+  simp only [values, List.mem_map, Prod.exists, exists_eq_right] at h
+  replace ⟨a, h⟩ := h
+  exact List.sizeOf_snd_lt_sizeOf_list h
+
 public theorem sizeOf_lt_of_tl [SizeOf α] [SizeOf β] {m : Map α β} {tl : List (α × β)}
   (h : m.toList = (k, v) :: tl) :
   1 + sizeOf tl < sizeOf m
@@ -117,7 +125,7 @@ public theorem sizeOf_lt_of_mem [SizeOf α] {s : Set α}
     omega
   omega
 
-public theorem sizeOf_lt_of_elts [SizeOf α] {s : Set α} :
+public theorem sizeOf_lt_of_elts [SizeOf α] (s : Set α) :
   sizeOf s.elts < sizeOf s
 := by
   simp only [elts]

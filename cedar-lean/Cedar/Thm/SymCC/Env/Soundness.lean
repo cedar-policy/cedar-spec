@@ -469,18 +469,8 @@ private theorem env_symbolize?_same_entity_data_standard_same_tag
         have ⟨sym_val, hsym_val, hval_sym_val⟩ := value?_symbolize?_id hwf_Γ hwf_tagTy hwf_val hwt_val
         simp only [←hval_sym_val]
         congr
-        simp only [
-          Factory.app, Factory.tagOf,
-          Term.isLiteral, List.cons.sizeOf_spec,
-          Prod.mk.sizeOf_spec,
-          Term.prim.sizeOf_spec,
-          TermPrim.entity.sizeOf_spec,
-          TermPrim.string.sizeOf_spec,
-          List.nil.sizeOf_spec, List.attach₃,
-          List.pmap, List.all_cons,
-          List.all, Bool.and_self,
-          ↓reduceIte, Option.bind_eq_bind,
-        ]
+        simp only [Factory.app, Factory.tagOf, Term.isLiteral, List.all_attach₂_snd,
+          Map.toList_mk_id, List.all_cons, List.all, Bool.and_self, ↓reduceIte, Option.bind_eq_bind]
         rw [map_make_filterMap_flatten_find? (v' := sym_val) hfind_data]
         · simp
           have hsym_tag_val_id :
@@ -1471,7 +1461,7 @@ private theorem env_symbolize?_tags_wf
               constructor
               constructor
           · simp [Map.WellFormed, Map.make, List.canonicalize, List.insertCanonical]
-        · simp [Term.isLiteral, List.all, List.attach₃, List.pmap]
+        · simp [Term.isLiteral]
         · simp only [Term.typeOf]
           rw [Map.mapOnValues₂_eq_mapOnValues _ Term.typeOf]
           simp [
