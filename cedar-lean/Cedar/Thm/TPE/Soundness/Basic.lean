@@ -46,6 +46,16 @@ theorem asValue_some {r : Residual} {v : Value} :
     simp only [reduceCtorEq, false_iff]
     exact not_exists.mpr (h v)
 
+theorem isError_true {r : Residual} :
+  r.isError ↔ (∃ ty, r = .error ty)
+:= by
+  simp only [Residual.isError]
+  split
+  · simp
+  · rename_i h
+    simp only [reduceCtorEq, false_iff]
+    exact not_exists.mpr h
+
 theorem asValue_evaluate_val {r : Residual} {v : Value} :
   r.asValue = .some v → ∀ req es, r.evaluate req es = Except.ok v
 := by
@@ -56,9 +66,8 @@ theorem asValue_evaluate_val {r : Residual} {v : Value} :
 theorem isError_evaluate_err {r : Spec.Residual} :
   r.isError → ∀ req es, ∃ e, r.evaluate req es = .error e
 := by
-  intro h
-  simp only [Residual.isError] at h
-  split at h <;> cases h
-  simp [Spec.Residual.evaluate]
+  simp only [isError_true, forall_exists_index]
+  intro _ he
+  simp [he, Spec.Residual.evaluate]
 
 end Cedar.Thm

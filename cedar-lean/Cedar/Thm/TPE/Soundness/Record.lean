@@ -76,10 +76,7 @@ theorem partial_evaluate_is_sound_record
     := by
       intro x h
       specialize hᵢ₁ x.fst x.snd h
-      simp only [bindAttr, bind_pure_comp]
-      rw [to_option_distr_fmap]
-      rw [to_option_distr_fmap]
-      rw [hᵢ₁]
+      simp [hᵢ₁, bindAttr, bind_pure_comp]
     have h₁ := List.mapM_to_option_congr this
     simp [heq] at h₁
     replace h₁ := to_option_left_ok' h₁
@@ -112,10 +109,7 @@ theorem partial_evaluate_is_sound_record
     := by
       intro x h
       specialize hᵢ₁ x.fst x.snd h
-      simp [bindAttr]
-      rw [to_option_distr_fmap]
-      rw [to_option_distr_fmap]
-      rw [hᵢ₁]
+      simp [hᵢ₁, bindAttr]
     exact List.mapM_to_option_congr this
 
 end Cedar.Thm

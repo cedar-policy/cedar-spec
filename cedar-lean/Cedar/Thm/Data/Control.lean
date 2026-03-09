@@ -186,12 +186,14 @@ public theorem to_option_eq_do₂ {α ε} {res₁ res₂ res₃ res₄: Except �
     have h₂' := to_option_eq_do₁ (f x) h₂
     simp [h₂']
 
+@[simp]
 public theorem to_option_distr_map {ε α β} {x : Except ε α} {f : α → β} :
   (x.map f).toOption = x.toOption.map f
 := by
   cases x <;>
     simp [Except.toOption, Except.map]
 
+@[simp]
 public theorem to_option_distr_fmap {ε α β} {x : Except ε α} {f : α → β} :
   (f <$> x).toOption = f <$> x.toOption
 := by
