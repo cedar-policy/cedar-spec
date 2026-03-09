@@ -66,6 +66,97 @@ decreasing_by
   }
   exact h₈
 
+theorem attrs_if_partial_attrs
+  {env : TypeEnv} {req : Request} {es : Entities} {pes : PartialEntities}
+  {uid : EntityUID} {m : Map Attr Value}
+  (h_wf : InstanceOfWellFormedEnvironment req es env)
+  (h_eref : EntitiesRefine es pes)
+  (h_attrs : PartialEntities.attrs pes uid = some m) :
+  ∃ (edata : EntityData),
+    edata.attrs = m ∧
+    InstanceOfSchemaEntry uid edata env
+:= by
+  unfold PartialEntities.attrs PartialEntities.get at h_attrs
+  cases h₁ : (Map.find? pes uid) <;> rw [h₁] at h_attrs
+  . simp at h_attrs
+  . rename_i pe
+    have ⟨edata, h_es, h_pa, _, _, h_entry⟩ :=
+      entity_data_from_partial h_wf h_eref h₁
+    simp only [Option.bind] at h_attrs
+    cases h_pe : pe.attrs <;> rw [h_pe] at h_attrs
+    . simp at h_attrs
+    . simp only [Option.some.injEq] at h_attrs
+      rw [h_pe] at h_pa
+      cases h_pa
+      rename_i h_eq
+      exact ⟨edata, by rw [← h_attrs, h_eq], h_entry⟩
+
+theorem entity_attr_well_typed
+  {env : TypeEnv} {req : Request} {es : Entities} {pes : PartialEntities}
+  {uid : EntityUID} {ety : EntityType} {rty : RecordType}
+  {m : Map Attr Value} {attr : Attr} {v : Value} {ty : CedarType} :
+  InstanceOfWellFormedEnvironment req es env →
+  RequestAndEntitiesRefine req es preq pes →
+  InstanceOfEntityType uid ety env →
+  PartialEntities.attrs pes uid = some m →
+  m.find? attr = some v →
+  (env.ets.attrs? ety).map RecordType.liftBoolTypes = .some rty →
+  (rty.find? attr).map Qualified.getType = .some ty →
+  InstanceOfType env v ty
+:= by
+  intros h_wf h_ref h_ent h_attrs h_find h_schema h_rty_find
+  unfold RequestAndEntitiesRefine at h_ref
+  rcases h_ref with ⟨_, h_eref⟩
+  have ⟨edata, h_eq, h_entry⟩ := attrs_if_partial_attrs h_wf h_eref h_attrs
+  rw [← h_eq] at h_find
+  unfold InstanceOfSchemaEntry at h_entry
+  cases h_entry
+  . rename_i h_ent_entry
+    unfold InstanceOfEntitySchemaEntry at h_ent_entry
+    rcases h_ent_entry with ⟨entry, h_ets, _, h_inst_attrs, _, _⟩
+    unfold InstanceOfEntityType at h_ent
+    rcases h_ent with ⟨h_ent_ty, _⟩
+    rw [← h_ent_ty] at h_ets
+    cases h_inst_attrs
+    rename_i h₂₉ h₃₀ _
+    specialize h₃₀ attr v
+    simp only [EntitySchema.attrs?, Option.map_map, Option.map_eq_some_iff, Function.comp_apply] at h_schema
+    rcases h_schema with ⟨e₄, h₃₂, h₃₃⟩
+    rw [h_ets] at h₃₂
+    injection h₃₂; rename_i h₃₂
+    rw [← h₃₂] at h₃₃
+    rw [← h₃₃] at h_rty_find
+    cases h₃₄ : (Map.find? entry.attrs attr)
+    . specialize h₂₉ attr
+      simp only [Map.contains] at h₂₉
+      rw [h_find] at h₂₉
+      simp only [Option.isSome_some, forall_const] at h₂₉
+      rw [h₃₄] at h₂₉
+      simp at h₂₉
+    . rename_i ty₃
+      cases h₃₅ : (Map.find? entry.attrs.liftBoolTypes attr)
+      . rw [h₃₅] at h_rty_find
+        simp at h_rty_find
+      . have h₃₆ := find_lifted_type h₃₄ h₃₅
+        rename_i v₃
+        rw [h₃₅] at h_rty_find
+        specialize h₃₀ ty₃ h_find h₃₄
+        simp only [Option.map_some, Option.some.injEq] at h_rty_find
+        rw [← h_rty_find]
+        rw [h₃₆]
+        have h₃₇ := type_lifting_preserves_instance_of_type h₃₀
+        cases ty₃
+        all_goals
+          rename_i ty₃
+          simp only [Qualified.getType] at h₃₇
+          simp only [Qualified.getType, QualifiedType.liftBoolTypes]
+          exact h₃₇
+  . rename_i h_act_entry
+    unfold InstanceOfActionSchemaEntry at h_act_entry
+    rcases h_act_entry with ⟨h_empty, _, _⟩
+    rw [h_empty] at h_find
+    simp [Map.empty, Map.find?] at h_find
+
 theorem partial_eval_well_typed_getAttr {env : TypeEnv} {expr : Residual} {attr : Attr} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
   Residual.WellTyped env (TPE.evaluate expr preq pes) →
   PEWellTyped env (Residual.getAttr expr attr ty) (TPE.evaluate (Residual.getAttr expr attr ty) preq pes) req preq es pes
@@ -141,78 +232,8 @@ theorem partial_eval_well_typed_getAttr {env : TypeEnv} {expr : Residual} {attr 
             have h₁₁ := partial_eval_preserves_typeof _ h₅ preq pes
             rw [h₃, h₆] at h₁₁
             simp only [Residual.typeOf, CedarType.entity.injEq] at h₁₁
-            unfold RequestAndEntitiesRefine at h_ref
-            rcases h_ref with ⟨h_rref, h_eref⟩
-            unfold EntitiesRefine at h_eref
-            unfold PartialEntities.attrs PartialEntities.get at h₂
-            cases h₁₃ : (Map.find? pes uid) <;> rw [h₁₃] at h₂
-            . simp at h₂
-            . rename_i e
-              specialize h_eref uid e h₁₃
-              cases h_eref
-              . rename_i h₁₄
-                rcases h₁₄ with ⟨h₁₄, h₁₅, _, h₁₇⟩
-                simp only [Option.bind] at h₂
-                rw [h₂] at h₁₅
-                cases h₁₅
-                rename_i h₁₈
-                rw [h₁₈] at h₁₂
-                have h_wf2 := h_wf
-                unfold InstanceOfWellFormedEnvironment at h_wf2
-                rcases h_wf2 with ⟨h₁₉, _, h₂₁⟩
-                unfold InstanceOfSchema at h₂₁
-                rcases h₂₁ with ⟨h₂₁, h₂₂⟩
-                rename EntityData => e₂
-                specialize h₂₁ uid e₂ h₁₄
-                unfold InstanceOfSchemaEntry at h₂₁
-                cases h₂₁
-                . rename_i h₂₃
-                  unfold InstanceOfEntitySchemaEntry at h₂₃
-                  rcases h₂₃ with ⟨e₃, h₂₃, _, h₂₅, _, _⟩
-                  unfold InstanceOfEntityType at h₈
-                  rcases h₈ with ⟨h₈, _⟩
-                  rw [← h₈] at h₂₃
-                  cases h₂₅
-                  rename_i h₂₉ h₃₀ h₃₁
-                  specialize h₃₀ attr v
-                  simp only [EntitySchema.attrs?, Option.map_map, Option.map_eq_some_iff, Function.comp_apply] at h₄
-                  rcases h₄ with ⟨e₄, h₃₂, h₃₃⟩
-                  rw [h₁₁] at h₂₃
-                  rw [h₂₃] at h₃₂
-                  injection h₃₂; rename_i h₃₂
-                  rw [← h₃₂] at h₃₃
-                  rw [← h₃₃] at h₇
-                  cases h₃₄ : (Map.find? e₃.attrs attr)
-                  . specialize h₂₉ attr
-                    simp only [Map.contains] at h₂₉
-                    rw [h₁₂] at h₂₉
-                    simp only [Option.isSome_some, forall_const] at h₂₉
-                    rw [h₃₄] at h₂₉
-                    simp at h₂₉
-                  . rename_i ty₃
-                    cases h₃₅ : (Map.find? e₃.attrs.liftBoolTypes attr)
-                    . rw [h₃₅] at h₇
-                      simp at h₇
-                    . have h₃₆ := find_lifted_type h₃₄ h₃₅
-                      rename_i v₃
-                      rw [h₃₅] at h₇
-
-                      specialize h₃₀ ty₃ h₁₂ h₃₄
-                      simp only [Option.map_some, Option.some.injEq] at h₇
-                      rw [← h₇]
-                      rw [h₃₆]
-                      have h₃₇ := type_lifting_preserves_instance_of_type h₃₀
-                      cases ty₃
-                      all_goals
-                        rename_i ty₃
-                        simp only [Qualified.getType] at h₃₇
-                        simp only [Qualified.getType, QualifiedType.liftBoolTypes]
-                        exact h₃₇
-                . rename_i h₂₃
-                  unfold InstanceOfActionSchemaEntry at h₂₃
-                  rcases h₂₃ with ⟨e₃, h₂₃, _, _⟩
-                  rw [e₃] at h₁₂
-                  simp [Map.empty, Map.find?] at h₁₂
+            rw [h₁₁] at h₈
+            exact entity_attr_well_typed h_wf h_ref h₈ h₂ h₁₂ h₄ h₇
         case getAttr_record rty h₄ h₅ h₆ =>
           have h₇ := partial_eval_preserves_typeof _ h₄ preq pes
           rw [h₃] at h₇
