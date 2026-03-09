@@ -201,8 +201,7 @@ theorem type_of_isEmpty_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env :
     have ⟨s, h₈, _⟩ := instance_of_set_type_is_set h₇
     subst h₈
     simp [apply₁]
-    apply InstanceOfType.instance_of_bool
-    simp [InstanceOfBoolType]
+    exact bool_is_instance_of_anyBool _
   all_goals {
     exact type_is_inhabited_bool
   }

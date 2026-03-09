@@ -128,18 +128,14 @@ theorem partial_eval_well_typed_app₂_values_hasTag :
         rw [h₃]
         rw [h₇]
         apply Residual.WellTyped.binaryApp
-        . apply Residual.WellTyped.val
-          rw [h₃] at ih₁
-          rw [h₇] at ih₂
+        . rw [h₃] at ih₁
           cases ih₁
           rename_i h₈
-          exact h₈
-        . apply Residual.WellTyped.val
-          rw [h₃] at ih₁
-          rw [h₇] at ih₂
+          exact Residual.WellTyped.val h₈
+        . rw [h₇] at ih₂
           cases ih₂
           rename_i h₈
-          exact h₈
+          exact Residual.WellTyped.val h₈
         . rw [h₈]
           rw [h₉]
           cases h_op
@@ -245,8 +241,7 @@ theorem partial_eval_well_typed_app₂_values_getTag :
       }
       rw [h_ety_eq] at ih₁
       exact ih₁
-    . apply Residual.WellTyped.val
-      apply InstanceOfType.instance_of_string
+    . exact well_typed_string
     . cases h_op with
       | getTag h₃ h₄ h₅ =>
       apply BinaryResidualWellTyped.getTag
@@ -311,14 +306,12 @@ theorem partial_eval_well_typed_app₂_values_mem :
       rw [h₃] at ih₁
       rw [h₇] at ih₂
       apply Residual.WellTyped.binaryApp
-      . apply Residual.WellTyped.val
-        cases ih₁
+      . cases ih₁
         rename_i h₈
-        exact h₈
-      . apply Residual.WellTyped.val
-        cases ih₂
+        exact Residual.WellTyped.val h₈
+      . cases ih₂
         rename_i h₈
-        exact h₈
+        exact Residual.WellTyped.val h₈
       . cases h_op
         . apply BinaryResidualWellTyped.memₑ
           . simp only [Residual.typeOf]
@@ -398,11 +391,9 @@ theorem partial_eval_well_typed_app₂_values :
     case h_1 =>
       apply Residual.WellTyped.error
     case h_2 =>
-      apply Residual.WellTyped.val
       cases h_op
-      all_goals {
-        apply InstanceOfType.instance_of_int
-      }
+      all_goals
+        exact well_typed_int
   -- mem and mem set
   case h_14 | h_15 =>
     rename_i v1 v2 id1 id2

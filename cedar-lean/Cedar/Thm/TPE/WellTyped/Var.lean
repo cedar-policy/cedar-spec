@@ -50,16 +50,12 @@ theorem partial_eval_well_typed_var {env : TypeEnv} {v : Var} {ty : CedarType} {
     case some =>
       simp only [Option.bind_some, varₚ.varₒ, someOrSelf]
       rw [h] at h_pv
-      apply Residual.WellTyped.val
       cases h_pv with | some _ h₃ =>
       cases h_wt with | var h₄ =>
       cases h₄ with | principal =>
-
-      rw [h₃]
-      apply InstanceOfType.instance_of_entity req.principal env.reqty.principal
-
       rcases h_wf with ⟨_, ⟨h_principal, _, _, _⟩, _⟩
-      exact h_principal
+      rw [h₃]
+      exact well_typed_entity h_principal
   case resource =>
     simp only [Option.pure_def, Option.bind_eq_bind]
     unfold RequestRefines at h_rref
@@ -69,33 +65,26 @@ theorem partial_eval_well_typed_var {env : TypeEnv} {v : Var} {ty : CedarType} {
       exact h_wt
     . dsimp only [Option.bind_some, varₚ.varₒ, someOrSelf]
       rw [h] at h_rv
-      apply Residual.WellTyped.val
       cases h_rv with | some _ h₃ =>
-      rw [h₃]
       cases h_wt with | var h₄ =>
       cases h₄ with | resource =>
-
-      apply InstanceOfType.instance_of_entity req.resource env.reqty.resource
       rcases h_wf with ⟨_, ⟨_, _, h_resource, _⟩, _⟩
-      exact h_resource
+      rw [h₃]
+      exact well_typed_entity h_resource
   case action =>
     simp only [varₚ.varₒ, someOrSelf]
     unfold RequestRefines at h_rref
     rcases h_rref with ⟨h_pv, h_rest⟩
     rcases h_rest with ⟨h_av, h_rv, h_cv⟩
     -- Action is always concrete in partial requests
-    apply Residual.WellTyped.val
     cases h_wt with | var h₄ =>
     cases h₄ with | action =>
-
-    rw [←h_av]
-    apply InstanceOfType.instance_of_entity req.action env.reqty.action.ty
     rcases h_wf with ⟨hwf, ⟨_, h_action, _, _⟩, _⟩
-    rw [h_action]
     have : InstanceOfEntityType env.reqty.action env.reqty.action.ty env := by
       have ⟨_, _, _, hwf_act, _⟩ := hwf
       simp [InstanceOfEntityType, EntityUID.WellFormed, ActionSchema.contains, hwf_act]
-    exact this
+    rw [←h_av, h_action]
+    exact well_typed_entity this
   case context =>
     simp only
     unfold RequestRefines at h_rref
