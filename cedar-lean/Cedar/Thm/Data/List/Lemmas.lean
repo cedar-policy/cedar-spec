@@ -1233,31 +1233,30 @@ public theorem mapM_congr [Monad m] [LawfulMonad m] {f g : α → m β} : ∀ {l
   rw [← mapM'_eq_mapM, ← mapM'_eq_mapM]
   exact mapM'_congr
 
-public theorem mapM'_to_option_congr {α β ε₁ ε₂} {l : List α} {f: α → Except ε₁ β} {g: α → Except ε₂ β} :
-(∀ x ∈ l, (f x).toOption = (g x).toOption) →
-(List.mapM' f l).toOption = (List.mapM' g l).toOption
+public theorem to_option_distr_mapM' {α β ε} {l : List α} {f: α → Except ε β} :
+  (List.mapM' f l).toOption = (List.mapM' (Except.toOption ∘ f) l)
 := by
   induction l
-  case nil =>
-    simp only [not_mem_nil, false_implies, implies_true, mapM'_nil, forall_const]
-    rfl
+  case nil => rfl
   case cons head tail hᵢ =>
-    intro h
-    let ⟨h₁, h₂⟩ := forall_mem_cons.1 h ; clear h
-    simp only [mapM'_cons, bind_pure_comp]
-    cases h₃ : (f head).toOption <;> rw [h₃] at h₁
-    · simp [do_to_option_none h₁.symm, do_to_option_none h₃]
-    · simp only [do_to_option_some h₃, do_to_option_some h₁.symm]
-      rw [to_option_distr_fmap]
-      rw [to_option_distr_fmap]
-      rw [hᵢ h₂]
+    simp only [mapM'_cons, bind_pure_comp, Function.comp_apply, Option.pure_def, Option.bind_eq_bind]
+    cases h₃ : (f head).toOption
+    · simp [do_to_option_none h₃]
+    · simp only [do_to_option_some h₃]
+      cases h₄ : (mapM' (Except.toOption ∘ f) tail) <;> simp [hᵢ, h₄]
 
-public theorem mapM_to_option_congr {α β ε₁ ε₂} {l : List α} {f: α → Except ε₁ β} {g: α → Except ε₂ β} :
-(∀ x ∈ l, (f x).toOption = (g x).toOption) →
-(List.mapM f l).toOption = (List.mapM g l).toOption
+public theorem to_option_distr_mapM {α β ε} {l : List α} {f: α → Except ε β} :
+  (List.mapM f l).toOption = (List.mapM (Except.toOption ∘ f) l)
 := by
   rw [← mapM'_eq_mapM, ← mapM'_eq_mapM]
-  exact mapM'_to_option_congr
+  exact to_option_distr_mapM'
+
+public theorem mapM_to_option_congr {α β ε₁ ε₂} {l : List α} {f: α → Except ε₁ β} {g: α → Except ε₂ β} :
+  (∀ x ∈ l, (f x).toOption = (g x).toOption) →
+  (List.mapM f l).toOption = (List.mapM g l).toOption
+:= by
+  simp only [to_option_distr_mapM]
+  exact mapM_congr
 
 /-! ### foldl -/
 
