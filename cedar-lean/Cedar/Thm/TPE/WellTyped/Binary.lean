@@ -31,6 +31,72 @@ open Cedar.Spec
 open Cedar.Validation
 open Cedar.TPE
 
+theorem tags_if_partial_tags
+  {env : TypeEnv} {req : Request} {es : Entities} {pes : PartialEntities}
+  {uid : EntityUID} {tags : Map Tag Value}
+  (h_wf : InstanceOfWellFormedEnvironment req es env)
+  (h_eref : EntitiesRefine es pes)
+  (h_tags : PartialEntities.tags pes uid = some tags) :
+  ∃ (edata : EntityData),
+    edata.tags = tags ∧
+    InstanceOfSchemaEntry uid edata env
+:= by
+  unfold PartialEntities.tags PartialEntities.get at h_tags
+  cases h₁ : (Map.find? pes uid) <;> rw [h₁] at h_tags
+  . simp at h_tags
+  . rename_i pe
+    have ⟨edata, h_es, _, _, h_pt, h_entry⟩ :=
+      entity_data_from_partial h_wf h_eref h₁
+    simp only [Option.bind] at h_tags
+    cases h_pe : pe.tags <;> rw [h_pe] at h_tags
+    . simp at h_tags
+    . simp only [Option.some.injEq] at h_tags
+      rw [h_pe] at h_pt
+      cases h_pt
+      rename_i h_eq
+      exact ⟨edata, by rw [← h_tags, h_eq], h_entry⟩
+
+theorem entity_tag_well_typed
+  {env : TypeEnv} {req : Request} {es : Entities} {pes : PartialEntities}
+  {uid : EntityUID} {ety : EntityType}
+  {tags : Map Tag Value} {v : Value} {ty : CedarType} :
+  InstanceOfWellFormedEnvironment req es env →
+  EntitiesRefine es pes →
+  InstanceOfEntityType uid ety env →
+  PartialEntities.tags pes uid = some tags →
+  v ∈ tags.values →
+  env.ets.tags? ety = some (some ty) →
+  InstanceOfType env v ty.liftBoolTypes
+:= by
+  intros h_wf h_eref h_ent h_tags h_mem h_schema
+  have ⟨edata, h_eq, h_entry⟩ := tags_if_partial_tags h_wf h_eref h_tags
+  rw [← h_eq] at h_mem
+  unfold InstanceOfSchemaEntry at h_entry
+  cases h_entry
+  . rename_i h_ent_entry
+    unfold InstanceOfEntitySchemaEntry at h_ent_entry
+    rcases h_ent_entry with ⟨entry, h_ets, _, _, _, h_inst_tags⟩
+    unfold InstanceOfEntityType at h_ent
+    rcases h_ent with ⟨h_ent_ty, _⟩
+    rw [← h_ent_ty] at h_ets
+    unfold InstanceOfEntityTags at h_inst_tags
+    cases h₂ : entry.tags? <;> rw [h₂] at h_inst_tags <;> simp only at h_inst_tags
+    . rw [h_inst_tags] at h_mem
+      simp [Map.empty, Map.values] at h_mem
+    . specialize h_inst_tags v h_mem
+      unfold EntitySchema.tags? at h_schema
+      rw [h_ets] at h_schema
+      simp only [Option.map_some, Option.some.injEq] at h_schema
+      rw [h₂] at h_schema
+      simp only [Option.some.injEq] at h_schema
+      rw [h_schema] at h_inst_tags
+      exact type_lifting_preserves_instance_of_type h_inst_tags
+  . rename_i h_act_entry
+    unfold InstanceOfActionSchemaEntry at h_act_entry
+    rcases h_act_entry with ⟨_, h_empty, _⟩
+    rw [h_empty] at h_mem
+    simp [Map.empty, Map.values] at h_mem
+
 theorem partial_eval_well_typed_app₂_values_hasTag :
   Residual.WellTyped env (TPE.evaluate expr1 preq pes) →
   Residual.WellTyped env (TPE.evaluate expr2 preq pes) →
@@ -123,7 +189,6 @@ theorem partial_eval_well_typed_app₂_values_getTag :
   cases h_wt with
   | binaryApp h_expr1 h_expr2 h_op =>
 
-
   unfold TPE.getTag
   split
   . unfold someOrError
@@ -133,101 +198,33 @@ theorem partial_eval_well_typed_app₂_values_getTag :
       rename_i tags heq x₁ x₂ x₃ v h₃
       cases h_op
       rename_i ety ty h₄ h₅ h₆
-      unfold EntitiesRefine at h_eref
       unfold Data.Map.find? at h₃
-      split at h₃
-      case h_2 =>  contradiction
-      dsimp only [PartialEntities.tags, PartialEntities.get] at heq
-      rename Value => v₂
-      cases h₇: (Data.Map.find? pes id₁)
-      case h_1.none =>
-        rw [h₇] at heq
-        simp at heq
-
-      rename Value => v₃
-      rename PartialEntityData => pv
-      specialize h_eref id₁ pv h₇
-      rw [h₇] at heq
-      simp only [Option.bind_some] at heq
-      cases h_eref
-      rename_i h₈
-      rcases h₈ with ⟨h₈, h₉, h₁₀, h₁₁⟩
-      rw [heq] at h₁₁
-      cases h₁₁
-      rename_i h₁₂
-      rename_i e
-      subst h₁₂
-      let h_wf₂ := h_wf
-      unfold InstanceOfWellFormedEnvironment at h_wf₂
-      rcases h_wf₂ with ⟨h₁₄, _, h₁₆⟩
-      unfold InstanceOfSchema at h₁₆
-      rcases h₁₆ with ⟨h₁₆, h₁₇⟩
-      specialize h₁₆ id₁ e h₈
-      unfold InstanceOfSchemaEntry at h₁₆
-      cases h₁₆
-      . rename_i h₁₃ _ h₁₆
-        unfold InstanceOfEntitySchemaEntry at h₁₆
-        rcases h₁₆ with ⟨_, _, _, _, _, h₁₇⟩
-        unfold InstanceOfEntityTags at h₁₇
-        rename EntitySchemaEntry => w
-        cases h₁₈: w.tags? <;> rw [h₁₈] at h₁₇ <;> simp only at h₁₇
-        . rw [h₁₇] at h₁₃
-          simp [Data.Map.empty] at h₁₃
-        . have h₁₈ : v₃ ∈ e.tags.values := by {
-            have h₁₉ := List.mem_of_find?_eq_some h₁₃
-            have h₂₀ := Map.in_list_in_values h₁₉
-            exact h₂₀
-          }
-          specialize h₁₇ v₃ h₁₈
-          rename CedarType => ty
-          rename_i h₁₉
-          rename CedarType => ty₂
-          injection h₃
-          rename_i h₃
-          rw [← h₃]
-          rename Data.Map.find? env.ets id₁.ty = some w => h₂₁
-          unfold EntitySchema.tags? at h₄
-          have h_ety_eq : ety = id₁.ty := by {
-            have h₂₁ := partial_eval_preserves_typeof _ h_expr1 preq pes
-            rw [← h₂₁] at h₅
-            unfold Residual.asValue at h₁
-            cases h₂₂: TPE.evaluate expr1 preq pes
-            . rw [h₂₂] at h₁
-              rename Value => v₄
-              simp only [Option.some.injEq] at h₁
-              rw [h₁] at h₂₂
-              rw [h₂₂] at h₅
-              rw [h₂₂] at h₂₁
-              rename  expr1.typeOf = CedarType.entity ety => h₂₃
-              rw [h₂₃] at h₂₁
-              simp only [Residual.typeOf] at h₂₁
-              rename CedarType => ty₃
-              rw [h₂₂] at ih₁
-              cases ih₁
-              rename_i h₂₃
-              rw [h₂₁] at h₂₃
-              cases h₂₃
-              rename_i h₂₄
-              unfold InstanceOfEntityType at h₂₄
-              rcases h₂₄ with ⟨h₂₄, _⟩
-              exact h₂₄
-            all_goals {
-              rw [h₂₂] at h₁
-              simp at h₁
-            }
-          }
-          rw [h_ety_eq] at h₄
-          rw [h₂₁] at h₄
-          simp only [Option.map_some, Option.some.injEq] at h₄
-          rw [h₁₉] at h₄
-          simp only [Option.some.injEq] at h₄
-          rw [h₄] at h₁₇
-          exact type_lifting_preserves_instance_of_type h₁₇
-      . rename_i h₁₃ _ h₁₆
-        unfold InstanceOfActionSchemaEntry at h₁₆
-        rcases h₁₆ with ⟨_, h₁₇, _, _, _⟩
-        rw [h₁₇] at h₁₃
-        simp at h₁₃
+      split at h₃ <;> try contradiction
+      rename_i v₂ v₃ _
+      injection h₃; rename_i h₃; rw [← h₃]
+      have h_v_mem : v₃ ∈ tags.values := by
+        have h₁₉ := List.mem_of_find?_eq_some (by assumption)
+        exact Map.in_list_in_values h₁₉
+      have h_ent : InstanceOfEntityType id₁ ety env := by
+        have h₂₁ := partial_eval_preserves_typeof _ h_expr1 preq pes
+        unfold Residual.asValue at h₁
+        cases h₂₂: TPE.evaluate expr1 preq pes
+        case val v ty₃ =>
+          replace h₁ : v = .prim (.entityUID id₁) := by
+            simpa [h₂₂] using h₁
+          rw [h₁] at h₂₂
+          rw [h₂₂] at ih₁
+          replace h₂₁ : ty₃ = CedarType.entity ety := by
+            rw [h₅, h₂₂] at h₂₁
+            simpa [Residual.typeOf] using h₂₁
+          cases ih₁; rename_i h₂₃
+          rw [h₂₁] at h₂₃
+          cases h₂₃; rename_i h₂₄
+          exact h₂₄
+        all_goals
+          rw [h₂₂] at h₁
+          simp at h₁
+      exact entity_tag_well_typed h_wf h_eref h_ent heq h_v_mem h₄
     . apply Residual.WellTyped.error
   . apply Residual.WellTyped.binaryApp
     . unfold Residual.asValue at h₁
