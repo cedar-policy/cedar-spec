@@ -161,6 +161,30 @@ theorem bool_is_instance_of_anyBool {env : TypeEnv} (b : Bool) :
   apply InstanceOfType.instance_of_bool
   simp [InstanceOfBoolType]
 
+theorem duration_is_instance_of_duration {env : TypeEnv} {d : Duration}:
+  InstanceOfType env (Value.ext (Ext.duration d)) (CedarType.ext .duration)
+:= by
+  apply InstanceOfType.instance_of_ext _ _
+  simp only [InstanceOfExtType]
+
+theorem datetime_is_instance_of_datetime {env : TypeEnv} {d : Ext.Datetime}:
+  InstanceOfType env (Value.ext (Ext.datetime d)) (CedarType.ext .datetime)
+:= by
+  apply InstanceOfType.instance_of_ext _ _
+  simp only [InstanceOfExtType]
+
+theorem decimal_is_instance_of_decimal {env : TypeEnv} {d : Ext.Decimal}:
+  InstanceOfType env (Value.ext (Ext.decimal d)) (CedarType.ext .decimal)
+:= by
+  apply InstanceOfType.instance_of_ext _ _
+  simp only [InstanceOfExtType]
+
+theorem ipaddr_is_instance_of_ipaddr {env : TypeEnv} {ip : IPAddr}:
+  InstanceOfType env (Value.ext (Ext.ipaddr ip)) (CedarType.ext .ipAddr)
+:= by
+  apply InstanceOfType.instance_of_ext _ _
+  simp only [InstanceOfExtType]
+
 theorem instance_of_bool_is_bool {env : TypeEnv} {v₁ : Value} {bty : BoolType} :
   InstanceOfType env v₁ (CedarType.bool bty) →
   ∃ b, v₁ = .prim (.bool b)

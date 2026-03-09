@@ -637,69 +637,53 @@ InstanceOfType env v (Residual.call xfn args ty).typeOf
     · rename_i v _
       simp only [Coe.coe, Except.ok.injEq] at h₂
       simp only [← h₂]
-      have : InstanceOfExtType (Ext.decimal v) .decimal := by
-        simp only [InstanceOfExtType]
-      exact InstanceOfType.instance_of_ext (Ext.decimal v) .decimal this
+      exact decimal_is_instance_of_decimal
     · cases h₂
   case _ =>
     split at h₂
     · rename_i v _
       simp only [Coe.coe, Except.ok.injEq] at h₂
       simp only [← h₂]
-      have : InstanceOfExtType (Ext.ipaddr v) .ipAddr := by
-        simp only [InstanceOfExtType]
-      exact InstanceOfType.instance_of_ext (Ext.ipaddr v) .ipAddr this
+      exact ipaddr_is_instance_of_ipaddr
     · cases h₂
   case _ =>
     split at h₂
     · rename_i v _
       simp only [Coe.coe, Except.ok.injEq] at h₂
       simp only [← h₂]
-      have : InstanceOfExtType (Ext.datetime v) .datetime := by
-        simp only [InstanceOfExtType]
-      exact InstanceOfType.instance_of_ext (Ext.datetime v) .datetime this
+      exact datetime_is_instance_of_datetime
     · cases h₂
   case _ =>
     split at h₂
     · rename_i v _
       simp only [Coe.coe, Except.ok.injEq] at h₂
       simp only [← h₂]
-      have : InstanceOfExtType (Ext.duration v) .duration := by
-        simp only [InstanceOfExtType]
-      exact InstanceOfType.instance_of_ext (Ext.duration v) .duration this
+      exact duration_is_instance_of_duration
     · cases h₂
   case _ =>
     split at h₂
     · rename_i v _
       simp only [Coe.coe, Except.ok.injEq] at h₂
       simp only [← h₂]
-      have : InstanceOfExtType (Ext.datetime v) .datetime := by
-        simp only [InstanceOfExtType]
-      exact InstanceOfType.instance_of_ext (Ext.datetime v) .datetime this
+      exact datetime_is_instance_of_datetime
     · cases h₂
   case _ =>
     split at h₂
     · rename_i v _
       simp only [Coe.coe, Except.ok.injEq] at h₂
       simp only [← h₂]
-      have : InstanceOfExtType (Ext.duration v) .duration := by
-        simp only [InstanceOfExtType]
-      exact InstanceOfType.instance_of_ext (Ext.duration v) .duration this
+      exact duration_is_instance_of_duration
     · cases h₂
   case _ =>
     split at h₂
     · rename_i v _
       simp only [Coe.coe, Except.ok.injEq] at h₂
       simp only [← h₂]
-      have : InstanceOfExtType (Ext.datetime v) .datetime := by
-        simp only [InstanceOfExtType]
-      exact InstanceOfType.instance_of_ext (Ext.datetime v) .datetime this
+      exact datetime_is_instance_of_datetime
     · cases h₂
   case _ =>
     rename_i dt _ _
-    have : InstanceOfExtType (Ext.duration dt.toTime) .duration := by
-      simp only [InstanceOfExtType]
-    exact InstanceOfType.instance_of_ext (Ext.duration dt.toTime) .duration this
+    exact duration_is_instance_of_duration
   all_goals { exact InstanceOfType.instance_of_int }
 
 end Cedar.Thm
