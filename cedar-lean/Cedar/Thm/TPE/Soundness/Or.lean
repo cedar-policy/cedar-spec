@@ -61,19 +61,15 @@ theorem partial_evaluate_is_sound_or
   case _ heq =>
     simp [heq, Residual.evaluate] at hᵢ₅
     have h₅ := to_option_right_ok' hᵢ₅
-    simp [Residual.evaluate, h₅, Result.as, Coe.coe, Value.asBool]
-    generalize h₆ : x₂.evaluate req es = res₂
-    cases res₂
-    case error =>
-      simp [←h₆]
-      exact hᵢ₆
+    simp [←hᵢ₆, Residual.evaluate, h₅, Result.as, Coe.coe, Value.asBool]
+    cases h₆ : x₂.evaluate req es
+    case error => simp [Except.toOption]
     case ok =>
       have h₇ := residual_well_typed_is_sound h₂ hᵢ₂ h₆
       rw [hᵢ₄] at h₇
       rcases instance_of_anyBool_is_bool h₇ with ⟨_, h₇⟩
       subst h₇
-      simp [←h₆]
-      exact hᵢ₆
+      simp [Except.toOption]
   case _ heq =>
     simp [heq, Residual.evaluate] at hᵢ₅
     rcases to_option_right_err hᵢ₅ with ⟨_, hᵢ₅⟩

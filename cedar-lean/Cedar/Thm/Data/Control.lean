@@ -87,13 +87,10 @@ public theorem to_option_some {v : α} {res: Except ε α} :
     simp only [Except.toOption, h]
 
 public theorem to_option_none {res: Except ε α} :
-  res.toOption = .none → (∃ err, res = .error err)
+  res.toOption = .none ↔ (∃ err, res = .error err)
 := by
-  intro h
-  simp [Except.toOption] at h
-  split at h <;> simp at h
-  rename_i err
-  exists err
+  simp only [Except.toOption]
+  split <;> simp
 
 public theorem to_option_left_ok {α ε₁ ε₂} {v : α} {res₁ : Except ε₁ α} {res₂ : Except ε₂ α} :
   res₁.toOption = res₂.toOption → res₁ = .ok v → res₂ = .ok v
@@ -150,3 +147,55 @@ public theorem do_error_to_option {res : Except ε α} {e : ε} :
   (do let (_ : α) ← res ; (.error e : Except ε α)).toOption = .none
 := by
   cases res <;> simp [Except.toOption]
+
+public theorem do_to_option_none {ε α β} {res : Except ε α} {f : α → Except ε β} :
+  res.toOption = none → (do let x ← res; f x).toOption = none
+:= by
+  intro h
+  replace ⟨_, h⟩ := to_option_none.mp h
+  simp [h, Except.toOption]
+
+public theorem do_to_option_some {ε α β} {res : Except ε α} {v : α} {f : α → Except ε β} :
+  res.toOption = .some v → (do let x ← res; f x) = f v
+:= by
+  intro h
+  simp [to_option_some.mp h]
+
+public theorem to_option_eq_do₁ {α β ε} {res₁ res₂: Except ε α} (f : α → Except ε β) :
+  res₁.toOption = res₂.toOption →
+  (do let x ← res₁; f x).toOption = (do let x ← res₂; f x).toOption
+:= by
+  cases h₁ : res₁.toOption
+  · intro h₂
+    simp [do_to_option_none h₁, do_to_option_none h₂.symm]
+  · intro h₂
+    simp [do_to_option_some h₁, do_to_option_some h₂.symm]
+
+public theorem to_option_eq_do₂ {α ε} {res₁ res₂ res₃ res₄: Except ε α} (f : α → α → Except ε α) :
+  res₁.toOption = res₃.toOption →
+  res₂.toOption = res₄.toOption →
+  (do let x ← res₁; let y ← res₂; f x y).toOption = (do let x ← res₃; let y ← res₄; f x y).toOption
+:= by
+  intro h₁ h₂
+  have h₁' := to_option_eq_do₁ (λ x => (do let y ← res₂ ; f x y)) h₁
+  simp only [h₁']
+  cases h₃ : res₃.toOption
+  · simp [do_to_option_none h₃]
+  · rename_i x
+    simp [do_to_option_some h₃]
+    have h₂' := to_option_eq_do₁ (f x) h₂
+    simp [h₂']
+
+@[simp]
+public theorem to_option_distr_map {ε α β} {x : Except ε α} {f : α → β} :
+  (x.map f).toOption = x.toOption.map f
+:= by
+  cases x <;>
+    simp [Except.toOption, Except.map]
+
+@[simp]
+public theorem to_option_distr_fmap {ε α β} {x : Except ε α} {f : α → β} :
+  (f <$> x).toOption = f <$> x.toOption
+:= by
+  cases x <;>
+    simp [Except.toOption, Except.map, Functor.map]

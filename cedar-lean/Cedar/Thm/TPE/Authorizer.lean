@@ -211,9 +211,8 @@ theorem partial_authorize_error_policies_is_sound
   have h₄ : (Spec.isAuthorized req es policies).erroringPolicies =  errorPolicies policies req es :=
     by grind [Spec.isAuthorized]
   simp only [errorPolicies, errored, hasError] at h₄
-  simp only [h₄, isAuthorized.errorPolicies, Set.subset_def, Set.mem_make, List.mem_filterMap,
-    ResidualPolicy.erroredWithEffect, ResidualPolicy.hasError, Residual.isError, Bool.and_eq_true,
-    beq_iff_eq, Option.ite_none_right_eq_some, Option.some.injEq, forall_exists_index, and_imp]
+  simp only [isAuthorized.errorPolicies, h₄, Set.subset_def, Set.mem_make, List.mem_filterMap,
+    ResidualPolicy.erroredWithEffect, Bool.and_eq_true,  Option.ite_none_right_eq_some, forall_exists_index, and_imp]
   intro pid rp hrp hef herr hpid
 
   have ⟨p, hp₁, hp₂⟩ := List.forall₂_implies_all_right h₁ rp hrp
@@ -225,9 +224,10 @@ theorem partial_authorize_error_policies_is_sound
   · exact hp₁
   · replace ⟨_, ha⟩ : ∃ e, Spec.evaluate p.toExpr req es = .error e := by
       rename_i r
-      replace ⟨_, herr⟩ : ∃ ty, r = .error ty := by grind
+      replace herr := isError_evaluate_err herr req es
+      simp only [← hp₂] at herr
       have ha := partial_evaluate_policy_is_sound hp₃ h₂
-      simp only [herr, Residual.evaluate] at ha
+      rw [herr.choose_spec] at ha
       exact to_option_right_err ha
     simp [ha]
   · simpa [←hp₂] using hpid

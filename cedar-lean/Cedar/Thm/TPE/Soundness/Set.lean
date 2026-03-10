@@ -50,50 +50,27 @@ theorem partial_evaluate_is_sound_set
   simp [TPE.evaluate, List.map₁, TPE.set]
   split
   case _ vs heq =>
-    simp [Residual.evaluate]
-    have : (Except.ok (Value.set (Data.Set.make vs)) : Except Spec.Error Value).toOption = .some (Value.set (Data.Set.make vs)) := by
-      simp only [Except.toOption]
-    rw [this]
-    clear this
-    simp only [List.mapM₁_eq_mapM (Residual.evaluate · req es), to_option_some, do_ok_eq_ok, Value.set.injEq]
-    exists vs
-    simp only [and_true]
-    simp [List.mapM_some_iff_forall₂] at heq
-    have : ∀ x y, (TPE.evaluate x preq pes).asValue = some y → (TPE.evaluate x preq pes).evaluate req es = .ok y := by
-      intro x y h
-      rcases as_value_some h with ⟨_, h⟩
-      simp [h, Residual.evaluate]
-    replace heq := List.Forall₂.imp this heq
-    clear this
-    rw [←List.mapM_ok_iff_forall₂] at heq
-    have : ∀ (x : Residual),
-      x ∈ ls →
-      Except.toOption ((TPE.evaluate x preq pes).evaluate req es) =
-      Except.toOption (x.evaluate req es) := by
-      intro x h
-      specialize hᵢ₁ x h
-      symm
-      exact hᵢ₁
-    have h₅ := to_option_eq_mapM
-      (λ x => (TPE.evaluate x preq pes).evaluate req es)
-      (λ x => x.evaluate req es)
-      this
-    simp [heq] at h₅
-    exact to_option_left_ok' h₅
+    simp only [Residual.evaluate, List.mapM₁_eq_mapM (Residual.evaluate · req es)]
+    simp only [List.mapM_some_iff_forall₂, Function.comp_apply] at heq
+    have h_tpe_ok : List.mapM (fun x => (TPE.evaluate x preq pes).evaluate req es) ls = .ok vs := by
+      rw [List.mapM_ok_iff_forall₂]
+      exact List.Forall₂.imp (fun _ _ h => asValue_evaluate_val h req es) heq
+    have h₅ : List.mapM (λ x => x.evaluate req es) ls = .ok vs := by
+      have h₅ := List.mapM_to_option_congr hᵢ₁
+      simp only [h_tpe_ok] at h₅
+      exact to_option_left_ok' h₅.symm
+    simp [h₅]
   case _ heq =>
     split
     case isTrue heq₁ =>
       rcases heq₁ with ⟨x, heq₂, heq₃⟩
-      specialize hᵢ₁ x heq₂
-      simp [Residual.isError] at heq₃
-      split at heq₃ <;> cases heq₃
-      rename_i heq₃
-      simp [heq₃, Residual.evaluate] at hᵢ₁
-      replace ⟨_, hᵢ₁⟩ := to_option_right_err hᵢ₁
-      simp only [Residual.evaluate, List.mapM₁_eq_mapM (Residual.evaluate · req es)]
-      have heq₄ := @List.element_error_implies_mapM_error _ _ _ _ _ (λ x => x.evaluate req es) _ heq₂ hᵢ₁
-      rcases heq₄ with ⟨_, heq₄⟩
-      simp [heq₄, Except.toOption]
+      have ⟨_, he⟩ := isError_evaluate_err heq₃ req es
+      have h_none : (x.evaluate req es).toOption = none := by
+        rw [hᵢ₁ x heq₂]
+        simp [he, Except.toOption]
+      have heq₄ := List.element_to_option_none_implies_mapM_none (f := (Residual.evaluate · req es)) heq₂ h_none
+      simp only [Residual.evaluate, List.mapM₁_eq_mapM (Residual.evaluate · req es), do_to_option_none heq₄]
+      simp [Except.toOption]
     case isFalse =>
       simp only [Residual.evaluate, List.mapM₁_eq_mapM (Residual.evaluate · req es)]
       apply to_option_eq_do₁ (λ (x : List Value) => (Except.ok (Value.set (Data.Set.make x))))
@@ -101,11 +78,7 @@ theorem partial_evaluate_is_sound_set
       -- Since we're in the case where List.mapM (Residual.asValue ∘ fun x => TPE.evaluate x preq pes) ls = none
       -- and ¬∃ x, x ∈ ls ∧ (TPE.evaluate x preq pes).isError = true
       -- we can directly apply our hypothesis hᵢ₁
-      have h₃ :=  to_option_eq_mapM
-        (fun x => x.evaluate req es)
-        (fun x => (TPE.evaluate x preq pes).evaluate req es)
-        hᵢ₁
-      rw [h₃]
+      rw [List.mapM_to_option_congr hᵢ₁]
       rw [List.mapM_map]
       unfold Function.comp
       simp

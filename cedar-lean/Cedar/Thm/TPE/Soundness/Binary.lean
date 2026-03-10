@@ -55,17 +55,11 @@ theorem partial_evaluate_is_sound_binary_app
   simp [TPE.evaluate, TPE.apply₂]
   split
   case _ heq₁ heq₂ =>
-    -- TODO: rewrite `Residual.asValue` using standard lib so that we can use theorems to unwrap it
-    simp [Residual.asValue] at heq₁
-    simp [Residual.asValue] at heq₂
-    split at heq₁ <;> cases heq₁
-    split at heq₂ <;> cases heq₂
-    rename_i heq₁ _ _ heq₂
-    simp [heq₁, Residual.evaluate] at hᵢ₁
-    simp [heq₂, Residual.evaluate] at hᵢ₂
+    rw [asValue_evaluate_val heq₁] at hᵢ₁
+    rw [asValue_evaluate_val heq₂] at hᵢ₂
     replace hᵢ₁ := to_option_right_ok' hᵢ₁
-    replace hᵢ₅ := to_option_right_ok' hᵢ₂
-    simp [Residual.evaluate, hᵢ₁, hᵢ₅, Spec.apply₂]
+    replace hᵢ₂ := to_option_right_ok' hᵢ₂
+    simp [Residual.evaluate, hᵢ₁, hᵢ₂, Spec.apply₂]
     -- TODO: rewrite one of the two binary app evaluation function so that we don't need this amount of case splits.
     split <;> simp [Residual.evaluate]
     any_goals
@@ -85,7 +79,7 @@ theorem partial_evaluate_is_sound_binary_app
       case _ =>
         simp only [Except.toOption, Residual.evaluate]
     case _ uid₁ uid₂ =>
-      simp [apply₂.self, heq₁, heq₂, someOrSelf]
+      simp [apply₂.self, someOrSelf]
       split
       case _ heq₃ =>
         simp only [Option.bind_eq_some_iff] at heq₃
@@ -117,9 +111,11 @@ theorem partial_evaluate_is_sound_binary_app
             simp only [beq_eq_false_iff_ne, ne_eq, heq₄, not_false_eq_true]
           simp only [this, Bool.false_or]
       case _ heq₃ =>
+        rw [asValue_some] at heq₁ heq₂
+        rw [heq₁.choose_spec, heq₂.choose_spec]
         simp only [Residual.evaluate, Spec.apply₂, Except.bind_ok]
     case _ =>
-      simp [apply₂.self, heq₁, heq₂, someOrSelf]
+      simp [apply₂.self, someOrSelf]
       split
       case _ uid vs _ _ _ _ _ heq₃ =>
         simp only [Option.bind_eq_some_iff] at heq₃
@@ -128,7 +124,7 @@ theorem partial_evaluate_is_sound_binary_app
         subst heq₃₂
         simp [Spec.inₛ]
         cases howt <;>
-        (rename_i h₅; have h₆ := residual_well_typed_is_sound h₂ hwt hᵢ₅; rw [h₅] at h₆; cases h₆)
+        (rename_i h₅; have h₆ := residual_well_typed_is_sound h₂ hwt hᵢ₂; rw [h₅] at h₆; cases h₆)
         rename_i h₆
         simp [Data.Set.mapOrErr]
         generalize h₇ : List.mapM Value.asEntityUID vs.elts = res
@@ -181,11 +177,13 @@ theorem partial_evaluate_is_sound_binary_app
               rw [heq₂] at h₃
               simp only [Entities.ancestorsOrEmpty, h₄, h₃, Bool.or_eq_right_iff_imp, beq_iff_eq, heq,
                 false_implies]
-          replace heq₃₂ := anyM_some_implies_any (fun x => if uid = x then some true else Option.map (fun y => y.contains x) (pes.ancestors uid))
+          replace heq₃₂ := List.anyM_some_implies_any (fun x => if uid = x then some true else Option.map (fun y => y.contains x) (pes.ancestors uid))
             (fun x => uid == x || (es.ancestorsOrEmpty uid).contains x) this heq₃₂
           subst heq₃₂
           simp only [Residual.evaluate]
       case _ =>
+        rw [asValue_some] at heq₁ heq₂
+        rw [heq₁.choose_spec, heq₂.choose_spec]
         simp only [Spec.inₛ, Residual.evaluate, Spec.apply₂, Except.bind_ok]
     case _ uid _ =>
       simp [someOrSelf, apply₂.self]
@@ -211,7 +209,9 @@ theorem partial_evaluate_is_sound_binary_app
         subst heq₅
         simp only [Spec.hasTag, Entities.tagsOrEmpty, h₄₁, Residual.evaluate]
       case _ =>
-        simp only [heq₁, heq₂, Residual.evaluate, Spec.apply₂, Except.bind_ok]
+        rw [asValue_some] at heq₁ heq₂
+        rw [heq₁.choose_spec, heq₂.choose_spec]
+        simp only [Residual.evaluate, Spec.apply₂, Except.bind_ok]
     case _ uid _ =>
       simp [TPE.getTag, someOrError]
       split

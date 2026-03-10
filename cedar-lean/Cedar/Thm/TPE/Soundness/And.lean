@@ -64,12 +64,11 @@ theorem partial_evaluate_is_sound_and
       rw [hᵢ₄] at h₆
       rcases instance_of_anyBool_is_bool h₆ with ⟨_, h₆⟩
       replace hᵢ₆ := to_option_left_ok hᵢ₆ heq₁
-      simp only [h₆, Except.map_ok, hᵢ₆]
+      simp [h₆, hᵢ₆, Except.toOption]
     case _ heq₁ =>
-      simp only [Except.map_error]
       rw [heq₁] at hᵢ₆
       rcases to_option_left_err hᵢ₆ with ⟨_, hᵢ₆⟩
-      simp only [hᵢ₆, Except.toOption]
+      simp [hᵢ₆, Except.toOption]
   case _ heq =>
     simp [heq, Residual.evaluate] at hᵢ₅
     have h₅ := to_option_right_ok' hᵢ₅
