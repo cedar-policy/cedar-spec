@@ -96,14 +96,20 @@ instance : DecidableEq PartialValue := decPValue
 -- instance : LT PartialValue := sorry
 -- instance : DecidableLT PartialValue := sorry
 
-partial def PartialValue.asValue : PartialValue → Option Value
-  | .record as => (Value.record ∘ Map.make) <$> as.toList.mapM₂ λ kv =>
-    match kv.val.snd with
-    | .present pv => do some (kv.val.fst, ←pv.asValue)
+def PartialValue.asValue : PartialValue → Option Value
+  | .record as => (Value.record ∘ Map.make) <$> as.toList.mapM₂ λ ⟨(k, pa), _h⟩ =>
+    match pa with
+    | .present pv => do some (k, ←pv.asValue)
     | _ => none
   | .prim p   => .some p
   | .set es   => .some (.set es)
   | .ext x    => .some (.ext x)
+termination_by v => v
+decreasing_by
+  simp_wf
+  have h_toList := Map.sizeOf_lt_of_toList as
+  simp only [PartialAttribute.present.sizeOf_spec] at _h
+  omega
 
 def PartialValue.asEntityUID : PartialValue → Result EntityUID
   | .prim (.entityUID uid) => .ok uid
@@ -188,7 +194,7 @@ def requiredAttributePresent (r : Map Attr (PartialAttribute PartialValue)) (rty
   | .some qty => !qty.isRequired || (r.find? k|>.isSome)
   | _ => true
 
-partial def PartialValue.instanceOfType (v : PartialValue) (ty : CedarType) (env : TypeEnv) : Bool :=
+def PartialValue.instanceOfType (v : PartialValue) (ty : CedarType) (env : TypeEnv) : Bool :=
   match v, ty with
   | .prim (.bool b), .bool bty => instanceOfBoolType b bty
   | .prim (.int _), .int => true
@@ -197,7 +203,7 @@ partial def PartialValue.instanceOfType (v : PartialValue) (ty : CedarType) (env
   | .set s, .set ty => s.elts.attach.all (λ ⟨v, _⟩ => Value.instanceOfType v ty env)
   | .record r, .record rty =>
     r.toList.all (λ (k, _) => rty.contains k) &&
-    (r.toList.attach₂.all (λ ⟨(k, v), _⟩ => (match rty.find? k with
+    (r.toList.attach₂.all (λ ⟨(k, v), _h⟩ => (match rty.find? k with
         | .some qty =>
           match v with
           | .present v => instanceOfType v qty.getType env
@@ -206,6 +212,12 @@ partial def PartialValue.instanceOfType (v : PartialValue) (ty : CedarType) (env
     rty.toList.all (λ (k, _) => requiredAttributePresent r rty k)
   | .ext x, .ext xty => instanceOfExtType x xty
   | _, _ => false
+termination_by v
+decreasing_by
+  simp_wf
+  have h_toList := Map.sizeOf_lt_of_toList r
+  simp only [PartialAttribute.present.sizeOf_spec] at _h
+  omega
 
 def requestIsValid (env : TypeEnv) (req : PartialRequest) : Bool :=
   (partialIsValid req.principal.asEntityUID λ principal =>
@@ -253,27 +265,33 @@ inductive ConcretizationError
   | entitiesDoNotMatch
   | invalidEnvironment
 
-partial def isValidAndConsistent (schema : Schema) (req₁ : Request) (es₁ : Entities) (req₂ : PartialRequest) (es₂ : PartialEntities) : Except ConcretizationError Unit :=
+private def valueIsConsistent (env : TypeEnv) (v : Value) (pv : PartialValue) : Bool :=
+  match v, pv with
+  | .prim p, .prim p' => p == p'
+  | .ext x, .ext x' => x == x'
+  | .set s, .set s' => s == s'
+  | .record a, .record a' =>
+    (a'.toList.attach₂.all λ ⟨(k, pa), _h⟩ =>
+      match a.find? k, pa with
+      | .some v, .present v' =>
+        valueIsConsistent env v v'
+      | .some _, .unknown ty => Value.instanceOfType v ty env
+      | .none, .present _ => false
+      | .none, .unknown _ => true) &&
+    (a.toList.all λ (k, _) => a'.find? k|>.isSome)
+  | _, _ => false
+termination_by pv
+decreasing_by
+  simp_wf
+  have h_toList := Map.sizeOf_lt_of_toList a'
+  simp only [PartialAttribute.present.sizeOf_spec] at _h
+  omega
+
+def isValidAndConsistent (schema : Schema) (req₁ : Request) (es₁ : Entities) (req₂ : PartialRequest) (es₂ : PartialEntities) : Except ConcretizationError Unit :=
   match schema.environment? req₂.principal.ty req₂.resource.ty req₂.action with
   | .some env => do requestIsConsistent env; entitiesIsConsistent env; envIsWellFormed env
   | .none => .error .invalidEnvironment
 where
-  valueIsConsistent (env : TypeEnv) (v : Value) (pv : PartialValue) :=
-    match v, pv with
-    | .prim p, .prim p' => p == p'
-    | .ext x, .ext x' => x == x'
-    | .set s, .set s' => s == s'
-    | .record a, .record a' =>
-      (a'.toList.attach₂.all λ kv=>
-        match a.find? kv.val.fst, kv.val.snd with
-        | .some v, .present v' =>
-          valueIsConsistent env v v'
-        | .some v, .unknown ty => Value.instanceOfType v ty env
-        | .none, .present _ => false
-        | .none, .unknown _ => true) &&
-      (a.toList.all λ (k, _) => a'.find? k|>.isSome)
-    | _, _ => false
-
   requestIsConsistent env :=
   if !requestIsValid env req₂ || !requestMatchesEnvironment env req₁
   then
@@ -322,14 +340,17 @@ open Cedar.Spec
 open Cedar.Validation
 open Cedar.TPE
 
-partial def Value.asPartialValue : Value → PartialValue
+def Value.asPartialValue : Value → PartialValue
   | .prim p => .prim p
   | .ext x => .ext x
   | .set s => .set s
-  | .record as => .record ∘ Map.mk $ as.toList.attach₂.map λ kv => (kv.val.fst, .present kv.val.snd.asPartialValue)
--- decreasing_by
-  --have : sizeOf as.kvs < sizeOf as := by
-  --  simp only [Map.sizeOf_lt_of_kvs]
+  | .record as => .record ∘ Map.mk $ as.toList.attach₂.map λ ⟨(k, v), _h⟩ => (k, .present v.asPartialValue)
+termination_by v => v
+decreasing_by
+  simp_wf
+  have := Map.sizeOf_lt_of_toList as
+  simp only at _h
+  omega
   --simp only [record.sizeOf_spec, gt_iff_lt]
   --omega
 

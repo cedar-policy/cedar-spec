@@ -72,11 +72,17 @@ instance : Coe String Residual where
 instance : Coe EntityUID Residual where
   coe uid := .val (.prim (.entityUID uid)) (.entity uid.ty)
 
-partial def Value.asResidualValue : Value → ResidualValue
+def Value.asResidualValue : Value → ResidualValue
   | .prim p => .prim p
   | .ext x => .ext x
   | .set s => .set s
-  | .record as => .record (as.toList.attach₂.map λ kv => (kv.val.fst, .present kv.val.snd.asResidualValue))
+  | .record as => .record (as.toList.attach₂.map λ ⟨(k, v), _h⟩ => (k, .present v.asResidualValue))
+termination_by v => v
+decreasing_by
+  simp_wf
+  have := Map.sizeOf_lt_of_toList as
+  simp only at _h
+  omega
 
 instance : Coe Value ResidualValue where
   coe v := Value.asResidualValue v
@@ -84,14 +90,19 @@ instance : Coe Value ResidualValue where
 instance {α : Type _} [Coe α Value] : Coe α ResidualValue where
   coe v := Value.asResidualValue v
 
-partial def ResidualValue.toPartialValue : ResidualValue → PartialValue
+def ResidualValue.toPartialValue : ResidualValue → PartialValue
   | .prim p => .prim p
   | .set s => .set s
   | .ext x => .ext x
-  | .record m => .record (Map.mk (m.map fun (a, ra) =>
+  | .record m => .record (Map.mk (m.attach₂.map fun ⟨(a, ra), _h⟩ =>
     (a, match ra with
       | .present rv => .present rv.toPartialValue
       | .unknown _ ty => .unknown ty)))
+termination_by rv => rv
+decreasing_by
+  simp_wf
+  simp only [ResidualAttribute.present.sizeOf_spec] at _h
+  omega
 
 end Cedar.Spec
 
@@ -101,17 +112,23 @@ open Cedar.Spec
 open Cedar.Data
 open Cedar.Validation
 
-partial def PartialValue.toResidualValue (target : Residual) : PartialValue → CedarType → ResidualValue
+def PartialValue.toResidualValue (target : Residual) : PartialValue → CedarType → ResidualValue
   | .prim p, _ => .prim p
   | .set s, _ => .set s
   | .ext x, _ => .ext x
-  | .record m, .record rty => .record (m.toList.map fun (a, pa) =>
+  | .record m, .record rty => .record (m.toList.attach₂.map fun ⟨(a, pa), _h⟩ =>
     (a, match pa with
       | .present pv =>
         let aty := Qualified.getType <$> rty.find? a|>.getD (.bool .anyBool)
         .present (PartialValue.toResidualValue (.getAttr target a (.record rty)) pv aty)
       | .unknown ty => .unknown target ty))
   | _, _ => .prim (.bool false)
+termination_by pv => pv
+decreasing_by
+  simp_wf
+  have := Map.sizeOf_lt_of_toList m
+  simp only [PartialAttribute.present.sizeOf_spec] at _h
+  omega
 
 end Cedar.TPE
 
@@ -125,14 +142,19 @@ def Residual.asResidualValue : Residual → Option ResidualValue
   | .val v _ => .some v
   | _        => .none
 
-partial def ResidualValue.asValue : ResidualValue → Option Value
-  | .record as => (Value.record ∘ Map.make) <$> as.mapM λ (a, ra) =>
+def ResidualValue.asValue : ResidualValue → Option Value
+  | .record as => (Value.record ∘ Map.make) <$> as.mapM₂ λ ⟨(a, ra), _h⟩ =>
     match ra with
     | .present rv => do some (a, ←rv.asValue)
     | _ => none
   | .prim p   => .some p
   | .set es   => .some (.set es)
   | .ext x    => .some (.ext x)
+termination_by rv => rv
+decreasing_by
+  simp_wf
+  simp only [ResidualAttribute.present.sizeOf_spec] at _h
+  omega
 
 def Residual.asValue :=
   Residual.asResidualValue >=> ResidualValue.asValue
@@ -191,19 +213,31 @@ def Residual.errorFree : Residual → Bool
 -- The interpreter of `Residual` that defines its semantics
 mutual
 
-partial def ResidualValue.evaluate (rv : ResidualValue) (req : Request) (es : Entities) : Result Value :=
+def ResidualValue.evaluate (rv : ResidualValue) (req : Request) (es : Entities) : Result Value :=
   match rv with
   | .prim p => .ok p
   | .set s => .ok s
   | .ext e => .ok e
   | .record r => do
-    let t ← r.mapM (λ (a, ra) =>
+    let t ← r.mapM₁ (λ ⟨(a, ra), h_mem⟩ =>
       bindAttr a (match ra with
-        | .present v' => ResidualValue.evaluate v' req es
-        | .unknown expr ty => Residual.evaluate (.getAttr expr a ty) req es))
+        | .present v' =>
+          have : sizeOf v' < 1 + sizeOf r := by
+            have := List.sizeOf_lt_of_mem h_mem
+            simp only [Prod.mk.sizeOf_spec, ResidualAttribute.present.sizeOf_spec] at this
+            omega
+          ResidualValue.evaluate v' req es
+        | .unknown expr ty =>
+          have : sizeOf (Residual.getAttr expr a ty) < 1 + sizeOf r := by
+            have := List.sizeOf_lt_of_mem h_mem
+            simp only [Prod.mk.sizeOf_spec, ResidualAttribute.unknown.sizeOf_spec,
+                        Residual.getAttr.sizeOf_spec] at *
+            omega
+          Residual.evaluate (.getAttr expr a ty) req es))
     .ok ∘ .record ∘ Map.make $ t
+termination_by sizeOf rv
 
-partial def Residual.evaluate (x : Residual) (req : Request) (es: Entities) : Result Value :=
+def Residual.evaluate (x : Residual) (req : Request) (es: Entities) : Result Value :=
   match x with
   | .val p _ => ResidualValue.evaluate p req es
   | .var v _ =>
@@ -236,29 +270,44 @@ partial def Residual.evaluate (x : Residual) (req : Request) (es: Entities) : Re
     let v ← Residual.evaluate e req es
     Cedar.Spec.getAttr v a es
   | .set xs _ => do
-    let vs ← xs.mapM (Residual.evaluate · req es)
+    let vs ← xs.mapM₁ (λ ⟨x, h⟩ =>
+      have : sizeOf x < sizeOf xs := List.sizeOf_lt_of_mem h
+      Residual.evaluate x req es)
     .ok (Set.make vs)
   | .record axs _ => do
-    let avs ← axs.mapM (fun (a₁, x₁) => bindAttr a₁ (Residual.evaluate x₁ req es))
+    let avs ← axs.mapM₂ (fun ⟨(a₁, x₁), _h⟩ =>
+      have : sizeOf x₁ < 1 + sizeOf axs := by simp only at _h; omega
+      bindAttr a₁ (Residual.evaluate x₁ req es))
     .ok (Map.make avs)
   | .call xfn xs _ => do
-    let vs ← xs.mapM (Residual.evaluate · req es)
+    let vs ← xs.mapM₁ (λ ⟨x, h⟩ =>
+      have : sizeOf x < sizeOf xs := List.sizeOf_lt_of_mem h
+      Residual.evaluate x req es)
     Cedar.Spec.call xfn vs
   | .error _ => .error .extensionError
+termination_by sizeOf x
 
 end
 
 mutual
 
-partial def ResidualValue.allLiteralUIDs : ResidualValue → Set EntityUID
+def ResidualValue.allLiteralUIDs (rv : ResidualValue) : Set EntityUID :=
+  match rv with
   | .prim (.entityUID uid)  => Set.singleton uid
-  | .record m => m.foldl (fun acc (_, ra) =>
+  | .record m => m.attach₂.foldl (fun acc ⟨(_, ra), h_mem⟩ =>
     match ra with
-    | .present v' => acc ∪ ResidualValue.allLiteralUIDs v'
-    | .unknown expr _ => acc ∪ Residual.allLiteralUIDs expr) Set.empty
+    | .present v' =>
+      have : sizeOf v' < 1 + sizeOf m := by
+        simp only [ResidualAttribute.present.sizeOf_spec] at h_mem; omega
+      acc ∪ ResidualValue.allLiteralUIDs v'
+    | .unknown expr _ =>
+      have : sizeOf expr < 1 + sizeOf m := by
+        simp only [ResidualAttribute.unknown.sizeOf_spec] at h_mem; omega
+      acc ∪ Residual.allLiteralUIDs expr) Set.empty
   | .prim _  | .set _ | .ext _ => Set.empty
+termination_by sizeOf rv
 
-partial def Residual.allLiteralUIDs (x : Residual) : Set EntityUID :=
+def Residual.allLiteralUIDs (x : Residual) : Set EntityUID :=
   match x with
   | .val v _ => ResidualValue.allLiteralUIDs v
   | .error _e                          => Set.empty
@@ -276,11 +325,18 @@ partial def Residual.allLiteralUIDs (x : Residual) : Set EntityUID :=
   | .getAttr x _ _       => Residual.allLiteralUIDs x
   | .hasAttr x _ _       => Residual.allLiteralUIDs x
   | .set x _             =>
-    x.mapUnion₁ (λ ⟨v, _⟩ => Residual.allLiteralUIDs v)
+    x.mapUnion₁ (λ ⟨v, h⟩ =>
+      have : sizeOf v < sizeOf x := List.sizeOf_lt_of_mem h
+      Residual.allLiteralUIDs v)
   | .record x _          =>
-    x.mapUnion₂ (λ ⟨⟨_attr, v⟩, _⟩ => Residual.allLiteralUIDs v)
+    x.mapUnion₂ (λ ⟨⟨_attr, v⟩, _h⟩ =>
+      have : sizeOf v < 1 + sizeOf x := by simp only at _h; omega
+      Residual.allLiteralUIDs v)
   | .call _ x _          =>
-    x.mapUnion₁ (λ ⟨v, _⟩ => Residual.allLiteralUIDs v)
+    x.mapUnion₁ (λ ⟨v, h⟩ =>
+      have : sizeOf v < sizeOf x := List.sizeOf_lt_of_mem h
+      Residual.allLiteralUIDs v)
+termination_by sizeOf x
 
 end
 
