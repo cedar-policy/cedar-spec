@@ -40,7 +40,7 @@ def InstanceOfBoolType : Bool → BoolType → Prop
   | _, _            => False
 
 def InstanceOfEntityType (e : EntityUID) (ety: EntityType) (env : TypeEnv) : Prop :=
-  ety = e.ty ∧ EntityUID.WellFormed env e
+  ety = e.ty ∧ EntityUID.WellFormed env.ets env.acts e
 
 def InstanceOfExtType : Ext → ExtType → Prop
   | .decimal _, .decimal => True

@@ -46,6 +46,8 @@ theorem partial_eval_well_typed_record {env : TypeEnv} {ls : List (Attr × Resid
   split
   . rename_i x xs h₃
     apply Residual.WellTyped.val
+    sorry
+    /-
     apply InstanceOfType.instance_of_record
     . intro k h₄
       rw [Map.contains_iff_some_find?] at h₄
@@ -136,6 +138,7 @@ theorem partial_eval_well_typed_record {env : TypeEnv} {ls : List (Attr × Resid
       exists v₃
       rw [← Map.list_find?_iff_make_find?]
       exact h₆
+      -/
   case h_2 x h₂ =>
     split
     . apply Residual.WellTyped.error

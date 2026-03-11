@@ -90,11 +90,18 @@ public def size {α β} (m : Map α β) : Nat :=
 public def mapOnValues {α β γ} (f : β → γ) (m : Map α β) : Map α γ :=
   Map.mk (m.toList.map (λ (k, v) => (k, f v)))
 
+public def mapKVsIntoValues {α β γ} (f : α × β → γ) (m : Map α β) : Map α γ :=
+  Map.mk (m.toList.map (λ kv => (kv.fst, f kv)))
+
 public def mapOnKeys {α β γ} [LT γ] [DecidableLT γ] (f : α → γ) (m : Map α β) : Map γ β :=
   Map.make (m.toList.map (λ (k, v) => (f k, v)))
 
-public def mapMOnValues {α β γ} [LT α] [DecidableLT α] [Monad m] (f : β → m γ) (map : Map α β) : m (Map α γ) := do
+public def mapMOnValues {α β γ} [Monad m] (f : β → m γ) (map : Map α β) : m (Map α γ) := do
   let kvs ← map.toList.mapM (λ (k, v) => f v >>= λ v' => pure (k, v'))
+  pure (Map.mk kvs)
+
+public def mapMKVsIntoValues {α β γ} [Monad m] (f : α × β → m γ) (map : Map α β) : m (Map α γ) := do
+  let kvs ← map.toList.mapM (λ kv => f kv >>= λ v' => pure (kv.fst, v'))
   pure (Map.mk kvs)
 
 public def mapMOnKeys {α β γ} [LT γ] [DecidableLT γ] [Monad m] (f : α → m γ) (map : Map α β) : m (Map γ β) := do
@@ -114,11 +121,28 @@ public def mapOnValues₂ {α β γ} [SizeOf α] [SizeOf β] (m : Map α β) (f 
     simp only at *
     omega⟩)))
 
+public def mapKVsIntoValues₂ {α β γ} [SizeOf α] [SizeOf β] (m : Map α β) (f : {kv : α × β // sizeOf kv < sizeOf m} → γ) : Map α γ :=
+  Map.mk (m.toList.map₁ (λ ⟨kv, h⟩ =>
+    have h' : sizeOf kv < sizeOf m := by
+      have h₁ := List.sizeOf_lt_of_mem h
+      have h₂ := sizeOf_toList_lt_map m
+      omega
+    (kv.fst, f ⟨kv, h'⟩)))
+
 public def mapMOnValues₂ {α β γ} [SizeOf α] [SizeOf β] [Monad m] (map : Map α β) (f : {x : β // sizeOf x < sizeOf map} → m γ) : m (Map α γ) := do
   let kvs ← map.toList.mapM₂ (λ ⟨(k, v), h⟩ => do pure (k, ← f ⟨v, by
     have := sizeOf_toList_lt_map map
     simp only at *
     omega⟩))
+  pure (Map.mk kvs)
+
+public def mapMKVsIntoValues₂ {α β γ} [SizeOf α] [SizeOf β] [Monad m] (map : Map α β) (f :  {kv : α × β // sizeOf kv < sizeOf map} → m γ) : m (Map α γ) := do
+  let kvs ← map.toList.mapM₁ (λ ⟨kv, h⟩ =>
+    have h' : sizeOf kv  < sizeOf map := by
+      have h₁ := List.sizeOf_lt_of_mem h
+      have h₂ := sizeOf_toList_lt_map map
+      omega
+    do pure (kv.fst, ← f ⟨kv, h'⟩))
   pure (Map.mk kvs)
 
 public def wellFormed {α β} [LT α] [DecidableLT α] (m : Map α β) : Bool :=

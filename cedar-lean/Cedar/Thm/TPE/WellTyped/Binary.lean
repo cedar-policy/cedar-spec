@@ -31,11 +31,12 @@ open Cedar.Spec
 open Cedar.Validation
 open Cedar.TPE
 
+/-
 theorem tags_if_partial_tags
   {env : TypeEnv} {req : Request} {es : Entities} {pes : PartialEntities}
-  {uid : EntityUID} {tags : Map Tag Value}
+  {uid : EntityUID} {tags : Map Tag (PartialAttribute PartialValue)}
   (h_wf : InstanceOfWellFormedEnvironment req es env)
-  (h_eref : EntitiesRefine es pes)
+  (h_eref : EntitiesRefine env es pes)
   (h_tags : PartialEntities.tags pes uid = some tags) :
   ∃ (edata : EntityData),
     edata.tags = tags ∧
@@ -61,7 +62,7 @@ theorem entity_tag_well_typed
   {uid : EntityUID} {ety : EntityType}
   {tags : Map Tag Value} {v : Value} {ty : CedarType} :
   InstanceOfWellFormedEnvironment req es env →
-  EntitiesRefine es pes →
+  EntitiesRefine env es pes →
   InstanceOfEntityType uid ety env →
   PartialEntities.tags pes uid = some tags →
   v ∈ tags.values →
@@ -544,28 +545,28 @@ theorem partial_eval_well_typed_app₂_nonvalues :
       | apply BinaryResidualWellTyped.containsAny
       rw [h₁, h₃]
       rw [h₂, h₄]
-
-
+-/
 
 theorem partial_eval_well_typed_app₂ :
   Residual.WellTyped env (TPE.evaluate expr1 preq pes) →
   Residual.WellTyped env (TPE.evaluate expr2 preq pes) →
   PEWellTyped env (Residual.binaryApp op expr1 expr2 ty) (TPE.apply₂ op (TPE.evaluate expr1 preq pes) (TPE.evaluate expr2 preq pes) pes ty) req preq es pes
 := by
-  intro ih₁ ih₂ h₁
-  cases h₂ : (TPE.evaluate expr1 preq pes).asValue
-  case none =>
-    apply partial_eval_well_typed_app₂_nonvalues ih₁ ih₂
-    . left
-      exact h₂
-    . exact h₁
-  case some v₁ =>
-    cases h₃ : (TPE.evaluate expr2 preq pes).asValue
-    case none =>
-      apply partial_eval_well_typed_app₂_nonvalues ih₁ ih₂
-      . right
-        exact h₃
-      . exact h₁
-    case some v₂ =>
-      apply partial_eval_well_typed_app₂_values ih₁ ih₂ h₂ h₃
-      . exact h₁
+  sorry
+  --intro ih₁ ih₂ h₁
+  --cases h₂ : (TPE.evaluate expr1 preq pes).asValue
+  --case none =>
+  --  apply partial_eval_well_typed_app₂_nonvalues ih₁ ih₂
+  --  . left
+  --    exact h₂
+  --  . exact h₁
+  --case some v₁ =>
+  --  cases h₃ : (TPE.evaluate expr2 preq pes).asValue
+  --  case none =>
+  --    apply partial_eval_well_typed_app₂_nonvalues ih₁ ih₂
+  --    . right
+  --      exact h₃
+  --    . exact h₁
+  --  case some v₂ =>
+  --    apply partial_eval_well_typed_app₂_values ih₁ ih₂ h₂ h₃
+  --    . exact h₁

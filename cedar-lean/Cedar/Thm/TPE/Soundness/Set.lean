@@ -63,11 +63,11 @@ theorem partial_evaluate_is_sound_set
   case _ heq =>
     split
     case isTrue heq₁ =>
-      rcases heq₁ with ⟨x, heq₂, heq₃⟩
-      have ⟨_, he⟩ := isError_evaluate_err heq₃ req es
+      simp at heq₁
+      rcases heq₁ with ⟨x, heq₂, _, he⟩
       have h_none : (x.evaluate req es).toOption = none := by
         rw [hᵢ₁ x heq₂]
-        simp [he, Except.toOption]
+        simp [he]
       have heq₄ := List.element_to_option_none_implies_mapM_none (f := (Residual.evaluate · req es)) heq₂ h_none
       simp only [Residual.evaluate, List.mapM₁_eq_mapM (Residual.evaluate · req es), do_to_option_none heq₄]
       simp [Except.toOption]

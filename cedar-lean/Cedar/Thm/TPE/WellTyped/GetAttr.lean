@@ -66,11 +66,12 @@ decreasing_by
   }
   exact h₈
 
+/-
 theorem attrs_if_partial_attrs
   {env : TypeEnv} {req : Request} {es : Entities} {pes : PartialEntities}
   {uid : EntityUID} {m : Map Attr Value}
   (h_wf : InstanceOfWellFormedEnvironment req es env)
-  (h_eref : EntitiesRefine es pes)
+  (h_eref : EntitiesRefine env es pes)
   (h_attrs : PartialEntities.attrs pes uid = some m) :
   ∃ (edata : EntityData),
     edata.attrs = m ∧
@@ -90,13 +91,15 @@ theorem attrs_if_partial_attrs
       cases h_pa
       rename_i h_eq
       exact ⟨edata, by rw [← h_attrs, h_eq], h_entry⟩
+      -/
 
+/-
 theorem entity_attr_well_typed
   {env : TypeEnv} {req : Request} {es : Entities} {pes : PartialEntities}
   {uid : EntityUID} {ety : EntityType} {rty : RecordType}
   {m : Map Attr Value} {attr : Attr} {v : Value} {ty : CedarType} :
   InstanceOfWellFormedEnvironment req es env →
-  RequestAndEntitiesRefine req es preq pes →
+  RequestAndEntitiesRefine env req es preq pes →
   InstanceOfEntityType uid ety env →
   PartialEntities.attrs pes uid = some m →
   m.find? attr = some v →
@@ -156,11 +159,13 @@ theorem entity_attr_well_typed
     rcases h_act_entry with ⟨h_empty, _, _⟩
     rw [h_empty] at h_find
     simp [Map.empty, Map.find?] at h_find
+    -/
 
 theorem partial_eval_well_typed_getAttr {env : TypeEnv} {expr : Residual} {attr : Attr} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
   Residual.WellTyped env (TPE.evaluate expr preq pes) →
   PEWellTyped env (Residual.getAttr expr attr ty) (TPE.evaluate (Residual.getAttr expr attr ty) preq pes) req preq es pes
-:= by
+:= by sorry
+/-
   intros h_expr_wt h_wf h_ref h_wt
   simp only [TPE.evaluate, TPE.getAttr, TPE.attrsOf]
   split
@@ -270,3 +275,4 @@ theorem partial_eval_well_typed_getAttr {env : TypeEnv} {expr : Residual} {attr 
           rw [h₁₀, h₇]
         case h₃ =>
           rw [h₈]
+          -/

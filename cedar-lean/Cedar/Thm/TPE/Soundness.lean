@@ -69,7 +69,7 @@ theorem partial_evaluate_is_sound
   {env : TypeEnv} :
   Residual.WellTyped env x →
   InstanceOfWellFormedEnvironment req es env →
-  RequestAndEntitiesRefine req es preq pes →
+  RequestAndEntitiesRefine env req es preq pes →
   (x.evaluate req es).toOption = ((Cedar.TPE.evaluate x preq pes).evaluate req es).toOption
 := by
   intro h₁ h₂ h₃

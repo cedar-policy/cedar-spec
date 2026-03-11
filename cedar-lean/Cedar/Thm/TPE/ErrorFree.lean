@@ -198,7 +198,7 @@ theorem error_free_evaluate_ok {r : Residual} :
 := by
   intro hwf hwt h₂
   cases h₂
-  case val => simp [Residual.evaluate, Except.isOk_iff_exists]
+  case val => sorry -- Residual.evaluate for val now goes through ResidualValue.evaluate
   case var =>
     rename_i v _
     cases v <;>

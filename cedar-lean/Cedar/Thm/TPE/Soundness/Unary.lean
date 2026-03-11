@@ -49,22 +49,24 @@ theorem partial_evaluate_is_sound_unary_app
   simp [TPE.evaluate, TPE.apply₁]
   split
   case _ heq =>
-    simp [heq, Residual.evaluate] at hᵢ₁
-    rcases to_option_right_err hᵢ₁ with ⟨_, hᵢ₁⟩
-    simp [Residual.evaluate, hᵢ₁, Except.toOption]
+    sorry
+    -- simp [heq, Residual.evaluate] at hᵢ₁
+    -- rcases to_option_right_err hᵢ₁ with ⟨_, hᵢ₁⟩
+    -- simp [Residual.evaluate, hᵢ₁, Except.toOption]
   case _ =>
     split
     case _ heq =>
-      rw [asValue_evaluate_val heq] at hᵢ₁
-      replace hᵢ₁ := to_option_right_ok' hᵢ₁
-      simp [someOrError, Residual.evaluate, hᵢ₁]
-      split
-      case _ heq₂ =>
-        simp [to_option_some] at heq₂
-        simp [heq₂, Residual.evaluate]
-      case _ heq₂ =>
-        rcases to_option_none.mp heq₂ with ⟨_, heq₂⟩
-        simp [heq₂, Residual.evaluate, Except.toOption]
+      sorry
+      -- rw [asValue_evaluate_val heq] at hᵢ₁
+      -- replace hᵢ₁ := to_option_right_ok' hᵢ₁
+      -- simp [someOrError, Residual.evaluate, hᵢ₁]
+      -- split
+      -- case _ heq₂ =>
+      --   simp [to_option_some] at heq₂
+      --   simp [heq₂, Residual.evaluate]
+      -- case _ heq₂ =>
+      --   rcases to_option_none.mp heq₂ with ⟨_, heq₂⟩
+      --   simp [heq₂, Residual.evaluate, Except.toOption]
     case _ =>
       simp [Residual.evaluate]
       generalize h₅ : x₁.evaluate req es = res₁

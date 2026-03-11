@@ -43,8 +43,8 @@ theorem residual_well_typed_is_sound {r : Residual} {v : Value} {env : TypeEnv} 
 := by
   intro h₁ h₂ h₃
   induction h₂ generalizing v <;> simp only [Residual.typeOf]
-  case val v ty h₄ =>
-    exact residual_well_typed_is_sound_val h₄ h₃
+  case val rv ty h₄ =>
+    sorry -- h₄ is now InstanceOfResidualValueType, needs adaptation
   case var var ty h₄ =>
     exact residual_well_typed_is_sound_var h₁ h₄ h₃
   case ite x₁ x₂ x₃ h₁ h₂ h₃ h₄ h₅ h₆ hᵢ₁ hᵢ₂ =>

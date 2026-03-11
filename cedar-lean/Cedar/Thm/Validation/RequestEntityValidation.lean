@@ -70,7 +70,7 @@ theorem instance_of_type_refl {v : Value} {ty : CedarType} {env : TypeEnv} :
       split at h₀ <;> simp only [reduceCtorEq, imp_self, implies_true, Value.set.injEq,
         CedarType.set.injEq, imp_false, forall_apply_eq_imp_iff, forall_eq'] at *
       subst s sty
-      rw [Set.all₁_eq_all (f := (instanceOfType · _ env))] at h₀
+      rw [Set.all₁_eq_all (f := (Value.instanceOfType · _ env))] at h₀
       simp only [Set.all, List.all_eq_true] at h₀
       intro v hv
       simp only [Set.mem_elts_iff_mem_set] at h₀

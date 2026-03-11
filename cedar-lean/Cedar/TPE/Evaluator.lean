@@ -165,13 +165,13 @@ def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (t
     | .error _, _ | _, .error _ => .error ty
     | _, _ => self
   where
-  self := .binaryApp op₂ r₁ r₂ ty
+  @[simp] self := .binaryApp op₂ r₁ r₂ ty
 
 def hasAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : Residual :=
   match r with
   | .error _ => .error ty
   | .val (.record m) _ =>
-    match Prod.snd <$> m.find? (·.1 == a) with
+    match m.find? a with
     | some (.present _) => true
     | some (.unknown tgt _) => .hasAttr tgt a ty
     | none => false
@@ -189,7 +189,7 @@ def getAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : 
   match r with
   | .error _ => .error ty
   | .val (.record m) _ =>
-    match Prod.snd <$> m.find? (·.1 == a) with
+    match m.find? a with
     | some (.present pv) => .val pv ty
     | some (.unknown tgt _) => .getAttr tgt a ty
     | none => .getAttr r a ty
@@ -210,7 +210,7 @@ def set (rs : List Residual) (ty : CedarType) : Residual :=
 
 def record (m : List (Attr × Residual)) (ty : CedarType) : Residual :=
   match m.mapM λ (a, r₁) => bindAttr a (ResidualAttribute.present <$> r₁.asResidualValue) with
-  | .some xs => .val (.record xs) ty
+  | .some xs => .val (.record (Map.make xs)) ty
   | .none    => if m.any λ (_, r₁) => r₁.isError then .error ty else .record m ty
 
 def call (xfn : ExtFun) (rs : List Residual) (ty : CedarType) : Residual :=
@@ -346,7 +346,7 @@ private def ctxVar : Residual  := .var .context ctxTy
 
 -- record = { "a" : 42 }
 private def recAllPresent : Residual :=
-  .val (.record [("a", .present (.prim (.int 42)))])
+  .val (.record (Map.make [("a", .present (.prim (.int 42)))]))
        (.record (Map.make [("a", .required .int)]))
 
 -- hasAttr for a present key  →  true
@@ -364,8 +364,8 @@ private def recAllPresent : Residual :=
 -- value would come from at full-evaluation time.
 private def unknownTgt : Residual := .var .principal (.entity ety)
 private def recMixed   : Residual :=
-  .val (.record [ ("k", .present (.prim (.bool true)))
-                , ("u", .unknown unknownTgt .int) ])
+  .val (.record (Map.make [ ("k", .present (.prim (.bool true)))
+                , ("u", .unknown unknownTgt .int) ]))
        (.record (Map.make [("k", .required (.bool .anyBool)), ("u", .required .int)]))
 
 -- hasAttr "k" (present)  →  true
@@ -516,9 +516,9 @@ private def getProfile      : Residual  := .getAttr charlieVal "profile" profile
 --   "other" : PartialAttribute.unknown .int  →  ResidualAttribute.unknown charlieVal .int
 -- The result is a .val (.record …) at profileTy.
 #guard evaluate getProfile emptyReq charlieEs
-    = .val (.record [ ("age",   .unknown charlieVal .int)
+    = .val (.record (Map.make [ ("age",   .unknown charlieVal .int)
                     , ("email", .present (.prim (.string "charlie@example.com")))
-                    , ("other", .unknown charlieVal .int) ])
+                    , ("other", .unknown charlieVal .int) ]))
            profileTy
 
 -- getAttr profile "email" (present in the nested record)  →  the value
@@ -576,9 +576,9 @@ private def addressTarget : Residual := .getAttr eveVal "address" outerRecTy
 --     "zip"  (unknown) → .unknown addressTarget .string
 --   "score" (unknown) → .unknown eveVal .int
 #guard evaluate getInfo emptyReq eveEs
-    = .val (.record [ ("address", .present (.record [ ("city", .present (.prim (.string "Seattle")))
-                                                    , ("zip",  .unknown addressTarget .string) ]))
-                    , ("score",   .unknown eveVal .int) ])
+    = .val (.record (Map.make [ ("address", .present (.record (Map.make [ ("city", .present (.prim (.string "Seattle")))
+                                                    , ("zip",  .unknown addressTarget .string) ])))
+                    , ("score",   .unknown eveVal .int) ]))
            outerRecTy
 
 -- getAttr info "score" (unknown at outer level)  →  .getAttr eveVal "score"
@@ -594,8 +594,8 @@ private def addressTarget : Residual := .getAttr eveVal "address" outerRecTy
 private def getAddress : Residual := .getAttr getInfo "address" innerRecTy
 
 #guard evaluate getAddress emptyReq eveEs
-    = .val (.record [ ("city", .present (.prim (.string "Seattle")))
-                    , ("zip",  .unknown addressTarget .string) ])
+    = .val (.record (Map.make [ ("city", .present (.prim (.string "Seattle")))
+                    , ("zip",  .unknown addressTarget .string) ]))
            innerRecTy
 
 -- getAttr address "city" (present in inner record)  →  the value

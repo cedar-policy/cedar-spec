@@ -207,11 +207,62 @@ open Cedar.Validation
 open Cedar.Spec
 open Cedar.Data
 
+/-- Instance-of-type for ResidualValue, mirroring InstanceOfType for Value.
+    ResidualValue.record can contain `.unknown` attributes, so this is not
+    simply a lift of InstanceOfType through asResidualValue. -/
+inductive InstanceOfResidualValueType (env : TypeEnv) : ResidualValue → CedarType → Prop where
+  | instance_of_bool (b : Bool) (bty : BoolType)
+      (h₁ : InstanceOfBoolType b bty) :
+      InstanceOfResidualValueType env (.prim (.bool b)) (.bool bty)
+  | instance_of_int :
+      InstanceOfResidualValueType env (.prim (.int _)) .int
+  | instance_of_string :
+      InstanceOfResidualValueType env (.prim (.string _)) .string
+  | instance_of_entity (e : EntityUID) (ety : EntityType)
+      (h₁ : InstanceOfEntityType e ety env) :
+      InstanceOfResidualValueType env (.prim (.entityUID e)) (.entity ety)
+  | instance_of_set (s : Set Value) (ty : CedarType)
+      (h₁ : ∀ v, v ∈ s → InstanceOfType env v ty) :
+      InstanceOfResidualValueType env (.set s) (.set ty)
+  | instance_of_record (r : Map Attr ResidualAttribute) (rty : RecordType)
+      (h₁ : True) : -- TODO: record well-typedness for ResidualAttribute
+      InstanceOfResidualValueType env (.record r) (.record rty)
+  | instance_of_ext (x : Ext) (xty : ExtType)
+      (h₁ : InstanceOfExtType x xty) :
+      InstanceOfResidualValueType env (.ext x) (.ext xty)
+
+/-- Lift an InstanceOfType proof to InstanceOfResidualValueType for primitive values -/
+theorem InstanceOfType.toResidualValueType {env : TypeEnv} {v : Value} {ty : CedarType} :
+  InstanceOfType env v ty → InstanceOfResidualValueType env v.asResidualValue ty
+:= by
+  intro h
+  cases h with
+  | instance_of_bool b bty h₁ =>
+    simp only [Value.asResidualValue]
+    exact .instance_of_bool b bty h₁
+  | instance_of_int =>
+    simp only [Value.asResidualValue]
+    exact .instance_of_int
+  | instance_of_string =>
+    simp only [Value.asResidualValue]
+    exact .instance_of_string
+  | instance_of_entity e ety h₁ =>
+    simp only [Value.asResidualValue]
+    exact .instance_of_entity e ety h₁
+  | instance_of_set s ty h₁ =>
+    simp only [Value.asResidualValue]
+    exact .instance_of_set s ty h₁
+  | instance_of_record r rty h₁ h₂ h₃ =>
+    sorry -- TODO: record case needs to bridge Map Attr Value → List (Attr × ResidualAttribute)
+  | instance_of_ext x xty h₁ =>
+    simp only [Value.asResidualValue]
+    exact .instance_of_ext x xty h₁
+
 /-- Well-typedness definition for Residual expressions -/
 inductive Residual.WellTyped (env : TypeEnv) : Residual → Prop
-| val {v : Value} {ty : CedarType}
-  (h₁ : InstanceOfType env v ty) :
-  WellTyped env (.val v ty)
+| val {rv : ResidualValue} {ty : CedarType}
+  (h₁ : InstanceOfResidualValueType env rv ty) :
+  WellTyped env (.val rv ty)
 | var {v : Var} {ty : CedarType}
   (h₁ : v.WellTyped env ty) :
   WellTyped env (.var v ty)
@@ -278,20 +329,54 @@ inductive Residual.WellTyped (env : TypeEnv) : Residual → Prop
 | error {ty : CedarType} :
   WellTyped env (.error ty)
 
+@[simp] theorem Value.asResidualValue_prim :
+  (Value.prim p).asResidualValue = .prim p
+:= by simp only [Value.asResidualValue]
+
+@[simp] theorem Value.asResidualValue_ext :
+  (Value.ext e).asResidualValue = .ext e
+:= by simp only [Value.asResidualValue]
+
+@[simp] theorem Value.asResidualValue_set :
+  (Value.set e).asResidualValue = .set e
+:= by simp only [Value.asResidualValue]
+
+@[simp] theorem Value.asResidualValue_prim' {v : Value} :
+  v.asResidualValue = .prim p ↔ v = .prim p
+:= by cases v <;> simp [Value.asResidualValue]
+
+@[simp] theorem Value.asResidualValue_ext' {v : Value} :
+  v.asResidualValue = .ext p ↔ v = .ext p
+:= by cases v <;> simp [Value.asResidualValue]
+
+@[simp] theorem Value.asResidualValue_set' {v : Value} :
+  v.asResidualValue = .set vs ↔ v = .set vs
+:= by cases v <;> simp [Value.asResidualValue]
+
+
+@[simp]
 theorem well_typed_bool {env : TypeEnv} {b : Bool}:
  Residual.WellTyped env (.val (.prim (.bool b)) (CedarType.bool BoolType.anyBool))
-:= Residual.WellTyped.val (bool_is_instance_of_anyBool b)
+:= Residual.WellTyped.val (.instance_of_bool b .anyBool (by cases b <;> trivial))
 
+@[simp]
 theorem well_typed_int {env : TypeEnv} {i : Int64}:
  Residual.WellTyped env (.val (.prim (.int i)) CedarType.int)
-:= Residual.WellTyped.val InstanceOfType.instance_of_int
+:= Residual.WellTyped.val .instance_of_int
 
+@[simp]
 theorem well_typed_string {env : TypeEnv} {s : String}:
  Residual.WellTyped env (.val (.prim (.string s)) CedarType.string)
-:= Residual.WellTyped.val InstanceOfType.instance_of_string
+:= Residual.WellTyped.val .instance_of_string
 
+@[simp]
 theorem well_typed_entity {env : TypeEnv} {e : EntityUID} {ety : EntityType} :
   InstanceOfEntityType e ety env → Residual.WellTyped env (.val (.prim (.entityUID e)) (.entity ety))
-:= .val ∘ .instance_of_entity _ _
+:= fun h => Residual.WellTyped.val (.instance_of_entity e ety h)
+
+@[simp]
+theorem well_typed_val {env : TypeEnv} {val : Value} :
+ InstanceOfType env val ty → Residual.WellTyped env (Residual.val val ty)
+:= (Residual.WellTyped.val $ InstanceOfType.toResidualValueType ·)
 
 end Cedar.Thm

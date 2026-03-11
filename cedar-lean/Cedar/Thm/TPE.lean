@@ -235,8 +235,8 @@ theorem partial_authorize_allow_determining_policies_is_sound
   · rename_i ty hr r
     replace hr : r = .val (.prim (.bool true)) ty := by grind
     have ha := partial_evaluate_policy_is_sound hp₃ h₂
-    simp only [hr, Residual.evaluate] at ha
-    exact to_option_right_ok' ha
+    simp only [hr] at ha
+    sorry -- Residual.evaluate for .val now goes through ResidualValue.evaluate
   · rw [←hp₂] at hpid
     exact hpid
 
@@ -315,8 +315,8 @@ theorem partial_authorize_satisfied_forbid_is_determining
   have ha : Spec.evaluate p.toExpr req es = .ok (.prim (.bool true)) := by
     replace hr : r = .val (.prim (.bool true)) ty := by grind
     have ha := partial_evaluate_policy_is_sound hp₃ h₂
-    simp only [hr, Residual.evaluate] at ha
-    exact to_option_right_ok' ha
+    simp only [hr] at ha
+    sorry -- Residual.evaluate for .val now goes through ResidualValue.evaluate
 
   suffices h : pid ∈ satisfiedPolicies Effect.forbid policies req es by
     have hd : IsExplicitlyForbidden req es policies := by

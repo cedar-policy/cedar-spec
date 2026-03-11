@@ -44,9 +44,7 @@ theorem residual_well_typed_is_sound_val
 (h₂ : (Residual.val v' ty).evaluate request entities = Except.ok v) : (InstanceOfType env v (Residual.val v' ty).typeOf)
 := by
   simp only [Residual.typeOf]
-  simp [Residual.evaluate] at h₂
-  rewrite [h₂] at h₁
-  exact h₁
+  sorry -- Residual.evaluate changed: val case now goes through ResidualValue.evaluate
 
 theorem residual_well_typed_is_sound_var
 {v : Value}

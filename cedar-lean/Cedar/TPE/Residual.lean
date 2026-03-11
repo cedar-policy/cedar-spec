@@ -39,7 +39,7 @@ inductive ResidualAttribute where
 inductive ResidualValue where
   | prim (p : Prim)
   | set (s : Set Value)
-  | record (m : List (Attr × ResidualAttribute))
+  | record (m : Map Attr ResidualAttribute)
   | ext (x : Ext)
 
 inductive Residual where
@@ -76,12 +76,11 @@ def Value.asResidualValue : Value → ResidualValue
   | .prim p => .prim p
   | .ext x => .ext x
   | .set s => .set s
-  | .record as => .record (as.toList.attach₂.map λ ⟨(k, v), _h⟩ => (k, .present v.asResidualValue))
+  | .record as => .record (as.mapOnValues₂ λ ⟨v, _h⟩ => .present v.asResidualValue)
 termination_by v => v
 decreasing_by
   simp_wf
   have := Map.sizeOf_lt_of_toList as
-  simp only at _h
   omega
 
 instance : Coe Value ResidualValue where
@@ -94,10 +93,10 @@ def ResidualValue.toPartialValue : ResidualValue → PartialValue
   | .prim p => .prim p
   | .set s => .set s
   | .ext x => .ext x
-  | .record m => .record (Map.mk (m.attach₂.map fun ⟨(a, ra), _h⟩ =>
-    (a, match ra with
+  | .record m => .record (m.mapOnValues₂ fun ⟨ra, _h⟩ =>
+    match ra with
       | .present rv => .present rv.toPartialValue
-      | .unknown _ ty => .unknown ty)))
+      | .unknown _ ty => .unknown ty)
 termination_by rv => rv
 decreasing_by
   simp_wf
@@ -116,18 +115,17 @@ def PartialValue.toResidualValue (target : Residual) : PartialValue → CedarTyp
   | .prim p, _ => .prim p
   | .set s, _ => .set s
   | .ext x, _ => .ext x
-  | .record m, .record rty => .record (m.toList.attach₂.map fun ⟨(a, pa), _h⟩ =>
-    (a, match pa with
-      | .present pv =>
+  | .record m, .record rty => .record (m.mapKVsIntoValues₂ λ kv =>
+    match kv with
+      | ⟨(a, .present pv), _h⟩ =>
         let aty := Qualified.getType <$> rty.find? a|>.getD (.bool .anyBool)
         .present (PartialValue.toResidualValue (.getAttr target a (.record rty)) pv aty)
-      | .unknown ty => .unknown target ty))
+      | ⟨(_, .unknown ty), _h⟩ => .unknown target ty)
   | _, _ => .prim (.bool false)
 termination_by pv => pv
 decreasing_by
-  simp_wf
-  have := Map.sizeOf_lt_of_toList m
-  simp only [PartialAttribute.present.sizeOf_spec] at _h
+  simp only [record.sizeOf_spec]
+  simp [PartialAttribute.present.sizeOf_spec] at _h
   omega
 
 end Cedar.TPE
@@ -142,19 +140,19 @@ def Residual.asResidualValue : Residual → Option ResidualValue
   | .val v _ => .some v
   | _        => .none
 
+mutual
+
+def ResidualAttribute.asValue : ResidualAttribute → Option Value
+  | .present rv => rv.asValue
+  | .unknown _ _ => none
+
 def ResidualValue.asValue : ResidualValue → Option Value
-  | .record as => (Value.record ∘ Map.make) <$> as.mapM₂ λ ⟨(a, ra), _h⟩ =>
-    match ra with
-    | .present rv => do some (a, ←rv.asValue)
-    | _ => none
+  | .record as => as.mapMOnValues₂ λ ⟨ra, _h⟩ => ra.asValue
   | .prim p   => .some p
   | .set es   => .some (.set es)
   | .ext x    => .some (.ext x)
-termination_by rv => rv
-decreasing_by
-  simp_wf
-  simp only [ResidualAttribute.present.sizeOf_spec] at _h
-  omega
+
+end
 
 def Residual.asValue :=
   Residual.asResidualValue >=> ResidualValue.asValue
@@ -219,22 +217,19 @@ def ResidualValue.evaluate (rv : ResidualValue) (req : Request) (es : Entities) 
   | .set s => .ok s
   | .ext e => .ok e
   | .record r => do
-    let t ← r.mapM₁ (λ ⟨(a, ra), h_mem⟩ =>
-      bindAttr a (match ra with
-        | .present v' =>
+    .ok (.record (← r.mapMKVsIntoValues₂ (λ kv  =>
+      (match kv with
+        | ⟨(a, .present v'), _h⟩  =>
           have : sizeOf v' < 1 + sizeOf r := by
-            have := List.sizeOf_lt_of_mem h_mem
-            simp only [Prod.mk.sizeOf_spec, ResidualAttribute.present.sizeOf_spec] at this
+            simp only [Prod.mk.sizeOf_spec, ResidualAttribute.present.sizeOf_spec] at _h
             omega
           ResidualValue.evaluate v' req es
-        | .unknown expr ty =>
+        | ⟨(a, .unknown expr ty), _h⟩ =>
           have : sizeOf (Residual.getAttr expr a ty) < 1 + sizeOf r := by
-            have := List.sizeOf_lt_of_mem h_mem
-            simp only [Prod.mk.sizeOf_spec, ResidualAttribute.unknown.sizeOf_spec,
-                        Residual.getAttr.sizeOf_spec] at *
+            simp only [Prod.mk.sizeOf_spec, ResidualAttribute.unknown.sizeOf_spec] at _h
+            simp only [Residual.getAttr.sizeOf_spec]
             omega
-          Residual.evaluate (.getAttr expr a ty) req es))
-    .ok ∘ .record ∘ Map.make $ t
+          Residual.evaluate (.getAttr expr a ty) req es))))
 termination_by sizeOf rv
 
 def Residual.evaluate (x : Residual) (req : Request) (es: Entities) : Result Value :=
@@ -294,15 +289,19 @@ mutual
 def ResidualValue.allLiteralUIDs (rv : ResidualValue) : Set EntityUID :=
   match rv with
   | .prim (.entityUID uid)  => Set.singleton uid
-  | .record m => m.attach₂.foldl (fun acc ⟨(_, ra), h_mem⟩ =>
+  | .record m => m.toList.attach₂.foldl (fun acc ⟨(_, ra), h_mem⟩ =>
     match ra with
     | .present v' =>
       have : sizeOf v' < 1 + sizeOf m := by
-        simp only [ResidualAttribute.present.sizeOf_spec] at h_mem; omega
+        have := Map.sizeOf_lt_of_toList m
+        simp only [ResidualAttribute.present.sizeOf_spec] at h_mem
+        omega
       acc ∪ ResidualValue.allLiteralUIDs v'
     | .unknown expr _ =>
       have : sizeOf expr < 1 + sizeOf m := by
-        simp only [ResidualAttribute.unknown.sizeOf_spec] at h_mem; omega
+        have := Map.sizeOf_lt_of_toList m
+        simp only [ResidualAttribute.unknown.sizeOf_spec] at h_mem
+        omega
       acc ∪ Residual.allLiteralUIDs expr) Set.empty
   | .prim _  | .set _ | .ext _ => Set.empty
 termination_by sizeOf rv
@@ -366,9 +365,10 @@ def decRValue (v₁ v₂ : ResidualValue) : Decidable (v₁ = v₂) := by
     | isTrue h => isTrue (by rw [h])
     | isFalse h₁ => isFalse (by intro h₂; injection h₂; contradiction)
   case record.record r₁ r₂ =>
+    cases r₁ ; cases r₂ ; rename_i r₁ r₂
     exact match decProdAttrRValueList r₁ r₂ with
     | isTrue h => isTrue (by rw [h])
-    | isFalse h₁ => isFalse (by intro h₂; injection h₂; contradiction)
+    | isFalse h₁ => isFalse (by intro h₂; simp [h₁] at h₂)
 
 def decProdAttrRValueList (avs₁ avs₂ : List (Attr × ResidualAttribute)) : Decidable (avs₁ = avs₂) :=
   match avs₁, avs₂ with

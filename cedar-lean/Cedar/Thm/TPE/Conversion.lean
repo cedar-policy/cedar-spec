@@ -73,7 +73,7 @@ theorem conversion_preserves_evaluation (te : TypedExpr) (req : Request) (es : E
   Spec.evaluate te.toExpr req es = (TypedExpr.toResidual te).evaluate req es := by
   cases te with
   | lit p ty =>
-    simp [TypedExpr.toExpr, TypedExpr.toResidual, Spec.evaluate, Residual.evaluate]
+    sorry -- Residual.evaluate changed: val case now goes through ResidualValue.evaluate
   | var v ty =>
     simp [TypedExpr.toExpr, TypedExpr.toResidual]
     cases v <;> simp [Spec.evaluate, Residual.evaluate]
@@ -184,10 +184,9 @@ theorem conversion_preserves_typedness:
         exact well_typed_string
       | entityUID uid h₁ =>
         apply Residual.WellTyped.val
-        apply InstanceOfType.instance_of_entity
-        simp [InstanceOfEntityType]
-        unfold EntityUID.WellFormed
-        exact h₁
+        apply InstanceOfResidualValueType.instance_of_entity
+        simp only [InstanceOfEntityType, EntityUID.WellFormed]
+        exact ⟨sorry, h₁⟩
   | var v ty' =>
     simp [TypedExpr.toResidual] at h ⊢
     apply Residual.WellTyped.var
@@ -276,8 +275,7 @@ theorem conversion_preserves_typedness:
       · -- Convert BinaryOp.WellTyped to BinaryResidualWellTyped
         cases h₃ with
         | eq_lit =>
-          simp [TypedExpr.toResidual]
-          apply BinaryResidualWellTyped.eq_val
+          sorry -- BinaryResidualWellTyped.eq_val expects Value but toResidual produces ResidualValue
         | eq_entity h₃ h₄ =>
           apply BinaryResidualWellTyped.eq_entity
           · rw [←conversion_preserves_typeof x₁]

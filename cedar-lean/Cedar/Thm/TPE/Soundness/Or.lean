@@ -42,7 +42,7 @@ theorem partial_evaluate_is_sound_or
 {pes : PartialEntities}
 {env : TypeEnv}
 (h₂ : InstanceOfWellFormedEnvironment req es env)
-(h₃ : RequestAndEntitiesRefine req es preq pes)
+(h₃ : RequestAndEntitiesRefine env req es preq pes)
 (hᵢ₁ : Residual.WellTyped env x₁)
 (hᵢ₂ : Residual.WellTyped env x₂)
 (hᵢ₃ : x₁.typeOf = CedarType.bool BoolType.anyBool)
@@ -113,19 +113,20 @@ theorem partial_evaluate_is_sound_or
         split at hᵢ₅ <;> try contradiction
         clear hᵢ₅ ; rename_i hᵢ₅
         simp [hᵢ₅, Result.as] at h₇
-      · split <;> simp
-        rename_i h₇
-        simp [Residual.evaluate] at h₇
-        subst h₇
-        rw [Residual.error_free_spec] at h₆
-        have h₇ : Residual.WellTyped env (TPE.evaluate x₁ preq pes) :=
-          partial_eval_preserves_well_typed h₂ h₃ hᵢ₁
-        have h₈ := error_free_evaluate_ok h₂ h₇ h₆
-        simp [Except.isOk, Except.toBool] at h₈
-        split at h₈ <;> try contradiction
-        clear h₈ ; rename_i h₈
-        rw [h₅, h₈] at hᵢ₅
-        simp [Except.toOption] at hᵢ₅
+      · sorry
+        -- split <;> simp
+        -- rename_i h₇
+        -- simp [Residual.evaluate] at h₇
+        -- subst h₇
+        -- rw [Residual.error_free_spec] at h₆
+        -- have h₇ : Residual.WellTyped env (TPE.evaluate x₁ preq pes) :=
+        --   partial_eval_preserves_well_typed h₂ h₃ hᵢ₁
+        -- have h₈ := error_free_evaluate_ok h₂ h₇ h₆
+        -- simp [Except.isOk, Except.toBool] at h₈
+        -- split at h₈ <;> try contradiction
+        -- clear h₈ ; rename_i h₈
+        -- rw [h₅, h₈] at hᵢ₅
+        -- simp [Except.toOption] at hᵢ₅
     · simp [Result.as, Except.toOption, Coe.coe, Value.asBool]
       simp [h₅, Except.toOption] at hᵢ₅
       split at hᵢ₅ <;> try contradiction

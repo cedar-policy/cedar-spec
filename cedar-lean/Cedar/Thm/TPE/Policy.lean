@@ -56,7 +56,6 @@ theorem partial_evaluate_policy_is_sound
   (Spec.evaluate policy.toExpr req es).toOption = (Residual.evaluate residual req es).toOption
 := by
   intro h₁ h₂
-  have h₃ := consistent_checks_ensure_refinement h₂
   simp [evaluatePolicy] at h₁
   split at h₁ <;> try cases h₁
   split at h₁ <;> try cases h₁
@@ -65,6 +64,7 @@ theorem partial_evaluate_policy_is_sound
   simp [Except.mapError] at h₁₁
   split at h₁₁ <;> try cases h₁₁
   rename_i env heq₁ _ ty _ _ heq₂
+  have h₃ : RequestAndEntitiesRefine env req es preq pes := consistent_checks_ensure_refinement h₂
   simp [isValidAndConsistent] at h₂
   split at h₂ <;> try cases h₂
   rename_i heq₃

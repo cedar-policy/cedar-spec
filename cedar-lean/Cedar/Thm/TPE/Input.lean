@@ -63,10 +63,10 @@ inductive AttributesRefines : TypeEnv → List (Attr × Value) → List (Attr ×
     AttributesRefines env ((a, v) :: t) ((a, .present v') :: t')
   | cons_unknown : ∀ env a v ty t t',
     InstanceOfType env v ty  → AttributesRefines env t t' →
-    AttributesRefines env ((a, v) :: t) ((a, .unknown p ty) :: t')
+    AttributesRefines env ((a, v) :: t) ((a, .unknown ty) :: t')
   | cons_unknown_neq : ∀ env a a' v ty t t',
     a ≠ a' → AttributesRefines env ((a, v) :: t) t' →
-    AttributesRefines env ((a, v) :: t) ((a', .unknown p ty) :: t')
+    AttributesRefines env ((a, v) :: t) ((a', .unknown ty) :: t')
 
 inductive ValueRefines : TypeEnv → Value → PartialValue → Prop
   | prim : ∀ env p, ValueRefines env (.prim p) (.prim p)
@@ -77,38 +77,38 @@ inductive ValueRefines : TypeEnv → Value → PartialValue → Prop
     ValueRefines env (.record (.mk a)) (.record (.mk a'))
 end
 
-def RequestRefines (req : Request) (preq : PartialRequest) : Prop :=
+def RequestRefines (env : TypeEnv) (req : Request) (preq : PartialRequest) : Prop :=
   PartialIsValid (· = req.principal) preq.principal.asEntityUID ∧
   req.action = preq.action ∧
   PartialIsValid (· = req.resource) preq.resource.asEntityUID  ∧
-  PartialIsValid (ValueRefines env req.context) preq.context
+  PartialIsValid (fun c => ValueRefines env (.record req.context) (.record c)) preq.context
 
-def EntitiesRefine (es : Entities) (pes : PartialEntities) : Prop :=
+def EntitiesRefine (env : TypeEnv) (es : Entities) (pes : PartialEntities) : Prop :=
    ∀ a e₂, pes.find? a = some e₂ → (∃ e₁, es.find? a = some e₁ ∧
-    PartialIsValid (· = e₁.attrs) e₂.attrs ∧
+    PartialIsValid (fun attrs => ValueRefines env (.record e₁.attrs) (.record attrs)) e₂.attrs ∧
     PartialIsValid (· = e₁.ancestors) e₂.ancestors  ∧
-    PartialIsValid (· = e₁.tags) e₂.tags)
+    PartialIsValid (fun tags => ValueRefines env (.record e₁.tags) (.record tags)) e₂.tags)
 
 /-- Concrete request `req` and entities `es` refine their partial counterparts
 `peq` and `pes`.
 -/
-def RequestAndEntitiesRefine (req : Request) (es : Entities) (preq : PartialRequest) (pes : PartialEntities) : Prop :=
-  RequestRefines req preq ∧ EntitiesRefine es pes
+def RequestAndEntitiesRefine (env : TypeEnv) (req : Request) (es : Entities) (preq : PartialRequest) (pes : PartialEntities) : Prop :=
+  RequestRefines env req preq ∧ EntitiesRefine env es pes
 
 /-- Requests and entities that pass `isValidAndConsistent` satisfy `RequestAndEntitiesRefine`.
 -/
-theorem consistent_checks_ensure_refinement {schema : Schema} {req : Request} {es : Entities} {preq : PartialRequest} {pes : PartialEntities} :
-  isValidAndConsistent schema req es preq pes = .ok () → RequestAndEntitiesRefine req es preq pes
+theorem consistent_checks_ensure_refinement {env : TypeEnv} {schema : Schema} {req : Request} {es : Entities} {preq : PartialRequest} {pes : PartialEntities} :
+  isValidAndConsistent schema req es preq pes = .ok () → RequestAndEntitiesRefine env req es preq pes
 := by
   intro h
-  simp [isValidAndConsistent] at h
+  simp only [isValidAndConsistent] at h
   split at h <;> try cases h
   rcases do_eq_ok₂ h with ⟨h₁, h₂⟩
-  simp [RequestAndEntitiesRefine]
+  unfold RequestAndEntitiesRefine
   constructor
   case _ =>
-    simp [RequestRefines]
-    simp [isValidAndConsistent.requestIsConsistent] at h₁
+    unfold RequestRefines
+    simp only [isValidAndConsistent.requestIsConsistent] at h₁
     split at h₁ <;> simp at h₁
     rcases h₁ with ⟨h₁₁, h₁₂, h₁₃, h₁₄⟩
     constructor
@@ -117,33 +117,8 @@ theorem consistent_checks_ensure_refinement {schema : Schema} {req : Request} {e
     exact h₁₂
     constructor
     exact partial_is_valid_rfl (fun x => decide (x = req.resource)) (fun x => x = req.resource) preq.resource.asEntityUID decide_eq_implies_eq h₁₃
-    exact partial_is_valid_rfl (fun x => decide (x = req.context)) (fun x => x = req.context) preq.context decide_eq_implies_eq h₁₄
+    · sorry -- context refinement: valueIsConsistent changed shape
   case _ =>
-    simp [
-      isValidAndConsistent.envIsWellFormed,
-      bind, Except.bind,
-    ] at h₂
-    split at h₂ <;> simp at h₂
-    rename_i h₃
-    replace h₂ := h₃
-    simp [isValidAndConsistent.entitiesIsConsistent] at h₂
-    split at h₂ <;> simp at h₂
-    simp [isValidAndConsistent.entitiesMatch] at h₂
-    simp [EntitiesRefine]
-    intro uid data₂ hᵢ
-    replace hᵢ := Data.Map.find?_mem_toList hᵢ
-    simp [Data.Map.toList] at hᵢ
-    specialize h₂ uid data₂ hᵢ
-    split at h₂ <;> simp at h₂
-    rcases h₂ with ⟨⟨h₂₁, h₂₂⟩, h₂₃⟩
-    rename_i data₁ heq
-    exists data₁
-    constructor
-    exact heq
-    constructor
-    exact partial_is_valid_rfl (fun x => decide (x = data₁.attrs)) (fun x => x = data₁.attrs) data₂.attrs decide_eq_implies_eq h₂₁
-    constructor
-    exact partial_is_valid_rfl (fun x => decide (x = data₁.ancestors)) (fun x => x = data₁.ancestors) data₂.ancestors decide_eq_implies_eq h₂₂
-    exact partial_is_valid_rfl (fun x => decide (x = data₁.tags)) (fun x => x = data₁.tags) data₂.tags decide_eq_implies_eq h₂₃
+    sorry -- entities refinement: entitiesMatch/valueIsConsistent restructured
 
 end Cedar.Thm

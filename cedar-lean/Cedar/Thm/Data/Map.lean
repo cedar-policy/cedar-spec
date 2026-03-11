@@ -736,14 +736,24 @@ theorem mapM_key_id_key_none_implies_find?_none {α β : Type} [DecidableEq α] 
     have h₄ := List.in_canonicalize_in_list hl'
     exact List.not_mem_implies_not_mem_mapM_key_id h₂ h₃ v h₄
 
-public theorem mapOnValues_wf [DecidableEq α] [LT α] [DecidableLT α] [StrictLT α] {f : β → γ} {m : Map α β} :
-  m.WellFormed ↔ (m.mapOnValues f).WellFormed
+public theorem mapOnValues_mapKVsIntoValues {f : β → γ} {m : Map α β} :
+  mapOnValues f m = mapKVsIntoValues (λ kv => f kv.snd) m
+:= by simp [mapOnValues, mapKVsIntoValues]
+
+public theorem mapKVsIntoValues_wf [DecidableEq α] [LT α] [DecidableLT α] [StrictLT α] {f : α × β → γ} {m : Map α β} :
+  m.WellFormed ↔ (m.mapKVsIntoValues f).WellFormed
 := by
   simp only [wf_iff_sorted, toList]
   apply List.map_eq_implies_sortedBy
-  simp only [mapOnValues, List.map_map]
+  simp only [mapKVsIntoValues, List.map_map]
   apply List.map_congr
   simp
+
+public theorem mapOnValues_wf [DecidableEq α] [LT α] [DecidableLT α] [StrictLT α] {f : β → γ} {m : Map α β} :
+  m.WellFormed ↔ (m.mapOnValues f).WellFormed
+:= by
+  rw [mapOnValues_mapKVsIntoValues]
+  exact mapKVsIntoValues_wf
 
 @[simp]
 public theorem mapOnValues_empty {α β γ} [LT α] [DecidableLT α] [DecidableEq α] {f : β → γ} :
@@ -1032,6 +1042,10 @@ public theorem in_mapOnValues_in_toList' [LT α] [DecidableLT α] [StrictLT α] 
   exists b
 
 /-! ### mapMOnValues -/
+
+public theorem mapMOnValues_mapMKVsIntoValues [Monad m] {f : β → m γ} {map : Map α β} :
+  mapMOnValues f map = mapMKVsIntoValues (λ kv => f kv.snd) map
+:= by simp [mapMOnValues, mapMKVsIntoValues]
 
 public theorem mapMOnValues₂_eq_mapMOnValues {α β γ : Type 0} [LT α] [DecidableLT α] [SizeOf α] [SizeOf β] [Monad m] [LawfulMonad m] (map : Map α β) (f : β → m γ) :
   map.mapMOnValues₂ (λ x : { x : β // sizeOf x < sizeOf map } => f x.1) = map.mapMOnValues f

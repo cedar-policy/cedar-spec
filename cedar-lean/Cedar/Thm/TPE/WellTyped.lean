@@ -64,14 +64,14 @@ theorem partial_eval_preserves_well_typed
   {es : Entities}
   {pes : PartialEntities} :
   InstanceOfWellFormedEnvironment req es env →
-  RequestAndEntitiesRefine req es preq pes →
+  RequestAndEntitiesRefine env req es preq pes →
   Residual.WellTyped env res →
   Residual.WellTyped env (TPE.evaluate res preq pes)
 := by
   intro h_wf h_ref h_wt
   unfold RequestAndEntitiesRefine at h_ref
   rcases h_ref with ⟨h_rref, h_eref⟩
-  have h_ref : RequestAndEntitiesRefine req es preq pes := ⟨h_rref, h_eref⟩
+  have h_ref : RequestAndEntitiesRefine env req es preq pes := ⟨h_rref, h_eref⟩
 
   cases hᵣ : res <;> rw [hᵣ] at h_wt
   case val v ty =>

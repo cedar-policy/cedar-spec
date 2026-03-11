@@ -21,6 +21,7 @@ import Cedar.Validation
 import Cedar.Thm.TPE.Input
 import Cedar.Thm.TPE.ErrorFree
 import Cedar.Thm.TPE.WellTyped
+import Cedar.Thm.TPE.Residual
 import Cedar.Thm.Validation
 import Cedar.Thm.WellTyped
 import Cedar.Thm.Data.Control
@@ -32,42 +33,9 @@ This file contains basic utility theorems used in the TPE soundness proof.
 namespace Cedar.Thm
 
 open Cedar.Spec
+open Cedar.Data
 open Cedar.Validation
 open Cedar.TPE
 open Cedar.Thm
-
-theorem asValue_some {r : Residual} {v : Value} :
-  r.asValue = .some v ↔ (∃ ty, r = .val v ty)
-:= by
-  simp only [Residual.asValue]
-  split
-  · simp
-  · rename_i h
-    simp only [reduceCtorEq, false_iff]
-    exact not_exists.mpr (h v)
-
-theorem isError_true {r : Residual} :
-  r.isError ↔ (∃ ty, r = .error ty)
-:= by
-  simp only [Residual.isError]
-  split
-  · simp
-  · rename_i h
-    simp only [reduceCtorEq, false_iff]
-    exact not_exists.mpr h
-
-theorem asValue_evaluate_val {r : Residual} {v : Value} :
-  r.asValue = .some v → ∀ req es, r.evaluate req es = Except.ok v
-:= by
-  simp only [asValue_some, forall_exists_index]
-  intro _ hv
-  simp [hv, Residual.evaluate]
-
-theorem isError_evaluate_err {r : Spec.Residual} :
-  r.isError → ∀ req es, ∃ e, r.evaluate req es = .error e
-:= by
-  simp only [isError_true, forall_exists_index]
-  intro _ he
-  simp [he, Spec.Residual.evaluate]
 
 end Cedar.Thm

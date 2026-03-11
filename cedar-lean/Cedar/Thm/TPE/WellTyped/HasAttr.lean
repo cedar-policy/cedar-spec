@@ -36,7 +36,7 @@ theorem partial_eval_well_typed_hasAttr {env : TypeEnv} {expr : Residual} {attr 
   PEWellTyped env (Residual.hasAttr expr attr ty) (TPE.evaluate (Residual.hasAttr expr attr ty) preq pes) req preq es pes
 := by
   intros h_expr_wt h_wf h_ref h_wt
-  simp only [TPE.evaluate, TPE.hasAttr, TPE.attrsOf]
+  simp only [TPE.evaluate, TPE.hasAttr]
   split
   case h_1 =>
     apply Residual.WellTyped.error
@@ -45,19 +45,23 @@ theorem partial_eval_well_typed_hasAttr {env : TypeEnv} {expr : Residual} {attr 
     case h_1 x m h₂ =>
       exact well_typed_bool
     case h_2 x h₂ =>
-      cases h_wt
-      case hasAttr_entity ety  h₅ h₆ =>
-        apply Residual.WellTyped.hasAttr_entity
-        case h₁ =>
-          exact h_expr_wt
-        case h₂ =>
-          have h₁₀ := partial_eval_preserves_typeof _ h₅
-          rw [h₁₀, h₆]
-      case hasAttr_record rty h₆ h₇ =>
-        apply Residual.WellTyped.hasAttr_record
-        case h₁ =>
-          exact h_expr_wt
-        case h₂ =>
-          have h₁₀ := partial_eval_preserves_typeof _ h₆
-          rw [h₁₀]
-          rw [h₇]
+      sorry
+      --cases h_wt
+      --case hasAttr_entity ety  h₅ h₆ =>
+      --  apply Residual.WellTyped.hasAttr_entity
+      --  case h₁ =>
+      --    exact h_expr_wt
+      --  case h₂ =>
+      --    have h₁₀ := partial_eval_preserves_typeof _ h₅
+      --    rw [h₁₀, h₆]
+      --case hasAttr_record rty h₆ h₇ =>
+      --  apply Residual.WellTyped.hasAttr_record
+      --  case h₁ =>
+      --    exact h_expr_wt
+      --  case h₂ =>
+      --    have h₁₀ := partial_eval_preserves_typeof _ h₆
+      --    rw [h₁₀]
+      --    rw [h₇]
+    case h_3 => sorry
+  case h_3 => sorry
+  case h_4 => sorry

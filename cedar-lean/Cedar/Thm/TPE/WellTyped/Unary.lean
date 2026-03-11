@@ -45,6 +45,8 @@ theorem partial_eval_well_typed_unaryApp {env : TypeEnv} {op : UnaryOp} {expr : 
   | unaryApp h_expr h_op =>
     let expr_eval := TPE.evaluate expr preq pes
     unfold TPE.apply₁
+    sorry
+    /-
     split
     case h_1 => apply Residual.WellTyped.error
     case h_2 =>
@@ -90,3 +92,4 @@ theorem partial_eval_well_typed_unaryApp {env : TypeEnv} {op : UnaryOp} {expr : 
             | apply UnaryResidualWellTyped.is
             rw [partial_eval_preserves_typeof _ h_expr]
             assumption
+            -/

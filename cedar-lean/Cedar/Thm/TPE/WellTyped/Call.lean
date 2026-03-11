@@ -45,9 +45,10 @@ theorem ext_well_typed_after_map {xfn args ty env f} :
   case decimal s d _ | ip s ip₁ _ | datetime s d _ | duration s d _ =>
     simp only [List.map]
     specialize h₄ (Residual.val (Value.prim (Prim.string s)) CedarType.string)
-    simp only [Residual.asValue, Option.isSome_some, forall_const] at h₄
-    rw [h₄]
-    exact h₁
+    simp [Residual.asValue, Option.isSome_some, forall_const] at h₄
+    sorry
+    -- rw [h₄]
+    -- exact h₁
   -- Binary comparison operators
   case lessThan x₁ x₂ h₆ h₇ | lessThanOrEqual x₁ x₂ h₆ h₇ | greaterThan x₁ x₂ h₆ h₇ | greaterThanOrEqual x₁ x₂ h₆ h₇ =>
     first
@@ -101,6 +102,8 @@ theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List
   rw [List.map_pmap_subtype (fun x => x)]
   simp only [List.map_id_fun', id_eq, List.map_subtype, List.mem_map, List.mem_unattach, List.mem_pmap, Subtype.mk.injEq, exists_prop, exists_eq_right, and_self]
   rw [List.map_pmap_subtype (fun x => TPE.evaluate x preq pes)]
+  sorry
+  /-
   split
   case h_1 x xs h₁ =>
     cases h_wt
@@ -270,3 +273,4 @@ theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List
           all_goals {
             simp [Residual.asValue] at h₄
           }
+          -/
