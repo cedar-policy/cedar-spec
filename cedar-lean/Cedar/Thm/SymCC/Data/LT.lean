@@ -17,8 +17,11 @@
 module
 
 import Cedar.Spec
+public import Cedar.SymCC.Op
+public import Cedar.SymCC.Term
+public import Cedar.SymCC.TermType
 import Cedar.Thm.Data
-import Cedar.Thm.Data.LT
+public import Cedar.Thm.Data.LT
 import Cedar.Thm.Data.Control
 
 -- needs to unfold various `.lt` definitions, that are normally opaque
@@ -102,7 +105,7 @@ theorem ExtOp.lt_conn {a b : ExtOp} :
   any_goals (simp only [ne_eq, not_true_eq_false] at h₁ )
   all_goals (simp only [ExtOp.mkName] ; decide)
 
-instance ExtOp.strictLT : StrictLT ExtOp where
+public instance ExtOp.strictLT : StrictLT ExtOp where
   asymmetric a b   := by exact lt_trans_irrefl_implies_asymm ExtOp.lt_trans ExtOp.lt_irrefl
   transitive a b c := by exact ExtOp.lt_trans a b c
   connected  a b   := by exact ExtOp.lt_conn
@@ -158,7 +161,7 @@ theorem TermPrimType.lt_conn {a b : TermPrimType} :
     cases xty₁ <;> cases xty₂ <;>
     simp only [LT.lt, ExtType.lt, reduceCtorEq, not_false_eq_true, not_true_eq_false, Bool.false_eq_true, or_true, or_false] at *
 
-instance TermPrimType.strictLT : StrictLT TermPrimType where
+public instance TermPrimType.strictLT : StrictLT TermPrimType where
   asymmetric a b   := by exact lt_trans_irrefl_implies_asymm TermPrimType.lt_trans TermPrimType.lt_irrefl
   transitive a b c := by exact TermPrimType.lt_trans a b c
   connected  a b   := by exact TermPrimType.lt_conn
@@ -324,7 +327,7 @@ theorem TermType.ltListProd_conn {ts₁ ts₂ : List (Attr × TermType)}
 
 end
 
-instance TermType.strictLT : StrictLT TermType where
+public instance TermType.strictLT : StrictLT TermType where
   asymmetric a b   := by exact lt_trans_irrefl_implies_asymm TermType.lt_trans TermType.lt_irrefl
   transitive a b c := by exact TermType.lt_trans a b c
   connected  a b   := by exact TermType.lt_conn
@@ -405,7 +408,7 @@ theorem UUF.lt_conn {a b : UUF} :
     rcases h₂ with h₂ | h₂ <;>
     simp only [h₂, true_or, or_true]
 
-instance UUF.strictLT : StrictLT UUF where
+public instance UUF.strictLT : StrictLT UUF where
   asymmetric a b   := by exact lt_trans_irrefl_implies_asymm UUF.lt_trans UUF.lt_irrefl
   transitive a b c := by exact UUF.lt_trans a b c
   connected  a b   := by exact UUF.lt_conn
@@ -442,7 +445,7 @@ theorem PatElem.lt_conn {a b : PatElem} :
     simp only [decide_eq_true_eq]
     exact Char.strictLT.connected _ _ h
 
-instance PatElem.strictLT : StrictLT PatElem where
+public instance PatElem.strictLT : StrictLT PatElem where
   asymmetric a b   := by exact lt_trans_irrefl_implies_asymm PatElem.lt_trans PatElem.lt_irrefl
   transitive a b c := by exact PatElem.lt_trans a b c
   connected  a b   := by exact PatElem.lt_conn
@@ -641,7 +644,7 @@ theorem Op.lt_conn {a b : Op} :
       replace h := Op.mkName.neq h h₁ h₂ h₃ h₄ h₅
       exact String.strictLT.connected _ _ h
 
-instance Op.strictLT : StrictLT Op where
+public instance Op.strictLT : StrictLT Op where
   asymmetric a b   := by exact lt_trans_irrefl_implies_asymm Op.lt_trans Op.lt_irrefl
   transitive a b c := by exact Op.lt_trans a b c
   connected  a b   := by exact Op.lt_conn
@@ -694,7 +697,7 @@ theorem TermVar.lt_conn {a b : TermVar} :
     rcases h₃ with h₃ | h₃ <;>
     simp only [h₃, true_or, or_true]
 
-instance TermVar.strictLT : StrictLT TermVar where
+public instance TermVar.strictLT : StrictLT TermVar where
   asymmetric a b   := by exact lt_trans_irrefl_implies_asymm TermVar.lt_trans TermVar.lt_irrefl
   transitive a b c := by exact TermVar.lt_trans a b c
   connected  a b   := by exact TermVar.lt_conn
@@ -775,7 +778,7 @@ theorem TermPrim.lt_conn {a b : TermPrim} :
       rcases h₃ with h₃ | h₃ <;>
       simp only [h₃, true_or, or_true]
 
-instance TermPrim.strictLT : StrictLT TermPrim where
+public instance TermPrim.strictLT : StrictLT TermPrim where
   asymmetric a b   := by exact lt_trans_irrefl_implies_asymm TermPrim.lt_trans TermPrim.lt_irrefl
   transitive a b c := by exact TermPrim.lt_trans a b c
   connected  a b   := by exact TermPrim.lt_conn
@@ -1199,7 +1202,7 @@ theorem Term.ltListProd_conn {ts₁ ts₂ : List (Attr × Term)}
 
 end
 
-instance Term.strictLT : StrictLT Term where
+public instance Term.strictLT : StrictLT Term where
   asymmetric a b   := by exact lt_trans_irrefl_implies_asymm Term.lt_trans Term.lt_irrefl
   transitive a b c := by exact Term.lt_trans a b c
   connected  a b   := by exact Term.lt_conn

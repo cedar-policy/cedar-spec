@@ -229,7 +229,7 @@ Lemma
 private theorem typeOf_noneOf (tty : TermType) :
   OptionTyped (Factory.noneOf tty)
 := by
-  simp [OptionTyped, IsOption, Factory.noneOf, Term.typeOf]
+  simp [OptionTyped, IsOption, Factory.noneOf]
 
 /--
 Lemma
@@ -237,7 +237,7 @@ Lemma
 private theorem typeOf_someOf (t : Term) :
   OptionTyped (⊙t)
 := by
-  simp [OptionTyped, IsOption, Factory.someOf, Term.typeOf]
+  simp [OptionTyped, IsOption, Factory.someOf]
 
 /--
 Lemma
@@ -257,7 +257,7 @@ private theorem typeOf_ite.simplify {c t f : Term} :
       · simp [typeOf_bool] at ht
       · simp [typeOf_bool] at hf
       · simp [typeOf_bool] at ht
-      · simp [Term.typeOf] ; exists tty
+      · simp only [typeOf_term_app] ; exists tty
 
 /--
 Lemma
@@ -268,7 +268,7 @@ private theorem typeOf_ite {c t f : Term} :
   intro ht hf
   simp only [OptionTyped, IsOption, Factory.ite]
   split
-  · simp [Term.typeOf]
+  · simp
   · apply typeOf_ite.simplify ht hf
 
 /--
@@ -349,8 +349,8 @@ theorem compile_ok_implies_option {x : Expr} {εnv : SymEnv} {t : Term} :
     cases hx₁ : compile x₁ εnv <;> simp [compileAnd, compileOr]
     case ok t₁ =>
       replace ⟨tty₁, hx₁⟩ := compile_ok_implies_option hx₁
-      split <;> simp [Term.typeOf] at *
-      · subst tty₁ ; intro h ; subst t ; simp [Term.typeOf]
+      split <;> simp at *
+      · subst tty₁ ; intro h ; subst t ; simp
       · cases hx₂ : compile x₂ εnv <;> simp
         case ok t₂ =>
           replace ⟨tty₂, hx₂⟩ := compile_ok_implies_option hx₂
@@ -365,7 +365,7 @@ theorem compile_ok_implies_option {x : Expr} {εnv : SymEnv} {t : Term} :
     cases hx₁ : compile x₁ εnv <;> simp [compileIf]
     case ok t₁ =>
       replace ⟨tty₁, hx₁⟩ := compile_ok_implies_option hx₁
-      split <;> simp [Term.typeOf] at *
+      split <;> simp at *
       · subst tty₁
         intro hx₂ ; simp [compile_ok_implies_option hx₂]
       · subst tty₁

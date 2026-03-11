@@ -167,7 +167,7 @@ theorem same_value_implies_lit {v : Value} {t : Term} :
   | .none _
   | .some _
   | .app _ _ _ => simp [Term.value?] at h₁
-  | .prim p    => simp [Term.isLiteral]
+  | .prim p    => simp
   | .set s _   =>
     unfold Term.isLiteral
     simp only [Set.all₁_eq_all, Set.all, List.all_eq_true]
@@ -202,7 +202,7 @@ theorem same_value_implies_lit {v : Value} {t : Term} :
       exact same_value_implies_lit (same_value_implies_same hv)
     case h_2 heq =>
       simp only [Option.some.injEq] at * ; subst t av'
-      simp [Term.isLiteral]
+      simp
     case h_3 =>
       cases hv : Term.value? t <;>
       simp [hv, Option.bind_none_fun, Option.bind_some_fun, Option.some.injEq] at h₁
@@ -1112,7 +1112,7 @@ private theorem wfl_isCedarRecordType_implies_attr_wfl_cedarType? {a : Attr} {t 
     rcases hty with hty | hty <;> subst hty
     · simp only [TermType.cedarType?, reduceCtorEq] at hcty'
     · simp only [hcty', and_true]
-      replace hlit' := lit_term_some_implies_lit hlit'
+      rw [isLiteral_some] at hlit'
       replace hwf' := wf_term_some_implies hwf'
       exact (And.intro hwf' hlit')
   · rcases hty with hty | hty

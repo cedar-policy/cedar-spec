@@ -14,8 +14,18 @@
  limitations under the License.
 -/
 
-import Cedar.SymCC.Factory
-import Cedar.Thm.SymCC.Data
+module
+
+public import Cedar.SymCC.Env
+public import Cedar.SymCC.ExtFun
+import all Cedar.SymCC.ExtFun -- proving things about internal functions in this file
+public import Cedar.SymCC.Factory
+import all Cedar.SymCC.Factory -- proving things about some SymCC.Factory functions, so need access to internals that aren't otherwise exposed
+public import Cedar.SymCC.Interpretation
+import all Cedar.SymCC.Interpretation -- proving things about internal functions in this file
+import all Cedar.SymCC.Tags -- proving things about internal functions in this file
+public import Cedar.SymCC.Term
+public import Cedar.Thm.SymCC.Data
 import Cedar.Thm.SymCC.Interpretation
 import Cedar.Thm.SymCC.Term.TypeOf
 
@@ -30,19 +40,19 @@ namespace Cedar.Thm
 
 open Batteries Data Spec SymCC Factory BitVec
 
-theorem wf_term_var_implies {εs : SymEntities} {v : TermVar} :
+public theorem wf_term_var_implies {εs : SymEntities} {v : TermVar} :
    (Term.var v).WellFormed εs → v.WellFormed εs
 := by intro h ; cases h ; assumption
 
-theorem wf_term_some_implies {εs : SymEntities} {t : Term} :
+public theorem wf_term_some_implies {εs : SymEntities} {t : Term} :
    (Term.some t).WellFormed εs → t.WellFormed εs
 := by intro h ; cases h ; assumption
 
-theorem wf_term_none_implies {εs : SymEntities} {ty : TermType} :
+public theorem wf_term_none_implies {εs : SymEntities} {ty : TermType} :
    (Term.none ty).WellFormed εs → ty.WellFormed εs
 := by intro h; cases h; assumption
 
-theorem wf_term_set_implies_wf_elt {εs : SymEntities} {s : Set Term} {ty : TermType} {t : Term} :
+public theorem wf_term_set_implies_wf_elt {εs : SymEntities} {s : Set Term} {ty : TermType} {t : Term} :
   (Term.set s ty).WellFormed εs →
   t ∈ s →
   t.WellFormed εs
@@ -51,7 +61,7 @@ theorem wf_term_set_implies_wf_elt {εs : SymEntities} {s : Set Term} {ty : Term
   cases h₁ ; rename_i h₃ _ _ _
   exact h₃ t h₂
 
-theorem wf_term_set_implies_typeOf_elt {εs : SymEntities} {s : Set Term} {ty : TermType} {t : Term} :
+public theorem wf_term_set_implies_typeOf_elt {εs : SymEntities} {s : Set Term} {ty : TermType} {t : Term} :
   (Term.set s ty).WellFormed εs →
   t ∈ s →
   t.typeOf = ty
@@ -60,17 +70,17 @@ theorem wf_term_set_implies_typeOf_elt {εs : SymEntities} {s : Set Term} {ty : 
   cases h₁ ; rename_i h₃
   exact h₃ t h₂
 
-theorem wf_term_set_implies_wf_type {εs : SymEntities} {s : Set Term} {ty : TermType} :
+public theorem wf_term_set_implies_wf_type {εs : SymEntities} {s : Set Term} {ty : TermType} :
   (Term.set s ty).WellFormed εs →
   ty.WellFormed εs
 := by intro h₁ ; cases h₁ ; assumption
 
-theorem wf_term_set_implies_wf_set {εs : SymEntities} {s : Set Term} {ty : TermType} :
+public theorem wf_term_set_implies_wf_set {εs : SymEntities} {s : Set Term} {ty : TermType} :
   (Term.set s ty).WellFormed εs →
   s.WellFormed
 := by intro h₁ ; cases h₁ ; assumption
 
-theorem wf_term_set_cons {εs : SymEntities} {hd : Term} {tl : List Term} {ty : TermType} :
+public theorem wf_term_set_cons {εs : SymEntities} {hd : Term} {tl : List Term} {ty : TermType} :
   (Term.set (Set.mk (hd :: tl)) ty).WellFormed εs →
   (hd.WellFormed εs ∧ hd.typeOf = ty ∧ (Term.set (Set.mk tl) ty).WellFormed εs)
 := by
@@ -85,7 +95,7 @@ theorem wf_term_set_cons {εs : SymEntities} {hd : Term} {tl : List Term} {ty : 
     rw [Set.wf_iff_sorted, List.Sorted] at *
     exact List.tail_sortedBy h₁
 
-theorem wf_term_record_implies {εs : SymEntities} {r : Map Attr Term} {a : Attr}
+public theorem wf_term_record_implies {εs : SymEntities} {r : Map Attr Term} {a : Attr}
   (h₁ : Term.WellFormed εs (Term.record r))
   (h₂ : Map.find? r a = .some t) :
   Term.WellFormed εs t
@@ -93,7 +103,7 @@ theorem wf_term_record_implies {εs : SymEntities} {r : Map Attr Term} {a : Attr
   cases h₁ ; rename_i h₃ _
   exact h₃ a t (Map.find?_mem_toList h₂)
 
-theorem wf_term_record_implies_wf_value {εs : SymEntities} {r : Map Attr Term} {a : Attr}
+public theorem wf_term_record_implies_wf_value {εs : SymEntities} {r : Map Attr Term} {a : Attr}
   (h₁ : Term.WellFormed εs (Term.record r))
   (h₂ : (a, t) ∈ r.toList) :
   Term.WellFormed εs t
@@ -101,12 +111,12 @@ theorem wf_term_record_implies_wf_value {εs : SymEntities} {r : Map Attr Term} 
   cases h₁ ; rename_i h₃ _
   exact h₃ a t h₂
 
-theorem wf_term_record_implies_wf_map {εs : SymEntities} {r : Map Attr Term}
+public theorem wf_term_record_implies_wf_map {εs : SymEntities} {r : Map Attr Term}
   (h₁ : Term.WellFormed εs (Term.record r)) :
   r.WellFormed
 := by cases h₁ ; assumption
 
-theorem wf_prods_implies_wf_map_snd {εs : SymEntities} {ats : List (Attr × Term)}
+public theorem wf_prods_implies_wf_map_snd {εs : SymEntities} {ats : List (Attr × Term)}
   (h₁ : ∀ (a : Attr) (t : Term), (a, t) ∈ ats → Term.WellFormed εs t) :
   ∀ t ∈ ats.map Prod.snd, t.WellFormed εs
 := by
@@ -117,42 +127,42 @@ theorem wf_prods_implies_wf_map_snd {εs : SymEntities} {ats : List (Attr × Ter
   subst h₃
   exact h₁ a t' h₂
 
-theorem wf_prods_option_implies_wf_prods {εs : SymEntities} {ats : List (Attr × Term)} :
+public theorem wf_prods_option_implies_wf_prods {εs : SymEntities} {ats : List (Attr × Term)} :
   (∀ a t, (a, t) ∈ ats → t.WellFormed εs ∧ ∃ ty, t.typeOf = .option ty) →
   (∀ a t, (a, t) ∈ ats → t.WellFormed εs)
 := by intro h₁ a t h₂ ; exact (h₁ a t h₂).left
 
-theorem wf_bool {b : Bool} :
+public theorem wf_bool {b : Bool} :
   Term.WellFormed εs (Term.prim (TermPrim.bool b))
 := by
   apply Term.WellFormed.prim_wf
   apply TermPrim.WellFormed.bool_wf
 
-theorem wf_bv {n : Nat} {bv : BitVec n} :
+public theorem wf_bv {n : Nat} {bv : BitVec n} :
   Term.WellFormed εs (Term.prim (TermPrim.bitvec bv))
 := by
   apply Term.WellFormed.prim_wf
   apply TermPrim.WellFormed.bitvec_wf
 
-theorem wf_string {s : String} {εs : SymEntities} :
+public theorem wf_string {s : String} {εs : SymEntities} :
   Term.WellFormed εs (Term.prim (TermPrim.string s))
 := by
   apply Term.WellFormed.prim_wf
   apply TermPrim.WellFormed.string_wf
 
-theorem wf_datetime {dt : Ext.Datetime} :
+public theorem wf_datetime {dt : Ext.Datetime} :
   Term.WellFormed ε (Term.ext (.datetime dt))
 := by
   apply Term.WellFormed.prim_wf
   apply TermPrim.WellFormed.ext_wf
 
-theorem wf_duration {dt : Ext.Datetime.Duration} :
+public theorem wf_duration {dt : Ext.Datetime.Duration} :
   Term.WellFormed ε (Term.ext (.duration dt))
 := by
   apply Term.WellFormed.prim_wf
   apply TermPrim.WellFormed.ext_wf
 
-theorem wf_term_some {t : Term} {ty : TermType} {εs : SymEntities} :
+public theorem wf_term_some {t : Term} {ty : TermType} {εs : SymEntities} :
   t.WellFormed εs → t.typeOf = ty →
   t.some.WellFormed εs ∧ t.some.typeOf = .option ty
 := by
@@ -171,13 +181,16 @@ theorem wf_term_app_implies_wf_arg {εs : SymEntities} {op : Op} {ts : List Term
   rename_i h₂ _
   apply h₂ ; assumption
 
-def WFArg (εs : SymEntities) (t : Term) (ty : TermType) : Prop :=
+@[expose]
+public def WFArg (εs : SymEntities) (t : Term) (ty : TermType) : Prop :=
   t.WellFormed εs ∧ t.typeOf = ty
 
-def WFUnary (εs : SymEntities) (ts : List Term) (ty : TermType) : Prop :=
+@[expose]
+public def WFUnary (εs : SymEntities) (ts : List Term) (ty : TermType) : Prop :=
   ∃ t, ts = [t] ∧ WFArg εs t ty
 
-def WFBinary (εs : SymEntities) (ts : List Term) (ty : TermType) : Prop :=
+@[expose]
+public def WFBinary (εs : SymEntities) (ts : List Term) (ty : TermType) : Prop :=
   ∃ t₁ t₂, ts = [t₁, t₂] ∧ WFArg εs t₁ ty ∧ WFArg εs t₂ ty
 
 ----- Unary operators -----
@@ -201,12 +214,12 @@ local macro "invert_wf_term_app_unary" h1:ident : tactic => do
     simp only [true_and, WFUnary, List.cons.injEq, and_true, WFArg, exists_eq_left', $h1:ident, $h2:ident, _root_.and_self]
    ))
 
-theorem wf_term_app_not {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_not {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app .not ts ty).WellFormed εs) :
   ty = .bool ∧ WFUnary εs ts .bool
 := by invert_wf_term_app_unary h₁
 
-theorem wf_term_app_not_exact {εs : SymEntities} {t : Term} {ty : TermType}
+public theorem wf_term_app_not_exact {εs : SymEntities} {t : Term} {ty : TermType}
   (h₁ : (Term.app .not [t] ty).WellFormed εs) :
   ty = .bool ∧ WFArg εs t .bool
 := by
@@ -214,67 +227,67 @@ theorem wf_term_app_not_exact {εs : SymEntities} {t : Term} {ty : TermType}
   simp only [WFUnary, List.cons.injEq, and_true, exists_eq_left'] at h₂
   exact h₂
 
-theorem wf_term_app_string_like {εs : SymEntities} {ts : List Term} {ty : TermType} {p : Pattern}
+public theorem wf_term_app_string_like {εs : SymEntities} {ts : List Term} {ty : TermType} {p : Pattern}
   (h₁ : (Term.app (Op.string.like p) ts ty).WellFormed εs) :
   ty = .bool ∧ WFUnary εs ts .string
 := by invert_wf_term_app_unary h₁
 
-theorem wf_term_app_option_get {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_option_get {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app Op.option.get ts ty).WellFormed εs) :
   WFUnary εs ts (.option ty)
 := by invert_wf_term_app_unary h₁
 
-theorem wf_term_app_ext_decimal_val {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_ext_decimal_val {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app (.ext ExtOp.decimal.val) ts ty).WellFormed εs) :
   ty = (.bitvec 64) ∧ WFUnary εs ts (.ext .decimal)
 := by invert_wf_term_app_unary h₁
 
-theorem wf_term_app_ext_ipaddr_isV4 {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_ext_ipaddr_isV4 {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app (.ext ExtOp.ipaddr.isV4) ts ty).WellFormed εs) :
   ty = .bool ∧ WFUnary εs ts (.ext .ipAddr)
 := by invert_wf_term_app_unary h₁
 
-theorem wf_term_app_ext_ipaddr_addrV4 {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_ext_ipaddr_addrV4 {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app (.ext ExtOp.ipaddr.addrV4) ts ty).WellFormed εs) :
   ty = (.bitvec 32) ∧ WFUnary εs ts (.ext .ipAddr)
 := by invert_wf_term_app_unary h₁
 
-theorem wf_term_app_ext_ipaddr_prefixV4 {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_ext_ipaddr_prefixV4 {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app (.ext ExtOp.ipaddr.prefixV4) ts ty).WellFormed εs) :
   ty = (.option (.bitvec 5)) ∧ WFUnary εs ts (.ext .ipAddr)
 := by invert_wf_term_app_unary h₁
 
-theorem wf_term_app_ext_ipaddr_addrV6 {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_ext_ipaddr_addrV6 {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app (.ext ExtOp.ipaddr.addrV6) ts ty).WellFormed εs) :
   ty = (.bitvec 128) ∧ WFUnary εs ts (.ext .ipAddr)
 := by invert_wf_term_app_unary h₁
 
-theorem wf_term_app_ext_ipaddr_prefixV6 {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_ext_ipaddr_prefixV6 {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app (.ext ExtOp.ipaddr.prefixV6) ts ty).WellFormed εs) :
   ty = (.option (.bitvec 7)) ∧ WFUnary εs ts (.ext .ipAddr)
 := by invert_wf_term_app_unary h₁
 
-theorem wf_term_app_ext_datetime_val {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_ext_datetime_val {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app (.ext ExtOp.datetime.val) ts ty).WellFormed εs) :
   ty = (.bitvec 64) ∧ WFUnary εs ts (.ext .datetime)
 := by invert_wf_term_app_unary h₁
 
-theorem wf_term_app_ext_datetime_ofBitVec {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_ext_datetime_ofBitVec {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app (.ext ExtOp.datetime.ofBitVec) ts ty).WellFormed εs) :
   ty = (.ext .datetime) ∧ WFUnary εs ts (.bitvec 64)
 := by invert_wf_term_app_unary h₁
 
-theorem wf_term_app_ext_duration_val {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_ext_duration_val {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app (.ext ExtOp.duration.val) ts ty).WellFormed εs) :
   ty = (.bitvec 64) ∧ WFUnary εs ts (.ext .duration)
 := by invert_wf_term_app_unary h₁
 
-theorem wf_term_app_ext_duration_ofBitVec {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_ext_duration_ofBitVec {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app (.ext ExtOp.duration.ofBitVec) ts ty).WellFormed εs) :
   ty = (.ext .duration) ∧ WFUnary εs ts (.bitvec 64)
 := by invert_wf_term_app_unary h₁
 
-theorem wf_term_app_uuf {εs : SymEntities} {ts : List Term} {f : UUF} {ty : TermType}
+public theorem wf_term_app_uuf {εs : SymEntities} {ts : List Term} {f : UUF} {ty : TermType}
   (h₁ : (Term.app (.uuf f) ts ty).WellFormed εs) :
   ty = f.out ∧ WFUnary εs ts f.arg ∧ f.WellFormed εs
 := by
@@ -285,7 +298,7 @@ theorem wf_term_app_uuf {εs : SymEntities} {ts : List Term} {f : UUF} {ty : Ter
   simp only [WFUnary, List.cons.injEq, and_true, WFArg, exists_eq_left', List.mem_singleton, h₁ t,
     h₂, _root_.and_self, h₃]
 
-theorem wf_term_app_record_get {εs : SymEntities} {ts : List Term} {a : Attr} {ty : TermType}
+public theorem wf_term_app_record_get {εs : SymEntities} {ts : List Term} {a : Attr} {ty : TermType}
   (h₁ : (Term.app (Op.record.get a) ts ty).WellFormed εs) :
   ∃ rty, rty.find? a = .some ty ∧ WFUnary εs ts (.record rty)
 := by
@@ -319,17 +332,17 @@ local macro "invert_wf_term_app_binary" h1:ident : tactic => do
       $h1:ident $t2:ident, $h3:ident]
    ))
 
-theorem wf_term_app_and {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_and {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app .and ts ty).WellFormed εs) :
   ty = .bool ∧ WFBinary εs ts .bool
 := by invert_wf_term_app_binary h₁
 
-theorem wf_term_app_or {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_or {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app .or ts ty).WellFormed εs) :
   ty = .bool ∧ WFBinary εs ts .bool
 := by invert_wf_term_app_binary h₁
 
-theorem wf_term_app_eq {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_eq {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app .eq ts ty).WellFormed εs) :
   ty = .bool ∧ ∃ ty', WFBinary εs ts ty'
 := by
@@ -343,7 +356,7 @@ theorem wf_term_app_eq {εs : SymEntities} {ts : List Term} {ty : TermType}
   exists t₁, t₂
   simp only [_root_.and_self, List.mem_cons, true_or, h₁ t₁, h₂, or_true, h₁ t₂]
 
-theorem wf_term_app_ite {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_ite {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app .ite ts ty).WellFormed εs) :
   ∃ t₁ t₂ t₃, ts = [t₁, t₂, t₃] ∧ WFArg εs t₁ .bool ∧ WFArg εs t₂ ty ∧ WFArg εs t₃ ty
 := by
@@ -355,7 +368,7 @@ theorem wf_term_app_ite {εs : SymEntities} {ts : List Term} {ty : TermType}
   simp only [WFArg, List.mem_cons, true_or,
     h₁ t₁, h₂, _root_.and_self, or_true, h₁ t₂, h₃, h₁ t₃]
 
-theorem wf_term_app_ite_exact {εs : SymEntities} {t₁ t₂ t₃ : Term} {ty : TermType}
+public theorem wf_term_app_ite_exact {εs : SymEntities} {t₁ t₂ t₃ : Term} {ty : TermType}
   (h₁ : (Term.app .ite [t₁, t₂, t₃] ty).WellFormed εs) :
   WFArg εs t₁ .bool ∧ WFArg εs t₂ ty ∧ WFArg εs t₃ ty
 := by
@@ -384,17 +397,17 @@ local macro "invert_wf_term_app_param_unary" h1:ident : tactic => do
       List.mem_singleton, $h1:ident $t:ident, $h2:ident, _root_.and_self]
   ))
 
-theorem wf_term_app_bvneg {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_bvneg {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app .bvneg ts ty).WellFormed εs) :
   ∃ n, ty = .bitvec n ∧ WFUnary εs ts ty
 := by invert_wf_term_app_param_unary h₁
 
-theorem wf_term_app_bvnego {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_bvnego {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app .bvnego ts ty).WellFormed εs) :
   ty = .bool ∧ ∃ n, WFUnary εs ts (.bitvec n)
 := by invert_wf_term_app_param_unary h₁
 
-theorem wf_term_app_zero_extend {εs : SymEntities} {ts : List Term} {n : Nat} {ty : TermType}
+public theorem wf_term_app_zero_extend {εs : SymEntities} {ts : List Term} {n : Nat} {ty : TermType}
   (h₁ : (Term.app (.zero_extend n) ts ty).WellFormed εs) :
   ∃ m, ty = .bitvec (n + m) ∧ WFUnary εs ts (.bitvec m)
 := by invert_wf_term_app_param_unary h₁
@@ -425,102 +438,102 @@ local macro "invert_wf_term_app_param_binary" h1:ident : tactic => do
       $h1:ident $t2:ident, $h3:ident]
    ))
 
-theorem wf_term_app_bvadd {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_bvadd {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app .bvadd ts ty).WellFormed εs) :
   ∃ n, ty = .bitvec n ∧ WFBinary εs ts ty
 := by invert_wf_term_app_param_binary h₁
 
-theorem wf_term_app_bvsub {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_bvsub {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app .bvsub ts ty).WellFormed εs) :
   ∃ n, ty = .bitvec n ∧ WFBinary εs ts ty
 := by invert_wf_term_app_param_binary h₁
 
-theorem wf_term_app_bvmul {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_bvmul {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app .bvmul ts ty).WellFormed εs) :
   ∃ n, ty = .bitvec n ∧ WFBinary εs ts ty
 := by invert_wf_term_app_param_binary h₁
 
-theorem wf_term_app_bvsdiv {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_bvsdiv {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app .bvsdiv ts ty).WellFormed εs) :
   ∃ n, ty = .bitvec n ∧ WFBinary εs ts ty
 := by invert_wf_term_app_param_binary h₁
 
-theorem wf_term_app_bvudiv {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_bvudiv {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app .bvudiv ts ty).WellFormed εs) :
   ∃ n, ty = .bitvec n ∧ WFBinary εs ts ty
 := by invert_wf_term_app_param_binary h₁
 
-theorem wf_term_app_bvsrem {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_bvsrem {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app .bvsrem ts ty).WellFormed εs) :
   ∃ n, ty = .bitvec n ∧ WFBinary εs ts ty
 := by invert_wf_term_app_param_binary h₁
 
-theorem wf_term_app_bvsmod {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_bvsmod {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app .bvsmod ts ty).WellFormed εs) :
   ∃ n, ty = .bitvec n ∧ WFBinary εs ts ty
 := by invert_wf_term_app_param_binary h₁
 
-theorem wf_term_app_bvurem {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_bvurem {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app .bvurem ts ty).WellFormed εs) :
   ∃ n, ty = .bitvec n ∧ WFBinary εs ts ty
 := by invert_wf_term_app_param_binary h₁
 
-theorem wf_term_app_bvshl {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_bvshl {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app .bvshl ts ty).WellFormed εs) :
   ∃ n, ty = .bitvec n ∧ WFBinary εs ts ty
 := by invert_wf_term_app_param_binary h₁
 
-theorem wf_term_app_bvlshr {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_bvlshr {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app .bvlshr ts ty).WellFormed εs) :
   ∃ n, ty = .bitvec n ∧ WFBinary εs ts ty
 := by invert_wf_term_app_param_binary h₁
 
-theorem wf_term_app_bvsaddo {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_bvsaddo {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app .bvsaddo ts ty).WellFormed εs) :
   ty = .bool ∧ ∃ n, WFBinary εs ts (.bitvec n)
 := by invert_wf_term_app_param_binary h₁
 
-theorem wf_term_app_bvssubo {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_bvssubo {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app .bvssubo ts ty).WellFormed εs) :
   ty = .bool ∧ ∃ n, WFBinary εs ts (.bitvec n)
 := by invert_wf_term_app_param_binary h₁
 
-theorem wf_term_app_bvsmulo {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_bvsmulo {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app .bvsmulo ts ty).WellFormed εs) :
   ty = .bool ∧ ∃ n, WFBinary εs ts (.bitvec n)
 := by invert_wf_term_app_param_binary h₁
 
-theorem wf_term_app_bvslt {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_bvslt {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app .bvslt ts ty).WellFormed εs) :
   ty = .bool ∧ ∃ n, WFBinary εs ts (.bitvec n)
 := by invert_wf_term_app_param_binary h₁
 
-theorem wf_term_app_bvsle {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_bvsle {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app .bvsle ts ty).WellFormed εs) :
   ty = .bool ∧ ∃ n, WFBinary εs ts (.bitvec n)
 := by invert_wf_term_app_param_binary h₁
 
-theorem wf_term_app_bvult {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_bvult {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app .bvult ts ty).WellFormed εs) :
   ty = .bool ∧ ∃ n, WFBinary εs ts (.bitvec n)
 := by invert_wf_term_app_param_binary h₁
 
-theorem wf_term_app_bvule {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_bvule {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app .bvule ts ty).WellFormed εs) :
   ty = .bool ∧ ∃ n, WFBinary εs ts (.bitvec n)
 := by invert_wf_term_app_param_binary h₁
 
-theorem wf_term_app_set_subset {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_set_subset {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app Op.set.subset ts ty).WellFormed εs) :
   ty = .bool ∧ ∃ ty, WFBinary εs ts (.set ty)
 := by invert_wf_term_app_param_binary h₁
 
-theorem wf_term_app_set_inter {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_set_inter {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app Op.set.inter ts ty).WellFormed εs) :
   ∃ ty', ty = (.set ty') ∧ WFBinary εs ts (.set ty')
 := by invert_wf_term_app_param_binary h₁
 
-theorem wf_term_app_set_member {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_term_app_set_member {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app Op.set.member ts ty).WellFormed εs) :
   ty = .bool ∧ ∃ t₁ t₂, ts = [t₁, t₂] ∧ t₁.WellFormed εs ∧ WFArg εs t₂ (.set t₁.typeOf)
 := by
@@ -535,12 +548,12 @@ theorem wf_term_app_set_member {εs : SymEntities} {ts : List Term} {ty : TermTy
 
 ----- Factory functions preserve well-formedness -----
 
-theorem wf_arg {εs : SymEntities} {t₁ : Term}
+public theorem wf_arg {εs : SymEntities} {t₁ : Term}
   (h₁ : Term.WellFormed εs t₁) :
   ∀ (t : Term), t ∈ [t₁] → Term.WellFormed εs t
 := by intros t₁ h₃; simp at h₃; subst h₃; exact h₁
 
-theorem wf_args {εs : SymEntities} {t₁ t₂ : Term}
+public theorem wf_args {εs : SymEntities} {t₁ t₂ : Term}
   (h₁ : Term.WellFormed εs t₁)
   (h₂ : Term.WellFormed εs t₂) :
   ∀ (t : Term), t ∈ [t₁, t₂] → Term.WellFormed εs t
@@ -557,14 +570,14 @@ theorem wf_args_ternary {εs : SymEntities} {t₁ t₂ t₃ : Term}
   intros t h₃ ; simp at h₃
   rcases h₃ with h₃ | h₃ | h₃ <;> subst h₃ <;> assumption
 
-theorem wf_arg' {εs : SymEntities} {t₁ : Term}
+public theorem wf_arg' {εs : SymEntities} {t₁ : Term}
   (h₁ : ∀ (t : Term), t ∈ [t₁] → Term.WellFormed εs t) :
   Term.WellFormed εs t₁
 := by
   simp only [List.mem_singleton, forall_eq] at h₁
   exact h₁
 
-theorem wf_args' {εs : SymEntities} {t₁ t₂ : Term}
+public theorem wf_args' {εs : SymEntities} {t₁ t₂ : Term}
   (h : ∀ (t : Term), t ∈ [t₁, t₂] → Term.WellFormed εs t) :
   Term.WellFormed εs t₁ ∧ Term.WellFormed εs t₂
 := by
@@ -572,13 +585,13 @@ theorem wf_args' {εs : SymEntities} {t₁ t₂ : Term}
   simp only [List.not_mem_nil, false_implies, forall_const, and_true] at h
   exact h
 
-theorem wf_setOf {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_setOf {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : ∀ t ∈ ts, t.WellFormed εs)
   (h₂ : ∀ t ∈ ts, t.typeOf = ty)
   (h₃ : ty.WellFormed εs) :
   (setOf ts ty).WellFormed εs ∧ (setOf ts ty).typeOf = .set ty
 := by
-  simp only [setOf, Term.typeOf, and_true]
+  simp only [setOf, typeOf_term_set, and_true]
   apply Term.WellFormed.set_wf _ _ h₃ (Set.make_wf ts)
   all_goals {
     intro t hmem
@@ -586,7 +599,7 @@ theorem wf_setOf {εs : SymEntities} {ts : List Term} {ty : TermType}
     simp only [h₁ t hmem, h₂ t hmem]
   }
 
-theorem wf_setOf_map {εs : SymEntities} {f : Term → Term} {ts : List Term} {ty : TermType}
+public theorem wf_setOf_map {εs : SymEntities} {f : Term → Term} {ts : List Term} {ty : TermType}
   (hwf : ∀ t ∈ ts, (f t).WellFormed εs ∧ (f t).typeOf = ty)
   (hwty : ty.WellFormed εs) :
   (setOf (ts.map f) ty).WellFormed εs ∧
@@ -601,7 +614,7 @@ theorem wf_setOf_map {εs : SymEntities} {f : Term → Term} {ts : List Term} {t
     simp only [hwf t ht]
   }
 
-theorem wf_some_setOf_map {εs : SymEntities} {f : Term → Term} {ts : List Term} {ty : TermType}
+public theorem wf_some_setOf_map {εs : SymEntities} {f : Term → Term} {ts : List Term} {ty : TermType}
   (hwf : ∀ t ∈ ts, (f t).WellFormed εs ∧ (f t).typeOf = ty)
   (hwty : ty.WellFormed εs) :
   (Term.some (setOf (ts.map f) ty)).WellFormed εs ∧
@@ -610,7 +623,7 @@ theorem wf_some_setOf_map {εs : SymEntities} {f : Term → Term} {ts : List Ter
   have hws := wf_setOf_map hwf hwty
   simp only [typeOf_term_some, hws.right, Term.WellFormed.some_wf hws.left, _root_.and_self]
 
-theorem wf_recordOf {εs : SymEntities} {ats : List (Attr × Term)}
+public theorem wf_recordOf {εs : SymEntities} {ats : List (Attr × Term)}
   (h₁ : ∀ a t, (a, t) ∈ ats → t.WellFormed εs) :
   (recordOf ats).WellFormed εs
 := by
@@ -620,7 +633,7 @@ theorem wf_recordOf {εs : SymEntities} {ats : List (Attr × Term)}
   replace ht := Map.make_mem_list_mem ht
   exact h₁ a t ht
 
-theorem wf_recordOf_map {εs : SymEntities} {f : Term → Term} {ats : List (Attr × Term)}
+public theorem wf_recordOf_map {εs : SymEntities} {f : Term → Term} {ats : List (Attr × Term)}
   (hwf : ∀ a t, (a, t) ∈ ats → (f t).WellFormed εs) :
   (recordOf (ats.map (Prod.map id f))).WellFormed εs
 := by
@@ -633,7 +646,7 @@ theorem wf_recordOf_map {εs : SymEntities} {f : Term → Term} {ats : List (Att
   subst h h'
   exact hwf a' t' hmem
 
-theorem wf_some_recordOf_map {εs : SymEntities} {f : Term → Term} {ats : List (Attr × Term)}
+public theorem wf_some_recordOf_map {εs : SymEntities} {f : Term → Term} {ats : List (Attr × Term)}
   (hwf : ∀ a t, (a, t) ∈ ats → (f t).WellFormed εs) :
   (Term.some (recordOf (ats.map (Prod.map id f)))).WellFormed εs ∧
   ∃ ty, (Term.some (recordOf (ats.map (Prod.map id f)))).typeOf = .option ty
@@ -641,7 +654,7 @@ theorem wf_some_recordOf_map {εs : SymEntities} {f : Term → Term} {ats : List
   simp only [typeOf_term_some, TermType.option.injEq, exists_eq', and_true]
   exact Term.WellFormed.some_wf (wf_recordOf_map hwf)
 
-theorem wf_not {εs : SymEntities} {t : Term}
+public theorem wf_not {εs : SymEntities} {t : Term}
   (h₁ : t.WellFormed εs)
   (h₂ : t.typeOf = .bool) :
   (not t).WellFormed εs ∧ (not t).typeOf = .bool
@@ -651,7 +664,7 @@ theorem wf_not {εs : SymEntities} {t : Term}
   case h_1 =>
     simp [typeOf_bool, wf_bool]
   case h_2 t' ty =>
-    simp [Term.typeOf] at h₂ ; subst h₂
+    simp only [typeOf_term_app] at h₂ ; subst h₂
     cases h₁
     case app_wf h₃ h₄ =>
       constructor
@@ -660,7 +673,7 @@ theorem wf_not {εs : SymEntities} {t : Term}
   case h_3 =>
     constructor
     case left  => exact Term.WellFormed.app_wf (wf_arg h₁) (Op.WellTyped.not_wt h₂)
-    case right => simp [Term.typeOf]
+    case right => simp
 
 theorem wf_eq_simplify {εs : SymEntities} {t₁ t₂ : Term}
   (h₁ : t₁.WellFormed εs)
@@ -675,10 +688,10 @@ theorem wf_eq_simplify {εs : SymEntities} {t₁ t₂ : Term}
     typeOf_bool, wf_bool]
   · rename_i h₃ ; exact wf_not h₂ h₃.right
   · exact wf_not h₁ h₃
-  · simp only [Term.typeOf, and_true]
+  · simp only [typeOf_term_app, and_true]
     exact Term.WellFormed.app_wf (wf_args h₁ h₂) (Op.WellTyped.eq_wt h₃)
 
-theorem wf_eq {εs : SymEntities} {t₁ t₂ : Term}
+public theorem wf_eq {εs : SymEntities} {t₁ t₂ : Term}
   (h₁ : t₁.WellFormed εs)
   (h₂ : t₂.WellFormed εs)
   (h₃ : t₁.typeOf = t₂.typeOf) :
@@ -687,13 +700,13 @@ theorem wf_eq {εs : SymEntities} {t₁ t₂ : Term}
   fun_cases Factory.eq t₁ t₂
   · replace h₁ := wf_term_some_implies h₁
     replace h₂ := wf_term_some_implies h₂
-    simp only [Term.typeOf, TermType.option.injEq] at h₃
+    simp only [typeOf_term_some, TermType.option.injEq] at h₃
     exact wf_eq_simplify h₁ h₂ h₃
   · simp [wf_bool, typeOf_bool]
   · simp [wf_bool, typeOf_bool]
   · exact wf_eq_simplify h₁ h₂ h₃
 
-theorem wf_and {εs : SymEntities} {t₁ t₂ : Term}
+public theorem wf_and {εs : SymEntities} {t₁ t₂ : Term}
   (h₁ : t₁.WellFormed εs)
   (h₂ : t₂.WellFormed εs)
   (h₃ : t₁.typeOf = .bool)
@@ -710,10 +723,10 @@ theorem wf_and {εs : SymEntities} {t₁ t₂ : Term}
       split
       case isTrue => simp [wf_bool, typeOf_bool]
       case isFalse =>
-        simp [Term.typeOf]
+        simp only [typeOf_term_app, and_true]
         exact Term.WellFormed.app_wf (wf_args h₁ h₂) (Op.WellTyped.and_wt h₃ h₄)
 
-theorem wf_or {εs : SymEntities} {t₁ t₂ : Term}
+public theorem wf_or {εs : SymEntities} {t₁ t₂ : Term}
   (h₁ : t₁.WellFormed εs)
   (h₂ : t₂.WellFormed εs)
   (h₃ : t₁.typeOf = .bool)
@@ -730,7 +743,7 @@ theorem wf_or {εs : SymEntities} {t₁ t₂ : Term}
       split
       case isTrue => simp [wf_bool, typeOf_bool]
       case isFalse =>
-        simp [Term.typeOf]
+        simp only [typeOf_term_app, and_true]
         exact Term.WellFormed.app_wf (wf_args h₁ h₂) (Op.WellTyped.or_wt h₃ h₄)
 
 theorem wf_ite_simplify {εs : SymEntities} {t₁ t₂ t₃ : Term}
@@ -752,10 +765,10 @@ theorem wf_ite_simplify {εs : SymEntities} {t₁ t₂ t₃ : Term}
     rw [h₅]
     exact wf_or h₁ h₃ h₄ h₅
   · rw [← h₅]
-    simp only [Term.typeOf, and_true]
+    simp only [and_true]
     exact Term.WellFormed.app_wf (wf_args_ternary h₁ h₂ h₃) (Op.WellTyped.ite_wt h₄ h₅)
 
-theorem wf_ite {εs : SymEntities} {t₁ t₂ t₃ : Term}
+public theorem wf_ite {εs : SymEntities} {t₁ t₂ t₃ : Term}
   (h₁ : t₁.WellFormed εs)
   (h₂ : t₂.WellFormed εs)
   (h₃ : t₃.WellFormed εs)
@@ -772,7 +785,7 @@ theorem wf_ite {εs : SymEntities} {t₁ t₂ t₃ : Term}
     exact And.intro (Term.WellFormed.some_wf h₆.left) h₆.right
   · exact wf_ite_simplify h₁ h₂ h₃ h₄ h₅
 
-theorem wf_foldr {α} {εs : SymEntities}
+public theorem wf_foldr {α} {εs : SymEntities}
   {xs : List α} {t : Term} {f : α → Term → Term}
   (h₁ : Term.WellFormed εs t)
   (h₂ : ∀ x t', x ∈ xs → t'.WellFormed εs → t'.typeOf = t.typeOf →
@@ -792,7 +805,7 @@ theorem wf_foldr {α} {εs : SymEntities}
     simp [h₃] at h₂
     exact h₂
 
-theorem wf_app {εs : SymEntities} {t : Term} {f : UnaryFunction}
+public theorem wf_app {εs : SymEntities} {t : Term} {f : UnaryFunction}
   (h₁ : t.WellFormed εs)
   (h₂ : t.typeOf = f.argType)
   (h₃ : f.WellFormed εs):
@@ -803,7 +816,7 @@ theorem wf_app {εs : SymEntities} {t : Term} {f : UnaryFunction}
   case h_1 =>
     simp [UnaryFunction.argType] at h₂
     simp [UnaryFunction.WellFormed] at h₃
-    simp [Term.typeOf, UnaryFunction.outType]
+    simp only [typeOf_term_app, UnaryFunction.outType, and_true]
     exact Term.WellFormed.app_wf (wf_arg h₁) (Op.WellTyped.uuf_wt h₂ h₃)
   case h_2 =>
     simp [UnaryFunction.argType] at h₂
@@ -830,24 +843,24 @@ theorem wf_app {εs : SymEntities} {t : Term} {f : UnaryFunction}
       apply wf_ite h₁₀.left hc.left h₈ h₁₀.right
       simp [h₉, ←hd, h₄]
 
-theorem wf_bvneg {εs : SymEntities} {t : Term} {n : Nat}
+public theorem wf_bvneg {εs : SymEntities} {t : Term} {n : Nat}
   (h₁ : t.WellFormed εs)
   (h₂ : t.typeOf = .bitvec n) :
   (bvneg t).WellFormed εs ∧ (bvneg t).typeOf = (.bitvec n)
 := by
   simp [Factory.bvneg]
   split
-  case h_1 => simp [wf_bv, typeOf_bv, typeOf_bv_width h₂]
+  case h_1 => simpa [wf_bv, typeOf_bv] using h₂
   case h_2 =>
-    simp only [Term.typeOf] at h₂
+    simp only [typeOf_term_app] at h₂
     cases h₁; rename_i h₁ h₃
     cases h₃; rename_i h₃
     simp [h₁, h₂, h₃]
   case h_3 =>
-    simp [Term.typeOf, h₂]
+    simp only [h₂, typeOf_term_app, and_true]
     exact Term.WellFormed.app_wf (wf_arg h₁) (Op.WellTyped.bvneg_wt h₂)
 
-theorem wf_bvnego {εs : SymEntities} {t : Term} {n : Nat}
+public theorem wf_bvnego {εs : SymEntities} {t : Term} {n : Nat}
   (h₁ : t.WellFormed εs)
   (h₂ : t.typeOf = .bitvec n) :
   (bvnego t).WellFormed εs ∧ (bvnego t).typeOf = .bool
@@ -856,16 +869,16 @@ theorem wf_bvnego {εs : SymEntities} {t : Term} {n : Nat}
   split
   case h_1 => simp [wf_bool, typeOf_bool]
   case h_2 =>
-    simp [Term.typeOf]
+    simp only [typeOf_term_app, and_true]
     exact Term.WellFormed.app_wf (wf_arg h₁) (Op.WellTyped.bvnego_wt h₂)
 
 local macro "simp_wf_bv_arith" h₁:ident h₂:ident h₃:ident h₄:ident arith_fun:ident wf_thm:ident : tactic => do
  `(tactic| (
     simp only [$arith_fun:ident, Factory.bvapp]
     split
-    case h_1 => simp only [ofNat_toNat, add_eq, wf_bv, typeOf_bv, typeOf_bv_width $h₃:ident, _root_.and_self]
+    case h_1 => simpa [ofNat_toNat, add_eq, wf_bv, typeOf_bv] using $h₃:ident
     case h_2 =>
-      simp only [$h₃:ident, Term.typeOf, and_true]
+      simp only [$h₃:ident, typeOf_term_app, and_true]
       exact Term.WellFormed.app_wf (wf_args $h₁:ident $h₂:ident) ($wf_thm:ident $h₃:ident $h₄:ident)
   ))
 
@@ -875,7 +888,7 @@ local macro "simp_wf_bv_arith_overflow" h₁:ident h₂:ident h₃:ident h₄:id
     split
     case h_1 => simp only [wf_bool, typeOf_bool, _root_.and_self]
     case h_2 =>
-      simp only [Term.typeOf, and_true]
+      simp only [typeOf_term_app, and_true]
       exact Term.WellFormed.app_wf (wf_args $h₁:ident $h₂:ident) ($wf_thm:ident $h₃:ident $h₄:ident)
   ))
 
@@ -885,11 +898,11 @@ local macro "simp_wf_bv_cmp" h₁:ident h₂:ident h₃:ident h₄:ident cmp_fun
     split
     case h_1 => simp only [wf_bool, typeOf_bool, _root_.and_self]
     case h_2 =>
-      simp only [Term.typeOf, and_true]
+      simp only [typeOf_term_app, and_true]
       exact Term.WellFormed.app_wf (wf_args $h₁:ident $h₂:ident) ($wf_thm:ident $h₃:ident $h₄:ident)
   ))
 
-theorem wf_bvadd {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
+public theorem wf_bvadd {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (h₁ : t₁.WellFormed εs)
   (h₂ : t₂.WellFormed εs)
   (h₃ : t₁.typeOf = .bitvec n)
@@ -897,7 +910,7 @@ theorem wf_bvadd {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (bvadd t₁ t₂).WellFormed εs ∧ (bvadd t₁ t₂).typeOf = .bitvec n
 := by simp_wf_bv_arith h₁ h₂ h₃ h₄ Factory.bvadd Op.WellTyped.bvadd_wt
 
-theorem wf_bvsub {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
+public theorem wf_bvsub {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (h₁ : t₁.WellFormed εs)
   (h₂ : t₂.WellFormed εs)
   (h₃ : t₁.typeOf = .bitvec n)
@@ -905,7 +918,7 @@ theorem wf_bvsub {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (bvsub t₁ t₂).WellFormed εs ∧ (bvsub t₁ t₂).typeOf = .bitvec n
 := by simp_wf_bv_arith h₁ h₂ h₃ h₄ Factory.bvsub Op.WellTyped.bvsub_wt
 
-theorem wf_bvmul {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
+public theorem wf_bvmul {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (h₁ : t₁.WellFormed εs)
   (h₂ : t₂.WellFormed εs)
   (h₃ : t₁.typeOf = .bitvec n)
@@ -913,7 +926,7 @@ theorem wf_bvmul {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (bvmul t₁ t₂).WellFormed εs ∧ (bvmul t₁ t₂).typeOf = .bitvec n
 := by simp_wf_bv_arith h₁ h₂ h₃ h₄ Factory.bvmul Op.WellTyped.bvmul_wt
 
-theorem wf_bvsdiv {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
+public theorem wf_bvsdiv {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (h₁ : t₁.WellFormed εs)
   (h₂ : t₂.WellFormed εs)
   (h₃ : t₁.typeOf = .bitvec n)
@@ -921,7 +934,7 @@ theorem wf_bvsdiv {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (bvsdiv t₁ t₂).WellFormed εs ∧ (bvsdiv t₁ t₂).typeOf = .bitvec n
 := by simp_wf_bv_arith h₁ h₂ h₃ h₄ Factory.bvsdiv Op.WellTyped.bvsdiv_wt
 
-theorem wf_bvudiv {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
+public theorem wf_bvudiv {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (h₁ : t₁.WellFormed εs)
   (h₂ : t₂.WellFormed εs)
   (h₃ : t₁.typeOf = .bitvec n)
@@ -929,7 +942,7 @@ theorem wf_bvudiv {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (bvudiv t₁ t₂).WellFormed εs ∧ (bvudiv t₁ t₂).typeOf = .bitvec n
 := by simp_wf_bv_arith h₁ h₂ h₃ h₄ Factory.bvudiv Op.WellTyped.bvudiv_wt
 
-theorem wf_bvsrem {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
+public theorem wf_bvsrem {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (h₁ : t₁.WellFormed εs)
   (h₂ : t₂.WellFormed εs)
   (h₃ : t₁.typeOf = .bitvec n)
@@ -937,7 +950,7 @@ theorem wf_bvsrem {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (bvsrem t₁ t₂).WellFormed εs ∧ (bvsrem t₁ t₂).typeOf = .bitvec n
 := by simp_wf_bv_arith h₁ h₂ h₃ h₄ Factory.bvsrem Op.WellTyped.bvsrem_wt
 
-theorem wf_bvsmod {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
+public theorem wf_bvsmod {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (h₁ : t₁.WellFormed εs)
   (h₂ : t₂.WellFormed εs)
   (h₃ : t₁.typeOf = .bitvec n)
@@ -945,7 +958,7 @@ theorem wf_bvsmod {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (bvsmod t₁ t₂).WellFormed εs ∧ (bvsmod t₁ t₂).typeOf = .bitvec n
 := by simp_wf_bv_arith h₁ h₂ h₃ h₄ Factory.bvsmod Op.WellTyped.bvsmod_wt
 
-theorem wf_bvurem {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
+public theorem wf_bvurem {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (h₁ : t₁.WellFormed εs)
   (h₂ : t₂.WellFormed εs)
   (h₃ : t₁.typeOf = .bitvec n)
@@ -953,7 +966,7 @@ theorem wf_bvurem {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (bvurem t₁ t₂).WellFormed εs ∧ (bvurem t₁ t₂).typeOf = .bitvec n
 := by simp_wf_bv_arith h₁ h₂ h₃ h₄ Factory.bvurem Op.WellTyped.bvurem_wt
 
-theorem wf_bvshl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
+public theorem wf_bvshl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (h₁ : t₁.WellFormed εs)
   (h₂ : t₂.WellFormed εs)
   (h₃ : t₁.typeOf = .bitvec n)
@@ -961,7 +974,7 @@ theorem wf_bvshl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (bvshl t₁ t₂).WellFormed εs ∧ (bvshl t₁ t₂).typeOf = .bitvec n
 := by simp_wf_bv_arith h₁ h₂ h₃ h₄ Factory.bvshl Op.WellTyped.bvshl_wt
 
-theorem wf_bvlshr {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
+public theorem wf_bvlshr {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (h₁ : t₁.WellFormed εs)
   (h₂ : t₂.WellFormed εs)
   (h₃ : t₁.typeOf = .bitvec n)
@@ -969,7 +982,7 @@ theorem wf_bvlshr {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (bvlshr t₁ t₂).WellFormed εs ∧ (bvlshr t₁ t₂).typeOf = .bitvec n
 := by simp_wf_bv_arith h₁ h₂ h₃ h₄ Factory.bvlshr Op.WellTyped.bvlshr_wt
 
-theorem wf_bvsaddo {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
+public theorem wf_bvsaddo {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (h₁ : t₁.WellFormed εs)
   (h₂ : t₂.WellFormed εs)
   (h₃ : t₁.typeOf = .bitvec n)
@@ -977,7 +990,7 @@ theorem wf_bvsaddo {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (bvsaddo t₁ t₂).WellFormed εs ∧ (bvsaddo t₁ t₂).typeOf = .bool
 := by simp_wf_bv_arith_overflow h₁ h₂ h₃ h₄ Factory.bvsaddo Op.WellTyped.bvsaddo_wt
 
-theorem wf_bvssubo {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
+public theorem wf_bvssubo {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (h₁ : t₁.WellFormed εs)
   (h₂ : t₂.WellFormed εs)
   (h₃ : t₁.typeOf = .bitvec n)
@@ -985,7 +998,7 @@ theorem wf_bvssubo {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (bvssubo t₁ t₂).WellFormed εs ∧ (bvssubo t₁ t₂).typeOf = .bool
 := by simp_wf_bv_arith_overflow h₁ h₂ h₃ h₄ Factory.bvssubo Op.WellTyped.bvssubo_wt
 
-theorem wf_bvsmulo {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
+public theorem wf_bvsmulo {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (h₁ : t₁.WellFormed εs)
   (h₂ : t₂.WellFormed εs)
   (h₃ : t₁.typeOf = .bitvec n)
@@ -993,7 +1006,7 @@ theorem wf_bvsmulo {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (bvsmulo t₁ t₂).WellFormed εs ∧ (bvsmulo t₁ t₂).typeOf = .bool
 := by simp_wf_bv_arith_overflow h₁ h₂ h₃ h₄ Factory.bvsmulo Op.WellTyped.bvsmulo_wt
 
-theorem wf_bvslt {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
+public theorem wf_bvslt {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (h₁ : t₁.WellFormed εs)
   (h₂ : t₂.WellFormed εs)
   (h₃ : t₁.typeOf = .bitvec n)
@@ -1001,7 +1014,7 @@ theorem wf_bvslt {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (bvslt t₁ t₂).WellFormed εs ∧ (bvslt t₁ t₂).typeOf = .bool
 := by simp_wf_bv_cmp h₁ h₂ h₃ h₄ Factory.bvslt Op.WellTyped.bvslt_wt
 
-theorem wf_bvsle {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
+public theorem wf_bvsle {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (h₁ : t₁.WellFormed εs)
   (h₂ : t₂.WellFormed εs)
   (h₃ : t₁.typeOf = .bitvec n)
@@ -1009,7 +1022,7 @@ theorem wf_bvsle {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (bvsle t₁ t₂).WellFormed εs ∧ (bvsle t₁ t₂).typeOf = .bool
 := by simp_wf_bv_cmp h₁ h₂ h₃ h₄ Factory.bvsle Op.WellTyped.bvsle_wt
 
-theorem wf_bvult {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
+public theorem wf_bvult {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (h₁ : t₁.WellFormed εs)
   (h₂ : t₂.WellFormed εs)
   (h₃ : t₁.typeOf = .bitvec n)
@@ -1017,7 +1030,7 @@ theorem wf_bvult {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (bvult t₁ t₂).WellFormed εs ∧ (bvult t₁ t₂).typeOf = .bool
 := by simp_wf_bv_cmp h₁ h₂ h₃ h₄ Factory.bvult Op.WellTyped.bvult_wt
 
-theorem wf_bvule {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
+public theorem wf_bvule {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (h₁ : t₁.WellFormed εs)
   (h₂ : t₂.WellFormed εs)
   (h₃ : t₁.typeOf = .bitvec n)
@@ -1025,23 +1038,23 @@ theorem wf_bvule {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (bvule t₁ t₂).WellFormed εs ∧ (bvule t₁ t₂).typeOf = .bool
 := by simp_wf_bv_cmp h₁ h₂ h₃ h₄ Factory.bvule Op.WellTyped.bvule_wt
 
-theorem wf_zero_extend {εs : SymEntities} {t : Term} {n m : Nat}
+public theorem wf_zero_extend {εs : SymEntities} {t : Term} {n m : Nat}
   (h₁ : t.WellFormed εs)
   (h₂ : t.typeOf = .bitvec m) :
   (zero_extend n t).WellFormed εs ∧ (zero_extend n t).typeOf = (.bitvec (n + m))
 := by
   simp [Factory.zero_extend]
   split
-  case h_1 => simp [wf_bv, typeOf_bv, typeOf_bv_width h₂]
+  case h_1 => simpa [wf_bv, typeOf_bv] using h₂
   case h_2 =>
     split
     case h_1 h₃ =>
       simp [h₂] at h₃ ; subst h₃
-      simp [Term.typeOf]
+      simp only [typeOf_term_app, and_true]
       exact Term.WellFormed.app_wf (wf_arg h₁) (Op.WellTyped.zero_extend_wt h₂)
     case h_2 h₃ => simp [h₂] at h₃
 
-theorem wf_set_member {εs : SymEntities} {t₁ t₂ : Term}
+public theorem wf_set_member {εs : SymEntities} {t₁ t₂ : Term}
   (h₁ : t₁.WellFormed εs)
   (h₂ : t₂.WellFormed εs)
   (h₃ : t₂.typeOf = .set t₁.typeOf) :
@@ -1054,15 +1067,15 @@ theorem wf_set_member {εs : SymEntities} {t₁ t₂ : Term}
     split
     case isTrue => simp [wf_bool, typeOf_bool]
     case isFalse =>
-      simp [Term.typeOf] at * ; subst h₃
+      simp only [imp_false, typeOf_term_set, TermType.set.injEq, _root_.not_and, Bool.not_eq_true,
+        typeOf_term_app, and_true] at * ; subst h₃
       apply Term.WellFormed.app_wf (wf_args h₁ h₂)
-      apply Op.WellTyped.set.member_wt
-      simp [Term.typeOf]
+      exact Op.WellTyped.set.member_wt typeOf_term_set
   case h_3 =>
-    simp [Term.typeOf]
+    simp only [typeOf_term_app, and_true]
     exact Term.WellFormed.app_wf (wf_args h₁ h₂) (Op.WellTyped.set.member_wt h₃)
 
-theorem wf_set_subset {εs : SymEntities} {t₁ t₂ : Term} {ty : TermType}
+public theorem wf_set_subset {εs : SymEntities} {t₁ t₂ : Term} {ty : TermType}
   (h₁ : t₁.WellFormed εs)
   (h₂ : t₂.WellFormed εs)
   (h₃ : t₁.typeOf = .set ty)
@@ -1079,15 +1092,16 @@ theorem wf_set_subset {εs : SymEntities} {t₁ t₂ : Term} {ty : TermType}
       split
       case isTrue => simp [wf_bool, typeOf_bool]
       case isFalse ty _ _ _ =>
-        simp [Term.typeOf] at * ; subst h₃ h₄
+        simp only [imp_false, typeOf_term_set, TermType.set.injEq, Term.set.injEq, _root_.not_and,
+          Bool.not_eq_true, typeOf_term_app, and_true] at * ; subst h₃ h₄
         apply Term.WellFormed.app_wf (wf_args h₁ h₂)
-        apply @Op.WellTyped.set.subset_wt _ _ _ ty <;>
-        simp only [Term.typeOf]
+        apply @Op.WellTyped.set.subset_wt _ _ _ ty
+        all_goals simp only [typeOf_term_set]
     case h_3 =>
-      simp [Term.typeOf]
+      simp only [typeOf_term_app, and_true]
       exact Term.WellFormed.app_wf (wf_args h₁ h₂) (Op.WellTyped.set.subset_wt h₃ h₄)
 
-theorem wf_set_inter {εs : SymEntities} {t₁ t₂ : Term} {ty : TermType}
+public theorem wf_set_inter {εs : SymEntities} {t₁ t₂ : Term} {ty : TermType}
   (h₁ : t₁.WellFormed εs)
   (h₂ : t₂.WellFormed εs)
   (h₃ : t₁.typeOf = .set ty)
@@ -1099,12 +1113,10 @@ theorem wf_set_inter {εs : SymEntities} {t₁ t₂ : Term} {ty : TermType}
   case isTrue h₅ => subst h₅; simp [h₁, h₄]
   case isFalse =>
     split
-    case h_1 | h_2 =>
-      simp [Term.typeOf] at *
-      simp [h₁, h₂]
-      assumption
+    case h_1 | h_2 => simp_all
     case h_3 s₁ _ s₂ _ _ _ _ =>
-      split <;> simp [Term.typeOf] at *
+      split <;> simp only [imp_false, typeOf_term_set, TermType.set.injEq, Term.set.injEq,
+        _root_.not_and, Bool.and_eq_true] at *
       case isTrue =>
         subst h₃ h₄
         simp only [and_true]
@@ -1125,22 +1137,21 @@ theorem wf_set_inter {εs : SymEntities} {t₁ t₂ : Term} {ty : TermType}
           apply Set.inter_wf ; assumption
       case isFalse =>
         subst h₃ h₄
-        simp only [and_true]
+        simp only [typeOf_term_app, and_true]
         apply Term.WellFormed.app_wf (wf_args h₁ h₂)
-        apply Op.WellTyped.set.inter_wt <;>
-        simp [Term.typeOf]
+        apply Op.WellTyped.set.inter_wt
+        all_goals simp only [typeOf_term_set]
     case h_4 =>
-      simp [Term.typeOf, h₃]
+      simp only [h₃, typeOf_term_app, and_true]
       exact Term.WellFormed.app_wf (wf_args h₁ h₂) (Op.WellTyped.set.inter_wt h₃ h₄)
 
-theorem wf_term_set_empty {εs : SymEntities} {ty : TermType}
+public theorem wf_term_set_empty {εs : SymEntities} {ty : TermType}
   (h₁ : ty.WellFormed εs) :
-  Term.WellFormed εs (Term.set (Set.mk []) ty) ∧
-  (Term.set (Set.mk []) ty).typeOf = .set ty
+  Term.WellFormed εs (Term.set Set.empty ty) ∧
+  (Term.set Set.empty ty).typeOf = .set ty
 := by
-  simp only [Term.typeOf, and_true]
+  simp only [typeOf_term_set, and_true]
   have h₂ := @Set.empty_wf Term _ _
-  unfold Set.empty at h₂
   apply Term.WellFormed.set_wf _ _ h₁ h₂
   all_goals {
     intro t h
@@ -1149,7 +1160,7 @@ theorem wf_term_set_empty {εs : SymEntities} {ty : TermType}
     contradiction
   }
 
-theorem wf_set_isEmpty {εs : SymEntities} {t₁ : Term} {ty : TermType}
+public theorem wf_set_isEmpty {εs : SymEntities} {t₁ : Term} {ty : TermType}
   (h₁ : t₁.WellFormed εs)
   (h₂ : t₁.typeOf = .set ty):
   (set.isEmpty t₁).WellFormed εs ∧ (set.isEmpty t₁).typeOf = .bool
@@ -1166,10 +1177,10 @@ theorem wf_set_isEmpty {εs : SymEntities} {t₁ : Term} {ty : TermType}
         rw [h₂] at h₁
         cases h₁ ; rename_i h₁
         exact (wf_term_set_empty h₁).left
-      · simp only [h₂, Term.typeOf]
+      · simp only [h₂, typeOf_term_set]
     case h_2   => exact And.intro wf_bool typeOf_bool
 
-theorem wf_set_intersects {εs : SymEntities} {t₁ t₂ : Term} {ty : TermType}
+public theorem wf_set_intersects {εs : SymEntities} {t₁ t₂ : Term} {ty : TermType}
   (h₁ : t₁.WellFormed εs)
   (h₂ : t₂.WellFormed εs)
   (h₃ : t₁.typeOf = .set ty)
@@ -1181,7 +1192,7 @@ theorem wf_set_intersects {εs : SymEntities} {t₁ t₂ : Term} {ty : TermType}
   replace hwf := wf_set_isEmpty hwf.left hwf.right
   exact wf_not hwf.left hwf.right
 
-theorem wf_record_get {εs : SymEntities} {t : Term} {rty : Map Attr TermType} {ty : TermType}
+public theorem wf_record_get {εs : SymEntities} {t : Term} {rty : Map Attr TermType} {ty : TermType}
   (h₁ : t.WellFormed εs)
   (h₂ : t.typeOf = .record rty)
   (h₃ : rty.find? a = .some ty) :
@@ -1206,7 +1217,7 @@ theorem wf_record_get {εs : SymEntities} {t : Term} {rty : Map Attr TermType} {
       case h_1 h₅ _ _ h₆ =>
         simp [h₂] at h₅ ; subst h₅
         simp [h₃] at h₆ ; subst h₆
-        simp [Term.typeOf]
+        simp only [typeOf_term_app, and_true]
         apply Term.WellFormed.app_wf (wf_arg h₁)
         exact Op.WellTyped.record.get_wt h₂ h₃
       case h_2 h₄ _  h₅ =>
@@ -1214,7 +1225,7 @@ theorem wf_record_get {εs : SymEntities} {t : Term} {rty : Map Attr TermType} {
         simp [h₃] at h₅
     case h_2 h₄ => simp [h₂] at h₄
 
-theorem wf_option_get {εs : SymEntities} {t : Term} {ty : TermType}
+public theorem wf_option_get {εs : SymEntities} {t : Term} {ty : TermType}
   (h₁ : t.WellFormed εs)
   (h₂ : t.typeOf = .option ty) :
   (option.get t).WellFormed εs ∧ (option.get t).typeOf = ty
@@ -1222,17 +1233,17 @@ theorem wf_option_get {εs : SymEntities} {t : Term} {ty : TermType}
   simp [Factory.option.get]
   split
   case h_1 =>
-    simp [Term.typeOf] at h₂
+    simp only [typeOf_term_some, TermType.option.injEq] at h₂
     simp [wf_term_some_implies h₁, h₂]
   case h_2 =>
     split
     case h_1 h₃ =>
       simp [h₂] at h₃ ; subst h₃
-      simp [Term.typeOf]
+      simp only [typeOf_term_app, and_true]
       exact Term.WellFormed.app_wf (wf_arg h₁) (Op.WellTyped.option.get_wt h₂)
     case h_2 h₃ => simp [h₂] at h₃
 
-theorem wf_option_get_mem_of_type {εs : SymEntities} {ts : List Term} {ty : TermType}
+public theorem wf_option_get_mem_of_type {εs : SymEntities} {ts : List Term} {ty : TermType}
   (hwf : ∀ t ∈ ts, t.WellFormed εs)
   (hty : ∀ t ∈ ts, t.typeOf = .option ty) :
   ∀ t ∈ ts, (option.get t).WellFormed εs ∧ (option.get t).typeOf = ty
@@ -1240,7 +1251,7 @@ theorem wf_option_get_mem_of_type {εs : SymEntities} {ts : List Term} {ty : Ter
   intro t ht
   exact wf_option_get (hwf t ht) (hty t ht)
 
-theorem wf_option_get_mem_of_type_snd {εs : SymEntities} {ats : List (Attr × Term)}
+public theorem wf_option_get_mem_of_type_snd {εs : SymEntities} {ats : List (Attr × Term)}
   (hwf : ∀ (a : Attr) (t : Term), (a, t) ∈ ats → Term.WellFormed εs t ∧ ∃ ty, t.typeOf = .option ty) :
   ∀ a t, (a, t) ∈ ats → (option.get t).WellFormed εs
 := by
@@ -1248,7 +1259,7 @@ theorem wf_option_get_mem_of_type_snd {εs : SymEntities} {ats : List (Attr × T
   replace ⟨hwf, ty, hty⟩ := hwf a t ht
   simp only [wf_option_get hwf hty]
 
-theorem wf_option_get' {εs : SymEntities} {I : Interpretation} {t : Term} {ty : TermType}
+public theorem wf_option_get' {εs : SymEntities} {I : Interpretation} {t : Term} {ty : TermType}
   (h₀ : I.WellFormed εs)
   (h₁ : t.WellFormed εs)
   (h₂ : t.typeOf = .option ty) :
@@ -1257,14 +1268,14 @@ theorem wf_option_get' {εs : SymEntities} {I : Interpretation} {t : Term} {ty :
   simp only [option.get']
   split
   case h_1 ty' =>
-    simp only [Term.typeOf, TermType.option.injEq] at h₂
+    simp only [typeOf_term_none, TermType.option.injEq] at h₂
     subst h₂
     have h₃ := wf_interpretation_implies_wfp_option_get h₀ (wf_term_none_implies h₁) rfl
     exact (And.intro h₃.left.left h₃.right)
   case h_2 =>
     exact wf_option_get h₁ h₂
 
-theorem wf_string_like {εs : SymEntities} {t : Term} {p : Pattern}
+public theorem wf_string_like {εs : SymEntities} {t : Term} {p : Pattern}
   (h₁ : t.WellFormed εs)
   (h₂ : t.typeOf = .string) :
   (string.like t p).WellFormed εs ∧ (string.like t p).typeOf = .bool
@@ -1273,14 +1284,14 @@ theorem wf_string_like {εs : SymEntities} {t : Term} {p : Pattern}
   split
   case h_1 => simp [wf_bool, typeOf_bool]
   case h_2 =>
-    simp [Term.typeOf]
+    simp only [typeOf_term_app, and_true]
     exact Term.WellFormed.app_wf (wf_arg h₁) (Op.WellTyped.string.like_wt h₂)
 
 -- TODO: Turn this proof into a tactic.
 -- Currently, it's just copy / paste / replace for these lemmas.
 -- The proofs differ only in the Factory op name and the ExtOp.WellTyped
 -- constructor.
-theorem wf_ext_decimal_val {εs : SymEntities} {t : Term}
+public theorem wf_ext_decimal_val {εs : SymEntities} {t : Term}
   (h₁ : t.WellFormed εs)
   (h₂ : t.typeOf = .ext .decimal) :
   (ext.decimal.val t).WellFormed εs ∧ (ext.decimal.val t).typeOf = (.bitvec 64)
@@ -1289,10 +1300,10 @@ theorem wf_ext_decimal_val {εs : SymEntities} {t : Term}
   split
   case h_1 => simp [wf_bv, typeOf_bv]
   case h_2 =>
-    simp [Term.typeOf]
+    simp only [typeOf_term_app, and_true]
     exact Term.WellFormed.app_wf (wf_arg h₁) (Op.WellTyped.ext_wt (ExtOp.WellTyped.decimal.val_wt h₂))
 
-theorem wf_ext_ipaddr_isV4 {εs : SymEntities} {t : Term}
+public theorem wf_ext_ipaddr_isV4 {εs : SymEntities} {t : Term}
   (h₁ : t.WellFormed εs)
   (h₂ : t.typeOf = .ext .ipAddr) :
   (ext.ipaddr.isV4 t).WellFormed εs ∧ (ext.ipaddr.isV4 t).typeOf = .bool
@@ -1301,10 +1312,10 @@ theorem wf_ext_ipaddr_isV4 {εs : SymEntities} {t : Term}
   split
   case h_1 => simp [wf_bool, typeOf_bool]
   case h_2 =>
-    simp [Term.typeOf]
+    simp only [typeOf_term_app, and_true]
     exact Term.WellFormed.app_wf (wf_arg h₁) (Op.WellTyped.ext_wt (ExtOp.WellTyped.ipaddr.isV4_wt h₂))
 
-theorem wf_ext_ipaddr_addrV4 {εs : SymEntities} {t : Term}
+public theorem wf_ext_ipaddr_addrV4 {εs : SymEntities} {t : Term}
   (h₁ : t.WellFormed εs)
   (h₂ : t.typeOf = .ext .ipAddr) :
   (ext.ipaddr.addrV4 t).WellFormed εs ∧ (ext.ipaddr.addrV4 t).typeOf = (.bitvec 32)
@@ -1314,7 +1325,7 @@ theorem wf_ext_ipaddr_addrV4 {εs : SymEntities} {t : Term}
   case h_1 =>
     simp only [Ext.IPAddr.V4_WIDTH, Ext.IPAddr.ADDR_SIZE, wf_bv, typeOf_bv, Nat.reducePow, _root_.and_self]
   case h_2 =>
-    simp [Term.typeOf]
+    simp only [typeOf_term_app, and_true]
     exact Term.WellFormed.app_wf (wf_arg h₁) (Op.WellTyped.ext_wt (ExtOp.WellTyped.ipaddr.addrV4_wt h₂))
 
 theorem wf_ext_ipaddr_addrV4' {εs : SymEntities} {I : Interpretation} {t : Term}
@@ -1331,7 +1342,7 @@ theorem wf_ext_ipaddr_addrV4' {εs : SymEntities} {I : Interpretation} {t : Term
   case h_2 =>
     exact wf_ext_ipaddr_addrV4 h₁ h₂
 
-theorem wf_ext_ipaddr_prefixV4 {εs : SymEntities} {t : Term}
+public theorem wf_ext_ipaddr_prefixV4 {εs : SymEntities} {t : Term}
   (h₁ : t.WellFormed εs)
   (h₂ : t.typeOf = .ext .ipAddr) :
   (ext.ipaddr.prefixV4 t).WellFormed εs ∧ (ext.ipaddr.prefixV4 t).typeOf = (.option (.bitvec 5))
@@ -1339,11 +1350,11 @@ theorem wf_ext_ipaddr_prefixV4 {εs : SymEntities} {t : Term}
   simp only [ext.ipaddr.prefixV4]
   split
   case h_1 =>
-    split <;> simp only [noneOf, someOf, Term.typeOf, typeOf_bv, and_true]
+    split <;> simp only [noneOf, someOf, typeOf_bv, typeOf_term_none, typeOf_term_some, and_true]
     · exact Term.WellFormed.none_wf TermType.WellFormed.bitvec_wf
     · exact Term.WellFormed.some_wf wf_bv
   case h_2 =>
-    simp [Term.typeOf]
+    simp only [typeOf_term_app, and_true]
     exact Term.WellFormed.app_wf (wf_arg h₁) (Op.WellTyped.ext_wt (ExtOp.WellTyped.ipaddr.prefixV4_wt h₂))
 
 theorem wf_ext_ipaddr_prefixV4' {εs : SymEntities} {I : Interpretation} {t : Term}
@@ -1360,7 +1371,7 @@ theorem wf_ext_ipaddr_prefixV4' {εs : SymEntities} {I : Interpretation} {t : Te
   case h_2 =>
     exact wf_ext_ipaddr_prefixV4 h₁ h₂
 
-theorem wf_ext_ipaddr_addrV6 {εs : SymEntities} {t : Term}
+public theorem wf_ext_ipaddr_addrV6 {εs : SymEntities} {t : Term}
   (h₁ : t.WellFormed εs)
   (h₂ : t.typeOf = .ext .ipAddr) :
   (ext.ipaddr.addrV6 t).WellFormed εs ∧ (ext.ipaddr.addrV6 t).typeOf = (.bitvec 128)
@@ -1370,7 +1381,7 @@ theorem wf_ext_ipaddr_addrV6 {εs : SymEntities} {t : Term}
   case h_1 =>
     simp only [Ext.IPAddr.V6_WIDTH, Ext.IPAddr.ADDR_SIZE, wf_bv, typeOf_bv, Nat.reducePow, _root_.and_self]
   case h_2 =>
-    simp [Term.typeOf]
+    simp only [typeOf_term_app, and_true]
     exact Term.WellFormed.app_wf (wf_arg h₁) (Op.WellTyped.ext_wt (ExtOp.WellTyped.ipaddr.addrV6_wt h₂))
 
 theorem wf_ext_ipaddr_addrV6' {εs : SymEntities} {I : Interpretation} {t : Term}
@@ -1387,7 +1398,7 @@ theorem wf_ext_ipaddr_addrV6' {εs : SymEntities} {I : Interpretation} {t : Term
   case h_2 =>
     exact wf_ext_ipaddr_addrV6 h₁ h₂
 
-theorem wf_ext_ipaddr_prefixV6 {εs : SymEntities} {t : Term}
+public theorem wf_ext_ipaddr_prefixV6 {εs : SymEntities} {t : Term}
   (h₁ : t.WellFormed εs)
   (h₂ : t.typeOf = .ext .ipAddr) :
   (ext.ipaddr.prefixV6 t).WellFormed εs ∧ (ext.ipaddr.prefixV6 t).typeOf = (.option (.bitvec 7))
@@ -1395,11 +1406,11 @@ theorem wf_ext_ipaddr_prefixV6 {εs : SymEntities} {t : Term}
   simp [Factory.ext.ipaddr.prefixV6]
   split
   case h_1 =>
-    split <;> simp only [noneOf, someOf, Term.typeOf, typeOf_bv, and_true]
+    split <;> simp only [noneOf, someOf, typeOf_bv, typeOf_term_none, typeOf_term_some, and_true]
     · exact Term.WellFormed.none_wf TermType.WellFormed.bitvec_wf
     · exact Term.WellFormed.some_wf wf_bv
   case h_2 =>
-    simp [Term.typeOf]
+    simp only [typeOf_term_app, and_true]
     exact Term.WellFormed.app_wf (wf_arg h₁) (Op.WellTyped.ext_wt (ExtOp.WellTyped.ipaddr.prefixV6_wt h₂))
 
 theorem wf_ext_ipaddr_prefixV6' {εs : SymEntities} {I : Interpretation} {t : Term}
@@ -1416,7 +1427,7 @@ theorem wf_ext_ipaddr_prefixV6' {εs : SymEntities} {I : Interpretation} {t : Te
   case h_2 =>
     exact wf_ext_ipaddr_prefixV6 h₁ h₂
 
-theorem wf_ext_datetime_val {εs : SymEntities} {t : Term}
+public theorem wf_ext_datetime_val {εs : SymEntities} {t : Term}
   (h₁ : t.WellFormed εs)
   (h₂ : t.typeOf = .ext .datetime) :
   (ext.datetime.val t).WellFormed εs ∧ (ext.datetime.val t).typeOf = (.bitvec 64)
@@ -1425,10 +1436,10 @@ theorem wf_ext_datetime_val {εs : SymEntities} {t : Term}
   split
   case h_1 => simp [wf_bv, typeOf_bv]
   case h_2 =>
-    simp [Term.typeOf]
+    simp only [typeOf_term_app, and_true]
     exact Term.WellFormed.app_wf (wf_arg h₁) (Op.WellTyped.ext_wt (ExtOp.WellTyped.datetime.val_wt h₂))
 
-theorem wf_ext_datetime_ofBitVec {εs : SymEntities} {t : Term}
+public theorem wf_ext_datetime_ofBitVec {εs : SymEntities} {t : Term}
   (h₁ : t.WellFormed εs)
   (h₂ : t.typeOf = .prim (.bitvec 64)) :
   (ext.datetime.ofBitVec t).WellFormed εs ∧ (ext.datetime.ofBitVec t).typeOf = .ext .datetime
@@ -1438,10 +1449,10 @@ theorem wf_ext_datetime_ofBitVec {εs : SymEntities} {t : Term}
   case h_1 =>
     simp [wf_datetime, typeOf_term_prim_ext_datetime]
   case h_2 =>
-    simp [Term.typeOf]
+    simp only [typeOf_term_app, and_true]
     exact Term.WellFormed.app_wf (wf_arg h₁) (Op.WellTyped.ext_wt (ExtOp.WellTyped.datetime.ofBitVec_wt h₂))
 
-theorem wf_ext_duration_val {εs : SymEntities} {t : Term}
+public theorem wf_ext_duration_val {εs : SymEntities} {t : Term}
   (h₁ : t.WellFormed εs)
   (h₂ : t.typeOf = .ext .duration) :
   (ext.duration.val t).WellFormed εs ∧ (ext.duration.val t).typeOf = (.bitvec 64)
@@ -1450,10 +1461,10 @@ theorem wf_ext_duration_val {εs : SymEntities} {t : Term}
   split
   case h_1 => simp [wf_bv, typeOf_bv]
   case h_2 =>
-    simp [Term.typeOf]
+    simp only [typeOf_term_app, and_true]
     exact Term.WellFormed.app_wf (wf_arg h₁) (Op.WellTyped.ext_wt (ExtOp.WellTyped.duration.val_wt h₂))
 
-theorem wf_ext_duration_ofBitVec {εs : SymEntities} {t : Term}
+public theorem wf_ext_duration_ofBitVec {εs : SymEntities} {t : Term}
   (h₁ : t.WellFormed εs)
   (h₂ : t.typeOf = .prim (.bitvec 64)) :
   (ext.duration.ofBitVec t).WellFormed εs ∧ (ext.duration.ofBitVec t).typeOf = .ext .duration
@@ -1463,10 +1474,10 @@ theorem wf_ext_duration_ofBitVec {εs : SymEntities} {t : Term}
   case h_1 =>
     simp [wf_duration, typeOf_term_prim_ext_duration]
   case h_2 =>
-    simp [Term.typeOf]
+    simp only [typeOf_term_app, and_true]
     exact Term.WellFormed.app_wf (wf_arg h₁) (Op.WellTyped.ext_wt (ExtOp.WellTyped.duration.ofBitVec_wt h₂))
 
-theorem wf_isNone {εs : SymEntities} {t : Term}
+public theorem wf_isNone {εs : SymEntities} {t : Term}
   (h₁ : t.WellFormed εs) :
   (isNone t).WellFormed εs ∧ (isNone t).typeOf = .bool
 := by
@@ -1485,11 +1496,11 @@ theorem wf_isNone {εs : SymEntities} {t : Term}
       have hty := typeOf_wf_term_is_wf h₁
       simp only [heq] at hty
       cases hty ; rename_i hty
-      exact wf_eq h₁ (Term.WellFormed.none_wf hty) (by simp only [Term.typeOf, heq])
+      exact wf_eq h₁ (Term.WellFormed.none_wf hty) (by simp [heq])
     case h_2 =>
       simp [wf_bool, typeOf_bool]
 
-theorem wf_isSome {εs : SymEntities} {t : Term}
+public theorem wf_isSome {εs : SymEntities} {t : Term}
   (h₁ : t.WellFormed εs) :
   (isSome t).WellFormed εs ∧ (isSome t).typeOf = .bool
 := by
@@ -1497,7 +1508,7 @@ theorem wf_isSome {εs : SymEntities} {t : Term}
   have h₂ := wf_isNone h₁
   exact wf_not h₂.left h₂.right
 
-theorem wf_ifSome_option {εs : SymEntities} {g t : Term} {ty : TermType} :
+public theorem wf_ifSome_option {εs : SymEntities} {g t : Term} {ty : TermType} :
   g.WellFormed εs →
   t.WellFormed εs →
   t.typeOf = .option ty →
@@ -1507,15 +1518,13 @@ theorem wf_ifSome_option {εs : SymEntities} {g t : Term} {ty : TermType} :
   have h₄ := wf_isNone h₁
   have h₅ := typeOf_wf_term_is_wf h₂
   simp only [ifSome, h₃, noneOf]
-  have ht : TermType.option ty = (Term.none ty).typeOf := by simp only [Term.typeOf]
-  rw [ht]
-  rw [h₃, ht] at h₅
-  simp only [Term.typeOf] at h₅
+  rw [← typeOf_term_none]
+  rw [h₃] at h₅
   cases h₅ ; rename_i h₅
   apply wf_ite h₄.left (Term.WellFormed.none_wf h₅) h₂ h₄.right
-  simp only [← ht, h₃]
+  simp [h₃]
 
-theorem wf_ifFalse {εs : SymEntities} {g t : Term} :
+public theorem wf_ifFalse {εs : SymEntities} {g t : Term} :
   g.WellFormed εs →
   t.WellFormed εs →
   g.typeOf = .bool →
@@ -1525,10 +1534,10 @@ theorem wf_ifFalse {εs : SymEntities} {g t : Term} :
   simp only [ifFalse, noneOf, someOf]
   have h₄ := wf_ite h₁
     (Term.WellFormed.none_wf (typeOf_wf_term_is_wf h₂))
-    (Term.WellFormed.some_wf h₂) h₃ (by simp only [Term.typeOf])
-  simp only [h₄, Term.typeOf, _root_.and_self]
+    (Term.WellFormed.some_wf h₂) h₃ (by simp)
+  simp [h₄]
 
-theorem wf_ifTrue {εs : SymEntities} {g t : Term} :
+public theorem wf_ifTrue {εs : SymEntities} {g t : Term} :
   g.WellFormed εs →
   t.WellFormed εs →
   g.typeOf = .bool →
@@ -1539,8 +1548,8 @@ theorem wf_ifTrue {εs : SymEntities} {g t : Term} :
   have h₄ := wf_ite h₁
     (Term.WellFormed.some_wf h₂)
     (Term.WellFormed.none_wf (typeOf_wf_term_is_wf h₂))
-    h₃ (by simp only [Term.typeOf])
-  simp only [h₄, Term.typeOf, _root_.and_self]
+    h₃ (by simp)
+  simp [h₄]
 
 theorem wf_foldl {α} {εs : SymEntities}
   {xs : List α} {t : Term} {f : Term → α → Term}
@@ -1561,7 +1570,7 @@ theorem wf_foldl {α} {εs : SymEntities}
     intro t' t'' h₄ h₅ h₆
     exact h₂ _ _ (by simp only [List.mem_cons, h₄, or_true]) h₅ h₆
 
-theorem wf_anyTrue {εs : SymEntities} {f : Term → Term} {ts : List Term} :
+public theorem wf_anyTrue {εs : SymEntities} {f : Term → Term} {ts : List Term} :
   (∀ t ∈ ts, (f t).WellFormed εs ∧ (f t).typeOf = .bool) →
   (anyTrue f ts).WellFormed εs ∧ (anyTrue f ts).typeOf = .bool
 := by
@@ -1574,7 +1583,7 @@ theorem wf_anyTrue {εs : SymEntities} {f : Term → Term} {ts : List Term} :
   specialize hwf t hin
   exact wf_or hwf.left hw' hwf.right hty'
 
-theorem wf_anyNone {εs : SymEntities} {gs : List Term} :
+public theorem wf_anyNone {εs : SymEntities} {gs : List Term} :
   (∀ g ∈ gs, g.WellFormed εs) →
   (anyNone gs).WellFormed εs ∧ (anyNone gs).typeOf = .bool
 := by
@@ -1584,7 +1593,7 @@ theorem wf_anyNone {εs : SymEntities} {gs : List Term} :
   specialize hwf t hin
   exact wf_isNone hwf
 
-theorem wf_ifAllSome {εs : SymEntities} {gs : List Term} {t : Term} {ty : TermType} :
+public theorem wf_ifAllSome {εs : SymEntities} {gs : List Term} {t : Term} {ty : TermType} :
   (∀ g ∈ gs, g.WellFormed εs) →
   t.WellFormed εs →
   t.typeOf = .option ty →
@@ -1599,7 +1608,7 @@ theorem wf_ifAllSome {εs : SymEntities} {gs : List Term} {t : Term} {ty : TermT
   rw [h₃] at h₆ ; cases h₆ ; rename_i h₆
   exact wf_ite h₅.left (Term.WellFormed.none_wf h₆) h₂ h₅.right (by simp only [h₄, h₃])
 
-theorem wf_bvaddChecked {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
+public theorem wf_bvaddChecked {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (h₁ : t₁.WellFormed εs)
   (h₂ : t₂.WellFormed εs)
   (h₃ : t₁.typeOf = .bitvec n)
@@ -1610,7 +1619,7 @@ theorem wf_bvaddChecked {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   have ⟨h₇, h₈⟩ := wf_bvadd h₁ h₂ h₃ h₄
   simp only [bvaddChecked, wf_ifFalse h₅ h₇ h₆, h₈, and_true]
 
-theorem wf_bvsubChecked {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
+public theorem wf_bvsubChecked {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (h₁ : t₁.WellFormed εs)
   (h₂ : t₂.WellFormed εs)
   (h₃ : t₁.typeOf = .bitvec n)
@@ -1621,7 +1630,7 @@ theorem wf_bvsubChecked {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   have ⟨h₇, h₈⟩ := wf_bvsub h₁ h₂ h₃ h₄
   simp only [bvsubChecked, wf_ifFalse h₅ h₇ h₆, h₈, and_true]
 
-theorem wf_bvmulChecked {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
+public theorem wf_bvmulChecked {εs : SymEntities} {t₁ t₂ : Term} {n : Nat}
   (h₁ : t₁.WellFormed εs)
   (h₂ : t₂.WellFormed εs)
   (h₃ : t₁.typeOf = .bitvec n)
@@ -1640,19 +1649,19 @@ local macro "simp_wf_decimal_cmp" h₁:ident h₂:ident cmp_fun:ident wf_thm:ide
     exact $wf_thm h₁.left h₂.left h₁.right h₂.right
   ))
 
-theorem wf_decimal_lessThan {εs : SymEntities} {t₁ t₂ : Term}
+public theorem wf_decimal_lessThan {εs : SymEntities} {t₁ t₂ : Term}
   (h₁ : t₁.WellFormed εs ∧ t₁.typeOf = .ext .decimal)
   (h₂ : t₂.WellFormed εs ∧ t₂.typeOf = .ext .decimal) :
   (Decimal.lessThan t₁ t₂).WellFormed εs ∧ (Decimal.lessThan t₁ t₂).typeOf = .bool
 := by simp_wf_decimal_cmp h₁ h₂ Decimal.lessThan wf_bvslt
 
-theorem wf_decimal_lessThanOrEqual {εs : SymEntities} {t₁ t₂ : Term}
+public theorem wf_decimal_lessThanOrEqual {εs : SymEntities} {t₁ t₂ : Term}
   (h₁ : t₁.WellFormed εs ∧ t₁.typeOf = .ext .decimal)
   (h₂ : t₂.WellFormed εs ∧ t₂.typeOf = .ext .decimal) :
   (Decimal.lessThanOrEqual t₁ t₂).WellFormed εs ∧ (Decimal.lessThanOrEqual t₁ t₂).typeOf = .bool
 := by simp_wf_decimal_cmp h₁ h₂ Decimal.lessThanOrEqual wf_bvsle
 
-theorem wf_decimal_greaterThan {εs : SymEntities} {t₁ t₂ : Term}
+public theorem wf_decimal_greaterThan {εs : SymEntities} {t₁ t₂ : Term}
   (h₁ : t₁.WellFormed εs ∧ t₁.typeOf = .ext .decimal)
   (h₂ : t₂.WellFormed εs ∧ t₂.typeOf = .ext .decimal) :
   (Decimal.greaterThan t₁ t₂).WellFormed εs ∧ (Decimal.greaterThan t₁ t₂).typeOf = .bool
@@ -1660,7 +1669,7 @@ theorem wf_decimal_greaterThan {εs : SymEntities} {t₁ t₂ : Term}
   unfold Decimal.greaterThan
   exact wf_decimal_lessThan h₂ h₁
 
-theorem wf_decimal_greaterThanOrEqual {εs : SymEntities} {t₁ t₂ : Term}
+public theorem wf_decimal_greaterThanOrEqual {εs : SymEntities} {t₁ t₂ : Term}
   (h₁ : t₁.WellFormed εs ∧ t₁.typeOf = .ext .decimal)
   (h₂ : t₂.WellFormed εs ∧ t₂.typeOf = .ext .decimal) :
   (Decimal.greaterThanOrEqual t₁ t₂).WellFormed εs ∧ (Decimal.greaterThanOrEqual t₁ t₂).typeOf = .bool
@@ -1668,14 +1677,14 @@ theorem wf_decimal_greaterThanOrEqual {εs : SymEntities} {t₁ t₂ : Term}
   unfold Decimal.greaterThanOrEqual
   exact wf_decimal_lessThanOrEqual h₂ h₁
 
-theorem wf_ipaddr_isIpv4 {εs : SymEntities} {t : Term}
+public theorem wf_ipaddr_isIpv4 {εs : SymEntities} {t : Term}
   (h₁ : t.WellFormed εs ∧ t.typeOf = .ext .ipAddr) :
   (IPAddr.isIpv4 t).WellFormed εs ∧ (IPAddr.isIpv4 t).typeOf = .bool
 := by
   unfold IPAddr.isIpv4
   exact wf_ext_ipaddr_isV4 h₁.left h₁.right
 
-theorem wf_ipaddr_isIpv6 {εs : SymEntities} {t : Term}
+public theorem wf_ipaddr_isIpv6 {εs : SymEntities} {t : Term}
   (h₁ : t.WellFormed εs ∧ t.typeOf = .ext .ipAddr) :
   (IPAddr.isIpv6 t).WellFormed εs ∧ (IPAddr.isIpv6 t).typeOf = .bool
 := by
@@ -1683,7 +1692,7 @@ theorem wf_ipaddr_isIpv6 {εs : SymEntities} {t : Term}
   have h₂ := wf_ipaddr_isIpv4 h₁
   exact wf_not h₂.left h₂.right
 
-theorem wf_ipaddr_subnetWidth {εs : SymEntities} {w : Nat} {ipPre : Term}
+public theorem wf_ipaddr_subnetWidth {εs : SymEntities} {w : Nat} {ipPre : Term}
   (h₁ : ipPre.WellFormed εs ∧ ipPre.typeOf = .option (.bitvec w)) :
   (IPAddr.subnetWidth w ipPre).WellFormed εs ∧
   (IPAddr.subnetWidth w ipPre).typeOf = .bitvec (Ext.IPAddr.ADDR_SIZE w)
@@ -1706,10 +1715,10 @@ theorem wf_ipaddr_subnetWidth {εs : SymEntities} {w : Nat} {ipPre : Term}
   apply wf_ite h₂.left h₅ h₇.left h₂.right
   simp only [h₆, h₇.right]
 
-def WFIPRange (εs : SymEntities) (p : Term × Term) (w : Nat) : Prop :=
+public def WFIPRange (εs : SymEntities) (p : Term × Term) (w : Nat) : Prop :=
   WFArg εs p.1 (.bitvec w) ∧ WFArg εs p.2 (.bitvec w)
 
-theorem wf_ipaddr_range {εs : SymEntities} {w : Nat} {ipAddr ipPre : Term}
+public theorem wf_ipaddr_range {εs : SymEntities} {w : Nat} {ipAddr ipPre : Term}
   (h₁ : ipAddr.WellFormed εs ∧ ipAddr.typeOf = .bitvec (Ext.IPAddr.ADDR_SIZE w))
   (h₂ : ipPre.WellFormed εs ∧ ipPre.typeOf = .option (.bitvec w)) :
   WFIPRange εs (IPAddr.range w ipAddr ipPre) (Ext.IPAddr.ADDR_SIZE w)
@@ -1735,7 +1744,7 @@ theorem wf_ipaddr_range {εs : SymEntities} {w : Nat} {ipAddr ipPre : Term}
 theorem ipaddr_addr_size_v4_eq : Ext.IPAddr.ADDR_SIZE Ext.IPAddr.V4_WIDTH = 32 := by decide
 theorem ipaddr_addr_size_v6_eq : Ext.IPAddr.ADDR_SIZE Ext.IPAddr.V6_WIDTH = 128 := by decide
 
-theorem wf_ipaddr_rangeV4 {εs : SymEntities} {t : Term}
+public theorem wf_ipaddr_rangeV4 {εs : SymEntities} {t : Term}
   (h₁ : t.WellFormed εs ∧ t.typeOf = .ext .ipAddr) :
   WFIPRange εs (IPAddr.rangeV4 t) (Ext.IPAddr.ADDR_SIZE Ext.IPAddr.V4_WIDTH)
 := by
@@ -1745,7 +1754,7 @@ theorem wf_ipaddr_rangeV4 {εs : SymEntities} {t : Term}
   rw [← ipaddr_addr_size_v4_eq] at h₂
   exact wf_ipaddr_range h₂ h₃
 
-theorem wf_ipaddr_rangeV6 {εs : SymEntities} {t : Term}
+public theorem wf_ipaddr_rangeV6 {εs : SymEntities} {t : Term}
   (h₁ : t.WellFormed εs ∧ t.typeOf = .ext .ipAddr) :
   WFIPRange εs (IPAddr.rangeV6 t) (Ext.IPAddr.ADDR_SIZE Ext.IPAddr.V6_WIDTH)
 := by
@@ -1755,7 +1764,7 @@ theorem wf_ipaddr_rangeV6 {εs : SymEntities} {t : Term}
   rw [← ipaddr_addr_size_v6_eq] at h₂
   exact wf_ipaddr_range h₂ h₃
 
-theorem wf_ipaddr_inRange {εs : SymEntities} {w : Nat} {range : Term → Term × Term} {t₁ t₂ : Term}
+public theorem wf_ipaddr_inRange {εs : SymEntities} {w : Nat} {range : Term → Term × Term} {t₁ t₂ : Term}
   (h₁ : WFIPRange εs (range t₁) w)
   (h₂ : WFIPRange εs (range t₂) w) :
   (IPAddr.inRange range t₁ t₂).WellFormed εs ∧ (IPAddr.inRange range t₁ t₂).typeOf = .bool
@@ -1766,7 +1775,7 @@ theorem wf_ipaddr_inRange {εs : SymEntities} {w : Nat} {range : Term → Term �
   have h₄ := wf_bvule h₂.left.left h₁.left.left h₂.left.right h₁.left.right
   exact wf_and h₃.left h₄.left h₃.right h₄.right
 
-theorem wf_ipaddr_inRangeV {εs : SymEntities} {w : Nat} {isIp : Term → Term} {rangeV : Term → Term × Term} {t₁ t₂ : Term}
+public theorem wf_ipaddr_inRangeV {εs : SymEntities} {w : Nat} {isIp : Term → Term} {rangeV : Term → Term × Term} {t₁ t₂ : Term}
   (h₁ : WFIPRange εs (rangeV t₁) w)
   (h₂ : WFIPRange εs (rangeV t₂) w)
   (h₃ : (isIp t₁).WellFormed εs ∧ (isIp t₁).typeOf = .bool)
@@ -1779,7 +1788,7 @@ theorem wf_ipaddr_inRangeV {εs : SymEntities} {w : Nat} {isIp : Term → Term} 
   have h₆ := wf_ipaddr_inRange h₁ h₂
   exact wf_and h₅.left h₆.left h₅.right h₆.right
 
-theorem wf_ipaddr_isInRange {εs : SymEntities} {t₁ t₂ : Term}
+public theorem wf_ipaddr_isInRange {εs : SymEntities} {t₁ t₂ : Term}
   (h₁ : t₁.WellFormed εs ∧ t₁.typeOf = .ext .ipAddr)
   (h₂ : t₂.WellFormed εs ∧ t₂.typeOf = .ext .ipAddr) :
   (IPAddr.isInRange t₁ t₂).WellFormed εs ∧ (IPAddr.isInRange t₁ t₂).typeOf = .bool
@@ -1789,7 +1798,7 @@ theorem wf_ipaddr_isInRange {εs : SymEntities} {t₁ t₂ : Term}
   have h₄ := wf_ipaddr_inRangeV (wf_ipaddr_rangeV6 h₁) (wf_ipaddr_rangeV6 h₂) (wf_ipaddr_isIpv6 h₁) (wf_ipaddr_isIpv6 h₂)
   exact wf_or h₃.left h₄.left h₃.right h₄.right
 
-theorem wf_ipaddr_ipTerm (εs : SymEntities) (ip : IPAddr) :
+public theorem wf_ipaddr_ipTerm (εs : SymEntities) (ip : IPAddr) :
   (IPAddr.ipTerm ip).WellFormed εs ∧ (IPAddr.ipTerm ip).typeOf = .ext .ipAddr
 := by
   simp only [IPAddr.ipTerm, Term.WellFormed.prim_wf TermPrim.WellFormed.ext_wf,
@@ -1807,19 +1816,19 @@ theorem wf_ipaddr_inRangeLit {εs : SymEntities} {t : Term} {cidr₄ : Ext.IPAdd
   rw [← h₃.right]
   exact wf_ite h₂.left h₃.left h₄.left h₂.right (by simp only [h₃.right, h₄.right])
 
-theorem wf_ipaddr_isLoopback {εs : SymEntities} {t : Term}
+public theorem wf_ipaddr_isLoopback {εs : SymEntities} {t : Term}
   (h₁ : t.WellFormed εs ∧ t.typeOf = .ext .ipAddr) :
   (IPAddr.isLoopback t).WellFormed εs ∧ (IPAddr.isLoopback t).typeOf = .bool
 := by
   simp only [IPAddr.isLoopback, wf_ipaddr_inRangeLit h₁, _root_.and_self]
 
-theorem wf_ipaddr_isMulticast {εs : SymEntities} {t : Term}
+public theorem wf_ipaddr_isMulticast {εs : SymEntities} {t : Term}
   (h₁ : t.WellFormed εs ∧ t.typeOf = .ext .ipAddr) :
   (IPAddr.isMulticast t).WellFormed εs ∧ (IPAddr.isMulticast t).typeOf = .bool
 := by
   simp only [IPAddr.isMulticast, wf_ipaddr_inRangeLit h₁, _root_.and_self]
 
-theorem wf_datetime_offset {εs : SymEntities} {t₁ t₂ : Term}
+public theorem wf_datetime_offset {εs : SymEntities} {t₁ t₂ : Term}
   (h₁ : t₁.WellFormed εs ∧ t₁.typeOf = .ext .datetime)
   (h₂ : t₂.WellFormed εs ∧ t₂.typeOf = .ext .duration) :
   (Datetime.offset t₁ t₂).WellFormed εs ∧ (Datetime.offset t₁ t₂).typeOf = .option (.ext .datetime)
@@ -1831,7 +1840,7 @@ theorem wf_datetime_offset {εs : SymEntities} {t₁ t₂ : Term}
   have ⟨hwf₅, hty₅⟩ := wf_bvsaddo hwf₁ hwf₂ hty₁ hty₂
   simp only [Datetime.offset, wf_ifFalse hwf₅ hwf₄ hty₅, hty₄, _root_.and_self]
 
-theorem wf_datetime_durationSince {εs : SymEntities} {t₁ t₂ : Term}
+public theorem wf_datetime_durationSince {εs : SymEntities} {t₁ t₂ : Term}
   (h₁ : t₁.WellFormed εs ∧ t₁.typeOf = .ext .datetime)
   (h₂ : t₂.WellFormed εs ∧ t₂.typeOf = .ext .datetime) :
   (Datetime.durationSince t₁ t₂).WellFormed εs ∧ (Datetime.durationSince t₁ t₂).typeOf = .option (.ext .duration)
@@ -1843,7 +1852,7 @@ theorem wf_datetime_durationSince {εs : SymEntities} {t₁ t₂ : Term}
   have ⟨hwf₅, hty₅⟩ := wf_bvssubo hwf₁ hwf₂ hty₁ hty₂
   simp only [Datetime.durationSince, wf_ifFalse hwf₅ hwf₄ hty₅, hty₄, _root_.and_self]
 
-theorem wf_datetime_toDate {εs : SymEntities} {t : Term}
+public theorem wf_datetime_toDate {εs : SymEntities} {t : Term}
   (h : t.WellFormed εs ∧ t.typeOf = .ext .datetime) :
   (Datetime.toDate t).WellFormed εs ∧ (Datetime.toDate t).typeOf = .option (.ext .datetime)
 := by
@@ -1867,7 +1876,7 @@ theorem wf_datetime_toDate {εs : SymEntities} {t : Term}
   have ⟨hwf₁₅, hty₁₅⟩ := wf_ite hwf₁ hwf₅ hwf₁₄ hty₁ (by simp only [hty₅, hty₁₄, hty₈])
   simp only [Datetime.toDate, someOf, hwf₁₅, hty₁₅, hty₅, _root_.and_self]
 
-theorem wf_datetime_toTime {εs : SymEntities} {t : Term}
+public theorem wf_datetime_toTime {εs : SymEntities} {t : Term}
   (h : t.WellFormed εs ∧ t.typeOf = .ext .datetime) :
   (Datetime.toTime t).WellFormed εs ∧ (Datetime.toTime t).typeOf = .ext .duration
 := by
@@ -1889,34 +1898,34 @@ local macro "show_wf_duration_conversion" cfun:ident wf_thm:ident hwf:ident : ta
     exact wf_bvsdiv ($hwf).left wf_bv ($hwf).right typeOf_bv
    ))
 
-theorem wf_duration_toMilliseconds {εs : SymEntities} {t : Term}
+public theorem wf_duration_toMilliseconds {εs : SymEntities} {t : Term}
   (h₁ : t.WellFormed εs ∧ t.typeOf = .ext .duration) :
   (Duration.toMilliseconds t).WellFormed εs ∧ (Duration.toMilliseconds t).typeOf = .bitvec 64
 := by
   unfold Duration.toMilliseconds
   exact wf_ext_duration_val h₁.left h₁.right
 
-theorem wf_duration_toSeconds {εs : SymEntities} {t : Term}
+public theorem wf_duration_toSeconds {εs : SymEntities} {t : Term}
   (h₁ : t.WellFormed εs ∧ t.typeOf = .ext .duration) :
   (Duration.toSeconds t).WellFormed εs ∧ (Duration.toSeconds t).typeOf = .bitvec 64
 := by show_wf_duration_conversion Duration.toSeconds wf_duration_toMilliseconds h₁
 
-theorem wf_duration_toMinutes {εs : SymEntities} {t : Term}
+public theorem wf_duration_toMinutes {εs : SymEntities} {t : Term}
   (h₁ : t.WellFormed εs ∧ t.typeOf = .ext .duration) :
   (Duration.toMinutes t).WellFormed εs ∧ (Duration.toMinutes t).typeOf = .bitvec 64
 := by show_wf_duration_conversion Duration.toMinutes wf_duration_toSeconds h₁
 
-theorem wf_duration_toHours {εs : SymEntities} {t : Term}
+public theorem wf_duration_toHours {εs : SymEntities} {t : Term}
   (h₁ : t.WellFormed εs ∧ t.typeOf = .ext .duration) :
   (Duration.toHours t).WellFormed εs ∧ (Duration.toHours t).typeOf = .bitvec 64
 := by show_wf_duration_conversion Duration.toHours wf_duration_toMinutes h₁
 
-theorem wf_duration_toDays {εs : SymEntities} {t : Term}
+public theorem wf_duration_toDays {εs : SymEntities} {t : Term}
   (h₁ : t.WellFormed εs ∧ t.typeOf = .ext .duration) :
   (Duration.toDays t).WellFormed εs ∧ (Duration.toDays t).typeOf = .bitvec 64
 := by show_wf_duration_conversion Duration.toDays wf_duration_toHours h₁
 
-theorem wf_tags_hasTag {εs : SymEntities} {τs : SymTags} {t₁ t₂ : Term} {ety : EntityType}
+public theorem wf_tags_hasTag {εs : SymEntities} {τs : SymTags} {t₁ t₂ : Term} {ety : EntityType}
   (hwτ : τs.WellFormed εs ety)
   (hw₁ : t₁.WellFormed εs)
   (hw₂ : t₂.WellFormed εs)
@@ -1931,7 +1940,7 @@ theorem wf_tags_hasTag {εs : SymEntities} {τs : SymTags} {t₁ t₂ : Term} {e
   rw [hout, ← hty₂] at happ
   exact wf_set_member hw₂ happ.left happ.right
 
-theorem wf_tagOf {εs : SymEntities} {t₁ t₂ : Term} {ety : EntityType}
+public theorem wf_tagOf {εs : SymEntities} {t₁ t₂ : Term} {ety : EntityType}
   (hw₁ : t₁.WellFormed εs)
   (hw₂ : t₂.WellFormed εs)
   (hty₁ : t₁.typeOf = TermType.entity ety)
@@ -1946,10 +1955,13 @@ theorem wf_tagOf {εs : SymEntities} {t₁ t₂ : Term} {ety : EntityType}
       rcases hin with ⟨_, hin⟩ | ⟨_, hin⟩ <;>
       subst hin <;>
       assumption
-    · simp [Map.WellFormed, Map.make, List.canonicalize, List.insertCanonical, String.reduceLT]
-  · simp [typeOf_term_record_eq, hty₁, hty₂, Map.mapOnValues]
+    · simp only [Map.wf_iff_sorted, Map.toList_mk_id]
+      apply List.SortedBy.cons_cons
+      simp only [String.reduceLT]
+      apply List.SortedBy.cons_nil
+  · simp [typeOf_term_record_eq, hty₁, hty₂, Map.mapOnValues_doubleton]
 
-theorem wf_tags_getTag! {εs : SymEntities} {τs : SymTags} {t₁ t₂ : Term} {ety : EntityType}
+public theorem wf_tags_getTag! {εs : SymEntities} {τs : SymTags} {t₁ t₂ : Term} {ety : EntityType}
   (hwτ : τs.WellFormed εs ety)
   (hw₁ : t₁.WellFormed εs)
   (hw₂ : t₂.WellFormed εs)
@@ -1963,7 +1975,7 @@ theorem wf_tags_getTag! {εs : SymEntities} {τs : SymTags} {t₁ t₂ : Term} {
   rw [← harg] at hwt
   exact wf_app hwt.left hwt.right hwf
 
-theorem wf_tags_getTag {εs : SymEntities} {τs : SymTags} {t₁ t₂ : Term} {ety : EntityType}
+public theorem wf_tags_getTag {εs : SymEntities} {τs : SymTags} {t₁ t₂ : Term} {ety : EntityType}
   (hwτ : τs.WellFormed εs ety)
   (hw₁ : t₁.WellFormed εs)
   (hw₂ : t₂.WellFormed εs)

@@ -181,7 +181,6 @@ private theorem pe_datetime_offset {dt : Ext.Datetime} {dur : Ext.Datetime.Durat
   case none =>
     rw [BitVec.Int64_ofInt?_eq_none_iff_overflows] at h
     simp [h, pe_ifFalse_true]
-    apply (wf_ext_datetime_ofBitVec wf_bv typeOf_bv).right; exact Map.empty
   case some v =>
     have h' : ∃ v, Int64.ofInt? (dt.val.toInt + dur.val.toInt) = some v := by exact Exists.intro v h
     rw [← Option.isSome_iff_exists, Option.isSome_iff_ne_none, ne_eq, BitVec.Int64_ofInt?_eq_none_iff_overflows] at h'
@@ -190,7 +189,10 @@ private theorem pe_datetime_offset {dt : Ext.Datetime} {dur : Ext.Datetime.Durat
     simp only [Int64.ofInt?, Option.dite_none_right_eq_some, Option.some.injEq, Int64.ofIntChecked] at h
     cases h; rename_i h heq
     subst heq
-    simp only [Int64.ofInt, BitVec.ofInt_add, Int64.toInt, ext.datetime.ofBitVec, BitVec.toInt_ofInt_64]
+    simp only [Int64.ofInt, Int64.toInt]
+    have hbmod := @Int.bmod_bounded_eq_self 63 _ h.left h.right
+    simp only [Int64.toInt] at hbmod
+    rw [hbmod]
 
 private theorem pe_datetime_durationSince {dt₁ dt₂ : Ext.Datetime}:
   Datetime.durationSince (.prim (.ext (Ext.datetime dt₁))) (.prim (.ext (Ext.datetime dt₂))) =
@@ -203,7 +205,6 @@ private theorem pe_datetime_durationSince {dt₁ dt₂ : Ext.Datetime}:
   case none =>
     rw [BitVec.Int64_ofInt?_eq_none_iff_overflows] at h
     simp [h, pe_ifFalse_true]
-    apply (wf_ext_duration_ofBitVec wf_bv typeOf_bv).right; exact Map.empty
   case some v =>
     have h' : ∃ v, Int64.ofInt? (dt₁.val.toInt - dt₂.val.toInt) = some v := by exact Exists.intro v h
     rw [← Option.isSome_iff_exists, Option.isSome_iff_ne_none, ne_eq, BitVec.Int64_ofInt?_eq_none_iff_overflows] at h'
@@ -212,8 +213,7 @@ private theorem pe_datetime_durationSince {dt₁ dt₂ : Ext.Datetime}:
     simp only [Int64.ofInt?, Option.dite_none_right_eq_some, Option.some.injEq, Int64.ofIntChecked] at h
     cases h; rename_i h heq
     subst heq
-    simp only [ext.duration.ofBitVec, Int64.ofInt, BitVec.toInt_sub, Nat.reducePow, Int64.toInt,
-      Term.prim.injEq, TermPrim.ext.injEq, Ext.duration.injEq, Ext.Datetime.Duration.mk.injEq]
+    simp only [Int64.ofInt, Int64.toInt]
     have hbmod := @Int.bmod_bounded_eq_self 63 _ h.left h.right
     simp only [Int64.toInt] at hbmod
     rw [hbmod]
@@ -249,7 +249,7 @@ private theorem pe_datetime_toDate {dt : Ext.Datetime}:
   simp only [Datetime.toDate, someOf, pe_ext_datetime_val, pe_bvsdiv, pe_bvsub, pe_bvmul, pe_bvsmulo,
     pe_bvsrem, pe_bvsle, pe_ext_datetime_ofBitVec,
     Ext.Datetime.toDate, Ext.Datetime.MILLISECONDS_PER_DAY, Int64.ofIntChecked,
-    Int64.ofInt, pe_eq_lit term_prim_is_lit term_prim_is_lit, Int64.mod, Int64.div ]
+    Int64.ofInt, pe_eq_lit isLiteral_prim isLiteral_prim, Int64.mod, Int64.div]
   simp only [
     show Int64.toBitVec 0 = 0 by rfl,
     show Int64.toBitVec 1 = 1 by rfl,
@@ -326,7 +326,7 @@ private theorem pe_datetime_toTime {dt : Ext.Datetime}:
   Datetime.toTime (.prim (.ext (Ext.datetime dt))) = .prim (.ext (Ext.duration dt.toTime))
 := by
   simp only [Datetime.toTime, pe_ext_datetime_val, pe_bvsrem, pe_bvadd, pe_bvsle,
-    pe_eq_lit term_prim_is_lit term_prim_is_lit, Ext.Datetime.toTime]
+    pe_eq_lit isLiteral_prim isLiteral_prim, Ext.Datetime.toTime]
   simp only [Int64.ofIntChecked, Int64.ofInt, Int64.mod, Ext.Datetime.MILLISECONDS_PER_DAY]
   simp only [
     show Int64.toBitVec 0 = 0#64 by rfl,

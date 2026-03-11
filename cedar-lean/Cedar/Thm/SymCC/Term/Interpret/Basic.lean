@@ -14,6 +14,14 @@
  limitations under the License.
 -/
 
+module
+
+public import Cedar.SymCC.Factory
+import all Cedar.SymCC.Factory -- proving things about functions in this file, so we need access to its private internals
+public import Cedar.SymCC.Interpretation
+import all Cedar.SymCC.Interpretation -- proving things about functions in this file, so we need access to its private internals
+public import Cedar.SymCC.Term
+import all Cedar.SymCC.Term -- proving things about functions in this file, so we need access to its private internals
 import Cedar.Thm.SymCC.Data
 import Cedar.Thm.SymCC.Term.WF
 import Cedar.Thm.SymCC.Interpretation
@@ -29,41 +37,49 @@ namespace Cedar.Thm
 
 open Batteries Data Spec SymCC Factory
 
-theorem interpret_term_prim {I : Interpretation} {p : TermPrim} :
+@[simp]
+public theorem interpret_term_prim {I : Interpretation} {p : TermPrim} :
   (Term.prim p).interpret I = Term.prim p
 := by simp only [Term.interpret]
 
-theorem interpret_term_var {I : Interpretation} {v : TermVar} :
+@[simp]
+public theorem interpret_term_var {I : Interpretation} {v : TermVar} :
   (Term.var v).interpret I = I.vars v
 := by simp only [Term.interpret]
 
-theorem interpret_term_none {I : Interpretation} {ty : TermType} :
+@[simp]
+public theorem interpret_term_none {I : Interpretation} {ty : TermType} :
   (Term.none ty).interpret I = Term.none ty
 := by simp only [Term.interpret, noneOf]
 
-theorem interpret_term_some {I : Interpretation} {t : Term} :
+@[simp]
+public theorem interpret_term_some {I : Interpretation} {t : Term} :
   (Term.some t).interpret I = Term.some (t.interpret I)
 := by simp only [Term.interpret, someOf]
 
-theorem interpret_term_set {I : Interpretation} {s : Set Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_set {I : Interpretation} {s : Set Term} {ty : TermType} :
   (Term.set s ty).interpret I =
   Term.set (Set.make (s.elts.map (Term.interpret I))) ty
 := by
   cases s
   simp only [Term.interpret, setOf, List.map₁_eq_map (Term.interpret I ·)]
 
-theorem interpret_term_set_mk_nil {ty : TermType} :
+@[simp]
+public theorem interpret_term_set_mk_nil {ty : TermType} :
   Term.interpret I (Term.set (Set.mk []) ty) = Term.set (Set.mk []) ty
 := by
-  simp only [interpret_term_set, Set.make, Set.elts, List.map_nil, List.canonicalize_nil]
+  simp [interpret_term_set, Set.make_nil, Set.elts, List.map_nil, Set.empty_eq_mk_nil]
 
-theorem interpret_term_set_empty {ty : TermType} :
+@[simp]
+public theorem interpret_term_set_empty {ty : TermType} :
   Term.interpret I (Term.set Set.empty ty) = Term.set Set.empty ty
 := by
   rw [Set.empty_eq_mk_nil]
   exact interpret_term_set_mk_nil
 
-theorem interpret_term_record {I : Interpretation} {r : Map Attr Term} :
+@[simp]
+public theorem interpret_term_record {I : Interpretation} {r : Map Attr Term} :
   (Term.record r).interpret I =
   Term.record (Map.make (r.toList.map λ (a, t) => (a, t.interpret I)))
 := by
@@ -83,212 +99,254 @@ local macro_rules
     simp only [Op.interpret] -- Faster proof when this is a separate simp
     )
 
-theorem interpret_term_app_not {I : Interpretation} {t₁ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_not {I : Interpretation} {t₁ : Term} {ty : TermType} :
   (Term.app .not [t₁] ty).interpret I =
   Factory.not (t₁.interpret I)
 := by simp_interpret_term_app
 
-theorem interpret_term_app_and {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_and {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
   (Term.app .and [t₁, t₂] ty).interpret I =
   Factory.and (t₁.interpret I) (t₂.interpret I)
 := by simp_interpret_term_app
 
-theorem interpret_term_app_or {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_or {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
   (Term.app .or [t₁, t₂] ty).interpret I =
   Factory.or (t₁.interpret I) (t₂.interpret I)
 := by simp_interpret_term_app
 
-theorem interpret_term_app_eq {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_eq {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
   (Term.app .eq [t₁, t₂] ty).interpret I =
   Factory.eq (t₁.interpret I) (t₂.interpret I)
 := by simp_interpret_term_app
 
-theorem interpret_term_app_ite {I : Interpretation} {t₁ t₂ t₃ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_ite {I : Interpretation} {t₁ t₂ t₃ : Term} {ty : TermType} :
   (Term.app .ite [t₁, t₂, t₃] ty).interpret I =
   Factory.ite (t₁.interpret I) (t₂.interpret I) (t₃.interpret I)
 := by simp_interpret_term_app
 
-theorem interpret_term_app_uuf {I : Interpretation} {f : UUF} {t₁ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_uuf {I : Interpretation} {f : UUF} {t₁ : Term} {ty : TermType} :
   (Term.app (.uuf f) [t₁] ty).interpret I =
   Factory.app (.udf (I.funs f)) (t₁.interpret I)
 := by simp_interpret_term_app
 
-theorem interpret_term_app_bvneg {I : Interpretation} {t₁ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_bvneg {I : Interpretation} {t₁ : Term} {ty : TermType} :
   (Term.app .bvneg [t₁] ty).interpret I =
   Factory.bvneg (t₁.interpret I)
 := by simp_interpret_term_app
 
-theorem interpret_term_app_bvadd {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_bvadd {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
   (Term.app .bvadd [t₁, t₂] ty).interpret I =
   Factory.bvadd (t₁.interpret I) (t₂.interpret I)
 := by simp_interpret_term_app
 
-theorem interpret_term_app_bvsub {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_bvsub {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
   (Term.app .bvsub [t₁, t₂] ty).interpret I =
   Factory.bvsub (t₁.interpret I) (t₂.interpret I)
 := by simp_interpret_term_app
 
-theorem interpret_term_app_bvmul {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_bvmul {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
   (Term.app .bvmul [t₁, t₂] ty).interpret I =
   Factory.bvmul (t₁.interpret I) (t₂.interpret I)
 := by simp_interpret_term_app
 
-theorem interpret_term_app_bvsdiv {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_bvsdiv {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
   (Term.app .bvsdiv [t₁, t₂] ty).interpret I =
   Factory.bvsdiv (t₁.interpret I) (t₂.interpret I)
 := by simp_interpret_term_app
 
-theorem interpret_term_app_bvudiv {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_bvudiv {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
   (Term.app .bvudiv [t₁, t₂] ty).interpret I =
   Factory.bvudiv (t₁.interpret I) (t₂.interpret I)
 := by simp_interpret_term_app
 
-theorem interpret_term_app_bvsrem {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_bvsrem {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
   (Term.app .bvsrem [t₁, t₂] ty).interpret I =
   Factory.bvsrem (t₁.interpret I) (t₂.interpret I)
 := by simp_interpret_term_app
 
-theorem interpret_term_app_bvsmod {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_bvsmod {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
   (Term.app .bvsmod [t₁, t₂] ty).interpret I =
   Factory.bvsmod (t₁.interpret I) (t₂.interpret I)
 := by simp_interpret_term_app
 
-theorem interpret_term_app_bvurem {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_bvurem {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
   (Term.app .bvurem [t₁, t₂] ty).interpret I =
   Factory.bvurem (t₁.interpret I) (t₂.interpret I)
 := by simp_interpret_term_app
 
-theorem interpret_term_app_bvshl {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_bvshl {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
   (Term.app .bvshl [t₁, t₂] ty).interpret I =
   Factory.bvshl (t₁.interpret I) (t₂.interpret I)
 := by simp_interpret_term_app
 
-theorem interpret_term_app_bvlshr {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_bvlshr {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
   (Term.app .bvlshr [t₁, t₂] ty).interpret I =
   Factory.bvlshr (t₁.interpret I) (t₂.interpret I)
 := by simp_interpret_term_app
 
-theorem interpret_term_app_bvnego {I : Interpretation} {t₁ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_bvnego {I : Interpretation} {t₁ : Term} {ty : TermType} :
   (Term.app .bvnego [t₁] ty).interpret I =
   Factory.bvnego (t₁.interpret I)
 := by simp_interpret_term_app
 
-theorem interpret_term_app_bvsaddo {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_bvsaddo {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
   (Term.app .bvsaddo [t₁, t₂] ty).interpret I =
   Factory.bvsaddo (t₁.interpret I) (t₂.interpret I)
 := by simp_interpret_term_app
 
-theorem interpret_term_app_bvssubo {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_bvssubo {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
   (Term.app .bvssubo [t₁, t₂] ty).interpret I =
   Factory.bvssubo (t₁.interpret I) (t₂.interpret I)
 := by simp_interpret_term_app
 
-theorem interpret_term_app_bvsmulo {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_bvsmulo {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
   (Term.app .bvsmulo [t₁, t₂] ty).interpret I =
   Factory.bvsmulo (t₁.interpret I) (t₂.interpret I)
 := by simp_interpret_term_app
 
-theorem interpret_term_app_bvslt {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_bvslt {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
   (Term.app .bvslt [t₁, t₂] ty).interpret I =
   Factory.bvslt (t₁.interpret I) (t₂.interpret I)
 := by simp_interpret_term_app
 
-theorem interpret_term_app_bvsle {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_bvsle {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
   (Term.app .bvsle [t₁, t₂] ty).interpret I =
   Factory.bvsle (t₁.interpret I) (t₂.interpret I)
 := by simp_interpret_term_app
 
-theorem interpret_term_app_bvult {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_bvult {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
   (Term.app .bvult [t₁, t₂] ty).interpret I =
   Factory.bvult (t₁.interpret I) (t₂.interpret I)
 := by simp_interpret_term_app
 
-theorem interpret_term_app_bvule {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_bvule {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
   (Term.app .bvule [t₁, t₂] ty).interpret I =
   Factory.bvule (t₁.interpret I) (t₂.interpret I)
 := by simp_interpret_term_app
 
-theorem interpret_term_app_zero_extend {I : Interpretation} {n : Nat} {t₁ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_zero_extend {I : Interpretation} {n : Nat} {t₁ : Term} {ty : TermType} :
   (Term.app (.zero_extend n) [t₁] ty).interpret I =
   Factory.zero_extend n (t₁.interpret I)
 := by simp_interpret_term_app
 
-theorem interpret_term_app_set_member {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_set_member {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
   (Term.app Op.set.member [t₁, t₂] ty).interpret I =
   Factory.set.member (t₁.interpret I) (t₂.interpret I)
 := by simp_interpret_term_app
 
-theorem interpret_term_app_set_subset {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_set_subset {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
   (Term.app Op.set.subset [t₁, t₂] ty).interpret I =
   Factory.set.subset (t₁.interpret I) (t₂.interpret I)
 := by simp_interpret_term_app
 
-theorem interpret_term_app_set_inter {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_set_inter {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
   (Term.app Op.set.inter [t₁, t₂] ty).interpret I =
   Factory.set.inter (t₁.interpret I) (t₂.interpret I)
 := by simp_interpret_term_app
 
-theorem interpret_term_app_option_get {I : Interpretation} {t₁ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_option_get {I : Interpretation} {t₁ : Term} {ty : TermType} :
   (Term.app Op.option.get [t₁] ty).interpret I =
   Factory.option.get' I (t₁.interpret I)
 := by simp_interpret_term_app
 
-theorem interpret_term_app_record_get {I : Interpretation} {a : Attr} {t₁ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_record_get {I : Interpretation} {a : Attr} {t₁ : Term} {ty : TermType} :
   (Term.app (Op.record.get a) [t₁] ty).interpret I =
   Factory.record.get (t₁.interpret I) a
 := by simp_interpret_term_app
 
-theorem interpret_term_app_string_like {I : Interpretation} {p : Pattern} {t₁ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_string_like {I : Interpretation} {p : Pattern} {t₁ : Term} {ty : TermType} :
   (Term.app (Op.string.like p) [t₁] ty).interpret I =
   Factory.string.like (t₁.interpret I) p
 := by simp_interpret_term_app
 
-theorem interpret_term_app_ext_decimal_val {I : Interpretation} {t₁ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_ext_decimal_val {I : Interpretation} {t₁ : Term} {ty : TermType} :
   (Term.app (.ext ExtOp.decimal.val) [t₁] ty).interpret I =
   Factory.ext.decimal.val (t₁.interpret I)
 := by simp_interpret_term_app; simp only [ExtOp.interpret]
 
-theorem interpret_term_app_ext_ipaddr_isV4 {I : Interpretation} {t₁ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_ext_ipaddr_isV4 {I : Interpretation} {t₁ : Term} {ty : TermType} :
   (Term.app (.ext ExtOp.ipaddr.isV4) [t₁] ty).interpret I =
   Factory.ext.ipaddr.isV4 (t₁.interpret I)
 := by simp_interpret_term_app; simp only [ExtOp.interpret]
 
-theorem interpret_term_app_ext_ipaddr_addrV4 {I : Interpretation} {t₁ : Term} {ty : TermType} :
+-- todo: make private once files like `Thm/.../Interpret/Lit.lean` become `module`s and thus able to `import all` this file, including private theorems about private Factory functions
+public theorem interpret_term_app_ext_ipaddr_addrV4 {I : Interpretation} {t₁ : Term} {ty : TermType} :
   (Term.app (.ext ExtOp.ipaddr.addrV4) [t₁] ty).interpret I =
   Factory.ext.ipaddr.addrV4' I (t₁.interpret I)
 := by simp_interpret_term_app; simp only [ExtOp.interpret]
 
-theorem interpret_term_app_ext_ipaddr_prefixV4 {I : Interpretation} {t₁ : Term} {ty : TermType} :
+-- todo: make private once files like `Thm/.../Interpret/Lit.lean` become `module`s and thus able to `import all` this file, including private theorems about private Factory functions
+public theorem interpret_term_app_ext_ipaddr_prefixV4 {I : Interpretation} {t₁ : Term} {ty : TermType} :
   (Term.app (.ext ExtOp.ipaddr.prefixV4) [t₁] ty).interpret I =
   Factory.ext.ipaddr.prefixV4' I (t₁.interpret I)
 := by simp_interpret_term_app; simp only [ExtOp.interpret]
 
-theorem interpret_term_app_ext_ipaddr_addrV6 {I : Interpretation} {t₁ : Term} {ty : TermType} :
+-- todo: make private once files like `Thm/.../Interpret/Lit.lean` become `module`s and thus able to `import all` this file, including private theorems about private Factory functions
+public theorem interpret_term_app_ext_ipaddr_addrV6 {I : Interpretation} {t₁ : Term} {ty : TermType} :
   (Term.app (.ext ExtOp.ipaddr.addrV6) [t₁] ty).interpret I =
   Factory.ext.ipaddr.addrV6' I (t₁.interpret I)
 := by simp_interpret_term_app; simp only [ExtOp.interpret]
 
-theorem interpret_term_app_ext_ipaddr_prefixV6 {I : Interpretation} {t₁ : Term} {ty : TermType} :
+-- todo: make private once files like `Thm/.../Interpret/Lit.lean` become `module`s and thus able to `import all` this file, including private theorems about private Factory functions
+public theorem interpret_term_app_ext_ipaddr_prefixV6 {I : Interpretation} {t₁ : Term} {ty : TermType} :
   (Term.app (.ext ExtOp.ipaddr.prefixV6) [t₁] ty).interpret I =
   Factory.ext.ipaddr.prefixV6' I (t₁.interpret I)
 := by simp_interpret_term_app; simp only [ExtOp.interpret]
 
-theorem interpret_term_app_ext_datetime_val {I : Interpretation} {t₁ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_ext_datetime_val {I : Interpretation} {t₁ : Term} {ty : TermType} :
   (Term.app (.ext ExtOp.datetime.val) [t₁] ty).interpret I =
   Factory.ext.datetime.val (t₁.interpret I)
 := by simp_interpret_term_app; simp only [ExtOp.interpret]
 
-theorem interpret_term_app_ext_datetime_ofBitVec {I : Interpretation} {t₁ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_ext_datetime_ofBitVec {I : Interpretation} {t₁ : Term} {ty : TermType} :
   (Term.app (.ext ExtOp.datetime.ofBitVec) [t₁] ty).interpret I =
   Factory.ext.datetime.ofBitVec (t₁.interpret I)
 := by simp_interpret_term_app; simp only [ExtOp.interpret]
 
-theorem interpret_term_app_ext_duration_val {I : Interpretation} {t₁ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_ext_duration_val {I : Interpretation} {t₁ : Term} {ty : TermType} :
   (Term.app (.ext ExtOp.duration.val) [t₁] ty).interpret I =
   Factory.ext.duration.val (t₁.interpret I)
 := by simp_interpret_term_app; simp only [ExtOp.interpret]
 
-theorem interpret_term_app_ext_duration_ofBitVec {I : Interpretation} {t₁ : Term} {ty : TermType} :
+@[simp]
+public theorem interpret_term_app_ext_duration_ofBitVec {I : Interpretation} {t₁ : Term} {ty : TermType} :
   (Term.app (.ext ExtOp.duration.ofBitVec) [t₁] ty).interpret I =
   Factory.ext.duration.ofBitVec (t₁.interpret I)
 := by simp_interpret_term_app; simp only [ExtOp.interpret]
