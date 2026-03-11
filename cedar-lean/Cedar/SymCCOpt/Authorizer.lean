@@ -14,25 +14,27 @@
  limitations under the License.
 -/
 
-import Cedar.SymCCOpt.Compiler
+module
+
+public import Cedar.SymCCOpt.Compiler
 
 namespace Cedar.SymCC.Opt
 
 open Factory Cedar.Spec
 
-def compileWithEffect (effect : Effect) (policy : Policy) (εnv : SymEnv) : Result (Option CompileResult) :=
+public def compileWithEffect (effect : Effect) (policy : Policy) (εnv : SymEnv) : Result (Option CompileResult) :=
   if policy.effect == effect
   then Opt.compile policy.toExpr εnv
   else .ok .none
 
-def satisfiedPolicies (effect : Effect) (policies : Policies) (εnv : SymEnv) : Result CompileResult := do
+public def satisfiedPolicies (effect : Effect) (policies : Policies) (εnv : SymEnv) : Result CompileResult := do
   let ress ← policies.filterMapM (compileWithEffect effect · εnv)
   .ok {
     term := anyTrue (eq · (someOf true)) (ress.map CompileResult.term)
     footprint := ress.mapUnion CompileResult.footprint
   }
 
-def isAuthorized (policies : Policies) (εnv : SymEnv) : Result CompileResult := do
+public def isAuthorized (policies : Policies) (εnv : SymEnv) : Result CompileResult := do
   let forbids ← satisfiedPolicies .forbid policies εnv
   let permits ← satisfiedPolicies .permit policies εnv
   .ok {

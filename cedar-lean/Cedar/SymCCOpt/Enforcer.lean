@@ -14,8 +14,12 @@
  limitations under the License.
 -/
 
+module
+
 import Cedar.SymCC.Enforcer
-import Cedar.SymCCOpt.CompiledPolicies
+public import Cedar.SymCCOpt.CompiledPolicies
+
+@[expose] public section -- TODO: make the public interface more granular/intentional, instead of having everything public and exposed
 
 namespace Cedar.SymCC
 
@@ -24,14 +28,14 @@ open Cedar.Data Cedar.Spec Factory
 /--
 Returns the ground acyclicity and transitivity assumptions for a single `CompiledPolicy`.
 -/
-def enforceCompiledPolicy (cp : CompiledPolicy) : Set Term :=
+public def enforceCompiledPolicy (cp : CompiledPolicy) : Set Term :=
   let tr := cp.footprint.elts.flatMap (λ t => cp.footprint.elts.map (transitivity t · cp.εnv.entities))
   Set.make (cp.acyclicity.elts ++ tr)
 
 /--
 Returns the ground acyclicity and transitivity assumptions for a single `CompiledPolicySet`.
 -/
-def enforceCompiledPolicySet (cpset : CompiledPolicySet) : Set Term :=
+public def enforceCompiledPolicySet (cpset : CompiledPolicySet) : Set Term :=
   let tr := cpset.footprint.elts.flatMap (λ t => cpset.footprint.elts.map (transitivity t · cpset.εnv.entities))
   Set.make (cpset.acyclicity.elts ++ tr)
 
@@ -39,7 +43,7 @@ def enforceCompiledPolicySet (cpset : CompiledPolicySet) : Set Term :=
 Returns the ground acyclicity and transitivity assumptions for a pair of `CompiledPolicy`.
 Caller guarantees that `cp₁` and `cp₂` were compiled for the same `εnv`.
 -/
-def enforcePairCompiledPolicy (cp₁ : CompiledPolicy) (cp₂ : CompiledPolicy) : Set Term :=
+public def enforcePairCompiledPolicy (cp₁ : CompiledPolicy) (cp₂ : CompiledPolicy) : Set Term :=
   assert! cp₁.εnv = cp₂.εnv
   let footprint := cp₁.footprint ++ cp₂.footprint
   let tr := footprint.elts.flatMap (λ t => footprint.elts.map (transitivity t · cp₁.εnv.entities))
@@ -49,7 +53,7 @@ def enforcePairCompiledPolicy (cp₁ : CompiledPolicy) (cp₂ : CompiledPolicy) 
 Returns the ground acyclicity and transitivity assumptions for a pair of `CompiledPolicySet`.
 Caller guarantees that `cpset₁` and `cpset₂` were compiled for the same `εnv`.
 -/
-def enforcePairCompiledPolicySet (cpset₁ : CompiledPolicySet) (cpset₂ : CompiledPolicySet) : Set Term :=
+public def enforcePairCompiledPolicySet (cpset₁ : CompiledPolicySet) (cpset₂ : CompiledPolicySet) : Set Term :=
   assert! cpset₁.εnv = cpset₂.εnv
   let footprint := cpset₁.footprint ++ cpset₂.footprint
   let tr := footprint.elts.flatMap (λ t => footprint.elts.map (transitivity t · cpset₁.εnv.entities))

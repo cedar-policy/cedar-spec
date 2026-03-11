@@ -14,10 +14,12 @@
  limitations under the License.
 -/
 
-import Cedar.SymCC.Env
+module
+
+public import Cedar.SymCC.Env
 import Cedar.SymCC.Factory
-import Cedar.SymCC.Solver
-import Batteries.Data.RBMap
+public import Cedar.SymCC.Solver
+public import Batteries.Data.RBMap
 
 /-!
 This file defines the Cedar encoder, which translates a list of boolean Terms
@@ -69,7 +71,7 @@ namespace Cedar.SymCC
 open Cedar.Spec Cedar.Validation
 open Solver Batteries
 
-structure EncoderState where
+public structure EncoderState where
   terms : RBMap Term String (compareOfLessAndEq · ·)
   types : RBMap TermType String (compareOfLessAndEq · ·)
   uufs  : RBMap UUF String (compareOfLessAndEq · ·)
@@ -84,12 +86,12 @@ abbrev EncoderM (α) := StateT EncoderState SolverM α
 
 namespace Encoder
 
-def termId (n : Nat)                    : String := s!"t{n}"
-def uufId (n : Nat)                     : String := s!"f{n}"
-def entityTypeId (n : Nat)              : String := s!"E{n}"
-def enumId (E : String) (n : Nat)       : String := s!"{E}_m{n}"
-def recordTypeId (n : Nat)              : String := s!"R{n}"
-def recordAttrId (R : String) (a : Nat) : String := s!"{R}_a{a}"
+def termId (n : Nat)                     : String := s!"t{n}"
+def uufId (n : Nat)                      : String := s!"f{n}"
+def entityTypeId (n : Nat)               : String := s!"E{n}"
+public def enumId (E : String) (n : Nat) : String := s!"{E}_m{n}"
+def recordTypeId (n : Nat)               : String := s!"R{n}"
+def recordAttrId (R : String) (a : Nat)  : String := s!"{R}_a{a}"
 
 def typeNum : EncoderM Nat := do return (← get).types.size
 def termNum : EncoderM Nat := do return (← get).terms.size
@@ -146,7 +148,7 @@ The maximum Unicode code point supported in SMT-LIB 2.7.
 Also see `num_codes` in cvc5:
 https://github.com/cvc5/cvc5/blob/b78e7ed23348659db52a32765ad181ae0c26bbd5/src/util/string.h#L53
 -/
-def smtLibMaxCodePoint : Nat := 196607
+public def smtLibMaxCodePoint : Nat := 196607
 
 /-
 This function needs to encode unicode strings with two levels of
@@ -335,7 +337,7 @@ Solver.lean.
 Note that `encode` itself first resets the solver in order to define datatypes
 etc.
 -/
-def encode (ts : List Term) (εnv : SymEnv) (produceModels : Bool := false) : SolverM EncoderState := do
+public def encode (ts : List Term) (εnv : SymEnv) (produceModels : Bool := false) : SolverM EncoderState := do
   Solver.reset
   Solver.setOptionProduceModels produceModels
   Solver.setLogic "ALL"

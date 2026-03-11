@@ -14,10 +14,13 @@
  limitations under the License.
 -/
 
-import Cedar.SymCC.Compiler
-import Cedar.SymCC.Env
-import Cedar.SymCC.ExtFun
-import Cedar.SymCC.Factory
+module
+
+-- TODO: once we remove the `@[expose]`s below, do all of these need to be public imports?
+public import Cedar.SymCC.Compiler
+public import Cedar.SymCC.Env
+public import Cedar.SymCC.ExtFun
+public import Cedar.SymCC.Factory
 
 /-!
 This file defines an optimized Cedar symbolic compiler, which computes the
@@ -29,6 +32,8 @@ worse in policy size, at least for certain policies.
 For notes on the meaning of compile or footprint, see SymCC/Compiler.lean and
 SymCC/Enforcer.lean, which have clearer, unoptimized implementations.
 -/
+
+@[expose] public section -- TODO: make the public interface more granular/intentional, instead of having everything public and exposed
 
 namespace Cedar.SymCC.Opt
 
