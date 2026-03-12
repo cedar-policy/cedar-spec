@@ -578,6 +578,8 @@ pub enum TermConversionError {
     ConstructBV(#[from] cedar_policy_symcc::err::BitVecError),
     #[error("bitvec had zero width")]
     ZeroWidthBV,
+    #[error("bitvec had unexpected width")]
+    UnexpectedWidth,
 }
 
 impl TryFrom<PatElem> for cedar_policy_core::ast::PatternElem {
@@ -680,12 +682,12 @@ impl TryFrom<Ext> for cedar_policy_symcc::ext::Ext {
             } => Self::Ipaddr {
                 ip: cedar_policy_symcc::extension_types::ipaddr::IPNet::V4(
                     cedar_policy_symcc::extension_types::ipaddr::CIDRv4 {
-                        addr: cedar_policy_symcc::extension_types::ipaddr::IPv4Addr {
-                            val: cidr.addr.try_into()?,
-                        },
-                        prefix: cedar_policy_symcc::extension_types::ipaddr::IPv4Prefix {
-                            val: cidr.prefix.map(TryInto::try_into).transpose()?,
-                        },
+                        addr: cedar_policy_symcc::extension_types::ipaddr::IPv4Addr::try_from_bitvec(
+                            cidr.addr.try_into()?
+                        ).ok_or(TermConversionError::UnexpectedWidth)?,
+                        prefix: cedar_policy_symcc::extension_types::ipaddr::IPv4Prefix::try_from_bitvec(
+                             cidr.prefix.map(TryInto::try_into).transpose()?,
+                        ).ok_or(TermConversionError::UnexpectedWidth)?,
                     },
                 ),
             },
@@ -694,12 +696,12 @@ impl TryFrom<Ext> for cedar_policy_symcc::ext::Ext {
             } => Self::Ipaddr {
                 ip: cedar_policy_symcc::extension_types::ipaddr::IPNet::V6(
                     cedar_policy_symcc::extension_types::ipaddr::CIDRv6 {
-                        addr: cedar_policy_symcc::extension_types::ipaddr::IPv6Addr {
-                            val: cidr.addr.try_into()?,
-                        },
-                        prefix: cedar_policy_symcc::extension_types::ipaddr::IPv6Prefix {
-                            val: cidr.prefix.map(TryInto::try_into).transpose()?,
-                        },
+                        addr: cedar_policy_symcc::extension_types::ipaddr::IPv6Addr::try_from_bitvec(
+                            cidr.addr.try_into()?,
+                        ).ok_or(TermConversionError::UnexpectedWidth)?,
+                        prefix: cedar_policy_symcc::extension_types::ipaddr::IPv6Prefix::try_from_bitvec(
+                            cidr.prefix.map(TryInto::try_into).transpose()?,
+                        ).ok_or(TermConversionError::UnexpectedWidth)?,
                     },
                 ),
             },
@@ -877,14 +879,14 @@ impl From<cedar_policy_symcc::term::TermPrim> for TermPrim {
                     ip: match ip {
                         cedar_policy_symcc::extension_types::ipaddr::IPNet::V4(cidr) => {
                             IpAddr::V4(Cidr {
-                                addr: cidr.addr.val.into(),
-                                prefix: cidr.prefix.val.map(Into::into),
+                                addr: cidr.addr.into_bitvec().into(),
+                                prefix: cidr.prefix.into_bitvec().map(Into::into),
                             })
                         }
                         cedar_policy_symcc::extension_types::ipaddr::IPNet::V6(cidr) => {
                             IpAddr::V6(Cidr {
-                                addr: cidr.addr.val.into(),
-                                prefix: cidr.prefix.val.map(Into::into),
+                                addr: cidr.addr.into_bitvec().into(),
+                                prefix: cidr.prefix.into_bitvec().map(Into::into),
                             })
                         }
                     },
