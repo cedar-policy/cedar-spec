@@ -206,7 +206,7 @@ private theorem andChain_false_cons (req : Request) (es : Entities)
   simp only [evaluateAndChain]; rfl
 
 /-- Result.as Bool on .ok v is Value.asBool v -/
-private theorem result_as_ok (v : Value) :
+@[simp] private theorem result_as_ok (v : Value) :
     Result.as Bool (.ok v : Result Value) = Value.asBool v := rfl
 
 /-- Or chain equivalence -/
@@ -690,6 +690,30 @@ theorem evaluateMultChain_eq_foldMult
         change evaluateMultChain req es r rest = _
         exact ih r _ (by rw [eval_binaryApp_ok .mul accE _ req es acc v h_acc hev, happ]) h_rest
 
+/-- apply₂ .mem always returns a bool value or an error -/
+private theorem apply₂_mem_returns_bool (v₁ v₂ : Value) (es : Entities) :
+    (∃ b : Bool, apply₂ .mem v₁ v₂ es = .ok (.prim (.bool b))) ∨
+    (∃ err : Error, apply₂ .mem v₁ v₂ es = .error err) := by
+  unfold apply₂
+  cases v₁ with
+  | prim p₁ =>
+    cases p₁ with
+    | entityUID uid₁ =>
+      cases v₂ with
+      | prim p₂ =>
+        cases p₂ with
+        | entityUID uid₂ => left; exact ⟨_, rfl⟩
+        | _ => right; exact ⟨.typeError, rfl⟩
+      | set vs =>
+        simp only [inₛ]
+        cases h : Set.mapOrErr Value.asEntityUID vs .typeError with
+        | error err => right; simp
+        | ok uids => left; simp
+      | _ => right; exact ⟨.typeError, rfl⟩
+    | _ => right; exact ⟨.typeError, rfl⟩
+  | _ => right; exact ⟨.typeError, rfl⟩
+
+
 /-- Main expression-level equivalence: CST evaluation equals translate-then-AST-evaluate. -/
 theorem cst_evaluate_eq_evaluate_toExpr
     (cst : CST.Expr) (req : Request) (es : Entities) :
@@ -801,7 +825,63 @@ theorem cst_evaluate_eq_evaluate_toExpr
   | .isIn e ety inE =>
     simp only [CST.Expr.evaluate, CST.Expr.toExpr]
     rw [cst_evaluate_eq_evaluate_toExpr e, cst_evaluate_eq_evaluate_toExpr inE]
-    sorry
+    generalize hev : Spec.evaluate e.toExpr req es = res
+    cases res with
+    | error err =>
+      simp only [Except.bind_err]
+      symm; exact eval_and_error _ _ req es err (by unfold Spec.evaluate; rw [hev]; rfl)
+    | ok v =>
+      simp only [Except.bind_ok]
+      -- LHS: do let b ← (apply₁ (.is ety) v).as Bool; if !b then .ok false else do let v₂ ← eval inE.toExpr; apply₂ .mem v v₂ es
+      -- RHS: eval (.and (.unaryApp (.is ety) e.toExpr) (.binaryApp .mem e.toExpr inE.toExpr))
+      have h_unary : Spec.evaluate (.unaryApp (.is ety) e.toExpr) req es = apply₁ (.is ety) v := by
+        unfold Spec.evaluate; rw [hev]; rfl
+      cases happ : apply₁ (.is ety) v with
+      | error err =>
+        simp only [Result.as, Coe.coe, Value.asBool, happ, Except.bind_err]
+        symm; exact eval_and_error _ _ req es err (by rw [h_unary, happ])
+      | ok isVal =>
+        simp only [Result.as, Coe.coe, Value.asBool, happ]
+        -- isVal must be a bool since apply₁ (.is ety) returns a bool
+        -- apply₁ (.is ety) v = .ok isVal means v = .prim (.entityUID uid) and isVal = .prim (.bool (ety == uid.ty))
+        cases v with
+        | prim p =>
+          cases p with
+          | entityUID uid =>
+            simp only [apply₁] at happ
+            have : isVal = .prim (.bool (ety == uid.ty)) := by injection happ; symm; assumption
+            subst this
+            simp only [Value.asBool, Except.bind_ok]
+            cases h_eq : (ety == uid.ty)
+            · -- ety ≠ uid.ty, so is-check returned false
+              simp only [Bool.not_false, ↓reduceIte]
+              symm; exact eval_and_false _ _ req es (by rw [h_unary]; simp [apply₁, h_eq])
+            · -- ety = uid.ty, so is-check returned true
+              simp only [Bool.not_true, ↓reduceIte]
+              have h_is_true : Spec.evaluate (.unaryApp (.is ety) e.toExpr) req es = .ok (.prim (.bool true)) := by
+                rw [h_unary]; simp [apply₁, h_eq]
+              generalize hev2 : Spec.evaluate inE.toExpr req es = res3
+              cases res3 with
+              | error err =>
+                simp only [Except.bind_err]
+                symm; exact eval_and_true_err _ _ req es err h_is_true
+                  (by unfold Spec.evaluate; rw [hev, hev2]; rfl)
+              | ok v₂ =>
+                simp only [Except.bind_ok]
+                have h_mem_eval : Spec.evaluate (.binaryApp .mem e.toExpr inE.toExpr) req es = apply₂ .mem (.prim (.entityUID uid)) v₂ es := by
+                  unfold Spec.evaluate; rw [hev, hev2]; rfl
+                have h_mem_bool := apply₂_mem_returns_bool (.prim (.entityUID uid)) v₂ es
+                cases h_mem_bool with
+                | inl hb =>
+                  obtain ⟨b', hb'⟩ := hb
+                  rw [hb']
+                  symm; exact eval_and_true_ok _ _ req es _ b' h_is_true (by rw [h_mem_eval, hb']) (by rfl)
+                | inr he =>
+                  obtain ⟨err, he⟩ := he
+                  rw [he]
+                  symm; exact eval_and_true_err _ _ req es err h_is_true (by rw [h_mem_eval, he])
+          | _ => simp [apply₁] at happ
+        | _ => simp [apply₁] at happ
   | .add init ext =>
     simp only [CST.Expr.evaluate, CST.Expr.toExpr]
     rw [cst_evaluate_eq_evaluate_toExpr init]
@@ -857,7 +937,17 @@ theorem cst_evaluate_eq_evaluate_toExpr
       exact List.mapM_congr (fun e _ => cst_evaluate_eq_evaluate_toExpr e req es)
     rw [this]
   | .record pairs =>
-    simp only [CST.Expr.evaluate, CST.Expr.toExpr]; sorry
+    simp only [CST.Expr.evaluate, CST.Expr.toExpr]
+    rw [List.mapM₂_eq_map_snd (CST.Expr.evaluate · req es) (xs := pairs),
+        List.map₂_eq_map_snd CST.Expr.toExpr (xs := pairs)]
+    simp only [Spec.evaluate,
+      List.mapM₂_eq_mapM (fun (x : Attr × Spec.Expr) => bindAttr x.fst (Spec.evaluate x.snd req es))]
+    congr 1
+    rw [List.mapM_map]
+    apply List.mapM_congr
+    intro ⟨a, e⟩ _
+    simp only [Function.comp, bindAttr]
+    rw [cst_evaluate_eq_evaluate_toExpr e req es]
   | .call fn args =>
     simp only [CST.Expr.evaluate, CST.Expr.toExpr]
     rw [List.mapM₁_eq_mapM (CST.Expr.evaluate · req es) args,
@@ -869,9 +959,29 @@ theorem cst_evaluate_eq_evaluate_toExpr
       exact List.mapM_congr (fun e _ => cst_evaluate_eq_evaluate_toExpr e req es)
     rw [this]
   | .methodCall recv fn args =>
-    simp only [CST.Expr.evaluate, CST.Expr.toExpr]; sorry
+    simp only [CST.Expr.evaluate, CST.Expr.toExpr]
+    rw [cst_evaluate_eq_evaluate_toExpr recv,
+        List.mapM₁_eq_mapM (CST.Expr.evaluate · req es) args,
+        List.map₁_eq_map CST.Expr.toExpr]
+    simp only [Spec.evaluate, List.mapM₁_eq_mapM (Spec.evaluate · req es),
+               List.mapM_cons, bind_assoc]
+    have : args.mapM (CST.Expr.evaluate · req es) =
+           (args.map CST.Expr.toExpr).mapM (Spec.evaluate · req es) := by
+      rw [List.mapM_map]
+      exact List.mapM_congr (fun e _ => cst_evaluate_eq_evaluate_toExpr e req es)
+    rw [this]; grind
 termination_by cst
-decreasing_by all_goals sorry
+decreasing_by
+  all_goals simp_wf
+  all_goals
+    first
+    | omega
+    | (rename_i h; have := List.sizeOf_lt_of_mem h; simp at this; omega)
+    | -- For pair subterms: the variable p : α × β needs destructuring
+      -- so that Prod.mk.sizeOf_spec can fire
+      (rename_i h
+       have h1 := List.sizeOf_lt_of_mem h
+       revert h1; cases ‹_ × _›; simp [Prod.mk.sizeOf_spec]; omega)
 
 /-- Policy translation preserves structure: effect, scopes, and conditions. -/
 theorem toPolicy_preserves_structure (cstPol : CST.Policy) :
@@ -929,57 +1039,218 @@ private theorem conditions_toExpr_cons (c : Spec.Condition) (c₂ : Spec.Conditi
     .and (c.toExpr) (Conditions.toExpr (c₂ :: rest)) := by
   unfold Conditions.toExpr
   simp only [List.reverse_cons]
-  -- LHS: match rest.reverse ++ [c₂] ++ [c] with | [] => ... | hd :: tl => foldl ... hd tl
-  -- RHS: .and c.toExpr (match rest.reverse ++ [c₂] with | [] => ... | hd :: tl => foldl ... hd tl)
-  -- rest.reverse ++ [c₂] ++ [c] = (rest.reverse ++ [c₂]) ++ [c]
-  -- This is always non-empty, so the match takes the cons branch
-  -- The foldl processes everything then applies .and c.toExpr at the end
-  -- which is the same as .and c.toExpr (foldl on rest.reverse ++ [c₂])
   cases h : rest.reverse ++ [c₂] with
   | nil => simp [List.append_eq_nil_iff] at h
   | cons hd tl =>
     simp only [h, List.cons_append, List.foldl_append, List.foldl]
 
-/-- CST conditions evaluation equals AST conditions evaluation after translation -/
-theorem conditions_evaluate_eq (cs : List CST.Condition) (req : Request) (es : Entities) :
-    CST.Conditions.evaluate cs req es =
-    Spec.evaluate (Conditions.toExpr (cs.map CST.Condition.toCondition)) req es := by
+/-- The .as Bool roundtrip preserves .ok true: a Result Value equals .ok true iff
+    the .as Bool coerced version does. -/
+private theorem eq_ok_true_iff_as_bool_eq_ok_true (r : Result Value) :
+    r = .ok true ↔
+    (do let a ← r.as Bool; .ok (.prim (.bool a) : Value)) = .ok true := by
+  constructor
+  · intro h; subst h; rfl
+  · intro h
+    cases r with
+    | error err => simp [Result.as] at h
+    | ok v =>
+      cases v with
+      | prim p =>
+        cases p with
+        | bool b => cases b <;> simp [Result.as, Coe.coe, Value.asBool] at h ⊢
+        | _ => simp [Result.as, Coe.coe, Value.asBool] at h
+      | _ => simp [Result.as, Coe.coe, Value.asBool] at h
+
+/-- If .and evaluates to true and first operand is true, second operand is true -/
+private theorem eval_and_true_implies_second_true (x₁ x₂ : Spec.Expr) (req : Request) (es : Entities)
+    (h_and : Spec.evaluate (.and x₁ x₂) req es = .ok (.prim (.bool true)))
+    (h_fst : Spec.evaluate x₁ req es = .ok (.prim (.bool true))) :
+    Spec.evaluate x₂ req es = .ok (.prim (.bool true)) := by
+  unfold Spec.evaluate at h_and; rw [h_fst] at h_and
+  simp only [Result.as, Coe.coe, Value.asBool, Except.bind_ok, Bool.not_true, ↓reduceIte,
+             Functor.map, Except.map] at h_and
+  cases hev : Spec.evaluate x₂ req es with
+  | error err => simp [hev, Result.as, Coe.coe, Value.asBool] at h_and
+  | ok v =>
+    cases v with
+    | prim p =>
+      cases p with
+      | bool b =>
+        simp [hev, Result.as, Coe.coe, Value.asBool] at h_and
+        rw [h_and]
+      | _ => simp [hev, Result.as, Coe.coe, Value.asBool] at h_and
+    | _ => simp [hev, Result.as, Coe.coe, Value.asBool] at h_and
+
+/-- CST conditions evaluation agrees with AST conditions evaluation on .ok true -/
+theorem conditions_evaluate_eq_ok_true (cs : List CST.Condition) (req : Request) (es : Entities) :
+    CST.Conditions.evaluate cs req es = .ok true ↔
+    Spec.evaluate (Conditions.toExpr (cs.map CST.Condition.toCondition)) req es = .ok true := by
   induction cs with
   | nil =>
     simp only [CST.Conditions.evaluate, List.map, Conditions.toExpr, List.reverse_nil]
-    unfold Spec.evaluate; rfl
+    unfold Spec.evaluate; simp
   | cons c rest ih =>
     cases rest with
     | nil =>
       simp only [CST.Conditions.evaluate, List.map, Conditions.toExpr, List.reverse_cons,
         List.reverse_nil, List.nil_append, List.foldl]
-      exact condition_evaluate_eq c req es
+      rw [condition_evaluate_eq c]
     | cons c₂ rest₂ =>
-      -- CST: do let b ← (c.evaluate req es).as Bool; if !b then .ok false else Conditions.evaluate (c₂ :: rest₂) req es
-      -- AST: evaluate (.and (c.toCondition.toExpr) (Conditions.toExpr (c₂.toCondition :: rest₂.map toCondition)))
-      -- These match because .and short-circuits the same way
+      simp only [List.map]
+      rw [conditions_toExpr_cons]
       simp only [CST.Conditions.evaluate]
-      rw [condition_evaluate_eq c, ih]
-      -- Goal: do let b ← (eval c.toCondition.toExpr).as Bool; if !b then .ok false else eval (Conditions.toExpr ...)
-      --     = eval (.and c.toCondition.toExpr (Conditions.toExpr ...))
-      -- But Conditions.toExpr uses reverse+foldl, so the nesting might differ
-      sorry
+      rw [condition_evaluate_eq c]
+      generalize hev : Spec.evaluate (CST.Condition.toCondition c).toExpr req es = res
+      constructor
+      · -- CST .ok true → AST .ok true
+        intro h
+        cases res with
+        | error err => simp [Result.as, Coe.coe, Value.asBool] at h
+        | ok v =>
+          cases v with
+          | prim p =>
+            cases p with
+            | bool b =>
+              simp only [Result.as, Coe.coe, Value.asBool, Except.bind_ok] at h
+              cases b
+              · simp at h
+              · simp only [Bool.not_true, ↓reduceIte] at h
+                exact eval_and_true_ok _ _ req es _ true (by rw [hev]) (ih.mp h) (by rfl)
+            | _ => simp [Result.as, Coe.coe, Value.asBool] at h
+          | _ => simp [Result.as, Coe.coe, Value.asBool] at h
+      · -- AST .ok true → CST .ok true
+        intro h
+        cases res with
+        | error err =>
+          rw [eval_and_error _ _ req es err (by rw [hev])] at h; simp at h
+        | ok v =>
+          cases v with
+          | prim p =>
+            cases p with
+            | bool b =>
+              simp only [Result.as, Coe.coe, Value.asBool, Except.bind_ok]
+              cases b
+              · rw [eval_and_false _ _ req es (by rw [hev])] at h; simp at h
+              · simp only [Bool.not_true, ↓reduceIte]
+                have h_fst : Spec.evaluate c.toCondition.toExpr req es = .ok (.prim (.bool true)) := by rw [hev]
+                have h_inner := eval_and_true_implies_second_true _ _ req es h h_fst
+                exact ih.mpr h_inner
+            | _ =>
+              rw [eval_and_nonbool _ _ req es _ .typeError (by rw [hev]) (by rfl)] at h; simp at h
+          | _ =>
+            rw [eval_and_nonbool _ _ req es _ .typeError (by rw [hev]) (by rfl)] at h; simp at h
 
-/-- CST policy evaluation equals AST policy evaluation after translation -/
-theorem cst_policy_evaluate_eq (cstPol : CST.Policy) (req : Request) (es : Entities) :
-    CST.Policy.evaluate cstPol req es = Spec.evaluate (cstPol.toPolicy.toExpr) req es := by
-  simp only [CST.Policy.evaluate, CST.Policy.toPolicy, Policy.toExpr]
-  -- Both sides evaluate principalScope, actionScope, resourceScope with short-circuit
-  -- then evaluate conditions
-  -- The scopes use the same Spec.evaluate, so they match
-  -- The conditions part uses conditions_evaluate_eq
-  sorry
+/-- CST policy satisfaction agrees with AST policy satisfaction on .ok true -/
+theorem cst_policy_evaluate_eq_ok_true (cstPol : CST.Policy) (req : Request) (es : Entities) :
+    CST.Policy.evaluate cstPol req es = .ok true ↔
+    Spec.evaluate (cstPol.toPolicy.toExpr) req es = .ok true := by
+  simp only [CST.Policy.evaluate, CST.Policy.toPolicy, Policy.toExpr, pure, Except.pure]
+  constructor
+  · -- Forward: CST .ok true → AST .ok true
+    intro h
+    generalize hp : Spec.evaluate cstPol.principalScope.toExpr req es = resp at h
+    cases resp with
+    | error err => simp [Result.as, Coe.coe, Value.asBool] at h
+    | ok vp => cases vp with
+      | prim pp => cases pp with
+        | bool bp =>
+          simp only [Result.as, Coe.coe, Value.asBool, Except.bind_ok] at h
+          cases bp
+          · simp at h
+          · simp only [Bool.not_true, ↓reduceIte] at h
+            generalize ha : Spec.evaluate cstPol.actionScope.toExpr req es = resa at h
+            cases resa with
+            | error err => simp [Result.as, Coe.coe, Value.asBool] at h
+            | ok va => cases va with
+              | prim pa => cases pa with
+                | bool ba =>
+                  simp only [Result.as, Coe.coe, Value.asBool, Except.bind_ok] at h
+                  cases ba
+                  · simp at h
+                  · simp only [Bool.not_true, ↓reduceIte] at h
+                    generalize hr : Spec.evaluate cstPol.resourceScope.toExpr req es = resr at h
+                    cases resr with
+                    | error err => simp [Result.as, Coe.coe, Value.asBool] at h
+                    | ok vr => cases vr with
+                      | prim pr => cases pr with
+                        | bool br =>
+                          simp only [Result.as, Coe.coe, Value.asBool, Except.bind_ok] at h
+                          cases br
+                          · simp at h
+                          · simp only [Bool.not_true, ↓reduceIte] at h
+                            exact eval_and_true_ok _ _ req es _ true (by rw [hp])
+                              (eval_and_true_ok _ _ req es _ true (by rw [ha])
+                                (eval_and_true_ok _ _ req es _ true (by rw [hr])
+                                  ((conditions_evaluate_eq_ok_true _ req es).mp h) (by rfl))
+                                (by rfl)) (by rfl)
+                        | _ => simp [Result.as, Coe.coe, Value.asBool] at h
+                      | _ => simp [Result.as, Coe.coe, Value.asBool] at h
+                | _ => simp [Result.as, Coe.coe, Value.asBool] at h
+              | _ => simp [Result.as, Coe.coe, Value.asBool] at h
+        | _ => simp [Result.as, Coe.coe, Value.asBool] at h
+      | _ => simp [Result.as, Coe.coe, Value.asBool] at h
+  · -- Backward: AST .ok true → CST .ok true
+    intro h
+    generalize hp : Spec.evaluate cstPol.principalScope.toExpr req es = resp
+    cases resp with
+    | error err =>
+      rw [eval_and_error _ _ req es err (by rw [hp])] at h; simp at h
+    | ok vp => cases vp with
+      | prim pp => cases pp with
+        | bool bp =>
+          simp only [Result.as, Coe.coe, Value.asBool, Except.bind_ok]
+          cases bp
+          · rw [eval_and_false _ _ req es (by rw [hp])] at h; simp at h
+          · simp only [Bool.not_true, ↓reduceIte]
+            have h1 := eval_and_true_implies_second_true _ _ req es h (by rw [hp])
+            generalize ha : Spec.evaluate cstPol.actionScope.toExpr req es = resa
+            cases resa with
+            | error err =>
+              rw [eval_and_error _ _ req es err (by rw [ha])] at h1; simp at h1
+            | ok va => cases va with
+              | prim pa => cases pa with
+                | bool ba =>
+                  simp only [Result.as, Coe.coe, Value.asBool, Except.bind_ok]
+                  cases ba
+                  · rw [eval_and_false _ _ req es (by rw [ha])] at h1; simp at h1
+                  · simp only [Bool.not_true, ↓reduceIte]
+                    have h2 := eval_and_true_implies_second_true _ _ req es h1 (by rw [ha])
+                    generalize hr : Spec.evaluate cstPol.resourceScope.toExpr req es = resr
+                    cases resr with
+                    | error err =>
+                      rw [eval_and_error _ _ req es err (by rw [hr])] at h2; simp at h2
+                    | ok vr => cases vr with
+                      | prim pr => cases pr with
+                        | bool br =>
+                          simp only [Result.as, Coe.coe, Value.asBool, Except.bind_ok]
+                          cases br
+                          · rw [eval_and_false _ _ req es (by rw [hr])] at h2; simp at h2
+                          · simp only [Bool.not_true, ↓reduceIte]
+                            exact (conditions_evaluate_eq_ok_true _ req es).mpr
+                              (eval_and_true_implies_second_true _ _ req es h2 (by rw [hr]))
+                        | _ =>
+                          rw [eval_and_nonbool _ _ req es _ .typeError (by rw [hr]) (by rfl)] at h2
+                          simp at h2
+                      | _ =>
+                        rw [eval_and_nonbool _ _ req es _ .typeError (by rw [hr]) (by rfl)] at h2
+                        simp at h2
+                | _ =>
+                  rw [eval_and_nonbool _ _ req es _ .typeError (by rw [ha]) (by rfl)] at h1
+                  simp at h1
+              | _ =>
+                rw [eval_and_nonbool _ _ req es _ .typeError (by rw [ha]) (by rfl)] at h1
+                simp at h1
+        | _ =>
+          rw [eval_and_nonbool _ _ req es _ .typeError (by rw [hp]) (by rfl)] at h; simp at h
+      | _ =>
+        rw [eval_and_nonbool _ _ req es _ .typeError (by rw [hp]) (by rfl)] at h; simp at h
 
 /-- Policy-level equivalence: direct CST policy evaluation equals AST policy
     evaluation after translation. -/
 theorem cst_policy_satisfied_eq (cstPol : CST.Policy) (req : Request) (es : Entities) :
     CST.satisfiedCST cstPol req es = satisfied (cstPol.toPolicy) req es := by
   simp only [CST.satisfiedCST, satisfied]
-  rw [cst_policy_evaluate_eq]
+  grind [(cst_policy_evaluate_eq_ok_true cstPol req es)]
 
 end Cedar.Thm
