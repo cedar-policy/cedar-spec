@@ -19,8 +19,6 @@ module
 import Cedar.SymCC.Enforcer
 public import Cedar.SymCCOpt.CompiledPolicies
 
-@[expose] public section -- TODO: make the public interface more granular/intentional, instead of having everything public and exposed
-
 namespace Cedar.SymCC
 
 open Cedar.Data Cedar.Spec Factory
