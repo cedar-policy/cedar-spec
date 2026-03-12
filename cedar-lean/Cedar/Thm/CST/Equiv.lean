@@ -38,6 +38,34 @@ open Cedar.Data
 @[simp] private theorem except_error_bind {α β : Type} {err : Error} {f : α → Except Error β} :
     Except.error err >>= f = Except.error err := rfl
 
+/-- Result.as Bool on .ok v is Value.asBool v -/
+@[simp] private theorem result_as_ok (v : Value) :
+    Result.as Bool (.ok v : Result Value) = Value.asBool v := rfl
+
+@[simp] private theorem result_as_error (err : Error) :
+    Result.as Bool (.error err : Result Value) = .error err := rfl
+
+@[simp] private theorem asBool_bool (b : Bool) :
+    Value.asBool (.prim (.bool b)) = .ok b := rfl
+
+@[simp] private theorem asBool_int (i : Int64) :
+    Value.asBool (.prim (.int i)) = .error .typeError := rfl
+
+@[simp] private theorem asBool_string (s : String) :
+    Value.asBool (.prim (.string s)) = .error .typeError := rfl
+
+@[simp] private theorem asBool_entityUID (uid : EntityUID) :
+    Value.asBool (.prim (.entityUID uid)) = .error .typeError := rfl
+
+@[simp] private theorem asBool_set (s : Data.Set Value) :
+    Value.asBool (.set s) = .error .typeError := rfl
+
+@[simp] private theorem asBool_record (m : Data.Map Attr Value) :
+    Value.asBool (.record m) = .error .typeError := rfl
+
+@[simp] private theorem asBool_ext (x : Ext) :
+    Value.asBool (.ext x) = .error .typeError := rfl
+
 /-- Evaluate .or when first arg evaluates to non-bool value -/
 private theorem eval_or_nonbool (a b : Spec.Expr) (req : Request) (es : Entities)
     (v : Value) (err : Error)
@@ -110,7 +138,7 @@ private theorem eval_or_false_nonbool (a eE : Spec.Expr) (req : Request) (es : E
     (hbv : Value.asBool v = .error err) :
     Spec.evaluate (.or a eE) req es = .error err := by
   simp only [Spec.evaluate, h_acc, Result.as]; rw [hev]
-  simp [hbv, Functor.map, Except.map]; rfl
+  simp [hbv, Functor.map, Except.map]
 
 /-- .and when first is true, second evaluates to .ok v with asBool v = .ok b' -/
 private theorem eval_and_true_ok (a eE : Spec.Expr) (req : Request) (es : Entities)
@@ -139,7 +167,7 @@ private theorem eval_and_true_nonbool (a eE : Spec.Expr) (req : Request) (es : E
     (hbv : Value.asBool v = .error err) :
     Spec.evaluate (.and a eE) req es = .error err := by
   simp only [Spec.evaluate, h_acc, Result.as]; rw [hev]
-  simp [hbv, Functor.map, Except.map]; rfl
+  simp [hbv, Functor.map, Except.map]
 
 theorem foldOr_error (req : Request) (es : Entities)
     (accE : Spec.Expr) (exts : List Spec.Expr) (err : Error)
@@ -205,9 +233,6 @@ private theorem andChain_false_cons (req : Request) (es : Entities)
     .ok (.prim (.bool false)) := by
   simp only [evaluateAndChain]; rfl
 
-/-- Result.as Bool on .ok v is Value.asBool v -/
-@[simp] private theorem result_as_ok (v : Value) :
-    Result.as Bool (.ok v : Result Value) = Value.asBool v := rfl
 
 /-- Or chain equivalence -/
 theorem evaluateOrChain_eq_foldOr
@@ -534,13 +559,6 @@ theorem evaluateExtendedHas_eq_translateExtendedHas
               rw [he]
               exact eval_and_true_err _ _ req es err h_hasattr_true he
 
-/-- Helper: evaluating a binary app when both sides evaluate to known values -/
-private theorem eval_binaryApp (op : BinaryOp) (e₁ e₂ : Spec.Expr)
-    (req : Request) (es : Entities) (v₁ v₂ : Value)
-    (h₁ : Spec.evaluate e₁ req es = .ok v₁)
-    (h₂ : Spec.evaluate e₂ req es = .ok v₂) :
-    Spec.evaluate (.binaryApp op e₁ e₂) req es = apply₂ op v₁ v₂ es := by
-  unfold Spec.evaluate; rw [h₁, h₂]; rfl
 
 /-- Helper: foldAdd propagates errors -/
 private theorem foldAdd_error (req : Request) (es : Entities)
@@ -741,7 +759,7 @@ theorem cst_evaluate_eq_evaluate_toExpr
       -- which reduces to: evaluateOrChain req es v ext
       change evaluateOrChain req es v ext = _
       cases ext with
-      | nil => simp only [evaluateOrChain, CST.foldOr]; exact hev.symm
+      | nil => simp only [evaluateOrChain]; exact hev.symm
       | cons e rest =>
         cases hbv : Value.asBool v with
         | error err =>
@@ -765,7 +783,7 @@ theorem cst_evaluate_eq_evaluate_toExpr
     | ok v =>
       change evaluateAndChain req es v ext = _
       cases ext with
-      | nil => simp only [evaluateAndChain, CST.foldAnd]; exact hev.symm
+      | nil => simp only [evaluateAndChain]; exact hev.symm
       | cons e rest =>
         cases hbv : Value.asBool v with
         | error err =>
@@ -838,10 +856,10 @@ theorem cst_evaluate_eq_evaluate_toExpr
         unfold Spec.evaluate; rw [hev]; rfl
       cases happ : apply₁ (.is ety) v with
       | error err =>
-        simp only [Result.as, Coe.coe, Value.asBool, happ, Except.bind_err]
+        simp only [Result.as, Except.bind_err]
         symm; exact eval_and_error _ _ req es err (by rw [h_unary, happ])
       | ok isVal =>
-        simp only [Result.as, Coe.coe, Value.asBool, happ]
+        simp only [Result.as, Coe.coe, Value.asBool]
         -- isVal must be a bool since apply₁ (.is ety) returns a bool
         -- apply₁ (.is ety) v = .ok isVal means v = .prim (.entityUID uid) and isVal = .prim (.bool (ety == uid.ty))
         cases v with
@@ -851,13 +869,13 @@ theorem cst_evaluate_eq_evaluate_toExpr
             simp only [apply₁] at happ
             have : isVal = .prim (.bool (ety == uid.ty)) := by injection happ; symm; assumption
             subst this
-            simp only [Value.asBool, Except.bind_ok]
+            simp only [Except.bind_ok]
             cases h_eq : (ety == uid.ty)
             · -- ety ≠ uid.ty, so is-check returned false
               simp only [Bool.not_false, ↓reduceIte]
               symm; exact eval_and_false _ _ req es (by rw [h_unary]; simp [apply₁, h_eq])
             · -- ety = uid.ty, so is-check returned true
-              simp only [Bool.not_true, ↓reduceIte]
+              simp only [Bool.not_true]
               have h_is_true : Spec.evaluate (.unaryApp (.is ety) e.toExpr) req es = .ok (.prim (.bool true)) := by
                 rw [h_unary]; simp [apply₁, h_eq]
               generalize hev2 : Spec.evaluate inE.toExpr req es = res3
@@ -1040,27 +1058,9 @@ private theorem conditions_toExpr_cons (c : Spec.Condition) (c₂ : Spec.Conditi
   unfold Conditions.toExpr
   simp only [List.reverse_cons]
   cases h : rest.reverse ++ [c₂] with
-  | nil => simp [List.append_eq_nil_iff] at h
-  | cons hd tl =>
-    simp only [h, List.cons_append, List.foldl_append, List.foldl]
+  | nil => simp at h
+  | cons hd tl => simp
 
-/-- The .as Bool roundtrip preserves .ok true: a Result Value equals .ok true iff
-    the .as Bool coerced version does. -/
-private theorem eq_ok_true_iff_as_bool_eq_ok_true (r : Result Value) :
-    r = .ok true ↔
-    (do let a ← r.as Bool; .ok (.prim (.bool a) : Value)) = .ok true := by
-  constructor
-  · intro h; subst h; rfl
-  · intro h
-    cases r with
-    | error err => simp [Result.as] at h
-    | ok v =>
-      cases v with
-      | prim p =>
-        cases p with
-        | bool b => cases b <;> simp [Result.as, Coe.coe, Value.asBool] at h ⊢
-        | _ => simp [Result.as, Coe.coe, Value.asBool] at h
-      | _ => simp [Result.as, Coe.coe, Value.asBool] at h
 
 /-- If .and evaluates to true and first operand is true, second operand is true -/
 private theorem eval_and_true_implies_second_true (x₁ x₂ : Spec.Expr) (req : Request) (es : Entities)
@@ -1068,19 +1068,41 @@ private theorem eval_and_true_implies_second_true (x₁ x₂ : Spec.Expr) (req :
     (h_fst : Spec.evaluate x₁ req es = .ok (.prim (.bool true))) :
     Spec.evaluate x₂ req es = .ok (.prim (.bool true)) := by
   unfold Spec.evaluate at h_and; rw [h_fst] at h_and
-  simp only [Result.as, Coe.coe, Value.asBool, Except.bind_ok, Bool.not_true, ↓reduceIte,
-             Functor.map, Except.map] at h_and
+  simp only [Result.as, Coe.coe, Value.asBool, Except.bind_ok, Bool.not_true] at h_and
   cases hev : Spec.evaluate x₂ req es with
-  | error err => simp [hev, Result.as, Coe.coe, Value.asBool] at h_and
+  | error err => simp [hev] at h_and
   | ok v =>
     cases v with
     | prim p =>
       cases p with
       | bool b =>
-        simp [hev, Result.as, Coe.coe, Value.asBool] at h_and
+        replace h_and : b = true := by simpa [hev] using h_and
         rw [h_and]
-      | _ => simp [hev, Result.as, Coe.coe, Value.asBool] at h_and
-    | _ => simp [hev, Result.as, Coe.coe, Value.asBool] at h_and
+      | _ => simp [hev] at h_and
+    | _ => simp [hev] at h_and
+
+/-- .and evaluates to .ok true iff both operands evaluate to .ok true -/
+theorem eval_and_ok_true_iff (x₁ x₂ : Spec.Expr) (req : Request) (es : Entities) :
+    Spec.evaluate (.and x₁ x₂) req es = .ok true ↔
+    Spec.evaluate x₁ req es = .ok true ∧ Spec.evaluate x₂ req es = .ok true := by
+  constructor
+  · intro h
+    have h₁ : Spec.evaluate x₁ req es = .ok (.prim (.bool true)) := by
+      by_contra hc
+      cases hev : Spec.evaluate x₁ req es with
+      | error err => rw [eval_and_error _ _ req es err hev] at h; simp at h
+      | ok v =>
+        cases v with
+        | prim p => cases p with
+          | bool b =>
+            cases b
+            · rw [eval_and_false _ _ req es hev] at h; simp at h
+            · exact hc hev
+          | _ => rw [eval_and_nonbool _ _ req es _ .typeError hev rfl] at h; simp at h
+        | _ => rw [eval_and_nonbool _ _ req es _ .typeError hev rfl] at h; simp at h
+    exact ⟨h₁, eval_and_true_implies_second_true _ _ req es h h₁⟩
+  · intro ⟨h₁, h₂⟩
+    exact eval_and_true_ok _ _ req es _ true h₁ h₂ rfl
 
 /-- CST conditions evaluation agrees with AST conditions evaluation on .ok true -/
 theorem conditions_evaluate_eq_ok_true (cs : List CST.Condition) (req : Request) (es : Entities) :
@@ -1101,150 +1123,78 @@ theorem conditions_evaluate_eq_ok_true (cs : List CST.Condition) (req : Request)
       rw [conditions_toExpr_cons]
       simp only [CST.Conditions.evaluate]
       rw [condition_evaluate_eq c]
+      rw [eval_and_ok_true_iff]
       generalize hev : Spec.evaluate (CST.Condition.toCondition c).toExpr req es = res
       constructor
-      · -- CST .ok true → AST .ok true
-        intro h
+      · intro h
         cases res with
-        | error err => simp [Result.as, Coe.coe, Value.asBool] at h
-        | ok v =>
-          cases v with
-          | prim p =>
-            cases p with
+        | error err => simp at h
+        | ok v => cases v with
+          | prim p => cases p with
             | bool b =>
-              simp only [Result.as, Coe.coe, Value.asBool, Except.bind_ok] at h
+              simp only [result_as_ok, asBool_bool, Bool.not_eq_eq_eq_not, Bool.not_true,
+                Except.bind_ok] at h
               cases b
               · simp at h
-              · simp only [Bool.not_true, ↓reduceIte] at h
-                exact eval_and_true_ok _ _ req es _ true (by rw [hev]) (ih.mp h) (by rfl)
-            | _ => simp [Result.as, Coe.coe, Value.asBool] at h
-          | _ => simp [Result.as, Coe.coe, Value.asBool] at h
-      · -- AST .ok true → CST .ok true
-        intro h
-        cases res with
-        | error err =>
-          rw [eval_and_error _ _ req es err (by rw [hev])] at h; simp at h
-        | ok v =>
-          cases v with
-          | prim p =>
-            cases p with
-            | bool b =>
-              simp only [Result.as, Coe.coe, Value.asBool, Except.bind_ok]
-              cases b
-              · rw [eval_and_false _ _ req es (by rw [hev])] at h; simp at h
-              · simp only [Bool.not_true, ↓reduceIte]
-                have h_fst : Spec.evaluate c.toCondition.toExpr req es = .ok (.prim (.bool true)) := by rw [hev]
-                have h_inner := eval_and_true_implies_second_true _ _ req es h h_fst
-                exact ih.mpr h_inner
-            | _ =>
-              rw [eval_and_nonbool _ _ req es _ .typeError (by rw [hev]) (by rfl)] at h; simp at h
-          | _ =>
-            rw [eval_and_nonbool _ _ req es _ .typeError (by rw [hev]) (by rfl)] at h; simp at h
+              · grind
+            | _ => simp at h
+          | _ => simp at h
+      · intro ⟨h₁, h₂⟩
+        subst h₁
+        simp only [result_as_ok, asBool_bool, Bool.not_eq_eq_eq_not, Bool.not_true, Except.bind_ok,
+          Bool.true_eq_false, ↓reduceIte]
+        exact ih.mpr h₂
+
+/-- Helper: the CST scope-checking do-block equals .ok true iff all scopes pass and conditions hold -/
+private theorem cst_policy_do_ok_true
+    (p a r : Result Value) (conds : Result Value) :
+    (do let b₁ ← p.as Bool
+        if !b₁ then .ok (Value.prim (.bool false))
+        else do
+          let b₂ ← a.as Bool
+          if !b₂ then .ok (.prim (.bool false))
+          else do
+            let b₃ ← r.as Bool
+            if !b₃ then .ok (.prim (.bool false))
+            else conds) = .ok (.prim (.bool true)) ↔
+    p = .ok (.prim (.bool true)) ∧ a = .ok (.prim (.bool true)) ∧
+    r = .ok (.prim (.bool true)) ∧ conds = .ok (.prim (.bool true)) := by
+  constructor
+  · intro h
+    cases p with
+    | error err => simp at h
+    | ok vp =>
+      simp only [result_as_ok] at h
+      cases vp <;> simp at h
+      rename_i pp; cases pp <;> simp at h
+      -- pp must be bool true
+      cases ‹Bool› <;> simp at h
+      cases a with
+      | error err => simp at h
+      | ok va =>
+        simp only [result_as_ok] at h
+        cases va <;> try simp at h
+        rename_i pa; cases pa <;> simp at h
+        cases ‹Bool› <;> simp at h
+        cases r with
+        | error err => simp at h
+        | ok vr =>
+          simp only [result_as_ok] at h
+          cases vr <;> try simp at h
+          rename_i pr; cases pr <;> simp at h
+          cases ‹Bool› <;> simp at h
+          exact ⟨rfl, rfl, rfl, h⟩
+  · intro ⟨hp, ha, hr, hc⟩
+    subst hp; subst ha; subst hr; simpa
 
 /-- CST policy satisfaction agrees with AST policy satisfaction on .ok true -/
 theorem cst_policy_evaluate_eq_ok_true (cstPol : CST.Policy) (req : Request) (es : Entities) :
     CST.Policy.evaluate cstPol req es = .ok true ↔
     Spec.evaluate (cstPol.toPolicy.toExpr) req es = .ok true := by
   simp only [CST.Policy.evaluate, CST.Policy.toPolicy, Policy.toExpr, pure, Except.pure]
-  constructor
-  · -- Forward: CST .ok true → AST .ok true
-    intro h
-    generalize hp : Spec.evaluate cstPol.principalScope.toExpr req es = resp at h
-    cases resp with
-    | error err => simp [Result.as, Coe.coe, Value.asBool] at h
-    | ok vp => cases vp with
-      | prim pp => cases pp with
-        | bool bp =>
-          simp only [Result.as, Coe.coe, Value.asBool, Except.bind_ok] at h
-          cases bp
-          · simp at h
-          · simp only [Bool.not_true, ↓reduceIte] at h
-            generalize ha : Spec.evaluate cstPol.actionScope.toExpr req es = resa at h
-            cases resa with
-            | error err => simp [Result.as, Coe.coe, Value.asBool] at h
-            | ok va => cases va with
-              | prim pa => cases pa with
-                | bool ba =>
-                  simp only [Result.as, Coe.coe, Value.asBool, Except.bind_ok] at h
-                  cases ba
-                  · simp at h
-                  · simp only [Bool.not_true, ↓reduceIte] at h
-                    generalize hr : Spec.evaluate cstPol.resourceScope.toExpr req es = resr at h
-                    cases resr with
-                    | error err => simp [Result.as, Coe.coe, Value.asBool] at h
-                    | ok vr => cases vr with
-                      | prim pr => cases pr with
-                        | bool br =>
-                          simp only [Result.as, Coe.coe, Value.asBool, Except.bind_ok] at h
-                          cases br
-                          · simp at h
-                          · simp only [Bool.not_true, ↓reduceIte] at h
-                            exact eval_and_true_ok _ _ req es _ true (by rw [hp])
-                              (eval_and_true_ok _ _ req es _ true (by rw [ha])
-                                (eval_and_true_ok _ _ req es _ true (by rw [hr])
-                                  ((conditions_evaluate_eq_ok_true _ req es).mp h) (by rfl))
-                                (by rfl)) (by rfl)
-                        | _ => simp [Result.as, Coe.coe, Value.asBool] at h
-                      | _ => simp [Result.as, Coe.coe, Value.asBool] at h
-                | _ => simp [Result.as, Coe.coe, Value.asBool] at h
-              | _ => simp [Result.as, Coe.coe, Value.asBool] at h
-        | _ => simp [Result.as, Coe.coe, Value.asBool] at h
-      | _ => simp [Result.as, Coe.coe, Value.asBool] at h
-  · -- Backward: AST .ok true → CST .ok true
-    intro h
-    generalize hp : Spec.evaluate cstPol.principalScope.toExpr req es = resp
-    cases resp with
-    | error err =>
-      rw [eval_and_error _ _ req es err (by rw [hp])] at h; simp at h
-    | ok vp => cases vp with
-      | prim pp => cases pp with
-        | bool bp =>
-          simp only [Result.as, Coe.coe, Value.asBool, Except.bind_ok]
-          cases bp
-          · rw [eval_and_false _ _ req es (by rw [hp])] at h; simp at h
-          · simp only [Bool.not_true, ↓reduceIte]
-            have h1 := eval_and_true_implies_second_true _ _ req es h (by rw [hp])
-            generalize ha : Spec.evaluate cstPol.actionScope.toExpr req es = resa
-            cases resa with
-            | error err =>
-              rw [eval_and_error _ _ req es err (by rw [ha])] at h1; simp at h1
-            | ok va => cases va with
-              | prim pa => cases pa with
-                | bool ba =>
-                  simp only [Result.as, Coe.coe, Value.asBool, Except.bind_ok]
-                  cases ba
-                  · rw [eval_and_false _ _ req es (by rw [ha])] at h1; simp at h1
-                  · simp only [Bool.not_true, ↓reduceIte]
-                    have h2 := eval_and_true_implies_second_true _ _ req es h1 (by rw [ha])
-                    generalize hr : Spec.evaluate cstPol.resourceScope.toExpr req es = resr
-                    cases resr with
-                    | error err =>
-                      rw [eval_and_error _ _ req es err (by rw [hr])] at h2; simp at h2
-                    | ok vr => cases vr with
-                      | prim pr => cases pr with
-                        | bool br =>
-                          simp only [Result.as, Coe.coe, Value.asBool, Except.bind_ok]
-                          cases br
-                          · rw [eval_and_false _ _ req es (by rw [hr])] at h2; simp at h2
-                          · simp only [Bool.not_true, ↓reduceIte]
-                            exact (conditions_evaluate_eq_ok_true _ req es).mpr
-                              (eval_and_true_implies_second_true _ _ req es h2 (by rw [hr]))
-                        | _ =>
-                          rw [eval_and_nonbool _ _ req es _ .typeError (by rw [hr]) (by rfl)] at h2
-                          simp at h2
-                      | _ =>
-                        rw [eval_and_nonbool _ _ req es _ .typeError (by rw [hr]) (by rfl)] at h2
-                        simp at h2
-                | _ =>
-                  rw [eval_and_nonbool _ _ req es _ .typeError (by rw [ha]) (by rfl)] at h1
-                  simp at h1
-              | _ =>
-                rw [eval_and_nonbool _ _ req es _ .typeError (by rw [ha]) (by rfl)] at h1
-                simp at h1
-        | _ =>
-          rw [eval_and_nonbool _ _ req es _ .typeError (by rw [hp]) (by rfl)] at h; simp at h
-      | _ =>
-        rw [eval_and_nonbool _ _ req es _ .typeError (by rw [hp]) (by rfl)] at h; simp at h
+  rw [eval_and_ok_true_iff, eval_and_ok_true_iff, eval_and_ok_true_iff,
+      ← conditions_evaluate_eq_ok_true, ←cst_policy_do_ok_true]
+  simp
 
 /-- Policy-level equivalence: direct CST policy evaluation equals AST policy
     evaluation after translation. -/
