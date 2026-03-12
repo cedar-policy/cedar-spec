@@ -95,8 +95,8 @@ private theorem compile_evaluate_hasAttr_record
     rw [pe_ifSome_some hwφ₂.right]
     simp only [pe_option_get_some] at *
     clear hty₁ hwφ₁
-    have hlit := lit_term_some_implies_lit (same_ok_value_implies_lit ih)
-    have ht₁ := lit_term_some_implies_lit (same_ok_value_implies_lit ih)
+    have hlit := isLiteral_some.mp (same_ok_value_implies_lit ih)
+    have ht₁ := hlit
     replace ⟨rt, ht₁⟩ := wfl_of_type_record_is_record (And.intro hwo.left ht₁) hwo.right
     subst ht₁
     simp only [Same.same, SameResults] at ih
@@ -169,7 +169,7 @@ private theorem compile_evaluate_hasAttr_entity
     rw [pe_ifSome_some hwφ₂.right]
     simp only [pe_option_get_some] at *
     clear hty₁ hwφ₁
-    have ht₁ := lit_term_some_implies_lit (same_ok_value_implies_lit ih)
+    have ht₁ := isLiteral_some.mp (same_ok_value_implies_lit ih)
     replace ⟨uid, ht₁, huid⟩ := wfl_of_type_entity_is_entity (And.intro hwo.left ht₁) hwo.right
     subst ht₁ huid
     simp only [Same.same, SameResults, SameValues, entity_value?, Option.some.injEq] at ih
@@ -441,8 +441,8 @@ private theorem compile_evaluate_getAttr_record
     rw [pe_ifSome_some htyₐ]
     simp only [pe_option_get_some] at *
     clear hty₁ hwφ₁
-    have hlit := lit_term_some_implies_lit (same_ok_value_implies_lit ih)
-    have ht₁ := lit_term_some_implies_lit (same_ok_value_implies_lit ih)
+    have hlit := isLiteral_some.mp (same_ok_value_implies_lit ih)
+    have ht₁ := hlit
     replace ⟨rt, ht₁⟩ := wfl_of_type_record_is_record (And.intro hwo.left ht₁) hwo.right
     subst ht₁
     simp only [Same.same, SameResults] at ih
@@ -484,7 +484,7 @@ private theorem compile_evaluate_getAttr_entity
     rw [pe_ifSome_some htyₐ]
     simp only [pe_option_get_some] at *
     clear hty₁ hwφ₁
-    have ht₁ := lit_term_some_implies_lit (same_ok_value_implies_lit ih)
+    have ht₁ := isLiteral_some.mp (same_ok_value_implies_lit ih)
     replace ⟨uid, ht₁, huid⟩ := wfl_of_type_entity_is_entity (And.intro hwo.left ht₁) hwo.right
     subst ht₁ huid
     simp only [Same.same, SameResults, SameValues, entity_value?, Option.some.injEq] at ih

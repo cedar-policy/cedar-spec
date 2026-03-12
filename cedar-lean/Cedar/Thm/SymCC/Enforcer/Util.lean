@@ -41,7 +41,7 @@ theorem interpret_option_entity_term {εs : SymEntities} {I : Interpretation} {t
   · exact Or.inl hlit
   · replace ⟨t', hlit, hty'⟩ := hlit
     simp only [hlit, Term.some.injEq, false_or, reduceCtorEq] at *
-    have hwt' : t'.WellFormedLiteral εs := And.intro (wf_term_some_implies hwt.left) (lit_term_some_implies_lit hwt.right)
+    have hwt' : t'.WellFormedLiteral εs := And.intro (wf_term_some_implies hwt.left) (isLiteral_some.mp hwt.right)
     exact wfl_of_type_entity_is_entity hwt' hty'
 
 theorem compile_interpret_entity_implies_wf {x : Expr} {t : Term} {env : Env} {εnv : SymEnv} {I : Interpretation}
@@ -65,7 +65,7 @@ theorem wfl_entity {uid : EntityUID} {εs : SymEntities} :
   Term.WellFormedLiteral εs (Term.entity uid)
 := by
   intro h
-  apply And.intro _ term_prim_is_lit
+  apply And.intro _ isLiteral_prim
   exact Term.WellFormed.prim_wf (TermPrim.WellFormed.entity_wf h)
 
 theorem εs_ancestors_find?_implies_ancestors {ety : EntityType} {δ : SymEntityData} {εs : SymEntities} :

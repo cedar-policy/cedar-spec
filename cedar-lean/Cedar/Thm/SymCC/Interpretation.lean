@@ -14,7 +14,11 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.SymCC.Data.Basic
+module
+
+public import Cedar.SymCC.Interpretation
+public import Cedar.Thm.SymCC.Data.Basic
+import Cedar.Thm.SymCC.Term.TypeOf
 
 /-!
 # Basic properties of well-formed interpretations
@@ -25,27 +29,27 @@ interpretations.
 
 namespace Cedar.Thm
 
-open Batteries Data Spec SymCC Factory
+open Batteries Data Spec SymCC
 
-theorem wf_interpretation_implies_wfl_var {εs : SymEntities} {I : Interpretation} {v : TermVar} :
+public theorem wf_interpretation_implies_wfl_var {εs : SymEntities} {I : Interpretation} {v : TermVar} :
   I.WellFormed εs → v.WellFormed εs → (I.vars v).WellFormedLiteral εs
 := by
   intro h₁ h₂
   exact (h₁.left v h₂).left
 
-theorem wf_interpretation_implies_wf_var {εs : SymEntities} {I : Interpretation} {v : TermVar} :
+public theorem wf_interpretation_implies_wf_var {εs : SymEntities} {I : Interpretation} {v : TermVar} :
   I.WellFormed εs → v.WellFormed εs → (I.vars v).WellFormed εs
 := by
   intro h₁ h₂
   exact (wf_interpretation_implies_wfl_var h₁ h₂).left
 
-theorem wf_interpretation_implies_typeOf_var {εs : SymEntities} {I : Interpretation} {v : TermVar} :
+public theorem wf_interpretation_implies_typeOf_var {εs : SymEntities} {I : Interpretation} {v : TermVar} :
   I.WellFormed εs → v.WellFormed εs → (I.vars v).typeOf = v.ty
 := by
   intro h₁ h₂
   exact (h₁.left v h₂).right
 
-theorem wf_interpretation_implies_wf_udf {εs : SymEntities} {I : Interpretation} {f : UUF} :
+public theorem wf_interpretation_implies_wf_udf {εs : SymEntities} {I : Interpretation} {f : UUF} :
   I.WellFormed εs → f.WellFormed εs →
   ((I.funs f).WellFormed εs ∧ (I.funs f).arg = f.arg ∧ (I.funs f).out = f.out)
 := by
@@ -53,7 +57,7 @@ theorem wf_interpretation_implies_wf_udf {εs : SymEntities} {I : Interpretation
   replace ⟨h₁, h₃, h₄⟩ := h₁.right.left f h₂
   simp only [h₁, h₃, h₄, and_self]
 
-theorem wf_interpretation_implies_wfp_option_get {εs : SymEntities} {I : Interpretation} {t : Term} {ty : TermType} :
+public theorem wf_interpretation_implies_wfp_option_get {εs : SymEntities} {I : Interpretation} {t : Term} {ty : TermType} :
   I.WellFormed εs → ty.WellFormed εs → t = .app Op.option.get [.none ty] ty →
   (I.partials t).WellFormedLiteral εs ∧ (I.partials t).typeOf = ty
 := by
@@ -61,11 +65,10 @@ theorem wf_interpretation_implies_wfp_option_get {εs : SymEntities} {I : Interp
   subst h₃
   replace h₁ := h₁.right.right (Term.app Op.option.get [Term.none ty] ty)
     (Term.WellFormedPartialApp.none_wfp h₂)
-  simp only [Interpretation.WellFormed.WellFormedPartialAppInterpretation,
-    Term.typeOf] at h₁
+  simp [Interpretation.WellFormed.WellFormedPartialAppInterpretation, typeOf_term_app] at h₁
   exact h₁
 
-theorem wf_interpretation_implies_wfp_ext_ipaddr_addrV4 {εs : SymEntities} {I : Interpretation} {t : Term}
+public theorem wf_interpretation_implies_wfp_ext_ipaddr_addrV4 {εs : SymEntities} {I : Interpretation} {t : Term}
   (v6 : Ext.IPAddr.IPv6Addr) (p6 : Ext.IPAddr.IPv6Prefix) :
   I.WellFormed εs →
   t = .app (.ext ExtOp.ipaddr.addrV4) [.prim (.ext (.ipaddr (.V6 ⟨v6, p6⟩)))] (.bitvec 32) →
@@ -78,11 +81,10 @@ theorem wf_interpretation_implies_wfp_ext_ipaddr_addrV4 {εs : SymEntities} {I :
   replace h₁ := h₁.right.right
     (.app (.ext ExtOp.ipaddr.addrV4) [.prim (.ext (.ipaddr (.V6 ⟨v6, p6⟩)))] (.bitvec 32))
     (Term.WellFormedPartialApp.ext_ipddr_addr4_wfp h₂)
-  simp only [Interpretation.WellFormed.WellFormedPartialAppInterpretation,
-    Term.typeOf] at h₁
+  simp only [Interpretation.WellFormed.WellFormedPartialAppInterpretation, typeOf_term_app] at h₁
   exact h₁
 
-theorem wf_interpretation_implies_wfp_ext_ipaddr_prefixV4 {εs : SymEntities} {I : Interpretation} {t : Term}
+public theorem wf_interpretation_implies_wfp_ext_ipaddr_prefixV4 {εs : SymEntities} {I : Interpretation} {t : Term}
   (v6 : Ext.IPAddr.IPv6Addr) (p6 : Ext.IPAddr.IPv6Prefix) :
   I.WellFormed εs →
   t = .app (.ext ExtOp.ipaddr.prefixV4) [.prim (.ext (.ipaddr (.V6 ⟨v6, p6⟩)))] (.option (.bitvec 5)) →
@@ -95,11 +97,10 @@ theorem wf_interpretation_implies_wfp_ext_ipaddr_prefixV4 {εs : SymEntities} {I
   replace h₁ := h₁.right.right
     (.app (.ext ExtOp.ipaddr.prefixV4) [.prim (.ext (.ipaddr (.V6 ⟨v6, p6⟩)))] (.option (.bitvec 5)))
     (Term.WellFormedPartialApp.ext_ipddr_prefix4_wfp h₂)
-  simp only [Interpretation.WellFormed.WellFormedPartialAppInterpretation,
-    Term.typeOf] at h₁
+  simp only [Interpretation.WellFormed.WellFormedPartialAppInterpretation, typeOf_term_app] at h₁
   exact h₁
 
-theorem wf_interpretation_implies_wfp_ext_ipaddr_addrV6 {εs : SymEntities} {I : Interpretation} {t : Term}
+public theorem wf_interpretation_implies_wfp_ext_ipaddr_addrV6 {εs : SymEntities} {I : Interpretation} {t : Term}
   (v4 : Ext.IPAddr.IPv4Addr) (p4 : Ext.IPAddr.IPv4Prefix) :
   I.WellFormed εs →
   t = .app (.ext ExtOp.ipaddr.addrV6) [.prim (.ext (.ipaddr (.V4 ⟨v4, p4⟩)))] (.bitvec 128) →
@@ -112,11 +113,10 @@ theorem wf_interpretation_implies_wfp_ext_ipaddr_addrV6 {εs : SymEntities} {I :
   replace h₁ := h₁.right.right
     (.app (.ext ExtOp.ipaddr.addrV6) [.prim (.ext (.ipaddr (.V4 ⟨v4, p4⟩)))] (.bitvec 128))
     (Term.WellFormedPartialApp.ext_ipddr_addr6_wfp h₂)
-  simp only [Interpretation.WellFormed.WellFormedPartialAppInterpretation,
-    Term.typeOf] at h₁
+  simp only [Interpretation.WellFormed.WellFormedPartialAppInterpretation, typeOf_term_app] at h₁
   exact h₁
 
-theorem wf_interpretation_implies_wfp_ext_ipaddr_prefixV6 {εs : SymEntities} {I : Interpretation} {t : Term}
+public theorem wf_interpretation_implies_wfp_ext_ipaddr_prefixV6 {εs : SymEntities} {I : Interpretation} {t : Term}
   (v4 : Ext.IPAddr.IPv4Addr) (p4 : Ext.IPAddr.IPv4Prefix) :
   I.WellFormed εs →
   t = .app (.ext ExtOp.ipaddr.prefixV6) [.prim (.ext (.ipaddr (.V4 ⟨v4, p4⟩)))] (.option (.bitvec 7)) →
@@ -129,8 +129,7 @@ theorem wf_interpretation_implies_wfp_ext_ipaddr_prefixV6 {εs : SymEntities} {I
   replace h₁ := h₁.right.right
     (.app (.ext ExtOp.ipaddr.prefixV6) [.prim (.ext (.ipaddr (.V4 ⟨v4, p4⟩)))] (.option (.bitvec 7)))
     (Term.WellFormedPartialApp.ext_ipddr_prefix6_wfp h₂)
-  simp only [Interpretation.WellFormed.WellFormedPartialAppInterpretation,
-    Term.typeOf] at h₁
+  simp only [Interpretation.WellFormed.WellFormedPartialAppInterpretation, typeOf_term_app] at h₁
   exact h₁
 
 end Cedar.Thm

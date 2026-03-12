@@ -102,7 +102,7 @@ theorem compile_evaluate_ite {x₁ x₂ x₃ : Expr} {env : Env} {εnv : SymEnv}
           replace ⟨t', hr₁, hr₁'⟩ := hr₁ ; subst hr₁ hr₁'
           simp only [CompileIfSym, Term.typeOf, TermType.option.injEq] at h₄
           replace hwφ₁ := wf_term_some_implies hwφ₁
-          replace ih₁ := lit_term_some_implies_lit ih₁
+          rw [isLiteral_some] at ih₁
           replace ih₁ := wfl_of_type_bool_is_true_or_false (And.intro hwφ₁ ih₁) h₄.left
           rcases ih₁ with ih₁ | ih₁ <;>
           simp [ih₁] at h₅ h₆
@@ -220,7 +220,7 @@ private theorem compile_bool_same_implies_bool {x : Expr} {εnv : SymEnv} {t : T
   case inl => simp only [Same.same, SameResults] at hs
   case inr =>
     cases hwφ ; rename_i hwφ
-    have hlit := lit_term_some_implies_lit (same_ok_value_implies_lit hs)
+    have hlit := isLiteral_some.mp (same_ok_value_implies_lit hs)
     replace ⟨b, hlit⟩ := wfl_of_type_bool_is_bool (And.intro hwφ hlit) hty'
     subst hlit
     exists b

@@ -842,7 +842,7 @@ private theorem compileInₑ_eq_inₑ {es : Entities} {εs : SymEntities} {e₁ 
     case h_1 ancs? hs =>
       replace ⟨ts, hs, hlit, hmem⟩ := same_entities_ancestors_some_of_type heq hwf₁ hs
       specialize hmem e₂ rfl
-      simp only [hs, pe_set_member hlit term_prim_is_lit, Term.prim.injEq, TermPrim.bool.injEq]
+      simp only [hs, pe_set_member hlit isLiteral_prim, Term.prim.injEq, TermPrim.bool.injEq]
       cases h : Set.contains ts (Term.prim (TermPrim.entity e₂)) <;> rw [eq_comm]
       case false =>
         by_contra hc
@@ -874,7 +874,7 @@ private theorem term_entity_set_wfl_implies_sorted_entity_list {εs : SymEntitie
     have hlt := wf_term_set_implies_wf_set hwφ
     simp only [Set.wf_iff_sorted, Set.elts] at hlt
     replace hwφ := wf_term_set_cons hwφ
-    replace hlit := lit_term_set_cons hlit
+    replace hlit := isLiteral_set_cons hlit
     replace ⟨uids, ih⟩ := ih hwφ.right.right hlit.right
     have ⟨uid, ht, hty⟩ := wfl_of_type_entity_is_entity (And.intro hwφ.left hlit.left) hwφ.right.left
     exists (uid :: uids)
@@ -1054,7 +1054,7 @@ private theorem compileInₛ_eq_any_inₑ {es : Entities} {εs : SymEntities} {e
       exists_eq_right, h]
     have hty := wf_term_set_implies_typeOf_elt hwφ₂ ht
     rw [← Set.contains_prop_bool_equiv] at ht
-    simp only [Term.typeOf, hty, ↓reduceIte, pe_set_member hlit₂ term_prim_is_lit, ht,
+    simp only [Term.typeOf, hty, ↓reduceIte, pe_set_member hlit₂ isLiteral_prim, ht,
       pe_or_true_left, Term.prim.injEq, TermPrim.bool.injEq]
     rw [eq_comm, List.any_eq_true]
     exists e₁
@@ -1086,7 +1086,7 @@ private theorem compileInₛ_eq_any_inₑ {es : Entities} {εs : SymEntities} {e
         replace ⟨e, he⟩ := he
         exists e
         simp only [he, Bool.or_true, and_self]
-    simp only [pe_set_member hlit₂ term_prim_is_lit, ht, ite_self, compileInₛ.isIn₂,
+    simp only [pe_set_member hlit₂ isLiteral_prim, ht, ite_self, compileInₛ.isIn₂,
       pe_or_false_left, hv]
     have hty := entities_type_eq hwφ₂ hts
     split

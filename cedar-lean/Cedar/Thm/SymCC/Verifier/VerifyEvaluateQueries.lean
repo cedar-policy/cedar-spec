@@ -36,9 +36,9 @@ theorem value_type_bool_implies_bool {v : Value} {t : Term} :
       simp only [Term.value?, TermPrim.value?, Option.some.injEq] at hs
       exists b
       simp only [hs]
-    all_goals simp_all [Term.value?, TermPrim.value?, typeOf_bv, typeOf_term_prim_string, typeOf_term_prim_entity]
-    case ext x => cases x <;> simp [typeOf_term_prim_ext_datetime, typeOf_term_prim_ext_decimal, typeOf_term_prim_ext_duration, typeOf_term_prim_ext_ipaddr] at hty
-  all_goals simp_all [Term.value?, Term.typeOf]
+    all_goals simp_all [Term.value?, TermPrim.value?]
+    case ext x => cases x <;> simp at hty
+  all_goals simp_all [Term.value?]
 
 theorem verifyNeverErrors_wbeq :
   WellBehavedEvaluateQuery isSome Except.isOk
@@ -93,7 +93,7 @@ theorem verifyAlwaysMatches_wbeq :
       subst heq
       simp only [pe_eq_some_some]
       have hwt' : t'.WellFormed εs ∧ t'.typeOf = .bool := by
-        simp [WellBehavedEvaluateQuery.WellFormedInput, Term.typeOf] at hwt
+        simp [WellBehavedEvaluateQuery.WellFormedInput] at hwt
         simp [hwt, wf_term_some_implies]
       replace ⟨b, hv⟩ := value_type_bool_implies_bool hs hwt'.right
       subst hv
@@ -103,7 +103,7 @@ theorem verifyAlwaysMatches_wbeq :
       cases b
       case false =>
         show eq.simplify (.prim (.bool false)) (.prim (.bool true)) = .prim (.bool false)
-        have := pe_eq_simplify_lit (t₁ := .prim (.bool false)) (t₂ := .prim (.bool true)) term_prim_is_lit term_prim_is_lit
+        have := pe_eq_simplify_lit (t₁ := .prim (.bool false)) (t₂ := .prim (.bool true)) isLiteral_prim isLiteral_prim
         rw [this.right]
         rfl
       case true =>
@@ -141,7 +141,7 @@ theorem verifyNeverMatches_wbeq :
       subst heq
       simp only [pe_eq_some_some]
       have hwt' : t'.WellFormed εs ∧ t'.typeOf = .bool := by
-        simp [WellBehavedEvaluateQuery.WellFormedInput, Term.typeOf] at hwt
+        simp [WellBehavedEvaluateQuery.WellFormedInput] at hwt
         simp [hwt, wf_term_some_implies]
       replace ⟨b, hv⟩ := value_type_bool_implies_bool hs hwt'.right
       subst hv
@@ -151,7 +151,7 @@ theorem verifyNeverMatches_wbeq :
       cases b
       case false =>
         show not (eq.simplify (.prim (.bool false)) (.prim (.bool true))) = .prim (.bool true)
-        have := pe_eq_simplify_lit (t₁ := .prim (.bool false)) (t₂ := .prim (.bool true)) term_prim_is_lit term_prim_is_lit
+        have := pe_eq_simplify_lit (t₁ := .prim (.bool false)) (t₂ := .prim (.bool true)) isLiteral_prim isLiteral_prim
         rw [this.right, pe_not_lit]
         rfl
       case true =>

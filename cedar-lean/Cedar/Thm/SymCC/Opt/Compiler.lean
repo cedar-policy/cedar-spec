@@ -41,7 +41,7 @@ Helper lemma
 private theorem Opt.directFootprint.someFalse :
   Opt.directFootprint (⊙false) = ∅
 := by
-  simp [EmptyCollection.emptyCollection, Opt.directFootprint, Factory.someOf, Term.typeOf, typeOf_bool, TermType.isOptionEntityType]
+  simp [EmptyCollection.emptyCollection, Opt.directFootprint, Factory.someOf, typeOf_bool, TermType.isOptionEntityType]
 
 /--
 Correctness lemma for `Opt.compileApp₁`, at least as to the `term`:

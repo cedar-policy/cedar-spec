@@ -218,7 +218,7 @@ private theorem wf_δ_implies_wf_app_udf_ancs {uid : EntityUID} {δ : SymEntityD
 := by
   intro hwδ hf
   have ⟨hwf, _, htyₒ⟩ := hwδ.right.right.right.left ancTy (.udf ancUF) hf
-  simp only [app, term_prim_is_lit, ↓reduceIte]
+  simp only [app, isLiteral_prim, ↓reduceIte]
   simp only [UnaryFunction.outType] at htyₒ
   simp only [UnaryFunction.WellFormed, UDF.WellFormed, htyₒ] at hwf
   split

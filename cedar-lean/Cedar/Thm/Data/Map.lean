@@ -757,6 +757,14 @@ public theorem mapOnValues_tail {f : β → γ} {hd₁ hd₂ : α × β} {tl₁ 
 := by
   simp [mapOnValues]
 
+/--
+Ideally we wouldn't need this, but it's currently necessary because of the kludgy way
+that `EntityTag.mk` uses `Map` without relying on its proper constructors
+-/
+public theorem mapOnValues_doubleton {f : β → γ} {s₁ s₂ : String} (b₁ b₂ : β) :
+  Map.mapOnValues f (Map.mk [(s₁, b₁), (s₂, b₂)]) = Map.mk [(s₁, f b₁), (s₂, f b₂)]
+:= by simp [mapOnValues]
+
 public theorem find?_mapOnValues {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) (m : Map α β) (k : α)  :
   (m.find? k).map f = (m.mapOnValues f).find? k
 := by
@@ -851,6 +859,14 @@ public theorem values_mapOnValues [LT α] [StrictLT α] [DecidableLT α] [Decida
 public theorem mapOnValues_mapOnValues [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {f : β → γ} {g : γ → φ} {m : Map α β} :
   (m.mapOnValues f).mapOnValues g = m.mapOnValues (g ∘ f)
 := by simp [mapOnValues]
+
+/-- Like `List.map_congr`, but lifted to `Map.mapOnValues` -/
+public theorem mapOnValues_congr {f g : β → γ} {m : Map α β} :
+  (∀ v ∈ m.values, f v = g v) → m.mapOnValues f = m.mapOnValues g
+:= by
+  simp only [mapOnValues, mk.injEq, List.map_inj_left, Prod.mk.injEq, true_and, Prod.forall]
+  intro h₁ a b h₂
+  apply h₁ b (in_list_in_values h₂)
 
 public theorem mapOnValues_restricted_id  {f : β → β} {m : Map α β} :
   (∀ b ∈ m.values, f b = b) →

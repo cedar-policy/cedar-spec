@@ -692,13 +692,10 @@ private theorem ofEnv_entity_completeness_standard_inst_tags
         (Factory.tagOf (Term.entity uid) (Term.string k)))
     := by
       simp [
-        Term.interpret, Op.interpret,
         UnaryFunction.interpret,
-        Factory.app, Factory.tagOf, Factory.recordOf,
-        List.map₁_eq_map (Term.interpret I ·),
+        Factory.app, Factory.tagOf,
         hvals_uuf,
         Term.isLiteral,
-        List.map₃, List.attach₃,
         Map.make,
         List.canonicalize, List.insertCanonical,
       ]

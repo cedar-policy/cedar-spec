@@ -105,10 +105,12 @@ public inductive IPNet where
   | V4 : CIDR V4_WIDTH → IPNet
   | V6 : CIDR V6_WIDTH → IPNet
 
+@[inline, expose]
 public def IPNet.isV4 : IPNet → Bool
   | .V4 _ => true
   | _     => false
 
+@[inline, expose]
 public def IPNet.isV6 : IPNet → Bool
   | .V6 _ => true
   | _     => false

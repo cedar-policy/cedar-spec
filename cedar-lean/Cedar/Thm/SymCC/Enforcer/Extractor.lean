@@ -69,8 +69,9 @@ private theorem repairAncestors_default_wfl {εs : SymEntities} {f : UDF}
   simp only [hty, heq] at hlt
   cases hlt ; rename_i hlt
   replace hlt := wf_term_set_empty hlt
-  simp only [Set.empty, hlt, heq, and_true]
-  exact And.intro hlt.left (lit_term_set_empty ty)
+  simp only [heq]
+  apply And.intro _ hlt.right
+  exact And.intro hlt.left (isLiteral_empty ty)
 
 private theorem repairAncestors_table_wf {uids : Set EntityUID} {f : UDF} :
   uids.WellFormed →
@@ -279,7 +280,7 @@ theorem not_mem_footprintUIDs_implies_empty_ancs {uid : EntityUID} {ety : Entity
   Term.set Set.empty (TermType.entity ety)
 := by
   simp only [app, UnaryFunction.interpret, Interpretation.repair, Interpretation.repair.funs,
-    footprintAncestors_eq hδ hf, term_prim_is_lit, ↓reduceIte,
+    footprintAncestors_eq hδ hf, isLiteral_prim, ↓reduceIte,
     not_mem_uids_implies_repairAncestors_find?_none hft]
   simp only [UUF.repairAncestors, UUF.repairAncestors.default]
   replace hwε := (hwε.right.right uid.ty δ hδ).right.right.right.left ety _ hf
@@ -312,7 +313,7 @@ theorem mem_footprintUIDs_implies_eq_ancs {uid : EntityUID} {ety : EntityType} {
 := by
   rw [app.eq_def]
   simp only [UnaryFunction.interpret, Interpretation.repair, Interpretation.repair.funs,
-    footprintAncestors_eq hδ hf, term_prim_is_lit, ↓reduceIte]
+    footprintAncestors_eq hδ hf, isLiteral_prim, ↓reduceIte]
   replace hwε := (hwε.right.right uid.ty δ hδ).right.right.right.left ety _ hf
   replace hI := (hI.right.left f hwε.left).right.left
   replace hwε := hwε.right.left

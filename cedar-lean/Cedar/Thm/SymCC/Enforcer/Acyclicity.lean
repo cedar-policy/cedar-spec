@@ -119,7 +119,7 @@ theorem swf_implies_interpret_acyclicity {x : Expr} {t : Term} {ety : EntityType
     have hv := compile_interpret_entity_implies_wf heq hI hwε (swf_env_for_implies_wf_for hse) hok ht
     replace ⟨ts, heq, hlit, huid⟩ := same_entities_ancestors_some_of_type heq.right hv hanc
     specialize huid uid rfl
-    simp only [heq, pe_set_member hlit term_prim_is_lit]
+    simp only [heq, pe_set_member hlit isLiteral_prim]
     cases h : ts.contains (Term.prim (TermPrim.entity uid))
     · simp only [pe_not_false]
     · rw [Set.contains_prop_bool_equiv] at h
@@ -146,9 +146,9 @@ theorem interpret_acyclicity_implies_acyclic {t : Term} {ts : Set Term} {uid : E
   replace hwt' := wf_term_some_implies hwt'
   replace hwε := (hwε.right.right uid.ty δ hδ).right.right.right.left uid.ty (.uuf f) hf
   replace hI := hI.right.left f hwε.left
-  have hlit := pe_app_wfl (And.intro hwt' term_prim_is_lit) hI.left
+  have hlit := pe_app_wfl (And.intro hwt' isLiteral_prim) hI.left
   simp only [heq] at ha hlit
-  simp [pe_set_member hlit term_prim_is_lit] at ha
+  simp [pe_set_member hlit isLiteral_prim] at ha
   cases hin : ts.contains (Term.entity uid) <;>
   simp only [hin, pe_not_true, Term.prim.injEq, TermPrim.bool.injEq, Bool.false_eq_true] at ha
   by_contra hc

@@ -632,6 +632,11 @@ public theorem subset_def [DecidableEq α] {s₁ s₂ : Set α} :
     rw [contains_prop_bool_equiv]
     exact h₁ h₂
 
+@[simp]
+public theorem subset_empty [DecidableEq α] {s : Set α} :
+  Set.empty ⊆ s
+:= by simp [Subset, subset]
+
 public theorem superset_empty_subset_empty [DecidableEq α] {s₁ s₂ : Set α} :
   s₁ ⊆ s₂ → s₂.isEmpty → s₁.isEmpty
 := by
@@ -766,6 +771,36 @@ public theorem difference_subset [LT α] [DecidableLT α] [StrictLT α] [Decidab
   intro s
   rw [mem_difference]
   exact And.left
+
+/-! ### all and any -/
+
+/-- Like `List.all_eq_true`, but for `Set.all` -/
+@[simp]
+public theorem all_eq_true {f : α → Bool} {s : Set α} :
+  s.all f = true ↔ ∀ x ∈ s, f x = true
+:= by
+  simp only [Set.all, List.all_eq_true, Set.mem_elts_iff_mem_set]
+
+/-- Like `List.all_eq_false`, but for `Set.all` -/
+@[simp]
+public theorem all_eq_false {f : α → Bool} {s : Set α} :
+  s.all f = false ↔ ∃ x ∈ s, ¬ f x = true
+:= by
+  simp only [Set.all, List.all_eq_false, Set.mem_elts_iff_mem_set]
+
+/-- Like `List.any_eq_true`, but for `Set.any` -/
+@[simp]
+public theorem any_eq_true {f : α → Bool} {s : Set α} :
+  s.any f = true ↔ ∃ x ∈ s, f x = true
+:= by
+  simp only [Set.any, List.any_eq_true, Set.mem_elts_iff_mem_set]
+
+/-- Like `List.any_eq_false`, but for `Set.any` -/
+@[simp]
+public theorem any_eq_false {f : α → Bool} {s : Set α} :
+  s.any f = false ↔ ∀ x ∈ s, ¬ f x = true
+:= by
+  simp only [Set.any, List.any_eq_false, Set.mem_elts_iff_mem_set]
 
 /-! ### all₁ and any₁ -/
 

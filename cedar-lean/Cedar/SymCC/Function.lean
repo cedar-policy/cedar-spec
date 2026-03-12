@@ -49,10 +49,12 @@ public inductive UnaryFunction : Type where
   | uuf : UUF → UnaryFunction
   | udf : UDF → UnaryFunction
 
+@[expose]
 public def UnaryFunction.argType : UnaryFunction → TermType
   | .uuf f => f.arg
   | .udf f => f.arg
 
+@[expose]
 public def UnaryFunction.outType : UnaryFunction → TermType
   | .uuf f => f.out
   | .udf f => f.out

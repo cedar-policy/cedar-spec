@@ -50,8 +50,7 @@ theorem wellTypedPolicies_allowAll (Γ : Validation.TypeEnv) :
 theorem isAuthorized_empty (εnv : SymEnv) :
   SymCC.isAuthorized [] εnv = .ok (.bool false)
 := by
-  simp [SymCC.isAuthorized, SymCC.satisfiedPolicies]
-  simp [pe_and_false_left, Factory.anyTrue, Factory.someOf]
+  simp [SymCC.isAuthorized, SymCC.satisfiedPolicies, Factory.anyTrue]
 
 /--
 `SymCC.compile` on `verifyAlwaysAllows.allowAll.toExpr`
@@ -62,7 +61,7 @@ private theorem compile_allowAll (εnv : SymEnv) :
   simp [verifyAlwaysAllows.allowAll]
   simp [Policy.toExpr, PrincipalScope.toExpr, ActionScope.toExpr, ResourceScope.toExpr, Scope.toExpr, Conditions.toExpr, Condition.toExpr]
   simp [compile, compilePrim, compileAnd]
-  simp [pe_ite_true, pe_ifSome_some, pe_option_get_some, Factory.someOf, Term.typeOf, typeOf_bool]
+  simp [pe_ite_true, pe_ifSome_some, pe_option_get_some, Factory.someOf, typeOf_bool]
 
 /--
 `SymCC.compile` on a literal bool
@@ -79,7 +78,7 @@ theorem isAuthorized_allowAll (εnv : SymEnv) :
   SymCC.isAuthorized [verifyAlwaysAllows.allowAll] εnv = .ok (.bool true)
 := by
   simp [SymCC.isAuthorized, SymCC.satisfiedPolicies, compileWithEffect, compile_allowAll]
-  simp [verifyAlwaysAllows.allowAll, Factory.anyTrue, Factory.someOf, pe_eq_same, pe_or_true_left, pe_not_false, pe_and_true_left]
+  simp [verifyAlwaysAllows.allowAll, Factory.anyTrue, Factory.someOf, pe_eq_same, pe_not_false, pe_and_true_left]
 
 /--
 `SymCC.footprint` on `verifyAlwaysAllows.allowAll.toExpr`
@@ -89,4 +88,4 @@ theorem footprint_allowAll (εnv : SymEnv) :
 := by
   simp [verifyAlwaysAllows.allowAll]
   simp [Policy.toExpr, PrincipalScope.toExpr, ActionScope.toExpr, ResourceScope.toExpr, Scope.toExpr, Conditions.toExpr, Condition.toExpr]
-  simp [footprint, footprint.ofBranch, footprint.ofEntity, compile_bool, Factory.someOf, TermType.isOptionEntityType, Term.typeOf, typeOf_bool]
+  simp [footprint, footprint.ofBranch, footprint.ofEntity, compile_bool, Factory.someOf, TermType.isOptionEntityType, typeOf_bool]

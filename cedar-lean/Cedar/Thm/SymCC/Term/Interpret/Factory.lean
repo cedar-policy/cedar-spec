@@ -313,7 +313,7 @@ theorem interpret_eq_simplify {I : Interpretation} {t₁ t₂ : Term} :
     · have h₅ := interpret_term_wfl h₂ h₃
       rw [h₁] at h₅
       have h₆ := wfl_of_type_bool_is_true_or_false h₅.left h₅.right
-      simp_all [Term.isLiteral, Term.WellFormedLiteral, Factory.not]
+      simp_all [Term.WellFormedLiteral, Factory.not]
   case case7 =>
     intro h₂ h₃ h₄
     have h₅ := interpret_term_wfl h₂ h₃
@@ -354,7 +354,7 @@ theorem interpret_eq {I : Interpretation} {t₁ t₂ : Term} :
       · simp only [Term.isLiteral, h₄, h₅, and_self, ↓reduceIte, Term.prim.injEq,
         TermPrim.bool.injEq, Bool.false_eq, beq_eq_false_iff_ne, ne_eq, h₉, not_false_eq_true]
     · simp only [eq.simplify, reduceCtorEq, ↓reduceIte, Term.isLiteral, h₄, Bool.and_self]
-    · rw [(pe_eq_simplify_lit (by simp [Term.isLiteral]) (by simp_all [Term.isLiteral])).right]
+    · rw [(pe_eq_simplify_lit (by simp) (by simp_all)).right]
       simp only [Term.prim.injEq, TermPrim.bool.injEq, beq_eq_false_iff_ne, ne_eq, reduceCtorEq,
         not_false_eq_true]
 
@@ -375,7 +375,6 @@ theorem interpret_isNone {I : Interpretation} {t : Term} :
     replace h₄ := wfl_of_type_bool_is_true_or_false h₄.left h₄.right
     rcases h₄ with h₄ | h₄ <;>
     simp only [h₄, pe_ite_true, pe_ite_false,
-      interpret_term_some, interpret_term_none,
       pe_isNone_some, pe_isNone_none,
       interpret_not h₁ h₂, pe_not_true,
       pe_not_false]
@@ -424,11 +423,11 @@ theorem interpret_isSome {I : Interpretation} {t : Term} :
 
 theorem interpret_noneOf {I : Interpretation} {ty : TermType} :
   (noneOf ty).interpret I = Term.none ty
-:= by simp [noneOf, Term.interpret]
+:= by simp [noneOf]
 
 theorem interpret_someOf {I : Interpretation} {t : Term} :
   (someOf t).interpret I = Term.some (t.interpret I)
-:= by simp [someOf, Term.interpret]
+:= by simp [someOf]
 
 theorem interpret_option_get {εs : SymEntities} (I : Interpretation) {t : Term} {ty : TermType} :
   t.WellFormed εs → t.typeOf = .option ty →
@@ -961,7 +960,6 @@ theorem interpret_set_isEmpty {εs : SymEntities} {t : Term} {ty : TermType} :
     simp only [hty] at hwt
     cases hwt ; rename_i hwt
     have hwe := wf_term_set_empty hwt
-    rw [← Set.empty_eq_mk_nil] at hwe
     simp only [hty, interpret_eq hI hw hwe.left, interpret_term_set_empty]
     have hwl := interpret_term_wfl hI hw
     simp only [hty] at hwl
@@ -972,7 +970,7 @@ theorem interpret_set_isEmpty {εs : SymEntities} {t : Term} {ty : TermType} :
     case nil =>
       simp only [pe_eq_same, pe_set_isEmpty, Set.isEmpty, Set.empty_eq_mk_nil, beq_self_eq_true]
     case cons hd tl =>
-      rw [(pe_eq_lit hwl.left.right (lit_term_set_empty ty)).right, pe_set_isEmpty]
+      rw [(pe_eq_lit hwl.left.right (isLiteral_empty ty)).right, pe_set_isEmpty]
       simp only [Set.isEmpty, Set.empty]
       have : (Set.mk (hd :: tl) == Set.mk []) = false := by
         simp only [beq_eq_false_iff_ne, ne_eq, Set.mk.injEq]

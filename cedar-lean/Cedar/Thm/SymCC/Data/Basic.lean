@@ -520,9 +520,11 @@ public inductive Term.WellFormed (εs : SymEntities) : Term → Prop
     (h₂ : r.WellFormed):
     WellFormed εs (.record r)
 
+@[expose]
 public def Term.WellFormedLiteral (εs : SymEntities) (t : Term) : Prop :=
   t.WellFormed εs ∧ t.isLiteral
 
+@[expose]
 public def UDF.WellFormed (εs : SymEntities) (f : UDF) : Prop :=
   f.default.WellFormedLiteral εs ∧
   f.default.typeOf = f.out ∧
@@ -533,10 +535,12 @@ public def UDF.WellFormed (εs : SymEntities) (f : UDF) : Prop :=
      tₒ.WellFormedLiteral εs ∧
      tₒ.typeOf = f.out)
 
+@[expose]
 public def UnaryFunction.WellFormed (εs : SymEntities) : UnaryFunction → Prop
   | .uuf f => f.WellFormed εs
   | .udf f => f.WellFormed εs
 
+@[expose]
 public def SymRequest.WellFormed (εs : SymEntities) (req : SymRequest) : Prop :=
   req.principal.WellFormed εs ∧
   req.principal.typeOf.isEntityType ∧
@@ -547,6 +551,7 @@ public def SymRequest.WellFormed (εs : SymEntities) (req : SymRequest) : Prop :
   req.context.WellFormed εs ∧
   req.context.typeOf.isCedarRecordType
 
+@[expose]
 public def SymTags.WellFormed (εs : SymEntities) (ety : EntityType) (τs : SymTags) : Prop :=
   τs.keys.WellFormed εs ∧
   τs.keys.argType = .entity ety ∧
@@ -555,6 +560,7 @@ public def SymTags.WellFormed (εs : SymEntities) (ety : EntityType) (τs : SymT
   τs.vals.argType = TermType.tagFor ety ∧
   τs.vals.outType.isCedarType
 
+@[expose]
 public def SymEntityData.WellFormed (εs : SymEntities) (ety : EntityType) (d : SymEntityData) : Prop :=
   d.attrs.WellFormed εs ∧
   d.attrs.argType = .entity ety ∧
@@ -567,10 +573,12 @@ public def SymEntityData.WellFormed (εs : SymEntities) (ety : EntityType) (d : 
   (∀ τs, d.tags = some τs → τs.WellFormed εs ety) ∧
   (∀ mems, d.members = some mems → ¬ mems.isEmpty)
 
+@[expose]
 public def SymEntities.WellFormed (εs : SymEntities) : Prop :=
   Map.WellFormed εs ∧
   ∀ ety d, εs.find? ety = some d → d.WellFormed εs ety
 
+@[expose]
 public def SymEnv.WellFormed (εnv : SymEnv) : Prop :=
   εnv.request.WellFormed εnv.entities ∧
   εnv.entities.WellFormed
@@ -587,6 +595,7 @@ public def SymEnv.WellFormedLiteralFor (εnv : SymEnv) (x : Expr) : Prop :=
 public def SymEnv.WellFormedForPolicies (εnv : SymEnv) (ps : Policies) : Prop :=
   εnv.WellFormed ∧ ∀ p ∈ ps, εnv.entities.ValidRefsFor p.toExpr
 
+@[expose]
 public def Asserts.WellFormed (εs : SymEntities) (asserts : Asserts) : Prop :=
   ∀ t ∈ asserts, t.WellFormed εs ∧ t.typeOf = .bool
 

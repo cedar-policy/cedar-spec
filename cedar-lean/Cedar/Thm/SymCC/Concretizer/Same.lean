@@ -133,7 +133,7 @@ private theorem term_setOfTags?_some_lit {t : Term} {tags : Set String} :
   replace ⟨_, _, heq⟩ := List.mapM_some_implies_all_some heq t hin
   rw [term_tag?_some_iff_eq] at heq
   subst heq
-  exact term_prim_is_lit
+  exact isLiteral_prim
 
 private theorem term_setOfTags?_some_exists {t : Term} {tags : Set String} :
   t.typeOf = .set .string →
@@ -320,7 +320,7 @@ private theorem concretize?_some_same_tags {uid : EntityUID} {δ : SymEntityData
     have ⟨τags, hkeq, hkeqv⟩ := term_setOfTags?_some_exists hkw.right hkeys
     have hklit := term_setOfTags?_some_lit hkeys
     rw [hkeq] at hklit
-    simp only [SymTags.hasTag, hkeq, pe_set_member hklit term_prim_is_lit, Term.prim.injEq,
+    simp only [SymTags.hasTag, hkeq, pe_set_member hklit isLiteral_prim, Term.prim.injEq,
       TermPrim.bool.injEq]
     constructor
     · intro tag

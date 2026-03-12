@@ -296,7 +296,7 @@ private theorem env_symbolize?_same_entity_data_standard_same_tag
       apply app_table_make_filterMap hfind_data
       · simp
       · simp
-      · simp [Term.isLiteral]
+      · simp
     have hkeys_set_is_literal :
       (Term.set
         (Set.make (List.map (fun k => Term.prim (TermPrim.string k)) data.tags.keys.toList))
@@ -308,7 +308,7 @@ private theorem env_symbolize?_same_entity_data_standard_same_tag
       have hmem_x := x.property
       rw [Set.mem_set_iff_mem_mk, Set.mem_make] at hmem_x
       have ⟨_, _, hx⟩ := List.mem_map.mp hmem_x
-      simp [←hx, Term.isLiteral]
+      simp [←hx]
     simp only [Option.map_some]
     constructor
     -- Tag key exists iff the symbolic tag key is true
@@ -620,7 +620,7 @@ private theorem env_symbolize?_same_entity_data_standard
       · rename_i heq
         simp only [Option.some.injEq, Prod.mk.injEq, Term.prim.injEq, TermPrim.entity.injEq] at hkv
         simp [hkv.1]
-    · simp [Term.isLiteral]
+    · simp
   · intros anc hmem_anc
     simp only [SameEntityData.InSymAncestors]
     have hfind_ancTy := hwt_data_ancs anc hmem_anc
