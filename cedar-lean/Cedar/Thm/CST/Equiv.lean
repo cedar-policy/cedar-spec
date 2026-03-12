@@ -362,14 +362,9 @@ private theorem hasAttr_returns_bool (v : Value) (a : Attr) (es : Entities) :
     (∃ b : Bool, Spec.hasAttr v a es = .ok (.prim (.bool b))) ∨
     (∃ err : Error, Spec.hasAttr v a es = .error err) := by
   unfold Spec.hasAttr Spec.attrsOf
-  cases v with
-  | prim p =>
-    cases p with
-    | entityUID uid => left; exact ⟨_, rfl⟩
-    | _ => right; exact ⟨.typeError, rfl⟩
-  | set _ => right; exact ⟨.typeError, rfl⟩
-  | ext _ => right; exact ⟨.typeError, rfl⟩
-  | record r => left; exact ⟨_, rfl⟩
+  cases v
+  case prim p => cases p <;> simp
+  all_goals simp
 
 /-- evaluateExtendedHas always returns a boolean value or an error -/
 private theorem evaluateExtendedHas_returns_bool
@@ -725,11 +720,11 @@ private theorem apply₂_mem_returns_bool (v₁ v₂ : Value) (es : Entities) :
       | set vs =>
         simp only [inₛ]
         cases h : Set.mapOrErr Value.asEntityUID vs .typeError with
-        | error err => right; simp
-        | ok uids => left; simp
-      | _ => right; exact ⟨.typeError, rfl⟩
-    | _ => right; exact ⟨.typeError, rfl⟩
-  | _ => right; exact ⟨.typeError, rfl⟩
+        | error err => simp
+        | ok uids => simp
+      | _ => simp
+    | _ => simp
+  | _ => simp
 
 
 /-- Main expression-level equivalence: CST evaluation equals translate-then-AST-evaluate. -/
@@ -1067,19 +1062,22 @@ private theorem eval_and_true_implies_second_true (x₁ x₂ : Spec.Expr) (req :
     (h_and : Spec.evaluate (.and x₁ x₂) req es = .ok (.prim (.bool true)))
     (h_fst : Spec.evaluate x₁ req es = .ok (.prim (.bool true))) :
     Spec.evaluate x₂ req es = .ok (.prim (.bool true)) := by
-  unfold Spec.evaluate at h_and; rw [h_fst] at h_and
-  simp only [Result.as, Coe.coe, Value.asBool, Except.bind_ok, Bool.not_true] at h_and
+  -- Unfold .and and substitute the known first operand to get a constraint on x₂
+  have h := h_and
+  unfold Spec.evaluate at h; rw [h_fst] at h
+  -- h now says: (do let a ← (eval x₂).as Bool; pure (.prim (.bool a))) = .ok true
+  -- This forces eval x₂ = .ok (.prim (.bool true))
   cases hev : Spec.evaluate x₂ req es with
-  | error err => simp [hev] at h_and
+  | error err => simp [hev] at h
   | ok v =>
+    suffices v = .prim (.bool true) by subst this; rfl
     cases v with
-    | prim p =>
-      cases p with
+    | prim p => cases p with
       | bool b =>
-        replace h_and : b = true := by simpa [hev] using h_and
-        rw [h_and]
-      | _ => simp [hev] at h_and
-    | _ => simp [hev] at h_and
+        have hb : b = true := by simp [hev] at h; exact h
+        exact congrArg _ (congrArg _ hb)
+      | _ => simp [hev] at h
+    | _ => simp [hev] at h
 
 /-- .and evaluates to .ok true iff both operands evaluate to .ok true -/
 theorem eval_and_ok_true_iff (x₁ x₂ : Spec.Expr) (req : Request) (es : Entities) :
@@ -1126,24 +1124,45 @@ theorem conditions_evaluate_eq_ok_true (cs : List CST.Condition) (req : Request)
       rw [eval_and_ok_true_iff]
       generalize hev : Spec.evaluate (CST.Condition.toCondition c).toExpr req es = res
       constructor
-      · intro h
+      · -- Forward: CST .ok true → .and is .ok true
+        intro h
+        -- The do-block returning true forces res = .ok (.prim (.bool true))
+        suffices hres : res = .ok (.prim (.bool true)) by
+          constructor
+          · exact hev ▸ hres
+          · rw [hres] at h; simp only [result_as_ok, asBool_bool] at h
+            exact ih.mp h
+        -- Prove res = .ok true by contradiction on all other cases
         cases res with
         | error err => simp at h
-        | ok v => cases v with
-          | prim p => cases p with
-            | bool b =>
-              simp only [result_as_ok, asBool_bool, Bool.not_eq_eq_eq_not, Bool.not_true,
-                Except.bind_ok] at h
-              cases b
-              · simp at h
-              · grind
-            | _ => simp at h
-          | _ => simp at h
-      · intro ⟨h₁, h₂⟩
-        subst h₁
-        simp only [result_as_ok, asBool_bool, Bool.not_eq_eq_eq_not, Bool.not_true, Except.bind_ok,
-          Bool.true_eq_false, ↓reduceIte]
+        | ok v =>
+          suffices hv : v = .prim (.bool true) by simp [hv]
+          cases v <;> try simp at h
+          rename_i p; cases p <;> try simp at h
+          rename_i b; exact match b, h with | true, _ => rfl
+      · -- Backward: .and is .ok true → CST .ok true
+        intro ⟨h₁, h₂⟩
+        have hres : res = .ok (.prim (.bool true)) := hev ▸ h₁
+        rw [hres]; simp only [result_as_ok, asBool_bool]
         exact ih.mpr h₂
+
+/-- A Result Value that feeds into a do-block returning .ok true must be .ok (.prim (.bool true)) -/
+private theorem result_eq_ok_true_of_as_bool_do
+    (rv : Result Value) (f : Bool → Result Value)
+    (h : (do let b ← rv.as Bool; f b) = .ok (.prim (.bool true))) :
+    rv = .ok (.prim (.bool true)) ∨
+    ∃ b, rv = .ok (.prim (.bool b)) ∧ f b = .ok (.prim (.bool true)) := by
+  cases rv with
+  | error err => simp at h
+  | ok v =>
+    cases v with
+    | set _ => simp at h
+    | record _ => simp at h
+    | ext _ => simp at h
+    | prim p =>
+      cases p with
+      | bool b => right; exact ⟨b, rfl, by simpa using h⟩
+      | _ => simp at h
 
 /-- Helper: the CST scope-checking do-block equals .ok true iff all scopes pass and conditions hold -/
 private theorem cst_policy_do_ok_true
@@ -1161,29 +1180,25 @@ private theorem cst_policy_do_ok_true
     r = .ok (.prim (.bool true)) ∧ conds = .ok (.prim (.bool true)) := by
   constructor
   · intro h
-    cases p with
-    | error err => simp at h
-    | ok vp =>
-      simp only [result_as_ok] at h
-      cases vp <;> simp at h
-      rename_i pp; cases pp <;> simp at h
-      -- pp must be bool true
-      cases ‹Bool› <;> simp at h
-      cases a with
-      | error err => simp at h
-      | ok va =>
-        simp only [result_as_ok] at h
-        cases va <;> try simp at h
-        rename_i pa; cases pa <;> simp at h
-        cases ‹Bool› <;> simp at h
-        cases r with
-        | error err => simp at h
-        | ok vr =>
-          simp only [result_as_ok] at h
-          cases vr <;> try simp at h
-          rename_i pr; cases pr <;> simp at h
-          cases ‹Bool› <;> simp at h
-          exact ⟨rfl, rfl, rfl, h⟩
+    have hp : p = .ok (.prim (.bool true)) := by
+      cases p <;> try simp at h
+      rename_i v; cases v <;> try simp at h
+      rename_i pp; cases pp <;> try simp at h
+      rename_i b; cases b <;> simp_all
+    subst hp; simp only [result_as_ok, asBool_bool] at h
+    have ha : a = .ok (.prim (.bool true)) := by
+      cases a <;> try simp at h
+      rename_i v; cases v <;> try simp at h
+      rename_i pp; cases pp <;> try simp at h
+      rename_i b; cases b <;> simp_all
+    subst ha; simp only [result_as_ok, asBool_bool] at h
+    have hr : r = .ok (.prim (.bool true)) := by
+      cases r <;> try simp at h
+      rename_i v; cases v <;> try simp at h
+      rename_i pp; cases pp <;> try simp at h
+      rename_i b; cases b <;> simp_all
+    subst hr; simp only [result_as_ok, asBool_bool] at h
+    exact ⟨rfl, rfl, rfl, h⟩
   · intro ⟨hp, ha, hr, hc⟩
     subst hp; subst ha; subst hr; simpa
 
