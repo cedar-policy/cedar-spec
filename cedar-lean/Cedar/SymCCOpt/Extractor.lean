@@ -14,8 +14,10 @@
  limitations under the License.
 -/
 
+module
+
 import Cedar.SymCC.Extractor
-import Cedar.SymCCOpt.CompiledPolicies
+public import Cedar.SymCCOpt.CompiledPolicies
 
 /-!
 # Extracting strongly well-formed counterexamples to verification queries
@@ -37,7 +39,7 @@ Optimized version of `extract?` in `SymCC/Extractor.lean`.
 
 Caller guarantees that all of the `CompiledPolicy`s and/or `CompiledPolicySet`s were compiled for the same `εnv`.
 -/
-def extractOpt? (cpss : List CompiledPolicies) (I : Interpretation) : Option Env :=
+public def extractOpt? (cpss : List CompiledPolicies) (I : Interpretation) : Option Env :=
   match cpss with
   | [] => none
   | cps :: _ =>

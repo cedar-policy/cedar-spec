@@ -14,11 +14,16 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
-import Cedar.SymCC
-import Cedar.SymCCOpt.Authorizer
-import Cedar.SymCCOpt.Compiler
-import Cedar.Validation.Validator
+module
+
+-- TODO: once we remove the `@[expose]`s below, do all of these need to be public imports?
+public import Cedar.Spec
+public import Cedar.SymCC
+public import Cedar.SymCCOpt.Authorizer
+public import Cedar.SymCCOpt.Compiler
+public import Cedar.Validation.Validator
+
+@[expose] public section -- TODO: make the public interface more granular/intentional, instead of having everything public and exposed
 
 namespace Cedar.SymCC
 

@@ -14,15 +14,20 @@
  limitations under the License.
 -/
 
-import Cedar.SymCC.Extractor
-import Cedar.SymCC.Decoder
-import Cedar.SymCC.Encoder
-import Cedar.SymCC.SatUnsat
-import Cedar.SymCC.Solver
-import Cedar.SymCC.Verifier
-import Cedar.Validation.Validator
+module
+
+-- TODO: once we remove the `@[expose]`s below, do all of these need to be public imports?
+public import Cedar.SymCC.Extractor
+public import Cedar.SymCC.Decoder
+public import Cedar.SymCC.Encoder
+public import Cedar.SymCC.SatUnsat
+public import Cedar.SymCC.Solver
+public import Cedar.SymCC.Verifier
+public import Cedar.Validation.Validator
 
 /-! This file contains the top-level interface to SymCC. -/
+
+@[expose] public section -- TODO: make the public interface more granular/intentional, instead of having everything public and exposed
 
 namespace Cedar.SymCC
 

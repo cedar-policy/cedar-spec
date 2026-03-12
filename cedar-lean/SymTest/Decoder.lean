@@ -14,8 +14,11 @@
  limitations under the License.
 -/
 
-import Cedar.SymCC.Decoder
-import SymTest.Util
+module
+
+import all Cedar.SymCC.Decoder -- needs access to decoder internals for `testParseEncodeRoundtrip`
+import all Cedar.SymCC.Encoder -- needs access to encoder internals for `testParseEncodeRoundtrip`
+public import SymTest.Util
 
 /-!
 This file contains unit tests for Cedar.SymCC.Decoder.
@@ -450,7 +453,7 @@ def testsDefaultUDF :=
   ]
 
 
-def tests := [
+public def tests := [
   testsParseValidSMTStrings,
   testsParseInvalidSMTStrings,
   testsDecodeValidTypeStrings,

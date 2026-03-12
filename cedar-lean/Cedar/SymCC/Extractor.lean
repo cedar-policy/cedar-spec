@@ -14,10 +14,12 @@
  limitations under the License.
 -/
 
-import Cedar.SymCC.Enforcer
-import Cedar.SymCC.Concretizer
-import Cedar.SymCC.Interpretation
+module
 
+-- TODO: once we remove the `@[expose]`s below, do all of these need to be public imports?
+public import Cedar.SymCC.Enforcer
+public import Cedar.SymCC.Concretizer
+public import Cedar.SymCC.Interpretation
 
 /-!
 # Extracting strongly well-formed counterexamples to verification queries
@@ -40,6 +42,8 @@ combination of (boolean) terms obtained by compiling `xs` with respect to `εnv`
 See `Cedar.Thm.SymCC.Verification` for how this is used to prove that verification
 queries based on Cedar's compiler and hierarchy enforcer are correct.
 -/
+
+@[expose] public section -- TODO: make the public interface more granular/intentional, instead of having everything public and exposed
 
 namespace Cedar.SymCC
 
