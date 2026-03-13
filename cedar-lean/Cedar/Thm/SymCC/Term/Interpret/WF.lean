@@ -72,18 +72,6 @@ public theorem interpret_term_some_wf {εs : SymEntities} {I : Interpretation} {
   simp only [InterpretTermWF, interpret_term_some, typeOf_term_some, ih.right, and_true]
   exact Term.WellFormed.some_wf ih.left
 
-private theorem interpret_term_set_wf_aux {I : Interpretation} {s : Set Term} {t : Term} :
-  t ∈ Set.make (List.map (Term.interpret I) (Set.elts s)) →
-  ∃ t', t' ∈ s ∧ t = t'.interpret I
-:= by
-  intro h₁
-  simp only [Set.mem_make, List.mem_map] at h₁
-  replace ⟨t', h₁, h₂⟩ := h₁
-  exists t'
-  simp only [h₂, and_true]
-  simp only [Membership.mem] at *
-  assumption
-
 public theorem interpret_term_set_wf {εs : SymEntities} {I : Interpretation} {s : Set Term} {ty : TermType}
   (h₁ : Term.WellFormed εs (Term.set s ty))
   (ih : ∀ (t : Term), t ∈ s → InterpretTermWF εs I t) :
@@ -93,18 +81,18 @@ public theorem interpret_term_set_wf {εs : SymEntities} {I : Interpretation} {s
   apply Term.WellFormed.set_wf
   case h₁ =>
     intro t h₂
-    have ⟨t', h₃, h₄⟩ := interpret_term_set_wf_aux h₂
-    subst h₄
-    exact (ih t' h₃).left
+    replace ⟨t', ht', h₂⟩ := Set.mem_map.mp h₂
+    subst t
+    exact (ih t' ht').left
   case h₂ =>
     intro t h₂
-    have ⟨t', h₃, h₄⟩ := interpret_term_set_wf_aux h₂
-    subst h₄
-    have h₅ := wf_term_set_implies_typeOf_elt h₁ h₃
+    replace ⟨t', ht', h₂⟩ := Set.mem_map.mp h₂
+    subst t
+    have h₅ := wf_term_set_implies_typeOf_elt h₁ ht'
     subst h₅
-    exact (ih t' h₃).right
+    exact (ih t' ht').right
   case h₃ => exact wf_term_set_implies_wf_type h₁
-  case h₄ => exact Set.make_wf (List.map (Term.interpret I) (Set.elts s))
+  case h₄ => exact Set.map_wf (Term.interpret I) s
 
 public theorem interpret_term_record_wf {εs : SymEntities} {I : Interpretation} {r : Map Attr Term}
   (h₁ : Term.WellFormed εs (Term.record r))
@@ -117,15 +105,13 @@ public theorem interpret_term_record_wf {εs : SymEntities} {I : Interpretation}
     apply Term.WellFormed.record_wf
     case h₁ =>
       intro a t h₄
-      replace h₄ := Map.make_mem_list_mem h₄
-      simp only [List.mem_map, Prod.mk.injEq] at h₄
-      replace ⟨kv, h₄, h₅, h₆⟩ := h₄
-      subst h₅ h₆
-      exact (ih kv.fst kv.snd h₄).left
-    case h₂ => exact Map.make_wf (List.map (fun x => (x.fst, Term.interpret I x.snd)) (Map.toList r))
+      replace h₄ := Map.in_mapOnValues_in_toList' h₄
+      replace ⟨v', _, h₄⟩ := h₄
+      subst t
+      exact (ih a v' h₄).left
+    case h₂ => exact Map.mapOnValues_wf.mp (wf_term_record_implies_wf_map h₁)
   case right =>
     replace h₁ := wf_term_record_implies_wf_map h₁
-    rw [←Map.mapOnValues_eq_make_map (Term.interpret I) h₁]
     simp only [Map.mapOnValues_mapOnValues]
     apply Map.mapOnValues_congr
     intro t ht

@@ -78,7 +78,7 @@ public theorem isLiteral_record_mapOnValues {m : Map Attr β} {f : β → Term} 
   · intro h₁ b hb
     have ⟨a, ha⟩ := Map.in_values_exists_key hb
     apply lit_term_record_implies_lit_value h₁ (a := a)
-    exact Map.in_toList_in_mapOnValues ha
+    exact Map.in_toList_in_mapOnValues _ ha
   · simp only [Term.isLiteral, List.all_attach₂_snd, List.all_eq_true, Prod.forall]
     intro h₁ a t h₂
     replace ⟨b, hb, h₂⟩ := Map.in_mapOnValues_in_toList' h₂

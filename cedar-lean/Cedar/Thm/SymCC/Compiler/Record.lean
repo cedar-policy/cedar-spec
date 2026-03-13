@@ -262,17 +262,17 @@ private theorem same_forall₂_implies_same_record {ats : List (Attr × Term)} {
   generalize h₂ : (List.canonicalize Prod.fst avs) = vs
   rw [h₁, h₂] at hs
   clear h₁ h₂
-  have ⟨avs', hts⟩ : ∃ avs', List.mapM' (λ x => Term.value?.attrValue? x.fst x.snd) ts = some avs' := by
+  have ⟨avs', hts⟩ : ∃ avs', List.mapM (λ x => Term.value?.attrValue? x.fst x.snd) ts = some avs' := by
     induction hs
     case nil =>
       exists []
     case cons thd vhd ttl _ h₁ _ ih =>
       replace ⟨vtl', ih⟩ := ih
       exists ((vhd.fst, some vhd.snd) :: vtl')
-      simp only [List.mapM'_cons, value?_some_implies_attrValue?_some h₁.right, ih, Option.pure_def,
+      simp only [List.mapM_cons, value?_some_implies_attrValue?_some h₁.right, ih, Option.pure_def,
         Option.bind_some_fun, ← h₁.left]
   apply record_value?_some_implied_by hts
-  replace hts := List.mapM'_some_eq_filterMap hts
+  replace hts := List.mapM_some_eq_filterMap hts
   subst hts
   simp only [List.filterMap_filterMap]
   induction hs

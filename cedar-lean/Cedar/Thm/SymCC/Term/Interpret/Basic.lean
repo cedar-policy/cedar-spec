@@ -60,31 +60,26 @@ public theorem interpret_term_some {I : Interpretation} {t : Term} :
 @[simp]
 public theorem interpret_term_set {I : Interpretation} {s : Set Term} {ty : TermType} :
   (Term.set s ty).interpret I =
-  Term.set (Set.make (s.elts.map (Term.interpret I))) ty
-:= by
-  cases s
-  simp only [Term.interpret, setOf, List.map₁_eq_map (Term.interpret I ·)]
+  Term.set (s.map (Term.interpret I)) ty
+:= by simp [Term.interpret, Set.map₁_eq_map]
+
+@[simp]
+public theorem interpret_term_set_empty {ty : TermType} :
+  Term.interpret I (Term.set Set.empty ty) = Term.set Set.empty ty
+:= by simp [interpret_term_set]
 
 @[simp]
 public theorem interpret_term_set_mk_nil {ty : TermType} :
   Term.interpret I (Term.set (Set.mk []) ty) = Term.set (Set.mk []) ty
 := by
-  simp [interpret_term_set, Set.make_nil, Set.elts, List.map_nil, Set.empty_eq_mk_nil]
-
-@[simp]
-public theorem interpret_term_set_empty {ty : TermType} :
-  Term.interpret I (Term.set Set.empty ty) = Term.set Set.empty ty
-:= by
-  rw [Set.empty_eq_mk_nil]
-  exact interpret_term_set_mk_nil
+  rw [← Set.empty_eq_mk_nil]
+  exact interpret_term_set_empty
 
 @[simp]
 public theorem interpret_term_record {I : Interpretation} {r : Map Attr Term} :
   (Term.record r).interpret I =
-  Term.record (Map.make (r.toList.map λ (a, t) => (a, t.interpret I)))
-:= by
-  cases r
-  simp [Term.interpret, recordOf, List.map₃_eq_map λ (x : (Attr × Term)) => (x.fst, x.snd.interpret I)]
+  Term.record (r.mapOnValues (Term.interpret I))
+:= by simp [Term.interpret]
 
 /--
 This tactic discharges proofs in lemmas of the form `interpret_term_app_*`,

@@ -460,6 +460,8 @@ decreasing_by
     rename ts = Set.mk ts_set => h₂
     simp [h₁, h₂]
     have := List.sizeOf_lt_of_mem hmem_t'
+    have := Set.sizeOf_lt_of_elts (Set.mk ts_set)
+    have := Set.sizeOf_mk ts_set
     omega
   · rename t = Term.record rec => h₃
     rename rec = Map.mk rec_map => h₄
@@ -478,23 +480,20 @@ decreasing_by
         omega
       _ < 1 + (1 + sizeOf rec_map) := by
         have := List.sizeOf_lt_of_mem hmem_attr_t'
+        simp only [Map.toList_mk_id] at this
         omega
-  · rename t = Term.record rec => h₃
-    rename rec = Map.mk rec_map => h₄
-    rename Term => t''
-    simp [h₃, h₄]
-    rename attr_t'.snd = t'' => h₅
+  · subst_vars
     have := List.sizeOf_lt_of_mem hmem_attr_t'
-    simp only [h₅] at ⊢ this
-    calc sizeOf t''
-      _ = sizeOf attr_t'.snd := by simp [h₅]
+    calc sizeOf attr_t'.snd
       _ < sizeOf attr_t' := by
         cases attr_t'
         simp
         omega
-      _ < 1 + (1 + sizeOf rec_map) := by
+      _ < sizeOf rec_map := by
         have := List.sizeOf_lt_of_mem hmem_attr_t'
-        omega
+        simp [Map.toList_mk_id] at this
+        exact this
+      _ < sizeOf (Term.record (Map.mk rec_map)) := by simp ; omega
 
 private theorem ofEnv_request_completeness
   {Γ : TypeEnv} {env : Env} {I : Interpretation}
@@ -691,14 +690,7 @@ private theorem ofEnv_entity_completeness_standard_inst_tags
         (.uuf vals_uuf)
         (Factory.tagOf (Term.entity uid) (Term.string k)))
     := by
-      simp [
-        UnaryFunction.interpret,
-        Factory.app, Factory.tagOf,
-        hvals_uuf,
-        Term.isLiteral,
-        Map.make,
-        List.canonicalize, List.insertCanonical,
-      ]
+      simp [UnaryFunction.interpret, Factory.app, Factory.tagOf, hvals_uuf, Map.mapOnValues_doubleton]
     -- Prove that the tag lookup term is well-formed and well-typed
     have hwf_tag_lookup:
       Term.WellFormed (SymEnv.ofEnv Γ).entities
@@ -927,8 +919,6 @@ private theorem ofEnv_entity_completeness_enum
       SymEntityData.ofEnumEntityType,
       SymEntityData.interpret,
       UnaryFunction.interpret,
-      Map.mapOnValues,
-      Map.find?,
     ] at this
   · simp only [
       SameTags,
@@ -939,7 +929,6 @@ private theorem ofEnv_entity_completeness_enum
       SymEntityData.interpret,
       UnaryFunction.interpret,
       SymEntityData.emptyAttrs,
-      Map.empty
     ] at hsame_tags
     simp only [InstanceOfEntityTags, EntitySchemaEntry.tags?]
     exact hsame_tags

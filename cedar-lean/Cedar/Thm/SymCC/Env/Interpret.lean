@@ -20,7 +20,7 @@ import Cedar.Thm.SymCC.Term.Interpret.Lit
 import Cedar.Thm.SymCC.Term.Interpret.WF
 
 /-!
-# Properties of interpretations on symbolic enviornments
+# Properties of interpretations on symbolic environments
 
 This file proves basic lemmas about the `interpret` function
 on symbolic environments.
@@ -34,7 +34,7 @@ theorem interpret_entities_find?_some {εs : SymEntities} {I : Interpretation} {
   (h₁ : εs.find? ety = .some d) :
   (εs.interpret I).find? ety = .some (d.interpret I)
 := by
-  simp [SymEntities.interpret]
+  simp only [SymEntities.interpret]
   apply Map.find?_mapOnValues_some
   exact h₁
 
@@ -57,7 +57,7 @@ theorem interpret_entities_isValidEntityType (εs : SymEntities) (I : Interpreta
   εs.isValidEntityType ety = (εs.interpret I).isValidEntityType ety
 := by
   simp only [SymEntities.isValidEntityType, SymEntities.interpret]
-  rw [Map.mapOnValues_contains (SymEntityData.interpret I)]
+  rw [Map.contains_mapOnValues (SymEntityData.interpret I)]
 
 theorem interpret_entities_ancestors_none  {εs : SymEntities} {ety : EntityType} (I : Interpretation) :
   εs.ancestors ety = .none →
@@ -290,24 +290,22 @@ theorem interpret_εnv_lit {εnv : SymEnv} {I : Interpretation} :
       interpret_term_lit hI hwp, interpret_term_lit hI hwa,
       interpret_term_lit hI hwr, interpret_term_lit hI hwc, Bool.and_self]
   case right =>
-    simp only [SymEntities.isLiteral, SymEntities.interpret, List.all_eq_true]
-    simp only [Map.mapOnValues, Map.toList_mk_id, List.mem_map, Prod.exists, forall_exists_index,
-      and_imp, Prod.forall, Prod.mk.injEq]
-    intro tyδ styδ ty sty hin hty ; subst tyδ
+    simp only [SymEntities.isLiteral, SymEntities.interpret, List.all_eq_true, Prod.forall]
+    intro tyδ styδ' hin
+    replace ⟨styδ, _, hin⟩ := Map.in_mapOnValues_in_toList' hin ; subst styδ'
     rw [Map.in_list_iff_find?_some hw.right.left] at hin
-    replace hw := hw.right.right ty sty hin
-    simp only [SymEntityData.isLiteral, SymEntityData.interpret, Bool.and_eq_true, List.all_eq_true]
-    intro h ; subst h
+    replace hw := hw.right.right tyδ styδ hin
+    simp only [SymEntityData.isLiteral, SymEntityData.interpret, Bool.and_eq_true, List.all_eq_true,
+      Prod.forall]
     constructor
     · constructor
       · exact interpret_uf_lit hI hw.left
-      · simp only [Map.mapOnValues, Map.toList_mk_id, List.mem_map, Prod.exists,
-          forall_exists_index, and_imp, Prod.forall, Prod.mk.injEq]
-        intro ty' tyf' ty'' tyf hin' _ _ ; subst tyf' ty''
+      · intro ety uf hin'
+        replace ⟨uf', _, hin'⟩ := Map.in_mapOnValues_in_toList' hin' ; subst uf
+        apply interpret_uf_lit hI
         replace hw := hw.right.right.right
         rw [Map.in_list_iff_find?_some hw.right.left] at hin'
-        have hwl := hw.left ty' tyf hin'
-        exact interpret_uf_lit hI hwl.left
+        exact (hw.left ety uf' hin').left
     · simp only [Option.all]
       split <;> try rfl
       rename_i τs' hτs
