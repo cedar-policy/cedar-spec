@@ -666,8 +666,14 @@ impl ExprGenerator<'_> {
                 }
                 Type::Record(m) => {
                     if max_depth == 0 || u.len() < 10 {
-                        // no recursion allowed
-                        Err(Error::TooDeep)
+                        Ok(uniform!(
+                            u,
+                            ast::Expr::var(ast::Var::Context),
+                            ast::Expr::record(m.iter().filter_map(|(k, qty)| {
+                                qty.required.then(|| (k.clone(), ast::Expr::val(false)))
+                            }))
+                            .unwrap()
+                        ))
                     } else {
                         gen!(u,
                         // record literal
@@ -689,7 +695,9 @@ impl ExprGenerator<'_> {
                         // getting an attr (on a record) with type record
                         3 => self.generate_get_record_attr_for_type(target_type, max_depth, u),
                         // getting an entity tag with type record
-                        3 => self.generate_get_tag_for_type(target_type, max_depth, u))
+                        3 => self.generate_get_tag_for_type(target_type, max_depth, u),
+                        // `context`
+                        1 => Ok(ast::Expr::var(ast::Var::Context)))
                     }
                 }
                 Type::Entity(ety) => {
