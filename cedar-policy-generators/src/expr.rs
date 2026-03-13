@@ -284,8 +284,7 @@ impl ExprGenerator<'_> {
             match target_type {
                 Type::Bool => {
                     if max_depth == 0 || u.len() < 10 {
-                        // no recursion allowed, so, just do a literal
-                        Ok(ast::Expr::val(u.arbitrary::<bool>()?))
+                        self.generate_expr_for_type_structurally_recursive(target_type, u)
                     } else {
                         gen!(u,
                         // bool literal
@@ -534,10 +533,7 @@ impl ExprGenerator<'_> {
                 }
                 Type::Long => {
                     if max_depth == 0 || u.len() < 10 {
-                        // no recursion allowed, so, just do a literal
-                        Ok(ast::Expr::val(
-                            self.constant_pool.arbitrary_int_constant(u)?,
-                        ))
+                        self.generate_expr_for_type_structurally_recursive(target_type, u)
                     } else {
                         gen!(u,
                         // int literal. weighted highly because all the other choices
@@ -605,10 +601,7 @@ impl ExprGenerator<'_> {
                 }
                 Type::String => {
                     if max_depth == 0 || u.len() < 10 {
-                        // no recursion allowed, so, just do a literal
-                        Ok(ast::Expr::val(
-                            self.constant_pool.arbitrary_string_constant(u)?,
-                        ))
+                        self.generate_expr_for_type_structurally_recursive(target_type, u)
                     } else {
                         gen!(u,
                         // string literal. weighted highly because all the other choices
@@ -631,8 +624,7 @@ impl ExprGenerator<'_> {
                 }
                 Type::Set(target_element_ty) => {
                     if max_depth == 0 || u.len() < 10 {
-                        // no recursion allowed, so, just do empty-set
-                        Ok(ast::Expr::set(vec![]))
+                        self.generate_expr_for_type_structurally_recursive(target_type, u)
                     } else {
                         gen!(u,
                         // set literal
@@ -666,14 +658,7 @@ impl ExprGenerator<'_> {
                 }
                 Type::Record(m) => {
                     if max_depth == 0 || u.len() < 10 {
-                        Ok(uniform!(
-                            u,
-                            ast::Expr::var(ast::Var::Context),
-                            ast::Expr::record(m.iter().filter_map(|(k, qty)| {
-                                qty.required.then(|| (k.clone(), ast::Expr::val(false)))
-                            }))
-                            .unwrap()
-                        ))
+                        self.generate_expr_for_type_structurally_recursive(target_type, u)
                     } else {
                         gen!(u,
                         // record literal
@@ -703,11 +688,7 @@ impl ExprGenerator<'_> {
                 Type::Entity(ety) => {
                     if max_depth == 0 || u.len() < 10 {
                         // no recursion allowed, so, just do `principal`, `action`, or `resource`
-                        Ok(ast::Expr::var(*u.choose(&[
-                            ast::Var::Principal,
-                            ast::Var::Action,
-                            ast::Var::Resource,
-                        ])?))
+                        self.generate_expr_for_type_structurally_recursive(target_type, u)
                     } else {
                         gen!(u,
                         // UID literal, that exists
@@ -737,14 +718,7 @@ impl ExprGenerator<'_> {
                         return Err(Error::ExtensionsDisabled);
                     };
                     if max_depth == 0 || u.len() < 10 {
-                        // no recursion allowed, so, just call the constructor
-                        // Invariant (MethodStyleArgs), Function Style, no worries
-                        self.arbitrary_ext_constructor_call_for_type(
-                            target_type,
-                            ast::Expr::val,
-                            ast::Expr::call_extension_fn,
-                            u,
-                        )
+                        self.generate_expr_for_type_structurally_recursive(target_type, u)
                     } else {
                         gen!(u,
                         // if-then-else expression, where both arms are extension types
@@ -760,6 +734,65 @@ impl ExprGenerator<'_> {
                     }
                 }
             }
+        }
+    }
+
+    /// Get an arbitrary expression of a given type conforming to the schema by
+    /// structural recursion on the type. This function is guaranteed to
+    /// terminate regardless of the bytes provided by `u`.
+    ///
+    /// To ensure this, it may call it's self recursively, but only on a type
+    /// obtained from destructing `target_type`. It may not call `generate_expr_for_type`.
+    fn generate_expr_for_type_structurally_recursive(
+        &self,
+        target_type: &Type,
+        u: &mut Unstructured<'_>,
+    ) -> Result<ast::Expr> {
+        match target_type {
+            Type::Bool => Ok(ast::Expr::val(u.arbitrary::<bool>()?)),
+            Type::Long => Ok(ast::Expr::val(
+                self.constant_pool.arbitrary_int_constant(u)?,
+            )),
+            Type::String => Ok(ast::Expr::val(
+                self.constant_pool.arbitrary_string_constant(u)?,
+            )),
+            Type::Set(el_ty) => {
+                let mut l = Vec::new();
+                u.arbitrary_loop(Some(0), Some(self.settings.max_width as u32), |u| {
+                    l.push(self.generate_expr_for_type_structurally_recursive(el_ty, u)?);
+                    Ok(std::ops::ControlFlow::Continue(()))
+                })?;
+                Ok(ast::Expr::set(l))
+            }
+            Type::Record(m) => match u.int_in_range(0..=3)? {
+                0 => Ok(ast::Expr::var(ast::Var::Context)),
+                _ => {
+                    let r = m
+                        .iter()
+                        .filter_map(|(a, qt)| {
+                            qt.required.then(|| {
+                                self.generate_expr_for_type_structurally_recursive(&qt.ty, u)
+                                    .map(|e| (a.clone(), e))
+                            })
+                        })
+                        .collect::<Result<IndexMap<_, _>>>()?;
+                    Ok(ast::Expr::record(r)
+                        .expect("can't have duplicate keys because `r` was already a HashMap"))
+                }
+            },
+            Type::Entity(ety) => match u.int_in_range(0..=3)? {
+                0 => Ok(ast::Expr::var(ast::Var::Principal)),
+                1 => Ok(ast::Expr::var(ast::Var::Action)),
+                2 => Ok(ast::Expr::var(ast::Var::Resource)),
+                _ => Ok(ast::Expr::val(self.arbitrary_uid_with_type(ety, u)?)),
+            },
+            Type::IPAddr | Type::Decimal | Type::DateTime | Type::Duration => self
+                .arbitrary_ext_constructor_call_for_type(
+                    target_type,
+                    ast::Expr::val,
+                    ast::Expr::call_extension_fn,
+                    u,
+                ),
         }
     }
 
