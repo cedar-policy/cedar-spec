@@ -132,4 +132,8 @@ public theorem sizeOf_lt_of_elts [SizeOf α] (s : Set α) :
   conv => rhs ; unfold sizeOf _sizeOf_inst _sizeOf_1 ; simp
   omega
 
+public theorem sizeOf_mk [SizeOf α] (xs : List α) :
+  sizeOf (Set.mk xs) = 1 + sizeOf xs
+:= by simp
+
 end Cedar.Data.Set

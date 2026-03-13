@@ -168,7 +168,6 @@ theorem wf_term_implies_valid_uids {t : Term} {εs : SymEntities} :
     replace hwf := wf_term_set_implies_wf_elt hwf hin'
     exact wf_term_implies_valid_uids hwf uid hin
   case record ats =>
-    cases ats ; rename_i ats
     simp only [List.mapUnion₃_eq_mapUnion λ x : Attr × Term => x.snd.entityUIDs] at hin
     rw [List.mem_mapUnion_iff_mem_exists] at hin
     replace ⟨at', hin', hin⟩ := hin
@@ -187,20 +186,22 @@ decreasing_by
   · rename_i h _ ; subst h
     simp only [Term.some.sizeOf_spec]
     omega
-  · rename_i h _ _ _ _ _ ; subst h
-    rename_i h _ _ _ _ _ _ ; subst h
+  · subst_vars
     have hs := List.sizeOf_lt_of_mem hin'
     simp only [Term.set.sizeOf_spec, Set.mk.sizeOf_spec, gt_iff_lt]
+    rename List Term => ts
+    have := Set.sizeOf_lt_of_elts (Set.mk ts)
+    have := Set.sizeOf_mk ts
     omega
-  · rename_i h _ _ _ _ _ ; subst h
-    rename_i h _ _ _ _ _ _ ; subst h
-    have hs := List.sizeOf_lt_of_mem hin'
-    have hp : at' = (at'.fst, at'.snd) := by simp only
-    rw [hp] at hs
-    simp only [Prod.mk.sizeOf_spec] at hs
-    simp only [Term.record.sizeOf_spec, Map.mk.sizeOf_spec, gt_iff_lt]
+  · subst_vars
+    simp only [Term.record.sizeOf_spec]
+    rename Map Attr Term => m
+    calc sizeOf at'.snd
+      _ < sizeOf at' := by cases at' ; simp only [Prod.mk.sizeOf_spec, Nat.lt_add_left_iff_pos] ; omega
+      _ < sizeOf m.toList := List.sizeOf_lt_of_mem hin'
+      _ < sizeOf m := Map.sizeOf_lt_of_toList m
     omega
-  · rename_i h _ _ _ _ _ _ _ _ _ _ _ _ _ _ ; subst h
+  · subst_vars
     have hs := List.sizeOf_lt_of_mem hin'
     simp only [Term.app.sizeOf_spec]
     omega

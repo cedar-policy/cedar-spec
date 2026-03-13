@@ -563,10 +563,10 @@ private theorem interpret_entities_ancestorsOfType_some_implies {εs : SymEntiti
     Option.bind_eq_some_iff, Option.some.injEq] at heq
   replace ⟨ancs, ⟨δ', hδ, heq⟩, hf⟩ := heq
   subst heq
-  simp only [SymEntities.interpret, ← Map.find?_mapOnValues, Option.map_eq_some_iff] at hδ
+  simp only [SymEntities.interpret, Map.find?_mapOnValues, Option.map_eq_some_iff] at hδ
   replace ⟨δ, hδ, hf'⟩ := hδ
   subst hf'
-  simp only [SymEntityData.interpret, ← Map.find?_mapOnValues, Option.map_eq_some_iff] at hf
+  simp only [SymEntityData.interpret, Map.find?_mapOnValues, Option.map_eq_some_iff] at hf
   replace ⟨f, hf, heq⟩ := hf
   exists δ, f
 

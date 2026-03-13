@@ -460,6 +460,26 @@ public theorem find?_notmem_keys [LT α] [DecidableLT α] [StrictLT α] [Decidab
       replace h₂ := List.mem_of_find?_eq_some h₂
       exact in_list_in_keys h₂
 
+/--
+  Two well-formed maps are equal if they have the same `find?` for every key.
+-/
+public theorem find?_ext [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m₁ m₂ : Map α β}
+  (wf₁ : m₁.WellFormed)
+  (wf₂ : m₂.WellFormed)
+  (h : ∀ k, m₁.find? k = m₂.find? k) :
+  m₁ = m₂
+:= by
+  apply eq_iff_toList_equiv wf₁ wf₂ |>.mp
+  constructor
+  · intro ⟨k, v⟩ h₁
+    have h₂ := (in_list_iff_find?_some wf₁).mp h₁
+    rw [h] at h₂
+    exact (in_list_iff_find?_some wf₂).mpr h₂
+  · intro ⟨k, v⟩ h₁
+    have h₂ := (in_list_iff_find?_some wf₂).mp h₁
+    rw [← h] at h₂
+    exact (in_list_iff_find?_some wf₁).mpr h₂
+
 public theorem find?_none_all_absent [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {k : α} :
   m.find? k = none → ∀ v, ¬ (k, v) ∈ m.toList
 := by
@@ -765,8 +785,9 @@ public theorem mapOnValues_doubleton {f : β → γ} {s₁ s₂ : String} (b₁ 
   Map.mapOnValues f (Map.mk [(s₁, b₁), (s₂, b₂)]) = Map.mk [(s₁, f b₁), (s₂, f b₂)]
 := by simp [mapOnValues]
 
+@[simp]
 public theorem find?_mapOnValues {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) (m : Map α β) (k : α)  :
-  (m.find? k).map f = (m.mapOnValues f).find? k
+  (m.mapOnValues f).find? k = (m.find? k).map f
 := by
   simp only [find?, toList, mapOnValues, ← List.find?_pair_map]
   cases m.1.find? (λ x => x.fst == k) <;> simp only [Option.map_none, Option.map_some]
@@ -776,7 +797,7 @@ public theorem find?_mapOnValues_some {α β γ} [LT α] [DecidableLT α] [Decid
   (m.mapOnValues f).find? k = .some (f v)
 := by
   intro h₁
-  rw [← find?_mapOnValues]
+  rw [find?_mapOnValues]
   simp [Option.map, h₁]
 
 public theorem find?_mapOnValues_some' {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) {m : Map α β} {k : α} {v : γ} :
@@ -805,7 +826,7 @@ public theorem find?_mapOnValues_some' {α β γ} [LT α] [DecidableLT α] [Deci
 public theorem find?_mapOnValues_none {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) {m : Map α β} {k : α} :
   (m.mapOnValues f).find? k = .none ↔
   m.find? k = .none
-:= by simp [← find?_mapOnValues]
+:= by simp [find?_mapOnValues]
 
 public theorem mapOnValues_eq_make_map {α β γ} [LT α] [StrictLT α] [DecidableLT α] (f : β → γ) {m : Map α β}
   (wf : m.WellFormed) :
@@ -834,13 +855,14 @@ public theorem mem_toList_find? {α β} [LT α] [DecidableLT α] [StrictLT α] [
   simp only at h
   simp [find?, h]
 
-public theorem mapOnValues_contains {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) {m : Map α β} {k : α} :
-  Map.contains m k = Map.contains (Map.mapOnValues f m) k
+@[simp]
+public theorem contains_mapOnValues {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) {m : Map α β} {k : α} :
+  Map.contains (Map.mapOnValues f m) k = Map.contains m k
 := by
   simp only [contains, Option.isSome]
-  split <;> rename_i h
-  · simp [find?_mapOnValues_some f h]
+  cases h : m.find? k
   · simp [(find?_mapOnValues_none f).mpr h]
+  · simp [find?_mapOnValues_some f h]
 
 @[simp]
 public theorem keys_mapOnValues [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] (f : β → γ) (m : Map α β) :
@@ -880,6 +902,12 @@ public theorem mapOnValues_restricted_id  {f : β → β} {m : Map α β} :
   simp [h pair.snd (Map.in_list_in_values hpair)]
 
 @[simp]
+public theorem mapOnValues_make [LT α] [DecidableLT α] [StrictLT α] {f : β → γ} {kvs : List (α × β)} :
+  (Map.make kvs).mapOnValues f = Map.make (kvs.map (Prod.map id f))
+:= by
+  simp [make, mapOnValues, List.canonicalize_of_map_fst]
+
+@[simp]
 public theorem mapOnValues₂_eq_mapOnValues {α β γ} [SizeOf α] [SizeOf β] (m : Map α β) (f : β → γ) :
   m.mapOnValues₂ (λ x : { x : β // sizeOf x < sizeOf m } => f x.1) = m.mapOnValues f
 := by
@@ -898,7 +926,7 @@ public theorem findOrErr_mapOnValues [LT α] [DecidableLT α] [DecidableEq α] {
   (m.mapOnValues f).findOrErr k e = (m.findOrErr k e).map f
 := by
   unfold findOrErr
-  rw [← find?_mapOnValues]
+  rw [find?_mapOnValues]
   cases m.find? k <;> simp [Except.map]
 
 @[simp]
@@ -1001,10 +1029,10 @@ public theorem findOrErr_err_iff_not_in_keys [LT α] [DecidableLT α] [StrictLT 
   exact find?_notmem_keys wf
 
 /--
-  The converse requires two extra preconditions (`m` is `WellFormed` and `f` is
-  injective) and is available as `in_mapOnValues_in_toList`
+  The converse requires the extra precondition that `f` is injective, and is
+  available as `in_mapOnValues_in_toList`
 -/
-public theorem in_toList_in_mapOnValues [LT α] [DecidableLT α] [DecidableEq α] {f : β → γ} {m : Map α β} {k : α} {v : β} :
+public theorem in_toList_in_mapOnValues [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) {m : Map α β} {k : α} {v : β} :
   (k, v) ∈ m.toList → (k, f v) ∈ (m.mapOnValues f).toList
 := by
   unfold mapOnValues

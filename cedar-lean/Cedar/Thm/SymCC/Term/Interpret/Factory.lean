@@ -399,8 +399,7 @@ theorem interpret_isNone {I : Interpretation} {t : Term} :
       simp only [isNone, interpret_term_prim]
       split <;> try {rfl}
       case h_1 heq =>
-        have ⟨_, h₄⟩  : ∃ ty, (Term.interpret I t).typeOf = .option ty := by
-          simp only [heq, Term.typeOf, TermType.option.injEq, exists_eq']
+        have ⟨_, h₄⟩ : ∃ ty, (Term.interpret I t).typeOf = .option ty := by simp [heq]
         simp only [(interpret_term_wfl h₁ h₂).right] at h₄
         simp only [h₄, TermType.option.injEq, forall_eq'] at h₃
       case h_4 heq | h_5 heq =>
@@ -468,9 +467,7 @@ theorem interpret_record_get {εs : SymEntities} (I : Interpretation) {t : Term}
   case h_1 r =>
     have ⟨tₐ, h₅⟩ := typeOf_term_record_attr_value h₃ h₄
     simp only [h₅.left, record.get, interpret_term_record]
-    have h₆ := wf_term_record_implies_wf_map h₂
-    have h₇ := Map.mapOnValues_eq_make_map (Term.interpret I) h₆
-    rw [← h₇, Map.find?_mapOnValues_some (Term.interpret I) h₅.left]
+    rw [Map.find?_mapOnValues_some (Term.interpret I) h₅.left]
   case h_2 =>
     split
     case h_1 h =>
@@ -545,12 +542,16 @@ private theorem interpret_app_foldr {εs : SymEntities} {I : Interpretation} {t 
   | none => f.default
 := by
   have h₄ :
-    (List.find? (fun x => x.fst == Term.interpret I t) f.table.1).map Prod.snd =
-    Map.find? f.table (Term.interpret I t)
+    Map.find? f.table (Term.interpret I t) =
+    (List.find? (fun x => x.fst == Term.interpret I t) f.table.toList).map Prod.snd
   := by
-    simp only [Option.map, Map.find?, Map.toList]
-    split <;> rename_i heq <;> simp only [heq]
-  rw [← h₄]
+    simp only [Option.map, Map.find?]
+    split <;> rename_i heq
+    · simp [heq]
+    · split <;> simp only [reduceCtorEq]
+      rename_i pair h₄
+      exact heq pair.fst pair.snd h₄
+  rw [h₄]
   simp only [UnaryFunction.WellFormed, UDF.WellFormed] at h₂
   apply interpret_app_foldr' h₀ h₁ h₂.left
   intro tᵢ tₒ hin
@@ -692,7 +693,7 @@ theorem interpret_bvneg {εs : SymEntities} {I : Interpretation} {t : Term} {n :
     replace hwf : Term.WellFormed εs t' := by
       simpa using hwf
     rw [interpret_term_app_bvneg] at ⊢ hwf₁ hwf₂
-    simp only [Term.typeOf] at hwf₂
+    simp only [typeOf_term_app] at hwf₂
     have ⟨bv, h⟩ := wfl_of_type_bitvec_is_bitvec hwf₁ hwf₂
     rw [h]
     simp only [bvneg, BitVec.neg_eq]
@@ -909,52 +910,39 @@ theorem interpret_set_inter  {εs : SymEntities} {I : Interpretation} {t₁ t₂
         case h_4 hneq _ =>
           simp only [Term.set.injEq, true_and, forall_eq'] at hneq
     case h_3 hneq =>
-      simp only [Term.typeOf, TermType.set.injEq] at hty₁ hty₂
+      simp only [typeOf_term_set, TermType.set.injEq] at hty₁ hty₂
       rw [eq_comm] at hty₁ hty₂ ; subst hty₁ hty₂
       split
       case isTrue s₁ s₂ _ _ heq =>
         simp only [Bool.and_eq_true] at heq
         simp only [Term.set.injEq, and_true] at hneq
-        have hmap : (List.map (Term.interpret I) (Set.intersect s₁ s₂).1) = (Set.intersect s₁ s₂).1 := by
-          rw (config := {occs := .pos [2]}) [← List.map_id' ((Set.intersect s₁ s₂).1)]
-          apply List.map_congr
+        have hws : (Set.intersect s₁ s₂).WellFormed := by
+          exact Set.inter_wf (wf_term_set_implies_wf_set hw₁)
+        have hmap : (Set.map (Term.interpret I) (Set.intersect s₁ s₂)) = Set.intersect s₁ s₂ := by
+          conv => rhs ; rw [← Set.map_id (Set.intersect s₁ s₂) hws]
+          apply Set.map_congr
           intro x h
-          rw [Set.mem_elts_iff_mem_set] at h
-          replace h : x ∈ s₁ ∩ s₂ := by simp only [Inter.inter, h]
+          change x ∈ s₁ ∩ s₂ at h
           rw [Set.mem_inter_iff] at h
           have hlit := lit_term_set_implies_lit_elt heq.left h.left
           have hwf := wf_term_set_implies_wf_elt hw₁ h.left
           exact interpret_term_lit_id I (And.intro hwf hlit)
-        have hws : (Set.intersect s₁ s₂).WellFormed := by
-          exact Set.inter_wf (wf_term_set_implies_wf_set hw₁)
-        simp only [Set.WellFormed, Set.toList, Set.elts] at hws
-        simp only [interpret_term_lit_id I (And.intro hw₁ heq.left),
+        simp [interpret_term_lit_id I (And.intro hw₁ heq.left),
           interpret_term_lit_id I (And.intro hw₂ heq.right),
-          hneq, heq, interpret_term_set, Set.elts, hmap, ← hws,
-          Term.set.injEq, and_true, ite_false, ite_true, Bool.and_self]
+          hneq, heq, hmap]
       case isFalse =>
         simp only [interpret_term_app_set_inter, set.inter, Bool.and_eq_true]
     case h_4 =>
       simp only [interpret_term_app_set_inter, set.inter, Bool.and_eq_true]
 
-theorem interpret_set_isEmpty {εs : SymEntities} {t : Term} {ty : TermType} :
+public theorem interpret_set_isEmpty {εs : SymEntities} {t : Term} {ty : TermType} :
   I.WellFormed εs → t.WellFormed εs → t.typeOf = .set ty →
   (set.isEmpty t).interpret I = set.isEmpty (t.interpret I)
 := by
   intro hI hw hty
   rw [set.isEmpty.eq_def]
   split
-  case h_1 s eltsTy =>
-    simp only [interpret_term_prim, interpret_term_set, set.isEmpty.eq_def]
-    cases h : (Set.make (s.elts.map (Term.interpret I))).isEmpty
-    case true =>
-      simp only [Set.isEmpty_make, List.map_eq_nil_iff] at h
-      cases s
-      simpa [Set.isEmpty, Set.empty]
-    case false =>
-      simp only [Set.isEmpty_make_eq_false, ne_eq, List.map_eq_nil_iff] at h
-      cases s
-      simpa [Set.isEmpty, Set.empty]
+  case h_1 s eltsTy => simp [interpret_term_prim, interpret_term_set, set.isEmpty]
   case h_2 =>
     have hwt := typeOf_wf_term_is_wf hw
     simp only [hty] at hwt
@@ -964,18 +952,18 @@ theorem interpret_set_isEmpty {εs : SymEntities} {t : Term} {ty : TermType} :
     have hwl := interpret_term_wfl hI hw
     simp only [hty] at hwl
     have ⟨ts, hws⟩ := wfl_of_type_set_is_set hwl.left hwl.right
-    cases ts ; rename_i ts
     simp only [hws] at *
-    cases ts
-    case nil =>
-      simp only [pe_eq_same, pe_set_isEmpty, Set.isEmpty, Set.empty_eq_mk_nil, beq_self_eq_true]
-    case cons hd tl =>
-      rw [(pe_eq_lit hwl.left.right (isLiteral_empty ty)).right, pe_set_isEmpty]
-      simp only [Set.isEmpty, Set.empty]
-      have : (Set.mk (hd :: tl) == Set.mk []) = false := by
-        simp only [beq_eq_false_iff_ne, ne_eq, Set.mk.injEq]
-        exact List.cons_ne_nil _ _
-      simp [this]
+    simp only [pe_set_isEmpty]
+    cases hempty : ts.isEmpty
+    case true =>
+      suffices ts = Set.empty by subst this ; exact pe_eq_same
+      simpa [Set.isEmpty_iff_eq_empty] using hempty
+    case false =>
+      rw [(pe_eq_lit hwl.left.right (isLiteral_empty ty)).right]
+      simp only [Term.prim.injEq, TermPrim.bool.injEq]
+      replace hempty := ne_true_of_eq_false hempty
+      rw [Set.isEmpty_iff_eq_empty] at hempty
+      simp [hempty]
 
 theorem interpret_set_intersects {εs : SymEntities} {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
   I.WellFormed εs → t₁.WellFormed εs → t₂.WellFormed εs →
@@ -1064,18 +1052,11 @@ theorem interpret_ifAllSome {εs : SymEntities} {I : Interpretation} {gs : List 
 
 theorem interpret_setOf {I : Interpretation} {ts : List Term} {ty : TermType} :
   (setOf ts ty).interpret I = setOf (ts.map (Term.interpret I)) ty
-:= by
-  simp only [setOf, interpret_term_set, Term.set.injEq, and_true, Set.make_make_eqv]
-  exact List.map_equiv (Term.interpret I) (Set.elts (Set.make ts)) ts Set.elts_make_eqv
+:= by simp [setOf, interpret_term_set]
 
 theorem interpret_recordOf {I : Interpretation} {ats : List (Attr × Term)} :
   (recordOf ats).interpret I = recordOf (ats.map (Prod.map id (Term.interpret I)))
-:= by
-  have h : (fun (x : Attr × Term) => (x.fst, Term.interpret I x.snd)) = Prod.map id (Term.interpret I) := by
-    unfold Prod.map id
-    simp only
-  simp only [recordOf, interpret_term_record, h, Term.record.injEq]
-  simp [Map.make, List.canonicalize_of_map_fst, List.canonicalize_idempotent]
+:= by simp [recordOf, interpret_term_record]
 
 theorem interpret_ext_decimal_val {I : Interpretation} {t : Term} :
   Term.interpret I (ext.decimal.val t) = ext.decimal.val (t.interpret I)
@@ -1195,7 +1176,6 @@ theorem interpret_ext_duration_ofBitVec {I : Interpretation} {t : Term} :
 theorem interpret_tagOf {I : Interpretation} {t₁ t₂ : Term} :
   (tagOf t₁ t₂).interpret I = tagOf (t₁.interpret I) (t₂.interpret I)
 := by
-  simp [tagOf, EntityTag.mk, interpret_term_record, Map.make, List.canonicalize,
-    List.insertCanonical, String.reduceLT]
+  simp [tagOf, EntityTag.mk, interpret_term_record, Map.mapOnValues_doubleton]
 
 end Cedar.Thm
