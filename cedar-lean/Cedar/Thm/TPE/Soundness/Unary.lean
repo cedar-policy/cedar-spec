@@ -34,6 +34,7 @@ open Cedar.Validation
 open Cedar.TPE
 open Cedar.Thm
 
+set_option maxRecDepth 1024 in
 theorem partial_evaluate_is_sound_unary_app
 {x₁ : Residual}
 {req : Request}
@@ -51,23 +52,66 @@ theorem partial_evaluate_is_sound_unary_app
   case _ rv heq =>
     have heval := asResidualValue_evaluate heq req es
     rw [heval] at hᵢ₁
-    -- Both sides compute apply₁ on the value
-    -- LHS: x₁.evaluate >>= Spec.apply₁ op₁
-    -- RHS: (TPE.apply₁ op₁ rv ty).evaluate
-    -- By hᵢ₁, toOption of x₁.evaluate = toOption of rv.evaluate
-    -- TPE.apply₁ matches on rv, Spec.apply₁ matches on the value
-    -- For each case, the results match
-    -- Use the fact that TPE.apply₁ result is someOrError/val/error
-    -- which evaluates to the same as Spec.apply₁
-    simp only [Residual.evaluate, someOrError_evaluate_ok, someOrError_evaluate_err,
-      evaluate_asResidualValue, Except.toOption]
-    -- After simp, the TPE side should be reduced
-    -- Now case-split on rv to match both sides
-    -- The TPE result is apply₁ op₁ rv ty, which matches on (op₁, rv)
-    -- Each case produces someOrError/val/error, all evaluating predictably
-    -- The concrete side computes Spec.apply₁ op₁ v where v = rv.evaluate
-    -- Both give the same result
-    sorry
+    -- LHS: (x₁.evaluate >>= Spec.apply₁ op₁).toOption
+    -- RHS: (TPE.apply₁ op₁ (.val rv _) ty).evaluate.toOption
+    -- = (match (op₁, rv) with ... | _ => .error ty).evaluate.toOption
+    -- By hᵢ₁: x₁.evaluate.toOption = rv.evaluate.toOption
+    -- Strategy: case split on x₁.evaluate
+    simp only [Residual.evaluate, Except.toOption]
+    cases hx : x₁.evaluate req es with
+    | error =>
+      simp only [Except.bind_err, Except.toOption]
+      -- Goal: none = (match (op₁, rv) with ...).evaluate.toOption
+      -- From hᵢ₁ and hx: none = rv.evaluate.toOption (via heval)
+      -- Case split on rv:
+      -- prim/set/ext: rv.evaluate = .ok _, so rv.evaluate.toOption = some _ ≠ none → contradiction
+      -- record: all (op₁, .record m) → .error ty → toOption = none ✓
+      have h_none : (rv.evaluate req es).toOption = none := by
+        rw [hx] at hᵢ₁; simp only [Except.toOption] at hᵢ₁
+        simp only [Except.toOption]; exact hᵢ₁.symm
+      cases rv with
+      | prim p =>
+        have := @evaluate_asResidualValue (.prim p) req es
+        simp [Value.asResidualValue, Except.toOption] at this h_none
+      | set s =>
+        have := @evaluate_asResidualValue (.set s) req es
+        simp [Value.asResidualValue, Except.toOption] at this h_none
+      | ext x =>
+        have := @evaluate_asResidualValue (.ext x) req es
+        simp [Value.asResidualValue, Except.toOption] at this h_none
+      | record m => cases op₁ <;> simp [Residual.evaluate, Except.toOption]
+    | ok v =>
+      simp only [Except.bind_ok]
+      -- From hᵢ₁: some v = rv.evaluate.toOption
+      have hrv : rv.evaluate req es = .ok v := by
+        simp only [hx, Except.toOption] at hᵢ₁
+        cases h : rv.evaluate req es <;> simp_all
+      -- Now show: (Spec.apply₁ op₁ v).toOption = (TPE result).evaluate.toOption
+      -- The TPE result depends on (op₁, rv). Since rv.evaluate = .ok v,
+      -- rv determines v. Case split on rv to determine v.
+      cases rv with
+      | prim p =>
+        simp [ResidualValue.evaluate] at hrv; subst hrv
+        cases op₁ <;> cases p <;>
+          simp_all [Spec.apply₁, someOrError, Residual.evaluate, ResidualValue.evaluate,
+            Except.toOption]
+        -- neg.int case: someOrError (i.neg?) ty vs intOrErr (i.neg?)
+        · rename_i i; cases h : i.neg? <;>
+            simp [someOrError, intOrErr, Residual.evaluate, ResidualValue.evaluate, evaluate_asResidualValue, Except.toOption]
+      | set s =>
+        simp [ResidualValue.evaluate] at hrv; subst hrv
+        cases op₁ <;> simp_all [Spec.apply₁, Residual.evaluate, ResidualValue.evaluate, Except.toOption]
+      | ext x =>
+        simp [ResidualValue.evaluate] at hrv; subst hrv
+        cases op₁ <;> simp_all [Spec.apply₁, Residual.evaluate, ResidualValue.evaluate, Except.toOption]
+      | record m =>
+        have hv_rec : ∃ kvs, v = .record kvs := by
+          simp only [ResidualValue.evaluate] at hrv
+          cases hm : m.mapMKVsIntoValues₂ (fun x => ResidualValue.evaluateAttr x.val req es) with
+          | error => simp [hm] at hrv
+          | ok kvs => simp [hm] at hrv; exact ⟨kvs, hrv.symm⟩
+        rcases hv_rec with ⟨kvs, hv_rec⟩; subst hv_rec
+        cases op₁ <;> simp [Residual.evaluate, Spec.apply₁, Except.toOption]
   case _ =>
     split
     case _ heq =>

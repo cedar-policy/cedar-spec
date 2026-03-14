@@ -62,36 +62,49 @@ theorem partial_evaluate_is_sound_var
   simp [TPE.evaluate, varₚ]
   split
   case _ =>
+    -- principal
     simp [varₚ.varₒ, someOrSelf]
     split
     case _ heq =>
       simp [Option.bind_eq_some_iff] at heq
-      rcases heq with ⟨_, heq₁, heq₂⟩
+      rcases heq with ⟨uid, heq₁, heq₂⟩
       subst heq₂
       simp [Residual.evaluate]
-      -- TODO: RequestRefines now uses PartialIsValid; destructuring changed
-      sorry
+      -- h₄ gives PartialIsValid (· = req.principal) preq.principal.asEntityUID
+      have ⟨⟨hp, _⟩, _⟩ := h₄
+      rw [heq₁] at hp; cases hp with | some _ h => simp [h, evaluate_asResidualValue, Except.toOption]
     case _ heq =>
       simp only [Residual.evaluate]
   case _ =>
+    -- resource
     simp [varₚ.varₒ, someOrSelf]
     split
     case _ heq =>
       simp [Option.bind_eq_some_iff] at heq
-      rcases heq with ⟨_, heq₁, heq₂⟩
+      rcases heq with ⟨uid, heq₁, heq₂⟩
       subst heq₂
       simp [Residual.evaluate]
-      -- TODO: RequestRefines now uses PartialIsValid; destructuring changed
-      sorry
+      have ⟨⟨_, _, hr, _⟩, _⟩ := h₄
+      rw [heq₁] at hr; cases hr with | some _ h => simp [h, evaluate_asResidualValue, Except.toOption]
     case _ heq =>
       simp only [Residual.evaluate]
   case _ =>
+    -- action
     simp [varₚ.varₒ, someOrSelf]
     simp [Residual.evaluate]
-    -- TODO: RequestRefines now uses PartialIsValid; destructuring changed
-    sorry
+    have ⟨⟨_, ha, _⟩, _⟩ := h₄
+    simp [ha, evaluate_asResidualValue, Except.toOption]
   case _ =>
-    -- TODO: varₚ context case changed structure; needs rework
-    sorry
+    -- context
+    simp only [varₚ, Option.bind, Option.getD]
+    have ⟨⟨_, _, _, hcv⟩, _⟩ := h₄
+    cases hc : preq.context with
+    | none => simp [Residual.evaluate]
+    | some attrs =>
+      simp only [hc, PartialValue.asResidual, Residual.evaluate, Except.toOption]
+      rw [hc] at hcv; cases hcv with | some _ href =>
+      have htgt : (Residual.var Var.context ty).evaluate req es = .ok (.record req.context) := by
+        unfold Residual.evaluate; rfl
+      simp [Residual.evaluate, toResidualValue_evaluate htgt href, Except.toOption]
 
 end Cedar.Thm

@@ -90,8 +90,13 @@ theorem partial_eval_well_typed_var {env : TypeEnv} {v : Var} {ty : CedarType} {
     exact well_typed_entity this
   case context =>
     simp only
-    unfold RequestRefines at h_rref
-    rcases h_rref with ⟨h_pv, ⟨h_av, h_rv, h_cv⟩⟩
     cases h : preq.context
-    . sorry -- TODO: context case restructured (now uses >>= and PartialValue.asResidual)
-    . sorry -- TODO: context case restructured (ValueRefines instead of equality)
+    · -- none: varₚ returns .var .context ty (the default)
+      simp [varₚ, Option.bind, Option.getD]
+      exact h_wt
+    · -- some attrs: varₚ returns PartialValue.asResidual (.record attrs) (.var .context ty) ty
+      simp [varₚ, Option.bind, Option.getD, PartialValue.asResidual]
+      -- Need: WellTyped env (.val (toResidualValue (.var .context ty) (.record attrs) ty) ty)
+      -- This requires showing toResidualValue produces a well-typed ResidualValue
+      -- which needs the ValueRefines from h_cv and the type information from h_wt
+      sorry

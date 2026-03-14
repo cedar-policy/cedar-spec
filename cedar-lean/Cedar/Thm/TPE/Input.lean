@@ -111,14 +111,12 @@ theorem consistent_checks_ensure_refinement {env : TypeEnv} {schema : Schema} {r
     simp only [isValidAndConsistent.requestIsConsistent] at h₁
     split at h₁ <;> simp at h₁
     rcases h₁ with ⟨h₁₁, h₁₂, h₁₃, h₁₄⟩
-    constructor
-    exact partial_is_valid_rfl (fun x => decide (x = req.principal)) (fun x => x = req.principal) preq.principal.asEntityUID decide_eq_implies_eq h₁₁
-    constructor
-    exact h₁₂
-    constructor
-    exact partial_is_valid_rfl (fun x => decide (x = req.resource)) (fun x => x = req.resource) preq.resource.asEntityUID decide_eq_implies_eq h₁₃
-    · sorry -- context refinement: valueIsConsistent changed shape
+    exact ⟨
+      partial_is_valid_rfl _ _ _ decide_eq_implies_eq h₁₁,
+      h₁₂,
+      partial_is_valid_rfl _ _ _ decide_eq_implies_eq h₁₃,
+      sorry⟩ -- context: valueIsConsistent → ValueRefines (private function bridge)
   case _ =>
-    sorry -- entities refinement: entitiesMatch/valueIsConsistent restructured
+    sorry -- entities: entitiesMatch → EntitiesRefine (private function bridge)
 
 end Cedar.Thm

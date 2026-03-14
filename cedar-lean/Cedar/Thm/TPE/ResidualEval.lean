@@ -145,4 +145,25 @@ theorem AttributesRefines.unknown_implies_concrete_typed
   (∀ v, (a, v) ∉ concrete) := by
   sorry
 
+/-- Paper Lemma 5.1 (Target Correctness): toResidualValue produces values that evaluate correctly.
+    If target.evaluate = .ok v_container and ValueRefines env v pv,
+    then (toResidualValue target pv ty).evaluate = .ok v. -/
+theorem toResidualValue_evaluate
+  {env : TypeEnv} {target : Residual} {v : Value} {pv : PartialValue} {ty : CedarType}
+  {req : Request} {es : Entities}
+  (htarget : target.evaluate req es = .ok v)
+  (href : ValueRefines env v pv) :
+  (PartialValue.toResidualValue target pv ty).evaluate req es = .ok v := by
+  cases href with
+  | prim => simp [PartialValue.toResidualValue, ResidualValue.evaluate]
+  | ext => simp [PartialValue.toResidualValue, ResidualValue.evaluate]
+  | set => simp [PartialValue.toResidualValue, ResidualValue.evaluate]
+  | record har =>
+    -- Record case: toResidualValue maps each attribute
+    -- present(pv') → present(toResidualValue (.getAttr target a rty) pv' aty)
+    -- unknown(ty') → unknown(target, ty')
+    -- evaluate maps each through evaluateAttr
+    -- Need to show the result equals the concrete record
+    sorry
+
 end Cedar.Thm

@@ -58,4 +58,7 @@ theorem entity_data_from_partial
     PartialIsValid (fun tags => ValueRefines env (.record edata.tags) (.record tags)) pe.tags ∧
     InstanceOfSchemaEntry uid edata env
 := by
-  sorry -- EntitiesRefine now uses ValueRefines instead of equality
+  intro hwf hrefine hfind
+  have ⟨edata, hes, hattrs, hanc, htags⟩ := hrefine uid pe hfind
+  have hschema := hwf.2.2.1 uid edata hes
+  exact ⟨edata, hes, hattrs, hanc, htags, hschema⟩

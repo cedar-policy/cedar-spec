@@ -144,10 +144,47 @@ theorem no_satisfied_effect_if_empty_satisfied_and_residual_policies
   replace ⟨_, hp⟩ :
     ∃ ty, r = .val (.prim (.bool false)) ty ∨ r = .error ty
   := by
-    -- rp is not satisfied and not residual
-    -- So rp.isFalse || rp.hasError
-    -- Which means r.isFalse || r.isError
-    sorry
+    subst h₄
+    -- Case split on r directly
+    cases r with
+    | error ty => exact ⟨ty, .inr rfl⟩
+    | val rv ty =>
+      cases rv with
+      | prim p =>
+        cases p with
+        | bool b =>
+          cases b with
+          | false => exact ⟨ty, .inl rfl⟩
+          | true =>
+            exfalso
+            have := h_satisfied_empty
+            simp [isAuthorized.satisfiedPolicies, Set.isEmpty_make, List.filterMap_eq_nil_iff] at this
+            have := this _ h₅
+            simp [ResidualPolicy.satisfiedWithEffect, ResidualPolicy.satisfied, Residual.isTrue, hp₂] at this
+        | _ => all_goals {
+            exfalso
+            have := h_residual_empty
+            simp [isAuthorized.residualPolicies, Set.isEmpty_make, List.filterMap_eq_nil_iff] at this
+            have := this _ h₅
+            simp [ResidualPolicy.residualWithEffect, ResidualPolicy.isResidual, ResidualPolicy.satisfied,
+              ResidualPolicy.isFalse, ResidualPolicy.hasError, Residual.isTrue, Residual.isFalse, Residual.isError, hp₂] at this
+          }
+      | _ => all_goals {
+          exfalso
+          have := h_residual_empty
+          simp [isAuthorized.residualPolicies, Set.isEmpty_make, List.filterMap_eq_nil_iff] at this
+          have := this _ h₅
+          simp [ResidualPolicy.residualWithEffect, ResidualPolicy.isResidual, ResidualPolicy.satisfied,
+            ResidualPolicy.isFalse, ResidualPolicy.hasError, Residual.isTrue, Residual.isFalse, Residual.isError, hp₂] at this
+        }
+    | _ => all_goals {
+        exfalso
+        have := h_residual_empty
+        simp [isAuthorized.residualPolicies, Set.isEmpty_make, List.filterMap_eq_nil_iff] at this
+        have := this _ h₅
+        simp [ResidualPolicy.residualWithEffect, ResidualPolicy.isResidual, ResidualPolicy.satisfied,
+          ResidualPolicy.isFalse, ResidualPolicy.hasError, Residual.isTrue, Residual.isFalse, Residual.isError, hp₂] at this
+      }
 
   have ha : r.evaluate req es = Except.ok (Value.prim (Prim.bool true)) :=
     to_option_left_ok (partial_evaluate_policy_is_sound he h₂) h
