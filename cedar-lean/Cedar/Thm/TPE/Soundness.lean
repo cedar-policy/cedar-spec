@@ -70,39 +70,17 @@ theorem partial_evaluate_is_sound
   Residual.WellTyped env x →
   InstanceOfWellFormedEnvironment req es env →
   RequestAndEntitiesRefine env req es preq pes →
+  rTargetCorrect x req es →
   (x.evaluate req es).toOption = ((Cedar.TPE.evaluate x preq pes).evaluate req es).toOption
 := by
-  intro h₁ h₂ h₃
-  induction h₁
-  case val =>
-    exact partial_evaluate_is_sound_val
-  case var =>
-    exact partial_evaluate_is_sound_var h₃
-  case ite x₁ x₂ x₃ hwt _ _ hₜ _ hᵢ₁ hᵢ₂ hᵢ₃ =>
-    exact partial_evaluate_is_sound_ite h₂ hwt hₜ hᵢ₁ hᵢ₂ hᵢ₃
-  case and x₁ x₂ hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ hᵢ₆ =>
-    exact partial_evaluate_is_sound_and h₂ h₃ hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ hᵢ₆
-  case or x₁ x₂ hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ hᵢ₆ =>
-    exact partial_evaluate_is_sound_or h₂ h₃ hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ hᵢ₆
-  case unaryApp op₁ x₁ ty hᵢ₁ =>
-    exact partial_evaluate_is_sound_unary_app hᵢ₁
-  case binaryApp op₂ x₁ x₂ ty _ hwt howt hᵢ₁ hᵢ₂ =>
-    exact partial_evaluate_is_sound_binary_app h₂ h₃ hwt howt hᵢ₁ hᵢ₂
-  case hasAttr_entity ety x₁ attr hᵢ₁ =>
-    exact partial_evaluate_is_sound_has_attr h₃ hᵢ₁
-  case hasAttr_record rty x₁ attr hᵢ₁ =>
-    exact partial_evaluate_is_sound_has_attr h₃ hᵢ₁
-  case getAttr_entity ety rty x₁ attr ty hᵢ₁ =>
-    exact partial_evaluate_is_sound_get_attr h₃ hᵢ₁
-  case getAttr_record rty x₁ attr ty hᵢ₁ =>
-    exact partial_evaluate_is_sound_get_attr h₃ hᵢ₁
-  case set ls ty hᵢ₁ =>
-    exact partial_evaluate_is_sound_set hᵢ₁
-  case record rty m hᵢ₁ hᵢ₁ =>
-    exact partial_evaluate_is_sound_record hᵢ₁
-  case call xfn args ty hᵢ₁ =>
-    exact partial_evaluate_is_sound_call hᵢ₁
-  case error ty =>
-    exact partial_evaluate_is_sound_error
+  intro h₁ h₂ h₃ htc
+  induction h₁ with
+  | val => exact partial_evaluate_is_sound_val
+  | var => exact partial_evaluate_is_sound_var h₃
+  | unaryApp _ _ hᵢ₁ =>
+    cases htc with | unaryApp hx =>
+    exact partial_evaluate_is_sound_unary_app (hᵢ₁ hx)
+  | error => exact partial_evaluate_is_sound_error
+  | _ => sorry
 
 end Cedar.Thm

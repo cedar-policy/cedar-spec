@@ -45,23 +45,36 @@ theorem partial_eval_well_typed_hasAttr {env : TypeEnv} {expr : Residual} {attr 
     case h_1 x m h₂ =>
       exact well_typed_bool
     case h_2 x h₂ =>
+      -- unknown(tgt, _) → .hasAttr tgt attr ty
+      -- Need WellTyped env (.hasAttr tgt attr ty)
+      -- This requires target well-typedness (Lemma 7.3)
       sorry
-      --cases h_wt
-      --case hasAttr_entity ety  h₅ h₆ =>
-      --  apply Residual.WellTyped.hasAttr_entity
-      --  case h₁ =>
-      --    exact h_expr_wt
-      --  case h₂ =>
-      --    have h₁₀ := partial_eval_preserves_typeof _ h₅
-      --    rw [h₁₀, h₆]
-      --case hasAttr_record rty h₆ h₇ =>
-      --  apply Residual.WellTyped.hasAttr_record
-      --  case h₁ =>
-      --    exact h_expr_wt
-      --  case h₂ =>
-      --    have h₁₀ := partial_eval_preserves_typeof _ h₆
-      --    rw [h₁₀]
-      --    rw [h₇]
-    case h_3 => sorry
-  case h_3 => sorry
-  case h_4 => sorry
+    case h_3 =>
+      -- none → false
+      exact well_typed_bool
+  case h_3 =>
+    -- entity case: match on pes.attrs uid
+    split
+    · -- some attrs: match on attrs.find? attr
+      split
+      · exact well_typed_bool  -- present → true
+      · -- unknown → .hasAttr r attr ty (entity case)
+        cases h_wt with
+        | hasAttr_entity h₅ h₆ =>
+          exact .hasAttr_entity h_expr_wt (by rw [partial_eval_preserves_typeof _ h₅ preq pes]; exact h₆)
+        | hasAttr_record h₅ h₆ =>
+          exact .hasAttr_record h_expr_wt (by rw [partial_eval_preserves_typeof _ h₅ preq pes]; exact h₆)
+      · exact well_typed_bool  -- none → false
+    · -- none → .hasAttr r attr ty
+      cases h_wt with
+      | hasAttr_entity h₅ h₆ =>
+        exact .hasAttr_entity h_expr_wt (by rw [partial_eval_preserves_typeof _ h₅ preq pes]; exact h₆)
+      | hasAttr_record h₅ h₆ =>
+        exact .hasAttr_record h_expr_wt (by rw [partial_eval_preserves_typeof _ h₅ preq pes]; exact h₆)
+  case h_4 =>
+    -- non-value: .hasAttr r attr ty
+    cases h_wt with
+    | hasAttr_entity h₅ h₆ =>
+      exact .hasAttr_entity h_expr_wt (by rw [partial_eval_preserves_typeof _ h₅ preq pes]; exact h₆)
+    | hasAttr_record h₅ h₆ =>
+      exact .hasAttr_record h_expr_wt (by rw [partial_eval_preserves_typeof _ h₅ preq pes]; exact h₆)

@@ -164,7 +164,49 @@ theorem entity_attr_well_typed
 theorem partial_eval_well_typed_getAttr {env : TypeEnv} {expr : Residual} {attr : Attr} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
   Residual.WellTyped env (TPE.evaluate expr preq pes) →
   PEWellTyped env (Residual.getAttr expr attr ty) (TPE.evaluate (Residual.getAttr expr attr ty) preq pes) req preq es pes
-:= by sorry
+:= by
+  intros h_expr_wt h_wf h_ref h_wt
+  simp only [TPE.evaluate, TPE.getAttr]
+  split
+  · exact .error  -- error case
+  · -- val (.record m) case: match on m.find? attr
+    split
+    · sorry  -- present(pv) → .val pv ty — needs InstanceOfResidualValueType
+    · sorry  -- unknown(tgt, _) → .getAttr tgt attr ty — needs target well-typedness
+    · -- none → .getAttr r attr ty
+      cases h_wt with
+      | getAttr_entity h₅ h₆ h₇ h₈ =>
+        exact .getAttr_entity h_expr_wt (by rw [partial_eval_preserves_typeof _ h₅ preq pes]; exact h₆) h₇ h₈
+      | getAttr_record h₅ h₆ h₇ =>
+        exact .getAttr_record h_expr_wt (by rw [partial_eval_preserves_typeof _ h₅ preq pes]; exact h₆) h₇
+  · -- val (.prim (.entityUID uid)) case: match on pes.attrs uid
+    split
+    · split
+      · sorry  -- present(pv) → .val (toResidualValue r pv ty) ty — needs Lemma 7.2
+      · -- unknown → .getAttr r attr ty
+        cases h_wt with
+        | getAttr_entity h₅ h₆ h₇ h₈ =>
+          exact .getAttr_entity h_expr_wt (by rw [partial_eval_preserves_typeof _ h₅ preq pes]; exact h₆) h₇ h₈
+        | getAttr_record h₅ h₆ h₇ =>
+          exact .getAttr_record h_expr_wt (by rw [partial_eval_preserves_typeof _ h₅ preq pes]; exact h₆) h₇
+      · -- none → .getAttr r attr ty
+        cases h_wt with
+        | getAttr_entity h₅ h₆ h₇ h₈ =>
+          exact .getAttr_entity h_expr_wt (by rw [partial_eval_preserves_typeof _ h₅ preq pes]; exact h₆) h₇ h₈
+        | getAttr_record h₅ h₆ h₇ =>
+          exact .getAttr_record h_expr_wt (by rw [partial_eval_preserves_typeof _ h₅ preq pes]; exact h₆) h₇
+    · -- none → .getAttr r attr ty
+      cases h_wt with
+      | getAttr_entity h₅ h₆ h₇ h₈ =>
+        exact .getAttr_entity h_expr_wt (by rw [partial_eval_preserves_typeof _ h₅ preq pes]; exact h₆) h₇ h₈
+      | getAttr_record h₅ h₆ h₇ =>
+        exact .getAttr_record h_expr_wt (by rw [partial_eval_preserves_typeof _ h₅ preq pes]; exact h₆) h₇
+  · -- non-value: .getAttr r attr ty
+    cases h_wt with
+    | getAttr_entity h₅ h₆ h₇ h₈ =>
+      exact .getAttr_entity h_expr_wt (by rw [partial_eval_preserves_typeof _ h₅ preq pes]; exact h₆) h₇ h₈
+    | getAttr_record h₅ h₆ h₇ =>
+      exact .getAttr_record h_expr_wt (by rw [partial_eval_preserves_typeof _ h₅ preq pes]; exact h₆) h₇
 /-
   intros h_expr_wt h_wf h_ref h_wt
   simp only [TPE.evaluate, TPE.getAttr, TPE.attrsOf]

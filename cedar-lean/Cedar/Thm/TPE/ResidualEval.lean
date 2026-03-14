@@ -120,6 +120,56 @@ theorem someOrSelf_some_evaluate {v : Value} {ty : CedarType} {r : Residual} {re
   (ResidualValue.ext x).evaluate req es = .ok (.ext x) := by
   unfold ResidualValue.evaluate; rfl
 
+/-! ## Target Correctness Invariant (Paper Definition 5.1) -/
+
+/-- A ResidualValue is target-correct if it evaluates successfully. -/
+def rvTargetCorrect (rv : ResidualValue) (req : Request) (es : Entities) : Prop :=
+  ∃ v, rv.evaluate req es = .ok v
+
+/-- A Residual is target-correct if every `.val` within it evaluates successfully. -/
+inductive rTargetCorrect : Residual → Request → Entities → Prop
+  | val {rv ty req es} (h : rvTargetCorrect rv req es) : rTargetCorrect (.val rv ty) req es
+  | var {v ty req es} : rTargetCorrect (.var v ty) req es
+  | error {ty req es} : rTargetCorrect (.error ty) req es
+  | ite {c t e ty req es} (hc : rTargetCorrect c req es) (ht : rTargetCorrect t req es) (he : rTargetCorrect e req es) : rTargetCorrect (.ite c t e ty) req es
+  | and {a b ty req es} (ha : rTargetCorrect a req es) (hb : rTargetCorrect b req es) : rTargetCorrect (.and a b ty) req es
+  | or {a b ty req es} (ha : rTargetCorrect a req es) (hb : rTargetCorrect b req es) : rTargetCorrect (.or a b ty) req es
+  | unaryApp {op x ty req es} (hx : rTargetCorrect x req es) : rTargetCorrect (.unaryApp op x ty) req es
+  | binaryApp {op x y ty req es} (hx : rTargetCorrect x req es) (hy : rTargetCorrect y req es) : rTargetCorrect (.binaryApp op x y ty) req es
+  | getAttr {x a ty req es} (hx : rTargetCorrect x req es) : rTargetCorrect (.getAttr x a ty) req es
+  | hasAttr {x a ty req es} (hx : rTargetCorrect x req es) : rTargetCorrect (.hasAttr x a ty) req es
+  | set {xs ty req es} (hxs : ∀ x ∈ xs, rTargetCorrect x req es) : rTargetCorrect (.set xs ty) req es
+  | record {m ty req es} (hm : ∀ k v, (k, v) ∈ m → rTargetCorrect v req es) : rTargetCorrect (.record m ty) req es
+  | call {xfn args ty req es} (hargs : ∀ x ∈ args, rTargetCorrect x req es) : rTargetCorrect (.call xfn args ty) req es
+
+@[simp] theorem rTargetCorrect_val {rv : ResidualValue} {ty : CedarType} {req : Request} {es : Entities} :
+  rTargetCorrect (.val rv ty) req es ↔ rvTargetCorrect rv req es :=
+  ⟨fun | .val h => h, .val⟩
+
+@[simp] theorem rTargetCorrect_error {ty : CedarType} {req : Request} {es : Entities} :
+  rTargetCorrect (.error ty) req es := .error
+
+theorem rTargetCorrect_unary {op : UnaryOp} {x : Residual} {ty : CedarType} {req : Request} {es : Entities} :
+  rTargetCorrect (.unaryApp op x ty) req es ↔ rTargetCorrect x req es :=
+  ⟨fun | .unaryApp h => h, .unaryApp⟩
+
+theorem rTargetCorrect_binary {op : BinaryOp} {x y : Residual} {ty : CedarType} {req : Request} {es : Entities} :
+  rTargetCorrect (.binaryApp op x y ty) req es ↔ rTargetCorrect x req es ∧ rTargetCorrect y req es :=
+  ⟨fun | .binaryApp hx hy => ⟨hx, hy⟩, fun ⟨hx, hy⟩ => .binaryApp hx hy⟩
+
+@[simp] theorem rvTargetCorrect_prim {p : Prim} {req : Request} {es : Entities} :
+  rvTargetCorrect (.prim p) req es := ⟨_, ResidualValue.evaluate_prim⟩
+
+@[simp] theorem rvTargetCorrect_set {s : Set Value} {req : Request} {es : Entities} :
+  rvTargetCorrect (.set s) req es := ⟨_, ResidualValue.evaluate_set⟩
+
+@[simp] theorem rvTargetCorrect_ext {x : Ext} {req : Request} {es : Entities} :
+  rvTargetCorrect (.ext x) req es := ⟨_, ResidualValue.evaluate_ext⟩
+
+/-- Concrete values are always target-correct -/
+@[simp] theorem asResidualValue_targetCorrect {v : Value} {req : Request} {es : Entities} :
+  rvTargetCorrect v.asResidualValue req es := ⟨v, evaluate_asResidualValue v req es⟩
+
 /-! ## Refinement lemmas (Paper Lemmas 4.1-4.3) -/
 
 /-- Paper Lemma 4.1: absent partial attr → absent concrete attr -/
@@ -201,5 +251,22 @@ theorem toResidualValue_evaluate
     -- evaluate maps each through evaluateAttr
     -- Need to show the result equals the concrete record
     sorry
+
+/-- Corollary: toResidualValue produces target-correct values -/
+theorem toResidualValue_targetCorrect
+  {env : TypeEnv} {target : Residual} {v : Value} {pv : PartialValue} {ty : CedarType}
+  {req : Request} {es : Entities}
+  (htarget : target.evaluate req es = .ok v)
+  (href : ValueRefines env v pv) :
+  rvTargetCorrect (PartialValue.toResidualValue target pv ty) req es :=
+  ⟨v, toResidualValue_evaluate htarget href⟩
+
+-- Key lemma: TPE.evaluate preserves target correctness.
+-- This should be proved in a file that imports both ResidualEval and WellTyped.
+
+/-- TargetCorrect → evaluate succeeds -/
+theorem rvTargetCorrect_isOk {rv : ResidualValue} {req : Request} {es : Entities} :
+  rvTargetCorrect rv req es → (rv.evaluate req es).isOk := by
+  intro ⟨v, hv⟩; simp [Except.isOk, Except.toBool, hv]
 
 end Cedar.Thm

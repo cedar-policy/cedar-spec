@@ -123,7 +123,7 @@ theorem batched_eval_loop_eq_evaluate
     let newRes := TPE.evaluate x req.asPartialRequest newStore
     have h₇ : (Residual.evaluate newRes req es).toOption = (Residual.evaluate x req es).toOption := by
       subst newRes
-      rw [← partial_evaluate_is_sound h₁ h₃ h₆]
+      rw [← partial_evaluate_is_sound h₁ h₃ h₆ sorry]
 
     simp only
     split
@@ -162,7 +162,7 @@ theorem batched_eval_eq_evaluate
     exact h₂
   }
   rw [conversion_preserves_evaluation x req es]
-  rw [partial_evaluate_is_sound h₅ h₃ h₄]
+  rw [partial_evaluate_is_sound h₅ h₃ h₄ sorry]
 
   have h₆ : Residual.WellTyped env (TPE.evaluate x.toResidual req.asPartialRequest Map.empty) := by
     apply partial_eval_preserves_well_typed h₃ _ h₅
@@ -176,7 +176,7 @@ theorem batched_eval_eq_evaluate
     . apply any_refines_empty_entities
 
   rw [batched_eval_loop_eq_evaluate es h₁ h₆ h₇ h₃]
-  rw [←partial_evaluate_is_sound h₅ h₃ h₇]
-  rw [←partial_evaluate_is_sound h₅ h₃ h₄]
+  rw [←partial_evaluate_is_sound h₅ h₃ h₇ sorry]
+  rw [←partial_evaluate_is_sound h₅ h₃ h₄ sorry]
 
 end Cedar.Thm

@@ -194,15 +194,15 @@ theorem error_free_evaluate_ok {r : Residual} :
   InstanceOfWellFormedEnvironment req es env →
   Residual.WellTyped env r →
   r.ErrorFree →
+  rTargetCorrect r req es →
   (r.evaluate req es).isOk
 := by
-  intro hwf hwt h₂
+  intro hwf hwt h₂ htc
   cases h₂
   case val =>
-    cases ‹Residual.WellTyped env _› with
-    | val h =>
-      cases h <;> simp [Residual.evaluate, ResidualValue.evaluate, ResidualValue.evaluateAttr, Except.isOk_iff_exists]
-      · sorry -- record case: blocked on InstanceOfResidualValueType
+    rw [rTargetCorrect_val] at htc
+    simp only [Residual.evaluate_val]
+    exact rvTargetCorrect_isOk htc
   case var =>
     rename_i v _
     cases v <;>
@@ -213,7 +213,8 @@ theorem error_free_evaluate_ok {r : Residual} :
     rename_i x₁ _ he₁
     cases hwt
     rename_i hwt₁ hwt
-    have ih₁ := error_free_evaluate_ok hwf hwt₁ he₁
+    cases htc with | unaryApp hx =>
+    have ih₁ := error_free_evaluate_ok hwf hwt₁ he₁ hx
     rw [Except.isOk_iff_exists] at ih₁
     rw [ih₁.choose_spec]
     simp only [apply₁, Except.bind_ok]
@@ -244,8 +245,9 @@ theorem error_free_evaluate_ok {r : Residual} :
     rename_i he₁ he₂
     cases hwt
     rename_i hwt₁ hwt₂ hwt
-    have ih₁ := error_free_evaluate_ok hwf hwt₁ he₁
-    have ih₂ := error_free_evaluate_ok hwf hwt₂ he₂
+    cases htc with | binaryApp htc₁ htc₂ =>
+    have ih₁ := error_free_evaluate_ok hwf hwt₁ he₁ htc₁
+    have ih₂ := error_free_evaluate_ok hwf hwt₂ he₂ htc₂
     rw [Except.isOk_iff_exists] at ih₁ ih₂
     rw [ih₁.choose_spec, ih₂.choose_spec]
     simp only [Except.bind_ok]
@@ -313,8 +315,10 @@ theorem error_free_evaluate_ok {r : Residual} :
     rename_i x₁ x₂ _ he₁ he₂
     cases hwt
     rename_i hwt₁ hty₁ hwt₂ hty₂
-    have ih₁ := error_free_evaluate_ok hwf hwt₁ he₁
-    have ih₂ := error_free_evaluate_ok hwf hwt₂ he₂
+    have ⟨htc₁, htc₂⟩ : rTargetCorrect x₁ req es ∧ rTargetCorrect x₂ req es := by
+      cases htc <;> exact ⟨‹_›, ‹_›⟩
+    have ih₁ := error_free_evaluate_ok hwf hwt₁ he₁ htc₁
+    have ih₂ := error_free_evaluate_ok hwf hwt₂ he₂ htc₂
     rw [Except.isOk_iff_exists] at ih₁ ih₂
     rw [ih₁.choose_spec, ih₂.choose_spec]
     have hwts₁ := residual_well_typed_is_sound hwf hwt₁ ih₁.choose_spec
@@ -331,9 +335,10 @@ theorem error_free_evaluate_ok {r : Residual} :
     rename_i x₁ x₂ x₃ _ he₁ he₂ he₃
     cases hwt
     rename_i hwt₁ hty₁ hwt₂ hwt₃ hty₂₃
-    have ih₁ := error_free_evaluate_ok hwf hwt₁ he₁
-    have ih₂ := error_free_evaluate_ok hwf hwt₂ he₂
-    have ih₃ := error_free_evaluate_ok hwf hwt₃ he₃
+    cases htc with | ite htc₁ htc₂ htc₃ =>
+    have ih₁ := error_free_evaluate_ok hwf hwt₁ he₁ htc₁
+    have ih₂ := error_free_evaluate_ok hwf hwt₂ he₂ htc₂
+    have ih₃ := error_free_evaluate_ok hwf hwt₃ he₃ htc₃
     rw [Except.isOk_iff_exists] at ih₁ ih₂ ih₃
     have hwts₁ := residual_well_typed_is_sound hwf hwt₁ ih₁.choose_spec
     rw [hty₁] at hwts₁
@@ -356,7 +361,7 @@ theorem error_free_evaluate_ok {r : Residual} :
       have := List.sizeOf_lt_of_mem r.property
       simp only [Residual.set.sizeOf_spec, gt_iff_lt]
       omega
-    have ih := error_free_evaluate_ok hwf hwt hrs₁
+    have ih := error_free_evaluate_ok hwf hwt hrs₁ (by cases htc with | set h => exact h _ r.property)
     rw [Except.isOk_iff_exists] at ih
     simp [hrs₂] at ih
   case hasAttr =>
@@ -364,7 +369,7 @@ theorem error_free_evaluate_ok {r : Residual} :
     rename_i x₁ a _ he₁
     have hwt₁ : Residual.WellTyped env x₁ := by
       cases hwt <;> assumption
-    have ih₁ := error_free_evaluate_ok hwf hwt₁ he₁
+    have ih₁ := error_free_evaluate_ok hwf hwt₁ he₁ (by cases htc with | hasAttr h => exact h)
     rw [Except.isOk_iff_exists] at ih₁
     rw [ih₁.choose_spec]
     simp only [hasAttr, attrsOf, Except.bind_ok]
@@ -395,7 +400,7 @@ theorem error_free_evaluate_ok {r : Residual} :
       have := List.sizeOf_snd_lt_sizeOf_list hax
       simp only [Residual.record.sizeOf_spec, gt_iff_lt]
       omega
-    have ih := error_free_evaluate_ok hwf hwt haxs₁
+    have ih := error_free_evaluate_ok hwf hwt haxs₁ (by cases htc with | record h => exact h _ _ hax)
     rw [Except.isOk_iff_exists] at ih
     rw [ih.choose_spec] at haxs₂
     simp [bindAttr] at haxs₂

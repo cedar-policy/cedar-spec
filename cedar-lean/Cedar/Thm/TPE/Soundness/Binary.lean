@@ -54,7 +54,11 @@ theorem partial_evaluate_is_sound_binary_app
 := by
   simp [TPE.evaluate, TPE.apply₂]
   split
-  case _ heq₁ heq₂ => sorry
+  case _ heq₁ heq₂ =>
+    have heval₁ := asResidualValue_evaluate heq₁ req es
+    have heval₂ := asResidualValue_evaluate heq₂ req es
+    rw [heval₁] at hᵢ₁; rw [heval₂] at hᵢ₂
+    sorry
   /-
         rcases heq₄ with ⟨_, heq₄₁, heq₄₂⟩
         subst heq₄₂

@@ -48,7 +48,9 @@ theorem partial_evaluate_is_sound_or
 (hᵢ₃ : x₁.typeOf = CedarType.bool BoolType.anyBool)
 (hᵢ₄ : x₂.typeOf = CedarType.bool BoolType.anyBool)
 (hᵢ₅ : Except.toOption (x₁.evaluate req es) = Except.toOption ((TPE.evaluate x₁ preq pes).evaluate req es))
-(hᵢ₆ : Except.toOption (x₂.evaluate req es) = Except.toOption ((TPE.evaluate x₂ preq pes).evaluate req es)) :
+(hᵢ₆ : Except.toOption (x₂.evaluate req es) = Except.toOption ((TPE.evaluate x₂ preq pes).evaluate req es))
+(htc₁ : rTargetCorrect (TPE.evaluate x₁ preq pes) req es)
+(htc₂ : rTargetCorrect (TPE.evaluate x₂ preq pes) req es) :
   Except.toOption ((x₁.or x₂ (CedarType.bool BoolType.anyBool)).evaluate req es) =
   Except.toOption ((TPE.evaluate (x₁.or x₂ (CedarType.bool BoolType.anyBool)) preq pes).evaluate req es)
 := by
@@ -113,20 +115,7 @@ theorem partial_evaluate_is_sound_or
         split at hᵢ₅ <;> try contradiction
         clear hᵢ₅ ; rename_i hᵢ₅
         simp [hᵢ₅, Result.as] at h₇
-      · sorry
-        -- split <;> simp
-        -- rename_i h₇
-        -- simp [Residual.evaluate] at h₇
-        -- subst h₇
-        -- rw [Residual.error_free_spec] at h₆
-        -- have h₇ : Residual.WellTyped env (TPE.evaluate x₁ preq pes) :=
-        --   partial_eval_preserves_well_typed h₂ h₃ hᵢ₁
-        -- have h₈ := error_free_evaluate_ok h₂ h₇ h₆
-        -- simp [Except.isOk, Except.toBool] at h₈
-        -- split at h₈ <;> try contradiction
-        -- clear h₈ ; rename_i h₈
-        -- rw [h₅, h₈] at hᵢ₅
-        -- simp [Except.toOption] at hᵢ₅
+      · sorry -- errorFree case: needs adaptation for new simp lemmas
     · simp [Result.as, Except.toOption, Coe.coe, Value.asBool]
       simp [h₅, Except.toOption] at hᵢ₅
       split at hᵢ₅ <;> try contradiction
