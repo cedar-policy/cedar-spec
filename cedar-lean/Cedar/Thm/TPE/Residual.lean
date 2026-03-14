@@ -79,32 +79,41 @@ theorem asValue_inverse_asResidualValue (v : Value) :
     simp only [ResidualValue.asValue, Option.pure_def, Option.bind_eq_bind]
     simp only [Map.mapMOnValues₂_eq_mapMOnValues (Map.mapOnValues (fun x => ResidualAttribute.present x.asResidualValue) as) (fun x => x.asValue)]
     simp only [Map.mapMOnValues_mapOnValues]
-    cases h : (Map.mapMOnValues ((fun x => x.asValue) ∘ fun x => ResidualAttribute.present x.asResidualValue) as)
-    case none =>
-      simp only [Map.mapMOnValues_none_iff_exists_none, Function.comp_apply] at h
-      replace ⟨v', hmem, hval⟩ := h
-      -- have ih := asValue_inverse_asResidualValue v'
-      -- simp [ih, ResidualAttribute.asValue] at hval
-      sorry
-    case some =>
-      simp only [Option.bind_some, Option.some.injEq, Value.record.injEq]
-      replace h' := Map.mapMOnValues_some_implies_all_some h
-      simp at h'
-      -- have ih := asValue_inverse_asResidualValue
-      conv at h' =>
-        intro a v' hmem
-        -- simp [ResidualAttribute.asValue, ih v']
-      rw [←Map.eq_iff_toList_eq]
-      sorry
-    -- Goal: (Value.record ∘ Map.make) <$> (attach₂ result).mapM₂ (...) = some (Value.record as)
-    -- We need to show the mapM₂ succeeds and reconstructs the original list
+    rw [Map.mapMOnValues_some_of_id]
+    · simp
+    · intro v' hv'
+      simp only [Function.comp_apply, ResidualAttribute.asValue]
+      exact asValue_inverse_asResidualValue v'
 termination_by sizeOf v
+decreasing_by
+  simp_wf
+  have h1 := Map.sizeOf_lt_of_values hv'
+  simp [Value.record.sizeOf_spec]
+  omega
 
 
 @[simp]
 theorem residual_val_as_residual_val  :
   (Residual.val v ty).asResidualValue = some v
 := by simp [Residual.asResidualValue]
+
+-- Helper: asValue is a left inverse of asResidualValue
+theorem ResidualValue.asValue_eq_some_val {rv : ResidualValue} {v : Value} :
+  rv.asValue = some v → rv = v.asResidualValue
+:= by
+  intro h
+  cases rv with
+  | prim p =>
+    simp only [ResidualValue.asValue, Option.some.injEq] at h
+    subst v; simp [Value.asResidualValue]
+  | set s =>
+    simp only [ResidualValue.asValue, Option.some.injEq] at h
+    subst v; simp [Value.asResidualValue]
+  | ext e =>
+    simp only [ResidualValue.asValue, Option.some.injEq] at h
+    subst v; simp [Value.asResidualValue]
+  | record m =>
+    sorry -- record case needs induction on map structure
 
 @[simp]
 theorem asValue_some {r : Residual} {v : Value} :
@@ -118,7 +127,7 @@ theorem asValue_some {r : Residual} {v : Value} :
     cases r
     case val rv ty =>
       simp only [Residual.asResidualValue, Option.bind_some] at h
-      exact ⟨ty, by sorry⟩ -- need: ResidualValue.asValue rv = some v → rv = v.asResidualValue
+      exact ⟨ty, by congr 1; exact ResidualValue.asValue_eq_some_val h⟩
     all_goals (simp [Residual.asResidualValue] at h)
   · intro ⟨ty, h⟩
     subst h
@@ -137,6 +146,20 @@ theorem isError_true {r : Residual} :
     simp only [reduceCtorEq, false_iff]
     exact not_exists.mpr h
 
+@[simp]
+theorem evaluate_asResidualValue (v : Value) (req : Request) (es : Entities) :
+  (v.asResidualValue).evaluate req es = .ok v
+:= by
+  match v with
+  | .prim p => simp [Value.asResidualValue, ResidualValue.evaluate]
+  | .set s => simp [Value.asResidualValue, ResidualValue.evaluate]
+  | .ext x => simp [Value.asResidualValue, ResidualValue.evaluate]
+  | .record as =>
+    simp only [Value.asResidualValue]
+    simp only [ResidualValue.evaluate, Map.mapOnValues₂_eq_mapOnValues]
+    sorry
+termination_by sizeOf v
+
 theorem asValue_evaluate_val {r : Residual} {v : Value} :
   r.asValue = .some v → ∀ req es, r.evaluate req es = Except.ok v
 := by
@@ -145,7 +168,7 @@ theorem asValue_evaluate_val {r : Residual} {v : Value} :
   rcases h with ⟨ty, h⟩
   subst h
   simp only [Residual.evaluate]
-  sorry -- need: ResidualValue.evaluate (v.asResidualValue) req es = .ok v
+  exact evaluate_asResidualValue v req es
 
 @[simp]
 theorem err_evaluate_err  :

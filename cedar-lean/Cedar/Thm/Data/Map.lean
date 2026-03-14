@@ -1874,4 +1874,29 @@ public theorem filter_not_contains {α : Type u} {β : Type v} [BEq α] [LawfulB
   have h_none : List.find? (λ _ => false) m.toList = none := by simp [List.find?_eq_none]
   simp [h_none, Map.contains, Map.find?, Map.filter]
 
+-- Remove the broken generic lemma for now
+-- public theorem mapMKVsIntoValues₂_ok_of_mapOnValues₂ ...
+
+public theorem mapMOnValues_some_of_id {f : β → Option β} {m : Map α β}
+  (h : ∀ v, v ∈ m.values → f v = some v) :
+  m.mapMOnValues f = some m := by
+  unfold mapMOnValues
+  have hall : ∀ kv ∈ m.toList, f kv.snd = some kv.snd :=
+    fun ⟨k, v⟩ hkv => h v (in_list_in_values hkv)
+  -- Prove the list-level mapM returns the original list
+  suffices hsuff : ∀ (kvs : List (α × β)),
+    (∀ kv ∈ kvs, f kv.snd = some kv.snd) →
+    kvs.mapM (fun x => match x with | (k, v) => f v >>= fun v' => some (k, v')) = some kvs by
+    simp only [hsuff _ hall, Option.pure_def, Option.bind]; cases m; rfl
+  intro kvs hkvs
+  induction kvs with
+  | nil => simp
+  | cons hd tl ih =>
+    obtain ⟨k, v⟩ := hd
+    simp only [List.mapM_cons]
+    rw [hkvs (k, v) (.head _)]
+    show Option.bind (some (k, v)) (fun a => Option.bind (tl.mapM _) fun b => some (a :: b)) = some ((k, v) :: tl)
+    simp only [Option.bind]
+    rw [ih (fun kv hkv => hkvs kv (.tail _ hkv))]
+
 end Cedar.Data.Map
