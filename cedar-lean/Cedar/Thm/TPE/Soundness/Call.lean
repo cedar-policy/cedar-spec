@@ -64,9 +64,8 @@ theorem partial_evaluate_is_sound_call
     simp only [h₅, Except.bind_ok]
     split
     case _ heq₁ =>
-      sorry
-      -- simp only [to_option_some] at heq₁
-      -- simp only [heq₁, Residual.evaluate]
+      simp only [to_option_some] at heq₁
+      simp only [heq₁, Residual.evaluate, evaluate_asResidualValue, Except.toOption]
     case _ heq₁ =>
       rcases to_option_none.mp heq₁ with ⟨_, heq₁⟩
       simp [heq₁, Residual.evaluate, Except.toOption]

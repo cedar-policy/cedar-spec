@@ -56,18 +56,6 @@ theorem partial_evaluate_is_sound_binary_app
   split
   case _ heq₁ heq₂ => sorry
   /-
-    rw [asValue_evaluate_val heq₁] at hᵢ₁
-    rw [asValue_evaluate_val heq₂] at hᵢ₂
-    replace hᵢ₁ := to_option_right_ok' hᵢ₁
-    replace hᵢ₂ := to_option_right_ok' hᵢ₂
-    simp [Residual.evaluate, hᵢ₁, hᵢ₂, Spec.apply₂]
-    -- TODO: rewrite one of the two binary app evaluation function so that we don't need this amount of case splits.
-    split <;> simp [Residual.evaluate]
-    any_goals
-      simp [intOrErr, someOrError]
-      split <;> split
-      case _ heq₃ _ _ _ _ heq₄ =>
-        simp [Option.bind_eq_some_iff] at heq₄
         rcases heq₄ with ⟨_, heq₄₁, heq₄₂⟩
         subst heq₄₂
         simp [heq₃] at heq₄₁

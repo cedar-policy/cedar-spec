@@ -48,25 +48,34 @@ theorem partial_evaluate_is_sound_unary_app
 := by
   simp [TPE.evaluate, TPE.apply₁]
   split
-  case _ heq =>
+  case _ rv heq =>
+    have heval := asResidualValue_evaluate heq req es
+    rw [heval] at hᵢ₁
+    -- Both sides compute apply₁ on the value
+    -- LHS: x₁.evaluate >>= Spec.apply₁ op₁
+    -- RHS: (TPE.apply₁ op₁ rv ty).evaluate
+    -- By hᵢ₁, toOption of x₁.evaluate = toOption of rv.evaluate
+    -- TPE.apply₁ matches on rv, Spec.apply₁ matches on the value
+    -- For each case, the results match
+    -- Use the fact that TPE.apply₁ result is someOrError/val/error
+    -- which evaluates to the same as Spec.apply₁
+    simp only [Residual.evaluate, someOrError_evaluate_ok, someOrError_evaluate_err,
+      evaluate_asResidualValue, Except.toOption]
+    -- After simp, the TPE side should be reduced
+    -- Now case-split on rv to match both sides
+    -- The TPE result is apply₁ op₁ rv ty, which matches on (op₁, rv)
+    -- Each case produces someOrError/val/error, all evaluating predictably
+    -- The concrete side computes Spec.apply₁ op₁ v where v = rv.evaluate
+    -- Both give the same result
     sorry
-    -- simp [heq, Residual.evaluate] at hᵢ₁
-    -- rcases to_option_right_err hᵢ₁ with ⟨_, hᵢ₁⟩
-    -- simp [Residual.evaluate, hᵢ₁, Except.toOption]
   case _ =>
     split
     case _ heq =>
-      sorry
-      -- rw [asValue_evaluate_val heq] at hᵢ₁
-      -- replace hᵢ₁ := to_option_right_ok' hᵢ₁
-      -- simp [someOrError, Residual.evaluate, hᵢ₁]
-      -- split
-      -- case _ heq₂ =>
-      --   simp [to_option_some] at heq₂
-      --   simp [heq₂, Residual.evaluate]
-      -- case _ heq₂ =>
-      --   rcases to_option_none.mp heq₂ with ⟨_, heq₂⟩
-      --   simp [heq₂, Residual.evaluate, Except.toOption]
+      -- error case
+      simp only [Residual.evaluate, Except.toOption]
+      rw [heq] at hᵢ₁
+      simp only [Residual.evaluate, Except.toOption] at hᵢ₁
+      cases hx : x₁.evaluate req es <;> simp_all
     case _ =>
       simp [Residual.evaluate]
       generalize h₅ : x₁.evaluate req es = res₁

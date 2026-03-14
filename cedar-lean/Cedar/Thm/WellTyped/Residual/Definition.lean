@@ -18,6 +18,8 @@ import Cedar.Spec.Ext
 import Cedar.Validation.TypedExpr
 import Cedar.TPE.Residual
 import Cedar.Thm.Validation
+import Cedar.Thm.TPE.ResidualEval
+import Cedar.Thm.Data.Map
 
 /-!
 This file contains well-typedness definitions of `TypedExpr`
@@ -225,7 +227,12 @@ inductive InstanceOfResidualValueType (env : TypeEnv) : ResidualValue → CedarT
       (h₁ : ∀ v, v ∈ s → InstanceOfType env v ty) :
       InstanceOfResidualValueType env (.set s) (.set ty)
   | instance_of_record (r : Map Attr ResidualAttribute) (rty : RecordType)
-      (h₁ : True) : -- TODO: record well-typedness for ResidualAttribute
+      (h₁ : ∀ (k : Attr), r.contains k → rty.contains k)
+      (h₂ : ∀ (k : Attr) (rv : ResidualValue) (qty : QualifiedType),
+        r.find? k = some (.present rv) → rty.find? k = some qty →
+        InstanceOfResidualValueType env rv qty.getType)
+      (h₃ : ∀ (k : Attr) (qty : QualifiedType),
+        rty.find? k = some qty → qty.isRequired → r.contains k) :
       InstanceOfResidualValueType env (.record r) (.record rty)
   | instance_of_ext (x : Ext) (xty : ExtType)
       (h₁ : InstanceOfExtType x xty) :
@@ -253,10 +260,34 @@ theorem InstanceOfType.toResidualValueType {env : TypeEnv} {v : Value} {ty : Ced
     simp only [Value.asResidualValue]
     exact .instance_of_set s ty h₁
   | instance_of_record r rty h₁ h₂ h₃ =>
-    sorry -- TODO: record case needs to bridge Map Attr Value → List (Attr × ResidualAttribute)
+    simp only [Value.asResidualValue]
+    simp only [Map.mapOnValues₂_eq_mapOnValues r (fun x => ResidualAttribute.present x.asResidualValue)]
+    apply InstanceOfResidualValueType.instance_of_record
+    · intro k hk
+      have := Map.mapOnValues_contains (fun (x : Value) => ResidualAttribute.present x.asResidualValue) (m := r) (k := k)
+      rw [← this] at hk
+      exact h₁ k hk
+    · intro k rv qty hfind hrty
+      have := Map.find?_mapOnValues (fun (x : Value) => ResidualAttribute.present x.asResidualValue) r k
+      rw [← this] at hfind
+      simp only [Option.map] at hfind
+      split at hfind <;> simp only [Option.some.injEq, reduceCtorEq] at hfind
+      rename_i v hv
+      simp only [ResidualAttribute.present.injEq] at hfind
+      subst hfind
+      exact InstanceOfType.toResidualValueType (h₂ k v qty hv hrty)
+    · intro k qty hrty hreq
+      have := Map.mapOnValues_contains (fun (x : Value) => ResidualAttribute.present x.asResidualValue) (m := r) (k := k)
+      rw [← this]
+      exact h₃ k qty hrty hreq
   | instance_of_ext x xty h₁ =>
     simp only [Value.asResidualValue]
     exact .instance_of_ext x xty h₁
+termination_by sizeOf v
+decreasing_by
+  simp_wf
+  have := Map.sizeOf_lt_of_find? ‹_›
+  simp [Value.record.sizeOf_spec]; omega
 
 /-- Well-typedness definition for Residual expressions -/
 inductive Residual.WellTyped (env : TypeEnv) : Residual → Prop

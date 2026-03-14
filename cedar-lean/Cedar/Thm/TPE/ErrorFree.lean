@@ -198,7 +198,11 @@ theorem error_free_evaluate_ok {r : Residual} :
 := by
   intro hwf hwt h₂
   cases h₂
-  case val => sorry -- Residual.evaluate for val now goes through ResidualValue.evaluate
+  case val =>
+    cases ‹Residual.WellTyped env _› with
+    | val h =>
+      cases h <;> simp [Residual.evaluate, ResidualValue.evaluate, ResidualValue.evaluateAttr, Except.isOk_iff_exists]
+      · sorry -- record case: blocked on InstanceOfResidualValueType
   case var =>
     rename_i v _
     cases v <;>

@@ -144,7 +144,9 @@ theorem no_satisfied_effect_if_empty_satisfied_and_residual_policies
   replace ⟨_, hp⟩ :
     ∃ ty, r = .val (.prim (.bool false)) ty ∨ r = .error ty
   := by
-    -- TODO: Residual.isTrue/isFalse definitions changed with ResidualValue
+    -- rp is not satisfied and not residual
+    -- So rp.isFalse || rp.hasError
+    -- Which means r.isFalse || r.isError
     sorry
 
   have ha : r.evaluate req es = Except.ok (Value.prim (Prim.bool true)) :=
@@ -256,7 +258,16 @@ theorem partial_authorize_satisfied_policies_is_sound
   · exact hp₁
   · simpa [←hp₂] using hef
   · replace htrue : Spec.evaluate p.toExpr req es = .ok (.prim (.bool true)) := by
-      sorry
+      have ha := partial_evaluate_policy_is_sound hp₃ h₂
+      unfold Residual.isTrue at htrue
+      split at htrue
+      · -- .val (.prim (.bool true)) _ case
+        rename_i heq
+        subst hp₂
+        simp only at heq
+        subst heq
+        exact to_option_left_ok ha.symm (by simp [Residual.evaluate, ResidualValue.evaluate])
+      · simp at htrue
     simp only [satisfied, decide_eq_true_eq]
     exact htrue
   · simpa [←hp₂] using hpid

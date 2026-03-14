@@ -51,9 +51,18 @@ theorem partial_evaluate_is_sound_ite
   Except.toOption ((TPE.evaluate (x₁.ite x₂ x₃ x₂.typeOf) preq pes).evaluate req es) := by
   simp [Residual.evaluate, TPE.evaluate, TPE.ite]
   split
-  case _ heq =>
-    -- TODO: Residual.evaluate for .val now goes through ResidualValue.evaluate
-    sorry
+  case _ b ty' heq =>
+    rw [heq] at hᵢ₁
+    simp only [Residual.evaluate, ResidualValue.evaluate, Except.toOption] at hᵢ₁
+    cases hx₁ : x₁.evaluate req es
+    · -- error case: contradicts hᵢ₁
+      simp_all
+    · -- ok case
+      rename_i v
+      simp only [hx₁, Except.toOption, Option.some.injEq] at hᵢ₁
+      subst hᵢ₁
+      simp only [Result.as, Value.asBool, Coe.coe, Except.bind_ok]
+      cases b <;> simp_all
   case _ heq =>
     simp only [heq, Residual.evaluate] at hᵢ₁
     rcases to_option_right_err hᵢ₁ with ⟨_, h₆⟩

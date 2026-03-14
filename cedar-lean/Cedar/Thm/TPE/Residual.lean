@@ -19,6 +19,7 @@ import Cedar.TPE
 import Cedar.Spec
 import Cedar.Validation
 import Cedar.Thm.TPE.Input
+import Cedar.Thm.TPE.ResidualEval
 import Cedar.Thm.Validation
 import Cedar.Thm.WellTyped
 import Cedar.Thm.Data.Control
@@ -146,32 +147,6 @@ theorem isError_true {r : Residual} :
   · rename_i h
     simp only [reduceCtorEq, false_iff]
     exact not_exists.mpr h
-
-@[simp]
-theorem evaluate_asResidualValue (v : Value) (req : Request) (es : Entities) :
-  (v.asResidualValue).evaluate req es = .ok v
-:= by
-  match v with
-  | .prim p => simp [Value.asResidualValue, ResidualValue.evaluate]
-  | .set s => simp [Value.asResidualValue, ResidualValue.evaluate]
-  | .ext x => simp [Value.asResidualValue, ResidualValue.evaluate]
-  | .record as =>
-    simp only [Value.asResidualValue, Map.mapOnValues₂_eq_mapOnValues as (fun x => ResidualAttribute.present x.asResidualValue)]
-    rw [ResidualValue.evaluate.eq_def]; dsimp only []
-    rw [Map.mapMKVsIntoValues₂_eq_mapMKVsIntoValues _ (fun kv => ResidualValue.evaluateAttr kv req es)]
-    rw [Map.mapMKVsIntoValues_mapOnValues_roundtrip
-      (fun x => ResidualAttribute.present x.asResidualValue)
-      (fun kv => ResidualValue.evaluateAttr kv req es)
-      as
-      (fun ⟨k, v⟩ hkv => by
-        simp only [ResidualValue.evaluateAttr]
-        exact evaluate_asResidualValue v req es)]
-    rfl
-termination_by sizeOf v
-decreasing_by
-  simp_wf
-  have h1 := Map.sizeOf_lt_of_values (Map.in_list_in_values hkv)
-  simp [Value.record.sizeOf_spec]; omega
 
 theorem asValue_evaluate_val {r : Residual} {v : Value} :
   r.asValue = .some v → ∀ req es, r.evaluate req es = Except.ok v

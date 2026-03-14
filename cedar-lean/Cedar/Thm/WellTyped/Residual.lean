@@ -17,6 +17,7 @@
 import Cedar.Thm.WellTyped.Residual.Definition
 import Cedar.Thm.WellTyped.Residual.Soundness
 import Cedar.Thm.WellTyped.Expr.Typechecking
+import Cedar.Thm.TPE.ResidualEval
 import Cedar.TPE.Residual
 import Cedar.Data.Map
 
@@ -44,7 +45,29 @@ theorem residual_well_typed_is_sound {r : Residual} {v : Value} {env : TypeEnv} 
   intro h₁ h₂ h₃
   induction h₂ generalizing v <;> simp only [Residual.typeOf]
   case val rv ty h₄ =>
-    sorry -- h₄ is now InstanceOfResidualValueType, needs adaptation
+    simp only [Residual.evaluate] at h₃
+    cases h₄ with
+    | instance_of_bool b bty h =>
+      simp only [ResidualValue.evaluate] at h₃; cases h₃; exact .instance_of_bool b bty h
+    | instance_of_int =>
+      simp only [ResidualValue.evaluate] at h₃; cases h₃; exact .instance_of_int
+    | instance_of_string =>
+      simp only [ResidualValue.evaluate] at h₃; cases h₃; exact .instance_of_string
+    | instance_of_entity e ety h =>
+      simp only [ResidualValue.evaluate] at h₃; cases h₃; exact .instance_of_entity e ety h
+    | instance_of_set s ty h =>
+      simp only [ResidualValue.evaluate] at h₃; cases h₃; exact .instance_of_set s ty h
+    | instance_of_ext x xty h =>
+      simp only [ResidualValue.evaluate] at h₃; cases h₃; exact .instance_of_ext x xty h
+    | instance_of_record r rty h_keys h_present h_required =>
+      -- h₃ : (.record r).evaluate request entities = .ok v
+      -- Need: InstanceOfType env v (.record rty)
+      -- The evaluate of .record r maps each attribute through evaluateAttr
+      -- For .present rv entries, evaluateAttr returns rv.evaluate
+      -- For .unknown expr ty entries, evaluateAttr returns (.getAttr expr _ ty).evaluate
+      -- The result is a Value.record with the evaluated attributes
+      -- We need to show this record satisfies InstanceOfType
+      sorry
   case var var ty h₄ =>
     exact residual_well_typed_is_sound_var h₁ h₄ h₃
   case ite x₁ x₂ x₃ h₁ h₂ h₃ h₄ h₅ h₆ hᵢ₁ hᵢ₂ =>

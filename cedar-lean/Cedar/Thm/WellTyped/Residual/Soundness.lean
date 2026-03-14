@@ -16,6 +16,7 @@
 
 import Cedar.Thm.WellTyped.Residual.Definition
 import Cedar.TPE.Residual
+import Cedar.Thm.TPE.ResidualEval
 import Cedar.Thm.WellTyped.Expr.Typechecking
 import Cedar.Data.Map
 import Cedar.Thm.Validation.Typechecker.Record
@@ -44,7 +45,17 @@ theorem residual_well_typed_is_sound_val
 (h₂ : (Residual.val v' ty).evaluate request entities = Except.ok v) : (InstanceOfType env v (Residual.val v' ty).typeOf)
 := by
   simp only [Residual.typeOf]
-  sorry -- Residual.evaluate changed: val case now goes through ResidualValue.evaluate
+  simp only [Residual.evaluate] at h₂
+  -- h₂ : (v'.asResidualValue).evaluate request entities = .ok v
+  -- For non-record values, asResidualValue.evaluate = .ok v' trivially
+  cases v' with
+  | prim p => simp only [Value.asResidualValue, ResidualValue.evaluate] at h₂; cases h₂; exact h₁
+  | set s => simp only [Value.asResidualValue, ResidualValue.evaluate] at h₂; cases h₂; exact h₁
+  | ext e => simp only [Value.asResidualValue, ResidualValue.evaluate] at h₂; cases h₂; exact h₁
+  | record r =>
+    -- v'.asResidualValue.evaluate = .ok v' by evaluate_asResidualValue
+    rw [Cedar.Thm.evaluate_asResidualValue] at h₂
+    cases h₂; exact h₁
 
 theorem residual_well_typed_is_sound_var
 {v : Value}
