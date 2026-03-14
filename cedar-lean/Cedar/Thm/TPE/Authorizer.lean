@@ -151,9 +151,9 @@ theorem no_satisfied_effect_if_empty_satisfied_and_residual_policies
     to_option_left_ok (partial_evaluate_policy_is_sound he h₂) h
 
   -- TODO: Residual.evaluate for .val now goes through ResidualValue.evaluate
-  cases hp
-  · rename_i hp; simp only at hp; sorry
-  · rename_i hp; subst hp; sorry
+  cases hp with
+  | inl hp => subst hp; simp [Residual.evaluate, ResidualValue.evaluate] at ha
+  | inr hp => subst hp; simp [Residual.evaluate] at ha
 
 theorem satisfied_effect_if_non_empty_satisfied_policies
   {schema : Schema}
@@ -187,8 +187,8 @@ theorem satisfied_effect_if_non_empty_satisfied_policies
   · exact hp₁
   · exact hf₂
   · have ha := partial_evaluate_policy_is_sound hp₃ h₂
-    -- TODO: Residual.evaluate for .val now goes through ResidualValue.evaluate
-    sorry
+    simp only [satisfied, decide_eq_true_eq]
+    exact to_option_left_ok ha.symm (by simp [Residual.evaluate, ResidualValue.evaluate])
 
 theorem partial_authorize_error_policies_is_sound
   {schema : Schema}
@@ -256,7 +256,6 @@ theorem partial_authorize_satisfied_policies_is_sound
   · exact hp₁
   · simpa [←hp₂] using hef
   · replace htrue : Spec.evaluate p.toExpr req es = .ok (.prim (.bool true)) := by
-      -- TODO: Residual.isTrue and Residual.evaluate changed with ResidualValue
       sorry
     simp only [satisfied, decide_eq_true_eq]
     exact htrue

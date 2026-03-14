@@ -209,7 +209,17 @@ def Residual.errorFree : Residual → Bool
   | _ => false
 
 -- The interpreter of `Residual` that defines its semantics
+
 mutual
+
+def ResidualValue.evaluateAttr (kv : Attr × ResidualAttribute) (req : Request) (es : Entities) : Result Value :=
+  match kv with
+  | (_, .present v') => ResidualValue.evaluate v' req es
+  | (a, .unknown expr ty) => Residual.evaluate (.getAttr expr a ty) req es
+termination_by sizeOf kv
+decreasing_by
+  · simp only [Prod.mk.sizeOf_spec, ResidualAttribute.present.sizeOf_spec]; omega
+  · simp only [Prod.mk.sizeOf_spec, ResidualAttribute.unknown.sizeOf_spec, Residual.getAttr.sizeOf_spec]; omega
 
 def ResidualValue.evaluate (rv : ResidualValue) (req : Request) (es : Entities) : Result Value :=
   match rv with
@@ -217,20 +227,14 @@ def ResidualValue.evaluate (rv : ResidualValue) (req : Request) (es : Entities) 
   | .set s => .ok s
   | .ext e => .ok e
   | .record r => do
-    .ok (.record (← r.mapMKVsIntoValues₂ (λ kv  =>
-      (match kv with
-        | ⟨(a, .present v'), _h⟩  =>
-          have : sizeOf v' < 1 + sizeOf r := by
-            simp only [Prod.mk.sizeOf_spec, ResidualAttribute.present.sizeOf_spec] at _h
-            omega
-          ResidualValue.evaluate v' req es
-        | ⟨(a, .unknown expr ty), _h⟩ =>
-          have : sizeOf (Residual.getAttr expr a ty) < 1 + sizeOf r := by
-            simp only [Prod.mk.sizeOf_spec, ResidualAttribute.unknown.sizeOf_spec] at _h
-            simp only [Residual.getAttr.sizeOf_spec]
-            omega
-          Residual.evaluate (.getAttr expr a ty) req es))))
+    .ok (.record (← r.mapMKVsIntoValues₂ (fun ⟨kv, _⟩ =>
+      ResidualValue.evaluateAttr kv req es)))
 termination_by sizeOf rv
+decreasing_by
+  simp_wf
+  have h1 := List.sizeOf_lt_of_mem ‹_›
+  have h2 := Map.sizeOf_lt_of_toList r
+  simp only [Prod.mk.sizeOf_spec] at h1; omega
 
 def Residual.evaluate (x : Residual) (req : Request) (es: Entities) : Result Value :=
   match x with

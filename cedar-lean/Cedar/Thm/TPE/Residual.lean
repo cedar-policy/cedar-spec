@@ -22,6 +22,7 @@ import Cedar.Thm.TPE.Input
 import Cedar.Thm.Validation
 import Cedar.Thm.WellTyped
 import Cedar.Thm.Data.Control
+import Cedar.Thm.Data.Map
 
 /-!
 This file contains basic utility theorems used in the TPE soundness proof.
@@ -155,10 +156,22 @@ theorem evaluate_asResidualValue (v : Value) (req : Request) (es : Entities) :
   | .set s => simp [Value.asResidualValue, ResidualValue.evaluate]
   | .ext x => simp [Value.asResidualValue, ResidualValue.evaluate]
   | .record as =>
-    simp only [Value.asResidualValue]
-    simp only [ResidualValue.evaluate, Map.mapOnValues₂_eq_mapOnValues]
-    sorry
+    simp only [Value.asResidualValue, Map.mapOnValues₂_eq_mapOnValues as (fun x => ResidualAttribute.present x.asResidualValue)]
+    rw [ResidualValue.evaluate.eq_def]; dsimp only []
+    rw [Map.mapMKVsIntoValues₂_eq_mapMKVsIntoValues _ (fun kv => ResidualValue.evaluateAttr kv req es)]
+    rw [Map.mapMKVsIntoValues_mapOnValues_roundtrip
+      (fun x => ResidualAttribute.present x.asResidualValue)
+      (fun kv => ResidualValue.evaluateAttr kv req es)
+      as
+      (fun ⟨k, v⟩ hkv => by
+        simp only [ResidualValue.evaluateAttr]
+        exact evaluate_asResidualValue v req es)]
+    rfl
 termination_by sizeOf v
+decreasing_by
+  simp_wf
+  have h1 := Map.sizeOf_lt_of_values (Map.in_list_in_values hkv)
+  simp [Value.record.sizeOf_spec]; omega
 
 theorem asValue_evaluate_val {r : Residual} {v : Value} :
   r.asValue = .some v → ∀ req es, r.evaluate req es = Except.ok v

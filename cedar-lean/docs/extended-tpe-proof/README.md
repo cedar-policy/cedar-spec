@@ -8,7 +8,7 @@ Analysis of the extended Typed Partial Evaluation (TPE) algorithm in Cedar Lean,
 
 2. **[Correctness Conditions](02-correctness-conditions.md)** — Top-level theorems, required preconditions (well-typedness, refinement, well-formed environments, entity loader contracts), preservation properties, and invariant summary.
 
-3. **[Proof Modification Plan](03-proof-modification-plan.md)** — Current proof status, catalog of all `sorry`s organized by root cause, phased modification plan with dependency graph and effort estimates.
+3. *(Superseded by doc 09)*
 
 4. **[New Preconditions and Invariants](04-new-preconditions-and-invariants.md)** — In-depth analysis of the preconditions and invariants introduced by field-level partiality, the `ResidualAttribute.unknown` target mechanism, and batched entity loading, including their interactions.
 
@@ -22,6 +22,10 @@ Analysis of the extended Typed Partial Evaluation (TPE) algorithm in Cedar Lean,
     - [Part 3: Target Correctness and Soundness](07-paper-proof-part3.md) — Target correctness definition, `toRV` correctness, `evalRV` correctness, main soundness theorem (Theorem 6.1) with all cases.
     - [Part 4: Type Preservation and Batched Evaluation](07-paper-proof-part4.md) — Type preservation, store monotonicity, missing entity equivalence, batched evaluation soundness (Theorem 8.3).
     - [Part 5: Policy & Authorization Soundness](07-paper-proof-part5.md) — `errorFree` definition, `≃` relation, conversion soundness, policy-level soundness, authorization decision soundness, end-to-end theorem, complete theorem index and dependency graph.
+
+8. **[How to Effectively Write Proofs About Cedar in Lean](08-lean-proof-guide.md)** — Practical guide covering proof architecture, tactic selection, data structure patterns, termination proofs, debugging techniques, and Cedar-specific pitfalls.
+
+9. **[Updated Proof Completion Plan](09-updated-proof-plan.md)** — Current sorry inventory (49 occurrences, 37 declarations, 22 files), dependency analysis of 5 root causes, 14-phase execution plan with paper proof cross-references and effort estimates.
 
 ## Quick Reference
 
@@ -42,18 +46,18 @@ Analysis of the extended Typed Partial Evaluation (TPE) algorithm in Cedar Lean,
 ### Critical Path for Completing Proofs
 
 ```
-ResidualValue.evaluate lemmas (Phase 1)
-  → Roundtrip lemmas (Phase 2)
-  → ErrorFree fix (Phase 5)
-  → Authorization fixes (Phase 7)
+Input refinement (Phase 3)  ──► Soundness/Var (Phase 4) ──► Authorizer (Phase 9)
+entity_data_from_partial (Phase 5) ──► WellTyped/* (Phase 6)
+evaluate_asResidualValue record (Phase 1) ──► ErrorFree val (Phase 7) ──► And/Or (Phase 8)
+Soundness/* asValue adaptation (Phase 2) — mostly independent
 ```
 
 ### `sorry` Count by Root Cause
 
 | Root Cause | Count | Phases |
 |---|---|---|
-| `ResidualValue.evaluate` for `.val` | ~10 | 1, 4, 5, 7 |
-| `Value ↔ ResidualValue` roundtrip | 3 | 2 |
-| Record well-typedness | 2 | 3 |
-| Refinement from `isValidAndConsistent` | 2 | 6 |
-| Smart constructor case restructuring | 5 | 4 |
+| `Residual.asValue` / `ResidualValue.evaluate` changes | 8 | 2 |
+| `RequestRefines` / `PartialIsValid` restructuring | 6 | 3, 4 |
+| `EntitiesRefine` / `ValueRefines` restructuring | 1+13 | 5, 6 |
+| `evaluate_asResidualValue` record case | 1+1+2 | 1, 7, 8 |
+| `Residual.isTrue`/`evaluate` in Authorizer | 5 | 9 |

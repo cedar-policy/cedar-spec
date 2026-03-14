@@ -136,13 +136,9 @@ public def mapMOnValues₂ {α β γ} [SizeOf α] [SizeOf β] [Monad m] (map : M
     omega⟩))
   pure (Map.mk kvs)
 
-public def mapMKVsIntoValues₂ {α β γ} [SizeOf α] [SizeOf β] [Monad m] (map : Map α β) (f :  {kv : α × β // sizeOf kv < sizeOf map} → m γ) : m (Map α γ) := do
+public def mapMKVsIntoValues₂ {α β γ} [Monad m] (map : Map α β) (f :  {kv : α × β // kv ∈ map.toList} → m γ) : m (Map α γ) := do
   let kvs ← map.toList.mapM₁ (λ ⟨kv, h⟩ =>
-    have h' : sizeOf kv  < sizeOf map := by
-      have h₁ := List.sizeOf_lt_of_mem h
-      have h₂ := sizeOf_toList_lt_map map
-      omega
-    do pure (kv.fst, ← f ⟨kv, h'⟩))
+    do pure (kv.fst, ← f ⟨kv, h⟩))
   pure (Map.mk kvs)
 
 public def wellFormed {α β} [LT α] [DecidableLT α] (m : Map α β) : Bool :=

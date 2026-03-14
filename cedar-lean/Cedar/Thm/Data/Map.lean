@@ -1877,6 +1877,52 @@ public theorem filter_not_contains {α : Type u} {β : Type v} [BEq α] [LawfulB
 -- Remove the broken generic lemma for now
 -- public theorem mapMKVsIntoValues₂_ok_of_mapOnValues₂ ...
 
+public theorem mapMKVsIntoValues₂_eq_mapMKVsIntoValues
+  (m : Map α β) (g : α × β → Except ε γ) :
+  m.mapMKVsIntoValues₂ (fun ⟨kv, _⟩ => g kv) = Map.mapMKVsIntoValues g m := by
+  unfold Map.mapMKVsIntoValues₂ Map.mapMKVsIntoValues
+  simp only [bind_pure_comp]
+  congr 1
+  let f := fun kv => Prod.mk (β := γ) kv.fst <$> g kv
+  show m.toList.mapM₁ (fun (x : {x // x ∈ m.toList}) => f x.val) = m.toList.mapM f
+  exact List.mapM₁_eq_mapM f m.toList
+
+public theorem list_mapM_kv_roundtrip
+  {α : Type} {β : Type} {γ : Type} {ε : Type}
+  (g : β → γ) (f : (α × γ) → Except ε β)
+  (kvs : List (α × β))
+  (hf : ∀ kv ∈ kvs, f (kv.1, g kv.2) = .ok kv.2) :
+  (kvs.map (Prod.map id g)).mapM (fun kv => f kv >>= fun v' => pure (kv.fst, v')) = Except.ok kvs := by
+  rw [List.mapM_ok_iff_forall₂]
+  induction kvs with
+  | nil => exact List.Forall₂.nil
+  | cons hd tl ih =>
+    apply List.Forall₂.cons
+    · simp only [Prod.map, id, hf hd (List.Mem.head _), Except.bind_ok, pure, Except.pure, Prod.eta]
+    · exact ih (fun kv hkv => hf kv (List.Mem.tail _ hkv))
+
+private theorem mapMKVsIntoValues_of_mapM_ok
+  {α : Type} {β : Type} {γ : Type} {ε : Type}
+  (f : (α × γ) → Except ε β)
+  (m : Map α γ)
+  (kvs : List (α × β))
+  (h : m.toList.mapM (fun kv => f kv >>= fun v' => pure (kv.fst, v')) = .ok kvs) :
+  Map.mapMKVsIntoValues f m = .ok (Map.mk kvs) := by
+  unfold Map.mapMKVsIntoValues
+  rw [show Bind.bind = Except.bind from rfl, h]; rfl
+
+public theorem mapMKVsIntoValues_mapOnValues_roundtrip
+  {α : Type} {β : Type} {γ : Type} {ε : Type}
+  (g : β → γ) (f : (α × γ) → Except ε β)
+  (m : Map α β)
+  (hf : ∀ kv ∈ m.toList, f (kv.1, g kv.2) = .ok kv.2) :
+  Map.mapMKVsIntoValues f (m.mapOnValues g) = Except.ok m := by
+  have hlist := list_mapM_kv_roundtrip g f m.1 hf
+  exact mapMKVsIntoValues_of_mapM_ok f (m.mapOnValues g) m.1 (by
+    show (m.mapOnValues g).toList.mapM _ = _
+    simp only [Map.mapOnValues, Map.toList]
+    exact hlist)
+
 public theorem mapMOnValues_some_of_id {f : β → Option β} {m : Map α β}
   (h : ∀ v, v ∈ m.values → f v = some v) :
   m.mapMOnValues f = some m := by
