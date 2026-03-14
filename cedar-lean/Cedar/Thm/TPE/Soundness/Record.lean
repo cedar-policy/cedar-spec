@@ -53,7 +53,6 @@ theorem partial_evaluate_is_sound_record
   sorry
   /-
   split
-  case _ vs heq =>
     simp only [Residual.evaluate, List.mapM₂_eq_mapM λ x => bindAttr x.fst (Residual.evaluate x.snd req es)]
     have : (Except.ok (Value.record (Data.Map.make vs)) : Except Spec.Error Value).toOption = .some (Value.record (Data.Map.make vs)) := by
       simp only [Except.toOption]

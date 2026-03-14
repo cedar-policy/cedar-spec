@@ -84,6 +84,42 @@ theorem someOrSelf_some_evaluate {v : Value} {ty : CedarType} {r : Residual} {re
   (someOrSelf (some v) ty r).evaluate req es = Except.ok v := by
   simp [someOrSelf, Residual.evaluate, evaluate_asResidualValue]
 
+@[simp] theorem Residual.typeOf_val {rv : ResidualValue} {ty : CedarType} :
+  (Residual.val rv ty).typeOf = ty := rfl
+
+@[simp] theorem Residual.typeOf_error {ty : CedarType} :
+  (Residual.error ty).typeOf = ty := rfl
+
+@[simp] theorem Residual.asResidualValue_val {rv : ResidualValue} {ty : CedarType} :
+  (Residual.val rv ty).asResidualValue = some rv := by
+  simp [Residual.asResidualValue]
+
+@[simp] theorem Residual.asResidualValue_error {ty : CedarType} :
+  (Residual.error ty).asResidualValue = none := by
+  simp [Residual.asResidualValue]
+
+/-! ## Core @[simp] lemmas for Residual.evaluate and ResidualValue.evaluate -/
+
+@[simp] theorem Residual.evaluate_error {ty : CedarType} {req : Request} {es : Entities} :
+  (Residual.error ty).evaluate req es = .error .extensionError := by
+  unfold Residual.evaluate; rfl
+
+@[simp] theorem Residual.evaluate_val {rv : ResidualValue} {ty : CedarType} {req : Request} {es : Entities} :
+  (Residual.val rv ty).evaluate req es = rv.evaluate req es := by
+  unfold Residual.evaluate; rfl
+
+@[simp] theorem ResidualValue.evaluate_prim {p : Prim} {req : Request} {es : Entities} :
+  (ResidualValue.prim p).evaluate req es = .ok (.prim p) := by
+  unfold ResidualValue.evaluate; rfl
+
+@[simp] theorem ResidualValue.evaluate_set {s : Set Value} {req : Request} {es : Entities} :
+  (ResidualValue.set s).evaluate req es = .ok (.set s) := by
+  unfold ResidualValue.evaluate; rfl
+
+@[simp] theorem ResidualValue.evaluate_ext {x : Ext} {req : Request} {es : Entities} :
+  (ResidualValue.ext x).evaluate req es = .ok (.ext x) := by
+  unfold ResidualValue.evaluate; rfl
+
 /-! ## Refinement lemmas (Paper Lemmas 4.1-4.3) -/
 
 /-- Paper Lemma 4.1: absent partial attr → absent concrete attr -/

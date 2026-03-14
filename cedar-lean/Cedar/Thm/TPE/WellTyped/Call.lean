@@ -44,11 +44,10 @@ theorem ext_well_typed_after_map {xfn args ty env f} :
   -- String-based constructors: decimal, ip, datetime, duration
   case decimal s d _ | ip s ip₁ _ | datetime s d _ | duration s d _ =>
     simp only [List.map]
-    specialize h₄ (Residual.val (Value.prim (Prim.string s)) CedarType.string)
-    simp [Residual.asValue, Option.isSome_some, forall_const] at h₄
-    sorry
-    -- rw [h₄]
-    -- exact h₁
+    have h₅ : (Residual.val (.prim (.string s)) .string).asValue.isSome := by
+      simp [Residual.asValue, Bind.kleisliRight, Residual.asResidualValue, ResidualValue.asValue]
+    rw [h₄ _ h₅]
+    assumption
   -- Binary comparison operators
   case lessThan x₁ x₂ h₆ h₇ | lessThanOrEqual x₁ x₂ h₆ h₇ | greaterThan x₁ x₂ h₆ h₇ | greaterThanOrEqual x₁ x₂ h₆ h₇ =>
     first
