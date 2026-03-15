@@ -79,7 +79,49 @@ theorem partial_evaluate_is_sound_get_attr
         grind [Residual.evaluate_getAttr, Residual.evaluate_val, Except.bind_ok]
     | prim p =>
       cases p with
-      | entityUID uid => sorry
+      | entityUID uid =>
+        -- v_tpe = .prim (.entityUID uid) since ResidualValue.evaluate (.prim p) = .ok (.prim p)
+        have hv_eq : v_tpe = .prim (.entityUID uid) := by
+          simp [ResidualValue.evaluate] at hv_tpe; exact hv_tpe.symm
+        subst hv_eq
+        -- TPE.getAttr for entity UID: match on pes.attrs uid
+        simp only []
+        split
+        next hattrs =>
+          -- pes.attrs uid = some attrs
+          split
+          next pv hfind_attr =>
+            -- attrs.find? attr = some (.present pv)
+            have hent := h₄.2  -- EntitiesRefine
+            obtain ⟨v_attr, hgetattr, hvref⟩ := entity_attr_present_refines hent hattrs hfind_attr
+            -- For prim/set/ext: toResidualValue ignores target, evaluates to the concrete value
+            -- For record: needs recursive argument (sorry for now)
+            cases hvref with
+            | prim =>
+              simp [PartialValue.toResidualValue, ResidualValue.evaluate,
+                    Residual.evaluate, Except.toOption, hx₁, Except.bind_ok, hgetattr]
+            | ext =>
+              simp [PartialValue.toResidualValue, ResidualValue.evaluate,
+                    Residual.evaluate, Except.toOption, hx₁, Except.bind_ok, hgetattr]
+            | set =>
+              simp [PartialValue.toResidualValue, ResidualValue.evaluate,
+                    Residual.evaluate, Except.toOption, hx₁, Except.bind_ok, hgetattr]
+            | record a a' har =>
+              have htarget : (Residual.val (.prim (.entityUID uid)) rty).evaluate req es =
+                .ok (.prim (.entityUID uid)) := by simp [Residual.evaluate, ResidualValue.evaluate]
+              have hvref' : ValueRefines env (.record (.mk a)) (.record (.mk a')) := .record _ _ _ har
+              have hv' := toResidualValue_entity_evaluate (ty := ty) htarget hgetattr hvref'
+              -- LHS: (x₁.getAttr attr ty).evaluate.toOption
+              --     = (x₁.evaluate >>= getAttr · attr).toOption
+              --     = (getAttr (.prim (.entityUID uid)) attr es).toOption  (by hx₁)
+              --     = some (.record (.mk a))  (by hgetattr)
+              -- RHS: (toResidualValue target pv ty).evaluate.toOption
+              --     = some (.record (.mk a))  (by hv')
+              simp only [Residual.evaluate, hx₁, Except.bind_ok, hgetattr, Except.toOption,
+                          Residual.evaluate_val, hv']
+          next => simp [Residual.evaluate_getAttr, Residual.evaluate_val, ResidualValue.evaluate_prim, Except.bind_ok, Except.toOption, hx₁]
+          next => simp [Residual.evaluate_getAttr, Residual.evaluate_val, ResidualValue.evaluate_prim, Except.bind_ok, Except.toOption, hx₁]
+        next => simp [Residual.evaluate_getAttr, Residual.evaluate_val, ResidualValue.evaluate_prim, Except.bind_ok, Except.toOption, hx₁]
       | _ => grind [Residual.evaluate_getAttr, Residual.evaluate_val, Except.bind_ok]
     | _ => grind [Residual.evaluate_getAttr, Residual.evaluate_val, Except.bind_ok]
   | _ =>

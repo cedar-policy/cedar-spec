@@ -379,8 +379,40 @@ theorem record_evaluate_hasAttr_unknown
     rw [lhs]
     -- Need: .ok true = Spec.hasAttr v_tgt attr es
     -- We know Spec.getAttr v_tgt attr es = .ok w
-    -- Prove hasAttr returns true when getAttr succeeds
-    sorry
+    -- getAttr uses attrsOf v_tgt es.attrs, hasAttr uses attrsOf v_tgt (fun uid => .ok (es.attrsOrEmpty uid))
+    -- For records: both return .ok r
+    -- For entities: if es.attrs uid = .ok attrs, then es.attrsOrEmpty uid = attrs
+    simp only [Spec.getAttr] at hgetattr
+    simp only [Spec.hasAttr]
+    cases v_tgt with
+    | record r =>
+      simp only [Spec.attrsOf] at hgetattr ⊢
+      simp only [Except.bind_ok] at hgetattr ⊢
+      simp only [Data.Map.findOrErr] at hgetattr
+      split at hgetattr
+      · simp [Map.contains, *]
+      · simp at hgetattr
+    | prim p =>
+      cases p with
+      | entityUID uid =>
+        simp only [Spec.attrsOf] at hgetattr ⊢
+        cases hea : es.attrs uid with
+        | error e => simp [hea] at hgetattr
+        | ok attrs =>
+          simp only [hea, Except.bind_ok] at hgetattr
+          -- es.attrsOrEmpty uid = attrs when es.attrs uid = .ok attrs
+          have : es.attrsOrEmpty uid = attrs := by
+            simp only [Entities.attrsOrEmpty, Entities.attrs, Data.Map.findOrErr] at hea ⊢
+            split at hea
+            · simp at hea; split <;> simp_all
+            · simp at hea
+          simp only [this, Except.bind_ok]
+          simp only [Data.Map.findOrErr] at hgetattr
+          split at hgetattr
+          · simp [Map.contains, *]
+          · simp at hgetattr
+      | _ => simp [Spec.attrsOf] at hgetattr
+    | _ => simp [Spec.attrsOf] at hgetattr
 
 theorem record_evaluate_hasAttr_none
   {m : Map Attr ResidualAttribute} {attr : Attr}
@@ -541,6 +573,91 @@ theorem AttributesRefines.present_implies_concrete_refines
     | tail _ h => have ⟨w, hw, hwr⟩ := present_implies_concrete_refines har h; exact ⟨w, hw, hwr⟩
 termination_by concrete.length + partial_.length
 
+/-- If entities refine and a partial entity has a present attribute,
+    then the concrete entity has that attribute with a refining value -/
+-- Helper to extract AttributesRefines from ValueRefines on records
+-- Works around dependent elimination issues with Map wrapper
+private def ValueRefines.getAttrsRefines :
+  ValueRefines env (.record m₁) (.record m₂) →
+  AttributesRefines env m₁.toList m₂.toList
+  | .record _ _ _ h => h
+
+-- Direct lemma: if AttributesRefines and partial find? = present pv,
+-- then concrete find? returns some value with ValueRefines
+theorem AttributesRefines.find_present_refines
+  {env : TypeEnv} {concrete : List (Attr × Value)}
+  {partial_ : List (Attr × PartialAttribute PartialValue)}
+  {attr : Attr} {pv : PartialValue}
+  (har : AttributesRefines env concrete partial_)
+  (hfind : partial_.find? (fun x => x.fst == attr) = some (attr, .present pv)) :
+  ∃ v_attr, concrete.find? (fun x => x.fst == attr) = some (attr, v_attr) ∧
+            ValueRefines env v_attr pv := by
+  cases har with
+  | nil => simp at hfind
+  | cons_present a v v' t t' hvr har =>
+    simp only [List.find?_cons] at hfind ⊢
+    by_cases h : a == attr
+    · simp only [h, ↓reduceIte] at hfind ⊢
+      have ha : a = attr := beq_iff_eq.mp h
+      subst ha
+      cases hfind
+      exact ⟨v, rfl, hvr⟩
+    · simp only [h, Bool.false_eq_true, ↓reduceIte] at hfind ⊢
+      exact find_present_refines har hfind
+  | cons_unknown a v ty t t' _ har =>
+    simp only [List.find?_cons] at hfind ⊢
+    by_cases h : a == attr
+    · simp [h] at hfind
+    · simp [h] at hfind ⊢; exact find_present_refines har hfind
+  | cons_unknown_neq a a' v ty t t' hneq har =>
+    simp only [List.find?_cons] at hfind ⊢
+    by_cases h : a' == attr
+    · simp [h] at hfind
+    · simp [h] at hfind; exact find_present_refines har hfind
+termination_by concrete.length + partial_.length
+
+theorem entity_attr_present_refines
+  {env : TypeEnv} {es : Entities} {pes : PartialEntities}
+  {uid : EntityUID} {attr : Attr} {pv : PartialValue}
+  {attrs : Map Attr (PartialAttribute PartialValue)}
+  (href : EntitiesRefine env es pes)
+  (hattrs : pes.attrs uid = some attrs)
+  (hfind : attrs.find? attr = some (.present pv)) :
+  ∃ v_attr, Spec.getAttr (.prim (.entityUID uid)) attr es = .ok v_attr ∧
+            ValueRefines env v_attr pv := by
+  -- Extract entity from pes
+  simp only [PartialEntities.attrs, PartialEntities.get] at hattrs
+  cases hpes : pes.find? uid with
+  | none => simp [hpes] at hattrs
+  | some e₂ =>
+    simp [hpes] at hattrs
+    -- e₂.attrs = some attrs
+    obtain ⟨e₁, hes, hattrs_ref, _⟩ := href uid e₂ hpes
+    -- hattrs_ref : PartialIsValid (fun a => ValueRefines env (.record e₁.attrs) (.record a)) e₂.attrs
+    -- hattrs : e₂.attrs = some attrs
+    -- Extract ValueRefines from PartialIsValid
+    have hvr : ValueRefines env (.record e₁.attrs) (.record attrs) := by
+      rw [hattrs] at hattrs_ref
+      exact match hattrs_ref with | .some _ _ h => h
+    have har := hvr.getAttrsRefines
+    -- Convert Map.find? to List.find? for use with find_present_refines
+    have hfind_list : attrs.toList.find? (fun x => x.fst == attr) = some (attr, .present pv) := by
+      simp only [Map.find?] at hfind
+      cases hfl : attrs.toList.find? (fun x => x.fst == attr) with
+      | none => simp [hfl] at hfind
+      | some kv =>
+        simp only [hfl, Option.some.injEq] at hfind
+        have hk : kv.fst = attr := by
+          have := @List.find?_some _ (fun x => x.fst == attr) kv attrs.toList hfl
+          simp at this; exact this
+        rw [show kv = (kv.fst, kv.snd) from (Prod.eta kv), hk, hfind]
+    obtain ⟨v_attr, hfind_c, hvref⟩ := AttributesRefines.find_present_refines har hfind_list
+    refine ⟨v_attr, ?_, hvref⟩
+    show Spec.getAttr (.prim (.entityUID uid)) attr es = .ok v_attr
+    unfold Spec.getAttr Spec.attrsOf Entities.attrs Data.Map.findOrErr
+    simp only [Map.find?, Map.toList] at hes hfind_c ⊢
+    simp [hes, hfind_c]
+
 /-- Paper Lemma 4.3: unknown partial attr → concrete value exists and is well-typed.
     NOTE: This only holds when the unknown entry was added via cons_unknown (not cons_unknown_neq).
     For entity attributes accessed via EntitiesRefine, cons_unknown_neq represents
@@ -566,6 +683,31 @@ theorem AttributesRefines.unknown_implies_concrete_typed
   unfold Residual.evaluate
   simp [htarget, Spec.getAttr, Spec.attrsOf]
 
+/-- Record case of Lemma 5.1, proved by induction on AttributesRefines. -/
+-- Key-dependent roundtrip: if transforming each kv and then evaluating gives back the original,
+-- then the whole mapM gives back the original list
+private theorem list_mapM_transform_roundtrip
+  {transform : (Attr × β) → γ}
+  {evaluate : (Attr × γ) → Except ε Value}
+  {partial_ : List (Attr × β)}
+  {concrete : List (Attr × Value)}
+  (hforall : List.Forall₂ (fun kv_p kv_c =>
+    kv_p.fst = kv_c.fst ∧
+    evaluate (kv_p.fst, transform kv_p) = .ok kv_c.snd) partial_ concrete) :
+  (partial_.map (fun kv => (kv.fst, transform kv))).mapM
+    (fun kv => evaluate kv >>= fun v' => pure (kv.fst, v')) = .ok concrete := by
+  rw [List.mapM_ok_iff_forall₂]
+  induction hforall with
+  | nil => exact .nil
+  | cons h _ ih =>
+    apply List.Forall₂.cons
+    · obtain ⟨hk, heval⟩ := h
+      simp only [heval, Except.bind_ok, pure, Except.pure]
+      congr 1; exact Prod.ext hk rfl
+    · exact ih
+
+mutual
+/-- Lemma 5.1: toResidualValue evaluates to the concrete value. -/
 theorem toResidualValue_evaluate
   {env : TypeEnv} {target : Residual} {v : Value} {pv : PartialValue} {ty : CedarType}
   {req : Request} {es : Entities}
@@ -576,13 +718,87 @@ theorem toResidualValue_evaluate
   | prim => simp [PartialValue.toResidualValue, ResidualValue.evaluate]
   | ext => simp [PartialValue.toResidualValue, ResidualValue.evaluate]
   | set => simp [PartialValue.toResidualValue, ResidualValue.evaluate]
-  | record har =>
-    -- Record case: toResidualValue maps each attribute
-    -- present(pv') → present(toResidualValue (.getAttr target a rty) pv' aty)
-    -- unknown(ty') → unknown(target, ty')
-    -- evaluate maps each through evaluateAttr
-    -- Need to show the result equals the concrete record
-    sorry
+  | record a a' har =>
+    cases ty with
+    | record rty =>
+      exact toResidualValue_evaluate_record htarget (fun attr v_a hmem => by
+        simp only [Spec.getAttr, Spec.attrsOf, Data.Map.findOrErr, Map.find?, Map.toList]
+        sorry -- need (attr, v_a) ∈ a → (.mk a).findOrErr attr = .ok v_a
+      ) har
+    | _ => sorry
+termination_by sizeOf pv
+
+private theorem toResidualValue_evaluate_record
+  {env : TypeEnv} {target : Residual} {v_rec : Value}
+  {concrete : List (Attr × Value)} {partial_ : List (Attr × PartialAttribute PartialValue)}
+  {rty : Map Attr (Qualified CedarType)}
+  {req : Request} {es : Entities}
+  (htarget : target.evaluate req es = .ok v_rec)
+  (hgetattr : ∀ a v_a, (a, v_a) ∈ concrete → Spec.getAttr v_rec a es = .ok v_a)
+  (har : AttributesRefines env concrete partial_) :
+  (PartialValue.toResidualValue target (.record (.mk partial_)) (.record rty)).evaluate req es =
+    .ok (.record (.mk concrete)) := by
+  -- Use toResidualValue_forall₂ to build the Forall₂, then connect to the goal
+  -- But we can't call toResidualValue_forall₂ here (same termination measure)
+  -- Instead, sorry this and prove it outside the mutual block
+  sorry
+termination_by sizeOf partial_
+
+-- Build the Forall₂ relating partial_ to concrete via the roundtrip property
+private theorem toResidualValue_forall₂
+  {env : TypeEnv} {target : Residual} {v_rec : Value}
+  {concrete : List (Attr × Value)} {partial_ : List (Attr × PartialAttribute PartialValue)}
+  {rty : Map Attr (Qualified CedarType)}
+  {req : Request} {es : Entities}
+  (htarget : target.evaluate req es = .ok v_rec)
+  (hgetattr : ∀ a v_a, (a, v_a) ∈ concrete → Spec.getAttr v_rec a es = .ok v_a)
+  (har : AttributesRefines env concrete partial_) :
+  List.Forall₂ (fun kv_p kv_c =>
+    kv_p.fst = kv_c.fst ∧
+    ResidualValue.evaluateAttr (kv_p.fst,
+      match kv_p.snd with
+      | .present pv' =>
+        ResidualAttribute.present (PartialValue.toResidualValue (.getAttr target kv_p.fst (.record rty)) pv'
+          ((Qualified.getType <$> rty.find? kv_p.fst).getD (.bool .anyBool)))
+      | .unknown ty' => ResidualAttribute.unknown target ty') req es = .ok kv_c.snd)
+    partial_ concrete := by
+  cases har with
+  | nil => exact .nil
+  | cons_present a v pv t t' hvr har_tl =>
+    apply List.Forall₂.cons
+    · refine ⟨rfl, ?_⟩
+      simp only [ResidualValue.evaluateAttr]
+      exact toResidualValue_evaluate
+        (by simp [Residual.evaluate, htarget, Except.bind_ok]; exact hgetattr a v (.head _)) hvr
+    · exact toResidualValue_forall₂ htarget (fun a' v_a' hmem => hgetattr a' v_a' (.tail _ hmem)) har_tl
+  | cons_unknown a v ty' t t' _ har_tl =>
+    apply List.Forall₂.cons
+    · refine ⟨rfl, ?_⟩
+      simp only [ResidualValue.evaluateAttr, Residual.evaluate, htarget, Except.bind_ok]
+      exact hgetattr a v (.head _)
+    · exact toResidualValue_forall₂ htarget (fun a' v_a' hmem => hgetattr a' v_a' (.tail _ hmem)) har_tl
+  | cons_unknown_neq a a' v ty' t t' hneq har_tl =>
+    sorry -- cons_unknown_neq: partial has extra entry
+termination_by sizeOf partial_
+end
+
+/-- Entity-specific version of Lemma 5.1. -/
+theorem toResidualValue_entity_evaluate
+  {env : TypeEnv} {target : Residual} {uid : EntityUID}
+  {v_attr : Value} {pv : PartialValue} {ty : CedarType}
+  {attr : Attr} {req : Request} {es : Entities}
+  (htarget : target.evaluate req es = .ok (.prim (.entityUID uid)))
+  (hgetattr : Spec.getAttr (.prim (.entityUID uid)) attr es = .ok v_attr)
+  (href : ValueRefines env v_attr pv) :
+  (PartialValue.toResidualValue target pv ty).evaluate req es = .ok v_attr := by
+  cases href with
+  | prim p => simp [PartialValue.toResidualValue, ResidualValue.evaluate]
+  | ext e => simp [PartialValue.toResidualValue, ResidualValue.evaluate]
+  | set s => simp [PartialValue.toResidualValue, ResidualValue.evaluate]
+  | record a a' har =>
+    cases ty with
+    | record rty => sorry -- entity record case
+    | _ => sorry
 
 /-- Corollary: toResidualValue produces target-correct values -/
 theorem toResidualValue_targetCorrect
