@@ -102,7 +102,7 @@ theorem partial_evaluate_policy_is_sound
     have h := conversion_preserves_typedness h₅
     exact h
   }
-  have h₆ := partial_evaluate_is_sound h₉ h₄ h₃ sorry
+  have h₆ := partial_evaluate_is_sound h₉ h₄ h₃ (toResidual_targetCorrect _ req es)
   subst h₁₂
   have h₇ := type_of_preserves_evaluation_results (empty_capabilities_invariant req es) h₄ heq₂
   have h₈ : Spec.evaluate (substituteAction env.reqty.action policy.toExpr) req es = Spec.evaluate policy.toExpr req es := by

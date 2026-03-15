@@ -269,4 +269,42 @@ theorem rvTargetCorrect_isOk {rv : ResidualValue} {req : Request} {es : Entities
   rvTargetCorrect rv req es → (rv.evaluate req es).isOk := by
   intro ⟨v, hv⟩; simp [Except.isOk, Except.toBool, hv]
 
+/-- Phase 1a: toResidual produces target-correct residuals.
+    toResidual only creates .lit (concrete prims) and .var — no unknown entries. -/
+theorem toResidual_targetCorrect (te : TypedExpr) (req : Request) (es : Entities) :
+  rTargetCorrect te.toResidual req es := by
+  match te with
+  | .lit p ty => simp [TypedExpr.toResidual, rvTargetCorrect_prim]
+  | .var v ty => simp [TypedExpr.toResidual]; exact rTargetCorrect.var
+  | .ite c t e ty =>
+    simp only [TypedExpr.toResidual]
+    exact .ite (toResidual_targetCorrect c req es) (toResidual_targetCorrect t req es) (toResidual_targetCorrect e req es)
+  | .and a b ty =>
+    simp only [TypedExpr.toResidual]
+    exact .and (toResidual_targetCorrect a req es) (toResidual_targetCorrect b req es)
+  | .or a b ty =>
+    simp only [TypedExpr.toResidual]
+    exact .or (toResidual_targetCorrect a req es) (toResidual_targetCorrect b req es)
+  | .unaryApp op e ty =>
+    simp only [TypedExpr.toResidual]
+    exact .unaryApp (toResidual_targetCorrect e req es)
+  | .binaryApp op a b ty =>
+    simp only [TypedExpr.toResidual]
+    exact .binaryApp (toResidual_targetCorrect a req es) (toResidual_targetCorrect b req es)
+  | .getAttr e attr ty =>
+    simp only [TypedExpr.toResidual]
+    exact .getAttr (toResidual_targetCorrect e req es)
+  | .hasAttr e attr ty =>
+    simp only [TypedExpr.toResidual]
+    exact .hasAttr (toResidual_targetCorrect e req es)
+  | .set ls ty =>
+    simp only [TypedExpr.toResidual]
+    apply rTargetCorrect.set; intro x hx
+    simp [List.map₁_eq_map] at hx
+    obtain ⟨te, hte, rfl⟩ := hx
+    exact toResidual_targetCorrect te req es
+  | .record ls ty => sorry -- needs List.map₂ lemma
+  | .call xfn args ty => sorry -- needs List.map₁ lemma
+termination_by te
+
 end Cedar.Thm

@@ -81,6 +81,38 @@ theorem partial_evaluate_is_sound
     cases htc with | unaryApp hx =>
     exact partial_evaluate_is_sound_unary_app (hᵢ₁ hx)
   | error => exact partial_evaluate_is_sound_error
-  | _ => sorry
+  | ite hwt₁ _ _ hₜ _ hᵢ₁ hᵢ₂ hᵢ₃ =>
+    cases htc with | ite hc ht he =>
+    exact partial_evaluate_is_sound_ite h₂ hwt₁ hₜ (hᵢ₁ hc) (hᵢ₂ ht) (hᵢ₃ he)
+  | and hwt₁ hwt₂ hᵢ₃ hᵢ₄ hᵢ₅ hᵢ₆ =>
+    cases htc with | and ha hb =>
+    exact partial_evaluate_is_sound_and h₂ h₃ hwt₁ hwt₂ hᵢ₃ hᵢ₄ (hᵢ₅ ha) (hᵢ₆ hb) sorry sorry
+  | or hwt₁ hwt₂ hᵢ₃ hᵢ₄ hᵢ₅ hᵢ₆ =>
+    cases htc with | or ha hb =>
+    exact partial_evaluate_is_sound_or h₂ h₃ hwt₁ hwt₂ hᵢ₃ hᵢ₄ (hᵢ₅ ha) (hᵢ₆ hb) sorry sorry
+  | binaryApp _ hwt howt hᵢ₁ hᵢ₂ =>
+    cases htc with | binaryApp hx hy =>
+    exact partial_evaluate_is_sound_binary_app h₂ h₃ hwt howt (hᵢ₁ hx) (hᵢ₂ hy)
+  | hasAttr_entity _ _ hᵢ₁ =>
+    cases htc with | hasAttr hx =>
+    exact partial_evaluate_is_sound_has_attr h₃ (hᵢ₁ hx)
+  | hasAttr_record _ _ hᵢ₁ =>
+    cases htc with | hasAttr hx =>
+    exact partial_evaluate_is_sound_has_attr h₃ (hᵢ₁ hx)
+  | getAttr_entity _ _ _ _ ih =>
+    cases htc with | getAttr hx =>
+    exact partial_evaluate_is_sound_get_attr h₃ (ih hx)
+  | getAttr_record _ _ _ ih =>
+    cases htc with | getAttr hx =>
+    exact partial_evaluate_is_sound_get_attr h₃ (ih hx)
+  | set _ _ _ ih =>
+    cases htc with | set hxs =>
+    exact partial_evaluate_is_sound_set (fun x hx => ih x hx (hxs x hx))
+  | record _ _ ih =>
+    cases htc with | record htcm =>
+    exact partial_evaluate_is_sound_record (fun k v hkv => ih k v hkv (htcm k v hkv))
+  | call _ _ ih =>
+    cases htc with | call hargs =>
+    exact partial_evaluate_is_sound_call (fun x hx => ih x hx (hargs x hx))
 
 end Cedar.Thm

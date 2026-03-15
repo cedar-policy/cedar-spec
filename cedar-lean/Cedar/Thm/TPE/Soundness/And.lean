@@ -120,7 +120,17 @@ theorem partial_evaluate_is_sound_and
         split at hᵢ₅ <;> try contradiction
         clear hᵢ₅ ; rename_i hᵢ₅
         simp [hᵢ₅, Result.as] at h₇
-      · sorry -- errorFree case: needs adaptation for new simp lemmas
+      · -- errorFree = true case
+        have h₇ : Residual.WellTyped env (TPE.evaluate x₁ preq pes) :=
+          partial_eval_preserves_well_typed h₂ h₃ hᵢ₁
+        rw [Residual.error_free_spec] at h₆
+        have h₈ := error_free_evaluate_ok h₂ h₇ h₆ htc₁
+        rw [Except.isOk_iff_exists] at h₈
+        obtain ⟨v, hv⟩ := h₈
+        rw [h₅] at hᵢ₅
+        simp only [Except.toOption] at hᵢ₅
+        rw [hv] at hᵢ₅
+        simp [Except.toOption] at hᵢ₅
     · simp [Result.as, Except.toOption, Coe.coe, Value.asBool]
       simp [h₅, Except.toOption] at hᵢ₅
       split at hᵢ₅ <;> try contradiction
