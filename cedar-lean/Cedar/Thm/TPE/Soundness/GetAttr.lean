@@ -14,7 +14,6 @@
  limitations under the License.
 -/
 
-
 import Cedar.TPE
 import Cedar.Spec
 import Cedar.Validation
@@ -44,54 +43,48 @@ theorem partial_evaluate_is_sound_get_attr
 {attr : Attr}
 {ty : CedarType}
 (h₄ : RequestAndEntitiesRefine env req es preq pes)
-(hᵢ₁ : Except.toOption (x₁.evaluate req es) = Except.toOption ((TPE.evaluate x₁ preq pes).evaluate req es)) :
+(hᵢ₁ : Except.toOption (x₁.evaluate req es) = Except.toOption ((TPE.evaluate x₁ preq pes).evaluate req es))
+(htc : rTargetCorrect (TPE.evaluate x₁ preq pes) req es) :
   Except.toOption ((x₁.getAttr attr ty).evaluate req es) =
   Except.toOption ((TPE.evaluate (x₁.getAttr attr ty) preq pes).evaluate req es)
 := by
-  simp [TPE.evaluate, TPE.getAttr]
-  sorry
-  /-
-  split
-  case _ heq =>
-    simp [heq, Residual.evaluate] at hᵢ₁
-    rcases to_option_right_err hᵢ₁ with ⟨_, hᵢ₁⟩
-    simp [Residual.evaluate, hᵢ₁, Except.toOption]
-  split
-  case _ heq =>
-    simp [TPE.attrsOf] at heq
-    split at heq
-    case _ heq₁ =>
-      simp at heq
-      simp [heq₁, Residual.evaluate] at hᵢ₁
-      replace hᵢ₁ := to_option_right_ok' hᵢ₁
-      simp [Residual.evaluate, hᵢ₁, someOrError, Spec.getAttr, Spec.attrsOf]
-      subst heq
-      split <;>
-      (
-        rename_i heq₂
-        simp [Data.Map.findOrErr, heq₂, Residual.evaluate, Except.toOption]
-      )
-    case _ uid _ heq₁ =>
-      simp [heq₁, Residual.evaluate] at hᵢ₁
-      replace hᵢ₁ := to_option_right_ok' hᵢ₁
-      simp [Residual.evaluate, hᵢ₁, Spec.getAttr, Spec.attrsOf]
-      simp [PartialEntities.attrs, PartialEntities.get, Option.bind_eq_some_iff] at heq
-      rcases heq with ⟨data, heq₂, heq₃⟩
-      simp [RequestAndEntitiesRefine, EntitiesRefine] at h₄
-      rcases h₄ with ⟨_, h₄⟩
-      specialize h₄ uid data heq₂
-      rcases h₄ with ⟨_, h₄₁, h₄₂, _⟩
-      rw [heq₃] at h₄₂
-      rcases h₄₂
-      rename_i data' _ h₄
-      subst h₄
-      simp [Entities.attrs, Data.Map.findOrErr, h₄₁]
-      generalize h₄ : data'.attrs.find? attr = res
-      cases res <;> simp [someOrError, Residual.evaluate, Except.toOption]
-    case _ => cases heq
-  case _ =>
-    simp [Residual.evaluate]
-    exact to_option_eq_do₁ (Spec.getAttr · attr es) hᵢ₁
-  -/
+  simp only [TPE.evaluate]
+  cases hr : TPE.evaluate x₁ preq pes with
+  | error ty' =>
+    rw [hr] at hᵢ₁; simp only [Residual.evaluate_error] at hᵢ₁
+    rcases to_option_right_err hᵢ₁ with ⟨e, he⟩
+    simp only [TPE.getAttr, hr, Residual.evaluate_error, Except.toOption,
+               Residual.evaluate_getAttr, he, Except.bind_err]
+  | val rv rty =>
+    have hᵢ₁' := hᵢ₁
+    rw [hr] at hᵢ₁ htc
+    rw [rTargetCorrect_val] at htc
+    obtain ⟨v_tpe, hv_tpe⟩ := htc
+    simp only [Residual.evaluate_val, hv_tpe, Except.toOption] at hᵢ₁
+    have hx₁ : x₁.evaluate req es = .ok v_tpe := by
+      cases hx : x₁.evaluate req es <;> simp_all [Except.toOption]
+    simp only [TPE.getAttr]
+    cases rv with
+    | record m =>
+      -- Need to further reduce TPE.getAttr for .val (.record m) case
+      simp only []
+      split
+      next hfind =>
+        have h := record_evaluate_getAttr_present hv_tpe hfind
+        grind [Residual.evaluate_val, Residual.evaluate_getAttr, Except.bind_ok]
+      next hfind =>
+        have h := record_evaluate_getAttr_unknown hv_tpe hfind
+        grind [Residual.evaluate_getAttr, Except.bind_ok]
+      next hfind =>
+        grind [Residual.evaluate_getAttr, Residual.evaluate_val, Except.bind_ok]
+    | prim p =>
+      cases p with
+      | entityUID uid => sorry
+      | _ => grind [Residual.evaluate_getAttr, Residual.evaluate_val, Except.bind_ok]
+    | _ => grind [Residual.evaluate_getAttr, Residual.evaluate_val, Except.bind_ok]
+  | _ =>
+    rw [hr] at hᵢ₁
+    simp only [TPE.getAttr, hr]
+    exact getAttr_sound_of_sound hᵢ₁
 
 end Cedar.Thm

@@ -108,6 +108,330 @@ theorem someOrSelf_some_evaluate {v : Value} {ty : CedarType} {r : Residual} {re
   (Residual.val rv ty).evaluate req es = rv.evaluate req es := by
   unfold Residual.evaluate; rfl
 
+-- Key lemma: Residual.evaluate for getAttr/hasAttr in do-notation form
+-- These bridge the gap between >>= notation and do notation
+@[simp] theorem Except.bind_toOption {e : Except ε α} {f : α → Except ε β} :
+  (e >>= f).toOption = (do let x ← e; f x).toOption := rfl
+
+@[simp] theorem Except.do_eq_bind {e : Except ε α} {f : α → Except ε β} :
+  (do let x ← e; f x) = (e >>= f) := rfl
+
+-- Helper: mapMKVsIntoValues preserves find? relationships
+-- We prove this via a list-level lemma about mapM preserving find?
+
+-- Helper: decompose a successful mapM on cons
+private theorem list_mapM_cons_ok
+  {g : α → Except ε β}
+  {hd : α} {tl : List α} {result : List β}
+  (h : (hd :: tl).mapM g = .ok result) :
+  ∃ hd' tl', result = hd' :: tl' ∧ g hd = .ok hd' ∧ tl.mapM g = .ok tl' := by
+  simp only [List.mapM_cons, bind_pure_comp] at h
+  cases hg : g hd with
+  | error e => simp [hg, Functor.map, Except.map] at h
+  | ok hd' =>
+    cases htl : tl.mapM g with
+    | error e => simp [hg, htl, Functor.map, Except.map] at h
+    | ok tl' =>
+      simp [hg, htl] at h
+      exact ⟨hd', tl', h.symm, rfl, rfl⟩
+
+private theorem list_mapM_find_some
+  {f : α × β → Except ε γ}
+  {kvs : List (α × β)} {kvs' : List (α × γ)}
+  {k : α} {v : β} {w : γ} [BEq α]
+  (hmap : kvs.mapM (fun kv => f kv >>= fun v' => pure (kv.fst, v')) = .ok kvs')
+  (hfind : kvs.find? (fun ⟨k', _⟩ => k' == k) = some (k, v))
+  (hf : f (k, v) = .ok w) :
+  kvs'.find? (fun ⟨k', _⟩ => k' == k) = some (k, w) := by
+  induction kvs generalizing kvs' with
+  | nil => simp at hfind
+  | cons hd tl ih =>
+    obtain ⟨hd', tl', rfl, hhd', htl'⟩ := list_mapM_cons_ok hmap
+    simp only [List.find?_cons] at hfind ⊢
+    split at hfind
+    · rename_i heq
+      obtain ⟨rfl, rfl⟩ := by simpa using hfind
+      simp only [hf, Except.bind_ok, pure, Except.pure, Except.ok.injEq] at hhd'
+      subst hhd'; simp [heq]
+    · rename_i hneq
+      have hkey : hd'.fst = hd.fst := by
+        have h := hhd'
+        simp only [Bind.bind, Except.bind, pure, Except.pure] at h
+        split at h
+        · simp at h
+        · grind
+      rw [hkey]; simp only [hneq, ↓reduceIte]
+      exact ih htl' hfind
+
+private theorem list_mapM_find_none
+  {f : α × β → Except ε γ}
+  {kvs : List (α × β)} {kvs' : List (α × γ)}
+  {k : α} [BEq α]
+  (hmap : kvs.mapM (fun kv => f kv >>= fun v' => pure (kv.fst, v')) = .ok kvs')
+  (hfind : kvs.find? (fun ⟨k', _⟩ => k' == k) = none) :
+  kvs'.find? (fun ⟨k', _⟩ => k' == k) = none := by
+  induction kvs generalizing kvs' with
+  | nil =>
+    have : kvs' = [] := by simpa [pure, Except.pure] using hmap
+    subst this; rfl
+  | cons hd tl ih =>
+    obtain ⟨hd', tl', rfl, hhd', htl'⟩ := list_mapM_cons_ok hmap
+    simp only [List.find?_cons] at hfind ⊢
+    split at hfind
+    · simp at hfind
+    · rename_i hneq
+      have hkey : hd'.fst = hd.fst := by
+        have h := hhd'
+        simp only [Bind.bind, Except.bind, pure, Except.pure] at h
+        split at h
+        · simp at h
+        · grind
+      rw [hkey]; simp only [hneq, ↓reduceIte]
+      exact ih htl' hfind
+
+-- Bridge: mapMKVsIntoValues produces Map.mk of the list-level mapM result
+private theorem mapMKVsIntoValues_toList
+  {f : Attr × β → Except ε γ} {m : Map Attr β} {result : Map Attr γ}
+  (hmap : m.mapMKVsIntoValues f = .ok result) :
+  m.toList.mapM (fun kv => f kv >>= fun v' => pure (kv.fst, v')) = .ok result.toList := by
+  -- mapMKVsIntoValues is definitionally: mapM g >>= fun kvs => .ok (Map.mk kvs)
+  -- where g kv = f kv >>= fun v' => pure (kv.fst, v')
+  -- So if it = .ok result, then mapM g = .ok result.toList
+  let g := fun kv : Attr × β => f kv >>= fun v' => pure (kv.fst, v')
+  -- hmap is definitionally: (m.toList.mapM g >>= fun kvs => .ok (Map.mk kvs)) = .ok result
+  change (m.toList.mapM g >>= fun kvs => .ok (Map.mk kvs)) = .ok result at hmap
+  cases hm : m.toList.mapM g with
+  | error e => simp [hm, Bind.bind, Except.bind] at hmap
+  | ok kvs =>
+    simp only [hm, Bind.bind, Except.bind, Except.ok.injEq] at hmap
+    subst hmap; rfl
+
+private theorem map_find_to_list_find
+  {m : Map Attr β} {k : Attr} {v : β}
+  (h : m.find? k = some v) :
+  m.toList.find? (fun x => x.fst == k) = some (k, v) := by
+  simp only [Map.find?] at h
+  cases hf : m.toList.find? (fun x => x.fst == k) with
+  | none => simp [hf] at h
+  | some kv =>
+    simp only [hf] at h
+    have hpred := List.find?_some hf
+    simp only at hpred
+    have hk' : kv.fst = k := beq_iff_eq.mp hpred
+    have hv' : kv.snd = v := by simpa using h
+    rw [show kv = (k, v) from Prod.ext hk' hv']
+
+private theorem map_find_none_to_list_find_none
+  {m : Map Attr β} {k : Attr}
+  (h : m.find? k = none) :
+  m.toList.find? (fun x => x.fst == k) = none := by
+  simp only [Map.find?] at h
+  cases hf : m.toList.find? (fun x => x.fst == k) with
+  | none => rfl
+  | some kv => simp [hf] at h
+
+private theorem mapMKVsIntoValues_find_some
+  {f : Attr × β → Except ε γ} {m : Map Attr β} {result : Map Attr γ}
+  {k : Attr} {v : β} {w : γ}
+  (hmap : m.mapMKVsIntoValues f = .ok result)
+  (hfind : m.find? k = some v)
+  (hf : f (k, v) = .ok w) :
+  result.find? k = some w := by
+  have hlist := mapMKVsIntoValues_toList hmap
+  have hfind_list := map_find_to_list_find hfind
+  have hresult := list_mapM_find_some hlist hfind_list hf
+  -- hresult : result.toList.find? (fun x => x.fst == k) = some (k, w)
+  -- goal : result.find? k = some w
+  -- result.find? k unfolds to: match result.toList.find? (fun x => x.fst == k) with | some (_, v) => some v | _ => none
+  unfold Map.find?
+  rw [hresult]
+
+private theorem mapMKVsIntoValues_find_none
+  {f : Attr × β → Except ε γ} {m : Map Attr β} {result : Map Attr γ}
+  {k : Attr}
+  (hmap : m.mapMKVsIntoValues f = .ok result)
+  (hfind : m.find? k = none) :
+  result.find? k = none := by
+  have hlist := mapMKVsIntoValues_toList hmap
+  have hfind_list := map_find_none_to_list_find_none hfind
+  have hresult := list_mapM_find_none hlist hfind_list
+  unfold Map.find?
+  rw [hresult]
+
+-- If mapMKVsIntoValues succeeds, then f succeeds on every element
+private theorem list_mapM_elem_ok
+  {g : α → Except ε β} {kvs : List α} {result : List β} {x : α}
+  (hmap : kvs.mapM g = .ok result) (hmem : x ∈ kvs) :
+  ∃ y, g x = .ok y := by
+  induction kvs generalizing result with
+  | nil => simp at hmem
+  | cons hd tl ih =>
+    obtain ⟨hd', tl', rfl, hhd', htl'⟩ := list_mapM_cons_ok hmap
+    cases hmem with
+    | head => exact ⟨hd', hhd'⟩
+    | tail _ hmem => exact ih htl' hmem
+
+private theorem mapMKVsIntoValues_elem_ok
+  {f : Attr × β → Except ε γ} {m : Map Attr β} {result : Map Attr γ}
+  {k : Attr} {v : β}
+  (hmap : m.mapMKVsIntoValues f = .ok result)
+  (hfind : m.find? k = some v) :
+  ∃ w, f (k, v) = .ok w := by
+  have hlist := mapMKVsIntoValues_toList hmap
+  have hfind_list := map_find_to_list_find hfind
+  -- (k, v) ∈ m.toList because find? found it
+  have hmem : (k, v) ∈ m.toList := List.mem_of_find?_eq_some hfind_list
+  -- The composed function g kv = f kv >>= fun v' => pure (kv.fst, v') succeeds on (k, v)
+  have ⟨kv', hkv'⟩ := list_mapM_elem_ok hlist hmem
+  -- kv' = (k, f(k,v).get), so f (k, v) must be .ok _
+  simp only [Bind.bind, Except.bind, pure, Except.pure] at hkv'
+  cases hf : f (k, v) with
+  | error e => simp [hf] at hkv'
+  | ok w => exact ⟨w, rfl⟩
+
+-- Helper: extract the map from a successful record evaluation
+private theorem record_evaluate_eq_mapM
+  {m : Map Attr ResidualAttribute} {req : Request} {es : Entities} {v_rec : Value}
+  (heval : (ResidualValue.record m).evaluate req es = .ok v_rec) :
+  ∃ kvs, m.mapMKVsIntoValues₂ (fun ⟨kv, _⟩ => ResidualValue.evaluateAttr kv req es) = .ok kvs ∧
+         v_rec = .record kvs := by
+  simp only [ResidualValue.evaluate] at heval
+  cases hm : m.mapMKVsIntoValues₂ (fun ⟨kv, _⟩ => ResidualValue.evaluateAttr kv req es) with
+  | error => simp [hm] at heval
+  | ok kvs => simp [hm] at heval; exact ⟨kvs, rfl, heval.symm⟩
+
+/-- When a record ResidualValue evaluates successfully, getAttr on the result
+    agrees with evaluating the individual attribute. -/
+theorem record_evaluate_getAttr_present
+  {m : Map Attr ResidualAttribute} {attr : Attr} {pv : ResidualValue}
+  {req : Request} {es : Entities} {v_rec : Value}
+  (heval : (ResidualValue.record m).evaluate req es = .ok v_rec)
+  (hfind : m.find? attr = some (.present pv)) :
+  Spec.getAttr v_rec attr es = pv.evaluate req es := by
+  obtain ⟨kvs, hkvs, rfl⟩ := record_evaluate_eq_mapM heval
+  have hkvs' : m.mapMKVsIntoValues (fun kv => ResidualValue.evaluateAttr kv req es) = .ok kvs := by
+    rw [← Map.mapMKVsIntoValues₂_eq_mapMKVsIntoValues]; exact hkvs
+  simp only [Spec.getAttr, Spec.attrsOf, Except.bind_ok]
+  -- evaluateAttr (attr, .present pv) = pv.evaluate, and it must succeed
+  have ⟨w, hw⟩ := mapMKVsIntoValues_elem_ok hkvs' hfind
+  have hpv : pv.evaluate req es = .ok w := by unfold ResidualValue.evaluateAttr at hw; exact hw
+  have hfind' := mapMKVsIntoValues_find_some hkvs' hfind hw
+  simp [Data.Map.findOrErr, hfind', hpv]
+
+theorem record_evaluate_getAttr_unknown
+  {m : Map Attr ResidualAttribute} {attr : Attr} {tgt : Residual} {ty' : CedarType}
+  {req : Request} {es : Entities} {v_rec : Value}
+  (heval : (ResidualValue.record m).evaluate req es = .ok v_rec)
+  (hfind : m.find? attr = some (.unknown tgt ty')) :
+  Spec.getAttr v_rec attr es = (Residual.getAttr tgt attr ty').evaluate req es := by
+  obtain ⟨kvs, hkvs, rfl⟩ := record_evaluate_eq_mapM heval
+  have hkvs' : m.mapMKVsIntoValues (fun kv => ResidualValue.evaluateAttr kv req es) = .ok kvs := by
+    rw [← Map.mapMKVsIntoValues₂_eq_mapMKVsIntoValues]; exact hkvs
+  simp only [Spec.getAttr, Spec.attrsOf, Except.bind_ok]
+  have ⟨w, hw⟩ := mapMKVsIntoValues_elem_ok hkvs' hfind
+  have htgt : (Residual.getAttr tgt attr ty').evaluate req es = .ok w := by
+    unfold ResidualValue.evaluateAttr at hw; exact hw
+  have hfind' := mapMKVsIntoValues_find_some hkvs' hfind hw
+  simp [Data.Map.findOrErr, hfind', htgt]
+
+theorem record_evaluate_hasAttr_present
+  {m : Map Attr ResidualAttribute} {attr : Attr} {pv : ResidualValue}
+  {req : Request} {es : Entities} {v_rec : Value}
+  (heval : (ResidualValue.record m).evaluate req es = .ok v_rec)
+  (hfind : m.find? attr = some (.present pv)) :
+  Spec.hasAttr v_rec attr es = .ok true := by
+  obtain ⟨kvs, hkvs, rfl⟩ := record_evaluate_eq_mapM heval
+  have hkvs' : m.mapMKVsIntoValues (fun kv => ResidualValue.evaluateAttr kv req es) = .ok kvs := by
+    rw [← Map.mapMKVsIntoValues₂_eq_mapMKVsIntoValues]; exact hkvs
+  have ⟨w, hw⟩ := mapMKVsIntoValues_elem_ok hkvs' hfind
+  have hfind' := mapMKVsIntoValues_find_some hkvs' hfind hw
+  simp [Spec.hasAttr, Spec.attrsOf, Map.contains, hfind']
+
+theorem record_evaluate_hasAttr_unknown
+  {m : Map Attr ResidualAttribute} {attr : Attr} {tgt : Residual} {ty' : CedarType}
+  {req : Request} {es : Entities} {v_rec : Value}
+  (heval : (ResidualValue.record m).evaluate req es = .ok v_rec)
+  (hfind : m.find? attr = some (.unknown tgt ty')) :
+  Spec.hasAttr v_rec attr es = (Residual.hasAttr tgt attr ty').evaluate req es := by
+  obtain ⟨kvs, hkvs, rfl⟩ := record_evaluate_eq_mapM heval
+  have hkvs' : m.mapMKVsIntoValues (fun kv => ResidualValue.evaluateAttr kv req es) = .ok kvs := by
+    rw [← Map.mapMKVsIntoValues₂_eq_mapMKVsIntoValues]; exact hkvs
+  -- LHS: hasAttr (.record kvs) attr es = .ok true (attr exists in kvs)
+  have ⟨w, hw⟩ := mapMKVsIntoValues_elem_ok hkvs' hfind
+  have hfind' := mapMKVsIntoValues_find_some hkvs' hfind hw
+  have lhs : Spec.hasAttr (.record kvs) attr es = .ok true := by
+    simp [Spec.hasAttr, Spec.attrsOf, Map.contains, hfind']
+  -- RHS: (Residual.hasAttr tgt attr ty').evaluate = tgt.evaluate >>= hasAttr
+  -- hw : evaluateAttr (attr, .unknown tgt ty') = .ok w
+  -- evaluateAttr (attr, .unknown tgt ty') = (Residual.getAttr tgt attr ty').evaluate
+  have hgetattr : (Residual.getAttr tgt attr ty').evaluate req es = .ok w := by
+    unfold ResidualValue.evaluateAttr at hw; exact hw
+  -- getAttr = tgt.evaluate >>= fun v => Spec.getAttr v attr es = .ok w
+  -- So tgt.evaluate = .ok v_tgt for some v_tgt, and Spec.getAttr v_tgt attr es = .ok w
+  unfold Residual.evaluate at hgetattr
+  cases htgt : tgt.evaluate req es with
+  | error e => simp [htgt] at hgetattr
+  | ok v_tgt =>
+    simp [htgt] at hgetattr
+    -- hgetattr : Spec.getAttr v_tgt attr es = .ok w
+    -- hasAttr succeeds when getAttr succeeds
+    unfold Residual.evaluate; simp only [htgt, Bind.bind, Except.bind]
+    rw [lhs]
+    -- Need: .ok true = Spec.hasAttr v_tgt attr es
+    -- We know Spec.getAttr v_tgt attr es = .ok w
+    -- Prove hasAttr returns true when getAttr succeeds
+    sorry
+
+theorem record_evaluate_hasAttr_none
+  {m : Map Attr ResidualAttribute} {attr : Attr}
+  {req : Request} {es : Entities} {v_rec : Value}
+  (heval : (ResidualValue.record m).evaluate req es = .ok v_rec)
+  (hfind : m.find? attr = none) :
+  Spec.hasAttr v_rec attr es = .ok false := by
+  obtain ⟨kvs, hkvs, rfl⟩ := record_evaluate_eq_mapM heval
+  have hkvs' : m.mapMKVsIntoValues (fun kv => ResidualValue.evaluateAttr kv req es) = .ok kvs := by
+    rw [← Map.mapMKVsIntoValues₂_eq_mapMKVsIntoValues]; exact hkvs
+  simp only [Spec.hasAttr, Spec.attrsOf, Except.bind_ok]
+  have hfind' := mapMKVsIntoValues_find_none hkvs' hfind
+  simp [Map.contains, hfind']
+
+@[simp] theorem Residual.evaluate_getAttr {r : Residual} {a : Attr} {ty : CedarType} {req : Request} {es : Entities} :
+  (Residual.getAttr r a ty).evaluate req es = (r.evaluate req es >>= fun v => Spec.getAttr v a es) := by
+  simp only [Residual.evaluate, Bind.bind, Except.bind]
+
+@[simp] theorem Residual.evaluate_hasAttr {r : Residual} {a : Attr} {ty : CedarType} {req : Request} {es : Entities} :
+  (Residual.hasAttr r a ty).evaluate req es = (r.evaluate req es >>= fun v => Spec.hasAttr v a es) := by
+  simp only [Residual.evaluate, Bind.bind, Except.bind]
+
+/-- Soundness of getAttr when both sides are residual (non-value) -/
+theorem getAttr_sound_of_sound {x₁ r : Residual} {attr : Attr} {ty : CedarType}
+  {req : Request} {es : Entities}
+  (h : (x₁.evaluate req es).toOption = (r.evaluate req es).toOption) :
+  ((x₁.getAttr attr ty).evaluate req es).toOption =
+  ((Residual.getAttr r attr ty).evaluate req es).toOption := by
+  rw [Residual.evaluate_getAttr, Residual.evaluate_getAttr]
+  exact to_option_eq_do₁ (fun x => Spec.getAttr x attr es) h
+
+/-- Soundness of hasAttr when both sides are residual (non-value) -/
+theorem hasAttr_sound_of_sound {x₁ r : Residual} {attr : Attr} {ty : CedarType}
+  {req : Request} {es : Entities}
+  (h : (x₁.evaluate req es).toOption = (r.evaluate req es).toOption) :
+  ((x₁.hasAttr attr ty).evaluate req es).toOption =
+  ((Residual.hasAttr r attr ty).evaluate req es).toOption := by
+  rw [Residual.evaluate_hasAttr, Residual.evaluate_hasAttr]
+  exact to_option_eq_do₁ (fun x => Spec.hasAttr x attr es) h
+
+/-- When x₁.evaluate.toOption = some v, getAttr reduces to getAttr on v -/
+theorem getAttr_toOption_ok {x₁ : Residual} {attr : Attr} {ty : CedarType}
+  {req : Request} {es : Entities} {v : Value}
+  (h : x₁.evaluate req es = .ok v) :
+  ((x₁.getAttr attr ty).evaluate req es).toOption =
+  (Spec.getAttr v attr es).toOption := by
+  rw [Residual.evaluate_getAttr, h]; simp [Except.bind, Except.toOption]
+
+/-- When rv.evaluate = .ok (.record m), getAttr on the record gives findOrErr -/
+-- This is complex; we'll use rvTargetCorrect directly in the GetAttr proof instead.
+
 @[simp] theorem ResidualValue.evaluate_prim {p : Prim} {req : Request} {es : Entities} :
   (ResidualValue.prim p).evaluate req es = .ok (.prim p) := by
   unfold ResidualValue.evaluate; rfl
@@ -234,6 +558,14 @@ theorem AttributesRefines.unknown_implies_concrete_typed
 /-- Paper Lemma 5.1 (Target Correctness): toResidualValue produces values that evaluate correctly.
     If target.evaluate = .ok v_container and ValueRefines env v pv,
     then (toResidualValue target pv ty).evaluate = .ok v. -/
+-- Helper: getAttr on a record evaluates to findOrErr
+@[simp] theorem getAttr_record_evaluate {m : Map Attr Value} {a : Attr} {ty : CedarType}
+  {target : Residual} {req : Request} {es : Entities}
+  (htarget : target.evaluate req es = .ok (.record m)) :
+  (Residual.getAttr target a ty).evaluate req es = (m.findOrErr a .attrDoesNotExist) := by
+  unfold Residual.evaluate
+  simp [htarget, Spec.getAttr, Spec.attrsOf]
+
 theorem toResidualValue_evaluate
   {env : TypeEnv} {target : Residual} {v : Value} {pv : PartialValue} {ty : CedarType}
   {req : Request} {es : Entities}

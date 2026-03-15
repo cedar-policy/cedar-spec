@@ -95,16 +95,16 @@ theorem partial_evaluate_is_sound
     exact partial_evaluate_is_sound_binary_app h₂ h₃ hwt howt (hᵢ₁ hx) (hᵢ₂ hy)
   | hasAttr_entity _ _ hᵢ₁ =>
     cases htc with | hasAttr hx =>
-    exact partial_evaluate_is_sound_has_attr h₃ (hᵢ₁ hx)
+    exact partial_evaluate_is_sound_has_attr h₃ (hᵢ₁ hx) sorry
   | hasAttr_record _ _ hᵢ₁ =>
     cases htc with | hasAttr hx =>
-    exact partial_evaluate_is_sound_has_attr h₃ (hᵢ₁ hx)
+    exact partial_evaluate_is_sound_has_attr h₃ (hᵢ₁ hx) sorry
   | getAttr_entity _ _ _ _ ih =>
     cases htc with | getAttr hx =>
-    exact partial_evaluate_is_sound_get_attr h₃ (ih hx)
+    exact partial_evaluate_is_sound_get_attr h₃ (ih hx) sorry
   | getAttr_record _ _ _ ih =>
     cases htc with | getAttr hx =>
-    exact partial_evaluate_is_sound_get_attr h₃ (ih hx)
+    exact partial_evaluate_is_sound_get_attr h₃ (ih hx) sorry
   | set _ _ _ ih =>
     cases htc with | set hxs =>
     exact partial_evaluate_is_sound_set (fun x hx => ih x hx (hxs x hx))
