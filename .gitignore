@@ -17,6 +17,8 @@
 cedar-drt/fuzz/corpus
 cedar-drt/fuzz/artifacts
 
+# VSCode settings -- although we have some checked in, we don't want local
+# settings to appear as unstaged changes by default
 .vscode
 
 # We expect a copy of `cedar-policy/cedar` present in this directory, but do
