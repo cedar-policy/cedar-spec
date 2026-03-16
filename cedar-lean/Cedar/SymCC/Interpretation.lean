@@ -16,6 +16,7 @@
 
 module
 
+import Cedar.Data.SizeOf
 import Cedar.Spec
 public import Cedar.SymCC.Env
 import Cedar.SymCC.Factory
@@ -141,19 +142,27 @@ def Op.interpret (I : Interpretation) (op : Op) (ts : List Term) (ty : TermType)
   | _, _                  => .app op ts ty
 
 public def Term.interpret (I : Interpretation) : Term → Term
-  | .prim p             => .prim p
-  | .var v              => I.vars v
-  | .none ty            => noneOf ty
-  | .some t             => someOf (t.interpret I)
-  | .set (Set.mk ts) ty =>
+  | .prim p       => .prim p
+  | .var v        => I.vars v
+  | .none ty      => noneOf ty
+  | .some t       => someOf (t.interpret I)
+  | .set ts ty    =>
     let ts' := ts.map₁ (λ ⟨t, _⟩ => t.interpret I)
-    setOf ts' ty
-  | .app op ts ty       =>
+    .set ts' ty
+  | .app op ts ty =>
     let ts' := ts.map₁ (λ ⟨t, _⟩ => t.interpret I)
     op.interpret I ts' ty
-  | .record (.mk ats)   =>
-    let ats' := ats.map₃ (λ ⟨(aᵢ, tᵢ), _⟩ => (aᵢ, tᵢ.interpret I))
-    recordOf ats'
+  | .record ats   =>
+    .record $ ats.mapOnValues₂ (λ ⟨t, _⟩ => t.interpret I)
+decreasing_by
+  all_goals simp_wf
+  · rename t ∈ ts => h
+    have := Set.sizeOf_lt_of_mem h
+    omega
+  · rename t ∈ ts => h
+    have := List.sizeOf_lt_of_mem h
+    omega
+  · omega
 
 public def SymRequest.interpret (I : Interpretation) (req : SymRequest)  : SymRequest :=
   {

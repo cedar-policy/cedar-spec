@@ -159,6 +159,9 @@ public instance [LT α] [DecidableLT α] : Union (Set α) := ⟨Set.union⟩
 
 ----- Termination-friendly iterators -----
 
+public def map₁ {α} [LT β] [DecidableLT β] (s : Set α) (f : {a : α // a ∈ s} → β) : Set β :=
+  Set.make (s.elts.attach.map f)
+
 public def all₁ {α} (s : Set α) (f : {a : α // a ∈ s} → Bool) : Bool :=
   s.elts.attach.all f
 

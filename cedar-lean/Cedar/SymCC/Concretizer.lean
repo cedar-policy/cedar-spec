@@ -122,23 +122,23 @@ def TermPrim.value? : TermPrim → Option Value
 
 def Term.value? : Term → Option Value
   | .prim p => p.value?
-  | .set (.mk ts) _ => do
-    let vs ← ts.mapM₁ λ ⟨tᵢ, _⟩ => tᵢ.value?
+  | .set s _ => do
+    let vs ← s.elts.mapM₁ λ ⟨tᵢ, _⟩ => tᵢ.value?
     .some (.set (Set.make vs))
-  | .record (.mk ats) => do
-    let avs? ← ats.mapM₂ λ ⟨(aᵢ, tᵢ), _⟩ => attrValue? aᵢ tᵢ
+  | .record ats => do
+    let avs? ← ats.toList.mapM₂ λ ⟨(aᵢ, tᵢ), _⟩ => attrValue? aᵢ tᵢ
     let avs := avs?.filterMap λ (aᵢ, vᵢ?) => vᵢ?.map (Prod.mk aᵢ)
     .some (.record (Map.mk avs))
   | _ => .none
 termination_by t => sizeOf t
 decreasing_by
-  all_goals {
-    simp_wf
-    rename_i h
-    try replace h := List.sizeOf_lt_of_mem h
-    simp only at h
+  all_goals simp_wf ; rename_i h
+  · have := List.sizeOf_lt_of_mem h
+    have := Set.sizeOf_lt_of_elts s
     omega
-  }
+  · have := Map.sizeOf_lt_of_toList ats
+    simp only at *
+    omega
 where
   attrValue? (a : Attr) : Term → Option (Attr × Option Value)
     | .some t => do .some (a, .some (← t.value?))
@@ -158,12 +158,24 @@ def TermPrim.entityUIDs : TermPrim → Set EntityUID
 
 def Term.entityUIDs : Term → Set EntityUID
   | .var _
-  | .none _              => Set.empty
-  | .prim p              => p.entityUIDs
-  | .some t              => t.entityUIDs
-  | .set (Set.mk ts) _   => ts.mapUnion₁ (λ ⟨t, _⟩ => t.entityUIDs)
-  | .record (Map.mk ats) => ats.mapUnion₃ (λ ⟨(_, t), _⟩ => t.entityUIDs)
-  | .app _ ts _          => ts.mapUnion₁ (λ ⟨t, _⟩ => t.entityUIDs)
+  | .none _      => Set.empty
+  | .prim p      => p.entityUIDs
+  | .some t      => t.entityUIDs
+  | .set ts _    => ts.elts.mapUnion₁ (λ ⟨t, _⟩ => t.entityUIDs)
+  | .record ats  => ats.toList.mapUnion₃ (λ ⟨(_, t), _⟩ => t.entityUIDs)
+  | .app _ ts _  => ts.mapUnion₁ (λ ⟨t, _⟩ => t.entityUIDs)
+decreasing_by
+  all_goals simp_wf
+  · rename t ∈ ts.elts => h
+    have := Set.sizeOf_lt_of_mem h
+    have := Set.sizeOf_lt_of_elts ts
+    omega
+  · have := Map.sizeOf_lt_of_toList ats
+    simp only at *
+    omega
+  · rename t ∈ ts => h
+    have := List.sizeOf_lt_of_mem h
+    omega
 
 def Term.entityUID? : Term → Option EntityUID
   | .prim (.entity uid) => .some uid

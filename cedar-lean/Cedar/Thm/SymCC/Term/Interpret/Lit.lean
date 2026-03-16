@@ -40,30 +40,29 @@ private theorem interpret_term_set_lit_id {εs : SymEntities} {I : Interpretatio
   (ih : ∀ t, t ∈ s → t.interpret I = t):
   (Term.set s ty).interpret I = Term.set s ty
 := by
-  simp only [interpret_term_set, Set.elts, Term.set.injEq, and_true]
-  have h₄ : List.map (Term.interpret I) s.1 = List.map id s.1 := by
+  simp only [interpret_term_set, Term.set.injEq, and_true]
+  have h₄ : List.map (Term.interpret I) s.elts = List.map id s.elts := by
     apply List.map_congr ; simp only [id_eq] ; exact ih
   simp only [List.map_id] at h₄
-  replace h₂ := wf_term_set_implies_wf_set h₁
-  simp only [Set.WellFormed, Set.toList, Set.elts] at h₂
-  rw [← h₄, eq_comm] at h₂
-  exact h₂
+  rw [Set.map_def, h₄]
+  exact Set.make_elts (wf_term_set_implies_wf_set h₁)
 
 private theorem interpret_term_record_lit_id {εs : SymEntities} {I : Interpretation} {r: Map Attr Term}
   (h₁ : Term.WellFormed εs (Term.record r))
   (ih : ∀ (a : Attr) (t : Term), (a, t) ∈ r.toList → Term.interpret I t = t) :
   Term.interpret I (Term.record r) = Term.record r
 := by
-  simp [interpret_term_record, Map.toList]
+  simp [interpret_term_record]
   have h₄ : List.map (fun x => (x.fst, Term.interpret I x.snd)) r.toList = List.map id r.toList := by
     apply List.map_congr
     intro x h₂
     simp only [id_eq, ih x.fst x.snd h₂]
   simp only [List.map_id] at h₄
-  replace h₂ := wf_term_record_implies_wf_map h₁
-  simp only [Map.WellFormed] at h₂
-  rw [← h₄, eq_comm] at h₂
-  exact h₂
+  have h₂ := wf_term_record_implies_wf_map h₁
+  apply Map.mapOnValues_restricted_id
+  intro t ht
+  replace ⟨a, ht⟩ := Map.in_values_exists_key ht
+  exact ih a t ht
 
 theorem interpret_term_lit_id {εs : SymEntities} (I : Interpretation) {t : Term}
   (h₁ : t.WellFormedLiteral εs) :
@@ -92,28 +91,30 @@ theorem interpret_term_lit_id {εs : SymEntities} (I : Interpretation) {t : Term
           (lit_term_set_implies_lit_elt h₃ h₄))
     exact interpret_term_set_lit_id h₁.left ih
   | .record r =>
-    have ih : ∀ a' t', (a', t') ∈ r.1 → t'.interpret I = t' := by
+    have ih : ∀ a' t', (a', t') ∈ r.toList → t'.interpret I = t' := by
       intro a' t' h₄
-      have _ := Map.sizeOf_lt_of_value h₄ -- termination
+      have := Map.sizeOf_lt_of_value h₄ -- termination
       exact interpret_term_lit_id I
         (And.intro
           (wf_term_record_implies_wf_value h₂ h₄)
           (lit_term_record_implies_lit_value h₃ h₄))
     exact interpret_term_record_lit_id h₁.left ih
 termination_by sizeOf t
+decreasing_by
+  all_goals simp_wf
+  any_goals omega
+  · simp only [Map.mk_toList_id] at *
+    omega
 
 private theorem interpret_term_set_lit {I : Interpretation} {s : Set Term} {ty: TermType}
   (ih : ∀ (t : Term), t ∈ s → Term.isLiteral (Term.interpret I t) = true) :
   Term.isLiteral (Term.interpret I (Term.set s ty)) = true
 := by
-  simp only [interpret_term_set, Term.isLiteral, Set.all₁_eq_all]
-  simp only [Set.all, List.all_eq_true]
+  simp only [interpret_term_set, Term.isLiteral, Set.all₁_eq_all, Set.all_eq_true]
   intro t h₁
-  rw [Set.mem_elts_iff_mem_set, Set.mem_make] at h₁
-  simp only [List.mem_map] at h₁
+  rw [Set.mem_map] at h₁
   replace ⟨t', h₁, h₂⟩ := h₁
   subst h₂
-  rw [Set.mem_elts_iff_mem_set] at h₁
   exact ih t' h₁
 
 private theorem interpret_term_record_lit {I : Interpretation} {r : Map Attr Term}
@@ -123,15 +124,9 @@ private theorem interpret_term_record_lit {I : Interpretation} {r : Map Attr Ter
   simp only [interpret_term_record, Term.isLiteral, List.all_attach₂_snd, List.all_eq_true,
     Prod.forall]
   intro a t h₁
-  simp only [Map.make] at h₁
-  have h₂ := List.canonicalize_subseteq Prod.fst (r.toList.map λ x => (x.fst, Term.interpret I x.snd))
-  simp only [List.subset_def] at h₂
-  specialize h₂ h₁
-  simp only [List.mem_map, Prod.mk.injEq, Prod.exists] at h₂
-  replace ⟨a', t', h₁, _, h₂⟩ := h₂
-  subst a' t
-  apply ih a t'
-  simp [h₁]
+  replace ⟨t', ht', h₁⟩ := Map.in_mapOnValues_in_toList' h₁
+  subst t
+  exact ih a t' h₁
 
 private theorem interpret_wf_is_wfl {εs : SymEntities} {I : Interpretation} {t : Term} {ty : TermType} :
   Interpretation.WellFormed I εs →
