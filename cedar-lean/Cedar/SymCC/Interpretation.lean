@@ -164,6 +164,7 @@ decreasing_by
     omega
   · omega
 
+@[expose]
 public def SymRequest.interpret (I : Interpretation) (req : SymRequest)  : SymRequest :=
   {
     principal := req.principal.interpret I,
@@ -189,6 +190,7 @@ public def SymEntityData.interpret (I : Interpretation) (d : SymEntityData) : Sy
 public def SymEntities.interpret (I : Interpretation) (es : SymEntities)  : SymEntities :=
   es.mapOnValues (SymEntityData.interpret I)
 
+@[expose]
 public def SymEnv.interpret (I : Interpretation) (env : SymEnv) : SymEnv :=
   ⟨env.request.interpret I, env.entities.interpret I⟩
 

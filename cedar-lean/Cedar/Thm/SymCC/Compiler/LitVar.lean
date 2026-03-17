@@ -14,7 +14,16 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.SymCC.Compiler.Basic
+module
+
+public import Cedar.SymCC.Compiler
+public import Cedar.SymCC.Concretizer
+public import Cedar.SymCC.Env
+import all Cedar.SymCC.Compiler -- proving things about private internals of the compiler
+public import Cedar.Thm.SymCC.Compiler.Basic
+import Cedar.Thm.SymCC.Env.Interpret
+import Cedar.Thm.SymCC.Term.Interpret.Basic
+import Cedar.Thm.SymCC.Term.Interpret.WF
 
 /-!
 This file proves the compilation lemmas for `.lit` and `.var` expressions.
@@ -35,19 +44,20 @@ theorem int64?_some {i : Int64} :
   congr
   simp only [BitVec.ofInt_toInt]
 
-theorem compile_evaluate_lit {p : Prim} {env : Env} {εnv : SymEnv} {t : Term}
+public theorem compile_evaluate_lit {p : Prim} {env : Env} {εnv : SymEnv} {t : Term}
   (h₁ : compile (.lit p) εnv = .ok t) :
   evaluate (.lit p) env.request env.entities ∼ t
 := by
   cases p <;>
-  simp only [compile, compilePrim, someOf, Except.ok.injEq] at h₁
+  rw [compile.eq_def] at h₁ <;>
+  simp only [compilePrim, someOf, Except.ok.injEq] at h₁
   case bool | string =>
     subst h₁
-    simp only [Same.same, SameResults, evaluate, SameValues, Term.value?,
+    simp only [Same.same, SameResults, evaluate.eq_def, SameValues, Term.value?.eq_def,
       TermPrim.value?]
   case int i =>
     subst h₁
-    simp only [Same.same, SameResults, evaluate, SameValues, Term.value?,
+    simp only [Same.same, SameResults, evaluate.eq_def, SameValues, Term.value?.eq_def,
       TermPrim.value?]
     simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq,
       Value.prim.injEq, Prim.int.injEq, exists_eq_right]
@@ -55,10 +65,10 @@ theorem compile_evaluate_lit {p : Prim} {env : Env} {εnv : SymEnv} {t : Term}
   case entityUID =>
     split at h₁ <;> simp only [Except.ok.injEq, reduceCtorEq] at h₁
     subst h₁
-    simp only [Same.same, SameResults, evaluate, SameValues, Term.value?,
+    simp only [Same.same, SameResults, evaluate.eq_def, SameValues, Term.value?.eq_def,
       TermPrim.value?]
 
-theorem compile_evaluate_var {v : Var} {env : Env} {εnv : SymEnv} {t : Term}
+public theorem compile_evaluate_var {v : Var} {env : Env} {εnv : SymEnv} {t : Term}
   (h₁ : env ∼ εnv)
   (h₂ : compile (.var v) εnv = .ok t) :
   evaluate (.var v) env.request env.entities ∼ t
@@ -66,32 +76,34 @@ theorem compile_evaluate_var {v : Var} {env : Env} {εnv : SymEnv} {t : Term}
   simp only [Same.same, SameEnvs, SameRequests, SameValues] at h₁
   replace h₁ := h₁.left
   cases v <;>
-  simp only [evaluate, Same.same, SameResults, ne_eq] <;>
-  simp only [compile, compileVar] at h₂ <;>
+  simp only [evaluate.eq_def, Same.same, SameResults, ne_eq] <;>
+  rw [compile.eq_def] at h₂ <;>
+  simp only [compileVar] at h₂ <;>
   split at h₂ <;>
   simp only [Except.ok.injEq, someOf, reduceCtorEq] at h₂ <;>
   subst h₂ <;>
   simp only [SameValues] <;>
-  simp only [h₁, Term.value?, TermPrim.value?]
+  simp only [h₁, Term.value?.eq_def, TermPrim.value?]
 
-theorem compile_interpret_lit {p : Prim} {εnv : SymEnv} {I : Interpretation} {t : Term}
+public theorem compile_interpret_lit {p : Prim} {εnv : SymEnv} {I : Interpretation} {t : Term}
   (h₁ : compile (.lit p) εnv = .ok t) :
   compile (.lit p) (εnv.interpret I) = .ok (t.interpret I)
 := by
   cases p <;>
-  simp only [compile, compilePrim, someOf, Except.ok.injEq] at *
+  rw [compile.eq_def] at * <;>
+  simp only [compilePrim, someOf, Except.ok.injEq] at *
   case bool | int | string =>
     subst h₁
-    simp only [Term.interpret, someOf]
+    simp
   case entityUID uid =>
     split at h₁ <;> simp at h₁
     subst h₁
     rename_i h₂
     have h₃ := interpret_entities_isValidEntityUID (εnv.entities) I uid
-    simp only [h₂] at h₃
-    simp only [SymEnv.interpret, h₃, ite_true, Term.interpret, someOf]
+    simp only [h₂] at h₃ ; symm at h₃
+    simp [SymEnv.interpret, h₃]
 
-theorem compile_interpret_var {v : Var} {εnv : SymEnv} {I : Interpretation} {t : Term}
+public theorem compile_interpret_var {v : Var} {εnv : SymEnv} {I : Interpretation} {t : Term}
   (h₁ : I.WellFormed εnv.entities)
   (h₂ : εnv.WellFormedFor (.var v))
   (h₃ : compile (.var v) εnv = .ok t) :
@@ -100,7 +112,8 @@ theorem compile_interpret_var {v : Var} {εnv : SymEnv} {I : Interpretation} {t 
   replace h₂ := wf_εnv_implies_wf_ρeq h₂.left
   simp only [SymRequest.WellFormed] at h₂
   cases v <;>
-  simp only [compile, compileVar] at * <;>
+  rw [compile.eq_def] at * <;>
+  simp only [compileVar] at * <;>
   split at h₃ <;>
   simp only [Except.ok.injEq, reduceCtorEq] at h₃  <;>
   subst h₃ <;>
@@ -119,7 +132,7 @@ theorem compile_interpret_var {v : Var} {εnv : SymEnv} {I : Interpretation} {t 
     replace h₂ : Term.WellFormed εnv.entities εnv.request.context := by simp only [h₂]
     have h₅ := interpret_term_isRecordType h₁ h₂
   all_goals {
-    simp only [←h₅, h₄, ite_true, Term.interpret, someOf]
+    simp [←h₅, h₄]
   }
 
 end Cedar.Thm

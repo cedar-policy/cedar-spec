@@ -54,32 +54,32 @@ public abbrev TermType.ext (xty : ExtType) : TermType := .prim (.ext xty)
 public abbrev TermType.tagFor (ety : EntityType) : TermType :=
   .record (EntityTag.mk (.entity ety) .string)
 
-@[inline]
+@[inline, expose]
 public def TermType.isPrimType : TermType → Bool
   | .prim _ => true
   | _       => false
 
-@[inline]
+@[inline, expose]
 public def TermType.isEntityType : TermType → Bool
   | .prim (.entity _) => true
   | _                 => false
 
-@[inline]
+@[inline, expose]
 public def TermType.isBitVecType : TermType → Bool
   | .prim (.bitvec _) => true
   | _                 => false
 
-@[inline]
+@[inline, expose]
 public def TermType.isRecordType : TermType → Bool
   | .record _ => true
   | _         => false
 
-@[inline]
+@[inline, expose]
 public def TermType.isOptionType : TermType → Bool
   | .option _ => true
   | _         => false
 
-@[inline]
+@[inline, expose]
 public def TermType.isOptionEntityType : TermType → Bool
   | .option (.entity _) => true
   | _                   => false

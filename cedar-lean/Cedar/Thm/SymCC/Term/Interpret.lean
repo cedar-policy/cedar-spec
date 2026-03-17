@@ -14,7 +14,9 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.SymCC.Term.Interpret.Basic
-import Cedar.Thm.SymCC.Term.Interpret.Factory
-import Cedar.Thm.SymCC.Term.Interpret.Lit
-import Cedar.Thm.SymCC.Term.Interpret.WF
+module
+
+public import Cedar.Thm.SymCC.Term.Interpret.Basic
+public import Cedar.Thm.SymCC.Term.Interpret.Factory
+public import Cedar.Thm.SymCC.Term.Interpret.Lit
+public import Cedar.Thm.SymCC.Term.Interpret.WF

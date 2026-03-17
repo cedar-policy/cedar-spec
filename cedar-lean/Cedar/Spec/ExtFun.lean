@@ -56,6 +56,7 @@ public def res {α} [Coe α Ext] : Option α → Result Value
   | some v => .ok v
   | none   => .error .extensionError
 
+@[expose]
 public def call : ExtFun → List Value → Result Value
   | .decimal, [.prim (.string s)]               => res (Decimal.decimal s)
   | .lessThan,

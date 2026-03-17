@@ -13,6 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
+
 import Cedar.Thm.SymCC.Data
 import Cedar.Thm.SymCC.Concretizer.Util
 import Cedar.Thm.SymCC.Concretizer.Same
@@ -309,7 +310,7 @@ private theorem term_setOfEntityUIDs?_some_value? {t : Term} {uids : Set EntityU
     case cons thd uhd ttl utl h₁ h₂ ih =>
       apply List.Forall₂.cons _ ih
       rw [term_entityUID?_some_iff_eq] at h₁
-      simp only [h₁, entity_value?]
+      simp only [h₁, value?_entity]
   · rw [Set.eq_means_eqv (Set.make_wf _) (Set.make_wf _)]
     apply List.Equiv.trans Set.elts_make_eqv
     apply List.Equiv.symm

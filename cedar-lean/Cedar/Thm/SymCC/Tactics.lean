@@ -14,7 +14,12 @@
  limitations under the License.
 -/
 
+module
+
+public import Cedar.Thm.Data.Control -- needs to be public because this tactic assumes that some Control lemmas are available
 import Cedar.Thm.SymCC.Data
+public import Lean.Elab.Tactic.Basic
+public meta import Lean.Meta.Tactic.Clear
 
 /-!
 This file contains basic utility tactics.

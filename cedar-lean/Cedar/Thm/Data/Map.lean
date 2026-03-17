@@ -79,6 +79,11 @@ public theorem wf_empty {α β} [LT α] [DecidableLT α] :
   (Map.empty : Map α β).WellFormed
 := by simp [Map.WellFormed, Map.make, Map.empty, List.canonicalize_nil, Map.toList]
 
+public theorem wf_singleton [LT α] [DecidableLT α] (a : α) (b : β) :
+  (Map.mk [(a, b)]).WellFormed
+:= by
+  simp [WellFormed, make, toList, List.canonicalize_singleton]
+
 /--
   In well-formed maps, if there are two pairs with the same key, then they have
   the same value

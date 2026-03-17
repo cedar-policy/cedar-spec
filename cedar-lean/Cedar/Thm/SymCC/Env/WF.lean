@@ -27,13 +27,11 @@ import all Cedar.Thm.SymCC.Data.Basic -- TODO: better public interface for Data.
 This file proves basic lemmas about well-formedness predicate on environments.
 --/
 
-@[expose] public section -- TODO: make the public interface more granular/intentional, instead of having everything public and exposed
-
 namespace Cedar.Thm
 
 open Batteries Data Spec SymCC
 
-theorem validEntityUID_implies_validEntityType {εs : SymEntities} {uid : EntityUID} :
+public theorem validEntityUID_implies_validEntityType {εs : SymEntities} {uid : EntityUID} :
   εs.isValidEntityUID uid = true →
   εs.isValidEntityType uid.ty = true
 := by
@@ -45,7 +43,7 @@ theorem validEntityUID_implies_validEntityType {εs : SymEntities} {uid : Entity
     exists εd
   · simp at h₁
 
-theorem wf_εnv_for_policies_cons {εnv : SymEnv} {p : Policy} {ps : Policies} :
+public theorem wf_εnv_for_policies_cons {εnv : SymEnv} {p : Policy} {ps : Policies} :
   εnv.WellFormedForPolicies (p::ps) →
   εnv.WellFormedFor p.toExpr ∧ εnv.WellFormedForPolicies ps
 := by
@@ -56,7 +54,7 @@ theorem wf_εnv_for_policies_cons {εnv : SymEnv} {p : Policy} {ps : Policies} :
   intro p hin
   exact hwε.right.right p hin
 
-theorem wf_εnv_for_policies_implies_wf_for_filter (f : Policy → Bool) {εnv : SymEnv} {ps : Policies}  :
+public theorem wf_εnv_for_policies_implies_wf_for_filter (f : Policy → Bool) {εnv : SymEnv} {ps : Policies}  :
   εnv.WellFormedForPolicies ps →
   εnv.WellFormedForPolicies (ps.filter f)
 := by
@@ -66,21 +64,21 @@ theorem wf_εnv_for_policies_implies_wf_for_filter (f : Policy → Bool) {εnv :
   intro p hin _
   exact hwε.right p hin
 
-theorem wf_εnv_all_policies_implies_wf_all {εnv : SymEnv} {ps : Policies} :
+public theorem wf_εnv_all_policies_implies_wf_all {εnv : SymEnv} {ps : Policies} :
   εnv.WellFormedForPolicies ps →
   ∀ p ∈ ps, εnv.WellFormedFor p.toExpr
 := by
   intro hwε p hin
   exact And.intro hwε.left (hwε.right p hin)
 
-theorem wf_env_all_policies_implies_wf_all {env : Env} {ps : Policies} :
+public theorem wf_env_all_policies_implies_wf_all {env : Env} {ps : Policies} :
   env.WellFormedForPolicies ps →
   ∀ p ∈ ps, env.WellFormedFor p.toExpr
 := by
   intro hwε p hin
   exact And.intro hwε.left (hwε.right p hin)
 
-theorem wf_εnv_valid_refs_implies_wf_εnv_for_set {xs : List Expr} {εnv : SymEnv}
+public theorem wf_εnv_valid_refs_implies_wf_εnv_for_set {xs : List Expr} {εnv : SymEnv}
   (hwε : εnv.WellFormed)
   (hvr : ∀ x ∈ xs, εnv.entities.ValidRefsFor x) :
   εnv.WellFormedFor (Expr.set xs)
@@ -90,7 +88,7 @@ theorem wf_εnv_valid_refs_implies_wf_εnv_for_set {xs : List Expr} {εnv : SymE
   intro x hin
   exact hvr x hin
 
-theorem wf_εnv_for_policies_iff_wf_εnv_for_set {ps : Policies} {εnv : SymEnv}  :
+public theorem wf_εnv_for_policies_iff_wf_εnv_for_set {ps : Policies} {εnv : SymEnv}  :
   εnv.WellFormedForPolicies ps ↔
   εnv.WellFormedFor (Expr.set (ps.map Policy.toExpr))
 := by
@@ -111,7 +109,7 @@ theorem wf_εnv_for_policies_iff_wf_εnv_for_set {ps : Policies} {εnv : SymEnv}
     simp only [List.mem_map, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂] at hvr
     exact hvr p hin
 
-theorem wf_env_valid_refs_implies_wf_env_for_set {xs : List Expr} {env : Env}
+public theorem wf_env_valid_refs_implies_wf_env_for_set {xs : List Expr} {env : Env}
   (hwε : env.WellFormed)
   (hvr : ∀ x ∈ xs, env.entities.ValidRefsFor x) :
   env.WellFormedFor (Expr.set xs)
@@ -121,7 +119,7 @@ theorem wf_env_valid_refs_implies_wf_env_for_set {xs : List Expr} {env : Env}
   intro x hin
   exact hvr x hin
 
-theorem wf_env_for_policies_iff_wf_env_for_set {ps : Policies} {env : Env}  :
+public theorem wf_env_for_policies_iff_wf_env_for_set {ps : Policies} {env : Env}  :
   env.WellFormedForPolicies ps ↔
   env.WellFormedFor (Expr.set (ps.map Policy.toExpr))
 := by
@@ -142,12 +140,12 @@ theorem wf_env_for_policies_iff_wf_env_for_set {ps : Policies} {env : Env}  :
     simp only [List.mem_map, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂] at hvr
     exact hvr p hin
 
-theorem wf_εnv_implies_wf_ρeq {εnv : SymEnv} :
+public theorem wf_εnv_implies_wf_ρeq {εnv : SymEnv} :
   εnv.WellFormed →
   εnv.request.WellFormed εnv.entities
 := by simp [SymEnv.WellFormed]; intros; assumption
 
-theorem wf_εs_implies_wf_attrs {ety : EntityType} {fₐ : UnaryFunction} {εs : SymEntities}
+public theorem wf_εs_implies_wf_attrs {ety : EntityType} {fₐ : UnaryFunction} {εs : SymEntities}
   (hwε : SymEntities.WellFormed εs)
   (hf  : SymEntities.attrs εs ety = some fₐ) :
   fₐ.WellFormed εs ∧
@@ -163,7 +161,7 @@ theorem wf_εs_implies_wf_attrs {ety : EntityType} {fₐ : UnaryFunction} {εs :
   unfold SymEntityData.WellFormed at hwε
   simp only [hwε, and_self]
 
-theorem wf_εs_implies_wf_ancs {ety₁ ety₂ : EntityType} {fₐ : UnaryFunction} {εs : SymEntities}
+public theorem wf_εs_implies_wf_ancs {ety₁ ety₂ : EntityType} {fₐ : UnaryFunction} {εs : SymEntities}
   (hwε : SymEntities.WellFormed εs)
   (hf  : SymEntities.ancestorsOfType εs ety₁ ety₂ = some fₐ) :
   fₐ.WellFormed εs ∧
@@ -177,7 +175,7 @@ theorem wf_εs_implies_wf_ancs {ety₁ ety₂ : EntityType} {fₐ : UnaryFunctio
   subst ha
   exact (hwε.right ety₁ εd hf').right.right.right.left ety₂ fₐ hf
 
-theorem wf_εs_implies_wf_tags {ety : EntityType} {τs : SymTags} {εs : SymEntities}
+public theorem wf_εs_implies_wf_tags {ety : EntityType} {τs : SymTags} {εs : SymEntities}
   (hwε : SymEntities.WellFormed εs)
   (hτs : εs.tags ety = some (some τs)) :
   τs.WellFormed εs ety
@@ -186,7 +184,7 @@ theorem wf_εs_implies_wf_tags {ety : EntityType} {τs : SymTags} {εs : SymEnti
   replace ⟨δ, hf, hτs⟩ := hτs
   exact (hwε.right ety δ hf).right.right.right.right.right.left τs hτs
 
-theorem wf_udf_implies_lit {f : UDF} {εs : SymEntities} :
+public theorem wf_udf_implies_lit {f : UDF} {εs : SymEntities} :
   f.WellFormed εs → f.isLiteral
 := by
   intro hwf
@@ -196,7 +194,7 @@ theorem wf_udf_implies_lit {f : UDF} {εs : SymEntities} :
   replace hwf := hwf.right.right.right tᵢ tₒ hin
   simp only [hwf.left.right, hwf.right.right.left.right, and_self]
 
-theorem wf_εnv_for_ite_implies {x₁ x₂ x₃ : Expr} {εnv : SymEnv} :
+public theorem wf_εnv_for_ite_implies {x₁ x₂ x₃ : Expr} {εnv : SymEnv} :
   εnv.WellFormedFor (.ite x₁ x₂ x₃) →
   εnv.WellFormedFor x₁ ∧
   εnv.WellFormedFor x₂ ∧
@@ -209,7 +207,7 @@ theorem wf_εnv_for_ite_implies {x₁ x₂ x₃ : Expr} {εnv : SymEnv} :
   rename_i h₂ h₃ h₄
   simp only [h₁, h₂, and_self, h₃, h₄]
 
-theorem wf_env_for_ite_implies {x₁ x₂ x₃ : Expr} {env : Env}
+public theorem wf_env_for_ite_implies {x₁ x₂ x₃ : Expr} {env : Env}
   (h₁ : env.WellFormedFor (.ite x₁ x₂ x₃)) :
   env.WellFormedFor x₁ ∧
   env.WellFormedFor x₂ ∧
@@ -230,37 +228,37 @@ local macro "show_wf_εnv_for_binary_expr_implies" : tactic => do
     exact (And.intro (And.intro h₁ h₂) (And.intro h₁ h₃))
   ))
 
-theorem wf_εnv_for_and_implies {x₁ x₂ : Expr} {εnv : SymEnv} :
+public theorem wf_εnv_for_and_implies {x₁ x₂ : Expr} {εnv : SymEnv} :
   εnv.WellFormedFor (.and x₁ x₂) →
   εnv.WellFormedFor x₁ ∧
   εnv.WellFormedFor x₂
 := by show_wf_εnv_for_binary_expr_implies
 
-theorem wf_env_for_and_implies {x₁ x₂ : Expr} {env : Env} :
+public theorem wf_env_for_and_implies {x₁ x₂ : Expr} {env : Env} :
   env.WellFormedFor (.and x₁ x₂) →
   env.WellFormedFor x₁ ∧
   env.WellFormedFor x₂
 := by show_wf_εnv_for_binary_expr_implies
 
-theorem wf_εnv_for_or_implies {x₁ x₂ : Expr} {εnv : SymEnv} :
+public theorem wf_εnv_for_or_implies {x₁ x₂ : Expr} {εnv : SymEnv} :
   εnv.WellFormedFor (.or x₁ x₂) →
   εnv.WellFormedFor x₁ ∧
   εnv.WellFormedFor x₂
 := by show_wf_εnv_for_binary_expr_implies
 
-theorem wf_env_for_or_implies {x₁ x₂ : Expr} {env : Env} :
+public theorem wf_env_for_or_implies {x₁ x₂ : Expr} {env : Env} :
   env.WellFormedFor (.or x₁ x₂) →
   env.WellFormedFor x₁ ∧
   env.WellFormedFor x₂
 := by show_wf_εnv_for_binary_expr_implies
 
-theorem wf_εnv_for_binaryApp_implies {op : BinaryOp} {x₁ x₂ : Expr} {εnv : SymEnv} :
+public theorem wf_εnv_for_binaryApp_implies {op : BinaryOp} {x₁ x₂ : Expr} {εnv : SymEnv} :
   εnv.WellFormedFor (.binaryApp op x₁ x₂) →
   εnv.WellFormedFor x₁ ∧
   εnv.WellFormedFor x₂
 := by show_wf_εnv_for_binary_expr_implies
 
-theorem wf_env_for_binaryApp_implies {op : BinaryOp} {x₁ x₂ : Expr} {env : Env} :
+public theorem wf_env_for_binaryApp_implies {op : BinaryOp} {x₁ x₂ : Expr} {env : Env} :
   env.WellFormedFor (.binaryApp op x₁ x₂) →
   env.WellFormedFor x₁ ∧
   env.WellFormedFor x₂
@@ -275,32 +273,32 @@ local macro "show_wf_εnv_for_unary_expr_implies" : tactic => do
     exact And.intro h₁ h₂
   ))
 
-theorem wf_εnv_for_hasAttr_implies {x₁ : Expr} {a : Attr} {εnv : SymEnv} :
+public theorem wf_εnv_for_hasAttr_implies {x₁ : Expr} {a : Attr} {εnv : SymEnv} :
   εnv.WellFormedFor (.hasAttr x₁ a) →
   εnv.WellFormedFor x₁
 := by show_wf_εnv_for_unary_expr_implies
 
-theorem wf_env_for_hasAttr_implies {x₁ : Expr} {a : Attr} {env : Env} :
+public theorem wf_env_for_hasAttr_implies {x₁ : Expr} {a : Attr} {env : Env} :
   env.WellFormedFor (.hasAttr x₁ a) →
   env.WellFormedFor x₁
 := by show_wf_εnv_for_unary_expr_implies
 
-theorem wf_εnv_for_getAttr_implies {x₁ : Expr} {a : Attr} {εnv : SymEnv} :
+public theorem wf_εnv_for_getAttr_implies {x₁ : Expr} {a : Attr} {εnv : SymEnv} :
   εnv.WellFormedFor (.getAttr x₁ a) →
   εnv.WellFormedFor x₁
 := by show_wf_εnv_for_unary_expr_implies
 
-theorem wf_env_for_getAttr_implies {x₁ : Expr} {a : Attr} {env : Env} :
+public theorem wf_env_for_getAttr_implies {x₁ : Expr} {a : Attr} {env : Env} :
   env.WellFormedFor (.getAttr x₁ a) →
   env.WellFormedFor x₁
 := by show_wf_εnv_for_unary_expr_implies
 
-theorem wf_εnv_for_unaryApp_implies {op : UnaryOp} {x₁ : Expr} {εnv : SymEnv} :
+public theorem wf_εnv_for_unaryApp_implies {op : UnaryOp} {x₁ : Expr} {εnv : SymEnv} :
   εnv.WellFormedFor (.unaryApp op x₁) →
   εnv.WellFormedFor x₁
 := by show_wf_εnv_for_unary_expr_implies
 
-theorem wf_env_for_unaryApp_implies {op : UnaryOp} {x₁ : Expr} {env : Env} :
+public theorem wf_env_for_unaryApp_implies {op : UnaryOp} {x₁ : Expr} {env : Env} :
   env.WellFormedFor (.unaryApp op x₁) →
   env.WellFormedFor x₁
 := by show_wf_εnv_for_unary_expr_implies
@@ -314,41 +312,42 @@ local macro "show_wf_εnv_for_nary_expr_implies" : tactic => do
     exact (And.intro hwf (hwr x hmem))
   ))
 
-theorem wf_εnv_for_set_implies {xs : List Expr} {εnv : SymEnv} :
+public theorem wf_εnv_for_set_implies {xs : List Expr} {εnv : SymEnv} :
   εnv.WellFormedFor (.set xs) →
   ∀ x, x ∈ xs → εnv.WellFormedFor x
 := by show_wf_εnv_for_nary_expr_implies
 
-theorem wf_env_for_set_implies {xs : List Expr} {env : Env} :
+public theorem wf_env_for_set_implies {xs : List Expr} {env : Env} :
   env.WellFormedFor (.set xs) →
   ∀ x, x ∈ xs → env.WellFormedFor x
 := by show_wf_εnv_for_nary_expr_implies
 
-theorem wf_εnv_for_record_implies {axs : List (Attr × Expr)} {εnv : SymEnv} :
+public theorem wf_εnv_for_record_implies {axs : List (Attr × Expr)} {εnv : SymEnv} :
   εnv.WellFormedFor (.record axs) →
   ∀ ax, ax ∈ axs → εnv.WellFormedFor ax.snd
 := by show_wf_εnv_for_nary_expr_implies
 
-theorem wf_env_for_record_implies {axs : List (Attr × Expr)} {env : Env} :
+public theorem wf_env_for_record_implies {axs : List (Attr × Expr)} {env : Env} :
   env.WellFormedFor (.record axs) →
   ∀ ax, ax ∈ axs → env.WellFormedFor ax.snd
 := by show_wf_εnv_for_nary_expr_implies
 
-theorem wf_εnv_for_call_implies {f : ExtFun} {xs : List Expr} {εnv : SymEnv} :
+public theorem wf_εnv_for_call_implies {f : ExtFun} {xs : List Expr} {εnv : SymEnv} :
   εnv.WellFormedFor (.call f xs) →
   ∀ x, x ∈ xs → εnv.WellFormedFor x
 := by show_wf_εnv_for_nary_expr_implies
 
-theorem wf_env_for_call_implies {f : ExtFun} {xs : List Expr} {env : Env} :
+public theorem wf_env_for_call_implies {f : ExtFun} {xs : List Expr} {env : Env} :
   env.WellFormedFor (.call f xs) →
   ∀ x, x ∈ xs → env.WellFormedFor x
 := by show_wf_εnv_for_nary_expr_implies
 
-def SameDomain (εs₁ εs₂ : SymEntities) : Prop :=
+@[expose]
+public def SameDomain (εs₁ εs₂ : SymEntities) : Prop :=
   (∀ uid, εs₁.isValidEntityUID uid = εs₂.isValidEntityUID uid) ∧
   (∀ ety, εs₁.isValidEntityType ety = εs₂.isValidEntityType ety)
 
-theorem same_domain_symmetric {εs₁ εs₂ : SymEntities} :
+public theorem same_domain_symmetric {εs₁ εs₂ : SymEntities} :
   SameDomain εs₁ εs₂ → SameDomain εs₂ εs₁
 := by
   unfold SameDomain
@@ -357,7 +356,7 @@ theorem same_domain_symmetric {εs₁ εs₂ : SymEntities} :
   case left  => intro uid ; simp only [h.left uid]
   case right => intro ety ; simp only [h.right ety]
 
-theorem wf_term_type_same_domain {εs₁ εs₂ : SymEntities} {ty : TermType} :
+public theorem wf_term_type_same_domain {εs₁ εs₂ : SymEntities} {ty : TermType} :
   SameDomain εs₁ εs₂ →
   TermType.WellFormed εs₁ ty →
   TermType.WellFormed εs₂ ty
@@ -384,7 +383,7 @@ theorem wf_term_type_same_domain {εs₁ εs₂ : SymEntities} {ty : TermType} :
     intro a ty h₃
     exact ih a ty h₃
 
-theorem wf_term_var_same_domain {εs₁ εs₂ : SymEntities} {v : TermVar} :
+public theorem wf_term_var_same_domain {εs₁ εs₂ : SymEntities} {v : TermVar} :
   SameDomain εs₁ εs₂ →
   TermVar.WellFormed εs₁ v →
   TermVar.WellFormed εs₂ v
@@ -393,7 +392,7 @@ theorem wf_term_var_same_domain {εs₁ εs₂ : SymEntities} {v : TermVar} :
   intro h₁ h₂
   exact wf_term_type_same_domain h₁ h₂
 
-theorem wf_term_prim_same_domain {εs₁ εs₂ : SymEntities} {p : TermPrim} :
+public theorem wf_term_prim_same_domain {εs₁ εs₂ : SymEntities} {p : TermPrim} :
   SameDomain εs₁ εs₂ →
   TermPrim.WellFormed εs₁ p →
   TermPrim.WellFormed εs₂ p
@@ -408,7 +407,7 @@ theorem wf_term_prim_same_domain {εs₁ εs₂ : SymEntities} {p : TermPrim} :
     rw [h₁.left] at h₃
     exact TermPrim.WellFormed.entity_wf h₃
 
-theorem wf_uuf_same_domain {εs₁ εs₂ : SymEntities} {f : UUF} :
+public theorem wf_uuf_same_domain {εs₁ εs₂ : SymEntities} {f : UUF} :
   SameDomain εs₁ εs₂ →
   f.WellFormed εs₁ →
   f.WellFormed εs₂
@@ -417,7 +416,7 @@ theorem wf_uuf_same_domain {εs₁ εs₂ : SymEntities} {f : UUF} :
   intro h₁ h₂ h₃
   simp only [wf_term_type_same_domain h₁ h₂, wf_term_type_same_domain h₁ h₃, and_self]
 
-theorem wt_op_same_domain {εs₁ εs₂ : SymEntities} {op : Op} {ts : List Term} {ty : TermType} :
+public theorem wt_op_same_domain {εs₁ εs₂ : SymEntities} {op : Op} {ts : List Term} {ty : TermType} :
   SameDomain εs₁ εs₂ →
   Op.WellTyped εs₁ op ts ty →
   Op.WellTyped εs₂ op ts ty
@@ -458,7 +457,7 @@ theorem wt_op_same_domain {εs₁ εs₂ : SymEntities} {op : Op} {ts : List Ter
   case string.like_wt h   => exact Op.WellTyped.string.like_wt h
   case ext_wt h           => exact Op.WellTyped.ext_wt h
 
-theorem wf_term_same_domain {εs₁ εs₂ : SymEntities} {t : Term} :
+public theorem wf_term_same_domain {εs₁ εs₂ : SymEntities} {t : Term} :
   SameDomain εs₁ εs₂ →
   t.WellFormed εs₁ →
   t.WellFormed εs₂
@@ -488,7 +487,7 @@ theorem wf_term_same_domain {εs₁ εs₂ : SymEntities} {t : Term} :
     case h₁ => intro a t ht ; exact ih a t ht
     case h₂ => exact h₃
 
-theorem wfl_term_same_domain {εs₁ εs₂ : SymEntities} {t : Term} :
+public theorem wfl_term_same_domain {εs₁ εs₂ : SymEntities} {t : Term} :
   SameDomain εs₁ εs₂ →
   t.WellFormedLiteral εs₁ →
   t.WellFormedLiteral εs₂
@@ -498,7 +497,7 @@ theorem wfl_term_same_domain {εs₁ εs₂ : SymEntities} {t : Term} :
   simp only [h₃, and_true]
   exact wf_term_same_domain h₁ h₂
 
-theorem wf_udf_same_domain {εs₁ εs₂ : SymEntities} {f : UDF} :
+public theorem wf_udf_same_domain {εs₁ εs₂ : SymEntities} {f : UDF} :
   SameDomain εs₁ εs₂ →
   f.WellFormed εs₁ →
   f.WellFormed εs₂
@@ -517,7 +516,7 @@ theorem wf_udf_same_domain {εs₁ εs₂ : SymEntities} {f : UDF} :
       wfl_term_same_domain h₁ h₅,
       wfl_term_same_domain h₁ h₈]
 
-theorem wfp_term_app_same_domain {εs₁ εs₂ : SymEntities} {t : Term} :
+public theorem wfp_term_app_same_domain {εs₁ εs₂ : SymEntities} {t : Term} :
   SameDomain εs₁ εs₂ →
   Term.WellFormedPartialApp εs₁ t →
   Term.WellFormedPartialApp εs₂ t
@@ -535,7 +534,7 @@ theorem wfp_term_app_same_domain {εs₁ εs₂ : SymEntities} {t : Term} :
   case ext_ipddr_prefix6_wfp h₁ =>
     exact Term.WellFormedPartialApp.ext_ipddr_prefix6_wfp h₁
 
-theorem wf_interpretation_same_domain {εs₁ εs₂ : SymEntities} {I : Interpretation} :
+public theorem wf_interpretation_same_domain {εs₁ εs₂ : SymEntities} {I : Interpretation} :
   SameDomain εs₁ εs₂ →
   I.WellFormed εs₁ →
   I.WellFormed εs₂
@@ -571,7 +570,7 @@ theorem wf_interpretation_same_domain {εs₁ εs₂ : SymEntities} {I : Interpr
       simp only [h₂, and_true]
       exact wfl_term_same_domain h₁ h₂.left
 
-theorem wf_ρeq_same_domain {εs₁ εs₂ : SymEntities} {ρeq : SymRequest} :
+public theorem wf_ρeq_same_domain {εs₁ εs₂ : SymEntities} {ρeq : SymRequest} :
   SameDomain εs₁ εs₂ →
   SymRequest.WellFormed εs₁ ρeq →
   SymRequest.WellFormed εs₂ ρeq
@@ -585,7 +584,7 @@ theorem wf_ρeq_same_domain {εs₁ εs₂ : SymEntities} {ρeq : SymRequest} :
     wf_term_same_domain h₁ hr, hr',
     wf_term_same_domain h₁ hc, hc']
 
-theorem wf_uf_same_domain {εs₁ εs₂ : SymEntities} {f : UnaryFunction} :
+public theorem wf_uf_same_domain {εs₁ εs₂ : SymEntities} {f : UnaryFunction} :
   SameDomain εs₁ εs₂ →
   f.WellFormed εs₁ →
   f.WellFormed εs₂
@@ -596,7 +595,7 @@ theorem wf_uf_same_domain {εs₁ εs₂ : SymEntities} {f : UnaryFunction} :
   case uuf => exact wf_uuf_same_domain h₁ h₂
   case udf => exact wf_udf_same_domain h₁ h₂
 
-theorem wf_εdata_same_domain {εs₁ εs₂ : SymEntities} {ety : EntityType} {εd : SymEntityData} :
+public theorem wf_εdata_same_domain {εs₁ εs₂ : SymEntities} {ety : EntityType} {εd : SymEntityData} :
   SameDomain εs₁ εs₂ →
   SymEntityData.WellFormed εs₁ ety εd →
   SymEntityData.WellFormed εs₂ ety εd
@@ -619,7 +618,7 @@ theorem wf_εdata_same_domain {εs₁ εs₂ : SymEntities} {ety : EntityType} {
         wf_uf_same_domain h₁ htags.right.right.right.left, and_self]
     · exact hmems
 
-theorem prim_valid_refs_same_domain {εs₁ εs₂ : SymEntities} {p : Prim} :
+public theorem prim_valid_refs_same_domain {εs₁ εs₂ : SymEntities} {p : Prim} :
   SameDomain εs₁ εs₂ →
   p.ValidRef (εs₁.isValidEntityUID · = true) →
   p.ValidRef (εs₂.isValidEntityUID · = true)
@@ -630,7 +629,7 @@ theorem prim_valid_refs_same_domain {εs₁ εs₂ : SymEntities} {p : Prim} :
   rw [h₁.left uid] at h₂
   exact h₂
 
-theorem expr_valid_refs_same_domain {εs₁ εs₂ : SymEntities} {x : Expr} :
+public theorem expr_valid_refs_same_domain {εs₁ εs₂ : SymEntities} {x : Expr} :
   SameDomain εs₁ εs₂ →
   x.ValidRefs (εs₁.isValidEntityUID · = true) →
   x.ValidRefs (εs₂.isValidEntityUID · = true)
@@ -666,7 +665,7 @@ theorem expr_valid_refs_same_domain {εs₁ εs₂ : SymEntities} {x : Expr} :
 `SymEnv` being well-formed implies that any
 attribute function is well-formed
 -/
-theorem wf_εnv_implies_attrs_wf
+public theorem wf_εnv_implies_attrs_wf
   {εnv : SymEnv} {ety : EntityType} {attrs : UnaryFunction}
   (hwf : εnv.WellFormed)
   (hattrs_exists : εnv.entities.attrs ety = .some attrs) :
