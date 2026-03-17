@@ -269,7 +269,7 @@ public def durationSince (datetime other: Datetime) : Option Duration :=
   Int64.sub? datetime.val other.val
 
 public def toDate (datetime: Datetime) : Option Datetime :=
-  -- we want datetime - (datetime % MS_PER_DAY), where `%` has the semantics of `smod` defined above
+  -- we want datetime - (datetime % MS_PER_DAY), where `%` has the semantics of `Int64.smod`
   let millisPerDayI64 := Int64.ofIntChecked MILLISECONDS_PER_DAY (by decide)
   datetime? (datetime.val - Int64.smod datetime.val millisPerDayI64)
 
