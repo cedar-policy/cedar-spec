@@ -269,12 +269,9 @@ public def durationSince (datetime other: Datetime) : Option Duration :=
   Int64.sub? datetime.val other.val
 
 public def toDate (datetime: Datetime) : Option Datetime :=
+  -- we want datetime - (datetime % MS_PER_DAY), where `%` has the semantics of `smod` defined above
   let millisPerDayI64 := Int64.ofIntChecked MILLISECONDS_PER_DAY (by decide)
-  if datetime.val >= 0
-  then datetime? (millisPerDayI64 * (datetime.val.div millisPerDayI64))
-  else if datetime.val.mod millisPerDayI64 == 0
-       then datetime
-       else datetime? (((datetime.val.div millisPerDayI64) - 1) * millisPerDayI64)
+  datetime? (datetime.val - Int64.smod datetime.val millisPerDayI64)
 
 public def toTime (datetime: Datetime) : Duration :=
   let millisPerDayI64 := Int64.ofIntChecked MILLISECONDS_PER_DAY (by decide)

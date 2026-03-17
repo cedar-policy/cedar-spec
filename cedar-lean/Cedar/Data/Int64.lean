@@ -66,6 +66,27 @@ public def neg? (i₁ : Int64) : Option Int64 := ofInt? (- i₁.toInt)
 
 public def natAbs (i₁ : Int64) : Nat := i₁.toInt.natAbs
 
+/--
+A version of Int64.mod with the property that
+  b > 0 →
+  ∀ a, 0 <= smod a b < b
+-/
+public def smod (a b : Int64) : Int64 :=
+  -- this definition would work, but is hard for SymCC proofs to reason about
+  -- if a % b < 0 then a % b + b else a % b
+  -- BitVec.smod has the behavior we want, even though Int64.mod does not
+  Int64.ofBitVec (a.toBitVec.smod b.toBitVec)
+
+public theorem smod_result_nonneg {a b : Int64} :
+  b > 0 →
+  0 <= smod a b ∧ smod a b < b
+:= by
+  intro hb
+  simp only [Int64.smod, Int64.le_iff_toInt_le, Int64.lt_iff_toInt_lt,
+    Int64.toInt_ofBitVec, BitVec.toInt_smod, Int64.toInt_toBitVec]
+  simp only [GT.gt, Int64.lt_iff_toInt_lt] at hb
+  exact ⟨Int.fmod_nonneg_of_pos a.toInt hb, Int.fmod_lt_of_pos a.toInt hb⟩
+
 ----- Derivations -----
 
 theorem ext_iff {i₁ i₂ : Int64} : i₁ = i₂ ↔ i₁.toInt = i₂.toInt := by
@@ -76,10 +97,10 @@ theorem ext_iff {i₁ i₂ : Int64} : i₁ = i₂ ↔ i₁.toInt = i₂.toInt :=
     simp only [toInt, BitVec.toInt_inj] at h₁
     exact h₁
 
-theorem lt_def_toInt {i₁ i₂ : Int64} : i₁ < i₂ ↔ i₁.toInt < i₂.toInt := by
+public theorem lt_def_toInt {i₁ i₂ : Int64} : i₁ < i₂ ↔ i₁.toInt < i₂.toInt := by
   simp only [LT.lt, Int64.lt, BitVec.slt, toInt_toBitVec, decide_eq_true_eq]
 
-theorem le_def_toInt {i₁ i₂ : Int64} : i₁ ≤ i₂ ↔ i₁.toInt ≤ i₂.toInt := by
+public theorem le_def_toInt {i₁ i₂ : Int64} : i₁ ≤ i₂ ↔ i₁.toInt ≤ i₂.toInt := by
   simp only [LE.le, Int64.le, BitVec.sle, toInt_toBitVec, decide_eq_true_eq]
 
 deriving instance Repr for Int64
