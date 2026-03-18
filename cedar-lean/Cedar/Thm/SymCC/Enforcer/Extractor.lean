@@ -14,6 +14,7 @@
  limitations under the License.
 -/
 
+import Cedar.SymCC.Extractor
 import Cedar.Thm.SymCC.Concretizer
 import Cedar.Thm.Data.MapUnion
 import Cedar.Thm.SymCC.Env.SWF

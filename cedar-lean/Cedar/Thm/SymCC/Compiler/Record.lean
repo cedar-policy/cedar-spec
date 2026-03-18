@@ -16,6 +16,8 @@
 
 import Cedar.Thm.SymCC.Compiler.Invert
 import Cedar.Thm.SymCC.Compiler.WF
+import Cedar.Thm.SymCC.Term.Interpret
+import Cedar.Thm.SymCC.Term.Same
 
 /-!
 This file proves the compilation lemmas for `.record` expressions.

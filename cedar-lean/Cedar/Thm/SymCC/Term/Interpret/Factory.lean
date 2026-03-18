@@ -14,12 +14,17 @@
  limitations under the License.
 -/
 
+module
+
+import all Cedar.SymCC.Factory -- proving things about Factory functions requires access to internals that are not normally exposed
+public import Cedar.SymCC.Interpretation
 import Cedar.Thm.SymCC.Data
 import Cedar.Thm.SymCC.Term.Interpret.Basic
 import Cedar.Thm.SymCC.Term.Interpret.Lit
-import Cedar.Thm.SymCC.Term.PE
+import Cedar.Thm.SymCC.Term.Lit
+import all Cedar.Thm.SymCC.Term.PE -- need access to private theorems about Factory internals
 import Cedar.Thm.SymCC.Term.TypeOf
-import Cedar.Thm.SymCC.Term.WF
+public import Cedar.Thm.SymCC.Term.WF
 import Cedar.Thm.SymCC.Interpretation
 
 /-!
@@ -33,7 +38,7 @@ namespace Cedar.Thm
 
 open Batteries Data Spec SymCC Factory
 
-theorem interpret_not {I : Interpretation} {t : Term} :
+public theorem interpret_not {I : Interpretation} {t : Term} :
   I.WellFormed εs → t.WellFormed εs →
   (Factory.not t).interpret I = Factory.not (t.interpret I)
 := by
@@ -74,8 +79,7 @@ theorem interpret_opposites_neq {I : Interpretation} {t₁ t₂ : Term} {b₁ b�
     cases b₁ <;>
     simp only [interpret_term_app_not, h₂, pe_not_true, pe_not_false, Term.prim.injEq, TermPrim.bool.injEq, Bool.false_eq_true, Bool.true_eq_false] at h₁
 
-
-theorem interpret_and {εs : SymEntities} {I : Interpretation} {t₁ t₂ : Term} :
+public theorem interpret_and {εs : SymEntities} {I : Interpretation} {t₁ t₂ : Term} :
   I.WellFormed εs → t₁.WellFormed εs → t₂.WellFormed εs →
   t₁.typeOf = .bool → t₂.typeOf = .bool →
   (Factory.and t₁ t₂).interpret I = Factory.and (t₁.interpret I) (t₂.interpret I)
@@ -121,7 +125,7 @@ theorem interpret_and {εs : SymEntities} {I : Interpretation} {t₁ t₂ : Term
       case isFalse =>
         simp only [interpret_term_app_and, Factory.and, Bool.or_eq_true, decide_eq_true_eq]
 
-theorem interpret_or {εs : SymEntities} {I : Interpretation} {t₁ t₂ : Term} :
+public theorem interpret_or {εs : SymEntities} {I : Interpretation} {t₁ t₂ : Term} :
   I.WellFormed εs → t₁.WellFormed εs → t₂.WellFormed εs →
   t₁.typeOf = .bool → t₂.typeOf = .bool →
   (Factory.or t₁ t₂).interpret I = Factory.or (t₁.interpret I) (t₂.interpret I)
@@ -168,7 +172,6 @@ theorem interpret_or {εs : SymEntities} {I : Interpretation} {t₁ t₂ : Term}
       case isFalse =>
         simp only [interpret_term_app_or, Factory.or, Bool.or_eq_true, decide_eq_true_eq]
 
-
 theorem interpret_ite_simplify {εs : SymEntities} {I : Interpretation} {t₁ t₂ t₃ : Term} :
   I.WellFormed εs → t₁.WellFormed εs →
   t₂.WellFormed εs → t₃.WellFormed εs →
@@ -177,47 +180,33 @@ theorem interpret_ite_simplify {εs : SymEntities} {I : Interpretation} {t₁ t�
   Factory.ite.simplify (t₁.interpret I) (t₂.interpret I) (t₃.interpret I)
 := by
   intro hI hw₁ hw₂ hw₃ hty₁ hty
-  rw [Factory.ite.simplify.eq_def]
+  simp only [Factory.ite.simplify]
   simp only [Bool.or_eq_true, decide_eq_true_eq]
   split
-  case isTrue h₃ =>
-    cases h₃ <;> rename_i h₃ <;> subst h₃
-    · simp [interpret_term_prim, pe_ite_simplify_true]
-    · simp [ite.simplify]
+  case isTrue h₃ => cases h₃ <;> subst_vars <;> simp
   case isFalse =>
     split
     case isTrue h₃ =>
       subst h₃
-      simp [interpret_term_prim, pe_ite_simplify_false]
+      grind [interpret_term_prim]
     case isFalse =>
       have h₃ := interpret_term_wfl hI hw₁
       simp only [hty₁] at h₃
       replace h₃ := wfl_of_type_bool_is_true_or_false h₃.left h₃.right
       split
-      · cases h₃ <;> rename_i h₃ <;>
-        simp only [h₃, interpret_term_prim,
-          pe_ite_simplify_true, pe_ite_simplify_false]
+      · cases h₃ <;> simp [*]
       · simp only [interpret_not hI hw₁]
-        cases h₃ <;> rename_i h₃ <;>
-        simp only [h₃, interpret_term_prim,
-          pe_not_true, pe_ite_simplify_true,
-          pe_not_false, pe_ite_simplify_false]
+        cases h₃ <;> simp [*]
       · rw [typeOf_bool] at hty
         rw [interpret_and hI hw₁ hw₂ hty₁ hty]
-        cases h₃ <;> rename_i h₃ <;>
-        simp only [h₃, pe_ite_simplify_true, pe_ite_simplify_false,
-          pe_and_true_left, pe_and_false_left, interpret_term_prim]
+        cases h₃ <;> simp [*, eq_comm]
       · rw [typeOf_bool, eq_comm] at hty
         rw [interpret_or hI hw₁ hw₃ hty₁ hty]
-        cases h₃ <;> rename_i h₃ <;>
-        simp only [h₃, pe_ite_simplify_true, pe_ite_simplify_false,
-          pe_or_true_left, pe_or_false_left, interpret_term_prim]
+        cases h₃ <;> simp [*, eq_comm]
       · simp only [interpret_term_app_ite]
-        cases h₃ <;> rename_i h₃ <;>
-        simp only [h₃, pe_ite_true, pe_ite_false,
-          pe_ite_simplify_true, pe_ite_simplify_false]
+        cases h₃ <;> simp [*, eq_comm]
 
-theorem interpret_ite {εs : SymEntities} {I : Interpretation} {t₁ t₂ t₃ : Term} :
+public theorem interpret_ite {εs : SymEntities} {I : Interpretation} {t₁ t₂ t₃ : Term} :
   I.WellFormed εs → t₁.WellFormed εs →
   t₂.WellFormed εs → t₃.WellFormed εs →
   t₁.typeOf = .bool → t₂.typeOf = t₃.typeOf →
@@ -245,7 +234,7 @@ theorem interpret_ite {εs : SymEntities} {I : Interpretation} {t₁ t₂ t₃ :
     cases hlit <;> rename_i hlit <;>
     simp only [hlit, pe_ite_simplify_true, pe_ite_simplify_false]
 
-theorem interpret_implies {I : Interpretation} {t₁ t₂ : Term} :
+public theorem interpret_implies {I : Interpretation} {t₁ t₂ : Term} :
   I.WellFormed εs → t₁.WellFormed εs → t₂.WellFormed εs →
   t₁.typeOf = .bool → t₂.typeOf = .bool →
   (Factory.implies t₁ t₂).interpret I = Factory.implies (t₁.interpret I) (t₂.interpret I)
@@ -330,7 +319,7 @@ theorem interpret_eq_simplify {I : Interpretation} {t₁ t₂ : Term} :
       · simp [h₉, pe_eq_simplify_same]
       · simp [h₉, pe_eq_simplify_lit h₅.left.right h₆.left.right]
 
-theorem interpret_eq {I : Interpretation} {t₁ t₂ : Term} :
+public theorem interpret_eq {I : Interpretation} {t₁ t₂ : Term} :
   I.WellFormed εs → t₁.WellFormed εs → t₂.WellFormed εs →
   (Factory.eq t₁ t₂).interpret I = Factory.eq (t₁.interpret I) (t₂.interpret I)
 := by
@@ -358,7 +347,7 @@ theorem interpret_eq {I : Interpretation} {t₁ t₂ : Term} :
       simp only [Term.prim.injEq, TermPrim.bool.injEq, beq_eq_false_iff_ne, ne_eq, reduceCtorEq,
         not_false_eq_true]
 
-theorem interpret_isNone {I : Interpretation} {t : Term} :
+public theorem interpret_isNone {I : Interpretation} {t : Term} :
   I.WellFormed εs → t.WellFormed εs →
   (isNone t).interpret I = isNone (t.interpret I)
 := by
@@ -412,7 +401,7 @@ theorem interpret_isNone {I : Interpretation} {t : Term} :
           simp only [heq, TermType.option.injEq, forall_eq'] at h₃
         case h_2 => rfl
 
-theorem interpret_isSome {I : Interpretation} {t : Term} :
+public theorem interpret_isSome {I : Interpretation} {t : Term} :
   I.WellFormed εs → t.WellFormed εs →
   (isSome t).interpret I = isSome (t.interpret I)
 := by
@@ -420,15 +409,15 @@ theorem interpret_isSome {I : Interpretation} {t : Term} :
   have h₃ := (wf_isNone h₂).left
   simp only [isSome, interpret_not h₁ h₃, interpret_isNone h₁ h₂]
 
-theorem interpret_noneOf {I : Interpretation} {ty : TermType} :
+public theorem interpret_noneOf {I : Interpretation} {ty : TermType} :
   (noneOf ty).interpret I = Term.none ty
 := by simp [noneOf]
 
-theorem interpret_someOf {I : Interpretation} {t : Term} :
+public theorem interpret_someOf {I : Interpretation} {t : Term} :
   (someOf t).interpret I = Term.some (t.interpret I)
 := by simp [someOf]
 
-theorem interpret_option_get {εs : SymEntities} (I : Interpretation) {t : Term} {ty : TermType} :
+public theorem interpret_option_get {εs : SymEntities} (I : Interpretation) {t : Term} {ty : TermType} :
   t.WellFormed εs → t.typeOf = .option ty →
   (Factory.option.get t).interpret I = Factory.option.get' I (t.interpret I)
 := by
@@ -444,7 +433,7 @@ theorem interpret_option_get {εs : SymEntities} (I : Interpretation) {t : Term}
     case h_2 h =>
       simp only [h₃, TermType.option.injEq, forall_eq'] at h
 
-theorem interpret_option_get' {εs : SymEntities} {I : Interpretation} {t : Term} {ty : TermType} :
+public theorem interpret_option_get' {εs : SymEntities} {I : Interpretation} {t : Term} {ty : TermType} :
   I.WellFormed εs → t.WellFormed εs → t.typeOf = .option ty →
   (Factory.option.get' I t).interpret I = Factory.option.get' I (t.interpret I)
 := by
@@ -457,7 +446,7 @@ theorem interpret_option_get' {εs : SymEntities} {I : Interpretation} {t : Term
     exact interpret_term_lit_id I h₄.left
   case h_2 => exact interpret_option_get I h₂ h₃
 
-theorem interpret_record_get {εs : SymEntities} (I : Interpretation) {t : Term} {a : Attr} {rty : Map Attr TermType} {ty : TermType} :
+public theorem interpret_record_get {εs : SymEntities} (I : Interpretation) {t : Term} {a : Attr} {rty : Map Attr TermType} {ty : TermType} :
   t.WellFormed εs → t.typeOf = .record rty → rty.find? a = .some ty →
   (Factory.record.get t a).interpret I = Factory.record.get (t.interpret I) a
 := by
@@ -560,7 +549,7 @@ private theorem interpret_app_foldr {εs : SymEntities} {I : Interpretation} {t 
   rw [← h₃] at h₅
   simp only [h₅, h₂, and_self]
 
-theorem interpret_app {εs : SymEntities} {I : Interpretation} {t : Term} {f : UnaryFunction} :
+public theorem interpret_app {εs : SymEntities} {I : Interpretation} {t : Term} {f : UnaryFunction} :
   I.WellFormed εs → t.WellFormed εs → f.WellFormed εs → t.typeOf = f.argType →
   (Factory.app f t).interpret I = Factory.app (f.interpret I) (t.interpret I)
 := by
@@ -587,7 +576,7 @@ theorem interpret_app {εs : SymEntities} {I : Interpretation} {t : Term} {f : U
       simp only [Factory.app, h₅.left.right, ite_true]
       exact interpret_app_foldr h₀ h₁ h₂ h₃
 
-theorem interpret_ifFalse {εs : SymEntities} {I : Interpretation} {g t : Term} :
+public theorem interpret_ifFalse {εs : SymEntities} {I : Interpretation} {g t : Term} :
   I.WellFormed εs → g.WellFormed εs → g.typeOf = .bool → t.WellFormed εs →
   (ifFalse g t).interpret I = ifFalse (g.interpret I) (t.interpret I)
 := by
@@ -597,7 +586,7 @@ theorem interpret_ifFalse {εs : SymEntities} {I : Interpretation} {g t : Term} 
       h₃ (by simp only [typeOf_term_none, typeOf_term_some]),
     interpret_term_none, interpret_term_some, (interpret_term_wfl h₁ h₄).right]
 
-theorem interpret_ifTrue {εs : SymEntities} {I : Interpretation} {g t : Term} :
+public theorem interpret_ifTrue {εs : SymEntities} {I : Interpretation} {g t : Term} :
   I.WellFormed εs → g.WellFormed εs → g.typeOf = .bool → t.WellFormed εs →
   (ifTrue g t).interpret I = ifTrue (g.interpret I) (t.interpret I)
 := by
@@ -607,7 +596,7 @@ theorem interpret_ifTrue {εs : SymEntities} {I : Interpretation} {g t : Term} :
       h₃ (by simp only [typeOf_term_none, typeOf_term_some]),
     interpret_term_none, interpret_term_some, (interpret_term_wfl h₁ h₄).right]
 
-theorem interpret_ifSome {εs : SymEntities} {I : Interpretation} {g t : Term} :
+public theorem interpret_ifSome {εs : SymEntities} {I : Interpretation} {g t : Term} :
   I.WellFormed εs → g.WellFormed εs → t.WellFormed εs →
   (ifSome g t).interpret I = ifSome (g.interpret I) (t.interpret I)
 := by
@@ -647,12 +636,12 @@ local macro "show_interpret_unary_op" op_fun:ident wfl_lit_of_type_thm:ident int
       have ⟨_, ht⟩ := $wfl_lit_of_type_thm:ident hwf.left hwf.right
       simp only [$interpret_term_app_op_thm:ident, $op_fun:ident, ht]))
 
-theorem interpret_string_like {εs : SymEntities} {I : Interpretation} {t : Term} {p : Pattern} :
+public theorem interpret_string_like {εs : SymEntities} {I : Interpretation} {t : Term} {p : Pattern} :
   I.WellFormed εs → t.WellFormed εs → t.typeOf = .string →
   (Factory.string.like t p).interpret I = Factory.string.like (t.interpret I) p
 := by show_interpret_unary_op Factory.string.like wfl_of_type_string_is_string interpret_term_app_string_like
 
-theorem interpret_bvnego {εs : SymEntities} {I : Interpretation} {t : Term} {n : Nat} :
+public theorem interpret_bvnego {εs : SymEntities} {I : Interpretation} {t : Term} {n : Nat} :
   I.WellFormed εs → t.WellFormed εs → t.typeOf = .bitvec n →
   (Factory.bvnego t).interpret I = Factory.bvnego (t.interpret I)
 := by show_interpret_unary_op Factory.bvnego wfl_of_type_bitvec_is_bitvec interpret_term_app_bvnego
@@ -678,7 +667,7 @@ theorem interpret_bvneg_inv {εs : SymEntities} {I : Interpretation} {t : Term} 
     simp [h₆] at h₅
   · contradiction
 
-theorem interpret_bvneg {εs : SymEntities} {I : Interpretation} {t : Term} {n : Nat} :
+public theorem interpret_bvneg {εs : SymEntities} {I : Interpretation} {t : Term} {n : Nat} :
   I.WellFormed εs → t.WellFormed εs → t.typeOf = .bitvec n →
   (Factory.bvneg t).interpret I = Factory.bvneg (t.interpret I)
 := by
@@ -707,67 +696,67 @@ local macro "show_interpret_bvop" op_fun:ident pe_fun:ident interpret_op_thm:ide
     · simp only [interpret_term_prim]
     · simp only [$interpret_op_thm:ident, $op_fun:ident, $pe_fun:ident]))
 
-theorem interpret_bvslt {I : Interpretation} {t₁ t₂ : Term} :
+public theorem interpret_bvslt {I : Interpretation} {t₁ t₂ : Term} :
   (Factory.bvslt t₁ t₂).interpret I = Factory.bvslt (t₁.interpret I) (t₂.interpret I)
 := by show_interpret_bvop bvslt bvcmp interpret_term_app_bvslt
 
-theorem interpret_bvsle {I : Interpretation} {t₁ t₂ : Term}  :
+public theorem interpret_bvsle {I : Interpretation} {t₁ t₂ : Term}  :
   (Factory.bvsle t₁ t₂).interpret I = Factory.bvsle (t₁.interpret I) (t₂.interpret I)
 := by show_interpret_bvop bvsle bvcmp interpret_term_app_bvsle
 
-theorem interpret_bvule {I : Interpretation} {t₁ t₂ : Term}  :
+public theorem interpret_bvule {I : Interpretation} {t₁ t₂ : Term}  :
   (Factory.bvule t₁ t₂).interpret I = Factory.bvule (t₁.interpret I) (t₂.interpret I)
 := by show_interpret_bvop bvule bvcmp interpret_term_app_bvule
 
-theorem interpret_bvsaddo {I : Interpretation} {t₁ t₂ : Term} :
+public theorem interpret_bvsaddo {I : Interpretation} {t₁ t₂ : Term} :
   (Factory.bvsaddo t₁ t₂).interpret I = Factory.bvsaddo (t₁.interpret I) (t₂.interpret I)
 := by show_interpret_bvop bvsaddo bvso interpret_term_app_bvsaddo
 
-theorem interpret_bvssubo {I : Interpretation} {t₁ t₂ : Term} :
+public theorem interpret_bvssubo {I : Interpretation} {t₁ t₂ : Term} :
   (Factory.bvssubo t₁ t₂).interpret I = Factory.bvssubo (t₁.interpret I) (t₂.interpret I)
 := by show_interpret_bvop bvssubo bvso interpret_term_app_bvssubo
 
-theorem interpret_bvsmulo {I : Interpretation} {t₁ t₂ : Term} :
+public theorem interpret_bvsmulo {I : Interpretation} {t₁ t₂ : Term} :
   (Factory.bvsmulo t₁ t₂).interpret I = Factory.bvsmulo (t₁.interpret I) (t₂.interpret I)
 := by show_interpret_bvop bvsmulo bvso interpret_term_app_bvsmulo
 
-theorem interpret_bvadd {I : Interpretation} {t₁ t₂ : Term} :
+public theorem interpret_bvadd {I : Interpretation} {t₁ t₂ : Term} :
   (Factory.bvadd t₁ t₂).interpret I = Factory.bvadd (t₁.interpret I) (t₂.interpret I)
 := by show_interpret_bvop bvadd bvapp interpret_term_app_bvadd
 
-theorem interpret_bvsub {I : Interpretation} {t₁ t₂ : Term} :
+public theorem interpret_bvsub {I : Interpretation} {t₁ t₂ : Term} :
   (Factory.bvsub t₁ t₂).interpret I = Factory.bvsub (t₁.interpret I) (t₂.interpret I)
 := by show_interpret_bvop bvsub bvapp interpret_term_app_bvsub
 
-theorem interpret_bvmul {I : Interpretation} {t₁ t₂ : Term} :
+public theorem interpret_bvmul {I : Interpretation} {t₁ t₂ : Term} :
   (Factory.bvmul t₁ t₂).interpret I = Factory.bvmul (t₁.interpret I) (t₂.interpret I)
 := by show_interpret_bvop bvmul bvapp interpret_term_app_bvmul
 
-theorem interpret_bvsdiv {I : Interpretation} {t₁ t₂ : Term} :
+public theorem interpret_bvsdiv {I : Interpretation} {t₁ t₂ : Term} :
   (Factory.bvsdiv t₁ t₂).interpret I = Factory.bvsdiv (t₁.interpret I) (t₂.interpret I)
 := by show_interpret_bvop bvsdiv bvapp interpret_term_app_bvsdiv
 
-theorem interpret_bvudiv {I : Interpretation} {t₁ t₂ : Term} :
+public theorem interpret_bvudiv {I : Interpretation} {t₁ t₂ : Term} :
   (Factory.bvudiv t₁ t₂).interpret I = Factory.bvudiv (t₁.interpret I) (t₂.interpret I)
 := by show_interpret_bvop bvudiv bvapp interpret_term_app_bvudiv
 
-theorem interpret_bvsrem {I : Interpretation} {t₁ t₂ : Term} :
+public theorem interpret_bvsrem {I : Interpretation} {t₁ t₂ : Term} :
   (Factory.bvsrem t₁ t₂).interpret I = Factory.bvsrem (t₁.interpret I) (t₂.interpret I)
 := by show_interpret_bvop bvsrem bvapp interpret_term_app_bvsrem
 
-theorem interpret_bvsmod {I : Interpretation} {t₁ t₂ : Term} :
+public theorem interpret_bvsmod {I : Interpretation} {t₁ t₂ : Term} :
   (Factory.bvsmod t₁ t₂).interpret I = Factory.bvsmod (t₁.interpret I) (t₂.interpret I)
 := by show_interpret_bvop bvsmod bvapp interpret_term_app_bvsmod
 
-theorem interpret_bvurem {I : Interpretation} {t₁ t₂ : Term} :
+public theorem interpret_bvurem {I : Interpretation} {t₁ t₂ : Term} :
   (Factory.bvurem t₁ t₂).interpret I = Factory.bvurem (t₁.interpret I) (t₂.interpret I)
 := by show_interpret_bvop bvurem bvapp interpret_term_app_bvurem
 
-theorem interpret_bvshl {I : Interpretation} {t₁ t₂ : Term} :
+public theorem interpret_bvshl {I : Interpretation} {t₁ t₂ : Term} :
   (Factory.bvshl t₁ t₂).interpret I = Factory.bvshl (t₁.interpret I) (t₂.interpret I)
 := by show_interpret_bvop bvshl bvapp interpret_term_app_bvshl
 
-theorem interpret_bvlshr {I : Interpretation} {t₁ t₂ : Term} :
+public theorem interpret_bvlshr {I : Interpretation} {t₁ t₂ : Term} :
   (Factory.bvlshr t₁ t₂).interpret I = Factory.bvlshr (t₁.interpret I) (t₂.interpret I)
 := by show_interpret_bvop bvlshr bvapp interpret_term_app_bvlshr
 
@@ -779,7 +768,7 @@ local macro "show_interpret_bvopChecked" hI:ident hwf₁:ident hwf₂:ident hty�
     simp only [$factory_func:ident, interpret_ifFalse $hI hgwf hgty htwf, $interp_check_func_thm:ident, $interp_op_func_thm:ident]
  ))
 
-theorem interpret_bvaddChecked {εs : SymEntities} {I : Interpretation} {t₁ t₂ : Term} {n : Nat}
+public theorem interpret_bvaddChecked {εs : SymEntities} {I : Interpretation} {t₁ t₂ : Term} {n : Nat}
   (hI : I.WellFormed εs)
   (hwf₁ : t₁.WellFormed εs) (hwf₂ : t₂.WellFormed εs)
   (hty₁ : t₁.typeOf = .bitvec n)
@@ -788,7 +777,7 @@ theorem interpret_bvaddChecked {εs : SymEntities} {I : Interpretation} {t₁ t�
 := by
   show_interpret_bvopChecked hI hwf₁ hwf₂ hty₁ hty₂ Factory.bvaddChecked wf_bvsaddo wf_bvadd interpret_bvsaddo interpret_bvadd
 
-theorem interpret_bvsubChecked {εs : SymEntities} {I : Interpretation} {t₁ t₂ : Term} {n : Nat}
+public theorem interpret_bvsubChecked {εs : SymEntities} {I : Interpretation} {t₁ t₂ : Term} {n : Nat}
   (hI : I.WellFormed εs)
   (hwf₁ : t₁.WellFormed εs) (hwf₂ : t₂.WellFormed εs)
   (hty₁ : t₁.typeOf = .bitvec n)
@@ -797,7 +786,7 @@ theorem interpret_bvsubChecked {εs : SymEntities} {I : Interpretation} {t₁ t�
 := by
   show_interpret_bvopChecked hI hwf₁ hwf₂ hty₁ hty₂ Factory.bvsubChecked wf_bvssubo wf_bvsub interpret_bvssubo interpret_bvsub
 
-theorem interpret_bvmulChecked {εs : SymEntities} {I : Interpretation} {t₁ t₂ : Term} {n : Nat}
+public theorem interpret_bvmulChecked {εs : SymEntities} {I : Interpretation} {t₁ t₂ : Term} {n : Nat}
   (hI : I.WellFormed εs)
   (hwf₁ : t₁.WellFormed εs) (hwf₂ : t₂.WellFormed εs)
   (hty₁ : t₁.typeOf = .bitvec n)
@@ -806,7 +795,7 @@ theorem interpret_bvmulChecked {εs : SymEntities} {I : Interpretation} {t₁ t�
 := by
   show_interpret_bvopChecked hI hwf₁ hwf₂ hty₁ hty₂ Factory.bvmulChecked wf_bvsmulo wf_bvmul interpret_bvsmulo interpret_bvmul
 
-theorem interpret_zero_extend {εs : SymEntities} {I : Interpretation} {n : Nat} {t : Term} :
+public theorem interpret_zero_extend {εs : SymEntities} {I : Interpretation} {n : Nat} {t : Term} :
   I.WellFormed εs → t.WellFormed εs →
   (Factory.zero_extend n t).interpret I = Factory.zero_extend n (t.interpret I)
 := by
@@ -829,8 +818,7 @@ theorem interpret_zero_extend {εs : SymEntities} {I : Interpretation} {n : Nat}
     specialize hnty n bv hlit
     contradiction
 
-
-theorem interpret_set_member {εs : SymEntities} {I : Interpretation} {t₁ t₂ : Term} :
+public theorem interpret_set_member {εs : SymEntities} {I : Interpretation} {t₁ t₂ : Term} :
   t₁.WellFormed εs → t₂.WellFormed εs →
   Term.interpret I (set.member t₁ t₂) = set.member (Term.interpret I t₁) (Term.interpret I t₂)
 := by
@@ -851,7 +839,7 @@ theorem interpret_set_member {εs : SymEntities} {I : Interpretation} {t₁ t₂
   case h_3 =>
     simp only [interpret_term_app_set_member, set.member, Bool.and_eq_true]
 
-theorem interpret_set_subset  {εs : SymEntities} {I : Interpretation} {t₁ t₂ : Term} :
+public theorem interpret_set_subset  {εs : SymEntities} {I : Interpretation} {t₁ t₂ : Term} :
   t₁.WellFormed εs → t₂.WellFormed εs →
   Term.interpret I (set.subset t₁ t₂) = set.subset (Term.interpret I t₁) (Term.interpret I t₂)
 := by
@@ -876,7 +864,7 @@ theorem interpret_set_subset  {εs : SymEntities} {I : Interpretation} {t₁ t�
     case h_3 =>
       simp only [interpret_term_app_set_subset, set.subset, Bool.and_eq_true]
 
-theorem interpret_set_inter  {εs : SymEntities} {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
+public theorem interpret_set_inter  {εs : SymEntities} {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
   I.WellFormed εs → t₁.WellFormed εs → t₂.WellFormed εs →
   t₁.typeOf = .set ty → t₂.typeOf = .set ty →
   Term.interpret I (set.inter t₁ t₂) = set.inter (Term.interpret I t₁) (Term.interpret I t₂)
@@ -899,9 +887,9 @@ theorem interpret_set_inter  {εs : SymEntities} {I : Interpretation} {t₁ t₂
         split
         case h_1 h₂ _ _ _ h₃ =>
           have h₄ := (interpret_term_wf hI hw₁).right
-          simp only [h₃, Term.typeOf, hty₁, TermType.set.injEq] at h₄
+          simp only [h₃, typeOf_term_set, hty₁, TermType.set.injEq] at h₄
           subst h₄
-          simp only [Term.typeOf, TermType.set.injEq] at hty₂
+          simp only [typeOf_term_set, TermType.set.injEq] at hty₂
           simp only [h₃, hty₂, not_true_eq_false] at h₂
         case h_2 => rfl
         case h_3 hneq _ heq =>
@@ -965,7 +953,7 @@ public theorem interpret_set_isEmpty {εs : SymEntities} {t : Term} {ty : TermTy
       rw [Set.isEmpty_iff_eq_empty] at hempty
       simp [hempty]
 
-theorem interpret_set_intersects {εs : SymEntities} {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
+public theorem interpret_set_intersects {εs : SymEntities} {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
   I.WellFormed εs → t₁.WellFormed εs → t₂.WellFormed εs →
   t₁.typeOf = .set ty → t₂.typeOf = .set ty →
   Term.interpret I (set.intersects t₁ t₂) = set.intersects (Term.interpret I t₁) (Term.interpret I t₂)
@@ -1008,7 +996,7 @@ private theorem interpret_anyTrue_foldl {εs : SymEntities} {I : Interpretation}
       simp only [List.mem_cons, hin, or_true, forall_const] at hts
       exact hts
 
-theorem interpret_anyTrue {εs : SymEntities} {I : Interpretation} {ts : List Term} {f : Term → Term} :
+public theorem interpret_anyTrue {εs : SymEntities} {I : Interpretation} {ts : List Term} {f : Term → Term} :
   I.WellFormed εs →
   (∀ t ∈ ts, (f t).WellFormed εs ∧ (f t).typeOf = .bool) →
   (∀ t ∈ ts, (f t).interpret I = f (t.interpret I)) →
@@ -1019,7 +1007,7 @@ theorem interpret_anyTrue {εs : SymEntities} {I : Interpretation} {ts : List Te
   rw (config := {occs := .pos [2]}) [← @interpret_term_prim I]
   exact interpret_anyTrue_foldl hI hwt hts wf_bool typeOf_bool
 
-theorem interpret_anyNone {εs : SymEntities} {I : Interpretation} {gs : List Term} :
+public theorem interpret_anyNone {εs : SymEntities} {I : Interpretation} {gs : List Term} :
   I.WellFormed εs →
   (∀ g ∈ gs, g.WellFormed εs) →
   (anyNone gs).interpret I = anyNone (gs.map (Term.interpret I))
@@ -1032,7 +1020,7 @@ theorem interpret_anyNone {εs : SymEntities} {I : Interpretation} {gs : List Te
   · exact wf_isNone hwg
   · exact interpret_isNone hI hwg
 
-theorem interpret_ifAllSome {εs : SymEntities} {I : Interpretation} {gs : List Term} {t : Term} :
+public theorem interpret_ifAllSome {εs : SymEntities} {I : Interpretation} {gs : List Term} {t : Term} :
   I.WellFormed εs →
   (∀ g ∈ gs, g.WellFormed εs) →
   t.WellFormed εs →
@@ -1050,15 +1038,15 @@ theorem interpret_ifAllSome {εs : SymEntities} {I : Interpretation} {gs : List 
       hwn.right (by simp only [typeOf_term_none, hty]),
     interpret_anyNone hI hwg, interpret_term_none]
 
-theorem interpret_setOf {I : Interpretation} {ts : List Term} {ty : TermType} :
+public theorem interpret_setOf {I : Interpretation} {ts : List Term} {ty : TermType} :
   (setOf ts ty).interpret I = setOf (ts.map (Term.interpret I)) ty
 := by simp [setOf, interpret_term_set]
 
-theorem interpret_recordOf {I : Interpretation} {ats : List (Attr × Term)} :
+public theorem interpret_recordOf {I : Interpretation} {ats : List (Attr × Term)} :
   (recordOf ats).interpret I = recordOf (ats.map (Prod.map id (Term.interpret I)))
 := by simp [recordOf, interpret_term_record]
 
-theorem interpret_ext_decimal_val {I : Interpretation} {t : Term} :
+public theorem interpret_ext_decimal_val {I : Interpretation} {t : Term} :
   Term.interpret I (ext.decimal.val t) = ext.decimal.val (t.interpret I)
 := by
   simp only [ext.decimal.val]
@@ -1072,14 +1060,14 @@ theorem interpret_ext_decimal_val {I : Interpretation} {t : Term} :
     case h_2 =>
       simp only [interpret_term_app_ext_decimal_val, ext.decimal.val, ext.decimal.val.match_1.eq_2]
 
-theorem interpret_ext_ipaddr_isV4 {I : Interpretation} {t : Term} :
+public theorem interpret_ext_ipaddr_isV4 {I : Interpretation} {t : Term} :
   (ext.ipaddr.isV4 t).interpret I  = ext.ipaddr.isV4 (t.interpret I)
 := by
   simp only [ext.ipaddr.isV4]
   split <;> try (simp only [interpret_term_prim])
   simp only [interpret_term_app_ext_ipaddr_isV4, ext.ipaddr.isV4]
 
-theorem interpret_ext_ipaddr_addrV4 {I : Interpretation} {t : Term} :
+public theorem interpret_ext_ipaddr_addrV4 {I : Interpretation} {t : Term} :
   (ext.ipaddr.addrV4 t).interpret I = ext.ipaddr.addrV4' I (t.interpret I)
 := by
   simp only [ext.ipaddr.addrV4]
@@ -1087,7 +1075,7 @@ theorem interpret_ext_ipaddr_addrV4 {I : Interpretation} {t : Term} :
   · simp only [ext.ipaddr.addrV4', ext.ipaddr.addrV4]
   · simp only [interpret_term_app_ext_ipaddr_addrV4]
 
-theorem interpret_ext_ipaddr_prefixV4 {I : Interpretation} {t : Term} :
+public theorem interpret_ext_ipaddr_prefixV4 {I : Interpretation} {t : Term} :
   (ext.ipaddr.prefixV4 t).interpret I = ext.ipaddr.prefixV4' I (t.interpret I)
 := by
   simp only [ext.ipaddr.prefixV4]
@@ -1098,7 +1086,7 @@ theorem interpret_ext_ipaddr_prefixV4 {I : Interpretation} {t : Term} :
     simp only [noneOf, someOf]
   · simp only [interpret_term_app_ext_ipaddr_prefixV4]
 
-theorem interpret_ext_ipaddr_addrV6 {I : Interpretation} {t : Term} :
+public theorem interpret_ext_ipaddr_addrV6 {I : Interpretation} {t : Term} :
   (ext.ipaddr.addrV6 t).interpret I = ext.ipaddr.addrV6' I (t.interpret I)
 := by
   simp only [ext.ipaddr.addrV6]
@@ -1106,7 +1094,7 @@ theorem interpret_ext_ipaddr_addrV6 {I : Interpretation} {t : Term} :
   · simp only [ext.ipaddr.addrV6', ext.ipaddr.addrV6]
   · simp only [interpret_term_app_ext_ipaddr_addrV6]
 
-theorem interpret_ext_ipaddr_prefixV6 {I : Interpretation} {t : Term} :
+public theorem interpret_ext_ipaddr_prefixV6 {I : Interpretation} {t : Term} :
   (ext.ipaddr.prefixV6 t).interpret I = ext.ipaddr.prefixV6' I (t.interpret I)
 := by
   simp only [ext.ipaddr.prefixV6]
@@ -1117,7 +1105,7 @@ theorem interpret_ext_ipaddr_prefixV6 {I : Interpretation} {t : Term} :
     simp only [noneOf, someOf]
   · simp only [interpret_term_app_ext_ipaddr_prefixV6]
 
-theorem interpret_ext_datetime_val {I : Interpretation} {t : Term} :
+public theorem interpret_ext_datetime_val {I : Interpretation} {t : Term} :
   Term.interpret I (ext.datetime.val t) = ext.datetime.val (t.interpret I)
 := by
   simp only [ext.datetime.val]
@@ -1131,7 +1119,7 @@ theorem interpret_ext_datetime_val {I : Interpretation} {t : Term} :
     case h_2 =>
       simp only [interpret_term_app_ext_datetime_val, ext.datetime.val, ext.datetime.val.match_1.eq_2]
 
-theorem interpret_ext_datetime_ofBitVec {I : Interpretation} {t : Term} :
+public theorem interpret_ext_datetime_ofBitVec {I : Interpretation} {t : Term} :
   Term.interpret I (ext.datetime.ofBitVec t) = ext.datetime.ofBitVec (t.interpret I)
 := by
   simp only [ext.datetime.ofBitVec]
@@ -1145,7 +1133,7 @@ theorem interpret_ext_datetime_ofBitVec {I : Interpretation} {t : Term} :
     case h_2 =>
       simp only [interpret_term_app_ext_datetime_ofBitVec, ext.datetime.ofBitVec, ext.datetime.ofBitVec.match_1.eq_2]
 
-theorem interpret_ext_duration_val {I : Interpretation} {t : Term} :
+public theorem interpret_ext_duration_val {I : Interpretation} {t : Term} :
   Term.interpret I (ext.duration.val t) = ext.duration.val (t.interpret I)
 := by
   simp only [ext.duration.val]
@@ -1159,7 +1147,7 @@ theorem interpret_ext_duration_val {I : Interpretation} {t : Term} :
     case h_2 =>
       simp only [interpret_term_app_ext_duration_val, ext.duration.val, ext.duration.val.match_1.eq_2]
 
-theorem interpret_ext_duration_ofBitVec {I : Interpretation} {t : Term} :
+public theorem interpret_ext_duration_ofBitVec {I : Interpretation} {t : Term} :
   Term.interpret I (ext.duration.ofBitVec t) = ext.duration.ofBitVec (t.interpret I)
 := by
   simp only [ext.duration.ofBitVec]
@@ -1173,7 +1161,7 @@ theorem interpret_ext_duration_ofBitVec {I : Interpretation} {t : Term} :
     case h_2 =>
       simp only [interpret_term_app_ext_duration_ofBitVec, ext.duration.ofBitVec]
 
-theorem interpret_tagOf {I : Interpretation} {t₁ t₂ : Term} :
+public theorem interpret_tagOf {I : Interpretation} {t₁ t₂ : Term} :
   (tagOf t₁ t₂).interpret I = tagOf (t₁.interpret I) (t₂.interpret I)
 := by
   simp [tagOf, EntityTag.mk, interpret_term_record, Map.mapOnValues_doubleton]

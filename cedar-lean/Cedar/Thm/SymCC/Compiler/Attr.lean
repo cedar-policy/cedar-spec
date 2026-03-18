@@ -16,6 +16,8 @@
 
 import Cedar.Thm.SymCC.Compiler.Invert
 import Cedar.Thm.SymCC.Compiler.WF
+import Cedar.Thm.SymCC.Env.Interpret
+import Cedar.Thm.SymCC.Term.Interpret
 
 /-!
 This file proves the compilation lemmas for `.hasAttr` and `.getAttr` expressions.
@@ -49,10 +51,10 @@ private theorem compile_evaluate_hasAttr_record_aux
     subst htₐ
     case inl =>
       replace hf := record_value?_find?_optional_none (wf_term_record_implies_wf_map hwo.left) hf ih
-      simp only [pe_isSome_none, bool_value?, Map.contains, hf, Option.isSome_none]
+      simp only [pe_isSome_none, value?_bool, Map.contains, hf, Option.isSome_none]
     case inr =>
       replace ⟨vₐ, hf, _⟩ := record_value?_find?_optional_some (wf_term_record_implies_wf_map hwo.left) hf ih
-      simp only [pe_isSome_some, bool_value?, Option.some.injEq, Value.prim.injEq,
+      simp only [pe_isSome_some, value?_bool, Option.some.injEq, Value.prim.injEq,
         Prim.bool.injEq]
       rw [eq_comm, Map.contains_iff_some_find?]
       exists vₐ
@@ -60,14 +62,14 @@ private theorem compile_evaluate_hasAttr_record_aux
     replace ⟨tₐ, hf, hf'⟩ := typeOf_term_record_attr_value hwo.right haty
     subst hf'
     replace ⟨vₐ, hf, _⟩ := record_value?_find?_required (wf_term_record_implies_wf_map hwo.left) hnopt hf ih
-    simp only [Same.same, SameResults, SameValues, bool_value?, Option.some.injEq,
+    simp only [Same.same, SameResults, SameValues, value?_bool, Option.some.injEq,
       Value.prim.injEq, Prim.bool.injEq]
     rw [eq_comm, Map.contains_iff_some_find?]
     exists vₐ
   case h_3 heq =>
     replace heq := typeOf_term_record_attr_value_none hwo.right heq
     replace heq := record_value?_find?_none (wf_term_record_implies_wf_map hwo.left) heq ih
-    simp only [Same.same, SameResults, SameValues, bool_value?, Map.contains, heq,
+    simp only [Same.same, SameResults, SameValues, value?_bool, Map.contains, heq,
       Option.isSome_none]
 
 private theorem compile_evaluate_hasAttr_record
@@ -172,7 +174,7 @@ private theorem compile_evaluate_hasAttr_entity
     have ht₁ := isLiteral_some.mp (same_ok_value_implies_lit ih)
     replace ⟨uid, ht₁, huid⟩ := wfl_of_type_entity_is_entity (And.intro hwo.left ht₁) hwo.right
     subst ht₁ huid
-    simp only [Same.same, SameResults, SameValues, entity_value?, Option.some.injEq] at ih
+    simp only [Same.same, SameResults, SameValues, value?_entity, Option.some.injEq] at ih
     subst ih
     simp only [hasAttr, attrsOf, Except.bind_ok]
     replace ⟨rt, happ, hrty, hwfl, hv⟩ := compile_evaluate_attrsOrEmpty heq hwε hf hwo hrty hwf₁
@@ -487,7 +489,7 @@ private theorem compile_evaluate_getAttr_entity
     have ht₁ := isLiteral_some.mp (same_ok_value_implies_lit ih)
     replace ⟨uid, ht₁, huid⟩ := wfl_of_type_entity_is_entity (And.intro hwo.left ht₁) hwo.right
     subst ht₁ huid
-    simp only [Same.same, SameResults, SameValues, entity_value?, Option.some.injEq] at ih
+    simp only [Same.same, SameResults, SameValues, value?_entity, Option.some.injEq] at ih
     subst ih
     simp only [getAttr, attrsOf]
     replace ⟨rt, happ, hrty, hwfl, hv⟩ := compile_evaluate_attrsOrEmpty heq hwε hf hwo hrty hwf₁

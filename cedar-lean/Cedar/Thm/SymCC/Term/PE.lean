@@ -201,13 +201,11 @@ public theorem pe_implies_true_left {t : Term} :
 
 /-! ### PE for Factory.ite -/
 
-@[simp]
-public theorem pe_ite_simplify_true {t₁ t₂ : Term} :
+theorem pe_ite_simplify_true {t₁ t₂ : Term} :
   Factory.ite.simplify (.prim (.bool true)) t₁ t₂ = t₁
 := by simp [ite.simplify]
 
-@[simp]
-public theorem pe_ite_simplify_false {t₁ t₂ : Term} :
+theorem pe_ite_simplify_false {t₁ t₂ : Term} :
   Factory.ite.simplify (.prim (.bool false)) t₁ t₂ = t₂
 := by simp [ite.simplify]
 

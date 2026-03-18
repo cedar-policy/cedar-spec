@@ -16,6 +16,8 @@
 
 import Cedar.Thm.SymCC.Compiler.Invert
 import Cedar.Thm.SymCC.Compiler.WF
+import Cedar.Thm.SymCC.Term.Interpret
+import Cedar.Thm.SymCC.Term.PE
 
 /-!
 This file proves the compilation lemmas for `.ite`, `.and`, and `.or` expressions.

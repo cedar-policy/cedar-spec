@@ -14,9 +14,14 @@
  limitations under the License.
 -/
 
+module
+
+import Cedar.Data.SizeOf
+public import Cedar.SymCC.Env
+public import Cedar.SymCC.Interpretation
 import Cedar.Thm.SymCC.Data
 import Cedar.Thm.SymCC.Term.Interpret.Basic
-import Cedar.Thm.SymCC.Term.Interpret.WF
+public import Cedar.Thm.SymCC.Term.Interpret.WF
 import Cedar.Thm.SymCC.Term.Lit
 import Cedar.Thm.SymCC.Term.PE
 import Cedar.Thm.SymCC.Term.WF
@@ -64,7 +69,7 @@ private theorem interpret_term_record_lit_id {εs : SymEntities} {I : Interpreta
   replace ⟨a, ht⟩ := Map.in_values_exists_key ht
   exact ih a t ht
 
-theorem interpret_term_lit_id {εs : SymEntities} (I : Interpretation) {t : Term}
+public theorem interpret_term_lit_id {εs : SymEntities} (I : Interpretation) {t : Term}
   (h₁ : t.WellFormedLiteral εs) :
   t.interpret I = t
 := by
@@ -278,7 +283,7 @@ private theorem interpret_term_app_lit {εs : SymEntities} {I : Interpretation} 
   case ext_wt h₁ =>
     exact interpret_term_app_ext_lit hI hwf h₁ ih
 
-theorem interpret_term_lit {εs : SymEntities} {I : Interpretation} {t : Term}
+public theorem interpret_term_lit {εs : SymEntities} {I : Interpretation} {t : Term}
   (h₀ : I.WellFormed εs)
   (h₁ : t.WellFormed εs) :
   (t.interpret I).isLiteral
@@ -299,7 +304,7 @@ theorem interpret_term_lit {εs : SymEntities} {I : Interpretation} {t : Term}
   case record_wf ih =>
     exact interpret_term_record_lit ih
 
-theorem interpret_term_wfl {εs : SymEntities} {I : Interpretation} {t : Term}
+public theorem interpret_term_wfl {εs : SymEntities} {I : Interpretation} {t : Term}
   (h₁ : I.WellFormed εs)
   (h₂ : t.WellFormed εs) :
   (t.interpret I).WellFormedLiteral εs ∧

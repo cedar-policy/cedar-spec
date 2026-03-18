@@ -627,6 +627,7 @@ private theorem compile_interpret_binaryApp_on_footprint {op₂ : BinaryOp} {x�
       case some f =>
         simp only [interpret_entities_ancestorsOfType_some hancs]
         specialize heqf ety₂ f hancs
+        simp only [SymCC.compileInₑ.isIn, SymCC.compileInₛ.isIn₁, SymCC.compileInₛ.isIn₂]
         congr 2
     }
   case less =>

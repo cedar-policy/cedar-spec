@@ -14,8 +14,14 @@
  limitations under the License.
 -/
 
+module
+
+public import Cedar.SymCC.Compiler
+import all Cedar.SymCC.Compiler -- proving things about internals of the compiler
 import Cedar.Thm.SymCC.Compiler.Basic
-import Cedar.Thm.SymCC.Compiler.Invert
+import all Cedar.Thm.SymCC.Compiler.Invert -- we require some lemmas from Compiler.Invert that are about private compiler internals
+public import Cedar.Thm.SymCC.Env.WF
+import Cedar.Thm.SymCC.Term.TypeOf
 import Cedar.Thm.SymCC.Term.WF
 
 /-!
@@ -43,13 +49,14 @@ private theorem typeOf_term_some_is_option {t : Term} :
   ∃ ty, Term.typeOf (Term.some t) = TermType.option ty
 := by
   exists t.typeOf
-  simp only [Term.typeOf]
+  simp
 
 private theorem compile_lit_wf {p: Prim} {εnv : SymEnv} {t : Term}
   (hok : compile (Expr.lit p) εnv = Except.ok t) :
   t.WellFormed εnv.entities ∧ ∃ ty, t.typeOf = .option ty
 := by
-  simp only [compile, compilePrim] at hok
+  rw [compile.eq_def] at hok
+  simp only [compilePrim] at hok
   cases p <;>
   simp only [Except.ok.injEq, someOf] at * <;>
   first | subst hok | skip
@@ -74,7 +81,8 @@ private theorem compile_var_wf {v : Var} {εnv : SymEnv} {t : Term}
 := by
   simp [SymEnv.WellFormedFor, SymEnv.WellFormed, SymRequest.WellFormed] at hwf
   replace hwf := hwf.left.left
-  simp only [compile, compileVar] at hok
+  rw [compile.eq_def] at hok
+  simp only [compileVar] at hok
   split at hok <;>
   split at hok <;>
   simp only [Except.ok.injEq, someOf, reduceCtorEq] at hok <;>
@@ -182,7 +190,7 @@ private theorem compile_or_wf {x₁ x₂: Expr} {εnv : SymEnv} {t : Term}
     exists .bool
     exact h₃.right
 
-theorem compileAttrsOf_wf {t t₁: Term} {εs : SymEntities}
+public theorem compileAttrsOf_wf {t t₁: Term} {εs : SymEntities}
   (hwε : εs.WellFormed)
   (hw₁ : Term.WellFormed εs t₁)
   (hok : compileAttrsOf t₁ εs = Except.ok t)  :
@@ -213,7 +221,7 @@ theorem compileAttrsOf_wf {t t₁: Term} {εs : SymEntities}
     simp only [hty, true_and]
     exists fₐ
 
-theorem compileHasAttr_wf {t t₁: Term} {a : Attr} {εs : SymEntities}
+public theorem compileHasAttr_wf {t t₁: Term} {a : Attr} {εs : SymEntities}
   (hwε : εs.WellFormed)
   (hw₁ : Term.WellFormed εs t₁)
   (hok : compileHasAttr t₁ a εs = Except.ok t)  :
@@ -249,7 +257,7 @@ private theorem compile_hasAttr_wf {x₁ : Expr} {a : Attr} {εnv : SymEnv} {t :
   exists .bool
   exact h.right
 
-theorem compileGetAttr_wf {t t₁: Term} {a : Attr} {εs : SymEntities}
+public theorem compileGetAttr_wf {t t₁: Term} {a : Attr} {εs : SymEntities}
   (hwε : εs.WellFormed)
   (hw₁ : Term.WellFormed εs t₁)
   (hok : compileGetAttr t₁ a εs = Except.ok t)  :
@@ -285,7 +293,7 @@ private theorem compile_getAttr_wf {x₁ : Expr} {a : Attr} {εnv : SymEnv} {t :
   exists tyₐ
   exact h.right
 
-theorem compileApp₁_wf_types {op₁ : UnaryOp} {t t₁: Term} {εs : SymEntities}
+public theorem compileApp₁_wf_types {op₁ : UnaryOp} {t t₁: Term} {εs : SymEntities}
   (hw₁ : Term.WellFormed εs t₁)
   (hok : compileApp₁ op₁ t₁ = Except.ok t)  :
   t.WellFormed εs ∧
@@ -319,7 +327,7 @@ theorem compileApp₁_wf_types {op₁ : UnaryOp} {t t₁: Term} {εs : SymEntiti
     simp only [hok, typeOf_term_some, hwf.right, and_true]
     exact Term.WellFormed.some_wf hwf.left
 
-theorem compileApp₁_wf {op₁ : UnaryOp} {t t₁: Term} {εs : SymEntities}
+public theorem compileApp₁_wf {op₁ : UnaryOp} {t t₁: Term} {εs : SymEntities}
   (hw₁ : Term.WellFormed εs t₁)
   (hok : compileApp₁ op₁ t₁ = Except.ok t)  :
   t.WellFormed εs ∧ ∃ ty, t.typeOf = .option ty
@@ -344,27 +352,27 @@ private theorem compile_unaryApp_wf {op₁ : UnaryOp} {x₁ : Expr} {εnv : SymE
   have h := wf_ifSome_option ih₁ ha ha'
   simp only [h, TermType.option.injEq, exists_eq', and_self]
 
-theorem compileInₑ.isEq_wf {t₁ t₂ : Term} {εs : SymEntities}
+public theorem compileInₑ.isEq_wf {t₁ t₂ : Term} {εs : SymEntities}
   (hw₁  : Term.WellFormed εs t₁)
   (hw₂  : Term.WellFormed εs t₂) :
-  (compileInₑ.isEq t₁ t₂).WellFormed εs ∧ (compileInₑ.isEq t₁ t₂).typeOf = .bool
+  (SymCC.compileInₑ.isEq t₁ t₂).WellFormed εs ∧ (SymCC.compileInₑ.isEq t₁ t₂).typeOf = .bool
 := by
-  simp only [compileInₑ.isEq]
+  rw [SymCC.compileInₑ.isEq.eq_def]
   split
   · rename_i heq
     exact wf_eq hw₁ hw₂ heq
   · exact And.intro wf_bool typeOf_bool
 
-theorem compileInₑ.isIn_wf {t₁ t₂ : Term} {ancs? : Option UnaryFunction} {ety₁ ety₂ : EntityType} {εs : SymEntities}
+public theorem compileInₑ.isIn_wf {t₁ t₂ : Term} {ancs? : Option UnaryFunction} {ety₁ ety₂ : EntityType} {εs : SymEntities}
   (hwε  : εs.WellFormed)
   (hw₁  : Term.WellFormed εs t₁)
   (hty₁ : t₁.typeOf = .entity ety₁)
   (hw₂  : Term.WellFormed εs t₂)
   (hty₂ : t₂.typeOf = .entity ety₂)
   (ha   : ancs? = SymEntities.ancestorsOfType εs ety₁ ety₂) :
-  (compileInₑ.isIn t₁ t₂ ancs?).WellFormed εs ∧ (compileInₑ.isIn t₁ t₂ ancs?).typeOf = .bool
+  (SymCC.compileInₑ.isIn t₁ t₂ ancs?).WellFormed εs ∧ (SymCC.compileInₑ.isIn t₁ t₂ ancs?).typeOf = .bool
 := by
-  simp only [compileInₑ.isIn]
+  rw [SymCC.compileInₑ.isIn.eq_def]
   split
   · rename_i fₐ
     rw [eq_comm] at ha
@@ -375,41 +383,41 @@ theorem compileInₑ.isIn_wf {t₁ t₂ : Term} {ancs? : Option UnaryFunction} {
     exact wf_set_member hw₂ happ.left happ.right
   · exact And.intro wf_bool typeOf_bool
 
-theorem compileInₑ_wf {t₁ t₂ : Term} {ancs? : Option UnaryFunction} {ety₁ ety₂ : EntityType} {εs : SymEntities}
+public theorem compileInₑ_wf {t₁ t₂ : Term} {ancs? : Option UnaryFunction} {ety₁ ety₂ : EntityType} {εs : SymEntities}
   (hwε  : εs.WellFormed)
   (hw₁  : Term.WellFormed εs t₁)
   (hty₁ : t₁.typeOf = .entity ety₁)
   (hw₂  : Term.WellFormed εs t₂)
   (hty₂ : t₂.typeOf = .entity ety₂)
   (ha   : ancs? = SymEntities.ancestorsOfType εs ety₁ ety₂) :
-  (compileInₑ t₁ t₂ ancs?).WellFormed εs ∧ (compileInₑ t₁ t₂ ancs?).typeOf = .bool
+  (SymCC.compileInₑ t₁ t₂ ancs?).WellFormed εs ∧ (SymCC.compileInₑ t₁ t₂ ancs?).typeOf = .bool
 := by
   have heq := compileInₑ.isEq_wf hw₁ hw₂
   have hin := compileInₑ.isIn_wf hwε hw₁ hty₁ hw₂ hty₂ ha
-  rw [compileInₑ_def]
+  rw [compileInₑ_def, compileInₑ.isEq_def, compileInₑ.isIn_def]
   exact wf_or heq.left hin.left heq.right hin.right
 
-theorem compileInₛ.isIn₁_wf {t ts : Term} {εs : SymEntities}
+public theorem compileInₛ.isIn₁_wf {t ts : Term} {εs : SymEntities}
   (hw₁  : Term.WellFormed εs t)
   (hw₂  : Term.WellFormed εs ts) :
-  (compileInₛ.isIn₁ t ts).WellFormed εs ∧ (compileInₛ.isIn₁ t ts).typeOf = .bool
+  (SymCC.compileInₛ.isIn₁ t ts).WellFormed εs ∧ (SymCC.compileInₛ.isIn₁ t ts).typeOf = .bool
 := by
-  simp only [compileInₛ.isIn₁]
+  rw [SymCC.compileInₛ.isIn₁.eq_def]
   split
   · rename_i heq
     exact wf_set_member hw₁ hw₂ heq
   · exact And.intro wf_bool typeOf_bool
 
-theorem compileInₛ.isIn₂_wf {t ts : Term} {ancs? : Option UnaryFunction} {ety₁ ety₂ : EntityType} {εs : SymEntities}
+public theorem compileInₛ.isIn₂_wf {t ts : Term} {ancs? : Option UnaryFunction} {ety₁ ety₂ : EntityType} {εs : SymEntities}
   (hwε  : εs.WellFormed)
   (hw₁  : Term.WellFormed εs t)
   (hty₁ : t.typeOf = .entity ety₁)
   (hw₂  : Term.WellFormed εs ts)
   (hty₂ : ts.typeOf = .set (.entity ety₂))
   (ha   : ancs? = SymEntities.ancestorsOfType εs ety₁ ety₂) :
-  (compileInₛ.isIn₂ t ts ancs?).WellFormed εs ∧ (compileInₛ.isIn₂ t ts ancs?).typeOf = .bool
+  (SymCC.compileInₛ.isIn₂ t ts ancs?).WellFormed εs ∧ (SymCC.compileInₛ.isIn₂ t ts ancs?).typeOf = .bool
 := by
-  simp only [compileInₛ.isIn₂]
+  rw [SymCC.compileInₛ.isIn₂.eq_def]
   split
   · rename_i fₐ
     rw [eq_comm] at ha
@@ -420,21 +428,21 @@ theorem compileInₛ.isIn₂_wf {t ts : Term} {ancs? : Option UnaryFunction} {et
     exact wf_set_intersects hw₂ happ.left hty₂ happ.right
   · exact And.intro wf_bool typeOf_bool
 
-theorem compileInₛ_wf {t ts : Term} {ancs? : Option UnaryFunction} {ety₁ ety₂ : EntityType} {εs : SymEntities}
+public theorem compileInₛ_wf {t ts : Term} {ancs? : Option UnaryFunction} {ety₁ ety₂ : EntityType} {εs : SymEntities}
   (hwε  : εs.WellFormed)
   (hw₁  : Term.WellFormed εs t)
   (hty₁ : t.typeOf = .entity ety₁)
   (hw₂  : Term.WellFormed εs ts)
   (hty₂ : ts.typeOf = .set (.entity ety₂))
   (ha   : ancs? = SymEntities.ancestorsOfType εs ety₁ ety₂) :
-  (compileInₛ t ts ancs?).WellFormed εs ∧ (compileInₛ t ts ancs?).typeOf = .bool
+  (SymCC.compileInₛ t ts ancs?).WellFormed εs ∧ (SymCC.compileInₛ t ts ancs?).typeOf = .bool
 := by
   have hin₁ := compileInₛ.isIn₁_wf hw₁ hw₂
   have hin₂ := compileInₛ.isIn₂_wf hwε hw₁ hty₁ hw₂ hty₂ ha
-  rw [compileInₛ_def]
+  rw [compileInₛ_def, compileInₛ.isIn₁_def, compileInₛ.isIn₂_def]
   exact wf_or hin₁.left hin₂.left hin₁.right hin₂.right
 
-theorem compileApp₂_wf_types {op₂ : BinaryOp} {t t₁ t₂: Term} {εs : SymEntities}
+public theorem compileApp₂_wf_types {op₂ : BinaryOp} {t t₁ t₂: Term} {εs : SymEntities}
   (hwε : εs.WellFormed)
   (hw₁ : Term.WellFormed εs t₁)
   (hw₂ : Term.WellFormed εs t₂)
@@ -535,7 +543,7 @@ theorem compileApp₂_wf_types {op₂ : BinaryOp} {t t₁ t₂: Term} {εs : Sym
     simp only [hwτ, hty₁, TermType.prim.injEq, TermPrimType.entity.injEq, TermType.option.injEq,
       exists_and_left, exists_eq_left', hτs, Option.some.injEq, and_self]
 
-theorem compileApp₂_wf {op₂ : BinaryOp} {t t₁ t₂: Term} {εs : SymEntities}
+public theorem compileApp₂_wf {op₂ : BinaryOp} {t t₁ t₂: Term} {εs : SymEntities}
   (hwε : εs.WellFormed)
   (hw₁ : Term.WellFormed εs t₁)
   (hw₂ : Term.WellFormed εs t₂)
@@ -666,7 +674,7 @@ local macro "simp_compileCall₀_wf" hok:ident compile_call_thm:ident typeOf_ter
     exact Term.WellFormed.some_wf (Term.WellFormed.prim_wf TermPrim.WellFormed.ext_wf)
 ))
 
-theorem compileCall_wf_types {f : ExtFun} {ts : List Term} {εs : SymEntities} {t : Term}
+public theorem compileCall_wf_types {f : ExtFun} {ts : List Term} {εs : SymEntities} {t : Term}
   (hwf : ∀ t ∈ ts, Term.WellFormed εs t)
   (hok : compileCall f ts = Except.ok t)  :
   t.WellFormed εs ∧
@@ -732,7 +740,7 @@ theorem compileCall_wf_types {f : ExtFun} {ts : List Term} {εs : SymEntities} {
   case toDays =>
     simp_compileCall₁_wf hwf hok compileCall_duration_toDays_ok_implies wf_duration_toDays
 
-theorem compileCall_wf {f : ExtFun} {ts : List Term} {εs : SymEntities} {t : Term}
+public theorem compileCall_wf {f : ExtFun} {ts : List Term} {εs : SymEntities} {t : Term}
   (hwf : ∀ t ∈ ts, Term.WellFormed εs t)
   (hok : compileCall f ts = Except.ok t)  :
   t.WellFormed εs ∧ ∃ ty, t.typeOf = .option ty
@@ -754,7 +762,7 @@ private theorem compile_call_wf {f : ExtFun} {xs : List Expr} {εnv : SymEnv} {t
   replace ⟨x, hx, heq⟩ := List.forall₂_implies_all_right heq t ht
   simp only [@ih x hx εnv t (hwf x hx) heq]
 
-theorem compile_wf {x : Expr} {εnv : SymEnv} {t : Term} :
+public theorem compile_wf {x : Expr} {εnv : SymEnv} {t : Term} :
   εnv.WellFormedFor x →
   compile x εnv = .ok t →
   (t.WellFormed εnv.entities ∧ ∃ ty, t.typeOf = .option ty)
@@ -806,7 +814,7 @@ theorem compile_wf {x : Expr} {εnv : SymEnv} {t : Term} :
       exact @compile_wf xᵢ
     exact compile_call_wf hwf hok ih
 
-theorem compile_option_get_wf {x : Expr} {εnv : SymEnv} {t : Term} :
+public theorem compile_option_get_wf {x : Expr} {εnv : SymEnv} {t : Term} :
   εnv.WellFormedFor x →
   compile x εnv = .ok t →
   ∃ ty,
@@ -849,13 +857,12 @@ private theorem evaluate_lit_wf {p: Prim} {env : Env} {v : Value}
   (hok : evaluate (Expr.lit p) env.request env.entities = Except.ok v) :
   Value.WellFormed env.entities v
 := by
-  simp only [evaluate, Except.ok.injEq] at hok
+  simp only [evaluate.eq_def, Except.ok.injEq] at hok
   subst hok
   apply Value.WellFormed.prim_wf
   cases p <;> simp only [Prim.WellFormed]
   replace hwf := hwf.right
-  cases hwf
-  rename_i hwf
+  cases hwf ; rename_i hwf
   simp only [Prim.ValidRef] at hwf
   exact hwf
 
@@ -864,7 +871,7 @@ private theorem evaluate_var_wf {xv : Var} {env : Env} {v : Value}
   (hok : evaluate (Expr.var xv) env.request env.entities = Except.ok v) :
   Value.WellFormed env.entities v
 := by
-  unfold evaluate at hok
+  simp only [evaluate.eq_def] at hok
   replace hwf := hwf.left.left
   unfold Request.WellFormed at hwf
   split at hok <;>
@@ -883,7 +890,8 @@ private theorem evaluate_ite_wf {x₁ x₂ x₃ : Expr} {env : Env} {v : Value}
   Value.WellFormed env.entities v
 := by
   replace hwf := wf_env_for_ite_implies hwf
-  simp only [evaluate, Result.as] at hok
+  rw [evaluate.eq_def] at hok
+  simp only [Result.as] at hok
   cases hok₁ : evaluate x₁ env.request env.entities <;>
   simp only [hok₁, Except.bind_err, reduceCtorEq] at hok
   rename_i v₁
@@ -933,21 +941,23 @@ private theorem evaluate_and_wf {x₁ x₂ : Expr} {env : Env} {v : Value}
   (hok : evaluate (Expr.and x₁ x₂) env.request env.entities = Except.ok v) :
   Value.WellFormed env.entities v
 := by
-  simp only [evaluate, Bool.not_eq_true'] at hok
+  rw [evaluate.eq_def] at hok
+  simp only [Bool.not_eq_true'] at hok
   exact evaluate_and_or_wf hok
 
 private theorem evaluate_or_wf {x₁ x₂ : Expr} {env : Env} {v : Value}
   (hok : evaluate (Expr.or x₁ x₂) env.request env.entities = Except.ok v) :
   Value.WellFormed env.entities v
 := by
-  simp only [evaluate] at hok
+  rw [evaluate.eq_def] at hok
   exact evaluate_and_or_wf hok
 
 private theorem evaluate_hasAttr_wf {x : Expr} {a : Attr} {env : Env} {v : Value}
   (hok : evaluate (Expr.hasAttr x a) env.request env.entities = Except.ok v) :
   Value.WellFormed env.entities v
 := by
-  simp only [evaluate, hasAttr, attrsOf] at hok
+  rw [evaluate.eq_def] at hok
+  simp only [hasAttr, attrsOf] at hok
   simp_do_let (evaluate x env.request env.entities) at hok
   split at hok
   case h_3 => simp only [Except.bind_err, reduceCtorEq] at hok
@@ -962,35 +972,29 @@ private theorem evaluate_getAttr_wf {x : Expr} {a : Attr} {env : Env} {v : Value
   (ih  : EvaluateWF x) :
   Value.WellFormed env.entities v
 := by
-  simp only [evaluate, getAttr, attrsOf] at hok
+  rw [evaluate.eq_def] at hok
+  simp only [getAttr, attrsOf] at hok
   simp_do_let (evaluate x env.request env.entities) at hok
   rename_i hok₁
   replace hwf := wf_env_for_getAttr_implies hwf
   specialize ih hwf hok₁
   split at hok
   case h_1 r =>
-    simp only [Except.bind_ok, Map.findOrErr] at hok
-    split at hok <;> simp only [Except.ok.injEq, reduceCtorEq] at hok
-    rename_i v₁ hf
-    subst hok
-    exact value_record_wf_implies_attr_value_wf ih hf
+    simp only [Except.bind_ok, Map.findOrErr_ok_iff_find?_some] at hok
+    rename_i v₁
+    exact value_record_wf_implies_attr_value_wf ih hok
   case h_2 uid =>
     simp_do_let (Entities.attrs env.entities uid) at hok
     rename_i ha
-    simp only [Map.findOrErr] at hok
-    split at hok <;> simp only [Except.ok.injEq, reduceCtorEq] at hok
-    rename_i r _ v₁ hf
-    subst hok
+    simp only [Map.findOrErr_ok_iff_find?_some] at hok
+    rename_i r v₁
     simp only [Entities.attrs] at ha
     simp_do_let (Map.findOrErr env.entities uid Error.entityDoesNotExist) at ha
     rename_i d hd
     simp only [Except.ok.injEq] at ha
     subst ha
-    apply value_record_wf_implies_attr_value_wf _ hf
-    simp only [Map.findOrErr] at hd
-    split at hd <;> simp only [Except.ok.injEq, reduceCtorEq] at hd
-    subst hd
-    rename_i d hd
+    apply value_record_wf_implies_attr_value_wf _ hok
+    simp only [Map.findOrErr_ok_iff_find?_some] at hd
     exact (hwf.left.right.right uid d hd).left
   case h_3 =>
     simp only [Except.bind_err, reduceCtorEq] at hok
@@ -1008,7 +1012,7 @@ private theorem evaluate_unaryApp_wf {op : UnaryOp} {x : Expr} {env : Env} {v : 
   (hok : evaluate (Expr.unaryApp op x) env.request env.entities = Except.ok v):
   Value.WellFormed env.entities v
 := by
-  simp only [evaluate] at hok
+  rw [evaluate.eq_def] at hok
   simp_do_let (evaluate x env.request env.entities) at hok
   simp only [apply₁] at hok
   split at hok <;> (try simp only [Except.ok.injEq, reduceCtorEq] at hok)
@@ -1034,7 +1038,7 @@ private theorem evaluate_binaryApp_wf {op : BinaryOp} {x₁ x₂ : Expr} {env : 
   (ih₁ : EvaluateWF x₁):
   Value.WellFormed env.entities v
 := by
-  simp only [evaluate] at hok
+  rw [evaluate.eq_def] at hok
   simp_do_let (evaluate x₁ env.request env.entities) at hok
   simp_do_let (evaluate x₂ env.request env.entities) at hok
   simp only [apply₂] at hok
@@ -1063,7 +1067,7 @@ private theorem evaluate_call_wf {xfn : ExtFun} {xs : List Expr} {env : Env} {v 
   (hok : evaluate (Expr.call xfn xs) env.request env.entities = Except.ok v) :
   Value.WellFormed env.entities v
 := by
-  simp only [evaluate] at hok
+  rw [evaluate.eq_def] at hok
   simp_do_let (List.mapM₁ xs fun x => evaluate x.val env.request env.entities) at hok
   simp only [call] at hok
   split at hok <;> (try simp only [Except.ok.injEq, reduceCtorEq] at hok)
@@ -1084,7 +1088,7 @@ private theorem evaluate_set_wf {env : Env} {v : Value} {xs : List Expr}
   (ih : ∀ (x : Expr), x ∈ xs → Cedar.Thm.EvaluateWF x) :
   Value.WellFormed env.entities v
 := by
-  simp only [evaluate] at hok
+  rw [evaluate.eq_def] at hok
   simp_do_let (List.mapM₁ xs fun x => evaluate x.val env.request env.entities) at hok
   rename_i vs hvs
   simp only [Except.ok.injEq] at hok
@@ -1102,7 +1106,7 @@ private theorem evaluate_record_wf {env : Env} {v : Value} {axs : List (Attr × 
   (ih : ∀ (a : Attr) (x : Expr), (a, x) ∈ axs → Cedar.Thm.EvaluateWF x) :
   Value.WellFormed env.entities v
 := by
-  simp only [evaluate] at hok
+  rw [evaluate.eq_def] at hok
   simp_do_let ( List.mapM₂ axs fun x => bindAttr x.1.fst (evaluate x.1.snd env.request env.entities)) at hok
   rename_i vs hvs
   simp only [Except.ok.injEq] at hok
@@ -1112,13 +1116,11 @@ private theorem evaluate_record_wf {env : Env} {v : Value} {axs : List (Attr × 
   apply Value.WellFormed.record_wf _ (Map.make_wf vs)
   intro a v hv
   replace hv := Map.find?_mem_toList hv
-  simp only [Map.make] at hv
-  have hv' := List.canonicalize_subseteq Prod.fst vs
-  rw [List.subset_def] at hv'
-  replace hv' := hv' hv
-  replace ⟨x, hx, hvs⟩ := List.mapM'_ok_implies_all_from_ok hvs (a, v) hv'
+  replace hv := Map.make_mem_list_mem hv
+  replace ⟨x, hx, hvs⟩ := List.mapM'_ok_implies_all_from_ok hvs (a, v) hv
   simp [bindAttr] at hvs
-  simp_do_let (evaluate x.snd env.request env.entities) at hvs <;> simp at hvs
+  simp_do_let (evaluate x.snd env.request env.entities) at hvs
+    <;> simp [Functor.map, Except.map] at hvs
   rename_i v' hok
   replace ⟨hvs, hvs'⟩ := hvs
   subst hvs'
@@ -1126,7 +1128,7 @@ private theorem evaluate_record_wf {env : Env} {v : Value} {axs : List (Attr × 
   replace hx' : (a, x.snd) ∈ axs := by rw [hx'] ; exact hx
   exact ih a x.snd hx' (wf_env_for_record_implies hwf x hx) hok
 
-theorem evaluate_wf {x : Expr} {env : Env} {v : Value} :
+public theorem evaluate_wf {x : Expr} {env : Env} {v : Value} :
   env.WellFormedFor x →
   evaluate x env.request env.entities = .ok v →
   v.WellFormed env.entities
@@ -1156,7 +1158,7 @@ theorem evaluate_wf {x : Expr} {env : Env} {v : Value} :
   | .call _ _         => exact evaluate_call_wf hok
 termination_by sizeOf x
 
-theorem wf_value_uid_implies_exists_entity_data {es : Entities} {uid : EntityUID}
+public theorem wf_value_uid_implies_exists_entity_data {es : Entities} {uid : EntityUID}
   (hwf : Value.WellFormed es (Value.prim (Prim.entityUID uid))) :
   ∃ d, es.find? uid = some d
 := by

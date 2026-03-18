@@ -82,14 +82,16 @@ def reducibleEq (ty₁ ty₂ : TermType) : Result Bool :=
   else .error .typeError
 
 def compileInₑ (t₁ t₂ : Term) (ancs? : Option UnaryFunction) : Term :=
-  let isEq := if t₁.typeOf = t₂.typeOf then eq t₁ t₂ else false
-  let isIn := if let some ancs := ancs? then set.member t₂ (app ancs t₁) else false
   or isEq isIn
+  where
+    isEq := if t₁.typeOf = t₂.typeOf then eq t₁ t₂ else false
+    isIn := if let some ancs := ancs? then set.member t₂ (app ancs t₁) else false
 
 def compileInₛ (t ts : Term) (ancs? : Option UnaryFunction) : Term :=
-  let isIn₁ := if ts.typeOf = .set t.typeOf then set.member t ts else false
-  let isIn₂ := if let some ancs := ancs? then set.intersects ts (app ancs t) else false
   or isIn₁ isIn₂
+  where
+    isIn₁ := if ts.typeOf = .set t.typeOf then set.member t ts else false
+    isIn₂ := if let some ancs := ancs? then set.intersects ts (app ancs t) else false
 
 def compileHasTag (entity tag : Term) : Option (Option SymTags) → Result Term
   | .none            => .error .noSuchEntityType

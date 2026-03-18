@@ -32,6 +32,7 @@ public def MAX : Int :=  9223372036854775807
 
 ----- Definitions -----
 
+@[expose]
 public def ofIntChecked (i : Int) (_ : MIN ≤ i ∧ i ≤ MAX) : Int64 :=
   Int64.ofInt i
 
@@ -41,20 +42,15 @@ public def ofInt? (i : Int) : Option Int64 :=
   else .none
 
 /-- We don't @[expose] the definition of `ofInt?`; but callers can use this
-theorem, which partially specifies its behavior -/
+theorem, which specifies its behavior -/
 public theorem ofInt?_some_iff {i : Int} :
-  MIN ≤ i ∧ i ≤ MAX ↔ (ofInt? i).isSome
-:= by simp [ofInt?]
+  MIN ≤ i ∧ i ≤ MAX ↔ (ofInt? i) = some (Int64.ofInt i)
+:= by simp [ofInt?, ofIntChecked]
 
-/-- Corollary of the above -/
+/-- Inverse of the above -/
 public theorem ofInt?_none_iff {i : Int} :
   i < MIN ∨ i > MAX ↔ (ofInt? i) = none
-:= by
-  have h := ofInt?_some_iff (i := i)
-  simp_all only [Option.isSome, gt_iff_lt]
-  split at h
-  · simp_all
-  · by_cases i < MIN <;> simp_all
+:= by grind [ofInt?, ofIntChecked]
 
 public def add? (i₁ i₂ : Int64) : Option Int64 := ofInt? (i₁.toInt + i₂.toInt)
 

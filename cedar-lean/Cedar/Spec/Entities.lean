@@ -37,28 +37,34 @@ public structure EntityData where
 
 public abbrev Entities := Map EntityUID EntityData
 
+@[expose]
 public def Entities.ancestors (es : Entities) (uid : EntityUID) : Result (Set EntityUID) := do
   let d ← es.findOrErr uid .entityDoesNotExist
   .ok d.ancestors
 
+@[expose]
 public def Entities.ancestorsOrEmpty (es : Entities) (uid : EntityUID) : Set EntityUID :=
   match es.find? uid with
   | some d => d.ancestors
   | none   => Set.empty
 
+@[expose]
 public def Entities.attrs (es : Entities) (uid : EntityUID) : Result (Map Attr Value) := do
   let d ← es.findOrErr uid .entityDoesNotExist
   .ok d.attrs
 
+@[expose]
 public def Entities.attrsOrEmpty (es : Entities) (uid : EntityUID) : Map Attr Value :=
   match es.find? uid with
   | some d => d.attrs
   | none   => Map.empty
 
+@[expose]
 public def Entities.tags (es : Entities) (uid : EntityUID) : Result (Map Tag Value) := do
   let d ← es.findOrErr uid .entityDoesNotExist
   .ok d.tags
 
+@[expose]
 public def Entities.tagsOrEmpty (es : Entities) (uid : EntityUID) : Map Tag Value :=
   match es.find? uid with
   | some d => d.tags

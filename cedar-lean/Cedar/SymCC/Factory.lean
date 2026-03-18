@@ -47,8 +47,10 @@ namespace Factory
 
 ---------- Term constructors ----------
 
+@[inline, expose]
 public def noneOf (ty : TermType) : Term := .none ty
 
+@[inline, expose]
 public def someOf (t : Term) : Term := .some t
 prefix:0 "⊙" => someOf
 

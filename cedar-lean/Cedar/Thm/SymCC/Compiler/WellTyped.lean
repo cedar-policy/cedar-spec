@@ -1,3 +1,4 @@
+import Cedar.SymCC.Compiler -- proving things about internals of SymCC.Compiler
 import Cedar.Thm.Data.Map
 import Cedar.Thm.WellTyped.Expr.Definition
 import Cedar.Thm.WellTyped.Residual.Definition
