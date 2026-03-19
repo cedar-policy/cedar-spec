@@ -1,6 +1,13 @@
 # Don't check in the local metadata file.
 .DS_Store
+
+# Don't check in ide settings by accident
 .idea
+.kiro
+.claude
+# VSCode settings -- although we have some checked in, we don't want local
+# settings to appear as unstaged changes by default
+.vscode
 
 # Don't check in the Emacs temp files
 *~
@@ -17,9 +24,7 @@
 cedar-drt/fuzz/corpus
 cedar-drt/fuzz/artifacts
 
-# VSCode settings -- although we have some checked in, we don't want local
-# settings to appear as unstaged changes by default
-.vscode
+
 
 # We expect a copy of `cedar-policy/cedar` present in this directory, but do
 # not track it in version control.

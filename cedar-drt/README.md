@@ -31,6 +31,8 @@ The table below lists all available fuzz targets, including which component of t
 | [`convert-policy-json-to-cedar`](fuzz/fuzz_targets/convert-policy-json-to-cedar.rs) | Parser, JSON Parser | PBT | Test we can convert all EST to an equivalent policy in the human-readable cedar syntax. deserialize == parse-ast ∘ pretty-print ∘ deserialize
 | [`roundtrip-entities`](fuzz/fuzz_targets/roundtrip-entities.rs) | Entity parser | PBT | Test round trip property for entity data. parse-entity-json ∘ serialize-entity == id for entities |
 | [`roundtrip-entities-bytes`](fuzz/fuzz_targets/roundtrip-entities.rs) | Entity parser | PBT | Test the same round trip property for entity data, starting from an arbitrary string instead of generating the entities data structure |
+| [`pst-roundtrip`](fuzz/fuzz_targets/pst-roundtrip.rs) | PST ↔ AST conversion | PBT | Test idempotency: AST → PST → AST → PST stabilizes after one normalization pass |
+| [`pst-est-roundtrip`](fuzz/fuzz_targets/pst-est-roundtrip.rs) | PST ↔ EST conversion | PBT | Test round trip property: PST → EST → PST == id for templates |
 |  |  |  |  |
 | [`simple-parser`](fuzz/fuzz_targets/simple-parser.rs) |  Parser | PBT | Test that parsing doesn't crash with random input strings |
 | [`validation-pbt`](fuzz/fuzz_targets/validation-pbt.rs) | Validator | PBT | Test that validated policies do not result in type errors |

@@ -425,3 +425,15 @@ path = "fuzz_targets/symcc-check-disjoint-ok.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "pst-est-roundtrip"
+path = "fuzz_targets/pst-est-roundtrip.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "pst-roundtrip"
+path = "fuzz_targets/pst-roundtrip.rs"
+test = false
+doc = false

@@ -40,6 +40,9 @@ pub mod hierarchy;
 /// structures
 pub mod policy;
 
+/// This module contains generators for PST (Public Syntax Tree) types
+pub mod pst;
+
 /// This module contains code for generating RBAC policies, hierarchies, and
 /// requests -- that is, without attributes
 pub mod rbac;
