@@ -17,7 +17,7 @@
 #![no_main]
 
 use cedar_drt::logger::initialize_log;
-use cedar_drt_inner::fuzz_target;
+use cedar_drt_inner::{fuzz_target, pst_equiv};
 
 use cedar_policy_core::est;
 use cedar_policy_core::pst;
@@ -74,43 +74,6 @@ fn round_trip_pst_est(template: &pst::Template) -> pst::Template {
     roundtripped
 }
 
-/// Compare two PST templates for equivalence, ignoring policy IDs
-/// (EST → PST always assigns id "policy").
-fn check_pst_equivalence(original: &pst::Template, roundtripped: &pst::Template) {
-    assert_eq!(
-        original.effect, roundtripped.effect,
-        "Effect mismatch.\nOriginal: {:?}\nRoundtripped: {:?}",
-        original, roundtripped
-    );
-    assert_eq!(
-        original.principal, roundtripped.principal,
-        "Principal constraint mismatch.\nOriginal: {:?}\nRoundtripped: {:?}",
-        original, roundtripped
-    );
-    assert_eq!(
-        original.action, roundtripped.action,
-        "Action constraint mismatch.\nOriginal: {:?}\nRoundtripped: {:?}",
-        original, roundtripped
-    );
-    assert_eq!(
-        original.resource, roundtripped.resource,
-        "Resource constraint mismatch.\nOriginal: {:?}\nRoundtripped: {:?}",
-        original, roundtripped
-    );
-    assert_eq!(
-        original.clauses(),
-        roundtripped.clauses(),
-        "Clauses mismatch.\nOriginal: {:?}\nRoundtripped: {:?}",
-        original,
-        roundtripped
-    );
-    assert_eq!(
-        original.annotations, roundtripped.annotations,
-        "Annotations mismatch.\nOriginal: {:?}\nRoundtripped: {:?}",
-        original, roundtripped
-    );
-}
-
 fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
     let template = input.template;
@@ -118,5 +81,10 @@ fuzz_target!(|input: FuzzTargetInput| {
     debug!("Running PST→EST→PST roundtrip on: {:?}", template);
 
     let roundtripped = round_trip_pst_est(&template);
-    check_pst_equivalence(&template, &roundtripped);
+    // Check PST equivalence, not including IDs because they get lost in the EST
+    pst_equiv::check_template_equivalence(
+        &template,
+        &roundtripped,
+        pst_equiv::CheckingParams { check_ids: false },
+    );
 });

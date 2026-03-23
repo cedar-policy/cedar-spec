@@ -17,7 +17,7 @@
 #![no_main]
 
 use cedar_drt::logger::initialize_log;
-use cedar_drt_inner::fuzz_target;
+use cedar_drt_inner::{fuzz_target, pst_equiv};
 
 use cedar_policy_core::ast::{self, StaticPolicy, Template};
 use cedar_policy_core::pst;
@@ -60,38 +60,6 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
     }
 }
 
-/// Compare two PST templates for equivalence, ignoring policy IDs.
-fn check_pst_equivalence(original: &pst::Template, roundtripped: &pst::Template) {
-    assert_eq!(
-        original.effect, roundtripped.effect,
-        "Effect mismatch.\nOriginal: {:?}\nRoundtripped: {:?}",
-        original, roundtripped
-    );
-    assert_eq!(
-        original.principal, roundtripped.principal,
-        "Principal constraint mismatch.\nOriginal: {:?}\nRoundtripped: {:?}",
-        original, roundtripped
-    );
-    assert_eq!(
-        original.action, roundtripped.action,
-        "Action constraint mismatch.\nOriginal: {:?}\nRoundtripped: {:?}",
-        original, roundtripped
-    );
-    assert_eq!(
-        original.resource, roundtripped.resource,
-        "Resource constraint mismatch.\nOriginal: {:?}\nRoundtripped: {:?}",
-        original, roundtripped
-    );
-    assert_eq!(
-        original.clauses(),
-        roundtripped.clauses(),
-        "Clauses mismatch.\nOriginal: {:?}\nRoundtripped: {:?}",
-        original,
-        roundtripped
-    );
-    // Ignore annotations: AST→PST→AST→PST may reorder or normalize annotation keys
-}
-
 // AST → PST → AST → PST roundtrip, comparing at the PST level.
 // PST → AST is lossy (desugars >=, >, !=), so we go through AST twice
 // and compare the two PST representations which should be stable.
@@ -105,29 +73,28 @@ fuzz_target!(|input: FuzzTargetInput| {
     // AST → PST (first conversion)
     let pst1: pst::Template = match ast_template.as_ref().clone().try_into() {
         Ok(t) => t,
-        Err(_) => return, // skip if conversion fails
+        Err(e) => panic!("AST → PST #1 failed: {:?}", e),
     };
-
+    assert_eq!(
+        ast_template.id().clone().into_smolstr(),
+        pst1.id.0,
+        "AST -> PST ids"
+    );
     // PST → AST → PST (roundtrip through AST)
     let ast2: ast::Template = match pst1.clone().try_into() {
         Ok(t) => t,
-        Err(e) => panic!("PST → AST failed: {:?}\nPST: {:?}", e, pst1),
+        Err(e) => panic!("PST → AST #1 failed: {:?}\nPST: {:?}", e, pst1),
     };
+    assert_eq!(ast_template.id(), ast2.id(), "IDs");
     let pst2: pst::Template = match ast2.try_into() {
         Ok(t) => t,
         Err(e) => panic!("AST → PST (second) failed: {:?}\nPST1: {:?}", e, pst1),
     };
 
-    // The second PST should be stable: PST → AST → PST → AST → PST should equal PST → AST → PST
-    let ast3: ast::Template = match pst2.clone().try_into() {
-        Ok(t) => t,
-        Err(e) => panic!("PST → AST (second) failed: {:?}\nPST2: {:?}", e, pst2),
-    };
-    let pst3: pst::Template = match ast3.try_into() {
-        Ok(t) => t,
-        Err(e) => panic!("AST → PST (third) failed: {:?}\nPST2: {:?}", e, pst2),
-    };
-
-    // pst2 and pst3 should be identical (the roundtrip is idempotent after first normalization)
-    check_pst_equivalence(&pst2, &pst3);
+    // pst1 and pst2
+    pst_equiv::check_template_equivalence(
+        &pst1,
+        &pst2,
+        pst_equiv::CheckingParams { check_ids: true },
+    );
 });
