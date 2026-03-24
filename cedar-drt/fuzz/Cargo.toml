@@ -433,7 +433,7 @@ test = false
 doc = false
 
 [[bin]]
-name = "pst-roundtrip"
-path = "fuzz_targets/pst-roundtrip.rs"
+name = "pst-ast-roundtrip"
+path = "fuzz_targets/pst-ast-roundtrip.rs"
 test = false
 doc = false
