@@ -18,6 +18,7 @@ import Cedar.Thm.Data.Control
 import Cedar.Thm.SymCC.Compiler.Args
 import Cedar.Thm.SymCC.Compiler.Invert
 import Cedar.Thm.SymCC.Compiler.WF
+import Cedar.Thm.SymCC.Data.Ext
 
 /-!
 This file proves the compilation lemmas for `.call` expressions.
@@ -219,37 +220,17 @@ private theorem pe_datetime_durationSince {dt₁ dt₂ : Ext.Datetime}:
     simp only [Int64.toInt] at hbmod
     rw [hbmod]
 
-private theorem pe_datetime_toDate_sDiv_ms_sub_1 (dt : Ext.Datetime) :
-  (dt.val.toUInt64.toBitVec.sdiv 86400000#64).toInt - Int.ofNat 1 =
-  ((dt.val.toUInt64.toBitVec.sdiv 86400000#64).sub 1#64).toInt
-:= by
-  simp only [Int.ofNat_eq_natCast, BitVec.sub_eq, BitVec.toInt_sub,
-    BitVec.reduceToInt, Nat.reducePow]
-  symm
-  apply @Int.bmod_bounded_eq_self 63
-  case hlow =>
-    generalize dt.val.toUInt64.toBitVec = bv at *
-    apply Int.le_sub_one_of_lt
-    apply @BitVec.sdiv_pos_gt_INT64_MIN
-    simp only [BitVec.reduceToInt, Int.reduceLT]
-  case hhigh =>
-    generalize dt.val.toUInt64.toBitVec = bv at *
-    apply @Int.le_trans _ (bv.sdiv 86400000#64).toInt
-    case h₁ => bv_omega
-    case h₂ =>
-      apply Int.le_of_lt
-      apply BitVec.sdiv_pos_lt_INT64_MAX
-      simp only [BitVec.reduceToInt, Int.reduceLT]
-
 private theorem pe_datetime_toDate {dt : Ext.Datetime}:
   Datetime.toDate (.prim (.ext (Ext.datetime dt))) =
   match dt.toDate with
   | none => .none (.prim (.ext .datetime))
   | some dt' => .some (.prim (.ext (Ext.datetime dt')))
 := by
+  -- Rewrite the spec's toDate to the smod-based formulation
+  rw [toDate_eq_smod]
   simp only [Datetime.toDate, pe_ext_datetime_val, Int64.toBitVec_ofNat, BitVec.ofNat_eq_ofNat,
     pe_bvsmod, pe_bvssubo, Int64.toInt_toBitVec, pe_bvsub, BitVec.sub_eq, pe_ext_datetime_ofBitVec,
-    Int64.ofInt, BitVec.toInt_sub, Nat.reducePow, Ext.Datetime.toDate, Ext.Datetime.datetime?,
+    Int64.ofInt, BitVec.toInt_sub, Nat.reducePow, Ext.Datetime.datetime?,
     Int64.ofIntChecked, Ext.Datetime.MILLISECONDS_PER_DAY, BitVec.ofInt_ofNat,
     UInt64.ofBitVec_ofNat, Option.pure_def, Option.bind_eq_bind]
   split <;> rename_i h₁

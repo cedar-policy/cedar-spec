@@ -87,6 +87,29 @@ public theorem smod_result_nonneg {a b : Int64} :
   simp only [GT.gt, Int64.lt_iff_toInt_lt] at hb
   exact ⟨Int.fmod_nonneg_of_pos a.toInt hb, Int.fmod_lt_of_pos a.toInt hb⟩
 
+public theorem toInt_smod (a b : Int64) : (smod a b).toInt = a.toInt.fmod b.toInt := by
+  simp only [Int64.smod, Int64.toInt_ofBitVec, BitVec.toInt_smod, Int64.toInt_toBitVec]
+
+public theorem ofInt?_toInt (v : Int64) : ofInt? v.toInt = some v := by
+  simp only [ofInt?]
+  have hv_lo : MIN ≤ v.toInt := by
+    simp only [MIN]; rw [← toInt_toBitVec]; exact @BitVec.le_toInt 64 v.toBitVec
+  have hv_hi : v.toInt ≤ MAX := by
+    simp only [MAX]; rw [← toInt_toBitVec]
+    have := @BitVec.toInt_lt 64 v.toBitVec; omega
+  simp only [hv_lo, hv_hi, and_self, ↓reduceDIte, ofIntChecked, Int64.ofInt]
+  exact congrArg some (ofInt_toInt v)
+
+public theorem toInt_nonneg_of_ge_zero {v : Int64} (h : v ≥ 0) : v.toInt ≥ 0 := by
+  simp only [GE.ge, LE.le, Int64.le, BitVec.sle, decide_eq_true_eq, toInt_toBitVec] at h
+  rwa [show (0 : Int64).toInt = 0 from by native_decide] at h
+
+public theorem toInt_neg_of_not_ge_zero {v : Int64} (h : ¬(v ≥ 0)) : v.toInt < 0 := by
+  simp only [GE.ge, LE.le, Int64.le, Bool.not_eq_true] at h
+  simp only [BitVec.sle, decide_eq_false_iff_not, toInt_toBitVec] at h
+  have := show (0 : Int64).toInt = 0 from by native_decide
+  omega
+
 ----- Derivations -----
 
 theorem ext_iff {i₁ i₂ : Int64} : i₁ = i₂ ↔ i₁.toInt = i₂.toInt := by
