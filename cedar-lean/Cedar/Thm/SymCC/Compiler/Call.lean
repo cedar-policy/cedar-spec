@@ -19,6 +19,8 @@ import Cedar.Thm.SymCC.Compiler.Args
 import Cedar.Thm.SymCC.Compiler.Invert
 import Cedar.Thm.SymCC.Compiler.WF
 import Cedar.Thm.SymCC.Data.Ext
+import Cedar.Thm.SymCC.Term.Interpret
+import Cedar.Thm.SymCC.Term.PE
 
 /-!
 This file proves the compilation lemmas for `.call` expressions.

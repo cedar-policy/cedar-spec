@@ -14,11 +14,16 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
-import Cedar.SymCC
+module
+
+import Cedar.Data.SizeOf
+public import Cedar.SymCC.Term
 import Cedar.Thm.Data
 import Cedar.Thm.SymCC.Data
+public import Cedar.Thm.SymCC.Data.Basic
+import all Cedar.Thm.SymCC.Data.Basic -- in this file, we prove things about `Same` which is defined in Data.Basic. Other files should not rely on the definition of `Same` and rather rely on lemmas about `Same` in this file.
 import Cedar.Thm.SymCC.Tactics
+import Cedar.Thm.SymCC.Term.Lit
 import Cedar.Thm.SymCC.Term.PE
 import Cedar.Thm.SymCC.Term.TypeOf
 
@@ -32,7 +37,7 @@ namespace Cedar.Thm
 
 open Batteries Data Spec SymCC Factory
 
-theorem same_results_implies_exists_outcome {res : Spec.Result Value} {t : Term} :
+public theorem same_results_implies_exists_outcome {res : Spec.Result Value} {t : Term} :
   res ∼ t → ∃ (o : Outcome Value), res ∼ o ∧ o ∼ t
 := by
   simp [Same.same, SameResults, Spec.SameOutcomes, SymCC.SameOutcomes]
@@ -41,7 +46,7 @@ theorem same_results_implies_exists_outcome {res : Spec.Result Value} {t : Term}
   case none.error => exists (.error ())
   case some.ok v  => exists (.ok v)
 
-theorem same_outcomes_implies_eq {o₁ o₂ : Outcome Value} {t : Term} :
+public theorem same_outcomes_implies_eq {o₁ o₂ : Outcome Value} {t : Term} :
   o₁ ∼ t → o₂ ∼ t → o₁ = o₂
 := by
   intros h₁ h₂
@@ -58,7 +63,7 @@ theorem same_outcomes_implies_eq {o₁ o₂ : Outcome Value} {t : Term} :
     simp only [h₁, Option.some.injEq] at h₂
     simp only [h₂]
 
-theorem same_error_implies {e : Spec.Error} {t : Term} :
+public theorem same_error_implies {e : Spec.Error} {t : Term} :
   (Except.error e : Spec.Result Value) ∼ t →
   (¬ e = .entityDoesNotExist) ∧
   (∃ ty, t = Term.none ty)
@@ -71,7 +76,7 @@ theorem same_error_implies {e : Spec.Error} {t : Term} :
   subst heq
   simp only [h₁, not_false_eq_true, Term.none.injEq, exists_eq', and_self]
 
-theorem same_error_implies_ifSome_error {e : Spec.Error} {t₁ t₂ : Term} {ty₂ : TermType} :
+public theorem same_error_implies_ifSome_error {e : Spec.Error} {t₁ t₂ : Term} {ty₂ : TermType} :
   (Except.error e : Spec.Result Value) ∼ t₁ →
   t₂.typeOf = .option ty₂ →
   (Except.error e : Spec.Result Value) ∼ ifSome t₁ t₂
@@ -83,7 +88,7 @@ theorem same_error_implies_ifSome_error {e : Spec.Error} {t₁ t₂ : Term} {ty�
   simp only [Same.same, SameResults, ne_eq] at *
   exact he
 
-theorem same_error_implies_ifAllSome_error {e : Spec.Error} {ts : List Term} {t₁ t₂ : Term} {ty₂ : TermType} :
+public theorem same_error_implies_ifAllSome_error {e : Spec.Error} {ts : List Term} {t₁ t₂ : Term} {ty₂ : TermType} :
   (Except.error e : Spec.Result Value) ∼ t₁ →
   t₁ ∈ ts →
   t₂.typeOf = .option ty₂ →
@@ -95,13 +100,13 @@ theorem same_error_implies_ifAllSome_error {e : Spec.Error} {ts : List Term} {t�
   rw [pe_ifAllSome_none ht hty]
   simp only [Same.same, SameResults, hne, ne_eq, not_false_eq_true]
 
-theorem same_error_implied_by {e : Spec.Error} {ty : TermType} :
+public theorem same_error_implied_by {e : Spec.Error} {ty : TermType} :
   ¬e = Error.entityDoesNotExist →
   (Except.error e : Spec.Result Value) ∼ Term.none ty
 := by
   intro h₁ ; simp [Same.same, SameResults, h₁]
 
-theorem same_ok_implies {v : Value} {t : Term} :
+public theorem same_ok_implies {v : Value} {t : Term} :
   (Except.ok v : Spec.Result Value) ∼ t →
   ∃ t', t = .some t' ∧ v ∼ t'
 := by
@@ -113,7 +118,7 @@ theorem same_ok_implies {v : Value} {t : Term} :
   subst heq
   exists t'
 
-theorem same_ok_some_implies {v : Value} {t : Term} :
+public theorem same_ok_some_implies {v : Value} {t : Term} :
   (Except.ok v : Spec.Result Value) ∼ (Term.some t) → v ∼ t
 := by
   intro h
@@ -122,7 +127,7 @@ theorem same_ok_some_implies {v : Value} {t : Term} :
   subst heq
   exact h
 
-theorem same_ok_some_iff {v : Value} {t : Term} :
+public theorem same_ok_some_iff {v : Value} {t : Term} :
   (Except.ok v : Spec.Result Value) ∼ (Term.some t) ↔ v ∼ t
 := by
   constructor
@@ -131,7 +136,7 @@ theorem same_ok_some_iff {v : Value} {t : Term} :
     simp only [Same.same, SameResults]
     exact h
 
-theorem same_some_implies_ok {r : Spec.Result Value} {t : Term} :
+public theorem same_some_implies_ok {r : Spec.Result Value} {t : Term} :
   r ∼ (Term.some t) →
   ∃ v, r = .ok v ∧ v ∼ t
 := by
@@ -143,21 +148,21 @@ theorem same_some_implies_ok {r : Spec.Result Value} {t : Term} :
   subst heq
   exists v
 
-theorem same_values_def {v : Value} {t : Term} :
+public theorem same_values_def {v : Value} {t : Term} :
   v ∼ t ↔ t.value? = .some v
 := by simp only [Same.same, SameValues]
 
-theorem same_value_implies_same {v : Value} {t : Term} :
+public theorem same_value_implies_same {v : Value} {t : Term} :
   SameValues v t → v ∼ t
 := by
   intro h₁
   simp only [Same.same, h₁]
 
-theorem same_implies_same_value {v : Value} {t : Term} :
+public theorem same_implies_same_value {v : Value} {t : Term} :
   v ∼ t → SameValues v t
 := by simp only [Same.same, imp_self]
 
-theorem same_value_implies_lit {v : Value} {t : Term} :
+public theorem same_value_implies_lit {v : Value} {t : Term} :
   v ∼ t → t.isLiteral
 := by
   intro h₁
@@ -170,7 +175,7 @@ theorem same_value_implies_lit {v : Value} {t : Term} :
   | .prim p    => simp
   | .set s _   =>
     unfold Term.isLiteral
-    simp only [Set.all₁_eq_all, Set.all, List.all_eq_true]
+    simp only [Set.all₁_eq_all, Set.all_eq_true]
     intro x h₂
     unfold Term.value? at h₁
     simp only [List.mapM₁_eq_mapM Term.value?, Option.bind_eq_bind, Option.bind_eq_some_iff,
@@ -203,7 +208,7 @@ theorem same_value_implies_lit {v : Value} {t : Term} :
 termination_by sizeOf t
 decreasing_by all_goals (simp_wf ; try (simp [Map.mk_toList_id] at *) ; omega)
 
-theorem same_ok_value_implies_lit {v : Value} {t : Term} :
+public theorem same_ok_value_implies_lit {v : Value} {t : Term} :
   (Except.ok v : Spec.Result Value) ∼ t → t.isLiteral
 := by
   intro h₁
@@ -214,7 +219,7 @@ theorem same_ok_value_implies_lit {v : Value} {t : Term} :
   simp only [Term.isLiteral]
   exact same_value_implies_lit (same_value_implies_same h₁)
 
-theorem same_bool_term_implies {v : Value} {b : Bool} :
+public theorem same_bool_term_implies {v : Value} {b : Bool} :
   v ∼ (Term.prim (TermPrim.bool b)) →
   v = .prim (.bool b)
 := by
@@ -222,7 +227,7 @@ theorem same_bool_term_implies {v : Value} {b : Bool} :
   simp only [Same.same, SameValues, Term.value?, TermPrim.value?, Option.some.injEq] at h₁
   simp [h₁]
 
-theorem same_ok_bool_term_implies {v : Value} {b : Bool} :
+public theorem same_ok_bool_term_implies {v : Value} {b : Bool} :
   (Except.ok v : Spec.Result Value) ∼ (Term.some (Term.prim (TermPrim.bool b))) →
   v = .prim (.bool b)
 := by
@@ -247,12 +252,12 @@ local macro "simp_same_prim_implies" prim_injEq:ident : tactic => do
     }
   ))
 
-theorem same_bool_implies {b : Bool} {t : Term} :
+public theorem same_bool_implies {b : Bool} {t : Term} :
   Value.prim (Prim.bool b) ∼ t →
   t = .prim (.bool b)
 := by simp_same_prim_implies Prim.bool.injEq
 
-theorem same_ok_bool_implies {b : Bool} {t : Term} :
+public theorem same_ok_bool_implies {b : Bool} {t : Term} :
   (Except.ok (Value.prim (Prim.bool b)) : Spec.Result Value) ∼ t →
   t = .some (.prim (.bool b))
 := by
@@ -262,17 +267,17 @@ theorem same_ok_bool_implies {b : Bool} {t : Term} :
   rename_i heq ; subst heq
   exact same_bool_implies h₁
 
-theorem same_bool {b : Bool} :
+public theorem same_bool {b : Bool} :
   Value.prim (Prim.bool b) ∼ Term.prim (TermPrim.bool b)
 := by
   simp only [Same.same, SameValues, Term.value?, TermPrim.value?]
 
-theorem same_ok_bool {b : Bool} :
+public theorem same_ok_bool {b : Bool} :
   (Except.ok (Value.prim (Prim.bool b)) : Spec.Result Value) ∼ Term.some (Term.prim (TermPrim.bool b))
 := by
   simp only [Same.same, SameResults, SameValues, Term.value?, TermPrim.value?]
 
-theorem same_ok_bool_iff {b₁ b₂ : Bool} :
+public theorem same_ok_bool_iff {b₁ b₂ : Bool} :
   b₁ = b₂ ↔
   (Except.ok (Value.prim (Prim.bool b₁)) : Spec.Result Value) ∼ Term.some (Term.prim (TermPrim.bool b₂))
 := by
@@ -285,7 +290,7 @@ theorem same_ok_bool_iff {b₁ b₂ : Bool} :
       Value.prim.injEq, Prim.bool.injEq] at h
     simp only [h]
 
-theorem same_set_term_implies {v : Value} {ts : Set Term} {ty : TermType} :
+public theorem same_set_term_implies {v : Value} {ts : Set Term} {ty : TermType} :
   v ∼ (Term.set ts ty) →
   ∃ vs, v = .set vs ∧ (Term.set ts ty).value? = vs
 := by
@@ -299,7 +304,7 @@ theorem same_set_term_implies {v : Value} {ts : Set Term} {ty : TermType} :
   unfold Term.value?
   simp only [h₁, Option.bind_some_fun]
 
-theorem same_set_implies {vs : Set Value} {t : Term} {ty : TermType} :
+public theorem same_set_implies {vs : Set Value} {t : Term} {ty : TermType} :
   (Value.set vs) ∼ t → t.typeOf = .set ty →
   ∃ ts, t = .set ts ty ∧ (Term.set ts ty).value? = vs
 := by
@@ -324,7 +329,7 @@ theorem same_set_implies {vs : Set Value} {t : Term} {ty : TermType} :
   case h_4 =>
     simp only [reduceCtorEq] at h₁
 
-theorem same_record_term_implies {v : Value} {rt : Map Attr Term} :
+public theorem same_record_term_implies {v : Value} {rt : Map Attr Term} :
   SameValues v (Term.record rt) →
   ∃ rv, v = .record rv ∧ (Term.record rt).value? = rv
 := by
@@ -337,7 +342,7 @@ theorem same_record_term_implies {v : Value} {rt : Map Attr Term} :
   exists (Map.mk (List.filterMap (fun x => Option.map (Prod.mk x.fst) x.snd) avs))
   simp only [h₁, h₂, and_self]
 
-theorem same_record_implies {avs : Map Attr Value} {t : Term} {rty : Map Attr TermType} :
+public theorem same_record_implies {avs : Map Attr Value} {t : Term} {rty : Map Attr TermType} :
   (Value.record avs) ∼ t → t.typeOf = .record rty →
   ∃ ats, t = .record ats ∧ (Term.record ats).value? = Value.record avs
 := by
@@ -358,41 +363,43 @@ theorem same_record_implies {avs : Map Attr Value} {t : Term} {rty : Map Attr Te
     simp only [Term.value?, h₁, true_and, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq,
       Value.record.injEq]
 
-theorem bool_value? {b : Bool} :
+@[simp]
+public theorem value?_bool {b : Bool} :
   (Term.prim (.bool b)).value? = some (Value.prim (.bool b))
 := by simp only [Term.value?, TermPrim.value?]
 
-theorem entity_value? {uid : EntityUID} :
+@[simp]
+public theorem value?_entity {uid : EntityUID} :
   (Term.prim (TermPrim.entity uid)).value? = some (Value.prim (.entityUID uid))
 := by simp only [Term.value?, TermPrim.value?]
 
-theorem same_entity_term_implies {v : Value} {uid : EntityUID} :
+public theorem same_entity_term_implies {v : Value} {uid : EntityUID} :
   v ∼ Term.prim (TermPrim.entity uid) → v = Value.prim (.entityUID uid)
 := by
-  simp only [Same.same, SameValues, entity_value?, Option.some.injEq]
+  simp only [Same.same, SameValues, value?_entity, Option.some.injEq]
   intro h
   simp only [h]
 
-theorem same_entity_implies {uid : EntityUID} {t : Term} :
+public theorem same_entity_implies {uid : EntityUID} {t : Term} :
   Value.prim (Prim.entityUID uid) ∼ t →
   t = .prim (.entity uid)
 := by
   simp_same_prim_implies Prim.entityUID.injEq
 
-theorem same_string_term_implies {v : Value} {s : String} :
+public theorem same_string_term_implies {v : Value} {s : String} :
   v ∼ Term.prim (TermPrim.string s) → v = Value.prim (.string s)
 := by
   simp only [Same.same, SameValues, Term.value?, TermPrim.value?, Option.some.injEq]
   intro h
   simp only [h]
 
-theorem same_string_implies {s : String} {t : Term} :
+public theorem same_string_implies {s : String} {t : Term} :
   Value.prim (Prim.string s) ∼ t →
   t = .prim (.string s)
 := by
   simp_same_prim_implies Prim.string.injEq
 
-theorem same_bitvec_term_implies {v : Value} {n : Nat} {bv : BitVec n} :
+public theorem same_bitvec_term_implies {v : Value} {n : Nat} {bv : BitVec n} :
   v ∼ Term.prim (TermPrim.bitvec bv) →
   ∃ i, v = Value.prim (.int i) ∧ bv.toInt = i ∧ n = 64
 := by
@@ -410,7 +417,7 @@ theorem same_bitvec_term_implies {v : Value} {n : Nat} {bv : BitVec n} :
   congr
   simp only [BitVec.toInt_ofInt64_toBitVec]
 
-theorem same_bitvec64_term_implies {v : Value} {bv : BitVec 64} :
+public theorem same_bitvec64_term_implies {v : Value} {bv : BitVec 64} :
   v ∼ Term.prim (TermPrim.bitvec bv) →
   ∃ i, v = Value.prim (.int i) ∧ bv.toInt = i
 := by
@@ -419,7 +426,7 @@ theorem same_bitvec64_term_implies {v : Value} {bv : BitVec 64} :
   simp only [and_true] at h
   exists i
 
-theorem same_int_implies {t : Term} {bv : BitVec 64} {i : Int64} :
+public theorem same_int_implies {t : Term} {bv : BitVec 64} {i : Int64} :
   BitVec.toInt bv = i.toInt →
   Value.prim (Prim.int i) ∼ t →
   t = Term.prim (TermPrim.bitvec bv)
@@ -445,21 +452,20 @@ theorem same_int_implies {t : Term} {bv : BitVec 64} {i : Int64} :
     simp only [Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq, and_false,
       exists_const, reduceCtorEq] at h₂
 
-theorem same_int {i : Int} {bv : BitVec 64}
+public theorem same_int {i : Int} {bv : BitVec 64}
   (h₁ : Int64.MIN ≤ i ∧ i ≤ Int64.MAX)
   (h₂ : BitVec.toInt bv = i) :
   Value.prim (Prim.int (Int64.ofIntChecked i h₁)) ∼ Term.prim (TermPrim.bitvec bv)
 := by
-  simp only [Same.same, SameValues, Term.value?, TermPrim.value?, BitVec.int64?, Int64.ofIntChecked, ↓reduceIte, h₂,
-    Option.pure_def, Option.bind_some_fun]
+  simp [Same.same, SameValues, Term.value?, TermPrim.value?, BitVec.int64?, h₂, Int64.ofIntChecked]
 
-theorem same_bv {bv : BitVec 64} :
+public theorem same_bv {bv : BitVec 64} :
   Value.prim (Prim.int (Int64.ofInt bv.toInt)) ∼ Term.prim (TermPrim.bitvec bv)
 := by
   simp only [Same.same, SameValues, Term.value?, TermPrim.value?, BitVec.int64?,
     ↓reduceIte, Option.pure_def, Option.bind_some_fun]
 
-theorem same_int64 {i : Int64} :
+public theorem same_int64 {i : Int64} :
   Value.prim (Prim.int i) ∼ Term.prim (TermPrim.bitvec i.toBitVec)
 := by
   simp only [Same.same, SameValues, Term.value?, TermPrim.value?, BitVec.int64?, ↓reduceIte,
@@ -467,25 +473,25 @@ theorem same_int64 {i : Int64} :
   cases i; rename_i i; cases i; rename_i i
   simp only [Int64.toBitVec, Int64.ofInt, BitVec.ofInt_toInt]
 
-theorem same_ext {x : Ext} :
+public theorem same_ext {x : Ext} :
   Value.ext x ∼ Term.prim (TermPrim.ext x)
 := by
   simp only [same_values_def, Term.value?, TermPrim.value?]
 
-theorem same_ext_term_implies {v : Value} {x : Ext} :
+public theorem same_ext_term_implies {v : Value} {x : Ext} :
   v ∼ Term.prim (TermPrim.ext x) → v = Value.ext x
 := by
   simp only [Same.same, SameValues, Term.value?, TermPrim.value?, Option.some.injEq]
   intro h
   simp only [h]
 
-theorem same_ext_implies  {x : Ext} {t : Term} :
+public theorem same_ext_implies  {x : Ext} {t : Term} :
   Value.ext x ∼ t →
   t = .prim (.ext x)
 := by
   simp_same_prim_implies Value.ext.injEq
 
-theorem value?_some_implies_attrValue?_some {a : Attr} {tₐ : Term} {vₐ : Value}
+public theorem value?_some_implies_attrValue?_some {a : Attr} {tₐ : Term} {vₐ : Value}
   (hv : Term.value? tₐ = some vₐ) :
   Term.value?.attrValue? a tₐ = some (a, some vₐ)
 := by
@@ -503,8 +509,7 @@ private theorem value?_attrValue?_some_required {a : Attr} {tₐ : Term} {av : A
 := by
   unfold Term.value?.attrValue? at hv
   split at hv
-  case h_1 | h_2 =>
-    simp only [Term.typeOf, TermType.option.injEq, forall_eq'] at hty
+  case h_1 | h_2 => simp at hty
   case h_3 =>
     simp only [Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at hv
     exact hv
@@ -526,7 +531,7 @@ private theorem value?_attrValue?_none_optional {a : Attr} {ty : TermType} {av :
     Option.some.injEq] at hv
   simp only [Term.value?, hv, and_self]
 
-theorem value?_attrValue?_none_implies_none {a : Attr} {t : Term}
+public theorem value?_attrValue?_none_implies_none {a : Attr} {t : Term}
   (hv : Term.value?.attrValue? a t = some (a, none)) :
   ∃ ty, t = .none ty
 := by
@@ -537,7 +542,7 @@ theorem value?_attrValue?_none_implies_none {a : Attr} {t : Term}
   rename_i ty
   exists ty
 
-theorem value?_attrValue?_some_implies_same {a : Attr} {t : Term} {v : Value} :
+public theorem value?_attrValue?_some_implies_same {a : Attr} {t : Term} {v : Value} :
   Term.value?.attrValue? a t = some (a, some v) →
   match t.typeOf with
   | .option _ => ∃ t', t = .some t' ∧ v ∼ t'
@@ -557,8 +562,8 @@ theorem value?_attrValue?_some_implies_same {a : Attr} {t : Term} {v : Value} :
       unfold Term.value? at hv
       split at hv
       case h_1 p _ _ =>
-        have hp := typeOf_term_prim_isPrimType p
-        simp only [TermType.isPrimType, heq, reduceCtorEq] at hp
+        have ⟨pty, hp⟩ := isPrimType_implies_prim_type (typeOf_term_prim_isPrimType p)
+        simp [heq] at hp
       case h_2 | h_3 =>
         simp at heq
       case h_4 =>
@@ -573,7 +578,7 @@ theorem value?_attrValue?_some_implies_same {a : Attr} {t : Term} {v : Value} :
     case h_3 =>
       exact hv
 
-theorem value?_attrValue?_fst {a : Attr} {t : Term} {av : Attr × Option Value} :
+public theorem value?_attrValue?_fst {a : Attr} {t : Term} {av : Attr × Option Value} :
   Term.value?.attrValue? a t = some av → a = av.fst
 := by
   intro hv
@@ -603,7 +608,7 @@ private theorem filterMap_attrValue?'_wf {rt : Map Attr Term}
     simp only [← hfx'.right, value?_attrValue?_fst hfx]
   exact Map.mk_wf hw
 
-theorem record_value?_mapM' {rt : Map Attr Term} {rv : Map Attr Value}
+public theorem record_value?_mapM' {rt : Map Attr Term} {rv : Map Attr Value}
   (hr : Term.value? (Term.record rt) = some (Value.record rv)) :
   ∃ avs,
     rt.toList.mapM' (fun x => Term.value?.attrValue? x.fst x.snd) = some avs ∧
@@ -616,7 +621,7 @@ theorem record_value?_mapM' {rt : Map Attr Term} {rv : Map Attr Value}
   rw [← List.mapM'_eq_mapM] at hr
   exists avs
 
-theorem record_value_find? {a : Attr} {tₐ : Term} {rt : Map Attr Term} {avs : List (Attr × Option Value)}
+public theorem record_value_find? {a : Attr} {tₐ : Term} {rt : Map Attr Term} {avs : List (Attr × Option Value)}
   (hf : Map.find? rt a = some tₐ)
   (hr : rt.toList.mapM' (λ x => Term.value?.attrValue? x.fst x.snd) = some avs) :
   ∃ av, av ∈ avs ∧ Term.value?.attrValue? a tₐ = some av
@@ -626,7 +631,7 @@ theorem record_value_find? {a : Attr} {tₐ : Term} {rt : Map Attr Term} {avs : 
   simp only at hr'
   exists av
 
-theorem record_value?_find?_required {a : Attr} {tₐ : Term} {rt : Map Attr Term} {rv : Map Attr Value}
+public theorem record_value?_find?_required {a : Attr} {tₐ : Term} {rt : Map Attr Term} {rv : Map Attr Value}
   (hw  : rt.WellFormed)
   (hty : ∀ (ty : TermType), tₐ.typeOf = TermType.option ty → False)
   (hf  : Map.find? rt a = some tₐ)
@@ -658,7 +663,7 @@ theorem record_value?_find?_required {a : Attr} {tₐ : Term} {rt : Map Attr Ter
   replace ⟨a', t', hf', hmem⟩ := hmem
   exists a', t'
 
-theorem record_value?_find?_optional_some {a : Attr} {tₐ : Term} {rt : Map Attr Term} {rv : Map Attr Value}
+public theorem record_value?_find?_optional_some {a : Attr} {tₐ : Term} {rt : Map Attr Term} {rv : Map Attr Value}
   (hw : rt.WellFormed)
   (hf : Map.find? rt a = some (.some tₐ))
   (hr : Term.value? (Term.record rt) = some (Value.record rv)) :
@@ -686,7 +691,7 @@ theorem record_value?_find?_optional_some {a : Attr} {tₐ : Term} {rt : Map Att
   apply Map.mem_toList_find? hw
   simp only [Map.toList_mk_id, hmem]
 
-theorem record_value?_find?_optional_none {a : Attr} {ty : TermType} {rt : Map Attr Term} {rv : Map Attr Value}
+public theorem record_value?_find?_optional_none {a : Attr} {ty : TermType} {rt : Map Attr Term} {rv : Map Attr Value}
   (hw : rt.WellFormed)
   (hf : Map.find? rt a = some (.none ty))
   (hr : Term.value? (Term.record rt) = some (Value.record rv)) :
@@ -722,7 +727,7 @@ theorem record_value?_find?_optional_none {a : Attr} {ty : TermType} {rt : Map A
   simp only [heq, Option.some.injEq] at ha
   simp_all
 
-theorem record_value?_find?_none {a : Attr} {rt : Map Attr Term} {rv : Map Attr Value}
+public theorem record_value?_find?_none {a : Attr} {rt : Map Attr Term} {rv : Map Attr Value}
   (hw : rt.WellFormed)
   (hf : Map.find? rt a = none)
   (hr : Term.value? (Term.record rt) = some (Value.record rv)) :
@@ -751,7 +756,7 @@ theorem record_value?_find?_none {a : Attr} {rt : Map Attr Term} {rv : Map Attr 
   subst a'
   exact List.mem_of_sortedBy_implies_find? hmem' hw
 
-theorem same_prim_value_inj {v : Value} {p : TermPrim} {t : Term} :
+public theorem same_prim_value_inj {v : Value} {p : TermPrim} {t : Term} :
   v ∼ (Term.prim p) → v ∼ t → (Term.prim p) = t
 := by
   intro h₁ h₂
@@ -777,7 +782,7 @@ theorem same_prim_value_inj {v : Value} {p : TermPrim} {t : Term} :
     subst h₁
     simp only [same_ext_implies h₂]
 
-theorem set_value?_implies_in_value {vs : Set Value} {ts : Set Term} {ty : TermType} :
+public theorem set_value?_implies_in_value {vs : Set Value} {ts : Set Term} {ty : TermType} :
   Term.value? (Term.set ts ty) = some (Value.set vs) →
   ∀ t, t ∈ ts → ∃ v, v ∈ vs ∧ t.value? = some v
 := by
@@ -792,7 +797,7 @@ theorem set_value?_implies_in_value {vs : Set Value} {ts : Set Term} {ty : TermT
   exists v
   simp only [Set.mem_make, hv, and_self]
 
-theorem set_value?_implies_in_term {vs : Set Value} {ts : Set Term} {ty : TermType} :
+public theorem set_value?_implies_in_term {vs : Set Value} {ts : Set Term} {ty : TermType} :
   Term.value? (Term.set ts ty) = some (Value.set vs) →
   ∀ v, v ∈ vs → ∃ t, t ∈ ts ∧ t.value? = some v
 := by
@@ -821,7 +826,7 @@ private theorem set_value?_eq_implies_subseteq {vs : Set Value} {ts₁ ts₂ : S
   simp only [Same.same, SameValues, h₁.right, h₂.right, forall_const] at hsm
   simp only [hsm, h₂.left]
 
-theorem record_value?_some_implies {ats : List (Attr × Term)} {avs : List (Attr × Value)} :
+public theorem record_value?_some_implies {ats : List (Attr × Term)} {avs : List (Attr × Value)} :
   (Term.record (Map.mk ats)).value? = some (Value.record (Map.mk avs)) →
   ∃ (avs' : List (Attr × Option Value)),
     List.mapM (λ (x : Attr × Term) => Term.value?.attrValue? x.fst x.snd) ats = some avs' ∧
@@ -835,7 +840,7 @@ theorem record_value?_some_implies {ats : List (Attr × Term)} {avs : List (Attr
   simp only [Map.toList_mk_id] at hv
   exists avs'
 
-theorem record_value?_some_implied_by {ats : List (Attr × Term)} {avs : List (Attr × Value)} {avs' : List (Attr × Option Value)} :
+public theorem record_value?_some_implied_by {ats : List (Attr × Term)} {avs : List (Attr × Value)} {avs' : List (Attr × Option Value)} :
   List.mapM (λ (x : Attr × Term) => Term.value?.attrValue? x.fst x.snd) ats = some avs' →
   List.filterMap (λ (x : Attr × Option Value) => Option.map (Prod.mk x.fst) x.snd) avs' = avs →
   (Term.record (Map.mk ats)).value? = some (Value.record (Map.mk avs))
@@ -843,7 +848,7 @@ theorem record_value?_some_implied_by {ats : List (Attr × Term)} {avs : List (A
   intro h₁ h₂
   simp [Term.value?, List.mapM₂_eq_mapM λ (x : Attr × Term) => Term.value?.attrValue? x.fst x.snd, h₁, h₂]
 
-private theorem record_value?_cons {a : Attr} {t : Term} {ats : List (Attr × Term)} {avs : List (Attr × Value)} :
+public theorem record_value?_cons {a : Attr} {t : Term} {ats : List (Attr × Term)} {avs : List (Attr × Value)} :
   (Term.record (Map.mk ((a, t) :: ats))).value? = some (Value.record (Map.mk avs)) →
   ∃ vₒ, Term.value?.attrValue? a t = .some (a, vₒ) ∧
     match vₒ with
@@ -870,7 +875,7 @@ private theorem record_value?_cons {a : Attr} {t : Term} {ats : List (Attr × Te
     simp only [hnone, Option.map_none] at h
     exact record_value?_some_implied_by hv' h
 
-private theorem record_value?_head_none {a : Attr} {t : Term} {ats : List (Attr × Term)} {avs : List (Attr × Value)} :
+public theorem record_value?_head_none {a : Attr} {t : Term} {ats : List (Attr × Term)} {avs : List (Attr × Value)} :
   ((a, t) :: ats).SortedBy Prod.fst →
   Term.value? (Term.record (Map.mk ((a, t) :: ats))) = some (Value.record (Map.mk avs)) →
   Term.value?.attrValue? a t = some (a, none) →
@@ -1046,7 +1051,7 @@ private theorem same_value_inj' {t₁ t₂ : Term} {v : Value} {εs : SymEntitie
   case set s₁ ty =>
     replace ⟨vs₁, hv, h₁⟩ := same_set_term_implies h₁
     subst hv
-    rw [Term.typeOf, eq_comm] at hty
+    simp only [typeOf_term_set, eq_comm] at hty
     replace ⟨s₂, ht, hv⟩ := same_set_implies h₂ hty
     subst ht
     have ih : ∀ (v' : Value) (t₁' t₂' : Term), t₁' ∈ s₁ → t₂' ∈ s₂ → v' ∼ t₁' → v' ∼ t₂' → t₁' = t₂' := by
@@ -1113,7 +1118,7 @@ decreasing_by
     simp only [Map.mk_toList_id] at this
     omega
 
-theorem same_value_inj {t₁ t₂ : Term} {v : Value} {εs : SymEntities} :
+public theorem same_value_inj {t₁ t₂ : Term} {v : Value} {εs : SymEntities} :
   t₁.WellFormed εs → t₂.WellFormed εs → t₁.typeOf = t₂.typeOf →
   v ∼ t₁ → v ∼ t₂ → t₁ = t₂
 := by
@@ -1160,7 +1165,7 @@ private theorem wfl_isCedarRecordType_implies_attr_wfl_cedarType? {a : Attr} {t 
       simp only [Term.none.injEq, imp_false,
         Term.some.injEq, forall_eq'] at h₁ h₂
 
-theorem term_value?_exists {t : Term} {ty : Validation.CedarType} {εs : SymEntities} :
+public theorem term_value?_exists {t : Term} {ty : Validation.CedarType} {εs : SymEntities} :
   t.WellFormedLiteral εs →
   t.typeOf.cedarType? = .some ty →
   ∃ (v : Value), t.value? = some v
@@ -1170,10 +1175,8 @@ theorem term_value?_exists {t : Term} {ty : Validation.CedarType} {εs : SymEnti
   unfold Term.value?
   cases t <;>
   simp only [Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq]
-  case var | app =>
-    simp only [Term.isLiteral, Bool.false_eq_true] at hlit
-  case none | some =>
-    simp only [Term.typeOf, TermType.cedarType?, reduceCtorEq] at hcty
+  case var | app => simp only [Term.isLiteral, Bool.false_eq_true] at hlit
+  case none | some => simp [TermType.cedarType?] at hcty
   case prim =>
     cases hwf ; rename_i p hwf
     cases p
@@ -1191,7 +1194,7 @@ theorem term_value?_exists {t : Term} {ty : Validation.CedarType} {εs : SymEnti
       simp [TermPrim.value?]
   case set ts sty =>
     cases ts ; rename_i ts
-    simp only [Term.typeOf, TermType.cedarType?, Option.bind_eq_bind, Option.bind_eq_some_iff,
+    simp only [typeOf_term_set, TermType.cedarType?, Option.bind_eq_bind, Option.bind_eq_some_iff,
       Option.some.injEq] at hcty
     have ⟨ty', hcty', _⟩ := hcty
     have ih : ∀ t' ∈ ts, ∃ (v' : Value), t'.value? = some v' := by

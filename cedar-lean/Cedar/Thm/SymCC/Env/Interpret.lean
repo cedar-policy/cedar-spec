@@ -14,8 +14,16 @@
  limitations under the License.
 -/
 
+module
+
+public import Cedar.SymCC.Env
+import all Cedar.SymCC.Env -- proving things about Env functions requires access to private internals
+public import Cedar.SymCC.Interpretation
+import all Cedar.SymCC.Interpretation -- proving things about interpretation requires access to private internals
+import Cedar.Thm.Data.Control
 import Cedar.Thm.SymCC.Data.Basic
-import Cedar.Thm.SymCC.Env.WF
+public import Cedar.Thm.SymCC.Env.WF
+import Cedar.Thm.SymCC.Interpretation
 import Cedar.Thm.SymCC.Term.Interpret.Lit
 import Cedar.Thm.SymCC.Term.Interpret.WF
 
@@ -30,7 +38,7 @@ namespace Cedar.Thm
 
 open Batteries Data Spec SymCC Factory
 
-theorem interpret_entities_find?_some {εs : SymEntities} {I : Interpretation} {ety : EntityType} {d : SymEntityData}
+public theorem interpret_entities_find?_some {εs : SymEntities} {I : Interpretation} {ety : EntityType} {d : SymEntityData}
   (h₁ : εs.find? ety = .some d) :
   (εs.interpret I).find? ety = .some (d.interpret I)
 := by
@@ -38,12 +46,12 @@ theorem interpret_entities_find?_some {εs : SymEntities} {I : Interpretation} {
   apply Map.find?_mapOnValues_some
   exact h₁
 
-theorem interpret_entities_find?_none {εs : SymEntities} {I : Interpretation} {ety : EntityType}
+public theorem interpret_entities_find?_none {εs : SymEntities} {I : Interpretation} {ety : EntityType}
   (h₁ : εs.find? ety = .none) :
   (εs.interpret I).find? ety = .none
 := by simp [SymEntities.interpret, h₁]
 
-theorem interpret_entities_isValidEntityUID (εs : SymEntities) (I : Interpretation) (uid : EntityUID) :
+public theorem interpret_entities_isValidEntityUID (εs : SymEntities) (I : Interpretation) (uid : EntityUID) :
   εs.isValidEntityUID uid = (εs.interpret I).isValidEntityUID uid
 := by
   simp only [SymEntities.isValidEntityUID]
@@ -53,13 +61,13 @@ theorem interpret_entities_isValidEntityUID (εs : SymEntities) (I : Interpretat
   case h_2 h =>
     simp only [interpret_entities_find?_none h]
 
-theorem interpret_entities_isValidEntityType (εs : SymEntities) (I : Interpretation) (ety : EntityType) :
+public theorem interpret_entities_isValidEntityType (εs : SymEntities) (I : Interpretation) (ety : EntityType) :
   εs.isValidEntityType ety = (εs.interpret I).isValidEntityType ety
 := by
   simp only [SymEntities.isValidEntityType, SymEntities.interpret]
   rw [Map.contains_mapOnValues (SymEntityData.interpret I)]
 
-theorem interpret_entities_ancestors_none  {εs : SymEntities} {ety : EntityType} (I : Interpretation) :
+public theorem interpret_entities_ancestors_none  {εs : SymEntities} {ety : EntityType} (I : Interpretation) :
   εs.ancestors ety = .none →
   (εs.interpret I).ancestors ety = .none
 := by
@@ -72,7 +80,7 @@ theorem interpret_entities_ancestors_none  {εs : SymEntities} {ety : EntityType
   case some =>
     simp only [h₃, Option.some.injEq, forall_eq', reduceCtorEq] at h₁
 
-theorem interpret_entities_ancestors_some  {εs : SymEntities} {ety : EntityType} {ancs : Map EntityType UnaryFunction} (I : Interpretation) :
+public theorem interpret_entities_ancestors_some  {εs : SymEntities} {ety : EntityType} {ancs : Map EntityType UnaryFunction} (I : Interpretation) :
   εs.ancestors ety = .some ancs →
   (εs.interpret I).ancestors ety = .some (ancs.mapOnValues (UnaryFunction.interpret I))
 := by
@@ -82,7 +90,7 @@ theorem interpret_entities_ancestors_some  {εs : SymEntities} {ety : EntityType
   simp only [Map.find?_mapOnValues_some _ h₁, SymEntityData.interpret, h₂,
     Option.some.injEq, exists_eq_left']
 
-theorem interpret_entities_ancestorsOfType_none {εs : SymEntities} {ety ancTy : EntityType} {I : Interpretation} :
+public theorem interpret_entities_ancestorsOfType_none {εs : SymEntities} {ety ancTy : EntityType} {I : Interpretation} :
   εs.ancestorsOfType ety ancTy = .none →
   (εs.interpret I).ancestorsOfType ety ancTy = .none
 := by
@@ -99,7 +107,7 @@ theorem interpret_entities_ancestorsOfType_none {εs : SymEntities} {ety ancTy :
     subst h₂
     exact (Map.find?_mapOnValues_none _).mpr h₁
 
-theorem interpret_entities_ancestorsOfType_some {εs : SymEntities} {ety ancTy : EntityType} {I : Interpretation} {f : UnaryFunction} :
+public theorem interpret_entities_ancestorsOfType_some {εs : SymEntities} {ety ancTy : EntityType} {I : Interpretation} {f : UnaryFunction} :
   εs.ancestorsOfType ety ancTy = .some f →
   (εs.interpret I).ancestorsOfType ety ancTy = .some (f.interpret I)
 := by
@@ -109,7 +117,7 @@ theorem interpret_entities_ancestorsOfType_some {εs : SymEntities} {ety ancTy :
   simp only [interpret_entities_ancestors_some I h₁, Map.find?_mapOnValues_some _ h₂,
     Option.some.injEq, exists_eq_left']
 
-theorem interpret_entities_tags_none {εs : SymEntities} {I : Interpretation} {ety : EntityType} :
+public theorem interpret_entities_tags_none {εs : SymEntities} {I : Interpretation} {ety : EntityType} :
   εs.tags ety = some none →
   (εs.interpret I).tags ety = some none
 := by
@@ -119,7 +127,7 @@ theorem interpret_entities_tags_none {εs : SymEntities} {I : Interpretation} {e
   exists (SymEntityData.interpret I δ)
   simp only [hf, SymEntityData.interpret, hτs, Option.map_none, and_self]
 
-theorem interpret_entities_tags_some {εs : SymEntities} {I : Interpretation} {ety : EntityType} {τs : SymTags} :
+public theorem interpret_entities_tags_some {εs : SymEntities} {I : Interpretation} {ety : EntityType} {τs : SymTags} :
   εs.tags ety = some τs →
   (εs.interpret I).tags ety = some (τs.interpret I)
 := by
@@ -130,11 +138,11 @@ theorem interpret_entities_tags_some {εs : SymEntities} {I : Interpretation} {e
   exists (SymEntityData.interpret I δ)
   simp only [hf, SymEntityData.interpret, hτs, Option.map_some, and_self]
 
-theorem interpret_entities_same_domain (εs : SymEntities) (I : Interpretation) :
+public theorem interpret_entities_same_domain (εs : SymEntities) (I : Interpretation) :
   SameDomain εs (εs.interpret I)
 := And.intro (interpret_entities_isValidEntityUID εs I) (interpret_entities_isValidEntityType εs I)
 
-theorem interpret_uf_wf {εs : SymEntities} {I : Interpretation} {f : UnaryFunction} :
+public theorem interpret_uf_wf {εs : SymEntities} {I : Interpretation} {f : UnaryFunction} :
   I.WellFormed εs →
   f.WellFormed εs →
   (f.interpret I).WellFormed εs ∧
@@ -152,7 +160,7 @@ theorem interpret_uf_wf {εs : SymEntities} {I : Interpretation} {f : UnaryFunct
     simp only [Interpretation.WellFormed.WellFormedUUFInterpretation] at h₁
     simp only [h₁, and_self]
 
-theorem interpret_εdata_wf {εs : SymEntities} {I : Interpretation} {ety : EntityType} {εd : SymEntityData} :
+public theorem interpret_εdata_wf {εs : SymEntities} {I : Interpretation} {ety : EntityType} {εd : SymEntityData} :
   I.WellFormed εs →
   εd.WellFormed εs ety →
   (εd.interpret I).WellFormed εs ety
@@ -185,7 +193,7 @@ theorem interpret_εdata_wf {εs : SymEntities} {I : Interpretation} {ety : Enti
         interpret_uf_wf h₁ htags.right.right.right.left, and_self]
     · exact hmems
 
-theorem interpret_εntities_wf {εs : SymEntities} {I : Interpretation} :
+public theorem interpret_εntities_wf {εs : SymEntities} {I : Interpretation} :
   εs.WellFormed →
   I.WellFormed εs →
   (εs.interpret I).WellFormed
@@ -217,7 +225,7 @@ private theorem interpret_term_wf_fun_typeOf
   have ⟨h₄, h₅⟩ := interpret_term_wf h₁ h₂
   simp only [h₄, h₅, h₃, and_self]
 
-theorem interpret_ρeq_wf {εs : SymEntities} {ρeq : SymRequest} {I : Interpretation} :
+public theorem interpret_ρeq_wf {εs : SymEntities} {ρeq : SymRequest} {I : Interpretation} :
   I.WellFormed εs →
   ρeq.WellFormed εs →
   (ρeq.interpret I).WellFormed εs
@@ -230,7 +238,7 @@ theorem interpret_ρeq_wf {εs : SymEntities} {ρeq : SymRequest} {I : Interpret
     interpret_term_wf_fun_typeOf h₁ hr hr',
     interpret_term_wf_fun_typeOf h₁ hc hc']
 
-theorem interpret_εnv_wf {εnv : SymEnv} {I : Interpretation} :
+public theorem interpret_εnv_wf {εnv : SymEnv} {I : Interpretation} :
   εnv.WellFormed →
   I.WellFormed εnv.entities →
   (εnv.interpret I).WellFormed
@@ -242,7 +250,7 @@ theorem interpret_εnv_wf {εnv : SymEnv} {I : Interpretation} :
   · exact interpret_ρeq_wf (wf_interpretation_same_domain hdom hI) (wf_ρeq_same_domain hdom hρeq)
   · exact interpret_εntities_wf hεs hI
 
-theorem interpret_εnv_wf_for_expr {x : Expr} {εnv : SymEnv} {I : Interpretation} :
+public theorem interpret_εnv_wf_for_expr {x : Expr} {εnv : SymEnv} {I : Interpretation} :
   εnv.WellFormedFor x →
   I.WellFormed εnv.entities →
   (εnv.interpret I).WellFormedFor x
@@ -253,7 +261,7 @@ theorem interpret_εnv_wf_for_expr {x : Expr} {εnv : SymEnv} {I : Interpretatio
   · exact interpret_εnv_wf hwε hI
   · exact expr_valid_refs_same_domain (interpret_entities_same_domain εnv.entities I) hvr
 
-theorem interpret_εnv_wf_for_policies {ps : Policies} {εnv : SymEnv} {I : Interpretation} :
+public theorem interpret_εnv_wf_for_policies {ps : Policies} {εnv : SymEnv} {I : Interpretation} :
   εnv.WellFormedForPolicies ps →
   I.WellFormed εnv.entities →
   (εnv.interpret I).WellFormedForPolicies ps
@@ -263,7 +271,7 @@ theorem interpret_εnv_wf_for_policies {ps : Policies} {εnv : SymEnv} {I : Inte
   intro p hin
   exact expr_valid_refs_same_domain (interpret_entities_same_domain εnv.entities I) (hvr p hin)
 
-theorem interpret_uf_lit {εs : SymEntities} {I : Interpretation} {f : UnaryFunction} :
+public theorem interpret_uf_lit {εs : SymEntities} {I : Interpretation} {f : UnaryFunction} :
   I.WellFormed εs →
   f.WellFormed εs →
   (f.interpret I).isLiteral
@@ -276,7 +284,7 @@ theorem interpret_uf_lit {εs : SymEntities} {I : Interpretation} {f : UnaryFunc
   · exact wf_udf_implies_lit (wf_interpretation_implies_wf_udf hI hwf).left
   · exact wf_udf_implies_lit hwf
 
-theorem interpret_εnv_lit {εnv : SymEnv} {I : Interpretation} :
+public theorem interpret_εnv_lit {εnv : SymEnv} {I : Interpretation} :
   εnv.WellFormed →
   I.WellFormed εnv.entities →
   (εnv.interpret I).isLiteral

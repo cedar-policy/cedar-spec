@@ -13,7 +13,15 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
-import Cedar.Thm.SymCC.Data
+
+module
+
+public import Cedar.SymCC.Concretizer
+import all Cedar.SymCC.Concretizer -- proving things about functions in this file, need access to private internals that aren't normally exposed
+import all Cedar.SymCC.Env -- as of this writing we don't have enough low-level lemmas about functions in SymCC.Env to avoid unfolding in this file
+import all Cedar.SymCC.Factory -- as of this writing, this file has one proof about `Factory.tagOf` and thus needs access to internals of `tagOf` that aren't normally exposed
+public import Cedar.Thm.SymCC.Data
+import Cedar.Thm.SymCC.Term.TypeOf
 import Cedar.Thm.SymCC.Term.WF
 
 /-!
@@ -23,7 +31,7 @@ This file contains helper lemmas that are shared by concretization proofs.
 namespace Cedar.Thm
 open Data Spec SymCC Factory
 
-theorem concretize?_ρ_some_eq {ρ : SymRequest} {r : Request} :
+public theorem concretize?_ρ_some_eq {ρ : SymRequest} {r : Request} :
   ρ.concretize? = .some r →
   ∃ uidₚ uidₐ uidᵣ ctx,
     ρ.principal.entityUID? = .some uidₚ ∧
@@ -37,7 +45,7 @@ theorem concretize?_ρ_some_eq {ρ : SymRequest} {r : Request} :
   replace ⟨uidₚ, hp, uidₐ, ha, uidᵣ, hr, ctx, hc, h⟩ := h
   simp only [hp, Option.some.injEq, ha, hr, hc, exists_and_left, exists_eq_left', h]
 
-theorem concretize?_εs_some_eq {uids : Set EntityUID} {εs : SymEntities} {es : Entities} :
+public theorem concretize?_εs_some_eq {uids : Set EntityUID} {εs : SymEntities} {es : Entities} :
   εs.concretize? uids = .some es →
    ∃ eds,
     (uids ∪ εs.entityUIDs).elts.mapM (SymEntities.concretize?.entityData? εs) = some eds ∧
@@ -48,7 +56,7 @@ theorem concretize?_εs_some_eq {uids : Set EntityUID} {εs : SymEntities} {es :
     Option.some.injEq] at hs
   exact hs
 
-theorem concretize?_entityData?_some_eq {uid : EntityUID} {ed : EntityUID × EntityData} {εs : SymEntities} :
+public theorem concretize?_entityData?_some_eq {uid : EntityUID} {ed : EntityUID × EntityData} {εs : SymEntities} :
   SymEntities.concretize?.entityData? εs uid = some ed →
   ∃ δ d,
     Map.find? εs uid.ty = some δ ∧
@@ -60,7 +68,7 @@ theorem concretize?_entityData?_some_eq {uid : EntityUID} {ed : EntityUID × Ent
     Option.some.injEq] at hs
   simp only [exists_and_left, hs]
 
-theorem concretize?_δ_isValidEntityUID_implies_wfl {uid : EntityUID} {δ : SymEntityData} {εs : SymEntities} :
+public theorem concretize?_δ_isValidEntityUID_implies_wfl {uid : EntityUID} {δ : SymEntityData} {εs : SymEntities} :
   Map.find? εs uid.ty = some δ →
   SymEntityData.concretize?.isValidEntityUID uid δ = true →
   Term.WellFormedLiteral εs (Term.entity uid)
@@ -73,7 +81,7 @@ theorem concretize?_δ_isValidEntityUID_implies_wfl {uid : EntityUID} {δ : SymE
   simp only [SymEntityData.concretize?.isValidEntityUID] at hvu
   exact hvu
 
-theorem wf_δ_implies_wf_app_attrs {uid : EntityUID} {δ : SymEntityData} {εs : SymEntities} :
+public theorem wf_δ_implies_wf_app_attrs {uid : EntityUID} {δ : SymEntityData} {εs : SymEntities} :
   δ.WellFormed εs uid.ty →
   (Term.entity uid).WellFormed εs →
   (app δ.attrs (Term.entity uid)).WellFormed εs ∧
@@ -83,7 +91,7 @@ theorem wf_δ_implies_wf_app_attrs {uid : EntityUID} {δ : SymEntityData} {εs :
   apply wf_app hwu _ hwδ.left
   simp only [typeOf_term_prim_entity, hwδ.right.left]
 
-theorem wf_δ_implies_wf_app_ancs {uid : EntityUID} {δ : SymEntityData} {εs : SymEntities} {ancTy : EntityType} {ancUF : UnaryFunction} :
+public theorem wf_δ_implies_wf_app_ancs {uid : EntityUID} {δ : SymEntityData} {εs : SymEntities} {ancTy : EntityType} {ancUF : UnaryFunction} :
   δ.WellFormed εs uid.ty →
   (Term.entity uid).WellFormed εs →
   δ.ancestors.find? ancTy = ancUF →
@@ -96,7 +104,7 @@ theorem wf_δ_implies_wf_app_ancs {uid : EntityUID} {δ : SymEntityData} {εs : 
   apply wf_app hwu _ hwδ.left
   simp only [typeOf_term_prim_entity, hwδ.right.left]
 
-theorem wf_δ_implies_wf_app_tags_keys {uid : EntityUID} {δ : SymEntityData} {τs : SymTags} :
+public theorem wf_δ_implies_wf_app_tags_keys {uid : EntityUID} {δ : SymEntityData} {τs : SymTags} :
   δ.WellFormed εs uid.ty →
   (Term.entity uid).WellFormed εs →
   δ.tags = .some τs →
@@ -109,7 +117,8 @@ theorem wf_δ_implies_wf_app_tags_keys {uid : EntityUID} {δ : SymEntityData} {�
   apply wf_app hwu _ hwδ.left
   simp only [typeOf_term_prim_entity, hwδ.right.left]
 
-theorem lit_tagOf (uid : EntityUID) (tag : Tag) :
+/-- TODO: is there a better place for this lemma? It's very unrelated to the other lemmas in this file. If we move it we can also remove the `Factory` import from this file. -/
+public theorem lit_tagOf (uid : EntityUID) (tag : Tag) :
   (tagOf (Term.entity uid) (Term.string tag)).isLiteral
 := by
   simp [tagOf, Term.isLiteral]

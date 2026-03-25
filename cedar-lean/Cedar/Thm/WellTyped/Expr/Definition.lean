@@ -14,8 +14,10 @@
  limitations under the License.
 -/
 
-import Cedar.Validation.TypedExpr
-import Cedar.Spec.Ext
+module
+
+public import Cedar.Validation.TypedExpr
+public import Cedar.Spec.Ext
 
 /-!
 This file contains well-typedness definitions of `TypedExpr`
@@ -26,7 +28,7 @@ namespace Cedar.Spec
 open Cedar.Validation
 open Cedar.Spec.Ext
 
-inductive Prim.WellTyped (env : TypeEnv) : Prim → CedarType → Prop
+public inductive Prim.WellTyped (env : TypeEnv) : Prim → CedarType → Prop
   | bool (b : Bool) :
     WellTyped env (.bool b) (.bool .anyBool)
   | int (i : Int64) :
@@ -37,7 +39,7 @@ inductive Prim.WellTyped (env : TypeEnv) : Prim → CedarType → Prop
     (h₁ : env.ets.isValidEntityUID uid ∨ env.acts.contains uid) :
     WellTyped env (.entityUID uid) (.entity uid.ty)
 
-inductive Var.WellTyped (env : TypeEnv) : Var → CedarType → Prop
+public inductive Var.WellTyped (env : TypeEnv) : Var → CedarType → Prop
   | principal :
     WellTyped env .principal (.entity env.reqty.principal)
   | resource :
@@ -47,7 +49,7 @@ inductive Var.WellTyped (env : TypeEnv) : Var → CedarType → Prop
   | context:
     WellTyped env .context (CedarType.liftBoolTypes (.record env.reqty.context))
 
-inductive UnaryOp.WellTyped : UnaryOp → TypedExpr → CedarType → Prop
+public inductive UnaryOp.WellTyped : UnaryOp → TypedExpr → CedarType → Prop
   | not {x₁ : TypedExpr}
     (h₁ : x₁.typeOf = .bool .anyBool) :
     WellTyped .not x₁ (.bool .anyBool)
@@ -64,7 +66,7 @@ inductive UnaryOp.WellTyped : UnaryOp → TypedExpr → CedarType → Prop
     (h₁ : x₁.typeOf = .entity ety₂) :
     WellTyped (.is ety₁) x₁ (.bool .anyBool)
 
-inductive BinaryOp.WellTyped (env : TypeEnv) : BinaryOp → TypedExpr → TypedExpr → CedarType → Prop
+public inductive BinaryOp.WellTyped (env : TypeEnv) : BinaryOp → TypedExpr → TypedExpr → CedarType → Prop
   | eq_lit {p₁ p₂ : Prim} {ty₁ ty₂ : CedarType} :
     -- do we need hypothesis like `InstanceOfType (.prim p₁) ty₁`?
     WellTyped env .eq (.lit p₁ ty₁) (.lit p₂ ty₂) (.bool .anyBool)
@@ -140,7 +142,7 @@ inductive BinaryOp.WellTyped (env : TypeEnv) : BinaryOp → TypedExpr → TypedE
     (h₃ : env.ets.tags? ety = .some (.some ty)) :
     WellTyped env .getTag x₁ x₂ ty.liftBoolTypes
 
-inductive ExtFun.WellTyped : ExtFun → List TypedExpr → CedarType → Prop
+public inductive ExtFun.WellTyped : ExtFun → List TypedExpr → CedarType → Prop
   | decimal {s₁ : String} {d₁ : Decimal}
     (h₁ : d₁ = Decimal.decimal s₁) :
     WellTyped .decimal [.lit (.string s₁) .string] (.ext .decimal)
@@ -223,7 +225,7 @@ open Cedar.Validation
 open Cedar.Spec
 open Cedar.Data
 
-inductive TypedExpr.WellTyped (env : TypeEnv) : TypedExpr → Prop
+public inductive TypedExpr.WellTyped (env : TypeEnv) : TypedExpr → Prop
 | lit {p : Prim} {ty : CedarType}
   (h₁ : p.WellTyped env ty) :
   WellTyped env (.lit p ty)

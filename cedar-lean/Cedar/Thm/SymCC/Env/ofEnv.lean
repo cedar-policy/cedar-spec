@@ -824,7 +824,7 @@ theorem ofActionType_ancsUDF_is_wf
       simp only [this, Option.isSome, true_and, hact_ty]
     · simp [Set.empty, Set.WellFormed, Set.make, Set.toList, Set.elts, List.canonicalize]
   · simp
-  · simp only [Set.empty, TermType.ofType, Term.typeOf]
+  · simp [TermType.ofType]
   · simp only [Map.make_wf]
   · -- WF of the ancestor UDF
     intros tᵢ tₒ hmem

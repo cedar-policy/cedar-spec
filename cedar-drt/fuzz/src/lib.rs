@@ -17,6 +17,8 @@
 pub use libfuzzer_sys::fuzz_target;
 
 pub mod abac;
+pub mod pst_equiv;
+pub mod pst_gen;
 pub mod roundtrip_entities;
 pub mod schemas;
 pub mod symcc;
