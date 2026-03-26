@@ -263,6 +263,10 @@ public theorem make_wf [LT α] [DecidableLT α] [StrictLT α] (xs : List α) :
 := by
   simp only [WellFormed, make, toList, elts, List.canonicalize_idempotent]
 
+public theorem make_elts [LT α] [DecidableLT α] {s : Set α} :
+  WellFormed s → Set.make s.elts = s
+:= by grind [WellFormed, toList]
+
 public theorem make_sorted {α} [LT α] [DecidableLT α] [StrictLT α] {xs : List α} :
   xs.Sorted → Set.make xs = Set.mk xs
 := by
@@ -632,6 +636,11 @@ public theorem subset_def [DecidableEq α] {s₁ s₂ : Set α} :
     rw [contains_prop_bool_equiv]
     exact h₁ h₂
 
+@[simp]
+public theorem subset_empty [DecidableEq α] {s : Set α} :
+  Set.empty ⊆ s
+:= by simp [Subset, subset]
+
 public theorem superset_empty_subset_empty [DecidableEq α] {s₁ s₂ : Set α} :
   s₁ ⊆ s₂ → s₂.isEmpty → s₁.isEmpty
 := by
@@ -725,12 +734,59 @@ public theorem wellFormed_correct {α} [LT α] [StrictLT α] [DecidableLT α] {s
 
 /-! ### map -/
 
+public theorem map_wf [LT β] [DecidableLT β] [StrictLT β] (f : α → β) (s : Set α) :
+  (s.map f).WellFormed
+:= by simp [map, make_wf]
+
+public theorem map_id [LT α] [DecidableLT α] (s : Set α) :
+  s.WellFormed → s.map id = s
+:= by
+  intro hwf
+  simp [map, make_elts hwf]
+
 /-- Analogue of `List.mem_map` but for sets -/
 @[simp]
-public theorem mem_map [LT α] [DecidableLT α] [StrictLT α] [LT β] [DecidableLT β] [StrictLT β] (b : β) (f : α → β) (s : Set α) :
+public theorem mem_map [LT α] [DecidableLT α] [StrictLT α] [LT β] [DecidableLT β] [StrictLT β] {b : β} {f : α → β} {s : Set α} :
   b ∈ s.map f ↔ ∃ a ∈ s, f a = b
 := by
   simp [Set.map, Set.mem_make, Set.mem_elts_iff_mem_set]
+
+/-- Analogue of `List.map_congr`, but for sets -/
+public theorem map_congr [LT β] [DecidableLT β] {f g : α → β} {s : Set α} :
+  (∀ a ∈ s, f a = g a) → s.map f = s.map g
+:= by
+  simp only [map]
+  intro h
+  congr 1
+  apply List.map_congr
+  intro x hx
+  exact h x hx
+
+@[simp]
+public theorem isEmpty_map [DecidableEq α] [LT β] [DecidableLT β] [DecidableEq β] {f : α → β} {s : Set α} :
+  (s.map f).isEmpty = s.isEmpty
+:= by
+  cases h : s.isEmpty
+  case true =>
+    simp only [isEmpty, empty, beq_iff_eq] at h
+    simp [map, h]
+  case false =>
+    simp only [isEmpty, empty, beq_eq_false_iff_ne, ne_eq] at h
+    simp only [map, elts, isEmpty_make_eq_false, ne_eq, List.map_eq_nil_iff]
+    cases s ; simp_all
+
+@[simp]
+public theorem map_make [LT α] [DecidableLT α] [StrictLT α] [LT β] [DecidableLT β] [StrictLT β] {f : α → β} {xs : List α} :
+  (Set.make xs).map f = Set.make (xs.map f)
+:= by
+  simp only [map]
+  rw [make_make_eqv]
+  exact List.map_equiv f (Set.elts (Set.make xs)) xs elts_make_eqv
+
+-- TODO: perhaps we could avoid needing to have this a public theorem, if we had enough other lemmas about `Set.map` that avoided callers having to reason about `make` or `elts`
+public theorem map_def [LT β] [DecidableLT β] (f : α → β) (s : Set α) :
+  s.map f = Set.make (s.elts.map f)
+:= by simp [Set.map]
 
 /-! ### filter and differences -/
 
@@ -767,7 +823,42 @@ public theorem difference_subset [LT α] [DecidableLT α] [StrictLT α] [Decidab
   rw [mem_difference]
   exact And.left
 
-/-! ### all₁ and any₁ -/
+/-! ### all and any -/
+
+/-- Like `List.all_eq_true`, but for `Set.all` -/
+@[simp]
+public theorem all_eq_true {f : α → Bool} {s : Set α} :
+  s.all f = true ↔ ∀ x ∈ s, f x = true
+:= by
+  simp only [Set.all, List.all_eq_true, Set.mem_elts_iff_mem_set]
+
+/-- Like `List.all_eq_false`, but for `Set.all` -/
+@[simp]
+public theorem all_eq_false {f : α → Bool} {s : Set α} :
+  s.all f = false ↔ ∃ x ∈ s, ¬ f x = true
+:= by
+  simp only [Set.all, List.all_eq_false, Set.mem_elts_iff_mem_set]
+
+/-- Like `List.any_eq_true`, but for `Set.any` -/
+@[simp]
+public theorem any_eq_true {f : α → Bool} {s : Set α} :
+  s.any f = true ↔ ∃ x ∈ s, f x = true
+:= by
+  simp only [Set.any, List.any_eq_true, Set.mem_elts_iff_mem_set]
+
+/-- Like `List.any_eq_false`, but for `Set.any` -/
+@[simp]
+public theorem any_eq_false {f : α → Bool} {s : Set α} :
+  s.any f = false ↔ ∀ x ∈ s, ¬ f x = true
+:= by
+  simp only [Set.any, List.any_eq_false, Set.mem_elts_iff_mem_set]
+
+/-! ### map₁, all₁, and any₁ -/
+
+@[simp]
+public theorem map₁_eq_map [LT α] [DecidableLT α] [LT β] [DecidableLT β] (f : α → β) (s : Set α) :
+  (s.map₁ λ ⟨elt, _⟩ => f elt) = s.map f
+:= by simp [map₁, map]
 
 @[simp]
 public theorem all₁_eq_all {s : Set α} {f : α → Bool} :

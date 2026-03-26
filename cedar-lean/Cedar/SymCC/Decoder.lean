@@ -14,9 +14,11 @@
  limitations under the License.
 -/
 
+module
+
 import Cedar.Spec
-import Cedar.SymCC.Encoder
-import Cedar.SymCC.Interpretation
+public import Cedar.SymCC.Encoder
+public import Cedar.SymCC.Interpretation
 import Cedar.Validation
 import Std.Internal.Parsec.Basic
 
@@ -34,7 +36,8 @@ See also Appendix B of https://smt-lib.org/papers/smt-lib-reference-v2.7-r2025-0
 namespace Cedar.SymCC.Decoder
 
 open Std.Internal.Parsec String Batteries
-open Cedar.Spec Cedar.Validation Cedar.Data
+open Cedar.Validation Cedar.Data
+open Cedar.Spec hiding Result
 
 ----- Parsing functions for SMTLib syntax -----
 
@@ -188,7 +191,7 @@ where
     let etyId ← enc.types.find? (.entity ety)
     .some (mems.mapIdx λ i eid => (Encoder.enumId etyId i, ⟨ety, eid⟩))
 
-abbrev Result (α) := Except String α
+public abbrev Result (α) := Except String α
 
 instance : Coe α (Result α) where
   coe := Except.ok
@@ -356,21 +359,21 @@ def defaultPrim (eidOf : EntityType → String) : TermPrimType → TermPrim
   | .entity ety => .entity ⟨ety, eidOf ety⟩
   | .ext xty    => defaultExt xty
 
-def defaultLit (eidOf : EntityType → String) : TermType → Term
+public def defaultLit (eidOf : EntityType → String) : TermType → Term
   | .prim pty   => .prim (defaultPrim eidOf pty)
   | .option ty  => .none ty
   | .set ty     => .set Set.empty ty
   | .record tys => .record (tys.mapOnValues₂ λ ⟨ty, _⟩ => defaultLit eidOf ty)
 
-def defaultUDF (eidOf : EntityType → String) (f : UUF) : UDF :=
+public def defaultUDF (eidOf : EntityType → String) (f : UUF) : UDF :=
   ⟨f.arg, f.out, Map.empty, defaultLit eidOf f.out⟩
 
-def eidOfForEntities (εs : SymEntities) (ety : EntityType) : String :=
+public def eidOfForEntities (εs : SymEntities) (ety : EntityType) : String :=
   match εs.find? ety with
   | .some ⟨_, _, .some (Set.mk (eid :: _)), _⟩ => eid
   | _                                          => ""
 
-def defaultInterpretation (εs : SymEntities) : Interpretation :=
+public def defaultInterpretation (εs : SymEntities) : Interpretation :=
   let eidOf := (eidOfForEntities εs)
   {
     vars := λ v => defaultLit eidOf v.ty,
@@ -386,7 +389,7 @@ environment `εnv`. If `εnv` is well-formed, the terms `ts` are well-formed wit
 respect to `εnv.entities`, and CVC5 is sound, the the resulting Interpretation
 satisfies `ts` and is well-formed with respect to `εnv.entities`.
 -/
-def decode (model : String) (enc : EncoderState) : Result Interpretation := do
+public def decode (model : String) (enc : EncoderState) : Result Interpretation := do
   let x ← SExpr.parse |>.run model
   let ⟨vars, uufs⟩ ← x.decodeModel (IdMaps.ofEncoderState enc)
   let eidOf := λ ety =>

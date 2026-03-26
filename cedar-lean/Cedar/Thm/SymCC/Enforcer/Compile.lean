@@ -234,7 +234,7 @@ private theorem interpret_ifSome_ite_eq_implies {t₁ t₂ t₃ t₄ : Term} {ty
   replace hlit := interpret_term_wfl hI hwt₁
   simp only [hopt] at hlit
   have hwt' := wf_term_some_implies hlit.left.left
-  replace hlit := lit_term_some_implies_lit hlit.left.right
+  replace hlit := isLiteral_some.mp hlit.left.right
   have hb := wfl_of_type_bool_is_true_or_false (And.intro hwt' hlit) hty'
   rcases hb with hb | hb <;>
   subst hb <;>
@@ -520,8 +520,8 @@ private theorem same_footprint_ancestors {x : Expr} {ft : Set Term} {εnv : SymE
   have hlit := (interpret_term_wfl hI₁ hwt).left
   simp only [heq₁] at hlit
   replace ⟨hwt, hlit⟩ := hlit
+  rw [isLiteral_some] at hlit
   replace hwt := wf_term_some_implies hwt
-  replace hlit := lit_term_some_implies_lit hlit
   have ⟨uid₁, ht', hty'⟩ := wfl_of_type_entity_is_entity (And.intro hwt hlit) hty
   subst ht' hty'
   simp only [Term.prim.injEq, TermPrim.entity.injEq, exists_eq_left', true_and]
@@ -627,6 +627,7 @@ private theorem compile_interpret_binaryApp_on_footprint {op₂ : BinaryOp} {x�
       case some f =>
         simp only [interpret_entities_ancestorsOfType_some hancs]
         specialize heqf ety₂ f hancs
+        simp only [SymCC.compileInₑ.isIn, SymCC.compileInₛ.isIn₁, SymCC.compileInₛ.isIn₂]
         congr 2
     }
   case less =>

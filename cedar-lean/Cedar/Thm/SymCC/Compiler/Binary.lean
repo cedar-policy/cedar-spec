@@ -16,6 +16,8 @@
 
 import Cedar.Thm.SymCC.Compiler.Invert
 import Cedar.Thm.SymCC.Compiler.WF
+import Cedar.Thm.SymCC.Env.Interpret
+import Cedar.Thm.SymCC.Term.Interpret
 
 /-!
 This file proves the compilation lemmas for `.binaryApp` expressions.
@@ -32,10 +34,10 @@ private theorem interpret_compileInₑ.isEq {t₁ t₂: Term} {εs : SymEntities
   (hwφ₂ : Term.WellFormed εs t₂)
   (hwl₁ : Term.WellFormed εs (Term.interpret I t₁) ∧ Term.typeOf (Term.interpret I t₁) = Term.typeOf t₁)
   (hwl₂ : Term.WellFormed εs (Term.interpret I t₂) ∧ Term.typeOf (Term.interpret I t₂) = Term.typeOf t₂) :
-  Term.interpret I (compileInₑ.isEq t₁ t₂) =
-  compileInₑ.isEq (Term.interpret I t₁) (Term.interpret I t₂)
+  Term.interpret I (SymCC.compileInₑ.isEq t₁ t₂) =
+  SymCC.compileInₑ.isEq (Term.interpret I t₁) (Term.interpret I t₂)
 := by
-  simp only [compileInₑ.isEq]
+  simp only [SymCC.compileInₑ.isEq]
   split
   case isTrue heq =>
     simp only [hwl₁, hwl₂, heq, interpret_eq hI hwφ₁ hwφ₂, ite_true]
@@ -48,10 +50,10 @@ private theorem interpret_compileInₑ.isIn {t₁ t₂: Term} {ety₁ ety₂ : E
   (hwφ₁ : Term.WellFormed εs t₁)
   (hwφ₂ : Term.WellFormed εs t₂)
   (hty₁ : Term.typeOf t₁ = TermType.entity ety₁) :
-  Term.interpret I (compileInₑ.isIn t₁ t₂ (SymEntities.ancestorsOfType εs ety₁ ety₂)) =
-  compileInₑ.isIn (Term.interpret I t₁) (Term.interpret I t₂) (SymEntities.ancestorsOfType (SymEntities.interpret I εs) ety₁ ety₂)
+  Term.interpret I (SymCC.compileInₑ.isIn t₁ t₂ (SymEntities.ancestorsOfType εs ety₁ ety₂)) =
+  SymCC.compileInₑ.isIn (Term.interpret I t₁) (Term.interpret I t₂) (SymEntities.ancestorsOfType (SymEntities.interpret I εs) ety₁ ety₂)
 := by
-  simp only [compileInₑ.isIn]
+  simp only [SymCC.compileInₑ.isIn]
   split
   case h_1 ancs heq =>
     have hwf := wf_εs_implies_wf_ancs hwε heq
@@ -61,7 +63,13 @@ private theorem interpret_compileInₑ.isIn {t₁ t₂: Term} {ety₁ ety₂ : E
       interpret_set_member hwφ₂ hwa.left,
       interpret_app hI hwφ₁ hwf.left hty₁]
   case h_2 heq =>
-    simp only [interpret_term_prim, interpret_entities_ancestorsOfType_none heq]
+    simp only [interpret_term_prim]
+    rw [interpret_entities_ancestorsOfType_none]
+    by_contra hbad
+    rw [← Option.not_isSome_iff_eq_none, Option.isSome_iff_exists] at hbad
+    simp only [not_exists, Classical.not_forall, Decidable.not_not] at hbad
+    replace ⟨ancs, hbad⟩ := hbad
+    exact heq ancs hbad
 
 theorem interpret_compileInₑ {t₁ t₂: Term} {ety₁ ety₂ : EntityType} {εs : SymEntities} {I : Interpretation}
   (hwε : SymEntities.WellFormed εs)
@@ -72,12 +80,14 @@ theorem interpret_compileInₑ {t₁ t₂: Term} {ety₁ ety₂ : EntityType} {�
   (hwl₂ : Term.WellFormed εs (Term.interpret I t₂) ∧ Term.typeOf (Term.interpret I t₂) = Term.typeOf t₂)
   (hty₁ : Term.typeOf t₁ = TermType.entity ety₁)
   (hty₂ : Term.typeOf t₂ = TermType.entity ety₂) :
-  Term.interpret I (compileInₑ t₁ t₂ (SymEntities.ancestorsOfType εs ety₁ ety₂)) =
-  compileInₑ (Term.interpret I t₁) (Term.interpret I t₂) (SymEntities.ancestorsOfType (SymEntities.interpret I εs) ety₁ ety₂)
+  Term.interpret I (SymCC.compileInₑ t₁ t₂ (SymEntities.ancestorsOfType εs ety₁ ety₂)) =
+  SymCC.compileInₑ (Term.interpret I t₁) (Term.interpret I t₂) (SymEntities.ancestorsOfType (SymEntities.interpret I εs) ety₁ ety₂)
 := by
   have hweq := compileInₑ.isEq_wf hwφ₁ hwφ₂
   have hwin := compileInₑ.isIn_wf hwε hwφ₁ hty₁ hwφ₂ hty₂ rfl
   simp only [compileInₑ_def,
+    compileInₑ.isIn_def,
+    compileInₑ.isEq_def,
     interpret_or hI hweq.left hwin.left hweq.right hwin.right,
     interpret_compileInₑ.isEq hI hwφ₁ hwφ₂ hwl₁ hwl₂,
     interpret_compileInₑ.isIn hwε hI hwφ₁ hwφ₂ hty₁]
@@ -87,10 +97,10 @@ private theorem interpret_compileInₛ.isIn₁ {t₁ t₂: Term} {εs : SymEntit
   (hwφ₂ : Term.WellFormed εs t₂)
   (hwl₁ : Term.WellFormed εs (Term.interpret I t₁) ∧ Term.typeOf (Term.interpret I t₁) = Term.typeOf t₁)
   (hwl₂ : Term.WellFormed εs (Term.interpret I t₂) ∧ Term.typeOf (Term.interpret I t₂) = Term.typeOf t₂) :
-  Term.interpret I (compileInₛ.isIn₁ t₁ t₂) =
-  compileInₛ.isIn₁ (Term.interpret I t₁) (Term.interpret I t₂)
+  Term.interpret I (SymCC.compileInₛ.isIn₁ t₁ t₂) =
+  SymCC.compileInₛ.isIn₁ (Term.interpret I t₁) (Term.interpret I t₂)
 := by
-  simp only [compileInₛ.isIn₁]
+  simp only [SymCC.compileInₛ.isIn₁]
   split
   case isTrue heq =>
     simp only [hwl₁, hwl₂, heq, interpret_set_member hwφ₁ hwφ₂, ite_true]
@@ -104,10 +114,10 @@ private theorem interpret_compileInₛ.isIn₂ {t₁ t₂: Term} {ety₁ ety₂ 
   (hwφ₂ : Term.WellFormed εs t₂)
   (hty₁ : Term.typeOf t₁ = .entity ety₁)
   (hty₂ : Term.typeOf t₂ = .set (.entity ety₂)) :
-  Term.interpret I (compileInₛ.isIn₂ t₁ t₂ (SymEntities.ancestorsOfType εs ety₁ ety₂)) =
-  compileInₛ.isIn₂ (Term.interpret I t₁) (Term.interpret I t₂) (SymEntities.ancestorsOfType (SymEntities.interpret I εs) ety₁ ety₂)
+  Term.interpret I (SymCC.compileInₛ.isIn₂ t₁ t₂ (SymEntities.ancestorsOfType εs ety₁ ety₂)) =
+  SymCC.compileInₛ.isIn₂ (Term.interpret I t₁) (Term.interpret I t₂) (SymEntities.ancestorsOfType (SymEntities.interpret I εs) ety₁ ety₂)
 := by
-  simp only [compileInₛ.isIn₂]
+  simp only [SymCC.compileInₛ.isIn₂]
   split
   case h_1 ancs heq =>
     have hwf := wf_εs_implies_wf_ancs hwε heq
@@ -118,7 +128,13 @@ private theorem interpret_compileInₛ.isIn₂ {t₁ t₂: Term} {ety₁ ety₂ 
       interpret_set_intersects hI hwφ₂ hwa.left hty₂ hwa.right,
       interpret_app hI hwφ₁ hwf.left hty₁]
   case h_2 heq =>
-    simp only [interpret_term_prim, interpret_entities_ancestorsOfType_none heq]
+    simp only [interpret_term_prim]
+    rw [interpret_entities_ancestorsOfType_none]
+    by_contra hbad
+    rw [← Option.not_isSome_iff_eq_none, Option.isSome_iff_exists] at hbad
+    simp only [not_exists, Classical.not_forall, Decidable.not_not] at hbad
+    replace ⟨ancs, hbad⟩ := hbad
+    exact heq ancs hbad
 
 theorem interpret_compileInₛ {t₁ t₂: Term} {ety₁ ety₂ : EntityType} {εs : SymEntities} {I : Interpretation}
   (hwε : SymEntities.WellFormed εs)
@@ -129,12 +145,14 @@ theorem interpret_compileInₛ {t₁ t₂: Term} {ety₁ ety₂ : EntityType} {�
   (hwl₂ : Term.WellFormed εs (Term.interpret I t₂) ∧ Term.typeOf (Term.interpret I t₂) = Term.typeOf t₂)
   (hty₁ : Term.typeOf t₁ = .entity ety₁)
   (hty₂ : Term.typeOf t₂ = .set (.entity ety₂)) :
-  Term.interpret I (compileInₛ t₁ t₂ (SymEntities.ancestorsOfType εs ety₁ ety₂)) =
-  compileInₛ (Term.interpret I t₁) (Term.interpret I t₂) (SymEntities.ancestorsOfType (SymEntities.interpret I εs) ety₁ ety₂)
+  Term.interpret I (SymCC.compileInₛ t₁ t₂ (SymEntities.ancestorsOfType εs ety₁ ety₂)) =
+  SymCC.compileInₛ (Term.interpret I t₁) (Term.interpret I t₂) (SymEntities.ancestorsOfType (SymEntities.interpret I εs) ety₁ ety₂)
 := by
   have hwin₁ := compileInₛ.isIn₁_wf hwφ₁ hwφ₂
   have hwin₂ := compileInₛ.isIn₂_wf hwε hwφ₁ hty₁ hwφ₂ hty₂ rfl
   simp only [compileInₛ_def,
+    compileInₛ.isIn₁_def,
+    compileInₛ.isIn₂_def,
     interpret_or hI hwin₁.left hwin₂.left hwin₁.right hwin₂.right,
     interpret_compileInₛ.isIn₁ hwφ₁ hwφ₂ hwl₁ hwl₂,
     interpret_compileInₛ.isIn₂ hwε hI hwφ₁ hwφ₂ hty₁ hty₂]
@@ -414,7 +432,7 @@ private theorem compileApp₂_eq_implies_apply₂ {t₁ t₂ t₃ : Term} {v₁ 
       subst hb
       simp only [Same.same, SameValues] at ih₁ ih₂
       simp only [ih₁, Option.some.injEq] at ih₂
-      simp only [bool_value?, ih₂, beq_self_eq_true]
+      simp only [value?_bool, ih₂, beq_self_eq_true]
   case inr =>
     subst hok
     replace ⟨hty, hp₁, _⟩ := reducibleEq_ok_false_implies hty
@@ -842,7 +860,7 @@ private theorem compileInₑ_eq_inₑ {es : Entities} {εs : SymEntities} {e₁ 
     case h_1 ancs? hs =>
       replace ⟨ts, hs, hlit, hmem⟩ := same_entities_ancestors_some_of_type heq hwf₁ hs
       specialize hmem e₂ rfl
-      simp only [hs, pe_set_member hlit term_prim_is_lit, Term.prim.injEq, TermPrim.bool.injEq]
+      simp only [hs, pe_set_member hlit isLiteral_prim, Term.prim.injEq, TermPrim.bool.injEq]
       cases h : Set.contains ts (Term.prim (TermPrim.entity e₂)) <;> rw [eq_comm]
       case false =>
         by_contra hc
@@ -874,7 +892,7 @@ private theorem term_entity_set_wfl_implies_sorted_entity_list {εs : SymEntitie
     have hlt := wf_term_set_implies_wf_set hwφ
     simp only [Set.wf_iff_sorted, Set.elts] at hlt
     replace hwφ := wf_term_set_cons hwφ
-    replace hlit := lit_term_set_cons hlit
+    replace hlit := isLiteral_set_cons hlit
     replace ⟨uids, ih⟩ := ih hwφ.right.right hlit.right
     have ⟨uid, ht, hty⟩ := wfl_of_type_entity_is_entity (And.intro hwφ.left hlit.left) hwφ.right.left
     exists (uid :: uids)
@@ -1054,7 +1072,7 @@ private theorem compileInₛ_eq_any_inₑ {es : Entities} {εs : SymEntities} {e
       exists_eq_right, h]
     have hty := wf_term_set_implies_typeOf_elt hwφ₂ ht
     rw [← Set.contains_prop_bool_equiv] at ht
-    simp only [Term.typeOf, hty, ↓reduceIte, pe_set_member hlit₂ term_prim_is_lit, ht,
+    simp only [Term.typeOf, hty, ↓reduceIte, pe_set_member hlit₂ isLiteral_prim, ht,
       pe_or_true_left, Term.prim.injEq, TermPrim.bool.injEq]
     rw [eq_comm, List.any_eq_true]
     exists e₁
@@ -1086,7 +1104,7 @@ private theorem compileInₛ_eq_any_inₑ {es : Entities} {εs : SymEntities} {e
         replace ⟨e, he⟩ := he
         exists e
         simp only [he, Bool.or_true, and_self]
-    simp only [pe_set_member hlit₂ term_prim_is_lit, ht, ite_self, compileInₛ.isIn₂,
+    simp only [pe_set_member hlit₂ isLiteral_prim, ht, ite_self, compileInₛ.isIn₂,
       pe_or_false_left, hv]
     have hty := entities_type_eq hwφ₂ hts
     split

@@ -18,5 +18,6 @@ module
 
 public import Cedar.Thm.SymCC.Data.Basic
 public import Cedar.Thm.SymCC.Data.BitVec
+public import Cedar.Thm.SymCC.Data.Ext
 public import Cedar.Thm.SymCC.Data.Hierarchy
 public import Cedar.Thm.SymCC.Data.LT

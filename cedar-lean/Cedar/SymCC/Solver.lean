@@ -14,7 +14,9 @@
  limitations under the License.
 -/
 
-import Lean.Data.Json
+module
+
+public import Lean.Data.Json
 
 /-!
 This file defines a simple interface to an SMT solver running in a separate
@@ -29,13 +31,13 @@ absolute path to the CVC5 executable.
 
 namespace Cedar.SymCC
 
-inductive Decision where
+public inductive Decision where
   | sat
   | unsat
   | unknown
 deriving DecidableEq, Repr
 
-instance : Lean.ToJson Decision where
+public instance : Lean.ToJson Decision where
   toJson d := match d with
     | .sat => "sat"
     | .unsat => "unsat"
@@ -51,13 +53,13 @@ instance : Lean.ToJson Decision where
  each command. We don't have an error stream here, since we configure solvers to
  run in quiet mode and not print anything to the error stream.
 -/
-structure Solver where
+public structure Solver where
   smtLibInput : IO.FS.Stream
   smtLibOutput : Option IO.FS.Stream
 
-abbrev SolverM (α) := ReaderT Solver IO α
+public abbrev SolverM (α) := ReaderT Solver IO α
 
-def SolverM.run (solver : Solver) (x : SolverM α) : IO α := ReaderT.run x solver
+public def SolverM.run (solver : Solver) (x : SolverM α) : IO α := ReaderT.run x solver
 
 namespace Solver
 
@@ -66,7 +68,7 @@ namespace Solver
   `path` to point to an SMT solver executable, and `args` to specify valid
   arguments to that solver.
 -/
-def spawn (path : String) (args : Array String) : IO Solver := do
+public def spawn (path : String) (args : Array String) : IO Solver := do
   let proc ← IO.Process.spawn {
     stdin  := .piped
     stdout := .piped
@@ -80,7 +82,7 @@ def spawn (path : String) (args : Array String) : IO Solver := do
   Returns an instance of the CVC5 solver that is backed by the executable
   specified in the environment variable "CVC5".
 -/
-def cvc5 : IO Solver := do
+public def cvc5 : IO Solver := do
   match (← IO.getEnv "CVC5") with
   | .some path => spawn path ["--quiet", "--lang", "smt"].toArray
   | .none      => throw (IO.userError "CVC5 environment variable not defined.")
@@ -92,7 +94,7 @@ def cvc5 : IO Solver := do
   useful). For example, `Solver.checkSat` returns `Decision.unknown`. This
   function expects `s` to be write-enabled.
 -/
-def streamWriter (s : IO.FS.Stream) : IO Solver :=
+public def streamWriter (s : IO.FS.Stream) : IO Solver :=
   return ⟨s, .none⟩
 
 /--
@@ -102,7 +104,7 @@ def streamWriter (s : IO.FS.Stream) : IO Solver :=
   useful). For example, `Solver.checkSat` returns `Decision.unknown`. This
   function expects `h` to be write-enabled.
 -/
-def fileWriter (h : IO.FS.Handle) : IO Solver :=
+public def fileWriter (h : IO.FS.Handle) : IO Solver :=
   return ⟨IO.FS.Stream.ofHandle h, .none⟩
 
 /--
@@ -111,7 +113,7 @@ def fileWriter (h : IO.FS.Handle) : IO Solver :=
   return values that are sound according to the SMTLib spec (but generally not
   useful). For example, `Solver.checkSat` returns `Decision.unknown`.
 -/
-def bufferWriter (b : IO.Ref IO.FS.Stream.Buffer) : IO Solver :=
+public def bufferWriter (b : IO.Ref IO.FS.Stream.Buffer) : IO Solver :=
   return ⟨IO.FS.Stream.ofBuffer b, .none⟩
 
 /--
@@ -120,7 +122,7 @@ def bufferWriter (b : IO.Ref IO.FS.Stream.Buffer) : IO Solver :=
   according to the SMTLib spec (but generally not useful). For example,
   `Solver.checkSat` returns `Decision.unknown`.
 -/
-def dummy : IO Solver :=
+public def dummy : IO Solver :=
   return ⟨IO.FS.Stream.ofHandle (← IO.FS.Handle.mk (.mk "/dev/null") IO.FS.Mode.write), .none⟩
 
 private def emitln (str : String) : SolverM Unit := do
@@ -129,34 +131,34 @@ private def emitln (str : String) : SolverM Unit := do
   solver.smtLibInput.putStr s!"{str}\n"
   solver.smtLibInput.flush
 
-def setLogic (logic : String) : SolverM Unit :=
+public def setLogic (logic : String) : SolverM Unit :=
   emitln s!"(set-logic {logic})"
 
-def setOption (opt val : String) : SolverM Unit :=
+public def setOption (opt val : String) : SolverM Unit :=
   emitln s!"(set-option {opt} {val})"
 
-def setOptionProduceModels (b : Bool) : SolverM Unit :=
+public def setOptionProduceModels (b : Bool) : SolverM Unit :=
   setOption ":produce-models" (if b then "true" else "false")
 
-def comment (comment : String) : SolverM Unit :=
+public def comment (comment : String) : SolverM Unit :=
   let inline := comment.replace "\n" " "
   emitln s!"; {inline}"
 
-def assert (expr : String) : SolverM Unit :=
+public def assert (expr : String) : SolverM Unit :=
   emitln s!"(assert {expr})"
 
-def defineFun (id : String) (args : List (String × String)) (type expr : String) : SolverM Unit :=
+public def defineFun (id : String) (args : List (String × String)) (type expr : String) : SolverM Unit :=
   let inline := String.intercalate " " (args.map (λ ⟨pᵢ, pₜ⟩ => s!"({pᵢ} {pₜ})"))
   emitln s!"(define-fun {id} ({inline}) {type} {expr})"
 
-def declareConst (id type : String) : SolverM Unit :=
+public def declareConst (id type : String) : SolverM Unit :=
   emitln s!"(declare-const {id} {type})"
 
-def declareFun (id : String) (args : List String) (type : String) : SolverM Unit :=
+public def declareFun (id : String) (args : List String) (type : String) : SolverM Unit :=
   let inline := String.intercalate " " args
   emitln s!"(declare-fun {id} ({inline}) {type})"
 
-def declareDatatype (id : String) (params : List String) (constructors : List String) : SolverM Unit :=
+public def declareDatatype (id : String) (params : List String) (constructors : List String) : SolverM Unit :=
   let cInline := "\n  " ++ String.intercalate "\n  " constructors
   let pInline := String.intercalate " " params
   if params.isEmpty
@@ -168,7 +170,7 @@ private def readlnD (dflt : String) : SolverM String := do
   | .some stdout => stdout.getLine
   | .none        => pure dflt
 
-def checkSat : SolverM Decision := do
+public def checkSat : SolverM Decision := do
   emitln "(check-sat)"
   match (← readlnD "unknown\n") with
   | "sat\n"     => return Decision.sat
@@ -176,10 +178,10 @@ def checkSat : SolverM Decision := do
   | "unknown\n" => return Decision.unknown
   | other       => throw (IO.userError s!"Unrecognized solver output: {other}")
 
-def reset : SolverM Unit :=
+public def reset : SolverM Unit :=
   emitln "(reset)"
 
-def exit : SolverM Unit :=
+public def exit : SolverM Unit :=
   emitln "(exit)"
 
 /--
@@ -189,7 +191,7 @@ the model strings follow the CVC5 format, where the model is enclosed in
 parentheses that are on a single line by themselves, i.e., opens with the line
 `(\n` and closes with the line `)\n`.
 -/
-def getModel : SolverM String := do
+public def getModel : SolverM String := do
   emitln "(get-model)"
   match (← read).smtLibOutput with
   | some out =>

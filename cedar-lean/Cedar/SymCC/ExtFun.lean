@@ -47,16 +47,16 @@ open Factory Batteries
 
 namespace Decimal
 
-def lessThan (t₁ t₂ : Term) : Term :=
+public def lessThan (t₁ t₂ : Term) : Term :=
   bvslt (ext.decimal.val t₁) (ext.decimal.val t₂)
 
-def lessThanOrEqual (t₁ t₂ : Term) : Term :=
+public def lessThanOrEqual (t₁ t₂ : Term) : Term :=
   bvsle (ext.decimal.val t₁) (ext.decimal.val t₂)
 
-def greaterThan (t₁ t₂ : Term) : Term :=
+public def greaterThan (t₁ t₂ : Term) : Term :=
   lessThan t₂ t₁
 
-def greaterThanOrEqual (t₁ t₂ : Term) : Term :=
+public def greaterThanOrEqual (t₁ t₂ : Term) : Term :=
   lessThanOrEqual t₂ t₁
 
 end Decimal
@@ -64,10 +64,10 @@ end Decimal
 namespace IPAddr
 open BitVec
 
-def isIpv4 (t : Term) : Term :=
+public def isIpv4 (t : Term) : Term :=
   ext.ipaddr.isV4 t
 
-def isIpv6 (t : Term) : Term :=
+public def isIpv6 (t : Term) : Term :=
   not (ext.ipaddr.isV4 t)
 
 def subnetWidth (w : Nat) (ipPre : Term) : Term :=
@@ -100,7 +100,7 @@ def inRangeV (isIp : Term → Term) (range : Term → Term × Term) (t₁ t₂ :
     (and (isIp t₁) (isIp t₂))
     (inRange range t₁ t₂))
 
-def isInRange (t₁ t₂ : Term) : Term :=
+public def isInRange (t₁ t₂ : Term) : Term :=
   (or
     (inRangeV isIpv4 rangeV4 t₁ t₂)
     (inRangeV isIpv6 rangeV6 t₁ t₂))
@@ -113,60 +113,53 @@ def inRangeLit (t : Term) (cidr₄ : Ext.IPAddr.CIDR Ext.IPAddr.V4_WIDTH) (cidr�
     (inRange rangeV4 t (ipTerm (Ext.IPAddr.IPNet.V4 cidr₄)))
     (inRange rangeV6 t (ipTerm (Ext.IPAddr.IPNet.V6 cidr₆))))
 
-def isLoopback (t : Term) : Term :=
+public def isLoopback (t : Term) : Term :=
   inRangeLit t Ext.IPAddr.LOOP_BACK_CIDR_V4 Ext.IPAddr.LOOP_BACK_CIDR_V6
 
- def isMulticast (t : Term) : Term :=
+public def isMulticast (t : Term) : Term :=
   inRangeLit t Ext.IPAddr.MULTICAST_CIDR_V4 Ext.IPAddr.MULTICAST_CIDR_V6
 
 end IPAddr
 
 namespace Duration
 
-def toMilliseconds (t : Term) : Term := ext.duration.val t
+public def toMilliseconds (t : Term) : Term := ext.duration.val t
 
-def toSeconds (t : Term) : Term :=
+public def toSeconds (t : Term) : Term :=
   bvsdiv (toMilliseconds t) (.prim (.bitvec (Int64.toBitVec 1000)))
 
-def toMinutes (t : Term) : Term :=
+public def toMinutes (t : Term) : Term :=
   bvsdiv (toSeconds t) (.prim (.bitvec (Int64.toBitVec 60)))
 
-def toHours (t : Term) : Term :=
+public def toHours (t : Term) : Term :=
   bvsdiv (toMinutes t) (.prim (.bitvec (Int64.toBitVec 60)))
 
-def toDays (t : Term) : Term :=
+public def toDays (t : Term) : Term :=
   bvsdiv (toHours t) (.prim (.bitvec (Int64.toBitVec 24)))
 
 end Duration
 
 namespace Datetime
 
-def offset (dt dur : Term) : Term :=
+public def offset (dt dur : Term) : Term :=
   let dt_val := ext.datetime.val dt
   let dur_val := ext.duration.val dur
   ifFalse (bvsaddo dt_val dur_val) (ext.datetime.ofBitVec (bvadd dt_val dur_val))
 
-def durationSince (dt₁ dt₂ : Term) : Term :=
+public def durationSince (dt₁ dt₂ : Term) : Term :=
   let dt₁_val := ext.datetime.val dt₁
   let dt₂_val := ext.datetime.val dt₂
   ifFalse (bvssubo dt₁_val dt₂_val) (ext.duration.ofBitVec (bvsub dt₁_val dt₂_val))
 
-def toDate (dt : Term) : Term :=
-  let zero := .prim (.bitvec (Int64.toBitVec 0))
-  let one := .prim (.bitvec (Int64.toBitVec 1))
+public def toDate (dt : Term) : Term :=
   let ms_per_day := .prim (.bitvec (Int64.toBitVec 86400000))
   let dt_val := ext.datetime.val dt
-  (ite (bvsle zero dt_val)
-    (someOf (ext.datetime.ofBitVec (bvmul ms_per_day (bvsdiv dt_val ms_per_day))))
-    (ite (eq (bvsrem dt_val ms_per_day) zero)
-      (someOf dt)
-      (ifFalse (bvsmulo (bvsub (bvsdiv dt_val ms_per_day) one) ms_per_day)
-        (ext.datetime.ofBitVec (bvmul (bvsub (bvsdiv dt_val ms_per_day) one) ms_per_day))
-      )
-    )
-  )
+  -- we want dt - (dt % MS_PER_DAY), with the right version of '%'
+  -- using bvsmod does the right thing: we have 0 <= (bvsmod x MS_PER_DAY) < MS_PER_DAY
+  let rem := bvsmod dt_val ms_per_day
+  ifFalse (bvssubo dt_val rem) (ext.datetime.ofBitVec (bvsub dt_val rem))
 
-def toTime (dt : Term) : Term :=
+public def toTime (dt : Term) : Term :=
   let zero := .prim (.bitvec (Int64.toBitVec 0))
   let ms_per_day := .prim (.bitvec (Int64.toBitVec 86400000))
   let dt_val := ext.datetime.val dt

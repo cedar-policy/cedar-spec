@@ -38,23 +38,22 @@ namespace Cedar.Thm
 
 open Data Spec SymCC
 
+@[simp]
 public theorem typeOf_bool {b : Bool} :
   Term.typeOf (Term.prim (TermPrim.bool b)) = TermType.bool
 := by simp [Term.typeOf, TermPrim.typeOf]
 
+@[simp]
 public theorem typeOf_bv {n : Nat} {bv : BitVec n} :
   Term.typeOf (Term.prim (TermPrim.bitvec bv)) = .bitvec n
 := by simp [Term.typeOf, TermPrim.typeOf, BitVec.width]
 
-public theorem typeOf_bv_width {n m : Nat} {bv : BitVec m} :
-  Term.typeOf (Term.prim (TermPrim.bitvec bv)) = TermType.bitvec n →
-  m = n
-:= by simp [Term.typeOf, TermPrim.typeOf, BitVec.width]
-
+@[simp]
 public theorem typeOf_term_none (ty : TermType) :
   Term.typeOf (Term.none ty) = TermType.option ty
 := by simp [Term.typeOf]
 
+@[simp]
 public theorem typeOf_term_some {t : Term} :
   Term.typeOf (Term.some t) = TermType.option t.typeOf
 := by simp only [Term.typeOf]
@@ -71,40 +70,49 @@ public theorem typeOf_term_prim_isPrimType (p : TermPrim) :
   split <;>
   simp only [TermType.isPrimType]
 
+@[simp]
 public theorem typeOf_term_prim_entity {uid : EntityUID} :
   (Term.entity uid).typeOf = TermType.entity uid.ty
 := by
   simp only [Term.typeOf, TermPrim.typeOf]
 
+@[simp]
 public theorem typeOf_term_prim_string {s : String} :
   (Term.string s).typeOf = TermType.string
 := by
   simp only [Term.typeOf, TermPrim.typeOf]
 
+@[simp]
 public theorem typeOf_term_prim_ext_decimal {d : Ext.Decimal} :
   (Term.prim (.ext (.decimal d))).typeOf = TermType.ext Validation.ExtType.decimal
 := by simp only [Term.typeOf, TermPrim.typeOf]
 
+@[simp]
 public theorem typeOf_term_prim_ext_ipaddr {ip : Ext.IPAddr.IPNet} :
   (Term.prim (.ext (.ipaddr ip))).typeOf = TermType.ext Validation.ExtType.ipAddr
 := by simp only [Term.typeOf, TermPrim.typeOf]
 
+@[simp]
 public theorem typeOf_term_prim_ext_datetime {d : Ext.Datetime} :
   (Term.prim (.ext (.datetime d))).typeOf = TermType.ext Validation.ExtType.datetime
 := by simp only [Term.typeOf, TermPrim.typeOf]
 
+@[simp]
 public theorem typeOf_term_prim_ext_duration {d : Ext.Datetime.Duration} :
   (Term.prim (.ext (.duration d))).typeOf = TermType.ext Validation.ExtType.duration
 := by simp only [Term.typeOf, TermPrim.typeOf]
 
+@[simp]
 public theorem typeOf_term_var (v : TermVar) :
   (Term.var v).typeOf = v.ty
 := by simp [Term.typeOf]
 
+@[simp]
 public theorem typeOf_term_set {elts : Set Term} {eltsTy : TermType} :
   (Term.set elts eltsTy).typeOf = TermType.set eltsTy
 := by simp [Term.typeOf]
 
+@[simp]
 public theorem typeOf_term_record_eq  {r : Map Attr Term} :
   Term.typeOf (Term.record r) =
   TermType.record (r.mapOnValues Term.typeOf)
@@ -168,7 +176,8 @@ public theorem typeOf_term_record_tail {a : Attr} {t₁ t₂ : Term} {tl₁ tl�
   simp only [typeOf_term_record_eq, TermType.record.injEq]
   exact Map.mapOnValues_tail (f := Term.typeOf)
 
-theorem typeOf_term_app {op : Op} {args : List Term} :
+@[simp]
+public theorem typeOf_term_app {op : Op} {args : List Term} :
   Term.typeOf (Term.app op args ty) = ty
 := by simp [Term.typeOf]
 
@@ -353,7 +362,7 @@ private theorem typeOf_ite_simplify_option {g t : Term} {ty : TermType} :
   · simp only [Term.typeOf]
   · split
     · exact hty
-    · split <;> simp [typeOf_bool, Term.typeOf] at *
+    · split <;> simp at *
 
 public theorem typeOf_ifSome_option {g t : Term} {ty : TermType} :
   t.typeOf = .option ty →

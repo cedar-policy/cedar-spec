@@ -14,9 +14,13 @@
  limitations under the License.
 -/
 
+import Cedar.Thm.Data.Control
 import Cedar.Thm.SymCC.Compiler.Args
 import Cedar.Thm.SymCC.Compiler.Invert
 import Cedar.Thm.SymCC.Compiler.WF
+import Cedar.Thm.SymCC.Data.Ext
+import Cedar.Thm.SymCC.Term.Interpret
+import Cedar.Thm.SymCC.Term.PE
 
 /-!
 This file proves the compilation lemmas for `.call` expressions.
@@ -181,7 +185,6 @@ private theorem pe_datetime_offset {dt : Ext.Datetime} {dur : Ext.Datetime.Durat
   case none =>
     rw [BitVec.Int64_ofInt?_eq_none_iff_overflows] at h
     simp [h, pe_ifFalse_true]
-    apply (wf_ext_datetime_ofBitVec wf_bv typeOf_bv).right; exact Map.empty
   case some v =>
     have h' : ∃ v, Int64.ofInt? (dt.val.toInt + dur.val.toInt) = some v := by exact Exists.intro v h
     rw [← Option.isSome_iff_exists, Option.isSome_iff_ne_none, ne_eq, BitVec.Int64_ofInt?_eq_none_iff_overflows] at h'
@@ -190,7 +193,10 @@ private theorem pe_datetime_offset {dt : Ext.Datetime} {dur : Ext.Datetime.Durat
     simp only [Int64.ofInt?, Option.dite_none_right_eq_some, Option.some.injEq, Int64.ofIntChecked] at h
     cases h; rename_i h heq
     subst heq
-    simp only [Int64.ofInt, BitVec.ofInt_add, Int64.toInt, ext.datetime.ofBitVec, BitVec.toInt_ofInt_64]
+    simp only [Int64.ofInt, Int64.toInt]
+    have hbmod := @Int.bmod_bounded_eq_self 63 _ h.left h.right
+    simp only [Int64.toInt] at hbmod
+    rw [hbmod]
 
 private theorem pe_datetime_durationSince {dt₁ dt₂ : Ext.Datetime}:
   Datetime.durationSince (.prim (.ext (Ext.datetime dt₁))) (.prim (.ext (Ext.datetime dt₂))) =
@@ -203,7 +209,6 @@ private theorem pe_datetime_durationSince {dt₁ dt₂ : Ext.Datetime}:
   case none =>
     rw [BitVec.Int64_ofInt?_eq_none_iff_overflows] at h
     simp [h, pe_ifFalse_true]
-    apply (wf_ext_duration_ofBitVec wf_bv typeOf_bv).right; exact Map.empty
   case some v =>
     have h' : ∃ v, Int64.ofInt? (dt₁.val.toInt - dt₂.val.toInt) = some v := by exact Exists.intro v h
     rw [← Option.isSome_iff_exists, Option.isSome_iff_ne_none, ne_eq, BitVec.Int64_ofInt?_eq_none_iff_overflows] at h'
@@ -212,33 +217,10 @@ private theorem pe_datetime_durationSince {dt₁ dt₂ : Ext.Datetime}:
     simp only [Int64.ofInt?, Option.dite_none_right_eq_some, Option.some.injEq, Int64.ofIntChecked] at h
     cases h; rename_i h heq
     subst heq
-    simp only [ext.duration.ofBitVec, Int64.ofInt, BitVec.toInt_sub, Nat.reducePow, Int64.toInt,
-      Term.prim.injEq, TermPrim.ext.injEq, Ext.duration.injEq, Ext.Datetime.Duration.mk.injEq]
+    simp only [Int64.ofInt, Int64.toInt]
     have hbmod := @Int.bmod_bounded_eq_self 63 _ h.left h.right
     simp only [Int64.toInt] at hbmod
     rw [hbmod]
-
-private theorem pe_datetime_toDate_sDiv_ms_sub_1 (dt : Ext.Datetime) :
-  (dt.val.toUInt64.toBitVec.sdiv 86400000#64).toInt - Int.ofNat 1 =
-  ((dt.val.toUInt64.toBitVec.sdiv 86400000#64).sub 1#64).toInt
-:= by
-  simp only [Int.ofNat_eq_natCast, BitVec.sub_eq, BitVec.toInt_sub,
-    BitVec.reduceToInt, Nat.reducePow]
-  symm
-  apply @Int.bmod_bounded_eq_self 63
-  case hlow =>
-    generalize dt.val.toUInt64.toBitVec = bv at *
-    apply Int.le_sub_one_of_lt
-    apply @BitVec.sdiv_pos_gt_INT64_MIN
-    simp only [BitVec.reduceToInt, Int.reduceLT]
-  case hhigh =>
-    generalize dt.val.toUInt64.toBitVec = bv at *
-    apply @Int.le_trans _ (bv.sdiv 86400000#64).toInt
-    case h₁ => bv_omega
-    case h₂ =>
-      apply Int.le_of_lt
-      apply BitVec.sdiv_pos_lt_INT64_MAX
-      simp only [BitVec.reduceToInt, Int.reduceLT]
 
 private theorem pe_datetime_toDate {dt : Ext.Datetime}:
   Datetime.toDate (.prim (.ext (Ext.datetime dt))) =
@@ -246,87 +228,71 @@ private theorem pe_datetime_toDate {dt : Ext.Datetime}:
   | none => .none (.prim (.ext .datetime))
   | some dt' => .some (.prim (.ext (Ext.datetime dt')))
 := by
-  simp only [Datetime.toDate, someOf, pe_ext_datetime_val, pe_bvsdiv, pe_bvsub, pe_bvmul, pe_bvsmulo,
-    pe_bvsrem, pe_bvsle, pe_ext_datetime_ofBitVec,
-    Ext.Datetime.toDate, Ext.Datetime.MILLISECONDS_PER_DAY, Int64.ofIntChecked,
-    Int64.ofInt, pe_eq_lit term_prim_is_lit term_prim_is_lit, Int64.mod, Int64.div ]
-  simp only [
-    show Int64.toBitVec 0 = 0 by rfl,
-    show Int64.toBitVec 1 = 1 by rfl,
-    show Int64.toBitVec 86400000 = 86400000 by rfl ]
-  cases h₀ : BitVec.sle 0 dt.val.toBitVec
-  case false =>
-    simp only [pe_ite_false]
-    have h₁ : ¬dt.val ≥ 0 := by
-      simp only [ge_iff_le, LE.le, Int64.le, Bool.not_eq_true]
-      exact h₀
-    simp only [h₁, ↓reduceIte]
-    cases h₂ : Term.prim (TermPrim.bitvec (dt.val.toBitVec.srem 86400000)) == Term.prim (TermPrim.bitvec 0)
-    case false =>
-      simp only [beq_eq_false_iff_ne, ne_eq, Term.prim.injEq,
-        TermPrim.bitvec.injEq, heq_eq_eq, true_and, Int64.toBitVec] at h₂
-      simp only [BitVec.ofInt_ofNat, BitVec.ofInt_toInt]
-      simp only [Int64.toBitVec, BEq.beq, decide_eq_true_eq, OfNat.ofNat, Int64.ofNat]
-      replace h₂ : ¬dt.val.toUInt64.toBitVec.srem 86400000#64 = 0#64 := by exact h₂
-      rw [BitVec.eq_iff_UInt64_toInt64_eq_64, UInt64.toInt64, UInt64.toInt64] at h₂
-      simp only [h₂, ↓reduceIte, pe_ite_false, Ext.Datetime.datetime?]
-      simp only [Int64.toInt, Int64.toBitVec]
-      have h₃ := pe_datetime_toDate_sDiv_ms_sub_1 dt
-      cases h₄ : BitVec.overflows 64 (((dt.val.toUInt64.toBitVec.smtSDiv 86400000#64).sub 1#64).toInt * (86400000#64).toInt)
-      case false =>
-        clear h₀ h₁ h₂
-        simp only [pe_ifFalse_false]
-        simp only [Bool.eq_false_iff, ne_eq, ← BitVec.Int64_ofInt?_eq_none_iff_overflows, Int64.ofInt?] at h₄
-        simp only [dite_eq_right_iff, reduceCtorEq, imp_false, not_and, not_imp, Decidable.not_not] at h₄
-        replace ⟨h₄, h₅⟩ := h₄
-        simp only [@BitVec.smtSDiv_eq_sdiv _ _ 86400000#64 (by simp only [BitVec.ofNat_eq_ofNat, ne_eq, BitVec.reduceEq, not_false_eq_true])] at *
-        simp only [h₃, Int64.ofInt?, h₄, h₅]
-        simp only [and_self, ↓reduceDIte,
-          BitVec.reduceToInt, Option.pure_def, Option.bind_some_fun, Term.some.injEq,
-          Term.prim.injEq, TermPrim.ext.injEq, Ext.datetime.injEq, Ext.Datetime.mk.injEq]
-        simp only [Int64.ofIntChecked, Int64.ofInt]
-        congr
-        have h₆ : (86400000 : Int) = (86400000#64).toInt := by decide
-        simp only [h₆, ← BitVec.mul_toInt_eq_toInt_mul (And.intro h₄ h₅), BitVec.ofInt_toInt]
-        simp only [BitVec.sub_eq, BitVec.mul_eq]
-      case true =>
-        simp only [← BitVec.Int64_ofInt?_eq_none_iff_overflows] at h₄
-        simp only [@BitVec.smtSDiv_eq_sdiv _ _ 86400000#64 (by simp only [BitVec.ofNat_eq_ofNat, ne_eq, BitVec.reduceEq, not_false_eq_true])] at *
-        simp only [pe_ifFalse_true, typeOf_term_prim_ext_datetime, h₃, h₄]
-        simp only [Option.pure_def, Option.bind_none_fun]
-    case true =>
-      simp only [pe_ite_true, Int64.toBitVec]
-      simp only [BitVec.ofNat_eq_ofNat, beq_iff_eq, Term.prim.injEq, TermPrim.bitvec.injEq, heq_eq_eq, true_and] at h₂
-      simp only [Int64.toInt, Int64.toBitVec] at *
-      simp only [show  BitVec.ofInt 64 86400000 = 86400000#64 by rfl, h₂]
-      have h₃ : 0 = UInt64.toInt64 { toBitVec := 0#64 } := by
-        simp only [UInt64.toInt64, UInt64.ofBitVec_ofNat, OfNat.ofNat, Int64.ofNat, UInt64.ofBitVec_ofNat, UInt64.reduceOfNat]
-      simp only [UInt64.ofBitVec_ofNat, h₃, UInt64.toInt64, beq_self_eq_true, ↓reduceIte]
-  case true =>
-    have h₁ : dt.val ≥ 0 := by
-      simp only [ge_iff_le, LE.le, Int64.le]
-      exact h₀
-    simp only [h₁, ↓reduceIte, pe_ite_true]; clear h₀ h₁
-    simp only [Int64.toInt, Int64.toBitVec]
-    simp only [show 86400000 = 86400000#64 by rfl]
-    simp only [@BitVec.smtSDiv_eq_sdiv _ _ 86400000#64 (by simp only [BitVec.ofNat_eq_ofNat, ne_eq, BitVec.reduceEq, not_false_eq_true])]
-    have h₀ : (BitVec.ofInt 64 86400000).toInt = (86400000#64).toInt := by
-      simp only [BitVec.toInt, BitVec.ofInt_ofNat, BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod,
-        Nat.reduceMul, Nat.reduceLT, ↓reduceIte]
-    have h₁ : (BitVec.ofInt 64 86400000) = 86400000#64 := by simp only [BitVec.ofInt_ofNat]
-    simp only [h₁] ; clear h₀ h₁
-    rw [@BitVec.mul_toInt_sdiv_eq_toInt_mul_sdiv _ 86400000#64 (by simp only [BitVec.reduceToInt, Int.reduceLT])]
-    simp only [Ext.Datetime.datetime?, Int64.ofInt?, BitVec.toInt_ge_INT64_MIN, BitVec.toInt_le_INT64_MAX]
-    simp only [BitVec.mul_eq, BitVec.toInt_mul, BitVec.reduceToInt, Nat.reducePow, and_self,
-      ↓reduceDIte, Int64.ofIntChecked, Option.pure_def, Option.bind_some_fun, Term.some.injEq,
-      Term.prim.injEq, TermPrim.ext.injEq, Ext.datetime.injEq, Ext.Datetime.mk.injEq]
-    simp only [Int64.ofInt]
+  -- Rewrite the spec's toDate to the smod-based formulation
+  rw [toDate_eq_smod]
+  simp only [Datetime.toDate, pe_ext_datetime_val, Int64.toBitVec_ofNat, BitVec.ofNat_eq_ofNat,
+    pe_bvsmod, pe_bvssubo, Int64.toInt_toBitVec, pe_bvsub, BitVec.sub_eq, pe_ext_datetime_ofBitVec,
+    Int64.ofInt, BitVec.toInt_sub, Nat.reducePow, Ext.Datetime.datetime?,
+    Int64.ofIntChecked, Ext.Datetime.MILLISECONDS_PER_DAY, BitVec.ofInt_ofNat,
+    UInt64.ofBitVec_ofNat, Option.pure_def, Option.bind_eq_bind]
+  split <;> rename_i h₁
+  · generalize h₂ : (BitVec.overflows 64 (dt.val.toInt - (dt.val.toBitVec.smod 86400000#64).toInt)) = ov
+    suffices ov = true by simp [this]
+    subst ov
+    simp_all only [Int64.ofInt?, Option.bind_eq_none_iff, Option.dite_none_right_eq_some,
+      Option.some.injEq, reduceCtorEq, imp_false, not_exists, forall_apply_eq_imp_iff, not_and,
+      Int.not_le, BitVec.overflows, BitVec.signedMin_eq_INT64_MIN, BitVec.signedMax_eq_INT64_MAX,
+      gt_iff_lt, Bool.or_eq_true, decide_eq_true_eq]
+    by_cases h₂ : dt.val.toInt - (dt.val.toBitVec.smod 86400000#64).toInt < Int64.MIN
+    case pos => left ; exact h₂
+    case neg =>
+      right
+      simp only [Int64.smod, Int64.toInt_ofBitVec, Int.not_lt] at *
+      rw [show Int64.toBitVec { toUInt64 := OfNat.ofNat 86400000 } = 86400000#64 by simp [Int64.toBitVec]] at h₁
+      exact h₁ h₂
+  · change (do
+      let val ← (Int64.ofInt? _)
+      some ({ val } : Ext.Datetime)) =
+      some _ at h₁
+    replace ⟨v, h₁, h⟩ := do_some.mp h₁
+    subst h
+    simp only [Int64.ofInt?, Option.dite_none_right_eq_some, Option.some.injEq] at h₁
+    replace ⟨h₁, _⟩ := h₁ ; subst v
+    generalize h₂ : (BitVec.overflows 64 (dt.val.toInt - (dt.val.toBitVec.smod 86400000#64).toInt)) = ov
+    suffices ov = false by
+      simp only [this, pe_ifFalse_false, Term.some.injEq, Term.prim.injEq, TermPrim.ext.injEq,
+        Ext.datetime.injEq, Ext.Datetime.mk.injEq]
+      subst ov
+      simp_all only [BitVec.overflows, BitVec.signedMin_eq_INT64_MIN, BitVec.signedMax_eq_INT64_MAX,
+        gt_iff_lt, Bool.or_eq_false_iff, decide_eq_false_iff_not, Int.not_lt]
+      replace ⟨h₁, h₂⟩ := h₁
+      simp only [BitVec.toInt_smod, Int64.toInt_toBitVec, BitVec.reduceToInt, Int64.ofIntChecked,
+        Int64.ofInt_sub, Int64.ofInt_toInt] at *
+      have hbmod := @Int.bmod_bounded_eq_self 63 _ this.left this.right
+      simp only [show (63 + 1) = 64 from rfl] at hbmod
+      rw [hbmod]
+      rw [show ({toUInt64 := {toBitVec := BitVec.ofInt 64 (dt.val.toInt - dt.val.toInt.fmod 86400000)}} : Int64) = Int64.ofBitVec (BitVec.ofInt 64 (dt.val.toInt - dt.val.toInt.fmod 86400000)) from rfl]
+      rw [show Int64.ofBitVec (BitVec.ofInt 64 (dt.val.toInt - dt.val.toInt.fmod 86400000)) = Int64.ofInt (dt.val.toInt - dt.val.toInt.fmod 86400000) from rfl]
+      simp only [Int64.smod]
+      rw [Int64.ofInt_sub, Int64.ofInt_toInt]
+      congr 1
+      rw [show (Int64.ofInt (dt.val.toInt.fmod 86400000) : Int64) = Int64.ofBitVec (BitVec.ofInt 64 (dt.val.toInt.fmod 86400000)) from rfl]
+      congr 1
+      rw [show ({ toUInt64 := OfNat.ofNat 86400000 } : Int64).toBitVec = (86400000#64 : BitVec 64) from by simp [Int64.toBitVec]]
+      rw [show (86400000 : Int) = (86400000#64 : BitVec 64).toInt from by decide]
+      rw [show dt.val.toInt = dt.val.toBitVec.toInt from rfl]
+      rw [← @BitVec.toInt_smod 64 dt.val.toBitVec 86400000#64]
+      exact BitVec.ofInt_toInt
+    subst ov
+    simp only [BitVec.toInt_smod, Int64.toInt_toBitVec, BitVec.reduceToInt]
+    simp only [Int64.smod, Int64.toInt_ofBitVec, BitVec.toInt_smod, Int64.toInt_toBitVec] at h₁
+    exact BitVec.overflows_false_64.mp h₁
 
 private theorem pe_datetime_toTime {dt : Ext.Datetime}:
   Datetime.toTime (.prim (.ext (Ext.datetime dt))) = .prim (.ext (Ext.duration dt.toTime))
 := by
   simp only [Datetime.toTime, pe_ext_datetime_val, pe_bvsrem, pe_bvadd, pe_bvsle,
-    pe_eq_lit term_prim_is_lit term_prim_is_lit, Ext.Datetime.toTime]
+    pe_eq_lit isLiteral_prim isLiteral_prim, Ext.Datetime.toTime]
   simp only [Int64.ofIntChecked, Int64.ofInt, Int64.mod, Ext.Datetime.MILLISECONDS_PER_DAY]
   simp only [
     show Int64.toBitVec 0 = 0#64 by rfl,
@@ -661,27 +627,15 @@ private theorem interpret_datetime_toDate {εs : SymEntities} {I : Interpretatio
   have ⟨hwf₀, hty₀⟩ := wf_ext_datetime_val hw.left hw.right
   have hwf_bv_zero := @wf_bv εs _ (Int64.toBitVec 0)
   have hwf_bv_ms_per_day := @wf_bv εs _ (Int64.toBitVec 86400000)
-  have ⟨hwf₁, hty₁⟩   := wf_bvsle hwf_bv_zero hwf₀ typeOf_bv hty₀
-  have ⟨hwf₂, hty₂⟩   := wf_bvsdiv hwf₀ hwf_bv_ms_per_day hty₀ typeOf_bv
-  have ⟨hwf₃, hty₃⟩   := wf_bvmul hwf_bv_ms_per_day hwf₂ typeOf_bv hty₂
-  have ⟨hwf₄, hty₄⟩   := wf_ext_datetime_ofBitVec hwf₃ hty₃
-  have ⟨hwf₅, hty₅⟩   := wf_term_some hwf₄ hty₄
-  have ⟨hwf₆, hty₆⟩   := wf_bvsrem hwf₀ hwf_bv_ms_per_day hty₀ typeOf_bv
-  have ⟨hwf₇, hty₇⟩   := wf_eq hwf₆ hwf_bv_zero (by simp only [hty₆, typeOf_bv])
-  have ⟨hwf₈, hty₈⟩   := wf_term_some hw.left hw.right
-  have ⟨hwf₉, hty₉⟩   := wf_bvsub hwf₂ (@wf_bv εs _ (Int64.toBitVec 1)) hty₂ typeOf_bv
-  have ⟨hwf₁₀, hty₁₀⟩ := wf_bvsmulo hwf₉ hwf_bv_ms_per_day hty₉ typeOf_bv
-  have ⟨hwf₁₁, hty₁₁⟩ := wf_bvmul hwf₉ hwf_bv_ms_per_day hty₉ typeOf_bv
-  have ⟨hwf₁₂, hty₁₂⟩ := wf_ext_datetime_ofBitVec hwf₁₁ hty₁₁
-  have ⟨hwf₁₃, hty₁₃⟩ := wf_ifFalse hwf₁₀ hwf₁₂ hty₁₀
-  have ⟨hwf₁₄, hty₁₄⟩ := wf_ite hwf₇ hwf₈ hwf₁₃ hty₇ (by simp only [hty₈, hty₁₃, hty₁₂])
-  simp only [Datetime.toDate, someOf,
-    interpret_ite hI hwf₁ hwf₅ hwf₁₄ hty₁ (by simp only [hty₅, hty₁₄, hty₈]),
-    interpret_ite hI hwf₇ hwf₈ hwf₁₃ hty₇ (by simp only [hty₈, hty₁₃, hty₁₂]),
-    interpret_eq hI hwf₆ hwf_bv_zero, interpret_term_some,
-    interpret_ifFalse hI hwf₁₀ hty₁₀ hwf₁₂, interpret_ext_datetime_ofBitVec,
-    interpret_bvsle, interpret_bvsmulo, interpret_bvmul, interpret_bvsrem,
-    interpret_bvsub, interpret_bvsdiv, interpret_term_prim, interpret_ext_datetime_val
+  simp only [Datetime.toDate]
+  have ⟨hwf₁, hty₁⟩   := wf_bvsmod hwf₀ hwf_bv_ms_per_day hty₀ typeOf_bv
+  have ⟨hwf₂, hty₂⟩   := wf_bvsub hwf₀ hwf₁ hty₀ hty₁
+  have ⟨hwf₃, hty₃⟩   := wf_bvssubo hwf₀ hwf₁ hty₀ hty₁
+  have ⟨hwf₄, hty₄⟩   := wf_ext_datetime_ofBitVec hwf₂ hty₂
+  simp only [
+    interpret_ifFalse hI hwf₃ hty₃ hwf₄,
+    interpret_bvssubo, interpret_ext_datetime_val, interpret_bvsmod,
+    interpret_term_prim, interpret_ext_datetime_ofBitVec, interpret_bvsub,
   ]
 
 private theorem interpret_datetime_toTime {εs : SymEntities} {I : Interpretation} {t : Term}

@@ -14,10 +14,14 @@
  limitations under the License.
 -/
 
+module
+
 import Cedar.Data.SizeOf
-import Cedar.SymCC.Decoder
+public import Cedar.SymCC.Decoder
+import all Cedar.SymCC.Decoder -- proving things about Decoder, so we need access to internals of Decoder that are normally not exposed
+import Cedar.Thm.Data.Set
 import Cedar.Thm.SymCC.Data
-import Cedar.Thm.SymCC.Env.WF
+public import Cedar.Thm.SymCC.Env.WF
 import Cedar.Thm.SymCC.Term.Lit
 import Cedar.Thm.SymCC.Term.TypeOf
 
@@ -34,7 +38,7 @@ open Cedar.Data
 `Decoder.defaultLit` is well-formed if given
 sufficiently well-formed `eidOf` and `ty`.
 -/
-theorem default_lit_wf
+public theorem default_lit_wf
   {εs : SymEntities}
   {eidOf : EntityType → String} {ty : TermType}
   (hwf_ty : ty.WellFormed εs)
@@ -96,22 +100,19 @@ decreasing_by
   simp at *
   omega
 
-theorem default_lit_is_lit
+public theorem default_lit_is_lit
   {eidOf : EntityType → String} {ty : TermType} :
   (Decoder.defaultLit eidOf ty).isLiteral
 := by
   cases ty with
-  | prim p =>
-    cases p
-    all_goals
-      simp [Decoder.defaultLit, Decoder.defaultPrim, Term.isLiteral]
+  | prim p => cases p <;> simp [Decoder.defaultLit, Decoder.defaultPrim]
   | record rty =>
     simp only [Decoder.defaultLit]
     rw [Map.mapOnValues₂_eq_mapOnValues]
     rw [isLiteral_record_mapOnValues]
     intro tty htty
     exact default_lit_is_lit
-  | _ => simp [Decoder.defaultLit, Term.isLiteral]
+  | _ => simp [Decoder.defaultLit]
 termination_by sizeOf ty
 decreasing_by
   simp_wf
@@ -125,9 +126,8 @@ public theorem default_lit_well_typed
   cases ty with
   | prim p =>
     cases p with
-    | ext x => cases x <;>
-        simp [Decoder.defaultLit, Decoder.defaultPrim, Decoder.defaultExt, typeOf_term_prim_ext_datetime, typeOf_term_prim_ext_decimal, typeOf_term_prim_ext_duration, typeOf_term_prim_ext_ipaddr]
-    | _ => simp [Decoder.defaultLit, Decoder.defaultPrim, typeOf_bool, typeOf_bv, typeOf_term_prim_string, typeOf_term_prim_entity]
+    | ext x => cases x <;> simp [Decoder.defaultLit, Decoder.defaultPrim, Decoder.defaultExt]
+    | _ => simp [Decoder.defaultLit, Decoder.defaultPrim]
   | option => simp only [Decoder.defaultLit, typeOf_term_none]
   | set => simp only [Decoder.defaultLit, typeOf_term_set]
   | record rty =>

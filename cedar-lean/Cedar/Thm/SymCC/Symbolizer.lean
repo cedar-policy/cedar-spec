@@ -625,11 +625,7 @@ theorem value?_symbolize?_id
       simp only [hsym_attr, Option.some.injEq] at h₁
       simp only [h₁]
       simp [h₂]
-    simp only [
-      List.mapM₂_eq_mapM (λ x => Term.value?.attrValue? x.fst x.snd) _,
-      hval_sym_attrs,
-      Option.some.injEq, Value.record.injEq,
-    ]
+    simp only [List.mapM₂_eq_mapM (λ x => Term.value?.attrValue? x.fst x.snd)]
     congr
     have hsorted_rty_map :
       List.SortedBy Prod.fst rty_map
@@ -716,6 +712,8 @@ theorem value?_symbolize?_id
         have := (h attr.snd).mpr hmem_attr
         exists val_sym_attr
         simp [hmem_val_sym_attr, this, heq]
+    simp only [exists_and_left, Prod.exists, Prod.forall, hval_sym_attrs, Option.some.injEq,
+      Value.record.injEq, Map.toList_mk_id, Map.mk.injEq] at *
     exact List.sortedBy_equiv_implies_eq Prod.fst hsorted_filt_val_sym_attrs hsorted_rec_map hequiv
 termination_by sizeOf v
 decreasing_by
@@ -726,7 +724,7 @@ decreasing_by
     cases elems
     simp [Set.toList, Set.elts] at this ⊢
     omega
-  any_goals
+  all_goals
     rename Value => v'
     rename v = Value.record rec => h₁
     rename rec = Map.mk rec_map => h₂

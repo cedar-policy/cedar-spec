@@ -13,6 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
+
 import Cedar.Thm.SymCC.Data
 import Cedar.Thm.SymCC.Concretizer.Util
 import Cedar.Thm.SymCC.Concretizer.Same
@@ -305,11 +306,11 @@ private theorem term_setOfEntityUIDs?_some_value? {t : Term} {uids : Set EntityU
     rw [List.mapM_some_iff_forall₂] at hs
     clear heq
     induction hs
-    case nil => simp only [List.map_nil, List.Forall₂.nil]
+    case nil => simp [Set.elts]
     case cons thd uhd ttl utl h₁ h₂ ih =>
       apply List.Forall₂.cons _ ih
       rw [term_entityUID?_some_iff_eq] at h₁
-      simp only [h₁, entity_value?]
+      simp only [h₁, value?_entity]
   · rw [Set.eq_means_eqv (Set.make_wf _) (Set.make_wf _)]
     apply List.Equiv.trans Set.elts_make_eqv
     apply List.Equiv.symm
@@ -450,8 +451,9 @@ private theorem concretize?_δ_tags_some_implies_ws_entityUIDs {uid : EntityUID}
       replace ⟨heq', heq⟩ := concretize?_taggedValueFor_some_implies heq
       rw [eq_comm] at heq' ; subst heq'
       simp only [SymTags.getTag!] at heq
-      have hsub := app_value?_some_implies_entityUIDs heq (lit_tagOf uid t)
-      exact Set.mem_subset_mem hin' hsub
+      apply Set.mem_subset_mem hin'
+      apply app_value?_some_implies_entityUIDs heq
+      exact lit_tagOf uid t
 
 private theorem concretize?_δ_some_implies {uid : EntityUID} {δ : SymEntityData} {d : EntityData} {εs : SymEntities} :
   εs.find? uid.ty = some δ →

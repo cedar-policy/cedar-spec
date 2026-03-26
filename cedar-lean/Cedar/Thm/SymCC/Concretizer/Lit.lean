@@ -13,13 +13,21 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
+
+module
+
+import all Cedar.SymCC.Concretizer -- proving things about internals of SymCC.Concretizer
+public import Cedar.SymCC.Env
+import all Cedar.SymCC.Env -- currently, proofs in this file also require reasoning about private internals of SymCC.Env functions
+import all Cedar.SymCC.Tags -- currently, proofs in this file also require reasoning about private internals of SymCC.Tags functions
 import Cedar.Thm.SymCC.Data
-import Cedar.Thm.SymCC.Concretizer.Util
+import all Cedar.Thm.SymCC.Concretizer.Util -- we require some lemmas about private functions that live in this file
 import Cedar.Thm.Data.MapUnion
 import Cedar.Thm.SymCC.Term.Lit
 import Cedar.Thm.SymCC.Term.PE
 import Cedar.Thm.SymCC.Term.Same
-
+import Cedar.Thm.SymCC.Term.TypeOf
+public import Cedar.Thm.SymCC.Term.WF
 
 /-!
 The main lemma in this file, `concretize?_wfl_some`, proves that
@@ -82,11 +90,9 @@ private theorem wfl_term_isCedarRecordType_implies_recordValue?_some {t : Term} 
 := by
   intro hw hty
   have ⟨rty, hrty⟩ := isCedarRecordType_implies_term_record_type hty
+  have ⟨cty, hcty⟩ := isCedarRecordType_implies_cedarType?_some hty
   have ⟨r, heq⟩ := wfl_of_type_record_is_record hw hrty
   subst heq
-  simp only [TermType.isCedarRecordType] at hty
-  split at hty <;> simp only [Bool.false_eq_true] at hty
-  rename_i hcty
   have ⟨v, hv⟩ := term_value?_exists hw hcty
   simp only [Term.recordValue?, Option.bind_eq_bind, Option.bind_eq_some_iff]
   replace ⟨rv, hv, hr⟩ := same_record_term_implies (same_values_def.mpr hv)
@@ -144,7 +150,7 @@ private theorem wf_term_prim_implies_valid_uids {t : TermPrim} {εs : SymEntitie
   · have _ := Set.not_mem_empty uid
     contradiction
 
-theorem wf_term_implies_valid_uids {t : Term} {εs : SymEntities} :
+public theorem wf_term_implies_valid_uids {t : Term} {εs : SymEntities} :
   t.WellFormed εs →
   ∀ uid ∈ t.entityUIDs, εs.isValidEntityUID uid
 := by
@@ -168,7 +174,6 @@ theorem wf_term_implies_valid_uids {t : Term} {εs : SymEntities} :
     replace hwf := wf_term_set_implies_wf_elt hwf hin'
     exact wf_term_implies_valid_uids hwf uid hin
   case record ats =>
-    cases ats ; rename_i ats
     simp only [List.mapUnion₃_eq_mapUnion λ x : Attr × Term => x.snd.entityUIDs] at hin
     rw [List.mem_mapUnion_iff_mem_exists] at hin
     replace ⟨at', hin', hin⟩ := hin
@@ -187,20 +192,22 @@ decreasing_by
   · rename_i h _ ; subst h
     simp only [Term.some.sizeOf_spec]
     omega
-  · rename_i h _ _ _ _ _ ; subst h
-    rename_i h _ _ _ _ _ _ ; subst h
+  · subst_vars
     have hs := List.sizeOf_lt_of_mem hin'
     simp only [Term.set.sizeOf_spec, Set.mk.sizeOf_spec, gt_iff_lt]
+    rename List Term => ts
+    have := Set.sizeOf_lt_of_elts (Set.mk ts)
+    have := Set.sizeOf_mk ts
     omega
-  · rename_i h _ _ _ _ _ ; subst h
-    rename_i h _ _ _ _ _ _ ; subst h
-    have hs := List.sizeOf_lt_of_mem hin'
-    have hp : at' = (at'.fst, at'.snd) := by simp only
-    rw [hp] at hs
-    simp only [Prod.mk.sizeOf_spec] at hs
-    simp only [Term.record.sizeOf_spec, Map.mk.sizeOf_spec, gt_iff_lt]
+  · subst_vars
+    simp only [Term.record.sizeOf_spec]
+    rename Map Attr Term => m
+    calc sizeOf at'.snd
+      _ < sizeOf at' := by cases at' ; simp only [Prod.mk.sizeOf_spec, Nat.lt_add_left_iff_pos] ; omega
+      _ < sizeOf m.toList := List.sizeOf_lt_of_mem hin'
+      _ < sizeOf m := Map.sizeOf_lt_of_toList m
     omega
-  · rename_i h _ _ _ _ _ _ _ _ _ _ _ _ _ _ ; subst h
+  · subst_vars
     have hs := List.sizeOf_lt_of_mem hin'
     simp only [Term.app.sizeOf_spec]
     omega
@@ -499,7 +506,7 @@ private theorem concretize?_wfl_εs_implies_some {εs : SymEntities} {uids : Set
   exists (Map.make es)
   simp only [h, Option.bind_some_fun]
 
-theorem concretize?_wfl_implies_some {x : Expr} {εnv : SymEnv} :
+public theorem concretize?_wfl_implies_some {x : Expr} {εnv : SymEnv} :
   εnv.WellFormedLiteralFor x →
   ∃ (env : Env), εnv.concretize? x = .some env
 := by

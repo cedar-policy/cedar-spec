@@ -49,20 +49,22 @@ public inductive UnaryFunction : Type where
   | uuf : UUF → UnaryFunction
   | udf : UDF → UnaryFunction
 
+@[expose]
 public def UnaryFunction.argType : UnaryFunction → TermType
   | .uuf f => f.arg
   | .udf f => f.arg
 
+@[expose]
 public def UnaryFunction.outType : UnaryFunction → TermType
   | .uuf f => f.out
   | .udf f => f.out
 
-@[inline]
+@[inline, expose]
 public def UnaryFunction.isUUF : UnaryFunction → Bool
   | .uuf _ => true
   | .udf _ => false
 
-@[inline]
+@[inline, expose]
 public def UnaryFunction.isUDF : UnaryFunction → Bool
   | .udf _ => true
   | .uuf _ => false
@@ -71,6 +73,7 @@ public def UDF.isLiteral (f : UDF) : Bool :=
   f.default.isLiteral &&
   f.table.toList.all λ (tᵢ, tₒ) => tᵢ.isLiteral && tₒ.isLiteral
 
+@[inline, expose]
 public def UnaryFunction.isLiteral : UnaryFunction → Bool
   | .udf f => f.isLiteral
   | .uuf _ => false

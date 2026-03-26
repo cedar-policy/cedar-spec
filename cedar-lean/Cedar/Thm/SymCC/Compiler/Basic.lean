@@ -14,27 +14,21 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.SymCC.Data
-import Cedar.Thm.SymCC.Env.Interpret
-import Cedar.Thm.SymCC.Env.WF
-import Cedar.Thm.SymCC.Interpretation
-import Cedar.Thm.SymCC.Term.Interpret
-import Cedar.Thm.SymCC.Term.Lit
-import Cedar.Thm.SymCC.Term.PE
-import Cedar.Thm.SymCC.Term.Same
-import Cedar.Thm.SymCC.Term.TypeOf
-import Cedar.Thm.SymCC.Term.WF
-import Cedar.Thm.SymCC.Tactics
+module
+
+public import Cedar.SymCC.Compiler
+public import Cedar.Thm.SymCC.Term.Same
 
 /-!
-This file contains basic definitions and lemmas for proofs about `compile`.
+This file contains basic definitions for proofs about `compile`.
 --/
 
 namespace Cedar.Thm
 
 open Spec SymCC Factory
 
-def CompileEvaluate (x : Expr) : Prop :=
+@[expose]
+public def CompileEvaluate (x : Expr) : Prop :=
   ∀ {env : Env} {εnv : SymEnv} {t : Term},
     env ∼ εnv →
     env.WellFormedFor x →
@@ -42,7 +36,8 @@ def CompileEvaluate (x : Expr) : Prop :=
     compile x εnv = .ok t →
     evaluate x env.request env.entities ∼ t
 
-def CompileInterpret (x : Expr) : Prop :=
+@[expose]
+public def CompileInterpret (x : Expr) : Prop :=
   ∀ {εnv : SymEnv} {I : Interpretation} {t : Term},
     I.WellFormed εnv.entities →
     εnv.WellFormedFor x →

@@ -14,10 +14,17 @@
  limitations under the License.
 -/
 
+module
+
+import Cedar.Data.SizeOf
+public import Cedar.SymCC.Env
+public import Cedar.SymCC.Interpretation
+public import Cedar.SymCC.Term
 import Cedar.Thm.SymCC.Data
-import Cedar.Thm.SymCC.Term.Interpret.Basic
-import Cedar.Thm.SymCC.Term.WF
-import Cedar.Thm.SymCC.Interpretation
+import all Cedar.Thm.SymCC.Term.Interpret.Basic -- proving things about the internals of `Interpretation` functions and we need access to not only internal functions in `SymCC/Interpretation.lean`, but also lemmas about them in `Thm/SymCC/Term/Interpret/Basic.lean`
+public import Cedar.Thm.SymCC.Term.WF
+import all Cedar.Thm.SymCC.Term.WF -- proving things about the internals of `Interpretation` functions and we need access to not only internal functions in `SymCC/Interpretation.lean`, but also lemmas about them in `Thm/SymCC/Term/WF.lean`
+import all Cedar.Thm.SymCC.Interpretation -- proving things about the internals of `Interpretation` functions and we need access to not only internal functions in `SymCC/Interpretation.lean`, but also lemmas about them in `Thm/SymCC/Interpretation.lean`
 
 /-!
 # Interpretation preserves well-formedness of Terms
@@ -30,103 +37,86 @@ namespace Cedar.Thm
 
 open Batteries Data Spec SymCC Factory
 
-
-
-def InterpretTermWF (εs : SymEntities) (I : Interpretation) (t : Term) : Prop :=
+@[expose]
+public def InterpretTermWF (εs : SymEntities) (I : Interpretation) (t : Term) : Prop :=
   (t.interpret I).WellFormed εs ∧
   (t.interpret I).typeOf = t.typeOf
 
-theorem interpret_term_prim_wf {εs : SymEntities} {I : Interpretation} {p : TermPrim}
+public theorem interpret_term_prim_wf {εs : SymEntities} {I : Interpretation} {p : TermPrim}
   (h : Term.WellFormed εs (Term.prim p)) :
   InterpretTermWF εs I (Term.prim p)
 := by
   simp only [InterpretTermWF, interpret_term_prim, and_true, h]
 
-theorem interpret_term_var_wf {εs : SymEntities} {I : Interpretation} {v : TermVar}
+public theorem interpret_term_var_wf {εs : SymEntities} {I : Interpretation} {v : TermVar}
   (h₁ : I.WellFormed εs)
   (h₂ : Term.WellFormed εs (Term.var v)) :
   InterpretTermWF εs I (Term.var v)
 := by
-  simp only [InterpretTermWF, interpret_term_var, Term.typeOf]
+  simp only [InterpretTermWF, interpret_term_var, typeOf_term_var]
   replace h₂ := wf_term_var_implies h₂
   constructor
   exact wf_interpretation_implies_wf_var h₁ h₂
   exact wf_interpretation_implies_typeOf_var h₁ h₂
 
-theorem interpret_term_none_wf {εs : SymEntities} {I : Interpretation} {ty : TermType}
+public theorem interpret_term_none_wf {εs : SymEntities} {I : Interpretation} {ty : TermType}
   (h : Term.WellFormed εs (Term.none ty)) :
   InterpretTermWF εs I (Term.none ty)
 := by
   simp only [InterpretTermWF, interpret_term_none, and_true, h]
 
-theorem interpret_term_some_wf {εs : SymEntities} {I : Interpretation} {t : Term}
+public theorem interpret_term_some_wf {εs : SymEntities} {I : Interpretation} {t : Term}
   (ih : InterpretTermWF εs I t) :
   InterpretTermWF εs I (Term.some t)
 := by
-  simp only [InterpretTermWF, interpret_term_some, Term.typeOf, ih.right, and_true]
+  simp only [InterpretTermWF, interpret_term_some, typeOf_term_some, ih.right, and_true]
   exact Term.WellFormed.some_wf ih.left
 
-private theorem interpret_term_set_wf_aux {I : Interpretation} {s : Set Term} {t : Term} :
-  t ∈ Set.make (List.map (Term.interpret I) (Set.elts s)) →
-  ∃ t', t' ∈ s ∧ t = t'.interpret I
-:= by
-  intro h₁
-  simp only [Set.mem_make, List.mem_map] at h₁
-  replace ⟨t', h₁, h₂⟩ := h₁
-  exists t'
-  simp only [h₂, and_true]
-  simp only [Membership.mem] at *
-  assumption
-
-theorem interpret_term_set_wf {εs : SymEntities} {I : Interpretation} {s : Set Term} {ty : TermType}
+public theorem interpret_term_set_wf {εs : SymEntities} {I : Interpretation} {s : Set Term} {ty : TermType}
   (h₁ : Term.WellFormed εs (Term.set s ty))
   (ih : ∀ (t : Term), t ∈ s → InterpretTermWF εs I t) :
   InterpretTermWF εs I (Term.set s ty)
 := by
-  simp only [InterpretTermWF, interpret_term_set, Term.typeOf, and_true]
+  simp only [InterpretTermWF, interpret_term_set, typeOf_term_set, and_true]
   apply Term.WellFormed.set_wf
   case h₁ =>
     intro t h₂
-    have ⟨t', h₃, h₄⟩ := interpret_term_set_wf_aux h₂
-    subst h₄
-    exact (ih t' h₃).left
+    replace ⟨t', ht', h₂⟩ := Set.mem_map.mp h₂
+    subst t
+    exact (ih t' ht').left
   case h₂ =>
     intro t h₂
-    have ⟨t', h₃, h₄⟩ := interpret_term_set_wf_aux h₂
-    subst h₄
-    have h₅ := wf_term_set_implies_typeOf_elt h₁ h₃
+    replace ⟨t', ht', h₂⟩ := Set.mem_map.mp h₂
+    subst t
+    have h₅ := wf_term_set_implies_typeOf_elt h₁ ht'
     subst h₅
-    exact (ih t' h₃).right
+    exact (ih t' ht').right
   case h₃ => exact wf_term_set_implies_wf_type h₁
-  case h₄ => exact Set.make_wf (List.map (Term.interpret I) (Set.elts s))
+  case h₄ => exact Set.map_wf (Term.interpret I) s
 
-theorem interpret_term_record_wf {εs : SymEntities} {I : Interpretation} {r : Map Attr Term}
+public theorem interpret_term_record_wf {εs : SymEntities} {I : Interpretation} {r : Map Attr Term}
   (h₁ : Term.WellFormed εs (Term.record r))
-  (ih :  ∀ (a : Attr) (t : Term), (a, t) ∈ r.1 → InterpretTermWF εs I t) :
+  (ih :  ∀ (a : Attr) (t : Term), (a, t) ∈ r.toList → InterpretTermWF εs I t) :
   InterpretTermWF εs I (Term.record r)
 := by
-  simp [InterpretTermWF, interpret_term_record]
+  simp only [InterpretTermWF, interpret_term_record, typeOf_term_record_eq, TermType.record.injEq]
   constructor
   case left  =>
     apply Term.WellFormed.record_wf
     case h₁ =>
       intro a t h₄
-      simp only [Map.toList] at *
-      replace h₄ := Map.make_mem_list_mem h₄
-      simp only [List.mem_map, Prod.mk.injEq] at h₄
-      replace ⟨kv, h₄, h₅, h₆⟩ := h₄
-      subst h₅ h₆
-      exact (ih kv.fst kv.snd h₄).left
-    case h₂ => exact Map.make_wf (List.map (fun x => (x.fst, Term.interpret I x.snd)) (Map.toList r))
+      replace h₄ := Map.in_mapOnValues_in_toList' h₄
+      replace ⟨v', _, h₄⟩ := h₄
+      subst t
+      exact (ih a v' h₄).left
+    case h₂ => exact Map.mapOnValues_wf.mp (wf_term_record_implies_wf_map h₁)
   case right =>
     replace h₁ := wf_term_record_implies_wf_map h₁
-    rw [←Map.mapOnValues_eq_make_map (Term.interpret I) h₁]
-    unfold Term.typeOf
-    rw [Map.mapOnValues₂_eq_mapOnValues, Map.mapOnValues₂_eq_mapOnValues]
-    simp only [Map.mapOnValues, Map.toList, TermType.record.injEq, Map.mk.injEq, List.map_map]
-    apply List.map_congr
-    intros atᵢ h₂
-    replace ih := (ih atᵢ.1 atᵢ.2 h₂).right
+    simp only [Map.mapOnValues_mapOnValues]
+    apply Map.mapOnValues_congr
+    intro t ht
+    replace ⟨a, ht⟩ := Map.in_values_exists_key ht
+    replace ih := (ih a t ht).right
     simp only [ih, Function.comp_apply]
 
 local macro "show_interpret_term_app_wf_unary" h1:ident ih:ident invert:ident wfdestruct:ident wfconstruct:term : tactic => do
@@ -143,7 +133,7 @@ local macro "show_interpret_term_app_wf_unary" h1:ident ih:ident invert:ident wf
         subst $h1:ident $h2:ident -- bvneg
       | replace ⟨$h1:ident, _, _, $h2:ident, _, $h3:ident⟩ := $wfdestruct:ident $h1:ident;
         subst $h1:ident $h2:ident -- bvnego
-    simp only [$invert:ident, Term.typeOf];
+    simp only [$invert:ident, typeOf_term_app];
     simp only [List.mem_singleton, InterpretTermWF, forall_eq, $h3:ident] at $ih:ident;
     exact $wfconstruct ($ih:ident).left ($ih:ident).right
   ))
@@ -163,7 +153,7 @@ private theorem interpret_term_app_wf_uuf {εs : SymEntities} {I : Interpretatio
   simp only [InterpretTermWF]
   replace ⟨h₁, ⟨_, h₂, h₃⟩, h₄⟩ := wf_term_app_uuf h₁
   subst h₁ h₂
-  simp only [interpret_term_app_uuf, Term.typeOf]
+  simp only [interpret_term_app_uuf, typeOf_term_app]
   simp only [List.mem_cons, InterpretTermWF, forall_eq_or_imp] at ih
   replace ⟨ih, ih'⟩ := ih.left
   have h₅ := wf_interpretation_implies_wf_udf h₀ h₄
@@ -206,7 +196,7 @@ private theorem interpret_term_app_wf_option_get {εs : SymEntities} {I : Interp
   simp only [InterpretTermWF]
   replace ⟨_, h₁, _, h₃⟩ := wf_term_app_option_get h₁
   subst h₁
-  simp only [interpret_term_app_option_get, Term.typeOf]
+  simp only [interpret_term_app_option_get, typeOf_term_app]
   simp only [List.mem_singleton, InterpretTermWF, forall_eq, h₃] at ih
   exact wf_option_get' h₀ ih.left ih.right
 
@@ -287,7 +277,7 @@ local macro "show_interpret_term_app_wf_binary" h1:ident ih:ident invert:ident w
         subst $h1:ident $h2:ident -- and/or
       | replace ⟨$h1:ident, _, _, _, $h2:ident, $h3:ident, $h4:ident⟩ := $wfdestruct:ident $h1:ident;
         subst $h1:ident $h2:ident; -- eq
-    simp only [$invert:ident, Term.typeOf];
+    simp only [$invert:ident, typeOf_term_app];
     simp only [List.mem_cons, List.mem_singleton, InterpretTermWF, forall_eq_or_imp, forall_eq] at $ih:ident;
     simp only [WFArg] at $h3:ident $h4:ident;
     apply $wfconstruct:ident <;>
@@ -320,7 +310,7 @@ private theorem interpret_term_app_wf_ite {εs : SymEntities} {I : Interpretatio
   simp only [InterpretTermWF]
   replace ⟨t₁, t₂, t₃, h₁, h₂, h₃, h₄⟩ := wf_term_app_ite h₁
   subst h₁
-  simp only [interpret_term_app_ite, Term.typeOf]
+  simp only [interpret_term_app_ite, typeOf_term_app]
   simp only [List.mem_cons, List.not_mem_nil, or_false, InterpretTermWF, forall_eq_or_imp,
     forall_eq] at ih
   have ⟨_, ih₂, _, _⟩ := ih
@@ -398,7 +388,7 @@ local macro "show_interpret_term_app_wf_binary_pred" h1:ident ih:ident invert:id
     first
       | replace ⟨$h1:ident, _, _, _, $h2:ident, $h3:ident, $h4:ident⟩ := $wfdestruct:ident $h1:ident;
         subst $h1:ident $h2:ident -- bvops
-    simp only [$invert:ident, Term.typeOf];
+    simp only [$invert:ident, typeOf_term_app];
     simp only [WFArg] at $h3:ident $h4:ident;
     simp only [List.mem_cons, List.mem_singleton, InterpretTermWF, forall_eq_or_imp, forall_eq,
       $h3:ident, $h4:ident, List.not_mem_nil, false_implies, forall_const, and_true] at $ih:ident
@@ -467,7 +457,7 @@ private theorem interpret_term_app_wf_set_member {εs : SymEntities} {I : Interp
   simp only [InterpretTermWF]
   replace ⟨h₁, t₁, t₂, h₂, h₃, h₄, h₅⟩ := wf_term_app_set_member h₁
   subst h₁ h₂
-  simp only [interpret_term_app_set_member, Term.typeOf]
+  simp only [interpret_term_app_set_member, typeOf_term_app]
   simp only [List.mem_cons, List.not_mem_nil, or_false, InterpretTermWF, forall_eq_or_imp,
     forall_eq, h₅] at ih
   replace ⟨ih, ih'⟩ := ih
@@ -482,11 +472,11 @@ private theorem interpret_term_app_wf_record_get {εs : SymEntities} {I : Interp
   simp only [InterpretTermWF]
   replace ⟨r, h₁, t₁, h₂, _, h₃⟩ := wf_term_app_record_get h₁
   subst h₂
-  simp only [interpret_term_app_record_get, Term.typeOf]
+  simp only [interpret_term_app_record_get, typeOf_term_app]
   simp only [List.mem_singleton, InterpretTermWF, forall_eq, h₃] at ih
   exact wf_record_get ih.left ih.right h₁
 
-theorem interpret_term_app_wf {εs : SymEntities} {I : Interpretation} {op : Op} {ts : List Term} {ty : TermType}
+public theorem interpret_term_app_wf {εs : SymEntities} {I : Interpretation} {op : Op} {ts : List Term} {ty : TermType}
   (h₀ : I.WellFormed εs)
   (h₁ : Term.WellFormed εs (Term.app op ts ty))
   (ih : ∀ (t : Term), t ∈ ts → InterpretTermWF εs I t) :
@@ -538,7 +528,7 @@ theorem interpret_term_app_wf {εs : SymEntities} {I : Interpretation} {op : Op}
     | ExtOp.duration.val      => exact interpret_term_app_wf_ext_duration_val h₁ ih
     | ExtOp.duration.ofBitVec => exact interpret_term_app_wf_ext_duration_ofBitVec h₁ ih
 
-theorem interpret_term_wf {εs : SymEntities} {I : Interpretation} {t : Term}
+public theorem interpret_term_wf {εs : SymEntities} {I : Interpretation} {t : Term}
   (h₁ : I.WellFormed εs)
   (h₂ : t.WellFormed εs) :
   (t.interpret I).WellFormed εs ∧
@@ -557,7 +547,7 @@ theorem interpret_term_wf {εs : SymEntities} {I : Interpretation} {t : Term}
       exact interpret_term_wf h₁ (wf_term_set_implies_wf_elt h₂ h₃)
     exact interpret_term_set_wf h₂ ih
   | .record r =>
-    have ih : ∀ aᵢ tᵢ, (aᵢ, tᵢ) ∈ r.1 → InterpretTermWF εs I tᵢ := by
+    have ih : ∀ aᵢ tᵢ, (aᵢ, tᵢ) ∈ r.toList → InterpretTermWF εs I tᵢ := by
       intro _ _ h₃
       exact interpret_term_wf h₁ (wf_term_record_implies_wf_value h₂ h₃)
     exact interpret_term_record_wf h₂ ih
@@ -570,16 +560,18 @@ termination_by sizeOf t
 decreasing_by
   all_goals simp_wf
   · replace h₃ := Set.sizeOf_lt_of_mem h₃ ; omega
-  · replace h₃ := Map.sizeOf_lt_of_value h₃ ; omega
+  · have := Map.sizeOf_lt_of_toList r
+    have := Map.sizeOf_lt_of_value h₃ ; simp only [Map.mk_toList_id] at this
+    omega
   · replace h₃ := List.sizeOf_lt_of_mem h₃ ; omega
 
-theorem interpret_term_isEntityType {εs : SymEntities} {I : Interpretation} {t : Term}
+public theorem interpret_term_isEntityType {εs : SymEntities} {I : Interpretation} {t : Term}
   (h₁ : I.WellFormed εs)
   (h₂ : t.WellFormed εs) :
   t.typeOf.isEntityType = (t.interpret I).typeOf.isEntityType
 := by simp only [interpret_term_wf h₁ h₂]
 
-theorem interpret_term_isRecordType {εs : SymEntities} {I : Interpretation} {t : Term}
+public theorem interpret_term_isRecordType {εs : SymEntities} {I : Interpretation} {t : Term}
   (h₁ : I.WellFormed εs)
   (h₂ : t.WellFormed εs) :
   t.typeOf.isRecordType = (t.interpret I).typeOf.isRecordType

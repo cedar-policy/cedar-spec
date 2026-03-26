@@ -16,6 +16,7 @@
 
 import Cedar.Thm.SymCC.Compiler.Invert
 import Cedar.Thm.SymCC.Compiler.WF
+import Cedar.Thm.SymCC.Term.Interpret
 
 /-!
 This file proves the compilation lemmas for `.unaryApp` expressions.

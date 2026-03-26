@@ -164,7 +164,7 @@ public def SymEntities.Acyclic (εs : SymEntities) : Prop :=
     δ.ancestors.find? uid.ty = .some (.udf f) →
     uid ∉ (Factory.app (.udf f) (.entity uid)).entityUIDs
 
-@[expose]
+@[expose] -- TODO: remove `@[expose]` and (possibly make private) once files like `Thm/.../ofEnv.lean` become `module`s and are able to `import all` this file (because they prove things about the private internals here)
 public def SymEntityData.knownAncestors (uid : EntityUID) (δ : SymEntityData) : Set EntityUID :=
   δ.ancestors.toList.mapUnion ancs
 where

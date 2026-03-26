@@ -296,7 +296,7 @@ private theorem env_symbolize?_same_entity_data_standard_same_tag
       apply app_table_make_filterMap hfind_data
       · simp
       · simp
-      · simp [Term.isLiteral]
+      · simp
     have hkeys_set_is_literal :
       (Term.set
         (Set.make (List.map (fun k => Term.prim (TermPrim.string k)) data.tags.keys.toList))
@@ -308,7 +308,7 @@ private theorem env_symbolize?_same_entity_data_standard_same_tag
       have hmem_x := x.property
       rw [Set.mem_set_iff_mem_mk, Set.mem_make] at hmem_x
       have ⟨_, _, hx⟩ := List.mem_map.mp hmem_x
-      simp [←hx, Term.isLiteral]
+      simp [←hx]
     simp only [Option.map_some]
     constructor
     -- Tag key exists iff the symbolic tag key is true
@@ -620,7 +620,7 @@ private theorem env_symbolize?_same_entity_data_standard
       · rename_i heq
         simp only [Option.some.injEq, Prod.mk.injEq, Term.prim.injEq, TermPrim.entity.injEq] at hkv
         simp [hkv.1]
-    · simp [Term.isLiteral]
+    · simp
   · intros anc hmem_anc
     simp only [SameEntityData.InSymAncestors]
     have hfind_ancTy := hwt_data_ancs anc hmem_anc
@@ -757,8 +757,7 @@ private theorem env_symbolize?_same_entity_data_enum
         simp only [h] at h₁
         have := h₁ attr.1
         simp [Map.contains, Map.find?] at this
-    simp only [SameValues, Map.empty, Term.value?, List.nil.sizeOf_spec, Nat.reduceAdd,
-      Option.bind_eq_bind, hemp_data_attrs]
+    simp only [SameValues, Map.empty, Term.value?, Option.bind_eq_bind, hemp_data_attrs]
     change ([].mapM₂ fun x => Term.value?.attrValue? x.1.fst x.1.snd).bind _ = _
     rw [[].mapM₂_eq_mapM λ x => Term.value?.attrValue? x.fst x.snd]
     simp
@@ -814,7 +813,7 @@ private theorem env_symbolize?_same_entities_ordinary
       )
     ).find? uid.ty = .some (SymEntityData.interpret (env.symbolize? Γ) (SymEntityData.ofEntityType uid.ty entry))
   := by
-    simp only [← Map.find?_mapOnValues, Option.map_eq_some_iff]
+    simp only [Map.find?_mapOnValues, Option.map_eq_some_iff]
     exists SymEntityData.ofEntityType uid.ty entry
   simp only [hfind_interp_entry, Option.some.injEq, exists_eq_left']
   simp only [SymEntityData.ofEntityType]
@@ -845,7 +844,7 @@ private theorem env_symbolize?_same_entities_action
     SymEntities.interpret,
     SymEnv.ofEnv,
   ]
-  simp only [←(Map.find?_mapOnValues _ _ _)]
+  simp only [Map.find?_mapOnValues]
   have hwf_acts := wf_env_implies_wf_acts_map hwf_Γ
   have := ofSchema_find?_acts hwf_Γ hfind_entry
   simp only [this, Option.map_some, Option.some.injEq, exists_eq_left']
@@ -922,15 +921,13 @@ private theorem env_symbolize?_same_entities_action
   -- Prove obligations of `SameEntityData`
   and_intros
   · simp only [Factory.app, Map.find?_empty, Term.isLiteral, ↓reduceIte]
-    simp only [SameValues, Term.value?, List.nil.sizeOf_spec, Nat.reduceAdd, Option.bind_eq_bind,
-      hattrs_emp, Map.empty]
+    simp only [SameValues, Term.value?, Option.bind_eq_bind, hattrs_emp, Map.empty]
     change ([].mapM₂ fun x => Term.value?.attrValue? x.1.fst x.1.snd).bind _ = _
     rw [[].mapM₂_eq_mapM λ x => Term.value?.attrValue? x.fst x.snd]
     simp
   -- Same ancestor map
   · intros anc hmem_anc
-    simp only [SameEntityData.InSymAncestors]
-    simp only [←(Map.find?_mapOnValues _ _ _)]
+    simp only [SameEntityData.InSymAncestors, Map.find?_mapOnValues]
     have :
       (Map.make
         (List.map
@@ -978,8 +975,7 @@ private theorem env_symbolize?_same_entities_action
     have hancUF :
       ancUF = SymEntityData.ofActionType.ancsUDF uid.ty Γ.acts ancTy
     := by
-      simp only [←Map.find?_mapOnValues] at hancUF
-      simp only [Option.map_eq_some_iff] at hancUF
+      simp only [Map.find?_mapOnValues, Option.map_eq_some_iff] at hancUF
       have ⟨ancUF', hancUF', heq_ancUF⟩ := hancUF
       have := Map.find?_mem_toList hancUF'
       have := Map.make_mem_list_mem this

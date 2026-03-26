@@ -96,7 +96,7 @@ theorem verifyMatchesEquivalent_wbepq :
       replace hs₂ := same_bool_implies hs₂
       subst hs₂
       simp only [same_bool_def, someOf, pe_eq_none_some, pe_eq_some_some]
-      cases b₂ <;> simp only [pe_eq_simplify_same, pe_eq_simplify_lit, term_prim_is_lit, pe_eq_prim, error_beq_ok]
+      cases b₂ <;> simp only [pe_eq_simplify_same, pe_eq_simplify_lit, isLiteral_prim, pe_eq_prim, error_beq_ok]
       · have : (Term.prim (.bool false) == Term.prim (.bool true)) = false := by simp
         simp [this]
       · simp
@@ -114,7 +114,7 @@ theorem verifyMatchesEquivalent_wbepq :
       replace hs₁ := same_bool_implies hs₁
       rw [hs₁]
       simp only [same_bool_def, someOf, pe_eq_some_some, pe_eq_none_some]
-      cases b₁ <;> simp only [pe_eq_simplify_same, pe_eq_simplify_lit, term_prim_is_lit, pe_eq_prim, error_beq_ok]
+      cases b₁ <;> simp only [pe_eq_simplify_same, pe_eq_simplify_lit, isLiteral_prim, pe_eq_prim, error_beq_ok]
       · have : (Term.prim (.bool false) == Term.prim (.bool true)) = false := by simp
         simp [this]
       · simp
@@ -139,7 +139,7 @@ theorem verifyMatchesEquivalent_wbepq :
       replace hs₂ := same_bool_implies hs₂
       rw [hs₁, hs₂]
       simp only [same_bool_def, someOf, pe_eq_some_some]
-      cases b₁ <;> cases b₂ <;> simp only [pe_eq_simplify_same, pe_eq_simplify_lit, term_prim_is_lit, pe_eq_prim]
+      cases b₁ <;> cases b₂ <;> simp only [pe_eq_simplify_same, pe_eq_simplify_lit, isLiteral_prim, pe_eq_prim]
       · have : (Term.prim (.bool false) == Term.prim (.bool true)) = false := by simp
         simp [this]
       · simp [BEq.beq, instBEqExcept_cedar.beq]
@@ -203,7 +203,7 @@ theorem verifyMatchesImplies_wbepq :
       replace hs₂ := same_bool_implies hs₂
       subst hs₂
       simp only [same_bool_def, someOf, implies, pe_eq_none_some, pe_eq_some_some]
-      cases b₂ <;> simp [pe_eq_simplify_same, pe_eq_simplify_lit, term_prim_is_lit, pe_not_lit, pe_or_true_left]
+      cases b₂ <;> simp
     case ok.error =>
       replace ⟨t₁', heq₁, hs₁⟩ := same_ok_implies hs₁
       replace ⟨_, hs₂⟩ := (same_error_implies hs₂).right
@@ -218,7 +218,7 @@ theorem verifyMatchesImplies_wbepq :
       replace hs₁ := same_bool_implies hs₁
       rw [hs₁]
       simp only [same_bool_def, someOf, implies, pe_eq_some_some, pe_eq_none_some]
-      cases b₁ <;> simp [pe_eq_simplify_same, pe_eq_simplify_lit, term_prim_is_lit, pe_not_lit, pe_or_false_right]
+      cases b₁ <;> simp
       · simp [BEq.beq]
     case ok.ok =>
       replace ⟨t₁', heq₁, hs₁⟩ := same_ok_implies hs₁
@@ -242,7 +242,7 @@ theorem verifyMatchesImplies_wbepq :
       rw [hs₁, hs₂]
       simp only [same_bool_def, someOf, implies, pe_eq_some_some]
       have : (Term.prim (.bool false) == Term.prim (.bool true)) = false := by simp
-      cases b₁ <;> cases b₂ <;> simp [pe_eq_simplify_same, pe_eq_simplify_lit, term_prim_is_lit, pe_not_lit, pe_or_true_right, pe_or_false_right, this]
+      cases b₁ <;> cases b₂ <;> simp [this]
 
 theorem verifyMatchesDisjoint_wbepq :
   WellBehavedEvaluatePairQuery
@@ -300,7 +300,7 @@ theorem verifyMatchesDisjoint_wbepq :
       replace hs₂ := same_bool_implies hs₂
       subst hs₂
       simp only [same_bool_def, someOf, pe_eq_none_some, pe_eq_some_some]
-      cases b₂ <;> simp [pe_eq_simplify_same, pe_eq_simplify_lit, term_prim_is_lit, pe_and_false_left, pe_not_false]
+      cases b₂ <;> simp
     case ok.error =>
       replace ⟨t₁', heq₁, hs₁⟩ := same_ok_implies hs₁
       replace ⟨_, hs₂⟩ := (same_error_implies hs₂).right
@@ -315,7 +315,7 @@ theorem verifyMatchesDisjoint_wbepq :
       replace hs₁ := same_bool_implies hs₁
       rw [hs₁]
       simp only [same_bool_def, someOf, pe_eq_some_some, pe_eq_none_some]
-      cases b₁ <;> simp only [pe_eq_simplify_same, pe_eq_simplify_lit, term_prim_is_lit, pe_and_false_right, pe_not_false]
+      cases b₁ <;> simp only [pe_eq_simplify_same, pe_eq_simplify_lit, isLiteral_prim, pe_and_false_right, pe_not_false]
       · simp [Bool.and_false, Bool.not_false]
       · simp [Bool.and_false, Bool.not_false]
     case ok.ok =>
@@ -340,6 +340,6 @@ theorem verifyMatchesDisjoint_wbepq :
       rw [hs₁, hs₂]
       simp only [same_bool_def, someOf, pe_eq_some_some]
       have : (Term.prim (.bool false) == Term.prim (.bool true)) = false := by simp
-      cases b₁ <;> cases b₂ <;> simp [pe_eq_simplify_same, pe_eq_simplify_lit, term_prim_is_lit, pe_and_false_left, pe_and_false_right, pe_and_true_left, pe_not_false, pe_not_true, this]
+      cases b₁ <;> cases b₂ <;> simp [this]
 
 end Cedar.Thm

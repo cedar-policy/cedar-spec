@@ -503,7 +503,7 @@ theorem swf_implies_interpret_transitivity {x₁ x₂ : Expr} {t₁ t₂ : Term}
       simp only [transitivity.isAncestor, pe_isSome_some, pe_and_true_left, pe_option_get_some]
       replace ⟨ts₁, heq₁, hlit₁, hanc₁⟩ := same_entities_ancestors_some_of_type heq.right hv₁ hanc₁
       specialize hanc₁ uid₂ rfl
-      simp only [heq₁, pe_set_member hlit₁ term_prim_is_lit]
+      simp only [heq₁, pe_set_member hlit₁ isLiteral_prim]
       cases hmem : ts₁.contains (Term.prim (TermPrim.entity uid₂)) <;>
       simp only [pe_implies_false_left, pe_implies_true_left]
       replace hmem := hanc₁.mp (Set.contains_prop_bool_equiv.mp hmem)
@@ -536,14 +536,14 @@ private theorem wf_ancs_implies_wfl_app_interpret_ancs {uid : EntityUID} {δ : S
   case udf ancUF =>
     simp only [ UnaryFunction.interpret,
       wf_app hwt hwf.right.left hwf.left,
-      pe_app_wfl (And.intro hwt term_prim_is_lit) hwf.left, and_self]
+      pe_app_wfl (And.intro hwt isLiteral_prim) hwf.left, and_self]
   case uuf ancUF =>
     simp only [UnaryFunction.interpret]
     have hwf' := hI.right.left ancUF hwf.left
     simp only [Interpretation.WellFormed.WellFormedUUFInterpretation] at hwf'
     simp only [UnaryFunction.argType, UnaryFunction.outType] at hwf
     simp only [← hwf.right.left] at hwf'
-    simp only [pe_app_wfl (And.intro hwt term_prim_is_lit) hwf'.left, and_true,
+    simp only [pe_app_wfl (And.intro hwt isLiteral_prim) hwf'.left, and_true,
       UnaryFunction.outType, hwf'.right.right]
     have htyᵢ : (I.funs ancUF).arg = (UnaryFunction.udf (I.funs ancUF)).argType := by simp only [UnaryFunction.argType]
     have htyₒ : (I.funs ancUF).out = (UnaryFunction.udf (I.funs ancUF)).outType := by simp only [UnaryFunction.outType]
@@ -563,10 +563,10 @@ private theorem interpret_entities_ancestorsOfType_some_implies {εs : SymEntiti
     Option.bind_eq_some_iff, Option.some.injEq] at heq
   replace ⟨ancs, ⟨δ', hδ, heq⟩, hf⟩ := heq
   subst heq
-  simp only [SymEntities.interpret, ← Map.find?_mapOnValues, Option.map_eq_some_iff] at hδ
+  simp only [SymEntities.interpret, Map.find?_mapOnValues, Option.map_eq_some_iff] at hδ
   replace ⟨δ, hδ, hf'⟩ := hδ
   subst hf'
-  simp only [SymEntityData.interpret, ← Map.find?_mapOnValues, Option.map_eq_some_iff] at hf
+  simp only [SymEntityData.interpret, Map.find?_mapOnValues, Option.map_eq_some_iff] at hf
   replace ⟨f, hf, heq⟩ := hf
   exists δ, f
 
@@ -615,7 +615,7 @@ theorem interpret_transitivity_implies_transitive
     have hwl₁₂ := wf_ancs_implies_wfl_app_interpret_ancs hwε.right hI hδ₁ hf₁ hwt₁'
     simp only [heq₁] at hwl₁₂
     rw [← Set.contains_prop_bool_equiv] at hin₁
-    simp only [pe_set_member hwl₁₂.left.right term_prim_is_lit, hin₁, pe_implies_true_left] at htr
+    simp only [pe_set_member hwl₁₂.left.right isLiteral_prim, hin₁, pe_implies_true_left] at htr
     simp only [transitivity.areAncestors, Map.mapOnValues, Map.toList_mk_id, pe_foldl_and_true_iff,
       List.mem_map, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂] at htr
     specialize htr (uid₃.ty, .uuf f₂₃) (Map.find?_mem_toList hf₂)

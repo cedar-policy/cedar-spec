@@ -88,6 +88,7 @@ public def Term.typeOf : Term → TermType
   | .set _ ty     => .set ty
   | .record atrs  => .record (atrs.mapOnValues₂ λ ⟨t, _⟩ => t.typeOf)
 
+@[expose] -- in the future could remove this and force callers to rely on the theorems in Term/Lit.lean
 public def Term.isLiteral : Term → Bool
   | .prim _
   | .none _      => true

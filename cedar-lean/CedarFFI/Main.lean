@@ -19,7 +19,9 @@ import Lean.Data.Json.FromToJson
 import Cedar.Spec
 import Cedar.Validation
 import Cedar.SymCC
+import Cedar.SymCC.Verifier
 import Cedar.SymCCOpt
+import Cedar.SymCCOpt.Verifier
 import CedarProto
 import Cedar.TPE
 import Protobuf

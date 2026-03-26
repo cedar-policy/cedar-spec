@@ -14,11 +14,19 @@
  limitations under the License.
 -/
 
+module
+
+public import Cedar.SymCC.Compiler
+import all Cedar.SymCC.Compiler -- proving things about Compiler functions requires access to private internals
 import Cedar.Thm.SymCC.Compiler.Basic
+import Cedar.Thm.SymCC.Tactics
+import Cedar.Thm.SymCC.Term.PE
 
 /-!
 This file proves inversion lemmas for `compile`.
 --/
+
+@[expose] public section -- TODO: make the public interface more granular/intentional, instead of having everything public and exposed
 
 namespace Cedar.Thm
 
@@ -42,8 +50,9 @@ theorem compile_ite_ok_implies {x₁ x₂ x₃ : Expr} {εnv : SymEnv} {t : Term
      | t₁ => CompileIfSym t t₁ (compile x₂ εnv) (compile x₃ εnv)
 := by
   simp only [CompileIfSym]
-  simp only [compile, compileIf] at h₁
+  rw [compile.eq_def] at h₁
   simp_do_let (compile x₁ εnv) at h₁
+  rw [compileIf.eq_def] at h₁
   split at h₁
   case h_1 =>
     exists Term.some (Term.prim (TermPrim.bool true))
@@ -76,7 +85,7 @@ theorem compile_and_ok_implies {x₁ x₂ : Expr} {εnv : SymEnv} {t : Term}
      | .some (.prim (.bool false)) => t = t₁
      | _ => CompileAndSym t t₁ (compile x₂ εnv)
 := by
-  simp only [compile] at h₁
+  rw [compile.eq_def] at h₁
   simp_do_let (compile x₁ εnv) at h₁ ; rename_i t₁ h₂
   exists t₁
   simp only [true_and, CompileAndSym]
@@ -92,9 +101,8 @@ theorem compile_and_ok_implies {x₁ x₂ : Expr} {εnv : SymEnv} {t : Term}
     case h_2 =>
       simp only [h₄, Except.ok.injEq, exists_eq_left', true_and]
       split at h₁ <;> simp only [Except.ok.injEq, reduceCtorEq] at h₁
-      rename_i h₆
-      simp only [someOf] at h₁
-      simp only [h₆, h₁, and_self]
+      subst t
+      simp [*, someOf]
   case h_3 => simp only [reduceCtorEq] at h₁
 
 def CompileOrSym (t t₁ : Term) (r₂ : SymCC.Result Term): Prop :=
@@ -112,7 +120,7 @@ theorem compile_or_ok_implies {x₁ x₂ : Expr} {εnv : SymEnv} {t : Term}
     | .some (.prim (.bool true)) => t = t₁
     | _ => CompileOrSym t t₁ (compile x₂ εnv)
 := by
-  simp only [compile] at h₁
+  rw [compile.eq_def] at h₁
   simp_do_let (compile x₁ εnv) at h₁ ; rename_i t₁ h₂
   exists t₁
   simp only [true_and, CompileOrSym]
@@ -185,7 +193,7 @@ theorem compile_hasAttr_ok_implies {a : Attr} {x₁ : Expr} {εnv : SymEnv} {t :
     (compileHasAttr (option.get t₁) a εnv.entities) = .ok t₂ ∧
     t = ifSome t₁ t₂
 := by
-  simp only [compile] at h₁
+  rw [compile.eq_def] at h₁
   simp_do_let (compile x₁ εnv) at h₁
   rename_i t₂ h₂
   simp_do_let (compileHasAttr (option.get t₂) a εnv.entities) at h₁
@@ -233,7 +241,7 @@ theorem compile_getAttr_ok_implies {a : Attr} {x₁ : Expr} {εnv : SymEnv} {t :
     (compileGetAttr (option.get t₁) a εnv.entities) = .ok t₂ ∧
     t = ifSome t₁ t₂
 := by
-  simp only [compile] at h₁
+  rw [compile.eq_def] at h₁
   simp_do_let (compile x₁ εnv) at h₁
   rename_i t₂ h₂
   simp_do_let (compileGetAttr (option.get t₂) a εnv.entities) at h₁
@@ -276,7 +284,7 @@ theorem compile_unaryApp_ok_implies {op₁ : UnaryOp} {x₁ : Expr} {εnv : SymE
     (compileApp₁ op₁ (option.get t₁)) = .ok t₂ ∧
     t = ifSome t₁ t₂
 := by
-  simp only [compile] at h₁
+  rw [compile.eq_def] at h₁
   simp_do_let (compile x₁ εnv) at h₁
   rename_i t₂ h₂
   simp_do_let (compileApp₁ op₁ (option.get t₂)) at h₁
@@ -448,29 +456,49 @@ theorem compileApp₂_getTag_ok_implies {t t₁ t₂ : Term} {εs : SymEntities}
 def compileInₑ.isEq (t₁ t₂ : Term) : Term :=
   if t₁.typeOf = t₂.typeOf then eq t₁ t₂ else false
 
+theorem compileInₑ.isEq_def :
+  compileInₑ.isEq t₁ t₂ = SymCC.compileInₑ.isEq t₁ t₂
+:= by
+  simp [compileInₑ.isEq, SymCC.compileInₑ.isEq]
+
 def compileInₑ.isIn (t₁ t₂ : Term) (ancs? : Option UnaryFunction) : Term :=
   match ancs? with
   | .some ancs => set.member t₂ (app ancs t₁)
   | .none      => false
 
+theorem compileInₑ.isIn_def :
+  compileInₑ.isIn t₁ t₂ ancs? = SymCC.compileInₑ.isIn t₁ t₂ ancs?
+:= by
+  simp only [compileInₑ.isIn, SymCC.compileInₑ.isIn] ; cases ancs? <;> simp
+
 theorem compileInₑ_def  {t₁ t₂ : Term} {ancs? : Option UnaryFunction} :
   compileInₑ t₁ t₂ ancs? = Factory.or (compileInₑ.isEq t₁ t₂) (compileInₑ.isIn t₁ t₂ ancs?)
 := by
-  simp only [compileInₑ, compileInₑ.isEq, compileInₑ.isIn]
+  simp only [compileInₑ, compileInₑ.isEq, compileInₑ.isIn, SymCC.compileInₑ.isEq, SymCC.compileInₑ.isIn]
   cases ancs? <;> simp only
 
 def compileInₛ.isIn₁ (t ts : Term) : Term :=
   if ts.typeOf = .set t.typeOf then set.member t ts else false
+
+theorem compileInₛ.isIn₁_def :
+  compileInₛ.isIn₁ t ts = SymCC.compileInₛ.isIn₁ t ts
+:= by
+  simp only [compileInₛ.isIn₁, SymCC.compileInₛ.isIn₁]
 
 def compileInₛ.isIn₂ (t ts : Term) (ancs? : Option UnaryFunction) : Term :=
   match ancs? with
   | .some ancs => set.intersects ts (app ancs t)
   | .none      => false
 
+theorem compileInₛ.isIn₂_def :
+  compileInₛ.isIn₂ t ts ancs? = SymCC.compileInₛ.isIn₂ t ts ancs?
+:= by
+  simp only [compileInₛ.isIn₂, SymCC.compileInₛ.isIn₂] ; cases ancs? <;> simp
+
 theorem compileInₛ_def  {t ts : Term} {ancs? : Option UnaryFunction} :
   compileInₛ t ts ancs? = Factory.or (compileInₛ.isIn₁ t ts) (compileInₛ.isIn₂ t ts ancs?)
 := by
-  simp only [compileInₛ, compileInₛ.isIn₁, compileInₛ.isIn₂]
+  simp only [compileInₛ, compileInₛ.isIn₁, compileInₛ.isIn₂, SymCC.compileInₛ.isIn₁.eq_def, SymCC.compileInₛ.isIn₂.eq_def]
   cases ancs? <;> simp only
 
 theorem compileApp₂_mem_ok_implies {t t₁ t₂ : Term} {εs : SymEntities} :
@@ -497,7 +525,7 @@ theorem compile_binaryApp_ok_implies {op₂ : BinaryOp} {x₁ x₂ : Expr} {εnv
     (compileApp₂ op₂ (option.get t₁) (option.get t₂) εnv.entities) = .ok t₃ ∧
     t = ifSome t₁ (ifSome t₂ t₃)
 := by
-  simp only [compile] at hok
+  rw [compile.eq_def] at hok
   simp_do_let (compile x₁ εnv) at hok
   simp_do_let (compile x₂ εnv) at hok
   rename_i t₁ h₁ t₂ h₂
@@ -532,7 +560,7 @@ theorem compile_set_ok_implies {xs : List Expr} {εnv : SymEnv} {t : Term}
     List.Forall₂ (λ x t => (compile x εnv) = .ok t) xs ts ∧
     compileSet ts = .ok t
 := by
-  simp only [compile] at hok
+  rw [compile.eq_def] at hok
   simp_do_let (List.mapM₁ xs fun x => compile x.val εnv) at hok
   rename_i ts hm
   simp only [List.mapM₁_eq_mapM (fun x => compile x εnv), ← List.mapM'_eq_mapM] at hm
@@ -545,7 +573,7 @@ theorem compile_record_ok_implies {axs : List (Attr × Expr)} {εnv : SymEnv} {t
     List.Forall₂ (λ px pt => px.fst = pt.fst ∧ compile px.snd εnv = .ok pt.snd) axs ats ∧
     t = compileRecord ats
 := by
-  simp only [compile] at hok
+  rw [compile.eq_def] at hok
   simp_do_let (axs.mapM₂ (λ ⟨(a₁, x₁), _⟩ => do .ok (a₁, ← compile x₁ εnv))) at hok
   rename_i ats hts
   simp only [List.mapM₂_eq_mapM λ (p : Attr × Expr) => do
@@ -796,7 +824,7 @@ theorem compile_call_ok_implies {f : ExtFun} {xs : List Expr} {εnv : SymEnv} {t
     List.Forall₂ (λ x t => (compile x εnv) = .ok t) xs ts ∧
     compileCall f ts = .ok t
 := by
-  simp only [compile] at hok
+  rw [compile.eq_def] at hok
   simp_do_let (List.mapM₁ xs fun x => compile x.val εnv) at hok
   rename_i ts hm
   simp only [List.mapM₁_eq_mapM (fun x => compile x εnv), ← List.mapM'_eq_mapM] at hm

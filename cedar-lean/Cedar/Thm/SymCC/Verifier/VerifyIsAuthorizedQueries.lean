@@ -70,7 +70,7 @@ theorem verifyDisjoint_wbaq :
     rcases heq₂ with ⟨heq₂, ht₂⟩ | ⟨heq₂, ht₂⟩
     all_goals {
       subst ht₁ ht₂
-      simp [heq₁, heq₂, pe_and_true_left, pe_and_false_left, pe_not_true, pe_not_false]
+      simp [heq₁, heq₂]
     }
   simp only [WellBehavedIsAuthorizedQuery, hw, hi, hs, and_self]
 
@@ -97,7 +97,7 @@ theorem verifyImplies_wbaq :
     rcases heq₂ with ⟨heq₂, ht₂⟩ | ⟨heq₂, ht₂⟩
     all_goals {
       subst ht₁ ht₂
-      simp [heq₁, heq₂, pe_not_true, pe_not_false, pe_or_true_left, pe_or_false_left]
+      simp [heq₁, heq₂]
     }
 
   simp only [WellBehavedIsAuthorizedQuery, hw, hi, hs, and_self]

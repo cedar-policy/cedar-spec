@@ -16,9 +16,10 @@
 
 module
 
+import Cedar.Data.SizeOf
 import Cedar.Spec
 public import Cedar.SymCC.Env
-public import Cedar.SymCC.Factory -- TODO: this need not be a public import
+import Cedar.SymCC.Factory
 public import Cedar.SymCC.Function
 public import Cedar.SymCC.Term
 
@@ -34,8 +35,6 @@ When a symbolic structure (such as a term, request, function, or entities) is
 interpreted with respect to an Interpretation, the result is a literal symbolic
 structure.
 -/
-
-@[expose] public section -- TODO: make the public interface more granular/intentional, instead of having everything public and exposed
 
 namespace Cedar.SymCC
 
@@ -53,36 +52,41 @@ application of `option.get` to a `.none` term. The SMTLib language treats all
 such operators as total, and it picks an arbitrary value of the right type as
 the result of the application.
 -/
-structure Interpretation where
+public structure Interpretation where
   vars : TermVar → Term
   funs : UUF → UDF
   partials : Term → Term
 
-def UnaryFunction.interpret (I : Interpretation) : UnaryFunction → UnaryFunction
+-- TODO: make private once files like `Thm/.../Interpret/Factory.lean become `module`s and able to `import all` this file in order to prove things about internals like this helper function
+public def UnaryFunction.interpret (I : Interpretation) : UnaryFunction → UnaryFunction
   | .uuf f => .udf (I.funs f)
   | .udf f => .udf f
 
-def Factory.option.get' (I : Interpretation) (t : Term) : Term :=
+public def Factory.option.get' (I : Interpretation) (t : Term) : Term :=
   if let .none ty := t
   then I.partials (.app Op.option.get [.none ty] ty)
   else (Factory.option.get t)
 
-def Factory.ext.ipaddr.addrV4' (I : Interpretation) (t : Term) : Term :=
+-- TODO: make `private` once files like `Thm/.../Interpret/Lit.lean` become `module`s and able to (perhaps transitively) `import all` this file in order to prove things about internals like this helper function
+public def Factory.ext.ipaddr.addrV4' (I : Interpretation) (t : Term) : Term :=
   if let .prim (.ext (.ipaddr (.V6 ⟨v6, p6⟩))) := t
   then I.partials (.app (.ext ExtOp.ipaddr.addrV4) [.prim (.ext (.ipaddr (.V6 ⟨v6, p6⟩)))] (.bitvec 32))
   else (Factory.ext.ipaddr.addrV4 t)
 
-def Factory.ext.ipaddr.prefixV4' (I : Interpretation) (t : Term) : Term :=
+-- TODO: make `private` once files like `Thm/.../Interpret/Lit.lean` become `module`s and able to (perhaps transitively) `import all` this file in order to prove things about internals like this helper function
+public def Factory.ext.ipaddr.prefixV4' (I : Interpretation) (t : Term) : Term :=
   if let .prim (.ext (.ipaddr (.V6 ⟨v6, p6⟩))) := t
   then I.partials (.app (.ext ExtOp.ipaddr.prefixV4) [.prim (.ext (.ipaddr (.V6 ⟨v6, p6⟩)))] (.option (.bitvec 5)))
   else (Factory.ext.ipaddr.prefixV4 t)
 
-def Factory.ext.ipaddr.addrV6' (I : Interpretation) (t : Term) : Term :=
+-- TODO: make `private` once files like `Thm/.../Interpret/Lit.lean` become `module`s and able to (perhaps transitively) `import all` this file in order to prove things about internals like this helper function
+public def Factory.ext.ipaddr.addrV6' (I : Interpretation) (t : Term) : Term :=
   if let .prim (.ext (.ipaddr (.V4 ⟨v4, p4⟩))) := t
   then I.partials (.app (.ext ExtOp.ipaddr.addrV6) [.prim (.ext (.ipaddr (.V4 ⟨v4, p4⟩)))] (.bitvec 128))
   else (Factory.ext.ipaddr.addrV6 t)
 
-def Factory.ext.ipaddr.prefixV6' (I : Interpretation) (t : Term) : Term :=
+-- TODO: make `private` once files like `Thm/.../Interpret/Lit.lean` become `module`s and able to (perhaps transitively) `import all` this file in order to prove things about internals like this helper function
+public def Factory.ext.ipaddr.prefixV6' (I : Interpretation) (t : Term) : Term :=
   if let .prim (.ext (.ipaddr (.V4 ⟨v4, p4⟩))) := t
   then I.partials (.app (.ext ExtOp.ipaddr.prefixV6) [.prim (.ext (.ipaddr (.V4 ⟨v4, p4⟩)))] (.option (.bitvec 7)))
   else (Factory.ext.ipaddr.prefixV6 t)
@@ -137,22 +141,31 @@ def Op.interpret (I : Interpretation) (op : Op) (ts : List Term) (ty : TermType)
   | .ext xop, [t₁]        => xop.interpret I t₁
   | _, _                  => .app op ts ty
 
-def Term.interpret (I : Interpretation) : Term → Term
-  | .prim p             => .prim p
-  | .var v              => I.vars v
-  | .none ty            => noneOf ty
-  | .some t             => someOf (t.interpret I)
-  | .set (Set.mk ts) ty =>
+public def Term.interpret (I : Interpretation) : Term → Term
+  | .prim p       => .prim p
+  | .var v        => I.vars v
+  | .none ty      => noneOf ty
+  | .some t       => someOf (t.interpret I)
+  | .set ts ty    =>
     let ts' := ts.map₁ (λ ⟨t, _⟩ => t.interpret I)
-    setOf ts' ty
-  | .app op ts ty       =>
+    .set ts' ty
+  | .app op ts ty =>
     let ts' := ts.map₁ (λ ⟨t, _⟩ => t.interpret I)
     op.interpret I ts' ty
-  | .record (.mk ats)   =>
-    let ats' := ats.map₃ (λ ⟨(aᵢ, tᵢ), _⟩ => (aᵢ, tᵢ.interpret I))
-    recordOf ats'
+  | .record ats   =>
+    .record $ ats.mapOnValues₂ (λ ⟨t, _⟩ => t.interpret I)
+decreasing_by
+  all_goals simp_wf
+  · rename t ∈ ts => h
+    have := Set.sizeOf_lt_of_mem h
+    omega
+  · rename t ∈ ts => h
+    have := List.sizeOf_lt_of_mem h
+    omega
+  · omega
 
-def SymRequest.interpret (I : Interpretation) (req : SymRequest)  : SymRequest :=
+@[expose]
+public def SymRequest.interpret (I : Interpretation) (req : SymRequest)  : SymRequest :=
   {
     principal := req.principal.interpret I,
     action    := req.action.interpret I,
@@ -160,13 +173,13 @@ def SymRequest.interpret (I : Interpretation) (req : SymRequest)  : SymRequest :
     context   := req.context.interpret I
   }
 
-def SymTags.interpret (I : Interpretation) (τags : SymTags) : SymTags :=
+public def SymTags.interpret (I : Interpretation) (τags : SymTags) : SymTags :=
   {
     keys := τags.keys.interpret I,
     vals := τags.vals.interpret I
   }
 
-def SymEntityData.interpret (I : Interpretation) (d : SymEntityData) : SymEntityData :=
+public def SymEntityData.interpret (I : Interpretation) (d : SymEntityData) : SymEntityData :=
   {
     attrs     := d.attrs.interpret I,
     ancestors := d.ancestors.mapOnValues (UnaryFunction.interpret I)
@@ -174,10 +187,11 @@ def SymEntityData.interpret (I : Interpretation) (d : SymEntityData) : SymEntity
     tags      := d.tags.map (SymTags.interpret I)
   }
 
-def SymEntities.interpret (I : Interpretation) (es : SymEntities)  : SymEntities :=
+public def SymEntities.interpret (I : Interpretation) (es : SymEntities)  : SymEntities :=
   es.mapOnValues (SymEntityData.interpret I)
 
-def SymEnv.interpret (I : Interpretation) (env : SymEnv) : SymEnv :=
+@[expose]
+public def SymEnv.interpret (I : Interpretation) (env : SymEnv) : SymEnv :=
   ⟨env.request.interpret I, env.entities.interpret I⟩
 
 

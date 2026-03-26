@@ -14,9 +14,12 @@
  limitations under the License.
 -/
 
-import Cedar.SymCC.Verifier
-import Cedar.SymCCOpt.CompiledPolicies
-import Cedar.SymCCOpt.Enforcer
+module
+
+-- TODO: once we remove the `@[expose]`s below, do all of these need to be public imports?
+public import Cedar.SymCC.Verifier
+public import Cedar.SymCCOpt.CompiledPolicies
+public import Cedar.SymCCOpt.Enforcer
 
 /-!
 This file contains versions of the functions in `SymCC/Verifier.lean` that
@@ -24,6 +27,8 @@ operate on compiled policies (from `SymCCOpt/CompiledPolicies.lean`).
 Unlike the unoptimized functions in `SymCC/Verifier.lean`, the functions in this
 file do not need to call the symbolic compiler.
 -/
+
+@[expose] public section -- TODO: make the public interface more granular/intentional, instead of having everything public and exposed
 
 namespace Cedar.SymCC
 

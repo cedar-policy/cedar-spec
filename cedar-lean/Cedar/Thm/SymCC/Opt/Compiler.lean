@@ -41,7 +41,7 @@ Helper lemma
 private theorem Opt.directFootprint.someFalse :
   Opt.directFootprint (⊙false) = ∅
 := by
-  simp [EmptyCollection.emptyCollection, Opt.directFootprint, Factory.someOf, Term.typeOf, typeOf_bool, TermType.isOptionEntityType]
+  simp [EmptyCollection.emptyCollection, Opt.directFootprint, Factory.someOf, typeOf_bool, TermType.isOptionEntityType]
 
 /--
 Correctness lemma for `Opt.compileApp₁`, at least as to the `term`:
@@ -763,8 +763,8 @@ theorem Opt.compile.correctness.lit (p : Prim) (εnv : SymEnv) :
   )
 := by
   simp [Opt.compile, SymCC.compile, footprint]
-  cases p <;> simp [Opt.compilePrim, SymCC.compilePrim, footprint.ofEntity, SymCC.compile, EmptyCollection.emptyCollection, Factory.someOf, TermType.isOptionEntityType, Term.typeOf, typeOf_bool, typeOf_bv, typeOf_term_prim_string]
-  case entityUID uid => split <;> simp [Term.typeOf, typeOf_term_prim_entity]
+  cases p <;> simp [Opt.compilePrim, SymCC.compilePrim, footprint.ofEntity, SymCC.compile, EmptyCollection.emptyCollection, Factory.someOf, TermType.isOptionEntityType]
+  case entityUID uid => split <;> simp
 
 /--
 Correctness theorem for `Opt.compile` -- `var` case
@@ -778,10 +778,10 @@ theorem Opt.compile.correctness.var (v : Var) (εnv : SymEnv) :
 := by
   simp [Opt.compile, SymCC.compile, footprint]
   cases v <;> simp [Opt.compileVar, SymCC.compileVar, footprint.ofEntity, SymCC.compile, EmptyCollection.emptyCollection, Factory.someOf, TermType.isEntityType, TermType.isOptionEntityType]
-  case principal | action | resource => split <;> simp [Term.typeOf, *]
+  case principal | action | resource => split <;> simp [*]
   case context =>
     split <;> rename_i h
-    · simp [Term.typeOf, TermType.isRecordType] at *
+    · simp [TermType.isRecordType] at *
       split at h <;> simp_all
     · simp
 

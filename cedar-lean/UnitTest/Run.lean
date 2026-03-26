@@ -14,6 +14,8 @@
  limitations under the License.
 -/
 
+module
+
 import Batteries.Data.List
 
 /-! This file defines simple utilities for unit testing. -/
@@ -22,41 +24,41 @@ namespace UnitTest
 
 variable [Monad m] [MonadLiftT IO m]
 
-abbrev TestResult := Except String Unit
+public abbrev TestResult := Except String Unit
 
-def checkEq {α} [DecidableEq α] [Repr α] (actual expected : α) : m TestResult :=
+public def checkEq {α} [DecidableEq α] [Repr α] (actual expected : α) : m TestResult :=
   if actual = expected
   then return .ok ()
   else return .error s!"actual: {reprArg actual}\nexpected: {reprArg expected}"
 
-def checkBEq {α} [BEq α] [Repr α] (actual expected : α) : m TestResult :=
+public def checkBEq {α} [BEq α] [Repr α] (actual expected : α) : m TestResult :=
   if actual == expected
   then return .ok ()
   else return .error s!"actual: {reprArg actual}\nexpected: {reprArg expected}"
 
-def checkMatches [Repr e] (matchesExpr : Bool) (origExpr : e) : m TestResult :=
+public def checkMatches [Repr e] (matchesExpr : Bool) (origExpr : e) : m TestResult :=
   if matchesExpr
   then return .ok ()
   else return .error s!"does not match expected pattern: got {reprArg origExpr}"
 
-structure TestCase (m) [Monad m] [MonadLiftT IO m] extends Thunk (m TestResult) where
+public structure TestCase (m) [Monad m] [MonadLiftT IO m] extends Thunk (m TestResult) where
   name : String
 
-structure TestSuite (m) [Monad m] [MonadLiftT IO m] where
+public structure TestSuite (m) [Monad m] [MonadLiftT IO m] where
   name  : String
   tests : List (TestCase m)
 
-def test (name : String) (exec : Thunk (m TestResult)) : TestCase m :=
+public def test (name : String) (exec : Thunk (m TestResult)) : TestCase m :=
   TestCase.mk exec name
 
-def suite (name : String) (tests : List (TestCase m)) : TestSuite m :=
+public def suite (name : String) (tests : List (TestCase m)) : TestSuite m :=
   TestSuite.mk name tests
 
 /--
 Runs the test case and returns true if the tests passes.
 Otherwise prints the error message and returns false.
 -/
-def TestCase.run (case : TestCase m) : m Bool := do
+public def TestCase.run (case : TestCase m) : m Bool := do
   match (← case.get) with
   | .ok _      =>
     return true
@@ -71,7 +73,7 @@ def TestCase.run (case : TestCase m) : m Bool := do
 Runs the test suite, prints the stats, and returns the number of
 failed test cases.
 -/
-def TestSuite.run (suite : TestSuite m) : m Nat := do
+public def TestSuite.run (suite : TestSuite m) : m Nat := do
   IO.println "===================="
   IO.println s!"Running {suite.name}"
   let outcomes ← suite.tests.mapM TestCase.run
@@ -84,7 +86,7 @@ def TestSuite.run (suite : TestSuite m) : m Nat := do
 /--
 Runs all the given test suites and prints the stats.
 -/
-def TestSuite.runAll (suites : List (TestSuite m)) : m UInt32 := do
+public def TestSuite.runAll (suites : List (TestSuite m)) : m UInt32 := do
   let outcomes ← suites.mapM TestSuite.run
   let total := suites.foldl (fun n ts => n + ts.tests.length) 0
   let failures := outcomes.foldl (· + ·) 0

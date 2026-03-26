@@ -14,11 +14,17 @@
  limitations under the License.
 -/
 
+module
+
+import Cedar.SymCC.Compiler
 import Cedar.SymCC.Decoder
 import Cedar.SymCC.Encoder
-import Cedar.SymCC.Verifier
-import Cedar.SymCCOpt
-import UnitTest.Run
+public import Cedar.SymCC.Solver
+public import Cedar.SymCC.Verifier
+public import Cedar.SymCCOpt
+import Cedar.SymCCOpt.Verifier
+import Cedar.SymCCOpt.CompiledPolicies
+public import UnitTest.Run
 
 /-! This file defines simple utilities for unit testing symbolic compilation. -/
 
@@ -27,9 +33,9 @@ namespace SymTest
 open Cedar Data Spec SymCC Validation
 open UnitTest
 
-abbrev Outcome := SymCC.Decision
+public abbrev Outcome := SymCC.Decision
 
-def Outcome.checkAsserts (expected : Outcome) (asserts : Asserts) (εnv : SymEnv) : SolverM TestResult := do
+public def Outcome.checkAsserts (expected : Outcome) (asserts : Asserts) (εnv : SymEnv) : SolverM TestResult := do
   let enc ← Encoder.encode asserts εnv (produceModels := true)
   let dec ← Solver.checkSat
   if dec matches .sat then
@@ -42,7 +48,7 @@ def Outcome.checkAsserts (expected : Outcome) (asserts : Asserts) (εnv : SymEnv
     | .error msg => throw (IO.userError s!"Decoding failed: {msg}\n {model}")
   checkEq dec expected
 
-def Outcome.check (expected : Outcome) (verify : SymEnv → SymCC.Result Asserts) (εnv : SymEnv) : SolverM TestResult := do
+public def Outcome.check (expected : Outcome) (verify : SymEnv → SymCC.Result Asserts) (εnv : SymEnv) : SolverM TestResult := do
   match verify εnv with
   | .ok asserts => Outcome.checkAsserts expected asserts εnv
   | .error err  => throw (IO.userError s!"SymCC failed: {reprStr err}")
@@ -62,16 +68,16 @@ private def CompiledPolicy.permit (x : Expr) (Γ : Validation.TypeEnv) : Except 
 private def CompiledPolicySet.permit (x : Expr) (Γ : Validation.TypeEnv) : Except CompiledPolicyError CompiledPolicySet :=
   CompiledPolicySet.compile [Policy.permit x] Γ
 
-def testFailsCompilePolicy (desc : String) (x : Expr) (Γ : Validation.TypeEnv) : TestCase SolverM :=
+public def testFailsCompilePolicy (desc : String) (x : Expr) (Γ : Validation.TypeEnv) : TestCase SolverM :=
   let compileResult := CompiledPolicy.compile (Policy.permit x) Γ
   test desc ⟨λ _ => checkMatches (compileResult matches .error _) compileResult⟩
 
-def testFailsCompilePolicies (desc : String) (x : Expr) (Γ : Validation.TypeEnv) : TestCase SolverM :=
+public def testFailsCompilePolicies (desc : String) (x : Expr) (Γ : Validation.TypeEnv) : TestCase SolverM :=
   let compileResult := CompiledPolicySet.compile [Policy.permit x] Γ
   test desc ⟨λ _ => checkMatches (compileResult matches .error _) compileResult⟩
 
 /-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/
-def testVerifyNoError (desc : String) (x : Expr) (Γ : Validation.TypeEnv) (expected : Outcome) : List (TestCase SolverM) :=
+public def testVerifyNoError (desc : String) (x : Expr) (Γ : Validation.TypeEnv) (expected : Outcome) : List (TestCase SolverM) :=
   let εnv := SymEnv.ofTypeEnv Γ
   [
     test (desc ++ " (unoptimized)") ⟨λ _ => expected.check (verifyNeverErrors (Policy.permit x)) εnv⟩,
@@ -81,7 +87,7 @@ def testVerifyNoError (desc : String) (x : Expr) (Γ : Validation.TypeEnv) (expe
   ]
 
 /-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/
-def testVerifyImplies (desc : String) (x₁ x₂ : Expr) (Γ : Validation.TypeEnv) (expected : Outcome) : List (TestCase SolverM) :=
+public def testVerifyImplies (desc : String) (x₁ x₂ : Expr) (Γ : Validation.TypeEnv) (expected : Outcome) : List (TestCase SolverM) :=
   let εnv := SymEnv.ofTypeEnv Γ
   [
     test (desc ++ " (unoptimized)") ⟨λ _ => expected.check (verifyImplies [(Policy.permit x₁)] [(Policy.permit x₂)]) εnv⟩,
@@ -92,7 +98,7 @@ def testVerifyImplies (desc : String) (x₁ x₂ : Expr) (Γ : Validation.TypeEn
   ]
 
 /-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/
-def testVerifyEquivalent (desc : String) (x₁ x₂ : Expr) (Γ : Validation.TypeEnv) (expected : Outcome) : List (TestCase SolverM) :=
+public def testVerifyEquivalent (desc : String) (x₁ x₂ : Expr) (Γ : Validation.TypeEnv) (expected : Outcome) : List (TestCase SolverM) :=
   let εnv := SymEnv.ofTypeEnv Γ
   [
     test (desc ++ " (unoptimized)") ⟨λ _ => expected.check (verifyEquivalent [(Policy.permit x₁)] [(Policy.permit x₂)]) εnv⟩,
@@ -102,7 +108,7 @@ def testVerifyEquivalent (desc : String) (x₁ x₂ : Expr) (Γ : Validation.Typ
       expected.checkAsserts (verifyEquivalentOpt cpset₁ cpset₂) εnv⟩,
   ]
 
-def testCompile (desc : String) (x : Expr) (εnv : SymEnv) (expected : SymCC.Result Term) : TestCase SolverM :=
+public def testCompile (desc : String) (x : Expr) (εnv : SymEnv) (expected : SymCC.Result Term) : TestCase SolverM :=
   test desc ⟨λ _ => checkEq (compile x εnv) expected⟩
 
 namespace BasicTypes
@@ -138,7 +144,7 @@ def entitySchema (principalAttrs resourceAttrs : RecordType) (principalTags reso
     (resourceType, .standard ⟨Set.empty, resourceAttrs, resourceTags⟩)
   ]
 
-def env (principalAttrs resourceAttrs context : RecordType) (principalTags resourceTags : Option CedarType := none) : TypeEnv :=
+public def env (principalAttrs resourceAttrs context : RecordType) (principalTags resourceTags : Option CedarType := none) : TypeEnv :=
   {
     ets   := entitySchema principalAttrs resourceAttrs principalTags resourceTags,
     acts  := actionSchema context,
@@ -149,23 +155,23 @@ end BasicTypes
 
 namespace Photoflash
 
-def userType : EntityType    := ⟨"User", ["Photoflash"]⟩
-def groupType : EntityType   := ⟨"Group", ["Photoflash"]⟩
-def photoType : EntityType   := ⟨"Photo", ["Photoflash"]⟩
-def albumType : EntityType   := ⟨"Album", ["Photoflash"]⟩
-def accountType : EntityType := ⟨"Account", ["Photoflash"]⟩
+public def userType : EntityType    := ⟨"User", ["Photoflash"]⟩
+public def groupType : EntityType   := ⟨"Group", ["Photoflash"]⟩
+public def photoType : EntityType   := ⟨"Photo", ["Photoflash"]⟩
+public def albumType : EntityType   := ⟨"Album", ["Photoflash"]⟩
+public def accountType : EntityType := ⟨"Account", ["Photoflash"]⟩
 
-def photoActionType : EntityType   := ⟨"Action", ["Photoflash", "Photo"]⟩
-def albumActionType : EntityType   := ⟨"Action", ["Photoflash", "Album"]⟩
+public def photoActionType : EntityType   := ⟨"Action", ["Photoflash", "Photo"]⟩
+public def albumActionType : EntityType   := ⟨"Action", ["Photoflash", "Album"]⟩
 
-def createPhoto : EntityUID := ⟨photoActionType, "createPhoto"⟩
-def readPhoto : EntityUID   := ⟨photoActionType, "readPhoto"⟩
-def updatePhoto : EntityUID := ⟨photoActionType, "updatePhoto"⟩
-def deletePhoto : EntityUID := ⟨photoActionType, "deletePhoto"⟩
-def editPhoto : EntityUID   := ⟨photoActionType, "editPhoto"⟩
+public def createPhoto : EntityUID := ⟨photoActionType, "createPhoto"⟩
+public def readPhoto : EntityUID   := ⟨photoActionType, "readPhoto"⟩
+public def updatePhoto : EntityUID := ⟨photoActionType, "updatePhoto"⟩
+public def deletePhoto : EntityUID := ⟨photoActionType, "deletePhoto"⟩
+public def editPhoto : EntityUID   := ⟨photoActionType, "editPhoto"⟩
 
-def shareAlbum : EntityUID := ⟨albumActionType, "shareAlbum"⟩
-def viewAlbum : EntityUID  := ⟨albumActionType, "viewAlbum"⟩
+public def shareAlbum : EntityUID := ⟨albumActionType, "shareAlbum"⟩
+public def viewAlbum : EntityUID  := ⟨albumActionType, "viewAlbum"⟩
 
 def actionSchema (context : RecordType) : ActionSchema :=
   Map.make [
@@ -227,7 +233,7 @@ def requestType (action : EntityUID) (resourceType : EntityType) (context : Reco
 
 deriving instance Inhabited for ActionSchemaEntry
 
-def env (action : EntityUID) (context : RecordType) : TypeEnv :=
+public def env (action : EntityUID) (context : RecordType) : TypeEnv :=
   let acts := actionSchema context
   let resourceType := (acts.find? action).get!.appliesToPrincipal.toList.head!
   {

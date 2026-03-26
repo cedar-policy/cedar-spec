@@ -14,9 +14,17 @@
  limitations under the License.
 -/
 
+module
+
+public import Cedar.SymCC.Env
+public import Cedar.SymCC.Factory
+import all Cedar.SymCC.Factory -- proving things about internals of SymCC.Factory functions
+public import Cedar.SymCC.Interpretation
+import all Cedar.SymCC.Interpretation -- we also prove some things about internals of these functions, like option.get'
 import Cedar.Thm.SymCC.Data.Basic
 import Cedar.Thm.SymCC.Term.Lit
-import Cedar.Thm.SymCC.Term.WF
+import Cedar.Thm.SymCC.Term.TypeOf
+public import Cedar.Thm.SymCC.Term.WF
 import Cedar.Thm.SymCC.Interpretation
 
 /-!
@@ -47,30 +55,32 @@ local macro "show_pe_binary_wfl" op_fun:ident impl_fun:ident ht_thm:ident : tact
 
 /-! ### PE for Factory.not -/
 
-theorem pe_not_true :
+@[simp]
+public theorem pe_not_true :
   Factory.not (.prim (.bool true)) = .prim (.bool false)
 := by simp [Factory.not]
 
-theorem pe_not_false :
+@[simp]
+public theorem pe_not_false :
   Factory.not (.prim (.bool false)) = .prim (.bool true)
 := by simp [Factory.not]
 
-theorem pe_not_lit {b : Bool} :
+public theorem pe_not_lit {b : Bool} :
   Factory.not (.prim (.bool b)) = .prim (.bool (!b))
 := by simp [Factory.not]
 
-theorem pe_not_wfl {εs : SymEntities} {t : Term} :
+public theorem pe_not_wfl {εs : SymEntities} {t : Term} :
   t.WellFormedLiteral εs → t.typeOf = .bool →
   (Factory.not t).isLiteral
 := by
   intro h₁ h₂
   replace h₁ := wfl_of_type_bool_is_true_or_false h₁ h₂
   rcases h₁ with h₁ | h₁ <;>
-  simp only [h₁, pe_not_true, pe_not_false, Term.isLiteral]
+  simp only [h₁, pe_not_true, pe_not_false, isLiteral_prim]
 
 /-! ### PE for Factory.and -/
 
-theorem pe_and_wfl {εs : SymEntities} {t₁ t₂ : Term} :
+public theorem pe_and_wfl {εs : SymEntities} {t₁ t₂ : Term} :
   Term.WellFormedLiteral εs t₁ → Term.typeOf t₁ = TermType.bool →
   Term.WellFormedLiteral εs t₂ → Term.typeOf t₂ = TermType.bool →
   Term.isLiteral (Factory.and t₁ t₂) = true
@@ -79,22 +89,25 @@ theorem pe_and_wfl {εs : SymEntities} {t₁ t₂ : Term} :
   have ⟨b₁, ht₁⟩ := wfl_of_type_bool_is_bool h₁ h₂
   have ⟨b₂, ht₂⟩ := wfl_of_type_bool_is_bool h₃ h₄
   subst ht₁ ht₂
-  cases b₁ <;> cases b₂ <;> simp [Factory.and, Term.isLiteral]
+  cases b₁ <;> cases b₂ <;> simp [Factory.and, isLiteral_prim]
 
-theorem pe_and_false_left {t : Term} :
+@[simp]
+public theorem pe_and_false_left {t : Term} :
   Factory.and false t = false
 := by
   simp only [Factory.and, Bool.or_eq_true, decide_eq_true_eq, Term.prim.injEq, TermPrim.bool.injEq,
     Bool.false_eq_true, ↓reduceIte, decide_true, Bool.true_or, ite_self]
 
-theorem pe_and_false_right {t : Term} :
+@[simp]
+public theorem pe_and_false_right {t : Term} :
   Factory.and t false = false
 := by
   simp only [Factory.and, Term.prim.injEq, TermPrim.bool.injEq, Bool.false_eq_true, decide_false,
     Bool.or_false, decide_eq_true_eq, decide_true, Bool.or_true, Bool.true_or, ↓reduceIte, ite_self,
     ite_eq_right_iff, imp_self]
 
-theorem pe_and_true_left {t : Term} :
+@[simp]
+public theorem pe_and_true_left {t : Term} :
   Factory.and true t = t
 := by
   simp only [Factory.and, Bool.or_eq_true, decide_eq_true_eq, ↓reduceIte, ite_eq_right_iff]
@@ -102,12 +115,14 @@ theorem pe_and_true_left {t : Term} :
   rcases h with h | h <;>
   simp only [h]
 
-theorem pe_and_true_right {t : Term} :
+@[simp]
+public theorem pe_and_true_right {t : Term} :
   Factory.and t true = t
 := by
   simp only [Factory.and, decide_true, Bool.or_true, ↓reduceIte]
 
-theorem pe_and_true_iff_true {t₁ t₂ : Term} :
+@[simp]
+public theorem pe_and_true_iff_true {t₁ t₂ : Term} :
   Factory.and t₁ t₂ = true ↔ t₁ = true ∧ t₂ = true
 := by
   constructor
@@ -130,7 +145,7 @@ theorem pe_and_true_iff_true {t₁ t₂ : Term} :
 
 /-! ### PE for Factory.or -/
 
-theorem pe_or_wfl {εs : SymEntities} {t₁ t₂ : Term} :
+public theorem pe_or_wfl {εs : SymEntities} {t₁ t₂ : Term} :
   Term.WellFormedLiteral εs t₁ → Term.typeOf t₁ = TermType.bool →
   Term.WellFormedLiteral εs t₂ → Term.typeOf t₂ = TermType.bool →
   Term.isLiteral (Factory.or t₁ t₂) = true
@@ -139,41 +154,47 @@ theorem pe_or_wfl {εs : SymEntities} {t₁ t₂ : Term} :
   have ⟨b₁, ht₁⟩ := wfl_of_type_bool_is_bool h₁ h₂
   have ⟨b₂, ht₂⟩ := wfl_of_type_bool_is_bool h₃ h₄
   subst ht₁ ht₂
-  cases b₁ <;> cases b₂ <;> simp [Factory.or, Term.isLiteral]
+  cases b₁ <;> cases b₂ <;> simp [Factory.or, isLiteral_prim]
 
-theorem pe_or_true_left {t : Term} :
+@[simp]
+public theorem pe_or_true_left {t : Term} :
   Factory.or true t = true
 := by
   simp only [Factory.or, Bool.or_eq_true, decide_eq_true_eq, Term.prim.injEq, TermPrim.bool.injEq,
     Bool.true_eq_false, ↓reduceIte, decide_true, Bool.true_or, ite_self]
 
-theorem pe_or_true_right {t : Term} :
+@[simp]
+public theorem pe_or_true_right {t : Term} :
   Factory.or t true = true
 := by
   simp only [Factory.or, Term.prim.injEq, TermPrim.bool.injEq, Bool.true_eq_false, decide_false,
     Bool.or_false, decide_eq_true_eq, decide_true, Bool.or_true, Bool.true_or, ↓reduceIte, ite_self,
     ite_eq_right_iff, imp_self]
 
-theorem pe_or_false_left {t : Term} :
+@[simp]
+public theorem pe_or_false_left {t : Term} :
   Factory.or false t = t
 := by
   simp only [Factory.or, Bool.or_eq_true, decide_eq_true_eq, ↓reduceIte, ite_eq_right_iff]
   rw [eq_comm]
   simp only [or_self, imp_self]
 
-theorem pe_or_false_right {t : Term} :
+@[simp]
+public theorem pe_or_false_right {t : Term} :
   Factory.or t false = t
 := by
   simp only [Factory.or, decide_true, Bool.or_true, ↓reduceIte]
 
 /-! ### PE for Factory.implies -/
 
-theorem pe_implies_false_left {t : Term} :
+@[simp]
+public theorem pe_implies_false_left {t : Term} :
   Factory.implies false t = true
 := by
   simp only [implies, pe_not_false, pe_or_true_left]
 
-theorem pe_implies_true_left {t : Term} :
+@[simp]
+public theorem pe_implies_true_left {t : Term} :
   Factory.implies true t = t
 := by
   simp only [implies, pe_not_true, pe_or_false_left]
@@ -188,19 +209,21 @@ theorem pe_ite_simplify_false {t₁ t₂ : Term} :
   Factory.ite.simplify (.prim (.bool false)) t₁ t₂ = t₂
 := by simp [ite.simplify]
 
-theorem pe_ite_true {t₁ t₂ : Term} :
+@[simp]
+public theorem pe_ite_true {t₁ t₂ : Term} :
   Factory.ite (.prim (.bool true)) t₁ t₂ = t₁
 := by
   simp only [Factory.ite]
   split <;> simp [pe_ite_simplify_true]
 
-theorem pe_ite_false {t₁ t₂ : Term} :
+@[simp]
+public theorem pe_ite_false {t₁ t₂ : Term} :
   Factory.ite (.prim (.bool false)) t₁ t₂ = t₂
 := by
   simp only [Factory.ite]
   split <;> simp [pe_ite_simplify_false]
 
-theorem pe_ite_wfl {εs : SymEntities} {t₁ t₂ t₃ : Term} :
+public theorem pe_ite_wfl {εs : SymEntities} {t₁ t₂ t₃ : Term} :
   Term.WellFormedLiteral εs t₁ →
   Term.WellFormedLiteral εs t₂ →
   Term.WellFormedLiteral εs t₃ →
@@ -216,67 +239,74 @@ theorem pe_ite_wfl {εs : SymEntities} {t₁ t₂ t₃ : Term} :
 
 /-! ### PE for Factory.eq -/
 
-theorem pe_eq_simplify_same {t : Term} :
+-- TODO: make private if/when `Factory.eq.simplify` becomes a private helper in Factory.lean
+public theorem pe_eq_simplify_same {t : Term} :
   Factory.eq.simplify t t = .prim (.bool true)
 := by simp [Factory.eq.simplify]
 
-theorem pe_eq_same {t : Term} :
+@[simp]
+public theorem pe_eq_same {t : Term} :
   Factory.eq t t = .prim (.bool true)
 := by simp only [Factory.eq] ; split <;> simp [pe_eq_simplify_same]
 
-theorem pe_eq_some_none {t : Term} {ty : TermType} :
+@[simp]
+public theorem pe_eq_some_none {t : Term} {ty : TermType} :
   Factory.eq (Term.some t) (Term.none ty) = .prim (.bool false)
 := by simp [Factory.eq]
 
-theorem pe_eq_none_some {t : Term} {ty : TermType} :
+@[simp]
+public theorem pe_eq_none_some {t : Term} {ty : TermType} :
   Factory.eq (Term.none ty) (Term.some t) = .prim (.bool false)
 := by simp [Factory.eq]
 
-theorem pe_eq_some_some {t₁ t₂ : Term} :
+-- TODO: make private if/when `Factory.eq.simplify` becomes a private helper in Factory.lean
+public theorem pe_eq_some_some {t₁ t₂ : Term} :
   Factory.eq (Term.some t₁) (Term.some t₂) = Factory.eq.simplify t₁ t₂
 := by simp [Factory.eq]
 
-theorem pe_eq_simplify_lit {t₁ t₂ : Term} :
+@[simp]
+public theorem pe_eq_simplify_lit {t₁ t₂ : Term} :
   t₁.isLiteral → t₂.isLiteral →
   Term.isLiteral (Factory.eq.simplify t₁ t₂) ∧
   Factory.eq.simplify t₁ t₂ = (t₁ == t₂)
 := by
-  fun_cases Factory.eq.simplify t₁ t₂
-  <;> simp_all [Term.isLiteral]
+  fun_cases Factory.eq.simplify t₁ t₂ <;> simp_all
 
-theorem pe_eq_lit {t₁ t₂ : Term} :
+public theorem pe_eq_lit {t₁ t₂ : Term} :
   t₁.isLiteral → t₂.isLiteral →
   Term.isLiteral (Factory.eq t₁ t₂) ∧
   Factory.eq t₁ t₂ = (t₁ == t₂)
 := by
   fun_cases Factory.eq t₁ t₂
   · intro h₁ h₂
-    have h₃ := pe_eq_simplify_lit (lit_term_some_implies_lit h₁) (lit_term_some_implies_lit h₂)
+    have h₃ := pe_eq_simplify_lit (isLiteral_some.mp h₁) (isLiteral_some.mp h₂)
     rw [h₃.left, h₃.right]
     simp only [Term.prim.injEq, TermPrim.bool.injEq]
     rename_i t₁ t₂
     cases h : t₁ == t₂ <;> simp_all
-  · simp [Term.isLiteral]
-  · simp [Term.isLiteral]
+  · simp
+  · simp
   · exact pe_eq_simplify_lit
 
-theorem pe_eq_prim {p₁ p₂ : TermPrim} :
+public theorem pe_eq_prim {p₁ p₂ : TermPrim} :
   Factory.eq (.prim p₁) (.prim p₂) = (p₁ == p₂)
 := by
-  simp only [@pe_eq_lit (.prim p₁) (.prim p₂) term_prim_is_lit term_prim_is_lit, BEq.beq,
+  simp only [@pe_eq_lit (.prim p₁) (.prim p₂) isLiteral_prim isLiteral_prim, BEq.beq,
     Term.prim.injEq]
 
 /-! ### PE for Factory.option.get and Factory.option.get' -/
 
-theorem pe_option_get_some {t : Term} :
+@[simp]
+public theorem pe_option_get_some {t : Term} :
   Factory.option.get (Term.some t) = t
 := by simp only [option.get]
 
-theorem pe_option_get'_some {I : Interpretation} {t : Term} :
+@[simp]
+public theorem pe_option_get'_some {I : Interpretation} {t : Term} :
   Factory.option.get' I (Term.some t) = t
 := by simp only [option.get', option.get]
 
-theorem pe_option_get'_wfl {εs : SymEntities} {I : Interpretation} {t : Term} {ty : TermType} :
+public theorem pe_option_get'_wfl {εs : SymEntities} {I : Interpretation} {t : Term} {ty : TermType} :
   I.WellFormed εs → t.WellFormedLiteral εs → t.typeOf = .option ty →
   (Factory.option.get' I t).isLiteral
 := by
@@ -291,43 +321,47 @@ theorem pe_option_get'_wfl {εs : SymEntities} {I : Interpretation} {t : Term} {
     replace ⟨_, hlit, _⟩ := hlit
     simp only [hlit, pe_option_get_some]
     simp only [hlit] at hwf
-    exact lit_term_some_implies_lit hwf.right
+    exact isLiteral_some.mp hwf.right
 
 /-! ### PE for Factory.isNone and Factory.isSome -/
 
-theorem pe_isNone_none {ty : TermType} :
+@[simp]
+public theorem pe_isNone_none {ty : TermType} :
   isNone (Term.none ty) = .prim (.bool true)
 := by simp [Factory.isNone]
 
-theorem pe_isNone_some {t : Term} :
+@[simp]
+public theorem pe_isNone_some {t : Term} :
   isNone (Term.some t) = .prim (.bool false)
 := by simp [Factory.isNone]
 
-theorem pe_isSome_none {ty : TermType} :
+@[simp]
+public theorem pe_isSome_none {ty : TermType} :
   isSome (Term.none ty) = .prim (.bool false)
 := by simp only [isSome, pe_isNone_none, pe_not_true]
 
-theorem pe_isSome_some {t : Term} :
+@[simp]
+public theorem pe_isSome_some {t : Term} :
   isSome (Term.some t) = .prim (.bool true)
 := by simp only [isSome, pe_isNone_some, pe_not_false]
 
 /-! ### PE for Factory.ifSome -/
 
-theorem pe_ifSome_none {t : Term} {gty tty : TermType} :
+public theorem pe_ifSome_none {t : Term} {gty tty : TermType} :
   t.typeOf = .option tty →
   ifSome (Term.none gty) t = Term.none tty
 := by
   intro h
   simp only [ifSome, h, pe_isNone_none, pe_ite_true, noneOf]
 
-theorem pe_ifSome_some {g t : Term} {tty : TermType} :
+public theorem pe_ifSome_some {g t : Term} {tty : TermType} :
   t.typeOf = .option tty →
   ifSome (Term.some g) t = t
 := by
   intro h
   simp only [ifSome, h, pe_isNone_some, pe_ite_false, noneOf]
 
-theorem pe_ifSome_get_eq_get' {εs : SymEntities} (I : Interpretation) {t : Term} {ty ty' : TermType} (f : Term → Term) :
+public theorem pe_ifSome_get_eq_get' {εs : SymEntities} (I : Interpretation) {t : Term} {ty ty' : TermType} (f : Term → Term) :
   t.WellFormedLiteral εs →
   t.typeOf = .option ty →
   (f (option.get t)).typeOf = .option ty' →
@@ -346,7 +380,7 @@ theorem pe_ifSome_get_eq_get' {εs : SymEntities} (I : Interpretation) {t : Term
     replace ⟨_, h₅, _⟩ := h₅ ; subst h₅
     simp only [pe_isNone_some, pe_ite_false, pe_option_get_some, pe_option_get'_some]
 
-theorem pe_ifSome_get_eq_get'₂ {εs : SymEntities} (I : Interpretation) {t₁ t₂ : Term} {ty₁ ty₂ ty₃ : TermType} (f : Term → Term → Term)
+public theorem pe_ifSome_get_eq_get'₂ {εs : SymEntities} (I : Interpretation) {t₁ t₂ : Term} {ty₁ ty₂ ty₃ : TermType} (f : Term → Term → Term)
   (hwφ₁ : Term.WellFormedLiteral εs t₁ ∧ Term.typeOf t₁ = TermType.option ty₁)
   (hwφ₂ : Term.WellFormedLiteral εs t₂ ∧ Term.typeOf t₂ = TermType.option ty₂)
   (hty₁ : Term.typeOf (f (option.get t₁) (option.get t₂)) = TermType.option ty₃)
@@ -375,7 +409,7 @@ theorem pe_ifSome_get_eq_get'₂ {εs : SymEntities} (I : Interpretation) {t₁ 
     replace ⟨_, hwo₂, _⟩ := hwo₂ ; subst hwo₂
     simp only [pe_isNone_some, pe_ite_false, pe_option_get_some, pe_option_get'_some]
 
-theorem pe_ifSome_ok_get_eq_get' {εs : SymEntities} (I : Interpretation) {t₁ t₂ t₃ : Term} {ty₁ ty₂ : TermType} (f : Term → SymCC.Result Term)
+public theorem pe_ifSome_ok_get_eq_get' {εs : SymEntities} (I : Interpretation) {t₁ t₂ t₃ : Term} {ty₁ ty₂ : TermType} (f : Term → SymCC.Result Term)
   (hwφ₁ : Term.WellFormedLiteral εs t₁ ∧ Term.typeOf t₁ = TermType.option ty₁)
   (hty₂ : Term.typeOf t₂ = TermType.option ty₂)
   (hty₃ : Term.typeOf t₃ = TermType.option ty₂)
@@ -396,7 +430,7 @@ theorem pe_ifSome_ok_get_eq_get' {εs : SymEntities} (I : Interpretation) {t₁ 
     simp only [pe_option_get_some, hok₂, Except.ok.injEq] at hok₃
     simp only [hok₃]
 
-theorem pe_ifSome_ok_get_eq_get'₂ {εs : SymEntities} (I : Interpretation) {t₁ t₂ t₃ t₄ : Term} {ty₁ ty₂ ty₃ : TermType} (f : Term → Term → SymCC.Result Term)
+public theorem pe_ifSome_ok_get_eq_get'₂ {εs : SymEntities} (I : Interpretation) {t₁ t₂ t₃ t₄ : Term} {ty₁ ty₂ ty₃ : TermType} (f : Term → Term → SymCC.Result Term)
   (hwφ₁ : Term.WellFormedLiteral εs t₁ ∧ Term.typeOf t₁ = TermType.option ty₁)
   (hwφ₂ : Term.WellFormedLiteral εs t₂ ∧ Term.typeOf t₂ = TermType.option ty₂)
   (hty₃ : Term.typeOf t₃ = TermType.option ty₃)
@@ -440,7 +474,7 @@ private theorem pe_foldl_or_right_true {ts : List Term} {f : Term → Term} :
   case cons hd tl ih =>
     simp only [List.foldl_cons, pe_or_true_right, ih]
 
-theorem pe_wfls_of_type_option {εs : SymEntities} {ts : List Term}
+public theorem pe_wfls_of_type_option {εs : SymEntities} {ts : List Term}
   (hwφ : ∀ t ∈ ts, t.WellFormedLiteral εs ∧ ∃ ty, t.typeOf = .option ty) :
   (∃ ty, .none ty ∈ ts) ∨
   (∃ ts', ts = List.map Term.some ts')
@@ -470,7 +504,7 @@ theorem pe_wfls_of_type_option {εs : SymEntities} {ts : List Term}
       simp only [List.mem_map, and_false, exists_const, false_or, reduceCtorEq]
       exists (hd' :: tl')
 
-theorem pe_anyTrue_true {f : Term → Term} {ts : List Term} {t : Term} :
+public theorem pe_anyTrue_true {f : Term → Term} {ts : List Term} {t : Term} :
   t ∈ ts → f t = true →
   anyTrue f ts = true
 := by
@@ -491,7 +525,7 @@ theorem pe_anyTrue_true {f : Term → Term} {ts : List Term} {t : Term} :
     case inr =>
       exact ih hin _
 
-theorem pe_anyTrue_false {f : Term → Term} {ts : List Term} :
+public theorem pe_anyTrue_false {f : Term → Term} {ts : List Term} :
   (∀ t ∈ ts, f t = false) →
   anyTrue f ts = false
 := by
@@ -512,7 +546,7 @@ theorem pe_anyTrue_false {f : Term → Term} {ts : List Term} :
     apply hf
     simp only [List.mem_cons, hin, or_true]
 
-theorem pe_anyNone_true {ts : List Term} {ty : TermType} :
+public theorem pe_anyNone_true {ts : List Term} {ty : TermType} :
   Term.none ty ∈ ts →
   anyNone ts = true
 := by
@@ -520,7 +554,7 @@ theorem pe_anyNone_true {ts : List Term} {ty : TermType} :
   intro hin
   exact pe_anyTrue_true hin pe_isNone_none
 
-theorem pe_anyNone_false {ts : List Term} :
+public theorem pe_anyNone_false {ts : List Term} :
   anyNone (ts.map Term.some) = false
 := by
   apply pe_anyTrue_false
@@ -529,7 +563,7 @@ theorem pe_anyNone_false {ts : List Term} :
   replace ⟨_, _, hin⟩ := hin
   simp only [← hin, pe_isNone_some]
 
-theorem pe_ifAllSome_none {ts : List Term} {t : Term} {ty₁ ty₂ : TermType} :
+public theorem pe_ifAllSome_none {ts : List Term} {t : Term} {ty₁ ty₂ : TermType} :
   Term.none ty₁ ∈ ts →
   t.typeOf = .option ty₂ →
   ifAllSome ts t = .none ty₂
@@ -537,7 +571,7 @@ theorem pe_ifAllSome_none {ts : List Term} {t : Term} {ty₁ ty₂ : TermType} :
   intro hn hty
   simp only [ifAllSome, hty, pe_anyNone_true hn, noneOf, pe_ite_true]
 
-theorem pe_ifAllSome_some {ts : List Term} {t : Term} {ty : TermType} :
+public theorem pe_ifAllSome_some {ts : List Term} {t : Term} {ty : TermType} :
   t.typeOf = .option ty →
   ifAllSome (ts.map Term.some) t = t
 := by
@@ -546,25 +580,29 @@ theorem pe_ifAllSome_some {ts : List Term} {t : Term} {ty : TermType} :
 
 /-! ### PE for Factory.ifFalse and Factory.ifTrue -/
 
-theorem pe_ifFalse_true {t : Term} :
+@[simp]
+public theorem pe_ifFalse_true {t : Term} :
   ifFalse (.prim (.bool true)) t = .none t.typeOf
 := by simp only [ifFalse, pe_ite_true, noneOf]
 
-theorem pe_ifFalse_false {t : Term} :
+@[simp]
+public theorem pe_ifFalse_false {t : Term} :
   ifFalse (.prim (.bool false)) t = .some t
 := by simp only [ifFalse, pe_ite_false, someOf]
 
-theorem pe_ifTrue_true {t : Term} :
+@[simp]
+public theorem pe_ifTrue_true {t : Term} :
   ifTrue (.prim (.bool true)) t = .some t
 := by simp only [ifTrue, pe_ite_true, someOf]
 
-theorem pe_ifTrue_false {t : Term} :
+@[simp]
+public theorem pe_ifTrue_false {t : Term} :
   ifTrue (.prim (.bool false)) t = .none t.typeOf
 := by simp only [ifTrue, pe_ite_false, noneOf]
 
 /-! ### PE for Factory.app -/
 
-theorem pe_app_wfl {εs : SymEntities} {f : UDF} {t : Term} :
+public theorem pe_app_wfl {εs : SymEntities} {f : UDF} {t : Term} :
   Term.WellFormedLiteral εs t →
   UDF.WellFormed εs f →
   Term.isLiteral (app (UnaryFunction.udf f) t) = true
@@ -581,215 +619,228 @@ theorem pe_app_wfl {εs : SymEntities} {f : UDF} {t : Term} :
 
 /-! ### PE for Factory bitvector operators -/
 
-theorem pe_bvneg_wfl {εs : SymEntities} {t : Term} {n : Nat} :
+public theorem pe_bvneg_wfl {εs : SymEntities} {t : Term} {n : Nat} :
   t.WellFormedLiteral εs → t.typeOf = .bitvec n →
   (Factory.bvneg t).isLiteral
 := by show_pe_unary_wfl bvneg wfl_of_type_bitvec_is_bitvec
 
-theorem pe_bvnego_wfl {εs : SymEntities} {t : Term} {n : Nat} :
+public theorem pe_bvnego_wfl {εs : SymEntities} {t : Term} {n : Nat} :
   t.WellFormedLiteral εs → t.typeOf = .bitvec n →
   (Factory.bvnego t).isLiteral
 := by show_pe_unary_wfl bvnego wfl_of_type_bitvec_is_bitvec
 
-theorem pe_zero_extend_wfl {εs : SymEntities} {t : Term} {n m : Nat} :
+public theorem pe_zero_extend_wfl {εs : SymEntities} {t : Term} {n m : Nat} :
   t.WellFormedLiteral εs → t.typeOf = .bitvec m →
   (Factory.zero_extend n t).isLiteral
 := by show_pe_unary_wfl zero_extend wfl_of_type_bitvec_is_bitvec
 
-theorem pe_bvadd_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
+public theorem pe_bvadd_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
   Term.WellFormedLiteral εs t₁ → Term.typeOf t₁ = TermType.bitvec n →
   Term.WellFormedLiteral εs t₂ → Term.typeOf t₂ = TermType.bitvec n →
   Term.isLiteral (Factory.bvadd t₁ t₂) = true
 := by show_pe_binary_wfl bvadd bvapp wfl_of_type_bitvec_is_bitvec
 
-theorem pe_bvsub_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
+public theorem pe_bvsub_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
   Term.WellFormedLiteral εs t₁ → Term.typeOf t₁ = TermType.bitvec n →
   Term.WellFormedLiteral εs t₂ → Term.typeOf t₂ = TermType.bitvec n →
   Term.isLiteral (Factory.bvsub t₁ t₂) = true
 := by show_pe_binary_wfl bvsub bvapp wfl_of_type_bitvec_is_bitvec
 
-theorem pe_bvmul_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
+public theorem pe_bvmul_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
   Term.WellFormedLiteral εs t₁ → Term.typeOf t₁ = TermType.bitvec n →
   Term.WellFormedLiteral εs t₂ → Term.typeOf t₂ = TermType.bitvec n →
   Term.isLiteral (Factory.bvmul t₁ t₂) = true
 := by show_pe_binary_wfl bvmul bvapp wfl_of_type_bitvec_is_bitvec
 
-theorem pe_bvsdiv_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
+public theorem pe_bvsdiv_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
   Term.WellFormedLiteral εs t₁ → Term.typeOf t₁ = TermType.bitvec n →
   Term.WellFormedLiteral εs t₂ → Term.typeOf t₂ = TermType.bitvec n →
   Term.isLiteral (Factory.bvsdiv t₁ t₂) = true
 := by show_pe_binary_wfl bvsdiv bvapp wfl_of_type_bitvec_is_bitvec
 
-theorem pe_bvudiv_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
+public theorem pe_bvudiv_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
   Term.WellFormedLiteral εs t₁ → Term.typeOf t₁ = TermType.bitvec n →
   Term.WellFormedLiteral εs t₂ → Term.typeOf t₂ = TermType.bitvec n →
   Term.isLiteral (Factory.bvudiv t₁ t₂) = true
 := by show_pe_binary_wfl bvudiv bvapp wfl_of_type_bitvec_is_bitvec
 
-theorem pe_bvsrem_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
+public theorem pe_bvsrem_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
   Term.WellFormedLiteral εs t₁ → Term.typeOf t₁ = TermType.bitvec n →
   Term.WellFormedLiteral εs t₂ → Term.typeOf t₂ = TermType.bitvec n →
   Term.isLiteral (Factory.bvsrem t₁ t₂) = true
 := by show_pe_binary_wfl bvsrem bvapp wfl_of_type_bitvec_is_bitvec
 
-theorem pe_bvsmod_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
+public theorem pe_bvsmod_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
   Term.WellFormedLiteral εs t₁ → Term.typeOf t₁ = TermType.bitvec n →
   Term.WellFormedLiteral εs t₂ → Term.typeOf t₂ = TermType.bitvec n →
   Term.isLiteral (Factory.bvsmod t₁ t₂) = true
 := by show_pe_binary_wfl bvsmod bvapp wfl_of_type_bitvec_is_bitvec
 
-theorem pe_bvurem_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
+public theorem pe_bvurem_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
   Term.WellFormedLiteral εs t₁ → Term.typeOf t₁ = TermType.bitvec n →
   Term.WellFormedLiteral εs t₂ → Term.typeOf t₂ = TermType.bitvec n →
   Term.isLiteral (Factory.bvurem t₁ t₂) = true
 := by show_pe_binary_wfl bvurem bvapp wfl_of_type_bitvec_is_bitvec
 
-theorem pe_bvshl_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
+public theorem pe_bvshl_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
   Term.WellFormedLiteral εs t₁ → Term.typeOf t₁ = TermType.bitvec n →
   Term.WellFormedLiteral εs t₂ → Term.typeOf t₂ = TermType.bitvec n →
   Term.isLiteral (Factory.bvshl t₁ t₂) = true
 := by show_pe_binary_wfl bvshl bvapp wfl_of_type_bitvec_is_bitvec
 
-theorem pe_bvlshr_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
+public theorem pe_bvlshr_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
   Term.WellFormedLiteral εs t₁ → Term.typeOf t₁ = TermType.bitvec n →
   Term.WellFormedLiteral εs t₂ → Term.typeOf t₂ = TermType.bitvec n →
   Term.isLiteral (Factory.bvlshr t₁ t₂) = true
 := by show_pe_binary_wfl bvlshr bvapp wfl_of_type_bitvec_is_bitvec
 
-theorem pe_bvslt_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
+public theorem pe_bvslt_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
   Term.WellFormedLiteral εs t₁ → Term.typeOf t₁ = TermType.bitvec n →
   Term.WellFormedLiteral εs t₂ → Term.typeOf t₂ = TermType.bitvec n →
   Term.isLiteral (Factory.bvslt t₁ t₂) = true
 := by show_pe_binary_wfl bvslt bvcmp wfl_of_type_bitvec_is_bitvec
 
-theorem pe_bvsle_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
+public theorem pe_bvsle_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
   Term.WellFormedLiteral εs t₁ → Term.typeOf t₁ = TermType.bitvec n →
   Term.WellFormedLiteral εs t₂ → Term.typeOf t₂ = TermType.bitvec n →
   Term.isLiteral (Factory.bvsle t₁ t₂) = true
 := by show_pe_binary_wfl bvsle bvcmp wfl_of_type_bitvec_is_bitvec
 
-theorem pe_bvult_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
+public theorem pe_bvult_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
   Term.WellFormedLiteral εs t₁ → Term.typeOf t₁ = TermType.bitvec n →
   Term.WellFormedLiteral εs t₂ → Term.typeOf t₂ = TermType.bitvec n →
   Term.isLiteral (Factory.bvult t₁ t₂) = true
 := by show_pe_binary_wfl bvult bvcmp wfl_of_type_bitvec_is_bitvec
 
-theorem pe_bvule_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
+public theorem pe_bvule_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
   Term.WellFormedLiteral εs t₁ → Term.typeOf t₁ = TermType.bitvec n →
   Term.WellFormedLiteral εs t₂ → Term.typeOf t₂ = TermType.bitvec n →
   Term.isLiteral (Factory.bvule t₁ t₂) = true
 := by show_pe_binary_wfl bvule bvcmp wfl_of_type_bitvec_is_bitvec
 
-theorem pe_bvsaddo_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
+public theorem pe_bvsaddo_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
   Term.WellFormedLiteral εs t₁ → Term.typeOf t₁ = TermType.bitvec n →
   Term.WellFormedLiteral εs t₂ → Term.typeOf t₂ = TermType.bitvec n →
   Term.isLiteral (Factory.bvsaddo t₁ t₂) = true
 := by show_pe_binary_wfl bvsaddo bvso wfl_of_type_bitvec_is_bitvec
 
-theorem pe_bvssubo_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
+public theorem pe_bvssubo_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
   Term.WellFormedLiteral εs t₁ → Term.typeOf t₁ = TermType.bitvec n →
   Term.WellFormedLiteral εs t₂ → Term.typeOf t₂ = TermType.bitvec n →
   Term.isLiteral (Factory.bvssubo t₁ t₂) = true
 := by show_pe_binary_wfl bvssubo bvso wfl_of_type_bitvec_is_bitvec
 
-theorem pe_bvsmulo_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
+public theorem pe_bvsmulo_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
   Term.WellFormedLiteral εs t₁ → Term.typeOf t₁ = TermType.bitvec n →
   Term.WellFormedLiteral εs t₂ → Term.typeOf t₂ = TermType.bitvec n →
   Term.isLiteral (Factory.bvsmulo t₁ t₂) = true
 := by show_pe_binary_wfl bvsmulo bvso wfl_of_type_bitvec_is_bitvec
 
-theorem pe_bvadd {n : Nat} {bv₁ bv₂ : BitVec n} :
+@[simp]
+public theorem pe_bvadd {n : Nat} {bv₁ bv₂ : BitVec n} :
   Factory.bvadd
     (Term.prim (TermPrim.bitvec bv₁))
     (Term.prim (TermPrim.bitvec bv₂)) =
   Term.prim (TermPrim.bitvec (BitVec.add bv₁ bv₂))
 := by simp only [bvadd, bvapp, BitVec.ofNat_toNat, BitVec.setWidth_eq]
 
-theorem pe_bvsub {n : Nat} {bv₁ bv₂ : BitVec n} :
+@[simp]
+public theorem pe_bvsub {n : Nat} {bv₁ bv₂ : BitVec n} :
   Factory.bvsub
     (Term.prim (TermPrim.bitvec bv₁))
     (Term.prim (TermPrim.bitvec bv₂)) =
   Term.prim (TermPrim.bitvec (BitVec.sub bv₁ bv₂))
 := by simp only [bvsub, bvapp, BitVec.ofNat_toNat, BitVec.setWidth_eq]
 
-theorem pe_bvmul {n : Nat} {bv₁ bv₂ : BitVec n} :
+@[simp]
+public theorem pe_bvmul {n : Nat} {bv₁ bv₂ : BitVec n} :
   Factory.bvmul
     (Term.prim (TermPrim.bitvec bv₁))
     (Term.prim (TermPrim.bitvec bv₂)) =
   Term.prim (TermPrim.bitvec (BitVec.mul bv₁ bv₂))
 := by simp only [bvmul, bvapp, BitVec.ofNat_toNat, BitVec.setWidth_eq]
 
-theorem pe_bvsdiv {n : Nat} {bv₁ bv₂ : BitVec n} :
+@[simp]
+public theorem pe_bvsdiv {n : Nat} {bv₁ bv₂ : BitVec n} :
   Factory.bvsdiv
     (Term.prim (TermPrim.bitvec bv₁))
     (Term.prim (TermPrim.bitvec bv₂)) =
   Term.prim (TermPrim.bitvec (BitVec.smtSDiv bv₁ bv₂))
 := by simp only [bvsdiv, bvapp, BitVec.ofNat_toNat, BitVec.setWidth_eq]
 
-theorem pe_bvudiv {n : Nat} {bv₁ bv₂ : BitVec n} :
+@[simp]
+public theorem pe_bvudiv {n : Nat} {bv₁ bv₂ : BitVec n} :
   Factory.bvudiv
     (Term.prim (TermPrim.bitvec bv₁))
     (Term.prim (TermPrim.bitvec bv₂)) =
   Term.prim (TermPrim.bitvec (BitVec.smtUDiv bv₁ bv₂))
 := by simp only [bvudiv, bvapp, BitVec.ofNat_toNat, BitVec.setWidth_eq]
 
-theorem pe_bvsrem {n : Nat} {bv₁ bv₂ : BitVec n} :
+@[simp]
+public theorem pe_bvsrem {n : Nat} {bv₁ bv₂ : BitVec n} :
   Factory.bvsrem
     (Term.prim (TermPrim.bitvec bv₁))
     (Term.prim (TermPrim.bitvec bv₂)) =
   Term.prim (TermPrim.bitvec (BitVec.srem bv₁ bv₂))
 := by simp only [bvsrem, bvapp, BitVec.ofNat_toNat, BitVec.setWidth_eq]
 
-theorem pe_bvsmod {n : Nat} {bv₁ bv₂ : BitVec n} :
+@[simp]
+public theorem pe_bvsmod {n : Nat} {bv₁ bv₂ : BitVec n} :
   Factory.bvsmod
     (Term.prim (TermPrim.bitvec bv₁))
     (Term.prim (TermPrim.bitvec bv₂)) =
   Term.prim (TermPrim.bitvec (BitVec.smod bv₁ bv₂))
 := by simp only [bvsmod, bvapp, BitVec.ofNat_toNat, BitVec.setWidth_eq]
 
-theorem pe_bvurem {n : Nat} {bv₁ bv₂ : BitVec n} :
+@[simp]
+public theorem pe_bvurem {n : Nat} {bv₁ bv₂ : BitVec n} :
   Factory.bvurem
     (Term.prim (TermPrim.bitvec bv₁))
     (Term.prim (TermPrim.bitvec bv₂)) =
   Term.prim (TermPrim.bitvec (BitVec.umod bv₁ bv₂))
 := by simp only [bvurem, bvapp, BitVec.ofNat_toNat, BitVec.setWidth_eq]
 
-theorem pe_bvlshr {n : Nat} {bv₁ bv₂ : BitVec n} :
+@[simp]
+public theorem pe_bvlshr {n : Nat} {bv₁ bv₂ : BitVec n} :
   Factory.bvlshr
     (Term.prim (TermPrim.bitvec bv₁))
     (Term.prim (TermPrim.bitvec bv₂)) =
   Term.prim (TermPrim.bitvec (bv₁ >>> bv₂))
 := by simp only [bvlshr, bvapp, BitVec.ofNat_toNat, BitVec.setWidth_eq]
 
-theorem pe_bvshl {n : Nat} {bv₁ bv₂ : BitVec n} :
+@[simp]
+public theorem pe_bvshl {n : Nat} {bv₁ bv₂ : BitVec n} :
   Factory.bvshl
     (Term.prim (TermPrim.bitvec bv₁))
     (Term.prim (TermPrim.bitvec bv₂)) =
   Term.prim (TermPrim.bitvec (bv₁ <<< bv₂))
 := by simp only [bvshl, bvapp, BitVec.ofNat_toNat, BitVec.setWidth_eq]
 
-theorem pe_bvsaddo {n : Nat} {bv₁ bv₂ : BitVec n} :
+@[simp]
+public theorem pe_bvsaddo {n : Nat} {bv₁ bv₂ : BitVec n} :
   Factory.bvsaddo
     (Term.prim (TermPrim.bitvec bv₁))
     (Term.prim (TermPrim.bitvec bv₂)) =
   Term.prim (TermPrim.bool (BitVec.overflows n (bv₁.toInt + bv₂.toInt)))
 := by simp only [bvsaddo, bvso]
 
-theorem pe_bvssubo {n : Nat} {bv₁ bv₂ : BitVec n} :
+@[simp]
+public theorem pe_bvssubo {n : Nat} {bv₁ bv₂ : BitVec n} :
   Factory.bvssubo
     (Term.prim (TermPrim.bitvec bv₁))
     (Term.prim (TermPrim.bitvec bv₂)) =
   Term.prim (TermPrim.bool (BitVec.overflows n (bv₁.toInt - bv₂.toInt)))
 := by simp only [bvssubo, bvso]
 
-theorem pe_bvsmulo {n : Nat} {bv₁ bv₂ : BitVec n} :
+@[simp]
+public theorem pe_bvsmulo {n : Nat} {bv₁ bv₂ : BitVec n} :
   Factory.bvsmulo
     (Term.prim (TermPrim.bitvec bv₁))
     (Term.prim (TermPrim.bitvec bv₂)) =
   Term.prim (TermPrim.bool (BitVec.overflows n (bv₁.toInt * bv₂.toInt)))
 := by simp only [bvsmulo, bvso]
 
-theorem pe_zero_extend {k n : Nat} {bv : BitVec k} :
+public theorem pe_zero_extend {k n : Nat} {bv : BitVec k} :
   k ≤ n →
   Factory.zero_extend (n - k) bv =
   Term.prim (TermPrim.bitvec (BitVec.zeroExtend n bv))
@@ -799,28 +850,31 @@ theorem pe_zero_extend {k n : Nat} {bv : BitVec k} :
   simp only [zero_extend, Term.prim.injEq, TermPrim.bitvec.injEq, h₂, true_and]
   rw [h₂]
 
-theorem pe_bvslt {n : Nat} {bv₁ bv₂ : BitVec n} :
+@[simp]
+public theorem pe_bvslt {n : Nat} {bv₁ bv₂ : BitVec n} :
   Factory.bvslt
     (Term.prim (TermPrim.bitvec bv₁))
     (Term.prim (TermPrim.bitvec bv₂)) =
   Term.prim (TermPrim.bool (BitVec.slt bv₁ bv₂))
 := by simp only [bvslt, bvcmp, BitVec.ofNat_toNat, BitVec.setWidth_eq]
 
-theorem pe_bvsle {n : Nat} {bv₁ bv₂ : BitVec n} :
+@[simp]
+public theorem pe_bvsle {n : Nat} {bv₁ bv₂ : BitVec n} :
   Factory.bvsle
     (Term.prim (TermPrim.bitvec bv₁))
     (Term.prim (TermPrim.bitvec bv₂)) =
   Term.prim (TermPrim.bool (BitVec.sle bv₁ bv₂))
 := by simp only [bvsle, bvcmp, BitVec.ofNat_toNat, BitVec.setWidth_eq]
 
-theorem pe_bvule {n : Nat} {bv₁ bv₂ : BitVec n} :
+@[simp]
+public theorem pe_bvule {n : Nat} {bv₁ bv₂ : BitVec n} :
   Factory.bvule
     (Term.prim (TermPrim.bitvec bv₁))
     (Term.prim (TermPrim.bitvec bv₂)) =
   Term.prim (TermPrim.bool (BitVec.ule bv₁ bv₂))
 := by simp only [bvule, bvcmp, BitVec.ofNat_toNat, BitVec.setWidth_eq]
 
-theorem pe_bvaddChecked_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
+public theorem pe_bvaddChecked_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
   Term.WellFormedLiteral εs t₁ → Term.typeOf t₁ = TermType.bitvec n →
   Term.WellFormedLiteral εs t₂ → Term.typeOf t₂ = TermType.bitvec n →
   Term.isLiteral (Factory.bvaddChecked t₁ t₂) = true
@@ -836,7 +890,7 @@ theorem pe_bvaddChecked_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
   case true =>
     simp only [bvaddChecked, h, h', pe_ifFalse_true, Term.isLiteral]
 
-theorem pe_bvsubChecked_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
+public theorem pe_bvsubChecked_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
   Term.WellFormedLiteral εs t₁ → Term.typeOf t₁ = TermType.bitvec n →
   Term.WellFormedLiteral εs t₂ → Term.typeOf t₂ = TermType.bitvec n →
   Term.isLiteral (Factory.bvsubChecked t₁ t₂) = true
@@ -852,7 +906,7 @@ theorem pe_bvsubChecked_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
   case true =>
     simp only [bvsubChecked, h, h', pe_ifFalse_true, Term.isLiteral]
 
-theorem pe_bvmulChecked_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
+public theorem pe_bvmulChecked_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
   Term.WellFormedLiteral εs t₁ → Term.typeOf t₁ = TermType.bitvec n →
   Term.WellFormedLiteral εs t₂ → Term.typeOf t₂ = TermType.bitvec n →
   Term.isLiteral (Factory.bvmulChecked t₁ t₂) = true
@@ -868,7 +922,7 @@ theorem pe_bvmulChecked_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
   case true =>
     simp only [bvmulChecked, h, h', pe_ifFalse_true, Term.isLiteral]
 
-theorem pe_bvaddChecked_overflow {n : Nat} {bv₁ bv₂ : BitVec n} :
+public theorem pe_bvaddChecked_overflow {n : Nat} {bv₁ bv₂ : BitVec n} :
   Factory.bvsaddo
     (Term.prim (TermPrim.bitvec bv₁))
     (Term.prim (TermPrim.bitvec bv₂)) =
@@ -879,7 +933,7 @@ theorem pe_bvaddChecked_overflow {n : Nat} {bv₁ bv₂ : BitVec n} :
   .none (.prim (.bitvec n))
 := by intro h; simp only [bvaddChecked, h, pe_ifFalse_true, pe_bvadd, typeOf_bv]
 
-theorem pe_bvaddChecked_no_overflow {n : Nat} {bv₁ bv₂ : BitVec n} :
+public theorem pe_bvaddChecked_no_overflow {n : Nat} {bv₁ bv₂ : BitVec n} :
   Factory.bvsaddo
     (Term.prim (TermPrim.bitvec bv₁))
     (Term.prim (TermPrim.bitvec bv₂)) =
@@ -890,7 +944,7 @@ theorem pe_bvaddChecked_no_overflow {n : Nat} {bv₁ bv₂ : BitVec n} :
   .some (Term.prim (TermPrim.bitvec (BitVec.add bv₁ bv₂)))
 := by intro h; simp only [bvaddChecked, h, pe_ifFalse_false, pe_bvadd]
 
-theorem pe_bvsubChecked_overflow {n : Nat} {bv₁ bv₂ : BitVec n} :
+public theorem pe_bvsubChecked_overflow {n : Nat} {bv₁ bv₂ : BitVec n} :
   Factory.bvssubo
     (Term.prim (TermPrim.bitvec bv₁))
     (Term.prim (TermPrim.bitvec bv₂)) =
@@ -901,7 +955,7 @@ theorem pe_bvsubChecked_overflow {n : Nat} {bv₁ bv₂ : BitVec n} :
   .none (.prim (.bitvec n))
 := by intro h; simp only [bvsubChecked, h, pe_ifFalse_true, pe_bvsub, typeOf_bv]
 
-theorem pe_bvsubChecked_no_overflow {n : Nat} {bv₁ bv₂ : BitVec n} :
+public theorem pe_bvsubChecked_no_overflow {n : Nat} {bv₁ bv₂ : BitVec n} :
   Factory.bvssubo
     (Term.prim (TermPrim.bitvec bv₁))
     (Term.prim (TermPrim.bitvec bv₂)) =
@@ -912,7 +966,7 @@ theorem pe_bvsubChecked_no_overflow {n : Nat} {bv₁ bv₂ : BitVec n} :
   .some (Term.prim (TermPrim.bitvec (BitVec.sub bv₁ bv₂)))
 := by intro h; simp only [bvsubChecked, h, pe_ifFalse_false, pe_bvsub]
 
-theorem pe_bvmulChecked_overflow {n : Nat} {bv₁ bv₂ : BitVec n} :
+public theorem pe_bvmulChecked_overflow {n : Nat} {bv₁ bv₂ : BitVec n} :
   Factory.bvsmulo
     (Term.prim (TermPrim.bitvec bv₁))
     (Term.prim (TermPrim.bitvec bv₂)) =
@@ -923,7 +977,7 @@ theorem pe_bvmulChecked_overflow {n : Nat} {bv₁ bv₂ : BitVec n} :
   .none (.prim (.bitvec n))
 := by intro h; simp only [bvmulChecked, h, pe_ifFalse_true, pe_bvmul, typeOf_bv]
 
-theorem pe_bvmulChecked_no_overflow {n : Nat} {bv₁ bv₂ : BitVec n} :
+public theorem pe_bvmulChecked_no_overflow {n : Nat} {bv₁ bv₂ : BitVec n} :
   Factory.bvsmulo
     (Term.prim (TermPrim.bitvec bv₁))
     (Term.prim (TermPrim.bitvec bv₂)) =
@@ -936,22 +990,19 @@ theorem pe_bvmulChecked_no_overflow {n : Nat} {bv₁ bv₂ : BitVec n} :
 
 /-! ### PE for Factory string, set, and record operators -/
 
-theorem pe_string_like_wfl {εs : SymEntities} {t : Term} {p : Pattern} :
+public theorem pe_string_like_wfl {εs : SymEntities} {t : Term} {p : Pattern} :
   t.WellFormedLiteral εs → t.typeOf = .string →
   (Factory.string.like t p).isLiteral
 := by show_pe_unary_wfl string.like wfl_of_type_string_is_string
 
-theorem pe_set_isEmpty {s : Set Term} {ty : TermType} :
+@[simp]
+public theorem pe_set_isEmpty {s : Set Term} {ty : TermType} :
   Factory.set.isEmpty (Term.set s ty) = s.isEmpty
 := by
   cases s ; rename_i ts
-  cases ts
-  case nil =>
-    simp only [set.isEmpty, Set.isEmpty, Set.empty, beq_self_eq_true]
-  case cons =>
-    simp only [set.isEmpty, Set.isEmpty, Set.empty]
+  cases ts <;> simp [set.isEmpty]
 
-theorem pe_set_member {t : Term} {s : Set Term} {ty : TermType} :
+public theorem pe_set_member {t : Term} {s : Set Term} {ty : TermType} :
   (Term.set s ty).isLiteral →
   t.isLiteral →
   (Factory.set.member t (Term.set s ty)) = s.contains t
@@ -963,7 +1014,7 @@ theorem pe_set_member {t : Term} {s : Set Term} {ty : TermType} :
     simp only [Term.set.injEq] at heq
     replace ⟨heq, _⟩ := heq
     subst heq
-    simp only [Set.contains, Set.elts, List.elem_eq_mem, List.not_mem_nil, decide_false]
+    simp [Set.not_contains_prop_bool_equiv, ← Set.empty_eq_mk_nil, Set.not_mem_empty]
   case h_2 heq =>
     simp only [Term.set.injEq] at heq
     replace ⟨heq, _⟩ := heq
@@ -973,7 +1024,7 @@ theorem pe_set_member {t : Term} {s : Set Term} {ty : TermType} :
     specialize h s ty
     simp only [forall_const] at h
 
-theorem pe_set_member_wfl {εs : SymEntities} {t₁ t₂ : Term} {ty : TermType} :
+public theorem pe_set_member_wfl {εs : SymEntities} {t₁ t₂ : Term} {ty : TermType} :
   Term.WellFormedLiteral εs t₁ →
   Term.WellFormedLiteral εs t₂ → Term.typeOf t₂ = TermType.set ty →
   (Factory.set.member t₁ t₂).isLiteral
@@ -990,7 +1041,7 @@ theorem pe_set_member_wfl {εs : SymEntities} {t₁ t₂ : Term} {ty : TermType}
     specialize h s₂ ty
     simp only [forall_const] at h
 
-theorem pe_set_subset {s₁ s₂ : Set Term} {ty : TermType} :
+public theorem pe_set_subset {s₁ s₂ : Set Term} {ty : TermType} :
   (Term.set s₁ ty).isLiteral →
   (Term.set s₂ ty).isLiteral →
   (Factory.set.subset (Term.set s₁ ty) (Term.set s₂ ty)) = s₁.subset s₂
@@ -1007,7 +1058,8 @@ theorem pe_set_subset {s₁ s₂ : Set Term} {ty : TermType} :
     split
     case h_1 h =>
       simp only [Term.set.injEq] at h
-      simp only [Set.subset, Set.elts, h, List.all_nil]
+      simp only [h, ← Set.empty_eq_mk_nil, Term.prim.injEq, TermPrim.bool.injEq, Bool.true_eq]
+      rw [Set.subset_empty]
     case h_2 heq₁ heq₂ =>
       simp only [Term.set.injEq] at heq₁ heq₂
       simp only [h₁, h₂, and_self, ↓reduceIte, ← heq₁.left, ← heq₂.left]
@@ -1015,7 +1067,7 @@ theorem pe_set_subset {s₁ s₂ : Set Term} {ty : TermType} :
       specialize h s₁ ty s₂ ty
       simp only [forall_const] at h
 
-theorem pe_set_subset_wfl {εs : SymEntities} {t₁ t₂ : Term} {ty : TermType} :
+public theorem pe_set_subset_wfl {εs : SymEntities} {t₁ t₂ : Term} {ty : TermType} :
   Term.WellFormedLiteral εs t₁ → Term.typeOf t₁ = TermType.set ty →
   Term.WellFormedLiteral εs t₂ → Term.typeOf t₂ = TermType.set ty →
   (Factory.set.subset t₁ t₂).isLiteral
@@ -1036,7 +1088,7 @@ theorem pe_set_subset_wfl {εs : SymEntities} {t₁ t₂ : Term} {ty : TermType}
       specialize h s₁ ty s₂ ty
       simp only [forall_const] at h
 
-theorem pe_set_inter_wfl {εs : SymEntities} {t₁ t₂ : Term} {ty : TermType} :
+public theorem pe_set_inter_wfl {εs : SymEntities} {t₁ t₂ : Term} {ty : TermType} :
   Term.WellFormedLiteral εs t₁ → Term.typeOf t₁ = TermType.set ty →
   Term.WellFormedLiteral εs t₂ → Term.typeOf t₂ = TermType.set ty →
   (Factory.set.inter t₁ t₂).isLiteral
@@ -1054,20 +1106,17 @@ theorem pe_set_inter_wfl {εs : SymEntities} {t₁ t₂ : Term} {ty : TermType} 
     case h_2 => simp only [h₃.right]
     case h_3 h₅ h₆ =>
       simp only [Term.set.injEq] at h₅ h₆
-      simp [←h₅, ←h₆, h₁.right, h₃.right]
-      simp [Term.isLiteral, Set.all]
+      simp only [h₁.right, h₃.right, and_self, ↓reduceIte, ← h₅, ← h₆]
+      simp only [Term.isLiteral, Set.all₁_eq_all, Set.all_eq_true]
       intro t h₇
-      replace h₇ : t ∈ s₁ ∩ s₂ := by
-        simp only [Inter.inter]
-        rw [← Set.mem_elts_iff_mem_set]
-        simp only [Set.elts, h₇]
+      replace h₇ : t ∈ s₁ ∩ s₂ := by simp only [Inter.inter, h₇]
       rw [Set.mem_inter_iff] at h₇
       apply lit_term_set_implies_lit_elt h₃.right h₇.right
     case h_4 h =>
       specialize h s₁ ty s₂ ty
       simp only [forall_const] at h
 
-theorem pe_set_inter {s₁ s₂ : Set Term} {ty : TermType} :
+public theorem pe_set_inter {s₁ s₂ : Set Term} {ty : TermType} :
   (Term.set s₁ ty).isLiteral →
   (Term.set s₂ ty).isLiteral →
   (Factory.set.inter (Term.set s₁ ty) (Term.set s₂ ty)) = Term.set (Set.intersect s₁ s₂) ty
@@ -1093,25 +1142,18 @@ theorem pe_set_inter {s₁ s₂ : Set Term} {ty : TermType} :
       specialize h s₁ ty s₂ ty
       simp only [forall_const] at h
 
-theorem pe_set_intersects {s₁ s₂ : Set Term} {ty : TermType} :
+public theorem pe_set_intersects {s₁ s₂ : Set Term} {ty : TermType} :
   (Term.set s₁ ty).isLiteral →
   (Term.set s₂ ty).isLiteral →
   (Factory.set.intersects (Term.set s₁ ty) (Term.set s₂ ty)) = s₁.intersects s₂
 := by
   intro h₁ h₂
-  simp only [set.intersects, pe_set_inter h₁ h₂, set.isEmpty]
-  cases h₃ : (s₁.intersect s₂).isEmpty
-  case true =>
-    simp only [pe_not_true, Term.prim.injEq, TermPrim.bool.injEq]
-    by_contra hc
-    rw [eq_comm, Bool.not_eq_false, Set.intersects_def] at hc
-    contradiction
-  case false =>
-    simp only [pe_not_false, Term.prim.injEq, TermPrim.bool.injEq]
-    rw [eq_comm, Set.intersects_def]
-    simp [Inter.inter, h₃]
+  simp only [set.intersects, set.isEmpty, pe_set_inter h₁ h₂, pe_not_lit, Term.prim.injEq,
+    TermPrim.bool.injEq, Bool.not_eq_eq_eq_not]
+  suffices (s₁.intersect s₂).isEmpty = !(s₁.intersects s₂ = true) by simp [this]
+  simp [Set.intersects_def, Inter.inter]
 
-theorem pe_record_get_wfl {εs : SymEntities} {a : Attr} {t : Term} {ty : TermType} {rty:  Map Attr TermType} :
+public theorem pe_record_get_wfl {εs : SymEntities} {a : Attr} {t : Term} {ty : TermType} {rty:  Map Attr TermType} :
   Term.WellFormedLiteral εs t →
   Term.typeOf t = TermType.record rty →
   Map.find? rty a = some ty →
@@ -1125,7 +1167,7 @@ theorem pe_record_get_wfl {εs : SymEntities} {a : Attr} {t : Term} {ty : TermTy
   simp only [record.get, h₄.left]
   exact lit_term_record_implies_lit_value h₁.right h₅
 
-theorem pe_record_get {rt : Map Attr Term} {a : Attr} {tₐ : Term} :
+public theorem pe_record_get {rt : Map Attr Term} {a : Attr} {tₐ : Term} :
   Map.find? rt a = some tₐ →
   record.get (Term.record rt) a = tₐ
 := by
@@ -1134,17 +1176,18 @@ theorem pe_record_get {rt : Map Attr Term} {a : Attr} {tₐ : Term} :
 
 /-! ### PE for Factory extension operators -/
 
-theorem pe_ext_decimal_val_wfl {εs : SymEntities} {t : Term} :
+public theorem pe_ext_decimal_val_wfl {εs : SymEntities} {t : Term} :
   t.WellFormedLiteral εs → t.typeOf = .ext .decimal →
   (Factory.ext.decimal.val t).isLiteral
 := by show_pe_unary_wfl ext.decimal.val wfl_of_type_ext_decimal_is_ext_decimal
 
-theorem pe_ext_ipaddr_isV4_wfl {εs : SymEntities} {t : Term} :
+public theorem pe_ext_ipaddr_isV4_wfl {εs : SymEntities} {t : Term} :
   t.WellFormedLiteral εs → t.typeOf = .ext .ipAddr →
   (Factory.ext.ipaddr.isV4 t).isLiteral
 := by show_pe_unary_wfl ext.ipaddr.isV4 wfl_of_type_ext_ipaddr_is_ext_ipaddr
 
-theorem pe_ext_ipaddr_addrV4'_wfl {εs : SymEntities} {I : Interpretation} {t : Term} :
+-- TODO: make private once files like `Thm/.../Interpret/Lit.lean` become `module`s and thus able to `import all` this file, including private theorems about private Factory functions
+public theorem pe_ext_ipaddr_addrV4'_wfl {εs : SymEntities} {I : Interpretation} {t : Term} :
   I.WellFormed εs → t.WellFormedLiteral εs → t.typeOf = .ext .ipAddr →
   (Factory.ext.ipaddr.addrV4' I t).isLiteral
 := by
@@ -1159,7 +1202,8 @@ theorem pe_ext_ipaddr_addrV4'_wfl {εs : SymEntities} {I : Interpretation} {t : 
     have h₃ := wf_interpretation_implies_wfp_ext_ipaddr_addrV4 c6.addr c6.pre h₀ rfl
     exact h₃.left.right
 
-theorem pe_ext_ipaddr_prefixV4'_wfl {εs : SymEntities} {I : Interpretation} {t : Term} :
+-- TODO: make private once files like `Thm/.../Interpret/Lit.lean` become `module`s and thus able to `import all` this file, including private theorems about private Factory functions
+public theorem pe_ext_ipaddr_prefixV4'_wfl {εs : SymEntities} {I : Interpretation} {t : Term} :
   I.WellFormed εs → t.WellFormedLiteral εs → t.typeOf = .ext .ipAddr →
   (Factory.ext.ipaddr.prefixV4' I t).isLiteral
 := by
@@ -1176,7 +1220,8 @@ theorem pe_ext_ipaddr_prefixV4'_wfl {εs : SymEntities} {I : Interpretation} {t 
     have h₃ := wf_interpretation_implies_wfp_ext_ipaddr_prefixV4 c6.addr c6.pre h₀ rfl
     exact h₃.left.right
 
-theorem pe_ext_ipaddr_addrV6'_wfl {εs : SymEntities} {I : Interpretation} {t : Term} :
+-- TODO: make private once files like `Thm/.../Interpret/Lit.lean` become `module`s and thus able to `import all` this file, including private theorems about private Factory functions
+public theorem pe_ext_ipaddr_addrV6'_wfl {εs : SymEntities} {I : Interpretation} {t : Term} :
   I.WellFormed εs → t.WellFormedLiteral εs → t.typeOf = .ext .ipAddr →
   (Factory.ext.ipaddr.addrV6' I t).isLiteral
 := by
@@ -1191,7 +1236,8 @@ theorem pe_ext_ipaddr_addrV6'_wfl {εs : SymEntities} {I : Interpretation} {t : 
   case V6 =>
     simp only [ext.ipaddr.addrV6, Term.isLiteral]
 
-theorem pe_ext_ipaddr_prefixV6'_wfl {εs : SymEntities} {I : Interpretation} {t : Term} :
+-- TODO: make private once files like `Thm/.../Interpret/Lit.lean` become `module`s and thus able to `import all` this file, including private theorems about private Factory functions
+public theorem pe_ext_ipaddr_prefixV6'_wfl {εs : SymEntities} {I : Interpretation} {t : Term} :
   I.WellFormed εs → t.WellFormedLiteral εs → t.typeOf = .ext .ipAddr →
   (Factory.ext.ipaddr.prefixV6' I t).isLiteral
 := by
@@ -1208,112 +1254,128 @@ theorem pe_ext_ipaddr_prefixV6'_wfl {εs : SymEntities} {I : Interpretation} {t 
     split <;>
     simp only [noneOf, someOf, Term.isLiteral]
 
-theorem pe_ext_datetime_val_wfl {εs : SymEntities} {t : Term} :
+public theorem pe_ext_datetime_val_wfl {εs : SymEntities} {t : Term} :
   t.WellFormedLiteral εs → t.typeOf = .ext .datetime →
   (Factory.ext.datetime.val t).isLiteral
 := by show_pe_unary_wfl ext.datetime.val wfl_of_type_ext_datetime_is_ext_datetime
 
-theorem pe_ext_datetime_ofBitVec_wfl {εs : SymEntities} {t : Term} :
+public theorem pe_ext_datetime_ofBitVec_wfl {εs : SymEntities} {t : Term} :
   t.WellFormedLiteral εs → t.typeOf = .prim (.bitvec 64) →
   (Factory.ext.datetime.ofBitVec t).isLiteral
 := by show_pe_unary_wfl ext.datetime.ofBitVec wfl_of_type_bitvec_is_bitvec
 
-theorem pe_ext_duration_val_wfl {εs : SymEntities} {t : Term} :
+public theorem pe_ext_duration_val_wfl {εs : SymEntities} {t : Term} :
   t.WellFormedLiteral εs → t.typeOf = .ext .duration →
   (Factory.ext.duration.val t).isLiteral
 := by show_pe_unary_wfl ext.duration.val wfl_of_type_ext_duration_is_ext_duration
 
-theorem pe_ext_duration_ofBitVec_wfl {εs : SymEntities} {t : Term} :
+public theorem pe_ext_duration_ofBitVec_wfl {εs : SymEntities} {t : Term} :
   t.WellFormedLiteral εs → t.typeOf = .prim (.bitvec 64) →
   (Factory.ext.duration.ofBitVec t).isLiteral
 := by show_pe_unary_wfl ext.duration.ofBitVec wfl_of_type_bitvec_is_bitvec
 
-theorem pe_ext_decimal_val {d : Ext.Decimal} :
+@[simp]
+public theorem pe_ext_decimal_val {d : Ext.Decimal} :
   ext.decimal.val (Term.prim (TermPrim.ext (Ext.decimal d))) =
   Term.prim (.bitvec d.toBitVec)
 := by simp only [ext.decimal.val]
 
-theorem pe_ext_ipaddr_isV4_V4 {cidr : Ext.IPAddr.CIDR Ext.IPAddr.V4_WIDTH} :
+@[simp]
+public theorem pe_ext_ipaddr_isV4_V4 {cidr : Ext.IPAddr.CIDR Ext.IPAddr.V4_WIDTH} :
   Factory.ext.ipaddr.isV4 (Term.prim (TermPrim.ext (Ext.ipaddr (Ext.IPAddr.IPNet.V4 cidr)))) = true
 := by
   simp only [ext.ipaddr.isV4, Ext.IPAddr.IPNet.isV4]
 
-theorem pe_ext_ipaddr_isV4_V6 {cidr : Ext.IPAddr.CIDR Ext.IPAddr.V6_WIDTH} :
+@[simp]
+public theorem pe_ext_ipaddr_isV4_V6 {cidr : Ext.IPAddr.CIDR Ext.IPAddr.V6_WIDTH} :
   Factory.ext.ipaddr.isV4 (Term.prim (TermPrim.ext (Ext.ipaddr (Ext.IPAddr.IPNet.V6 cidr)))) = false
 := by
   simp only [ext.ipaddr.isV4, Ext.IPAddr.IPNet.isV4]
 
-theorem pe_ext_ipaddr_addrV4_V4 {cidr : Ext.IPAddr.CIDR Ext.IPAddr.V4_WIDTH} :
+@[simp]
+public theorem pe_ext_ipaddr_addrV4_V4 {cidr : Ext.IPAddr.CIDR Ext.IPAddr.V4_WIDTH} :
   Factory.ext.ipaddr.addrV4 (Term.prim (TermPrim.ext (Ext.ipaddr (Ext.IPAddr.IPNet.V4 cidr)))) = cidr.addr
 := by
   simp only [ext.ipaddr.addrV4]
 
-theorem pe_ext_ipaddr_addrV4'_V4 {I : Interpretation} {cidr : Ext.IPAddr.CIDR Ext.IPAddr.V4_WIDTH} :
+-- TODO: make private once files like `Thm/.../Interpret/Lit.lean` become `module`s and thus able to `import all` this file, including private theorems about private Factory functions
+public theorem pe_ext_ipaddr_addrV4'_V4 {I : Interpretation} {cidr : Ext.IPAddr.CIDR Ext.IPAddr.V4_WIDTH} :
   Factory.ext.ipaddr.addrV4' I (Term.prim (TermPrim.ext (Ext.ipaddr (Ext.IPAddr.IPNet.V4 cidr)))) =
   Factory.ext.ipaddr.addrV4 (Term.prim (TermPrim.ext (Ext.ipaddr (Ext.IPAddr.IPNet.V4 cidr))))
 := by
   simp only [ext.ipaddr.addrV4']
 
-def cidrPrefixTerm {w} (cidr : Ext.IPAddr.CIDR w) : Term :=
+@[expose]
+public def cidrPrefixTerm {w} (cidr : Ext.IPAddr.CIDR w) : Term :=
   match cidr.pre with
   | none => Term.none (TermType.bitvec w)
   | some pre => Term.some (Term.prim (TermPrim.bitvec pre))
 
-theorem pe_ext_ipaddr_prefixV4_V4 {cidr : Ext.IPAddr.CIDR Ext.IPAddr.V4_WIDTH} :
+@[simp]
+public theorem pe_ext_ipaddr_prefixV4_V4 {cidr : Ext.IPAddr.CIDR Ext.IPAddr.V4_WIDTH} :
   Factory.ext.ipaddr.prefixV4 (Term.prim (TermPrim.ext (Ext.ipaddr (Ext.IPAddr.IPNet.V4 cidr)))) =
   cidrPrefixTerm cidr
 := by
   simp only [Factory.ext.ipaddr.prefixV4, noneOf, someOf, cidrPrefixTerm]
   split <;> rename_i heq <;> simp only [heq]
 
-theorem pe_ext_ipaddr_prefixV4'_V4 {I : Interpretation} {cidr : Ext.IPAddr.CIDR Ext.IPAddr.V4_WIDTH} :
+-- TODO: make private once files like `Thm/.../Interpret/Lit.lean` become `module`s and thus able to `import all` this file, including private theorems about private Factory functions
+public theorem pe_ext_ipaddr_prefixV4'_V4 {I : Interpretation} {cidr : Ext.IPAddr.CIDR Ext.IPAddr.V4_WIDTH} :
   Factory.ext.ipaddr.prefixV4' I (Term.prim (TermPrim.ext (Ext.ipaddr (Ext.IPAddr.IPNet.V4 cidr)))) =
   Factory.ext.ipaddr.prefixV4 (Term.prim (TermPrim.ext (Ext.ipaddr (Ext.IPAddr.IPNet.V4 cidr))))
 := by
   simp only [ext.ipaddr.prefixV4']
 
-theorem pe_ext_ipaddr_addrV6_V6 {cidr : Ext.IPAddr.CIDR Ext.IPAddr.V6_WIDTH} :
+@[simp]
+public theorem pe_ext_ipaddr_addrV6_V6 {cidr : Ext.IPAddr.CIDR Ext.IPAddr.V6_WIDTH} :
   Factory.ext.ipaddr.addrV6 (Term.prim (TermPrim.ext (Ext.ipaddr (Ext.IPAddr.IPNet.V6 cidr)))) = cidr.addr
 := by
   simp only [ext.ipaddr.addrV6]
 
-theorem pe_ext_ipaddr_addrV6'_V6 {I : Interpretation} {cidr : Ext.IPAddr.CIDR Ext.IPAddr.V6_WIDTH} :
+-- TODO: make private once files like `Thm/.../Interpret/Lit.lean` become `module`s and thus able to `import all` this file, including private theorems about private Factory functions
+public theorem pe_ext_ipaddr_addrV6'_V6 {I : Interpretation} {cidr : Ext.IPAddr.CIDR Ext.IPAddr.V6_WIDTH} :
   Factory.ext.ipaddr.addrV6' I (Term.prim (TermPrim.ext (Ext.ipaddr (Ext.IPAddr.IPNet.V6 cidr)))) =
   Factory.ext.ipaddr.addrV6 (Term.prim (TermPrim.ext (Ext.ipaddr (Ext.IPAddr.IPNet.V6 cidr))))
 := by
   simp only [ext.ipaddr.addrV6']
 
-theorem pe_ext_ipaddr_prefixV6_V6 {cidr : Ext.IPAddr.CIDR Ext.IPAddr.V6_WIDTH} :
+@[simp]
+public theorem pe_ext_ipaddr_prefixV6_V6 {cidr : Ext.IPAddr.CIDR Ext.IPAddr.V6_WIDTH} :
   Factory.ext.ipaddr.prefixV6 (Term.prim (TermPrim.ext (Ext.ipaddr (Ext.IPAddr.IPNet.V6 cidr)))) =
   cidrPrefixTerm cidr
 := by
   simp only [Factory.ext.ipaddr.prefixV6, noneOf, someOf, cidrPrefixTerm]
   split <;> rename_i heq <;> simp only [heq]
 
-theorem pe_ext_ipaddr_prefixV6'_V6 {I : Interpretation} {cidr : Ext.IPAddr.CIDR Ext.IPAddr.V6_WIDTH} :
+-- TODO: make private once files like `Thm/.../Interpret/Lit.lean` become `module`s and thus able to `import all` this file, including private theorems about private Factory functions
+public theorem pe_ext_ipaddr_prefixV6'_V6 {I : Interpretation} {cidr : Ext.IPAddr.CIDR Ext.IPAddr.V6_WIDTH} :
   Factory.ext.ipaddr.prefixV6' I (Term.prim (TermPrim.ext (Ext.ipaddr (Ext.IPAddr.IPNet.V6 cidr)))) =
   Factory.ext.ipaddr.prefixV6 (Term.prim (TermPrim.ext (Ext.ipaddr (Ext.IPAddr.IPNet.V6 cidr))))
 := by
   simp only [Factory.ext.ipaddr.prefixV6']
 
-theorem pe_ext_datetime_val {d : Ext.Datetime} :
+@[simp]
+public theorem pe_ext_datetime_val {d : Ext.Datetime} :
   ext.datetime.val (Term.prim (TermPrim.ext (Ext.datetime d))) =
     Term.prim (.bitvec d.val.toBitVec)
 := by simp only [ext.datetime.val]
 
-theorem pe_ext_datetime_ofBitVec {bv : BitVec 64} :
+@[simp]
+public theorem pe_ext_datetime_ofBitVec {bv : BitVec 64} :
   ext.datetime.ofBitVec (Term.prim (TermPrim.bitvec bv)) =
-  Term.prim (TermPrim.ext (Ext.datetime ( Int64.ofInt bv.toInt)))
+  Term.prim (TermPrim.ext (Ext.datetime (Int64.ofInt bv.toInt)))
 := by simp only [ext.datetime.ofBitVec]
 
-theorem pe_ext_duration_val {d : Ext.Datetime.Duration} :
+@[simp]
+public theorem pe_ext_duration_val {d : Ext.Datetime.Duration} :
   ext.duration.val (Term.prim (TermPrim.ext (Ext.duration d))) =
     Term.prim (.bitvec d.val.toBitVec)
 := by simp only [ext.duration.val]
 
-theorem pe_ext_duration_ofBitVec {bv : BitVec 64} :
+@[simp]
+public theorem pe_ext_duration_ofBitVec {bv : BitVec 64} :
   ext.duration.ofBitVec (Term.prim (TermPrim.bitvec bv)) =
-  Term.prim (TermPrim.ext (Ext.duration ( Int64.ofInt bv.toInt)))
+  Term.prim (TermPrim.ext (Ext.duration (Int64.ofInt bv.toInt)))
 := by simp only [ext.duration.ofBitVec]
 
 

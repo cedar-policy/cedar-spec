@@ -587,7 +587,7 @@ theorem ofEnv_request_is_wf
   · constructor
     exact ofType_wf hwf hwf_ctx
   -- Context well-typed
-  · simp [Term.typeOf, TermType.isCedarRecordType]
+  · simp [TermType.isCedarRecordType]
     have := wf_ofType_right_inverse_cedarType? hwf hwf_ctx
     simp only [TermType.ofType] at this
     simp [this, CedarType.liftBoolTypes]
@@ -601,7 +601,6 @@ theorem ofEnv_request_is_basic
     SymRequest.ofRequestType,
     SymRequest.IsBasic,
     Term.isBasic,
-    Term.isLiteral,
   ]
 
 theorem ofEnv_request_is_swf
@@ -824,8 +823,8 @@ theorem ofActionType_ancsUDF_is_wf
       exists act.fst
       simp only [this, Option.isSome, true_and, hact_ty]
     · simp [Set.empty, Set.WellFormed, Set.make, Set.toList, Set.elts, List.canonicalize]
-  · simp [Term.isLiteral]
-  · simp only [Set.empty, TermType.ofType, Term.typeOf]
+  · simp
+  · simp [TermType.ofType]
   · simp only [Map.make_wf]
   · -- WF of the ancestor UDF
     intros tᵢ tₒ hmem
@@ -969,8 +968,8 @@ theorem ofActionType_is_wf
   · constructor
     · intro _ _ h ; simp at h
     · exact Map.wf_empty
-  · simp [Map.empty, Term.isLiteral]
-  · simp [Term.typeOf, Map.mapOnValues₂_eq_mapOnValues]
+  · simp [Term.isLiteral]
+  · simp
   · exact Map.wf_empty
   · intros; contradiction
   · simp only [TermType.isCedarRecordType, TermType.cedarType?, Map.empty]
