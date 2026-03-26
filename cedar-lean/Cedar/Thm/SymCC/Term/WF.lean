@@ -1859,22 +1859,15 @@ public theorem wf_datetime_toDate {εs : SymEntities} {t : Term}
   have ⟨hwf₀, hty₀⟩ := wf_ext_datetime_val h.left h.right
   have hwf_bv_zero := @wf_bv εs _ (Int64.toBitVec 0)
   have hwf_bv_ms_per_day := @wf_bv εs _ (Int64.toBitVec 86400000)
-  have ⟨hwf₁, hty₁⟩   := wf_bvsle hwf_bv_zero hwf₀ typeOf_bv hty₀
-  have ⟨hwf₂, hty₂⟩   := wf_bvsdiv hwf₀ hwf_bv_ms_per_day hty₀ typeOf_bv
-  have ⟨hwf₃, hty₃⟩   := wf_bvmul hwf_bv_ms_per_day hwf₂ typeOf_bv hty₂
-  have ⟨hwf₄, hty₄⟩   := wf_ext_datetime_ofBitVec hwf₃ hty₃
-  have ⟨hwf₅, hty₅⟩   := wf_term_some hwf₄ hty₄
-  have ⟨hwf₆, hty₆⟩   := wf_bvsrem hwf₀ hwf_bv_ms_per_day hty₀ typeOf_bv
-  have ⟨hwf₇, hty₇⟩   := wf_eq hwf₆ hwf_bv_zero (by simp only [hty₆, typeOf_bv])
-  have ⟨hwf₈, hty₈⟩   := wf_term_some h.left h.right
-  have ⟨hwf₉, hty₉⟩   := wf_bvsub hwf₂ (@wf_bv εs _ (Int64.toBitVec 1)) hty₂ typeOf_bv
-  have ⟨hwf₁₀, hty₁₀⟩ := wf_bvsmulo hwf₉ hwf_bv_ms_per_day hty₉ typeOf_bv
-  have ⟨hwf₁₁, hty₁₁⟩ := wf_bvmul hwf₉ hwf_bv_ms_per_day hty₉ typeOf_bv
-  have ⟨hwf₁₂, hty₁₂⟩ := wf_ext_datetime_ofBitVec hwf₁₁ hty₁₁
-  have ⟨hwf₁₃, hty₁₃⟩ := wf_ifFalse hwf₁₀ hwf₁₂ hty₁₀
-  have ⟨hwf₁₄, hty₁₄⟩ := wf_ite hwf₇ hwf₈ hwf₁₃ hty₇ (by simp only [hty₈, hty₁₃, hty₁₂])
-  have ⟨hwf₁₅, hty₁₅⟩ := wf_ite hwf₁ hwf₅ hwf₁₄ hty₁ (by simp only [hty₅, hty₁₄, hty₈])
-  simp only [Datetime.toDate, someOf, hwf₁₅, hty₁₅, hty₅, _root_.and_self]
+  simp only [Datetime.toDate]
+  have ⟨hwf₁, hty₁⟩   := wf_bvsmod hwf₀ hwf_bv_ms_per_day hty₀ typeOf_bv
+  have ⟨hwf₂, hty₂⟩   := wf_bvsub hwf₀ hwf₁ hty₀ hty₁
+  have ⟨hwf₃, hty₃⟩   := wf_bvssubo hwf₀ hwf₁ hty₀ hty₁
+  have ⟨hwf₄, hty₄⟩   := wf_ext_datetime_ofBitVec hwf₂ hty₂
+  have ⟨hwf₅, hty₅⟩   := wf_ifFalse hwf₃ hwf₄ hty₃
+  apply And.intro hwf₅
+  rw [hty₅]
+  rw [hty₄]
 
 public theorem wf_datetime_toTime {εs : SymEntities} {t : Term}
   (h : t.WellFormed εs ∧ t.typeOf = .ext .datetime) :
