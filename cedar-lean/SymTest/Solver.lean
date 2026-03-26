@@ -84,6 +84,44 @@ def testGetModelErrorForCVC5 : TestCase IO :=
       | err            => checkEq "IO.userError" err.toString
   ⟩
 
+def testCheckSatWithCRLF : TestCase IO :=
+  test "Check Solver.checkSat handles Windows CRLF" ⟨λ _ => do
+    let (hIn, pathIn) ← IO.FS.createTempFile
+    let (hOut, pathOut) ← IO.FS.createTempFile
+    hOut.putStr "sat\r\n"
+    hOut.rewind
+    let testSolver : Solver := {
+      smtLibInput  := IO.FS.Stream.ofHandle hIn,
+      smtLibOutput := some (IO.FS.Stream.ofHandle hOut)
+    }
+    let decision ← Solver.checkSat |>.run testSolver
+    IO.FS.removeFile pathIn
+    IO.FS.removeFile pathOut
+    checkEq decision .sat
+  ⟩
+
+def testGetModelWithCRLF : TestCase IO :=
+  test "Check Solver.getModel handles Windows CRLF" ⟨λ _ => do
+    let (hIn, pathIn) ← IO.FS.createTempFile
+    let (hOut, pathOut) ← IO.FS.createTempFile
+    hOut.putStr "(\r\n  define-fun x () Int 1\r\n)\r\n"
+    hOut.rewind
+    let testSolver : Solver := {
+      smtLibInput  := IO.FS.Stream.ofHandle hIn,
+      smtLibOutput := some (IO.FS.Stream.ofHandle hOut)
+    }
+    let model ← Solver.getModel |>.run testSolver
+    IO.FS.removeFile pathIn
+    IO.FS.removeFile pathOut
+    checkEq model "(\n  define-fun x () Int 1\n)\n"
+  ⟩
+
+def testsForCRLF :=
+  suite "Solver.CRLF_Compatibility" [
+    testCheckSatWithCRLF,
+    testGetModelWithCRLF
+  ]
+
 def testsForBuffers :=
   suite "Solver.buffers" [
     testAssertBoolToBuffer true,
@@ -106,7 +144,8 @@ def testsForCVC5 :=
 def tests := [
   testsForBuffers,
   testsForFiles,
-  testsForCVC5
+  testsForCVC5,
+  testsForCRLF
 ]
 
 -- Uncomment for interactive debugging
