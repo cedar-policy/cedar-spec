@@ -152,19 +152,12 @@ public def durationSince (dt₁ dt₂ : Term) : Term :=
   ifFalse (bvssubo dt₁_val dt₂_val) (ext.duration.ofBitVec (bvsub dt₁_val dt₂_val))
 
 public def toDate (dt : Term) : Term :=
-  let zero := .prim (.bitvec (Int64.toBitVec 0))
-  let one := .prim (.bitvec (Int64.toBitVec 1))
   let ms_per_day := .prim (.bitvec (Int64.toBitVec 86400000))
   let dt_val := ext.datetime.val dt
-  (ite (bvsle zero dt_val)
-    (someOf (ext.datetime.ofBitVec (bvmul ms_per_day (bvsdiv dt_val ms_per_day))))
-    (ite (eq (bvsrem dt_val ms_per_day) zero)
-      (someOf dt)
-      (ifFalse (bvsmulo (bvsub (bvsdiv dt_val ms_per_day) one) ms_per_day)
-        (ext.datetime.ofBitVec (bvmul (bvsub (bvsdiv dt_val ms_per_day) one) ms_per_day))
-      )
-    )
-  )
+  -- we want dt - (dt % MS_PER_DAY), with the right version of '%'
+  -- using bvsmod does the right thing: we have 0 <= (bvsmod x MS_PER_DAY) < MS_PER_DAY
+  let rem := bvsmod dt_val ms_per_day
+  ifFalse (bvssubo dt_val rem) (ext.datetime.ofBitVec (bvsub dt_val rem))
 
 public def toTime (dt : Term) : Term :=
   let zero := .prim (.bitvec (Int64.toBitVec 0))

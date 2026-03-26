@@ -605,10 +605,8 @@ theorem compile_ok_implies_option {x : Expr} {εnv : SymEnv} {t : Term} :
       apply typeOf_ifSome
       simp only [Datetime.toDate]
       apply typeOf_ite
+      · apply typeOf_noneOf
       · apply typeOf_someOf
-      · apply typeOf_ite
-        · apply typeOf_someOf
-        · apply typeOf_ifFalse
     case _ | _ | _ | _ | _ | _ =>
       simp only [compileCall₁, compileCallWithError₁]
       split <;> simp only [Except.ok.injEq, reduceCtorEq, false_implies]
