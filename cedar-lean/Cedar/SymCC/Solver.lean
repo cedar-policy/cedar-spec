@@ -172,10 +172,11 @@ private def readlnD (dflt : String) : SolverM String := do
 
 public def checkSat : SolverM Decision := do
   emitln "(check-sat)"
-  match (← readlnD "unknown\n") with
-  | "sat\n"     => return Decision.sat
-  | "unsat\n"   => return Decision.unsat
-  | "unknown\n" => return Decision.unknown
+  let line := (← readlnD "unknown").trimAsciiEnd.toString
+  match line with
+  | "sat"     => return Decision.sat
+  | "unsat"   => return Decision.unsat
+  | "unknown" => return Decision.unknown
   | other       => throw (IO.userError s!"Unrecognized solver output: {other}")
 
 public def reset : SolverM Unit :=
@@ -195,14 +196,16 @@ public def getModel : SolverM String := do
   emitln "(get-model)"
   match (← read).smtLibOutput with
   | some out =>
-    match (← out.getLine) with
-    | "(\n" =>
-      let mut s := ""
+    let firstLine := ← out.getLine
+    match firstLine.trimAsciiEnd.toString with
+    | "(" =>
+      let mut s := firstLine -- s may start with '(\n' or '(\n\r'
       repeat
-        match (← out.getLine) with
-        | ")\n" => break
-        | line  => s := s ++ line
-      return "(\n" ++ s ++ ")\n"
+        let line := ← out.getLine
+        s := s ++ line
+        if line.trimAsciiEnd.toString == ")" then
+          break
+      return s
     | other => throw (IO.userError s!"Unrecognized solver output: {other}")
   | none    => throw (IO.userError s!"Cannot get model unless after a SAT response.")
 
