@@ -77,7 +77,7 @@ theorem satisfied_policies_congr_evaluate {ps : Policies} {r₁ r₂ : Request} 
   replace heq : ∀ p ∈ ps, satisfiedWithEffect effect p r₁ es₁ = satisfiedWithEffect effect p r₂ es₂ := by
     intro p hp
     specialize heq p hp
-    simp only [heq, satisfiedWithEffect, satisfied]
+    simp [heq, satisfiedWithEffect, satisfied]
   rw [List.filterMap_congr heq]
 
 theorem error_policies_congr_evaluate {ps : Policies} {r₁ r₂ : Request} {es₁ es₂ : Entities}
