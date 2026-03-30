@@ -100,7 +100,7 @@ theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List
   unfold List.unattach
   rw [List.map_pmap_subtype (fun x => x)]
   simp only [List.map_id_fun', id_eq, List.map_subtype, List.mem_map, List.mem_unattach, List.mem_pmap, Subtype.mk.injEq, exists_prop, exists_eq_right, and_self]
-  rw [List.map_pmap_subtype (fun x => TPE.evaluate x preq pes)]
+  simp only [List.map_pmap_subtype (fun x => TPE.evaluate x preq pes)]
   split
   case h_1 x xs h₁ =>
     cases h_wt

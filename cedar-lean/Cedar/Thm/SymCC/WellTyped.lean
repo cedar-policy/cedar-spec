@@ -399,7 +399,7 @@ theorem wellTypedPolicies_preserves_satisfiedWithEffect
   = satisfiedWithEffect effect p' request entities
 := by
   have h := wellTypedPolicy_preserves_evaluation hinst hwt
-  simp only [
+  simp [
     satisfiedWithEffect, satisfied,
     h, wellTypedPolicies_preserves_policy_id_and_effect hwt
   ]
@@ -437,7 +437,7 @@ theorem wellTypedPolicies_preserves_errored
   = errored p' request entities
 := by
   have h := wellTypedPolicy_preserves_evaluation hinst hwt
-  simp only [
+  simp [
     errored, hasError,
     h, wellTypedPolicies_preserves_policy_id_and_effect hwt
   ]
