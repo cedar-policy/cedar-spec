@@ -71,7 +71,9 @@ def testGetModelBoolForBuffer (b : Bool) : TestCase IO :=
 def testGetEmptyModelForCVC5 : TestCase IO :=
   test "Check Solver.cvc5.getModel for a trivially SAT formula with no variables" ⟨λ _ => do
     let s ← getModelBool true |>.run (← Solver.cvc5)
-    checkEq s "(\n)\n"
+    -- normalize line endings for cross-platform compatibility
+    let normalized := s.replace "\r\n" "\n"
+    checkEq normalized "(\n)\n"
   ⟩
 
 def testGetModelErrorForCVC5 : TestCase IO :=
@@ -113,7 +115,7 @@ def testGetModelWithCRLF : TestCase IO :=
     let model ← Solver.getModel |>.run testSolver
     IO.FS.removeFile pathIn
     IO.FS.removeFile pathOut
-    checkEq model "(\n  define-fun x () Int 1\n)\n"
+    checkEq model "(\r\n  define-fun x () Int 1\r\n)\r\n"
   ⟩
 
 def testsForCRLF :=

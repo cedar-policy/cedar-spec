@@ -196,16 +196,16 @@ public def getModel : SolverM String := do
   emitln "(get-model)"
   match (← read).smtLibOutput with
   | some out =>
-    let first := (← out.getLine).trimAsciiEnd.toString
-    match first with
+    let firstLine := ← out.getLine
+    match firstLine.trimAsciiEnd.toString with
     | "(" =>
-      let mut s := ""
+      let mut s := firstLine -- s may start with '(\n' or '(\n\r'
       repeat
-        let line := (← out.getLine).trimAsciiEnd.toString
-        match line with
-        | ")" => break
-        | line => s := s ++ line ++ "\n"
-      return "(\n" ++ s ++ ")\n"
+        let line := ← out.getLine
+        s := s ++ line
+        if line.trimAsciiEnd.toString == ")" then
+          break
+      return s
     | other => throw (IO.userError s!"Unrecognized solver output: {other}")
   | none    => throw (IO.userError s!"Cannot get model unless after a SAT response.")
 
