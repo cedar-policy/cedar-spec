@@ -98,7 +98,7 @@ instance : LawfulMonad BParsec := {
     intro α β f1 f2
     apply ext
     intro it
-    simp only [Monad.toApplicative, instMonad, instFunctor, Functor.map, bind, pure, map]
+    simp only [Functor.map, SeqLeft.seqLeft, Seq.seq, bind, map, pure]
     split <;> simp only [Function.const_apply]
 
   seqRight_eq := by
@@ -113,7 +113,7 @@ instance : LawfulMonad BParsec := {
     intro α β g x
     apply ext
     intro it
-    simp only [Seq.seq, bind, Pure.pure, pure, Monad.toApplicative, instMonad]
+    simp only [Seq.seq, bind, Pure.pure, pure]
 
   bind_pure_comp := by
     intro α β f x
