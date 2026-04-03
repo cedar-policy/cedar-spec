@@ -60,7 +60,7 @@ instance [Field α] : Field (Option α) where
     | _, a₂ => a₂
   expectedWireType := Field.expectedWireType α
 
-@[inline]
+@[implicit_reducible]
 def fromInterField {α β : Type} [Inhabited α] [Field α] (convert : α → β) (merge : β → β → β) : Field β := {
   parse := do
     let m : α ← Field.parse
@@ -69,7 +69,7 @@ def fromInterField {α β : Type} [Inhabited α] [Field α] (convert : α → β
   merge := merge
 }
 
-@[inline]
+@[implicit_reducible]
 def fromInterFieldFallible {α β : Type} [Inhabited α] [Field α] (convert : α → Except String β) (merge : β → β → β) : Field β := {
   parse := do
     let m : α ← Field.parse

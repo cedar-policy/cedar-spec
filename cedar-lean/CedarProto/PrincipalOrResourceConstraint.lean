@@ -204,9 +204,6 @@ namespace ScopeTemplate
 --   | isMem (ety : EntityType) (entityOrSlot : EntityUIDOrSlot)
 deriving instance Inhabited for ScopeTemplate
 
-
-deriving instance Inhabited for EntityUIDOrSlot
-
 @[inline]
 def mergeAny (_ : ScopeTemplate) (x : Proto.ScopeTemplate.Any) : ScopeTemplate :=
   match x with
