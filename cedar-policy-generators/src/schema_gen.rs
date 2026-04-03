@@ -15,7 +15,7 @@ use crate::{
 };
 use arbitrary::Unstructured;
 use cedar_policy_core::{
-    ast::{self, EntityType},
+    ast::{self, Eid, EntityType},
     extensions::Extensions,
     validator::{
         types::{self, OpenTag},
@@ -23,6 +23,7 @@ use cedar_policy_core::{
     },
 };
 use indexmap::IndexMap;
+use nonempty::NonEmpty;
 use smol_str::SmolStr;
 
 impl From<types::Type> for abac::Type {
@@ -93,7 +94,7 @@ pub trait SchemaGen: std::fmt::Debug {
         u: &mut Unstructured<'_>,
     ) -> Result<SmolStr>;
     /// Get uid choices of an entity type
-    fn get_uid_enum_choices(&self, ty: &ast::EntityType) -> Vec<SmolStr>;
+    fn get_uid_enum_choices(&self, ty: &ast::EntityType) -> Option<&NonEmpty<Eid>>;
     /// Get an arbitrary principal type
     fn arbitrary_principal_type(&self, u: &mut Unstructured<'_>) -> Result<ast::EntityType>;
     /// Get an arbitrary resource type
@@ -390,14 +391,14 @@ impl SchemaGen for ValidatorSchema<'_> {
         let resources: Vec<_> = self.core_schema.resources().cloned().collect();
         Ok(u.choose(&resources)?.clone())
     }
-    fn get_uid_enum_choices(&self, ty: &ast::EntityType) -> Vec<SmolStr> {
+    fn get_uid_enum_choices(&self, ty: &ast::EntityType) -> Option<&NonEmpty<Eid>> {
         self.core_schema
             .get_entity_type(ty)
-            .map_or(vec![], |ty| match &ty.kind {
+            .and_then(|ty| match &ty.kind {
                 cedar_policy_core::validator::ValidatorEntityTypeKind::Enum(choices) => {
-                    choices.into_iter().cloned().collect()
+                    Some(choices)
                 }
-                cedar_policy_core::validator::ValidatorEntityTypeKind::Standard(_) => vec![],
+                cedar_policy_core::validator::ValidatorEntityTypeKind::Standard(_) => None,
             })
     }
     fn entity_types(&self) -> Box<dyn Iterator<Item = EntityType> + '_> {
@@ -556,7 +557,7 @@ impl SchemaGen for Schema {
         // TODO: figure out if we need to qualify them with ns
         Ok(u.choose(&self.resource_types).cloned()?)
     }
-    fn get_uid_enum_choices(&self, ty: &ast::EntityType) -> Vec<SmolStr> {
+    fn get_uid_enum_choices(&self, ty: &ast::EntityType) -> Option<&NonEmpty<Eid>> {
         self.get_uid_enum_choices(ty)
     }
     fn entity_types(&self) -> Box<dyn Iterator<Item = EntityType> + '_> {
