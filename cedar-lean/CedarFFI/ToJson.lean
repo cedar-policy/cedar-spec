@@ -3,12 +3,16 @@ import Lean.Data.Json.FromToJson
 import Cedar.Spec
 import Cedar.SymCC
 import Cedar.Data
+import Cedar.TPE.Authorizer
+import Cedar.TPE
+import Cedar.TPE.Residual
 
 namespace CedarFFI
 
 open Cedar.Spec
 open Cedar.SymCC
 open Cedar.Data
+open Cedar
 
 abbrev x := Term
 
@@ -192,5 +196,20 @@ deriving instance Lean.ToJson for Entities
 
 /- Serializing `Env` -/
 deriving instance Lean.ToJson for Env
+
+/- Serializing `TPE.Response` -/
+deriving instance Lean.ToJson for Validation.BoolType
+deriving instance Lean.ToJson for Validation.Qualified
+deriving instance Lean.ToJson for Validation.CedarType
+deriving instance Lean.ToJson for BinaryOp
+deriving instance Lean.ToJson for UnaryOp
+deriving instance Lean.ToJson for Var
+deriving instance Lean.ToJson for Spec.ExtFun
+deriving instance Lean.ToJson for Residual
+deriving instance Lean.ToJson for Effect
+deriving instance Lean.ToJson for TPE.ResidualPolicy
+deriving instance Lean.ToJson for TPE.Response
+deriving instance Lean.ToJson for Spec.Error
+
 
 end CedarFFI
