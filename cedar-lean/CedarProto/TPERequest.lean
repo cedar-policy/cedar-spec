@@ -15,12 +15,15 @@
 -/
 
 import Cedar.Spec
+import Cedar.TPE.Authorizer
+import Cedar.TPE.Input
 import Protobuf.Message
 import Protobuf.Structure
 
 -- Message Dependencies
 import CedarProto.Entities
 import CedarProto.PolicySet
+import CedarProto.PartialInput
 import CedarProto.Request
 import CedarProto.Schema
 
@@ -35,6 +38,7 @@ structure BatchedEvaluationRequest where
   entities : Spec.Entities
   iteration: UInt32
 deriving Inhabited
+
 
 namespace BatchedEvaluationRequest
 
@@ -57,5 +61,32 @@ instance : Message BatchedEvaluationRequest where
   }
 
 end BatchedEvaluationRequest
+
+structure PartialAuthorizationRequest where
+  schema: Validation.Schema
+  policies: Spec.Policies
+  request: TPE.PartialRequest
+  entities: TPE.PartialEntities
+deriving Inhabited
+
+namespace PartialAuthorizationRequest
+
+instance : Message PartialAuthorizationRequest where
+  parseField (t: Proto.Tag) := do
+    match t.fieldNum with
+      | 1 => parseFieldElement t schema (update schema)
+      | 2 => parseFieldElement t policies (update policies)
+      | 3 => parseFieldElement t request (update request)
+      | 4 => parseFieldElement t entities (update entities)
+      | _ => let _ <- t.wireType.skip; pure ignore
+
+  merge x y := {
+    schema := Field.merge x.schema y.schema
+    policies := Field.merge x.policies y.policies
+    request := Field.merge x.request y.request
+    entities := Field.merge x.entities y.entities
+  }
+
+end PartialAuthorizationRequest
 
 end Cedar.Proto

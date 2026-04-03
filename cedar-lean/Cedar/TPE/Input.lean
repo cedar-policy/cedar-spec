@@ -30,6 +30,7 @@ open Cedar.Validation
 structure PartialEntityUID where
   ty : EntityType
   id : Option String
+deriving Inhabited
 
 def PartialEntityUID.asEntityUID (self : PartialEntityUID) : Option EntityUID :=
   self.id.map (⟨self.ty, ·⟩)
@@ -42,6 +43,7 @@ structure PartialRequest where
   -- be accessed via evaluating a `TypedExpr`, which allows us to obtain a
   -- (typed) `Residual`
   context   : Option (Map Attr Value)
+deriving Inhabited
 
 
 -- We don't need type annotations here following the rationale above
@@ -49,10 +51,13 @@ structure PartialEntityData where
   attrs     : Option (Map Attr Value)
   ancestors : Option (Set EntityUID)
   tags      : Option (Map Attr Value)
+deriving Inhabited
 
 abbrev MaybeEntityData := Option EntityData
 
 abbrev PartialEntities := Map EntityUID PartialEntityData
+
+deriving instance Inhabited for PartialEntities
 
 /--
 A subset of an Entities store.
@@ -89,6 +94,13 @@ def requestIsValid (env : TypeEnv) (req : PartialRequest) : Bool :=
 def entitiesIsValid (env : TypeEnv) (es : PartialEntities) : Bool :=
   (es.toList.all entityIsValid) && (env.acts.toList.all instanceOfActionSchema)
 where
+  actionEntityIsValid uid entityData : Bool :=
+    match env.acts.find? uid with
+    | .some actionEntry =>
+      (partialIsValid entityData.ancestors (actionEntry.ancestors == ·)) &&
+      (partialIsValid entityData.attrs (instanceOfType · (.record Map.empty) env)) &&
+      (partialIsValid entityData.tags (· == Map.empty))
+    | .none             => false
   entityIsValid p :=
     let (uid, entityData) := p
     let (attrs, ancestors, tags) := (entityData.attrs, entityData.ancestors, entityData.tags)
@@ -104,11 +116,11 @@ where
         match entry.tags? with
         | .some tty => tags.values.all (instanceOfType · tty env)
         | .none     => tags == Map.empty)
-    | .none       => false
+    | .none => actionEntityIsValid uid entityData
   instanceOfActionSchema p :=
-    let (uid, entry) := p
+    let (uid, _) := p
     match es.find? uid with
-    | .some entry₁ => entry.ancestors == entry₁.ancestors
+    | .some entry₁ => actionEntityIsValid uid entry₁
     | _            => false
 
 def requestAndEntitiesIsValid (env : TypeEnv) (req : PartialRequest) (es : PartialEntities) : Bool :=

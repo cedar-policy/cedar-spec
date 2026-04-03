@@ -24,6 +24,7 @@ import Cedar.SymCCOpt
 import Cedar.SymCCOpt.Verifier
 import CedarProto
 import Cedar.TPE
+import Cedar.TPE.Authorizer
 import Protobuf
 
 import CedarFFI.ToJson
@@ -852,6 +853,26 @@ def parseBatchedEvaluationReq (req : ByteArray) : Except String (TypedExpr × Re
     | .error _ => (.some false)
     | _ => .none
     )
+
+
+def parsePartialAuthzRequest (req: ByteArray): Except String (Schema × List Policy × PartialRequest × PartialEntities) := do
+  let req <- (@Proto.Message.interpret? Proto.PartialAuthorizationRequest) req |> .mapError (s!"Failed to parse input: {.}")
+  return (req.schema, req.policies, req.request, req.entities)
+
+
+/--
+  `req`: binary protobuf for a `PartialAuthorizationRequest`
+
+  returns a string containing a JSON encoding of `Timed TPE.Response`
+-/
+@[export isAuthorizedPartial] unsafe def isAuthorizedPartial (req: ByteArray): String :=
+  runFfiM do
+    let (schema, policies, partialReq, partialEnts) ← parsePartialAuthzRequest req
+    runAndTime (λ () =>
+      (TPE.isAuthorized schema policies partialReq partialEnts).mapError
+        (s!"TPE error: {repr ·}"))
+
+
 
 --------------------------------- FFI Test Utils ---------------------------------
 /- Some definitions used to test lean object decoding in Rust -/
