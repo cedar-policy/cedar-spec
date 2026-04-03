@@ -16,7 +16,10 @@
 
 use cedar_policy_core::pst;
 use cedar_policy_generators::hierarchy::HierarchyGenerator;
-use cedar_policy_generators::pst::{arbitrary_pst_template, arbitrary_pst_template_size_hint};
+use cedar_policy_generators::pst::{
+    arbitrary_pst_policy_set, arbitrary_pst_policy_set_size_hint, arbitrary_pst_template,
+    arbitrary_pst_template_size_hint,
+};
 use cedar_policy_generators::schema::Schema;
 use cedar_policy_generators::schema_gen::SchemaGen;
 use cedar_policy_generators::settings::ABACSettings;
@@ -26,6 +29,12 @@ use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 #[derive(Debug, Clone)]
 pub struct FuzzTargetInput {
     pub template: pst::Template,
+}
+
+/// Fuzz target input: a PST policy set generated from a schema/hierarchy.
+#[derive(Debug, Clone)]
+pub struct PolicySetFuzzTargetInput {
+    pub policy_set: pst::PolicySet,
 }
 
 const SETTINGS: ABACSettings = ABACSettings {
@@ -49,6 +58,25 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
             Schema::arbitrary_size_hint(depth)?,
             HierarchyGenerator::size_hint(depth),
             arbitrary_pst_template_size_hint(depth),
+        ]))
+    }
+}
+
+impl<'a> Arbitrary<'a> for PolicySetFuzzTargetInput {
+    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
+        let schema = Schema::arbitrary(SETTINGS.clone(), u)?;
+        let hierarchy = schema.arbitrary_hierarchy(u)?;
+        let policy_set = arbitrary_pst_policy_set(&hierarchy, 5, 5, u)?;
+        Ok(Self { policy_set })
+    }
+
+    fn try_size_hint(
+        depth: usize,
+    ) -> arbitrary::Result<(usize, Option<usize>), arbitrary::MaxRecursionReached> {
+        Ok(arbitrary::size_hint::and_all(&[
+            Schema::arbitrary_size_hint(depth)?,
+            HierarchyGenerator::size_hint(depth),
+            arbitrary_pst_policy_set_size_hint(depth),
         ]))
     }
 }

@@ -16,7 +16,7 @@ The table below lists all available fuzz targets, including which component of t
 | [`rbac`](fuzz/fuzz_targets/rbac.rs) | Authorizer | DRT | Diff test authorizer on sets of RBAC policies, including template instantiations |
 | [`validation-drt-type-directed`](fuzz/fuzz_targets/validation-drt-type-directed.rs) | Validator | DRT | Diff test validation using (mostly) well-typed inputs |
 | [`validation-drt`](fuzz/fuzz_targets/validation-drt.rs) | Validator | DRT | Diff test validation |
-| [`entity-validation`](fuzz/fuzz_targets/entity-validation.rs) | Entity Validator | DRT | Diff test entity validation | 
+| [`entity-validation`](fuzz/fuzz_targets/entity-validation.rs) | Entity Validator | DRT | Diff test entity validation |
 | [`request-validation`](fuzz/fuzz_targets/request-validation.rs) | Request Validator | DRT | Diff test request validation |
 |  |  |  |  |
 | [`formatter`](fuzz/fuzz_targets/formatter.rs) | Policy formatter, Pretty printer, Parser | PBT | Test round trip property: parse ∘ format ∘ pretty-print == id for ASTs |
@@ -25,7 +25,7 @@ The table below lists all available fuzz targets, including which component of t
 | [`roundtrip`](fuzz/fuzz_targets/roundtrip.rs) | Pretty printer, Parser, Conversion to JSON | PBT | Test round trip property: parse ∘ pretty-print == deserialize ∘ serialize == id for policy ASTs |
 | [`policy-set-roundtrip`](fuzz/fuzz_targets/policy-setroundtrip.rs) | Pretty printer, Parser, Conversion to JSON | PBT | Test round trip property: parse ∘ pretty-print == deserialize ∘ serialize == id for a policy set ASTs
 | [`schema-roundtrip`](fuzz/fuzz_targets/schema-roundtrip.rs) | Schema parser | PBT | Test round trip property: parse ∘ pretty-print == id for schemas
-| [`convert-schema-json-to-human`](fuzz/fuzz_targets/convert-schema-json-to-human.rs) | Schema parser | PBT | Test we can convert all human schemas to equivalent JSON. parse == parse-json ∘ print-json ∘ parse 
+| [`convert-schema-json-to-human`](fuzz/fuzz_targets/convert-schema-json-to-human.rs) | Schema parser | PBT | Test we can convert all human schemas to equivalent JSON. parse == parse-json ∘ print-json ∘ parse
 | [`convert-schema-human-to-json`](fuzz/fuzz_targets/convert-schema-human-to-json.rs) | Schema parser | PBT | Test we can convert all JSON schemas to an equivalent human format schema. parse-json == parse ∘ pretty-print ∘ parse-json
 | [`convert-policy-cedar-to-json`](fuzz/fuzz_targets/convert-policy-cedar-to-json.rs) | Parser, Conversion to JSON | PBT | Test we can convert all policies to an equivalent EST.  parse-ast ∘ parse-cst == deserialize ∘ serialize ∘ parse-cst
 | [`convert-policy-json-to-cedar`](fuzz/fuzz_targets/convert-policy-json-to-cedar.rs) | Parser, JSON Parser | PBT | Test we can convert all EST to an equivalent policy in the human-readable cedar syntax. deserialize == parse-ast ∘ pretty-print ∘ deserialize
@@ -33,6 +33,7 @@ The table below lists all available fuzz targets, including which component of t
 | [`roundtrip-entities-bytes`](fuzz/fuzz_targets/roundtrip-entities.rs) | Entity parser | PBT | Test the same round trip property for entity data, starting from an arbitrary string instead of generating the entities data structure |
 | [`pst-ast-roundtrip`](fuzz/fuzz_targets/pst-ast-roundtrip.rs) | PST ↔ AST conversion | PBT | Test idempotency: PST → AST → PST → AST → PST stabilizes after one normalization pass |
 | [`pst-est-roundtrip`](fuzz/fuzz_targets/pst-est-roundtrip.rs) | PST ↔ EST conversion | PBT | Test round trip property: PST → EST → PST == id for templates |
+| [`pst-policyset-text-roundtrip`](fuzz/fuzz_targets/pst-policyset-text-roundtrip.rs) | PST policy set conversion through API | PBT | Test round trip property: PST policy set -> PolicySet → cedar text → PolicySet -> PST == id with explicit policy id management, and through public API |
 |  |  |  |  |
 | [`simple-parser`](fuzz/fuzz_targets/simple-parser.rs) |  Parser | PBT | Test that parsing doesn't crash with random input strings |
 | [`validation-pbt`](fuzz/fuzz_targets/validation-pbt.rs) | Validator | PBT | Test that validated policies do not result in type errors |

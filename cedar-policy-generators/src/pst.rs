@@ -21,12 +21,13 @@
 
 use crate::err::Result;
 use crate::hierarchy::Hierarchy;
-use crate::size_hint_utils::size_hint_for_ratio;
+use crate::size_hint_utils::{size_hint_for_range, size_hint_for_ratio};
 use arbitrary::Unstructured;
 use cedar_policy_core::ast;
 use cedar_policy_core::pst;
 use smol_str::SmolStr;
 use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 /// Generate an arbitrary `pst::Name` from the hierarchy's entity types.
@@ -295,21 +296,29 @@ pub fn arbitrary_pst_resource_constraint(
     }
 }
 
+/// Generate an arbitrary `pst::EntityUID` with entity type `Action`. Other types would be
+/// rejected by `from_pst` APIs.
+pub fn arbitrary_pst_action_entity_uid(u: &mut Unstructured<'_>) -> Result<pst::EntityUID> {
+    let eid: SmolStr = u.arbitrary()?;
+    Ok(pst::EntityUID::from(ast::EntityUID::from_components(
+        ast::EntityType::from_normalized_str("Action").expect("valid type"),
+        ast::Eid::new(eid),
+        None,
+    )))
+}
+
 /// Generate an arbitrary `pst::ActionConstraint`.
-pub fn arbitrary_pst_action_constraint(
-    hierarchy: &Hierarchy,
-    u: &mut Unstructured<'_>,
-) -> Result<pst::ActionConstraint> {
+pub fn arbitrary_pst_action_constraint(u: &mut Unstructured<'_>) -> Result<pst::ActionConstraint> {
     if u.ratio(1, 10)? {
         Ok(pst::ActionConstraint::Any)
     } else if u.ratio(1, 3)? {
-        Ok(pst::ActionConstraint::Eq(arbitrary_pst_entity_uid(
-            hierarchy, u,
+        Ok(pst::ActionConstraint::Eq(arbitrary_pst_action_entity_uid(
+            u,
         )?))
     } else {
         let mut uids = vec![];
         u.arbitrary_loop(Some(0), Some(3), |u| {
-            uids.push(arbitrary_pst_entity_uid(hierarchy, u)?);
+            uids.push(arbitrary_pst_action_entity_uid(u)?);
             Ok(std::ops::ControlFlow::Continue(()))
         })?;
         Ok(pst::ActionConstraint::In(uids))
@@ -363,7 +372,7 @@ fn arbitrary_pst_template_with_slots(
     let id = pst::PolicyID(u.arbitrary::<SmolStr>()?);
     let effect = arbitrary_pst_effect(u)?;
     let principal = arbitrary_pst_principal_constraint(hierarchy, principal_slot, u)?;
-    let action = arbitrary_pst_action_constraint(hierarchy, u)?;
+    let action = arbitrary_pst_action_constraint(u)?;
     let resource = arbitrary_pst_resource_constraint(hierarchy, resource_slot, u)?;
 
     let mut template = pst::Template::new(id, effect, principal, action, resource);
@@ -411,4 +420,108 @@ pub fn arbitrary_pst_template_size_hint(depth: usize) -> (usize, Option<usize>) 
         ), // resource
         (1, None),                                           // clauses
     ])
+}
+
+/// Generate an arbitrary `pst::PolicySet` containing templates, static policies, and template links.
+pub fn arbitrary_pst_policy_set(
+    hierarchy: &Hierarchy,
+    max_depth: usize,
+    max_width: usize,
+    u: &mut Unstructured<'_>,
+) -> Result<pst::PolicySet> {
+    let mut template_entries = Vec::new();
+    let mut template_links = Vec::new();
+    let mut next_id: usize = 0;
+    let mut fresh_id = || {
+        let id = pst::PolicyID(SmolStr::from(format!("policy{next_id}")));
+        next_id += 1;
+        id
+    };
+
+    // Generate 0-3 templates (with slots) and links for each
+    let num_templates: usize = u.int_in_range(0..=3)?;
+    for _ in 0..num_templates {
+        let num_slots = u.int_in_range(1..=2)?;
+        let mut template =
+            arbitrary_pst_slotted_template(hierarchy, max_depth, max_width, num_slots, u)?;
+        template.id = fresh_id();
+        // Ensure the template actually has slots (the random constraint
+        // generators may produce slot-free constraints even when asked for slots)
+        if template.is_static() {
+            template.principal =
+                pst::PrincipalConstraint::Eq(pst::EntityOrSlot::Slot(pst::SlotId::Principal));
+        }
+        let template_id = template.id.clone();
+        let slots = template.slots();
+        template_entries.push((template_id.clone(), template));
+
+        // Generate 0-2 links for this template
+        let num_links: usize = u.int_in_range(0..=2)?;
+        for _ in 0..num_links {
+            let values: HashMap<pst::SlotId, pst::EntityUID> = slots
+                .iter()
+                .map(|slot| Ok((*slot, arbitrary_pst_entity_uid(hierarchy, u)?)))
+                .collect::<Result<_>>()?;
+            template_links.push(pst::TemplateLink {
+                template_id: template_id.clone(),
+                new_id: fresh_id(),
+                values,
+            });
+        }
+    }
+
+    // Generate 0-3 static policies (no slots)
+    let mut policy_entries = Vec::new();
+    let num_static: usize = u.int_in_range(0..=3)?;
+    for _ in 0..num_static {
+        let mut template = arbitrary_pst_template(hierarchy, max_depth, max_width, u)?;
+        template.id = fresh_id();
+        let static_policy: pst::StaticPolicy = template
+            .try_into()
+            .map_err(|_| crate::err::Error::TooDeep)?;
+        policy_entries.push((static_policy.id().clone(), static_policy));
+    }
+
+    Ok(pst::PolicySet {
+        templates: template_entries.into_iter().collect(),
+        policies: policy_entries.into_iter().collect(),
+        template_links,
+    })
+}
+
+/// Size hint for PST policy set generation.
+pub fn arbitrary_pst_policy_set_size_hint(depth: usize) -> (usize, Option<usize>) {
+    let template_hint = arbitrary_pst_template_size_hint(depth);
+    let uid_hint = Hierarchy::arbitrary_uid_size_hint(depth);
+    let range_hint = size_hint_for_range(0usize, 3usize);
+
+    let per_template = arbitrary::size_hint::and_all(&[
+        size_hint_for_range(1usize, 2usize), // 1 or 2 slots in templates
+        template_hint,                       // hint for template
+        size_hint_for_range(1usize, 2usize), // 1 or 2 links
+        // 2 links × 2 slot UIDs each = 4 UIDs worst case
+        uid_hint,
+        uid_hint,
+        uid_hint,
+        uid_hint,
+    ]);
+    // Up to 3 templates,
+    let templates_hint = arbitrary::size_hint::and(
+        range_hint,
+        arbitrary::size_hint::and(
+            per_template,
+            arbitrary::size_hint::and(per_template, per_template),
+        ),
+    );
+
+    // Up to 3 static policies
+    let statics_hint = arbitrary::size_hint::and(
+        range_hint,
+        arbitrary::size_hint::and(
+            template_hint,
+            arbitrary::size_hint::and(template_hint, template_hint),
+        ),
+    );
+
+    arbitrary::size_hint::and(templates_hint, statics_hint)
 }

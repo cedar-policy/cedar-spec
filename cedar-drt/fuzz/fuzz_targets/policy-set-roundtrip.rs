@@ -18,6 +18,7 @@
 
 use cedar_drt::{check_policy_set_equivalence, logger::initialize_log, policy_set_to_text};
 use cedar_drt_inner::fuzz_target;
+use cedar_policy_core::pst;
 
 use cedar_policy_generators::{
     policy_set::GeneratedPolicySet, schema::Schema, schema_gen::SchemaGen, settings::ABACSettings,
@@ -100,6 +101,29 @@ fn round_trip_est(
     est.try_into().expect("Failed to convert EST to AST")
 }
 
+// AST → PST → AST
+// Converts each template through PST and back.
+fn round_trip_pst(
+    policy_set: &cedar_policy_core::ast::PolicySet,
+) -> cedar_policy_core::ast::PolicySet {
+    let mut result = cedar_policy_core::ast::PolicySet::new();
+    for template in policy_set.all_templates() {
+        // AST → PST
+        let pst_template: pst::Template = template
+            .clone()
+            .try_into()
+            .unwrap_or_else(|e| panic!("AST → PST failed: {:?}", e));
+        // PST → AST
+        let ast_template: cedar_policy_core::ast::Template = pst_template
+            .try_into()
+            .unwrap_or_else(|e| panic!("PST → AST failed: {:?}", e));
+        result
+            .add_template(ast_template)
+            .unwrap_or_else(|e| panic!("Failed to add template to policy set: {:?}", e));
+    }
+    result
+}
+
 fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
     let p: cedar_policy_core::ast::PolicySet = input.policy_set.into();
@@ -112,5 +136,9 @@ fuzz_target!(|input: FuzzTargetInput| {
 
     // AST --> text --> CST --> EST --> json --> EST --> AST
     let np = round_trip_est(&p);
+    check_policy_set_equivalence(&p, &np);
+
+    // AST -> PST -> AST (those conversions are rather cheap compared to text)
+    let np = round_trip_pst(&p);
     check_policy_set_equivalence(&p, &np);
 });
