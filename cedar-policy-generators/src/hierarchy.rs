@@ -23,6 +23,7 @@ use cedar_policy_core::ast::{self, Eid, Entity, EntityUID};
 use cedar_policy_core::entities::{Entities, NoEntitiesSchema, TCComputation};
 use cedar_policy_core::extensions::Extensions;
 use indexmap::{IndexMap, IndexSet};
+use nonempty::NonEmpty;
 use smol_str::SmolStr;
 
 /// EntityUIDs with the mappings to their indices in the container.
@@ -178,7 +179,7 @@ impl Hierarchy {
             let choices = schema
                 .map(|schema| schema.get_uid_enum_choices(typename))
                 .unwrap_or_default();
-            generate_uid_with_type(typename.clone(), &choices, u)
+            generate_uid_with_type(typename.clone(), choices, u)
         }
     }
     /// size hint for arbitrary_uid_with_type()
@@ -408,13 +409,14 @@ pub enum AttributesMode {
 /// actually exists (yet) in any given hierarchy.
 pub(crate) fn generate_uid_with_type(
     ty: ast::EntityType,
-    choices: &[SmolStr],
+    choices: Option<&NonEmpty<Eid>>,
     u: &mut Unstructured<'_>,
 ) -> Result<ast::EntityUID> {
-    let eid = if choices.is_empty() {
-        u.arbitrary()?
+    let eid: Eid = if let Some(choices) = choices {
+        let idx = u.int_in_range(0..=choices.len() - 1)?;
+        choices.get(idx).unwrap().clone()
     } else {
-        Eid::new(u.choose(choices)?.to_owned())
+        u.arbitrary()?
     };
     Ok(ast::EntityUID::from_components(ty, eid, None))
 }
@@ -439,7 +441,7 @@ impl HierarchyGenerator<'_, '_> {
                     HierarchyGeneratorMode::SchemaBased { schema } => {
                         (name.clone(), schema.get_uid_enum_choices(name))
                     }
-                    HierarchyGeneratorMode::Arbitrary { .. } => (name.clone(), vec![]),
+                    HierarchyGeneratorMode::Arbitrary { .. } => (name.clone(), None),
                 };
                 let uids = match &self.num_entities {
                     NumEntities::RangePerEntityType(r) => {
@@ -448,7 +450,7 @@ impl HierarchyGenerator<'_, '_> {
                             Some((*r.start()).try_into().unwrap()),
                             Some((*r.end()).try_into().unwrap()),
                             |u| {
-                                uids.insert(generate_uid_with_type(name.clone(), &uid_choices, u)?);
+                                uids.insert(generate_uid_with_type(name.clone(), uid_choices, u)?);
                                 Ok(std::ops::ControlFlow::Continue(()))
                             },
                         )?;
@@ -457,7 +459,7 @@ impl HierarchyGenerator<'_, '_> {
                     NumEntities::ExactlyPerEntityType(num_entities_per_type) => {
                         // generate `num_entities` entity UIDs of this type
                         (1..=*num_entities_per_type)
-                            .map(|_| generate_uid_with_type(name.clone(), &uid_choices, self.u))
+                            .map(|_| generate_uid_with_type(name.clone(), uid_choices, self.u))
                             .collect::<Result<_>>()?
                     }
                     NumEntities::Exactly(num_entities) => {
@@ -470,7 +472,7 @@ impl HierarchyGenerator<'_, '_> {
                             if self.u.is_empty() {
                                 return Err(Error::NotEnoughData);
                             }
-                            let uid = generate_uid_with_type(name.clone(), &uid_choices, self.u)?;
+                            let uid = generate_uid_with_type(name.clone(), uid_choices, self.u)?;
                             uids.insert(uid);
                         }
                         uids
