@@ -665,10 +665,10 @@ mod test {
     fn test_is_authorized_partial_enum_entity_scope_residual() {
         let schema = Schema::from_cedarschema_str(
             r#"
-            entity a enum [""];
+            entity A enum ["X", "Y"];
             action "action" appliesTo {
-                principal: [a],
-                resource: [a],
+                principal: [A],
+                resource: [A],
                 context: {}
             };
             "#,
@@ -678,28 +678,28 @@ mod test {
 
         let policies = PolicySet::from_str(
             r#"
-            forbid(principal is a, action == Action::"action", resource == a::"")
+            forbid(principal is A, action == Action::"action", resource == A::"Y")
             when { true };
             "#,
         )
         .unwrap();
 
         let principal = PartialEntityUid::new(
-            EntityTypeName::from_str("a").unwrap(),
+            EntityTypeName::from_str("A").unwrap(),
             None, // unknown principal eid
         );
         let action = EntityUid::from_str(r#"Action::"action""#).unwrap();
         let resource = PartialEntityUid::new(
-            EntityTypeName::from_str("a").unwrap(),
+            EntityTypeName::from_str("A").unwrap(),
             None, // unknown resource eid
         );
         let request = PartialRequest::new(principal, action, resource, None, &schema).unwrap();
 
         let entity_a = PartialEntity::new(
-            EntityUid::from_str(r#"a::"" "#.trim()).unwrap(),
-            None, // unknown attrs
-            None, // unknown ancestors
-            None, // unknown tags
+            EntityUid::from_str(r#"A::"Y" "#.trim()).unwrap(),
+            None,
+            None,
+            None,
             &schema,
         )
         .unwrap();
@@ -723,6 +723,9 @@ mod test {
             .is_authorized_partial(&policies, &request, &entities, &schema)
             .expect("Lean FFI call failed");
 
+        // TODO: this fails! (pass --no-capture to get output)
+        // Residual on the Rust side: `resource == A::"Y"``
+        // Residual on the Lean side: `resource is A && resource == A::"Y"`
         assert_tpe_responses_match(&rust_resp, &lean_resp);
     }
 }

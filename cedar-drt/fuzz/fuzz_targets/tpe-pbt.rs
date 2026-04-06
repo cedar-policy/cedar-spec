@@ -16,107 +16,13 @@
 
 #![no_main]
 use cedar_drt::logger::initialize_log;
-use cedar_drt_inner::{abac, fuzz_target, tpe::entities_to_partial_entities};
-use cedar_policy::{
-    Authorizer, Entities, EntityId, PartialEntities, PartialEntityUid, PartialRequest, Policy,
-    PolicySet, Request, Schema, Validator,
+use cedar_drt_inner::{
+    fuzz_target,
+    tpe::{TpeFuzzTargetInput, passes_request_validation, passes_validation},
 };
-use cedar_policy_generators::abac::ABACRequest;
-use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
+use cedar_policy::{Authorizer, Entities, Policy, PolicySet, Request, Schema, Validator};
 use log::debug;
 use std::convert::TryFrom;
-
-// Input expected by this fuzz target:
-// An ABAC hierarchy, schema, and 8 associated policies
-#[derive(Debug, Clone)]
-struct FuzzTargetInput {
-    pub abac_input: abac::FuzzTargetInput<true>,
-    pub partial_requests: [PartialRequest; 8],
-    pub partial_entities: PartialEntities,
-}
-
-// Construct a partial request based on a concrete request
-// Essentially drop eid for a probability of 1/4
-fn make_partial_request(
-    req: &ABACRequest,
-    u: &mut Unstructured<'_>,
-    schema: &Schema,
-) -> arbitrary::Result<PartialRequest> {
-    PartialRequest::new(
-        PartialEntityUid::new(
-            req.principal.entity_type().clone().into(),
-            if u.ratio(1, 4)? {
-                None
-            } else {
-                Some(EntityId::new(req.principal.eid()))
-            },
-        ),
-        req.action.clone().into(),
-        PartialEntityUid::new(
-            req.resource.entity_type().clone().into(),
-            if u.ratio(1, 4)? {
-                None
-            } else {
-                Some(EntityId::new(req.resource.eid()))
-            },
-        ),
-        None,
-        schema,
-    )
-    .map_err(|_| arbitrary::Error::IncorrectFormat)
-}
-
-impl<'a> Arbitrary<'a> for FuzzTargetInput {
-    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        let abac_input = abac::FuzzTargetInput::<true>::arbitrary(u)?;
-        let schema: cedar_policy::Schema = abac_input
-            .schema
-            .clone()
-            .try_into()
-            .map_err(|_| arbitrary::Error::IncorrectFormat)?;
-        let partial_requests = abac_input
-            .requests
-            .iter()
-            .map(|req| make_partial_request(req, u, &schema))
-            .collect::<arbitrary::Result<Vec<_>>>()?
-            .try_into()
-            .unwrap();
-        let partial_entities =
-            entities_to_partial_entities(abac_input.entities.iter(), u, &schema)?;
-        Ok(Self {
-            abac_input,
-            partial_requests,
-            partial_entities,
-        })
-    }
-
-    fn try_size_hint(
-        depth: usize,
-    ) -> arbitrary::Result<(usize, Option<usize>), arbitrary::MaxRecursionReached> {
-        abac::FuzzTargetInput::<true>::try_size_hint(depth)
-    }
-}
-
-/// helper function that just tells us whether a policyset passes validation
-fn passes_policy_validation(validator: &Validator, pset: &PolicySet) -> bool {
-    validator
-        .validate(pset, cedar_policy::ValidationMode::Strict)
-        .validation_passed()
-}
-
-// It turns out we don't have a request validation function in public API
-// Use the workaround to reconstruct a request with the schema, which should
-// validate the request
-fn passes_request_validation(validator: &Validator, request: &Request) -> bool {
-    Request::new(
-        request.principal().unwrap().clone(),
-        request.action().unwrap().clone(),
-        request.resource().unwrap().clone(),
-        request.context().unwrap().clone(),
-        Some(validator.schema()),
-    )
-    .is_ok()
-}
 
 fn test_weak_equiv(
     residual: &PolicySet,
@@ -136,7 +42,7 @@ fn test_weak_equiv(
 }
 
 // The main fuzz target. This is for PBT on the validator
-fuzz_target!(|input: FuzzTargetInput| {
+fuzz_target!(|input: TpeFuzzTargetInput| {
     initialize_log();
     // preserve the schema in string format, which may be needed for error messages later
     let schemafile_string = input.abac_input.schema.schemafile_string();
@@ -146,7 +52,7 @@ fuzz_target!(|input: FuzzTargetInput| {
         let mut policyset = PolicySet::new();
         let policy: Policy = input.abac_input.policy.into();
         policyset.add(policy.clone()).unwrap();
-        let passes_strict = passes_policy_validation(&validator, &policyset);
+        let passes_strict = passes_validation(&validator, &policyset);
         if passes_strict {
             let partial_entities = input.partial_entities;
             for (request, partial_request) in input
