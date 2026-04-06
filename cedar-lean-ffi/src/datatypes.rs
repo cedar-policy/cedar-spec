@@ -16,6 +16,10 @@ use std::sync::Arc;
 
 use crate::FfiError;
 
+pub mod tpe;
+pub(crate) use tpe::TpeResponseInner;
+pub use tpe::{TpeResidualPolicy, TpeResponse};
+
 /*************************************** Lean return types ***************************************/
 
 /// List type
@@ -273,7 +277,7 @@ pub enum ExtOp {
     DurationOfBitVec,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub enum PatElem {
     #[serde(rename = "star")]
     Star,
@@ -467,7 +471,7 @@ impl From<Duration> for RestrictedExpression {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ExtType {
     IpAddr,

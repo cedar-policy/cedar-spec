@@ -4,9 +4,12 @@ edition = "2024"
 version = "4.5.0"
 publish = false
 
+[features]
+integration-testing = []
+
 [dependencies]
-cedar-policy = { version = "*", path = "../cedar/cedar-policy", features = ["protobufs"] }
-cedar-policy-core = { version = "*", path = "../cedar/cedar-policy-core" }
+cedar-policy = { version = "*", path = "../cedar/cedar-policy", features = ["protobufs", "tpe"] }
+cedar-policy-core = { version = "*", path = "../cedar/cedar-policy-core", features = ["tpe"] }
 cedar-policy-symcc = { version = "*", path = "../cedar/cedar-policy-symcc" }
 cedar-testing = { version = "*", path = "../cedar/cedar-testing"}
 lean-sys = { version = "0.0.9", default-features = false }
@@ -18,6 +21,7 @@ prost = "0.14"
 miette = "7.6.0"
 smol_str = "0.3.2"
 num-bigint = "0.4.6"
+nonempty = "0.12.0"
 
 [build-dependencies]
 prost-build = "0.14"
@@ -28,6 +32,3 @@ cool_asserts = "2.0.3"
 rstest = "0.26.1"
 
 [profile.release]
-
-[features]
-integration-testing = []

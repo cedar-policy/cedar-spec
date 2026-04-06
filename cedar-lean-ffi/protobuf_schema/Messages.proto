@@ -297,6 +297,41 @@ message CheckAssertsRequest {
     RequestEnv request = 3;
 }
 
+// Partial Authorization Messages
+message PartialEntityUID {
+    cedar_policy_core.Name ty = 1;
+    optional string id = 2;
+}
+
+message PartialRequest {
+    PartialEntityUID principal = 1;
+    cedar_policy_core.EntityUid action = 2;
+    PartialEntityUID resource = 3;
+    map<string, cedar_policy_core.Expr> context = 4;
+    bool has_context = 5;
+}
+
+message PartialEntity {
+    cedar_policy_core.EntityUid uid = 1;
+    map<string, cedar_policy_core.Expr> attrs = 2;
+    repeated cedar_policy_core.EntityUid ancestors = 3;
+    map<string, cedar_policy_core.Expr> tags = 4;
+    bool has_attrs = 5;
+    bool has_ancestors = 6;
+    bool has_tags = 7;
+}
+
+message PartialEntities {
+    repeated PartialEntity entities = 1;
+}
+
+message PartialAuthorizationRequest {
+    cedar_policy_validator.Schema schema = 1;
+    cedar_policy_core.PolicySet policies = 2;
+    PartialRequest request = 3;
+    PartialEntities entities = 4;
+}
+
 // Batched evaluation request
 message BatchedEvaluationRequest {
     cedar_policy_core.PolicySet policies = 1;
