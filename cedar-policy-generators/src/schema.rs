@@ -27,7 +27,7 @@ use crate::schema_gen::SchemaGen;
 use crate::settings::ABACSettings;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
 use arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
-use cedar_policy_core::ast::{self, Effect, EntityType, EntityUID, PolicyID, UnreservedId};
+use cedar_policy_core::ast::{self, Effect, Eid, EntityType, EntityUID, PolicyID, UnreservedId};
 use cedar_policy_core::est;
 use cedar_policy_core::extensions::Extensions;
 use cedar_policy_core::validator::json_schema::{
@@ -38,6 +38,7 @@ use cedar_policy_core::validator::{
     ValidatorSchema, ValidatorSchemaFragment,
 };
 use indexmap::{IndexMap, IndexSet};
+use nonempty::NonEmpty;
 use smol_str::{SmolStr, ToSmolStr};
 use std::collections::BTreeMap;
 use std::ops::Deref;
@@ -828,16 +829,17 @@ impl Schema {
             None
         }
     }
-    /// Get valid UID choices if `ty` is an enumerated entity type otherwise return an empty vector
-    pub fn get_uid_enum_choices(&self, ty: &ast::EntityType) -> Vec<SmolStr> {
+    /// Get valid UID choices if `ty` is an enumerated entity type, or `None` if
+    /// this is not an enumerated entity type.
+    pub fn get_uid_enum_choices(&self, ty: &ast::EntityType) -> Option<&NonEmpty<Eid>> {
         if let Some(json_schema::EntityType {
             kind: json_schema::EntityTypeKind::Enum { choices },
             ..
         }) = self.schema.entity_types.get(&ty.name().basename())
         {
-            choices.clone().into()
+            Some(choices)
         } else {
-            vec![]
+            None
         }
     }
 
