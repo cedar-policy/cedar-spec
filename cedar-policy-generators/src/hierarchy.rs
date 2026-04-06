@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-use crate::abac::Type;
 use crate::err::{while_doing, Error, Result};
 use crate::schema_gen::SchemaGen;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_ratio};
@@ -543,11 +542,7 @@ impl HierarchyGenerator<'_, '_> {
                                         None,
                                         Some(schema.get_abac_settings().max_width as u32),
                                         |u| {
-                                            let attr_type = if schema.get_abac_settings().enable_extensions {
-                                                u.arbitrary()?
-                                            } else {
-                                                Type::arbitrary_nonextension(u)?
-                                            };
+                                            let attr_type = schema.type_generator().generate_type(schema.get_abac_settings().max_depth, u)?;
                                             let attr_name: String = u.arbitrary()?;
                                             attrs.insert(
                                                 attr_name.into(),

@@ -257,39 +257,27 @@ pub fn arbitrary_schematype_with_bounded_depth<N: From<ast::Name>>(
         }
     };
 
-    let ty = if settings.enable_extensions {
-        uniform!(
-            u,
-            json_schema::TypeVariant::String,
-            json_schema::TypeVariant::Long,
-            json_schema::TypeVariant::Boolean,
-            set(u)?,
-            record(u)?,
-            entity_type_name_to_schema_type_variant::<N>(u.choose(entity_types)?),
-            json_schema::TypeVariant::Extension {
-                name: "ipaddr".parse().unwrap(),
-            },
-            json_schema::TypeVariant::Extension {
-                name: "decimal".parse().unwrap(),
-            },
-            json_schema::TypeVariant::Extension {
-                name: "datetime".parse().unwrap(),
-            },
-            json_schema::TypeVariant::Extension {
-                name: "duration".parse().unwrap(),
-            }
-        )
-    } else {
-        uniform!(
-            u,
-            json_schema::TypeVariant::String,
-            json_schema::TypeVariant::Long,
-            json_schema::TypeVariant::Boolean,
-            set(u)?,
-            record(u)?,
-            entity_type_name_to_schema_type_variant::<N>(u.choose(entity_types)?)
-        )
-    };
+    let ty = uniform!(
+        u,
+        json_schema::TypeVariant::String,
+        json_schema::TypeVariant::Long,
+        json_schema::TypeVariant::Boolean,
+        set(u)?,
+        record(u)?,
+        entity_type_name_to_schema_type_variant::<N>(u.choose(entity_types)?),
+        json_schema::TypeVariant::Extension {
+            name: "ipaddr".parse().unwrap(),
+        },
+        json_schema::TypeVariant::Extension {
+            name: "decimal".parse().unwrap(),
+        },
+        json_schema::TypeVariant::Extension {
+            name: "datetime".parse().unwrap(),
+        },
+        json_schema::TypeVariant::Extension {
+            name: "duration".parse().unwrap(),
+        }
+    );
 
     Ok(json_schema::Type::Type { ty, loc: None })
 }
@@ -1966,7 +1954,6 @@ mod tests {
     const ITERATION: u8 = 100;
 
     const TEST_SETTINGS: ABACSettings = ABACSettings {
-        enable_extensions: false,
         max_depth: 4,
         max_width: 4,
         enable_additional_attributes: false,
