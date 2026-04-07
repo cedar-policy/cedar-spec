@@ -80,19 +80,26 @@ theorem consistent_checks_ensure_refinement {schema : Schema} {req : Request} {e
   isValidAndConsistent schema req es preq pes = .ok () → RequestAndEntitiesRefine req es preq pes
 := by
   intro h
-  simp [isValidAndConsistent] at h
+  simp only [isValidAndConsistent] at h
   split at h <;> try cases h
   rcases do_eq_ok₂ h with ⟨h₁, h₂⟩
-  simp [RequestAndEntitiesRefine]
+  simp only [RequestAndEntitiesRefine]
   constructor
   case _ =>
-    simp [RequestRefines]
-    simp [isValidAndConsistent.requestIsConsistent] at h₁
+    simp only [RequestRefines]
+    simp only [
+      isValidAndConsistent.requestIsConsistent,
+      Bool.or_eq_true,
+      Bool.not_eq_eq_eq_not,
+      Bool.not_true,
+      Bool.and_eq_true,
+      decide_eq_true_eq
+    ] at h₁
     split at h₁ <;> simp at h₁
     rcases h₁ with ⟨h₁₁, h₁₂, h₁₃, h₁₄⟩
     -- Extract type equalities from requestMatchesEnvironment and schema.environment?
     rename_i env heq h_guard
-    simp [not_or, Bool.not_eq_false] at h_guard
+    simp only [not_or, Bool.not_eq_false] at h_guard
     have h_rm := h_guard.2
     simp only [requestMatchesEnvironment, instanceOfRequestType, instanceOfEntityType,
       Bool.and_eq_true, beq_iff_eq] at h_rm
@@ -106,7 +113,7 @@ theorem consistent_checks_ensure_refinement {schema : Schema} {req : Request} {e
       unfold Schema.environment? at heq
       cases h_find : schema.acts.find? preq.action
       · simp [h_find] at heq
-      · simp [h_find] at heq
+      · simp only [h_find, Option.bind_some_fun] at heq
         split at heq <;> simp at heq
         rw [← heq] at h_rm
         simp_all

@@ -72,16 +72,12 @@ theorem partial_evaluate_is_sound_unary_app
         rename_i ety _ heq_r
         simp [heq_r, Residual.evaluate] at hᵢ₁ ⊢
         replace hᵢ₁ := to_option_right_ok' hᵢ₁
-        simp only [hᵢ₁, Spec.apply₁, Except.toOption, Except.bind_ok]
-        rw [h_ref.1.2.2.2.2.2]
-        grind
+        simp only [hᵢ₁, Spec.apply₁, Except.toOption, Except.bind_ok, h_ref.1.2.2.2.2.2, BEq.comm]
       · -- .is ety, .var .principal _
         rename_i ety _ heq_p
         simp [heq_p, Residual.evaluate] at hᵢ₁ ⊢
         replace hᵢ₁ := to_option_right_ok' hᵢ₁
-        simp only [hᵢ₁, Spec.apply₁, Except.toOption, Except.bind_ok]
-        rw [h_ref.1.2.2.2.2.1]
-        grind
+        simp only [hᵢ₁, Spec.apply₁, Except.toOption, Except.bind_ok, h_ref.1.2.2.2.2.1, BEq.comm]
       · simp [Residual.evaluate]
         generalize h₅ : x₁.evaluate req es = res₁
         cases res₁ <;> simp [h₅] at hᵢ₁
