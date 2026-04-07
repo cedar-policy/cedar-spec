@@ -428,165 +428,155 @@ pub struct AvailableExtensionFunctions {
 impl AvailableExtensionFunctions {
     /// Create a new `AvailableExtensionFunctions` object based on the given `settings`
     pub fn create(settings: &ABACSettings) -> Self {
-        let available_ext_funcs = if settings.enable_extensions {
-            vec![
-                AvailableExtensionFunction {
-                    name: Name::parse_unqualified_name("ip").expect("should be a valid identifier"),
-                    is_constructor: true,
-                    parameter_types: vec![Type::string()],
-                    return_ty: Type::ipaddr(),
-                },
-                AvailableExtensionFunction {
-                    name: Name::parse_unqualified_name("isIpv4")
-                        .expect("should be a valid identifier"),
-                    is_constructor: false,
-                    parameter_types: vec![Type::ipaddr()],
-                    return_ty: Type::bool(),
-                },
-                AvailableExtensionFunction {
-                    name: Name::parse_unqualified_name("isIpv6")
-                        .expect("should be a valid identifier"),
-                    is_constructor: false,
-                    parameter_types: vec![Type::ipaddr()],
-                    return_ty: Type::bool(),
-                },
-                AvailableExtensionFunction {
-                    name: Name::parse_unqualified_name("isLoopback")
-                        .expect("should be a valid identifier"),
-                    is_constructor: false,
-                    parameter_types: vec![Type::ipaddr()],
-                    return_ty: Type::bool(),
-                },
-                AvailableExtensionFunction {
-                    name: Name::parse_unqualified_name("isMulticast")
-                        .expect("should be a valid identifier"),
-                    is_constructor: false,
-                    parameter_types: vec![Type::ipaddr()],
-                    return_ty: Type::bool(),
-                },
-                AvailableExtensionFunction {
-                    name: Name::parse_unqualified_name("isInRange")
-                        .expect("should be a valid identifier"),
-                    is_constructor: false,
-                    parameter_types: vec![Type::ipaddr(), Type::ipaddr()],
-                    return_ty: Type::bool(),
-                },
-                AvailableExtensionFunction {
-                    name: Name::parse_unqualified_name("decimal")
-                        .expect("should be a valid identifier"),
-                    is_constructor: true,
-                    parameter_types: vec![Type::string()],
-                    return_ty: Type::decimal(),
-                },
-                AvailableExtensionFunction {
-                    name: Name::parse_unqualified_name("lessThan")
-                        .expect("should be a valid identifier"),
-                    is_constructor: false,
-                    parameter_types: vec![Type::decimal(), Type::decimal()],
-                    return_ty: Type::bool(),
-                },
-                AvailableExtensionFunction {
-                    name: Name::parse_unqualified_name("lessThanOrEqual")
-                        .expect("should be a valid identifier"),
-                    is_constructor: false,
-                    parameter_types: vec![Type::decimal(), Type::decimal()],
-                    return_ty: Type::bool(),
-                },
-                AvailableExtensionFunction {
-                    name: Name::parse_unqualified_name("greaterThan")
-                        .expect("should be a valid identifier"),
-                    is_constructor: false,
-                    parameter_types: vec![Type::decimal(), Type::decimal()],
-                    return_ty: Type::bool(),
-                },
-                AvailableExtensionFunction {
-                    name: Name::parse_unqualified_name("greaterThanOrEqual")
-                        .expect("should be a valid identifier"),
-                    is_constructor: false,
-                    parameter_types: vec![Type::decimal(), Type::decimal()],
-                    return_ty: Type::bool(),
-                },
-                AvailableExtensionFunction {
-                    name: Name::parse_unqualified_name("datetime")
-                        .expect("should be a valid identifier"),
-                    is_constructor: true,
-                    parameter_types: vec![Type::string()],
-                    return_ty: Type::datetime(),
-                },
-                AvailableExtensionFunction {
-                    name: Name::parse_unqualified_name("offset")
-                        .expect("should be a valid identifier"),
-                    is_constructor: true,
-                    parameter_types: vec![Type::datetime(), Type::duration()],
-                    return_ty: Type::datetime(),
-                },
-                AvailableExtensionFunction {
-                    name: Name::parse_unqualified_name("durationSince")
-                        .expect("should be a valid identifier"),
-                    is_constructor: false,
-                    parameter_types: vec![Type::datetime(), Type::datetime()],
-                    return_ty: Type::duration(),
-                },
-                AvailableExtensionFunction {
-                    name: Name::parse_unqualified_name("toDate")
-                        .expect("should be a valid identifier"),
-                    is_constructor: false,
-                    parameter_types: vec![Type::datetime()],
-                    return_ty: Type::datetime(),
-                },
-                AvailableExtensionFunction {
-                    name: Name::parse_unqualified_name("toTime")
-                        .expect("should be a valid identifier"),
-                    is_constructor: false,
-                    parameter_types: vec![Type::datetime()],
-                    return_ty: Type::duration(),
-                },
-                AvailableExtensionFunction {
-                    name: Name::parse_unqualified_name("duration")
-                        .expect("should be a valid identifier"),
-                    is_constructor: true,
-                    parameter_types: vec![Type::string()],
-                    return_ty: Type::duration(),
-                },
-                AvailableExtensionFunction {
-                    name: Name::parse_unqualified_name("toMilliseconds")
-                        .expect("should be a valid identifier"),
-                    is_constructor: false,
-                    parameter_types: vec![Type::duration()],
-                    return_ty: Type::long(),
-                },
-                AvailableExtensionFunction {
-                    name: Name::parse_unqualified_name("toSeconds")
-                        .expect("should be a valid identifier"),
-                    is_constructor: false,
-                    parameter_types: vec![Type::duration()],
-                    return_ty: Type::long(),
-                },
-                AvailableExtensionFunction {
-                    name: Name::parse_unqualified_name("toMinutes")
-                        .expect("should be a valid identifier"),
-                    is_constructor: false,
-                    parameter_types: vec![Type::duration()],
-                    return_ty: Type::long(),
-                },
-                AvailableExtensionFunction {
-                    name: Name::parse_unqualified_name("toHours")
-                        .expect("should be a valid identifier"),
-                    is_constructor: false,
-                    parameter_types: vec![Type::duration()],
-                    return_ty: Type::long(),
-                },
-                AvailableExtensionFunction {
-                    name: Name::parse_unqualified_name("toDays")
-                        .expect("should be a valid identifier"),
-                    is_constructor: false,
-                    parameter_types: vec![Type::duration()],
-                    return_ty: Type::long(),
-                },
-            ]
-        } else {
-            vec![]
-        };
+        let available_ext_funcs = vec![
+            AvailableExtensionFunction {
+                name: Name::parse_unqualified_name("ip").expect("should be a valid identifier"),
+                is_constructor: true,
+                parameter_types: vec![Type::string()],
+                return_ty: Type::ipaddr(),
+            },
+            AvailableExtensionFunction {
+                name: Name::parse_unqualified_name("isIpv4").expect("should be a valid identifier"),
+                is_constructor: false,
+                parameter_types: vec![Type::ipaddr()],
+                return_ty: Type::bool(),
+            },
+            AvailableExtensionFunction {
+                name: Name::parse_unqualified_name("isIpv6").expect("should be a valid identifier"),
+                is_constructor: false,
+                parameter_types: vec![Type::ipaddr()],
+                return_ty: Type::bool(),
+            },
+            AvailableExtensionFunction {
+                name: Name::parse_unqualified_name("isLoopback")
+                    .expect("should be a valid identifier"),
+                is_constructor: false,
+                parameter_types: vec![Type::ipaddr()],
+                return_ty: Type::bool(),
+            },
+            AvailableExtensionFunction {
+                name: Name::parse_unqualified_name("isMulticast")
+                    .expect("should be a valid identifier"),
+                is_constructor: false,
+                parameter_types: vec![Type::ipaddr()],
+                return_ty: Type::bool(),
+            },
+            AvailableExtensionFunction {
+                name: Name::parse_unqualified_name("isInRange")
+                    .expect("should be a valid identifier"),
+                is_constructor: false,
+                parameter_types: vec![Type::ipaddr(), Type::ipaddr()],
+                return_ty: Type::bool(),
+            },
+            AvailableExtensionFunction {
+                name: Name::parse_unqualified_name("decimal")
+                    .expect("should be a valid identifier"),
+                is_constructor: true,
+                parameter_types: vec![Type::string()],
+                return_ty: Type::decimal(),
+            },
+            AvailableExtensionFunction {
+                name: Name::parse_unqualified_name("lessThan")
+                    .expect("should be a valid identifier"),
+                is_constructor: false,
+                parameter_types: vec![Type::decimal(), Type::decimal()],
+                return_ty: Type::bool(),
+            },
+            AvailableExtensionFunction {
+                name: Name::parse_unqualified_name("lessThanOrEqual")
+                    .expect("should be a valid identifier"),
+                is_constructor: false,
+                parameter_types: vec![Type::decimal(), Type::decimal()],
+                return_ty: Type::bool(),
+            },
+            AvailableExtensionFunction {
+                name: Name::parse_unqualified_name("greaterThan")
+                    .expect("should be a valid identifier"),
+                is_constructor: false,
+                parameter_types: vec![Type::decimal(), Type::decimal()],
+                return_ty: Type::bool(),
+            },
+            AvailableExtensionFunction {
+                name: Name::parse_unqualified_name("greaterThanOrEqual")
+                    .expect("should be a valid identifier"),
+                is_constructor: false,
+                parameter_types: vec![Type::decimal(), Type::decimal()],
+                return_ty: Type::bool(),
+            },
+            AvailableExtensionFunction {
+                name: Name::parse_unqualified_name("datetime")
+                    .expect("should be a valid identifier"),
+                is_constructor: true,
+                parameter_types: vec![Type::string()],
+                return_ty: Type::datetime(),
+            },
+            AvailableExtensionFunction {
+                name: Name::parse_unqualified_name("offset").expect("should be a valid identifier"),
+                is_constructor: true,
+                parameter_types: vec![Type::datetime(), Type::duration()],
+                return_ty: Type::datetime(),
+            },
+            AvailableExtensionFunction {
+                name: Name::parse_unqualified_name("durationSince")
+                    .expect("should be a valid identifier"),
+                is_constructor: false,
+                parameter_types: vec![Type::datetime(), Type::datetime()],
+                return_ty: Type::duration(),
+            },
+            AvailableExtensionFunction {
+                name: Name::parse_unqualified_name("toDate").expect("should be a valid identifier"),
+                is_constructor: false,
+                parameter_types: vec![Type::datetime()],
+                return_ty: Type::datetime(),
+            },
+            AvailableExtensionFunction {
+                name: Name::parse_unqualified_name("toTime").expect("should be a valid identifier"),
+                is_constructor: false,
+                parameter_types: vec![Type::datetime()],
+                return_ty: Type::duration(),
+            },
+            AvailableExtensionFunction {
+                name: Name::parse_unqualified_name("duration")
+                    .expect("should be a valid identifier"),
+                is_constructor: true,
+                parameter_types: vec![Type::string()],
+                return_ty: Type::duration(),
+            },
+            AvailableExtensionFunction {
+                name: Name::parse_unqualified_name("toMilliseconds")
+                    .expect("should be a valid identifier"),
+                is_constructor: false,
+                parameter_types: vec![Type::duration()],
+                return_ty: Type::long(),
+            },
+            AvailableExtensionFunction {
+                name: Name::parse_unqualified_name("toSeconds")
+                    .expect("should be a valid identifier"),
+                is_constructor: false,
+                parameter_types: vec![Type::duration()],
+                return_ty: Type::long(),
+            },
+            AvailableExtensionFunction {
+                name: Name::parse_unqualified_name("toMinutes")
+                    .expect("should be a valid identifier"),
+                is_constructor: false,
+                parameter_types: vec![Type::duration()],
+                return_ty: Type::long(),
+            },
+            AvailableExtensionFunction {
+                name: Name::parse_unqualified_name("toHours")
+                    .expect("should be a valid identifier"),
+                is_constructor: false,
+                parameter_types: vec![Type::duration()],
+                return_ty: Type::long(),
+            },
+            AvailableExtensionFunction {
+                name: Name::parse_unqualified_name("toDays").expect("should be a valid identifier"),
+                is_constructor: false,
+                parameter_types: vec![Type::duration()],
+                return_ty: Type::long(),
+            },
+        ];
         let constructors = available_ext_funcs
             .iter()
             .filter(|func| func.is_constructor)
@@ -695,7 +685,7 @@ impl AvailableExtensionFunctions {
 }
 
 /// A qualified type
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Arbitrary)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct QualifiedType {
     /// Type
     pub ty: Type,
@@ -705,7 +695,7 @@ pub struct QualifiedType {
 
 /// Approximation of the Cedar type system used by the type-directed
 /// generator
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Arbitrary)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Type {
     /// Bool
     Bool,
@@ -779,41 +769,6 @@ impl Type {
             "ip" => Self::IPAddr,
             _ => unreachable!("unexpected extension type"),
         }
-    }
-
-    fn arbitrary_record_inner(
-        u: &mut Unstructured<'_>,
-        max_width: Option<usize>,
-        type_gen: impl Fn(&mut Unstructured<'_>) -> Result<QualifiedType>,
-    ) -> Result<Type> {
-        let mut r: BTreeMap<SmolStr, QualifiedType> = BTreeMap::new();
-        u.arbitrary_loop(Some(0), max_width.map(|u| u as u32), |u| {
-            r.insert(u.arbitrary()?, type_gen(u)?);
-            Ok(std::ops::ControlFlow::Continue(()))
-        })?;
-        Ok(Self::Record(r))
-    }
-
-    /// Produce an arbitrary record with `max_width`
-    pub fn arbitrary_record(u: &mut Unstructured<'_>, max_width: usize) -> Result<Type> {
-        Self::arbitrary_record_inner(u, Some(max_width), |u| Ok(u.arbitrary()?))
-    }
-
-    /// `Type` has `Arbitrary` auto-derived for it, but for the case where you
-    /// want "any nonextension Type", you have this
-    pub fn arbitrary_nonextension(u: &mut Unstructured<'_>) -> Result<Type> {
-        Ok(uniform!(
-            u,
-            Type::bool(),
-            Type::long(),
-            Type::string(),
-            Type::set_of(Self::arbitrary_nonextension(u)?),
-            Self::arbitrary_record_inner(u, None, |u| Ok(QualifiedType {
-                ty: Self::arbitrary_nonextension(u)?,
-                required: u.arbitrary()?
-            }))?,
-            Type::entity(u.arbitrary()?)
-        ))
     }
 }
 
