@@ -76,10 +76,13 @@ theorem partial_eval_well_typed_unaryApp {env : TypeEnv} {op : UnaryOp} {expr : 
           case h_6 =>
            contradiction
       | none =>
-        apply Residual.WellTyped.unaryApp
-        case none.h₁ =>
+        simp only []
+        split
+        . cases h_op; exact well_typed_bool
+        . cases h_op; exact well_typed_bool
+        . case h_3 =>
+          apply Residual.WellTyped.unaryApp
           exact h_expr_wt
-        case none.h₂ =>
           cases h_op
           all_goals
             first

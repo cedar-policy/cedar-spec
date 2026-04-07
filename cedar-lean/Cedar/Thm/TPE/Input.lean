@@ -58,7 +58,9 @@ def RequestRefines (req : Request) (preq : PartialRequest) : Prop :=
   PartialIsValid (· = req.principal) preq.principal.asEntityUID ∧
   req.action = preq.action ∧
   PartialIsValid (· = req.resource) preq.resource.asEntityUID  ∧
-  PartialIsValid (· = req.context) preq.context
+  PartialIsValid (· = req.context) preq.context ∧
+  preq.principal.ty = req.principal.ty ∧
+  preq.resource.ty = req.resource.ty
 
 def EntitiesRefine (es : Entities) (pes : PartialEntities) : Prop :=
    ∀ a e₂, pes.find? a = some e₂ → (∃ e₁, es.find? a = some e₁ ∧
@@ -88,13 +90,28 @@ theorem consistent_checks_ensure_refinement {schema : Schema} {req : Request} {e
     simp [isValidAndConsistent.requestIsConsistent] at h₁
     split at h₁ <;> simp at h₁
     rcases h₁ with ⟨h₁₁, h₁₂, h₁₃, h₁₄⟩
-    constructor
-    exact partial_is_valid_rfl (fun x => decide (x = req.principal)) (fun x => x = req.principal) preq.principal.asEntityUID decide_eq_implies_eq h₁₁
-    constructor
-    exact h₁₂
-    constructor
-    exact partial_is_valid_rfl (fun x => decide (x = req.resource)) (fun x => x = req.resource) preq.resource.asEntityUID decide_eq_implies_eq h₁₃
-    exact partial_is_valid_rfl (fun x => decide (x = req.context)) (fun x => x = req.context) preq.context decide_eq_implies_eq h₁₄
+    -- Extract type equalities from requestMatchesEnvironment and schema.environment?
+    rename_i env heq h_guard
+    simp [not_or, Bool.not_eq_false] at h_guard
+    have h_rm := h_guard.2
+    simp only [requestMatchesEnvironment, instanceOfRequestType, instanceOfEntityType,
+      Bool.and_eq_true, beq_iff_eq] at h_rm
+    refine ⟨
+      partial_is_valid_rfl _ _ _ decide_eq_implies_eq h₁₁,
+      h₁₂,
+      partial_is_valid_rfl _ _ _ decide_eq_implies_eq h₁₃,
+      partial_is_valid_rfl _ _ _ decide_eq_implies_eq h₁₄,
+      ?_, ?_⟩
+    all_goals {
+      unfold Schema.environment? at heq
+      cases h_find : schema.acts.find? preq.action
+      · simp [h_find] at heq
+      · simp [h_find] at heq
+        split at heq <;> simp at heq
+        rw [← heq] at h_rm
+        simp_all
+    }
+
   case _ =>
     simp [
       isValidAndConsistent.envIsWellFormed,

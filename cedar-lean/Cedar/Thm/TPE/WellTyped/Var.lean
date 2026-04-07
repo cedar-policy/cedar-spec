@@ -88,7 +88,7 @@ theorem partial_eval_well_typed_var {env : TypeEnv} {v : Var} {ty : CedarType} {
   case context =>
     simp only
     unfold RequestRefines at h_rref
-    rcases h_rref with ⟨h_pv, ⟨h_av, h_rv, h_cv⟩⟩
+    rcases h_rref with ⟨h_pv, ⟨h_av, h_rv, ⟨ h_cv, _, _ ⟩⟩⟩
     cases h : preq.context
     . simp only [Option.map_none, varₚ.varₒ, someOrSelf]
       exact h_wt
