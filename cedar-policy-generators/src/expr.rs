@@ -22,6 +22,7 @@ use crate::hierarchy::{generate_uid_with_type, Hierarchy};
 use crate::schema_gen::SchemaGen;
 use crate::settings::ABACSettings;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
+use crate::types::TypeGenerator;
 use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{Arbitrary, MaxRecursionReached, Unstructured};
 use cedar_policy_core::ast;
@@ -45,6 +46,16 @@ pub struct ExprGenerator<'a> {
     /// If this is present, any literal UIDs included in generated `Expr`s will
     /// (usually) exist in the hierarchy.
     pub hierarchy: Option<&'a Hierarchy>,
+}
+
+impl<'a> ExprGenerator<'a> {
+    fn as_type_gen(&self) -> TypeGenerator<'a> {
+        TypeGenerator {
+            schema: self.schema,
+            constant_pool: self.constant_pool,
+            settings: self.settings,
+        }
+    }
 }
 
 impl ExprGenerator<'_> {
@@ -183,9 +194,6 @@ impl ExprGenerator<'_> {
                         Ok(ast::Expr::record(r).expect("can't have duplicate keys because `r` was already a HashMap"))
                     },
                     1 => {
-                        if !self.settings.enable_extensions {
-                            return Err(Error::ExtensionsDisabled);
-                        };
                         let func = self.ext_funcs.arbitrary_all(u)?;
                         let arity = if !self.settings.enable_arbitrary_func_call
                             || u.ratio::<u8>(9, 10)?
@@ -291,7 +299,7 @@ impl ExprGenerator<'_> {
                         2 => Ok(ast::Expr::val(u.arbitrary::<bool>()?)),
                         // == expression, where types on both sides match
                         5 => {
-                            let ty: Type = u.arbitrary()?;
+                            let ty = self.as_type_gen().generate_type(max_depth, u)?;
                             Ok(ast::Expr::is_eq(
                                 self.generate_expr_for_type(&ty, max_depth - 1, u)?,
                                 self.generate_expr_for_type(&ty, max_depth - 1, u)?,
@@ -299,8 +307,8 @@ impl ExprGenerator<'_> {
                         },
                         // == expression, where types do not match
                         2 => {
-                            let ty1: Type = u.arbitrary()?;
-                            let ty2: Type = u.arbitrary()?;
+                            let ty1 = self.as_type_gen().generate_type(max_depth, u)?;
+                            let ty2 = self.as_type_gen().generate_type(max_depth, u)?;
                             Ok(ast::Expr::is_eq(
                                 self.generate_expr_for_type(
                                     &ty1,
@@ -398,7 +406,7 @@ impl ExprGenerator<'_> {
                         ))},
                         // contains() on a set
                         2 => {
-                            let element_ty = u.arbitrary()?;
+                            let element_ty = self.as_type_gen().generate_type(max_depth, u)?;
                             let element = self.generate_expr_for_type(
                                 &element_ty,
                                 max_depth - 1,
@@ -415,12 +423,12 @@ impl ExprGenerator<'_> {
                         1 => Ok(ast::Expr::contains_all(
                             // doesn't require the input sets to have the same element type
                             self.generate_expr_for_type(
-                                &Type::set_of(u.arbitrary()?),
+                                &Type::set_of(self.as_type_gen().generate_type(max_depth, u)?),
                                 max_depth - 1,
                                 u,
                             )?,
                             self.generate_expr_for_type(
-                                &Type::set_of(u.arbitrary()?),
+                                &Type::set_of(self.as_type_gen().generate_type(max_depth, u)?),
                                 max_depth - 1,
                                 u,
                             )?,
@@ -429,12 +437,12 @@ impl ExprGenerator<'_> {
                         1 => Ok(ast::Expr::contains_any(
                             // doesn't require the input sets to have the same element type
                             self.generate_expr_for_type(
-                                &Type::set_of(u.arbitrary()?),
+                                &Type::set_of(self.as_type_gen().generate_type(max_depth, u)?),
                                 max_depth - 1,
                                 u,
                             )?,
                             self.generate_expr_for_type(
-                                &Type::set_of(u.arbitrary()?),
+                                &Type::set_of(self.as_type_gen().generate_type(max_depth, u)?),
                                 max_depth - 1,
                                 u,
                             )?,
@@ -442,7 +450,7 @@ impl ExprGenerator<'_> {
                         // isEmpty()
                         1 => Ok(ast::Expr::is_empty(
                             self.generate_expr_for_type(
-                                &Type::set_of(u.arbitrary()?),
+                                &Type::set_of(self.as_type_gen().generate_type(max_depth, u)?),
                                 max_depth - 1,
                                 u,
                             )?,
@@ -513,7 +521,7 @@ impl ExprGenerator<'_> {
                         // has expression on a record
                         2 => Ok(ast::Expr::has_attr(
                             self.generate_expr_for_type(
-                                &Type::arbitrary_record(u, self.settings.max_width)?,
+                                &self.as_type_gen().generate_record_type(max_depth, u)?,
                                 max_depth - 1,
                                 u,
                             )?,
@@ -714,9 +722,6 @@ impl ExprGenerator<'_> {
                     }
                 }
                 Type::IPAddr | Type::Decimal | Type::DateTime | Type::Duration => {
-                    if !self.settings.enable_extensions {
-                        return Err(Error::ExtensionsDisabled);
-                    };
                     if max_depth == 0 || u.len() < 10 {
                         self.generate_expr_for_type_structurally_recursive(target_type, u)
                     } else {

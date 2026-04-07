@@ -27,9 +27,6 @@ pub struct ABACSettings {
     ///
     /// If false, does not attempt to match types.
     pub match_types: bool,
-    /// If true, may generate extension function calls in policies and/or
-    /// attribute values.
-    pub enable_extensions: bool,
     /// Maximum depth of an expression or type. E.g., maximum nesting of sets.
     ///
     /// This is used in the following places:
@@ -101,7 +98,6 @@ impl ABACSettings {
     pub const fn type_directed() -> Self {
         Self {
             match_types: true,
-            enable_extensions: true,
             max_depth: 7,
             max_width: 7,
             enable_additional_attributes: false,

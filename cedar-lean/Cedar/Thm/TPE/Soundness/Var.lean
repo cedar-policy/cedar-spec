@@ -106,7 +106,7 @@ theorem partial_evaluate_is_sound_var
       subst heq₂
       simp [Residual.evaluate]
       simp [RequestAndEntitiesRefine, RequestRefines] at h₄
-      rcases h₄ with ⟨⟨_, ⟨_, ⟨_, h₄⟩⟩⟩, _⟩
+      rcases h₄ with ⟨⟨_, ⟨_, ⟨_, ⟨h₄, _, _⟩⟩⟩⟩, _⟩
       rw [heq₁] at h₄
       cases h₄
       rename_i heq₂

@@ -76,13 +76,17 @@ def or : Residual → Residual → CedarType → Residual
     if l.errorFree then true else .or l (.val true rty) ty
   | l, r, ty           => .or l r ty
 
-def apply₁ (op₁ : UnaryOp) (r : Residual) (ty : CedarType) : Residual :=
+def apply₁ (req: PartialRequest) (op₁ : UnaryOp) (r : Residual) (ty : CedarType) : Residual :=
   match r with
   | .error _ => .error ty
   | _ =>
     match r.asValue with
     | .some v => someOrError (Spec.apply₁ op₁ v).toOption ty
-    | .none   => .unaryApp op₁ r ty
+    | .none   =>
+      match op₁, r with
+      | .is ety, .var .resource _ => .val (req.resource.ty == ety) ty
+      | .is ety, .var .principal _ => .val (req.principal.ty == ety) ty
+      | _, _ => .unaryApp op₁ r ty
 
 def inₑ (uid₁ uid₂ : EntityUID) (es : PartialEntities) : Option Bool :=
   if uid₁ = uid₂ then .some true else (es.ancestors uid₁).map (Set.contains · uid₂)
@@ -197,7 +201,7 @@ def evaluate
   | .or x₁ x₂ ty =>
     or (evaluate x₁ req es) (evaluate x₂ req es) ty
   | .unaryApp op₁ x₁ ty =>
-    apply₁ op₁ (evaluate x₁ req es) ty
+    apply₁ req op₁ (evaluate x₁ req es) ty
   | .binaryApp op₂ x₁ x₂ ty =>
     apply₂ op₂ (evaluate x₁ req es) (evaluate x₂ req es) es ty
   | .hasAttr x₁ a ty =>

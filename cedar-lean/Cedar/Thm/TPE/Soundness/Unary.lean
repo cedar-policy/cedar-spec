@@ -42,6 +42,7 @@ theorem partial_evaluate_is_sound_unary_app
 {pes : PartialEntities}
 {op₁ : UnaryOp}
 {ty : CedarType}
+(h_ref : RequestAndEntitiesRefine req es preq pes)
 (hᵢ₁ : Except.toOption (x₁.evaluate req es) = Except.toOption ((TPE.evaluate x₁ preq pes).evaluate req es)) :
   Except.toOption ((Residual.unaryApp op₁ x₁ ty).evaluate req es) =
   Except.toOption ((TPE.evaluate (Residual.unaryApp op₁ x₁ ty) preq pes).evaluate req es)
@@ -49,7 +50,7 @@ theorem partial_evaluate_is_sound_unary_app
   simp [TPE.evaluate, TPE.apply₁]
   split
   case _ heq =>
-    simp [heq, Residual.evaluate] at hᵢ₁
+    simp only [heq, Residual.evaluate] at hᵢ₁
     rcases to_option_right_err hᵢ₁ with ⟨_, hᵢ₁⟩
     simp [Residual.evaluate, hᵢ₁, Except.toOption]
   case _ =>
@@ -60,20 +61,31 @@ theorem partial_evaluate_is_sound_unary_app
       simp [someOrError, Residual.evaluate, hᵢ₁]
       split
       case _ heq₂ =>
-        simp [to_option_some] at heq₂
+        simp only [to_option_some] at heq₂
         simp [heq₂, Residual.evaluate]
       case _ heq₂ =>
         rcases to_option_none.mp heq₂ with ⟨_, heq₂⟩
         simp [heq₂, Residual.evaluate, Except.toOption]
     case _ =>
-      simp [Residual.evaluate]
-      generalize h₅ : x₁.evaluate req es = res₁
-      cases res₁ <;> simp [h₅] at hᵢ₁
-      case error =>
-        rcases to_option_left_err hᵢ₁ with ⟨_, hᵢ₁⟩
-        simp [hᵢ₁, Except.toOption]
-      case ok =>
-        replace hᵢ₃ := to_option_left_ok' hᵢ₁
-        simp [hᵢ₃]
+      split
+      · -- .is ety, .var .resource _
+        rename_i ety _ heq_r
+        simp [heq_r, Residual.evaluate] at hᵢ₁ ⊢
+        replace hᵢ₁ := to_option_right_ok' hᵢ₁
+        simp only [hᵢ₁, Spec.apply₁, Except.toOption, Except.bind_ok, h_ref.1.2.2.2.2.2, BEq.comm]
+      · -- .is ety, .var .principal _
+        rename_i ety _ heq_p
+        simp [heq_p, Residual.evaluate] at hᵢ₁ ⊢
+        replace hᵢ₁ := to_option_right_ok' hᵢ₁
+        simp only [hᵢ₁, Spec.apply₁, Except.toOption, Except.bind_ok, h_ref.1.2.2.2.2.1, BEq.comm]
+      · simp [Residual.evaluate]
+        generalize h₅ : x₁.evaluate req es = res₁
+        cases res₁ <;> simp [h₅] at hᵢ₁
+        case error =>
+          rcases to_option_left_err hᵢ₁ with ⟨_, hᵢ₁⟩
+          simp [hᵢ₁, Except.toOption]
+        case ok =>
+          replace hᵢ₃ := to_option_left_ok' hᵢ₁
+          simp [hᵢ₃]
 
 end Cedar.Thm
