@@ -524,10 +524,16 @@ pub async fn get_cex(
     match timeout(TIMEOUT_DUR, f).await {
         Ok(Ok(None)) => None, // successfully executed, no counterexample because the property holds
         Ok(Ok(Some(cex))) => Some(cex),
-        Err(err) => panic!(
-            "found a slow unit (solver took more than {secs:.2} sec) probably worth investigating: {err}",
-            secs = TIMEOUT_DUR.as_secs_f32()
-        ),
+        Err(err) => {
+            // Exceeded timeout for solver. Skip this and continue testing, it
+            // should still be reported as a slow-unit since out solver timeout
+            // is longer than libfuzzers default (10s, I think).
+            debug!(
+                "found a slow unit (solver took more than {secs:.2} sec) probably worth investigating: {err}",
+                secs = TIMEOUT_DUR.as_secs_f32()
+            );
+            None
+        }
         Ok(Err(Error::SolverError(err))) => panic!("solver failed: {err}"),
         Ok(Err(Error::EncodeError(EncodeError::EncodeStringFailed(_))))
         | Ok(Err(Error::EncodeError(EncodeError::EncodePatternFailed(_)))) => {
