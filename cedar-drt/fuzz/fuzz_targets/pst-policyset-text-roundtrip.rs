@@ -98,58 +98,10 @@ fuzz_target!(|input: PolicySetFuzzTargetInput| {
         .to_pst()
         .unwrap_or_else(|e| panic!("to_pst failed: {:?}", e));
 
-    // Compare templates (with IDs)
-    assert_eq!(
-        pst_set.templates.len(),
-        roundtripped.templates.len(),
-        "Template count mismatch"
+    // Compare policy sets
+    pst_equiv::check_policy_set_equivalence(
+        &pst_set,
+        &roundtripped,
+        pst_equiv::CheckingParams { check_ids: true },
     );
-    for (id, orig) in &pst_set.templates {
-        let rt = roundtripped
-            .templates
-            .get(id)
-            .unwrap_or_else(|| panic!("Template {:?} missing after roundtrip", id));
-        pst_equiv::check_template_equivalence(
-            orig,
-            rt,
-            pst_equiv::CheckingParams { check_ids: true },
-        );
-    }
-
-    // Compare static policies (with IDs)
-    assert_eq!(
-        pst_set.policies.len(),
-        roundtripped.policies.len(),
-        "Static policy count mismatch"
-    );
-    for (id, orig) in &pst_set.policies {
-        let rt = roundtripped
-            .policies
-            .get(id)
-            .unwrap_or_else(|| panic!("Static policy {:?} missing after roundtrip", id));
-        pst_equiv::check_template_equivalence(
-            &orig.body,
-            &rt.body,
-            pst_equiv::CheckingParams { check_ids: true },
-        );
-    }
-
-    // Compare template links
-    assert_eq!(
-        pst_set.template_links.len(),
-        roundtripped.template_links.len(),
-        "Template link count mismatch"
-    );
-    for (orig, rt) in pst_set
-        .template_links
-        .iter()
-        .zip(roundtripped.template_links.iter())
-    {
-        assert_eq!(
-            orig.template_id, rt.template_id,
-            "Link template_id mismatch"
-        );
-        assert_eq!(orig.new_id, rt.new_id, "Link new_id mismatch");
-        assert_eq!(orig.values, rt.values, "Link values mismatch");
-    }
 });

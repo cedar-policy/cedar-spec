@@ -34,6 +34,7 @@ The table below lists all available fuzz targets, including which component of t
 | [`pst-ast-roundtrip`](fuzz/fuzz_targets/pst-ast-roundtrip.rs) | PST ↔ AST conversion | PBT | Test idempotency: PST → AST → PST → AST → PST stabilizes after one normalization pass |
 | [`pst-est-roundtrip`](fuzz/fuzz_targets/pst-est-roundtrip.rs) | PST ↔ EST conversion | PBT | Test round trip property: PST → EST → PST == id for templates |
 | [`pst-policyset-text-roundtrip`](fuzz/fuzz_targets/pst-policyset-text-roundtrip.rs) | PST policy set conversion through API | PBT | Test round trip property: PST policy set -> PolicySet → cedar text → PolicySet -> PST == id with explicit policy id management, and through public API |
+| [`pst-policyset-json-roundtrip`](fuzz/fuzz_targets/pst-policyset-json-roundtrip.rs) | PST policy set conversion through API | PBT | Test round trip property: PST policy set -> PolicySet → JSON → PolicySet -> PST == id with explicit policy id management, and through public API |
 |  |  |  |  |
 | [`simple-parser`](fuzz/fuzz_targets/simple-parser.rs) |  Parser | PBT | Test that parsing doesn't crash with random input strings |
 | [`validation-pbt`](fuzz/fuzz_targets/validation-pbt.rs) | Validator | PBT | Test that validated policies do not result in type errors |
