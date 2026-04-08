@@ -42,8 +42,10 @@ theorem as_partial_request_refines {req : Request} :
   constructor
   · apply PartialIsValid.some
     rfl
+  constructor
   · apply PartialIsValid.some
     rfl
+  constructor <;> trivial
 
 theorem any_refines_empty_entities :
   EntitiesRefine es Data.Map.empty := by

@@ -131,7 +131,7 @@ private theorem partial_eval_preserves_typeof_unaryApp {op : UnaryOp} {e : Resid
         cases h₃ : i.neg?
         all_goals
           simp [intOrErr]
-    . simp [Residual.typeOf]
+    . split <;> simp [Residual.typeOf]
 
 private theorem partial_eval_preserves_typeof_binaryApp {op : BinaryOp} {e1 e2 : Residual} {ty : CedarType} :
   PEPreservesTypeOf (Residual.binaryApp op e1 e2 ty)
