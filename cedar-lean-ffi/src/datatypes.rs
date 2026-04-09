@@ -1,7 +1,6 @@
 use cedar_policy::{
     Decision, EntityId, EntityTypeName, ParseErrors, PolicyId, RestrictedExpression,
 };
-use cedar_policy_core::ast::Name;
 use num_bigint::ParseBigIntError;
 use serde::{Deserialize, Serialize};
 use serde_with::{TryFromInto, serde_as};
@@ -15,6 +14,10 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use crate::FfiError;
+
+pub mod tpe;
+pub(crate) use tpe::TpeResponseInner;
+pub use tpe::{TpeResidualPolicy, TpeResponse};
 
 /*************************************** Lean return types ***************************************/
 
@@ -273,7 +276,7 @@ pub enum ExtOp {
     DurationOfBitVec,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub enum PatElem {
     #[serde(rename = "star")]
     Star,
@@ -359,19 +362,10 @@ impl From<Decimal> for RestrictedExpression {
     fn from(decimal: Decimal) -> Self {
         // note this assumes the Lean represents the decimal value `v` as the integer `10000 * v`
         let neg = if decimal.0 < 0 { "-" } else { "" };
-        let absval = i64::abs(decimal.0);
+        let absval = i128::from(decimal.0).abs();
         let left = absval / 10000;
         let right = absval % 10000;
-        let right = if right < 10 {
-            format!(".000{right}")
-        } else if right < 100 {
-            format!(".00{right}")
-        } else if right < 1000 {
-            format!(".0{right}")
-        } else {
-            format!(".{right}")
-        };
-        RestrictedExpression::new_decimal(format!("{neg}{left}{right}"))
+        RestrictedExpression::new_decimal(format!("{neg}{left}.{right:04}"))
     }
 }
 
@@ -393,34 +387,20 @@ impl From<IpAddr> for RestrictedExpression {
         match ip {
             IpAddr::V4(cidr) => {
                 let addr = cidr.addr.as_u64();
-                let mut addr = format!(
-                    "{a0}.{a1}.{a2}.{a3}",
+                let prefix = cidr.prefix.map_or(32, |p| p.as_u64());
+                let addr = format!(
+                    "{a0}.{a1}.{a2}.{a3}/{prefix}",
                     a0 = (addr >> 24) & 0xFF,
                     a1 = (addr >> 16) & 0xFF,
                     a2 = (addr >> 8) & 0xFF,
                     a3 = addr & 0xFF,
                 );
-                if let Some(prefix) = cidr.prefix {
-                    addr.push_str(&format!("/{}", prefix.as_u64()));
-                }
                 RestrictedExpression::new_ip(addr)
             }
             IpAddr::V6(cidr) => {
-                let addr = cidr.addr.as_u128();
-                let mut addr = format!(
-                    "{a0:x}:{a1:x}:{a2:x}:{a3:x}:{a4:x}:{a5:x}:{a6:x}:{a7:x}",
-                    a0 = (addr >> 112) & 0xFFFF,
-                    a1 = (addr >> 96) & 0xFFFF,
-                    a2 = (addr >> 80) & 0xFFFF,
-                    a3 = (addr >> 64) & 0xFFFF,
-                    a4 = (addr >> 48) & 0xFFFF,
-                    a5 = (addr >> 32) & 0xFFFF,
-                    a6 = (addr >> 16) & 0xFFFF,
-                    a7 = addr & 0xFFFF,
-                );
-                if let Some(prefix) = cidr.prefix {
-                    addr.push_str(&format!("/{}", prefix.as_u64()));
-                }
+                let v6 = std::net::Ipv6Addr::from(cidr.addr.as_u128());
+                let prefix = cidr.prefix.map_or(128, |p| p.as_u64());
+                let addr = format!("{v6}/{prefix}");
                 RestrictedExpression::new_ip(addr)
             }
         }
@@ -435,20 +415,20 @@ pub struct Datetime {
 impl TryFrom<Datetime> for RestrictedExpression {
     type Error = cedar_policy_core::parser::err::ParseErrors;
     fn try_from(dt: Datetime) -> Result<Self, Self::Error> {
-        // note this assumes the Lean represents datetimes as milliseconds since Unix epoch
+        // Match Rust's DateTime canonical form: offset(datetime("1970-01-01"), duration("Nms"))
         let epoch = cedar_policy_core::ast::RestrictedExpr::call_extension_fn(
-            Name::parse_unqualified_name("datetime")?,
+            cedar_policy_core::ast::Name::parse_unqualified_name("datetime")?,
             [cedar_policy_core::ast::RestrictedExpr::val("1970-01-01")],
         );
         let millis_since_epoch = cedar_policy_core::ast::RestrictedExpr::call_extension_fn(
-            Name::parse_unqualified_name("duration")?,
+            cedar_policy_core::ast::Name::parse_unqualified_name("duration")?,
             [cedar_policy_core::ast::RestrictedExpr::val(format!(
                 "{}ms",
                 dt.val
             ))],
         );
         let core_rexpr = cedar_policy_core::ast::RestrictedExpr::call_extension_fn(
-            Name::parse_unqualified_name("offset")?,
+            cedar_policy_core::ast::Name::parse_unqualified_name("offset")?,
             [epoch, millis_since_epoch],
         );
         Ok(core_rexpr.into())
@@ -467,7 +447,7 @@ impl From<Duration> for RestrictedExpression {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ExtType {
     IpAddr,
@@ -1209,5 +1189,26 @@ mod term_conversion {
                 .unwrap(),
             pattern
         );
+    }
+}
+
+#[cfg(test)]
+mod decimal_conversion {
+    use super::{Decimal, RestrictedExpression};
+
+    #[test]
+    fn i64_min_does_not_overflow() {
+        // i64::MIN triggered an overflow in i64::abs; ensure it no longer panics.
+        let _: RestrictedExpression = Decimal(i64::MIN).into();
+    }
+
+    #[test]
+    fn negative_value() {
+        let _: RestrictedExpression = Decimal(-12345).into();
+    }
+
+    #[test]
+    fn zero() {
+        let _: RestrictedExpression = Decimal(0).into();
     }
 }
