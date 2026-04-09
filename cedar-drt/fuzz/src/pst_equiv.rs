@@ -28,11 +28,6 @@ pub fn check_policy_set_equivalence(
     params: CheckingParams,
 ) {
     // Compare templates
-    assert_eq!(
-        original.templates.len(),
-        roundtripped.templates.len(),
-        "Template count mismatch"
-    );
     for (id, orig) in &original.templates {
         let rt = roundtripped
             .templates
@@ -46,33 +41,33 @@ pub fn check_policy_set_equivalence(
             },
         );
     }
+    assert_eq!(
+        original.templates.len(),
+        roundtripped.templates.len(),
+        "Template count mismatch"
+    );
 
     // Compare static policies
-    assert_eq!(
-        original.policies.len(),
-        roundtripped.policies.len(),
-        "Static policy count mismatch"
-    );
     for (id, orig) in &original.policies {
         let rt = roundtripped
             .policies
             .get(id)
             .unwrap_or_else(|| panic!("Static policy {:?} missing after roundtrip", id));
         check_template_equivalence(
-            &orig.body,
-            &rt.body,
+            &orig.body(),
+            &rt.body(),
             CheckingParams {
                 check_ids: params.check_ids,
             },
         );
     }
+    assert_eq!(
+        original.policies.len(),
+        roundtripped.policies.len(),
+        "Static policy count mismatch"
+    );
 
     // Compare template links
-    assert_eq!(
-        original.template_links.len(),
-        roundtripped.template_links.len(),
-        "Template link count mismatch"
-    );
     for (orig, rt) in original
         .template_links
         .iter()
@@ -85,6 +80,11 @@ pub fn check_policy_set_equivalence(
         assert_eq!(orig.new_id, rt.new_id, "Link new_id mismatch");
         assert_eq!(orig.values, rt.values, "Link values mismatch");
     }
+    assert_eq!(
+        original.template_links.len(),
+        roundtripped.template_links.len(),
+        "Template link count mismatch"
+    );
 }
 
 /// Compare two PST templates for equivalence
