@@ -449,3 +449,9 @@ name = "pst-policyset-text-roundtrip"
 path = "fuzz_targets/pst-policyset-text-roundtrip.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "pst-policyset-json-roundtrip"
+path = "fuzz_targets/pst-policyset-json-roundtrip.rs"
+test = false
+doc = false
