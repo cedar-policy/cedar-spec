@@ -1,6 +1,7 @@
 use cedar_policy::{
     Decision, EntityId, EntityTypeName, ParseErrors, PolicyId, RestrictedExpression,
 };
+use cedar_policy_core::ast;
 use num_bigint::ParseBigIntError;
 use serde::{Deserialize, Serialize};
 use serde_with::{TryFromInto, serde_as};
@@ -388,6 +389,8 @@ impl From<IpAddr> for RestrictedExpression {
             IpAddr::V4(cidr) => {
                 let addr = cidr.addr.as_u64();
                 let prefix = cidr.prefix.map_or(32, |p| p.as_u64());
+                // Canonical reprsentation always formats with prefix,
+                // even if IP address is single host /32
                 let addr = format!(
                     "{a0}.{a1}.{a2}.{a3}/{prefix}",
                     a0 = (addr >> 24) & 0xFF,
@@ -400,6 +403,8 @@ impl From<IpAddr> for RestrictedExpression {
             IpAddr::V6(cidr) => {
                 let v6 = std::net::Ipv6Addr::from(cidr.addr.as_u128());
                 let prefix = cidr.prefix.map_or(128, |p| p.as_u64());
+                // Canonical reprsentation always formats with prefix,
+                // even if IP address is single host /128
                 let addr = format!("{v6}/{prefix}");
                 RestrictedExpression::new_ip(addr)
             }
@@ -415,20 +420,17 @@ pub struct Datetime {
 impl TryFrom<Datetime> for RestrictedExpression {
     type Error = cedar_policy_core::parser::err::ParseErrors;
     fn try_from(dt: Datetime) -> Result<Self, Self::Error> {
-        // Match Rust's DateTime canonical form: offset(datetime("1970-01-01"), duration("Nms"))
-        let epoch = cedar_policy_core::ast::RestrictedExpr::call_extension_fn(
-            cedar_policy_core::ast::Name::parse_unqualified_name("datetime")?,
-            [cedar_policy_core::ast::RestrictedExpr::val("1970-01-01")],
+        // Match Rust's DateTime canonical form: datetime("1970-01-01").offset(duration("Nms"))
+        let epoch = ast::RestrictedExpr::call_extension_fn(
+            ast::Name::parse_unqualified_name("datetime")?,
+            [ast::RestrictedExpr::val("1970-01-01")],
         );
-        let millis_since_epoch = cedar_policy_core::ast::RestrictedExpr::call_extension_fn(
-            cedar_policy_core::ast::Name::parse_unqualified_name("duration")?,
-            [cedar_policy_core::ast::RestrictedExpr::val(format!(
-                "{}ms",
-                dt.val
-            ))],
+        let millis_since_epoch = ast::RestrictedExpr::call_extension_fn(
+            ast::Name::parse_unqualified_name("duration")?,
+            [ast::RestrictedExpr::val(format!("{}ms", dt.val))],
         );
-        let core_rexpr = cedar_policy_core::ast::RestrictedExpr::call_extension_fn(
-            cedar_policy_core::ast::Name::parse_unqualified_name("offset")?,
+        let core_rexpr = ast::RestrictedExpr::call_extension_fn(
+            ast::Name::parse_unqualified_name("offset")?,
             [epoch, millis_since_epoch],
         );
         Ok(core_rexpr.into())
@@ -562,7 +564,7 @@ pub enum TermConversionError {
     UnexpectedWidth,
 }
 
-impl TryFrom<PatElem> for cedar_policy_core::ast::PatternElem {
+impl TryFrom<PatElem> for ast::PatternElem {
     type Error = TermConversionError;
 
     fn try_from(value: PatElem) -> Result<Self, Self::Error> {
@@ -627,11 +629,11 @@ impl TryFrom<Op> for cedar_policy_symcc::op::Op {
             Op::OptionGet => Self::OptionGet,
             Op::RecordGet(a) => Self::RecordGet(a),
             Op::StringLike(pats) => Self::StringLike(
-                cedar_policy_core::ast::Pattern::from_iter(
-                    pats.into_iter()
-                        .map(TryInto::try_into)
-                        .collect::<Result<Vec<_>, _>>()?,
-                )
+                ast::Pattern::from_iter(pats.into_iter().map(TryInto::try_into).collect::<Result<
+                    Vec<_>,
+                    _,
+                >>(
+                )?)
                 .into(),
             ),
             Op::Ext(op) => Self::Ext(op.into()),
@@ -904,11 +906,11 @@ impl From<cedar_policy_symcc::op::ExtOp> for ExtOp {
     }
 }
 
-impl From<cedar_policy_core::ast::PatternElem> for PatElem {
-    fn from(value: cedar_policy_core::ast::PatternElem) -> Self {
+impl From<ast::PatternElem> for PatElem {
+    fn from(value: ast::PatternElem) -> Self {
         match value {
-            cedar_policy_core::ast::PatternElem::Char(c) => Self::Char { c: c.into() },
-            cedar_policy_core::ast::PatternElem::Wildcard => Self::Star,
+            ast::PatternElem::Char(c) => Self::Char { c: c.into() },
+            ast::PatternElem::Wildcard => Self::Star,
         }
     }
 }
@@ -1183,10 +1185,9 @@ mod deserialization {
 mod term_conversion {
     #[test]
     fn roundtrip_pattern() {
-        let pattern = cedar_policy_core::ast::PatternElem::Char('a');
+        let pattern = ast::PatternElem::Char('a');
         assert_eq!(
-            cedar_policy_core::ast::PatternElem::try_from(crate::datatypes::PatElem::from(pattern))
-                .unwrap(),
+            ast::PatternElem::try_from(crate::datatypes::PatElem::from(pattern)).unwrap(),
             pattern
         );
     }

@@ -18,7 +18,7 @@
 use cedar_drt::logger::initialize_log;
 use cedar_drt_inner::{
     fuzz_target,
-    tpe::{TpeFuzzTargetInput, passes_request_validation, passes_validation},
+    tpe::{TpeFuzzTargetInput, passes_policyset_validation, passes_request_validation},
 };
 use cedar_policy::{Authorizer, Entities, Policy, PolicySet, Request, Schema, Validator};
 use log::debug;
@@ -52,7 +52,7 @@ fuzz_target!(|input: TpeFuzzTargetInput| {
         let mut policyset = PolicySet::new();
         let policy: Policy = input.abac_input.policy.into();
         policyset.add(policy.clone()).unwrap();
-        let passes_strict = passes_validation(&validator, &policyset);
+        let passes_strict = passes_policyset_validation(&validator, &policyset);
         if passes_strict {
             let partial_entities = input.partial_entities;
             for (request, partial_request) in input

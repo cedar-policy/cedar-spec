@@ -21,19 +21,19 @@
 use cedar_drt::logger::initialize_log;
 use cedar_drt_inner::{
     fuzz_target,
-    tpe::{TpeFuzzTargetInput, passes_request_validation, passes_validation},
+    tpe::{TpeFuzzTargetInput, passes_policyset_validation, passes_request_validation},
 };
 use cedar_lean_ffi::CedarLeanFfi;
 use cedar_policy::{
     PartialEntities, PartialRequest, Policy, PolicyId, PolicySet, Request, Schema, Validator,
+    pst::{Clause, Expr, UnaryOp},
 };
-use cedar_policy_core::pst;
 use log::debug;
-use std::collections::HashSet;
 use std::convert::TryFrom;
+use std::{collections::HashSet, sync::Arc};
 
 /// Compare Rust and Lean TPE outputs for a single partial request.
-fn compare_tpe_outputs(
+fn test_tpe_is_authorized_equiv(
     ffi: &CedarLeanFfi,
     schema: &Schema,
     policies: &PolicySet,
@@ -41,17 +41,24 @@ fn compare_tpe_outputs(
     partial_entities: &PartialEntities,
 ) {
     // Run Rust TPE
-    let rust_resp = match policies.tpe(partial_request, partial_entities, schema) {
-        Ok(r) => r,
-        Err(_) => return,
-    };
+    let maybe_rust_resp = policies.tpe(partial_request, partial_entities, schema);
 
     // Run Lean TPE
-    let lean_resp =
-        match ffi.is_authorized_partial(policies, partial_request, partial_entities, schema) {
-            Ok(r) => r,
-            Err(_) => return,
-        };
+    let maybe_lean_resp =
+        ffi.is_authorized_partial(policies, partial_request, partial_entities, schema);
+
+    let (rust_resp, lean_resp) = match (maybe_rust_resp, maybe_lean_resp) {
+        (Ok(r), Ok(l)) => (r, l),
+        (Err(_), Err(_)) => return,
+        (Ok(r), Err(e)) => panic!(
+            "Got Lean TPE error, but Rust returned response.\nRust: {:?}\n, Lean: {}",
+            r, e
+        ),
+        (Err(e), Ok(l)) => panic!(
+            "Got Rust TPE error, but Lean returned response.\nRust: {}\n, Lean: {:?}",
+            e, l
+        ),
+    };
 
     let rust_inner = rust_resp.as_ref();
 
@@ -62,12 +69,13 @@ fn compare_tpe_outputs(
         "TPE decision mismatch"
     );
 
-    // Compare policy categorizations
+    // Compare policy categorizations (comparing sets of policy IDs)
     let to_set =
         |iter: Box<dyn Iterator<Item = &cedar_policy_core::tpe::response::ResidualPolicy> + '_>| {
             iter.map(|p| PolicyId::new(p.get_policy_id().as_ref()))
                 .collect::<HashSet<PolicyId>>()
         };
+    // The satisified forbids/permits match.
     assert_eq!(
         to_set(Box::new(rust_inner.satisfied_permits())),
         lean_resp.satisfied_permits,
@@ -78,16 +86,21 @@ fn compare_tpe_outputs(
         lean_resp.satisfied_forbids,
         "satisfied_forbids mismatch"
     );
+    // Rust only returns false_permits, which should be the union of the
+    // false_permits and error_permits of the Lean side.
     assert_eq!(
         to_set(Box::new(rust_inner.false_permits())),
         &lean_resp.false_permits | &lean_resp.error_permits,
-        "false_permits mismatch (Rust merges errors into false)"
+        "rust false_permits mismatch with false permits union error permits"
     );
+    // Same for the false_forbids and error_forbids. The Rust side puts the policy ID
+    // in false_forbids for all Effect::Forbid policies that result in false or error.
     assert_eq!(
         to_set(Box::new(rust_inner.false_forbids())),
         &lean_resp.false_forbids | &lean_resp.error_forbids,
-        "false_forbids mismatch (Rust merges errors into false)"
+        "rust false_forbids mismatch with false forbids union error forbids"
     );
+    // The policies with residuals match on both sides.
     assert_eq!(
         to_set(Box::new(rust_inner.residual_permits())),
         lean_resp.residual_permits,
@@ -100,19 +113,28 @@ fn compare_tpe_outputs(
     );
 
     // Compare residual expressions by policy ID via PST
-    let rust_residual_map: std::collections::HashMap<String, pst::Expr> = rust_inner
+    let rust_residual_map: std::collections::HashMap<String, Expr> = rust_resp
         .residual_policies()
         .map(|rp| {
-            let id = rp.get_policy_id().to_string();
-            let ast_expr = cedar_policy_core::ast::Expr::from(rp.get_residual().as_ref().clone());
-            let pst_expr = pst::Expr::try_from(ast_expr)
-                .expect("ast->pst conversion should succeed for residuals");
-            (id, pst_expr)
+            let id: String = rp.id().to_string();
+            let pst = rp
+                .to_pst()
+                .expect("policy->pst conversion should succeeed for residuals");
+            // Residual should only have one clause
+            let clause = match pst.body().clauses().as_slice() {
+                [Clause::When(x)] => x.clone(),
+                [Clause::Unless(x)] => Arc::new(Expr::UnaryOp {
+                    op: UnaryOp::Not,
+                    expr: x.clone(),
+                }),
+                _ => panic!(""),
+            };
+            (id, Arc::unwrap_or_clone(clause))
         })
         .collect();
 
     for lean_rp in &lean_resp.residuals {
-        let lean_pst = pst::Expr::try_from(lean_rp.residual.clone())
+        let lean_pst = Expr::try_from(lean_rp.residual.clone())
             .expect("lean residual->pst conversion should succeed");
         let id_str = lean_rp.id.to_string();
         let rust_pst = rust_residual_map.get(&id_str).unwrap_or_else(|| {
@@ -139,7 +161,7 @@ fuzz_target!(|input: TpeFuzzTargetInput| {
         let mut policyset = PolicySet::new();
         let policy: Policy = input.abac_input.policy.into();
         policyset.add(policy).unwrap();
-        if passes_validation(&validator, &policyset) {
+        if passes_policyset_validation(&validator, &policyset) {
             let ffi = CedarLeanFfi::new();
             for (request, partial_request) in input
                 .abac_input
@@ -149,7 +171,7 @@ fuzz_target!(|input: TpeFuzzTargetInput| {
             {
                 let request: Request = request.into();
                 if passes_request_validation(&validator, &request) {
-                    compare_tpe_outputs(
+                    test_tpe_is_authorized_equiv(
                         &ffi,
                         &schema,
                         &policyset,

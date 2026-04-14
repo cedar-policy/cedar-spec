@@ -174,7 +174,7 @@ impl<'a> Arbitrary<'a> for TpeFuzzTargetInput {
 }
 
 /// Whether a policyset passes strict validation.
-pub fn passes_validation(validator: &Validator, pset: &PolicySet) -> bool {
+pub fn passes_policyset_validation(validator: &Validator, pset: &PolicySet) -> bool {
     validator
         .validate(pset, cedar_policy::ValidationMode::Strict)
         .validation_passed()
