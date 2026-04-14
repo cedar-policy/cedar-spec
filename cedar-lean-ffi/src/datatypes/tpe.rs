@@ -523,5 +523,3 @@ mod convert {
         }
     }
 }
-
-pub use convert::ResidualConversionError;

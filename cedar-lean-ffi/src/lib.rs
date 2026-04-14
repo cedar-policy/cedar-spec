@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-pub mod datatypes;
+mod datatypes;
 mod err;
 mod lean_ffi;
 mod lean_object;

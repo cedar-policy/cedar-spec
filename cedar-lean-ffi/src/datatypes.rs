@@ -17,8 +17,8 @@ use std::sync::Arc;
 use crate::FfiError;
 
 pub mod tpe;
+pub use tpe::TpeResponse;
 pub(crate) use tpe::TpeResponseInner;
-pub use tpe::{TpeResidualPolicy, TpeResponse};
 
 /*************************************** Lean return types ***************************************/
 
@@ -1183,6 +1183,8 @@ mod deserialization {
 
 #[cfg(test)]
 mod term_conversion {
+    use cedar_policy_core::ast;
+
     #[test]
     fn roundtrip_pattern() {
         let pattern = ast::PatternElem::Char('a');
