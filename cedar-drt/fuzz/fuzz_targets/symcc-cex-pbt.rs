@@ -18,7 +18,7 @@
 use cedar_drt::logger::initialize_log;
 use cedar_drt_inner::{
     fuzz_target,
-    symcc::{RUNTIME, SinglePolicyFuzzTargetInput, get_cex, get_solver, reproduce},
+    symcc::{CexError, RUNTIME, SinglePolicyFuzzTargetInput, get_cex, get_solver, reproduce},
 };
 use cedar_policy::Decision;
 use cedar_policy_symcc::CompiledPolicySet;
@@ -32,19 +32,37 @@ fuzz_target!(|input: SinglePolicyFuzzTargetInput<128>| {
             // also note that we do the compilation (and reproduction) while _not_ holding the `get_solver()` lock
             if let Ok(cps) = CompiledPolicySet::compile(&policyset, &req_env, &schema) {
                 RUNTIME.block_on(async {
-                    if let Some(cex) = get_cex(get_solver().await.symcc.check_always_allows_with_counterexample_opt(&cps)).await {
-                        assert_eq!(
-                            reproduce(&cex, &policyset),
-                            Decision::Deny,
-                            "Rust SymCC counterexample for AlwaysAllows was expected to produce Deny but did not"
-                        );
+                    let mut solver_guard = get_solver().await;
+                    match get_cex(solver_guard.symcc.check_always_allows_with_counterexample_opt(&cps)).await {
+                        Ok(cex) => {
+                            drop(solver_guard);
+                            assert_eq!(
+                                reproduce(&cex, &policyset),
+                                Decision::Deny,
+                                "Rust SymCC counterexample for AlwaysAllows was expected to produce Deny but did not"
+                            );
+                        }
+                        Err(CexError::Timeout) => {
+                            solver_guard.restart().await;
+                            drop(solver_guard);
+                        }
+                        Err(_) => { drop(solver_guard); }
                     }
-                    if let Some(cex) = get_cex(get_solver().await.symcc.check_always_denies_with_counterexample_opt(&cps)).await {
-                        assert_eq!(
-                            reproduce(&cex, &policyset),
-                            Decision::Allow,
-                            "Rust SymCC counterexample for AlwaysDenies was expected to produce Allow but did not"
-                        );
+                    let mut solver_guard = get_solver().await;
+                    match get_cex(solver_guard.symcc.check_always_denies_with_counterexample_opt(&cps)).await {
+                        Ok(cex) => {
+                            drop(solver_guard);
+                            assert_eq!(
+                                reproduce(&cex, &policyset),
+                                Decision::Allow,
+                                "Rust SymCC counterexample for AlwaysDenies was expected to produce Allow but did not"
+                            );
+                        }
+                        Err(CexError::Timeout) => {
+                            solver_guard.restart().await;
+                            drop(solver_guard);
+                        }
+                        Err(_) => { drop(solver_guard); }
                     }
                 });
             }
