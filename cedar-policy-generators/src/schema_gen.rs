@@ -12,6 +12,7 @@ use crate::{
     request::Request,
     schema::Schema,
     settings::ABACSettings,
+    types::TypeGenerator,
 };
 use arbitrary::Unstructured;
 use cedar_policy_core::{
@@ -118,6 +119,8 @@ pub trait SchemaGen: std::fmt::Debug {
     fn get_abac_settings(&self) -> &ABACSettings;
     /// Get an expression generator
     fn exprgenerator<'s>(&'s self, hierarchy: Option<&'s Hierarchy>) -> ExprGenerator<'s>;
+    /// Get a type generator
+    fn type_generator<'s>(&'s self) -> TypeGenerator<'s>;
     /// Get an arbitrary Hierarchy conforming to the schema.
     fn arbitrary_hierarchy(&self, u: &mut Unstructured<'_>) -> Result<Hierarchy>;
     /// get an arbitrary policy conforming to this schema
@@ -457,6 +460,13 @@ impl SchemaGen for ValidatorSchema<'_> {
             hierarchy,
         }
     }
+    fn type_generator<'s>(&'s self) -> TypeGenerator<'s> {
+        TypeGenerator {
+            schema: self,
+            constant_pool: &self.constant_pool,
+            settings: &self.settings,
+        }
+    }
     fn arbitrary_hierarchy(&self, u: &mut Unstructured<'_>) -> Result<Hierarchy> {
         HierarchyGenerator {
             mode: HierarchyGeneratorMode::SchemaBased { schema: self },
@@ -583,6 +593,13 @@ impl SchemaGen for Schema {
     }
     fn exprgenerator<'s>(&'s self, hierarchy: Option<&'s Hierarchy>) -> ExprGenerator<'s> {
         self.exprgenerator(hierarchy)
+    }
+    fn type_generator<'s>(&'s self) -> TypeGenerator<'s> {
+        TypeGenerator {
+            schema: self,
+            constant_pool: &self.constant_pool,
+            settings: &self.settings,
+        }
     }
     fn arbitrary_hierarchy(&self, u: &mut Unstructured<'_>) -> Result<Hierarchy> {
         HierarchyGenerator {

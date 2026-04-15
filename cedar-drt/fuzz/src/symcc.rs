@@ -483,6 +483,15 @@ pub struct SymCCWithUsageLimit {
 
 impl SymCCWithUsageLimit {
     const SOLVER_USAGE_LIMIT: usize = 10_000;
+
+    /// Kill the solver process and start new one. Automatically called after
+    /// `SOLVER_USAGE_LIMIT` calls, but can also be called manually if the
+    /// solver is in a bad state.
+    pub async fn restart(&mut self) {
+        let _ = self.symcc.solver_mut().solver.clean_up().await;
+        self.symcc = new_symcc();
+        self.usage_count = 0;
+    }
 }
 
 fn new_symcc() -> CedarSymCompiler<WrappedLocalSolver> {
@@ -502,9 +511,7 @@ pub async fn get_solver() -> MutexGuard<'static, SymCCWithUsageLimit> {
     let mut guard = SOLVER.lock().await;
     guard.usage_count += 1;
     if guard.usage_count >= SymCCWithUsageLimit::SOLVER_USAGE_LIMIT {
-        let _ = guard.symcc.solver_mut().solver.clean_up().await;
-        guard.symcc = new_symcc();
-        guard.usage_count = 0;
+        guard.restart().await;
     }
     guard
 }
@@ -512,28 +519,46 @@ pub async fn get_solver() -> MutexGuard<'static, SymCCWithUsageLimit> {
 /// Solver timeout used for `get_cex()`
 const TIMEOUT_DUR: Duration = Duration::from_secs(300);
 
+pub enum CexError {
+    /// Successfully executed, but no counterexample because the property holds
+    NoCex,
+    /// Known benign error that fuzz testing should ignore
+    Benign,
+    /// Solver time out. This is expected on some inputs, but fuzz target need
+    /// to handle this by restarting the solver process.
+    Timeout,
+}
+
 /// Run the given future (producing `Result<Option<Env>>`), and return the
 /// counterexample if one was successfully generated.
 ///
-/// Panics on unexpected errors. Ignores certain expected errors, returning
-/// `None`. Also returns `None` if the property holds and there is no
-/// counterexample.
+/// Panics on unexpected errors. Expected errors, timeouts, and successful queries
+/// which do not produce a counter example are forwarded as `Err` results.
+/// These should not generally cause a fuzz target to fail. Callers should
+/// handle timeouts by restarting the solver process if they intend to make any
+/// subsequent queries.
 pub async fn get_cex(
     f: impl Future<Output = cedar_policy_symcc::err::Result<Option<Env>>>,
-) -> Option<Env> {
+) -> Result<Env, CexError> {
     match timeout(TIMEOUT_DUR, f).await {
-        Ok(Ok(None)) => None, // successfully executed, no counterexample because the property holds
-        Ok(Ok(Some(cex))) => Some(cex),
-        Err(err) => panic!(
-            "found a slow unit (solver took more than {secs:.2} sec) probably worth investigating: {err}",
-            secs = TIMEOUT_DUR.as_secs_f32()
-        ),
+        Ok(Ok(None)) => Err(CexError::NoCex), // successfully executed, no counterexample because the property holds
+        Ok(Ok(Some(cex))) => Ok(cex),
+        Err(err) => {
+            // Exceeded timeout for solver. Skip this and continue testing, it
+            // should still be reported as a slow-unit since out solver timeout
+            // is longer than libfuzzers default (10s, I think).
+            debug!(
+                "found a slow unit (solver took more than {secs:.2} sec) probably worth investigating: {err}",
+                secs = TIMEOUT_DUR.as_secs_f32()
+            );
+            Err(CexError::Timeout)
+        }
         Ok(Err(Error::SolverError(err))) => panic!("solver failed: {err}"),
         Ok(Err(Error::EncodeError(EncodeError::EncodeStringFailed(_))))
         | Ok(Err(Error::EncodeError(EncodeError::EncodePatternFailed(_)))) => {
             // Encoding errors are benign -- SMTLIB doesn't support full unicode
             // but our generators generate full unicode
-            None
+            Err(CexError::Benign)
         }
         Ok(Err(err)) => panic!("{err}"), // other errors are unexpected
     }

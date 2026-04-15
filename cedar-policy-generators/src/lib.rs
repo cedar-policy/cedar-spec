@@ -62,3 +62,6 @@ pub mod policy_set;
 
 /// A trait that specifies what methods other generators expect from a schema
 pub mod schema_gen;
+
+/// Generates Cedar types
+pub mod types;
