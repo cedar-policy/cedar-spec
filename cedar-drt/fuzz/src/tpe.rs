@@ -16,12 +16,18 @@
 
 //! Test utilities for type-directed partial evaluation fuzz targets
 
-use cedar_policy::{Entity, EntityUid, PartialEntities, PartialEntity, Schema};
+use cedar_policy::{
+    Entity, EntityId, EntityUid, PartialEntities, PartialEntity, PartialEntityUid, PartialRequest,
+    PolicySet, Request, Schema, Validator,
+};
 use cedar_policy_core::ast::{self, Value};
-use libfuzzer_sys::arbitrary::{self, Unstructured};
+use cedar_policy_generators::abac::ABACRequest;
+use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use ref_cast::RefCast;
 use std::collections::{BTreeMap, HashSet};
 use std::convert::TryFrom;
+
+use crate::abac;
 
 fn entity_to_partial_entity(
     entity: &Entity,
@@ -96,4 +102,92 @@ pub fn entities_to_partial_entities<'a>(
         schema,
     )
     .map_err(|_| arbitrary::Error::IncorrectFormat)
+}
+
+/// Input for TPE fuzz targets: an ABAC hierarchy, schema, and 8 associated partial requests.
+#[derive(Debug, Clone)]
+pub struct TpeFuzzTargetInput {
+    pub abac_input: abac::FuzzTargetInput<true>,
+    pub partial_requests: [PartialRequest; 8],
+    pub partial_entities: PartialEntities,
+}
+
+/// Construct a partial request from a concrete request, randomly dropping eids.
+pub fn make_partial_request(
+    req: &ABACRequest,
+    u: &mut Unstructured<'_>,
+    schema: &Schema,
+) -> arbitrary::Result<PartialRequest> {
+    PartialRequest::new(
+        PartialEntityUid::new(
+            req.principal.entity_type().clone().into(),
+            if u.ratio(1, 4)? {
+                None
+            } else {
+                Some(EntityId::new(req.principal.eid()))
+            },
+        ),
+        req.action.clone().into(),
+        PartialEntityUid::new(
+            req.resource.entity_type().clone().into(),
+            if u.ratio(1, 4)? {
+                None
+            } else {
+                Some(EntityId::new(req.resource.eid()))
+            },
+        ),
+        None,
+        schema,
+    )
+    .map_err(|_| arbitrary::Error::IncorrectFormat)
+}
+
+impl<'a> Arbitrary<'a> for TpeFuzzTargetInput {
+    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
+        let abac_input = abac::FuzzTargetInput::<true>::arbitrary(u)?;
+        let schema: Schema = abac_input
+            .schema
+            .clone()
+            .try_into()
+            .map_err(|_| arbitrary::Error::IncorrectFormat)?;
+        let partial_requests = abac_input
+            .requests
+            .iter()
+            .map(|req| make_partial_request(req, u, &schema))
+            .collect::<arbitrary::Result<Vec<_>>>()?
+            .try_into()
+            .unwrap();
+        let partial_entities =
+            entities_to_partial_entities(abac_input.entities.iter(), u, &schema)?;
+        Ok(Self {
+            abac_input,
+            partial_requests,
+            partial_entities,
+        })
+    }
+
+    fn try_size_hint(
+        depth: usize,
+    ) -> arbitrary::Result<(usize, Option<usize>), arbitrary::MaxRecursionReached> {
+        abac::FuzzTargetInput::<true>::try_size_hint(depth)
+    }
+}
+
+/// Whether a policyset passes strict validation.
+pub fn passes_policyset_validation(validator: &Validator, pset: &PolicySet) -> bool {
+    validator
+        .validate(pset, cedar_policy::ValidationMode::Strict)
+        .validation_passed()
+}
+
+/// Whether a request passes validation against the validator's schema.
+pub fn passes_request_validation(validator: &Validator, request: &Request) -> bool {
+    Request::new(
+        request.principal().unwrap().clone(),
+        request.action().unwrap().clone(),
+        request.resource().unwrap().clone(),
+        request.context().unwrap().clone(),
+        Some(validator.schema()),
+    )
+    .is_ok()
 }

@@ -19,6 +19,8 @@
     reason = "declares a broad array of FFI functions, some of which are not currently used in any fuzz targets but are declared for completeness"
 )]
 
+mod tpe;
+
 use crate::datatypes::{
     AuthorizationResponse, AuthorizationResponseInner, Env, ResultDef, Term, TimedDef, TimedResult,
     ValidationResponse,
@@ -277,6 +279,8 @@ unsafe extern "C" {
     ) -> *mut lean_object;
 
     fn batchedEvaluateFFI(req: *mut lean_object) -> *mut lean_object;
+
+    fn isAuthorizedPartial(req: *mut lean_object) -> *mut lean_object;
 
     fn initialize_Cedar_CedarFFI(builtin: u8, ob: *mut lean_object) -> *mut lean_object;
 
@@ -1250,6 +1254,7 @@ impl CedarLeanFfi {
             ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
         }
     }
+
     pub fn batched_evaluation(
         &self,
         policy: &Policy,

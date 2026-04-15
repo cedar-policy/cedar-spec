@@ -230,6 +230,133 @@ impl proto::RequestValidationRequest {
     }
 }
 
+pub mod tpe {
+    use cedar_policy::{PartialEntities, PartialRequest, PolicySet, Schema};
+
+    use super::proto;
+
+    /// Serialize a partial entity UID
+    impl proto::PartialEntityUid {
+        fn from_inner(peuid: &cedar_policy_core::tpe::request::PartialEntityUID) -> Self {
+            Self {
+                ty: Some(cedar_policy::proto::models::Name::from(&peuid.ty)),
+                id: peuid.eid.as_ref().map(|e| e.as_ref().to_string()),
+            }
+        }
+    }
+
+    /// Serialize a partial authorization request
+    impl proto::PartialAuthorizationRequest {
+        pub(crate) fn new(
+            schema: &Schema,
+            request: &PartialRequest,
+            entities: &PartialEntities,
+            policies: &PolicySet,
+        ) -> Self {
+            Self {
+                schema: Some(cedar_policy::proto::models::Schema::from(schema)),
+                policies: Some(cedar_policy::proto::models::PolicySet::from(policies)),
+                request: Some(proto::PartialRequest::from_inner(request.as_ref())),
+                entities: Some(proto::PartialEntities::from_inner(entities.as_ref())),
+            }
+        }
+    }
+
+    impl proto::PartialRequest {
+        fn from_inner(req: &cedar_policy_core::tpe::request::PartialRequest) -> Self {
+            use cedar_policy_core::ast::Expr;
+            let principal = req.get_principal();
+            let resource = req.get_resource();
+            let (context, has_context) = match req.get_context_attrs() {
+                Some(ctx) => (
+                    ctx.iter()
+                        .map(|(k, v)| {
+                            (
+                                k.to_string(),
+                                cedar_policy::proto::models::Expr::from(&Expr::from(v.clone())),
+                            )
+                        })
+                        .collect(),
+                    true,
+                ),
+                None => (Default::default(), false),
+            };
+            Self {
+                principal: Some(proto::PartialEntityUid::from_inner(&principal)),
+                action: Some(cedar_policy::proto::models::EntityUid::from(
+                    &req.get_action(),
+                )),
+                resource: Some(proto::PartialEntityUid::from_inner(&resource)),
+                context,
+                has_context,
+            }
+        }
+    }
+
+    impl proto::PartialEntities {
+        fn from_inner(entities: &cedar_policy_core::tpe::entities::PartialEntities) -> Self {
+            Self {
+                entities: entities
+                    .entities()
+                    .map(proto::PartialEntity::from_inner)
+                    .collect(),
+            }
+        }
+    }
+
+    impl proto::PartialEntity {
+        fn from_inner(entity: &cedar_policy_core::tpe::entities::PartialEntity) -> Self {
+            use cedar_policy_core::ast::Expr;
+            let (attrs, has_attrs) = match entity.attrs() {
+                Some(a) => (
+                    a.iter()
+                        .map(|(k, v)| {
+                            (
+                                k.to_string(),
+                                cedar_policy::proto::models::Expr::from(&Expr::from(v.clone())),
+                            )
+                        })
+                        .collect(),
+                    true,
+                ),
+                None => (Default::default(), false),
+            };
+            let (ancestors, has_ancestors) = match entity.ancestors() {
+                Some(a) => (
+                    a.iter()
+                        .map(cedar_policy::proto::models::EntityUid::from)
+                        .collect(),
+                    true,
+                ),
+                None => (Default::default(), false),
+            };
+            let (tags, has_tags) = match entity.tags() {
+                Some(t) => (
+                    t.iter()
+                        .map(|(k, v)| {
+                            (
+                                k.to_string(),
+                                cedar_policy::proto::models::Expr::from(&Expr::from(v.clone())),
+                            )
+                        })
+                        .collect(),
+                    true,
+                ),
+                None => (Default::default(), false),
+            };
+            Self {
+                uid: Some(cedar_policy::proto::models::EntityUid::from(entity.uid())),
+                attrs,
+                ancestors,
+                tags,
+                has_attrs,
+                has_ancestors,
+                has_tags,
+            }
+        }
+    }
+}
+
 impl proto::Uuf {
     pub(crate) fn new(uuf: &datatypes::Uuf) -> Self {
         Self {

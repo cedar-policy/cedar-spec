@@ -227,6 +227,12 @@ test = false
 doc = false
 
 [[bin]]
+name = "tpe-is-authorized-drt"
+path = "fuzz_targets/tpe-is-authorized-drt.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "tpe-pbt"
 path = "fuzz_targets/tpe-pbt.rs"
 test = false
