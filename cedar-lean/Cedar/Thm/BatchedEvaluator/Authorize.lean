@@ -90,9 +90,6 @@ theorem batched_authorize_loop_decision_agrees
       exact batched_authorize_loop_decision_agrees es h₀
         (residuals_equiv_preserved h₁ h₃ h₆) h₆ h₃ h_dec
 
-/--
-Extract the type environment and well-formedness proof from `isValidAndConsistent`.
--/
 theorem isValidAndConsistent_env
   {schema : Schema} {req : Request} {es : Entities}
   {preq : PartialRequest} {pes : PartialEntities} :

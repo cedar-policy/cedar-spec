@@ -14,8 +14,7 @@ open Cedar.Spec
 open Cedar.Data
 
 /-- A well behaved entity loader
-1. Loads all the requested entities, returning none for missing
-entities
+1. Loads all the requested entities, returning none for missing entities
 2. Refines the backing entity store
 
 The first condition is required for convergence of

@@ -53,16 +53,15 @@ The main correctness theorem for batched authorization:
 If the batched authorizer reaches a definitive decision, that decision
 agrees with the concrete authorizer.
 -/
-theorem batched_authorize_decision_agrees
+theorem batched_authorize_decision_eq_authorize
   {schema : Schema} {policies : List Policy} {req : Request}
   {es : Entities} {response : TPE.Response} {d : Decision} :
   EntityLoader.WellBehaved es loader →
   batchedAuthorize schema policies req loader iters = .ok response →
-  isValidAndConsistent schema req es req.asPartialRequest Map.empty = .ok () →
   response.decision = some d →
   (Spec.isAuthorized req es policies).decision = d
 := by
-  intro h_loader h_batched h_valid h_dec
+  intro h_loader h_batched h_dec
   simp only [batchedAuthorize] at h_batched
   cases h_mapM : policies.mapM (λ p =>
     ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p req.asPartialRequest Map.empty) with
@@ -73,6 +72,34 @@ theorem batched_authorize_decision_agrees
     rw [List.mapM_ok_iff_forall₂] at h_mapM
     have h_ref : RequestAndEntitiesRefine req es req.asPartialRequest Map.empty :=
       ⟨as_partial_request_refines, any_refines_empty_entities⟩
+
+    have : (Spec.isAuthorized req es policies).decision = d ∨ ∃ env,
+        schema.environment? req.asPartialRequest.principal.ty req.asPartialRequest.resource.ty req.asPartialRequest.action = .some env ∧
+        requestAndEntitiesIsValid env req.asPartialRequest Map.empty = true
+    := by
+      cases h_mapM
+      · unfold batchedAuthorizeLoop isAuthorized.isAuthorizedFromResiduals isAuthorized.satisfiedPolicies isAuthorized.residualPolicies isAuthorized.falsePolicies isAuthorized.errorPolicies at h_dec
+        simp at h_dec
+        rw [←h_dec]
+        have := default_deny req es []
+        simp [IsExplicitlyPermitted, HasSatisfiedEffect] at this
+        exact .inl this
+      · rename_i p rp ps rps _ _
+        rename_i h _
+        cases h₂ : evaluatePolicy schema p req.asPartialRequest Map.empty <;> simp [h₂] at h
+        simp [evaluatePolicy] at h₂
+        split at h₂ <;> grind
+
+    cases this ; case inl => assumption
+    rename_i henv
+    replace ⟨env, henv, henv₂⟩ := henv
+
+    have h_valid : isValidAndConsistent schema req es req.asPartialRequest Map.empty = .ok () := by
+      simp [isValidAndConsistent]
+      split
+      ·
+        sorry
+      · grind
     have ⟨env, h_schema_env, h_wf⟩ := isValidAndConsistent_env h_valid
     have h_sound := evaluatePolicies_equiv_and_well_typed h_mapM h_valid h_schema_env h_wf h_ref
     exact batched_authorize_loop_decision_agrees es h_loader h_sound h_ref h_wf h_dec
