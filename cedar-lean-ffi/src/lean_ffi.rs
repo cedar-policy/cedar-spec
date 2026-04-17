@@ -23,7 +23,7 @@ mod tpe;
 
 use crate::datatypes::{
     AuthorizationResponse, AuthorizationResponseInner, Env, ResultDef, Term, TimedDef, TimedResult,
-    ValidationResponse,
+    TpeResponse, TpeResponseInner, ValidationResponse,
 };
 use crate::err::FfiError;
 use crate::lean_object::{
@@ -33,7 +33,7 @@ use crate::lean_object::{
 use crate::messages::*;
 
 use cedar_policy::{
-    Decision, Effect, Entities, Expression, Policy, PolicySet, Request, RequestEnv, Schema,
+    Entities, Expression, Policy, PolicySet, Request, RequestEnv, Schema,
     ValidationMode,
 };
 use lean_sys::{
@@ -1225,15 +1225,12 @@ impl CedarLeanFfi {
     /// Calls the lean backend to perform batched evaluation on a single policy
     pub fn batched_evaluation_timed(
         &self,
-        policy: &Policy,
+        policyset: &PolicySet,
         schema: &Schema,
         request: &Request,
         entities: &Entities,
         iteration: u32,
-    ) -> Result<TimedResult<Option<Decision>>, FfiError> {
-        // We have to construct a policy set because we don't have protobuf encoding of policy yet
-        let policyset = PolicySet::from_policies(std::iter::once(policy.clone()))
-            .expect("policy set construction should succeed");
+    ) -> Result<TimedResult<TpeResponse>, FfiError> {
         let response = unsafe {
             call_lean_ffi_takes_protobuf(
                 batchedEvaluateFFI,
@@ -1242,27 +1239,26 @@ impl CedarLeanFfi {
                 ),
             )
         };
-        match response.as_borrowed().deserialize_into()? {
-            ResultDef::Ok(res) => Ok(TimedResult::from_def(res).transform(|b: Option<bool>| {
-                match (b, policy.effect()) {
-                    (Some(true), Effect::Permit) => Some(Decision::Allow),
-                    (Some(_), _) | (None, Effect::Forbid) => Some(Decision::Deny),
-                    // We can't make any conclusions for this case
-                    (None, Effect::Permit) => None,
-                }
-            })),
-            ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
-        }
+        println!("{:?}", response);
+        response
+            .as_borrowed()
+            .deserialize_into::<ResultDef<TimedDef<ResultDef<TpeResponseInner>>>>()?
+            .to_result()
+            .map_err(FfiError::LeanBackendError)?
+            .to_timed_result()
+            .transform_m(ResultDef::to_result)
+            .map_err(FfiError::LeanBackendError)?
+            .transform_m(TpeResponse::from_inner)
     }
 
     pub fn batched_evaluation(
         &self,
-        policy: &Policy,
+        policy: &PolicySet,
         schema: &Schema,
         request: &Request,
         entities: &Entities,
         iteration: u32,
-    ) -> Result<Option<Decision>, FfiError> {
+    ) -> Result<TpeResponse, FfiError> {
         Ok(self
             .batched_evaluation_timed(policy, schema, request, entities, iteration)?
             .take_result())
@@ -2204,7 +2200,7 @@ mod test {
         "#,
         )
         .expect("valid schema");
-        let policy = Policy::from_str(
+        let policy = PolicySet::from_str(
             r#"
         // Rule 1a: organization-level access
 permit (
@@ -2317,10 +2313,10 @@ when
         )
         .expect("valid request");
         let ffi = CedarLeanFfi::new();
-        assert_matches!(
-            ffi.batched_evaluation(&policy, &schema, &request, &entities, 3),
-            Ok(Some(cedar_policy::Decision::Allow))
-        );
+        let response = ffi
+            .batched_evaluation(&policy, &schema, &request, &entities, 3)
+            .unwrap();
+        assert_eq!(response.decision, Some(cedar_policy::Decision::Allow));
     }
 
     #[test]

@@ -94,10 +94,13 @@ structure Response where
 
 def isAuthorized (schema : Schema) (policies : List Policy) (req : PartialRequest) (es : PartialEntities) : Except Error Response :=
   do
-    let residualPolicies ← policies.mapM (λ p => do
-      pure ⟨p.id, p.effect, ← evaluatePolicy schema p req es⟩)
+    let residualPolicies ← evaluatePolicies schema policies req es
     pure (isAuthorizedFromResiduals residualPolicies)
   where
+    evaluatePolicies (schema : Schema) (policies : List Policy) (req : PartialRequest) (es : PartialEntities) : Except Error (List ResidualPolicy) :=
+      policies.mapM (λ p => do
+        pure ⟨p.id, p.effect, ← evaluatePolicy schema p req es⟩)
+
     satisfiedPolicies (effect : Effect) (policies : List ResidualPolicy) : Set PolicyID :=
       Set.make (policies.filterMap (ResidualPolicy.satisfiedWithEffect effect))
 

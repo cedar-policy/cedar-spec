@@ -1,0 +1,159 @@
+import Cedar.TPE.Input
+import Cedar.TPE.BatchedEvaluator
+import Cedar.Spec
+import Cedar.Validation
+import Cedar.Thm.Validation
+import Cedar.Thm.TPE
+import Cedar.Thm.Authorization
+import Cedar.Thm.BatchedEvaluator.Common
+
+/-!
+Soundness of batched authorization: if the batched authorizer reaches a
+definitive decision, that decision agrees with the concrete authorizer.
+-/
+
+namespace Cedar.Thm
+
+open Cedar.TPE
+open Cedar.Spec
+open Cedar.Validation
+open Cedar.Thm
+open Cedar.Data
+
+def ResidualPoliciesEquivAndWellTyped
+  (env : TypeEnv)
+  (policies : List Policy)
+  (residuals : List ResidualPolicy)
+  (req : Request)
+  (es : Entities) : Prop :=
+  List.Forall₂ (λ p rp =>
+    rp.id = p.id ∧
+    rp.effect = p.effect ∧
+    (rp.residual.evaluate req es).toOption = (Spec.evaluate p.toExpr req es).toOption ∧
+    Residual.WellTyped env rp.residual
+  ) policies residuals
+
+theorem equiv_well_typed_implies_equiv
+  (h : ResidualPoliciesEquivAndWellTyped env policies residuals req es) :
+  ResidualPoliciesEquiv policies residuals req es :=
+  List.Forall₂.imp (fun _ _ ⟨a, b, c, _⟩ => ⟨a, b, c⟩) h
+
+theorem residuals_equiv_preserved
+  {env : TypeEnv} {policies : List Policy} {residuals : List ResidualPolicy}
+  {req : Request} {es : Entities} {pes : PartialEntities}
+  (h_sound : ResidualPoliciesEquivAndWellTyped env policies residuals req es)
+  (h_wf : InstanceOfWellFormedEnvironment req es env)
+  (h_ref : RequestAndEntitiesRefine req es req.asPartialRequest pes) :
+  ResidualPoliciesEquivAndWellTyped env policies
+    (residuals.map λ rp => ⟨rp.id, rp.effect, Cedar.TPE.evaluate rp.residual req.asPartialRequest pes⟩)
+    req es
+:= by
+  unfold ResidualPoliciesEquivAndWellTyped at *
+  rw [← List.map_id policies]
+  exact List.map_preserves_forall₂ (fun p rp ⟨h_id, h_eff, h_eval, h_wt⟩ =>
+    ⟨h_id, h_eff,
+     by rw [← partial_evaluate_is_sound h_wt h_wf h_ref]; exact h_eval,
+     partial_eval_preserves_well_typed h_wf h_ref h_wt⟩
+  ) h_sound
+
+theorem batched_authorize_loop_decision_agrees
+  {policies : List Policy} {residuals : List ResidualPolicy} {req : Request}
+  (es : Entities) {current_store : PartialEntities} {env : TypeEnv} {d : Decision} :
+  EntityLoader.WellBehaved es loader →
+  ResidualPoliciesEquivAndWellTyped env policies residuals req es →
+  RequestAndEntitiesRefine req es req.asPartialRequest current_store →
+  InstanceOfWellFormedEnvironment req es env →
+  (batchedAuthorizeLoop residuals req loader current_store iters).decision = some d →
+  (Spec.isAuthorized req es policies).decision = d
+:= by
+  intro h₀ h₁ h₂ h₃ h_dec
+  unfold batchedAuthorizeLoop at h_dec
+  simp only at h_dec
+  split at h_dec
+  case isTrue =>
+    exact residuals_decision_agrees (equiv_well_typed_implies_equiv h₁) h_dec
+  case isFalse =>
+    cases iters with
+    | zero =>
+      exact residuals_decision_agrees (equiv_well_typed_implies_equiv h₁) h_dec
+    | succ n =>
+      have h₆ : RequestAndEntitiesRefine req es req.asPartialRequest
+        (((loader
+          (Set.filter (fun uid => (Map.find? current_store uid).isNone)
+            (List.mapUnion (fun rp => rp.residual.allLiteralUIDs) residuals))).mapOnValues
+            MaybeEntityData.asPartial) ++ current_store) := by
+        constructor
+        · exact as_partial_request_refines
+        · apply entities_refine_append
+          · exact h₂.right
+          · exact (h₀ _).2
+      exact batched_authorize_loop_decision_agrees es h₀
+        (residuals_equiv_preserved h₁ h₃ h₆) h₆ h₃ h_dec
+
+/--
+Extract the type environment and well-formedness proof from `isValidAndConsistent`.
+-/
+theorem isValidAndConsistent_env
+  {schema : Schema} {req : Request} {es : Entities}
+  {preq : PartialRequest} {pes : PartialEntities} :
+  isValidAndConsistent schema req es preq pes = .ok () →
+  ∃ env,
+    schema.environment? preq.principal.ty preq.resource.ty preq.action = .some env ∧
+    InstanceOfWellFormedEnvironment req es env
+:= by
+  intro h_valid
+  simp only [isValidAndConsistent] at h_valid
+  split at h_valid <;> try cases h_valid
+  rename_i env heq
+  exists env; refine ⟨heq, ?_⟩
+  rcases do_eq_ok₂ h_valid with ⟨h₁, h₂⟩
+  simp only [isValidAndConsistent.requestIsConsistent, Bool.or_eq_true, Bool.not_eq_eq_eq_not,
+    Bool.not_true, Bool.and_eq_true, decide_eq_true_eq] at h₁
+  split at h₁ <;> try cases h₁
+  rename_i h_guard; simp only [not_or, Bool.not_eq_false] at h_guard
+  simp only [isValidAndConsistent.entitiesIsConsistent, Bool.or_eq_true, Bool.not_eq_eq_eq_not,
+    Bool.not_true] at h₂
+  split at h₂ <;> try cases h₂
+  rename_i heq₄; simp only [not_or, Bool.not_eq_false] at heq₄
+  rcases heq₄ with ⟨_, heq₄⟩
+  simp only [Except.isOk, Except.toBool] at heq₄
+  split at heq₄ <;> cases heq₄; rename_i heq₄
+  simp only [bind, Except.bind, isValidAndConsistent.envIsWellFormed, Bool.not_eq_eq_eq_not,
+    Bool.not_true] at h₂
+  split at h₂ <;> try cases h₂
+  simp only [ite_eq_right_iff, reduceCtorEq, imp_false, Bool.not_eq_false] at h₂
+  simp only [Except.isOk, Except.toBool] at h₂
+  split at h₂ <;> cases h₂; rename_i heq₅
+  exact instance_of_well_formed_env heq₅ h_guard.2 heq₄
+
+theorem evaluatePolicies_equiv_and_well_typed
+  {schema : Schema} {policies : List Policy} {rps : List ResidualPolicy}
+  {req : Request} {es : Entities} {preq : PartialRequest}
+  {pes : PartialEntities} {env : TypeEnv} :
+  List.Forall₂ (λ p rp => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes = .ok rp) policies rps →
+  isValidAndConsistent schema req es preq pes = .ok () →
+  schema.environment? preq.principal.ty preq.resource.ty preq.action = .some env →
+  InstanceOfWellFormedEnvironment req es env →
+  RequestAndEntitiesRefine req es preq pes →
+  ResidualPoliciesEquivAndWellTyped env policies rps req es
+:= by
+  intro h_mapM h_valid h_schema_env h_wf h_ref
+  unfold ResidualPoliciesEquivAndWellTyped
+  apply List.Forall₂.imp _ h_mapM
+  intro p rp h
+  cases h_ep : evaluatePolicy schema p preq pes <;> simp only [h_ep, Except.map_error, reduceCtorEq] at h
+  simp only [Except.map_ok, Except.ok.injEq] at h
+  subst h
+  refine ⟨rfl, rfl, (partial_evaluate_policy_is_sound h_ep h_valid).symm, ?_⟩
+  simp only [evaluatePolicy, h_schema_env, List.empty_eq] at h_ep
+  split at h_ep <;> try cases h_ep
+  simp only [do_ok_eq_ok, Prod.exists, exists_and_right] at h_ep
+  rcases h_ep with ⟨_, ⟨_, h₁₁⟩, h₁₂⟩
+  simp only [Except.mapError] at h₁₁
+  split at h₁₁ <;> try cases h₁₁
+  rename_i ty _ _ heq₂
+  subst h₁₂
+  exact partial_eval_preserves_well_typed h_wf h_ref
+    (conversion_preserves_typedness (typechecked_is_well_typed_after_lifting heq₂))
+
+end Cedar.Thm
