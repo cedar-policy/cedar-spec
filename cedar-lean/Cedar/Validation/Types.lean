@@ -171,7 +171,13 @@ public structure ActionSchemaEntry where
   context : RecordType
 deriving Repr, Inhabited
 
+public def ActionSchemaEntry.entityData (action : ActionSchemaEntry) : EntityData :=
+  EntityData.mk Map.empty action.ancestors Map.empty
+
 public abbrev ActionSchema := Map EntityUID ActionSchemaEntry
+
+public def ActionSchema.asEntities (acts : ActionSchema) : Entities :=
+  acts.mapOnValues ActionSchemaEntry.entityData
 
 public def ActionSchema.actionType? (acts: ActionSchema) (ety : EntityType) : Bool :=
   acts.keys.any (EntityUID.ty · == ety)

@@ -1239,7 +1239,6 @@ impl CedarLeanFfi {
                 ),
             )
         };
-        println!("{:?}", response);
         response
             .as_borrowed()
             .deserialize_into::<ResultDef<TimedDef<ResultDef<TpeResponseInner>>>>()?
