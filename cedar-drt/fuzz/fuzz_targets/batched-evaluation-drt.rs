@@ -19,7 +19,7 @@ use cedar_drt::logger::initialize_log;
 use cedar_drt_inner::{abac::FuzzTargetInput, fuzz_target};
 
 use cedar_lean_ffi::CedarLeanFfi;
-use cedar_policy::{Policy, PolicySet, Schema, TestEntityLoader};
+use cedar_policy::{Schema, TestEntityLoader};
 
 // This target tests a property that batched evaluation, if succeeds, should
 // produce the same authorization decision based on the Lean model output
@@ -28,9 +28,7 @@ fuzz_target!(|input: FuzzTargetInput<true>| {
     initialize_log();
 
     if let Ok(schema) = Schema::try_from(input.schema) {
-        let policy = Policy::from(input.policy);
-        let mut policyset = PolicySet::new();
-        policyset.add(policy.clone()).unwrap();
+        let policyset = input.policy.into_policy_set();
         let mut loader = TestEntityLoader::new(&input.entities);
         log::debug!("policy: {policyset}");
         let iteration = (FuzzTargetInput::<true>::settings().max_depth + 1) as u32;
@@ -44,9 +42,9 @@ fuzz_target!(|input: FuzzTargetInput<true>| {
             if let Ok(rust_decision) =
                 policyset.is_authorized_batched(&req, &schema, &mut loader, iteration)
             {
-                match ffi.batched_evaluation(&policy, &schema, &req, &input.entities, iteration) {
+                match ffi.batched_evaluation(&policyset, &schema, &req, &input.entities, iteration) {
                     Ok(lean_decision) => {
-                        assert_eq!(lean_decision, Some(rust_decision));
+                        assert_eq!(lean_decision.decision, Some(rust_decision));
                     }
                     Err(err) => {
                         panic!("lean failed but rust didn't: {err}");
