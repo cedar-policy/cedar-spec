@@ -50,58 +50,25 @@ theorem partial_evaluate_policy_is_sound
   {req : Request}
   {es : Entities}
   {preq : PartialRequest}
-  {pes : PartialEntities} :
-  evaluatePolicy schema policy preq pes = .ok residual   →
-  isValidAndConsistent schema req es preq pes = .ok () →
+  {pes : PartialEntities}
+  {env : TypeEnv} :
+  evaluatePolicy schema policy preq pes = .ok residual →
+  schema.environment? preq.principal.ty preq.resource.ty preq.action = .some env →
+  InstanceOfWellFormedEnvironment req es env →
+  RequestAndEntitiesRefine req es preq pes →
   (Spec.evaluate policy.toExpr req es).toOption = (Residual.evaluate residual req es).toOption
 := by
-  intro h₁ h₂
-  have h₃ := consistent_checks_ensure_refinement h₂
-  simp [evaluatePolicy] at h₁
-  split at h₁ <;> try cases h₁
+  intro h₁ h_schema_env h₄ h₃
+  simp [evaluatePolicy, h_schema_env] at h₁
   split at h₁ <;> try cases h₁
   simp [do_ok_eq_ok] at h₁
   rcases h₁ with ⟨_, ⟨_, h₁₁⟩, h₁₂⟩
   simp [Except.mapError] at h₁₁
   split at h₁₁ <;> try cases h₁₁
-  rename_i env heq₁ _ ty _ _ heq₂
-  simp [isValidAndConsistent] at h₂
-  split at h₂ <;> try cases h₂
-  rename_i heq₃
-  simp [heq₁] at heq₃
-  subst heq₃
-  have ⟨h₂₁, h₂₂⟩ := do_eq_ok₂ h₂
-  simp only [isValidAndConsistent.requestIsConsistent, Bool.or_eq_true, Bool.not_eq_eq_eq_not,
-    Bool.not_true, Bool.and_eq_true, decide_eq_true_eq] at h₂₁
-  split at h₂₁ <;> try cases h₂₁
-  rename_i heq₃
-  simp only [not_or, Bool.not_eq_false] at heq₃
-  rcases heq₃ with ⟨_, heq₃⟩
-  simp only [isValidAndConsistent.entitiesIsConsistent, Bool.or_eq_true, Bool.not_eq_eq_eq_not,
-    Bool.not_true] at h₂₂
-  split at h₂₂ <;> try cases h₂₂
-  rename_i heq₄
-  simp only [not_or, Bool.not_eq_false] at heq₄
-  rcases heq₄ with ⟨_, heq₄⟩
-  simp [Except.isOk, Except.toBool] at heq₄
-  split at heq₄ <;> cases heq₄
-  rename_i heq₄
-  simp only [bind, Except.bind, isValidAndConsistent.envIsWellFormed, Bool.not_eq_eq_eq_not,
-    Bool.not_true] at h₂₂
-  split at h₂₂ <;> try cases h₂₂
-  simp only [ite_eq_right_iff, reduceCtorEq, imp_false, Bool.not_eq_false] at h₂₂
-  have heq₅ := h₂₂
-  simp [Except.isOk, Except.toBool] at heq₅
-  split at heq₅ <;> cases heq₅
-  rename_i heq₅
-  have h₄ := instance_of_well_formed_env heq₅ heq₃ heq₄
+  rename_i ty _ _ heq₂
   have h₅ := typechecked_is_well_typed_after_lifting heq₂
-  let old_residual := (TypedExpr.toResidual ty.liftBoolTypes)
-
-  have h₉ : Residual.WellTyped env old_residual := by {
-    have h := conversion_preserves_typedness h₅
-    exact h
-  }
+  have h₉ : Residual.WellTyped env (TypedExpr.toResidual ty.liftBoolTypes) :=
+    conversion_preserves_typedness h₅
   have h₆ := partial_evaluate_is_sound h₉ h₄ h₃
   subst h₁₂
   have h₇ := type_of_preserves_evaluation_results (empty_capabilities_invariant req es) h₄ heq₂
@@ -113,8 +80,6 @@ theorem partial_evaluate_policy_is_sound
     rw [←h₄]
     exact substitute_action_preserves_evaluation policy.toExpr req es
   simp [h₈] at h₇
-  rw [h₇, type_lifting_preserves_expr]
-  rw [← h₆]
-  subst old_residual
+  rw [h₇, type_lifting_preserves_expr, ← h₆]
   congr
   apply conversion_preserves_evaluation

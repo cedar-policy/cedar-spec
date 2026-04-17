@@ -46,6 +46,39 @@ def ResidualPoliciesEquiv
     (rp.residual.evaluate req es).toOption = (Spec.evaluate p.toExpr req es).toOption
   ) policies residuals
 
+theorem isValidAndConsistent_env
+  {schema : Schema} {req : Request} {es : Entities}
+  {preq : PartialRequest} {pes : PartialEntities} :
+  isValidAndConsistent schema req es preq pes = .ok () →
+  ∃ env,
+    schema.environment? preq.principal.ty preq.resource.ty preq.action = .some env ∧
+    InstanceOfWellFormedEnvironment req es env
+:= by
+  intro h_valid
+  simp only [isValidAndConsistent] at h_valid
+  split at h_valid <;> try cases h_valid
+  rename_i env heq
+  exists env; refine ⟨heq, ?_⟩
+  rcases do_eq_ok₂ h_valid with ⟨h₁, h₂⟩
+  simp only [isValidAndConsistent.requestIsConsistent, Bool.or_eq_true, Bool.not_eq_eq_eq_not,
+    Bool.not_true, Bool.and_eq_true, decide_eq_true_eq] at h₁
+  split at h₁ <;> try cases h₁
+  rename_i h_guard; simp only [not_or, Bool.not_eq_false] at h_guard
+  simp only [isValidAndConsistent.entitiesIsConsistent, Bool.or_eq_true, Bool.not_eq_eq_eq_not,
+    Bool.not_true] at h₂
+  split at h₂ <;> try cases h₂
+  rename_i heq₄; simp only [not_or, Bool.not_eq_false] at heq₄
+  rcases heq₄ with ⟨_, heq₄⟩
+  simp only [Except.isOk, Except.toBool] at heq₄
+  split at heq₄ <;> cases heq₄; rename_i heq₄
+  simp only [bind, Except.bind, isValidAndConsistent.envIsWellFormed, Bool.not_eq_eq_eq_not,
+    Bool.not_true] at h₂
+  split at h₂ <;> try cases h₂
+  simp only [ite_eq_right_iff, reduceCtorEq, imp_false, Bool.not_eq_false] at h₂
+  simp only [Except.isOk, Except.toBool] at h₂
+  split at h₂ <;> cases h₂; rename_i heq₅
+  exact instance_of_well_formed_env heq₅ h_guard.2 heq₄
+
 theorem evaluatePolicies_residuals_equiv
   {schema : Schema}
   {policies : List Policy}
@@ -58,13 +91,15 @@ theorem evaluatePolicies_residuals_equiv
   (h : isAuthorized.evaluatePolicies schema policies preq pes = Except.ok rps) :
   ResidualPoliciesEquiv policies rps req es
 := by
+  have h_ref := consistent_checks_ensure_refinement hv
+  have ⟨env, h_schema_env, h_wf⟩ := isValidAndConsistent_env hv
   simp only [isAuthorized.evaluatePolicies, bind_pure_comp, List.mapM_ok_iff_forall₂] at h
   apply List.Forall₂.imp _ h
   intro p rp h₂
   cases h_ep : evaluatePolicy schema p preq pes <;> simp only [h_ep, Except.map_error, reduceCtorEq] at h₂
   simp only [Except.map_ok, Except.ok.injEq] at h₂
   simp only [true_and, ←h₂]
-  exact (partial_evaluate_policy_is_sound h_ep hv).symm
+  exact (partial_evaluate_policy_is_sound h_ep h_schema_env h_wf h_ref).symm
 
 theorem reauthorize_satisfied_policies_equiv
   {policies : List Policy}

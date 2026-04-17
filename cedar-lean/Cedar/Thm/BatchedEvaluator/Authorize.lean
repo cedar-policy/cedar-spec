@@ -90,58 +90,24 @@ theorem batched_authorize_loop_decision_agrees
       exact batched_authorize_loop_decision_agrees es h₀
         (residuals_equiv_preserved h₁ h₃ h₆) h₆ h₃ h_dec
 
-theorem isValidAndConsistent_env
-  {schema : Schema} {req : Request} {es : Entities}
-  {preq : PartialRequest} {pes : PartialEntities} :
-  isValidAndConsistent schema req es preq pes = .ok () →
-  ∃ env,
-    schema.environment? preq.principal.ty preq.resource.ty preq.action = .some env ∧
-    InstanceOfWellFormedEnvironment req es env
-:= by
-  intro h_valid
-  simp only [isValidAndConsistent] at h_valid
-  split at h_valid <;> try cases h_valid
-  rename_i env heq
-  exists env; refine ⟨heq, ?_⟩
-  rcases do_eq_ok₂ h_valid with ⟨h₁, h₂⟩
-  simp only [isValidAndConsistent.requestIsConsistent, Bool.or_eq_true, Bool.not_eq_eq_eq_not,
-    Bool.not_true, Bool.and_eq_true, decide_eq_true_eq] at h₁
-  split at h₁ <;> try cases h₁
-  rename_i h_guard; simp only [not_or, Bool.not_eq_false] at h_guard
-  simp only [isValidAndConsistent.entitiesIsConsistent, Bool.or_eq_true, Bool.not_eq_eq_eq_not,
-    Bool.not_true] at h₂
-  split at h₂ <;> try cases h₂
-  rename_i heq₄; simp only [not_or, Bool.not_eq_false] at heq₄
-  rcases heq₄ with ⟨_, heq₄⟩
-  simp only [Except.isOk, Except.toBool] at heq₄
-  split at heq₄ <;> cases heq₄; rename_i heq₄
-  simp only [bind, Except.bind, isValidAndConsistent.envIsWellFormed, Bool.not_eq_eq_eq_not,
-    Bool.not_true] at h₂
-  split at h₂ <;> try cases h₂
-  simp only [ite_eq_right_iff, reduceCtorEq, imp_false, Bool.not_eq_false] at h₂
-  simp only [Except.isOk, Except.toBool] at h₂
-  split at h₂ <;> cases h₂; rename_i heq₅
-  exact instance_of_well_formed_env heq₅ h_guard.2 heq₄
-
 theorem evaluatePolicies_equiv_and_well_typed
   {schema : Schema} {policies : List Policy} {rps : List ResidualPolicy}
   {req : Request} {es : Entities} {preq : PartialRequest}
   {pes : PartialEntities} {env : TypeEnv} :
   List.Forall₂ (λ p rp => ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p preq pes = .ok rp) policies rps →
-  isValidAndConsistent schema req es preq pes = .ok () →
   schema.environment? preq.principal.ty preq.resource.ty preq.action = .some env →
   InstanceOfWellFormedEnvironment req es env →
   RequestAndEntitiesRefine req es preq pes →
   ResidualPoliciesEquivAndWellTyped env policies rps req es
 := by
-  intro h_mapM h_valid h_schema_env h_wf h_ref
+  intro h_mapM h_schema_env h_wf h_ref
   unfold ResidualPoliciesEquivAndWellTyped
   apply List.Forall₂.imp _ h_mapM
   intro p rp h
   cases h_ep : evaluatePolicy schema p preq pes <;> simp only [h_ep, Except.map_error, reduceCtorEq] at h
   simp only [Except.map_ok, Except.ok.injEq] at h
   subst h
-  refine ⟨rfl, rfl, (partial_evaluate_policy_is_sound h_ep h_valid).symm, ?_⟩
+  refine ⟨rfl, rfl, (partial_evaluate_policy_is_sound h_ep h_schema_env h_wf h_ref).symm, ?_⟩
   simp only [evaluatePolicy, h_schema_env, List.empty_eq] at h_ep
   split at h_ep <;> try cases h_ep
   simp only [do_ok_eq_ok, Prod.exists, exists_and_right] at h_ep
