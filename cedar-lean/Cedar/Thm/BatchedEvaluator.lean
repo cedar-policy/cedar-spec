@@ -52,18 +52,23 @@ theorem batched_eval_eq_evaluate
 The main correctness theorem for batched authorization:
 If the batched authorizer reaches a definitive decision, that decision
 agrees with the concrete authorizer.
+
+Request well-typedness is inferred from `batchedAuthorize` succeeding (which
+internally checks `requestAndEntitiesIsValid`). Entity and schema
+well-typedness are stated in terms of the boolean validation functions
+`schema.validateWellFormed` and `validateEntities`.
 -/
 theorem batched_authorize_decision_eq_authorize
   {schema : Schema} {policies : List Policy} {req : Request}
-  {es : Entities} {response : TPE.Response} {d : Decision} {env : TypeEnv} :
+  {es : Entities} {response : TPE.Response} {d : Decision} :
   EntityLoader.WellBehaved es loader →
   batchedAuthorize schema policies req loader iters = .ok response →
-  schema.environment? req.asPartialRequest.principal.ty req.asPartialRequest.resource.ty req.asPartialRequest.action = .some env →
-  InstanceOfWellFormedEnvironment req es env →
+  schema.validateWellFormed = .ok () →
+  validateEntities schema es = .ok () →
   response.decision = some d →
   (Spec.isAuthorized req es policies).decision = d
 := by
-  intro h_loader h_batched h_schema_env h_wf h_dec
+  intro h_loader h_batched h_schema_wf h_entities h_dec
   simp only [batchedAuthorize] at h_batched
   cases h_mapM : policies.mapM (λ p =>
     ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p req.asPartialRequest Map.empty) with
@@ -74,5 +79,18 @@ theorem batched_authorize_decision_eq_authorize
     rw [List.mapM_ok_iff_forall₂] at h_mapM
     have h_ref : RequestAndEntitiesRefine req es req.asPartialRequest Map.empty :=
       ⟨as_partial_request_refines, any_refines_empty_entities⟩
-    have h_sound := evaluatePolicies_equiv_and_well_typed h_mapM h_schema_env h_wf h_ref
-    exact batched_authorize_loop_decision_agrees es h_loader h_sound h_ref h_wf h_dec
+    match policies, h_mapM with
+    | [], .nil =>
+      rw [batchedAuthorizeLoop_nil_decision] at h_dec
+      exact residuals_decision_agrees .nil h_dec
+    | p :: _, .cons h_first h_rest =>
+      have h_ep_ok : ∃ r, evaluatePolicy schema p req.asPartialRequest Map.empty = .ok r := by
+        cases h_ep : evaluatePolicy schema p req.asPartialRequest Map.empty with
+        | ok r => exact ⟨r, rfl⟩
+        | error e => simp [h_ep, Except.map_error] at h_first
+      obtain ⟨r, h_ep⟩ := h_ep_ok
+      obtain ⟨env, h_schema_env, h_wf⟩ :=
+        evaluatePolicy_ok_implies_well_formed_env h_ep h_schema_wf h_entities
+      exact batched_authorize_loop_decision_agrees es h_loader
+        (evaluatePolicies_equiv_and_well_typed (.cons h_first h_rest) h_schema_env h_wf h_ref)
+        h_ref h_wf h_dec
