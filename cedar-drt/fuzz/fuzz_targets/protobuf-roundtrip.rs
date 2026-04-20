@@ -19,7 +19,7 @@
 use cedar_drt_inner::roundtrip_entities;
 use cedar_drt_inner::{fuzz_target, schemas::Equiv};
 
-use cedar_policy::{Entities, Entity, Policy, PolicySet, Request, Schema, proto};
+use cedar_policy::{Entities, Entity, PolicySet, Request, Schema, proto};
 
 use cedar_policy_generators::schema_gen::SchemaGen;
 use libfuzzer_sys::arbitrary::{self, MaxRecursionReached};
@@ -81,9 +81,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 }
 
 fuzz_target!(|input: FuzzTargetInput| {
-    let policy = Policy::from(input.policy);
-    let mut policies = PolicySet::new();
-    policies.add(policy).expect("Failed to add policy");
+    let policies = input.policy.into_policy_set();
     let request = Request::from(input.request);
 
     roundtrip_policies(policies);

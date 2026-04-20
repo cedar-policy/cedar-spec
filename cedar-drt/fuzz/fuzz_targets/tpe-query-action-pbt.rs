@@ -18,7 +18,7 @@
 use cedar_drt::logger::initialize_log;
 use cedar_drt_inner::{abac, fuzz_target, tpe::entities_to_partial_entities};
 use cedar_policy::{
-    ActionQueryRequest, Decision, EntityId, PartialEntities, PartialEntityUid, PolicySet, Request,
+    ActionQueryRequest, Decision, EntityId, PartialEntities, PartialEntityUid, Request,
     ValidationMode, Validator,
 };
 use cedar_policy_generators::abac::ABACRequest;
@@ -99,8 +99,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
 
-    let mut policyset = PolicySet::new();
-    policyset.add(input.abac_input.policy.into()).unwrap();
+    let policyset = input.abac_input.policy.into_policy_set();
 
     let cedar_schema = cedar_policy::Schema::try_from(input.abac_input.schema.clone()).unwrap();
 

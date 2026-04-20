@@ -20,6 +20,7 @@ use cedar_drt_inner::{abac::FuzzTargetInput, fuzz_target};
 
 use cedar_lean_ffi::CedarLeanFfi;
 use cedar_policy::{Policy, PolicySet, Schema, TestEntityLoader};
+use cedar_policy_generators::{abac::ABACPolicy, policy::GeneratedPolicy};
 
 // This target tests a property that batched evaluation, if succeeds, should
 // produce the same authorization decision based on the Lean model output
@@ -28,7 +29,13 @@ fuzz_target!(|input: FuzzTargetInput<true>| {
     initialize_log();
 
     if let Ok(schema) = Schema::try_from(input.schema) {
-        let policy = Policy::from(input.policy);
+        let ABACPolicy(GeneratedPolicy::Static(policy)) = input.policy else {
+            panic!(
+                "batched-evaluation-drt needs #932 to support linked policies\n{:?}",
+                input.policy
+            )
+        };
+        let policy = Policy::from(policy);
         let mut policyset = PolicySet::new();
         policyset.add(policy).unwrap();
         let mut loader = TestEntityLoader::new(&input.entities);

@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 use crate::hierarchy::Hierarchy;
-use crate::policy::GeneratedPolicy;
+use crate::policy::GeneratedTemplate;
 use crate::schema::Schema;
+use crate::schema_gen::SchemaGen;
 use arbitrary::Unstructured;
 use cedar_policy_core::ast;
 use cedar_policy_core::ast::PolicyID;
@@ -30,7 +31,7 @@ const MAX_LENGTH: usize = 6;
 
 /// Data structure representing a set of generated templates and static policies.
 #[derive(Debug, Clone, Serialize)]
-pub struct GeneratedPolicySet(Vec<GeneratedPolicy>);
+pub struct GeneratedPolicySet(Vec<GeneratedTemplate>);
 
 impl GeneratedPolicySet {
     /// Generate an arbitrary [`GeneratedPolicySet`]
@@ -41,13 +42,13 @@ impl GeneratedPolicySet {
     ) -> arbitrary::Result<Self> {
         let mut ids: HashSet<PolicyID> = HashSet::new();
         let len = u.int_in_range(MIN_LENGTH..=MAX_LENGTH)?;
-        let mut policies: Vec<GeneratedPolicy> = Vec::with_capacity(len);
+        let mut policies: Vec<GeneratedTemplate> = Vec::with_capacity(len);
         for _ in 0..len {
             let id: PolicyID = u.arbitrary()?;
             // Skip duplicate IDs
             if ids.insert(id.clone()) {
                 let abac_constraints = schema.arbitrary_abac_constraints(hierarchy, u)?;
-                let policy = GeneratedPolicy::arbitrary_for_hierarchy(
+                let policy = GeneratedTemplate::arbitrary_for_hierarchy(
                     Some(id),
                     Some(schema),
                     hierarchy,

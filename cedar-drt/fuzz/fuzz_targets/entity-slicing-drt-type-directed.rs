@@ -20,8 +20,7 @@ use cedar_drt::logger::initialize_log;
 use cedar_drt_inner::{abac::FuzzTargetInput, fuzz_target};
 
 use cedar_policy::{
-    Authorizer, Entities, EntityManifestError, Policy, PolicySet, Request, Schema, Validator,
-    compute_entity_manifest,
+    Authorizer, Entities, EntityManifestError, Request, Schema, Validator, compute_entity_manifest,
 };
 
 use log::debug;
@@ -32,9 +31,7 @@ fuzz_target!(|input: FuzzTargetInput<true>| {
     initialize_log();
     if let Ok(schema) = Schema::try_from(input.schema) {
         debug!("Schema: {:?}", schema);
-        let mut policyset = PolicySet::new();
-        let policy: Policy = input.policy.into();
-        policyset.add(policy.clone()).unwrap();
+        let policyset = input.policy.into_policy_set();
         let manifest = match compute_entity_manifest(&Validator::new(schema), &policyset) {
             Ok(manifest) => manifest,
             Err(

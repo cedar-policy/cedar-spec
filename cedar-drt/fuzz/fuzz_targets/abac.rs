@@ -24,7 +24,7 @@ use cedar_drt::{
 use cedar_drt_inner::{abac::FuzzTargetInput, fuzz_target};
 
 use cedar_lean_ffi::CedarLeanFfi;
-use cedar_policy::{Authorizer, Policy, PolicyId, PolicySet, Request, SchemaFragment};
+use cedar_policy::{Authorizer, PolicyId, PolicySet, Request, SchemaFragment};
 
 use cedar_testing::cedar_test_impl::time_function;
 
@@ -34,9 +34,7 @@ use std::convert::TryFrom;
 // Simple fuzzing of ABAC hierarchy/policy/requests without respect to types.
 fuzz_target!(|input: FuzzTargetInput<false>| {
     initialize_log();
-    let mut policyset = PolicySet::new();
-    let policy = Policy::from(input.policy);
-    policyset.add(policy.clone()).unwrap();
+    let policyset = input.policy.0.clone().into_policy_set();
     debug!("Policies: {policyset}");
     debug!("Entities: {}", input.entities.as_ref());
     let requests = input
@@ -57,7 +55,11 @@ fuzz_target!(|input: FuzzTargetInput<false>| {
         // When the corpus is re-parsed, the policy will be given id "policy0".
         // Recreate the policy set and compute responses here to account for this.
         let mut policyset = PolicySet::new();
-        let policy = policy.new_id(PolicyId::new("policy0"));
+        // Corpus tests don't support linked policies, so we have to convert to static.
+        let policy = input
+            .policy
+            .link_to_static()
+            .new_id(PolicyId::new("policy0"));
         policyset.add(policy).unwrap();
         let responses = requests
             .iter()

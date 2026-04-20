@@ -20,13 +20,15 @@ use cedar_drt::check_policy_equivalence;
 use cedar_drt::logger::initialize_log;
 use cedar_drt_inner::fuzz_target;
 
+use cedar_policy::Policy;
 use cedar_policy_core::ast::{StaticPolicy, Template};
 use cedar_policy_core::parser::{self, parse_policy};
 use cedar_policy_formatter::token::{Comment, Token, WrappedToken};
 use cedar_policy_formatter::{Config, policies_str_to_pretty};
+use cedar_policy_generators::abac::StaticABACPolicy;
 use cedar_policy_generators::schema_gen::SchemaGen;
 use cedar_policy_generators::{
-    abac::ABACPolicy, hierarchy::HierarchyGenerator, schema::Schema, settings::ABACSettings,
+    hierarchy::HierarchyGenerator, schema::Schema, settings::ABACSettings,
 };
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
@@ -41,7 +43,7 @@ use uuid::Builder;
 #[derive(Debug, Clone)]
 struct FuzzTargetInput {
     // the generated policy
-    policy: ABACPolicy,
+    policy: StaticABACPolicy,
     // seed to generate random UUIDs
     seed: u64,
 }
@@ -57,7 +59,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
         let schema: Schema = Schema::arbitrary(SETTINGS.clone(), u)?;
         let hierarchy = schema.arbitrary_hierarchy(u)?;
-        let policy = schema.arbitrary_policy(&hierarchy, u)?;
+        let policy = schema.arbitrary_static_policy(&hierarchy, u)?;
         let seed = u.arbitrary()?;
         Ok(Self { policy, seed })
     }
@@ -102,13 +104,18 @@ fn attach_comment(p: &str, uuids: &mut Vec<String>, seed: u64) -> String {
 
 // round-tripping of a policy
 // i.e., print a policy to string, format it, and parse it back
-fn round_trip(p: &StaticPolicy, seed: u64) -> Result<StaticPolicy, Box<parser::err::ParseErrors>> {
+fn round_trip(p: &Policy, seed: u64) -> Result<StaticPolicy, Box<parser::err::ParseErrors>> {
     let config = Config {
         indent_width: 2,
         line_width: 80,
     };
     let mut uuids = Vec::new();
-    let commented = attach_comment(&p.to_string(), &mut uuids, seed);
+    let commented = attach_comment(
+        &p.to_cedar()
+            .expect("`to_cedar` should never fail on static policy"),
+        &mut uuids,
+        seed,
+    );
     let formatted_policy_str =
         &policies_str_to_pretty(&commented, &config).expect("pretty-printing should not fail");
     // check if pretty-printing drops any comment
@@ -144,8 +151,7 @@ fn round_trip(p: &StaticPolicy, seed: u64) -> Result<StaticPolicy, Box<parser::e
 fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
     let seed = input.seed;
-    let p: StaticPolicy = input.policy.into();
-    let (t, _) = Template::link_static_policy(p.clone());
+    let p: Policy = input.policy.into_static_policy();
 
     debug!("Starting policy: {:?}", p);
     // round-tripping over it should preserve syntactical equivalence.
@@ -153,12 +159,8 @@ fuzz_target!(|input: FuzzTargetInput| {
     // get ids from policy text
     match round_trip(&p, seed) {
         Ok(roundtripped) => {
-            assert!(
-                t.slots().collect::<Vec<_>>().is_empty(),
-                "\nold template slots should be empty\n"
-            );
             check_policy_equivalence(
-                &Into::<Arc<Template>>::into(p),
+                p.as_ref().template(),
                 &Into::<Arc<Template>>::into(roundtripped),
             );
         }

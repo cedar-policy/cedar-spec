@@ -17,13 +17,12 @@
 #![no_main]
 use cedar_drt_inner::{abac::FuzzTargetInput, fuzz_target};
 
-use cedar_policy::{PolicySet, PrincipalQueryRequest, Request, Validator};
+use cedar_policy::{PrincipalQueryRequest, Request, Validator};
 
 use std::{collections::BTreeSet, convert::TryFrom};
 
 fuzz_target!(|input: FuzzTargetInput<true>| {
-    let mut policyset = PolicySet::new();
-    policyset.add(input.policy.into()).unwrap();
+    let policyset = input.policy.into_policy_set();
     let cedar_schema = cedar_policy::Schema::try_from(input.schema.clone()).unwrap();
 
     let validator = Validator::new(cedar_schema);
