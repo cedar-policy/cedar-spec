@@ -9,7 +9,7 @@ use crate::{
     expr::ExprGenerator,
     hierarchy::{Hierarchy, HierarchyGenerator, HierarchyGeneratorMode, NumEntities},
     policy::{
-        ActionConstraint, GeneratedLinkedPolicy, GeneratedPolicy, GeneratedTemplate,
+        ActionConstraint, GeneratedLink, GeneratedPolicy, GeneratedTemplate,
         PrincipalOrResourceConstraint,
     },
     request::Request,
@@ -146,8 +146,20 @@ pub trait SchemaGen: std::fmt::Debug {
         let template = self.arbitrary_template(hierarchy, true, u)?;
         let policy = if template.has_slots() {
             let link_id = PolicyID::from_smolstr(format_smolstr!("link_{}", template.id()));
-            let link = GeneratedLinkedPolicy::arbitrary(link_id, &template, hierarchy, u)?;
-            GeneratedPolicy::Link { template, link }
+            let link = GeneratedLink::arbitrary(
+                link_id,
+                &template,
+                |u| {
+                    self.exprgenerator(Some(hierarchy))
+                        .arbitrary_principal_uid(u)
+                },
+                |u| {
+                    self.exprgenerator(Some(hierarchy))
+                        .arbitrary_resource_uid(u)
+                },
+                u,
+            )?;
+            GeneratedPolicy::Linked { template, link }
         } else {
             GeneratedPolicy::Static(template)
         };

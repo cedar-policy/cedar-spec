@@ -885,7 +885,7 @@ impl ABACPolicy {
     pub fn link_to_static(self) -> cedar_policy::Policy {
         match self.0 {
             GeneratedPolicy::Static(p) => p.into(),
-            GeneratedPolicy::Link { template, link } => template.link_to_static(link).into(),
+            GeneratedPolicy::Linked { template, link } => template.link_to_static(link).into(),
         }
     }
 }

@@ -37,11 +37,11 @@ pub enum GeneratedPolicy {
     /// Generated static policy. The `GeneratedTemplate` will not have any slots
     Static(GeneratedTemplate),
     /// Generated linked policy
-    Link {
+    Linked {
         /// Generated template which will have at least one slot
         template: GeneratedTemplate,
         /// Bindings for slots in `template`
-        link: GeneratedLinkedPolicy,
+        link: GeneratedLink,
     },
 }
 
@@ -49,6 +49,10 @@ impl GeneratedPolicy {
     /// Generate an arbitrary policy, either static or linked.
     ///
     /// If `allow_slots` is `false`, then this will always be a static policy.
+    ///
+    /// Even though this function accept a `schema` argument. It *does not* use
+    /// that schema to generate well typed policies. If you want type-directed
+    /// generation, use [`SchemaGen::arbitrary_policy`] instead.
     pub fn arbitrary_for_hierarchy(
         fixed_id_opt: Option<PolicyID>,
         schema: Option<&Schema>,
@@ -67,8 +71,8 @@ impl GeneratedPolicy {
         )?;
         if template.has_slots() {
             let link_id = PolicyID::from_smolstr(format_smolstr!("link_{}", template.id()));
-            let link = GeneratedLinkedPolicy::arbitrary(link_id, &template, hierarchy, u)?;
-            Ok(GeneratedPolicy::Link { template, link })
+            let link = GeneratedLink::arbitrary_for_hierarchy(link_id, &template, hierarchy, u)?;
+            Ok(GeneratedPolicy::Linked { template, link })
         } else {
             Ok(GeneratedPolicy::Static(template))
         }
@@ -82,7 +86,7 @@ impl GeneratedPolicy {
             GeneratedPolicy::Static(generated_template) => {
                 ps.add(generated_template.into()).unwrap();
             }
-            GeneratedPolicy::Link { template, link } => {
+            GeneratedPolicy::Linked { template, link } => {
                 let t: cedar_policy::Template = template.into();
                 let tid = t.id().clone();
                 ps.add_template(t).unwrap();
@@ -104,7 +108,7 @@ impl GeneratedPolicy {
     pub fn id(&self) -> &PolicyID {
         match self {
             GeneratedPolicy::Static(generated_template) => &generated_template.id,
-            GeneratedPolicy::Link { link, .. } => &link.id,
+            GeneratedPolicy::Linked { link, .. } => &link.id,
         }
     }
 
@@ -112,7 +116,7 @@ impl GeneratedPolicy {
     pub fn set_id(&mut self, id: PolicyID) {
         match self {
             GeneratedPolicy::Static(generated_template) => generated_template.set_id(id),
-            GeneratedPolicy::Link { link, .. } => {
+            GeneratedPolicy::Linked { link, .. } => {
                 link.id = id;
             }
         }
@@ -244,7 +248,7 @@ impl GeneratedTemplate {
     /// directly if you do not want templates. This is intended for obtaining a
     /// static representation of a template, primarily for corpus test
     /// serialization.
-    pub fn link_to_static(self, link: GeneratedLinkedPolicy) -> Self {
+    pub fn link_to_static(self, link: GeneratedLink) -> Self {
         Self {
             principal_constraint: self.principal_constraint.link_to_static(link.principal),
             resource_constraint: self.resource_constraint.link_to_static(link.resource),
@@ -623,7 +627,7 @@ impl ActionConstraint {
 
 /// Data structure representing a generated linked policy
 #[derive(Debug, Clone, Serialize)]
-pub struct GeneratedLinkedPolicy {
+pub struct GeneratedLink {
     /// ID of the linked policy
     pub id: PolicyID,
     /// ID of the template it's linked to
@@ -632,35 +636,48 @@ pub struct GeneratedLinkedPolicy {
     resource: Option<EntityUID>,
 }
 
-impl GeneratedLinkedPolicy {
-    fn arbitrary_slot_value(
-        prc: &PrincipalOrResourceConstraint,
-        hierarchy: &Hierarchy,
-        u: &mut Unstructured<'_>,
-    ) -> Result<Option<EntityUID>> {
-        if prc.has_slot() {
-            Ok(Some(hierarchy.arbitrary_uid(u)?))
-        } else {
-            Ok(None)
-        }
-    }
-
-    /// Generate an arbitrary `GeneratedLinkedPolicy` from the given template
-    pub fn arbitrary(
+impl GeneratedLink {
+    /// Generate an arbitrary `GeneratedLink` from the given template
+    pub fn arbitrary_for_hierarchy(
         id: PolicyID,
         template: &GeneratedTemplate,
         hierarchy: &Hierarchy,
         u: &mut Unstructured<'_>,
     ) -> Result<Self> {
+        Self::arbitrary(
+            id,
+            template,
+            |u| hierarchy.arbitrary_uid(u),
+            |u| hierarchy.arbitrary_uid(u),
+            u,
+        )
+    }
+
+    /// Generate
+    pub fn arbitrary(
+        id: PolicyID,
+        template: &GeneratedTemplate,
+        gen_principal_link: impl FnOnce(&mut Unstructured<'_>) -> Result<EntityUID>,
+        gen_resource_link: impl FnOnce(&mut Unstructured<'_>) -> Result<EntityUID>,
+        u: &mut Unstructured<'_>,
+    ) -> Result<Self> {
         Ok(Self {
             id,
             template_id: template.id.clone(),
-            principal: Self::arbitrary_slot_value(&template.principal_constraint, hierarchy, u)?,
-            resource: Self::arbitrary_slot_value(&template.resource_constraint, hierarchy, u)?,
+            principal: template
+                .principal_constraint
+                .has_slot()
+                .then(|| gen_principal_link(u))
+                .transpose()?,
+            resource: template
+                .resource_constraint
+                .has_slot()
+                .then(|| gen_resource_link(u))
+                .transpose()?,
         })
     }
 
-    /// Add this `GeneratedLinkedPolicy` to the given `PolicySet`
+    /// Add this `GeneratedLink` to the given `PolicySet`
     pub fn add_to_policyset(self, policyset: &mut PolicySet) {
         let mut vals = IndexMap::new();
         if let Some(principal_uid) = self.principal {
@@ -675,7 +692,7 @@ impl GeneratedLinkedPolicy {
     }
 
     #[cfg(feature = "cedar-policy")]
-    /// Add this `GeneratedLinkedPolicy` to the given `cedar_policy::PolicySet`
+    /// Add this `GeneratedLink` to the given `cedar_policy::PolicySet`
     pub fn add_to_api_policyset(self, policyset: &mut cedar_policy::PolicySet) {
         let mut vals = HashMap::new();
         if let Some(principal_uid) = self.principal {
