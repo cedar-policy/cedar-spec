@@ -277,7 +277,7 @@ unsafe extern "C" {
         req: *mut lean_object,
     ) -> *mut lean_object;
 
-    fn batchedEvaluateFFI(req: *mut lean_object) -> *mut lean_object;
+    fn batchedAuthorizationFFI(req: *mut lean_object) -> *mut lean_object;
 
     fn isAuthorizedPartial(req: *mut lean_object) -> *mut lean_object;
 
@@ -1221,8 +1221,8 @@ impl CedarLeanFfi {
         Ok(self.validate_request_timed(schema, request)?.take_result())
     }
 
-    /// Calls the lean backend to perform batched evaluation on a single policy
-    pub fn batched_evaluation_timed(
+    /// Calls the lean backend to perform batched authorization
+    pub fn batched_authorization_timed(
         &self,
         policyset: &PolicySet,
         schema: &Schema,
@@ -1232,7 +1232,7 @@ impl CedarLeanFfi {
     ) -> Result<TimedResult<TpeResponse>, FfiError> {
         let response = unsafe {
             call_lean_ffi_takes_protobuf(
-                batchedEvaluateFFI,
+                batchedAuthorizationFFI,
                 &proto::BatchedEvaluationRequest::new(
                     &policyset, schema, request, entities, iteration,
                 ),
@@ -1249,7 +1249,7 @@ impl CedarLeanFfi {
             .transform_m(TpeResponse::from_inner)
     }
 
-    pub fn batched_evaluation(
+    pub fn batched_authorization(
         &self,
         policy: &PolicySet,
         schema: &Schema,
@@ -1258,7 +1258,7 @@ impl CedarLeanFfi {
         iteration: u32,
     ) -> Result<TpeResponse, FfiError> {
         Ok(self
-            .batched_evaluation_timed(policy, schema, request, entities, iteration)?
+            .batched_authorization_timed(policy, schema, request, entities, iteration)?
             .take_result())
     }
 
@@ -2312,7 +2312,7 @@ when
         .expect("valid request");
         let ffi = CedarLeanFfi::new();
         let response = ffi
-            .batched_evaluation(&policy, &schema, &request, &entities, 3)
+            .batched_authorization(&policy, &schema, &request, &entities, 3)
             .unwrap();
         assert_eq!(response.decision, Some(cedar_policy::Decision::Allow));
     }

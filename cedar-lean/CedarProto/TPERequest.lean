@@ -31,7 +31,7 @@ open Proto
 
 namespace Cedar.Proto
 
-structure BatchedEvaluationRequest where
+structure BatchedAuthorizationRequest where
   policies : Spec.Policies
   schema : Validation.Schema
   request : Spec.Request
@@ -40,9 +40,9 @@ structure BatchedEvaluationRequest where
 deriving Inhabited
 
 
-namespace BatchedEvaluationRequest
+namespace BatchedAuthorizationRequest
 
-instance : Message BatchedEvaluationRequest where
+instance : Message BatchedAuthorizationRequest where
   parseField (t : Proto.Tag) := do
     match t.fieldNum with
     | 1 => parseFieldElement t policies (update policies)
@@ -60,7 +60,7 @@ instance : Message BatchedEvaluationRequest where
     iteration := Field.merge x.iteration y.iteration
   }
 
-end BatchedEvaluationRequest
+end BatchedAuthorizationRequest
 
 structure PartialAuthorizationRequest where
   schema: Validation.Schema

@@ -804,10 +804,10 @@ Note that the time is only the encoder and _not_ policy compilation to Term
 
 /--
   `req`: binary protobuf for an `BatchedEvaluationRequest`
-  Upon success returns inputs to `batchedEvaluate`
+  Upon success returns inputs to `batchedAuthorize`
   Returns a failure if Protobuf message could not be parsed
 -/
-def parseBatchedEvaluationReq (req : ByteArray) : Except String (Schema × List Policy × Request × Entities × Nat) := do
+def parseBatchedAuthorizationReq (req : ByteArray) : Except String (Schema × List Policy × Request × Entities × Nat) := do
   let req ← (@Proto.Message.interpret? Proto.BatchedEvaluationRequest) req |>.mapError (s!"failed to parse input: {·}")
   let policySet := req.policies
   let schema := req.schema
@@ -821,9 +821,9 @@ def parseBatchedEvaluationReq (req : ByteArray) : Except String (Schema × List 
 
   returns a string containing a JSON encoding of `Timed TPE.Response`
 -/
-@[export batchedEvaluateFFI] unsafe def batchedEvaluateFFI (req : ByteArray) : String :=
+@[export batchedAuthorizationFFI] unsafe def batchedAuthorizationFFI (req : ByteArray) : String :=
   runFfiM do
-    let (schema, policies, request, entities, iteration) ← parseBatchedEvaluationReq req
+    let (schema, policies, request, entities, iteration) ← parseBatchedAuthorizationReq req
     runAndTime (λ () =>
       (batchedAuthorize schema policies request (entityLoaderFor entities) iteration).mapError
         (s!"TPE error: {repr ·}"))
