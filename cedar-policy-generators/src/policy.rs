@@ -653,7 +653,8 @@ impl GeneratedLink {
         )
     }
 
-    /// Generate
+    /// Generate a `GeneratedLink` using the provided generators for principal
+    /// and resource slot values.
     pub fn arbitrary(
         id: PolicyID,
         template: &GeneratedTemplate,
