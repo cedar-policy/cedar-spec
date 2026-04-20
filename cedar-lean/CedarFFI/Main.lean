@@ -808,7 +808,7 @@ Note that the time is only the encoder and _not_ policy compilation to Term
   Returns a failure if Protobuf message could not be parsed
 -/
 def parseBatchedAuthorizationReq (req : ByteArray) : Except String (Schema × List Policy × Request × Entities × Nat) := do
-  let req ← (@Proto.Message.interpret? Proto.BatchedEvaluationRequest) req |>.mapError (s!"failed to parse input: {·}")
+  let req ← (@Proto.Message.interpret? Proto.BatchedAuthorizationRequest) req |>.mapError (s!"failed to parse input: {·}")
   let policySet := req.policies
   let schema := req.schema
   let request := req.request

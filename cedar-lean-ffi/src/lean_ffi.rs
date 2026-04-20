@@ -1233,7 +1233,7 @@ impl CedarLeanFfi {
         let response = unsafe {
             call_lean_ffi_takes_protobuf(
                 batchedAuthorizationFFI,
-                &proto::BatchedEvaluationRequest::new(
+                &proto::BatchedAuthorizationRequest::new(
                     &policyset, schema, request, entities, iteration,
                 ),
             )

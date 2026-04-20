@@ -332,8 +332,8 @@ message PartialAuthorizationRequest {
     PartialEntities entities = 4;
 }
 
-// Batched evaluation request
-message BatchedEvaluationRequest {
+// Batched authorization request
+message BatchedAuthorizationRequest {
     cedar_policy_core.PolicySet policies = 1;
     cedar_policy_validator.Schema schema = 2;
     cedar_policy_core.Request request = 3;
