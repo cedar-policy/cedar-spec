@@ -522,4 +522,27 @@ theorem env_validate_well_formed_is_sound
   simp only [hwf_reqs] at hok
   exact request_type_validate_well_formed_is_sound hwf_reqs
 
+theorem environment_some_mem_environments {schema : Schema}
+  {principal resource : EntityType} {action : EntityUID} {env : TypeEnv}
+  (h : schema.environment? principal resource action = .some env) :
+  env ∈ schema.environments
+:= by
+  simp only [Schema.environment?] at h
+  cases h_find : schema.acts.find? action <;>
+    simp only [h_find, Option.bind_none_fun, Option.bind_some_fun, reduceCtorEq] at h
+  rename_i ase
+  split at h <;> simp only [reduceCtorEq, Option.some.injEq] at h
+  rename_i hp hr
+  subst h
+  simp only [Schema.environments, List.mem_map, List.mem_flatMap, TypeEnv.mk.injEq, true_and, exists_eq_right]
+  exists (action, ase)
+  and_intros
+  · exact Map.find?_mem_toList h_find
+  · show { principal, action, resource, context := ase.context : RequestType } ∈
+      (ase.appliesToPrincipal.toList.product ase.appliesToResource.toList |>.map
+        (λ (principal, resource) => {
+          principal, action, resource,
+          context := ase.context}))
+    simp [Set.toList, Set.mem_elts_iff_mem_set, ← Set.contains_prop_bool_equiv, hr, hp]
+
 end Cedar.Thm

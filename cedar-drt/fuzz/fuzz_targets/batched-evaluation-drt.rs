@@ -19,7 +19,7 @@ use cedar_drt::logger::initialize_log;
 use cedar_drt_inner::{abac::FuzzTargetInput, fuzz_target};
 
 use cedar_lean_ffi::CedarLeanFfi;
-use cedar_policy::{Schema, TestEntityLoader};
+use cedar_policy::{Policy, PolicySet, Schema, TestEntityLoader};
 
 // This target tests a property that batched evaluation, if succeeds, should
 // produce the same authorization decision based on the Lean model output
@@ -28,7 +28,9 @@ fuzz_target!(|input: FuzzTargetInput<true>| {
     initialize_log();
 
     if let Ok(schema) = Schema::try_from(input.schema) {
-        let policyset = input.policy.into_policy_set();
+        let policy = Policy::from(input.policy);
+        let mut policyset = PolicySet::new();
+        policyset.add(policy).unwrap();
         let mut loader = TestEntityLoader::new(&input.entities);
         log::debug!("policy: {policyset}");
         let iteration = (FuzzTargetInput::<true>::settings().max_depth + 1) as u32;

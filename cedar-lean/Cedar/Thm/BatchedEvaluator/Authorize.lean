@@ -20,53 +20,6 @@ open Cedar.Validation
 open Cedar.Thm
 open Cedar.Data
 
-private theorem mem_foldl_append_of_init {α β : Type} {f : β → List α} {xs : List β}
-  {init : List α} {a : α} (h : a ∈ init) :
-  a ∈ List.foldl (fun acc x => f x ++ acc) init xs
-:= by
-  induction xs generalizing init with
-  | nil => exact h
-  | cons hd tl ih => exact ih (List.mem_append_right _ h)
-
-private theorem mem_foldl_append_of_mem {α β : Type} {f : β → List α} {xs : List β}
-  {init : List α} {a : α} {x : β} (hx : x ∈ xs) (ha : a ∈ f x) :
-  a ∈ List.foldl (fun acc y => f y ++ acc) init xs
-:= by
-  induction xs generalizing init with
-  | nil => cases hx
-  | cons hd tl ih =>
-    simp only [List.foldl_cons]
-    cases hx with
-    | head => exact mem_foldl_append_of_init (List.mem_append_left _ ha)
-    | tail _ htl => exact ih htl
-
-theorem environment_some_mem_environments {schema : Schema}
-  {principal resource : EntityType} {action : EntityUID} {env : TypeEnv}
-  (h : schema.environment? principal resource action = .some env) :
-  env ∈ schema.environments
-:= by
-  simp only [Schema.environment?] at h
-  cases h_find : schema.acts.find? action <;> simp only [h_find, Option.bind_none_fun,
-    Option.bind_some_fun, reduceCtorEq] at h
-  rename_i ase
-  split at h <;> simp only [reduceCtorEq, Option.some.injEq] at h
-  rename_i hp hr
-  subst h
-  simp only [Schema.environments, List.mem_map]
-  refine ⟨{ principal, action, resource, context := ase.context }, ?_, rfl⟩
-  -- Show this RequestType is in the foldl result
-  apply mem_foldl_append_of_mem (Map.find?_mem_toList h_find)
-  -- Show it's in the inner foldl (requestTypes for this action entry)
-  -- ActionSchemaEntry.requestTypes inlines to a foldl over appliesToPrincipal
-  show { principal, action, resource, context := ase.context : RequestType } ∈
-    ase.appliesToPrincipal.toList.foldl (fun acc p =>
-      (ase.appliesToResource.toList.map (fun r =>
-        { principal := p, action, resource := r, context := ase.context })) ++ acc) []
-  apply mem_foldl_append_of_mem
-  · exact (Set.mem_elts_iff_mem_set _ _).mpr (Set.contains_prop_bool_equiv.mp hp)
-  · simp only [List.mem_map]
-    exact ⟨resource, (Set.mem_elts_iff_mem_set _ _).mpr (Set.contains_prop_bool_equiv.mp hr), rfl⟩
-
 theorem evaluatePolicy_ok_implies_env_some {schema : Schema} {p : Policy}
   {preq : PartialRequest} {pes : PartialEntities} {r : Residual} :
   evaluatePolicy schema p preq pes = .ok r →
@@ -74,9 +27,7 @@ theorem evaluatePolicy_ok_implies_env_some {schema : Schema} {p : Policy}
 := by
   intro h
   simp only [evaluatePolicy] at h
-  split at h
-  · exact ⟨_, ‹_›⟩
-  · cases h
+  split at h <;> grind
 
 private theorem requestIsValid_asPartialRequest_eq {env : TypeEnv} {req : Request} :
   requestIsValid env req.asPartialRequest = instanceOfRequestType req env
@@ -155,18 +106,6 @@ theorem residuals_equiv_preserved
      by rw [← partial_evaluate_is_sound h_wt h_wf h_ref]; exact h_eval,
      partial_eval_preserves_well_typed h_wf h_ref h_wt⟩
   ) h_sound
-
-theorem batchedAuthorizeLoop_nil_decision {req : Request} {loader : EntityLoader}
-  {store : PartialEntities} {iters : Nat} :
-  (batchedAuthorizeLoop [] req loader store iters).decision =
-  (isAuthorized.isAuthorizedFromResiduals []).decision
-:= by
-  unfold batchedAuthorizeLoop
-  simp only
-  have : (isAuthorized.isAuthorizedFromResiduals ([] : List ResidualPolicy)).decision.isSome = true := by
-    simp [isAuthorized.isAuthorizedFromResiduals, isAuthorized.satisfiedPolicies,
-      isAuthorized.falsePolicies, isAuthorized.errorPolicies, isAuthorized.residualPolicies]
-  simp [this]
 
 theorem batched_authorize_loop_decision_agrees
   {policies : List Policy} {residuals : List ResidualPolicy} {req : Request}

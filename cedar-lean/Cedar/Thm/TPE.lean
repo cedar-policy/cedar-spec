@@ -70,7 +70,7 @@ theorem reauthorize_is_sound
   have h_equiv := evaluatePolicies_residuals_equiv hv h_auth₁
   have equiv_satisfied := reauthorize_satisfied_policies_equiv h_equiv
   have equiv_errors := reauthorize_error_policies_equiv h_equiv
-  simp [TPE.isAuthorized.isAuthorizedFromResiduals, Response.reauthorize, Spec.isAuthorized,
+  simp [TPE.isAuthorizedFromResiduals, Response.reauthorize, Spec.isAuthorized,
         equiv_satisfied .forbid, equiv_satisfied .permit, equiv_errors]
 
 /-- Main partial authorization soundness theorem: If partial authorization
@@ -232,7 +232,7 @@ theorem partial_authorize_satisfied_forbid_is_determining
   have h_equiv := evaluatePolicies_residuals_equiv h₂ h₃
   rename_i rps
 
-  simp only [isAuthorized.isAuthorizedFromResiduals, isAuthorized.satisfiedPolicies, Set.subset_def,
+  simp only [isAuthorizedFromResiduals, isAuthorizedFromResiduals.satisfiedPolicies, Set.subset_def,
     Set.mem_make, List.mem_filterMap, ResidualPolicy.satisfiedWithEffect,
     ResidualPolicy.satisfied, Residual.isTrue, Bool.and_eq_true, beq_iff_eq,
     Option.ite_none_right_eq_some, Option.some.injEq, forall_exists_index, and_imp]

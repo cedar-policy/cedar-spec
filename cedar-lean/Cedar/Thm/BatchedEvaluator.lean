@@ -1,7 +1,12 @@
+import Cedar.Thm.BatchedEvaluator.Common
 import Cedar.Thm.BatchedEvaluator.Evaluate
 import Cedar.Thm.BatchedEvaluator.Authorize
 
 namespace Cedar.Thm
+
+/-!
+This file defines the main theorems for batched authorization and evaluation.
+-/
 
 open Cedar.TPE
 open Cedar.Spec
@@ -14,7 +19,7 @@ The main correctness theorem for batched evaluation:
 Batched evaluation with an entity loader produces the same result
 as normal evaluation with the complete entity store.
 -/
-theorem batched_eval_eq_evaluate
+theorem batched_evaluate_eq_evaluate
   {x : TypedExpr}
   {req : Request}
   {es : Entities}
@@ -53,22 +58,22 @@ The main correctness theorem for batched authorization:
 If the batched authorizer reaches a definitive decision, that decision
 agrees with the concrete authorizer.
 
-Request well-typedness is inferred from `batchedAuthorize` succeeding (which
-internally checks `requestAndEntitiesIsValid`). Entity and schema
-well-typedness are stated in terms of the boolean validation functions
-`schema.validateWellFormed` and `validateEntities`.
+Request and policy well-typedness are checked by `batchedAuthorize`, so we do
+not need those as an explicit precondition. We do need entity to explicitly
+require well-typed entities because `batchedAuthorize` only has access to these
+through the entity loader.
 -/
 theorem batched_authorize_decision_eq_authorize
   {schema : Schema} {policies : List Policy} {req : Request}
   {es : Entities} {response : TPE.Response} {d : Decision} :
   EntityLoader.WellBehaved es loader →
-  batchedAuthorize schema policies req loader iters = .ok response →
   schema.validateWellFormed = .ok () →
   validateEntities schema es = .ok () →
+  batchedAuthorize schema policies req loader iters = .ok response →
   response.decision = some d →
   (Spec.isAuthorized req es policies).decision = d
 := by
-  intro h_loader h_batched h_schema_wf h_entities h_dec
+  intro h_loader h_schema_wf h_entities h_batched h_dec
   simp only [batchedAuthorize] at h_batched
   cases h_mapM : policies.mapM (λ p =>
     ResidualPolicy.mk p.id p.effect <$> evaluatePolicy schema p req.asPartialRequest Map.empty) with
@@ -77,20 +82,20 @@ theorem batched_authorize_decision_eq_authorize
     simp only [bind_pure_comp, h_mapM, Except.map_ok, Except.ok.injEq] at h_batched
     subst h_batched
     rw [List.mapM_ok_iff_forall₂] at h_mapM
-    have h_ref : RequestAndEntitiesRefine req es req.asPartialRequest Map.empty :=
-      ⟨as_partial_request_refines, any_refines_empty_entities⟩
     match policies, h_mapM with
     | [], .nil =>
-      rw [batchedAuthorizeLoop_nil_decision] at h_dec
+      replace h_dec : (isAuthorizedFromResiduals []).decision = some d := by
+        unfold batchedAuthorizeLoop at h_dec
+        simpa using h_dec
       exact residuals_decision_agrees .nil h_dec
     | p :: _, .cons h_first h_rest =>
-      have h_ep_ok : ∃ r, evaluatePolicy schema p req.asPartialRequest Map.empty = .ok r := by
-        cases h_ep : evaluatePolicy schema p req.asPartialRequest Map.empty with
-        | ok r => exact ⟨r, rfl⟩
-        | error e => simp [h_ep, Except.map_error] at h_first
-      obtain ⟨r, h_ep⟩ := h_ep_ok
+      have ⟨r, h_ep⟩ : ∃ r, evaluatePolicy schema p req.asPartialRequest Map.empty = .ok r := by
+        cases h_ep : evaluatePolicy schema p req.asPartialRequest Map.empty <;>
+          simp [h_ep] at ⊢ h_first
       obtain ⟨env, h_schema_env, h_wf⟩ :=
         evaluatePolicy_ok_implies_well_formed_env h_ep h_schema_wf h_entities
+      have h_ref : RequestAndEntitiesRefine req es req.asPartialRequest Map.empty :=
+        ⟨as_partial_request_refines, any_refines_empty_entities⟩
       exact batched_authorize_loop_decision_agrees es h_loader
         (evaluatePolicies_equiv_and_well_typed (.cons h_first h_rest) h_schema_env h_wf h_ref)
         h_ref h_wf h_dec

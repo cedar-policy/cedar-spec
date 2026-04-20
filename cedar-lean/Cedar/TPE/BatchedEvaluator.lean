@@ -82,7 +82,7 @@ def batchedAuthorizeLoop
   (store : PartialEntities) (n : Nat)
   : Response
 :=
-  let resp := isAuthorized.isAuthorizedFromResiduals residuals
+  let resp := isAuthorizedFromResiduals residuals
   if resp.decision.isSome then
     resp
   else match n with

@@ -33,21 +33,18 @@ For a given action, compute the cross-product of the applicable principal and
 resource types.
 -/
 def ActionSchemaEntry.requestTypes (action : EntityUID) (entry : ActionSchemaEntry) : List RequestType :=
-  entry.appliesToPrincipal.toList.foldl (fun acc principal =>
-    let reqtys : List RequestType :=
-      entry.appliesToResource.toList.map (fun resource =>
-        {
-          principal := principal,
-          action := action,
-          resource := resource,
-          context := entry.context
-        })
-    reqtys ++ acc) ∅
+  entry.appliesToPrincipal.toList.product entry.appliesToResource.toList |>.map
+    (λ (principal, resource) => {
+      principal,
+      action,
+      resource,
+      context := entry.context
+    })
 
 /-- Return every schema-defined environment. -/
 public def Schema.environments (schema : Schema) : List TypeEnv :=
   let requestTypes : List RequestType :=
-    schema.acts.toList.foldl (fun acc (action,entry) => entry.requestTypes action ++ acc) ∅
+    schema.acts.toList.flatMap (λ (action, entry) => entry.requestTypes action)
   requestTypes.map ({
     ets := schema.ets,
     acts := schema.acts,
