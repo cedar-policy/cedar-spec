@@ -33,8 +33,7 @@ use crate::lean_object::{
 use crate::messages::*;
 
 use cedar_policy::{
-    Entities, Expression, Policy, PolicySet, Request, RequestEnv, Schema,
-    ValidationMode,
+    Entities, Expression, Policy, PolicySet, Request, RequestEnv, Schema, ValidationMode,
 };
 use lean_sys::{
     lean_dec, lean_dec_ref, lean_finalize_thread, lean_initialize_runtime_module_locked,
