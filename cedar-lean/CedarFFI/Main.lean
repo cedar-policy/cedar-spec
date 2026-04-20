@@ -803,7 +803,7 @@ Note that the time is only the encoder and _not_ policy compilation to Term
   runFfiM $ SymCCPrimitive.matchesDisjoint.smtLib schema req
 
 /--
-  `req`: binary protobuf for an `BatchedEvaluationRequest`
+  `req`: binary protobuf for an `BatchedAuthorizationRequest`
   Upon success returns inputs to `batchedAuthorize`
   Returns a failure if Protobuf message could not be parsed
 -/
@@ -817,7 +817,7 @@ def parseBatchedAuthorizationReq (req : ByteArray) : Except String (Schema × Li
   return (schema, policySet, request, entities, iteration)
 
 /--
-  `req`: binary protobuf for a `BatchedEvaluationRequest`
+  `req`: binary protobuf for a `BatchedAuthorizationRequest`
 
   returns a string containing a JSON encoding of `Timed TPE.Response`
 -/

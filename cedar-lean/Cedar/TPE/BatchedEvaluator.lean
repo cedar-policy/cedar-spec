@@ -99,7 +99,7 @@ def batchedAuthorizeLoop
 /--
 Evaluate an authorization request using an EntityLoader instead of a full Entities store.
 
-Performs a maximum of `iter` number of calls to `loader`, but may perform fewer when an authorization decisions is reached.
+Performs a maximum of `iter` number of calls to `loader`, but may perform fewer when an authorization decision is reached early.
 -/
 def batchedAuthorize
   (schema : Schema)
