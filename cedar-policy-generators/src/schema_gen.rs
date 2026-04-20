@@ -155,7 +155,7 @@ pub trait SchemaGen: std::fmt::Debug {
     }
     /// Get an arbitrary unlinked template conforming to this schema.
     ///
-    /// If `with_slots` is false, then the template will not have any slots and
+    /// If `allow_slots` is false, then the template will not have any slots and
     /// can be used to construct a static policy (though you should prefer
     /// calling `arbitrary_static_policy` directly).
     fn arbitrary_template(

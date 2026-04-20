@@ -879,7 +879,7 @@ impl ABACPolicy {
     /// their linked values if necessary.
     ///
     /// If you want to generate a static policy, you should prefer using
-    /// `StaticABACPolicy`. This functions is intended for serializing linked
+    /// `StaticABACPolicy`. This function is intended for serializing linked
     /// policies to the corpus test JSON format, which doesn't support links.
     #[cfg(feature = "cedar-policy")]
     pub fn link_to_static(self) -> cedar_policy::Policy {
@@ -890,7 +890,7 @@ impl ABACPolicy {
     }
 }
 
-/// Represents an static ABAC policy. This is an `ABACPolicy` which we know does not have any slots
+/// Represents a static ABAC policy. This is an `ABACPolicy` which we know does not have any slots
 #[derive(Debug, Clone)]
 pub struct StaticABACPolicy(pub GeneratedTemplate);
 

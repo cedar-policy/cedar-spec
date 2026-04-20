@@ -1469,7 +1469,7 @@ impl Schema {
         })
     }
 
-    /// Size hint for [`Self::arbitrary_abac_constraints()`].
+    /// Size hint for [`SchemaGen::arbitrary_abac_constraints`].
     pub fn arbitrary_abac_constraints_size_hint(_depth: usize) -> (usize, Option<usize>) {
         // not sure how to count the arbitrary_loop() call
         (1, None)
