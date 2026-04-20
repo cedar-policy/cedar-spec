@@ -66,10 +66,7 @@ impl GeneratedPolicy {
             u,
         )?;
         if template.has_slots() {
-            let link_id = match fixed_id_opt {
-                Some(pid) => PolicyID::from_smolstr(format_smolstr!("link_{}", pid)),
-                None => PolicyID::from_string("l"),
-            };
+            let link_id = PolicyID::from_smolstr(format_smolstr!("link_{}", template.id()));
             let link = GeneratedLinkedPolicy::arbitrary(link_id, &template, hierarchy, u)?;
             Ok(GeneratedPolicy::Link { template, link })
         } else {
