@@ -10,11 +10,6 @@ Follow [these instructions](https://leanprover.github.io/lean4/doc/setup.html) t
 
 ## Usage
 
-To use VS Code, open the `cedar-lean` folder as the root directory.
-
-> [!WARNING]
-> The VS Code Lean plugin _will not_ work properly if this project is opened with `cedar-spec` as the root.
-
 To build code and proofs from the command line:
 
 ```shell
