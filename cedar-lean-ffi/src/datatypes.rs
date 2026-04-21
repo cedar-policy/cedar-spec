@@ -46,8 +46,8 @@ pub(crate) enum ResultDef<T> {
 }
 
 impl<T> ResultDef<T> {
-    pub fn to_result(def: ResultDef<T>) -> Result<T, String> {
-        match def {
+    pub fn to_result(self) -> Result<T, String> {
+        match self {
             ResultDef::Ok(t) => Ok(t),
             ResultDef::Error(s) => Err(s),
         }
@@ -58,6 +58,15 @@ impl<T> ResultDef<T> {
 pub(crate) struct TimedDef<T> {
     pub(crate) data: T,
     pub(crate) duration: u128,
+}
+
+impl<T> TimedDef<T> {
+    pub fn to_timed_result(self) -> TimedResult<T> {
+        TimedResult {
+            result: self.data,
+            duration: self.duration,
+        }
+    }
 }
 
 /// Authorization Response
@@ -182,6 +191,16 @@ impl<T> TimedResult<T> {
             result: f(self.result),
             duration: self.duration,
         }
+    }
+
+    pub(crate) fn transform_m<U, F, E>(self, f: F) -> Result<TimedResult<U>, E>
+    where
+        F: FnOnce(T) -> Result<U, E>,
+    {
+        Ok(TimedResult {
+            result: f(self.result)?,
+            duration: self.duration,
+        })
     }
 }
 

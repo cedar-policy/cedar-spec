@@ -30,7 +30,7 @@ fuzz_target!(|input: FuzzTargetInput<true>| {
     if let Ok(schema) = Schema::try_from(input.schema) {
         let policy = Policy::from(input.policy);
         let mut policyset = PolicySet::new();
-        policyset.add(policy.clone()).unwrap();
+        policyset.add(policy).unwrap();
         let mut loader = TestEntityLoader::new(&input.entities);
         log::debug!("policy: {policyset}");
         let iteration = (FuzzTargetInput::<true>::settings().max_depth + 1) as u32;
@@ -44,9 +44,15 @@ fuzz_target!(|input: FuzzTargetInput<true>| {
             if let Ok(rust_decision) =
                 policyset.is_authorized_batched(&req, &schema, &mut loader, iteration)
             {
-                match ffi.batched_evaluation(&policy, &schema, &req, &input.entities, iteration) {
+                match ffi.batched_authorization(
+                    &policyset,
+                    &schema,
+                    &req,
+                    &input.entities,
+                    iteration,
+                ) {
                     Ok(lean_decision) => {
-                        assert_eq!(lean_decision, Some(rust_decision));
+                        assert_eq!(lean_decision.decision, Some(rust_decision));
                     }
                     Err(err) => {
                         panic!("lean failed but rust didn't: {err}");

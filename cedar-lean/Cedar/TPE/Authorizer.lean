@@ -92,11 +92,39 @@ structure Response where
 
   residuals : List ResidualPolicy
 
-def isAuthorized (schema : Schema) (policies : List Policy) (req : PartialRequest) (es : PartialEntities) : Except Error Response :=
-  do
-    let residualPolicies ← policies.mapM (λ p => do
-      pure ⟨p.id, p.effect, ← evaluatePolicy schema p req es⟩)
-    pure (isAuthorizedFromResiduals residualPolicies)
+/-- Compute an authorization decision (if possible) from a list of partially
+    evaluated policies. Also used for batched evaluation.  -/
+def isAuthorizedFromResiduals (residuals : List ResidualPolicy) : Response :=
+  let satisfiedForbids := satisfiedPolicies .forbid residuals
+  let falseForbids := falsePolicies .forbid residuals
+  let errorForbids := errorPolicies .forbid residuals
+  let residualForbids := residualPolicies .forbid residuals
+
+  let satisfiedPermits := satisfiedPolicies .permit residuals
+  let falsePermits := falsePolicies .permit residuals
+  let errorPermits := errorPolicies .permit residuals
+  let residualPermits := residualPolicies .permit residuals
+
+  let decision :=
+    match (!satisfiedForbids.isEmpty, !satisfiedPermits.isEmpty, !residualPermits.isEmpty, !residualForbids.isEmpty) with
+    | (true,  _,     _,     _)    => some Decision.deny
+    | (_,     false, false, _)    => some Decision.deny
+    | (false, _,     _,    true)  => none
+    | (false, false, true, false) => none
+    | (false, true,  _,    false) => some .allow
+
+  {
+    decision,
+    satisfiedPermits,
+    falsePermits,
+    errorPermits,
+    residualPermits,
+    satisfiedForbids,
+    falseForbids,
+    errorForbids,
+    residualForbids
+    residuals
+  }
   where
     satisfiedPolicies (effect : Effect) (policies : List ResidualPolicy) : Set PolicyID :=
       Set.make (policies.filterMap (ResidualPolicy.satisfiedWithEffect effect))
@@ -110,37 +138,14 @@ def isAuthorized (schema : Schema) (policies : List Policy) (req : PartialReques
     falsePolicies (effect : Effect) (policies : List ResidualPolicy) : Set PolicyID :=
       Set.make (policies.filterMap (ResidualPolicy.falseWithEffect effect))
 
-    isAuthorizedFromResiduals (residuals : List ResidualPolicy) : Response :=
-      let satisfiedForbids := satisfiedPolicies .forbid residuals
-      let falseForbids := falsePolicies .forbid residuals
-      let errorForbids := errorPolicies .forbid residuals
-      let residualForbids := residualPolicies .forbid residuals
-
-      let satisfiedPermits := satisfiedPolicies .permit residuals
-      let falsePermits := falsePolicies .permit residuals
-      let errorPermits := errorPolicies .permit residuals
-      let residualPermits := residualPolicies .permit residuals
-
-      let decision :=
-        match (!satisfiedForbids.isEmpty, !satisfiedPermits.isEmpty, !residualPermits.isEmpty, !residualForbids.isEmpty) with
-        | (true,  _,     _,     _)    => some Decision.deny
-        | (_,     false, false, _)    => some Decision.deny
-        | (false, _,     _,    true)  => none
-        | (false, false, true, false) => none
-        | (false, true,  _,    false) => some .allow
-
-      {
-        decision,
-        satisfiedPermits,
-        falsePermits,
-        errorPermits,
-        residualPermits,
-        satisfiedForbids,
-        falseForbids,
-        errorForbids,
-        residualForbids
-        residuals
-      }
+def isAuthorized (schema : Schema) (policies : List Policy) (req : PartialRequest) (es : PartialEntities) : Except Error Response :=
+  do
+    let residualPolicies ← evaluatePolicies schema policies req es
+    pure (isAuthorizedFromResiduals residualPolicies)
+  where
+    evaluatePolicies (schema : Schema) (policies : List Policy) (req : PartialRequest) (es : PartialEntities) : Except Error (List ResidualPolicy) :=
+      policies.mapM (λ p => do
+        pure ⟨p.id, p.effect, ← evaluatePolicy schema p req es⟩)
 
 /--
 Take a partial authorization Response and fully evaluate it using a concrete

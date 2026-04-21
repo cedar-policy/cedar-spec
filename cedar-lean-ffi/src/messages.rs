@@ -723,7 +723,7 @@ impl proto::CheckAssertsRequest {
     }
 }
 
-impl proto::BatchedEvaluationRequest {
+impl proto::BatchedAuthorizationRequest {
     pub(crate) fn new(
         policies: &PolicySet,
         schema: &Schema,

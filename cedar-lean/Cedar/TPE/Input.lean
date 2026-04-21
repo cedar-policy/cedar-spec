@@ -121,7 +121,7 @@ where
     let (uid, _) := p
     match es.find? uid with
     | .some entry₁ => actionEntityIsValid uid entry₁
-    | _            => false
+    | _            => true
 
 def requestAndEntitiesIsValid (env : TypeEnv) (req : PartialRequest) (es : PartialEntities) : Bool :=
   requestIsValid env req && entitiesIsValid env es

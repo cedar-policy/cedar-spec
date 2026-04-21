@@ -803,56 +803,30 @@ Note that the time is only the encoder and _not_ policy compilation to Term
   runFfiM $ SymCCPrimitive.matchesDisjoint.smtLib schema req
 
 /--
-  `req`: binary protobuf for an `BatchedEvaluationRequest`
-  Upon success returns inputs to `batchedEvaluate`
-  Returns a failure if
-  1.) Protobuf message could not be parsed
-  2.) Cannot derive a request environment from the request
-  3.) Request cannot be validated
-  4.) Policy cannot be validated
-  5.) Policy set contains more than one policy (a limitation at this moment)
+  `req`: binary protobuf for an `BatchedAuthorizationRequest`
+  Upon success returns inputs to `batchedAuthorize`
+  Returns a failure if Protobuf message could not be parsed
 -/
-def parseBatchedEvaluationReq (req : ByteArray) : Except String (TypedExpr × Request × Entities × Nat) := do
-  let req ← (@Proto.Message.interpret? Proto.BatchedEvaluationRequest) req |>.mapError (s!"failed to parse input: {·}")
+def parseBatchedAuthorizationReq (req : ByteArray) : Except String (Schema × List Policy × Request × Entities × Nat) := do
+  let req ← (@Proto.Message.interpret? Proto.BatchedAuthorizationRequest) req |>.mapError (s!"failed to parse input: {·}")
   let policySet := req.policies
-  let policy ← match policySet with
-    | [policy] => .ok policy
-    | _ => .error s!"only one policy is expected"
   let schema := req.schema
   let request := req.request
   let entities := req.entities
   let iteration := req.iteration.toNat
-  let expr ← match schema.environment? request.principal.ty request.resource.ty request.action with
-    | .some env =>
-      if requestIsValid env request.asPartialRequest then do
-        let expr := substituteAction env.reqty.action policy.toExpr
-        let (te, _) ← (typeOf expr ∅ env).mapError (fun err => s!"invalid policy: {reprStr err}")
-        .ok te
-      else
-        .error s!"invalid request"
-    | .none => .error s!"invalid environment derived from request"
-  return (expr, request, entities, iteration)
+  return (schema, policySet, request, entities, iteration)
 
 /--
-  `req`: binary protobuf for an `CheckPolicySetRequest`
+  `req`: binary protobuf for a `BatchedAuthorizationRequest`
 
-  returns JSON encoded of `Option Bool`
-  1.) .error err_message if there was an error in parsing `req`
-  2.) .ok {data, ..} where data is of type `Option Bool`. It is true when the
-      result residual is `.val true`; and it is false when the result residual
-      is either `.val false` or `.error _`. So we can interpret the boolean
-      value as if the policy takes effect or not
+  returns a string containing a JSON encoding of `Timed TPE.Response`
 -/
-@[export batchedEvaluateFFI] unsafe def batchedEvaluateFFI (req : ByteArray) : String :=
+@[export batchedAuthorizationFFI] unsafe def batchedAuthorizationFFI (req : ByteArray) : String :=
   runFfiM do
-    let (expr, request, entities, iteration) ← parseBatchedEvaluationReq req
-    runAndTime (λ () => match batchedEvaluate expr request (entityLoaderFor entities) iteration with
-    | .val v _ => match v.asBool with
-      | .ok b => (.some b : Option Bool)
-      | .error _ => .none
-    | .error _ => (.some false)
-    | _ => .none
-    )
+    let (schema, policies, request, entities, iteration) ← parseBatchedAuthorizationReq req
+    runAndTime (λ () =>
+      (batchedAuthorize schema policies request (entityLoaderFor entities) iteration).mapError
+        (s!"TPE error: {repr ·}"))
 
 
 def parsePartialAuthzRequest (req: ByteArray): Except String (Schema × List Policy × PartialRequest × PartialEntities) := do
