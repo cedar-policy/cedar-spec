@@ -19,8 +19,8 @@ use cedar_drt::logger::initialize_log;
 use cedar_drt_inner::{abac::FuzzTargetInput, fuzz_target};
 
 use cedar_lean_ffi::CedarLeanFfi;
-use cedar_policy::{Policy, PolicySet, Schema, TestEntityLoader};
-use cedar_policy_generators::{abac::ABACPolicy, policy::GeneratedPolicy};
+use cedar_policy::{Schema, TestEntityLoader};
+use cedar_policy_core::batched_evaluator::err::BatchedEvalError;
 
 // This target tests a property that batched evaluation, if succeeds, should
 // produce the same authorization decision based on the Lean model output
@@ -29,15 +29,7 @@ fuzz_target!(|input: FuzzTargetInput<true>| {
     initialize_log();
 
     if let Ok(schema) = Schema::try_from(input.schema) {
-        let ABACPolicy(GeneratedPolicy::Static(policy)) = input.policy else {
-            panic!(
-                "batched-evaluation-drt needs #932 to support linked policies\n{:?}",
-                input.policy
-            )
-        };
-        let policy = Policy::from(policy);
-        let mut policyset = PolicySet::new();
-        policyset.add(policy).unwrap();
+        let policyset = input.policy.into_policy_set();
         let mut loader = TestEntityLoader::new(&input.entities);
         log::debug!("policy: {policyset}");
         let iteration = (FuzzTargetInput::<true>::settings().max_depth + 1) as u32;
@@ -45,26 +37,26 @@ fuzz_target!(|input: FuzzTargetInput<true>| {
         for req in input.requests {
             let req = req.into();
             log::debug!("req: {req}");
-            // We need to start with an `Ok` result of Rust because the
-            // validation DRT property is if Rust validations, then Lean also
-            // does. `is_authorized_batched` validates policies/request/entities
-            if let Ok(rust_decision) =
-                policyset.is_authorized_batched(&req, &schema, &mut loader, iteration)
-            {
-                match ffi.batched_authorization(
-                    &policyset,
-                    &schema,
-                    &req,
-                    &input.entities,
-                    iteration,
-                ) {
-                    Ok(lean_decision) => {
-                        assert_eq!(lean_decision.decision, Some(rust_decision));
-                    }
-                    Err(err) => {
-                        panic!("lean failed but rust didn't: {err}");
-                    }
+            let rust_decision =
+                match policyset.is_authorized_batched(&req, &schema, &mut loader, iteration) {
+                    Ok(decision) => Ok(Some(decision)),
+                    Err(BatchedEvalError::InsufficientIterations(_)) => Ok(None),
+                    Err(e) => Err(e),
+                };
+
+            let lean_decision =
+                ffi.batched_authorization(&policyset, &schema, &req, &input.entities, iteration);
+            match (rust_decision, lean_decision) {
+                (Ok(rust_decision), Ok(lean_decision)) => {
+                    assert_eq!(rust_decision, lean_decision.decision);
                 }
+                (Ok(rust_decision), Err(lean_err)) => {
+                    panic!("Rust reached decisions {rust_decision:?} but lean errored: {lean_err}")
+                }
+                (Err(rust_err), Ok(lean_decision)) => {
+                    panic!("Lean reached decisions {lean_decision:?} but rust errored: {rust_err}")
+                }
+                (Err(_), Err(_)) => {}
             }
         }
     }
