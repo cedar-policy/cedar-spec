@@ -55,37 +55,32 @@ theorem partial_evaluate_is_sound_unary_app
     simp [Residual.evaluate, hᵢ₁, Except.toOption]
   case _ =>
     split
-    case _ heq =>
+    case _ v heq  =>
       rw [asValue_evaluate_val heq] at hᵢ₁
       replace hᵢ₁ := to_option_right_ok' hᵢ₁
-      simp [someOrError, Residual.evaluate, hᵢ₁]
-      split
-      case _ heq₂ =>
-        simp only [to_option_some] at heq₂
-        simp [heq₂, Residual.evaluate]
-      case _ heq₂ =>
-        rcases to_option_none.mp heq₂ with ⟨_, heq₂⟩
-        simp [heq₂, Residual.evaluate, Except.toOption]
+      simp only [Residual.evaluate, hᵢ₁, Except.bind_ok, okOrResidualError, ExceptT.stM_eq]
+      split <;> (rename_i h; simp [h])
     case _ =>
       split
       · -- .is ety, .var .resource _
         rename_i ety _ heq_r
-        simp [heq_r, Residual.evaluate] at hᵢ₁ ⊢
-        replace hᵢ₁ := to_option_right_ok' hᵢ₁
-        simp only [hᵢ₁, Spec.apply₁, Except.toOption, Except.bind_ok, h_ref.1.2.2.2.2.2, BEq.comm]
+        simp only [heq_r, Residual.evaluate, toOption_ok, toOption_eq_some_iff, evaluate_val] at hᵢ₁ ⊢
+        simp [hᵢ₁, Spec.apply₁, h_ref.1.2, BEq.comm]
       · -- .is ety, .var .principal _
         rename_i ety _ heq_p
-        simp [heq_p, Residual.evaluate] at hᵢ₁ ⊢
-        replace hᵢ₁ := to_option_right_ok' hᵢ₁
-        simp only [hᵢ₁, Spec.apply₁, Except.toOption, Except.bind_ok, h_ref.1.2.2.2.2.1, BEq.comm]
+        simp only [heq_p, Residual.evaluate, toOption_ok, toOption_eq_some_iff, evaluate_val] at hᵢ₁ ⊢
+        simp [hᵢ₁, Spec.apply₁,  h_ref.1.2, BEq.comm]
       · simp [Residual.evaluate]
         generalize h₅ : x₁.evaluate req es = res₁
-        cases res₁ <;> simp [h₅] at hᵢ₁
+        cases res₁ <;> simp only [h₅, toOption_error, toOption_ok] at hᵢ₁
         case error =>
-          rcases to_option_left_err hᵢ₁ with ⟨_, hᵢ₁⟩
+          symm at hᵢ₁
+          simp only [toOption_eq_none_iff] at hᵢ₁
+          rcases hᵢ₁ with ⟨_, hᵢ₁⟩
           simp [hᵢ₁, Except.toOption]
         case ok =>
-          replace hᵢ₃ := to_option_left_ok' hᵢ₁
-          simp [hᵢ₃]
+          symm at hᵢ₁
+          simp only [toOption_eq_some_iff] at hᵢ₁
+          simp [←hᵢ₁]
 
 end Cedar.Thm

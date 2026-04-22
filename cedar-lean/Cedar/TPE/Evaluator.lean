@@ -34,9 +34,13 @@ instance : Coe Spec.Error Error where
   coe := Error.evaluation
 
 /- Convert an optional value to a residual: Return `.error ty` when it's none -/
-def someOrError : Option Value → CedarType → Residual
-  | .some v, ty => .val v ty
-  | .none,   ty => .error ty
+def someOrError : Option Value → Spec.Error → CedarType → Residual
+  | .some v, _, ty => .val v ty
+  | .none  , e, ty  => Residual.error e ty
+
+def okOrResidualError : Spec.Result Value → CedarType → Residual
+  | .ok v, ty    => .val v ty
+  | .error e, ty => Residual.error e ty
 
 /- Convert an optional value to a residual: Return `self` when it's none -/
 def someOrSelf : Option Value → CedarType → Residual → Residual
@@ -55,13 +59,13 @@ where
 def ite (c t e : Residual) (ty : CedarType) : Residual :=
   match c with
   | .val (.prim (.bool b)) _ => if b then t else e
-  | .error _                 => .error ty
+  | .error e _               => .error e ty
   | _                        => .ite c t e ty
 
 def and : Residual → Residual → CedarType → Residual
   | .val true  _, r, _ => r
   | .val false _, _, _ => false
-  | .error _, _, ty    => .error ty
+  | .error e _, _, ty    => .error e ty
   | l, .val true _, _  => l
   | l, .val false rty, ty  =>
     if l.errorFree then false else .and l (.val false rty) ty
@@ -70,7 +74,7 @@ def and : Residual → Residual → CedarType → Residual
 def or : Residual → Residual → CedarType → Residual
   | .val true  _, _, _ => true
   | .val false _, r, _ => r
-  | .error _, _, ty    => .error ty
+  | .error e _, _, ty    => .error e ty
   | l, .val false _, _ => l
   | l, .val true rty, ty  =>
     if l.errorFree then true else .or l (.val true rty) ty
@@ -78,10 +82,10 @@ def or : Residual → Residual → CedarType → Residual
 
 def apply₁ (req: PartialRequest) (op₁ : UnaryOp) (r : Residual) (ty : CedarType) : Residual :=
   match r with
-  | .error _ => .error ty
+  | .error e _ => .error e ty
   | _ =>
     match r.asValue with
-    | .some v => someOrError (Spec.apply₁ op₁ v).toOption ty
+    | .some v => okOrResidualError (Spec.apply₁ op₁ v) ty
     | .none   =>
       match op₁, r with
       | .is ety, .var .resource _ => .val (req.resource.ty == ety) ty
@@ -99,7 +103,7 @@ def hasTag (uid : EntityUID) (tag : String) (es : PartialEntities) : Option Bool
 
 def getTag (uid : EntityUID) (tag : String) (es : PartialEntities) (ty : CedarType) : Residual :=
   match es.tags uid with
-  | .some tags => someOrError (tags.find? tag) ty
+  | .some tags => someOrError (tags.find? tag) .tagDoesNotExist ty
   | .none => .binaryApp .getTag uid tag ty
 
 def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (ty : CedarType) : Residual :=
@@ -121,11 +125,11 @@ def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (t
     | .lessEq, .ext (.duration d₁), .ext (.duration d₂) =>
       .val (d₁ ≤ d₂: Bool) ty
     | .add, .prim (.int i), .prim (.int j) =>
-      someOrError (i.add? j) ty
+      someOrError (i.add? j) .arithBoundsError ty
     | .sub, .prim (.int i), .prim (.int j) =>
-      someOrError (i.sub? j) ty
+      someOrError (i.sub? j) .arithBoundsError ty
     | .mul, .prim (.int i), .prim (.int j) =>
-      someOrError (i.mul? j) ty
+      someOrError (i.mul? j) .arithBoundsError ty
     | .contains, .set vs₁, _ =>
       .val (vs₁.contains v₂) ty
     | .containsAll, .set vs₁, .set vs₂ =>
@@ -140,10 +144,11 @@ def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (t
       someOrSelf (hasTag uid₁ tag es) ty self
     | .getTag, .prim (.entityUID uid₁), .prim (.string tag) =>
       getTag uid₁ tag es ty
-    | _, _, _ => .error ty
+    | _, _, _ => .error .typeError ty
   | _, _ =>
     match r₁, r₂ with
-    | .error _, _ | _, .error _ => .error ty
+    | .error e _, _ => .error e ty
+    | _, .error e _ => .error e ty
     | _, _ => self
   where
   self := .binaryApp op₂ r₁ r₂ ty
@@ -157,7 +162,7 @@ def attrsOf (r : Residual) (lookup : EntityUID → Option (Map Attr Value)) : Op
 
 def hasAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : Residual :=
   match r with
-  | .error _ => .error ty
+  | .error e _ => .error e ty
   | _ =>
     match attrsOf r es.attrs with
     | .some m => m.contains a
@@ -165,26 +170,35 @@ def hasAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : 
 
 def getAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : Residual :=
   match r with
-  | .error _ => .error ty
+  | .error e _ => .error e ty
   | _ =>
     match attrsOf r es.attrs with
-    | .some m => someOrError (m.find? a) ty
+    | .some m => someOrError (m.find? a) .attrDoesNotExist ty
     | .none   => .getAttr r a ty
 
 def set (rs : List Residual) (ty : CedarType) : Residual :=
   match rs.mapM Residual.asValue with
   | .some xs => .val (.set (Set.make xs)) ty
-  | .none    => if rs.any Residual.isError then .error ty else .set rs ty
+  | .none    =>
+    match rs.findSome? Residual.asError with
+    | .some (e, _) => .error e ty
+    | .none => .set rs ty
 
 def record (m : List (Attr × Residual)) (ty : CedarType) : Residual :=
   match m.mapM λ (a, r₁) => bindAttr a r₁.asValue with
   | .some xs => .val (.record (Map.make xs)) ty
-  | .none    => if m.any λ (_, r₁) => r₁.isError then .error ty else .record m ty
+  | .none    =>
+    match m.findSome? (λ (_, r₁) => r₁.asError) with
+    | .some (e, _) => .error e ty
+    | .none => .record m ty
 
 def call (xfn : ExtFun) (rs : List Residual) (ty : CedarType) : Residual :=
   match rs.mapM Residual.asValue with
-  | .some xs => someOrError (Spec.call xfn xs).toOption ty
-  | .none    => if rs.any Residual.isError then .error ty else .call xfn rs ty
+  | .some xs => okOrResidualError (Spec.call xfn xs) ty
+  | .none    =>
+    match rs.findSome? Residual.asError with
+    | .some (e, _) => .error e ty
+    | .none => .call xfn rs ty
 
 def evaluate
   (x : Residual)
@@ -193,7 +207,7 @@ def evaluate
   match x with
   | .val l ty => .val l ty
   | .var v ty => varₚ req v ty
-  | .error ty => .error ty
+  | .error e ty => .error e ty
   | .ite x₁ x₂ x₃ ty =>
     ite (evaluate x₁ req es) (evaluate x₂ req es) (evaluate x₃ req es) ty
   | .and x₁ x₂ ty =>

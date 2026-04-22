@@ -52,14 +52,13 @@ theorem partial_evaluate_is_sound_ite
   simp [Residual.evaluate, TPE.evaluate, TPE.ite]
   split
   case _ heq =>
-    simp [heq, Residual.evaluate] at hᵢ₁
-    have h₆ := to_option_right_ok' hᵢ₁
+    simp only [heq, evaluate_val, toOption_ok, toOption_eq_some_iff] at hᵢ₁
     split
     case isTrue heq =>
-      simp only [h₆, heq, Value.asBool, Except.bind_ok, ↓reduceIte]
+      simp only [hᵢ₁, heq, Value.asBool, ExceptT.stM_eq, Except.bind_ok, ↓reduceIte]
       exact hᵢ₂
     case isFalse heq =>
-      simp only [h₆, heq, Value.asBool, Except.bind_ok, Bool.false_eq_true, ↓reduceIte]
+      simp only [hᵢ₁, heq, Value.asBool, ExceptT.stM_eq, Except.bind_ok, Bool.false_eq_true, ↓reduceIte]
       exact hᵢ₃
   case _ heq =>
     simp only [heq, Residual.evaluate] at hᵢ₁

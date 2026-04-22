@@ -41,7 +41,7 @@ inductive Residual where
   | set (ls : List Residual)  (ty : CedarType)
   | record (map : List (Attr × Residual))  (ty : CedarType)
   | call (xfn : ExtFun) (args : List Residual) (ty : CedarType)
-  | error (ty : CedarType)
+  | error (err : Error) (ty : CedarType)
 deriving Repr, Inhabited
 
 instance : Coe Bool Residual where
@@ -61,8 +61,12 @@ def Value.toResidual (v : Value) (ty : CedarType) : Residual :=
   .val v ty
 
 def Residual.isError : Residual → Bool
-  | .error _ => true
-  | _        => false
+  | .error _ _ => true
+  | _          => false
+
+def Residual.asError : Residual → Option (Error × CedarType)
+  | .error e ty => .some (e, ty)
+  | _           => .none
 
 def Residual.typeOf : Residual → CedarType
   | .val _ ty
@@ -77,7 +81,7 @@ def Residual.typeOf : Residual → CedarType
   | .set _ ty
   | .record _ ty
   | .call _ _ ty
-  | .error ty => ty
+  | .error _ ty => ty
 
 
 def BinaryOp.canError : BinaryOp → Bool
@@ -155,7 +159,7 @@ def Residual.evaluate (x : Residual) (req : Request) (es: Entities) : Result Val
   | .call xfn xs _ => do
     let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => evaluate x₁ req es)
     Cedar.Spec.call xfn vs
-  | .error _ => .error .extensionError
+  | .error e _ => .error e
 termination_by x
 decreasing_by
   all_goals
@@ -170,7 +174,7 @@ def Residual.allLiteralUIDs (x : Residual) : Set EntityUID :=
   match x with
   | .val (.prim (.entityUID uid)) _ty  => Set.singleton uid
   | .val _ _                           => Set.empty
-  | .error _e                          => Set.empty
+  | .error _ _                         => Set.empty
   | .var _ _                           => Set.empty
   | .ite x₁ x₂ x₃ _      =>
     x₁.allLiteralUIDs ∪ x₂.allLiteralUIDs ∪ x₃.allLiteralUIDs
@@ -245,10 +249,11 @@ def decResidual (x y : Residual) : Decidable (x = y) := by
     exact match decEq f f', decResidualList xs ys, decEq tx ty with
     | isTrue h₁, isTrue h₂, isTrue h₃ => isTrue (by rw [h₁, h₂, h₃])
     | isFalse _, _, _ | _, isFalse _, _ | _, _, isFalse _ => isFalse (by intro h; injection h; contradiction)
-  case error.error ty₁ ty₂ =>
-    exact match decEq ty₁ ty₂ with
-    | isTrue h₁ => isTrue (by rw [h₁])
-    | isFalse _ => isFalse (by intro h; injection h; contradiction)
+  case error.error e₁ ty₁ e₂ ty₂ =>
+    exact match decEq ty₁ ty₂, decEq e₁ e₂ with
+    | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
+    | isFalse _, _ => isFalse (by intro h; injection h; contradiction)
+    | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
 
 def decProdAttrResidualList (axs ays : List (Prod Attr Residual)) : Decidable (axs = ays) :=
   match axs, ays with

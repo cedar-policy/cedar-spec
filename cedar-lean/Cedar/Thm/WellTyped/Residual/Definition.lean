@@ -275,8 +275,8 @@ inductive Residual.WellTyped (env : TypeEnv) : Residual → Prop
   (h₁ : ∀ x, x ∈ args → WellTyped env x)
   (h₂ : ExtResidualWellTyped xfn args ty) :
   WellTyped env (.call xfn args ty)
-| error {ty : CedarType} :
-  WellTyped env (.error ty)
+| error {e : Error} {ty : CedarType} :
+  WellTyped env (.error e ty)
 
 theorem well_typed_bool {env : TypeEnv} {b : Bool}:
  Residual.WellTyped env (.val (.prim (.bool b)) (CedarType.bool BoolType.anyBool))

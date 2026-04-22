@@ -41,7 +41,7 @@ theorem partial_eval_well_typed_record {env : TypeEnv} {ls : List (Attr × Resid
   simp only [TPE.evaluate]
   unfold List.map₁ List.attach List.attachWith
   rw [List.map_pmap_subtype (fun x => (x.fst, TPE.evaluate x.snd preq pes)) ls]
-  simp only [record, List.mapM_map, List.any_map, List.any_eq_true, Function.comp_apply, Prod.exists]
+  simp only [record, List.mapM_map]
   let m := Map.mk ls
   split
   . rename_i x xs h₃
@@ -139,8 +139,7 @@ theorem partial_eval_well_typed_record {env : TypeEnv} {ls : List (Attr × Resid
   case h_2 x h₂ =>
     split
     . apply Residual.WellTyped.error
-    case isFalse h₃ =>
-      apply Residual.WellTyped.record
+    · apply Residual.WellTyped.record
       . intros k v h₄
         have h₅ := List.mem_of_map_implies_exists_unmapped h₄
         rcases h₅ with ⟨p, h₅, h₆⟩

@@ -125,7 +125,7 @@ private theorem partial_eval_preserves_typeof_unaryApp {op : UnaryOp} {e : Resid
       rename_i h₂
       unfold Spec.apply₁
       split
-      any_goals simp only [Residual.typeOf, someOrError, Except.toOption]
+      any_goals simp only [Residual.typeOf, okOrResidualError]
       case h_2 =>
         rename Int64 => i
         cases h₃ : i.neg?
@@ -188,10 +188,9 @@ private theorem partial_eval_preserves_typeof_call {xfn : ExtFun} {args : List R
   intro env h_wt preq pes
   simp only [TPE.evaluate, TPE.call]
   split
-  · simp only [someOrError]
-    split
-    · simp [Residual.typeOf]
-    · simp [Residual.typeOf]
+  · rename_i vs _
+    cases h : Spec.call xfn vs <;>
+      simp [okOrResidualError, Residual.typeOf]
   · split
     · simp [Residual.typeOf]
     · simp [Residual.typeOf]
@@ -204,10 +203,9 @@ private theorem partial_eval_preserves_typeof_getAttr {expr : Residual} {attr : 
   split
   . simp [Residual.typeOf]
   . split
-    . unfold someOrError
-      split
-      . simp [Residual.typeOf]
-      . simp [Residual.typeOf]
+    . rename_i m _
+      cases h : m.find? attr <;>
+        simp [someOrError, Residual.typeOf]
     . simp [Residual.typeOf]
 
 private theorem partial_eval_preserves_typeof_hasAttr {expr : Residual} {attr : Attr} {ty : CedarType} :

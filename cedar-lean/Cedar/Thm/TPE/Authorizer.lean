@@ -187,7 +187,7 @@ theorem no_satisfied_effect_if_empty_satisfied_and_residual_policies
   replace ⟨rp, h₅, h_id, h_eff, h_eval⟩ := List.forall₂_implies_all_left h₃ p hp₁
 
   replace ⟨_, hp⟩ :
-    ∃ ty, rp.residual = .val (.prim (.bool false)) ty ∨ rp.residual = .error ty
+    ∃ ty, rp.residual = .val (.prim (.bool false)) ty ∨ (∃ err, rp.residual = .error err ty)
   := by
     simp only [isAuthorizedFromResiduals.satisfiedPolicies, Set.empty_iff_not_exists, Set.mem_make,
       List.mem_filterMap, ResidualPolicy.satisfiedWithEffect, ResidualPolicy.satisfied,
@@ -202,8 +202,10 @@ theorem no_satisfied_effect_if_empty_satisfied_and_residual_policies
     to_option_right_ok h_eval h
 
   cases hp
-  · rename_i hp; simp [hp, Residual.evaluate] at ha
-  · rename_i hp; simp [hp, Residual.evaluate] at ha
+  · rename_i hp; simp [hp] at ha
+  · rename_i hp
+    replace ⟨_, hp⟩ := hp
+    simp [hp] at ha
 
 theorem satisfied_effect_if_non_empty_satisfied_policies
   {policies : List Policy}

@@ -50,27 +50,27 @@ theorem partial_eval_well_typed_unaryApp {env : TypeEnv} {op : UnaryOp} {expr : 
     case h_2 =>
       cases h : expr_eval.asValue with
       | some v =>
-        simp only [someOrError]
-        split
-        case h_2 =>
-          apply Residual.WellTyped.error
-        case h_1 v ty ox x v₂ heq =>
-          unfold Spec.apply₁ at heq
-          split at heq
+        simp only
+        cases h_app : Spec.apply₁ op v
+        case error => exact Residual.WellTyped.error
+        case ok =>
+          unfold Spec.apply₁ at h_app
+          split at h_app
           any_goals
             cases h_op
-            simp only [Except.toOption, Option.some.injEq] at heq
-            rw [← heq]
-            exact well_typed_bool
+            all_goals
+              simp only [Except.ok.injEq, reduceCtorEq] at h_app
+              simp only [←h_app, okOrResidualError]
+              exact well_typed_bool
           case h_2 =>
-            simp only [Except.toOption, intOrErr] at heq
+            simp only [intOrErr] at h_app
             rename Int64 => i
             cases h₂: i.neg?
-            . rw [h₂] at heq
-              simp at heq
-            . rw [h₂] at heq
-              simp only [Option.some.injEq] at heq
-              rw [← heq]
+            . rw [h₂] at h_app
+              simp at h_app
+            . rw [h₂] at h_app
+              simp only [Except.ok.injEq] at h_app
+              rw [← h_app]
               cases h_op
               exact well_typed_int
           case h_6 =>

@@ -49,10 +49,10 @@ theorem partial_evaluate_is_sound_call
   Except.toOption ((TPE.evaluate (Residual.call xfn args ty) preq pes).evaluate req es)
 := by
   simp only [TPE.evaluate, TPE.call, List.map₁, List.map_subtype, List.unattach_attach,
-    List.mapM_map, Function.comp_def, List.any_map, List.any_eq_true]
+    List.mapM_map, Function.comp_def]
   split
   case _ vs heq =>
-    simp only [Residual.evaluate, List.mapM₁_eq_mapM (Residual.evaluate · req es), someOrError]
+    simp only [Residual.evaluate, List.mapM₁_eq_mapM (Residual.evaluate · req es), okOrResidualError]
     simp only [List.mapM_some_iff_forall₂] at heq
     have h_tpe_ok : List.mapM (λ x => (TPE.evaluate x preq pes).evaluate req es) args = .ok vs := by
       rw [List.mapM_ok_iff_forall₂]
@@ -62,24 +62,25 @@ theorem partial_evaluate_is_sound_call
       simp only [h_tpe_ok] at h₅
       exact to_option_left_ok' h₅.symm
     simp only [h₅, Except.bind_ok]
-    split
-    case _ heq₁ =>
-      simp only [to_option_some] at heq₁
-      simp only [heq₁, Residual.evaluate]
-    case _ heq₁ =>
-      rcases to_option_none.mp heq₁ with ⟨_, heq₁⟩
-      simp [heq₁, Residual.evaluate, Except.toOption]
+    split <;> (rename_i h_call ; simp [h_call])
   split
   case _ heq₁ =>
-    rcases heq₁ with ⟨x, heq₂, heq₃⟩
-    have ⟨_, he⟩ := isError_evaluate_err heq₃ req es
-    have h_none : (x.evaluate req es).toOption = none := by
-      rw [hᵢ₁ x heq₂]
-      simp [he, Except.toOption]
-    have heq₄ := List.element_to_option_none_implies_mapM_none (f := (Residual.evaluate · req es)) heq₂
-      (by rw [hᵢ₁ x heq₂]; simp [he, Except.toOption])
-    simp only [Residual.evaluate, List.mapM₁_eq_mapM (Residual.evaluate · req es), do_to_option_none heq₄,]
-    simp [Except.toOption]
+    simp only [evaluate_error, toOption_error, toOption_eq_none_iff]
+    rename_i e _
+    simp only [List.findSome?_eq_some_iff, asError_some, exists_and_right] at heq₁
+    rcases heq₁ with ⟨args', arg, ⟨args'', heq₂⟩, heq₃, heq₄⟩
+    have h_mem : arg ∈ List.map (TPE.evaluate · preq pes) args := by
+      rw [heq₂]; simp
+    have ⟨a, h_a_mem, h_a_eq⟩ := List.mem_map.mp h_mem
+    have h_is_err : (TPE.evaluate a preq pes).isError := by
+      rw [h_a_eq, heq₃]; simp [Residual.isError]
+    have ⟨_, h_tpe_err⟩ := isError_evaluate_err h_is_err req es
+    have h_none : (a.evaluate req es).toOption = .none := by
+      rw [hᵢ₁ a h_a_mem, h_tpe_err]; simp [Except.toOption]
+    have ⟨err, h_err⟩ := (toOption_eq_none_iff).mp <|
+      List.element_to_option_none_implies_mapM_none (f := (Residual.evaluate · req es)) h_a_mem h_none
+    exists err
+    simp [Residual.evaluate, List.mapM₁_eq_mapM (Residual.evaluate · req es), h_err]
   case _ =>
     simp only [Residual.evaluate, List.mapM₁_eq_mapM (Residual.evaluate · req es)]
     apply to_option_eq_do₁ (λ (x : List Value) => Spec.call xfn x)

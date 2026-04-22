@@ -49,8 +49,8 @@ theorem partial_evaluate_is_sound_has_attr
   simp [TPE.evaluate, TPE.hasAttr]
   split
   case _ heq =>
-    simp [heq, Residual.evaluate] at hᵢ₁
-    rcases to_option_right_err hᵢ₁ with ⟨_, hᵢ₁⟩
+    simp only [heq, evaluate_error, toOption_error, toOption_eq_none_iff] at hᵢ₁
+    rcases hᵢ₁ with ⟨_, hᵢ₁⟩
     simp [Residual.evaluate, hᵢ₁, Except.toOption]
   split
   case _ heq =>
@@ -58,12 +58,10 @@ theorem partial_evaluate_is_sound_has_attr
     split at heq
     case _ heq₁ =>
       simp only [Option.some.injEq] at heq
-      simp [heq₁, Residual.evaluate] at hᵢ₁
-      replace hᵢ₁ := to_option_right_ok' hᵢ₁
-      simp [Residual.evaluate, hᵢ₁, Spec.hasAttr, Spec.attrsOf, Except.toOption, heq]
+      simp only [heq₁, evaluate_val, toOption_ok, toOption_eq_some_iff] at hᵢ₁
+      simp [Residual.evaluate, hᵢ₁, Spec.hasAttr, Spec.attrsOf, heq]
     case _ uid _ heq₁ =>
-      simp [heq₁, Residual.evaluate] at hᵢ₁
-      replace hᵢ₁ := to_option_right_ok' hᵢ₁
+      simp only [heq₁, evaluate_val, toOption_ok, toOption_eq_some_iff] at hᵢ₁
       simp [Residual.evaluate, hᵢ₁, Spec.hasAttr, Spec.attrsOf, Except.toOption]
       simp [PartialEntities.attrs, PartialEntities.get, Option.bind_eq_some_iff] at heq
       rcases heq with ⟨data, heq₂, heq₃⟩

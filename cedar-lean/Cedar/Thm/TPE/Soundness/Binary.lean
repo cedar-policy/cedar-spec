@@ -59,25 +59,18 @@ theorem partial_evaluate_is_sound_binary_app
     rw [asValue_evaluate_val heq₂] at hᵢ₂
     replace hᵢ₁ := to_option_right_ok' hᵢ₁
     replace hᵢ₂ := to_option_right_ok' hᵢ₂
-    simp [Residual.evaluate, hᵢ₁, hᵢ₂, Spec.apply₂]
+    simp only [Residual.evaluate, hᵢ₁, hᵢ₂, Spec.apply₂, ExceptT.stM_eq, Except.bind_ok]
     -- TODO: rewrite one of the two binary app evaluation function so that we don't need this amount of case splits.
-    split <;> simp [Residual.evaluate]
-    any_goals
-      simp [intOrErr, someOrError]
-      split <;> split
-      case _ heq₃ _ _ _ _ heq₄ =>
-        simp [Option.bind_eq_some_iff] at heq₄
-        rcases heq₄ with ⟨_, heq₄₁, heq₄₂⟩
-        subst heq₄₂
-        simp [heq₃] at heq₄₁
-        subst heq₄₁
-        simp [Residual.evaluate]
-      case _ heq₃ _ _ _ heq₄ =>
-        simp only [heq₃, Option.bind_some, reduceCtorEq] at heq₄
-      case _ heq₃ _ _ _ _ heq₄ =>
-        simp only [heq₃, Option.bind_none, reduceCtorEq] at heq₄
-      case _ =>
-        simp only [Except.toOption, Residual.evaluate]
+    split <;> simp only [Residual.evaluate]
+    case _ =>
+      simp only [intOrErr, ExceptT.stM_eq]
+      split <;> rename_i heq₃ <;> simp [heq₃]
+    case _ =>
+      simp only [intOrErr, ExceptT.stM_eq, someOrError]
+      split <;> rename_i heq₃ <;> simp [heq₃]
+    case _ =>
+      simp only [intOrErr, ExceptT.stM_eq, someOrError]
+      split <;> rename_i heq₃ <;> simp [heq₃]
     case _ uid₁ uid₂ =>
       simp [apply₂.self, someOrSelf]
       split
@@ -86,7 +79,7 @@ theorem partial_evaluate_is_sound_binary_app
         rcases heq₃ with ⟨_, heq₃₁, heq₃₂⟩
         simp only [Option.some.injEq] at heq₃₂
         subst heq₃₂
-        simp [Residual.evaluate]
+        simp only [evaluate_val, toOption_ok, Option.some.injEq, Value.prim.injEq, Prim.bool.injEq]
         simp [TPE.inₑ] at heq₃₁
         split at heq₃₁
         case _ heq₄ =>
@@ -106,14 +99,11 @@ theorem partial_evaluate_is_sound_binary_app
           rw [heq₅₂] at h₄₂
           cases h₄₂
           rename_i h₄₂
-          simp [Spec.inₑ, Entities.ancestorsOrEmpty, h₄₁, ←h₄₂]
-          have : (uid₁ == uid₂) = false := by
-            simp only [beq_eq_false_iff_ne, ne_eq, heq₄, not_false_eq_true]
-          simp only [this, Bool.false_or]
+          simp [Spec.inₑ, Entities.ancestorsOrEmpty, h₄₁, ←h₄₂, heq₄]
       case _ heq₃ =>
         rw [asValue_some] at heq₁ heq₂
         rw [heq₁.choose_spec, heq₂.choose_spec]
-        simp only [Residual.evaluate, Spec.apply₂, Except.bind_ok]
+        simp [Residual.evaluate, Spec.apply₂, Except.bind_ok]
     case _ =>
       simp [apply₂.self, someOrSelf]
       split
@@ -180,7 +170,7 @@ theorem partial_evaluate_is_sound_binary_app
           replace heq₃₂ := List.anyM_some_implies_any (fun x => if uid = x then some true else Option.map (fun y => y.contains x) (pes.ancestors uid))
             (fun x => uid == x || (es.ancestorsOrEmpty uid).contains x) this heq₃₂
           subst heq₃₂
-          simp only [Residual.evaluate]
+          rfl
       case _ =>
         rw [asValue_some] at heq₁ heq₂
         rw [heq₁.choose_spec, heq₂.choose_spec]
@@ -227,27 +217,25 @@ theorem partial_evaluate_is_sound_binary_app
         cases h₄₂
         rename_i heq₄
         subst heq₄
-        simp only [Spec.getTag, Entities.tags, Data.Map.findOrErr, h₄₁]
-        split <;>
-        (rename_i heq₁; simp [heq₁, Residual.evaluate, Except.toOption])
+        simp only [Spec.getTag, Entities.tags, Data.Map.findOrErr, h₄₁, Except.bind_ok]
+        rename_i tag _ _ _ edata _ _
+        cases h_tag : edata.tags.find? tag <;>
+          simp only [Except.toOption, evaluate_error, evaluate_val]
       case _ =>
         simp only [Residual.evaluate, Spec.apply₂, Except.bind_ok]
-    case _ => simp [Except.toOption]
   case _ =>
     split
     case _ heq =>
-      simp [heq, Residual.evaluate] at hᵢ₁
-      rcases to_option_right_err hᵢ₁ with ⟨_, hᵢ₁⟩
+      simp only [heq, evaluate_error, toOption_error, toOption_eq_none_iff] at hᵢ₁
+      rcases hᵢ₁ with ⟨_, hᵢ₁⟩
       simp [Residual.evaluate, hᵢ₁, Except.toOption]
     case _ heq _ =>
-      simp [heq, Residual.evaluate] at hᵢ₂
-      rcases to_option_right_err hᵢ₂ with ⟨_, hᵢ₂⟩
-      simp only [Residual.evaluate, hᵢ₂, Except.bind_err, do_error_to_option]
-      simp only [Except.toOption]
+      simp only [heq, evaluate_error, toOption_error, toOption_eq_none_iff] at hᵢ₂
+      rcases hᵢ₂ with ⟨_, hᵢ₂⟩
+      simp [Residual.evaluate, hᵢ₂, do_error_to_option]
     case _ =>
-      simp [Residual.evaluate, apply₂.self]
+      simp only [Residual.evaluate, apply₂.self]
       exact to_option_eq_do₂
         (λ x y => Spec.apply₂ op₂ x y es) hᵢ₁ hᵢ₂
-
 
 end Cedar.Thm

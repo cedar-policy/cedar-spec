@@ -93,14 +93,12 @@ theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List
   PEWellTyped env (Residual.call xfn args ty) (TPE.evaluate (Residual.call xfn args ty) preq pes) req preq es pes
 := by
   intros h_args_wt h_wf h_ref h_wt
-  simp only [TPE.evaluate, TPE.call, List.any_eq_true]
-  simp only [List.map₁, List.attach, List.attachWith, List.map_subtype, List.mapM_map, List.mem_map, List.mem_unattach, List.mem_pmap, Subtype.mk.injEq, exists_prop, exists_eq_right, and_self]
+  simp only [TPE.evaluate, TPE.call]
+  simp only [List.map₁, List.attach, List.attachWith, List.map_subtype, List.mapM_map]
   unfold Function.comp
-  simp only [List.map_subtype, List.mem_map, List.mem_unattach, List.mem_pmap, Subtype.mk.injEq, exists_prop, exists_eq_right, and_self]
   unfold List.unattach
   rw [List.map_pmap_subtype (fun x => x)]
-  simp only [List.map_id_fun', id_eq, List.map_subtype, List.mem_map, List.mem_unattach, List.mem_pmap, Subtype.mk.injEq, exists_prop, exists_eq_right, and_self]
-  simp only [List.map_pmap_subtype (fun x => TPE.evaluate x preq pes)]
+  simp only [List.map_id_fun', id_eq]
   split
   case h_1 x xs h₁ =>
     cases h_wt
@@ -122,7 +120,7 @@ theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List
         | skip
       split
       case h_1 x₂ v =>
-        simp only [someOrError, Except.toOption]
+        simp only [okOrResidualError]
         rw [List.mapM_some_iff_forall₂, List.forall₂_singleton_right_iff] at h₁
         rcases h₁ with ⟨x₃, h₁, h₅⟩
         unfold Residual.asValue at h₁
@@ -148,14 +146,14 @@ theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List
           simp [InstanceOfExtType]
         | exact well_typed_bool
       case h_2 x₂ h₄ =>
-        simp only [someOrError, Except.toOption]
+        simp only [okOrResidualError]
         first
         | apply Residual.WellTyped.error
         | cases h₃
           exact well_typed_bool
     case h_2 | h_3 | h_4 | h_5 =>
       rename_i xf vs d₁ d₂
-      simp only [someOrError, Except.toOption]
+      simp only [okOrResidualError]
       cases h₃
       exact well_typed_bool
     case h_11 | h_14 | h_15 =>
@@ -170,7 +168,7 @@ theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List
 
       split
       case h_1 x₂ v =>
-        simp only [someOrError, Except.toOption]
+        simp only [okOrResidualError]
         rw [List.mapM_some_iff_forall₂, List.forall₂_pair_right_iff] at h₁
         rcases h₁ with ⟨x₃, x₄, h₁, h₅, h₆⟩
 
@@ -197,17 +195,17 @@ theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List
           simp [InstanceOfExtType]
         | exact well_typed_bool
       case h_2 x₂ h₄ =>
-        simp only [someOrError, Except.toOption]
+        simp only [okOrResidualError]
         first
         | apply Residual.WellTyped.error
         | cases h₃
           exact well_typed_bool
       try case h_3 x₂ v =>
-        simp only [someOrError, Except.toOption]
+        simp only [okOrResidualError]
         cases h₃
         exact well_typed_bool
     case h_17 | h_18 | h_19 | h_20 | h_21 | h_22 =>
-      simp only [someOrError, Except.toOption, Ext.Datetime.toTime, ge_iff_le, beq_iff_eq]
+      simp only [okOrResidualError]
       rw [List.mapM_some_iff_forall₂, List.forall₂_singleton_right_iff] at h₁
       rcases h₁ with ⟨x₃, h₁, h₅⟩
       unfold Residual.asValue at h₁
@@ -234,14 +232,12 @@ theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List
         simp [InstanceOfExtType]
       | exact well_typed_int
     case h_23 =>
-      simp only [someOrError, Except.toOption]
+      simp only [okOrResidualError]
       apply Residual.WellTyped.error
   case h_2 x h₂ =>
     split
-    case isTrue =>
-      apply Residual.WellTyped.error
-    case isFalse =>
-      cases h_wt
+    · apply Residual.WellTyped.error
+    · cases h_wt
       rename_i h₁ h₂
       apply Residual.WellTyped.call
       case call.h₁ =>

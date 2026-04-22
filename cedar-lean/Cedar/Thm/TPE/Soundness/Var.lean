@@ -44,8 +44,7 @@ theorem partial_evaluate_is_sound_val
   Except.toOption ((Residual.val v ty).evaluate req es) =
   Except.toOption ((TPE.evaluate (Residual.val v ty) preq pes).evaluate req es)
 := by
-  simp [TPE.evaluate, Residual.evaluate]
-
+  simp [TPE.evaluate]
 
 theorem partial_evaluate_is_sound_var
 {req : Request}

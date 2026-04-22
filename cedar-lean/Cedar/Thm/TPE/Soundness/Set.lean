@@ -62,16 +62,24 @@ theorem partial_evaluate_is_sound_set
     simp [h₅]
   case _ heq =>
     split
-    case isTrue heq₁ =>
-      rcases heq₁ with ⟨x, heq₂, heq₃⟩
-      have ⟨_, he⟩ := isError_evaluate_err heq₃ req es
-      have h_none : (x.evaluate req es).toOption = none := by
-        rw [hᵢ₁ x heq₂]
-        simp [he, Except.toOption]
-      have heq₄ := List.element_to_option_none_implies_mapM_none (f := (Residual.evaluate · req es)) heq₂ h_none
-      simp only [Residual.evaluate, List.mapM₁_eq_mapM (Residual.evaluate · req es), do_to_option_none heq₄]
-      simp [Except.toOption]
-    case isFalse =>
+    case _ heq₁ =>
+      simp only [evaluate_error, toOption_error, toOption_eq_none_iff]
+      rename_i e _
+      simp only [List.findSome?_eq_some_iff, asError_some, exists_and_right] at heq₁
+      rcases heq₁ with ⟨ls', arg, ⟨ls'', heq₂⟩, heq₃, heq₄⟩
+      have h_mem : arg ∈ List.map (TPE.evaluate · preq pes) ls := by
+        rw [heq₂]; simp
+      have ⟨a, h_a_mem, h_a_eq⟩ := List.mem_map.mp h_mem
+      have h_is_err : (TPE.evaluate a preq pes).isError := by
+        rw [h_a_eq, heq₃]; simp [Residual.isError]
+      have ⟨_, h_tpe_err⟩ := isError_evaluate_err h_is_err req es
+      have h_none : (a.evaluate req es).toOption = .none := by
+        rw [hᵢ₁ a h_a_mem, h_tpe_err]; simp [Except.toOption]
+      have ⟨err, h_err⟩ := (toOption_eq_none_iff).mp <|
+        List.element_to_option_none_implies_mapM_none (f := (Residual.evaluate · req es)) h_a_mem h_none
+      exists err
+      simp [Residual.evaluate, List.mapM₁_eq_mapM (Residual.evaluate · req es), h_err]
+    case _ =>
       simp only [Residual.evaluate, List.mapM₁_eq_mapM (Residual.evaluate · req es)]
       apply to_option_eq_do₁ (λ (x : List Value) => (Except.ok (Value.set (Data.Set.make x))))
       -- We need to show that evaluating the original list gives the same result as evaluating the TPE-transformed list

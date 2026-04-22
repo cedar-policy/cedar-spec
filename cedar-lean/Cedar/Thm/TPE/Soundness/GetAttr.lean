@@ -50,27 +50,25 @@ theorem partial_evaluate_is_sound_get_attr
   simp [TPE.evaluate, TPE.getAttr]
   split
   case _ heq =>
-    simp [heq, Residual.evaluate] at hᵢ₁
-    rcases to_option_right_err hᵢ₁ with ⟨_, hᵢ₁⟩
-    simp [Residual.evaluate, hᵢ₁, Except.toOption]
+    simp only [heq, evaluate_error, toOption_error, toOption_eq_none_iff] at hᵢ₁
+    rcases hᵢ₁ with ⟨_, hᵢ₁⟩
+    simp [Residual.evaluate, hᵢ₁]
   split
   case _ heq =>
     simp [TPE.attrsOf] at heq
     split at heq
     case _ heq₁ =>
-      simp at heq
-      simp [heq₁, Residual.evaluate] at hᵢ₁
-      replace hᵢ₁ := to_option_right_ok' hᵢ₁
+      simp only [Option.some.injEq] at heq
+      simp only [heq₁, evaluate_val, toOption_ok, toOption_eq_some_iff] at hᵢ₁
       simp [Residual.evaluate, hᵢ₁, someOrError, Spec.getAttr, Spec.attrsOf]
       subst heq
       split <;>
       (
         rename_i heq₂
-        simp [Data.Map.findOrErr, heq₂, Residual.evaluate, Except.toOption]
+        simp [Data.Map.findOrErr, heq₂]
       )
     case _ uid _ heq₁ =>
-      simp [heq₁, Residual.evaluate] at hᵢ₁
-      replace hᵢ₁ := to_option_right_ok' hᵢ₁
+      simp [heq₁] at hᵢ₁
       simp [Residual.evaluate, hᵢ₁, Spec.getAttr, Spec.attrsOf]
       simp [PartialEntities.attrs, PartialEntities.get, Option.bind_eq_some_iff] at heq
       rcases heq with ⟨data, heq₂, heq₃⟩
@@ -84,7 +82,7 @@ theorem partial_evaluate_is_sound_get_attr
       subst h₄
       simp [Entities.attrs, Data.Map.findOrErr, h₄₁]
       generalize h₄ : data'.attrs.find? attr = res
-      cases res <;> simp [someOrError, Residual.evaluate, Except.toOption]
+      cases res <;> simp [someOrError]
     case _ => cases heq
   case _ =>
     simp [Residual.evaluate]

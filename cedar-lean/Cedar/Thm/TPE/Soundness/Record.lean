@@ -48,8 +48,7 @@ theorem partial_evaluate_is_sound_record
   Except.toOption ((TPE.evaluate (Residual.record m (CedarType.record rty)) preq pes).evaluate req es)
 := by
   simp only [TPE.evaluate, TPE.record,
-    List.map₁_eq_map (fun (x : Attr × Residual) => (x.fst, TPE.evaluate x.snd preq pes)),
-    List.any_map, List.any_eq_true, Function.comp_apply, Prod.exists]
+    List.map₁_eq_map (fun (x : Attr × Residual) => (x.fst, TPE.evaluate x.snd preq pes))]
   split
   case _ vs heq =>
     simp only [Residual.evaluate, List.mapM₂_eq_mapM λ x => bindAttr x.fst (Residual.evaluate x.snd req es)]
@@ -57,7 +56,7 @@ theorem partial_evaluate_is_sound_record
       simp only [Except.toOption]
     rw [this]
     clear this
-    simp [to_option_some, do_ok_eq_ok]
+    simp only [toOption_eq_some_iff, do_ok_eq_ok, Value.record.injEq]
     exists vs
     simp only [and_true]
     simp only [List.mapM_map, List.mapM_some_iff_forall₂] at heq
@@ -78,26 +77,34 @@ theorem partial_evaluate_is_sound_record
       specialize hᵢ₁ x.fst x.snd h
       simp [hᵢ₁, bindAttr, bind_pure_comp]
     have h₁ := List.mapM_to_option_congr this
-    simp [heq] at h₁
-    replace h₁ := to_option_left_ok' h₁
+    symm at h₁
+    simp only [heq, toOption_ok, toOption_eq_some_iff] at h₁
     exact h₁
   split
   case _ h₁ =>
-    simp only [
-      List.map₁_eq_map λ (x : Attr × Residual) => (x.fst, TPE.evaluate x.snd preq pes),
-      List.any_map, List.any_eq_true, Function.comp_apply, Prod.exists] at h₁
-    rcases h₁ with ⟨k, v, h₂, h₃⟩
-    have ⟨tpe_err, h_tpe_err⟩ := isError_evaluate_err h₃ req es
-    specialize hᵢ₁ k v h₂
+    simp only [evaluate_error, toOption_error, toOption_eq_none_iff]
+    rename_i e _
+    simp only [List.findSome?_eq_some_iff, asError_some, exists_and_right] at h₁
+    rcases h₁ with ⟨args', arg, ⟨args'', heq₂⟩, heq₃, heq₄⟩
+    have h_mem : arg ∈ List.map (fun x => (x.fst, TPE.evaluate x.snd preq pes)) m := by
+      rw [heq₂]; simp
+    simp only [List.mem_map] at h_mem
+    rcases h_mem with ⟨⟨k', v'⟩, h_mem', h_eq⟩
+    have h_is_err : (TPE.evaluate v' preq pes).isError := by
+      have : TPE.evaluate v' preq pes = arg.snd := by
+        rw [← h_eq]
+      rw [this, heq₃]; simp [Residual.isError]
+    have ⟨_, h_tpe_err⟩ := isError_evaluate_err h_is_err req es
+    specialize hᵢ₁ k' v' h_mem'
     rw [h_tpe_err] at hᵢ₁
     rcases to_option_right_err hᵢ₁ with ⟨err, hᵢ₁⟩
     simp only [Residual.evaluate, List.mapM₂_eq_mapM λ x => bindAttr x.fst (Residual.evaluate x.snd req es)]
     have h₄ := @List.element_error_implies_mapM_error _ _ _ _ _
       (fun (x: Attr × Residual) => bindAttr x.fst (x.snd.evaluate req es)) _
-      h₂ (show (fun (x: Attr × Residual) => bindAttr x.fst (x.snd.evaluate req es)) (k, v) = .error err from
+      h_mem' (show (fun (x: Attr × Residual) => bindAttr x.fst (x.snd.evaluate req es)) (k', v') = .error err from
         by simp only [bindAttr, hᵢ₁, bind_pure_comp, Except.map_error])
     rcases h₄ with ⟨_, h₄⟩
-    simp [h₄, Except.toOption]
+    simp [h₄]
   case _ =>
     simp only [Residual.evaluate,
       List.mapM₂_eq_mapM λ x => bindAttr x.fst (Residual.evaluate x.snd req es), List.mapM_map,

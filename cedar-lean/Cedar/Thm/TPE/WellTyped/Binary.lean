@@ -187,20 +187,14 @@ theorem partial_eval_well_typed_app₂_values_getTag :
 
   unfold TPE.getTag
   split
-  . unfold someOrError
-    split
-    . apply Residual.WellTyped.val
-      rename Option (Data.Map Tag Value) => x
-      rename_i tags heq x₁ x₂ x₃ v h₃
+  . rename_i tags h_tags
+    cases h_find_tag : tags.find? id₂
+    case none => exact Residual.WellTyped.error
+    case some v =>
+      apply Residual.WellTyped.val
       cases h_op
-      rename_i ety ty h₄ h₅ h₆
-      unfold Data.Map.find? at h₃
-      split at h₃ <;> try contradiction
-      rename_i v₂ v₃ _
-      injection h₃; rename_i h₃; rw [← h₃]
-      have h_v_mem : v₃ ∈ tags.values := by
-        have h₁₉ := List.mem_of_find?_eq_some (by assumption)
-        exact Map.in_list_in_values h₁₉
+      rename_i ety ty h₄ h₅ _
+      replace h_find_tag := Map.find?_some_implies_in_values h_find_tag
       have h_ent : InstanceOfEntityType id₁ ety env := by
         have h₂₁ := partial_eval_preserves_typeof _ h_expr1 preq pes
         unfold Residual.asValue at h₁
@@ -220,8 +214,7 @@ theorem partial_eval_well_typed_app₂_values_getTag :
         all_goals
           rw [h₂₂] at h₁
           simp at h₁
-      exact entity_tag_well_typed h_wf h_eref h_ent heq h_v_mem h₄
-    . apply Residual.WellTyped.error
+      exact entity_tag_well_typed h_wf h_eref h_ent h_tags h_find_tag h₄
   . apply Residual.WellTyped.binaryApp
     . unfold Residual.asValue at h₁
       cases h₃: TPE.evaluate expr1 preq pes

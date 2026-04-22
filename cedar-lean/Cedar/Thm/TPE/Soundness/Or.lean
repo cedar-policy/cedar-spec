@@ -55,13 +55,11 @@ theorem partial_evaluate_is_sound_or
   simp [TPE.evaluate, TPE.or]
   split
   case _ heq =>
-    simp [heq, Residual.evaluate] at hᵢ₅
-    have h₅ := to_option_right_ok' hᵢ₅
-    simp [Residual.evaluate, h₅, Result.as, Coe.coe, Value.asBool, Residual.evaluate]
+    simp only [heq, evaluate_val, toOption_ok, toOption_eq_some_iff] at hᵢ₅
+    simp [Residual.evaluate, hᵢ₅, Result.as, Coe.coe, Value.asBool, Residual.evaluate]
   case _ heq =>
-    simp [heq, Residual.evaluate] at hᵢ₅
-    have h₅ := to_option_right_ok' hᵢ₅
-    simp [←hᵢ₆, Residual.evaluate, h₅, Result.as, Coe.coe, Value.asBool]
+    simp only [heq, evaluate_val, toOption_ok, toOption_eq_some_iff] at hᵢ₅
+    simp [←hᵢ₆, Residual.evaluate, hᵢ₅, Result.as, Coe.coe, Value.asBool]
     cases h₆ : x₂.evaluate req es
     case error => simp [Except.toOption]
     case ok =>
@@ -71,23 +69,23 @@ theorem partial_evaluate_is_sound_or
       subst h₇
       simp [Except.toOption]
   case _ heq =>
-    simp [heq, Residual.evaluate] at hᵢ₅
-    rcases to_option_right_err hᵢ₅ with ⟨_, hᵢ₅⟩
+    simp only [heq, evaluate_error, toOption_error, toOption_eq_none_iff] at hᵢ₅
+    rcases hᵢ₅ with ⟨_, hᵢ₅⟩
     simp [Residual.evaluate, hᵢ₅, Result.as, Residual.evaluate, Except.toOption]
   case _ heq _ _ _ =>
-    simp [heq, Residual.evaluate] at hᵢ₆
-    have hᵢ₇ := to_option_right_ok' hᵢ₆
+    simp only [heq, evaluate_val, toOption_ok, toOption_eq_some_iff] at hᵢ₆
     generalize h₅ : x₁.evaluate req es = res₁
     cases res₁
-    case error =>
-      simp [Residual.evaluate, h₅, Result.as]
-      rw [←h₅]
-      exact hᵢ₅
+    case error e =>
+      symm
+      simp only [Residual.evaluate, Result.as, h₅, ExceptT.stM_eq, bind_pure_comp, Except.bind_err, toOption_error, toOption_eq_none_iff]
+      symm at hᵢ₅
+      simpa [h₅] using hᵢ₅
     case ok =>
       have h₆ := residual_well_typed_is_sound h₂ hᵢ₁ h₅
       rw [hᵢ₃] at h₆
       rcases instance_of_anyBool_is_bool h₆ with ⟨_, h₆⟩
-      simp [Residual.evaluate, h₅, h₆, Result.as, Coe.coe, Value.asBool, hᵢ₇]
+      simp [Residual.evaluate, h₅, h₆, Result.as, Coe.coe, Value.asBool, hᵢ₆]
       split
       case _ heq₁ =>
         subst heq₁
@@ -113,11 +111,7 @@ theorem partial_evaluate_is_sound_or
         split at hᵢ₅ <;> try contradiction
         clear hᵢ₅ ; rename_i hᵢ₅
         simp [hᵢ₅, Result.as] at h₇
-      · split <;> simp
-        rename_i h₇
-        simp [Residual.evaluate] at h₇
-        subst h₇
-        rw [Residual.error_free_spec] at h₆
+      · rw [Residual.error_free_spec] at h₆
         have h₇ : Residual.WellTyped env (TPE.evaluate x₁ preq pes) :=
           partial_eval_preserves_well_typed h₂ h₃ hᵢ₁
         have h₈ := error_free_evaluate_ok h₂ h₇ h₆
@@ -140,7 +134,7 @@ theorem partial_evaluate_is_sound_or
       subst hv
       simp only
       rename_i h₁ _ _ _ _ _
-      simp [h₁, Except.toOption, Residual.evaluate] at hᵢ₆
+      simp only [Except.toOption, h₁, evaluate_val] at hᵢ₆
       split at hᵢ₆ <;> simp at hᵢ₆
       subst hᵢ₆
       rename_i hᵢ₆

@@ -50,10 +50,10 @@ theorem partial_evaluate_is_sound_error
 {preq : PartialRequest}
 {pes : PartialEntities}
 {ty : CedarType} :
-  Except.toOption ((Residual.error ty).evaluate req es) =
-  Except.toOption ((TPE.evaluate (Residual.error ty) preq pes).evaluate req es)
+  Except.toOption ((Residual.error e ty).evaluate req es) =
+  Except.toOption ((TPE.evaluate (Residual.error e ty) preq pes).evaluate req es)
 := by
-  simp [TPE.evaluate, Residual.evaluate]
+  simp [TPE.evaluate]
 
 /-- The main lemma: Evaluating a residual derived from partially evaluating
 a well-typed expression is equivalent to that of evaluating the original
