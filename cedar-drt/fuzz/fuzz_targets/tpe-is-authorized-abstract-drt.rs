@@ -5,8 +5,7 @@ use std::sync::LazyLock;
 use cedar_drt_inner::tpe::test_tpe_is_authorized_equiv;
 use cedar_lean_ffi::CedarLeanFfi;
 use cedar_policy::{
-    PartialEntities, PartialEntityUid, PartialRequest, Policy, PolicyId, PolicySet,
-    Schema,
+    PartialEntities, PartialEntityUid, PartialRequest, Policy, PolicyId, PolicySet, Schema,
 };
 use libfuzzer_sys::{
     arbitrary::{self, Arbitrary},
@@ -62,7 +61,7 @@ mod concrete_policies {
     pub static PERMIT_RESIDUAL: LazyLock<Policy> = LazyLock::new(|| {
         Policy::parse(
             None,
-            "permit(principal, action, resource) when {{ principal.is_admin };",
+            "permit(principal, action, resource) when { principal.is_admin };",
         )
         .expect("should be a valid policy")
     });
@@ -91,7 +90,7 @@ mod concrete_policies {
     pub static FORBID_RESIDUAL: LazyLock<Policy> = LazyLock::new(|| {
         Policy::parse(
             None,
-            "forbid(principal, action, resource) when {{ principal.is_admin };",
+            "forbid(principal, action, resource) when { principal.is_admin };",
         )
         .expect("should be a valid policy")
     });
