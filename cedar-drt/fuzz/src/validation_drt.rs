@@ -20,7 +20,7 @@ use cedar_drt::{
 };
 
 use cedar_lean_ffi::CedarLeanFfi;
-use cedar_policy::{Policy, PolicySet, Schema, ValidationMode};
+use cedar_policy::{Schema, ValidationMode};
 
 use cedar_policy_generators::{
     abac::ABACPolicy, hierarchy::HierarchyGenerator, schema, schema_gen::SchemaGen,
@@ -80,9 +80,7 @@ pub fn fuzz_target<const TYPE_DIRECTED: bool>(input: FuzzTargetInput<TYPE_DIRECT
         debug!("Schema: {:?}", schema);
 
         // generate a policy
-        let mut policyset = PolicySet::new();
-        let policy: Policy = input.policy.into();
-        policyset.add(policy).unwrap();
+        let policyset = input.policy.into_policy_set();
         debug!("Policies: {policyset}");
 
         // run the policy through both validators and compare the result

@@ -15,15 +15,12 @@
  */
 
 use crate::abac::{
-    ABACPolicy, ABACRequest, AvailableExtensionFunctions, ConstantPool, QualifiedType, Type,
-    UnknownPool,
+    ABACRequest, AvailableExtensionFunctions, ConstantPool, QualifiedType, Type, UnknownPool,
 };
 use crate::err::{while_doing, Error, Result};
 use crate::expr::ExprGenerator;
 use crate::hierarchy::Hierarchy;
-use crate::policy::GeneratedPolicy;
 use crate::request::Request;
-use crate::schema_gen::SchemaGen;
 use crate::settings::ABACSettings;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
 use arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
@@ -1472,57 +1469,7 @@ impl Schema {
         })
     }
 
-    /// get an arbitrary policy conforming to this schema
-    pub fn arbitrary_policy(
-        &self,
-        hierarchy: &Hierarchy,
-        u: &mut Unstructured<'_>,
-    ) -> Result<ABACPolicy> {
-        let id = u.arbitrary()?;
-        let effect = u.arbitrary()?;
-        let principal_constraint = self.arbitrary_principal_constraint(hierarchy, u)?;
-        let action_constraint = self.arbitrary_action_constraint(u, Some(3))?;
-        let resource_constraint = self.arbitrary_resource_constraint(hierarchy, u)?;
-        let conjunction = self.arbitrary_abac_constraints(hierarchy, u)?;
-        Ok(ABACPolicy(GeneratedPolicy::new(
-            id,
-            u.arbitrary()?,
-            effect,
-            principal_constraint,
-            action_constraint,
-            resource_constraint,
-            conjunction,
-        )))
-    }
-
-    /// Generates arbitrary non-scope constraints
-    pub fn arbitrary_abac_constraints(
-        &self,
-        hierarchy: &Hierarchy,
-        u: &mut Unstructured<'_>,
-    ) -> Result<ast::Expr> {
-        let mut abac_constraints = Vec::new();
-        let mut exprgenerator = self.exprgenerator(Some(hierarchy));
-        u.arbitrary_loop(Some(0), Some(self.settings.max_depth as u32), |u| {
-            if self.settings.match_types {
-                abac_constraints.push(exprgenerator.generate_expr_for_type(
-                    &Type::bool(),
-                    self.settings.max_depth,
-                    u,
-                )?);
-            } else {
-                abac_constraints.push(exprgenerator.generate_expr(self.settings.max_depth, u)?);
-            }
-            Ok(std::ops::ControlFlow::Continue(()))
-        })?;
-        let mut conjunction = ast::Expr::val(true);
-        for constraint in abac_constraints {
-            conjunction = ast::Expr::and(conjunction, constraint);
-        }
-        Ok(conjunction)
-    }
-
-    /// Size hint for [`Self::arbitrary_abac_constraints()`].
+    /// Size hint for [`SchemaGen::arbitrary_abac_constraints`].
     pub fn arbitrary_abac_constraints_size_hint(_depth: usize) -> (usize, Option<usize>) {
         // not sure how to count the arbitrary_loop() call
         (1, None)

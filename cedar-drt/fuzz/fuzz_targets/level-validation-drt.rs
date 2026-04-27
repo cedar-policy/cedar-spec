@@ -19,7 +19,7 @@ use cedar_drt::tests::run_level_val_test;
 use cedar_drt_inner::fuzz_target;
 
 use cedar_lean_ffi::CedarLeanFfi;
-use cedar_policy::{Policy, PolicySet, Schema, ValidationMode};
+use cedar_policy::{Schema, ValidationMode};
 
 use cedar_policy_generators::{
     abac::ABACPolicy, hierarchy::HierarchyGenerator, schema, schema_gen::SchemaGen,
@@ -73,14 +73,10 @@ fuzz_target!(|input: FuzzTargetInput| {
     let def_impl = CedarLeanFfi::new();
 
     if let Ok(schema) = Schema::try_from(input.schema) {
-        let policy = Policy::from(input.policy);
-        let mut policyset = PolicySet::new();
-        policyset.add(policy).unwrap();
-
         run_level_val_test(
             &def_impl,
             schema,
-            &policyset,
+            &input.policy.into_policy_set(),
             ValidationMode::Strict,
             input.level as i32,
         );
