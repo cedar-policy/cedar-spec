@@ -30,7 +30,7 @@ use cedar_policy_core::{ast, extensions::Extensions};
 use cedar_policy_generators::{
     err::Result,
     hierarchy::{AttributesMode, HierarchyGenerator, HierarchyGeneratorMode},
-    policy::GeneratedLinkedPolicy,
+    policy::GeneratedLink,
     rbac::{RBACHierarchy, RBACPolicy, RBACRequest},
 };
 
@@ -63,7 +63,7 @@ pub enum PolicyGroup {
     StaticPolicy(RBACPolicy),
     TemplateWithLinks {
         template: RBACPolicy,
-        links: Vec<GeneratedLinkedPolicy>,
+        links: Vec<GeneratedLink>,
     },
 }
 
@@ -119,7 +119,7 @@ impl PolicyGroup {
         )?;
         if policy.has_slots() {
             let links = arbitrary_vec(u, Some(1), Some(4), |l_idx, u| {
-                GeneratedLinkedPolicy::arbitrary(
+                GeneratedLink::arbitrary_for_hierarchy(
                     ast::PolicyID::from_string(format!("t{}_l{}", pg_idx, l_idx)),
                     &policy,
                     hierarchy,

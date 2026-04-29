@@ -20,7 +20,7 @@ use cedar_drt_inner::{
     fuzz_target,
     tpe::{TpeFuzzTargetInput, passes_policyset_validation, passes_request_validation},
 };
-use cedar_policy::{Authorizer, Entities, Policy, PolicySet, Request, Schema, Validator};
+use cedar_policy::{Authorizer, Entities, PolicySet, Request, Schema, Validator};
 use log::debug;
 use std::convert::TryFrom;
 
@@ -49,9 +49,7 @@ fuzz_target!(|input: TpeFuzzTargetInput| {
     if let Ok(schema) = Schema::try_from(input.abac_input.schema) {
         debug!("Schema: {schemafile_string}");
         let validator = Validator::new(schema.clone());
-        let mut policyset = PolicySet::new();
-        let policy: Policy = input.abac_input.policy.into();
-        policyset.add(policy.clone()).unwrap();
+        let policyset = input.abac_input.policy.into_policy_set();
         let passes_strict = passes_policyset_validation(&validator, &policyset);
         if passes_strict {
             let partial_entities = input.partial_entities;

@@ -18,7 +18,7 @@ use cedar_lean_ffi::{CedarLeanFfi, FfiError, LeanSchema};
 use cedar_policy::{Authorizer, Policy, PolicySet, RequestEnv, Schema};
 use cedar_policy_core::ast::PolicyID;
 use cedar_policy_generators::{
-    abac::ABACPolicy,
+    abac::StaticABACPolicy,
     accum, r#gen as weighted_generate, gen_inner,
     hierarchy::{Hierarchy, HierarchyGenerator},
     schema,
@@ -184,21 +184,24 @@ pub struct SinglePolicyFuzzTargetInput<const MAX_REQUEST_ENVS: MaxRequestEnvs> {
     /// generated schema
     schema: schema::Schema,
     /// generated policy
-    policy: ABACPolicy,
+    policy: StaticABACPolicy,
 }
 
 impl<const MAX_REQUEST_ENVS: MaxRequestEnvs> SinglePolicyFuzzTargetInput<MAX_REQUEST_ENVS> {
     /// Get the `cedar_policy::Schema` and `cedar_policy::Policy` that were generated
     pub fn into_inputs(self) -> Result<(Schema, Policy), cedar_policy::SchemaError> {
-        Ok((Schema::try_from(self.schema)?, self.policy.into()))
+        Ok((
+            Schema::try_from(self.schema)?,
+            self.policy.into_static_policy(),
+        ))
     }
 
     /// Get the `cedar_policy::Schema` and singleton `cedar_policy::PolicySet` that were generated
     pub fn into_inputs_as_pset(self) -> Result<(Schema, PolicySet), cedar_policy::SchemaError> {
-        let mut pset = PolicySet::new();
-        pset.add(self.policy.into())
-            .expect("creating a singleton policyset should not fail");
-        Ok((Schema::try_from(self.schema)?, pset))
+        Ok((
+            Schema::try_from(self.schema)?,
+            self.policy.into_policy_set(),
+        ))
     }
 }
 
@@ -208,7 +211,7 @@ impl<'a, const MAX_REQUEST_ENVS: MaxRequestEnvs> Arbitrary<'a>
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
         let schema = schema::Schema::arbitrary(settings(MAX_REQUEST_ENVS), u)?;
         let hierarchy = schema.arbitrary_hierarchy(u)?;
-        let policy = schema.arbitrary_policy(&hierarchy, u)?;
+        let policy = schema.arbitrary_static_policy(&hierarchy, u)?;
 
         Ok(Self { schema, policy })
     }
@@ -227,7 +230,7 @@ fn arbitrary_policies(
     schema: &schema::Schema,
     hierarchy: &Hierarchy,
     u: &mut Unstructured<'_>,
-) -> arbitrary::Result<Vec<ABACPolicy>> {
+) -> arbitrary::Result<Vec<StaticABACPolicy>> {
     let len = weighted_generate!(u,
         1 => 0, // very rarely, try the empty-policyset case
         0 => 1, // other targets cover the single-policy case
@@ -241,9 +244,9 @@ fn arbitrary_policies(
         4 => 9,
         2 => 10
     );
-    let mut policies: Vec<ABACPolicy> = Vec::with_capacity(len);
+    let mut policies: Vec<StaticABACPolicy> = Vec::with_capacity(len);
     for _ in 0..len {
-        policies.push(schema.arbitrary_policy(&hierarchy, u)?);
+        policies.push(schema.arbitrary_static_policy(&hierarchy, u)?);
     }
     // we want to ensure that the policies all have unique IDs.
     // this will be a list of policy IDs that we have seen (and will ensure there are no duplicates of)
@@ -282,7 +285,7 @@ pub struct SinglePolicySetFuzzTargetInput<const MAX_REQUEST_ENVS: MaxRequestEnvs
     /// generated schema
     schema: schema::Schema,
     /// generated policyset
-    pset: Vec<ABACPolicy>,
+    pset: Vec<StaticABACPolicy>,
 }
 
 impl<const MAX_REQUEST_ENVS: MaxRequestEnvs> SinglePolicySetFuzzTargetInput<MAX_REQUEST_ENVS> {
@@ -290,7 +293,7 @@ impl<const MAX_REQUEST_ENVS: MaxRequestEnvs> SinglePolicySetFuzzTargetInput<MAX_
     pub fn into_inputs(self) -> Result<(Schema, PolicySet), cedar_policy::SchemaError> {
         Ok((
             Schema::try_from(self.schema)?,
-            PolicySet::from_policies(self.pset.into_iter().map(Into::into))
+            PolicySet::from_policies(self.pset.into_iter().map(|p| p.into_static_policy()))
                 .expect("creating a policyset from the generated policies should not fail"),
         ))
     }
@@ -325,9 +328,9 @@ pub struct TwoPolicyFuzzTargetInput<const MAX_REQUEST_ENVS: MaxRequestEnvs> {
     /// generated schema
     schema: schema::Schema,
     /// generated policy
-    policy1: ABACPolicy,
+    policy1: StaticABACPolicy,
     /// generated policy
-    policy2: ABACPolicy,
+    policy2: StaticABACPolicy,
 }
 
 impl<const MAX_REQUEST_ENVS: MaxRequestEnvs> TwoPolicyFuzzTargetInput<MAX_REQUEST_ENVS> {
@@ -335,8 +338,8 @@ impl<const MAX_REQUEST_ENVS: MaxRequestEnvs> TwoPolicyFuzzTargetInput<MAX_REQUES
     pub fn into_inputs(self) -> Result<(Schema, Policy, Policy), cedar_policy::SchemaError> {
         Ok((
             Schema::try_from(self.schema)?,
-            self.policy1.into(),
-            self.policy2.into(),
+            self.policy1.into_static_policy(),
+            self.policy2.into_static_policy(),
         ))
     }
 
@@ -346,11 +349,11 @@ impl<const MAX_REQUEST_ENVS: MaxRequestEnvs> TwoPolicyFuzzTargetInput<MAX_REQUES
     ) -> Result<(Schema, PolicySet, PolicySet), cedar_policy::SchemaError> {
         let mut pset1 = PolicySet::new();
         pset1
-            .add(self.policy1.into())
+            .add(self.policy1.into_static_policy())
             .expect("creating a singleton policyset should not fail");
         let mut pset2 = PolicySet::new();
         pset2
-            .add(self.policy2.into())
+            .add(self.policy2.into_static_policy())
             .expect("creating a singleton policyset should not fail");
         Ok((Schema::try_from(self.schema)?, pset1, pset2))
     }
@@ -362,8 +365,8 @@ impl<'a, const MAX_REQUEST_ENVS: MaxRequestEnvs> Arbitrary<'a>
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
         let schema = schema::Schema::arbitrary(settings(MAX_REQUEST_ENVS), u)?;
         let hierarchy = schema.arbitrary_hierarchy(u)?;
-        let policy1 = schema.arbitrary_policy(&hierarchy, u)?;
-        let policy2 = schema.arbitrary_policy(&hierarchy, u)?;
+        let policy1 = schema.arbitrary_static_policy(&hierarchy, u)?;
+        let policy2 = schema.arbitrary_static_policy(&hierarchy, u)?;
 
         Ok(Self {
             schema,
@@ -390,9 +393,9 @@ pub struct TwoPolicySetFuzzTargetInput<const MAX_REQUEST_ENVS: MaxRequestEnvs> {
     /// generated schema
     schema: schema::Schema,
     /// generated policyset
-    pset1: Vec<ABACPolicy>,
+    pset1: Vec<StaticABACPolicy>,
     /// generated policyset
-    pset2: Vec<ABACPolicy>,
+    pset2: Vec<StaticABACPolicy>,
 }
 
 impl<const MAX_REQUEST_ENVS: MaxRequestEnvs> TwoPolicySetFuzzTargetInput<MAX_REQUEST_ENVS> {
@@ -400,9 +403,9 @@ impl<const MAX_REQUEST_ENVS: MaxRequestEnvs> TwoPolicySetFuzzTargetInput<MAX_REQ
     pub fn into_inputs(self) -> Result<(Schema, PolicySet, PolicySet), cedar_policy::SchemaError> {
         Ok((
             Schema::try_from(self.schema)?,
-            PolicySet::from_policies(self.pset1.into_iter().map(Into::into))
+            PolicySet::from_policies(self.pset1.into_iter().map(|p| p.into_static_policy()))
                 .expect("creating a policyset from the generated policies should not fail"),
-            PolicySet::from_policies(self.pset2.into_iter().map(Into::into))
+            PolicySet::from_policies(self.pset2.into_iter().map(|p| p.into_static_policy()))
                 .expect("creating a policyset from the generated policies should not fail"),
         ))
     }

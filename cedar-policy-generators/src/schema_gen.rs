@@ -3,12 +3,15 @@ use std::collections::BTreeMap;
 use crate::{
     abac::{
         self, ABACPolicy, ABACRequest, AvailableExtensionFunctions, ConstantPool, QualifiedType,
-        UnknownPool,
+        StaticABACPolicy, UnknownPool,
     },
     err::{while_doing, Error, Result},
     expr::ExprGenerator,
     hierarchy::{Hierarchy, HierarchyGenerator, HierarchyGeneratorMode, NumEntities},
-    policy::{ActionConstraint, GeneratedPolicy, PrincipalOrResourceConstraint},
+    policy::{
+        ActionConstraint, GeneratedLink, GeneratedPolicy, GeneratedTemplate,
+        PrincipalOrResourceConstraint,
+    },
     request::Request,
     schema::Schema,
     settings::ABACSettings,
@@ -16,7 +19,7 @@ use crate::{
 };
 use arbitrary::Unstructured;
 use cedar_policy_core::{
-    ast::{self, Eid, EntityType},
+    ast::{self, Eid, EntityType, EntityUID, PolicyID},
     extensions::Extensions,
     validator::{
         types::{self, OpenTag},
@@ -25,7 +28,7 @@ use cedar_policy_core::{
 };
 use indexmap::IndexMap;
 use nonempty::NonEmpty;
-use smol_str::SmolStr;
+use smol_str::{format_smolstr, SmolStr};
 
 impl From<types::Type> for abac::Type {
     fn from(ty: types::Type) -> Self {
@@ -71,7 +74,7 @@ impl From<types::Type> for abac::Type {
 /// A trait that specifies what methods other generators expect from a schema
 pub trait SchemaGen: std::fmt::Debug {
     /// Gen all entity types
-    fn entity_types(&self) -> Box<dyn Iterator<Item = EntityType> + '_>;
+    fn entity_types(&self) -> Box<dyn ExactSizeIterator<Item = EntityType> + '_>;
     /// Get an arbitrary entity type
     fn arbitrary_entity_type(&self, u: &mut Unstructured<'_>) -> Result<EntityType>;
     /// Get an arbitrary attribute
@@ -124,19 +127,63 @@ pub trait SchemaGen: std::fmt::Debug {
     fn type_generator<'s>(&'s self) -> TypeGenerator<'s>;
     /// Get an arbitrary Hierarchy conforming to the schema.
     fn arbitrary_hierarchy(&self, u: &mut Unstructured<'_>) -> Result<Hierarchy>;
-    /// get an arbitrary policy conforming to this schema
+    /// get an arbitrary static policy conforming to this schema
+    fn arbitrary_static_policy(
+        &self,
+        hierarchy: &Hierarchy,
+        u: &mut Unstructured<'_>,
+    ) -> Result<StaticABACPolicy> {
+        Ok(StaticABACPolicy(
+            self.arbitrary_template(hierarchy, false, u)?,
+        ))
+    }
+    /// get an arbitrary static or linked policy conforming to this schema
     fn arbitrary_policy(
         &self,
         hierarchy: &Hierarchy,
         u: &mut Unstructured<'_>,
     ) -> Result<ABACPolicy> {
+        let template = self.arbitrary_template(hierarchy, true, u)?;
+        let policy = if template.has_slots() {
+            let link_id = PolicyID::from_smolstr(format_smolstr!("link_{}", template.id()));
+            let link = GeneratedLink::arbitrary(
+                link_id,
+                &template,
+                |u| {
+                    self.exprgenerator(Some(hierarchy))
+                        .arbitrary_principal_uid(u)
+                },
+                |u| {
+                    self.exprgenerator(Some(hierarchy))
+                        .arbitrary_resource_uid(u)
+                },
+                u,
+            )?;
+            GeneratedPolicy::Linked { template, link }
+        } else {
+            GeneratedPolicy::Static(template)
+        };
+        Ok(ABACPolicy(policy))
+    }
+    /// Get an arbitrary unlinked template conforming to this schema.
+    ///
+    /// If `allow_slots` is false, then the template will not have any slots and
+    /// can be used to construct a static policy (though you should prefer
+    /// calling `arbitrary_static_policy` directly).
+    fn arbitrary_template(
+        &self,
+        hierarchy: &Hierarchy,
+        allow_slots: bool,
+        u: &mut Unstructured<'_>,
+    ) -> Result<GeneratedTemplate> {
         let id = u.arbitrary()?;
         let effect = u.arbitrary()?;
-        let principal_constraint = self.arbitrary_principal_constraint(hierarchy, u)?;
+        let principal_constraint =
+            self.arbitrary_principal_constraint(hierarchy, allow_slots, u)?;
         let action_constraint = self.arbitrary_action_constraint(u, Some(3))?;
-        let resource_constraint = self.arbitrary_resource_constraint(hierarchy, u)?;
+        let resource_constraint = self.arbitrary_resource_constraint(hierarchy, allow_slots, u)?;
         let conjunction = self.arbitrary_abac_constraints(hierarchy, u)?;
-        Ok(ABACPolicy(GeneratedPolicy::new(
+        Ok(GeneratedTemplate::new(
             id,
             u.arbitrary()?,
             effect,
@@ -144,31 +191,20 @@ pub trait SchemaGen: std::fmt::Debug {
             action_constraint,
             resource_constraint,
             conjunction,
-        )))
+        ))
     }
     /// Generate an arbitrary principal constraint
     fn arbitrary_principal_constraint(
         &self,
         hierarchy: &Hierarchy,
+        allow_slots: bool,
         u: &mut Unstructured<'_>,
     ) -> Result<PrincipalOrResourceConstraint> {
-        // 20% of the time, NoConstraint
-        if u.ratio(1, 5)? {
-            Ok(PrincipalOrResourceConstraint::NoConstraint)
-        } else {
-            // 32% Eq, 16% In, 16% Is, 16% IsIn
-            let uid = self
-                .exprgenerator(Some(hierarchy))
-                .arbitrary_principal_uid(u)?;
-            let entity_types: Vec<_> = self.entity_types().collect();
-            let ety = u.choose(&entity_types)?.clone();
-            gen!(u,
-                2 => Ok(PrincipalOrResourceConstraint::Eq(uid)),
-                1 => Ok(PrincipalOrResourceConstraint::In(uid)),
-                1 => Ok(PrincipalOrResourceConstraint::IsType(ety)),
-                1 => Ok(PrincipalOrResourceConstraint::IsTypeIn(ety, uid))
-            )
-        }
+        let choose_uid = |u: &mut Unstructured<'_>| {
+            self.exprgenerator(Some(hierarchy))
+                .arbitrary_principal_uid(u)
+        };
+        self.arbitrary_principal_or_resource_constraint(&choose_uid, allow_slots, u)
     }
     /// Generates an arbitrary action constraint.
     fn arbitrary_action_constraint(
@@ -201,24 +237,45 @@ pub trait SchemaGen: std::fmt::Debug {
     fn arbitrary_resource_constraint(
         &self,
         hierarchy: &Hierarchy,
+        allow_slots: bool,
+        u: &mut Unstructured<'_>,
+    ) -> Result<PrincipalOrResourceConstraint> {
+        let choose_uid = |u: &mut Unstructured<'_>| {
+            self.exprgenerator(Some(hierarchy))
+                .arbitrary_resource_uid(u)
+        };
+        self.arbitrary_principal_or_resource_constraint(&choose_uid, allow_slots, u)
+    }
+    /// Generate an arbitrary principal or resource constraint with entity uids drawn from `uid_gen`
+    fn arbitrary_principal_or_resource_constraint(
+        &self,
+        uid_gen: &dyn Fn(&mut Unstructured<'_>) -> Result<EntityUID>,
+        allow_slots: bool,
         u: &mut Unstructured<'_>,
     ) -> Result<PrincipalOrResourceConstraint> {
         // 20% of the time, NoConstraint
         if u.ratio(1, 5)? {
             Ok(PrincipalOrResourceConstraint::NoConstraint)
         } else {
-            // 32% Eq, 16% In, 16% Is, 16% IsIn
-            let uid = self
-                .exprgenerator(Some(hierarchy))
-                .arbitrary_resource_uid(u)?;
-            let entity_types: Vec<_> = self.entity_types().collect();
-            let ety = u.choose(&entity_types)?.clone();
-            gen!(u,
-                2 => Ok(PrincipalOrResourceConstraint::Eq(uid)),
-                1 => Ok(PrincipalOrResourceConstraint::In(uid)),
-                1 => Ok(PrincipalOrResourceConstraint::IsType(ety)),
-                1 => Ok(PrincipalOrResourceConstraint::IsTypeIn(ety, uid))
-            )
+            let choose_ety = |u: &mut Unstructured<'_>| u.choose_iter(self.entity_types());
+            // If slots are allowed, then generate a slot 50% of the time.
+            if allow_slots && u.ratio(1, 2)? {
+                // 40% Eq, 40% In or IsIn.
+                // Don't generate `Is` on its own because it can't have a slot.
+                gen!(u,
+                    2 => Ok(PrincipalOrResourceConstraint::EqSlot),
+                    1 => Ok(PrincipalOrResourceConstraint::InSlot),
+                    1 => Ok(PrincipalOrResourceConstraint::IsTypeInSlot(choose_ety(u)?))
+                )
+            } else {
+                // 32% Eq, 16% In, 16% Is, 16% IsIn
+                gen!(u,
+                    2 => Ok(PrincipalOrResourceConstraint::Eq(uid_gen(u)?)),
+                    1 => Ok(PrincipalOrResourceConstraint::In(uid_gen(u)?)),
+                    1 => Ok(PrincipalOrResourceConstraint::IsType(choose_ety(u)?)),
+                    1 => Ok(PrincipalOrResourceConstraint::IsTypeIn(choose_ety(u)?, uid_gen(u)?))
+                )
+            }
         }
     }
     /// Generates arbitrary non-scope constraints
@@ -404,7 +461,7 @@ impl SchemaGen for ValidatorSchema<'_> {
                 cedar_policy_core::validator::ValidatorEntityTypeKind::Standard(_) => None,
             })
     }
-    fn entity_types(&self) -> Box<dyn Iterator<Item = EntityType> + '_> {
+    fn entity_types(&self) -> Box<dyn ExactSizeIterator<Item = EntityType> + '_> {
         Box::new(self.entity_types.clone().into_iter())
     }
     fn allowed_parent_typenames(
@@ -570,7 +627,7 @@ impl SchemaGen for Schema {
     fn get_uid_enum_choices(&self, ty: &ast::EntityType) -> Option<&NonEmpty<Eid>> {
         self.get_uid_enum_choices(ty)
     }
-    fn entity_types(&self) -> Box<dyn Iterator<Item = EntityType> + '_> {
+    fn entity_types(&self) -> Box<dyn ExactSizeIterator<Item = EntityType> + '_> {
         Box::new(self.entity_types.clone().into_iter())
     }
     fn allowed_parent_typenames(

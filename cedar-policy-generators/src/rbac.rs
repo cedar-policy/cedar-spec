@@ -15,7 +15,7 @@
  */
 
 use crate::hierarchy::Hierarchy;
-use crate::policy::GeneratedPolicy;
+use crate::policy::GeneratedTemplate;
 use crate::request::Request;
 use arbitrary::{self, Unstructured};
 use ast::{Entity, Expr, PolicyID, StaticPolicy, Template};
@@ -158,17 +158,17 @@ impl From<RBACEntity> for cedar_policy::Entity {
 /// Represents an RBAC policy, ie, with no `when` or `unless` clauses
 #[derive(Debug, Clone, Serialize)]
 #[serde(transparent)]
-pub struct RBACPolicy(pub GeneratedPolicy);
+pub struct RBACPolicy(pub GeneratedTemplate);
 
 impl Deref for RBACPolicy {
-    type Target = GeneratedPolicy;
-    fn deref(&self) -> &GeneratedPolicy {
+    type Target = GeneratedTemplate;
+    fn deref(&self) -> &GeneratedTemplate {
         &self.0
     }
 }
 
 impl DerefMut for RBACPolicy {
-    fn deref_mut(&mut self) -> &mut GeneratedPolicy {
+    fn deref_mut(&mut self) -> &mut GeneratedTemplate {
         &mut self.0
     }
 }
@@ -207,7 +207,7 @@ impl RBACPolicy {
         allow_slots: bool,
         u: &mut Unstructured<'_>,
     ) -> arbitrary::Result<Self> {
-        Ok(Self(GeneratedPolicy::arbitrary_for_hierarchy(
+        Ok(Self(GeneratedTemplate::arbitrary_for_hierarchy(
             fixed_id_opt,
             None,
             hierarchy,
@@ -223,7 +223,7 @@ impl RBACPolicy {
         allow_slots: bool,
         depth: usize,
     ) -> (usize, Option<usize>) {
-        GeneratedPolicy::arbitrary_for_hierarchy_size_hint(have_fixed_id, allow_slots, depth)
+        GeneratedTemplate::arbitrary_for_hierarchy_size_hint(have_fixed_id, allow_slots, depth)
     }
 }
 

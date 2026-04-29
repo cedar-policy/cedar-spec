@@ -27,7 +27,7 @@ use cedar_drt_inner::{
     },
 };
 use cedar_lean_ffi::CedarLeanFfi;
-use cedar_policy::{Policy, PolicySet, Request, Schema, Validator};
+use cedar_policy::{Request, Schema, Validator};
 use log::debug;
 use std::convert::TryFrom;
 
@@ -37,9 +37,7 @@ fuzz_target!(|input: TpeFuzzTargetInput| {
     if let Ok(schema) = Schema::try_from(input.abac_input.schema) {
         debug!("Schema: {schemafile_string}");
         let validator = Validator::new(schema.clone());
-        let mut policyset = PolicySet::new();
-        let policy: Policy = input.abac_input.policy.into();
-        policyset.add(policy).unwrap();
+        let policyset = input.abac_input.policy.into_policy_set();
         if passes_policyset_validation(&validator, &policyset) {
             let ffi = CedarLeanFfi::new();
             for (request, partial_request) in input

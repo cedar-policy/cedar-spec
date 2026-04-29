@@ -19,12 +19,14 @@
 use cedar_drt::{check_policy_equivalence, logger::initialize_log};
 use cedar_drt_inner::fuzz_target;
 
-use cedar_policy_core::ast::{self, StaticPolicy, Template};
+use cedar_policy::Policy;
+use cedar_policy_core::ast::{StaticPolicy, Template};
 use cedar_policy_core::est;
 use cedar_policy_core::parser::{self, parse_policy};
+use cedar_policy_generators::abac::StaticABACPolicy;
 use cedar_policy_generators::schema_gen::SchemaGen;
 use cedar_policy_generators::{
-    abac::ABACPolicy, hierarchy::HierarchyGenerator, schema::Schema, settings::ABACSettings,
+    hierarchy::HierarchyGenerator, schema::Schema, settings::ABACSettings,
 };
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
@@ -34,7 +36,7 @@ use std::sync::Arc;
 #[derive(Debug, Clone)]
 struct FuzzTargetInput {
     // the generated policy
-    policy: ABACPolicy,
+    policy: StaticABACPolicy,
 }
 
 // settings for this fuzz target
@@ -49,7 +51,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
         let schema: Schema = Schema::arbitrary(SETTINGS.clone(), u)?;
         let hierarchy = schema.arbitrary_hierarchy(u)?;
-        let policy = schema.arbitrary_policy(&hierarchy, u)?;
+        let policy = schema.arbitrary_static_policy(&hierarchy, u)?;
         Ok(Self { policy })
     }
 
@@ -67,8 +69,8 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 // AST --> text --> CST --> AST
 // Print a policy to a string and parse it back using the standard AST parser.
 // Panics if parsing fails.
-fn round_trip_ast(p: &StaticPolicy) -> StaticPolicy {
-    parse_policy(None, &p.to_string()).unwrap_or_else(|err| {
+fn round_trip_ast(p: &Policy) -> StaticPolicy {
+    parse_policy(None, &p.to_cedar().unwrap()).unwrap_or_else(|err| {
         panic!(
             "Failed to round-trip AST: {:?}\nPretty printed form: {}\nParse error: {:?}\n",
             p, p, err
@@ -78,9 +80,9 @@ fn round_trip_ast(p: &StaticPolicy) -> StaticPolicy {
 
 // AST --> EST --> json --> EST --> AST
 // Print a policy to a JSON string and parse it back. Panics if any step fails.
-fn round_trip_json(p: StaticPolicy) -> StaticPolicy {
+fn round_trip_json(p: &Policy) -> StaticPolicy {
     // convert to json
-    let est = est::Policy::from(ast::Policy::from(p));
+    let est = est::Policy::from(p.as_ref().clone());
     let json = serde_json::to_value(est).expect("failed to convert EST to JSON");
     // read back
     let est: est::Policy = serde_json::from_value(json).expect("failed to parse EST from JSON");
@@ -95,13 +97,14 @@ fn round_trip_json(p: StaticPolicy) -> StaticPolicy {
 // AST --> text --> CST --> EST --> json --> EST --> AST
 // Print a policy to a string, parse it back using the EST parser, convert to JSON,
 // and then parse back to an AST. Panics if any step fails.
-fn round_trip_est(p: &StaticPolicy) -> StaticPolicy {
-    let est = parser::parse_policy_or_template_to_est(&p.to_string()).unwrap_or_else(|err| {
-        panic!(
-            "Failed to round-trip EST: {:?}\nPretty printed form: {}\nParse error: {:?}\n",
-            p, p, err
-        )
-    });
+fn round_trip_est(p: &Policy) -> StaticPolicy {
+    let est =
+        parser::parse_policy_or_template_to_est(&p.to_cedar().unwrap()).unwrap_or_else(|err| {
+            panic!(
+                "Failed to round-trip EST: {:?}\nPretty printed form: {}\nParse error: {:?}\n",
+                p, p, err
+            )
+        });
     let json = serde_json::to_value(est).unwrap_or_else(|err| {
         panic!(
             "Failed to convert EST to JSON: {:?}\nParse error: {:?}\n",
@@ -119,28 +122,19 @@ fn round_trip_est(p: &StaticPolicy) -> StaticPolicy {
 
 fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
-    let p: StaticPolicy = input.policy.into();
+    let p: Policy = input.policy.into_static_policy();
 
     debug!("Running on policy: {:?}", p);
 
     // AST --> text --> CST --> AST
     let np = round_trip_ast(&p);
-    check_policy_equivalence(
-        &Into::<Arc<Template>>::into(p.clone()),
-        &Into::<Arc<Template>>::into(np),
-    );
+    check_policy_equivalence(p.as_ref().template(), &Into::<Arc<Template>>::into(np));
 
     // AST --> EST --> json --> EST --> AST
-    let np = round_trip_json(p.clone());
-    check_policy_equivalence(
-        &Into::<Arc<Template>>::into(p.clone()),
-        &Into::<Arc<Template>>::into(np),
-    );
+    let np = round_trip_json(&p);
+    check_policy_equivalence(p.as_ref().template(), &Into::<Arc<Template>>::into(np));
 
     // AST --> text --> CST --> EST --> json --> EST --> AST
     let np = round_trip_est(&p);
-    check_policy_equivalence(
-        &Into::<Arc<Template>>::into(p),
-        &Into::<Arc<Template>>::into(np),
-    );
+    check_policy_equivalence(p.as_ref().template(), &Into::<Arc<Template>>::into(np));
 });

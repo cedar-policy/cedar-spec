@@ -24,7 +24,7 @@ use cedar_drt::{
 use cedar_drt_inner::{abac::FuzzTargetInput, fuzz_target};
 
 use cedar_lean_ffi::CedarLeanFfi;
-use cedar_policy::{Authorizer, Policy, PolicyId, PolicySet, SchemaFragment};
+use cedar_policy::{Authorizer, PolicyId, PolicySet, SchemaFragment};
 use cedar_testing::cedar_test_impl::time_function;
 
 use log::{debug, info};
@@ -34,9 +34,7 @@ use std::convert::TryFrom;
 fuzz_target!(|input: FuzzTargetInput<true>| {
     initialize_log();
     let lean_engine = CedarLeanFfi::new();
-    let mut policyset = PolicySet::new();
-    let policy: Policy = input.policy.into();
-    policyset.add(policy.clone()).unwrap();
+    let policyset = input.policy.0.clone().into_policy_set();
     debug!("Schema: {}\n", input.schema.schemafile_string());
     debug!("Policies: {policyset}\n");
     debug!("Entities: {}\n", input.entities.as_ref());
@@ -61,7 +59,10 @@ fuzz_target!(|input: FuzzTargetInput<true>| {
         // When the corpus is re-parsed, the policy will be given id "policy0".
         // Recreate the policy set and compute responses here to account for this.
         let mut policyset = PolicySet::new();
-        let policy = policy.new_id(PolicyId::new("policy0"));
+        let policy = input
+            .policy
+            .link_to_static()
+            .new_id(PolicyId::new("policy0"));
         policyset.add(policy).unwrap();
         let responses = requests
             .iter()

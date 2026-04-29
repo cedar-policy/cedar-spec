@@ -19,8 +19,8 @@ use cedar_drt::logger::initialize_log;
 use cedar_drt_inner::{abac::FuzzTargetInput, fuzz_target};
 
 use cedar_policy::{
-    AuthorizationError, Authorizer, EvaluationError, Policy, PolicySet, Request, Schema,
-    ValidationMode, Validator,
+    AuthorizationError, Authorizer, EvaluationError, PolicySet, Request, Schema, ValidationMode,
+    Validator,
 };
 
 use itertools::Itertools;
@@ -40,9 +40,7 @@ fuzz_target!(|input: FuzzTargetInput<false>| {
     if let Ok(schema) = Schema::try_from(input.schema) {
         debug!("Schema: {:?}", schema);
         let validator = Validator::new(schema.clone());
-        let mut policyset = PolicySet::new();
-        let policy: Policy = input.policy.into();
-        policyset.add(policy.clone()).unwrap();
+        let policyset = input.policy.into_policy_set();
         let passes_strict = passes_validation(&validator, &policyset, ValidationMode::Strict);
         let passes_permissive =
             passes_validation(&validator, &policyset, ValidationMode::Permissive);

@@ -18,7 +18,7 @@
 use cedar_drt::logger::initialize_log;
 use cedar_drt_inner::{abac::FuzzTargetInput, fuzz_target};
 
-use cedar_policy::{Authorizer, Policy, PolicySet, Schema, TestEntityLoader};
+use cedar_policy::{Authorizer, Schema, TestEntityLoader};
 
 use cedar_policy_core::batched_evaluator::err::BatchedEvalError;
 
@@ -29,9 +29,7 @@ fuzz_target!(|input: FuzzTargetInput<true>| {
     initialize_log();
 
     if let Ok(schema) = Schema::try_from(input.schema) {
-        let policy = Policy::from(input.policy);
-        let mut policyset = PolicySet::new();
-        policyset.add(policy.clone()).unwrap();
+        let policyset = input.policy.into_policy_set();
         let mut loader = TestEntityLoader::new(&input.entities);
         log::debug!("policy: {policyset}");
         let iteration = (FuzzTargetInput::<true>::settings().max_depth + 1) as u32;

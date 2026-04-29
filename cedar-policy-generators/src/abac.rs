@@ -15,17 +15,16 @@
  */
 
 use crate::err::{while_doing, Error, Result};
-use crate::policy::GeneratedPolicy;
+use crate::policy::{GeneratedPolicy, GeneratedTemplate};
 use crate::request::Request;
 use crate::settings::*;
 use crate::size_hint_utils::size_hint_for_choose;
 use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{Arbitrary, Unstructured};
-use ast::{EntityUID, Name, RestrictedExpr, StaticPolicy};
+use ast::{EntityUID, Name, RestrictedExpr};
 use cedar_policy_core::ast::{self, EntityType};
 use cedar_policy_core::extensions;
 use indexmap::IndexMap;
-use serde::Serialize;
 use smol_str::{SmolStr, ToSmolStr};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -865,40 +864,49 @@ impl From<AttrValue> for RestrictedExpr {
     }
 }
 
-/// Represents an ABAC policy, i.e., fully general
-#[derive(Debug, Clone, Serialize)]
-#[serde(transparent)]
+/// Represents an ABAC policy, i.e., having arbitrary conditions in `when` and `unless` clauses.
+#[derive(Debug, Clone)]
 pub struct ABACPolicy(pub GeneratedPolicy);
 
-impl std::fmt::Display for ABACPolicy {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
+impl ABACPolicy {
+    /// Get a `PolicySet` containing either a single static policy or a template and template linked policy.
+    #[cfg(feature = "cedar-policy")]
+    pub fn into_policy_set(self) -> cedar_policy::PolicySet {
+        self.0.into_policy_set()
+    }
+
+    /// Get this policy as a static policy, substituting template slots for
+    /// their linked values if necessary.
+    ///
+    /// If you want to generate a static policy, you should prefer using
+    /// `StaticABACPolicy`. This function is intended for serializing linked
+    /// policies to the corpus test JSON format, which doesn't support links.
+    #[cfg(feature = "cedar-policy")]
+    pub fn link_to_static(self) -> cedar_policy::Policy {
+        match self.0 {
+            GeneratedPolicy::Static(p) => p.into(),
+            GeneratedPolicy::Linked { template, link } => template.link_to_static(link).into(),
+        }
     }
 }
 
-impl Deref for ABACPolicy {
-    type Target = GeneratedPolicy;
-    fn deref(&self) -> &GeneratedPolicy {
-        &self.0
-    }
-}
+/// Represents a static ABAC policy. This is an `ABACPolicy` which we know does not have any slots
+#[derive(Debug, Clone)]
+pub struct StaticABACPolicy(pub GeneratedTemplate);
 
-impl DerefMut for ABACPolicy {
-    fn deref_mut(&mut self) -> &mut GeneratedPolicy {
-        &mut self.0
+impl StaticABACPolicy {
+    /// Get a `PolicySet` containing a single static policy
+    #[cfg(feature = "cedar-policy")]
+    pub fn into_policy_set(self) -> cedar_policy::PolicySet {
+        let mut ps = cedar_policy::PolicySet::new();
+        ps.add(self.into_static_policy()).unwrap();
+        ps
     }
-}
 
-impl From<ABACPolicy> for StaticPolicy {
-    fn from(abac: ABACPolicy) -> StaticPolicy {
-        abac.0.into()
-    }
-}
-
-#[cfg(feature = "cedar-policy")]
-impl From<ABACPolicy> for cedar_policy::Policy {
-    fn from(abac: ABACPolicy) -> cedar_policy::Policy {
-        StaticPolicy::from(abac).into()
+    /// Get this as  a static policy.
+    #[cfg(feature = "cedar-policy")]
+    pub fn into_static_policy(self) -> cedar_policy::Policy {
+        self.0.into()
     }
 }
 
