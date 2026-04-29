@@ -20,6 +20,7 @@ use thiserror::Error;
 use cedar_drt::{check_for_internal_errors, check_policy_set_equivalence};
 use cedar_drt_inner::fuzz_target;
 
+use cedar_policy_core::ast;
 use cedar_policy_core::est;
 use cedar_policy_core::parser;
 
@@ -31,6 +32,8 @@ enum ESTParseError {
     #[error(transparent)]
     #[diagnostic(transparent)]
     ESTToAST(#[from] Box<est::PolicySetFromJsonError>),
+    #[error(transparent)]
+    Serde(#[from] Box<serde_json::error::Error>),
 }
 
 // Given some Cedar source, assert that parsing it directly (parsing to CST,
@@ -46,14 +49,25 @@ fuzz_target!(|src: String| {
                     .clone()
                     .node
                     .expect("AST construction should fail for missing CST node");
-                // CST -> EST -> AST
-                let est_result: Result<_, ESTParseError> = cst_node
-                    .try_into()
-                    .map_err(|e: parser::err::ParseErrors| ESTParseError::from(Box::new(e)));
-                let ast_from_est_result: Result<_, ESTParseError> =
-                    est_result.and_then(|est: est::PolicySet| {
+
+                let ast_from_est_result: Result<ast::PolicySet, ESTParseError> = cst_node
+                    .try_into() // CST -> EST
+                    .map_err(|e: parser::err::ParseErrors| ESTParseError::from(Box::new(e)))
+                    .and_then(|est: est::PolicySet| {
+                        // EST -> JSON
+                        // Make this extra roundtrip through JSON, as the user of cedar-to-json would actually see the JSON string first,
+                        // and then parse it. This ensures the manual serde::Deserialize implementations roundtrip for valid Cedar strings.
+                        serde_json::to_string(&est).map_err(|e| ESTParseError::from(Box::new(e)))
+                    })
+                    .and_then(|json: String| {
+                        // JSON -> EST
+                        serde_json::from_str(&json).map_err(|e| ESTParseError::from(Box::new(e)))
+                    })
+                    .and_then(|est: est::PolicySet| {
+                        // EST -> AST
                         est.try_into().map_err(|e| ESTParseError::from(Box::new(e)))
                     });
+
                 match ast_from_est_result {
                     Ok(ast_from_est) => {
                         check_policy_set_equivalence(&ast_from_cst, &ast_from_est);
@@ -61,7 +75,7 @@ fuzz_target!(|src: String| {
                     Err(e) => {
                         println!("{:?}", miette::Report::new(e));
                         panic!(
-                            "Policy set parsed directly through cst->ast but not through cst->est->ast"
+                            "Policy set parsed directly through cst->ast but not through cst->est->json->est->ast"
                         );
                     }
                 }
