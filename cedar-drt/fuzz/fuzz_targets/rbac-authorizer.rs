@@ -18,10 +18,10 @@ use cedar_drt::tests::run_auth_test;
 use cedar_drt_inner::fuzz_target;
 
 use cedar_lean_ffi::CedarLeanFfi;
-use cedar_policy::{Context, Entities, Policy, PolicySet, Request};
-use cedar_policy_core::ast;
+use cedar_policy::{Context, Entities, Policy, PolicyId, PolicySet, Request};
 
 use libfuzzer_sys::arbitrary::{self, Arbitrary};
+use smol_str::format_smolstr;
 
 #[derive(Arbitrary, Debug)]
 pub struct AuthorizerInputAbstractEvaluator {
@@ -29,7 +29,7 @@ pub struct AuthorizerInputAbstractEvaluator {
     policies: Vec<AbstractPolicy>,
 }
 
-#[derive(Arbitrary, Debug, PartialEq, Eq, Clone)]
+#[derive(Arbitrary, Debug, PartialEq, Eq, Clone, Copy)]
 enum AbstractPolicy {
     /// Permit policy that evaluates 'true'
     PermitTrue,
@@ -46,39 +46,40 @@ enum AbstractPolicy {
 }
 
 mod concrete_policies {
-    use cedar_policy_core::{ast, parser};
     use std::sync::LazyLock;
 
-    pub static PERMIT_TRUE: LazyLock<ast::StaticPolicy> = LazyLock::new(|| {
-        parser::parse_policy(None, "permit(principal, action, resource);")
+    use cedar_policy::Policy;
+
+    pub static PERMIT_TRUE: LazyLock<Policy> = LazyLock::new(|| {
+        Policy::parse(None, "permit(principal, action, resource);")
             .expect("should be a valid policy")
     });
 
-    pub static PERMIT_FALSE: LazyLock<ast::StaticPolicy> = LazyLock::new(|| {
-        parser::parse_policy(None, "permit(principal, action, resource) when { 1 == 0 };")
+    pub static PERMIT_FALSE: LazyLock<Policy> = LazyLock::new(|| {
+        Policy::parse(None, "permit(principal, action, resource) when { 1 == 0 };")
             .expect("should be a valid policy")
     });
 
-    pub static PERMIT_ERROR: LazyLock<ast::StaticPolicy> = LazyLock::new(|| {
-        parser::parse_policy(
+    pub static PERMIT_ERROR: LazyLock<Policy> = LazyLock::new(|| {
+        Policy::parse(
             None,
             "permit(principal, action, resource) when { 1 < \"hello\" };",
         )
         .expect("should be a valid policy")
     });
 
-    pub static FORBID_TRUE: LazyLock<ast::StaticPolicy> = LazyLock::new(|| {
-        parser::parse_policy(None, "forbid(principal, action, resource);")
+    pub static FORBID_TRUE: LazyLock<Policy> = LazyLock::new(|| {
+        Policy::parse(None, "forbid(principal, action, resource);")
             .expect("should be a valid policy")
     });
 
-    pub static FORBID_FALSE: LazyLock<ast::StaticPolicy> = LazyLock::new(|| {
-        parser::parse_policy(None, "forbid(principal, action, resource) when { 1 == 0 };")
+    pub static FORBID_FALSE: LazyLock<Policy> = LazyLock::new(|| {
+        Policy::parse(None, "forbid(principal, action, resource) when { 1 == 0 };")
             .expect("should be a valid policy")
     });
 
-    pub static FORBID_ERROR: LazyLock<ast::StaticPolicy> = LazyLock::new(|| {
-        parser::parse_policy(
+    pub static FORBID_ERROR: LazyLock<Policy> = LazyLock::new(|| {
+        Policy::parse(
             None,
             "forbid(principal, action, resource) when { 1 < \"hello\" };",
         )
@@ -88,7 +89,7 @@ mod concrete_policies {
 
 impl AbstractPolicy {
     /// Convert the `AbstractPolicy` into a `Policy` with the given `id`
-    fn into_policy(self, id: ast::PolicyID) -> ast::StaticPolicy {
+    fn into_policy(self, id: PolicyId) -> Policy {
         match self {
             AbstractPolicy::PermitTrue => concrete_policies::PERMIT_TRUE.new_id(id),
             AbstractPolicy::PermitFalse => concrete_policies::PERMIT_FALSE.new_id(id),
@@ -105,17 +106,15 @@ impl AbstractPolicy {
 // trivial policies and requests, and focus on how the authorizer combines the
 // results.
 fuzz_target!(|input: AuthorizerInputAbstractEvaluator| {
-    let policies = input
-        .policies
-        .iter()
-        .cloned()
-        .enumerate()
-        .map(|(i, p)| p.into_policy(ast::PolicyID::from_string(format!("policy{i}"))));
-    let mut policyset = PolicySet::new();
-    for policy in policies {
-        let policy = Policy::from(policy);
-        policyset.add(policy).unwrap();
-    }
+    let policyset = PolicySet::from_policies(
+        input
+            .policies
+            .iter()
+            .copied()
+            .enumerate()
+            .map(|(i, p)| p.into_policy(PolicyId::new(format_smolstr!("policy{i}")))),
+    )
+    .unwrap();
     assert_eq!(policyset.policies().count(), input.policies.len());
     let entities = Entities::empty();
     let request = Request::new(
