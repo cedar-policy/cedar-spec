@@ -220,7 +220,11 @@ def defineTerm (tyEnc tEnc : String) : EncoderM String := do
   return id
 
 def defineSet (tyEnc : String) (tEncs : List String) : EncoderM String := do
-  defineTerm tyEnc (tEncs.foldl (λ acc t => s!"(set.insert {t} {acc})") s!"(as set.empty {tyEnc})")
+  if tEncs.isEmpty then
+    defineTerm tyEnc s!"(as set.empty {tyEnc})"
+  else
+    let tEncs := String.intercalate " " tEncs
+    defineTerm tyEnc s!"(set.insert {tEncs} (as set.empty {tyEnc}))"
 
 def defineRecord (tyEnc : String) (tEncs : List String) : EncoderM String := do
   defineTerm tyEnc (if tEncs.isEmpty then tyEnc else s!"({tyEnc} {String.intercalate " " tEncs})")
