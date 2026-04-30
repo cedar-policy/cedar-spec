@@ -17,6 +17,8 @@
 #![no_main]
 use thiserror::Error;
 
+use serde::Deserialize;
+
 use cedar_drt::{check_for_internal_errors, check_policy_set_equivalence};
 use cedar_drt_inner::fuzz_target;
 
@@ -61,7 +63,10 @@ fuzz_target!(|src: String| {
                     })
                     .and_then(|json: String| {
                         // JSON -> EST
-                        serde_json::from_str(&json).map_err(|e| ESTParseError::from(Box::new(e)))
+                        let mut deserializer = serde_json::Deserializer::from_str(&json);
+                        deserializer.disable_recursion_limit();
+                        est::PolicySet::deserialize(&mut deserializer)
+                            .map_err(|e| ESTParseError::from(Box::new(e)))
                     })
                     .and_then(|est: est::PolicySet| {
                         // EST -> AST
