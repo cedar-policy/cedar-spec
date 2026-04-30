@@ -65,7 +65,13 @@ fuzz_target!(|src: String| {
                     })
                     .and_then(|est: est::PolicySet| {
                         // EST -> AST
-                        est.try_into().map_err(|e| ESTParseError::from(Box::new(e)))
+                        // Disable serde_json's default recursion limit (128) because
+                        // chained attribute access (e.g. a.b.c["d"]["e"]) produces
+                        // deeply nested JSON in the EST format.
+                        let mut deserializer = serde_json::Deserializer::from_str(&json);
+                        deserializer.disable_recursion_limit();
+                        est::PolicySet::deserialize(&mut deserializer)
+                            .map_err(|e| ESTParseError::from(Box::new(e)))
                     });
 
                 match ast_from_est_result {
