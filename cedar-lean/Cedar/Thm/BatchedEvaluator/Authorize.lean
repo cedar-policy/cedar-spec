@@ -161,7 +161,9 @@ theorem evaluatePolicies_equiv_and_well_typed
   refine ⟨rfl, rfl, (partial_evaluate_policy_is_sound h_ep h_schema_env h_wf h_ref).symm, ?_⟩
   simp only [evaluatePolicy, h_schema_env, List.empty_eq] at h_ep
   split at h_ep <;> try cases h_ep
-  simp only [do_ok_eq_ok, Prod.exists, exists_and_right] at h_ep
+  cases hcheck : Except.mapError Error.invalidPolicy (checkEntities schema p.toExpr) <;>
+    simp only [hcheck, Except.bind_err, reduceCtorEq] at h_ep
+  simp only [Except.bind_ok, do_ok_eq_ok, Prod.exists, exists_and_right] at h_ep
   rcases h_ep with ⟨_, ⟨_, h₁₁⟩, h₁₂⟩
   simp only [Except.mapError] at h₁₁
   split at h₁₁ <;> try cases h₁₁

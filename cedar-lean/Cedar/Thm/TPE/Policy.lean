@@ -61,6 +61,8 @@ theorem partial_evaluate_policy_is_sound
   intro h₁ h_schema_env h₄ h₃
   simp [evaluatePolicy, h_schema_env] at h₁
   split at h₁ <;> try cases h₁
+  cases hcheck : Except.mapError Error.invalidPolicy (checkEntities schema policy.toExpr) <;>
+    simp only [hcheck, Except.bind_err, reduceCtorEq] at h₁
   simp [do_ok_eq_ok] at h₁
   rcases h₁ with ⟨_, ⟨_, h₁₁⟩, h₁₂⟩
   simp [Except.mapError] at h₁₁
