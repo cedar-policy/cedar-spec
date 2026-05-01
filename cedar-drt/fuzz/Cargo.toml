@@ -197,6 +197,48 @@ test = false
 doc = false
 
 [[bin]]
+name = "protobuf-decode-bytes-entity"
+path = "fuzz_targets/protobuf-decode/protobuf-decode-bytes-entity.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-decode-bytes-entities"
+path = "fuzz_targets/protobuf-decode/protobuf-decode-bytes-entities.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-decode-bytes-expression"
+path = "fuzz_targets/protobuf-decode/protobuf-decode-bytes-expression.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-decode-bytes-policyset"
+path = "fuzz_targets/protobuf-decode/protobuf-decode-bytes-policyset.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-decode-bytes-request"
+path = "fuzz_targets/protobuf-decode/protobuf-decode-bytes-request.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-decode-bytes-schema"
+path = "fuzz_targets/protobuf-decode/protobuf-decode-bytes-schema.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-decode-bytes-template"
+path = "fuzz_targets/protobuf-decode/protobuf-decode-bytes-template.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "entity-validation"
 path = "fuzz_targets/entity-validation.rs"
 test = false
