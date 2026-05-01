@@ -15,6 +15,7 @@
  */
 
 #![no_main]
+use serde::Deserialize as _;
 use thiserror::Error;
 
 use cedar_drt::{check_for_internal_errors, check_policy_set_equivalence};
@@ -34,7 +35,11 @@ enum ESTParseError {
     ESTToAST(#[from] Box<est::PolicySetFromJsonError>),
     #[error(transparent)]
     Serde(#[from] Box<serde_json::error::Error>),
+    #[error("exceeded max expression height")]
+    ExceededMaxHeight,
 }
+
+const MAX_EXPRESSION_HEIGHT: usize = 250;
 
 // Given some Cedar source, assert that parsing it directly (parsing to CST,
 // then converting CST to AST) gives the same result of parsing via EST (parsing
@@ -61,16 +66,33 @@ fuzz_target!(|src: String| {
                     })
                     .and_then(|json: String| {
                         // JSON -> EST
-                        serde_json::from_str(&json).map_err(|e| ESTParseError::from(Box::new(e)))
+                        let mut deserializer = serde_json::Deserializer::from_str(&json);
+                        // Disable the recursion limit
+                        deserializer.disable_recursion_limit();
+                        let deserializer = serde_stacker::Deserializer::new(&mut deserializer);
+                        // Use serde_stacker to safely handle the deep nesting
+                        est::PolicySet::deserialize(deserializer)
+                            .map_err(|e| ESTParseError::from(Box::new(e)))
                     })
                     .and_then(|est: est::PolicySet| {
-                        // EST -> AST
-                        est.try_into().map_err(|e| ESTParseError::from(Box::new(e)))
+                        if est
+                            .max_expr_height()
+                            .is_some_and(|h| h > MAX_EXPRESSION_HEIGHT)
+                        {
+                            // Conversion may produce a stack overflow
+                            Err(ESTParseError::ExceededMaxHeight)
+                        } else {
+                            // EST -> AST
+                            est.try_into().map_err(|e| ESTParseError::from(Box::new(e)))
+                        }
                     });
 
                 match ast_from_est_result {
                     Ok(ast_from_est) => {
                         check_policy_set_equivalence(&ast_from_cst, &ast_from_est);
+                    }
+                    Err(ESTParseError::ExceededMaxHeight) => {
+                        // Ignore when the expression height exceeds MAX_EXPRESSION_HEIGHT,
                     }
                     Err(e) => {
                         println!("{:?}", miette::Report::new(e));
