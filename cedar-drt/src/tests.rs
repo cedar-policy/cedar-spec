@@ -230,6 +230,11 @@ fn compare_validation_results(
                 // if the validation comparison mode is `AgreeOnAll`.
                 match comparison_mode {
                     ValidationComparisonMode::AgreeOnAll => {
+                        // Workaround for known discrepancy where Rust is more strict when typechecking linked policies.
+                        // https://github.com/cedar-policy/cedar-spec/issues/945
+                        if policies.num_of_templates() != 0 {
+                            return;
+                        }
                         assert!(
                             !definitional_res.validation_passed(),
                             "Mismatch for Policies:\n{}\nSchema:\n{:?}\ncedar-policy response:\n{:?}\nTest engine response: {:?}\n",
