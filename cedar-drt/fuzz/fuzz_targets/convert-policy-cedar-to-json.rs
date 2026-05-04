@@ -16,6 +16,7 @@
 
 #![no_main]
 use serde::Deserialize as _;
+use serde::Serialize as _;
 use thiserror::Error;
 
 use cedar_drt::{check_for_internal_errors, check_policy_set_equivalence};
@@ -55,37 +56,45 @@ fuzz_target!(|src: String| {
                     .node
                     .expect("AST construction should fail for missing CST node");
 
-                let ast_from_est_result: Result<ast::PolicySet, ESTParseError> = cst_node
-                    .try_into() // CST -> EST
-                    .map_err(|e: parser::err::ParseErrors| ESTParseError::from(Box::new(e)))
-                    .and_then(|est: est::PolicySet| {
-                        // EST -> JSON
-                        // Make this extra roundtrip through JSON, as the user of cedar-to-json would actually see the JSON string first,
-                        // and then parse it. This ensures the manual serde::Deserialize implementations roundtrip for valid Cedar strings.
-                        serde_json::to_string(&est).map_err(|e| ESTParseError::from(Box::new(e)))
-                    })
-                    .and_then(|json: String| {
-                        // JSON -> EST
-                        let mut deserializer = serde_json::Deserializer::from_str(&json);
-                        // Disable the recursion limit
-                        deserializer.disable_recursion_limit();
-                        let deserializer = serde_stacker::Deserializer::new(&mut deserializer);
-                        // Use serde_stacker to safely handle the deep nesting
-                        est::PolicySet::deserialize(deserializer)
-                            .map_err(|e| ESTParseError::from(Box::new(e)))
-                    })
-                    .and_then(|est: est::PolicySet| {
-                        if est
-                            .max_expr_height()
-                            .is_some_and(|h| h > MAX_EXPRESSION_HEIGHT)
-                        {
-                            // Conversion may produce a stack overflow
-                            Err(ESTParseError::ExceededMaxHeight)
-                        } else {
+                let ast_from_est_result: Result<ast::PolicySet, ESTParseError> =
+                    cst_node
+                        .try_into() // CST -> EST
+                        .map_err(|e: parser::err::ParseErrors| ESTParseError::from(Box::new(e)))
+                        .and_then(|est: est::PolicySet| {
+                            if est
+                                .max_expr_height()
+                                .is_some_and(|h| h > MAX_EXPRESSION_HEIGHT)
+                            {
+                                // Conversions may produce a stack overflow
+                                Err(ESTParseError::ExceededMaxHeight)
+                            } else {
+                                // EST -> JSON
+                                // Make this extra roundtrip through JSON, as the user of cedar-to-json would actually see the JSON string first,
+                                // and then parse it. This ensures the manual serde::Deserialize implementations roundtrip for valid Cedar strings.
+                                let mut out = Vec::new();
+                                let mut serializer = serde_json::Serializer::new(&mut out);
+                                // Use serde_stacker to safely handle the deep nesting
+                                let serializer = serde_stacker::Serializer::new(&mut serializer);
+                                est.serialize(serializer)
+                                    .map_err(|e| ESTParseError::from(Box::new(e)))?;
+                                Ok(String::from_utf8(out)
+                                    .expect("Serde should not emit invalid UTF-8"))
+                            }
+                        })
+                        .and_then(|json: String| {
+                            // JSON -> EST
+                            let mut deserializer = serde_json::Deserializer::from_str(&json);
+                            // Disable the recursion limit
+                            deserializer.disable_recursion_limit();
+                            let deserializer = serde_stacker::Deserializer::new(&mut deserializer);
+                            // Use serde_stacker to safely handle the deep nesting
+                            est::PolicySet::deserialize(deserializer)
+                                .map_err(|e| ESTParseError::from(Box::new(e)))
+                        })
+                        .and_then(|est: est::PolicySet| {
                             // EST -> AST
                             est.try_into().map_err(|e| ESTParseError::from(Box::new(e)))
-                        }
-                    });
+                        });
 
                 match ast_from_est_result {
                     Ok(ast_from_est) => {
