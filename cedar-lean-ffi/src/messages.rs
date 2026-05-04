@@ -992,8 +992,8 @@ mod test {
 
         let rt_policyset = PolicySet::try_from(authorization_proto.policies.unwrap())
             .expect("Failed to round-trip policies");
-        let rt_entities = Entities::from(authorization_proto.entities.unwrap());
-        let rt_request = Request::from(authorization_proto.request.unwrap());
+        let rt_entities = Entities::try_from(authorization_proto.entities.unwrap()).unwrap();
+        let rt_request = Request::try_from(authorization_proto.request.unwrap()).unwrap();
 
         assert_eq!(policyset, rt_policyset);
         assert_eq!(entities, rt_entities);
@@ -1060,7 +1060,7 @@ mod test {
 
         let rt_pset = PolicySet::try_from(validation_request_proto.policies.unwrap())
             .expect("Failed to roundtrip PolicySet");
-        let rt_schema = Schema::from(validation_request_proto.schema.unwrap());
+        let rt_schema = Schema::try_from(validation_request_proto.schema.unwrap()).unwrap();
 
         assert_eq!(policyset, rt_pset);
 
@@ -1097,7 +1097,7 @@ mod test {
 
         let rt_pset = PolicySet::try_from(validation_request_proto.policies.unwrap())
             .expect("Failed to roundtrip PolicySet");
-        let rt_schema = Schema::from(validation_request_proto.schema.unwrap());
+        let rt_schema = Schema::try_from(validation_request_proto.schema.unwrap()).unwrap();
 
         assert_eq!(policyset, rt_pset);
 
@@ -1129,8 +1129,8 @@ mod test {
                 .expect("Failed to decode protobuf entity validation request");
         assert_eq!(validation_request_pre_proto, validation_request_proto);
 
-        let rt_schema = Schema::from(validation_request_proto.schema.unwrap());
-        let rt_entities = Entities::from(validation_request_proto.entities.unwrap());
+        let rt_schema = Schema::try_from(validation_request_proto.schema.unwrap()).unwrap();
+        let rt_entities = Entities::try_from(validation_request_proto.entities.unwrap()).unwrap();
 
         // Need to collect into a collection that is either unordered or is first sorted
         assert_eq!(
@@ -1165,8 +1165,8 @@ mod test {
                 .expect("Failed to decode protobuf request validation request");
         assert_eq!(validation_request_pre_proto, validation_request_proto);
 
-        let rt_schema = Schema::from(validation_request_proto.schema.unwrap());
-        let rt_request = Request::from(validation_request_proto.request.unwrap());
+        let rt_schema = Schema::try_from(validation_request_proto.schema.unwrap()).unwrap();
+        let rt_request = Request::try_from(validation_request_proto.request.unwrap()).unwrap();
 
         // Need to collect into a collection that is either unordered or is first sorted
         assert_eq!(

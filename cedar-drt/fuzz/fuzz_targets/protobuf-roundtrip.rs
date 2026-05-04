@@ -105,7 +105,7 @@ fn roundtrip_entities(entities: Entities) {
     let buf = entities_proto.encode_to_vec();
     let roundtriped_proto = proto::models::Entities::decode(&buf[..])
         .expect("Failed to deserialize Entities from proto");
-    let roundtripped = Entities::from(roundtriped_proto);
+    let roundtripped = Entities::try_from(roundtriped_proto).unwrap();
     roundtrip_entities::pretty_assert_entities_deep_eq(&entities, &roundtripped);
 }
 
@@ -114,7 +114,7 @@ fn roundtrip_request(request: Request) {
     let buf = request_proto.encode_to_vec();
     let roundtriped_proto =
         proto::models::Request::decode(&buf[..]).expect("Failed to deserialize Request from proto");
-    let roundtripped = Request::from(roundtriped_proto);
+    let roundtripped = Request::try_from(roundtriped_proto).unwrap();
     assert_eq!(
         request.principal().map(|p| p.id()),
         roundtripped.principal().map(|p| p.id())
@@ -138,6 +138,6 @@ fn roundtrip_schema(schema: Schema) {
     let buf = schema_proto.encode_to_vec();
     let roundtriped_proto =
         proto::models::Schema::decode(&buf[..]).expect("Failed to deserialize Schema from proto");
-    let roundtripped = Schema::from(roundtriped_proto);
+    let roundtripped = Schema::try_from(roundtriped_proto).unwrap();
     Equiv::equiv(schema.as_ref(), roundtripped.as_ref()).unwrap();
 }
