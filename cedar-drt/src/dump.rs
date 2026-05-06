@@ -114,7 +114,9 @@ pub fn dump(
     let testcase = JsonTest {
         schema: schema_filename.display().to_string(),
         policies: policies_filename.display().to_string(),
+        policy_format: Default::default(),
         entities: entities_filename.display().to_string(),
+        schema_format: Default::default(),
         should_validate,
         requests: requests.clone(),
     };
