@@ -102,7 +102,9 @@ public def spawn (path : String) (args : Array String) : IO Solver := do
         stdinStream.putStr "(exit)\n"
         stdinStream.flush
       catch _ => pure ()
-      let _ ← proc.wait
+      try
+        let _ ← proc.wait
+      catch _ => pure ()
   }
 
 /--
