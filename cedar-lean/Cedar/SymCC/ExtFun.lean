@@ -96,9 +96,8 @@ def inRange (range : Term → Term × Term) (t₁ t₂ : Term) : Term :=
   (and (bvule r₁.2 r₂.2) (bvule r₂.1 r₁.1))
 
 def inRangeV (isIp : Term → Term) (range : Term → Term × Term) (t₁ t₂ : Term) : Term :=
-  (and
-    (and (isIp t₁) (isIp t₂))
-    (inRange range t₁ t₂))
+  (and (isIp t₁)
+    (and (isIp t₂) (inRange range t₁ t₂)))
 
 public def isInRange (t₁ t₂ : Term) : Term :=
   (or

@@ -496,12 +496,12 @@ private theorem interpret_ipaddr_inRangeV {εs : SymEntities} {I : Interpretatio
   (IPAddr.inRangeV isIp rangeV t₁ t₂).interpret I =
   IPAddr.inRangeV isIp rangeV (t₁.interpret I) (t₂.interpret I)
 := by
-  have hw₃ := wf_and hw₁.left hw₂.left hw₁.right hw₂.right
-  have hw₄ := wf_ipaddr_inRange hr₁ hr₂
+  have hw₃ := wf_ipaddr_inRange hr₁ hr₂
+  have hw₄ := wf_and hw₂.left hw₃.left hw₂.right hw₃.right
   simp only [IPAddr.inRangeV]
   rw [
-    interpret_and hI hw₃.left hw₄.left hw₃.right hw₄.right,
-    interpret_and hI hw₁.left hw₂.left hw₁.right hw₂.right,
+    interpret_and hI hw₁.left hw₄.left hw₁.right hw₄.right,
+    interpret_and hI hw₂.left hw₃.left hw₂.right hw₃.right,
     hi₁, hi₂]
   have hlit₁ := interpret_term_wfl hI hw₁.left
   have hlit₂ := interpret_term_wfl hI hw₂.left
