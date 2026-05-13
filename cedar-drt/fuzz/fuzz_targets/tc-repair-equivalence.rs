@@ -73,27 +73,83 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
     }
 }
 
-fn make_uid(index: u8) -> EntityUID {
-    EntityUID::with_eid_and_type("Node", &index.to_string()).unwrap()
+struct TestData {
+    // uids cache
+    uids: HashMap<u8, EntityUID>,
 }
 
-/// Build a HashMap of entities with only direct parent edges (no TC computed).
-fn build_entities(num_nodes: u8, edges: &[Edge]) -> HashMap<EntityUID, Arc<Entity>> {
-    let mut parents_map: Vec<HashSet<EntityUID>> = vec![HashSet::new(); num_nodes as usize];
-    for edge in edges {
-        parents_map[edge.child as usize].insert(make_uid(edge.parent));
+impl TestData {
+    fn new() -> TestData {
+        TestData {
+            uids: HashMap::new(),
+        }
+    }
+    fn make_uid(&mut self, index: u8) -> EntityUID {
+        self.uids
+            .entry(index)
+            .or_insert(EntityUID::with_eid_and_type("Node", &index.to_string()).unwrap())
+            .clone()
     }
 
-    parents_map
-        .into_iter()
-        .enumerate()
-        .map(|(i, parents)| {
-            let uid = make_uid(i as u8);
-            let entity =
-                Entity::new_with_attr_partial_value(uid.clone(), [], HashSet::new(), parents, []);
-            (uid, Arc::new(entity))
-        })
-        .collect()
+    /// Build a HashMap of entities with only direct parent edges (no TC computed).
+    fn build_entities(&mut self, num_nodes: u8, edges: &[Edge]) -> HashMap<EntityUID, Arc<Entity>> {
+        let mut parents_map: Vec<HashSet<EntityUID>> = vec![HashSet::new(); num_nodes as usize];
+        for edge in edges {
+            parents_map[edge.child as usize].insert(self.make_uid(edge.parent));
+        }
+
+        parents_map
+            .into_iter()
+            .enumerate()
+            .map(|(i, parents)| {
+                let uid = self.make_uid(i as u8);
+                let entity = Entity::new_with_attr_partial_value(
+                    uid.clone(),
+                    [],
+                    HashSet::new(),
+                    parents,
+                    [],
+                );
+                (uid, Arc::new(entity))
+            })
+            .collect()
+    }
+
+    /// Add new parent edges to entities and return the full set of nodes needing
+    /// TC repair. This mirrors the touched-node logic in `Entities::add_entities`:
+    /// any node that already has a directly-touched node in its ancestor set also
+    /// needs its indirect ancestors recomputed.
+    fn add_new_edges(
+        &mut self,
+        entities: &mut HashMap<EntityUID, Arc<Entity>>,
+        new_edges: &[Edge],
+    ) -> HashSet<EntityUID> {
+        let mut directly_touched: HashSet<EntityUID> = HashSet::new();
+        for edge in new_edges {
+            let child_uid = self.make_uid(edge.child);
+            let parent_uid = self.make_uid(edge.parent);
+            let entity = Arc::make_mut(entities.get_mut(&child_uid).unwrap());
+            entity.add_parent(parent_uid);
+            entity.remove_all_indirect_ancestors();
+            directly_touched.insert(child_uid);
+        }
+        // The logic in add_entities. This fuzz target focuses on the low-level implementations and
+        // wants to test them directly, but we have to make sure the arguments to repair_tc are correct.
+        let mut touched = directly_touched.clone();
+        for (uid, entity) in entities.iter() {
+            if !directly_touched
+                .is_disjoint(&entity.ancestors().cloned().collect::<HashSet<EntityUID>>())
+            {
+                touched.insert(uid.clone());
+            }
+        }
+        for uid in &touched {
+            if !directly_touched.contains(uid) {
+                Arc::make_mut(entities.get_mut(uid).unwrap()).remove_all_indirect_ancestors();
+            }
+        }
+        touched
+    }
 }
 
 /// Collect ancestor sets for comparison.
@@ -106,54 +162,27 @@ fn ancestor_sets(
         .collect()
 }
 
-/// Add new parent edges to entities and return the full set of nodes needing
-/// TC repair. This mirrors the touched-node logic in `Entities::add_entities`:
-/// any node that already has a directly-touched node in its ancestor set also
-/// needs its indirect ancestors recomputed.
-fn add_new_edges(
-    entities: &mut HashMap<EntityUID, Arc<Entity>>,
-    new_edges: &[Edge],
-) -> HashSet<EntityUID> {
-    let mut directly_touched: HashSet<EntityUID> = HashSet::new();
-    for edge in new_edges {
-        let child_uid = make_uid(edge.child);
-        let parent_uid = make_uid(edge.parent);
-        let entity = Arc::make_mut(entities.get_mut(&child_uid).unwrap());
-        entity.add_parent(parent_uid);
-        entity.remove_all_indirect_ancestors();
-        directly_touched.insert(child_uid);
-    }
-    // The logic in add_entities. This fuzz target focuses on the low-level implementations and
-    // wants to test them directly, but we have to make sure the arguments to repair_tc are correct.
-    let mut touched = directly_touched.clone();
-    for (uid, entity) in entities.iter() {
-        if !directly_touched
-            .is_disjoint(&entity.ancestors().cloned().collect::<HashSet<EntityUID>>())
-        {
-            touched.insert(uid.clone());
-        }
-    }
-    for uid in &touched {
-        if !directly_touched.contains(uid) {
-            Arc::make_mut(entities.get_mut(uid).unwrap()).remove_all_indirect_ancestors();
-        }
-    }
-    touched
-}
-
 fuzz_target!(|input: FuzzTargetInput| {
+    // This tests that, given a graph partition of old and new edges:
+    // - if old + new is cyclic, then compute_tc and repair_tc agree that it is cyclic when enforce_dag=true,
+    // - if old + new is not cyclic,
+    //.   - compute_tc and repair_tc agree that it is not cyclic when enforce_dag=true
+    //.   - compute_tc and repair_tc with enforce_dag=true and enforce_dag=false agree on the TC.
+    // compute_tc and repair_tc paths will disagree on cyclic graphs with enforce_dag = false
+    // I.e. repair_tc should not be used without enforce_dag=false when the graph is not known to
+    // be a dag.
     let all_edges: Vec<Edge> = input
         .pre_existing_edges
         .iter()
         .chain(input.new_edges.iter())
         .cloned()
         .collect();
-
+    let mut t = TestData::new();
     // --- Test with enforce_dag=true: cycle detection must agree ---
-    let mut expected_entities = build_entities(input.num_nodes, &all_edges);
+    let mut expected_entities = t.build_entities(input.num_nodes, &all_edges);
     let expected_result = compute_tc(&mut expected_entities, true);
 
-    let mut incremental_entities = build_entities(input.num_nodes, &input.pre_existing_edges);
+    let mut incremental_entities = t.build_entities(input.num_nodes, &input.pre_existing_edges);
     if compute_tc(&mut incremental_entities, true).is_err() {
         // Pre-existing edges alone form a cycle. Full graph must also be cyclic.
         assert!(
@@ -163,7 +192,7 @@ fuzz_target!(|input: FuzzTargetInput| {
         return;
     }
 
-    let touched = add_new_edges(&mut incremental_entities, &input.new_edges);
+    let touched = t.add_new_edges(&mut incremental_entities, &input.new_edges);
     let repair_result = repair_tc(touched, &mut incremental_entities, true);
 
     // Both must agree on whether the graph is a DAG.
@@ -189,12 +218,12 @@ fuzz_target!(|input: FuzzTargetInput| {
     // --- Test with enforce_dag=false: TC equivalence on acyclic graphs ---
     // Only run this if the graph is actually a DAG (already confirmed above).
     if expected_result.is_ok() {
-        let mut expected_no_dag = build_entities(input.num_nodes, &all_edges);
+        let mut expected_no_dag = t.build_entities(input.num_nodes, &all_edges);
         let _ = compute_tc(&mut expected_no_dag, false);
 
-        let mut incremental_no_dag = build_entities(input.num_nodes, &input.pre_existing_edges);
+        let mut incremental_no_dag = t.build_entities(input.num_nodes, &input.pre_existing_edges);
         let _ = compute_tc(&mut incremental_no_dag, false);
-        let touched = add_new_edges(&mut incremental_no_dag, &input.new_edges);
+        let touched = t.add_new_edges(&mut incremental_no_dag, &input.new_edges);
         let _ = repair_tc(touched, &mut incremental_no_dag, false);
 
         let expected = ancestor_sets(&expected_no_dag);
