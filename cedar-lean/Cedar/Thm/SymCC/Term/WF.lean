@@ -1784,9 +1784,9 @@ public theorem wf_ipaddr_inRangeV {εs : SymEntities} {w : Nat} {isIp : Term →
   (IPAddr.inRangeV isIp rangeV t₁ t₂).typeOf = .bool
 := by
   simp only [IPAddr.inRangeV]
-  have h₅ := wf_and h₃.left h₄.left h₃.right h₄.right
-  have h₆ := wf_ipaddr_inRange h₁ h₂
-  exact wf_and h₅.left h₆.left h₅.right h₆.right
+  have h₅ := wf_ipaddr_inRange h₁ h₂
+  have h₆ := wf_and h₄.left h₅.left h₄.right h₅.right
+  exact wf_and h₃.left h₆.left h₃.right h₆.right
 
 public theorem wf_ipaddr_isInRange {εs : SymEntities} {t₁ t₂ : Term}
   (h₁ : t₁.WellFormed εs ∧ t₁.typeOf = .ext .ipAddr)
