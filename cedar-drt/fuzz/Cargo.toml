@@ -510,3 +510,9 @@ name = "pst-policyset-json-roundtrip"
 path = "fuzz_targets/pst-policyset-json-roundtrip.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "tc-repair-equivalence"
+path = "fuzz_targets/tc-repair-equivalence.rs"
+test = false
+doc = false
