@@ -56,10 +56,28 @@ public instance : Lean.ToJson Decision where
 public structure Solver where
   smtLibInput : IO.FS.Stream
   smtLibOutput : Option IO.FS.Stream
+  /--
+    Tear-down action that releases any process/file resources backing the
+    solver. For solvers that spawn an external SMT process this reaps the
+    child to prevent zombie accumulation; for in-memory writer/dummy
+    solvers this is a no-op. Run by `SolverM.run` after the user's
+    `SolverM` action completes (success or failure).
+  -/
+  cleanup : IO Unit := pure ()
 
 public abbrev SolverM (α) := ReaderT Solver IO α
 
-public def SolverM.run (solver : Solver) (x : SolverM α) : IO α := ReaderT.run x solver
+/--
+  Runs a `SolverM` action against `solver` and then invokes `solver.cleanup`.
+  For process-backed solvers, cleanup tears down the underlying child process,
+  so those solver values are single-use: callers must spawn a fresh solver
+  (e.g. via `Solver.cvc5`) for each `SolverM.run` invocation.
+-/
+public def SolverM.run (solver : Solver) (x : SolverM α) : IO α := do
+  try
+    ReaderT.run x solver
+  finally
+    solver.cleanup
 
 namespace Solver
 
@@ -76,7 +94,24 @@ public def spawn (path : String) (args : Array String) : IO Solver := do
     cmd    := path
     args   := args
   }
-  return ⟨IO.FS.Stream.ofHandle proc.stdin, IO.FS.Stream.ofHandle proc.stdout⟩
+  let stdinStream := IO.FS.Stream.ofHandle proc.stdin
+  return {
+    smtLibInput  := stdinStream
+    smtLibOutput := IO.FS.Stream.ofHandle proc.stdout
+    -- Best-effort send of `(exit)` so the solver shuts down cleanly, then
+    -- `wait` to reap the child. Without this `wait` every spawned solver
+    -- becomes a zombie and the analyzer eventually trips
+    -- `RLIMIT_NPROC`/`kern.maxprocperuid` with `EAGAIN` from `posix_spawn`,
+    -- surfaced as `IO error: resource exhausted (error code: 35)`.
+    cleanup := do
+      try
+        stdinStream.putStr "(exit)\n"
+        stdinStream.flush
+      catch _ => pure ()
+      try
+        let _ ← proc.wait
+      catch _ => pure ()
+  }
 
 /--
   Returns an instance of the CVC5 solver that is backed by the executable
@@ -95,7 +130,7 @@ public def cvc5 : IO Solver := do
   function expects `s` to be write-enabled.
 -/
 public def streamWriter (s : IO.FS.Stream) : IO Solver :=
-  return ⟨s, .none⟩
+  return { smtLibInput := s, smtLibOutput := .none }
 
 /--
   Returns a solver that writes all issued commands to the given file handle `h`.
@@ -105,7 +140,7 @@ public def streamWriter (s : IO.FS.Stream) : IO Solver :=
   function expects `h` to be write-enabled.
 -/
 public def fileWriter (h : IO.FS.Handle) : IO Solver :=
-  return ⟨IO.FS.Stream.ofHandle h, .none⟩
+  return { smtLibInput := IO.FS.Stream.ofHandle h, smtLibOutput := .none }
 
 /--
   Returns a solver that writes all issued commands to the given buffer `b`.
@@ -114,7 +149,7 @@ public def fileWriter (h : IO.FS.Handle) : IO Solver :=
   useful). For example, `Solver.checkSat` returns `Decision.unknown`.
 -/
 public def bufferWriter (b : IO.Ref IO.FS.Stream.Buffer) : IO Solver :=
-  return ⟨IO.FS.Stream.ofBuffer b, .none⟩
+  return { smtLibInput := IO.FS.Stream.ofBuffer b, smtLibOutput := .none }
 
 /--
   Returns a solver that drops/ignores all issued commands.
@@ -123,7 +158,11 @@ public def bufferWriter (b : IO.Ref IO.FS.Stream.Buffer) : IO Solver :=
   `Solver.checkSat` returns `Decision.unknown`.
 -/
 public def dummy : IO Solver :=
-  return ⟨IO.FS.Stream.ofHandle (← IO.FS.Handle.mk (.mk "/dev/null") IO.FS.Mode.write), .none⟩
+  return {
+    smtLibInput :=
+      IO.FS.Stream.ofHandle (← IO.FS.Handle.mk (.mk "/dev/null") IO.FS.Mode.write)
+    smtLibOutput := .none
+  }
 
 private def emitln (str : String) : SolverM Unit := do
   -- dbg_trace "{str}" -- uncomment to see input sent to the solver
