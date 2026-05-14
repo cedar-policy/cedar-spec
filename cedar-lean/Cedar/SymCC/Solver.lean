@@ -67,6 +67,12 @@ public structure Solver where
 
 public abbrev SolverM (α) := ReaderT Solver IO α
 
+/--
+  Runs a `SolverM` action against `solver` and then invokes `solver.cleanup`.
+  For process-backed solvers, cleanup tears down the underlying child process,
+  so those solver values are single-use: callers must spawn a fresh solver
+  (e.g. via `Solver.cvc5`) for each `SolverM.run` invocation.
+-/
 public def SolverM.run (solver : Solver) (x : SolverM α) : IO α := do
   try
     ReaderT.run x solver
