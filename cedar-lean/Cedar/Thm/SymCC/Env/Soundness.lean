@@ -666,7 +666,7 @@ private theorem env_symbolize?_same_entity_data_standard
     ]
     have ⟨uuf, huuf, hancUF⟩ := Map.find?_mapOnValues_some' _ hancUF
     have := (Map.in_list_iff_find?_some (Map.make_wf _)).mpr huuf
-    have := Map.make_mem_list_mem this
+    have := Map.mem_make_mem_list this
     have ⟨_, hmem_ancTy, heq⟩ := List.mem_map.mp this
     simp only [Prod.mk.injEq] at heq
     replace huuf := heq.2
@@ -978,7 +978,7 @@ private theorem env_symbolize?_same_entities_action
       simp only [Map.find?_mapOnValues, Option.map_eq_some_iff] at hancUF
       have ⟨ancUF', hancUF', heq_ancUF⟩ := hancUF
       have := Map.find?_mem_toList hancUF'
-      have := Map.make_mem_list_mem this
+      have := Map.mem_make_mem_list this
       have ⟨_, _, h⟩ := List.mem_map.mp this
       simp only [Prod.mk.injEq] at h
       simp only [h.1, true_and] at h
@@ -1068,7 +1068,7 @@ private theorem defaultLitWithDefaultEid_wf
             simp [←hmembers] at this
         -- `eids` should not be empty
         simp only [SymEnv.ofEnv, SymEntities.ofSchema] at hfind_δ
-        have := Map.make_mem_list_mem (Map.find?_mem_toList hfind_δ)
+        have := Map.mem_make_mem_list (Map.find?_mem_toList hfind_δ)
         have := List.mem_append.mp this
         cases this with
         | inl hmem_ets =>
@@ -1267,7 +1267,7 @@ private theorem env_symbolize?_attrs_wf
   -- Well-formed `UDF.table`
   · simp only
     intros tᵢ tₒ hmem
-    have hmem := Map.make_mem_list_mem hmem
+    have hmem := Map.mem_make_mem_list hmem
     have ⟨⟨uid, data⟩, hmem_uid_data, hio⟩ := List.mem_filterMap.mp hmem
     have hfind_uid_data := (Map.in_list_iff_find?_some hwf_entities.1).mp hmem_uid_data
     have ⟨hwf_attrs, _⟩ := hwf_entities.2 uid data hfind_uid_data
@@ -1349,7 +1349,7 @@ private theorem env_symbolize?_tags_wf
       -- Well-formed `UDF.table`
       · simp only
         intros tᵢ tₒ hmem
-        have hmem := Map.make_mem_list_mem hmem
+        have hmem := Map.mem_make_mem_list hmem
         have ⟨⟨uid, data⟩, hmem_uid_data, hio⟩ := List.mem_filterMap.mp hmem
         have hfind_uid_data := (Map.in_list_iff_find?_some hwf_entities.1).mp hmem_uid_data
         have ⟨hwf_attrs, _⟩ := hwf_entities.2 uid data hfind_uid_data
@@ -1408,7 +1408,7 @@ private theorem env_symbolize?_tags_wf
         exact Map.make_wf _
       · simp only
         intros tᵢ tₒ hmem
-        have hmem := Map.make_mem_list_mem hmem
+        have hmem := Map.mem_make_mem_list hmem
         have ⟨l, hmem_l, hmem⟩ := List.mem_flatten.mp hmem
         have ⟨⟨uid, data⟩, hmem_uid_data, hl⟩ := List.mem_filterMap.mp hmem_l
         simp only [Option.bind_eq_bind, Option.ite_none_right_eq_some] at hl
@@ -1508,7 +1508,7 @@ private theorem env_symbolize?_ancs_wf
     exact Map.make_wf _
   · simp only
     intros tᵢ tₒ hmem
-    have hmem := Map.make_mem_list_mem hmem
+    have hmem := Map.mem_make_mem_list hmem
     have ⟨⟨uid, data⟩, hmem_uid_data, hio⟩ := List.mem_filterMap.mp hmem
     have hfind_uid_data := (Map.in_list_iff_find?_some hwf_entities.1).mp hmem_uid_data
     have ⟨_, _, hwf_ancs, _⟩ := hwf_entities.2 uid data hfind_uid_data

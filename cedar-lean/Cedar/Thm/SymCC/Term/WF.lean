@@ -630,7 +630,7 @@ public theorem wf_recordOf {εs : SymEntities} {ats : List (Attr × Term)}
   simp only [recordOf]
   apply Term.WellFormed.record_wf _ (Map.make_wf ats)
   intro a t ht
-  replace ht := Map.make_mem_list_mem ht
+  replace ht := Map.mem_make_mem_list ht
   exact h₁ a t ht
 
 public theorem wf_recordOf_map {εs : SymEntities} {f : Term → Term} {ats : List (Attr × Term)}

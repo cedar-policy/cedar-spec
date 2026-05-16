@@ -655,7 +655,7 @@ theorem ofStandardEntityType_is_wf
   · intros anc_ty sym_anc_f hfind_anc
     have := Map.find?_mem_toList hfind_anc
     simp only [Map.toList] at this
-    have := Map.make_mem_list_mem this
+    have := Map.mem_make_mem_list this
     have ⟨anc_ty', hmem_anc', heq_anc'⟩ := List.mem_map.mp this
     simp only [Prod.mk.injEq] at heq_anc'
     simp only [heq_anc'.1] at hmem_anc'
@@ -800,7 +800,7 @@ theorem ofActionType_ancsUDF_is_wf
   ]
   have := Map.find?_mem_toList hanc
   simp only [Map.toList] at this
-  have := Map.make_mem_list_mem this
+  have := Map.mem_make_mem_list this
   have ⟨anc_ty', hmem_anc', heq_anc'⟩ := List.mem_map.mp this
   simp only [Prod.mk.injEq] at heq_anc'
   simp only [heq_anc'.1] at hmem_anc'
@@ -828,7 +828,7 @@ theorem ofActionType_ancsUDF_is_wf
   · simp only [Map.make_wf]
   · -- WF of the ancestor UDF
     intros tᵢ tₒ hmem
-    have := Map.make_mem_list_mem hmem
+    have := Map.mem_make_mem_list hmem
     have ⟨act_entry, hact_entry, hsym⟩ := List.mem_filterMap.mp this
     simp [bind, Option.bind] at hsym
     split at hsym
@@ -978,7 +978,7 @@ theorem ofActionType_is_wf
   · intros anc sym_anc_f hfind_anc
     have := Map.find?_mem_toList hfind_anc
     simp only [Map.toList] at this
-    have := Map.make_mem_list_mem this
+    have := Map.mem_make_mem_list this
     have ⟨anc_ty', hmem_anc', heq_anc'⟩ := List.mem_map.mp this
     simp only [Prod.mk.injEq] at heq_anc'
     simp only [heq_anc'.1] at hmem_anc'
@@ -1005,7 +1005,7 @@ theorem ofEnv_entities_is_wf
   · intros ety data hfind
     have := Map.find?_mem_toList hfind
     simp only at this
-    have := Map.make_mem_list_mem this
+    have := Map.mem_make_mem_list this
     have := List.mem_append.mp this
     -- Reduce to either `ofEntityType_is_wf` or `ofActionType_is_wf`
     cases this with
@@ -1368,7 +1368,7 @@ theorem ofEnv_entities_find?_some
       Γ.acts)
 := by
   have := Map.find?_mem_toList hfind
-  have := Map.make_mem_list_mem this
+  have := Map.mem_make_mem_list this
   have := List.mem_append.mp this
   cases this with
   | inl hmem_ets =>
@@ -1451,7 +1451,7 @@ theorem in_ancsUDF_implies_in_ancestors
     split at hmem
     · rename_i heq
       have := Map.find?_mem_toList heq
-      have := Map.make_mem_list_mem this
+      have := Map.mem_make_mem_list this
       have ⟨entry, hmem_entry, heq_entry⟩ := List.mem_filterMap.mp this
       simp only [bind, Option.bind] at heq_entry
       split at heq_entry
@@ -1529,7 +1529,7 @@ theorem ofEnv_entities_is_acyclic
   intros uid δ udf hfind_uid_ty hfind_udf_ancs huid_cyclic
   simp only [SymEnv.ofEnv, SymEntities.ofSchema] at hfind_uid_ty
   have := Map.find?_mem_toList hfind_uid_ty
-  have := Map.make_mem_list_mem this
+  have := Map.mem_make_mem_list this
   have := List.mem_append.mp this
   cases this with
   | inl hmem_ets =>
@@ -1545,7 +1545,7 @@ theorem ofEnv_entities_is_acyclic
     split at hfind_udf_ancs
     · simp only at hfind_udf_ancs
       have := Map.find?_mem_toList hfind_udf_ancs
-      have := Map.make_mem_list_mem this
+      have := Map.mem_make_mem_list this
       have ⟨_, _, h⟩ := List.mem_map.mp this
       simp [
         Prod.mk.injEq,
@@ -1557,7 +1557,7 @@ theorem ofEnv_entities_is_acyclic
     simp only [Prod.mk.injEq, SymEntityData.ofActionType] at hsym_act
     simp only [←hsym_act.2] at hfind_udf_ancs
     have := Map.find?_mem_toList hfind_udf_ancs
-    have := Map.make_mem_list_mem this
+    have := Map.mem_make_mem_list this
     have ⟨ancTy, hmem_ancTy, hudf⟩ := List.mem_map.mp this
     have := List.mem_eraseDups_implies_mem hmem_ancTy
     have ⟨⟨anc, entry⟩, hmem_anc, heq_anc⟩ := List.mem_map.mp this
@@ -1601,7 +1601,7 @@ theorem ofEnv_entities_is_transitive
   any_goals
     have ⟨⟨ety, f_anc⟩, hmem_ety_f_anc, hmem_uid₁⟩ := (List.mem_mapUnion_iff_mem_exists _).mp huid_anc₂
     simp only [SymEntityData.ofStandardEntityType ] at hmem_ety_f_anc
-    have := Map.make_mem_list_mem hmem_ety_f_anc
+    have := Map.mem_make_mem_list hmem_ety_f_anc
     replace ⟨ancTy, hmem_ancTy, heq_ancTy⟩ := List.mem_map.mp this
     simp only [Prod.mk.injEq] at heq_ancTy
     simp only [
@@ -1614,7 +1614,7 @@ theorem ofEnv_entities_is_transitive
   -- Case: `uid₁`: standard; `uid₂`: action
   · have ⟨⟨ety, f_anc⟩, hmem_ety_f_anc, hmem_uid₂⟩ := (List.mem_mapUnion_iff_mem_exists _).mp hanc
     simp only [SymEntityData.ofStandardEntityType ] at hmem_ety_f_anc
-    have := Map.make_mem_list_mem hmem_ety_f_anc
+    have := Map.mem_make_mem_list hmem_ety_f_anc
     replace ⟨ancTy, hmem_ancTy, heq_ancTy⟩ := List.mem_map.mp this
     simp only [Prod.mk.injEq] at heq_ancTy
     simp only [
@@ -1627,7 +1627,7 @@ theorem ofEnv_entities_is_transitive
   -- Case: `uid₁`: action; `uid₂`: action
   · have ⟨⟨ety₁, f_anc₁⟩, hmem_ety_f_anc₁, hmem_uid₁⟩ := (List.mem_mapUnion_iff_mem_exists _).mp hanc
     have ⟨⟨ety₂, f_anc₂⟩, hmem_ety_f_anc₂, hmem_uid₂⟩ := (List.mem_mapUnion_iff_mem_exists _).mp huid_anc₂
-    have := Map.make_mem_list_mem hmem_ety_f_anc₁
+    have := Map.mem_make_mem_list hmem_ety_f_anc₁
     replace ⟨ancTy₁, hmem_ancTy₁, heq_ancTy₁⟩ := List.mem_map.mp this
     simp only [Prod.mk.injEq] at heq_ancTy₁
     simp only [
@@ -1646,7 +1646,7 @@ theorem ofEnv_entities_is_transitive
       simp only [←heq.2] at hmem_uid₁
       exact hmem_uid₁
     simp only [heq_ety₁] at hmem_uid₁
-    have := Map.make_mem_list_mem hmem_ety_f_anc₂
+    have := Map.mem_make_mem_list hmem_ety_f_anc₂
     replace ⟨ancTy₂, hmem_ancTy₂, heq_ancTy₂⟩ := List.mem_map.mp this
     simp only [Prod.mk.injEq] at heq_ancTy₂
     simp only [
@@ -1721,7 +1721,7 @@ theorem ofEnv_entities_is_partitioned
         ]
         intros ancTy f hfind_f
         have := Map.find?_mem_toList hfind_f
-        replace := Map.make_mem_list_mem this
+        replace := Map.mem_make_mem_list this
         have ⟨ancTy', hmem_ancTy', heq_ancTy'⟩ := List.mem_map.mp this
         simp only [Prod.mk.injEq] at heq_ancTy'
         simp only [
@@ -1751,7 +1751,7 @@ theorem ofEnv_entities_is_partitioned
       ]
       intros ancTy f hfind_f
       have := Map.find?_mem_toList hfind_f
-      replace := Map.make_mem_list_mem this
+      replace := Map.mem_make_mem_list this
       have ⟨ancTy', hmem_ancTy', heq_ancTy'⟩ := List.mem_map.mp this
       simp only [Prod.mk.injEq] at heq_ancTy'
       simp only [
@@ -1785,7 +1785,7 @@ theorem ofEnv_entities_is_partitioned
     · have hancs_std_only := wf_env_implies_ancestors_of_standard_ety_is_standard hwf hfind_entry₁ ety₂
       simp only [SymEntityData.ofStandardEntityType] at hanc
       have := Map.find?_mem_toList hanc
-      replace := Map.make_mem_list_mem this
+      replace := Map.mem_make_mem_list this
       have ⟨ancTy, hmem_ancTy, heq_ancTy⟩ := List.mem_map.mp this
       simp only [Prod.mk.injEq] at heq_ancTy
       simp only [heq_ancTy.1] at hmem_ancTy
@@ -1795,7 +1795,7 @@ theorem ofEnv_entities_is_partitioned
     · have hancs_std_only := wf_env_implies_ancestors_of_standard_ety_is_standard hwf hfind_entry₁ ety₂
       simp only [SymEntityData.ofStandardEntityType] at hanc
       have := Map.find?_mem_toList hanc
-      replace := Map.make_mem_list_mem this
+      replace := Map.mem_make_mem_list this
       have ⟨ancTy, hmem_ancTy, heq_ancTy⟩ := List.mem_map.mp this
       simp only [Prod.mk.injEq] at heq_ancTy
       simp only [heq_ancTy.1] at hmem_ancTy
@@ -1805,7 +1805,7 @@ theorem ofEnv_entities_is_partitioned
       contradiction
     -- entry₁: action; entry₂: standard
     · have := Map.find?_mem_toList hanc
-      replace := Map.make_mem_list_mem this
+      replace := Map.mem_make_mem_list this
       have ⟨ancTy, hmem_ancTy, heq_ancTy⟩ := List.mem_map.mp this
       simp only [Prod.mk.injEq] at heq_ancTy
       have := List.mem_eraseDups_implies_mem hmem_ancTy

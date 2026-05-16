@@ -74,7 +74,7 @@ theorem map_make_filterMap_find?_none
 := by
   apply Map.all_absent_find?_none
   intros v hmem_k'_v
-  have := Map.make_mem_list_mem hmem_k'_v
+  have := Map.mem_make_mem_list hmem_k'_v
   have ⟨(k'', v''), hmem_kv, hfkv⟩ := List.mem_filterMap.mp this
   have heq_k'' := hf (k'', v'')
   simp only [

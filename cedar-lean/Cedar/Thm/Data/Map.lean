@@ -304,7 +304,7 @@ public theorem make_singleton [LT α] [DecidableLT α] [StrictLT α] (k : α) (v
 
   For a limited converse, see `mem_list_mem_make` below.
 -/
-public theorem make_mem_list_mem [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
+public theorem mem_make_mem_list [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
   x ∈ (Map.make xs).toList → x ∈ xs
 := by
   simp only [toList, make]
@@ -314,13 +314,13 @@ public theorem make_mem_list_mem [LT α] [StrictLT α] [DecidableLT α] {xs : Li
   exact h₂ h₁
 
 /--
-  Very similar to `make_mem_list_mem` above
+  Very similar to `mem_make_mem_list` above
 -/
 public theorem mem_values_make [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
   v ∈ (Map.make xs).values → v ∈ xs.map Prod.snd
 := by
-  -- despite the similarity to `make_mem_list_mem`, the proof does not currently
-  -- use `make_mem_list_mem`
+  -- despite the similarity to `mem_make_mem_list`, the proof does not currently
+  -- use `mem_make_mem_list`
   simp only [values, make]
   simp only [List.mem_map, forall_exists_index, and_imp]
   intro (k, v) h₁ h₂
@@ -332,7 +332,7 @@ public theorem mem_values_make [LT α] [StrictLT α] [DecidableLT α] {xs : List
   exact h₂ h₁
 
 /--
-  This limited converse of `make_mem_list_mem` requires that the input list is
+  This limited converse of `mem_make_mem_list` requires that the input list is
   SortedBy Prod.fst.
 -/
 public theorem mem_list_mem_make [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
