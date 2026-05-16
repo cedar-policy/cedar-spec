@@ -206,7 +206,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n nmax: Nat} {c c' : Capabilit
     have ih : ∀ a x, (Map.make rxs).find? a = some x → CheckedEvalEntityReachable x := by
       intros a x hfx
       have : sizeOf x < sizeOf (Expr.record rxs) := by
-        replace he := Map.make_mem_list_mem (Map.find?_mem_toList hfx)
+        replace he := Map.mem_make_mem_list (Map.find?_mem_toList hfx)
         have h₁ := List.sizeOf_lt_of_mem he
         rw [Prod.mk.sizeOf_spec a x] at h₁
         simp only [Expr.record.sizeOf_spec, gt_iff_lt]

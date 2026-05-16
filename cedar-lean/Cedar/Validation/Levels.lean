@@ -78,7 +78,7 @@ public def TypedExpr.checkEntityAccessLevel (tx : TypedExpr) (env : TypeEnv) (n 
     match h₁ : (Map.make axs).find? a with
     | some tx' =>
       have : sizeOf tx' < sizeOf axs := by
-        replace h₁ := List.sizeOf_lt_of_mem ∘ Map.make_mem_list_mem ∘ Map.find?_mem_toList $ h₁
+        replace h₁ := List.sizeOf_lt_of_mem ∘ Map.mem_make_mem_list ∘ Map.find?_mem_toList $ h₁
         rw [Prod.mk.sizeOf_spec a tx'] at h₁
         omega
       tx'.checkEntityAccessLevel env n nmax path &&
