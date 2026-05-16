@@ -16,21 +16,24 @@
 
 module
 
-public import Cedar.Thm.Tactics
-import Cedar.Thm.SymCC.Data
-public meta import Lean.Meta.Tactic.Clear
+public import Cedar.Thm.Data.Control
+public import Lean.Elab.Tactic.Basic
 
 /-!
-This file contains basic utility tactics specific to symbolic compilation.
-General-purpose tactics live in `Cedar.Thm.Tactics`.
+This file contains general-purpose proof tactics that are shared across
+the Cedar theorems and not tied to any specific subsystem.
 --/
 
 namespace Cedar.Thm
 
-open Lean Elab Meta Tactic in
-elab "clean_i" : tactic => liftMetaTactic fun mvarId => mvarId.withContext do
-  let mut toClear := #[]
-  for localDecl in (← getLCtx) do
-    if localDecl.userName.hasMacroScopes then
-      toClear := toClear.push localDecl.fvarId
-  return [← mvarId.tryClearMany toClear]
+/--
+This tactic simplifies assumptions of the form `do (let x ← expr ...)` by
+performing a `cases` and `simp` on `expr`.
+-/
+syntax "simp_do_let" term (" at " ident)? : tactic
+
+macro_rules
+| `(tactic| simp_do_let $e $[at $h:ident]?) =>
+  `(tactic|
+    cases h' : $e <;>
+    simp only [h', Except.bind_err, Except.bind_ok, reduceCtorEq] $[at $h:ident]?)

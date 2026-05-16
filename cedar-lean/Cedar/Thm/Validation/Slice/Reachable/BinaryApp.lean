@@ -23,6 +23,7 @@ import Cedar.Thm.Data.MapUnion
 import Cedar.Thm.Validation.Levels.CheckLevel
 
 import Cedar.Thm.Validation.Slice.Reachable.Basic
+import Cedar.Thm.Tactics
 
 namespace Cedar.Thm
 
@@ -64,8 +65,10 @@ theorem checked_eval_entity_reachable_get_tag {e₁ e₂: Expr} {n : Nat} {c c' 
   ReachableIn entities request.sliceEUIDs euid (n + 1)
 := by
   simp only [evaluate] at he
-  cases he₁ : evaluate e₁ request entities <;> simp only [he₁, Except.bind_err, Except.bind_ok, reduceCtorEq] at he
-  cases he₂ : evaluate e₂ request entities <;> simp only [he₂, Except.bind_err, Except.bind_ok, reduceCtorEq] at he
+  simp_do_let (evaluate e₁ request entities) at he
+  rename_i he₁
+  simp_do_let (evaluate e₂ request entities) at he
+  rename_i he₂
   simp only [apply₂] at he
   split at he <;> try contradiction
   rename_i euid' _ _
@@ -75,7 +78,8 @@ theorem checked_eval_entity_reachable_get_tag {e₁ e₂: Expr} {n : Nat} {c c' 
   cases hl
   rename_i hl₁ hl₂
   simp only [getTag] at he
-  cases he₃ : entities.tags euid' <;> simp only [he₃, Except.bind_ok, Except.bind_err, reduceCtorEq] at he
+  simp_do_let (entities.tags euid') at he
+  rename_i he₃
   simp only [Map.findOrErr] at he
   split at he <;> simp only [reduceCtorEq, Except.ok.injEq] at he
   subst he
@@ -95,8 +99,10 @@ theorem binary_op_not_euid_via_path {op : BinaryOp} {e₁ e₂: Expr} {entities 
 := by
   intro ha
   simp only [evaluate] at he
-  cases he₁ : evaluate e₁ request entities <;> simp only [he₁, Except.bind_err, Except.bind_ok, reduceCtorEq] at he
-  cases he₂ : evaluate e₂ request entities <;> simp only [he₂, Except.bind_err, Except.bind_ok, reduceCtorEq] at he
+  simp_do_let (evaluate e₁ request entities) at he
+  rename_i he₁
+  simp_do_let (evaluate e₂ request entities) at he
+  rename_i he₂
   simp only [apply₂, intOrErr, inₛ, hasTag] at he
   split at he <;> try split at he
   all_goals first
