@@ -1,58 +1,66 @@
+-- Design choices to discuss
+-- 1. For the LEAN keywords, how to rename them?
+-- (Currently: Add → AddExpr, if → if_)
+-- Better : add `id` to the beginning of every constructor in Ident
+-- 2. Use `structure` or `inductive` for definitions with a single constructor
+-- 3. Is it good to put almost everything in the `mutual` block?
+-- 4. Should the types match the Rust implementation exactly? (e.g. Int vs UInt64)
+
 module
 
 public inductive Ident where
-  | principal
-  | action
-  | resource
-  | context
-  | true_   -- `true` is a LEAN keyword
-  | false_  -- `false` is a LEAN keyword
-  | permit
-  | forbid
-  | when
-  | unless
-  | in_    -- `in` is a LEAN keyword
-  | has
-  | like
-  | is
-  | if_     -- `if` is a LEAN keyword
-  | then_   -- `then` is a LEAN keyword
-  | else_   -- `else` is a LEAN keyword
+  | idPrincipal
+  | idAction
+  | idResource
+  | idContext
+  | idTrue
+  | idFalse
+  | idPermit
+  | idForbid
+  | idWhen
+  | idUnless
+  | idIn
+  | idHas
+  | idLike
+  | idIs
+  | idIf
+  | idThen
+  | idElse
 
 -- Should the type of n match the Rust implementation (i.e. UInt64)?
 -- Why are true and false in both Ident and Literal?
 public inductive Literal where
-  | true_
-  | false_
-  | num (n : Int)
-  | str (s : String)
+  | liTrue
+  | liFalse
+  | liNum (n : Int)
+  | liStr (s : String)
 
 public inductive RelOp where
-  | less
-  | lessEq
-  | greaterEq
-  | greater
-  | notEq
-  | eq
-  | in_ -- `in` is a LEAN keyword
+  | roLess
+  | roLessEq
+  | roGreaterEq
+  | roGreater
+  | roNotEq
+  | roEq
+  | roIn
 
 public inductive AddOp where
-  | plus
-  | minus
+  | aoPlus
+  | aoMinus
 
 public inductive MultOp where
-  | times
-  | divide
-  | mod
+  | moTimes
+  | moDivide
+  | moMod
 
 -- Should the type of n match the Rust implementation (i.e. UInt8),
 -- or can I use Int for simplicity?
 -- Are overBang and overDash for error cases?
 public inductive NegOp where
-  | bang (n : Int)
-  | overBang
-  | dash (n : Int)
-  | overDash
+  | noBang (n : Int)
+  | noOverBang
+  | noDash (n : Int)
+  | noOverDash
 
 -- I tried to not use the mutual block, but there are circular definitions
 -- (e.g. Expr -> ExprData ->(If) Expr )
@@ -89,8 +97,8 @@ public inductive ExprImpl where
   | exprImpl (expr : ExprData)
 
 public inductive ExprData where
-  | or (expr : OrExpr)
-  | if_ (i t e : Expr) -- `if` is a LEAN keyword
+  | edOr (expr : OrExpr)
+  | edIf (i t e : Expr) -- `if` is a LEAN keyword
 
 -- Corresponds to `Or` in cst.rs
 -- `Or` has already been declared in LEAN
@@ -103,10 +111,10 @@ public inductive AndExpr where
 
 -- Do we want to formalize all of these at this stage?
 public inductive Relation where
-  | common (initial : AddExpr) (extended : List (RelOp × AddExpr))
-  | has (target : AddExpr) (field : AddExpr)
-  | like (target : AddExpr) (pattern : AddExpr)
-  | isIn (target : AddExpr) (entityType : AddExpr) (inEntity : Option AddExpr)
+  | rCommon (initial : AddExpr) (extended : List (RelOp × AddExpr))
+  | rHas (target : AddExpr) (field : AddExpr)
+  | rLike (target : AddExpr) (pattern : AddExpr)
+  | rIsIn (target : AddExpr) (entityType : AddExpr) (inEntity : Option AddExpr)
 
 public inductive AddExpr where
   | addExpr (initial : MultExpr) (extended : List (AddOp × MultExpr))
