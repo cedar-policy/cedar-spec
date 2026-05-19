@@ -1,5 +1,7 @@
 module
 
+namespace Cedar.Spec.Cst
+
 public inductive Ident where
   | idPrincipal
   | idAction
@@ -122,7 +124,8 @@ public inductive Member where
 
 public inductive MemAccess where
   | field (i : Ident)
-  -- | call (fs : List Expr) Function call not implemented at this stage
+  -- | call (fs : List Expr)
+  -- Function call not implemented at this stage
   | index (e : Expr)
 
 public inductive Primary where
@@ -141,3 +144,5 @@ public inductive Name where
   | name (path : List Ident) (name : Ident)
 
 end
+
+end Cedar.Spec.Cst
