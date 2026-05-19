@@ -58,8 +58,8 @@ public inductive NegOp where
 
 -- I tried to not use the mutual block, but there are circular definitions
 -- (e.g. Expr -> ExprData ->(If) Expr )
--- `inductive` is still used for single-constructor definitions so that
--- it is easier to add constructores in the future (e.g. for allowing errors)
+-- `inductive` is still used for single-constructor definitions that defined
+-- using enum in cst.rs so that it is easier to add constructores in the future
 
 mutual
 
@@ -67,28 +67,34 @@ mutual
 public inductive Str where
   | string (s : String)
 
-public inductive Policies where
-  | policies (ps : List Policy)
+public structure Policies where
+  ps : List Policy
 
 public inductive Policy where
   | policy (p : PolicyImpl)
 
-public inductive PolicyImpl where
-  | policyImpl (effect : Ident) (vars : List VariableDef) (conds : Cond)
+public structure PolicyImpl where
+  effect : Ident
+  vars : List VariableDef
+  conds : Cond
 
 -- `variable` is a LEAN keyword
-public inductive VariableDef where
-  | variableDef (var : Ident) (typeName : Name) (entityType : AddExpr) (ineq : Option (RelOp × Expr))
+public structure VariableDef where
+  var : Ident
+  typeName : Name
+  entityType : AddExpr
+  ineq : Option (RelOp × Expr)
 
-public inductive Cond where
-  | cond (cond : Ident) (expr : Option Expr)
+public structure Cond where
+  cond : Ident
+  expr : Option Expr
 
 public inductive Expr where
   | expr (e : ExprImpl)
 
 -- The `Box` data structure is dropped
-public inductive ExprImpl where
-  | exprImpl (expr : ExprData)
+public structure ExprImpl where
+  expr : ExprData
 
 public inductive ExprData where
   | edOr (expr : OrExpr)
@@ -96,12 +102,14 @@ public inductive ExprData where
 
 -- Corresponds to `Or` in cst.rs
 -- `Or` has already been declared in LEAN
-public inductive OrExpr where
-  | orExpr (initial : AndExpr) (extended : List AndExpr)
+public structure OrExpr where
+  initial : AndExpr
+  extended : List AndExpr
 
 -- Same as `OrExpr`
-public inductive AndExpr where
-  | andExpr (initial : Relation) (extended : List Relation)
+public structure AndExpr where
+  initial : Relation
+  extended : List Relation
 
 -- Do we want to formalize all of these at this stage?
 public inductive Relation where
@@ -110,17 +118,21 @@ public inductive Relation where
   | rLike (target : AddExpr) (pattern : AddExpr)
   | rIsIn (target : AddExpr) (entityType : AddExpr) (inEntity : Option AddExpr)
 
-public inductive AddExpr where
-  | addExpr (initial : MultExpr) (extended : List (AddOp × MultExpr))
+public structure AddExpr where
+  initial : MultExpr
+  extended : List (AddOp × MultExpr)
 
-public inductive MultExpr where
-  | multExpr (initial : Unary) (extended : List (MultOp × Unary))
+public structure MultExpr where
+  initial : Unary
+  extended : List (MultOp × Unary)
 
-public inductive Unary where
-  | unary (op : NegOp) (item : Member)
+public structure Unary where
+  op : NegOp
+  item : Member
 
-public inductive Member where
-  | member (item : Primary) (access : List MemAccess)
+public structure Member where
+  item : Primary
+  access : List MemAccess
 
 public inductive MemAccess where
   | field (i : Ident)
@@ -140,8 +152,9 @@ public inductive Primary where
   -- | rInits (r : List RecInit)
   -- Constructed record not implemented at this stage
 
-public inductive Name where
-  | name (path : List Ident) (name : Ident)
+public structure Name where
+  path : List Ident
+  name : Ident
 
 end
 
