@@ -1,11 +1,3 @@
--- Design choices to discuss
--- 1. For the LEAN keywords, how to rename them?
--- (Currently: Add → AddExpr, if → if_)
--- Better : add `id` to the beginning of every constructor in Ident
--- 2. Use `structure` or `inductive` for definitions with a single constructor
--- 3. Is it good to put almost everything in the `mutual` block?
--- 4. Should the types match the Rust implementation exactly? (e.g. Int vs UInt64)
-
 module
 
 public inductive Ident where
