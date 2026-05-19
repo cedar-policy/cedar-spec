@@ -1,5 +1,7 @@
 module
 
+@[expose] public section
+
 namespace Cedar.Spec.Cst
 
 public inductive Ident where
@@ -39,22 +41,22 @@ public inductive RelOp where
   | roIn
 
 public inductive AddOp where
-  | aoPlus
-  | aoMinus
+  | aPlus
+  | aMinus
 
 public inductive MultOp where
-  | moTimes
-  | moDivide
-  | moMod
+  | mTimes
+  | mDivide
+  | mMod
 
 -- Should the type of n match the Rust implementation (i.e. UInt8),
 -- or can I use Int for simplicity?
 -- Are overBang and overDash for error cases?
 public inductive NegOp where
-  | noBang (n : Int)
-  | noOverBang
-  | noDash (n : Int)
-  | noOverDash
+  | nBang (n : Int)
+  | nOverBang
+  | nDash (n : Int)
+  | nOverDash
 
 -- I tried to not use the mutual block, but there are circular definitions
 -- (e.g. Expr -> ExprData ->(If) Expr )
@@ -74,15 +76,16 @@ public inductive Policy where
   | policy (p : PolicyImpl)
 
 public structure PolicyImpl where
+  -- annotations : List Annotation
   effect : Ident
   vars : List VariableDef
-  conds : Cond
+  conds : List Cond
 
 -- `variable` is a LEAN keyword
 public structure VariableDef where
   var : Ident
-  typeName : Name
-  entityType : AddExpr
+  typeName : Option Name
+  entityType : Option AddExpr
   ineq : Option (RelOp × Expr)
 
 public structure Cond where
@@ -142,8 +145,7 @@ public inductive MemAccess where
 
 public inductive Primary where
   | literal (l : Literal)
-  -- | ref (r : Ref)
-  -- Is this for record references?
+  | ref (r : Ref)
   | name (n : Name)
   -- | slot (s : Slot)
   -- Slots not implemented at this stage
@@ -155,6 +157,14 @@ public inductive Primary where
 public structure Name where
   path : List Ident
   name : Ident
+
+public inductive Ref where
+  | uid (path : Name) (eid : Str)
+  | ref (path : Name) (rinits : List RefInit)
+
+public structure RefInit where
+  id : Ident
+  lit : Literal
 
 end
 
