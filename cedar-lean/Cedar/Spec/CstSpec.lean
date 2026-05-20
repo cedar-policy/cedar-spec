@@ -186,8 +186,7 @@ private def AddExpr.toAttrs? (e : AddExpr) : Option (List Attr) :=
   let unary := mult.initial
   match unary.op with
   | some _ => none
-  | none =>
-    let member := unary.item
+  | none => let member := unary.item
     match fieldChain? member.access with
     | none => none
     | some fields => match member.item with
@@ -198,6 +197,40 @@ private def AddExpr.toAttrs? (e : AddExpr) : Option (List Attr) :=
         some (id.toString :: fields)
       | .name _ => none
       | _ => none
+
+-- Only Literal.liStr s is allowed
+private def AddExpr.toPatternString? (e : AddExpr) : Option String :=
+  if !e.extended.isEmpty then none else
+  let mult := e.initial
+  if !mult.extended.isEmpty then none else
+  let unary := mult.initial
+  match unary.op with
+  | some _ => none
+  | none => let member := unary.item
+    if !member.access.isEmpty then none else
+    let item := member.item
+    match item with
+    | .literal (.liStr s) => some s
+    | _ => none
+
+-- TODO: Review this function
+private def String.toPattern (s : String) : Pattern :=
+  let rec go : List Char → Pattern
+    | []                  => []
+    | '\\' :: '*'  :: cs  => .justChar '*'  :: go cs
+    | '\\' :: '\\' :: cs  => .justChar '\\' :: go cs
+    | '\\' :: 'n'  :: cs  => .justChar '\n' :: go cs
+    | '\\' :: 'r'  :: cs  => .justChar '\r' :: go cs
+    | '\\' :: 't'  :: cs  => .justChar '\t' :: go cs
+    | '\\' :: '0'  :: cs  => .justChar '\x00' :: go cs
+    | '\\' :: '"'  :: cs  => .justChar '"'  :: go cs
+    | '\\' :: '\'' :: cs  => .justChar '\'' :: go cs
+    | '\\' :: c    :: cs  => .justChar c    :: go cs   -- swallow unknown escape
+    | '\\' :: []          => []                        -- lone trailing backslash
+    | '*'  :: cs          => .star          :: go cs
+    | c    :: cs          => .justChar c    :: go cs
+  go s.toList
+
 
 public def Relation.evaluate (e : Relation) (req : Request) (es : Entities) : Result Value :=
   match e with
@@ -221,7 +254,11 @@ public def Relation.evaluate (e : Relation) (req : Request) (es : Entities) : Re
         let aListRest := aList.dropLast
         let v' ← aListRest.foldlM (fun acc attr => getAttr acc attr es) v
         hasAttr v' aListLast es
-  | .rLike t p => sorry
+  | .rLike t p => match p.toPatternString? with
+    | none => .error .typeError
+    | some s => do
+      let v ← t.evaluate req es
+      apply₁ (.like (String.toPattern s)) v
 
 public def AndExpr.evaluate (e : AndExpr) (req : Request) (es : Entities) : Result Value := do
   let b ← (e.initial.evaluate req es).as Bool
