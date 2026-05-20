@@ -136,6 +136,8 @@ public def Policies.toExpr (ps : Policies) : Expr :=
 
 /- Evaluator -/
 
+mutual
+
 private def Ident.toString : Ident → String
   | .idPrincipal => "principal"
   | .idAction => "action"
@@ -156,8 +158,36 @@ private def Ident.toString : Ident → String
   | .idElse => "else"
   | .idIdent s => s
 
-public def AddExpr.evaluate (e : AddExpr) (req : Request) (es : Entities) : Result Value :=
-  sorry
+public def Member.evaluate (e : Member) (req : Request) (es : Entities) : Result Value := sorry
+
+-- NegOp: nBang i, nOverBang, nDash i, nOverDash
+public def Unary.evaluate (e : Unary) (req : Request) (es : Entities) : Result Value := do
+  match e.op with
+  | none => e.item.evaluate req es
+  | some _ => sorry
+
+-- Division and Modulo are rejected in cst_to_ast.rs
+public def MultExpr.evaluate (e : MultExpr) (req : Request) (es : Entities) : Result Value := do
+  let b ← (e.initial.evaluate req es)
+  let result ← e.extended.foldlM
+    (fun acc a => do
+      let aval ← a.2.evaluate req es
+      match a.1 with
+      | .mTimes => apply₂ .mul acc aval es
+      | _ => .error .arithBoundsError )
+    (init := b)
+  .ok result
+
+public def AddExpr.evaluate (e : AddExpr) (req : Request) (es : Entities) : Result Value := do
+  let b ← (e.initial.evaluate req es)
+  let result ← e.extended.foldlM
+    (fun acc a => do
+      let aval ← a.2.evaluate req es
+      match a.1 with
+      | .aPlus => apply₂ .add acc aval es
+      | .aMinus => apply₂ .sub acc aval es )
+    (init := b )
+  .ok result
 
 -- RelOp: rLess, rLessEq, rGreaterEq, rGreater, rNotEq, rEq, rIn
 private def applyRelOp (op : RelOp) (v₁ v₂ : Value) (es : Entities) : Result Value :=
@@ -213,7 +243,7 @@ private def AddExpr.toPatternString? (e : AddExpr) : Option String :=
     | .literal (.liStr s) => some s
     | _ => none
 
--- TODO: Review this function
+-- TODO: Review this function, written by Claude
 private def String.toPattern (s : String) : Pattern :=
   let rec go : List Char → Pattern
     | []                  => []
@@ -230,7 +260,6 @@ private def String.toPattern (s : String) : Pattern :=
     | '*'  :: cs          => .star          :: go cs
     | c    :: cs          => .justChar c    :: go cs
   go s.toList
-
 
 public def Relation.evaluate (e : Relation) (req : Request) (es : Entities) : Result Value :=
   match e with
@@ -273,8 +302,6 @@ public def OrExpr.evaluate (e : OrExpr) (req : Request) (es : Entities) : Result
     (fun acc a => if acc then .ok acc else (a.evaluate req es).as Bool)
     (init := b)
   .ok result
-
-mutual
 
 public def ExprData.evaluate (e : ExprData) (req : Request) (es : Entities) : Result Value :=
   match e with
