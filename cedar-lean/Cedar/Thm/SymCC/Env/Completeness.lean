@@ -50,7 +50,7 @@ private theorem sym_entities_is_valid_entity_uid_implies_entity_uid_wf
   split at huid
   · rename_i δ hfind
     have := Map.find?_mem_toList hfind
-    have := Map.make_mem_list_mem this
+    have := Map.mem_make_mem_list this
     have := List.mem_append.mp this
     cases this with
     | inl hmem =>
@@ -849,7 +849,7 @@ private theorem ofEnv_entity_completeness_standard
     ] at hfind_ancUF
     have ⟨f, hfind_f, _⟩ := Map.find?_mapOnValues_some' _ hfind_ancUF
     have := Map.find?_mem_toList hfind_f
-    have := Map.make_mem_list_mem this
+    have := Map.mem_make_mem_list this
     have ⟨ancTy, hfind_ancTy, hancTy⟩ := List.mem_map.mp this
     simp only [Prod.mk.injEq] at hancTy
     simp only [hancTy.1] at hfind_ancTy
@@ -1006,7 +1006,7 @@ private theorem ofEnv_entity_completeness_action
       have ⟨ancUF, hfind_ancUF, ⟨anc_ts, happ_ancUF, hmem_anc_ts⟩⟩ := hanc₁ anc hmem_data_anc
       simp only [hδ, hδ', SymEntityData.ofActionType, SymEntityData.interpret] at hfind_ancUF
       have ⟨ancUDF, hfind_ancUDF, hancUDF⟩ := Map.find?_mapOnValues_some' _ hfind_ancUF
-      have := Map.make_mem_list_mem (Map.find?_mem_toList hfind_ancUDF)
+      have := Map.mem_make_mem_list (Map.find?_mem_toList hfind_ancUDF)
       have ⟨ancTy, hmem_ancTy, hancTy⟩ := List.mem_map.mp this
       simp only [Prod.mk.injEq] at hancTy
       replace hmem_ancTy := List.mem_eraseDups_implies_mem hmem_ancTy
@@ -1016,7 +1016,7 @@ private theorem ofEnv_entity_completeness_action
       simp only [hancUDF, Factory.app, Term.isLiteral, ↓reduceIte] at happ_ancUF
       split at happ_ancUF
       · rename_i ts' hts'
-        have := Map.make_mem_list_mem (Map.find?_mem_toList hts')
+        have := Map.mem_make_mem_list (Map.find?_mem_toList hts')
         have ⟨⟨act'', entry''⟩, hmem_act''_entry'', hact''_entry''⟩ := List.mem_filterMap.mp this
         simp only [bind, Option.bind] at hact''_entry''
         split at hact''_entry''
@@ -1120,7 +1120,7 @@ private theorem ofEnv_entity_completeness
   -- Exists a `SymEntityData` before interpretation
   have ⟨δ', hfind_δ', hδ'⟩ := Map.find?_mapOnValues_some' _ hfind_δ
   have := Map.find?_mem_toList hfind_δ'
-  have := Map.make_mem_list_mem this
+  have := Map.mem_make_mem_list this
   have := List.mem_append.mp this
   cases this with
   -- Ordinary entity
