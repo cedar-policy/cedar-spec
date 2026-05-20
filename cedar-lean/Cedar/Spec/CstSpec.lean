@@ -9,9 +9,11 @@ public import Cedar.Spec.Value
 namespace Cedar.Spec.Cst
 
 
--- The layers of Expr in the CST
+-- The hierarchy of Expr in the CST
 -- Expr → ExprImpl → ExprData → OrExpr → AndExpr → Relation
 -- → AddExpr → MultExpr → Unary → Member → Primary
+
+-- Write an evaluator for every level
 
 /- Lifting helpers -/
 
@@ -23,6 +25,7 @@ public def Primary.toMember (p : Primary) : Member :=
 
 public def Member.toUnary (m : Member) : Unary :=
   {op := .nBang 0, item := m}
+-- Check if Bang 0 actually means "doing nothing"
 
 public def Unary.toMultExpr (u : Unary) : MultExpr :=
   {initial := u, extended := []}
@@ -45,7 +48,21 @@ public def OrExpr.toExpr (o : OrExpr) : Expr :=
 public def Expr.lift (e : Expr) : Expr :=
   e.toPrimary.toMember.toUnary.toMultExpr.toAddExpr.toRelation.toAndExpr.toOrExpr.toExpr
 
+/- Other lifting helpers -/
+
+public def Expr.toRelation (e : Expr) : Relation :=
+  e.toPrimary.toMember.toUnary.toMultExpr.toAddExpr.toRelation
+
+public def Expr.toAddExpr (e : Expr) : AddExpr :=
+  e.toPrimary.toMember.toUnary.toMultExpr.toAddExpr
+
+public def Ident.varToAddExpr (id : Ident) : AddExpr :=
+  (Primary.name {path := [], name := id}).toMember.toUnary.toMultExpr.toAddExpr
+
 /- Constants and Combinators on Expr -/
+
+public def Relation.tt : Relation :=
+  (Primary.literal Literal.liTrue).toMember.toUnary.toMultExpr.toAddExpr.toRelation
 
 public def Expr.tt : Expr :=
   (Primary.literal Literal.liTrue).toMember.toUnary.toMultExpr.toAddExpr.toRelation.toAndExpr.toOrExpr.toExpr
@@ -69,14 +86,50 @@ public def Expr.or (e1 e2 : Expr) : Expr :=
   let e' : OrExpr := {initial := e1', extended := [e2']}
   e'.toExpr
 
-public def Expr.toRelation (e : Expr) : Relation :=
-  e.toPrimary.toMember.toUnary.toMultExpr.toAddExpr.toRelation
+-- Check whether this is needed
+-- public def andReduce : List Expr → List Expr
+--   | [] => []
+--   | Expr.tt :: es => andReduce es
+--   | e :: es => e :: (andReduce es)
 
 public def Expr.foldAnd : List Expr → Expr
   | []      => Expr.tt
   | [e]     => e
   | e :: es =>
-    let e'  := e.toRelation
+    let e' := e.toRelation
     let es' := es.map Expr.toRelation
-    let a   : AndExpr := { initial := e', extended := es' }
+    let a : AndExpr := { initial := e', extended := es' }
     a.toOrExpr.toExpr
+
+/- Conversion to Expr -/
+
+public def VariableDef.toAndExpr (vd : VariableDef) : AndExpr :=
+  let var' := vd.var.varToAddExpr
+  let isClause := match vd.entityType with
+    | some et => Relation.rCommon var' [(.rIn, et)]
+    | none => Relation.tt
+  let ineqClause := match vd.ineq with
+    | some (op, e) => Relation.rCommon var' [(op, e.toAddExpr)]
+    | none => Relation.tt
+  {initial := isClause, extended := [ineqClause]}
+
+public def VariableDef.toExpr (vd : VariableDef) : Expr :=
+  vd.toAndExpr.toOrExpr.toExpr
+
+public def Cond.toExpr (c : Cond) : Expr :=
+  match c.cond, c.expr with
+  | .idWhen, some e => e
+  | .idUnless, some e => Expr.not e
+  | _, _ => Expr.tt
+
+public def PolicyImpl.toExpr (p : PolicyImpl) : Expr :=
+  let varExprs := List.map VariableDef.toExpr p.vars
+  let condExprs := List.map Cond.toExpr p.conds
+  Expr.foldAnd (varExprs ++ condExprs)
+
+public def Policy.toExpr : Policy → Expr
+  | policy p => PolicyImpl.toExpr p
+
+public def Policies.toExpr (ps : Policies) : Expr :=
+  let exprs := List.map Policy.toExpr ps.ps
+  Expr.foldAnd exprs

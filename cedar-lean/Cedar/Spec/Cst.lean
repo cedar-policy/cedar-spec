@@ -32,13 +32,13 @@ public inductive Literal where
   | liStr (s : String)
 
 public inductive RelOp where
-  | roLess
-  | roLessEq
-  | roGreaterEq
-  | roGreater
-  | roNotEq
-  | roEq
-  | roIn
+  | rLess
+  | rLessEq
+  | rGreaterEq
+  | rGreater
+  | rNotEq
+  | rEq
+  | rIn
 
 public inductive AddOp where
   | aPlus
@@ -61,7 +61,7 @@ public inductive NegOp where
 -- I tried to not use the mutual block, but there are circular definitions
 -- (e.g. Expr -> ExprData ->(If) Expr )
 -- `inductive` is still used for single-constructor definitions that defined
--- using enum in cst.rs so that it is easier to add constructores in the future
+-- using enum in cst.rs so that it is easier to add constructors in the future
 
 mutual
 
@@ -77,6 +77,7 @@ public inductive Policy where
 
 public structure PolicyImpl where
   -- annotations : List Annotation
+  -- annotations not formalized at this stage
   effect : Ident
   vars : List VariableDef
   conds : List Cond
@@ -84,7 +85,8 @@ public structure PolicyImpl where
 -- `variable` is a LEAN keyword
 public structure VariableDef where
   var : Ident
-  typeName : Option Name
+  -- unusedTypeName : Option Name
+  -- This is not used other than error reporting
   entityType : Option AddExpr
   ineq : Option (RelOp × Expr)
 
@@ -119,7 +121,8 @@ public inductive Relation where
   | rCommon (initial : AddExpr) (extended : List (RelOp × AddExpr))
   | rHas (target : AddExpr) (field : AddExpr)
   | rLike (target : AddExpr) (pattern : AddExpr)
-  | rIsIn (target : AddExpr) (entityType : AddExpr) (inEntity : Option AddExpr)
+  -- | rIsIn (target : AddExpr) (entityType : AddExpr) (inEntity : Option AddExpr)
+  -- A syntactic sugar for Principal is ... in ...
 
 public structure AddExpr where
   initial : MultExpr
