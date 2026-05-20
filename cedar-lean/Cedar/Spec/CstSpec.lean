@@ -5,6 +5,7 @@ public import Cedar.Spec.Entities
 public import Cedar.Spec.Request
 public import Cedar.Spec.Response
 public import Cedar.Spec.Value
+public import Cedar.Spec.Evaluator
 
 namespace Cedar.Spec.Cst
 
@@ -24,8 +25,7 @@ public def Primary.toMember (p : Primary) : Member :=
   {item := p, access := []}
 
 public def Member.toUnary (m : Member) : Unary :=
-  {op := .nBang 0, item := m}
--- Check if Bang 0 actually means "doing nothing"
+  {op := none, item := m}
 
 public def Unary.toMultExpr (u : Unary) : MultExpr :=
   {initial := u, extended := []}
@@ -136,15 +136,91 @@ public def Policies.toExpr (ps : Policies) : Expr :=
 
 /- Evaluator -/
 
-mutual
+private def Ident.toString : Ident → String
+  | .idPrincipal => "principal"
+  | .idAction => "action"
+  | .idResource => "resource"
+  | .idContext => "context"
+  | .idTrue => "true"
+  | .idFalse => "false"
+  | .idPermit => "permit"
+  | .idForbid => "forbid"
+  | .idWhen => "when"
+  | .idUnless => "unless"
+  | .idIn => "in"
+  | .idHas => "has"
+  | .idLike => "like"
+  | .idIs => "is"
+  | .idIf => "if"
+  | .idThen => "then"
+  | .idElse => "else"
+  | .idIdent s => s
 
 public def AddExpr.evaluate (e : AddExpr) (req : Request) (es : Entities) : Result Value :=
   sorry
 
+-- RelOp: rLess, rLessEq, rGreaterEq, rGreater, rNotEq, rEq, rIn
+private def applyRelOp (op : RelOp) (v₁ v₂ : Value) (es : Entities) : Result Value :=
+  match op with
+  | .rLess => apply₂ .less v₁ v₂ es
+  | .rLessEq => apply₂ .lessEq v₁ v₂ es
+  | .rGreater => apply₂ .less v₂ v₁ es
+  | .rGreaterEq => apply₂ .lessEq v₂ v₁ es
+  | .rEq => apply₂ .eq v₁ v₂ es
+  | .rNotEq => do
+    let eq ← apply₂ .eq v₁ v₂ es
+    apply₁ .not eq
+  | .rIn => apply₂ .mem v₁ v₂ es
+
+-- When the list is all `field`s, return the converted list of `Attr`s
+-- Otherwise return `none`
+private def fieldChain? : List MemAccess → Option (List Attr)
+  | [] => some []
+  | .field id :: xs => (fieldChain? xs).map (id.toString :: ·)
+  | _ :: _ => none
+
+private def AddExpr.toAttrs? (e : AddExpr) : Option (List Attr) :=
+  if !e.extended.isEmpty then none else
+  let mult := e.initial
+  if !mult.extended.isEmpty then none else
+  let unary := mult.initial
+  match unary.op with
+  | some _ => none
+  | none =>
+    let member := unary.item
+    match fieldChain? member.access with
+    | none => none
+    | some fields => match member.item with
+      | .literal (.liStr s) =>
+        if fields.isEmpty then some [s] else none
+      | .literal _ => none
+      | .name { path := [], name := id } =>
+        some (id.toString :: fields)
+      | .name _ => none
+      | _ => none
+
 public def Relation.evaluate (e : Relation) (req : Request) (es : Entities) : Result Value :=
   match e with
-  | .rCommon hd tl => sorry
-  | .rHas t f => sorry
+  -- Currently assuming that the `RelOp` cannot be chained
+  | .rCommon x xs => match xs with
+    | [] => x.evaluate req es
+    | [(op, y)] => do
+      let v₁ ← x.evaluate req es
+      let v₂ ← y.evaluate req es
+      applyRelOp op v₁ v₂ es
+    | _ => .error .typeError
+  | .rHas t f => do
+      let v ← t.evaluate req es
+      match f.toAttrs? with
+      | none => .error .typeError
+      | some [] => .error .typeError
+      | some (a :: as) =>
+        -- For `r has x.y.z`: call `hasAttr r.x.y z es`
+        let aList := a :: as
+        let aListLast := aList.getLast (by simp)
+        let aListRest := aList.dropLast
+        let v' ← aListRest.foldlM (fun acc attr => getAttr acc attr es) v
+        hasAttr v' aListLast es
   | .rLike t p => sorry
 
 public def AndExpr.evaluate (e : AndExpr) (req : Request) (es : Entities) : Result Value := do
@@ -160,6 +236,8 @@ public def OrExpr.evaluate (e : OrExpr) (req : Request) (es : Entities) : Result
     (fun acc a => if acc then .ok acc else (a.evaluate req es).as Bool)
     (init := b)
   .ok result
+
+mutual
 
 public def ExprData.evaluate (e : ExprData) (req : Request) (es : Entities) : Result Value :=
   match e with

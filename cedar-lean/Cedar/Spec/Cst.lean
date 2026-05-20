@@ -22,6 +22,7 @@ public inductive Ident where
   | idIf
   | idThen
   | idElse
+  | idIdent (s : String)
 
 -- Should the type of n match the Rust implementation (i.e. UInt64)?
 -- Why are true and false in both Ident and Literal?
@@ -132,7 +133,7 @@ public structure MultExpr where
   extended : List (MultOp × Unary)
 
 public structure Unary where
-  op : NegOp
+  op : Option NegOp
   item : Member
 
 public structure Member where
