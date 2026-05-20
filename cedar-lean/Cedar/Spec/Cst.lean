@@ -49,8 +49,8 @@ public inductive MultOp where
   | mDivide
   | mMod
 
--- Should the type of n match the Rust implementation (i.e. UInt8),
--- or can I use Int for simplicity?
+-- The types for n does not match the Rust implementation (`UInt8`)
+-- `Int` is used for simplicity
 -- Are overBang and overDash for error cases?
 public inductive NegOp where
   | nBang (n : Int)
@@ -58,10 +58,9 @@ public inductive NegOp where
   | nDash (n : Int)
   | nOverDash
 
--- I tried to not use the mutual block, but there are circular definitions
--- (e.g. Expr -> ExprData ->(If) Expr )
--- `inductive` is still used for single-constructor definitions that defined
--- using enum in cst.rs so that it is easier to add constructors in the future
+-- `inductive` is still used for single-constructor definitions that
+-- are defined using enum in cst.rs so that it is easier to add
+-- constructors in the future
 
 mutual
 

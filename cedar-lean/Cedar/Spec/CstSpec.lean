@@ -133,3 +133,50 @@ public def Policy.toExpr : Policy → Expr
 public def Policies.toExpr (ps : Policies) : Expr :=
   let exprs := List.map Policy.toExpr ps.ps
   Expr.foldAnd exprs
+
+/- Evaluator -/
+
+mutual
+
+public def AddExpr.evaluate (e : AddExpr) (req : Request) (es : Entities) : Result Value :=
+  sorry
+
+public def Relation.evaluate (e : Relation) (req : Request) (es : Entities) : Result Value :=
+  match e with
+  | .rCommon hd tl => sorry
+  | .rHas t f => sorry
+  | .rLike t p => sorry
+
+public def AndExpr.evaluate (e : AndExpr) (req : Request) (es : Entities) : Result Value := do
+  let b ← (e.initial.evaluate req es).as Bool
+  let result ← e.extended.foldlM
+    (fun acc a => if !acc then .ok acc else (a.evaluate req es).as Bool)
+    (init := b)
+  .ok result
+
+public def OrExpr.evaluate (e : OrExpr) (req : Request) (es : Entities) : Result Value := do
+  let b ← (e.initial.evaluate req es).as Bool
+  let result ← e.extended.foldlM
+    (fun acc a => if acc then .ok acc else (a.evaluate req es).as Bool)
+    (init := b)
+  .ok result
+
+public def ExprData.evaluate (e : ExprData) (req : Request) (es : Entities) : Result Value :=
+  match e with
+  | .edOr e => e.evaluate req es
+  | .edIf i t f => do
+    let b ← (i.evaluate req es).as Bool
+    if b then t.evaluate req es else f.evaluate req es
+termination_by sizeOf e
+
+public def ExprImpl.evaluate (e : ExprImpl) (req : Request) (es : Entities) : Result Value :=
+  e.expr.evaluate req es
+termination_by sizeOf e
+decreasing_by cases e; simp_wf
+
+public def Expr.evaluate (e : Expr) (req : Request) (es : Entities) : Result Value :=
+  match e with
+  | .expr e => e.evaluate req es
+termination_by sizeOf e
+
+end
