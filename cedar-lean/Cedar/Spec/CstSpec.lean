@@ -137,8 +137,6 @@ public def Policies.toExpr (ps : Policies) : Expr :=
 
 /- Evaluator -/
 
-mutual
-
 private def Ident.toString : Ident → String
   | .idPrincipal => "principal"
   | .idAction => "action"
@@ -186,36 +184,6 @@ private def AttrChain? (ms : List MemAccess) : Option (List Attr) :=
       | none => none
       | some s => (AttrChain? ms).map (s :: ·)
 
-public def Primary.evaluate (e : Primary) (req : Request) (es : Entities) : Result Value :=
-  match e with
-  | .literal l => match l with
-    | .liTrue => .ok (.prim (.bool true))
-    | .liFalse => .ok (.prim (.bool false))
-    | .liNum n => match Int64.ofInt? n.toNat with
-      | some i => .ok (.prim (.int i))
-      | none => .error .arithBoundsError
-    | .liStr s => .ok (.prim (.string s))
-  | .name n =>
-    -- Not implementing names with non-empty paths for now
-    if !n.path.isEmpty then .error .typeError
-    else match n.name with
-      | .idPrincipal => .ok (.prim (.entityUID req.principal))
-      | .idAction => .ok (.prim (.entityUID req.action))
-      | .idResource => .ok (.prim (.entityUID req.resource))
-      | .idContext => .ok (.record req.context)
-      | _ => .error .typeError
-  | .expr e => sorry -- e.evaluate req es
-  | .eList xs => sorry -- do
-    -- let vs ← xs.mapM (fun x => x.evaluate req es)
-    -- .ok (.set (Set.make vs))
-  | .ref r => match r with
-    | .uid path (.string eid) =>
-      let ids := path.path.map Ident.toString
-      let last := path.name.toString
-      let etype : Spec.Name := { id := last, path := ids }
-      .ok (.prim (.entityUID { ty := etype, eid := eid }))
-    | .ref _ _ => .error .typeError
-
 private def Member.toAttrs? (e : Member) : Option (List Attr) :=
   match AttrChain? e.access with
   | none => none
@@ -228,49 +196,6 @@ private def Member.toAttrs? (e : Member) : Option (List Attr) :=
       | none   => none
     | .name _ => none
     | _ => none
-
--- Call `getAttr` recursively, a design choice that can be changed later
-public def Member.evaluate (e : Member) (req : Request) (es : Entities) : Result Value := do
-  let head ← e.item.evaluate req es
-  match AttrChain? e.access with
-  | none => .error .typeError
-  | some attrs => attrs.foldlM (fun v a => getAttr v a es) head
-
--- NegOp: nBang i, nOverBang, nDash i, nOverDash
--- `.nDash` case is handled with more intricacy in cst_to_ast.rs,
--- mainly for the `(neg (I64::MIN))` case.
-public def Unary.evaluate (e : Unary) (req : Request) (es : Entities) : Result Value :=
-  match e.op with
-  | none => e.item.evaluate req es
-  | some op => do
-      let mval ← e.item.evaluate req es
-      match op with
-        | .nBang n => if n % 2 == 0 then .ok mval else apply₁ .not mval
-        | .nDash n => if n % 2 == 0 then .ok mval else apply₁ .neg mval
-        | _ => .error .arithBoundsError
-
--- Division and Modulo are rejected in cst_to_ast.rs
-public def MultExpr.evaluate (e : MultExpr) (req : Request) (es : Entities) : Result Value := do
-  let b ← (e.initial.evaluate req es)
-  let result ← e.extended.foldlM
-    (fun acc a => do
-      let aval ← a.2.evaluate req es
-      match a.1 with
-      | .mTimes => apply₂ .mul acc aval es
-      | _ => .error .arithBoundsError )
-    (init := b)
-  .ok result
-
-public def AddExpr.evaluate (e : AddExpr) (req : Request) (es : Entities) : Result Value := do
-  let b ← (e.initial.evaluate req es)
-  let result ← e.extended.foldlM
-    (fun acc a => do
-      let aval ← a.2.evaluate req es
-      match a.1 with
-      | .aPlus => apply₂ .add acc aval es
-      | .aMinus => apply₂ .sub acc aval es )
-    (init := b )
-  .ok result
 
 -- RelOp: rLess, rLessEq, rGreaterEq, rGreater, rNotEq, rEq, rIn
 private def applyRelOp (op : RelOp) (v₁ v₂ : Value) (es : Entities) : Result Value :=
@@ -343,6 +268,81 @@ private def String.toPattern (s : String) : Pattern :=
     | '*'  :: cs          => .star          :: go cs
     | c    :: cs          => .justChar c    :: go cs
   go s.toList
+
+mutual
+
+public def Primary.evaluate (e : Primary) (req : Request) (es : Entities) : Result Value :=
+  match e with
+  | .literal l => match l with
+    | .liTrue => .ok (.prim (.bool true))
+    | .liFalse => .ok (.prim (.bool false))
+    | .liNum n => match Int64.ofInt? n.toNat with
+      | some i => .ok (.prim (.int i))
+      | none => .error .arithBoundsError
+    | .liStr s => .ok (.prim (.string s))
+  | .name n =>
+    -- Not implementing names with non-empty paths for now
+    if !n.path.isEmpty then .error .typeError
+    else match n.name with
+      | .idPrincipal => .ok (.prim (.entityUID req.principal))
+      | .idAction => .ok (.prim (.entityUID req.action))
+      | .idResource => .ok (.prim (.entityUID req.resource))
+      | .idContext => .ok (.record req.context)
+      | _ => .error .typeError
+  | .expr e => sorry -- e.evaluate req es
+  | .eList xs => sorry -- do
+    -- let vs ← xs.mapM (fun x => x.evaluate req es)
+    -- .ok (.set (Set.make vs))
+  | .ref r => match r with
+    | .uid path (.string eid) =>
+      let ids := path.path.map Ident.toString
+      let last := path.name.toString
+      let etype : Spec.Name := { id := last, path := ids }
+      .ok (.prim (.entityUID { ty := etype, eid := eid }))
+    | .ref _ _ => .error .typeError
+
+-- Call `getAttr` recursively, a design choice that can be changed later
+public def Member.evaluate (e : Member) (req : Request) (es : Entities) : Result Value := do
+  let head ← e.item.evaluate req es
+  match AttrChain? e.access with
+  | none => .error .typeError
+  | some attrs => attrs.foldlM (fun v a => getAttr v a es) head
+
+-- NegOp: nBang i, nOverBang, nDash i, nOverDash
+-- `.nDash` case is handled with more intricacy in cst_to_ast.rs,
+-- mainly for the `(neg (I64::MIN))` case.
+public def Unary.evaluate (e : Unary) (req : Request) (es : Entities) : Result Value :=
+  match e.op with
+  | none => e.item.evaluate req es
+  | some op => do
+      let mval ← e.item.evaluate req es
+      match op with
+        | .nBang n => if n % 2 == 0 then .ok mval else apply₁ .not mval
+        | .nDash n => if n % 2 == 0 then .ok mval else apply₁ .neg mval
+        | _ => .error .arithBoundsError
+
+-- Division and Modulo are rejected in cst_to_ast.rs
+public def MultExpr.evaluate (e : MultExpr) (req : Request) (es : Entities) : Result Value := do
+  let b ← (e.initial.evaluate req es)
+  let result ← e.extended.foldlM
+    (fun acc a => do
+      let aval ← a.2.evaluate req es
+      match a.1 with
+      | .mTimes => apply₂ .mul acc aval es
+      | _ => .error .arithBoundsError )
+    (init := b)
+  .ok result
+
+public def AddExpr.evaluate (e : AddExpr) (req : Request) (es : Entities) : Result Value := do
+  let b ← (e.initial.evaluate req es)
+  let result ← e.extended.foldlM
+    (fun acc a => do
+      let aval ← a.2.evaluate req es
+      match a.1 with
+      | .aPlus => apply₂ .add acc aval es
+      | .aMinus => apply₂ .sub acc aval es )
+    (init := b )
+  .ok result
 
 public def Relation.evaluate (e : Relation) (req : Request) (es : Entities) : Result Value :=
   match e with
