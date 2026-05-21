@@ -9,6 +9,8 @@ public import Cedar.Spec.Evaluator
 
 namespace Cedar.Spec.Cst
 
+open Cedar.Data
+
 -- The hierarchy of Expr in the CST
 -- Expr → ExprImpl → ExprData → OrExpr → AndExpr → Relation
 -- → AddExpr → MultExpr → Unary → Member → Primary
@@ -121,6 +123,7 @@ public def Cond.toExpr (c : Cond) : Expr :=
   | .idUnless, some e => Expr.not e
   | _, _ => Expr.tt
 
+-- The `effect` field is not considered in this translation
 public def PolicyImpl.toExpr (p : PolicyImpl) : Expr :=
   let varExprs := List.map VariableDef.toExpr p.vars
   let condExprs := List.map Cond.toExpr p.conds
@@ -290,7 +293,7 @@ public def Primary.evaluate (e : Primary) (req : Request) (es : Entities) : Resu
   | .expr e => e.evaluate req es
   | .eList xs => do
     let vs ← xs.mapM (fun x => x.evaluate req es)
-    .ok (.set (Data.Set.make vs))
+    .ok (.set (Set.make vs))
   | .ref r => match r with
     | .uid path (.string eid) =>
       let ids := path.path.map Ident.toString
@@ -453,3 +456,50 @@ public def Expr.evaluate (e : Expr) (req : Request) (es : Entities) : Result Val
 termination_by sizeOf e
 
 end
+
+/- Authorizer -/
+
+public def Ident.toEffect? : Ident →  Option Effect
+  | .idPermit => some .permit
+  | .idForbid => some .forbid
+  | _ => none
+
+public def satisfied (policy : Policy) (req : Request) (entities : Entities) : Bool :=
+  policy.toExpr.evaluate req entities = .ok true
+
+-- To avoid returning an `Option Bool`, this function returns `false`
+-- when the `effect` field of `policy` is not an effect
+public def satisfiedWithEffect (effect : Effect) (policy : Policy) (req : Request) (entities : Entities) : Bool :=
+  if satisfied policy req entities then
+  match policy with
+  | .policy p => match p.effect.toEffect? with
+    | none => false
+    | some eff => eff = effect
+  else false
+
+public def Policies.withIDs (policies : Policies) : List (PolicyID × Policy) :=
+  let len := policies.ps.length
+  List.zip ((List.range len).map (fun i => s!"policy{i}")) policies.ps
+
+public def satisfiedPolicies (effect : Effect) (policies : Policies) (req : Request) (entities : Entities) : Set PolicyID :=
+  Set.make (List.filterMap
+    (fun (id, p) => if satisfiedWithEffect effect p req entities then some id else none)
+    policies.withIDs)
+
+public def hasError (policy : Policy) (req : Request) (entities : Entities) : Bool :=
+  match policy.toExpr.evaluate req entities with
+  | .ok _ => false
+  | .error _ => true
+
+public def errorPolicies (policies : Policies) (req : Request) (entities : Entities) : Set PolicyID :=
+  Set.make (List.filterMap
+    (fun (id, p) => if hasError p req entities then some id else none)
+    policies.withIDs)
+
+public def isAuthorized (req : Request) (entities : Entities) (policies : Policies) : Response :=
+  let forbids := satisfiedPolicies .forbid policies req entities
+  let permits := satisfiedPolicies .permit policies req entities
+  let erroringPolicies := errorPolicies policies req entities
+  if forbids.isEmpty && !permits.isEmpty
+  then {decision := .allow, determiningPolicies := permits, erroringPolicies}
+  else {decision := .deny, determiningPolicies := permits, erroringPolicies}
