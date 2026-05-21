@@ -355,7 +355,6 @@ termination_by sizeOf e
 decreasing_by
   all_goals cases e; simp_wf; omega
 
--- Structurally recursive helper, applies each (op, MultExpr) pair left-to-right.
 private def AddExpr.foldExtended (acc : Value) (xs : List (AddOp × MultExpr))
     (req : Request) (es : Entities) : Result Value :=
   match xs with
@@ -406,8 +405,7 @@ termination_by sizeOf e
 decreasing_by
   all_goals cases e; simp_wf; omega
 
--- Structurally recursive helper, mirrors `OrExpr.foldExtended`.
--- Short-circuits on `false` instead of `true`.
+-- Separated from the evalute function for termination proofs
 private def AndExpr.foldExtended (acc : Bool) (xs : List Relation)
     (req : Request) (es : Entities) : Result Bool :=
   match xs with
@@ -426,9 +424,8 @@ termination_by sizeOf e
 decreasing_by
   all_goals cases e; simp_wf; omega
 
--- Structurally recursive helper so the termination checker can see decrease.
--- Preserves short-circuiting: once `acc` is true, no further `AndExpr.evaluate`
--- calls happen.
+-- Short circuit: once a true is found, halt the execution
+-- Separated from the evaluate function for termination proofs
 private def OrExpr.foldExtended (acc : Bool) (xs : List AndExpr)
     (req : Request) (es : Entities) : Result Bool :=
   match xs with
