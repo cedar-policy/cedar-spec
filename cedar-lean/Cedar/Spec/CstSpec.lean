@@ -9,6 +9,7 @@ public import Cedar.Spec.Evaluator
 
 namespace Cedar.Spec.Cst
 
+open Cedar.Data
 
 -- The hierarchy of Expr in the CST
 -- Expr → ExprImpl → ExprData → OrExpr → AndExpr → Relation
@@ -158,13 +159,95 @@ private def Ident.toString : Ident → String
   | .idElse => "else"
   | .idIdent s => s
 
-public def Member.evaluate (e : Member) (req : Request) (es : Entities) : Result Value := sorry
+private def Ident.toUnreservedString? : Ident → Option String
+  | .idIdent s => some s
+  | _ => none
+
+private def Expr.toStringLiteral? : Expr → Option String
+  | .expr e => match e.expr with
+    | .edIf _ _ _ => none
+    | .edOr e => match e.initial.initial with
+      | .rHas _ _ => none
+      | .rLike _ _ => none
+      | .rCommon i e => match i.initial.initial.item.item with
+        | .literal l => match l with
+          | .liStr s => some s
+          | _ => none
+        | _ => none
+
+private def AttrChain? (ms : List MemAccess) : Option (List Attr) :=
+  match ms with
+  | [] => some []
+  | m :: ms => match m with
+    | .field i => match i.toUnreservedString? with
+      | none => none
+      | some s => (AttrChain? ms).map (s :: ·)
+    | .index e => match e.toStringLiteral? with
+      | none => none
+      | some s => (AttrChain? ms).map (s :: ·)
+
+public def Primary.evaluate (e : Primary) (req : Request) (es : Entities) : Result Value :=
+  match e with
+  | .literal l => match l with
+    | .liTrue => .ok (.prim (.bool true))
+    | .liFalse => .ok (.prim (.bool false))
+    | .liNum n => match Int64.ofInt? n.toNat with
+      | some i => .ok (.prim (.int i))
+      | none => .error .arithBoundsError
+    | .liStr s => .ok (.prim (.string s))
+  | .name n =>
+    -- Not implementing names with non-empty paths for now
+    if !n.path.isEmpty then .error .typeError
+    else match n.name with
+      | .idPrincipal => .ok (.prim (.entityUID req.principal))
+      | .idAction => .ok (.prim (.entityUID req.action))
+      | .idResource => .ok (.prim (.entityUID req.resource))
+      | .idContext => .ok (.record req.context)
+      | _ => .error .typeError
+  | .expr e => sorry -- e.evaluate req es
+  | .eList xs => sorry -- do
+    -- let vs ← xs.mapM (fun x => x.evaluate req es)
+    -- .ok (.set (Set.make vs))
+  | .ref r => match r with
+    | .uid path (.string eid) =>
+      let ids := path.path.map Ident.toString
+      let last := path.name.toString
+      let etype : Spec.Name := { id := last, path := ids }
+      .ok (.prim (.entityUID { ty := etype, eid := eid }))
+    | .ref _ _ => .error .typeError
+
+private def Member.toAttrs? (e : Member) : Option (List Attr) :=
+  match AttrChain? e.access with
+  | none => none
+  | some attrs => match e.item with
+    | .literal (.liStr s) =>
+      if attrs.isEmpty then some [s] else none
+    | .literal _ => none
+    | .name { path := [], name := id } => match id.toUnreservedString? with
+      | some s => some (s :: attrs)
+      | none   => none
+    | .name _ => none
+    | _ => none
+
+-- Call `getAttr` recursively, a design choice that can be changed later
+public def Member.evaluate (e : Member) (req : Request) (es : Entities) : Result Value := do
+  let head ← e.item.evaluate req es
+  match AttrChain? e.access with
+  | none => .error .typeError
+  | some attrs => attrs.foldlM (fun v a => getAttr v a es) head
 
 -- NegOp: nBang i, nOverBang, nDash i, nOverDash
-public def Unary.evaluate (e : Unary) (req : Request) (es : Entities) : Result Value := do
+-- `.nDash` case is handled with more intricacy in cst_to_ast.rs,
+-- mainly for the `(neg (I64::MIN))` case.
+public def Unary.evaluate (e : Unary) (req : Request) (es : Entities) : Result Value :=
   match e.op with
   | none => e.item.evaluate req es
-  | some _ => sorry
+  | some op => do
+      let mval ← e.item.evaluate req es
+      match op with
+        | .nBang n => if n % 2 == 0 then .ok mval else apply₁ .not mval
+        | .nDash n => if n % 2 == 0 then .ok mval else apply₁ .neg mval
+        | _ => .error .arithBoundsError
 
 -- Division and Modulo are rejected in cst_to_ast.rs
 public def MultExpr.evaluate (e : MultExpr) (req : Request) (es : Entities) : Result Value := do
@@ -278,11 +361,12 @@ public def Relation.evaluate (e : Relation) (req : Request) (es : Entities) : Re
       | some [] => .error .typeError
       | some (a :: as) =>
         -- For `r has x.y.z`: call `hasAttr r.x.y z es`
-        let aList := a :: as
-        let aListLast := aList.getLast (by simp)
-        let aListRest := aList.dropLast
-        let v' ← aListRest.foldlM (fun acc attr => getAttr acc attr es) v
-        hasAttr v' aListLast es
+        let (v', last) ← as.foldlM
+          (fun (acc : Value × Attr) attr => do
+            let next ← getAttr acc.1 acc.2 es
+            pure (next, attr))
+          (v, a)
+        hasAttr v' last es
   | .rLike t p => match p.toPatternString? with
     | none => .error .typeError
     | some s => do

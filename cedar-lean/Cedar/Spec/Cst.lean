@@ -29,7 +29,7 @@ public inductive Ident where
 public inductive Literal where
   | liTrue
   | liFalse
-  | liNum (n : Int)
+  | liNum (n : UInt64)
   | liStr (s : String)
 
 public inductive RelOp where
@@ -54,9 +54,9 @@ public inductive MultOp where
 -- `Int` is used for simplicity
 -- Are overBang and overDash for error cases?
 public inductive NegOp where
-  | nBang (n : Int)
+  | nBang (n : UInt8)
   | nOverBang
-  | nDash (n : Int)
+  | nDash (n : UInt8)
   | nOverDash
 
 -- `inductive` is still used for single-constructor definitions that
