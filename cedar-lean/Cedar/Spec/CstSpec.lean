@@ -167,7 +167,7 @@ private def Expr.toStringLiteral? : Expr → Option String
     | .edOr e => match e.initial.initial with
       | .rHas _ _ => none
       | .rLike _ _ => none
-      | .rCommon i e => match i.initial.initial.item.item with
+      | .rCommon i _ => match i.initial.initial.item.item with
         | .literal l => match l with
           | .liStr s => some s
           | _ => none
@@ -289,10 +289,10 @@ public def Primary.evaluate (e : Primary) (req : Request) (es : Entities) : Resu
       | .idResource => .ok (.prim (.entityUID req.resource))
       | .idContext => .ok (.record req.context)
       | _ => .error .typeError
-  | .expr e => sorry -- e.evaluate req es
-  | .eList xs => sorry -- do
-    -- let vs ← xs.mapM (fun x => x.evaluate req es)
-    -- .ok (.set (Set.make vs))
+  | .expr e => e.evaluate req es
+  | .eList xs => do
+    let vs ← xs.mapM (fun x => x.evaluate req es)
+    .ok (.set (Set.make vs))
   | .ref r => match r with
     | .uid path (.string eid) =>
       let ids := path.path.map Ident.toString
@@ -300,6 +300,7 @@ public def Primary.evaluate (e : Primary) (req : Request) (es : Entities) : Resu
       let etype : Spec.Name := { id := last, path := ids }
       .ok (.prim (.entityUID { ty := etype, eid := eid }))
     | .ref _ _ => .error .typeError
+termination_by sizeOf e
 
 -- Call `getAttr` recursively, a design choice that can be changed later
 public def Member.evaluate (e : Member) (req : Request) (es : Entities) : Result Value := do
@@ -307,6 +308,9 @@ public def Member.evaluate (e : Member) (req : Request) (es : Entities) : Result
   match AttrChain? e.access with
   | none => .error .typeError
   | some attrs => attrs.foldlM (fun v a => getAttr v a es) head
+termination_by sizeOf e
+decreasing_by
+  all_goals cases e; simp_wf; omega
 
 -- NegOp: nBang i, nOverBang, nDash i, nOverDash
 -- `.nDash` case is handled with more intricacy in cst_to_ast.rs,
@@ -320,29 +324,49 @@ public def Unary.evaluate (e : Unary) (req : Request) (es : Entities) : Result V
         | .nBang n => if n % 2 == 0 then .ok mval else apply₁ .not mval
         | .nDash n => if n % 2 == 0 then .ok mval else apply₁ .neg mval
         | _ => .error .arithBoundsError
+termination_by sizeOf e
+decreasing_by
+  all_goals cases e; simp_wf; omega
+
+public def MultExpr.evaluate (e : MultExpr) (req : Request) (es : Entities) : Result Value := do
+  let b ← e.initial.evaluate req es
+  MultExpr.foldExtended b e.extended req es
+termination_by sizeOf e
+decreasing_by
+  all_goals cases e; simp_wf; omega
 
 -- Division and Modulo are rejected in cst_to_ast.rs
-public def MultExpr.evaluate (e : MultExpr) (req : Request) (es : Entities) : Result Value := do
-  let b ← (e.initial.evaluate req es)
-  let result ← e.extended.foldlM
-    (fun acc a => do
-      let aval ← a.2.evaluate req es
-      match a.1 with
+private def MultExpr.foldExtended (acc : Value) (xs : List (MultOp × Unary))
+    (req : Request) (es : Entities) : Result Value :=
+  match xs with
+  | [] => .ok acc
+  | (op, u) :: rest => do
+    let aval ← u.evaluate req es
+    let acc' ← match op with
       | .mTimes => apply₂ .mul acc aval es
-      | _ => .error .arithBoundsError )
-    (init := b)
-  .ok result
+      | _ => .error .typeError
+    MultExpr.foldExtended acc' rest req es
+termination_by sizeOf xs
 
 public def AddExpr.evaluate (e : AddExpr) (req : Request) (es : Entities) : Result Value := do
-  let b ← (e.initial.evaluate req es)
-  let result ← e.extended.foldlM
-    (fun acc a => do
-      let aval ← a.2.evaluate req es
-      match a.1 with
-      | .aPlus => apply₂ .add acc aval es
-      | .aMinus => apply₂ .sub acc aval es )
-    (init := b )
-  .ok result
+  let b ← e.initial.evaluate req es
+  AddExpr.foldExtended b e.extended req es
+termination_by sizeOf e
+decreasing_by
+  all_goals cases e; simp_wf; omega
+
+-- Structurally recursive helper, applies each (op, MultExpr) pair left-to-right.
+private def AddExpr.foldExtended (acc : Value) (xs : List (AddOp × MultExpr))
+    (req : Request) (es : Entities) : Result Value :=
+  match xs with
+  | [] => .ok acc
+  | (op, m) :: rest => do
+    let aval ← m.evaluate req es
+    let acc' ← match op with
+      | .aPlus  => apply₂ .add acc aval es
+      | .aMinus => apply₂ .sub acc aval es
+    AddExpr.foldExtended acc' rest req es
+termination_by sizeOf xs
 
 public def Relation.evaluate (e : Relation) (req : Request) (es : Entities) : Result Value :=
   match e with
@@ -372,20 +396,48 @@ public def Relation.evaluate (e : Relation) (req : Request) (es : Entities) : Re
     | some s => do
       let v ← t.evaluate req es
       apply₁ (.like (String.toPattern s)) v
+termination_by sizeOf e
 
 public def AndExpr.evaluate (e : AndExpr) (req : Request) (es : Entities) : Result Value := do
   let b ← (e.initial.evaluate req es).as Bool
-  let result ← e.extended.foldlM
-    (fun acc a => if !acc then .ok acc else (a.evaluate req es).as Bool)
-    (init := b)
+  let result ← AndExpr.foldExtended b e.extended req es
   .ok result
+termination_by sizeOf e
+decreasing_by
+  all_goals cases e; simp_wf; omega
+
+-- Structurally recursive helper, mirrors `OrExpr.foldExtended`.
+-- Short-circuits on `false` instead of `true`.
+private def AndExpr.foldExtended (acc : Bool) (xs : List Relation)
+    (req : Request) (es : Entities) : Result Bool :=
+  match xs with
+  | [] => .ok acc
+  | x :: rest =>
+    if !acc then .ok acc else do
+      let b ← (x.evaluate req es).as Bool
+      AndExpr.foldExtended b rest req es
+termination_by sizeOf xs
 
 public def OrExpr.evaluate (e : OrExpr) (req : Request) (es : Entities) : Result Value := do
   let b ← (e.initial.evaluate req es).as Bool
-  let result ← e.extended.foldlM
-    (fun acc a => if acc then .ok acc else (a.evaluate req es).as Bool)
-    (init := b)
+  let result ← OrExpr.foldExtended b e.extended req es
   .ok result
+termination_by sizeOf e
+decreasing_by
+  all_goals cases e; simp_wf; omega
+
+-- Structurally recursive helper so the termination checker can see decrease.
+-- Preserves short-circuiting: once `acc` is true, no further `AndExpr.evaluate`
+-- calls happen.
+private def OrExpr.foldExtended (acc : Bool) (xs : List AndExpr)
+    (req : Request) (es : Entities) : Result Bool :=
+  match xs with
+  | [] => .ok acc
+  | x :: rest =>
+    if acc then .ok acc else do
+      let b ← (x.evaluate req es).as Bool
+      OrExpr.foldExtended b rest req es
+termination_by sizeOf xs
 
 public def ExprData.evaluate (e : ExprData) (req : Request) (es : Entities) : Result Value :=
   match e with
