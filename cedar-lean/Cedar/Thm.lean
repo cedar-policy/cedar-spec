@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Thm.Data
+import Cedar.Thm.Tactics
 import Cedar.Thm.Authorization
 import Cedar.Thm.PolicySlice
 import Cedar.Thm.SymCC.Opt
