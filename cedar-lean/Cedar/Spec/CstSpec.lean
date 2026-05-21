@@ -9,8 +9,6 @@ public import Cedar.Spec.Evaluator
 
 namespace Cedar.Spec.Cst
 
-open Cedar.Data
-
 -- The hierarchy of Expr in the CST
 -- Expr → ExprImpl → ExprData → OrExpr → AndExpr → Relation
 -- → AddExpr → MultExpr → Unary → Member → Primary
@@ -292,7 +290,7 @@ public def Primary.evaluate (e : Primary) (req : Request) (es : Entities) : Resu
   | .expr e => e.evaluate req es
   | .eList xs => do
     let vs ← xs.mapM (fun x => x.evaluate req es)
-    .ok (.set (Set.make vs))
+    .ok (.set (Data.Set.make vs))
   | .ref r => match r with
     | .uid path (.string eid) =>
       let ids := path.path.map Ident.toString
