@@ -204,7 +204,7 @@ public def Cst.Unary.toExprOrSpecial? (e : Cst.Unary) : Option ExprOrSpecial :=
       | .gt => none
     | _ => do
       let eos ← e.item.toExprOrSpecial?
-      let expr ← e.toExpr?
+      let expr ← eos.toExpr?
       some (ExprOrSpecial.expr (expr.dashN n.toNat))
   | some .nOverBang | some .nOverDash => none
 
