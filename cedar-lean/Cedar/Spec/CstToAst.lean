@@ -88,7 +88,9 @@ public def Cst.Primary.toAExpr? (e : Cst.Primary) : Option AExpr :=
   | .expr e => e.toAExpr?
   | .eList es => do
     let aes ← es.mapM (Cst.Expr.toAExpr?)
-    sorry
+    some (.set aes)
+
+
 
 
 
