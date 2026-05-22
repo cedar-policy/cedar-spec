@@ -208,7 +208,45 @@ public def Cst.Unary.toExprOrSpecial? (e : Cst.Unary) : Option ExprOrSpecial :=
       some (ExprOrSpecial.expr (expr.dashN n.toNat))
   | some .nOverBang | some .nOverDash => none
 
-public def Cst.Unary.toExpr? (e : Cst.Unary) : Option Expr := do
+public def Cst.Unary.toAExpr? (e : Cst.Unary) : Option Expr := do
+  let ret ← e.toExprOrSpecial?
+  ret.toExpr?
+
+public def Cst.MultExpr.toExprOrSpecial? (e : Cst.MultExpr) : Option ExprOrSpecial :=
+  match e.extended with
+  | [] => e.initial.toExprOrSpecial?
+  | _ => do
+    let first ← e.initial.toAExpr?
+    let rest ← e.extended.mapM (fun (op, u) => do
+      let expr ← u.toAExpr?
+      some (op, expr))
+    let result ← rest.foldlM (fun acc (op, expr) =>
+      match op with
+      | .mTimes => some (Expr.binaryApp .mul acc expr)
+      | .mDivide => none
+      | .mMod => none) first
+    some (.expr result)
+
+public def Cst.MultExpr.toAExpr? (e : Cst.MultExpr) : Option AExpr := do
+  let ret ← e.toExprOrSpecial?
+  ret.toExpr?
+
+public def Cst.AddExpr.toExprOrSpecial? (e : Cst.AddExpr) : Option ExprOrSpecial :=
+  match e.extended with
+  | [] => e.initial.toExprOrSpecial?
+  | _ => do
+    let first ← e.initial.toAExpr?
+    let rest ← e.extended.mapM (fun (op, u) => do
+      let expr ← u.toAExpr?
+      some (op, expr))
+    let result ← rest.foldlM (fun acc (op, expr) =>
+      match op with
+      | .aPlus => some (Expr.binaryApp .add acc expr)
+      | .aMinus => some (Expr.binaryApp .sub acc expr)
+    ) first
+    some (.expr result)
+
+public def Cst.AddExpr.toAExpr? (e : Cst.AddExpr) : Option AExpr := do
   let ret ← e.toExprOrSpecial?
   ret.toExpr?
 
