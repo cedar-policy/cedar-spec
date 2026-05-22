@@ -250,6 +250,29 @@ public def Cst.AddExpr.toAExpr? (e : Cst.AddExpr) : Option AExpr := do
   let ret ← e.toExprOrSpecial?
   ret.toExpr?
 
+private def constructExprRel (op : Cst.RelOp) (e₁ e₂ : Expr) : Expr :=
+  match op with
+  | .rLess => .binaryApp .less e₁ e₂
+  | .rLessEq => .binaryApp .lessEq e₁ e₂
+  | .rGreaterEq => .unaryApp .not (.binaryApp .less e₁ e₂)
+  | .rGreater => .unaryApp .not (.binaryApp .lessEq e₁ e₂)
+  | .rNotEq => .unaryApp .not (.binaryApp .eq e₁ e₂)
+  | .rEq => .binaryApp .eq e₁ e₂
+  | .rIn => .binaryApp .mem e₁ e₂
+
+public def Cst.Relation.toExprOrSpecial? : Cst.Relation → Option ExprOrSpecial
+  | .rCommon initial extended =>
+    if extended.length > 1 then none else do
+    let first ← initial.toExprOrSpecial?
+    match extended with
+    | [] => some first
+    | (op, x) :: tail =>
+      let first ← first.toExpr?
+      let second ← x.toAExpr?
+      some (.expr (constructExprRel op first second))
+  | _ => sorry
+
+
 
 public def Cst.Expr.toAExpr? (e : Cst.Expr) : Option AExpr :=
   sorry
