@@ -7,9 +7,9 @@ namespace Cedar.Spec.Cst
 -- The CST follows the Cedar grammar defined in grammar.lalrpop:
 --
 --   Policies    := {Policy}
---   Policy      := {Annotation} Ident '(' {VariableDef} ')' {Cond} ';'
+--   Policy      := {Annotation} Ident '(' [VariableDef {',' VariableDef}] ')' {Cond} ';'
 --   Annotation  := '@' Ident ['(' Str ')']
---   VariableDef := Ident [':' Name] ['is' Add] [(RelOp) Expr]
+--   VariableDef := Ident [':' Name] ['is' Add] [RelOp Expr]
 --   Cond        := Ident '{' Expr '}'
 --   Expr        := Or | 'if' Expr 'then' Expr 'else' Expr
 --   Or          := And {'||' And}
@@ -20,10 +20,10 @@ namespace Cedar.Spec.Cst
 --   Mult        := Unary {('*' | '/' | '%') Unary}
 --   Unary       := ['!' {'!'} | '-' {'-'}] Member
 --   Member      := Primary {MemAccess}
---   MemAccess   := '.' Ident | '(' [ExprList] ')' | '[' Expr ']'
---   Primary     := Literal | Ref | Name | Slot | '(' Expr ')' | '[' [ExprList] ']' | '{' [RecInits] '}'
+--   MemAccess   := '.' Ident | '(' [Expr {',' Expr}] ')' | '[' Expr ']'
+--   Primary     := Literal | Ref | Name | Slot | '(' Expr ')' | '[' [Expr {',' Expr}] ']' | '{' [RecInit {',' RecInit}] '}'
 --   Name        := Ident {'::' Ident}
---   Ref         := Name '::' (Str | '{' [RefInits] '}')
+--   Ref         := Name '::' (Str | '{' [RefInit {',' RefInit}] '}')
 --   RefInit     := Ident ':' Literal
 --   RecInit     := Expr ':' Expr
 --   Literal     := 'true' | 'false' | Number | Str
