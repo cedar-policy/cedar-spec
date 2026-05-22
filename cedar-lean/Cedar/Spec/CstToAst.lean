@@ -44,6 +44,11 @@ private def Cst.Ident.toString : Cst.Ident → String
   | .idElse => "else"
   | .idIdent s => s
 
+public inductive AstAccessor where
+  | field (id : Cst.Ident)
+  -- | Call (args : List Expr)
+  | index (s : String)
+
 mutual
 
 -- The Rust implementation handles `Invalid` strings for the `.liStr` case.
@@ -80,6 +85,27 @@ private def Cst.Name.toAExpr? (n : Name) : Option AExpr :=
     | .idContext => some (.var .context)
     | _ => none
 
+private def Cst.Expr.toStringLiteral? : Cst.Expr → Option String
+  | .expr e => match e.expr with
+    | .edIf _ _ _ => none
+    | .edOr e => match e.initial.initial with
+      | .rHas _ _ => none
+      | .rLike _ _ => none
+      | .rCommon i _ => match i.initial.initial.item.item with
+        | .literal l => match l with
+          | .liStr s => some s
+          | _ => none
+        | _ => none
+
+private def Cst.MemAccess.toAstAccessor? (m : Cst.MemAccess) : Option AstAccessor :=
+  match m with
+  | .field i => match i with
+    | .idIdent _ => some (.field i)
+    | _ => none
+  | .index e => do
+    let s ← e.toStringLiteral?
+    some (.index s)
+
 public def Cst.Primary.toAExpr? (e : Cst.Primary) : Option AExpr :=
   match e with
   | .literal l => l.toAExpr?
@@ -89,8 +115,6 @@ public def Cst.Primary.toAExpr? (e : Cst.Primary) : Option AExpr :=
   | .eList es => do
     let aes ← es.mapM (Cst.Expr.toAExpr?)
     some (.set aes)
-
-
 
 
 
