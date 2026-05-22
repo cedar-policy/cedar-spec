@@ -65,18 +65,81 @@ public def AstAccessor.toString : AstAccessor → String
   | .field id => id.toString
   | .index s => s
 
+/- Begin code by Claude -/
+/- Check correctness later -/
+private def hexDigitToNat? (c : Char) : Option Nat :=
+  if '0' ≤ c ∧ c ≤ '9' then some (c.toNat - '0'.toNat)
+  else if 'a' ≤ c ∧ c ≤ 'f' then some (c.toNat - 'a'.toNat + 10)
+  else if 'A' ≤ c ∧ c ≤ 'F' then some (c.toNat - 'A'.toNat + 10)
+  else none
+
+private def parseUnicodeEscape (cs : List Char) : Option (Char × List Char) := do
+  match cs with
+  | '{' :: rest =>
+    let digits := rest.takeWhile (· ≠ '}')
+    let afterBrace := rest.drop digits.length
+    match afterBrace with
+    | '}' :: remaining =>
+      if digits.isEmpty ∨ digits.length > 6 then none else do
+      let codepoint ← digits.foldlM (fun acc d => do
+        let v ← hexDigitToNat? d
+        some (acc * 16 + v)) 0
+      if codepoint > 0x10FFFF then none
+      else some (Char.ofNat codepoint, remaining)
+    | _ => none
+  | _ => none
+
+private def unescapeAux (input : List Char) : Option (List Char) :=
+  match input with
+  | [] => some []
+  | '\\' :: 'n'  :: cs => do let tail ← unescapeAux cs; some ('\n' :: tail)
+  | '\\' :: 'r'  :: cs => do let tail ← unescapeAux cs; some ('\r' :: tail)
+  | '\\' :: 't'  :: cs => do let tail ← unescapeAux cs; some ('\t' :: tail)
+  | '\\' :: '0'  :: cs => do let tail ← unescapeAux cs; some ('\x00' :: tail)
+  | '\\' :: '\\' :: cs => do let tail ← unescapeAux cs; some ('\\' :: tail)
+  | '\\' :: '"'  :: cs => do let tail ← unescapeAux cs; some ('"' :: tail)
+  | '\\' :: '\'' :: cs => do let tail ← unescapeAux cs; some ('\'' :: tail)
+  | '\\' :: 'u'  :: '{' :: cs =>
+    let digits := cs.takeWhile (· ≠ '}')
+    let afterBrace := cs.drop digits.length
+    match h : afterBrace with
+    | '}' :: remaining => do
+      if digits.isEmpty ∨ digits.length > 6 then none else do
+      let codepoint ← digits.foldlM (fun acc d => do
+        let v ← hexDigitToNat? d
+        some (acc * 16 + v)) 0
+      if codepoint > 0x10FFFF then none
+      let tail ← unescapeAux remaining
+      some (Char.ofNat codepoint :: tail)
+    | _ => none
+  | '\\' :: _ => none
+  | c :: cs => do
+    let tail ← unescapeAux cs
+    some (c :: tail)
+termination_by input.length
+decreasing_by
+  all_goals simp_wf
+  all_goals (try omega)
+  · have h1 : digits.length ≤ cs.length :=
+      List.IsPrefix.length_le (List.takeWhile_prefix _)
+    have h2 : afterBrace.length = cs.length - digits.length := by
+      simp [afterBrace, List.length_drop]
+    have h3 : remaining.length + 1 = afterBrace.length := by
+      simp [h]
+    omega
+
+public def String.unescape? (s : String) : Option String := do
+  let chars ← unescapeAux s.toList
+  some (String.ofList chars)
+
+/- End code by Claude -/
+
 public def ExprOrSpecial.toExpr? : ExprOrSpecial → Option Expr
   | .expr e => some e
   | .var v => some (.var v)
   | .strLit s => sorry -- unescape the string
   | .boolLit b => some (.lit (.bool b))
   | .name _ => none
-
-
-#eval (fun (n : UInt64) => - n.toInt64) 32
-#eval Int64.MAX+1
-#eval Int64.MIN
-
 
 mutual
 
