@@ -49,7 +49,7 @@ Use the following commands to build the `cedar-lean-ffi` Library.
 
 ```
 cd cedar-spec/cedar-lean-ffi        # Enter this directory
-source set_env_vars.sh              # Update environment variabels with Lean's library location
+source set_env_vars.sh              # Update environment variables with Lean's library location
 ./build_lean_lib.sh                 # Build the Lean model of Cedar
 cargo build                         # Build this library
 ```

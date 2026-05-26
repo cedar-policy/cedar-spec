@@ -529,7 +529,7 @@ fn print_check_implies_results(
             )
         }
     } else if open_req_env.is_any() {
-        println!("pset1 implies pset1 for some request signatures")
+        println!("pset1 implies pset2 for some request signatures")
     } else {
         println!(
             "pset1 implies pset2 for some request signatures where {}",

@@ -320,7 +320,7 @@ fn rename_from_id_annotation_policyset(ps: PolicySet) -> miette::Result<PolicySe
         let policy = p.unwrap_or_else(|never| match never {});
         new_ps
             .add(policy)
-            .wrap_err("failed to add template to policy set")?;
+            .wrap_err("failed to add policy to policy set")?;
     }
     Ok(new_ps)
 }
@@ -610,7 +610,7 @@ struct PerSigFindingsSer {
     equiv_classes: Vec<EquivalentPolicies>,
     permit_shadowed_by_permits: Vec<PermitShadowedByPermit>,
     forbid_shadowed_by_forbids: Vec<ForbidShadowedByForbids>,
-    permit_overriden_by_forbids: Vec<PermitOverridenByForbids>,
+    permit_overridden_by_forbids: Vec<PermitOverridenByForbids>,
 }
 
 impl PerSigFindingsSer {
@@ -658,8 +658,8 @@ impl PerSigFindingsSer {
             })
             .collect_vec();
 
-        let permit_overriden_by_forbids = per_sig_findings
-            .permit_overriden_by_forbids
+        let permit_overridden_by_forbids = per_sig_findings
+            .permit_overridden_by_forbids
             .iter()
             .filter_map(|(pid, pid_set)| {
                 if pid_set.is_empty() {
@@ -677,7 +677,7 @@ impl PerSigFindingsSer {
             equiv_classes,
             permit_shadowed_by_permits,
             forbid_shadowed_by_forbids,
-            permit_overriden_by_forbids,
+            permit_overridden_by_forbids,
         }
     }
 }
