@@ -5,66 +5,6 @@ public import Cedar.Spec.Expr
 public import Cedar.Spec.Policy
 public import Cedar.Spec.Value
 
-namespace Cedar.Spec
-
-public abbrev CExpr := Cedar.Spec.Cst.Expr
-public abbrev AExpr := Cedar.Spec.Expr
-public abbrev CName := Cedar.Spec.Cst.Name
-public abbrev AName := Cedar.Spec.Name
-
-public inductive ExprOrSpecial where
-  -- Any expression except a variable, name, string literal, or bool literal
-  | expr (e : Expr)
-  -- Variables, which act as expressions or names
-  | var (v : Var)
-  -- Name that isn't an expr and couldn't be converted to var
-  | name (n : Name)
-  -- String literal, not yet unescaped
-  | strLit (lit : String)
-  -- A boolean literal
-  | boolLit (v : Bool)
-
-private def Cst.Ident.toUnreservedString? : Cst.Ident → Option String
-  | .idPrincipal => some "principal"
-  | .idAction => some "action"
-  | .idResource => some "resource"
-  | .idContext => some "context"
-  | .idPermit => some "permit"
-  | .idForbid => some "forbid"
-  | .idWhen => some "when"
-  | .idUnless => some "unless"
-  | .idIdent s => some s
-  | _ => none
-
-private def Cst.Ident.toString : Cst.Ident → String
-  | .idPrincipal => "principal"
-  | .idAction => "action"
-  | .idResource => "resource"
-  | .idContext => "context"
-  | .idTrue => "true"
-  | .idFalse => "false"
-  | .idPermit => "permit"
-  | .idForbid => "forbid"
-  | .idWhen => "when"
-  | .idUnless => "unless"
-  | .idIn => "in"
-  | .idHas => "has"
-  | .idLike => "like"
-  | .idIs => "is"
-  | .idIf => "if"
-  | .idThen => "then"
-  | .idElse => "else"
-  | .idIdent s => s
-
-public inductive AstAccessor where
-  | field (id : Cst.Ident)
-  -- | Call (args : List Expr)
-  | index (s : String)
-
-public def AstAccessor.toString : AstAccessor → String
-  | .field id => id.toString
-  | .index s => s
-
 /- Begin code by Claude -/
 /- Check correctness later -/
 private def hexDigitToNat? (c : Char) : Option Nat :=
@@ -134,10 +74,90 @@ public def String.unescape? (s : String) : Option String := do
 
 /- End code by Claude -/
 
+private def String.toUnreservedId? (s : String) : Option String :=
+  match s with
+  | "principal" | "action" | "resource" | "context"
+  | "true" | "false" | "permit" | "forbid"
+  | "when" | "unless" | "in" | "has" | "like" | "is"
+  | "if" | "then" | "else" => none
+  | _ => some s
+
+namespace Cedar.Spec
+
+public abbrev CExpr := Cedar.Spec.Cst.Expr
+public abbrev AExpr := Cedar.Spec.Expr
+public abbrev CName := Cedar.Spec.Cst.Name
+public abbrev AName := Cedar.Spec.Name
+
+public inductive ExprOrSpecial where
+  -- Any expression except a variable, name, string literal, or bool literal
+  | expr (e : Expr)
+  -- Variables, which act as expressions or names
+  | var (v : Var)
+  -- Name that isn't an expr and couldn't be converted to var
+  | name (n : Name)
+  -- String literal, not yet unescaped
+  | strLit (lit : String)
+  -- A boolean literal
+  | boolLit (v : Bool)
+
+private def Cst.Ident.toUnreservedId? : Cst.Ident → Option String
+  | .idIdent s => some s
+  | _ => none
+
+private def Cst.Ident.toUnreservedString? : Cst.Ident → Option String
+  | .idPrincipal => some "principal"
+  | .idAction => some "action"
+  | .idResource => some "resource"
+  | .idContext => some "context"
+  | .idPermit => some "permit"
+  | .idForbid => some "forbid"
+  | .idWhen => some "when"
+  | .idUnless => some "unless"
+  | .idIdent s => some s
+  | _ => none
+
+private def Cst.Ident.toString : Cst.Ident → String
+  | .idPrincipal => "principal"
+  | .idAction => "action"
+  | .idResource => "resource"
+  | .idContext => "context"
+  | .idTrue => "true"
+  | .idFalse => "false"
+  | .idPermit => "permit"
+  | .idForbid => "forbid"
+  | .idWhen => "when"
+  | .idUnless => "unless"
+  | .idIn => "in"
+  | .idHas => "has"
+  | .idLike => "like"
+  | .idIs => "is"
+  | .idIf => "if"
+  | .idThen => "then"
+  | .idElse => "else"
+  | .idIdent s => s
+
+private def Var.toString : Var → String
+  | .principal => "principal"
+  | .action => "action"
+  | .resource => "resource"
+  | .context => "context"
+
+public inductive AstAccessor where
+  | field (id : Cst.Ident)
+  -- | Call (args : List Expr)
+  | index (s : String)
+
+public def AstAccessor.toString : AstAccessor → String
+  | .field id => id.toString
+  | .index s => s
+
 public def ExprOrSpecial.toExpr? : ExprOrSpecial → Option Expr
   | .expr e => some e
   | .var v => some (.var v)
-  | .strLit s => sorry -- unescape the string
+  | .strLit s => do
+      let unescapted ← s.unescape?
+      some (.lit (.string unescapted))
   | .boolLit b => some (.lit (.bool b))
   | .name _ => none
 
@@ -323,6 +343,48 @@ private def constructExprRel (op : Cst.RelOp) (e₁ e₂ : Expr) : Expr :=
   | .rEq => .binaryApp .eq e₁ e₂
   | .rIn => .binaryApp .mem e₁ e₂
 
+
+private def constructAttrsAux? : List Cst.MemAccess → Option (List String)
+  | [] => some []
+  | .field id :: rest => do
+    let head ← id.toUnreservedId?
+    let tail ← constructAttrsAux? rest
+    head :: tail
+  | .index e :: rest => none
+
+
+-- `first` should already be verified to be unreserved
+-- Verify all elements in `rest` are unreserved
+private def constructAttrs? (first : String) (rest : List Cst.MemAccess) : Option (List String) := do
+  let tail ← constructAttrsAux? rest
+  some (first :: tail)
+
+-- In Rust, `to_has_rhs` has the output type `Option (String ⊕ UnreservedId)`.
+-- `UnservedId` is essentially a string, but passed the check that it's not
+-- a reserved keyword. In this implementation, we keep the output type `String`
+-- and return a `none` if it is reserved.
+private def Cst.AddExpr.toHasRhs? (e : Cst.AddExpr) : Option (String ⊕ List String) := do
+  if (!e.extended.isEmpty) || (!e.initial.extended.isEmpty) || (!e.initial.initial.op.isNone) then none else
+  let member := e.initial.initial.item
+  match member.item with
+  | .literal _ | .name _ =>
+    let item ← member.item.toExprOrSpecial?
+    match item, member.access with
+    | .strLit lit, [] => lit.unescape?.map .inl
+    | .var v, rest => (constructAttrs? (v.toString) rest).map .inr
+    | .name n, rest => if !n.path.isEmpty then none else
+      let first ← n.id.toUnreservedId?
+      (constructAttrs? first rest).map .inr
+    | _, _ => none
+  | _ => none
+
+private def extendedHasAttr (target : Expr) (fields : List String) : Expr :=
+  match fields with
+  | [] => target
+  | [f] => .hasAttr target f
+  | f :: rest =>
+    .and (.hasAttr target f) (extendedHasAttr (.getAttr target f) rest)
+
 public def Cst.Relation.toExprOrSpecial? : Cst.Relation → Option ExprOrSpecial
   | .rCommon initial extended =>
     if extended.length > 1 then none else do
@@ -333,7 +395,13 @@ public def Cst.Relation.toExprOrSpecial? : Cst.Relation → Option ExprOrSpecial
       let first ← first.toExpr?
       let second ← x.toAExpr?
       some (.expr (constructExprRel op first second))
-  | _ => sorry
+  | .rHas target field => do
+    let maybe_target ← target.toAExpr?
+    let maybe_fields ← field.toHasRhs?
+    match maybe_fields with
+    | .inl f => some (.expr (.hasAttr maybe_target f))
+    | .inr fs => some (.expr (extendedHasAttr maybe_target fs))
+  | .rLike target pattern => sorry
 
 
 
