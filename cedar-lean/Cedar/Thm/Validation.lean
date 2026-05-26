@@ -66,8 +66,7 @@ theorem validation_is_sound (policies : Policies) (schema : Schema) (request : R
     apply typecheck_policy_with_environments_is_sound policy schema request entities h₁
     subst h₃
     simp only [List.forM_eq_forM, List.forM_cons] at h₀
-    cases h₄ : (typecheckPolicyWithEnvironments typecheckPolicy h' schema) <;>
-    simp only [h₄, Except.bind_err, reduceCtorEq] at h₀
+    simp_do_let (typecheckPolicyWithEnvironments typecheckPolicy h' schema) as h₄ at h₀
     case ok _ =>
       rw [List.mem_cons] at pin
       cases pin with

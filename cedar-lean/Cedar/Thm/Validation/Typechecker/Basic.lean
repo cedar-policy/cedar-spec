@@ -16,7 +16,7 @@
 
 import Cedar.Spec
 import Cedar.Validation
-import Cedar.Thm.Data.Control
+import Cedar.Thm.Tactics
 import Cedar.Thm.Validation.Typechecker.Types
 import Cedar.Thm.WellTyped.Expr.WF
 

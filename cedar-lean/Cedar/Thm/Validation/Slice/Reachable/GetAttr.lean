@@ -66,7 +66,7 @@ theorem checked_eval_entity_reachable_get_attr {e : Expr} {n : Nat} {c c' : Capa
   ReachableIn entities request.sliceEUIDs euid (n + 1)
 := by
   simp only [evaluate] at he
-  cases he₁ : evaluate e request entities <;> simp only [he₁, Except.bind_err, reduceCtorEq] at he
+  simp_do_let (evaluate e request entities) as he₁ at he
   have ⟨ hc', tx', c₁', ht', htx, h₂ ⟩ := type_of_getAttr_inversion ht
   rw [htx] at hl
   have ⟨ hgc, v, he', hi ⟩ := type_of_is_sound hc hr ht'
@@ -85,10 +85,10 @@ theorem checked_eval_entity_reachable_get_attr {e : Expr} {n : Nat} {c c' : Capa
       exact he'
     subst hv
 
-    simp only [getAttr, attrsOf, Except.bind_ok] at he
-    cases he₂ : entities.attrs euid' <;> simp only [he₂, Except.bind_err, reduceCtorEq] at he
+    simp only [getAttr, attrsOf] at he
+    simp_do_let (entities.attrs euid') as he₂ at he
     rename_i attrs
-    simp only [Map.findOrErr, Except.bind_ok] at he
+    simp only [Map.findOrErr] at he
     split at he <;> simp only [reduceCtorEq, Except.ok.injEq] at he
     subst he
     rename_i v hv

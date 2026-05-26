@@ -153,8 +153,9 @@ theorem Opt.isAuthorized.correctness (ps : Policies) (εnv : SymEnv) :
   simp [Opt.isAuthorized, SymCC.isAuthorized]
   rw [Opt.satisfiedPolicies.correctness .permit]
   rw [Opt.satisfiedPolicies.correctness .forbid]
-  simp_do_let SymCC.satisfiedPolicies .forbid ps εnv ; rename_i ft hforbid
-  simp_do_let SymCC.satisfiedPolicies .permit ps εnv ; rename_i pt hpermit
+  simp_do_let SymCC.satisfiedPolicies .forbid ps εnv
+  simp_do_let SymCC.satisfiedPolicies .permit ps εnv
+  rename_i ft hforbid pt hpermit
   simp only [Except.ok.injEq, Opt.CompileResult.mk.injEq, true_and]
   simp only [footprints, List.mapUnion_filterMap, List.mapUnion_map]
   rw [List.mapUnion_union_mapUnion']

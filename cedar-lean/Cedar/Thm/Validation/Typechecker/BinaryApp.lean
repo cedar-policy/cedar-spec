@@ -43,8 +43,8 @@ theorem type_of_binaryApp_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' 
     ∃ ty, tx = .binaryApp op₂ tx₁ tx₂ ty
 := by
   simp only [typeOf] at htx
-  cases htx₁ : typeOf x₁ c env <;> simp only [htx₁, Except.bind_err, reduceCtorEq] at htx
-  cases htx₂ : typeOf x₂ c env <;> simp only [htx₂, Except.bind_err, Except.bind_ok, reduceCtorEq] at htx
+  simp_do_let (typeOf x₁ c env) as htx₁ at htx
+  simp_do_let (typeOf x₂ c env) as htx₂ at htx
   rename_i r₁ r₂
   simp [typeOfBinaryApp, typeOfEq, ifLubThenBool, typeOfGetTag, typeOfHasTag, ok, err] at htx
   (split at htx <;> try split at htx <;> try split at htx <;> try split at htx) <;> try simp at htx

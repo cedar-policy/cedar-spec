@@ -39,7 +39,8 @@ theorem type_of_unary_inversion {op : UnaryOp} {x₁ : Expr} {c₁ c₂ : Capabi
     | .like _ => ty = .bool .anyBool ∧ tx₁.typeOf = .string
     | .is ety₀  => ∃ ety₁, ty = .bool (if ety₀ = ety₁ then .tt else .ff) ∧ tx₁.typeOf = .entity ety₁
 := by
-  cases h₂ : typeOf x₁ c₁ env <;> simp only [h₂, typeOf, Except.bind_err, Except.bind_ok, reduceCtorEq] at h₁
+  simp only [typeOf] at h₁
+  simp_do_let (typeOf x₁ c₁ env) as h₂ at h₁
   rename_i res ; have ⟨ty₁, c₁'⟩ := res
   simp only [typeOfUnaryApp, Function.comp_apply] at h₁
   split at h₁ <;> try contradiction

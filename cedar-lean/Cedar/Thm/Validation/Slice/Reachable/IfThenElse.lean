@@ -50,7 +50,7 @@ theorem checked_eval_entity_reachable_ite {e₁ e₂ e₃: Expr} {n : Nat} {c c'
   rename_i hl₁ hl₂ hl₃
 
   simp only [evaluate] at he
-  cases he₁' : Result.as Bool (evaluate e₁ request entities) <;> simp only [he₁', Except.bind_err, Except.bind_ok, reduceCtorEq] at he
+  simp_do_let (Result.as Bool (evaluate e₁ request entities)) as he₁' at he
   rename_i b
   replace he₁' : evaluate e₁ request entities = .ok (.prim (.bool b)) := by
     simp only [Result.as, Coe.coe, Value.asBool] at he₁'

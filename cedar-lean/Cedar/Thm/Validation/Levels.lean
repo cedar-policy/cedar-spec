@@ -134,9 +134,8 @@ theorem typecheck_policy_at_level_with_environments_is_sound {p : Policy} {schem
 := by
   replace htl : ∀ x ∈ schema.environments, ∃ tx, typecheckPolicyWithLevel p n x = .ok tx := by
     simp only [typecheckPolicyWithEnvironments, Except.mapError] at htl
-    cases hes : checkEntities schema p.toExpr <;> simp only [hes, Except.bind_err, Except.bind_ok, reduceCtorEq] at htl
-    cases htl₁ : List.mapM (typecheckPolicyWithLevel p n) schema.environments <;>
-    simp only [htl₁, Except.bind_err, reduceCtorEq] at htl
+    simp_do_let (checkEntities schema p.toExpr) as hes at htl
+    simp_do_let (List.mapM (typecheckPolicyWithLevel p n) schema.environments) as htl₁ at htl
     replace htl₁ := List.forall₂_implies_all_left ∘ List.mapM_ok_iff_forall₂.mp $ htl₁
     intro env he
     specialize htl₁ env he

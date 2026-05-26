@@ -106,7 +106,8 @@ theorem binary_op_not_euid_via_path {op : BinaryOp} {e₁ e₂: Expr} {entities 
     rw [←he] at ha
     cases ha
   | rename_i vs
-    cases he₃ : Set.mapOrErr Value.asEntityUID vs Error.typeError <;> simp only [he₃, Except.bind_err, Except.bind_ok, reduceCtorEq, Except.ok.injEq] at he
+    simp_do_let Set.mapOrErr Value.asEntityUID vs Error.typeError  as he₃ at he
+    simp only [Except.ok.injEq] at he
     rw [←he] at ha
     cases ha
 

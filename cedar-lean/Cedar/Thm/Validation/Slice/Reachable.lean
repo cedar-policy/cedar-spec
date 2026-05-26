@@ -81,8 +81,8 @@ theorem or_not_euid_via_path {e₁ e₂: Expr} {entities : Entities} {path : Lis
 := by
   intro ha
   simp only [evaluate] at he
-  cases he₁ : Result.as Bool (evaluate e₁ request entities) <;>
-    simp only [he₁, bind_pure_comp, Except.bind_err, Except.bind_ok, reduceCtorEq] at he
+  simp_do_let Result.as Bool (evaluate e₁ request entities) as he₁ at he
+  simp only [bind_pure_comp] at he
   split at he
   · simp only [Except.ok.injEq] at he
     subst he ; cases ha
@@ -96,8 +96,8 @@ theorem unary_not_euid_via_path {op : UnaryOp} {e₁ : Expr} {entities : Entitie
 := by
   intro ha
   simp only [evaluate] at he
-  cases he₁ : evaluate e₁ request entities <;>
-    simp only [he₁, intOrErr, apply₁, Except.bind_err, Except.bind_ok, reduceCtorEq] at he
+  simp_do_let evaluate e₁ request entities as he₁ at he
+  simp only [intOrErr, apply₁] at he
   (split at he <;> try split at he) <;>
   try simp only [reduceCtorEq] at he
   all_goals
