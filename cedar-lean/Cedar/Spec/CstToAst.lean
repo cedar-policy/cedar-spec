@@ -262,7 +262,7 @@ private def constructAttrsAux? : List Cst.MemAccess → Option (List String)
     let head ← id.toUnreservedId?
     let tail ← constructAttrsAux? rest
     head :: tail
-  | .index e :: rest => none
+  | .index _ :: _ => none
 
 -- `first` should already be verified to be unreserved
 -- Verify all elements in `rest` are unreserved
@@ -475,7 +475,7 @@ public def Cst.Relation.toExprOrSpecial? : Cst.Relation → Option ExprOrSpecial
     let first ← initial.toExprOrSpecial?
     match extended with
     | [] => some first
-    | (op, x) :: tail =>
+    | (op, x) :: _ =>
       let first ← first.toExpr?
       let second ← x.toAExpr?
       some (.expr (constructExprRel op first second))
