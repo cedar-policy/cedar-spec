@@ -253,22 +253,54 @@ private def AddExpr.toPatternString? (e : AddExpr) : Option String :=
     | _ => none
 
 -- TODO: Review this function, written by Claude
-private def String.toPattern (s : String) : Pattern :=
-  let rec go : List Char → Pattern
-    | []                  => []
-    | '\\' :: '*'  :: cs  => .justChar '*'  :: go cs
-    | '\\' :: '\\' :: cs  => .justChar '\\' :: go cs
-    | '\\' :: 'n'  :: cs  => .justChar '\n' :: go cs
-    | '\\' :: 'r'  :: cs  => .justChar '\r' :: go cs
-    | '\\' :: 't'  :: cs  => .justChar '\t' :: go cs
-    | '\\' :: '0'  :: cs  => .justChar '\x00' :: go cs
-    | '\\' :: '"'  :: cs  => .justChar '"'  :: go cs
-    | '\\' :: '\'' :: cs  => .justChar '\'' :: go cs
-    | '\\' :: c    :: cs  => .justChar c    :: go cs   -- swallow unknown escape
-    | '\\' :: []          => []                        -- lone trailing backslash
-    | '*'  :: cs          => .star          :: go cs
-    | c    :: cs          => .justChar c    :: go cs
-  go s.toList
+
+private def hexDigitToNat? (c : Char) : Option Nat :=
+  if '0' ≤ c ∧ c ≤ '9' then some (c.toNat - '0'.toNat)
+  else if 'a' ≤ c ∧ c ≤ 'f' then some (c.toNat - 'a'.toNat + 10)
+  else if 'A' ≤ c ∧ c ≤ 'F' then some (c.toNat - 'A'.toNat + 10)
+  else none
+
+private def toPatternAux (input : List Char) : Option Pattern :=
+  match input with
+  | [] => some []
+  | '\\' :: '*'  :: cs => do let tail ← toPatternAux cs; some (.justChar '*' :: tail)
+  | '\\' :: '\\' :: cs => do let tail ← toPatternAux cs; some (.justChar '\\' :: tail)
+  | '\\' :: 'n'  :: cs => do let tail ← toPatternAux cs; some (.justChar '\n' :: tail)
+  | '\\' :: 'r'  :: cs => do let tail ← toPatternAux cs; some (.justChar '\r' :: tail)
+  | '\\' :: 't'  :: cs => do let tail ← toPatternAux cs; some (.justChar '\t' :: tail)
+  | '\\' :: '0'  :: cs => do let tail ← toPatternAux cs; some (.justChar '\x00' :: tail)
+  | '\\' :: '"'  :: cs => do let tail ← toPatternAux cs; some (.justChar '"' :: tail)
+  | '\\' :: '\'' :: cs => do let tail ← toPatternAux cs; some (.justChar '\'' :: tail)
+  | '\\' :: 'u'  :: '{' :: cs =>
+    let digits := cs.takeWhile (· ≠ '}')
+    let afterBrace := cs.drop digits.length
+    match h : afterBrace with
+    | '}' :: remaining => do
+      if digits.isEmpty ∨ digits.length > 6 then none else do
+      let codepoint ← digits.foldlM (fun acc d => do
+        let v ← hexDigitToNat? d
+        some (acc * 16 + v)) 0
+      if codepoint > 0x10FFFF then none
+      let tail ← toPatternAux remaining
+      some (.justChar (Char.ofNat codepoint) :: tail)
+    | _ => none
+  | '\\' :: _ => none
+  | '*' :: cs => do let tail ← toPatternAux cs; some (.star :: tail)
+  | c :: cs => do let tail ← toPatternAux cs; some (.justChar c :: tail)
+termination_by input.length
+decreasing_by
+  all_goals simp_wf
+  all_goals (try omega)
+  · have h1 : digits.length ≤ cs.length :=
+      List.IsPrefix.length_le (List.takeWhile_prefix _)
+    have h2 : afterBrace.length = cs.length - digits.length := by
+      simp [afterBrace, List.length_drop]
+    have h3 : remaining.length + 1 = afterBrace.length := by
+      simp [h]
+    omega
+
+private def String.toPattern? (s : String) : Option Pattern :=
+  toPatternAux s.toList
 
 mutual
 
@@ -395,7 +427,9 @@ public def Relation.evaluate (e : Relation) (req : Request) (es : Entities) : Re
     | none => .error .typeError
     | some s => do
       let v ← t.evaluate req es
-      apply₁ (.like (String.toPattern s)) v
+      match String.toPattern? s with
+      | some p => apply₁ (.like p) v
+      | none => .error .typeError
 termination_by sizeOf e
 
 public def AndExpr.evaluate (e : AndExpr) (req : Request) (es : Entities) : Result Value := do

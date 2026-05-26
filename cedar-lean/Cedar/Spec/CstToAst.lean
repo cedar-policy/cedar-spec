@@ -343,7 +343,6 @@ private def constructExprRel (op : Cst.RelOp) (e₁ e₂ : Expr) : Expr :=
   | .rEq => .binaryApp .eq e₁ e₂
   | .rIn => .binaryApp .mem e₁ e₂
 
-
 private def constructAttrsAux? : List Cst.MemAccess → Option (List String)
   | [] => some []
   | .field id :: rest => do
@@ -351,7 +350,6 @@ private def constructAttrsAux? : List Cst.MemAccess → Option (List String)
     let tail ← constructAttrsAux? rest
     head :: tail
   | .index e :: rest => none
-
 
 -- `first` should already be verified to be unreserved
 -- Verify all elements in `rest` are unreserved
@@ -385,6 +383,57 @@ private def extendedHasAttr (target : Expr) (fields : List String) : Expr :=
   | f :: rest =>
     .and (.hasAttr target f) (extendedHasAttr (.getAttr target f) rest)
 
+-- Begin code by Claude
+private def toPatternAux (input : List Char) : Option Pattern :=
+  match input with
+  | [] => some []
+  | '\\' :: '*'  :: cs => do let tail ← toPatternAux cs; some (.justChar '*' :: tail)
+  | '\\' :: '\\' :: cs => do let tail ← toPatternAux cs; some (.justChar '\\' :: tail)
+  | '\\' :: 'n'  :: cs => do let tail ← toPatternAux cs; some (.justChar '\n' :: tail)
+  | '\\' :: 'r'  :: cs => do let tail ← toPatternAux cs; some (.justChar '\r' :: tail)
+  | '\\' :: 't'  :: cs => do let tail ← toPatternAux cs; some (.justChar '\t' :: tail)
+  | '\\' :: '0'  :: cs => do let tail ← toPatternAux cs; some (.justChar '\x00' :: tail)
+  | '\\' :: '"'  :: cs => do let tail ← toPatternAux cs; some (.justChar '"' :: tail)
+  | '\\' :: '\'' :: cs => do let tail ← toPatternAux cs; some (.justChar '\'' :: tail)
+  | '\\' :: 'u'  :: '{' :: cs =>
+    let digits := cs.takeWhile (· ≠ '}')
+    let afterBrace := cs.drop digits.length
+    match h : afterBrace with
+    | '}' :: remaining => do
+      if digits.isEmpty ∨ digits.length > 6 then none else do
+      let codepoint ← digits.foldlM (fun acc d => do
+        let v ← hexDigitToNat? d
+        some (acc * 16 + v)) 0
+      if codepoint > 0x10FFFF then none
+      let tail ← toPatternAux remaining
+      some (.justChar (Char.ofNat codepoint) :: tail)
+    | _ => none
+  | '\\' :: _ => none
+  | '*' :: cs => do let tail ← toPatternAux cs; some (.star :: tail)
+  | c :: cs => do let tail ← toPatternAux cs; some (.justChar c :: tail)
+termination_by input.length
+decreasing_by
+  all_goals simp_wf
+  all_goals (try omega)
+  · have h1 : digits.length ≤ cs.length :=
+      List.IsPrefix.length_le (List.takeWhile_prefix _)
+    have h2 : afterBrace.length = cs.length - digits.length := by
+      simp [afterBrace, List.length_drop]
+    have h3 : remaining.length + 1 = afterBrace.length := by
+      simp [h]
+    omega
+
+private def String.toPattern? (s : String) : Option Pattern :=
+  toPatternAux s.toList
+
+-- End code by Claude
+
+private def Cst.AddExpr.toPattern? (e : Cst.AddExpr) : Option Pattern := do
+  let eos ← e.toExprOrSpecial?
+  match eos with
+  | .strLit lit => String.toPattern? lit
+  | _ => none
+
 public def Cst.Relation.toExprOrSpecial? : Cst.Relation → Option ExprOrSpecial
   | .rCommon initial extended =>
     if extended.length > 1 then none else do
@@ -401,7 +450,10 @@ public def Cst.Relation.toExprOrSpecial? : Cst.Relation → Option ExprOrSpecial
     match maybe_fields with
     | .inl f => some (.expr (.hasAttr maybe_target f))
     | .inr fs => some (.expr (extendedHasAttr maybe_target fs))
-  | .rLike target pattern => sorry
+  | .rLike target pattern => do
+    let maybe_target ← target.toAExpr?
+    let maybe_pattern ← pattern.toPattern?
+    some (.expr (.unaryApp (.like maybe_pattern) maybe_target))
 
 
 
