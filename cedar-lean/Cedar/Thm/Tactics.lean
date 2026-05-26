@@ -29,11 +29,15 @@ namespace Cedar.Thm
 /--
 This tactic simplifies assumptions of the form `do (let x ← expr ...)` by
 performing a `cases` and `simp` on `expr`.
+
+Optionally, `as h` names the case-analysis hypothesis (avoiding a subsequent `rename_i`).
 -/
-syntax "simp_do_let" term (" at " ident)? : tactic
+syntax "simp_do_let" term (" as " ident)? (" at " ident)? : tactic
 
 macro_rules
-| `(tactic| simp_do_let $e $[at $h:ident]?) =>
-  `(tactic|
-    cases h' : $e <;>
-    simp only [h', Except.bind_err, Except.bind_ok, reduceCtorEq] $[at $h:ident]?)
+| `(tactic| simp_do_let $e as $h:ident $[at $loc:ident]?) =>
+  `(tactic| cases $h:ident : $e <;>
+    simp only [$h:ident, Except.bind_err, Except.bind_ok, reduceCtorEq] $[at $loc:ident]?)
+| `(tactic| simp_do_let $e $[at $loc:ident]?) =>
+  `(tactic| cases h' : $e <;>
+    simp only [h', Except.bind_err, Except.bind_ok, reduceCtorEq] $[at $loc:ident]?)
