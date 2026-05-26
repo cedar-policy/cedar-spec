@@ -455,10 +455,58 @@ public def Cst.Relation.toExprOrSpecial? : Cst.Relation → Option ExprOrSpecial
     let maybe_pattern ← pattern.toPattern?
     some (.expr (.unaryApp (.like maybe_pattern) maybe_target))
 
+public def Cst.Relation.toAExpr? (e : Cst.Relation) : Option Expr := do
+  let ret ← e.toExprOrSpecial?
+  ret.toExpr?
 
+public def Cst.AndExpr.toExprOrSpecial? (e : Cst.AndExpr) : Option ExprOrSpecial :=
+  match e.extended with
+  | [] => e.initial.toExprOrSpecial?
+  | _ => do
+    let first ← e.initial.toAExpr?
+    let rest ← e.extended.mapM (fun rel => rel.toAExpr?)
+    some (.expr (rest.foldl Expr.and first))
 
-public def Cst.Expr.toAExpr? (e : Cst.Expr) : Option AExpr :=
-  sorry
+public def Cst.AndExpr.toAExpr? (e : Cst.AndExpr) : Option Expr := do
+  let ret ← e.toExprOrSpecial?
+  ret.toExpr?
 
+public def Cst.OrExpr.toExprOrSpecial? (e : Cst.OrExpr) : Option ExprOrSpecial :=
+  match e.extended with
+  | [] => e.initial.toExprOrSpecial?
+  | _ => do
+    let first ← e.initial.toAExpr?
+    let rest ← e.extended.mapM (fun ande => ande.toAExpr?)
+    some (.expr (rest.foldl Expr.or first))
+
+public def Cst.OrExpr.toAExpr? (e : Cst.OrExpr) : Option Expr := do
+  let ret ← e.toExprOrSpecial?
+  ret.toExpr?
+
+public def Cst.ExprData.toExprOrSpecial? : Cst.ExprData → Option ExprOrSpecial
+  | .edOr ore => ore.toExprOrSpecial?
+  | .edIf i t e => do
+    let maybe_guard ← i.toAExpr?
+    let maybe_then ← t.toAExpr?
+    let maybe_else ← e.toAExpr?
+    some (.expr (.ite maybe_guard maybe_then maybe_else))
+
+public def Cst.ExprData.toAExpr? (e : Cst.ExprData) : Option Expr := do
+  let ret ← e.toExprOrSpecial?
+  ret.toExpr?
+
+public def Cst.ExprImpl.toExprOrSpecial? (e : Cst.ExprImpl) : Option ExprOrSpecial :=
+  e.expr.toExprOrSpecial?
+
+public def Cst.ExprImpl.toAExpr? (e : Cst.ExprImpl) : Option Expr := do
+  let ret ← e.toExprOrSpecial?
+  ret.toExpr?
+
+public def Cst.Expr.toExprOrSpecial? : Cst.Expr → Option ExprOrSpecial
+  | .expr impl => impl.toExprOrSpecial?
+
+public def Cst.Expr.toAExpr? (e : Cst.Expr) : Option AExpr := do
+  let ret ← e.toExprOrSpecial?
+  ret.toExpr?
 
 end
