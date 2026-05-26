@@ -121,7 +121,7 @@ pub(crate) struct RequestArgs {
     /// The context as a JSON string [default {}]
     #[arg(long, value_name = "CONTEXT", conflicts_with_all = ["request_file", "context_file"], requires = "principal", requires = "action", requires = "resource")]
     context: Option<String>,
-    /// A file containign the context in JSON
+    /// A file containing the context in JSON
     #[arg(long, value_name = "CONTEXT_FILE", conflicts_with_all = ["request_file", "context"], requires = "principal", requires = "action", requires = "resource")]
     context_file: Option<PathBuf>,
     /// A file containing a request (principal, action, resource, context) in JSON format
@@ -185,7 +185,7 @@ pub(crate) struct RequestEnvArgs {
     /// Restrict Analysis to Request Environments for the given PrincipalType
     #[arg(long, value_name = "PRINCIPAL_TYPE_NAME", global = true)]
     principal_type: Option<String>,
-    /// Restrict Analysis to Request Environmetns for the given Action
+    /// Restrict Analysis to Request Environments for the given Action
     #[arg(long, value_name = "ACTION_NAME", global = true)]
     action_name: Option<String>,
     /// Restrict Analysis to Request Environments for the given ResourceType
@@ -226,7 +226,7 @@ pub(crate) enum EvaluationCommands {
     },
     /// Evaluate a Cedar Expression
     Evaluate {
-        /// A file contianing the expression to be evaluated
+        /// A file containing the expression to be evaluated
         #[clap(required = true)]
         input_expr_file: PathBuf,
         /// A file containing the Entities needed for evaluation
