@@ -10,7 +10,7 @@ private def String.toUnreservedId? (s : String) : Option String :=
   | "principal" | "action" | "resource" | "context"
   | "true" | "false" | "permit" | "forbid"
   | "when" | "unless" | "in" | "has" | "like" | "is"
-  | "if" | "then" | "else" => none
+  | "if" | "then" | "else" | "__cedar" => none
   | _ => some s
 
 namespace Cedar.Spec
@@ -32,8 +32,30 @@ public inductive ExprOrSpecial where
   -- A boolean literal
   | boolLit (v : Bool)
 
+public def Unreserved? (s : String) : Bool :=
+  match s with
+  | "principal" => false
+  | "action" => false
+  | "resource" => false
+  | "context" => false
+  | "true" => false
+  | "false" => false
+  | "permit" => false
+  | "forbid" => false
+  | "when" => false
+  | "unless" => false
+  | "in" => false
+  | "has" => false
+  | "like" => false
+  | "is" => false
+  | "if" => false
+  | "then" => false
+  | "else" => false
+  | "__cedar" => false
+  | _ => true
+
 private def Cst.Ident.toUnreservedId? : Cst.Ident → Option String
-  | .idIdent s => some s
+  | .idIdent s => if Unreserved? s then some s else none
   | _ => none
 
 private def Cst.Ident.toUnreservedString? : Cst.Ident → Option String
@@ -148,18 +170,18 @@ private def Cst.MemAccess.toAstAccessor? (m : Cst.MemAccess) : Option AstAccesso
 private def memberAux :  ExprOrSpecial → List AstAccessor → Option ExprOrSpecial
   | prim, [] => prim
   | .expr e, hd :: tl => memberAux (.expr (.getAttr e hd.toString)) tl
-  | prim@(.strLit s), hd :: tl => do
+  | prim@(.strLit _), hd :: tl => do
     let ret ← prim.toExpr?
     memberAux (.expr (.getAttr ret hd.toString)) tl
-  | prim@(.boolLit s), hd :: tl => do
+  | prim@(.boolLit _), hd :: tl => do
     let ret ← prim.toExpr?
     memberAux (.expr (.getAttr ret hd.toString)) tl
-  | prim@(.var v), hd@(.field id) :: tl =>
+  | (.var v), (.field id) :: tl =>
     memberAux (.expr (.getAttr (.var v) id.toString)) tl
-  | prim@(.var v), hd@(.index id) :: tl =>
+  | (.var v), (.index id) :: tl =>
     memberAux (.expr (.getAttr (.var v) id)) tl
-  | prim@(.name n), hd@(.field _) :: tl => none
-  | prim@(.name n), hd@(.index _) :: tl => none
+  | (.name _), (.field _) :: _ => none
+  | (.name _), (.index _) :: _ => none
 
 private def Expr.bangN (e : Expr) (n : Nat) : Expr :=
   if n == 0 then e else (Expr.unaryApp .not e).bangN (n-1)
@@ -321,12 +343,10 @@ public def Cst.AddExpr.toAExpr? (e : Cst.AddExpr) : Option AExpr := do
   ret.toExpr?
 termination_by (sizeOf e, 1)
 
--- Define `UnreservedId` as a refinement type and write
--- a partial function from `String` to `UnreservedId`
 
 -- In Rust, `to_has_rhs` has the output type `Option (String ⊕ UnreservedId)`.
 -- `UnservedId` is essentially a string, but passed the check that it's not
--- a reserved keyword. In this implementation, we keep the output type `String`
+-- "__cedar". In this implementation, we keep the output type `String`
 -- and return a `none` if it is reserved.
 private def Cst.AddExpr.toHasRhs? (e : Cst.AddExpr) : Option (String ⊕ List String) := do
   if (!e.extended.isEmpty) || (!e.initial.extended.isEmpty) || (!e.initial.initial.op.isNone) then none else
@@ -433,7 +453,6 @@ decreasing_by
 public def Cst.OrExpr.toAExpr? (e : Cst.OrExpr) : Option AExpr := do
   let ret ← e.toExprOrSpecial?
   ret.toExpr?
-termination_by (sizeOf e, 1)
 
 public def Cst.ExprData.toExprOrSpecial? : Cst.ExprData → Option ExprOrSpecial
   | .edOr ore => ore.toExprOrSpecial?
@@ -447,7 +466,6 @@ termination_by e => (sizeOf e, 0)
 public def Cst.ExprData.toAExpr? (e : Cst.ExprData) : Option AExpr := do
   let ret ← e.toExprOrSpecial?
   ret.toExpr?
-termination_by (sizeOf e, 1)
 
 public def Cst.ExprImpl.toExprOrSpecial? (e : Cst.ExprImpl) : Option ExprOrSpecial :=
   e.expr.toExprOrSpecial?
@@ -458,7 +476,6 @@ decreasing_by
 public def Cst.ExprImpl.toAExpr? (e : Cst.ExprImpl) : Option AExpr := do
   let ret ← e.toExprOrSpecial?
   ret.toExpr?
-termination_by (sizeOf e, 1)
 
 public def Cst.Expr.toExprOrSpecial? : Cst.Expr → Option ExprOrSpecial
   | .expr impl => impl.toExprOrSpecial?
@@ -661,8 +678,6 @@ public def Cst.PolicyImpl.toPolicy? (p : Cst.PolicyImpl) : Option Cedar.Spec.Pol
 
 public def Cst.Policy.toPolicy? : Cst.Policy → Option Cedar.Spec.Policy
   | .policy p => p.toPolicy?
-
-#check List.mapM
 
 public def Cst.Policies.toPolicies? (ps : List Cst.Policy) : Option Cedar.Spec.Policies := do
   let rets ← ps.mapM Cst.Policy.toPolicy?
