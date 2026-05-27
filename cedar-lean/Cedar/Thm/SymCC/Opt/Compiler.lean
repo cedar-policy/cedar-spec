@@ -113,7 +113,7 @@ private theorem Opt.compileHasAttr.correctness (t₁ : Term) (attr : Attr) (εs 
   (do let term ← SymCC.compileHasAttr t₁ attr εs ; .ok { term, footprint })
 := by
   simp only [Opt.compileHasAttr, SymCC.compileHasAttr, bind_assoc]
-  simp_do_let compileAttrsOf t₁ εs ; rename_i h₁
+  simp_do_let compileAttrsOf t₁ εs as h₁
   split <;> rename_i h <;> simp [h]
   split <;> rename_i h <;> simp [h]
 
@@ -697,7 +697,7 @@ private theorem both_lists_ok_then_elts_correspond {xs : List Expr} {εnv : SymE
   case cons hd tl =>
     simp [List.mapM_cons, Functor.map, Except.map] at h₁ h₂
     rw [ih _ (by simp)] at h₁
-    simp_do_let SymCC.compile hd εnv at h₁ ; rename_i hhd
+    simp_do_let SymCC.compile hd εnv as hhd at h₁
     case ok t =>
     simp [hhd] at h₂
     split at h₁ <;> simp at h₁
@@ -734,7 +734,7 @@ private theorem both_lists_pairs_ok_then_elts_correspond {xs : List (Attr × Exp
   case cons hd tl =>
     simp [List.mapM_cons, Functor.map, Except.map] at h₁ h₂
     rw [ih _ (by simp)] at h₁
-    simp_do_let compile hd.snd εnv at h₁ ; rename_i hhd
+    simp_do_let compile hd.snd εnv as hhd at h₁
     case ok t =>
     simp [hhd] at h₂
     split at h₁ <;> simp at h₁
@@ -955,8 +955,8 @@ theorem Opt.compile.correctness.set (ls : List Expr) (εnv : SymEnv) :
   simp [Opt.compile, SymCC.compile, footprint]
   rw [List.mapM₁_eq_mapM (Opt.compile · εnv), List.mapM₁_eq_mapM (SymCC.compile · εnv)]
   rw [List.mapUnion₁_eq_mapUnion (footprint · εnv)]
-  simp_do_let ls.mapM (Opt.compile · εnv) <;> rename_i hmap₁
-  <;> simp_do_let ls.mapM (SymCC.compile · εnv) <;> rename_i hmap₂
+  simp_do_let ls.mapM (Opt.compile · εnv) as hmap₁
+  <;> simp_do_let ls.mapM (SymCC.compile · εnv) as hmap₂
   case error.error e₁ e₂ =>
     simp only [Except.error.injEq]
     apply both_lists_error_then_errors_same hmap₁ hmap₂
@@ -1006,8 +1006,8 @@ theorem Opt.compile.correctness.record (m : List (Attr × Expr)) (εnv : SymEnv)
   simp only [List.mapM₂_eq_mapM (λ x => do Except.ok (x.fst, ← Opt.compile x.snd εnv)) m]
   simp only [List.mapM₂_eq_mapM (λ x => do Except.ok (x.fst, ← SymCC.compile x.snd εnv)) m]
   rw [List.mapUnion₂_eq_mapUnion (λ x => footprint x.snd εnv)]
-  simp_do_let m.mapM (m := SymCC.Result) _ <;> rename_i hmap₁
-  <;> simp_do_let m.mapM (m := SymCC.Result) _ <;> rename_i hmap₂
+  simp_do_let m.mapM (m := SymCC.Result) _ as hmap₁
+  <;> simp_do_let m.mapM (m := SymCC.Result) _ as hmap₂
   case error.error e₁ e₂ =>
     simp only [Except.error.injEq]
     apply both_lists_pairs_error_then_errors_same hmap₁ hmap₂
@@ -1059,8 +1059,8 @@ theorem Opt.compile.correctness.call (xfn : ExtFun) (args : List Expr) (εnv : S
   simp [Opt.compile, SymCC.compile, footprint]
   rw [List.mapM₁_eq_mapM (Opt.compile · εnv), List.mapM₁_eq_mapM (SymCC.compile · εnv)]
   rw [List.mapUnion₁_eq_mapUnion (footprint · εnv)]
-  simp_do_let args.mapM (Opt.compile · εnv) <;> rename_i hmap₁
-  <;> simp_do_let args.mapM (SymCC.compile · εnv) <;> rename_i hmap₂
+  simp_do_let args.mapM (Opt.compile · εnv) as hmap₁
+  <;> simp_do_let args.mapM (SymCC.compile · εnv) as hmap₂
   case error.error e₁ e₂ =>
     simp only [Except.error.injEq]
     apply both_lists_error_then_errors_same hmap₁ hmap₂

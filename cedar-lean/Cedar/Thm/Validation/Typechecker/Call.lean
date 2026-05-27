@@ -38,12 +38,12 @@ match xs with
   constructor
 | x :: xs => by
   simp only [List.mapM₁_eq_mapM λ x => justType (typeOf x c env), List.mapM_cons, bind_pure_comp] at htxs
-  cases htx : justType (typeOf x c env) <;> simp only [htx, Except.bind_err, reduceCtorEq] at htxs
+  simp_do_let (justType (typeOf x c env)) as htx at htxs
   simp only [justType, Except.map] at htx
   split at htx <;> simp only [reduceCtorEq, Except.ok.injEq] at htx
   subst htx
   cases htxs' : List.mapM (fun x => justType (typeOf x c env)) xs <;>
-    simp only [htxs', Except.map_error, Except.map_ok, Except.bind_ok, reduceCtorEq, Except.ok.injEq] at htxs
+    simp only [htxs', Except.map_error, Except.map_ok, reduceCtorEq, Except.ok.injEq] at htxs
   subst txs
   constructor
   · rename_i r _ _
@@ -58,7 +58,7 @@ theorem type_of_call_inversion {xs : List Expr} {c c' : Capabilities} {env : Typ
     List.Forall₂ (λ xᵢ txᵢ => ∃ cᵢ, typeOf xᵢ c env = .ok (txᵢ, cᵢ)) xs txs
 := by
   simp only [typeOf, typeOfCall] at htx
-  cases htx₁ : xs.mapM₁ fun x => justType (typeOf x.val c env) <;> simp only [htx₁, Except.bind_err, Except.bind_ok, reduceCtorEq] at htx
+  simp_do_let (xs.mapM₁ fun x => justType (typeOf x.val c env)) as htx₁ at htx
   rename_i txs
   exists txs
   and_intros
@@ -119,10 +119,9 @@ theorem type_of_call_datetime_inversion {xs : List Expr} {c c' : Capabilities} {
     (Cedar.Spec.Ext.Datetime.parse s).isSome
 := by
   simp only [typeOf] at h₁
-  cases h₂ : List.mapM₁ xs fun x => justType (typeOf x.val c env) <;>
-  simp only [h₂, Except.bind_err, reduceCtorEq] at h₁
+  simp_do_let (List.mapM₁ xs fun x => justType (typeOf x.val c env)) as h₂ at h₁
   rename_i tys
-  simp only [typeOfCall, typeOfConstructor, List.empty_eq, Except.bind_ok] at h₁
+  simp only [typeOfCall, typeOfConstructor, List.empty_eq] at h₁
   split at h₁ <;> simp [ok, err] at h₁
   rename_i s
   split at h₁ <;> simp at h₁
@@ -157,8 +156,7 @@ theorem type_of_call_duration_inversion {xs : List Expr} {c c' : Capabilities} {
     (Cedar.Spec.Ext.Datetime.duration s).isSome
 := by
   simp only [typeOf] at h₁
-  cases h₂ : List.mapM₁ xs fun x => justType (typeOf x.val c env) <;>
-  simp only [h₂, Except.bind_err, reduceCtorEq] at h₁
+  simp_do_let (List.mapM₁ xs fun x => justType (typeOf x.val c env)) as h₂ at h₁
   rename_i tys
   simp only [typeOfCall, typeOfConstructor, List.empty_eq] at h₁
   split at h₁ <;> simp [ok, err] at h₁
@@ -469,10 +467,9 @@ theorem type_of_call_toTime_inversion {xs : List Expr} {c c' : Capabilities} {en
     (typeOf x₁ c env).typeOf = .ok ((CedarType.ext .datetime), c₁)
 := by
   simp [typeOf] at h₁
-  cases h₂ : List.mapM₁ xs fun x => justType (typeOf x.val c env) <;>
-  simp only [h₂, Except.bind_err, reduceCtorEq] at h₁
+  simp_do_let (List.mapM₁ xs fun x => justType (typeOf x.val c env)) as h₂ at h₁
   rename_i tys
-  simp only [typeOfCall, List.empty_eq, Except.bind_ok] at h₁
+  simp only [typeOfCall, List.empty_eq] at h₁
   all_goals {
     split at h₁ <;> try { contradiction }
     all_goals {
@@ -528,10 +525,9 @@ theorem type_of_call_toDate_inversion {xs : List Expr} {c c' : Capabilities} {en
     (typeOf x₁ c env).typeOf = .ok ((CedarType.ext .datetime), c₁)
 := by
   simp only [typeOf] at h₁
-  cases h₂ : List.mapM₁ xs fun x => justType (typeOf x.val c env) <;>
-  simp only [h₂, Except.bind_err, reduceCtorEq] at h₁
+  simp_do_let (List.mapM₁ xs fun x => justType (typeOf x.val c env)) as h₂ at h₁
   rename_i tys
-  simp only [typeOfCall, List.empty_eq, Except.bind_ok] at h₁
+  simp only [typeOfCall, List.empty_eq] at h₁
   all_goals {
     split at h₁ <;> try { contradiction }
     all_goals {
@@ -593,10 +589,9 @@ theorem type_of_call_offset_inversion {xs : List Expr} {c c' : Capabilities} {en
     (typeOf x₂ c env).typeOf = .ok ((CedarType.ext .duration), c₂)
 := by
   simp only [typeOf] at h₁
-  cases h₂ : List.mapM₁ xs fun x => justType (typeOf x.val c env) <;>
-  simp only [h₂, Except.bind_err, reduceCtorEq] at h₁
+  simp_do_let (List.mapM₁ xs fun x => justType (typeOf x.val c env)) as h₂ at h₁
   rename_i tys
-  simp only [typeOfCall, List.empty_eq, Except.bind_ok] at h₁
+  simp only [typeOfCall, List.empty_eq] at h₁
   all_goals {
     split at h₁ <;> try { contradiction }
     all_goals {
@@ -673,10 +668,9 @@ theorem type_of_call_durationSince_inversion {xs : List Expr} {c c' : Capabiliti
     (typeOf x₂ c env).typeOf = .ok ((CedarType.ext .datetime), c₂)
 := by
   simp only [typeOf] at h₁
-  cases h₂ : List.mapM₁ xs fun x => justType (typeOf x.val c env) <;>
-  simp only [h₂, Except.bind_err, reduceCtorEq] at h₁
+  simp_do_let (List.mapM₁ xs fun x => justType (typeOf x.val c env)) as h₂ at h₁
   rename_i tys
-  simp only [typeOfCall, List.empty_eq, Except.bind_ok] at h₁
+  simp only [typeOfCall, List.empty_eq] at h₁
   all_goals {
     split at h₁ <;> try { contradiction }
     all_goals {

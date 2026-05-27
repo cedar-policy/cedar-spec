@@ -233,14 +233,14 @@ theorem Except.isOk_iff_exists {x : Except ε α} :
 := by
   cases x <;> simp [Except.isOk, Except.toBool]
 
-theorem if_mapM_doesn't_fail_on_list_then_doesn't_fail_on_set [LT α] [DecidableLT α] [StrictLT α] {f : α → Except ε β} {as : List α} :
-  Except.isOk (as.mapM f) →
-  Except.isOk ((Set.elts (Set.make as)).mapM f)
+theorem if_mapM_doesn't_fail_on_list_then_doesn't_fail_on_set [LT α] [DecidableLT α] [StrictLT α] {f : α → Except ε β} {xs : List α} :
+  Except.isOk (xs.mapM f) →
+  Except.isOk ((Set.elts (Set.make xs)).mapM f)
 := by
   intro h₁
   replace ⟨bs, h₁⟩ := Except.isOk_iff_exists.mp h₁
   replace h₁ := List.mapM_ok_implies_all_ok h₁
-  cases as <;> simp at h₁
+  cases xs <;> simp at h₁
   case nil => simp [pure, Except.pure, Except.isOk, Except.toBool]
   case cons ahd atl =>
     replace ⟨⟨b, _, h₁⟩, h₂⟩ := h₁

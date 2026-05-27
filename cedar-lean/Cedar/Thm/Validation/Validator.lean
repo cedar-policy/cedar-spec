@@ -89,7 +89,7 @@ theorem typecheck_policy_with_environments_is_sound (policy : Policy) (schema : 
 := by
   intro h₀ h₂
   simp only [typecheckPolicyWithEnvironments, Except.mapError] at h₂
-  cases h₄ : checkEntities schema policy.toExpr <;> simp only [h₄, Except.bind_err, Except.bind_ok, reduceCtorEq] at h₂
+  simp_do_let (checkEntities schema policy.toExpr) as h₄ at h₂
   cases h₃ : List.mapM (typecheckPolicy policy) schema.environments with
   | error => simp only [h₃, Except.bind_err, reduceCtorEq] at h₂
   | ok ts =>
