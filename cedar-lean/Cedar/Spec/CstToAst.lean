@@ -5,75 +5,6 @@ public import Cedar.Spec.Expr
 public import Cedar.Spec.Policy
 public import Cedar.Spec.Value
 
-/- Begin code by Claude -/
-/- Check correctness later -/
-private def hexDigitToNat? (c : Char) : Option Nat :=
-  if '0' ≤ c ∧ c ≤ '9' then some (c.toNat - '0'.toNat)
-  else if 'a' ≤ c ∧ c ≤ 'f' then some (c.toNat - 'a'.toNat + 10)
-  else if 'A' ≤ c ∧ c ≤ 'F' then some (c.toNat - 'A'.toNat + 10)
-  else none
-
-private def parseUnicodeEscape (cs : List Char) : Option (Char × List Char) := do
-  match cs with
-  | '{' :: rest =>
-    let digits := rest.takeWhile (· ≠ '}')
-    let afterBrace := rest.drop digits.length
-    match afterBrace with
-    | '}' :: remaining =>
-      if digits.isEmpty ∨ digits.length > 6 then none else do
-      let codepoint ← digits.foldlM (fun acc d => do
-        let v ← hexDigitToNat? d
-        some (acc * 16 + v)) 0
-      if codepoint > 0x10FFFF then none
-      else some (Char.ofNat codepoint, remaining)
-    | _ => none
-  | _ => none
-
-private def unescapeAux (input : List Char) : Option (List Char) :=
-  match input with
-  | [] => some []
-  | '\\' :: 'n'  :: cs => do let tail ← unescapeAux cs; some ('\n' :: tail)
-  | '\\' :: 'r'  :: cs => do let tail ← unescapeAux cs; some ('\r' :: tail)
-  | '\\' :: 't'  :: cs => do let tail ← unescapeAux cs; some ('\t' :: tail)
-  | '\\' :: '0'  :: cs => do let tail ← unescapeAux cs; some ('\x00' :: tail)
-  | '\\' :: '\\' :: cs => do let tail ← unescapeAux cs; some ('\\' :: tail)
-  | '\\' :: '"'  :: cs => do let tail ← unescapeAux cs; some ('"' :: tail)
-  | '\\' :: '\'' :: cs => do let tail ← unescapeAux cs; some ('\'' :: tail)
-  | '\\' :: 'u'  :: '{' :: cs =>
-    let digits := cs.takeWhile (· ≠ '}')
-    let afterBrace := cs.drop digits.length
-    match h : afterBrace with
-    | '}' :: remaining => do
-      if digits.isEmpty ∨ digits.length > 6 then none else do
-      let codepoint ← digits.foldlM (fun acc d => do
-        let v ← hexDigitToNat? d
-        some (acc * 16 + v)) 0
-      if codepoint > 0x10FFFF then none
-      let tail ← unescapeAux remaining
-      some (Char.ofNat codepoint :: tail)
-    | _ => none
-  | '\\' :: _ => none
-  | c :: cs => do
-    let tail ← unescapeAux cs
-    some (c :: tail)
-termination_by input.length
-decreasing_by
-  all_goals simp_wf
-  all_goals (try omega)
-  · have h1 : digits.length ≤ cs.length :=
-      List.IsPrefix.length_le (List.takeWhile_prefix _)
-    have h2 : afterBrace.length = cs.length - digits.length := by
-      simp [afterBrace, List.length_drop]
-    have h3 : remaining.length + 1 = afterBrace.length := by
-      simp [h]
-    omega
-
-public def String.unescape? (s : String) : Option String := do
-  let chars ← unescapeAux s.toList
-  some (String.ofList chars)
-
-/- End code by Claude -/
-
 private def String.toUnreservedId? (s : String) : Option String :=
   match s with
   | "principal" | "action" | "resource" | "context"
@@ -156,7 +87,7 @@ public def ExprOrSpecial.toExpr? : ExprOrSpecial → Option Expr
   | .expr e => some e
   | .var v => some (.var v)
   | .strLit s => do
-      let unescapted ← s.unescape?
+      let unescapted ← Cedar.Spec.CstCommon.unescape? s
       some (.lit (.string unescapted))
   | .boolLit b => some (.lit (.bool b))
   | .name _ => none
@@ -277,49 +208,6 @@ private def extendedHasAttr (target : Expr) (fields : List String) : Expr :=
   | f :: rest =>
     .and (.hasAttr target f) (extendedHasAttr (.getAttr target f) rest)
 
--- Begin code by Claude
-private def toPatternAux (input : List Char) : Option Pattern :=
-  match input with
-  | [] => some []
-  | '\\' :: '*'  :: cs => do let tail ← toPatternAux cs; some (.justChar '*' :: tail)
-  | '\\' :: '\\' :: cs => do let tail ← toPatternAux cs; some (.justChar '\\' :: tail)
-  | '\\' :: 'n'  :: cs => do let tail ← toPatternAux cs; some (.justChar '\n' :: tail)
-  | '\\' :: 'r'  :: cs => do let tail ← toPatternAux cs; some (.justChar '\r' :: tail)
-  | '\\' :: 't'  :: cs => do let tail ← toPatternAux cs; some (.justChar '\t' :: tail)
-  | '\\' :: '0'  :: cs => do let tail ← toPatternAux cs; some (.justChar '\x00' :: tail)
-  | '\\' :: '"'  :: cs => do let tail ← toPatternAux cs; some (.justChar '"' :: tail)
-  | '\\' :: '\'' :: cs => do let tail ← toPatternAux cs; some (.justChar '\'' :: tail)
-  | '\\' :: 'u'  :: '{' :: cs =>
-    let digits := cs.takeWhile (· ≠ '}')
-    let afterBrace := cs.drop digits.length
-    match h : afterBrace with
-    | '}' :: remaining => do
-      if digits.isEmpty ∨ digits.length > 6 then none else do
-      let codepoint ← digits.foldlM (fun acc d => do
-        let v ← hexDigitToNat? d
-        some (acc * 16 + v)) 0
-      if codepoint > 0x10FFFF then none
-      let tail ← toPatternAux remaining
-      some (.justChar (Char.ofNat codepoint) :: tail)
-    | _ => none
-  | '\\' :: _ => none
-  | '*' :: cs => do let tail ← toPatternAux cs; some (.star :: tail)
-  | c :: cs => do let tail ← toPatternAux cs; some (.justChar c :: tail)
-termination_by input.length
-decreasing_by
-  all_goals simp_wf
-  all_goals (try omega)
-  · have h1 : digits.length ≤ cs.length :=
-      List.IsPrefix.length_le (List.takeWhile_prefix _)
-    have h2 : afterBrace.length = cs.length - digits.length := by
-      simp [afterBrace, List.length_drop]
-    have h3 : remaining.length + 1 = afterBrace.length := by
-      simp [h]
-    omega
-
-private def String.toPattern? (s : String) : Option Pattern :=
-  toPatternAux s.toList
--- End code by Claude
 
 mutual
 
@@ -447,7 +335,7 @@ private def Cst.AddExpr.toHasRhs? (e : Cst.AddExpr) : Option (String ⊕ List St
   | .literal _ | .name _ =>
     let item ← member.item.toExprOrSpecial?
     match item, member.access with
-    | .strLit lit, [] => lit.unescape?.map .inl
+    | .strLit lit, [] => (Cedar.Spec.CstCommon.unescape? lit).map .inl
     | .var v, rest => (constructAttrs? (v.toString) rest).map .inr
     | .name n, rest => if !n.path.isEmpty then none else
       let first ← n.id.toUnreservedId?
@@ -468,7 +356,7 @@ decreasing_by
 private def Cst.AddExpr.toPattern? (e : Cst.AddExpr) : Option Pattern := do
   let eos ← e.toExprOrSpecial?
   match eos with
-  | .strLit lit => String.toPattern? lit
+  | .strLit lit => Cedar.Spec.CstCommon.toPattern? lit
   | _ => none
 termination_by (sizeOf e, 2)
 
@@ -641,7 +529,7 @@ private def Cst.Primary.toMultipleEntityUID? (p : Cst.Primary) : Option (EntityU
   | .ref r => match r with
     | .uid path (.string s) => do
       let maybe_path ← path.toAName?
-      let maybe_eid ← s.unescape?
+      let maybe_eid ← Cedar.Spec.CstCommon.unescape? s
       some (.inl {ty := maybe_path, eid := maybe_eid})
     | .ref _ _ => none
   | .expr e => e.toMultipleEntityUID?
