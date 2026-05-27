@@ -433,6 +433,9 @@ public def Cst.AddExpr.toAExpr? (e : Cst.AddExpr) : Option AExpr := do
   ret.toExpr?
 termination_by (sizeOf e, 1)
 
+-- Define `UnreservedId` as a refinement type and write
+-- a partial function from `String` to `UnreservedId`
+
 -- In Rust, `to_has_rhs` has the output type `Option (String ⊕ UnreservedId)`.
 -- `UnservedId` is essentially a string, but passed the check that it's not
 -- a reserved keyword. In this implementation, we keep the output type `String`
@@ -579,3 +582,200 @@ public def Cst.Expr.toAExpr? (e : Cst.Expr) : Option AExpr := do
 termination_by (sizeOf e, 1)
 
 end
+
+private def Cst.Ident.toConditionKind? : Cst.Ident →  Option ConditionKind
+  | .idWhen => some .when
+  | .idUnless => some .unless
+  | _ => none
+
+public def Cst.Cond.toCondition? (cond : Cst.Cond) : Option Condition := do
+  let kind ← cond.cond.toConditionKind?
+  let body ← cond.expr.bind (Cst.Expr.toAExpr?)
+  some {kind := kind, body := body}
+
+public def toConditions? (conds : List Cst.Cond) : Option Conditions := do
+  conds.mapM (·.toCondition?)
+
+private def Cst.Ident.toVar? : Cst.Ident → Option Var
+  | .idPrincipal => some .principal
+  | .idAction => some .action
+  | .idResource => some .resource
+  | .idContext => some .context
+  | _ => none
+
+private def Cst.Ident.toEffect? : Cst.Ident → Option Effect
+  | .idPermit => some .permit
+  | .idForbid => some .forbid
+  | _ => none
+
+private def Cst.AddExpr.toEntityType? (e : Cst.AddExpr) : Option EntityType := do
+  let eos ← e.toExprOrSpecial?
+  match eos with
+  | .name n => some n
+  | .var  _ => none --  in Rust unqualified name
+  | _ => none
+
+-- Helper lemma: a `Primary` reachable through the AddExpr→Primary chain
+-- has strictly smaller `sizeOf` than the surrounding `OrExpr`.
+private theorem sizeOf_addExpr_primary_lt_orExpr (o : Cst.OrExpr) (ae : Cst.AddExpr) (ext : List (Cst.RelOp × Cst.AddExpr))
+    (h : o.initial.initial = .rCommon ae ext) :
+    sizeOf ae.initial.initial.item.item < sizeOf o := by
+  -- ae.initial : MultExpr ⟨Unary, List _⟩
+  -- ae.initial.initial : Unary ⟨Option NegOp, Member⟩
+  -- ae.initial.initial.item : Member ⟨Primary, List MemAccess⟩
+  -- ae.initial.initial.item.item : Primary
+  obtain ⟨ae_mult, ae_ext⟩ := ae
+  obtain ⟨ae_unary, ae_mult_ext⟩ := ae_mult
+  obtain ⟨ae_op, ae_member⟩ := ae_unary
+  obtain ⟨ae_prim, ae_access⟩ := ae_member
+  obtain ⟨o_and, o_ext⟩ := o
+  obtain ⟨o_rel, o_and_ext⟩ := o_and
+  simp_all
+  omega
+
+mutual
+
+private def Cst.Primary.toMultipleEntityUID? (p : Cst.Primary) : Option (EntityUID ⊕ List EntityUID) :=
+  match p with
+  | .literal _ | .name _ => none
+  | .ref r => match r with
+    | .uid path (.string s) => do
+      let maybe_path ← path.toAName?
+      let maybe_eid ← s.unescape?
+      some (.inl {ty := maybe_path, eid := maybe_eid})
+    | .ref _ _ => none
+  | .expr e => e.toMultipleEntityUID?
+  | .eList es => do
+    let uids ← es.attach.mapM (fun ⟨x, hmem⟩ =>
+      have : sizeOf x < sizeOf es := List.sizeOf_lt_of_mem hmem
+      x.toMultipleEntityUID?)
+    some (.inr (uids.flatMap (Sum.elim ([·]) id)))
+termination_by (sizeOf p, 0)
+decreasing_by
+  all_goals (simp_wf; omega)
+
+private def Cst.Expr.toMultipleEntityUID? (e : Cst.Expr) : Option (EntityUID ⊕ List EntityUID) :=
+  match e with
+  | .expr ⟨.edIf _ _ _⟩ => none
+  | .expr ⟨.edOr o⟩ =>
+    if !o.extended.isEmpty || !o.initial.extended.isEmpty then none
+    else
+      match h : o.initial.initial with
+      | .rHas _ _ | .rLike _ _ => none
+      | .rCommon ae ext =>
+        if !ext.isEmpty || !ae.extended.isEmpty || !ae.initial.extended.isEmpty
+            || !ae.initial.initial.op.isNone || !ae.initial.initial.item.access.isEmpty then none
+        else
+          have : sizeOf ae.initial.initial.item.item < sizeOf o :=
+            sizeOf_addExpr_primary_lt_orExpr o ae ext h
+          ae.initial.initial.item.item.toMultipleEntityUID?
+termination_by (sizeOf e, 1)
+decreasing_by
+  all_goals (simp_wf; omega)
+
+end
+
+private def Cst.Expr.toEntityUID? (e : Cst.Expr) : Option EntityUID := do
+  let erefs ← e.toMultipleEntityUID?
+  match erefs with
+  | .inl eref => some eref
+  | .inr _ => none
+
+private def Cst.Expr.toEntityUIDs? (e : Cst.Expr) : Option (List EntityUID) := do
+  let erefs ← e.toMultipleEntityUID?
+  match erefs with
+  | .inl eref => some [eref]
+  | .inr erefs => some erefs
+
+-- To be used when translating a `VariableDef` to a `PrincipalScope` or
+-- a `ResourceScope`
+private def Cst.VariableDef.toPRScope? (v : Cst.VariableDef) : Option Scope:=
+  match v.ineq, v.entityType with
+  | none, none => some .any
+  | some (op, e), _ => match op, v.entityType with
+    | .rEq, none => do
+      let eref ← e.toEntityUID?
+      some (.eq eref)
+    | .rEq, some _ => none
+    | .rIn, none => do
+      let eref ← e.toEntityUID?
+      some (.mem eref)
+    | .rIn, some t => do
+      let eref ← e.toEntityUID?
+      let ety ← t.toEntityType?
+      some (.isMem ety eref)
+    | _, _ => none
+  | none, some t => do
+    let ety ← t.toEntityType?
+    some (.is ety)
+
+public def Cst.VariableDef.toPrincipalScope? (v : Cst.VariableDef) : Option PrincipalScope :=
+  match v.var with
+  | .idPrincipal => do
+    let scope ← v.toPRScope?
+    some (.principalScope scope)
+  | _ => none
+
+public def Cst.VariableDef.toResourceScope? (v : Cst.VariableDef) : Option ResourceScope :=
+  match v.var with
+  | .idResource => do
+    let scope ← v.toPRScope?
+    some (.resourceScope scope)
+  | _ => none
+
+private def EntityUID.isAction? (uid : EntityUID) : Bool :=
+  uid.ty.id == "Action"
+
+-- Need to check `contains_only_action_types` before using the `ActionScope` output
+private def Cst.VariableDef.toActionScopeAux? (v : Cst.VariableDef) : Option ActionScope :=
+  match v.var with
+  | .idAction => if v.entityType.isSome then none else
+    match v.ineq with
+    | none => some (.actionScope (.any))
+    | some (op, e) => match op with
+      | .rEq => do
+        let eref ← e.toEntityUID?
+        some (.actionScope (.eq eref))
+      | .rIn => do
+        let erefs ← e.toEntityUIDs?
+        some (.actionInAny erefs)
+      | _ => none
+  | _ => none
+
+private def ActionScope.containsOnlyActionTypes? (as : ActionScope) : Bool :=
+  match as with
+  | .actionScope scope => match scope with
+    | .any => true
+    | .eq eref => eref.isAction?
+    | .mem eref => eref.isAction?
+    | _ => false
+  | .actionInAny erefs => erefs.all (·.isAction?)
+
+public def Cst.VariableDef.toActionScope? (v : Cst.VariableDef) : Option ActionScope := do
+  let as ← v.toActionScopeAux?
+  if as.containsOnlyActionTypes? then some as else none
+
+public def extractScope? (vars : List Cst.VariableDef) : Option (PrincipalScope × ActionScope × ResourceScope) := do
+  match vars with
+  | a :: b :: c :: .nil => do
+    let ps ← a.toPrincipalScope?
+    let as ← b.toActionScope?
+    let rs ← c.toResourceScope?
+    some (ps, as, rs)
+  | _ => none
+
+-- `id` to be filled in later
+public def Cst.PolicyImpl.toPolicy? (p : Cst.PolicyImpl) : Option Cedar.Spec.Policy := do
+  let effect ← p.effect.toEffect?
+  let (ps, as, rs) ← extractScope? p.vars
+  let conds ← toConditions? p.conds
+  some {id := "", effect := effect, principalScope := ps, actionScope := as, resourceScope := rs, condition := conds}
+
+public def Cst.Policy.toPolicy? : Cst.Policy → Option Cedar.Spec.Policy
+  | .policy p => p.toPolicy?
+
+#check List.mapM
+
+public def Cst.Policies.toPolicies? (ps : List Cst.Policy) : Option Cedar.Spec.Policies := do
+  let rets ← ps.mapM Cst.Policy.toPolicy?
+  some (rets.mapIdx (fun i p => {p with id := s!"policy{i}"}))
