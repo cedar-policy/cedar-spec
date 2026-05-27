@@ -237,6 +237,8 @@ def testsForFiles :=
   [
     testParseFileOk "comprehensive.cedar"
       "UnitTest/parser_tests/comprehensive.cedar" 100,
+    testParseFileOk "comments.cedar"
+      "UnitTest/parser_tests/comments.cedar" 21,
     -- Syntactic errors that the parser must reject
     testParseFail' "missing_semicolon" "UnitTest/parser_tests/negative/missing_semicolon.cedar",
     testParseFail' "missing_close_paren" "UnitTest/parser_tests/negative/missing_close_paren.cedar",

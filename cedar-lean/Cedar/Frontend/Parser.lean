@@ -19,6 +19,13 @@ import Std.Internal.Parsec.String
 
 /-! This file defines a parser from Cedar policy text to the CST. -/
 
+---- String conversion utilities ---
+
+-- Parsing hex numbers `\xHH` and unicode codepoints `\u{...}` is done with the
+-- functions `Char.asHexNat` and `String.asHexNat`. We prove that the latter roundtrips
+-- with `Nat.toHexString` implemented here, for natural numbers ≤ 0xFFFFFF.
+
+
 /-- Parses a character into a `Nat` number, assuming the character is the hex reprsentation of
 that natural number. -/
 def Char.asHexNat (c : Char) : Except String Nat :=
@@ -32,10 +39,26 @@ def Char.asHexNat (c : Char) : Except String Nat :=
 def String.asHexNat (s : String) : Except String Nat :=
   if s.isEmpty then .error "empty hex string"
   else if s.length > 6 then .error "hex string too long"
-  else s.foldl (fun acc c => do
+  else s.toList.foldl (fun acc c => do
     let n ← acc
     let d ← c.asHexNat
     .ok (n * 16 + d)) (.ok 0)
+
+/-- Simple recursive hex digit list with explicit termination. -/
+def Nat.toHexChars (n : Nat) : List Char :=
+  if n == 0 then ['0'] else go n []
+where
+  go : Nat → List Char → List Char
+    | 0, acc => acc
+    | n + 1, acc =>
+      let val := n + 1
+      let d := val % 16
+      let r := val / 16
+      go r (Nat.digitChar d :: acc)
+  termination_by n => n
+
+def Nat.toHexString (n : Nat) : String :=
+  String.ofList (Nat.toHexChars n)
 
 namespace Except
 open Std.Internal.Parsec String
@@ -134,7 +157,12 @@ private def parseNat : Parser UInt64 := tok do
   | some n => return n.toUInt64
   | none => fail s!"invalid number: {s}"
 
-/-- Parse a string literal (double-quoted, with escape sequences) -/
+/--
+  Parse a string literal (double-quoted, with escape sequences).
+  The STR element uses the same string literal syntax as Rust string literals, supporting the
+  following escape sequences: \", \\, \n, \r, \t, \0, \xHH (2-digit ASCII hex escape),
+  and \u{...} (1–6 digit Unicode escape).
+-/
 private partial def stringLit : Parser String := do
   skipChar '"'
   stringLitBody ""
@@ -154,12 +182,13 @@ where
         | '"'  => pure (s.push '"')
         | '\'' => pure (s.push '\'')
         | '0'  => pure (s.push '\x00')
+        -- 2-digit ASCII hex escape: `\xHH` where H is a hex digit is an escape for a natural number
         | 'x'  => do
-          --
           let h ← hexDigit
           let l ← hexDigit
           let n := h * 16 + l
           pure (s.push (Char.ofNat n))
+        -- 1-6 digit unicode escape: `\u{...}`
         | 'u'  => do
           skipChar '{'
           -- get all digits until next }
