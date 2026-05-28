@@ -166,6 +166,7 @@ private def Cst.MemAccess.toAstAccessor? (m : Cst.MemAccess) : Option AstAccesso
     | _ => none
   | .index e => do
     let s ← e.toStringLiteral?
+    let s ← Cedar.Spec.CstCommon.unescape? s
     some (.index s)
 
 private def memberAux :  ExprOrSpecial → List AstAccessor → Option ExprOrSpecial
