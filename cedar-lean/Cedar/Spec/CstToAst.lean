@@ -58,7 +58,7 @@ private def Cst.Ident.toUnreservedId? : Cst.Ident → Option String
   | .idIdent s => if Unreserved? s then some s else none
   | _ => none
 
-private def Cst.Ident.toUnreservedString? : Cst.Ident → Option String
+public def Cst.Ident.toUnreservedString? : Cst.Ident → Option String
   | .idPrincipal => some "principal"
   | .idAction => some "action"
   | .idResource => some "resource"
@@ -69,26 +69,6 @@ private def Cst.Ident.toUnreservedString? : Cst.Ident → Option String
   | .idUnless => some "unless"
   | .idIdent s => some s
   | _ => none
-
-private def Cst.Ident.toString : Cst.Ident → String
-  | .idPrincipal => "principal"
-  | .idAction => "action"
-  | .idResource => "resource"
-  | .idContext => "context"
-  | .idTrue => "true"
-  | .idFalse => "false"
-  | .idPermit => "permit"
-  | .idForbid => "forbid"
-  | .idWhen => "when"
-  | .idUnless => "unless"
-  | .idIn => "in"
-  | .idHas => "has"
-  | .idLike => "like"
-  | .idIs => "is"
-  | .idIf => "if"
-  | .idThen => "then"
-  | .idElse => "else"
-  | .idIdent s => s
 
 private def Var.toString : Var → String
   | .principal => "principal"
@@ -102,7 +82,7 @@ public inductive AstAccessor where
   | index (s : String)
 
 public def AstAccessor.toString : AstAccessor → String
-  | .field id => id.toString
+  | .field id => CstCommon.Ident.toString id
   | .index s => s
 
 public def ExprOrSpecial.toExpr? : ExprOrSpecial → Option Expr
@@ -123,12 +103,12 @@ public def Cst.Literal.toExprOrSpecial? (l : Cst.Literal) : Option ExprOrSpecial
     some (.expr (.lit (.int i)))
   | .liStr s => some (.strLit s)
 
-private def Cst.Name.toAName? (n : Cst.Name) : Option AName := do
+public def Cst.Name.toAName? (n : Cst.Name) : Option AName := do
   let id ← n.name.toUnreservedString?
   let path ← n.path.mapM (Cst.Ident.toUnreservedString?)
   some {id := id, path := path}
 
-private def Cst.Name.toVar? (n : Cst.Name) : Option Var :=
+public def Cst.Name.toVar? (n : Cst.Name) : Option Var :=
   if !n.path.isEmpty then none
   else match n.name with
     | .idPrincipal => some .principal
@@ -137,7 +117,7 @@ private def Cst.Name.toVar? (n : Cst.Name) : Option Var :=
     | .idContext => some .context
     | _ => none
 
-private def Cst.Ref.toExprOrSpecial? (r : Cst.Ref) : Option ExprOrSpecial :=
+public def Cst.Ref.toExprOrSpecial? (r : Cst.Ref) : Option ExprOrSpecial :=
   match r with
   | .uid path eid => do
     let ty ← path.toAName?
@@ -179,7 +159,7 @@ private def memberAux :  ExprOrSpecial → List AstAccessor → Option ExprOrSpe
     let ret ← prim.toExpr?
     memberAux (.expr (.getAttr ret hd.toString)) tl
   | (.var v), (.field id) :: tl =>
-    memberAux (.expr (.getAttr (.var v) id.toString)) tl
+    memberAux (.expr (.getAttr (.var v) (CstCommon.Ident.toString id))) tl
   | (.var v), (.index id) :: tl =>
     memberAux (.expr (.getAttr (.var v) id)) tl
   | (.name _), (.field _) :: _ => none

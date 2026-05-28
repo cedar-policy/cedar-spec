@@ -17,25 +17,7 @@ open Cedar.Data
 
 /- Evaluator helpers -/
 
-private def Ident.toString : Ident → String
-  | .idPrincipal => "principal"
-  | .idAction => "action"
-  | .idResource => "resource"
-  | .idContext => "context"
-  | .idTrue => "true"
-  | .idFalse => "false"
-  | .idPermit => "permit"
-  | .idForbid => "forbid"
-  | .idWhen => "when"
-  | .idUnless => "unless"
-  | .idIn => "in"
-  | .idHas => "has"
-  | .idLike => "like"
-  | .idIs => "is"
-  | .idIf => "if"
-  | .idThen => "then"
-  | .idElse => "else"
-  | .idIdent s => s
+public abbrev Ident.toString : Ident → String := CstCommon.Ident.toString
 
 public def Unreserved? (s : String) : Bool :=
   match s with
@@ -155,6 +137,11 @@ private def AddExpr.toPatternString? (e : AddExpr) : Option String :=
 
 /- Evaluators -/
 
+public def Str.toUnescapedString : Str → Result String
+  | .string s => match Cedar.Spec.CstCommon.unescape? s with
+    | some s' => .ok s'
+    | none    => .error .typeError
+
 mutual
 
 public def Primary.evaluate (e : Primary) (req : Request) (es : Entities) : Result Value :=
@@ -166,9 +153,8 @@ public def Primary.evaluate (e : Primary) (req : Request) (es : Entities) : Resu
       | some i => .ok (.prim (.int i))
       | none => .error .arithBoundsError
     | .liStr s => do
-      match Cedar.Spec.CstCommon.unescape? s with
-      | none => .error .typeError
-      | some unescaped => .ok (.prim (.string unescaped))
+      let s' ← Str.toUnescapedString (.string s)
+      .ok (.prim (.string s'))
   | .name n =>
     -- Not implementing names with non-empty paths for now
     if !n.path.isEmpty then .error .typeError
@@ -183,11 +169,12 @@ public def Primary.evaluate (e : Primary) (req : Request) (es : Entities) : Resu
     let vs ← xs.mapM (fun x => x.evaluate req es)
     .ok (.set (Set.make vs))
   | .ref r => match r with
-    | .uid path (.string eid) =>
+    | .uid path eid => do
+      let eid' ← Str.toUnescapedString eid
       let ids := path.path.map Ident.toString
       let last := path.name.toString
       let etype : Spec.Name := { id := last, path := ids }
-      .ok (.prim (.entityUID { ty := etype, eid := eid }))
+      .ok (.prim (.entityUID { ty := etype, eid := eid' }))
     | .ref _ _ => .error .typeError
 termination_by sizeOf e
 

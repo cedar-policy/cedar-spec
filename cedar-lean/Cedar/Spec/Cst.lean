@@ -270,4 +270,24 @@ public def unescape? (s : String) : Option String := do
   let chars ← unescapeAux s.toList
   some (String.ofList chars)
 
+public def Ident.toString : Cst.Ident → String
+  | .idPrincipal => "principal"
+  | .idAction => "action"
+  | .idResource => "resource"
+  | .idContext => "context"
+  | .idTrue => "true"
+  | .idFalse => "false"
+  | .idPermit => "permit"
+  | .idForbid => "forbid"
+  | .idWhen => "when"
+  | .idUnless => "unless"
+  | .idIn => "in"
+  | .idHas => "has"
+  | .idLike => "like"
+  | .idIs => "is"
+  | .idIf => "if"
+  | .idThen => "then"
+  | .idElse => "else"
+  | .idIdent s => s
+
 end Cedar.Spec.CstCommon
