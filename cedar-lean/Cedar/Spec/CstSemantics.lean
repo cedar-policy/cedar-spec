@@ -37,8 +37,30 @@ private def Ident.toString : Ident → String
   | .idElse => "else"
   | .idIdent s => s
 
+public def Unreserved? (s : String) : Bool :=
+  match s with
+  | "principal" => false
+  | "action" => false
+  | "resource" => false
+  | "context" => false
+  | "true" => false
+  | "false" => false
+  | "permit" => false
+  | "forbid" => false
+  | "when" => false
+  | "unless" => false
+  | "in" => false
+  | "has" => false
+  | "like" => false
+  | "is" => false
+  | "if" => false
+  | "then" => false
+  | "else" => false
+  | "__cedar" => false
+  | _ => true
+
 private def Ident.toUnreservedString? : Ident → Option String
-  | .idIdent s => some s
+  | .idIdent s => if (Unreserved? s) then some s else none
   | _ => none
 
 private def Expr.toStringLiteral? : Expr → Option String
