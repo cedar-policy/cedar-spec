@@ -139,11 +139,12 @@ private def Cst.Name.toVar? (n : Cst.Name) : Option Var :=
 
 private def Cst.Ref.toExprOrSpecial? (r : Cst.Ref) : Option ExprOrSpecial :=
   match r with
-  -- Unescape `eid` not done
   | .uid path eid => do
     let ty ← path.toAName?
     match eid with
-    | .string s => some (.expr (.lit (.entityUID {ty := ty, eid := s})))
+    | .string s => do
+      let unescaped ← Cedar.Spec.CstCommon.unescape? s
+      some (.expr (.lit (.entityUID {ty := ty, eid := unescaped})))
   | .ref _ _ => none
 
 private def Cst.Expr.toStringLiteral? : Cst.Expr → Option String
