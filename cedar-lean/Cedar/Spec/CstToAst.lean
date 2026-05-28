@@ -109,12 +109,12 @@ public def ExprOrSpecial.toExpr? : ExprOrSpecial → Option Expr
   | .expr e => some e
   | .var v => some (.var v)
   | .strLit s => do
-      let unescapted ← Cedar.Spec.CstCommon.unescape? s
-      some (.lit (.string unescapted))
+      let unescaped ← Cedar.Spec.CstCommon.unescape? s
+      some (.lit (.string unescaped))
   | .boolLit b => some (.lit (.bool b))
   | .name _ => none
 
-private def Cst.Literal.toExprOrSpecial? (l : Cst.Literal) : Option ExprOrSpecial :=
+public def Cst.Literal.toExprOrSpecial? (l : Cst.Literal) : Option ExprOrSpecial :=
   match l with
   | .liTrue => some (.boolLit true)
   | .liFalse => some (.boolLit false)
@@ -254,6 +254,10 @@ termination_by (sizeOf e, 0)
 decreasing_by
   all_goals simp_wf
   all_goals first | omega | (rename_i h; have := List.sizeOf_lt_of_mem h; omega)
+
+public def Cst.Primary.toAExpr? (e : Cst.Primary) : Option AExpr := do
+  let ret ← e.toExprOrSpecial?
+  ret.toExpr?
 
 public def Cst.Member.toExprOrSpecial? (e : Cst.Member) : Option ExprOrSpecial := do
   let prim ← e.item.toExprOrSpecial?

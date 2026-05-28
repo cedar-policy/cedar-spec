@@ -165,7 +165,10 @@ public def Primary.evaluate (e : Primary) (req : Request) (es : Entities) : Resu
     | .liNum n => match Int64.ofInt? n.toNat with
       | some i => .ok (.prim (.int i))
       | none => .error .arithBoundsError
-    | .liStr s => .ok (.prim (.string s))
+    | .liStr s => do
+      match Cedar.Spec.CstCommon.unescape? s with
+      | none => .error .typeError
+      | some unescaped => .ok (.prim (.string unescaped))
   | .name n =>
     -- Not implementing names with non-empty paths for now
     if !n.path.isEmpty then .error .typeError
