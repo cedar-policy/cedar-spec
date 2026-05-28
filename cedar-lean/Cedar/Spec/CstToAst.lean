@@ -274,10 +274,14 @@ public def Cst.Unary.toExprOrSpecial? (e : Cst.Unary) : Option ExprOrSpecial :=
   | some (.nDash n) =>
     match e.item.toLit? with
     | some (.liNum x) =>
-      let y := (Int64.ofUInt64 x)
-      match compare y (Int64.MAX+1).toInt64 with
+      let xNat := x.toNat
+      let minMagnitude := (Int64.MAX + 1).toNat
+      match compare xNat minMagnitude with
       | .eq => some (.expr ((Expr.lit (.int (Int64.MIN).toInt64)).dashN (n-1).toNat))
-      | .lt => some (.expr ((Expr.lit (.int (-y))).dashN (n-1).toNat))
+      | .lt =>
+        match Int64.ofInt? (Int.ofNat xNat) with
+        | some y => some (.expr ((Expr.lit (.int (-y))).dashN (n-1).toNat))
+        | none => none
       | .gt => none
     | _ => do
       let eos ← e.item.toExprOrSpecial?
