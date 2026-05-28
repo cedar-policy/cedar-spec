@@ -685,6 +685,6 @@ public def Cst.PolicyImpl.toPolicy? (p : Cst.PolicyImpl) : Option Cedar.Spec.Pol
 public def Cst.Policy.toPolicy? : Cst.Policy → Option Cedar.Spec.Policy
   | .policy p => p.toPolicy?
 
-public def Cst.Policies.toPolicies? (ps : List Cst.Policy) : Option Cedar.Spec.Policies := do
-  let rets ← ps.mapM Cst.Policy.toPolicy?
+public def Cst.Policies.toPolicies? (ps : Cst.Policies) : Option Cedar.Spec.Policies := do
+  let rets ← ps.ps.mapM Cst.Policy.toPolicy?
   some (rets.mapIdx (fun i p => {p with id := s!"policy{i}"}))
