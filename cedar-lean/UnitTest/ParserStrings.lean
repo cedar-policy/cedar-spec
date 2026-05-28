@@ -71,26 +71,6 @@ private def getStringLit (input : String) : Except String String := do
     | _ => .error "not a string literal"
   | _ => .error "not rCommon"
 
-private def identToString : Ident → String
-  | .idIdent s => s
-  | .idPrincipal => "principal"
-  | .idAction => "action"
-  | .idResource => "resource"
-  | .idContext => "context"
-  | .idTrue => "true"
-  | .idFalse => "false"
-  | .idPermit => "permit"
-  | .idForbid => "forbid"
-  | .idWhen => "when"
-  | .idUnless => "unless"
-  | .idIn => "in"
-  | .idHas => "has"
-  | .idLike => "like"
-  | .idIs => "is"
-  | .idIf => "if"
-  | .idThen => "then"
-  | .idElse => "else"
-
 /-- Extract EUID path and eid from `permit(principal == Type::"eid", ...)` -/
 private def getEUID (input : String) : Except String (List String × String) := do
   let ps ← parse input
@@ -106,7 +86,7 @@ private def getEUID (input : String) : Except String (List String × String) := 
         | .rCommon addE _ =>
           match addE.initial.initial.item.item with
           | .ref (.uid name (.string eid)) =>
-            let path := (name.path ++ [name.name]).map identToString
+            let path := (name.path ++ [name.name]).map Ident.toString
             .ok (path, eid)
           | _ => .error "not a ref uid"
         | _ => .error "not rCommon"
@@ -128,7 +108,7 @@ private def getAnnotation (input : String) (idx : Nat) : Except String (String �
   | [.policy p] =>
     match p.annotations[idx]? with
     | some ann =>
-      let name := identToString ann.name
+      let name := Ident.toString ann.name
       let value := ann.value.map fun (.string s) => s
       .ok (name, value)
     | none => .error "annotation index out of bounds"

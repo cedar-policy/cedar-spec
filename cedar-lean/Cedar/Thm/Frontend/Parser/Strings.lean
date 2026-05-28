@@ -144,4 +144,44 @@ theorem go_length_le (n : Nat) (hn : n ≤ 0xFFFFFF) :
         exact this
       exact ih _ hdiv
 
+----- classifyIdent / Ident.toString roundtrip -----
+
+/-- `classifyIdent` is a left inverse of `Ident.toString` for keyword identifiers. -/
+theorem classifyIdent_toString_keyword (i : Ident) (h : ¬∃ s hs, i = .idIdent s hs) :
+    classifyIdent (Ident.toString i) = i := by
+  cases i with
+  | idIdent s hs => exact absurd ⟨s, hs, rfl⟩ h
+  | _ => rfl
+
+/-- `classifyIdent` roundtrips with `Ident.toString` when the string is not a keyword. -/
+theorem classifyIdent_toString_ident (s : String)
+    (h : s ∉ keywords) :
+    classifyIdent (Ident.toString (.idIdent s h)) = .idIdent s h := by
+  simp only [Ident.toString, classifyIdent, dif_neg h]
+
+/-- `Ident.toString` is a left inverse of `classifyIdent` for all Cedar keywords. -/
+theorem toString_classifyIdent_keyword (s : String)
+    (h : s ∈ keywords) :
+    Ident.toString (classifyIdent s) = s := by
+  simp only [keywords, List.mem_cons, List.mem_nil_iff, or_false] at h
+  rcases h with h | h | h | h | h | h | h | h | h | h | h | h | h | h | h | h | h <;>
+    subst h <;> rfl
+
+/-- `Ident.toString` is a left inverse of `classifyIdent` for non-keyword identifiers. -/
+theorem toString_classifyIdent_ident (s : String)
+    (h : s ∉ keywords) :
+    Ident.toString (classifyIdent s) = s := by
+  simp only [classifyIdent, dif_neg h, Ident.toString]
+
+----- String.asHexNat injectivity -----
+
+
+/-- A lowercase hex char is one in '0'..'9' or 'a'..'f'. -/
+def isLowerHex (c : Char) : Prop :=
+  (48 ≤ c.toNat ∧ c.toNat ≤ 57) ∨ (97 ≤ c.toNat ∧ c.toNat ≤ 102)
+
+/-- Two chars with the same `toNat` are equal. -/
+theorem Char.eq_of_toNat_eq {c₁ c₂ : Char} (h : c₁.toNat = c₂.toNat) : c₁ = c₂ :=
+  Char.ext_iff.mpr (congrArg UInt32.ofBitVec (BitVec.eq_of_toNat_eq h))
+
 end Cedar.Spec.Cst.Parser

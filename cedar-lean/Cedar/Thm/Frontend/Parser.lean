@@ -16,7 +16,7 @@
 
 import Cedar.Thm.Frontend.Parser.Strings
 
-/-! This file states and proves the main theorems about the Cedar parser. -/
+/-! This file states and proves the main theorems about the Cedar parser's pure functions. -/
 
 namespace Cedar.Spec.Cst.Parser
 
@@ -48,5 +48,27 @@ theorem String.asHexNat_toHexString (n : Nat) (h : n ≤ 0xFFFFFF) :
   match hn : n with
   | 0 => exact toHexChars_zero_roundtrip
   | n + 1 => exact toHexChars_pos_roundtrip (n + 1) (by omega)
+
+/-- `classifyIdent` is a left inverse of `Ident.toString`. -/
+theorem classifyIdent_roundtrip (i : Ident) :
+    classifyIdent i.toString = i := by
+  cases i with
+  | idIdent s h => simp only [Ident.toString, classifyIdent, dif_neg h]
+  | _ => rfl
+
+/-- `Char.asHexNat` is injective on lowercase hex chars:
+    if two chars in '0'..'9' or 'a'..'f' map to the same value, they are equal. -/
+theorem Char.asHexNat_injective_lower (c₁ c₂ : Char) (n : Nat)
+    (h₁ : Char.asHexNat c₁ = .ok n)
+    (h₂ : Char.asHexNat c₂ = .ok n)
+    (hlc₁ : isLowerHex c₁) (hlc₂ : isLowerHex c₂) :
+    c₁ = c₂ := by
+  unfold Char.asHexNat at h₁ h₂
+  simp only [Bool.and_eq_true, decide_eq_true_eq, Char.le_def, UInt32.le_iff_toNat_le] at h₁ h₂
+  unfold isLowerHex at hlc₁ hlc₂
+  have heq : c₁.toNat = c₂.toNat := by
+    rcases hlc₁ with ⟨lo₁, hi₁⟩ | ⟨lo₁, hi₁⟩ <;> rcases hlc₂ with ⟨lo₂, hi₂⟩ | ⟨lo₂, hi₂⟩ <;>
+      (split at h₁ <;> split at h₂ <;> simp_all <;> omega)
+  exact Char.eq_of_toNat_eq heq
 
 end Cedar.Spec.Cst.Parser

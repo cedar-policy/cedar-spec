@@ -31,6 +31,12 @@ namespace Cedar.Spec.Cst
 -- Generally, the cst::* concrete syntax tree structures are represented without location
 -- information in Lean. We also omit elements that are useful in Rust only for nice error reporting.
 
+/-- The list of Cedar keywords that cannot appear as plain identifiers. -/
+public def keywords : List String :=
+  ["principal", "action", "resource", "context", "true", "false",
+   "permit", "forbid", "when", "unless", "in", "has", "like", "is",
+   "if", "then", "else"]
+
 -- Identifiers of the Cedar language, including special ones
 public inductive Ident where
   -- rust cst::Ident::Principal
@@ -68,8 +74,31 @@ public inductive Ident where
   -- cst::Ident::Else
   | idElse
   -- cst::Ident::Ident(SmoltStr)
-  | idIdent (s : String)
+  | idIdent (s : String) (h : s ∉ keywords)
   -- Note: the cst::Ident::Invalid(String) is not represented in Lean
+
+deriving instance DecidableEq, Repr for Ident
+
+/-- Convert an `Ident` back to its string representation. -/
+public def Ident.toString : Ident → String
+  | .idPrincipal => "principal"
+  | .idAction    => "action"
+  | .idResource  => "resource"
+  | .idContext   => "context"
+  | .idTrue      => "true"
+  | .idFalse     => "false"
+  | .idPermit    => "permit"
+  | .idForbid    => "forbid"
+  | .idWhen      => "when"
+  | .idUnless    => "unless"
+  | .idIn        => "in"
+  | .idHas       => "has"
+  | .idLike      => "like"
+  | .idIs        => "is"
+  | .idIf        => "if"
+  | .idThen      => "then"
+  | .idElse      => "else"
+  | .idIdent s _ => s
 
 -- This is a cst::Literal in Rust.
 -- Should the type of n match the Rust implementation (i.e. UInt64)?

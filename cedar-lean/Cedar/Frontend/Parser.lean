@@ -112,27 +112,32 @@ private def rawIdent : Parser String := tok do
   let rest ← manyChars (satisfy isIdentCont)
   return String.ofList (c :: rest.toList)
 
-/-- Classify a raw identifier string into an `Ident` -/
-private def classifyIdent (s : String) : Ident :=
-  match s with
-  | "principal" => .idPrincipal
-  | "action"    => .idAction
-  | "resource"  => .idResource
-  | "context"   => .idContext
-  | "true"      => .idTrue
-  | "false"     => .idFalse
-  | "permit"    => .idPermit
-  | "forbid"    => .idForbid
-  | "when"      => .idWhen
-  | "unless"    => .idUnless
-  | "in"        => .idIn
-  | "has"       => .idHas
-  | "like"      => .idLike
-  | "is"        => .idIs
-  | "if"        => .idIf
-  | "then"      => .idThen
-  | "else"      => .idElse
-  | s           => .idIdent s
+/-- Classify a raw identifier string into an `Ident`.
+    Uses dependent `if` rather than `match` because Lean's pattern matching on `String`
+    does not provide discrimination hypotheses in the catch-all case, which are needed
+    to prove that the keyword branch is exhaustive and to supply the `s ∉ keywords` proof. -/
+def classifyIdent (s : String) : Ident :=
+  if h : s ∈ keywords then
+    if _ : s = "principal" then .idPrincipal
+    else if _ : s = "action" then .idAction
+    else if _ : s = "resource" then .idResource
+    else if _ : s = "context" then .idContext
+    else if _ : s = "true" then .idTrue
+    else if _ : s = "false" then .idFalse
+    else if _ : s = "permit" then .idPermit
+    else if _ : s = "forbid" then .idForbid
+    else if _ : s = "when" then .idWhen
+    else if _ : s = "unless" then .idUnless
+    else if _ : s = "in" then .idIn
+    else if _ : s = "has" then .idHas
+    else if _ : s = "like" then .idLike
+    else if _ : s = "is" then .idIs
+    else if _ : s = "if" then .idIf
+    else if _ : s = "then" then .idThen
+    else have : s = "else" := by simp_all [keywords]
+         .idElse
+  else
+    .idIdent s h
 
 /-- Parse an identifier -/
 def parseIdent : Parser Ident := do
