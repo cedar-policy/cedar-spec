@@ -16,8 +16,8 @@
 
 #![no_main]
 
-use cedar_drt_inner::fuzz_target;
 use cedar_drt_inner::proto_gen::ModelGenerator;
+use cedar_drt_inner::{fuzz_target, props::template_to_cedar_parses};
 
 use cedar_policy::Template;
 use cedar_policy::proto::models;
@@ -57,16 +57,7 @@ fuzz_target!(|input: ProtoTemplateInput| {
         Ok(t) => t,
         Err(_) => return,
     };
-
-    // Print to Cedar text
-    let cedar_text = template.to_cedar();
-
-    // Re-parse (templates parse as part of a policy set)
-    let _: cedar_policy::PolicySet = cedar_text.parse().unwrap_or_else(|e| {
-        panic!(
-            "Template accepted from proto could not be re-parsed from Cedar text.\n\
-             Proto input: {:?}\nCedar text: {cedar_text}\nParse error: {e}",
-            input.template
-        )
-    });
+    // Once we have a template, it should parse again through a Cedar roundtrip: we test that
+    // validation in the Cedar parser is not stronger than validation in protobuf.
+    template_to_cedar_parses(template);
 });

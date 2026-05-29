@@ -17,6 +17,7 @@
 #![no_main]
 
 use cedar_drt_inner::fuzz_target;
+use cedar_drt_inner::props::entities_to_json_roundtrips;
 use cedar_drt_inner::proto_gen;
 
 use cedar_policy::Entities;
@@ -60,22 +61,7 @@ fuzz_target!(|input: ProtoEntitiesInput| {
         Ok(e) => e,
         Err(_) => return,
     };
-
-    // Serialize to JSON
-    let json = entities.to_json_value().unwrap_or_else(|e| {
-        panic!(
-            "Entities accepted from proto could not be serialized to JSON.\n\
-             Proto input: {:?}\nError: {e}",
-            input.entities
-        )
-    });
-
-    // Re-parse from JSON; this shouldn't fail
-    let _reparsed = Entities::from_json_value(json.clone(), None).unwrap_or_else(|e| {
-        panic!(
-            "JSON from proto-accepted entities failed to re-parse.\n\
-             Proto input: {:?}\nJSON: {json}\nParse error: {e}",
-            input.entities
-        )
-    });
+    // Once we have some `Entities`, then it should roundtrip through JSON. We test that validation
+    // in the JSON deserialization is not stronger than in Proto decoding.
+    entities_to_json_roundtrips(entities);
 });

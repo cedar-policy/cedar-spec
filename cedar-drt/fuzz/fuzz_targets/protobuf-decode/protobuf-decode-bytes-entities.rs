@@ -18,11 +18,15 @@
 
 use cedar_drt_inner::fuzz_target;
 
+use cedar_drt_inner::props::entities_to_json_roundtrips;
 use cedar_policy::Entities;
 use cedar_policy::proto::traits::Protobuf;
 
 // Feed arbitrary bytes into entities protobuf decoder.
 // The property under test: decode either returns Ok or Err, never panics.
 fuzz_target!(|input: &[u8]| {
-    let _ = Entities::decode(input);
+    match Entities::decode(input) {
+        Ok(es) => entities_to_json_roundtrips(es),
+        Err(_) => (), // we expect errors here
+    }
 });

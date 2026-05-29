@@ -17,6 +17,7 @@
 #![no_main]
 
 use cedar_drt_inner::fuzz_target;
+use cedar_drt_inner::props::policyset_to_cedar_parses;
 use cedar_drt_inner::proto_gen::ProtoPolicySetInput;
 
 use cedar_policy::PolicySet;
@@ -44,22 +45,8 @@ fuzz_target!(|input: ProtoPolicySetInput| {
         Ok(ps) => ps,
         Err(_) => return,
     };
-
-    // Print the whole policy set to Cedar text
-    let cedar_text = policy_set.to_cedar().unwrap_or_else(|| {
-        panic!(
-            "PolicySet accepted from proto could not be printed to Cedar.\n\
-             Proto input: {:?}",
-            input.policy_set
-        )
-    });
-
-    // Re-parse the Cedar text; this should succeed
-    let _: PolicySet = cedar_text.parse().unwrap_or_else(|e| {
-        panic!(
-            "Cedar text from proto-accepted PolicySet failed to re-parse.\n\
-             Proto input: {:?}\nCedar text: {cedar_text}\nParse error: {e}",
-            input.policy_set
-        )
-    });
+    // Once we have a PolicySet, printing and parsing it back should succeed.
+    // We are testing that validation through the Cedar text parsing path is not stronger than the
+    // validation in proto.
+    policyset_to_cedar_parses(policy_set);
 });
