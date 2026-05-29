@@ -21,10 +21,10 @@
 # Rust build artifacts
 **/target
 **/Cargo.lock
+# Fuzzing artifacts
 cedar-drt/fuzz/corpus
 cedar-drt/fuzz/artifacts
-
-
+cedar-drt/fuzz_reports
 
 # We expect a copy of `cedar-policy/cedar` present in this directory, but do
 # not track it in version control.
