@@ -236,6 +236,10 @@ termination_by (sizeOf e, 0)
 decreasing_by
   all_goals (cases e; simp only [Cst.Member.mk.sizeOf_spec]; omega)
 
+public def Cst.Member.toAExpr? (e : Cst.Member) : Option AExpr := do
+  let ret ← e.toExprOrSpecial?
+  ret.toExpr?
+
 public def Cst.Unary.toExprOrSpecial? (e : Cst.Unary) : Option ExprOrSpecial :=
   match e.op with
   | none => e.item.toExprOrSpecial?

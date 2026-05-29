@@ -120,8 +120,30 @@ theorem Cst.Member.toAExpr?_evaluate
   obtain ⟨item, access⟩ := mem
   simp [Cst.Member.toExprOrSpecial?] at hmem
   simp only [Option.bind_eq_some_iff] at hmem
-  obtain ⟨eprim, heprim, accs, haccs, hmem⟩ := hmem
+  obtain ⟨peos, hitem, accs, haccs, hmem⟩ := hmem
+
+  /- item evaluation -/
+  have hitem_eval : ∃ eprim, evaluate eprim req es = item.evaluate req es := by
+    have h := @Cst.Primary.toAExpr?_evaluate item peos req es hitem
+    match hpeos : peos.toExpr? with
+    | none =>
+      exfalso
+      have h_mem_fails : (⟨item, access⟩ : Cst.Member).toAExpr? = none := by
+        apply item_none_member_none
+        simp [Cst.Primary.toAExpr?, hitem, hpeos]
+      simp [Cst.Member.toAExpr?, Cst.Member.toExprOrSpecial?,
+          hitem, haccs, hmem] at h_mem_fails
+      rw [h_mem_fails] at heos
+      simp at heos
+    | some eprim =>
+      exists eprim
+      apply (h _ hpeos)
+  obtain ⟨eprim, hitem_eval⟩ := hitem_eval
+
+
+
   sorry
+
 
 
 

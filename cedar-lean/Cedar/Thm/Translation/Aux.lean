@@ -8,6 +8,23 @@ namespace Cedar.Thm
 open Cedar.Data
 open Cedar.Spec
 
+theorem ExprOrSpecial.toExpr?_none (eos : ExprOrSpecial) :
+  eos.toExpr? = none →
+  (∃ s, eos = .strLit s ∧ CstCommon.unescape? s = none) ∨
+  (∃ n, eos = .name n) := by
+  intro h
+  match eos with
+  | .expr e => simp [ExprOrSpecial.toExpr?] at h
+  | .var v => simp [ExprOrSpecial.toExpr?] at h
+  | .boolLit b => simp [ExprOrSpecial.toExpr?] at h
+  | .strLit s =>
+    left; exists s; constructor
+    · rfl
+    · match hs : CstCommon.unescape? s with
+      | none => rfl
+      | some s' => simp [ExprOrSpecial.toExpr?, hs] at h
+  | .name n => right; exists n
+
 /- For Primary -/
 
 theorem Cst.Ident.toUnrestrictedString?_eq_toString
@@ -118,3 +135,29 @@ theorem toAstAccessor_attrChain_agrees (accs : List Cst.MemAccess)
         simp [←hret1, ←hret2, attrsAccessorsAgree]; constructor
         · simp [← hhd1, attrAccessorAgrees]
         · apply (ih tl1 tl2 htl1 htl2)
+
+theorem item_none_member_none (mem : Cst.Member) :
+  mem.item.toAExpr? = none →
+  mem.toAExpr? = none := by
+  obtain ⟨item, acc⟩ := mem
+  intro hitem
+  simp [Cst.Primary.toAExpr?, Option.bind_eq_none_iff] at hitem
+  simp [Cst.Member.toAExpr?, Cst.Member.toExprOrSpecial?, Option.bind_eq_none_iff]
+  intro eos hmem_trans
+  simp only [Option.bind_eq_some_iff] at hmem_trans
+  obtain ⟨ieos, hieos, accessors, haccessors, hmaux⟩ := hmem_trans
+  specialize hitem ieos hieos
+  cases accessors with
+  | nil =>
+    simp [memberAux] at hmaux
+    rw [← hmaux]; exact hitem
+  | cons hd tl =>
+    cases ieos with
+    | expr e => simp [ExprOrSpecial.toExpr?] at hitem
+    | var v => simp [ExprOrSpecial.toExpr?] at hitem
+    | boolLit b => simp [ExprOrSpecial.toExpr?] at hitem
+    | strLit s => simp [memberAux, hitem] at hmaux
+    | name n  =>
+      cases hd with
+      | field _ => simp [memberAux] at hmaux
+      | index _ => simp [memberAux] at hmaux
