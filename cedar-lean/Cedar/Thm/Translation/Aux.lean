@@ -10,17 +10,17 @@ open Cedar.Spec
 
 /- For Primary -/
 
-theorem Cst.Ident.toUnreservedString?_eq_toString
+theorem Cst.Ident.toUnrestrictedString?_eq_toString
     {i : Cst.Ident} {s : String} :
-    i.toUnreservedString? = some s →
+    Cst.Ident.toUnrestrictedString? i = some s →
     s = CstCommon.Ident.toString i := by
-  cases i <;> intro h <;> simp [Cst.Ident.toUnreservedString?] at h
+  cases i <;> intro h <;> simp [Cst.Ident.toUnrestrictedString?] at h
   all_goals first | rfl | (rw [← h]; rfl)
 
-/-- If `mapM` over `toUnreservedString?` succeeds, the result equals `map toString`. -/
-theorem mapM_toUnreservedString?_eq_map
+/-- If `mapM` over `toUnrestrictedString?` succeeds, the result equals `map toString`. -/
+theorem mapM_toUnrestrictedString?_eq_map
     {l : List Cst.Ident} {result : List String} :
-    l.mapM Cst.Ident.toUnreservedString? = some result →
+    l.mapM Cst.Ident.toUnrestrictedString? = some result →
     result = l.map CstCommon.Ident.toString := by
   induction l generalizing result with
   | nil =>
@@ -32,7 +32,7 @@ theorem mapM_toUnreservedString?_eq_map
     simp [List.mapM_cons, Option.bind_eq_some_iff] at h
     obtain ⟨s, hs, rest, hrest, heq⟩ := h
     simp [List.map, ← heq]
-    exact ⟨Cst.Ident.toUnreservedString?_eq_toString hs, ih hrest⟩
+    exact ⟨Cst.Ident.toUnrestrictedString?_eq_toString hs, ih hrest⟩
 
 /-- `toAName?` produces the same `Spec.Name` the evaluator builds. -/
 theorem Cst.Name.toAName?_agrees
@@ -44,8 +44,8 @@ theorem Cst.Name.toAName?_agrees
   simp [Cst.Name.toAName?, Option.bind_eq_some_iff] at h
   obtain ⟨id, hid, path, hpath, han⟩ := h
   rw [← han]; congr 1
-  · exact Cst.Ident.toUnreservedString?_eq_toString hid
-  · exact mapM_toUnreservedString?_eq_map hpath
+  · exact Cst.Ident.toUnrestrictedString?_eq_toString hid
+  · exact mapM_toUnrestrictedString?_eq_map hpath
 
 theorem Cst.Name.toVar?_agrees
     {n : Cst.Name} {v : Var} :
@@ -64,3 +64,57 @@ theorem Cst.Name.toVar?_agrees
     cases v <;> simp_all
 
 /- For Member -/
+
+def attrAccessorAgrees (acc : AstAccessor) (attr : Attr) : Bool :=
+  match acc with
+  | .field (.idIdent s) => s = attr
+  | .index s => s = attr
+  | _ => false
+
+def attrsAccessorsAgree : List AstAccessor → List Attr → Bool
+  | [], [] => true
+  | acc :: accs, attr :: attrs =>
+      attrAccessorAgrees acc attr && attrsAccessorsAgree accs attrs
+  | _, _ => false
+
+theorem toAstAccessor_attrChain_agrees (accs : List Cst.MemAccess)
+  (ret1 : List AstAccessor) (ret2 : List Attr) :
+  accs.mapM (Cst.MemAccess.toAstAccessor?) = some ret1 →
+  Cst.AttrChain? accs = some ret2 →
+  attrsAccessorsAgree ret1 ret2 := by
+  induction accs generalizing ret1 ret2 with
+  | nil =>
+    intro h1 h2
+    simp at h1; simp [Cst.AttrChain?] at h2
+    rw [h1, h2]; simp [attrsAccessorsAgree]
+  | cons acc tl ih =>
+    intro h1 h2
+    match acc with
+    | .field (.idIdent s) =>
+      simp [List.mapM_cons, Option.bind_eq_some_iff] at h1
+      obtain ⟨hd1, hhd1, tl1, htl1, hret1⟩ := h1
+      simp [Cst.MemAccess.toAstAccessor?] at hhd1
+      simp [Cst.AttrChain?] at h2
+      match h : (CstCommon.Ident.toUnreservedString? (Cst.Ident.idIdent s)) with
+      | none => simp [h] at h2
+      | some hd2 =>
+        simp [h] at hhd1 h2
+        obtain ⟨tl2, htl2, hret2⟩ := h2
+        simp [←hret1, ←hret2, attrsAccessorsAgree]; constructor
+        · simp [CstCommon.Ident.toUnreservedString?] at h
+          obtain ⟨hl, hr⟩ := h
+          rw [← hhd1, ← hr]; simp [attrAccessorAgrees]
+        · apply (ih tl1 tl2 htl1 htl2)
+    | .index e =>
+      simp [List.mapM_cons, Option.bind_eq_some_iff] at h1
+      obtain ⟨hd1, hhd1, tl1, htl1, hret1⟩ := h1
+      simp [Cst.MemAccess.toAstAccessor?] at hhd1
+      simp [Cst.AttrChain?] at h2
+      match h : (CstCommon.Expr.toUnescapedStringLiteral? e) with
+      | none => simp [h] at h2
+      | some hd2 =>
+        simp [h] at h2 hhd1
+        obtain ⟨tl2, htl2, hret2⟩ := h2
+        simp [←hret1, ←hret2, attrsAccessorsAgree]; constructor
+        · simp [← hhd1, attrAccessorAgrees]
+        · apply (ih tl1 tl2 htl1 htl2)
