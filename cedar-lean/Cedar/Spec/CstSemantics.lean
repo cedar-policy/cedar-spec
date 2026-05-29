@@ -19,52 +19,41 @@ open Cedar.Data
 
 public abbrev Ident.toString : Ident → String := CstCommon.Ident.toString
 
-public def Unreserved? (s : String) : Bool :=
-  match s with
-  | "principal" => false
-  | "action" => false
-  | "resource" => false
-  | "context" => false
-  | "true" => false
-  | "false" => false
-  | "permit" => false
-  | "forbid" => false
-  | "when" => false
-  | "unless" => false
-  | "in" => false
-  | "has" => false
-  | "like" => false
-  | "is" => false
-  | "if" => false
-  | "then" => false
-  | "else" => false
-  | "__cedar" => false
-  | _ => true
+-- public def Unreserved? (s : String) : Bool :=
+--   match s with
+--   | "principal" => false
+--   | "action" => false
+--   | "resource" => false
+--   | "context" => false
+--   | "true" => false
+--   | "false" => false
+--   | "permit" => false
+--   | "forbid" => false
+--   | "when" => false
+--   | "unless" => false
+--   | "in" => false
+--   | "has" => false
+--   | "like" => false
+--   | "is" => false
+--   | "if" => false
+--   | "then" => false
+--   | "else" => false
+--   | "__cedar" => false
+--   | _ => true
 
-private def Ident.toUnreservedString? : Ident → Option String
-  | .idIdent s => if (Unreserved? s) then some s else none
-  | _ => none
+-- private def Ident.toUnreservedString? : Ident → Option String
+--   | .idIdent s => if (Unreserved? s) then some s else none
+--   | _ => none
 
-private def Expr.toStringLiteral? : Expr → Option String
-  | .expr e => match e.expr with
-    | .edIf _ _ _ => none
-    | .edOr e => match e.initial.initial with
-      | .rHas _ _ => none
-      | .rLike _ _ => none
-      | .rCommon i _ => match i.initial.initial.item.item with
-        | .literal l => match l with
-          | .liStr s => some s
-          | _ => none
-        | _ => none
 
-private def AttrChain? (ms : List MemAccess) : Option (List Attr) :=
+public def AttrChain? (ms : List MemAccess) : Option (List Attr) :=
   match ms with
   | [] => some []
   | m :: ms => match m with
-    | .field i => match i.toUnreservedString? with
+    | .field i => match (CstCommon.Ident.toUnreservedString? i) with
       | none => none
       | some s => (AttrChain? ms).map (s :: ·)
-    | .index e => match e.toStringLiteral? with
+    | .index e => match (CstCommon.Expr.toUnescapedStringLiteral? e) with
       | none => none
       | some s => (AttrChain? ms).map (s :: ·)
 
@@ -75,7 +64,7 @@ private def Member.toAttrs? (e : Member) : Option (List Attr) :=
     | .literal (.liStr s) =>
       if attrs.isEmpty then some [s] else none
     | .literal _ => none
-    | .name { path := [], name := id } => match id.toUnreservedString? with
+    | .name { path := [], name := id } => match (CstCommon.Ident.toUnreservedString? id) with
       | some s => some (s :: attrs)
       | none   => none
     | .name _ => none

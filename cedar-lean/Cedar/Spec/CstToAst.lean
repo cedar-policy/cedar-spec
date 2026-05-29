@@ -58,7 +58,7 @@ private def Cst.Ident.toUnreservedId? : Cst.Ident → Option String
   | .idIdent s => if Unreserved? s then some s else none
   | _ => none
 
-public def Cst.Ident.toUnreservedString? : Cst.Ident → Option String
+public def Cst.Ident.toUnrestrictedString? : Cst.Ident → Option String
   | .idPrincipal => some "principal"
   | .idAction => some "action"
   | .idResource => some "resource"
@@ -104,8 +104,8 @@ public def Cst.Literal.toExprOrSpecial? (l : Cst.Literal) : Option ExprOrSpecial
   | .liStr s => some (.strLit s)
 
 public def Cst.Name.toAName? (n : Cst.Name) : Option AName := do
-  let id ← n.name.toUnreservedString?
-  let path ← n.path.mapM (Cst.Ident.toUnreservedString?)
+  let id ← n.name.toUnrestrictedString?
+  let path ← n.path.mapM (Cst.Ident.toUnrestrictedString?)
   some {id := id, path := path}
 
 public def Cst.Name.toVar? (n : Cst.Name) : Option Var :=
@@ -127,26 +127,15 @@ public def Cst.Ref.toExprOrSpecial? (r : Cst.Ref) : Option ExprOrSpecial :=
       some (.expr (.lit (.entityUID {ty := ty, eid := unescaped})))
   | .ref _ _ => none
 
-private def Cst.Expr.toStringLiteral? : Cst.Expr → Option String
-  | .expr e => match e.expr with
-    | .edIf _ _ _ => none
-    | .edOr e => match e.initial.initial with
-      | .rHas _ _ => none
-      | .rLike _ _ => none
-      | .rCommon i _ => match i.initial.initial.item.item with
-        | .literal l => match l with
-          | .liStr s => some s
-          | _ => none
-        | _ => none
-
 public def Cst.MemAccess.toAstAccessor? (m : Cst.MemAccess) : Option AstAccessor :=
   match m with
   | .field i => match i with
-    | .idIdent _ => some (.field i)
+    | id@(.idIdent _) => do
+      let s ← CstCommon.Ident.toUnreservedString? id
+      some (.field (.idIdent s))
     | _ => none
   | .index e => do
-    let s ← e.toStringLiteral?
-    let s ← Cedar.Spec.CstCommon.unescape? s
+    let s ← CstCommon.Expr.toUnescapedStringLiteral? e
     some (.index s)
 
 public def memberAux :  ExprOrSpecial → List AstAccessor → Option ExprOrSpecial
@@ -194,7 +183,7 @@ private def constructExprRel (op : Cst.RelOp) (e₁ e₂ : Expr) : Expr :=
 private def constructAttrsAux? : List Cst.MemAccess → Option (List String)
   | [] => some []
   | .field id :: rest => do
-    let head ← id.toUnreservedId?
+    let head ← id.toUnreservedId? -- move toUnreserbvedId to CstCommon later
     let tail ← constructAttrsAux? rest
     head :: tail
   | .index _ :: _ => none

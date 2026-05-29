@@ -290,4 +290,46 @@ public def Ident.toString : Cst.Ident → String
   | .idElse => "else"
   | .idIdent s => s
 
+public def Unreserved? (s : String) : Bool :=
+  match s with
+  | "principal" => false
+  | "action" => false
+  | "resource" => false
+  | "context" => false
+  | "true" => false
+  | "false" => false
+  | "permit" => false
+  | "forbid" => false
+  | "when" => false
+  | "unless" => false
+  | "in" => false
+  | "has" => false
+  | "like" => false
+  | "is" => false
+  | "if" => false
+  | "then" => false
+  | "else" => false
+  | "__cedar" => false
+  | _ => true
+
+public def Ident.toUnreservedString? : Cst.Ident → Option String
+  | .idIdent s => if (Unreserved? s) then some s else none
+  | _ => none
+
+public def Expr.toStringLiteral? : Cst.Expr → Option String
+  | .expr e => match e.expr with
+    | .edIf _ _ _ => none
+    | .edOr e => match e.initial.initial with
+      | .rHas _ _ => none
+      | .rLike _ _ => none
+      | .rCommon i _ => match i.initial.initial.item.item with
+        | .literal l => match l with
+          | .liStr s => some s
+          | _ => none
+        | _ => none
+
+public def Expr.toUnescapedStringLiteral? (e : Cst.Expr) : Option String := do
+  let s ← Expr.toStringLiteral? e
+  unescape? s
+
 end Cedar.Spec.CstCommon

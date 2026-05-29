@@ -8,6 +8,7 @@ namespace Cedar.Thm
 open Cedar.Data
 open Cedar.Spec
 
+/- For Primary -/
 
 theorem Cst.Ident.toUnreservedString?_eq_toString
     {i : Cst.Ident} {s : String} :
@@ -61,3 +62,5 @@ theorem Cst.Name.toVar?_agrees
   refine ⟨hpath, ?_⟩
   cases hn : n.name <;> rw [hn] at hname <;> simp at hname <;>
     cases v <;> simp_all
+
+/- For Member -/

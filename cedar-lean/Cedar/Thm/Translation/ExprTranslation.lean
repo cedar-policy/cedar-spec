@@ -121,9 +121,8 @@ theorem Cst.Member.toAExpr?_evaluate
   simp [Cst.Member.toExprOrSpecial?] at hmem
   simp only [Option.bind_eq_some_iff] at hmem
   obtain ⟨eprim, heprim, accs, haccs, hmem⟩ := hmem
+  sorry
 
-
-sorry
 
 
 
