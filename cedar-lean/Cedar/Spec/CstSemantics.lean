@@ -178,17 +178,47 @@ decreasing_by
   all_goals cases e; simp_wf; omega
 
 -- NegOp: nBang i, nOverBang, nDash i, nOverDash
--- `.nDash` case is handled with more intricacy in cst_to_ast.rs,
--- mainly for the `(neg (I64::MIN))` case.
+-- The `.nDash` numeric-literal case is handled specially so that the value
+-- `-(Int64.MAX + 1) = Int64.MIN` is representable, matching the AST translator.
 public def Unary.evaluate (e : Unary) (req : Request) (es : Entities) : Result Value :=
   match e.op with
   | none => e.item.evaluate req es
-  | some op => do
-      let mval ← e.item.evaluate req es
-      match op with
-        | .nBang n => if n % 2 == 0 then .ok mval else apply₁ .not mval
-        | .nDash n => if n % 2 == 0 then .ok mval else apply₁ .neg mval
-        | _ => .error .arithBoundsError
+  | some (.nBang n) =>
+      if n == 0 then e.item.evaluate req es else do
+        let mval ← e.item.evaluate req es
+        -- error the non-bool
+        match mval with
+        | .prim (.bool b) =>
+            if n % 2 == 0 then .ok (.prim (.bool b)) else .ok (.prim (.bool !b))
+        | _ => .error .typeError
+  | some (.nDash n) =>
+      if n == 0 then e.item.evaluate req es else
+      match CstCommon.Member.toLit? e.item with
+      | some (.liNum x) =>
+        let xNat := x.toNat
+        let minMagnitude := (Int64.MAX + 1).toNat
+        match compare xNat minMagnitude with
+        | .eq =>
+          if n % 2 == 1
+          then .ok (.prim (.int Int64.MIN.toInt64))
+          else .error .arithBoundsError
+        | .lt =>
+          match Int64.ofInt? (Int.ofNat xNat) with
+          | some y =>
+            if n % 2 == 0 then .ok (.prim (.int y)) else .ok (.prim (.int (-y)))
+          | none => .error .arithBoundsError
+        | .gt => .error .arithBoundsError
+      | _ => do
+          let mval ← e.item.evaluate req es
+          -- Force the type check and error the non-ints
+          match mval with
+          | .prim (.int i) =>
+              if n % 2 == 0 then .ok (.prim (.int i))
+              else match i.neg? with
+                | some j => .ok (.prim (.int j))
+                | none   => .error .arithBoundsError
+          | _ => .error .typeError
+  | some _ => .error .arithBoundsError
 termination_by sizeOf e
 decreasing_by
   all_goals cases e; simp_wf; omega

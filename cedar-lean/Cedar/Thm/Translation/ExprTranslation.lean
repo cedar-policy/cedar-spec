@@ -164,8 +164,74 @@ theorem Cst.Member.toAExpr?_evaluate
     | some eprim' =>
       have hheadEval : evaluate eprim' req es = item.evaluate req es :=
         Cst.Primary.toAExpr?_evaluate hitem _ hpeos
-      rw [memberAux_foldGetAttr_agrees_aux accs attrs req es hpeos hmem heos hagr,
-          hheadEval]
+      cases hitemEval : item.evaluate req es with
+      | error e =>
+        rw [memberAux_foldGetAttr_agrees_aux accs attrs req es hpeos hmem heos hagr,
+            hheadEval, hitemEval]
+      | ok head =>
+        rw [memberAux_foldGetAttr_agrees item head accs attrs req es
+              hitem hpeos hmem heos hheadEval hitemEval hagr]
+        simp [bind, Except.bind]
+
+theorem Cst.Unary.toAExpr?_evaluate
+  {u : Cst.Unary} {eos : ExprOrSpecial}
+  {req : Request} {es : Entities} :
+  u.toExprOrSpecial? = some eos →
+  ∀ aexp, eos.toExpr? = some aexp →
+  evaluate aexp req es = u.evaluate req es := by
+
+  intro hu aexp heos
+  obtain ⟨op, item⟩ := u
+  match hop : op with
+  | none =>
+    simp [Cst.Unary.toExprOrSpecial?] at hu
+    simp [Cst.Unary.evaluate]
+    apply @Cst.Member.toAExpr?_evaluate item eos req es hu aexp heos
+  | some (.nDash 0) =>
+    simp [Cst.Unary.toExprOrSpecial?] at hu
+    simp [Cst.Unary.evaluate]
+    apply @Cst.Member.toAExpr?_evaluate item eos req es hu aexp heos
+  | some (.nBang n) =>
+    simp [Cst.Unary.toExprOrSpecial?] at hu
+    simp [Cst.Unary.evaluate]
+    cases hitem_trans : item.toExprOrSpecial? with
+    | none => simp [hitem_trans] at hu
+    | some ieos =>
+      simp [hitem_trans] at hu
+      cases hioes_trans : ieos.toExpr? with
+      | none => simp [hioes_trans] at hu
+      | some iexp =>
+        simp [hioes_trans] at hu
+        simp [←hu, ExprOrSpecial.toExpr?] at heos
+        rw [← heos]
+        have hitem_eval : evaluate iexp req es = item.evaluate req es :=
+          @Cst.Member.toAExpr?_evaluate item ieos req es hitem_trans iexp hioes_trans
+        rw [bangN_evaluate_general iexp n.toNat req es, hitem_eval]
+        -- Bridge `n.toNat = 0` (Nat) and `n = 0` (UInt8); same for `% 2 = 0`.
+        have h_zero : (n.toNat = 0) ↔ (n = 0) := by
+          constructor
+          · intro h; exact UInt8.toNat_inj.mp (by simp [h])
+          · intro h; rw [h]; rfl
+        have h_par : (n.toNat % 2 = 0) ↔ (n % 2 = 0) := by
+          rw [show n.toNat % 2 = (n % 2).toNat from by rw [UInt8.toNat_mod]; rfl]
+          constructor
+          · intro h; exact UInt8.toNat_inj.mp (by simp [h])
+          · intro h; rw [h]; rfl
+        simp [h_zero, h_par]
+        by_cases hn : n = 0
+        · simp [hn]
+          cases item.evaluate req es <;> rfl
+        · simp [hn]
+          cases hev : item.evaluate req es with
+          | error err => simp [bind, Except.bind]
+          | ok v =>
+            simp [bind, Except.bind]
+            cases v with
+            | prim p => cases p <;> simp
+            | _ => simp
+  | some (.nDash n) => sorry
+  | some .nOverBang => simp [Cst.Unary.toExprOrSpecial?] at hu
+  | some .nOverDash => simp [Cst.Unary.toExprOrSpecial?] at hu
 
 
 

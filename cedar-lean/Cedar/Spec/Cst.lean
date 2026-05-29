@@ -177,6 +177,12 @@ end Cedar.Spec.Cst
 
 namespace Cedar.Spec.CstCommon
 
+public def Member.toLit? (e : Cst.Member) : Option Cst.Literal :=
+  if !e.access.isEmpty then none else
+  match e.item with
+  | .literal l => some l
+  | _ => none
+
 -- TODO: Review this function, written by Claude
 
 public def hexDigitToNat? (c : Char) : Option Nat :=

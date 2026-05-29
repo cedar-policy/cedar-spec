@@ -154,21 +154,15 @@ public def memberAux :  ExprOrSpecial → List AstAccessor → Option ExprOrSpec
   | (.name _), (.field _) :: _ => none
   | (.name _), (.index _) :: _ => none
 
-private def Expr.bangN (e : Expr) (n : Nat) : Expr :=
+public def Expr.bangN (e : Expr) (n : Nat) : Expr :=
   if n == 0 then e else (Expr.unaryApp .not e).bangN (n-1)
   termination_by n
   decreasing_by rename_i h; simp at h; omega
 
-private def Expr.dashN (e : Expr) (n : Nat) : Expr :=
+public def Expr.dashN (e : Expr) (n : Nat) : Expr :=
   if n == 0 then e else (Expr.unaryApp .neg e).dashN (n-1)
   termination_by n
   decreasing_by rename_i h; simp at h; omega
-
-private def Cst.Member.toLit? (e : Cst.Member) : Option Cst.Literal :=
-  if !e.access.isEmpty then none else
-  match e.item with
-  | .literal l => some l
-  | _ => none
 
 private def constructExprRel (op : Cst.RelOp) (e₁ e₂ : Expr) : Expr :=
   match op with
@@ -249,7 +243,7 @@ public def Cst.Unary.toExprOrSpecial? (e : Cst.Unary) : Option ExprOrSpecial :=
     let expr ← eos.toExpr?
     some (.expr (expr.bangN (n.toNat)))
   | some (.nDash n) =>
-    match e.item.toLit? with
+    match CstCommon.Member.toLit? e.item with
     | some (.liNum x) =>
       let xNat := x.toNat
       let minMagnitude := (Int64.MAX + 1).toNat

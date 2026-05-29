@@ -309,3 +309,106 @@ theorem memberAux_foldGetAttr_agrees
   rw [memberAux_foldGetAttr_agrees_aux accs attrs req es hheadExpr hmaux haexp hagr]
   rw [hheadEval, hitemEval]
   simp [bind, Except.bind]
+
+/- For Unary -/
+
+theorem bangN_evaluate_error (e : Expr) (n : Nat) (req : Request) (es : Entities) (err : Error) :
+  evaluate e req es = .error err →
+  evaluate (e.bangN n) req es = .error err := by
+  induction n generalizing e with
+  | zero =>
+    intro he
+    rw [Expr.bangN]; simp; exact he
+  | succ n ih =>
+    intro he
+    rw [Expr.bangN]; simp
+    apply ih (.unaryApp .not e)
+    simp [evaluate, he, bind, Except.bind]
+
+/-- `bangN` only behaves predictably when applied to a boolean value, since
+    intermediate `not` applications require bool-ness. -/
+theorem bangN_evaluate
+  (e : Expr) (n : Nat) (req : Request) (es : Entities) (b : Bool) :
+  evaluate e req es = .ok (.prim (.bool b)) →
+  evaluate (e.bangN n) req es =
+    if n%2 == 0 then .ok (.prim (.bool b)) else .ok (.prim (.bool !b)) := by
+  intro he
+  induction n generalizing e b with
+  | zero => simp [Expr.bangN]; exact he
+  | succ n ih =>
+    rw [Expr.bangN]; simp
+    have hnot : evaluate (Expr.unaryApp UnaryOp.not e) req es = .ok (.prim (.bool !b)) := by
+      simp [evaluate, he, bind, Except.bind, apply₁]
+    rw [ih (Expr.unaryApp UnaryOp.not e) (!b) hnot]
+    rcases Nat.mod_two_eq_zero_or_one n with hn | hn
+    · -- n even, n+1 odd
+      have h1 : (n % 2 == 0) = true := by simp [hn]
+      simp [h1]; omega
+    · -- n odd, n+1 even
+      have h1 : (n % 2 == 0) = false := by simp [hn]
+      simp [h1]; omega
+
+theorem bangN_evaluate_nonBool
+  (e : Expr) (n : Nat) (req : Request) (es : Entities) (v : Value) :
+  evaluate e req es = .ok v →
+  (∀ b, v ≠ .prim (.bool b)) →
+  n > 0 →
+  evaluate (e.bangN n) req es = .error .typeError := by
+  intro he hnb hpos
+  cases n with
+  | zero => omega
+  | succ k =>
+    rw [Expr.bangN]; simp
+    apply bangN_evaluate_error (.unaryApp .not e) k req es .typeError
+    simp [evaluate, he, bind, Except.bind]
+    cases v with
+    | prim p =>
+      cases p with
+      | bool b => exact absurd rfl (hnb b)
+      | _ => simp [apply₁]
+    | _ => simp [apply₁]
+
+theorem bangN_evaluate_ok
+  (e : Expr) (n : Nat) (req : Request) (es : Entities) (v : Value) :
+  evaluate e req es = .ok v →
+  evaluate (e.bangN n) req es = (
+    if n == 0 then .ok v
+    else match v with
+      | .prim (.bool b) =>
+        if n % 2 == 0 then .ok (.prim (.bool b)) else .ok (.prim (.bool !b))
+      | _ => .error .typeError) := by
+  intro hev
+  cases hn : n with
+  | zero =>
+    simp [Expr.bangN, hev]
+  | succ k =>
+    cases v with
+    | prim p =>
+      cases p with
+      | bool b =>
+        rw [bangN_evaluate e (k+1) req es b hev]
+        simp
+      | int _ | string _ | entityUID _ =>
+        rw [bangN_evaluate_nonBool e (k+1) req es _ hev
+              (by intro b h; cases h) (by omega)]
+        simp
+    | set _ | record _ | ext _ =>
+      rw [bangN_evaluate_nonBool e (k+1) req es _ hev
+            (by intro b h; cases h) (by omega)]
+      simp
+
+theorem bangN_evaluate_general
+  (e : Expr) (n : Nat) (req : Request) (es : Entities) :
+  evaluate (e.bangN n) req es = (match evaluate e req es with
+    | .error err => .error err
+    | .ok v =>
+      if n == 0 then .ok v
+      else match v with
+        | .prim (.bool b) =>
+          if n % 2 == 0 then .ok (.prim (.bool b)) else .ok (.prim (.bool !b))
+        | _ => .error .typeError) := by
+  cases hev : evaluate e req es with
+  | error err =>
+    rw [bangN_evaluate_error e n req es err hev]
+  | ok v =>
+    rw [bangN_evaluate_ok e n req es v hev]
