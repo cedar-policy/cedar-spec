@@ -139,11 +139,34 @@ theorem Cst.Member.toAExpr?_evaluate
       exists eprim
       apply (h _ hpeos)
   obtain ⟨eprim, hitem_eval⟩ := hitem_eval
-
   unfold Cst.Member.evaluate
 
+  /- AttrChain agreement -/
+  match hattr : Cst.AttrChain? access with
+  | none =>
+    exfalso
+    exact attrChain?_isSome_of_mapM_toAstAccessor? access accs haccs hattr
+  | some attrs =>
+    have hagr : attrsAccessorsAgree accs attrs = true :=
+      toAstAccessor_attrChain_agrees access accs attrs haccs hattr
 
-  sorry
+    /- memberAux / foldGetAttr agreement -/
+    match hpeos : peos.toExpr? with
+    | none =>
+      exfalso
+      have h_mem_fails : (⟨item, access⟩ : Cst.Member).toAExpr? = none := by
+        apply item_none_member_none
+        simp [Cst.Primary.toAExpr?, hitem, hpeos]
+      simp [Cst.Member.toAExpr?, Cst.Member.toExprOrSpecial?,
+            hitem, haccs, hmem] at h_mem_fails
+      rw [h_mem_fails] at heos
+      simp at heos
+    | some eprim' =>
+      have hheadEval : evaluate eprim' req es = item.evaluate req es :=
+        Cst.Primary.toAExpr?_evaluate hitem _ hpeos
+      rw [memberAux_foldGetAttr_agrees_aux accs attrs req es hpeos hmem heos hagr,
+          hheadEval]
+
 
 
 

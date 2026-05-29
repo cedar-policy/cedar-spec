@@ -120,6 +120,33 @@ theorem item_none_member_none (mem : Cst.Member) :
       | field _ => simp [memberAux] at hmaux
       | index _ => simp [memberAux] at hmaux
 
+theorem attrChain?_isSome_of_mapM_toAstAccessor?
+  (accs : List Cst.MemAccess) (ret : List AstAccessor) :
+  accs.mapM (Cst.MemAccess.toAstAccessor?) = some ret →
+  Cst.AttrChain? accs ≠ none := by
+  induction accs generalizing ret with
+  | nil =>
+    intro _ h
+    simp [Cst.AttrChain?] at h
+  | cons hd tl ih =>
+    intro h
+    simp [List.mapM_cons, Option.bind_eq_some_iff] at h
+    obtain ⟨hd_ret, hhd, tl_ret, htl, _⟩ := h
+    match hd with
+    | .field i =>
+      cases i <;> simp [Cst.MemAccess.toAstAccessor?] at hhd
+      simp only [Option.bind_eq_some_iff] at hhd
+      obtain ⟨s, hs, _⟩ := hhd
+      simp [Cst.AttrChain?, hs]
+      intro h2
+      exact ih tl_ret htl h2
+    | .index e =>
+      simp [Cst.MemAccess.toAstAccessor?, Option.bind_eq_some_iff] at hhd
+      obtain ⟨s, hs, _⟩ := hhd
+      simp [Cst.AttrChain?, hs]
+      intro h2
+      exact ih tl_ret htl h2
+
 theorem toAstAccessor_attrChain_agrees (accs : List Cst.MemAccess)
   (ret1 : List AstAccessor) (ret2 : List Attr) :
   accs.mapM (Cst.MemAccess.toAstAccessor?) = some ret1 →
