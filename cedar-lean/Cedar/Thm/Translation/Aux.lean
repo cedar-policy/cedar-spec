@@ -94,6 +94,32 @@ def attrsAccessorsAgree : List AstAccessor → List Attr → Bool
       attrAccessorAgrees acc attr && attrsAccessorsAgree accs attrs
   | _, _ => false
 
+theorem item_none_member_none (mem : Cst.Member) :
+  mem.item.toAExpr? = none →
+  mem.toAExpr? = none := by
+  obtain ⟨item, acc⟩ := mem
+  intro hitem
+  simp [Cst.Primary.toAExpr?, Option.bind_eq_none_iff] at hitem
+  simp [Cst.Member.toAExpr?, Cst.Member.toExprOrSpecial?, Option.bind_eq_none_iff]
+  intro eos hmem_trans
+  simp only [Option.bind_eq_some_iff] at hmem_trans
+  obtain ⟨ieos, hieos, accessors, haccessors, hmaux⟩ := hmem_trans
+  specialize hitem ieos hieos
+  cases accessors with
+  | nil =>
+    simp [memberAux] at hmaux
+    rw [← hmaux]; exact hitem
+  | cons hd tl =>
+    cases ieos with
+    | expr e => simp [ExprOrSpecial.toExpr?] at hitem
+    | var v => simp [ExprOrSpecial.toExpr?] at hitem
+    | boolLit b => simp [ExprOrSpecial.toExpr?] at hitem
+    | strLit s => simp [memberAux, hitem] at hmaux
+    | name n  =>
+      cases hd with
+      | field _ => simp [memberAux] at hmaux
+      | index _ => simp [memberAux] at hmaux
+
 theorem toAstAccessor_attrChain_agrees (accs : List Cst.MemAccess)
   (ret1 : List AstAccessor) (ret2 : List Attr) :
   accs.mapM (Cst.MemAccess.toAstAccessor?) = some ret1 →
@@ -136,28 +162,123 @@ theorem toAstAccessor_attrChain_agrees (accs : List Cst.MemAccess)
         · simp [← hhd1, attrAccessorAgrees]
         · apply (ih tl1 tl2 htl1 htl2)
 
-theorem item_none_member_none (mem : Cst.Member) :
-  mem.item.toAExpr? = none →
-  mem.toAExpr? = none := by
-  obtain ⟨item, acc⟩ := mem
-  intro hitem
-  simp [Cst.Primary.toAExpr?, Option.bind_eq_none_iff] at hitem
-  simp [Cst.Member.toAExpr?, Cst.Member.toExprOrSpecial?, Option.bind_eq_none_iff]
-  intro eos hmem_trans
-  simp only [Option.bind_eq_some_iff] at hmem_trans
-  obtain ⟨ieos, hieos, accessors, haccessors, hmaux⟩ := hmem_trans
-  specialize hitem ieos hieos
-  cases accessors with
+theorem memberAux_foldGetAttr_agrees_aux
+  (accs : List AstAccessor) (attrs : List Attr)
+  (req : Request) (es : Entities)
+  {ieos eos : ExprOrSpecial} {headExpr aexp : Expr} :
+  ieos.toExpr? = some headExpr →
+  memberAux ieos accs = some eos →
+  eos.toExpr? = some aexp →
+  attrsAccessorsAgree accs attrs →
+  evaluate aexp req es =
+    (do let h ← evaluate headExpr req es
+        List.foldlM (fun v a => getAttr v a es) h attrs) := by
+  induction accs generalizing attrs ieos eos headExpr aexp with
   | nil =>
-    simp [memberAux] at hmaux
-    rw [← hmaux]; exact hitem
-  | cons hd tl =>
-    cases ieos with
-    | expr e => simp [ExprOrSpecial.toExpr?] at hitem
-    | var v => simp [ExprOrSpecial.toExpr?] at hitem
-    | boolLit b => simp [ExprOrSpecial.toExpr?] at hitem
-    | strLit s => simp [memberAux, hitem] at hmaux
-    | name n  =>
-      cases hd with
-      | field _ => simp [memberAux] at hmaux
-      | index _ => simp [memberAux] at hmaux
+    intro hheadExpr hmaux haexp hagr
+    cases attrs with
+    | nil =>
+      simp [memberAux] at hmaux
+      rw [← hmaux] at haexp
+      rw [hheadExpr] at haexp
+      simp at haexp
+      rw [← haexp]
+      simp [List.foldlM]
+    | cons _ _ => simp [attrsAccessorsAgree] at hagr
+  | cons acc tl ih =>
+    intro hheadExpr hmaux haexp hagr
+    cases attrs with
+    | nil => simp [attrsAccessorsAgree] at hagr
+    | cons attr ttl =>
+      simp [attrsAccessorsAgree] at hagr
+      obtain ⟨hhead, htail⟩ := hagr
+      have h_acc_toString : acc.toString = attr := by
+        cases acc with
+        | field id =>
+          cases id <;> simp [attrAccessorAgrees] at hhead
+          all_goals (simp [AstAccessor.toString, CstCommon.Ident.toString]; exact hhead)
+        | index s =>
+          simp [attrAccessorAgrees] at hhead
+          simp [AstAccessor.toString]; exact hhead
+      cases ieos with
+      | expr e =>
+        simp [ExprOrSpecial.toExpr?] at hheadExpr
+        simp [memberAux] at hmaux
+        have hnew : (ExprOrSpecial.expr (e.getAttr acc.toString)).toExpr?
+                    = some (e.getAttr acc.toString) := rfl
+        have ih' := ih ttl
+                       (ieos := .expr (e.getAttr acc.toString))
+                       (headExpr := e.getAttr acc.toString)
+                       hnew hmaux haexp htail
+        rw [ih', ← hheadExpr]
+        simp [evaluate, h_acc_toString, List.foldlM]
+      | var v =>
+        simp [ExprOrSpecial.toExpr?] at hheadExpr
+        cases acc with
+        | field id =>
+          simp [memberAux] at hmaux
+          have hnew : (ExprOrSpecial.expr ((Expr.var v).getAttr (CstCommon.Ident.toString id))).toExpr?
+                      = some ((Expr.var v).getAttr (CstCommon.Ident.toString id)) := rfl
+          have ih' := ih ttl
+                         (ieos := .expr ((Expr.var v).getAttr (CstCommon.Ident.toString id)))
+                         (headExpr := (Expr.var v).getAttr (CstCommon.Ident.toString id))
+                         hnew hmaux haexp htail
+          rw [ih', ← hheadExpr]
+          simp [AstAccessor.toString] at h_acc_toString
+          simp [evaluate, h_acc_toString, List.foldlM]
+        | index s =>
+          simp [memberAux] at hmaux
+          have hnew : (ExprOrSpecial.expr ((Expr.var v).getAttr s)).toExpr?
+                      = some ((Expr.var v).getAttr s) := rfl
+          have ih' := ih ttl
+                         (ieos := .expr ((Expr.var v).getAttr s))
+                         (headExpr := (Expr.var v).getAttr s)
+                         hnew hmaux haexp htail
+          rw [ih', ← hheadExpr]
+          simp [AstAccessor.toString] at h_acc_toString
+          simp [evaluate, h_acc_toString, List.foldlM]
+      | strLit s =>
+        simp [ExprOrSpecial.toExpr?, Option.bind_eq_some_iff] at hheadExpr
+        obtain ⟨us, hus, hheadEq⟩ := hheadExpr
+        simp [memberAux, ExprOrSpecial.toExpr?, hus] at hmaux
+        have hnew : (ExprOrSpecial.expr ((Expr.lit (.string us)).getAttr acc.toString)).toExpr?
+                    = some ((Expr.lit (.string us)).getAttr acc.toString) := rfl
+        have ih' := ih ttl
+                       (ieos := .expr ((Expr.lit (.string us)).getAttr acc.toString))
+                       (headExpr := (Expr.lit (.string us)).getAttr acc.toString)
+                       hnew hmaux haexp htail
+        rw [ih']
+        simp [evaluate, ← hheadEq, h_acc_toString, List.foldlM]
+      | boolLit b =>
+        simp [ExprOrSpecial.toExpr?] at hheadExpr
+        simp [memberAux, ExprOrSpecial.toExpr?] at hmaux
+        have hnew : (ExprOrSpecial.expr ((Expr.lit (.bool b)).getAttr acc.toString)).toExpr?
+                    = some ((Expr.lit (.bool b)).getAttr acc.toString) := rfl
+        have ih' := ih ttl
+                       (ieos := .expr ((Expr.lit (.bool b)).getAttr acc.toString))
+                       (headExpr := (Expr.lit (.bool b)).getAttr acc.toString)
+                       hnew hmaux haexp htail
+        rw [ih', ← hheadExpr]
+        simp [evaluate, h_acc_toString, List.foldlM]
+      | name n =>
+        cases acc with
+        | field _ => simp [memberAux] at hmaux
+        | index _ => simp [memberAux] at hmaux
+
+theorem memberAux_foldGetAttr_agrees
+  (item : Cst.Primary) (head : Value)
+  (accs : List AstAccessor) (attrs : List Attr)
+  (req : Request) (es : Entities)
+  {ieos eos : ExprOrSpecial} {headExpr aexp : Expr} :
+  item.toExprOrSpecial? = some ieos →
+  ieos.toExpr? = some headExpr →
+  memberAux ieos accs = some eos →
+  eos.toExpr? = some aexp →
+  evaluate headExpr req es = item.evaluate req es →
+  item.evaluate req es = .ok head →
+  attrsAccessorsAgree accs attrs →
+  evaluate aexp req es = List.foldlM (fun v a => getAttr v a es) head attrs := by
+  intro _ hheadExpr hmaux haexp hheadEval hitemEval hagr
+  rw [memberAux_foldGetAttr_agrees_aux accs attrs req es hheadExpr hmaux haexp hagr]
+  rw [hheadEval, hitemEval]
+  simp [bind, Except.bind]

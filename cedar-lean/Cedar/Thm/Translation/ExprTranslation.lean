@@ -140,6 +140,7 @@ theorem Cst.Member.toAExpr?_evaluate
       apply (h _ hpeos)
   obtain ⟨eprim, hitem_eval⟩ := hitem_eval
 
+  unfold Cst.Member.evaluate
 
 
   sorry
