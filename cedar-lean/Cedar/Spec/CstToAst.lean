@@ -139,7 +139,7 @@ private def Cst.Expr.toStringLiteral? : Cst.Expr → Option String
           | _ => none
         | _ => none
 
-private def Cst.MemAccess.toAstAccessor? (m : Cst.MemAccess) : Option AstAccessor :=
+public def Cst.MemAccess.toAstAccessor? (m : Cst.MemAccess) : Option AstAccessor :=
   match m with
   | .field i => match i with
     | .idIdent _ => some (.field i)
@@ -149,7 +149,7 @@ private def Cst.MemAccess.toAstAccessor? (m : Cst.MemAccess) : Option AstAccesso
     let s ← Cedar.Spec.CstCommon.unescape? s
     some (.index s)
 
-private def memberAux :  ExprOrSpecial → List AstAccessor → Option ExprOrSpecial
+public def memberAux :  ExprOrSpecial → List AstAccessor → Option ExprOrSpecial
   | prim, [] => prim
   | .expr e, hd :: tl => memberAux (.expr (.getAttr e hd.toString)) tl
   | prim@(.strLit _), hd :: tl => do
