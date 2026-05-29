@@ -207,7 +207,6 @@ theorem Cst.Unary.toAExpr?_evaluate
         have hitem_eval : evaluate iexp req es = item.evaluate req es :=
           @Cst.Member.toAExpr?_evaluate item ieos req es hitem_trans iexp hioes_trans
         rw [bangN_evaluate_general iexp n.toNat req es, hitem_eval]
-        -- Bridge `n.toNat = 0` (Nat) and `n = 0` (UInt8); same for `% 2 = 0`.
         have h_zero : (n.toNat = 0) ↔ (n = 0) := by
           constructor
           · intro h; exact UInt8.toNat_inj.mp (by simp [h])
@@ -229,7 +228,123 @@ theorem Cst.Unary.toAExpr?_evaluate
             cases v with
             | prim p => cases p <;> simp
             | _ => simp
-  | some (.nDash n) => sorry
+  | some (.nDash n) =>
+    -- The previous `some (.nDash 0)` arm caught the n=0 case, so n ≠ 0 here.
+    -- But we can't extract that without an explicit by_cases on n = 0.
+    by_cases hn0 : n = 0
+    · -- This arm is unreachable when n = 0 (caught by the prior pattern).
+      -- We have to discharge it anyway. The translator's nDash branch with n=0
+      -- collapses to `e.item.toExprOrSpecial?` (per the explicit nDash 0 arm
+      -- earlier in `Cst.Unary.toExprOrSpecial?`), so the proof is the same.
+      simp [hn0, Cst.Unary.toExprOrSpecial?] at hu
+      simp [Cst.Unary.evaluate, hn0]
+      apply @Cst.Member.toAExpr?_evaluate item eos req es hu aexp heos
+    · -- Main case: n ≠ 0.  Match the translator's split on item.toLit?.
+      simp [Cst.Unary.toExprOrSpecial?] at hu
+      simp [Cst.Unary.evaluate, hn0]
+      -- Bridge UInt8 ↔ Nat for n.toNat = 0 and parity.
+      have h_zero : (n.toNat = 0) ↔ (n = 0) := by
+        constructor
+        · intro h; exact UInt8.toNat_inj.mp (by simp [h])
+        · intro h; rw [h]; rfl
+      have h_par : (n.toNat % 2 = 0) ↔ (n % 2 = 0) := by
+        rw [show n.toNat % 2 = (n % 2).toNat from by rw [UInt8.toNat_mod]; rfl]
+        constructor
+        · intro h; exact UInt8.toNat_inj.mp (by simp [h])
+        · intro h; rw [h]; rfl
+      match hlit : CstCommon.Member.toLit? item with
+      | some (.liNum x) =>
+        simp [hlit] at hu
+        show evaluate aexp req es = (
+          match compare x.toNat (Int64.MAX + 1).toNat with
+          | .eq =>
+            if n = 1 then .ok (.prim (.int Int64.MIN.toInt64)) else .error .arithBoundsError
+          | .lt =>
+            match Int64.ofInt? ↑x.toNat with
+            | some y =>
+              if n % 2 = 0 then .ok (.prim (.int y)) else .ok (.prim (.int (-y)))
+            | none => .error .arithBoundsError
+          | .gt => .error .arithBoundsError)
+        match hcmp : compare x.toNat (Int64.MAX + 1).toNat with
+        | .gt =>
+          rw [hcmp] at hu; simp at hu
+        | .eq =>
+          rw [hcmp] at hu
+          simp at hu
+          simp [← hu, ExprOrSpecial.toExpr?] at heos
+          rw [← heos]
+          rw [dashN_evaluate_general (Expr.lit (.int Int64.MIN.toInt64)) (n - 1).toNat req es]
+          simp [evaluate]
+          -- Int64.MIN.toInt64.neg? = none (computable; check via decide).
+          have hMIN_neg : Int64.MIN.toInt64.neg? = none := by decide
+          rw [hMIN_neg]
+          -- Bridge `(n-1).toNat = 0 ↔ n = 1` (UInt8).
+          have h_eq1 : ((n - 1).toNat = 0) ↔ (n = 1) := by
+            have hpos : n.toNat > 0 := by
+              by_contra h0
+              apply hn0
+              apply h_zero.mp
+              omega
+            constructor
+            · intro h
+              -- (n-1).toNat = 0 in UInt8.  We need n.toNat = 1.
+              -- (n-1).toNat = (n.toNat + (256 - 1)) % 256 = (n.toNat + 255) % 256
+              -- = 0 iff n.toNat = 1 (when n.toNat ≤ 255 which always holds for UInt8).
+              have hbound : n.toNat < 256 := n.toNat_lt
+              have : n - 1 = 0 := UInt8.toNat_inj.mp (by simp; exact h)
+              -- From n - 1 = 0 and n ≠ 0, get n = 1.
+              have : n = 1 := by
+                have h2 := congrArg (· + 1) this
+                simp at h2
+                omega
+              exact this
+            · intro h; rw [h]; rfl
+          simp [h_eq1]
+        | .lt =>
+          rw [hcmp] at hu
+          simp at hu
+          cases hofInt : Int64.ofInt? (x.toNat : Int) with
+          | none => rw [hofInt] at hu; cases hu
+          | some y =>
+            rw [hofInt] at hu
+            simp at hu
+            simp [← hu, ExprOrSpecial.toExpr?] at heos
+            rw [← heos]
+            rw [dashN_evaluate_general (Expr.lit (.int (-y))) (n - 1).toNat req es]
+            simp [evaluate]
+            -- The .lt arm needs (-y).neg? = some y plus a parity bridge between
+            -- (n-1).toNat (UInt8) and n (UInt8). The math works out (since y is
+            -- in [0, Int64.MAX], -y is in [-Int64.MAX, 0], and (-y).neg? = some y),
+            -- but the proof requires multiple Int64 helpers not currently exposed.
+            sorry
+      | some .liTrue | some .liFalse | some (.liStr _) | none =>
+        all_goals
+          simp [hlit] at hu
+          -- hu now has the form: ... = some eos using the dashN n.toNat fallback
+          cases hitem_trans : item.toExprOrSpecial? with
+          | none => simp [hitem_trans] at hu
+          | some ieos =>
+            simp [hitem_trans] at hu
+            cases hioes_trans : ieos.toExpr? with
+            | none => simp [hioes_trans] at hu
+            | some iexp =>
+              simp [hioes_trans] at hu
+              simp [←hu, ExprOrSpecial.toExpr?] at heos
+              rw [← heos]
+              have hitem_eval : evaluate iexp req es = item.evaluate req es :=
+                @Cst.Member.toAExpr?_evaluate item ieos req es hitem_trans iexp hioes_trans
+              rw [dashN_evaluate_general iexp n.toNat req es, hitem_eval]
+              simp [hlit, h_zero, h_par, hn0]
+              cases hev : item.evaluate req es with
+              | error err => simp [bind, Except.bind]
+              | ok v =>
+                simp [bind, Except.bind]
+                cases v with
+                | prim p =>
+                  cases p with
+                  | int i => simp; rfl
+                  | _ => simp
+                | _ => simp
   | some .nOverBang => simp [Cst.Unary.toExprOrSpecial?] at hu
   | some .nOverDash => simp [Cst.Unary.toExprOrSpecial?] at hu
 

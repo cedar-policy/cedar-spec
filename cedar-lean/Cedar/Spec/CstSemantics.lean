@@ -199,7 +199,10 @@ public def Unary.evaluate (e : Unary) (req : Request) (es : Entities) : Result V
         let minMagnitude := (Int64.MAX + 1).toNat
         match compare xNat minMagnitude with
         | .eq =>
-          if n % 2 == 1
+          -- AST translates to `(lit Int64.MIN).dashN (n-1)`.  Since
+          -- `Int64.MIN.neg?` fails, only `n = 1` succeeds (zero further
+          -- negations applied); any larger `n` errors on the first negation.
+          if n == 1
           then .ok (.prim (.int Int64.MIN.toInt64))
           else .error .arithBoundsError
         | .lt =>
@@ -210,13 +213,17 @@ public def Unary.evaluate (e : Unary) (req : Request) (es : Entities) : Result V
         | .gt => .error .arithBoundsError
       | _ => do
           let mval ← e.item.evaluate req es
-          -- Force the type check and error the non-ints
+          -- Force the type check and error the non-ints. We must also check
+          -- `i.neg?` *before* the parity shortcut: when `i = Int64.MIN`, the
+          -- AST iterates `apply₁ .neg` and errors on the first step, so this
+          -- case must error regardless of parity.
           match mval with
           | .prim (.int i) =>
-              if n % 2 == 0 then .ok (.prim (.int i))
-              else match i.neg? with
-                | some j => .ok (.prim (.int j))
-                | none   => .error .arithBoundsError
+              match i.neg? with
+              | none => .error .arithBoundsError
+              | some j =>
+                  if n % 2 == 0 then .ok (.prim (.int i))
+                  else .ok (.prim (.int j))
           | _ => .error .typeError
   | some _ => .error .arithBoundsError
 termination_by sizeOf e

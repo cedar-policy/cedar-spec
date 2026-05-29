@@ -325,8 +325,6 @@ theorem bangN_evaluate_error (e : Expr) (n : Nat) (req : Request) (es : Entities
     apply ih (.unaryApp .not e)
     simp [evaluate, he, bind, Except.bind]
 
-/-- `bangN` only behaves predictably when applied to a boolean value, since
-    intermediate `not` applications require bool-ness. -/
 theorem bangN_evaluate
   (e : Expr) (n : Nat) (req : Request) (es : Entities) (b : Bool) :
   evaluate e req es = .ok (.prim (.bool b)) →
@@ -412,3 +410,167 @@ theorem bangN_evaluate_general
     rw [bangN_evaluate_error e n req es err hev]
   | ok v =>
     rw [bangN_evaluate_ok e n req es v hev]
+
+theorem dashN_evaluate_error (e : Expr) (n : Nat) (req : Request) (es : Entities) (err : Error) :
+  evaluate e req es = .error err →
+  evaluate (e.dashN n) req es = .error err := by
+  induction n generalizing e with
+  | zero =>
+    intro he
+    rw [Expr.dashN]; simp; exact he
+  | succ n ih =>
+    intro he
+    rw [Expr.dashN]; simp
+    apply ih (.unaryApp .neg e)
+    simp [evaluate, he, bind, Except.bind]
+
+theorem dashN_evaluate_nonInt
+  (e : Expr) (n : Nat) (req : Request) (es : Entities) (v : Value) :
+  evaluate e req es = .ok v →
+  (∀ i, v ≠ .prim (.int i)) →
+  n > 0 →
+  evaluate (e.dashN n) req es = .error .typeError := by
+  intro he hni hpos
+  cases n with
+  | zero => omega
+  | succ k =>
+    rw [Expr.dashN]; simp
+    apply dashN_evaluate_error (.unaryApp .neg e) k req es .typeError
+    simp [evaluate, he, bind, Except.bind]
+    cases v with
+    | prim p =>
+      cases p with
+      | int i => exact absurd rfl (hni i)
+      | _ => simp [apply₁]
+    | _ => simp [apply₁]
+
+/-- Helper: `(Int64.ofInt k).toInt = k` when `k` is in the `Int64` range. -/
+private theorem toInt_ofInt_of_range {k : Int} (h : Int64.MIN ≤ k ∧ k ≤ Int64.MAX) :
+    (Int64.ofInt k).toInt = k := by
+  have h1 : -2^63 ≤ k := by simp [Int64.MIN] at h; omega
+  have h2 : k < 2^63 := by simp [Int64.MAX] at h; omega
+  show BitVec.toInt (BitVec.ofInt 64 k) = k
+  rw [BitVec.toInt_ofInt]
+  exact Int.bmod_eq_of_le h1 h2
+
+/-- Helper: if `Int64.ofInt? k = some v`, then `v.toInt = k`. -/
+private theorem toInt_of_ofInt? {k : Int} {v : Int64}
+    (h : Int64.ofInt? k = some v) : v.toInt = k := by
+  have hrange : Int64.MIN ≤ k ∧ k ≤ Int64.MAX := by
+    by_contra hnr
+    have : Int64.ofInt? k = none := by
+      apply Int64.ofInt?_none_iff.mp
+      by_cases hlo : Int64.MIN ≤ k
+      · right; by_contra hhi; apply hnr; exact ⟨hlo, by omega⟩
+      · left; omega
+    rw [this] at h; cases h
+  have hsome : Int64.ofInt? k = some (Int64.ofInt k) := Int64.ofInt?_some_iff.mp hrange
+  rw [hsome] at h; injection h with hv
+  rw [← hv]
+  exact toInt_ofInt_of_range hrange
+
+/-- Double negation on `Int64`: if `i.neg? = some j` then `j.neg? = some i`. -/
+theorem Int64.neg?_neg? {i j : Int64} :
+    i.neg? = some j → j.neg? = some i := by
+  intro h
+  rw [Int64.neg?] at h
+  have hj : j.toInt = -i.toInt := toInt_of_ofInt? h
+  rw [Int64.neg?, hj]
+  rw [show -(-i.toInt) = i.toInt from by omega]
+  exact Int64.ofInt?_toInt i
+
+/-- `dashN` on an int. Note: when `i = Int64.MIN` (so `i.neg? = none`), the
+    AST iterates `apply₁ .neg` and errors on the first step — regardless of
+    whether the total count is even or odd. So the `i.neg? = none` arm here
+    short-circuits *before* the parity check. -/
+theorem dashN_evaluate_int
+  (e : Expr) (n : Nat) (req : Request) (es : Entities) (i : Int64) :
+  evaluate e req es = .ok (.prim (.int i)) →
+  evaluate (e.dashN n) req es =
+    (if n == 0 then .ok (.prim (.int i))
+     else match i.neg? with
+       | none => .error .arithBoundsError
+       | some j =>
+           if n % 2 == 0 then .ok (.prim (.int i))
+           else .ok (.prim (.int j))) := by
+  intro he
+  induction n generalizing e i with
+  | zero => simp [Expr.dashN]; exact he
+  | succ n ih =>
+    rw [Expr.dashN]; simp
+    cases hneg : i.neg? with
+    | none =>
+      have hev_err : evaluate (Expr.unaryApp UnaryOp.neg e) req es = .error .arithBoundsError := by
+        simp [evaluate, he, bind, Except.bind, apply₁, intOrErr, hneg]
+      rw [dashN_evaluate_error (Expr.unaryApp UnaryOp.neg e) n req es .arithBoundsError hev_err]
+    | some j =>
+      have hev_ok : evaluate (Expr.unaryApp UnaryOp.neg e) req es = .ok (.prim (.int j)) := by
+        simp [evaluate, he, bind, Except.bind, apply₁, intOrErr, hneg]
+      rw [ih (.unaryApp .neg e) j hev_ok]
+      have hjneg : j.neg? = some i := Int64.neg?_neg? hneg
+      rw [hjneg]
+      rcases Nat.mod_two_eq_zero_or_one n with hn | hn
+      · -- n even ⇒ n+1 odd
+        have h1 : (n % 2 == 0) = true := by simp [hn]
+        have h2 : (n + 1) % 2 ≠ 0 := by simp [Nat.add_mod, hn]
+        simp [h1, h2]
+      · -- n odd ⇒ n+1 even
+        have h1 : (n % 2 == 0) = false := by simp [hn]
+        have h2 : (n + 1) % 2 = 0 := by simp [Nat.add_mod, hn]
+        have h3 : n ≠ 0 := by intro h; rw [h] at hn; simp at hn
+        simp [h1, h2, h3]
+
+theorem dashN_evaluate_ok
+  (e : Expr) (n : Nat) (req : Request) (es : Entities) (v : Value) :
+  evaluate e req es = .ok v →
+  evaluate (e.dashN n) req es = (
+    if n == 0 then .ok v
+    else match v with
+      | .prim (.int i) =>
+          match i.neg? with
+          | none => .error .arithBoundsError
+          | some j =>
+              if n % 2 == 0 then .ok (.prim (.int i))
+              else .ok (.prim (.int j))
+      | _ => .error .typeError) := by
+  intro hev
+  cases hn : n with
+  | zero => simp [Expr.dashN, hev]
+  | succ k =>
+    cases v with
+    | prim p =>
+      cases p with
+      | int i =>
+        rw [dashN_evaluate_int e (k+1) req es i hev]
+      | bool _ | string _ | entityUID _ =>
+        rw [dashN_evaluate_nonInt e (k+1) req es _ hev
+              (by intro i h; cases h) (by omega)]
+        simp
+    | set _ | record _ | ext _ =>
+      rw [dashN_evaluate_nonInt e (k+1) req es _ hev
+            (by intro i h; cases h) (by omega)]
+      simp
+
+/-- Fully-unified `dashN` evaluation. NOTE: the CST evaluator's non-`liNum`
+    `nDash` arm in `CstSemantics.lean` will need to validate `i.neg?` *before*
+    the parity shortcut to match this spec — otherwise it diverges on
+    `Int64.MIN` inputs with even count. -/
+theorem dashN_evaluate_general
+  (e : Expr) (n : Nat) (req : Request) (es : Entities) :
+  evaluate (e.dashN n) req es = (match evaluate e req es with
+    | .error err => .error err
+    | .ok v =>
+      if n == 0 then .ok v
+      else match v with
+        | .prim (.int i) =>
+            match i.neg? with
+            | none => .error .arithBoundsError
+            | some j =>
+                if n % 2 == 0 then .ok (.prim (.int i))
+                else .ok (.prim (.int j))
+        | _ => .error .typeError) := by
+  cases hev : evaluate e req es with
+  | error err =>
+    rw [dashN_evaluate_error e n req es err hev]
+  | ok v =>
+    rw [dashN_evaluate_ok e n req es v hev]
