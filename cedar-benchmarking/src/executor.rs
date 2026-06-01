@@ -34,11 +34,11 @@ pub struct BenchmarkExecutor {
 }
 
 impl BenchmarkExecutor {
-    pub fn new(trials: usize) -> Self {
+    pub const fn new(trials: usize) -> Self {
         Self { trials }
     }
 
-    pub fn run(&self, task: &BenchmarkTask) -> miette::Result<(Target, String, TimingInfo)> {
+    pub fn run(self, task: &BenchmarkTask) -> miette::Result<(Target, String, TimingInfo)> {
         let timing = match task {
             BenchmarkTask::PolicyParse { policy_file, .. } => {
                 self.bench_policy_parsing(policy_file)
@@ -98,7 +98,7 @@ impl BenchmarkExecutor {
         Ok((task.target(), task.name().to_string(), timing))
     }
 
-    fn bench_policy_parsing(&self, policy_file: &Path) -> miette::Result<TimingInfo> {
+    fn bench_policy_parsing(self, policy_file: &Path) -> miette::Result<TimingInfo> {
         let src = std::fs::read_to_string(policy_file).into_diagnostic()?;
         Ok(self.benchmark(
             |src| {
@@ -108,7 +108,7 @@ impl BenchmarkExecutor {
         ))
     }
 
-    fn bench_json_policy_parsing(&self, policy_file: &Path) -> miette::Result<TimingInfo> {
+    fn bench_json_policy_parsing(self, policy_file: &Path) -> miette::Result<TimingInfo> {
         let src = std::fs::read_to_string(policy_file).into_diagnostic()?;
         let policy_set = src.parse::<PolicySet>()?;
         let json_policy =
@@ -121,7 +121,7 @@ impl BenchmarkExecutor {
         ))
     }
 
-    fn bench_protobuf_policy_parsing(&self, policy_file: &Path) -> miette::Result<TimingInfo> {
+    fn bench_protobuf_policy_parsing(self, policy_file: &Path) -> miette::Result<TimingInfo> {
         let src = std::fs::read_to_string(policy_file).into_diagnostic()?;
         let policy_set = src.parse::<PolicySet>()?;
         let proto = policy_set.encode();
@@ -133,7 +133,7 @@ impl BenchmarkExecutor {
         ))
     }
 
-    fn bench_schema_parsing(&self, schema_file: &Path) -> miette::Result<TimingInfo> {
+    fn bench_schema_parsing(self, schema_file: &Path) -> miette::Result<TimingInfo> {
         let src = std::fs::read_to_string(schema_file).into_diagnostic()?;
         Ok(self.benchmark(
             |src| {
@@ -143,7 +143,7 @@ impl BenchmarkExecutor {
         ))
     }
 
-    fn bench_json_schema_parsing(&self, json_schema_file: &Path) -> miette::Result<TimingInfo> {
+    fn bench_json_schema_parsing(self, json_schema_file: &Path) -> miette::Result<TimingInfo> {
         let src = std::fs::read_to_string(json_schema_file).into_diagnostic()?;
         Ok(self.benchmark(
             |src| {
@@ -153,7 +153,7 @@ impl BenchmarkExecutor {
         ))
     }
 
-    fn bench_protobuf_schema_parsing(&self, schema_file: &Path) -> miette::Result<TimingInfo> {
+    fn bench_protobuf_schema_parsing(self, schema_file: &Path) -> miette::Result<TimingInfo> {
         let schema = Self::load_cedar_schema(schema_file)?;
         let proto = schema.encode();
         Ok(self.benchmark(
@@ -165,7 +165,7 @@ impl BenchmarkExecutor {
     }
 
     fn bench_validation(
-        &self,
+        self,
         policy_file: &Path,
         schema_file: &Path,
     ) -> miette::Result<TimingInfo> {
@@ -182,7 +182,7 @@ impl BenchmarkExecutor {
     }
 
     fn bench_authorization(
-        &self,
+        self,
         policy_file: &Path,
         cedar_schema_file: Option<&Path>,
         json_schema_file: &Path,
@@ -207,7 +207,7 @@ impl BenchmarkExecutor {
     }
 
     fn bench_entity_parsing_with_schema(
-        &self,
+        self,
         cedar_schema_file: &Path,
         entities_file: &Path,
     ) -> miette::Result<TimingInfo> {
@@ -223,7 +223,7 @@ impl BenchmarkExecutor {
     }
 
     fn bench_entity_parsing_without_schema(
-        &self,
+        self,
         entities_file: &Path,
     ) -> miette::Result<TimingInfo> {
         let entities_str = std::fs::read_to_string(entities_file).into_diagnostic()?;
@@ -236,7 +236,7 @@ impl BenchmarkExecutor {
         ))
     }
 
-    fn bench_protobuf_entity_parsing(&self, entities_file: &Path) -> miette::Result<TimingInfo> {
+    fn bench_protobuf_entity_parsing(self, entities_file: &Path) -> miette::Result<TimingInfo> {
         let entities_str = std::fs::read_to_string(entities_file).into_diagnostic()?;
         let entities =
             cedar_policy::Entities::from_json_str(&entities_str, None).into_diagnostic()?;
@@ -276,7 +276,7 @@ impl BenchmarkExecutor {
     }
 
     /// Run `f(x)` for `trials` iterations, recording timing statistics
-    fn benchmark<T: Clone>(&self, f: impl Fn(T), x: T) -> TimingInfo {
+    fn benchmark<T: Clone>(self, f: impl Fn(T), x: T) -> TimingInfo {
         let mut runs = Vec::with_capacity(self.trials);
 
         // Warm-up run

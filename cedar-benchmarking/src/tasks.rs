@@ -16,7 +16,7 @@
 
 use miette::IntoDiagnostic;
 use serde::Deserialize;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Benchmark targets that can be measured
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
@@ -158,7 +158,7 @@ impl BenchmarkTask {
         }
     }
 
-    pub fn target(&self) -> Target {
+    pub const fn target(&self) -> Target {
         match self {
             Self::PolicyParse { .. } => Target::PolicyParse,
             Self::JsonPolicyParse { .. } => Target::JsonPolicyParse,
@@ -299,9 +299,9 @@ impl Task {
 }
 
 /// Load a benchmark corpus from a tasks.json file
-pub fn load_corpus(path: &PathBuf, targets: Option<Vec<Target>>) -> miette::Result<Vec<Task>> {
+pub fn load_corpus(path: &Path, targets: Option<&[Target]>) -> miette::Result<Vec<Task>> {
     let f = std::fs::File::open(path).into_diagnostic()?;
-    let prefix = path.parent().unwrap_or(std::path::Path::new("."));
+    let prefix = path.parent().unwrap_or_else(|| Path::new("."));
     let tasks: Vec<Task> = serde_json::from_reader(f).into_diagnostic()?;
     Ok(tasks
         .into_iter()
@@ -312,7 +312,7 @@ pub fn load_corpus(path: &PathBuf, targets: Option<Vec<Target>>) -> miette::Resu
             json_schema_file: t.json_schema_file.map(|p| prefix.join(p)),
             entities_file: t.entities_file.map(|p| prefix.join(p)),
             exclude_targets: t.exclude_targets,
-            only_targets: targets.clone(),
+            only_targets: targets.map(<[Target]>::to_vec),
         })
         .collect())
 }

@@ -14,6 +14,37 @@ publish = false
 name = "cedar-benchmarking"
 path = "src/main.rs"
 
+[lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "deny"
+rust-2018-idioms = "deny"
+
+[lints.clippy]
+nursery = { level = "warn", priority = -1 }
+cast_lossless = "warn"
+cast_possible_truncation = "warn"
+cloned_instead_of_copied = "warn"
+format_collect = "warn"
+format_push_string = "warn"
+implicit_clone = "warn"
+inconsistent_struct_constructor = "warn"
+inefficient_to_string = "warn"
+large_types_passed_by_value = "warn"
+needless_pass_by_value = "warn"
+option_as_ref_cloned = "warn"
+option_option = "warn"
+redundant_clone = "deny"
+ref_option = "warn"
+ref_option_ref = "warn"
+trivially_copy_pass_by_ref = "warn"
+allow_attributes = "deny"
+allow_attributes_without_reason = "deny"
+should_panic_without_expect = "deny"
+use_self = "allow"
+option_if_let_else = "allow"
+redundant_pub_crate = "allow"
+too_long_first_doc_paragraph = "allow"
+
 [dependencies]
 arbitrary = "1.4"
 cedar-policy = { version = "=4.11.0", path = "../cedar/cedar-policy", features = ["protobufs"] }

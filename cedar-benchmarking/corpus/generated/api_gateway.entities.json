@@ -22,21 +22,151 @@
   {
     "uid": {
       "__entity": {
+        "type": "APIGateway",
+        "id": "apigateway_2"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "APIGateway",
+        "id": "apigateway_3"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "APIGateway",
+        "id": "apigateway_4"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "APIGateway",
+        "id": "apigateway_5"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "APIGateway",
+        "id": "apigateway_6"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "APIGateway",
+        "id": "apigateway_7"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "APIGateway",
+        "id": "apigateway_8"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "APIGateway",
+        "id": "apigateway_9"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "APIGateway",
+        "id": "apigateway_10"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "APIGateway",
+        "id": "apigateway_11"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "APIGateway",
+        "id": "apigateway_12"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "APIGateway",
+        "id": "apigateway_13"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "APIGateway",
+        "id": "apigateway_14"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
         "type": "Endpoint",
         "id": "endpoint_0"
       }
     },
     "attrs": {
-      "path": "sample_value",
-      "method": "sample_value",
-      "rate_limit": 42,
-      "auth_required": true
+      "path": "val_main_2",
+      "method": "val_main_271",
+      "rate_limit": 100,
+      "auth_required": false
     },
     "parents": [
       {
         "__entity": {
           "type": "APIGateway",
-          "id": "apigateway_0"
+          "id": "apigateway_2"
         }
       }
     ]
@@ -49,9 +179,53 @@
       }
     },
     "attrs": {
-      "path": "sample_value",
-      "method": "sample_value",
-      "rate_limit": 42,
+      "path": "val_backup_713",
+      "method": "val_secondary_158",
+      "rate_limit": 24,
+      "auth_required": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "APIGateway",
+          "id": "apigateway_4"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Endpoint",
+        "id": "endpoint_2"
+      }
+    },
+    "attrs": {
+      "path": "val_beta_593",
+      "method": "val_beta_765",
+      "rate_limit": 40,
+      "auth_required": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "APIGateway",
+          "id": "apigateway_3"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Endpoint",
+        "id": "endpoint_3"
+      }
+    },
+    "attrs": {
+      "path": "val_secondary_514",
+      "method": "val_zeta_58",
+      "rate_limit": 65,
       "auth_required": true
     },
     "parents": [
@@ -66,24 +240,266 @@
   {
     "uid": {
       "__entity": {
+        "type": "Endpoint",
+        "id": "endpoint_4"
+      }
+    },
+    "attrs": {
+      "path": "val_zeta_70",
+      "method": "val_gamma_691",
+      "rate_limit": 30,
+      "auth_required": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "APIGateway",
+          "id": "apigateway_13"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Endpoint",
+        "id": "endpoint_5"
+      }
+    },
+    "attrs": {
+      "path": "val_theta_592",
+      "method": "val_beta_634",
+      "rate_limit": 10,
+      "auth_required": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "APIGateway",
+          "id": "apigateway_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Endpoint",
+        "id": "endpoint_6"
+      }
+    },
+    "attrs": {
+      "path": "val_dev_957",
+      "method": "val_prod_209",
+      "rate_limit": 85,
+      "auth_required": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "APIGateway",
+          "id": "apigateway_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Endpoint",
+        "id": "endpoint_7"
+      }
+    },
+    "attrs": {
+      "path": "val_prod_405",
+      "method": "val_epsilon_687",
+      "rate_limit": 82,
+      "auth_required": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "APIGateway",
+          "id": "apigateway_3"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Endpoint",
+        "id": "endpoint_8"
+      }
+    },
+    "attrs": {
+      "path": "val_dev_951",
+      "method": "val_gamma_9",
+      "rate_limit": 58,
+      "auth_required": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "APIGateway",
+          "id": "apigateway_7"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Endpoint",
+        "id": "endpoint_9"
+      }
+    },
+    "attrs": {
+      "path": "val_eta_518",
+      "method": "val_prod_135",
+      "rate_limit": 44,
+      "auth_required": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "APIGateway",
+          "id": "apigateway_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Endpoint",
+        "id": "endpoint_10"
+      }
+    },
+    "attrs": {
+      "path": "val_theta_378",
+      "method": "val_staging_161",
+      "rate_limit": 56,
+      "auth_required": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "APIGateway",
+          "id": "apigateway_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Endpoint",
+        "id": "endpoint_11"
+      }
+    },
+    "attrs": {
+      "path": "val_alpha_683",
+      "method": "val_staging_954",
+      "rate_limit": 84,
+      "auth_required": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "APIGateway",
+          "id": "apigateway_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Endpoint",
+        "id": "endpoint_12"
+      }
+    },
+    "attrs": {
+      "path": "val_epsilon_270",
+      "method": "val_delta_911",
+      "rate_limit": 13,
+      "auth_required": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "APIGateway",
+          "id": "apigateway_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Endpoint",
+        "id": "endpoint_13"
+      }
+    },
+    "attrs": {
+      "path": "val_staging_619",
+      "method": "val_eta_734",
+      "rate_limit": 43,
+      "auth_required": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "APIGateway",
+          "id": "apigateway_4"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Endpoint",
+        "id": "endpoint_14"
+      }
+    },
+    "attrs": {
+      "path": "val_prod_517",
+      "method": "val_secondary_257",
+      "rate_limit": 6,
+      "auth_required": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "APIGateway",
+          "id": "apigateway_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
         "type": "Client",
         "id": "client_0"
       }
     },
     "attrs": {
-      "tier": "sample_value",
+      "tier": "val_backup_849",
       "registered": {
         "__extn": {
           "fn": "datetime",
-          "arg": "2025-06-01T12:00:00Z"
+          "arg": "2025-01-01T10:00:00Z"
         }
       },
       "quota": {
-        "requests_per_minute": 42,
+        "requests_per_minute": 98,
         "bandwidth_mb": {
           "__extn": {
             "fn": "decimal",
-            "arg": "100.50"
+            "arg": "2143.81"
           }
         }
       }
@@ -98,19 +514,370 @@
       }
     },
     "attrs": {
-      "tier": "sample_value",
+      "tier": "val_prod_165",
       "registered": {
         "__extn": {
           "fn": "datetime",
-          "arg": "2025-06-01T12:00:00Z"
+          "arg": "2026-09-23T13:00:00Z"
         }
       },
       "quota": {
-        "requests_per_minute": 42,
+        "requests_per_minute": 71,
         "bandwidth_mb": {
           "__extn": {
             "fn": "decimal",
-            "arg": "100.50"
+            "arg": "158.14"
+          }
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Client",
+        "id": "client_2"
+      }
+    },
+    "attrs": {
+      "tier": "val_gamma_967",
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-09-02T11:00:00Z"
+        }
+      },
+      "quota": {
+        "requests_per_minute": 74,
+        "bandwidth_mb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "9052.18"
+          }
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Client",
+        "id": "client_3"
+      }
+    },
+    "attrs": {
+      "tier": "val_backup_130",
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-05-12T01:00:00Z"
+        }
+      },
+      "quota": {
+        "requests_per_minute": 45,
+        "bandwidth_mb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "3441.87"
+          }
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Client",
+        "id": "client_4"
+      }
+    },
+    "attrs": {
+      "tier": "val_theta_682",
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-06-25T17:00:00Z"
+        }
+      },
+      "quota": {
+        "requests_per_minute": 52,
+        "bandwidth_mb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "2532.30"
+          }
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Client",
+        "id": "client_5"
+      }
+    },
+    "attrs": {
+      "tier": "val_zeta_999",
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-07-01T05:00:00Z"
+        }
+      },
+      "quota": {
+        "requests_per_minute": 94,
+        "bandwidth_mb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "5442.52"
+          }
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Client",
+        "id": "client_6"
+      }
+    },
+    "attrs": {
+      "tier": "val_theta_273",
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-12-04T12:00:00Z"
+        }
+      },
+      "quota": {
+        "requests_per_minute": 4,
+        "bandwidth_mb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "7711.28"
+          }
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Client",
+        "id": "client_7"
+      }
+    },
+    "attrs": {
+      "tier": "val_eta_836",
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-06-10T07:00:00Z"
+        }
+      },
+      "quota": {
+        "requests_per_minute": 28,
+        "bandwidth_mb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "387.84"
+          }
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Client",
+        "id": "client_8"
+      }
+    },
+    "attrs": {
+      "tier": "val_eta_408",
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-05-28T02:00:00Z"
+        }
+      },
+      "quota": {
+        "requests_per_minute": 98,
+        "bandwidth_mb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "4573.44"
+          }
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Client",
+        "id": "client_9"
+      }
+    },
+    "attrs": {
+      "tier": "val_main_695",
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-01-04T08:00:00Z"
+        }
+      },
+      "quota": {
+        "requests_per_minute": 22,
+        "bandwidth_mb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "9512.33"
+          }
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Client",
+        "id": "client_10"
+      }
+    },
+    "attrs": {
+      "tier": "val_beta_111",
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-06-24T10:00:00Z"
+        }
+      },
+      "quota": {
+        "requests_per_minute": 55,
+        "bandwidth_mb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "9932.65"
+          }
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Client",
+        "id": "client_11"
+      }
+    },
+    "attrs": {
+      "tier": "val_delta_394",
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-05-02T22:00:00Z"
+        }
+      },
+      "quota": {
+        "requests_per_minute": 55,
+        "bandwidth_mb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "27.66"
+          }
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Client",
+        "id": "client_12"
+      }
+    },
+    "attrs": {
+      "tier": "val_eta_372",
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-02-22T10:00:00Z"
+        }
+      },
+      "quota": {
+        "requests_per_minute": 79,
+        "bandwidth_mb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "5143.84"
+          }
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Client",
+        "id": "client_13"
+      }
+    },
+    "attrs": {
+      "tier": "val_delta_737",
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-09-10T21:00:00Z"
+        }
+      },
+      "quota": {
+        "requests_per_minute": 52,
+        "bandwidth_mb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "5344.51"
+          }
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Client",
+        "id": "client_14"
+      }
+    },
+    "attrs": {
+      "tier": "val_staging_567",
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-04-14T21:00:00Z"
+        }
+      },
+      "quota": {
+        "requests_per_minute": 48,
+        "bandwidth_mb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "2851.78"
           }
         }
       }
