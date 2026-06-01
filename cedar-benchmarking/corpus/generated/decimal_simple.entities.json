@@ -1,0 +1,94 @@
+[
+  {
+    "uid": {
+      "__entity": {
+        "type": "Account",
+        "id": "account_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Account",
+        "id": "account_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Transaction",
+        "id": "transaction_0"
+      }
+    },
+    "attrs": {
+      "amount": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "currency": "sample_value",
+      "category": "sample_value"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Account",
+          "id": "account_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Transaction",
+        "id": "transaction_1"
+      }
+    },
+    "attrs": {
+      "amount": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "currency": "sample_value",
+      "category": "sample_value"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Account",
+          "id": "account_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  }
+]

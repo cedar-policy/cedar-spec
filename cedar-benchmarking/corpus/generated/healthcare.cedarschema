@@ -1,0 +1,48 @@
+entity Hospital;
+entity Department in [Hospital] = {
+    "name": __cedar::String,
+    "floor": __cedar::Long
+};
+entity Patient in [Department] = {
+    "name": __cedar::String,
+    "admitted": datetime,
+    "diagnosis": {
+        "code": __cedar::String,
+        "severity": __cedar::Long,
+        "details": {
+            "primary": __cedar::String,
+            "secondary": Set<__cedar::String>,
+            "vitals": {
+                "bp_systolic": decimal,
+                "bp_diastolic": decimal,
+                "heart_rate": __cedar::Long,
+                "temperature": decimal
+            }
+        }
+    },
+    "insurance": {
+        "provider": __cedar::String,
+        "policy_id": __cedar::String,
+        "coverage": decimal
+    }
+};
+entity Staff in [Department] = {
+    "role": __cedar::String,
+    "license_expiry": datetime,
+    "specializations": Set<__cedar::String>
+};
+action "view_record" appliesTo {
+    principal: [Staff],
+    resource: [Patient],
+    context: { "access_time": datetime, "source_ip": ipaddr }
+};
+action "modify_record" appliesTo {
+    principal: [Staff],
+    resource: [Patient],
+    context: { "access_time": datetime, "reason": __cedar::String }
+};
+action "prescribe" appliesTo {
+    principal: [Staff],
+    resource: [Patient],
+    context: { "medication": __cedar::String, "dosage": decimal }
+};

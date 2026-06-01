@@ -1,0 +1,92 @@
+{
+  "": {
+    "entityTypes": {
+      "Badge": {
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "access_level": {
+              "type": "Long"
+            },
+            "expires": {
+              "type": "datetime"
+            },
+            "holder": {
+              "type": "String"
+            },
+            "issued": {
+              "type": "datetime"
+            }
+          }
+        }
+      },
+      "Building": {},
+      "Room": {
+        "memberOfTypes": [
+          "Building"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "capacity": {
+              "type": "Long"
+            },
+            "floor": {
+              "type": "Long"
+            },
+            "name": {
+              "type": "String"
+            },
+            "network": {
+              "type": "ipaddr"
+            }
+          }
+        }
+      }
+    },
+    "actions": {
+      "enter": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Room"
+          ],
+          "principalTypes": [
+            "Badge"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "reader_ip": {
+                "type": "ipaddr"
+              },
+              "timestamp": {
+                "type": "datetime"
+              }
+            }
+          }
+        }
+      },
+      "unlock": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Room"
+          ],
+          "principalTypes": [
+            "Badge"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "duration": {
+                "type": "duration"
+              },
+              "timestamp": {
+                "type": "datetime"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

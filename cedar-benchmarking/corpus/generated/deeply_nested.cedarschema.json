@@ -1,0 +1,206 @@
+{
+  "": {
+    "entityTypes": {
+      "Operator": {
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "clearance": {
+              "type": "Long"
+            },
+            "team": {
+              "type": "String"
+            }
+          }
+        }
+      },
+      "Platform": {},
+      "Service": {
+        "memberOfTypes": [
+          "Platform"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "config": {
+              "type": "Record",
+              "attributes": {
+                "deployment": {
+                  "type": "Record",
+                  "attributes": {
+                    "network": {
+                      "type": "Record",
+                      "attributes": {
+                        "egress": {
+                          "type": "Record",
+                          "attributes": {
+                            "allow_internet": {
+                              "type": "Boolean"
+                            },
+                            "cidr": {
+                              "type": "ipaddr"
+                            }
+                          }
+                        },
+                        "ingress": {
+                          "type": "Record",
+                          "attributes": {
+                            "cidr": {
+                              "type": "ipaddr"
+                            },
+                            "ports": {
+                              "type": "Set",
+                              "element": {
+                                "type": "Long"
+                              }
+                            },
+                            "tls": {
+                              "type": "Boolean"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "replicas": {
+                      "type": "Long"
+                    },
+                    "resources": {
+                      "type": "Record",
+                      "attributes": {
+                        "limits": {
+                          "type": "Record",
+                          "attributes": {
+                            "cpu": {
+                              "type": "decimal"
+                            },
+                            "gpu": {
+                              "type": "Long"
+                            },
+                            "memory_gb": {
+                              "type": "decimal"
+                            }
+                          }
+                        },
+                        "requests": {
+                          "type": "Record",
+                          "attributes": {
+                            "cpu": {
+                              "type": "decimal"
+                            },
+                            "memory_gb": {
+                              "type": "decimal"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "strategy": {
+                      "type": "String"
+                    }
+                  }
+                },
+                "metadata": {
+                  "type": "Record",
+                  "attributes": {
+                    "created": {
+                      "type": "datetime"
+                    },
+                    "labels": {
+                      "type": "Set",
+                      "element": {
+                        "type": "String"
+                      }
+                    },
+                    "modified": {
+                      "type": "datetime"
+                    },
+                    "version": {
+                      "type": "String"
+                    }
+                  }
+                },
+                "monitoring": {
+                  "type": "Record",
+                  "attributes": {
+                    "alert_threshold": {
+                      "type": "decimal"
+                    },
+                    "enabled": {
+                      "type": "Boolean"
+                    },
+                    "retention": {
+                      "type": "duration"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "actions": {
+      "reconfigure": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Service"
+          ],
+          "principalTypes": [
+            "Operator"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "change": {
+                "type": "Record",
+                "attributes": {
+                  "field": {
+                    "type": "String"
+                  },
+                  "source_ip": {
+                    "type": "ipaddr"
+                  },
+                  "timestamp": {
+                    "type": "datetime"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "scale": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Service"
+          ],
+          "principalTypes": [
+            "Operator"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "request": {
+                "type": "Record",
+                "attributes": {
+                  "justification": {
+                    "type": "String"
+                  },
+                  "new_replicas": {
+                    "type": "Long"
+                  },
+                  "source_ip": {
+                    "type": "ipaddr"
+                  },
+                  "timestamp": {
+                    "type": "datetime"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

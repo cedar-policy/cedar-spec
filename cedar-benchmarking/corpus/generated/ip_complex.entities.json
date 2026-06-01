@@ -1,0 +1,166 @@
+[
+  {
+    "uid": {
+      "__entity": {
+        "type": "Firewall",
+        "id": "firewall_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Firewall",
+        "id": "firewall_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Zone",
+        "id": "zone_0"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      },
+      "name": "sample_value",
+      "trust_level": 42
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Firewall",
+          "id": "firewall_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Zone",
+        "id": "zone_1"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      },
+      "name": "sample_value",
+      "trust_level": 42
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Firewall",
+          "id": "firewall_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Service",
+        "id": "service_0"
+      }
+    },
+    "attrs": {
+      "port": 42,
+      "protocol": "sample_value",
+      "allowed_sources": [
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "10.0.0.1/32"
+          }
+        }
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Zone",
+          "id": "zone_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Service",
+        "id": "service_1"
+      }
+    },
+    "attrs": {
+      "port": 42,
+      "protocol": "sample_value",
+      "allowed_sources": [
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "10.0.0.1/32"
+          }
+        }
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Zone",
+          "id": "zone_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Client",
+        "id": "client_0"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      },
+      "mac": "sample_value"
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Client",
+        "id": "client_1"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      },
+      "mac": "sample_value"
+    },
+    "parents": []
+  }
+]

@@ -1,0 +1,156 @@
+[
+  {
+    "uid": {
+      "__entity": {
+        "type": "Org",
+        "id": "org_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Org",
+        "id": "org_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Team",
+        "id": "team_0"
+      }
+    },
+    "attrs": {},
+    "parents": [
+      {
+        "__entity": {
+          "type": "Org",
+          "id": "org_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Team",
+        "id": "team_1"
+      }
+    },
+    "attrs": {},
+    "parents": [
+      {
+        "__entity": {
+          "type": "Org",
+          "id": "org_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_0"
+      }
+    },
+    "attrs": {
+      "clearance": 42,
+      "department": "sample_value",
+      "active": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Team",
+          "id": "team_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_1"
+      }
+    },
+    "attrs": {
+      "clearance": 42,
+      "department": "sample_value",
+      "active": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Team",
+          "id": "team_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Document",
+        "id": "document_0"
+      }
+    },
+    "attrs": {
+      "classification": 42,
+      "owner": {
+        "__entity": {
+          "type": "User",
+          "id": "user_0"
+        }
+      },
+      "tags": [
+        "item1",
+        "item2"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Org",
+          "id": "org_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Document",
+        "id": "document_1"
+      }
+    },
+    "attrs": {
+      "classification": 42,
+      "owner": {
+        "__entity": {
+          "type": "User",
+          "id": "user_0"
+        }
+      },
+      "tags": [
+        "item1",
+        "item2"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Org",
+          "id": "org_0"
+        }
+      }
+    ]
+  }
+]

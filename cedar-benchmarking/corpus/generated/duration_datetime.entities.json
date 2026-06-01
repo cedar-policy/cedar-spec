@@ -1,0 +1,130 @@
+[
+  {
+    "uid": {
+      "__entity": {
+        "type": "Scheduler",
+        "id": "scheduler_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Scheduler",
+        "id": "scheduler_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Task",
+        "id": "task_0"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "max_duration": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "1h30m"
+        }
+      },
+      "timeout": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "1h30m"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Scheduler",
+          "id": "scheduler_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Task",
+        "id": "task_1"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "max_duration": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "1h30m"
+        }
+      },
+      "timeout": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "1h30m"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Scheduler",
+          "id": "scheduler_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Worker",
+        "id": "worker_0"
+      }
+    },
+    "attrs": {
+      "shift_start": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "shift_end": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Worker",
+        "id": "worker_1"
+      }
+    },
+    "attrs": {
+      "shift_start": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "shift_end": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      }
+    },
+    "parents": []
+  }
+]

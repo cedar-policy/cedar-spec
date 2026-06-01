@@ -1,0 +1,31 @@
+entity APIGateway;
+entity Endpoint in [APIGateway] = {
+    "path": __cedar::String,
+    "method": __cedar::String,
+    "rate_limit": __cedar::Long,
+    "auth_required": __cedar::Bool
+};
+entity Client = {
+    "tier": __cedar::String,
+    "registered": datetime,
+    "quota": {
+        "requests_per_minute": __cedar::Long,
+        "bandwidth_mb": decimal
+    }
+};
+action "invoke" appliesTo {
+    principal: [Client],
+    resource: [Endpoint],
+    context: {
+        "source_ip": ipaddr,
+        "timestamp": datetime,
+        "request": {
+            "content_length": __cedar::Long,
+            "user_agent": __cedar::String,
+            "headers": {
+                "authorization": __cedar::String,
+                "content_type": __cedar::String
+            }
+        }
+    }
+};

@@ -1,0 +1,137 @@
+{
+  "": {
+    "entityTypes": {
+      "Exchange": {},
+      "Instrument": {
+        "memberOfTypes": [
+          "Market"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "halted": {
+              "type": "Boolean"
+            },
+            "price": {
+              "type": "decimal"
+            },
+            "symbol": {
+              "type": "String"
+            },
+            "tick_size": {
+              "type": "decimal"
+            }
+          }
+        }
+      },
+      "Market": {
+        "memberOfTypes": [
+          "Exchange"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "close_time": {
+              "type": "datetime"
+            },
+            "max_order": {
+              "type": "decimal"
+            },
+            "min_order": {
+              "type": "decimal"
+            },
+            "name": {
+              "type": "String"
+            },
+            "open_time": {
+              "type": "datetime"
+            }
+          }
+        }
+      },
+      "Trader": {
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "firm": {
+              "type": "String"
+            },
+            "level": {
+              "type": "Long"
+            },
+            "max_position": {
+              "type": "decimal"
+            },
+            "network": {
+              "type": "ipaddr"
+            },
+            "registered": {
+              "type": "datetime"
+            }
+          }
+        }
+      }
+    },
+    "actions": {
+      "cancel_order": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Instrument"
+          ],
+          "principalTypes": [
+            "Trader"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "order_id": {
+                "type": "String"
+              },
+              "source_ip": {
+                "type": "ipaddr"
+              }
+            }
+          }
+        }
+      },
+      "place_order": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Instrument"
+          ],
+          "principalTypes": [
+            "Trader"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "order": {
+                "type": "Record",
+                "attributes": {
+                  "price": {
+                    "type": "decimal"
+                  },
+                  "quantity": {
+                    "type": "decimal"
+                  },
+                  "side": {
+                    "type": "String"
+                  },
+                  "type": {
+                    "type": "String"
+                  }
+                }
+              },
+              "source_ip": {
+                "type": "ipaddr"
+              },
+              "timestamp": {
+                "type": "datetime"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

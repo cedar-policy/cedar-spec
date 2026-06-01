@@ -1,0 +1,274 @@
+[
+  {
+    "uid": {
+      "__entity": {
+        "type": "Platform",
+        "id": "platform_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Platform",
+        "id": "platform_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Service",
+        "id": "service_0"
+      }
+    },
+    "attrs": {
+      "config": {
+        "deployment": {
+          "strategy": "sample_value",
+          "replicas": 42,
+          "resources": {
+            "limits": {
+              "cpu": {
+                "__extn": {
+                  "fn": "decimal",
+                  "arg": "100.50"
+                }
+              },
+              "memory_gb": {
+                "__extn": {
+                  "fn": "decimal",
+                  "arg": "100.50"
+                }
+              },
+              "gpu": 42
+            },
+            "requests": {
+              "cpu": {
+                "__extn": {
+                  "fn": "decimal",
+                  "arg": "100.50"
+                }
+              },
+              "memory_gb": {
+                "__extn": {
+                  "fn": "decimal",
+                  "arg": "100.50"
+                }
+              }
+            }
+          },
+          "network": {
+            "ingress": {
+              "cidr": {
+                "__extn": {
+                  "fn": "ip",
+                  "arg": "10.0.1.100/32"
+                }
+              },
+              "ports": [
+                80,
+                443
+              ],
+              "tls": true
+            },
+            "egress": {
+              "cidr": {
+                "__extn": {
+                  "fn": "ip",
+                  "arg": "10.0.1.100/32"
+                }
+              },
+              "allow_internet": true
+            }
+          }
+        },
+        "monitoring": {
+          "enabled": true,
+          "retention": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "1h30m"
+            }
+          },
+          "alert_threshold": {
+            "__extn": {
+              "fn": "decimal",
+              "arg": "100.50"
+            }
+          }
+        },
+        "metadata": {
+          "created": {
+            "__extn": {
+              "fn": "datetime",
+              "arg": "2025-06-01T12:00:00Z"
+            }
+          },
+          "modified": {
+            "__extn": {
+              "fn": "datetime",
+              "arg": "2025-06-01T12:00:00Z"
+            }
+          },
+          "version": "sample_value",
+          "labels": [
+            "item1",
+            "item2"
+          ]
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Platform",
+          "id": "platform_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Service",
+        "id": "service_1"
+      }
+    },
+    "attrs": {
+      "config": {
+        "deployment": {
+          "strategy": "sample_value",
+          "replicas": 42,
+          "resources": {
+            "limits": {
+              "cpu": {
+                "__extn": {
+                  "fn": "decimal",
+                  "arg": "100.50"
+                }
+              },
+              "memory_gb": {
+                "__extn": {
+                  "fn": "decimal",
+                  "arg": "100.50"
+                }
+              },
+              "gpu": 42
+            },
+            "requests": {
+              "cpu": {
+                "__extn": {
+                  "fn": "decimal",
+                  "arg": "100.50"
+                }
+              },
+              "memory_gb": {
+                "__extn": {
+                  "fn": "decimal",
+                  "arg": "100.50"
+                }
+              }
+            }
+          },
+          "network": {
+            "ingress": {
+              "cidr": {
+                "__extn": {
+                  "fn": "ip",
+                  "arg": "10.0.1.100/32"
+                }
+              },
+              "ports": [
+                80,
+                443
+              ],
+              "tls": true
+            },
+            "egress": {
+              "cidr": {
+                "__extn": {
+                  "fn": "ip",
+                  "arg": "10.0.1.100/32"
+                }
+              },
+              "allow_internet": true
+            }
+          }
+        },
+        "monitoring": {
+          "enabled": true,
+          "retention": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "1h30m"
+            }
+          },
+          "alert_threshold": {
+            "__extn": {
+              "fn": "decimal",
+              "arg": "100.50"
+            }
+          }
+        },
+        "metadata": {
+          "created": {
+            "__extn": {
+              "fn": "datetime",
+              "arg": "2025-06-01T12:00:00Z"
+            }
+          },
+          "modified": {
+            "__extn": {
+              "fn": "datetime",
+              "arg": "2025-06-01T12:00:00Z"
+            }
+          },
+          "version": "sample_value",
+          "labels": [
+            "item1",
+            "item2"
+          ]
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Platform",
+          "id": "platform_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Operator",
+        "id": "operator_0"
+      }
+    },
+    "attrs": {
+      "clearance": 42,
+      "team": "sample_value"
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Operator",
+        "id": "operator_1"
+      }
+    },
+    "attrs": {
+      "clearance": 42,
+      "team": "sample_value"
+    },
+    "parents": []
+  }
+]

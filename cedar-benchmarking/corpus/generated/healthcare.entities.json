@@ -1,0 +1,254 @@
+[
+  {
+    "uid": {
+      "__entity": {
+        "type": "Hospital",
+        "id": "hospital_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Hospital",
+        "id": "hospital_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Department",
+        "id": "department_0"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "floor": 42
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Hospital",
+          "id": "hospital_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Department",
+        "id": "department_1"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "floor": 42
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Hospital",
+          "id": "hospital_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Patient",
+        "id": "patient_0"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "admitted": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "diagnosis": {
+        "code": "sample_value",
+        "severity": 42,
+        "details": {
+          "primary": "sample_value",
+          "secondary": [
+            "item1",
+            "item2"
+          ],
+          "vitals": {
+            "bp_systolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "100.50"
+              }
+            },
+            "bp_diastolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "100.50"
+              }
+            },
+            "heart_rate": 42,
+            "temperature": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "100.50"
+              }
+            }
+          }
+        }
+      },
+      "insurance": {
+        "provider": "sample_value",
+        "policy_id": "sample_value",
+        "coverage": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "100.50"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "department_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Patient",
+        "id": "patient_1"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "admitted": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "diagnosis": {
+        "code": "sample_value",
+        "severity": 42,
+        "details": {
+          "primary": "sample_value",
+          "secondary": [
+            "item1",
+            "item2"
+          ],
+          "vitals": {
+            "bp_systolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "100.50"
+              }
+            },
+            "bp_diastolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "100.50"
+              }
+            },
+            "heart_rate": 42,
+            "temperature": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "100.50"
+              }
+            }
+          }
+        }
+      },
+      "insurance": {
+        "provider": "sample_value",
+        "policy_id": "sample_value",
+        "coverage": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "100.50"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "department_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Staff",
+        "id": "staff_0"
+      }
+    },
+    "attrs": {
+      "role": "sample_value",
+      "license_expiry": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "specializations": [
+        "item1",
+        "item2"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "department_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Staff",
+        "id": "staff_1"
+      }
+    },
+    "attrs": {
+      "role": "sample_value",
+      "license_expiry": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "specializations": [
+        "item1",
+        "item2"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "department_0"
+        }
+      }
+    ]
+  }
+]

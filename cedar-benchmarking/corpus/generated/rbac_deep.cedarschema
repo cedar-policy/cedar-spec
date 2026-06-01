@@ -1,0 +1,32 @@
+entity Org;
+entity Team in [Org];
+entity User in [Team] = {
+    "clearance": __cedar::Long,
+    "department": __cedar::String,
+    "active": __cedar::Bool
+};
+entity Document in [Org] = {
+    "classification": __cedar::Long,
+    "owner": User,
+    "tags": Set<__cedar::String>
+};
+action "read" appliesTo {
+    principal: [User],
+    resource: [Document],
+    context: {}
+};
+action "write" appliesTo {
+    principal: [User],
+    resource: [Document],
+    context: {}
+};
+action "delete" appliesTo {
+    principal: [User],
+    resource: [Document],
+    context: {}
+};
+action "share" appliesTo {
+    principal: [User],
+    resource: [Document],
+    context: { "recipient": User }
+};

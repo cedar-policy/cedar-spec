@@ -1,0 +1,120 @@
+[
+  {
+    "uid": {
+      "__entity": {
+        "type": "APIGateway",
+        "id": "apigateway_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "APIGateway",
+        "id": "apigateway_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Endpoint",
+        "id": "endpoint_0"
+      }
+    },
+    "attrs": {
+      "path": "sample_value",
+      "method": "sample_value",
+      "rate_limit": 42,
+      "auth_required": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "APIGateway",
+          "id": "apigateway_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Endpoint",
+        "id": "endpoint_1"
+      }
+    },
+    "attrs": {
+      "path": "sample_value",
+      "method": "sample_value",
+      "rate_limit": 42,
+      "auth_required": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "APIGateway",
+          "id": "apigateway_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Client",
+        "id": "client_0"
+      }
+    },
+    "attrs": {
+      "tier": "sample_value",
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "quota": {
+        "requests_per_minute": 42,
+        "bandwidth_mb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "100.50"
+          }
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Client",
+        "id": "client_1"
+      }
+    },
+    "attrs": {
+      "tier": "sample_value",
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "quota": {
+        "requests_per_minute": 42,
+        "bandwidth_mb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "100.50"
+          }
+        }
+      }
+    },
+    "parents": []
+  }
+]

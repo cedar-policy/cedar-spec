@@ -1,0 +1,268 @@
+[
+  {
+    "uid": {
+      "__entity": {
+        "type": "DataLake",
+        "id": "datalake_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DataLake",
+        "id": "datalake_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Dataset",
+        "id": "dataset_0"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "classification": "sample_value",
+      "size_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "retention": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "1h30m"
+        }
+      },
+      "schema_version": 42
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "DataLake",
+          "id": "datalake_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Dataset",
+        "id": "dataset_1"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "classification": "sample_value",
+      "size_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "retention": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "1h30m"
+        }
+      },
+      "schema_version": 42
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "DataLake",
+          "id": "datalake_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pipeline",
+        "id": "pipeline_0"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "schedule": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "1h30m"
+        }
+      },
+      "last_run": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "config": {
+        "source": {
+          "type": "sample_value",
+          "connection": {
+            "host": {
+              "__extn": {
+                "fn": "ip",
+                "arg": "10.0.1.100/32"
+              }
+            },
+            "port": 42,
+            "encrypted": true
+          }
+        },
+        "destination": {
+          "type": "sample_value",
+          "connection": {
+            "host": {
+              "__extn": {
+                "fn": "ip",
+                "arg": "10.0.1.100/32"
+              }
+            },
+            "port": 42,
+            "encrypted": true
+          }
+        },
+        "transform": {
+          "timeout": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "1h30m"
+            }
+          },
+          "max_records": 42
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "DataLake",
+          "id": "datalake_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pipeline",
+        "id": "pipeline_1"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "schedule": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "1h30m"
+        }
+      },
+      "last_run": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "config": {
+        "source": {
+          "type": "sample_value",
+          "connection": {
+            "host": {
+              "__extn": {
+                "fn": "ip",
+                "arg": "10.0.1.100/32"
+              }
+            },
+            "port": 42,
+            "encrypted": true
+          }
+        },
+        "destination": {
+          "type": "sample_value",
+          "connection": {
+            "host": {
+              "__extn": {
+                "fn": "ip",
+                "arg": "10.0.1.100/32"
+              }
+            },
+            "port": 42,
+            "encrypted": true
+          }
+        },
+        "transform": {
+          "timeout": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "1h30m"
+            }
+          },
+          "max_records": 42
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "DataLake",
+          "id": "datalake_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DataEngineer",
+        "id": "dataengineer_0"
+      }
+    },
+    "attrs": {
+      "level": 42,
+      "certifications": [
+        "item1",
+        "item2"
+      ]
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DataEngineer",
+        "id": "dataengineer_1"
+      }
+    },
+    "attrs": {
+      "level": 42,
+      "certifications": [
+        "item1",
+        "item2"
+      ]
+    },
+    "parents": []
+  }
+]

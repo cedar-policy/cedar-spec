@@ -1,0 +1,38 @@
+entity Bank;
+entity Branch in [Bank] = {
+    "name": __cedar::String,
+    "region": __cedar::String,
+    "network": ipaddr
+};
+entity Account in [Branch] = {
+    "type": __cedar::String,
+    "balance": decimal,
+    "daily_limit": decimal,
+    "owner": __cedar::String,
+    "opened": datetime
+};
+entity Employee in [Branch] = {
+    "role": __cedar::String,
+    "level": __cedar::Long,
+    "approval_limit": decimal
+};
+action "transfer" appliesTo {
+    principal: [Employee],
+    resource: [Account],
+    context: {
+        "amount": decimal,
+        "destination": __cedar::String,
+        "source_ip": ipaddr,
+        "timestamp": datetime
+    }
+};
+action "close_account" appliesTo {
+    principal: [Employee],
+    resource: [Account],
+    context: { "reason": __cedar::String, "source_ip": ipaddr }
+};
+action "audit" appliesTo {
+    principal: [Employee],
+    resource: [Account],
+    context: { "source_ip": ipaddr, "period": duration }
+};

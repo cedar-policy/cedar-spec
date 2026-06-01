@@ -1,0 +1,11 @@
+entity Network;
+entity Host in [Network] = {
+    "address": ipaddr,
+    "name": __cedar::String
+};
+entity User;
+action "access" appliesTo {
+    principal: [User],
+    resource: [Host],
+    context: { "source_ip": ipaddr }
+};

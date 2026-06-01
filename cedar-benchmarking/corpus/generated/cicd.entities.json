@@ -1,0 +1,236 @@
+[
+  {
+    "uid": {
+      "__entity": {
+        "type": "CI",
+        "id": "ci_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CI",
+        "id": "ci_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Repository",
+        "id": "repository_0"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "visibility": "sample_value",
+      "default_branch": "sample_value"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CI",
+          "id": "ci_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Repository",
+        "id": "repository_1"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "visibility": "sample_value",
+      "default_branch": "sample_value"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CI",
+          "id": "ci_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pipeline",
+        "id": "pipeline_0"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "timeout": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "1h30m"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "config": {
+        "runner": {
+          "type": "sample_value",
+          "network": {
+            "__extn": {
+              "fn": "ip",
+              "arg": "10.0.1.100/32"
+            }
+          },
+          "max_duration": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "1h30m"
+            }
+          }
+        },
+        "artifacts": {
+          "retention": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "1h30m"
+            }
+          },
+          "max_size_mb": {
+            "__extn": {
+              "fn": "decimal",
+              "arg": "100.50"
+            }
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Repository",
+          "id": "repository_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pipeline",
+        "id": "pipeline_1"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "timeout": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "1h30m"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "config": {
+        "runner": {
+          "type": "sample_value",
+          "network": {
+            "__extn": {
+              "fn": "ip",
+              "arg": "10.0.1.100/32"
+            }
+          },
+          "max_duration": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "1h30m"
+            }
+          }
+        },
+        "artifacts": {
+          "retention": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "1h30m"
+            }
+          },
+          "max_size_mb": {
+            "__extn": {
+              "fn": "decimal",
+              "arg": "100.50"
+            }
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Repository",
+          "id": "repository_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Developer",
+        "id": "developer_0"
+      }
+    },
+    "attrs": {
+      "role": "sample_value",
+      "joined": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "ip_allowlist": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Developer",
+        "id": "developer_1"
+      }
+    },
+    "attrs": {
+      "role": "sample_value",
+      "joined": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "ip_allowlist": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      }
+    },
+    "parents": []
+  }
+]

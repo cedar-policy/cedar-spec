@@ -1,0 +1,82 @@
+[
+  {
+    "uid": {
+      "__entity": {
+        "type": "System",
+        "id": "system_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "System",
+        "id": "system_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Resource",
+        "id": "resource_0"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "level": 42
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "System",
+          "id": "system_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Resource",
+        "id": "resource_1"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "level": 42
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "System",
+          "id": "system_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  }
+]
