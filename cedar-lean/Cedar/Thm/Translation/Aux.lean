@@ -574,3 +574,76 @@ theorem dashN_evaluate_general
     rw [dashN_evaluate_error e n req es err hev]
   | ok v =>
     rw [dashN_evaluate_ok e n req es v hev]
+
+/- For Relation -/
+
+/-- The AST expression `constructExprRel op e₁ e₂` evaluates to the same `.ok`
+    output as `Cst.applyRelOp op v₁ v₂ es`, when `e₁` evaluates to `v₁` and
+    `e₂` evaluates to `v₂`. -/
+theorem constructExprRel_applyRelOp_agrees
+    (op : Cst.RelOp) (e₁ e₂ : Expr) (req : Request) (es : Entities)
+    (v₁ v₂ : Value) :
+    evaluate e₁ req es = .ok v₁ →
+    evaluate e₂ req es = .ok v₂ →
+    ∀ v, evaluate (constructExprRel op e₁ e₂) req es = .ok v ↔
+         Cst.applyRelOp op v₁ v₂ es = .ok v := by
+  sorry
+
+/-- Collapse the `String ⊕ List String` shape from the translator's `toHasRhs?`
+    into a flat `List String`, treating `.inl f` as the singleton `[f]`. -/
+def hasRhsToList : String ⊕ List String → List String
+  | .inl f => [f]
+  | .inr fs => fs
+
+/-- For the `rHas` case: `Cst.AddExpr.toHasRhs?` (translation) and `Cst.AddExpr.toAttrs?`
+    (evaluation) produce identical attribute lists when collapsed via `hasRhsToList`.
+
+    With the evaluator strengthened to use `toUnreservedId?` (mismatch 2) and
+    `unescape?` (mismatch 3), the only structural difference is the `Sum` vs `List`
+    output type, which `hasRhsToList` bridges. -/
+theorem addExpr_toHasRhs_toAttrs_agrees
+    {e : Cst.AddExpr} {rhs : String ⊕ List String} :
+    e.toHasRhs? = some rhs →
+    e.toAttrs? = some (hasRhsToList rhs) := by
+  sorry
+
+/-- Helper: `constructAttrs?` always returns a non-empty list when it succeeds. -/
+theorem constructAttrs?_nonempty
+    {first : String} {rest : List Cst.MemAccess} {result : List String} :
+    constructAttrs? first rest = some result → result ≠ [] := by
+  intro h
+  simp [constructAttrs?, Option.bind_eq_some_iff] at h
+  obtain ⟨tail, _, hresult⟩ := h
+  simp [← hresult]
+
+/-- Non-emptiness: `toHasRhs?` always produces a non-empty list when collapsed.
+    Used to discharge the evaluator's `some []` arm as vacuous. -/
+theorem hasRhsToList_nonempty {rhs : String ⊕ List String}
+    {e : Cst.AddExpr} :
+    e.toHasRhs? = some rhs →
+    hasRhsToList rhs ≠ [] := by
+  intro hrhs
+  cases rhs with
+  | inl f => simp [hasRhsToList]
+  | inr fs =>
+    -- The `.inr fs` arm of `toHasRhs?` always produces `(constructAttrs? _ _).map .inr`,
+    -- where `constructAttrs?` is non-empty by `constructAttrs?_nonempty`. The proof
+    -- requires tracing the nested matches in `toHasRhs?`, which is substantial.
+    sorry
+
+/-- The AST expression `extendedHasAttr target (a :: as)` evaluates the same as
+    the CST evaluator's chained `getAttr` / `hasAttr` fold, when `target` evaluates
+    to value `v`. -/
+theorem extendedHasAttr_evaluate_agrees
+    (target : Expr) (a : Attr) (as : List Attr) (req : Request) (es : Entities) (v : Value) :
+    evaluate target req es = .ok v →
+    ∀ vresult,
+      evaluate (extendedHasAttr target (a :: as)) req es = .ok vresult ↔
+      (do
+         let (v', last) ← as.foldlM
+           (fun (acc : Value × Attr) attr => do
+             let next ← getAttr acc.1 acc.2 es
+             pure (next, attr))
+           (v, a)
+         hasAttr v' last es) = .ok vresult := by
+  sorry

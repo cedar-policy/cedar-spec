@@ -54,7 +54,7 @@ public def Unreserved? (s : String) : Bool :=
   | "__cedar" => false
   | _ => true
 
-private def Cst.Ident.toUnreservedId? : Cst.Ident → Option String
+public def Cst.Ident.toUnreservedId? : Cst.Ident → Option String
   | .idIdent s => if Unreserved? s then some s else none
   | _ => none
 
@@ -164,7 +164,7 @@ public def Expr.dashN (e : Expr) (n : Nat) : Expr :=
   termination_by n
   decreasing_by rename_i h; simp at h; omega
 
-private def constructExprRel (op : Cst.RelOp) (e₁ e₂ : Expr) : Expr :=
+public def constructExprRel (op : Cst.RelOp) (e₁ e₂ : Expr) : Expr :=
   match op with
   | .rLess => .binaryApp .less e₁ e₂
   | .rLessEq => .binaryApp .lessEq e₁ e₂
@@ -174,7 +174,7 @@ private def constructExprRel (op : Cst.RelOp) (e₁ e₂ : Expr) : Expr :=
   | .rEq => .binaryApp .eq e₁ e₂
   | .rIn => .binaryApp .mem e₁ e₂
 
-private def constructAttrsAux? : List Cst.MemAccess → Option (List String)
+public def constructAttrsAux? : List Cst.MemAccess → Option (List String)
   | [] => some []
   | .field id :: rest => do
     let head ← id.toUnreservedId? -- move toUnreserbvedId to CstCommon later
@@ -184,11 +184,11 @@ private def constructAttrsAux? : List Cst.MemAccess → Option (List String)
 
 -- `first` should already be verified to be unreserved
 -- Verify all elements in `rest` are unreserved
-private def constructAttrs? (first : String) (rest : List Cst.MemAccess) : Option (List String) := do
+public def constructAttrs? (first : String) (rest : List Cst.MemAccess) : Option (List String) := do
   let tail ← constructAttrsAux? rest
   some (first :: tail)
 
-private def extendedHasAttr (target : Expr) (fields : List String) : Expr :=
+public def extendedHasAttr (target : Expr) (fields : List String) : Expr :=
   match fields with
   | [] => target
   | [f] => .hasAttr target f
@@ -325,7 +325,7 @@ termination_by (sizeOf e, 1)
 -- `UnservedId` is essentially a string, but passed the check that it's not
 -- "__cedar". In this implementation, we keep the output type `String`
 -- and return a `none` if it is reserved.
-private def Cst.AddExpr.toHasRhs? (e : Cst.AddExpr) : Option (String ⊕ List String) := do
+public def Cst.AddExpr.toHasRhs? (e : Cst.AddExpr) : Option (String ⊕ List String) := do
   if (!e.extended.isEmpty) || (!e.initial.extended.isEmpty) || (!e.initial.initial.op.isNone) then none else
   let member := e.initial.initial.item
   match member.item with

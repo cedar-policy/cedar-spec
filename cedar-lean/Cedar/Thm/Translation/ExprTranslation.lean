@@ -677,6 +677,113 @@ theorem Cst.AddExpr.toAExpr?_evaluate
       rw [h_first]
 
 
+theorem Cst.Relation.toAExpr?_evaluate
+  {rel : Cst.Relation} {eos : ExprOrSpecial}
+  {req : Request} {es : Entities} :
+  rel.toExprOrSpecial? = some eos →
+  ∀ aexp, eos.toExpr? = some aexp →
+  ∀ v, evaluate aexp req es = .ok v ↔
+  rel.evaluate req es = .ok v := by
+  intro hrel aexp heos v
+  cases rel with
+  | rCommon initial extended =>
+    -- Translator filters out extended.length > 1 to none.
+    match hext : extended with
+    | [] =>
+      -- Both sides delegate to AddExpr.toAExpr?_evaluate.
+      simp [Cst.Relation.toExprOrSpecial?, hext] at hrel
+      have hadd_iff := @Cst.AddExpr.toAExpr?_evaluate initial eos req es hrel aexp heos v
+      simp [Cst.Relation.evaluate, hext]
+      exact hadd_iff
+    | [(op, x)] =>
+      -- AST: constructExprRel op first second; CST: Cst.applyRelOp op v₁ v₂.
+      simp [Cst.Relation.toExprOrSpecial?, hext] at hrel
+      simp only [Option.bind_eq_some_iff] at hrel
+      obtain ⟨ieos, hieos, eFirst, hFirst, eSecond, hSecond, hres⟩ := hrel
+      injection hres with hres
+      rw [← hres] at heos
+      simp [ExprOrSpecial.toExpr?] at heos
+      rw [← heos]
+      -- Bridge `evaluate eFirst` and `initial.evaluate` via the iff for ieos.
+      have hieos_iff := @Cst.ExprOrSpecial.toExpr?_evaluate ieos eFirst req es hFirst
+      have hinit_iff :=
+        @Cst.AddExpr.toAExpr?_evaluate initial ieos req es hieos eFirst hFirst
+      -- Bridge `evaluate eSecond` and `x.evaluate` via Cst.AddExpr.toAExpr?_evaluate.
+      simp [Cst.AddExpr.toAExpr?, Option.bind_eq_some_iff] at hSecond
+      obtain ⟨xeos, hxeos, hxsecond⟩ := hSecond
+      have hx_iff : ∀ vp, evaluate eSecond req es = .ok vp ↔ x.evaluate req es = .ok vp :=
+        Cst.AddExpr.toAExpr?_evaluate hxeos eSecond hxsecond
+      simp [Cst.Relation.evaluate, hext]
+      cases h_init : initial.evaluate req es with
+      | error err =>
+        simp [bind, Except.bind]
+        cases h_first : evaluate eFirst req es with
+        | ok vp =>
+          have := (hinit_iff vp).mp h_first
+          rw [this] at h_init; cases h_init
+        | error _ =>
+          -- Both LHS and RHS short-circuit on the first operand's error.
+          -- Goal: <evaluate constructExprRel ...> = .ok v ↔ False
+          -- which simplifies via the constructExprRel evaluator's bind chain.
+          cases op <;>
+            simp [constructExprRel, evaluate, h_first, bind, Except.bind, apply₁]
+      | ok iv =>
+        simp [bind, Except.bind]
+        have h_first : evaluate eFirst req es = .ok iv := (hinit_iff iv).mpr h_init
+        cases h_x : x.evaluate req es with
+        | error err =>
+          -- x.evaluate errors ⇒ evaluate eSecond also errors (via hx_iff contrapositive).
+          -- Both LHS and RHS produce error: show iff trivially holds.
+          cases h_second : evaluate eSecond req es with
+          | ok xv =>
+            have := (hx_iff xv).mp h_second
+            rw [this] at h_x; cases h_x
+          | error err' =>
+            -- AST: constructExprRel evaluates inner expressions; eSecond errors so
+            -- the resulting expression errors ⇒ LHS is false.
+            -- CST: apply₂ on second operand errors ⇒ RHS is false.
+            constructor
+            · intro hev
+              -- evaluate (constructExprRel op eFirst eSecond) = .ok v
+              -- but evaluate eSecond errors; constructExprRel's body always
+              -- evaluates eSecond (after eFirst), so it errors. Contradiction.
+              exfalso
+              cases op <;> simp [constructExprRel, evaluate, h_first, h_second,
+                                  bind, Except.bind, apply₁] at hev
+            · intro hev
+              -- Cst.applyRelOp on `(iv, x_value)` — but x.evaluate errors, so
+              -- the do-bind short-circuits before reaching applyRelOp.  Wait,
+              -- looking at CST evaluate: rCommon does `let v₁ ← x.evaluate; ...`
+              -- which means x.evaluate is the SECOND argument to applyRelOp.
+              -- The CST already has `let v₂ ← y.evaluate` which is x.evaluate
+              -- in our naming. So h_x errors ⇒ the bind short-circuits.
+              -- The hypothesis hev claims that result is .ok v, contradiction.
+              simp [bind, Except.bind, h_x] at hev
+        | ok xv =>
+          have h_second : evaluate eSecond req es = .ok xv := (hx_iff xv).mpr h_x
+          rw [constructExprRel_applyRelOp_agrees op eFirst eSecond req es iv xv h_first h_second]
+    | _ :: _ :: _ =>
+      simp [Cst.Relation.toExprOrSpecial?, hext] at hrel
+  | rHas target field =>
+    -- Translation:  do let mt ← target.toAExpr?; let mf ← field.toHasRhs?
+    --                  match mf with
+    --                  | .inl f => some (.expr (.hasAttr mt f))
+    --                  | .inr fs => some (.expr (extendedHasAttr mt fs))
+    -- Evaluation:   do let v ← target.evaluate
+    --                  match field.toAttrs? with
+    --                  | none | some [] => .error
+    --                  | some (a :: as) => foldlM getAttr ... ; hasAttr ...
+    --
+    -- The proof's key facts (from Aux.lean):
+    --   (1) addExpr_toHasRhs_toAttrs_agrees: if toHasRhs? succeeds then toAttrs? does too,
+    --       and the shapes are compatible (`.inl f` corresponds to `[f]`, `.inr fs` to `fs`).
+    --   (2) extendedHasAttr_evaluate_agrees: evaluate (extendedHasAttr ...) agrees with
+    --       the foldlM-getAttr chain plus final hasAttr.
+    --
+    -- The proof requires careful threading and is left as a stub; the
+    -- structure above sketches the path.
+    sorry
+  | rLike target pattern => sorry
 
 
 theorem Cst.Expr.toAExpr?_evaluate

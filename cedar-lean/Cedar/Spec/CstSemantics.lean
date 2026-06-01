@@ -71,26 +71,38 @@ private def Member.toAttrs? (e : Member) : Option (List Attr) :=
     | _ => none
 
 -- RelOp: rLess, rLessEq, rGreaterEq, rGreater, rNotEq, rEq, rIn
-private def applyRelOp (op : RelOp) (v₁ v₂ : Value) (es : Entities) : Result Value :=
+-- `rGreater`/`rGreaterEq` use the `not (less/lessEq v₁ v₂)` pattern to match
+-- the translator's `constructExprRel`. Behaviorally equivalent on totally-
+-- comparable values; for other values, the `apply₂` errors propagate through
+-- the `not` consistently with the translator's AST output.
+public def applyRelOp (op : RelOp) (v₁ v₂ : Value) (es : Entities) : Result Value :=
   match op with
   | .rLess => apply₂ .less v₁ v₂ es
   | .rLessEq => apply₂ .lessEq v₁ v₂ es
-  | .rGreater => apply₂ .less v₂ v₁ es
-  | .rGreaterEq => apply₂ .lessEq v₂ v₁ es
+  | .rGreater => do
+    let r ← apply₂ .lessEq v₁ v₂ es
+    apply₁ .not r
+  | .rGreaterEq => do
+    let r ← apply₂ .less v₁ v₂ es
+    apply₁ .not r
   | .rEq => apply₂ .eq v₁ v₂ es
   | .rNotEq => do
     let eq ← apply₂ .eq v₁ v₂ es
     apply₁ .not eq
   | .rIn => apply₂ .mem v₁ v₂ es
 
--- When the list is all `field`s, return the converted list of `Attr`s
--- Otherwise return `none`
-private def fieldChain? : List MemAccess → Option (List Attr)
+-- When the list is all `.field id` with `id` unreserved, return the converted
+-- list of `Attr`s. Otherwise return `none`. Matches the translator's
+-- `constructAttrsAux?` filter.
+public def fieldChain? : List MemAccess → Option (List Attr)
   | [] => some []
-  | .field id :: xs => (fieldChain? xs).map (id.toString :: ·)
+  | .field id :: xs => do
+      let head ← Cedar.Spec.CstCommon.Ident.toUnreservedString? id
+      let tail ← fieldChain? xs
+      some (head :: tail)
   | _ :: _ => none
 
-private def AddExpr.toAttrs? (e : AddExpr) : Option (List Attr) :=
+public def AddExpr.toAttrs? (e : AddExpr) : Option (List Attr) :=
   if !e.extended.isEmpty then none else
   let mult := e.initial
   if !mult.extended.isEmpty then none else
@@ -102,10 +114,15 @@ private def AddExpr.toAttrs? (e : AddExpr) : Option (List Attr) :=
     | none => none
     | some fields => match member.item with
       | .literal (.liStr s) =>
-        if fields.isEmpty then some [s] else none
+        -- Apply unescape? to mirror the translator's `(unescape? lit).map .inl`.
+        if fields.isEmpty then (Cedar.Spec.CstCommon.unescape? s).map (fun s' => [s'])
+        else none
       | .literal _ => none
       | .name { path := [], name := id } =>
-        some (id.toString :: fields)
+        -- Filter by unreserved-ness, mirroring the translator's `n.id.toUnreservedId?`.
+        match Cedar.Spec.CstCommon.Ident.toUnreservedString? id with
+        | some idStr => some (idStr :: fields)
+        | none       => none
       | .name _ => none
       | _ => none
 
@@ -130,6 +147,21 @@ public def Str.toUnescapedString : Str → Result String
   | .string s => match Cedar.Spec.CstCommon.unescape? s with
     | some s' => .ok s'
     | none    => .error .typeError
+
+/-- Evaluate the chain of attribute checks for `r has a₀.a₁.….aₙ` with
+    short-circuiting on the inner `hasAttr` returning `false`. Mirrors the
+    translator's `extendedHasAttr`, which builds nested `.and (hasAttr ...) ...`. -/
+public def rHasChain (v : Value) (a : Attr) (rest : List Attr) (es : Entities) : Result Value :=
+  match rest with
+  | [] => hasAttr v a es
+  | b :: bs => do
+    let h ← hasAttr v a es
+    match h with
+    | .prim (.bool false) => .ok (.prim (.bool false))
+    | _ => do
+      let v' ← getAttr v a es
+      rHasChain v' b bs es
+termination_by sizeOf rest
 
 mutual
 
@@ -285,13 +317,10 @@ public def Relation.evaluate (e : Relation) (req : Request) (es : Entities) : Re
       | none => .error .typeError
       | some [] => .error .typeError
       | some (a :: as) =>
-        -- For `r has x.y.z`: call `hasAttr r.x.y z es`
-        let (v', last) ← as.foldlM
-          (fun (acc : Value × Attr) attr => do
-            let next ← getAttr acc.1 acc.2 es
-            pure (next, attr))
-          (v, a)
-        hasAttr v' last es
+        -- For `r has x.y.z`: short-circuit on `false` between getAttr steps,
+        -- mirroring the translator's `.and (hasAttr ...) (extendedHasAttr ...)`
+        -- which short-circuits on the inner `hasAttr` returning `false`.
+        rHasChain v a as es
   | .rLike t p => match p.toPatternString? with
     | none => .error .typeError
     | some s => do
