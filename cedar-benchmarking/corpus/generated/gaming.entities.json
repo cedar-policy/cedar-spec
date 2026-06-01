@@ -22,17 +22,147 @@
   {
     "uid": {
       "__entity": {
+        "type": "GameServer",
+        "id": "gameserver_2"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "GameServer",
+        "id": "gameserver_3"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "GameServer",
+        "id": "gameserver_4"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "GameServer",
+        "id": "gameserver_5"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "GameServer",
+        "id": "gameserver_6"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "GameServer",
+        "id": "gameserver_7"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "GameServer",
+        "id": "gameserver_8"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "GameServer",
+        "id": "gameserver_9"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "GameServer",
+        "id": "gameserver_10"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "GameServer",
+        "id": "gameserver_11"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "GameServer",
+        "id": "gameserver_12"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "GameServer",
+        "id": "gameserver_13"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "GameServer",
+        "id": "gameserver_14"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
         "type": "World",
         "id": "world_0"
       }
     },
     "attrs": {
-      "name": "sample_value",
-      "max_players": 42,
+      "name": "val_zeta_226",
+      "max_players": 78,
       "created": {
         "__extn": {
           "fn": "datetime",
-          "arg": "2025-06-01T12:00:00Z"
+          "arg": "2025-04-04T05:00:00Z"
         }
       }
     },
@@ -40,7 +170,7 @@
       {
         "__entity": {
           "type": "GameServer",
-          "id": "gameserver_0"
+          "id": "gameserver_2"
         }
       }
     ]
@@ -53,12 +183,142 @@
       }
     },
     "attrs": {
-      "name": "sample_value",
-      "max_players": 42,
+      "name": "val_beta_871",
+      "max_players": 96,
       "created": {
         "__extn": {
           "fn": "datetime",
-          "arg": "2025-06-01T12:00:00Z"
+          "arg": "2026-11-18T02:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "GameServer",
+          "id": "gameserver_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "World",
+        "id": "world_2"
+      }
+    },
+    "attrs": {
+      "name": "val_gamma_256",
+      "max_players": 12,
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-12-19T15:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "GameServer",
+          "id": "gameserver_4"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "World",
+        "id": "world_3"
+      }
+    },
+    "attrs": {
+      "name": "val_test_131",
+      "max_players": 85,
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-02-10T19:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "GameServer",
+          "id": "gameserver_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "World",
+        "id": "world_4"
+      }
+    },
+    "attrs": {
+      "name": "val_eta_325",
+      "max_players": 62,
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-06-20T21:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "GameServer",
+          "id": "gameserver_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "World",
+        "id": "world_5"
+      }
+    },
+    "attrs": {
+      "name": "val_epsilon_579",
+      "max_players": 72,
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-14T05:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "GameServer",
+          "id": "gameserver_4"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "World",
+        "id": "world_6"
+      }
+    },
+    "attrs": {
+      "name": "val_dev_252",
+      "max_players": 100,
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-12-24T20:00:00Z"
         }
       }
     },
@@ -74,20 +334,228 @@
   {
     "uid": {
       "__entity": {
+        "type": "World",
+        "id": "world_7"
+      }
+    },
+    "attrs": {
+      "name": "val_prod_860",
+      "max_players": 46,
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-11-24T10:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "GameServer",
+          "id": "gameserver_6"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "World",
+        "id": "world_8"
+      }
+    },
+    "attrs": {
+      "name": "val_secondary_473",
+      "max_players": 57,
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-05-16T17:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "GameServer",
+          "id": "gameserver_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "World",
+        "id": "world_9"
+      }
+    },
+    "attrs": {
+      "name": "val_zeta_661",
+      "max_players": 77,
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-05-28T04:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "GameServer",
+          "id": "gameserver_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "World",
+        "id": "world_10"
+      }
+    },
+    "attrs": {
+      "name": "val_eta_269",
+      "max_players": 93,
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-12-03T00:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "GameServer",
+          "id": "gameserver_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "World",
+        "id": "world_11"
+      }
+    },
+    "attrs": {
+      "name": "val_alpha_832",
+      "max_players": 74,
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-10-07T01:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "GameServer",
+          "id": "gameserver_13"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "World",
+        "id": "world_12"
+      }
+    },
+    "attrs": {
+      "name": "val_prod_556",
+      "max_players": 69,
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-11-25T04:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "GameServer",
+          "id": "gameserver_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "World",
+        "id": "world_13"
+      }
+    },
+    "attrs": {
+      "name": "val_main_228",
+      "max_players": 98,
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-03-15T16:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "GameServer",
+          "id": "gameserver_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "World",
+        "id": "world_14"
+      }
+    },
+    "attrs": {
+      "name": "val_gamma_406",
+      "max_players": 46,
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-11-08T19:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "GameServer",
+          "id": "gameserver_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
         "type": "Zone",
         "id": "zone_0"
       }
     },
     "attrs": {
-      "name": "sample_value",
-      "level_requirement": 42,
+      "name": "val_zeta_775",
+      "level_requirement": 65,
       "pvp_enabled": true
     },
     "parents": [
       {
         "__entity": {
           "type": "World",
-          "id": "world_0"
+          "id": "world_10"
         }
       }
     ]
@@ -100,15 +568,288 @@
       }
     },
     "attrs": {
-      "name": "sample_value",
-      "level_requirement": 42,
+      "name": "val_zeta_183",
+      "level_requirement": 72,
       "pvp_enabled": true
     },
     "parents": [
       {
         "__entity": {
           "type": "World",
-          "id": "world_0"
+          "id": "world_7"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Zone",
+        "id": "zone_2"
+      }
+    },
+    "attrs": {
+      "name": "val_secondary_961",
+      "level_requirement": 45,
+      "pvp_enabled": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "World",
+          "id": "world_11"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Zone",
+        "id": "zone_3"
+      }
+    },
+    "attrs": {
+      "name": "val_secondary_237",
+      "level_requirement": 8,
+      "pvp_enabled": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "World",
+          "id": "world_3"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Zone",
+        "id": "zone_4"
+      }
+    },
+    "attrs": {
+      "name": "val_theta_43",
+      "level_requirement": 85,
+      "pvp_enabled": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "World",
+          "id": "world_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Zone",
+        "id": "zone_5"
+      }
+    },
+    "attrs": {
+      "name": "val_test_397",
+      "level_requirement": 60,
+      "pvp_enabled": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "World",
+          "id": "world_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Zone",
+        "id": "zone_6"
+      }
+    },
+    "attrs": {
+      "name": "val_beta_40",
+      "level_requirement": 83,
+      "pvp_enabled": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "World",
+          "id": "world_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Zone",
+        "id": "zone_7"
+      }
+    },
+    "attrs": {
+      "name": "val_prod_854",
+      "level_requirement": 94,
+      "pvp_enabled": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "World",
+          "id": "world_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Zone",
+        "id": "zone_8"
+      }
+    },
+    "attrs": {
+      "name": "val_zeta_385",
+      "level_requirement": 83,
+      "pvp_enabled": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "World",
+          "id": "world_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Zone",
+        "id": "zone_9"
+      }
+    },
+    "attrs": {
+      "name": "val_gamma_529",
+      "level_requirement": 32,
+      "pvp_enabled": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "World",
+          "id": "world_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Zone",
+        "id": "zone_10"
+      }
+    },
+    "attrs": {
+      "name": "val_theta_528",
+      "level_requirement": 51,
+      "pvp_enabled": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "World",
+          "id": "world_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Zone",
+        "id": "zone_11"
+      }
+    },
+    "attrs": {
+      "name": "val_test_498",
+      "level_requirement": 61,
+      "pvp_enabled": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "World",
+          "id": "world_13"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Zone",
+        "id": "zone_12"
+      }
+    },
+    "attrs": {
+      "name": "val_epsilon_450",
+      "level_requirement": 21,
+      "pvp_enabled": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "World",
+          "id": "world_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Zone",
+        "id": "zone_13"
+      }
+    },
+    "attrs": {
+      "name": "val_prod_216",
+      "level_requirement": 19,
+      "pvp_enabled": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "World",
+          "id": "world_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Zone",
+        "id": "zone_14"
+      }
+    },
+    "attrs": {
+      "name": "val_test_616",
+      "level_requirement": 91,
+      "pvp_enabled": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "World",
+          "id": "world_2"
         }
       }
     ]
@@ -121,32 +862,32 @@
       }
     },
     "attrs": {
-      "username": "sample_value",
+      "username": "val_theta_424",
       "level": 42,
       "premium": true,
       "registered": {
         "__extn": {
           "fn": "datetime",
-          "arg": "2025-06-01T12:00:00Z"
+          "arg": "2026-11-16T15:00:00Z"
         }
       },
       "stats": {
         "play_time": {
           "__extn": {
             "fn": "duration",
-            "arg": "1h30m"
+            "arg": "216d"
           }
         },
         "last_login": {
           "__extn": {
             "fn": "datetime",
-            "arg": "2025-06-01T12:00:00Z"
+            "arg": "2024-11-27T13:00:00Z"
           }
         },
         "reputation": {
           "__extn": {
             "fn": "decimal",
-            "arg": "100.50"
+            "arg": "367.31"
           }
         }
       }
@@ -161,32 +902,552 @@
       }
     },
     "attrs": {
-      "username": "sample_value",
-      "level": 42,
+      "username": "val_beta_130",
+      "level": 73,
       "premium": true,
       "registered": {
         "__extn": {
           "fn": "datetime",
-          "arg": "2025-06-01T12:00:00Z"
+          "arg": "2024-11-17T01:00:00Z"
         }
       },
       "stats": {
         "play_time": {
           "__extn": {
             "fn": "duration",
-            "arg": "1h30m"
+            "arg": "913d"
           }
         },
         "last_login": {
           "__extn": {
             "fn": "datetime",
-            "arg": "2025-06-01T12:00:00Z"
+            "arg": "2024-01-06T08:00:00Z"
           }
         },
         "reputation": {
           "__extn": {
             "fn": "decimal",
-            "arg": "100.50"
+            "arg": "2949.66"
+          }
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Player",
+        "id": "player_2"
+      }
+    },
+    "attrs": {
+      "username": "val_main_613",
+      "level": 72,
+      "premium": true,
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-02-07T14:00:00Z"
+        }
+      },
+      "stats": {
+        "play_time": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "622h"
+          }
+        },
+        "last_login": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2026-03-08T13:00:00Z"
+          }
+        },
+        "reputation": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "9844.18"
+          }
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Player",
+        "id": "player_3"
+      }
+    },
+    "attrs": {
+      "username": "val_zeta_638",
+      "level": 84,
+      "premium": false,
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-12-22T10:00:00Z"
+        }
+      },
+      "stats": {
+        "play_time": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "945h"
+          }
+        },
+        "last_login": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2023-04-13T12:00:00Z"
+          }
+        },
+        "reputation": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "2166.13"
+          }
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Player",
+        "id": "player_4"
+      }
+    },
+    "attrs": {
+      "username": "val_alpha_207",
+      "level": 66,
+      "premium": false,
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-10-04T05:00:00Z"
+        }
+      },
+      "stats": {
+        "play_time": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "488d"
+          }
+        },
+        "last_login": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2023-09-17T03:00:00Z"
+          }
+        },
+        "reputation": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "1526.61"
+          }
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Player",
+        "id": "player_5"
+      }
+    },
+    "attrs": {
+      "username": "val_epsilon_923",
+      "level": 77,
+      "premium": true,
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-09-14T11:00:00Z"
+        }
+      },
+      "stats": {
+        "play_time": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "896ms"
+          }
+        },
+        "last_login": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2026-04-26T15:00:00Z"
+          }
+        },
+        "reputation": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "6246.44"
+          }
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Player",
+        "id": "player_6"
+      }
+    },
+    "attrs": {
+      "username": "val_delta_435",
+      "level": 17,
+      "premium": false,
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-04-28T02:00:00Z"
+        }
+      },
+      "stats": {
+        "play_time": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "291d"
+          }
+        },
+        "last_login": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2026-05-07T00:00:00Z"
+          }
+        },
+        "reputation": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "116.73"
+          }
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Player",
+        "id": "player_7"
+      }
+    },
+    "attrs": {
+      "username": "val_delta_532",
+      "level": 0,
+      "premium": false,
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-12-26T10:00:00Z"
+        }
+      },
+      "stats": {
+        "play_time": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "419m"
+          }
+        },
+        "last_login": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2023-03-14T20:00:00Z"
+          }
+        },
+        "reputation": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "9590.32"
+          }
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Player",
+        "id": "player_8"
+      }
+    },
+    "attrs": {
+      "username": "val_prod_875",
+      "level": 68,
+      "premium": false,
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-10-09T21:00:00Z"
+        }
+      },
+      "stats": {
+        "play_time": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "407s"
+          }
+        },
+        "last_login": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2026-09-26T17:00:00Z"
+          }
+        },
+        "reputation": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "7904.22"
+          }
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Player",
+        "id": "player_9"
+      }
+    },
+    "attrs": {
+      "username": "val_test_572",
+      "level": 71,
+      "premium": false,
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-05-19T11:00:00Z"
+        }
+      },
+      "stats": {
+        "play_time": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "793h"
+          }
+        },
+        "last_login": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2024-11-04T23:00:00Z"
+          }
+        },
+        "reputation": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "3764.57"
+          }
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Player",
+        "id": "player_10"
+      }
+    },
+    "attrs": {
+      "username": "val_zeta_102",
+      "level": 27,
+      "premium": false,
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-09-20T22:00:00Z"
+        }
+      },
+      "stats": {
+        "play_time": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "701ms"
+          }
+        },
+        "last_login": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2024-07-21T00:00:00Z"
+          }
+        },
+        "reputation": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "1492.18"
+          }
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Player",
+        "id": "player_11"
+      }
+    },
+    "attrs": {
+      "username": "val_secondary_948",
+      "level": 76,
+      "premium": false,
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-02-09T07:00:00Z"
+        }
+      },
+      "stats": {
+        "play_time": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "380ms"
+          }
+        },
+        "last_login": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2023-12-13T12:00:00Z"
+          }
+        },
+        "reputation": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "8536.36"
+          }
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Player",
+        "id": "player_12"
+      }
+    },
+    "attrs": {
+      "username": "val_beta_968",
+      "level": 99,
+      "premium": true,
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-08-01T06:00:00Z"
+        }
+      },
+      "stats": {
+        "play_time": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "871d"
+          }
+        },
+        "last_login": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2025-04-02T19:00:00Z"
+          }
+        },
+        "reputation": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "8364.66"
+          }
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Player",
+        "id": "player_13"
+      }
+    },
+    "attrs": {
+      "username": "val_theta_629",
+      "level": 21,
+      "premium": true,
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-04-21T00:00:00Z"
+        }
+      },
+      "stats": {
+        "play_time": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "162ms"
+          }
+        },
+        "last_login": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2025-07-12T21:00:00Z"
+          }
+        },
+        "reputation": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "6474.51"
+          }
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Player",
+        "id": "player_14"
+      }
+    },
+    "attrs": {
+      "username": "val_eta_530",
+      "level": 1,
+      "premium": true,
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-09-10T23:00:00Z"
+        }
+      },
+      "stats": {
+        "play_time": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "850d"
+          }
+        },
+        "last_login": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2025-06-27T08:00:00Z"
+          }
+        },
+        "reputation": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "3707.77"
           }
         }
       }

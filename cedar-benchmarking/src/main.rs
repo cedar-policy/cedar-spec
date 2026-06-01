@@ -57,7 +57,7 @@ struct Args {
 
 fn main() -> miette::Result<()> {
     let args = Args::parse();
-    let tasks = tasks::load_corpus(&args.corpus, args.targets)?;
+    let tasks = tasks::load_corpus(&args.corpus, args.targets.as_deref())?;
 
     let exec = executor::BenchmarkExecutor::new(args.trials);
     let mut results = Vec::new();
@@ -111,7 +111,13 @@ fn print_table(output: &BenchmarkOutput) {
         output.system.memory_mb
     );
 
-    let bench_w = output.results.iter().map(|r| r.benchmark.len()).max().unwrap_or(9).max(9);
+    let bench_w = output
+        .results
+        .iter()
+        .map(|r| r.benchmark.len())
+        .max()
+        .unwrap_or(9)
+        .max(9);
 
     // Group results by target, preserving insertion order via BTreeMap isn't ideal
     // but we use IndexMap-style: collect targets in order seen

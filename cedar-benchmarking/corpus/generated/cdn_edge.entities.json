@@ -22,35 +22,705 @@
   {
     "uid": {
       "__entity": {
+        "type": "CDN",
+        "id": "cdn_2"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CDN",
+        "id": "cdn_3"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CDN",
+        "id": "cdn_4"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CDN",
+        "id": "cdn_5"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CDN",
+        "id": "cdn_6"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CDN",
+        "id": "cdn_7"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CDN",
+        "id": "cdn_8"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CDN",
+        "id": "cdn_9"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CDN",
+        "id": "cdn_10"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CDN",
+        "id": "cdn_11"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CDN",
+        "id": "cdn_12"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CDN",
+        "id": "cdn_13"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CDN",
+        "id": "cdn_14"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
         "type": "Origin",
         "id": "origin_0"
       }
     },
     "attrs": {
-      "hostname": "sample_value",
+      "hostname": "val_staging_415",
       "ip": {
         "__extn": {
           "fn": "ip",
-          "arg": "10.0.1.100/32"
+          "arg": "141.0.155.74/32"
         }
       },
       "health_check": {
         "interval": {
           "__extn": {
             "fn": "duration",
-            "arg": "1h30m"
+            "arg": "216h"
           }
         },
         "timeout": {
           "__extn": {
             "fn": "duration",
-            "arg": "1h30m"
+            "arg": "805d"
           }
         },
         "last_check": {
           "__extn": {
             "fn": "datetime",
-            "arg": "2025-06-01T12:00:00Z"
+            "arg": "2025-08-15T14:00:00Z"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CDN",
+          "id": "cdn_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Origin",
+        "id": "origin_1"
+      }
+    },
+    "attrs": {
+      "hostname": "val_eta_523",
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "122.86.43.73/32"
+        }
+      },
+      "health_check": {
+        "interval": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "528d"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "344ms"
+          }
+        },
+        "last_check": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2024-11-10T07:00:00Z"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CDN",
+          "id": "cdn_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Origin",
+        "id": "origin_2"
+      }
+    },
+    "attrs": {
+      "hostname": "val_eta_150",
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "7.23.125.252/32"
+        }
+      },
+      "health_check": {
+        "interval": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "487d"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "871ms"
+          }
+        },
+        "last_check": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2026-07-21T18:00:00Z"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CDN",
+          "id": "cdn_12"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Origin",
+        "id": "origin_3"
+      }
+    },
+    "attrs": {
+      "hostname": "val_main_506",
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "103.124.75.168/32"
+        }
+      },
+      "health_check": {
+        "interval": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "705ms"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "915ms"
+          }
+        },
+        "last_check": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2026-04-06T22:00:00Z"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CDN",
+          "id": "cdn_3"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Origin",
+        "id": "origin_4"
+      }
+    },
+    "attrs": {
+      "hostname": "val_primary_51",
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "143.127.62.117/32"
+        }
+      },
+      "health_check": {
+        "interval": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "137h"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "684d"
+          }
+        },
+        "last_check": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2025-08-20T23:00:00Z"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CDN",
+          "id": "cdn_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Origin",
+        "id": "origin_5"
+      }
+    },
+    "attrs": {
+      "hostname": "val_backup_850",
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "141.228.81.191/32"
+        }
+      },
+      "health_check": {
+        "interval": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "883h"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "461m"
+          }
+        },
+        "last_check": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2024-11-09T16:00:00Z"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CDN",
+          "id": "cdn_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Origin",
+        "id": "origin_6"
+      }
+    },
+    "attrs": {
+      "hostname": "val_theta_281",
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "113.39.146.61/32"
+        }
+      },
+      "health_check": {
+        "interval": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "279m"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "328d"
+          }
+        },
+        "last_check": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2023-03-05T07:00:00Z"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CDN",
+          "id": "cdn_7"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Origin",
+        "id": "origin_7"
+      }
+    },
+    "attrs": {
+      "hostname": "val_epsilon_723",
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "55.32.212.105/32"
+        }
+      },
+      "health_check": {
+        "interval": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "339d"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "478h"
+          }
+        },
+        "last_check": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2023-04-27T13:00:00Z"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CDN",
+          "id": "cdn_6"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Origin",
+        "id": "origin_8"
+      }
+    },
+    "attrs": {
+      "hostname": "val_alpha_877",
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "196.194.244.2/32"
+        }
+      },
+      "health_check": {
+        "interval": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "966m"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "306h"
+          }
+        },
+        "last_check": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2026-09-24T23:00:00Z"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CDN",
+          "id": "cdn_6"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Origin",
+        "id": "origin_9"
+      }
+    },
+    "attrs": {
+      "hostname": "val_theta_499",
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "57.139.223.125/32"
+        }
+      },
+      "health_check": {
+        "interval": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "30h"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "345h"
+          }
+        },
+        "last_check": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2024-08-05T19:00:00Z"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CDN",
+          "id": "cdn_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Origin",
+        "id": "origin_10"
+      }
+    },
+    "attrs": {
+      "hostname": "val_alpha_928",
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "101.13.42.165/32"
+        }
+      },
+      "health_check": {
+        "interval": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "439s"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "888h"
+          }
+        },
+        "last_check": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2024-01-09T12:00:00Z"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CDN",
+          "id": "cdn_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Origin",
+        "id": "origin_11"
+      }
+    },
+    "attrs": {
+      "hostname": "val_eta_465",
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "84.172.194.72/32"
+        }
+      },
+      "health_check": {
+        "interval": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "771h"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "259ms"
+          }
+        },
+        "last_check": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2026-01-24T17:00:00Z"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CDN",
+          "id": "cdn_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Origin",
+        "id": "origin_12"
+      }
+    },
+    "attrs": {
+      "hostname": "val_test_229",
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "167.35.20.194/32"
+        }
+      },
+      "health_check": {
+        "interval": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "32s"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "205ms"
+          }
+        },
+        "last_check": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2024-04-05T15:00:00Z"
           }
         }
       }
@@ -68,34 +738,34 @@
     "uid": {
       "__entity": {
         "type": "Origin",
-        "id": "origin_1"
+        "id": "origin_13"
       }
     },
     "attrs": {
-      "hostname": "sample_value",
+      "hostname": "val_delta_577",
       "ip": {
         "__extn": {
           "fn": "ip",
-          "arg": "10.0.1.100/32"
+          "arg": "56.238.131.197/32"
         }
       },
       "health_check": {
         "interval": {
           "__extn": {
             "fn": "duration",
-            "arg": "1h30m"
+            "arg": "378s"
           }
         },
         "timeout": {
           "__extn": {
             "fn": "duration",
-            "arg": "1h30m"
+            "arg": "621d"
           }
         },
         "last_check": {
           "__extn": {
             "fn": "datetime",
-            "arg": "2025-06-01T12:00:00Z"
+            "arg": "2023-03-10T03:00:00Z"
           }
         }
       }
@@ -104,7 +774,52 @@
       {
         "__entity": {
           "type": "CDN",
-          "id": "cdn_0"
+          "id": "cdn_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Origin",
+        "id": "origin_14"
+      }
+    },
+    "attrs": {
+      "hostname": "val_alpha_951",
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "80.192.203.242/32"
+        }
+      },
+      "health_check": {
+        "interval": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "733s"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "78d"
+          }
+        },
+        "last_check": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2024-02-23T09:00:00Z"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CDN",
+          "id": "cdn_9"
         }
       }
     ]
@@ -120,20 +835,57 @@
       "ip": {
         "__extn": {
           "fn": "ip",
-          "arg": "10.0.1.100/32"
+          "arg": "176.61.21.89/32"
         }
       },
-      "region": "sample_value",
+      "region": "val_backup_677",
       "capacity_gb": {
         "__extn": {
           "fn": "decimal",
-          "arg": "100.50"
+          "arg": "6071.08"
         }
       },
       "ttl": {
         "__extn": {
           "fn": "duration",
-          "arg": "1h30m"
+          "arg": "519m"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CDN",
+          "id": "cdn_13"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CacheNode",
+        "id": "cachenode_1"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "218.215.250.28/32"
+        }
+      },
+      "region": "val_backup_983",
+      "capacity_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "5934.81"
+        }
+      },
+      "ttl": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "913h"
         }
       }
     },
@@ -150,27 +902,360 @@
     "uid": {
       "__entity": {
         "type": "CacheNode",
-        "id": "cachenode_1"
+        "id": "cachenode_2"
       }
     },
     "attrs": {
       "ip": {
         "__extn": {
           "fn": "ip",
-          "arg": "10.0.1.100/32"
+          "arg": "40.222.90.188/32"
         }
       },
-      "region": "sample_value",
+      "region": "val_prod_630",
       "capacity_gb": {
         "__extn": {
           "fn": "decimal",
-          "arg": "100.50"
+          "arg": "8817.99"
         }
       },
       "ttl": {
         "__extn": {
           "fn": "duration",
-          "arg": "1h30m"
+          "arg": "496h"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CDN",
+          "id": "cdn_11"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CacheNode",
+        "id": "cachenode_3"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "212.137.165.219/32"
+        }
+      },
+      "region": "val_theta_850",
+      "capacity_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "1419.35"
+        }
+      },
+      "ttl": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "903h"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CDN",
+          "id": "cdn_6"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CacheNode",
+        "id": "cachenode_4"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "193.237.194.87/32"
+        }
+      },
+      "region": "val_alpha_506",
+      "capacity_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "5325.23"
+        }
+      },
+      "ttl": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "500s"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CDN",
+          "id": "cdn_3"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CacheNode",
+        "id": "cachenode_5"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "205.132.174.72/32"
+        }
+      },
+      "region": "val_prod_569",
+      "capacity_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "166.66"
+        }
+      },
+      "ttl": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "971s"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CDN",
+          "id": "cdn_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CacheNode",
+        "id": "cachenode_6"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "62.208.250.143/32"
+        }
+      },
+      "region": "val_theta_707",
+      "capacity_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "7800.82"
+        }
+      },
+      "ttl": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "729h"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CDN",
+          "id": "cdn_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CacheNode",
+        "id": "cachenode_7"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "203.8.47.76/32"
+        }
+      },
+      "region": "val_theta_414",
+      "capacity_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "3986.39"
+        }
+      },
+      "ttl": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "680d"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CDN",
+          "id": "cdn_7"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CacheNode",
+        "id": "cachenode_8"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "122.176.217.191/32"
+        }
+      },
+      "region": "val_dev_360",
+      "capacity_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "7434.34"
+        }
+      },
+      "ttl": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "314m"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CDN",
+          "id": "cdn_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CacheNode",
+        "id": "cachenode_9"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "31.98.161.31/32"
+        }
+      },
+      "region": "val_zeta_196",
+      "capacity_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "3545.94"
+        }
+      },
+      "ttl": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "496m"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CDN",
+          "id": "cdn_3"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CacheNode",
+        "id": "cachenode_10"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "151.144.51.214/32"
+        }
+      },
+      "region": "val_eta_303",
+      "capacity_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "3727.46"
+        }
+      },
+      "ttl": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "184m"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CDN",
+          "id": "cdn_11"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CacheNode",
+        "id": "cachenode_11"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "182.64.140.12/32"
+        }
+      },
+      "region": "val_beta_566",
+      "capacity_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "4786.89"
+        }
+      },
+      "ttl": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "967s"
         }
       }
     },
@@ -186,6 +1271,117 @@
   {
     "uid": {
       "__entity": {
+        "type": "CacheNode",
+        "id": "cachenode_12"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "223.251.52.224/32"
+        }
+      },
+      "region": "val_alpha_587",
+      "capacity_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "4658.60"
+        }
+      },
+      "ttl": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "491h"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CDN",
+          "id": "cdn_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CacheNode",
+        "id": "cachenode_13"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "48.26.129.241/32"
+        }
+      },
+      "region": "val_secondary_116",
+      "capacity_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "1070.51"
+        }
+      },
+      "ttl": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "504ms"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CDN",
+          "id": "cdn_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CacheNode",
+        "id": "cachenode_14"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "162.27.77.39/32"
+        }
+      },
+      "region": "val_staging_87",
+      "capacity_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "4066.15"
+        }
+      },
+      "ttl": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "572h"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CDN",
+          "id": "cdn_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
         "type": "EdgeClient",
         "id": "edgeclient_0"
       }
@@ -194,14 +1390,14 @@
       "ip": {
         "__extn": {
           "fn": "ip",
-          "arg": "10.0.1.100/32"
+          "arg": "156.115.194.116/32"
         }
       },
-      "geo": "sample_value",
+      "geo": "val_primary_304",
       "bandwidth_limit": {
         "__extn": {
           "fn": "decimal",
-          "arg": "100.50"
+          "arg": "9642.54"
         }
       }
     },
@@ -218,14 +1414,326 @@
       "ip": {
         "__extn": {
           "fn": "ip",
-          "arg": "10.0.1.100/32"
+          "arg": "79.30.50.243/32"
         }
       },
-      "geo": "sample_value",
+      "geo": "val_eta_640",
       "bandwidth_limit": {
         "__extn": {
           "fn": "decimal",
-          "arg": "100.50"
+          "arg": "3457.33"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "EdgeClient",
+        "id": "edgeclient_2"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "170.41.80.62/32"
+        }
+      },
+      "geo": "val_zeta_565",
+      "bandwidth_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "1229.20"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "EdgeClient",
+        "id": "edgeclient_3"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "1.209.230.177/32"
+        }
+      },
+      "geo": "val_secondary_298",
+      "bandwidth_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "534.29"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "EdgeClient",
+        "id": "edgeclient_4"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "74.144.232.19/32"
+        }
+      },
+      "geo": "val_theta_946",
+      "bandwidth_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "4334.80"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "EdgeClient",
+        "id": "edgeclient_5"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "151.101.217.30/32"
+        }
+      },
+      "geo": "val_theta_663",
+      "bandwidth_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "2441.34"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "EdgeClient",
+        "id": "edgeclient_6"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "212.72.36.16/32"
+        }
+      },
+      "geo": "val_zeta_811",
+      "bandwidth_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "5039.76"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "EdgeClient",
+        "id": "edgeclient_7"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "192.147.224.32/32"
+        }
+      },
+      "geo": "val_primary_705",
+      "bandwidth_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "4982.89"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "EdgeClient",
+        "id": "edgeclient_8"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "104.139.252.113/32"
+        }
+      },
+      "geo": "val_gamma_612",
+      "bandwidth_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "653.55"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "EdgeClient",
+        "id": "edgeclient_9"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "189.165.128.7/32"
+        }
+      },
+      "geo": "val_gamma_234",
+      "bandwidth_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "9424.75"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "EdgeClient",
+        "id": "edgeclient_10"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "6.137.20.196/32"
+        }
+      },
+      "geo": "val_zeta_481",
+      "bandwidth_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "8502.83"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "EdgeClient",
+        "id": "edgeclient_11"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "114.142.92.150/32"
+        }
+      },
+      "geo": "val_backup_650",
+      "bandwidth_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "8056.11"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "EdgeClient",
+        "id": "edgeclient_12"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "121.178.209.86/32"
+        }
+      },
+      "geo": "val_dev_686",
+      "bandwidth_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "1713.20"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "EdgeClient",
+        "id": "edgeclient_13"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "85.210.253.74/32"
+        }
+      },
+      "geo": "val_main_833",
+      "bandwidth_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "9012.04"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "EdgeClient",
+        "id": "edgeclient_14"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "117.45.161.65/32"
+        }
+      },
+      "geo": "val_dev_118",
+      "bandwidth_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "6622.65"
         }
       }
     },

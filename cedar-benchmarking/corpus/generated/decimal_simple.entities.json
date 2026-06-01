@@ -22,6 +22,136 @@
   {
     "uid": {
       "__entity": {
+        "type": "Account",
+        "id": "account_2"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Account",
+        "id": "account_3"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Account",
+        "id": "account_4"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Account",
+        "id": "account_5"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Account",
+        "id": "account_6"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Account",
+        "id": "account_7"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Account",
+        "id": "account_8"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Account",
+        "id": "account_9"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Account",
+        "id": "account_10"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Account",
+        "id": "account_11"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Account",
+        "id": "account_12"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Account",
+        "id": "account_13"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Account",
+        "id": "account_14"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
         "type": "Transaction",
         "id": "transaction_0"
       }
@@ -30,17 +160,17 @@
       "amount": {
         "__extn": {
           "fn": "decimal",
-          "arg": "100.50"
+          "arg": "185.20"
         }
       },
-      "currency": "sample_value",
-      "category": "sample_value"
+      "currency": "val_secondary_975",
+      "category": "val_test_535"
     },
     "parents": [
       {
         "__entity": {
           "type": "Account",
-          "id": "account_0"
+          "id": "account_11"
         }
       }
     ]
@@ -56,11 +186,349 @@
       "amount": {
         "__extn": {
           "fn": "decimal",
-          "arg": "100.50"
+          "arg": "4247.21"
         }
       },
-      "currency": "sample_value",
-      "category": "sample_value"
+      "currency": "val_test_129",
+      "category": "val_prod_750"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Account",
+          "id": "account_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Transaction",
+        "id": "transaction_2"
+      }
+    },
+    "attrs": {
+      "amount": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "1934.98"
+        }
+      },
+      "currency": "val_alpha_343",
+      "category": "val_backup_278"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Account",
+          "id": "account_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Transaction",
+        "id": "transaction_3"
+      }
+    },
+    "attrs": {
+      "amount": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "1046.33"
+        }
+      },
+      "currency": "val_gamma_508",
+      "category": "val_primary_523"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Account",
+          "id": "account_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Transaction",
+        "id": "transaction_4"
+      }
+    },
+    "attrs": {
+      "amount": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "908.63"
+        }
+      },
+      "currency": "val_zeta_376",
+      "category": "val_zeta_261"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Account",
+          "id": "account_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Transaction",
+        "id": "transaction_5"
+      }
+    },
+    "attrs": {
+      "amount": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "1685.73"
+        }
+      },
+      "currency": "val_delta_233",
+      "category": "val_alpha_45"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Account",
+          "id": "account_12"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Transaction",
+        "id": "transaction_6"
+      }
+    },
+    "attrs": {
+      "amount": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "201.31"
+        }
+      },
+      "currency": "val_beta_483",
+      "category": "val_test_392"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Account",
+          "id": "account_13"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Transaction",
+        "id": "transaction_7"
+      }
+    },
+    "attrs": {
+      "amount": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "2458.22"
+        }
+      },
+      "currency": "val_beta_566",
+      "category": "val_backup_229"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Account",
+          "id": "account_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Transaction",
+        "id": "transaction_8"
+      }
+    },
+    "attrs": {
+      "amount": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "4067.53"
+        }
+      },
+      "currency": "val_dev_277",
+      "category": "val_gamma_585"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Account",
+          "id": "account_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Transaction",
+        "id": "transaction_9"
+      }
+    },
+    "attrs": {
+      "amount": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "1956.64"
+        }
+      },
+      "currency": "val_beta_183",
+      "category": "val_theta_823"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Account",
+          "id": "account_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Transaction",
+        "id": "transaction_10"
+      }
+    },
+    "attrs": {
+      "amount": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "752.51"
+        }
+      },
+      "currency": "val_gamma_898",
+      "category": "val_primary_886"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Account",
+          "id": "account_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Transaction",
+        "id": "transaction_11"
+      }
+    },
+    "attrs": {
+      "amount": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "5090.41"
+        }
+      },
+      "currency": "val_gamma_566",
+      "category": "val_primary_8"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Account",
+          "id": "account_4"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Transaction",
+        "id": "transaction_12"
+      }
+    },
+    "attrs": {
+      "amount": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "3287.37"
+        }
+      },
+      "currency": "val_staging_757",
+      "category": "val_theta_475"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Account",
+          "id": "account_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Transaction",
+        "id": "transaction_13"
+      }
+    },
+    "attrs": {
+      "amount": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "9694.63"
+        }
+      },
+      "currency": "val_eta_750",
+      "category": "val_theta_154"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Account",
+          "id": "account_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Transaction",
+        "id": "transaction_14"
+      }
+    },
+    "attrs": {
+      "amount": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "6718.03"
+        }
+      },
+      "currency": "val_theta_554",
+      "category": "val_test_651"
     },
     "parents": [
       {
@@ -86,6 +554,136 @@
       "__entity": {
         "type": "User",
         "id": "user_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_2"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_3"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_4"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_5"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_6"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_7"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_8"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_9"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_10"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_11"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_12"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_13"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_14"
       }
     },
     "attrs": {},

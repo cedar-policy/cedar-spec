@@ -22,19 +22,149 @@
   {
     "uid": {
       "__entity": {
+        "type": "Hospital",
+        "id": "hospital_2"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Hospital",
+        "id": "hospital_3"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Hospital",
+        "id": "hospital_4"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Hospital",
+        "id": "hospital_5"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Hospital",
+        "id": "hospital_6"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Hospital",
+        "id": "hospital_7"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Hospital",
+        "id": "hospital_8"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Hospital",
+        "id": "hospital_9"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Hospital",
+        "id": "hospital_10"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Hospital",
+        "id": "hospital_11"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Hospital",
+        "id": "hospital_12"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Hospital",
+        "id": "hospital_13"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Hospital",
+        "id": "hospital_14"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
         "type": "Department",
         "id": "department_0"
       }
     },
     "attrs": {
-      "name": "sample_value",
-      "floor": 42
+      "name": "val_primary_952",
+      "floor": 51
     },
     "parents": [
       {
         "__entity": {
           "type": "Hospital",
-          "id": "hospital_0"
+          "id": "hospital_3"
         }
       }
     ]
@@ -47,14 +177,274 @@
       }
     },
     "attrs": {
-      "name": "sample_value",
-      "floor": 42
+      "name": "val_alpha_267",
+      "floor": 22
     },
     "parents": [
       {
         "__entity": {
           "type": "Hospital",
-          "id": "hospital_0"
+          "id": "hospital_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Department",
+        "id": "department_2"
+      }
+    },
+    "attrs": {
+      "name": "val_delta_572",
+      "floor": 9
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Hospital",
+          "id": "hospital_6"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Department",
+        "id": "department_3"
+      }
+    },
+    "attrs": {
+      "name": "val_staging_348",
+      "floor": 14
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Hospital",
+          "id": "hospital_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Department",
+        "id": "department_4"
+      }
+    },
+    "attrs": {
+      "name": "val_prod_897",
+      "floor": 68
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Hospital",
+          "id": "hospital_12"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Department",
+        "id": "department_5"
+      }
+    },
+    "attrs": {
+      "name": "val_prod_710",
+      "floor": 56
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Hospital",
+          "id": "hospital_13"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Department",
+        "id": "department_6"
+      }
+    },
+    "attrs": {
+      "name": "val_secondary_788",
+      "floor": 31
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Hospital",
+          "id": "hospital_6"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Department",
+        "id": "department_7"
+      }
+    },
+    "attrs": {
+      "name": "val_dev_984",
+      "floor": 99
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Hospital",
+          "id": "hospital_12"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Department",
+        "id": "department_8"
+      }
+    },
+    "attrs": {
+      "name": "val_primary_918",
+      "floor": 75
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Hospital",
+          "id": "hospital_7"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Department",
+        "id": "department_9"
+      }
+    },
+    "attrs": {
+      "name": "val_alpha_493",
+      "floor": 14
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Hospital",
+          "id": "hospital_13"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Department",
+        "id": "department_10"
+      }
+    },
+    "attrs": {
+      "name": "val_gamma_391",
+      "floor": 81
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Hospital",
+          "id": "hospital_4"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Department",
+        "id": "department_11"
+      }
+    },
+    "attrs": {
+      "name": "val_theta_693",
+      "floor": 89
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Hospital",
+          "id": "hospital_12"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Department",
+        "id": "department_12"
+      }
+    },
+    "attrs": {
+      "name": "val_dev_422",
+      "floor": 45
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Hospital",
+          "id": "hospital_3"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Department",
+        "id": "department_13"
+      }
+    },
+    "attrs": {
+      "name": "val_alpha_717",
+      "floor": 33
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Hospital",
+          "id": "hospital_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Department",
+        "id": "department_14"
+      }
+    },
+    "attrs": {
+      "name": "val_staging_95",
+      "floor": 51
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Hospital",
+          "id": "hospital_3"
         }
       }
     ]
@@ -67,52 +457,938 @@
       }
     },
     "attrs": {
-      "name": "sample_value",
+      "name": "val_dev_77",
       "admitted": {
         "__extn": {
           "fn": "datetime",
-          "arg": "2025-06-01T12:00:00Z"
+          "arg": "2024-08-11T11:00:00Z"
         }
       },
       "diagnosis": {
-        "code": "sample_value",
-        "severity": 42,
+        "code": "val_eta_915",
+        "severity": 73,
         "details": {
-          "primary": "sample_value",
+          "primary": "val_prod_187",
           "secondary": [
-            "item1",
-            "item2"
+            "val_secondary_754",
+            "val_eta_240"
           ],
           "vitals": {
             "bp_systolic": {
               "__extn": {
                 "fn": "decimal",
-                "arg": "100.50"
+                "arg": "3965.33"
               }
             },
             "bp_diastolic": {
               "__extn": {
                 "fn": "decimal",
-                "arg": "100.50"
+                "arg": "3387.29"
               }
             },
-            "heart_rate": 42,
+            "heart_rate": 25,
             "temperature": {
               "__extn": {
                 "fn": "decimal",
-                "arg": "100.50"
+                "arg": "4091.79"
               }
             }
           }
         }
       },
       "insurance": {
-        "provider": "sample_value",
-        "policy_id": "sample_value",
+        "provider": "val_test_159",
+        "policy_id": "val_delta_122",
         "coverage": {
           "__extn": {
             "fn": "decimal",
-            "arg": "100.50"
+            "arg": "1285.86"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "department_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Patient",
+        "id": "patient_1"
+      }
+    },
+    "attrs": {
+      "name": "val_secondary_628",
+      "admitted": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-09-02T15:00:00Z"
+        }
+      },
+      "diagnosis": {
+        "code": "val_test_635",
+        "severity": 40,
+        "details": {
+          "primary": "val_secondary_919",
+          "secondary": [
+            "val_prod_502",
+            "val_zeta_782",
+            "val_prod_407",
+            "val_theta_768",
+            "val_epsilon_55"
+          ],
+          "vitals": {
+            "bp_systolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "8613.54"
+              }
+            },
+            "bp_diastolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "7836.69"
+              }
+            },
+            "heart_rate": 4,
+            "temperature": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "8232.44"
+              }
+            }
+          }
+        }
+      },
+      "insurance": {
+        "provider": "val_main_881",
+        "policy_id": "val_zeta_468",
+        "coverage": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "1972.89"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "department_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Patient",
+        "id": "patient_2"
+      }
+    },
+    "attrs": {
+      "name": "val_primary_323",
+      "admitted": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-01-22T06:00:00Z"
+        }
+      },
+      "diagnosis": {
+        "code": "val_main_594",
+        "severity": 12,
+        "details": {
+          "primary": "val_dev_370",
+          "secondary": [
+            "val_prod_191",
+            "val_prod_242",
+            "val_prod_482",
+            "val_dev_374",
+            "val_zeta_510"
+          ],
+          "vitals": {
+            "bp_systolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "6945.26"
+              }
+            },
+            "bp_diastolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "6866.89"
+              }
+            },
+            "heart_rate": 96,
+            "temperature": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "6099.46"
+              }
+            }
+          }
+        }
+      },
+      "insurance": {
+        "provider": "val_main_286",
+        "policy_id": "val_primary_184",
+        "coverage": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "9361.16"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "department_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Patient",
+        "id": "patient_3"
+      }
+    },
+    "attrs": {
+      "name": "val_theta_833",
+      "admitted": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-12-09T07:00:00Z"
+        }
+      },
+      "diagnosis": {
+        "code": "val_backup_876",
+        "severity": 48,
+        "details": {
+          "primary": "val_eta_149",
+          "secondary": [
+            "val_secondary_825",
+            "val_alpha_180"
+          ],
+          "vitals": {
+            "bp_systolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "6906.63"
+              }
+            },
+            "bp_diastolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "2203.80"
+              }
+            },
+            "heart_rate": 66,
+            "temperature": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "8748.92"
+              }
+            }
+          }
+        }
+      },
+      "insurance": {
+        "provider": "val_dev_804",
+        "policy_id": "val_secondary_307",
+        "coverage": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "4111.71"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "department_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Patient",
+        "id": "patient_4"
+      }
+    },
+    "attrs": {
+      "name": "val_beta_407",
+      "admitted": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-12-06T01:00:00Z"
+        }
+      },
+      "diagnosis": {
+        "code": "val_eta_833",
+        "severity": 32,
+        "details": {
+          "primary": "val_secondary_859",
+          "secondary": [
+            "val_primary_762"
+          ],
+          "vitals": {
+            "bp_systolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "5483.33"
+              }
+            },
+            "bp_diastolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "5914.46"
+              }
+            },
+            "heart_rate": 71,
+            "temperature": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "9133.32"
+              }
+            }
+          }
+        }
+      },
+      "insurance": {
+        "provider": "val_test_20",
+        "policy_id": "val_backup_124",
+        "coverage": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "5752.86"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "department_13"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Patient",
+        "id": "patient_5"
+      }
+    },
+    "attrs": {
+      "name": "val_eta_590",
+      "admitted": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-05-12T10:00:00Z"
+        }
+      },
+      "diagnosis": {
+        "code": "val_secondary_793",
+        "severity": 94,
+        "details": {
+          "primary": "val_primary_910",
+          "secondary": [
+            "val_main_628"
+          ],
+          "vitals": {
+            "bp_systolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "4694.59"
+              }
+            },
+            "bp_diastolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "2373.21"
+              }
+            },
+            "heart_rate": 81,
+            "temperature": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "5527.53"
+              }
+            }
+          }
+        }
+      },
+      "insurance": {
+        "provider": "val_main_869",
+        "policy_id": "val_gamma_81",
+        "coverage": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "2654.43"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "department_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Patient",
+        "id": "patient_6"
+      }
+    },
+    "attrs": {
+      "name": "val_dev_324",
+      "admitted": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-12-09T19:00:00Z"
+        }
+      },
+      "diagnosis": {
+        "code": "val_main_277",
+        "severity": 56,
+        "details": {
+          "primary": "val_test_765",
+          "secondary": [
+            "val_primary_423",
+            "val_zeta_188",
+            "val_alpha_128",
+            "val_theta_677",
+            "val_prod_963"
+          ],
+          "vitals": {
+            "bp_systolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "1311.26"
+              }
+            },
+            "bp_diastolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "2734.50"
+              }
+            },
+            "heart_rate": 13,
+            "temperature": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "1565.08"
+              }
+            }
+          }
+        }
+      },
+      "insurance": {
+        "provider": "val_secondary_561",
+        "policy_id": "val_beta_26",
+        "coverage": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "6504.67"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "department_3"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Patient",
+        "id": "patient_7"
+      }
+    },
+    "attrs": {
+      "name": "val_gamma_106",
+      "admitted": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-10-05T02:00:00Z"
+        }
+      },
+      "diagnosis": {
+        "code": "val_main_316",
+        "severity": 29,
+        "details": {
+          "primary": "val_theta_755",
+          "secondary": [
+            "val_primary_641",
+            "val_epsilon_134",
+            "val_zeta_29"
+          ],
+          "vitals": {
+            "bp_systolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "575.84"
+              }
+            },
+            "bp_diastolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "5846.41"
+              }
+            },
+            "heart_rate": 60,
+            "temperature": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "7654.69"
+              }
+            }
+          }
+        }
+      },
+      "insurance": {
+        "provider": "val_prod_561",
+        "policy_id": "val_primary_138",
+        "coverage": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "8835.22"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "department_12"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Patient",
+        "id": "patient_8"
+      }
+    },
+    "attrs": {
+      "name": "val_primary_646",
+      "admitted": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-09-21T20:00:00Z"
+        }
+      },
+      "diagnosis": {
+        "code": "val_staging_930",
+        "severity": 44,
+        "details": {
+          "primary": "val_secondary_552",
+          "secondary": [
+            "val_gamma_452",
+            "val_staging_374"
+          ],
+          "vitals": {
+            "bp_systolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "6753.33"
+              }
+            },
+            "bp_diastolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "2551.38"
+              }
+            },
+            "heart_rate": 1,
+            "temperature": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "1.66"
+              }
+            }
+          }
+        }
+      },
+      "insurance": {
+        "provider": "val_epsilon_352",
+        "policy_id": "val_staging_480",
+        "coverage": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "8767.01"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "department_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Patient",
+        "id": "patient_9"
+      }
+    },
+    "attrs": {
+      "name": "val_secondary_969",
+      "admitted": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-05-01T13:00:00Z"
+        }
+      },
+      "diagnosis": {
+        "code": "val_staging_611",
+        "severity": 29,
+        "details": {
+          "primary": "val_alpha_561",
+          "secondary": [
+            "val_eta_421",
+            "val_backup_404",
+            "val_theta_167"
+          ],
+          "vitals": {
+            "bp_systolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "6385.48"
+              }
+            },
+            "bp_diastolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "3614.33"
+              }
+            },
+            "heart_rate": 10,
+            "temperature": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "6917.80"
+              }
+            }
+          }
+        }
+      },
+      "insurance": {
+        "provider": "val_theta_529",
+        "policy_id": "val_prod_291",
+        "coverage": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "8715.34"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "department_11"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Patient",
+        "id": "patient_10"
+      }
+    },
+    "attrs": {
+      "name": "val_eta_873",
+      "admitted": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-03-05T09:00:00Z"
+        }
+      },
+      "diagnosis": {
+        "code": "val_delta_652",
+        "severity": 58,
+        "details": {
+          "primary": "val_primary_278",
+          "secondary": [
+            "val_secondary_192",
+            "val_dev_19",
+            "val_epsilon_50",
+            "val_alpha_190",
+            "val_delta_288"
+          ],
+          "vitals": {
+            "bp_systolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "4410.16"
+              }
+            },
+            "bp_diastolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "7183.93"
+              }
+            },
+            "heart_rate": 1,
+            "temperature": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "3814.11"
+              }
+            }
+          }
+        }
+      },
+      "insurance": {
+        "provider": "val_epsilon_15",
+        "policy_id": "val_secondary_222",
+        "coverage": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "5601.53"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "department_6"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Patient",
+        "id": "patient_11"
+      }
+    },
+    "attrs": {
+      "name": "val_secondary_380",
+      "admitted": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-12-26T01:00:00Z"
+        }
+      },
+      "diagnosis": {
+        "code": "val_dev_82",
+        "severity": 96,
+        "details": {
+          "primary": "val_epsilon_57",
+          "secondary": [
+            "val_main_73",
+            "val_secondary_185",
+            "val_eta_917"
+          ],
+          "vitals": {
+            "bp_systolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "4097.48"
+              }
+            },
+            "bp_diastolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "206.15"
+              }
+            },
+            "heart_rate": 98,
+            "temperature": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "4078.49"
+              }
+            }
+          }
+        }
+      },
+      "insurance": {
+        "provider": "val_primary_253",
+        "policy_id": "val_beta_203",
+        "coverage": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "7550.94"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "department_4"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Patient",
+        "id": "patient_12"
+      }
+    },
+    "attrs": {
+      "name": "val_delta_533",
+      "admitted": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-08-13T21:00:00Z"
+        }
+      },
+      "diagnosis": {
+        "code": "val_staging_958",
+        "severity": 41,
+        "details": {
+          "primary": "val_zeta_644",
+          "secondary": [
+            "val_delta_259"
+          ],
+          "vitals": {
+            "bp_systolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "7884.81"
+              }
+            },
+            "bp_diastolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "4895.25"
+              }
+            },
+            "heart_rate": 46,
+            "temperature": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "853.85"
+              }
+            }
+          }
+        }
+      },
+      "insurance": {
+        "provider": "val_eta_996",
+        "policy_id": "val_delta_241",
+        "coverage": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "7113.41"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "department_12"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Patient",
+        "id": "patient_13"
+      }
+    },
+    "attrs": {
+      "name": "val_zeta_813",
+      "admitted": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-10-04T12:00:00Z"
+        }
+      },
+      "diagnosis": {
+        "code": "val_theta_9",
+        "severity": 5,
+        "details": {
+          "primary": "val_secondary_704",
+          "secondary": [
+            "val_epsilon_380",
+            "val_gamma_254",
+            "val_zeta_511",
+            "val_gamma_702",
+            "val_dev_953"
+          ],
+          "vitals": {
+            "bp_systolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "983.07"
+              }
+            },
+            "bp_diastolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "5824.82"
+              }
+            },
+            "heart_rate": 19,
+            "temperature": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "8787.13"
+              }
+            }
+          }
+        }
+      },
+      "insurance": {
+        "provider": "val_epsilon_499",
+        "policy_id": "val_theta_324",
+        "coverage": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "9148.82"
           }
         }
       }
@@ -130,56 +1406,55 @@
     "uid": {
       "__entity": {
         "type": "Patient",
-        "id": "patient_1"
+        "id": "patient_14"
       }
     },
     "attrs": {
-      "name": "sample_value",
+      "name": "val_test_824",
       "admitted": {
         "__extn": {
           "fn": "datetime",
-          "arg": "2025-06-01T12:00:00Z"
+          "arg": "2026-12-07T00:00:00Z"
         }
       },
       "diagnosis": {
-        "code": "sample_value",
-        "severity": 42,
+        "code": "val_main_366",
+        "severity": 92,
         "details": {
-          "primary": "sample_value",
+          "primary": "val_epsilon_256",
           "secondary": [
-            "item1",
-            "item2"
+            "val_secondary_723"
           ],
           "vitals": {
             "bp_systolic": {
               "__extn": {
                 "fn": "decimal",
-                "arg": "100.50"
+                "arg": "7168.71"
               }
             },
             "bp_diastolic": {
               "__extn": {
                 "fn": "decimal",
-                "arg": "100.50"
+                "arg": "4828.69"
               }
             },
-            "heart_rate": 42,
+            "heart_rate": 89,
             "temperature": {
               "__extn": {
                 "fn": "decimal",
-                "arg": "100.50"
+                "arg": "8029.24"
               }
             }
           }
         }
       },
       "insurance": {
-        "provider": "sample_value",
-        "policy_id": "sample_value",
+        "provider": "val_zeta_556",
+        "policy_id": "val_test_331",
         "coverage": {
           "__extn": {
             "fn": "decimal",
-            "arg": "100.50"
+            "arg": "7674.35"
           }
         }
       }
@@ -188,7 +1463,7 @@
       {
         "__entity": {
           "type": "Department",
-          "id": "department_0"
+          "id": "department_12"
         }
       }
     ]
@@ -201,23 +1476,26 @@
       }
     },
     "attrs": {
-      "role": "sample_value",
+      "role": "val_zeta_70",
       "license_expiry": {
         "__extn": {
           "fn": "datetime",
-          "arg": "2025-06-01T12:00:00Z"
+          "arg": "2024-08-10T08:00:00Z"
         }
       },
       "specializations": [
-        "item1",
-        "item2"
+        "val_test_464",
+        "val_alpha_794",
+        "val_main_751",
+        "val_zeta_904",
+        "val_alpha_634"
       ]
     },
     "parents": [
       {
         "__entity": {
           "type": "Department",
-          "id": "department_0"
+          "id": "department_13"
         }
       }
     ]
@@ -230,23 +1508,1142 @@
       }
     },
     "attrs": {
-      "role": "sample_value",
+      "role": "val_test_794",
       "license_expiry": {
         "__extn": {
           "fn": "datetime",
-          "arg": "2025-06-01T12:00:00Z"
+          "arg": "2024-06-24T02:00:00Z"
         }
       },
       "specializations": [
-        "item1",
-        "item2"
+        "val_main_194",
+        "val_secondary_784",
+        "val_epsilon_627",
+        "val_staging_330",
+        "val_backup_656"
       ]
     },
     "parents": [
       {
         "__entity": {
           "type": "Department",
-          "id": "department_0"
+          "id": "department_13"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Staff",
+        "id": "staff_2"
+      }
+    },
+    "attrs": {
+      "role": "val_delta_98",
+      "license_expiry": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-01-27T04:00:00Z"
+        }
+      },
+      "specializations": [
+        "val_beta_206",
+        "val_delta_497"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "department_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Staff",
+        "id": "staff_3"
+      }
+    },
+    "attrs": {
+      "role": "val_delta_32",
+      "license_expiry": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-11-16T16:00:00Z"
+        }
+      },
+      "specializations": [
+        "val_prod_50",
+        "val_test_226",
+        "val_gamma_13",
+        "val_eta_671",
+        "val_secondary_950"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "department_3"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Staff",
+        "id": "staff_4"
+      }
+    },
+    "attrs": {
+      "role": "val_gamma_479",
+      "license_expiry": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-06-18T23:00:00Z"
+        }
+      },
+      "specializations": [
+        "val_test_813",
+        "val_beta_843",
+        "val_prod_541",
+        "val_beta_751"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "department_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Staff",
+        "id": "staff_5"
+      }
+    },
+    "attrs": {
+      "role": "val_staging_79",
+      "license_expiry": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-09-04T03:00:00Z"
+        }
+      },
+      "specializations": [
+        "val_main_194",
+        "val_eta_538"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "department_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Staff",
+        "id": "staff_6"
+      }
+    },
+    "attrs": {
+      "role": "val_theta_583",
+      "license_expiry": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-09-24T17:00:00Z"
+        }
+      },
+      "specializations": [
+        "val_delta_784",
+        "val_test_690",
+        "val_primary_719",
+        "val_backup_904"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "department_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Staff",
+        "id": "staff_7"
+      }
+    },
+    "attrs": {
+      "role": "val_zeta_811",
+      "license_expiry": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-09-13T16:00:00Z"
+        }
+      },
+      "specializations": [
+        "val_zeta_546",
+        "val_primary_955",
+        "val_test_924"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "department_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Staff",
+        "id": "staff_8"
+      }
+    },
+    "attrs": {
+      "role": "val_dev_865",
+      "license_expiry": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-07-25T20:00:00Z"
+        }
+      },
+      "specializations": [
+        "val_dev_623",
+        "val_theta_576",
+        "val_eta_384",
+        "val_prod_368"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "department_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Staff",
+        "id": "staff_9"
+      }
+    },
+    "attrs": {
+      "role": "val_primary_982",
+      "license_expiry": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-01-24T01:00:00Z"
+        }
+      },
+      "specializations": [
+        "val_alpha_530",
+        "val_epsilon_911",
+        "val_staging_6"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "department_7"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Staff",
+        "id": "staff_10"
+      }
+    },
+    "attrs": {
+      "role": "val_theta_219",
+      "license_expiry": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-01-25T22:00:00Z"
+        }
+      },
+      "specializations": [
+        "val_epsilon_96",
+        "val_beta_471",
+        "val_test_159"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "department_4"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Staff",
+        "id": "staff_11"
+      }
+    },
+    "attrs": {
+      "role": "val_prod_375",
+      "license_expiry": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-04-09T09:00:00Z"
+        }
+      },
+      "specializations": [
+        "val_main_582"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "department_2"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Staff",
+        "id": "staff_12"
+      }
+    },
+    "attrs": {
+      "role": "val_eta_751",
+      "license_expiry": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-12-11T15:00:00Z"
+        }
+      },
+      "specializations": [
+        "val_secondary_845",
+        "val_delta_609"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "department_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Staff",
+        "id": "staff_13"
+      }
+    },
+    "attrs": {
+      "role": "val_staging_38",
+      "license_expiry": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-02-25T01:00:00Z"
+        }
+      },
+      "specializations": [
+        "val_test_900",
+        "val_backup_426",
+        "val_delta_890"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "department_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Staff",
+        "id": "staff_14"
+      }
+    },
+    "attrs": {
+      "role": "val_theta_765",
+      "license_expiry": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-11-25T20:00:00Z"
+        }
+      },
+      "specializations": [
+        "val_beta_312",
+        "val_beta_326",
+        "val_epsilon_334",
+        "val_theta_156"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "department_12"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Hospital",
+        "id": "mercy_general"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Hospital",
+        "id": "st_james"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Department",
+        "id": "emergency"
+      }
+    },
+    "attrs": {
+      "name": "Emergency Medicine",
+      "floor": 1
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Hospital",
+          "id": "mercy_general"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Department",
+        "id": "cardiology"
+      }
+    },
+    "attrs": {
+      "name": "Cardiology",
+      "floor": 4
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Hospital",
+          "id": "mercy_general"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Department",
+        "id": "oncology"
+      }
+    },
+    "attrs": {
+      "name": "Oncology",
+      "floor": 6
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Hospital",
+          "id": "st_james"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Department",
+        "id": "pediatrics"
+      }
+    },
+    "attrs": {
+      "name": "Pediatrics",
+      "floor": 3
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Hospital",
+          "id": "st_james"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Department",
+        "id": "neurology"
+      }
+    },
+    "attrs": {
+      "name": "Neurology",
+      "floor": 5
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Hospital",
+          "id": "mercy_general"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Staff",
+        "id": "dr_chen"
+      }
+    },
+    "attrs": {
+      "role": "doctor",
+      "license_expiry": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2027-03-15T00:00:00Z"
+        }
+      },
+      "specializations": [
+        "cardiology",
+        "internal_medicine"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "cardiology"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Staff",
+        "id": "dr_patel"
+      }
+    },
+    "attrs": {
+      "role": "doctor",
+      "license_expiry": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-11-30T00:00:00Z"
+        }
+      },
+      "specializations": [
+        "oncology",
+        "radiology",
+        "palliative_care"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "oncology"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Staff",
+        "id": "dr_williams"
+      }
+    },
+    "attrs": {
+      "role": "doctor",
+      "license_expiry": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2028-06-01T00:00:00Z"
+        }
+      },
+      "specializations": [
+        "neurology",
+        "neurosurgery"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "neurology"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Staff",
+        "id": "nurse_garcia"
+      }
+    },
+    "attrs": {
+      "role": "nurse",
+      "license_expiry": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-09-20T00:00:00Z"
+        }
+      },
+      "specializations": [
+        "emergency",
+        "trauma"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "emergency"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Staff",
+        "id": "nurse_kim"
+      }
+    },
+    "attrs": {
+      "role": "nurse",
+      "license_expiry": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-01-10T00:00:00Z"
+        }
+      },
+      "specializations": [
+        "pediatrics"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "pediatrics"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Staff",
+        "id": "tech_jones"
+      }
+    },
+    "attrs": {
+      "role": "technician",
+      "license_expiry": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-05-01T00:00:00Z"
+        }
+      },
+      "specializations": [
+        "radiology",
+        "mri"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "oncology"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Staff",
+        "id": "dr_expired"
+      }
+    },
+    "attrs": {
+      "role": "doctor",
+      "license_expiry": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-12-31T00:00:00Z"
+        }
+      },
+      "specializations": [
+        "general"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "emergency"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Patient",
+        "id": "patient_cardiac_01"
+      }
+    },
+    "attrs": {
+      "name": "John Morrison",
+      "admitted": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-11-02T08:30:00Z"
+        }
+      },
+      "diagnosis": {
+        "code": "I21.0",
+        "severity": 7,
+        "details": {
+          "primary": "Acute myocardial infarction",
+          "secondary": [
+            "hypertension",
+            "type_2_diabetes"
+          ],
+          "vitals": {
+            "bp_systolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "185.00"
+              }
+            },
+            "bp_diastolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "110.00"
+              }
+            },
+            "heart_rate": 112,
+            "temperature": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "37.20"
+              }
+            }
+          }
+        }
+      },
+      "insurance": {
+        "provider": "BlueCross",
+        "policy_id": "BC-2024-88712",
+        "coverage": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "8500.00"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "cardiology"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Patient",
+        "id": "patient_onc_01"
+      }
+    },
+    "attrs": {
+      "name": "Sarah Mitchell",
+      "admitted": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-09-15T14:00:00Z"
+        }
+      },
+      "diagnosis": {
+        "code": "C34.1",
+        "severity": 9,
+        "details": {
+          "primary": "Non-small cell lung carcinoma",
+          "secondary": [
+            "chronic_cough",
+            "weight_loss",
+            "fatigue"
+          ],
+          "vitals": {
+            "bp_systolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "128.00"
+              }
+            },
+            "bp_diastolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "82.00"
+              }
+            },
+            "heart_rate": 88,
+            "temperature": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "37.80"
+              }
+            }
+          }
+        }
+      },
+      "insurance": {
+        "provider": "Aetna",
+        "policy_id": "AE-2023-44291",
+        "coverage": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "15000.00"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "oncology"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Patient",
+        "id": "patient_ped_01"
+      }
+    },
+    "attrs": {
+      "name": "Emma Rodriguez",
+      "admitted": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-12-20T10:15:00Z"
+        }
+      },
+      "diagnosis": {
+        "code": "J06.9",
+        "severity": 2,
+        "details": {
+          "primary": "Upper respiratory infection",
+          "secondary": [
+            "mild_fever"
+          ],
+          "vitals": {
+            "bp_systolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "95.00"
+              }
+            },
+            "bp_diastolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "60.00"
+              }
+            },
+            "heart_rate": 100,
+            "temperature": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "38.50"
+              }
+            }
+          }
+        }
+      },
+      "insurance": {
+        "provider": "UnitedHealth",
+        "policy_id": "UH-2025-10033",
+        "coverage": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "3000.00"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "pediatrics"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Patient",
+        "id": "patient_neuro_01"
+      }
+    },
+    "attrs": {
+      "name": "Robert Chang",
+      "admitted": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-10-05T22:45:00Z"
+        }
+      },
+      "diagnosis": {
+        "code": "G40.3",
+        "severity": 6,
+        "details": {
+          "primary": "Generalized epilepsy",
+          "secondary": [
+            "recurrent_seizures",
+            "memory_impairment"
+          ],
+          "vitals": {
+            "bp_systolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "140.00"
+              }
+            },
+            "bp_diastolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "88.00"
+              }
+            },
+            "heart_rate": 76,
+            "temperature": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "36.80"
+              }
+            }
+          }
+        }
+      },
+      "insurance": {
+        "provider": "Cigna",
+        "policy_id": "CG-2024-67890",
+        "coverage": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "12000.00"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "neurology"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Patient",
+        "id": "patient_er_critical"
+      }
+    },
+    "attrs": {
+      "name": "David Park",
+      "admitted": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-12-25T03:10:00Z"
+        }
+      },
+      "diagnosis": {
+        "code": "S06.5",
+        "severity": 10,
+        "details": {
+          "primary": "Traumatic subdural hemorrhage",
+          "secondary": [
+            "unconscious",
+            "multiple_fractures",
+            "internal_bleeding"
+          ],
+          "vitals": {
+            "bp_systolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "80.00"
+              }
+            },
+            "bp_diastolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "45.00"
+              }
+            },
+            "heart_rate": 130,
+            "temperature": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "35.20"
+              }
+            }
+          }
+        }
+      },
+      "insurance": {
+        "provider": "Medicare",
+        "policy_id": "MC-2025-00142",
+        "coverage": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "50000.00"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "emergency"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Patient",
+        "id": "patient_uninsured"
+      }
+    },
+    "attrs": {
+      "name": "Maria Santos",
+      "admitted": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-11-30T16:20:00Z"
+        }
+      },
+      "diagnosis": {
+        "code": "K35.8",
+        "severity": 5,
+        "details": {
+          "primary": "Acute appendicitis",
+          "secondary": [
+            "abdominal_pain",
+            "nausea"
+          ],
+          "vitals": {
+            "bp_systolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "135.00"
+              }
+            },
+            "bp_diastolic": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "85.00"
+              }
+            },
+            "heart_rate": 95,
+            "temperature": {
+              "__extn": {
+                "fn": "decimal",
+                "arg": "39.10"
+              }
+            }
+          }
+        }
+      },
+      "insurance": {
+        "provider": "None",
+        "policy_id": "N/A",
+        "coverage": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "0.00"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "emergency"
         }
       }
     ]

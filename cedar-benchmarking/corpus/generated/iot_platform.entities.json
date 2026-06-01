@@ -22,20 +22,150 @@
   {
     "uid": {
       "__entity": {
+        "type": "IoTPlatform",
+        "id": "iotplatform_2"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "IoTPlatform",
+        "id": "iotplatform_3"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "IoTPlatform",
+        "id": "iotplatform_4"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "IoTPlatform",
+        "id": "iotplatform_5"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "IoTPlatform",
+        "id": "iotplatform_6"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "IoTPlatform",
+        "id": "iotplatform_7"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "IoTPlatform",
+        "id": "iotplatform_8"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "IoTPlatform",
+        "id": "iotplatform_9"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "IoTPlatform",
+        "id": "iotplatform_10"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "IoTPlatform",
+        "id": "iotplatform_11"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "IoTPlatform",
+        "id": "iotplatform_12"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "IoTPlatform",
+        "id": "iotplatform_13"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "IoTPlatform",
+        "id": "iotplatform_14"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
         "type": "DeviceGroup",
         "id": "devicegroup_0"
       }
     },
     "attrs": {
-      "name": "sample_value",
+      "name": "val_main_994",
       "location": {
-        "building": "sample_value",
-        "floor": 42,
-        "zone": "sample_value",
+        "building": "val_primary_770",
+        "floor": 76,
+        "zone": "val_gamma_227",
         "network": {
           "__extn": {
             "fn": "ip",
-            "arg": "10.0.1.100/32"
+            "arg": "111.148.201.38/32"
           }
         }
       }
@@ -57,15 +187,15 @@
       }
     },
     "attrs": {
-      "name": "sample_value",
+      "name": "val_dev_84",
       "location": {
-        "building": "sample_value",
-        "floor": 42,
-        "zone": "sample_value",
+        "building": "val_secondary_585",
+        "floor": 95,
+        "zone": "val_beta_561",
         "network": {
           "__extn": {
             "fn": "ip",
-            "arg": "10.0.1.100/32"
+            "arg": "103.134.43.103/32"
           }
         }
       }
@@ -74,7 +204,397 @@
       {
         "__entity": {
           "type": "IoTPlatform",
-          "id": "iotplatform_0"
+          "id": "iotplatform_2"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DeviceGroup",
+        "id": "devicegroup_2"
+      }
+    },
+    "attrs": {
+      "name": "val_backup_792",
+      "location": {
+        "building": "val_epsilon_780",
+        "floor": 17,
+        "zone": "val_secondary_572",
+        "network": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "51.249.202.167/32"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "IoTPlatform",
+          "id": "iotplatform_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DeviceGroup",
+        "id": "devicegroup_3"
+      }
+    },
+    "attrs": {
+      "name": "val_eta_574",
+      "location": {
+        "building": "val_theta_248",
+        "floor": 9,
+        "zone": "val_prod_795",
+        "network": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "111.165.45.29/32"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "IoTPlatform",
+          "id": "iotplatform_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DeviceGroup",
+        "id": "devicegroup_4"
+      }
+    },
+    "attrs": {
+      "name": "val_backup_433",
+      "location": {
+        "building": "val_test_356",
+        "floor": 24,
+        "zone": "val_dev_352",
+        "network": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "153.12.156.44/32"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "IoTPlatform",
+          "id": "iotplatform_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DeviceGroup",
+        "id": "devicegroup_5"
+      }
+    },
+    "attrs": {
+      "name": "val_primary_638",
+      "location": {
+        "building": "val_epsilon_451",
+        "floor": 5,
+        "zone": "val_theta_204",
+        "network": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "176.191.79.194/32"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "IoTPlatform",
+          "id": "iotplatform_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DeviceGroup",
+        "id": "devicegroup_6"
+      }
+    },
+    "attrs": {
+      "name": "val_gamma_115",
+      "location": {
+        "building": "val_beta_248",
+        "floor": 79,
+        "zone": "val_epsilon_889",
+        "network": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "214.147.7.88/32"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "IoTPlatform",
+          "id": "iotplatform_11"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DeviceGroup",
+        "id": "devicegroup_7"
+      }
+    },
+    "attrs": {
+      "name": "val_delta_312",
+      "location": {
+        "building": "val_primary_482",
+        "floor": 2,
+        "zone": "val_dev_214",
+        "network": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "190.108.104.140/32"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "IoTPlatform",
+          "id": "iotplatform_11"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DeviceGroup",
+        "id": "devicegroup_8"
+      }
+    },
+    "attrs": {
+      "name": "val_prod_561",
+      "location": {
+        "building": "val_secondary_637",
+        "floor": 93,
+        "zone": "val_epsilon_711",
+        "network": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "179.9.192.150/32"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "IoTPlatform",
+          "id": "iotplatform_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DeviceGroup",
+        "id": "devicegroup_9"
+      }
+    },
+    "attrs": {
+      "name": "val_beta_261",
+      "location": {
+        "building": "val_zeta_61",
+        "floor": 36,
+        "zone": "val_eta_808",
+        "network": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "179.138.27.120/32"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "IoTPlatform",
+          "id": "iotplatform_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DeviceGroup",
+        "id": "devicegroup_10"
+      }
+    },
+    "attrs": {
+      "name": "val_alpha_68",
+      "location": {
+        "building": "val_main_676",
+        "floor": 34,
+        "zone": "val_test_885",
+        "network": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "28.9.149.223/32"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "IoTPlatform",
+          "id": "iotplatform_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DeviceGroup",
+        "id": "devicegroup_11"
+      }
+    },
+    "attrs": {
+      "name": "val_main_236",
+      "location": {
+        "building": "val_main_520",
+        "floor": 90,
+        "zone": "val_delta_925",
+        "network": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "81.248.45.48/32"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "IoTPlatform",
+          "id": "iotplatform_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DeviceGroup",
+        "id": "devicegroup_12"
+      }
+    },
+    "attrs": {
+      "name": "val_primary_574",
+      "location": {
+        "building": "val_alpha_40",
+        "floor": 31,
+        "zone": "val_staging_341",
+        "network": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "126.201.80.5/32"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "IoTPlatform",
+          "id": "iotplatform_3"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DeviceGroup",
+        "id": "devicegroup_13"
+      }
+    },
+    "attrs": {
+      "name": "val_test_363",
+      "location": {
+        "building": "val_staging_241",
+        "floor": 64,
+        "zone": "val_prod_831",
+        "network": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "16.131.198.228/32"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "IoTPlatform",
+          "id": "iotplatform_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DeviceGroup",
+        "id": "devicegroup_14"
+      }
+    },
+    "attrs": {
+      "name": "val_alpha_966",
+      "location": {
+        "building": "val_prod_230",
+        "floor": 19,
+        "zone": "val_dev_918",
+        "network": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "101.70.44.187/32"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "IoTPlatform",
+          "id": "iotplatform_13"
         }
       }
     ]
@@ -87,40 +607,358 @@
       }
     },
     "attrs": {
-      "type": "sample_value",
-      "firmware_version": "sample_value",
+      "type": "val_theta_427",
+      "firmware_version": "val_theta_586",
       "ip": {
         "__extn": {
           "fn": "ip",
-          "arg": "10.0.1.100/32"
+          "arg": "40.218.159.233/32"
         }
       },
       "last_seen": {
         "__extn": {
           "fn": "datetime",
-          "arg": "2025-06-01T12:00:00Z"
+          "arg": "2025-08-18T04:00:00Z"
         }
       },
       "telemetry": {
         "temperature": {
           "__extn": {
             "fn": "decimal",
-            "arg": "100.50"
+            "arg": "3387.83"
           }
         },
         "humidity": {
           "__extn": {
             "fn": "decimal",
-            "arg": "100.50"
+            "arg": "2270.74"
           }
         },
         "battery": {
           "__extn": {
             "fn": "decimal",
-            "arg": "100.50"
+            "arg": "8869.87"
           }
         },
-        "signal_strength": 42
+        "signal_strength": 25
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "DeviceGroup",
+          "id": "devicegroup_6"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Device",
+        "id": "device_1"
+      }
+    },
+    "attrs": {
+      "type": "val_epsilon_316",
+      "firmware_version": "val_epsilon_440",
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "198.74.80.82/32"
+        }
+      },
+      "last_seen": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-09-18T23:00:00Z"
+        }
+      },
+      "telemetry": {
+        "temperature": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "1939.23"
+          }
+        },
+        "humidity": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "5203.18"
+          }
+        },
+        "battery": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "483.97"
+          }
+        },
+        "signal_strength": 40
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "DeviceGroup",
+          "id": "devicegroup_13"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Device",
+        "id": "device_2"
+      }
+    },
+    "attrs": {
+      "type": "val_backup_984",
+      "firmware_version": "val_backup_310",
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "114.140.77.200/32"
+        }
+      },
+      "last_seen": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-02-05T05:00:00Z"
+        }
+      },
+      "telemetry": {
+        "temperature": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "429.97"
+          }
+        },
+        "humidity": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "4372.77"
+          }
+        },
+        "battery": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "9290.78"
+          }
+        },
+        "signal_strength": 29
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "DeviceGroup",
+          "id": "devicegroup_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Device",
+        "id": "device_3"
+      }
+    },
+    "attrs": {
+      "type": "val_theta_236",
+      "firmware_version": "val_alpha_367",
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "21.244.68.129/32"
+        }
+      },
+      "last_seen": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-12-21T11:00:00Z"
+        }
+      },
+      "telemetry": {
+        "temperature": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "3014.49"
+          }
+        },
+        "humidity": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "8051.60"
+          }
+        },
+        "battery": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "2253.20"
+          }
+        },
+        "signal_strength": 24
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "DeviceGroup",
+          "id": "devicegroup_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Device",
+        "id": "device_4"
+      }
+    },
+    "attrs": {
+      "type": "val_beta_418",
+      "firmware_version": "val_alpha_947",
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "70.211.113.191/32"
+        }
+      },
+      "last_seen": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-04-03T05:00:00Z"
+        }
+      },
+      "telemetry": {
+        "temperature": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "7197.78"
+          }
+        },
+        "humidity": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "8027.88"
+          }
+        },
+        "battery": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "5323.58"
+          }
+        },
+        "signal_strength": 31
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "DeviceGroup",
+          "id": "devicegroup_3"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Device",
+        "id": "device_5"
+      }
+    },
+    "attrs": {
+      "type": "val_main_794",
+      "firmware_version": "val_beta_622",
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "189.194.160.101/32"
+        }
+      },
+      "last_seen": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-09-04T14:00:00Z"
+        }
+      },
+      "telemetry": {
+        "temperature": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "7485.05"
+          }
+        },
+        "humidity": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "4025.66"
+          }
+        },
+        "battery": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "8812.50"
+          }
+        },
+        "signal_strength": 94
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "DeviceGroup",
+          "id": "devicegroup_6"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Device",
+        "id": "device_6"
+      }
+    },
+    "attrs": {
+      "type": "val_main_528",
+      "firmware_version": "val_beta_194",
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "75.225.203.227/32"
+        }
+      },
+      "last_seen": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-05-15T05:00:00Z"
+        }
+      },
+      "telemetry": {
+        "temperature": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "6921.37"
+          }
+        },
+        "humidity": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "893.88"
+          }
+        },
+        "battery": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "8470.18"
+          }
+        },
+        "signal_strength": 59
       }
     },
     "parents": [
@@ -136,44 +974,256 @@
     "uid": {
       "__entity": {
         "type": "Device",
-        "id": "device_1"
+        "id": "device_7"
       }
     },
     "attrs": {
-      "type": "sample_value",
-      "firmware_version": "sample_value",
+      "type": "val_primary_92",
+      "firmware_version": "val_delta_184",
       "ip": {
         "__extn": {
           "fn": "ip",
-          "arg": "10.0.1.100/32"
+          "arg": "200.69.201.106/32"
         }
       },
       "last_seen": {
         "__extn": {
           "fn": "datetime",
-          "arg": "2025-06-01T12:00:00Z"
+          "arg": "2025-08-01T05:00:00Z"
         }
       },
       "telemetry": {
         "temperature": {
           "__extn": {
             "fn": "decimal",
-            "arg": "100.50"
+            "arg": "7433.75"
           }
         },
         "humidity": {
           "__extn": {
             "fn": "decimal",
-            "arg": "100.50"
+            "arg": "3308.58"
           }
         },
         "battery": {
           "__extn": {
             "fn": "decimal",
-            "arg": "100.50"
+            "arg": "1477.32"
           }
         },
-        "signal_strength": 42
+        "signal_strength": 41
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "DeviceGroup",
+          "id": "devicegroup_13"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Device",
+        "id": "device_8"
+      }
+    },
+    "attrs": {
+      "type": "val_zeta_735",
+      "firmware_version": "val_delta_93",
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "30.230.185.22/32"
+        }
+      },
+      "last_seen": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-12-26T16:00:00Z"
+        }
+      },
+      "telemetry": {
+        "temperature": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "2619.48"
+          }
+        },
+        "humidity": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "9016.48"
+          }
+        },
+        "battery": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "719.98"
+          }
+        },
+        "signal_strength": 21
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "DeviceGroup",
+          "id": "devicegroup_11"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Device",
+        "id": "device_9"
+      }
+    },
+    "attrs": {
+      "type": "val_dev_579",
+      "firmware_version": "val_epsilon_166",
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "223.74.91.197/32"
+        }
+      },
+      "last_seen": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-07-10T09:00:00Z"
+        }
+      },
+      "telemetry": {
+        "temperature": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "7311.36"
+          }
+        },
+        "humidity": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "2960.15"
+          }
+        },
+        "battery": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "2155.25"
+          }
+        },
+        "signal_strength": 0
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "DeviceGroup",
+          "id": "devicegroup_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Device",
+        "id": "device_10"
+      }
+    },
+    "attrs": {
+      "type": "val_prod_12",
+      "firmware_version": "val_primary_509",
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "219.255.2.156/32"
+        }
+      },
+      "last_seen": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-04-07T18:00:00Z"
+        }
+      },
+      "telemetry": {
+        "temperature": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "7794.58"
+          }
+        },
+        "humidity": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "6719.56"
+          }
+        },
+        "battery": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "1300.76"
+          }
+        },
+        "signal_strength": 76
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "DeviceGroup",
+          "id": "devicegroup_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Device",
+        "id": "device_11"
+      }
+    },
+    "attrs": {
+      "type": "val_theta_903",
+      "firmware_version": "val_prod_634",
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "161.106.25.48/32"
+        }
+      },
+      "last_seen": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-01-21T11:00:00Z"
+        }
+      },
+      "telemetry": {
+        "temperature": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "601.18"
+          }
+        },
+        "humidity": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "531.85"
+          }
+        },
+        "battery": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "9471.77"
+          }
+        },
+        "signal_strength": 38
       }
     },
     "parents": [
@@ -188,15 +1238,176 @@
   {
     "uid": {
       "__entity": {
+        "type": "Device",
+        "id": "device_12"
+      }
+    },
+    "attrs": {
+      "type": "val_gamma_50",
+      "firmware_version": "val_delta_426",
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "46.82.145.157/32"
+        }
+      },
+      "last_seen": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-08-24T18:00:00Z"
+        }
+      },
+      "telemetry": {
+        "temperature": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "5901.04"
+          }
+        },
+        "humidity": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "1525.98"
+          }
+        },
+        "battery": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "4903.41"
+          }
+        },
+        "signal_strength": 47
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "DeviceGroup",
+          "id": "devicegroup_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Device",
+        "id": "device_13"
+      }
+    },
+    "attrs": {
+      "type": "val_main_839",
+      "firmware_version": "val_gamma_776",
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "110.33.149.121/32"
+        }
+      },
+      "last_seen": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-02-23T08:00:00Z"
+        }
+      },
+      "telemetry": {
+        "temperature": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "5393.67"
+          }
+        },
+        "humidity": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "6779.67"
+          }
+        },
+        "battery": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "3438.89"
+          }
+        },
+        "signal_strength": 26
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "DeviceGroup",
+          "id": "devicegroup_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Device",
+        "id": "device_14"
+      }
+    },
+    "attrs": {
+      "type": "val_beta_111",
+      "firmware_version": "val_gamma_495",
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "186.147.218.156/32"
+        }
+      },
+      "last_seen": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-05-17T18:00:00Z"
+        }
+      },
+      "telemetry": {
+        "temperature": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "5797.16"
+          }
+        },
+        "humidity": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "9218.63"
+          }
+        },
+        "battery": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "8514.93"
+          }
+        },
+        "signal_strength": 80
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "DeviceGroup",
+          "id": "devicegroup_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
         "type": "Controller",
         "id": "controller_0"
       }
     },
     "attrs": {
-      "level": 42,
+      "level": 63,
       "zones": [
-        "item1",
-        "item2"
+        "val_zeta_904",
+        "val_theta_725",
+        "val_staging_198",
+        "val_alpha_121"
       ]
     },
     "parents": []
@@ -209,10 +1420,238 @@
       }
     },
     "attrs": {
-      "level": 42,
+      "level": 3,
       "zones": [
-        "item1",
-        "item2"
+        "val_delta_755",
+        "val_eta_818",
+        "val_backup_423",
+        "val_beta_341"
+      ]
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Controller",
+        "id": "controller_2"
+      }
+    },
+    "attrs": {
+      "level": 44,
+      "zones": [
+        "val_eta_11",
+        "val_eta_706",
+        "val_staging_260",
+        "val_gamma_315",
+        "val_staging_518"
+      ]
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Controller",
+        "id": "controller_3"
+      }
+    },
+    "attrs": {
+      "level": 70,
+      "zones": [
+        "val_alpha_116",
+        "val_dev_349",
+        "val_main_741"
+      ]
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Controller",
+        "id": "controller_4"
+      }
+    },
+    "attrs": {
+      "level": 72,
+      "zones": [
+        "val_alpha_852",
+        "val_zeta_198",
+        "val_dev_853",
+        "val_dev_944",
+        "val_secondary_938"
+      ]
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Controller",
+        "id": "controller_5"
+      }
+    },
+    "attrs": {
+      "level": 60,
+      "zones": [
+        "val_epsilon_493"
+      ]
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Controller",
+        "id": "controller_6"
+      }
+    },
+    "attrs": {
+      "level": 19,
+      "zones": [
+        "val_dev_473",
+        "val_backup_950",
+        "val_beta_855",
+        "val_staging_578"
+      ]
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Controller",
+        "id": "controller_7"
+      }
+    },
+    "attrs": {
+      "level": 92,
+      "zones": [
+        "val_alpha_213",
+        "val_dev_818",
+        "val_test_67"
+      ]
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Controller",
+        "id": "controller_8"
+      }
+    },
+    "attrs": {
+      "level": 19,
+      "zones": [
+        "val_alpha_347",
+        "val_main_641",
+        "val_zeta_584"
+      ]
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Controller",
+        "id": "controller_9"
+      }
+    },
+    "attrs": {
+      "level": 77,
+      "zones": [
+        "val_zeta_609",
+        "val_delta_885",
+        "val_staging_722",
+        "val_dev_726"
+      ]
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Controller",
+        "id": "controller_10"
+      }
+    },
+    "attrs": {
+      "level": 4,
+      "zones": [
+        "val_backup_88",
+        "val_secondary_898",
+        "val_theta_380"
+      ]
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Controller",
+        "id": "controller_11"
+      }
+    },
+    "attrs": {
+      "level": 57,
+      "zones": [
+        "val_eta_537",
+        "val_staging_179",
+        "val_delta_383"
+      ]
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Controller",
+        "id": "controller_12"
+      }
+    },
+    "attrs": {
+      "level": 100,
+      "zones": [
+        "val_eta_935"
+      ]
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Controller",
+        "id": "controller_13"
+      }
+    },
+    "attrs": {
+      "level": 11,
+      "zones": [
+        "val_alpha_818",
+        "val_secondary_926",
+        "val_epsilon_194",
+        "val_dev_945"
+      ]
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Controller",
+        "id": "controller_14"
+      }
+    },
+    "attrs": {
+      "level": 61,
+      "zones": [
+        "val_staging_794",
+        "val_dev_146",
+        "val_delta_841",
+        "val_epsilon_210",
+        "val_beta_470"
       ]
     },
     "parents": []
