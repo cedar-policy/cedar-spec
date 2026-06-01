@@ -268,7 +268,7 @@ public def Cst.Unary.toAExpr? (e : Cst.Unary) : Option AExpr := do
   ret.toExpr?
 termination_by (sizeOf e, 1)
 
-private def Cst.MultExpr.foldExtended (acc : AExpr) (xs : List (Cst.MultOp × Cst.Unary)) : Option AExpr :=
+public def Cst.MultExpr.foldExtended (acc : AExpr) (xs : List (Cst.MultOp × Cst.Unary)) : Option AExpr :=
   match xs with
   | [] => some acc
   | (op, u) :: rest => do
@@ -294,7 +294,7 @@ public def Cst.MultExpr.toAExpr? (e : Cst.MultExpr) : Option AExpr := do
   ret.toExpr?
 termination_by (sizeOf e, 1)
 
-private def Cst.AddExpr.foldExtended (acc : AExpr) (xs : List (Cst.AddOp × Cst.MultExpr)) : Option AExpr :=
+public def Cst.AddExpr.foldExtended (acc : AExpr) (xs : List (Cst.AddOp × Cst.MultExpr)) : Option AExpr :=
   match xs with
   | [] => some acc
   | (op, m) :: rest => do

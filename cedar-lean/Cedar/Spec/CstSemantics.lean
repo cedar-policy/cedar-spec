@@ -232,13 +232,13 @@ decreasing_by
 
 public def MultExpr.evaluate (e : MultExpr) (req : Request) (es : Entities) : Result Value := do
   let b ← e.initial.evaluate req es
-  MultExpr.foldExtended b e.extended req es
+  MultExpr.foldOps b e.extended req es
 termination_by sizeOf e
 decreasing_by
   all_goals cases e; simp_wf; omega
 
 -- Division and Modulo are rejected in cst_to_ast.rs
-private def MultExpr.foldExtended (acc : Value) (xs : List (MultOp × Unary))
+public def MultExpr.foldOps (acc : Value) (xs : List (MultOp × Unary))
     (req : Request) (es : Entities) : Result Value :=
   match xs with
   | [] => .ok acc
@@ -247,17 +247,17 @@ private def MultExpr.foldExtended (acc : Value) (xs : List (MultOp × Unary))
     let acc' ← match op with
       | .mTimes => apply₂ .mul acc aval es
       | _ => .error .typeError
-    MultExpr.foldExtended acc' rest req es
+    MultExpr.foldOps acc' rest req es
 termination_by sizeOf xs
 
 public def AddExpr.evaluate (e : AddExpr) (req : Request) (es : Entities) : Result Value := do
   let b ← e.initial.evaluate req es
-  AddExpr.foldExtended b e.extended req es
+  AddExpr.foldOps b e.extended req es
 termination_by sizeOf e
 decreasing_by
   all_goals cases e; simp_wf; omega
 
-private def AddExpr.foldExtended (acc : Value) (xs : List (AddOp × MultExpr))
+public def AddExpr.foldOps (acc : Value) (xs : List (AddOp × MultExpr))
     (req : Request) (es : Entities) : Result Value :=
   match xs with
   | [] => .ok acc
@@ -266,7 +266,7 @@ private def AddExpr.foldExtended (acc : Value) (xs : List (AddOp × MultExpr))
     let acc' ← match op with
       | .aPlus  => apply₂ .add acc aval es
       | .aMinus => apply₂ .sub acc aval es
-    AddExpr.foldExtended acc' rest req es
+    AddExpr.foldOps acc' rest req es
 termination_by sizeOf xs
 
 public def Relation.evaluate (e : Relation) (req : Request) (es : Entities) : Result Value :=
@@ -303,26 +303,26 @@ termination_by sizeOf e
 
 public def AndExpr.evaluate (e : AndExpr) (req : Request) (es : Entities) : Result Value := do
   let b ← (e.initial.evaluate req es).as Bool
-  let result ← AndExpr.foldExtended b e.extended req es
+  let result ← AndExpr.foldOps b e.extended req es
   .ok result
 termination_by sizeOf e
 decreasing_by
   all_goals cases e; simp_wf; omega
 
 -- Separated from the evalute function for termination proofs
-private def AndExpr.foldExtended (acc : Bool) (xs : List Relation)
+private def AndExpr.foldOps (acc : Bool) (xs : List Relation)
     (req : Request) (es : Entities) : Result Bool :=
   match xs with
   | [] => .ok acc
   | x :: rest =>
     if !acc then .ok acc else do
       let b ← (x.evaluate req es).as Bool
-      AndExpr.foldExtended b rest req es
+      AndExpr.foldOps b rest req es
 termination_by sizeOf xs
 
 public def OrExpr.evaluate (e : OrExpr) (req : Request) (es : Entities) : Result Value := do
   let b ← (e.initial.evaluate req es).as Bool
-  let result ← OrExpr.foldExtended b e.extended req es
+  let result ← OrExpr.foldOps b e.extended req es
   .ok result
 termination_by sizeOf e
 decreasing_by
@@ -330,14 +330,14 @@ decreasing_by
 
 -- Short circuit: once a true is found, halt the execution
 -- Separated from the evaluate function for termination proofs
-private def OrExpr.foldExtended (acc : Bool) (xs : List AndExpr)
+private def OrExpr.foldOps (acc : Bool) (xs : List AndExpr)
     (req : Request) (es : Entities) : Result Bool :=
   match xs with
   | [] => .ok acc
   | x :: rest =>
     if acc then .ok acc else do
       let b ← (x.evaluate req es).as Bool
-      OrExpr.foldExtended b rest req es
+      OrExpr.foldOps b rest req es
 termination_by sizeOf xs
 
 public def ExprData.evaluate (e : ExprData) (req : Request) (es : Entities) : Result Value :=

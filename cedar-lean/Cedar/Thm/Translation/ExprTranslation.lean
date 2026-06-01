@@ -229,20 +229,15 @@ theorem Cst.Unary.toAExpr?_evaluate
             | prim p => cases p <;> simp
             | _ => simp
   | some (.nDash n) =>
-    -- The previous `some (.nDash 0)` arm caught the n=0 case, so n ≠ 0 here.
-    -- But we can't extract that without an explicit by_cases on n = 0.
     by_cases hn0 : n = 0
-    · -- This arm is unreachable when n = 0 (caught by the prior pattern).
-      -- We have to discharge it anyway. The translator's nDash branch with n=0
-      -- collapses to `e.item.toExprOrSpecial?` (per the explicit nDash 0 arm
-      -- earlier in `Cst.Unary.toExprOrSpecial?`), so the proof is the same.
+    · -- n = 0
       simp [hn0, Cst.Unary.toExprOrSpecial?] at hu
       simp [Cst.Unary.evaluate, hn0]
       apply @Cst.Member.toAExpr?_evaluate item eos req es hu aexp heos
-    · -- Main case: n ≠ 0.  Match the translator's split on item.toLit?.
+    · -- n ≠ 0
       simp [Cst.Unary.toExprOrSpecial?] at hu
       simp [Cst.Unary.evaluate, hn0]
-      -- Bridge UInt8 ↔ Nat for n.toNat = 0 and parity.
+      -- Bridge UInt8 ↔ Nat for n.toNat = 0 and parity (used in non-liNum arms).
       have h_zero : (n.toNat = 0) ↔ (n = 0) := by
         constructor
         · intro h; exact UInt8.toNat_inj.mp (by simp [h])
@@ -255,6 +250,7 @@ theorem Cst.Unary.toAExpr?_evaluate
       match hlit : CstCommon.Member.toLit? item with
       | some (.liNum x) =>
         simp [hlit] at hu
+        -- Discharge the outer evaluator match by `show`-ing the reduced form.
         show evaluate aexp req es = (
           match compare x.toNat (Int64.MAX + 1).toNat with
           | .eq =>
@@ -267,32 +263,26 @@ theorem Cst.Unary.toAExpr?_evaluate
           | .gt => .error .arithBoundsError)
         match hcmp : compare x.toNat (Int64.MAX + 1).toNat with
         | .gt =>
+          -- Translation returns none, contradicting hu.
           rw [hcmp] at hu; simp at hu
         | .eq =>
+          -- AST = (.lit Int64.MIN).dashN (n-1).toNat.  Both sides agree iff n = 1
+          -- (the only odd count where Int64.MIN.neg? = none doesn't kill the chain).
           rw [hcmp] at hu
           simp at hu
           simp [← hu, ExprOrSpecial.toExpr?] at heos
           rw [← heos]
           rw [dashN_evaluate_general (Expr.lit (.int Int64.MIN.toInt64)) (n - 1).toNat req es]
           simp [evaluate]
-          -- Int64.MIN.toInt64.neg? = none (computable; check via decide).
           have hMIN_neg : Int64.MIN.toInt64.neg? = none := by decide
           rw [hMIN_neg]
-          -- Bridge `(n-1).toNat = 0 ↔ n = 1` (UInt8).
           have h_eq1 : ((n - 1).toNat = 0) ↔ (n = 1) := by
             have hpos : n.toNat > 0 := by
-              by_contra h0
-              apply hn0
-              apply h_zero.mp
-              omega
+              by_contra h0; apply hn0; apply h_zero.mp; omega
             constructor
             · intro h
-              -- (n-1).toNat = 0 in UInt8.  We need n.toNat = 1.
-              -- (n-1).toNat = (n.toNat + (256 - 1)) % 256 = (n.toNat + 255) % 256
-              -- = 0 iff n.toNat = 1 (when n.toNat ≤ 255 which always holds for UInt8).
               have hbound : n.toNat < 256 := n.toNat_lt
               have : n - 1 = 0 := UInt8.toNat_inj.mp (by simp; exact h)
-              -- From n - 1 = 0 and n ≠ 0, get n = 1.
               have : n = 1 := by
                 have h2 := congrArg (· + 1) this
                 simp at h2
@@ -301,6 +291,8 @@ theorem Cst.Unary.toAExpr?_evaluate
             · intro h; rw [h]; rfl
           simp [h_eq1]
         | .lt =>
+          -- AST = (.lit (-y)).dashN (n-1).toNat where y = ofInt? x.toNat.
+          -- Both sides reduce to .ok y or .ok (-y) based on parity (off-by-one).
           rw [hcmp] at hu
           simp at hu
           cases hofInt : Int64.ofInt? (x.toNat : Int) with
@@ -312,15 +304,99 @@ theorem Cst.Unary.toAExpr?_evaluate
             rw [← heos]
             rw [dashN_evaluate_general (Expr.lit (.int (-y))) (n - 1).toNat req es]
             simp [evaluate]
-            -- The .lt arm needs (-y).neg? = some y plus a parity bridge between
-            -- (n-1).toNat (UInt8) and n (UInt8). The math works out (since y is
-            -- in [0, Int64.MAX], -y is in [-Int64.MAX, 0], and (-y).neg? = some y),
-            -- but the proof requires multiple Int64 helpers not currently exposed.
-            sorry
+            -- Step 1: derive (-y).neg? = some y.
+            -- y came from Int64.ofInt? x.toNat with x.toNat in [0, Int64.MAX].
+            -- We use Int64.ofInt?_toInt (-y) : ofInt? (-y).toInt = some (-y).
+            -- Substituting -y for the input of neg?, we get y.neg? = some (-y),
+            -- then Int64.neg?_neg? flips it.
+            have hy_neg : y.neg? = some (-y) := by
+              show Int64.ofInt? (-y.toInt) = some (-y)
+              have hround : Int64.ofInt? ((-y).toInt) = some (-y) := Int64.ofInt?_toInt (-y)
+              -- (-y).toInt = -y.toInt holds when -y.toInt is in Int64 range.
+              -- y came from ofInt? (Int.ofNat x.toNat) so 0 ≤ y.toInt ≤ Int64.MAX,
+              -- hence -y.toInt ∈ [-Int64.MAX, 0] is in range.
+              have hy_range : Int64.MIN ≤ y.toInt ∧ y.toInt ≤ Int64.MAX := by
+                by_contra hnr
+                have : Int64.ofInt? y.toInt = none := by
+                  apply Int64.ofInt?_none_iff.mp
+                  by_cases hlo : Int64.MIN ≤ y.toInt
+                  · right; by_contra hhi; apply hnr; exact ⟨hlo, by omega⟩
+                  · left; omega
+                rw [Int64.ofInt?_toInt] at this; cases this
+              -- y.toInt = Int.ofNat x.toNat (so y is nonneg)
+              have hyti_x : y.toInt = Int.ofNat x.toNat := by
+                have hofInt' : Int64.ofInt? (Int.ofNat x.toNat) = some y := hofInt
+                have hrange' : Int64.MIN ≤ Int.ofNat x.toNat ∧ Int.ofNat x.toNat ≤ Int64.MAX := by
+                  by_contra hnr
+                  have : Int64.ofInt? (Int.ofNat x.toNat) = none := by
+                    apply Int64.ofInt?_none_iff.mp
+                    by_cases hlo : Int64.MIN ≤ Int.ofNat x.toNat
+                    · right; by_contra hhi; apply hnr; exact ⟨hlo, by omega⟩
+                    · left; omega
+                  rw [this] at hofInt'; cases hofInt'
+                have hsome : Int64.ofInt? (Int.ofNat x.toNat) =
+                             some (Int64.ofInt (Int.ofNat x.toNat)) :=
+                  Int64.ofInt?_some_iff.mp hrange'
+                rw [hsome] at hofInt'; injection hofInt' with hyeq
+                rw [← hyeq]
+                show BitVec.toInt (BitVec.ofInt 64 (Int.ofNat x.toNat)) = Int.ofNat x.toNat
+                rw [BitVec.toInt_ofInt]
+                have hnonneg : (Int.ofNat x.toNat : Int) ≥ 0 := Int.natCast_nonneg _
+                have hmaxv : Int64.MAX = 9223372036854775807 := by decide
+                have hbound : Int.ofNat x.toNat ≤ 9223372036854775807 := by
+                  have := hrange'.2; rw [hmaxv] at this; exact this
+                have h1 : -(2:Int)^63 ≤ Int.ofNat x.toNat := by
+                  have : -(2:Int)^63 = -9223372036854775808 := by decide
+                  rw [this]; omega
+                have h2 : Int.ofNat x.toNat < (2:Int)^63 := by
+                  have : (2:Int)^63 = 9223372036854775808 := by decide
+                  rw [this]; omega
+                exact Int.bmod_eq_of_le h1 h2
+              have hy_nonneg : y.toInt ≥ 0 := by
+                rw [hyti_x]; exact Int.natCast_nonneg _
+              have hneg_range : Int64.MIN ≤ -y.toInt ∧ -y.toInt ≤ Int64.MAX := by
+                simp [Int64.MIN, Int64.MAX] at hy_range ⊢; omega
+              have hyti : (-y).toInt = -y.toInt := by
+                show BitVec.toInt (-(y.toBitVec)) = -BitVec.toInt y.toBitVec
+                rw [BitVec.toInt_neg]
+                have hy : Int64.toInt y = BitVec.toInt y.toBitVec := rfl
+                rw [← hy]
+                apply Int.bmod_eq_of_le
+                · simp [Int64.MIN] at hneg_range; omega
+                · simp [Int64.MAX] at hneg_range; omega
+              rw [← hyti]; exact hround
+            have hneg_y : (-y).neg? = some y := Int64.neg?_neg? hy_neg
+            rw [hneg_y]
+            -- Step 2: parity bridging between (n-1).toNat (Nat) and n (UInt8).
+            have hpos : n.toNat > 0 := by
+              by_contra h0; apply hn0; apply h_zero.mp; omega
+            have h_sub : (n - 1).toNat = n.toNat - 1 := by
+              have h1 : (UInt8.toNat 1) = 1 := by decide
+              rw [UInt8.toNat_sub, h1]
+              have hbnd : n.toNat < 256 := n.toNat_lt
+              omega
+            rw [h_sub]
+            -- LHS now uses (n.toNat - 1) parity; RHS uses n % 2.
+            rcases Nat.mod_two_eq_zero_or_one n.toNat with hpar | hpar
+            · -- n.toNat even ⇒ n.toNat ≥ 2 (since hpos ⇒ n.toNat ≥ 1, even ⇒ ≥ 2)
+              have hge2 : n.toNat ≥ 2 := by omega
+              have h1 : n.toNat - 1 ≠ 0 := by omega
+              have h2 : (n.toNat - 1) % 2 = 1 := by omega
+              have h3 : (n % 2 = 0) := h_par.mp hpar
+              simp [h1, h2, h3]
+            · -- n.toNat odd
+              have h3 : n % 2 ≠ 0 := by
+                intro hcontra
+                have : n.toNat % 2 = 0 := h_par.mpr hcontra
+                omega
+              by_cases h1 : n.toNat - 1 = 0
+              · -- n.toNat = 1 ⇒ (n-1).toNat = 0 ⇒ LHS = .ok (-y); RHS uses n % 2 ≠ 0 ⇒ .ok (-y)
+                simp [h1, h3]
+              · have h2 : (n.toNat - 1) % 2 = 0 := by omega
+                simp [h1, h2, h3]
       | some .liTrue | some .liFalse | some (.liStr _) | none =>
         all_goals
           simp [hlit] at hu
-          -- hu now has the form: ... = some eos using the dashN n.toNat fallback
           cases hitem_trans : item.toExprOrSpecial? with
           | none => simp [hitem_trans] at hu
           | some ieos =>
@@ -334,7 +410,7 @@ theorem Cst.Unary.toAExpr?_evaluate
               have hitem_eval : evaluate iexp req es = item.evaluate req es :=
                 @Cst.Member.toAExpr?_evaluate item ieos req es hitem_trans iexp hioes_trans
               rw [dashN_evaluate_general iexp n.toNat req es, hitem_eval]
-              simp [hlit, h_zero, h_par, hn0]
+              simp [h_zero, h_par, hn0]
               cases hev : item.evaluate req es with
               | error err => simp [bind, Except.bind]
               | ok v =>
@@ -348,7 +424,60 @@ theorem Cst.Unary.toAExpr?_evaluate
   | some .nOverBang => simp [Cst.Unary.toExprOrSpecial?] at hu
   | some .nOverDash => simp [Cst.Unary.toExprOrSpecial?] at hu
 
+theorem multExprFoldExtended_foldOps_agrees
+  (req : Request) (es : Entities)
+  (xs : List (Cst.MultOp × Cst.Unary))
+  {acc_ast : Expr} {result : Expr} :
+  Cst.MultExpr.foldExtended acc_ast xs = some result →
+  evaluate result req es = (do
+    let acc_v ← evaluate acc_ast req es
+    Cst.MultExpr.foldOps acc_v xs req es) := by
 
+  intro hres
+  induction xs generalizing acc_ast result with
+  | nil =>
+    simp [Cst.MultExpr.foldExtended] at hres
+    simp [hres, bind, Except.bind]
+    cases hres : evaluate result req es with
+    | error er => simp
+    | ok vres => simp [Cst.MultExpr.foldOps]
+  | cons x xs ih =>
+    obtain ⟨op, u⟩ := x
+    cases op with
+    | mTimes =>
+      simp [Cst.MultExpr.foldExtended] at hres
+      cases heu : u.toAExpr? with
+      | none => rw [heu] at hres; simp at hres
+      | some eu =>
+        rw [heu] at hres; simp at hres
+        specialize (ih hres); simp [ih]
+        sorry
+    | _ => sorry
+
+theorem Cst.MultExpr.toAExpr?_evaluate
+  {mult : Cst.MultExpr} {eos : ExprOrSpecial}
+  {req : Request} {es : Entities} :
+  mult.toExprOrSpecial? = some eos →
+  ∀ aexp, eos.toExpr? = some aexp →
+  evaluate aexp req es = mult.evaluate req es := by
+
+  intro hmult aexp heos
+  obtain ⟨initial, extended⟩ := mult
+  cases extended with
+  | nil =>
+    simp [Cst.MultExpr.toExprOrSpecial?] at hmult
+    simp [Cst.MultExpr.evaluate]
+    have hinit := @Cst.Unary.toAExpr?_evaluate initial eos req es hmult aexp heos
+    simp [hinit]
+    cases hinit' : initial.evaluate req es
+    · simp [bind, Except.bind]
+    · simp [bind, Except.bind, Cst.MultExpr.foldOps]
+  | cons hd tl =>
+
+
+
+
+    sorry
 
 
 
