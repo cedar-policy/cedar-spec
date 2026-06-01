@@ -442,8 +442,61 @@ theorem multExprFoldExtended_foldOps_agrees
   ∀ v, evaluate result req es = .ok v ↔
        (do let acc_v ← evaluate acc_ast req es
            Cst.MultExpr.foldOps acc_v xs req es) = .ok v := by
-  sorry
 
+  intro hfold v
+  induction xs generalizing acc_ast result with
+  | nil =>
+    simp [Cst.MultExpr.foldExtended] at hfold
+    simp [hfold]; constructor <;> intro h
+    · simp [h, bind, Except.bind]
+      simp [Cst.MultExpr.foldOps]
+    · cases hres : evaluate result req es with
+      | error err =>
+        simp [bind, Except.bind, hres] at h
+      | ok v' =>
+        simp [bind, Except.bind, hres] at h
+        simp [Cst.MultExpr.foldOps] at h
+        rw [h]
+
+  | cons x xs ih =>
+    obtain ⟨op, u⟩ := x
+    -- Translator only succeeds on .mTimes; other ops fail and contradict hfold.
+    cases hop : op with
+    | mTimes =>
+      simp [Cst.MultExpr.foldExtended, hop] at hfold
+      cases hu : u.toAExpr? with
+      | none => rw [hu] at hfold; simp at hfold
+      | some eu =>
+        rw [hu] at hfold
+        simp at hfold
+        have ih' := ih hfold
+        rw [ih']
+        simp [Cst.Unary.toAExpr?, Option.bind_eq_some_iff] at hu
+        obtain ⟨ueos, hueos, heu⟩ := hu
+        have hu_iff : ∀ vp, evaluate eu req es = .ok vp ↔ u.evaluate req es = .ok vp :=
+          Cst.Unary.toAExpr?_evaluate hueos eu heu
+        -- Reduce both sides' do-notation and align via case splits.
+        simp [evaluate, bind, Except.bind, Cst.MultExpr.foldOps]
+        cases h_acc : evaluate acc_ast req es with
+        | error err => simp
+        | ok acc_v =>
+          simp
+          cases h_eu : evaluate eu req es with
+          | error err =>
+            simp
+            -- evaluate eu errors ⇒ u.evaluate also errors (or returns non-ok); RHS shorts.
+            cases h_u : u.evaluate req es with
+            | error _ => simp
+            | ok u_v =>
+              -- contradiction: hu_iff u_v says evaluate eu = .ok u_v but h_eu = .error.
+              have := (hu_iff u_v).mpr h_u
+              rw [this] at h_eu; cases h_eu
+          | ok eu_v =>
+            simp
+            have hu_v := (hu_iff eu_v).mp h_eu
+            rw [hu_v]
+    | _ =>
+      simp [Cst.MultExpr.foldExtended, hop] at hfold
 
 theorem Cst.MultExpr.toAExpr?_evaluate
   {mult : Cst.MultExpr} {eos : ExprOrSpecial}
@@ -454,9 +507,175 @@ theorem Cst.MultExpr.toAExpr?_evaluate
   mult.evaluate req es = .ok v := by
 
   intro hmult aexp heos v
+  obtain ⟨initial, extended⟩ := mult
+  match hext : extended with
+  | [] =>
+    subst hext
+    simp only [Cst.MultExpr.toExprOrSpecial?] at hmult
+    have hu_iff := @Cst.Unary.toAExpr?_evaluate initial eos req es hmult aexp heos v
+    rw [hu_iff]
+    simp [Cst.MultExpr.evaluate]
+    cases h_init : initial.evaluate req es with
+    | error err => simp [bind, Except.bind]
+    | ok iv => simp [bind, Except.bind, Cst.MultExpr.foldOps]
+  | hd :: tl =>
+    subst hext
+    simp [Cst.MultExpr.toExprOrSpecial?, Option.bind_eq_some_iff] at hmult
+    obtain ⟨first, hfirst, result, hres, heos_eq⟩ := hmult
+    rw [← heos_eq] at heos
+    simp [ExprOrSpecial.toExpr?] at heos
+    rw [← heos]
+    rw [multExprFoldExtended_foldOps_agrees req es _ hres v]
+    simp [Cst.Unary.toAExpr?, Option.bind_eq_some_iff] at hfirst
+    obtain ⟨ueos, hueos, hfeu⟩ := hfirst
+    have hu_iff : ∀ vp, evaluate first req es = .ok vp ↔ initial.evaluate req es = .ok vp :=
+      Cst.Unary.toAExpr?_evaluate hueos first hfeu
+    simp [Cst.MultExpr.evaluate]
+    cases h_init : initial.evaluate req es with
+    | error err =>
+      simp [bind, Except.bind]
+      cases h_first : evaluate first req es with
+      | ok vp =>
+        have := (hu_iff vp).mp h_first
+        rw [this] at h_init; cases h_init
+      | error _ => simp
+    | ok iv =>
+      simp [bind, Except.bind]
+      have h_first : evaluate first req es = .ok iv := (hu_iff iv).mpr h_init
+      rw [h_first]
 
+/-- Fold-helper analog for `AddExpr`. Mirrors `multExprFoldExtended_foldOps_agrees`
+    with `aPlus`/`aMinus` instead of `mTimes`, `MultExpr` instead of `Unary`,
+    and `apply₂ .add`/`apply₂ .sub` instead of `apply₂ .mul`. -/
+theorem addExprFoldExtended_foldOps_agrees
+  (req : Request) (es : Entities)
+  (xs : List (Cst.AddOp × Cst.MultExpr))
+  {acc_ast : Expr} {result : Expr} :
+  Cst.AddExpr.foldExtended acc_ast xs = some result →
+  ∀ v, evaluate result req es = .ok v ↔
+       (do let acc_v ← evaluate acc_ast req es
+           Cst.AddExpr.foldOps acc_v xs req es) = .ok v := by
+  intro hfold v
+  induction xs generalizing acc_ast result with
+  | nil =>
+    simp [Cst.AddExpr.foldExtended] at hfold
+    simp [hfold]; constructor <;> intro h
+    · simp [h, bind, Except.bind, Cst.AddExpr.foldOps]
+    · cases hres : evaluate result req es with
+      | error err => simp [bind, Except.bind, hres] at h
+      | ok v' =>
+        simp [bind, Except.bind, hres] at h
+        simp [Cst.AddExpr.foldOps] at h
+        rw [h]
+  | cons x xs ih =>
+    obtain ⟨op, m⟩ := x
+    cases hop : op with
+    | aPlus =>
+      simp [Cst.AddExpr.foldExtended, hop] at hfold
+      cases hm : m.toAExpr? with
+      | none => rw [hm] at hfold; simp at hfold
+      | some em =>
+        rw [hm] at hfold
+        simp at hfold
+        have ih' := ih hfold
+        rw [ih']
+        simp [Cst.MultExpr.toAExpr?, Option.bind_eq_some_iff] at hm
+        obtain ⟨meos, hmeos, hmem⟩ := hm
+        have hm_iff : ∀ vp, evaluate em req es = .ok vp ↔ m.evaluate req es = .ok vp :=
+          Cst.MultExpr.toAExpr?_evaluate hmeos em hmem
+        simp [evaluate, bind, Except.bind, Cst.AddExpr.foldOps]
+        cases h_acc : evaluate acc_ast req es with
+        | error err => simp
+        | ok acc_v =>
+          simp
+          cases h_em : evaluate em req es with
+          | error err =>
+            simp
+            cases h_m : m.evaluate req es with
+            | error _ => simp
+            | ok m_v =>
+              have := (hm_iff m_v).mpr h_m
+              rw [this] at h_em; cases h_em
+          | ok em_v =>
+            simp
+            have hm_v := (hm_iff em_v).mp h_em
+            rw [hm_v]
+    | aMinus =>
+      simp [Cst.AddExpr.foldExtended, hop] at hfold
+      cases hm : m.toAExpr? with
+      | none => rw [hm] at hfold; simp at hfold
+      | some em =>
+        rw [hm] at hfold
+        simp at hfold
+        have ih' := ih hfold
+        rw [ih']
+        simp [Cst.MultExpr.toAExpr?, Option.bind_eq_some_iff] at hm
+        obtain ⟨meos, hmeos, hmem⟩ := hm
+        have hm_iff : ∀ vp, evaluate em req es = .ok vp ↔ m.evaluate req es = .ok vp :=
+          Cst.MultExpr.toAExpr?_evaluate hmeos em hmem
+        simp [evaluate, bind, Except.bind, Cst.AddExpr.foldOps]
+        cases h_acc : evaluate acc_ast req es with
+        | error err => simp
+        | ok acc_v =>
+          simp
+          cases h_em : evaluate em req es with
+          | error err =>
+            simp
+            cases h_m : m.evaluate req es with
+            | error _ => simp
+            | ok m_v =>
+              have := (hm_iff m_v).mpr h_m
+              rw [this] at h_em; cases h_em
+          | ok em_v =>
+            simp
+            have hm_v := (hm_iff em_v).mp h_em
+            rw [hm_v]
 
-  sorry
+theorem Cst.AddExpr.toAExpr?_evaluate
+  {add : Cst.AddExpr} {eos : ExprOrSpecial}
+  {req : Request} {es : Entities} :
+  add.toExprOrSpecial? = some eos →
+  ∀ aexp, eos.toExpr? = some aexp →
+  ∀ v, evaluate aexp req es = .ok v ↔
+  add.evaluate req es = .ok v := by
+  intro hadd aexp heos v
+  obtain ⟨initial, extended⟩ := add
+  match hext : extended with
+  | [] =>
+    subst hext
+    simp only [Cst.AddExpr.toExprOrSpecial?] at hadd
+    have hm_iff := @Cst.MultExpr.toAExpr?_evaluate initial eos req es hadd aexp heos v
+    rw [hm_iff]
+    simp [Cst.AddExpr.evaluate]
+    cases h_init : initial.evaluate req es with
+    | error err => simp [bind, Except.bind]
+    | ok iv => simp [bind, Except.bind, Cst.AddExpr.foldOps]
+  | hd :: tl =>
+    subst hext
+    simp [Cst.AddExpr.toExprOrSpecial?, Option.bind_eq_some_iff] at hadd
+    obtain ⟨first, hfirst, result, hres, heos_eq⟩ := hadd
+    rw [← heos_eq] at heos
+    simp [ExprOrSpecial.toExpr?] at heos
+    rw [← heos]
+    rw [addExprFoldExtended_foldOps_agrees req es _ hres v]
+    simp [Cst.MultExpr.toAExpr?, Option.bind_eq_some_iff] at hfirst
+    obtain ⟨ueos, hueos, hfeu⟩ := hfirst
+    have hu_iff : ∀ vp, evaluate first req es = .ok vp ↔ initial.evaluate req es = .ok vp :=
+      Cst.MultExpr.toAExpr?_evaluate hueos first hfeu
+    simp [Cst.AddExpr.evaluate]
+    cases h_init : initial.evaluate req es with
+    | error err =>
+      simp [bind, Except.bind]
+      cases h_first : evaluate first req es with
+      | ok vp =>
+        have := (hu_iff vp).mp h_first
+        rw [this] at h_init; cases h_init
+      | error _ => simp
+    | ok iv =>
+      simp [bind, Except.bind]
+      have h_first : evaluate first req es = .ok iv := (hu_iff iv).mpr h_init
+      rw [h_first]
+
 
 
 
