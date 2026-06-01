@@ -1,0 +1,83 @@
+{
+  "": {
+    "entityTypes": {
+      "Scheduler": {},
+      "Task": {
+        "memberOfTypes": [
+          "Scheduler"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "max_duration": {
+              "type": "duration"
+            },
+            "name": {
+              "type": "String"
+            },
+            "timeout": {
+              "type": "duration"
+            }
+          }
+        }
+      },
+      "Worker": {
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "shift_end": {
+              "type": "datetime"
+            },
+            "shift_start": {
+              "type": "datetime"
+            }
+          }
+        }
+      }
+    },
+    "actions": {
+      "execute": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Task"
+          ],
+          "principalTypes": [
+            "Worker"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "current_time": {
+                "type": "datetime"
+              },
+              "elapsed": {
+                "type": "duration"
+              }
+            }
+          }
+        }
+      },
+      "schedule": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Scheduler"
+          ],
+          "principalTypes": [
+            "Worker"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "requested_duration": {
+                "type": "duration"
+              },
+              "start_time": {
+                "type": "datetime"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

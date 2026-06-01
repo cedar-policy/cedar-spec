@@ -1,0 +1,179 @@
+{
+  "": {
+    "entityTypes": {
+      "Cluster": {},
+      "DBUser": {
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "max_query_duration": {
+              "type": "duration"
+            },
+            "role": {
+              "type": "String"
+            },
+            "source_ip": {
+              "type": "ipaddr"
+            }
+          }
+        }
+      },
+      "Database": {
+        "memberOfTypes": [
+          "Cluster"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "created": {
+              "type": "datetime"
+            },
+            "endpoint": {
+              "type": "ipaddr"
+            },
+            "engine": {
+              "type": "String"
+            },
+            "maintenance_window": {
+              "type": "Record",
+              "attributes": {
+                "duration": {
+                  "type": "duration"
+                },
+                "start": {
+                  "type": "datetime"
+                }
+              }
+            },
+            "name": {
+              "type": "String"
+            },
+            "port": {
+              "type": "Long"
+            },
+            "storage_gb": {
+              "type": "decimal"
+            },
+            "version": {
+              "type": "String"
+            }
+          }
+        }
+      },
+      "Table": {
+        "memberOfTypes": [
+          "Database"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "name": {
+              "type": "String"
+            },
+            "pii": {
+              "type": "Boolean"
+            },
+            "row_count": {
+              "type": "Long"
+            },
+            "size_gb": {
+              "type": "decimal"
+            }
+          }
+        }
+      }
+    },
+    "actions": {
+      "alter": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Table"
+          ],
+          "principalTypes": [
+            "DBUser"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "operation": {
+                "type": "String"
+              },
+              "source_ip": {
+                "type": "ipaddr"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Table"
+          ],
+          "principalTypes": [
+            "DBUser"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "row_count": {
+                "type": "Long"
+              },
+              "source_ip": {
+                "type": "ipaddr"
+              },
+              "where_clause": {
+                "type": "Boolean"
+              }
+            }
+          }
+        }
+      },
+      "insert": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Table"
+          ],
+          "principalTypes": [
+            "DBUser"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "row_count": {
+                "type": "Long"
+              },
+              "source_ip": {
+                "type": "ipaddr"
+              }
+            }
+          }
+        }
+      },
+      "select": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Table"
+          ],
+          "principalTypes": [
+            "DBUser"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "estimated_duration": {
+                "type": "duration"
+              },
+              "row_limit": {
+                "type": "Long"
+              },
+              "source_ip": {
+                "type": "ipaddr"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

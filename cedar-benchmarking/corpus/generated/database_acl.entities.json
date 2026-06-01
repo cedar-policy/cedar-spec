@@ -1,0 +1,232 @@
+[
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cluster",
+        "id": "cluster_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cluster",
+        "id": "cluster_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Database",
+        "id": "database_0"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "engine": "sample_value",
+      "version": "sample_value",
+      "endpoint": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      },
+      "port": 42,
+      "storage_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "maintenance_window": {
+        "start": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2025-06-01T12:00:00Z"
+          }
+        },
+        "duration": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "1h30m"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cluster",
+          "id": "cluster_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Database",
+        "id": "database_1"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "engine": "sample_value",
+      "version": "sample_value",
+      "endpoint": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      },
+      "port": 42,
+      "storage_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "maintenance_window": {
+        "start": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2025-06-01T12:00:00Z"
+          }
+        },
+        "duration": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "1h30m"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cluster",
+          "id": "cluster_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Table",
+        "id": "table_0"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "row_count": 42,
+      "size_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "pii": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Database",
+          "id": "database_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Table",
+        "id": "table_1"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "row_count": 42,
+      "size_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "pii": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Database",
+          "id": "database_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DBUser",
+        "id": "dbuser_0"
+      }
+    },
+    "attrs": {
+      "role": "sample_value",
+      "source_ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      },
+      "max_query_duration": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "1h30m"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DBUser",
+        "id": "dbuser_1"
+      }
+    },
+    "attrs": {
+      "role": "sample_value",
+      "source_ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      },
+      "max_query_duration": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "1h30m"
+        }
+      }
+    },
+    "parents": []
+  }
+]

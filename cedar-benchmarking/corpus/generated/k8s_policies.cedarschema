@@ -1,0 +1,52 @@
+entity Platform;
+entity Namespace in [Platform] = {
+    "name": __cedar::String,
+    "quota": {
+        "max_pods": __cedar::Long,
+        "max_cpu": decimal,
+        "max_memory_gb": decimal
+    }
+};
+entity Pod in [Namespace] = {
+    "name": __cedar::String,
+    "image": __cedar::String,
+    "resources": {
+        "cpu_request": decimal,
+        "memory_gb": decimal,
+        "gpu": __cedar::Long
+    },
+    "network": {
+        "pod_ip": ipaddr,
+        "host_ip": ipaddr,
+        "ports": Set<__cedar::Long>
+    },
+    "scheduling": {
+        "started": datetime,
+        "timeout": duration,
+        "priority": __cedar::Long
+    }
+};
+entity ServiceAccount in [Namespace];
+action "create_pod" appliesTo {
+    principal: [ServiceAccount],
+    resource: [Namespace],
+    context: {
+        "pod_spec": {
+            "cpu": decimal,
+            "memory_gb": decimal,
+            "image": __cedar::String
+        },
+        "source_ip": ipaddr,
+        "timestamp": datetime
+    }
+};
+action "delete_pod" appliesTo {
+    principal: [ServiceAccount],
+    resource: [Pod],
+    context: { "source_ip": ipaddr, "force": __cedar::Bool }
+};
+action "exec" appliesTo {
+    principal: [ServiceAccount],
+    resource: [Pod],
+    context: { "source_ip": ipaddr, "command": __cedar::String }
+};

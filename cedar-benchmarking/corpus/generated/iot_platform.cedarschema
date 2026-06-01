@@ -1,0 +1,41 @@
+entity IoTPlatform;
+entity DeviceGroup in [IoTPlatform] = {
+    "name": __cedar::String,
+    "location": {
+        "building": __cedar::String,
+        "floor": __cedar::Long,
+        "zone": __cedar::String,
+        "network": ipaddr
+    }
+};
+entity Device in [DeviceGroup] = {
+    "type": __cedar::String,
+    "firmware_version": __cedar::String,
+    "ip": ipaddr,
+    "last_seen": datetime,
+    "telemetry": {
+        "temperature": decimal,
+        "humidity": decimal,
+        "battery": decimal,
+        "signal_strength": __cedar::Long
+    }
+};
+entity Controller = {
+    "level": __cedar::Long,
+    "zones": Set<__cedar::String>
+};
+action "read_telemetry" appliesTo {
+    principal: [Controller],
+    resource: [Device],
+    context: { "source_ip": ipaddr, "timestamp": datetime }
+};
+action "send_command" appliesTo {
+    principal: [Controller],
+    resource: [Device],
+    context: { "source_ip": ipaddr, "command": __cedar::String, "timeout": duration }
+};
+action "update_firmware" appliesTo {
+    principal: [Controller],
+    resource: [Device],
+    context: { "source_ip": ipaddr, "version": __cedar::String, "scheduled": datetime }
+};

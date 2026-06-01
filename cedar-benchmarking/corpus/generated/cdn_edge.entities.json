@@ -1,0 +1,234 @@
+[
+  {
+    "uid": {
+      "__entity": {
+        "type": "CDN",
+        "id": "cdn_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CDN",
+        "id": "cdn_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Origin",
+        "id": "origin_0"
+      }
+    },
+    "attrs": {
+      "hostname": "sample_value",
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      },
+      "health_check": {
+        "interval": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "1h30m"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "1h30m"
+          }
+        },
+        "last_check": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2025-06-01T12:00:00Z"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CDN",
+          "id": "cdn_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Origin",
+        "id": "origin_1"
+      }
+    },
+    "attrs": {
+      "hostname": "sample_value",
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      },
+      "health_check": {
+        "interval": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "1h30m"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "1h30m"
+          }
+        },
+        "last_check": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2025-06-01T12:00:00Z"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CDN",
+          "id": "cdn_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CacheNode",
+        "id": "cachenode_0"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      },
+      "region": "sample_value",
+      "capacity_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "ttl": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "1h30m"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CDN",
+          "id": "cdn_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CacheNode",
+        "id": "cachenode_1"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      },
+      "region": "sample_value",
+      "capacity_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "ttl": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "1h30m"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CDN",
+          "id": "cdn_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "EdgeClient",
+        "id": "edgeclient_0"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      },
+      "geo": "sample_value",
+      "bandwidth_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "EdgeClient",
+        "id": "edgeclient_1"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      },
+      "geo": "sample_value",
+      "bandwidth_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      }
+    },
+    "parents": []
+  }
+]

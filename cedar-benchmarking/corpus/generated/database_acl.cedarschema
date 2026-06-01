@@ -1,0 +1,45 @@
+entity Cluster;
+entity Database in [Cluster] = {
+    "name": __cedar::String,
+    "engine": __cedar::String,
+    "version": __cedar::String,
+    "endpoint": ipaddr,
+    "port": __cedar::Long,
+    "storage_gb": decimal,
+    "created": datetime,
+    "maintenance_window": {
+        "start": datetime,
+        "duration": duration
+    }
+};
+entity Table in [Database] = {
+    "name": __cedar::String,
+    "row_count": __cedar::Long,
+    "size_gb": decimal,
+    "pii": __cedar::Bool
+};
+entity DBUser = {
+    "role": __cedar::String,
+    "source_ip": ipaddr,
+    "max_query_duration": duration
+};
+action "select" appliesTo {
+    principal: [DBUser],
+    resource: [Table],
+    context: { "source_ip": ipaddr, "estimated_duration": duration, "row_limit": __cedar::Long }
+};
+action "insert" appliesTo {
+    principal: [DBUser],
+    resource: [Table],
+    context: { "source_ip": ipaddr, "row_count": __cedar::Long }
+};
+action "delete" appliesTo {
+    principal: [DBUser],
+    resource: [Table],
+    context: { "source_ip": ipaddr, "row_count": __cedar::Long, "where_clause": __cedar::Bool }
+};
+action "alter" appliesTo {
+    principal: [DBUser],
+    resource: [Table],
+    context: { "source_ip": ipaddr, "operation": __cedar::String }
+};

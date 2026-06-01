@@ -1,0 +1,220 @@
+[
+  {
+    "uid": {
+      "__entity": {
+        "type": "IoTPlatform",
+        "id": "iotplatform_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "IoTPlatform",
+        "id": "iotplatform_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DeviceGroup",
+        "id": "devicegroup_0"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "location": {
+        "building": "sample_value",
+        "floor": 42,
+        "zone": "sample_value",
+        "network": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "10.0.1.100/32"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "IoTPlatform",
+          "id": "iotplatform_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DeviceGroup",
+        "id": "devicegroup_1"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "location": {
+        "building": "sample_value",
+        "floor": 42,
+        "zone": "sample_value",
+        "network": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "10.0.1.100/32"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "IoTPlatform",
+          "id": "iotplatform_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Device",
+        "id": "device_0"
+      }
+    },
+    "attrs": {
+      "type": "sample_value",
+      "firmware_version": "sample_value",
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      },
+      "last_seen": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "telemetry": {
+        "temperature": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "100.50"
+          }
+        },
+        "humidity": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "100.50"
+          }
+        },
+        "battery": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "100.50"
+          }
+        },
+        "signal_strength": 42
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "DeviceGroup",
+          "id": "devicegroup_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Device",
+        "id": "device_1"
+      }
+    },
+    "attrs": {
+      "type": "sample_value",
+      "firmware_version": "sample_value",
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      },
+      "last_seen": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "telemetry": {
+        "temperature": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "100.50"
+          }
+        },
+        "humidity": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "100.50"
+          }
+        },
+        "battery": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "100.50"
+          }
+        },
+        "signal_strength": 42
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "DeviceGroup",
+          "id": "devicegroup_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Controller",
+        "id": "controller_0"
+      }
+    },
+    "attrs": {
+      "level": 42,
+      "zones": [
+        "item1",
+        "item2"
+      ]
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Controller",
+        "id": "controller_1"
+      }
+    },
+    "attrs": {
+      "level": 42,
+      "zones": [
+        "item1",
+        "item2"
+      ]
+    },
+    "parents": []
+  }
+]

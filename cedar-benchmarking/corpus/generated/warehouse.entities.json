@@ -1,0 +1,280 @@
+[
+  {
+    "uid": {
+      "__entity": {
+        "type": "Warehouse",
+        "id": "warehouse_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Warehouse",
+        "id": "warehouse_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Rack",
+        "id": "rack_0"
+      }
+    },
+    "attrs": {
+      "zone": "sample_value",
+      "temperature": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "humidity": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Warehouse",
+          "id": "warehouse_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Rack",
+        "id": "rack_1"
+      }
+    },
+    "attrs": {
+      "zone": "sample_value",
+      "temperature": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "humidity": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Warehouse",
+          "id": "warehouse_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Item",
+        "id": "item_0"
+      }
+    },
+    "attrs": {
+      "sku": "sample_value",
+      "weight_kg": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "value": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "expiry": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "hazmat": true,
+      "dimensions": {
+        "length_cm": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "100.50"
+          }
+        },
+        "width_cm": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "100.50"
+          }
+        },
+        "height_cm": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "100.50"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Rack",
+          "id": "rack_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Item",
+        "id": "item_1"
+      }
+    },
+    "attrs": {
+      "sku": "sample_value",
+      "weight_kg": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "value": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "expiry": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "hazmat": true,
+      "dimensions": {
+        "length_cm": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "100.50"
+          }
+        },
+        "width_cm": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "100.50"
+          }
+        },
+        "height_cm": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "100.50"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Rack",
+          "id": "rack_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Worker",
+        "id": "worker_0"
+      }
+    },
+    "attrs": {
+      "role": "sample_value",
+      "certifications": [
+        "item1",
+        "item2"
+      ],
+      "shift_start": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "shift_end": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "max_weight_kg": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Worker",
+        "id": "worker_1"
+      }
+    },
+    "attrs": {
+      "role": "sample_value",
+      "certifications": [
+        "item1",
+        "item2"
+      ],
+      "shift_start": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "shift_end": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "max_weight_kg": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      }
+    },
+    "parents": []
+  }
+]

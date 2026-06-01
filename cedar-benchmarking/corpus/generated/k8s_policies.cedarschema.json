@@ -1,0 +1,179 @@
+{
+  "": {
+    "entityTypes": {
+      "Namespace": {
+        "memberOfTypes": [
+          "Platform"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "name": {
+              "type": "String"
+            },
+            "quota": {
+              "type": "Record",
+              "attributes": {
+                "max_cpu": {
+                  "type": "decimal"
+                },
+                "max_memory_gb": {
+                  "type": "decimal"
+                },
+                "max_pods": {
+                  "type": "Long"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Platform": {},
+      "Pod": {
+        "memberOfTypes": [
+          "Namespace"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "image": {
+              "type": "String"
+            },
+            "name": {
+              "type": "String"
+            },
+            "network": {
+              "type": "Record",
+              "attributes": {
+                "host_ip": {
+                  "type": "ipaddr"
+                },
+                "pod_ip": {
+                  "type": "ipaddr"
+                },
+                "ports": {
+                  "type": "Set",
+                  "element": {
+                    "type": "Long"
+                  }
+                }
+              }
+            },
+            "resources": {
+              "type": "Record",
+              "attributes": {
+                "cpu_request": {
+                  "type": "decimal"
+                },
+                "gpu": {
+                  "type": "Long"
+                },
+                "memory_gb": {
+                  "type": "decimal"
+                }
+              }
+            },
+            "scheduling": {
+              "type": "Record",
+              "attributes": {
+                "priority": {
+                  "type": "Long"
+                },
+                "started": {
+                  "type": "datetime"
+                },
+                "timeout": {
+                  "type": "duration"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ServiceAccount": {
+        "memberOfTypes": [
+          "Namespace"
+        ]
+      }
+    },
+    "actions": {
+      "create_pod": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Namespace"
+          ],
+          "principalTypes": [
+            "ServiceAccount"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "pod_spec": {
+                "type": "Record",
+                "attributes": {
+                  "cpu": {
+                    "type": "decimal"
+                  },
+                  "image": {
+                    "type": "String"
+                  },
+                  "memory_gb": {
+                    "type": "decimal"
+                  }
+                }
+              },
+              "source_ip": {
+                "type": "ipaddr"
+              },
+              "timestamp": {
+                "type": "datetime"
+              }
+            }
+          }
+        }
+      },
+      "delete_pod": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Pod"
+          ],
+          "principalTypes": [
+            "ServiceAccount"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "force": {
+                "type": "Boolean"
+              },
+              "source_ip": {
+                "type": "ipaddr"
+              }
+            }
+          }
+        }
+      },
+      "exec": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Pod"
+          ],
+          "principalTypes": [
+            "ServiceAccount"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "command": {
+                "type": "String"
+              },
+              "source_ip": {
+                "type": "ipaddr"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

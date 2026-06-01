@@ -1,0 +1,156 @@
+{
+  "": {
+    "entityTypes": {
+      "CI": {},
+      "Developer": {
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "ip_allowlist": {
+              "type": "ipaddr"
+            },
+            "joined": {
+              "type": "datetime"
+            },
+            "role": {
+              "type": "String"
+            }
+          }
+        }
+      },
+      "Pipeline": {
+        "memberOfTypes": [
+          "Repository"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "config": {
+              "type": "Record",
+              "attributes": {
+                "artifacts": {
+                  "type": "Record",
+                  "attributes": {
+                    "max_size_mb": {
+                      "type": "decimal"
+                    },
+                    "retention": {
+                      "type": "duration"
+                    }
+                  }
+                },
+                "runner": {
+                  "type": "Record",
+                  "attributes": {
+                    "max_duration": {
+                      "type": "duration"
+                    },
+                    "network": {
+                      "type": "ipaddr"
+                    },
+                    "type": {
+                      "type": "String"
+                    }
+                  }
+                }
+              }
+            },
+            "created": {
+              "type": "datetime"
+            },
+            "name": {
+              "type": "String"
+            },
+            "timeout": {
+              "type": "duration"
+            }
+          }
+        }
+      },
+      "Repository": {
+        "memberOfTypes": [
+          "CI"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "default_branch": {
+              "type": "String"
+            },
+            "name": {
+              "type": "String"
+            },
+            "visibility": {
+              "type": "String"
+            }
+          }
+        }
+      }
+    },
+    "actions": {
+      "download_artifact": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Pipeline"
+          ],
+          "principalTypes": [
+            "Developer"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "artifact_size_mb": {
+                "type": "decimal"
+              },
+              "source_ip": {
+                "type": "ipaddr"
+              }
+            }
+          }
+        }
+      },
+      "trigger": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Pipeline"
+          ],
+          "principalTypes": [
+            "Developer"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "branch": {
+                "type": "String"
+              },
+              "source_ip": {
+                "type": "ipaddr"
+              },
+              "timestamp": {
+                "type": "datetime"
+              }
+            }
+          }
+        }
+      },
+      "view_logs": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Pipeline"
+          ],
+          "principalTypes": [
+            "Developer"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "source_ip": {
+                "type": "ipaddr"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

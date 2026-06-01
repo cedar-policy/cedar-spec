@@ -1,0 +1,126 @@
+[
+  {
+    "uid": {
+      "__entity": {
+        "type": "Building",
+        "id": "building_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Building",
+        "id": "building_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Room",
+        "id": "room_0"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "floor": 42,
+      "capacity": 42,
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Building",
+          "id": "building_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Room",
+        "id": "room_1"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "floor": 42,
+      "capacity": 42,
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Building",
+          "id": "building_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Badge",
+        "id": "badge_0"
+      }
+    },
+    "attrs": {
+      "holder": "sample_value",
+      "issued": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "expires": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "access_level": 42
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Badge",
+        "id": "badge_1"
+      }
+    },
+    "attrs": {
+      "holder": "sample_value",
+      "issued": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "expires": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "access_level": 42
+    },
+    "parents": []
+  }
+]

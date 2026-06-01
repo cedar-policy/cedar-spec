@@ -1,0 +1,316 @@
+[
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cloud",
+        "id": "cloud_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cloud",
+        "id": "cloud_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Region",
+        "id": "region_0"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "compliance": [
+        "item1",
+        "item2"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cloud",
+          "id": "cloud_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Region",
+        "id": "region_1"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "compliance": [
+        "item1",
+        "item2"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cloud",
+          "id": "cloud_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "VPC",
+        "id": "vpc_0"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      },
+      "name": "sample_value"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Region",
+          "id": "region_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "VPC",
+        "id": "vpc_1"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      },
+      "name": "sample_value"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Region",
+          "id": "region_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Subnet",
+        "id": "subnet_0"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      },
+      "public": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "VPC",
+          "id": "vpc_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Subnet",
+        "id": "subnet_1"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      },
+      "public": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "VPC",
+          "id": "vpc_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instance",
+        "id": "instance_0"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      },
+      "type": "sample_value",
+      "cost_per_hour": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "launched": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Subnet",
+          "id": "subnet_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instance",
+        "id": "instance_1"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      },
+      "type": "sample_value",
+      "cost_per_hour": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "launched": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Subnet",
+          "id": "subnet_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "SecurityGroup",
+        "id": "securitygroup_0"
+      }
+    },
+    "attrs": {
+      "ingress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      },
+      "egress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      },
+      "ports": [
+        80,
+        443
+      ]
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "SecurityGroup",
+        "id": "securitygroup_1"
+      }
+    },
+    "attrs": {
+      "ingress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      },
+      "egress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      },
+      "ports": [
+        80,
+        443
+      ]
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Admin",
+        "id": "admin_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Admin",
+        "id": "admin_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  }
+]

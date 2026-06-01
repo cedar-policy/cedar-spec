@@ -1,0 +1,232 @@
+[
+  {
+    "uid": {
+      "__entity": {
+        "type": "Org",
+        "id": "org_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Org",
+        "id": "org_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Department",
+        "id": "department_0"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "budget": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "metadata": {
+        "created": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2025-06-01T12:00:00Z"
+          }
+        },
+        "modified": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2025-06-01T12:00:00Z"
+          }
+        },
+        "owner": {
+          "name": "sample_value",
+          "email": "sample_value",
+          "role": "sample_value"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Org",
+          "id": "org_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Department",
+        "id": "department_1"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "budget": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "metadata": {
+        "created": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2025-06-01T12:00:00Z"
+          }
+        },
+        "modified": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2025-06-01T12:00:00Z"
+          }
+        },
+        "owner": {
+          "name": "sample_value",
+          "email": "sample_value",
+          "role": "sample_value"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Org",
+          "id": "org_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Project",
+        "id": "project_0"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "config": {
+        "environment": "sample_value",
+        "settings": {
+          "max_instances": 42,
+          "timeout": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "1h30m"
+            }
+          },
+          "network": {
+            "vpc_cidr": {
+              "__extn": {
+                "fn": "ip",
+                "arg": "10.0.1.100/32"
+              }
+            },
+            "subnet": {
+              "__extn": {
+                "fn": "ip",
+                "arg": "10.0.1.100/32"
+              }
+            },
+            "allow_public": true
+          }
+        },
+        "tags": [
+          "item1",
+          "item2"
+        ]
+      },
+      "status": "sample_value"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "department_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Project",
+        "id": "project_1"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "config": {
+        "environment": "sample_value",
+        "settings": {
+          "max_instances": 42,
+          "timeout": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "1h30m"
+            }
+          },
+          "network": {
+            "vpc_cidr": {
+              "__extn": {
+                "fn": "ip",
+                "arg": "10.0.1.100/32"
+              }
+            },
+            "subnet": {
+              "__extn": {
+                "fn": "ip",
+                "arg": "10.0.1.100/32"
+              }
+            },
+            "allow_public": true
+          }
+        },
+        "tags": [
+          "item1",
+          "item2"
+        ]
+      },
+      "status": "sample_value"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Department",
+          "id": "department_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  }
+]

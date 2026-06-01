@@ -1,0 +1,31 @@
+entity Document in [Folder, View] = {"isPublic": __cedar::Bool};
+entity Folder in [Folder, View];
+entity Group;
+entity User in [Group] = {"documentsAndFoldersWithViewAccess": View, "ownedDocuments": Set < Document >, "ownedFolders": Set < Folder >};
+entity View in [View];
+action "changeOwner" appliesTo {
+  principal: [User],
+  resource: [Document],
+  context: {}
+};
+action "createDocument" appliesTo {
+  principal: [User],
+  resource: [Folder],
+  context: {}
+};
+action "read" appliesTo {
+  principal: [User],
+  resource: [Document],
+  context: {}
+};
+action "share" appliesTo {
+  principal: [User],
+  resource: [Document],
+  context: {}
+};
+action "write" appliesTo {
+  principal: [User],
+  resource: [Document],
+  context: {}
+};
+

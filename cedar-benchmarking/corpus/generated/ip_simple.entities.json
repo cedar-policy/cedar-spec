@@ -1,0 +1,92 @@
+[
+  {
+    "uid": {
+      "__entity": {
+        "type": "Network",
+        "id": "network_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Network",
+        "id": "network_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Host",
+        "id": "host_0"
+      }
+    },
+    "attrs": {
+      "address": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      },
+      "name": "sample_value"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Network",
+          "id": "network_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Host",
+        "id": "host_1"
+      }
+    },
+    "attrs": {
+      "address": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      },
+      "name": "sample_value"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Network",
+          "id": "network_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  }
+]

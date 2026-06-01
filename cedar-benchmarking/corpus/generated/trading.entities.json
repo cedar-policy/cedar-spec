@@ -1,0 +1,234 @@
+[
+  {
+    "uid": {
+      "__entity": {
+        "type": "Exchange",
+        "id": "exchange_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Exchange",
+        "id": "exchange_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Market",
+        "id": "market_0"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "open_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "close_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "min_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "max_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Exchange",
+          "id": "exchange_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Market",
+        "id": "market_1"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "open_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "close_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "min_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "max_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Exchange",
+          "id": "exchange_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instrument",
+        "id": "instrument_0"
+      }
+    },
+    "attrs": {
+      "symbol": "sample_value",
+      "price": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "tick_size": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "halted": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Market",
+          "id": "market_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instrument",
+        "id": "instrument_1"
+      }
+    },
+    "attrs": {
+      "symbol": "sample_value",
+      "price": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "tick_size": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "halted": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Market",
+          "id": "market_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Trader",
+        "id": "trader_0"
+      }
+    },
+    "attrs": {
+      "firm": "sample_value",
+      "level": 42,
+      "max_position": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Trader",
+        "id": "trader_1"
+      }
+    },
+    "attrs": {
+      "firm": "sample_value",
+      "level": 42,
+      "max_position": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      },
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      }
+    },
+    "parents": []
+  }
+]

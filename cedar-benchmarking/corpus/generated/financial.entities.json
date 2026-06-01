@@ -1,0 +1,202 @@
+[
+  {
+    "uid": {
+      "__entity": {
+        "type": "Bank",
+        "id": "bank_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Bank",
+        "id": "bank_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Branch",
+        "id": "branch_0"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "region": "sample_value",
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Bank",
+          "id": "bank_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Branch",
+        "id": "branch_1"
+      }
+    },
+    "attrs": {
+      "name": "sample_value",
+      "region": "sample_value",
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.0.1.100/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Bank",
+          "id": "bank_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Account",
+        "id": "account_0"
+      }
+    },
+    "attrs": {
+      "type": "sample_value",
+      "balance": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "daily_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "owner": "sample_value",
+      "opened": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Account",
+        "id": "account_1"
+      }
+    },
+    "attrs": {
+      "type": "sample_value",
+      "balance": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "daily_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      },
+      "owner": "sample_value",
+      "opened": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-01T12:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Employee",
+        "id": "employee_0"
+      }
+    },
+    "attrs": {
+      "role": "sample_value",
+      "level": 42,
+      "approval_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Employee",
+        "id": "employee_1"
+      }
+    },
+    "attrs": {
+      "role": "sample_value",
+      "level": 42,
+      "approval_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.50"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_0"
+        }
+      }
+    ]
+  }
+]
