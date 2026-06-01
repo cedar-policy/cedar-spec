@@ -61,7 +61,6 @@ theorem checked_eval_entity_reachable_get_attr {e : Expr} {n : Nat} {c c' : Capa
   (hl : tx.EntityAccessAtLevel env n nmax path)
   (he : evaluate (e.getAttr a) request entities = .ok v)
   (ha : Value.EuidViaPath v path euid)
-  (hf : entities.contains euid)
   (ih : CheckedEvalEntityReachable e) :
   ReachableIn entities request.sliceEUIDs euid (n + 1)
 := by
@@ -95,8 +94,7 @@ theorem checked_eval_entity_reachable_get_attr {e : Expr} {n : Nat} {c c' : Capa
 
     have ⟨ ed, hed, hed' ⟩ := entities_attrs_then_find? he₂
     subst attrs
-    have hf' : entities.contains euid' := by simp [Map.contains, Option.isSome, hed]
-    have ih := ih hc hr ht' hl he₁ (.euid euid') hf'
+    have ih := ih hc hr ht' hl he₁ (.euid euid')
     have ha' : Value.EuidViaPath (Value.record ed.attrs) (a :: path) euid := .record hv ha
     apply reachable_attr_step ih hed ha'
 
@@ -118,4 +116,4 @@ theorem checked_eval_entity_reachable_get_attr {e : Expr} {n : Nat} {c c' : Capa
       rename_i v hv
       subst he
       have ha' : Value.EuidViaPath (Value.record attrs) (a :: path) euid := .record hv ha
-      exact ih hc hr ht' hl he₁ ha' hf
+      exact ih hc hr ht' hl he₁ ha'

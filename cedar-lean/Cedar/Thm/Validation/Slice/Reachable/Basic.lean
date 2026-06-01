@@ -78,7 +78,6 @@ def CheckedEvalEntityReachable (e : Expr) :=
     tx.EntityAccessAtLevel env n nmax path →
     evaluate e request entities = .ok v →
     Value.EuidViaPath v path euid →
-    entities.contains euid →
     ReachableIn entities request.sliceEUIDs euid (n + 1)
 
 theorem reachable_succ {n : Nat} {euid : EntityUID} {start : Set EntityUID} {entities : Entities}

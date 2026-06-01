@@ -35,6 +35,7 @@ import Cedar.Thm.Validation.Levels.Or
 import Cedar.Thm.Validation.Levels.Record
 import Cedar.Thm.Validation.Levels.Set
 import Cedar.Thm.Validation.Levels.Call
+import Cedar.Thm.Validation.Levels.NoEntitiesError
 
 namespace Cedar.Thm
 
@@ -126,6 +127,21 @@ theorem typecheck_policy_with_level_is_sound {p : Policy} {tx : TypedExpr} {n : 
   rw [←level_spec] at htl'
   have hc := empty_capabilities_invariant request entities
   exact level_based_slicing_is_sound_expr hc hr htx' htl'
+
+/--
+The sliced variant of `typecheck_policy_with_level_no_dne` (issue #642): evaluating
+a level-checked policy against the level-`n` *slice* of a closed store also never
+produces `entityDoesNotExist`.  Follows trivially by transporting the full-store
+result across the semantic-equivalence soundness theorem.
+-/
+theorem typecheck_policy_with_level_no_dne_on_slice {p : Policy} {tx : TypedExpr} {n : Nat} {env : TypeEnv} {request : Request} {entities : Entities}
+  (hr : InstanceOfWellFormedEnvironment request entities env)
+  (hcl : EntitiesClosedAtLevel entities request n)
+  (htl : typecheckPolicyWithLevel p n env = .ok tx) :
+  evaluate p.toExpr request (entities.sliceAtLevel request n) ≠ .error .entityDoesNotExist
+:= by
+  rw [← typecheck_policy_with_level_is_sound hr htl]
+  exact typecheck_policy_with_level_no_dne hr hcl htl
 
 theorem typecheck_policy_at_level_with_environments_is_sound {p : Policy} {schema : Schema} {n : Nat} {request : Request} {entities : Entities}
   (he : ∃ env ∈ schema.environments, InstanceOfWellFormedEnvironment request entities env)

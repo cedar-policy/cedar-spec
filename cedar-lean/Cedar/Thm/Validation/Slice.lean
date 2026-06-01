@@ -49,9 +49,8 @@ theorem checked_eval_entity_in_slice  {n : Nat} {c c' : Capabilities} {tx : Type
   (Entities.sliceAtLevel entities request (n + 1)).find? euid = some ed
 := by
   simp only [Entities.sliceAtLevel]
-  have hf₁ : Map.contains entities euid := by simp [Map.contains, hf]
   have hw : ReachableIn entities request.sliceEUIDs euid (n + 1) :=
-    checked_eval_entity_reachable hc hr ht hl he (.euid euid) hf₁
+    checked_eval_entity_reachable hc hr ht hl he (.euid euid)
   have hi := slice_contains_reachable hw
   rw [←hf]
   let eids := Entities.sliceAtLevel.sliceAtLevel entities request.sliceEUIDs (n + 1)

@@ -155,8 +155,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n nmax: Nat} {c c' : Capabilit
   (ht : typeOf e c env = .ok (tx, c'))
   (hl : tx.EntityAccessAtLevel env n nmax path)
   (he : evaluate e request entities = .ok v)
-  (ha : Value.EuidViaPath v path euid)
-  (hf : entities.contains euid) :
+  (ha : Value.EuidViaPath v path euid) :
   ReachableIn entities request.sliceEUIDs euid (n + 1)
 := by
   cases e
@@ -167,12 +166,12 @@ theorem checked_eval_entity_reachable {e : Expr} {n nmax: Nat} {c c' : Capabilit
     exact ReachableIn.in_start hi
 
   case var =>
-    exact var_entity_reachable he ha hf
+    exact var_entity_reachable he ha
 
   case ite e₁ e₂ e₃ =>
     have ih₂ := @checked_eval_entity_reachable e₂
     have ih₃ := @checked_eval_entity_reachable e₃
-    exact checked_eval_entity_reachable_ite hc hr ht hl he ha hf ih₂ ih₃
+    exact checked_eval_entity_reachable_ite hc hr ht hl he ha ih₂ ih₃
 
   case and =>
     exfalso
@@ -192,7 +191,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n nmax: Nat} {c c' : Capabilit
 
   case getAttr e _ =>
     have ih := @checked_eval_entity_reachable e
-    exact checked_eval_entity_reachable_get_attr hc hr ht hl he ha hf ih
+    exact checked_eval_entity_reachable_get_attr hc hr ht hl he ha ih
 
   case hasAttr e a =>
     exfalso
@@ -212,7 +211,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n nmax: Nat} {c c' : Capabilit
         simp only [Expr.record.sizeOf_spec, gt_iff_lt]
         omega
       exact @checked_eval_entity_reachable x
-    exact checked_eval_entity_reachable_record hc hr ht hl he ha hf ih
+    exact checked_eval_entity_reachable_record hc hr ht hl he ha ih
 
   case call xfn args =>
     exfalso
