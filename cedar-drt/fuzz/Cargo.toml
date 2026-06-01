@@ -258,6 +258,18 @@ test = false
 doc = false
 
 [[bin]]
+name = "protobuf-decode-gen-expression"
+path = "fuzz_targets/protobuf-decode/protobuf-decode-gen-expression.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-decode-gen-request"
+path = "fuzz_targets/protobuf-decode/protobuf-decode-gen-request.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "protobuf-decode-gen-template"
 path = "fuzz_targets/protobuf-decode/protobuf-decode-gen-template.rs"
 test = false

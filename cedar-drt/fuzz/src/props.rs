@@ -17,7 +17,9 @@
 //! This module contains properties that API-level entities should satisfy.
 
 use crate::roundtrip_entities::pretty_assert_entities_deep_eq;
-use cedar_policy::{Entities, Entity, Policy, PolicySet, Template};
+use cedar_policy::{
+    Entities, Entity, Expression, Policy, PolicySet, Request, RestrictedExpression, Template,
+};
 
 /// An [`Entity`] should roundrtrip through serialization with json and then deserialization.
 /// The [`Entity`] gets converted to a singleton [`Entities`].
@@ -49,6 +51,19 @@ pub fn entities_to_json_roundtrips(original: Entities) {
     });
 
     pretty_assert_entities_deep_eq(&original, &roundtripped);
+}
+
+pub fn expression_to_cedar_parses(original: Expression) {
+    // Print to cedar text, wrapped in a policy body
+    let cedar_text = original.to_string();
+
+    // Re-parse as a policy
+    let _: Expression = cedar_text.parse().unwrap_or_else(|e| {
+        panic!(
+            "This Expression cannot be printed and parsed:\n{:?}\nParse error: {e}",
+            original
+        )
+    });
 }
 
 /// A [`Template`] should print to Cedar and parse again. This function panic for inputs where
@@ -103,6 +118,22 @@ pub fn policyset_to_cedar_parses(original: PolicySet) -> PolicySet {
         }
     }
     reconstructed
+}
+
+/// A [`Request`]'s context values should each print to Cedar and re-parse. This tests that
+/// protobuf decoding validation is not weaker than Cedar text parsing for context expressions.
+pub fn request_context_to_cedar_parses(request: Request) {
+    if let Some(context) = request.context() {
+        for (key, value) in context.clone() {
+            let text = value.as_ref().to_string();
+            let _: RestrictedExpression = text.parse().unwrap_or_else(|e| {
+                panic!(
+                    "Context value for key `{key}` cannot be printed and parsed:\n\
+                     {value:?}\nParse error: {e}"
+                )
+            });
+        }
+    }
 }
 
 /// A [`PolicySet`] should serialize to JSON and deserialize again. This function panics for

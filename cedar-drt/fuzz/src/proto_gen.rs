@@ -664,3 +664,33 @@ impl<'a> Arbitrary<'a> for ProtoEntityInput {
         })
     }
 }
+
+/// Fuzz input: a protobuf Entity model.
+#[derive(Debug, Clone)]
+pub struct ProtoExprInput {
+    pub expr: models::Expr,
+}
+
+impl<'a> Arbitrary<'a> for ProtoExprInput {
+    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
+        let g = ModelGenerator::arbitrary(u)?;
+        Ok(Self {
+            expr: g.arbitrary_model_expr(u, g.max_expr_depth)?,
+        })
+    }
+}
+
+/// Fuzz input: a protobuf Request model.
+#[derive(Debug, Clone)]
+pub struct ProtoRequestInput {
+    pub request: models::Request,
+}
+
+impl<'a> Arbitrary<'a> for ProtoRequestInput {
+    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
+        let g = ModelGenerator::arbitrary(u)?;
+        Ok(Self {
+            request: g.arbitrary_model_request(u)?,
+        })
+    }
+}
