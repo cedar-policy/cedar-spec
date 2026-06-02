@@ -310,6 +310,21 @@ async def main():
 
     print(f"Matched {len(matched)} targets: {', '.join(matched)}")
 
+    # Pre-build all targets to avoid cargo lock contention during parallel runs
+    print(f"Pre-building {len(matched)} targets...")
+    for name in matched:
+        build_proc = await asyncio.create_subprocess_exec(
+            "cargo", "fuzz", "build", "-s", args.sanitizer, name,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+            cwd=str(Path(__file__).parent),
+        )
+        await build_proc.wait()
+        if build_proc.returncode != 0:
+            print(f"{RED}Failed to build target '{name}'{RESET}")
+            sys.exit(1)
+    print(f"{GREEN}Build complete.{RESET}")
+
     reports_dir = Path(__file__).parent / "fuzz_reports"
     reports_dir.mkdir(exist_ok=True)
 
