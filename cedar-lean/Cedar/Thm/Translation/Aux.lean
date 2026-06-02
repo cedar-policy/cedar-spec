@@ -2,6 +2,7 @@ import Cedar.Spec
 import Cedar.Spec.Cst
 import Cedar.Spec.CstSemantics
 import Cedar.Spec.CstToAst
+import Cedar.Thm.Data.List.Lemmas
 
 namespace Cedar.Thm
 
@@ -1125,3 +1126,61 @@ theorem expr_or_eval_eq_foldOps_step
           | bool _ => simp [Value.asBool, pure, Except.pure]
           | int _ | string _ | entityUID _ => simp [Value.asBool]
         | set _ | record _ | ext _ => simp [Value.asBool]
+
+/- For Primary's eList case -/
+
+/-- Generic element-wise bridge: when each element of `xs` translates to an AST
+    expression and the per-element iff holds, then evaluating the translated
+    list element-wise agrees with evaluating the original list element-wise.
+    The signature uses `.val` form to match `List.mapM₁_eq_mapM`. -/
+theorem mapM_eval_agrees
+    (req : Request) (es : Entities) :
+    ∀ (xs : List Cst.Expr) (aes : List Expr),
+      xs.mapM₁ (fun x => x.val.toAExpr?) = some aes →
+      (∀ x ∈ xs, ∀ ax,
+        x.toAExpr? = some ax →
+        ∀ v, evaluate ax req es = .ok v ↔ x.evaluate req es = .ok v) →
+      ∀ vs, aes.mapM (fun a => evaluate a req es) = .ok vs ↔
+            xs.mapM (fun x => x.evaluate req es) = .ok vs := by
+  intro xs aes htrans hperElt vs
+  rw [List.mapM₁_eq_mapM (fun (x : Cst.Expr) => x.toAExpr?)] at htrans
+  induction xs generalizing aes vs with
+  | nil =>
+    simp [List.mapM_nil] at htrans
+    subst htrans
+    simp [List.mapM_nil]
+  | cons hd tl ih =>
+    simp [List.mapM_cons, Option.bind_eq_some_iff] at htrans
+    obtain ⟨ahd, hahd, atl, hatl, haes⟩ := htrans
+    subst haes
+    have hhd_iff : ∀ vp, evaluate ahd req es = .ok vp ↔ hd.evaluate req es = .ok vp :=
+      hperElt hd List.mem_cons_self ahd hahd
+    have htl_perElt : ∀ x ∈ tl, ∀ ax,
+        x.toAExpr? = some ax →
+        ∀ v, evaluate ax req es = .ok v ↔ x.evaluate req es = .ok v := by
+      intro x hx ax hax v
+      exact hperElt x (List.mem_cons_of_mem _ hx) ax hax v
+    have ih' := ih atl hatl htl_perElt
+    simp [List.mapM_cons, bind, Except.bind]
+    cases hev_ahd : evaluate ahd req es with
+    | error err =>
+      cases hev_hd : hd.evaluate req es with
+      | ok vp =>
+        have := (hhd_iff vp).mpr hev_hd
+        rw [this] at hev_ahd; cases hev_ahd
+      | error _ => simp
+    | ok ahdv =>
+      have hev_hd : hd.evaluate req es = .ok ahdv := (hhd_iff ahdv).mp hev_ahd
+      rw [hev_hd]
+      simp
+      cases hev_atl : atl.mapM (fun a => evaluate a req es) with
+      | error err =>
+        cases hev_tl : tl.mapM (fun x => x.evaluate req es) with
+        | ok vstl =>
+          have := (ih' vstl).mpr hev_tl
+          rw [this] at hev_atl; cases hev_atl
+        | error _ => simp
+      | ok atlvs =>
+        have hev_tl : tl.mapM (fun x => x.evaluate req es) = .ok atlvs :=
+          (ih' atlvs).mp hev_atl
+        rw [hev_tl]

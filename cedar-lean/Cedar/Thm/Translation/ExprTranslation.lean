@@ -119,26 +119,25 @@ theorem Cst.Member.toAExpr?_evaluate
   mem.evaluate req es = .ok v := by
 
   intro hmem aexp heos v
-  obtain ⟨item, access⟩ := mem
   simp [Cst.Member.toExprOrSpecial?] at hmem
   simp only [Option.bind_eq_some_iff] at hmem
   obtain ⟨peos, hitem, accs, haccs, hmem⟩ := hmem
   unfold Cst.Member.evaluate
 
   /- AttrChain agreement -/
-  match hattr : Cst.AttrChain? access with
+  match hattr : Cst.AttrChain? mem.access with
   | none =>
     exfalso
-    exact attrChain?_isSome_of_mapM_toAstAccessor? access accs haccs hattr
+    exact attrChain?_isSome_of_mapM_toAstAccessor? mem.access accs haccs hattr
   | some attrs =>
     have hagr : attrsAccessorsAgree accs attrs = true :=
-      toAstAccessor_attrChain_agrees access accs attrs haccs hattr
+      toAstAccessor_attrChain_agrees mem.access accs attrs haccs hattr
 
     /- memberAux / foldGetAttr agreement -/
     match hpeos : peos.toExpr? with
     | none =>
       exfalso
-      have h_mem_fails : (⟨item, access⟩ : Cst.Member).toAExpr? = none := by
+      have h_mem_fails : mem.toAExpr? = none := by
         apply item_none_member_none
         simp [Cst.Primary.toAExpr?, hitem, hpeos]
       simp [Cst.Member.toAExpr?, Cst.Member.toExprOrSpecial?,
@@ -146,14 +145,10 @@ theorem Cst.Member.toAExpr?_evaluate
       rw [h_mem_fails] at heos
       simp at heos
     | some eprim' =>
-      have hheadIff : ∀ vp, evaluate eprim' req es = .ok vp ↔ item.evaluate req es = .ok vp :=
+      have hheadIff : ∀ vp, evaluate eprim' req es = .ok vp ↔ mem.item.evaluate req es = .ok vp :=
         Cst.Primary.toAExpr?_evaluate hitem _ hpeos
-      -- Forward direction: AST .ok v → CST .ok v.
       constructor
       · intro hev_ok
-        -- aexp evaluates to .ok v.  By memberAux_foldGetAttr_agrees_aux, this means
-        -- the do-block on eprim' produces .ok v.  That requires evaluate eprim' = .ok vp
-        -- for some vp, then the foldlM produces .ok v.  Use hheadIff to lift to item side.
         rw [memberAux_foldGetAttr_agrees_aux accs attrs req es hpeos hmem heos hagr] at hev_ok
         simp [bind, Except.bind] at hev_ok
         cases h_eprim : evaluate eprim' req es with
@@ -165,7 +160,7 @@ theorem Cst.Member.toAExpr?_evaluate
       · intro hev_ok
         rw [memberAux_foldGetAttr_agrees_aux accs attrs req es hpeos hmem heos hagr]
         simp [bind, Except.bind] at hev_ok
-        cases h_item : item.evaluate req es with
+        cases h_item : mem.item.evaluate req es with
         | error err => rw [h_item] at hev_ok; simp at hev_ok
         | ok head =>
           rw [h_item] at hev_ok; simp at hev_ok
@@ -181,20 +176,19 @@ theorem Cst.Unary.toAExpr?_evaluate
   u.evaluate req es = .ok v := by
 
   intro hu aexp heos v
-  obtain ⟨op, item⟩ := u
-  match hop : op with
+  match hop : u.op with
   | none =>
-    simp [Cst.Unary.toExprOrSpecial?] at hu
-    simp [Cst.Unary.evaluate]
+    simp [Cst.Unary.toExprOrSpecial?, hop] at hu
+    simp [Cst.Unary.evaluate, hop]
     exact Cst.Member.toAExpr?_evaluate hu aexp heos v
   | some (.nDash 0) =>
-    simp [Cst.Unary.toExprOrSpecial?] at hu
-    simp [Cst.Unary.evaluate]
+    simp [Cst.Unary.toExprOrSpecial?, hop] at hu
+    simp [Cst.Unary.evaluate, hop]
     exact Cst.Member.toAExpr?_evaluate hu aexp heos v
   | some (.nBang n) =>
-    simp [Cst.Unary.toExprOrSpecial?] at hu
-    simp [Cst.Unary.evaluate]
-    cases hitem_trans : item.toExprOrSpecial? with
+    simp [Cst.Unary.toExprOrSpecial?, hop] at hu
+    simp [Cst.Unary.evaluate, hop]
+    cases hitem_trans : u.item.toExprOrSpecial? with
     | none => simp [hitem_trans] at hu
     | some ieos =>
       simp [hitem_trans] at hu
@@ -204,7 +198,7 @@ theorem Cst.Unary.toAExpr?_evaluate
         simp [hioes_trans] at hu
         simp [← hu, ExprOrSpecial.toExpr?] at heos
         rw [← heos]
-        have hitem_iff : ∀ vp, evaluate iexp req es = .ok vp ↔ item.evaluate req es = .ok vp :=
+        have hitem_iff : ∀ vp, evaluate iexp req es = .ok vp ↔ u.item.evaluate req es = .ok vp :=
           Cst.Member.toAExpr?_evaluate hitem_trans iexp hioes_trans
         rw [bangN_evaluate_general iexp n.toNat req es]
         have h_zero : (n.toNat = 0) ↔ (n = 0) := by
@@ -240,8 +234,7 @@ theorem Cst.Unary.toAExpr?_evaluate
                 | _ => simp at hev_ok
               | _ => simp at hev_ok
         · intro hev_ok
-          -- CST side .ok v.  Expand u.evaluate to see vp from item.evaluate.
-          cases h_item : item.evaluate req es with
+          cases h_item : u.item.evaluate req es with
           | error err => rw [h_item] at hev_ok; simp [bind, Except.bind] at hev_ok
           | ok vp =>
             rw [h_item] at hev_ok
@@ -259,12 +252,11 @@ theorem Cst.Unary.toAExpr?_evaluate
               | _ => simp at hev_ok
   | some (.nDash n) =>
     by_cases hn0 : n = 0
-    · -- Already handled by the prior `nDash 0` arm; defensively handle here too.
-      simp [hn0, Cst.Unary.toExprOrSpecial?] at hu
-      simp [Cst.Unary.evaluate, hn0]
+    · simp [hn0, Cst.Unary.toExprOrSpecial?, hop] at hu
+      simp [Cst.Unary.evaluate, hop, hn0]
       exact Cst.Member.toAExpr?_evaluate hu aexp heos v
-    · simp [Cst.Unary.toExprOrSpecial?] at hu
-      simp [Cst.Unary.evaluate, hn0]
+    · simp [Cst.Unary.toExprOrSpecial?, hop] at hu
+      simp [Cst.Unary.evaluate, hop, hn0]
       have h_zero : (n.toNat = 0) ↔ (n = 0) := by
         constructor
         · intro h; exact UInt8.toNat_inj.mp (by simp [h])
@@ -281,7 +273,7 @@ theorem Cst.Unary.toAExpr?_evaluate
         rw [UInt8.toNat_sub, h1]
         have hbnd : n.toNat < 256 := n.toNat_lt
         omega
-      match hlit : CstCommon.Member.toLit? item with
+      match hlit : CstCommon.Member.toLit? u.item with
       | some (.liNum x) =>
         simp [hlit] at hu
         match hcmp : compare x.toNat (Int64.MAX + 1).toNat with
@@ -389,7 +381,7 @@ theorem Cst.Unary.toAExpr?_evaluate
       | some .liTrue | some .liFalse | some (.liStr _) | none =>
         all_goals
           simp [hlit] at hu
-          cases hitem_trans : item.toExprOrSpecial? with
+          cases hitem_trans : u.item.toExprOrSpecial? with
           | none => simp [hitem_trans] at hu
           | some ieos =>
             simp [hitem_trans] at hu
@@ -399,7 +391,7 @@ theorem Cst.Unary.toAExpr?_evaluate
               simp [hioes_trans] at hu
               simp [← hu, ExprOrSpecial.toExpr?] at heos
               rw [← heos]
-              have hitem_iff : ∀ vp, evaluate iexp req es = .ok vp ↔ item.evaluate req es = .ok vp :=
+              have hitem_iff : ∀ vp, evaluate iexp req es = .ok vp ↔ u.item.evaluate req es = .ok vp :=
                 Cst.Member.toAExpr?_evaluate hitem_trans iexp hioes_trans
               rw [dashN_evaluate_general iexp n.toNat req es]
               simp [h_zero, h_par, hn0]
@@ -418,7 +410,7 @@ theorem Cst.Unary.toAExpr?_evaluate
                     | _ => simp at hev_ok
                   | _ => simp at hev_ok
               · intro hev_ok
-                cases h_item : item.evaluate req es with
+                cases h_item : u.item.evaluate req es with
                 | error err => rw [h_item] at hev_ok; simp [bind, Except.bind] at hev_ok
                 | ok vp =>
                   rw [h_item] at hev_ok
@@ -431,8 +423,8 @@ theorem Cst.Unary.toAExpr?_evaluate
                     | int i => simp at hev_ok ⊢; exact hev_ok
                     | _ => simp at hev_ok
                   | _ => simp at hev_ok
-  | some .nOverBang => simp [Cst.Unary.toExprOrSpecial?] at hu
-  | some .nOverDash => simp [Cst.Unary.toExprOrSpecial?] at hu
+  | some .nOverBang => simp [Cst.Unary.toExprOrSpecial?, hop] at hu
+  | some .nOverDash => simp [Cst.Unary.toExprOrSpecial?, hop] at hu
 
 theorem multExprFoldExtended_foldOps_agrees
   (req : Request) (es : Entities)
@@ -507,20 +499,17 @@ theorem Cst.MultExpr.toAExpr?_evaluate
   mult.evaluate req es = .ok v := by
 
   intro hmult aexp heos v
-  obtain ⟨initial, extended⟩ := mult
-  match hext : extended with
+  match hext : mult.extended with
   | [] =>
-    subst hext
-    simp only [Cst.MultExpr.toExprOrSpecial?] at hmult
-    have hu_iff := @Cst.Unary.toAExpr?_evaluate initial eos req es hmult aexp heos v
+    simp only [Cst.MultExpr.toExprOrSpecial?, hext] at hmult
+    have hu_iff := @Cst.Unary.toAExpr?_evaluate mult.initial eos req es hmult aexp heos v
     rw [hu_iff]
     simp [Cst.MultExpr.evaluate]
-    cases h_init : initial.evaluate req es with
+    cases h_init : mult.initial.evaluate req es with
     | error err => simp [bind, Except.bind]
-    | ok iv => simp [bind, Except.bind, Cst.MultExpr.foldOps]
+    | ok iv => simp [bind, Except.bind, Cst.MultExpr.foldOps, hext]
   | hd :: tl =>
-    subst hext
-    simp [Cst.MultExpr.toExprOrSpecial?, Option.bind_eq_some_iff] at hmult
+    simp [Cst.MultExpr.toExprOrSpecial?, hext, Option.bind_eq_some_iff] at hmult
     obtain ⟨first, hfirst, result, hres, heos_eq⟩ := hmult
     rw [← heos_eq] at heos
     simp [ExprOrSpecial.toExpr?] at heos
@@ -528,10 +517,10 @@ theorem Cst.MultExpr.toAExpr?_evaluate
     rw [multExprFoldExtended_foldOps_agrees req es _ hres v]
     simp [Cst.Unary.toAExpr?, Option.bind_eq_some_iff] at hfirst
     obtain ⟨ueos, hueos, hfeu⟩ := hfirst
-    have hu_iff : ∀ vp, evaluate first req es = .ok vp ↔ initial.evaluate req es = .ok vp :=
+    have hu_iff : ∀ vp, evaluate first req es = .ok vp ↔ mult.initial.evaluate req es = .ok vp :=
       Cst.Unary.toAExpr?_evaluate hueos first hfeu
     simp [Cst.MultExpr.evaluate]
-    cases h_init : initial.evaluate req es with
+    cases h_init : mult.initial.evaluate req es with
     | error err =>
       simp [bind, Except.bind]
       cases h_first : evaluate first req es with
@@ -540,7 +529,7 @@ theorem Cst.MultExpr.toAExpr?_evaluate
         rw [this] at h_init; cases h_init
       | error _ => simp
     | ok iv =>
-      simp [bind, Except.bind]
+      simp [bind, Except.bind, hext]
       have h_first : evaluate first req es = .ok iv := (hu_iff iv).mpr h_init
       rw [h_first]
 
@@ -639,20 +628,17 @@ theorem Cst.AddExpr.toAExpr?_evaluate
   ∀ v, evaluate aexp req es = .ok v ↔
   add.evaluate req es = .ok v := by
   intro hadd aexp heos v
-  obtain ⟨initial, extended⟩ := add
-  match hext : extended with
+  match hext : add.extended with
   | [] =>
-    subst hext
-    simp only [Cst.AddExpr.toExprOrSpecial?] at hadd
-    have hm_iff := @Cst.MultExpr.toAExpr?_evaluate initial eos req es hadd aexp heos v
+    simp only [Cst.AddExpr.toExprOrSpecial?, hext] at hadd
+    have hm_iff := @Cst.MultExpr.toAExpr?_evaluate add.initial eos req es hadd aexp heos v
     rw [hm_iff]
     simp [Cst.AddExpr.evaluate]
-    cases h_init : initial.evaluate req es with
+    cases h_init : add.initial.evaluate req es with
     | error err => simp [bind, Except.bind]
-    | ok iv => simp [bind, Except.bind, Cst.AddExpr.foldOps]
+    | ok iv => simp [bind, Except.bind, Cst.AddExpr.foldOps, hext]
   | hd :: tl =>
-    subst hext
-    simp [Cst.AddExpr.toExprOrSpecial?, Option.bind_eq_some_iff] at hadd
+    simp [Cst.AddExpr.toExprOrSpecial?, hext, Option.bind_eq_some_iff] at hadd
     obtain ⟨first, hfirst, result, hres, heos_eq⟩ := hadd
     rw [← heos_eq] at heos
     simp [ExprOrSpecial.toExpr?] at heos
@@ -660,10 +646,10 @@ theorem Cst.AddExpr.toAExpr?_evaluate
     rw [addExprFoldExtended_foldOps_agrees req es _ hres v]
     simp [Cst.MultExpr.toAExpr?, Option.bind_eq_some_iff] at hfirst
     obtain ⟨ueos, hueos, hfeu⟩ := hfirst
-    have hu_iff : ∀ vp, evaluate first req es = .ok vp ↔ initial.evaluate req es = .ok vp :=
+    have hu_iff : ∀ vp, evaluate first req es = .ok vp ↔ add.initial.evaluate req es = .ok vp :=
       Cst.MultExpr.toAExpr?_evaluate hueos first hfeu
     simp [Cst.AddExpr.evaluate]
-    cases h_init : initial.evaluate req es with
+    cases h_init : add.initial.evaluate req es with
     | error err =>
       simp [bind, Except.bind]
       cases h_first : evaluate first req es with
@@ -672,7 +658,7 @@ theorem Cst.AddExpr.toAExpr?_evaluate
         rw [this] at h_init; cases h_init
       | error _ => simp
     | ok iv =>
-      simp [bind, Except.bind]
+      simp [bind, Except.bind, hext]
       have h_first : evaluate first req es = .ok iv := (hu_iff iv).mpr h_init
       rw [h_first]
 
@@ -906,20 +892,17 @@ theorem Cst.AndExpr.toAExpr?_evaluate
   ∀ v, evaluate aexp req es = .ok v ↔
   ae.evaluate req es = .ok v := by
   intro hae aexp heos v
-  obtain ⟨initial, extended⟩ := ae
-  match hext : extended with
+  match hext : ae.extended with
   | [] =>
-    subst hext
-    simp only [Cst.AndExpr.toExprOrSpecial?] at hae
-    have hr_iff := @Cst.Relation.toAExpr?_evaluate initial eos req es hae aexp heos v
+    simp only [Cst.AndExpr.toExprOrSpecial?, hext] at hae
+    have hr_iff := @Cst.Relation.toAExpr?_evaluate ae.initial eos req es hae aexp heos v
     rw [hr_iff]
     simp [Cst.AndExpr.evaluate]
-    cases h_init : initial.evaluate req es with
+    cases h_init : ae.initial.evaluate req es with
     | error err => simp [bind, Except.bind]
-    | ok iv => simp [bind, Except.bind, Cst.AndExpr.foldOps]
+    | ok iv => simp [bind, Except.bind, Cst.AndExpr.foldOps, hext]
   | hd :: tl =>
-    subst hext
-    simp [Cst.AndExpr.toExprOrSpecial?, Option.bind_eq_some_iff] at hae
+    simp [Cst.AndExpr.toExprOrSpecial?, hext, Option.bind_eq_some_iff] at hae
     obtain ⟨first, hfirst, result, hres, heos_eq⟩ := hae
     rw [← heos_eq] at heos
     simp [ExprOrSpecial.toExpr?] at heos
@@ -927,10 +910,10 @@ theorem Cst.AndExpr.toAExpr?_evaluate
     rw [andExprFoldExtended_foldOps_agrees req es _ hres v]
     simp [Cst.Relation.toAExpr?, Option.bind_eq_some_iff] at hfirst
     obtain ⟨reos, hreos, hfeu⟩ := hfirst
-    have hr_iff : ∀ vp, evaluate first req es = .ok vp ↔ initial.evaluate req es = .ok vp :=
+    have hr_iff : ∀ vp, evaluate first req es = .ok vp ↔ ae.initial.evaluate req es = .ok vp :=
       Cst.Relation.toAExpr?_evaluate hreos first hfeu
     simp [Cst.AndExpr.evaluate]
-    cases h_init : initial.evaluate req es with
+    cases h_init : ae.initial.evaluate req es with
     | error err =>
       simp [bind, Except.bind]
       cases h_first : evaluate first req es with
@@ -939,7 +922,7 @@ theorem Cst.AndExpr.toAExpr?_evaluate
         rw [this] at h_init; cases h_init
       | error _ => simp
     | ok iv =>
-      simp [bind, Except.bind]
+      simp [bind, Except.bind, hext]
       have h_first : evaluate first req es = .ok iv := (hr_iff iv).mpr h_init
       rw [h_first]
 
@@ -995,20 +978,17 @@ theorem Cst.OrExpr.toAExpr?_evaluate
   ∀ v, evaluate aexp req es = .ok v ↔
   oe.evaluate req es = .ok v := by
   intro hoe aexp heos v
-  obtain ⟨initial, extended⟩ := oe
-  match hext : extended with
+  match hext : oe.extended with
   | [] =>
-    subst hext
-    simp only [Cst.OrExpr.toExprOrSpecial?] at hoe
-    have ha_iff := @Cst.AndExpr.toAExpr?_evaluate initial eos req es hoe aexp heos v
+    simp only [Cst.OrExpr.toExprOrSpecial?, hext] at hoe
+    have ha_iff := @Cst.AndExpr.toAExpr?_evaluate oe.initial eos req es hoe aexp heos v
     rw [ha_iff]
     simp [Cst.OrExpr.evaluate]
-    cases h_init : initial.evaluate req es with
+    cases h_init : oe.initial.evaluate req es with
     | error err => simp [bind, Except.bind]
-    | ok iv => simp [bind, Except.bind, Cst.OrExpr.foldOps]
+    | ok iv => simp [bind, Except.bind, Cst.OrExpr.foldOps, hext]
   | hd :: tl =>
-    subst hext
-    simp [Cst.OrExpr.toExprOrSpecial?, Option.bind_eq_some_iff] at hoe
+    simp [Cst.OrExpr.toExprOrSpecial?, hext, Option.bind_eq_some_iff] at hoe
     obtain ⟨first, hfirst, result, hres, heos_eq⟩ := hoe
     rw [← heos_eq] at heos
     simp [ExprOrSpecial.toExpr?] at heos
@@ -1016,10 +996,10 @@ theorem Cst.OrExpr.toAExpr?_evaluate
     rw [orExprFoldExtended_foldOps_agrees req es _ hres v]
     simp [Cst.AndExpr.toAExpr?, Option.bind_eq_some_iff] at hfirst
     obtain ⟨aeos, haeos, hfeu⟩ := hfirst
-    have ha_iff : ∀ vp, evaluate first req es = .ok vp ↔ initial.evaluate req es = .ok vp :=
+    have ha_iff : ∀ vp, evaluate first req es = .ok vp ↔ oe.initial.evaluate req es = .ok vp :=
       Cst.AndExpr.toAExpr?_evaluate haeos first hfeu
     simp [Cst.OrExpr.evaluate]
-    cases h_init : initial.evaluate req es with
+    cases h_init : oe.initial.evaluate req es with
     | error err =>
       simp [bind, Except.bind]
       cases h_first : evaluate first req es with
@@ -1028,7 +1008,7 @@ theorem Cst.OrExpr.toAExpr?_evaluate
         rw [this] at h_init; cases h_init
       | error _ => simp
     | ok iv =>
-      simp [bind, Except.bind]
+      simp [bind, Except.bind, hext]
       have h_first : evaluate first req es = .ok iv := (ha_iff iv).mpr h_init
       rw [h_first]
 
