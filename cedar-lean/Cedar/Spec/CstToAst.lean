@@ -5,7 +5,7 @@ public import Cedar.Spec.Expr
 public import Cedar.Spec.Policy
 public import Cedar.Spec.Value
 
-private def String.toUnreservedId? (s : String) : Option String :=
+public def String.toUnreservedId? (s : String) : Option String :=
   match s with
   | "principal" | "action" | "resource" | "context"
   | "true" | "false" | "permit" | "forbid"
@@ -70,7 +70,7 @@ public def Cst.Ident.toUnrestrictedString? : Cst.Ident → Option String
   | .idIdent s => some s
   | _ => none
 
-private def Var.toString : Var → String
+public def Var.toString : Var → String
   | .principal => "principal"
   | .action => "action"
   | .resource => "resource"

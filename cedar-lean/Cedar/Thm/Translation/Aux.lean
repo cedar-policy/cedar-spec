@@ -587,13 +587,32 @@ theorem constructExprRel_applyRelOp_agrees
     evaluate e₂ req es = .ok v₂ →
     ∀ v, evaluate (constructExprRel op e₁ e₂) req es = .ok v ↔
          Cst.applyRelOp op v₁ v₂ es = .ok v := by
-  sorry
+  intro he₁ he₂ v
+  cases op <;>
+    simp [constructExprRel, Cst.applyRelOp, evaluate, he₁, he₂,
+          bind, Except.bind]
 
 /-- Collapse the `String ⊕ List String` shape from the translator's `toHasRhs?`
     into a flat `List String`, treating `.inl f` as the singleton `[f]`. -/
 def hasRhsToList : String ⊕ List String → List String
   | .inl f => [f]
   | .inr fs => fs
+
+/-- Helper: `fieldChain?` and `constructAttrsAux?` are the same function
+    (both filter via `toUnreservedId?`/`toUnreservedString?` on `.field` accessors,
+    rejecting `.index`). -/
+theorem fieldChain?_eq_constructAttrsAux?
+    (xs : List Cst.MemAccess) :
+    Cst.fieldChain? xs = constructAttrsAux? xs := by
+  induction xs with
+  | nil => rfl
+  | cons hd tl ih =>
+    cases hd with
+    | field id =>
+      simp [Cst.fieldChain?, constructAttrsAux?, ih]
+      rfl
+    | index e =>
+      simp [Cst.fieldChain?, constructAttrsAux?]
 
 /-- For the `rHas` case: `Cst.AddExpr.toHasRhs?` (translation) and `Cst.AddExpr.toAttrs?`
     (evaluation) produce identical attribute lists when collapsed via `hasRhsToList`.
@@ -605,7 +624,119 @@ theorem addExpr_toHasRhs_toAttrs_agrees
     {e : Cst.AddExpr} {rhs : String ⊕ List String} :
     e.toHasRhs? = some rhs →
     e.toAttrs? = some (hasRhsToList rhs) := by
-  sorry
+  intro hrhs
+  simp [Cst.AddExpr.toHasRhs?] at hrhs
+  obtain ⟨⟨⟨he, hm⟩, hu⟩, hbody⟩ := hrhs
+  simp [Cst.AddExpr.toAttrs?, he, hm, hu]
+  match hmi : e.initial.initial.item.item with
+  | .literal lit =>
+    rw [hmi] at hbody
+    cases lit with
+    | liTrue =>
+      simp [Cst.Primary.toExprOrSpecial?, Cst.Literal.toExprOrSpecial?] at hbody
+    | liFalse =>
+      simp [Cst.Primary.toExprOrSpecial?, Cst.Literal.toExprOrSpecial?] at hbody
+    | liNum n =>
+      simp [Cst.Primary.toExprOrSpecial?, Cst.Literal.toExprOrSpecial?,
+            Option.bind_eq_some_iff] at hbody
+      obtain ⟨a, ⟨_, _, ha⟩, hmatch⟩ := hbody
+      rw [← ha] at hmatch
+      simp at hmatch
+    | liStr s =>
+      simp [Cst.Primary.toExprOrSpecial?, Cst.Literal.toExprOrSpecial?] at hbody
+      cases haccess : e.initial.initial.item.access with
+      | nil =>
+        rw [haccess] at hbody
+        simp at hbody
+        cases hunesc : Cedar.Spec.CstCommon.unescape? s with
+        | none => rw [hunesc] at hbody; simp at hbody
+        | some s' =>
+          rw [hunesc] at hbody
+          simp at hbody
+          rw [← hbody]
+          simp [hasRhsToList, Cst.fieldChain?, hunesc]
+      | cons hd tl =>
+        rw [haccess] at hbody
+        cases hd with
+        | field id => simp at hbody
+        | index e' => simp at hbody
+  | .name n =>
+    rw [hmi] at hbody
+    simp [Cst.Primary.toExprOrSpecial?] at hbody
+    obtain ⟨np, nname⟩ := n
+    cases hvar : (Cst.Name.toVar? ⟨np, nname⟩) with
+    | some v =>
+      rw [hvar] at hbody
+      simp [Option.map_eq_some_iff] at hbody
+      obtain ⟨attrs, hattrs, hrhsEq⟩ := hbody
+      have hagree := Cst.Name.toVar?_agrees hvar
+      have hpath : np = [] := hagree.1
+      have hname := hagree.2
+      simp [constructAttrs?, Option.bind_eq_some_iff] at hattrs
+      obtain ⟨tail, htail, hattrsEq⟩ := hattrs
+      subst hpath
+      cases v with
+      | principal =>
+        simp at hname; subst hname
+        simp [fieldChain?_eq_constructAttrsAux?, htail]
+        rw [← hrhsEq]
+        simp [hasRhsToList, ← hattrsEq, Cst.Ident.toHasHead?, Var.toString]
+      | action =>
+        simp at hname; subst hname
+        simp [fieldChain?_eq_constructAttrsAux?, htail]
+        rw [← hrhsEq]
+        simp [hasRhsToList, ← hattrsEq, Cst.Ident.toHasHead?, Var.toString]
+      | resource =>
+        simp at hname; subst hname
+        simp [fieldChain?_eq_constructAttrsAux?, htail]
+        rw [← hrhsEq]
+        simp [hasRhsToList, ← hattrsEq, Cst.Ident.toHasHead?, Var.toString]
+      | context =>
+        simp at hname; subst hname
+        simp [fieldChain?_eq_constructAttrsAux?, htail]
+        rw [← hrhsEq]
+        simp [hasRhsToList, ← hattrsEq, Cst.Ident.toHasHead?, Var.toString]
+    | none =>
+      rw [hvar] at hbody
+      cases han : (⟨np, nname⟩ : Cst.Name).toAName? with
+      | none => rw [han] at hbody; simp at hbody
+      | some an =>
+        rw [han] at hbody
+        simp [Option.bind_eq_some_iff, Option.map_eq_some_iff] at hbody
+        obtain ⟨hp, first, hfirst, attrs, hattrs, hrhseq⟩ := hbody
+        have han_eq := Cst.Name.toAName?_agrees han
+        have hnpath : np = [] := by
+          rw [han_eq] at hp; simp at hp; exact hp
+        subst hnpath
+        rw [han_eq] at hfirst
+        simp at hfirst
+        cases hname : nname with
+        | idIdent s =>
+          rw [hname] at hfirst
+          simp [CstCommon.Ident.toString] at hfirst
+          have hs_eq_and_unreserved : s = first ∧ Cedar.Spec.CstCommon.Unreserved? s = true := by
+            simp [String.toUnreservedId?, Cedar.Spec.CstCommon.Unreserved?] at hfirst ⊢
+            split at hfirst <;> rename_i heq
+            all_goals (simp_all)
+          obtain ⟨hs_first, hs_unreserved⟩ := hs_eq_and_unreserved
+          simp [constructAttrs?, Option.bind_eq_some_iff] at hattrs
+          obtain ⟨tail, htail, hattrs_eq2⟩ := hattrs
+          simp [fieldChain?_eq_constructAttrsAux?, htail]
+          rw [← hrhseq]
+          simp [hasRhsToList, Cst.Ident.toHasHead?, hs_unreserved,
+                ← hs_first, ← hattrs_eq2]
+        | idPrincipal | idAction | idResource | idContext
+        | idTrue | idFalse | idPermit | idForbid
+        | idWhen | idUnless | idIn | idHas | idLike | idIs
+        | idIf | idThen | idElse =>
+          rw [hname] at hfirst
+          simp [CstCommon.Ident.toString, String.toUnreservedId?] at hfirst
+  | .ref r =>
+    rw [hmi] at hbody; simp at hbody
+  | .expr e' =>
+    rw [hmi] at hbody; simp at hbody
+  | .eList es' =>
+    rw [hmi] at hbody; simp at hbody
 
 /-- Helper: `constructAttrs?` always returns a non-empty list when it succeeds. -/
 theorem constructAttrs?_nonempty
@@ -616,6 +747,28 @@ theorem constructAttrs?_nonempty
   obtain ⟨tail, _, hresult⟩ := h
   simp [← hresult]
 
+/-- `toAttrs?` always produces a non-empty list when it succeeds: the result is
+    either `[unescaped_lit]` or `head :: fields`. -/
+theorem toAttrs?_nonempty {e : Cst.AddExpr} {fs : List Attr} :
+    e.toAttrs? = some fs → fs ≠ [] := by
+  intro hattrs
+  simp only [Cst.AddExpr.toAttrs?] at hattrs
+  split at hattrs; · simp at hattrs
+  split at hattrs; · simp at hattrs
+  split at hattrs; · simp at hattrs
+  split at hattrs; · simp at hattrs
+  split at hattrs
+  · split at hattrs
+    · simp [Option.map_eq_some_iff] at hattrs
+      obtain ⟨_, _, hattrs⟩ := hattrs; rw [← hattrs]; simp
+    · simp at hattrs
+  · simp at hattrs
+  · split at hattrs
+    · simp at hattrs; rw [← hattrs]; simp
+    · simp at hattrs
+  · simp at hattrs
+  · simp at hattrs
+
 /-- Non-emptiness: `toHasRhs?` always produces a non-empty list when collapsed.
     Used to discharge the evaluator's `some []` arm as vacuous. -/
 theorem hasRhsToList_nonempty {rhs : String ⊕ List String}
@@ -623,27 +776,87 @@ theorem hasRhsToList_nonempty {rhs : String ⊕ List String}
     e.toHasRhs? = some rhs →
     hasRhsToList rhs ≠ [] := by
   intro hrhs
-  cases rhs with
-  | inl f => simp [hasRhsToList]
-  | inr fs =>
-    -- The `.inr fs` arm of `toHasRhs?` always produces `(constructAttrs? _ _).map .inr`,
-    -- where `constructAttrs?` is non-empty by `constructAttrs?_nonempty`. The proof
-    -- requires tracing the nested matches in `toHasRhs?`, which is substantial.
-    sorry
+  -- The collapsed list `hasRhsToList rhs` equals `e.toAttrs?`, which is always
+  -- non-empty by `toAttrs?_nonempty`.
+  have hattrs := addExpr_toHasRhs_toAttrs_agrees hrhs
+  exact toAttrs?_nonempty hattrs
+
+/-- `hasAttr` always returns a Bool-valued `Value` on success. -/
+private theorem hasAttr_isBool {v : Value} {a : Attr} {es : Entities} {r : Value} :
+    hasAttr v a es = .ok r → ∃ b, r = .prim (.bool b) := by
+  intro h
+  simp [hasAttr, bind, Except.bind] at h
+  split at h
+  case h_1 => simp at h
+  all_goals (injection h with hr; rw [← hr]; exact ⟨_, rfl⟩)
+
+/-- `rHasChain` always returns a Bool-valued `Value` on success. -/
+private theorem rHasChain_isBool
+    (v : Value) (a : Attr) (as : List Attr) (es : Entities) :
+    ∀ r, Cst.rHasChain v a as es = .ok r → ∃ b, r = .prim (.bool b) := by
+  induction as generalizing v a with
+  | nil =>
+    intro r h
+    simp [Cst.rHasChain] at h
+    exact hasAttr_isBool h
+  | cons b bs ih =>
+    intro r h
+    simp [Cst.rHasChain, bind, Except.bind] at h
+    split at h
+    · simp at h
+    · rename_i hv
+      obtain ⟨b'', hb''⟩ := hasAttr_isBool hv
+      rw [hb''] at h
+      split at h
+      · simp at h; rw [← h]; exact ⟨false, rfl⟩
+      · split at h
+        · simp at h
+        · exact ih _ _ _ h
 
 /-- The AST expression `extendedHasAttr target (a :: as)` evaluates the same as
-    the CST evaluator's chained `getAttr` / `hasAttr` fold, when `target` evaluates
-    to value `v`. -/
+    the evaluator's `rHasChain v a as`, when `target` evaluates to value `v`. -/
 theorem extendedHasAttr_evaluate_agrees
     (target : Expr) (a : Attr) (as : List Attr) (req : Request) (es : Entities) (v : Value) :
     evaluate target req es = .ok v →
-    ∀ vresult,
-      evaluate (extendedHasAttr target (a :: as)) req es = .ok vresult ↔
-      (do
-         let (v', last) ← as.foldlM
-           (fun (acc : Value × Attr) attr => do
-             let next ← getAttr acc.1 acc.2 es
-             pure (next, attr))
-           (v, a)
-         hasAttr v' last es) = .ok vresult := by
-  sorry
+    evaluate (extendedHasAttr target (a :: as)) req es = Cst.rHasChain v a as es := by
+  intro htarget
+  induction as generalizing target a v with
+  | nil =>
+    simp [extendedHasAttr, evaluate, htarget, bind, Except.bind, Cst.rHasChain]
+  | cons b bs ih =>
+    cases hh : hasAttr v a es with
+    | error err =>
+      simp [extendedHasAttr, evaluate, htarget, bind, Except.bind, hh,
+            Result.as, Cst.rHasChain]
+    | ok hv =>
+      obtain ⟨b', hb'⟩ := hasAttr_isBool hh
+      subst hb'
+      cases b' with
+      | false =>
+        simp [extendedHasAttr, evaluate, htarget, bind, Except.bind, hh,
+              Result.as, Coe.coe, Value.asBool, Cst.rHasChain]
+      | true =>
+        cases hga : getAttr v a es with
+        | error err =>
+          have hgetAttr : evaluate (.getAttr target a) req es = .error err := by
+            simp [evaluate, htarget, bind, Except.bind, hga]
+          cases bs with
+          | nil =>
+            simp [extendedHasAttr, evaluate, htarget, hgetAttr, bind, Except.bind,
+                  hh, hga, Result.as, Coe.coe, Value.asBool, Cst.rHasChain]
+          | cons c cs =>
+            simp [extendedHasAttr, evaluate, htarget, hgetAttr, bind, Except.bind,
+                  hh, hga, Result.as, Coe.coe, Value.asBool, Cst.rHasChain]
+        | ok v' =>
+          have hgetAttr : evaluate (.getAttr target a) req es = .ok v' := by
+            simp [evaluate, htarget, bind, Except.bind, hga]
+          have ih' := ih (target := .getAttr target a) (a := b) (v := v') hgetAttr
+          simp [extendedHasAttr, evaluate, htarget, bind, Except.bind, hh, hga,
+                Result.as, Coe.coe, Value.asBool, Cst.rHasChain]
+          rw [ih']
+          cases hrhc : Cst.rHasChain v' b bs es with
+          | error err => simp
+          | ok rv =>
+            obtain ⟨b'', hb''⟩ := rHasChain_isBool v' b bs es rv hrhc
+            subst hb''
+            rfl

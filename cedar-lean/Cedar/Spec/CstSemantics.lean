@@ -102,6 +102,20 @@ public def fieldChain? : List MemAccess → Option (List Attr)
       some (head :: tail)
   | _ :: _ => none
 
+-- Head string for a name appearing at the start of a `has` field chain.
+-- Mirrors the translator's two paths:
+--   * `.var v` arm (when `n.toVar? = some v`): use `v.toString` directly,
+--     allowing the four var idents through without an unreserved check.
+--   * `.name an` arm (when `n.toVar? = none`): filter via `toUnreservedId?`,
+--     accepting only `.idIdent s` with `s` unreserved.
+public def Ident.toHasHead? : Cst.Ident → Option String
+  | .idPrincipal => some "principal"
+  | .idAction    => some "action"
+  | .idResource  => some "resource"
+  | .idContext   => some "context"
+  | .idIdent s   => if Cedar.Spec.CstCommon.Unreserved? s then some s else none
+  | _            => none
+
 public def AddExpr.toAttrs? (e : AddExpr) : Option (List Attr) :=
   if !e.extended.isEmpty then none else
   let mult := e.initial
@@ -119,8 +133,9 @@ public def AddExpr.toAttrs? (e : AddExpr) : Option (List Attr) :=
         else none
       | .literal _ => none
       | .name { path := [], name := id } =>
-        -- Filter by unreserved-ness, mirroring the translator's `n.id.toUnreservedId?`.
-        match Cedar.Spec.CstCommon.Ident.toUnreservedString? id with
+        -- Mirror the translator's combined `.var v` / `.name n` arms via
+        -- the helper above.
+        match Ident.toHasHead? id with
         | some idStr => some (idStr :: fields)
         | none       => none
       | .name _ => none
