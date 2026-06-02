@@ -350,7 +350,7 @@ decreasing_by
       omega
     omega
 
-private def Cst.AddExpr.toPattern? (e : Cst.AddExpr) : Option Pattern := do
+public def Cst.AddExpr.toPattern? (e : Cst.AddExpr) : Option Pattern := do
   let eos ← e.toExprOrSpecial?
   match eos with
   | .strLit lit => Cedar.Spec.CstCommon.toPattern? lit

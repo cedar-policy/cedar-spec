@@ -142,19 +142,22 @@ public def AddExpr.toAttrs? (e : AddExpr) : Option (List Attr) :=
       | _ => none
 
 -- Only Literal.liStr s is allowed
-private def AddExpr.toPatternString? (e : AddExpr) : Option String :=
+-- Mirrors the translator's `Cst.AddExpr.toPattern?`: the unary `op` may be
+-- `none` or `some (.nDash 0)` (a structural no-op that the translator allows).
+public def AddExpr.toPatternString? (e : AddExpr) : Option String :=
   if !e.extended.isEmpty then none else
   let mult := e.initial
   if !mult.extended.isEmpty then none else
   let unary := mult.initial
   match unary.op with
-  | some _ => none
-  | none => let member := unary.item
+  | some (.nDash 0) | none =>
+    let member := unary.item
     if !member.access.isEmpty then none else
     let item := member.item
     match item with
     | .literal (.liStr s) => some s
     | _ => none
+  | some _ => none
 
 /- Evaluators -/
 

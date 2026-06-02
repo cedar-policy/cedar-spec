@@ -765,25 +765,94 @@ theorem Cst.Relation.toAExpr?_evaluate
     | _ :: _ :: _ =>
       simp [Cst.Relation.toExprOrSpecial?, hext] at hrel
   | rHas target field =>
-    -- Translation:  do let mt ← target.toAExpr?; let mf ← field.toHasRhs?
-    --                  match mf with
-    --                  | .inl f => some (.expr (.hasAttr mt f))
-    --                  | .inr fs => some (.expr (extendedHasAttr mt fs))
-    -- Evaluation:   do let v ← target.evaluate
-    --                  match field.toAttrs? with
-    --                  | none | some [] => .error
-    --                  | some (a :: as) => foldlM getAttr ... ; hasAttr ...
-    --
-    -- The proof's key facts (from Aux.lean):
-    --   (1) addExpr_toHasRhs_toAttrs_agrees: if toHasRhs? succeeds then toAttrs? does too,
-    --       and the shapes are compatible (`.inl f` corresponds to `[f]`, `.inr fs` to `fs`).
-    --   (2) extendedHasAttr_evaluate_agrees: evaluate (extendedHasAttr ...) agrees with
-    --       the foldlM-getAttr chain plus final hasAttr.
-    --
-    -- The proof requires careful threading and is left as a stub; the
-    -- structure above sketches the path.
-    sorry
-  | rLike target pattern => sorry
+    simp [Cst.Relation.toExprOrSpecial?, Option.bind_eq_some_iff] at hrel
+    obtain ⟨mt, hmt, mf, hmf, hres⟩ := hrel
+    -- hmt : target.toAExpr? = some mt
+    -- hmf : field.toHasRhs? = some mf
+    -- hres encodes the inner match producing eos.
+    -- Bridge target via Cst.AddExpr.toAExpr?_sound-style iff.
+    simp [Cst.AddExpr.toAExpr?, Option.bind_eq_some_iff] at hmt
+    obtain ⟨tEos, htEos, htExpr⟩ := hmt
+    have htarget_iff :=
+      @Cst.AddExpr.toAExpr?_evaluate target tEos req es htEos mt htExpr
+    -- Bridge field via addExpr_toHasRhs_toAttrs_agrees.
+    have hfield_attrs := addExpr_toHasRhs_toAttrs_agrees hmf
+    have hfield_nonempty := hasRhsToList_nonempty hmf
+    simp [Cst.Relation.evaluate, hfield_attrs]
+    -- Now case-split on mf (.inl f or .inr fs).
+    cases mf with
+    | inl f =>
+      simp at hres
+      rw [← hres] at heos
+      simp [ExprOrSpecial.toExpr?] at heos
+      rw [← heos]
+      -- AST: evaluate (.hasAttr mt f).  CST: rHasChain v f [] es.
+      simp [hasRhsToList]
+      cases htgt : target.evaluate req es with
+      | error err =>
+        simp [bind, Except.bind]
+        cases htgt' : evaluate mt req es with
+        | ok vt =>
+          have := (htarget_iff vt).mp htgt'
+          rw [this] at htgt; cases htgt
+        | error _ => simp [evaluate, htgt', bind, Except.bind]
+      | ok vt =>
+        have htgtMt : evaluate mt req es = .ok vt := (htarget_iff vt).mpr htgt
+        simp [evaluate, htgtMt, bind, Except.bind, Cst.rHasChain]
+    | inr fs =>
+      simp at hres
+      rw [← hres] at heos
+      simp [ExprOrSpecial.toExpr?] at heos
+      rw [← heos]
+      simp [hasRhsToList] at hfield_attrs hfield_nonempty
+      -- fs is non-empty by hfield_nonempty, so it's `head :: tail`.
+      cases hfs : fs with
+      | nil => rw [hfs] at hfield_nonempty; simp at hfield_nonempty
+      | cons a as =>
+        rw [hfs] at hfield_attrs
+        cases htgt : target.evaluate req es with
+        | error err =>
+          simp [bind, Except.bind]
+          cases htgt' : evaluate mt req es with
+          | ok vt =>
+            have := (htarget_iff vt).mp htgt'
+            rw [this] at htgt; cases htgt
+          | error _ =>
+            -- LHS: extendedHasAttr mt (a :: as) evaluates with mt erroring.
+            cases as with
+            | nil => simp [extendedHasAttr, evaluate, htgt', bind, Except.bind]
+            | cons b bs => simp [extendedHasAttr, evaluate, htgt', bind, Except.bind,
+                                  Result.as]
+        | ok vt =>
+          have htgtMt : evaluate mt req es = .ok vt := (htarget_iff vt).mpr htgt
+          rw [extendedHasAttr_evaluate_agrees mt a as req es vt htgtMt]
+          simp [hasRhsToList, bind, Except.bind]
+  | rLike target pattern =>
+    simp [Cst.Relation.toExprOrSpecial?, Option.bind_eq_some_iff] at hrel
+    obtain ⟨mt, hmt, mp, hmp, hres⟩ := hrel
+    rw [← hres] at heos
+    simp [ExprOrSpecial.toExpr?] at heos
+    rw [← heos]
+    -- Bridge target via Cst.AddExpr.toAExpr?_evaluate.
+    simp [Cst.AddExpr.toAExpr?, Option.bind_eq_some_iff] at hmt
+    obtain ⟨tEos, htEos, htExpr⟩ := hmt
+    have htarget_iff :=
+      @Cst.AddExpr.toAExpr?_evaluate target tEos req es htEos mt htExpr
+    -- Bridge pattern via addExpr_toPattern_toPatternString_agrees.
+    obtain ⟨s, hpStr, hpToPattern⟩ := addExpr_toPattern_toPatternString_agrees hmp
+    simp [Cst.Relation.evaluate, hpStr]
+    cases htgt : target.evaluate req es with
+    | error err =>
+      simp [bind, Except.bind]
+      cases htgt' : evaluate mt req es with
+      | ok vt =>
+        have := (htarget_iff vt).mp htgt'
+        rw [this] at htgt; cases htgt
+      | error _ =>
+        simp [evaluate, htgt', bind, Except.bind]
+    | ok vt =>
+      have htgtMt : evaluate mt req es = .ok vt := (htarget_iff vt).mpr htgt
+      simp [evaluate, htgtMt, bind, Except.bind, hpToPattern]
 
 
 theorem Cst.Expr.toAExpr?_evaluate

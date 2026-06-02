@@ -860,3 +860,164 @@ theorem extendedHasAttr_evaluate_agrees
             obtain ⟨b'', hb''⟩ := rHasChain_isBool v' b bs es rv hrhc
             subst hb''
             rfl
+
+/-- Helper: when `memberAux` takes an `.expr ...` input, it always returns
+    either `.expr ...` or `none` — never another `ExprOrSpecial` constructor. -/
+private theorem memberAux_expr_returns_expr
+    (e : Expr) (accs : List AstAccessor) (ret : ExprOrSpecial) :
+    memberAux (.expr e) accs = some ret →
+    ∃ e', ret = .expr e' := by
+  induction accs generalizing e ret with
+  | nil =>
+    intro h; simp [memberAux] at h; exact ⟨e, h.symm⟩
+  | cons acc rest ih =>
+    intro h; simp [memberAux] at h; exact ih _ _ h
+
+/-- Helper: `memberAux ieos accs = some (.strLit lit)` requires `accs = []`
+    and `ieos = .strLit lit`.  Everything else either fails or routes through
+    an `.expr ...` recursion. -/
+private theorem memberAux_eq_strLit
+    {ieos : ExprOrSpecial} {accs : List AstAccessor} {lit : String} :
+    memberAux ieos accs = some (.strLit lit) →
+    accs = [] ∧ ieos = .strLit lit := by
+  intro h
+  cases accs with
+  | nil =>
+    simp [memberAux] at h
+    refine ⟨rfl, ?_⟩; rw [← h]
+  | cons acc rest =>
+    exfalso
+    cases ieos with
+    | expr _ =>
+      simp [memberAux] at h
+      obtain ⟨_, hcontra⟩ := memberAux_expr_returns_expr _ _ _ h; cases hcontra
+    | var _ =>
+      cases acc <;> (simp [memberAux] at h
+                     obtain ⟨_, hcontra⟩ := memberAux_expr_returns_expr _ _ _ h
+                     cases hcontra)
+    | strLit _ =>
+      simp [memberAux, ExprOrSpecial.toExpr?, Option.bind_eq_some_iff] at h
+      obtain ⟨_, _, h⟩ := h
+      obtain ⟨_, hcontra⟩ := memberAux_expr_returns_expr _ _ _ h; cases hcontra
+    | boolLit _ =>
+      simp [memberAux, ExprOrSpecial.toExpr?] at h
+      obtain ⟨_, hcontra⟩ := memberAux_expr_returns_expr _ _ _ h; cases hcontra
+    | name _ => cases acc <;> simp [memberAux] at h
+
+/-- Helper: `Cst.Primary.toExprOrSpecial? p = some (.strLit lit)` iff
+    `p = .literal (.liStr lit)`. -/
+private theorem primary_toExprOrSpecial_strLit
+    {p : Cst.Primary} {lit : String} :
+    p.toExprOrSpecial? = some (.strLit lit) →
+    p = .literal (.liStr lit) := by
+  intro h
+  cases p with
+  | literal lit' =>
+    cases lit' with
+    | liStr s =>
+      simp [Cst.Primary.toExprOrSpecial?, Cst.Literal.toExprOrSpecial?] at h
+      rw [h]
+    | liTrue | liFalse =>
+      simp [Cst.Primary.toExprOrSpecial?, Cst.Literal.toExprOrSpecial?] at h
+    | liNum _ =>
+      simp [Cst.Primary.toExprOrSpecial?, Cst.Literal.toExprOrSpecial?,
+            Option.bind_eq_some_iff] at h
+  | name _ =>
+    simp [Cst.Primary.toExprOrSpecial?] at h
+    split at h
+    · simp at h
+    · simp [Option.bind_eq_some_iff] at h
+  | ref r =>
+    cases r with
+    | uid _ eid =>
+      cases eid with
+      | string _ =>
+        simp [Cst.Primary.toExprOrSpecial?, Cst.Ref.toExprOrSpecial?,
+              Option.bind_eq_some_iff] at h
+    | ref _ _ =>
+      simp [Cst.Primary.toExprOrSpecial?, Cst.Ref.toExprOrSpecial?] at h
+  | expr _ =>
+    simp [Cst.Primary.toExprOrSpecial?, Option.bind_eq_some_iff] at h
+  | eList _ =>
+    simp [Cst.Primary.toExprOrSpecial?, Option.bind_eq_some_iff] at h
+
+/-- Helper: `Cst.Member.toExprOrSpecial? m = some (.strLit lit)` iff
+    `m.access = []` and `m.item = .literal (.liStr lit)`. -/
+private theorem member_toExprOrSpecial_strLit
+    {m : Cst.Member} {lit : String} :
+    m.toExprOrSpecial? = some (.strLit lit) →
+    m.access = [] ∧ m.item = .literal (.liStr lit) := by
+  intro h
+  simp [Cst.Member.toExprOrSpecial?, Option.bind_eq_some_iff] at h
+  obtain ⟨ieos, hieos, accs, haccs, hmaux⟩ := h
+  obtain ⟨hAccs, hIeos⟩ := memberAux_eq_strLit hmaux
+  subst hAccs
+  refine ⟨?_, primary_toExprOrSpecial_strLit (hIeos ▸ hieos)⟩
+  cases hAcc : m.access with
+  | nil => rfl
+  | cons _ _ =>
+    rw [hAcc] at haccs
+    simp [List.mapM_cons, Option.bind_eq_some_iff] at haccs
+
+/-- For the `rLike` case: if the translator's `toPattern?` succeeds with `p`,
+    then the evaluator's `toPatternString?` succeeds with some `s` such that
+    `CstCommon.toPattern? s = some p`.
+
+    Both functions enforce the same shape (extended/op/access empty, item is
+    a `liStr`) and call `CstCommon.toPattern?` on the same raw string. -/
+theorem addExpr_toPattern_toPatternString_agrees
+    {e : Cst.AddExpr} {p : Pattern} :
+    Cst.AddExpr.toPattern? e = some p →
+    ∃ s, Cst.AddExpr.toPatternString? e = some s ∧
+         Cedar.Spec.CstCommon.toPattern? s = some p := by
+  intro h
+  simp [Cst.AddExpr.toPattern?, Option.bind_eq_some_iff] at h
+  obtain ⟨eos, heos, hmatch⟩ := h
+  -- For the inner match to succeed, eos must be .strLit lit.
+  cases eos with
+  | expr _ | var _ | name _ | boolLit _ => simp at hmatch
+  | strLit lit =>
+    simp at hmatch
+    refine ⟨lit, ?_, hmatch⟩
+    -- Trace `e.toExprOrSpecial? = some (.strLit lit)` through the chain.
+    -- The chain delegates to the underlying member only when extended/mext
+    -- are empty AND op is `none` or `.nDash 0`.
+    obtain ⟨⟨⟨op, member⟩, mext⟩, ext⟩ := e
+    simp [Cst.AddExpr.toExprOrSpecial?, Cst.MultExpr.toExprOrSpecial?,
+          Cst.Unary.toExprOrSpecial?] at heos
+    -- ext = [] required; otherwise produces .expr.
+    cases ext with
+    | cons _ _ =>
+      simp [Option.bind_eq_some_iff] at heos
+    | nil =>
+      simp at heos
+      cases mext with
+      | cons _ _ =>
+        simp [Option.bind_eq_some_iff] at heos
+      | nil =>
+        simp at heos
+        -- Now the unary's match on `op` runs. Show op ∈ {none, .nDash 0}.
+        cases op with
+        | none =>
+          obtain ⟨hAccNil, hItem⟩ := member_toExprOrSpecial_strLit heos
+          simp [Cst.AddExpr.toPatternString?, hAccNil, hItem]
+        | some op' =>
+          cases op' with
+          | nDash n =>
+            by_cases hn : n = 0
+            · subst hn
+              obtain ⟨hAccNil, hItem⟩ := member_toExprOrSpecial_strLit heos
+              simp [Cst.AddExpr.toPatternString?, hAccNil, hItem]
+            · simp at heos
+              -- For non-zero n, falls into the toLit?/eos chain producing .expr/none.
+              split at heos
+              · split at heos
+                · simp at heos
+                · split at heos
+                  · simp at heos
+                  · simp at heos
+                · simp at heos
+              · simp [Option.bind_eq_some_iff] at heos
+          | nBang _ =>
+            simp [Option.bind_eq_some_iff] at heos
+          | nOverBang | nOverDash => simp at heos
