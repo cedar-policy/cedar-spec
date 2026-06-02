@@ -3,14 +3,14 @@ import Cedar.Spec.Cst
 import Cedar.Spec.CstSemantics
 import Cedar.Spec.CstToAst
 import Cedar.Thm.Translation.Aux
+import Cedar.Thm.Data.List.Lemmas
 
 namespace Cedar.Thm
 
 open Cedar.Data
 open Cedar.Spec
 
-
-mutual
+set_option maxHeartbeats 1000000
 
 theorem Cst.ExprOrSpecial.toExpr?_evaluate  {eos : ExprOrSpecial} {aexp : Expr} req es :
   eos.toExpr? = some aexp →
@@ -28,6 +28,8 @@ theorem Cst.ExprOrSpecial.toExpr?_evaluate  {eos : ExprOrSpecial} {aexp : Expr} 
     | none => rw [hsome] at h; simp at h
     | some s' => rw [hsome] at h; simp at *; rw [← h]; simp [evaluate]
   · rename_i b; rw [← h]; simp [evaluate]
+
+mutual
 
 theorem Cst.Primary.toAExpr?_evaluate
   {prim : Cst.Primary} {eos : ExprOrSpecial}
@@ -107,8 +109,51 @@ theorem Cst.Primary.toAExpr?_evaluate
         have ⟨hvn1, _⟩ := Cst.Name.toVar?_agrees hvar
         simp [hvn1] at hpath
 
-  | expr e => sorry
-  | eList es => sorry
+  | expr e =>
+    intro hprim aexp heos v
+    simp [Cst.Primary.toExprOrSpecial?, Option.bind_eq_some_iff] at hprim
+    obtain ⟨ae, hae, heq⟩ := hprim
+    rw [← heq] at heos
+    simp [ExprOrSpecial.toExpr?] at heos
+    rw [← heos]
+    simp [Cst.Primary.evaluate]
+    simp [Cst.Expr.toAExpr?, Option.bind_eq_some_iff] at hae
+    obtain ⟨eEos, heEos, heExpr⟩ := hae
+    exact Cst.Expr.toAExpr?_evaluate heEos ae heExpr v
+  | eList xs =>
+    intro hprim aexp heos v
+    simp [Cst.Primary.toExprOrSpecial?, Option.bind_eq_some_iff] at hprim
+    obtain ⟨aes, haes, heq⟩ := hprim
+    rw [← heq] at heos
+    simp [ExprOrSpecial.toExpr?] at heos
+    rw [← heos]
+    have hperElt : ∀ x ∈ xs, ∀ ax,
+        x.toAExpr? = some ax →
+        ∀ v, evaluate ax req es = .ok v ↔ x.evaluate req es = .ok v := by
+      intro x hx ax hax v
+      simp [Cst.Expr.toAExpr?, Option.bind_eq_some_iff] at hax
+      obtain ⟨xEos, hxEos, hxExpr⟩ := hax
+      exact Cst.Expr.toAExpr?_evaluate hxEos ax hxExpr v
+    have hbridge := mapM_eval_agrees req es xs aes haes hperElt
+    simp [evaluate, Cst.Primary.evaluate, bind, Except.bind,
+          List.mapM₁_eq_mapM (evaluate · req es)]
+    cases hmes : aes.mapM (fun a => evaluate a req es) with
+    | error err =>
+      cases hxes : xs.mapM (fun x => x.evaluate req es) with
+      | ok vs =>
+        have := (hbridge vs).mpr hxes
+        rw [this] at hmes; cases hmes
+      | error _ => simp
+    | ok vs =>
+      have := (hbridge vs).mp hmes
+      rw [this]
+termination_by (sizeOf prim, 0)
+decreasing_by
+  all_goals simp_wf
+  all_goals first
+    | (apply Prod.Lex.left; omega)
+    | (apply Prod.Lex.left
+       rename_i hx _; have := List.sizeOf_lt_of_mem hx; omega)
 
 theorem Cst.Member.toAExpr?_evaluate
   {mem : Cst.Member} {eos : ExprOrSpecial}
@@ -166,6 +211,11 @@ theorem Cst.Member.toAExpr?_evaluate
           rw [h_item] at hev_ok; simp at hev_ok
           rw [(hheadIff head).mpr h_item]
           simp [bind, Except.bind, hev_ok]
+termination_by (sizeOf mem, 0)
+decreasing_by
+  all_goals
+    (apply Prod.Lex.left
+     cases mem; simp only [Cst.Member.mk.sizeOf_spec]; omega)
 
 theorem Cst.Unary.toAExpr?_evaluate
   {u : Cst.Unary} {eos : ExprOrSpecial}
@@ -425,6 +475,11 @@ theorem Cst.Unary.toAExpr?_evaluate
                   | _ => simp at hev_ok
   | some .nOverBang => simp [Cst.Unary.toExprOrSpecial?, hop] at hu
   | some .nOverDash => simp [Cst.Unary.toExprOrSpecial?, hop] at hu
+termination_by (sizeOf u, 0)
+decreasing_by
+  all_goals
+    (apply Prod.Lex.left
+     cases u; simp only [Cst.Unary.mk.sizeOf_spec]; omega)
 
 theorem multExprFoldExtended_foldOps_agrees
   (req : Request) (es : Entities)
@@ -436,8 +491,8 @@ theorem multExprFoldExtended_foldOps_agrees
            Cst.MultExpr.foldOps acc_v xs req es) = .ok v := by
 
   intro hfold v
-  induction xs generalizing acc_ast result with
-  | nil =>
+  match xs with
+  | [] =>
     simp [Cst.MultExpr.foldExtended] at hfold
     simp [hfold]; constructor <;> intro h
     · simp [h, bind, Except.bind]
@@ -450,8 +505,7 @@ theorem multExprFoldExtended_foldOps_agrees
         simp [Cst.MultExpr.foldOps] at h
         rw [h]
 
-  | cons x xs ih =>
-    obtain ⟨op, u⟩ := x
+  | (op, u) :: rest =>
     -- Translator only succeeds on .mTimes; other ops fail and contradict hfold.
     cases hop : op with
     | mTimes =>
@@ -461,7 +515,7 @@ theorem multExprFoldExtended_foldOps_agrees
       | some eu =>
         rw [hu] at hfold
         simp at hfold
-        have ih' := ih hfold
+        have ih' := multExprFoldExtended_foldOps_agrees req es rest hfold v
         rw [ih']
         simp [Cst.Unary.toAExpr?, Option.bind_eq_some_iff] at hu
         obtain ⟨ueos, hueos, heu⟩ := hu
@@ -489,6 +543,12 @@ theorem multExprFoldExtended_foldOps_agrees
             rw [hu_v]
     | _ =>
       simp [Cst.MultExpr.foldExtended, hop] at hfold
+termination_by (sizeOf xs, 0)
+decreasing_by
+  all_goals
+    (apply Prod.Lex.left
+     simp only [List.cons.sizeOf_spec, Prod.mk.sizeOf_spec] at *
+     omega)
 
 theorem Cst.MultExpr.toAExpr?_evaluate
   {mult : Cst.MultExpr} {eos : ExprOrSpecial}
@@ -532,6 +592,14 @@ theorem Cst.MultExpr.toAExpr?_evaluate
       simp [bind, Except.bind, hext]
       have h_first : evaluate first req es = .ok iv := (hu_iff iv).mpr h_init
       rw [h_first]
+termination_by (sizeOf mult, 0)
+decreasing_by
+  all_goals
+    (apply Prod.Lex.left
+     cases mult
+     simp only [Cst.MultExpr.mk.sizeOf_spec]
+     try (have h := hext; subst h)
+     omega)
 
 /-- Fold-helper analog for `AddExpr`. Mirrors `multExprFoldExtended_foldOps_agrees`
     with `aPlus`/`aMinus` instead of `mTimes`, `MultExpr` instead of `Unary`,
@@ -545,8 +613,8 @@ theorem addExprFoldExtended_foldOps_agrees
        (do let acc_v ← evaluate acc_ast req es
            Cst.AddExpr.foldOps acc_v xs req es) = .ok v := by
   intro hfold v
-  induction xs generalizing acc_ast result with
-  | nil =>
+  match xs with
+  | [] =>
     simp [Cst.AddExpr.foldExtended] at hfold
     simp [hfold]; constructor <;> intro h
     · simp [h, bind, Except.bind, Cst.AddExpr.foldOps]
@@ -556,8 +624,7 @@ theorem addExprFoldExtended_foldOps_agrees
         simp [bind, Except.bind, hres] at h
         simp [Cst.AddExpr.foldOps] at h
         rw [h]
-  | cons x xs ih =>
-    obtain ⟨op, m⟩ := x
+  | (op, m) :: rest =>
     cases hop : op with
     | aPlus =>
       simp [Cst.AddExpr.foldExtended, hop] at hfold
@@ -566,7 +633,7 @@ theorem addExprFoldExtended_foldOps_agrees
       | some em =>
         rw [hm] at hfold
         simp at hfold
-        have ih' := ih hfold
+        have ih' := addExprFoldExtended_foldOps_agrees req es rest hfold v
         rw [ih']
         simp [Cst.MultExpr.toAExpr?, Option.bind_eq_some_iff] at hm
         obtain ⟨meos, hmeos, hmem⟩ := hm
@@ -596,7 +663,7 @@ theorem addExprFoldExtended_foldOps_agrees
       | some em =>
         rw [hm] at hfold
         simp at hfold
-        have ih' := ih hfold
+        have ih' := addExprFoldExtended_foldOps_agrees req es rest hfold v
         rw [ih']
         simp [Cst.MultExpr.toAExpr?, Option.bind_eq_some_iff] at hm
         obtain ⟨meos, hmeos, hmem⟩ := hm
@@ -619,6 +686,12 @@ theorem addExprFoldExtended_foldOps_agrees
             simp
             have hm_v := (hm_iff em_v).mp h_em
             rw [hm_v]
+termination_by (sizeOf xs, 0)
+decreasing_by
+  all_goals
+    (apply Prod.Lex.left
+     simp only [List.cons.sizeOf_spec, Prod.mk.sizeOf_spec] at *
+     omega)
 
 theorem Cst.AddExpr.toAExpr?_evaluate
   {add : Cst.AddExpr} {eos : ExprOrSpecial}
@@ -661,6 +734,14 @@ theorem Cst.AddExpr.toAExpr?_evaluate
       simp [bind, Except.bind, hext]
       have h_first : evaluate first req es = .ok iv := (hu_iff iv).mpr h_init
       rw [h_first]
+termination_by (sizeOf add, 0)
+decreasing_by
+  all_goals
+    (apply Prod.Lex.left
+     cases add
+     simp only [Cst.AddExpr.mk.sizeOf_spec]
+     try (have h := hext; subst h)
+     omega)
 
 
 theorem Cst.Relation.toAExpr?_evaluate
@@ -839,6 +920,9 @@ theorem Cst.Relation.toAExpr?_evaluate
     | ok vt =>
       have htgtMt : evaluate mt req es = .ok vt := (htarget_iff vt).mpr htgt
       simp [evaluate, htgtMt, bind, Except.bind, hpToPattern]
+termination_by (sizeOf rel, 0)
+decreasing_by
+  all_goals (apply Prod.Lex.left; decreasing_tactic)
 
 
 /-- Fold-helper analog for `AndExpr`. Mirrors `addExprFoldExtended_foldOps_agrees`,
@@ -852,8 +936,8 @@ theorem andExprFoldExtended_foldOps_agrees
        (do let acc_v ← evaluate acc_ast req es
            Cst.AndExpr.foldOps acc_v xs req es) = .ok v := by
   intro hfold v
-  induction xs generalizing acc_ast result with
-  | nil =>
+  match xs with
+  | [] =>
     simp [Cst.AndExpr.foldExtended] at hfold
     simp [hfold]; constructor <;> intro h
     · simp [h, bind, Except.bind, Cst.AndExpr.foldOps]
@@ -863,14 +947,14 @@ theorem andExprFoldExtended_foldOps_agrees
         simp [bind, Except.bind, hres] at h
         simp [Cst.AndExpr.foldOps] at h
         rw [h]
-  | cons rel rest ih =>
+  | rel :: rest =>
     simp [Cst.AndExpr.foldExtended] at hfold
     cases hrel : rel.toAExpr? with
     | none => rw [hrel] at hfold; simp at hfold
     | some erel =>
       rw [hrel] at hfold
       simp at hfold
-      have ih' := ih hfold
+      have ih' := andExprFoldExtended_foldOps_agrees req es rest hfold v
       rw [ih']
       simp [Cst.Relation.toAExpr?, Option.bind_eq_some_iff] at hrel
       obtain ⟨reos, hreos, hrm⟩ := hrel
@@ -883,6 +967,12 @@ theorem andExprFoldExtended_foldOps_agrees
       | ok acc_v =>
         simp
         exact expr_and_eval_eq_foldOps_step req es acc_ast erel acc_v rel rest h_acc hrel_iff v
+termination_by (sizeOf xs, 0)
+decreasing_by
+  all_goals
+    (apply Prod.Lex.left
+     simp only [List.cons.sizeOf_spec] at *
+     omega)
 
 theorem Cst.AndExpr.toAExpr?_evaluate
   {ae : Cst.AndExpr} {eos : ExprOrSpecial}
@@ -925,6 +1015,14 @@ theorem Cst.AndExpr.toAExpr?_evaluate
       simp [bind, Except.bind, hext]
       have h_first : evaluate first req es = .ok iv := (hr_iff iv).mpr h_init
       rw [h_first]
+termination_by (sizeOf ae, 0)
+decreasing_by
+  all_goals
+    (apply Prod.Lex.left
+     cases ae
+     simp only [Cst.AndExpr.mk.sizeOf_spec]
+     try (have h := hext; subst h)
+     omega)
 
 
 /-- Fold-helper analog for `OrExpr`. Mirrors `andExprFoldExtended_foldOps_agrees`,
@@ -938,8 +1036,8 @@ theorem orExprFoldExtended_foldOps_agrees
        (do let acc_v ← evaluate acc_ast req es
            Cst.OrExpr.foldOps acc_v xs req es) = .ok v := by
   intro hfold v
-  induction xs generalizing acc_ast result with
-  | nil =>
+  match xs with
+  | [] =>
     simp [Cst.OrExpr.foldExtended] at hfold
     simp [hfold]; constructor <;> intro h
     · simp [h, bind, Except.bind, Cst.OrExpr.foldOps]
@@ -949,14 +1047,14 @@ theorem orExprFoldExtended_foldOps_agrees
         simp [bind, Except.bind, hres] at h
         simp [Cst.OrExpr.foldOps] at h
         rw [h]
-  | cons ande rest ih =>
+  | ande :: rest =>
     simp [Cst.OrExpr.foldExtended] at hfold
     cases hande : ande.toAExpr? with
     | none => rw [hande] at hfold; simp at hfold
     | some eande =>
       rw [hande] at hfold
       simp at hfold
-      have ih' := ih hfold
+      have ih' := orExprFoldExtended_foldOps_agrees req es rest hfold v
       rw [ih']
       simp [Cst.AndExpr.toAExpr?, Option.bind_eq_some_iff] at hande
       obtain ⟨aeos, haeos, ham⟩ := hande
@@ -969,6 +1067,12 @@ theorem orExprFoldExtended_foldOps_agrees
       | ok acc_v =>
         simp
         exact expr_or_eval_eq_foldOps_step req es acc_ast eande acc_v ande rest h_acc hande_iff v
+termination_by (sizeOf xs, 0)
+decreasing_by
+  all_goals
+    (apply Prod.Lex.left
+     simp only [List.cons.sizeOf_spec] at *
+     omega)
 
 theorem Cst.OrExpr.toAExpr?_evaluate
   {oe : Cst.OrExpr} {eos : ExprOrSpecial}
@@ -1011,7 +1115,86 @@ theorem Cst.OrExpr.toAExpr?_evaluate
       simp [bind, Except.bind, hext]
       have h_first : evaluate first req es = .ok iv := (ha_iff iv).mpr h_init
       rw [h_first]
+termination_by (sizeOf oe, 0)
+decreasing_by
+  all_goals
+    (apply Prod.Lex.left
+     cases oe
+     simp only [Cst.OrExpr.mk.sizeOf_spec]
+     try (have h := hext; subst h)
+     omega)
 
+
+theorem Cst.ExprData.toAExpr?_evaluate
+  {ed : Cst.ExprData} {eos : ExprOrSpecial}
+  {req : Request} {es : Entities} :
+  ed.toExprOrSpecial? = some eos →
+  ∀ aexp, eos.toExpr? = some aexp →
+  ∀ v, evaluate aexp req es = .ok v ↔
+  ed.evaluate req es = .ok v := by
+  intro hed aexp heos v
+  cases ed with
+  | edOr ore =>
+    simp [Cst.ExprData.toExprOrSpecial?] at hed
+    simp [Cst.ExprData.evaluate]
+    exact Cst.OrExpr.toAExpr?_evaluate hed aexp heos v
+  | edIf i t f =>
+    simp [Cst.ExprData.toExprOrSpecial?, Option.bind_eq_some_iff] at hed
+    obtain ⟨eg, hg, et, ht, ef, hf, hres⟩ := hed
+    rw [← hres] at heos
+    simp [ExprOrSpecial.toExpr?] at heos
+    rw [← heos]
+    simp [Cst.Expr.toAExpr?, Option.bind_eq_some_iff] at hg ht hf
+    obtain ⟨gEos, hgEos, hgExpr⟩ := hg
+    obtain ⟨tEos, htEos, htExpr⟩ := ht
+    obtain ⟨fEos, hfEos, hfExpr⟩ := hf
+    have hg_iff : ∀ vp, evaluate eg req es = .ok vp ↔ i.evaluate req es = .ok vp :=
+      Cst.Expr.toAExpr?_evaluate hgEos eg hgExpr
+    have ht_iff : ∀ vp, evaluate et req es = .ok vp ↔ t.evaluate req es = .ok vp :=
+      Cst.Expr.toAExpr?_evaluate htEos et htExpr
+    have hf_iff : ∀ vp, evaluate ef req es = .ok vp ↔ f.evaluate req es = .ok vp :=
+      Cst.Expr.toAExpr?_evaluate hfEos ef hfExpr
+    simp [evaluate, Cst.ExprData.evaluate, bind, Except.bind, Result.as, Coe.coe]
+    cases hg_eval : evaluate eg req es with
+    | error err =>
+      cases hi : i.evaluate req es with
+      | ok iv =>
+        have := (hg_iff iv).mpr hi
+        rw [this] at hg_eval; cases hg_eval
+      | error _ => simp
+    | ok gv =>
+      have hi_ok : i.evaluate req es = .ok gv := (hg_iff gv).mp hg_eval
+      rw [hi_ok]
+      cases gv with
+      | prim p =>
+        cases p with
+        | bool b =>
+          simp [Value.asBool]
+          cases b with
+          | true => exact ht_iff v
+          | false => exact hf_iff v
+        | int _ | string _ | entityUID _ => simp [Value.asBool]
+      | set _ | record _ | ext _ => simp [Value.asBool]
+termination_by (sizeOf ed, 0)
+decreasing_by
+  all_goals (apply Prod.Lex.left; decreasing_tactic)
+
+theorem Cst.ExprImpl.toAExpr?_evaluate
+  {ei : Cst.ExprImpl} {eos : ExprOrSpecial}
+  {req : Request} {es : Entities} :
+  ei.toExprOrSpecial? = some eos →
+  ∀ aexp, eos.toExpr? = some aexp →
+  ∀ v, evaluate aexp req es = .ok v ↔
+  ei.evaluate req es = .ok v := by
+  intro hei aexp heos v
+  simp only [Cst.ExprImpl.toExprOrSpecial?] at hei
+  simp [Cst.ExprImpl.evaluate]
+  exact Cst.ExprData.toAExpr?_evaluate hei aexp heos v
+termination_by (sizeOf ei, 0)
+decreasing_by
+  all_goals
+    (apply Prod.Lex.left
+     cases ei; simp only [Cst.ExprImpl.mk.sizeOf_spec]; omega)
 
 theorem Cst.Expr.toAExpr?_evaluate
   {e : Cst.Expr} {eos : ExprOrSpecial}
@@ -1019,7 +1202,16 @@ theorem Cst.Expr.toAExpr?_evaluate
   e.toExprOrSpecial? = some eos →
   ∀ aexp, eos.toExpr? = some aexp →
   ∀ v, evaluate aexp req es = .ok v ↔
-  e.evaluate req es = .ok v := by sorry
+  e.evaluate req es = .ok v := by
+  intro he aexp heos v
+  cases e with
+  | expr ei =>
+    simp only [Cst.Expr.toExprOrSpecial?] at he
+    simp [Cst.Expr.evaluate]
+    exact Cst.ExprImpl.toAExpr?_evaluate he aexp heos v
+termination_by (sizeOf e, 0)
+decreasing_by
+  all_goals (apply Prod.Lex.left; decreasing_tactic)
 
 theorem Cst.Expr.toAExpr?_sound
   {e : Cst.Expr} {aexp : Expr} {req : Request} {es : Entities} :
