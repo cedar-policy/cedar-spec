@@ -384,7 +384,7 @@ public def Cst.Relation.toAExpr? (e : Cst.Relation) : Option AExpr := do
   ret.toExpr?
 termination_by (sizeOf e, 1)
 
-private def Cst.AndExpr.foldExtended (acc : AExpr) (xs : List Cst.Relation) : Option AExpr :=
+public def Cst.AndExpr.foldExtended (acc : AExpr) (xs : List Cst.Relation) : Option AExpr :=
   match xs with
   | [] => some acc
   | rel :: rest => do
@@ -408,7 +408,7 @@ public def Cst.AndExpr.toAExpr? (e : Cst.AndExpr) : Option AExpr := do
   ret.toExpr?
 termination_by (sizeOf e, 1)
 
-private def Cst.OrExpr.foldExtended (acc : AExpr) (xs : List Cst.AndExpr) : Option AExpr :=
+public def Cst.OrExpr.foldExtended (acc : AExpr) (xs : List Cst.AndExpr) : Option AExpr :=
   match xs with
   | [] => some acc
   | ande :: rest => do

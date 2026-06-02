@@ -1021,3 +1021,107 @@ theorem addExpr_toPattern_toPatternString_agrees
           | nBang _ =>
             simp [Option.bind_eq_some_iff] at heos
           | nOverBang | nOverDash => simp at heos
+
+/- For AndExpr -/
+
+/-- `foldOps` short-circuits on `.bool false`: it ignores `rest` and returns
+    `.ok (.bool false)`. -/
+theorem andExprFoldOps_false_short_circuits
+    (req : Request) (es : Entities) (rest : List Cst.Relation) :
+    Cst.AndExpr.foldOps (.prim (.bool false)) rest req es = .ok (.prim (.bool false)) := by
+  cases rest with
+  | nil => simp [Cst.AndExpr.foldOps]
+  | cons _ _ => simp [Cst.AndExpr.foldOps, Value.asBool, bind, Except.bind]
+
+/-- Bridge one fold step: `evaluate (Expr.and acc_ast rhs)` followed by
+    `foldOps ... rest` matches `foldOps acc_v (rel :: rest)`. -/
+theorem expr_and_eval_eq_foldOps_step
+    (req : Request) (es : Entities)
+    (acc_ast rhs : Expr) (acc_v : Value) (rel : Cst.Relation)
+    (rest : List Cst.Relation) :
+    evaluate acc_ast req es = .ok acc_v →
+    (∀ vp, evaluate rhs req es = .ok vp ↔ rel.evaluate req es = .ok vp) →
+    ∀ v,
+      (do let v' ← evaluate (Expr.and acc_ast rhs) req es
+          Cst.AndExpr.foldOps v' rest req es) = .ok v ↔
+      Cst.AndExpr.foldOps acc_v (rel :: rest) req es = .ok v := by
+  intro hacc hrel_iff v
+  simp [Cst.AndExpr.foldOps, evaluate, hacc, bind, Except.bind, Result.as, Coe.coe]
+  cases hAccBool : acc_v.asBool with
+  | error _ => simp
+  | ok bAcc =>
+    cases bAcc with
+    | false =>
+      simp
+      rw [andExprFoldOps_false_short_circuits]
+      exact ⟨fun h => by injection h, fun h => by rw [← h]⟩
+    | true =>
+      simp
+      cases h_rhs : evaluate rhs req es with
+      | error err =>
+        cases h_rel : rel.evaluate req es with
+        | ok rv =>
+          have := (hrel_iff rv).mpr h_rel
+          rw [this] at h_rhs; cases h_rhs
+        | error err' => simp
+      | ok rv =>
+        have h_rel_ok : rel.evaluate req es = .ok rv := (hrel_iff rv).mp h_rhs
+        rw [h_rel_ok]
+        cases rv with
+        | prim p =>
+          cases p with
+          | bool _ => simp [Value.asBool, pure, Except.pure]
+          | int _ | string _ | entityUID _ => simp [Value.asBool]
+        | set _ | record _ | ext _ => simp [Value.asBool]
+
+/- For OrExpr -/
+
+/-- `foldOps` short-circuits on `.bool true`: it ignores `rest` and returns
+    `.ok (.bool true)`. -/
+theorem orExprFoldOps_true_short_circuits
+    (req : Request) (es : Entities) (rest : List Cst.AndExpr) :
+    Cst.OrExpr.foldOps (.prim (.bool true)) rest req es = .ok (.prim (.bool true)) := by
+  cases rest with
+  | nil => simp [Cst.OrExpr.foldOps]
+  | cons _ _ => simp [Cst.OrExpr.foldOps, Value.asBool, bind, Except.bind]
+
+/-- Bridge one fold step: `evaluate (Expr.or acc_ast rhs)` followed by
+    `foldOps ... rest` matches `foldOps acc_v (ande :: rest)`. -/
+theorem expr_or_eval_eq_foldOps_step
+    (req : Request) (es : Entities)
+    (acc_ast rhs : Expr) (acc_v : Value) (ande : Cst.AndExpr)
+    (rest : List Cst.AndExpr) :
+    evaluate acc_ast req es = .ok acc_v →
+    (∀ vp, evaluate rhs req es = .ok vp ↔ ande.evaluate req es = .ok vp) →
+    ∀ v,
+      (do let v' ← evaluate (Expr.or acc_ast rhs) req es
+          Cst.OrExpr.foldOps v' rest req es) = .ok v ↔
+      Cst.OrExpr.foldOps acc_v (ande :: rest) req es = .ok v := by
+  intro hacc hrel_iff v
+  simp [Cst.OrExpr.foldOps, evaluate, hacc, bind, Except.bind, Result.as, Coe.coe]
+  cases hAccBool : acc_v.asBool with
+  | error _ => simp
+  | ok bAcc =>
+    cases bAcc with
+    | true =>
+      simp
+      rw [orExprFoldOps_true_short_circuits]
+      exact ⟨fun h => by injection h, fun h => by rw [← h]⟩
+    | false =>
+      simp
+      cases h_rhs : evaluate rhs req es with
+      | error err =>
+        cases h_rel : ande.evaluate req es with
+        | ok rv =>
+          have := (hrel_iff rv).mpr h_rel
+          rw [this] at h_rhs; cases h_rhs
+        | error err' => simp
+      | ok rv =>
+        have h_rel_ok : ande.evaluate req es = .ok rv := (hrel_iff rv).mp h_rhs
+        rw [h_rel_ok]
+        cases rv with
+        | prim p =>
+          cases p with
+          | bool _ => simp [Value.asBool, pure, Except.pure]
+          | int _ | string _ | entityUID _ => simp [Value.asBool]
+        | set _ | record _ | ext _ => simp [Value.asBool]

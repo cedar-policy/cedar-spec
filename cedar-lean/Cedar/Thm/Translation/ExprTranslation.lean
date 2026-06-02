@@ -855,6 +855,184 @@ theorem Cst.Relation.toAExpr?_evaluate
       simp [evaluate, htgtMt, bind, Except.bind, hpToPattern]
 
 
+/-- Fold-helper analog for `AndExpr`. Mirrors `addExprFoldExtended_foldOps_agrees`,
+    with `Expr.and` replacing `binaryApp` and `Relation` replacing `MultExpr`. -/
+theorem andExprFoldExtended_foldOps_agrees
+  (req : Request) (es : Entities)
+  (xs : List Cst.Relation)
+  {acc_ast : Expr} {result : Expr} :
+  Cst.AndExpr.foldExtended acc_ast xs = some result →
+  ∀ v, evaluate result req es = .ok v ↔
+       (do let acc_v ← evaluate acc_ast req es
+           Cst.AndExpr.foldOps acc_v xs req es) = .ok v := by
+  intro hfold v
+  induction xs generalizing acc_ast result with
+  | nil =>
+    simp [Cst.AndExpr.foldExtended] at hfold
+    simp [hfold]; constructor <;> intro h
+    · simp [h, bind, Except.bind, Cst.AndExpr.foldOps]
+    · cases hres : evaluate result req es with
+      | error err => simp [bind, Except.bind, hres] at h
+      | ok v' =>
+        simp [bind, Except.bind, hres] at h
+        simp [Cst.AndExpr.foldOps] at h
+        rw [h]
+  | cons rel rest ih =>
+    simp [Cst.AndExpr.foldExtended] at hfold
+    cases hrel : rel.toAExpr? with
+    | none => rw [hrel] at hfold; simp at hfold
+    | some erel =>
+      rw [hrel] at hfold
+      simp at hfold
+      have ih' := ih hfold
+      rw [ih']
+      simp [Cst.Relation.toAExpr?, Option.bind_eq_some_iff] at hrel
+      obtain ⟨reos, hreos, hrm⟩ := hrel
+      have hrel_iff : ∀ vp, evaluate erel req es = .ok vp ↔ rel.evaluate req es = .ok vp :=
+        Cst.Relation.toAExpr?_evaluate hreos erel hrm
+      simp [bind, Except.bind]
+      cases h_acc : evaluate acc_ast req es with
+      | error err =>
+        simp [evaluate, h_acc, bind, Except.bind, Result.as]
+      | ok acc_v =>
+        simp
+        exact expr_and_eval_eq_foldOps_step req es acc_ast erel acc_v rel rest h_acc hrel_iff v
+
+theorem Cst.AndExpr.toAExpr?_evaluate
+  {ae : Cst.AndExpr} {eos : ExprOrSpecial}
+  {req : Request} {es : Entities} :
+  ae.toExprOrSpecial? = some eos →
+  ∀ aexp, eos.toExpr? = some aexp →
+  ∀ v, evaluate aexp req es = .ok v ↔
+  ae.evaluate req es = .ok v := by
+  intro hae aexp heos v
+  obtain ⟨initial, extended⟩ := ae
+  match hext : extended with
+  | [] =>
+    subst hext
+    simp only [Cst.AndExpr.toExprOrSpecial?] at hae
+    have hr_iff := @Cst.Relation.toAExpr?_evaluate initial eos req es hae aexp heos v
+    rw [hr_iff]
+    simp [Cst.AndExpr.evaluate]
+    cases h_init : initial.evaluate req es with
+    | error err => simp [bind, Except.bind]
+    | ok iv => simp [bind, Except.bind, Cst.AndExpr.foldOps]
+  | hd :: tl =>
+    subst hext
+    simp [Cst.AndExpr.toExprOrSpecial?, Option.bind_eq_some_iff] at hae
+    obtain ⟨first, hfirst, result, hres, heos_eq⟩ := hae
+    rw [← heos_eq] at heos
+    simp [ExprOrSpecial.toExpr?] at heos
+    rw [← heos]
+    rw [andExprFoldExtended_foldOps_agrees req es _ hres v]
+    simp [Cst.Relation.toAExpr?, Option.bind_eq_some_iff] at hfirst
+    obtain ⟨reos, hreos, hfeu⟩ := hfirst
+    have hr_iff : ∀ vp, evaluate first req es = .ok vp ↔ initial.evaluate req es = .ok vp :=
+      Cst.Relation.toAExpr?_evaluate hreos first hfeu
+    simp [Cst.AndExpr.evaluate]
+    cases h_init : initial.evaluate req es with
+    | error err =>
+      simp [bind, Except.bind]
+      cases h_first : evaluate first req es with
+      | ok vp =>
+        have := (hr_iff vp).mp h_first
+        rw [this] at h_init; cases h_init
+      | error _ => simp
+    | ok iv =>
+      simp [bind, Except.bind]
+      have h_first : evaluate first req es = .ok iv := (hr_iff iv).mpr h_init
+      rw [h_first]
+
+
+/-- Fold-helper analog for `OrExpr`. Mirrors `andExprFoldExtended_foldOps_agrees`,
+    with `Expr.or` replacing `Expr.and` and `AndExpr` replacing `Relation`. -/
+theorem orExprFoldExtended_foldOps_agrees
+  (req : Request) (es : Entities)
+  (xs : List Cst.AndExpr)
+  {acc_ast : Expr} {result : Expr} :
+  Cst.OrExpr.foldExtended acc_ast xs = some result →
+  ∀ v, evaluate result req es = .ok v ↔
+       (do let acc_v ← evaluate acc_ast req es
+           Cst.OrExpr.foldOps acc_v xs req es) = .ok v := by
+  intro hfold v
+  induction xs generalizing acc_ast result with
+  | nil =>
+    simp [Cst.OrExpr.foldExtended] at hfold
+    simp [hfold]; constructor <;> intro h
+    · simp [h, bind, Except.bind, Cst.OrExpr.foldOps]
+    · cases hres : evaluate result req es with
+      | error err => simp [bind, Except.bind, hres] at h
+      | ok v' =>
+        simp [bind, Except.bind, hres] at h
+        simp [Cst.OrExpr.foldOps] at h
+        rw [h]
+  | cons ande rest ih =>
+    simp [Cst.OrExpr.foldExtended] at hfold
+    cases hande : ande.toAExpr? with
+    | none => rw [hande] at hfold; simp at hfold
+    | some eande =>
+      rw [hande] at hfold
+      simp at hfold
+      have ih' := ih hfold
+      rw [ih']
+      simp [Cst.AndExpr.toAExpr?, Option.bind_eq_some_iff] at hande
+      obtain ⟨aeos, haeos, ham⟩ := hande
+      have hande_iff : ∀ vp, evaluate eande req es = .ok vp ↔ ande.evaluate req es = .ok vp :=
+        Cst.AndExpr.toAExpr?_evaluate haeos eande ham
+      simp [bind, Except.bind]
+      cases h_acc : evaluate acc_ast req es with
+      | error err =>
+        simp [evaluate, h_acc, bind, Except.bind, Result.as]
+      | ok acc_v =>
+        simp
+        exact expr_or_eval_eq_foldOps_step req es acc_ast eande acc_v ande rest h_acc hande_iff v
+
+theorem Cst.OrExpr.toAExpr?_evaluate
+  {oe : Cst.OrExpr} {eos : ExprOrSpecial}
+  {req : Request} {es : Entities} :
+  oe.toExprOrSpecial? = some eos →
+  ∀ aexp, eos.toExpr? = some aexp →
+  ∀ v, evaluate aexp req es = .ok v ↔
+  oe.evaluate req es = .ok v := by
+  intro hoe aexp heos v
+  obtain ⟨initial, extended⟩ := oe
+  match hext : extended with
+  | [] =>
+    subst hext
+    simp only [Cst.OrExpr.toExprOrSpecial?] at hoe
+    have ha_iff := @Cst.AndExpr.toAExpr?_evaluate initial eos req es hoe aexp heos v
+    rw [ha_iff]
+    simp [Cst.OrExpr.evaluate]
+    cases h_init : initial.evaluate req es with
+    | error err => simp [bind, Except.bind]
+    | ok iv => simp [bind, Except.bind, Cst.OrExpr.foldOps]
+  | hd :: tl =>
+    subst hext
+    simp [Cst.OrExpr.toExprOrSpecial?, Option.bind_eq_some_iff] at hoe
+    obtain ⟨first, hfirst, result, hres, heos_eq⟩ := hoe
+    rw [← heos_eq] at heos
+    simp [ExprOrSpecial.toExpr?] at heos
+    rw [← heos]
+    rw [orExprFoldExtended_foldOps_agrees req es _ hres v]
+    simp [Cst.AndExpr.toAExpr?, Option.bind_eq_some_iff] at hfirst
+    obtain ⟨aeos, haeos, hfeu⟩ := hfirst
+    have ha_iff : ∀ vp, evaluate first req es = .ok vp ↔ initial.evaluate req es = .ok vp :=
+      Cst.AndExpr.toAExpr?_evaluate haeos first hfeu
+    simp [Cst.OrExpr.evaluate]
+    cases h_init : initial.evaluate req es with
+    | error err =>
+      simp [bind, Except.bind]
+      cases h_first : evaluate first req es with
+      | ok vp =>
+        have := (ha_iff vp).mp h_first
+        rw [this] at h_init; cases h_init
+      | error _ => simp
+    | ok iv =>
+      simp [bind, Except.bind]
+      have h_first : evaluate first req es = .ok iv := (ha_iff iv).mpr h_init
+      rw [h_first]
+
+
 theorem Cst.Expr.toAExpr?_evaluate
   {e : Cst.Expr} {eos : ExprOrSpecial}
   {req : Request} {es : Entities} :

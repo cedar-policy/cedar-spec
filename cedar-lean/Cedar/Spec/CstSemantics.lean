@@ -349,42 +349,43 @@ public def Relation.evaluate (e : Relation) (req : Request) (es : Entities) : Re
 termination_by sizeOf e
 
 public def AndExpr.evaluate (e : AndExpr) (req : Request) (es : Entities) : Result Value := do
-  let b ← (e.initial.evaluate req es).as Bool
-  let result ← AndExpr.foldOps b e.extended req es
-  .ok result
+  let acc ← e.initial.evaluate req es
+  AndExpr.foldOps acc e.extended req es
 termination_by sizeOf e
 decreasing_by
   all_goals cases e; simp_wf; omega
 
--- Separated from the evalute function for termination proofs
-private def AndExpr.foldOps (acc : Bool) (xs : List Relation)
-    (req : Request) (es : Entities) : Result Bool :=
+-- Mirrors the AST `Expr.and acc rel` evaluation: coerce acc to Bool, short-circuit
+-- on `false`, otherwise coerce rel.evaluate to Bool, wrap as a Value, recurse.
+public def AndExpr.foldOps (acc : Value) (xs : List Relation)
+    (req : Request) (es : Entities) : Result Value :=
   match xs with
   | [] => .ok acc
-  | x :: rest =>
-    if !acc then .ok acc else do
-      let b ← (x.evaluate req es).as Bool
-      AndExpr.foldOps b rest req es
+  | x :: rest => do
+    let b ← acc.asBool
+    if !b then .ok (.prim (.bool false)) else do
+      let b' ← (x.evaluate req es).as Bool
+      AndExpr.foldOps (.prim (.bool b')) rest req es
 termination_by sizeOf xs
 
 public def OrExpr.evaluate (e : OrExpr) (req : Request) (es : Entities) : Result Value := do
-  let b ← (e.initial.evaluate req es).as Bool
-  let result ← OrExpr.foldOps b e.extended req es
-  .ok result
+  let acc ← e.initial.evaluate req es
+  OrExpr.foldOps acc e.extended req es
 termination_by sizeOf e
 decreasing_by
   all_goals cases e; simp_wf; omega
 
--- Short circuit: once a true is found, halt the execution
--- Separated from the evaluate function for termination proofs
-private def OrExpr.foldOps (acc : Bool) (xs : List AndExpr)
-    (req : Request) (es : Entities) : Result Bool :=
+-- Mirrors the AST `Expr.or acc rhs` evaluation: coerce acc to Bool, short-circuit
+-- on `true`, otherwise coerce rhs.evaluate to Bool, wrap as a Value, recurse.
+public def OrExpr.foldOps (acc : Value) (xs : List AndExpr)
+    (req : Request) (es : Entities) : Result Value :=
   match xs with
   | [] => .ok acc
-  | x :: rest =>
-    if acc then .ok acc else do
-      let b ← (x.evaluate req es).as Bool
-      OrExpr.foldOps b rest req es
+  | x :: rest => do
+    let b ← acc.asBool
+    if b then .ok (.prim (.bool true)) else do
+      let b' ← (x.evaluate req es).as Bool
+      OrExpr.foldOps (.prim (.bool b')) rest req es
 termination_by sizeOf xs
 
 public def ExprData.evaluate (e : ExprData) (req : Request) (es : Entities) : Result Value :=
