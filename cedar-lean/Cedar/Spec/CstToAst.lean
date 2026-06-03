@@ -320,6 +320,14 @@ public def Cst.AddExpr.toAExpr? (e : Cst.AddExpr) : Option AExpr := do
   ret.toExpr?
 termination_by (sizeOf e, 1)
 
+public def Cst.AddExpr.toEntityType? (e : Cst.AddExpr) : Option EntityType := do
+  let eos ← e.toExprOrSpecial?
+  match eos with
+  | .name n => some n
+  | .var  _ => none --  in Rust unqualified name
+  | _ => none
+termination_by (sizeOf e, 1)
+
 
 -- In Rust, `to_has_rhs` has the output type `Option (String ⊕ UnreservedId)`.
 -- `UnservedId` is essentially a string, but passed the check that it's not
@@ -377,6 +385,15 @@ public def Cst.Relation.toExprOrSpecial? : Cst.Relation → Option ExprOrSpecial
     let maybe_target ← target.toAExpr?
     let maybe_pattern ← pattern.toPattern?
     some (.expr (.unaryApp (.like maybe_pattern) maybe_target))
+  | .rIsIn target ety inEntity => do
+    let maybe_target ← target.toAExpr?
+    let maybe_entity_type ← ety.toEntityType?
+    let isExpr := Expr.unaryApp (.is maybe_entity_type) maybe_target
+    match inEntity with
+    | some ie => do
+      let maybe_in ← ie.toAExpr?
+      some (.expr (.and isExpr (.binaryApp .mem maybe_target maybe_in)))
+    | none => some (.expr isExpr)
 termination_by e => (sizeOf e, 0)
 
 public def Cst.Relation.toAExpr? (e : Cst.Relation) : Option AExpr := do
@@ -490,13 +507,6 @@ private def Cst.Ident.toEffect? : Cst.Ident → Option Effect
   | .idForbid => some .forbid
   | _ => none
 
-private def Cst.AddExpr.toEntityType? (e : Cst.AddExpr) : Option EntityType := do
-  let eos ← e.toExprOrSpecial?
-  match eos with
-  | .name n => some n
-  | .var  _ => none --  in Rust unqualified name
-  | _ => none
-
 -- Helper lemma: a `Primary` reachable through the AddExpr→Primary chain
 -- has strictly smaller `sizeOf` than the surrounding `OrExpr`.
 private theorem sizeOf_addExpr_primary_lt_orExpr (o : Cst.OrExpr) (ae : Cst.AddExpr) (ext : List (Cst.RelOp × Cst.AddExpr))
@@ -551,6 +561,7 @@ private def Cst.Expr.toMultipleEntityUID? (e : Cst.Expr) : Option (EntityUID ⊕
           have : sizeOf ae.initial.initial.item.item < sizeOf o :=
             sizeOf_addExpr_primary_lt_orExpr o ae ext h
           ae.initial.initial.item.item.toMultipleEntityUID?
+      | .rIsIn _ _ _ => none
 termination_by (sizeOf e, 1)
 decreasing_by
   all_goals (simp_wf; omega)

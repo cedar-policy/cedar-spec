@@ -123,8 +123,7 @@ public inductive Relation where
   | rCommon (initial : AddExpr) (extended : List (RelOp × AddExpr))
   | rHas (target : AddExpr) (field : AddExpr)
   | rLike (target : AddExpr) (pattern : AddExpr)
-  -- | rIsIn (target : AddExpr) (entityType : AddExpr) (inEntity : Option AddExpr)
-  -- A syntactic sugar for Principal is ... in ...
+  | rIsIn (target : AddExpr) (entityType : AddExpr) (inEntity : Option AddExpr)
 
 public structure AddExpr where
   initial : MultExpr
@@ -333,6 +332,7 @@ public def Expr.toStringLiteral? : Cst.Expr → Option String
           | .liStr s => some s
           | _ => none
         | _ => none
+      | .rIsIn _ _ _ => none
 
 public def Expr.toUnescapedStringLiteral? (e : Cst.Expr) : Option String := do
   let s ← Expr.toStringLiteral? e

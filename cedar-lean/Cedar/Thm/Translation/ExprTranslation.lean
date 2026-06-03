@@ -890,6 +890,50 @@ theorem Cst.Relation.toAExpr?_evaluate
     | ok vt =>
       have htgtMt : evaluate mt req es = .ok vt := (htarget_iff vt).mpr htgt
       simp [evaluate, htgtMt, bind, Except.bind, hpToPattern]
+  | rIsIn target ety inEntity =>
+    simp [Cst.Relation.toExprOrSpecial?, Option.bind_eq_some_iff] at hrel
+    have ⟨mt, hmt, et, hEt, hMatch⟩ := hrel
+    match hinE : inEntity, hMatch with
+    | none, hMatch =>
+      simp at hMatch
+      subst hMatch
+      simp [ExprOrSpecial.toExpr?] at heos
+      rw [← heos]
+      have hEtyName := addExpr_toEntityType_agrees hEt
+      simp [Cst.AddExpr.toAExpr?, Option.bind_eq_some_iff] at hmt
+      have ⟨tEos, htEos, htExpr⟩ := hmt
+      have htarget_iff :=
+        @Cst.AddExpr.toAExpr?_evaluate target tEos req es htEos mt htExpr
+      simp [Cst.Relation.evaluate, hEtyName, hinE]
+      cases htgt : target.evaluate req es with
+      | error err =>
+        simp [bind, Except.bind]
+        cases htgt' : evaluate mt req es with
+        | ok vt =>
+          have := (htarget_iff vt).mp htgt'
+          rw [this] at htgt; cases htgt
+        | error _ =>
+          simp [evaluate, htgt', bind, Except.bind]
+      | ok vt =>
+        have htgtMt : evaluate mt req es = .ok vt := (htarget_iff vt).mpr htgt
+        simp only [evaluate, htgtMt, bind, Except.bind]
+        cases apply₁ (UnaryOp.is et) vt <;> simp
+    | some ie, hMatch =>
+      simp [Option.bind_eq_some_iff] at hMatch
+      have ⟨mi, hmi, hres⟩ := hMatch
+      subst hres
+      simp [ExprOrSpecial.toExpr?] at heos
+      rw [← heos]
+      have hEtyName := addExpr_toEntityType_agrees hEt
+      simp [Cst.AddExpr.toAExpr?, Option.bind_eq_some_iff] at hmt
+      have ⟨tEos, htEos, htExpr⟩ := hmt
+      have htarget_iff :=
+        @Cst.AddExpr.toAExpr?_evaluate target tEos req es htEos mt htExpr
+      simp [Cst.AddExpr.toAExpr?, Option.bind_eq_some_iff] at hmi
+      have ⟨iEos, hiEos, hiExpr⟩ := hmi
+      have hinEntity_iff :=
+        @Cst.AddExpr.toAExpr?_evaluate ie iEos req es hiEos mi hiExpr
+      exact rIsIn_some_eval_agrees hEtyName htarget_iff hinEntity_iff v
 termination_by (sizeOf rel, 0)
 decreasing_by
   all_goals (apply Prod.Lex.left; decreasing_tactic)

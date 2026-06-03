@@ -159,6 +159,21 @@ public def AddExpr.toPatternString? (e : AddExpr) : Option String :=
     | _ => none
   | some _ => none
 
+-- Extracts an EntityType (Spec.Name) from an AddExpr that is a bare name.
+public def AddExpr.toEntityTypeName? (e : AddExpr) : Option EntityType :=
+  if !e.extended.isEmpty then none else
+  let mult := e.initial
+  if !mult.extended.isEmpty then none else
+  let unary := mult.initial
+  match unary.op with
+  | some (.nDash 0) | none =>
+    let member := unary.item
+    if !member.access.isEmpty then none else
+    match member.item with
+    | .name n => some { id := n.name.toString, path := n.path.map Ident.toString }
+    | _ => none
+  | some _ => none
+
 /- Evaluators -/
 
 public def Str.toUnescapedString : Str → Result String
@@ -346,6 +361,19 @@ public def Relation.evaluate (e : Relation) (req : Request) (es : Entities) : Re
       match Cedar.Spec.CstCommon.toPattern? s with
       | some p => apply₁ (.like p) v
       | none => .error .typeError
+  | .rIsIn t ety inEntity => match ety.toEntityTypeName? with
+    | none => .error .typeError
+    | some etyName => do
+      let v ← t.evaluate req es
+      let isResult ← apply₁ (.is etyName) v
+      match inEntity with
+      | none => .ok isResult
+      | some ie => do
+        let b ← isResult.asBool
+        if !b then .ok false
+        else do
+          let v₂ ← ie.evaluate req es
+          apply₂ .mem v v₂ es
 termination_by sizeOf e
 
 public def AndExpr.evaluate (e : AndExpr) (req : Request) (es : Entities) : Result Value := do
@@ -497,13 +525,18 @@ public def Expr.foldAnd : List Expr → Expr
 
 public def VariableDef.toAndExpr (vd : VariableDef) : AndExpr :=
   let var' := vd.var.varToAddExpr
-  let isClause := match vd.entityType with
-    | some et => Relation.rCommon var' [(.rIn, et)]
-    | none => Relation.tt
-  let ineqClause := match vd.ineq with
-    | some (op, e) => Relation.rCommon var' [(op, e.toAddExpr)]
-    | none => Relation.tt
-  {initial := isClause, extended := [ineqClause]}
+  match vd.entityType, vd.ineq with
+  | some et, some (.rIn, e) =>
+    {initial := Relation.rIsIn var' et (some e.toAddExpr), extended := []}
+  | some et, none =>
+    {initial := Relation.rIsIn var' et none, extended := []}
+  | none, some (op, e) =>
+    {initial := Relation.rCommon var' [(op, e.toAddExpr)], extended := []}
+  | none, none =>
+    {initial := Relation.tt, extended := []}
+  | some _, some (_, _) =>
+    -- entityType with a non-`in` operator (e.g., `==`) is not valid
+    {initial := Relation.tt, extended := []}
 
 public def VariableDef.toExpr (vd : VariableDef) : Expr :=
   vd.toAndExpr.toOrExpr.toExpr

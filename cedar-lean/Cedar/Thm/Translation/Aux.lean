@@ -1023,6 +1023,222 @@ theorem addExpr_toPattern_toPatternString_agrees
             simp [Option.bind_eq_some_iff] at heos
           | nOverBang | nOverDash => simp at heos
 
+/-- Helper: `memberAux ieos accs = some (.name an)` requires `accs = []`
+    and `ieos = .name an`. -/
+private theorem memberAux_eq_name
+    {ieos : ExprOrSpecial} {accs : List AstAccessor} {an : Spec.Name} :
+    memberAux ieos accs = some (.name an) →
+    accs = [] ∧ ieos = .name an := by
+  intro h
+  cases accs with
+  | nil =>
+    simp [memberAux] at h
+    refine ⟨rfl, ?_⟩; rw [← h]
+  | cons acc rest =>
+    exfalso
+    cases ieos with
+    | expr _ =>
+      simp [memberAux] at h
+      obtain ⟨_, hcontra⟩ := memberAux_expr_returns_expr _ _ _ h; cases hcontra
+    | var _ =>
+      cases acc <;> (simp [memberAux] at h
+                     obtain ⟨_, hcontra⟩ := memberAux_expr_returns_expr _ _ _ h
+                     cases hcontra)
+    | strLit _ =>
+      simp [memberAux, ExprOrSpecial.toExpr?, Option.bind_eq_some_iff] at h
+      obtain ⟨_, _, h⟩ := h
+      obtain ⟨_, hcontra⟩ := memberAux_expr_returns_expr _ _ _ h; cases hcontra
+    | boolLit _ =>
+      simp [memberAux, ExprOrSpecial.toExpr?] at h
+      obtain ⟨_, hcontra⟩ := memberAux_expr_returns_expr _ _ _ h; cases hcontra
+    | name _ => cases acc <;> simp [memberAux] at h
+
+/-- Helper: `Cst.Primary.toExprOrSpecial? p = some (.name an)` requires `p` to
+    be a `.name n` with `n.toAName? = some an`. -/
+private theorem primary_toExprOrSpecial_name
+    {p : Cst.Primary} {an : Spec.Name} :
+    p.toExprOrSpecial? = some (.name an) →
+    ∃ n, p = .name n ∧ n.toAName? = some an := by
+  intro h
+  cases p with
+  | literal lit' =>
+    cases lit' with
+    | liStr s =>
+      simp [Cst.Primary.toExprOrSpecial?, Cst.Literal.toExprOrSpecial?] at h
+    | liTrue | liFalse =>
+      simp [Cst.Primary.toExprOrSpecial?, Cst.Literal.toExprOrSpecial?] at h
+    | liNum _ =>
+      simp [Cst.Primary.toExprOrSpecial?, Cst.Literal.toExprOrSpecial?,
+            Option.bind_eq_some_iff] at h
+  | name n =>
+    have hdef : Cst.Primary.toExprOrSpecial? (.name n) =
+      (match n.toVar? with
+       | some v => some (ExprOrSpecial.var v)
+       | none => n.toAName?.map ExprOrSpecial.name) := by
+      simp [Cst.Primary.toExprOrSpecial?]
+      cases n.toVar? with
+      | some v => rfl
+      | none =>
+        simp [Option.bind, Option.map]
+        cases n.toAName? with
+        | none => rfl
+        | some a => rfl
+    rw [hdef] at h
+    cases hv : n.toVar? with
+    | some v => simp [hv] at h
+    | none =>
+      simp [hv, Option.map] at h
+      cases hname : n.toAName? with
+      | none => simp [hname] at h
+      | some a => simp [hname] at h; exact ⟨n, rfl, h ▸ hname⟩
+  | ref r =>
+    cases r with
+    | uid _ eid =>
+      cases eid with
+      | string _ =>
+        simp [Cst.Primary.toExprOrSpecial?, Cst.Ref.toExprOrSpecial?,
+              Option.bind_eq_some_iff] at h
+    | ref _ _ =>
+      simp [Cst.Primary.toExprOrSpecial?, Cst.Ref.toExprOrSpecial?] at h
+  | expr _ =>
+    simp [Cst.Primary.toExprOrSpecial?, Option.bind_eq_some_iff] at h
+  | eList _ =>
+    simp [Cst.Primary.toExprOrSpecial?, Option.bind_eq_some_iff] at h
+
+/-- Helper: `Cst.Member.toExprOrSpecial? m = some (.name an)` requires
+    `m.access = []` and `m.item = .name n` with `n.toAName? = some an`. -/
+private theorem member_toExprOrSpecial_name
+    {m : Cst.Member} {an : Spec.Name} :
+    m.toExprOrSpecial? = some (.name an) →
+    m.access = [] ∧ ∃ n, m.item = .name n ∧ n.toAName? = some an := by
+  intro h
+  simp [Cst.Member.toExprOrSpecial?, Option.bind_eq_some_iff] at h
+  obtain ⟨ieos, hieos, accs, haccs, hmaux⟩ := h
+  obtain ⟨hAccs, hIeos⟩ := memberAux_eq_name hmaux
+  subst hAccs
+  obtain ⟨n, hItem, hAName⟩ := primary_toExprOrSpecial_name (hIeos ▸ hieos)
+  refine ⟨?_, n, hItem, hAName⟩
+  cases hAcc : m.access with
+  | nil => rfl
+  | cons _ _ =>
+    rw [hAcc] at haccs
+    simp [List.mapM_cons, Option.bind_eq_some_iff] at haccs
+
+/-- For the `rIsIn` case: when the translator's `toEntityType?` succeeds with
+    `et`, the evaluator's structural `toEntityTypeName?` succeeds with the same
+    `et`.  Both enforce the same shape (extended/mext empty, op `none` or
+    `.nDash 0`, access empty, item a `.name`); the translator additionally
+    requires the name be non-reserved, and on those names `toAName?` produces
+    exactly the `toString`-based name the evaluator builds. -/
+theorem addExpr_toEntityType_agrees
+    {e : Cst.AddExpr} {et : EntityType} :
+    Cst.AddExpr.toEntityType? e = some et →
+    Cst.AddExpr.toEntityTypeName? e = some et := by
+  intro h
+  simp [Cst.AddExpr.toEntityType?, Option.bind_eq_some_iff] at h
+  obtain ⟨eos, heos, hmatch⟩ := h
+  cases eos with
+  | expr _ | var _ | boolLit _ | strLit _ => simp at hmatch
+  | name an =>
+    simp at hmatch
+    subst hmatch
+    obtain ⟨⟨⟨op, member⟩, mext⟩, ext⟩ := e
+    simp [Cst.AddExpr.toExprOrSpecial?, Cst.MultExpr.toExprOrSpecial?,
+          Cst.Unary.toExprOrSpecial?] at heos
+    cases ext with
+    | cons _ _ => simp [Option.bind_eq_some_iff] at heos
+    | nil =>
+      simp at heos
+      cases mext with
+      | cons _ _ => simp [Option.bind_eq_some_iff] at heos
+      | nil =>
+        simp at heos
+        cases op with
+        | none =>
+          obtain ⟨hAccNil, n, hItem, hAName⟩ := member_toExprOrSpecial_name heos
+          have hagree := Cst.Name.toAName?_agrees hAName
+          simp [Cst.AddExpr.toEntityTypeName?, hAccNil, hItem, hagree]
+        | some op' =>
+          cases op' with
+          | nDash k =>
+            by_cases hk : k = 0
+            · subst hk
+              obtain ⟨hAccNil, n, hItem, hAName⟩ := member_toExprOrSpecial_name heos
+              have hagree := Cst.Name.toAName?_agrees hAName
+              simp [Cst.AddExpr.toEntityTypeName?, hAccNil, hItem, hagree]
+            · simp at heos
+              split at heos
+              · split at heos
+                · simp at heos
+                · split at heos <;> simp at heos
+                · simp at heos
+              · simp [Option.bind_eq_some_iff] at heos
+          | nBang _ => simp [Option.bind_eq_some_iff] at heos
+          | nOverBang | nOverDash => simp at heos
+
+/-- `apply₂ .mem` only ever yields a boolean value (or an error), so its result
+    survives the `.as Bool` coercion the translated `.and` applies to it. -/
+theorem apply₂_mem_returns_bool {v₁ v₂ : Value} {es : Entities} {r : Value} :
+    apply₂ BinaryOp.mem v₁ v₂ es = .ok r → ∃ b : Bool, r = .prim (.bool b) := by
+  intro h
+  simp only [apply₂] at h
+  split at h <;> simp_all only [reduceCtorEq, Except.ok.injEq, inₛ, bind, Except.bind]
+  · exact ⟨_, h.symm⟩
+  · split at h
+    · simp at h
+    · simp only [Except.ok.injEq] at h; exact ⟨_, h.symm⟩
+
+/-- For the `rIsIn` case with `inEntity = some ie`: the translated AST
+    `(is et target) && (target in ie)` agrees with the CST evaluation. Takes the
+    target/inEntity bridging iffs as hypotheses so the mutual recursion stays in
+    the main proof. -/
+theorem rIsIn_some_eval_agrees
+    {target ety ie : Cst.AddExpr} {mt mi : Expr} {et : EntityType}
+    {req : Request} {es : Entities}
+    (hEtyName : ety.toEntityTypeName? = some et)
+    (htarget_iff : ∀ v, evaluate mt req es = .ok v ↔ target.evaluate req es = .ok v)
+    (hinEntity_iff : ∀ v, evaluate mi req es = .ok v ↔ ie.evaluate req es = .ok v) :
+    ∀ v, evaluate (Expr.and (.unaryApp (.is et) mt) (.binaryApp .mem mt mi)) req es = .ok v ↔
+         (Cst.Relation.rIsIn target ety (some ie)).evaluate req es = .ok v := by
+  intro v
+  simp only [Cst.Relation.evaluate, hEtyName, evaluate]
+  cases htgt : evaluate mt req es with
+  | error e =>
+    cases htgtC : target.evaluate req es with
+    | ok vt => exact absurd ((htarget_iff vt).mpr htgtC) (by rw [htgt]; simp)
+    | error e' => simp [bind, Except.bind, Result.as, Value.asBool]
+  | ok vt =>
+    have htgtC : target.evaluate req es = .ok vt := (htarget_iff vt).mp htgt
+    simp only [htgtC, bind, Except.bind]
+    cases hIs : apply₁ (.is et) vt with
+    | error e => simp [Result.as, Coe.coe, Value.asBool]
+    | ok isVal =>
+      cases isVal with
+      | prim p =>
+        cases p with
+        | bool b =>
+          cases b with
+          | false => simp [Result.as, Coe.coe, Value.asBool]
+          | true =>
+            simp only [Result.as, Coe.coe, Value.asBool, Bool.not_true,
+                       Bool.false_eq_true, if_false, reduceIte]
+            cases hie : evaluate mi req es with
+            | error e =>
+              cases hieC : ie.evaluate req es with
+              | ok vi => exact absurd ((hinEntity_iff vi).mpr hieC) (by rw [hie]; simp)
+              | error e' => simp [bind, Except.bind, Result.as, Value.asBool]
+            | ok v₂ =>
+              have hieC : ie.evaluate req es = .ok v₂ := (hinEntity_iff v₂).mp hie
+              simp only [hieC, bind, Except.bind]
+              cases hmem : apply₂ .mem vt v₂ es with
+              | error e => simp [Result.as, Coe.coe, Value.asBool]
+              | ok memv =>
+                have ⟨b', hb'⟩ := apply₂_mem_returns_bool hmem
+                subst hb'
+                simp [Result.as, Coe.coe, Value.asBool, pure, Except.pure]
+        | int _ | string _ | entityUID _ => simp [Result.as, Coe.coe, Value.asBool]
+      | set _ | record _ | ext _ => simp [Result.as, Coe.coe, Value.asBool]
+
 /- For AndExpr -/
 
 /-- `foldOps` short-circuits on `.bool false`: it ignores `rest` and returns
