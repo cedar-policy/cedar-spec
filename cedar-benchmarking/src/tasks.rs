@@ -86,7 +86,7 @@ pub struct Task {
     pub entities_file: Option<PathBuf>,
     #[serde(default)]
     pub exclude_targets: Vec<Target>,
-    #[serde(skip)]
+    #[serde(default)]
     pub only_targets: Option<Vec<Target>>,
 }
 
@@ -329,7 +329,17 @@ pub fn load_corpus(path: &Path, targets: Option<&[Target]>) -> miette::Result<Ve
             json_schema_file: t.json_schema_file.map(|p| prefix.join(p)),
             entities_file: t.entities_file.map(|p| prefix.join(p)),
             exclude_targets: t.exclude_targets,
-            only_targets: targets.map(<[Target]>::to_vec),
+            only_targets: match (t.only_targets, targets) {
+                (Some(task_targets), Some(cli_targets)) => Some(
+                    task_targets
+                        .into_iter()
+                        .filter(|t| cli_targets.contains(t))
+                        .collect(),
+                ),
+                (Some(task_targets), None) => Some(task_targets),
+                (None, Some(cli_targets)) => Some(cli_targets.to_vec()),
+                (None, None) => None,
+            },
         })
         .collect())
 }
