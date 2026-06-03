@@ -12,6 +12,9 @@ on:
         default: "main"
         type: string
 
+permissions:
+  contents: read
+
 jobs:
   build_and_test_benchmarking:
     name: Build and test benchmarking

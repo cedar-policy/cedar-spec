@@ -3,6 +3,9 @@ name: Build and Test cedar-spec
 on:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   get-branch-name:
     runs-on: ubuntu-latest
