@@ -47,9 +47,13 @@ too_long_first_doc_paragraph = "allow"
 
 [dependencies]
 arbitrary = "1.4"
-cedar-policy = { version = "=4.11.0", path = "../cedar/cedar-policy", features = ["protobufs"] }
+cedar-policy = { version = "=4.11.0", path = "../cedar/cedar-policy", features = [
+    "protobufs",
+] }
 cedar-policy-core = { version = "=4.11.0", path = "../cedar/cedar-policy-core" }
-cedar-policy-generators = { version = "4", path = "../cedar-policy-generators", features = ["cedar-policy"] }
+cedar-policy-generators = { version = "4", path = "../cedar-policy-generators", features = [
+    "cedar-policy",
+] }
 clap = { version = "4", features = ["derive"] }
 miette = { version = "7.6.0", features = ["fancy"] }
 rand = "0.9"

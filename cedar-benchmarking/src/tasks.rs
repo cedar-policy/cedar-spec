@@ -33,6 +33,7 @@ pub enum Target {
     EntityParseWithSchema,
     EntityParseWithoutSchema,
     ProtobufEntityParse,
+    IncrementalEntities,
 }
 
 impl std::fmt::Display for Target {
@@ -49,6 +50,7 @@ impl std::fmt::Display for Target {
             Self::EntityParseWithSchema => write!(f, "entity_parse_with_schema"),
             Self::EntityParseWithoutSchema => write!(f, "entity_parse_without_schema"),
             Self::ProtobufEntityParse => write!(f, "protobuf_entity_parse"),
+            Self::IncrementalEntities => write!(f, "incremental_entities"),
         }
     }
 }
@@ -68,6 +70,7 @@ impl std::str::FromStr for Target {
             "entity_parse_with_schema" => Ok(Self::EntityParseWithSchema),
             "entity_parse_without_schema" => Ok(Self::EntityParseWithoutSchema),
             "protobuf_entity_parse" => Ok(Self::ProtobufEntityParse),
+            "incremental_entities" => Ok(Self::IncrementalEntities),
             _ => Err(format!("unknown target: {s}")),
         }
     }
@@ -139,6 +142,11 @@ pub enum BenchmarkTask {
         name: String,
         entities_file: PathBuf,
     },
+    IncrementalEntities {
+        name: String,
+        cedar_schema_file: PathBuf,
+        entities_file: PathBuf,
+    },
 }
 
 impl BenchmarkTask {
@@ -154,7 +162,8 @@ impl BenchmarkTask {
             | Self::Authorization { name, .. }
             | Self::EntityParseWithSchema { name, .. }
             | Self::EntityParseWithoutSchema { name, .. }
-            | Self::ProtobufEntityParse { name, .. } => name,
+            | Self::ProtobufEntityParse { name, .. }
+            | Self::IncrementalEntities { name, .. } => name,
         }
     }
 
@@ -171,6 +180,7 @@ impl BenchmarkTask {
             Self::EntityParseWithSchema { .. } => Target::EntityParseWithSchema,
             Self::EntityParseWithoutSchema { .. } => Target::EntityParseWithoutSchema,
             Self::ProtobufEntityParse { .. } => Target::ProtobufEntityParse,
+            Self::IncrementalEntities { .. } => Target::IncrementalEntities,
         }
     }
 }
@@ -265,6 +275,13 @@ impl Task {
         {
             if self.is_target_enabled(Target::EntityParseWithSchema) {
                 tasks.push(BenchmarkTask::EntityParseWithSchema {
+                    name: self.name.clone(),
+                    cedar_schema_file: cedar_schema_file.clone(),
+                    entities_file: entities_file.clone(),
+                });
+            }
+            if self.is_target_enabled(Target::IncrementalEntities) {
+                tasks.push(BenchmarkTask::IncrementalEntities {
                     name: self.name.clone(),
                     cedar_schema_file: cedar_schema_file.clone(),
                     entities_file: entities_file.clone(),

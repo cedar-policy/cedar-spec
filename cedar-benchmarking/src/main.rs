@@ -135,14 +135,14 @@ fn print_table(output: &BenchmarkOutput) {
         println!();
         println!("  {}", target);
         println!(
-            "  {:<bench_w$} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9}",
-            "Benchmark", "p50", "p95", "p99", "avg", "min", "max"
+            "  {:<bench_w$} {:>12} {:>9} {:>9} {:>9}",
+            "Benchmark", "avg ± stddev", "min", "max", "p99"
         );
-        println!("  {}", "-".repeat(bench_w + 6 * 10));
+        println!("  {}", "-".repeat(bench_w + 12 + 3 * 10));
         for r in results {
             println!(
-                "  {:<bench_w$} {:>7}µs {:>7}µs {:>7}µs {:>7}µs {:>7}µs {:>7}µs",
-                r.benchmark, r.p50, r.p95, r.p99, r.average, r.min, r.max
+                "  {:<bench_w$} {:>5}µs ± {:<4} {:>7}µs {:>7}µs {:>7}µs",
+                r.benchmark, r.average, format!("{:.0}", r.stddev), r.min, r.max, r.p99
             );
         }
     }
