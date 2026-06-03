@@ -46,170 +46,119 @@
         "policy_file": "generated/access_control.cedar",
         "cedar_schema_file": "generated/access_control.cedarschema",
         "json_schema_file": "generated/access_control.cedarschema.json",
-        "entities_file": "generated/access_control.entities.json",
-        "exclude_targets": [
-            "authorization"
-        ]
+        "entities_file": "generated/access_control.entities.json"
     },
     {
         "name": "generated/api_gateway",
         "policy_file": "generated/api_gateway.cedar",
         "cedar_schema_file": "generated/api_gateway.cedarschema",
         "json_schema_file": "generated/api_gateway.cedarschema.json",
-        "entities_file": "generated/api_gateway.entities.json",
-        "exclude_targets": [
-            "authorization"
-        ]
+        "entities_file": "generated/api_gateway.entities.json"
     },
     {
         "name": "generated/cdn_edge",
         "policy_file": "generated/cdn_edge.cedar",
         "cedar_schema_file": "generated/cdn_edge.cedarschema",
         "json_schema_file": "generated/cdn_edge.cedarschema.json",
-        "entities_file": "generated/cdn_edge.entities.json",
-        "exclude_targets": [
-            "authorization"
-        ]
+        "entities_file": "generated/cdn_edge.entities.json"
     },
     {
         "name": "generated/cicd",
         "policy_file": "generated/cicd.cedar",
         "cedar_schema_file": "generated/cicd.cedarschema",
         "json_schema_file": "generated/cicd.cedarschema.json",
-        "entities_file": "generated/cicd.entities.json",
-        "exclude_targets": [
-            "authorization"
-        ]
+        "entities_file": "generated/cicd.entities.json"
     },
     {
         "name": "generated/cloud_infra",
         "policy_file": "generated/cloud_infra.cedar",
         "cedar_schema_file": "generated/cloud_infra.cedarschema",
         "json_schema_file": "generated/cloud_infra.cedarschema.json",
-        "entities_file": "generated/cloud_infra.entities.json",
-        "exclude_targets": [
-            "authorization"
-        ]
+        "entities_file": "generated/cloud_infra.entities.json"
     },
     {
         "name": "generated/data_platform",
         "policy_file": "generated/data_platform.cedar",
         "cedar_schema_file": "generated/data_platform.cedarschema",
         "json_schema_file": "generated/data_platform.cedarschema.json",
-        "entities_file": "generated/data_platform.entities.json",
-        "exclude_targets": [
-            "authorization"
-        ]
+        "entities_file": "generated/data_platform.entities.json"
     },
     {
         "name": "generated/database_acl",
         "policy_file": "generated/database_acl.cedar",
         "cedar_schema_file": "generated/database_acl.cedarschema",
         "json_schema_file": "generated/database_acl.cedarschema.json",
-        "entities_file": "generated/database_acl.entities.json",
-        "exclude_targets": [
-            "authorization"
-        ]
+        "entities_file": "generated/database_acl.entities.json"
     },
     {
         "name": "generated/decimal_simple",
         "policy_file": "generated/decimal_simple.cedar",
         "cedar_schema_file": "generated/decimal_simple.cedarschema",
         "json_schema_file": "generated/decimal_simple.cedarschema.json",
-        "entities_file": "generated/decimal_simple.entities.json",
-        "exclude_targets": [
-            "authorization"
-        ]
+        "entities_file": "generated/decimal_simple.entities.json"
     },
     {
         "name": "generated/deeply_nested",
         "policy_file": "generated/deeply_nested.cedar",
         "cedar_schema_file": "generated/deeply_nested.cedarschema",
         "json_schema_file": "generated/deeply_nested.cedarschema.json",
-        "entities_file": "generated/deeply_nested.entities.json",
-        "exclude_targets": [
-            "authorization"
-        ]
+        "entities_file": "generated/deeply_nested.entities.json"
     },
     {
         "name": "generated/duration_datetime",
         "policy_file": "generated/duration_datetime.cedar",
         "cedar_schema_file": "generated/duration_datetime.cedarschema",
         "json_schema_file": "generated/duration_datetime.cedarschema.json",
-        "entities_file": "generated/duration_datetime.entities.json",
-        "exclude_targets": [
-            "authorization"
-        ]
+        "entities_file": "generated/duration_datetime.entities.json"
     },
     {
         "name": "generated/financial",
         "policy_file": "generated/financial.cedar",
         "cedar_schema_file": "generated/financial.cedarschema",
         "json_schema_file": "generated/financial.cedarschema.json",
-        "entities_file": "generated/financial.entities.json",
-        "exclude_targets": [
-            "authorization"
-        ]
+        "entities_file": "generated/financial.entities.json"
     },
     {
         "name": "generated/gaming",
         "policy_file": "generated/gaming.cedar",
         "cedar_schema_file": "generated/gaming.cedarschema",
         "json_schema_file": "generated/gaming.cedarschema.json",
-        "entities_file": "generated/gaming.entities.json",
-        "exclude_targets": [
-            "authorization"
-        ]
+        "entities_file": "generated/gaming.entities.json"
     },
     {
         "name": "generated/healthcare",
         "policy_file": "generated/healthcare.cedar",
         "cedar_schema_file": "generated/healthcare.cedarschema",
         "json_schema_file": "generated/healthcare.cedarschema.json",
-        "entities_file": "generated/healthcare.entities.json",
-        "exclude_targets": [
-            "authorization"
-        ]
+        "entities_file": "generated/healthcare.entities.json"
     },
     {
         "name": "generated/iot_platform",
         "policy_file": "generated/iot_platform.cedar",
         "cedar_schema_file": "generated/iot_platform.cedarschema",
         "json_schema_file": "generated/iot_platform.cedarschema.json",
-        "entities_file": "generated/iot_platform.entities.json",
-        "exclude_targets": [
-            "authorization"
-        ]
+        "entities_file": "generated/iot_platform.entities.json"
     },
     {
         "name": "generated/ip_complex",
         "policy_file": "generated/ip_complex.cedar",
         "cedar_schema_file": "generated/ip_complex.cedarschema",
         "json_schema_file": "generated/ip_complex.cedarschema.json",
-        "entities_file": "generated/ip_complex.entities.json",
-        "exclude_targets": [
-            "authorization"
-        ]
+        "entities_file": "generated/ip_complex.entities.json"
     },
     {
         "name": "generated/ip_simple",
         "policy_file": "generated/ip_simple.cedar",
         "cedar_schema_file": "generated/ip_simple.cedarschema",
         "json_schema_file": "generated/ip_simple.cedarschema.json",
-        "entities_file": "generated/ip_simple.entities.json",
-        "exclude_targets": [
-            "authorization"
-        ]
+        "entities_file": "generated/ip_simple.entities.json"
     },
     {
         "name": "generated/k8s_policies",
         "policy_file": "generated/k8s_policies.cedar",
         "cedar_schema_file": "generated/k8s_policies.cedarschema",
         "json_schema_file": "generated/k8s_policies.cedarschema.json",
-        "entities_file": "generated/k8s_policies.entities.json",
-        "exclude_targets": [
-            "authorization"
-        ]
+        "entities_file": "generated/k8s_policies.entities.json"
     },
     {
         "name": "generated/many_policies",
@@ -223,10 +172,7 @@
         "policy_file": "generated/nested_attrs.cedar",
         "cedar_schema_file": "generated/nested_attrs.cedarschema",
         "json_schema_file": "generated/nested_attrs.cedarschema.json",
-        "entities_file": "generated/nested_attrs.entities.json",
-        "exclude_targets": [
-            "authorization"
-        ]
+        "entities_file": "generated/nested_attrs.entities.json"
     },
     {
         "name": "generated/rbac_deep",
@@ -240,19 +186,13 @@
         "policy_file": "generated/trading.cedar",
         "cedar_schema_file": "generated/trading.cedarschema",
         "json_schema_file": "generated/trading.cedarschema.json",
-        "entities_file": "generated/trading.entities.json",
-        "exclude_targets": [
-            "authorization"
-        ]
+        "entities_file": "generated/trading.entities.json"
     },
     {
         "name": "generated/warehouse",
         "policy_file": "generated/warehouse.cedar",
         "cedar_schema_file": "generated/warehouse.cedarschema",
         "json_schema_file": "generated/warehouse.cedarschema.json",
-        "entities_file": "generated/warehouse.entities.json",
-        "exclude_targets": [
-            "authorization"
-        ]
+        "entities_file": "generated/warehouse.entities.json"
     }
 ]

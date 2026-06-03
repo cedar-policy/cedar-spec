@@ -15,7 +15,7 @@
  */
 
 use arbitrary::Unstructured;
-use cedar_policy::{Context, Request};
+use cedar_policy::Request;
 use cedar_policy_core::ast;
 use cedar_policy_core::validator::{json_schema::Fragment, RawName};
 use cedar_policy_generators::{hierarchy::Hierarchy, settings::ABACSettings};
@@ -60,10 +60,10 @@ pub fn generate_requests(
 
     let mut requests: Vec<ast::Request> = Vec::with_capacity(500);
     requests.resize_with(500, || loop {
-        let request: ast::Request = schema
-            .arbitrary_request(&hierarchy, u)
-            .expect("failed to generate request")
-            .into();
+        let request: ast::Request = match schema.arbitrary_request(&hierarchy, u) {
+            Ok(r) => r.into(),
+            Err(_) => continue,
+        };
         // Only keep requests with valid principal and resource from the hierarchy
         if hierarchy
             .uids()
@@ -85,7 +85,7 @@ pub fn generate_requests(
                 r.principal().uid().unwrap().to_string().parse().unwrap(),
                 r.action().uid().unwrap().to_string().parse().unwrap(),
                 r.resource().uid().unwrap().to_string().parse().unwrap(),
-                Context::empty(),
+                r.context().unwrap().clone().into(),
                 None,
             )
             .unwrap()

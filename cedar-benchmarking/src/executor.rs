@@ -86,6 +86,11 @@ impl BenchmarkExecutor {
             BenchmarkTask::ProtobufEntityParse { entities_file, .. } => {
                 self.bench_protobuf_entity_parsing(entities_file)
             }
+            BenchmarkTask::IncrementalEntities {
+                cedar_schema_file,
+                entities_file,
+                ..
+            } => self.bench_incremental_entities(cedar_schema_file, entities_file),
         }
         .wrap_err_with(|| {
             format!(
@@ -247,6 +252,33 @@ impl BenchmarkExecutor {
                     .expect("protobuf entity parse failed");
             },
             &proto,
+        ))
+    }
+
+    fn bench_incremental_entities(
+        self,
+        cedar_schema_file: &Path,
+        entities_file: &Path,
+    ) -> miette::Result<TimingInfo> {
+        let entities_str = std::fs::read_to_string(entities_file).into_diagnostic()?;
+        let schema = Self::load_cedar_schema(cedar_schema_file)?;
+        let all_entities: Vec<cedar_policy::Entity> =
+            cedar_policy::Entities::from_json_str(&entities_str, Some(&schema))
+                .into_diagnostic()?
+                .into_iter()
+                .collect();
+        let midpoint = all_entities.len() / 2;
+        let first_half: Vec<_> = all_entities[..midpoint].to_vec();
+        let second_half: Vec<_> = all_entities[midpoint..].to_vec();
+        let base_entities =
+            cedar_policy::Entities::from_entities(first_half, Some(&schema)).into_diagnostic()?;
+        Ok(self.benchmark(
+            |(base, to_add, schema)| {
+                base.clone()
+                    .add_entities(to_add.iter().cloned(), Some(schema))
+                    .expect("incremental add failed");
+            },
+            (&base_entities, &second_half, &schema),
         ))
     }
 
