@@ -17,6 +17,7 @@
 import Cedar.Spec
 import Cedar.Data
 import Cedar.Validation
+import Cedar.Thm.Data.Control
 import Cedar.Thm.Validation.Typechecker
 import Cedar.Thm.Validation.Typechecker.Types
 import Cedar.Thm.Validation.Slice
@@ -64,18 +65,14 @@ lookups (`hasAttr`/`hasTag`/`mem`), so for them the result follows from the
 inductive hypotheses alone.  Hence only `level_based_no_dne_get_attr` and the
 `.getTag` branch of `level_based_no_dne_binary_app` carry real content.
 
-## The crux (`reachable_of_checked_eval_entity`)
+## The crux (`checked_eval_entity_exists`)
 
-The hard part is `reachable_of_checked_eval_entity`: it is
-`checked_eval_entity_reachable` (Slice/Reachable.lean) with the
-`entities.contains euid` *hypothesis removed*.  The existing lemma assumes the
-reached entity exists; we must instead *conclude* existence, so we need
-reachability that does not presuppose it.  Reachability does not actually
-require the endpoint to exist (`ReachableIn.in_start` only needs membership in
-the work set; only intermediate `step`s require `find? = some`), so the
-generalisation should hold, but proving it means dropping the `contains`
-hypothesis from the `Slice/Reachable/*` helper lemmas it depends on.  That is
-the bulk of the work for this issue; the rest of this file is plumbing.
+`checked_eval_entity_reachable` (Slice/Reachable.lean) already places a
+level-checked entity at `ReachableIn … (n + 1)`, and with its `entities.contains`
+hypothesis dropped upstream it does so without presupposing existence.  Composing
+that with `EntitiesClosedAtLevel` gives `checked_eval_entity_exists`, the single
+lemma consumed by the two dereferencing cases (`getAttr` on an entity, `.getTag`).
+Everything else is plumbing.
 -/
 
 namespace Cedar.Thm
@@ -90,19 +87,31 @@ the request roots (`request.sliceEUIDs`) within `level` dereferences is present
 in the store.  This is the closure condition #642 adds.
 
 Phrased relative to the request because that is what `checked_eval_entity_reachable`
-and friends produce (`ReachableIn entities request.sliceEUIDs euid (n + 1)`),
-which makes `reachable_entity_exists` below definitional.
-
-Alternative considered: a request-independent, store-intrinsic closure ("every
-entity in `es` has all of its `sliceEUIDs` references in `es`, up to depth n").
-That is strictly stronger and could be offered as `EntitiesClosed es n` with a
-derivation `EntitiesClosed es n → EntitiesClosedAtLevel es r n` for any request
-whose roots lie in `es`; but the roots (principal/action/resource) need not be
-in the store, so the request-relative form is the one the proof consumes.  Open
-to switching if a store-only statement is preferred on review.
+and friends produce (`ReachableIn entities request.sliceEUIDs euid (n + 1)`).
+`Entities.closedAtLevel` (Spec/Slice.lean) is the executable algorithm that
+decides this predicate, and `closedAtLevel_iff` proves the two equivalent, so the
+guarantees below can be discharged by *running* the check on a concrete store.
 -/
 def EntitiesClosedAtLevel (entities : Entities) (request : Request) (level : Nat) : Prop :=
   ∀ euid, ReachableIn entities request.sliceEUIDs euid level → entities.contains euid
+
+/--
+`Entities.closedAtLevel` (the executable check) agrees with the
+`EntitiesClosedAtLevel` predicate.  `Entities.closedAtLevel` reuses the reachable
+set computed by the slicing algorithm (`Entities.sliceAtLevel.sliceAtLevel`), and
+membership in that set coincides with `ReachableIn` (`reachable_then_mem_slice` /
+`reachable_of_mem_slice`), so the algorithm checks `contains` on exactly the
+entities the predicate quantifies over.
+-/
+theorem closedAtLevel_iff {entities : Entities} {request : Request} {n : Nat} :
+  entities.closedAtLevel request n = true ↔ EntitiesClosedAtLevel entities request n
+:= by
+  simp only [Entities.closedAtLevel, Set.all_eq_true, EntitiesClosedAtLevel]
+  constructor
+  · intro h euid hr
+    exact h euid (reachable_then_mem_slice hr)
+  · intro h euid hmem
+    exact h euid (reachable_of_mem_slice hmem)
 
 /--
 Per-expression inductive hypothesis, parallel to `TypedAtLevelIsSound`: a
@@ -118,76 +127,36 @@ def TypedAtLevelHasNoDNEError (e : Expr) : Prop :=
     tx.AtLevel env n →
     evaluate e request entities ≠ .error .entityDoesNotExist
 
-/-! ## Closure lemmas -/
+/-! ## The crux: a reachable, level-checked entity exists -/
 
 /--
-Closure is downward closed in the level: fewer hops reach fewer entities
-(`reachable_succ`), so closure at `n + 1` implies closure at `n`.  Needed
-because dereferencing operators decrement the level for their sub-expressions.
+KEY LEMMA (the crux of #642).  If a level-checked, well-typed entity-access
+expression evaluates to (a value yielding, via `path`) `euid`, and the store is
+closed at level `n + 1`, then `euid` is present in the store.
+
+`checked_eval_entity_reachable` (Slice/Reachable.lean) supplies
+`ReachableIn entities request.sliceEUIDs euid (n + 1)` without assuming `euid`
+exists (its `entities.contains` hypothesis was dropped upstream), and
+`EntitiesClosedAtLevel` turns that reachability into membership.  This is the one
+lemma the two dereferencing cases (`getAttr` on an entity, `.getTag`) consume.
 -/
-theorem closed_at_level_succ {entities : Entities} {request : Request} {n : Nat}
-  (hcl : EntitiesClosedAtLevel entities request (n + 1)) :
-  EntitiesClosedAtLevel entities request n
-:= by
-  intro euid hr
-  exact hcl euid (reachable_succ hr)
-
-/--
-Definitional consequence of `EntitiesClosedAtLevel`: a reachable entity exists.
-Kept as a named lemma so the meat cases read declaratively.
--/
-theorem reachable_entity_exists {entities : Entities} {request : Request} {euid : EntityUID} {n : Nat}
-  (hcl : EntitiesClosedAtLevel entities request n)
-  (hr : ReachableIn entities request.sliceEUIDs euid n) :
-  entities.contains euid
-:= hcl euid hr
-
-/-! ## The crux: reachability without assuming existence -/
-
-/--
-KEY LEMMA (the crux of #642).  Identical to `checked_eval_entity_reachable`
-except that the `entities.contains euid` hypothesis is dropped: if a
-level-checked entity-access expression evaluates to (a value yielding, via
-`path`) `euid`, then `euid` is reachable from the request roots in `n + 1`
-hops, whether or not `euid` is present in the store.
-
-This is the main proof obligation.  The expected route is to generalise the
-helper lemmas in `Slice/Reachable/*` (`var_entity_reachable`,
-`checked_eval_entity_reachable_get_attr`, ...) to drop their own `contains`
-hypotheses; the endpoint genuinely never needs to exist for the conclusion to
-hold, only the intermediate `step` entities do.
--/
-theorem reachable_of_checked_eval_entity {e : Expr} {n nmax : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : TypeEnv} {request : Request} {entities : Entities} {v : Value} {path : List Attr} {euid : EntityUID}
+theorem checked_eval_entity_exists {e : Expr} {n nmax : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : TypeEnv} {request : Request} {entities : Entities} {v : Value} {path : List Attr} {euid : EntityUID}
   (hc : CapabilitiesInvariant c request entities)
   (hr : InstanceOfWellFormedEnvironment request entities env)
   (ht : typeOf e c env = .ok (tx, c'))
   (hl : tx.EntityAccessAtLevel env n nmax path)
   (he : evaluate e request entities = .ok v)
-  (ha : Value.EuidViaPath v path euid) :
-  ReachableIn entities request.sliceEUIDs euid (n + 1)
-:= checked_eval_entity_reachable hc hr ht hl he ha
+  (ha : Value.EuidViaPath v path euid)
+  (hcl : EntitiesClosedAtLevel entities request (n + 1)) :
+  entities.contains euid
+:= hcl euid (checked_eval_entity_reachable hc hr ht hl he ha)
 
-/-! ## Generic monadic + per-operation "never DNE" helpers -/
+/-! ## Per-operation "never DNE" helpers
 
-/--
-Monadic bind preserves "not this error": if neither the first computation nor
-the continuation (on success) yields error `e`, the bind does not either.  The
-workhorse for every error-propagation (non-dereferencing) operator case.
+The generic `bind_ne_error` workhorse (monadic bind preserves "not this error")
+lives in `Thm/Data/Control.lean`; the lemmas below cover the individual
+operators.
 -/
-theorem bind_ne_error {α β ε} {r : Except ε α} {f : α → Except ε β} {e : ε}
-  (hr : r ≠ .error e)
-  (hf : ∀ a, r = .ok a → f a ≠ .error e) :
-  (r >>= f) ≠ .error e
-:= by
-  cases r
-  case error e' =>
-    simp only [Except.bind_err, ne_eq, Except.error.injEq]
-    intro heq
-    apply hr
-    rw [heq]
-  case ok a =>
-    simp only [Except.bind_ok]
-    exact hf a rfl
 
 /--
 `apply₁` only ever yields a value, a `typeError`, or an `arithBoundsError` (via
@@ -257,8 +226,8 @@ theorem as_bool_ok_inv {r : Result Value} {b : Bool} (h : Result.as Bool r = .ok
 
 Trivial (IH plumbing only): lit, var, and, or, ite, unaryApp, hasAttr, set,
 call, record, and the non-dereferencing / `*OrEmpty` branches of binaryApp.
-Meaty (use `reachable_of_checked_eval_entity` + `reachable_entity_exists`):
-`get_attr` (entity branch) and the `.getTag` branch of `binary_app`.
+Meaty (use `checked_eval_entity_exists`): `get_attr` (entity branch) and the
+`.getTag` branch of `binary_app`.
 -/
 
 /--
@@ -408,8 +377,8 @@ theorem level_based_no_dne_unary_app {op : UnaryOp} {e : Expr} {n : Nat} {c₀ c
 /--
 Meaty (`.getTag` branch).  For `op = .getTag` the evaluator calls
 `getTag uid tag es` which dereferences `Entities.tags` and can DNE; that branch
-mirrors `get_attr` below (reach the entity, then `reachable_entity_exists`).
-All other binary operators are non-dereferencing or use `*OrEmpty`
+mirrors `get_attr` below (`checked_eval_entity_exists` shows the entity is
+present).  All other binary operators are non-dereferencing or use `*OrEmpty`
 (`.mem`, `.hasTag`), so they follow from the inductive hypotheses.
 -/
 
@@ -455,8 +424,7 @@ theorem level_based_no_dne_binary_app {op : BinaryOp} {e₁ e₂ : Expr} {n : Na
         first
         | (simp [apply₂] ; done)
         | ( rename_i uid tag
-            have hreach := reachable_of_checked_eval_entity hc hr htx₁ hl₁ hv₁eq (.euid uid)
-            have hcont := reachable_entity_exists hcl hreach
+            have hcont := checked_eval_entity_exists hc hr htx₁ hl₁ hv₁eq (.euid uid) hcl
             obtain ⟨ ed, hed ⟩ := Map.contains_iff_some_find?.mp hcont
             simp only [apply₂, getTag, Entities.tags, Map.findOrErr, hed, Except.bind_ok]
             split <;> simp ) )
@@ -483,9 +451,8 @@ theorem level_based_no_dne_binary_app {op : BinaryOp} {e₁ e₂ : Expr} {n : Na
 Entity branch.  `getAttr (entity euid) a es = es.attrs euid >>= (·.findOrErr a attrDoesNotExist)`,
 which DNEs iff `euid ∉ es`.  By soundness `e` evaluates to an entity (or errors,
 in which case the IH rules out a DNE error and the remaining error kinds are not
-`entityDoesNotExist`).  When it evaluates to `entity euid`, `euid` is reachable in
-`n` hops (`reachable_of_checked_eval_entity`) hence present
-(`reachable_entity_exists hcl`), so the outer lookup yields at worst
+`entityDoesNotExist`).  When it evaluates to `entity euid`, `checked_eval_entity_exists`
+shows `euid` is present in the store, so the outer lookup yields at worst
 `attrDoesNotExist`, never `entityDoesNotExist`.
 -/
 theorem level_based_no_dne_get_attr_entity {e : Expr} {tx₁ : TypedExpr} {ty : CedarType} {ety : EntityType} {a : Attr} {n : Nat} {c₀ c₁ : Capabilities} {env : TypeEnv} {request : Request} {entities : Entities}
@@ -514,8 +481,7 @@ theorem level_based_no_dne_get_attr_entity {e : Expr} {tx₁ : TypedExpr} {ty : 
   · exact absurd he (ihe hc hr hcl ht hl₁')
   · simp [he]
   · simp [he]
-  · have hreach := reachable_of_checked_eval_entity hc hr ht hl₁ he (.euid euid)
-    have hcont := reachable_entity_exists hcl hreach
+  · have hcont := checked_eval_entity_exists hc hr ht hl₁ he (.euid euid) hcl
     obtain ⟨ ed, hed ⟩ := Map.contains_iff_some_find?.mp hcont
     simp only [he, Except.bind_ok, getAttr, attrsOf, Entities.attrs, Map.findOrErr, hed]
     split <;> simp

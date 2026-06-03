@@ -253,3 +253,41 @@ theorem slice_contains_reachable {n: Nat} {work : Set EntityUID} {euid : EntityU
       and_intros
       · exists euid'
       · exact slice_contains_reachable hw
+
+/--
+Converse of `slice_contains_reachable`: every entity in the level-`n` slice (the
+reachable set computed by `Entities.sliceAtLevel`) is reachable in `n` steps.
+Together with `reachable_then_mem_slice` this gives `euid ∈ slice ↔ ReachableIn`,
+the bridge that makes `Entities.closedAtLevel` decide `EntitiesClosedAtLevel`.
+-/
+theorem reachable_of_mem_slice {n : Nat} {work : Set EntityUID} {euid : EntityUID} {entities : Entities}
+  (h : euid ∈ Entities.sliceAtLevel.sliceAtLevel entities work n) :
+  ReachableIn entities work euid n
+:= by
+  cases n
+  case zero =>
+    simp only [Entities.sliceAtLevel.sliceAtLevel] at h
+    exact absurd h (Set.not_mem_empty euid)
+  case succ m =>
+    simp only [Entities.sliceAtLevel.sliceAtLevel] at h
+    rw [Set.mem_union] at h
+    cases h
+    case inl hw => exact ReachableIn.in_start hw
+    case inr hs =>
+      simp only [List.mem_mapUnion_iff_mem_exists, List.mem_filterMap] at hs
+      obtain ⟨ed, ⟨i, hi, hfind⟩, hmem⟩ := hs
+      exact ReachableIn.step i ((Set.mem_elts_iff_mem_set i work).mp hi) hfind (reachable_of_mem_slice hmem)
+termination_by n
+
+/--
+`ReachableIn` at any level implies membership in the level-`n` slice.  Wraps
+`slice_contains_reachable` (the `n + 1` case); `n = 0` is vacuous since
+`ReachableIn _ _ _ 0` is uninhabited.
+-/
+theorem reachable_then_mem_slice {n : Nat} {work : Set EntityUID} {euid : EntityUID} {entities : Entities}
+  (hr : ReachableIn entities work euid n) :
+  euid ∈ Entities.sliceAtLevel.sliceAtLevel entities work n
+:= by
+  cases n
+  case zero => cases hr
+  case succ m => exact slice_contains_reachable hr

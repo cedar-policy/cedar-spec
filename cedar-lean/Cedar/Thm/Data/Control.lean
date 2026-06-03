@@ -34,6 +34,25 @@ notation together with `Except` and `Option`.
   (bind (Except.error e) f : Except ε β) = (Except.error e)
 := by rfl
 
+/--
+Monadic bind preserves "not this error": if neither the first computation nor
+the continuation (on success) yields error `e`, the bind does not either.
+-/
+public theorem bind_ne_error {α β ε} {r : Except ε α} {f : α → Except ε β} {e : ε}
+  (hr : r ≠ .error e)
+  (hf : ∀ a, r = .ok a → f a ≠ .error e) :
+  (r >>= f) ≠ .error e
+:= by
+  cases r
+  case error e' =>
+    simp only [Except.bind_err, ne_eq, Except.error.injEq]
+    intro heq
+    apply hr
+    rw [heq]
+  case ok a =>
+    simp only [Except.bind_ok]
+    exact hf a rfl
+
 -- The `Option.bind_*` theorems let `simp` reduce terms that use the `do` notation.
 @[simp] public theorem Option.bind_some_T (a : α) (f : α → OptionT Id β) :
   (bind (Option.some a) f : OptionT Id β) = f a

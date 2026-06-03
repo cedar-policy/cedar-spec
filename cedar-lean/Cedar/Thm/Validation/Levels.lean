@@ -171,3 +171,47 @@ theorem validate_with_level_is_sound_wf {ps : Policies} {schema : Schema} {n : N
     intro p hp
     exact typecheck_policy_at_level_with_environments_is_sound hwf (htl p hp)
   exact is_authorized_congr_evaluate hsound
+
+/--
+The `_no_dne` analogue of `typecheck_policy_at_level_with_environments_is_sound`:
+a policy that level-checks against every environment of the schema (and so, in
+particular, the one the request inhabits), evaluated against a store closed at
+that level, never produces `entityDoesNotExist`.
+-/
+theorem typecheck_policy_at_level_with_environments_no_dne {p : Policy} {schema : Schema} {n : Nat} {request : Request} {entities : Entities}
+  (he : ∃ env ∈ schema.environments, InstanceOfWellFormedEnvironment request entities env)
+  (hcl : EntitiesClosedAtLevel entities request n)
+  (htl : typecheckPolicyWithEnvironments (typecheckPolicyWithLevel · n) p schema = .ok ()) :
+  evaluate p.toExpr request entities ≠ .error .entityDoesNotExist
+:= by
+  replace htl : ∀ x ∈ schema.environments, ∃ tx, typecheckPolicyWithLevel p n x = .ok tx := by
+    simp only [typecheckPolicyWithEnvironments, Except.mapError] at htl
+    simp_do_let (checkEntities schema p.toExpr) as hes at htl
+    simp_do_let (List.mapM (typecheckPolicyWithLevel p n) schema.environments) as htl₁ at htl
+    replace htl₁ := List.forall₂_implies_all_left ∘ List.mapM_ok_iff_forall₂.mp $ htl₁
+    intro env he
+    specialize htl₁ env he
+    simp only [htl₁.imp, and_imp, imp_self, implies_true]
+  have ⟨env, ⟨he₁, hr⟩⟩ := he
+  specialize htl env he₁
+  replace ⟨_, htl⟩ := htl
+  exact typecheck_policy_with_level_no_dne hr hcl htl
+
+/--
+Validator-level statement of issue #642: if every policy in `ps` validates at
+level `n` and `entities` is closed at level `n` for the request, then no policy
+evaluates to an `entityDoesNotExist` error.  This is exactly the family of
+evaluations `isAuthorized` performs, so it is the closure guarantee `isAuthorized`
+inherits (the authorizer surfaces evaluation results only through the
+kind-agnostic `errorPolicies` / `satisfiedPolicies`, and never introduces a
+`entityDoesNotExist` of its own).  Mirrors `validate_with_level_is_sound_wf`.
+-/
+theorem validate_with_level_no_dne_wf {ps : Policies} {schema : Schema} {n : Nat} {request : Request} {entities : Entities}
+  (hwf : InstanceOfWellFormedSchema schema request entities)
+  (hcl : EntitiesClosedAtLevel entities request n)
+  (htl : validateWithLevel ps schema n = .ok ()) :
+  ∀ p ∈ ps, evaluate p.toExpr request entities ≠ .error .entityDoesNotExist
+:= by
+  replace htl := List.forM_ok_implies_all_ok _ _ htl
+  intro p hp
+  exact typecheck_policy_at_level_with_environments_no_dne hwf hcl (htl p hp)
