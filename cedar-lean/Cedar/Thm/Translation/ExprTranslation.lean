@@ -11,6 +11,7 @@ open Cedar.Data
 open Cedar.Spec
 
 set_option maxHeartbeats 1000000
+set_option linter.unusedVariables false
 
 theorem Cst.ExprOrSpecial.toExpr?_evaluate  {eos : ExprOrSpecial} {aexp : Expr} req es :
   eos.toExpr? = some aexp →
@@ -153,7 +154,9 @@ decreasing_by
   all_goals first
     | (apply Prod.Lex.left; omega)
     | (apply Prod.Lex.left
-       rename_i hx _; have := List.sizeOf_lt_of_mem hx; omega)
+       rename_i hx _
+       have := List.sizeOf_lt_of_mem hx
+       omega)
 
 theorem Cst.Member.toAExpr?_evaluate
   {mem : Cst.Member} {eos : ExprOrSpecial}
@@ -754,33 +757,27 @@ theorem Cst.Relation.toAExpr?_evaluate
   intro hrel aexp heos v
   cases rel with
   | rCommon initial extended =>
-    -- Translator filters out extended.length > 1 to none.
     match hext : extended with
     | [] =>
-      -- Both sides delegate to AddExpr.toAExpr?_evaluate.
-      simp [Cst.Relation.toExprOrSpecial?, hext] at hrel
+      simp [Cst.Relation.toExprOrSpecial?] at hrel
       have hadd_iff := @Cst.AddExpr.toAExpr?_evaluate initial eos req es hrel aexp heos v
-      simp [Cst.Relation.evaluate, hext]
+      simp [Cst.Relation.evaluate]
       exact hadd_iff
     | [(op, x)] =>
-      -- AST: constructExprRel op first second; CST: Cst.applyRelOp op v₁ v₂.
-      simp [Cst.Relation.toExprOrSpecial?, hext] at hrel
+      simp [Cst.Relation.toExprOrSpecial?] at hrel
       simp only [Option.bind_eq_some_iff] at hrel
       obtain ⟨ieos, hieos, eFirst, hFirst, eSecond, hSecond, hres⟩ := hrel
       injection hres with hres
       rw [← hres] at heos
       simp [ExprOrSpecial.toExpr?] at heos
       rw [← heos]
-      -- Bridge `evaluate eFirst` and `initial.evaluate` via the iff for ieos.
-      have hieos_iff := @Cst.ExprOrSpecial.toExpr?_evaluate ieos eFirst req es hFirst
       have hinit_iff :=
         @Cst.AddExpr.toAExpr?_evaluate initial ieos req es hieos eFirst hFirst
-      -- Bridge `evaluate eSecond` and `x.evaluate` via Cst.AddExpr.toAExpr?_evaluate.
       simp [Cst.AddExpr.toAExpr?, Option.bind_eq_some_iff] at hSecond
       obtain ⟨xeos, hxeos, hxsecond⟩ := hSecond
       have hx_iff : ∀ vp, evaluate eSecond req es = .ok vp ↔ x.evaluate req es = .ok vp :=
         Cst.AddExpr.toAExpr?_evaluate hxeos eSecond hxsecond
-      simp [Cst.Relation.evaluate, hext]
+      simp [Cst.Relation.evaluate]
       cases h_init : initial.evaluate req es with
       | error err =>
         simp [bind, Except.bind]
@@ -789,71 +786,46 @@ theorem Cst.Relation.toAExpr?_evaluate
           have := (hinit_iff vp).mp h_first
           rw [this] at h_init; cases h_init
         | error _ =>
-          -- Both LHS and RHS short-circuit on the first operand's error.
-          -- Goal: <evaluate constructExprRel ...> = .ok v ↔ False
-          -- which simplifies via the constructExprRel evaluator's bind chain.
           cases op <;>
-            simp [constructExprRel, evaluate, h_first, bind, Except.bind, apply₁]
+            simp [constructExprRel, evaluate, h_first, bind, Except.bind]
       | ok iv =>
         simp [bind, Except.bind]
         have h_first : evaluate eFirst req es = .ok iv := (hinit_iff iv).mpr h_init
         cases h_x : x.evaluate req es with
         | error err =>
-          -- x.evaluate errors ⇒ evaluate eSecond also errors (via hx_iff contrapositive).
-          -- Both LHS and RHS produce error: show iff trivially holds.
           cases h_second : evaluate eSecond req es with
           | ok xv =>
             have := (hx_iff xv).mp h_second
             rw [this] at h_x; cases h_x
           | error err' =>
-            -- AST: constructExprRel evaluates inner expressions; eSecond errors so
-            -- the resulting expression errors ⇒ LHS is false.
-            -- CST: apply₂ on second operand errors ⇒ RHS is false.
             constructor
             · intro hev
-              -- evaluate (constructExprRel op eFirst eSecond) = .ok v
-              -- but evaluate eSecond errors; constructExprRel's body always
-              -- evaluates eSecond (after eFirst), so it errors. Contradiction.
               exfalso
               cases op <;> simp [constructExprRel, evaluate, h_first, h_second,
-                                  bind, Except.bind, apply₁] at hev
+                                  bind, Except.bind] at hev
             · intro hev
-              -- Cst.applyRelOp on `(iv, x_value)` — but x.evaluate errors, so
-              -- the do-bind short-circuits before reaching applyRelOp.  Wait,
-              -- looking at CST evaluate: rCommon does `let v₁ ← x.evaluate; ...`
-              -- which means x.evaluate is the SECOND argument to applyRelOp.
-              -- The CST already has `let v₂ ← y.evaluate` which is x.evaluate
-              -- in our naming. So h_x errors ⇒ the bind short-circuits.
-              -- The hypothesis hev claims that result is .ok v, contradiction.
-              simp [bind, Except.bind, h_x] at hev
+              simp_all
         | ok xv =>
           have h_second : evaluate eSecond req es = .ok xv := (hx_iff xv).mpr h_x
           rw [constructExprRel_applyRelOp_agrees op eFirst eSecond req es iv xv h_first h_second]
     | _ :: _ :: _ =>
-      simp [Cst.Relation.toExprOrSpecial?, hext] at hrel
+      simp [Cst.Relation.toExprOrSpecial?] at hrel
   | rHas target field =>
     simp [Cst.Relation.toExprOrSpecial?, Option.bind_eq_some_iff] at hrel
     obtain ⟨mt, hmt, mf, hmf, hres⟩ := hrel
-    -- hmt : target.toAExpr? = some mt
-    -- hmf : field.toHasRhs? = some mf
-    -- hres encodes the inner match producing eos.
-    -- Bridge target via Cst.AddExpr.toAExpr?_sound-style iff.
     simp [Cst.AddExpr.toAExpr?, Option.bind_eq_some_iff] at hmt
     obtain ⟨tEos, htEos, htExpr⟩ := hmt
     have htarget_iff :=
       @Cst.AddExpr.toAExpr?_evaluate target tEos req es htEos mt htExpr
-    -- Bridge field via addExpr_toHasRhs_toAttrs_agrees.
     have hfield_attrs := addExpr_toHasRhs_toAttrs_agrees hmf
     have hfield_nonempty := hasRhsToList_nonempty hmf
     simp [Cst.Relation.evaluate, hfield_attrs]
-    -- Now case-split on mf (.inl f or .inr fs).
     cases mf with
     | inl f =>
       simp at hres
       rw [← hres] at heos
       simp [ExprOrSpecial.toExpr?] at heos
       rw [← heos]
-      -- AST: evaluate (.hasAttr mt f).  CST: rHasChain v f [] es.
       simp [hasRhsToList]
       cases htgt : target.evaluate req es with
       | error err =>
@@ -872,7 +844,6 @@ theorem Cst.Relation.toAExpr?_evaluate
       simp [ExprOrSpecial.toExpr?] at heos
       rw [← heos]
       simp [hasRhsToList] at hfield_attrs hfield_nonempty
-      -- fs is non-empty by hfield_nonempty, so it's `head :: tail`.
       cases hfs : fs with
       | nil => rw [hfs] at hfield_nonempty; simp at hfield_nonempty
       | cons a as =>
@@ -885,7 +856,6 @@ theorem Cst.Relation.toAExpr?_evaluate
             have := (htarget_iff vt).mp htgt'
             rw [this] at htgt; cases htgt
           | error _ =>
-            -- LHS: extendedHasAttr mt (a :: as) evaluates with mt erroring.
             cases as with
             | nil => simp [extendedHasAttr, evaluate, htgt', bind, Except.bind]
             | cons b bs => simp [extendedHasAttr, evaluate, htgt', bind, Except.bind,
