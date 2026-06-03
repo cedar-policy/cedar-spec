@@ -91,4 +91,27 @@ theorem validate_with_level_is_sound {ps : Policies} {schema : Schema} {n : Nat}
   isAuthorized request entities ps = isAuthorized request (entities.sliceAtLevel request n) ps
 := validate_with_level_is_sound_wf (request_and_entities_validate_implies_instance_of_wf_schema _ _ _ hwf hr he) htl
 
+/--
+End-to-end statement of issue #642 for a validated policy set, phrased over the
+*executable* closure check `Entities.closedAtLevel`: if `ps` validates at level
+`n` and the store passes `entities.closedAtLevel request n`, then no policy
+evaluates to `entityDoesNotExist`.  These are exactly the evaluations
+`isAuthorized` performs, so this is the per-policy guarantee `isAuthorized`
+inherits: the authorizer surfaces evaluation results only through the
+kind-agnostic `errorPolicies` / `satisfiedPolicies` and never raises
+`entityDoesNotExist` of its own.  Mirrors `validate_with_level_is_sound`, with the
+runtime closure obligation discharged by running `Entities.closedAtLevel`
+(`closedAtLevel_iff` bridges it to the `EntitiesClosedAtLevel` predicate).
+-/
+theorem validate_with_level_no_dne {ps : Policies} {schema : Schema} {n : Nat} {request : Request} {entities : Entities}
+  (hwf : schema.validateWellFormed = .ok ())
+  (hr : validateRequest schema request = .ok ())
+  (he : validateEntities schema entities = .ok ())
+  (hcl : entities.closedAtLevel request n)
+  (htl : validateWithLevel ps schema n = .ok ()) :
+  ∀ p ∈ ps, evaluate p.toExpr request entities ≠ .error .entityDoesNotExist
+:= validate_with_level_no_dne_wf
+    (request_and_entities_validate_implies_instance_of_wf_schema _ _ _ hwf hr he)
+    (closedAtLevel_iff.mp hcl) htl
+
 end Cedar.Thm

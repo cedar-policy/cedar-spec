@@ -155,8 +155,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n nmax: Nat} {c c' : Capabilit
   (ht : typeOf e c env = .ok (tx, c'))
   (hl : tx.EntityAccessAtLevel env n nmax path)
   (he : evaluate e request entities = .ok v)
-  (ha : Value.EuidViaPath v path euid)
-  (hf : entities.contains euid) :
+  (ha : Value.EuidViaPath v path euid) :
   ReachableIn entities request.sliceEUIDs euid (n + 1)
 := by
   cases e
@@ -167,12 +166,12 @@ theorem checked_eval_entity_reachable {e : Expr} {n nmax: Nat} {c c' : Capabilit
     exact ReachableIn.in_start hi
 
   case var =>
-    exact var_entity_reachable he ha hf
+    exact var_entity_reachable he ha
 
   case ite e₁ e₂ e₃ =>
     have ih₂ := @checked_eval_entity_reachable e₂
     have ih₃ := @checked_eval_entity_reachable e₃
-    exact checked_eval_entity_reachable_ite hc hr ht hl he ha hf ih₂ ih₃
+    exact checked_eval_entity_reachable_ite hc hr ht hl he ha ih₂ ih₃
 
   case and =>
     exfalso
@@ -192,7 +191,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n nmax: Nat} {c c' : Capabilit
 
   case getAttr e _ =>
     have ih := @checked_eval_entity_reachable e
-    exact checked_eval_entity_reachable_get_attr hc hr ht hl he ha hf ih
+    exact checked_eval_entity_reachable_get_attr hc hr ht hl he ha ih
 
   case hasAttr e a =>
     exfalso
@@ -212,7 +211,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n nmax: Nat} {c c' : Capabilit
         simp only [Expr.record.sizeOf_spec, gt_iff_lt]
         omega
       exact @checked_eval_entity_reachable x
-    exact checked_eval_entity_reachable_record hc hr ht hl he ha hf ih
+    exact checked_eval_entity_reachable_record hc hr ht hl he ha ih
 
   case call xfn args =>
     exfalso
@@ -254,3 +253,41 @@ theorem slice_contains_reachable {n: Nat} {work : Set EntityUID} {euid : EntityU
       and_intros
       · exists euid'
       · exact slice_contains_reachable hw
+
+/--
+Converse of `slice_contains_reachable`: every entity in the level-`n` slice (the
+reachable set computed by `Entities.sliceAtLevel`) is reachable in `n` steps.
+Together with `reachable_then_mem_slice` this gives `euid ∈ slice ↔ ReachableIn`,
+the bridge that makes `Entities.closedAtLevel` decide `EntitiesClosedAtLevel`.
+-/
+theorem reachable_of_mem_slice {n : Nat} {work : Set EntityUID} {euid : EntityUID} {entities : Entities}
+  (h : euid ∈ Entities.sliceAtLevel.sliceAtLevel entities work n) :
+  ReachableIn entities work euid n
+:= by
+  cases n
+  case zero =>
+    simp only [Entities.sliceAtLevel.sliceAtLevel] at h
+    exact absurd h (Set.not_mem_empty euid)
+  case succ m =>
+    simp only [Entities.sliceAtLevel.sliceAtLevel] at h
+    rw [Set.mem_union] at h
+    cases h
+    case inl hw => exact ReachableIn.in_start hw
+    case inr hs =>
+      simp only [List.mem_mapUnion_iff_mem_exists, List.mem_filterMap] at hs
+      obtain ⟨ed, ⟨i, hi, hfind⟩, hmem⟩ := hs
+      exact ReachableIn.step i ((Set.mem_elts_iff_mem_set i work).mp hi) hfind (reachable_of_mem_slice hmem)
+termination_by n
+
+/--
+`ReachableIn` at any level implies membership in the level-`n` slice.  Wraps
+`slice_contains_reachable` (the `n + 1` case); `n = 0` is vacuous since
+`ReachableIn _ _ _ 0` is uninhabited.
+-/
+theorem reachable_then_mem_slice {n : Nat} {work : Set EntityUID} {euid : EntityUID} {entities : Entities}
+  (hr : ReachableIn entities work euid n) :
+  euid ∈ Entities.sliceAtLevel.sliceAtLevel entities work n
+:= by
+  cases n
+  case zero => cases hr
+  case succ m => exact slice_contains_reachable hr

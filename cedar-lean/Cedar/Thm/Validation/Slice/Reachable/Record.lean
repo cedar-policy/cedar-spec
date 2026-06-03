@@ -58,7 +58,6 @@ theorem checked_eval_entity_reachable_record {rxs : List (Attr × Expr)} {n : Na
   (hl : tx.EntityAccessAtLevel env n nmax path)
   (he : evaluate (.record rxs) request entities = .ok v)
   (ha : Value.EuidViaPath v path euid)
-  (hf : entities.contains euid)
   (ih : ∀ a x, (Map.make rxs).find? a = some x → CheckedEvalEntityReachable x) :
   ReachableIn entities request.sliceEUIDs euid (n + 1)
 := by
@@ -70,4 +69,4 @@ theorem checked_eval_entity_reachable_record {rxs : List (Attr × Expr)} {n : Na
   have ⟨ rtxs, _, atx, htx, hfatx, _, het⟩ := typed_record_contains_typed_attrs ht hfx
   rw [htx] at hl
   have hl' := record_entity_access_implies_attr_entity_access hl hfatx
-  exact ih a x hfx hc hr het hl' hex hv hf
+  exact ih a x hfx hc hr het hl' hex hv

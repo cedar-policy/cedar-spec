@@ -84,9 +84,8 @@ theorem checked_eval_entity_reachable_get_tag {e₁ e₂: Expr} {n : Nat} {c c' 
 
   have ⟨ ed, hed, hed' ⟩ := entities_tags_then_find? he₃
   subst hed'
-  have hf' : entities.contains euid' := by simp [Map.contains, Option.isSome, hed]
 
-  have ih := ih₁ hc hr htx₁ hl₁ he₁ (.euid euid') hf'
+  have ih := ih₁ hc hr htx₁ hl₁ he₁ (.euid euid')
   exact reachable_tag_step ih hed hv ha
 
 theorem binary_op_not_euid_via_path {op : BinaryOp} {e₁ e₂: Expr} {entities : Entities} {path : List Attr}
