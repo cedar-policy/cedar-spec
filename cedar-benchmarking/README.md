@@ -6,7 +6,8 @@ You can use your own set of benchmarks, or test on the provided one in `corpus/`
 ```bash
 cargo run --release -- --corpus corpus/tasks.json --trials 500 --output table
 ```
-To use your own benchmarks, provide a path to a `tasks.json` describing your benchmarks.
+To use your own benchmarks, provide a path to a `tasks.json` describing your benchmarks (see [corpus format](#corpus-format)).
+To install from source, run `cargo install --path .`.
 
 ### Options
 
@@ -18,6 +19,7 @@ To use your own benchmarks, provide a path to a `tasks.json` describing your ben
 | `--output <format>` | Output format: `json` (default) or `table` (human-readable) |
 
 ### Example: run only parsing benchmarks with 500 trials
+
 
 ```bash
 cedar-benchmarking --corpus corpus/tasks.json --targets policy_parse,schema_parse --trials 500
@@ -53,8 +55,22 @@ Results are printed as JSON to stdout by default:
   ]
 }
 ```
+but you can also print them as a table with `--output table`:
+```
+Cedar <version> | <hardware information>
+
+  policy_parse
+  Benchmark                   avg ± stddev       min       max       p99
+  ---------------------------------------------------------------------
+  tinytodo                       93µs ± 4         92µs     159µs     108µs
+  oopsla/tinytodo                93µs ± 2         92µs     110µs     105µs
+  oopsla/gdrive                  97µs ± 2         96µs     117µs     109µs
+  oopsla/github                 115µs ± 2        113µs     130µs     126µs
+[more lines...]
+```
 
 ### Fields
+Each `results` object in the JSON output has the following fields:
 
 | Field | Description |
 |-------|-------------|
@@ -80,6 +96,7 @@ Results are printed as JSON to stdout by default:
 | `entity_parse_with_schema` | Parse entities with schema validation |
 | `entity_parse_without_schema` | Parse entities without schema |
 | `protobuf_entity_parse` | Parse entities from protobuf encoding |
+| `incremental_entities` | Incrementally add entities (measures transitive closure recomputation) |
 
 ## Corpus format
 
@@ -93,10 +110,12 @@ A corpus is a `tasks.json` file alongside the referenced policy/schema/entity fi
     "cedar_schema_file": "path/to/schema.cedarschema",
     "json_schema_file": "path/to/schema.cedarschema.json",
     "entities_file": "path/to/entities.json",
-    "exclude_targets": ["protobuf_policy_parse"]
+    "only_targets": ["policy_parse", "validation"]
   }
 ]
 ```
+
+Use `only_targets` to run specific targets, or `exclude_targets` to skip specific targets. If both are set, `only_targets` is applied first and `exclude_targets` filters the result.
 
 All paths are relative to the directory containing `tasks.json`.
 
@@ -106,10 +125,10 @@ To compare performance across Cedar releases, build the benchmark binary from ea
 
 ```bash
 # Build from release tags
-git checkout v4.10.0 && cargo build --release -p cedar-benchmarking
+git checkout cedar-benchmarking-v4.10.0 && cargo build --release -p cedar-benchmarking
 cp target/release/cedar-benchmarking cedar-bench-4.10
 
-git checkout v4.11.0 && cargo build --release -p cedar-benchmarking
+git checkout cedar-benchmarking-v4.11.0 && cargo build --release -p cedar-benchmarking
 cp target/release/cedar-benchmarking cedar-bench-4.11
 
 # Run against same corpus

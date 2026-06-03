@@ -44,6 +44,10 @@ use_self = "allow"
 option_if_let_else = "allow"
 redundant_pub_crate = "allow"
 too_long_first_doc_paragraph = "allow"
+missing_const_for_fn = "allow"
+needless_doctest_main = "allow"
+result_large_err = "allow"
+large_enum_variant = "allow"
 
 [dependencies]
 arbitrary = "1.4"

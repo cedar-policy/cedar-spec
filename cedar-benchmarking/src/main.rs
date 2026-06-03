@@ -142,7 +142,12 @@ fn print_table(output: &BenchmarkOutput) {
         for r in results {
             println!(
                 "  {:<bench_w$} {:>5}µs ± {:<4} {:>7}µs {:>7}µs {:>7}µs",
-                r.benchmark, r.average, format!("{:.0}", r.stddev), r.min, r.max, r.p99
+                r.benchmark,
+                r.average,
+                format!("{:.0}", r.stddev),
+                r.min,
+                r.max,
+                r.p99
             );
         }
     }
