@@ -562,11 +562,6 @@ public def Policies.toExpr (ps : Policies) : Expr :=
 
 /- Authorizer -/
 
-public def Ident.toEffect? : Ident →  Option Effect
-  | .idPermit => some .permit
-  | .idForbid => some .forbid
-  | _ => none
-
 public def satisfied (policy : Policy) (req : Request) (entities : Entities) : Bool :=
   policy.toExpr.evaluate req entities = .ok true
 
@@ -575,7 +570,7 @@ public def satisfied (policy : Policy) (req : Request) (entities : Entities) : B
 public def satisfiedWithEffect (effect : Effect) (policy : Policy) (req : Request) (entities : Entities) : Bool :=
   if satisfied policy req entities then
   match policy with
-  | .policy p => match p.effect.toEffect? with
+  | .policy p => match CstCommon.Ident.toEffect? p.effect with
     | none => false
     | some eff => eff = effect
   else false

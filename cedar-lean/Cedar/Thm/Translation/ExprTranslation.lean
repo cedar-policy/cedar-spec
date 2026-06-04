@@ -1227,7 +1227,7 @@ termination_by (sizeOf e, 0)
 decreasing_by
   all_goals (apply Prod.Lex.left; decreasing_tactic)
 
-theorem Cst.Expr.toAExpr?_sound
+theorem expr_to_expr_agrees
   {e : Cst.Expr} {aexp : Expr} {req : Request} {es : Entities} :
   e.toAExpr? = some aexp →
   ∀ v, evaluate aexp req es = .ok v ↔ e.evaluate req es = .ok v := by
@@ -1238,10 +1238,5 @@ theorem Cst.Expr.toAExpr?_sound
   | some eos =>
     apply Cst.Expr.toAExpr?_evaluate heos aexp
     simp [heos] at h; exact h
-
--- theorem expr_translation_sound (cexp : Cst.Expr) (aexp : Expr) (req : Request) (es : Entities) :
---   cexp.toAExpr? = some aexp →
---   cexp.evaluate req es = evaluate aexp req es := by sorry
-
 
 end

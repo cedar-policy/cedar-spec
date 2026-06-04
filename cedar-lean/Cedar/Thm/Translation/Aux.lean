@@ -1518,3 +1518,219 @@ theorem list_mem_toAExpr {es : List Cst.Expr} {uids : List EntityUID} :
 termination_by (sizeOf es, 2)
 decreasing_by all_goals (simp_wf; first | assumption | decreasing_tactic)
 end
+
+/- Forward translation helpers (used by the policy-translation soundness proof) -/
+
+/-- `toEntityUID?` agrees with the AST translation on the produced literal. -/
+theorem toEntityUID_toAExpr {e : Cst.Expr} {uid : EntityUID} :
+    e.toEntityUID? = some uid → e.toAExpr? = some (.lit (.entityUID uid)) := by
+  intro h
+  simp [Cst.Expr.toEntityUID?, Option.bind_eq_some_iff] at h
+  obtain ⟨erefs, herefs, hmatch⟩ := h
+  cases erefs with
+  | inl eref => simp only [Option.some.injEq] at hmatch; subst hmatch; exact expr_mem_toAExpr herefs
+  | inr _ => simp at hmatch
+
+/-- `Cst.Expr.not` translates to an AST `.not`. -/
+theorem cond_not_toAExpr {e : Cst.Expr} {b : Expr} :
+    e.toAExpr? = some b → (Cst.Expr.not e).toAExpr? = some (Expr.unaryApp .not b) := by
+  intro h
+  simp [Cst.Expr.not, Cst.Expr.toPrimary, Cst.Primary.toMember,
+    Cst.Unary.toMultExpr, Cst.MultExpr.toAddExpr, Cst.AddExpr.toRelation, Cst.Relation.toAndExpr,
+    Cst.AndExpr.toOrExpr, Cst.OrExpr.toExpr, Cst.Expr.toAExpr?, Cst.Expr.toExprOrSpecial?,
+    Cst.ExprImpl.toExprOrSpecial?, Cst.ExprData.toExprOrSpecial?, Cst.OrExpr.toExprOrSpecial?,
+    Cst.AndExpr.toExprOrSpecial?, Cst.Relation.toExprOrSpecial?, Cst.AddExpr.toExprOrSpecial?,
+    Cst.MultExpr.toExprOrSpecial?, Cst.Unary.toExprOrSpecial?, Cst.Member.toExprOrSpecial?,
+    Cst.Primary.toExprOrSpecial?, memberAux, Expr.bangN, ExprOrSpecial.toExpr?, h]
+
+/-- If both halves of an append `mapM`-translate, so does the whole list. -/
+theorem mapM_append_isSome {α β : Type} {f : α → Option β} :
+    ∀ {l1 l2 : List α},
+    (∃ r1, l1.mapM f = some r1) → (∃ r2, l2.mapM f = some r2) →
+    ∃ r, (l1 ++ l2).mapM f = some r := by
+  intro l1 l2 h1 h2
+  obtain ⟨r1, hr1⟩ := h1
+  obtain ⟨r2, hr2⟩ := h2
+  induction l1 generalizing r1 with
+  | nil =>
+    simp only [List.nil_append]
+    exact ⟨r2, hr2⟩
+  | cons hd tl ih =>
+    simp [List.mapM_cons, Option.bind_eq_some_iff] at hr1
+    obtain ⟨b, hb, rest, hrest, _⟩ := hr1
+    obtain ⟨r, hr⟩ := ih rest hrest
+    refine ⟨b :: r, ?_⟩
+    rw [List.cons_append]
+    simp [List.mapM_cons, hb, hr]
+
+/-- Collapsing a single-relation `AndExpr` through the translation chain. -/
+theorem andExpr_single_collapse (r : Cst.Relation) :
+    ({initial := r, extended := []} : Cst.AndExpr).toOrExpr.toExpr.toAExpr? = r.toAExpr? := by
+  simp [Cst.AndExpr.toOrExpr, Cst.OrExpr.toExpr, Cst.Expr.toAExpr?, Cst.Expr.toExprOrSpecial?,
+    Cst.ExprImpl.toExprOrSpecial?, Cst.ExprData.toExprOrSpecial?, Cst.OrExpr.toExprOrSpecial?,
+    Cst.AndExpr.toExprOrSpecial?, Cst.Relation.toAExpr?]
+
+/-- Forward leaf translation for principal/resource scope variables: when
+    `toPRScope?` succeeds and the variable translates to an `Expr.var`, the
+    variable definition's expression translates to AST. -/
+theorem toPRScope_leaf_isSome {vd : Cst.VariableDef} {scope : Scope} {v : Var}
+    (hv : (vd.var.varToAddExpr).toExprOrSpecial? = some (ExprOrSpecial.var v))
+    (hscope : vd.toPRScope? = some scope) :
+    ∃ leaf, vd.toExpr.toAExpr? = some leaf := by
+  have hv2 : (vd.var.varToAddExpr).toAExpr? = some (Expr.var v) := by
+    simp [Cst.AddExpr.toAExpr?, hv, ExprOrSpecial.toExpr?]
+  obtain ⟨var, et, ineq⟩ := vd
+  simp only [Cst.VariableDef.toExpr, Cst.VariableDef.toAndExpr]
+  match ineq, et, hscope with
+  | none, none, hscope =>
+    rw [andExpr_single_collapse]
+    simp [Cst.Relation.tt, Cst.Primary.toMember, Cst.Member.toUnary, Cst.Unary.toMultExpr,
+      Cst.MultExpr.toAddExpr, Cst.AddExpr.toRelation, Cst.Relation.toAExpr?,
+      Cst.Relation.toExprOrSpecial?, Cst.AddExpr.toExprOrSpecial?, Cst.MultExpr.toExprOrSpecial?,
+      Cst.Unary.toExprOrSpecial?, Cst.Member.toExprOrSpecial?, Cst.Primary.toExprOrSpecial?,
+      Cst.Literal.toExprOrSpecial?, memberAux, ExprOrSpecial.toExpr?]
+  | none, some t, hscope =>
+    simp [Cst.VariableDef.toPRScope?, Option.bind_eq_some_iff] at hscope
+    obtain ⟨ety, hety, _⟩ := hscope
+    rw [andExpr_single_collapse]
+    simp [Cst.Relation.toAExpr?, Cst.Relation.toExprOrSpecial?, hv2, hety,
+      ExprOrSpecial.toExpr?]
+  | some (.rEq, e), none, hscope =>
+    simp [Cst.VariableDef.toPRScope?, Option.bind_eq_some_iff] at hscope
+    obtain ⟨uid, huid, _⟩ := hscope
+    rw [andExpr_single_collapse]
+    simp [Cst.Relation.toAExpr?, Cst.Relation.toExprOrSpecial?, hv, constructExprRel,
+      toAddExpr_toAExpr, toEntityUID_toAExpr huid, ExprOrSpecial.toExpr?]
+  | some (.rIn, e), none, hscope =>
+    simp [Cst.VariableDef.toPRScope?, Option.bind_eq_some_iff] at hscope
+    obtain ⟨uid, huid, _⟩ := hscope
+    rw [andExpr_single_collapse]
+    simp [Cst.Relation.toAExpr?, Cst.Relation.toExprOrSpecial?, hv, constructExprRel,
+      toAddExpr_toAExpr, toEntityUID_toAExpr huid, ExprOrSpecial.toExpr?]
+  | some (.rIn, e), some t, hscope =>
+    simp [Cst.VariableDef.toPRScope?, Option.bind_eq_some_iff] at hscope
+    obtain ⟨uid, huid, ety, hety, _⟩ := hscope
+    rw [andExpr_single_collapse]
+    simp [Cst.Relation.toAExpr?, Cst.Relation.toExprOrSpecial?, hv2, hety,
+      toAddExpr_toAExpr, toEntityUID_toAExpr huid, ExprOrSpecial.toExpr?]
+  | some (.rEq, e), some t, hscope => simp [Cst.VariableDef.toPRScope?] at hscope
+  | some (.rLess, e), _, hscope => simp [Cst.VariableDef.toPRScope?] at hscope
+  | some (.rLessEq, e), _, hscope => simp [Cst.VariableDef.toPRScope?] at hscope
+  | some (.rGreater, e), _, hscope => simp [Cst.VariableDef.toPRScope?] at hscope
+  | some (.rGreaterEq, e), _, hscope => simp [Cst.VariableDef.toPRScope?] at hscope
+  | some (.rNotEq, e), _, hscope => simp [Cst.VariableDef.toPRScope?] at hscope
+
+/-- Forward leaf translation for the action scope variable. -/
+theorem action_leaf_isSome {va : Cst.VariableDef} {as : ActionScope}
+    (has : va.toActionScope? = some as) :
+    ∃ leaf, va.toExpr.toAExpr? = some leaf := by
+  obtain ⟨var, et, ineq⟩ := va
+  simp only [Cst.VariableDef.toExpr, Cst.VariableDef.toAndExpr]
+  cases var
+  case idAction =>
+    have hv : (Cst.Ident.idAction.varToAddExpr).toExprOrSpecial? = some (ExprOrSpecial.var .action) := by
+      simp [Cst.Ident.varToAddExpr, Cst.Primary.toMember, Cst.Member.toUnary, Cst.Unary.toMultExpr,
+        Cst.MultExpr.toAddExpr, Cst.AddExpr.toExprOrSpecial?, Cst.MultExpr.toExprOrSpecial?,
+        Cst.Unary.toExprOrSpecial?, Cst.Member.toExprOrSpecial?, Cst.Primary.toExprOrSpecial?,
+        Cst.Name.toVar?, memberAux]
+    have hv2 : (Cst.Ident.idAction.varToAddExpr).toAExpr? = some (Expr.var .action) := by
+      simp [Cst.AddExpr.toAExpr?, hv, ExprOrSpecial.toExpr?]
+    cases et
+    case some t =>
+      simp [Cst.VariableDef.toActionScope?, Cst.VariableDef.toActionScopeAux?] at has
+    case none =>
+      cases ineq with
+      | none =>
+        rw [andExpr_single_collapse]
+        simp [Cst.Relation.tt, Cst.Primary.toMember, Cst.Member.toUnary, Cst.Unary.toMultExpr,
+          Cst.MultExpr.toAddExpr, Cst.AddExpr.toRelation, Cst.Relation.toAExpr?,
+          Cst.Relation.toExprOrSpecial?, Cst.AddExpr.toExprOrSpecial?, Cst.MultExpr.toExprOrSpecial?,
+          Cst.Unary.toExprOrSpecial?, Cst.Member.toExprOrSpecial?, Cst.Primary.toExprOrSpecial?,
+          Cst.Literal.toExprOrSpecial?, memberAux, ExprOrSpecial.toExpr?]
+      | some opE =>
+        obtain ⟨op, e⟩ := opE
+        cases op with
+        | rEq =>
+          cases huid : e.toEntityUID? with
+          | none => simp [Cst.VariableDef.toActionScope?, Cst.VariableDef.toActionScopeAux?, huid] at has
+          | some uid =>
+            rw [andExpr_single_collapse]
+            simp [Cst.Relation.toAExpr?, Cst.Relation.toExprOrSpecial?, hv, constructExprRel,
+              toAddExpr_toAExpr, toEntityUID_toAExpr huid, ExprOrSpecial.toExpr?]
+        | rIn =>
+          cases hr : e.toMultipleEntityUID? with
+          | none => simp [Cst.VariableDef.toActionScope?, Cst.VariableDef.toActionScopeAux?,
+              Cst.Expr.toEntityUIDs?, hr] at has
+          | some r =>
+            have hmem := expr_mem_toAExpr hr
+            rw [andExpr_single_collapse]
+            simp [Cst.Relation.toAExpr?, Cst.Relation.toExprOrSpecial?, hv, constructExprRel,
+              toAddExpr_toAExpr, hmem, ExprOrSpecial.toExpr?]
+        | rLess => simp [Cst.VariableDef.toActionScope?, Cst.VariableDef.toActionScopeAux?] at has
+        | rLessEq => simp [Cst.VariableDef.toActionScope?, Cst.VariableDef.toActionScopeAux?] at has
+        | rGreater => simp [Cst.VariableDef.toActionScope?, Cst.VariableDef.toActionScopeAux?] at has
+        | rGreaterEq => simp [Cst.VariableDef.toActionScope?, Cst.VariableDef.toActionScopeAux?] at has
+        | rNotEq => simp [Cst.VariableDef.toActionScope?, Cst.VariableDef.toActionScopeAux?] at has
+  all_goals simp [Cst.VariableDef.toActionScope?, Cst.VariableDef.toActionScopeAux?] at has
+
+/-- Forward leaf translation for a condition. -/
+theorem cond_leaf_isSome {c : Cst.Cond} {cond : Condition}
+    (hcond : c.toCondition? = some cond) :
+    ∃ leaf, (Cst.Cond.toExpr c).toAExpr? = some leaf := by
+  obtain ⟨ccond, cexpr⟩ := c
+  cases ccond <;> cases cexpr <;>
+    simp_all [Cst.Cond.toCondition?, Cst.Ident.toConditionKind?, Cst.Cond.toExpr,
+      Option.bind_eq_some_iff]
+  case idWhen.some e =>
+    obtain ⟨body, hbody, _⟩ := hcond
+    exact ⟨body, hbody⟩
+  case idUnless.some e =>
+    obtain ⟨body, hbody, _⟩ := hcond
+    exact ⟨_, cond_not_toAExpr hbody⟩
+
+/-- Principal-scope variable translates. -/
+theorem principal_leaf_isSome {vp : Cst.VariableDef} {ps : PrincipalScope}
+    (hps : vp.toPrincipalScope? = some ps) :
+    ∃ leaf, vp.toExpr.toAExpr? = some leaf := by
+  simp only [Cst.VariableDef.toPrincipalScope?] at hps
+  split at hps <;> [skip; simp at hps]
+  rename_i hvar
+  simp [Option.bind_eq_some_iff] at hps
+  obtain ⟨scope, hscope, _⟩ := hps
+  have hv : (vp.var.varToAddExpr).toExprOrSpecial? = some (ExprOrSpecial.var .principal) := by
+    rw [hvar]; simp [Cst.Ident.varToAddExpr, Cst.Primary.toMember, Cst.Member.toUnary,
+      Cst.Unary.toMultExpr, Cst.MultExpr.toAddExpr, Cst.AddExpr.toExprOrSpecial?,
+      Cst.MultExpr.toExprOrSpecial?, Cst.Unary.toExprOrSpecial?, Cst.Member.toExprOrSpecial?,
+      Cst.Primary.toExprOrSpecial?, Cst.Name.toVar?, memberAux]
+  exact toPRScope_leaf_isSome hv hscope
+
+/-- Resource-scope variable translates. -/
+theorem resource_leaf_isSome {vr : Cst.VariableDef} {rs : ResourceScope}
+    (hrs : vr.toResourceScope? = some rs) :
+    ∃ leaf, vr.toExpr.toAExpr? = some leaf := by
+  simp only [Cst.VariableDef.toResourceScope?] at hrs
+  split at hrs <;> [skip; simp at hrs]
+  rename_i hvar
+  simp [Option.bind_eq_some_iff] at hrs
+  obtain ⟨scope, hscope, _⟩ := hrs
+  have hv : (vr.var.varToAddExpr).toExprOrSpecial? = some (ExprOrSpecial.var .resource) := by
+    rw [hvar]; simp [Cst.Ident.varToAddExpr, Cst.Primary.toMember, Cst.Member.toUnary,
+      Cst.Unary.toMultExpr, Cst.MultExpr.toAddExpr, Cst.AddExpr.toExprOrSpecial?,
+      Cst.MultExpr.toExprOrSpecial?, Cst.Unary.toExprOrSpecial?, Cst.Member.toExprOrSpecial?,
+      Cst.Primary.toExprOrSpecial?, Cst.Name.toVar?, memberAux]
+  exact toPRScope_leaf_isSome hv hscope
+
+/-- All condition leaves translate when `toConditions?` succeeds. -/
+theorem conds_mapM_toAExpr_isSome {conds : List Cst.Cond} {acconds : Conditions}
+    (h : conds.mapM (·.toCondition?) = some acconds) :
+    ∃ r, (conds.map Cst.Cond.toExpr).mapM Cst.Expr.toAExpr? = some r := by
+  induction conds generalizing acconds with
+  | nil => exact ⟨[], by simp⟩
+  | cons hd tl ih =>
+    simp [List.mapM_cons, Option.bind_eq_some_iff] at h
+    obtain ⟨c0, hc0, crest, hcrest, _⟩ := h
+    obtain ⟨leaf, hleaf⟩ := cond_leaf_isSome hc0
+    obtain ⟨r, hr⟩ := ih hcrest
+    refine ⟨leaf :: r, ?_⟩
+    rw [List.map_cons, List.mapM_cons]
+    simp [hleaf, hr]

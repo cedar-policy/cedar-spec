@@ -1,5 +1,6 @@
 module
 
+public import Cedar.Spec.Policy
 public import Cedar.Spec.Wildcard
 
 @[expose] public section
@@ -319,6 +320,11 @@ public def Unreserved? (s : String) : Bool :=
 
 public def Ident.toUnreservedString? : Cst.Ident → Option String
   | .idIdent s => if (Unreserved? s) then some s else none
+  | _ => none
+
+public def Ident.toEffect? : Cst.Ident → Option Effect
+  | .idPermit => some .permit
+  | .idForbid => some .forbid
   | _ => none
 
 public def Expr.toStringLiteral? : Cst.Expr → Option String

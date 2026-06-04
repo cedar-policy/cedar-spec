@@ -502,11 +502,6 @@ private def Cst.Ident.toVar? : Cst.Ident → Option Var
   | .idContext => some .context
   | _ => none
 
-private def Cst.Ident.toEffect? : Cst.Ident → Option Effect
-  | .idPermit => some .permit
-  | .idForbid => some .forbid
-  | _ => none
-
 -- Helper lemma: a `Primary` reachable through the AddExpr→Primary chain
 -- has strictly smaller `sizeOf` than the surrounding `OrExpr`.
 public theorem sizeOf_addExpr_primary_lt_orExpr (o : Cst.OrExpr) (ae : Cst.AddExpr) (ext : List (Cst.RelOp × Cst.AddExpr))
@@ -661,7 +656,7 @@ public def extractScope? (vars : List Cst.VariableDef) : Option (PrincipalScope 
 
 -- `id` to be filled in later
 public def Cst.PolicyImpl.toPolicy? (p : Cst.PolicyImpl) : Option Cedar.Spec.Policy := do
-  let effect ← p.effect.toEffect?
+  let effect ← CstCommon.Ident.toEffect? p.effect
   let (ps, as, rs) ← extractScope? p.vars
   let conds ← toConditions? p.conds
   some {id := "", effect := effect, principalScope := ps, actionScope := as, resourceScope := rs, condition := conds}

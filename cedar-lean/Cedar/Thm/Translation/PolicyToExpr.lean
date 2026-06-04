@@ -368,16 +368,6 @@ theorem evaluate_mem_singleton (v : Var) (uid : EntityUID) (req : Request) (es :
       List.mapM_nil, bind, Except.bind, pure, Except.pure, key]
   intro val; rw [heq]
 
-/-- `toEntityUID?` agrees with the AST translation on the produced literal. -/
-theorem toEntityUID_toAExpr {e : Cst.Expr} {uid : EntityUID} :
-    e.toEntityUID? = some uid → e.toAExpr? = some (.lit (.entityUID uid)) := by
-  intro h
-  simp [Cst.Expr.toEntityUID?, Option.bind_eq_some_iff] at h
-  obtain ⟨erefs, herefs, hmatch⟩ := h
-  cases erefs with
-  | inl eref => simp only [Option.some.injEq] at hmatch; subst hmatch; exact expr_mem_toAExpr herefs
-  | inr _ => simp at hmatch
-
 /-- Shared core: the principal/resource leaf equals `Scope.toExpr scope v`,
     given the scope variable translates to `Expr.var v`. -/
 theorem toPRScope_leaf {vd : Cst.VariableDef} {scope : Scope} {leaf : Expr} {v : Var}
@@ -579,18 +569,6 @@ theorem action_leaf_agrees {va : Cst.VariableDef} {as : ActionScope} {leaf : Exp
         | rNotEq => simp [Cst.VariableDef.toActionScope?, Cst.VariableDef.toActionScopeAux?] at has
   all_goals simp [Cst.VariableDef.toActionScope?, Cst.VariableDef.toActionScopeAux?] at has
 
-
-/-- `Cst.Expr.not` translates to an AST `.not`. -/
-theorem cond_not_toAExpr {e : Cst.Expr} {b : Expr} :
-    e.toAExpr? = some b → (Cst.Expr.not e).toAExpr? = some (Expr.unaryApp .not b) := by
-  intro h
-  simp [Cst.Expr.not, Cst.Expr.toPrimary, Cst.Primary.toMember, 
-    Cst.Unary.toMultExpr, Cst.MultExpr.toAddExpr, Cst.AddExpr.toRelation, Cst.Relation.toAndExpr,
-    Cst.AndExpr.toOrExpr, Cst.OrExpr.toExpr, Cst.Expr.toAExpr?, Cst.Expr.toExprOrSpecial?,
-    Cst.ExprImpl.toExprOrSpecial?, Cst.ExprData.toExprOrSpecial?, Cst.OrExpr.toExprOrSpecial?,
-    Cst.AndExpr.toExprOrSpecial?, Cst.Relation.toExprOrSpecial?, Cst.AddExpr.toExprOrSpecial?,
-    Cst.MultExpr.toExprOrSpecial?, Cst.Unary.toExprOrSpecial?, Cst.Member.toExprOrSpecial?,
-    Cst.Primary.toExprOrSpecial?, memberAux, Expr.bangN, ExprOrSpecial.toExpr?, h]
 
 /-- Per-condition agreement: a condition's `foldAnd` leaf equals its AST
     `Condition.toExpr`. -/
