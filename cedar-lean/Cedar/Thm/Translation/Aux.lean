@@ -1400,3 +1400,86 @@ theorem mapM_eval_agrees
         have hev_tl : tl.mapM (fun x => x.evaluate req es) = .ok atlvs :=
           (ih' atlvs).mp hev_atl
         rw [hev_tl]
+
+/- Lifting round-trips and entity-UID translation agreement -/
+
+/-- Lifting a CST expr to a `Relation` and translating round-trips. -/
+theorem toRelation_toAExpr (e : Cst.Expr) :
+    (Cst.Expr.toRelation e).toAExpr? = e.toAExpr? := by
+  simp [Cst.Expr.toRelation, Cst.Expr.toPrimary, Cst.Primary.toMember,
+    Cst.Member.toUnary, Cst.Unary.toMultExpr, Cst.MultExpr.toAddExpr, Cst.AddExpr.toRelation,
+    Cst.Relation.toAExpr?, Cst.Relation.toExprOrSpecial?, Cst.AddExpr.toExprOrSpecial?,
+    Cst.MultExpr.toExprOrSpecial?, Cst.Unary.toExprOrSpecial?, Cst.Member.toExprOrSpecial?,
+    Cst.Primary.toExprOrSpecial?, memberAux, ExprOrSpecial.toExpr?, Cst.Expr.toAExpr?,
+    Option.bind_assoc]
+
+/-- Lifting a CST expr to an `AddExpr` and translating round-trips. -/
+theorem toAddExpr_toAExpr (e : Cst.Expr) :
+    (Cst.Expr.toAddExpr e).toAExpr? = e.toAExpr? := by
+  simp [Cst.Expr.toAddExpr, Cst.Expr.toPrimary, Cst.Primary.toMember,
+    Cst.Member.toUnary, Cst.Unary.toMultExpr, Cst.MultExpr.toAddExpr,
+    Cst.AddExpr.toAExpr?, Cst.AddExpr.toExprOrSpecial?, Cst.MultExpr.toExprOrSpecial?,
+    Cst.Unary.toExprOrSpecial?, Cst.Member.toExprOrSpecial?, Cst.Primary.toExprOrSpecial?,
+    memberAux, ExprOrSpecial.toExpr?, Cst.Expr.toAExpr?, Option.bind_assoc]
+
+/- The entity-UID extractor agrees with the AST translation on the produced
+    literal: a `Primary`/`Expr` that `toMultipleEntityUID?` reads as a single
+    UID translates (via `toAExpr?`) to that entity literal. -/
+mutual
+theorem prim_mem_toAExpr {p : Cst.Primary} {uid : EntityUID} :
+    p.toMultipleEntityUID? = some (.inl uid) → p.toAExpr? = some (.lit (.entityUID uid)) := by
+  intro h
+  cases p with
+  | literal _ => simp [Cst.Primary.toMultipleEntityUID?] at h
+  | name _ => simp [Cst.Primary.toMultipleEntityUID?] at h
+  | ref r =>
+    cases r with
+    | uid path eid =>
+      cases eid with
+      | string s =>
+        simp [Cst.Primary.toMultipleEntityUID?, Option.bind_eq_some_iff] at h
+        obtain ⟨p', hp', eid', heid', heq⟩ := h
+        subst heq
+        simp [Cst.Primary.toAExpr?, Cst.Primary.toExprOrSpecial?, Cst.Ref.toExprOrSpecial?,
+          hp', heid', ExprOrSpecial.toExpr?]
+    | ref _ _ => simp [Cst.Primary.toMultipleEntityUID?, Cst.Ref.toExprOrSpecial?] at h
+  | expr e' =>
+    simp only [Cst.Primary.toMultipleEntityUID?] at h
+    have hih := expr_mem_toAExpr h
+    simp [Cst.Primary.toAExpr?, Cst.Primary.toExprOrSpecial?, ExprOrSpecial.toExpr?,
+      Cst.Expr.toAExpr?, Option.bind_assoc] at hih ⊢
+    exact hih
+  | eList _ => simp [Cst.Primary.toMultipleEntityUID?, Option.bind_eq_some_iff] at h
+termination_by (sizeOf p, 0)
+decreasing_by all_goals (simp_wf; first | assumption | decreasing_tactic | omega)
+
+theorem expr_mem_toAExpr {e : Cst.Expr} {uid : EntityUID} :
+    e.toMultipleEntityUID? = some (.inl uid) → e.toAExpr? = some (.lit (.entityUID uid)) := by
+  intro h
+  match he : e with
+  | .expr ⟨.edIf _ _ _⟩ => simp [Cst.Expr.toMultipleEntityUID?] at h
+  | .expr ⟨.edOr o⟩ =>
+    simp only [Cst.Expr.toMultipleEntityUID?] at h
+    split at h
+    · simp at h
+    · rename_i hc1
+      split at h <;> try simp at h
+      rename_i ae ext heq
+      simp at hc1
+      obtain ⟨hoext, hoiext⟩ := hc1
+      obtain ⟨⟨⟨⟨⟨hext, haeext⟩, hmext⟩, hop⟩, hacc⟩, hinner⟩ := h
+      have hsz : sizeOf ae.initial.initial.item.item < sizeOf e := by
+        have h1 := sizeOf_addExpr_primary_lt_orExpr o ae ext heq
+        have h2 : sizeOf o < sizeOf e := by rw [he]; decreasing_tactic
+        exact Nat.lt_trans h1 h2
+      have hih := prim_mem_toAExpr hinner
+      simp [Cst.Expr.toAExpr?, Cst.Expr.toExprOrSpecial?, Cst.ExprImpl.toExprOrSpecial?,
+        Cst.ExprData.toExprOrSpecial?, Cst.OrExpr.toExprOrSpecial?, hoext, hoiext, heq,
+        Cst.AndExpr.toExprOrSpecial?, Cst.Relation.toExprOrSpecial?, hext,
+        Cst.AddExpr.toExprOrSpecial?, haeext, Cst.MultExpr.toExprOrSpecial?, hmext,
+        Cst.Unary.toExprOrSpecial?, hop, Cst.Member.toExprOrSpecial?, hacc, memberAux,
+        Cst.Primary.toAExpr?, Option.bind_assoc] at hih ⊢
+      exact hih
+termination_by (sizeOf e, 1)
+decreasing_by all_goals (simp_wf; first | assumption | decreasing_tactic | omega)
+end

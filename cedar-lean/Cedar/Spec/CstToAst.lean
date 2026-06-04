@@ -509,7 +509,7 @@ private def Cst.Ident.toEffect? : Cst.Ident → Option Effect
 
 -- Helper lemma: a `Primary` reachable through the AddExpr→Primary chain
 -- has strictly smaller `sizeOf` than the surrounding `OrExpr`.
-private theorem sizeOf_addExpr_primary_lt_orExpr (o : Cst.OrExpr) (ae : Cst.AddExpr) (ext : List (Cst.RelOp × Cst.AddExpr))
+public theorem sizeOf_addExpr_primary_lt_orExpr (o : Cst.OrExpr) (ae : Cst.AddExpr) (ext : List (Cst.RelOp × Cst.AddExpr))
     (h : o.initial.initial = .rCommon ae ext) :
     sizeOf ae.initial.initial.item.item < sizeOf o := by
   -- ae.initial : MultExpr ⟨Unary, List _⟩
@@ -527,7 +527,7 @@ private theorem sizeOf_addExpr_primary_lt_orExpr (o : Cst.OrExpr) (ae : Cst.AddE
 
 mutual
 
-private def Cst.Primary.toMultipleEntityUID? (p : Cst.Primary) : Option (EntityUID ⊕ List EntityUID) :=
+public def Cst.Primary.toMultipleEntityUID? (p : Cst.Primary) : Option (EntityUID ⊕ List EntityUID) :=
   match p with
   | .literal _ | .name _ => none
   | .ref r => match r with
@@ -546,7 +546,7 @@ termination_by (sizeOf p, 0)
 decreasing_by
   all_goals (simp_wf; omega)
 
-private def Cst.Expr.toMultipleEntityUID? (e : Cst.Expr) : Option (EntityUID ⊕ List EntityUID) :=
+public def Cst.Expr.toMultipleEntityUID? (e : Cst.Expr) : Option (EntityUID ⊕ List EntityUID) :=
   match e with
   | .expr ⟨.edIf _ _ _⟩ => none
   | .expr ⟨.edOr o⟩ =>
@@ -568,13 +568,13 @@ decreasing_by
 
 end
 
-private def Cst.Expr.toEntityUID? (e : Cst.Expr) : Option EntityUID := do
+public def Cst.Expr.toEntityUID? (e : Cst.Expr) : Option EntityUID := do
   let erefs ← e.toMultipleEntityUID?
   match erefs with
   | .inl eref => some eref
   | .inr _ => none
 
-private def Cst.Expr.toEntityUIDs? (e : Cst.Expr) : Option (List EntityUID) := do
+public def Cst.Expr.toEntityUIDs? (e : Cst.Expr) : Option (List EntityUID) := do
   let erefs ← e.toMultipleEntityUID?
   match erefs with
   | .inl eref => some [eref]
@@ -582,7 +582,7 @@ private def Cst.Expr.toEntityUIDs? (e : Cst.Expr) : Option (List EntityUID) := d
 
 -- To be used when translating a `VariableDef` to a `PrincipalScope` or
 -- a `ResourceScope`
-private def Cst.VariableDef.toPRScope? (v : Cst.VariableDef) : Option Scope:=
+public def Cst.VariableDef.toPRScope? (v : Cst.VariableDef) : Option Scope:=
   match v.ineq, v.entityType with
   | none, none => some .any
   | some (op, e), _ => match op, v.entityType with
@@ -616,11 +616,11 @@ public def Cst.VariableDef.toResourceScope? (v : Cst.VariableDef) : Option Resou
     some (.resourceScope scope)
   | _ => none
 
-private def EntityUID.isAction? (uid : EntityUID) : Bool :=
+public def EntityUID.isAction? (uid : EntityUID) : Bool :=
   uid.ty.id == "Action"
 
 -- Need to check `contains_only_action_types` before using the `ActionScope` output
-private def Cst.VariableDef.toActionScopeAux? (v : Cst.VariableDef) : Option ActionScope :=
+public def Cst.VariableDef.toActionScopeAux? (v : Cst.VariableDef) : Option ActionScope :=
   match v.var with
   | .idAction => if v.entityType.isSome then none else
     match v.ineq with
@@ -635,7 +635,7 @@ private def Cst.VariableDef.toActionScopeAux? (v : Cst.VariableDef) : Option Act
       | _ => none
   | _ => none
 
-private def ActionScope.containsOnlyActionTypes? (as : ActionScope) : Bool :=
+public def ActionScope.containsOnlyActionTypes? (as : ActionScope) : Bool :=
   match as with
   | .actionScope scope => match scope with
     | .any => true

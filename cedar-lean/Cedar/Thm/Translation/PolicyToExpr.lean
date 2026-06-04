@@ -4,6 +4,8 @@ import Cedar.Spec.CstSemantics
 import Cedar.Spec.CstToAst
 import Cedar.Thm.Translation.Aux
 import Cedar.Thm.Data.List.Lemmas
+import Cedar.Thm.Data.Set
+import Cedar.Thm.Data.List.Canonical
 
 namespace Cedar.Thm
 
@@ -96,17 +98,6 @@ theorem bigAnd_congr (a a' : Expr) (l l' : List Expr) (req : Request) (es : Enti
     rw [evaluate_and_eq, evaluate_and_eq, ha, hr]
 
 /- ===== Layer B: path 1 translation (`foldAnd` → `bigAnd`) ===== -/
-
-/-- Lifting an AST-translatable CST expr to a `Relation` and back is
-    translation-transparent (the parentheses `foldAnd` introduces). -/
-theorem toRelation_toAExpr (e : Cst.Expr) :
-    (Cst.Expr.toRelation e).toAExpr? = e.toAExpr? := by
-  simp [Cst.Expr.toRelation, Cst.Expr.toPrimary, Cst.Primary.toMember,
-    Cst.Member.toUnary, Cst.Unary.toMultExpr, Cst.MultExpr.toAddExpr, Cst.AddExpr.toRelation,
-    Cst.Relation.toAExpr?, Cst.Relation.toExprOrSpecial?, Cst.AddExpr.toExprOrSpecial?,
-    Cst.MultExpr.toExprOrSpecial?, Cst.Unary.toExprOrSpecial?, Cst.Member.toExprOrSpecial?,
-    Cst.Primary.toExprOrSpecial?, memberAux, ExprOrSpecial.toExpr?, Cst.Expr.toAExpr?,
-    Option.bind_assoc]
 
 /-- `AndExpr.foldExtended` over lifted relations is exactly `bigAnd`. -/
 theorem foldExtended_eq_bigAnd (acc : Expr) (l : List Cst.Expr) (aes : List Expr) :
@@ -243,7 +234,108 @@ theorem evaluate_policy_toExpr (ap : Policy) (req : Request) (es : Entities) :
 theorem evaluate_mem_singleton (v : Var) (uid : EntityUID) (req : Request) (es : Entities) :
     ∀ val, evaluate (.binaryApp .mem (.var v) (.set [.lit (.entityUID uid)])) req es = .ok val ↔
            evaluate (.binaryApp .mem (.var v) (.lit (.entityUID uid))) req es = .ok val := by
-  sorry
+  have hels : (Set.make [Value.prim (Prim.entityUID uid)]).elts = [Value.prim (Prim.entityUID uid)] := by
+    simp [Set.make, Set.elts, List.canonicalize_singleton]
+  have key : ∀ val1 : Value,
+      apply₂ .mem val1 (.set (Set.make [.prim (.entityUID uid)])) es
+      = apply₂ .mem val1 (.prim (.entityUID uid)) es := by
+    intro val1
+    cases val1 with
+    | prim p =>
+      cases p with
+      | entityUID a =>
+        have huids : (Set.make [uid]).elts = [uid] := by
+          simp [Set.make, Set.elts, List.canonicalize_singleton]
+        simp only [apply₂, inₛ, Set.mapOrErr, hels, List.mapM_cons, List.mapM_nil,
+          Value.asEntityUID, bind, Except.bind, pure, Except.pure, Set.any, huids, List.any,
+          Bool.or_false]
+      | _ => simp [apply₂]
+    | _ => simp [apply₂]
+  have heq : evaluate (.binaryApp .mem (.var v) (.set [.lit (.entityUID uid)])) req es =
+             evaluate (.binaryApp .mem (.var v) (.lit (.entityUID uid))) req es := by
+    simp only [evaluate, List.mapM₁_eq_mapM (fun e => evaluate e req es), List.mapM_cons,
+      List.mapM_nil, bind, Except.bind, pure, Except.pure, key]
+  intro val; rw [heq]
+
+/-- `toEntityUID?` agrees with the AST translation on the produced literal. -/
+theorem toEntityUID_toAExpr {e : Cst.Expr} {uid : EntityUID} :
+    e.toEntityUID? = some uid → e.toAExpr? = some (.lit (.entityUID uid)) := by
+  intro h
+  simp [Cst.Expr.toEntityUID?, Option.bind_eq_some_iff] at h
+  obtain ⟨erefs, herefs, hmatch⟩ := h
+  cases erefs with
+  | inl eref => simp only [Option.some.injEq] at hmatch; subst hmatch; exact expr_mem_toAExpr herefs
+  | inr _ => simp at hmatch
+
+/-- Shared core: the principal/resource leaf equals `Scope.toExpr scope v`,
+    given the scope variable translates to `Expr.var v`. -/
+theorem toPRScope_leaf {vd : Cst.VariableDef} {scope : Scope} {leaf : Expr} {v : Var}
+    (hv : (vd.var.varToAddExpr).toExprOrSpecial? = some (ExprOrSpecial.var v))
+    (hscope : vd.toPRScope? = some scope)
+    (hleaf : vd.toExpr.toAExpr? = some leaf) :
+    leaf = Scope.toExpr scope v := by
+  have collapse : ∀ r : Cst.Relation,
+      ({initial := r, extended := []} : Cst.AndExpr).toOrExpr.toExpr.toAExpr? = r.toAExpr? := by
+    intro r
+    simp [Cst.AndExpr.toOrExpr, Cst.OrExpr.toExpr, Cst.Expr.toAExpr?, Cst.Expr.toExprOrSpecial?,
+      Cst.ExprImpl.toExprOrSpecial?, Cst.ExprData.toExprOrSpecial?, Cst.OrExpr.toExprOrSpecial?,
+      Cst.AndExpr.toExprOrSpecial?, Cst.Relation.toAExpr?]
+  obtain ⟨var, et, ineq⟩ := vd
+  have hv2 : (var.varToAddExpr).toAExpr? = some (Expr.var v) := by
+    simp [Cst.AddExpr.toAExpr?, hv, ExprOrSpecial.toExpr?]
+  simp only [Cst.VariableDef.toExpr, Cst.VariableDef.toAndExpr] at hleaf
+  match ineq, et, hscope with
+  | none, none, hscope =>
+    simp only [Cst.VariableDef.toPRScope?, Option.some.injEq] at hscope
+    subst hscope
+    rw [collapse] at hleaf
+    simp [Cst.Relation.tt, Cst.Primary.toMember, Cst.Member.toUnary, Cst.Unary.toMultExpr,
+      Cst.MultExpr.toAddExpr, Cst.AddExpr.toRelation, Cst.Relation.toAExpr?,
+      Cst.Relation.toExprOrSpecial?, Cst.AddExpr.toExprOrSpecial?, Cst.MultExpr.toExprOrSpecial?,
+      Cst.Unary.toExprOrSpecial?, Cst.Member.toExprOrSpecial?, Cst.Primary.toExprOrSpecial?,
+      Cst.Literal.toExprOrSpecial?, memberAux, ExprOrSpecial.toExpr?] at hleaf
+    simp_all [Scope.toExpr]
+  | none, some t, hscope =>
+    simp [Cst.VariableDef.toPRScope?, Option.bind_eq_some_iff] at hscope
+    obtain ⟨ety, hety, hsc⟩ := hscope
+    subst hsc
+    rw [collapse] at hleaf
+    simp [Cst.Relation.toAExpr?, Cst.Relation.toExprOrSpecial?, hv, hv2, hety,
+      ExprOrSpecial.toExpr?, Option.bind_eq_some_iff] at hleaf
+    simp_all [Scope.toExpr, Var.eqEntityUID, Var.inEntityUID, Var.isEntityType]
+  | some (.rEq, e), none, hscope =>
+    simp [Cst.VariableDef.toPRScope?, Option.bind_eq_some_iff] at hscope
+    obtain ⟨uid, huid, hsc⟩ := hscope
+    subst hsc
+    rw [collapse] at hleaf
+    simp [Cst.Relation.toAExpr?, Cst.Relation.toExprOrSpecial?, hv, hv2, constructExprRel,
+      toAddExpr_toAExpr, toEntityUID_toAExpr huid, ExprOrSpecial.toExpr?,
+      Option.bind_eq_some_iff] at hleaf
+    simp_all [Scope.toExpr, Var.eqEntityUID, Var.inEntityUID, Var.isEntityType]
+  | some (.rIn, e), none, hscope =>
+    simp [Cst.VariableDef.toPRScope?, Option.bind_eq_some_iff] at hscope
+    obtain ⟨uid, huid, hsc⟩ := hscope
+    subst hsc
+    rw [collapse] at hleaf
+    simp [Cst.Relation.toAExpr?, Cst.Relation.toExprOrSpecial?, hv, hv2, constructExprRel,
+      toAddExpr_toAExpr, toEntityUID_toAExpr huid, ExprOrSpecial.toExpr?,
+      Option.bind_eq_some_iff] at hleaf
+    simp_all [Scope.toExpr, Var.eqEntityUID, Var.inEntityUID, Var.isEntityType]
+  | some (.rIn, e), some t, hscope =>
+    simp [Cst.VariableDef.toPRScope?, Option.bind_eq_some_iff] at hscope
+    obtain ⟨uid, huid, ety, hety, hsc⟩ := hscope
+    subst hsc
+    rw [collapse] at hleaf
+    simp [Cst.Relation.toAExpr?, Cst.Relation.toExprOrSpecial?, hv, hv2, hety,
+      toAddExpr_toAExpr, toEntityUID_toAExpr huid, ExprOrSpecial.toExpr?,
+      Option.bind_eq_some_iff] at hleaf
+    simp_all [Scope.toExpr, Var.eqEntityUID, Var.inEntityUID, Var.isEntityType]
+  | some (.rEq, e), some t, hscope => simp [Cst.VariableDef.toPRScope?] at hscope
+  | some (.rLess, e), _, hscope => simp [Cst.VariableDef.toPRScope?] at hscope
+  | some (.rLessEq, e), _, hscope => simp [Cst.VariableDef.toPRScope?] at hscope
+  | some (.rGreater, e), _, hscope => simp [Cst.VariableDef.toPRScope?] at hscope
+  | some (.rGreaterEq, e), _, hscope => simp [Cst.VariableDef.toPRScope?] at hscope
+  | some (.rNotEq, e), _, hscope => simp [Cst.VariableDef.toPRScope?] at hscope
 
 /-- Principal-scope leaf agrees between the two paths. -/
 theorem principal_leaf_agrees {vp : Cst.VariableDef} {ps : PrincipalScope} {leaf : Expr}
@@ -251,7 +343,19 @@ theorem principal_leaf_agrees {vp : Cst.VariableDef} {ps : PrincipalScope} {leaf
     vp.toPrincipalScope? = some ps →
     vp.toExpr.toAExpr? = some leaf →
     ∀ val, evaluate leaf req es = .ok val ↔ evaluate ps.toExpr req es = .ok val := by
-  sorry
+  intro hps hleaf val
+  simp only [Cst.VariableDef.toPrincipalScope?] at hps
+  split at hps <;> [skip; simp at hps]
+  rename_i hvar
+  simp [Option.bind_eq_some_iff] at hps
+  obtain ⟨scope, hscope, hps⟩ := hps
+  subst hps
+  have hv : (vp.var.varToAddExpr).toExprOrSpecial? = some (ExprOrSpecial.var .principal) := by
+    rw [hvar]; simp [Cst.Ident.varToAddExpr, Cst.Primary.toMember, Cst.Member.toUnary,
+      Cst.Unary.toMultExpr, Cst.MultExpr.toAddExpr, Cst.AddExpr.toExprOrSpecial?,
+      Cst.MultExpr.toExprOrSpecial?, Cst.Unary.toExprOrSpecial?, Cst.Member.toExprOrSpecial?,
+      Cst.Primary.toExprOrSpecial?, Cst.Name.toVar?, memberAux]
+  rw [toPRScope_leaf hv hscope hleaf]; exact Iff.rfl
 
 /-- Resource-scope leaf agrees between the two paths. -/
 theorem resource_leaf_agrees {vr : Cst.VariableDef} {rs : ResourceScope} {leaf : Expr}
@@ -259,7 +363,19 @@ theorem resource_leaf_agrees {vr : Cst.VariableDef} {rs : ResourceScope} {leaf :
     vr.toResourceScope? = some rs →
     vr.toExpr.toAExpr? = some leaf →
     ∀ val, evaluate leaf req es = .ok val ↔ evaluate rs.toExpr req es = .ok val := by
-  sorry
+  intro hrs hleaf val
+  simp only [Cst.VariableDef.toResourceScope?] at hrs
+  split at hrs <;> [skip; simp at hrs]
+  rename_i hvar
+  simp [Option.bind_eq_some_iff] at hrs
+  obtain ⟨scope, hscope, hrs⟩ := hrs
+  subst hrs
+  have hv : (vr.var.varToAddExpr).toExprOrSpecial? = some (ExprOrSpecial.var .resource) := by
+    rw [hvar]; simp [Cst.Ident.varToAddExpr, Cst.Primary.toMember, Cst.Member.toUnary,
+      Cst.Unary.toMultExpr, Cst.MultExpr.toAddExpr, Cst.AddExpr.toExprOrSpecial?,
+      Cst.MultExpr.toExprOrSpecial?, Cst.Unary.toExprOrSpecial?, Cst.Member.toExprOrSpecial?,
+      Cst.Primary.toExprOrSpecial?, Cst.Name.toVar?, memberAux]
+  rw [toPRScope_leaf hv hscope hleaf]; exact Iff.rfl
 
 /-- Action-scope leaf agrees between the two paths (uses `evaluate_mem_singleton`
     for the single-entity `in` case). -/
