@@ -482,7 +482,7 @@ termination_by (sizeOf e, 1)
 
 end
 
-private def Cst.Ident.toConditionKind? : Cst.Ident →  Option ConditionKind
+public def Cst.Ident.toConditionKind? : Cst.Ident →  Option ConditionKind
   | .idWhen => some .when
   | .idUnless => some .unless
   | _ => none
@@ -540,8 +540,10 @@ public def Cst.Primary.toMultipleEntityUID? (p : Cst.Primary) : Option (EntityUI
   | .eList es => do
     let uids ← es.attach.mapM (fun ⟨x, hmem⟩ =>
       have : sizeOf x < sizeOf es := List.sizeOf_lt_of_mem hmem
-      x.toMultipleEntityUID?)
-    some (.inr (uids.flatMap (Sum.elim ([·]) id)))
+      match x.toMultipleEntityUID? with
+      | some (.inl eref) => some eref
+      | _ => none)
+    some (.inr uids)
 termination_by (sizeOf p, 0)
 decreasing_by
   all_goals (simp_wf; omega)

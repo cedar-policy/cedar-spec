@@ -1206,12 +1206,12 @@ theorem rIsIn_some_eval_agrees
   | error e =>
     cases htgtC : target.evaluate req es with
     | ok vt => exact absurd ((htarget_iff vt).mpr htgtC) (by rw [htgt]; simp)
-    | error e' => simp [bind, Except.bind, Result.as, Value.asBool]
+    | error e' => simp [bind, Except.bind, Result.as]
   | ok vt =>
     have htgtC : target.evaluate req es = .ok vt := (htarget_iff vt).mp htgt
     simp only [htgtC, bind, Except.bind]
     cases hIs : apply₁ (.is et) vt with
-    | error e => simp [Result.as, Coe.coe, Value.asBool]
+    | error e => simp [Result.as]
     | ok isVal =>
       cases isVal with
       | prim p =>
@@ -1221,21 +1221,21 @@ theorem rIsIn_some_eval_agrees
           | false => simp [Result.as, Coe.coe, Value.asBool]
           | true =>
             simp only [Result.as, Coe.coe, Value.asBool, Bool.not_true,
-                       Bool.false_eq_true, if_false, reduceIte]
+                       Bool.false_eq_true, if_false]
             cases hie : evaluate mi req es with
             | error e =>
               cases hieC : ie.evaluate req es with
               | ok vi => exact absurd ((hinEntity_iff vi).mpr hieC) (by rw [hie]; simp)
-              | error e' => simp [bind, Except.bind, Result.as, Value.asBool]
+              | error e' => simp []
             | ok v₂ =>
               have hieC : ie.evaluate req es = .ok v₂ := (hinEntity_iff v₂).mp hie
-              simp only [hieC, bind, Except.bind]
+              simp only [hieC]
               cases hmem : apply₂ .mem vt v₂ es with
-              | error e => simp [Result.as, Coe.coe, Value.asBool]
+              | error e => simp []
               | ok memv =>
                 have ⟨b', hb'⟩ := apply₂_mem_returns_bool hmem
                 subst hb'
-                simp [Result.as, Coe.coe, Value.asBool, pure, Except.pure]
+                simp [pure, Except.pure]
         | int _ | string _ | entityUID _ => simp [Result.as, Coe.coe, Value.asBool]
       | set _ | record _ | ext _ => simp [Result.as, Coe.coe, Value.asBool]
 
@@ -1423,17 +1423,22 @@ theorem toAddExpr_toAExpr (e : Cst.Expr) :
     memberAux, ExprOrSpecial.toExpr?, Cst.Expr.toAExpr?, Option.bind_assoc]
 
 /- The entity-UID extractor agrees with the AST translation on the produced
-    literal: a `Primary`/`Expr` that `toMultipleEntityUID?` reads as a single
-    UID translates (via `toAExpr?`) to that entity literal. -/
+    expression: a `Primary`/`Expr` that `toMultipleEntityUID?` reads as a single
+    UID (or list of UIDs) translates (via `toAExpr?`) to the corresponding entity
+    literal (or set of entity literals). -/
+def memToExpr : EntityUID ⊕ List EntityUID → Expr
+  | .inl uid  => .lit (.entityUID uid)
+  | .inr uids => .set (uids.map (fun u => .lit (.entityUID u)))
+
 mutual
-theorem prim_mem_toAExpr {p : Cst.Primary} {uid : EntityUID} :
-    p.toMultipleEntityUID? = some (.inl uid) → p.toAExpr? = some (.lit (.entityUID uid)) := by
+theorem prim_mem_toAExpr {p : Cst.Primary} {r : EntityUID ⊕ List EntityUID} :
+    p.toMultipleEntityUID? = some r → p.toAExpr? = some (memToExpr r) := by
   intro h
   cases p with
   | literal _ => simp [Cst.Primary.toMultipleEntityUID?] at h
   | name _ => simp [Cst.Primary.toMultipleEntityUID?] at h
-  | ref r =>
-    cases r with
+  | ref rf =>
+    cases rf with
     | uid path eid =>
       cases eid with
       | string s =>
@@ -1441,20 +1446,27 @@ theorem prim_mem_toAExpr {p : Cst.Primary} {uid : EntityUID} :
         obtain ⟨p', hp', eid', heid', heq⟩ := h
         subst heq
         simp [Cst.Primary.toAExpr?, Cst.Primary.toExprOrSpecial?, Cst.Ref.toExprOrSpecial?,
-          hp', heid', ExprOrSpecial.toExpr?]
-    | ref _ _ => simp [Cst.Primary.toMultipleEntityUID?, Cst.Ref.toExprOrSpecial?] at h
+          hp', heid', ExprOrSpecial.toExpr?, memToExpr]
+    | ref _ _ => simp [Cst.Primary.toMultipleEntityUID?] at h
   | expr e' =>
     simp only [Cst.Primary.toMultipleEntityUID?] at h
     have hih := expr_mem_toAExpr h
     simp [Cst.Primary.toAExpr?, Cst.Primary.toExprOrSpecial?, ExprOrSpecial.toExpr?,
       Cst.Expr.toAExpr?, Option.bind_assoc] at hih ⊢
     exact hih
-  | eList _ => simp [Cst.Primary.toMultipleEntityUID?, Option.bind_eq_some_iff] at h
+  | eList es =>
+    simp [Cst.Primary.toMultipleEntityUID?, Option.bind_eq_some_iff] at h
+    obtain ⟨uids, huids, heq⟩ := h
+    subst heq
+    have hlist := list_mem_toAExpr huids
+    unfold Cst.Primary.toAExpr? Cst.Primary.toExprOrSpecial?
+    rw [List.mapM₁_eq_mapM (fun x : Cst.Expr => x.toAExpr?), hlist]
+    simp [ExprOrSpecial.toExpr?, memToExpr]
 termination_by (sizeOf p, 0)
-decreasing_by all_goals (simp_wf; first | assumption | decreasing_tactic | omega)
+decreasing_by all_goals (simp_wf; first | assumption | decreasing_tactic)
 
-theorem expr_mem_toAExpr {e : Cst.Expr} {uid : EntityUID} :
-    e.toMultipleEntityUID? = some (.inl uid) → e.toAExpr? = some (.lit (.entityUID uid)) := by
+theorem expr_mem_toAExpr {e : Cst.Expr} {r : EntityUID ⊕ List EntityUID} :
+    e.toMultipleEntityUID? = some r → e.toAExpr? = some (memToExpr r) := by
   intro h
   match he : e with
   | .expr ⟨.edIf _ _ _⟩ => simp [Cst.Expr.toMultipleEntityUID?] at h
@@ -1478,8 +1490,31 @@ theorem expr_mem_toAExpr {e : Cst.Expr} {uid : EntityUID} :
         Cst.AndExpr.toExprOrSpecial?, Cst.Relation.toExprOrSpecial?, hext,
         Cst.AddExpr.toExprOrSpecial?, haeext, Cst.MultExpr.toExprOrSpecial?, hmext,
         Cst.Unary.toExprOrSpecial?, hop, Cst.Member.toExprOrSpecial?, hacc, memberAux,
-        Cst.Primary.toAExpr?, Option.bind_assoc] at hih ⊢
+        Cst.Primary.toAExpr?] at hih ⊢
       exact hih
 termination_by (sizeOf e, 1)
-decreasing_by all_goals (simp_wf; first | assumption | decreasing_tactic | omega)
+decreasing_by all_goals (simp_wf; first | assumption | decreasing_tactic)
+
+theorem list_mem_toAExpr {es : List Cst.Expr} {uids : List EntityUID} :
+    es.mapM (fun x => match x.toMultipleEntityUID? with | some (.inl e) => some e | _ => none) = some uids →
+    es.mapM (fun x => x.toAExpr?) = some (uids.map (fun u => Expr.lit (.entityUID u))) := by
+  intro h
+  cases es with
+  | nil => simp_all
+  | cons x xs =>
+    rw [List.mapM_cons] at h
+    simp [Option.bind_eq_some_iff] at h
+    obtain ⟨eref, href, restU, hrest, rfl⟩ := h
+    have hxm : x.toMultipleEntityUID? = some (.inl eref) := by
+      cases hx : x.toMultipleEntityUID? with
+      | none => rw [hx] at href; simp at href
+      | some rr =>
+        cases rr with
+        | inl e => rw [hx] at href; simp at href; subst href; rfl
+        | inr _ => rw [hx] at href; simp at href
+    have hxa := expr_mem_toAExpr hxm
+    have hxsa := list_mem_toAExpr hrest
+    simp [List.mapM_cons, hxa, hxsa, memToExpr]
+termination_by (sizeOf es, 2)
+decreasing_by all_goals (simp_wf; first | assumption | decreasing_tactic)
 end
