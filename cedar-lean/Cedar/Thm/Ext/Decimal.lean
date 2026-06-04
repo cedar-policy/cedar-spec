@@ -13,6 +13,8 @@ def IsWfStr (s : String) : Prop :=
     (toInt?' left).isSome ∧
     (toNat?' right).isSome
 
+/-- Compute the integer value that a well-formed decimal string represents.
+    Returns a junk value (0) for malformed inputs; only meaningful under `IsWfStr`. -/
 def computeValue (s : String) : Int :=
   match s.splitToList (· = '.') with
   | [left, right] =>
@@ -26,8 +28,13 @@ def computeValue (s : String) : Int :=
       | _, _ => 0
   | _ => 0
 
-/-- `toString d` splits into concrete parts whose parse-relevant properties are known: -/
-theorem toString_split (d : Decimal) :
+/-- Canonical-form normalizer: parse the string and re-serialize.
+    Returns `none` for malformed or out-of-range inputs. -/
+def normalize (s : String) : Option String := (Decimal.parse s).map toString
+
+/-- Decomposes `toString d` into its left (integer) and right (fractional) parts, establishing
+    their split structure, right-part length, parsability, and sign behavior. -/
+private theorem toString_split (d : Decimal) :
     let leftPart := (if d < 0 then "-" else "") ++ toString (d.natAbs / Nat.pow 10 4)
     let rightNat := d.natAbs % Nat.pow 10 4
     let rightPart :=
@@ -252,7 +259,7 @@ theorem toString_isWfStr (d : Decimal) : IsWfStr (toString d) := by
   · -- (toNat?' rightPart).isSome
     rw [h_rnat]; simp
 
-/-- If a string is well-formed, `parse` succeeds and reconstructs the value. -/
+/-- If a string is well-formed and its computed value matches `d.toInt`, then `parse` returns `d`. -/
 theorem parse_of_isWfStr (s : String) (d : Decimal)
     (hwf : IsWfStr s) (hval : computeValue s = d.toInt) :
     Decimal.parse s = some d := by
@@ -275,7 +282,7 @@ theorem parse_of_isWfStr (s : String) (d : Decimal)
     exact Int64.ofInt?_toInt d
   · rename_i h; exact (h left right rfl).elim
 
-/-- The `computeValue` of `toString d` equals `d.toInt`. -/
+/-- The canonical string representation of a decimal encodes the same integer value. -/
 theorem computeValue_toString (d : Decimal) : computeValue (toString d) = d.toInt := by
   obtain ⟨h_split, h_rlen, h_lint, h_rnat, h_starts⟩ := toString_split d
   simp only [computeValue, h_split, h_lint, h_rnat, h_rlen, h_starts, DECIMAL_DIGITS]
@@ -305,12 +312,12 @@ theorem computeValue_toString (d : Decimal) : computeValue (toString d) = d.toIn
       have := Nat.div_add_mod d.toInt.natAbs 10000; omega
     rw [h3, Int.natAbs_of_nonneg hge]
 
-/-- Roundtrip: `Decimal.parse (toString d) = some d`. -/
+/-- Parsing the canonical string representation of a decimal returns the same decimal. -/
 theorem parse_toString_roundtrip (d : Decimal) :
     Decimal.parse (toString d) = some d :=
   parse_of_isWfStr (toString d) d (toString_isWfStr d) (computeValue_toString d)
 
-/-- `parse` fails iff the string is malformed or its value overflows `Int64`. -/
+/-- Parsing fails iff the string is not well-formed or its value overflows `Int64` range. -/
 theorem parse_eq_none_iff (s : String) :
     Decimal.parse s = none ↔ ¬ IsWfStr s ∨
     computeValue s < Int64.MIN ∨ computeValue s > Int64.MAX := by
@@ -381,5 +388,29 @@ where
           by rw [heq_l]; rfl, by rw [heq_r]; rfl⟩
       · simp at h
     · simp at h
+
+/-- `toString` is injective: distinct decimals produce distinct strings. -/
+theorem toString_injective (d d' : Decimal) (h : toString d = toString d') : d = d' := by
+  have h₁ := parse_toString_roundtrip d
+  have h₂ := parse_toString_roundtrip d'
+  rw [h] at h₁
+  rw [h₁] at h₂
+  injection h₂
+
+/-- Equal normal form iff equal value: normalization decides decimal equality. -/
+theorem normalize_eq_iff_parse_eq (s s' : String) :
+    normalize s = normalize s' ↔ Decimal.parse s = Decimal.parse s' := by
+  constructor
+  · intro h
+    unfold normalize at h
+    match hps : Decimal.parse s, hps' : Decimal.parse s' with
+    | .some d, .some d' =>
+      simp [hps, hps', Option.map] at h
+      exact congrArg _ (toString_injective d d' h)
+    | .some d, .none => simp [hps, hps', Option.map] at h
+    | .none, .some d' => simp [hps, hps', Option.map] at h
+    | .none, .none => rfl
+  · intro h
+    simp [normalize, h]
 
 end Cedar.Thm.Decimal
