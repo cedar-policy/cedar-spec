@@ -73,7 +73,7 @@ private def Member.toAttrs? (e : Member) : Option (List Attr) :=
 /-- Attribute name of an identifier used as a record key, read structurally
     (no translation).  Reserved keywords map to their spellings; ordinary
     identifiers map to themselves; `true`/`false`/`in`/`has`/… are rejected. -/
-private def Ident.toAttr? : Ident → Option Attr
+public def Ident.toAttr? : Ident → Option Attr
   | .idPrincipal => some "principal"
   | .idAction    => some "action"
   | .idResource  => some "resource"
@@ -86,17 +86,17 @@ private def Ident.toAttr? : Ident → Option Attr
   | _            => none
 
 /-- Attribute name of a `Primary` used as a record key. -/
-private def Primary.toAttr? (p : Primary) : Option Attr :=
+public def Primary.toAttr? (p : Primary) : Option Attr :=
   match p with
   | .literal (.liStr s)              => CstCommon.unescape? s
   | .name { path := [], name := id } => Ident.toAttr? id
   | _                                => none
 
 /-- Extract a record-key attribute name from a CST expression, without
-    translating it: the key must be a "bare" primary (no operators, no
-    extended chains, no member accesses) that is a string literal or an
-    identifier name. -/
-private def Expr.toAttr? (e : Expr) : Option Attr :=
+    translating it: the key must be a "bare" primary (no operators other than a
+    no-op `-0`, no extended chains, no member accesses) that is a string literal
+    or an identifier name.  This matches the keys the translator accepts. -/
+public def Expr.toAttr? (e : Expr) : Option Attr :=
   match e with
   | .expr ⟨.edIf _ _ _⟩ => none
   | .expr ⟨.edOr o⟩ =>
@@ -104,8 +104,11 @@ private def Expr.toAttr? (e : Expr) : Option Attr :=
     else match o.initial.initial with
       | .rCommon ae ext =>
         if !ext.isEmpty || !ae.extended.isEmpty || !ae.initial.extended.isEmpty
-            || !ae.initial.initial.op.isNone || !ae.initial.initial.item.access.isEmpty then none
-        else Primary.toAttr? ae.initial.initial.item.item
+            || !ae.initial.initial.item.access.isEmpty then none
+        else match ae.initial.initial.op with
+          | none            => Primary.toAttr? ae.initial.initial.item.item
+          | some (.nDash 0) => Primary.toAttr? ae.initial.initial.item.item
+          | _               => none
       | _ => none
 
 -- RelOp: rLess, rLessEq, rGreaterEq, rGreater, rNotEq, rEq, rIn
@@ -269,7 +272,7 @@ public def Primary.evaluate (e : Primary) (req : Request) (es : Entities) : Resu
       .ok (.prim (.entityUID { ty := etype, eid := eid' }))
     | .ref _ _ => .error .typeError
   | .rInits r => do
-    let avs ← r.attach.mapM (fun ⟨ri, hmem⟩ =>
+    let avs ← r.mapM₁ (fun ⟨ri, hmem⟩ =>
       have : sizeOf ri.value < 1 + sizeOf r := by
         have h1 := List.sizeOf_lt_of_mem hmem
         obtain ⟨k, v⟩ := ri
