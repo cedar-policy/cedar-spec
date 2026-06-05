@@ -264,7 +264,7 @@ public inductive Primary where
   -- cst::Primary::EList(Vec<Node<Expr>>)
   | eList (es : List Expr)
   -- cst::Primary::RInits(Vec<Node<RecInit>>) is not represented in Lean (support will be added later)
-  -- | rInits (r : List RecInit)
+  | rInits (r : List RecInit)
 
 -- This is a cst::Name
 public structure Name where
@@ -282,6 +282,10 @@ public inductive Ref where
 public structure RefInit where
   id : Ident
   lit : Literal
+
+public structure RecInit where
+  key : Expr
+  value : Expr
 
 end
 

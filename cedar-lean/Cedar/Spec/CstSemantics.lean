@@ -230,6 +230,7 @@ public def Primary.evaluate (e : Primary) (req : Request) (es : Entities) : Resu
       let etype : Spec.Name := { id := last, path := ids }
       .ok (.prim (.entityUID { ty := etype, eid := eid' }))
     | .ref _ _ => .error .typeError
+  | .rInits r => sorry
 termination_by sizeOf e
 
 -- Call `getAttr` recursively, a design choice that can be changed later
