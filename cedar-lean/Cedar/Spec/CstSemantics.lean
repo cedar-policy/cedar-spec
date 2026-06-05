@@ -484,6 +484,9 @@ public def Ident.varToAddExpr (id : Ident) : AddExpr :=
 public def Relation.tt : Relation :=
   (Primary.literal Literal.liTrue).toMember.toUnary.toMultExpr.toAddExpr.toRelation
 
+public def Relation.ff : Relation :=
+  (Primary.literal Literal.liFalse).toMember.toUnary.toMultExpr.toAddExpr.toRelation
+
 public def Expr.tt : Expr :=
   (Primary.literal Literal.liTrue).toMember.toUnary.toMultExpr.toAddExpr.toRelation.toAndExpr.toOrExpr.toExpr
 
@@ -536,7 +539,7 @@ public def VariableDef.toAndExpr (vd : VariableDef) : AndExpr :=
     {initial := Relation.tt, extended := []}
   | some _, some (_, _) =>
     -- entityType with a non-`in` operator (e.g., `==`) is not valid
-    {initial := Relation.tt, extended := []}
+    {initial := Relation.ff, extended := []}
 
 public def VariableDef.toExpr (vd : VariableDef) : Expr :=
   vd.toAndExpr.toOrExpr.toExpr
