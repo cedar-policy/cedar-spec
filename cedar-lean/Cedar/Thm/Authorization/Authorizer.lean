@@ -27,6 +27,26 @@ namespace Cedar.Thm
 
 open Cedar.Spec Cedar.Data
 
+theorem mem_satisfied_policies :
+  pid ∈ satisfiedPolicies effect policies request entities ↔
+  ∃ policy, policy.id = pid ∧ policy ∈ policies ∧ policy.effect = effect ∧ satisfied policy request entities
+:= by
+  simp only [satisfiedPolicies, satisfiedWithEffect, Set.mem_make]
+  grind
+
+theorem mem_error_policies :
+  pid ∈ errorPolicies policies request entities ↔
+  ∃ policy, policy.id = pid ∧ policy ∈ policies ∧ hasError policy request entities
+:= by
+  simp only [errorPolicies, errored, Set.mem_make]
+  grind
+
+theorem erroringPolicies_of (request : Request) (entities : Entities) (policies : Policies) :
+  (isAuthorized request entities policies).erroringPolicies = errorPolicies policies request entities := by
+  simp only [isAuthorized]
+  split <;> rfl
+
+
 theorem determiningPolicies_wf {policies : Policies} {request : Request} {entities : Entities} :
   (isAuthorized request entities policies).determiningPolicies.WellFormed
 := by

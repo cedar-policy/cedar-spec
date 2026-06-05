@@ -255,15 +255,9 @@ theorem determining_erroring_disjoint_when_unique_ids (request : Request) (entit
   simp only [Set.mem_inter_iff, not_exists, not_and]
   rw [determiningPolicies_of]
   intro _ h_det h_err
-  unfold isAuthorized satisfiedPolicies errorPolicies satisfiedWithEffect errored at *
-  simp only [
-    Bool.and_eq_true, beq_iff_eq, apply_ite, ite_self, Set.mem_make, List.mem_filterMap, Option.ite_none_right_eq_some, Option.some.injEq
-  ] at *
-  -- Extract the determining policy
-  obtain ⟨p₁, _, ⟨_, _⟩, _⟩ := h_det
-  -- Extract the erroring policy, and the fact that it is erroring
-  obtain ⟨p₂, _, h₂, _⟩ := h_err
-  -- They're the same policy, leading to a contradiction
+  have ⟨p₁, h_id_p₁, h_mem_p₁, _, h_sat⟩ := mem_satisfied_policies.mp h_det
+  rw [erroringPolicies_of] at h_err
+  have ⟨p₂, h_id_p₂, h_mem_p₂, h₂⟩ := mem_error_policies.mp h_err
   have heq : p₁ = p₂ := by grind [PolicyIdsUnique]
   subst heq
   have l₁ : ∀ p, hasError p request entities → ¬satisfied p request entities := by
@@ -272,5 +266,88 @@ theorem determining_erroring_disjoint_when_unique_ids (request : Request) (entit
     split <;> rename_i _ s <;> simp [s]
   have : ¬satisfied _ request entities := l₁ _ h₂
   contradiction
+
+theorem satisfiedPolicies_permit_forbid_disjoint (policies : Policies) (request request' : Request) (entities entities' : Entities)
+  (h_uniq : PolicyIdsUnique policies) :
+  (satisfiedPolicies .permit policies request entities ∩
+   satisfiedPolicies .forbid policies request' entities').isEmpty := by
+  rw [Set.disjoint_iff_no_common]
+  intro pid h_permit h_forbid
+  have ⟨p, h_id_p, h_mem_p, h_eff_p, _⟩ := mem_satisfied_policies.mp h_permit
+  have ⟨p', h_id_p', h_mem_p', h_eff_p', _⟩ := mem_satisfied_policies.mp h_forbid
+  have h_same_id : p.id = p'.id := by rw [h_id_p, h_id_p']
+  have h_eq := h_uniq _ h_mem_p _ h_mem_p' h_same_id
+  subst h_eq; simp_all
+
+/--
+If the determining policies for two different authorization requests against the
+same policy set share a common policy id, then the authorization decisions must
+be the same.
+-/
+theorem determiningPolicies_overlap_implies_same_decision (request request' : Request) (entities entities' : Entities) (policies : Policies) :
+  PolicyIdsUnique policies →
+  let auth  := isAuthorized request entities policies
+  let auth' := isAuthorized request' entities' policies
+  ¬ (auth.determiningPolicies ∩ auth'.determiningPolicies).isEmpty →
+  auth.decision = auth'.decision := by
+  intro h_uniq
+  have hdet := determiningPolicies_of request entities policies
+  have hdet' := determiningPolicies_of request' entities' policies
+  simp only
+  intro h_inter
+  have ⟨pid, h_mem⟩ := (Set.non_empty_iff_exists _).mp h_inter
+  rw [Set.mem_inter_iff] at h_mem
+  cases hdec : (isAuthorized request entities policies).decision <;>
+  cases hdec' : (isAuthorized request' entities' policies).decision <;>
+  simp only [hdec, hdec', reduceCtorEq, ↓reduceIte] at hdet hdet' ⊢ <;> exfalso
+  case allow.deny =>
+    rw [hdet, hdet'] at h_mem
+    have h_disj := (Set.disjoint_iff_no_common ..).mp
+      (satisfiedPolicies_permit_forbid_disjoint policies request request' entities entities' h_uniq)
+    exact h_disj pid h_mem.1 h_mem.2
+  case deny.allow =>
+    rw [hdet, hdet'] at h_mem
+    have h_disj := (Set.disjoint_iff_no_common ..).mp
+      (satisfiedPolicies_permit_forbid_disjoint policies request' request entities' entities h_uniq)
+    exact h_disj pid h_mem.2 h_mem.1
+
+/--
+If the determining policies are empty, the decision is deny.
+-/
+theorem deny_of_empty_determining (request : Request) (entities : Entities) (policies : Policies) :
+  (isAuthorized request entities policies).determiningPolicies.isEmpty →
+  (isAuthorized request entities policies).decision = .deny := by
+  intro h
+  cases hdec : (isAuthorized request entities policies).decision <;> try rfl
+  have hdet := determiningPolicies_of request entities policies
+  simp only [hdec, ↓reduceIte] at hdet
+  rw [hdet] at h
+  have h_permitted := allowed_only_if_explicitly_permitted request entities policies hdec
+  rw [explicitly_permitted_iff_satisfying_permit] at h_permitted
+  simp [h_permitted] at h
+
+/--
+For two authorizations requests against the same policy set, if the determining
+policies are the same, then the authorization decisions will also be the same.
+This is mostly a specialization of `determiningPolicies_overlap_implies_same_decision`,
+but it also needs `deny_of_empty_determining` for the default-deny case where
+there are no determining policies.
+-/
+theorem determiningPolicies_determines_decision (request request' : Request) (entities entities' : Entities) (policies : Policies) :
+  PolicyIdsUnique policies →
+  let auth  := (isAuthorized request entities policies)
+  let auth' := (isAuthorized request' entities' policies)
+  auth.determiningPolicies = auth'.determiningPolicies →
+  auth.decision = auth'.decision
+:= by
+  intro h_uniq
+  simp only
+  intro h_det_eq
+  cases h_empty : (isAuthorized request entities policies).determiningPolicies.isEmpty
+  · apply determiningPolicies_overlap_implies_same_decision _ _ _ _ _ h_uniq
+    rw [h_det_eq, Set.inter_self, ← h_det_eq]
+    simp [h_empty]
+  · rw [deny_of_empty_determining _ _ _ h_empty,
+        deny_of_empty_determining _ _ _ (h_det_eq ▸ h_empty)]
 
 end Cedar.Thm

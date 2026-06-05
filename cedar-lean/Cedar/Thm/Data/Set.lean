@@ -423,6 +423,11 @@ public theorem mem_inter_iff {α} [DecidableEq α] {x : α} {s₁ s₂ : Set α}
   simp only [Membership.mem, Inter.inter] at h
   exact h
 
+public theorem disjoint_iff_no_common [DecidableEq α] (s₁ s₂ : Set α) :
+  (s₁ ∩ s₂).isEmpty ↔ ∀ a, a ∈ s₁ → a ∈ s₂ → False := by
+  rw [empty_iff_not_exists]
+  simp only [mem_inter_iff, not_exists, not_and]
+
 public theorem inter_wf {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {s₁ s₂ : Set α}
  (h₁ : WellFormed s₁) :
  WellFormed (s₁ ∩ s₂)

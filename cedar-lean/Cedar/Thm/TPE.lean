@@ -190,24 +190,17 @@ theorem partial_authorize_satisfied_permits_not_determining_if_deny
   (response.satisfiedPermits ∩ (Spec.isAuthorized req es policies).determiningPolicies).isEmpty
 := by
   intro h₁ h₂ h₃ h₄
-  simp only [Set.empty_iff_not_exists, Set.mem_inter_iff, not_exists, not_and]
+  rw [Set.disjoint_iff_no_common]
   intro pid hp₁ hp₂
-
-  have hsatisfied : ∀ effect, (pid ∈ satisfiedPolicies effect policies req es ↔ (∃ policy, policy.id = pid ∧ policy ∈ policies ∧ policy.effect = effect ∧ satisfied policy req es)) := by
-    simp only [satisfiedPolicies, satisfiedWithEffect, Set.mem_make]
-    grind [PolicyIdsUnique]
-
-  replace hp₂ : ∃ policy, policy.id = pid ∧ policy ∈ policies ∧ policy.effect = .forbid ∧ satisfied policy req es := by
-    have hd := determiningPolicies_of req es policies
-    simpa [hd, h₃, hsatisfied] using hp₂
-
-  have hp₃ : ∃ policy, policy.id = pid ∧ policy ∈ policies ∧ policy.effect = .permit ∧ satisfied policy req es := by
+  have h_in_permits : pid ∈ satisfiedPolicies .permit policies req es := by
     have hpermits := partial_authorize_satisfied_permits_is_sound h₁ h₂
-    rw [Set.subset_def] at hpermits
-    rw [←hsatisfied]
-    exact hpermits pid hp₁
-
-  grind [PolicyIdsUnique]
+    exact Set.subset_def.mp hpermits pid hp₁
+  have h_in_forbids : pid ∈ satisfiedPolicies .forbid policies req es := by
+    have hd := determiningPolicies_of req es policies
+    simpa [hd, h₃, mem_satisfied_policies] using hp₂
+  have h_disj := (Set.disjoint_iff_no_common ..).mp
+    (satisfiedPolicies_permit_forbid_disjoint policies req req es es h₄)
+  exact h_disj pid h_in_permits h_in_forbids
 
 /-- Like `partial_authorize_allow_determining_policies_is_sound` for `forbid`
 policies, but we can prove a stronger theorem because of `forbid_trumps_permit`.
@@ -252,10 +245,8 @@ theorem partial_authorize_satisfied_forbid_is_determining
     replace hd := forbid_trumps_permit _ _ _ hd
     grind [Spec.isAuthorized]
 
-  simp only [satisfiedPolicies, satisfiedWithEffect, satisfied, Bool.and_eq_true, beq_iff_eq,
-    decide_eq_true_eq, Set.mem_make, List.mem_filterMap, Option.ite_none_right_eq_some,
-    Option.some.injEq]
-  exact ⟨p, hp₁, ⟨h_eff ▸ heff, ha⟩, h_id ▸ hpid⟩
+  have h_sat : satisfied p req es := by simp [satisfied, ha]
+  exact mem_satisfied_policies.mpr ⟨p, h_id ▸ hpid, hp₁, h_eff ▸ heff, h_sat⟩
 
 /-- Like `partial_authorize_satisfied_permits_not_determining_if_deny` for
 `forbid` policies, but we can prove a stronger theorem because any satisfied
