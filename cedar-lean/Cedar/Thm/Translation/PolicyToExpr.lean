@@ -21,7 +21,7 @@ proof factors into four layers:
   B. path 1 translation  (`Cst` `foldAnd` → `bigAnd`),
   C. path 2 normalization (`Policy.toExpr` → `bigAnd`),
   D. per-leaf semantic agreement.
-The main theorem just composes them. All proofs are `sorry` for now. -/
+The main theorem just composes them. -/
 
 /- ===== Layer A: algebra of AST conjunction ===== -/
 
