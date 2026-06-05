@@ -127,6 +127,8 @@ public inductive NegOp where
   | nBang (n : UInt8)
   -- cst::NegOp::Dash(u8)
   | nDash (n : UInt8)
+  | nOverBang
+  | nOverDash
   -- cst::NegOp::OverBand and cst::NegOp::OverDash are not represented in Lean, they are used
   -- to return nice errors
 
@@ -172,6 +174,9 @@ public structure VariableDef where
   -- cst::VariableDef::ineq
   ineq : Option (RelOp × Expr)
 
+public structure Cond where
+  cond : Ident
+  expr : Option Expr
 
 -- This is a cst::Expr
 public inductive Expr where
