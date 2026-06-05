@@ -904,7 +904,7 @@ theorem Cst.Relation.toAExpr?_evaluate
       have ⟨tEos, htEos, htExpr⟩ := hmt
       have htarget_iff :=
         @Cst.AddExpr.toAExpr?_evaluate target tEos req es htEos mt htExpr
-      simp [Cst.Relation.evaluate, hEtyName, hinE]
+      simp [Cst.Relation.evaluate, hEtyName]
       cases htgt : target.evaluate req es with
       | error err =>
         simp [bind, Except.bind]

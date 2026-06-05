@@ -600,4 +600,4 @@ public def isAuthorized (req : Request) (entities : Entities) (policies : Polici
   let erroringPolicies := errorPolicies policies req entities
   if forbids.isEmpty && !permits.isEmpty
   then {decision := .allow, determiningPolicies := permits, erroringPolicies}
-  else {decision := .deny, determiningPolicies := permits, erroringPolicies}
+  else {decision := .deny, determiningPolicies := forbids, erroringPolicies}

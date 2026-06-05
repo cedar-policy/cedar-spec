@@ -1734,3 +1734,88 @@ theorem conds_mapM_toAExpr_isSome {conds : List Cst.Cond} {acconds : Conditions}
     refine ⟨leaf :: r, ?_⟩
     rw [List.map_cons, List.mapM_cons]
     simp [hleaf, hr]
+
+/- Helpers for the policy-list translation soundness proof -/
+
+/-- `toPolicy?` always produces a policy whose `id` field is empty. -/
+theorem toPolicy?_id_empty {cp : Cst.Policy} {ap : Spec.Policy} :
+    cp.toPolicy? = some ap → ap.id = "" := by
+  intro h
+  obtain ⟨p⟩ := cp
+  simp only [Cst.Policy.toPolicy?, Cst.PolicyImpl.toPolicy?, bind, Option.bind_eq_some_iff,
+    Option.some.injEq] at h
+  obtain ⟨eff, heff, ⟨ps, as, rs⟩, hsc, conds, hconds, heq⟩ := h
+  rw [← heq]
+
+/-- `filterMap` congruence across two lists related pointwise. -/
+theorem filterMap_congr_forall₂ {α β γ : Type} {f : α → Option γ} {g : β → Option γ}
+    {R : α → β → Prop} {xs : List α} {ys : List β} :
+    List.Forall₂ R xs ys → (∀ a b, R a b → f a = g b) →
+    xs.filterMap f = ys.filterMap g := by
+  intro h hfg
+  induction h with
+  | nil => rfl
+  | cons hhd htl ih =>
+    rename_i a b xs' ys'
+    simp only [List.filterMap, hfg _ _ hhd, ih]
+
+/-- Index-generalized consistency: zipping `policy{k+i}` ids onto the CST policies
+    is pointwise related to id-stamping the translated AST policies. This is the
+    structural bridge between `Cst.Policies.withIDs` and `Cst.Policies.toPolicies?`. -/
+theorem withIDs_toPolicies_aux :
+    ∀ (k : Nat) (ps : List Cst.Policy) (rets : List Spec.Policy),
+    ps.mapM Cst.Policy.toPolicy? = some rets →
+    List.Forall₂ (fun (pr : PolicyID × Cst.Policy) (ap : Spec.Policy) =>
+        pr.1 = ap.id ∧ pr.2.toPolicy? = some {ap with id := ""})
+      (List.zip ((List.range' k ps.length).map (fun i => s!"policy{i}")) ps)
+      (rets.mapIdx (fun i p => {p with id := s!"policy{k+i}"})) := by
+  intro k ps
+  induction ps generalizing k with
+  | nil =>
+    intro rets hrets
+    simp only [List.mapM_nil, Option.pure_def, Option.some.injEq] at hrets
+    subst hrets
+    simp
+  | cons hd tl ih =>
+    intro rets hrets
+    simp [List.mapM_cons, Option.bind_eq_some_iff] at hrets
+    obtain ⟨a0, ha0, restRets, hrest, hretseq⟩ := hrets
+    subst hretseq
+    rw [List.length_cons, List.range'_succ, List.map_cons, List.zip_cons_cons,
+      List.mapIdx_cons]
+    apply List.Forall₂.cons
+    · refine ⟨by simp, ?_⟩
+      rw [ha0]
+      have hid := toPolicy?_id_empty ha0
+      obtain ⟨id, e, pp, aa, rr, cc⟩ := a0
+      subst hid
+      rfl
+    · have hfun : (fun (i : Nat) (p : Spec.Policy) => ({p with id := s!"policy{k + (i + 1)}"} : Spec.Policy))
+                = (fun i p => {p with id := s!"policy{(k + 1) + i}"}) := by
+        funext i p
+        have : k + (i + 1) = (k + 1) + i := by omega
+        rw [this]
+      rw [hfun]
+      exact ih (k + 1) restRets hrest
+
+/-- `Cst.Policies.withIDs` generates a list of `(id, policy)` pairs that is
+    pointwise consistent with `Cst.Policies.toPolicies?`: each id matches the
+    stamped AST policy's id, and each CST policy translates to that AST policy
+    (modulo the id field). -/
+theorem withIDs_toPolicies_forall₂ {cps : Cst.Policies} {aps : Spec.Policies} :
+    cps.toPolicies? = some aps →
+    List.Forall₂ (fun (pr : PolicyID × Cst.Policy) (ap : Spec.Policy) =>
+        pr.1 = ap.id ∧ pr.2.toPolicy? = some {ap with id := ""})
+      cps.withIDs aps := by
+  intro htrans
+  simp only [Cst.Policies.toPolicies?, bind, Option.bind_eq_some_iff, Option.some.injEq] at htrans
+  obtain ⟨rets, hrets, hapeq⟩ := htrans
+  have haux := withIDs_toPolicies_aux 0 cps.ps rets hrets
+  have hfun : (fun (i : Nat) (p : Spec.Policy) => ({p with id := s!"policy{0 + i}"} : Spec.Policy))
+            = (fun i p => {p with id := s!"policy{i}"}) := by
+    funext i p
+    have : 0 + i = i := by omega
+    rw [this]
+  rw [hfun, ← List.range_eq_range'] at haux
+  rw [← hapeq]
+  exact haux
