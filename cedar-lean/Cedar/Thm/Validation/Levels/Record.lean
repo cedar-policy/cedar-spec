@@ -59,7 +59,7 @@ theorem level_based_slicing_is_sound_record_attrs {rxs : List (Attr × Expr)} {n
     specialize ihx hc hr htx hlx
     simp only [List.mapM_cons, ←ihx]
     have ih' := level_based_slicing_is_sound_record_attrs hc hr htl hl ih
-    cases he₁ : evaluate rx.snd request entities <;> simp only [Except.bind_err, Except.bind_ok]
+    simp_do_let (evaluate rx.snd request entities) as he₁
     simp only [List.mapM₂_eq_mapM (λ x : (Attr × Expr) => do let v ← evaluate x.snd request entities; .ok (x.fst, v))] at ih'
     simp only [List.mapM₂_eq_mapM (λ x : (Attr × Expr) => do let v ← evaluate x.snd request (entities.sliceAtLevel request n); .ok (x.fst, v))] at ih'
     rw [ih']
