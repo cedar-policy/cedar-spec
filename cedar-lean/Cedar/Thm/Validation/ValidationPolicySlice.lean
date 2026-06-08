@@ -266,12 +266,38 @@ theorem principal_scope_types_to_bool
         simp [PrincipalScope.toExpr, Scope.toExpr, typeOf, typeOfLit, ok, Function.comp_apply]
       exact ⟨_, _, h, _, rfl⟩
     | eq uid =>
-      -- PrincipalScope.toExpr (.principalScope (.eq uid)) = .binaryApp .eq (.var .principal) (.lit (.entityUID uid)) by rfl
-      -- typeOf on this expression gives a bool type (either .ff or .anyBool depending on lub)
-      sorry
+      have hvalid_uid : (env.ets.isValidEntityUID uid || env.acts.contains uid) = true := by
+        have h := hce_ps
+        sorry
+      have h1 : typeOf (.var Var.principal) ∅ env = Except.ok (.var .principal (.entity env.reqty.principal), ∅) := by
+        simp [typeOf, typeOfVar, ok]
+      have h2 : typeOf (.lit (Prim.entityUID uid)) ∅ env = Except.ok (.lit (.entityUID uid) (.entity uid.ty), ∅) := by
+        simp [typeOf, typeOfLit, hvalid_uid, ok]
+      suffices h : ∃ (r : TypedExpr × Capabilities),
+          typeOf (.binaryApp .eq (.var .principal) (.lit (.entityUID uid))) ∅ env = .ok r ∧
+          ∃ bty, r.1.typeOf = .bool bty from h
+      simp only [typeOf, h1, h2, Except.bind_ok]
+      simp only [typeOfBinaryApp,
+        show TypedExpr.typeOf (.var .principal (.entity env.reqty.principal)) = .entity env.reqty.principal from rfl,
+        show TypedExpr.typeOf (.lit (.entityUID uid) (.entity uid.ty)) = .entity uid.ty from rfl, typeOfEq]
+      cases lub? (CedarType.entity env.reqty.principal) (CedarType.entity uid.ty)
+      all_goals simp_all [ok, TypedExpr.typeOf]
     | mem uid =>
-      -- Similar: typeOfInₑ always returns a BoolType for .mem
-      sorry
+      have hvalid_uid : (env.ets.isValidEntityUID uid || env.acts.contains uid) = true := by
+        have h := hce_ps
+        sorry
+      have h1 : typeOf (.var Var.principal) ∅ env = Except.ok (.var .principal (.entity env.reqty.principal), ∅) := by
+        simp [typeOf, typeOfVar, ok]
+      have h2 : typeOf (.lit (Prim.entityUID uid)) ∅ env = Except.ok (.lit (.entityUID uid) (.entity uid.ty), ∅) := by
+        simp [typeOf, typeOfLit, hvalid_uid, ok]
+      suffices h : ∃ (r : TypedExpr × Capabilities),
+          typeOf (.binaryApp .mem (.var .principal) (.lit (.entityUID uid))) ∅ env = .ok r ∧
+          ∃ bty, r.1.typeOf = .bool bty from h
+      simp only [typeOf, h1, h2, Except.bind_ok]
+      simp only [typeOfBinaryApp,
+        show TypedExpr.typeOf (.var .principal (.entity env.reqty.principal)) = .entity env.reqty.principal from rfl,
+        show TypedExpr.typeOf (.lit (.entityUID uid) (.entity uid.ty)) = .entity uid.ty from rfl]
+      simp_all [ok, TypedExpr.typeOf, typeOfInₑ]
     | is ety =>
       have h : typeOf (PrincipalScope.toExpr (.principalScope (.is ety))) ∅ env =
           .ok (.unaryApp (.is ety) (.var .principal (.entity env.reqty.principal))
