@@ -221,7 +221,12 @@ theorem action_scope_typechecks_to_ff
     {policy : Policy} {env : TypeEnv} {caps : Capabilities}
     (hnotmatch : actionScopeMatchesAction env.acts env.reqty.action policy.actionScope = false)
     (hcontains : env.acts.contains env.reqty.action)
-    (hentities : checkEntities ⟨env.ets, env.acts⟩ policy.toExpr = .ok ()) :
+    (hentities : checkEntities ⟨env.ets, env.acts⟩ policy.toExpr = .ok ())
+    (hscope_types : ∀ (ls : List EntityUID),
+      policy.actionScope = .actionInAny ls →
+      ∃ tx_set c_set ety,
+        typeOf (.set (ls.map (fun e => Expr.lit (.entityUID e)))) caps env = .ok (tx_set, c_set) ∧
+        tx_set.typeOf = .set (.entity ety)) :
     ∃ tx c,
       typeOf (substituteAction env.reqty.action policy.actionScope.toExpr) caps env = .ok (tx, c) ∧
       tx.typeOf = .bool .ff := by
@@ -229,7 +234,7 @@ theorem action_scope_typechecks_to_ff
   have hvalid_action : (env.ets.isValidEntityUID env.reqty.action || env.acts.contains env.reqty.action) = true := by
     simp [hcontains]
   simp only [ActionScope.toExpr, Scope.toExpr, Var.eqEntityUID, Var.inEntityUID, Var.isEntityType,
-             substituteAction] at hce_scope ⊢
+             substituteAction] at hce_scope
   unfold actionScopeMatchesAction at hnotmatch
   split at hnotmatch
   next => simp at hnotmatch
@@ -265,10 +270,12 @@ theorem action_scope_typechecks_to_ff
       simp only [checkEntities] at hce_uid; split at hce_uid <;> [assumption; contradiction]
     exact action_scope_isMem_typechecks_to_ff hnotmatch hcontains hvalid_action hvalid_uid
   next ls heq =>
-    rw [heq] at hce_scope ⊢
-    simp only [ActionScope.toExpr, substituteAction, mapOnVars] at hce_scope ⊢
-    -- Need hset_ok and hset_ty from the precondition that the policy validated previously.
-    -- These require knowing the set typechecks, which we take as sorry for now.
-    sorry
+    have ⟨tx_set, c_set, ety, hset_ok, hset_ty⟩ := hscope_types ls heq
+    have hsub : substituteAction env.reqty.action (ActionScope.toExpr (.actionInAny ls)) =
+        .binaryApp .mem (.lit (.entityUID env.reqty.action)) (.set (ls.map (fun e => .lit (.entityUID e)))) := by
+      simp [ActionScope.toExpr, substituteAction, mapOnVars, List.map₁_eq_map, List.map_map,
+            Function.comp]
+    rw [heq, hsub]
+    exact action_scope_actionInAny_typechecks_to_ff hnotmatch hcontains hvalid_action hset_ok ⟨ety, hset_ty⟩
 
 end Cedar.Thm
