@@ -17,72 +17,43 @@ open Cedar.Data
 
 /- Evaluator helpers -/
 
-private def Ident.toString : Ident → String
-  | .idPrincipal => "principal"
-  | .idAction => "action"
-  | .idResource => "resource"
-  | .idContext => "context"
-  | .idTrue => "true"
-  | .idFalse => "false"
-  | .idPermit => "permit"
-  | .idForbid => "forbid"
-  | .idWhen => "when"
-  | .idUnless => "unless"
-  | .idIn => "in"
-  | .idHas => "has"
-  | .idLike => "like"
-  | .idIs => "is"
-  | .idIf => "if"
-  | .idThen => "then"
-  | .idElse => "else"
-  | .idIdent s => s
+public abbrev Ident.toString : Ident → String := CstCommon.Ident.toString
 
-public def Unreserved? (s : String) : Bool :=
-  match s with
-  | "principal" => false
-  | "action" => false
-  | "resource" => false
-  | "context" => false
-  | "true" => false
-  | "false" => false
-  | "permit" => false
-  | "forbid" => false
-  | "when" => false
-  | "unless" => false
-  | "in" => false
-  | "has" => false
-  | "like" => false
-  | "is" => false
-  | "if" => false
-  | "then" => false
-  | "else" => false
-  | "__cedar" => false
-  | _ => true
+-- public def Unreserved? (s : String) : Bool :=
+--   match s with
+--   | "principal" => false
+--   | "action" => false
+--   | "resource" => false
+--   | "context" => false
+--   | "true" => false
+--   | "false" => false
+--   | "permit" => false
+--   | "forbid" => false
+--   | "when" => false
+--   | "unless" => false
+--   | "in" => false
+--   | "has" => false
+--   | "like" => false
+--   | "is" => false
+--   | "if" => false
+--   | "then" => false
+--   | "else" => false
+--   | "__cedar" => false
+--   | _ => true
 
-private def Ident.toUnreservedString? : Ident → Option String
-  | .idIdent s => if (Unreserved? s) then some s else none
-  | _ => none
+-- private def Ident.toUnreservedString? : Ident → Option String
+--   | .idIdent s => if (Unreserved? s) then some s else none
+--   | _ => none
 
-private def Expr.toStringLiteral? : Expr → Option String
-  | .expr e => match e.expr with
-    | .edIf _ _ _ => none
-    | .edOr e => match e.initial.initial with
-      | .rHas _ _ => none
-      | .rLike _ _ => none
-      | .rCommon i _ => match i.initial.initial.item.item with
-        | .literal l => match l with
-          | .liStr s => some s
-          | _ => none
-        | _ => none
 
-private def AttrChain? (ms : List MemAccess) : Option (List Attr) :=
+public def AttrChain? (ms : List MemAccess) : Option (List Attr) :=
   match ms with
   | [] => some []
   | m :: ms => match m with
-    | .field i => match i.toUnreservedString? with
+    | .field i => match (CstCommon.Ident.toUnreservedString? i) with
       | none => none
       | some s => (AttrChain? ms).map (s :: ·)
-    | .index e => match e.toStringLiteral? with
+    | .index e => match (CstCommon.Expr.toUnescapedStringLiteral? e) with
       | none => none
       | some s => (AttrChain? ms).map (s :: ·)
 
@@ -93,33 +64,59 @@ private def Member.toAttrs? (e : Member) : Option (List Attr) :=
     | .literal (.liStr s) =>
       if attrs.isEmpty then some [s] else none
     | .literal _ => none
-    | .name { path := [], name := id } => match id.toUnreservedString? with
+    | .name { path := [], name := id } => match (CstCommon.Ident.toUnreservedString? id) with
       | some s => some (s :: attrs)
       | none   => none
     | .name _ => none
     | _ => none
 
 -- RelOp: rLess, rLessEq, rGreaterEq, rGreater, rNotEq, rEq, rIn
-private def applyRelOp (op : RelOp) (v₁ v₂ : Value) (es : Entities) : Result Value :=
+-- `rGreater`/`rGreaterEq` use the `not (less/lessEq v₁ v₂)` pattern to match
+-- the translator's `constructExprRel`. Behaviorally equivalent on totally-
+-- comparable values; for other values, the `apply₂` errors propagate through
+-- the `not` consistently with the translator's AST output.
+public def applyRelOp (op : RelOp) (v₁ v₂ : Value) (es : Entities) : Result Value :=
   match op with
   | .rLess => apply₂ .less v₁ v₂ es
   | .rLessEq => apply₂ .lessEq v₁ v₂ es
-  | .rGreater => apply₂ .less v₂ v₁ es
-  | .rGreaterEq => apply₂ .lessEq v₂ v₁ es
+  | .rGreater => do
+    let r ← apply₂ .lessEq v₁ v₂ es
+    apply₁ .not r
+  | .rGreaterEq => do
+    let r ← apply₂ .less v₁ v₂ es
+    apply₁ .not r
   | .rEq => apply₂ .eq v₁ v₂ es
   | .rNotEq => do
     let eq ← apply₂ .eq v₁ v₂ es
     apply₁ .not eq
   | .rIn => apply₂ .mem v₁ v₂ es
 
--- When the list is all `field`s, return the converted list of `Attr`s
--- Otherwise return `none`
-private def fieldChain? : List MemAccess → Option (List Attr)
+-- When the list is all `.field id` with `id` unreserved, return the converted
+-- list of `Attr`s. Otherwise return `none`. Matches the translator's
+-- `constructAttrsAux?` filter.
+public def fieldChain? : List MemAccess → Option (List Attr)
   | [] => some []
-  | .field id :: xs => (fieldChain? xs).map (id.toString :: ·)
+  | .field id :: xs => do
+      let head ← Cedar.Spec.CstCommon.Ident.toUnreservedString? id
+      let tail ← fieldChain? xs
+      some (head :: tail)
   | _ :: _ => none
 
-private def AddExpr.toAttrs? (e : AddExpr) : Option (List Attr) :=
+-- Head string for a name appearing at the start of a `has` field chain.
+-- Mirrors the translator's two paths:
+--   * `.var v` arm (when `n.toVar? = some v`): use `v.toString` directly,
+--     allowing the four var idents through without an unreserved check.
+--   * `.name an` arm (when `n.toVar? = none`): filter via `toUnreservedId?`,
+--     accepting only `.idIdent s` with `s` unreserved.
+public def Ident.toHasHead? : Cst.Ident → Option String
+  | .idPrincipal => some "principal"
+  | .idAction    => some "action"
+  | .idResource  => some "resource"
+  | .idContext   => some "context"
+  | .idIdent s   => if Cedar.Spec.CstCommon.Unreserved? s then some s else none
+  | _            => none
+
+public def AddExpr.toAttrs? (e : AddExpr) : Option (List Attr) :=
   if !e.extended.isEmpty then none else
   let mult := e.initial
   if !mult.extended.isEmpty then none else
@@ -131,29 +128,73 @@ private def AddExpr.toAttrs? (e : AddExpr) : Option (List Attr) :=
     | none => none
     | some fields => match member.item with
       | .literal (.liStr s) =>
-        if fields.isEmpty then some [s] else none
+        -- Apply unescape? to mirror the translator's `(unescape? lit).map .inl`.
+        if fields.isEmpty then (Cedar.Spec.CstCommon.unescape? s).map (fun s' => [s'])
+        else none
       | .literal _ => none
       | .name { path := [], name := id } =>
-        some (id.toString :: fields)
+        -- Mirror the translator's combined `.var v` / `.name n` arms via
+        -- the helper above.
+        match Ident.toHasHead? id with
+        | some idStr => some (idStr :: fields)
+        | none       => none
       | .name _ => none
       | _ => none
 
 -- Only Literal.liStr s is allowed
-private def AddExpr.toPatternString? (e : AddExpr) : Option String :=
+-- Mirrors the translator's `Cst.AddExpr.toPattern?`: the unary `op` may be
+-- `none` or `some (.nDash 0)` (a structural no-op that the translator allows).
+public def AddExpr.toPatternString? (e : AddExpr) : Option String :=
   if !e.extended.isEmpty then none else
   let mult := e.initial
   if !mult.extended.isEmpty then none else
   let unary := mult.initial
   match unary.op with
-  | some _ => none
-  | none => let member := unary.item
+  | some (.nDash 0) | none =>
+    let member := unary.item
     if !member.access.isEmpty then none else
     let item := member.item
     match item with
     | .literal (.liStr s) => some s
     | _ => none
+  | some _ => none
+
+-- Extracts an EntityType (Spec.Name) from an AddExpr that is a bare name.
+public def AddExpr.toEntityTypeName? (e : AddExpr) : Option EntityType :=
+  if !e.extended.isEmpty then none else
+  let mult := e.initial
+  if !mult.extended.isEmpty then none else
+  let unary := mult.initial
+  match unary.op with
+  | some (.nDash 0) | none =>
+    let member := unary.item
+    if !member.access.isEmpty then none else
+    match member.item with
+    | .name n => some { id := n.name.toString, path := n.path.map Ident.toString }
+    | _ => none
+  | some _ => none
 
 /- Evaluators -/
+
+public def Str.toUnescapedString : Str → Result String
+  | .string s => match Cedar.Spec.CstCommon.unescape? s with
+    | some s' => .ok s'
+    | none    => .error .typeError
+
+/-- Evaluate the chain of attribute checks for `r has a₀.a₁.….aₙ` with
+    short-circuiting on the inner `hasAttr` returning `false`. Mirrors the
+    translator's `extendedHasAttr`, which builds nested `.and (hasAttr ...) ...`. -/
+public def rHasChain (v : Value) (a : Attr) (rest : List Attr) (es : Entities) : Result Value :=
+  match rest with
+  | [] => hasAttr v a es
+  | b :: bs => do
+    let h ← hasAttr v a es
+    match h with
+    | .prim (.bool false) => .ok (.prim (.bool false))
+    | _ => do
+      let v' ← getAttr v a es
+      rHasChain v' b bs es
+termination_by sizeOf rest
 
 mutual
 
@@ -165,7 +206,9 @@ public def Primary.evaluate (e : Primary) (req : Request) (es : Entities) : Resu
     | .liNum n => match Int64.ofInt? n.toNat with
       | some i => .ok (.prim (.int i))
       | none => .error .arithBoundsError
-    | .liStr s => .ok (.prim (.string s))
+    | .liStr s => do
+      let s' ← Str.toUnescapedString (.string s)
+      .ok (.prim (.string s'))
   | .name n =>
     -- Not implementing names with non-empty paths for now
     if !n.path.isEmpty then .error .typeError
@@ -180,11 +223,12 @@ public def Primary.evaluate (e : Primary) (req : Request) (es : Entities) : Resu
     let vs ← xs.mapM (fun x => x.evaluate req es)
     .ok (.set (Set.make vs))
   | .ref r => match r with
-    | .uid path (.string eid) =>
+    | .uid path eid => do
+      let eid' ← Str.toUnescapedString eid
       let ids := path.path.map Ident.toString
       let last := path.name.toString
       let etype : Spec.Name := { id := last, path := ids }
-      .ok (.prim (.entityUID { ty := etype, eid := eid }))
+      .ok (.prim (.entityUID { ty := etype, eid := eid' }))
     | .ref _ _ => .error .typeError
 termination_by sizeOf e
 
@@ -199,30 +243,67 @@ decreasing_by
   all_goals cases e; simp_wf; omega
 
 -- NegOp: nBang i, nOverBang, nDash i, nOverDash
--- `.nDash` case is handled with more intricacy in cst_to_ast.rs,
--- mainly for the `(neg (I64::MIN))` case.
+-- The `.nDash` numeric-literal case is handled specially so that the value
+-- `-(Int64.MAX + 1) = Int64.MIN` is representable, matching the AST translator.
 public def Unary.evaluate (e : Unary) (req : Request) (es : Entities) : Result Value :=
   match e.op with
   | none => e.item.evaluate req es
-  | some op => do
-      let mval ← e.item.evaluate req es
-      match op with
-        | .nBang n => if n % 2 == 0 then .ok mval else apply₁ .not mval
-        | .nDash n => if n % 2 == 0 then .ok mval else apply₁ .neg mval
-        | _ => .error .arithBoundsError
+  | some (.nBang n) =>
+      if n == 0 then e.item.evaluate req es else do
+        let mval ← e.item.evaluate req es
+        -- error the non-bool
+        match mval with
+        | .prim (.bool b) =>
+            if n % 2 == 0 then .ok (.prim (.bool b)) else .ok (.prim (.bool !b))
+        | _ => .error .typeError
+  | some (.nDash n) =>
+      if n == 0 then e.item.evaluate req es else
+      match CstCommon.Member.toLit? e.item with
+      | some (.liNum x) =>
+        let xNat := x.toNat
+        let minMagnitude := (Int64.MAX + 1).toNat
+        match compare xNat minMagnitude with
+        | .eq =>
+          -- AST translates to `(lit Int64.MIN).dashN (n-1)`.  Since
+          -- `Int64.MIN.neg?` fails, only `n = 1` succeeds (zero further
+          -- negations applied); any larger `n` errors on the first negation.
+          if n == 1
+          then .ok (.prim (.int Int64.MIN.toInt64))
+          else .error .arithBoundsError
+        | .lt =>
+          match Int64.ofInt? (Int.ofNat xNat) with
+          | some y =>
+            if n % 2 == 0 then .ok (.prim (.int y)) else .ok (.prim (.int (-y)))
+          | none => .error .arithBoundsError
+        | .gt => .error .arithBoundsError
+      | _ => do
+          let mval ← e.item.evaluate req es
+          -- Force the type check and error the non-ints. We must also check
+          -- `i.neg?` *before* the parity shortcut: when `i = Int64.MIN`, the
+          -- AST iterates `apply₁ .neg` and errors on the first step, so this
+          -- case must error regardless of parity.
+          match mval with
+          | .prim (.int i) =>
+              match i.neg? with
+              | none => .error .arithBoundsError
+              | some j =>
+                  if n % 2 == 0 then .ok (.prim (.int i))
+                  else .ok (.prim (.int j))
+          | _ => .error .typeError
+  | some _ => .error .arithBoundsError
 termination_by sizeOf e
 decreasing_by
   all_goals cases e; simp_wf; omega
 
 public def MultExpr.evaluate (e : MultExpr) (req : Request) (es : Entities) : Result Value := do
   let b ← e.initial.evaluate req es
-  MultExpr.foldExtended b e.extended req es
+  MultExpr.foldOps b e.extended req es
 termination_by sizeOf e
 decreasing_by
   all_goals cases e; simp_wf; omega
 
 -- Division and Modulo are rejected in cst_to_ast.rs
-private def MultExpr.foldExtended (acc : Value) (xs : List (MultOp × Unary))
+public def MultExpr.foldOps (acc : Value) (xs : List (MultOp × Unary))
     (req : Request) (es : Entities) : Result Value :=
   match xs with
   | [] => .ok acc
@@ -231,17 +312,17 @@ private def MultExpr.foldExtended (acc : Value) (xs : List (MultOp × Unary))
     let acc' ← match op with
       | .mTimes => apply₂ .mul acc aval es
       | _ => .error .typeError
-    MultExpr.foldExtended acc' rest req es
+    MultExpr.foldOps acc' rest req es
 termination_by sizeOf xs
 
 public def AddExpr.evaluate (e : AddExpr) (req : Request) (es : Entities) : Result Value := do
   let b ← e.initial.evaluate req es
-  AddExpr.foldExtended b e.extended req es
+  AddExpr.foldOps b e.extended req es
 termination_by sizeOf e
 decreasing_by
   all_goals cases e; simp_wf; omega
 
-private def AddExpr.foldExtended (acc : Value) (xs : List (AddOp × MultExpr))
+public def AddExpr.foldOps (acc : Value) (xs : List (AddOp × MultExpr))
     (req : Request) (es : Entities) : Result Value :=
   match xs with
   | [] => .ok acc
@@ -250,7 +331,7 @@ private def AddExpr.foldExtended (acc : Value) (xs : List (AddOp × MultExpr))
     let acc' ← match op with
       | .aPlus  => apply₂ .add acc aval es
       | .aMinus => apply₂ .sub acc aval es
-    AddExpr.foldExtended acc' rest req es
+    AddExpr.foldOps acc' rest req es
 termination_by sizeOf xs
 
 public def Relation.evaluate (e : Relation) (req : Request) (es : Entities) : Result Value :=
@@ -269,13 +350,10 @@ public def Relation.evaluate (e : Relation) (req : Request) (es : Entities) : Re
       | none => .error .typeError
       | some [] => .error .typeError
       | some (a :: as) =>
-        -- For `r has x.y.z`: call `hasAttr r.x.y z es`
-        let (v', last) ← as.foldlM
-          (fun (acc : Value × Attr) attr => do
-            let next ← getAttr acc.1 acc.2 es
-            pure (next, attr))
-          (v, a)
-        hasAttr v' last es
+        -- For `r has x.y.z`: short-circuit on `false` between getAttr steps,
+        -- mirroring the translator's `.and (hasAttr ...) (extendedHasAttr ...)`
+        -- which short-circuits on the inner `hasAttr` returning `false`.
+        rHasChain v a as es
   | .rLike t p => match p.toPatternString? with
     | none => .error .typeError
     | some s => do
@@ -283,45 +361,59 @@ public def Relation.evaluate (e : Relation) (req : Request) (es : Entities) : Re
       match Cedar.Spec.CstCommon.toPattern? s with
       | some p => apply₁ (.like p) v
       | none => .error .typeError
+  | .rIsIn t ety inEntity => match ety.toEntityTypeName? with
+    | none => .error .typeError
+    | some etyName => do
+      let v ← t.evaluate req es
+      let isResult ← apply₁ (.is etyName) v
+      match inEntity with
+      | none => .ok isResult
+      | some ie => do
+        let b ← isResult.asBool
+        if !b then .ok false
+        else do
+          let v₂ ← ie.evaluate req es
+          apply₂ .mem v v₂ es
 termination_by sizeOf e
 
 public def AndExpr.evaluate (e : AndExpr) (req : Request) (es : Entities) : Result Value := do
-  let b ← (e.initial.evaluate req es).as Bool
-  let result ← AndExpr.foldExtended b e.extended req es
-  .ok result
+  let acc ← e.initial.evaluate req es
+  AndExpr.foldOps acc e.extended req es
 termination_by sizeOf e
 decreasing_by
   all_goals cases e; simp_wf; omega
 
--- Separated from the evalute function for termination proofs
-private def AndExpr.foldExtended (acc : Bool) (xs : List Relation)
-    (req : Request) (es : Entities) : Result Bool :=
+-- Mirrors the AST `Expr.and acc rel` evaluation: coerce acc to Bool, short-circuit
+-- on `false`, otherwise coerce rel.evaluate to Bool, wrap as a Value, recurse.
+public def AndExpr.foldOps (acc : Value) (xs : List Relation)
+    (req : Request) (es : Entities) : Result Value :=
   match xs with
   | [] => .ok acc
-  | x :: rest =>
-    if !acc then .ok acc else do
-      let b ← (x.evaluate req es).as Bool
-      AndExpr.foldExtended b rest req es
+  | x :: rest => do
+    let b ← acc.asBool
+    if !b then .ok (.prim (.bool false)) else do
+      let b' ← (x.evaluate req es).as Bool
+      AndExpr.foldOps (.prim (.bool b')) rest req es
 termination_by sizeOf xs
 
 public def OrExpr.evaluate (e : OrExpr) (req : Request) (es : Entities) : Result Value := do
-  let b ← (e.initial.evaluate req es).as Bool
-  let result ← OrExpr.foldExtended b e.extended req es
-  .ok result
+  let acc ← e.initial.evaluate req es
+  OrExpr.foldOps acc e.extended req es
 termination_by sizeOf e
 decreasing_by
   all_goals cases e; simp_wf; omega
 
--- Short circuit: once a true is found, halt the execution
--- Separated from the evaluate function for termination proofs
-private def OrExpr.foldExtended (acc : Bool) (xs : List AndExpr)
-    (req : Request) (es : Entities) : Result Bool :=
+-- Mirrors the AST `Expr.or acc rhs` evaluation: coerce acc to Bool, short-circuit
+-- on `true`, otherwise coerce rhs.evaluate to Bool, wrap as a Value, recurse.
+public def OrExpr.foldOps (acc : Value) (xs : List AndExpr)
+    (req : Request) (es : Entities) : Result Value :=
   match xs with
   | [] => .ok acc
-  | x :: rest =>
-    if acc then .ok acc else do
-      let b ← (x.evaluate req es).as Bool
-      OrExpr.foldExtended b rest req es
+  | x :: rest => do
+    let b ← acc.asBool
+    if b then .ok (.prim (.bool true)) else do
+      let b' ← (x.evaluate req es).as Bool
+      OrExpr.foldOps (.prim (.bool b')) rest req es
 termination_by sizeOf xs
 
 public def ExprData.evaluate (e : ExprData) (req : Request) (es : Entities) : Result Value :=
@@ -392,6 +484,9 @@ public def Ident.varToAddExpr (id : Ident) : AddExpr :=
 public def Relation.tt : Relation :=
   (Primary.literal Literal.liTrue).toMember.toUnary.toMultExpr.toAddExpr.toRelation
 
+public def Relation.ff : Relation :=
+  (Primary.literal Literal.liFalse).toMember.toUnary.toMultExpr.toAddExpr.toRelation
+
 public def Expr.tt : Expr :=
   (Primary.literal Literal.liTrue).toMember.toUnary.toMultExpr.toAddExpr.toRelation.toAndExpr.toOrExpr.toExpr
 
@@ -433,13 +528,18 @@ public def Expr.foldAnd : List Expr → Expr
 
 public def VariableDef.toAndExpr (vd : VariableDef) : AndExpr :=
   let var' := vd.var.varToAddExpr
-  let isClause := match vd.entityType with
-    | some et => Relation.rCommon var' [(.rIn, et)]
-    | none => Relation.tt
-  let ineqClause := match vd.ineq with
-    | some (op, e) => Relation.rCommon var' [(op, e.toAddExpr)]
-    | none => Relation.tt
-  {initial := isClause, extended := [ineqClause]}
+  match vd.entityType, vd.ineq with
+  | some et, some (.rIn, e) =>
+    {initial := Relation.rIsIn var' et (some e.toAddExpr), extended := []}
+  | some et, none =>
+    {initial := Relation.rIsIn var' et none, extended := []}
+  | none, some (op, e) =>
+    {initial := Relation.rCommon var' [(op, e.toAddExpr)], extended := []}
+  | none, none =>
+    {initial := Relation.tt, extended := []}
+  | some _, some (_, _) =>
+    -- entityType with a non-`in` operator (e.g., `==`) is not valid
+    {initial := Relation.ff, extended := []}
 
 public def VariableDef.toExpr (vd : VariableDef) : Expr :=
   vd.toAndExpr.toOrExpr.toExpr
@@ -465,11 +565,6 @@ public def Policies.toExpr (ps : Policies) : Expr :=
 
 /- Authorizer -/
 
-public def Ident.toEffect? : Ident →  Option Effect
-  | .idPermit => some .permit
-  | .idForbid => some .forbid
-  | _ => none
-
 public def satisfied (policy : Policy) (req : Request) (entities : Entities) : Bool :=
   policy.toExpr.evaluate req entities = .ok true
 
@@ -478,7 +573,7 @@ public def satisfied (policy : Policy) (req : Request) (entities : Entities) : B
 public def satisfiedWithEffect (effect : Effect) (policy : Policy) (req : Request) (entities : Entities) : Bool :=
   if satisfied policy req entities then
   match policy with
-  | .policy p => match p.effect.toEffect? with
+  | .policy p => match CstCommon.Ident.toEffect? p.effect with
     | none => false
     | some eff => eff = effect
   else false
@@ -508,4 +603,4 @@ public def isAuthorized (req : Request) (entities : Entities) (policies : Polici
   let erroringPolicies := errorPolicies policies req entities
   if forbids.isEmpty && !permits.isEmpty
   then {decision := .allow, determiningPolicies := permits, erroringPolicies}
-  else {decision := .deny, determiningPolicies := permits, erroringPolicies}
+  else {decision := .deny, determiningPolicies := forbids, erroringPolicies}

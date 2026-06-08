@@ -1,5 +1,6 @@
 module
 
+public import Cedar.Spec.Policy
 public import Cedar.Spec.Wildcard
 
 @[expose] public section
@@ -126,6 +127,8 @@ public inductive NegOp where
   | nBang (n : UInt8)
   -- cst::NegOp::Dash(u8)
   | nDash (n : UInt8)
+  | nOverBang
+  | nOverDash
   -- cst::NegOp::OverBand and cst::NegOp::OverDash are not represented in Lean, they are used
   -- to return nice errors
 
@@ -171,6 +174,9 @@ public structure VariableDef where
   -- cst::VariableDef::ineq
   ineq : Option (RelOp × Expr)
 
+public structure Cond where
+  cond : Ident
+  expr : Option Expr
 
 -- This is a cst::Expr
 public inductive Expr where
@@ -209,9 +215,8 @@ public inductive Relation where
   | rHas (target : AddExpr) (field : AddExpr)
   -- cst::Relation::Like { target, pattern }
   | rLike (target : AddExpr) (pattern : AddExpr)
-  -- cst::Relation::IsIn { target, entity_type, in_entity } is not represented in Lean (will need to support later)
-  -- This relation is the "... is .. in" expresion which is syntactic sugar for ".. is .. && .. in .."
-  -- | rIsIn (target : AddExpr) (entityType : AddExpr) (inEntity : Option AddExpr)
+  -- cst::Relation::IsIn { target, entity_type, in_entity }
+  | rIsIn (target : AddExpr) (entityType : AddExpr) (inEntity : Option AddExpr)
 
 -- This is a cst::Add
 public structure AddExpr where
@@ -282,6 +287,12 @@ end
 end Cedar.Spec.Cst
 
 namespace Cedar.Spec.CstCommon
+
+public def Member.toLit? (e : Cst.Member) : Option Cst.Literal :=
+  if !e.access.isEmpty then none else
+  match e.item with
+  | .literal l => some l
+  | _ => none
 
 -- TODO: Review this function, written by Claude
 
@@ -375,5 +386,73 @@ decreasing_by
 public def unescape? (s : String) : Option String := do
   let chars ← unescapeAux s.toList
   some (String.ofList chars)
+
+public def Ident.toString : Cst.Ident → String
+  | .idPrincipal => "principal"
+  | .idAction => "action"
+  | .idResource => "resource"
+  | .idContext => "context"
+  | .idTrue => "true"
+  | .idFalse => "false"
+  | .idPermit => "permit"
+  | .idForbid => "forbid"
+  | .idWhen => "when"
+  | .idUnless => "unless"
+  | .idIn => "in"
+  | .idHas => "has"
+  | .idLike => "like"
+  | .idIs => "is"
+  | .idIf => "if"
+  | .idThen => "then"
+  | .idElse => "else"
+  | .idIdent s => s
+
+public def Unreserved? (s : String) : Bool :=
+  match s with
+  | "principal" => false
+  | "action" => false
+  | "resource" => false
+  | "context" => false
+  | "true" => false
+  | "false" => false
+  | "permit" => false
+  | "forbid" => false
+  | "when" => false
+  | "unless" => false
+  | "in" => false
+  | "has" => false
+  | "like" => false
+  | "is" => false
+  | "if" => false
+  | "then" => false
+  | "else" => false
+  | "__cedar" => false
+  | _ => true
+
+public def Ident.toUnreservedString? : Cst.Ident → Option String
+  | .idIdent s => if (Unreserved? s) then some s else none
+  | _ => none
+
+public def Ident.toEffect? : Cst.Ident → Option Effect
+  | .idPermit => some .permit
+  | .idForbid => some .forbid
+  | _ => none
+
+public def Expr.toStringLiteral? : Cst.Expr → Option String
+  | .expr e => match e.expr with
+    | .edIf _ _ _ => none
+    | .edOr e => match e.initial.initial with
+      | .rHas _ _ => none
+      | .rLike _ _ => none
+      | .rCommon i _ => match i.initial.initial.item.item with
+        | .literal l => match l with
+          | .liStr s => some s
+          | _ => none
+        | _ => none
+      | .rIsIn _ _ _ => none
+
+public def Expr.toUnescapedStringLiteral? (e : Cst.Expr) : Option String := do
+  let s ← Expr.toStringLiteral? e
+  unescape? s
 
 end Cedar.Spec.CstCommon

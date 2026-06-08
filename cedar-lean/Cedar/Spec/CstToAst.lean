@@ -5,7 +5,7 @@ public import Cedar.Spec.Expr
 public import Cedar.Spec.Policy
 public import Cedar.Spec.Value
 
-private def String.toUnreservedId? (s : String) : Option String :=
+public def String.toUnreservedId? (s : String) : Option String :=
   match s with
   | "principal" | "action" | "resource" | "context"
   | "true" | "false" | "permit" | "forbid"
@@ -54,11 +54,11 @@ public def Unreserved? (s : String) : Bool :=
   | "__cedar" => false
   | _ => true
 
-private def Cst.Ident.toUnreservedId? : Cst.Ident → Option String
+public def Cst.Ident.toUnreservedId? : Cst.Ident → Option String
   | .idIdent s => if Unreserved? s then some s else none
   | _ => none
 
-private def Cst.Ident.toUnreservedString? : Cst.Ident → Option String
+public def Cst.Ident.toUnrestrictedString? : Cst.Ident → Option String
   | .idPrincipal => some "principal"
   | .idAction => some "action"
   | .idResource => some "resource"
@@ -70,27 +70,7 @@ private def Cst.Ident.toUnreservedString? : Cst.Ident → Option String
   | .idIdent s => some s
   | _ => none
 
-private def Cst.Ident.toString : Cst.Ident → String
-  | .idPrincipal => "principal"
-  | .idAction => "action"
-  | .idResource => "resource"
-  | .idContext => "context"
-  | .idTrue => "true"
-  | .idFalse => "false"
-  | .idPermit => "permit"
-  | .idForbid => "forbid"
-  | .idWhen => "when"
-  | .idUnless => "unless"
-  | .idIn => "in"
-  | .idHas => "has"
-  | .idLike => "like"
-  | .idIs => "is"
-  | .idIf => "if"
-  | .idThen => "then"
-  | .idElse => "else"
-  | .idIdent s => s
-
-private def Var.toString : Var → String
+public def Var.toString : Var → String
   | .principal => "principal"
   | .action => "action"
   | .resource => "resource"
@@ -102,19 +82,19 @@ public inductive AstAccessor where
   | index (s : String)
 
 public def AstAccessor.toString : AstAccessor → String
-  | .field id => id.toString
+  | .field id => CstCommon.Ident.toString id
   | .index s => s
 
 public def ExprOrSpecial.toExpr? : ExprOrSpecial → Option Expr
   | .expr e => some e
   | .var v => some (.var v)
   | .strLit s => do
-      let unescapted ← Cedar.Spec.CstCommon.unescape? s
-      some (.lit (.string unescapted))
+      let unescaped ← Cedar.Spec.CstCommon.unescape? s
+      some (.lit (.string unescaped))
   | .boolLit b => some (.lit (.bool b))
   | .name _ => none
 
-private def Cst.Literal.toExprOrSpecial? (l : Cst.Literal) : Option ExprOrSpecial :=
+public def Cst.Literal.toExprOrSpecial? (l : Cst.Literal) : Option ExprOrSpecial :=
   match l with
   | .liTrue => some (.boolLit true)
   | .liFalse => some (.boolLit false)
@@ -123,12 +103,12 @@ private def Cst.Literal.toExprOrSpecial? (l : Cst.Literal) : Option ExprOrSpecia
     some (.expr (.lit (.int i)))
   | .liStr s => some (.strLit s)
 
-private def Cst.Name.toAName? (n : Cst.Name) : Option AName := do
-  let id ← n.name.toUnreservedString?
-  let path ← n.path.mapM (Cst.Ident.toUnreservedString?)
+public def Cst.Name.toAName? (n : Cst.Name) : Option AName := do
+  let id ← n.name.toUnrestrictedString?
+  let path ← n.path.mapM (Cst.Ident.toUnrestrictedString?)
   some {id := id, path := path}
 
-private def Cst.Name.toVar? (n : Cst.Name) : Option Var :=
+public def Cst.Name.toVar? (n : Cst.Name) : Option Var :=
   if !n.path.isEmpty then none
   else match n.name with
     | .idPrincipal => some .principal
@@ -137,7 +117,7 @@ private def Cst.Name.toVar? (n : Cst.Name) : Option Var :=
     | .idContext => some .context
     | _ => none
 
-private def Cst.Ref.toExprOrSpecial? (r : Cst.Ref) : Option ExprOrSpecial :=
+public def Cst.Ref.toExprOrSpecial? (r : Cst.Ref) : Option ExprOrSpecial :=
   match r with
   | .uid path eid => do
     let ty ← path.toAName?
@@ -147,29 +127,18 @@ private def Cst.Ref.toExprOrSpecial? (r : Cst.Ref) : Option ExprOrSpecial :=
       some (.expr (.lit (.entityUID {ty := ty, eid := unescaped})))
   | .ref _ _ => none
 
-private def Cst.Expr.toStringLiteral? : Cst.Expr → Option String
-  | .expr e => match e.expr with
-    | .edIf _ _ _ => none
-    | .edOr e => match e.initial.initial with
-      | .rHas _ _ => none
-      | .rLike _ _ => none
-      | .rCommon i _ => match i.initial.initial.item.item with
-        | .literal l => match l with
-          | .liStr s => some s
-          | _ => none
-        | _ => none
-
-private def Cst.MemAccess.toAstAccessor? (m : Cst.MemAccess) : Option AstAccessor :=
+public def Cst.MemAccess.toAstAccessor? (m : Cst.MemAccess) : Option AstAccessor :=
   match m with
   | .field i => match i with
-    | .idIdent _ => some (.field i)
+    | id@(.idIdent _) => do
+      let s ← CstCommon.Ident.toUnreservedString? id
+      some (.field (.idIdent s))
     | _ => none
   | .index e => do
-    let s ← e.toStringLiteral?
-    let s ← Cedar.Spec.CstCommon.unescape? s
+    let s ← CstCommon.Expr.toUnescapedStringLiteral? e
     some (.index s)
 
-private def memberAux :  ExprOrSpecial → List AstAccessor → Option ExprOrSpecial
+public def memberAux :  ExprOrSpecial → List AstAccessor → Option ExprOrSpecial
   | prim, [] => prim
   | .expr e, hd :: tl => memberAux (.expr (.getAttr e hd.toString)) tl
   | prim@(.strLit _), hd :: tl => do
@@ -179,29 +148,23 @@ private def memberAux :  ExprOrSpecial → List AstAccessor → Option ExprOrSpe
     let ret ← prim.toExpr?
     memberAux (.expr (.getAttr ret hd.toString)) tl
   | (.var v), (.field id) :: tl =>
-    memberAux (.expr (.getAttr (.var v) id.toString)) tl
+    memberAux (.expr (.getAttr (.var v) (CstCommon.Ident.toString id))) tl
   | (.var v), (.index id) :: tl =>
     memberAux (.expr (.getAttr (.var v) id)) tl
   | (.name _), (.field _) :: _ => none
   | (.name _), (.index _) :: _ => none
 
-private def Expr.bangN (e : Expr) (n : Nat) : Expr :=
+public def Expr.bangN (e : Expr) (n : Nat) : Expr :=
   if n == 0 then e else (Expr.unaryApp .not e).bangN (n-1)
   termination_by n
   decreasing_by rename_i h; simp at h; omega
 
-private def Expr.dashN (e : Expr) (n : Nat) : Expr :=
+public def Expr.dashN (e : Expr) (n : Nat) : Expr :=
   if n == 0 then e else (Expr.unaryApp .neg e).dashN (n-1)
   termination_by n
   decreasing_by rename_i h; simp at h; omega
 
-private def Cst.Member.toLit? (e : Cst.Member) : Option Cst.Literal :=
-  if !e.access.isEmpty then none else
-  match e.item with
-  | .literal l => some l
-  | _ => none
-
-private def constructExprRel (op : Cst.RelOp) (e₁ e₂ : Expr) : Expr :=
+public def constructExprRel (op : Cst.RelOp) (e₁ e₂ : Expr) : Expr :=
   match op with
   | .rLess => .binaryApp .less e₁ e₂
   | .rLessEq => .binaryApp .lessEq e₁ e₂
@@ -211,21 +174,21 @@ private def constructExprRel (op : Cst.RelOp) (e₁ e₂ : Expr) : Expr :=
   | .rEq => .binaryApp .eq e₁ e₂
   | .rIn => .binaryApp .mem e₁ e₂
 
-private def constructAttrsAux? : List Cst.MemAccess → Option (List String)
+public def constructAttrsAux? : List Cst.MemAccess → Option (List String)
   | [] => some []
   | .field id :: rest => do
-    let head ← id.toUnreservedId?
+    let head ← id.toUnreservedId? -- move toUnreserbvedId to CstCommon later
     let tail ← constructAttrsAux? rest
     head :: tail
   | .index _ :: _ => none
 
 -- `first` should already be verified to be unreserved
 -- Verify all elements in `rest` are unreserved
-private def constructAttrs? (first : String) (rest : List Cst.MemAccess) : Option (List String) := do
+public def constructAttrs? (first : String) (rest : List Cst.MemAccess) : Option (List String) := do
   let tail ← constructAttrsAux? rest
   some (first :: tail)
 
-private def extendedHasAttr (target : Expr) (fields : List String) : Expr :=
+public def extendedHasAttr (target : Expr) (fields : List String) : Expr :=
   match fields with
   | [] => target
   | [f] => .hasAttr target f
@@ -255,6 +218,10 @@ decreasing_by
   all_goals simp_wf
   all_goals first | omega | (rename_i h; have := List.sizeOf_lt_of_mem h; omega)
 
+public def Cst.Primary.toAExpr? (e : Cst.Primary) : Option AExpr := do
+  let ret ← e.toExprOrSpecial?
+  ret.toExpr?
+
 public def Cst.Member.toExprOrSpecial? (e : Cst.Member) : Option ExprOrSpecial := do
   let prim ← e.item.toExprOrSpecial?
   let accessors ← e.access.mapM (Cst.MemAccess.toAstAccessor?)
@@ -262,6 +229,10 @@ public def Cst.Member.toExprOrSpecial? (e : Cst.Member) : Option ExprOrSpecial :
 termination_by (sizeOf e, 0)
 decreasing_by
   all_goals (cases e; simp only [Cst.Member.mk.sizeOf_spec]; omega)
+
+public def Cst.Member.toAExpr? (e : Cst.Member) : Option AExpr := do
+  let ret ← e.toExprOrSpecial?
+  ret.toExpr?
 
 public def Cst.Unary.toExprOrSpecial? (e : Cst.Unary) : Option ExprOrSpecial :=
   match e.op with
@@ -272,7 +243,7 @@ public def Cst.Unary.toExprOrSpecial? (e : Cst.Unary) : Option ExprOrSpecial :=
     let expr ← eos.toExpr?
     some (.expr (expr.bangN (n.toNat)))
   | some (.nDash n) =>
-    match e.item.toLit? with
+    match CstCommon.Member.toLit? e.item with
     | some (.liNum x) =>
       let xNat := x.toNat
       let minMagnitude := (Int64.MAX + 1).toNat
@@ -297,7 +268,7 @@ public def Cst.Unary.toAExpr? (e : Cst.Unary) : Option AExpr := do
   ret.toExpr?
 termination_by (sizeOf e, 1)
 
-private def Cst.MultExpr.foldExtended (acc : AExpr) (xs : List (Cst.MultOp × Cst.Unary)) : Option AExpr :=
+public def Cst.MultExpr.foldExtended (acc : AExpr) (xs : List (Cst.MultOp × Cst.Unary)) : Option AExpr :=
   match xs with
   | [] => some acc
   | (op, u) :: rest => do
@@ -323,7 +294,7 @@ public def Cst.MultExpr.toAExpr? (e : Cst.MultExpr) : Option AExpr := do
   ret.toExpr?
 termination_by (sizeOf e, 1)
 
-private def Cst.AddExpr.foldExtended (acc : AExpr) (xs : List (Cst.AddOp × Cst.MultExpr)) : Option AExpr :=
+public def Cst.AddExpr.foldExtended (acc : AExpr) (xs : List (Cst.AddOp × Cst.MultExpr)) : Option AExpr :=
   match xs with
   | [] => some acc
   | (op, m) :: rest => do
@@ -349,12 +320,20 @@ public def Cst.AddExpr.toAExpr? (e : Cst.AddExpr) : Option AExpr := do
   ret.toExpr?
 termination_by (sizeOf e, 1)
 
+public def Cst.AddExpr.toEntityType? (e : Cst.AddExpr) : Option EntityType := do
+  let eos ← e.toExprOrSpecial?
+  match eos with
+  | .name n => some n
+  | .var  _ => none --  in Rust unqualified name
+  | _ => none
+termination_by (sizeOf e, 1)
+
 
 -- In Rust, `to_has_rhs` has the output type `Option (String ⊕ UnreservedId)`.
 -- `UnservedId` is essentially a string, but passed the check that it's not
 -- "__cedar". In this implementation, we keep the output type `String`
 -- and return a `none` if it is reserved.
-private def Cst.AddExpr.toHasRhs? (e : Cst.AddExpr) : Option (String ⊕ List String) := do
+public def Cst.AddExpr.toHasRhs? (e : Cst.AddExpr) : Option (String ⊕ List String) := do
   if (!e.extended.isEmpty) || (!e.initial.extended.isEmpty) || (!e.initial.initial.op.isNone) then none else
   let member := e.initial.initial.item
   match member.item with
@@ -379,7 +358,7 @@ decreasing_by
       omega
     omega
 
-private def Cst.AddExpr.toPattern? (e : Cst.AddExpr) : Option Pattern := do
+public def Cst.AddExpr.toPattern? (e : Cst.AddExpr) : Option Pattern := do
   let eos ← e.toExprOrSpecial?
   match eos with
   | .strLit lit => Cedar.Spec.CstCommon.toPattern? lit
@@ -406,6 +385,15 @@ public def Cst.Relation.toExprOrSpecial? : Cst.Relation → Option ExprOrSpecial
     let maybe_target ← target.toAExpr?
     let maybe_pattern ← pattern.toPattern?
     some (.expr (.unaryApp (.like maybe_pattern) maybe_target))
+  | .rIsIn target ety inEntity => do
+    let maybe_target ← target.toAExpr?
+    let maybe_entity_type ← ety.toEntityType?
+    let isExpr := Expr.unaryApp (.is maybe_entity_type) maybe_target
+    match inEntity with
+    | some ie => do
+      let maybe_in ← ie.toAExpr?
+      some (.expr (.and isExpr (.binaryApp .mem maybe_target maybe_in)))
+    | none => some (.expr isExpr)
 termination_by e => (sizeOf e, 0)
 
 public def Cst.Relation.toAExpr? (e : Cst.Relation) : Option AExpr := do
@@ -413,7 +401,7 @@ public def Cst.Relation.toAExpr? (e : Cst.Relation) : Option AExpr := do
   ret.toExpr?
 termination_by (sizeOf e, 1)
 
-private def Cst.AndExpr.foldExtended (acc : AExpr) (xs : List Cst.Relation) : Option AExpr :=
+public def Cst.AndExpr.foldExtended (acc : AExpr) (xs : List Cst.Relation) : Option AExpr :=
   match xs with
   | [] => some acc
   | rel :: rest => do
@@ -437,7 +425,7 @@ public def Cst.AndExpr.toAExpr? (e : Cst.AndExpr) : Option AExpr := do
   ret.toExpr?
 termination_by (sizeOf e, 1)
 
-private def Cst.OrExpr.foldExtended (acc : AExpr) (xs : List Cst.AndExpr) : Option AExpr :=
+public def Cst.OrExpr.foldExtended (acc : AExpr) (xs : List Cst.AndExpr) : Option AExpr :=
   match xs with
   | [] => some acc
   | ande :: rest => do
@@ -494,7 +482,7 @@ termination_by (sizeOf e, 1)
 
 end
 
-private def Cst.Ident.toConditionKind? : Cst.Ident →  Option ConditionKind
+public def Cst.Ident.toConditionKind? : Cst.Ident →  Option ConditionKind
   | .idWhen => some .when
   | .idUnless => some .unless
   | _ => none
@@ -514,21 +502,9 @@ private def Cst.Ident.toVar? : Cst.Ident → Option Var
   | .idContext => some .context
   | _ => none
 
-private def Cst.Ident.toEffect? : Cst.Ident → Option Effect
-  | .idPermit => some .permit
-  | .idForbid => some .forbid
-  | _ => none
-
-private def Cst.AddExpr.toEntityType? (e : Cst.AddExpr) : Option EntityType := do
-  let eos ← e.toExprOrSpecial?
-  match eos with
-  | .name n => some n
-  | .var  _ => none --  in Rust unqualified name
-  | _ => none
-
 -- Helper lemma: a `Primary` reachable through the AddExpr→Primary chain
 -- has strictly smaller `sizeOf` than the surrounding `OrExpr`.
-private theorem sizeOf_addExpr_primary_lt_orExpr (o : Cst.OrExpr) (ae : Cst.AddExpr) (ext : List (Cst.RelOp × Cst.AddExpr))
+public theorem sizeOf_addExpr_primary_lt_orExpr (o : Cst.OrExpr) (ae : Cst.AddExpr) (ext : List (Cst.RelOp × Cst.AddExpr))
     (h : o.initial.initial = .rCommon ae ext) :
     sizeOf ae.initial.initial.item.item < sizeOf o := by
   -- ae.initial : MultExpr ⟨Unary, List _⟩
@@ -546,7 +522,7 @@ private theorem sizeOf_addExpr_primary_lt_orExpr (o : Cst.OrExpr) (ae : Cst.AddE
 
 mutual
 
-private def Cst.Primary.toMultipleEntityUID? (p : Cst.Primary) : Option (EntityUID ⊕ List EntityUID) :=
+public def Cst.Primary.toMultipleEntityUID? (p : Cst.Primary) : Option (EntityUID ⊕ List EntityUID) :=
   match p with
   | .literal _ | .name _ => none
   | .ref r => match r with
@@ -559,13 +535,15 @@ private def Cst.Primary.toMultipleEntityUID? (p : Cst.Primary) : Option (EntityU
   | .eList es => do
     let uids ← es.attach.mapM (fun ⟨x, hmem⟩ =>
       have : sizeOf x < sizeOf es := List.sizeOf_lt_of_mem hmem
-      x.toMultipleEntityUID?)
-    some (.inr (uids.flatMap (Sum.elim ([·]) id)))
+      match x.toMultipleEntityUID? with
+      | some (.inl eref) => some eref
+      | _ => none)
+    some (.inr uids)
 termination_by (sizeOf p, 0)
 decreasing_by
   all_goals (simp_wf; omega)
 
-private def Cst.Expr.toMultipleEntityUID? (e : Cst.Expr) : Option (EntityUID ⊕ List EntityUID) :=
+public def Cst.Expr.toMultipleEntityUID? (e : Cst.Expr) : Option (EntityUID ⊕ List EntityUID) :=
   match e with
   | .expr ⟨.edIf _ _ _⟩ => none
   | .expr ⟨.edOr o⟩ =>
@@ -580,19 +558,20 @@ private def Cst.Expr.toMultipleEntityUID? (e : Cst.Expr) : Option (EntityUID ⊕
           have : sizeOf ae.initial.initial.item.item < sizeOf o :=
             sizeOf_addExpr_primary_lt_orExpr o ae ext h
           ae.initial.initial.item.item.toMultipleEntityUID?
+      | .rIsIn _ _ _ => none
 termination_by (sizeOf e, 1)
 decreasing_by
   all_goals (simp_wf; omega)
 
 end
 
-private def Cst.Expr.toEntityUID? (e : Cst.Expr) : Option EntityUID := do
+public def Cst.Expr.toEntityUID? (e : Cst.Expr) : Option EntityUID := do
   let erefs ← e.toMultipleEntityUID?
   match erefs with
   | .inl eref => some eref
   | .inr _ => none
 
-private def Cst.Expr.toEntityUIDs? (e : Cst.Expr) : Option (List EntityUID) := do
+public def Cst.Expr.toEntityUIDs? (e : Cst.Expr) : Option (List EntityUID) := do
   let erefs ← e.toMultipleEntityUID?
   match erefs with
   | .inl eref => some [eref]
@@ -600,7 +579,7 @@ private def Cst.Expr.toEntityUIDs? (e : Cst.Expr) : Option (List EntityUID) := d
 
 -- To be used when translating a `VariableDef` to a `PrincipalScope` or
 -- a `ResourceScope`
-private def Cst.VariableDef.toPRScope? (v : Cst.VariableDef) : Option Scope:=
+public def Cst.VariableDef.toPRScope? (v : Cst.VariableDef) : Option Scope:=
   match v.ineq, v.entityType with
   | none, none => some .any
   | some (op, e), _ => match op, v.entityType with
@@ -634,11 +613,11 @@ public def Cst.VariableDef.toResourceScope? (v : Cst.VariableDef) : Option Resou
     some (.resourceScope scope)
   | _ => none
 
-private def EntityUID.isAction? (uid : EntityUID) : Bool :=
+public def EntityUID.isAction? (uid : EntityUID) : Bool :=
   uid.ty.id == "Action"
 
 -- Need to check `contains_only_action_types` before using the `ActionScope` output
-private def Cst.VariableDef.toActionScopeAux? (v : Cst.VariableDef) : Option ActionScope :=
+public def Cst.VariableDef.toActionScopeAux? (v : Cst.VariableDef) : Option ActionScope :=
   match v.var with
   | .idAction => if v.entityType.isSome then none else
     match v.ineq with
@@ -653,7 +632,7 @@ private def Cst.VariableDef.toActionScopeAux? (v : Cst.VariableDef) : Option Act
       | _ => none
   | _ => none
 
-private def ActionScope.containsOnlyActionTypes? (as : ActionScope) : Bool :=
+public def ActionScope.containsOnlyActionTypes? (as : ActionScope) : Bool :=
   match as with
   | .actionScope scope => match scope with
     | .any => true
@@ -677,7 +656,7 @@ public def extractScope? (vars : List Cst.VariableDef) : Option (PrincipalScope 
 
 -- `id` to be filled in later
 public def Cst.PolicyImpl.toPolicy? (p : Cst.PolicyImpl) : Option Cedar.Spec.Policy := do
-  let effect ← p.effect.toEffect?
+  let effect ← CstCommon.Ident.toEffect? p.effect
   let (ps, as, rs) ← extractScope? p.vars
   let conds ← toConditions? p.conds
   some {id := "", effect := effect, principalScope := ps, actionScope := as, resourceScope := rs, condition := conds}
