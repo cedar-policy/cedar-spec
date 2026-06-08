@@ -215,9 +215,8 @@ public inductive Relation where
   | rHas (target : AddExpr) (field : AddExpr)
   -- cst::Relation::Like { target, pattern }
   | rLike (target : AddExpr) (pattern : AddExpr)
+  -- cst::Relation::IsIn { target, entity_type, in_entity }
   | rIsIn (target : AddExpr) (entityType : AddExpr) (inEntity : Option AddExpr)
-  -- cst::Relation::IsIn { target, entity_type, in_entity } is not represented in Lean (will need to support later)
-  -- This relation is the "... is .. in" expresion which is syntactic sugar for ".. is .. && .. in .."
 
 -- This is a cst::Add
 public structure AddExpr where
