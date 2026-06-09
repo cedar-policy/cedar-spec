@@ -245,7 +245,7 @@ public inductive MemAccess where
   | field (i : Ident)
   -- cst::MemAccess::Call(Vec<Node<Expr>>) is not represented in Lean
   -- Supporting function calls will require thinking about extension functions
-  -- | call (fs : List Expr)
+  | call (fs : List Expr)
   -- cst::MemAccess::Index(Node<Expr>)
   | index (e : Expr)
 
@@ -459,5 +459,75 @@ public def Expr.toStringLiteral? : Cst.Expr → Option String
 public def Expr.toUnescapedStringLiteral? (e : Cst.Expr) : Option String := do
   let s ← Expr.toStringLiteral? e
   unescape? s
+
+public def String.isFunctionName? : String → Bool
+  | "decimal"             ----- Decimal functions -----
+  | "lessThan"
+  | "lessThanOrEqual"
+  | "greaterThan"
+  | "greaterThanOrEqual"
+  | "ip"                  ----- IpAddr functions -----
+  | "isIpv4"
+  | "isIpv6"
+  | "isLoopback"
+  | "isMulticast"
+  | "isInRange"
+  | "datetime"           ----- Datetime functions -----
+  | "duration"
+  | "offset"
+  | "durationSince"
+  | "toDate"
+  | "toTime"
+  | "toMilliseconds"
+  | "toSeconds"
+  | "toMinutes"
+  | "toHours"
+  | "toDays" => true
+  | _ => false
+
+public def String.toExtFun? : String → Option ExtFun
+  | "decimal" => some .decimal
+  | "lessThan" => some .lessThan
+  | "lessThanOrEqual" => some .lessThanOrEqual
+  | "greaterThan" => some .greaterThan
+  | "greaterThanOrEqual" => some .greaterThanOrEqual
+  | "ip" => some .ip
+  | "isIpv4" => some .isIpv4
+  | "isIpv6" => some .isIpv6
+  | "isLoopback" => some .isLoopback
+  | "isMulticast" => some .isMulticast
+  | "isInRange" => some .isInRange
+  | "datetime" => some .datetime
+  | "duration" => some .duration
+  | "offset" => some .offset
+  | "durationSince" => some .durationSince
+  | "toDate" => some .toDate
+  | "toTime" => some .toTime
+  | "toMilliseconds" => some .toMilliseconds
+  | "toSeconds" => some .toSeconds
+  | "toMinutes" => some .toMinutes
+  | "toHours" => some .toHours
+  | "toDays" => some .toDays
+  | _ => none
+
+public def String.isMethodName? : String → Bool
+  | "contains"
+  | "containsAll"
+  | "containsAny"
+  | "isEmpty"
+  | "getTag"
+  | "hasTag" => true
+  | _ => false
+
+public def String.toMethodOp? : String → Option (BinaryOp ⊕ UnaryOp)
+  | "contains" => some (.inl .contains)
+  | "containsAll" => some (.inl .containsAll)
+  | "containsAny" => some (.inl .containsAny)
+  | "getTag" => some (.inl .getTag)
+  | "hasTag" => some (.inl .hasTag)
+  | "isEmpty" => some (.inr .isEmpty)
+  | _ => none
+
+
 
 end Cedar.Spec.CstCommon
