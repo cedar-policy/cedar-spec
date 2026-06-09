@@ -25,7 +25,7 @@ use cedar_policy::{
 /// The [`Entity`] gets converted to a singleton [`Entities`].
 pub fn entity_to_json_roundtrips(original: Entity) {
     // Wrap in Entities for JSON serialization
-    let entities = Entities::from_entities([original.clone()], None)
+    let entities = Entities::from_entities([original], None)
         .expect("Failed to create Entities from single entity");
     entities_to_json_roundtrips(entities);
 }
