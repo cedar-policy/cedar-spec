@@ -148,6 +148,26 @@ theorem Cst.Primary.toAExpr?_evaluate
     | ok vs =>
       have := (hbridge vs).mp hmes
       rw [this]
+  | rInits r =>
+    intro hprim aexp heos v
+    simp [Cst.Primary.toExprOrSpecial?, Option.bind_eq_some_iff] at hprim
+    obtain ⟨map, hmap, heq⟩ := hprim
+    rw [← heq] at heos
+    simp [ExprOrSpecial.toExpr?] at heos
+    rw [← heos]
+    -- per-value evaluation agreement (mutual IH on each record value)
+    have hperElt : ∀ ri ∈ r, ∀ ax, ri.value.toAExpr? = some ax →
+        ∀ v, evaluate ax req es = .ok v ↔ ri.value.evaluate req es = .ok v := by
+      intro ri hmem ax hax v
+      have hsz : sizeOf ri.value < 1 + sizeOf r := by
+        have h1 := List.sizeOf_lt_of_mem hmem
+        have hval : sizeOf ri.value < sizeOf ri := by
+          cases ri; simp only [Cst.RecInit.mk.sizeOf_spec]; omega
+        omega
+      simp [Cst.Expr.toAExpr?, Option.bind_eq_some_iff] at hax
+      obtain ⟨vEos, hvEos, hvExpr⟩ := hax
+      exact Cst.Expr.toAExpr?_evaluate hvEos ax hvExpr v
+    exact rInits_record_eval_agrees req es r map hmap hperElt v
 termination_by (sizeOf prim, 0)
 decreasing_by
   all_goals simp_wf

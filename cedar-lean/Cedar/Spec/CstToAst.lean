@@ -195,8 +195,31 @@ public def extendedHasAttr (target : Expr) (fields : List String) : Expr :=
   | f :: rest =>
     .and (.hasAttr target f) (extendedHasAttr (.getAttr target f) rest)
 
+public def ExprOrSpecial.toValidAttr? (eos : ExprOrSpecial) : Option Attr :=
+  match eos with
+  | .expr _ => none
+  | .var v => some (v.toString)
+  | .name n => if n.path.isEmpty then some (n.id) else none
+  | .strLit lit => CstCommon.unescape? lit
+  | .boolLit _ => none
 
 mutual
+
+public def rInitsToMap? (rs : List Cst.RecInit) : Option (List (Attr × Expr)) :=
+  match rs with
+  | [] => some []
+  | r :: rs => do
+    let attr_eos ← r.key.toExprOrSpecial?
+    let maybe_attr ← attr_eos.toValidAttr?
+    let maybe_value ← r.value.toAExpr?
+    let rest ← rInitsToMap? rs
+    (maybe_attr, maybe_value) :: rest
+termination_by (sizeOf rs, 0)
+decreasing_by
+  all_goals simp_wf
+  all_goals first
+    | omega
+    | (cases r; simp only [Cst.RecInit.mk.sizeOf_spec]; omega)
 
 public def Cst.Primary.toExprOrSpecial? (e : Cst.Primary) : Option ExprOrSpecial :=
   match e with
@@ -213,6 +236,9 @@ public def Cst.Primary.toExprOrSpecial? (e : Cst.Primary) : Option ExprOrSpecial
   | .eList es => do
     let aes ← es.mapM₁ (fun ⟨x, _⟩ => x.toAExpr?)
     some (.expr (.set aes))
+  | .rInits r => do
+    let map ← rInitsToMap? r
+    some (.expr (.record map))
 termination_by (sizeOf e, 0)
 decreasing_by
   all_goals simp_wf
@@ -539,6 +565,7 @@ public def Cst.Primary.toMultipleEntityUID? (p : Cst.Primary) : Option (EntityUI
       | some (.inl eref) => some eref
       | _ => none)
     some (.inr uids)
+  | .rInits _ => none
 termination_by (sizeOf p, 0)
 decreasing_by
   all_goals (simp_wf; omega)

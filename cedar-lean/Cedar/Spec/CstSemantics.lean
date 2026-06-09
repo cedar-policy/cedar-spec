@@ -70,6 +70,47 @@ private def Member.toAttrs? (e : Member) : Option (List Attr) :=
     | .name _ => none
     | _ => none
 
+/-- Attribute name of an identifier used as a record key, read structurally
+    (no translation).  Reserved keywords map to their spellings; ordinary
+    identifiers map to themselves; `true`/`false`/`in`/`has`/… are rejected. -/
+public def Ident.toAttr? : Ident → Option Attr
+  | .idPrincipal => some "principal"
+  | .idAction    => some "action"
+  | .idResource  => some "resource"
+  | .idContext   => some "context"
+  | .idPermit    => some "permit"
+  | .idForbid    => some "forbid"
+  | .idWhen      => some "when"
+  | .idUnless    => some "unless"
+  | .idIdent s   => some s
+  | _            => none
+
+/-- Attribute name of a `Primary` used as a record key. -/
+public def Primary.toAttr? (p : Primary) : Option Attr :=
+  match p with
+  | .literal (.liStr s)              => CstCommon.unescape? s
+  | .name { path := [], name := id } => Ident.toAttr? id
+  | _                                => none
+
+/-- Extract a record-key attribute name from a CST expression, without
+    translating it: the key must be a "bare" primary (no operators other than a
+    no-op `-0`, no extended chains, no member accesses) that is a string literal
+    or an identifier name.  This matches the keys the translator accepts. -/
+public def Expr.toAttr? (e : Expr) : Option Attr :=
+  match e with
+  | .expr ⟨.edIf _ _ _⟩ => none
+  | .expr ⟨.edOr o⟩ =>
+    if !o.extended.isEmpty || !o.initial.extended.isEmpty then none
+    else match o.initial.initial with
+      | .rCommon ae ext =>
+        if !ext.isEmpty || !ae.extended.isEmpty || !ae.initial.extended.isEmpty
+            || !ae.initial.initial.item.access.isEmpty then none
+        else match ae.initial.initial.op with
+          | none            => Primary.toAttr? ae.initial.initial.item.item
+          | some (.nDash 0) => Primary.toAttr? ae.initial.initial.item.item
+          | _               => none
+      | _ => none
+
 -- RelOp: rLess, rLessEq, rGreaterEq, rGreater, rNotEq, rEq, rIn
 -- `rGreater`/`rGreaterEq` use the `not (less/lessEq v₁ v₂)` pattern to match
 -- the translator's `constructExprRel`. Behaviorally equivalent on totally-
@@ -230,6 +271,20 @@ public def Primary.evaluate (e : Primary) (req : Request) (es : Entities) : Resu
       let etype : Spec.Name := { id := last, path := ids }
       .ok (.prim (.entityUID { ty := etype, eid := eid' }))
     | .ref _ _ => .error .typeError
+  | .rInits r => do
+    let avs ← r.mapM₁ (fun ⟨ri, hmem⟩ =>
+      have : sizeOf ri.value < 1 + sizeOf r := by
+        have h1 := List.sizeOf_lt_of_mem hmem
+        obtain ⟨k, v⟩ := ri
+        simp only [RecInit.mk.sizeOf_spec] at h1
+        show sizeOf v < 1 + sizeOf r
+        omega
+      match ri.key.toAttr? with
+      | none => .error .typeError
+      | some attr => do
+          let val ← ri.value.evaluate req es
+          .ok (attr, val))
+    .ok (.record (Map.make avs))
 termination_by sizeOf e
 
 -- Call `getAttr` recursively, a design choice that can be changed later
