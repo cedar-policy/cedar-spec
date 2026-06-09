@@ -22,6 +22,7 @@ import Cedar.Thm.Validation.Validator
 import Cedar.Thm.Validation.ValidationPolicySlice.ActionScope
 import Cedar.Thm.Validation.ValidationPolicySlice.TypeOfCongr
 import Cedar.Thm.Validation.ValidationPolicySlice.Environments
+import Cedar.Thm.Validation.EnvironmentValidation
 
 /-!
 # Validation Policy Slicing: Correctness Proof
@@ -930,24 +931,132 @@ private theorem nonslice_policy_noTypeErrors
 errors. Non-slice policies are unaffected by the schema change (their environments
 either don't match the changed actions, or transfer via appliesTo subset).
 -/
+private theorem schemaWf_implies
+    {schema : Schema} (hwf : schemaWf schema) :
+    schema.acts.wellFormed ∧
+    (∀ uid, schema.acts.contains uid = true → schema.ets.isValidEntityUID uid = false) := by
+  simp only [schemaWf, Bool.and_eq_true] at hwf
+  obtain ⟨hwf_acts, hdisj⟩ := hwf
+  constructor
+  · exact hwf_acts
+  · intro uid hc
+    simp only [List.all_eq_true] at hdisj
+    have hfind := Option.isSome_iff_exists.mp (by simp [ActionSchema.contains] at hc; exact hc)
+    obtain ⟨entry, hfind⟩ := hfind
+    have hmem := Map.find?_mem_toList hfind
+    have := hdisj (uid, entry) hmem
+    simp only [Bool.not_eq_true', EntitySchema.contains, Option.isSome_eq_false_iff] at this
+    have hfind_none : Map.find? schema.ets uid.ty = none := Option.isNone_iff_eq_none.mp this
+    simp [EntitySchema.isValidEntityUID, hfind_none]
+
+private theorem validateOrImpossible_of_empty_envs
+    {oldSchema schema : Schema} {policies : Policies}
+    (henvs : schema.environments = [])
+    (hno_full : requiresFullRevalidation oldSchema schema = false)
+    (hold : validate policies oldSchema = .ok ()) :
+    validateOrImpossible policies schema = true := by
+  simp only [validateOrImpossible, List.all_eq_true]
+  intro p hp
+  have hvalid_p := List.forM_ok_implies_all_ok' (by simp [validate] at hold; exact hold) p hp
+  -- Extract checkEntities success from old schema
+  simp only [typecheckPolicyWithEnvironments, Except.mapError] at hvalid_p
+  simp_do_let (checkEntities oldSchema p.toExpr) as hce₁ at hvalid_p
+  -- checkEntities passes on new schema by monotonicity
+  have hets := rfr_false_ets_eq hno_full
+  have hce₂ : checkEntities schema p.toExpr = .ok () :=
+    checkEntities_monotone p.toExpr
+      (by intro uid hv
+          cases hv₁ : oldSchema.ets.isValidEntityUID uid
+          · simp only [hv₁] at hv
+            obtain ⟨entry, hfind⟩ := Option.isSome_iff_exists.mp
+              (by simp [ActionSchema.contains] at hv; exact hv)
+            have ⟨_, hfn, _⟩ := rfr_false_old_in_new hno_full hfind
+            have : schema.acts.contains uid = true := by simp [ActionSchema.contains, hfn]
+            simp [this]
+          · have : schema.ets.isValidEntityUID uid = true := hets ▸ hv₁
+            simp [this])
+      (by intro ety hv
+          simp only [Bool.or_eq_true] at hv ⊢
+          cases hv with
+          | inl hc => left; rw [← hets]; exact hc
+          | inr hat =>
+            right
+            simp only [ActionSchema.actionType?, Set.any, List.any_eq_true] at hat ⊢
+            obtain ⟨uid, hmem, hty⟩ := hat
+            have hc_old : oldSchema.acts.contains uid = true := Map.in_keys_iff_contains.mp hmem
+            obtain ⟨oe, hfo⟩ := Option.isSome_iff_exists.mp hc_old
+            have ⟨_, hfn, _⟩ := rfr_false_old_in_new hno_full hfo
+            have hc_new : schema.acts.contains uid = true := by
+              simp only [ActionSchema.contains, hfn, Option.isSome]
+            exact ⟨uid, Map.in_keys_iff_contains.mpr hc_new, hty⟩)
+      hce₁
+  -- With empty environments, the result is .impossiblePolicy
+  simp [typecheckPolicyWithEnvironments, Except.mapError, hce₂, henvs, allFalse]
+
+private theorem schemaWf_of_validateWellFormed
+    {schema : Schema}
+    (hwf : Schema.validateWellFormed schema = .ok ())
+    {env : TypeEnv} (henv : env ∈ schema.environments) :
+    schemaWf schema := by
+  have henv_wf := List.forM_ok_implies_all_ok'
+    (by simp [Schema.validateWellFormed] at hwf; exact hwf) env henv
+  simp only [TypeEnv.validateWellFormed] at henv_wf
+  cases h₁ : EntitySchema.validateWellFormed env env.ets
+  · simp [h₁] at henv_wf
+  simp [h₁] at henv_wf
+  cases h₂ : ActionSchema.validateWellFormed env env.acts
+  · simp [h₂] at henv_wf
+  have hacts_wf := action_schema_validate_well_formed_is_sound h₂
+  have ⟨henv_ets, henv_acts⟩ := env_mem_environments_schema henv
+  simp only [schemaWf, Bool.and_eq_true]
+  constructor
+  · exact List.isSortedBy_correct.mp (Map.wf_iff_sorted.mp (henv_acts ▸ hacts_wf.1))
+  · rw [List.all_eq_true]; intro ⟨uid, entry⟩ hmem
+    simp only [Bool.not_eq_true']
+    have hc : env.acts.contains uid = true := by
+      rw [henv_acts]; exact Map.in_list_implies_contains hmem
+    have := hacts_wf.2.2.1 uid hc
+    rw [henv_ets] at this
+    exact Bool.eq_false_iff.mpr this
+
 theorem validation_slice_soundness
     (oldSchema newSchema : Schema)
     (policies : Policies)
     (hno_full : requiresFullRevalidation oldSchema newSchema = false)
     (hold : validate policies oldSchema = .ok ())
     (hslice : validateOrImpossible (validationSlice oldSchema newSchema policies) newSchema = true)
-    (hacts_wf₁ : oldSchema.acts.wellFormed)
-    (hacts_wf₂ : newSchema.acts.wellFormed)
-    (hdisjoint : ∀ uid, newSchema.acts.contains uid = true → newSchema.ets.isValidEntityUID uid = false) :
+    (hwf₁ : Schema.validateWellFormed oldSchema = .ok ())
+    (hwf₂ : Schema.validateWellFormed newSchema = .ok ()) :
     validateOrImpossible policies newSchema = true := by
-  simp only [validateOrImpossible, List.all_eq_true] at hslice ⊢
-  intro p hp
-  by_cases hmatch : actionScopeMatchesAnyChangedAction oldSchema.acts
-      (computeActionChanges oldSchema newSchema) p.actionScope
-  · exact hslice p (List.mem_filter.mpr ⟨hp, hmatch⟩)
-  · simp only [Bool.not_eq_true] at hmatch
-    have hvalid_p := List.forM_ok_implies_all_ok' (by simp [validate] at hold; exact hold) p hp
-    exact nonslice_policy_noTypeErrors hno_full hvalid_p hmatch hacts_wf₁ hacts_wf₂ hdisjoint
+  by_cases henvs : newSchema.environments = []
+  · exact validateOrImpossible_of_empty_envs henvs hno_full hold
+  · have ⟨env₂, henv₂_mem⟩ := List.exists_mem_of_ne_nil _ henvs
+    have hwf₂' := schemaWf_of_validateWellFormed hwf₂ henv₂_mem
+    -- oldSchema environments must be non-empty (old acts ⊆ new acts and old has no removed actions)
+    -- If policies = [], validateOrImpossible is trivially true
+    by_cases hpol : policies = []
+    · simp [validateOrImpossible, hpol]
+    · -- policies ≠ [] → old environments must be non-empty (validate would fail otherwise)
+      have henvs₁ : oldSchema.environments ≠ [] := by
+        intro hempty
+        obtain ⟨p, hp⟩ := List.exists_mem_of_ne_nil _ hpol
+        have hvalid_p := List.forM_ok_implies_all_ok' (by simp [validate] at hold; exact hold) p hp
+        simp only [typecheckPolicyWithEnvironments, Except.mapError] at hvalid_p
+        simp_do_let (checkEntities oldSchema p.toExpr) as hce at hvalid_p
+        simp [hempty, allFalse] at hvalid_p
+      have ⟨env₁, henv₁_mem⟩ := List.exists_mem_of_ne_nil _ henvs₁
+      have hwf₁' := schemaWf_of_validateWellFormed hwf₁ henv₁_mem
+      have ⟨hacts_wf₁, _⟩ := schemaWf_implies hwf₁'
+      have ⟨hacts_wf₂, hdisjoint⟩ := schemaWf_implies hwf₂'
+      simp only [validateOrImpossible, List.all_eq_true] at hslice ⊢
+      intro q hq
+      by_cases hmatch : actionScopeMatchesAnyChangedAction oldSchema.acts
+          (computeActionChanges oldSchema newSchema) q.actionScope
+      · exact hslice q (List.mem_filter.mpr ⟨hq, hmatch⟩)
+      · simp only [Bool.not_eq_true] at hmatch
+        have hvalid_q := List.forM_ok_implies_all_ok'
+          (by simp [validate] at hold; exact hold) q hq
+        exact nonslice_policy_noTypeErrors hno_full hvalid_q hmatch hacts_wf₁ hacts_wf₂ hdisjoint
 
 /--
 **Main theorem**: no type errors across all policies iff no type errors in the
@@ -962,12 +1071,11 @@ theorem validation_slice_iff
     (policies : Policies)
     (hno_full : requiresFullRevalidation oldSchema newSchema = false)
     (hold : validate policies oldSchema = .ok ())
-    (hacts_wf₁ : oldSchema.acts.wellFormed)
-    (hacts_wf₂ : newSchema.acts.wellFormed)
-    (hdisjoint : ∀ uid, newSchema.acts.contains uid = true → newSchema.ets.isValidEntityUID uid = false) :
+    (hwf₁ : Schema.validateWellFormed oldSchema = .ok ())
+    (hwf₂ : Schema.validateWellFormed newSchema = .ok ()) :
     validateOrImpossible policies newSchema = true ↔
     validateOrImpossible (validationSlice oldSchema newSchema policies) newSchema = true :=
   ⟨validation_slice_complete oldSchema newSchema policies,
-   fun h => validation_slice_soundness oldSchema newSchema policies hno_full hold h hacts_wf₁ hacts_wf₂ hdisjoint⟩
+   fun h => validation_slice_soundness oldSchema newSchema policies hno_full hold h hwf₁ hwf₂⟩
 
 end Cedar.Thm

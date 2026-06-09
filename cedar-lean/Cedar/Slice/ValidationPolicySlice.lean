@@ -143,6 +143,15 @@ def computeActionChanges (oldSchema newSchema : Schema) : List ActionChange :=
         none
 
 /--
+Schema well-formedness sufficient for validation slicing: action map is sorted,
+and action entity types are disjoint from the entity schema. Both are implied by
+`ActionSchema.validateWellFormed` / `Schema.validateWellFormed`.
+-/
+def schemaWf (schema : Schema) : Bool :=
+  schema.acts.wellFormed &&
+  schema.acts.toList.all (fun (uid, _) => !(schema.ets.contains uid.ty))
+
+/--
 Validation "succeeds modulo impossible policies": either fully succeeds, or fails
 only because some policies became impossible (all environments produce `.ff`).
 This is the appropriate success criterion when appliesTo truncation is allowed,
