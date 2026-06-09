@@ -24,22 +24,34 @@ import Cedar.Thm.Validation.ValidationPolicySlice.TypeOfCongr
 import Cedar.Thm.Validation.ValidationPolicySlice.Environments
 
 /-!
-This file proves the correctness of validation-focused policy slicing.
+# Validation Policy Slicing: Correctness Proof
 
-The core insight: `typecheckPolicy` substitutes the environment's action UID
-into the policy expression via `substituteAction`. If the environment's action
-does not match the policy's action scope, the substituted action scope expression
-typechecks to `bool .ff`, making the whole policy typecheck to `bool .ff` for
-that environment. This means the validation result depends only on environments
-whose action matches the policy's scope.
+## Main result
 
-We prove this in stages:
-1. Infrastructure: `checkEntities` preservation, principal scope typing, congruence
-2. Per-policy theorem (`policy_preserved`): if a policy's action scope does not
-   match any changed action, and was previously valid, it remains valid.
-3. Top-level theorem (`validation_slice_soundness`): the complete executable
-   procedure connecting `requiresFullRevalidation`, `computeActionChanges`,
-   `validationSlice`, and `validate`.
+`validation_slice_iff`: when a schema change does not require full revalidation,
+validating all policies on the new schema succeeds **if and only if** validating
+the sliced subset succeeds:
+
+    validate policies newSchema = .ok () ↔
+    validate (validationSlice oldSchema newSchema policies) newSchema = .ok ()
+
+## Key insight
+
+`typecheckPolicy` substitutes the environment's action UID into the policy
+expression. If the environment's action does not match the policy's action scope,
+the substituted expression typechecks to `bool .ff`. This means the validation
+result depends only on environments whose action matches the policy's scope —
+so policies whose scope doesn't match any changed action are unaffected.
+
+## Proof structure
+
+1. **Infrastructure**: `checkEntities` preservation, principal scope typing,
+   `typeOf`/`typecheckPolicy` congruence across environments
+2. **Per-policy** (`policy_preserved`): if a policy's action scope does not match
+   any changed action, and was previously valid, it remains valid
+3. **Soundness** (`validation_slice_soundness`): slice validates → all validate
+4. **Completeness** (`validation_slice_complete`): all validate → slice validates
+5. **Equivalence** (`validation_slice_iff`): combines soundness and completeness
 -/
 
 namespace Cedar.Thm
@@ -475,13 +487,15 @@ theorem policy_preserved
       exact htx₁_notff' this
     · simp [hallff₂]
 
-/-! ## Top-level theorems -/
+/-! ## Top-level theorems
+
+The main result is `validation_slice_iff` at the bottom of this file:
+validating all policies ↔ validating the slice.
+-/
 
 /--
-The main soundness theorem: if the schemas are incrementally revalidatable,
-validation passed on the old schema for all policies, and validation passes on
-the new schema for the sliced policies, then validation passes on the new schema
-for all policies.
+Soundness (propositional): slice validates → all validate.
+Used internally by `validation_slice_soundness`.
 -/
 theorem validation_slice_is_sufficient
     (schema₁ schema₂ : Schema)
@@ -489,7 +503,7 @@ theorem validation_slice_is_sufficient
     (policies : Policies)
     (hincr : IncrementallyRevalidatable schema₁ schema₂)
     (hold : validate policies schema₁ = .ok ())
-    (hslice : validate (validationSlice schema₁.acts changes policies) schema₂ = .ok ())
+    (hslice : validate (validationSliceByChanges schema₁.acts changes policies) schema₂ = .ok ())
     (hunchanged : ∀ (action : EntityUID),
       ¬ changes.any (fun c => c.action == action) →
       schema₁.acts.find? action = schema₂.acts.find? action)
@@ -500,8 +514,8 @@ theorem validation_slice_is_sufficient
   apply List.all_ok_implies_forM_ok
   intro p hp
   by_cases hmatch : actionScopeMatchesAnyChangedAction schema₁.acts changes p.actionScope
-  · have hp_slice : p ∈ validationSlice schema₁.acts changes policies := by
-      simp [validationSlice, List.mem_filter, hp, hmatch]
+  · have hp_slice : p ∈ validationSliceByChanges schema₁.acts changes policies := by
+      simp [validationSliceByChanges, List.mem_filter, hp, hmatch]
     exact List.forM_ok_implies_all_ok' hslice p hp_slice
   · simp only [Bool.not_eq_true] at hmatch
     exact policy_preserved schema₁ schema₂ changes p hincr hmatch
@@ -668,28 +682,16 @@ theorem computeActionChanges_complete {oldSchema newSchema : Schema}
     simp [hfind_old, hentry_eq]
 
 /--
-**Main executable theorem**: the complete validation slicing procedure.
-
-Given two schemas where `requiresFullRevalidation` returns false, if:
-1. All policies validated on the old schema
-2. The sliced policies (computed by `validationSlice` using `computeActionChanges`)
-   validate on the new schema
-
-Then all policies validate on the new schema.
-
-This gives users a concrete executable procedure:
-1. Check `requiresFullRevalidation oldSchema newSchema = false`
-2. Compute `changes := computeActionChanges oldSchema newSchema`
-3. Compute `slice := validationSlice oldSchema.acts changes policies`
-4. Validate `slice` against `newSchema`
-5. If validation passes, ALL policies are guaranteed valid on `newSchema`
+Soundness (executable): assembles `rfr_false_implies_incr` and
+`computeActionChanges_complete` to discharge the propositional hypotheses
+of `validation_slice_is_sufficient` from the executable preconditions.
 -/
 theorem validation_slice_soundness
     (oldSchema newSchema : Schema)
     (policies : Policies)
     (hno_full : requiresFullRevalidation oldSchema newSchema = false)
     (hold : validate policies oldSchema = .ok ())
-    (hslice : validate (validationSlice oldSchema.acts (computeActionChanges oldSchema newSchema) policies) newSchema = .ok ())
+    (hslice : validate (validationSlice oldSchema newSchema policies) newSchema = .ok ())
     (hacts_wf₁ : oldSchema.acts.wellFormed)
     (hacts_wf₂ : newSchema.acts.wellFormed) :
     validate policies newSchema = .ok () := by
@@ -700,8 +702,44 @@ theorem validation_slice_soundness
   exact validation_slice_is_sufficient oldSchema newSchema
     (computeActionChanges oldSchema newSchema) policies
     (rfr_false_implies_incr hno_full hacts_wf₁' hacts_wf₂')
-    hold hslice
+    hold (by simp [validationSlice, validationSliceByChanges] at hslice; exact hslice)
     (fun action h => computeActionChanges_complete hno_full hacts_wf₁' hacts_wf₂' action h)
     hacts_wf₁' hacts_wf₂'
+
+/-! ### Completeness -/
+
+/--
+Completeness: all validate → slice validates.
+Trivial since the slice is a subset (`List.filter`) of the policies.
+-/
+theorem validation_slice_complete
+    (oldSchema newSchema : Schema)
+    (policies : Policies)
+    (hall : validate policies newSchema = .ok ()) :
+    validate (validationSlice oldSchema newSchema policies) newSchema = .ok () := by
+  simp only [validate, validationSlice, validationSliceByChanges]
+  apply List.all_ok_implies_forM_ok
+  intro p hp
+  have hp_policies : p ∈ policies := (List.mem_filter.mp hp).1
+  exact List.forM_ok_implies_all_ok' hall p hp_policies
+
+/--
+**Main theorem (equivalence)**: validating all policies against the new schema
+succeeds if and only if validating only the sliced policies succeeds, provided
+the old schema validated and `requiresFullRevalidation` is false.
+
+This is the complete correctness guarantee for the slicing algorithm.
+-/
+theorem validation_slice_iff
+    (oldSchema newSchema : Schema)
+    (policies : Policies)
+    (hno_full : requiresFullRevalidation oldSchema newSchema = false)
+    (hold : validate policies oldSchema = .ok ())
+    (hacts_wf₁ : oldSchema.acts.wellFormed)
+    (hacts_wf₂ : newSchema.acts.wellFormed) :
+    validate policies newSchema = .ok () ↔
+    validate (validationSlice oldSchema newSchema policies) newSchema = .ok () :=
+  ⟨fun h => validation_slice_complete oldSchema newSchema policies h,
+   fun h => validation_slice_soundness oldSchema newSchema policies hno_full hold h hacts_wf₁ hacts_wf₂⟩
 
 end Cedar.Thm
