@@ -69,7 +69,11 @@ def ActionChange.action : ActionChange → EntityUID
 Checks whether a full revalidation is required (as opposed to incremental).
 A full revalidation is needed when:
 1. The entity schema has changed (entity types, attributes, ancestors)
-2. Any action's hierarchy membership (ancestors) has changed
+2. Any existing action's hierarchy membership (ancestors) has changed
+3. Any existing action has been removed from the schema
+
+New actions being added is fine — they are captured by `computeActionChanges` and
+only policies matching the new action need revalidation.
 
 Returns `true` if a full revalidation is required.
 -/
@@ -79,8 +83,9 @@ def requiresFullRevalidation (oldSchema newSchema : Schema) : Bool :=
     match newSchema.acts.find? action with
     | none => true
     | some newEntry => oldEntry.ancestors != newEntry.ancestors) ||
-  newSchema.acts.toList.any (fun (action, _) =>
-    !(oldSchema.acts.contains action))
+  newSchema.acts.toList.any (fun (action, newEntry) =>
+    !(oldSchema.acts.contains action) &&
+    (!newEntry.ancestors.isEmpty || !(oldSchema.acts.actionType? action.ty)))
 
 /--
 Determines whether a policy's action scope could possibly match a given action,

@@ -152,20 +152,96 @@ private theorem checkEntities_eq {schema₁ schema₂ : Schema} (expr : Expr)
     exact checkEntities_eq x huid hety
   termination_by sizeOf expr
 
+private theorem checkEntities_monotone {schema₁ schema₂ : Schema} (expr : Expr)
+    (huid : ∀ uid : EntityUID,
+      (schema₁.ets.isValidEntityUID uid || schema₁.acts.contains uid) = true →
+      (schema₂.ets.isValidEntityUID uid || schema₂.acts.contains uid) = true)
+    (hety : ∀ ety : EntityType,
+      (schema₁.ets.contains ety || schema₁.acts.actionType? ety) = true →
+      (schema₂.ets.contains ety || schema₂.acts.actionType? ety) = true)
+    (hok : checkEntities schema₁ expr = .ok ()) :
+    checkEntities schema₂ expr = .ok () := by
+  match expr with
+  | .lit (.entityUID uid) =>
+    simp only [checkEntities] at hok ⊢
+    split at hok
+    · rename_i hv; rw [show (schema₂.ets.isValidEntityUID uid || schema₂.acts.contains uid) = true from huid uid hv]; rfl
+    · contradiction
+  | .lit (.bool _) | .lit (.int _) | .lit (.string _) | .var _ =>
+    unfold checkEntities; rfl
+  | .unaryApp (.is ety) e₁ =>
+    simp only [checkEntities] at hok ⊢
+    split at hok
+    · rename_i hv
+      rw [show (schema₂.ets.contains ety || schema₂.acts.actionType? ety) = true from hety ety hv]
+      exact checkEntities_monotone e₁ huid hety hok
+    · contradiction
+  | .unaryApp (.not) e₁ | .unaryApp (.neg) e₁ | .unaryApp (.like _) e₁ | .unaryApp (.isEmpty) e₁ =>
+    unfold checkEntities at hok ⊢; exact checkEntities_monotone e₁ huid hety hok
+  | .and e₁ e₂ | .or e₁ e₂ | .binaryApp _ e₁ e₂ =>
+    unfold checkEntities at hok ⊢
+    cases h₁ : checkEntities schema₁ e₁ with
+    | error => simp [h₁] at hok
+    | ok _ =>
+      simp [h₁] at hok
+      have h₁' := checkEntities_monotone e₁ huid hety (by exact h₁ ▸ rfl)
+      simp [h₁']
+      exact checkEntities_monotone e₂ huid hety hok
+  | .ite e₁ e₂ e₃ =>
+    unfold checkEntities at hok ⊢
+    cases h₁ : checkEntities schema₁ e₁ with
+    | error => simp [h₁] at hok
+    | ok _ =>
+      cases h₂ : checkEntities schema₁ e₂ with
+      | error => simp [h₁, h₂] at hok
+      | ok _ =>
+        simp [h₁, h₂] at hok
+        have h₁' := checkEntities_monotone e₁ huid hety (by exact h₁ ▸ rfl)
+        have h₂' := checkEntities_monotone e₂ huid hety (by exact h₂ ▸ rfl)
+        simp [h₁', h₂']
+        exact checkEntities_monotone e₃ huid hety hok
+  | .hasAttr e₁ _ | .getAttr e₁ _ =>
+    unfold checkEntities at hok ⊢; exact checkEntities_monotone e₁ huid hety hok
+  | .set xs =>
+    simp only [checkEntities] at hok ⊢
+    apply List.all_ok_implies_forM_ok
+    intro ⟨x, hx⟩ hmem
+    have hok_x := List.forM_ok_implies_all_ok' hok ⟨x, hx⟩ hmem
+    exact checkEntities_monotone x huid hety hok_x
+  | .record axs =>
+    simp only [checkEntities] at hok ⊢
+    apply List.all_ok_implies_forM_ok
+    intro ⟨ax, hax⟩ hmem
+    have hok_ax := List.forM_ok_implies_all_ok' hok ⟨ax, hax⟩ hmem
+    exact checkEntities_monotone ax.snd huid hety hok_ax
+  | .call _ xs =>
+    simp only [checkEntities] at hok ⊢
+    apply List.all_ok_implies_forM_ok
+    intro ⟨x, hx⟩ hmem
+    have hok_x := List.forM_ok_implies_all_ok' hok ⟨x, hx⟩ hmem
+    exact checkEntities_monotone x huid hety hok_x
+  termination_by sizeOf expr
+
 theorem checkEntities_preserved
     {schema₁ schema₂ : Schema} {expr : Expr}
     (hincr : IncrementallyRevalidatable schema₁ schema₂)
     (hok : checkEntities schema₁ expr = .ok ()) :
     checkEntities schema₂ expr = .ok () := by
-  have huid : ∀ uid : EntityUID,
-      (schema₁.ets.isValidEntityUID uid || schema₁.acts.contains uid) =
-      (schema₂.ets.isValidEntityUID uid || schema₂.acts.contains uid) := by
-    intro uid; rw [hincr.ets_eq, hincr.same_actions]
-  have hety : ∀ ety : EntityType,
-      (schema₁.ets.contains ety || schema₁.acts.actionType? ety) =
-      (schema₂.ets.contains ety || schema₂.acts.actionType? ety) := by
-    intro ety; rw [hincr.ets_eq, hincr.same_action_types]
-  rw [← checkEntities_eq expr huid hety]; exact hok
+  have huid_fwd : ∀ uid : EntityUID,
+      (schema₁.ets.isValidEntityUID uid || schema₁.acts.contains uid) = true →
+      (schema₂.ets.isValidEntityUID uid || schema₂.acts.contains uid) = true := by
+    intro uid hv
+    cases hv₁ : schema₁.ets.isValidEntityUID uid
+    · simp only [hv₁] at hv
+      have := hincr.acts_contains_fwd uid hv
+      simp [this]
+    · have : schema₂.ets.isValidEntityUID uid = true := hincr.ets_eq ▸ hv₁
+      simp [this]
+  have hety_fwd : ∀ ety : EntityType,
+      (schema₁.ets.contains ety || schema₁.acts.actionType? ety) = true →
+      (schema₂.ets.contains ety || schema₂.acts.actionType? ety) = true := by
+    intro ety hv; rw [← hincr.ets_eq, ← hincr.same_action_types]; exact hv
+  exact checkEntities_monotone expr huid_fwd hety_fwd hok
 
 /-! ## Infrastructure: principal scope typing -/
 
@@ -287,6 +363,112 @@ theorem typecheckPolicy_env_congr {policy : Policy} {env₁ env₂ : TypeEnv}
     (h : TypeEnvAgreement env₁ env₂) :
     typecheckPolicy policy env₁ = typecheckPolicy policy env₂ := by
   simp only [typecheckPolicy, h.reqty_eq, typeOf_env_congr _ _ h]
+
+/--
+Weak congruence: if `checkEntities` passes on env₁ and the environments have
+`WeakTypeEnvAgreement`, then `typecheckPolicy` gives the same result.
+-/
+private theorem checkEntities_mapOnVars {schema : Schema} {f : Var → Expr} (expr : Expr)
+    (hf : ∀ v, checkEntities schema (f v) = .ok ())
+    (hce : checkEntities schema expr = .ok ()) :
+    checkEntities schema (mapOnVars f expr) = .ok () := by
+  match expr with
+  | .lit _ => simp [mapOnVars, hce]
+  | .var v => simp [mapOnVars, hf]
+  | .unaryApp (.is ety) e₁ =>
+    simp only [checkEntities] at hce
+    split at hce
+    · rename_i hv; simp only [mapOnVars, checkEntities, hv]; exact checkEntities_mapOnVars e₁ hf hce
+    · contradiction
+  | .unaryApp (.not) e₁ | .unaryApp (.neg) e₁ | .unaryApp (.like _) e₁ | .unaryApp (.isEmpty) e₁ =>
+    unfold checkEntities at hce; simp only [mapOnVars]; unfold checkEntities
+    exact checkEntities_mapOnVars e₁ hf hce
+  | .and e₁ e₂ =>
+    unfold checkEntities at hce
+    cases h₁ : checkEntities schema e₁ <;> simp [h₁] at hce
+    simp [mapOnVars, checkEntities, checkEntities_mapOnVars e₁ hf (by rw [h₁]),
+          checkEntities_mapOnVars e₂ hf hce]
+  | .or e₁ e₂ =>
+    unfold checkEntities at hce
+    cases h₁ : checkEntities schema e₁ <;> simp [h₁] at hce
+    simp [mapOnVars, checkEntities, checkEntities_mapOnVars e₁ hf (by rw [h₁]),
+          checkEntities_mapOnVars e₂ hf hce]
+  | .binaryApp _ e₁ e₂ =>
+    unfold checkEntities at hce
+    cases h₁ : checkEntities schema e₁ <;> simp [h₁] at hce
+    simp [mapOnVars, checkEntities, checkEntities_mapOnVars e₁ hf (by rw [h₁]),
+          checkEntities_mapOnVars e₂ hf hce]
+  | .ite e₁ e₂ e₃ =>
+    unfold checkEntities at hce
+    cases h₁ : checkEntities schema e₁ <;> simp [h₁] at hce
+    cases h₂ : checkEntities schema e₂ <;> simp [h₂] at hce
+    simp [mapOnVars, checkEntities, checkEntities_mapOnVars e₁ hf (by rw [h₁]),
+          checkEntities_mapOnVars e₂ hf (by rw [h₂]),
+          checkEntities_mapOnVars e₃ hf hce]
+  | .hasAttr e₁ _ =>
+    unfold checkEntities at hce; simp [mapOnVars, checkEntities, checkEntities_mapOnVars e₁ hf hce]
+  | .getAttr e₁ _ =>
+    unfold checkEntities at hce; simp [mapOnVars, checkEntities, checkEntities_mapOnVars e₁ hf hce]
+  | .set xs =>
+    simp only [checkEntities] at hce
+    simp only [mapOnVars, List.map₁, checkEntities]
+    apply List.all_ok_implies_forM_ok
+    intro ⟨y, hy⟩ hmem
+    have hy_in_map : y ∈ xs.attach.map (fun ⟨x, _⟩ => mapOnVars f x) := hy
+    rw [List.mem_map] at hy_in_map
+    obtain ⟨⟨x, hx⟩, hmem_att, heq⟩ := hy_in_map
+    have : checkEntities schema y = .ok () := by
+      rw [← heq]
+      exact checkEntities_mapOnVars x hf (List.forM_ok_implies_all_ok' hce ⟨x, hx⟩ (List.mem_attach xs ⟨x, hx⟩))
+    exact this
+  | .record axs =>
+    simp only [checkEntities] at hce
+    simp only [mapOnVars, List.map₂, checkEntities]
+    apply List.all_ok_implies_forM_ok
+    intro ⟨y, hy⟩ hmem
+    -- y ∈ the mapped list. Get membership from hmem via attach₂ → mem_attach₂
+    have hy_mem : y ∈ axs.attach₂.map (fun ⟨⟨a, x⟩, _⟩ => (a, mapOnVars f x)) :=
+      List.mem_attach₂ hmem
+    simp only [List.mem_map] at hy_mem
+    obtain ⟨⟨ax, hax⟩, hmem_att, heq⟩ := hy_mem
+    have heq_snd : y.snd = mapOnVars f ax.snd := by
+      have := congrArg Prod.snd heq; simp at this; exact this.symm
+    rw [heq_snd]
+    exact checkEntities_mapOnVars ax.snd hf (List.forM_ok_implies_all_ok' hce ⟨ax, hax⟩ hmem_att)
+  | .call _ xs =>
+    simp only [checkEntities] at hce
+    simp only [mapOnVars, List.map₁, checkEntities]
+    apply List.all_ok_implies_forM_ok
+    intro ⟨y, hy⟩ hmem
+    have hy_in_map : y ∈ xs.attach.map (fun ⟨x, _⟩ => mapOnVars f x) := hy
+    rw [List.mem_map] at hy_in_map
+    obtain ⟨⟨x, hx⟩, hmem_att, heq⟩ := hy_in_map
+    have : checkEntities schema y = .ok () := by
+      rw [← heq]
+      exact checkEntities_mapOnVars x hf (List.forM_ok_implies_all_ok' hce ⟨x, hx⟩ (List.mem_attach xs ⟨x, hx⟩))
+    exact this
+  termination_by sizeOf expr
+
+private theorem checkEntities_substituteAction {schema : Schema} {uid : EntityUID} {expr : Expr}
+    (hce : checkEntities schema expr = .ok ())
+    (hvalid : (schema.ets.isValidEntityUID uid || schema.acts.contains uid) = true) :
+    checkEntities schema (substituteAction uid expr) = .ok () := by
+  simp only [substituteAction]
+  exact checkEntities_mapOnVars expr (fun v => by cases v <;> simp [checkEntities, hvalid]) hce
+
+theorem typecheckPolicy_env_congr_weak {policy : Policy} {env₁ env₂ : TypeEnv}
+    (h : WeakTypeEnvAgreement env₁ env₂)
+    (hce : checkEntities ⟨env₁.ets, env₁.acts⟩ policy.toExpr = .ok ())
+    (haction_valid : (env₁.ets.isValidEntityUID env₁.reqty.action ||
+                      env₁.acts.contains env₁.reqty.action) = true) :
+    typecheckPolicy policy env₁ = typecheckPolicy policy env₂ := by
+  simp only [typecheckPolicy]
+  have hce_sub : checkEntities ⟨env₁.ets, env₁.acts⟩
+      (substituteAction env₁.reqty.action policy.toExpr) = .ok () :=
+    checkEntities_substituteAction hce haction_valid
+  have heq := typeOf_env_congr_weak (substituteAction env₁.reqty.action policy.toExpr) ∅ h hce_sub
+  simp only [h.reqty_eq] at heq ⊢
+  rw [heq]
 
 /-! ## Per-policy non-matching action produces ff -/
 
@@ -449,9 +631,11 @@ theorem policy_preserved
           hunchanged env.reqty.action haction
         obtain ⟨env₁, henv₁_mem, henv₁_reqty⟩ := env_in_other_schema_environments henv hfind_eq hacts_wf₂
         have ⟨henv₁_ets, henv₁_acts⟩ := env_mem_environments_schema henv₁_mem
-        have hagree := mk_typeEnvAgreement_from_schemas hincr henv₁_ets henv₁_acts henv_ets henv_acts henv₁_reqty
+        have hagree := mk_weakTypeEnvAgreement_from_schemas hincr henv₁_ets henv₁_acts henv_ets henv_acts henv₁_reqty
+        have hce_env₁ : checkEntities ⟨env₁.ets, env₁.acts⟩ policy.toExpr = .ok () := by
+          rw [henv₁_ets, henv₁_acts]; exact hce₁
         have ⟨tx₁, _, htx₁⟩ := List.mapM_ok_implies_all_ok h_mapM₁ env₁ henv₁_mem
-        rw [typecheckPolicy_env_congr hagree] at htx₁
+        rw [typecheckPolicy_env_congr_weak hagree hce_env₁ (by simp [henv₁_acts, env_mem_environments_action_contained henv₁_mem])] at htx₁
         exact ⟨tx₁, htx₁⟩
     obtain ⟨txs₂, h_mapM₂⟩ := List.all_ok_implies_mapM_ok hall_ok
     rw [h_mapM₂]
@@ -484,9 +668,11 @@ theorem policy_preserved
         env_in_other_schema_environments henv₁_mem hfind_eq hacts_wf₁
       have ⟨henv₂_ets, henv₂_acts⟩ := env_mem_environments_schema henv₂_mem
       have ⟨henv₁_ets', henv₁_acts'⟩ := env_mem_environments_schema henv₁_mem
-      have hagree := mk_typeEnvAgreement_from_schemas hincr henv₁_ets' henv₁_acts' henv₂_ets henv₂_acts henv₂_reqty.symm
+      have hagree := mk_weakTypeEnvAgreement_from_schemas hincr henv₁_ets' henv₁_acts' henv₂_ets henv₂_acts henv₂_reqty.symm
+      have hce_env₁' : checkEntities ⟨env₁.ets, env₁.acts⟩ policy.toExpr = .ok () := by
+        rw [henv₁_ets', henv₁_acts']; exact hce₁
       have henv₂_ok : typecheckPolicy policy env₂ = .ok tx₁ := by
-        rw [← typecheckPolicy_env_congr hagree]; exact henv₁_ok
+        rw [← typecheckPolicy_env_congr_weak hagree hce_env₁' (by simp [henv₁_acts', env_mem_environments_action_contained henv₁_mem])]; exact henv₁_ok
       have htx₁_in_txs₂ : tx₁ ∈ txs₂ := by
         have ⟨tx₂, htx₂_mem, htx₂_ok⟩ := List.mapM_ok_implies_all_ok h_mapM₂ env₂ henv₂_mem
         have : tx₁ = tx₂ := by rw [henv₂_ok] at htx₂_ok; exact Except.ok.inj htx₂_ok
@@ -525,16 +711,6 @@ private theorem rfr_false_old_in_new {old new : Schema}
   | none => simp [hfn] at h_entry
   | some ne => simp [hfn, bne] at h_entry; exact ⟨ne, rfl, h_entry⟩
 
-private theorem rfr_false_new_in_old {old new : Schema}
-    (h : requiresFullRevalidation old new = false)
-    {action : EntityUID} {newEntry : ActionSchemaEntry}
-    (hfind : new.acts.find? action = some newEntry) :
-    old.acts.contains action := by
-  unfold requiresFullRevalidation at h
-  simp only [Bool.or_eq_false_iff, List.any_eq_false] at h
-  have h_entry := h.2 ⟨action, newEntry⟩ (Map.find?_mem_toList hfind)
-  simp at h_entry; exact h_entry
-
 private theorem rfr_false_same_ancestors {old new : Schema}
     (h : requiresFullRevalidation old new = false)
     {action : EntityUID} {e₁ e₂ : ActionSchemaEntry}
@@ -550,56 +726,107 @@ This bridges the executable check to the propositional spec.
 theorem rfr_false_implies_incr {oldSchema newSchema : Schema}
     (hno_full : requiresFullRevalidation oldSchema newSchema = false)
     (hacts_wf₁ : Map.WellFormed oldSchema.acts)
-    (hacts_wf₂ : Map.WellFormed newSchema.acts) :
+    (hacts_wf₂ : Map.WellFormed newSchema.acts)
+    (hdisjoint : ∀ uid, newSchema.acts.contains uid = true → newSchema.ets.isValidEntityUID uid = false) :
     IncrementallyRevalidatable oldSchema newSchema := by
   have hets := rfr_false_ets_eq hno_full
-  have hsame_contains : ∀ uid, oldSchema.acts.contains uid = newSchema.acts.contains uid := by
-    intro uid
-    cases hold' : oldSchema.acts.contains uid <;> cases hnew' : newSchema.acts.contains uid
-    · rfl
-    · simp only [ActionSchema.contains, Option.isSome_iff_exists] at hnew'
-      obtain ⟨ne, hfn⟩ := hnew'
-      have := rfr_false_new_in_old hno_full hfn; simp [this] at hold'
-    · simp only [ActionSchema.contains, Option.isSome_iff_exists] at hold'
-      obtain ⟨oe, hfo⟩ := hold'
-      have ⟨_, hfn, _⟩ := rfr_false_old_in_new hno_full hfo
-      simp [ActionSchema.contains, hfn] at hnew'
-    · rfl
+  have hcontains_fwd : ∀ uid, oldSchema.acts.contains uid = true → newSchema.acts.contains uid = true := by
+    intro uid hc
+    simp only [ActionSchema.contains, Option.isSome_iff_exists] at hc
+    obtain ⟨oe, hfo⟩ := hc
+    have ⟨_, hfn, _⟩ := rfr_false_old_in_new hno_full hfo
+    simp [ActionSchema.contains, hfn]
   have hsame_anc : ∀ (a : EntityUID) (e₁ e₂ : ActionSchemaEntry),
       oldSchema.acts.find? a = some e₁ → newSchema.acts.find? a = some e₂ →
       e₁.ancestors = e₂.ancestors := fun a e₁ e₂ h₁ h₂ => rfr_false_same_ancestors hno_full h₁ h₂
+  have hnew_leaf : ∀ (action : EntityUID) (newEntry : ActionSchemaEntry),
+      (action, newEntry) ∈ newSchema.acts.toList →
+      oldSchema.acts.contains action = false →
+      newEntry.ancestors.isEmpty ∧ oldSchema.acts.actionType? action.ty := by
+    intro action newEntry hmem hnot_old
+    unfold requiresFullRevalidation at hno_full
+    simp only [Bool.or_eq_false_iff, List.any_eq_false] at hno_full
+    have h_entry := hno_full.2 ⟨action, newEntry⟩ hmem
+    simp [hnot_old] at h_entry
+    exact h_entry
   exact {
     ets_eq := hets
-    same_actions := hsame_contains
+    acts_contains_fwd := hcontains_fwd
+    acts_disjoint := hdisjoint
     same_action_types := by
       intro ety; simp only [ActionSchema.actionType?, Set.any]
       cases h : oldSchema.acts.keys.elts.any (EntityUID.ty · == ety)
-      · symm; rw [List.any_eq_false] at h ⊢; intro uid hmem
+      · symm; rw [List.any_eq_false]; intro uid hmem
+        rw [List.any_eq_false] at h
         have hc : newSchema.acts.contains uid = true := Map.in_keys_iff_contains.mp hmem
-        have hc' : oldSchema.acts.contains uid = true := by rw [hsame_contains]; exact hc
-        exact h uid (Map.in_keys_iff_contains.mpr hc')
+        cases hold : oldSchema.acts.contains uid with
+        | true => exact h uid (Map.in_keys_iff_contains.mpr hold)
+        | false =>
+          have hfind_new := Option.isSome_iff_exists.mp (by simp [ActionSchema.contains] at hc; exact hc)
+          obtain ⟨entry, hfind⟩ := hfind_new
+          have ⟨_, hat⟩ := hnew_leaf uid entry (Map.find?_mem_toList hfind) (by simp [hold])
+          simp only [ActionSchema.actionType?, Set.any, List.any_eq_true] at hat
+          obtain ⟨uid', hmem', hty'⟩ := hat
+          by_contra heq; simp only [beq_iff_eq] at heq
+          rw [heq] at hty'; exact absurd hty' (h uid' hmem')
       · symm; rw [List.any_eq_true] at h ⊢; obtain ⟨uid, hmem, hty⟩ := h
         have hc : oldSchema.acts.contains uid = true := Map.in_keys_iff_contains.mp hmem
-        have hc' : newSchema.acts.contains uid = true := by rw [← hsame_contains]; exact hc
+        have hc' : newSchema.acts.contains uid = true := hcontains_fwd uid hc
         exact ⟨uid, Map.in_keys_iff_contains.mpr hc', hty⟩
     same_ancestors := hsame_anc
-    same_descendentOf := acts_descendentOf_agree hsame_contains hsame_anc
+    same_descendentOf := by
+      intro uid₁ uid₂
+      simp only [ActionSchema.descendentOf]
+      split
+      · rfl
+      · cases hf₁ : oldSchema.acts.find? uid₁ with
+        | none =>
+          -- uid₁ not in old. Is it in new?
+          cases hf₂ : newSchema.acts.find? uid₁ with
+          | none => rfl
+          | some entry₂ =>
+            -- uid₁ is new. By hnew_leaf, entry₂.ancestors.isEmpty
+            have hnotold : oldSchema.acts.contains uid₁ = false := by
+              simp [ActionSchema.contains, hf₁]
+            have ⟨hempty, _⟩ := hnew_leaf uid₁ entry₂ (Map.find?_mem_toList hf₂) hnotold
+            simp only [Set.isEmpty, beq_iff_eq] at hempty
+            simp only [Set.contains]
+            have : entry₂.ancestors.elts = [] := by
+              have := congrArg Set.elts hempty; simp [Set.empty] at this; exact this
+            simp [this]
+        | some entry₁ =>
+          have ⟨entry₂, hf₂, hanc⟩ := rfr_false_old_in_new hno_full hf₁
+          simp [hf₂, hanc]
     same_maybeDescendentOf := by
       intro ety₁ ety₂; simp only [ActionSchema.maybeDescendentOf]
       cases h : oldSchema.acts.toList.any (fun x => x.1.ty = ety₁ && x.2.ancestors.any (EntityUID.ty · == ety₂))
-      · symm; rw [List.any_eq_false] at h ⊢; intro ⟨act, entry₂⟩ hmem₂
+      · -- No old action has the property. Show no new action does either.
+        symm; rw [List.any_eq_false] at h ⊢
+        intro ⟨act, entry₂⟩ hmem₂
         have hfind₂ := (Map.in_list_iff_find?_some hacts_wf₂).mp hmem₂
-        have hc₁ : oldSchema.acts.contains act := (hsame_contains act).symm ▸ (by simp [ActionSchema.contains, hfind₂])
-        obtain ⟨entry₁, hfind₁⟩ := Option.isSome_iff_exists.mp hc₁
-        have := h ⟨act, entry₁⟩ (Map.find?_mem_toList hfind₁)
-        simp only [Bool.and_eq_true, decide_eq_true_eq] at this ⊢
-        rw [← hsame_anc act entry₁ entry₂ hfind₁ hfind₂]; exact this
-      · symm; rw [List.any_eq_true] at h ⊢; obtain ⟨⟨act, entry₁⟩, hmem₁, hpred⟩ := h
+        cases hold : oldSchema.acts.contains act
+        · -- act is new: ancestors is empty, so ancestors.any is false
+          have ⟨hempty, _⟩ := hnew_leaf act entry₂ hmem₂ hold
+          simp only [Set.isEmpty, beq_iff_eq] at hempty
+          simp only [Bool.and_eq_true, decide_eq_true_eq]
+          intro _
+          have helts : entry₂.ancestors.elts = [] := by
+            have := congrArg Set.elts hempty; simp [Set.empty] at this; exact this
+          simp_all [Set.any]
+        · -- act is in old: use h
+          obtain ⟨entry₁, hfind₁⟩ := Option.isSome_iff_exists.mp hold
+          have := h ⟨act, entry₁⟩ (Map.find?_mem_toList hfind₁)
+          simp only [Bool.and_eq_true, decide_eq_true_eq] at this ⊢
+          rw [← hsame_anc act entry₁ entry₂ hfind₁ hfind₂]; exact this
+      · -- Some old action has the property. Transfer to new.
+        symm; rw [List.any_eq_true] at h ⊢
+        obtain ⟨⟨act, entry₁⟩, hmem₁, hpred⟩ := h
         have hfind₁ := (Map.in_list_iff_find?_some hacts_wf₁).mp hmem₁
-        have hc₂ : newSchema.acts.contains act := (hsame_contains act) ▸ (by simp [ActionSchema.contains, hfind₁])
+        have hc₂ : newSchema.acts.contains act = true := hcontains_fwd act (by simp [ActionSchema.contains, hfind₁])
         obtain ⟨entry₂, hfind₂⟩ := Option.isSome_iff_exists.mp hc₂
         simp only [Bool.and_eq_true, decide_eq_true_eq] at hpred ⊢
-        exact ⟨⟨act, entry₂⟩, Map.find?_mem_toList hfind₂, by rw [← hsame_anc act entry₁ entry₂ hfind₁ hfind₂]; exact hpred⟩
+        exact ⟨⟨act, entry₂⟩, Map.find?_mem_toList hfind₂,
+          by rw [← hsame_anc act entry₁ entry₂ hfind₁ hfind₂]; exact hpred⟩
   }
 
 /-! ### Completeness -/
@@ -630,7 +857,8 @@ private theorem nonslice_policy_noTypeErrors
     (hmatch : actionScopeMatchesAnyChangedAction oldSchema.acts
       (computeActionChanges oldSchema newSchema) p.actionScope = false)
     (hacts_wf₁ : oldSchema.acts.wellFormed)
-    (hacts_wf₂ : newSchema.acts.wellFormed) :
+    (hacts_wf₂ : newSchema.acts.wellFormed)
+    (hdisjoint : ∀ uid, newSchema.acts.contains uid = true → newSchema.ets.isValidEntityUID uid = false) :
     (match typecheckPolicyWithEnvironments typecheckPolicy p newSchema with
     | .ok () => true
     | .error (.impossiblePolicy _) => true
@@ -639,7 +867,7 @@ private theorem nonslice_policy_noTypeErrors
     Map.wf_iff_sorted.mpr (List.isSortedBy_correct.mpr hacts_wf₁)
   have hacts_wf₂' : Map.WellFormed newSchema.acts :=
     Map.wf_iff_sorted.mpr (List.isSortedBy_correct.mpr hacts_wf₂)
-  have hincr := rfr_false_implies_incr hno_full hacts_wf₁' hacts_wf₂'
+  have hincr := rfr_false_implies_incr hno_full hacts_wf₁' hacts_wf₂' hdisjoint
   have hvalid_p_orig := hvalid_p
   simp only [typecheckPolicyWithEnvironments, Except.mapError] at hvalid_p ⊢
   simp_do_let (checkEntities oldSchema p.toExpr) as hce₁ at hvalid_p
@@ -671,17 +899,25 @@ private theorem nonslice_policy_noTypeErrors
       exact ⟨tx, htx⟩
     · have henv_action_in_new : newSchema.acts.contains env.reqty.action := henv_contains
       obtain ⟨newEntry, hfind_new⟩ := Option.isSome_iff_exists.mp henv_action_in_new
-      have henv_action_in_old : oldSchema.acts.contains env.reqty.action :=
-        rfr_false_new_in_old hno_full hfind_new
+      have henv_action_in_old : oldSchema.acts.contains env.reqty.action := by
+        -- If the action were NOT in old, computeActionChanges would include it
+        by_contra h; simp [ActionSchema.contains] at h
+        have hmem_out : ActionChange.contextChanged env.reqty.action ∈
+            computeActionChanges oldSchema newSchema := by
+          simp only [computeActionChanges, List.mem_filterMap]
+          exact ⟨(env.reqty.action, newEntry), Map.find?_mem_toList hfind_new, by simp [h]⟩
+        exact absurd (List.any_eq_true.mpr ⟨_, hmem_out, by simp [ActionChange.action]⟩) haction
       obtain ⟨oldEntry, hfind_old⟩ := Option.isSome_iff_exists.mp henv_action_in_old
       have ⟨hctx, hprincipal, hresource⟩ := computeActionChanges_not_in_gives_subset
         haction hfind_old hfind_new
       obtain ⟨env₁, henv₁_mem, henv₁_reqty⟩ := env_in_other_schema_environments_subset
         henv hfind_old hfind_new hctx hprincipal hresource hacts_wf₂'
       have ⟨henv₁_ets, henv₁_acts⟩ := env_mem_environments_schema henv₁_mem
-      have hagree := mk_typeEnvAgreement_from_schemas hincr henv₁_ets henv₁_acts henv_ets henv_acts henv₁_reqty
+      have hagree := mk_weakTypeEnvAgreement_from_schemas hincr henv₁_ets henv₁_acts henv_ets henv_acts henv₁_reqty
+      have hce_env₁ : checkEntities ⟨env₁.ets, env₁.acts⟩ p.toExpr = .ok () := by
+        rw [henv₁_ets, henv₁_acts]; exact hce₁
       have ⟨tx₁, _, htx₁⟩ := List.mapM_ok_implies_all_ok h_mapM₁ env₁ henv₁_mem
-      rw [typecheckPolicy_env_congr hagree] at htx₁
+      rw [typecheckPolicy_env_congr_weak hagree hce_env₁ (by simp [henv₁_acts, env_mem_environments_action_contained henv₁_mem])] at htx₁
       exact ⟨tx₁, htx₁⟩
   obtain ⟨txs₂, h_mapM₂⟩ := List.all_ok_implies_mapM_ok hall_ok
   simp only [Except.bind_ok, h_mapM₂]
@@ -701,7 +937,8 @@ theorem validation_slice_soundness
     (hold : validate policies oldSchema = .ok ())
     (hslice : validateOrImpossible (validationSlice oldSchema newSchema policies) newSchema = true)
     (hacts_wf₁ : oldSchema.acts.wellFormed)
-    (hacts_wf₂ : newSchema.acts.wellFormed) :
+    (hacts_wf₂ : newSchema.acts.wellFormed)
+    (hdisjoint : ∀ uid, newSchema.acts.contains uid = true → newSchema.ets.isValidEntityUID uid = false) :
     validateOrImpossible policies newSchema = true := by
   simp only [validateOrImpossible, List.all_eq_true] at hslice ⊢
   intro p hp
@@ -710,7 +947,7 @@ theorem validation_slice_soundness
   · exact hslice p (List.mem_filter.mpr ⟨hp, hmatch⟩)
   · simp only [Bool.not_eq_true] at hmatch
     have hvalid_p := List.forM_ok_implies_all_ok' (by simp [validate] at hold; exact hold) p hp
-    exact nonslice_policy_noTypeErrors hno_full hvalid_p hmatch hacts_wf₁ hacts_wf₂
+    exact nonslice_policy_noTypeErrors hno_full hvalid_p hmatch hacts_wf₁ hacts_wf₂ hdisjoint
 
 /--
 **Main theorem**: no type errors across all policies iff no type errors in the
@@ -726,10 +963,11 @@ theorem validation_slice_iff
     (hno_full : requiresFullRevalidation oldSchema newSchema = false)
     (hold : validate policies oldSchema = .ok ())
     (hacts_wf₁ : oldSchema.acts.wellFormed)
-    (hacts_wf₂ : newSchema.acts.wellFormed) :
+    (hacts_wf₂ : newSchema.acts.wellFormed)
+    (hdisjoint : ∀ uid, newSchema.acts.contains uid = true → newSchema.ets.isValidEntityUID uid = false) :
     validateOrImpossible policies newSchema = true ↔
     validateOrImpossible (validationSlice oldSchema newSchema policies) newSchema = true :=
   ⟨validation_slice_complete oldSchema newSchema policies,
-   fun h => validation_slice_soundness oldSchema newSchema policies hno_full hold h hacts_wf₁ hacts_wf₂⟩
+   fun h => validation_slice_soundness oldSchema newSchema policies hno_full hold h hacts_wf₁ hacts_wf₂ hdisjoint⟩
 
 end Cedar.Thm

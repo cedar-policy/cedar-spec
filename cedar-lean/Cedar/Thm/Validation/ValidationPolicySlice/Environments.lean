@@ -190,8 +190,10 @@ revalidation. Corresponds to `requiresFullRevalidation old new = false`.
 -/
 structure IncrementallyRevalidatable (schema₁ schema₂ : Schema) : Prop where
   ets_eq : schema₁.ets = schema₂.ets
-  same_actions : ∀ action : EntityUID,
-    schema₁.acts.contains action = schema₂.acts.contains action
+  acts_contains_fwd : ∀ action : EntityUID,
+    schema₁.acts.contains action = true → schema₂.acts.contains action = true
+  acts_disjoint : ∀ uid : EntityUID,
+    schema₂.acts.contains uid = true → schema₂.ets.isValidEntityUID uid = false
   same_action_types : ∀ ety : EntityType,
     schema₁.acts.actionType? ety = schema₂.acts.actionType? ety
   same_ancestors : ∀ (action : EntityUID) (entry₁ entry₂ : ActionSchemaEntry),
@@ -204,12 +206,12 @@ structure IncrementallyRevalidatable (schema₁ schema₂ : Schema) : Prop where
     schema₁.acts.maybeDescendentOf ety₁ ety₂ = schema₂.acts.maybeDescendentOf ety₁ ety₂
 
 /--
-Construct `TypeEnvAgreement` between two environments from different schemas when:
+Construct `WeakTypeEnvAgreement` between two environments from different schemas when:
 - Both environments' ets and acts fields are the schema ets/acts respectively
 - The schemas are `IncrementallyRevalidatable`
 - The environments have the same `reqty`
 -/
-theorem mk_typeEnvAgreement_from_schemas
+theorem mk_weakTypeEnvAgreement_from_schemas
     {schema₁ schema₂ : Schema} {env₁ env₂ : TypeEnv}
     (hincr : IncrementallyRevalidatable schema₁ schema₂)
     (henv₁_ets : env₁.ets = schema₁.ets)
@@ -217,10 +219,13 @@ theorem mk_typeEnvAgreement_from_schemas
     (henv₂_ets : env₂.ets = schema₂.ets)
     (henv₂_acts : env₂.acts = schema₂.acts)
     (hreqty : env₁.reqty = env₂.reqty) :
-    TypeEnvAgreement env₁ env₂ where
+    WeakTypeEnvAgreement env₁ env₂ where
   ets_eq := by rw [henv₁_ets, henv₂_ets, hincr.ets_eq]
   reqty_eq := hreqty
-  acts_contains := fun uid => by rw [henv₁_acts, henv₂_acts]; exact hincr.same_actions uid
+  acts_contains_fwd := fun uid hc => by
+    rw [henv₁_acts] at hc; rw [henv₂_acts]; exact hincr.acts_contains_fwd uid hc
+  acts_disjoint := fun uid hc => by
+    rw [henv₂_acts] at hc; rw [henv₂_ets]; exact hincr.acts_disjoint uid hc
   acts_actionType := fun ety => by rw [henv₁_acts, henv₂_acts]; exact hincr.same_action_types ety
   acts_descendentOf := fun u₁ u₂ => by rw [henv₁_acts, henv₂_acts]; exact hincr.same_descendentOf u₁ u₂
   acts_maybeDescendentOf := fun e₁ e₂ => by rw [henv₁_acts, henv₂_acts]; exact hincr.same_maybeDescendentOf e₁ e₂
