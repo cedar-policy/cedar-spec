@@ -240,6 +240,42 @@ test = false
 doc = false
 
 [[bin]]
+name = "protobuf-decode-gen-policyset"
+path = "fuzz_targets/protobuf-decode/protobuf-decode-gen-policyset.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-decode-gen-entity"
+path = "fuzz_targets/protobuf-decode/protobuf-decode-gen-entity.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-decode-gen-entities"
+path = "fuzz_targets/protobuf-decode/protobuf-decode-gen-entities.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-decode-gen-expression"
+path = "fuzz_targets/protobuf-decode/protobuf-decode-gen-expression.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-decode-gen-request"
+path = "fuzz_targets/protobuf-decode/protobuf-decode-gen-request.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-decode-gen-template"
+path = "fuzz_targets/protobuf-decode/protobuf-decode-gen-template.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "entity-validation"
 path = "fuzz_targets/entity-validation.rs"
 test = false

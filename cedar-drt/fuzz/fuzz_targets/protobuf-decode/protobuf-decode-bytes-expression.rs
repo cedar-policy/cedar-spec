@@ -18,11 +18,15 @@
 
 use cedar_drt_inner::fuzz_target;
 
+use cedar_drt_inner::props::expression_to_cedar_parses;
 use cedar_policy::Expression;
 use cedar_policy::proto::traits::Protobuf;
 
 // Feed arbitrary bytes into Expression protobuf decoder.
 // The property under test: decode either returns Ok or Err, never panics.
 fuzz_target!(|input: &[u8]| {
-    let _ = Expression::decode(input);
+    match Expression::decode(input) {
+        Ok(e) => expression_to_cedar_parses(e.into()),
+        Err(_) => (), // errors are expected here
+    }
 });
