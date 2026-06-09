@@ -392,10 +392,7 @@ theorem single_policy_single_change_preserved
     (policy : Policy)
     (hchange : SingleActionChange schema₁ schema₂ changedAction)
     (hnotmatch : actionScopeMatchesAction schema₁.acts changedAction policy.actionScope = false)
-    (hvalid : typecheckPolicyWithEnvironments typecheckPolicy policy schema₁ = .ok ())
-    (hactionInAny_wf : ∀ (ls : List EntityUID),
-      policy.actionScope = .actionInAny ls →
-      ls ≠ [] ∧ ∃ ety, ∀ uid ∈ ls, uid.ty = ety) :
+    (hvalid : typecheckPolicyWithEnvironments typecheckPolicy policy schema₁ = .ok ()) :
     typecheckPolicyWithEnvironments typecheckPolicy policy schema₂ = .ok () := by
   -- Extract facts from hvalid
   simp only [typecheckPolicyWithEnvironments, Except.mapError] at hvalid ⊢
@@ -408,7 +405,18 @@ theorem single_policy_single_change_preserved
     have hce₂ : checkEntities schema₂ policy.toExpr = .ok () :=
       checkEntities_preserved hchange.incr hce₁
     rw [show (checkEntities schema₂ policy.toExpr) = .ok () from hce₂]
-    simp only [Except.ok.injEq, Except.bind_ok]
+    simp only [Except.bind_ok]
+    -- Derive actionInAny well-formedness from hvalid
+    have hactionInAny_wf : ∀ (ls : List EntityUID),
+        policy.actionScope = .actionInAny ls →
+        ls ≠ [] ∧ ∃ ety, ∀ uid ∈ ls, uid.ty = ety := by
+      intro ls hls
+      -- Reconstruct the original hvalid for the full theorem call
+      have hvalid_full : typecheckPolicyWithEnvironments typecheckPolicy policy schema₁ = .ok () := by
+        simp only [typecheckPolicyWithEnvironments, Except.mapError, hce₁, Except.bind_ok,
+                   h_mapM₁, Except.bind_ok, ite_eq_right_iff, allFalse]
+        exact hvalid
+      exact actionInAny_wf_of_valid hls hvalid_full
     -- Part B: every env in schema₂.environments typechecks ok
     have hall_ok : ∀ env ∈ schema₂.environments, ∃ tx, typecheckPolicy policy env = .ok tx := by
       intro env henv
@@ -556,8 +564,8 @@ theorem validation_slice_is_sufficient
     (schema₁ schema₂ : Schema)
     (changes : List ActionChange)
     (policies : Policies)
-    (hincr : IncrementallyRevalidatable schema₁ schema₂)
-    (hchanges : ChangesAreComplete schema₁ schema₂ changes)
+    (_hincr : IncrementallyRevalidatable schema₁ schema₂)
+    (_hchanges : ChangesAreComplete schema₁ schema₂ changes)
     (hold : validate policies schema₁ = .ok ())
     (hslice : validate (validationSlice schema₁.acts changes policies) schema₂ = .ok ())
     -- Per-policy preservation (proved separately via single_policy_single_change_preserved)

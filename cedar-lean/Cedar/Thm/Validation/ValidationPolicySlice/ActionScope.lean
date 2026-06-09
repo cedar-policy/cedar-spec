@@ -18,6 +18,7 @@ import Cedar.Spec
 import Cedar.Data
 import Cedar.Validation
 import Cedar.Slice.ValidationPolicySlice
+import Cedar.Thm.Validation.Validator
 
 /-!
 This file proves that action scope expressions typecheck to `bool .ff` when the
@@ -416,5 +417,186 @@ theorem actionInAny_set_types
   rw [hfold]
   simp only [ok, TypedExpr.typeOf]
   exact ⟨_, _, ety, rfl, rfl⟩
+
+/-! ### Extracting actionInAny well-formedness from validation success -/
+
+private theorem typeOf_and_left_succeeds {e₁ e₂ : Expr} {c : Capabilities} {env : TypeEnv}
+    {tx : TypedExpr} {c' : Capabilities}
+    (h : typeOf (.and e₁ e₂) c env = .ok (tx, c')) :
+    ∃ tx₁ c₁, typeOf e₁ c env = .ok (tx₁, c₁) := by
+  simp only [typeOf] at h
+  cases h₁ : typeOf e₁ c env with
+  | error => simp [h₁] at h
+  | ok val₁ => exact ⟨val₁.1, val₁.2, rfl⟩
+
+private theorem typeOf_and_right_typed {e₁ e₂ : Expr} {c : Capabilities} {env : TypeEnv}
+    {tx : TypedExpr} {c' : Capabilities}
+    (h : typeOf (.and e₁ e₂) c env = .ok (tx, c'))
+    (hnotff : tx.typeOf ≠ .bool .ff) :
+    ∃ tx₂ c₂ caps₂, typeOf e₂ caps₂ env = .ok (tx₂, c₂) := by
+  simp only [typeOf] at h
+  cases h₁ : typeOf e₁ c env with
+  | error => simp [h₁] at h
+  | ok val₁ =>
+    obtain ⟨tx₁, c₁⟩ := val₁
+    simp only [h₁, Except.bind_ok] at h
+    unfold typeOfAnd at h; simp only at h
+    split at h
+    · rename_i hff; simp only [ok, Except.ok.injEq, Prod.mk.injEq] at h
+      exact absurd (h.1 ▸ hff) hnotff
+    · cases h₂ : typeOf e₂ (c ∪ c₁) env with
+      | error => simp [h₂] at h
+      | ok val₂ => exact ⟨val₂.1, val₂.2, c ∪ c₁, h₂⟩
+    · simp [err] at h
+
+private theorem typeOf_binaryApp_right_succeeds {op : BinaryOp} {e₁ e₂ : Expr}
+    {c : Capabilities} {env : TypeEnv} {tx : TypedExpr} {c' : Capabilities}
+    (h : typeOf (.binaryApp op e₁ e₂) c env = .ok (tx, c')) :
+    ∃ tx₂ c₂, typeOf e₂ c env = .ok (tx₂, c₂) := by
+  simp only [typeOf] at h
+  cases h₁ : typeOf e₁ c env with
+  | error => simp [h₁] at h
+  | ok val₁ =>
+    simp only [h₁, Except.bind_ok] at h
+    cases h₂ : typeOf e₂ c env with
+    | error => simp [h₂] at h
+    | ok val₂ => exact ⟨val₂.1, val₂.2, rfl⟩
+
+private theorem typeOf_set_nil_fails {c : Capabilities} {env : TypeEnv} :
+    ∀ tx c', typeOf (.set ([] : List Expr)) c env ≠ .ok (tx, c') := by
+  intro tx c' h
+  simp [typeOf, List.mapM₁, List.attach, List.pmap, List.mapM, List.mapM.loop,
+        typeOfSet, err, Except.bind, pure, Except.pure] at h
+
+private theorem lub_entity_some {ety : EntityType} {x result : CedarType}
+    (h : lub? (.entity ety) x = some result) :
+    x = .entity ety ∧ result = .entity ety := by
+  cases x with
+  | entity e => simp [lub?] at h; exact ⟨congrArg _ h.1.symm, h.2.symm⟩
+  | _ => simp [lub?] at h
+
+private theorem foldlM_lub_entity_all_eq {ety₀ : EntityType} {tys : List CedarType} {result : CedarType}
+    (h : tys.foldlM lub? (.entity ety₀) = some result) :
+    ∀ ty ∈ tys, ty = .entity ety₀ := by
+  induction tys generalizing result with
+  | nil => simp
+  | cons hd tl ih =>
+    simp only [List.foldlM_cons, Option.bind] at h
+    cases hlub : lub? (.entity ety₀) hd with
+    | none => simp [hlub] at h
+    | some mid =>
+      simp only [hlub] at h
+      have ⟨hhd_eq, hmid_eq⟩ := lub_entity_some hlub
+      intro ty hty
+      simp only [List.mem_cons] at hty
+      cases hty with
+      | inl heq => exact heq ▸ hhd_eq
+      | inr htl => exact ih (hmid_eq ▸ h) ty htl
+
+/--
+If a policy with `actionInAny ls` validated successfully (not impossible),
+then `ls` is non-empty and all UIDs have the same entity type.
+-/
+private theorem typecheckPolicy_implies_typeOf {policy : Policy} {env : TypeEnv} {tx : TypedExpr}
+    (htc : typecheckPolicy policy env = .ok tx) :
+    ∃ c', typeOf (substituteAction env.reqty.action policy.toExpr) ∅ env = .ok (tx, c') := by
+  simp only [typecheckPolicy] at htc
+  have h := htc; revert h
+  cases htypeOf : typeOf (substituteAction env.reqty.action policy.toExpr) ∅ env with
+  | error => intro h; simp [htypeOf] at h
+  | ok val =>
+    intro h; obtain ⟨tx', c'⟩ := val
+    simp only [htypeOf] at h
+    split at h
+    · exact ⟨c', by simp_all [htypeOf]⟩
+    · simp at h
+
+private theorem actionInAny_set_typed_from_typecheckPolicy
+    {policy : Policy} {env : TypeEnv} {tx : TypedExpr} {ls : List EntityUID}
+    (hscope : policy.actionScope = .actionInAny ls)
+    (htc : typecheckPolicy policy env = .ok tx)
+    (hnotff : tx.typeOf ≠ .bool .ff) :
+    ∃ tx_set c_set caps, typeOf (.set (ls.map (fun e => Expr.lit (.entityUID e)))) caps env = .ok (tx_set, c_set) := by
+  obtain ⟨c', htypeOf⟩ := typecheckPolicy_implies_typeOf htc
+  have hsub : substituteAction env.reqty.action policy.toExpr =
+      .and (substituteAction env.reqty.action policy.principalScope.toExpr)
+           (.and (substituteAction env.reqty.action policy.actionScope.toExpr)
+                 (substituteAction env.reqty.action (.and policy.resourceScope.toExpr policy.condition.toExpr))) := by
+    simp [Policy.toExpr, substituteAction, mapOnVars]
+  rw [hsub] at htypeOf
+  obtain ⟨_, _, caps_inner, hinner⟩ := typeOf_and_right_typed htypeOf hnotff
+  obtain ⟨tx_as, c_as, has⟩ := typeOf_and_left_succeeds hinner
+  have has_form : substituteAction env.reqty.action (ActionScope.toExpr (.actionInAny ls)) =
+      .binaryApp .mem (.lit (.entityUID env.reqty.action)) (.set (ls.map (fun e => .lit (.entityUID e)))) := by
+    simp [ActionScope.toExpr, substituteAction, mapOnVars, List.map₁_eq_map, List.map_map, Function.comp]
+  rw [hscope] at has; rw [has_form] at has
+  obtain ⟨tx_set, c_set, hset⟩ := typeOf_binaryApp_right_succeeds has
+  exact ⟨tx_set, c_set, caps_inner, hset⟩
+
+private theorem typeOf_set_nil_fails' {c : Capabilities} {env : TypeEnv} {tx : TypedExpr} {c' : Capabilities} :
+    typeOf (.set ([] : List Expr)) c env ≠ .ok (tx, c') := by
+  simp [typeOf, List.mapM₁, List.attach, List.pmap, List.mapM, List.mapM.loop,
+        typeOfSet, err, Except.bind, pure, Except.pure]
+
+theorem actionInAny_wf_of_valid
+    {policy : Policy} {schema : Schema} {ls : List EntityUID}
+    (hscope : policy.actionScope = .actionInAny ls)
+    (hvalid : typecheckPolicyWithEnvironments typecheckPolicy policy schema = .ok ()) :
+    ls ≠ [] ∧ ∃ ety, ∀ uid ∈ ls, uid.ty = ety := by
+  -- Extract: mapM succeeded, not all false
+  simp only [typecheckPolicyWithEnvironments, Except.mapError] at hvalid
+  cases hce : checkEntities schema policy.toExpr with
+  | error => simp [hce] at hvalid
+  | ok _ =>
+    simp only [hce, Except.bind_ok] at hvalid
+    cases hmapM : List.mapM (typecheckPolicy policy) schema.environments with
+    | error => simp [hmapM] at hvalid
+    | ok txs =>
+      simp only [hmapM, Except.bind_ok, ite_eq_right_iff, allFalse] at hvalid
+      -- There's some env with non-ff result
+      have hnotallff : ¬ (txs.all fun tx => tx.typeOf == .bool .ff) = true :=
+        fun h => absurd (hvalid h) (by simp)
+      have ⟨tx, htx_mem, htx_notff⟩ : ∃ tx ∈ txs, tx.typeOf ≠ .bool .ff := by
+        by_contra h
+        simp only [not_exists, not_and, Classical.not_not] at h
+        exact hnotallff (List.all_eq_true.mpr (fun tx htx => by simp [h tx htx]))
+      -- tx came from some env
+      obtain ⟨env, henv_mem, henv_ok⟩ := List.mapM_ok_implies_all_from_ok hmapM tx htx_mem
+      -- From typecheckPolicy giving non-ff, the set was typed
+      obtain ⟨tx_set, c_set, caps, hset_ok⟩ :=
+        actionInAny_set_typed_from_typecheckPolicy hscope henv_ok htx_notff
+      -- From typeOf (.set (ls.map ...)) succeeding:
+      -- 1. ls ≠ [] (typeOf_set_nil_fails')
+      -- 2. typeOfSet succeeded → foldlM lub? succeeded → all same type
+      constructor
+      · -- ls ≠ []
+        intro hnil; subst hnil
+        exact typeOf_set_nil_fails' hset_ok
+      · -- all same type
+        -- ls ≠ [] (from typeOf_set_nil_fails')
+        cases ls with
+        | nil => exact absurd hset_ok typeOf_set_nil_fails'
+        | cons hd tl =>
+          -- From checkEntities on the policy, UIDs in ls are valid
+          have henv_schema := env_mem_environments_schema henv_mem
+          have hce_env : checkEntities ⟨env.ets, env.acts⟩ policy.toExpr = .ok () := by
+            rw [henv_schema.1, henv_schema.2]; exact hce
+          have hvalid_uids := actionInAny_uids_valid_from_policy hce_env hscope
+          have hmapM_det := mapM_justType_entityUID_lits (caps := caps) hvalid_uids
+          simp only [typeOf, List.mapM₁_eq_mapM (fun x => justType (typeOf x caps env)),
+                     hmapM_det, Except.bind_ok] at hset_ok
+          simp only [typeOfSet, List.map_cons, TypedExpr.typeOf, map_typeOf_entityUID_lits] at hset_ok
+          cases hfold : (tl.map (fun uid => CedarType.entity uid.ty)).foldlM lub? (.entity hd.ty) with
+          | none => simp [hfold, err] at hset_ok
+          | some result =>
+            have hall := foldlM_lub_entity_all_eq hfold
+            exact ⟨hd.ty, fun uid huid => by
+              cases huid with
+              | head => rfl
+              | tail _ htl =>
+                have hmem : CedarType.entity uid.ty ∈ tl.map (fun uid => CedarType.entity uid.ty) :=
+                  List.mem_map.mpr ⟨uid, htl, rfl⟩
+                have := hall (.entity uid.ty) hmem
+                exact CedarType.entity.inj this⟩
 
 end Cedar.Thm
