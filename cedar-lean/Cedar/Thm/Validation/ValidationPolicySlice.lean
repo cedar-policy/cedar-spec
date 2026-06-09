@@ -631,7 +631,7 @@ theorem policy_preserved
         obtain ⟨tx, htx, _⟩ := typecheckPolicy_nonmatching_action_produces_ff
           hnotmatch' hcontains hentities hprincipal hscope_types
         exact ⟨tx, htx⟩
-      · -- Case B2: action not in changes → find? same → same result
+      · -- Case B2: action not in changes → same entry → same result
         have hfind_eq : schema₁.acts.find? env.reqty.action = schema₂.acts.find? env.reqty.action :=
           hunchanged env.reqty.action haction
         obtain ⟨env₁, henv₁_mem, henv₁_reqty⟩ := env_in_other_schema_environments henv hfind_eq hacts_wf₂
@@ -749,5 +749,199 @@ theorem validation_slice_is_sufficient
   · simp only [Bool.not_eq_true] at hmatch
     exact policy_preserved schema₁ schema₂ changes p hincr hmatch
       (List.forM_ok_implies_all_ok' hold p hp) hunchanged hacts_wf₁ hacts_wf₂
+
+/--
+For actions not in the changes list, the new schema's environments are a subset
+of the old schema's environments (because appliesTo can only be truncated).
+This is a weaker condition than `find?` equality that suffices for the proof.
+-/
+def UnchangedActionsSubset (oldSchema newSchema : Schema) (changes : List ActionChange) : Prop :=
+  ∀ (action : EntityUID),
+    ¬ changes.any (fun c => c.action == action) →
+    ∀ env ∈ newSchema.environments,
+      env.reqty.action = action →
+      ∃ env₁ ∈ oldSchema.environments, env₁.reqty = env.reqty
+
+/-! ### Connecting executable checks to propositional specs -/
+
+private theorem rfr_false_ets_eq {old new : Schema}
+    (h : requiresFullRevalidation old new = false) :
+    old.ets = new.ets := by
+  unfold requiresFullRevalidation at h
+  simp only [Bool.or_eq_false_iff] at h; simp [bne] at h; exact h.1.1
+
+private theorem rfr_false_old_in_new {old new : Schema}
+    (h : requiresFullRevalidation old new = false)
+    {action : EntityUID} {oldEntry : ActionSchemaEntry}
+    (hfind : old.acts.find? action = some oldEntry) :
+    ∃ newEntry, new.acts.find? action = some newEntry ∧
+      oldEntry.ancestors = newEntry.ancestors := by
+  unfold requiresFullRevalidation at h
+  simp only [Bool.or_eq_false_iff, List.any_eq_false] at h
+  have h_entry := h.1.2 ⟨action, oldEntry⟩ (Map.find?_mem_toList hfind)
+  cases hfn : new.acts.find? action with
+  | none => simp [hfn] at h_entry
+  | some ne => simp [hfn, bne] at h_entry; exact ⟨ne, rfl, h_entry⟩
+
+private theorem rfr_false_new_in_old {old new : Schema}
+    (h : requiresFullRevalidation old new = false)
+    {action : EntityUID} {newEntry : ActionSchemaEntry}
+    (hfind : new.acts.find? action = some newEntry) :
+    old.acts.contains action := by
+  unfold requiresFullRevalidation at h
+  simp only [Bool.or_eq_false_iff, List.any_eq_false] at h
+  have h_entry := h.2 ⟨action, newEntry⟩ (Map.find?_mem_toList hfind)
+  simp at h_entry; exact h_entry
+
+private theorem rfr_false_same_ancestors {old new : Schema}
+    (h : requiresFullRevalidation old new = false)
+    {action : EntityUID} {e₁ e₂ : ActionSchemaEntry}
+    (hf₁ : old.acts.find? action = some e₁) (hf₂ : new.acts.find? action = some e₂) :
+    e₁.ancestors = e₂.ancestors := by
+  have ⟨_, hf₂', heq⟩ := rfr_false_old_in_new h hf₁
+  exact (Option.some.inj (hf₂' ▸ hf₂)) ▸ heq
+
+/--
+**Main executable theorem**: the complete validation slicing procedure.
+
+Given two schemas where `requiresFullRevalidation` returns false, if:
+1. All policies validated on the old schema
+2. The sliced policies (computed by `validationSlice` using `computeActionChanges`)
+   validate on the new schema
+
+Then all policies validate on the new schema.
+
+This gives users a concrete executable procedure:
+1. Check `requiresFullRevalidation oldSchema newSchema = false`
+2. Compute `changes := computeActionChanges oldSchema newSchema`
+3. Compute `slice := validationSlice oldSchema.acts changes policies`
+4. Validate `slice` against `newSchema`
+5. If validation passes, ALL policies are guaranteed valid on `newSchema`
+-/
+theorem validation_slice_soundness
+    (oldSchema newSchema : Schema)
+    (policies : Policies)
+    (hno_full : requiresFullRevalidation oldSchema newSchema = false)
+    (hold : validate policies oldSchema = .ok ())
+    (hslice : validate (validationSlice oldSchema.acts (computeActionChanges oldSchema newSchema) policies) newSchema = .ok ())
+    (hacts_wf₁ : oldSchema.acts.wellFormed)
+    (hacts_wf₂ : newSchema.acts.wellFormed) :
+    validate policies newSchema = .ok () := by
+  have hacts_wf₁ : Map.WellFormed oldSchema.acts :=
+    Map.wf_iff_sorted.mpr (List.isSortedBy_correct.mpr hacts_wf₁)
+  have hacts_wf₂ : Map.WellFormed newSchema.acts :=
+    Map.wf_iff_sorted.mpr (List.isSortedBy_correct.mpr hacts_wf₂)
+  have hets := rfr_false_ets_eq hno_full
+  have hsame_contains : ∀ uid, oldSchema.acts.contains uid = newSchema.acts.contains uid := by
+    intro uid
+    cases hold' : oldSchema.acts.contains uid <;> cases hnew' : newSchema.acts.contains uid
+    · rfl
+    · simp only [ActionSchema.contains, Option.isSome_iff_exists] at hnew'
+      obtain ⟨ne, hfn⟩ := hnew'
+      have := rfr_false_new_in_old hno_full hfn; simp [this] at hold'
+    · simp only [ActionSchema.contains, Option.isSome_iff_exists] at hold'
+      obtain ⟨oe, hfo⟩ := hold'
+      have ⟨_, hfn, _⟩ := rfr_false_old_in_new hno_full hfo
+      simp [ActionSchema.contains, hfn] at hnew'
+    · rfl
+  have hsame_anc : ∀ (a : EntityUID) (e₁ e₂ : ActionSchemaEntry),
+      oldSchema.acts.find? a = some e₁ → newSchema.acts.find? a = some e₂ →
+      e₁.ancestors = e₂.ancestors := fun a e₁ e₂ h₁ h₂ => rfr_false_same_ancestors hno_full h₁ h₂
+  have hsame_desc : ∀ u₁ u₂, oldSchema.acts.descendentOf u₁ u₂ = newSchema.acts.descendentOf u₁ u₂ :=
+    acts_descendentOf_agree hsame_contains hsame_anc
+  have hincr : IncrementallyRevalidatable oldSchema newSchema := {
+    ets_eq := hets
+    same_actions := hsame_contains
+    same_action_types := by
+      intro ety; simp only [ActionSchema.actionType?, Set.any]
+      cases h : oldSchema.acts.keys.elts.any (EntityUID.ty · == ety)
+      · symm; rw [List.any_eq_false] at h ⊢; intro uid hmem
+        have hc : newSchema.acts.contains uid = true := Map.in_keys_iff_contains.mp hmem
+        have hc' : oldSchema.acts.contains uid = true := by rw [hsame_contains]; exact hc
+        exact h uid (Map.in_keys_iff_contains.mpr hc')
+      · symm; rw [List.any_eq_true] at h ⊢; obtain ⟨uid, hmem, hty⟩ := h
+        have hc : oldSchema.acts.contains uid = true := Map.in_keys_iff_contains.mp hmem
+        have hc' : newSchema.acts.contains uid = true := by rw [← hsame_contains]; exact hc
+        exact ⟨uid, Map.in_keys_iff_contains.mpr hc', hty⟩
+    same_ancestors := hsame_anc
+    same_descendentOf := hsame_desc
+    same_maybeDescendentOf := by
+      intro ety₁ ety₂; simp only [ActionSchema.maybeDescendentOf]
+      cases h : oldSchema.acts.toList.any (fun x => x.1.ty = ety₁ && x.2.ancestors.any (EntityUID.ty · == ety₂))
+      · symm; rw [List.any_eq_false] at h ⊢; intro ⟨act, entry₂⟩ hmem₂
+        have hfind₂ := (Map.in_list_iff_find?_some hacts_wf₂).mp hmem₂
+        have hc₁ : oldSchema.acts.contains act := (hsame_contains act).symm ▸ (by simp [ActionSchema.contains, hfind₂])
+        obtain ⟨entry₁, hfind₁⟩ := Option.isSome_iff_exists.mp hc₁
+        have := h ⟨act, entry₁⟩ (Map.find?_mem_toList hfind₁)
+        simp only [Bool.and_eq_true, decide_eq_true_eq, Bool.not_eq_true'] at this ⊢
+        rw [← hsame_anc act entry₁ entry₂ hfind₁ hfind₂]; exact this
+      · symm; rw [List.any_eq_true] at h ⊢; obtain ⟨⟨act, entry₁⟩, hmem₁, hpred⟩ := h
+        have hfind₁ := (Map.in_list_iff_find?_some hacts_wf₁).mp hmem₁
+        have hc₂ : newSchema.acts.contains act := (hsame_contains act) ▸ (by simp [ActionSchema.contains, hfind₁])
+        obtain ⟨entry₂, hfind₂⟩ := Option.isSome_iff_exists.mp hc₂
+        simp only [Bool.and_eq_true, decide_eq_true_eq] at hpred ⊢
+        exact ⟨⟨act, entry₂⟩, Map.find?_mem_toList hfind₂, by rw [← hsame_anc act entry₁ entry₂ hfind₁ hfind₂]; exact hpred⟩
+  }
+  -- computeActionChanges is a subset of all actions with different find?
+  -- For the theorem to apply, hunchanged must hold.
+  -- This follows from the fact that computeActionChanges captures ALL actions
+  -- whose entries differ (context change, appliesToExtended, or NEW actions).
+  -- Actions not in the list have identical entries (same find?).
+  have hunchanged : ∀ (action : EntityUID),
+      ¬ (computeActionChanges oldSchema newSchema).any (fun c => c.action == action) →
+      oldSchema.acts.find? action = newSchema.acts.find? action := by
+    intro action hnotinchanges
+    cases hfind_new : newSchema.acts.find? action with
+    | none =>
+      have hc : newSchema.acts.contains action = false := by
+        simp [ActionSchema.contains, hfind_new]
+      rw [← hsame_contains] at hc
+      simp [ActionSchema.contains] at hc
+      cases h : oldSchema.acts.find? action with
+      | none => rfl
+      | some _ => simp [h] at hc
+    | some newEntry =>
+      have hmem_new := Map.find?_mem_toList hfind_new
+      have hc_old : oldSchema.acts.contains action = true := by
+        rw [hsame_contains]; simp [ActionSchema.contains, hfind_new]
+      obtain ⟨oldEntry, hfind_old⟩ := Option.isSome_iff_exists.mp hc_old
+      -- Show old and new entries are equal
+      have hanc := hsame_anc action oldEntry newEntry hfind_old hfind_new
+      -- From not in changes: context same and appliesToPrincipal/Resource same
+      -- (computeActionChanges would have flagged it otherwise)
+      have hctx : oldEntry.context = newEntry.context := by
+        by_contra h
+        have : (oldEntry.context != newEntry.context) = true := by simp [bne, h]
+        have hmem_out : ActionChange.contextChanged action ∈ computeActionChanges oldSchema newSchema :=
+          List.mem_filterMap.mpr ⟨(action, newEntry), hmem_new, by simp [computeActionChanges, hfind_old, this]⟩
+        have hany : (computeActionChanges oldSchema newSchema).any (fun c => c.action == action) = true :=
+          List.any_eq_true.mpr ⟨_, hmem_out, by simp [ActionChange.action]⟩
+        simp [hany] at hnotinchanges
+      have hap : oldEntry.appliesToPrincipal = newEntry.appliesToPrincipal ∧
+                 oldEntry.appliesToResource = newEntry.appliesToResource := by
+        by_contra h
+        simp only [not_and, Classical.not_not] at h
+        have hne : (oldEntry.appliesToPrincipal != newEntry.appliesToPrincipal ||
+                    oldEntry.appliesToResource != newEntry.appliesToResource) = true := by
+          by_cases hp : oldEntry.appliesToPrincipal = newEntry.appliesToPrincipal
+          · have hr := h hp; simp [bne, hp, hr, Bool.or_true]
+          · simp [bne, hp]
+        have hctx_false : (oldEntry.context != newEntry.context) = false := by simp [bne, hctx]
+        have hmem_out : ActionChange.appliesToExtended action ∈ computeActionChanges oldSchema newSchema := by
+          simp only [computeActionChanges, List.mem_filterMap]
+          refine ⟨(action, newEntry), hmem_new, ?_⟩
+          simp only [hfind_old]
+          rw [show (oldEntry.context != newEntry.context) = false from hctx_false]
+          simp only [Bool.false_eq_true, ↓reduceIte, hne]
+        have hany : (computeActionChanges oldSchema newSchema).any (fun c => c.action == action) = true :=
+          List.any_eq_true.mpr ⟨_, hmem_out, by simp [ActionChange.action]⟩
+        simp [hany] at hnotinchanges
+      -- All 4 fields match → entries equal → find? equal
+      have hentry_eq : oldEntry = newEntry := by
+        cases oldEntry; cases newEntry; simp_all
+      simp [hfind_old, hfind_new, hentry_eq]
+  exact validation_slice_is_sufficient oldSchema newSchema
+    (computeActionChanges oldSchema newSchema) policies
+    hincr hold hslice hunchanged hacts_wf₁ hacts_wf₂
 
 end Cedar.Thm

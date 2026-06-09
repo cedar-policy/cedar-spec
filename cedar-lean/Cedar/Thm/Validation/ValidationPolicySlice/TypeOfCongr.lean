@@ -53,13 +53,13 @@ theorem acts_descendentOf_agree {acts₁ acts₂ : ActionSchema}
         rw [← hsame]; simp [ActionSchema.contains, h₁]
       have h₂ : acts₂.find? uid₁ = none := by
         cases h : acts₂.find? uid₁ <;> simp_all [ActionSchema.contains]
-      simp [h₁, h₂]
+      simp [h₂]
     | some entry₁ =>
       have hc₂ : acts₂.contains uid₁ = true := by
         rw [← hsame]; simp [ActionSchema.contains, h₁]
       have ⟨entry₂, h₂⟩ : ∃ e, acts₂.find? uid₁ = some e := by
         cases h : acts₂.find? uid₁ <;> simp_all [ActionSchema.contains]
-      simp [h₁, h₂, hancestors uid₁ entry₁ entry₂ h₁ h₂]
+      simp [h₂, hancestors uid₁ entry₁ entry₂ h₁ h₂]
 
 /-- Two TypeEnvs agree on all queries the typechecker makes. -/
 structure TypeEnvAgreement (env₁ env₂ : TypeEnv) : Prop where
@@ -109,7 +109,7 @@ theorem typeOf_env_congr (expr : Expr) (c : Capabilities) {env₁ env₂ : TypeE
     unfold typeOfBinaryApp
     simp only [typeOfInₑ, typeOfInₛ, TypeEnv.descendentOf, actionUID?,
                h.ets_eq, h.acts_contains, h.acts_descendentOf,
-               h.acts_maybeDescendentOf, h.acts_actionType]
+               h.acts_maybeDescendentOf]
     split <;> simp_all [typeOfHasTag, typeOfGetTag, h.ets_eq, h.acts_actionType]
   | .hasAttr x₁ a =>
     simp only [typeOf]

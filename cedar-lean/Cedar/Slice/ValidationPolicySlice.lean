@@ -50,6 +50,8 @@ open Cedar.Spec
 open Cedar.Validation
 open Cedar.Data
 
+open Cedar.Data
+
 /--
 Describes how an action's schema entry has changed between two schemas.
 Only changes that could potentially invalidate a policy are tracked here.
@@ -129,8 +131,8 @@ def computeActionChanges (oldSchema newSchema : Schema) : List ActionChange :=
     | some oldEntry =>
       if oldEntry.context != newEntry.context then
         some (.contextChanged action)
-      else if !(newEntry.appliesToPrincipal.subset oldEntry.appliesToPrincipal) ||
-              !(newEntry.appliesToResource.subset oldEntry.appliesToResource) then
+      else if oldEntry.appliesToPrincipal != newEntry.appliesToPrincipal ||
+              oldEntry.appliesToResource != newEntry.appliesToResource then
         some (.appliesToExtended action)
       else
         none
