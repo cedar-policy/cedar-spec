@@ -335,6 +335,29 @@ theorem typecheckPolicy_nonmatching_action_produces_ff
 /-! ## Per-policy preservation theorem -/
 
 /--
+Helper: if action scope doesn't match a given action, checkEntities passes,
+and actionInAny is well-formed, then typecheckPolicy produces `.ff`.
+This factors out the repeated setup for `typecheckPolicy_nonmatching_action_produces_ff`.
+-/
+private theorem typecheckPolicy_produces_ff_for_nonmatching_env
+    {policy : Policy} {env : TypeEnv}
+    (hnotmatch : actionScopeMatchesAction env.acts env.reqty.action policy.actionScope = false)
+    (hcontains : env.acts.contains env.reqty.action)
+    (hentities : checkEntities ⟨env.ets, env.acts⟩ policy.toExpr = .ok ())
+    (hactionInAny_wf : ∀ (ls : List EntityUID),
+      policy.actionScope = .actionInAny ls → ls ≠ [] ∧ ∃ ety, ∀ uid ∈ ls, uid.ty = ety) :
+    ∃ tx, typecheckPolicy policy env = .ok tx ∧ tx.typeOf = .bool .ff := by
+  have hprincipal := principal_scope_types_to_bool hentities
+  have hscope_types : ∀ (ls : List EntityUID) (caps' : Capabilities),
+      policy.actionScope = .actionInAny ls →
+      ∃ tx_set c_set ety, typeOf (.set (ls.map (fun e => Expr.lit (.entityUID e)))) caps' env = .ok (tx_set, c_set) ∧
+        tx_set.typeOf = .set (.entity ety) :=
+    fun ls caps' hls => by
+      have ⟨hne, hsame⟩ := hactionInAny_wf ls hls
+      exact actionInAny_set_types hne (actionInAny_uids_valid_from_policy hentities hls) hsame
+  exact typecheckPolicy_nonmatching_action_produces_ff hnotmatch hcontains hentities hprincipal hscope_types
+
+/--
 Multi-change version: if a policy's scope doesn't match ANY action whose entry
 differs between schemas, and the policy validated on schema₁, it validates on schema₂.
 This directly connects to the slicing algorithm.
@@ -356,20 +379,11 @@ theorem policy_preserved
   have hnotmatch_action : ∀ (action : EntityUID),
       changes.any (fun c => c.action == action) →
       actionScopeMatchesAction schema₁.acts action policy.actionScope = false := by
+    simp only [actionScopeMatchesAnyChangedAction, List.any_eq_false] at hnotmatch
     intro action hany
-    unfold actionScopeMatchesAnyChangedAction at hnotmatch
     simp only [List.any_eq_true, beq_iff_eq] at hany
     obtain ⟨c, hc_mem, hc_eq⟩ := hany
-    have hscope_false : actionScopeMatchesAction schema₁.acts c.action policy.actionScope = false := by
-      by_contra h
-      have h' : actionScopeMatchesAction schema₁.acts c.action policy.actionScope = true := by
-        cases hv : actionScopeMatchesAction schema₁.acts c.action policy.actionScope
-        · exact absurd hv h
-        · rfl
-      have hany' : (changes.any fun change => actionScopeMatchesAction schema₁.acts change.action policy.actionScope) = true :=
-        List.any_eq_true.mpr ⟨c, hc_mem, h'⟩
-      simp [hany'] at hnotmatch
-    rw [← hc_eq]; exact hscope_false
+    exact Bool.eq_false_iff.mpr (hc_eq ▸ hnotmatch c hc_mem)
   -- Extract validation components
   simp only [typecheckPolicyWithEnvironments, Except.mapError] at hvalid ⊢
   simp_do_let (checkEntities schema₁ policy.toExpr) as hce₁ at hvalid
@@ -404,17 +418,8 @@ theorem policy_preserved
         have hcontains : env.acts.contains env.reqty.action := by rw [henv_acts]; exact henv_contains
         have hentities : checkEntities ⟨env.ets, env.acts⟩ policy.toExpr = .ok () := by
           rw [henv_ets, henv_acts]; exact hce₂
-        have hprincipal := principal_scope_types_to_bool hentities
-        have hscope_types : ∀ (ls : List EntityUID) (caps' : Capabilities),
-            policy.actionScope = .actionInAny ls →
-            ∃ tx_set c_set ety, typeOf (.set (ls.map (fun e => Expr.lit (.entityUID e)))) caps' env = .ok (tx_set, c_set) ∧
-              tx_set.typeOf = .set (.entity ety) :=
-          fun ls caps' hls => by
-            have ⟨hne, hsame⟩ := hactionInAny_wf ls hls
-            have hvalid_uids := actionInAny_uids_valid_from_policy hentities hls
-            exact actionInAny_set_types hne hvalid_uids hsame
-        obtain ⟨tx, htx, _⟩ := typecheckPolicy_nonmatching_action_produces_ff
-          hnotmatch' hcontains hentities hprincipal hscope_types
+        obtain ⟨tx, htx, _⟩ := typecheckPolicy_produces_ff_for_nonmatching_env
+          hnotmatch' hcontains hentities hactionInAny_wf
         exact ⟨tx, htx⟩
       · -- Case B2: action not in changes → same entry → same result
         have hfind_eq : schema₁.acts.find? env.reqty.action = schema₂.acts.find? env.reqty.action :=
@@ -445,17 +450,8 @@ theorem policy_preserved
         have hcontains₁ : env₁.acts.contains env₁.reqty.action := by rw [henv₁_acts]; exact henv₁_contains
         have hentities₁ : checkEntities ⟨env₁.ets, env₁.acts⟩ policy.toExpr = .ok () := by
           rw [henv₁_ets, henv₁_acts]; exact hce₁
-        have hprincipal₁ := principal_scope_types_to_bool hentities₁
-        have hscope_types₁ : ∀ (ls : List EntityUID) (caps' : Capabilities),
-            policy.actionScope = .actionInAny ls →
-            ∃ tx_set c_set ety, typeOf (.set (ls.map (fun e => Expr.lit (.entityUID e)))) caps' env₁ = .ok (tx_set, c_set) ∧
-              tx_set.typeOf = .set (.entity ety) :=
-          fun ls caps' hls => by
-            have ⟨hne, hsame⟩ := hactionInAny_wf ls hls
-            have hvalid_uids := actionInAny_uids_valid_from_policy hentities₁ hls
-            exact actionInAny_set_types hne hvalid_uids hsame
-        obtain ⟨tx_ff, htx_ff_ok, htx_ff_ty⟩ := typecheckPolicy_nonmatching_action_produces_ff
-          hnotmatch₁ hcontains₁ hentities₁ hprincipal₁ hscope_types₁
+        obtain ⟨tx_ff, htx_ff_ok, htx_ff_ty⟩ := typecheckPolicy_produces_ff_for_nonmatching_env
+          hnotmatch₁ hcontains₁ hentities₁ hactionInAny_wf
         have : tx_ff = tx₁ := by
           have h := henv₁_ok; rw [htx_ff_ok] at h; exact Except.ok.inj h
         exact htx₁_notff' (this ▸ htx_ff_ty)
@@ -622,7 +618,7 @@ theorem validation_slice_soundness
         have hc₁ : oldSchema.acts.contains act := (hsame_contains act).symm ▸ (by simp [ActionSchema.contains, hfind₂])
         obtain ⟨entry₁, hfind₁⟩ := Option.isSome_iff_exists.mp hc₁
         have := h ⟨act, entry₁⟩ (Map.find?_mem_toList hfind₁)
-        simp only [Bool.and_eq_true, decide_eq_true_eq, Bool.not_eq_true'] at this ⊢
+        simp only [Bool.and_eq_true, decide_eq_true_eq] at this ⊢
         rw [← hsame_anc act entry₁ entry₂ hfind₁ hfind₂]; exact this
       · symm; rw [List.any_eq_true] at h ⊢; obtain ⟨⟨act, entry₁⟩, hmem₁, hpred⟩ := h
         have hfind₁ := (Map.in_list_iff_find?_some hacts_wf₁).mp hmem₁
@@ -662,18 +658,19 @@ theorem validation_slice_soundness
         by_contra h
         have : (oldEntry.context != newEntry.context) = true := by simp [bne, h]
         have hmem_out : ActionChange.contextChanged action ∈ computeActionChanges oldSchema newSchema :=
-          List.mem_filterMap.mpr ⟨(action, newEntry), hmem_new, by simp [computeActionChanges, hfind_old, this]⟩
+          List.mem_filterMap.mpr ⟨(action, newEntry), hmem_new, by simp [hfind_old, this]⟩
         have hany : (computeActionChanges oldSchema newSchema).any (fun c => c.action == action) = true :=
           List.any_eq_true.mpr ⟨_, hmem_out, by simp [ActionChange.action]⟩
         simp [hany] at hnotinchanges
       have hap : oldEntry.appliesToPrincipal = newEntry.appliesToPrincipal ∧
                  oldEntry.appliesToResource = newEntry.appliesToResource := by
         by_contra h
-        simp only [not_and, Classical.not_not] at h
         have hne : (oldEntry.appliesToPrincipal != newEntry.appliesToPrincipal ||
                     oldEntry.appliesToResource != newEntry.appliesToResource) = true := by
           by_cases hp : oldEntry.appliesToPrincipal = newEntry.appliesToPrincipal
-          · have hr := h hp; simp [bne, hp, hr, Bool.or_true]
+          · by_cases hr : oldEntry.appliesToResource = newEntry.appliesToResource
+            · exact absurd ⟨hp, hr⟩ h
+            · simp [bne, hr]
           · simp [bne, hp]
         have hctx_false : (oldEntry.context != newEntry.context) = false := by simp [bne, hctx]
         have hmem_out : ActionChange.appliesToExtended action ∈ computeActionChanges oldSchema newSchema := by
@@ -688,7 +685,7 @@ theorem validation_slice_soundness
       -- All 4 fields match → entries equal → find? equal
       have hentry_eq : oldEntry = newEntry := by
         cases oldEntry; cases newEntry; simp_all
-      simp [hfind_old, hfind_new, hentry_eq]
+      simp [hfind_old, hentry_eq]
   exact validation_slice_is_sufficient oldSchema newSchema
     (computeActionChanges oldSchema newSchema) policies
     hincr hold hslice hunchanged hacts_wf₁ hacts_wf₂
