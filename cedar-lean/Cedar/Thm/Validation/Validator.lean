@@ -101,4 +101,82 @@ theorem typecheck_policy_with_environments_is_sound (policy : Policy) (schema : 
     obtain ⟨tx, ⟨_, h₅⟩⟩ := h₄
     exact typecheck_policy_is_sound h₁ h₅
 
+/--
+Every environment in `schema.environments` has `ets = schema.ets` and `acts = schema.acts`.
+-/
+theorem env_mem_environments_schema {schema : Schema} {env : TypeEnv}
+    (henv : env ∈ schema.environments) :
+    env.ets = schema.ets ∧ env.acts = schema.acts := by
+  simp only [Schema.environments, List.mem_map] at henv
+  obtain ⟨_, _, henv_eq⟩ := henv
+  exact ⟨congrArg TypeEnv.ets henv_eq.symm, congrArg TypeEnv.acts henv_eq.symm⟩
+
+/--
+The action of every environment's reqty is contained in the schema's action map.
+-/
+theorem env_mem_environments_action_contained {schema : Schema} {env : TypeEnv}
+    (henv : env ∈ schema.environments) :
+    schema.acts.contains env.reqty.action := by
+  simp only [Schema.environments, List.mem_map, List.mem_flatMap] at henv
+  obtain ⟨rt, ⟨⟨action, entry⟩, hmem_acts, hmem_rt⟩, henv_eq⟩ := henv
+  have hreqty : env.reqty = rt := congrArg TypeEnv.reqty henv_eq.symm
+  rw [hreqty]
+  simp only [ActionSchemaEntry.requestTypes, List.mem_map] at hmem_rt
+  obtain ⟨⟨p, r⟩, _, hrt_eq⟩ := hmem_rt
+  have haction : rt.action = action := congrArg RequestType.action hrt_eq.symm
+  rw [haction]
+  exact Map.in_list_implies_contains hmem_acts
+
+/--
+If two schemas have the same `find?` for a given action, then the environments generated
+for that action are the same (modulo ets/acts wrapping).
+-/
+theorem environments_reqty_from_action {schema : Schema} {env : TypeEnv}
+    (henv : env ∈ schema.environments) :
+    ∃ (action : EntityUID) (entry : ActionSchemaEntry),
+      (action, entry) ∈ schema.acts.toList ∧
+      env.reqty.action = action := by
+  simp only [Schema.environments, List.mem_map, List.mem_flatMap] at henv
+  obtain ⟨rt, ⟨⟨action, entry⟩, hmem_acts, hmem_rt⟩, henv_eq⟩ := henv
+  have hreqty : env.reqty = rt := congrArg TypeEnv.reqty henv_eq.symm
+  simp only [ActionSchemaEntry.requestTypes, List.mem_map] at hmem_rt
+  obtain ⟨⟨p, r⟩, _, hrt_eq⟩ := hmem_rt
+  exact ⟨action, entry, hmem_acts, by rw [hreqty]; exact congrArg RequestType.action hrt_eq.symm⟩
+
+/--
+If an env is in schema₂.environments and the action entry is the same in both schemas
+(same `find?`), then an env with the same reqty exists in schema₁.environments.
+-/
+theorem env_in_other_schema_environments
+    {schema₁ schema₂ : Schema} {env₂ : TypeEnv}
+    (henv₂ : env₂ ∈ schema₂.environments)
+    (hfind_eq : schema₁.acts.find? env₂.reqty.action = schema₂.acts.find? env₂.reqty.action)
+    (hwf₂ : Map.WellFormed schema₂.acts) :
+    ∃ env₁ ∈ schema₁.environments, env₁.reqty = env₂.reqty := by
+  simp only [Schema.environments, List.mem_map, List.mem_flatMap] at henv₂ ⊢
+  obtain ⟨rt₂, ⟨⟨action₂, entry₂⟩, hmem_acts₂, hmem_rt₂⟩, henv₂_eq⟩ := henv₂
+  have hreqty₂ : env₂.reqty = rt₂ := congrArg TypeEnv.reqty henv₂_eq.symm
+  simp only [ActionSchemaEntry.requestTypes, List.mem_map] at hmem_rt₂
+  obtain ⟨⟨p, r⟩, hpr_mem, hrt₂_eq⟩ := hmem_rt₂
+  have haction₂ : rt₂.action = action₂ := congrArg RequestType.action hrt₂_eq.symm
+  have henv_action : env₂.reqty.action = action₂ := by rw [hreqty₂, haction₂]
+  -- From (action₂, entry₂) ∈ schema₂.acts.toList and WellFormed:
+  have hfind₂ : schema₂.acts.find? action₂ = some entry₂ :=
+    (Map.in_list_iff_find?_some hwf₂).mp hmem_acts₂
+  -- Transfer to schema₁
+  have hfind₁ : schema₁.acts.find? action₂ = some entry₂ := by
+    have h := hfind_eq; rw [henv_action] at h; rw [h, hfind₂]
+  -- So (action₂, entry₂) ∈ schema₁.acts.toList
+  have hmem_acts₁ : (action₂, entry₂) ∈ schema₁.acts.toList :=
+    Map.find?_mem_toList hfind₁
+  -- Same reqty in schema₁.environments
+  -- The env₁ we construct: { ets := schema₁.ets, acts := schema₁.acts, reqty := rt₂ }
+  refine ⟨{ ets := schema₁.ets, acts := schema₁.acts, reqty := rt₂ }, ?_, ?_⟩
+  · -- Show it's in schema₁.environments (goal is existential form from simp)
+    exact ⟨rt₂, ⟨⟨action₂, entry₂⟩, hmem_acts₁, by
+      simp only [ActionSchemaEntry.requestTypes, List.mem_map]
+      exact ⟨⟨p, r⟩, hpr_mem, hrt₂_eq⟩⟩, rfl⟩
+  · -- Show reqty matches
+    exact hreqty₂.symm
+
 end Cedar.Thm

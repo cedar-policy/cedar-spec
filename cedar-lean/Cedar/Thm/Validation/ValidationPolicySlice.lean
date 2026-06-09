@@ -60,6 +60,10 @@ structure IncrementallyRevalidatable (schema₁ schema₂ : Schema) : Prop where
     schema₁.acts.find? action = some entry₁ →
     schema₂.acts.find? action = some entry₂ →
     entry₁.ancestors = entry₂.ancestors
+  same_descendentOf : ∀ uid₁ uid₂ : EntityUID,
+    schema₁.acts.descendentOf uid₁ uid₂ = schema₂.acts.descendentOf uid₁ uid₂
+  same_maybeDescendentOf : ∀ ety₁ ety₂ : EntityType,
+    schema₁.acts.maybeDescendentOf ety₁ ety₂ = schema₂.acts.maybeDescendentOf ety₁ ety₂
 
 /--
 Specifies that only a single action's context or appliesTo has changed, and the
@@ -73,6 +77,8 @@ structure SingleActionChange (schema₁ schema₂ : Schema) (changedAction : Ent
   other_actions_unchanged : ∀ (action : EntityUID),
     action ≠ changedAction →
     schema₁.acts.find? action = schema₂.acts.find? action
+  acts_wf₁ : Map.WellFormed schema₁.acts
+  acts_wf₂ : Map.WellFormed schema₂.acts
 
 /--
 If an `and` expression typechecks successfully and its left operand typechecks to
@@ -245,6 +251,80 @@ private theorem substituteAction_principal_scope {a : EntityUID} {ps : Principal
     | is ety => simp [PrincipalScope.toExpr, Scope.toExpr, Var.isEntityType, substituteAction, mapOnVars]
     | isMem ety uid => simp [PrincipalScope.toExpr, Scope.toExpr, Var.isEntityType, Var.inEntityUID, substituteAction, mapOnVars]
 
+private theorem checkEntities_lit_entityUID {schema : Schema} {uid : EntityUID}
+    (h : checkEntities schema (.lit (.entityUID uid)) = .ok ()) :
+    (schema.ets.isValidEntityUID uid || schema.acts.contains uid) = true := by
+  simp only [checkEntities] at h
+  split at h
+  · assumption
+  · contradiction
+
+/--
+Any scope expression typechecks to a boolean type given valid entities.
+-/
+private theorem scope_types_to_bool {scope : Scope} {env : TypeEnv}
+    (hce : checkEntities ⟨env.ets, env.acts⟩ (Scope.toExpr scope .principal) = .ok ()) :
+    ∃ tx c, typeOf (Scope.toExpr scope .principal) ∅ env = .ok (tx, c) ∧
+            ∃ bty, tx.typeOf = .bool bty := by
+  cases scope with
+  | any =>
+    have heval : typeOf (Scope.toExpr .any .principal) ∅ env =
+        .ok (.lit (.bool true) (.bool .tt), ∅) := by
+      simp [Scope.toExpr, typeOf, typeOfLit, ok, Function.comp_apply]
+    exact ⟨_, _, heval, _, rfl⟩
+  | eq uid =>
+    simp only [Scope.toExpr, Var.eqEntityUID] at hce
+    have ⟨_, hce_uid⟩ := checkEntities_binaryApp hce
+    have hvalid_uid := checkEntities_lit_entityUID hce_uid
+    simp only [Scope.toExpr, Var.eqEntityUID]
+    have h1 : typeOf (.var Var.principal) ∅ env = Except.ok (.var .principal (.entity env.reqty.principal), ∅) := by
+      simp [typeOf, typeOfVar, ok]
+    have h2 : typeOf (.lit (Prim.entityUID uid)) ∅ env = Except.ok (.lit (.entityUID uid) (.entity uid.ty), ∅) := by
+      simp [typeOf, typeOfLit, hvalid_uid, ok]
+    simp only [typeOf, h1, h2, Except.bind_ok]
+    simp only [typeOfBinaryApp,
+      show TypedExpr.typeOf (.var .principal (.entity env.reqty.principal)) = .entity env.reqty.principal from rfl,
+      show TypedExpr.typeOf (.lit (.entityUID uid) (.entity uid.ty)) = .entity uid.ty from rfl, typeOfEq]
+    cases lub? (CedarType.entity env.reqty.principal) (CedarType.entity uid.ty)
+    all_goals simp_all [ok, TypedExpr.typeOf]
+  | mem uid =>
+    simp only [Scope.toExpr, Var.inEntityUID] at hce
+    have ⟨_, hce_uid⟩ := checkEntities_binaryApp hce
+    have hvalid_uid := checkEntities_lit_entityUID hce_uid
+    simp only [Scope.toExpr, Var.inEntityUID]
+    have h1 : typeOf (.var Var.principal) ∅ env = Except.ok (.var .principal (.entity env.reqty.principal), ∅) := by
+      simp [typeOf, typeOfVar, ok]
+    have h2 : typeOf (.lit (Prim.entityUID uid)) ∅ env = Except.ok (.lit (.entityUID uid) (.entity uid.ty), ∅) := by
+      simp [typeOf, typeOfLit, hvalid_uid, ok]
+    simp only [typeOf, h1, h2, Except.bind_ok]
+    simp only [typeOfBinaryApp,
+      show TypedExpr.typeOf (.var .principal (.entity env.reqty.principal)) = .entity env.reqty.principal from rfl,
+      show TypedExpr.typeOf (.lit (.entityUID uid) (.entity uid.ty)) = .entity uid.ty from rfl]
+    simp_all [ok, TypedExpr.typeOf, typeOfInₑ]
+  | is ety =>
+    simp only [Scope.toExpr, Var.isEntityType]
+    have heval : typeOf (.unaryApp (.is ety) (.var .principal)) ∅ env =
+        .ok (.unaryApp (.is ety) (.var .principal (.entity env.reqty.principal))
+             (.bool (if ety = env.reqty.principal then .tt else .ff)), ∅) := by
+      simp [typeOf, typeOfVar, ok, Function.comp_apply, typeOfUnaryApp, TypedExpr.typeOf]
+    exact ⟨_, _, heval, _, rfl⟩
+  | isMem ety uid =>
+    simp only [Scope.toExpr, Var.isEntityType, Var.inEntityUID] at hce
+    have ⟨_, hce_inner⟩ := checkEntities_and hce
+    have ⟨_, hce_uid⟩ := checkEntities_binaryApp hce_inner
+    have hvalid_uid := checkEntities_lit_entityUID hce_uid
+    simp only [Scope.toExpr, Var.isEntityType, Var.inEntityUID]
+    by_cases hety : ety = env.reqty.principal
+    · cases hdesc : env.descendentOf env.reqty.principal uid.ty
+      all_goals simp [typeOf, typeOfVar, ok, typeOfUnaryApp, TypedExpr.typeOf, hety,
+            typeOfAnd, typeOfLit, hvalid_uid, typeOfBinaryApp, typeOfInₑ,
+            entityUID?, actionUID?, hdesc]
+    · have heval : typeOf (.and (.unaryApp (.is ety) (.var .principal))
+                                (.binaryApp .mem (.var .principal) (.lit (.entityUID uid)))) ∅ env =
+          .ok (.unaryApp (.is ety) (.var .principal (.entity env.reqty.principal)) (.bool .ff), ∅) := by
+        simp [typeOf, typeOfVar, ok, typeOfUnaryApp, TypedExpr.typeOf, hety, typeOfAnd]
+      exact ⟨_, _, heval, _, rfl⟩
+
 /--
 The principal scope always typechecks to a boolean type (given checkEntities passed).
 -/
@@ -257,55 +337,12 @@ theorem principal_scope_types_to_bool
   have hce_ps : checkEntities ⟨env.ets, env.acts⟩ policy.principalScope.toExpr = .ok () := by
     simp only [Policy.toExpr] at hce
     exact (checkEntities_and hce).1
-  cases policy.principalScope with
-  | principalScope scope =>
-    cases scope with
-    | any =>
-      have h : typeOf (PrincipalScope.toExpr (.principalScope .any)) ∅ env =
-          .ok (.lit (.bool true) (.bool .tt), ∅) := by
-        simp [PrincipalScope.toExpr, Scope.toExpr, typeOf, typeOfLit, ok, Function.comp_apply]
-      exact ⟨_, _, h, _, rfl⟩
-    | eq uid =>
-      have hvalid_uid : (env.ets.isValidEntityUID uid || env.acts.contains uid) = true := by
-        have h := hce_ps
-        sorry
-      have h1 : typeOf (.var Var.principal) ∅ env = Except.ok (.var .principal (.entity env.reqty.principal), ∅) := by
-        simp [typeOf, typeOfVar, ok]
-      have h2 : typeOf (.lit (Prim.entityUID uid)) ∅ env = Except.ok (.lit (.entityUID uid) (.entity uid.ty), ∅) := by
-        simp [typeOf, typeOfLit, hvalid_uid, ok]
-      suffices h : ∃ (r : TypedExpr × Capabilities),
-          typeOf (.binaryApp .eq (.var .principal) (.lit (.entityUID uid))) ∅ env = .ok r ∧
-          ∃ bty, r.1.typeOf = .bool bty from h
-      simp only [typeOf, h1, h2, Except.bind_ok]
-      simp only [typeOfBinaryApp,
-        show TypedExpr.typeOf (.var .principal (.entity env.reqty.principal)) = .entity env.reqty.principal from rfl,
-        show TypedExpr.typeOf (.lit (.entityUID uid) (.entity uid.ty)) = .entity uid.ty from rfl, typeOfEq]
-      cases lub? (CedarType.entity env.reqty.principal) (CedarType.entity uid.ty)
-      all_goals simp_all [ok, TypedExpr.typeOf]
-    | mem uid =>
-      have hvalid_uid : (env.ets.isValidEntityUID uid || env.acts.contains uid) = true := by
-        have h := hce_ps
-        sorry
-      have h1 : typeOf (.var Var.principal) ∅ env = Except.ok (.var .principal (.entity env.reqty.principal), ∅) := by
-        simp [typeOf, typeOfVar, ok]
-      have h2 : typeOf (.lit (Prim.entityUID uid)) ∅ env = Except.ok (.lit (.entityUID uid) (.entity uid.ty), ∅) := by
-        simp [typeOf, typeOfLit, hvalid_uid, ok]
-      suffices h : ∃ (r : TypedExpr × Capabilities),
-          typeOf (.binaryApp .mem (.var .principal) (.lit (.entityUID uid))) ∅ env = .ok r ∧
-          ∃ bty, r.1.typeOf = .bool bty from h
-      simp only [typeOf, h1, h2, Except.bind_ok]
-      simp only [typeOfBinaryApp,
-        show TypedExpr.typeOf (.var .principal (.entity env.reqty.principal)) = .entity env.reqty.principal from rfl,
-        show TypedExpr.typeOf (.lit (.entityUID uid) (.entity uid.ty)) = .entity uid.ty from rfl]
-      simp_all [ok, TypedExpr.typeOf, typeOfInₑ]
-    | is ety =>
-      have h : typeOf (PrincipalScope.toExpr (.principalScope (.is ety))) ∅ env =
-          .ok (.unaryApp (.is ety) (.var .principal (.entity env.reqty.principal))
-               (.bool (if ety = env.reqty.principal then .tt else .ff)), ∅) := by
-        simp [PrincipalScope.toExpr, Scope.toExpr, Var.isEntityType, typeOf, typeOfVar, ok,
-              Function.comp_apply, typeOfUnaryApp, TypedExpr.typeOf]
-      exact ⟨_, _, h, _, rfl⟩
-    | isMem ety uid => sorry
+  have ⟨scope, _, hps_toExpr⟩ : ∃ scope, policy.principalScope = .principalScope scope ∧
+      policy.principalScope.toExpr = Scope.toExpr scope .principal := by
+    cases policy.principalScope with
+    | principalScope s => exact ⟨s, rfl, rfl⟩
+  rw [hps_toExpr] at hce_ps ⊢
+  exact scope_types_to_bool hce_ps
 
 /--
 If two TypeEnvs agree (same ets, reqty, and acts queries), typecheckPolicy gives
@@ -315,6 +352,21 @@ theorem typecheckPolicy_env_congr {policy : Policy} {env₁ env₂ : TypeEnv}
     (h : TypeEnvAgreement env₁ env₂) :
     typecheckPolicy policy env₁ = typecheckPolicy policy env₂ := by
   simp only [typecheckPolicy, h.reqty_eq, typeOf_env_congr _ _ h]
+
+/--
+Construct `TypeEnvAgreement` for environments from an `IncrementallyRevalidatable` pair.
+-/
+theorem incr_gives_agreement {schema₁ schema₂ : Schema} {reqty : RequestType}
+    (hincr : IncrementallyRevalidatable schema₁ schema₂) :
+    TypeEnvAgreement
+      { ets := schema₁.ets, acts := schema₁.acts, reqty := reqty }
+      { ets := schema₂.ets, acts := schema₂.acts, reqty := reqty } where
+  ets_eq := hincr.ets_eq
+  reqty_eq := rfl
+  acts_contains := hincr.same_actions
+  acts_actionType := hincr.same_action_types
+  acts_descendentOf := hincr.same_descendentOf
+  acts_maybeDescendentOf := hincr.same_maybeDescendentOf
 
 /--
 Core lemma: if a policy's action scope does not match the changed action, and
@@ -340,7 +392,10 @@ theorem single_policy_single_change_preserved
     (policy : Policy)
     (hchange : SingleActionChange schema₁ schema₂ changedAction)
     (hnotmatch : actionScopeMatchesAction schema₁.acts changedAction policy.actionScope = false)
-    (hvalid : typecheckPolicyWithEnvironments typecheckPolicy policy schema₁ = .ok ()) :
+    (hvalid : typecheckPolicyWithEnvironments typecheckPolicy policy schema₁ = .ok ())
+    (hactionInAny_wf : ∀ (ls : List EntityUID),
+      policy.actionScope = .actionInAny ls →
+      ls ≠ [] ∧ ∃ ety, ∀ uid ∈ ls, uid.ty = ety) :
     typecheckPolicyWithEnvironments typecheckPolicy policy schema₂ = .ok () := by
   -- Extract facts from hvalid
   simp only [typecheckPolicyWithEnvironments, Except.mapError] at hvalid ⊢
@@ -354,19 +409,130 @@ theorem single_policy_single_change_preserved
       checkEntities_preserved hchange.incr hce₁
     rw [show (checkEntities schema₂ policy.toExpr) = .ok () from hce₂]
     simp only [Except.ok.injEq, Except.bind_ok]
-    -- Part B: Show mapM succeeds on schema₂.environments
-    -- Part C: Show not allFalse
-    -- These require structural reasoning about Schema.environments:
-    -- 1. For each env₂ in schema₂.environments with env₂.reqty.action ≠ changedAction:
-    --    there's a corresponding env₁ in schema₁.environments with TypeEnvAgreement,
-    --    so typecheckPolicy gives the same result (by typecheckPolicy_env_congr).
-    -- 2. For each env₂ with env₂.reqty.action = changedAction:
-    --    typecheckPolicy_nonmatching_action_produces_ff gives .ok with .ff.
-    -- 3. Since schema₁ had a non-ff result (hvalid), and it came from an unchanged action,
-    --    the same non-ff result appears in schema₂.
-    -- All building blocks are proven. The composition requires lemmas about
-    -- List membership in Schema.environments (relating find? to flatMap/map).
-    sorry
+    -- Part B: every env in schema₂.environments typechecks ok
+    have hall_ok : ∀ env ∈ schema₂.environments, ∃ tx, typecheckPolicy policy env = .ok tx := by
+      intro env henv
+      have ⟨henv_ets, henv_acts⟩ := env_mem_environments_schema henv
+      have henv_contains := env_mem_environments_action_contained henv
+      by_cases haction : env.reqty.action = changedAction
+      · -- Case B1: action is the changed one → produces .ff
+        have hnotmatch' : actionScopeMatchesAction env.acts env.reqty.action policy.actionScope = false := by
+          rw [henv_acts, haction]
+          -- actionScopeMatchesAction uses contains and descendentOf, which agree
+          rw [actionScopeMatchesAction_descendentOf_congr (fun u₁ u₂ => (hchange.incr.same_descendentOf u₁ u₂).symm)]
+          exact hnotmatch
+        have hcontains : env.acts.contains env.reqty.action := by rw [henv_acts]; exact henv_contains
+        have hentities : checkEntities ⟨env.ets, env.acts⟩ policy.toExpr = .ok () := by
+          rw [henv_ets, henv_acts]; exact hce₂
+        have hprincipal := principal_scope_types_to_bool hentities
+        have hscope_types : ∀ (ls : List EntityUID) (caps' : Capabilities),
+            policy.actionScope = .actionInAny ls →
+            ∃ tx_set c_set ety, typeOf (.set (ls.map (fun e => Expr.lit (.entityUID e)))) caps' env = .ok (tx_set, c_set) ∧
+              tx_set.typeOf = .set (.entity ety) :=
+          fun ls caps' hls => by
+            have ⟨hne, hsame⟩ := hactionInAny_wf ls hls
+            have hvalid_uids := actionInAny_uids_valid_from_policy hentities hls
+            exact actionInAny_set_types hne hvalid_uids hsame
+        obtain ⟨tx, htx, _⟩ := typecheckPolicy_nonmatching_action_produces_ff
+          hnotmatch' hcontains hentities hprincipal hscope_types
+        exact ⟨tx, htx⟩
+      · -- Case B2: action is unchanged → same result as in schema₁
+        have henv₁_exists : ∃ env₁ ∈ schema₁.environments,
+            env₁.reqty = env.reqty ∧ TypeEnvAgreement env₁ env := by
+          have hfind_eq : schema₁.acts.find? env.reqty.action = schema₂.acts.find? env.reqty.action :=
+            hchange.other_actions_unchanged env.reqty.action haction
+          obtain ⟨env₁, henv₁_mem, henv₁_reqty⟩ := env_in_other_schema_environments henv hfind_eq hchange.acts_wf₂
+          have ⟨henv₁_ets, henv₁_acts⟩ := env_mem_environments_schema henv₁_mem
+          refine ⟨env₁, henv₁_mem, henv₁_reqty, ?_⟩
+          constructor
+          · rw [henv₁_ets, henv_ets, hchange.incr.ets_eq]
+          · rw [henv₁_reqty]
+          · intro uid; rw [henv₁_acts, henv_acts]; exact hchange.incr.same_actions uid
+          · intro ety; rw [henv₁_acts, henv_acts]; exact hchange.incr.same_action_types ety
+          · intro u₁ u₂; rw [henv₁_acts, henv_acts]; exact hchange.incr.same_descendentOf u₁ u₂
+          · intro e₁ e₂; rw [henv₁_acts, henv_acts]; exact hchange.incr.same_maybeDescendentOf e₁ e₂
+        obtain ⟨env₁, henv₁_mem, henv₁_reqty, hagree⟩ := henv₁_exists
+        have ⟨tx₁, _, htx₁⟩ := List.mapM_ok_implies_all_ok h_mapM₁ env₁ henv₁_mem
+        rw [typecheckPolicy_env_congr hagree] at htx₁
+        exact ⟨tx₁, htx₁⟩
+    -- Get the mapM result
+    obtain ⟨txs₂, h_mapM₂⟩ := List.all_ok_implies_mapM_ok hall_ok
+    rw [h_mapM₂]
+    simp only [Except.bind_ok]
+    -- Part C: not allFalse
+    -- From hvalid: not all txs₁ are .ff
+    -- So there exists env₁ in schema₁.environments where typecheckPolicy ≠ .ff
+    -- That env₁ has env₁.reqty.action ≠ changedAction (otherwise it would be .ff)
+    -- The same reqty exists in schema₂.environments and gives the same result
+    by_cases hallff₂ : allFalse txs₂ = true
+    · -- allFalse case: derive contradiction
+      exfalso
+      -- Step 1: from hvalid, not all txs₁ are .ff
+      -- hvalid : allFalse txs₁ = true → .error ... = .ok () (i.e., allFalse txs₁ ≠ true)
+      have hnotallff₁ : ∃ tx₁ ∈ txs₁, tx₁.typeOf ≠ .bool .ff := by
+        by_contra h
+        simp only [not_exists, not_and, Classical.not_not] at h
+        have hall : (txs₁.all fun tx => tx.typeOf == .bool .ff) = true :=
+          List.all_eq_true.mpr (fun tx htx => by simp [h tx htx])
+        exact absurd (hvalid hall) (by simp)
+      obtain ⟨tx₁, htx₁_mem, htx₁_notff'⟩ := hnotallff₁
+      -- Step 2: tx₁ corresponds to some env₁
+      have ⟨env₁, henv₁_mem, henv₁_ok⟩ := List.mapM_ok_implies_all_from_ok h_mapM₁ tx₁ htx₁_mem
+      -- Step 3: env₁.reqty.action ≠ changedAction
+      -- (otherwise typecheckPolicy_nonmatching_action_produces_ff would give .ff)
+      have henv₁_action_ne : env₁.reqty.action ≠ changedAction := by
+        intro heq
+        have ⟨henv₁_ets, henv₁_acts⟩ := env_mem_environments_schema henv₁_mem
+        have henv₁_contains := env_mem_environments_action_contained henv₁_mem
+        have hnotmatch₁ : actionScopeMatchesAction env₁.acts env₁.reqty.action policy.actionScope = false := by
+          rw [henv₁_acts, heq]; exact hnotmatch
+        have hcontains₁ : env₁.acts.contains env₁.reqty.action := by rw [henv₁_acts]; exact henv₁_contains
+        have hentities₁ : checkEntities ⟨env₁.ets, env₁.acts⟩ policy.toExpr = .ok () := by
+          rw [henv₁_ets, henv₁_acts]; exact hce₁
+        have hprincipal₁ := principal_scope_types_to_bool hentities₁
+        have hscope_types₁ : ∀ (ls : List EntityUID) (caps' : Capabilities),
+            policy.actionScope = .actionInAny ls →
+            ∃ tx_set c_set ety, typeOf (.set (ls.map (fun e => Expr.lit (.entityUID e)))) caps' env₁ = .ok (tx_set, c_set) ∧
+              tx_set.typeOf = .set (.entity ety) :=
+          fun ls caps' hls => by
+            have ⟨hne, hsame⟩ := hactionInAny_wf ls hls
+            have hvalid_uids := actionInAny_uids_valid_from_policy hentities₁ hls
+            exact actionInAny_set_types hne hvalid_uids hsame
+        obtain ⟨tx_ff, htx_ff_ok, htx_ff_ty⟩ := typecheckPolicy_nonmatching_action_produces_ff
+          hnotmatch₁ hcontains₁ hentities₁ hprincipal₁ hscope_types₁
+        have : tx_ff = tx₁ := by
+          have h := henv₁_ok; rw [htx_ff_ok] at h; exact Except.ok.inj h
+        exact htx₁_notff' (this ▸ htx_ff_ty)
+      -- Step 4: env_in_other_schema_environments (schema₁→schema₂)
+      have hfind_eq : schema₂.acts.find? env₁.reqty.action = schema₁.acts.find? env₁.reqty.action :=
+        (hchange.other_actions_unchanged env₁.reqty.action henv₁_action_ne).symm
+      obtain ⟨env₂, henv₂_mem, henv₂_reqty⟩ :=
+        env_in_other_schema_environments henv₁_mem hfind_eq hchange.acts_wf₁
+      -- Step 5: typecheckPolicy gives the same result on env₂
+      have ⟨henv₂_ets, henv₂_acts⟩ := env_mem_environments_schema henv₂_mem
+      have ⟨henv₁_ets', henv₁_acts'⟩ := env_mem_environments_schema henv₁_mem
+      have hagree : TypeEnvAgreement env₁ env₂ := by
+        constructor
+        · rw [henv₁_ets', henv₂_ets, hchange.incr.ets_eq]
+        · rw [henv₂_reqty]
+        · intro uid; rw [henv₁_acts', henv₂_acts]; exact hchange.incr.same_actions uid
+        · intro ety; rw [henv₁_acts', henv₂_acts]; exact hchange.incr.same_action_types ety
+        · intro u₁ u₂; rw [henv₁_acts', henv₂_acts]; exact hchange.incr.same_descendentOf u₁ u₂
+        · intro e₁ e₂; rw [henv₁_acts', henv₂_acts]; exact hchange.incr.same_maybeDescendentOf e₁ e₂
+      have henv₂_ok : typecheckPolicy policy env₂ = .ok tx₁ := by
+        rw [← typecheckPolicy_env_congr hagree]; exact henv₁_ok
+      -- Step 6: tx₁ ∈ txs₂
+      have htx₁_in_txs₂ : tx₁ ∈ txs₂ := by
+        have ⟨tx₂, htx₂_mem, htx₂_ok⟩ := List.mapM_ok_implies_all_ok h_mapM₂ env₂ henv₂_mem
+        have : tx₁ = tx₂ := by rw [henv₂_ok] at htx₂_ok; exact Except.ok.inj htx₂_ok
+        rw [this]; exact htx₂_mem
+      -- Step 7: contradiction with hallff₂
+      simp only [allFalse] at hallff₂
+      rw [List.all_eq_true] at hallff₂
+      have := hallff₂ tx₁ htx₁_in_txs₂
+      simp only [beq_iff_eq] at this
+      exact htx₁_notff' this
+    · simp [hallff₂]
 
 /--
 The changes list captures all actions that could require revalidation.

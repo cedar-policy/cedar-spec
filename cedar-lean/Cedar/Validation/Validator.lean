@@ -32,7 +32,7 @@ open Cedar.Data
 For a given action, compute the cross-product of the applicable principal and
 resource types.
 -/
-def ActionSchemaEntry.requestTypes (action : EntityUID) (entry : ActionSchemaEntry) : List RequestType :=
+public def ActionSchemaEntry.requestTypes (action : EntityUID) (entry : ActionSchemaEntry) : List RequestType :=
   entry.appliesToPrincipal.toList.product entry.appliesToResource.toList |>.map
     (λ (principal, resource) => {
       principal,

@@ -278,4 +278,143 @@ theorem action_scope_typechecks_to_ff
     rw [heq, hsub]
     exact action_scope_actionInAny_typechecks_to_ff hnotmatch hcontains hvalid_action hset_ok ⟨ety, hset_ty⟩
 
+/--
+`actionScopeMatchesAction` only depends on `descendentOf`, so if two action schemas
+agree on `descendentOf`, they give the same result.
+-/
+theorem actionScopeMatchesAction_descendentOf_congr
+    {acts₁ acts₂ : ActionSchema} {action : EntityUID} {scope : ActionScope}
+    (hdesc : ∀ uid₁ uid₂, acts₁.descendentOf uid₁ uid₂ = acts₂.descendentOf uid₁ uid₂) :
+    actionScopeMatchesAction acts₁ action scope = actionScopeMatchesAction acts₂ action scope := by
+  unfold actionScopeMatchesAction
+  cases scope with
+  | actionScope s =>
+    cases s with
+    | any => rfl
+    | eq uid => simp [hdesc]
+    | mem uid => exact hdesc action uid
+    | is ety => rfl
+    | isMem ety uid => simp [hdesc]
+  | actionInAny ls =>
+    simp only
+    induction ls with
+    | nil => rfl
+    | cons hd tl ih =>
+      simp only [List.any_cons, hdesc action hd, ih]
+
+/--
+`checkEntities` on a set succeeds implies `checkEntities` on each element succeeds.
+-/
+theorem checkEntities_set_elem {schema : Schema} {xs : List Expr} {x : Expr}
+    (hce : checkEntities schema (.set xs) = .ok ())
+    (hmem : x ∈ xs) :
+    checkEntities schema x = .ok () := by
+  simp only [checkEntities] at hce
+  exact List.forM_ok_implies_all_ok' hce ⟨x, hmem⟩ (List.mem_attach xs ⟨x, hmem⟩)
+
+/--
+From `checkEntities` on a policy with `actionInAny` scope, all UIDs in the list are valid.
+-/
+theorem actionInAny_uids_valid_from_policy
+    {policy : Policy} {env : TypeEnv} {ls : List EntityUID}
+    (hce : checkEntities ⟨env.ets, env.acts⟩ policy.toExpr = .ok ())
+    (hscope : policy.actionScope = .actionInAny ls) :
+    ∀ uid ∈ ls, (env.ets.isValidEntityUID uid || env.acts.contains uid) = true := by
+  have hce_scope := checkEntities_policy_implies_actionScope hce
+  rw [hscope] at hce_scope
+  simp only [ActionScope.toExpr] at hce_scope
+  have ⟨_, hce_set⟩ := checkEntities_binaryApp hce_scope
+  intro uid huid
+  have hmem : Expr.lit (.entityUID uid) ∈ ls.map (fun e => Expr.lit (.entityUID e)) :=
+    List.mem_map.mpr ⟨uid, huid, rfl⟩
+  have helem := checkEntities_set_elem hce_set hmem
+  simp only [checkEntities] at helem
+  split at helem
+  · assumption
+  · contradiction
+
+private theorem justType_typeOf_entityUID_lit
+    {uid : EntityUID} {env : TypeEnv} {caps : Capabilities}
+    (hvalid : (env.ets.isValidEntityUID uid || env.acts.contains uid) = true) :
+    justType (typeOf (.lit (.entityUID uid)) caps env) =
+    .ok (.lit (.entityUID uid) (.entity uid.ty)) := by
+  simp [typeOf, typeOfLit, hvalid, ok, justType, Except.map]
+
+theorem mapM_justType_entityUID_lits
+    {ls : List EntityUID} {env : TypeEnv} {caps : Capabilities}
+    (hvalid : ∀ uid ∈ ls, (env.ets.isValidEntityUID uid || env.acts.contains uid) = true) :
+    (ls.map (fun e => Expr.lit (.entityUID e))).mapM
+      (fun x => justType (typeOf x caps env)) =
+    .ok (ls.map (fun uid => TypedExpr.lit (.entityUID uid) (.entity uid.ty))) := by
+  induction ls with
+  | nil => rfl
+  | cons hd tl ih =>
+    simp only [List.map_cons, List.mapM_cons]
+    rw [justType_typeOf_entityUID_lit (hvalid hd (.head _))]
+    simp only [Except.bind_ok]
+    rw [ih (fun uid huid => hvalid uid (.tail _ huid))]
+    rfl
+
+/--
+`typeOf` on a set of entity UID literals gives the same result regardless of env/caps,
+as long as all UIDs are valid in both environments.
+-/
+theorem typeOf_entityUID_set_deterministic
+    {ls : List EntityUID} {env₁ env₂ : TypeEnv} {caps₁ caps₂ : Capabilities}
+    (hvalid₁ : ∀ uid ∈ ls, (env₁.ets.isValidEntityUID uid || env₁.acts.contains uid) = true)
+    (hvalid₂ : ∀ uid ∈ ls, (env₂.ets.isValidEntityUID uid || env₂.acts.contains uid) = true) :
+    typeOf (.set (ls.map (fun e => Expr.lit (.entityUID e)))) caps₁ env₁ =
+    typeOf (.set (ls.map (fun e => Expr.lit (.entityUID e)))) caps₂ env₂ := by
+  simp only [typeOf,
+    List.mapM₁_eq_mapM (fun x => justType (typeOf x caps₁ env₁)),
+    List.mapM₁_eq_mapM (fun x => justType (typeOf x caps₂ env₂)),
+    mapM_justType_entityUID_lits hvalid₁,
+    mapM_justType_entityUID_lits hvalid₂]
+
+private theorem foldlM_lub_entity_same {tl : List EntityUID} {ety : EntityType}
+    (hsame : ∀ uid ∈ tl, uid.ty = ety) :
+    (tl.map (fun uid => CedarType.entity uid.ty)).foldlM lub? (.entity ety) = some (.entity ety) := by
+  induction tl with
+  | nil => simp [List.foldlM]
+  | cons hd tl ih =>
+    simp only [List.map_cons, List.foldlM_cons]
+    have hhd : hd.ty = ety := hsame hd (.head _)
+    simp only [hhd, lub?, ↓reduceIte, Option.bind_some_fun]
+    exact ih (fun uid huid => hsame uid (.tail _ huid))
+
+private theorem map_typeOf_entityUID_lits {ls : List EntityUID} :
+    (ls.map (fun uid => TypedExpr.lit (.entityUID uid) (.entity uid.ty))).map TypedExpr.typeOf =
+    ls.map (fun uid => CedarType.entity uid.ty) := by
+  simp [List.map_map, Function.comp, TypedExpr.typeOf]
+
+/--
+If a list of entity UIDs is non-empty, all UIDs are valid, and all have the same entity type,
+then `typeOf` on the corresponding set expression succeeds with type `.set (.entity ety)`.
+-/
+theorem actionInAny_set_types
+    {ls : List EntityUID} {env : TypeEnv} {caps : Capabilities}
+    (hne : ls ≠ [])
+    (hvalid : ∀ uid ∈ ls, (env.ets.isValidEntityUID uid || env.acts.contains uid) = true)
+    (hsame : ∃ ety, ∀ uid ∈ ls, uid.ty = ety) :
+    ∃ tx_set c_set ety,
+      typeOf (.set (ls.map (fun e => Expr.lit (.entityUID e)))) caps env = .ok (tx_set, c_set) ∧
+      tx_set.typeOf = .set (.entity ety) := by
+  obtain ⟨ety, hsame⟩ := hsame
+  have hmapM : (ls.map (fun e => Expr.lit (.entityUID e))).mapM (fun x => justType (typeOf x caps env)) =
+      .ok (ls.map (fun uid => TypedExpr.lit (.entityUID uid) (.entity uid.ty))) :=
+    mapM_justType_entityUID_lits (caps := caps) hvalid
+  simp only [typeOf, List.mapM₁_eq_mapM (fun x => justType (typeOf x caps env)), hmapM, Except.bind_ok]
+  obtain ⟨hd, tl, hls_eq⟩ : ∃ hd tl, ls = hd :: tl := by
+    cases ls with
+    | nil => exact absurd rfl hne
+    | cons hd tl => exact ⟨hd, tl, rfl⟩
+  subst hls_eq
+  simp only [typeOfSet, List.map_cons, TypedExpr.typeOf, map_typeOf_entityUID_lits]
+  have hhd : hd.ty = ety := hsame hd (.head _)
+  rw [hhd]
+  have hfold := foldlM_lub_entity_same (fun uid huid => hsame uid (.tail _ huid))
+  rw [hfold]
+  simp only [ok, TypedExpr.typeOf]
+  exact ⟨_, _, ety, rfl, rfl⟩
+
 end Cedar.Thm
