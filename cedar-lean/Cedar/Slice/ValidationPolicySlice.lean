@@ -112,7 +112,7 @@ A policy is included in the slice if its action scope could match a changed
 action. Policies with unconstrained action scopes (`action scope == any`) are
 always included when any action has changed.
 -/
-def validationSlice (acts : ActionSchema) (changes : List ActionChange) (policies : Policies) : Policies :=
+def validationSliceByChanges (acts : ActionSchema) (changes : List ActionChange) (policies : Policies) : Policies :=
   policies.filter (fun policy => actionScopeMatchesAnyChangedAction acts changes policy.actionScope)
 
 /--
@@ -131,10 +131,32 @@ def computeActionChanges (oldSchema newSchema : Schema) : List ActionChange :=
     | some oldEntry =>
       if oldEntry.context != newEntry.context then
         some (.contextChanged action)
-      else if oldEntry.appliesToPrincipal != newEntry.appliesToPrincipal ||
-              oldEntry.appliesToResource != newEntry.appliesToResource then
+      else if !(newEntry.appliesToPrincipal.subset oldEntry.appliesToPrincipal) ||
+              !(newEntry.appliesToResource.subset oldEntry.appliesToResource) then
         some (.appliesToExtended action)
       else
         none
+
+/--
+Validation "succeeds modulo impossible policies": either fully succeeds, or fails
+only because some policies became impossible (all environments produce `.ff`).
+This is the appropriate success criterion when appliesTo truncation is allowed,
+since truncation can make a policy impossible but cannot introduce type errors.
+-/
+def validateNoTypeErrors (policies : Policies) (schema : Schema) : Bool :=
+  policies.all fun policy =>
+    match typecheckPolicyWithEnvironments typecheckPolicy policy schema with
+    | .ok () => true
+    | .error (.impossiblePolicy _) => true
+    | _ => false
+
+/--
+The main entry point: given an old and new schema, compute the subset of policies
+that need revalidation.
+
+Precondition: `requiresFullRevalidation oldSchema newSchema = false`.
+-/
+def validationSlice (oldSchema newSchema : Schema) (policies : Policies) : Policies :=
+  validationSliceByChanges oldSchema.acts (computeActionChanges oldSchema newSchema) policies
 
 end Cedar.Slice
