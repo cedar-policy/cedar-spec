@@ -29,11 +29,14 @@ import Cedar.Thm.Validation.ValidationPolicySlice.Environments
 ## Main result
 
 `validation_slice_iff`: when a schema change does not require full revalidation,
-validating all policies on the new schema succeeds **if and only if** validating
-the sliced subset succeeds:
+no type errors across all policies iff no type errors in the slice:
 
-    validate policies newSchema = .ok () ↔
-    validate (validationSlice oldSchema newSchema policies) newSchema = .ok ()
+    validateOrImpossible policies newSchema = true ↔
+    validateOrImpossible (validationSlice oldSchema newSchema policies) newSchema = true
+
+This handles appliesTo truncation: removing principal/resource types from an
+action's appliesTo can make policies "impossible" (all environments yield `.ff`)
+but cannot introduce type errors.
 
 ## Key insight
 
@@ -49,9 +52,11 @@ so policies whose scope doesn't match any changed action are unaffected.
    `typeOf`/`typecheckPolicy` congruence across environments
 2. **Per-policy** (`policy_preserved`): if a policy's action scope does not match
    any changed action, and was previously valid, it remains valid
-3. **Soundness** (`validation_slice_soundness`): slice validates → all validate
+3. **Core lemma** (`nonslice_policy_noTypeErrors`): non-slice policies have no
+   type errors on the new schema (handles appliesTo subset via congruence)
 4. **Completeness** (`validation_slice_complete`): all validate → slice validates
-5. **Equivalence** (`validation_slice_iff`): combines soundness and completeness
+5. **Soundness** (`validation_slice_soundness`): slice validates → no type errors
+6. **Equivalence** (`validation_slice_iff`): combines into biconditional
 -/
 
 namespace Cedar.Thm
@@ -370,6 +375,21 @@ private theorem typecheckPolicy_produces_ff_for_nonmatching_env
   exact typecheckPolicy_nonmatching_action_produces_ff hnotmatch hcontains hentities hprincipal hscope_types
 
 /--
+If a policy's action scope doesn't match any action in a changes list, then for
+any specific action in that list, the scope doesn't match that action either.
+-/
+private theorem actionScopeNotMatchesIndividual
+    {acts : ActionSchema} {changes : List ActionChange} {scope : ActionScope}
+    (hnotmatch : actionScopeMatchesAnyChangedAction acts changes scope = false)
+    {action : EntityUID}
+    (haction : changes.any (fun c => c.action == action)) :
+    actionScopeMatchesAction acts action scope = false := by
+  simp only [actionScopeMatchesAnyChangedAction, List.any_eq_false] at hnotmatch
+  simp only [List.any_eq_true, beq_iff_eq] at haction
+  obtain ⟨c, hc_mem, hc_eq⟩ := haction
+  exact Bool.eq_false_iff.mpr (hc_eq ▸ hnotmatch c hc_mem)
+
+/--
 Multi-change version: if a policy's scope doesn't match ANY action whose entry
 differs between schemas, and the policy validated on schema₁, it validates on schema₂.
 This directly connects to the slicing algorithm.
@@ -387,15 +407,6 @@ theorem policy_preserved
     (hacts_wf₁ : Map.WellFormed schema₁.acts)
     (hacts_wf₂ : Map.WellFormed schema₂.acts) :
     typecheckPolicyWithEnvironments typecheckPolicy policy schema₂ = .ok () := by
-  -- The policy scope doesn't match any action in the changes list
-  have hnotmatch_action : ∀ (action : EntityUID),
-      changes.any (fun c => c.action == action) →
-      actionScopeMatchesAction schema₁.acts action policy.actionScope = false := by
-    simp only [actionScopeMatchesAnyChangedAction, List.any_eq_false] at hnotmatch
-    intro action hany
-    simp only [List.any_eq_true, beq_iff_eq] at hany
-    obtain ⟨c, hc_mem, hc_eq⟩ := hany
-    exact Bool.eq_false_iff.mpr (hc_eq ▸ hnotmatch c hc_mem)
   -- Extract validation components
   simp only [typecheckPolicyWithEnvironments, Except.mapError] at hvalid ⊢
   simp_do_let (checkEntities schema₁ policy.toExpr) as hce₁ at hvalid
@@ -426,7 +437,7 @@ theorem policy_preserved
         have hnotmatch' : actionScopeMatchesAction env.acts env.reqty.action policy.actionScope = false := by
           rw [henv_acts]
           rw [actionScopeMatchesAction_descendentOf_congr (fun u₁ u₂ => (hincr.same_descendentOf u₁ u₂).symm)]
-          exact hnotmatch_action env.reqty.action haction
+          exact actionScopeNotMatchesIndividual hnotmatch haction
         have hcontains : env.acts.contains env.reqty.action := by rw [henv_acts]; exact henv_contains
         have hentities : checkEntities ⟨env.ets, env.acts⟩ policy.toExpr = .ok () := by
           rw [henv_ets, henv_acts]; exact hce₂
@@ -458,7 +469,7 @@ theorem policy_preserved
         have ⟨henv₁_ets, henv₁_acts⟩ := env_mem_environments_schema henv₁_mem
         have henv₁_contains := env_mem_environments_action_contained henv₁_mem
         have hnotmatch₁ : actionScopeMatchesAction env₁.acts env₁.reqty.action policy.actionScope = false := by
-          rw [henv₁_acts]; exact hnotmatch_action env₁.reqty.action hany
+          rw [henv₁_acts]; exact actionScopeNotMatchesIndividual hnotmatch hany
         have hcontains₁ : env₁.acts.contains env₁.reqty.action := by rw [henv₁_acts]; exact henv₁_contains
         have hentities₁ : checkEntities ⟨env₁.ets, env₁.acts⟩ policy.toExpr = .ok () := by
           rw [henv₁_ets, henv₁_acts]; exact hce₁
@@ -490,36 +501,8 @@ theorem policy_preserved
 /-! ## Top-level theorems
 
 The main result is `validation_slice_iff` at the bottom of this file:
-validating all policies ↔ validating the slice.
+no type errors across all policies ↔ no type errors in the slice.
 -/
-
-/--
-Soundness (propositional): slice validates → all validate.
-Used internally by `validation_slice_soundness`.
--/
-theorem validation_slice_is_sufficient
-    (schema₁ schema₂ : Schema)
-    (changes : List ActionChange)
-    (policies : Policies)
-    (hincr : IncrementallyRevalidatable schema₁ schema₂)
-    (hold : validate policies schema₁ = .ok ())
-    (hslice : validate (validationSliceByChanges schema₁.acts changes policies) schema₂ = .ok ())
-    (hunchanged : ∀ (action : EntityUID),
-      ¬ changes.any (fun c => c.action == action) →
-      schema₁.acts.find? action = schema₂.acts.find? action)
-    (hacts_wf₁ : Map.WellFormed schema₁.acts)
-    (hacts_wf₂ : Map.WellFormed schema₂.acts) :
-    validate policies schema₂ = .ok () := by
-  simp [validate]
-  apply List.all_ok_implies_forM_ok
-  intro p hp
-  by_cases hmatch : actionScopeMatchesAnyChangedAction schema₁.acts changes p.actionScope
-  · have hp_slice : p ∈ validationSliceByChanges schema₁.acts changes policies := by
-      simp [validationSliceByChanges, List.mem_filter, hp, hmatch]
-    exact List.forM_ok_implies_all_ok' hslice p hp_slice
-  · simp only [Bool.not_eq_true] at hmatch
-    exact policy_preserved schema₁ schema₂ changes p hincr hmatch
-      (List.forM_ok_implies_all_ok' hold p hp) hunchanged hacts_wf₁ hacts_wf₂
 
 /-! ### Connecting executable checks to propositional specs -/
 
@@ -622,19 +605,17 @@ theorem rfr_false_implies_incr {oldSchema newSchema : Schema}
 /-! ### Completeness -/
 
 /--
-Completeness: all policies validate → slice validates.
-Trivial since the slice is a subset (`List.filter`) of the policies.
+Completeness for `validateOrImpossible`: the slice is a subset of all policies,
+so if all pass then the slice passes.
 -/
 theorem validation_slice_complete
     (oldSchema newSchema : Schema)
     (policies : Policies)
-    (hall : validate policies newSchema = .ok ()) :
-    validate (validationSlice oldSchema newSchema policies) newSchema = .ok () := by
-  simp only [validate, validationSlice, validationSliceByChanges]
-  apply List.all_ok_implies_forM_ok
+    (hall : validateOrImpossible policies newSchema = true) :
+    validateOrImpossible (validationSlice oldSchema newSchema policies) newSchema = true := by
+  simp only [validateOrImpossible, List.all_eq_true] at hall ⊢
   intro p hp
-  have hp_policies : p ∈ policies := (List.mem_filter.mp hp).1
-  exact List.forM_ok_implies_all_ok' hall p hp_policies
+  exact hall p ((List.mem_filter.mp hp).1)
 
 /-! ### Soundness: non-slice policies have no type errors -/
 
@@ -678,16 +659,10 @@ private theorem nonslice_policy_noTypeErrors
     have ⟨henv_ets, henv_acts⟩ := env_mem_environments_schema henv
     have henv_contains := env_mem_environments_action_contained henv
     by_cases haction : (computeActionChanges oldSchema newSchema).any (fun c => c.action == env.reqty.action)
-    · have hnotmatch_action : actionScopeMatchesAction oldSchema.acts env.reqty.action p.actionScope = false := by
-        simp only [actionScopeMatchesAnyChangedAction, List.any_eq_false] at hmatch
-        have hany : (computeActionChanges oldSchema newSchema).any (fun c => c.action == env.reqty.action) = true := haction
-        simp only [List.any_eq_true, beq_iff_eq] at hany
-        obtain ⟨c, hc_mem, hc_eq⟩ := hany
-        exact Bool.eq_false_iff.mpr (hc_eq ▸ hmatch c hc_mem)
-      have hnotmatch' : actionScopeMatchesAction env.acts env.reqty.action p.actionScope = false := by
+    · have hnotmatch' : actionScopeMatchesAction env.acts env.reqty.action p.actionScope = false := by
         rw [henv_acts]
         rw [actionScopeMatchesAction_descendentOf_congr (fun u₁ u₂ => (hincr.same_descendentOf u₁ u₂).symm)]
-        exact hnotmatch_action
+        exact actionScopeNotMatchesIndividual hmatch haction
       have hcontains : env.acts.contains env.reqty.action := by rw [henv_acts]; exact henv_contains
       have hentities : checkEntities ⟨env.ets, env.acts⟩ p.toExpr = .ok () := by
         rw [henv_ets, henv_acts]; exact hce₂
@@ -712,101 +687,49 @@ private theorem nonslice_policy_noTypeErrors
   simp only [Except.bind_ok, h_mapM₂]
   cases hallff : allFalse txs₂ <;> simp
 
-/-! ### Soundness -/
+/-! ### Equivalence -/
 
 /--
-**Soundness**: if the slice validates on the new schema, then all policies have
-no type errors on the new schema.
+**Soundness**: if the slice has no type errors, then all policies have no type
+errors. Non-slice policies are unaffected by the schema change (their environments
+either don't match the changed actions, or transfer via appliesTo subset).
 -/
 theorem validation_slice_soundness
     (oldSchema newSchema : Schema)
     (policies : Policies)
     (hno_full : requiresFullRevalidation oldSchema newSchema = false)
     (hold : validate policies oldSchema = .ok ())
-    (hslice : validate (validationSlice oldSchema newSchema policies) newSchema = .ok ())
+    (hslice : validateOrImpossible (validationSlice oldSchema newSchema policies) newSchema = true)
     (hacts_wf₁ : oldSchema.acts.wellFormed)
     (hacts_wf₂ : newSchema.acts.wellFormed) :
-    validateNoTypeErrors policies newSchema = true := by
-  simp only [validateNoTypeErrors, List.all_eq_true]
+    validateOrImpossible policies newSchema = true := by
+  simp only [validateOrImpossible, List.all_eq_true] at hslice ⊢
   intro p hp
   by_cases hmatch : actionScopeMatchesAnyChangedAction oldSchema.acts
       (computeActionChanges oldSchema newSchema) p.actionScope
-  · have hp_slice : p ∈ validationSlice oldSchema newSchema policies := by
-      simp [validationSlice, validationSliceByChanges, List.mem_filter, hp, hmatch]
-    have hp_ok := List.forM_ok_implies_all_ok' (by simp [validate] at hslice; exact hslice) p hp_slice
-    simp [hp_ok]
+  · exact hslice p (List.mem_filter.mpr ⟨hp, hmatch⟩)
   · simp only [Bool.not_eq_true] at hmatch
     have hvalid_p := List.forM_ok_implies_all_ok' (by simp [validate] at hold; exact hold) p hp
     exact nonslice_policy_noTypeErrors hno_full hvalid_p hmatch hacts_wf₁ hacts_wf₂
 
-/-! ### Equivalence (with truncation) -/
-
 /--
-**Equivalence theorem (truncation-aware)**: no type errors across all policies iff
-no type errors in the slice.
+**Main theorem**: no type errors across all policies iff no type errors in the
+slice.
 
 This handles the general case including appliesTo truncation. Truncated actions
 can make non-slice policies "impossible" but cannot introduce type errors. The
 slice captures exactly the policies whose type-error status could change.
--/
-theorem validation_slice_noTypeErrors_iff
-    (oldSchema newSchema : Schema)
-    (policies : Policies)
-    (hno_full : requiresFullRevalidation oldSchema newSchema = false)
-    (hold : validate policies oldSchema = .ok ())
-    (hacts_wf₁ : oldSchema.acts.wellFormed)
-    (hacts_wf₂ : newSchema.acts.wellFormed) :
-    validateNoTypeErrors policies newSchema = true ↔
-    validateNoTypeErrors (validationSlice oldSchema newSchema policies) newSchema = true := by
-  constructor
-  · intro hall
-    simp only [validateNoTypeErrors, List.all_eq_true] at hall ⊢
-    intro p hp
-    exact hall p ((List.mem_filter.mp hp).1)
-  · intro hslice_nte
-    simp only [validateNoTypeErrors, List.all_eq_true] at hslice_nte ⊢
-    intro p hp
-    by_cases hmatch : actionScopeMatchesAnyChangedAction oldSchema.acts
-        (computeActionChanges oldSchema newSchema) p.actionScope
-    · exact hslice_nte p (List.mem_filter.mpr ⟨hp, hmatch⟩)
-    · simp only [Bool.not_eq_true] at hmatch
-      have hvalid_p := List.forM_ok_implies_all_ok' (by simp [validate] at hold; exact hold) p hp
-      exact nonslice_policy_noTypeErrors hno_full hvalid_p hmatch hacts_wf₁ hacts_wf₂
-
-/-! ### Equivalence (no appliesTo truncation) -/
-
-/--
-**Equivalence theorem**: when no appliesTo truncation occurs (all changes are
-context changes or appliesTo extensions, and unchanged actions have identical
-entries), validating all policies on the new schema is equivalent to validating
-just the slice.
-
-This is the strongest form: an exact biconditional between full validation and
-slice validation. It applies when `computeActionChanges` captures all differences
-(i.e., unchanged actions have literally identical schema entries).
 -/
 theorem validation_slice_iff
     (oldSchema newSchema : Schema)
     (policies : Policies)
     (hno_full : requiresFullRevalidation oldSchema newSchema = false)
     (hold : validate policies oldSchema = .ok ())
-    (hunchanged : ∀ (action : EntityUID),
-      ¬ (computeActionChanges oldSchema newSchema).any (fun c => c.action == action) →
-      oldSchema.acts.find? action = newSchema.acts.find? action)
     (hacts_wf₁ : oldSchema.acts.wellFormed)
     (hacts_wf₂ : newSchema.acts.wellFormed) :
-    validate policies newSchema = .ok () ↔
-    validate (validationSlice oldSchema newSchema policies) newSchema = .ok () := by
-  constructor
-  · exact validation_slice_complete oldSchema newSchema policies
-  · intro hslice
-    have hacts_wf₁' : Map.WellFormed oldSchema.acts :=
-      Map.wf_iff_sorted.mpr (List.isSortedBy_correct.mpr hacts_wf₁)
-    have hacts_wf₂' : Map.WellFormed newSchema.acts :=
-      Map.wf_iff_sorted.mpr (List.isSortedBy_correct.mpr hacts_wf₂)
-    have hincr := rfr_false_implies_incr hno_full hacts_wf₁' hacts_wf₂'
-    exact validation_slice_is_sufficient oldSchema newSchema
-      (computeActionChanges oldSchema newSchema) policies
-      hincr hold hslice hunchanged hacts_wf₁' hacts_wf₂'
+    validateOrImpossible policies newSchema = true ↔
+    validateOrImpossible (validationSlice oldSchema newSchema policies) newSchema = true :=
+  ⟨validation_slice_complete oldSchema newSchema policies,
+   fun h => validation_slice_soundness oldSchema newSchema policies hno_full hold h hacts_wf₁ hacts_wf₂⟩
 
 end Cedar.Thm

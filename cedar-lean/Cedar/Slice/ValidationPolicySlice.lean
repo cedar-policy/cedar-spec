@@ -143,7 +143,7 @@ only because some policies became impossible (all environments produce `.ff`).
 This is the appropriate success criterion when appliesTo truncation is allowed,
 since truncation can make a policy impossible but cannot introduce type errors.
 -/
-def validateNoTypeErrors (policies : Policies) (schema : Schema) : Bool :=
+def validateOrImpossible (policies : Policies) (schema : Schema) : Bool :=
   policies.all fun policy =>
     match typecheckPolicyWithEnvironments typecheckPolicy policy schema with
     | .ok () => true
