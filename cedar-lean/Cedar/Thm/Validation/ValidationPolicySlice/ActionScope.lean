@@ -83,14 +83,14 @@ theorem action_scope_eq_typechecks_to_ff
         (.lit (.entityUID uid) (.entity uid.ty))
         (.bool .ff), ∅) := by
     simp [typeOf, typeOfLit, hvalid_action, hvalid_uid, ok, Function.comp_apply,
-      typeOfBinaryApp, TypedExpr.typeOf, typeOfEq, hne_prim]
+      typeOfBinaryApp, typeOfEq, hne_prim]
   exact ⟨_, _, heval, rfl⟩
 
 theorem action_scope_mem_typechecks_to_ff
     {uid : EntityUID} {env : TypeEnv} {caps : Capabilities}
     (hnotdesc : env.acts.descendentOf env.reqty.action uid = false)
     (hcontains : env.acts.contains env.reqty.action)
-    (hvalid_action : (env.ets.isValidEntityUID env.reqty.action || env.acts.contains env.reqty.action) = true)
+    (_hvalid_action : (env.ets.isValidEntityUID env.reqty.action || env.acts.contains env.reqty.action) = true)
     (hvalid_uid : (env.ets.isValidEntityUID uid || env.acts.contains uid) = true) :
     ∃ tx c,
       typeOf (.binaryApp .mem (.lit (.entityUID env.reqty.action)) (.lit (.entityUID uid))) caps env = .ok (tx, c) ∧
@@ -100,7 +100,7 @@ theorem action_scope_mem_typechecks_to_ff
         (.lit (.entityUID env.reqty.action) (.entity env.reqty.action.ty))
         (.lit (.entityUID uid) (.entity uid.ty))
         (.bool .ff), ∅) := by
-    simp [typeOf, typeOfLit, hvalid_action, hvalid_uid, ok, Function.comp_apply,
+    simp [typeOf, typeOfLit, hvalid_uid, ok, Function.comp_apply,
       typeOfBinaryApp, TypedExpr.typeOf, typeOfInₑ, actionUID?, entityUID?,
       hcontains, hnotdesc]
   exact ⟨_, _, heval, rfl⟩
@@ -143,7 +143,7 @@ theorem action_scope_isMem_typechecks_to_ff
           (.binaryApp .mem (.lit (.entityUID env.reqty.action) (.entity env.reqty.action.ty))
                            (.lit (.entityUID uid) (.entity uid.ty)) (.bool .ff))
           (.bool .ff), ∅) := by
-      simp [typeOf, typeOfLit, hvalid_action, hvalid_uid, ok, Function.comp_apply,
+      simp [typeOf, typeOfLit, hvalid_uid, ok, Function.comp_apply,
             typeOfUnaryApp, TypedExpr.typeOf, hety, typeOfAnd,
             typeOfBinaryApp, typeOfInₑ, actionUID?, entityUID?, hcontains, hnotdesc]
     exact ⟨_, _, heval, rfl⟩
@@ -234,8 +234,7 @@ theorem action_scope_typechecks_to_ff
   have hce_scope := checkEntities_policy_implies_actionScope hentities
   have hvalid_action : (env.ets.isValidEntityUID env.reqty.action || env.acts.contains env.reqty.action) = true := by
     simp [hcontains]
-  simp only [ActionScope.toExpr, Scope.toExpr, Var.eqEntityUID, Var.inEntityUID, Var.isEntityType,
-             substituteAction] at hce_scope
+  simp only [ActionScope.toExpr, Scope.toExpr, Var.eqEntityUID, Var.inEntityUID, Var.isEntityType] at hce_scope
   unfold actionScopeMatchesAction at hnotmatch
   split at hnotmatch
   next => simp at hnotmatch
@@ -243,7 +242,7 @@ theorem action_scope_typechecks_to_ff
     rw [heq] at hce_scope ⊢
     simp only [ActionScope.toExpr, Scope.toExpr, Var.eqEntityUID, substituteAction, mapOnVars] at hce_scope ⊢
     have hne : ¬ (uid = env.reqty.action) := by
-      cases huid : (uid == env.reqty.action) <;> simp_all [Bool.or_eq_false_iff]
+      cases huid : (uid == env.reqty.action) <;> simp_all
     have ⟨_, hce_uid⟩ := checkEntities_binaryApp hce_scope
     have hvalid_uid : (env.ets.isValidEntityUID uid || env.acts.contains uid) = true := by
       simp only [checkEntities] at hce_uid; split at hce_uid <;> [assumption; contradiction]
@@ -376,7 +375,7 @@ private theorem foldlM_lub_entity_same {tl : List EntityUID} {ety : EntityType}
     (hsame : ∀ uid ∈ tl, uid.ty = ety) :
     (tl.map (fun uid => CedarType.entity uid.ty)).foldlM lub? (.entity ety) = some (.entity ety) := by
   induction tl with
-  | nil => simp [List.foldlM]
+  | nil => simp
   | cons hd tl ih =>
     simp only [List.map_cons, List.foldlM_cons]
     have hhd : hd.ty = ety := hsame hd (.head _)
@@ -415,7 +414,7 @@ theorem actionInAny_set_types
   rw [hhd]
   have hfold := foldlM_lub_entity_same (fun uid huid => hsame uid (.tail _ huid))
   rw [hfold]
-  simp only [ok, TypedExpr.typeOf]
+  simp only [ok]
   exact ⟨_, _, ety, rfl, rfl⟩
 
 /-! ### Extracting actionInAny well-formedness from validation success -/
@@ -465,8 +464,8 @@ private theorem typeOf_binaryApp_right_succeeds {op : BinaryOp} {e₁ e₂ : Exp
 private theorem typeOf_set_nil_fails {c : Capabilities} {env : TypeEnv} :
     ∀ tx c', typeOf (.set ([] : List Expr)) c env ≠ .ok (tx, c') := by
   intro tx c' h
-  simp [typeOf, List.mapM₁, List.attach, List.pmap, List.mapM, List.mapM.loop,
-        typeOfSet, err, Except.bind, pure, Except.pure] at h
+  simp [typeOf, List.mapM₁, List.attach, List.mapM, List.mapM.loop,
+        typeOfSet, err, pure, Except.pure] at h
 
 private theorem lub_entity_some {ety : EntityType} {x result : CedarType}
     (h : lub? (.entity ety) x = some result) :
@@ -481,7 +480,7 @@ private theorem foldlM_lub_entity_all_eq {ety₀ : EntityType} {tys : List Cedar
   induction tys generalizing result with
   | nil => simp
   | cons hd tl ih =>
-    simp only [List.foldlM_cons, Option.bind] at h
+    simp only [List.foldlM_cons] at h
     cases hlub : lub? (.entity ety₀) hd with
     | none => simp [hlub] at h
     | some mid =>
@@ -503,12 +502,12 @@ private theorem typecheckPolicy_implies_typeOf {policy : Policy} {env : TypeEnv}
   simp only [typecheckPolicy] at htc
   have h := htc; revert h
   cases htypeOf : typeOf (substituteAction env.reqty.action policy.toExpr) ∅ env with
-  | error => intro h; simp [htypeOf] at h
+  | error => intro h; simp at h
   | ok val =>
     intro h; obtain ⟨tx', c'⟩ := val
-    simp only [htypeOf] at h
+    simp only at h
     split at h
-    · exact ⟨c', by simp_all [htypeOf]⟩
+    · exact ⟨c', by simp_all⟩
     · simp at h
 
 private theorem actionInAny_set_typed_from_typecheckPolicy
@@ -535,8 +534,8 @@ private theorem actionInAny_set_typed_from_typecheckPolicy
 
 private theorem typeOf_set_nil_fails' {c : Capabilities} {env : TypeEnv} {tx : TypedExpr} {c' : Capabilities} :
     typeOf (.set ([] : List Expr)) c env ≠ .ok (tx, c') := by
-  simp [typeOf, List.mapM₁, List.attach, List.pmap, List.mapM, List.mapM.loop,
-        typeOfSet, err, Except.bind, pure, Except.pure]
+  simp [typeOf, List.mapM₁, List.attach, List.mapM, List.mapM.loop,
+        typeOfSet, err, pure, Except.pure]
 
 theorem actionInAny_wf_of_valid
     {policy : Policy} {schema : Schema} {ls : List EntityUID}
