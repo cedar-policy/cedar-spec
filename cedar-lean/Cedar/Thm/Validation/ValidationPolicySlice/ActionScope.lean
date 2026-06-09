@@ -19,6 +19,7 @@ import Cedar.Data
 import Cedar.Validation
 import Cedar.Slice.ValidationPolicySlice
 import Cedar.Thm.Validation.Validator
+import Cedar.Thm.Validation.ValidationPolicySlice.Environments
 
 /-!
 This file proves that action scope expressions typecheck to `bool .ff` when the

@@ -21,6 +21,7 @@ import Cedar.Slice.ValidationPolicySlice
 import Cedar.Thm.Validation.Validator
 import Cedar.Thm.Validation.ValidationPolicySlice.ActionScope
 import Cedar.Thm.Validation.ValidationPolicySlice.TypeOfCongr
+import Cedar.Thm.Validation.ValidationPolicySlice.Environments
 
 /-!
 This file proves the correctness of validation-focused policy slicing.
@@ -33,10 +34,12 @@ that environment. This means the validation result depends only on environments
 whose action matches the policy's scope.
 
 We prove this in stages:
-1. Single policy, single action change: if the policy doesn't match the changed
-   action and was previously valid, it remains valid.
-2. Lift to the full theorem: if a full scan is not required and we revalidate
-   the sliced policies, all policies validate.
+1. Infrastructure: `checkEntities` preservation, principal scope typing, congruence
+2. Per-policy theorem (`policy_preserved`): if a policy's action scope does not
+   match any changed action, and was previously valid, it remains valid.
+3. Top-level theorem (`validation_slice_soundness`): the complete executable
+   procedure connecting `requiresFullRevalidation`, `computeActionChanges`,
+   `validationSlice`, and `validate`.
 -/
 
 namespace Cedar.Thm
@@ -46,39 +49,7 @@ open Cedar.Spec
 open Cedar.Validation
 open Cedar.Slice
 
-/--
-Specifies the relationship between two schemas that permits incremental
-revalidation. Corresponds to `requiresFullRevalidation old new = false`.
--/
-structure IncrementallyRevalidatable (schema₁ schema₂ : Schema) : Prop where
-  ets_eq : schema₁.ets = schema₂.ets
-  same_actions : ∀ action : EntityUID,
-    schema₁.acts.contains action = schema₂.acts.contains action
-  same_action_types : ∀ ety : EntityType,
-    schema₁.acts.actionType? ety = schema₂.acts.actionType? ety
-  same_ancestors : ∀ (action : EntityUID) (entry₁ entry₂ : ActionSchemaEntry),
-    schema₁.acts.find? action = some entry₁ →
-    schema₂.acts.find? action = some entry₂ →
-    entry₁.ancestors = entry₂.ancestors
-  same_descendentOf : ∀ uid₁ uid₂ : EntityUID,
-    schema₁.acts.descendentOf uid₁ uid₂ = schema₂.acts.descendentOf uid₁ uid₂
-  same_maybeDescendentOf : ∀ ety₁ ety₂ : EntityType,
-    schema₁.acts.maybeDescendentOf ety₁ ety₂ = schema₂.acts.maybeDescendentOf ety₁ ety₂
-
-/--
-Specifies that only a single action's context or appliesTo has changed, and the
-change is one that could potentially invalidate policies (context change or
-appliesTo extension).
--/
-structure SingleActionChange (schema₁ schema₂ : Schema) (changedAction : EntityUID) : Prop where
-  incr : IncrementallyRevalidatable schema₁ schema₂
-  action_exists₁ : schema₁.acts.contains changedAction
-  action_exists₂ : schema₂.acts.contains changedAction
-  other_actions_unchanged : ∀ (action : EntityUID),
-    action ≠ changedAction →
-    schema₁.acts.find? action = schema₂.acts.find? action
-  acts_wf₁ : Map.WellFormed schema₁.acts
-  acts_wf₂ : Map.WellFormed schema₂.acts
+/-! ## Infrastructure: typeOf helpers for and-expressions -/
 
 /--
 If an `and` expression typechecks successfully and its left operand typechecks to
@@ -113,64 +84,7 @@ theorem and_right_ff {e₁ e₂ : Expr} {env : TypeEnv} {c : Capabilities}
     simp only [typeOf, h₁, Except.bind_ok, typeOfAnd, hbty, h₂, Except.bind_ok, hff₂, ok]
     exact ⟨_, _, rfl, rfl⟩
 
-/--
-If a policy's action scope does not match an action that appears in the
-environment, and entity references in the policy are valid (checkEntities passed),
-then `typecheckPolicy` produces a result of type `bool .ff`.
-
-The proof strategy:
-- Policy.toExpr = .and principalScope (.and actionScope (.and resourceScope conditions))
-- After substituteAction, the action scope part typechecks to `bool .ff`
-  (by `action_scope_typechecks_to_ff`)
-- `typeOfAnd` with `ff` on left short-circuits: the inner and returns `ff`
-- The outer and, seeing `ff` on the right, also returns `ff`
-- Principal scope always typechecks to a bool (given valid entities), so no error
--/
-theorem typecheckPolicy_nonmatching_action_produces_ff
-    {policy : Policy} {env : TypeEnv}
-    (hnotmatch : actionScopeMatchesAction env.acts env.reqty.action policy.actionScope = false)
-    (hcontains : env.acts.contains env.reqty.action)
-    (hentities : checkEntities ⟨env.ets, env.acts⟩ policy.toExpr = .ok ())
-    (hprincipal : ∃ tx c, typeOf (substituteAction env.reqty.action policy.principalScope.toExpr) ∅ env = .ok (tx, c) ∧
-                  ∃ bty, tx.typeOf = .bool bty)
-    (hscope_types : ∀ (ls : List EntityUID) (caps' : Capabilities),
-      policy.actionScope = .actionInAny ls →
-      ∃ tx_set c_set ety,
-        typeOf (.set (ls.map (fun e => Expr.lit (.entityUID e)))) caps' env = .ok (tx_set, c_set) ∧
-        tx_set.typeOf = .set (.entity ety)) :
-    ∃ tx, typecheckPolicy policy env = .ok tx ∧ tx.typeOf = .bool .ff := by
-  obtain ⟨tx_p, c_p, hp, bty_p, hbty_p⟩ := hprincipal
-  have haction : ∃ tx_a c_a,
-      typeOf (substituteAction env.reqty.action policy.actionScope.toExpr) (∅ ∪ c_p) env = .ok (tx_a, c_a) ∧
-      tx_a.typeOf = .bool .ff :=
-    action_scope_typechecks_to_ff hnotmatch hcontains hentities
-      (fun ls hls => hscope_types ls (∅ ∪ c_p) hls)
-  obtain ⟨tx_a, c_a, ha, hff_a⟩ := haction
-  have hinner : ∃ tx c',
-      typeOf (.and (substituteAction env.reqty.action policy.actionScope.toExpr)
-                   (substituteAction env.reqty.action (.and policy.resourceScope.toExpr policy.condition.toExpr)))
-             (∅ ∪ c_p) env = .ok (tx, c') ∧ tx.typeOf = .bool .ff := by
-    simp only [typeOf, ha, Except.bind_ok, typeOfAnd, hff_a]
-    exact ⟨_, _, rfl, hff_a⟩
-  obtain ⟨tx_inner, c_inner, hinner_ok, hinner_ff⟩ := hinner
-  have houter : ∃ tx c',
-      typeOf (.and (substituteAction env.reqty.action policy.principalScope.toExpr)
-                   (.and (substituteAction env.reqty.action policy.actionScope.toExpr)
-                         (substituteAction env.reqty.action (.and policy.resourceScope.toExpr policy.condition.toExpr))))
-             ∅ env = .ok (tx, c') ∧ tx.typeOf = .bool .ff :=
-    and_right_ff hp ⟨bty_p, hbty_p⟩ hinner_ok hinner_ff
-  obtain ⟨tx_out, c_out, hout_ok, hout_ff⟩ := houter
-  have hsub : substituteAction env.reqty.action policy.toExpr =
-      .and (substituteAction env.reqty.action policy.principalScope.toExpr)
-           (.and (substituteAction env.reqty.action policy.actionScope.toExpr)
-                 (substituteAction env.reqty.action (.and policy.resourceScope.toExpr policy.condition.toExpr))) := by
-    simp [Policy.toExpr, substituteAction, mapOnVars]
-  unfold typecheckPolicy
-  simp only [hsub, hout_ok]
-  have hsub_bool : tx_out.typeOf ⊑ .bool .anyBool := by
-    simp [hout_ff, subty, lub?, lubBool]
-  simp only [hsub_bool, ↓reduceIte]
-  exact ⟨tx_out, rfl, hout_ff⟩
+/-! ## Infrastructure: checkEntities preservation -/
 
 /--
 If `checkEntities` passes on `schema₁` and the schemas agree on all checks that
@@ -235,6 +149,8 @@ theorem checkEntities_preserved
       (schema₂.ets.contains ety || schema₂.acts.actionType? ety) := by
     intro ety; rw [hincr.ets_eq, hincr.same_action_types]
   rw [← checkEntities_eq expr huid hety]; exact hok
+
+/-! ## Infrastructure: principal scope typing -/
 
 /--
 `substituteAction` does not affect the principal scope expression (it contains no
@@ -344,6 +260,8 @@ theorem principal_scope_types_to_bool
   rw [hps_toExpr] at hce_ps ⊢
   exact scope_types_to_bool hce_ps
 
+/-! ## Infrastructure: typecheckPolicy congruence -/
+
 /--
 If two TypeEnvs agree (same ets, reqty, and acts queries), typecheckPolicy gives
 the same result.
@@ -353,194 +271,68 @@ theorem typecheckPolicy_env_congr {policy : Policy} {env₁ env₂ : TypeEnv}
     typecheckPolicy policy env₁ = typecheckPolicy policy env₂ := by
   simp only [typecheckPolicy, h.reqty_eq, typeOf_env_congr _ _ h]
 
-/--
-Construct `TypeEnvAgreement` for environments from an `IncrementallyRevalidatable` pair.
--/
-theorem incr_gives_agreement {schema₁ schema₂ : Schema} {reqty : RequestType}
-    (hincr : IncrementallyRevalidatable schema₁ schema₂) :
-    TypeEnvAgreement
-      { ets := schema₁.ets, acts := schema₁.acts, reqty := reqty }
-      { ets := schema₂.ets, acts := schema₂.acts, reqty := reqty } where
-  ets_eq := hincr.ets_eq
-  reqty_eq := rfl
-  acts_contains := hincr.same_actions
-  acts_actionType := hincr.same_action_types
-  acts_descendentOf := hincr.same_descendentOf
-  acts_maybeDescendentOf := hincr.same_maybeDescendentOf
+/-! ## Per-policy non-matching action produces ff -/
 
 /--
-Core lemma: if a policy's action scope does not match the changed action, and
-the policy was valid under the old schema, then it remains valid under the new
-schema.
+If a policy's action scope does not match an action that appears in the
+environment, and entity references in the policy are valid (checkEntities passed),
+then `typecheckPolicy` produces a result of type `bool .ff`.
 
-Proof strategy:
-1. `checkEntities schema₂ policy.toExpr = .ok ()` — by `checkEntities_preserved`
-2. For each env in `schema₂.environments`:
-   - If `env.reqty.action = changedAction`: `typecheckPolicy_nonmatching_action_produces_ff`
-     gives `.ok tx` with `tx.typeOf = .bool .ff`
-   - If `env.reqty.action ≠ changedAction`: the action entry is the same in both schemas
-     (`other_actions_unchanged`), so the environment has the same `reqty`. The typechecker
-     produces the same result because `acts.descendentOf`, `acts.contains`, and
-     `acts.actionType?` all agree (by `IncrementallyRevalidatable`).
-3. Not all results are `ff`: since schema₁ validation passed, some environment in schema₁
-   for an unchanged action produced a non-ff result. That same environment exists in schema₂
-   and produces the same result.
+The proof strategy:
+- Policy.toExpr = .and principalScope (.and actionScope (.and resourceScope conditions))
+- After substituteAction, the action scope part typechecks to `bool .ff`
+  (by `action_scope_typechecks_to_ff`)
+- `typeOfAnd` with `ff` on left short-circuits: the inner and returns `ff`
+- The outer and, seeing `ff` on the right, also returns `ff`
+- Principal scope always typechecks to a bool (given valid entities), so no error
 -/
-theorem single_policy_single_change_preserved
-    (schema₁ schema₂ : Schema)
-    (changedAction : EntityUID)
-    (policy : Policy)
-    (hchange : SingleActionChange schema₁ schema₂ changedAction)
-    (hnotmatch : actionScopeMatchesAction schema₁.acts changedAction policy.actionScope = false)
-    (hvalid : typecheckPolicyWithEnvironments typecheckPolicy policy schema₁ = .ok ()) :
-    typecheckPolicyWithEnvironments typecheckPolicy policy schema₂ = .ok () := by
-  -- Extract facts from hvalid
-  simp only [typecheckPolicyWithEnvironments, Except.mapError] at hvalid ⊢
-  simp_do_let (checkEntities schema₁ policy.toExpr) as hce₁ at hvalid
-  cases h_mapM₁ : List.mapM (typecheckPolicy policy) schema₁.environments with
-  | error => simp only [h_mapM₁, Except.bind_err, reduceCtorEq] at hvalid
-  | ok txs₁ =>
-    simp only [h_mapM₁, Except.bind_ok, ite_eq_right_iff, allFalse] at hvalid
-    -- Part A: checkEntities for schema₂
-    have hce₂ : checkEntities schema₂ policy.toExpr = .ok () :=
-      checkEntities_preserved hchange.incr hce₁
-    rw [show (checkEntities schema₂ policy.toExpr) = .ok () from hce₂]
-    simp only [Except.bind_ok]
-    -- Derive actionInAny well-formedness from hvalid
-    have hactionInAny_wf : ∀ (ls : List EntityUID),
-        policy.actionScope = .actionInAny ls →
-        ls ≠ [] ∧ ∃ ety, ∀ uid ∈ ls, uid.ty = ety := by
-      intro ls hls
-      -- Reconstruct the original hvalid for the full theorem call
-      have hvalid_full : typecheckPolicyWithEnvironments typecheckPolicy policy schema₁ = .ok () := by
-        simp only [typecheckPolicyWithEnvironments, Except.mapError, hce₁, Except.bind_ok,
-                   h_mapM₁, Except.bind_ok, ite_eq_right_iff, allFalse]
-        exact hvalid
-      exact actionInAny_wf_of_valid hls hvalid_full
-    -- Part B: every env in schema₂.environments typechecks ok
-    have hall_ok : ∀ env ∈ schema₂.environments, ∃ tx, typecheckPolicy policy env = .ok tx := by
-      intro env henv
-      have ⟨henv_ets, henv_acts⟩ := env_mem_environments_schema henv
-      have henv_contains := env_mem_environments_action_contained henv
-      by_cases haction : env.reqty.action = changedAction
-      · -- Case B1: action is the changed one → produces .ff
-        have hnotmatch' : actionScopeMatchesAction env.acts env.reqty.action policy.actionScope = false := by
-          rw [henv_acts, haction]
-          -- actionScopeMatchesAction uses contains and descendentOf, which agree
-          rw [actionScopeMatchesAction_descendentOf_congr (fun u₁ u₂ => (hchange.incr.same_descendentOf u₁ u₂).symm)]
-          exact hnotmatch
-        have hcontains : env.acts.contains env.reqty.action := by rw [henv_acts]; exact henv_contains
-        have hentities : checkEntities ⟨env.ets, env.acts⟩ policy.toExpr = .ok () := by
-          rw [henv_ets, henv_acts]; exact hce₂
-        have hprincipal := principal_scope_types_to_bool hentities
-        have hscope_types : ∀ (ls : List EntityUID) (caps' : Capabilities),
-            policy.actionScope = .actionInAny ls →
-            ∃ tx_set c_set ety, typeOf (.set (ls.map (fun e => Expr.lit (.entityUID e)))) caps' env = .ok (tx_set, c_set) ∧
-              tx_set.typeOf = .set (.entity ety) :=
-          fun ls caps' hls => by
-            have ⟨hne, hsame⟩ := hactionInAny_wf ls hls
-            have hvalid_uids := actionInAny_uids_valid_from_policy hentities hls
-            exact actionInAny_set_types hne hvalid_uids hsame
-        obtain ⟨tx, htx, _⟩ := typecheckPolicy_nonmatching_action_produces_ff
-          hnotmatch' hcontains hentities hprincipal hscope_types
-        exact ⟨tx, htx⟩
-      · -- Case B2: action is unchanged → same result as in schema₁
-        have henv₁_exists : ∃ env₁ ∈ schema₁.environments,
-            env₁.reqty = env.reqty ∧ TypeEnvAgreement env₁ env := by
-          have hfind_eq : schema₁.acts.find? env.reqty.action = schema₂.acts.find? env.reqty.action :=
-            hchange.other_actions_unchanged env.reqty.action haction
-          obtain ⟨env₁, henv₁_mem, henv₁_reqty⟩ := env_in_other_schema_environments henv hfind_eq hchange.acts_wf₂
-          have ⟨henv₁_ets, henv₁_acts⟩ := env_mem_environments_schema henv₁_mem
-          refine ⟨env₁, henv₁_mem, henv₁_reqty, ?_⟩
-          constructor
-          · rw [henv₁_ets, henv_ets, hchange.incr.ets_eq]
-          · rw [henv₁_reqty]
-          · intro uid; rw [henv₁_acts, henv_acts]; exact hchange.incr.same_actions uid
-          · intro ety; rw [henv₁_acts, henv_acts]; exact hchange.incr.same_action_types ety
-          · intro u₁ u₂; rw [henv₁_acts, henv_acts]; exact hchange.incr.same_descendentOf u₁ u₂
-          · intro e₁ e₂; rw [henv₁_acts, henv_acts]; exact hchange.incr.same_maybeDescendentOf e₁ e₂
-        obtain ⟨env₁, henv₁_mem, henv₁_reqty, hagree⟩ := henv₁_exists
-        have ⟨tx₁, _, htx₁⟩ := List.mapM_ok_implies_all_ok h_mapM₁ env₁ henv₁_mem
-        rw [typecheckPolicy_env_congr hagree] at htx₁
-        exact ⟨tx₁, htx₁⟩
-    -- Get the mapM result
-    obtain ⟨txs₂, h_mapM₂⟩ := List.all_ok_implies_mapM_ok hall_ok
-    rw [h_mapM₂]
-    simp only [Except.bind_ok]
-    -- Part C: not allFalse
-    -- From hvalid: not all txs₁ are .ff
-    -- So there exists env₁ in schema₁.environments where typecheckPolicy ≠ .ff
-    -- That env₁ has env₁.reqty.action ≠ changedAction (otherwise it would be .ff)
-    -- The same reqty exists in schema₂.environments and gives the same result
-    by_cases hallff₂ : allFalse txs₂ = true
-    · -- allFalse case: derive contradiction
-      exfalso
-      -- Step 1: from hvalid, not all txs₁ are .ff
-      -- hvalid : allFalse txs₁ = true → .error ... = .ok () (i.e., allFalse txs₁ ≠ true)
-      have hnotallff₁ : ∃ tx₁ ∈ txs₁, tx₁.typeOf ≠ .bool .ff := by
-        by_contra h
-        simp only [not_exists, not_and, Classical.not_not] at h
-        have hall : (txs₁.all fun tx => tx.typeOf == .bool .ff) = true :=
-          List.all_eq_true.mpr (fun tx htx => by simp [h tx htx])
-        exact absurd (hvalid hall) (by simp)
-      obtain ⟨tx₁, htx₁_mem, htx₁_notff'⟩ := hnotallff₁
-      -- Step 2: tx₁ corresponds to some env₁
-      have ⟨env₁, henv₁_mem, henv₁_ok⟩ := List.mapM_ok_implies_all_from_ok h_mapM₁ tx₁ htx₁_mem
-      -- Step 3: env₁.reqty.action ≠ changedAction
-      -- (otherwise typecheckPolicy_nonmatching_action_produces_ff would give .ff)
-      have henv₁_action_ne : env₁.reqty.action ≠ changedAction := by
-        intro heq
-        have ⟨henv₁_ets, henv₁_acts⟩ := env_mem_environments_schema henv₁_mem
-        have henv₁_contains := env_mem_environments_action_contained henv₁_mem
-        have hnotmatch₁ : actionScopeMatchesAction env₁.acts env₁.reqty.action policy.actionScope = false := by
-          rw [henv₁_acts, heq]; exact hnotmatch
-        have hcontains₁ : env₁.acts.contains env₁.reqty.action := by rw [henv₁_acts]; exact henv₁_contains
-        have hentities₁ : checkEntities ⟨env₁.ets, env₁.acts⟩ policy.toExpr = .ok () := by
-          rw [henv₁_ets, henv₁_acts]; exact hce₁
-        have hprincipal₁ := principal_scope_types_to_bool hentities₁
-        have hscope_types₁ : ∀ (ls : List EntityUID) (caps' : Capabilities),
-            policy.actionScope = .actionInAny ls →
-            ∃ tx_set c_set ety, typeOf (.set (ls.map (fun e => Expr.lit (.entityUID e)))) caps' env₁ = .ok (tx_set, c_set) ∧
-              tx_set.typeOf = .set (.entity ety) :=
-          fun ls caps' hls => by
-            have ⟨hne, hsame⟩ := hactionInAny_wf ls hls
-            have hvalid_uids := actionInAny_uids_valid_from_policy hentities₁ hls
-            exact actionInAny_set_types hne hvalid_uids hsame
-        obtain ⟨tx_ff, htx_ff_ok, htx_ff_ty⟩ := typecheckPolicy_nonmatching_action_produces_ff
-          hnotmatch₁ hcontains₁ hentities₁ hprincipal₁ hscope_types₁
-        have : tx_ff = tx₁ := by
-          have h := henv₁_ok; rw [htx_ff_ok] at h; exact Except.ok.inj h
-        exact htx₁_notff' (this ▸ htx_ff_ty)
-      -- Step 4: env_in_other_schema_environments (schema₁→schema₂)
-      have hfind_eq : schema₂.acts.find? env₁.reqty.action = schema₁.acts.find? env₁.reqty.action :=
-        (hchange.other_actions_unchanged env₁.reqty.action henv₁_action_ne).symm
-      obtain ⟨env₂, henv₂_mem, henv₂_reqty⟩ :=
-        env_in_other_schema_environments henv₁_mem hfind_eq hchange.acts_wf₁
-      -- Step 5: typecheckPolicy gives the same result on env₂
-      have ⟨henv₂_ets, henv₂_acts⟩ := env_mem_environments_schema henv₂_mem
-      have ⟨henv₁_ets', henv₁_acts'⟩ := env_mem_environments_schema henv₁_mem
-      have hagree : TypeEnvAgreement env₁ env₂ := by
-        constructor
-        · rw [henv₁_ets', henv₂_ets, hchange.incr.ets_eq]
-        · rw [henv₂_reqty]
-        · intro uid; rw [henv₁_acts', henv₂_acts]; exact hchange.incr.same_actions uid
-        · intro ety; rw [henv₁_acts', henv₂_acts]; exact hchange.incr.same_action_types ety
-        · intro u₁ u₂; rw [henv₁_acts', henv₂_acts]; exact hchange.incr.same_descendentOf u₁ u₂
-        · intro e₁ e₂; rw [henv₁_acts', henv₂_acts]; exact hchange.incr.same_maybeDescendentOf e₁ e₂
-      have henv₂_ok : typecheckPolicy policy env₂ = .ok tx₁ := by
-        rw [← typecheckPolicy_env_congr hagree]; exact henv₁_ok
-      -- Step 6: tx₁ ∈ txs₂
-      have htx₁_in_txs₂ : tx₁ ∈ txs₂ := by
-        have ⟨tx₂, htx₂_mem, htx₂_ok⟩ := List.mapM_ok_implies_all_ok h_mapM₂ env₂ henv₂_mem
-        have : tx₁ = tx₂ := by rw [henv₂_ok] at htx₂_ok; exact Except.ok.inj htx₂_ok
-        rw [this]; exact htx₂_mem
-      -- Step 7: contradiction with hallff₂
-      simp only [allFalse] at hallff₂
-      rw [List.all_eq_true] at hallff₂
-      have := hallff₂ tx₁ htx₁_in_txs₂
-      simp only [beq_iff_eq] at this
-      exact htx₁_notff' this
-    · simp [hallff₂]
+theorem typecheckPolicy_nonmatching_action_produces_ff
+    {policy : Policy} {env : TypeEnv}
+    (hnotmatch : actionScopeMatchesAction env.acts env.reqty.action policy.actionScope = false)
+    (hcontains : env.acts.contains env.reqty.action)
+    (hentities : checkEntities ⟨env.ets, env.acts⟩ policy.toExpr = .ok ())
+    (hprincipal : ∃ tx c, typeOf (substituteAction env.reqty.action policy.principalScope.toExpr) ∅ env = .ok (tx, c) ∧
+                  ∃ bty, tx.typeOf = .bool bty)
+    (hscope_types : ∀ (ls : List EntityUID) (caps' : Capabilities),
+      policy.actionScope = .actionInAny ls →
+      ∃ tx_set c_set ety,
+        typeOf (.set (ls.map (fun e => Expr.lit (.entityUID e)))) caps' env = .ok (tx_set, c_set) ∧
+        tx_set.typeOf = .set (.entity ety)) :
+    ∃ tx, typecheckPolicy policy env = .ok tx ∧ tx.typeOf = .bool .ff := by
+  obtain ⟨tx_p, c_p, hp, bty_p, hbty_p⟩ := hprincipal
+  have haction : ∃ tx_a c_a,
+      typeOf (substituteAction env.reqty.action policy.actionScope.toExpr) (∅ ∪ c_p) env = .ok (tx_a, c_a) ∧
+      tx_a.typeOf = .bool .ff :=
+    action_scope_typechecks_to_ff hnotmatch hcontains hentities
+      (fun ls hls => hscope_types ls (∅ ∪ c_p) hls)
+  obtain ⟨tx_a, c_a, ha, hff_a⟩ := haction
+  have hinner : ∃ tx c',
+      typeOf (.and (substituteAction env.reqty.action policy.actionScope.toExpr)
+                   (substituteAction env.reqty.action (.and policy.resourceScope.toExpr policy.condition.toExpr)))
+             (∅ ∪ c_p) env = .ok (tx, c') ∧ tx.typeOf = .bool .ff := by
+    simp only [typeOf, ha, Except.bind_ok, typeOfAnd, hff_a]
+    exact ⟨_, _, rfl, hff_a⟩
+  obtain ⟨tx_inner, c_inner, hinner_ok, hinner_ff⟩ := hinner
+  have houter : ∃ tx c',
+      typeOf (.and (substituteAction env.reqty.action policy.principalScope.toExpr)
+                   (.and (substituteAction env.reqty.action policy.actionScope.toExpr)
+                         (substituteAction env.reqty.action (.and policy.resourceScope.toExpr policy.condition.toExpr))))
+             ∅ env = .ok (tx, c') ∧ tx.typeOf = .bool .ff :=
+    and_right_ff hp ⟨bty_p, hbty_p⟩ hinner_ok hinner_ff
+  obtain ⟨tx_out, c_out, hout_ok, hout_ff⟩ := houter
+  have hsub : substituteAction env.reqty.action policy.toExpr =
+      .and (substituteAction env.reqty.action policy.principalScope.toExpr)
+           (.and (substituteAction env.reqty.action policy.actionScope.toExpr)
+                 (substituteAction env.reqty.action (.and policy.resourceScope.toExpr policy.condition.toExpr))) := by
+    simp [Policy.toExpr, substituteAction, mapOnVars]
+  unfold typecheckPolicy
+  simp only [hsub, hout_ok]
+  have hsub_bool : tx_out.typeOf ⊑ .bool .anyBool := by
+    simp [hout_ff, subty, lub?, lubBool]
+  simp only [hsub_bool, ↓reduceIte]
+  exact ⟨tx_out, rfl, hout_ff⟩
+
+/-! ## Per-policy preservation theorem -/
 
 /--
 Multi-change version: if a policy's scope doesn't match ANY action whose entry
@@ -578,14 +370,7 @@ theorem policy_preserved
         List.any_eq_true.mpr ⟨c, hc_mem, h'⟩
       simp [hany'] at hnotmatch
     rw [← hc_eq]; exact hscope_false
-  -- Reuse the single_policy_single_change_preserved proof structure
-  -- Pick any changed action (if there are any) for the SingleActionChange
-  -- Actually, we apply the SAME proof pattern:
-  -- Part A: checkEntities preserved (from IncrementallyRevalidatable)
-  -- Part B: for each env in schema₂.environments:
-  --   B1: action is in changes list → scope doesn't match → .ff
-  --   B2: action is NOT in changes list → find? same → same result
-  -- Part C: not allFalse (same argument as single change)
+  -- Extract validation components
   simp only [typecheckPolicyWithEnvironments, Except.mapError] at hvalid ⊢
   simp_do_let (checkEntities schema₁ policy.toExpr) as hce₁ at hvalid
   cases h_mapM₁ : List.mapM (typecheckPolicy policy) schema₁.environments with
@@ -605,7 +390,7 @@ theorem policy_preserved
                    h_mapM₁, Except.bind_ok, ite_eq_right_iff, allFalse]
         exact hvalid
       exact actionInAny_wf_of_valid hls hvalid_full
-    -- Part B
+    -- Part B: every env in schema₂.environments typechecks ok
     have hall_ok : ∀ env ∈ schema₂.environments, ∃ tx, typecheckPolicy policy env = .ok tx := by
       intro env henv
       have ⟨henv_ets, henv_acts⟩ := env_mem_environments_schema henv
@@ -636,14 +421,7 @@ theorem policy_preserved
           hunchanged env.reqty.action haction
         obtain ⟨env₁, henv₁_mem, henv₁_reqty⟩ := env_in_other_schema_environments henv hfind_eq hacts_wf₂
         have ⟨henv₁_ets, henv₁_acts⟩ := env_mem_environments_schema henv₁_mem
-        have hagree : TypeEnvAgreement env₁ env := by
-          constructor
-          · rw [henv₁_ets, henv_ets, hincr.ets_eq]
-          · rw [henv₁_reqty]
-          · intro uid; rw [henv₁_acts, henv_acts]; exact hincr.same_actions uid
-          · intro ety; rw [henv₁_acts, henv_acts]; exact hincr.same_action_types ety
-          · intro u₁ u₂; rw [henv₁_acts, henv_acts]; exact hincr.same_descendentOf u₁ u₂
-          · intro e₁ e₂; rw [henv₁_acts, henv_acts]; exact hincr.same_maybeDescendentOf e₁ e₂
+        have hagree := mk_typeEnvAgreement_from_schemas hincr henv₁_ets henv₁_acts henv_ets henv_acts henv₁_reqty
         have ⟨tx₁, _, htx₁⟩ := List.mapM_ok_implies_all_ok h_mapM₁ env₁ henv₁_mem
         rw [typecheckPolicy_env_congr hagree] at htx₁
         exact ⟨tx₁, htx₁⟩
@@ -687,14 +465,7 @@ theorem policy_preserved
         env_in_other_schema_environments henv₁_mem hfind_eq hacts_wf₁
       have ⟨henv₂_ets, henv₂_acts⟩ := env_mem_environments_schema henv₂_mem
       have ⟨henv₁_ets', henv₁_acts'⟩ := env_mem_environments_schema henv₁_mem
-      have hagree : TypeEnvAgreement env₁ env₂ := by
-        constructor
-        · rw [henv₁_ets', henv₂_ets, hincr.ets_eq]
-        · rw [henv₂_reqty]
-        · intro uid; rw [henv₁_acts', henv₂_acts]; exact hincr.same_actions uid
-        · intro ety; rw [henv₁_acts', henv₂_acts]; exact hincr.same_action_types ety
-        · intro u₁ u₂; rw [henv₁_acts', henv₂_acts]; exact hincr.same_descendentOf u₁ u₂
-        · intro e₁ e₂; rw [henv₁_acts', henv₂_acts]; exact hincr.same_maybeDescendentOf e₁ e₂
+      have hagree := mk_typeEnvAgreement_from_schemas hincr henv₁_ets' henv₁_acts' henv₂_ets henv₂_acts henv₂_reqty.symm
       have henv₂_ok : typecheckPolicy policy env₂ = .ok tx₁ := by
         rw [← typecheckPolicy_env_congr hagree]; exact henv₁_ok
       have htx₁_in_txs₂ : tx₁ ∈ txs₂ := by
@@ -708,17 +479,7 @@ theorem policy_preserved
       exact htx₁_notff' this
     · simp [hallff₂]
 
-/--
-The changes list captures all actions that could require revalidation.
--/
-def ChangesAreComplete (schema₁ schema₂ : Schema) (changes : List ActionChange) : Prop :=
-  ∀ (action : EntityUID) (entry₁ entry₂ : ActionSchemaEntry),
-    schema₁.acts.find? action = some entry₁ →
-    schema₂.acts.find? action = some entry₂ →
-    (entry₁.context ≠ entry₂.context ∨
-     ¬ entry₂.appliesToPrincipal.subset entry₁.appliesToPrincipal ∨
-     ¬ entry₂.appliesToResource.subset entry₁.appliesToResource) →
-    changes.any (fun c => c.action == action)
+/-! ## Top-level theorems -/
 
 /--
 The main soundness theorem: if the schemas are incrementally revalidatable,
@@ -749,18 +510,6 @@ theorem validation_slice_is_sufficient
   · simp only [Bool.not_eq_true] at hmatch
     exact policy_preserved schema₁ schema₂ changes p hincr hmatch
       (List.forM_ok_implies_all_ok' hold p hp) hunchanged hacts_wf₁ hacts_wf₂
-
-/--
-For actions not in the changes list, the new schema's environments are a subset
-of the old schema's environments (because appliesTo can only be truncated).
-This is a weaker condition than `find?` equality that suffices for the proof.
--/
-def UnchangedActionsSubset (oldSchema newSchema : Schema) (changes : List ActionChange) : Prop :=
-  ∀ (action : EntityUID),
-    ¬ changes.any (fun c => c.action == action) →
-    ∀ env ∈ newSchema.environments,
-      env.reqty.action = action →
-      ∃ env₁ ∈ oldSchema.environments, env₁.reqty = env.reqty
 
 /-! ### Connecting executable checks to propositional specs -/
 
