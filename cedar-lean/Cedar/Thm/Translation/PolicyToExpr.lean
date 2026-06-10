@@ -176,7 +176,7 @@ theorem foldAnd_toAExpr (l : List Cst.Expr) (as : List Expr) :
       Cst.ExprImpl.toExprOrSpecial?, Cst.ExprData.toExprOrSpecial?, Cst.OrExpr.toExprOrSpecial?,
       Cst.AndExpr.toExprOrSpecial?, Cst.Relation.toExprOrSpecial?, Cst.AddExpr.toExprOrSpecial?,
       Cst.MultExpr.toExprOrSpecial?, Cst.Unary.toExprOrSpecial?, Cst.Member.toExprOrSpecial?,
-      Cst.Primary.toExprOrSpecial?, Cst.Literal.toExprOrSpecial?, memberAux, ExprOrSpecial.toExpr?]
+      Cst.Primary.toExprOrSpecial?, Cst.Literal.toExprOrSpecial?, memberAuxA, memberAux, ExprOrSpecial.toExpr?]
   | cons e tl =>
     cases tl with
     | nil =>
@@ -238,7 +238,7 @@ theorem foldAnd_inv (l : List Cst.Expr) (ae : Expr) :
       Cst.ExprImpl.toExprOrSpecial?, Cst.ExprData.toExprOrSpecial?, Cst.OrExpr.toExprOrSpecial?,
       Cst.AndExpr.toExprOrSpecial?, Cst.Relation.toExprOrSpecial?, Cst.AddExpr.toExprOrSpecial?,
       Cst.MultExpr.toExprOrSpecial?, Cst.Unary.toExprOrSpecial?, Cst.Member.toExprOrSpecial?,
-      Cst.Primary.toExprOrSpecial?, Cst.Literal.toExprOrSpecial?, memberAux, ExprOrSpecial.toExpr?] at h
+      Cst.Primary.toExprOrSpecial?, Cst.Literal.toExprOrSpecial?, memberAuxA, memberAux, ExprOrSpecial.toExpr?] at h
     simp [← h]
   | cons e tl =>
     cases tl with
@@ -394,7 +394,7 @@ theorem toPRScope_leaf {vd : Cst.VariableDef} {scope : Scope} {leaf : Expr} {v :
       Cst.MultExpr.toAddExpr, Cst.AddExpr.toRelation, Cst.Relation.toAExpr?,
       Cst.Relation.toExprOrSpecial?, Cst.AddExpr.toExprOrSpecial?, Cst.MultExpr.toExprOrSpecial?,
       Cst.Unary.toExprOrSpecial?, Cst.Member.toExprOrSpecial?, Cst.Primary.toExprOrSpecial?,
-      Cst.Literal.toExprOrSpecial?, memberAux, ExprOrSpecial.toExpr?] at hleaf
+      Cst.Literal.toExprOrSpecial?, memberAuxA, memberAux, ExprOrSpecial.toExpr?] at hleaf
     simp_all [Scope.toExpr]
   | none, some t, hscope =>
     simp [Cst.VariableDef.toPRScope?, Option.bind_eq_some_iff] at hscope
@@ -455,7 +455,7 @@ theorem principal_leaf_agrees {vp : Cst.VariableDef} {ps : PrincipalScope} {leaf
     rw [hvar]; simp [Cst.Ident.varToAddExpr, Cst.Primary.toMember, Cst.Member.toUnary,
       Cst.Unary.toMultExpr, Cst.MultExpr.toAddExpr, Cst.AddExpr.toExprOrSpecial?,
       Cst.MultExpr.toExprOrSpecial?, Cst.Unary.toExprOrSpecial?, Cst.Member.toExprOrSpecial?,
-      Cst.Primary.toExprOrSpecial?, Cst.Name.toVar?, memberAux]
+      Cst.Primary.toExprOrSpecial?, Cst.Name.toVar?, memberAuxA, memberAux]
   rw [toPRScope_leaf hv hscope hleaf]; exact Iff.rfl
 
 /-- Resource-scope leaf agrees between the two paths. -/
@@ -475,7 +475,7 @@ theorem resource_leaf_agrees {vr : Cst.VariableDef} {rs : ResourceScope} {leaf :
     rw [hvar]; simp [Cst.Ident.varToAddExpr, Cst.Primary.toMember, Cst.Member.toUnary,
       Cst.Unary.toMultExpr, Cst.MultExpr.toAddExpr, Cst.AddExpr.toExprOrSpecial?,
       Cst.MultExpr.toExprOrSpecial?, Cst.Unary.toExprOrSpecial?, Cst.Member.toExprOrSpecial?,
-      Cst.Primary.toExprOrSpecial?, Cst.Name.toVar?, memberAux]
+      Cst.Primary.toExprOrSpecial?, Cst.Name.toVar?, memberAuxA, memberAux]
   rw [toPRScope_leaf hv hscope hleaf]; exact Iff.rfl
 
 /-- Action-scope leaf agrees between the two paths (uses `evaluate_mem_singleton`
@@ -500,7 +500,7 @@ theorem action_leaf_agrees {va : Cst.VariableDef} {as : ActionScope} {leaf : Exp
       simp [Cst.Ident.varToAddExpr, Cst.Primary.toMember, Cst.Member.toUnary, Cst.Unary.toMultExpr,
         Cst.MultExpr.toAddExpr, Cst.AddExpr.toExprOrSpecial?, Cst.MultExpr.toExprOrSpecial?,
         Cst.Unary.toExprOrSpecial?, Cst.Member.toExprOrSpecial?, Cst.Primary.toExprOrSpecial?,
-        Cst.Name.toVar?, memberAux]
+        Cst.Name.toVar?, memberAuxA, memberAux]
     have hv2 : (Cst.Ident.idAction.varToAddExpr).toAExpr? = some (Expr.var .action) := by
       simp [Cst.AddExpr.toAExpr?, hv, ExprOrSpecial.toExpr?]
     cases et
@@ -517,7 +517,7 @@ theorem action_leaf_agrees {va : Cst.VariableDef} {as : ActionScope} {leaf : Exp
           Cst.MultExpr.toAddExpr, Cst.AddExpr.toRelation, Cst.Relation.toAExpr?,
           Cst.Relation.toExprOrSpecial?, Cst.AddExpr.toExprOrSpecial?, Cst.MultExpr.toExprOrSpecial?,
           Cst.Unary.toExprOrSpecial?, Cst.Member.toExprOrSpecial?, Cst.Primary.toExprOrSpecial?,
-          Cst.Literal.toExprOrSpecial?, memberAux, ExprOrSpecial.toExpr?] at hleaf
+          Cst.Literal.toExprOrSpecial?, memberAuxA, memberAux, ExprOrSpecial.toExpr?] at hleaf
         rw [← hleaf]; rfl
       | some opE =>
         obtain ⟨op, e⟩ := opE
