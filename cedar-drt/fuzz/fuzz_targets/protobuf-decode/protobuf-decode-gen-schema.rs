@@ -17,19 +17,26 @@
 #![no_main]
 
 use cedar_drt_inner::fuzz_target;
-
 use cedar_drt_inner::props::{schema_to_cedar_roundtrips, schema_to_json_roundtrips};
-use cedar_policy::Schema;
-use cedar_policy::proto::traits::Protobuf;
+use cedar_drt_inner::proto_gen::ProtoSchemaInput;
 
-// Feed arbitrary bytes into Schema protobuf decoder.
-// The property under test: decode either returns Ok or Err, never panics.
-fuzz_target!(|input: &[u8]| {
-    match Schema::decode(input) {
-        Ok(schema) => {
-            schema_to_cedar_roundtrips(&schema);
-            schema_to_json_roundtrips(&schema);
-        }
-        Err(_) => (), // we expect errors
-    }
+use cedar_policy::Schema;
+use cedar_policy::proto::models;
+use prost::Message;
+
+// Generates a proto Schema → encode to bytes → decode → convert to domain →
+// roundtrip through JSON and Cedar text.
+fuzz_target!(|input: ProtoSchemaInput| {
+    let buf = input.schema.encode_to_vec();
+
+    let decoded = models::Schema::decode(&buf[..])
+        .expect("Failed to decode proto Schema that was just encoded.");
+
+    let schema = match Schema::try_from(decoded) {
+        Ok(s) => s,
+        Err(_) => return,
+    };
+
+    schema_to_json_roundtrips(&schema);
+    schema_to_cedar_roundtrips(&schema);
 });

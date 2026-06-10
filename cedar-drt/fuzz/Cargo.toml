@@ -270,6 +270,12 @@ test = false
 doc = false
 
 [[bin]]
+name = "protobuf-decode-gen-schema"
+path = "fuzz_targets/protobuf-decode/protobuf-decode-gen-schema.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "protobuf-decode-gen-template"
 path = "fuzz_targets/protobuf-decode/protobuf-decode-gen-template.rs"
 test = false
