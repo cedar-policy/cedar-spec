@@ -667,7 +667,7 @@ theorem validation_slice_complete
 A policy whose action scope doesn't match any changed action has no type errors
 on the new schema. This is the core lemma for both soundness theorems.
 -/
-private theorem nonslice_policy_noTypeErrors
+theorem nonslice_policy_noTypeErrors
     {oldSchema newSchema : Schema} {p : Policy}
     (hno_full : requiresFullRevalidation oldSchema newSchema = false)
     (hvalid_p : typecheckPolicyWithEnvironments typecheckPolicy p oldSchema = .ok ())
@@ -747,7 +747,7 @@ private theorem nonslice_policy_noTypeErrors
 errors. Non-slice policies are unaffected by the schema change (their environments
 either don't match the changed actions, or transfer via appliesTo subset).
 -/
-private theorem validateWellFormed_gives_wf_and_disjoint
+theorem validateWellFormed_gives_wf_and_disjoint
     {schema : Schema}
     (hwf : Schema.validateWellFormed schema = .ok ())
     {env : TypeEnv} (henv : env ∈ schema.environments) :
@@ -771,7 +771,7 @@ private theorem validateWellFormed_gives_wf_and_disjoint
     | none => rfl
     | some entry => exfalso; exact hdisj (by simp [EntitySchema.contains, hfind])
 
-private theorem validateOrImpossible_of_empty_envs
+theorem validateOrImpossible_of_empty_envs
     {oldSchema schema : Schema} {policies : Policies}
     (henvs : schema.environments = [])
     (hno_full : requiresFullRevalidation oldSchema schema = false)
