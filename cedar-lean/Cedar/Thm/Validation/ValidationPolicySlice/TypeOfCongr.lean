@@ -177,6 +177,17 @@ theorem TypeEnvAgreement.toWeak {env₁ env₂ : TypeEnv} (h : TypeEnvAgreement 
 For entity UIDs valid on env₁ (via ets or acts), `acts.contains` agrees between
 the two envs. This is the key lemma that makes WeakTypeEnvAgreement sufficient.
 -/
+private theorem ets_isValidEntityUID_fwd {env₁ env₂ : TypeEnv}
+    (hets_fwd : ∀ (ety : EntityType) (entry : EntitySchemaEntry),
+      env₁.ets.find? ety = some entry → env₂.ets.find? ety = some entry)
+    {uid : EntityUID}
+    (hvalid : env₁.ets.isValidEntityUID uid = true) :
+    env₂.ets.isValidEntityUID uid = true := by
+  simp only [EntitySchema.isValidEntityUID] at hvalid ⊢
+  cases hf : env₁.ets.find? uid.ty with
+  | none => simp [hf] at hvalid
+  | some entry => rw [hets_fwd uid.ty entry hf]; simp [hf] at hvalid; exact hvalid
+
 private theorem acts_contains_agree_for_valid {env₁ env₂ : TypeEnv}
     (h : WeakTypeEnvAgreement env₁ env₂)
     {uid : EntityUID}
@@ -186,11 +197,9 @@ private theorem acts_contains_agree_for_valid {env₁ env₂ : TypeEnv}
   | true => exact (h.acts_contains_fwd uid hc).symm ▸ rfl
   | false =>
     simp [hc] at hvalid
-    -- uid is valid via ets, so by disjointness of env₂, it's not in acts₂
-    have hvalid₂ := hvalid; rw [h.ets_eq] at hvalid₂
+    have hvalid₂ : env₂.ets.isValidEntityUID uid = true := by rw [← h.ets_eq]; exact hvalid
     have hnotacts₂ : env₂.acts.contains uid = false := by
-      by_contra habs
-      simp at habs
+      by_contra habs; simp at habs
       exact absurd hvalid₂ (by simp [h.acts_disjoint uid habs])
     rw [hnotacts₂]
 
