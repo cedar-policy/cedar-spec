@@ -84,7 +84,7 @@ public inductive AstAccessor where
 public def AstAccessor.toString : AstAccessor → String
   | .field id => CstCommon.Ident.toString id
   | .index s => s
-  | .call _ => "sorry"
+  | .call _ => "<call>"
 
 public def ExprOrSpecial.toExpr? : ExprOrSpecial → Option Expr
   | .expr e => some e
