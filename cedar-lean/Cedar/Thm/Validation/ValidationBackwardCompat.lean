@@ -619,14 +619,59 @@ private theorem mem_of_subset_toList {α : Type} [DecidableEq α] {s₁ s₂ : S
   rw [List.elem_eq_mem] at h
   grind
 
-private theorem wf_and_disjoint_from_hwf
-    {schema : Schema}
-    (hwf : Schema.validateWellFormed schema = .ok ())
-    (henvs_ne : schema.environments ≠ []) :
-    schema.acts.wellFormed ∧
-    (∀ uid, schema.acts.contains uid = true → schema.ets.isValidEntityUID uid = false) := by
-  have ⟨env, henv⟩ := List.exists_mem_of_ne_nil _ henvs_ne
-  exact validateWellFormed_gives_wf_and_disjoint hwf henv
+/-- Extract `ets_eq` from `isAppliesToRestriction`. -/
+private theorem isAppliesToRestriction_ets_eq
+    {oldSchema newSchema : Schema}
+    (hrestr : isAppliesToRestriction oldSchema newSchema = true) :
+    oldSchema.ets = newSchema.ets := by
+  simp only [isAppliesToRestriction, Bool.and_eq_true] at hrestr
+  exact Map.eq_iff_toList_eq.mp ((beq_iff_eq (α := List _)).mp hrestr.1.1.1)
+
+/-- From `isAppliesToRestriction`, every new action has a corresponding old entry. -/
+private theorem isAppliesToRestriction_new_in_old
+    {oldSchema newSchema : Schema}
+    (hrestr : isAppliesToRestriction oldSchema newSchema = true)
+    {action : EntityUID} {newEntry : ActionSchemaEntry}
+    (hmem : (action, newEntry) ∈ newSchema.acts.toList) :
+    ∃ oldEntry, oldSchema.acts.find? action = some oldEntry ∧
+      oldEntry.context = newEntry.context ∧
+      newEntry.appliesToPrincipal.subset oldEntry.appliesToPrincipal = true ∧
+      newEntry.appliesToResource.subset oldEntry.appliesToResource = true := by
+  simp only [isAppliesToRestriction, Bool.and_eq_true] at hrestr
+  have h_entry := List.all_eq_true.mp hrestr.1.2 _ hmem
+  simp only at h_entry
+  cases hfo : oldSchema.acts.find? action with
+  | none => simp [hfo] at h_entry
+  | some oldEntry =>
+    simp only [hfo, Bool.and_eq_true, decide_eq_true_eq] at h_entry
+    exact ⟨oldEntry, by grind, h_entry.1.1.1.1, by grind, by grind⟩
+
+/-- If new schema has non-empty environments and appliesTo restricted, old is also non-empty. -/
+private theorem appliesTo_restriction_envs_ne
+    {oldSchema newSchema : Schema}
+    (hrestr : isAppliesToRestriction oldSchema newSchema = true)
+    (henvs_new : newSchema.environments ≠ []) :
+    oldSchema.environments ≠ [] := by
+  intro h_empty
+  apply henvs_new
+  simp only [Schema.environments, List.map_eq_nil_iff] at h_empty ⊢
+  rw [List.flatMap_eq_nil_iff] at h_empty ⊢
+  intro ⟨action, newEntry⟩ hmem_new
+  obtain ⟨oldEntry, hfind_old, _, hprinc_sub, hres_sub⟩ :=
+    isAppliesToRestriction_new_in_old hrestr hmem_new
+  have hold_empty := h_empty (action, oldEntry) (Map.find?_mem_toList hfind_old)
+  simp only [ActionSchemaEntry.requestTypes, List.map_eq_nil_iff] at hold_empty ⊢
+  by_contra h_ne
+  have h_ne' : newEntry.appliesToPrincipal.toList.product newEntry.appliesToResource.toList ≠ [] := by
+    intro h_eq; exact h_ne (by simp [h_eq])
+  obtain ⟨⟨p, r⟩, hpr_mem⟩ := List.exists_mem_of_ne_nil _ h_ne'
+  have ⟨hp, hr⟩ : p ∈ newEntry.appliesToPrincipal.toList ∧ r ∈ newEntry.appliesToResource.toList := by
+    simp [List.product, List.mem_flatMap, List.mem_map] at hpr_mem; exact hpr_mem
+  have hp_old := mem_of_subset_toList hp (show newEntry.appliesToPrincipal.subset oldEntry.appliesToPrincipal = true by grind)
+  have hr_old := mem_of_subset_toList hr (show newEntry.appliesToResource.subset oldEntry.appliesToResource = true by grind)
+  have hpr_old : (p, r) ∈ oldEntry.appliesToPrincipal.toList.product oldEntry.appliesToResource.toList := by
+    simp [List.product, List.mem_flatMap, List.mem_map]; exact ⟨hp_old, hr_old⟩
+  simp [hold_empty] at hpr_old
 
 theorem validateOrImpossible_of_appliesTo_restriction
     (oldSchema newSchema : Schema)
@@ -639,61 +684,24 @@ theorem validateOrImpossible_of_appliesTo_restriction
   have hno_changes := isAppliesToRestriction_implies_no_changes hrestr
   have hacts_wf₂ : newSchema.acts.wellFormed := by
     simp only [isAppliesToRestriction, Bool.and_eq_true] at hrestr; exact hrestr.2
-  -- If new environments empty, validateOrImpossible is trivially true
+  have hets_eq := isAppliesToRestriction_ets_eq hrestr
   by_cases henvs_new : newSchema.environments = []
   · exact validateOrImpossible_of_empty_envs henvs_new hno_full hold
-  have henvs_old : oldSchema.environments ≠ [] := by
-    intro h_empty
-    apply henvs_new
-    simp only [Schema.environments, List.map_eq_nil_iff] at h_empty ⊢
-    rw [List.flatMap_eq_nil_iff] at h_empty ⊢
-    intro ⟨action, newEntry⟩ hmem_new
-    simp only [isAppliesToRestriction, Bool.and_eq_true] at hrestr
-    have h_entry := List.all_eq_true.mp hrestr.1.2 _ hmem_new
-    simp only at h_entry
-    cases hfo : oldSchema.acts.find? action with
-    | none => simp [hfo] at h_entry
-    | some oldEntry =>
-      simp only [hfo, Bool.and_eq_true, decide_eq_true_eq] at h_entry
-      have ⟨⟨⟨_, hprinc_sub⟩, hres_sub⟩, _⟩ := h_entry
-      have hold_empty := h_empty (action, oldEntry) (Map.find?_mem_toList hfo)
-      simp only [ActionSchemaEntry.requestTypes, List.map_eq_nil_iff] at hold_empty ⊢
-      by_contra h_ne
-      have h_ne' : newEntry.appliesToPrincipal.toList.product newEntry.appliesToResource.toList ≠ [] := by
-        intro h_eq; exact h_ne (by simp [h_eq])
-      obtain ⟨⟨p, r⟩, hpr_mem⟩ := List.exists_mem_of_ne_nil _ h_ne'
-      have ⟨hp, hr⟩ : p ∈ newEntry.appliesToPrincipal.toList ∧ r ∈ newEntry.appliesToResource.toList := by
-        simp [List.product, List.mem_flatMap, List.mem_map] at hpr_mem; exact hpr_mem
-      have hp_old := mem_of_subset_toList hp (show newEntry.appliesToPrincipal.subset oldEntry.appliesToPrincipal = true by grind)
-      have hr_old := mem_of_subset_toList hr (show newEntry.appliesToResource.subset oldEntry.appliesToResource = true by grind)
-      have hpr_old : (p, r) ∈ oldEntry.appliesToPrincipal.toList.product oldEntry.appliesToResource.toList := by
-        simp [List.product, List.mem_flatMap, List.mem_map]; exact ⟨hp_old, hr_old⟩
-      simp [hold_empty] at hpr_old
-  have ⟨hacts_wf₁, hdisjoint_old⟩ := wf_and_disjoint_from_hwf hwf₁ henvs_old
-  have hets_eq : oldSchema.ets = newSchema.ets := by
-    simp only [isAppliesToRestriction, Bool.and_eq_true] at hrestr
-    exact Map.eq_iff_toList_eq.mp ((beq_iff_eq (α := List _)).mp hrestr.1.1.1)
+  have ⟨hacts_wf₁, hdisjoint_old⟩ :=
+    validateWellFormed_gives_wf_and_disjoint hwf₁
+      (List.exists_mem_of_ne_nil _ (appliesTo_restriction_envs_ne hrestr henvs_new)).choose_spec
   have hdisjoint : ∀ uid, newSchema.acts.contains uid = true →
       newSchema.ets.isValidEntityUID uid = false := by
     intro uid hc
     rw [← hets_eq]
-    -- uid in new acts → uid in old acts
-    have ⟨newE, hfind_new⟩ := Map.contains_iff_some_find?.mp hc
-    have hmem_new := Map.find?_mem_toList hfind_new
-    simp only [isAppliesToRestriction, Bool.and_eq_true] at hrestr
-    have h_entry := List.all_eq_true.mp hrestr.1.2 _ hmem_new
-    simp only at h_entry
-    cases hfo : oldSchema.acts.find? uid with
-    | none => simp [hfo] at h_entry
-    | some oldE =>
-      have hc_old : oldSchema.acts.contains uid := by simp [ActionSchema.contains, hfo]
-      exact hdisjoint_old uid hc_old
+    obtain ⟨_, hfind_old, _, _, _⟩ :=
+      isAppliesToRestriction_new_in_old hrestr (Map.find?_mem_toList (Map.contains_iff_some_find?.mp hc).choose_spec)
+    exact hdisjoint_old uid (by simp [ActionSchema.contains, hfind_old])
   simp only [Cedar.Slice.validateOrImpossible, List.all_eq_true]
   intro p hp
-  have hvalid_p := List.forM_ok_implies_all_ok' (by simp [validate] at hold; exact hold) p hp
-  have hmatch : Cedar.Slice.actionScopeMatchesAnyChangedAction oldSchema.acts
-      (Cedar.Slice.computeActionChanges oldSchema newSchema) p.actionScope = false := by
-    simp [hno_changes, Cedar.Slice.actionScopeMatchesAnyChangedAction]
-  exact nonslice_policy_noTypeErrors hno_full hvalid_p hmatch hacts_wf₁ hacts_wf₂ hdisjoint
+  exact nonslice_policy_noTypeErrors hno_full
+    (List.forM_ok_implies_all_ok' (by simp [validate] at hold; exact hold) p hp)
+    (by simp [hno_changes, Cedar.Slice.actionScopeMatchesAnyChangedAction])
+    hacts_wf₁ hacts_wf₂ hdisjoint
 
 end Cedar.Thm
