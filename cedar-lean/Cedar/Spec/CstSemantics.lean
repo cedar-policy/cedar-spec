@@ -262,6 +262,7 @@ public def Primary.evaluate (e : Primary) (req : Request) (es : Entities) : Resu
 termination_by sizeOf e
 
 public def Member.evaluate (e : Member) (req : Request) (es : Entities) : Result Value :=
+  match e with
   -- Function calls
   | { item := .name { path := [], name := .idIdent s }, access := .call args :: rest } =>
     match CstCommon.String.toExtFun? s with

@@ -140,7 +140,7 @@ public def Name.toFunc? (n : Name) (args : List Expr) : Option Expr := do
   else none
 
 -- Remember to check that id is unreserved
-public def Cst.Ident.toMeth? (id : Ident) (recv : AExpr) (args : List AExpr) : Option AExpr :=
+public def Cst.Ident.toMeth? (id : Cst.Ident) (recv : AExpr) (args : List AExpr) : Option AExpr :=
   match id with
   | .idIdent s => do
     let op ← CstCommon.String.toMethodOp? s
