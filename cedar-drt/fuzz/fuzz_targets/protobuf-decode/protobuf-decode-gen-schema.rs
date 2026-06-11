@@ -17,8 +17,11 @@
 #![no_main]
 
 use cedar_drt_inner::fuzz_target;
-use cedar_drt_inner::props::{schema_to_cedar_parses, schema_to_json_deserializes};
 use cedar_drt_inner::proto_gen::ProtoSchemaInput;
+use cedar_drt_inner::{
+    props::{schema_to_cedar_parses, schema_to_json_deserializes},
+    schemas::schemas_are_equivalent,
+};
 
 use cedar_policy::Schema;
 use cedar_policy::proto::models;
@@ -38,7 +41,12 @@ fuzz_target!(|input: ProtoSchemaInput| {
         Ok(s) => s,
         Err(_) => return,
     };
-    // It should roundtrip through JSON and Cedar formats.
-    schema_to_json_deserializes(&schema);
-    schema_to_cedar_parses(&schema);
+    // It should roundtrip through JSON and Cedar formats, and result in equivalent schemas.
+    // Proto decoding should compute tc
+    schemas_are_equivalent(&schema, &schema_to_cedar_parses(&schema), "Cedar roundtrip");
+    schemas_are_equivalent(
+        &schema,
+        &schema_to_json_deserializes(&schema),
+        "JSON roundtrip",
+    );
 });
