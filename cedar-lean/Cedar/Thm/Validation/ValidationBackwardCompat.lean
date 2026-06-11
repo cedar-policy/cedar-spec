@@ -14,15 +14,8 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
-import Cedar.Data
-import Cedar.Validation
-import Cedar.Thm.Validation.ValidationPolicySlice.TypeOfCongr
-import Cedar.Thm.Validation.ValidationPolicySlice.CheckEntities
-import Cedar.Thm.Validation.Typechecker
-import Cedar.Thm.Validation.EnvironmentValidation
-import Cedar.Thm.WellTyped.Expr.WF
 import Cedar.Thm.Validation.ValidationPolicySlice
+import Cedar.Thm.WellTyped.Expr.WF
 import Cedar.Thm.Data
 
 /-!
@@ -682,8 +675,8 @@ theorem validateOrImpossible_of_appliesTo_restriction
     Cedar.Slice.validateOrImpossible policies newSchema = true := by
   have hno_full := isAppliesToRestriction_implies_rfr_false hrestr
   have hno_changes := isAppliesToRestriction_implies_no_changes hrestr
-  have hacts_wf₂ : newSchema.acts.wellFormed := by
-    simp only [isAppliesToRestriction, Bool.and_eq_true] at hrestr; exact hrestr.2
+  have hacts_wf₂ : newSchema.acts.wellFormed :=
+    (by simp only [isAppliesToRestriction, Bool.and_eq_true] at hrestr; exact hrestr.2)
   have hets_eq := isAppliesToRestriction_ets_eq hrestr
   by_cases henvs_new : newSchema.environments = []
   · exact validateOrImpossible_of_empty_envs henvs_new hno_full hold
