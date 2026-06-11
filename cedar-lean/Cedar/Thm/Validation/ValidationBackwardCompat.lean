@@ -177,6 +177,18 @@ structure EtsExtension (env₁ env₂ : TypeEnv) : Prop where
   disjoint₂ : ∀ uid, env₂.acts.contains uid = true → ¬ env₂.ets.contains uid.ty
   wf₁ : env₁.WellFormed
 
+private theorem disjoint_backward
+    {env₁ env₂ : TypeEnv}
+    (hets_fwd : ∀ ety entry, env₁.ets.find? ety = some entry → env₂.ets.find? ety = some entry)
+    (hacts : env₁.acts = env₂.acts)
+    (hdisjoint₂ : ∀ uid, env₂.acts.contains uid = true → ¬ env₂.ets.contains uid.ty) :
+    ∀ uid, env₁.acts.contains uid = true → ¬ env₁.ets.contains uid.ty := by
+  intro uid hc hc₁
+  have hc₂ : env₂.ets.contains uid.ty := by
+    simp only [EntitySchema.contains, Option.isSome_iff_exists] at hc₁ ⊢
+    obtain ⟨e, hf⟩ := hc₁; exact ⟨e, hets_fwd uid.ty e hf⟩
+  exact hdisjoint₂ uid (hacts ▸ hc) hc₂
+
 private theorem isValidEntityUID_fwd
     {ets₁ ets₂ : EntitySchema}
     (hfwd : ∀ (ety : EntityType) (entry : EntitySchemaEntry),
@@ -213,8 +225,7 @@ private theorem contains_or_actionType_fwd
   · simp [hc] at hv; rw [← hacts]; simp [hv]
   · simp only [EntitySchema.contains, Option.isSome_iff_exists] at hc
     obtain ⟨entry, hf⟩ := hc
-    have hf₂ := hets_fwd ety entry hf
-    simp [EntitySchema.contains, hf₂]
+    simp [EntitySchema.contains, hets_fwd ety entry hf]
 
 private theorem checkEntities_pair' {schema : Schema} {e₁ e₂ : Expr}
     (h : (do checkEntities schema e₁; checkEntities schema e₂) = .ok ()) :
@@ -315,10 +326,7 @@ theorem typeOf_preserved_of_ets_extension (expr : Expr) (c : Capabilities)
         have hinv₁ : ∀ ety, tx₁.typeOf = .entity ety →
             env₁.ets.contains ety ∨ env₁.acts.actionType? ety :=
           fun ety hety => typeOf_entity_type_in_ets x₁ c hwf₁ hr₁' hety
-        have hdisjoint₁ : ∀ uid, env₁.acts.contains uid = true → ¬ env₁.ets.contains uid.ty :=
-          fun uid hc hc₁ => hdisjoint₂ uid (hacts ▸ hc) (by
-            simp only [EntitySchema.contains, Option.isSome_iff_exists] at hc₁ ⊢
-            obtain ⟨e, hf⟩ := hc₁; exact ⟨e, hets_fwd uid.ty e hf⟩)
+        have hdisjoint₁ := disjoint_backward hets_fwd hacts hdisjoint₂
         unfold typeOfBinaryApp
         split
         · rfl
@@ -336,20 +344,18 @@ theorem typeOf_preserved_of_ets_extension (expr : Expr) (c : Capabilities)
   | .hasAttr x₁ _ | .getAttr x₁ _ =>
     have hce₁ : checkEntities ⟨env₁.ets, env₁.acts⟩ x₁ = .ok () := by
       unfold checkEntities at hce; exact hce
-    simp only [typeOf]
     have hih := typeOf_preserved_of_ets_extension x₁ c h hce₁
+    simp only [typeOf]
     cases hr : typeOf x₁ c env₁ with
     | error e => simp [hih ▸ hr]
     | ok val =>
       obtain ⟨tx₁, c₁⟩ := val
       simp only [Except.bind_ok]
       rw [show typeOf x₁ c env₂ = .ok (tx₁, c₁) from hih ▸ hr]
-      simp only [Except.bind_ok]
-      simp only [typeOfHasAttr, typeOfGetAttr]
+      simp only [Except.bind_ok, typeOfHasAttr, typeOfGetAttr]
       cases htx : tx₁.typeOf with
       | entity ety =>
-        have hinv := typeOf_entity_type_in_ets x₁ c hwf₁ hr htx
-        simp [ets_attrs_agree hets_fwd (hacts ▸ hdisjoint₂) hinv, hacts]
+        simp [ets_attrs_agree hets_fwd (hacts ▸ hdisjoint₂) (typeOf_entity_type_in_ets x₁ c hwf₁ hr htx), hacts]
       | record _ => rfl
       | _ => rfl
   | .set xs | .call _ xs =>
@@ -447,5 +453,70 @@ theorem validate_preserved_of_ets_extension
   simp only [Except.mapError, hce₂, Except.bind_ok]
   simp only [Except.mapError, hce₁, Except.bind_ok] at hp₁
   rw [← hmapM]; exact hp₁
+
+/-! ## Executable backward-compatibility check -/
+
+private instance : DecidableEq ActionSchemaEntry := by
+  intro a b
+  cases a; cases b
+  simp only [ActionSchemaEntry.mk.injEq]
+  exact inferInstance
+
+/--
+Decidable check that `schema₂` is a backward-compatible entity-schema extension
+of `schema₁`. Returns `true` when:
+- The action schemas are identical
+- Every entity type entry in `schema₁` has the same entry in `schema₂`
+- No action uid's entity type collides with `schema₂.ets`
+-/
+def isValidEtsExtension (schema₁ schema₂ : Schema) : Bool :=
+  (schema₁.acts.toList == schema₂.acts.toList) &&
+  schema₁.ets.toList.all (fun (ety, entry) => schema₂.ets.find? ety == some entry) &&
+  schema₂.acts.toList.all (fun (uid, _) => !schema₂.ets.contains uid.ty)
+
+
+private theorem ets_fwd_of_all_find
+    {ets₁ ets₂ : EntitySchema}
+    (h : ets₁.toList.all (fun (ety, entry) => ets₂.find? ety == some entry) = true) :
+    ∀ ety entry, ets₁.find? ety = some entry → ets₂.find? ety = some entry := by
+  intro ety entry hfind
+  have hmem := Map.find?_mem_toList hfind
+  have := List.all_eq_true.mp h (ety, entry) hmem
+  simp [beq_iff_eq] at this
+  exact this
+
+private theorem disjoint_of_acts_all
+    {acts : ActionSchema} {ets : EntitySchema}
+    (h : acts.toList.all (fun (uid, _) => !ets.contains uid.ty) = true) :
+    ∀ uid, acts.contains uid = true → ¬ ets.contains uid.ty := by
+  intro uid hc hets
+  have ⟨entry, hfind⟩ := Map.contains_iff_some_find?.mp hc
+  have hmem := Map.find?_mem_toList hfind
+  have hall := List.all_eq_true.mp h (uid, entry) hmem
+  simp only [Bool.not_eq_true'] at hall
+  rw [hets] at hall
+  exact absurd hall (by simp)
+
+/--
+**Executable backward compatibility**: if `isValidEtsExtension schema₁ schema₂`
+returns `true` and policies validate on `schema₁`, they also validate on `schema₂`.
+
+This is a fully decidable algorithm: given two schemas, run `isValidEtsExtension`
+to determine whether adding entity types to schema₁ to produce schema₂ preserves
+validation of all policies.
+-/
+theorem validate_of_isValidEtsExtension
+    (schema₁ schema₂ : Schema)
+    (policies : Policies)
+    (hext : isValidEtsExtension schema₁ schema₂ = true)
+    (hwf₁ : schema₁.validateWellFormed = .ok ())
+    (hold : validate policies schema₁ = .ok ()) :
+    validate policies schema₂ = .ok () := by
+  simp only [isValidEtsExtension, Bool.and_eq_true] at hext
+  obtain ⟨⟨hacts_list, hets_all⟩, hdisj_all⟩ := hext
+  have hacts : schema₁.acts = schema₂.acts :=
+    Map.eq_iff_toList_eq.mp ((beq_iff_eq (α := List _)).mp hacts_list)
+  exact validate_preserved_of_ets_extension schema₁ schema₂ policies
+    hacts (ets_fwd_of_all_find hets_all) (disjoint_of_acts_all hdisj_all) hwf₁ hold
 
 end Cedar.Thm
