@@ -11,7 +11,6 @@ open Cedar.Data
 open Cedar.Spec
 
 set_option maxHeartbeats 1000000
-set_option linter.unusedVariables false
 
 theorem Cst.ExprOrSpecial.toExpr?_evaluate  {eos : ExprOrSpecial} {aexp : Expr} req es :
   eos.toExpr? = some aexp →
