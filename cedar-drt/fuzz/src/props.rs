@@ -149,31 +149,32 @@ pub fn policyset_to_json_deserializes(original: PolicySet) -> PolicySet {
     })
 }
 
-/// A [`Schema`] should roundtrip through JSON serialization. Convert to a JSON
-/// schema fragment, serialize to JSON, then parse back as a [`Schema`].
-pub fn schema_to_json_roundtrips(schema: &Schema) {
+/// A [`Schema`] should serialize to JSON and deserialize again. Panics if serializing or
+/// deserializing fails.
+/// Caller should use the result if they need to assert equality with the input.
+pub fn schema_to_json_deserializes(schema: &Schema) -> Schema {
     let validator_schema: &ValidatorSchema = schema.as_ref();
     let fragment = validator_schema
         .to_json_schema()
         .expect("ValidatorSchema could not be converted to JSON schema fragment");
     let json = serde_json::to_value(&fragment)
         .unwrap_or_else(|e| panic!("Schema fragment could not be serialized to JSON.\nError: {e}"));
-    let _roundtripped = Schema::from_json_value(json.clone()).unwrap_or_else(|e| {
+    Schema::from_json_value(json.clone()).unwrap_or_else(|e| {
         panic!("JSON from Schema failed to re-parse.\nJSON: {json}\nError: {e}")
-    });
+    })
 }
 
-/// A [`Schema`] should roundtrip through Cedar schema syntax. Convert to a JSON
-/// schema fragment, print to Cedar text, then parse back as a [`Schema`].
-pub fn schema_to_cedar_roundtrips(schema: &Schema) {
+/// A [`Schema`] should print to Cedar syntax and then parse again. Panics if printing or parsing
+/// fails.
+/// Caller should use the result if they need to assert equality with the input.
+pub fn schema_to_cedar_parses(schema: &Schema) -> Schema {
     let validator_schema: &ValidatorSchema = schema.as_ref();
-    let fragment = validator_schema
-        .to_json_schema()
-        .expect("ValidatorSchema could not be converted to JSON schema fragment");
-    let cedar_text = fragment
-        .to_cedarschema()
+    let cedar_text = validator_schema
+        .to_cedar_schema()
         .expect("Schema fragment could not be converted to Cedar schema syntax");
-    let _roundtripped = Schema::from_cedarschema_str(&cedar_text).unwrap_or_else(|e| {
-        panic!("Cedar schema text failed to re-parse.\nText: {cedar_text}\nError: {e}")
-    });
+    Schema::from_cedarschema_str(&cedar_text)
+        .unwrap_or_else(|e| {
+            panic!("Cedar schema text failed to re-parse.\nText: {cedar_text}\nError: {e}")
+        })
+        .0
 }

@@ -17,7 +17,7 @@
 #![no_main]
 
 use cedar_drt_inner::fuzz_target;
-use cedar_drt_inner::props::{schema_to_cedar_roundtrips, schema_to_json_roundtrips};
+use cedar_drt_inner::props::{schema_to_cedar_parses, schema_to_json_deserializes};
 use cedar_drt_inner::proto_gen::ProtoSchemaInput;
 
 use cedar_policy::Schema;
@@ -39,6 +39,6 @@ fuzz_target!(|input: ProtoSchemaInput| {
         Err(_) => return,
     };
     // It should roundtrip through JSON and Cedar formats.
-    schema_to_json_roundtrips(&schema);
-    schema_to_cedar_roundtrips(&schema);
+    schema_to_json_deserializes(&schema);
+    schema_to_cedar_parses(&schema);
 });
