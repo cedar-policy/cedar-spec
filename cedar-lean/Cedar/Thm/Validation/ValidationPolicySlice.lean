@@ -216,14 +216,6 @@ theorem principal_scope_types_to_bool
 
 /-! ## Infrastructure: typecheckPolicy congruence -/
 
-/--
-If two TypeEnvs agree (same ets, reqty, and acts queries), typecheckPolicy gives
-the same result.
--/
-theorem typecheckPolicy_env_congr {policy : Policy} {env₁ env₂ : TypeEnv}
-    (h : TypeEnvAgreement env₁ env₂) :
-    typecheckPolicy policy env₁ = typecheckPolicy policy env₂ := by
-  simp only [typecheckPolicy, h.reqty_eq, typeOf_env_congr _ _ h]
 
 theorem checkEntities_preserved
     {schema₁ schema₂ : Schema} {expr : Expr}

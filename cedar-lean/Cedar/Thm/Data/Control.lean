@@ -53,6 +53,14 @@ public theorem bind_ne_error {α β ε} {r : Except ε α} {f : α → Except ε
     simp only [Except.bind_ok]
     exact hf a rfl
 
+/-- If a sequential `do` of two unit-returning computations succeeds, both succeed. -/
+public theorem Except.seq_ok {ε : Type} {f g : Except ε Unit}
+    (h : (do f; g) = .ok ()) :
+    f = .ok () ∧ g = .ok () := by
+  cases h₁ : f with
+  | error e => simp [h₁, bind, Except.bind] at h
+  | ok _ => simp [h₁, bind, Except.bind] at h; exact ⟨rfl, h⟩
+
 -- The `Option.bind_*` theorems let `simp` reduce terms that use the `do` notation.
 @[simp] public theorem Option.bind_some_T (a : α) (f : α → OptionT Id β) :
   (bind (Option.some a) f : OptionT Id β) = f a

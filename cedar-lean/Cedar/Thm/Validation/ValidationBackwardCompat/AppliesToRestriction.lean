@@ -187,7 +187,7 @@ theorem validateOrImpossible_of_appliesTo_restriction'
   simp only [Cedar.Slice.validateOrImpossible, List.all_eq_true]
   intro p hp
   exact nonslice_policy_noTypeErrors hno_full
-    (List.forM_ok_implies_all_ok' (by simp [validate] at hold; exact hold) p hp)
+    (policy_validated_of_validate hold hp)
     (by simp [hno_changes, Cedar.Slice.actionScopeMatchesAnyChangedAction])
     hacts_wf₁ hacts_wf₂ hdisjoint
 

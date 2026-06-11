@@ -221,12 +221,12 @@ theorem contains_or_actionType_fwd
     obtain ⟨entry, hf⟩ := hc
     simp [EntitySchema.contains, hets_fwd ety entry hf]
 
-theorem checkEntities_pair' {schema : Schema} {e₁ e₂ : Expr}
-    (h : (do checkEntities schema e₁; checkEntities schema e₂) = .ok ()) :
-    checkEntities schema e₁ = .ok () ∧ checkEntities schema e₂ = .ok () := by
-  cases h₁ : checkEntities schema e₁ with
-  | error e => simp [h₁] at h
-  | ok _ => simp [h₁] at h; exact ⟨rfl, h⟩
 
+/-- Extract a single policy's validation result from `validate policies schema = .ok ()`. -/
+theorem policy_validated_of_validate {policies : Policies} {schema : Schema} {p : Policy}
+    (hval : validate policies schema = .ok ())
+    (hp : p ∈ policies) :
+    typecheckPolicyWithEnvironments typecheckPolicy p schema = .ok () :=
+  List.forM_ok_implies_all_ok' (by simp [validate] at hval; exact hval) p hp
 
 end Cedar.Thm

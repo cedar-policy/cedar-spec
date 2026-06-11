@@ -67,14 +67,14 @@ theorem typeOf_preserved_of_ets_extension (expr : Expr) (c : Capabilities)
     rw [typeOf_preserved_of_ets_extension x₁ c h hce₁]
   | .and x₁ x₂ =>
     have hce' := hce; unfold checkEntities at hce'
-    have ⟨hce₁, hce₂⟩ := checkEntities_pair' hce'
+    have ⟨hce₁, hce₂⟩ := checkEntities_pair hce'
     simp only [typeOf]
     rw [typeOf_preserved_of_ets_extension x₁ c h hce₁]
     congr 1; funext ⟨tx₁, c₁⟩
     rw [typeOf_preserved_of_ets_extension x₂ (c ∪ c₁) h hce₂]
   | .or x₁ x₂ =>
     have hce' := hce; unfold checkEntities at hce'
-    have ⟨hce₁, hce₂⟩ := checkEntities_pair' hce'
+    have ⟨hce₁, hce₂⟩ := checkEntities_pair hce'
     simp only [typeOf]
     rw [typeOf_preserved_of_ets_extension x₁ c h hce₁]
     congr 1; funext ⟨tx₁, c₁⟩
@@ -99,7 +99,7 @@ theorem typeOf_preserved_of_ets_extension (expr : Expr) (c : Capabilities)
            typeOf_preserved_of_ets_extension x₃ c h hce₃]
   | .binaryApp op x₁ x₂ =>
     have hce' := hce; unfold checkEntities at hce'
-    have ⟨hce₁, hce₂⟩ := checkEntities_pair' hce'
+    have ⟨hce₁, hce₂⟩ := checkEntities_pair hce'
     simp only [typeOf]
     have hih₁ := typeOf_preserved_of_ets_extension x₁ c h hce₁
     have hih₂ := typeOf_preserved_of_ets_extension x₂ c h hce₂

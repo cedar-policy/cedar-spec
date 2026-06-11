@@ -236,4 +236,9 @@ theorem checkEntities_substituteAction {schema : Schema} {uid : EntityUID} {expr
   simp only [substituteAction]
   exact checkEntities_mapOnVars expr (fun v => by cases v <;> simp [checkEntities, hvalid]) hce
 
+theorem checkEntities_pair {schema : Schema} {e₁ e₂ : Expr}
+    (h : (do checkEntities schema e₁; checkEntities schema e₂) = .ok ()) :
+    checkEntities schema e₁ = .ok () ∧ checkEntities schema e₂ = .ok () :=
+  Except.seq_ok h
+
 end Cedar.Thm

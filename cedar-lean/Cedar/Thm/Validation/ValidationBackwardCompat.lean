@@ -132,7 +132,7 @@ theorem validateOrImpossible_of_backward_compatible
   simp only [Cedar.Slice.validateOrImpossible, List.all_eq_true]
   intro p hp
   exact nonslice_policy_noTypeErrors hno_full
-    (List.forM_ok_implies_all_ok' (by simp [validate] at hvalid₂; exact hvalid₂) p hp)
+    (policy_validated_of_validate hvalid₂ hp)
     (by simp [hno_changes, Cedar.Slice.actionScopeMatchesAnyChangedAction])
     hacts_wf_old hacts_wf₃ hdisjoint₃
 
