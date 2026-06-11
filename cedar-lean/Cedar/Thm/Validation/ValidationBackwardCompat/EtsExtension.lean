@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Thm.Validation.ValidationBackwardCompat.Helpers
+import Cedar.Validation.BackwardCompatibility
 
 /-!
 # Backward compatibility: entity schema extension
@@ -251,23 +252,6 @@ theorem validate_preserved_of_ets_extension
 
 /-! ## Executable backward-compatibility check -/
 
-instance : DecidableEq ActionSchemaEntry := by
-  intro a b
-  cases a; cases b
-  simp only [ActionSchemaEntry.mk.injEq]
-  exact inferInstance
-
-/--
-Decidable check that `schema₂` is a backward-compatible entity-schema extension
-of `schema₁`. Returns `true` when:
-- The action schemas are identical
-- Every entity type entry in `schema₁` has the same entry in `schema₂`
-- No action uid's entity type collides with `schema₂.ets`
--/
-def isValidEtsExtension (schema₁ schema₂ : Schema) : Bool :=
-  (schema₁.acts.toList == schema₂.acts.toList) &&
-  schema₁.ets.toList.all (fun (ety, entry) => schema₂.ets.find? ety == some entry) &&
-  schema₂.acts.toList.all (fun (uid, _) => !schema₂.ets.contains uid.ty)
 
 
 theorem ets_fwd_of_all_find

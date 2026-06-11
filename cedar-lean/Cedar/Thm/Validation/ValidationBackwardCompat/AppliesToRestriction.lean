@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Thm.Validation.ValidationBackwardCompat.Helpers
+import Cedar.Validation.BackwardCompatibility
 
 /-!
 # Backward compatibility: appliesTo restriction
@@ -32,31 +33,6 @@ open Cedar.Validation
 set_option maxHeartbeats 12800000
 
 /-! ## Backward compatibility for appliesTo removal -/
-
-/--
-Check that `newSchema` is an "appliesTo restriction" of `oldSchema`: same entity
-types, and for each action, the context and ancestors are unchanged and the
-appliesTo sets have only shrunk (new ⊆ old).
--/
-def isAppliesToRestriction (oldSchema newSchema : Schema) : Bool :=
-  (oldSchema.ets.toList == newSchema.ets.toList) &&
-  -- Every old action exists in new with same ancestors
-  oldSchema.acts.toList.all (fun (action, oldEntry) =>
-    match newSchema.acts.find? action with
-    | none => false
-    | some newEntry => decide (oldEntry.ancestors = newEntry.ancestors)) &&
-  -- Every new action exists in old with same context/ancestors, appliesTo ⊆ old and well-formed
-  newSchema.acts.toList.all (fun (action, newEntry) =>
-    match oldSchema.acts.find? action with
-    | none => false
-    | some oldEntry =>
-      decide (oldEntry.context = newEntry.context) &&
-      newEntry.appliesToPrincipal.subset oldEntry.appliesToPrincipal &&
-      newEntry.appliesToResource.subset oldEntry.appliesToResource &&
-      newEntry.appliesToPrincipal.wellFormed &&
-      newEntry.appliesToResource.wellFormed) &&
-  -- newSchema.acts is a well-formed map
-  newSchema.acts.wellFormed
 
 theorem isAppliesToRestriction_implies_rfr_false
     {oldSchema newSchema : Schema}
