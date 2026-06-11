@@ -263,6 +263,7 @@ termination_by sizeOf e
 
 public def Member.evaluate (e : Member) (req : Request) (es : Entities) : Result Value :=
   -- Function calls
+  | { item := .name { path := [], name := .idIdent s }, access := .call args :: rest } =>
     match CstCommon.String.toExtFun? s with
     | none => .error .typeError
     | some xfn => do
