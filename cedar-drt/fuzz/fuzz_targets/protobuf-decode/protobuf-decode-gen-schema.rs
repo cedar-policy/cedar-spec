@@ -32,11 +32,13 @@ fuzz_target!(|input: ProtoSchemaInput| {
     let decoded = models::Schema::decode(&buf[..])
         .expect("Failed to decode proto Schema that was just encoded.");
 
+    // Convert proto model -> schema. If it doesn't fail here, then the roundtrips through
+    // other formats should succeed.
     let schema = match Schema::try_from(decoded) {
         Ok(s) => s,
         Err(_) => return,
     };
-
+    // It should roundtrip through JSON and Cedar formats.
     schema_to_json_roundtrips(&schema);
     schema_to_cedar_roundtrips(&schema);
 });
