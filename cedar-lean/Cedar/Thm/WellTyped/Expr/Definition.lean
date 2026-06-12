@@ -177,10 +177,11 @@ public inductive ExtFun.WellTyped : ExtFun → List TypedExpr → CedarType → 
   | isMulticast {x₁ : TypedExpr}
     (h₁ : x₁.typeOf = .ext .ipAddr) :
     WellTyped .isMulticast [x₁] (.bool .anyBool)
-  | isInRange {x₁ x₂ : TypedExpr}
+  | isInRange {x₁ : TypedExpr} {xs : List TypedExpr}
     (h₁ : x₁.typeOf = .ext .ipAddr)
-    (h₂ : x₂.typeOf = .ext .ipAddr):
-    WellTyped .isInRange [x₁, x₂] (.bool .anyBool)
+    (h₂ : xs.length > 0)
+    (h₃ : ∀ x ∈ xs, x.typeOf = .ext .ipAddr):
+    WellTyped .isInRange (x₁ :: xs) (.bool .anyBool)
   | datetime {s₁ : String} {d₁ : Datetime}
     (h₁ : d₁ =  Datetime.parse s₁) :
     WellTyped .datetime [.lit (.string s₁) .string] (.ext .datetime)

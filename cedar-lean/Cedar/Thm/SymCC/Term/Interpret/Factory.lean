@@ -446,6 +446,18 @@ public theorem interpret_option_get' {εs : SymEntities} {I : Interpretation} {t
     exact interpret_term_lit_id I h₄.left
   case h_2 => exact interpret_option_get I h₂ h₃
 
+/-- `map (interpret ∘ option.get)` commutes with `map (option.get' ∘ interpret)`. -/
+public theorem map_interpret_option_get {εs : SymEntities} {I : Interpretation} {ty : TermType} {ts : List Term}
+  (hts : ∀ t ∈ ts, t.WellFormed εs ∧ t.typeOf = .option ty) :
+  (ts.map option.get).map (Term.interpret I) = (ts.map (Term.interpret I)).map (option.get' I)
+:= by
+  induction ts with
+  | nil => rfl
+  | cons t rest ih =>
+    simp only [List.map_cons]
+    rw [interpret_option_get I (hts t (by simp)).left (hts t (by simp)).right,
+        ih (fun s hs => hts s (List.mem_cons_of_mem _ hs))]
+
 public theorem interpret_record_get {εs : SymEntities} (I : Interpretation) {t : Term} {a : Attr} {rty : Map Attr TermType} {ty : TermType} :
   t.WellFormed εs → t.typeOf = .record rty → rty.find? a = .some ty →
   (Factory.record.get t a).interpret I = Factory.record.get (t.interpret I) a
@@ -624,6 +636,24 @@ public theorem interpret_ifSome {εs : SymEntities} {I : Interpretation} {g t : 
       simp only [heq', TermType.option.injEq, forall_eq'] at hneq
     case h_2 hneq' =>
       rfl
+
+/-- Push `interpret` through a `foldr ifSome` over well-formed guards. -/
+public theorem interpret_foldr_ifSome {εs : SymEntities} {I : Interpretation} {ty : TermType} {P : Term}
+  (hI : I.WellFormed εs)
+  (hP : P.WellFormed εs) (hPty : P.typeOf = .option ty) :
+  ∀ (ts : List Term), (∀ t ∈ ts, t.WellFormed εs) →
+  (ts.foldr (fun tᵢ acc => ifSome tᵢ acc) P).interpret I =
+  (ts.map (Term.interpret I)).foldr (fun tᵢ acc => ifSome tᵢ acc) (P.interpret I)
+:= by
+  intro ts
+  induction ts with
+  | nil => intro _; simp only [List.foldr_nil, List.map_nil]
+  | cons t rest ih =>
+    intro hts
+    simp only [List.foldr_cons, List.map_cons]
+    have hrest := wf_foldr_ifSome hP hPty (fun s hs => hts s (List.mem_cons_of_mem _ hs))
+    rw [interpret_ifSome hI (hts t (by simp)) hrest.left,
+        ih (fun s hs => hts s (List.mem_cons_of_mem _ hs))]
 
 local macro "show_interpret_unary_op" op_fun:ident wfl_lit_of_type_thm:ident interpret_term_app_op_thm:ident : tactic => do
  `(tactic| (
