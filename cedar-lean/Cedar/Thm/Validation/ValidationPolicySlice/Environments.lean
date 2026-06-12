@@ -193,8 +193,6 @@ structure IncrementallyRevalidatable (schema₁ schema₂ : Schema) : Prop where
   ets_disjoint : ∀ uid, schema₂.acts.contains uid = true → ¬ schema₂.ets.contains uid.ty
   acts_contains_fwd : ∀ action : EntityUID,
     schema₁.acts.contains action = true → schema₂.acts.contains action = true
-  acts_disjoint : ∀ uid : EntityUID,
-    schema₂.acts.contains uid = true → schema₂.ets.isValidEntityUID uid = false
   same_action_types : ∀ ety : EntityType,
     schema₁.acts.actionType? ety = schema₂.acts.actionType? ety
   same_ancestors : ∀ (action : EntityUID) (entry₁ entry₂ : ActionSchemaEntry),
@@ -259,6 +257,11 @@ theorem mk_actsAgreement_from_schemas
   acts_descendentOf := fun u₁ u₂ => by rw [henv₁_acts, henv₂_acts]; exact hincr.same_descendentOf u₁ u₂
   acts_maybeDescendentOf := fun e₁ e₂ => by rw [henv₁_acts, henv₂_acts]; exact hincr.same_maybeDescendentOf e₁ e₂
   disjoint₂ := fun uid hc => by
-    rw [henv₂_acts] at hc; rw [henv₂_ets]; exact hincr.acts_disjoint uid hc
+    rw [henv₂_acts] at hc; rw [henv₂_ets]
+    have hnotc := hincr.ets_disjoint uid hc
+    simp only [EntitySchema.isValidEntityUID]
+    cases hf : schema₂.ets.find? uid.ty with
+    | none => rfl
+    | some _ => exact absurd (by simp [EntitySchema.contains, hf]) hnotc
 
 end Cedar.Thm

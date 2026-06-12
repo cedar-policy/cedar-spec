@@ -70,7 +70,8 @@ def isAppliesToRestriction (oldSchema newSchema : Schema) : Bool :=
 /--
 Combined backward-compatibility check: `schema₃` extends entity types from
 `schema₁` AND restricts appliesTo sets. Validates via an intermediate schema
-that has the new entity types but the old action schema.
+that has the new entity types but the old action schema. Requires well-formed
+action and entity maps for the proof to hold.
 -/
 def isBackwardCompatible (schema₁ schema₃ : Schema) : Bool :=
   let schema₂ : Schema := { ets := schema₃.ets, acts := schema₁.acts }

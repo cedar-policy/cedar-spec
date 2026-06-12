@@ -51,4 +51,18 @@ theorem policy_validated_of_validate {policies : Policies} {schema : Schema} {p 
     typecheckPolicyWithEnvironments typecheckPolicy p schema = .ok () :=
   List.forM_ok_implies_all_ok' (by simp [validate] at hval; exact hval) p hp
 
+/-- `¬ ets.contains uid.ty` implies `ets.isValidEntityUID uid = false`. -/
+theorem not_contains_implies_not_isValidEntityUID {ets : EntitySchema} {uid : EntityUID}
+    (h : ¬ ets.contains uid.ty) : ets.isValidEntityUID uid = false := by
+  simp only [EntitySchema.isValidEntityUID]
+  cases hf : ets.find? uid.ty with
+  | none => rfl
+  | some _ => exact absurd (by simp [EntitySchema.contains, hf]) h
+
+/-- Extract the inner `forM` from `Schema.validateWellFormed`. -/
+theorem schema_validateWellFormed_forM {schema : Schema}
+    (hwf : Schema.validateWellFormed schema = .ok ()) :
+    schema.environments.forM TypeEnv.validateWellFormed = .ok () := by
+  simp [Schema.validateWellFormed] at hwf; exact hwf
+
 end Cedar.Thm

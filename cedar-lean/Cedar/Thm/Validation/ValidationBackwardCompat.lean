@@ -79,16 +79,6 @@ theorem validateOrImpossible_of_appliesTo_restriction
 
 /-! ## Combined: entity schema extension + appliesTo restriction -/
 
-
-/--
-**Combined backward compatibility**: if `isBackwardCompatible schema₁ schema₃`
-returns `true` and `schema₁` is well-formed, then:
-- Adding entity types cannot break validation
-- Restricting appliesTo cannot introduce type errors (only "impossible" policies)
-
-The result is `validateOrImpossible`, which allows policies to become impossible
-but not to acquire type errors.
--/
 private theorem disjoint_contains_from_ets_ext_and_appliesTo_restr
     {schema₁ schema₃ : Schema}
     (hets_ext : isValidEtsExtension schema₁ { ets := schema₃.ets, acts := schema₁.acts } = true)
@@ -105,18 +95,16 @@ private theorem disjoint_contains_from_ets_ext_and_appliesTo_restr
   simp only [Bool.not_eq_true'] at h_not
   exact absurd hets_c (by simp [h_not])
 
-private theorem disjoint_from_ets_ext_and_appliesTo_restr
-    {schema₁ schema₃ : Schema}
-    (hets_ext : isValidEtsExtension schema₁ { ets := schema₃.ets, acts := schema₁.acts } = true)
-    (happlies_restr : isAppliesToRestriction { ets := schema₃.ets, acts := schema₁.acts } schema₃ = true) :
-    ∀ uid, schema₃.acts.contains uid = true → schema₃.ets.isValidEntityUID uid = false := by
-  intro uid hc
-  have hnotc := disjoint_contains_from_ets_ext_and_appliesTo_restr hets_ext happlies_restr uid hc
-  simp only [EntitySchema.isValidEntityUID]
-  cases hf : schema₃.ets.find? uid.ty with
-  | none => rfl
-  | some _ => exact absurd (by simp [EntitySchema.contains, hf]) hnotc
 
+/--
+**Combined backward compatibility**: if `isBackwardCompatible schema₁ schema₃`
+returns `true` and `schema₁` is well-formed, then:
+- Adding entity types cannot break validation
+- Restricting appliesTo cannot introduce type errors (only "impossible" policies)
+
+The result is `validateOrImpossible`, which allows policies to become impossible
+but not to acquire type errors.
+-/
 theorem validateOrImpossible_of_backward_compatible
     (schema₁ schema₃ : Schema)
     (policies : Policies)
@@ -139,12 +127,11 @@ theorem validateOrImpossible_of_backward_compatible
     Map.wf_iff_sorted.mpr (List.isSortedBy_correct.mpr hacts_wf_old)
   have hacts_wf₃' : Map.WellFormed schema₃.acts :=
     Map.wf_iff_sorted.mpr (List.isSortedBy_correct.mpr hacts_wf₃)
-  have hdisjoint₃ := disjoint_from_ets_ext_and_appliesTo_restr hets_ext happlies_restr
   have hdisjoint_contains₃ := disjoint_contains_from_ets_ext_and_appliesTo_restr hets_ext happlies_restr
   have hets_wf₃' : Map.WellFormed schema₃.ets := Map.wellFormed_correct.mp hets_wf₃
   have hno_full : Cedar.Slice.requiresFullRevalidation ⟨schema₃.ets, schema₁.acts⟩ schema₃ = false :=
     isAppliesToRestriction_implies_rfr_false happlies_restr hdisjoint_contains₃ hets_wf₃'
-  have hincr := rfr_false_implies_incr hno_full hacts_wf₁' hacts_wf₃' hdisjoint₃
+  have hincr := rfr_false_implies_incr hno_full hacts_wf₁' hacts_wf₃'
   simp only [Cedar.Slice.validateOrImpossible, List.all_eq_true]
   intro p hp
   have hvalid_p := List.forM_ok_implies_all_ok' (by simp [validate] at hvalid₂; exact hvalid₂) p hp
@@ -157,7 +144,7 @@ theorem validateOrImpossible_of_backward_compatible
     checkEntities_preserved hincr hce_mid
   rw [show (checkEntities schema₃ p.toExpr) = .ok () from hce₃]
   simp only [Except.bind_ok]
-  simp only [hce_mid, Except.bind_ok, Except.ok.injEq] at hvalid_p
+  simp only [hce_mid, Except.bind_ok] at hvalid_p
   cases h_mapM : List.mapM (typecheckPolicy p) (Schema.environments ⟨schema₃.ets, schema₁.acts⟩) with
   | error => simp [h_mapM] at hvalid_p
   | ok txs =>

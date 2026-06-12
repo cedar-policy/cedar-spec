@@ -97,8 +97,6 @@ theorem validate_preserved_of_ets_extension
 
 /-! ## Executable backward-compatibility check -/
 
-
-
 theorem ets_fwd_of_all_find
     {ets₁ ets₂ : EntitySchema}
     (h : ets₁.toList.all (fun (ety, entry) => ets₂.find? ety == some entry) = true) :

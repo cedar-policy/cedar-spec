@@ -551,8 +551,7 @@ This bridges the executable check to the propositional spec.
 theorem rfr_false_implies_incr {oldSchema newSchema : Schema}
     (hno_full : requiresFullRevalidation oldSchema newSchema = false)
     (hacts_wf₁ : Map.WellFormed oldSchema.acts)
-    (hacts_wf₂ : Map.WellFormed newSchema.acts)
-    (hdisjoint : ∀ uid, newSchema.acts.contains uid = true → newSchema.ets.isValidEntityUID uid = false) :
+    (hacts_wf₂ : Map.WellFormed newSchema.acts) :
     IncrementallyRevalidatable oldSchema newSchema := by
   have ⟨hets_fwd, hets_disj⟩ := rfr_false_ets_fwd hno_full
   have hcontains_fwd : ∀ uid, oldSchema.acts.contains uid = true → newSchema.acts.contains uid = true := by
@@ -578,7 +577,6 @@ theorem rfr_false_implies_incr {oldSchema newSchema : Schema}
     ets_fwd := hets_fwd
     ets_disjoint := fun uid hc => hets_disj uid hc
     acts_contains_fwd := hcontains_fwd
-    acts_disjoint := hdisjoint
     same_action_types := by
       intro ety; simp only [ActionSchema.actionType?, Set.any]
       cases h : oldSchema.acts.keys.elts.any (EntityUID.ty · == ety)
@@ -719,7 +717,6 @@ theorem nonslice_policy_noTypeErrors
       (computeActionChanges oldSchema newSchema) p.actionScope = false)
     (hacts_wf₁ : oldSchema.acts.wellFormed)
     (hacts_wf₂ : newSchema.acts.wellFormed)
-    (hdisjoint : ∀ uid, newSchema.acts.contains uid = true → newSchema.ets.isValidEntityUID uid = false)
     (hschema_wf₁ : Schema.validateWellFormed oldSchema = .ok ()) :
     (match typecheckPolicyWithEnvironments typecheckPolicy p newSchema with
     | .ok () => true
@@ -729,7 +726,7 @@ theorem nonslice_policy_noTypeErrors
     Map.wf_iff_sorted.mpr (List.isSortedBy_correct.mpr hacts_wf₁)
   have hacts_wf₂' : Map.WellFormed newSchema.acts :=
     Map.wf_iff_sorted.mpr (List.isSortedBy_correct.mpr hacts_wf₂)
-  have hincr := rfr_false_implies_incr hno_full hacts_wf₁' hacts_wf₂' hdisjoint
+  have hincr := rfr_false_implies_incr hno_full hacts_wf₁' hacts_wf₂'
   have hvalid_p_orig := hvalid_p
   simp only [typecheckPolicyWithEnvironments, Except.mapError] at hvalid_p ⊢
   simp_do_let (checkEntities oldSchema p.toExpr) as hce₁ at hvalid_p
@@ -844,7 +841,7 @@ theorem validation_slice_soundness
   by_cases henvs : newSchema.environments = []
   · exact validateOrImpossible_of_empty_envs henvs hno_full hold
   · have ⟨env₂, henv₂_mem⟩ := List.exists_mem_of_ne_nil _ henvs
-    have ⟨hacts_wf₂, hdisjoint⟩ := validateWellFormed_gives_wf_and_disjoint hwf₂ henv₂_mem
+    have ⟨hacts_wf₂, _⟩ := validateWellFormed_gives_wf_and_disjoint hwf₂ henv₂_mem
     by_cases hpol : policies = []
     · simp [validateOrImpossible, hpol]
     · have henvs₁ : oldSchema.environments ≠ [] := by
@@ -864,7 +861,7 @@ theorem validation_slice_soundness
       · simp only [Bool.not_eq_true] at hmatch
         have hvalid_q := List.forM_ok_implies_all_ok'
           (by simp [validate] at hold; exact hold) q hq
-        exact nonslice_policy_noTypeErrors hno_full hvalid_q hmatch hacts_wf₁ hacts_wf₂ hdisjoint hwf₁
+        exact nonslice_policy_noTypeErrors hno_full hvalid_q hmatch hacts_wf₁ hacts_wf₂ hwf₁
 
 /--
 **Main theorem**: no type errors across all policies iff no type errors in the
