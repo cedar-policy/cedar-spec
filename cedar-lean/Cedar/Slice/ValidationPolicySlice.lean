@@ -78,14 +78,18 @@ only policies matching the new action need revalidation.
 Returns `true` if a full revalidation is required.
 -/
 def requiresFullRevalidation (oldSchema newSchema : Schema) : Bool :=
-  oldSchema.ets != newSchema.ets ||
-  oldSchema.acts.toList.any (fun (action, oldEntry) =>
-    match newSchema.acts.find? action with
+  -- Entity schema: all old entries must be preserved in new, and new ets disjoint from acts
+  !(oldSchema.ets.toList.all (fun x => newSchema.ets.find? x.1 == some x.2) &&
+    newSchema.acts.toList.all (fun x => !newSchema.ets.contains x.1.ty)) ||
+  -- Action hierarchy: existing actions must have same ancestors
+  oldSchema.acts.toList.any (fun x =>
+    match newSchema.acts.find? x.1 with
     | none => true
-    | some newEntry => oldEntry.ancestors != newEntry.ancestors) ||
-  newSchema.acts.toList.any (fun (action, newEntry) =>
-    !(oldSchema.acts.contains action) &&
-    (!newEntry.ancestors.isEmpty || !(oldSchema.acts.actionType? action.ty)))
+    | some newEntry => x.2.ancestors != newEntry.ancestors) ||
+  -- New actions: must be leaf or have existing action type
+  newSchema.acts.toList.any (fun x =>
+    !(oldSchema.acts.contains x.1) &&
+    (!x.2.ancestors.isEmpty || !(oldSchema.acts.actionType? x.1.ty)))
 
 /--
 Determines whether a policy's action scope could possibly match a given action,

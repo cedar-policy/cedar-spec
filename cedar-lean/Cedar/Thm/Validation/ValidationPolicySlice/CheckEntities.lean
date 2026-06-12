@@ -19,7 +19,6 @@ import Cedar.Data
 import Cedar.Validation
 import Cedar.Slice.ValidationPolicySlice
 import Cedar.Thm.Data
-import Cedar.Thm.Validation.ValidationPolicySlice.Environments
 
 /-!
 This file proves that `checkEntities` is preserved under schema changes: equality

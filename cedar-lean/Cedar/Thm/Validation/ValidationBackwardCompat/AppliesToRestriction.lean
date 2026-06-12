@@ -36,39 +36,48 @@ set_option maxHeartbeats 12800000
 
 theorem isAppliesToRestriction_implies_rfr_false
     {oldSchema newSchema : Schema}
-    (h : isAppliesToRestriction oldSchema newSchema = true) :
+    (h : isAppliesToRestriction oldSchema newSchema = true)
+    (hdisjoint : ∀ uid, newSchema.acts.contains uid = true → ¬ newSchema.ets.contains uid.ty)
+    (hets_wf : Map.WellFormed oldSchema.ets) :
     Cedar.Slice.requiresFullRevalidation oldSchema newSchema = false := by
   simp only [isAppliesToRestriction, Bool.and_eq_true] at h
   obtain ⟨⟨⟨hets, hold_all⟩, hnew_all⟩, _⟩ := h
   have hets_eq : oldSchema.ets = newSchema.ets :=
     Map.eq_iff_toList_eq.mp ((beq_iff_eq (α := List _)).mp hets)
-  have h1 : (oldSchema.ets != newSchema.ets) = false := by simp [bne_iff_ne, hets_eq]
-  have h2 : oldSchema.acts.toList.any (fun x =>
+  -- Prove directly: requiresFullRevalidation unfolds to !(a && b) || c || d
+  -- where a && b = true (so !(a&&b) = false), c = false, d = false
+  have hall_ets : oldSchema.ets.toList.all (fun x => newSchema.ets.find? x.1 == some x.2) = true := by
+    rw [List.all_eq_true]; intro ⟨ety, entry⟩ hmem
+    simp only [beq_iff_eq, ← hets_eq]
+    exact (Map.in_list_iff_find?_some hets_wf).mp hmem
+  have hall_disj : newSchema.acts.toList.all (fun x => !newSchema.ets.contains x.1.ty) = true := by
+    rw [List.all_eq_true]; intro ⟨uid, _⟩ hmem
+    simp only [Bool.not_eq_true']
+    exact Bool.eq_false_iff.mpr (hdisjoint uid (Map.in_list_implies_contains hmem))
+  have hany_anc : oldSchema.acts.toList.any (fun x =>
       match newSchema.acts.find? x.1 with
-      | none => true
-      | some newEntry => x.2.ancestors != newEntry.ancestors) = false := by
-    rw [List.any_eq_false]
-    intro ⟨action, oldEntry⟩ hmem
-    have h_entry := List.all_eq_true.mp hold_all _ hmem
-    simp only at h_entry
+      | none => true | some e => x.2.ancestors != e.ancestors) = false := by
+    rw [List.any_eq_false]; intro ⟨action, oldEntry⟩ hmem
+    have h_entry := List.all_eq_true.mp hold_all _ hmem; simp only at h_entry
     cases hfn : newSchema.acts.find? action with
     | none => simp [hfn] at h_entry
-    | some newEntry =>
-      simp only [hfn, decide_eq_true_eq] at h_entry
-      simp [hfn, bne_iff_ne, h_entry]
-  have h3 : newSchema.acts.toList.any (fun x =>
-      !(oldSchema.acts.contains x.1) &&
-      (!x.2.ancestors.isEmpty || !(oldSchema.acts.actionType? x.1.ty))) = false := by
-    rw [List.any_eq_false]
-    intro ⟨action, newEntry⟩ hmem
-    have h_entry := List.all_eq_true.mp hnew_all _ hmem
-    simp only at h_entry
+    | some newEntry => simp only [hfn, decide_eq_true_eq] at h_entry; simp [hfn, bne_iff_ne, h_entry]
+  have hany_new : newSchema.acts.toList.any (fun x =>
+      !(oldSchema.acts.contains x.1) && (!x.2.ancestors.isEmpty || !(oldSchema.acts.actionType? x.1.ty))) = false := by
+    rw [List.any_eq_false]; intro ⟨action, newEntry⟩ hmem
+    have h_entry := List.all_eq_true.mp hnew_all _ hmem; simp only at h_entry
     cases hfo : oldSchema.acts.find? action with
     | none => simp [hfo] at h_entry
     | some _ => simp [ActionSchema.contains, hfo]
-  have key : ∀ (a b c : Bool), a = false → b = false → c = false → (a || b || c) = false := by
-    intros; simp_all
-  exact key _ _ _ h1 h2 h3
+  have h : (!(oldSchema.ets.toList.all (fun x => newSchema.ets.find? x.1 == some x.2) &&
+              newSchema.acts.toList.all (fun x => !newSchema.ets.contains x.1.ty)) ||
+            oldSchema.acts.toList.any (fun x =>
+              match newSchema.acts.find? x.1 with
+              | none => true | some e => x.2.ancestors != e.ancestors) ||
+            newSchema.acts.toList.any (fun x =>
+              !(oldSchema.acts.contains x.1) && (!x.2.ancestors.isEmpty || !(oldSchema.acts.actionType? x.1.ty)))) = false := by
+    simp [hall_ets, hall_disj, hany_anc, hany_new]
+  exact h
 
 theorem isAppliesToRestriction_implies_no_changes
     {oldSchema newSchema : Schema}
@@ -160,6 +169,32 @@ theorem appliesTo_restriction_envs_ne
     simp [List.product, List.mem_flatMap, List.mem_map]; exact ⟨hp_old, hr_old⟩
   simp [hold_empty] at hpr_old
 
+/-- The strong disjointness: acts UIDs' types don't appear in ets.
+    Derived from `isAppliesToRestriction` + old schema well-formedness. -/
+theorem isAppliesToRestriction_disjoint
+    {oldSchema newSchema : Schema}
+    (hrestr : isAppliesToRestriction oldSchema newSchema = true)
+    (hwf₁ : Schema.validateWellFormed oldSchema = .ok ())
+    (henvs_old : oldSchema.environments ≠ []) :
+    ∀ uid, newSchema.acts.contains uid = true → ¬ newSchema.ets.contains uid.ty := by
+  have ⟨env_old, henv_old_mem⟩ := List.exists_mem_of_ne_nil _ henvs_old
+  have hwf_env := env_validate_well_formed_is_sound
+    (List.forM_ok_implies_all_ok' (by simp [Schema.validateWellFormed] at hwf₁; exact hwf₁) _ henv_old_mem)
+  have ⟨henv_ets, henv_acts⟩ := env_mem_environments_schema henv_old_mem
+  have hacts_wf : ActionSchema.WellFormed env_old env_old.acts := hwf_env.2.1
+  have hold_disj : ∀ uid, oldSchema.acts.contains uid = true → ¬ oldSchema.ets.contains uid.ty := by
+    intro uid hc
+    have hc' : env_old.acts.contains uid = true := henv_acts ▸ hc
+    have hdisj := hacts_wf.2.2.1 uid hc'
+    rw [henv_ets] at hdisj; exact hdisj
+  have hets_eq := isAppliesToRestriction_ets_eq hrestr
+  intro uid hc_new
+  rw [← hets_eq]
+  have ⟨_, hfind_old, _, _, _⟩ :=
+    isAppliesToRestriction_new_in_old hrestr
+      (Map.find?_mem_toList (Map.contains_iff_some_find?.mp hc_new).choose_spec)
+  exact hold_disj uid (by simp [ActionSchema.contains, hfind_old])
+
 theorem validateOrImpossible_of_appliesTo_restriction'
     (oldSchema newSchema : Schema)
     (policies : Policies)
@@ -167,16 +202,40 @@ theorem validateOrImpossible_of_appliesTo_restriction'
     (hwf₁ : Schema.validateWellFormed oldSchema = .ok ())
     (hold : validate policies oldSchema = .ok ()) :
     Cedar.Slice.validateOrImpossible policies newSchema = true := by
-  have hno_full := isAppliesToRestriction_implies_rfr_false hrestr
   have hno_changes := isAppliesToRestriction_implies_no_changes hrestr
   have hacts_wf₂ : newSchema.acts.wellFormed :=
     (by simp only [isAppliesToRestriction, Bool.and_eq_true] at hrestr; exact hrestr.2)
   have hets_eq := isAppliesToRestriction_ets_eq hrestr
   by_cases henvs_new : newSchema.environments = []
-  · exact validateOrImpossible_of_empty_envs henvs_new hno_full hold
+  · -- Empty environments: need hno_full for validateOrImpossible_of_empty_envs
+    -- To get hno_full, derive prerequisites from oldSchema.environments (non-empty since isAppliesToRestriction)
+    by_cases henvs_old : oldSchema.environments = []
+    · -- Both empty: validateOrImpossible trivially holds
+      simp only [Cedar.Slice.validateOrImpossible, List.all_eq_true]
+      intro p hp
+      have hvalid_p := policy_validated_of_validate hold hp
+      simp only [typecheckPolicyWithEnvironments, Except.mapError] at hvalid_p
+      simp_do_let (checkEntities oldSchema p.toExpr) as hce at hvalid_p
+      simp [henvs_old, allFalse] at hvalid_p
+    · have ⟨env_old, henv_old_mem⟩ := List.exists_mem_of_ne_nil _ henvs_old
+      have ⟨_, hdisjoint_old'⟩ := validateWellFormed_gives_wf_and_disjoint hwf₁ henv_old_mem
+      have hdisjoint_contains' : ∀ uid, newSchema.acts.contains uid = true → ¬ newSchema.ets.contains uid.ty :=
+        isAppliesToRestriction_disjoint hrestr hwf₁ henvs_old
+      have hwf_env_old := env_validate_well_formed_is_sound (List.forM_ok_implies_all_ok' (by simp [Schema.validateWellFormed] at hwf₁; exact hwf₁) _ henv_old_mem)
+      have ⟨henv_old_ets, _⟩ := env_mem_environments_schema henv_old_mem
+      have hets_wf' : Map.WellFormed oldSchema.ets := by rw [← henv_old_ets]; exact hwf_env_old.1.1
+      have hno_full' := isAppliesToRestriction_implies_rfr_false hrestr hdisjoint_contains' hets_wf'
+      exact validateOrImpossible_of_empty_envs henvs_new hno_full' hold
+  have henv₁_mem := (List.exists_mem_of_ne_nil _ (appliesTo_restriction_envs_ne hrestr henvs_new)).choose_spec
   have ⟨hacts_wf₁, hdisjoint_old⟩ :=
-    validateWellFormed_gives_wf_and_disjoint hwf₁
-      (List.exists_mem_of_ne_nil _ (appliesTo_restriction_envs_ne hrestr henvs_new)).choose_spec
+    validateWellFormed_gives_wf_and_disjoint hwf₁ henv₁_mem
+  have hdisjoint_contains : ∀ uid, newSchema.acts.contains uid = true → ¬ newSchema.ets.contains uid.ty :=
+    isAppliesToRestriction_disjoint hrestr hwf₁ (appliesTo_restriction_envs_ne hrestr henvs_new)
+  have hets_wf₁ : Map.WellFormed oldSchema.ets := by
+    have hwf_env := env_validate_well_formed_is_sound (List.forM_ok_implies_all_ok' (by simp [Schema.validateWellFormed] at hwf₁; exact hwf₁) _ henv₁_mem)
+    have ⟨henv₁_ets, _⟩ := env_mem_environments_schema henv₁_mem
+    rw [← henv₁_ets]; exact hwf_env.1.1
+  have hno_full := isAppliesToRestriction_implies_rfr_false hrestr hdisjoint_contains hets_wf₁
   have hdisjoint : ∀ uid, newSchema.acts.contains uid = true →
       newSchema.ets.isValidEntityUID uid = false := by
     intro uid hc
@@ -189,7 +248,7 @@ theorem validateOrImpossible_of_appliesTo_restriction'
   exact nonslice_policy_noTypeErrors hno_full
     (policy_validated_of_validate hold hp)
     (by simp [hno_changes, Cedar.Slice.actionScopeMatchesAnyChangedAction])
-    hacts_wf₁ hacts_wf₂ hdisjoint
+    hacts_wf₁ hacts_wf₂ hdisjoint hwf₁
 
 
 end Cedar.Thm

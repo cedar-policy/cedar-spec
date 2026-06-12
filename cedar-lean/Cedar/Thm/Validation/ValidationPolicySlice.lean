@@ -20,7 +20,7 @@ import Cedar.Validation
 import Cedar.Slice.ValidationPolicySlice
 import Cedar.Thm.Validation.Validator
 import Cedar.Thm.Validation.ValidationPolicySlice.ActionScope
-import Cedar.Thm.Validation.ValidationPolicySlice.TypeOfCongr
+import Cedar.Thm.Validation.TypeOfCongruence
 import Cedar.Thm.Validation.ValidationPolicySlice.CheckEntities
 import Cedar.Thm.Validation.ValidationPolicySlice.Environments
 import Cedar.Thm.Validation.EnvironmentValidation
@@ -226,25 +226,54 @@ theorem checkEntities_preserved
     (by intro uid hv
         cases hv₁ : schema₁.ets.isValidEntityUID uid
         · simp only [hv₁] at hv; simp [hincr.acts_contains_fwd uid hv]
-        · simp [hincr.ets_eq ▸ hv₁])
-    (by intro ety hv; rw [← hincr.ets_eq, ← hincr.same_action_types]; exact hv)
+        · simp [isValidEntityUID_fwd hincr.ets_fwd hv₁])
+    (by intro ety hv
+        simp only [Bool.or_eq_true] at hv ⊢
+        cases hv with
+        | inl hc =>
+          simp only [EntitySchema.contains, Option.isSome_iff_exists] at hc
+          obtain ⟨entry, hf⟩ := hc
+          left; simp [EntitySchema.contains, hincr.ets_fwd ety entry hf]
+        | inr hat =>
+          right; rw [← hincr.same_action_types]; exact hat)
     hok
 
 /--
-Weak congruence: if `checkEntities` passes on env₁ and the environments have
-`WeakTypeEnvAgreement`, then `typecheckPolicy` gives the same result.
+Congruence: if `checkEntities` passes on env₁ and the environments have
+`EnvAgreement`, then `typecheckPolicy` gives the same result.
 -/
-theorem typecheckPolicy_env_congr_weak {policy : Policy} {env₁ env₂ : TypeEnv}
-    (h : WeakTypeEnvAgreement env₁ env₂)
+theorem typecheckPolicy_congr {policy : Policy} {env₁ env₂ : TypeEnv}
+    (h : EnvAgreement env₁ env₂)
     (hce : checkEntities ⟨env₁.ets, env₁.acts⟩ policy.toExpr = .ok ())
-    (haction_valid : (env₁.ets.isValidEntityUID env₁.reqty.action ||
-                      env₁.acts.contains env₁.reqty.action) = true) :
+    (hcontains : env₁.acts.contains env₁.reqty.action = true) :
     typecheckPolicy policy env₁ = typecheckPolicy policy env₂ := by
   simp only [typecheckPolicy]
+  have haction_valid : (env₁.ets.isValidEntityUID env₁.reqty.action ||
+                        env₁.acts.contains env₁.reqty.action) = true := by simp [hcontains]
   have hce_sub : checkEntities ⟨env₁.ets, env₁.acts⟩
       (substituteAction env₁.reqty.action policy.toExpr) = .ok () :=
     checkEntities_substituteAction hce haction_valid
-  have heq := typeOf_env_congr_weak (substituteAction env₁.reqty.action policy.toExpr) ∅ h hce_sub
+  have heq := typeOf_congr (substituteAction env₁.reqty.action policy.toExpr) ∅ h hce_sub
+  simp only [h.reqty_eq] at heq ⊢
+  rw [heq]
+
+/--
+Weak congruence: if `checkEntities` passes on env₁ and the environments have
+`ActsAgreement` (same ets), then `typecheckPolicy` gives the same result.
+Does not require `env₁.WellFormed` since ets are equal.
+-/
+theorem typecheckPolicy_congr_acts {policy : Policy} {env₁ env₂ : TypeEnv}
+    (h : ActsAgreement env₁ env₂)
+    (hce : checkEntities ⟨env₁.ets, env₁.acts⟩ policy.toExpr = .ok ())
+    (hcontains : env₁.acts.contains env₁.reqty.action = true) :
+    typecheckPolicy policy env₁ = typecheckPolicy policy env₂ := by
+  simp only [typecheckPolicy]
+  have haction_valid : (env₁.ets.isValidEntityUID env₁.reqty.action ||
+                        env₁.acts.contains env₁.reqty.action) = true := by simp [hcontains]
+  have hce_sub : checkEntities ⟨env₁.ets, env₁.acts⟩
+      (substituteAction env₁.reqty.action policy.toExpr) = .ok () :=
+    checkEntities_substituteAction hce haction_valid
+  have heq := typeOf_congr_acts (substituteAction env₁.reqty.action policy.toExpr) ∅ h hce_sub
   simp only [h.reqty_eq] at heq ⊢
   rw [heq]
 
@@ -365,7 +394,8 @@ theorem policy_preserved
       ¬ changes.any (fun c => c.action == action) →
       schema₁.acts.find? action = schema₂.acts.find? action)
     (hacts_wf₁ : Map.WellFormed schema₁.acts)
-    (hacts_wf₂ : Map.WellFormed schema₂.acts) :
+    (hacts_wf₂ : Map.WellFormed schema₂.acts)
+    (hschema_wf₁ : Schema.validateWellFormed schema₁ = .ok ()) :
     typecheckPolicyWithEnvironments typecheckPolicy policy schema₂ = .ok () := by
   -- Extract validation components
   simp only [typecheckPolicyWithEnvironments, Except.mapError] at hvalid ⊢
@@ -409,11 +439,13 @@ theorem policy_preserved
           hunchanged env.reqty.action haction
         obtain ⟨env₁, henv₁_mem, henv₁_reqty⟩ := env_in_other_schema_environments henv hfind_eq hacts_wf₂
         have ⟨henv₁_ets, henv₁_acts⟩ := env_mem_environments_schema henv₁_mem
-        have hagree := mk_weakTypeEnvAgreement_from_schemas hincr henv₁_ets henv₁_acts henv_ets henv_acts henv₁_reqty
+        have hwf_env₁ : env₁.WellFormed :=
+          env_validate_well_formed_is_sound (List.forM_ok_implies_all_ok' hschema_wf₁ _ henv₁_mem)
+        have hagree := mk_envAgreement_from_schemas hincr henv₁_ets henv₁_acts henv_ets henv_acts henv₁_reqty hwf_env₁
         have hce_env₁ : checkEntities ⟨env₁.ets, env₁.acts⟩ policy.toExpr = .ok () := by
           rw [henv₁_ets, henv₁_acts]; exact hce₁
         have ⟨tx₁, _, htx₁⟩ := List.mapM_ok_implies_all_ok h_mapM₁ env₁ henv₁_mem
-        rw [typecheckPolicy_env_congr_weak hagree hce_env₁ (by simp [henv₁_acts, env_mem_environments_action_contained henv₁_mem])] at htx₁
+        rw [typecheckPolicy_congr hagree hce_env₁ (by simp [henv₁_acts, env_mem_environments_action_contained henv₁_mem])] at htx₁
         exact ⟨tx₁, htx₁⟩
     obtain ⟨txs₂, h_mapM₂⟩ := List.all_ok_implies_mapM_ok hall_ok
     rw [h_mapM₂]
@@ -446,11 +478,13 @@ theorem policy_preserved
         env_in_other_schema_environments henv₁_mem hfind_eq hacts_wf₁
       have ⟨henv₂_ets, henv₂_acts⟩ := env_mem_environments_schema henv₂_mem
       have ⟨henv₁_ets', henv₁_acts'⟩ := env_mem_environments_schema henv₁_mem
-      have hagree := mk_weakTypeEnvAgreement_from_schemas hincr henv₁_ets' henv₁_acts' henv₂_ets henv₂_acts henv₂_reqty.symm
+      have hwf_env₁' : env₁.WellFormed :=
+        env_validate_well_formed_is_sound (List.forM_ok_implies_all_ok' hschema_wf₁ _ henv₁_mem)
+      have hagree := mk_envAgreement_from_schemas hincr henv₁_ets' henv₁_acts' henv₂_ets henv₂_acts henv₂_reqty.symm hwf_env₁'
       have hce_env₁' : checkEntities ⟨env₁.ets, env₁.acts⟩ policy.toExpr = .ok () := by
         rw [henv₁_ets', henv₁_acts']; exact hce₁
       have henv₂_ok : typecheckPolicy policy env₂ = .ok tx₁ := by
-        rw [← typecheckPolicy_env_congr_weak hagree hce_env₁' (by simp [henv₁_acts', env_mem_environments_action_contained henv₁_mem])]; exact henv₁_ok
+        rw [← typecheckPolicy_congr hagree hce_env₁' (by simp [henv₁_acts', env_mem_environments_action_contained henv₁_mem])]; exact henv₁_ok
       have htx₁_in_txs₂ : tx₁ ∈ txs₂ := by
         have ⟨tx₂, htx₂_mem, htx₂_ok⟩ := List.mapM_ok_implies_all_ok h_mapM₂ env₂ henv₂_mem
         have : tx₁ = tx₂ := by rw [henv₂_ok] at htx₂_ok; exact Except.ok.inj htx₂_ok
@@ -470,11 +504,24 @@ no type errors across all policies ↔ no type errors in the slice.
 
 /-! ### Connecting executable checks to propositional specs -/
 
-private theorem rfr_false_ets_eq {old new : Schema}
+private theorem rfr_false_ets_fwd {old new : Schema}
     (h : requiresFullRevalidation old new = false) :
-    old.ets = new.ets := by
+    (∀ ety entry, old.ets.find? ety = some entry → new.ets.find? ety = some entry) ∧
+    (∀ uid, new.acts.contains uid = true → ¬ new.ets.contains uid.ty) := by
   unfold requiresFullRevalidation at h
-  simp only [Bool.or_eq_false_iff] at h; simp [bne] at h; exact h.1.1
+  simp only [Bool.or_eq_false_iff, Bool.not_eq_false', Bool.and_eq_true, List.any_eq_false] at h
+  obtain ⟨⟨⟨hets_all, hdisj_all⟩, _⟩, _⟩ := h
+  constructor
+  · intro ety entry hfind
+    have hmem := Map.find?_mem_toList hfind
+    have := List.all_eq_true.mp hets_all (ety, entry) hmem
+    simp [beq_iff_eq] at this; exact this
+  · intro uid hc hcontains
+    have ⟨entry, hfind⟩ := Map.contains_iff_some_find?.mp hc
+    have hmem := Map.find?_mem_toList hfind
+    have hh := List.all_eq_true.mp hdisj_all (uid, entry) hmem
+    simp only [Bool.not_eq_true'] at hh
+    exact absurd hcontains (by simp [hh])
 
 private theorem rfr_false_old_in_new {old new : Schema}
     (h : requiresFullRevalidation old new = false)
@@ -507,7 +554,7 @@ theorem rfr_false_implies_incr {oldSchema newSchema : Schema}
     (hacts_wf₂ : Map.WellFormed newSchema.acts)
     (hdisjoint : ∀ uid, newSchema.acts.contains uid = true → newSchema.ets.isValidEntityUID uid = false) :
     IncrementallyRevalidatable oldSchema newSchema := by
-  have hets := rfr_false_ets_eq hno_full
+  have ⟨hets_fwd, hets_disj⟩ := rfr_false_ets_fwd hno_full
   have hcontains_fwd : ∀ uid, oldSchema.acts.contains uid = true → newSchema.acts.contains uid = true := by
     intro uid hc
     simp only [ActionSchema.contains, Option.isSome_iff_exists] at hc
@@ -528,7 +575,8 @@ theorem rfr_false_implies_incr {oldSchema newSchema : Schema}
     simp [hnot_old] at h_entry
     exact h_entry
   exact {
-    ets_eq := hets
+    ets_fwd := hets_fwd
+    ets_disjoint := fun uid hc => hets_disj uid hc
     acts_contains_fwd := hcontains_fwd
     acts_disjoint := hdisjoint
     same_action_types := by
@@ -614,7 +662,7 @@ theorem checkEntities_preserved_of_rfr
     (hno_full : requiresFullRevalidation oldSchema newSchema = false)
     (hok : checkEntities oldSchema expr = .ok ()) :
     checkEntities newSchema expr = .ok () := by
-  have hets := rfr_false_ets_eq hno_full
+  have ⟨hets_fwd, _⟩ := rfr_false_ets_fwd hno_full
   exact checkEntities_monotone expr
     (by intro uid hv
         cases hv₁ : oldSchema.ets.isValidEntityUID uid
@@ -623,11 +671,15 @@ theorem checkEntities_preserved_of_rfr
             (by simp [ActionSchema.contains] at hv; exact hv)
           have ⟨_, hfn, _⟩ := rfr_false_old_in_new hno_full hfind
           simp [ActionSchema.contains, hfn]
-        · simp [hets ▸ hv₁])
+        · simp [isValidEntityUID_fwd hets_fwd hv₁])
     (by intro ety hv
         simp only [Bool.or_eq_true] at hv ⊢
         cases hv with
-        | inl hc => left; exact hets ▸ hc
+        | inl hc =>
+          left
+          simp only [EntitySchema.contains, Option.isSome_iff_exists] at hc ⊢
+          obtain ⟨entry, hf⟩ := hc
+          exact ⟨entry, hets_fwd ety entry hf⟩
         | inr hat =>
           right; simp only [ActionSchema.actionType?, Set.any, List.any_eq_true] at hat ⊢
           obtain ⟨uid, hmem, hty⟩ := hat
@@ -667,7 +719,8 @@ theorem nonslice_policy_noTypeErrors
       (computeActionChanges oldSchema newSchema) p.actionScope = false)
     (hacts_wf₁ : oldSchema.acts.wellFormed)
     (hacts_wf₂ : newSchema.acts.wellFormed)
-    (hdisjoint : ∀ uid, newSchema.acts.contains uid = true → newSchema.ets.isValidEntityUID uid = false) :
+    (hdisjoint : ∀ uid, newSchema.acts.contains uid = true → newSchema.ets.isValidEntityUID uid = false)
+    (hschema_wf₁ : Schema.validateWellFormed oldSchema = .ok ()) :
     (match typecheckPolicyWithEnvironments typecheckPolicy p newSchema with
     | .ok () => true
     | .error (.impossiblePolicy _) => true
@@ -722,11 +775,13 @@ theorem nonslice_policy_noTypeErrors
       obtain ⟨env₁, henv₁_mem, henv₁_reqty⟩ := env_in_other_schema_environments_subset
         henv hfind_old hfind_new hctx hprincipal hresource hacts_wf₂'
       have ⟨henv₁_ets, henv₁_acts⟩ := env_mem_environments_schema henv₁_mem
-      have hagree := mk_weakTypeEnvAgreement_from_schemas hincr henv₁_ets henv₁_acts henv_ets henv_acts henv₁_reqty
+      have hwf_env₁ : env₁.WellFormed :=
+        env_validate_well_formed_is_sound (List.forM_ok_implies_all_ok' hschema_wf₁ _ henv₁_mem)
+      have hagree := mk_envAgreement_from_schemas hincr henv₁_ets henv₁_acts henv_ets henv_acts henv₁_reqty hwf_env₁
       have hce_env₁ : checkEntities ⟨env₁.ets, env₁.acts⟩ p.toExpr = .ok () := by
         rw [henv₁_ets, henv₁_acts]; exact hce₁
       have ⟨tx₁, _, htx₁⟩ := List.mapM_ok_implies_all_ok h_mapM₁ env₁ henv₁_mem
-      rw [typecheckPolicy_env_congr_weak hagree hce_env₁ (by simp [henv₁_acts, env_mem_environments_action_contained henv₁_mem])] at htx₁
+      rw [typecheckPolicy_congr hagree hce_env₁ (by simp [henv₁_acts, env_mem_environments_action_contained henv₁_mem])] at htx₁
       exact ⟨tx₁, htx₁⟩
   obtain ⟨txs₂, h_mapM₂⟩ := List.all_ok_implies_mapM_ok hall_ok
   simp only [Except.bind_ok, h_mapM₂]
@@ -809,7 +864,7 @@ theorem validation_slice_soundness
       · simp only [Bool.not_eq_true] at hmatch
         have hvalid_q := List.forM_ok_implies_all_ok'
           (by simp [validate] at hold; exact hold) q hq
-        exact nonslice_policy_noTypeErrors hno_full hvalid_q hmatch hacts_wf₁ hacts_wf₂ hdisjoint
+        exact nonslice_policy_noTypeErrors hno_full hvalid_q hmatch hacts_wf₁ hacts_wf₂ hdisjoint hwf₁
 
 /--
 **Main theorem**: no type errors across all policies iff no type errors in the

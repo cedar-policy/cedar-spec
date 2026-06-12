@@ -89,12 +89,12 @@ returns `true` and `schema₁` is well-formed, then:
 The result is `validateOrImpossible`, which allows policies to become impossible
 but not to acquire type errors.
 -/
-private theorem disjoint_from_ets_ext_and_appliesTo_restr
+private theorem disjoint_contains_from_ets_ext_and_appliesTo_restr
     {schema₁ schema₃ : Schema}
     (hets_ext : isValidEtsExtension schema₁ { ets := schema₃.ets, acts := schema₁.acts } = true)
     (happlies_restr : isAppliesToRestriction { ets := schema₃.ets, acts := schema₁.acts } schema₃ = true) :
-    ∀ uid, schema₃.acts.contains uid = true → schema₃.ets.isValidEntityUID uid = false := by
-  intro uid hc
+    ∀ uid, schema₃.acts.contains uid = true → ¬ schema₃.ets.contains uid.ty := by
+  intro uid hc hets_c
   simp only [isValidEtsExtension, Bool.and_eq_true] at hets_ext
   have hdisj_all := hets_ext.2
   obtain ⟨_, hfind_old, _, _, _⟩ :=
@@ -103,10 +103,19 @@ private theorem disjoint_from_ets_ext_and_appliesTo_restr
   have hmem := Map.find?_mem_toList hfind_old
   have h_not := List.all_eq_true.mp hdisj_all _ hmem
   simp only [Bool.not_eq_true'] at h_not
+  exact absurd hets_c (by simp [h_not])
+
+private theorem disjoint_from_ets_ext_and_appliesTo_restr
+    {schema₁ schema₃ : Schema}
+    (hets_ext : isValidEtsExtension schema₁ { ets := schema₃.ets, acts := schema₁.acts } = true)
+    (happlies_restr : isAppliesToRestriction { ets := schema₃.ets, acts := schema₁.acts } schema₃ = true) :
+    ∀ uid, schema₃.acts.contains uid = true → schema₃.ets.isValidEntityUID uid = false := by
+  intro uid hc
+  have hnotc := disjoint_contains_from_ets_ext_and_appliesTo_restr hets_ext happlies_restr uid hc
   simp only [EntitySchema.isValidEntityUID]
   cases hf : schema₃.ets.find? uid.ty with
   | none => rfl
-  | some _ => simp [EntitySchema.contains, hf] at h_not
+  | some _ => exact absurd (by simp [EntitySchema.contains, hf]) hnotc
 
 theorem validateOrImpossible_of_backward_compatible
     (schema₁ schema₃ : Schema)
@@ -116,24 +125,89 @@ theorem validateOrImpossible_of_backward_compatible
     (hold : validate policies schema₁ = .ok ()) :
     Cedar.Slice.validateOrImpossible policies schema₃ = true := by
   simp only [isBackwardCompatible, Bool.and_eq_true] at hcompat
-  obtain ⟨⟨hets_ext, happlies_restr⟩, hacts_wf_old⟩ := hcompat
-  -- Step 1: entity schema extension (schema₁ → schema₂)
-  let schema₂ : Schema := { ets := schema₃.ets, acts := schema₁.acts }
-  have hvalid₂ : validate policies schema₂ = .ok () :=
-    validate_of_isValidEtsExtension schema₁ schema₂ policies hets_ext hwf₁ hold
-  -- Step 2: appliesTo restriction (schema₂ → schema₃)
-  have hno_full := isAppliesToRestriction_implies_rfr_false happlies_restr
-  have hno_changes := isAppliesToRestriction_implies_no_changes happlies_restr
-  have hdisjoint₃ := disjoint_from_ets_ext_and_appliesTo_restr hets_ext happlies_restr
+  obtain ⟨⟨⟨hets_ext, happlies_restr⟩, hacts_wf_old⟩, hets_wf₃⟩ := hcompat
+  -- Use validateOrImpossible_of_appliesTo_restriction' via a helper that avoids Schema.validateWellFormed
+  -- Step 1: entity schema extension
+  have hvalid₂ : validate policies ⟨schema₃.ets, schema₁.acts⟩ = .ok () :=
+    validate_of_isValidEtsExtension schema₁ ⟨schema₃.ets, schema₁.acts⟩ policies hets_ext hwf₁ hold
+  -- Step 2: directly prove validateOrImpossible using the structure from AppliesToRestriction
+  -- Since all schema₃ actions are in schema₁.acts (from happlies_restr) and
+  -- schema₃.ets extends schema₁.ets, every schema₃ environment has a matching intermediate env
   have hacts_wf₃ : schema₃.acts.wellFormed := by
     simp only [isAppliesToRestriction, Bool.and_eq_true] at happlies_restr; exact happlies_restr.2
-  by_cases henvs_new : schema₃.environments = []
-  · exact validateOrImpossible_of_empty_envs henvs_new hno_full hvalid₂
+  have hacts_wf₁' : Map.WellFormed schema₁.acts :=
+    Map.wf_iff_sorted.mpr (List.isSortedBy_correct.mpr hacts_wf_old)
+  have hacts_wf₃' : Map.WellFormed schema₃.acts :=
+    Map.wf_iff_sorted.mpr (List.isSortedBy_correct.mpr hacts_wf₃)
+  have hdisjoint₃ := disjoint_from_ets_ext_and_appliesTo_restr hets_ext happlies_restr
+  have hdisjoint_contains₃ := disjoint_contains_from_ets_ext_and_appliesTo_restr hets_ext happlies_restr
+  have hets_wf₃' : Map.WellFormed schema₃.ets := Map.wellFormed_correct.mp hets_wf₃
+  have hno_full : Cedar.Slice.requiresFullRevalidation ⟨schema₃.ets, schema₁.acts⟩ schema₃ = false :=
+    isAppliesToRestriction_implies_rfr_false happlies_restr hdisjoint_contains₃ hets_wf₃'
+  have hincr := rfr_false_implies_incr hno_full hacts_wf₁' hacts_wf₃' hdisjoint₃
   simp only [Cedar.Slice.validateOrImpossible, List.all_eq_true]
   intro p hp
-  exact nonslice_policy_noTypeErrors hno_full
-    (policy_validated_of_validate hvalid₂ hp)
-    (by simp [hno_changes, Cedar.Slice.actionScopeMatchesAnyChangedAction])
-    hacts_wf_old hacts_wf₃ hdisjoint₃
+  have hvalid_p := List.forM_ok_implies_all_ok' (by simp [validate] at hvalid₂; exact hvalid₂) p hp
+  simp only [typecheckPolicyWithEnvironments, Except.mapError] at hvalid_p ⊢
+  have hce_mid : checkEntities ⟨schema₃.ets, schema₁.acts⟩ p.toExpr = .ok () := by
+    cases hce : checkEntities ⟨schema₃.ets, schema₁.acts⟩ p.toExpr with
+    | ok _ => rfl
+    | error e => simp [hce] at hvalid_p
+  have hce₃ : checkEntities schema₃ p.toExpr = .ok () :=
+    checkEntities_preserved hincr hce_mid
+  rw [show (checkEntities schema₃ p.toExpr) = .ok () from hce₃]
+  simp only [Except.bind_ok]
+  simp only [hce_mid, Except.bind_ok, Except.ok.injEq] at hvalid_p
+  cases h_mapM : List.mapM (typecheckPolicy p) (Schema.environments ⟨schema₃.ets, schema₁.acts⟩) with
+  | error => simp [h_mapM] at hvalid_p
+  | ok txs =>
+  have hall_ok : ∀ env₃ ∈ schema₃.environments, ∃ tx, typecheckPolicy p env₃ = .ok tx := by
+    intro env₃ henv₃_mem
+    have ⟨henv₃_ets, henv₃_acts⟩ := env_mem_environments_schema henv₃_mem
+    have henv₃_contains := env_mem_environments_action_contained henv₃_mem
+    have hfind₃ := (Map.contains_iff_some_find?.mp henv₃_contains).choose_spec
+    have h_entry := List.all_eq_true.mp
+      (by simp only [isAppliesToRestriction, Bool.and_eq_true] at happlies_restr; exact happlies_restr.1.2)
+      _ (Map.find?_mem_toList hfind₃)
+    simp only at h_entry
+    cases hfo : schema₁.acts.find? env₃.reqty.action with
+    | none => simp [hfo] at h_entry
+    | some oldEntry =>
+    simp only [hfo, Bool.and_eq_true, decide_eq_true_eq] at h_entry
+    obtain ⟨⟨⟨⟨hctx, hprinc⟩, hres⟩, _⟩, _⟩ := h_entry
+    obtain ⟨env_mid, henv_mid_mem, hreqty_eq⟩ := env_in_other_schema_environments_subset
+      henv₃_mem (show (Schema.mk schema₃.ets schema₁.acts).acts.find? env₃.reqty.action = some oldEntry from hfo)
+      hfind₃ hctx hprinc hres hacts_wf₃'
+    have ⟨henv_mid_ets, henv_mid_acts⟩ := env_mem_environments_schema henv_mid_mem
+    have hagree : ActsAgreement env_mid env₃ :=
+      mk_actsAgreement_from_schemas hincr henv_mid_ets henv_mid_acts henv₃_ets henv₃_acts hreqty_eq rfl
+    have hce_env : checkEntities ⟨env_mid.ets, env_mid.acts⟩ p.toExpr = .ok () := by
+      rw [henv_mid_ets, henv_mid_acts]; exact hce_mid
+    have hcontains : env_mid.acts.contains env_mid.reqty.action = true := by
+      rw [henv_mid_acts]; exact env_mem_environments_action_contained henv_mid_mem
+    have ⟨tx, _, htx⟩ := List.mapM_ok_implies_all_ok h_mapM env_mid henv_mid_mem
+    rw [typecheckPolicy_congr_acts hagree hce_env hcontains] at htx
+    exact ⟨tx, htx⟩
+  obtain ⟨txs₃, h_mapM₃⟩ := List.all_ok_implies_mapM_ok hall_ok
+  simp only [Except.bind_ok, h_mapM₃]
+  cases hallff : allFalse txs₃ <;> simp
+
+/--
+**Backward-compatible schemas require no revalidation**: if `isBackwardCompatible`
+passes, the validation slice is empty — no policies need to be rechecked.
+Combined with `validateOrImpossible_of_backward_compatible`, this means the new
+schema is guaranteed to pass without running the validator at all.
+-/
+theorem validationSlice_empty_of_backward_compatible
+    (schema₁ schema₃ : Schema)
+    (policies : Policies)
+    (hcompat : isBackwardCompatible schema₁ schema₃ = true) :
+    Cedar.Slice.validationSlice schema₁ schema₃ policies = [] := by
+  simp only [isBackwardCompatible, Bool.and_eq_true] at hcompat
+  obtain ⟨⟨⟨_, happlies_restr⟩, _⟩, _⟩ := hcompat
+  have hno_changes := isAppliesToRestriction_implies_no_changes happlies_restr
+  have h : Cedar.Slice.computeActionChanges schema₁ schema₃ = [] := hno_changes
+  simp [Cedar.Slice.validationSlice, Cedar.Slice.validationSliceByChanges,
+    Cedar.Slice.actionScopeMatchesAnyChangedAction, h]
 
 end Cedar.Thm

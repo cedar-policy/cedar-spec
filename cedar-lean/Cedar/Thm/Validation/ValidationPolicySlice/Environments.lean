@@ -18,7 +18,7 @@ import Cedar.Spec
 import Cedar.Data
 import Cedar.Validation
 import Cedar.Slice.ValidationPolicySlice
-import Cedar.Thm.Validation.ValidationPolicySlice.TypeOfCongr
+import Cedar.Thm.Validation.TypeOfCongruence
 import Cedar.Thm.Data
 
 /-!
@@ -189,7 +189,8 @@ Specifies the relationship between two schemas that permits incremental
 revalidation. Corresponds to `requiresFullRevalidation old new = false`.
 -/
 structure IncrementallyRevalidatable (schema₁ schema₂ : Schema) : Prop where
-  ets_eq : schema₁.ets = schema₂.ets
+  ets_fwd : ∀ ety entry, schema₁.ets.find? ety = some entry → schema₂.ets.find? ety = some entry
+  ets_disjoint : ∀ uid, schema₂.acts.contains uid = true → ¬ schema₂.ets.contains uid.ty
   acts_contains_fwd : ∀ action : EntityUID,
     schema₁.acts.contains action = true → schema₂.acts.contains action = true
   acts_disjoint : ∀ uid : EntityUID,
@@ -206,28 +207,58 @@ structure IncrementallyRevalidatable (schema₁ schema₂ : Schema) : Prop where
     schema₁.acts.maybeDescendentOf ety₁ ety₂ = schema₂.acts.maybeDescendentOf ety₁ ety₂
 
 /--
-Construct `WeakTypeEnvAgreement` between two environments from different schemas when:
+Construct `ActsAgreement` between two environments from different schemas when:
 - Both environments' ets and acts fields are the schema ets/acts respectively
 - The schemas are `IncrementallyRevalidatable`
 - The environments have the same `reqty`
 -/
-theorem mk_weakTypeEnvAgreement_from_schemas
+theorem mk_envAgreement_from_schemas
     {schema₁ schema₂ : Schema} {env₁ env₂ : TypeEnv}
     (hincr : IncrementallyRevalidatable schema₁ schema₂)
     (henv₁_ets : env₁.ets = schema₁.ets)
     (henv₁_acts : env₁.acts = schema₁.acts)
     (henv₂_ets : env₂.ets = schema₂.ets)
     (henv₂_acts : env₂.acts = schema₂.acts)
-    (hreqty : env₁.reqty = env₂.reqty) :
-    WeakTypeEnvAgreement env₁ env₂ where
-  ets_eq := by rw [henv₁_ets, henv₂_ets, hincr.ets_eq]
+    (hreqty : env₁.reqty = env₂.reqty)
+    (hwf₁ : env₁.WellFormed) :
+    EnvAgreement env₁ env₂ where
   reqty_eq := hreqty
+  ets_fwd := fun ety entry hf => by
+    rw [henv₁_ets] at hf; rw [henv₂_ets]; exact hincr.ets_fwd ety entry hf
   acts_contains_fwd := fun uid hc => by
     rw [henv₁_acts] at hc; rw [henv₂_acts]; exact hincr.acts_contains_fwd uid hc
-  acts_disjoint := fun uid hc => by
-    rw [henv₂_acts] at hc; rw [henv₂_ets]; exact hincr.acts_disjoint uid hc
   acts_actionType := fun ety => by rw [henv₁_acts, henv₂_acts]; exact hincr.same_action_types ety
   acts_descendentOf := fun u₁ u₂ => by rw [henv₁_acts, henv₂_acts]; exact hincr.same_descendentOf u₁ u₂
   acts_maybeDescendentOf := fun e₁ e₂ => by rw [henv₁_acts, henv₂_acts]; exact hincr.same_maybeDescendentOf e₁ e₂
+  disjoint₂ := fun uid hc => by
+    rw [henv₂_acts] at hc; rw [henv₂_ets]; exact hincr.ets_disjoint uid hc
+  wf₁ := hwf₁
+
+/--
+Construct `ActsAgreement` between two environments from different schemas when:
+- Both environments' ets and acts fields are the schema ets/acts respectively
+- The schemas are `IncrementallyRevalidatable` and have the same entity schema
+- The environments have the same `reqty`
+Does NOT require `env₁.WellFormed`.
+-/
+theorem mk_actsAgreement_from_schemas
+    {schema₁ schema₂ : Schema} {env₁ env₂ : TypeEnv}
+    (hincr : IncrementallyRevalidatable schema₁ schema₂)
+    (henv₁_ets : env₁.ets = schema₁.ets)
+    (henv₁_acts : env₁.acts = schema₁.acts)
+    (henv₂_ets : env₂.ets = schema₂.ets)
+    (henv₂_acts : env₂.acts = schema₂.acts)
+    (hreqty : env₁.reqty = env₂.reqty)
+    (hets_eq : schema₁.ets = schema₂.ets) :
+    ActsAgreement env₁ env₂ where
+  reqty_eq := hreqty
+  ets_eq := by rw [henv₁_ets, henv₂_ets, hets_eq]
+  acts_contains_fwd := fun uid hc => by
+    rw [henv₁_acts] at hc; rw [henv₂_acts]; exact hincr.acts_contains_fwd uid hc
+  acts_actionType := fun ety => by rw [henv₁_acts, henv₂_acts]; exact hincr.same_action_types ety
+  acts_descendentOf := fun u₁ u₂ => by rw [henv₁_acts, henv₂_acts]; exact hincr.same_descendentOf u₁ u₂
+  acts_maybeDescendentOf := fun e₁ e₂ => by rw [henv₁_acts, henv₂_acts]; exact hincr.same_maybeDescendentOf e₁ e₂
+  disjoint₂ := fun uid hc => by
+    rw [henv₂_acts] at hc; rw [henv₂_ets]; exact hincr.acts_disjoint uid hc
 
 end Cedar.Thm

@@ -76,6 +76,7 @@ def isBackwardCompatible (schema₁ schema₃ : Schema) : Bool :=
   let schema₂ : Schema := { ets := schema₃.ets, acts := schema₁.acts }
   isValidEtsExtension schema₁ schema₂ &&
   isAppliesToRestriction schema₂ schema₃ &&
-  schema₁.acts.wellFormed
+  schema₁.acts.wellFormed &&
+  schema₃.ets.wellFormed
 
 end Cedar.Validation
