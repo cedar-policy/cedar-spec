@@ -221,6 +221,19 @@ def compileCallWithError₂ (xty₁ xty₂ : ExtType) (enc : Term → Term → T
 def compileCall₂ (xty : ExtType) (enc : Term → Term → Term) (t₁ t₂ : Term) : Result Term :=
   compileCallWithError₂ xty xty (λ t₁ t₂ => ⊙ enc t₁ t₂) t₁ t₂
 
+/--
+Variadic version of `compileCall₂` for a non-erroring call whose target `t` and
+all arguments `ts` share extension type `xty`. Errors (`.typeError`) unless every
+term has type `.option (.ext xty)`; otherwise encodes `enc` under nested `ifSome`
+guards so that a `.none` in any position propagates as `.none`, mirroring the
+concrete evaluator's error propagation.
+-/
+def compileCallₙ (xty : ExtType) (enc : Term → List Term → Term) (t : Term) (ts : List Term) : Result Term := do
+  let ty := TermType.option (.ext xty)
+  if t.typeOf = ty ∧ ∀ tᵢ ∈ ts, tᵢ.typeOf = ty
+  then ifSome t (ts.foldr (λ tᵢ acc => ifSome tᵢ acc) (⊙ enc (option.get t) (ts.map option.get)))
+  else .error .typeError
+
 def compileCall (xfn : ExtFun) (ts : List Term) : Result Term := do
   match xfn, ts with
   | .decimal, [t₁]                => compileCall₀ Ext.Decimal.decimal t₁
@@ -233,7 +246,7 @@ def compileCall (xfn : ExtFun) (ts : List Term) : Result Term := do
   | .isIpv6, [t₁]                 => compileCall₁ .ipAddr IPAddr.isIpv6 t₁
   | .isLoopback, [t₁]             => compileCall₁ .ipAddr IPAddr.isLoopback t₁
   | .isMulticast, [t₁]            => compileCall₁ .ipAddr IPAddr.isMulticast t₁
-  | .isInRange, [t₁, t₂]          => compileCall₂ .ipAddr IPAddr.isInRange t₁ t₂
+  | .isInRange, t₁ :: t₂ :: ts    => compileCallₙ .ipAddr IPAddr.isInRangeV t₁ (t₂ :: ts)
   | .datetime, [t₁]               => compileCall₀ Ext.Datetime.datetime t₁
   | .duration, [t₁]               => compileCall₀ Ext.Datetime.duration t₁
   | .offset, [t₁, t₂]             => compileCallWithError₂ .datetime .duration Datetime.offset t₁ t₂

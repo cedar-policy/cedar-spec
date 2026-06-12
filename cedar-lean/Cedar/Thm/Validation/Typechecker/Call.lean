@@ -69,9 +69,15 @@ theorem type_of_call_inversion {xs : List Expr} {c c' : Capabilities} {env : Typ
     | cases htx₁ : typeOfConstructor Ext.IPAddr.ip xs (CedarType.ext ExtType.ipAddr) <;> simp only [htx₁] at htx
     | cases htx₁ : typeOfConstructor Cedar.Spec.Ext.Datetime.parse xs (.ext .datetime) <;> simp only [htx₁] at htx
     | cases htx₁ : typeOfConstructor Cedar.Spec.Ext.Datetime.Duration.parse xs (.ext .duration) <;> simp only [htx₁] at htx
+    | (simp [typeOfIsInRange] at htx; split at htx <;> try contradiction)
     | skip) <;>
-    simp only [ok, Except.ok.injEq, Prod.mk.injEq, Except.bind_ok, Except.bind_err, reduceCtorEq] at htx <;>
-    simp [←htx]
+    (try simp only [ok, Except.ok.injEq, Prod.mk.injEq, Except.bind_ok, Except.bind_err, reduceCtorEq] at htx) <;>
+    first
+      | simp [←htx]
+      | exact ⟨_, rfl⟩
+      | (split at htx <;> simp [err] at htx
+         obtain ⟨htx, _⟩ := htx
+         exact ⟨_, htx.symm⟩)
   · exact type_of_call_args_inversion htx₁
 
 theorem type_of_call_decimal_inversion {xs : List Expr} {c c' : Capabilities} {env : TypeEnv} {ty : TypedExpr}
@@ -348,38 +354,82 @@ theorem type_of_call_decimal_comparator_is_sound {xfn : ExtFun} {xs : List Expr}
     apply bool_is_instance_of_anyBool
   }
 
+/--
+Structural inversion for `typeOfIsInRange`: if it succeeds with `.bool .anyBool`,
+then it typed at least two arguments and every argument's type is `.ext .ipAddr`.
+-/
+theorem typeOfIsInRange_ok_inversion {tys : List TypedExpr} {xs : List Expr} {ty : TypedExpr} {c' : Capabilities}
+  (h : typeOfIsInRange tys xs = Except.ok (ty, c')) :
+  ty.typeOf = .bool .anyBool ∧
+  c' = ∅ ∧
+  2 ≤ tys.length ∧
+  ∀ t ∈ tys, t.typeOf = .ext .ipAddr
+:= by
+  simp only [typeOfIsInRange] at h
+  split at h
+  case h_2 => simp only [err, reduceCtorEq] at h
+  case h_1 heq =>
+    split at h
+    case isFalse => simp only [err, reduceCtorEq] at h
+    case isTrue hif =>
+      simp only [ok, Except.ok.injEq, Prod.mk.injEq] at h
+      obtain ⟨hty, hc'⟩ := h
+      subst hty hc'
+      refine ⟨by simp only [TypedExpr.typeOf], rfl, ?_, ?_⟩
+      · -- 2 ≤ tys.length : the map matched a two-or-more-element list
+        have hlen := congrArg List.length heq
+        simp only [List.length_map, List.length_cons] at hlen
+        omega
+      · -- every element of tys is an ipAddr
+        intro t ht
+        have hmem : t.typeOf ∈ List.map TypedExpr.typeOf tys := List.mem_map.mpr ⟨t, ht, rfl⟩
+        rw [heq, List.mem_cons] at hmem
+        rcases hmem with hmem | hmem
+        · exact hmem
+        · rw [List.all_eq_true] at hif
+          simpa only [beq_iff_eq] using hif _ hmem
 
 theorem type_of_call_isInRange_inversion {xs : List Expr} {c c' : Capabilities} {env : TypeEnv} {ty : TypedExpr}
   (h₁ : typeOf (Expr.call .isInRange xs) c env = Except.ok (ty, c')) :
   ty.typeOf = .bool .anyBool ∧
   c' = ∅ ∧
-  ∃ (x₁ x₂ : Expr) (c₁ c₂ : Capabilities),
-    xs = [x₁, x₂] ∧
+  ∃ (x₁ : Expr) (xrest : List Expr) (c₁ : Capabilities),
+    xs = x₁ :: xrest ∧
+    xrest.length > 0 ∧
     (typeOf x₁ c env).typeOf = .ok ((.ext .ipAddr), c₁) ∧
-    (typeOf x₂ c env).typeOf = .ok ((.ext .ipAddr), c₂)
+    ∀ xᵢ ∈ xrest, ∃ cᵢ, (typeOf xᵢ c env).typeOf = .ok ((.ext .ipAddr), cᵢ)
 := by
-  simp [typeOf] at h₁
-  cases h₂ : List.mapM₁ xs fun x => justType (typeOf x.val c env) <;>
-  simp [h₂] at h₁
+  simp only [typeOf] at h₁
+  cases h₂ : List.mapM₁ xs (fun x => justType (typeOf x.val c env)) <;>
+    simp only [h₂, Except.bind_err, Except.bind_ok, reduceCtorEq] at h₁
   rename_i tys
-  simp [typeOfCall] at h₁
-  split at h₁ <;> try { contradiction }
-  all_goals {
-    simp [ok] at h₁
-    have ⟨hl₁, hr₁⟩ := h₁
-    rw [←hl₁]
-    simp only [TypedExpr.typeOf, hr₁, List.empty_eq, true_and]
-    rename_i h₃
-    cases tys <;> try simp at h₃
-    rename_i tys
-    cases tys <;> try simp at h₃
-    rename_i tys
-    cases tys <;> try simp at h₃
-    have ⟨ h₃ₗ, h₃ᵣ ⟩ := h₃
-    rw (config := {occs := .pos [1]}) [←h₃ₗ]
-    rw [←h₃ᵣ]
-    apply typeOf_of_binary_call_inversion h₂
-  }
+  simp only [typeOfCall] at h₁
+  -- Structural facts about `tys`: at least two elements, all `ipAddr`.
+  obtain ⟨htyOf, hc', hlen, hall⟩ := typeOfIsInRange_ok_inversion h₁
+  refine ⟨htyOf, hc', ?_⟩
+  -- Positional correspondence between `xs` and `tys`.
+  have hforall := type_of_call_args_inversion h₂
+  cases tys with
+  | nil => simp only [List.length_nil] at hlen; omega
+  | cons ty₁ tytail =>
+    cases hforall with
+    | cons hhead htail =>
+      rename_i x₁ xrest
+      obtain ⟨c₁', hx₁⟩ := hhead
+      refine ⟨x₁, xrest, c₁', rfl, ?_, ?_, ?_⟩
+      · -- xrest.length > 0 : `tytail` is nonempty, and matches `xrest` positionally
+        cases htail with
+        | nil => simp only [List.length_cons, List.length_nil] at hlen; omega
+        | cons => simp only [List.length_cons]; omega
+      · -- typeOf x₁ is an ipAddr
+        have hty₁ : ty₁.typeOf = .ext .ipAddr := hall ty₁ List.mem_cons_self
+        simp only [ResultType.typeOf, hx₁, Except.map, hty₁]
+      · -- every element of xrest is an ipAddr
+        intro xᵢ hxᵢ
+        obtain ⟨tyᵢ, htyᵢ_mem, cᵢ, hxᵢ_ok⟩ := List.forall₂_implies_all_left htail xᵢ hxᵢ
+        refine ⟨cᵢ, ?_⟩
+        have htyᵢ : tyᵢ.typeOf = .ext .ipAddr := hall tyᵢ (List.mem_cons_of_mem _ htyᵢ_mem)
+        simp only [ResultType.typeOf, hxᵢ_ok, Except.map, htyᵢ]
 
 theorem type_of_call_isInRange_comparator_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : TypeEnv} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
@@ -389,33 +439,65 @@ theorem type_of_call_isInRange_comparator_is_sound {xs : List Expr} {c₁ c₂ :
   GuardedCapabilitiesInvariant (Expr.call .isInRange xs) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.call .isInRange xs) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
-  have ⟨h₄, h₅, x₁, x₂, c₁', c₂', h₆, h₇, h₈⟩ := type_of_call_isInRange_inversion h₃
+  have ⟨h₄, h₅, x₁, xrest, c₁', h₆, hlen, h₇, h₈⟩ := type_of_call_isInRange_inversion h₃
   rw [h₄]
   subst h₅ h₆
-  apply And.intro empty_guarded_capabilities_invariant
-  simp only [EvaluatesTo, evaluate, List.mapM₁, List.attach_def, List.pmap, List.mapM_cons,
-    List.mapM_nil, pure_bind, bind_assoc]
-  have ih₁ := ih x₁
-  have ih₂ := ih x₂
-  simp [TypeOfIsSound] at ih₁ ih₂
-  split_type_of h₇ ; rename_i h₇ hl₇ hr₇
-  have ⟨_, v₁, hl₁, hr₁⟩ := ih₁ h₁ h₂ h₇
-  split_type_of h₈ ; rename_i h₈ hl₈ hr₈
-  have ⟨_, v₂, hl₂, hr₂⟩ := ih₂ h₁ h₂ h₈
-  simp [EvaluatesTo] at hl₁
-  rcases hl₁ with hl₁ | hl₁ | hl₁ | hl₁ <;>
-  simp [hl₁] <;>
-  try { exact type_is_inhabited_bool}
-  rcases hl₂ with hl₂ | hl₂ | hl₂ | hl₂ <;>
-  simp [hl₂] <;>
-  try { exact type_is_inhabited_bool}
-  rw [hl₇] at hr₁
-  have ⟨d₁, hr₁⟩ := instance_of_ipAddr_type_is_ipAddr hr₁
-  rw [hl₈] at hr₂
-  have ⟨d₂, hr₂⟩ := instance_of_ipAddr_type_is_ipAddr hr₂
-  subst hr₁ hr₂
-  simp [call]
-  apply bool_is_instance_of_anyBool
+  refine ⟨empty_guarded_capabilities_invariant, ?_⟩
+  obtain ⟨xr, xrs, rfl⟩ : ∃ xr xrs, xrest = xr :: xrs := by
+    cases xrest with
+    | nil => simp only [List.length_nil, gt_iff_lt, Nat.lt_irrefl] at hlen
+    | cons a b => exact ⟨a, b, rfl⟩
+  have key : ∀ xᵢ ∈ x₁ :: xr :: xrs, ∃ a, EvaluatesTo xᵢ request entities (.ext (.ipaddr a)) := by
+    intro xᵢ hxᵢ
+    obtain ⟨cᵢ, htyᵢ⟩ : ∃ cᵢ, (typeOf xᵢ c₁ env).typeOf = .ok (.ext .ipAddr, cᵢ) := by
+      rcases List.mem_cons.mp hxᵢ with rfl | hmem
+      · exact ⟨c₁', h₇⟩
+      · exact h₈ xᵢ hmem
+    split_type_of htyᵢ ; rename_i htyᵢ hl _
+    have ⟨_, v, hev, hinst⟩ := (ih xᵢ hxᵢ) h₁ h₂ htyᵢ
+    rw [hl] at hinst
+    obtain ⟨a, rfl⟩ := instance_of_ipAddr_type_is_ipAddr hinst
+    exact ⟨a, hev⟩
+  simp only [EvaluatesTo, evaluate]
+  rw [List.mapM₁_eq_mapM (fun x => evaluate x request entities)]
+  cases hm : (x₁ :: xr :: xrs).mapM (fun x => evaluate x request entities) with
+  | error e =>
+    refine ⟨.prim (.bool false), ?_, bool_is_instance_of_anyBool false⟩
+    obtain ⟨xᵢ, hmem, herr⟩ := List.mapM_error_implies_exists_error hm
+    obtain ⟨_, hev⟩ := key xᵢ hmem
+    simp only [Except.bind_err]
+    simp only [EvaluatesTo, herr] at hev
+    rcases hev with h | h | h | h <;> simp_all
+  | ok vs =>
+    simp only [Except.bind_ok]
+    -- All evaluated values are ipaddrs.
+    have hall_ip : ∀ v ∈ vs, ∃ a, v = .ext (.ipaddr a) := by
+      intro v hv
+      obtain ⟨x, hx_mem, hx_ok⟩ := List.mapM_ok_implies_all_from_ok hm v hv
+      obtain ⟨a, hev⟩ := key x hx_mem
+      simp only [EvaluatesTo, hx_ok] at hev
+      rcases hev with h | h | h | h <;> simp only [reduceCtorEq, Except.ok.injEq] at h
+      exact ⟨a, h⟩
+    -- `vs` has at least two elements.
+    have hlen_vs : 2 ≤ vs.length := by
+      have hpl := List.mapM_preserves_length hm
+      simp only [List.length_cons] at hpl
+      omega
+    rcases vs with _ | ⟨v₀, _ | ⟨v₁, vtail⟩⟩
+    · simp only [List.length_nil] at hlen_vs; omega
+    · simp only [List.length_cons, List.length_nil] at hlen_vs; omega
+    · obtain ⟨a₀, rfl⟩ := hall_ip v₀ List.mem_cons_self
+      simp only [call, Except.bind_ok]
+      -- The ranges all extract to ipaddrs, so their `mapM` succeeds.
+      have ⟨rs, hrs⟩ : ∃ rs, (v₁ :: vtail).mapM
+          (fun x => match x with | .ext (.ipaddr a) => Except.ok a | _ => Except.error Error.typeError) = .ok rs := by
+        apply List.all_ok_implies_mapM_ok
+        intro w hw
+        obtain ⟨aw, rfl⟩ := hall_ip w (List.mem_cons_of_mem _ hw)
+        exact ⟨aw, rfl⟩
+      refine ⟨.prim (.bool (rs.any (a₀.inRange ·))), ?_, bool_is_instance_of_anyBool _⟩
+      right; right; right
+      exact hrs ▸ rfl
 
 def IsIpAddrRecognizer : ExtFun → Prop
   | .isIpv4
@@ -915,13 +997,22 @@ theorem type_of_preserves_evaluation_results_call {xfn ty c₂ request entities}
   evaluate (Expr.call xfn xs) request entities = evaluate ty.toExpr request entities
 := by
   intro h₁ h₂
-  simp [typeOfCall] at h₁
+  simp [typeOfCall, typeOfIsInRange] at h₁
   split at h₁ <;>
-  simp [ok, err, do_ok_eq_ok] at h₁
+  (try simp [ok, err, do_ok_eq_ok] at h₁)
   all_goals
-    try replace ⟨_, _, h₁⟩ := h₁
-    try replace ⟨h₁, _⟩ := h₁
-    subst h₁
-    simp [TypedExpr.toExpr, evaluate, List.mapM₁_eq_mapM (evaluate · request entities), List.map₁_eq_map, List.mapM_map, h₂, Function.comp_def]
+    first
+      | (try replace ⟨_, _, h₁⟩ := h₁
+         try replace ⟨h₁, _⟩ := h₁
+         subst h₁
+         simp [TypedExpr.toExpr, evaluate, List.mapM₁_eq_mapM (evaluate · request entities), List.map₁_eq_map, List.mapM_map, h₂, Function.comp_def])
+      -- isInRange: `typeOfIsInRange` leaves a match + inner `if`; split both, the non-ipAddr
+      -- branches are contradictory, the all-ipAddr branch gives `... = ty`
+      | (split at h₁ <;> (try (split at h₁ <;> simp at h₁)) <;>
+         (first
+           | contradiction
+           | (obtain ⟨h₁, _⟩ := h₁
+              subst h₁
+              simp [TypedExpr.toExpr, evaluate, List.mapM₁_eq_mapM (evaluate · request entities), List.map₁_eq_map, List.mapM_map, h₂, Function.comp_def])))
 
 end Cedar.Thm

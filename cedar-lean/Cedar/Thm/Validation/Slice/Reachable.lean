@@ -139,11 +139,11 @@ theorem call_not_euid_via_path {xfn : ExtFun} {xs : List Expr} {entities : Entit
 
   simp only [call, res, Except.bind_ok] at he
   (split at he <;> try split at he) <;>
-  simp only [Except.ok.injEq, reduceCtorEq] at he
+  (try simp only [Except.ok.injEq, reduceCtorEq, Except.bind_err] at he)
 
-  all_goals
-    rw [←he] at ha
-    cases ha
+  all_goals first
+    | (rw [←he] at ha; cases ha)
+    | (rw [do_ok_eq_ok] at he; obtain ⟨rs, _, hv⟩ := he; rw [←hv] at ha; cases ha)
 
 /--
 If an expression checks at level `n` and then evaluates an entity (or a record

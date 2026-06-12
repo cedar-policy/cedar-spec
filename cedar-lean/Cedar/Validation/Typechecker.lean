@@ -302,6 +302,14 @@ public def typeOfConstructor (mk : String → Option α) (xs : List Expr) (ty : 
     | .none   => err (.extensionErr xs)
   | _ => err (.extensionErr xs)
 
+public def typeOfIsInRange (tys : List TypedExpr) (xs : List Expr) : ResultType :=
+  let ok ty (c := ∅) := ok (TypedExpr.call .isInRange tys ty) c
+  match tys.map TypedExpr.typeOf with
+  | (.ext .ipAddr) :: rest@(_ :: _) =>
+    if rest.all (· == .ext .ipAddr) then ok (.bool .anyBool)
+    else err (.extensionErr xs)
+  | _ => err (.extensionErr xs)
+
 public def typeOfCall (xfn : ExtFun) (tys : List TypedExpr) (xs : List Expr) : ResultType :=
   let ok ty (c := ∅) := ok (TypedExpr.call xfn tys ty) c
   match xfn, tys.map TypedExpr.typeOf with
@@ -325,7 +333,7 @@ public def typeOfCall (xfn : ExtFun) (tys : List TypedExpr) (xs : List Expr) : R
   | .isIpv6, [.ext .ipAddr]                             => ok (.bool .anyBool)
   | .isLoopback, [.ext .ipAddr]                         => ok (.bool .anyBool)
   | .isMulticast, [.ext .ipAddr]                        => ok (.bool .anyBool)
-  | .isInRange, [.ext .ipAddr, .ext .ipAddr]            => ok (.bool .anyBool)
+  | .isInRange, _                                       => typeOfIsInRange tys xs
   | .offset, [.ext .datetime, .ext .duration]           => ok (.ext .datetime)
   | .durationSince, [.ext .datetime, .ext .datetime]    => ok (.ext .duration)
   | .toDate, [.ext .datetime]                           => ok (.ext .datetime)

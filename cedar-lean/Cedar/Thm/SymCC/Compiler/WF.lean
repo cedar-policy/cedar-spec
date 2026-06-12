@@ -716,7 +716,19 @@ public theorem compileCall_wf_types {f : ExtFun} {ts : List Term} {εs : SymEnti
   case isMulticast =>
     simp_compileCall₁_wf hwf hok compileCall_ipAddr_isMulticast_ok_implies wf_ipaddr_isMulticast
   case isInRange =>
-    simp_compileCall₂_wf hwf hok compileCall_ipAddr_isInRange_ok_implies wf_ipaddr_isInRange
+    have ⟨t₁, t₂, ts', hts, hty₁, htyrest, ht⟩ := compileCall_ipAddr_isInRange_ok_implies hok
+    subst hts ht
+    have ⟨hwf_enc, hty_enc⟩ := wf_ipaddr_isInRangeV
+      (ts := (t₂ :: ts').map option.get)
+      (wf_option_get (hwf t₁ (by simp)) hty₁)
+      (by intro g hg
+          simp only [List.mem_map] at hg
+          obtain ⟨tᵢ, htᵢ, rfl⟩ := hg
+          exact wf_option_get (hwf tᵢ (List.mem_cons_of_mem _ htᵢ)) (htyrest tᵢ htᵢ))
+    have hfold := wf_foldr_ifSome (ty := .bool) (Term.WellFormed.some_wf hwf_enc)
+      (by simp only [typeOf_term_some, hty_enc])
+      (fun tᵢ htᵢ => hwf tᵢ (List.mem_cons_of_mem _ htᵢ))
+    exact wf_ifSome_option (hwf t₁ (by simp)) hfold.left hfold.right
   case datetime =>
     simp_compileCall₀_wf hok compileCall_datetime_ok_implies typeOf_term_prim_ext_datetime
   case duration =>
@@ -1072,13 +1084,20 @@ private theorem evaluate_call_wf {xfn : ExtFun} {xs : List Expr} {env : Env} {v 
   any_goals (subst hok ; exact value_bool_wf)
   any_goals (subst hok; exact value_int_wf)
   any_goals (subst hok; exact Value.WellFormed.ext_wf)
-  all_goals {
-    simp only [res] at hok
-    split at hok <;> simp only [Except.ok.injEq, reduceCtorEq] at hok
-    simp only [Coe.coe] at hok
-    subst hok
-    exact Value.WellFormed.ext_wf
-  }
+  all_goals first
+    | (simp only [res] at hok
+       split at hok <;> simp only [Except.ok.injEq, reduceCtorEq] at hok
+       simp only [Coe.coe] at hok
+       subst hok
+       exact Value.WellFormed.ext_wf)
+    -- isInRange (variadic): result is always a bool
+    | (split at hok <;>
+       first
+       | (rw [Except.bind_ok, do_ok_eq_ok] at hok
+          obtain ⟨rs, _, hv⟩ := hok
+          subst hv
+          exact value_bool_wf)
+       | simp only [Except.bind_err, reduceCtorEq] at hok)
 
 private theorem evaluate_set_wf {env : Env} {v : Value} {xs : List Expr}
   (hwf : Env.WellFormedFor env (Expr.set xs))

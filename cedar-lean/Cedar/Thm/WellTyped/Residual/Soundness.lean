@@ -647,6 +647,13 @@ InstanceOfType env v (Residual.call xfn args ty).typeOf
     · cases h₂
   case _ =>
     split at h₂
+    · simp only [Except.bind_ok, do_ok_eq_ok] at h₂
+      obtain ⟨rs, _, hv⟩ := h₂
+      subst hv
+      exact bool_is_instance_of_anyBool _
+    · simp at h₂
+  case _ =>
+    split at h₂
     · rename_i v _
       simp only [Coe.coe, Except.ok.injEq] at h₂
       simp only [← h₂]

@@ -845,9 +845,10 @@ theorem typechecked_is_well_typed_after_lifting_call
   generalize hᵢ : List.mapM (fun x => justType (typeOf x c₁ env)) xs = res₁
   cases res₁ <;> simp [hᵢ] at h₃
   simp [List.mapM_ok_iff_forall₂] at hᵢ
-  simp [typeOfCall] at h₃
+  simp [typeOfCall, typeOfIsInRange] at h₃
   split at h₃ <;>
-  simp [err, ok, do_ok_eq_ok] at h₃
+  (try simp [err, ok, do_ok_eq_ok] at h₃) <;>
+  (try (split at h₃ <;> simp at h₃))
   · rcases h₃ with ⟨_, h₃₁, h₃₂⟩
     subst h₃₂
     simp only [TypedExpr.liftBoolTypes]
@@ -1056,149 +1057,64 @@ theorem typechecked_is_well_typed_after_lifting_call
       simp only [List.map_cons, List.map_nil]
       constructor
       simp [type_of_after_lifted_is_lifted, h₂, CedarType.liftBoolTypes]
-  case _ tys _ _ heq =>
-    rcases h₃ with ⟨h₃, _⟩
-    subst h₃
-    simp only [TypedExpr.liftBoolTypes]
-    apply TypedExpr.WellTyped.call
-    · exact typechecked_is_well_typed_after_lifting_call_arg hᵢ hᵢ₁
-    · simp [CedarType.liftBoolTypes, List.map₁_eq_map, BoolType.lift]
-      unfold List.map at heq
-      split at heq <;> simp at heq
-      rcases heq with ⟨h₂, _, h₃, h₄⟩
-      subst h₃
-      simp only [List.map_cons, List.map_nil]
-      constructor <;> simp [type_of_after_lifted_is_lifted]
-      · simp [h₂, CedarType.liftBoolTypes]
-      · simp [h₄, CedarType.liftBoolTypes]
-  case _ tys _ _ heq =>
-    rcases h₃ with ⟨h₃, _⟩
-    subst h₃
-    simp only [TypedExpr.liftBoolTypes]
-    apply TypedExpr.WellTyped.call
-    · exact typechecked_is_well_typed_after_lifting_call_arg hᵢ hᵢ₁
-    · simp only [List.map₁_eq_map, CedarType.liftBoolTypes]
-      unfold List.map at heq
-      split at heq <;> simp at heq
-      rcases heq with ⟨h₂, _, h₃, h₄⟩
-      subst h₃
-      simp only [List.map_cons, List.map_nil]
-      constructor <;> simp [type_of_after_lifted_is_lifted]
-      · simp only [h₂, CedarType.liftBoolTypes]
-      · simp only [h₄, CedarType.liftBoolTypes]
-  case _ tys _ _ heq =>
-    rcases h₃ with ⟨h₃, _⟩
-    subst h₃
-    simp only [TypedExpr.liftBoolTypes]
-    apply TypedExpr.WellTyped.call
-    · exact typechecked_is_well_typed_after_lifting_call_arg hᵢ hᵢ₁
-    · simp only [List.map₁_eq_map, CedarType.liftBoolTypes]
-      unfold List.map at heq
-      split at heq <;> simp at heq
-      rcases heq with ⟨h₂, _, h₃, h₄⟩
-      subst h₃
-      simp only [List.map_cons, List.map_nil]
-      constructor <;> simp [type_of_after_lifted_is_lifted]
-      · simp only [h₂, CedarType.liftBoolTypes]
-      · simp only [h₄, CedarType.liftBoolTypes]
-  case _ tys _ _ heq =>
-    rcases h₃ with ⟨h₃, _⟩
-    subst h₃
-    simp only [TypedExpr.liftBoolTypes]
-    apply TypedExpr.WellTyped.call
-    · exact typechecked_is_well_typed_after_lifting_call_arg hᵢ hᵢ₁
-    · simp only [List.map₁_eq_map, CedarType.liftBoolTypes]
-      unfold List.map at heq
-      split at heq <;> simp at heq
-      rcases heq with ⟨h₂, h₃⟩
-      subst h₃
-      simp only [List.map_cons, List.map_nil]
-      constructor
-      simp [type_of_after_lifted_is_lifted, h₂, CedarType.liftBoolTypes]
-  case _ tys _ _ heq =>
-    rcases h₃ with ⟨h₃, _⟩
-    subst h₃
-    simp only [TypedExpr.liftBoolTypes]
-    apply TypedExpr.WellTyped.call
-    · exact typechecked_is_well_typed_after_lifting_call_arg hᵢ hᵢ₁
-    · simp only [List.map₁_eq_map, CedarType.liftBoolTypes]
-      unfold List.map at heq
-      split at heq <;> simp at heq
-      rcases heq with ⟨h₂, h₃⟩
-      subst h₃
-      simp only [List.map_cons, List.map_nil]
-      constructor
-      simp [type_of_after_lifted_is_lifted, h₂, CedarType.liftBoolTypes]
-  case _ tys _ _ heq =>
-    rcases h₃ with ⟨h₃, _⟩
-    subst h₃
-    simp only [TypedExpr.liftBoolTypes]
-    apply TypedExpr.WellTyped.call
-    · exact typechecked_is_well_typed_after_lifting_call_arg hᵢ hᵢ₁
-    · simp only [List.map₁_eq_map, CedarType.liftBoolTypes]
-      unfold List.map at heq
-      split at heq <;> simp at heq
-      rcases heq with ⟨h₂, h₃⟩
-      subst h₃
-      simp only [List.map_cons, List.map_nil]
-      constructor
-      simp [type_of_after_lifted_is_lifted, h₂, CedarType.liftBoolTypes]
-  case _ tys _ _ heq =>
-    rcases h₃ with ⟨h₃, _⟩
-    subst h₃
-    simp only [TypedExpr.liftBoolTypes]
-    apply TypedExpr.WellTyped.call
-    · exact typechecked_is_well_typed_after_lifting_call_arg hᵢ hᵢ₁
-    · simp only [List.map₁_eq_map, CedarType.liftBoolTypes]
-      unfold List.map at heq
-      split at heq <;> simp at heq
-      rcases heq with ⟨h₂, h₃⟩
-      subst h₃
-      simp only [List.map_cons, List.map_nil]
-      constructor
-      simp [type_of_after_lifted_is_lifted, h₂, CedarType.liftBoolTypes]
-  case _ tys _ _ heq =>
-    rcases h₃ with ⟨h₃, _⟩
-    subst h₃
-    simp only [TypedExpr.liftBoolTypes]
-    apply TypedExpr.WellTyped.call
-    · exact typechecked_is_well_typed_after_lifting_call_arg hᵢ hᵢ₁
-    · simp only [List.map₁_eq_map, CedarType.liftBoolTypes]
-      unfold List.map at heq
-      split at heq <;> simp at heq
-      rcases heq with ⟨h₂, h₃⟩
-      subst h₃
-      simp only [List.map_cons, List.map_nil]
-      constructor
-      simp [type_of_after_lifted_is_lifted, h₂, CedarType.liftBoolTypes]
-  case _ tys _ _ heq =>
-    rcases h₃ with ⟨h₃, _⟩
-    subst h₃
-    simp only [TypedExpr.liftBoolTypes]
-    apply TypedExpr.WellTyped.call
-    · exact typechecked_is_well_typed_after_lifting_call_arg hᵢ hᵢ₁
-    · simp only [List.map₁_eq_map, CedarType.liftBoolTypes]
-      unfold List.map at heq
-      split at heq <;> simp at heq
-      rcases heq with ⟨h₂, h₃⟩
-      subst h₃
-      simp only [List.map_cons, List.map_nil]
-      constructor
-      simp [type_of_after_lifted_is_lifted, h₂, CedarType.liftBoolTypes]
-  case _ tys _ _ heq =>
-    rcases h₃ with ⟨h₃, _⟩
-    subst h₃
-    simp only [TypedExpr.liftBoolTypes]
-    apply TypedExpr.WellTyped.call
-    · exact typechecked_is_well_typed_after_lifting_call_arg hᵢ hᵢ₁
-    · simp only [List.map₁_eq_map, CedarType.liftBoolTypes]
-      unfold List.map at heq
-      split at heq <;> simp at heq
-      rcases heq with ⟨h₂, h₃⟩
-      subst h₃
-      simp only [List.map_cons, List.map_nil]
-      constructor
-      simp [type_of_after_lifted_is_lifted, h₂, CedarType.liftBoolTypes]
+  -- isInRange case (variadic) and remaining cases
+  all_goals first
+    | (rename_i heq
+       rcases h₃ with ⟨h₃, _⟩
+       subst h₃
+       simp only [TypedExpr.liftBoolTypes]
+       apply TypedExpr.WellTyped.call
+       · exact typechecked_is_well_typed_after_lifting_call_arg hᵢ hᵢ₁
+       · simp only [List.map₁_eq_map, CedarType.liftBoolTypes]
+         unfold List.map at heq
+         split at heq <;> simp at heq
+         first
+           | (rcases heq with ⟨h₂, _, h₃, h₄⟩
+              subst h₃
+              simp only [List.map_cons, List.map_nil]
+              constructor <;> simp [type_of_after_lifted_is_lifted]
+              · simp [h₂, CedarType.liftBoolTypes]
+              · simp [h₄, CedarType.liftBoolTypes])
+           | (rcases heq with ⟨h₂, h₃⟩
+              subst h₃
+              simp only [List.map_cons, List.map_nil]
+              constructor
+              simp [type_of_after_lifted_is_lifted, h₂, CedarType.liftBoolTypes]))
+    -- isInRange (variadic): typeOfIsInRange has an inner `if` guarding all-ipAddr
+    | (rename_i tys _ _ _ head tail heq
+       split at h₃
+       case isFalse => simp at h₃
+       case isTrue hcond =>
+         obtain ⟨hhead, htail⟩ := hcond
+         simp only [Except.ok.injEq, Prod.mk.injEq] at h₃
+         obtain ⟨hty, _⟩ := h₃
+         subst hty
+         simp only [TypedExpr.liftBoolTypes]
+         apply TypedExpr.WellTyped.call
+         · exact typechecked_is_well_typed_after_lifting_call_arg hᵢ hᵢ₁
+         · simp only [List.map₁_eq_map, CedarType.liftBoolTypes, BoolType.lift]
+           -- tys.map typeOf = ipAddr :: head :: tail, so tys has ≥ 2 elements
+           match tys, heq with
+           | [], heq => simp at heq
+           | [_], heq => simp at heq
+           | y₁ :: y₂ :: ytail, heq =>
+             simp only [List.map_cons, List.cons.injEq] at heq
+             obtain ⟨he1, he2, he3⟩ := heq
+             simp only [List.map_cons]
+             apply ExtFun.WellTyped.isInRange (x₁ := y₁.liftBoolTypes)
+               (xs := y₂.liftBoolTypes :: ytail.map (·.liftBoolTypes))
+             · rw [type_of_after_lifted_is_lifted, he1]; simp [CedarType.liftBoolTypes]
+             · simp
+             · intro x hx
+               simp only [List.mem_cons, List.mem_map] at hx
+               rcases hx with h | ⟨w, hw, hwx⟩
+               · subst h; rw [type_of_after_lifted_is_lifted, he2, hhead]
+                 simp [CedarType.liftBoolTypes]
+               · subst hwx
+                 rw [type_of_after_lifted_is_lifted]
+                 have hmem : w.typeOf ∈ tail := by
+                   rw [← he3]; exact List.mem_map_of_mem hw
+                 rw [htail _ hmem]; simp [CedarType.liftBoolTypes])
 
 theorem foldM_lub_some {x y: CedarType} {xs : List CedarType} :
   List.foldlM lub? x xs = some y →

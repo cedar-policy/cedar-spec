@@ -319,6 +319,17 @@ private theorem typeOf_ifAllSome {gs : List Term} {t : Term} :
   · intro h ; apply typeOf_ifFalse
 
 /--
+Guarding an option-typed term with a fold of `ifSome`s keeps it option-typed.
+-/
+private theorem optionTyped_foldr_ifSome {gs : List Term} {t : Term} :
+  OptionTyped t → OptionTyped (gs.foldr (fun g acc => Factory.ifSome g acc) t)
+:= by
+  intro ht
+  induction gs with
+  | nil => exact ht
+  | cons g rest ih => exact typeOf_ifSome ih
+
+/--
 Weaker result than `compile_well_typed`, but requiring weaker hypotheses:
 
 If `compile` on any expression (not necessarily well-typed) produces `.ok t`,
@@ -577,11 +588,11 @@ theorem compile_ok_implies_option {x : Expr} {εnv : SymEnv} {t : Term} :
       apply typeOf_ifSome
       apply typeOf_someOf
     case _ =>
-      simp only [compileCall₂, compileCallWithError₂]
+      simp only [compileCallₙ]
       split <;> simp only [Except.ok.injEq, reduceCtorEq, false_implies]
       intro h ; subst t
       apply typeOf_ifSome
-      apply typeOf_ifSome
+      apply optionTyped_foldr_ifSome
       apply typeOf_someOf
     case _ | _ =>
       simp only [compileCall₀]
