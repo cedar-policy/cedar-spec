@@ -78,12 +78,13 @@ public def Var.toString : Var → String
 
 public inductive AstAccessor where
   | field (id : Cst.Ident)
-  -- | Call (args : List Expr)
+  | call (args : List Expr)
   | index (s : String)
 
 public def AstAccessor.toString : AstAccessor → String
   | .field id => CstCommon.Ident.toString id
   | .index s => s
+  | .call _ => "<call>"
 
 public def ExprOrSpecial.toExpr? : ExprOrSpecial → Option Expr
   | .expr e => some e
@@ -127,32 +128,97 @@ public def Cst.Ref.toExprOrSpecial? (r : Cst.Ref) : Option ExprOrSpecial :=
       some (.expr (.lit (.entityUID {ty := ty, eid := unescaped})))
   | .ref _ _ => none
 
-public def Cst.MemAccess.toAstAccessor? (m : Cst.MemAccess) : Option AstAccessor :=
-  match m with
-  | .field i => match i with
-    | id@(.idIdent _) => do
-      let s ← CstCommon.Ident.toUnreservedString? id
-      some (.field (.idIdent s))
-    | _ => none
-  | .index e => do
-    let s ← CstCommon.Expr.toUnescapedStringLiteral? e
-    some (.index s)
+public def oneArg? (args : List Expr) : Option Expr :=
+  match args with
+  | e :: [] => some e
+  | _ => none
 
-public def memberAux :  ExprOrSpecial → List AstAccessor → Option ExprOrSpecial
-  | prim, [] => prim
-  | .expr e, hd :: tl => memberAux (.expr (.getAttr e hd.toString)) tl
-  | prim@(.strLit _), hd :: tl => do
-    let ret ← prim.toExpr?
-    memberAux (.expr (.getAttr ret hd.toString)) tl
-  | prim@(.boolLit _), hd :: tl => do
-    let ret ← prim.toExpr?
-    memberAux (.expr (.getAttr ret hd.toString)) tl
-  | (.var v), (.field id) :: tl =>
-    memberAux (.expr (.getAttr (.var v) (CstCommon.Ident.toString id))) tl
-  | (.var v), (.index id) :: tl =>
-    memberAux (.expr (.getAttr (.var v) id)) tl
-  | (.name _), (.field _) :: _ => none
-  | (.name _), (.index _) :: _ => none
+public def Name.toFunc? (n : Name) (args : List Expr) : Option Expr := do
+  if n.path.isEmpty && CstCommon.String.isFunctionName? n.id then
+    let xfn ← CstCommon.String.toExtFun? n.id
+    some (.call xfn args)
+  else none
+
+-- Remember to check that id is unreserved
+public def Cst.Ident.toMeth? (id : Cst.Ident) (recv : AExpr) (args : List AExpr) : Option AExpr :=
+  match id with
+  | .idIdent s => do
+    let op ← CstCommon.String.toMethodOp? s
+    match op with
+    | .inl bop => let arg ← oneArg? args; some (.binaryApp bop recv arg)
+    | .inr uop => if args.isEmpty then some (.unaryApp uop recv) else none
+  | _ => none
+
+public def memberAuxA : ExprOrSpecial → List AstAccessor → Option (ExprOrSpecial ⊕ (Expr × List AstAccessor))
+  -- case 1: no accessors, return head immediately
+  | prim, [] => some (.inl prim)
+
+  -- case 2: access on arbitrary expression, defer to phase B
+  | prim@(.expr _), asts@(_ :: _)
+  | prim@(.strLit _), asts@(_ :: _)
+  | prim@(.boolLit _), asts@(_ :: _) => do
+    let e ← prim.toExpr?
+    some (.inr (e, asts))
+
+  -- case 3: function call
+  | .name n, .call args :: rest => do
+    let e ← n.toFunc? args
+    some (.inr (e, rest))
+
+  -- case 4: variable function call, error
+  | .var _, .call _ :: _ => none
+
+  -- case 5: method call on name, error
+  | .name _, .field _ :: .call _ :: _ => none
+
+  -- case 6: method call on a variable
+  | prim@(.var _), .field id :: .call args :: rest => do
+    let recv ← prim.toExpr?
+    let e ← id.toMeth? recv args
+    some (.inr (e, rest))
+
+  -- case 7: attribute access on a variable
+  | .var v, .field id :: rest =>
+    let e := .getAttr (.var v) (CstCommon.Ident.toString id)
+    some (.inr (e, rest))
+
+  -- case 8: attribute access on a name, error
+  | .name _, .field _ :: _ => none
+
+  -- case 9: index access on a name, error
+  | .name _, .index _ :: _ => none
+
+  -- case 10: index access on a variable
+  | .var v, .index id :: rest =>
+    let e := .getAttr (.var v) id
+    some (.inr (e, rest))
+
+public def memberAuxB (head : Expr) : List AstAccessor → Option Expr
+  | .nil => some head
+
+  -- function call on arbitrary expressions, error
+  | .call _ :: _ => none
+
+  -- method call on arbitrary expressions
+  | .field id :: .call args :: rest => do
+    let head' ← id.toMeth? head args
+    memberAuxB head' rest
+
+  -- field of arbitrary expressions
+  | .field id :: rest => do
+    memberAuxB (.getAttr head (CstCommon.Ident.toString id)) rest
+
+  -- index into arbitrary expressions
+  | .index id :: rest => do
+    memberAuxB (.getAttr head id) rest
+
+public def memberAux (prim : ExprOrSpecial) (accs : List AstAccessor) : Option ExprOrSpecial := do
+  let reta ← memberAuxA prim accs
+  match reta with
+  | .inl eos => some eos
+  | .inr (e, rest) =>
+    let ret ← memberAuxB e rest
+    some (.expr ret)
 
 public def Expr.bangN (e : Expr) (n : Nat) : Expr :=
   if n == 0 then e else (Expr.unaryApp .not e).bangN (n-1)
@@ -181,6 +247,7 @@ public def constructAttrsAux? : List Cst.MemAccess → Option (List String)
     let tail ← constructAttrsAux? rest
     head :: tail
   | .index _ :: _ => none
+  | .call _ :: _ => none
 
 -- `first` should already be verified to be unreserved
 -- Verify all elements in `rest` are unreserved
@@ -221,6 +288,24 @@ decreasing_by
     | omega
     | (cases r; simp only [Cst.RecInit.mk.sizeOf_spec]; omega)
 
+public def Cst.MemAccess.toAstAccessor? (m : Cst.MemAccess) : Option AstAccessor :=
+  match m with
+  | .field i => match i with
+    | id@(.idIdent _) => do
+      let s ← CstCommon.Ident.toUnreservedString? id
+      some (.field (.idIdent s))
+    | _ => none
+  | .index e => do
+    let s ← CstCommon.Expr.toUnescapedStringLiteral? e
+    some (.index s)
+  | .call es => do
+    let xs ← Cst.Expr.toAExprs? es
+    some (.call xs)
+termination_by (sizeOf m, 0)
+decreasing_by
+  all_goals simp_wf
+  all_goals omega
+
 public def Cst.Primary.toExprOrSpecial? (e : Cst.Primary) : Option ExprOrSpecial :=
   match e with
   | .literal l => l.toExprOrSpecial?
@@ -254,7 +339,15 @@ public def Cst.Member.toExprOrSpecial? (e : Cst.Member) : Option ExprOrSpecial :
   memberAux prim accessors
 termination_by (sizeOf e, 0)
 decreasing_by
-  all_goals (cases e; simp only [Cst.Member.mk.sizeOf_spec]; omega)
+  all_goals simp_wf
+  all_goals
+    (obtain ⟨item, access⟩ := e
+     simp only [Cst.Member.mk.sizeOf_spec]
+     first
+       | omega
+       | (have h := List.sizeOf_lt_of_mem (by assumption)
+          dsimp only at h
+          omega))
 
 public def Cst.Member.toAExpr? (e : Cst.Member) : Option AExpr := do
   let ret ← e.toExprOrSpecial?
@@ -505,6 +598,17 @@ public def Cst.Expr.toAExpr? (e : Cst.Expr) : Option AExpr := do
   let ret ← e.toExprOrSpecial?
   ret.toExpr?
 termination_by (sizeOf e, 1)
+
+public def Cst.Expr.toAExprs? : List Cst.Expr → Option (List Expr)
+  | [] => some []
+  | e :: es => do
+    let a ← e.toAExpr?
+    let as ← Cst.Expr.toAExprs? es
+    some (a :: as)
+termination_by es => (sizeOf es, 0)
+decreasing_by
+  all_goals simp_wf
+  all_goals omega
 
 end
 

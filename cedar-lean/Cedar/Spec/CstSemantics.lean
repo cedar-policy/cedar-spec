@@ -19,33 +19,6 @@ open Cedar.Data
 
 public abbrev Ident.toString : Ident → String := CstCommon.Ident.toString
 
--- public def Unreserved? (s : String) : Bool :=
---   match s with
---   | "principal" => false
---   | "action" => false
---   | "resource" => false
---   | "context" => false
---   | "true" => false
---   | "false" => false
---   | "permit" => false
---   | "forbid" => false
---   | "when" => false
---   | "unless" => false
---   | "in" => false
---   | "has" => false
---   | "like" => false
---   | "is" => false
---   | "if" => false
---   | "then" => false
---   | "else" => false
---   | "__cedar" => false
---   | _ => true
-
--- private def Ident.toUnreservedString? : Ident → Option String
---   | .idIdent s => if (Unreserved? s) then some s else none
---   | _ => none
-
-
 public def AttrChain? (ms : List MemAccess) : Option (List Attr) :=
   match ms with
   | [] => some []
@@ -56,6 +29,7 @@ public def AttrChain? (ms : List MemAccess) : Option (List Attr) :=
     | .index e => match (CstCommon.Expr.toUnescapedStringLiteral? e) with
       | none => none
       | some s => (AttrChain? ms).map (s :: ·)
+    | .call _ => none
 
 private def Member.toAttrs? (e : Member) : Option (List Attr) :=
   match AttrChain? e.access with
@@ -287,15 +261,69 @@ public def Primary.evaluate (e : Primary) (req : Request) (es : Entities) : Resu
     .ok (.record (Map.make avs))
 termination_by sizeOf e
 
--- Call `getAttr` recursively, a design choice that can be changed later
-public def Member.evaluate (e : Member) (req : Request) (es : Entities) : Result Value := do
-  let head ← e.item.evaluate req es
-  match AttrChain? e.access with
-  | none => .error .typeError
-  | some attrs => attrs.foldlM (fun v a => getAttr v a es) head
+public def Member.evaluate (e : Member) (req : Request) (es : Entities) : Result Value :=
+  match e with
+  -- Function calls
+  | { item := .name { path := [], name := .idIdent s }, access := .call args :: rest } =>
+    match CstCommon.String.toExtFun? s with
+    | none => .error .typeError
+    | some xfn => do
+      let args ← args.mapM (fun a => a.evaluate req es)
+      let v ← call xfn args
+      Member.evalAccessors v rest req es
+  -- Accessors
+  | { item := item, access := access } => do
+    let head ← item.evaluate req es
+    Member.evalAccessors head access req es
 termination_by sizeOf e
 decreasing_by
-  all_goals cases e; simp_wf; omega
+  all_goals simp_wf
+  all_goals first
+    | omega
+    | (have := List.sizeOf_lt_of_mem (by assumption); omega)
+
+public def Member.evalAccessors (head : Value) (accs : List MemAccess)
+    (req : Request) (es : Entities) : Result Value :=
+  match accs with
+  | [] => .ok head
+  -- Method call `recv.m(args)`: a field naming the method, then its arguments.
+  | .field i :: .call args :: rest =>
+    match CstCommon.Ident.toUnreservedString? i with
+    | none => .error .typeError
+    | some m => match CstCommon.String.toMethodOp? m with
+      | some (.inl bop) => match args with
+        | [arg] => do
+          let argVal ← arg.evaluate req es
+          let v ← apply₂ bop head argVal es
+          Member.evalAccessors v rest req es
+        | _ => .error .typeError
+      | some (.inr uop) =>
+        if args.isEmpty then do
+          let v ← apply₁ uop head
+          Member.evalAccessors v rest req es
+        else .error .typeError
+      | none => .error .typeError
+  -- Attribute access `recv.attr`.
+  | .field i :: rest =>
+    match CstCommon.Ident.toUnreservedString? i with
+    | none => .error .typeError
+    | some attr => do
+      let v ← getAttr head attr es
+      Member.evalAccessors v rest req es
+  -- Indexed attribute access `recv["attr"]`.
+  | .index ex :: rest =>
+    match CstCommon.Expr.toUnescapedStringLiteral? ex with
+    | none => .error .typeError
+    | some attr => do
+      let v ← getAttr head attr es
+      Member.evalAccessors v rest req es
+  -- A call with no preceding field accessor is a call on a non-name value,
+  -- which the translator rejects.
+  | .call _ :: _ => .error .typeError
+termination_by sizeOf accs
+decreasing_by
+  all_goals simp_wf
+  all_goals omega
 
 -- NegOp: nBang i, nOverBang, nDash i, nOverDash
 -- The `.nDash` numeric-literal case is handled specially so that the value
