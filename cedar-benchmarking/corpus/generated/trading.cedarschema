@@ -1,0 +1,40 @@
+entity Exchange;
+entity Market in [Exchange] = {
+    "name": __cedar::String,
+    "open_time": datetime,
+    "close_time": datetime,
+    "min_order": decimal,
+    "max_order": decimal
+};
+entity Instrument in [Market] = {
+    "symbol": __cedar::String,
+    "price": decimal,
+    "tick_size": decimal,
+    "halted": __cedar::Bool
+};
+entity Trader = {
+    "firm": __cedar::String,
+    "level": __cedar::Long,
+    "max_position": decimal,
+    "registered": datetime,
+    "network": ipaddr
+};
+action "place_order" appliesTo {
+    principal: [Trader],
+    resource: [Instrument],
+    context: {
+        "order": {
+            "quantity": decimal,
+            "price": decimal,
+            "side": __cedar::String,
+            "type": __cedar::String
+        },
+        "source_ip": ipaddr,
+        "timestamp": datetime
+    }
+};
+action "cancel_order" appliesTo {
+    principal: [Trader],
+    resource: [Instrument],
+    context: { "source_ip": ipaddr, "order_id": __cedar::String }
+};

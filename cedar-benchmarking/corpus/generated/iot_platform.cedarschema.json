@@ -1,0 +1,163 @@
+{
+  "": {
+    "entityTypes": {
+      "Controller": {
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "level": {
+              "type": "Long"
+            },
+            "zones": {
+              "type": "Set",
+              "element": {
+                "type": "String"
+              }
+            }
+          }
+        }
+      },
+      "Device": {
+        "memberOfTypes": [
+          "DeviceGroup"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "firmware_version": {
+              "type": "String"
+            },
+            "ip": {
+              "type": "ipaddr"
+            },
+            "last_seen": {
+              "type": "datetime"
+            },
+            "telemetry": {
+              "type": "Record",
+              "attributes": {
+                "battery": {
+                  "type": "decimal"
+                },
+                "humidity": {
+                  "type": "decimal"
+                },
+                "signal_strength": {
+                  "type": "Long"
+                },
+                "temperature": {
+                  "type": "decimal"
+                }
+              }
+            },
+            "type": {
+              "type": "String"
+            }
+          }
+        }
+      },
+      "DeviceGroup": {
+        "memberOfTypes": [
+          "IoTPlatform"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "location": {
+              "type": "Record",
+              "attributes": {
+                "building": {
+                  "type": "String"
+                },
+                "floor": {
+                  "type": "Long"
+                },
+                "network": {
+                  "type": "ipaddr"
+                },
+                "zone": {
+                  "type": "String"
+                }
+              }
+            },
+            "name": {
+              "type": "String"
+            }
+          }
+        }
+      },
+      "IoTPlatform": {}
+    },
+    "actions": {
+      "read_telemetry": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Device"
+          ],
+          "principalTypes": [
+            "Controller"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "source_ip": {
+                "type": "ipaddr"
+              },
+              "timestamp": {
+                "type": "datetime"
+              }
+            }
+          }
+        }
+      },
+      "send_command": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Device"
+          ],
+          "principalTypes": [
+            "Controller"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "command": {
+                "type": "String"
+              },
+              "source_ip": {
+                "type": "ipaddr"
+              },
+              "timeout": {
+                "type": "duration"
+              }
+            }
+          }
+        }
+      },
+      "update_firmware": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Device"
+          ],
+          "principalTypes": [
+            "Controller"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "scheduled": {
+                "type": "datetime"
+              },
+              "source_ip": {
+                "type": "ipaddr"
+              },
+              "version": {
+                "type": "String"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

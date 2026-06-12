@@ -1,0 +1,69 @@
+entity Platform;
+entity Service in [Platform] = {
+    "config": {
+        "deployment": {
+            "strategy": __cedar::String,
+            "replicas": __cedar::Long,
+            "resources": {
+                "limits": {
+                    "cpu": decimal,
+                    "memory_gb": decimal,
+                    "gpu": __cedar::Long
+                },
+                "requests": {
+                    "cpu": decimal,
+                    "memory_gb": decimal
+                }
+            },
+            "network": {
+                "ingress": {
+                    "cidr": ipaddr,
+                    "ports": Set<__cedar::Long>,
+                    "tls": __cedar::Bool
+                },
+                "egress": {
+                    "cidr": ipaddr,
+                    "allow_internet": __cedar::Bool
+                }
+            }
+        },
+        "monitoring": {
+            "enabled": __cedar::Bool,
+            "retention": duration,
+            "alert_threshold": decimal
+        },
+        "metadata": {
+            "created": datetime,
+            "modified": datetime,
+            "version": __cedar::String,
+            "labels": Set<__cedar::String>
+        }
+    }
+};
+entity Operator = {
+    "clearance": __cedar::Long,
+    "team": __cedar::String
+};
+action "scale" appliesTo {
+    principal: [Operator],
+    resource: [Service],
+    context: {
+        "request": {
+            "new_replicas": __cedar::Long,
+            "source_ip": ipaddr,
+            "timestamp": datetime,
+            "justification": __cedar::String
+        }
+    }
+};
+action "reconfigure" appliesTo {
+    principal: [Operator],
+    resource: [Service],
+    context: {
+        "change": {
+            "field": __cedar::String,
+            "source_ip": ipaddr,
+            "timestamp": datetime
+        }
+    }
+};

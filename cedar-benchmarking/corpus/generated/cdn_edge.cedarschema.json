@@ -1,0 +1,122 @@
+{
+  "": {
+    "entityTypes": {
+      "CDN": {},
+      "CacheNode": {
+        "memberOfTypes": [
+          "CDN"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "capacity_gb": {
+              "type": "decimal"
+            },
+            "ip": {
+              "type": "ipaddr"
+            },
+            "region": {
+              "type": "String"
+            },
+            "ttl": {
+              "type": "duration"
+            }
+          }
+        }
+      },
+      "EdgeClient": {
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "bandwidth_limit": {
+              "type": "decimal"
+            },
+            "geo": {
+              "type": "String"
+            },
+            "ip": {
+              "type": "ipaddr"
+            }
+          }
+        }
+      },
+      "Origin": {
+        "memberOfTypes": [
+          "CDN"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "health_check": {
+              "type": "Record",
+              "attributes": {
+                "interval": {
+                  "type": "duration"
+                },
+                "last_check": {
+                  "type": "datetime"
+                },
+                "timeout": {
+                  "type": "duration"
+                }
+              }
+            },
+            "hostname": {
+              "type": "String"
+            },
+            "ip": {
+              "type": "ipaddr"
+            }
+          }
+        }
+      }
+    },
+    "actions": {
+      "fetch": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Origin"
+          ],
+          "principalTypes": [
+            "EdgeClient"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "request_size": {
+                "type": "decimal"
+              },
+              "source_ip": {
+                "type": "ipaddr"
+              },
+              "timestamp": {
+                "type": "datetime"
+              }
+            }
+          }
+        }
+      },
+      "purge": {
+        "appliesTo": {
+          "resourceTypes": [
+            "CacheNode"
+          ],
+          "principalTypes": [
+            "EdgeClient"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "pattern": {
+                "type": "String"
+              },
+              "source_ip": {
+                "type": "ipaddr"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

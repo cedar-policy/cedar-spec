@@ -1,0 +1,1502 @@
+[
+  {
+    "uid": {
+      "__entity": {
+        "type": "Bank",
+        "id": "bank_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Bank",
+        "id": "bank_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Bank",
+        "id": "bank_2"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Bank",
+        "id": "bank_3"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Bank",
+        "id": "bank_4"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Bank",
+        "id": "bank_5"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Bank",
+        "id": "bank_6"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Bank",
+        "id": "bank_7"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Bank",
+        "id": "bank_8"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Bank",
+        "id": "bank_9"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Bank",
+        "id": "bank_10"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Bank",
+        "id": "bank_11"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Bank",
+        "id": "bank_12"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Bank",
+        "id": "bank_13"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Bank",
+        "id": "bank_14"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Branch",
+        "id": "branch_0"
+      }
+    },
+    "attrs": {
+      "name": "val_secondary_328",
+      "region": "val_theta_338",
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "72.25.114.141/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Bank",
+          "id": "bank_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Branch",
+        "id": "branch_1"
+      }
+    },
+    "attrs": {
+      "name": "val_main_412",
+      "region": "val_theta_80",
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "118.227.229.23/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Bank",
+          "id": "bank_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Branch",
+        "id": "branch_2"
+      }
+    },
+    "attrs": {
+      "name": "val_secondary_457",
+      "region": "val_dev_121",
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "128.9.52.104/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Bank",
+          "id": "bank_13"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Branch",
+        "id": "branch_3"
+      }
+    },
+    "attrs": {
+      "name": "val_beta_570",
+      "region": "val_alpha_845",
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "24.155.105.168/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Bank",
+          "id": "bank_6"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Branch",
+        "id": "branch_4"
+      }
+    },
+    "attrs": {
+      "name": "val_primary_973",
+      "region": "val_dev_372",
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "212.27.114.217/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Bank",
+          "id": "bank_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Branch",
+        "id": "branch_5"
+      }
+    },
+    "attrs": {
+      "name": "val_dev_573",
+      "region": "val_secondary_733",
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "169.186.231.30/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Bank",
+          "id": "bank_7"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Branch",
+        "id": "branch_6"
+      }
+    },
+    "attrs": {
+      "name": "val_theta_2",
+      "region": "val_dev_363",
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "213.149.191.180/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Bank",
+          "id": "bank_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Branch",
+        "id": "branch_7"
+      }
+    },
+    "attrs": {
+      "name": "val_beta_918",
+      "region": "val_zeta_504",
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "36.209.54.66/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Bank",
+          "id": "bank_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Branch",
+        "id": "branch_8"
+      }
+    },
+    "attrs": {
+      "name": "val_eta_192",
+      "region": "val_delta_952",
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "219.201.110.118/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Bank",
+          "id": "bank_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Branch",
+        "id": "branch_9"
+      }
+    },
+    "attrs": {
+      "name": "val_eta_733",
+      "region": "val_dev_110",
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "194.212.23.238/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Bank",
+          "id": "bank_13"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Branch",
+        "id": "branch_10"
+      }
+    },
+    "attrs": {
+      "name": "val_delta_790",
+      "region": "val_primary_468",
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "169.68.255.2/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Bank",
+          "id": "bank_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Branch",
+        "id": "branch_11"
+      }
+    },
+    "attrs": {
+      "name": "val_beta_566",
+      "region": "val_backup_858",
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "150.247.90.178/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Bank",
+          "id": "bank_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Branch",
+        "id": "branch_12"
+      }
+    },
+    "attrs": {
+      "name": "val_zeta_748",
+      "region": "val_epsilon_106",
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "100.164.196.108/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Bank",
+          "id": "bank_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Branch",
+        "id": "branch_13"
+      }
+    },
+    "attrs": {
+      "name": "val_theta_280",
+      "region": "val_main_986",
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "88.150.231.207/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Bank",
+          "id": "bank_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Branch",
+        "id": "branch_14"
+      }
+    },
+    "attrs": {
+      "name": "val_epsilon_422",
+      "region": "val_staging_863",
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "180.160.111.52/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Bank",
+          "id": "bank_2"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Account",
+        "id": "account_0"
+      }
+    },
+    "attrs": {
+      "type": "val_staging_703",
+      "balance": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "5657.86"
+        }
+      },
+      "daily_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "2173.90"
+        }
+      },
+      "owner": "val_zeta_515",
+      "opened": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-12-04T11:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_3"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Account",
+        "id": "account_1"
+      }
+    },
+    "attrs": {
+      "type": "val_secondary_596",
+      "balance": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "9349.85"
+        }
+      },
+      "daily_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "6839.86"
+        }
+      },
+      "owner": "val_staging_898",
+      "opened": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-01-17T03:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Account",
+        "id": "account_2"
+      }
+    },
+    "attrs": {
+      "type": "val_main_148",
+      "balance": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "869.85"
+        }
+      },
+      "daily_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "927.25"
+        }
+      },
+      "owner": "val_prod_768",
+      "opened": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-05-22T08:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Account",
+        "id": "account_3"
+      }
+    },
+    "attrs": {
+      "type": "val_beta_707",
+      "balance": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "4835.26"
+        }
+      },
+      "daily_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "8866.04"
+        }
+      },
+      "owner": "val_test_833",
+      "opened": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-02-20T21:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_2"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Account",
+        "id": "account_4"
+      }
+    },
+    "attrs": {
+      "type": "val_theta_760",
+      "balance": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "9195.49"
+        }
+      },
+      "daily_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "3892.65"
+        }
+      },
+      "owner": "val_staging_709",
+      "opened": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-07-13T13:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_11"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Account",
+        "id": "account_5"
+      }
+    },
+    "attrs": {
+      "type": "val_dev_989",
+      "balance": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "9046.06"
+        }
+      },
+      "daily_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "212.95"
+        }
+      },
+      "owner": "val_prod_207",
+      "opened": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-04-21T22:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_12"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Account",
+        "id": "account_6"
+      }
+    },
+    "attrs": {
+      "type": "val_test_773",
+      "balance": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "9640.69"
+        }
+      },
+      "daily_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "9885.25"
+        }
+      },
+      "owner": "val_eta_301",
+      "opened": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-03-22T02:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_11"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Account",
+        "id": "account_7"
+      }
+    },
+    "attrs": {
+      "type": "val_zeta_752",
+      "balance": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "8418.15"
+        }
+      },
+      "daily_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "6180.05"
+        }
+      },
+      "owner": "val_backup_285",
+      "opened": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-03-06T18:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_2"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Account",
+        "id": "account_8"
+      }
+    },
+    "attrs": {
+      "type": "val_prod_5",
+      "balance": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "5415.59"
+        }
+      },
+      "daily_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "2536.05"
+        }
+      },
+      "owner": "val_epsilon_950",
+      "opened": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-10-02T20:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_13"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Account",
+        "id": "account_9"
+      }
+    },
+    "attrs": {
+      "type": "val_staging_502",
+      "balance": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "9382.70"
+        }
+      },
+      "daily_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "5866.09"
+        }
+      },
+      "owner": "val_dev_538",
+      "opened": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-03-17T02:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Account",
+        "id": "account_10"
+      }
+    },
+    "attrs": {
+      "type": "val_zeta_425",
+      "balance": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "8897.68"
+        }
+      },
+      "daily_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "6609.11"
+        }
+      },
+      "owner": "val_test_226",
+      "opened": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-11-11T10:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_12"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Account",
+        "id": "account_11"
+      }
+    },
+    "attrs": {
+      "type": "val_staging_223",
+      "balance": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "8691.60"
+        }
+      },
+      "daily_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "9196.96"
+        }
+      },
+      "owner": "val_alpha_117",
+      "opened": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-08-08T20:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Account",
+        "id": "account_12"
+      }
+    },
+    "attrs": {
+      "type": "val_theta_981",
+      "balance": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "653.87"
+        }
+      },
+      "daily_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "5258.48"
+        }
+      },
+      "owner": "val_delta_395",
+      "opened": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-09-24T09:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Account",
+        "id": "account_13"
+      }
+    },
+    "attrs": {
+      "type": "val_test_526",
+      "balance": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "8335.57"
+        }
+      },
+      "daily_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "7975.05"
+        }
+      },
+      "owner": "val_staging_919",
+      "opened": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-06-17T02:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Account",
+        "id": "account_14"
+      }
+    },
+    "attrs": {
+      "type": "val_zeta_994",
+      "balance": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "8814.68"
+        }
+      },
+      "daily_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "120.80"
+        }
+      },
+      "owner": "val_gamma_215",
+      "opened": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-11-14T03:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Employee",
+        "id": "employee_0"
+      }
+    },
+    "attrs": {
+      "role": "val_backup_662",
+      "level": 9,
+      "approval_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "2519.03"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_3"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Employee",
+        "id": "employee_1"
+      }
+    },
+    "attrs": {
+      "role": "val_dev_38",
+      "level": 11,
+      "approval_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "1200.06"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_7"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Employee",
+        "id": "employee_2"
+      }
+    },
+    "attrs": {
+      "role": "val_prod_571",
+      "level": 9,
+      "approval_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "9420.29"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_2"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Employee",
+        "id": "employee_3"
+      }
+    },
+    "attrs": {
+      "role": "val_prod_417",
+      "level": 49,
+      "approval_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "7391.80"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Employee",
+        "id": "employee_4"
+      }
+    },
+    "attrs": {
+      "role": "val_backup_323",
+      "level": 2,
+      "approval_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "6381.86"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_6"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Employee",
+        "id": "employee_5"
+      }
+    },
+    "attrs": {
+      "role": "val_alpha_656",
+      "level": 92,
+      "approval_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "1036.96"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Employee",
+        "id": "employee_6"
+      }
+    },
+    "attrs": {
+      "role": "val_beta_717",
+      "level": 9,
+      "approval_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "5860.64"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_11"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Employee",
+        "id": "employee_7"
+      }
+    },
+    "attrs": {
+      "role": "val_staging_805",
+      "level": 87,
+      "approval_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "4937.77"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Employee",
+        "id": "employee_8"
+      }
+    },
+    "attrs": {
+      "role": "val_staging_783",
+      "level": 56,
+      "approval_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "6249.50"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Employee",
+        "id": "employee_9"
+      }
+    },
+    "attrs": {
+      "role": "val_alpha_485",
+      "level": 20,
+      "approval_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "8740.28"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_13"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Employee",
+        "id": "employee_10"
+      }
+    },
+    "attrs": {
+      "role": "val_main_815",
+      "level": 69,
+      "approval_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "4832.81"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_2"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Employee",
+        "id": "employee_11"
+      }
+    },
+    "attrs": {
+      "role": "val_staging_693",
+      "level": 93,
+      "approval_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "6113.01"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_2"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Employee",
+        "id": "employee_12"
+      }
+    },
+    "attrs": {
+      "role": "val_epsilon_126",
+      "level": 5,
+      "approval_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "82.73"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Employee",
+        "id": "employee_13"
+      }
+    },
+    "attrs": {
+      "role": "val_main_550",
+      "level": 70,
+      "approval_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "1394.39"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Employee",
+        "id": "employee_14"
+      }
+    },
+    "attrs": {
+      "role": "val_test_216",
+      "level": 52,
+      "approval_limit": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "8397.18"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Branch",
+          "id": "branch_3"
+        }
+      }
+    ]
+  }
+]

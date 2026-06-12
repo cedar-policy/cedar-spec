@@ -1,0 +1,602 @@
+[
+  {
+    "uid": {
+      "__entity": {
+        "type": "System",
+        "id": "system_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "System",
+        "id": "system_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "System",
+        "id": "system_2"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "System",
+        "id": "system_3"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "System",
+        "id": "system_4"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "System",
+        "id": "system_5"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "System",
+        "id": "system_6"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "System",
+        "id": "system_7"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "System",
+        "id": "system_8"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "System",
+        "id": "system_9"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "System",
+        "id": "system_10"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "System",
+        "id": "system_11"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "System",
+        "id": "system_12"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "System",
+        "id": "system_13"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "System",
+        "id": "system_14"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Resource",
+        "id": "resource_0"
+      }
+    },
+    "attrs": {
+      "name": "val_alpha_993",
+      "level": 94
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "System",
+          "id": "system_2"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Resource",
+        "id": "resource_1"
+      }
+    },
+    "attrs": {
+      "name": "val_dev_662",
+      "level": 90
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "System",
+          "id": "system_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Resource",
+        "id": "resource_2"
+      }
+    },
+    "attrs": {
+      "name": "val_secondary_917",
+      "level": 37
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "System",
+          "id": "system_4"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Resource",
+        "id": "resource_3"
+      }
+    },
+    "attrs": {
+      "name": "val_epsilon_818",
+      "level": 72
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "System",
+          "id": "system_12"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Resource",
+        "id": "resource_4"
+      }
+    },
+    "attrs": {
+      "name": "val_primary_346",
+      "level": 88
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "System",
+          "id": "system_11"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Resource",
+        "id": "resource_5"
+      }
+    },
+    "attrs": {
+      "name": "val_secondary_921",
+      "level": 5
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "System",
+          "id": "system_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Resource",
+        "id": "resource_6"
+      }
+    },
+    "attrs": {
+      "name": "val_delta_315",
+      "level": 3
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "System",
+          "id": "system_2"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Resource",
+        "id": "resource_7"
+      }
+    },
+    "attrs": {
+      "name": "val_theta_456",
+      "level": 45
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "System",
+          "id": "system_6"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Resource",
+        "id": "resource_8"
+      }
+    },
+    "attrs": {
+      "name": "val_dev_56",
+      "level": 77
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "System",
+          "id": "system_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Resource",
+        "id": "resource_9"
+      }
+    },
+    "attrs": {
+      "name": "val_eta_597",
+      "level": 67
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "System",
+          "id": "system_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Resource",
+        "id": "resource_10"
+      }
+    },
+    "attrs": {
+      "name": "val_prod_200",
+      "level": 2
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "System",
+          "id": "system_3"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Resource",
+        "id": "resource_11"
+      }
+    },
+    "attrs": {
+      "name": "val_primary_693",
+      "level": 85
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "System",
+          "id": "system_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Resource",
+        "id": "resource_12"
+      }
+    },
+    "attrs": {
+      "name": "val_main_199",
+      "level": 62
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "System",
+          "id": "system_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Resource",
+        "id": "resource_13"
+      }
+    },
+    "attrs": {
+      "name": "val_beta_930",
+      "level": 85
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "System",
+          "id": "system_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Resource",
+        "id": "resource_14"
+      }
+    },
+    "attrs": {
+      "name": "val_main_151",
+      "level": 91
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "System",
+          "id": "system_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_2"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_3"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_4"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_5"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_6"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_7"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_8"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_9"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_10"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_11"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_12"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_13"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "User",
+        "id": "user_14"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  }
+]

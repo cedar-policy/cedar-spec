@@ -1,0 +1,1358 @@
+[
+  {
+    "uid": {
+      "__entity": {
+        "type": "Firewall",
+        "id": "firewall_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Firewall",
+        "id": "firewall_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Firewall",
+        "id": "firewall_2"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Firewall",
+        "id": "firewall_3"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Firewall",
+        "id": "firewall_4"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Firewall",
+        "id": "firewall_5"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Firewall",
+        "id": "firewall_6"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Firewall",
+        "id": "firewall_7"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Firewall",
+        "id": "firewall_8"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Firewall",
+        "id": "firewall_9"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Firewall",
+        "id": "firewall_10"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Firewall",
+        "id": "firewall_11"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Firewall",
+        "id": "firewall_12"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Firewall",
+        "id": "firewall_13"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Firewall",
+        "id": "firewall_14"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Zone",
+        "id": "zone_0"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "183.59.2.80/32"
+        }
+      },
+      "name": "val_beta_703",
+      "trust_level": 76
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Firewall",
+          "id": "firewall_6"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Zone",
+        "id": "zone_1"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "23.170.239.228/32"
+        }
+      },
+      "name": "val_beta_105",
+      "trust_level": 66
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Firewall",
+          "id": "firewall_13"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Zone",
+        "id": "zone_2"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "169.159.11.148/32"
+        }
+      },
+      "name": "val_staging_654",
+      "trust_level": 26
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Firewall",
+          "id": "firewall_12"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Zone",
+        "id": "zone_3"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "52.98.146.71/32"
+        }
+      },
+      "name": "val_dev_791",
+      "trust_level": 56
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Firewall",
+          "id": "firewall_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Zone",
+        "id": "zone_4"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "31.139.76.41/32"
+        }
+      },
+      "name": "val_prod_117",
+      "trust_level": 1
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Firewall",
+          "id": "firewall_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Zone",
+        "id": "zone_5"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "144.52.105.139/32"
+        }
+      },
+      "name": "val_test_562",
+      "trust_level": 40
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Firewall",
+          "id": "firewall_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Zone",
+        "id": "zone_6"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "37.145.125.44/32"
+        }
+      },
+      "name": "val_gamma_318",
+      "trust_level": 78
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Firewall",
+          "id": "firewall_4"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Zone",
+        "id": "zone_7"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "87.227.25.34/32"
+        }
+      },
+      "name": "val_alpha_482",
+      "trust_level": 86
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Firewall",
+          "id": "firewall_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Zone",
+        "id": "zone_8"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "28.196.27.23/32"
+        }
+      },
+      "name": "val_backup_401",
+      "trust_level": 22
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Firewall",
+          "id": "firewall_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Zone",
+        "id": "zone_9"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "153.228.182.80/32"
+        }
+      },
+      "name": "val_dev_837",
+      "trust_level": 25
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Firewall",
+          "id": "firewall_11"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Zone",
+        "id": "zone_10"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "195.40.238.146/32"
+        }
+      },
+      "name": "val_epsilon_95",
+      "trust_level": 89
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Firewall",
+          "id": "firewall_11"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Zone",
+        "id": "zone_11"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "25.233.158.176/32"
+        }
+      },
+      "name": "val_primary_481",
+      "trust_level": 29
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Firewall",
+          "id": "firewall_7"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Zone",
+        "id": "zone_12"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "37.132.186.101/32"
+        }
+      },
+      "name": "val_zeta_716",
+      "trust_level": 85
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Firewall",
+          "id": "firewall_3"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Zone",
+        "id": "zone_13"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "202.166.232.125/32"
+        }
+      },
+      "name": "val_alpha_66",
+      "trust_level": 60
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Firewall",
+          "id": "firewall_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Zone",
+        "id": "zone_14"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "90.245.236.217/32"
+        }
+      },
+      "name": "val_zeta_289",
+      "trust_level": 98
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Firewall",
+          "id": "firewall_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Service",
+        "id": "service_0"
+      }
+    },
+    "attrs": {
+      "port": 77,
+      "protocol": "val_epsilon_520",
+      "allowed_sources": [
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "104.54.166.143/32"
+          }
+        }
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Zone",
+          "id": "zone_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Service",
+        "id": "service_1"
+      }
+    },
+    "attrs": {
+      "port": 9,
+      "protocol": "val_staging_545",
+      "allowed_sources": [
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "103.211.122.159/32"
+          }
+        },
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "63.81.246.99/32"
+          }
+        },
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "17.174.106.209/32"
+          }
+        },
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "178.220.222.146/32"
+          }
+        }
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Zone",
+          "id": "zone_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Service",
+        "id": "service_2"
+      }
+    },
+    "attrs": {
+      "port": 43,
+      "protocol": "val_theta_177",
+      "allowed_sources": [
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "190.249.58.152/32"
+          }
+        }
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Zone",
+          "id": "zone_12"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Service",
+        "id": "service_3"
+      }
+    },
+    "attrs": {
+      "port": 59,
+      "protocol": "val_dev_568",
+      "allowed_sources": [
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "211.227.90.79/32"
+          }
+        }
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Zone",
+          "id": "zone_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Service",
+        "id": "service_4"
+      }
+    },
+    "attrs": {
+      "port": 8,
+      "protocol": "val_delta_701",
+      "allowed_sources": [
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "198.194.167.127/32"
+          }
+        },
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "166.31.46.56/32"
+          }
+        },
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "210.71.0.194/32"
+          }
+        },
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "38.76.231.137/32"
+          }
+        },
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "75.199.228.51/32"
+          }
+        }
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Zone",
+          "id": "zone_6"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Service",
+        "id": "service_5"
+      }
+    },
+    "attrs": {
+      "port": 87,
+      "protocol": "val_dev_306",
+      "allowed_sources": [
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "204.155.222.184/32"
+          }
+        },
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "89.45.4.157/32"
+          }
+        },
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "131.206.65.219/32"
+          }
+        },
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "76.31.189.231/32"
+          }
+        },
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "141.27.0.181/32"
+          }
+        }
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Zone",
+          "id": "zone_3"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Service",
+        "id": "service_6"
+      }
+    },
+    "attrs": {
+      "port": 45,
+      "protocol": "val_delta_881",
+      "allowed_sources": [
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "222.15.120.111/32"
+          }
+        },
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "180.201.162.183/32"
+          }
+        },
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "98.207.195.112/32"
+          }
+        }
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Zone",
+          "id": "zone_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Service",
+        "id": "service_7"
+      }
+    },
+    "attrs": {
+      "port": 27,
+      "protocol": "val_zeta_486",
+      "allowed_sources": [
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "49.196.184.216/32"
+          }
+        },
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "107.78.147.224/32"
+          }
+        }
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Zone",
+          "id": "zone_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Service",
+        "id": "service_8"
+      }
+    },
+    "attrs": {
+      "port": 16,
+      "protocol": "val_epsilon_11",
+      "allowed_sources": [
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "166.8.73.185/32"
+          }
+        }
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Zone",
+          "id": "zone_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Service",
+        "id": "service_9"
+      }
+    },
+    "attrs": {
+      "port": 62,
+      "protocol": "val_backup_998",
+      "allowed_sources": [
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "22.70.212.221/32"
+          }
+        },
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "117.217.92.117/32"
+          }
+        }
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Zone",
+          "id": "zone_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Service",
+        "id": "service_10"
+      }
+    },
+    "attrs": {
+      "port": 54,
+      "protocol": "val_primary_393",
+      "allowed_sources": [
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "58.95.217.155/32"
+          }
+        },
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "2.255.121.183/32"
+          }
+        },
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "129.137.210.238/32"
+          }
+        }
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Zone",
+          "id": "zone_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Service",
+        "id": "service_11"
+      }
+    },
+    "attrs": {
+      "port": 73,
+      "protocol": "val_test_34",
+      "allowed_sources": [
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "146.247.188.29/32"
+          }
+        }
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Zone",
+          "id": "zone_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Service",
+        "id": "service_12"
+      }
+    },
+    "attrs": {
+      "port": 61,
+      "protocol": "val_gamma_145",
+      "allowed_sources": [
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "220.143.238.133/32"
+          }
+        },
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "21.45.125.121/32"
+          }
+        },
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "162.39.159.157/32"
+          }
+        },
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "14.175.5.121/32"
+          }
+        },
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "117.240.169.108/32"
+          }
+        }
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Zone",
+          "id": "zone_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Service",
+        "id": "service_13"
+      }
+    },
+    "attrs": {
+      "port": 37,
+      "protocol": "val_staging_171",
+      "allowed_sources": [
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "178.155.133.16/32"
+          }
+        }
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Zone",
+          "id": "zone_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Service",
+        "id": "service_14"
+      }
+    },
+    "attrs": {
+      "port": 60,
+      "protocol": "val_zeta_586",
+      "allowed_sources": [
+        {
+          "__extn": {
+            "fn": "ip",
+            "arg": "169.149.13.74/32"
+          }
+        }
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Zone",
+          "id": "zone_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Client",
+        "id": "client_0"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "125.42.64.130/32"
+        }
+      },
+      "mac": "val_gamma_871"
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Client",
+        "id": "client_1"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "201.142.129.34/32"
+        }
+      },
+      "mac": "val_prod_281"
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Client",
+        "id": "client_2"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "220.131.7.190/32"
+        }
+      },
+      "mac": "val_delta_618"
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Client",
+        "id": "client_3"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "45.77.228.95/32"
+        }
+      },
+      "mac": "val_zeta_267"
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Client",
+        "id": "client_4"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "201.120.248.47/32"
+        }
+      },
+      "mac": "val_beta_351"
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Client",
+        "id": "client_5"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "22.74.78.215/32"
+        }
+      },
+      "mac": "val_secondary_770"
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Client",
+        "id": "client_6"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "106.196.121.170/32"
+        }
+      },
+      "mac": "val_primary_743"
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Client",
+        "id": "client_7"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "164.85.107.148/32"
+        }
+      },
+      "mac": "val_test_55"
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Client",
+        "id": "client_8"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "165.135.59.14/32"
+        }
+      },
+      "mac": "val_zeta_475"
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Client",
+        "id": "client_9"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "103.243.154.122/32"
+        }
+      },
+      "mac": "val_theta_388"
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Client",
+        "id": "client_10"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "175.199.242.68/32"
+        }
+      },
+      "mac": "val_epsilon_543"
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Client",
+        "id": "client_11"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "223.222.6.74/32"
+        }
+      },
+      "mac": "val_primary_391"
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Client",
+        "id": "client_12"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "174.161.21.25/32"
+        }
+      },
+      "mac": "val_test_979"
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Client",
+        "id": "client_13"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "217.221.139.86/32"
+        }
+      },
+      "mac": "val_prod_273"
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Client",
+        "id": "client_14"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "206.50.130.168/32"
+        }
+      },
+      "mac": "val_main_472"
+    },
+    "parents": []
+  }
+]

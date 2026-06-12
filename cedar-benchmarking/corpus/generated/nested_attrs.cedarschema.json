@@ -1,0 +1,172 @@
+{
+  "": {
+    "entityTypes": {
+      "Department": {
+        "memberOfTypes": [
+          "Org"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "budget": {
+              "type": "decimal"
+            },
+            "metadata": {
+              "type": "Record",
+              "attributes": {
+                "created": {
+                  "type": "datetime"
+                },
+                "modified": {
+                  "type": "datetime"
+                },
+                "owner": {
+                  "type": "Record",
+                  "attributes": {
+                    "email": {
+                      "type": "String"
+                    },
+                    "name": {
+                      "type": "String"
+                    },
+                    "role": {
+                      "type": "String"
+                    }
+                  }
+                }
+              }
+            },
+            "name": {
+              "type": "String"
+            }
+          }
+        }
+      },
+      "Org": {},
+      "Project": {
+        "memberOfTypes": [
+          "Department"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "config": {
+              "type": "Record",
+              "attributes": {
+                "environment": {
+                  "type": "String"
+                },
+                "settings": {
+                  "type": "Record",
+                  "attributes": {
+                    "max_instances": {
+                      "type": "Long"
+                    },
+                    "network": {
+                      "type": "Record",
+                      "attributes": {
+                        "allow_public": {
+                          "type": "Boolean"
+                        },
+                        "subnet": {
+                          "type": "ipaddr"
+                        },
+                        "vpc_cidr": {
+                          "type": "ipaddr"
+                        }
+                      }
+                    },
+                    "timeout": {
+                      "type": "duration"
+                    }
+                  }
+                },
+                "tags": {
+                  "type": "Set",
+                  "element": {
+                    "type": "String"
+                  }
+                }
+              }
+            },
+            "name": {
+              "type": "String"
+            },
+            "status": {
+              "type": "String"
+            }
+          }
+        }
+      },
+      "User": {}
+    },
+    "actions": {
+      "configure": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Project"
+          ],
+          "principalTypes": [
+            "User"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "change": {
+                "type": "Record",
+                "attributes": {
+                  "field": {
+                    "type": "String"
+                  },
+                  "new_value": {
+                    "type": "String"
+                  },
+                  "old_value": {
+                    "type": "String"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "deploy": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Project"
+          ],
+          "principalTypes": [
+            "User"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "request": {
+                "type": "Record",
+                "attributes": {
+                  "params": {
+                    "type": "Record",
+                    "attributes": {
+                      "instance_count": {
+                        "type": "Long"
+                      },
+                      "region": {
+                        "type": "String"
+                      }
+                    }
+                  },
+                  "source_ip": {
+                    "type": "ipaddr"
+                  },
+                  "timestamp": {
+                    "type": "datetime"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
