@@ -96,7 +96,11 @@ theorem default_deny
     contradiction
   | deny => contradiction
 
-
+theorem explicit_allow
+  (request : Request) (entities : Entities) (policies : Cst.Policies) :
+  (Cst.isAuthorized request entities policies).decision = .allow →
+  IsExplicitlyPermitted request entities policies :=
+  allowed_only_if_explicitly_permitted request entities policies
 
 
 end Cedar.Thm.Cst
