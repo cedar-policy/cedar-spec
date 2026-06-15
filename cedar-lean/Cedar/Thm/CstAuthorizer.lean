@@ -67,6 +67,34 @@ theorem forbid_trumps_permit
   rw [explicitly_forbidden_iff_satisfying_forbid] at h
   simp [h]
 
+theorem allowed_only_if_explicitly_permitted (request : Request) (entities : Entities) (policies : Cst.Policies) :
+  (Cst.isAuthorized request entities policies).decision = .allow →
+  IsExplicitlyPermitted request entities policies := by
+  unfold Cst.isAuthorized
+  generalize hf: (Cst.satisfiedPolicies .forbid policies request entities) = forbids
+  generalize hp: (Cst.satisfiedPolicies .permit policies request entities) = permits
+  simp [Bool.and_eq_true]
+  cases forbids.isEmpty <;> simp
+  cases hpemp : permits.isEmpty with
+  | true => simp
+  | false =>
+    simp
+    rw [←hp] at hpemp
+    have h := explicitly_permitted_iff_satisfying_permit request entities policies
+    simp [h]; exact hpemp
+
+theorem default_deny
+  (request : Request) (entities : Entities) (policies : Cst.Policies) :
+  ¬ IsExplicitlyPermitted request entities policies →
+  (Cst.isAuthorized request entities policies).decision = .deny := by
+  intro h
+  generalize hdec : (Cst.isAuthorized request entities policies).decision = dec
+  by_contra hcontra
+  cases dec with
+  | allow =>
+    have hperm := allowed_only_if_explicitly_permitted request entities policies hdec
+    contradiction
+  | deny => contradiction
 
 
 
