@@ -21,6 +21,7 @@ use cedar_drt_inner::{fuzz_target, props::template_to_cedar_parses};
 
 use cedar_policy::Template;
 use cedar_policy::proto::models;
+use cedar_policy::proto::traits::{DecodeError, Protobuf};
 use prost::Message;
 
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
@@ -47,14 +48,12 @@ fuzz_target!(|input: ProtoTemplateInput| {
     // Encode the generated proto model to bytes
     let buf = input.template.encode_to_vec();
 
-    // Decode from bytes
-    let decoded = models::TemplateBody::decode(&buf[..])
-        .expect("Decoding an encoded models::Template failed.");
-
-    // Convert proto model → domain type
-    // We expect this to fail, but when this doesn't faill all subsequent steps should pass.
-    let template = match Template::try_from(decoded) {
+    // Decode into `Template`
+    let template = match Template::decode(&buf[..]) {
         Ok(t) => t,
+        Err(DecodeError::Proto(err)) => {
+            panic!("Decoding an encoded models::Template failed: {err}")
+        }
         Err(_) => return,
     };
     // Once we have a template, it should parse again through a Cedar roundtrip: we test that

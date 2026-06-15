@@ -21,7 +21,10 @@ use cedar_drt_inner::props::entities_to_json_roundtrips;
 use cedar_drt_inner::proto_gen;
 
 use cedar_policy::Entities;
-use cedar_policy::proto::models;
+use cedar_policy::proto::{
+    models,
+    traits::{DecodeError, Protobuf},
+};
 use prost::Message;
 
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
@@ -51,14 +54,13 @@ fuzz_target!(|input: ProtoEntitiesInput| {
     // a models::Entities.
     let buf = input.entities.encode_to_vec();
 
-    // Decode from bytes.
-    let decoded =
-        models::Entities::decode(&buf[..]).expect("Decoding an encoded models::Entities failed");
-
-    // Convert proto model → domain type.
+    // Decode the encoded `Entities`.
     // This is expected to fail for many inputs.
-    let entities = match Entities::try_from(decoded) {
+    let entities = match Entities::decode(&buf[..]) {
         Ok(e) => e,
+        Err(DecodeError::Proto(err)) => {
+            panic!("Decoding an encoded models::Entities failed: {err}")
+        }
         Err(_) => return,
     };
     // Once we have some `Entities`, then it should roundtrip through JSON. We test that validation
