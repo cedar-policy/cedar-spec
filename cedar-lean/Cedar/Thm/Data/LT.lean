@@ -274,7 +274,6 @@ theorem EntityUID.lt_asymm {a b : EntityUID} :
   false_or_by_contra ; rename_i h₂
   simp only [not_and, not_imp, Classical.not_not] at h₂
   have h₃ := Name.strictLT.asymmetric a.ty b.ty
-  simp only at h₃
   rcases h₁ with h₁ | h₁
   · simp only [h₁, true_implies] at h₃
     simp only [h₃, not_false_eq_true, true_implies] at h₂

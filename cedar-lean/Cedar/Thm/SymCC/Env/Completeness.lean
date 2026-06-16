@@ -982,7 +982,8 @@ private theorem ofEnv_entity_completeness_action
     ] at hsame_attrs
     change ([].mapM₂ fun x => Term.value?.attrValue? x.1.fst x.1.snd).bind _ = _ at hsame_attrs
     rw [[].mapM₂_eq_mapM λ (x : Attr × Term) => Term.value?.attrValue? x.fst x.snd] at hsame_attrs
-    simpa using hsame_attrs
+    simp only [List.mapM_nil, Option.pure_def, Option.bind_some, List.filterMap_nil, Option.some.injEq, Value.record.injEq] at hsame_attrs
+    exact hsame_attrs
   · simp only [
       hδ, hδ',
       SameTags,

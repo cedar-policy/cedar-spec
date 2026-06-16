@@ -1321,7 +1321,7 @@ public theorem mapMOnValues_none_iff_exists_none {α : Type 0} [LT α] [Decidabl
   constructor
   case mp =>
     intro h₁
-    cases h₂ : m.toList <;> simp only at h₁
+    cases h₂ : m.toList
     case nil =>
       rw [toList_nil_iff_empty] at h₂ ; subst h₂
       simp at h₁

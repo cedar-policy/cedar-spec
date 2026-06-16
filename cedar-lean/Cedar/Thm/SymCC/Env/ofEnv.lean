@@ -1004,7 +1004,6 @@ theorem ofEnv_entities_is_wf
   · exact Map.make_wf _
   · intros ety data hfind
     have := Map.find?_mem_toList hfind
-    simp only at this
     have := Map.mem_make_mem_list this
     have := List.mem_append.mp this
     -- Reduce to either `ofEntityType_is_wf` or `ofActionType_is_wf`

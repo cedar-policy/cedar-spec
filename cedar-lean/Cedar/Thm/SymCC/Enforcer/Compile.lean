@@ -902,7 +902,6 @@ private theorem compile_interpret_record_on_footprint {axs : List (Attr × Expr)
   replace hft : ∀ ax ∈ axs, footprint ax.snd εnv ⊆ ft := by
     intro x hx
     have h := List.mem_implies_subset_mapUnion (fun x : Attr × Expr => footprint x.snd εnv) hx
-    simp only at h
     exact Set.subset_trans h hft
   replace hwε := wf_εnv_for_record_implies hwε
   replace ⟨ats, ha, hok⟩ := compile_record_ok_implies hok

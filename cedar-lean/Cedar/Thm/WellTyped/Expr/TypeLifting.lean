@@ -75,7 +75,7 @@ theorem type_lifting_preserves_expr (x : TypedExpr) :
     all_goals
       rename_i h
       have := List.sizeOf_lt_of_mem h
-      simp only [Prod.mk.sizeOf_spec] at this
+      simp only [Prod.mk.sizeOf_spec, gt_iff_lt] at this ⊢
       omega
 
 theorem type_lifting_preserves_evaluation_results {x : TypedExpr} {request : Request} {entities : Entities} :

@@ -249,8 +249,8 @@ theorem if_mapM_doesn't_fail_on_list_then_doesn't_fail_on_set [LT α] [Decidable
     intro a h₃
     rw [Set.mem_elts_iff_mem_set, Set.mem_make] at h₃
     rcases List.mem_cons.mp h₃ with h₃ | h₃
-    case a.inl => subst h₃ ; exists b
-    case a.inr =>
+    case inl => subst h₃ ; exists b
+    case inr =>
       replace ⟨b, _, h₄⟩ := h₂ a h₃
       exists b
 

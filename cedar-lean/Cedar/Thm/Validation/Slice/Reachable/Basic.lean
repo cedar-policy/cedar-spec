@@ -58,10 +58,9 @@ theorem in_val_then_val_slice {v path euid}
   case record attrs =>
     suffices h : ∃ kv ∈ attrs.toList, euid ∈ kv.snd.sliceEUIDs by
       unfold Value.sliceEUIDs
-      simpa [
-        List.mem_mapUnion_iff_mem_exists,
-        List.mapUnion₃_eq_mapUnion (λ e : (Attr × Value) => e.snd.sliceEUIDs)
-      ] using h
+      simp only [Prod.exists] at h
+      simp only [List.mapUnion₃_eq_mapUnion (λ e : (Attr × Value) => e.snd.sliceEUIDs), List.mem_mapUnion_iff_mem_exists, Prod.exists]
+      exact h
     cases path <;> cases hv
     rename_i a _ v ha hv
     exists (a, v)
