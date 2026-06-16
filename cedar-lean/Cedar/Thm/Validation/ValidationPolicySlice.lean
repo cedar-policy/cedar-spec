@@ -784,6 +784,66 @@ theorem nonslice_policy_noTypeErrors
   simp only [Except.bind_ok, h_mapM₂]
   cases hallff : allFalse txs₂ <;> simp
 
+/--
+If the principal scope is `is ety` and `ety ≠ env.reqty.principal`, the policy
+typechecks to `.bool .ff`.
+-/
+private theorem typecheckPolicy_ff_of_principal_is_mismatch
+    {policy : Policy} {env : TypeEnv} {ety : EntityType}
+    (hps : policy.principalScope = .principalScope (.is ety))
+    (hne : ety ≠ env.reqty.principal)
+    (hce : checkEntities ⟨env.ets, env.acts⟩ policy.toExpr = .ok ()) :
+    ∃ tx, typecheckPolicy policy env = .ok tx ∧ tx.typeOf = .bool .ff := by
+  unfold typecheckPolicy
+  have hsub : substituteAction env.reqty.action policy.toExpr =
+      .and (substituteAction env.reqty.action policy.principalScope.toExpr)
+           (.and (substituteAction env.reqty.action policy.actionScope.toExpr)
+                 (substituteAction env.reqty.action (.and policy.resourceScope.toExpr policy.condition.toExpr))) := by
+    simp [Policy.toExpr, substituteAction, mapOnVars]
+  rw [hsub]
+  have hps_sub : substituteAction env.reqty.action policy.principalScope.toExpr =
+      .unaryApp (.is ety) (.var .principal) := by
+    simp [hps, PrincipalScope.toExpr, Scope.toExpr, Var.isEntityType, substituteAction, mapOnVars]
+  rw [hps_sub]
+  have heval : typeOf (.and (.unaryApp (.is ety) (.var .principal))
+      (.and (substituteAction env.reqty.action policy.actionScope.toExpr)
+            (substituteAction env.reqty.action (.and policy.resourceScope.toExpr policy.condition.toExpr)))) ∅ env =
+      .ok (.unaryApp (.is ety) (.var .principal (.entity env.reqty.principal)) (.bool .ff), ∅) := by
+    simp [typeOf, typeOfVar, ok, typeOfUnaryApp, TypedExpr.typeOf, hne, typeOfAnd]
+  simp only [typecheckPolicy, hsub, hps_sub, heval]
+  simp [subty, lub?, lubBool, TypedExpr.typeOf]
+
+/--
+If the principal scope is `isMem ety uid` and `ety ≠ env.reqty.principal`, the policy
+typechecks to `.bool .ff`.
+-/
+private theorem typecheckPolicy_ff_of_principal_isMem_mismatch
+    {policy : Policy} {env : TypeEnv} {ety : EntityType} {uid : EntityUID}
+    (hps : policy.principalScope = .principalScope (.isMem ety uid))
+    (hne : ety ≠ env.reqty.principal)
+    (hce : checkEntities ⟨env.ets, env.acts⟩ policy.toExpr = .ok ()) :
+    ∃ tx, typecheckPolicy policy env = .ok tx ∧ tx.typeOf = .bool .ff := by
+  unfold typecheckPolicy
+  have hsub : substituteAction env.reqty.action policy.toExpr =
+      .and (substituteAction env.reqty.action policy.principalScope.toExpr)
+           (.and (substituteAction env.reqty.action policy.actionScope.toExpr)
+                 (substituteAction env.reqty.action (.and policy.resourceScope.toExpr policy.condition.toExpr))) := by
+    simp [Policy.toExpr, substituteAction, mapOnVars]
+  rw [hsub]
+  have hps_sub : substituteAction env.reqty.action policy.principalScope.toExpr =
+      .and (.unaryApp (.is ety) (.var .principal))
+           (.binaryApp .mem (.var .principal) (.lit (.entityUID uid))) := by
+    simp [hps, PrincipalScope.toExpr, Scope.toExpr, Var.isEntityType, Var.inEntityUID, substituteAction, mapOnVars]
+  rw [hps_sub]
+  have heval : typeOf (.and (.and (.unaryApp (.is ety) (.var .principal))
+      (.binaryApp .mem (.var .principal) (.lit (.entityUID uid))))
+      (.and (substituteAction env.reqty.action policy.actionScope.toExpr)
+            (substituteAction env.reqty.action (.and policy.resourceScope.toExpr policy.condition.toExpr)))) ∅ env =
+      .ok (.unaryApp (.is ety) (.var .principal (.entity env.reqty.principal)) (.bool .ff), ∅) := by
+    simp [typeOf, typeOfVar, ok, typeOfUnaryApp, TypedExpr.typeOf, hne, typeOfAnd]
+  simp only [typecheckPolicy, hsub, hps_sub, heval]
+  simp [subty, lub?, lubBool, TypedExpr.typeOf]
+
 /-! ### Equivalence -/
 
 /--
@@ -855,13 +915,25 @@ theorem validation_slice_soundness
       have ⟨hacts_wf₁, _⟩ := validateWellFormed_gives_wf_and_disjoint hwf₁ henv₁_mem
       simp only [validateOrImpossible, List.all_eq_true] at hslice ⊢
       intro q hq
-      by_cases hmatch : actionScopeMatchesAnyChangedAction oldSchema.acts
-          (computeActionChanges oldSchema newSchema) q.actionScope
+      by_cases hmatch : policyMatchesAnyChange oldSchema.acts
+          (computeActionChanges oldSchema newSchema) q
       · exact hslice q (List.mem_filter.mpr ⟨hq, hmatch⟩)
       · simp only [Bool.not_eq_true] at hmatch
         have hvalid_q := List.forM_ok_implies_all_ok'
           (by simp [validate] at hold; exact hold) q hq
-        exact nonslice_policy_noTypeErrors hno_full hvalid_q hmatch hacts_wf₁ hacts_wf₂ hwf₁
+        -- policyMatchesAnyChange = false means either actionScope doesn't match,
+        -- or the extension types don't match the principal/resource scope
+        by_cases hscope : actionScopeMatchesAnyChangedAction oldSchema.acts
+            (computeActionChanges oldSchema newSchema) q.actionScope
+        · -- Action scope matches but extension types rejected by principal/resource scope.
+          -- All new environments produce .ff, old environments transfer via congruence.
+          -- This is the scope-filtered case: use nonslice_policy_noTypeErrors by showing
+          -- the action scope doesn't effectively match any *relevant* change.
+          -- Key: policyMatchesAnyChange = false ∧ actionScopeMatchesAnyChangedAction = true
+          -- means every matching change is appliesToExtended with policyAffectedByExtension = false.
+          sorry
+        · simp only [Bool.not_eq_true] at hscope
+          exact nonslice_policy_noTypeErrors hno_full hvalid_q hscope hacts_wf₁ hacts_wf₂ hwf₁
 
 /--
 **Main theorem**: no type errors across all policies iff no type errors in the

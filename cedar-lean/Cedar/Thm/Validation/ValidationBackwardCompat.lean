@@ -195,6 +195,6 @@ theorem validationSlice_empty_of_backward_compatible
   have hno_changes := isAppliesToRestriction_implies_no_changes happlies_restr
   have h : Cedar.Slice.computeActionChanges schema₁ schema₃ = [] := hno_changes
   simp [Cedar.Slice.validationSlice, Cedar.Slice.validationSliceByChanges,
-    Cedar.Slice.actionScopeMatchesAnyChangedAction, h]
+    Cedar.Slice.policyMatchesAnyChange, h]
 
 end Cedar.Thm

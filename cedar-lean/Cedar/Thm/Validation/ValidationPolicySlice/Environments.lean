@@ -160,27 +160,47 @@ theorem computeActionChanges_not_in_gives_subset
     have hmem_out : ActionChange.contextChanged action ∈ computeActionChanges oldSchema newSchema :=
       List.mem_filterMap.mpr ⟨(action, newEntry), hmem_new, by simp [hfind_old, hne]⟩
     exact absurd (List.any_eq_true.mpr ⟨_, hmem_out, by simp [ActionChange.action]⟩) hnotinchanges
+  have hnotchanged : (computeActionChanges oldSchema newSchema).any (fun c => c.action == action) = false :=
+    Bool.eq_false_iff.mpr hnotinchanges
   have hprincipal : newEntry.appliesToPrincipal.subset oldEntry.appliesToPrincipal := by
     by_contra h
     have hf := Bool.eq_false_iff.mpr h
-    have hne : (!(newEntry.appliesToPrincipal.subset oldEntry.appliesToPrincipal) ||
-                !(newEntry.appliesToResource.subset oldEntry.appliesToResource)) = true := by simp [hf]
-    have hctx_bne : (oldEntry.context != newEntry.context) = false := by simp [bne, hctx]
-    have hmem_out : ActionChange.appliesToExtended action ∈ computeActionChanges oldSchema newSchema := by
+    have hne_princ : (newEntry.appliesToPrincipal.toList.filter
+        (fun p => !(oldEntry.appliesToPrincipal.contains p))).isEmpty = false := by
+      rw [List.isEmpty_eq_false_iff_exists_mem]
+      rw [Set.subset, List.all_eq_false] at hf
+      obtain ⟨p, hmem, hp⟩ := hf
+      exact ⟨p, List.mem_filter.mpr ⟨hmem, by simp [Set.contains] at hp ⊢; exact hp⟩⟩
+    have hmem_out : (ActionChange.appliesToExtended action
+        (newEntry.appliesToPrincipal.toList.filter (fun p => !(oldEntry.appliesToPrincipal.contains p)))
+        (newEntry.appliesToResource.toList.filter (fun r => !(oldEntry.appliesToResource.contains r))))
+        ∈ computeActionChanges oldSchema newSchema := by
       simp only [computeActionChanges, List.mem_filterMap]
       refine ⟨(action, newEntry), hmem_new, ?_⟩
-      simp only [hfind_old]; simp_all [bne]
+      simp only [hfind_old]
+      have hctx_ne : (oldEntry.context != newEntry.context) = false := by
+        simp [bne, beq_iff_eq, hctx]
+      simp [hctx_ne, hne_princ]
     exact absurd (List.any_eq_true.mpr ⟨_, hmem_out, by simp [ActionChange.action]⟩) hnotinchanges
   have hresource : newEntry.appliesToResource.subset oldEntry.appliesToResource := by
     by_contra h
     have hf := Bool.eq_false_iff.mpr h
-    have hne : (!(newEntry.appliesToPrincipal.subset oldEntry.appliesToPrincipal) ||
-                !(newEntry.appliesToResource.subset oldEntry.appliesToResource)) = true := by simp [hf]
-    have hctx_bne : (oldEntry.context != newEntry.context) = false := by simp [bne, hctx]
-    have hmem_out : ActionChange.appliesToExtended action ∈ computeActionChanges oldSchema newSchema := by
+    have hne_res : (newEntry.appliesToResource.toList.filter
+        (fun r => !(oldEntry.appliesToResource.contains r))).isEmpty = false := by
+      rw [List.isEmpty_eq_false_iff_exists_mem]
+      rw [Set.subset, List.all_eq_false] at hf
+      obtain ⟨r, hmem, hr⟩ := hf
+      exact ⟨r, List.mem_filter.mpr ⟨hmem, by simp [Set.contains] at hr ⊢; exact hr⟩⟩
+    have hmem_out : (ActionChange.appliesToExtended action
+        (newEntry.appliesToPrincipal.toList.filter (fun p => !(oldEntry.appliesToPrincipal.contains p)))
+        (newEntry.appliesToResource.toList.filter (fun r => !(oldEntry.appliesToResource.contains r))))
+        ∈ computeActionChanges oldSchema newSchema := by
       simp only [computeActionChanges, List.mem_filterMap]
       refine ⟨(action, newEntry), hmem_new, ?_⟩
-      simp only [hfind_old]; simp_all [bne]
+      simp only [hfind_old]
+      have hctx_ne : (oldEntry.context != newEntry.context) = false := by
+        simp [bne, beq_iff_eq, hctx]
+      simp [hctx_ne, hne_res]
     exact absurd (List.any_eq_true.mpr ⟨_, hmem_out, by simp [ActionChange.action]⟩) hnotinchanges
   exact ⟨hctx, hprincipal, hresource⟩
 

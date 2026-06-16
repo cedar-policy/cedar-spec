@@ -94,8 +94,23 @@ theorem isAppliesToRestriction_implies_no_changes
   | none => simp [hfo] at h_entry
   | some oldEntry =>
     simp only [hfo, Bool.and_eq_true, decide_eq_true_eq] at h_entry
-    obtain ⟨⟨hctx, hprinc⟩, hres⟩ := h_entry
-    simp [hctx.symm]
+    obtain ⟨⟨⟨⟨hctx, hprinc⟩, hres⟩, _⟩, _⟩ := h_entry
+    have hctx_ne : (oldEntry.context != newEntry.context) = false := by simp [bne, beq_iff_eq, hctx]
+    have hprinc_nil : (newEntry.appliesToPrincipal.toList.filter
+        (fun p => !(oldEntry.appliesToPrincipal.contains p))) = [] := by
+      rw [List.filter_eq_nil_iff]; intro p hp
+      simp only [Bool.not_eq_true', decide_eq_true_eq]
+      have := List.all_eq_true.mp (show newEntry.appliesToPrincipal.toList.all
+        oldEntry.appliesToPrincipal.contains = true from hprinc) p hp
+      simp [this]
+    have hres_nil : (newEntry.appliesToResource.toList.filter
+        (fun r => !(oldEntry.appliesToResource.contains r))) = [] := by
+      rw [List.filter_eq_nil_iff]; intro r hr
+      simp only [Bool.not_eq_true', decide_eq_true_eq]
+      have := List.all_eq_true.mp (show newEntry.appliesToResource.toList.all
+        oldEntry.appliesToResource.contains = true from hres) r hr
+      simp [this]
+    simp [hctx_ne, hprinc_nil, hres_nil]
 
 /-! ## Helpers -/
 

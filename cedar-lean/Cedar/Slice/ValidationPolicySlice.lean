@@ -50,8 +50,6 @@ open Cedar.Spec
 open Cedar.Validation
 open Cedar.Data
 
-open Cedar.Data
-
 /--
 Describes how an action's schema entry has changed between two schemas.
 Only changes that could potentially invalidate a policy are tracked here.
@@ -59,11 +57,12 @@ Only changes that could potentially invalidate a policy are tracked here.
 inductive ActionChange where
   | contextChanged (action : EntityUID)
   | appliesToExtended (action : EntityUID)
+      (newPrincipals : List EntityType) (newResources : List EntityType)
 deriving Repr, DecidableEq
 
 def ActionChange.action : ActionChange → EntityUID
   | .contextChanged a => a
-  | .appliesToExtended a => a
+  | .appliesToExtended a _ _ => a
 
 /--
 Checks whether a full revalidation is required (as opposed to incremental).
@@ -92,6 +91,30 @@ def requiresFullRevalidation (oldSchema newSchema : Schema) : Bool :=
     (!x.2.ancestors.isEmpty || !(oldSchema.acts.actionType? x.1.ty)))
 
 /--
+Whether a scope constraint could match any entity type in a list.
+For `.is ety` and `.isMem ety _`, the scope rejects any environment whose
+principal/resource type ≠ ety, so only ety matters.
+For other scope forms, we conservatively return true.
+-/
+def scopeCouldMatch (scope : Scope) (types : List EntityType) : Bool :=
+  match scope with
+  | .any => true
+  | .eq _ => true
+  | .mem _ => true
+  | .is ety => types.any (· == ety)
+  | .isMem ety _ => types.any (· == ety)
+
+/--
+Whether a policy could be affected by an appliesTo extension that introduces
+the given new principal/resource types. The policy is unaffected if its scope
+constraints statically reject all new types.
+-/
+def policyAffectedByExtension (policy : Policy)
+    (newPrincipals newResources : List EntityType) : Bool :=
+  scopeCouldMatch policy.principalScope.scope newPrincipals ||
+  scopeCouldMatch policy.resourceScope.scope newResources
+
+/--
 Determines whether a policy's action scope could possibly match a given action,
 considering the action hierarchy defined in the schema.
 -/
@@ -106,9 +129,23 @@ def actionScopeMatchesAction (acts : ActionSchema) (action : EntityUID) (scope :
 
 /--
 Determines whether a policy's action scope matches any of the changed actions.
+This is the basic scope-level check (ignores principal/resource filtering).
 -/
 def actionScopeMatchesAnyChangedAction (acts : ActionSchema) (changes : List ActionChange) (scope : ActionScope) : Bool :=
   changes.any (fun change => actionScopeMatchesAction acts change.action scope)
+
+/--
+Determines whether a policy could be affected by any of the changed actions,
+considering both the action scope AND (for appliesTo extensions) whether the
+new principal/resource types are relevant to the policy's scope constraints.
+This is strictly more precise than `actionScopeMatchesAnyChangedAction`.
+-/
+def policyMatchesAnyChange (acts : ActionSchema) (changes : List ActionChange) (policy : Policy) : Bool :=
+  changes.any fun change =>
+    actionScopeMatchesAction acts change.action policy.actionScope &&
+    match change with
+    | .contextChanged _ => true
+    | .appliesToExtended _ newP newR => policyAffectedByExtension policy newP newR
 
 /--
 Given a list of action changes, return the subset of policies whose
@@ -122,7 +159,7 @@ action. Policies with unconstrained action scopes (`action scope == any`) are
 always included when any action has changed.
 -/
 def validationSliceByChanges (acts : ActionSchema) (changes : List ActionChange) (policies : Policies) : Policies :=
-  policies.filter (fun policy => actionScopeMatchesAnyChangedAction acts changes policy.actionScope)
+  policies.filter (fun policy => policyMatchesAnyChange acts changes policy)
 
 /--
 Compute the list of action changes between two schemas. An action is considered
@@ -140,11 +177,15 @@ def computeActionChanges (oldSchema newSchema : Schema) : List ActionChange :=
     | some oldEntry =>
       if oldEntry.context != newEntry.context then
         some (.contextChanged action)
-      else if !(newEntry.appliesToPrincipal.subset oldEntry.appliesToPrincipal) ||
-              !(newEntry.appliesToResource.subset oldEntry.appliesToResource) then
-        some (.appliesToExtended action)
       else
-        none
+        let newPrincipals := newEntry.appliesToPrincipal.toList.filter
+          (fun p => !(oldEntry.appliesToPrincipal.contains p))
+        let newResources := newEntry.appliesToResource.toList.filter
+          (fun r => !(oldEntry.appliesToResource.contains r))
+        if !newPrincipals.isEmpty || !newResources.isEmpty then
+          some (.appliesToExtended action newPrincipals newResources)
+        else
+          none
 
 /--
 Validation "succeeds modulo impossible policies": either fully succeeds, or fails
