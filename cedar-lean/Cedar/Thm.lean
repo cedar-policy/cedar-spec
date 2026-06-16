@@ -24,3 +24,5 @@ import Cedar.Thm.WellTyped
 import Cedar.Thm.TPE
 import Cedar.Thm.BatchedEvaluator
 import Cedar.Thm.WellTypedVerification
+import Cedar.Thm.Translation
+import Cedar.Thm.CstAuthorizer

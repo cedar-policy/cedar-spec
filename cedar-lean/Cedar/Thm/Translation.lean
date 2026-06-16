@@ -159,3 +159,5 @@ theorem translation_is_sound (cps : Cst.Policies) (aps : Spec.Policies)
   have herrors := errorPolicies_agrees cps aps req es htrans
   simp [Cst.isAuthorized, isAuthorized]
   simp [hforbids, hpermits, herrors]
+
+end Cedar.Thm
