@@ -132,6 +132,32 @@ theorem policy_translation_success_prVars_isSome'
     rw [Option.isSome_iff_exists]; exists ap
   apply (policy_translation_success_prVars_isSome h)
 
+-- When the policies translation is successful, the three scopes can be extracted
+theorem policies_translation_success_prVars_isSome
+  {cps : Cst.Policies} :
+  (cps.toPolicies?).isSome →
+  ∀ cp ∈ cps.ps, (prVars? cp).isSome := by
+  intro htrans
+  obtain ⟨ps⟩ := cps
+  simp only [Cst.Policies.toPolicies?] at htrans
+  rw [Option.isSome_iff_exists] at htrans
+  obtain ⟨aps, hmap⟩ := htrans
+  have hall := List.mapM_some_implies_all_some hmap
+  intro cp hcp; simp at hcp
+  apply policy_translation_success_prVars_isSome
+  rw [Option.isSome_iff_exists]
+  obtain ⟨ap, hap1, hap2⟩ := (hall cp hcp)
+  exists ap
+
+theorem policies_translation_success_prVars_isSome'
+  {cps : Cst.Policies} {aps : Policies} :
+  cps.toPolicies? = aps →
+  ∀ cp ∈ cps.ps, (prVars? cp).isSome := by
+  intro htrans
+  have h : (cps.toPolicies?).isSome := by
+    rw [Option.isSome_iff_exists]; exists aps
+  apply (policies_translation_success_prVars_isSome h)
+
 /-- The CST-native `varBound?` agrees with the AST `Scope.bound` of the scope the
     variable translates to. -/
 private theorem varBound?_eq_scope_bound {v : Cst.VariableDef} {scope : Scope}
@@ -256,3 +282,89 @@ def Cst.IsSoundPolicyBound (bound : PolicyBound) (policy : Cst.Policy) : Prop :=
 
 def Cst.IsSoundBoundAnalysis (ba : Cst.BoundAnalysis) : Prop :=
   ∀ (policy : Cst.Policy) (h : (prVars? policy).isSome), Cst.IsSoundPolicyBound (ba policy h) policy
+
+/-- `mapM`-cons helper specialised to `toPolicy?`. -/
+private theorem mapM_toPolicy?_cons {hd : Cst.Policy} {ap : Spec.Policy}
+    {tl : List Cst.Policy} {r : List Spec.Policy}
+    (h1 : hd.toPolicy? = some ap) (h2 : tl.mapM Cst.Policy.toPolicy? = some r) :
+    (hd :: tl).mapM Cst.Policy.toPolicy? = some (ap :: r) := by
+  simp [List.mapM_cons, h1, h2]
+
+/-- Core list-level commutation: scope-based slicing on a list of CST policies,
+    followed by translation, yields the scope-based slice of the translated AST
+    policies.  Proven by induction on the translation `Forall₂`, using
+    `translation_preserves_scopeAnalysis'` (so the CST and AST `satisfiedBound`
+    predicates agree on corresponding policies). -/
+private theorem scope_slice_translate
+    (req : Request) (entities : Entities) :
+    ∀ (cps : List Cst.Policy) (aps : List Spec.Policy)
+      (hwf : ∀ policy ∈ cps, (prVars? policy).isSome),
+      List.Forall₂ (fun cp ap => cp.toPolicy? = some ap) cps aps →
+      (cps.attach.filterMap (fun x =>
+          if satisfiedBound (Cedar.Slice.Cst.scopeAnalysis x.1 (hwf x.1 x.2)) req entities
+          then some x.1 else none)).mapM Cst.Policy.toPolicy?
+        = some (aps.filter (fun ap => satisfiedBound (Cedar.Slice.scopeAnalysis ap) req entities)) := by
+  intro cps
+  induction cps with
+  | nil =>
+    intro aps _ hforall
+    cases hforall
+    simp
+  | cons hd tl ih =>
+    intro aps hwf hforall
+    cases hforall with
+    | cons hhd htl =>
+      rename_i ap aps'
+      have ihtl := ih aps' (fun p hp => hwf p (List.mem_cons_of_mem hd hp)) htl
+      have hsc : Cedar.Slice.Cst.scopeAnalysis hd (hwf hd List.mem_cons_self)
+               = Cedar.Slice.scopeAnalysis ap :=
+        translation_preserves_scopeAnalysis' hhd (hwf hd List.mem_cons_self)
+      cases hb : satisfiedBound (Cedar.Slice.scopeAnalysis ap) req entities
+      · have hF : (fun x : {x // x ∈ hd :: tl} =>
+            if satisfiedBound (Cedar.Slice.Cst.scopeAnalysis x.1 (hwf x.1 x.2)) req entities
+            then some x.1 else none) ⟨hd, List.mem_cons_self⟩ = none := by
+          simp [hsc, hb]
+        rw [List.attach_cons,
+          List.filterMap_cons_none (f := fun x : {x // x ∈ hd :: tl} =>
+            if satisfiedBound (Cedar.Slice.Cst.scopeAnalysis x.1 (hwf x.1 x.2)) req entities
+            then some x.1 else none) hF,
+          List.filterMap_map, List.filter_cons]
+        simp only [hb, Bool.false_eq_true, if_false]
+        exact ihtl
+      · have hF : (fun x : {x // x ∈ hd :: tl} =>
+            if satisfiedBound (Cedar.Slice.Cst.scopeAnalysis x.1 (hwf x.1 x.2)) req entities
+            then some x.1 else none) ⟨hd, List.mem_cons_self⟩ = some hd := by
+          simp [hsc, hb]
+        rw [List.attach_cons,
+          List.filterMap_cons_some (f := fun x : {x // x ∈ hd :: tl} =>
+            if satisfiedBound (Cedar.Slice.Cst.scopeAnalysis x.1 (hwf x.1 x.2)) req entities
+            then some x.1 else none) hF,
+          List.filterMap_map, List.filter_cons]
+        simp only [hb, if_true]
+        exact mapM_toPolicy?_cons hhd ihtl
+
+/-- The CST scope-based slice and the AST scope-based slice choose the same
+    policies: translating the CST slice yields exactly the AST slice of the
+    translated policy store. -/
+theorem cst_slice_chooses_same_policies'
+    {cps : Cst.Policies} {aps : Spec.Policies}
+    (req : Request) (entities : Entities)
+    (htrans : cps.toPolicies? = some aps)
+    (hwf : ∀ policy ∈ cps.ps, (prVars? policy).isSome) :
+    (Cedar.Slice.Cst.BoundAnalysis.slice Cedar.Slice.Cst.scopeAnalysis req entities cps hwf).toPolicies?
+      = some (Cedar.Slice.BoundAnalysis.slice Cedar.Slice.scopeAnalysis req entities aps) := by
+  have hforall := toPolicies?_forall₂ htrans
+  simp only [Cedar.Slice.Cst.BoundAnalysis.slice, Cst.Policies.toPolicies?,
+    Cedar.Slice.BoundAnalysis.slice]
+  exact scope_slice_translate req entities cps.ps aps hwf hforall
+
+theorem cst_slice_chooses_same_policies
+  {cps : Cst.Policies} {aps : Spec.Policies}
+  (req : Request) (entities : Entities)
+  (htrans : cps.toPolicies? = some aps) :
+    ∃ hwf : ∀ policy ∈ cps.ps, (prVars? policy).isSome,
+    (Cedar.Slice.Cst.BoundAnalysis.slice Cedar.Slice.Cst.scopeAnalysis req entities cps hwf).toPolicies?
+    = some (Cedar.Slice.BoundAnalysis.slice Cedar.Slice.scopeAnalysis req entities aps) := by
+  have h := policies_translation_success_prVars_isSome' htrans
+  exists h
+  apply (cst_slice_chooses_same_policies' req entities htrans)
