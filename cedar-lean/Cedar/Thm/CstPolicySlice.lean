@@ -49,10 +49,9 @@ theorem Cst.policies_translation_success_prVars_isSome
   ∀ cp ∈ cps.ps, (prVars? cp).isSome := by
   intro htrans
   obtain ⟨ps⟩ := cps
-  simp [Cst.Policies.toPolicies?] at htrans
-  have hmapM := Option.isSome_of_isSome_bind htrans
-  rw [Option.isSome_iff_exists] at hmapM
-  obtain ⟨aps, hmap⟩ := hmapM
+  simp only [Cst.Policies.toPolicies?] at htrans
+  rw [Option.isSome_iff_exists] at htrans
+  obtain ⟨aps, hmap⟩ := htrans
   have hall := List.mapM_some_implies_all_some hmap
   intro cp hcp; simp at hcp
   apply policy_translation_success_prVars_isSome

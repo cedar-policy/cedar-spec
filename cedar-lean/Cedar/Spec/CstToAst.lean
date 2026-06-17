@@ -785,7 +785,6 @@ public def extractScope? (vars : List Cst.VariableDef) : Option (PrincipalScope 
     some (ps, as, rs)
   | _ => none
 
--- `id` to be filled in later
 public def Cst.PolicyImpl.toPolicy? (p : Cst.PolicyImpl) : Option Cedar.Spec.Policy := do
   let effect ← CstCommon.Ident.toEffect? p.effect
   let (ps, as, rs) ← extractScope? p.vars

@@ -82,18 +82,18 @@ theorem policy_hasError_agrees (cp : Cst.Policy) (ap : Spec.Policy)
 /-- Per-policy agreement of the error check. -/
 theorem policy_errored_agrees (cp : Cst.Policy) (ap : Spec.Policy)
     (req : Request) (es : Entities)
-    (htrans : cp.toPolicy? = some {ap with id := ""}) :
-    (if Cst.hasError cp req es then some ap.id else none) = errored ap req es := by
-  have hhe : Cst.hasError cp req es = hasError ap req es := by
-    have h := policy_hasError_agrees cp {ap with id := ""} req es htrans
-    simpa [hasError, Policy.toExpr] using h
-  simp only [errored, hhe]
+    (htrans : cp.toPolicy? = some ap) :
+    (if Cst.hasError cp req es then some cp.id else none) = errored ap req es := by
+  have hhe : Cst.hasError cp req es = hasError ap req es :=
+    policy_hasError_agrees cp ap req es htrans
+  have hid : cp.id = ap.id := (toPolicy?_id_eq htrans).symm
+  simp only [errored, hhe, hid]
 
 /-- Per-policy agreement of the effect-filtered satisfaction check. -/
 theorem policy_satisfiedWithEffect_agrees (cp : Cst.Policy) (ap : Spec.Policy)
     (req : Request) (es : Entities) (eff : Effect)
-    (htrans : cp.toPolicy? = some {ap with id := ""}) :
-    (if Cst.satisfiedWithEffect eff cp req es then some ap.id else none)
+    (htrans : cp.toPolicy? = some ap) :
+    (if Cst.satisfiedWithEffect eff cp req es then some cp.id else none)
       = Spec.satisfiedWithEffect eff ap req es := by
   obtain ⟨p⟩ := cp
   have htrans' := htrans
@@ -104,10 +104,10 @@ theorem policy_satisfiedWithEffect_agrees (cp : Cst.Policy) (ap : Spec.Policy)
     have := congrArg Spec.Policy.effect heq; simpa using this
   have heff : CstCommon.Ident.toEffect? p.effect = some ap.effect := by
     rw [he0, heffeq]
-  have hsat : Cst.satisfied (.policy p) req es = satisfied ap req es := by
-    have h := policy_satisfied_agrees (.policy p) {ap with id := ""} req es htrans
-    simpa [satisfied, Policy.toExpr] using h
-  simp only [Cst.satisfiedWithEffect, Spec.satisfiedWithEffect, heff, hsat]
+  have hsat : Cst.satisfied (.policy p) req es = satisfied ap req es :=
+    policy_satisfied_agrees (.policy p) ap req es htrans
+  have hid : (Cst.Policy.policy p).id = ap.id := (toPolicy?_id_eq htrans).symm
+  simp only [Cst.satisfiedWithEffect, Spec.satisfiedWithEffect, heff, hsat, hid]
   by_cases hs : satisfied ap req es
   · simp only [hs, if_true, Bool.and_true]
     by_cases he : ap.effect = eff
@@ -120,34 +120,25 @@ theorem satisfiedPolicies_agrees (cps : Cst.Policies) (aps : Spec.Policies)
   cps.toPolicies? = some aps →
   Cst.satisfiedPolicies eff cps req es = satisfiedPolicies eff aps req es := by
   intro htrans
-  have hforall := withIDs_toPolicies_forall₂ htrans
+  have hforall := toPolicies?_forall₂ htrans
   -- The two filterMaps agree pointwise.
   simp only [Cst.satisfiedPolicies, satisfiedPolicies]
   congr 1
   apply filterMap_congr_forall₂ hforall
-  intro a b hR
-  obtain ⟨id, p⟩ := a
-  obtain ⟨hid, htp⟩ := hR
-  show (if Cst.satisfiedWithEffect eff p req es then some id else none)
-      = Spec.satisfiedWithEffect eff b req es
-  rw [show id = b.id from hid]
-  exact policy_satisfiedWithEffect_agrees p b req es eff htp
+  intro cp ap htp
+  exact policy_satisfiedWithEffect_agrees cp ap req es eff htp
 
 theorem errorPolicies_agrees (cps : Cst.Policies) (aps : Spec.Policies)
   (req : Request) (es : Entities) :
   cps.toPolicies? = some aps →
   Cst.errorPolicies cps req es = errorPolicies aps req es := by
   intro htrans
-  have hforall := withIDs_toPolicies_forall₂ htrans
+  have hforall := toPolicies?_forall₂ htrans
   simp only [Cst.errorPolicies, errorPolicies]
   congr 1
   apply filterMap_congr_forall₂ hforall
-  intro a b hR
-  obtain ⟨id, p⟩ := a
-  obtain ⟨hid, htp⟩ := hR
-  show (if Cst.hasError p req es then some id else none) = errored b req es
-  rw [show id = b.id from hid]
-  exact policy_errored_agrees p b req es htp
+  intro cp ap htp
+  exact policy_errored_agrees cp ap req es htp
 
 theorem translation_is_sound (cps : Cst.Policies) (aps : Spec.Policies)
 (req : Request) (es : Entities) :
