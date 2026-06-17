@@ -8,18 +8,24 @@ import Cedar.Thm.PolicySlice
 namespace Cedar.Thm
 open Cedar.Spec Cedar.Slice Cedar.Slice.Cst Cedar.Data
 
+
+-- write the specifications so that the style is more consistant and the code is more readable
+-- and then prove that the functions satisfy the specs
+
 /-!
 Key theorems in this file:
 
-* `policy_translation_success_prVars_isSome` / `policies_translation_success_prVars_isSome`:
-  Whenever a CST policy (resp. set of policies) successfully translates to the AST,
-  its principal/resource scope variables can be extracted via `prVars?` (i.e. `prVars?`
-  is `isSome`). This well-formedness fact is the precondition required to run scope
-  analysis on the CST.
+* `policy_translation_success_prVars_isSome`: Whenever a CST policy successfully
+  translates to the AST, its principal/resource scope variables can be extracted
+  via `prVars?` (i.e. `prVars?` is `isSome`). This well-formedness fact is the
+  precondition required to run scope analysis on the CST. (The policy-store level
+  variant `policies_translation_success_prVars_isSome` lives in
+  `Cedar/Thm/CstPolicySlice.lean`.)
 
-* `translation_preserves_scopeAnalysis`: Scope analysis computed natively on a CST
+* `translation_preserves_scopeAnalysis'`: Scope analysis computed natively on a CST
   policy (`Cst.scopeAnalysis`) agrees with scope analysis computed on the AST policy
-  it translates to (`scopeAnalysis`).
+  it translates to (`scopeAnalysis`). (The packaged form
+  `translation_preserves_scopeAnalysis` lives in `Cedar/Thm/CstPolicySlice.lean`.)
 
 * `cst_slice_chooses_same_policies`: Lifting the previous result to whole policy
   stores, the CST slice and the AST slice select corresponding policies in lockstep.
@@ -126,33 +132,6 @@ theorem policy_translation_success_prVars_isSome'
     rw [Option.isSome_iff_exists]; exists ap
   apply (policy_translation_success_prVars_isSome h)
 
--- When the policies translation is successful, the three scopes can be extracted
-theorem policies_translation_success_prVars_isSome
-  {cps : Cst.Policies} :
-  (cps.toPolicies?).isSome →
-  ∀ cp ∈ cps.ps, (prVars? cp).isSome := by
-  intro htrans
-  obtain ⟨ps⟩ := cps
-  simp [Cst.Policies.toPolicies?] at htrans
-  have hmapM := Option.isSome_of_isSome_bind htrans
-  rw [Option.isSome_iff_exists] at hmapM
-  obtain ⟨aps, hmap⟩ := hmapM
-  have hall := List.mapM_some_implies_all_some hmap
-  intro cp hcp; simp at hcp
-  apply policy_translation_success_prVars_isSome
-  rw [Option.isSome_iff_exists]
-  obtain ⟨ap, hap1, hap2⟩ := (hall cp hcp)
-  exists ap
-
-theorem policies_translation_success_prVars_isSome'
-  {cps : Cst.Policies} {aps : Policies} :
-  cps.toPolicies? = aps →
-  ∀ cp ∈ cps.ps, (prVars? cp).isSome := by
-  intro htrans
-  have h : (cps.toPolicies?).isSome := by
-    rw [Option.isSome_iff_exists]; exists aps
-  apply (policies_translation_success_prVars_isSome h)
-
 /-- The CST-native `varBound?` agrees with the AST `Scope.bound` of the scope the
     variable translates to. -/
 private theorem varBound?_eq_scope_bound {v : Cst.VariableDef} {scope : Scope}
@@ -215,7 +194,7 @@ private theorem toResourceScope?_some {v : Cst.VariableDef} {rs : ResourceScope}
     exact ⟨scope, hscope, hrs.symm⟩
   · simp at h
 
-theorem translation_preserves_scopeAnalysis
+theorem translation_preserves_scopeAnalysis'
   {cp : Cst.Policy} {ap : Policy}
   (htrans : cp.toPolicy? = some ap)
   (h : (prVars? cp).isSome) : -- redundant, but provides flexibility in future uses
@@ -250,260 +229,30 @@ theorem translation_preserves_scopeAnalysis
   | [_, _], hsc => simp [extractScope?] at hsc
   | _ :: _ :: _ :: _ :: _, hsc => simp [extractScope?] at hsc
 
+def Cst.IsSoundPolicySlice (req : Request) (entities : Entities) (slice policies : Cst.Policies) : Prop :=
+  slice.ps ⊆ policies.ps ∧
+  ∀ policy ∈ policies.ps,
+    policy ∉ slice.ps →
+    ¬ Cst.satisfied policy req entities ∧ ¬ Cst.hasError policy req entities
 
-/-- `scopeAnalysis` ignores the policy id. -/
-theorem scopeAnalysis_id_indep (ap : Policy) (x : PolicyID) :
-    Cedar.Slice.scopeAnalysis { ap with id := x } = Cedar.Slice.scopeAnalysis ap := rfl
-
-/-- `Forall₂` is preserved by `filterMap` when, on related inputs, the two functions
-    are both `none` or both `some` with related results. -/
-theorem forall₂_filterMap_rel {α β γ δ : Type} {R : α → β → Prop} {S : γ → δ → Prop}
-    {f : α → Option γ} {g : β → Option δ} {xs : List α} {ys : List β}
-    (h : List.Forall₂ R xs ys)
-    (hfg : ∀ a b, R a b →
-      (f a = none ∧ g b = none) ∨ (∃ c d, f a = some c ∧ g b = some d ∧ S c d)) :
-    List.Forall₂ S (xs.filterMap f) (ys.filterMap g) := by
-  induction h with
-  | nil => simp
-  | @cons a b l₁ l₂ hab _ ih =>
-    rcases hfg a b hab with ⟨hfa, hgb⟩ | ⟨c, d, hfa, hgb, hsd⟩
-    · simp only [List.filterMap_cons, hfa, hgb]; exact ih
-    · simp only [List.filterMap_cons, hfa, hgb]; exact List.Forall₂.cons hsd ih
-
-/-- Index-generalized base correspondence between CST policies and their stamped
-    AST translations. The relation erases the id, so the mapIdx offset is irrelevant. -/
-private theorem cps_ps_forall₂_aux :
-    ∀ (k : Nat) (ps : List Cst.Policy) (rets : List Policy),
-      ps.mapM Cst.Policy.toPolicy? = some rets →
-      List.Forall₂ (fun cp ap => cp.toPolicy? = some { ap with id := "" })
-        ps (rets.mapIdx (fun i p => { p with id := s!"policy{k+i}" })) := by
-  intro k ps
-  induction ps generalizing k with
-  | nil =>
-    intro rets h
-    simp only [List.mapM_nil, Option.pure_def, Option.some.injEq] at h
-    subst h; simp
-  | cons hd tl ih =>
-    intro rets h
-    simp only [List.mapM_cons, bind, Option.bind_eq_some_iff, Option.pure_def,
-      Option.some.injEq] at h
-    obtain ⟨r0, hr0, restRets, hrest, hretseq⟩ := h
-    subst hretseq
-    rw [List.mapIdx_cons]
-    apply List.Forall₂.cons
-    · rw [hr0]
-      have hid := toPolicy?_id_empty hr0
-      obtain ⟨id, e, pp, aa, rr, cc⟩ := r0
-      subst hid; rfl
-    · have hfun : (fun (i : Nat) (p : Policy) => ({p with id := s!"policy{k + (i + 1)}"} : Policy))
-                = (fun i p => {p with id := s!"policy{(k + 1) + i}"}) := by
-        funext i p
-        have : k + (i + 1) = (k + 1) + i := by omega
-        rw [this]
-      rw [hfun]
-      exact ih (k + 1) restRets hrest
-
-/-- The base correspondence: each CST policy in the store translates to the
-    corresponding AST policy (modulo the id field). -/
-theorem cps_ps_forall₂ {cps : Cst.Policies} {aps : Policies}
-    (htrans : cps.toPolicies? = some aps) :
-    List.Forall₂ (fun cp ap => cp.toPolicy? = some { ap with id := "" }) cps.ps aps := by
-  simp only [Cst.Policies.toPolicies?, bind, Option.bind_eq_some_iff, Option.some.injEq] at htrans
-  obtain ⟨rets, hrets, hapeq⟩ := htrans
-  subst hapeq
-  have h := cps_ps_forall₂_aux 0 cps.ps rets hrets
-  have hfun : (fun (i : Nat) (p : Policy) => ({p with id := s!"policy{0 + i}"} : Policy))
-            = (fun i p => {p with id := s!"policy{i}"}) := by
-    funext i p
-    have : 0 + i = i := by omega
-    rw [this]
-  rwa [hfun] at h
-
-/-- Push a left `map` through `Forall₂`. -/
-theorem forall₂_map_left {α α' β : Type} {f : α → α'} {R : α' → β → Prop}
-    {xs : List α} {ys : List β} :
-    List.Forall₂ R (xs.map f) ys ↔ List.Forall₂ (fun a b => R (f a) b) xs ys := by
+theorem Cst.sound_slice_transitive :
+  Cst.IsSoundPolicySlice r es slice₁ ps →
+  Cst.IsSoundPolicySlice r es slice₂ slice₁ →
+  Cst.IsSoundPolicySlice r es slice₂ ps := by
+  intro ⟨h_slice₁_sub, h_slice₁_sound⟩ ⟨h_slice₂_sub, h_slice₂_sound⟩
   constructor
-  · induction xs generalizing ys with
-    | nil => intro h; cases h; exact List.Forall₂.nil
-    | cons a xs' ih =>
-      intro h
-      simp only [List.map_cons] at h
-      cases h with
-      | cons hab htl => exact List.Forall₂.cons hab (ih htl)
-  · intro h
-    induction h with
-    | nil => simp
-    | @cons a b l₁ l₂ hab _ ih => simp only [List.map_cons]; exact List.Forall₂.cons hab ih
+  · exact List.Subset.trans h_slice₂_sub h_slice₁_sub
+  · intro p h_mem_ps h_mem_slice₂
+    by_cases h_mem_slice₁ : p ∈ slice₁.ps
+    case pos =>
+      exact h_slice₂_sound p h_mem_slice₁ h_mem_slice₂
+    case neg =>
+      exact h_slice₁_sound p h_mem_ps h_mem_slice₁
 
-theorem cst_slice_chooses_same_policies
-  {cps : Cst.Policies} {aps : Policies} {req : Request} {es : Entities}
-  (htrans : cps.toPolicies? = some aps)
-  (hwf : ∀ cp ∈ cps.ps, (prVars? cp).isSome) :
-  List.Forall₂
-    (fun cp ap => cp.toPolicy? = some { ap with id := "" })
-    (Cedar.Slice.Cst.BoundAnalysis.slice Cedar.Slice.Cst.scopeAnalysis req es cps hwf).ps
-    (Cedar.Slice.BoundAnalysis.slice Cedar.Slice.scopeAnalysis req es aps) := by
-  -- lift the base correspondence to the attached list
-  have hattach : List.Forall₂
-      (fun (x : {x // x ∈ cps.ps}) ap => x.1.toPolicy? = some { ap with id := "" })
-      cps.ps.attach aps := by
-    have h' : List.Forall₂ (fun cp ap => cp.toPolicy? = some { ap with id := "" })
-        (cps.ps.attach.map Subtype.val) aps := by
-      rw [List.attach_map_subtype_val]; exact cps_ps_forall₂ htrans
-    exact forall₂_map_left.mp h'
-  -- unfold both slices into `filterMap`s
-  simp only [Cedar.Slice.Cst.BoundAnalysis.slice, Cedar.Slice.BoundAnalysis.slice]
-  rw [← List.filterMap_eq_filter]
-  apply forall₂_filterMap_rel hattach
-  intro x ap hR
-  obtain ⟨cp, hmem⟩ := x
-  simp only at hR
-  have hpres := translation_preserves_scopeAnalysis hR (hwf cp hmem)
-  rw [scopeAnalysis_id_indep] at hpres
-  by_cases hb : satisfiedBound (Cedar.Slice.scopeAnalysis ap) req es = true
-  · right
-    exact ⟨cp, ap, by simp [hpres, hb], by simp [Option.guard, hb], hR⟩
-  · left
-    simp only [Bool.not_eq_true] at hb
-    exact ⟨by simp [hpres, hb], by simp [Option.guard, hb]⟩
+def Cst.IsSoundPolicyBound (bound : PolicyBound) (policy : Cst.Policy) : Prop :=
+  ∀ (req : Request) (entities : Entities),
+  (Cst.satisfied policy req entities → satisfiedBound bound req entities) ∧
+  (Cst.hasError policy req entities → satisfiedBound bound req entities)
 
-/-- Step 1 (Link D): authorizing the full CST store agrees, at the decision level, with
-    authorizing its AST translation. -/
-theorem cst_full_decision_eq_ast
-    {cps : Cst.Policies} {aps : Policies} {req : Request} {es : Entities}
-    (htrans : cps.toPolicies? = some aps) :
-    (Cst.isAuthorized req es cps).decision = (Spec.isAuthorized req es aps).decision := by
-  rw [translation_is_sound cps aps req es htrans]
-
-/-- Step 2 (Link C): the AST scope-based slice agrees, at the decision level, with the full
-    AST store (a direct corollary of AST scope-slice soundness). -/
-theorem ast_slice_decision_eq
-    (req : Request) (es : Entities) (aps : Policies) :
-    (Spec.isAuthorized req es
-        (Cedar.Slice.BoundAnalysis.slice Cedar.Slice.scopeAnalysis req es aps)).decision
-      = (Spec.isAuthorized req es aps).decision := by
-  rw [isAuthorized_eq_for_scope_based_policy_slice req es aps]
-
-/-- Step 5c: `Forall₂` with a `none`-iff side condition transfers `filterMap` emptiness. -/
-theorem forall₂_filterMap_eq_nil_iff {α β γ δ : Type} {R : α → β → Prop}
-    {f : α → Option γ} {g : β → Option δ} {xs : List α} {ys : List β}
-    (h : List.Forall₂ R xs ys)
-    (hfg : ∀ a b, R a b → (f a = none ↔ g b = none)) :
-    xs.filterMap f = [] ↔ ys.filterMap g = [] := by
-  induction h with
-  | nil => simp
-  | @cons a b l₁ l₂ hab _ ih =>
-    have hiff := hfg a b hab
-    cases hfa : f a with
-    | none =>
-      have hgb : g b = none := hiff.mp hfa
-      simp only [List.filterMap_cons, hfa, hgb]
-      exact ih
-    | some c =>
-      cases hgbv : g b with
-      | none => simp [hiff.mpr hgbv] at hfa
-      | some d => simp [hfa, hgbv]
-
-/-- Step 5a: equating two policies after zeroing the id forces satisfaction and effect to agree
-    (since `toExpr` and `effect` never read the id). -/
-theorem satisfied_effect_eq_up_to_id {p q : Policy} (req : Request) (es : Entities)
-    (h : ({ p with id := "" } : Policy) = { q with id := "" }) :
-    satisfied p req es = satisfied q req es ∧ p.effect = q.effect := by
-  obtain ⟨id1, e1, ps1, as1, rs1, c1⟩ := p
-  obtain ⟨id2, e2, ps2, as2, rs2, c2⟩ := q
-  simp only [Policy.mk.injEq, true_and] at h
-  obtain ⟨he, hps, has, hrs, hc⟩ := h
-  subst he hps has hrs hc
-  exact ⟨rfl, rfl⟩
-
-/-- Step 5b: `satisfiedWithEffect` is `none` (vs `some`) independently of the id. -/
-theorem satisfiedWithEffect_isNone_eq_up_to_id {p q : Policy}
-    (eff : Effect) (req : Request) (es : Entities)
-    (h : ({ p with id := "" } : Policy) = { q with id := "" }) :
-    satisfiedWithEffect eff p req es = none ↔ satisfiedWithEffect eff q req es = none := by
-  obtain ⟨hsat, heff⟩ := satisfied_effect_eq_up_to_id req es h
-  simp [satisfiedWithEffect, hsat, heff]
-
-/-- Step 5d: emptiness of `satisfiedPolicies` is invariant under id-renaming. -/
-theorem satisfiedPolicies_isEmpty_eq_up_to_ids {ps qs : Policies}
-    (eff : Effect) (req : Request) (es : Entities)
-    (h : List.Forall₂ (fun p q => ({ p with id := "" } : Policy) = { q with id := "" }) ps qs) :
-    (satisfiedPolicies eff ps req es).isEmpty = (satisfiedPolicies eff qs req es).isEmpty := by
-  have key : (ps.filterMap (satisfiedWithEffect eff · req es) = []) ↔
-             (qs.filterMap (satisfiedWithEffect eff · req es) = []) :=
-    forall₂_filterMap_eq_nil_iff h
-      (fun a b hab => satisfiedWithEffect_isNone_eq_up_to_id eff req es hab)
-  simp only [satisfiedPolicies]
-  rcases Decidable.em (ps.filterMap (satisfiedWithEffect eff · req es) = []) with hA | hA
-  · rw [Set.isEmpty_make.mpr hA, Set.isEmpty_make.mpr (key.mp hA)]
-  · rw [(Set.isEmpty_make_eq_false _).mpr hA,
-        (Set.isEmpty_make_eq_false _).mpr (fun hc => hA (key.mpr hc))]
-
-/-- Step 5: the authorization *decision* is invariant under policy-id renaming. -/
-theorem isAuthorized_decision_eq_up_to_ids
-    (req : Request) (es : Entities) {ps qs : Policies}
-    (h : List.Forall₂ (fun p q => ({ p with id := "" } : Policy) = { q with id := "" }) ps qs) :
-    (isAuthorized req es ps).decision = (isAuthorized req es qs).decision := by
-  have hforbid := satisfiedPolicies_isEmpty_eq_up_to_ids .forbid req es h
-  have hpermit := satisfiedPolicies_isEmpty_eq_up_to_ids .permit req es h
-  simp only [isAuthorized, hforbid, hpermit]
-  split <;> rfl
-
-/-- Push a right `map` through `Forall₂`. -/
-theorem forall₂_map_right {α β β' : Type} {f : β → β'} {R : α → β' → Prop}
-    {xs : List α} {ys : List β} :
-    List.Forall₂ R xs (ys.map f) ↔ List.Forall₂ (fun a b => R a (f b)) xs ys := by
-  constructor
-  · induction ys generalizing xs with
-    | nil => intro h; cases h; exact List.Forall₂.nil
-    | cons b ys' ih =>
-      intro h
-      simp only [List.map_cons] at h
-      cases h with
-      | cons hab htl => exact List.Forall₂.cons hab (ih htl)
-  · intro h
-    induction h with
-    | nil => simp
-    | @cons a b l₁ l₂ hab _ ih => simp only [List.map_cons]; exact List.Forall₂.cons hab ih
-
-/-- Step 3: the CST slice translates, and its translation agrees (up to ids) with the AST slice. -/
-theorem cstSlice_toPolicies_some
-    {cps : Cst.Policies} {aps : Policies} {req : Request} {es : Entities}
-    (htrans : cps.toPolicies? = some aps)
-    (hwf : ∀ cp ∈ cps.ps, (prVars? cp).isSome) :
-    ∃ aps',
-      (Cedar.Slice.Cst.BoundAnalysis.slice Cedar.Slice.Cst.scopeAnalysis req es cps hwf).toPolicies?
-        = some aps' ∧
-      List.Forall₂ (fun ap' ast => ({ ap' with id := "" } : Policy) = { ast with id := "" })
-        aps'
-        (Cedar.Slice.BoundAnalysis.slice Cedar.Slice.scopeAnalysis req es aps) := by
-  have hA := cst_slice_chooses_same_policies (req := req) (es := es) htrans hwf
-  have hmm := List.mapM_some_iff_forall₂.mpr
-    ((forall₂_map_right (f := fun (ast : Policy) => ({ ast with id := "" } : Policy))).mpr hA)
-  have htoP :
-      (Cedar.Slice.Cst.BoundAnalysis.slice Cedar.Slice.Cst.scopeAnalysis req es cps hwf).toPolicies?
-        = some (((Cedar.Slice.BoundAnalysis.slice Cedar.Slice.scopeAnalysis req es aps).map
-                  (fun ast => ({ ast with id := "" } : Policy))).mapIdx
-                  (fun i p => ({ p with id := s!"policy{i}" } : Policy))) := by
-    simp only [Cst.Policies.toPolicies?, hmm]
-    rfl
-  refine ⟨_, htoP, ?_⟩
-  have hB := cps_ps_forall₂ htoP
-  exact List.forall₂_trans_ish hB hA
-    (fun hQ hR => by rw [hQ, Option.some.injEq] at hR; exact hR)
-
-/-- Step 6 (headline): decision-level soundness of CST scope-based slicing. Authorizing with the
-    CST slice yields the same decision as authorizing with the full CST policy store. -/
-theorem cst_slice_is_sound
-    {cps : Cst.Policies} {aps : Policies} {req : Request} {es : Entities}
-    (htrans : cps.toPolicies? = some aps)
-    (hwf : ∀ cp ∈ cps.ps, (prVars? cp).isSome) :
-    (Cst.isAuthorized req es
-        (Cedar.Slice.Cst.BoundAnalysis.slice Cedar.Slice.Cst.scopeAnalysis req es cps hwf)).decision
-      = (Cst.isAuthorized req es cps).decision := by
-  obtain ⟨aps', htoP, hrel⟩ := cstSlice_toPolicies_some htrans hwf
-  rw [cst_full_decision_eq_ast htoP,
-      isAuthorized_decision_eq_up_to_ids req es hrel,
-      ast_slice_decision_eq req es aps,
-      cst_full_decision_eq_ast htrans]
+def Cst.IsSoundBoundAnalysis (ba : Cst.BoundAnalysis) : Prop :=
+  ∀ (policy : Cst.Policy) (h : (prVars? policy).isSome), Cst.IsSoundPolicyBound (ba policy h) policy
