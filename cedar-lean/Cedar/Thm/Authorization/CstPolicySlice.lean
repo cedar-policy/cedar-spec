@@ -281,7 +281,8 @@ def Cst.IsSoundPolicyBound (bound : PolicyBound) (policy : Cst.Policy) : Prop :=
   (Cst.hasError policy req entities → satisfiedBound bound req entities)
 
 def Cst.IsSoundBoundAnalysis (ba : Cst.BoundAnalysis) : Prop :=
-  ∀ (policy : Cst.Policy) (h : (prVars? policy).isSome), Cst.IsSoundPolicyBound (ba policy h) policy
+  ∀ (policy : Cst.Policy) (h : (prVars? policy).isSome),
+    (policy.toPolicy?).isSome → Cst.IsSoundPolicyBound (ba policy h) policy
 
 /-- `mapM`-cons helper specialised to `toPolicy?`. -/
 private theorem mapM_toPolicy?_cons {hd : Cst.Policy} {ap : Spec.Policy}
@@ -368,3 +369,116 @@ theorem cst_slice_chooses_same_policies
   have h := policies_translation_success_prVars_isSome' htrans
   exists h
   apply (cst_slice_chooses_same_policies' req entities htrans)
+
+
+/-- From `Forall₂ R xs ys` and `y ∈ ys`, recover a related `x ∈ xs`. -/
+private theorem forall₂_exists_mem_right {α β : Type _} {R : α → β → Prop}
+    {xs : List α} {ys : List β}
+    (h : List.Forall₂ R xs ys) : ∀ {y}, y ∈ ys → ∃ x ∈ xs, R x y := by
+  induction h with
+  | nil => intro y hy; simp at hy
+  | @cons x y' xs' ys' hr _ ih =>
+    intro y hy
+    rcases List.mem_cons.mp hy with heq | hmem
+    · subst heq; exact ⟨x, List.mem_cons_self, hr⟩
+    · obtain ⟨x', hx'mem, hx'r⟩ := ih hmem
+      exact ⟨x', List.mem_cons_of_mem _ hx'mem, hx'r⟩
+
+/-- From `Forall₂ R xs ys` and `x ∈ xs`, recover a related `y ∈ ys`. -/
+private theorem forall₂_exists_mem_left {α β : Type _} {R : α → β → Prop}
+    {xs : List α} {ys : List β}
+    (h : List.Forall₂ R xs ys) : ∀ {x}, x ∈ xs → ∃ y ∈ ys, R x y := by
+  induction h with
+  | nil => intro x hx; simp at hx
+  | @cons x' y' xs' ys' hr _ ih =>
+    intro x hx
+    rcases List.mem_cons.mp hx with heq | hmem
+    · subst heq; exact ⟨y', List.mem_cons_self, hr⟩
+    · obtain ⟨y'', hy''mem, hy''r⟩ := ih hmem
+      exact ⟨y'', List.mem_cons_of_mem _ hy''mem, hy''r⟩
+
+/-- If every element of `xs` maps to `some`, then `mapM` succeeds. -/
+private theorem mapM_some_of_all_isSome {α β : Type _} {f : α → Option β} :
+    ∀ {xs : List α}, (∀ x ∈ xs, (f x).isSome) → ∃ ys, xs.mapM f = some ys := by
+  intro xs
+  induction xs with
+  | nil => intro _; exact ⟨[], by simp⟩
+  | cons hd tl ih =>
+    intro h
+    obtain ⟨b, hb⟩ := Option.isSome_iff_exists.mp (h hd List.mem_cons_self)
+    obtain ⟨bs, hbs⟩ := ih (fun x hx => h x (List.mem_cons_of_mem _ hx))
+    exact ⟨b :: bs, by simp [List.mapM_cons, hb, hbs]⟩
+
+/-- A subset of a translating policy store also translates. -/
+theorem slice_toPolicies?_isSome {slice policies : Cst.Policies} {aps : Spec.Policies}
+    (hsub : slice.ps ⊆ policies.ps) (haps : policies.toPolicies? = some aps) :
+    ∃ sps, slice.toPolicies? = some sps := by
+  have hfp := toPolicies?_forall₂ haps
+  simp only [Cst.Policies.toPolicies?]
+  apply mapM_some_of_all_isSome
+  intro cp hcp
+  obtain ⟨ap, _, hr⟩ := forall₂_exists_mem_left hfp (hsub hcp)
+  rw [Option.isSome_iff_exists]; exact ⟨ap, hr⟩
+
+/-- Translating a sound CST policy slice yields a sound AST policy slice. -/
+theorem cst_sound_slice_translates
+    {req : Request} {entities : Entities} {slice policies : Cst.Policies}
+    {sps aps : Spec.Policies}
+    (hsound : Cst.IsSoundPolicySlice req entities slice policies)
+    (hsps : slice.toPolicies? = some sps)
+    (haps : policies.toPolicies? = some aps) :
+    IsSoundPolicySlice req entities sps aps := by
+  obtain ⟨hsub, hrest⟩ := hsound
+  have hfs := toPolicies?_forall₂ hsps
+  have hfp := toPolicies?_forall₂ haps
+  refine ⟨?_, ?_⟩
+  · intro ap hap
+    obtain ⟨cp, hcp_mem, hcp⟩ := forall₂_exists_mem_right hfs hap
+    obtain ⟨ap', hap'_mem, hr'⟩ := forall₂_exists_mem_left hfp (hsub hcp_mem)
+    have : ap = ap' := by rw [hcp] at hr'; exact Option.some.inj hr'
+    rw [this]; exact hap'_mem
+  · intro ap hap_aps hap_not_sps
+    obtain ⟨cp, hcp_mem_pol, hcp⟩ := forall₂_exists_mem_right hfp hap_aps
+    have hcp_not_slice : cp ∉ slice.ps := by
+      intro hcp_slice
+      obtain ⟨ap'', hap''_mem, hr''⟩ := forall₂_exists_mem_left hfs hcp_slice
+      have : ap = ap'' := by rw [hcp] at hr''; exact Option.some.inj hr''
+      rw [this] at hap_not_sps
+      exact hap_not_sps hap''_mem
+    obtain ⟨hsat, herr⟩ := hrest cp hcp_mem_pol hcp_not_slice
+    rw [← policy_satisfied_agrees cp ap req entities hcp,
+        ← policy_hasError_agrees cp ap req entities hcp]
+    exact ⟨hsat, herr⟩
+
+
+/-- Every policy kept by the CST bound-analysis slice is a member of the
+    original policy store. -/
+theorem cst_bound_slice_subset (ba : Cedar.Slice.Cst.BoundAnalysis) (request : Request)
+    (entities : Entities) (policies : Cst.Policies)
+    (hwf : ∀ policy ∈ policies.ps, (prVars? policy).isSome) :
+    (Cedar.Slice.Cst.BoundAnalysis.slice ba request entities policies hwf).ps ⊆ policies.ps := by
+  intro x hx
+  simp only [Cedar.Slice.Cst.BoundAnalysis.slice, List.mem_filterMap] at hx
+  obtain ⟨⟨a, ha⟩, _, hF⟩ := hx
+  split at hF
+  · injection hF with h; exact h ▸ ha
+  · contradiction
+
+/-- If a policy's bound is satisfied, it is kept by the CST bound-analysis slice. -/
+theorem cst_bound_slice_kept (ba : Cedar.Slice.Cst.BoundAnalysis) (request : Request)
+    (entities : Entities) (policies : Cst.Policies)
+    (hwf : ∀ policy ∈ policies.ps, (prVars? policy).isSome)
+    {policy : Cst.Policy} (hmem : policy ∈ policies.ps)
+    (hsat : satisfiedBound (ba policy (hwf policy hmem)) request entities) :
+    policy ∈ (Cedar.Slice.Cst.BoundAnalysis.slice ba request entities policies hwf).ps := by
+  simp only [Cedar.Slice.Cst.BoundAnalysis.slice, List.mem_filterMap]
+  exact ⟨⟨policy, hmem⟩, List.mem_attach _ _, by simp [hsat]⟩
+
+
+/-- A policy belonging to a store that translates also translates. -/
+theorem policy_toPolicy?_isSome_of_mem {policies : Cst.Policies} {policy : Cst.Policy}
+    (htrans : (policies.toPolicies?).isSome) (hmem : policy ∈ policies.ps) :
+    (policy.toPolicy?).isSome := by
+  obtain ⟨aps, haps⟩ := Option.isSome_iff_exists.mp htrans
+  obtain ⟨ap, _, hr⟩ := forall₂_exists_mem_left (toPolicies?_forall₂ haps) hmem
+  rw [Option.isSome_iff_exists]; exact ⟨ap, hr⟩
