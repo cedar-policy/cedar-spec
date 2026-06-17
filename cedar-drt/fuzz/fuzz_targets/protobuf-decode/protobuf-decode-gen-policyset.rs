@@ -21,7 +21,8 @@ use cedar_drt_inner::props::policyset_to_cedar_parses;
 use cedar_drt_inner::proto_gen::ProtoPolicySetInput;
 
 use cedar_policy::PolicySet;
-use cedar_policy::proto::models;
+use cedar_policy::proto::traits::{DecodeError, Protobuf};
+
 use prost::Message;
 
 // This fuzz target checks that the validation of policy sets on the protobuf decode path is the
@@ -34,15 +35,13 @@ fuzz_target!(|input: ProtoPolicySetInput| {
     // Encode the generated proto model to bytes
     let buf = input.policy_set.encode_to_vec();
 
-    // Decode from bytes (as a real client would). Should not fail since it is the encoding of
-    // a models::PolicySet.
-    let decoded =
-        models::PolicySet::decode(&buf[..]).expect("Decoding an encoded models::PolicySet failed");
-
     // Convert proto model → domain type
     // This is expected to fail
-    let policy_set = match PolicySet::try_from(decoded) {
+    let policy_set = match PolicySet::decode(&buf[..]) {
         Ok(ps) => ps,
+        Err(DecodeError::Proto(err)) => {
+            panic!("Decoding an encoded models::PolicySet failed: {err}")
+        }
         Err(_) => return,
     };
     // Once we have a PolicySet, printing and parsing it back should succeed.
