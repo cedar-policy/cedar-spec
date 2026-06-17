@@ -1,6 +1,11 @@
+module
+
+import all Init.Data.List.SplitOn.Basic
+import all Init.Data.Nat.ToString
+import all Std.Data.String.ToNat
 import Std.Data.String
 import Batteries.Data.String
-import Cedar.Spec.Ext.Util
+import all Cedar.Spec.Ext.Util
 
 /-- If no element of `l` satisfies `P`, then `splitOnPPrepend P l acc` returns
     the single segment `[acc.reverse ++ l]` (the accumulator is prepended in reverse). -/
