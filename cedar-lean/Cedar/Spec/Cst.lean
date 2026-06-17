@@ -162,6 +162,7 @@ public structure PolicyImpl where
   effect : Ident
   vars : List VariableDef
   conds : List Cond
+  id : String
 
 -- This is a cst::VariableDef
 -- `variable` is a LEAN keyword

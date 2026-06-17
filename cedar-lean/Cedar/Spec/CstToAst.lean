@@ -790,11 +790,10 @@ public def Cst.PolicyImpl.toPolicy? (p : Cst.PolicyImpl) : Option Cedar.Spec.Pol
   let effect ← CstCommon.Ident.toEffect? p.effect
   let (ps, as, rs) ← extractScope? p.vars
   let conds ← toConditions? p.conds
-  some {id := "", effect := effect, principalScope := ps, actionScope := as, resourceScope := rs, condition := conds}
+  some {id := p.id, effect := effect, principalScope := ps, actionScope := as, resourceScope := rs, condition := conds}
 
 public def Cst.Policy.toPolicy? : Cst.Policy → Option Cedar.Spec.Policy
   | .policy p => p.toPolicy?
 
 public def Cst.Policies.toPolicies? (ps : Cst.Policies) : Option Cedar.Spec.Policies := do
-  let rets ← ps.ps.mapM Cst.Policy.toPolicy?
-  some (rets.mapIdx (fun i p => {p with id := s!"policy{i}"}))
+  ps.ps.mapM Cst.Policy.toPolicy?

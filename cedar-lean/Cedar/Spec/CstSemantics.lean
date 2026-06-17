@@ -648,6 +648,9 @@ public def Policies.toExpr (ps : Policies) : Expr :=
 
 /- Authorizer -/
 
+public def Policy.id : Policy → PolicyID
+  | .policy p => p.id
+
 public def satisfied (policy : Policy) (req : Request) (entities : Entities) : Bool :=
   policy.toExpr.evaluate req entities = .ok true
 
@@ -661,14 +664,10 @@ public def satisfiedWithEffect (effect : Effect) (policy : Policy) (req : Reques
     | some eff => eff = effect
   else false
 
-public def Policies.withIDs (policies : Policies) : List (PolicyID × Policy) :=
-  let len := policies.ps.length
-  List.zip ((List.range len).map (fun i => s!"policy{i}")) policies.ps
-
 public def satisfiedPolicies (effect : Effect) (policies : Policies) (req : Request) (entities : Entities) : Set PolicyID :=
   Set.make (List.filterMap
-    (fun (id, p) => if satisfiedWithEffect effect p req entities then some id else none)
-    policies.withIDs)
+    (fun p => if satisfiedWithEffect effect p req entities then some p.id else none)
+    policies.ps)
 
 public def hasError (policy : Policy) (req : Request) (entities : Entities) : Bool :=
   match policy.toExpr.evaluate req entities with
@@ -677,8 +676,8 @@ public def hasError (policy : Policy) (req : Request) (entities : Entities) : Bo
 
 public def errorPolicies (policies : Policies) (req : Request) (entities : Entities) : Set PolicyID :=
   Set.make (List.filterMap
-    (fun (id, p) => if hasError p req entities then some id else none)
-    policies.withIDs)
+    (fun p => if hasError p req entities then some p.id else none)
+    policies.ps)
 
 public def isAuthorized (req : Request) (entities : Entities) (policies : Policies) : Response :=
   let forbids := satisfiedPolicies .forbid policies req entities
