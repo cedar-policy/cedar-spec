@@ -185,7 +185,7 @@ public def AddExpr.toEntityTypeName? (e : AddExpr) : Option EntityType :=
     let member := unary.item
     if !member.access.isEmpty then none else
     match member.item with
-    | .name n => some { id := n.name.toString, path := n.path.map Ident.toString }
+    | .name n => CstCommon.Name.toAName? n
     | _ => none
   | some _ => none
 
@@ -240,10 +240,9 @@ public def Primary.evaluate (e : Primary) (req : Request) (es : Entities) : Resu
   | .ref r => match r with
     | .uid path eid => do
       let eid' ← Str.toUnescapedString eid
-      let ids := path.path.map Ident.toString
-      let last := path.name.toString
-      let etype : Spec.Name := { id := last, path := ids }
-      .ok (.prim (.entityUID { ty := etype, eid := eid' }))
+      match CstCommon.Name.toAName? path with
+      | some etype => .ok (.prim (.entityUID { ty := etype, eid := eid' }))
+      | none       => .error .typeError
     | .ref _ _ => .error .typeError
   | .rInits r => do
     let avs ← r.mapM₁ (fun ⟨ri, hmem⟩ =>

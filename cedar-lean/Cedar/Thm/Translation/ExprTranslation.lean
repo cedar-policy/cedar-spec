@@ -84,7 +84,8 @@ theorem Cst.Primary.toAExpr?_evaluate
       | some su' =>
         rw [hs] at hsu1; simp at hsu1
         simp [hsu1, bind, Except.bind]
-        simp [evaluate, Cst.Name.toAName?_agrees hty]
+        simp only [Cst.Name.toAName?] at hty
+        simp [evaluate, hty]
     | ref path rinits => simp [Cst.Ref.toExprOrSpecial?] at href
 
   | name n =>
@@ -179,7 +180,7 @@ decreasing_by
   all_goals first
     | (apply Prod.Lex.left; omega)
     | (apply Prod.Lex.left
-       rename_i hx _
+       rename_i _ _
        have := List.sizeOf_lt_of_mem hx
        omega)
 
@@ -204,7 +205,8 @@ theorem Cst.Member.toAExpr?_evaluate
   split
   case h_1 _ s args rest =>
     simp only [Cst.Primary.toExprOrSpecial?, Cst.Name.toVar?, Cst.Name.toAName?,
-      Cst.Ident.toUnrestrictedString?, List.isEmpty_nil, Bool.not_true, Bool.false_eq_true,
+      CstCommon.Name.toAName?,
+      CstCommon.Ident.toUnrestrictedString?, List.isEmpty_nil, Bool.not_true, Bool.false_eq_true,
       reduceIte, Option.pure_def, List.mapM_nil, Option.bind_eq_bind, Option.bind_some,
       Option.some.injEq] at hitem
     subst hitem

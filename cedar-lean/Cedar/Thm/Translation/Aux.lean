@@ -32,8 +32,9 @@ theorem Cst.Ident.toUnrestrictedString?_eq_toString
     {i : Cst.Ident} {s : String} :
     Cst.Ident.toUnrestrictedString? i = some s →
     s = CstCommon.Ident.toString i := by
-  cases i <;> intro h <;> simp [Cst.Ident.toUnrestrictedString?] at h
-  all_goals first | rfl | (rw [← h]; rfl)
+  cases i <;> intro h <;>
+    simp_all [Cst.Ident.toUnrestrictedString?, CstCommon.Ident.toUnrestrictedString?,
+      CstCommon.Ident.toString]
 
 /-- If `mapM` over `toUnrestrictedString?` succeeds, the result equals `map toString`. -/
 theorem mapM_toUnrestrictedString?_eq_map
@@ -59,7 +60,7 @@ theorem Cst.Name.toAName?_agrees
     an = { id := n.name.toString,
            path := n.path.map CstCommon.Ident.toString } := by
   intro h
-  simp [Cst.Name.toAName?, Option.bind_eq_some_iff] at h
+  simp [Cst.Name.toAName?, CstCommon.Name.toAName?, Option.bind_eq_some_iff] at h
   obtain ⟨id, hid, path, hpath, han⟩ := h
   rw [← han]; congr 1
   · exact Cst.Ident.toUnrestrictedString?_eq_toString hid
@@ -1377,9 +1378,8 @@ theorem toExprOrSpecial_name_func {item : Cst.Primary} {an : Spec.Name}
 /-- For the `rIsIn` case: when the translator's `toEntityType?` succeeds with
     `et`, the evaluator's structural `toEntityTypeName?` succeeds with the same
     `et`.  Both enforce the same shape (extended/mext empty, op `none` or
-    `.nDash 0`, access empty, item a `.name`); the translator additionally
-    requires the name be non-reserved, and on those names `toAName?` produces
-    exactly the `toString`-based name the evaluator builds. -/
+    `.nDash 0`, access empty, item a `.name`), and both now build the entity-type
+    name via the shared `CstCommon.Name.toAName?`, so they agree. -/
 theorem addExpr_toEntityType_agrees
     {e : Cst.AddExpr} {et : EntityType} :
     Cst.AddExpr.toEntityType? e = some et →
@@ -1406,16 +1406,16 @@ theorem addExpr_toEntityType_agrees
         cases op with
         | none =>
           obtain ⟨hAccNil, n, hItem, hAName⟩ := member_toExprOrSpecial_name heos
-          have hagree := Cst.Name.toAName?_agrees hAName
-          simp [Cst.AddExpr.toEntityTypeName?, hAccNil, hItem, hagree]
+          simp [Cst.AddExpr.toEntityTypeName?, hAccNil, hItem]
+          exact hAName
         | some op' =>
           cases op' with
           | nDash k =>
             by_cases hk : k = 0
             · subst hk
               obtain ⟨hAccNil, n, hItem, hAName⟩ := member_toExprOrSpecial_name heos
-              have hagree := Cst.Name.toAName?_agrees hAName
-              simp [Cst.AddExpr.toEntityTypeName?, hAccNil, hItem, hagree]
+              simp [Cst.AddExpr.toEntityTypeName?, hAccNil, hItem]
+              exact hAName
             · simp at heos
               split at heos
               · split at heos
@@ -1695,7 +1695,8 @@ theorem Cst.Primary.toAttr?_consistent (p : Cst.Primary) :
     | nil =>
       cases name <;>
         simp [Cst.Primary.toAttr?, Cst.Ident.toAttr?, Cst.Primary.toExprOrSpecial?, Cst.Name.toVar?,
-              Cst.Name.toAName?, Cst.Ident.toUnrestrictedString?, ExprOrSpecial.toValidAttr?,
+              Cst.Name.toAName?, CstCommon.Name.toAName?,
+              CstCommon.Ident.toUnrestrictedString?, ExprOrSpecial.toValidAttr?,
               Var.toString]
     | cons hd tl =>
       simp only [Cst.Primary.toAttr?, Cst.Primary.toExprOrSpecial?, Cst.Name.toVar?,

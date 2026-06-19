@@ -58,17 +58,8 @@ public def Cst.Ident.toUnreservedId? : Cst.Ident → Option String
   | .idIdent s => if Unreserved? s then some s else none
   | _ => none
 
-public def Cst.Ident.toUnrestrictedString? : Cst.Ident → Option String
-  | .idPrincipal => some "principal"
-  | .idAction => some "action"
-  | .idResource => some "resource"
-  | .idContext => some "context"
-  | .idPermit => some "permit"
-  | .idForbid => some "forbid"
-  | .idWhen => some "when"
-  | .idUnless => some "unless"
-  | .idIdent s => some s
-  | _ => none
+public def Cst.Ident.toUnrestrictedString? : Cst.Ident → Option String :=
+  CstCommon.Ident.toUnrestrictedString?
 
 public def Var.toString : Var → String
   | .principal => "principal"
@@ -104,10 +95,8 @@ public def Cst.Literal.toExprOrSpecial? (l : Cst.Literal) : Option ExprOrSpecial
     some (.expr (.lit (.int i)))
   | .liStr s => some (.strLit s)
 
-public def Cst.Name.toAName? (n : Cst.Name) : Option AName := do
-  let id ← n.name.toUnrestrictedString?
-  let path ← n.path.mapM (Cst.Ident.toUnrestrictedString?)
-  some {id := id, path := path}
+public def Cst.Name.toAName? (n : Cst.Name) : Option AName :=
+  CstCommon.Name.toAName? n
 
 public def Cst.Name.toVar? (n : Cst.Name) : Option Var :=
   if !n.path.isEmpty then none
