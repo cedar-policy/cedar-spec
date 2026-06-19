@@ -23,8 +23,10 @@ use cedar_drt_inner::{
     schemas::schemas_are_equivalent,
 };
 
-use cedar_policy::Schema;
-use cedar_policy::proto::models;
+use cedar_policy::{
+    Schema,
+    proto::traits::{DecodeError, Protobuf},
+};
 use prost::Message;
 
 // Generates a proto Schema → encode to bytes → decode → convert to domain →
@@ -32,13 +34,12 @@ use prost::Message;
 fuzz_target!(|input: ProtoSchemaInput| {
     let buf = input.schema.encode_to_vec();
 
-    let decoded = models::Schema::decode(&buf[..])
-        .expect("Failed to decode proto Schema that was just encoded.");
-
-    // Convert proto model -> schema. If it doesn't fail here, then the roundtrips through
-    // other formats should succeed.
-    let schema = match Schema::try_from(decoded) {
+    // Decode into Schema
+    let schema = match Schema::decode(&buf[..]) {
         Ok(s) => s,
+        Err(DecodeError::Proto(err)) => {
+            panic!("Decoding an encoded models::Schema failed: {err}")
+        }
         Err(_) => return,
     };
     // It should roundtrip through JSON and Cedar formats, and result in equivalent schemas.
