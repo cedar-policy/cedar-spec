@@ -222,7 +222,7 @@ pub fn test_tpe_is_authorized_equiv(
         ),
         // LeanBackendError is returned for expected error conditions like ill-typed policies
         (Err(_), Err(FfiError::LeanBackendError(_))) => return,
-        // other FfiError variants indicate a bug in the FII layer
+        // other FfiError variants indicate a bug in the FFI layer
         (Err(_), Err(e)) => panic!("Unexpected FfiError: {e:?}"),
     };
 
