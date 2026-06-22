@@ -26,7 +26,7 @@ use cedar_policy_core::ast::{self, Value};
 use cedar_policy_generators::abac::ABACRequest;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use ref_cast::RefCast;
-use std::collections::{BTreeMap, HashSet, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::convert::TryFrom;
 use std::sync::Arc;
 
