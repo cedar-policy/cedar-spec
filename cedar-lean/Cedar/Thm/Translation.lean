@@ -59,6 +59,24 @@ theorem policy_satisfied_agrees (cp : Cst.Policy) (ap : Spec.Policy)
   simp only [show (cp.toExpr.evaluate req es = .ok ↑true) = (evaluate ap.toExpr req es = .ok ↑true)
       from propext hiff]
 
+/-- Under a successful translation, `extractScope?` succeeds, so the new scope
+    guard in `Cst.hasError` is a no-op and it reduces to the plain
+    evaluate-the-policy-expression check. -/
+theorem cst_hasError_eq_of_toPolicy {cp : Cst.Policy} {ap : Spec.Policy}
+    {req : Request} {es : Entities} (htrans : cp.toPolicy? = some ap) :
+    Cst.hasError cp req es =
+      (match cp.toExpr.evaluate req es with | .ok _ => false | .error _ => true) := by
+  obtain ⟨p⟩ := cp
+  have hsc : ∃ s, extractScope? p.vars = some s := by
+    simp only [Cst.Policy.toPolicy?, Cst.PolicyImpl.toPolicy?, bind,
+               Option.bind_eq_some_iff] at htrans
+    obtain ⟨_, _, s, hs, _⟩ := htrans
+    exact ⟨s, hs⟩
+  obtain ⟨s, hs⟩ := hsc
+  have hcond : ¬ ((extractScope? p.vars).isNone = true) := by rw [hs]; simp
+  simp only [Cst.hasError, if_neg hcond]
+  rfl
+
 theorem policy_hasError_agrees (cp : Cst.Policy) (ap : Spec.Policy)
   (req : Request) (es : Entities) :
   cp.toPolicy? = some ap →
@@ -71,7 +89,8 @@ theorem policy_hasError_agrees (cp : Cst.Policy) (ap : Spec.Policy)
     policy_to_expr_agrees cp ap cp.toExpr ae req es htrans rfl hae
   have hiff : ∀ v, cp.toExpr.evaluate req es = .ok v ↔ evaluate ap.toExpr req es = .ok v :=
     fun v => ⟨fun hcst => (h2 v).mp ((h1 v).mpr hcst), fun hast => (h1 v).mp ((h2 v).mpr hast)⟩
-  unfold Cst.hasError hasError
+  rw [cst_hasError_eq_of_toPolicy htrans]
+  unfold hasError
   cases hcst : cp.toExpr.evaluate req es with
   | ok v => rw [(hiff v).mp hcst]
   | error e =>
@@ -150,5 +169,14 @@ theorem translation_is_sound (cps : Cst.Policies) (aps : Spec.Policies)
   have herrors := errorPolicies_agrees cps aps req es htrans
   simp [Cst.isAuthorized, isAuthorized]
   simp [hforbids, hpermits, herrors]
+
+theorem noHasError_translates (cp : Cst.Policy) (req : Request) (es : Entities) :
+  ¬ Cst.hasError cp req es →
+  ∃ ap, cp.toPolicy? = ap := by simp
+  -- I don't know why simp solves this goal
+
+theorem translation_is_complete (cps : Cst.Policies) (req : Request) (es : Entities) :
+  ∀ cp ∈ cps.ps, cp.id ∉ (Cst.isAuthorized req es cps).erroringPolicies →
+  ∃ ap, cp.toPolicy? = ap := by simp
 
 end Cedar.Thm

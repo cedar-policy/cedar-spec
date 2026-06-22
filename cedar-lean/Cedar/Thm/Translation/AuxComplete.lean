@@ -372,4 +372,20 @@ theorem orExprFoldExtended_complete :
       obtain ⟨result, hresult⟩ := ih hrest (Cedar.Spec.Expr.or acc aval)
       exact ⟨result, by simp [Cst.OrExpr.foldExtended, hrelE, hresult]⟩
 
+-- If a CST policy can be evaluated without error then scope extract will succeed
+theorem extractScope_complete
+  (cp : Cst.Policy) (req : Request) (es : Entities) :
+  ¬ Cst.hasError cp req es →
+  ∃ trip, match cp with
+  | .policy p => extractScope? p.vars = some trip := by
+  intro hne
+  cases cp with
+  | policy p =>
+    cases h : extractScope? p.vars with
+    | none =>
+      exfalso
+      apply hne
+      simp [Cst.hasError, h]
+    | some trip => exact ⟨trip, h⟩
+
 end Cedar.Thm
