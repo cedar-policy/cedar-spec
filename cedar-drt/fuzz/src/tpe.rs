@@ -16,7 +16,7 @@
 
 //! Test utilities for type-directed partial evaluation fuzz targets
 
-use cedar_lean_ffi::CedarLeanFfi;
+use cedar_lean_ffi::{CedarLeanFfi, FfiError};
 use cedar_policy::pst::{Clause, Expr, UnaryOp};
 use cedar_policy::{
     Entity, EntityId, EntityUid, PartialEntities, PartialEntity, PartialEntityUid, PartialRequest,
@@ -26,7 +26,7 @@ use cedar_policy_core::ast::{self, Value};
 use cedar_policy_generators::abac::ABACRequest;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use ref_cast::RefCast;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashSet, HashMap};
 use std::convert::TryFrom;
 use std::sync::Arc;
 
@@ -212,7 +212,6 @@ pub fn test_tpe_is_authorized_equiv(
 
     let (rust_resp, lean_resp) = match (maybe_rust_resp, maybe_lean_resp) {
         (Ok(r), Ok(l)) => (r, l),
-        (Err(_), Err(_)) => return,
         (Ok(r), Err(e)) => panic!(
             "Got Lean TPE error, but Rust returned response.\nRust: {:?}\n, Lean: {}",
             r, e
@@ -221,96 +220,104 @@ pub fn test_tpe_is_authorized_equiv(
             "Got Rust TPE error, but Lean returned response.\nRust: {}\n, Lean: {:?}",
             e, l
         ),
+        // LeanBackendError is returned for expected error conditions like ill-typed policies
+        (Err(_), Err(FfiError::LeanBackendError(_))) => return,
+        // other FfiError variants indicate a bug in the FII layer
+        (Err(_), Err(e)) => panic!("Unexpected FfiError: {e:?}"),
     };
-
-    let rust_inner = rust_resp.as_ref();
 
     // Compare decisions
     assert_eq!(
-        rust_inner.decision(),
+        rust_resp.decision(),
         lean_resp.decision,
         "TPE decision mismatch"
     );
 
     // Compare policy categorizations (comparing sets of policy IDs)
-    let to_set =
-        |iter: Box<dyn Iterator<Item = &cedar_policy_core::tpe::response::ResidualPolicy> + '_>| {
-            iter.map(|p| PolicyId::new(p.get_policy_id().as_ref()))
-                .collect::<HashSet<PolicyId>>()
-        };
+    fn to_set<'a>(iter: impl Iterator<Item = &'a PolicyId> + 'a) -> HashSet<PolicyId> {
+        iter.cloned().collect::<HashSet<_>>()
+    }
     // The satisfied forbids/permits match.
     assert_eq!(
-        to_set(Box::new(rust_inner.satisfied_permits())),
+        to_set(rust_resp.true_permits()),
         lean_resp.satisfied_permits,
         "satisfied_permits mismatch"
     );
     assert_eq!(
-        to_set(Box::new(rust_inner.satisfied_forbids())),
+        to_set(rust_resp.true_forbids()),
         lean_resp.satisfied_forbids,
         "satisfied_forbids mismatch"
     );
-    // Rust only returns false_permits, which should be the union of the
-    // false_permits and error_permits of the Lean side.
+    // False permits/forbids match
     assert_eq!(
-        to_set(Box::new(rust_inner.false_permits())),
-        &lean_resp.false_permits | &lean_resp.error_permits,
-        "rust false_permits mismatch with false permits union error permits"
+        to_set(rust_resp.false_permits()),
+        lean_resp.false_permits,
+        "false_permits mismatch"
     );
-    // Same for the false_forbids and error_forbids. The Rust side puts the policy ID
-    // in false_forbids for all Effect::Forbid policies that result in false or error.
     assert_eq!(
-        to_set(Box::new(rust_inner.false_forbids())),
-        &lean_resp.false_forbids | &lean_resp.error_forbids,
-        "rust false_forbids mismatch with false forbids union error forbids"
+        to_set(rust_resp.false_forbids()),
+        lean_resp.false_forbids,
+        "false_forbids mismatch"
+    );
+    // Error permits/forbids match
+    assert_eq!(
+        to_set(rust_resp.error_permits()),
+        lean_resp.error_permits,
+        "false_permits mismatch"
+    );
+    assert_eq!(
+        to_set(rust_resp.error_forbids()),
+        lean_resp.error_forbids,
+        "false_forbids mismatch"
     );
     // The policies with residuals match on both sides.
     assert_eq!(
-        to_set(Box::new(rust_inner.residual_permits())),
+        to_set(rust_resp.residual_permits()),
         lean_resp.residual_permits,
         "residual_permits mismatch"
     );
     assert_eq!(
-        to_set(Box::new(rust_inner.residual_forbids())),
+        to_set(rust_resp.residual_forbids()),
         lean_resp.residual_forbids,
         "residual_forbids mismatch"
     );
 
     // Compare residual expressions by policy ID via PST
-    let rust_residual_map: std::collections::HashMap<String, Expr> = rust_resp
-        .residual_policies()
+    let rust_residual_map: HashMap<PolicyId, Expr> = rust_resp
+        .policies()
         .map(|rp| {
-            let id: String = rp.id().to_string();
             let pst = rp
                 .to_pst()
-                .expect("policy->pst conversion should succeeed for residuals");
-            // Residual should only have one clause
+                .expect("policy->pst conversion should succeed for residuals");
+            // Residual should have exactly one clause
             let clause = match pst.body().clauses().as_slice() {
                 [Clause::When(x)] => x.clone(),
                 [Clause::Unless(x)] => Arc::new(Expr::UnaryOp {
                     op: UnaryOp::Not,
                     expr: x.clone(),
                 }),
-                _ => panic!(""),
+                _ => panic!("zero or multiple when/unless clauses in residual policy"),
             };
-            (id, Arc::unwrap_or_clone(clause))
+            (rp.id().clone(), Arc::unwrap_or_clone(clause))
         })
         .collect();
 
     for lean_rp in &lean_resp.residuals {
         let lean_pst = Expr::try_from(lean_rp.residual.clone())
             .expect("lean residual->pst conversion should succeed");
-        let id_str = lean_rp.id.to_string();
-        let rust_pst = rust_residual_map.get(&id_str).unwrap_or_else(|| {
+        let rust_pst = rust_residual_map.get(&lean_rp.id).unwrap_or_else(|| {
             panic!(
-                "Lean returned residual for policy {id_str:?} but Rust did not.\n\
+                "Lean returned residual for policy {:?} but Rust did not.\n\
                  Rust residual IDs: {:?}",
+                lean_rp.id,
                 rust_residual_map.keys().collect::<Vec<_>>()
             )
         });
         assert_eq!(
             rust_pst, &lean_pst,
-            "Residual expression mismatch for policy {id_str:?}\n\
-             Rust PST: {rust_pst:?}\nLean PST: {lean_pst:?}"
+            "Residual expression mismatch for policy {:?}\n\
+             Rust PST: {rust_pst:?}\nLean PST: {lean_pst:?}",
+            lean_rp.id,
         );
     }
 }
