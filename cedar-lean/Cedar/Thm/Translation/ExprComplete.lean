@@ -11,8 +11,8 @@ import Cedar.Thm.Data.List.Lemmas
 Translation completeness for CST expressions: if a CST expression evaluates
 without error, its translation to AST succeeds.
 
-`Cst.Expr.toAExpr?_complete` is currently a `sorry` placeholder; the rest of the
-mutual family (`Member`, `Unary`, …, down to `Expr`) will be filled in here.
+The full mutual family (`Primary`, `Member`, `Unary`, …, down to `Expr`) is
+proven below by mutual well-founded recursion on the CST size.
 -/
 
 namespace Cedar.Thm
@@ -123,6 +123,26 @@ theorem Cst.Primary.toAExpr?_complete
           exact ⟨ae, by simp [Cst.Expr.toAExpr?, heos, hae]⟩)
       refine ⟨.expr (.record map), .record map, ?_, by simp [ExprOrSpecial.toExpr?]⟩
       simp [Cst.Primary.toExprOrSpecial?, hmap]
+termination_by (sizeOf prim, 0)
+decreasing_by
+  all_goals simp_wf
+  all_goals first
+    | (apply Prod.Lex.left
+       subst_vars
+       simp only [Cst.Primary.expr.sizeOf_spec]
+       omega)
+    | (apply Prod.Lex.left
+       subst_vars
+       simp only [Cst.Primary.eList.sizeOf_spec]
+       have := List.sizeOf_lt_of_mem (show x ∈ xs by assumption)
+       omega)
+    | (apply Prod.Lex.left
+       subst_vars
+       simp only [Cst.Primary.rInits.sizeOf_spec]
+       have := List.sizeOf_lt_of_mem (show ri ∈ r by assumption)
+       cases ri
+       simp only [Cst.RecInit.mk.sizeOf_spec] at *
+       omega)
 
 theorem Cst.Member.toAExpr?_complete
   {mem : Cst.Member} {req : Request} {es : Entities} {v : Value} :
@@ -182,6 +202,13 @@ theorem Cst.Member.toAExpr?_complete
       refine ⟨eos, r, ?_, heos⟩
       simp only [Cst.Member.toExprOrSpecial?, hpeos, haccs, hmaux, Option.bind_some,
         Option.bind_eq_bind]
+termination_by (sizeOf mem, 0)
+decreasing_by
+  all_goals
+    (apply Prod.Lex.left
+     first
+       | (subst_vars; simp only [Cst.Member.mk.sizeOf_spec]; omega)
+       | (cases mem; simp only [Cst.Member.mk.sizeOf_spec] at *; omega))
 
 theorem Cst.Unary.toAExpr?_complete
   {u : Cst.Unary} {req : Request} {es : Entities} {v : Value} :
@@ -270,6 +297,11 @@ theorem Cst.Unary.toAExpr?_complete
                    by simp [ExprOrSpecial.toExpr?]⟩
   | some .nOverBang => simp [Cst.Unary.evaluate, hop] at hev
   | some .nOverDash => simp [Cst.Unary.evaluate, hop] at hev
+termination_by (sizeOf u, 0)
+decreasing_by
+  all_goals
+    (apply Prod.Lex.left
+     cases u; simp only [Cst.Unary.mk.sizeOf_spec]; omega)
 
 theorem Cst.MultExpr.toAExpr?_complete
   {mult : Cst.MultExpr} {req : Request} {es : Entities} {v : Value} :
@@ -298,6 +330,15 @@ theorem Cst.MultExpr.toAExpr?_complete
       refine ⟨.expr result, result, ?_, by simp [ExprOrSpecial.toExpr?]⟩
       simp only [hext] at hresult
       simp [Cst.MultExpr.toExprOrSpecial?, hext, hinitA, hresult]
+termination_by (sizeOf mult, 0)
+decreasing_by
+  all_goals
+    (apply Prod.Lex.left
+     have h1 : sizeOf mult.initial < sizeOf mult := by
+       cases mult; simp only [Cst.MultExpr.mk.sizeOf_spec]; omega
+     have h2 : sizeOf mult.extended < sizeOf mult := by
+       cases mult; simp only [Cst.MultExpr.mk.sizeOf_spec]; omega
+     omega)
 
 theorem Cst.AddExpr.toAExpr?_complete
   {add : Cst.AddExpr} {req : Request} {es : Entities} {v : Value} :
@@ -326,6 +367,15 @@ theorem Cst.AddExpr.toAExpr?_complete
       refine ⟨.expr result, result, ?_, by simp [ExprOrSpecial.toExpr?]⟩
       simp only [hext] at hresult
       simp [Cst.AddExpr.toExprOrSpecial?, hext, hinitA, hresult]
+termination_by (sizeOf add, 0)
+decreasing_by
+  all_goals
+    (apply Prod.Lex.left
+     have h1 : sizeOf add.initial < sizeOf add := by
+       cases add; simp only [Cst.AddExpr.mk.sizeOf_spec]; omega
+     have h2 : sizeOf add.extended < sizeOf add := by
+       cases add; simp only [Cst.AddExpr.mk.sizeOf_spec]; omega
+     omega)
 
 theorem Cst.Relation.toAExpr?_complete
   {rel : Cst.Relation} {req : Request} {es : Entities} {v : Value} :
@@ -359,41 +409,42 @@ theorem Cst.Relation.toAExpr?_complete
             simp [Cst.Relation.toExprOrSpecial?, hieos, hiexpr, hyA]
   | rHas target field =>
     simp only [Cst.Relation.evaluate] at hev
-    cases hrhs : field.toHasRhs? with
-    | none => rw [hrhs] at hev; simp at hev
-    | some rhs =>
-      rw [hrhs] at hev
-      simp only [Option.isNone_some, Bool.false_eq_true, if_false] at hev
-      cases htgt : target.evaluate req es with
-      | error e => rw [htgt] at hev; simp [bind, Except.bind] at hev
-      | ok vt =>
+    cases htgt : target.evaluate req es with
+    | error e => rw [htgt] at hev; simp [bind, Except.bind] at hev
+    | ok vt =>
+      cases hattrs : field.toAttrs? with
+      | none => rw [htgt, hattrs] at hev; simp [bind, Except.bind] at hev
+      | some attrs =>
+        obtain ⟨rhs, hrhs⟩ := addExpr_toAttrs_toHasRhs hattrs
         obtain ⟨teos, texpr, hteos, htexpr⟩ := Cst.AddExpr.toAExpr?_complete htgt
         have htgtA : target.toAExpr? = some texpr := by simp [Cst.AddExpr.toAExpr?, hteos, htexpr]
         cases rhs with
-        | inl f =>
-          exact ⟨.expr (.hasAttr texpr f), .hasAttr texpr f,
+        | inl fld =>
+          exact ⟨.expr (.hasAttr texpr fld), .hasAttr texpr fld,
                  by simp [Cst.Relation.toExprOrSpecial?, htgtA, hrhs], by simp [ExprOrSpecial.toExpr?]⟩
         | inr fs =>
           exact ⟨.expr (extendedHasAttr texpr fs), extendedHasAttr texpr fs,
                  by simp [Cst.Relation.toExprOrSpecial?, htgtA, hrhs], by simp [ExprOrSpecial.toExpr?]⟩
   | rLike target pattern =>
     simp only [Cst.Relation.evaluate] at hev
-    cases hpat : pattern.toPattern? with
-    | none => rw [hpat] at hev; simp at hev
-    | some mp =>
-      rw [hpat] at hev
-      simp only [Option.isNone_some, Bool.false_eq_true, if_false] at hev
-      cases hps : pattern.toPatternString? with
-      | none => rw [hps] at hev; simp at hev
-      | some s =>
-        rw [hps] at hev
-        cases htgt : target.evaluate req es with
-        | error e => rw [htgt] at hev; simp [bind, Except.bind] at hev
-        | ok vt =>
+    cases hps : pattern.toPatternString? with
+    | none => rw [hps] at hev; simp at hev
+    | some s =>
+      rw [hps] at hev
+      cases htgt : target.evaluate req es with
+      | error e => rw [htgt] at hev; simp [bind, Except.bind] at hev
+      | ok vt =>
+        rw [htgt] at hev
+        simp only [bind, Except.bind] at hev
+        cases hcp : Cedar.Spec.CstCommon.toPattern? s with
+        | none => rw [hcp] at hev; simp at hev
+        | some mp =>
           obtain ⟨teos, texpr, hteos, htexpr⟩ := Cst.AddExpr.toAExpr?_complete htgt
           have htgtA : target.toAExpr? = some texpr := by simp [Cst.AddExpr.toAExpr?, hteos, htexpr]
+          have hpatT : pattern.toPattern? = some mp := by
+            simp [Cst.AddExpr.toPattern?, addExpr_toPatternString_toExprOrSpecial hps, hcp]
           exact ⟨.expr (.unaryApp (.like mp) texpr), .unaryApp (.like mp) texpr,
-                 by simp [Cst.Relation.toExprOrSpecial?, htgtA, hpat], by simp [ExprOrSpecial.toExpr?]⟩
+                 by simp [Cst.Relation.toExprOrSpecial?, htgtA, hpatT], by simp [ExprOrSpecial.toExpr?]⟩
   | rIsIn target ety inEntity =>
     simp only [Cst.Relation.evaluate] at hev
     cases hety : ety.toEntityType? with
@@ -424,6 +475,9 @@ theorem Cst.Relation.toAExpr?_complete
                      .and (.unaryApp (.is etyName) texpr) (.binaryApp .mem texpr mi),
                      by simp [Cst.Relation.toExprOrSpecial?, htgtA, hety, hie],
                      by simp [ExprOrSpecial.toExpr?]⟩
+termination_by (sizeOf rel, 0)
+decreasing_by
+  all_goals (apply Prod.Lex.left; decreasing_tactic)
 
 theorem Cst.AndExpr.toAExpr?_complete
   {ae : Cst.AndExpr} {req : Request} {es : Entities} {v : Value} :
@@ -447,6 +501,13 @@ theorem Cst.AndExpr.toAExpr?_complete
         simp only [hext] at hresult
         simp [Cst.AndExpr.toExprOrSpecial?, hext, hinitA, hresult]
   · simp [Cst.AndExpr.evaluate, hall] at hev
+termination_by (sizeOf ae, 0)
+decreasing_by
+  all_goals
+    (apply Prod.Lex.left
+     cases ae
+     simp only [Cst.AndExpr.mk.sizeOf_spec]
+     omega)
 
 theorem Cst.OrExpr.toAExpr?_complete
   {oe : Cst.OrExpr} {req : Request} {es : Entities} {v : Value} :
@@ -470,12 +531,94 @@ theorem Cst.OrExpr.toAExpr?_complete
         simp only [hext] at hresult
         simp [Cst.OrExpr.toExprOrSpecial?, hext, hinitA, hresult]
   · simp [Cst.OrExpr.evaluate, hall] at hev
+termination_by (sizeOf oe, 0)
+decreasing_by
+  all_goals
+    (apply Prod.Lex.left
+     cases oe
+     simp only [Cst.OrExpr.mk.sizeOf_spec]
+     omega)
+
+theorem Cst.ExprData.toAExpr?_complete
+  {ed : Cst.ExprData} {req : Request} {es : Entities} {v : Value} :
+  ed.evaluate req es = .ok v →
+  ∃ eos ae, ed.toExprOrSpecial? = some eos ∧ eos.toExpr? = some ae := by
+  intro hev
+  cases ed with
+  | edOr ore =>
+    simp only [Cst.ExprData.evaluate] at hev
+    obtain ⟨eos, ae, heos, hae⟩ := Cst.OrExpr.toAExpr?_complete hev
+    exact ⟨eos, ae, by simp [Cst.ExprData.toExprOrSpecial?, heos], hae⟩
+  | edIf i t f =>
+    by_cases hguard : (t.toAExpr?.isSome && f.toAExpr?.isSome) = true
+    · rw [ExprData.evaluate_edIf_eq hguard] at hev
+      -- `i` is always evaluated, so a successful evaluation forces `i.evaluate`
+      -- to succeed, and Expr-level completeness recovers `i`'s translation.
+      cases hi : i.evaluate req es with
+      | error e => rw [hi] at hev; simp [bind, Except.bind, Result.as] at hev
+      | ok iv =>
+        obtain ⟨ieos, iexpr, hieos, hiexpr⟩ := Cst.Expr.toAExpr?_complete hi
+        have hiA : i.toAExpr? = some iexpr := by simp [Cst.Expr.toAExpr?, hieos, hiexpr]
+        simp only [Bool.and_eq_true] at hguard
+        obtain ⟨ht, hf⟩ := hguard
+        cases htt : t.toAExpr? with
+        | none => rw [htt] at ht; simp at ht
+        | some texpr =>
+          cases hff : f.toAExpr? with
+          | none => rw [hff] at hf; simp at hf
+          | some fexpr =>
+            exact ⟨.expr (.ite iexpr texpr fexpr), .ite iexpr texpr fexpr,
+                   by simp [Cst.ExprData.toExprOrSpecial?, hiA, htt, hff],
+                   by simp [ExprOrSpecial.toExpr?]⟩
+    · simp [Cst.ExprData.evaluate, hguard] at hev
+termination_by (sizeOf ed, 0)
+decreasing_by
+  all_goals (apply Prod.Lex.left; decreasing_tactic)
+
+theorem Cst.ExprImpl.toAExpr?_complete
+  {ei : Cst.ExprImpl} {req : Request} {es : Entities} {v : Value} :
+  ei.evaluate req es = .ok v →
+  ∃ eos ae, ei.toExprOrSpecial? = some eos ∧ eos.toExpr? = some ae := by
+  intro hev
+  simp only [Cst.ExprImpl.evaluate] at hev
+  have hed := Cst.ExprData.toAExpr?_complete hev
+  obtain ⟨eos, ae, hed1, hed2⟩ := hed
+  exists eos, ae; constructor
+  · simp only [Cst.ExprImpl.toExprOrSpecial?]; exact hed1
+  · exact hed2
+termination_by (sizeOf ei, 0)
+decreasing_by
+  all_goals
+    (apply Prod.Lex.left
+     cases ei; simp only [Cst.ExprImpl.mk.sizeOf_spec]; omega)
 
 theorem Cst.Expr.toAExpr?_complete
   {e : Cst.Expr} {req : Request} {es : Entities} {v : Value} :
   e.evaluate req es = .ok v →
   ∃ eos ae, e.toExprOrSpecial? = some eos ∧ eos.toExpr? = some ae := by
-  sorry
+  intro hev
+  cases e with
+  | expr e =>
+    simp only [Cst.Expr.evaluate] at hev
+    have h := (Cst.ExprImpl.toAExpr?_complete hev)
+    obtain ⟨eos, ae, h1, h2⟩ := h
+    exists eos, ae; constructor
+    · simp only [Cst.Expr.toExprOrSpecial?]; exact h1
+    · exact h2
+termination_by (sizeOf e, 0)
+decreasing_by
+  all_goals (apply Prod.Lex.left; decreasing_tactic)
+
+theorem expr_to_expr_complete
+  {e : Cst.Expr} {req : Request} {es : Entities} {v : Value} :
+  e.evaluate req es = .ok v →
+  ∃ ae, e.toAExpr? = ae := by
+  intro hev
+  have h := Cst.Expr.toAExpr?_complete hev
+  obtain ⟨eos, ae, h1, h2⟩ := h
+  exists ae
+  simp only [Cst.Expr.toAExpr?, h1, bind, Option.bind]
+  exact h2
 
 end
 

@@ -427,14 +427,7 @@ public def Relation.evaluate (e : Relation) (req : Request) (es : Entities) : Re
       let v₂ ← y.evaluate req es
       applyRelOp op v₁ v₂ es
     | _ => .error .typeError
-  | .rHas t f =>
-      -- Strengthening (mirrors the `rIsIn` `in` guard): fail when the `has`
-      -- right-hand side does not translate. Under a successful translation
-      -- `f.toHasRhs?.isSome` holds, so this guard is a no-op and the evaluator
-      -- still agrees with the AST; but it lets a successful evaluation witness
-      -- that the field chain translates, which completeness needs.
-      if f.toHasRhs?.isNone then .error .typeError
-      else do
+  | .rHas t f => do
       let v ← t.evaluate req es
       match f.toAttrs? with
       | none => .error .typeError
@@ -444,9 +437,7 @@ public def Relation.evaluate (e : Relation) (req : Request) (es : Entities) : Re
         -- mirroring the translator's `.and (hasAttr ...) (extendedHasAttr ...)`
         -- which short-circuits on the inner `hasAttr` returning `false`.
         rHasChain v a as es
-  | .rLike t p =>
-    if p.toPattern?.isNone then .error .typeError
-    else match p.toPatternString? with
+  | .rLike t p => match p.toPatternString? with
     | none => .error .typeError
     | some s => do
       let v ← t.evaluate req es
@@ -477,7 +468,7 @@ public def Relation.evaluate (e : Relation) (req : Request) (es : Entities) : Re
 termination_by sizeOf e
 
 public def AndExpr.evaluate (e : AndExpr) (req : Request) (es : Entities) : Result Value :=
-  -- Strengthening (mirrors the `rIsIn`/`rHas`/`rLike` guards): fail when some
+  -- Strengthening (mirrors the `rIsIn` guard): fail when some
   -- conjunct does not translate, even if `foldOps` short-circuits past it on a
   -- `false`. Under a successful translation every conjunct translates, so this
   -- guard is a no-op and the evaluator still agrees with the short-circuiting
@@ -534,9 +525,18 @@ termination_by sizeOf xs
 public def ExprData.evaluate (e : ExprData) (req : Request) (es : Entities) : Result Value :=
   match e with
   | .edOr e => e.evaluate req es
-  | .edIf i t f => do
-    let b ← (i.evaluate req es).as Bool
-    if b then t.evaluate req es else f.evaluate req es
+  | .edIf i t f =>
+    -- Strengthening (mirrors the `rIsIn` `in` guard): the guard `i` is always
+    -- evaluated, but only one of `t`/`f` is (the conditional short-circuits), so
+    -- we only fail when a *branch* `t`/`f` does not translate. Under a successful
+    -- translation both branches translate, so this guard is a no-op and the
+    -- evaluator still agrees with the AST `ite`; but it lets a successful
+    -- evaluation witness that both branches translate (completeness recovers
+    -- `i`'s translatability from the fact that `i` is always evaluated).
+    if t.toAExpr?.isSome && f.toAExpr?.isSome then do
+      let b ← (i.evaluate req es).as Bool
+      if b then t.evaluate req es else f.evaluate req es
+    else .error .typeError
 termination_by sizeOf e
 
 public def ExprImpl.evaluate (e : ExprImpl) (req : Request) (es : Entities) : Result Value :=

@@ -518,6 +518,106 @@ theorem addExpr_toHasRhs_toAttrs_agrees
   | .rInits r =>
     rw [hmi] at hbody; simp at hbody
 
+/-- `fieldChain?` returns the empty list only for an empty access list. -/
+theorem fieldChain?_eq_nil {access : List Cst.MemAccess} :
+    Cst.fieldChain? access = some [] → access = [] := by
+  intro h
+  cases access with
+  | nil => rfl
+  | cons hd tl =>
+    cases hd with
+    | field id =>
+      simp [Cst.fieldChain?, Option.bind_eq_some_iff] at h
+    | index _ => simp [Cst.fieldChain?] at h
+    | call _ => simp [Cst.fieldChain?] at h
+
+/-- Converse direction (eval ⟹ translate) for `rHas`: if the evaluator's
+    `toAttrs?` succeeds, then the translator's `toHasRhs?` also succeeds.  Both
+    accept exactly the same bare field-chain shapes: the evaluator was
+    strengthened to use `toHasHead?`/`toUnreservedId?`/`unescape?`, and
+    `fieldChain? = constructAttrsAux?`. -/
+theorem addExpr_toAttrs_toHasRhs {e : Cst.AddExpr} {attrs : List Attr} :
+    e.toAttrs? = some attrs →
+    ∃ rhs, e.toHasRhs? = some rhs := by
+  intro h
+  obtain ⟨⟨⟨op, ⟨prim, access⟩⟩, mext⟩, ext⟩ := e
+  simp only [Cst.AddExpr.toAttrs?] at h
+  cases ext with
+  | cons _ _ => simp at h
+  | nil =>
+    cases mext with
+    | cons _ _ => simp at h
+    | nil =>
+      cases op with
+      | some o => simp at h
+      | none =>
+        cases hfc : Cst.fieldChain? access with
+        | none => rw [hfc] at h; simp at h
+        | some fields =>
+          rw [hfc] at h
+          have hcaeq : constructAttrsAux? access = some fields := by
+            rw [← fieldChain?_eq_constructAttrsAux?]; exact hfc
+          cases prim with
+          | literal lit =>
+            cases lit with
+            | liStr s =>
+              cases hfe : fields.isEmpty with
+              | false => simp [hfe] at h
+              | true =>
+                have hfields : fields = [] := by simpa using hfe
+                have hacc : access = [] := fieldChain?_eq_nil (hfields ▸ hfc)
+                subst hacc
+                cases hun : Cedar.Spec.CstCommon.unescape? s with
+                | none => simp [hfe, hun] at h
+                | some s' =>
+                  exact ⟨.inl s', by
+                    simp [Cst.AddExpr.toHasRhs?, Cst.Primary.toExprOrSpecial?,
+                          Cst.Literal.toExprOrSpecial?, hun]⟩
+            | liTrue | liFalse | liNum _ => simp at h
+          | name n =>
+            obtain ⟨np, nname⟩ := n
+            cases np with
+            | cons _ _ => simp at h
+            | nil =>
+              cases hhh : Cst.Ident.toHasHead? nname with
+              | none => simp [hhh] at h
+              | some idStr =>
+                cases nname with
+                | idPrincipal =>
+                  exact ⟨.inr ("principal" :: fields), by
+                    simp [Cst.AddExpr.toHasRhs?, Cst.Primary.toExprOrSpecial?,
+                          Cst.Name.toVar?, Var.toString, constructAttrs?, hcaeq]⟩
+                | idAction =>
+                  exact ⟨.inr ("action" :: fields), by
+                    simp [Cst.AddExpr.toHasRhs?, Cst.Primary.toExprOrSpecial?,
+                          Cst.Name.toVar?, Var.toString, constructAttrs?, hcaeq]⟩
+                | idResource =>
+                  exact ⟨.inr ("resource" :: fields), by
+                    simp [Cst.AddExpr.toHasRhs?, Cst.Primary.toExprOrSpecial?,
+                          Cst.Name.toVar?, Var.toString, constructAttrs?, hcaeq]⟩
+                | idContext =>
+                  exact ⟨.inr ("context" :: fields), by
+                    simp [Cst.AddExpr.toHasRhs?, Cst.Primary.toExprOrSpecial?,
+                          Cst.Name.toVar?, Var.toString, constructAttrs?, hcaeq]⟩
+                | idIdent s =>
+                  simp only [Cst.Ident.toHasHead?] at hhh
+                  split at hhh
+                  · rename_i hunres
+                    have htus : String.toUnreservedId? s = some s := by
+                      simp only [String.toUnreservedId?]
+                      simp only [Cedar.Spec.CstCommon.Unreserved?] at hunres
+                      split <;> simp_all
+                    refine ⟨.inr (s :: fields), ?_⟩
+                    simp [Cst.AddExpr.toHasRhs?, Cst.Primary.toExprOrSpecial?,
+                          Cst.Name.toVar?, Cst.Name.toAName?,
+                          CstCommon.Name.toAName?,
+                          CstCommon.Ident.toUnrestrictedString?,
+                          htus, constructAttrs?, hcaeq]
+                  · simp at hhh
+                | idTrue | idFalse | idPermit | idForbid | idWhen | idUnless
+                | idIn | idHas | idLike | idIs | idIf | idThen | idElse =>
+                  simp [Cst.Ident.toHasHead?] at hhh
+          | ref _ | expr _ | eList _ | rInits _ => simp at h
 /-- Helper: `constructAttrs?` always returns a non-empty list when it succeeds. -/
 theorem constructAttrs?_nonempty
     {first : String} {rest : List Cst.MemAccess} {result : List String} :
@@ -830,6 +930,60 @@ theorem addExpr_toPattern_toPatternString_agrees
           | nBang _ =>
             simp [Option.bind_eq_some_iff] at heos
           | nOverBang | nOverDash => simp at heos
+
+/-- Converse direction (eval ⟹ translate) for `rLike`: if the evaluator's
+    `toPatternString?` succeeds with `s`, then the AddExpr translates to the
+    string-literal special form `.strLit s`.  Both functions accept exactly the
+    bare string-literal shape (extended/op/access empty, item a `liStr`). -/
+theorem addExpr_toPatternString_toExprOrSpecial {e : Cst.AddExpr} {s : String} :
+    Cst.AddExpr.toPatternString? e = some s →
+    e.toExprOrSpecial? = some (.strLit s) := by
+  intro h
+  obtain ⟨⟨⟨op, ⟨prim, access⟩⟩, mext⟩, ext⟩ := e
+  simp only [Cst.AddExpr.toPatternString?] at h
+  cases ext with
+  | cons _ _ => simp at h
+  | nil =>
+    cases mext with
+    | cons _ _ => simp at h
+    | nil =>
+      cases op with
+      | none =>
+        cases access with
+        | cons _ _ => simp at h
+        | nil =>
+          cases prim with
+          | literal lit =>
+            cases lit with
+            | liStr str =>
+              simp at h; subst h
+              simp [Cst.AddExpr.toExprOrSpecial?, Cst.MultExpr.toExprOrSpecial?,
+                    Cst.Unary.toExprOrSpecial?, Cst.Member.toExprOrSpecial?,
+                    Cst.Primary.toExprOrSpecial?, Cst.Literal.toExprOrSpecial?,
+                    memberAux, memberAuxA, List.mapM_nil]
+            | liTrue | liFalse | liNum _ => simp at h
+          | ref _ | name _ | expr _ | eList _ | rInits _ => simp at h
+      | some o =>
+        cases o with
+        | nDash n =>
+          by_cases hn : n = 0
+          · subst hn
+            cases access with
+            | cons _ _ => simp at h
+            | nil =>
+              cases prim with
+              | literal lit =>
+                cases lit with
+                | liStr str =>
+                  simp at h; subst h
+                  simp [Cst.AddExpr.toExprOrSpecial?, Cst.MultExpr.toExprOrSpecial?,
+                        Cst.Unary.toExprOrSpecial?, Cst.Member.toExprOrSpecial?,
+                        Cst.Primary.toExprOrSpecial?, Cst.Literal.toExprOrSpecial?,
+                        memberAux, memberAuxA, List.mapM_nil]
+                | liTrue | liFalse | liNum _ => simp at h
+              | ref _ | name _ | expr _ | eList _ | rInits _ => simp at h
+          · simp [hn] at h
+        | nBang _ | nOverBang | nOverDash => simp at h
 
 /-- Helper: `memberAux ieos accs = some (.name an)` requires `accs = []`
     and `ieos = .name an`. -/
@@ -1643,6 +1797,15 @@ theorem OrExpr.evaluate_eq {e : Cst.OrExpr} {req : Request} {es : Entities}
     Cst.OrExpr.evaluate e req es =
       (do let acc ← e.initial.evaluate req es; Cst.OrExpr.foldOps acc e.extended req es) := by
   simp only [Cst.OrExpr.evaluate, if_pos h]
+
+/-- When both branches translate, `ExprData.evaluate`'s `edIf` guard is a no-op
+    and it reduces to the plain conditional evaluation. -/
+theorem ExprData.evaluate_edIf_eq {i t f : Cst.Expr} {req : Request} {es : Entities}
+    (h : (t.toAExpr?.isSome && f.toAExpr?.isSome) = true) :
+    Cst.ExprData.evaluate (.edIf i t f) req es =
+      (do let b ← (i.evaluate req es).as Bool;
+          if b then t.evaluate req es else f.evaluate req es) := by
+  simp only [Cst.ExprData.evaluate, if_pos h]
 
 /- For Primary's eList case -/
 

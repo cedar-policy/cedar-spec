@@ -938,7 +938,7 @@ theorem Cst.Relation.toAExpr?_evaluate
       @Cst.AddExpr.toAExpr?_evaluate target tEos req es htEos mt htExpr
     have hfield_attrs := addExpr_toHasRhs_toAttrs_agrees hmf
     have hfield_nonempty := hasRhsToList_nonempty hmf
-    simp [Cst.Relation.evaluate, hmf, hfield_attrs]
+    simp [Cst.Relation.evaluate, hfield_attrs]
     cases mf with
     | inl f =>
       simp at hres
@@ -996,7 +996,7 @@ theorem Cst.Relation.toAExpr?_evaluate
       @Cst.AddExpr.toAExpr?_evaluate target tEos req es htEos mt htExpr
     -- Bridge pattern via addExpr_toPattern_toPatternString_agrees.
     obtain ⟨s, hpStr, hpToPattern⟩ := addExpr_toPattern_toPatternString_agrees hmp
-    simp [Cst.Relation.evaluate, hmp, hpStr]
+    simp [Cst.Relation.evaluate, hpStr]
     cases htgt : target.evaluate req es with
     | error err =>
       simp [bind, Except.bind]
@@ -1278,6 +1278,8 @@ theorem Cst.ExprData.toAExpr?_evaluate
   | edIf i t f =>
     simp [Cst.ExprData.toExprOrSpecial?, Option.bind_eq_some_iff] at hed
     obtain ⟨eg, hg, et, ht, ef, hf, hres⟩ := hed
+    have hguard : (t.toAExpr?.isSome && f.toAExpr?.isSome) = true := by
+      simp [ht, hf]
     rw [← hres] at heos
     simp [ExprOrSpecial.toExpr?] at heos
     rw [← heos]
@@ -1291,7 +1293,8 @@ theorem Cst.ExprData.toAExpr?_evaluate
       Cst.Expr.toAExpr?_evaluate htEos et htExpr
     have hf_iff : ∀ vp, evaluate ef req es = .ok vp ↔ f.evaluate req es = .ok vp :=
       Cst.Expr.toAExpr?_evaluate hfEos ef hfExpr
-    simp [evaluate, Cst.ExprData.evaluate, bind, Except.bind, Result.as, Coe.coe]
+    rw [ExprData.evaluate_edIf_eq hguard]
+    simp [evaluate, bind, Except.bind, Result.as, Coe.coe]
     cases hg_eval : evaluate eg req es with
     | error err =>
       cases hi : i.evaluate req es with
