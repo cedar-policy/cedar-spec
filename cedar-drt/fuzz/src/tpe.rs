@@ -263,12 +263,12 @@ pub fn test_tpe_is_authorized_equiv(
     assert_eq!(
         to_set(rust_resp.error_permits()),
         lean_resp.error_permits,
-        "false_permits mismatch"
+        "error_permits mismatch"
     );
     assert_eq!(
         to_set(rust_resp.error_forbids()),
         lean_resp.error_forbids,
-        "false_forbids mismatch"
+        "error_forbids mismatch"
     );
     // The policies with residuals match on both sides.
     assert_eq!(
