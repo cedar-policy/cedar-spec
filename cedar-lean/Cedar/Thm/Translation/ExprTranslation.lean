@@ -938,7 +938,7 @@ theorem Cst.Relation.toAExpr?_evaluate
       @Cst.AddExpr.toAExpr?_evaluate target tEos req es htEos mt htExpr
     have hfield_attrs := addExpr_toHasRhs_toAttrs_agrees hmf
     have hfield_nonempty := hasRhsToList_nonempty hmf
-    simp [Cst.Relation.evaluate, hfield_attrs]
+    simp [Cst.Relation.evaluate, hmf, hfield_attrs]
     cases mf with
     | inl f =>
       simp at hres
@@ -996,7 +996,7 @@ theorem Cst.Relation.toAExpr?_evaluate
       @Cst.AddExpr.toAExpr?_evaluate target tEos req es htEos mt htExpr
     -- Bridge pattern via addExpr_toPattern_toPatternString_agrees.
     obtain ⟨s, hpStr, hpToPattern⟩ := addExpr_toPattern_toPatternString_agrees hmp
-    simp [Cst.Relation.evaluate, hpStr]
+    simp [Cst.Relation.evaluate, hmp, hpStr]
     cases htgt : target.evaluate req es with
     | error err =>
       simp [bind, Except.bind]
@@ -1023,7 +1023,7 @@ theorem Cst.Relation.toAExpr?_evaluate
       have ⟨tEos, htEos, htExpr⟩ := hmt
       have htarget_iff :=
         @Cst.AddExpr.toAExpr?_evaluate target tEos req es htEos mt htExpr
-      simp [Cst.Relation.evaluate, hEtyName]
+      simp [Cst.Relation.evaluate, hEt]
       cases htgt : target.evaluate req es with
       | error err =>
         simp [bind, Except.bind]
@@ -1043,16 +1043,16 @@ theorem Cst.Relation.toAExpr?_evaluate
       subst hres
       simp [ExprOrSpecial.toExpr?] at heos
       rw [← heos]
-      have hEtyName := addExpr_toEntityType_agrees hEt
       simp [Cst.AddExpr.toAExpr?, Option.bind_eq_some_iff] at hmt
       have ⟨tEos, htEos, htExpr⟩ := hmt
       have htarget_iff :=
         @Cst.AddExpr.toAExpr?_evaluate target tEos req es htEos mt htExpr
+      have hie_trans : ie.toAExpr? = some mi := hmi
       simp [Cst.AddExpr.toAExpr?, Option.bind_eq_some_iff] at hmi
       have ⟨iEos, hiEos, hiExpr⟩ := hmi
       have hinEntity_iff :=
         @Cst.AddExpr.toAExpr?_evaluate ie iEos req es hiEos mi hiExpr
-      exact rIsIn_some_eval_agrees hEtyName htarget_iff hinEntity_iff v
+      exact rIsIn_some_eval_agrees hEt htarget_iff hinEntity_iff hie_trans v
 termination_by (sizeOf rel, 0)
 decreasing_by
   all_goals (apply Prod.Lex.left; decreasing_tactic)
@@ -1120,10 +1120,10 @@ theorem Cst.AndExpr.toAExpr?_evaluate
     simp only [Cst.AndExpr.toExprOrSpecial?, hext] at hae
     have hr_iff := @Cst.Relation.toAExpr?_evaluate ae.initial eos req es hae aexp heos v
     rw [hr_iff]
-    simp [Cst.AndExpr.evaluate]
+    simp [Cst.AndExpr.evaluate, hext]
     cases h_init : ae.initial.evaluate req es with
     | error err => simp [bind, Except.bind]
-    | ok iv => simp [bind, Except.bind, Cst.AndExpr.foldOps, hext]
+    | ok iv => simp [bind, Except.bind, Cst.AndExpr.foldOps]
   | hd :: tl =>
     simp [Cst.AndExpr.toExprOrSpecial?, hext, Option.bind_eq_some_iff] at hae
     obtain ⟨first, hfirst, result, hres, heos_eq⟩ := hae
@@ -1135,7 +1135,9 @@ theorem Cst.AndExpr.toAExpr?_evaluate
     obtain ⟨reos, hreos, hfeu⟩ := hfirst
     have hr_iff : ∀ vp, evaluate first req es = .ok vp ↔ ae.initial.evaluate req es = .ok vp :=
       Cst.Relation.toAExpr?_evaluate hreos first hfeu
-    simp [Cst.AndExpr.evaluate]
+    have hall := andExprFoldExtended_some_all_translate _ hres
+    have hguard : (ae.extended.all fun r => r.toAExpr?.isSome) = true := by rw [hext]; exact hall
+    rw [AndExpr.evaluate_eq hguard]
     cases h_init : ae.initial.evaluate req es with
     | error err =>
       simp [bind, Except.bind]
@@ -1220,10 +1222,10 @@ theorem Cst.OrExpr.toAExpr?_evaluate
     simp only [Cst.OrExpr.toExprOrSpecial?, hext] at hoe
     have ha_iff := @Cst.AndExpr.toAExpr?_evaluate oe.initial eos req es hoe aexp heos v
     rw [ha_iff]
-    simp [Cst.OrExpr.evaluate]
+    simp [Cst.OrExpr.evaluate, hext]
     cases h_init : oe.initial.evaluate req es with
     | error err => simp [bind, Except.bind]
-    | ok iv => simp [bind, Except.bind, Cst.OrExpr.foldOps, hext]
+    | ok iv => simp [bind, Except.bind, Cst.OrExpr.foldOps]
   | hd :: tl =>
     simp [Cst.OrExpr.toExprOrSpecial?, hext, Option.bind_eq_some_iff] at hoe
     obtain ⟨first, hfirst, result, hres, heos_eq⟩ := hoe
@@ -1235,7 +1237,9 @@ theorem Cst.OrExpr.toAExpr?_evaluate
     obtain ⟨aeos, haeos, hfeu⟩ := hfirst
     have ha_iff : ∀ vp, evaluate first req es = .ok vp ↔ oe.initial.evaluate req es = .ok vp :=
       Cst.AndExpr.toAExpr?_evaluate haeos first hfeu
-    simp [Cst.OrExpr.evaluate]
+    have hall := orExprFoldExtended_some_all_translate _ hres
+    have hguard : (oe.extended.all fun r => r.toAExpr?.isSome) = true := by rw [hext]; exact hall
+    rw [OrExpr.evaluate_eq hguard]
     cases h_init : oe.initial.evaluate req es with
     | error err =>
       simp [bind, Except.bind]

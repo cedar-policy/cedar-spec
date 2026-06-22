@@ -327,6 +327,150 @@ theorem Cst.AddExpr.toAExpr?_complete
       simp only [hext] at hresult
       simp [Cst.AddExpr.toExprOrSpecial?, hext, hinitA, hresult]
 
+theorem Cst.Relation.toAExpr?_complete
+  {rel : Cst.Relation} {req : Request} {es : Entities} {v : Value} :
+  rel.evaluate req es = .ok v →
+  ∃ eos ae, rel.toExprOrSpecial? = some eos ∧ eos.toExpr? = some ae := by
+  intro hev
+  cases rel with
+  | rCommon initial extended =>
+    match hext : extended with
+    | [] =>
+      simp only [Cst.Relation.evaluate] at hev
+      obtain ⟨eos, ae, heos, hae⟩ := Cst.AddExpr.toAExpr?_complete hev
+      exact ⟨eos, ae, by simp [Cst.Relation.toExprOrSpecial?, heos], hae⟩
+    | (op, y) :: rest =>
+      match hrest : rest with
+      | _ :: _ => simp [Cst.Relation.evaluate] at hev
+      | [] =>
+        simp only [Cst.Relation.evaluate] at hev
+        cases hi : initial.evaluate req es with
+        | error e => rw [hi] at hev; simp [bind, Except.bind] at hev
+        | ok v₁ =>
+          rw [hi] at hev
+          cases hy : y.evaluate req es with
+          | error e => rw [hy] at hev; simp [bind, Except.bind] at hev
+          | ok v₂ =>
+            obtain ⟨ieos, iexpr, hieos, hiexpr⟩ := Cst.AddExpr.toAExpr?_complete hi
+            obtain ⟨yeos, yexpr, hyeos, hyexpr⟩ := Cst.AddExpr.toAExpr?_complete hy
+            have hyA : y.toAExpr? = some yexpr := by simp [Cst.AddExpr.toAExpr?, hyeos, hyexpr]
+            refine ⟨.expr (constructExprRel op iexpr yexpr), constructExprRel op iexpr yexpr,
+                    ?_, by simp [ExprOrSpecial.toExpr?]⟩
+            simp [Cst.Relation.toExprOrSpecial?, hieos, hiexpr, hyA]
+  | rHas target field =>
+    simp only [Cst.Relation.evaluate] at hev
+    cases hrhs : field.toHasRhs? with
+    | none => rw [hrhs] at hev; simp at hev
+    | some rhs =>
+      rw [hrhs] at hev
+      simp only [Option.isNone_some, Bool.false_eq_true, if_false] at hev
+      cases htgt : target.evaluate req es with
+      | error e => rw [htgt] at hev; simp [bind, Except.bind] at hev
+      | ok vt =>
+        obtain ⟨teos, texpr, hteos, htexpr⟩ := Cst.AddExpr.toAExpr?_complete htgt
+        have htgtA : target.toAExpr? = some texpr := by simp [Cst.AddExpr.toAExpr?, hteos, htexpr]
+        cases rhs with
+        | inl f =>
+          exact ⟨.expr (.hasAttr texpr f), .hasAttr texpr f,
+                 by simp [Cst.Relation.toExprOrSpecial?, htgtA, hrhs], by simp [ExprOrSpecial.toExpr?]⟩
+        | inr fs =>
+          exact ⟨.expr (extendedHasAttr texpr fs), extendedHasAttr texpr fs,
+                 by simp [Cst.Relation.toExprOrSpecial?, htgtA, hrhs], by simp [ExprOrSpecial.toExpr?]⟩
+  | rLike target pattern =>
+    simp only [Cst.Relation.evaluate] at hev
+    cases hpat : pattern.toPattern? with
+    | none => rw [hpat] at hev; simp at hev
+    | some mp =>
+      rw [hpat] at hev
+      simp only [Option.isNone_some, Bool.false_eq_true, if_false] at hev
+      cases hps : pattern.toPatternString? with
+      | none => rw [hps] at hev; simp at hev
+      | some s =>
+        rw [hps] at hev
+        cases htgt : target.evaluate req es with
+        | error e => rw [htgt] at hev; simp [bind, Except.bind] at hev
+        | ok vt =>
+          obtain ⟨teos, texpr, hteos, htexpr⟩ := Cst.AddExpr.toAExpr?_complete htgt
+          have htgtA : target.toAExpr? = some texpr := by simp [Cst.AddExpr.toAExpr?, hteos, htexpr]
+          exact ⟨.expr (.unaryApp (.like mp) texpr), .unaryApp (.like mp) texpr,
+                 by simp [Cst.Relation.toExprOrSpecial?, htgtA, hpat], by simp [ExprOrSpecial.toExpr?]⟩
+  | rIsIn target ety inEntity =>
+    simp only [Cst.Relation.evaluate] at hev
+    cases hety : ety.toEntityType? with
+    | none => rw [hety] at hev; simp at hev
+    | some etyName =>
+      rw [hety] at hev
+      cases htgt : target.evaluate req es with
+      | error e => rw [htgt] at hev; simp [bind, Except.bind] at hev
+      | ok vt =>
+        rw [htgt] at hev
+        simp only [bind, Except.bind] at hev
+        obtain ⟨teos, texpr, hteos, htexpr⟩ := Cst.AddExpr.toAExpr?_complete htgt
+        have htgtA : target.toAExpr? = some texpr := by simp [Cst.AddExpr.toAExpr?, hteos, htexpr]
+        cases hap : apply₁ (.is etyName) vt with
+        | error e => rw [hap] at hev; simp at hev
+        | ok isResult =>
+          rw [hap] at hev
+          match hinE : inEntity with
+          | none =>
+            exact ⟨.expr (.unaryApp (.is etyName) texpr), .unaryApp (.is etyName) texpr,
+                   by simp [Cst.Relation.toExprOrSpecial?, htgtA, hety],
+                   by simp [ExprOrSpecial.toExpr?]⟩
+          | some ie =>
+            cases hie : ie.toAExpr? with
+            | none => simp [hie] at hev
+            | some mi =>
+              exact ⟨.expr (.and (.unaryApp (.is etyName) texpr) (.binaryApp .mem texpr mi)),
+                     .and (.unaryApp (.is etyName) texpr) (.binaryApp .mem texpr mi),
+                     by simp [Cst.Relation.toExprOrSpecial?, htgtA, hety, hie],
+                     by simp [ExprOrSpecial.toExpr?]⟩
+
+theorem Cst.AndExpr.toAExpr?_complete
+  {ae : Cst.AndExpr} {req : Request} {es : Entities} {v : Value} :
+  ae.evaluate req es = .ok v →
+  ∃ eos aexpr, ae.toExprOrSpecial? = some eos ∧ eos.toExpr? = some aexpr := by
+  intro hev
+  by_cases hall : (ae.extended.all fun r => r.toAExpr?.isSome) = true
+  · rw [AndExpr.evaluate_eq hall] at hev
+    cases hinit : ae.initial.evaluate req es with
+    | error e => rw [hinit] at hev; simp [bind, Except.bind] at hev
+    | ok acc =>
+      obtain ⟨ieos, iexpr, hieos, hiexpr⟩ := Cst.Relation.toAExpr?_complete hinit
+      match hext : ae.extended with
+      | [] =>
+        exact ⟨ieos, iexpr, by simp [Cst.AndExpr.toExprOrSpecial?, hext, hieos], hiexpr⟩
+      | hd :: tl =>
+        have hinitA : ae.initial.toAExpr? = some iexpr := by
+          simp [Cst.Relation.toAExpr?, hieos, hiexpr]
+        obtain ⟨result, hresult⟩ := andExprFoldExtended_complete ae.extended hall iexpr
+        refine ⟨.expr result, result, ?_, by simp [ExprOrSpecial.toExpr?]⟩
+        simp only [hext] at hresult
+        simp [Cst.AndExpr.toExprOrSpecial?, hext, hinitA, hresult]
+  · simp [Cst.AndExpr.evaluate, hall] at hev
+
+theorem Cst.OrExpr.toAExpr?_complete
+  {oe : Cst.OrExpr} {req : Request} {es : Entities} {v : Value} :
+  oe.evaluate req es = .ok v →
+  ∃ eos aexpr, oe.toExprOrSpecial? = some eos ∧ eos.toExpr? = some aexpr := by
+  intro hev
+  by_cases hall : (oe.extended.all fun r => r.toAExpr?.isSome) = true
+  · rw [OrExpr.evaluate_eq hall] at hev
+    cases hinit : oe.initial.evaluate req es with
+    | error e => rw [hinit] at hev; simp [bind, Except.bind] at hev
+    | ok acc =>
+      obtain ⟨ieos, iexpr, hieos, hiexpr⟩ := Cst.AndExpr.toAExpr?_complete hinit
+      match hext : oe.extended with
+      | [] =>
+        exact ⟨ieos, iexpr, by simp [Cst.OrExpr.toExprOrSpecial?, hext, hieos], hiexpr⟩
+      | hd :: tl =>
+        have hinitA : oe.initial.toAExpr? = some iexpr := by
+          simp [Cst.AndExpr.toAExpr?, hieos, hiexpr]
+        obtain ⟨result, hresult⟩ := orExprFoldExtended_complete oe.extended hall iexpr
+        refine ⟨.expr result, result, ?_, by simp [ExprOrSpecial.toExpr?]⟩
+        simp only [hext] at hresult
+        simp [Cst.OrExpr.toExprOrSpecial?, hext, hinitA, hresult]
+  · simp [Cst.OrExpr.evaluate, hall] at hev
+
 theorem Cst.Expr.toAExpr?_complete
   {e : Cst.Expr} {req : Request} {es : Entities} {v : Value} :
   e.evaluate req es = .ok v →

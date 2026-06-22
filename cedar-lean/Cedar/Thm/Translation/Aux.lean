@@ -1445,13 +1445,15 @@ theorem apply₂_mem_returns_bool {v₁ v₂ : Value} {es : Entities} {r : Value
 theorem rIsIn_some_eval_agrees
     {target ety ie : Cst.AddExpr} {mt mi : Expr} {et : EntityType}
     {req : Request} {es : Entities}
-    (hEtyName : ety.toEntityTypeName? = some et)
+    (hEt : ety.toEntityType? = some et)
     (htarget_iff : ∀ v, evaluate mt req es = .ok v ↔ target.evaluate req es = .ok v)
-    (hinEntity_iff : ∀ v, evaluate mi req es = .ok v ↔ ie.evaluate req es = .ok v) :
+    (hinEntity_iff : ∀ v, evaluate mi req es = .ok v ↔ ie.evaluate req es = .ok v)
+    (hie_trans : ie.toAExpr? = some mi) :
     ∀ v, evaluate (Expr.and (.unaryApp (.is et) mt) (.binaryApp .mem mt mi)) req es = .ok v ↔
          (Cst.Relation.rIsIn target ety (some ie)).evaluate req es = .ok v := by
   intro v
-  simp only [Cst.Relation.evaluate, hEtyName, evaluate]
+  simp only [Cst.Relation.evaluate, hEt, evaluate, hie_trans, Option.isNone_some,
+             Bool.false_eq_true, if_false]
   cases htgt : evaluate mt req es with
   | error e =>
     cases htgtC : target.evaluate req es with
@@ -1592,6 +1594,55 @@ theorem expr_or_eval_eq_foldOps_step
           | bool _ => simp [Value.asBool, pure, Except.pure]
           | int _ | string _ | entityUID _ => simp [Value.asBool]
         | set _ | record _ | ext _ => simp [Value.asBool]
+
+/-- If `foldExtended` succeeds on `xs`, every conjunct in `xs` translates. Used
+    to discharge the `AndExpr.evaluate` translatability guard. -/
+theorem andExprFoldExtended_some_all_translate (xs : List Cst.Relation) :
+    ∀ {acc result : Expr}, Cst.AndExpr.foldExtended acc xs = some result →
+    xs.all (fun r => r.toAExpr?.isSome) = true := by
+  induction xs with
+  | nil => intro acc result _; rfl
+  | cons rel rest ih =>
+    intro acc result h
+    simp [Cst.AndExpr.foldExtended] at h
+    cases hrel : rel.toAExpr? with
+    | none => rw [hrel] at h; simp at h
+    | some aval =>
+      rw [hrel] at h
+      simp at h
+      simp [List.all_cons, hrel, ih h]
+
+/-- When every conjunct translates, `AndExpr.evaluate`'s guard is a no-op and it
+    reduces to the plain `initial`-then-`foldOps` evaluation. -/
+theorem AndExpr.evaluate_eq {e : Cst.AndExpr} {req : Request} {es : Entities}
+    (h : (e.extended.all fun r => r.toAExpr?.isSome) = true) :
+    Cst.AndExpr.evaluate e req es =
+      (do let acc ← e.initial.evaluate req es; Cst.AndExpr.foldOps acc e.extended req es) := by
+  simp only [Cst.AndExpr.evaluate, if_pos h]
+
+/-- If `foldExtended` succeeds on `xs`, every disjunct in `xs` translates. -/
+theorem orExprFoldExtended_some_all_translate (xs : List Cst.AndExpr) :
+    ∀ {acc result : Expr}, Cst.OrExpr.foldExtended acc xs = some result →
+    xs.all (fun r => r.toAExpr?.isSome) = true := by
+  induction xs with
+  | nil => intro acc result _; rfl
+  | cons rel rest ih =>
+    intro acc result h
+    simp [Cst.OrExpr.foldExtended] at h
+    cases hrel : rel.toAExpr? with
+    | none => rw [hrel] at h; simp at h
+    | some aval =>
+      rw [hrel] at h
+      simp at h
+      simp [List.all_cons, hrel, ih h]
+
+/-- When every disjunct translates, `OrExpr.evaluate`'s guard is a no-op and it
+    reduces to the plain `initial`-then-`foldOps` evaluation. -/
+theorem OrExpr.evaluate_eq {e : Cst.OrExpr} {req : Request} {es : Entities}
+    (h : (e.extended.all fun r => r.toAExpr?.isSome) = true) :
+    Cst.OrExpr.evaluate e req es =
+      (do let acc ← e.initial.evaluate req es; Cst.OrExpr.foldOps acc e.extended req es) := by
+  simp only [Cst.OrExpr.evaluate, if_pos h]
 
 /- For Primary's eList case -/
 

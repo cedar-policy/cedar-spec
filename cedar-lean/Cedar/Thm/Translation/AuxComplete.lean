@@ -335,4 +335,41 @@ theorem addExprFoldExtended_complete {req : Request} {es : Entities}
           exact ⟨result, by simp [Cst.AddExpr.foldExtended, haval, hresult]⟩
 termination_by sizeOf xs
 
+/-- If every conjunct of an `AndExpr`'s extended list translates, `foldExtended`
+    succeeds (for any head). Used in `AndExpr` completeness to discharge the
+    translatability guard recorded by the strengthened evaluator. -/
+theorem andExprFoldExtended_complete :
+    ∀ (xs : List Cst.Relation), (xs.all (fun r => r.toAExpr?.isSome) = true) →
+    ∀ (acc : Expr), ∃ result, Cst.AndExpr.foldExtended acc xs = some result := by
+  intro xs
+  induction xs with
+  | nil => intro _ acc; exact ⟨acc, by simp [Cst.AndExpr.foldExtended]⟩
+  | cons rel rest ih =>
+    intro hall acc
+    simp only [List.all_cons, Bool.and_eq_true] at hall
+    obtain ⟨hrel, hrest⟩ := hall
+    cases hrelE : rel.toAExpr? with
+    | none => rw [hrelE] at hrel; simp at hrel
+    | some aval =>
+      obtain ⟨result, hresult⟩ := ih hrest (Cedar.Spec.Expr.and acc aval)
+      exact ⟨result, by simp [Cst.AndExpr.foldExtended, hrelE, hresult]⟩
+
+/-- If every disjunct of an `OrExpr`'s extended list translates, `foldExtended`
+    succeeds (for any head). -/
+theorem orExprFoldExtended_complete :
+    ∀ (xs : List Cst.AndExpr), (xs.all (fun r => r.toAExpr?.isSome) = true) →
+    ∀ (acc : Expr), ∃ result, Cst.OrExpr.foldExtended acc xs = some result := by
+  intro xs
+  induction xs with
+  | nil => intro _ acc; exact ⟨acc, by simp [Cst.OrExpr.foldExtended]⟩
+  | cons rel rest ih =>
+    intro hall acc
+    simp only [List.all_cons, Bool.and_eq_true] at hall
+    obtain ⟨hrel, hrest⟩ := hall
+    cases hrelE : rel.toAExpr? with
+    | none => rw [hrelE] at hrel; simp at hrel
+    | some aval =>
+      obtain ⟨result, hresult⟩ := ih hrest (Cedar.Spec.Expr.or acc aval)
+      exact ⟨result, by simp [Cst.OrExpr.foldExtended, hrelE, hresult]⟩
+
 end Cedar.Thm

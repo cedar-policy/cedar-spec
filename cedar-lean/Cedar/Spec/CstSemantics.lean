@@ -6,6 +6,7 @@ public import Cedar.Spec.Request
 public import Cedar.Spec.Response
 public import Cedar.Spec.Value
 public import Cedar.Spec.Evaluator
+public import Cedar.Spec.CstToAst
 
 namespace Cedar.Spec.Cst
 
@@ -426,7 +427,14 @@ public def Relation.evaluate (e : Relation) (req : Request) (es : Entities) : Re
       let v₂ ← y.evaluate req es
       applyRelOp op v₁ v₂ es
     | _ => .error .typeError
-  | .rHas t f => do
+  | .rHas t f =>
+      -- Strengthening (mirrors the `rIsIn` `in` guard): fail when the `has`
+      -- right-hand side does not translate. Under a successful translation
+      -- `f.toHasRhs?.isSome` holds, so this guard is a no-op and the evaluator
+      -- still agrees with the AST; but it lets a successful evaluation witness
+      -- that the field chain translates, which completeness needs.
+      if f.toHasRhs?.isNone then .error .typeError
+      else do
       let v ← t.evaluate req es
       match f.toAttrs? with
       | none => .error .typeError
@@ -436,31 +444,49 @@ public def Relation.evaluate (e : Relation) (req : Request) (es : Entities) : Re
         -- mirroring the translator's `.and (hasAttr ...) (extendedHasAttr ...)`
         -- which short-circuits on the inner `hasAttr` returning `false`.
         rHasChain v a as es
-  | .rLike t p => match p.toPatternString? with
+  | .rLike t p =>
+    if p.toPattern?.isNone then .error .typeError
+    else match p.toPatternString? with
     | none => .error .typeError
     | some s => do
       let v ← t.evaluate req es
       match Cedar.Spec.CstCommon.toPattern? s with
       | some p => apply₁ (.like p) v
       | none => .error .typeError
-  | .rIsIn t ety inEntity => match ety.toEntityTypeName? with
+  | .rIsIn t ety inEntity => match ety.toEntityType? with
     | none => .error .typeError
     | some etyName => do
       let v ← t.evaluate req es
       let isResult ← apply₁ (.is etyName) v
       match inEntity with
       | none => .ok isResult
-      | some ie => do
-        let b ← isResult.asBool
-        if !b then .ok false
+      | some ie =>
+        -- Strengthening: fail the evaluation when the `in` branch does not
+        -- translate, even if the `is` branch short-circuits to `false`. Under a
+        -- successful translation `ie.toAExpr?.isSome` holds, so this guard is a
+        -- no-op and the evaluator still agrees with the short-circuiting AST;
+        -- but it lets a successful evaluation witness that `ie` translates,
+        -- which is needed for translation completeness.
+        if ie.toAExpr?.isNone then .error .typeError
         else do
-          let v₂ ← ie.evaluate req es
-          apply₂ .mem v v₂ es
+          let b ← isResult.asBool
+          if !b then .ok false
+          else do
+            let v₂ ← ie.evaluate req es
+            apply₂ .mem v v₂ es
 termination_by sizeOf e
 
-public def AndExpr.evaluate (e : AndExpr) (req : Request) (es : Entities) : Result Value := do
-  let acc ← e.initial.evaluate req es
-  AndExpr.foldOps acc e.extended req es
+public def AndExpr.evaluate (e : AndExpr) (req : Request) (es : Entities) : Result Value :=
+  -- Strengthening (mirrors the `rIsIn`/`rHas`/`rLike` guards): fail when some
+  -- conjunct does not translate, even if `foldOps` short-circuits past it on a
+  -- `false`. Under a successful translation every conjunct translates, so this
+  -- guard is a no-op and the evaluator still agrees with the short-circuiting
+  -- AST; but it lets a successful evaluation witness that every conjunct
+  -- translates, which completeness needs.
+  if e.extended.all (fun r => r.toAExpr?.isSome) then do
+    let acc ← e.initial.evaluate req es
+    AndExpr.foldOps acc e.extended req es
+  else .error .typeError
 termination_by sizeOf e
 decreasing_by
   all_goals cases e; simp_wf; omega
@@ -478,9 +504,16 @@ public def AndExpr.foldOps (acc : Value) (xs : List Relation)
       AndExpr.foldOps (.prim (.bool b')) rest req es
 termination_by sizeOf xs
 
-public def OrExpr.evaluate (e : OrExpr) (req : Request) (es : Entities) : Result Value := do
-  let acc ← e.initial.evaluate req es
-  OrExpr.foldOps acc e.extended req es
+public def OrExpr.evaluate (e : OrExpr) (req : Request) (es : Entities) : Result Value :=
+  -- Strengthening (mirrors `AndExpr.evaluate`): fail when some disjunct does not
+  -- translate, even if `foldOps` short-circuits past it on a `true`. Under a
+  -- successful translation every disjunct translates, so this guard is a no-op
+  -- and the evaluator still agrees with the short-circuiting AST; but it lets a
+  -- successful evaluation witness that every disjunct translates.
+  if e.extended.all (fun r => r.toAExpr?.isSome) then do
+    let acc ← e.initial.evaluate req es
+    OrExpr.foldOps acc e.extended req es
+  else .error .typeError
 termination_by sizeOf e
 decreasing_by
   all_goals cases e; simp_wf; omega
