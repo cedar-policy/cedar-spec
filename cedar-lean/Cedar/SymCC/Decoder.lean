@@ -233,11 +233,15 @@ where
     | [.symbol "Set", x]                          => do TermType.set (← x.decodeType types)
     | other                                       => fail "BitVec, Option, or Set" other
 
-partial def SExpr.decodeLit (ids : IdMaps) : SExpr → Result Term
+partial def SExpr.decodeLit (ids : IdMaps) (expectedTy : Option TermType := .none) : SExpr → Result Term
   | .bitvec bv      => Term.bitvec bv
   | .string s       => Term.string s
   | .symbol "true"  => Term.bool true
   | .symbol "false" => Term.bool false
+  | .symbol "none"  =>
+    match expectedTy with
+    | .some (.option ty) => Term.none ty
+    | _                  => fail "option type for bare 'none'" expectedTy
   | .symbol e       => enumOrEmptyRecord e
   | .sexpr xs       => construct xs
   | other           => fail "literal expr" other
@@ -251,9 +255,10 @@ where
     | .some (.entity ety), [SExpr.string eid] =>
       Term.entity ⟨ety, eid⟩
     | .some (.record (Map.mk rty)), _ =>
-      let ts ← args.mapM (SExpr.decodeLit ids)
-      if rty.length != ts.length then
+      if rty.length != args.length then
         fail s!"record literal args of length {rty.length}" args
+      let ts ← (rty.zip args).mapM λ ((_, fieldTy), arg) =>
+        arg.decodeLit ids (.some fieldTy)
       for aty in rty, t in ts do
         if t.typeOf != aty.snd then
           fail s!"attribute {aty.fst} of type {reprStr aty.snd}" t
@@ -267,20 +272,30 @@ where
       | .option ty => Term.none ty
       | other      => fail "option type" other
     | [.sexpr [.symbol "as", .symbol "some", oty], x] => do
-      let t := Term.some (← x.decodeLit ids)
       let ty ← oty.decodeType ids.types
+      let innerTy? := match ty with | .option inner => .some inner | _ => .none
+      let t := Term.some (← x.decodeLit ids innerTy?)
       if t.typeOf != ty then
         fail s!"term of type {reprStr ty}" t
       t
+    | [.symbol "some", x] => do
+      let innerTy := match expectedTy with
+      | .some (.option ty) => .some ty
+      | _ => .none
+      let t ← x.decodeLit ids innerTy
+      Term.some t
     | [.symbol "as", .symbol "set.empty", sty] => do
       match ← sty.decodeType ids.types with
       | .set ty => Term.set Set.empty ty
       | other   => fail "set type" other
     | [.symbol "set.singleton", x] => do
-      let t ← x.decodeLit ids
+      let eltTy := match expectedTy with
+      | .some (.set ty) => .some ty
+      | _ => .none
+      let t ← x.decodeLit ids eltTy
       Term.set (Set.singleton t) t.typeOf
     | [.symbol "set.union", x₁, x₂] => do
-      match ← x₁.decodeLit ids, ← x₂.decodeLit ids with
+      match ← x₁.decodeLit ids expectedTy, ← x₂.decodeLit ids expectedTy with
       | .set ts₁ ty, .set ts₂ _ => Term.set (ts₁ ∪ ts₂) ty
       | t₁, t₂                  => fail "sets" [t₁, t₂]
     | [.symbol "Decimal", @SExpr.bitvec 64 bv]  =>
@@ -312,23 +327,25 @@ where
     | other =>
       fail "literal expr" other
 
-partial def SExpr.decodeUnaryFunctionTable (arg : String) (ids : IdMaps) : SExpr → Result ((List (Term × Term)) × Term)
-  | .sexpr [.symbol "ite", .sexpr [.symbol "=", condExpr, .symbol v], thenExpr, elseExpr] => do
-    if v != arg then
+partial def SExpr.decodeUnaryFunctionTable (arg : String) (ids : IdMaps) (retTy : Option TermType := .none) : SExpr → Result ((List (Term × Term)) × Term)
+  | .sexpr [.symbol "ite", .sexpr [.symbol "=", condExpr, .symbol v], thenExpr, elseExpr]
+  | .sexpr [.symbol "ite", .sexpr [.symbol "=", .symbol v, condExpr], thenExpr, elseExpr] => do
+    if v == arg then
+      let condTerm ← condExpr.decodeLit ids
+      let thenTerm ← thenExpr.decodeLit ids retTy
+      let (elseTable, dflt) ← elseExpr.decodeUnaryFunctionTable arg ids retTy
+      .ok ((condTerm, thenTerm) :: elseTable, dflt)
+    else
       fail arg v
-    let condTerm ← condExpr.decodeLit ids
-    let thenTerm ← thenExpr.decodeLit ids
-    let (elseTable, dflt) ← elseExpr.decodeUnaryFunctionTable arg ids
-    .ok ((condTerm, thenTerm) :: elseTable, dflt)
   | other => do
-    .ok ([], ← other.decodeLit ids)
+    .ok ([], ← other.decodeLit ids retTy)
 
 def SExpr.decodeVarBinding (v : TermVar) (ids : IdMaps) : List SExpr → Result Term
   | [.sexpr [], tyExpr, vExpr] => do
     let ty ← tyExpr.decodeType ids.types
     if ty != v.ty then
       fail s!"type {reprStr v.ty}" ty
-    vExpr.decodeLit ids
+    vExpr.decodeLit ids (.some ty)
   | other                      => fail "variable binding" other
 
 def SExpr.decodeUUFBinding (f : UUF) (ids : IdMaps) : List SExpr → Result UDF
@@ -339,7 +356,7 @@ def SExpr.decodeUUFBinding (f : UUF) (ids : IdMaps) : List SExpr → Result UDF
       fail s!"type {reprStr f.arg}" tyᵢ
     if tyₒ != f.out then
       fail s!"type {reprStr f.out}" tyₒ
-    let (tbl, dflt) ← tblExpr.decodeUnaryFunctionTable v ids
+    let (tbl, dflt) ← tblExpr.decodeUnaryFunctionTable v ids (.some tyₒ)
     .ok ⟨tyᵢ, tyₒ, Map.make tbl, dflt⟩
   | other                      => fail "UUF binding" other
 
