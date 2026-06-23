@@ -32,8 +32,9 @@ theorem Cst.Ident.toUnrestrictedString?_eq_toString
     {i : Cst.Ident} {s : String} :
     Cst.Ident.toUnrestrictedString? i = some s →
     s = CstCommon.Ident.toString i := by
-  cases i <;> intro h <;> simp [Cst.Ident.toUnrestrictedString?] at h
-  all_goals first | rfl | (rw [← h]; rfl)
+  cases i <;> intro h <;>
+    simp_all [Cst.Ident.toUnrestrictedString?, CstCommon.Ident.toUnrestrictedString?,
+      CstCommon.Ident.toString]
 
 /-- If `mapM` over `toUnrestrictedString?` succeeds, the result equals `map toString`. -/
 theorem mapM_toUnrestrictedString?_eq_map
@@ -59,7 +60,7 @@ theorem Cst.Name.toAName?_agrees
     an = { id := n.name.toString,
            path := n.path.map CstCommon.Ident.toString } := by
   intro h
-  simp [Cst.Name.toAName?, Option.bind_eq_some_iff] at h
+  simp [Cst.Name.toAName?, CstCommon.Name.toAName?, Option.bind_eq_some_iff] at h
   obtain ⟨id, hid, path, hpath, han⟩ := h
   rw [← han]; congr 1
   · exact Cst.Ident.toUnrestrictedString?_eq_toString hid
@@ -517,6 +518,106 @@ theorem addExpr_toHasRhs_toAttrs_agrees
   | .rInits r =>
     rw [hmi] at hbody; simp at hbody
 
+/-- `fieldChain?` returns the empty list only for an empty access list. -/
+theorem fieldChain?_eq_nil {access : List Cst.MemAccess} :
+    Cst.fieldChain? access = some [] → access = [] := by
+  intro h
+  cases access with
+  | nil => rfl
+  | cons hd tl =>
+    cases hd with
+    | field id =>
+      simp [Cst.fieldChain?, Option.bind_eq_some_iff] at h
+    | index _ => simp [Cst.fieldChain?] at h
+    | call _ => simp [Cst.fieldChain?] at h
+
+/-- Converse direction (eval ⟹ translate) for `rHas`: if the evaluator's
+    `toAttrs?` succeeds, then the translator's `toHasRhs?` also succeeds.  Both
+    accept exactly the same bare field-chain shapes: the evaluator was
+    strengthened to use `toHasHead?`/`toUnreservedId?`/`unescape?`, and
+    `fieldChain? = constructAttrsAux?`. -/
+theorem addExpr_toAttrs_toHasRhs {e : Cst.AddExpr} {attrs : List Attr} :
+    e.toAttrs? = some attrs →
+    ∃ rhs, e.toHasRhs? = some rhs := by
+  intro h
+  obtain ⟨⟨⟨op, ⟨prim, access⟩⟩, mext⟩, ext⟩ := e
+  simp only [Cst.AddExpr.toAttrs?] at h
+  cases ext with
+  | cons _ _ => simp at h
+  | nil =>
+    cases mext with
+    | cons _ _ => simp at h
+    | nil =>
+      cases op with
+      | some o => simp at h
+      | none =>
+        cases hfc : Cst.fieldChain? access with
+        | none => rw [hfc] at h; simp at h
+        | some fields =>
+          rw [hfc] at h
+          have hcaeq : constructAttrsAux? access = some fields := by
+            rw [← fieldChain?_eq_constructAttrsAux?]; exact hfc
+          cases prim with
+          | literal lit =>
+            cases lit with
+            | liStr s =>
+              cases hfe : fields.isEmpty with
+              | false => simp [hfe] at h
+              | true =>
+                have hfields : fields = [] := by simpa using hfe
+                have hacc : access = [] := fieldChain?_eq_nil (hfields ▸ hfc)
+                subst hacc
+                cases hun : Cedar.Spec.CstCommon.unescape? s with
+                | none => simp [hfe, hun] at h
+                | some s' =>
+                  exact ⟨.inl s', by
+                    simp [Cst.AddExpr.toHasRhs?, Cst.Primary.toExprOrSpecial?,
+                          Cst.Literal.toExprOrSpecial?, hun]⟩
+            | liTrue | liFalse | liNum _ => simp at h
+          | name n =>
+            obtain ⟨np, nname⟩ := n
+            cases np with
+            | cons _ _ => simp at h
+            | nil =>
+              cases hhh : Cst.Ident.toHasHead? nname with
+              | none => simp [hhh] at h
+              | some idStr =>
+                cases nname with
+                | idPrincipal =>
+                  exact ⟨.inr ("principal" :: fields), by
+                    simp [Cst.AddExpr.toHasRhs?, Cst.Primary.toExprOrSpecial?,
+                          Cst.Name.toVar?, Var.toString, constructAttrs?, hcaeq]⟩
+                | idAction =>
+                  exact ⟨.inr ("action" :: fields), by
+                    simp [Cst.AddExpr.toHasRhs?, Cst.Primary.toExprOrSpecial?,
+                          Cst.Name.toVar?, Var.toString, constructAttrs?, hcaeq]⟩
+                | idResource =>
+                  exact ⟨.inr ("resource" :: fields), by
+                    simp [Cst.AddExpr.toHasRhs?, Cst.Primary.toExprOrSpecial?,
+                          Cst.Name.toVar?, Var.toString, constructAttrs?, hcaeq]⟩
+                | idContext =>
+                  exact ⟨.inr ("context" :: fields), by
+                    simp [Cst.AddExpr.toHasRhs?, Cst.Primary.toExprOrSpecial?,
+                          Cst.Name.toVar?, Var.toString, constructAttrs?, hcaeq]⟩
+                | idIdent s =>
+                  simp only [Cst.Ident.toHasHead?] at hhh
+                  split at hhh
+                  · rename_i hunres
+                    have htus : String.toUnreservedId? s = some s := by
+                      simp only [String.toUnreservedId?]
+                      simp only [Cedar.Spec.CstCommon.Unreserved?] at hunres
+                      split <;> simp_all
+                    refine ⟨.inr (s :: fields), ?_⟩
+                    simp [Cst.AddExpr.toHasRhs?, Cst.Primary.toExprOrSpecial?,
+                          Cst.Name.toVar?, Cst.Name.toAName?,
+                          CstCommon.Name.toAName?,
+                          CstCommon.Ident.toUnrestrictedString?,
+                          htus, constructAttrs?, hcaeq]
+                  · simp at hhh
+                | idTrue | idFalse | idPermit | idForbid | idWhen | idUnless
+                | idIn | idHas | idLike | idIs | idIf | idThen | idElse =>
+                  simp [Cst.Ident.toHasHead?] at hhh
+          | ref _ | expr _ | eList _ | rInits _ => simp at h
 /-- Helper: `constructAttrs?` always returns a non-empty list when it succeeds. -/
 theorem constructAttrs?_nonempty
     {first : String} {rest : List Cst.MemAccess} {result : List String} :
@@ -829,6 +930,60 @@ theorem addExpr_toPattern_toPatternString_agrees
           | nBang _ =>
             simp [Option.bind_eq_some_iff] at heos
           | nOverBang | nOverDash => simp at heos
+
+/-- Converse direction (eval ⟹ translate) for `rLike`: if the evaluator's
+    `toPatternString?` succeeds with `s`, then the AddExpr translates to the
+    string-literal special form `.strLit s`.  Both functions accept exactly the
+    bare string-literal shape (extended/op/access empty, item a `liStr`). -/
+theorem addExpr_toPatternString_toExprOrSpecial {e : Cst.AddExpr} {s : String} :
+    Cst.AddExpr.toPatternString? e = some s →
+    e.toExprOrSpecial? = some (.strLit s) := by
+  intro h
+  obtain ⟨⟨⟨op, ⟨prim, access⟩⟩, mext⟩, ext⟩ := e
+  simp only [Cst.AddExpr.toPatternString?] at h
+  cases ext with
+  | cons _ _ => simp at h
+  | nil =>
+    cases mext with
+    | cons _ _ => simp at h
+    | nil =>
+      cases op with
+      | none =>
+        cases access with
+        | cons _ _ => simp at h
+        | nil =>
+          cases prim with
+          | literal lit =>
+            cases lit with
+            | liStr str =>
+              simp at h; subst h
+              simp [Cst.AddExpr.toExprOrSpecial?, Cst.MultExpr.toExprOrSpecial?,
+                    Cst.Unary.toExprOrSpecial?, Cst.Member.toExprOrSpecial?,
+                    Cst.Primary.toExprOrSpecial?, Cst.Literal.toExprOrSpecial?,
+                    memberAux, memberAuxA, List.mapM_nil]
+            | liTrue | liFalse | liNum _ => simp at h
+          | ref _ | name _ | expr _ | eList _ | rInits _ => simp at h
+      | some o =>
+        cases o with
+        | nDash n =>
+          by_cases hn : n = 0
+          · subst hn
+            cases access with
+            | cons _ _ => simp at h
+            | nil =>
+              cases prim with
+              | literal lit =>
+                cases lit with
+                | liStr str =>
+                  simp at h; subst h
+                  simp [Cst.AddExpr.toExprOrSpecial?, Cst.MultExpr.toExprOrSpecial?,
+                        Cst.Unary.toExprOrSpecial?, Cst.Member.toExprOrSpecial?,
+                        Cst.Primary.toExprOrSpecial?, Cst.Literal.toExprOrSpecial?,
+                        memberAux, memberAuxA, List.mapM_nil]
+                | liTrue | liFalse | liNum _ => simp at h
+              | ref _ | name _ | expr _ | eList _ | rInits _ => simp at h
+          · simp [hn] at h
+        | nBang _ | nOverBang | nOverDash => simp at h
 
 /-- Helper: `memberAux ieos accs = some (.name an)` requires `accs = []`
     and `ieos = .name an`. -/
@@ -1377,9 +1532,8 @@ theorem toExprOrSpecial_name_func {item : Cst.Primary} {an : Spec.Name}
 /-- For the `rIsIn` case: when the translator's `toEntityType?` succeeds with
     `et`, the evaluator's structural `toEntityTypeName?` succeeds with the same
     `et`.  Both enforce the same shape (extended/mext empty, op `none` or
-    `.nDash 0`, access empty, item a `.name`); the translator additionally
-    requires the name be non-reserved, and on those names `toAName?` produces
-    exactly the `toString`-based name the evaluator builds. -/
+    `.nDash 0`, access empty, item a `.name`), and both now build the entity-type
+    name via the shared `CstCommon.Name.toAName?`, so they agree. -/
 theorem addExpr_toEntityType_agrees
     {e : Cst.AddExpr} {et : EntityType} :
     Cst.AddExpr.toEntityType? e = some et →
@@ -1406,16 +1560,16 @@ theorem addExpr_toEntityType_agrees
         cases op with
         | none =>
           obtain ⟨hAccNil, n, hItem, hAName⟩ := member_toExprOrSpecial_name heos
-          have hagree := Cst.Name.toAName?_agrees hAName
-          simp [Cst.AddExpr.toEntityTypeName?, hAccNil, hItem, hagree]
+          simp [Cst.AddExpr.toEntityTypeName?, hAccNil, hItem]
+          exact hAName
         | some op' =>
           cases op' with
           | nDash k =>
             by_cases hk : k = 0
             · subst hk
               obtain ⟨hAccNil, n, hItem, hAName⟩ := member_toExprOrSpecial_name heos
-              have hagree := Cst.Name.toAName?_agrees hAName
-              simp [Cst.AddExpr.toEntityTypeName?, hAccNil, hItem, hagree]
+              simp [Cst.AddExpr.toEntityTypeName?, hAccNil, hItem]
+              exact hAName
             · simp at heos
               split at heos
               · split at heos
@@ -1445,13 +1599,15 @@ theorem apply₂_mem_returns_bool {v₁ v₂ : Value} {es : Entities} {r : Value
 theorem rIsIn_some_eval_agrees
     {target ety ie : Cst.AddExpr} {mt mi : Expr} {et : EntityType}
     {req : Request} {es : Entities}
-    (hEtyName : ety.toEntityTypeName? = some et)
+    (hEt : ety.toEntityType? = some et)
     (htarget_iff : ∀ v, evaluate mt req es = .ok v ↔ target.evaluate req es = .ok v)
-    (hinEntity_iff : ∀ v, evaluate mi req es = .ok v ↔ ie.evaluate req es = .ok v) :
+    (hinEntity_iff : ∀ v, evaluate mi req es = .ok v ↔ ie.evaluate req es = .ok v)
+    (hie_trans : ie.toAExpr? = some mi) :
     ∀ v, evaluate (Expr.and (.unaryApp (.is et) mt) (.binaryApp .mem mt mi)) req es = .ok v ↔
          (Cst.Relation.rIsIn target ety (some ie)).evaluate req es = .ok v := by
   intro v
-  simp only [Cst.Relation.evaluate, hEtyName, evaluate]
+  simp only [Cst.Relation.evaluate, hEt, evaluate, hie_trans, Option.isNone_some,
+             Bool.false_eq_true, if_false]
   cases htgt : evaluate mt req es with
   | error e =>
     cases htgtC : target.evaluate req es with
@@ -1593,6 +1749,64 @@ theorem expr_or_eval_eq_foldOps_step
           | int _ | string _ | entityUID _ => simp [Value.asBool]
         | set _ | record _ | ext _ => simp [Value.asBool]
 
+/-- If `foldExtended` succeeds on `xs`, every conjunct in `xs` translates. Used
+    to discharge the `AndExpr.evaluate` translatability guard. -/
+theorem andExprFoldExtended_some_all_translate (xs : List Cst.Relation) :
+    ∀ {acc result : Expr}, Cst.AndExpr.foldExtended acc xs = some result →
+    xs.all (fun r => r.toAExpr?.isSome) = true := by
+  induction xs with
+  | nil => intro acc result _; rfl
+  | cons rel rest ih =>
+    intro acc result h
+    simp [Cst.AndExpr.foldExtended] at h
+    cases hrel : rel.toAExpr? with
+    | none => rw [hrel] at h; simp at h
+    | some aval =>
+      rw [hrel] at h
+      simp at h
+      simp [List.all_cons, hrel, ih h]
+
+/-- When every conjunct translates, `AndExpr.evaluate`'s guard is a no-op and it
+    reduces to the plain `initial`-then-`foldOps` evaluation. -/
+theorem AndExpr.evaluate_eq {e : Cst.AndExpr} {req : Request} {es : Entities}
+    (h : (e.extended.all fun r => r.toAExpr?.isSome) = true) :
+    Cst.AndExpr.evaluate e req es =
+      (do let acc ← e.initial.evaluate req es; Cst.AndExpr.foldOps acc e.extended req es) := by
+  simp only [Cst.AndExpr.evaluate, if_pos h]
+
+/-- If `foldExtended` succeeds on `xs`, every disjunct in `xs` translates. -/
+theorem orExprFoldExtended_some_all_translate (xs : List Cst.AndExpr) :
+    ∀ {acc result : Expr}, Cst.OrExpr.foldExtended acc xs = some result →
+    xs.all (fun r => r.toAExpr?.isSome) = true := by
+  induction xs with
+  | nil => intro acc result _; rfl
+  | cons rel rest ih =>
+    intro acc result h
+    simp [Cst.OrExpr.foldExtended] at h
+    cases hrel : rel.toAExpr? with
+    | none => rw [hrel] at h; simp at h
+    | some aval =>
+      rw [hrel] at h
+      simp at h
+      simp [List.all_cons, hrel, ih h]
+
+/-- When every disjunct translates, `OrExpr.evaluate`'s guard is a no-op and it
+    reduces to the plain `initial`-then-`foldOps` evaluation. -/
+theorem OrExpr.evaluate_eq {e : Cst.OrExpr} {req : Request} {es : Entities}
+    (h : (e.extended.all fun r => r.toAExpr?.isSome) = true) :
+    Cst.OrExpr.evaluate e req es =
+      (do let acc ← e.initial.evaluate req es; Cst.OrExpr.foldOps acc e.extended req es) := by
+  simp only [Cst.OrExpr.evaluate, if_pos h]
+
+/-- When both branches translate, `ExprData.evaluate`'s `edIf` guard is a no-op
+    and it reduces to the plain conditional evaluation. -/
+theorem ExprData.evaluate_edIf_eq {i t f : Cst.Expr} {req : Request} {es : Entities}
+    (h : (t.toAExpr?.isSome && f.toAExpr?.isSome) = true) :
+    Cst.ExprData.evaluate (.edIf i t f) req es =
+      (do let b ← (i.evaluate req es).as Bool;
+          if b then t.evaluate req es else f.evaluate req es) := by
+  simp only [Cst.ExprData.evaluate, if_pos h]
+
 /- For Primary's eList case -/
 
 /-- Generic element-wise bridge: when each element of `xs` translates to an AST
@@ -1695,7 +1909,8 @@ theorem Cst.Primary.toAttr?_consistent (p : Cst.Primary) :
     | nil =>
       cases name <;>
         simp [Cst.Primary.toAttr?, Cst.Ident.toAttr?, Cst.Primary.toExprOrSpecial?, Cst.Name.toVar?,
-              Cst.Name.toAName?, Cst.Ident.toUnrestrictedString?, ExprOrSpecial.toValidAttr?,
+              Cst.Name.toAName?, CstCommon.Name.toAName?,
+              CstCommon.Ident.toUnrestrictedString?, ExprOrSpecial.toValidAttr?,
               Var.toString]
     | cons hd tl =>
       simp only [Cst.Primary.toAttr?, Cst.Primary.toExprOrSpecial?, Cst.Name.toVar?,
@@ -2330,15 +2545,15 @@ theorem conds_mapM_toAExpr_isSome {conds : List Cst.Cond} {acconds : Conditions}
 
 /- Helpers for the policy-list translation soundness proof -/
 
-/-- `toPolicy?` always produces a policy whose `id` field is empty. -/
-theorem toPolicy?_id_empty {cp : Cst.Policy} {ap : Spec.Policy} :
-    cp.toPolicy? = some ap → ap.id = "" := by
+/-- `toPolicy?` produces a policy whose `id` field is the CST policy's `id`. -/
+theorem toPolicy?_id_eq {cp : Cst.Policy} {ap : Spec.Policy} :
+    cp.toPolicy? = some ap → ap.id = cp.id := by
   intro h
   obtain ⟨p⟩ := cp
   simp only [Cst.Policy.toPolicy?, Cst.PolicyImpl.toPolicy?, bind, Option.bind_eq_some_iff,
     Option.some.injEq] at h
   obtain ⟨eff, heff, ⟨ps, as, rs⟩, hsc, conds, hconds, heq⟩ := h
-  rw [← heq]
+  simp only [← heq, Cst.Policy.id]
 
 /-- `filterMap` congruence across two lists related pointwise. -/
 theorem filterMap_congr_forall₂ {α β γ : Type} {f : α → Option γ} {g : β → Option γ}
@@ -2352,63 +2567,25 @@ theorem filterMap_congr_forall₂ {α β γ : Type} {f : α → Option γ} {g : 
     rename_i a b xs' ys'
     simp only [List.filterMap, hfg _ _ hhd, ih]
 
-/-- Index-generalized consistency: zipping `policy{k+i}` ids onto the CST policies
-    is pointwise related to id-stamping the translated AST policies. This is the
-    structural bridge between `Cst.Policies.withIDs` and `Cst.Policies.toPolicies?`. -/
-theorem withIDs_toPolicies_aux :
-    ∀ (k : Nat) (ps : List Cst.Policy) (rets : List Spec.Policy),
-    ps.mapM Cst.Policy.toPolicy? = some rets →
-    List.Forall₂ (fun (pr : PolicyID × Cst.Policy) (ap : Spec.Policy) =>
-        pr.1 = ap.id ∧ pr.2.toPolicy? = some {ap with id := ""})
-      (List.zip ((List.range' k ps.length).map (fun i => s!"policy{i}")) ps)
-      (rets.mapIdx (fun i p => {p with id := s!"policy{k+i}"})) := by
-  intro k ps
-  induction ps generalizing k with
-  | nil =>
-    intro rets hrets
-    simp only [List.mapM_nil, Option.pure_def, Option.some.injEq] at hrets
-    subst hrets
-    simp
-  | cons hd tl ih =>
-    intro rets hrets
-    simp [List.mapM_cons, Option.bind_eq_some_iff] at hrets
-    obtain ⟨a0, ha0, restRets, hrest, hretseq⟩ := hrets
-    subst hretseq
-    rw [List.length_cons, List.range'_succ, List.map_cons, List.zip_cons_cons,
-      List.mapIdx_cons]
-    apply List.Forall₂.cons
-    · refine ⟨by simp, ?_⟩
-      rw [ha0]
-      have hid := toPolicy?_id_empty ha0
-      obtain ⟨id, e, pp, aa, rr, cc⟩ := a0
-      subst hid
-      rfl
-    · have hfun : (fun (i : Nat) (p : Spec.Policy) => ({p with id := s!"policy{k + (i + 1)}"} : Spec.Policy))
-                = (fun i p => {p with id := s!"policy{(k + 1) + i}"}) := by
-        funext i p
-        have : k + (i + 1) = (k + 1) + i := by omega
-        rw [this]
-      rw [hfun]
-      exact ih (k + 1) restRets hrest
-
-/-- `Cst.Policies.withIDs` generates a list of `(id, policy)` pairs that is
-    pointwise consistent with `Cst.Policies.toPolicies?`: each id matches the
-    stamped AST policy's id, and each CST policy translates to that AST policy
-    (modulo the id field). -/
-theorem withIDs_toPolicies_forall₂ {cps : Cst.Policies} {aps : Spec.Policies} :
+/-- `Cst.Policies.toPolicies?` relates the original CST policies to the translated
+    AST policies pointwise: each CST policy translates (via `toPolicy?`) to the
+    corresponding AST policy. The id is carried through by `toPolicy?` itself (see
+    `toPolicy?_id_eq`). -/
+theorem toPolicies?_forall₂ {cps : Cst.Policies} {aps : Spec.Policies} :
     cps.toPolicies? = some aps →
-    List.Forall₂ (fun (pr : PolicyID × Cst.Policy) (ap : Spec.Policy) =>
-        pr.1 = ap.id ∧ pr.2.toPolicy? = some {ap with id := ""})
-      cps.withIDs aps := by
-  intro htrans
-  simp only [Cst.Policies.toPolicies?, bind, Option.bind_eq_some_iff, Option.some.injEq] at htrans
-  obtain ⟨rets, hrets, hapeq⟩ := htrans
-  have haux := withIDs_toPolicies_aux 0 cps.ps rets hrets
-  have hfun : (fun (i : Nat) (p : Spec.Policy) => ({p with id := s!"policy{0 + i}"} : Spec.Policy))
-            = (fun i p => {p with id := s!"policy{i}"}) := by
-    funext i p
-    have : 0 + i = i := by omega
-    rw [this]
-  rw [hfun, ← List.range_eq_range'] at haux
-  rw [← hapeq]
-  exact haux
+    List.Forall₂ (fun (cp : Cst.Policy) (ap : Spec.Policy) => cp.toPolicy? = some ap)
+      cps.ps aps := by
+  simp only [Cst.Policies.toPolicies?]
+  generalize cps.ps = ps
+  induction ps generalizing aps with
+  | nil =>
+    intro htrans
+    simp only [List.mapM_nil, Option.pure_def, Option.some.injEq] at htrans
+    subst htrans
+    exact List.Forall₂.nil
+  | cons hd tl ih =>
+    intro htrans
+    simp [List.mapM_cons, Option.bind_eq_some_iff] at htrans
+    obtain ⟨a0, ha0, restRets, hrest, hretseq⟩ := htrans
+    subst hretseq
+    exact List.Forall₂.cons ha0 (ih hrest)

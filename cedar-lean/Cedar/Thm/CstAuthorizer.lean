@@ -12,35 +12,22 @@ def HasSatisfiedEffect (effect : Effect) (request : Request) (entities : Entitie
   ∃ policy ∈ policies.ps,
   Cst.satisfiedWithEffect effect policy request entities = true
 
-/-- The second components of `withIDs` are exactly the original policies. -/
-private theorem withIDs_map_snd (policies : Cst.Policies) :
-    (Cst.Policies.withIDs policies).map Prod.snd = policies.ps := by
-  unfold Cst.Policies.withIDs
-  apply List.map_snd_zip
-  simp [List.length_range]
-
 theorem satisfied_iff_satisfiedPolicies_non_empty {effect : Effect} {request : Request} {entities : Entities} {policies : Cst.Policies} :
   HasSatisfiedEffect effect request entities policies ↔ (Cst.satisfiedPolicies effect policies request entities).isEmpty = false := by
   simp only [HasSatisfiedEffect, Cst.satisfiedPolicies, Set.isEmpty_make_eq_false]
-  rw [← withIDs_map_snd policies]
   constructor
   · rintro ⟨p, hp, hsat⟩
-    rw [List.mem_map] at hp
-    obtain ⟨⟨pid, pol⟩, hpair, hpeq⟩ := hp
-    simp only at hpeq
-    subst hpeq
-    apply List.ne_nil_of_mem (a := pid)
+    apply List.ne_nil_of_mem (a := p.id)
     rw [List.mem_filterMap]
-    exact ⟨(pid, pol), hpair, by simp [hsat]⟩
+    exact ⟨p, hp, by simp [hsat]⟩
   · intro hne
     obtain ⟨id, hid⟩ := List.exists_mem_of_ne_nil _ hne
     rw [List.mem_filterMap] at hid
-    obtain ⟨⟨pid, pol⟩, hpair, hf⟩ := hid
-    refine ⟨pol, ?_, ?_⟩
-    · rw [List.mem_map]; exact ⟨(pid, pol), hpair, rfl⟩
-    · by_cases h : Cst.satisfiedWithEffect effect pol request entities = true
-      · exact h
-      · simp [h] at hf
+    obtain ⟨pol, hpair, hf⟩ := hid
+    refine ⟨pol, hpair, ?_⟩
+    by_cases h : Cst.satisfiedWithEffect effect pol request entities = true
+    · exact h
+    · simp [h] at hf
 
 def IsExplicitlyForbidden := HasSatisfiedEffect .forbid
 

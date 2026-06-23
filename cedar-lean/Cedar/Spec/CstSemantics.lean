@@ -6,6 +6,7 @@ public import Cedar.Spec.Request
 public import Cedar.Spec.Response
 public import Cedar.Spec.Value
 public import Cedar.Spec.Evaluator
+public import Cedar.Spec.CstToAst
 
 namespace Cedar.Spec.Cst
 
@@ -185,7 +186,7 @@ public def AddExpr.toEntityTypeName? (e : AddExpr) : Option EntityType :=
     let member := unary.item
     if !member.access.isEmpty then none else
     match member.item with
-    | .name n => some { id := n.name.toString, path := n.path.map Ident.toString }
+    | .name n => CstCommon.Name.toAName? n
     | _ => none
   | some _ => none
 
@@ -240,10 +241,9 @@ public def Primary.evaluate (e : Primary) (req : Request) (es : Entities) : Resu
   | .ref r => match r with
     | .uid path eid => do
       let eid' ← Str.toUnescapedString eid
-      let ids := path.path.map Ident.toString
-      let last := path.name.toString
-      let etype : Spec.Name := { id := last, path := ids }
-      .ok (.prim (.entityUID { ty := etype, eid := eid' }))
+      match CstCommon.Name.toAName? path with
+      | some etype => .ok (.prim (.entityUID { ty := etype, eid := eid' }))
+      | none       => .error .typeError
     | .ref _ _ => .error .typeError
   | .rInits r => do
     let avs ← r.mapM₁ (fun ⟨ri, hmem⟩ =>
@@ -444,24 +444,40 @@ public def Relation.evaluate (e : Relation) (req : Request) (es : Entities) : Re
       match Cedar.Spec.CstCommon.toPattern? s with
       | some p => apply₁ (.like p) v
       | none => .error .typeError
-  | .rIsIn t ety inEntity => match ety.toEntityTypeName? with
+  | .rIsIn t ety inEntity => match ety.toEntityType? with
     | none => .error .typeError
     | some etyName => do
       let v ← t.evaluate req es
       let isResult ← apply₁ (.is etyName) v
       match inEntity with
       | none => .ok isResult
-      | some ie => do
-        let b ← isResult.asBool
-        if !b then .ok false
+      | some ie =>
+        -- Strengthening: fail the evaluation when the `in` branch does not
+        -- translate, even if the `is` branch short-circuits to `false`. Under a
+        -- successful translation `ie.toAExpr?.isSome` holds, so this guard is a
+        -- no-op and the evaluator still agrees with the short-circuiting AST;
+        -- but it lets a successful evaluation witness that `ie` translates,
+        -- which is needed for translation completeness.
+        if ie.toAExpr?.isNone then .error .typeError
         else do
-          let v₂ ← ie.evaluate req es
-          apply₂ .mem v v₂ es
+          let b ← isResult.asBool
+          if !b then .ok false
+          else do
+            let v₂ ← ie.evaluate req es
+            apply₂ .mem v v₂ es
 termination_by sizeOf e
 
-public def AndExpr.evaluate (e : AndExpr) (req : Request) (es : Entities) : Result Value := do
-  let acc ← e.initial.evaluate req es
-  AndExpr.foldOps acc e.extended req es
+public def AndExpr.evaluate (e : AndExpr) (req : Request) (es : Entities) : Result Value :=
+  -- Strengthening (mirrors the `rIsIn` guard): fail when some
+  -- conjunct does not translate, even if `foldOps` short-circuits past it on a
+  -- `false`. Under a successful translation every conjunct translates, so this
+  -- guard is a no-op and the evaluator still agrees with the short-circuiting
+  -- AST; but it lets a successful evaluation witness that every conjunct
+  -- translates, which completeness needs.
+  if e.extended.all (fun r => r.toAExpr?.isSome) then do
+    let acc ← e.initial.evaluate req es
+    AndExpr.foldOps acc e.extended req es
+  else .error .typeError
 termination_by sizeOf e
 decreasing_by
   all_goals cases e; simp_wf; omega
@@ -479,9 +495,16 @@ public def AndExpr.foldOps (acc : Value) (xs : List Relation)
       AndExpr.foldOps (.prim (.bool b')) rest req es
 termination_by sizeOf xs
 
-public def OrExpr.evaluate (e : OrExpr) (req : Request) (es : Entities) : Result Value := do
-  let acc ← e.initial.evaluate req es
-  OrExpr.foldOps acc e.extended req es
+public def OrExpr.evaluate (e : OrExpr) (req : Request) (es : Entities) : Result Value :=
+  -- Strengthening (mirrors `AndExpr.evaluate`): fail when some disjunct does not
+  -- translate, even if `foldOps` short-circuits past it on a `true`. Under a
+  -- successful translation every disjunct translates, so this guard is a no-op
+  -- and the evaluator still agrees with the short-circuiting AST; but it lets a
+  -- successful evaluation witness that every disjunct translates.
+  if e.extended.all (fun r => r.toAExpr?.isSome) then do
+    let acc ← e.initial.evaluate req es
+    OrExpr.foldOps acc e.extended req es
+  else .error .typeError
 termination_by sizeOf e
 decreasing_by
   all_goals cases e; simp_wf; omega
@@ -502,9 +525,18 @@ termination_by sizeOf xs
 public def ExprData.evaluate (e : ExprData) (req : Request) (es : Entities) : Result Value :=
   match e with
   | .edOr e => e.evaluate req es
-  | .edIf i t f => do
-    let b ← (i.evaluate req es).as Bool
-    if b then t.evaluate req es else f.evaluate req es
+  | .edIf i t f =>
+    -- Strengthening (mirrors the `rIsIn` `in` guard): the guard `i` is always
+    -- evaluated, but only one of `t`/`f` is (the conditional short-circuits), so
+    -- we only fail when a *branch* `t`/`f` does not translate. Under a successful
+    -- translation both branches translate, so this guard is a no-op and the
+    -- evaluator still agrees with the AST `ite`; but it lets a successful
+    -- evaluation witness that both branches translate (completeness recovers
+    -- `i`'s translatability from the fact that `i` is always evaluated).
+    if t.toAExpr?.isSome && f.toAExpr?.isSome then do
+      let b ← (i.evaluate req es).as Bool
+      if b then t.evaluate req es else f.evaluate req es
+    else .error .typeError
 termination_by sizeOf e
 
 public def ExprImpl.evaluate (e : ExprImpl) (req : Request) (es : Entities) : Result Value :=
@@ -648,6 +680,9 @@ public def Policies.toExpr (ps : Policies) : Expr :=
 
 /- Authorizer -/
 
+public def Policy.id : Policy → PolicyID
+  | .policy p => p.id
+
 public def satisfied (policy : Policy) (req : Request) (entities : Entities) : Bool :=
   policy.toExpr.evaluate req entities = .ok true
 
@@ -661,24 +696,28 @@ public def satisfiedWithEffect (effect : Effect) (policy : Policy) (req : Reques
     | some eff => eff = effect
   else false
 
-public def Policies.withIDs (policies : Policies) : List (PolicyID × Policy) :=
-  let len := policies.ps.length
-  List.zip ((List.range len).map (fun i => s!"policy{i}")) policies.ps
-
 public def satisfiedPolicies (effect : Effect) (policies : Policies) (req : Request) (entities : Entities) : Set PolicyID :=
   Set.make (List.filterMap
-    (fun (id, p) => if satisfiedWithEffect effect p req entities then some id else none)
-    policies.withIDs)
+    (fun p => if satisfiedWithEffect effect p req entities then some p.id else none)
+    policies.ps)
 
 public def hasError (policy : Policy) (req : Request) (entities : Entities) : Bool :=
-  match policy.toExpr.evaluate req entities with
-  | .ok _ => false
-  | .error _ => true
+  match policy with
+  | .policy p =>
+    -- Strengthening: a policy whose scope variables don't form a valid
+    -- (principal, action, resource) triple has no AST translation
+    -- (`extractScope?` fails), so we treat it as an error.  Under a successful
+    -- translation `extractScope?` succeeds, so this guard is a no-op and
+    -- agreement with the AST (`policy_hasError_agrees`) is preserved.
+    if (extractScope? p.vars).isNone then true
+    else match policy.toExpr.evaluate req entities with
+         | .ok _ => false
+         | .error _ => true
 
 public def errorPolicies (policies : Policies) (req : Request) (entities : Entities) : Set PolicyID :=
   Set.make (List.filterMap
-    (fun (id, p) => if hasError p req entities then some id else none)
-    policies.withIDs)
+    (fun p => if hasError p req entities then some p.id else none)
+    policies.ps)
 
 public def isAuthorized (req : Request) (entities : Entities) (policies : Policies) : Response :=
   let forbids := satisfiedPolicies .forbid policies req entities

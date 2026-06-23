@@ -162,6 +162,7 @@ public structure PolicyImpl where
   effect : Ident
   vars : List VariableDef
   conds : List Cond
+  id : String
 
 -- This is a cst::VariableDef
 -- `variable` is a LEAN keyword
@@ -436,6 +437,30 @@ public def Unreserved? (s : String) : Bool :=
 public def Ident.toUnreservedString? : Cst.Ident → Option String
   | .idIdent s => if (Unreserved? s) then some s else none
   | _ => none
+
+/-- Convert an identifier to its string form, accepting variable/keyword
+    identifiers that are valid as (parts of) entity-type names but rejecting
+    the reserved keywords (`true`, `false`, `in`, `has`, `like`, `is`, `if`,
+    `then`, `else`). Shared by the translator (`Cst.Name.toAName?`) and the
+    evaluator. -/
+public def Ident.toUnrestrictedString? : Cst.Ident → Option String
+  | .idPrincipal => some "principal"
+  | .idAction => some "action"
+  | .idResource => some "resource"
+  | .idContext => some "context"
+  | .idPermit => some "permit"
+  | .idForbid => some "forbid"
+  | .idWhen => some "when"
+  | .idUnless => some "unless"
+  | .idIdent s => some s
+  | _ => none
+
+/-- Convert a CST name to an AST entity-type `Name`, failing if any component
+    is a reserved keyword. Shared by the translator and the evaluator. -/
+public def Name.toAName? (n : Cst.Name) : Option Cedar.Spec.Name := do
+  let id ← Ident.toUnrestrictedString? n.name
+  let path ← n.path.mapM Ident.toUnrestrictedString?
+  some {id := id, path := path}
 
 public def Ident.toEffect? : Cst.Ident → Option Effect
   | .idPermit => some .permit
