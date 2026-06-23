@@ -21,6 +21,7 @@ public import Cedar.SymCC.Encoder
 public import Cedar.SymCC.Interpretation
 import Cedar.Validation
 import Std.Internal.Parsec.Basic
+import Std.Data.TreeMap
 
 /-!
 This file functions for parsing SMT models produced by CVC5, and turning them
@@ -175,9 +176,9 @@ where
 
 abbrev StringOrd : String → String → Ordering := (compareOfLessAndEq · ·)
 
-abbrev IdMap (α) := RBMap String α StringOrd
+abbrev IdMap (α) := Std.TreeMap String α StringOrd
 
-abbrev IdMap.ofList {α} : List (String × α) → IdMap α := (List.toRBMap · StringOrd)
+abbrev IdMap.ofList {α} : List (String × α) → IdMap α := (Std.TreeMap.ofList · StringOrd)
 
 structure IdMaps where
   types : IdMap TermType
@@ -200,7 +201,7 @@ where
     | _           => .none
   asStrEnum? (enums : EntityType × List String) : Option (List (String × EntityUID)) := do
     let (ety, mems) := enums
-    let etyId ← enc.types.find? (.entity ety)
+    let etyId ← enc.types.get? (.entity ety)
     .some (mems.mapIdx λ i eid => (Encoder.enumId etyId i, ⟨ety, eid⟩))
 
 public abbrev Result (α) := Except String α
@@ -224,7 +225,7 @@ where
     | "Duration" => TermType.ext .duration
     | "Datetime" => TermType.ext .datetime
     | other      => -- entity or record type
-      match types.find? other with
+      match types.get? other with
       | .some ty => ty
       | .none    => fail "atomic type name" other
   parameterized : List SExpr → Result TermType
@@ -243,11 +244,11 @@ partial def SExpr.decodeLit (ids : IdMaps) : SExpr → Result Term
   | other           => fail "literal expr" other
 where
   enumOrEmptyRecord (s : String) : Result Term :=
-    match ids.enums.find? s with
+    match ids.enums.get? s with
     | .some uid => Term.entity uid
     | .none     => constructEntityOrRecord s []
   constructEntityOrRecord tyId args : Result Term := do
-    match ids.types.find? tyId, args with
+    match ids.types.get? tyId, args with
     | .some (.entity ety), [SExpr.string eid] =>
       Term.entity ⟨ety, eid⟩
     | .some (.record (Map.mk rty)), _ =>
@@ -343,8 +344,8 @@ def SExpr.decodeUUFBinding (f : UUF) (ids : IdMaps) : List SExpr → Result UDF
     .ok ⟨tyᵢ, tyₒ, Map.make tbl, dflt⟩
   | other                      => fail "UUF binding" other
 
-abbrev VarMap := RBMap TermVar Term (compareOfLessAndEq · ·)
-abbrev UUFMap := RBMap UUF UDF (compareOfLessAndEq · ·)
+abbrev VarMap := Std.TreeMap TermVar Term (compareOfLessAndEq · ·)
+abbrev UUFMap := Std.TreeMap UUF UDF (compareOfLessAndEq · ·)
 
 def SExpr.decodeModel (ids : IdMaps) : SExpr → Result (VarMap × UUFMap)
   | .sexpr bindings => do
@@ -353,15 +354,15 @@ def SExpr.decodeModel (ids : IdMaps) : SExpr → Result (VarMap × UUFMap)
     for binding in bindings do
       match binding with
       | .sexpr ((.symbol "define-fun") :: (.symbol id) :: xs) =>
-        if let .some v := ids.vars.find? id then
+        if let .some v := ids.vars.get? id then
           vars := (v, (← SExpr.decodeVarBinding v ids xs)) :: vars
-        else if let .some f := ids.uufs.find? id then
+        else if let .some f := ids.uufs.get? id then
           uufs := (f, (← SExpr.decodeUUFBinding f ids xs)) :: uufs
         else
           pure () -- skip unknown define-funs (e.g., Z3 intermediate terms)
       | other =>
         fail "define-fun" other
-    (vars.toRBMap (compareOfLessAndEq · ·), uufs.toRBMap (compareOfLessAndEq · ·))
+    (Std.TreeMap.ofList vars (compareOfLessAndEq · ·), Std.TreeMap.ofList uufs (compareOfLessAndEq · ·))
   | other =>
     fail "model (list of define-fun)" other
 
@@ -414,16 +415,16 @@ public def decode (model : String) (enc : EncoderState) : Result Interpretation 
   let x ← SExpr.parse |>.run model
   let ⟨vars, uufs⟩ ← x.decodeModel (IdMaps.ofEncoderState enc)
   let eidOf := λ ety =>
-    match enc.enums.find? ety with
+    match enc.enums.get? ety with
     | .some (eid :: _) => eid
     | _                => ""
   .ok {
     vars := λ v =>
-      match vars.find? v with
+      match vars.get? v with
       | .some t => t
       | .none   => defaultLit eidOf v.ty,
     funs := λ f =>
-      match uufs.find? f with
+      match uufs.get? f with
       | .some d => d
       | .none   => defaultUDF eidOf f,
     partials := λ t =>

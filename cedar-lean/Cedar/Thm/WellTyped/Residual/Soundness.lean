@@ -438,7 +438,6 @@ InstanceOfType env v (Residual.getAttr x₁ attr ty).typeOf
         simp only [h₁₁, Option.some.injEq] at h₅₁
         simp only [← h₅₁] at h₅₃
         have h₈ := λ qty => h₈ attr v₁ qty heq₁
-        simp only at h₈
         simp only [Option.map_eq_some_iff] at h₆
         rcases h₆ with ⟨qty, h₆₁, h₆₂⟩
         simp only [← h₅₂, lift_bool_types_record_eq_map_on_values] at h₆₁

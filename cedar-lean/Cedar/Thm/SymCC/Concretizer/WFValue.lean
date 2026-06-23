@@ -275,11 +275,11 @@ private theorem term_record_value?_some_implies_eq_entityUIDs {ats : List (Attr 
   simp only at ha ; subst ha
   simp only [hv, Option.map, Option.bind_some]
   cases vopt
-  case a.none =>
+  case none =>
     simp only [Option.mapD_none]
     replace ⟨_, hv⟩ := value?_attrValue?_none_implies_none hv
     simp only [hv, Term.entityUIDs]
-  case a.some vᵢ =>
+  case some vᵢ =>
     simp only [Option.mapD_some]
     replace hv := term_value?_attrValue?_some_implies_or hv
     rcases hv with hv | hv

@@ -223,7 +223,7 @@ private def uufs : IdMap UUF := IdMap.ofList [
 private def ids : IdMaps := ⟨types, vars, uufs, enums⟩
 
 private def getValue! [Inhabited α] (m : IdMap α) (key : String) : α :=
-  if let some v := m.find? key then v else default
+  if let some v := m.get? key then v else default
 
 private def types.get! (key : String) := getValue! types key
 private def enums.get! (key : String) := getValue! enums key
@@ -365,8 +365,8 @@ private def testDecodeModelOk := (testDecodeOk (SExpr.decodeModel ids))
 
 private def testDecodeModelError := (testDecodeError (SExpr.decodeModel ids))
 
-private abbrev mkvars : List (TermVar × Term) → VarMap := (List.toRBMap · (compareOfLessAndEq · ·))
-private abbrev mkuufs : List (UUF × UDF) → UUFMap := (List.toRBMap · (compareOfLessAndEq · ·))
+private abbrev mkvars : List (TermVar × Term) → VarMap := (Std.TreeMap.ofList · (compareOfLessAndEq · ·))
+private abbrev mkuufs : List (UUF × UDF) → UUFMap := (Std.TreeMap.ofList · (compareOfLessAndEq · ·))
 
 def testsDecodeValidModelStrings :=
   suite "Decoder.SExpr.decodeModel for valid model strings"

@@ -618,7 +618,6 @@ decreasing_by
   . rw [b]
     simp
     let h := List.sizeOf_lt_of_mem hy
-    simp at h
     omega
 
 end Cedar.Thm
