@@ -138,6 +138,17 @@ def parseBinary : Parser (List Bool) := do
   let s ← many1Chars (satisfy λ c => c = '0' || c = '1')
   trim (s.toList.map (· = '1'))
 
+def parseHex : Parser (List Bool) := do
+  skipString "#x"
+  let s ← many1Chars (satisfy λ c => c.isHexDigit)
+  trim (s.toList.flatMap hexDigitToBits)
+where
+  hexDigitToBits (c : Char) : List Bool :=
+    let n := if '0' ≤ c ∧ c ≤ '9' then c.toNat - '0'.toNat
+             else if 'a' ≤ c ∧ c ≤ 'f' then c.toNat - 'a'.toNat + 10
+             else c.toNat - 'A'.toNat + 10
+    [n / 8 % 2 == 1, n / 4 % 2 == 1, n / 2 % 2 == 1, n % 2 == 1]
+
 -- Limited s-expression syntax that CVC5 uses to output models for Cedar formula.
 inductive SExpr where
   | bitvec  : ∀ {n}, BitVec n → SExpr
@@ -148,9 +159,10 @@ inductive SExpr where
 deriving Repr, Inhabited, BEq
 
 partial def SExpr.parse : Parser SExpr := do
-  bin <|> num <|> str <|> sym <|> sxp
+  bv <|> num <|> str <|> sym <|> sxp
 where
-  bin : Parser SExpr := do pure (.bitvec (BitVec.ofBoolListBE (← parseBinary)))
+  bv : Parser SExpr := do
+    pure (.bitvec (BitVec.ofBoolListBE (← parseBinary <|> parseHex)))
   num : Parser SExpr := do pure (.numeral (← parseNat))
   str : Parser SExpr := do pure (.string (← parseString))
   sym : Parser SExpr := do pure (.symbol (← parseSymbol))
@@ -288,6 +300,15 @@ where
       | .some (.prim (@TermPrim.bitvec 7 p)) => Term.ext (.ipaddr (.V6 ⟨a, p⟩))
       | .none (.bitvec 7)                    => Term.ext (.ipaddr (.V6 ⟨a, .none⟩))
       | other                                => fail "Option (BitVec 7)" other
+    | [.symbol "_", .symbol bvStr, .numeral w] =>
+      if bvStr.startsWith "bv" then
+        match (bvStr.drop 2).toNat? with
+        | .some val =>
+          if w == 0 then fail "non-zero width" w
+          else if val >= 2^w then fail s!"value fitting in {w} bits" val
+          else Term.bitvec (BitVec.ofNat w val)
+        | .none => fail "numeric bv value" bvStr
+      else fail "indexed bitvec (_ bvN W)" bvStr
     | (.symbol tyId) :: xs => constructEntityOrRecord tyId xs
     | other =>
       fail "literal expr" other
@@ -338,7 +359,7 @@ def SExpr.decodeModel (ids : IdMaps) : SExpr → Result (VarMap × UUFMap)
         else if let .some f := ids.uufs.get? id then
           uufs := (f, (← SExpr.decodeUUFBinding f ids xs)) :: uufs
         else
-          fail s!"valid variable or UUF id (we know of {ids.vars.size} vars and {ids.uufs.size} UUF ids)" id
+          pure () -- skip unknown define-funs (e.g., Z3 intermediate terms)
       | other =>
         fail "define-fun" other
     (Std.TreeMap.ofList vars (compareOfLessAndEq · ·), Std.TreeMap.ofList uufs (compareOfLessAndEq · ·))

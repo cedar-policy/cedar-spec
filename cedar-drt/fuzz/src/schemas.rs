@@ -28,6 +28,7 @@ use std::hash::Hash;
 use cedar_policy::{Entities, Schema};
 use cedar_policy_generators::err::Error;
 use libfuzzer_sys::arbitrary;
+use similar_asserts::SimpleDiff;
 
 pub fn add_actions_to_entities(schema: &Schema, entities: Entities) -> arbitrary::Result<Entities> {
     let actions = schema
@@ -37,6 +38,27 @@ pub fn add_actions_to_entities(schema: &Schema, entities: Entities) -> arbitrary
     Ok(entities
         .add_entities(actions, None)
         .map_err(|e| Error::EntitiesError(format!("Error fetching action entities: {e}")))?)
+}
+
+/// Test that API-level `schema` and `other` are equivalent according to [`equivalence_check`]
+/// after conversion to `json_schema::Fragment`.
+/// Panics if the schemas are not equivalent.
+pub fn schemas_are_equivalent(schema: &Schema, other: &Schema, how_related: &str) {
+    if let Err(msg) = equivalence_check(
+        &schema.as_ref().to_json_schema().unwrap(),
+        &other.as_ref().to_json_schema().unwrap(),
+    ) {
+        println!(
+            "{}",
+            SimpleDiff::from_str(
+                &format!("{:#?}", schema),
+                &format!("{:#?}", other),
+                "Initial Schema",
+                how_related
+            )
+        );
+        panic!("{msg}");
+    };
 }
 
 /// Check if two schema fragments are equivalent, modulo empty apply specs.

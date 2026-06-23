@@ -21,7 +21,7 @@ use cedar_drt_inner::proto_gen::ProtoExprInput;
 
 use cedar_drt_inner::props::expression_to_cedar_parses;
 use cedar_policy::Expression;
-use cedar_policy::proto::models;
+use cedar_policy::proto::traits::{DecodeError, Protobuf};
 use prost::Message;
 
 // This tests that validation when decoding protobufs for an expression is the same as validation
@@ -34,14 +34,11 @@ fuzz_target!(|input: ProtoExprInput| {
     // Encode the generated proto model to bytes
     let buf = input.expr.encode_to_vec();
 
-    // Decode from bytes
-    let decoded =
-        models::Expr::decode(&buf[..]).expect("Failed to decode proto Expr that was just encoded.");
-
-    // Convert proto model → domain type
+    // Decode encoded model into an `Expression`.
     // If it doesn't fail here, then all subsequent steps should not fail.
-    let expression = match Expression::try_from(decoded) {
+    let expression = match Expression::decode(&buf[..]) {
         Ok(e) => e,
+        Err(DecodeError::Proto(err)) => panic!("Decoding an encoded models::Expr failed: {err}"),
         Err(_) => return,
     };
     // Once we have an `Expression` it should roundtrip through Cedar.
