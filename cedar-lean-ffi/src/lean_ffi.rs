@@ -52,6 +52,7 @@ mod test_implementation;
 #[link(name = "Cedar_Protobuf", kind = "static")]
 #[link(name = "Cedar_CedarProto", kind = "static")]
 #[link(name = "batteries_Batteries", kind = "static")]
+#[link(name = "batteries_BatteriesRecycling", kind = "static")]
 #[link(name = "Cedar_CedarFFI", kind = "static")]
 unsafe extern "C" {
     fn runCheckNeverErrors(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
@@ -1294,6 +1295,7 @@ mod test {
     #[link(name = "Cedar_Protobuf", kind = "static")]
     #[link(name = "Cedar_CedarProto", kind = "static")]
     #[link(name = "batteries_Batteries", kind = "static")]
+    #[link(name = "batteries_BatteriesRecycling", kind = "static")]
     #[link(name = "Cedar_CedarFFI", kind = "static")]
     unsafe extern "C" {}
 
