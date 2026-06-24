@@ -285,6 +285,8 @@ def testsDecodeInvalidTypeStrings :=
 
 private def testDecodeLitOk := (testDecodeOk (SExpr.decodeLit ids))
 
+private def testDecodeLitWithTyOk (ty : TermType) := (testDecodeOk (SExpr.decodeLit ids (.some ty)))
+
 private def testDecodeLitError := (testDecodeError (SExpr.decodeLit ids))
 
 def testsDecodeValidLitStrings :=
@@ -303,6 +305,7 @@ def testsDecodeValidLitStrings :=
     testDecodeLitOk "E0_m1" (.entity (enums.get! "E0_m1")),
     testDecodeLitOk "E0_m2" (.entity (enums.get! "E0_m2")),
     testDecodeLitOk "((as some (Option E0)) E0_m0)" (.some (.entity (enums.get! "E0_m0"))),
+    testDecodeLitOk "(some E0_m0)" (.some (.entity (enums.get! "E0_m0"))),
     testDecodeLitOk "(as none (Option Bool))" (.none .bool),
     testDecodeLitOk "(as set.empty (Set (_ BitVec 64)))" (.set Set.empty (.bitvec 64)),
     testDecodeLitOk "(set.singleton (set.singleton #b0001))" (.set (Set.singleton (.set (Set.singleton 1#4) (.bitvec 4))) (.set (.bitvec 4))),
@@ -320,6 +323,10 @@ def testsDecodeValidLitStrings :=
     testDecodeLitOk "(R4 (as none (Option Bool)) #b0000000000000000000000000000000000000000000000000000000000001010 E0_m2)"
       (.record (Map.make [("a", .none .bool), ("b", 10#64), ("c", .entity ⟨colorType, "red"⟩)])),
     testDecodeLitOk "(R6 (R5 true))" (.record (Map.make [("d", .record (Map.make [("e", .bool true)]))])),
+    testDecodeLitWithTyOk (.option .bool) "none" (.none .bool),
+    testDecodeLitWithTyOk (.option .bool) "(some true)" (.some (.bool true)),
+    testDecodeLitOk "(R4 none #b0000000000000000000000000000000000000000000000000000000000001010 E0_m2)"
+      (.record (Map.make [("a", .none .bool), ("b", 10#64), ("c", .entity ⟨colorType, "red"⟩)])),
   ]
 
 def testsDecodeInvalidLitStrings :=
@@ -330,7 +337,7 @@ def testsDecodeInvalidLitStrings :=
     testDecodeLitError "(_ bv256 8)",
     testDecodeLitError "(_ bv0 0)",
     testDecodeLitError "(some)",
-    testDecodeLitError "(some E0_m0)",
+    testDecodeLitError "none",
     testDecodeLitError "(as none Bool)",
     testDecodeLitError "(as set.empty Bool)", -- must be a set type
     testDecodeLitError "(set.union (set.singleton true) false)",
@@ -350,13 +357,13 @@ def testsDecodeValidFunctionTableStrings :=
     testDecodeTableOk "true" ([], .bool true),
     testDecodeTableOk "(ite (= #b0000 x) #b0001 #b0010)" ([(0#4, 1#4)], 2#4),
     testDecodeTableOk "(ite (= #b0000 x) #b0001 (ite (= #b0001 x) #b0010 #b0011))" ([(0#4, 1#4), (1#4, 2#4)], 3#4),
+    testDecodeTableOk "(ite (= x #b0000) #b0001 #b0010)" ([(0#4, 1#4)], 2#4),
   ]
 
 def testsDecodeInvalidFunctionTableStrings :=
   suite "Decoder.SExpr.decodeUnaryFunctionTable for invalid unary function body strings"
   [
     testDecodeTableError "foo",
-    testDecodeTableError "(ite (= x #b0000) #b0001 #b0010)",
     testDecodeTableError "(ite (= #b0000 y) #b0001 #b0010)", -- we're using x as var name in these tests
     testDecodeTableError "(ite (= #b0000 x) (ite (= #b0001 x) #b0010 #b0011) #b0010)",
   ]
