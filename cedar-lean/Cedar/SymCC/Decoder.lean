@@ -212,7 +212,7 @@ instance : Coe α (Result α) where
 def SExpr.fail {α β} [Repr α] (expected : String) (actual : α) : Result β :=
   .error s!"expected {expected}, but got {reprStr actual}"
 
-partial def SExpr.decodeType (types : IdMap TermType) : SExpr → Result TermType
+def SExpr.decodeType (types : IdMap TermType) : SExpr → Result TermType
   | .symbol ty => atomic ty
   | .sexpr xs  => parameterized xs
   | other      => fail "type s-expr" other
@@ -234,7 +234,9 @@ where
     | [.symbol "Set", x]                          => do TermType.set (← x.decodeType types)
     | other                                       => fail "BitVec, Option, or Set" other
 
-partial def SExpr.decodeLit (ids : IdMaps) (expectedTy : Option TermType := .none) : SExpr → Result Term
+mutual
+
+def SExpr.decodeLit (ids : IdMaps) (expectedTy : Option TermType := .none) : SExpr → Result Term
   | .bitvec bv      => Term.bitvec bv
   | .string s       => Term.string s
   | .symbol "true"  => Term.bool true
@@ -243,92 +245,105 @@ partial def SExpr.decodeLit (ids : IdMaps) (expectedTy : Option TermType := .non
     match expectedTy with
     | .some (.option ty) => Term.none ty
     | _                  => fail "option type for bare 'none'" expectedTy
-  | .symbol e       => enumOrEmptyRecord e
-  | .sexpr xs       => construct xs
-  | other           => fail "literal expr" other
-where
-  enumOrEmptyRecord (s : String) : Result Term :=
-    match ids.enums.get? s with
+  | .symbol e       =>
+    match ids.enums.get? e with
     | .some uid => Term.entity uid
-    | .none     => constructEntityOrRecord s []
-  constructEntityOrRecord tyId args : Result Term := do
-    match ids.types.get? tyId, args with
-    | .some (.entity ety), [SExpr.string eid] =>
-      Term.entity ⟨ety, eid⟩
-    | .some (.record (Map.mk rty)), _ =>
-      if rty.length != args.length then
-        fail s!"record literal args of length {rty.length}" args
-      let ts ← (rty.zip args).mapM λ ((_, fieldTy), arg) =>
-        arg.decodeLit ids (.some fieldTy)
-      for aty in rty, t in ts do
-        if t.typeOf != aty.snd then
-          fail s!"attribute {aty.fst} of type {reprStr aty.snd}" t
-      let ats := rty.zipWith (λ (a, _) t => (a, t)) ts
-      Term.record (Map.mk ats)
-    | _, _  =>
-        fail "entity or record literal" ((.symbol tyId) :: args)
-  construct : List SExpr → Result Term
-    | [.symbol "as", .symbol "none", oty] => do
-      match (← oty.decodeType ids.types) with
-      | .option ty => Term.none ty
-      | other      => fail "option type" other
-    | [.sexpr [.symbol "as", .symbol "some", oty], x] => do
-      let ty ← oty.decodeType ids.types
-      let innerTy? := match ty with | .option inner => .some inner | _ => .none
-      let t := Term.some (← x.decodeLit ids innerTy?)
-      if t.typeOf != ty then
-        fail s!"term of type {reprStr ty}" t
-      t
-    | [.symbol "some", x] => do
-      let innerTy := match expectedTy with
-      | .some (.option ty) => .some ty
-      | _ => .none
-      let t ← x.decodeLit ids innerTy
-      Term.some t
-    | [.symbol "as", .symbol "set.empty", sty] => do
-      match ← sty.decodeType ids.types with
-      | .set ty => Term.set Set.empty ty
-      | other   => fail "set type" other
-    | [.symbol "set.singleton", x] => do
-      let eltTy := match expectedTy with
-      | .some (.set ty) => .some ty
-      | _ => .none
-      let t ← x.decodeLit ids eltTy
-      Term.set (Set.singleton t) t.typeOf
-    | [.symbol "set.union", x₁, x₂] => do
-      match ← x₁.decodeLit ids expectedTy, ← x₂.decodeLit ids expectedTy with
-      | .set ts₁ ty, .set ts₂ _ => Term.set (ts₁ ∪ ts₂) ty
-      | t₁, t₂                  => fail "sets" [t₁, t₂]
-    | [.symbol "Decimal", @SExpr.bitvec 64 bv]  =>
-      Term.ext (.decimal (Int64.ofBitVec bv))
-    | [.symbol "Duration", @SExpr.bitvec 64 bv] =>
-      Term.ext (.duration ⟨Int64.ofBitVec bv⟩)
-    | [.symbol "Datetime", @SExpr.bitvec 64 bv] =>
-      Term.ext (.datetime ⟨Int64.ofBitVec bv⟩)
-    | [.symbol "V4", @SExpr.bitvec 32 a, opt] => do
-      match (← opt.decodeLit ids) with
-      | .some (.prim (@TermPrim.bitvec 5 p)) => Term.ext (.ipaddr (.V4 ⟨a, p⟩))
-      | .none (.bitvec 5)                    => Term.ext (.ipaddr (.V4 ⟨a, .none⟩))
-      | other                                => fail "Option (BitVec 5)" other
-    | [.symbol "V6", @SExpr.bitvec 128 a, opt] => do
-      match (← opt.decodeLit ids) with
-      | .some (.prim (@TermPrim.bitvec 7 p)) => Term.ext (.ipaddr (.V6 ⟨a, p⟩))
-      | .none (.bitvec 7)                    => Term.ext (.ipaddr (.V6 ⟨a, .none⟩))
-      | other                                => fail "Option (BitVec 7)" other
-    | [.symbol "_", .symbol bvStr, .numeral w] =>
-      if bvStr.startsWith "bv" then
-        match (bvStr.drop 2).toNat? with
-        | .some val =>
-          if w == 0 then fail "non-zero width" w
-          else if val >= 2^w then fail s!"value fitting in {w} bits" val
-          else Term.bitvec (BitVec.ofNat w val)
-        | .none => fail "numeric bv value" bvStr
-      else fail "indexed bitvec (_ bvN W)" bvStr
-    | (.symbol tyId) :: xs => constructEntityOrRecord tyId xs
-    | other =>
-      fail "literal expr" other
+    | .none     => SExpr.constructEntityOrRecord ids e []
+  | .sexpr xs       => SExpr.decodeLitConstruct ids expectedTy xs
+  | other           => fail "literal expr" other
+termination_by s => sizeOf s
+decreasing_by
+  all_goals simp
+  simp [sizeOf, String._sizeOf_1] ; omega
 
-partial def SExpr.decodeUnaryFunctionTable (arg : String) (ids : IdMaps) (retTy : Option TermType := .none) : SExpr → Result ((List (Term × Term)) × Term)
+private def SExpr.constructEntityOrRecord (ids : IdMaps) (tyId : String) (args : List SExpr) : Result Term := do
+  match ids.types.get? tyId with
+  | .some (.entity ety) =>
+    match args with
+    | [SExpr.string eid] => Term.entity ⟨ety, eid⟩
+    | _ => fail "entity literal" args
+  | .some (.record (Map.mk rty)) =>
+    if rty.length != args.length then
+      fail s!"record literal args of length {rty.length}" args
+    let ts ← (rty.zip args).mapM₁ λ ⟨((_, fieldTy), arg), h⟩ =>
+      have : sizeOf arg < sizeOf args :=
+        have ⟨_, hb⟩ := List.of_mem_zip h
+        List.sizeOf_lt_of_mem hb
+      arg.decodeLit ids (.some fieldTy)
+    for aty in rty, t in ts do
+      if t.typeOf != aty.snd then
+        fail s!"attribute {aty.fst} of type {reprStr aty.snd}" t
+    let ats := rty.zipWith (λ (a, _) t => (a, t)) ts
+    Term.record (Map.mk ats)
+  | _ =>
+      fail "entity or record literal" ((.symbol tyId) :: args)
+termination_by sizeOf args
+
+private def SExpr.decodeLitConstruct (ids : IdMaps) (expectedTy : Option TermType := .none) : List SExpr → Result Term
+  | [.symbol "as", .symbol "none", oty] => do
+    match (← oty.decodeType ids.types) with
+    | .option ty => Term.none ty
+    | other      => fail "option type" other
+  | [.sexpr [.symbol "as", .symbol "some", oty], x] => do
+    let ty ← oty.decodeType ids.types
+    let innerTy? := match ty with | .option inner => .some inner | _ => .none
+    let t := Term.some (← x.decodeLit ids innerTy?)
+    if t.typeOf != ty then
+      fail s!"term of type {reprStr ty}" t
+    t
+  | [.symbol "some", x] => do
+    let innerTy := match expectedTy with
+    | .some (.option ty) => .some ty
+    | _ => .none
+    let t ← x.decodeLit ids innerTy
+    Term.some t
+  | [.symbol "as", .symbol "set.empty", sty] => do
+    match ← sty.decodeType ids.types with
+    | .set ty => Term.set Set.empty ty
+    | other   => fail "set type" other
+  | [.symbol "set.singleton", x] => do
+    let eltTy := match expectedTy with
+    | .some (.set ty) => .some ty
+    | _ => .none
+    let t ← x.decodeLit ids eltTy
+    Term.set (Set.singleton t) t.typeOf
+  | [.symbol "set.union", x₁, x₂] => do
+    match ← x₁.decodeLit ids expectedTy, ← x₂.decodeLit ids expectedTy with
+    | .set ts₁ ty, .set ts₂ _ => Term.set (ts₁ ∪ ts₂) ty
+    | t₁, t₂                  => fail "sets" [t₁, t₂]
+  | [.symbol "Decimal", @SExpr.bitvec 64 bv]  =>
+    Term.ext (.decimal (Int64.ofBitVec bv))
+  | [.symbol "Duration", @SExpr.bitvec 64 bv] =>
+    Term.ext (.duration ⟨Int64.ofBitVec bv⟩)
+  | [.symbol "Datetime", @SExpr.bitvec 64 bv] =>
+    Term.ext (.datetime ⟨Int64.ofBitVec bv⟩)
+  | [.symbol "V4", @SExpr.bitvec 32 a, opt] => do
+    match (← opt.decodeLit ids) with
+    | .some (.prim (@TermPrim.bitvec 5 p)) => Term.ext (.ipaddr (.V4 ⟨a, p⟩))
+    | .none (.bitvec 5)                    => Term.ext (.ipaddr (.V4 ⟨a, .none⟩))
+    | other                                => fail "Option (BitVec 5)" other
+  | [.symbol "V6", @SExpr.bitvec 128 a, opt] => do
+    match (← opt.decodeLit ids) with
+    | .some (.prim (@TermPrim.bitvec 7 p)) => Term.ext (.ipaddr (.V6 ⟨a, p⟩))
+    | .none (.bitvec 7)                    => Term.ext (.ipaddr (.V6 ⟨a, .none⟩))
+    | other                                => fail "Option (BitVec 7)" other
+  | [.symbol "_", .symbol bvStr, .numeral w] =>
+    if bvStr.startsWith "bv" then
+      match (bvStr.drop 2).toNat? with
+      | .some val =>
+        if w == 0 then fail "non-zero width" w
+        else if val >= 2^w then fail s!"value fitting in {w} bits" val
+        else Term.bitvec (BitVec.ofNat w val)
+      | .none => fail "numeric bv value" bvStr
+    else fail "indexed bitvec (_ bvN W)" bvStr
+  | (.symbol tyId) :: xs => SExpr.constructEntityOrRecord ids tyId xs
+  | other =>
+    fail "literal expr" other
+termination_by xs => sizeOf xs
+
+end
+
+def SExpr.decodeUnaryFunctionTable (arg : String) (ids : IdMaps) (retTy : Option TermType := .none) : SExpr → Result ((List (Term × Term)) × Term)
   | .sexpr [.symbol "ite", .sexpr [.symbol "=", condExpr, .symbol v], thenExpr, elseExpr]
   | .sexpr [.symbol "ite", .sexpr [.symbol "=", .symbol v, condExpr], thenExpr, elseExpr] => do
     if v == arg then
