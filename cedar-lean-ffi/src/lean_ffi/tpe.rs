@@ -90,7 +90,7 @@ mod test {
         PartialRequest, Policy, PolicyId, PolicySet, RestrictedExpression, Schema,
     };
 
-    use std::collections::{BTreeMap, HashSet};
+    use std::collections::{BTreeMap, HashMap, HashSet};
     use std::str::FromStr;
 
     use crate::CedarLeanFfi;
@@ -108,79 +108,79 @@ mod test {
         lean: &crate::datatypes::TpeResponse,
     ) {
         let mut errors = Vec::new();
-        let rust_inner = rust.as_ref();
-
         // Compare decisions
-        if lean.decision != rust_inner.decision() {
+        if lean.decision != rust.decision() {
             errors.push(format!(
                 "decision mismatch: lean={:?}, rust={:?}",
                 lean.decision,
-                rust_inner.decision()
+                rust.decision()
             ));
         }
 
-        // Compare policy categorizations
-        let policy_ids = |iter: Box<
-            dyn Iterator<Item = &cedar_policy_core::tpe::response::ResidualPolicy> + '_,
-        >|
-         -> HashSet<PolicyId> {
-            iter.map(|p| PolicyId::new(p.get_policy_id().as_ref()))
-                .collect()
-        };
-
-        macro_rules! check_set {
-            ($lean_field:expr, $rust_iter:expr, $name:expr) => {
-                let rust_set = policy_ids(Box::new($rust_iter));
-                if $lean_field != rust_set {
-                    errors.push(format!(
-                        "{} mismatch:\n  lean={:?}\n  rust={:?}",
-                        $name, $lean_field, rust_set
-                    ));
-                }
-            };
+        fn check_set<'a>(
+            lean_field: &HashSet<PolicyId>,
+            rust_iter: impl Iterator<Item = &'a PolicyId>,
+            name: &str,
+            errors: &mut Vec<String>,
+        ) {
+            let rust_set: HashSet<PolicyId> = rust_iter.cloned().collect();
+            if lean_field != &rust_set {
+                errors.push(format!(
+                    "{} mismatch:\n  lean={:?}\n  rust={:?}",
+                    name, lean_field, rust_set
+                ));
+            }
         }
-        check_set!(
-            lean.satisfied_permits,
-            rust_inner.true_permits(),
-            "satisfied_permits"
+        check_set(
+            &lean.satisfied_permits,
+            rust.true_permits(),
+            "satisfied_permits",
+            &mut errors,
         );
-        check_set!(
-            lean.satisfied_forbids,
-            rust_inner.true_forbids(),
-            "satisfied_forbids"
+        check_set(
+            &lean.satisfied_forbids,
+            rust.true_forbids(),
+            "satisfied_forbids",
+            &mut errors,
         );
-        check_set!(
-            lean.false_permits,
-            rust_inner.false_permits(),
-            "false_permits"
+        check_set(
+            &lean.false_permits,
+            rust.false_permits(),
+            "false_permits",
+            &mut errors,
         );
-        check_set!(
-            lean.false_forbids,
-            rust_inner.false_forbids(),
-            "false_forbids"
+        check_set(
+            &lean.false_forbids,
+            rust.false_forbids(),
+            "false_forbids",
+            &mut errors,
         );
-        check_set!(
-            lean.residual_permits,
-            rust_inner.residual_permits(),
-            "residual_permits"
+        check_set(
+            &lean.residual_permits,
+            rust.residual_permits(),
+            "residual_permits",
+            &mut errors,
         );
-        check_set!(
-            lean.residual_forbids,
-            rust_inner.residual_forbids(),
-            "residual_forbids"
+        check_set(
+            &lean.residual_forbids,
+            rust.residual_forbids(),
+            "residual_forbids",
+            &mut errors,
         );
 
         // Compare residual expressions via PST
         use cedar_policy_core::pst;
-        let rust_residual_map: std::collections::HashMap<String, pst::Expr> = rust_inner
-            .residual_policies()
+        let rust_residual_map: HashMap<String, pst::Expr> = rust
+            .policies()
             .map(|rp| {
-                let id = rp.get_policy_id().to_string();
-                let ast_expr =
-                    cedar_policy_core::ast::Expr::from(rp.get_residual().as_ref().clone());
-                let pst_expr = pst::Expr::try_from(ast_expr)
+                let id = rp.id().to_string();
+                let pst_policy = rp
+                    .to_pst()
                     .expect("ast->pst conversion should succeed for residuals");
-                (id, pst_expr)
+                let [pst::Clause::When(pst_expr)] = pst_policy.body().clauses().as_slice() else {
+                    panic!("expected exactly one `when` clause in residual")
+                };
+                (id, pst_expr.as_ref().clone())
             })
             .collect();
 
