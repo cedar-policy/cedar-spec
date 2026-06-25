@@ -193,7 +193,7 @@ fuzz_target!(|input: FuzzTargetInput| {
     }
 
     let touched = t.add_new_edges(&mut incremental_entities, &input.new_edges);
-    let repair_result = repair_tc(touched, &mut incremental_entities, true);
+    let repair_result = repair_tc(&touched, &mut incremental_entities, true);
 
     // Both must agree on whether the graph is a DAG.
     assert_eq!(
@@ -224,7 +224,7 @@ fuzz_target!(|input: FuzzTargetInput| {
         let mut incremental_no_dag = t.build_entities(input.num_nodes, &input.pre_existing_edges);
         let _ = compute_tc(&mut incremental_no_dag, false);
         let touched = t.add_new_edges(&mut incremental_no_dag, &input.new_edges);
-        let _ = repair_tc(touched, &mut incremental_no_dag, false);
+        let _ = repair_tc(&touched, &mut incremental_no_dag, false);
 
         let expected = ancestor_sets(&expected_no_dag);
         let actual = ancestor_sets(&incremental_no_dag);
