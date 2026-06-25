@@ -5,9 +5,10 @@
 .idea
 .kiro
 .claude
-# VSCode settings -- although we have some checked in, we don't want local
-# settings to appear as unstaged changes by default
-.vscode
+# VSCode settings -- use .vscode/settings.json.default for recommended config;
+# local .vscode/ is ignored so developer overrides stay untracked
+.vscode/*
+!.vscode/settings.json.default
 
 # Don't check in the Emacs temp files
 *~
