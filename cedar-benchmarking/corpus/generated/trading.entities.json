@@ -1,0 +1,2279 @@
+[
+  {
+    "uid": {
+      "__entity": {
+        "type": "Exchange",
+        "id": "exchange_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Exchange",
+        "id": "exchange_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Exchange",
+        "id": "exchange_2"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Exchange",
+        "id": "exchange_3"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Exchange",
+        "id": "exchange_4"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Exchange",
+        "id": "exchange_5"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Exchange",
+        "id": "exchange_6"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Exchange",
+        "id": "exchange_7"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Exchange",
+        "id": "exchange_8"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Exchange",
+        "id": "exchange_9"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Exchange",
+        "id": "exchange_10"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Exchange",
+        "id": "exchange_11"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Exchange",
+        "id": "exchange_12"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Exchange",
+        "id": "exchange_13"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Exchange",
+        "id": "exchange_14"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Market",
+        "id": "market_0"
+      }
+    },
+    "attrs": {
+      "name": "val_delta_320",
+      "open_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-03-16T08:00:00Z"
+        }
+      },
+      "close_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-07-10T08:00:00Z"
+        }
+      },
+      "min_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "4321.66"
+        }
+      },
+      "max_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "5128.55"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Exchange",
+          "id": "exchange_4"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Market",
+        "id": "market_1"
+      }
+    },
+    "attrs": {
+      "name": "val_zeta_323",
+      "open_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-03-18T21:00:00Z"
+        }
+      },
+      "close_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-01-07T04:00:00Z"
+        }
+      },
+      "min_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "894.29"
+        }
+      },
+      "max_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "3000.04"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Exchange",
+          "id": "exchange_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Market",
+        "id": "market_2"
+      }
+    },
+    "attrs": {
+      "name": "val_prod_167",
+      "open_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-07-04T15:00:00Z"
+        }
+      },
+      "close_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-08-12T22:00:00Z"
+        }
+      },
+      "min_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "9189.62"
+        }
+      },
+      "max_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "7499.63"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Exchange",
+          "id": "exchange_7"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Market",
+        "id": "market_3"
+      }
+    },
+    "attrs": {
+      "name": "val_epsilon_126",
+      "open_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-02-07T09:00:00Z"
+        }
+      },
+      "close_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-03-24T16:00:00Z"
+        }
+      },
+      "min_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "4469.72"
+        }
+      },
+      "max_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "9595.27"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Exchange",
+          "id": "exchange_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Market",
+        "id": "market_4"
+      }
+    },
+    "attrs": {
+      "name": "val_alpha_538",
+      "open_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-07-03T07:00:00Z"
+        }
+      },
+      "close_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-11-04T10:00:00Z"
+        }
+      },
+      "min_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "425.36"
+        }
+      },
+      "max_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "1998.50"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Exchange",
+          "id": "exchange_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Market",
+        "id": "market_5"
+      }
+    },
+    "attrs": {
+      "name": "val_delta_857",
+      "open_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-03-01T02:00:00Z"
+        }
+      },
+      "close_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-12-22T15:00:00Z"
+        }
+      },
+      "min_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "7439.80"
+        }
+      },
+      "max_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "4412.76"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Exchange",
+          "id": "exchange_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Market",
+        "id": "market_6"
+      }
+    },
+    "attrs": {
+      "name": "val_alpha_337",
+      "open_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-11-20T14:00:00Z"
+        }
+      },
+      "close_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-12-24T18:00:00Z"
+        }
+      },
+      "min_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "2118.27"
+        }
+      },
+      "max_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "797.82"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Exchange",
+          "id": "exchange_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Market",
+        "id": "market_7"
+      }
+    },
+    "attrs": {
+      "name": "val_dev_817",
+      "open_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-12-03T17:00:00Z"
+        }
+      },
+      "close_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-02-13T08:00:00Z"
+        }
+      },
+      "min_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "2916.30"
+        }
+      },
+      "max_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "6535.11"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Exchange",
+          "id": "exchange_4"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Market",
+        "id": "market_8"
+      }
+    },
+    "attrs": {
+      "name": "val_eta_166",
+      "open_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-07-10T20:00:00Z"
+        }
+      },
+      "close_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-02-10T15:00:00Z"
+        }
+      },
+      "min_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "7083.94"
+        }
+      },
+      "max_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "5080.87"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Exchange",
+          "id": "exchange_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Market",
+        "id": "market_9"
+      }
+    },
+    "attrs": {
+      "name": "val_epsilon_367",
+      "open_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-06-17T06:00:00Z"
+        }
+      },
+      "close_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-08-13T15:00:00Z"
+        }
+      },
+      "min_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "4398.72"
+        }
+      },
+      "max_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "9835.54"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Exchange",
+          "id": "exchange_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Market",
+        "id": "market_10"
+      }
+    },
+    "attrs": {
+      "name": "val_backup_830",
+      "open_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-10-06T13:00:00Z"
+        }
+      },
+      "close_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-02-02T16:00:00Z"
+        }
+      },
+      "min_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "5599.59"
+        }
+      },
+      "max_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "3673.82"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Exchange",
+          "id": "exchange_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Market",
+        "id": "market_11"
+      }
+    },
+    "attrs": {
+      "name": "val_epsilon_953",
+      "open_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-09-21T20:00:00Z"
+        }
+      },
+      "close_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-05-15T13:00:00Z"
+        }
+      },
+      "min_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "1297.61"
+        }
+      },
+      "max_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "4921.19"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Exchange",
+          "id": "exchange_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Market",
+        "id": "market_12"
+      }
+    },
+    "attrs": {
+      "name": "val_staging_861",
+      "open_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-09-14T09:00:00Z"
+        }
+      },
+      "close_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-09-03T01:00:00Z"
+        }
+      },
+      "min_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "8411.13"
+        }
+      },
+      "max_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "8366.54"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Exchange",
+          "id": "exchange_2"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Market",
+        "id": "market_13"
+      }
+    },
+    "attrs": {
+      "name": "val_delta_475",
+      "open_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-09T18:00:00Z"
+        }
+      },
+      "close_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-09-01T03:00:00Z"
+        }
+      },
+      "min_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "7583.22"
+        }
+      },
+      "max_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "2985.50"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Exchange",
+          "id": "exchange_6"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Market",
+        "id": "market_14"
+      }
+    },
+    "attrs": {
+      "name": "val_gamma_426",
+      "open_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-19T23:00:00Z"
+        }
+      },
+      "close_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-11-15T19:00:00Z"
+        }
+      },
+      "min_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "4342.43"
+        }
+      },
+      "max_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "3066.27"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Exchange",
+          "id": "exchange_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instrument",
+        "id": "instrument_0"
+      }
+    },
+    "attrs": {
+      "symbol": "val_gamma_764",
+      "price": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "9896.33"
+        }
+      },
+      "tick_size": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "1742.55"
+        }
+      },
+      "halted": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Market",
+          "id": "market_2"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instrument",
+        "id": "instrument_1"
+      }
+    },
+    "attrs": {
+      "symbol": "val_main_119",
+      "price": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "217.21"
+        }
+      },
+      "tick_size": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "7817.58"
+        }
+      },
+      "halted": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Market",
+          "id": "market_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instrument",
+        "id": "instrument_2"
+      }
+    },
+    "attrs": {
+      "symbol": "val_secondary_310",
+      "price": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "5910.88"
+        }
+      },
+      "tick_size": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "6471.38"
+        }
+      },
+      "halted": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Market",
+          "id": "market_13"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instrument",
+        "id": "instrument_3"
+      }
+    },
+    "attrs": {
+      "symbol": "val_epsilon_14",
+      "price": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "3126.14"
+        }
+      },
+      "tick_size": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "260.89"
+        }
+      },
+      "halted": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Market",
+          "id": "market_2"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instrument",
+        "id": "instrument_4"
+      }
+    },
+    "attrs": {
+      "symbol": "val_alpha_214",
+      "price": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "7882.83"
+        }
+      },
+      "tick_size": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "2378.83"
+        }
+      },
+      "halted": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Market",
+          "id": "market_13"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instrument",
+        "id": "instrument_5"
+      }
+    },
+    "attrs": {
+      "symbol": "val_eta_88",
+      "price": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "4930.98"
+        }
+      },
+      "tick_size": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "7592.18"
+        }
+      },
+      "halted": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Market",
+          "id": "market_6"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instrument",
+        "id": "instrument_6"
+      }
+    },
+    "attrs": {
+      "symbol": "val_alpha_119",
+      "price": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "2721.19"
+        }
+      },
+      "tick_size": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "7295.62"
+        }
+      },
+      "halted": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Market",
+          "id": "market_6"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instrument",
+        "id": "instrument_7"
+      }
+    },
+    "attrs": {
+      "symbol": "val_primary_599",
+      "price": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "3975.25"
+        }
+      },
+      "tick_size": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "4830.72"
+        }
+      },
+      "halted": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Market",
+          "id": "market_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instrument",
+        "id": "instrument_8"
+      }
+    },
+    "attrs": {
+      "symbol": "val_dev_8",
+      "price": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "1682.80"
+        }
+      },
+      "tick_size": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "7074.53"
+        }
+      },
+      "halted": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Market",
+          "id": "market_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instrument",
+        "id": "instrument_9"
+      }
+    },
+    "attrs": {
+      "symbol": "val_staging_37",
+      "price": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "7987.51"
+        }
+      },
+      "tick_size": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "7964.65"
+        }
+      },
+      "halted": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Market",
+          "id": "market_11"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instrument",
+        "id": "instrument_10"
+      }
+    },
+    "attrs": {
+      "symbol": "val_beta_540",
+      "price": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "311.54"
+        }
+      },
+      "tick_size": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "9443.40"
+        }
+      },
+      "halted": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Market",
+          "id": "market_3"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instrument",
+        "id": "instrument_11"
+      }
+    },
+    "attrs": {
+      "symbol": "val_backup_910",
+      "price": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "7755.14"
+        }
+      },
+      "tick_size": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "8106.79"
+        }
+      },
+      "halted": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Market",
+          "id": "market_4"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instrument",
+        "id": "instrument_12"
+      }
+    },
+    "attrs": {
+      "symbol": "val_backup_21",
+      "price": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "2643.36"
+        }
+      },
+      "tick_size": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "3149.60"
+        }
+      },
+      "halted": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Market",
+          "id": "market_7"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instrument",
+        "id": "instrument_13"
+      }
+    },
+    "attrs": {
+      "symbol": "val_theta_519",
+      "price": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "3599.75"
+        }
+      },
+      "tick_size": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "5556.77"
+        }
+      },
+      "halted": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Market",
+          "id": "market_7"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instrument",
+        "id": "instrument_14"
+      }
+    },
+    "attrs": {
+      "symbol": "val_staging_740",
+      "price": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "6395.53"
+        }
+      },
+      "tick_size": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "5902.60"
+        }
+      },
+      "halted": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Market",
+          "id": "market_2"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Trader",
+        "id": "trader_0"
+      }
+    },
+    "attrs": {
+      "firm": "val_eta_289",
+      "level": 88,
+      "max_position": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "1412.85"
+        }
+      },
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-03-06T06:00:00Z"
+        }
+      },
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "41.251.51.204/32"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Trader",
+        "id": "trader_1"
+      }
+    },
+    "attrs": {
+      "firm": "val_backup_965",
+      "level": 63,
+      "max_position": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "4975.30"
+        }
+      },
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-09-02T00:00:00Z"
+        }
+      },
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "92.133.182.174/32"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Trader",
+        "id": "trader_2"
+      }
+    },
+    "attrs": {
+      "firm": "val_zeta_178",
+      "level": 64,
+      "max_position": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "523.08"
+        }
+      },
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-07-04T19:00:00Z"
+        }
+      },
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "59.61.114.125/32"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Trader",
+        "id": "trader_3"
+      }
+    },
+    "attrs": {
+      "firm": "val_prod_348",
+      "level": 100,
+      "max_position": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "5820.98"
+        }
+      },
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-09-09T04:00:00Z"
+        }
+      },
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "219.53.25.238/32"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Trader",
+        "id": "trader_4"
+      }
+    },
+    "attrs": {
+      "firm": "val_primary_818",
+      "level": 58,
+      "max_position": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "1817.13"
+        }
+      },
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-09-02T16:00:00Z"
+        }
+      },
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "27.85.60.223/32"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Trader",
+        "id": "trader_5"
+      }
+    },
+    "attrs": {
+      "firm": "val_eta_932",
+      "level": 46,
+      "max_position": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "2572.93"
+        }
+      },
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-12-15T16:00:00Z"
+        }
+      },
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "128.50.78.166/32"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Trader",
+        "id": "trader_6"
+      }
+    },
+    "attrs": {
+      "firm": "val_test_342",
+      "level": 17,
+      "max_position": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "2014.25"
+        }
+      },
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-07-25T00:00:00Z"
+        }
+      },
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "63.242.174.74/32"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Trader",
+        "id": "trader_7"
+      }
+    },
+    "attrs": {
+      "firm": "val_zeta_87",
+      "level": 34,
+      "max_position": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "6101.91"
+        }
+      },
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-06-21T21:00:00Z"
+        }
+      },
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "63.77.215.202/32"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Trader",
+        "id": "trader_8"
+      }
+    },
+    "attrs": {
+      "firm": "val_theta_141",
+      "level": 54,
+      "max_position": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "6773.52"
+        }
+      },
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-09-26T21:00:00Z"
+        }
+      },
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "93.15.226.38/32"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Trader",
+        "id": "trader_9"
+      }
+    },
+    "attrs": {
+      "firm": "val_alpha_734",
+      "level": 66,
+      "max_position": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "1140.10"
+        }
+      },
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-13T05:00:00Z"
+        }
+      },
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "112.31.201.195/32"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Trader",
+        "id": "trader_10"
+      }
+    },
+    "attrs": {
+      "firm": "val_beta_676",
+      "level": 82,
+      "max_position": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "2473.73"
+        }
+      },
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-11-23T21:00:00Z"
+        }
+      },
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "134.151.214.103/32"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Trader",
+        "id": "trader_11"
+      }
+    },
+    "attrs": {
+      "firm": "val_staging_738",
+      "level": 95,
+      "max_position": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "5139.44"
+        }
+      },
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-05-17T19:00:00Z"
+        }
+      },
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "38.206.228.165/32"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Trader",
+        "id": "trader_12"
+      }
+    },
+    "attrs": {
+      "firm": "val_eta_908",
+      "level": 69,
+      "max_position": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "7244.89"
+        }
+      },
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-11-13T06:00:00Z"
+        }
+      },
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "78.43.18.138/32"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Trader",
+        "id": "trader_13"
+      }
+    },
+    "attrs": {
+      "firm": "val_dev_399",
+      "level": 92,
+      "max_position": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "2064.66"
+        }
+      },
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-04-03T16:00:00Z"
+        }
+      },
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "142.159.174.194/32"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Trader",
+        "id": "trader_14"
+      }
+    },
+    "attrs": {
+      "firm": "val_zeta_23",
+      "level": 3,
+      "max_position": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "8846.75"
+        }
+      },
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-04-27T09:00:00Z"
+        }
+      },
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "186.216.56.188/32"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Exchange",
+        "id": "nyse"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Exchange",
+        "id": "nasdaq"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Exchange",
+        "id": "lse"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Market",
+        "id": "us_equities"
+      }
+    },
+    "attrs": {
+      "name": "US Equities",
+      "open_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-12-01T14:30:00Z"
+        }
+      },
+      "close_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-12-01T21:00:00Z"
+        }
+      },
+      "min_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "1.00"
+        }
+      },
+      "max_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "1000000.00"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Exchange",
+          "id": "nyse"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Market",
+        "id": "tech_stocks"
+      }
+    },
+    "attrs": {
+      "name": "Technology",
+      "open_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-12-01T14:30:00Z"
+        }
+      },
+      "close_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-12-01T21:00:00Z"
+        }
+      },
+      "min_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "0.10"
+        }
+      },
+      "max_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "500000.00"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Exchange",
+          "id": "nasdaq"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Market",
+        "id": "uk_gilts"
+      }
+    },
+    "attrs": {
+      "name": "UK Government Bonds",
+      "open_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-12-01T08:00:00Z"
+        }
+      },
+      "close_time": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-12-01T16:30:00Z"
+        }
+      },
+      "min_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "100.00"
+        }
+      },
+      "max_order": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "10000000.00"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Exchange",
+          "id": "lse"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instrument",
+        "id": "AAPL"
+      }
+    },
+    "attrs": {
+      "symbol": "AAPL",
+      "price": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "178.52"
+        }
+      },
+      "tick_size": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "0.01"
+        }
+      },
+      "halted": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Market",
+          "id": "tech_stocks"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instrument",
+        "id": "MSFT"
+      }
+    },
+    "attrs": {
+      "symbol": "MSFT",
+      "price": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "412.30"
+        }
+      },
+      "tick_size": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "0.01"
+        }
+      },
+      "halted": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Market",
+          "id": "tech_stocks"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instrument",
+        "id": "NVDA"
+      }
+    },
+    "attrs": {
+      "symbol": "NVDA",
+      "price": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "875.60"
+        }
+      },
+      "tick_size": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "0.05"
+        }
+      },
+      "halted": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Market",
+          "id": "tech_stocks"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instrument",
+        "id": "GME"
+      }
+    },
+    "attrs": {
+      "symbol": "GME",
+      "price": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "22.15"
+        }
+      },
+      "tick_size": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "0.01"
+        }
+      },
+      "halted": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Market",
+          "id": "us_equities"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instrument",
+        "id": "JPM"
+      }
+    },
+    "attrs": {
+      "symbol": "JPM",
+      "price": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "198.44"
+        }
+      },
+      "tick_size": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "0.01"
+        }
+      },
+      "halted": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Market",
+          "id": "us_equities"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instrument",
+        "id": "GILT_2Y"
+      }
+    },
+    "attrs": {
+      "symbol": "GILT_2Y",
+      "price": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "99.82"
+        }
+      },
+      "tick_size": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "0.001"
+        }
+      },
+      "halted": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Market",
+          "id": "uk_gilts"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Trader",
+        "id": "hft_bot_alpha"
+      }
+    },
+    "attrs": {
+      "firm": "Citadel Securities",
+      "level": 5,
+      "max_position": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "5000000.00"
+        }
+      },
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2020-03-15T00:00:00Z"
+        }
+      },
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.100.0.0/16"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Trader",
+        "id": "desk_ny_01"
+      }
+    },
+    "attrs": {
+      "firm": "Goldman Sachs",
+      "level": 4,
+      "max_position": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "2000000.00"
+        }
+      },
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2019-07-01T00:00:00Z"
+        }
+      },
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.50.0.0/16"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Trader",
+        "id": "desk_london_01"
+      }
+    },
+    "attrs": {
+      "firm": "Barclays",
+      "level": 3,
+      "max_position": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "1000000.00"
+        }
+      },
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2022-01-10T00:00:00Z"
+        }
+      },
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "172.16.5.0/24"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Trader",
+        "id": "retail_user_42"
+      }
+    },
+    "attrs": {
+      "firm": "Robinhood",
+      "level": 1,
+      "max_position": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "25000.00"
+        }
+      },
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-11-20T00:00:00Z"
+        }
+      },
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "203.0.113.0/24"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Trader",
+        "id": "intern_trader"
+      }
+    },
+    "attrs": {
+      "firm": "JPMorgan",
+      "level": 1,
+      "max_position": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "5000.00"
+        }
+      },
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-09-01T00:00:00Z"
+        }
+      },
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "10.50.10.0/24"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Trader",
+        "id": "suspended_trader"
+      }
+    },
+    "attrs": {
+      "firm": "Archegos",
+      "level": 2,
+      "max_position": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "0.00"
+        }
+      },
+      "registered": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2018-05-01T00:00:00Z"
+        }
+      },
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "198.51.100.0/24"
+        }
+      }
+    },
+    "parents": []
+  }
+]

@@ -1,0 +1,1757 @@
+[
+  {
+    "uid": {
+      "__entity": {
+        "type": "CI",
+        "id": "ci_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CI",
+        "id": "ci_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CI",
+        "id": "ci_2"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CI",
+        "id": "ci_3"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CI",
+        "id": "ci_4"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CI",
+        "id": "ci_5"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CI",
+        "id": "ci_6"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CI",
+        "id": "ci_7"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CI",
+        "id": "ci_8"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CI",
+        "id": "ci_9"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CI",
+        "id": "ci_10"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CI",
+        "id": "ci_11"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CI",
+        "id": "ci_12"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CI",
+        "id": "ci_13"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "CI",
+        "id": "ci_14"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Repository",
+        "id": "repository_0"
+      }
+    },
+    "attrs": {
+      "name": "val_alpha_673",
+      "visibility": "val_primary_423",
+      "default_branch": "val_beta_192"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CI",
+          "id": "ci_13"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Repository",
+        "id": "repository_1"
+      }
+    },
+    "attrs": {
+      "name": "val_test_637",
+      "visibility": "val_secondary_640",
+      "default_branch": "val_primary_778"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CI",
+          "id": "ci_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Repository",
+        "id": "repository_2"
+      }
+    },
+    "attrs": {
+      "name": "val_eta_273",
+      "visibility": "val_epsilon_949",
+      "default_branch": "val_staging_448"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CI",
+          "id": "ci_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Repository",
+        "id": "repository_3"
+      }
+    },
+    "attrs": {
+      "name": "val_secondary_124",
+      "visibility": "val_alpha_996",
+      "default_branch": "val_theta_726"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CI",
+          "id": "ci_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Repository",
+        "id": "repository_4"
+      }
+    },
+    "attrs": {
+      "name": "val_staging_564",
+      "visibility": "val_alpha_565",
+      "default_branch": "val_backup_95"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CI",
+          "id": "ci_2"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Repository",
+        "id": "repository_5"
+      }
+    },
+    "attrs": {
+      "name": "val_delta_472",
+      "visibility": "val_delta_663",
+      "default_branch": "val_epsilon_510"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CI",
+          "id": "ci_3"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Repository",
+        "id": "repository_6"
+      }
+    },
+    "attrs": {
+      "name": "val_staging_521",
+      "visibility": "val_prod_425",
+      "default_branch": "val_secondary_483"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CI",
+          "id": "ci_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Repository",
+        "id": "repository_7"
+      }
+    },
+    "attrs": {
+      "name": "val_primary_564",
+      "visibility": "val_epsilon_392",
+      "default_branch": "val_eta_943"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CI",
+          "id": "ci_3"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Repository",
+        "id": "repository_8"
+      }
+    },
+    "attrs": {
+      "name": "val_epsilon_884",
+      "visibility": "val_gamma_282",
+      "default_branch": "val_backup_348"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CI",
+          "id": "ci_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Repository",
+        "id": "repository_9"
+      }
+    },
+    "attrs": {
+      "name": "val_prod_840",
+      "visibility": "val_alpha_289",
+      "default_branch": "val_staging_857"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CI",
+          "id": "ci_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Repository",
+        "id": "repository_10"
+      }
+    },
+    "attrs": {
+      "name": "val_secondary_886",
+      "visibility": "val_epsilon_457",
+      "default_branch": "val_secondary_353"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CI",
+          "id": "ci_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Repository",
+        "id": "repository_11"
+      }
+    },
+    "attrs": {
+      "name": "val_main_466",
+      "visibility": "val_dev_890",
+      "default_branch": "val_eta_714"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CI",
+          "id": "ci_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Repository",
+        "id": "repository_12"
+      }
+    },
+    "attrs": {
+      "name": "val_main_239",
+      "visibility": "val_backup_44",
+      "default_branch": "val_dev_762"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CI",
+          "id": "ci_3"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Repository",
+        "id": "repository_13"
+      }
+    },
+    "attrs": {
+      "name": "val_main_395",
+      "visibility": "val_epsilon_507",
+      "default_branch": "val_beta_129"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CI",
+          "id": "ci_7"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Repository",
+        "id": "repository_14"
+      }
+    },
+    "attrs": {
+      "name": "val_dev_890",
+      "visibility": "val_delta_895",
+      "default_branch": "val_primary_102"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "CI",
+          "id": "ci_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pipeline",
+        "id": "pipeline_0"
+      }
+    },
+    "attrs": {
+      "name": "val_primary_15",
+      "timeout": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "740s"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-11-05T02:00:00Z"
+        }
+      },
+      "config": {
+        "runner": {
+          "type": "val_secondary_800",
+          "network": {
+            "__extn": {
+              "fn": "ip",
+              "arg": "68.173.203.167/32"
+            }
+          },
+          "max_duration": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "83m"
+            }
+          }
+        },
+        "artifacts": {
+          "retention": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "873d"
+            }
+          },
+          "max_size_mb": {
+            "__extn": {
+              "fn": "decimal",
+              "arg": "6226.40"
+            }
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Repository",
+          "id": "repository_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pipeline",
+        "id": "pipeline_1"
+      }
+    },
+    "attrs": {
+      "name": "val_secondary_893",
+      "timeout": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "555ms"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-04-21T21:00:00Z"
+        }
+      },
+      "config": {
+        "runner": {
+          "type": "val_staging_232",
+          "network": {
+            "__extn": {
+              "fn": "ip",
+              "arg": "192.46.222.251/32"
+            }
+          },
+          "max_duration": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "101ms"
+            }
+          }
+        },
+        "artifacts": {
+          "retention": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "455s"
+            }
+          },
+          "max_size_mb": {
+            "__extn": {
+              "fn": "decimal",
+              "arg": "4906.03"
+            }
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Repository",
+          "id": "repository_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pipeline",
+        "id": "pipeline_2"
+      }
+    },
+    "attrs": {
+      "name": "val_dev_815",
+      "timeout": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "58m"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-14T04:00:00Z"
+        }
+      },
+      "config": {
+        "runner": {
+          "type": "val_theta_543",
+          "network": {
+            "__extn": {
+              "fn": "ip",
+              "arg": "106.92.87.45/32"
+            }
+          },
+          "max_duration": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "81d"
+            }
+          }
+        },
+        "artifacts": {
+          "retention": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "892h"
+            }
+          },
+          "max_size_mb": {
+            "__extn": {
+              "fn": "decimal",
+              "arg": "3945.63"
+            }
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Repository",
+          "id": "repository_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pipeline",
+        "id": "pipeline_3"
+      }
+    },
+    "attrs": {
+      "name": "val_epsilon_237",
+      "timeout": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "473m"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-05-22T00:00:00Z"
+        }
+      },
+      "config": {
+        "runner": {
+          "type": "val_primary_922",
+          "network": {
+            "__extn": {
+              "fn": "ip",
+              "arg": "74.80.37.114/32"
+            }
+          },
+          "max_duration": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "968m"
+            }
+          }
+        },
+        "artifacts": {
+          "retention": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "602m"
+            }
+          },
+          "max_size_mb": {
+            "__extn": {
+              "fn": "decimal",
+              "arg": "6951.88"
+            }
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Repository",
+          "id": "repository_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pipeline",
+        "id": "pipeline_4"
+      }
+    },
+    "attrs": {
+      "name": "val_primary_865",
+      "timeout": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "310s"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-08-04T07:00:00Z"
+        }
+      },
+      "config": {
+        "runner": {
+          "type": "val_main_585",
+          "network": {
+            "__extn": {
+              "fn": "ip",
+              "arg": "92.151.151.6/32"
+            }
+          },
+          "max_duration": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "850h"
+            }
+          }
+        },
+        "artifacts": {
+          "retention": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "282ms"
+            }
+          },
+          "max_size_mb": {
+            "__extn": {
+              "fn": "decimal",
+              "arg": "9272.87"
+            }
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Repository",
+          "id": "repository_4"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pipeline",
+        "id": "pipeline_5"
+      }
+    },
+    "attrs": {
+      "name": "val_beta_932",
+      "timeout": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "621h"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-04-20T11:00:00Z"
+        }
+      },
+      "config": {
+        "runner": {
+          "type": "val_theta_651",
+          "network": {
+            "__extn": {
+              "fn": "ip",
+              "arg": "49.128.70.161/32"
+            }
+          },
+          "max_duration": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "100ms"
+            }
+          }
+        },
+        "artifacts": {
+          "retention": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "317h"
+            }
+          },
+          "max_size_mb": {
+            "__extn": {
+              "fn": "decimal",
+              "arg": "546.74"
+            }
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Repository",
+          "id": "repository_12"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pipeline",
+        "id": "pipeline_6"
+      }
+    },
+    "attrs": {
+      "name": "val_epsilon_92",
+      "timeout": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "932m"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-12-14T05:00:00Z"
+        }
+      },
+      "config": {
+        "runner": {
+          "type": "val_eta_135",
+          "network": {
+            "__extn": {
+              "fn": "ip",
+              "arg": "202.187.139.213/32"
+            }
+          },
+          "max_duration": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "169m"
+            }
+          }
+        },
+        "artifacts": {
+          "retention": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "936h"
+            }
+          },
+          "max_size_mb": {
+            "__extn": {
+              "fn": "decimal",
+              "arg": "4835.95"
+            }
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Repository",
+          "id": "repository_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pipeline",
+        "id": "pipeline_7"
+      }
+    },
+    "attrs": {
+      "name": "val_dev_823",
+      "timeout": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "118h"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-03-25T07:00:00Z"
+        }
+      },
+      "config": {
+        "runner": {
+          "type": "val_main_990",
+          "network": {
+            "__extn": {
+              "fn": "ip",
+              "arg": "217.187.46.203/32"
+            }
+          },
+          "max_duration": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "405ms"
+            }
+          }
+        },
+        "artifacts": {
+          "retention": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "271d"
+            }
+          },
+          "max_size_mb": {
+            "__extn": {
+              "fn": "decimal",
+              "arg": "2024.58"
+            }
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Repository",
+          "id": "repository_13"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pipeline",
+        "id": "pipeline_8"
+      }
+    },
+    "attrs": {
+      "name": "val_prod_598",
+      "timeout": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "391m"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-11-08T15:00:00Z"
+        }
+      },
+      "config": {
+        "runner": {
+          "type": "val_alpha_634",
+          "network": {
+            "__extn": {
+              "fn": "ip",
+              "arg": "144.167.113.166/32"
+            }
+          },
+          "max_duration": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "65h"
+            }
+          }
+        },
+        "artifacts": {
+          "retention": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "932m"
+            }
+          },
+          "max_size_mb": {
+            "__extn": {
+              "fn": "decimal",
+              "arg": "6689.14"
+            }
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Repository",
+          "id": "repository_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pipeline",
+        "id": "pipeline_9"
+      }
+    },
+    "attrs": {
+      "name": "val_beta_968",
+      "timeout": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "39m"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-02-04T07:00:00Z"
+        }
+      },
+      "config": {
+        "runner": {
+          "type": "val_epsilon_397",
+          "network": {
+            "__extn": {
+              "fn": "ip",
+              "arg": "117.189.214.151/32"
+            }
+          },
+          "max_duration": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "761s"
+            }
+          }
+        },
+        "artifacts": {
+          "retention": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "907h"
+            }
+          },
+          "max_size_mb": {
+            "__extn": {
+              "fn": "decimal",
+              "arg": "1622.62"
+            }
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Repository",
+          "id": "repository_2"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pipeline",
+        "id": "pipeline_10"
+      }
+    },
+    "attrs": {
+      "name": "val_backup_961",
+      "timeout": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "975m"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-12-12T06:00:00Z"
+        }
+      },
+      "config": {
+        "runner": {
+          "type": "val_primary_455",
+          "network": {
+            "__extn": {
+              "fn": "ip",
+              "arg": "61.185.50.252/32"
+            }
+          },
+          "max_duration": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "703m"
+            }
+          }
+        },
+        "artifacts": {
+          "retention": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "558m"
+            }
+          },
+          "max_size_mb": {
+            "__extn": {
+              "fn": "decimal",
+              "arg": "992.50"
+            }
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Repository",
+          "id": "repository_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pipeline",
+        "id": "pipeline_11"
+      }
+    },
+    "attrs": {
+      "name": "val_eta_991",
+      "timeout": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "126h"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-11-07T20:00:00Z"
+        }
+      },
+      "config": {
+        "runner": {
+          "type": "val_alpha_51",
+          "network": {
+            "__extn": {
+              "fn": "ip",
+              "arg": "202.170.124.254/32"
+            }
+          },
+          "max_duration": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "129d"
+            }
+          }
+        },
+        "artifacts": {
+          "retention": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "211ms"
+            }
+          },
+          "max_size_mb": {
+            "__extn": {
+              "fn": "decimal",
+              "arg": "9080.26"
+            }
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Repository",
+          "id": "repository_4"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pipeline",
+        "id": "pipeline_12"
+      }
+    },
+    "attrs": {
+      "name": "val_eta_832",
+      "timeout": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "891s"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-03-26T19:00:00Z"
+        }
+      },
+      "config": {
+        "runner": {
+          "type": "val_alpha_283",
+          "network": {
+            "__extn": {
+              "fn": "ip",
+              "arg": "220.74.66.139/32"
+            }
+          },
+          "max_duration": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "257s"
+            }
+          }
+        },
+        "artifacts": {
+          "retention": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "113ms"
+            }
+          },
+          "max_size_mb": {
+            "__extn": {
+              "fn": "decimal",
+              "arg": "2159.01"
+            }
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Repository",
+          "id": "repository_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pipeline",
+        "id": "pipeline_13"
+      }
+    },
+    "attrs": {
+      "name": "val_theta_602",
+      "timeout": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "332ms"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-05-02T04:00:00Z"
+        }
+      },
+      "config": {
+        "runner": {
+          "type": "val_backup_538",
+          "network": {
+            "__extn": {
+              "fn": "ip",
+              "arg": "30.32.243.115/32"
+            }
+          },
+          "max_duration": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "797m"
+            }
+          }
+        },
+        "artifacts": {
+          "retention": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "526d"
+            }
+          },
+          "max_size_mb": {
+            "__extn": {
+              "fn": "decimal",
+              "arg": "1786.57"
+            }
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Repository",
+          "id": "repository_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pipeline",
+        "id": "pipeline_14"
+      }
+    },
+    "attrs": {
+      "name": "val_theta_968",
+      "timeout": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "630ms"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-08-21T00:00:00Z"
+        }
+      },
+      "config": {
+        "runner": {
+          "type": "val_beta_490",
+          "network": {
+            "__extn": {
+              "fn": "ip",
+              "arg": "217.205.218.176/32"
+            }
+          },
+          "max_duration": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "111h"
+            }
+          }
+        },
+        "artifacts": {
+          "retention": {
+            "__extn": {
+              "fn": "duration",
+              "arg": "730h"
+            }
+          },
+          "max_size_mb": {
+            "__extn": {
+              "fn": "decimal",
+              "arg": "1204.10"
+            }
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Repository",
+          "id": "repository_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Developer",
+        "id": "developer_0"
+      }
+    },
+    "attrs": {
+      "role": "val_dev_622",
+      "joined": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-02-05T08:00:00Z"
+        }
+      },
+      "ip_allowlist": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "160.166.195.153/32"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Developer",
+        "id": "developer_1"
+      }
+    },
+    "attrs": {
+      "role": "val_staging_464",
+      "joined": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-02-26T22:00:00Z"
+        }
+      },
+      "ip_allowlist": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "30.110.220.116/32"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Developer",
+        "id": "developer_2"
+      }
+    },
+    "attrs": {
+      "role": "val_theta_423",
+      "joined": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-08-13T13:00:00Z"
+        }
+      },
+      "ip_allowlist": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "187.48.160.110/32"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Developer",
+        "id": "developer_3"
+      }
+    },
+    "attrs": {
+      "role": "val_dev_681",
+      "joined": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-05T21:00:00Z"
+        }
+      },
+      "ip_allowlist": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "122.34.46.213/32"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Developer",
+        "id": "developer_4"
+      }
+    },
+    "attrs": {
+      "role": "val_gamma_95",
+      "joined": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-02-24T23:00:00Z"
+        }
+      },
+      "ip_allowlist": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "96.66.30.151/32"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Developer",
+        "id": "developer_5"
+      }
+    },
+    "attrs": {
+      "role": "val_dev_686",
+      "joined": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-07-12T21:00:00Z"
+        }
+      },
+      "ip_allowlist": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "193.216.26.248/32"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Developer",
+        "id": "developer_6"
+      }
+    },
+    "attrs": {
+      "role": "val_staging_614",
+      "joined": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-04T18:00:00Z"
+        }
+      },
+      "ip_allowlist": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "130.108.79.169/32"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Developer",
+        "id": "developer_7"
+      }
+    },
+    "attrs": {
+      "role": "val_secondary_229",
+      "joined": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-06-28T17:00:00Z"
+        }
+      },
+      "ip_allowlist": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "95.58.142.147/32"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Developer",
+        "id": "developer_8"
+      }
+    },
+    "attrs": {
+      "role": "val_theta_826",
+      "joined": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-09-25T19:00:00Z"
+        }
+      },
+      "ip_allowlist": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "158.13.136.8/32"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Developer",
+        "id": "developer_9"
+      }
+    },
+    "attrs": {
+      "role": "val_zeta_279",
+      "joined": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-06-12T00:00:00Z"
+        }
+      },
+      "ip_allowlist": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "47.73.205.18/32"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Developer",
+        "id": "developer_10"
+      }
+    },
+    "attrs": {
+      "role": "val_epsilon_758",
+      "joined": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-02-24T16:00:00Z"
+        }
+      },
+      "ip_allowlist": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "56.192.214.117/32"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Developer",
+        "id": "developer_11"
+      }
+    },
+    "attrs": {
+      "role": "val_dev_161",
+      "joined": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-05-24T10:00:00Z"
+        }
+      },
+      "ip_allowlist": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "199.43.26.40/32"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Developer",
+        "id": "developer_12"
+      }
+    },
+    "attrs": {
+      "role": "val_zeta_772",
+      "joined": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-11-03T08:00:00Z"
+        }
+      },
+      "ip_allowlist": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "114.217.248.156/32"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Developer",
+        "id": "developer_13"
+      }
+    },
+    "attrs": {
+      "role": "val_primary_424",
+      "joined": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-04-25T16:00:00Z"
+        }
+      },
+      "ip_allowlist": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "30.176.220.29/32"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Developer",
+        "id": "developer_14"
+      }
+    },
+    "attrs": {
+      "role": "val_staging_694",
+      "joined": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-09-22T09:00:00Z"
+        }
+      },
+      "ip_allowlist": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "12.112.202.253/32"
+        }
+      }
+    },
+    "parents": []
+  }
+]

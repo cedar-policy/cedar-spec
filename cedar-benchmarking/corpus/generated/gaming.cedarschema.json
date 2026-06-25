@@ -1,0 +1,140 @@
+{
+  "": {
+    "entityTypes": {
+      "GameServer": {},
+      "Player": {
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "level": {
+              "type": "Long"
+            },
+            "premium": {
+              "type": "Boolean"
+            },
+            "registered": {
+              "type": "datetime"
+            },
+            "stats": {
+              "type": "Record",
+              "attributes": {
+                "last_login": {
+                  "type": "datetime"
+                },
+                "play_time": {
+                  "type": "duration"
+                },
+                "reputation": {
+                  "type": "decimal"
+                }
+              }
+            },
+            "username": {
+              "type": "String"
+            }
+          }
+        }
+      },
+      "World": {
+        "memberOfTypes": [
+          "GameServer"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "created": {
+              "type": "datetime"
+            },
+            "max_players": {
+              "type": "Long"
+            },
+            "name": {
+              "type": "String"
+            }
+          }
+        }
+      },
+      "Zone": {
+        "memberOfTypes": [
+          "World"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "level_requirement": {
+              "type": "Long"
+            },
+            "name": {
+              "type": "String"
+            },
+            "pvp_enabled": {
+              "type": "Boolean"
+            }
+          }
+        }
+      }
+    },
+    "actions": {
+      "chat": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Zone"
+          ],
+          "principalTypes": [
+            "Player"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "channel": {
+                "type": "String"
+              }
+            }
+          }
+        }
+      },
+      "enter_zone": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Zone"
+          ],
+          "principalTypes": [
+            "Player"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "session_duration": {
+                "type": "duration"
+              },
+              "source_ip": {
+                "type": "ipaddr"
+              }
+            }
+          }
+        }
+      },
+      "trade": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Zone"
+          ],
+          "principalTypes": [
+            "Player"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "amount": {
+                "type": "decimal"
+              },
+              "item": {
+                "type": "String"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "": {
+    "entityTypes": {
+      "Document": {
+        "memberOfTypes": [
+          "Org"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "classification": {
+              "type": "Long"
+            },
+            "owner": {
+              "type": "Entity",
+              "name": "User"
+            },
+            "tags": {
+              "type": "Set",
+              "element": {
+                "type": "String"
+              }
+            }
+          }
+        }
+      },
+      "Org": {},
+      "Team": {
+        "memberOfTypes": [
+          "Org"
+        ]
+      },
+      "User": {
+        "memberOfTypes": [
+          "Team"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "active": {
+              "type": "Boolean"
+            },
+            "clearance": {
+              "type": "Long"
+            },
+            "department": {
+              "type": "String"
+            }
+          }
+        }
+      }
+    },
+    "actions": {
+      "delete": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Document"
+          ],
+          "principalTypes": [
+            "User"
+          ]
+        }
+      },
+      "read": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Document"
+          ],
+          "principalTypes": [
+            "User"
+          ]
+        }
+      },
+      "share": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Document"
+          ],
+          "principalTypes": [
+            "User"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "recipient": {
+                "type": "Entity",
+                "name": "User"
+              }
+            }
+          }
+        }
+      },
+      "write": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Document"
+          ],
+          "principalTypes": [
+            "User"
+          ]
+        }
+      }
+    }
+  }
+}

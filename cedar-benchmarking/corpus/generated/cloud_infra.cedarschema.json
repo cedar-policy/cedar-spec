@@ -1,0 +1,168 @@
+{
+  "": {
+    "entityTypes": {
+      "Admin": {},
+      "Cloud": {},
+      "Instance": {
+        "memberOfTypes": [
+          "Subnet"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "cost_per_hour": {
+              "type": "decimal"
+            },
+            "ip": {
+              "type": "ipaddr"
+            },
+            "launched": {
+              "type": "datetime"
+            },
+            "type": {
+              "type": "String"
+            }
+          }
+        }
+      },
+      "Region": {
+        "memberOfTypes": [
+          "Cloud"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "compliance": {
+              "type": "Set",
+              "element": {
+                "type": "String"
+              }
+            },
+            "name": {
+              "type": "String"
+            }
+          }
+        }
+      },
+      "SecurityGroup": {
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "egress_cidr": {
+              "type": "ipaddr"
+            },
+            "ingress_cidr": {
+              "type": "ipaddr"
+            },
+            "ports": {
+              "type": "Set",
+              "element": {
+                "type": "Long"
+              }
+            }
+          }
+        }
+      },
+      "Subnet": {
+        "memberOfTypes": [
+          "VPC"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "cidr": {
+              "type": "ipaddr"
+            },
+            "public": {
+              "type": "Boolean"
+            }
+          }
+        }
+      },
+      "VPC": {
+        "memberOfTypes": [
+          "Region"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "cidr": {
+              "type": "ipaddr"
+            },
+            "name": {
+              "type": "String"
+            }
+          }
+        }
+      }
+    },
+    "actions": {
+      "launch": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Subnet"
+          ],
+          "principalTypes": [
+            "Admin"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "cost": {
+                "type": "decimal"
+              },
+              "instance_type": {
+                "type": "String"
+              },
+              "source_ip": {
+                "type": "ipaddr"
+              }
+            }
+          }
+        }
+      },
+      "modify_sg": {
+        "appliesTo": {
+          "resourceTypes": [
+            "SecurityGroup"
+          ],
+          "principalTypes": [
+            "Admin"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "new_cidr": {
+                "type": "ipaddr"
+              },
+              "source_ip": {
+                "type": "ipaddr"
+              }
+            }
+          }
+        }
+      },
+      "terminate": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Instance"
+          ],
+          "principalTypes": [
+            "Admin"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "reason": {
+                "type": "String"
+              },
+              "source_ip": {
+                "type": "ipaddr"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
