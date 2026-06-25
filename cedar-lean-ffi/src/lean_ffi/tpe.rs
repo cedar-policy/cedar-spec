@@ -141,12 +141,12 @@ mod test {
         }
         check_set!(
             lean.satisfied_permits,
-            rust_inner.satisfied_permits(),
+            rust_inner.true_permits(),
             "satisfied_permits"
         );
         check_set!(
             lean.satisfied_forbids,
-            rust_inner.satisfied_forbids(),
+            rust_inner.true_forbids(),
             "satisfied_forbids"
         );
         check_set!(
