@@ -1,5 +1,14 @@
-import Cedar.Spec.Ext.Decimal
-import Cedar.Thm.Data.String
+module
+
+public import Cedar.Spec.Ext.Decimal
+
+import all Cedar.Data.Int64
+import all Cedar.Spec.Ext.Decimal
+import all Cedar.Spec.Ext.Util
+import all Cedar.Thm.Data.String
+import all Init.Data.Nat.ToString
+import all Init.Data.String.Search
+import all Init.Data.String.Slice
 
 namespace Cedar.Thm.Decimal
 open Cedar.Spec.Ext
@@ -259,7 +268,8 @@ theorem toString_isWfStr (d : Decimal) : IsWfStr (toString d) := by
   · -- (toNat?' rightPart).isSome
     rw [h_rnat]; simp
 
-/-- If a string is well-formed and its computed value matches `d.toInt`, then `parse` returns `d`. -/
+/-- Completeness of `Decimal.parse`: if a string is well-formed and its computed value
+    matches `d.toInt`, then parsing accepts the string as `d`. -/
 theorem parse_of_isWfStr (s : String) (d : Decimal)
     (hwf : IsWfStr s) (hval : computeValue s = d.toInt) :
     Decimal.parse s = some d := by
@@ -317,7 +327,8 @@ theorem parse_toString_roundtrip (d : Decimal) :
     Decimal.parse (toString d) = some d :=
   parse_of_isWfStr (toString d) d (toString_isWfStr d) (computeValue_toString d)
 
-/-- Parsing fails iff the string is not well-formed or its value overflows `Int64` range. -/
+/-- Failure characterization for `Decimal.parse`: parsing rejects exactly strings that are
+    not well-formed or whose computed value overflows the `Int64` range. -/
 theorem parse_eq_none_iff (s : String) :
     Decimal.parse s = none ↔ ¬ IsWfStr s ∨
     computeValue s < Int64.MIN ∨ computeValue s > Int64.MAX := by
@@ -388,6 +399,45 @@ where
           by rw [heq_l]; rfl, by rw [heq_r]; rfl⟩
       · simp at h
     · simp at h
+
+/-- Soundness of `Decimal.parse`: if parsing succeeds, then the input is well-formed,
+    its computed value is in the `Int64` range, and the returned decimal has exactly
+    that computed value. -/
+theorem parse_sound (s : String) (d : Decimal) (h : Decimal.parse s = some d) :
+    IsWfStr s ∧
+    Int64.MIN ≤ computeValue s ∧
+    computeValue s ≤ Int64.MAX ∧
+    computeValue s = d.toInt := by
+  have hnot_bad : ¬ (¬ IsWfStr s ∨
+      computeValue s < Int64.MIN ∨ computeValue s > Int64.MAX) := by
+    intro hbad
+    have hnone := (parse_eq_none_iff s).mpr hbad
+    simp [h] at hnone
+  have hwf : IsWfStr s := by
+    by_contra hnwf
+    exact hnot_bad (Or.inl hnwf)
+  have hnot_lt : ¬ computeValue s < Int64.MIN := by
+    intro hlt
+    exact hnot_bad (Or.inr (Or.inl hlt))
+  have hnot_gt : ¬ computeValue s > Int64.MAX := by
+    intro hgt
+    exact hnot_bad (Or.inr (Or.inr hgt))
+  have hmin : Int64.MIN ≤ computeValue s := by omega
+  have hmax : computeValue s ≤ Int64.MAX := by omega
+  let d' : Decimal := Int64.ofInt (computeValue s)
+  have hd'_toInt : d'.toInt = computeValue s := by
+    dsimp [d']
+    exact Int64.toInt_ofInt_of_le
+      (by simp only [Int64.MIN] at hmin ⊢; omega)
+      (by simp only [Int64.MAX] at hmax ⊢; omega)
+  have hparse' : Decimal.parse s = some d' :=
+    parse_of_isWfStr s d' hwf hd'_toInt.symm
+  have hd_eq : d = d' := by
+    rw [h] at hparse'
+    exact Option.some.inj hparse'
+  refine ⟨hwf, hmin, hmax, ?_⟩
+  rw [hd_eq]
+  exact hd'_toInt.symm
 
 /-- `toString` is injective: distinct decimals produce distinct strings. -/
 theorem toString_injective (d d' : Decimal) (h : toString d = toString d') : d = d' := by
