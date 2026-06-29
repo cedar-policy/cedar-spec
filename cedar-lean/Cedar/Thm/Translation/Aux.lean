@@ -2118,7 +2118,7 @@ theorem rInits_eval_agrees (req : Request) (es : Entities) :
       ∀ vs, map.mapM (fun x => bindAttr x.fst (evaluate x.snd req es)) = .ok vs ↔
             r.mapM (fun ri =>
               match ri.key.toAttr? with
-              | none => Except.error Error.typeError
+              | none => Except.error Error.stringError
               | some attr => do let val ← ri.value.evaluate req es; .ok (attr, val)) = .ok vs := by
   intro r
   induction r with
@@ -2197,14 +2197,14 @@ theorem rInits_record_eval_agrees (req : Request) (es : Entities)
   have hCST : (Cst.Primary.rInits r).evaluate req es =
       (r.mapM (fun ri =>
         match ri.key.toAttr? with
-        | none => Except.error Error.typeError
+        | none => Except.error Error.stringError
         | some attr => do let val ← ri.value.evaluate req es; Except.ok (attr, val))) >>=
       fun avs => Except.ok (Value.record (Map.make avs)) := by
     simp only [Cst.Primary.evaluate]
     congr 1
     exact List.mapM₁_eq_mapM (fun ri : Cst.RecInit =>
       match ri.key.toAttr? with
-      | none => Except.error Error.typeError
+      | none => Except.error Error.stringError
       | some attr => do let val ← ri.value.evaluate req es; Except.ok (attr, val)) r
   rw [hAST, hCST]
   exact except_bind_iff hbridge

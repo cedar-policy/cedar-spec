@@ -101,19 +101,19 @@ theorem Cst.Primary.toAExpr?_complete
     have hCST : (Cst.Primary.rInits r).evaluate req es =
         (r.mapM (fun ri =>
           match ri.key.toAttr? with
-          | none => Except.error Error.typeError
+          | none => Except.error Error.stringError
           | some attr => do let val ← ri.value.evaluate req es; Except.ok (attr, val))) >>=
         fun avs => Except.ok (Value.record (Map.make avs)) := by
       simp only [Cst.Primary.evaluate]
       congr 1
       exact List.mapM₁_eq_mapM (fun ri : Cst.RecInit =>
         match ri.key.toAttr? with
-        | none => Except.error Error.typeError
+        | none => Except.error Error.stringError
         | some attr => do let val ← ri.value.evaluate req es; Except.ok (attr, val)) r
     rw [hCST] at hev
     cases hrv : r.mapM (fun ri =>
         match ri.key.toAttr? with
-        | none => Except.error Error.typeError
+        | none => Except.error Error.stringError
         | some attr => do let val ← ri.value.evaluate req es; Except.ok (attr, val)) with
     | error e => rw [hrv] at hev; simp [bind, Except.bind] at hev
     | ok avs =>
