@@ -62,12 +62,12 @@ public def parse (str : String) : Option Decimal :=
     else .none
   | _ => .none
 
-instance : ToString Decimal where
+public instance : ToString Decimal where
   toString (d : Decimal) : String :=
     let neg   := if d < 0 then "-" else ""
     let d     := d.natAbs
-    let left  := d / (Nat.pow 10 DECIMAL_DIGITS)
-    let right := d % (Nat.pow 10 DECIMAL_DIGITS)
+    let left  := d / (Nat.pow 10 4)
+    let right := d % (Nat.pow 10 4)
     let right :=
       -- this is not generalized for arbitrary DECIMAL_DIGITS
       if right < 10 then s!".000{right}"
