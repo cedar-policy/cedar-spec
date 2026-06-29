@@ -34,6 +34,12 @@ public inductive Error where
   | typeError
   | arithBoundsError
   | extensionError
+  -- CST only errors
+  | stringError
+  | nameError
+  | unsupportedError
+  | arityError
+  | translationError
 
 public abbrev Result (α) := Except Error α
 
