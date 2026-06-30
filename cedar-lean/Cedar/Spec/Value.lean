@@ -27,6 +27,13 @@ open Cedar.Data
 
 ----- Definitions -----
 
+public inductive CstError where
+  | stringError
+  | nameError
+  | unsupportedError
+  | arityError
+  | translationError
+
 public inductive Error where
   | entityDoesNotExist
   | attrDoesNotExist
@@ -35,11 +42,7 @@ public inductive Error where
   | arithBoundsError
   | extensionError
   -- CST only errors
-  | stringError
-  | nameError
-  | unsupportedError
-  | arityError
-  | translationError
+  | cstError (c : CstError)
 
 public abbrev Result (α) := Except Error α
 
@@ -162,6 +165,7 @@ public instance : Coe Value (Result (Data.Set Value)) where
 ----- Derivations -----
 
 deriving instance Repr, DecidableEq, BEq for Except
+deriving instance Repr, DecidableEq for CstError
 deriving instance Repr, DecidableEq for Error
 deriving instance Repr, DecidableEq, Inhabited, Lean.ToJson for Name
 deriving instance Repr, DecidableEq, Inhabited for EntityType

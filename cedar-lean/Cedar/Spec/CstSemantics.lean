@@ -195,7 +195,7 @@ public def AddExpr.toEntityTypeName? (e : AddExpr) : Option EntityType :=
 public def Str.toUnescapedString : Str → Result String
   | .string s => match Cedar.Spec.CstCommon.unescape? s with
     | some s' => .ok s'
-    | none    => .error .stringError
+    | none    => .error (.cstError .stringError)
 
 /-- Evaluate the chain of attribute checks for `r has a₀.a₁.….aₙ` with
     short-circuiting on the inner `hasAttr` returning `false`. Mirrors the
@@ -226,13 +226,13 @@ public def Primary.evaluate (e : Primary) (req : Request) (es : Entities) : Resu
       let s' ← Str.toUnescapedString (.string s)
       .ok (.prim (.string s'))
   | .name n =>
-    if !n.path.isEmpty then .error .nameError
+    if !n.path.isEmpty then .error (.cstError .nameError)
     else match n.name with
       | .idPrincipal => .ok (.prim (.entityUID req.principal))
       | .idAction => .ok (.prim (.entityUID req.action))
       | .idResource => .ok (.prim (.entityUID req.resource))
       | .idContext => .ok (.record req.context)
-      | _ => .error .nameError
+      | _ => .error (.cstError .nameError)
   | .expr e => e.evaluate req es
   | .eList xs => do
     let vs ← xs.mapM (fun x => x.evaluate req es)
@@ -242,8 +242,8 @@ public def Primary.evaluate (e : Primary) (req : Request) (es : Entities) : Resu
       let eid' ← Str.toUnescapedString eid
       match CstCommon.Name.toAName? path with
       | some etype => .ok (.prim (.entityUID { ty := etype, eid := eid' }))
-      | none       => .error .unsupportedError
-    | .ref _ _ => .error .unsupportedError
+      | none       => .error (.cstError .unsupportedError)
+    | .ref _ _ => .error (.cstError .unsupportedError)
   | .rInits r => do
     let avs ← r.mapM₁ (fun ⟨ri, hmem⟩ =>
       have : sizeOf ri.value < 1 + sizeOf r := by
@@ -253,7 +253,7 @@ public def Primary.evaluate (e : Primary) (req : Request) (es : Entities) : Resu
         show sizeOf v < 1 + sizeOf r
         omega
       match ri.key.toAttr? with
-      | none => .error .stringError
+      | none => .error (.cstError .stringError)
       | some attr => do
           let val ← ri.value.evaluate req es
           .ok (attr, val))
@@ -265,7 +265,7 @@ public def Member.evaluate (e : Member) (req : Request) (es : Entities) : Result
   -- Function calls
   | { item := .name { path := [], name := .idIdent s }, access := .call args :: rest } =>
     match CstCommon.String.toExtFun? s with
-    | none => .error .unsupportedError
+    | none => .error (.cstError .unsupportedError)
     | some xfn => do
       let args ← args.mapM (fun a => a.evaluate req es)
       let v ← call xfn args
@@ -288,37 +288,37 @@ public def Member.evalAccessors (head : Value) (accs : List MemAccess)
   -- Method call `recv.m(args)`: a field naming the method, then its arguments.
   | .field i :: .call args :: rest =>
     match CstCommon.Ident.toUnreservedString? i with
-    | none => .error .stringError
+    | none => .error (.cstError .stringError)
     | some m => match CstCommon.String.toMethodOp? m with
       | some (.inl bop) => match args with
         | [arg] => do
           let argVal ← arg.evaluate req es
           let v ← apply₂ bop head argVal es
           Member.evalAccessors v rest req es
-        | _ => .error .arityError
+        | _ => .error (.cstError .arityError)
       | some (.inr uop) =>
         if args.isEmpty then do
           let v ← apply₁ uop head
           Member.evalAccessors v rest req es
-        else .error .arityError
-      | none => .error .unsupportedError
+        else .error (.cstError .arityError)
+      | none => .error (.cstError .unsupportedError)
   -- Attribute access `recv.attr`.
   | .field i :: rest =>
     match CstCommon.Ident.toUnreservedString? i with
-    | none => .error .stringError
+    | none => .error (.cstError .stringError)
     | some attr => do
       let v ← getAttr head attr es
       Member.evalAccessors v rest req es
   -- Indexed attribute access `recv["attr"]`.
   | .index ex :: rest =>
     match CstCommon.Expr.toUnescapedStringLiteral? ex with
-    | none => .error .stringError
+    | none => .error (.cstError .stringError)
     | some attr => do
       let v ← getAttr head attr es
       Member.evalAccessors v rest req es
   -- A call with no preceding field accessor is a call on a non-name value,
   -- which the translator rejects.
-  | .call _ :: _ => .error .unsupportedError
+  | .call _ :: _ => .error (.cstError .unsupportedError)
 termination_by sizeOf accs
 decreasing_by
   all_goals simp_wf
@@ -372,7 +372,7 @@ public def Unary.evaluate (e : Unary) (req : Request) (es : Entities) : Result V
                   if n % 2 == 0 then .ok (.prim (.int i))
                   else .ok (.prim (.int j))
           | _ => .error .typeError
-  | some _ => .error .unsupportedError
+  | some _ => .error (.cstError .unsupportedError)
 termination_by sizeOf e
 decreasing_by
   all_goals cases e; simp_wf; omega
@@ -393,7 +393,7 @@ public def MultExpr.foldOps (acc : Value) (xs : List (MultOp × Unary))
     let aval ← u.evaluate req es
     let acc' ← match op with
       | .mTimes => apply₂ .mul acc aval es
-      | _ => .error .unsupportedError
+      | _ => .error (.cstError .unsupportedError)
     MultExpr.foldOps acc' rest req es
 termination_by sizeOf xs
 
@@ -425,26 +425,26 @@ public def Relation.evaluate (e : Relation) (req : Request) (es : Entities) : Re
       let v₁ ← x.evaluate req es
       let v₂ ← y.evaluate req es
       applyRelOp op v₁ v₂ es
-    | _ => .error .unsupportedError
+    | _ => .error (.cstError .unsupportedError)
   | .rHas t f => do
       let v ← t.evaluate req es
       match f.toAttrs? with
-      | none => .error .unsupportedError
-      | some [] => .error .unsupportedError
+      | none => .error (.cstError .unsupportedError)
+      | some [] => .error (.cstError .unsupportedError)
       | some (a :: as) =>
         -- For `r has x.y.z`: short-circuit on `false` between getAttr steps,
         -- mirroring the translator's `.and (hasAttr ...) (extendedHasAttr ...)`
         -- which short-circuits on the inner `hasAttr` returning `false`.
         rHasChain v a as es
   | .rLike t p => match p.toPatternString? with
-    | none => .error .stringError
+    | none => .error (.cstError .stringError)
     | some s => do
       let v ← t.evaluate req es
       match Cedar.Spec.CstCommon.toPattern? s with
       | some p => apply₁ (.like p) v
-      | none => .error .stringError
+      | none => .error (.cstError  .stringError)
   | .rIsIn t ety inEntity => match ety.toEntityType? with
-    | none => .error .nameError
+    | none => .error (.cstError .nameError)
     | some etyName => do
       let v ← t.evaluate req es
       let isResult ← apply₁ (.is etyName) v
@@ -457,7 +457,7 @@ public def Relation.evaluate (e : Relation) (req : Request) (es : Entities) : Re
         -- no-op and the evaluator still agrees with the short-circuiting AST;
         -- but it lets a successful evaluation witness that `ie` translates,
         -- which is needed for translation completeness.
-        if ie.toAExpr?.isNone then .error .translationError
+        if ie.toAExpr?.isNone then .error (.cstError .translationError)
         else do
           let b ← isResult.asBool
           if !b then .ok false
@@ -476,7 +476,7 @@ public def AndExpr.evaluate (e : AndExpr) (req : Request) (es : Entities) : Resu
   if e.extended.all (fun r => r.toAExpr?.isSome) then do
     let acc ← e.initial.evaluate req es
     AndExpr.foldOps acc e.extended req es
-  else .error .translationError
+  else .error (.cstError .translationError)
 termination_by sizeOf e
 decreasing_by
   all_goals cases e; simp_wf; omega
@@ -503,7 +503,7 @@ public def OrExpr.evaluate (e : OrExpr) (req : Request) (es : Entities) : Result
   if e.extended.all (fun r => r.toAExpr?.isSome) then do
     let acc ← e.initial.evaluate req es
     OrExpr.foldOps acc e.extended req es
-  else .error .translationError
+  else .error (.cstError .translationError)
 termination_by sizeOf e
 decreasing_by
   all_goals cases e; simp_wf; omega
@@ -535,7 +535,7 @@ public def ExprData.evaluate (e : ExprData) (req : Request) (es : Entities) : Re
     if t.toAExpr?.isSome && f.toAExpr?.isSome then do
       let b ← (i.evaluate req es).as Bool
       if b then t.evaluate req es else f.evaluate req es
-    else .error .translationError
+    else .error (.cstError .translationError)
 termination_by sizeOf e
 
 public def ExprImpl.evaluate (e : ExprImpl) (req : Request) (es : Entities) : Result Value :=

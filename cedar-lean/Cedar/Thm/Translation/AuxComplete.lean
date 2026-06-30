@@ -53,7 +53,7 @@ theorem rInits_complete {req : Request} {es : Entities} :
     ∀ (r : List Cst.RecInit) (avs : List (Attr × Value)),
       r.mapM (fun ri =>
         match ri.key.toAttr? with
-        | none => Except.error Error.stringError
+        | none => Except.error (Error.cstError CstError.stringError)
         | some attr => do let val ← ri.value.evaluate req es; .ok (attr, val)) = .ok avs →
       (∀ ri ∈ r, ∀ v, ri.value.evaluate req es = .ok v → ∃ ae, ri.value.toAExpr? = some ae) →
       ∃ map, rInitsToMap? r = some map := by
@@ -80,7 +80,7 @@ theorem rInits_complete {req : Request} {es : Entities} :
           obtain ⟨vae, hvae⟩ := hcomp ri List.mem_cons_self vval hvalv
           have htl' : rs.mapM (fun ri =>
               match ri.key.toAttr? with
-              | none => Except.error Error.stringError
+              | none => Except.error (Error.cstError CstError.stringError)
               | some attr => do let val ← ri.value.evaluate req es; .ok (attr, val)) = .ok av_tl := by
             rw [List.mapM_ok_iff_forall₂]; exact htl
           obtain ⟨mtl, hmtl⟩ := ih av_tl htl' (fun x hx => hcomp x (List.mem_cons_of_mem _ hx))
