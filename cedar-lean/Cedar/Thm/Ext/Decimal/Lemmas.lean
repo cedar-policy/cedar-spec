@@ -14,6 +14,194 @@ import all Init.Data.String.Slice
 namespace Cedar.Thm.Decimal
 open Cedar.Spec.Ext
 
+/-! ============================================================================================
+    # Grammar ↔ parser bridge lemmas
+
+    `IsWfStr` is phrased over the grammar's digit-level productions (`IsDigits`/`IsWfInt`), while
+    `Decimal.parse` and `computeValue` extract numeric values through `toInt?'`/`toNat?'`. These
+    lemmas connect the two: a digit string is exactly one the stdlib parser accepts. They are what
+    lets the soundness/completeness proofs move between the grammar view and the parser view.
+    ============================================================================================ -/
+
+/-- A digit string contains no `'_'`, so `toInt?'`/`toNat?'` (which reject `'_'`) do not
+    short-circuit on it. -/
+theorem no_underscore_of_isDigits {s : String} (h : IsDigits s) : s.contains '_' = false := by
+  obtain ⟨_, hdig⟩ := h
+  have hnot : ¬ ('_' ∈ s.toList) := by
+    intro hm; have := hdig '_' hm; simp at this
+  simpa [String.contains] using hnot
+
+/-- A digit string is a well-formed natural-number literal (`String.isNat`). -/
+theorem isNat_of_isDigits {s : String} (h : IsDigits s) : s.isNat = true := by
+  obtain ⟨hlen, hdig⟩ := h
+  have hne : s.toList ≠ [] := List.ne_nil_of_length_pos hlen
+  rw [String.isNat_iff]
+  refine ⟨?_, ?_, ?_, ?_, ?_⟩
+  · intro hs; rw [hs] at hlen; simp at hlen
+  · intro c hc; left; exact hdig c hc
+  · intro hinfix
+    rcases hinfix with ⟨p, t, ht⟩
+    have : '_' ∈ s.toList := by rw [← ht]; simp [List.mem_append]
+    have := hdig '_' this; simp at this
+  · intro hh
+    have hmem : '_' ∈ s.toList := by
+      have heq : s.toList.head hne = '_' := by
+        have := List.head?_eq_some_head hne
+        rw [this] at hh; injection hh
+      exact heq ▸ List.head_mem hne
+    have := hdig '_' hmem; simp at this
+  · intro hh
+    have hmem := List.getLast_mem hne
+    rw [List.getLast?_eq_some_getLast hne] at hh
+    injection hh with hh
+    rw [hh] at hmem
+    have := hdig '_' hmem; simp at this
+
+/-- Conversely, a natural-number literal with no `'_'` is a digit string. -/
+theorem isDigits_of_isNat {s : String} (hisnat : s.isNat = true)
+    (hnc : s.contains '_' = false) : IsDigits s := by
+  rw [String.isNat_iff] at hisnat
+  obtain ⟨hne_empty, hchars, _, _, _⟩ := hisnat
+  refine ⟨?_, ?_⟩
+  · rw [← String.length_toList]
+    apply List.length_pos_iff.mpr
+    intro he; apply hne_empty; rw [← String.toList_inj]; simpa using he
+  · intro c hc
+    cases hchars c hc with
+    | inl h => exact h
+    | inr h =>
+      subst h
+      have hcontains : s.contains '_' = true := by simpa [String.contains] using hc
+      rw [hcontains] at hnc; simp at hnc
+
+/-- Forward bridge (fraction): a `Digit⁺` string parses as a natural number. -/
+theorem toNat?'_isSome_of_isDigits {s : String} (h : IsDigits s) :
+    (toNat?' s).isSome = true := by
+  unfold toNat?'
+  rw [no_underscore_of_isDigits h]
+  simp only [Bool.false_eq_true, ↓reduceIte]
+  rw [show s.toNat?.isSome = s.isNat from String.isSome_toNat?]
+  exact isNat_of_isDigits h
+
+/-- Backward bridge (fraction): anything `toNat?'` accepts is a `Digit⁺` string. -/
+theorem isDigits_of_toNat?'_isSome {s : String} (h : (toNat?' s).isSome = true) :
+    IsDigits s := by
+  unfold toNat?' at h
+  split at h
+  · simp at h
+  · rename_i hnc
+    rw [Bool.not_eq_true] at hnc
+    rw [show s.toNat?.isSome = s.isNat from String.isSome_toNat?] at h
+    exact isDigits_of_isNat h hnc
+
+/-- An `Integer` string (`['-'] Digit⁺`) contains no `'_'`. -/
+theorem no_underscore_of_isWfInt {s : String} (h : IsWfInt s) : s.contains '_' = false := by
+  rcases h with hd | ⟨t, hst, hd⟩
+  · exact no_underscore_of_isDigits hd
+  · subst hst
+    obtain ⟨_, htd⟩ := hd
+    have hnot : ¬ ('_' ∈ ("-" ++ t).toList) := by
+      rw [String.toList_append]; intro hm
+      cases List.mem_append.mp hm with
+      | inl h => simp at h
+      | inr h => have := htd '_' h; simp at this
+    simpa [String.contains] using hnot
+
+/-- Forward bridge (integer): an `['-'] Digit⁺` string parses as an integer. -/
+theorem toInt?'_isSome_of_isWfInt {s : String} (h : IsWfInt s) :
+    (toInt?' s).isSome = true := by
+  unfold toInt?'
+  rw [no_underscore_of_isWfInt h]
+  simp only [Bool.false_eq_true, ↓reduceIte]
+  rw [show s.toInt?.isSome = s.isInt from String.isSome_toInt?, String.isInt_iff]
+  rcases h with hd | ⟨t, hst, hd⟩
+  · left; exact isNat_of_isDigits hd
+  · right; exact ⟨t, hst, isNat_of_isDigits hd⟩
+
+/-- Backward bridge (integer): anything `toInt?'` accepts is an `['-'] Digit⁺` string. -/
+theorem isWfInt_of_toInt?'_isSome {s : String} (h : (toInt?' s).isSome = true) :
+    IsWfInt s := by
+  unfold toInt?' at h
+  split at h
+  · simp at h
+  · rename_i hnc
+    rw [Bool.not_eq_true] at hnc
+    rw [show s.toInt?.isSome = s.isInt from String.isSome_toInt?, String.isInt_iff] at h
+    rcases h with hnat | ⟨t, hst, htnat⟩
+    · left; exact isDigits_of_isNat hnat hnc
+    · right
+      refine ⟨t, hst, ?_⟩
+      have hnct : t.contains '_' = false := by
+        by_contra hc
+        rw [Bool.not_eq_false] at hc
+        have ht : '_' ∈ t.toList := by simpa [String.contains] using hc
+        have hs : '_' ∈ s.toList := by
+          rw [hst, String.toList_append]; exact List.mem_append_right _ ht
+        have hcontains : s.contains '_' = true := by simpa [String.contains] using hs
+        rw [hcontains] at hnc; simp at hnc
+      exact isDigits_of_isNat htnat hnct
+
+/-- A well-formed `Integer` is never a bare `"-"`: the grammar's `Digit⁺` requires at least one
+    digit after the sign. This is what the old `left ≠ "-"` side condition asserted explicitly. -/
+theorem ne_dash_of_isWfInt {s : String} (h : IsWfInt s) : s ≠ "-" := by
+  rcases h with hd | ⟨t, hst, hd⟩
+  · obtain ⟨hlen, hdig⟩ := hd
+    intro hs; subst hs
+    have := hdig '-' (by decide); simp at this
+  · subst hst
+    obtain ⟨hlen, _⟩ := hd
+    intro hs
+    have ht : t = "" := by
+      have := congrArg String.length hs
+      simp only [String.length_append] at this
+      have h1 : ("-" : String).length = 1 := by decide
+      rw [h1] at this
+      have : t.length = 0 := by omega
+      rw [← String.length_toList] at this
+      rw [← String.toList_inj]; simpa using List.eq_nil_of_length_eq_zero this
+    rw [ht] at hlen; simp at hlen
+
+/-- `IsWfStr` restated in the parser-primitive form the parse proofs consume: the digit-string
+    clauses become `(toInt?'/toNat?').isSome`, and `left ≠ "-"` / `0 < right.length` fall out of
+    `IsWfInt`/`IsDigits`. -/
+theorem isWfStr_iff {s : String} :
+    IsWfStr s ↔
+      ∃ left right,
+        s.splitToList (· = '.') = [left, right] ∧
+        left ≠ "-" ∧
+        0 < right.length ∧
+        right.length ≤ DECIMAL_DIGITS ∧
+        (toInt?' left).isSome ∧
+        (toNat?' right).isSome := by
+  constructor
+  · rintro ⟨left, right, h_split, h_lwf, h_rdig, h_rle⟩
+    exact ⟨left, right, h_split, ne_dash_of_isWfInt h_lwf, h_rdig.1, h_rle,
+      toInt?'_isSome_of_isWfInt h_lwf, toNat?'_isSome_of_isDigits h_rdig⟩
+  · rintro ⟨left, right, h_split, _, _, h_rle, h_lint, h_rnat⟩
+    exact ⟨left, right, h_split, isWfInt_of_toInt?'_isSome h_lint,
+      isDigits_of_toNat?'_isSome h_rnat, h_rle⟩
+
+/-- Bridge between `Decimal.parse`'s branching value expression (`if not-negative then + else −`)
+    and `computeValue`'s single-`sign`-factor form (matching the grammar). The two are equal. -/
+theorem parse_value_eq_sign_form (l : Int) (r : Nat) (b : Bool) (P Q : Int) :
+    (if !b then l * P + (r : Int) * Q else l * P - (r : Int) * Q)
+      = l * P + (if b then (-1 : Int) else 1) * (r : Int) * Q := by
+  cases b <;> simp [Int.sub_eq_add_neg, Int.neg_mul, Int.one_mul]
+
+/-- A well-formed string always has a computed value: `computeValue` succeeds because both the
+    split and the integer/fraction primitives succeed. (The converse fails — `computeValue` can
+    succeed on strings that violate the `right.length ≤ DECIMAL_DIGITS` bound.) -/
+theorem computeValue_isSome_of_isWfStr {s : String} (h : IsWfStr s) :
+    (computeValue s).isSome = true := by
+  obtain ⟨left, right, h_split, h_lwf, h_rdig, _⟩ := h
+  obtain ⟨l, hl⟩ := Option.isSome_iff_exists.mp (toInt?'_isSome_of_isWfInt h_lwf)
+  obtain ⟨r, hr⟩ := Option.isSome_iff_exists.mp (toNat?'_isSome_of_isDigits h_rdig)
+  simp only [computeValue, h_split, hl, hr, Option.isSome_some]
+
+/-! ============================================================================================
+    # `toString` well-formedness and value
+    ============================================================================================ -/
+
 /-- Prepending zero characters to a natural number's string representation does not change
     the value accepted by `toNat?'`. -/
 private theorem zeroPad_toNat? (pad : String) (n : Nat)
@@ -225,9 +413,9 @@ private theorem toString_split (d : Decimal) :
       exact absurd (Nat.isDigit_of_mem_toDigits (by omega) (by omega) hmem) (by decide)
 
 /-- The string produced by `toString d` is well-formed for parsing. -/
-theorem toString_isWfStr (d : Decimal) : IsWfStr (toString d) := by
+public theorem toString_isWfStr (d : Decimal) : IsWfStr (toString d) := by
   obtain ⟨h_split, h_rlen, h_lint, h_rnat, _⟩ := toString_split d
-  refine ⟨_, _, h_split, ?_, ?_, ?_, ?_, ?_⟩
+  refine isWfStr_iff.mpr ⟨_, _, h_split, ?_, ?_, ?_, ?_, ?_⟩
   · -- leftPart ≠ "-"
     intro h; by_cases hd : d < 0
     · simp [hd] at h
@@ -248,18 +436,24 @@ theorem toString_isWfStr (d : Decimal) : IsWfStr (toString d) := by
     rw [h_rnat]; simp
 
 /-- The canonical string representation of a decimal encodes the same integer value. -/
-theorem computeValue_toString (d : Decimal) : computeValue (toString d) = d.toInt := by
+public theorem computeValue_toString (d : Decimal) : computeValue (toString d) = some d.toInt := by
   obtain ⟨h_split, h_rlen, h_lint, h_rnat, h_starts⟩ := toString_split d
-  simp only [computeValue, h_split, h_lint, h_rnat, h_rlen, h_starts, DECIMAL_DIGITS]
+  -- `computeValue` uses the grammar's positive `sign` factor keyed on `startsWith "-"`;
+  -- recover that directly from the negated form `h_starts` provides.
+  have h_starts' : ((if d < 0 then "-" else "") ++ toString (d.natAbs / Nat.pow 10 4)).startsWith "-"
+      = decide (d < 0) := by
+    have := Bool.not_inj h_starts; simpa using this
+  simp only [computeValue, h_split, h_lint, h_rnat, h_rlen, h_starts', DECIMAL_DIGITS,
+    Option.some.injEq]
   simp only [show Nat.pow 10 4 = 10000 from rfl, show (4 : Nat) - 4 = 0 from rfl,
     show Int.pow 10 4 = (10000 : Int) from rfl,
     show Int.pow 10 0 = (1 : Int) from rfl, Int.mul_one]
   simp (config := { decide := true }) only [Int64.natAbs]
   by_cases hd : d < 0
-  · simp only [hd, ↓reduceIte, decide_true, Bool.not_true, Bool.false_eq_true]
-    -- Goal: -↑(n/10000) * 10000 - ↑(n%10000) = d.toInt
+  · -- Goal: -↑(n/10000) * 10000 + -1 * ↑(n%10000) = d.toInt
+    simp only [hd, ↓reduceIte, decide_true, Int.neg_one_mul]
     have h1 := Int.natAbs_eq d.toInt
-    have h3 : -(↑(d.toInt.natAbs / 10000) : Int) * 10000 - ↑(d.toInt.natAbs % 10000) =
+    have h3 : -(↑(d.toInt.natAbs / 10000) : Int) * 10000 + -↑(d.toInt.natAbs % 10000) =
         -↑d.toInt.natAbs := by
       have := Nat.div_add_mod d.toInt.natAbs 10000; omega
     simp_all
@@ -267,7 +461,8 @@ theorem computeValue_toString (d : Decimal) : computeValue (toString d) = d.toIn
       rw [Int64.lt_def_toInt] at hd
       have : (0 : Int64).toInt = 0 := by rfl
       omega))
-  · simp only [hd, ↓reduceIte, decide_false, Bool.not_false]
+  · -- Goal: ↑(n/10000) * 10000 + 1 * ↑(n%10000) = d.toInt
+    simp only [hd, ↓reduceIte, decide_false, Bool.false_eq_true, Int.one_mul]
     have hge : d.toInt ≥ 0 := by
       simp only [Int64.lt_def_toInt] at hd
       have : (0 : Int64).toInt = 0 := by rfl

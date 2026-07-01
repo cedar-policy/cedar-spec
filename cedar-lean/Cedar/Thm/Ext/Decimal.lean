@@ -14,9 +14,9 @@ open Cedar.Spec.Ext
 /-- Completeness of `Decimal.parse`: if a string is well-formed and its computed value
     matches `d.toInt`, then parsing accepts the string as `d`. -/
 public theorem parse_complete (s : String) (d : Decimal)
-    (hwf : IsWfStr s) (hval : computeValue s = d.toInt) :
+    (hwf : IsWfStr s) (hval : computeValue s = some d.toInt) :
     Decimal.parse s = some d := by
-  obtain ⟨left, right, h_split, h_ne, h_rpos, h_rle, h_lint, h_rnat⟩ := hwf
+  obtain ⟨left, right, h_split, h_ne, h_rpos, h_rle, h_lint, h_rnat⟩ := isWfStr_iff.mp hwf
   unfold Decimal.parse
   rw [h_split]
   split
@@ -30,7 +30,10 @@ public theorem parse_complete (s : String) (d : Decimal)
         then l * Int.pow 10 DECIMAL_DIGITS + ↑r * Int.pow 10 (DECIMAL_DIGITS - right.length)
         else l * Int.pow 10 DECIMAL_DIGITS - ↑r * Int.pow 10 (DECIMAL_DIGITS - right.length))
         = d.toInt := by
-      simpa only [computeValue, h_split, hl, hr] using hval
+      rw [parse_value_eq_sign_form]
+      have := hval
+      simp only [computeValue, h_split, hl, hr, Option.some.injEq] at this
+      exact this
     rw [hval']
     exact Int64.ofInt?_toInt d
   · rename_i h; exact (h left right rfl).elim
@@ -44,14 +47,14 @@ public theorem parse_toString_roundtrip (d : Decimal) :
     not well-formed or whose computed value overflows the `Int64` range. -/
 public theorem parse_eq_none_iff (s : String) :
     Decimal.parse s = none ↔ ¬ IsWfStr s ∨
-    computeValue s < Int64.MIN ∨ computeValue s > Int64.MAX := by
+    ∃ v, computeValue s = some v ∧ (v < Int64.MIN ∨ v > Int64.MAX) := by
   constructor
   · -- → direction: parse s = none implies malformed or overflow
     intro h
     by_cases hwf : IsWfStr s
     · -- s is well-formed, so it must be overflow
       right
-      obtain ⟨left, right, h_split, h_ne, h_rpos, h_rle, h_lint, h_rnat⟩ := hwf
+      obtain ⟨left, right, h_split, h_ne, h_rpos, h_rle, h_lint, h_rnat⟩ := isWfStr_iff.mp hwf
       obtain ⟨l, hl⟩ := Option.isSome_iff_exists.mp h_lint
       obtain ⟨r, hr⟩ := Option.isSome_iff_exists.mp h_rnat
       -- parse returned none despite well-formedness → decimal? returned none → overflow
@@ -60,16 +63,13 @@ public theorem parse_eq_none_iff (s : String) :
       simp only [show 0 < right.length ∧ right.length ≤ DECIMAL_DIGITS from ⟨h_rpos, h_rle⟩,
         hl, hr, Decimal.decimal?, ite_true, and_true] at h
       -- h : Int64.ofInt? (if ... then ... + ... else ... - ...) = none
-      have hcv : computeValue s = (if !left.startsWith "-"
-          then l * Int.pow 10 DECIMAL_DIGITS + ↑r * Int.pow 10 (DECIMAL_DIGITS - right.length)
-          else l * Int.pow 10 DECIMAL_DIGITS - ↑r * Int.pow 10 (DECIMAL_DIGITS - right.length)) := by
-        simp only [computeValue, h_split, hl, hr]
-      rw [hcv]
-      exact Int64.ofInt?_none_iff.mpr h
+      refine ⟨_, ?_, Int64.ofInt?_none_iff.mpr h⟩
+      rw [parse_value_eq_sign_form]
+      simp only [computeValue, h_split, hl, hr]
     · left; exact hwf
   · -- ← direction: malformed or overflow implies parse s = none
     intro h
-    rcases h with h | h
+    rcases h with h | ⟨v, hcv, hovf⟩
     · -- ¬ IsWfStr s → parse s = none
       by_contra hne
       have ⟨d, hd⟩ := Option.ne_none_iff_exists'.mp hne
@@ -78,7 +78,7 @@ public theorem parse_eq_none_iff (s : String) :
       -- If s is not well-formed, parse = none trivially
       by_cases hwf : IsWfStr s
       · -- s is well-formed but overflows
-        obtain ⟨left, right, h_split, h_ne, h_rpos, h_rle, h_lint, h_rnat⟩ := hwf
+        obtain ⟨left, right, h_split, h_ne, h_rpos, h_rle, h_lint, h_rnat⟩ := isWfStr_iff.mp hwf
         obtain ⟨l, hl⟩ := Option.isSome_iff_exists.mp h_lint
         obtain ⟨r, hr⟩ := Option.isSome_iff_exists.mp h_rnat
         unfold Decimal.parse
@@ -86,13 +86,17 @@ public theorem parse_eq_none_iff (s : String) :
         simp only [show 0 < right.length ∧ right.length ≤ DECIMAL_DIGITS from ⟨h_rpos, h_rle⟩,
           hl, hr, Decimal.decimal?, ite_true, and_true]
         -- Goal: Int64.ofInt? (if ... then ... else ...) = none
-        -- We know computeValue s is out of range, and computeValue s = this expression
-        have hcv : computeValue s = (if !left.startsWith "-"
+        -- computeValue s = some v is out of range, and equals this branching expression
+        have hcv' : (if !left.startsWith "-"
             then l * Int.pow 10 DECIMAL_DIGITS + ↑r * Int.pow 10 (DECIMAL_DIGITS - right.length)
-            else l * Int.pow 10 DECIMAL_DIGITS - ↑r * Int.pow 10 (DECIMAL_DIGITS - right.length)) := by
-          simp only [computeValue, h_split, hl, hr]
-        rw [← hcv]
-        exact Int64.ofInt?_none_iff.mp h
+            else l * Int.pow 10 DECIMAL_DIGITS - ↑r * Int.pow 10 (DECIMAL_DIGITS - right.length))
+            = v := by
+          rw [parse_value_eq_sign_form]
+          have := hcv
+          simp only [computeValue, h_split, hl, hr, Option.some.injEq] at this
+          exact this
+        rw [hcv']
+        exact Int64.ofInt?_none_iff.mp hovf
       · -- s is not well-formed → parse = none (same as the other branch)
         by_contra hne
         have ⟨d, hd⟩ := Option.ne_none_iff_exists'.mp hne
@@ -108,7 +112,7 @@ where
       · rename_i l r heq_l heq_r
         have h_len : 0 < right.length ∧ right.length ≤ DECIMAL_DIGITS := by
           by_contra hc; simp [hc] at h
-        exact ⟨left, right, h_split, h_ne, h_len.1, h_len.2,
+        exact isWfStr_iff.mpr ⟨left, right, h_split, h_ne, h_len.1, h_len.2,
           by rw [heq_l]; rfl, by rw [heq_r]; rfl⟩
       · simp at h
     · simp at h
@@ -118,39 +122,40 @@ where
     that computed value. -/
 public theorem parse_sound (s : String) (d : Decimal) (h : Decimal.parse s = some d) :
     IsWfStr s ∧
-    Int64.MIN ≤ computeValue s ∧
-    computeValue s ≤ Int64.MAX ∧
-    computeValue s = d.toInt := by
+    computeValue s = some d.toInt ∧
+    Int64.MIN ≤ d.toInt ∧
+    d.toInt ≤ Int64.MAX := by
+  -- parse succeeded, so `parse_eq_none_iff` rules out both malformedness and overflow.
   have hnot_bad : ¬ (¬ IsWfStr s ∨
-      computeValue s < Int64.MIN ∨ computeValue s > Int64.MAX) := by
+      ∃ v, computeValue s = some v ∧ (v < Int64.MIN ∨ v > Int64.MAX)) := by
     intro hbad
     have hnone := (parse_eq_none_iff s).mpr hbad
     simp [h] at hnone
   have hwf : IsWfStr s := by
     by_contra hnwf
     exact hnot_bad (Or.inl hnwf)
-  have hnot_lt : ¬ computeValue s < Int64.MIN := by
-    intro hlt
-    exact hnot_bad (Or.inr (Or.inl hlt))
-  have hnot_gt : ¬ computeValue s > Int64.MAX := by
-    intro hgt
-    exact hnot_bad (Or.inr (Or.inr hgt))
-  have hmin : Int64.MIN ≤ computeValue s := by omega
-  have hmax : computeValue s ≤ Int64.MAX := by omega
-  let d' : Decimal := Int64.ofInt (computeValue s)
-  have hd'_toInt : d'.toInt = computeValue s := by
+  -- well-formed ⇒ `computeValue s = some v` for some value `v`.
+  obtain ⟨v, hv⟩ := Option.isSome_iff_exists.mp (computeValue_isSome_of_isWfStr hwf)
+  have hnot_ovf : ¬ (v < Int64.MIN ∨ v > Int64.MAX) := fun hovf =>
+    hnot_bad (Or.inr ⟨v, hv, hovf⟩)
+  have hmin : Int64.MIN ≤ v := by omega
+  have hmax : v ≤ Int64.MAX := by omega
+  -- reconstruct the decimal from `v` and show it is exactly `d`.
+  let d' : Decimal := Int64.ofInt v
+  have hd'_toInt : d'.toInt = v := by
     dsimp [d']
     exact Int64.toInt_ofInt_of_le
       (by simp only [Int64.MIN] at hmin ⊢; omega)
       (by simp only [Int64.MAX] at hmax ⊢; omega)
   have hparse' : Decimal.parse s = some d' :=
-    parse_complete s d' hwf hd'_toInt.symm
+    parse_complete s d' hwf (by rw [hv, hd'_toInt])
   have hd_eq : d = d' := by
     rw [h] at hparse'
     exact Option.some.inj hparse'
-  refine ⟨hwf, hmin, hmax, ?_⟩
-  rw [hd_eq]
-  exact hd'_toInt.symm
+  refine ⟨hwf, ?_, ?_, ?_⟩
+  · rw [hv, hd_eq, hd'_toInt]
+  · rw [hd_eq, hd'_toInt]; exact hmin
+  · rw [hd_eq, hd'_toInt]; exact hmax
 
 /-- `toString` is injective: distinct decimals produce distinct strings. -/
 public theorem toString_injective (d d' : Decimal) (h : toString d = toString d') : d = d' := by
