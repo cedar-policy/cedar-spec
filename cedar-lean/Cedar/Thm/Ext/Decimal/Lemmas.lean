@@ -21,78 +21,12 @@ open Cedar.Spec.Ext
     `Decimal.parse` and `computeValue` extract numeric values through `toInt?'`/`toNat?'`. These
     lemmas connect the two: a digit string is exactly one the stdlib parser accepts. They are what
     lets the soundness/completeness proofs move between the grammar view and the parser view.
+
+    The `IsDigits` predicate and its `toNat?'` bridges (`no_underscore_of_isDigits`,
+    `isNat_of_isDigits`, `isDigits_of_isNat`, `toNat?'_isSome_of_isDigits`,
+    `isDigits_of_toNat?'_isSome`) are shared with the duration grammar and live in
+    `Cedar.Thm.Data.String`; the integer-specific lemmas below build on them.
     ============================================================================================ -/
-
-/-- A digit string contains no `'_'`, so `toInt?'`/`toNat?'` (which reject `'_'`) do not
-    short-circuit on it. -/
-theorem no_underscore_of_isDigits {s : String} (h : IsDigits s) : s.contains '_' = false := by
-  obtain ⟨_, hdig⟩ := h
-  have hnot : ¬ ('_' ∈ s.toList) := by
-    intro hm; have := hdig '_' hm; simp at this
-  simpa [String.contains] using hnot
-
-/-- A digit string is a well-formed natural-number literal (`String.isNat`). -/
-theorem isNat_of_isDigits {s : String} (h : IsDigits s) : s.isNat = true := by
-  obtain ⟨hlen, hdig⟩ := h
-  have hne : s.toList ≠ [] := List.ne_nil_of_length_pos hlen
-  rw [String.isNat_iff]
-  refine ⟨?_, ?_, ?_, ?_, ?_⟩
-  · intro hs; rw [hs] at hlen; simp at hlen
-  · intro c hc; left; exact hdig c hc
-  · intro hinfix
-    rcases hinfix with ⟨p, t, ht⟩
-    have : '_' ∈ s.toList := by rw [← ht]; simp [List.mem_append]
-    have := hdig '_' this; simp at this
-  · intro hh
-    have hmem : '_' ∈ s.toList := by
-      have heq : s.toList.head hne = '_' := by
-        have := List.head?_eq_some_head hne
-        rw [this] at hh; injection hh
-      exact heq ▸ List.head_mem hne
-    have := hdig '_' hmem; simp at this
-  · intro hh
-    have hmem := List.getLast_mem hne
-    rw [List.getLast?_eq_some_getLast hne] at hh
-    injection hh with hh
-    rw [hh] at hmem
-    have := hdig '_' hmem; simp at this
-
-/-- Conversely, a natural-number literal with no `'_'` is a digit string. -/
-theorem isDigits_of_isNat {s : String} (hisnat : s.isNat = true)
-    (hnc : s.contains '_' = false) : IsDigits s := by
-  rw [String.isNat_iff] at hisnat
-  obtain ⟨hne_empty, hchars, _, _, _⟩ := hisnat
-  refine ⟨?_, ?_⟩
-  · rw [← String.length_toList]
-    apply List.length_pos_iff.mpr
-    intro he; apply hne_empty; rw [← String.toList_inj]; simpa using he
-  · intro c hc
-    cases hchars c hc with
-    | inl h => exact h
-    | inr h =>
-      subst h
-      have hcontains : s.contains '_' = true := by simpa [String.contains] using hc
-      rw [hcontains] at hnc; simp at hnc
-
-/-- Forward bridge (fraction): a `Digit⁺` string parses as a natural number. -/
-theorem toNat?'_isSome_of_isDigits {s : String} (h : IsDigits s) :
-    (toNat?' s).isSome = true := by
-  unfold toNat?'
-  rw [no_underscore_of_isDigits h]
-  simp only [Bool.false_eq_true, ↓reduceIte]
-  rw [show s.toNat?.isSome = s.isNat from String.isSome_toNat?]
-  exact isNat_of_isDigits h
-
-/-- Backward bridge (fraction): anything `toNat?'` accepts is a `Digit⁺` string. -/
-theorem isDigits_of_toNat?'_isSome {s : String} (h : (toNat?' s).isSome = true) :
-    IsDigits s := by
-  unfold toNat?' at h
-  split at h
-  · simp at h
-  · rename_i hnc
-    rw [Bool.not_eq_true] at hnc
-    rw [show s.toNat?.isSome = s.isNat from String.isSome_toNat?] at h
-    exact isDigits_of_isNat h hnc
 
 /-- An `Integer` string (`['-'] Digit⁺`) contains no `'_'`. -/
 theorem no_underscore_of_isWfInt {s : String} (h : IsWfInt s) : s.contains '_' = false := by
