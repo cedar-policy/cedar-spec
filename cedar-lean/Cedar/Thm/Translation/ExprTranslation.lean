@@ -47,6 +47,7 @@ theorem Cst.ExprOrSpecial.toExpr?_evaluate  {eos : ExprOrSpecial} {aexp : Expr} 
     | some s' => rw [hsome] at h; simp at *; rw [← h]; simp [evaluate]
   · rename_i b; rw [← h]; simp [evaluate]
 
+
 mutual
 
 theorem Cst.Primary.toAExpr?_sound
@@ -141,6 +142,9 @@ theorem Cst.Primary.toAExpr?_sound
     have hperElt : ∀ x ∈ xs, ∀ ax, x.toAExpr? = some ax →
         evaluate ax req es = x.evaluate req es := by
       intro x hx ax hax
+      have hsz : sizeOf x < sizeOf (Cst.Primary.eList xs) := by
+        have := List.sizeOf_lt_of_mem hx
+        simp only [Cst.Primary.eList.sizeOf_spec]; omega
       simp [Cst.Expr.toAExpr?, Option.bind_eq_some_iff] at hax
       obtain ⟨xEos, hxEos, hxExpr⟩ := hax
       exact Cst.Expr.toAExpr?_sound hxEos ax hxExpr
@@ -158,10 +162,18 @@ theorem Cst.Primary.toAExpr?_sound
     have hperElt : ∀ ri ∈ r, ∀ ax, ri.value.toAExpr? = some ax →
         evaluate ax req es = ri.value.evaluate req es := by
       intro ri hmem ax hax
+      have hsz : sizeOf ri.value < sizeOf (Cst.Primary.rInits r) := by
+        have h1 := List.sizeOf_lt_of_mem hmem
+        have hval : sizeOf ri.value < sizeOf ri := by
+          cases ri; simp only [Cst.RecInit.mk.sizeOf_spec]; omega
+        simp only [Cst.Primary.rInits.sizeOf_spec]; omega
       simp [Cst.Expr.toAExpr?, Option.bind_eq_some_iff] at hax
       obtain ⟨vEos, hvEos, hvExpr⟩ := hax
       exact Cst.Expr.toAExpr?_sound hvEos ax hvExpr
     exact rInits_record_eval_eq req es r map hmap hperElt
+
+termination_by (sizeOf prim, 0)
+decreasing_by all_goals (apply Prod.Lex.left; first | (subst_vars; assumption) | simp_wf)
 
 theorem Cst.Member.toAExpr?_sound
   {mem : Cst.Member} {eos : ExprOrSpecial}
@@ -172,6 +184,10 @@ theorem Cst.Member.toAExpr?_sound
   intro hmem aexp heos
   simp only [Cst.Member.toExprOrSpecial?, Option.bind_eq_bind, Option.bind_eq_some_iff] at hmem
   obtain ⟨peos, hitem, accs, haccs, hmem⟩ := hmem
+  have hacc : sizeOf mem.access < sizeOf mem := by
+    cases mem; simp only [Cst.Member.mk.sizeOf_spec]; omega
+  have hitm : sizeOf mem.item < sizeOf mem := by
+    cases mem; simp only [Cst.Member.mk.sizeOf_spec]; omega
   have harg : ∀ ce : Cst.Expr, sizeOf ce < sizeOf mem.access → ∀ ax, ce.toAExpr? = some ax →
       evaluate ax req es = ce.evaluate req es := by
     intro ce hsz ax hax
@@ -293,6 +309,12 @@ theorem Cst.Member.toAExpr?_sound
                         Option.bind_eq_bind, Option.bind_eq_some_iff] at haccs
                 · simp at hfunc
 
+termination_by (sizeOf mem, 0)
+decreasing_by
+  all_goals (apply Prod.Lex.left; first
+    | omega
+    | (subst_vars; simp only [Cst.Member.mk.sizeOf_spec] at *; omega))
+
 theorem Cst.Unary.toAExpr?_sound
   {u : Cst.Unary} {eos : ExprOrSpecial}
   {req : Request} {es : Entities} :
@@ -300,6 +322,7 @@ theorem Cst.Unary.toAExpr?_sound
   ∀ aexp, eos.toExpr? = some aexp →
   evaluate aexp req es = u.evaluate req es := by
   intro hu aexp heos
+  have hmk : sizeOf u.item < sizeOf u := by cases u; simp only [Cst.Unary.mk.sizeOf_spec]; omega
   match hop : u.op with
   | none =>
     simp [Cst.Unary.toExprOrSpecial?, hop] at hu
@@ -519,12 +542,446 @@ theorem Cst.Unary.toAExpr?_sound
                   | _ => simp [h0, bind, Except.bind]
                 | _ => simp [h0, bind, Except.bind]
 
+termination_by (sizeOf u, 0)
+decreasing_by all_goals (apply Prod.Lex.left; (subst_vars; assumption))
+
+theorem Cst.MultExpr.toAExpr?_sound
+  {mult : Cst.MultExpr} {eos : ExprOrSpecial}
+  {req : Request} {es : Entities} :
+  mult.toExprOrSpecial? = some eos →
+  ∀ aexp, eos.toExpr? = some aexp →
+  evaluate aexp req es = mult.evaluate req es := by
+  intro hmult aexp heos
+  have hmk : sizeOf mult.initial < sizeOf mult := by cases mult; simp only [Cst.MultExpr.mk.sizeOf_spec]; omega
+  have hueq : ∀ p ∈ mult.extended, ∀ (eu : Expr), p.2.toAExpr? = some eu →
+      evaluate eu req es = p.2.evaluate req es := by
+    intro p hp eu heu
+    have hsz : sizeOf p.2 < sizeOf mult := by
+      obtain ⟨mi, me⟩ := mult
+      have h1 := List.sizeOf_lt_of_mem hp
+      obtain ⟨pop, pu⟩ := p
+      simp only [Cst.MultExpr.mk.sizeOf_spec, Prod.mk.sizeOf_spec] at h1 ⊢
+      omega
+    simp only [Cst.Unary.toAExpr?, Option.bind_eq_bind, Option.bind_eq_some_iff] at heu
+    obtain ⟨ueos, hueos, heu'⟩ := heu
+    exact Cst.Unary.toAExpr?_sound hueos eu heu'
+  match hext : mult.extended with
+  | [] =>
+    simp only [Cst.MultExpr.toExprOrSpecial?, hext] at hmult
+    rw [@Cst.Unary.toAExpr?_sound mult.initial eos req es hmult aexp heos]
+    simp [Cst.MultExpr.evaluate, hext]
+    cases h_init : mult.initial.evaluate req es <;>
+      simp [bind, Except.bind, Cst.MultExpr.foldOps]
+  | hd :: tl =>
+    simp [Cst.MultExpr.toExprOrSpecial?, hext, Option.bind_eq_some_iff] at hmult
+    obtain ⟨first, hfirst, result, hres, heos_eq⟩ := hmult
+    rw [← heos_eq] at heos
+    simp [ExprOrSpecial.toExpr?] at heos
+    rw [← heos]
+    rw [hext] at hueq
+    rw [multExprFoldExtended_foldOps_eq req es _ hueq _ _ hres]
+    have hfirst_eq : evaluate first req es = mult.initial.evaluate req es := by
+      simp only [Cst.Unary.toAExpr?, Option.bind_eq_bind, Option.bind_eq_some_iff] at hfirst
+      obtain ⟨ueos, hueos, hfeu⟩ := hfirst
+      exact Cst.Unary.toAExpr?_sound hueos first hfeu
+    rw [hfirst_eq]
+    simp [Cst.MultExpr.evaluate, hext]
+
+termination_by (sizeOf mult, 0)
+decreasing_by all_goals (apply Prod.Lex.left; (subst_vars; assumption))
+
+theorem Cst.AddExpr.toAExpr?_sound
+  {add : Cst.AddExpr} {eos : ExprOrSpecial}
+  {req : Request} {es : Entities} :
+  add.toExprOrSpecial? = some eos →
+  ∀ aexp, eos.toExpr? = some aexp →
+  evaluate aexp req es = add.evaluate req es := by
+  intro hadd aexp heos
+  have hmk : sizeOf add.initial < sizeOf add := by cases add; simp only [Cst.AddExpr.mk.sizeOf_spec]; omega
+  have hmeq : ∀ p ∈ add.extended, ∀ (em : Expr), p.2.toAExpr? = some em →
+      evaluate em req es = p.2.evaluate req es := by
+    intro p hp em hem
+    have hsz : sizeOf p.2 < sizeOf add := by
+      obtain ⟨ai, aext⟩ := add
+      have h1 := List.sizeOf_lt_of_mem hp
+      obtain ⟨pop, pm⟩ := p
+      simp only [Cst.AddExpr.mk.sizeOf_spec, Prod.mk.sizeOf_spec] at h1 ⊢
+      omega
+    simp only [Cst.MultExpr.toAExpr?, Option.bind_eq_bind, Option.bind_eq_some_iff] at hem
+    obtain ⟨meos, hmeos, hem'⟩ := hem
+    exact Cst.MultExpr.toAExpr?_sound hmeos em hem'
+  match hext : add.extended with
+  | [] =>
+    simp only [Cst.AddExpr.toExprOrSpecial?, hext] at hadd
+    rw [@Cst.MultExpr.toAExpr?_sound add.initial eos req es hadd aexp heos]
+    simp [Cst.AddExpr.evaluate, hext]
+    cases h_init : add.initial.evaluate req es <;>
+      simp [bind, Except.bind, Cst.AddExpr.foldOps]
+  | hd :: tl =>
+    simp [Cst.AddExpr.toExprOrSpecial?, hext, Option.bind_eq_some_iff] at hadd
+    obtain ⟨first, hfirst, result, hres, heos_eq⟩ := hadd
+    rw [← heos_eq] at heos
+    simp [ExprOrSpecial.toExpr?] at heos
+    rw [← heos]
+    rw [hext] at hmeq
+    rw [addExprFoldExtended_foldOps_eq req es _ hmeq _ _ hres]
+    have hfirst_eq : evaluate first req es = add.initial.evaluate req es := by
+      simp only [Cst.MultExpr.toAExpr?, Option.bind_eq_bind, Option.bind_eq_some_iff] at hfirst
+      obtain ⟨meos, hmeos, hfem⟩ := hfirst
+      exact Cst.MultExpr.toAExpr?_sound hmeos first hfem
+    rw [hfirst_eq]
+    simp [Cst.AddExpr.evaluate, hext]
+
+termination_by (sizeOf add, 0)
+decreasing_by all_goals (apply Prod.Lex.left; (subst_vars; assumption))
+
+theorem Cst.Relation.toAExpr?_sound
+  {rel : Cst.Relation} {eos : ExprOrSpecial}
+  {req : Request} {es : Entities} :
+  rel.toExprOrSpecial? = some eos →
+  ∀ aexp, eos.toExpr? = some aexp →
+  evaluate aexp req es = rel.evaluate req es := by
+  intro hrel aexp heos
+  cases rel with
+  | rCommon initial extended =>
+    match hext : extended with
+    | [] =>
+      simp [Cst.Relation.toExprOrSpecial?] at hrel
+      rw [@Cst.AddExpr.toAExpr?_sound initial eos req es hrel aexp heos]
+      simp [Cst.Relation.evaluate]
+    | [(op, x)] =>
+      simp [Cst.Relation.toExprOrSpecial?] at hrel
+      simp only [Option.bind_eq_some_iff] at hrel
+      obtain ⟨ieos, hieos, eFirst, hFirst, eSecond, hSecond, hres⟩ := hrel
+      injection hres with hres
+      rw [← hres] at heos
+      simp [ExprOrSpecial.toExpr?] at heos
+      rw [← heos]
+      have hinit_eq : evaluate eFirst req es = initial.evaluate req es :=
+        @Cst.AddExpr.toAExpr?_sound initial ieos req es hieos eFirst hFirst
+      simp [Cst.AddExpr.toAExpr?, Option.bind_eq_some_iff] at hSecond
+      obtain ⟨xeos, hxeos, hxsecond⟩ := hSecond
+      have hx_eq : evaluate eSecond req es = x.evaluate req es :=
+        Cst.AddExpr.toAExpr?_sound hxeos eSecond hxsecond
+      cases h_init : initial.evaluate req es with
+      | error err =>
+        have h_first : evaluate eFirst req es = .error err := hinit_eq.trans h_init
+        cases op <;>
+          simp [constructExprRel, evaluate, Cst.Relation.evaluate, h_first, h_init, bind, Except.bind]
+      | ok iv =>
+        have h_first : evaluate eFirst req es = .ok iv := hinit_eq.trans h_init
+        cases h_x : x.evaluate req es with
+        | error err =>
+          have h_second : evaluate eSecond req es = .error err := hx_eq.trans h_x
+          cases op <;>
+            simp [constructExprRel, evaluate, Cst.Relation.evaluate, h_first, h_second, h_init, h_x, bind, Except.bind]
+        | ok xv =>
+          have h_second : evaluate eSecond req es = .ok xv := hx_eq.trans h_x
+          rw [constructExprRel_applyRelOp_eq op eFirst eSecond req es iv xv h_first h_second]
+          simp [Cst.Relation.evaluate, h_init, h_x, bind, Except.bind]
+    | _ :: _ :: _ =>
+      simp [Cst.Relation.toExprOrSpecial?] at hrel
+  | rHas target field =>
+    simp [Cst.Relation.toExprOrSpecial?, Option.bind_eq_some_iff] at hrel
+    obtain ⟨mt, hmt, mf, hmf, hres⟩ := hrel
+    simp [Cst.AddExpr.toAExpr?, Option.bind_eq_some_iff] at hmt
+    obtain ⟨tEos, htEos, htExpr⟩ := hmt
+    have htarget_eq : evaluate mt req es = target.evaluate req es :=
+      @Cst.AddExpr.toAExpr?_sound target tEos req es htEos mt htExpr
+    have hfield_attrs := addExpr_toHasRhs_toAttrs_agrees hmf
+    have hfield_nonempty := hasRhsToList_nonempty hmf
+    simp [Cst.Relation.evaluate, hfield_attrs]
+    cases mf with
+    | inl f =>
+      simp at hres
+      rw [← hres] at heos
+      simp [ExprOrSpecial.toExpr?] at heos
+      rw [← heos]
+      simp [hasRhsToList]
+      cases htgt : target.evaluate req es with
+      | error err =>
+        have hmtE : evaluate mt req es = .error err := htarget_eq.trans htgt
+        simp [evaluate, hmtE, bind, Except.bind]
+      | ok vt =>
+        have hmtO : evaluate mt req es = .ok vt := htarget_eq.trans htgt
+        simp [evaluate, hmtO, bind, Except.bind, Cst.rHasChain]
+    | inr fs =>
+      simp at hres
+      rw [← hres] at heos
+      simp [ExprOrSpecial.toExpr?] at heos
+      rw [← heos]
+      simp [hasRhsToList] at hfield_attrs hfield_nonempty
+      cases hfs : fs with
+      | nil => rw [hfs] at hfield_nonempty; simp at hfield_nonempty
+      | cons a as =>
+        rw [hfs] at hfield_attrs
+        cases htgt : target.evaluate req es with
+        | error err =>
+          have htgtMt : evaluate mt req es = .error err := htarget_eq.trans htgt
+          cases as with
+          | nil => simp [extendedHasAttr, evaluate, htgtMt, bind, Except.bind]
+          | cons b bs => simp [extendedHasAttr, evaluate, htgtMt, bind, Except.bind, Result.as]
+        | ok vt =>
+          have htgtMt : evaluate mt req es = .ok vt := htarget_eq.trans htgt
+          rw [extendedHasAttr_evaluate_agrees mt a as req es vt htgtMt]
+          simp [hasRhsToList, bind, Except.bind]
+  | rLike target pattern =>
+    simp [Cst.Relation.toExprOrSpecial?, Option.bind_eq_some_iff] at hrel
+    obtain ⟨mt, hmt, mp, hmp, hres⟩ := hrel
+    rw [← hres] at heos
+    simp [ExprOrSpecial.toExpr?] at heos
+    rw [← heos]
+    simp [Cst.AddExpr.toAExpr?, Option.bind_eq_some_iff] at hmt
+    obtain ⟨tEos, htEos, htExpr⟩ := hmt
+    have htarget_eq : evaluate mt req es = target.evaluate req es :=
+      @Cst.AddExpr.toAExpr?_sound target tEos req es htEos mt htExpr
+    obtain ⟨s, hpStr, hpToPattern⟩ := addExpr_toPattern_toPatternString_agrees hmp
+    simp [Cst.Relation.evaluate, hpStr]
+    cases htgt : target.evaluate req es with
+    | error err =>
+      have hmtE : evaluate mt req es = .error err := htarget_eq.trans htgt
+      simp [evaluate, hmtE, bind, Except.bind]
+    | ok vt =>
+      have hmtO : evaluate mt req es = .ok vt := htarget_eq.trans htgt
+      simp [evaluate, hmtO, bind, Except.bind, hpToPattern]
+  | rIsIn target ety inEntity =>
+    simp [Cst.Relation.toExprOrSpecial?, Option.bind_eq_some_iff] at hrel
+    have ⟨mt, hmt, et, hEt, hMatch⟩ := hrel
+    match hinE : inEntity, hMatch with
+    | none, hMatch =>
+      simp at hMatch
+      subst hMatch
+      simp [ExprOrSpecial.toExpr?] at heos
+      rw [← heos]
+      simp [Cst.AddExpr.toAExpr?, Option.bind_eq_some_iff] at hmt
+      have ⟨tEos, htEos, htExpr⟩ := hmt
+      have htarget_eq : evaluate mt req es = target.evaluate req es :=
+        @Cst.AddExpr.toAExpr?_sound target tEos req es htEos mt htExpr
+      simp [Cst.Relation.evaluate, hEt]
+      cases htgt : target.evaluate req es with
+      | error err =>
+        have hmtE : evaluate mt req es = .error err := htarget_eq.trans htgt
+        simp [evaluate, hmtE, bind, Except.bind]
+      | ok vt =>
+        have hmtO : evaluate mt req es = .ok vt := htarget_eq.trans htgt
+        simp [evaluate, hmtO, bind, Except.bind]
+        cases apply₁ (UnaryOp.is et) vt <;> simp
+    | some ie, hMatch =>
+      simp [Option.bind_eq_some_iff] at hMatch
+      have ⟨mi, hmi, hres⟩ := hMatch
+      subst hres
+      simp [ExprOrSpecial.toExpr?] at heos
+      rw [← heos]
+      simp [Cst.AddExpr.toAExpr?, Option.bind_eq_some_iff] at hmt
+      have ⟨tEos, htEos, htExpr⟩ := hmt
+      have htarget_eq : evaluate mt req es = target.evaluate req es :=
+        @Cst.AddExpr.toAExpr?_sound target tEos req es htEos mt htExpr
+      have hie_trans : ie.toAExpr? = some mi := hmi
+      simp [Cst.AddExpr.toAExpr?, Option.bind_eq_some_iff] at hmi
+      have ⟨iEos, hiEos, hiExpr⟩ := hmi
+      have hinEntity_eq : evaluate mi req es = ie.evaluate req es :=
+        @Cst.AddExpr.toAExpr?_sound ie iEos req es hiEos mi hiExpr
+      exact rIsIn_some_eval_eq hEt htarget_eq hinEntity_eq hie_trans
+
+termination_by (sizeOf rel, 0)
+decreasing_by
+  all_goals
+    apply Prod.Lex.left
+    subst_vars
+    simp only [Cst.Relation.rCommon.sizeOf_spec, Cst.Relation.rHas.sizeOf_spec,
+      Cst.Relation.rLike.sizeOf_spec, Cst.Relation.rIsIn.sizeOf_spec,
+      List.cons.sizeOf_spec, Prod.mk.sizeOf_spec, Option.some.sizeOf_spec] at *
+    omega
+
+theorem Cst.AndExpr.toAExpr?_sound
+  {ae : Cst.AndExpr} {eos : ExprOrSpecial}
+  {req : Request} {es : Entities} :
+  ae.toExprOrSpecial? = some eos →
+  ∀ aexp, eos.toExpr? = some aexp →
+  evaluate aexp req es = ae.evaluate req es := by
+  intro hae aexp heos
+  have hmk : sizeOf ae.initial < sizeOf ae := by cases ae; simp only [Cst.AndExpr.mk.sizeOf_spec]; omega
+  have hreq : ∀ r ∈ ae.extended, ∀ (er : Expr), r.toAExpr? = some er →
+      evaluate er req es = r.evaluate req es := by
+    intro r hr er her
+    have hsz : sizeOf r < sizeOf ae := by
+      obtain ⟨ai, aext⟩ := ae
+      have h1 := List.sizeOf_lt_of_mem hr
+      simp only [Cst.AndExpr.mk.sizeOf_spec] at h1 ⊢
+      omega
+    simp only [Cst.Relation.toAExpr?, Option.bind_eq_bind, Option.bind_eq_some_iff] at her
+    obtain ⟨reos, hreos, her'⟩ := her
+    exact Cst.Relation.toAExpr?_sound hreos er her'
+  match hext : ae.extended with
+  | [] =>
+    simp only [Cst.AndExpr.toExprOrSpecial?, hext] at hae
+    rw [@Cst.Relation.toAExpr?_sound ae.initial eos req es hae aexp heos]
+    simp [Cst.AndExpr.evaluate, hext]
+    cases h_init : ae.initial.evaluate req es <;>
+      simp [bind, Except.bind, Cst.AndExpr.foldOps]
+  | hd :: tl =>
+    simp [Cst.AndExpr.toExprOrSpecial?, hext, Option.bind_eq_some_iff] at hae
+    obtain ⟨first, hfirst, result, hres, heos_eq⟩ := hae
+    rw [← heos_eq] at heos
+    simp [ExprOrSpecial.toExpr?] at heos
+    rw [← heos]
+    rw [hext] at hreq
+    rw [andExprFoldExtended_foldOps_eq req es _ hreq _ _ hres]
+    have hfirst_eq : evaluate first req es = ae.initial.evaluate req es := by
+      simp only [Cst.Relation.toAExpr?, Option.bind_eq_bind, Option.bind_eq_some_iff] at hfirst
+      obtain ⟨reos, hreos, hfem⟩ := hfirst
+      exact Cst.Relation.toAExpr?_sound hreos first hfem
+    rw [hfirst_eq]
+    have hall := andExprFoldExtended_some_all_translate _ hres
+    have hguard : (ae.extended.all fun r => r.toAExpr?.isSome) = true := by rw [hext]; exact hall
+    rw [AndExpr.evaluate_eq hguard, hext]
+
+termination_by (sizeOf ae, 0)
+decreasing_by all_goals (apply Prod.Lex.left; (subst_vars; assumption))
+
+theorem Cst.OrExpr.toAExpr?_sound
+  {oe : Cst.OrExpr} {eos : ExprOrSpecial}
+  {req : Request} {es : Entities} :
+  oe.toExprOrSpecial? = some eos →
+  ∀ aexp, eos.toExpr? = some aexp →
+  evaluate aexp req es = oe.evaluate req es := by
+  intro hoe aexp heos
+  have hmk : sizeOf oe.initial < sizeOf oe := by cases oe; simp only [Cst.OrExpr.mk.sizeOf_spec]; omega
+  have hareq : ∀ a ∈ oe.extended, ∀ (ea : Expr), a.toAExpr? = some ea →
+      evaluate ea req es = a.evaluate req es := by
+    intro a ha ea hea
+    have hsz : sizeOf a < sizeOf oe := by
+      obtain ⟨oi, oext⟩ := oe
+      have h1 := List.sizeOf_lt_of_mem ha
+      simp only [Cst.OrExpr.mk.sizeOf_spec] at h1 ⊢
+      omega
+    simp only [Cst.AndExpr.toAExpr?, Option.bind_eq_bind, Option.bind_eq_some_iff] at hea
+    obtain ⟨aeos, haeos, hea'⟩ := hea
+    exact Cst.AndExpr.toAExpr?_sound haeos ea hea'
+  match hext : oe.extended with
+  | [] =>
+    simp only [Cst.OrExpr.toExprOrSpecial?, hext] at hoe
+    rw [@Cst.AndExpr.toAExpr?_sound oe.initial eos req es hoe aexp heos]
+    simp [Cst.OrExpr.evaluate, hext]
+    cases h_init : oe.initial.evaluate req es <;>
+      simp [bind, Except.bind, Cst.OrExpr.foldOps]
+  | hd :: tl =>
+    simp [Cst.OrExpr.toExprOrSpecial?, hext, Option.bind_eq_some_iff] at hoe
+    obtain ⟨first, hfirst, result, hres, heos_eq⟩ := hoe
+    rw [← heos_eq] at heos
+    simp [ExprOrSpecial.toExpr?] at heos
+    rw [← heos]
+    rw [hext] at hareq
+    rw [orExprFoldExtended_foldOps_eq req es _ hareq _ _ hres]
+    have hfirst_eq : evaluate first req es = oe.initial.evaluate req es := by
+      simp only [Cst.AndExpr.toAExpr?, Option.bind_eq_bind, Option.bind_eq_some_iff] at hfirst
+      obtain ⟨aeos, haeos, hfea⟩ := hfirst
+      exact Cst.AndExpr.toAExpr?_sound haeos first hfea
+    rw [hfirst_eq]
+    have hall := orExprFoldExtended_some_all_translate _ hres
+    have hguard : (oe.extended.all fun r => r.toAExpr?.isSome) = true := by rw [hext]; exact hall
+    rw [OrExpr.evaluate_eq hguard, hext]
+
+termination_by (sizeOf oe, 0)
+decreasing_by all_goals (apply Prod.Lex.left; (subst_vars; assumption))
+
+theorem Cst.ExprData.toAExpr?_sound
+  {ed : Cst.ExprData} {eos : ExprOrSpecial}
+  {req : Request} {es : Entities} :
+  ed.toExprOrSpecial? = some eos →
+  ∀ aexp, eos.toExpr? = some aexp →
+  evaluate aexp req es = ed.evaluate req es := by
+  intro hed aexp heos
+  cases ed with
+  | edOr ore =>
+    simp [Cst.ExprData.toExprOrSpecial?] at hed
+    simp [Cst.ExprData.evaluate]
+    have hsz : sizeOf ore < sizeOf (Cst.ExprData.edOr ore) := by
+      simp only [Cst.ExprData.edOr.sizeOf_spec]; omega
+    exact Cst.OrExpr.toAExpr?_sound hed aexp heos
+  | edIf i t f =>
+    simp [Cst.ExprData.toExprOrSpecial?, Option.bind_eq_some_iff] at hed
+    obtain ⟨eg, hg, et, ht, ef, hf, hres⟩ := hed
+    have hguard : (t.toAExpr?.isSome && f.toAExpr?.isSome) = true := by simp [ht, hf]
+    rw [← hres] at heos
+    simp [ExprOrSpecial.toExpr?] at heos
+    rw [← heos]
+    simp [Cst.Expr.toAExpr?, Option.bind_eq_some_iff] at hg ht hf
+    obtain ⟨gEos, hgEos, hgExpr⟩ := hg
+    obtain ⟨tEos, htEos, htExpr⟩ := ht
+    obtain ⟨fEos, hfEos, hfExpr⟩ := hf
+    have hszi : sizeOf i < sizeOf (Cst.ExprData.edIf i t f) := by
+      simp only [Cst.ExprData.edIf.sizeOf_spec]; omega
+    have hszt : sizeOf t < sizeOf (Cst.ExprData.edIf i t f) := by
+      simp only [Cst.ExprData.edIf.sizeOf_spec]; omega
+    have hszf : sizeOf f < sizeOf (Cst.ExprData.edIf i t f) := by
+      simp only [Cst.ExprData.edIf.sizeOf_spec]; omega
+    have hg_eq : evaluate eg req es = i.evaluate req es := Cst.Expr.toAExpr?_sound hgEos eg hgExpr
+    have ht_eq : evaluate et req es = t.evaluate req es := Cst.Expr.toAExpr?_sound htEos et htExpr
+    have hf_eq : evaluate ef req es = f.evaluate req es := Cst.Expr.toAExpr?_sound hfEos ef hfExpr
+    rw [ExprData.evaluate_edIf_eq hguard]
+    simp [evaluate, bind, Except.bind, Result.as, Coe.coe]
+    rw [hg_eq]
+    cases hi : i.evaluate req es with
+    | error err => simp
+    | ok gv =>
+      cases gv with
+      | prim p =>
+        cases p with
+        | bool b =>
+          simp [Value.asBool]
+          cases b with
+          | true => exact ht_eq
+          | false => exact hf_eq
+        | int _ | string _ | entityUID _ => simp [Value.asBool]
+      | set _ | record _ | ext _ => simp [Value.asBool]
+termination_by (sizeOf ed, 0)
+decreasing_by all_goals (apply Prod.Lex.left; (subst_vars; assumption))
+
+theorem Cst.ExprImpl.toAExpr?_sound
+  {ei : Cst.ExprImpl} {eos : ExprOrSpecial}
+  {req : Request} {es : Entities} :
+  ei.toExprOrSpecial? = some eos →
+  ∀ aexp, eos.toExpr? = some aexp →
+  evaluate aexp req es = ei.evaluate req es := by
+  intro hei aexp heos
+  simp only [Cst.ExprImpl.toExprOrSpecial?] at hei
+  simp [Cst.ExprImpl.evaluate]
+  exact Cst.ExprData.toAExpr?_sound hei aexp heos
+termination_by (sizeOf ei, 0)
+decreasing_by
+  apply Prod.Lex.left
+  have h : sizeOf ei = 1 + sizeOf ei.expr := by cases ei; simp [Cst.ExprImpl.mk.sizeOf_spec]
+  omega
+
 theorem Cst.Expr.toAExpr?_sound
   {e : Cst.Expr} {eos : ExprOrSpecial}
   {req : Request} {es : Entities} :
   e.toExprOrSpecial? = some eos →
   ∀ aexp, eos.toExpr? = some aexp →
-  evaluate aexp req es = e.evaluate req es := by sorry
+  evaluate aexp req es = e.evaluate req es := by
+  intro he aexp heos
+  cases e with
+  | expr ei =>
+    simp only [Cst.Expr.toExprOrSpecial?] at he
+    simp [Cst.Expr.evaluate]
+    have hsz : sizeOf ei < sizeOf (Cst.Expr.expr ei) := by
+      simp only [Cst.Expr.expr.sizeOf_spec]; omega
+    exact Cst.ExprImpl.toAExpr?_sound he aexp heos
+termination_by (sizeOf e, 0)
+decreasing_by all_goals (apply Prod.Lex.left; (subst_vars; assumption))
+
+theorem expr_to_expr_sound
+  {e : Cst.Expr} {aexp : Expr} {req : Request} {es : Entities} :
+  e.toAExpr? = some aexp →
+  evaluate aexp req es = e.evaluate req es := by
+  intro h
+  simp [Cst.Expr.toAExpr?] at h
+  cases heos : e.toExprOrSpecial? with
+  | none => simp [heos] at h
+  | some eos =>
+    apply Cst.Expr.toAExpr?_sound heos aexp
+    simp [heos] at h; exact h
 
 end
 

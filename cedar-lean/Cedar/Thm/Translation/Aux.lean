@@ -374,6 +374,18 @@ theorem constructExprRel_applyRelOp_agrees
     simp [constructExprRel, Cst.applyRelOp, evaluate, he₁, he₂,
           bind, Except.bind]
 
+/-- Equality version of `constructExprRel_applyRelOp_agrees`. -/
+theorem constructExprRel_applyRelOp_eq
+    (op : Cst.RelOp) (e₁ e₂ : Expr) (req : Request) (es : Entities)
+    (v₁ v₂ : Value) :
+    evaluate e₁ req es = .ok v₁ →
+    evaluate e₂ req es = .ok v₂ →
+    evaluate (constructExprRel op e₁ e₂) req es = Cst.applyRelOp op v₁ v₂ es := by
+  intro he₁ he₂
+  cases op <;>
+    simp [constructExprRel, Cst.applyRelOp, evaluate, he₁, he₂,
+          bind, Except.bind]
+
 /-- Collapse the `String ⊕ List String` shape from the translator's `toHasRhs?`
     into a flat `List String`, treating `.inl f` as the singleton `[f]`. -/
 def hasRhsToList : String ⊕ List String → List String
@@ -1906,6 +1918,48 @@ theorem rIsIn_some_eval_agrees
         | int _ | string _ | entityUID _ => simp [Result.as, Coe.coe, Value.asBool]
       | set _ | record _ | ext _ => simp [Result.as, Coe.coe, Value.asBool]
 
+/-- Equality version of `rIsIn_some_eval_agrees`. -/
+theorem rIsIn_some_eval_eq
+    {target ety ie : Cst.AddExpr} {mt mi : Expr} {et : EntityType}
+    {req : Request} {es : Entities}
+    (hEt : ety.toEntityType? = some et)
+    (htarget_eq : evaluate mt req es = target.evaluate req es)
+    (hinEntity_eq : evaluate mi req es = ie.evaluate req es)
+    (hie_trans : ie.toAExpr? = some mi) :
+    evaluate (Expr.and (.unaryApp (.is et) mt) (.binaryApp .mem mt mi)) req es =
+         (Cst.Relation.rIsIn target ety (some ie)).evaluate req es := by
+  simp only [Cst.Relation.evaluate, hEt, evaluate, hie_trans, Option.isNone_some,
+             Bool.false_eq_true, if_false]
+  rw [htarget_eq]
+  cases htgt : target.evaluate req es with
+  | error e => simp [bind, Except.bind, Result.as]
+  | ok vt =>
+    simp only [bind, Except.bind]
+    cases hIs : apply₁ (.is et) vt with
+    | error e => simp [Result.as]
+    | ok isVal =>
+      cases isVal with
+      | prim p =>
+        cases p with
+        | bool b =>
+          cases b with
+          | false => simp [Result.as, Coe.coe, Value.asBool]
+          | true =>
+            simp only [Result.as, Coe.coe, Value.asBool, Bool.not_true,
+                       Bool.false_eq_true, if_false]
+            rw [hinEntity_eq]
+            cases hie : ie.evaluate req es with
+            | error e => simp
+            | ok v₂ =>
+              cases hmem : apply₂ .mem vt v₂ es with
+              | error e => simp [hmem]
+              | ok memv =>
+                have ⟨b', hb'⟩ := apply₂_mem_returns_bool hmem
+                subst hb'
+                simp [hmem, pure, Except.pure]
+        | int _ | string _ | entityUID _ => simp [Result.as, Coe.coe, Value.asBool]
+      | set _ | record _ | ext _ => simp [Result.as, Coe.coe, Value.asBool]
+
 /- For AndExpr -/
 
 /-- `foldOps` short-circuits on `.bool false`: it ignores `rest` and returns
@@ -1951,6 +2005,38 @@ theorem expr_and_eval_eq_foldOps_step
       | ok rv =>
         have h_rel_ok : rel.evaluate req es = .ok rv := (hrel_iff rv).mp h_rhs
         rw [h_rel_ok]
+        cases rv with
+        | prim p =>
+          cases p with
+          | bool _ => simp [Value.asBool, pure, Except.pure]
+          | int _ | string _ | entityUID _ => simp [Value.asBool]
+        | set _ | record _ | ext _ => simp [Value.asBool]
+
+/-- Equality version of `expr_and_eval_eq_foldOps_step`. -/
+theorem expr_and_eval_eq_foldOps_step_eq
+    (req : Request) (es : Entities)
+    (acc_ast rhs : Expr) (acc_v : Value) (rel : Cst.Relation)
+    (rest : List Cst.Relation) :
+    evaluate acc_ast req es = .ok acc_v →
+    evaluate rhs req es = rel.evaluate req es →
+      (do let v' ← evaluate (Expr.and acc_ast rhs) req es
+          Cst.AndExpr.foldOps v' rest req es) =
+      Cst.AndExpr.foldOps acc_v (rel :: rest) req es := by
+  intro hacc hrel_eq
+  simp [Cst.AndExpr.foldOps, evaluate, hacc, bind, Except.bind, Result.as, Coe.coe]
+  cases hAccBool : acc_v.asBool with
+  | error _ => simp
+  | ok bAcc =>
+    cases bAcc with
+    | false =>
+      simp
+      rw [andExprFoldOps_false_short_circuits]
+    | true =>
+      simp
+      rw [hrel_eq]
+      cases h_rel : rel.evaluate req es with
+      | error err => simp
+      | ok rv =>
         cases rv with
         | prim p =>
           cases p with
@@ -2009,6 +2095,175 @@ theorem expr_or_eval_eq_foldOps_step
           | bool _ => simp [Value.asBool, pure, Except.pure]
           | int _ | string _ | entityUID _ => simp [Value.asBool]
         | set _ | record _ | ext _ => simp [Value.asBool]
+
+/-- Equality version of `expr_or_eval_eq_foldOps_step`. -/
+theorem expr_or_eval_eq_foldOps_step_eq
+    (req : Request) (es : Entities)
+    (acc_ast rhs : Expr) (acc_v : Value) (ande : Cst.AndExpr)
+    (rest : List Cst.AndExpr) :
+    evaluate acc_ast req es = .ok acc_v →
+    evaluate rhs req es = ande.evaluate req es →
+      (do let v' ← evaluate (Expr.or acc_ast rhs) req es
+          Cst.OrExpr.foldOps v' rest req es) =
+      Cst.OrExpr.foldOps acc_v (ande :: rest) req es := by
+  intro hacc hrel_eq
+  simp [Cst.OrExpr.foldOps, evaluate, hacc, bind, Except.bind, Result.as, Coe.coe]
+  cases hAccBool : acc_v.asBool with
+  | error _ => simp
+  | ok bAcc =>
+    cases bAcc with
+    | true =>
+      simp
+      rw [orExprFoldOps_true_short_circuits]
+    | false =>
+      simp
+      rw [hrel_eq]
+      cases h_rel : ande.evaluate req es with
+      | error err => simp
+      | ok rv =>
+        cases rv with
+        | prim p =>
+          cases p with
+          | bool _ => simp [Value.asBool, pure, Except.pure]
+          | int _ | string _ | entityUID _ => simp [Value.asBool]
+        | set _ | record _ | ext _ => simp [Value.asBool]
+
+/-- Equality analog of `multExprFoldExtended_foldOps_agrees`, with the per-`Unary`
+    evaluation equality supplied as a hypothesis so the fold stays outside the
+    mutual `_sound` cycle. -/
+theorem multExprFoldExtended_foldOps_eq
+    (req : Request) (es : Entities) :
+    (xs : List (Cst.MultOp × Cst.Unary)) →
+    (∀ p ∈ xs, ∀ (eu : Expr), p.2.toAExpr? = some eu →
+        evaluate eu req es = p.2.evaluate req es) →
+    (acc_ast result : Expr) →
+    Cst.MultExpr.foldExtended acc_ast xs = some result →
+    evaluate result req es =
+      (do let acc_v ← evaluate acc_ast req es; Cst.MultExpr.foldOps acc_v xs req es)
+  | [], _, acc_ast, result, hfold => by
+    simp [Cst.MultExpr.foldExtended] at hfold
+    subst hfold
+    cases h : evaluate acc_ast req es <;> simp [Cst.MultExpr.foldOps, bind, Except.bind]
+  | (op, u) :: rest, hueq, acc_ast, result, hfold => by
+    cases hop : op with
+    | mTimes =>
+      simp [Cst.MultExpr.foldExtended, hop] at hfold
+      cases hu : u.toAExpr? with
+      | none => rw [hu] at hfold; simp at hfold
+      | some eu =>
+        rw [hu] at hfold; simp at hfold
+        have ih' := multExprFoldExtended_foldOps_eq req es rest
+          (fun p hp => hueq p (List.mem_cons_of_mem _ hp)) _ _ hfold
+        rw [ih']
+        have hu_eq := hueq (op, u) List.mem_cons_self eu hu
+        simp [evaluate, Cst.MultExpr.foldOps, bind_assoc, hu_eq]
+    | _ => simp [Cst.MultExpr.foldExtended, hop] at hfold
+termination_by xs _ _ _ => xs.length
+
+/-- Equality analog of `addExprFoldExtended_foldOps_agrees`, with the per-`MultExpr`
+    evaluation equality supplied as a hypothesis. -/
+theorem addExprFoldExtended_foldOps_eq
+    (req : Request) (es : Entities) :
+    (xs : List (Cst.AddOp × Cst.MultExpr)) →
+    (∀ p ∈ xs, ∀ (em : Expr), p.2.toAExpr? = some em →
+        evaluate em req es = p.2.evaluate req es) →
+    (acc_ast result : Expr) →
+    Cst.AddExpr.foldExtended acc_ast xs = some result →
+    evaluate result req es =
+      (do let acc_v ← evaluate acc_ast req es; Cst.AddExpr.foldOps acc_v xs req es)
+  | [], _, acc_ast, result, hfold => by
+    simp [Cst.AddExpr.foldExtended] at hfold
+    subst hfold
+    cases h : evaluate acc_ast req es <;> simp [Cst.AddExpr.foldOps, bind, Except.bind]
+  | (op, m) :: rest, hmeq, acc_ast, result, hfold => by
+    cases hop : op with
+    | aPlus =>
+      simp [Cst.AddExpr.foldExtended, hop] at hfold
+      cases hm : m.toAExpr? with
+      | none => rw [hm] at hfold; simp at hfold
+      | some em =>
+        rw [hm] at hfold; simp at hfold
+        have ih' := addExprFoldExtended_foldOps_eq req es rest
+          (fun p hp => hmeq p (List.mem_cons_of_mem _ hp)) _ _ hfold
+        rw [ih']
+        have hm_eq := hmeq (op, m) List.mem_cons_self em hm
+        simp [evaluate, Cst.AddExpr.foldOps, bind_assoc, hm_eq]
+    | aMinus =>
+      simp [Cst.AddExpr.foldExtended, hop] at hfold
+      cases hm : m.toAExpr? with
+      | none => rw [hm] at hfold; simp at hfold
+      | some em =>
+        rw [hm] at hfold; simp at hfold
+        have ih' := addExprFoldExtended_foldOps_eq req es rest
+          (fun p hp => hmeq p (List.mem_cons_of_mem _ hp)) _ _ hfold
+        rw [ih']
+        have hm_eq := hmeq (op, m) List.mem_cons_self em hm
+        simp [evaluate, Cst.AddExpr.foldOps, bind_assoc, hm_eq]
+termination_by xs _ _ _ => xs.length
+
+/-- Equality analog of `andExprFoldExtended_foldOps_agrees`, with the per-`Relation`
+    evaluation equality supplied as a hypothesis. -/
+theorem andExprFoldExtended_foldOps_eq
+    (req : Request) (es : Entities) :
+    (xs : List Cst.Relation) →
+    (∀ r ∈ xs, ∀ (er : Expr), r.toAExpr? = some er →
+        evaluate er req es = r.evaluate req es) →
+    (acc_ast result : Expr) →
+    Cst.AndExpr.foldExtended acc_ast xs = some result →
+    evaluate result req es =
+      (do let acc_v ← evaluate acc_ast req es; Cst.AndExpr.foldOps acc_v xs req es)
+  | [], _, acc_ast, result, hfold => by
+    simp [Cst.AndExpr.foldExtended] at hfold
+    subst hfold
+    cases h : evaluate acc_ast req es <;> simp [Cst.AndExpr.foldOps, bind, Except.bind]
+  | rel :: rest, hreq, acc_ast, result, hfold => by
+    simp [Cst.AndExpr.foldExtended] at hfold
+    cases hrel : rel.toAExpr? with
+    | none => rw [hrel] at hfold; simp at hfold
+    | some erel =>
+      rw [hrel] at hfold; simp at hfold
+      have ih' := andExprFoldExtended_foldOps_eq req es rest
+        (fun r hr => hreq r (List.mem_cons_of_mem _ hr)) _ _ hfold
+      rw [ih']
+      have hrel_eq := hreq rel List.mem_cons_self erel hrel
+      cases h_acc : evaluate acc_ast req es with
+      | error err => simp [evaluate, h_acc, bind, Except.bind, Result.as]
+      | ok acc_v =>
+        rw [expr_and_eval_eq_foldOps_step_eq req es acc_ast erel acc_v rel rest h_acc hrel_eq]
+        simp [bind, Except.bind]
+termination_by xs _ _ _ => xs.length
+
+/-- Equality analog of `orExprFoldExtended_foldOps_agrees`, with the per-`AndExpr`
+    evaluation equality supplied as a hypothesis. -/
+theorem orExprFoldExtended_foldOps_eq
+    (req : Request) (es : Entities) :
+    (xs : List Cst.AndExpr) →
+    (∀ a ∈ xs, ∀ (ea : Expr), a.toAExpr? = some ea →
+        evaluate ea req es = a.evaluate req es) →
+    (acc_ast result : Expr) →
+    Cst.OrExpr.foldExtended acc_ast xs = some result →
+    evaluate result req es =
+      (do let acc_v ← evaluate acc_ast req es; Cst.OrExpr.foldOps acc_v xs req es)
+  | [], _, acc_ast, result, hfold => by
+    simp [Cst.OrExpr.foldExtended] at hfold
+    subst hfold
+    cases h : evaluate acc_ast req es <;> simp [Cst.OrExpr.foldOps, bind, Except.bind]
+  | ande :: rest, hareq, acc_ast, result, hfold => by
+    simp [Cst.OrExpr.foldExtended] at hfold
+    cases hande : ande.toAExpr? with
+    | none => rw [hande] at hfold; simp at hfold
+    | some eande =>
+      rw [hande] at hfold; simp at hfold
+      have ih' := orExprFoldExtended_foldOps_eq req es rest
+        (fun a ha => hareq a (List.mem_cons_of_mem _ ha)) _ _ hfold
+      rw [ih']
+      have hande_eq := hareq ande List.mem_cons_self eande hande
+      cases h_acc : evaluate acc_ast req es with
+      | error err => simp [evaluate, h_acc, bind, Except.bind, Result.as]
+      | ok acc_v =>
+        rw [expr_or_eval_eq_foldOps_step_eq req es acc_ast eande acc_v ande rest h_acc hande_eq]
+        simp [bind, Except.bind]
+termination_by xs _ _ _ => xs.length
 
 /-- If `foldExtended` succeeds on `xs`, every conjunct in `xs` translates. Used
     to discharge the `AndExpr.evaluate` translatability guard. -/
