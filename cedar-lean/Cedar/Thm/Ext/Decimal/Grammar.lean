@@ -2,6 +2,7 @@ module
 
 public import Cedar.Spec.Ext.Decimal
 public import Std.Data.String
+public import Cedar.Thm.Data.String
 
 import all Cedar.Spec.Ext.Decimal
 import all Cedar.Spec.Ext.Util
@@ -14,11 +15,8 @@ open Cedar.Spec.Ext
 This file contains only the grammar-level definitions — the well-formedness predicates and the
 value function — as a direct, parser-independent transcription of the decimal grammar. The lemmas
 connecting these definitions to `Decimal.parse` (in particular the digit-string ↔ `toInt?'`/
-`toNat?'` bridges) live in `Cedar.Thm.Ext.Decimal.Lemmas`. -/
-
-/-- `Digit⁺`: a non-empty string all of whose characters are decimal digits. -/
-public def IsDigits (s : String) : Prop :=
-  0 < s.length ∧ ∀ c ∈ s.toList, c.isDigit = true
+`toNat?'` bridges) live in `Cedar.Thm.Ext.Decimal.Lemmas`. The `Digit⁺` predicate `IsDigits` and
+its `toNat?'` bridges are shared with the duration grammar and live in `Cedar.Thm.Data.String`. -/
 
 /-- The grammar's `Integer ::= ['-'] Digit⁺`: either a bare non-empty digit string, or a
     `'-'` followed by one. The `∃ t` branch requires `IsDigits t`, so a bare `"-"` is
