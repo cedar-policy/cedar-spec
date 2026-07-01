@@ -33,7 +33,7 @@ For instance, 10.234 is a decimal number. Its integer part is 10 and its fractio
 We restrict the number of the digits after the decimal point to 4.
 -/
 
-def DECIMAL_DIGITS : Nat := 4
+private abbrev DECIMAL_DIGITS : Nat := 4
 
 public abbrev Decimal := Int64
 
@@ -47,7 +47,7 @@ public def decimal? (i : Int) : Option Decimal :=
 
 public def parse (str : String) : Option Decimal :=
   match str.splitToList (· = '.') with
-  | ["-", _] => .none -- String.toInt? "-" == some 0
+  | ["-", _] => .none -- guard against bare "-"; redundant on current stdlib (`String.toInt? "-" = none`) but robust to stdlib changes
   | [left, right] =>
     let rlen := right.length
     if 0 < rlen ∧ rlen ≤ DECIMAL_DIGITS
@@ -62,12 +62,12 @@ public def parse (str : String) : Option Decimal :=
     else .none
   | _ => .none
 
-instance : ToString Decimal where
+public instance : ToString Decimal where
   toString (d : Decimal) : String :=
     let neg   := if d < 0 then "-" else ""
     let d     := d.natAbs
-    let left  := d / (Nat.pow 10 DECIMAL_DIGITS)
-    let right := d % (Nat.pow 10 DECIMAL_DIGITS)
+    let left  := d / (Nat.pow 10 4)
+    let right := d % (Nat.pow 10 4)
     let right :=
       -- this is not generalized for arbitrary DECIMAL_DIGITS
       if right < 10 then s!".000{right}"
