@@ -4,11 +4,13 @@ import Cedar.Spec.CstSemantics
 import Cedar.Spec.CstToAst
 import Cedar.Thm.Translation.ExprTranslation
 import Cedar.Thm.Translation.PolicyToExpr
+import Cedar.Thm.Validation.Typechecker
 
 namespace Cedar.Thm
 
 open Cedar.Data
 open Cedar.Spec
+open Cedar.Validation
 
 /-- When `toPolicy?` succeeds, the CST policy's expression also translates to AST. -/
 private theorem toPolicy?_implies_toAExpr?
@@ -51,7 +53,8 @@ theorem policy_satisfied_agrees (cp : Cst.Policy) (ap : Spec.Policy)
   Cst.satisfied cp req es = satisfied ap req es := by
   intro htrans
   obtain ⟨ae, hae⟩ := toPolicy?_implies_toAExpr? htrans
-  have h1 := @expr_to_expr_agrees _ _ req es hae (↑true : Value)
+  have h1 : evaluate ae req es = .ok (↑true : Value) ↔ cp.toExpr.evaluate req es = .ok (↑true : Value) := by
+    rw [expr_to_expr_sound hae]
   have h2 := policy_to_expr_agrees cp ap cp.toExpr ae req es htrans rfl hae (val := (↑true : Value))
   have hiff : cp.toExpr.evaluate req es = .ok ↑true ↔ evaluate ap.toExpr req es = .ok ↑true :=
     ⟨fun hcst => h2.mp (h1.mpr hcst), fun hast => h1.mp (h2.mpr hast)⟩
@@ -84,7 +87,7 @@ theorem policy_hasError_agrees (cp : Cst.Policy) (ap : Spec.Policy)
   intro htrans
   obtain ⟨ae, hae⟩ := toPolicy?_implies_toAExpr? htrans
   have h1 : ∀ v, evaluate ae req es = .ok v ↔ cp.toExpr.evaluate req es = .ok v :=
-    @expr_to_expr_agrees _ _ req es hae
+    fun v => by rw [expr_to_expr_sound hae]
   have h2 : ∀ v, evaluate ae req es = .ok v ↔ evaluate ap.toExpr req es = .ok v :=
     policy_to_expr_agrees cp ap cp.toExpr ae req es htrans rfl hae
   have hiff : ∀ v, cp.toExpr.evaluate req es = .ok v ↔ evaluate ap.toExpr req es = .ok v :=
@@ -178,5 +181,19 @@ theorem noHasError_translates (cp : Cst.Policy) (req : Request) (es : Entities) 
 theorem translation_is_complete (cps : Cst.Policies) (req : Request) (es : Entities) :
   ∀ cp ∈ cps.ps, cp.id ∉ (Cst.isAuthorized req es cps).erroringPolicies →
   ∃ ap, cp.toPolicy? = ap := by simp
+
+theorem cst_validated_no_type_error
+    {cst : Cst.Expr} {ast : Spec.Expr} {c₁ c₂ : Capabilities} {ty : TypedExpr}
+    {env : TypeEnv} {request : Request} {entities : Entities}
+    (htrans : cst.toAExpr? = some ast)
+    (hcap : CapabilitiesInvariant c₁ request entities)
+    (hwf : InstanceOfWellFormedEnvironment request entities env)
+    (hwt : typeOf ast c₁ env = .ok (ty, c₂)) :
+    cst.evaluate request entities ≠ .error .typeError := by
+  intro hcontra
+  obtain ⟨_, v, hev, _⟩ := type_of_is_sound hcap hwf hwt
+  have hast : evaluate ast request entities = .error .typeError := by
+    rw [expr_to_expr_sound htrans, hcontra]
+  simp [EvaluatesTo, hast] at hev
 
 end Cedar.Thm
