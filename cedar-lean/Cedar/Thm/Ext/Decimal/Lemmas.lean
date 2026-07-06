@@ -17,7 +17,7 @@ open Cedar.Spec.Ext
 /-! ============================================================================================
     # Grammar ↔ parser bridge lemmas
 
-    `IsWfStr` is phrased over the grammar's digit-level productions (`IsDigits`/`IsWfInt`), while
+    `IsWfDecimal` is phrased over the grammar's digit-level productions (`IsDigits`/`IsWfInt`), while
     `Decimal.parse` and `computeValue` extract numeric values through `toInt?'`/`toNat?'`. These
     lemmas connect the two: a digit string is exactly one the stdlib parser accepts. They are what
     lets the soundness/completeness proofs move between the grammar view and the parser view.
@@ -95,11 +95,11 @@ theorem ne_dash_of_isWfInt {s : String} (h : IsWfInt s) : s ≠ "-" := by
       rw [← String.toList_inj]; simpa using List.eq_nil_of_length_eq_zero this
     rw [ht] at hlen; simp at hlen
 
-/-- `IsWfStr` restated in the parser-primitive form the parse proofs consume: the digit-string
+/-- `IsWfDecimal` restated in the parser-primitive form the parse proofs consume: the digit-string
     clauses become `(toInt?'/toNat?').isSome`, and `left ≠ "-"` / `0 < right.length` fall out of
     `IsWfInt`/`IsDigits`. -/
-theorem isWfStr_iff {s : String} :
-    IsWfStr s ↔
+theorem isWfDecimal_iff {s : String} :
+    IsWfDecimal s ↔
       ∃ left right,
         s.splitToList (· = '.') = [left, right] ∧
         left ≠ "-" ∧
@@ -125,7 +125,7 @@ theorem parse_value_eq_sign_form (l : Int) (r : Nat) (b : Bool) (P Q : Int) :
 /-- A well-formed string always has a computed value: `computeValue` succeeds because both the
     split and the integer/fraction primitives succeed. (The converse fails — `computeValue` can
     succeed on strings that violate the `right.length ≤ DECIMAL_DIGITS` bound.) -/
-theorem computeValue_isSome_of_isWfStr {s : String} (h : IsWfStr s) :
+theorem computeValue_isSome_of_isWfDecimal {s : String} (h : IsWfDecimal s) :
     (computeValue s).isSome = true := by
   obtain ⟨left, right, h_split, h_lwf, h_rdig, _⟩ := h
   obtain ⟨l, hl⟩ := Option.isSome_iff_exists.mp (toInt?'_isSome_of_isWfInt h_lwf)
@@ -347,9 +347,9 @@ private theorem toString_split (d : Decimal) :
       exact absurd (Nat.isDigit_of_mem_toDigits (by omega) (by omega) hmem) (by decide)
 
 /-- The string produced by `toString d` is well-formed for parsing. -/
-public theorem toString_isWfStr (d : Decimal) : IsWfStr (toString d) := by
+public theorem toString_isWfDecimal (d : Decimal) : IsWfDecimal (toString d) := by
   obtain ⟨h_split, h_rlen, h_lint, h_rnat, _⟩ := toString_split d
-  refine isWfStr_iff.mpr ⟨_, _, h_split, ?_, ?_, ?_, ?_, ?_⟩
+  refine isWfDecimal_iff.mpr ⟨_, _, h_split, ?_, ?_, ?_, ?_, ?_⟩
   · -- leftPart ≠ "-"
     intro h; by_cases hd : d < 0
     · simp [hd] at h

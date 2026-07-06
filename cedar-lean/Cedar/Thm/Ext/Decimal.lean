@@ -14,9 +14,9 @@ open Cedar.Spec.Ext
 /-- Completeness of `Decimal.parse`: if a string is well-formed and its computed value
     matches `d.toInt`, then parsing accepts the string as `d`. -/
 public theorem parse_complete (s : String) (d : Decimal)
-    (hwf : IsWfStr s) (hval : computeValue s = some d.toInt) :
+    (hwf : IsWfDecimal s) (hval : computeValue s = some d.toInt) :
     Decimal.parse s = some d := by
-  obtain ⟨left, right, h_split, h_ne, h_rpos, h_rle, h_lint, h_rnat⟩ := isWfStr_iff.mp hwf
+  obtain ⟨left, right, h_split, h_ne, h_rpos, h_rle, h_lint, h_rnat⟩ := isWfDecimal_iff.mp hwf
   unfold Decimal.parse
   rw [h_split]
   split
@@ -41,20 +41,20 @@ public theorem parse_complete (s : String) (d : Decimal)
 /-- Parsing the canonical string representation of a decimal returns the same decimal. -/
 public theorem parse_toString_roundtrip (d : Decimal) :
     Decimal.parse (toString d) = some d :=
-  parse_complete (toString d) d (toString_isWfStr d) (computeValue_toString d)
+  parse_complete (toString d) d (toString_isWfDecimal d) (computeValue_toString d)
 
 /-- Failure characterization for `Decimal.parse`: parsing rejects exactly strings that are
     not well-formed or whose computed value overflows the `Int64` range. -/
 public theorem parse_eq_none_iff (s : String) :
-    Decimal.parse s = none ↔ ¬ IsWfStr s ∨
+    Decimal.parse s = none ↔ ¬ IsWfDecimal s ∨
     ∃ v, computeValue s = some v ∧ (v < Int64.MIN ∨ v > Int64.MAX) := by
   constructor
   · -- → direction: parse s = none implies malformed or overflow
     intro h
-    by_cases hwf : IsWfStr s
+    by_cases hwf : IsWfDecimal s
     · -- s is well-formed, so it must be overflow
       right
-      obtain ⟨left, right, h_split, h_ne, h_rpos, h_rle, h_lint, h_rnat⟩ := isWfStr_iff.mp hwf
+      obtain ⟨left, right, h_split, h_ne, h_rpos, h_rle, h_lint, h_rnat⟩ := isWfDecimal_iff.mp hwf
       obtain ⟨l, hl⟩ := Option.isSome_iff_exists.mp h_lint
       obtain ⟨r, hr⟩ := Option.isSome_iff_exists.mp h_rnat
       -- parse returned none despite well-formedness → decimal? returned none → overflow
@@ -70,15 +70,15 @@ public theorem parse_eq_none_iff (s : String) :
   · -- ← direction: malformed or overflow implies parse s = none
     intro h
     rcases h with h | ⟨v, hcv, hovf⟩
-    · -- ¬ IsWfStr s → parse s = none
+    · -- ¬ IsWfDecimal s → parse s = none
       by_contra hne
       have ⟨d, hd⟩ := Option.ne_none_iff_exists'.mp hne
-      exact absurd (parse_some_isWfStr s d hd) h
+      exact absurd (parse_some_isWfDecimal s d hd) h
     · -- overflow → parse s = none
       -- If s is not well-formed, parse = none trivially
-      by_cases hwf : IsWfStr s
+      by_cases hwf : IsWfDecimal s
       · -- s is well-formed but overflows
-        obtain ⟨left, right, h_split, h_ne, h_rpos, h_rle, h_lint, h_rnat⟩ := isWfStr_iff.mp hwf
+        obtain ⟨left, right, h_split, h_ne, h_rpos, h_rle, h_lint, h_rnat⟩ := isWfDecimal_iff.mp hwf
         obtain ⟨l, hl⟩ := Option.isSome_iff_exists.mp h_lint
         obtain ⟨r, hr⟩ := Option.isSome_iff_exists.mp h_rnat
         unfold Decimal.parse
@@ -100,10 +100,10 @@ public theorem parse_eq_none_iff (s : String) :
       · -- s is not well-formed → parse = none (same as the other branch)
         by_contra hne
         have ⟨d, hd⟩ := Option.ne_none_iff_exists'.mp hne
-        exact absurd (parse_some_isWfStr s d hd) hwf
+        exact absurd (parse_some_isWfDecimal s d hd) hwf
 
 where
-  parse_some_isWfStr (s : String) (d : Decimal) (h : Decimal.parse s = some d) : IsWfStr s := by
+  parse_some_isWfDecimal (s : String) (d : Decimal) (h : Decimal.parse s = some d) : IsWfDecimal s := by
     unfold Decimal.parse at h
     split at h
     · exact absurd h (by simp)
@@ -112,7 +112,7 @@ where
       · rename_i l r heq_l heq_r
         have h_len : 0 < right.length ∧ right.length ≤ DECIMAL_DIGITS := by
           by_contra hc; simp [hc] at h
-        exact isWfStr_iff.mpr ⟨left, right, h_split, h_ne, h_len.1, h_len.2,
+        exact isWfDecimal_iff.mpr ⟨left, right, h_split, h_ne, h_len.1, h_len.2,
           by rw [heq_l]; rfl, by rw [heq_r]; rfl⟩
       · simp at h
     · simp at h
@@ -121,21 +121,21 @@ where
     its computed value is in the `Int64` range, and the returned decimal has exactly
     that computed value. -/
 public theorem parse_sound (s : String) (d : Decimal) (h : Decimal.parse s = some d) :
-    IsWfStr s ∧
+    IsWfDecimal s ∧
     computeValue s = some d.toInt ∧
     Int64.MIN ≤ d.toInt ∧
     d.toInt ≤ Int64.MAX := by
   -- parse succeeded, so `parse_eq_none_iff` rules out both malformedness and overflow.
-  have hnot_bad : ¬ (¬ IsWfStr s ∨
+  have hnot_bad : ¬ (¬ IsWfDecimal s ∨
       ∃ v, computeValue s = some v ∧ (v < Int64.MIN ∨ v > Int64.MAX)) := by
     intro hbad
     have hnone := (parse_eq_none_iff s).mpr hbad
     simp [h] at hnone
-  have hwf : IsWfStr s := by
+  have hwf : IsWfDecimal s := by
     by_contra hnwf
     exact hnot_bad (Or.inl hnwf)
   -- well-formed ⇒ `computeValue s = some v` for some value `v`.
-  obtain ⟨v, hv⟩ := Option.isSome_iff_exists.mp (computeValue_isSome_of_isWfStr hwf)
+  obtain ⟨v, hv⟩ := Option.isSome_iff_exists.mp (computeValue_isSome_of_isWfDecimal hwf)
   have hnot_ovf : ¬ (v < Int64.MIN ∨ v > Int64.MAX) := fun hovf =>
     hnot_bad (Or.inr ⟨v, hv, hovf⟩)
   have hmin : Int64.MIN ≤ v := by omega

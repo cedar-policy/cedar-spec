@@ -24,16 +24,20 @@ its `toNat?'` bridges are shared with the duration grammar and live in `Cedar.Th
 public def IsWfInt (s : String) : Prop :=
   IsDigits s ∨ ∃ t, s = "-" ++ t ∧ IsDigits t
 
+/-- The grammar's `Fraction ::= Digit{1,4}`: 1 to `DECIMAL_DIGITS` digits. `IsDigits` supplies
+    the lower bound (at least one digit) and the length constraint supplies the upper bound. -/
+public def IsWfFrac (s : String) : Prop :=
+  IsDigits s ∧ s.length ≤ DECIMAL_DIGITS
+
 /-- Well-formed decimal syntax: `s` splits on `.` into exactly two parts, where the left part
-    matches the grammar's `Integer ::= ['-'] Digit⁺` and the right part is a fraction of 1 to
-    `DECIMAL_DIGITS` digits (`Digit{1,4}`). This is a direct transcription of the grammar's
-    character-level productions, independent of any string-to-number parser. -/
-public def IsWfStr (s : String) : Prop :=
+    matches the grammar's `Integer ::= ['-'] Digit⁺` and the right part matches
+    `Fraction ::= Digit{1,4}`. This is a direct transcription of the grammar's character-level
+    productions, independent of any string-to-number parser. -/
+public def IsWfDecimal (s : String) : Prop :=
  ∃ left right,
     s.splitToList (· = '.') = [left, right] ∧
     IsWfInt left ∧
-    IsDigits right ∧
-    right.length ≤ DECIMAL_DIGITS
+    IsWfFrac right
 
 /-- Compute the integer value that a decimal string represents, or `none` if the string does not
     split into an integer part and a fraction part. This mirrors the
