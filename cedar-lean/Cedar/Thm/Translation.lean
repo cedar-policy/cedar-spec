@@ -4,7 +4,7 @@ import Cedar.Spec.CstSemantics
 import Cedar.Spec.CstToAst
 import Cedar.Thm.Translation.ExprTranslation
 import Cedar.Thm.Translation.PolicyToExpr
-import Cedar.Thm.Validation.Typechecker
+import Cedar.Thm.Validation
 
 namespace Cedar.Thm
 
@@ -195,5 +195,31 @@ theorem cst_validated_no_type_error
   have hast : evaluate ast request entities = .error .typeError := by
     rw [expr_to_expr_sound htrans, hcontra]
   simp [EvaluatesTo, hast] at hev
+
+/--
+**CST validation soundness (policy-set level).** The CST counterpart of
+`validation_is_sound`: if a set of CST policies translates to a set of AST
+policies that is well-typed (valid) with respect to the schema, and the request
+and entities are consistent with the schema, then evaluating each CST policy's
+expression never throws a `typeError` (it produces a boolean value or one of the
+runtime-only errors `entityDoesNotExist`, `extensionError`, `arithBoundsError`).
+
+Proof strategy: `validation_is_sound` gives `AllEvaluateToBool aps`, i.e. every
+AST policy expression `ap.toExpr` evaluates to a bool (or safe error);
+`toPolicies?_forall₂` recovers the AST counterpart `ap` of each CST policy `cp`;
+the remaining step transports the no-`typeError` guarantee from `ap.toExpr` to
+`cp.toExpr`. That transport needs a *full `Except`-equality* policy bridge
+`cp.toExpr.evaluate = evaluate ap.toExpr` (the policy-level analog of
+`expr_to_expr_sound`) — `policy_to_expr_agrees` only supplies an `ok`-iff, which
+cannot rule out a `typeError` in the error case. -/
+theorem cst_validation_is_sound (cps : Cst.Policies) (aps : Policies)
+    (schema : Schema) (request : Request) (entities : Entities) :
+    cps.toPolicies? = some aps →
+    schema.validateWellFormed = .ok () →
+    validate aps schema = .ok () →
+    validateRequest schema request = .ok () →
+    validateEntities schema entities = .ok () →
+    ∀ cp ∈ cps.ps, cp.toExpr.evaluate request entities ≠ .error .typeError := by
+  sorry
 
 end Cedar.Thm
