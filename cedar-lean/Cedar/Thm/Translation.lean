@@ -202,16 +202,8 @@ theorem cst_validated_no_type_error
 policies that is well-typed (valid) with respect to the schema, and the request
 and entities are consistent with the schema, then evaluating each CST policy's
 expression never throws a `typeError` (it produces a boolean value or one of the
-runtime-only errors `entityDoesNotExist`, `extensionError`, `arithBoundsError`).
+runtime-only errors `entityDoesNotExist`, `extensionError`, `arithBoundsError`). -/
 
-Proof strategy: `validation_is_sound` gives `AllEvaluateToBool aps`, i.e. every
-AST policy expression `ap.toExpr` evaluates to a bool (or safe error);
-`toPolicies?_forall₂` recovers the AST counterpart `ap` of each CST policy `cp`;
-the remaining step transports the no-`typeError` guarantee from `ap.toExpr` to
-`cp.toExpr`. That transport needs a *full `Except`-equality* policy bridge
-`cp.toExpr.evaluate = evaluate ap.toExpr` (the policy-level analog of
-`expr_to_expr_sound`) — `policy_to_expr_agrees` only supplies an `ok`-iff, which
-cannot rule out a `typeError` in the error case. -/
 theorem cst_validation_is_sound (cps : Cst.Policies) (aps : Policies)
     (schema : Schema) (request : Request) (entities : Entities) :
     cps.toPolicies? = some aps →
@@ -220,6 +212,19 @@ theorem cst_validation_is_sound (cps : Cst.Policies) (aps : Policies)
     validateRequest schema request = .ok () →
     validateEntities schema entities = .ok () →
     ∀ cp ∈ cps.ps, cp.toExpr.evaluate request entities ≠ .error .typeError := by
-  sorry
+  intro htrans hwf hval hreq hent cp hcp
+  have hbool := validation_is_sound aps schema request entities hwf hval hreq hent
+  obtain ⟨ap, hap_mem, hcp_ap⟩ :=
+    List.forall₂_implies_all_left (toPolicies?_forall₂ htrans) cp hcp
+  obtain ⟨_, hev⟩ := hbool ap hap_mem
+  obtain ⟨ae, hae⟩ := toPolicy?_implies_toAExpr? hcp_ap
+  have h1 : evaluate ae request entities = cp.toExpr.evaluate request entities :=
+    expr_to_expr_sound hae
+  have h2 : evaluate ae request entities = evaluate ap.toExpr request entities :=
+    policy_to_expr_sound cp ap cp.toExpr ae request entities hcp_ap rfl hae
+  intro hcontra
+  have hap_te : evaluate ap.toExpr request entities = .error .typeError := by
+    rw [← h2, h1]; exact hcontra
+  simp [EvaluatesTo, hap_te] at hev
 
 end Cedar.Thm
