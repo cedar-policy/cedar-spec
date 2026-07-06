@@ -60,7 +60,7 @@ public def computeValue (s : String) : Option Int :=
       | .some l, .some r =>
         let sign : Int := if left.startsWith "-" then -1 else 1
         some (l * Int.pow 10 DECIMAL_DIGITS
-          + sign * (r : Int) * Int.pow 10 (DECIMAL_DIGITS - right.length))
+          + sign * r * Int.pow 10 (DECIMAL_DIGITS - right.length))
       | _, _ => none
   | _ => none
 -- ANCHOR_END: computeValue
