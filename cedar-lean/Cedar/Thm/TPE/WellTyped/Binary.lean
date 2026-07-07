@@ -51,10 +51,9 @@ theorem tags_if_partial_tags
     cases h_pe : pe.tags <;> rw [h_pe] at h_tags
     . simp at h_tags
     . simp only [Option.some.injEq] at h_tags
-      rw [h_pe] at h_pt
-      cases h_pt
-      rename_i h_eq
-      exact ⟨edata, by rw [← h_tags, h_eq], h_entry⟩
+      simp only [h_pe, PartialIsValid.some_inv] at h_pt
+      subst h_pt
+      exact ⟨edata, by simp_all, h_entry⟩
 
 theorem entity_tag_well_typed
   {env : TypeEnv} {req : Request} {es : Entities} {pes : PartialEntities}

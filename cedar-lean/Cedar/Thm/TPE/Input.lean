@@ -34,25 +34,30 @@ theorem decide_eq_implies_eq {α} [DecidableEq α] {y : α} :
   ∀ x, decide (x = y) → x = y := by
       simp only [decide_eq_true_eq, imp_self, implies_true]
 
-inductive PartialIsValid {α} : (α → Prop) → Option α -> Prop
-  | some (p : α → Prop) (x : α)
-    (h : p x) :
-    PartialIsValid p (.some x)
-  | none :
-    PartialIsValid p .none
+inductive PartialIsValid {α} (p : α → Prop) (o : Option α) : Prop
+  | some (x : α) (heq : o = .some x) (h : p x) :
+    PartialIsValid p o
+  | none (heq : o = .none) :
+    PartialIsValid p o
+
+@[simp]
+theorem PartialIsValid.some_inv {p : α → Prop} {x : α} :  (PartialIsValid p (.some x)) ↔ p x := by
+  constructor
+  · intro h
+    cases h with
+    | some y heq hy => simp only [Option.some.injEq] at heq; subst heq; exact hy
+    | none heq => simp at heq
+  · exact some _ rfl
 
 theorem partial_is_valid_rfl (f : α → Bool) (p : α → Prop) (o : Option α) :
   (∀ x, f x = true → p x) → partialIsValid o f → PartialIsValid p o
 := by
-  intro h₁
-  simp [partialIsValid, Option.map]
-  split <;> simp [Option.getD]
-  case _ x =>
-    intro h₂
-    constructor
-    exact h₁ x h₂
-  case _ =>
-    constructor
+  intro h₁ h₂
+  cases o with
+  | none => exact .none rfl
+  | some x =>
+    simp only [partialIsValid, Option.map_some, Option.getD_some] at h₂
+    exact .some x rfl (h₁ x h₂)
 
 def RequestRefines (req : Request) (preq : PartialRequest) : Prop :=
   PartialIsValid (· = req.principal) preq.principal.asEntityUID ∧

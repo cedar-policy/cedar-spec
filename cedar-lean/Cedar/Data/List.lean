@@ -143,4 +143,12 @@ public def isSorted {α} [LT α] [DecidableLT α] (l : List α) : Bool :=
     else
       false
 
+public def ternaryAny  {α} (l : List α) (p : α → Option Bool) : Option Bool :=
+  if l.map p|>.any (· == some true) then
+    some true
+  else if l.map p|>.any Option.isNone then
+    none
+  else
+    some false
+
 end List

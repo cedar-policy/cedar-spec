@@ -103,9 +103,7 @@ theorem partial_evaluate_is_sound_binary_app
           rcases h₄ with ⟨_, h₄⟩
           specialize h₄ uid₁ data heq₅₁
           rcases h₄ with ⟨_, h₄₁, _, h₄₂, _⟩
-          rw [heq₅₂] at h₄₂
-          cases h₄₂
-          rename_i h₄₂
+          simp only [heq₅₂, PartialIsValid.some_inv] at h₄₂
           simp [Spec.inₑ, Entities.ancestorsOrEmpty, h₄₁, ←h₄₂]
           have : (uid₁ == uid₂) = false := by
             simp only [beq_eq_false_iff_ne, ne_eq, heq₄, not_false_eq_true]
@@ -150,35 +148,23 @@ theorem partial_evaluate_is_sound_binary_app
           rw [←List.mapM_ok_iff_forall₂] at heq₄
           simp [heq₄] at h₇
           subst h₇
-          simp [Spec.inₑ]
-          simp [TPE.inₑ] at heq₃₂
           simp [RequestAndEntitiesRefine] at h₄
           rcases h₄ with ⟨_, h₄⟩
-          have : ∀ x b, ((if uid = x then some true else Option.map (fun y => y.contains x) (pes.ancestors uid)) = some b) →
-            (uid == x || (es.ancestorsOrEmpty uid).contains x) = b := by
-            intro x b' h₁
-            split at h₁
-            case isTrue heq =>
-              simp only [Option.some.injEq, Bool.true_eq] at h₁
-              subst h₁
-              simp only [heq, beq_self_eq_true, Bool.true_or]
-            case isFalse heq =>
-              simp [EntitiesRefine] at h₄
-              simp at h₁
-              rcases h₁ with ⟨ancestors₁, h₂, h₃⟩
-              simp [PartialEntities.ancestors, PartialEntities.get, Option.bind] at h₂
-              split at h₂ <;> try cases h₂
-              rename_i data heq₁
-              specialize h₄ uid data heq₁
-              rcases h₄ with ⟨e, h₄, _, h₅, _⟩
-              rw [h₂] at h₅
-              cases h₅
-              rename_i heq₂
-              rw [heq₂] at h₃
-              simp only [Entities.ancestorsOrEmpty, h₄, h₃, Bool.or_eq_right_iff_imp, beq_iff_eq, heq,
-                false_implies]
-          replace heq₃₂ := List.anyM_some_implies_any (fun x => if uid = x then some true else Option.map (fun y => y.contains x) (pes.ancestors uid))
-            (fun x => uid == x || (es.ancestorsOrEmpty uid).contains x) this heq₃₂
+          have : ∀ x b, (TPE.inₑ uid x pes) = .some b → (Spec.inₑ uid x es) = b := by
+            intro x b h
+            simp only [EntitiesRefine] at h₄
+            simp only [TPE.inₑ] at h
+            simp only [Spec.inₑ]
+            split at h
+            case isTrue heq => simp_all
+            case isFalse hneq =>
+              simp only [beq_eq_false_iff_ne.mpr hneq, Bool.false_or,
+                Option.map_eq_some_iff, PartialEntities.ancestors, PartialEntities.get,
+                Option.bind_eq_some_iff, Entities.ancestorsOrEmpty] at h ⊢
+              obtain ⟨anc, ⟨e₂, hfind, hanc⟩, hcontains⟩ := h
+              obtain ⟨e₁, hfind_es, _, hpv, _⟩ := h₄ uid e₂ hfind
+              cases hpv <;> simp_all
+          replace heq₃₂ := List.ternary_any_some_implies_any (TPE.inₑ uid · pes) (Spec.inₑ uid · es) this heq₃₂
           subst heq₃₂
           simp only [Residual.evaluate]
       case _ =>
@@ -203,10 +189,8 @@ theorem partial_evaluate_is_sound_binary_app
         rcases h₄ with ⟨_, h₄⟩
         specialize h₄ uid data heq₃
         rcases h₄ with ⟨_, h₄₁, _, _, h₄₂⟩
-        rw [heq₄] at h₄₂
-        cases h₄₂
-        rename_i heq₅
-        subst heq₅
+        simp only [heq₄, PartialIsValid.some_inv] at h₄₂
+        subst h₄₂
         simp only [Spec.hasTag, Entities.tagsOrEmpty, h₄₁, Residual.evaluate]
       case _ =>
         rw [asValue_some] at heq₁ heq₂
@@ -223,10 +207,8 @@ theorem partial_evaluate_is_sound_binary_app
         rcases h₄ with ⟨_, h₄⟩
         specialize h₄ uid data heq₂
         rcases h₄ with ⟨_, h₄₁, _, _, h₄₂⟩
-        rw [heq₃] at h₄₂
-        cases h₄₂
-        rename_i heq₄
-        subst heq₄
+        simp only [heq₃, PartialIsValid.some_inv] at h₄₂
+        subst h₄₂
         simp only [Spec.getTag, Entities.tags, Data.Map.findOrErr, h₄₁]
         split <;>
         (rename_i heq₁; simp [heq₁, Residual.evaluate, Except.toOption])
