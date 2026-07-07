@@ -117,14 +117,11 @@ where
       · simp at h
     · simp at h
 
-/-- Soundness of `Decimal.parse`: if parsing succeeds, then the input is well-formed,
-    its computed value is in the `Int64` range, and the returned decimal has exactly
-    that computed value. -/
+/-- Soundness of `Decimal.parse`: if parsing succeeds, then the input is well-formed and its
+    computed value is exactly the returned decimal's value. (The value is automatically in `Int64`
+    range, since `d : Decimal = Int64`, so no range conjunct is stated.) -/
 public theorem parse_sound (s : String) (d : Decimal) (h : Decimal.parse s = some d) :
-    IsWfDecimal s ∧
-    computeValue s = some d.toInt ∧
-    Int64.MIN ≤ d.toInt ∧
-    d.toInt ≤ Int64.MAX := by
+    IsWfDecimal s ∧ computeValue s = some d.toInt := by
   -- parse succeeded, so `parse_eq_none_iff` rules out both malformedness and overflow.
   have hnot_bad : ¬ (¬ IsWfDecimal s ∨
       ∃ v, computeValue s = some v ∧ (v < Int64.MIN ∨ v > Int64.MAX)) := by
@@ -152,10 +149,7 @@ public theorem parse_sound (s : String) (d : Decimal) (h : Decimal.parse s = som
   have hd_eq : d = d' := by
     rw [h] at hparse'
     exact Option.some.inj hparse'
-  refine ⟨hwf, ?_, ?_, ?_⟩
-  · rw [hv, hd_eq, hd'_toInt]
-  · rw [hd_eq, hd'_toInt]; exact hmin
-  · rw [hd_eq, hd'_toInt]; exact hmax
+  exact ⟨hwf, by rw [hv, hd_eq, hd'_toInt]⟩
 
 /-- `toString` is injective: distinct decimals produce distinct strings. -/
 public theorem toString_injective (d d' : Decimal) (h : toString d = toString d') : d = d' := by
