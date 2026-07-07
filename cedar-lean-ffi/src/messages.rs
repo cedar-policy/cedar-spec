@@ -265,9 +265,7 @@ pub mod tpe {
     impl proto::PartialRequest {
         fn from_inner(req: &cedar_policy_core::tpe::request::PartialRequest) -> Self {
             use cedar_policy_core::ast::Expr;
-            let principal = req.get_principal();
-            let resource = req.get_resource();
-            let (context, has_context) = match req.get_context_attrs() {
+            let (context, has_context) = match req.context_attrs() {
                 Some(ctx) => (
                     ctx.iter()
                         .map(|(k, v)| {
@@ -282,11 +280,9 @@ pub mod tpe {
                 None => (Default::default(), false),
             };
             Self {
-                principal: Some(proto::PartialEntityUid::from_inner(&principal)),
-                action: Some(cedar_policy::proto::models::EntityUid::from(
-                    &req.get_action(),
-                )),
-                resource: Some(proto::PartialEntityUid::from_inner(&resource)),
+                principal: Some(proto::PartialEntityUid::from_inner(req.principal())),
+                action: Some(cedar_policy::proto::models::EntityUid::from(req.action())),
+                resource: Some(proto::PartialEntityUid::from_inner(req.resource())),
                 context,
                 has_context,
             }
