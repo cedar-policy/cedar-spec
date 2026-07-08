@@ -164,7 +164,6 @@ theorem translation_is_sound (cps : Cst.Policies) (aps : Spec.Policies)
 theorem noHasError_translates (cp : Cst.Policy) (req : Request) (es : Entities) :
   ¬ Cst.hasError cp req es →
   ∃ ap, cp.toPolicy? = ap := by simp
-  -- I don't know why simp solves this goal
 
 theorem translation_is_complete (cps : Cst.Policies) (req : Request) (es : Entities) :
   ∀ cp ∈ cps.ps, cp.id ∉ (Cst.isAuthorized req es cps).erroringPolicies →

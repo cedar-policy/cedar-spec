@@ -16,23 +16,6 @@ theorem toExtFun?_some_isFunctionName {s : String} {xfn : ExtFun}
   simp only [CstCommon.String.toExtFun?] at h
   split at h <;> simp_all [CstCommon.String.isFunctionName?]
 
-theorem ExprOrSpecial.toExpr?_none (eos : ExprOrSpecial) :
-  eos.toExpr? = none →
-  (∃ s, eos = .strLit s ∧ CstCommon.unescape? s = none) ∨
-  (∃ n, eos = .name n) := by
-  intro h
-  match eos with
-  | .expr e => simp [ExprOrSpecial.toExpr?] at h
-  | .var v => simp [ExprOrSpecial.toExpr?] at h
-  | .boolLit b => simp [ExprOrSpecial.toExpr?] at h
-  | .strLit s =>
-    left; exists s; constructor
-    · rfl
-    · match hs : CstCommon.unescape? s with
-      | none => rfl
-      | some s' => simp [ExprOrSpecial.toExpr?, hs] at h
-  | .name n => right; exists n
-
 /- For Primary -/
 
 theorem Cst.Ident.toUnrestrictedString?_eq_toString
@@ -622,15 +605,6 @@ theorem addExpr_toAttrs_toHasRhs {e : Cst.AddExpr} {attrs : List Attr} :
                 | idIn | idHas | idLike | idIs | idIf | idThen | idElse =>
                   simp [Cst.Ident.toHasHead?] at hhh
           | ref _ | expr _ | eList _ | rInits _ => simp at h
-/-- Helper: `constructAttrs?` always returns a non-empty list when it succeeds. -/
-theorem constructAttrs?_nonempty
-    {first : String} {rest : List Cst.MemAccess} {result : List String} :
-    constructAttrs? first rest = some result → result ≠ [] := by
-  intro h
-  simp [constructAttrs?, Option.bind_eq_some_iff] at h
-  obtain ⟨tail, _, hresult⟩ := h
-  simp [← hresult]
-
 /-- `toAttrs?` always produces a non-empty list when it succeeds: the result is
     either `[unescaped_lit]` or `head :: fields`. -/
 theorem toAttrs?_nonempty {e : Cst.AddExpr} {fs : List Attr} :
@@ -756,18 +730,6 @@ private theorem memberAux_expr_eq (e : Expr) (accs : List AstAccessor) :
   cases accs with
   | nil => rfl
   | cons acc rest => rfl
-
-/-- Helper: when `memberAux` takes an `.expr ...` input, it always returns
-    either `.expr ...` or `none` — never another `ExprOrSpecial` constructor. -/
-private theorem memberAux_expr_returns_expr
-    (e : Expr) (accs : List AstAccessor) (ret : ExprOrSpecial) :
-    memberAux (.expr e) accs = some ret →
-    ∃ e', ret = .expr e' := by
-  intro h
-  rw [memberAux_expr_eq] at h
-  simp only [Option.bind_eq_some_iff] at h
-  obtain ⟨e', _, hret⟩ := h
-  exact ⟨e', (Option.some.inj hret).symm⟩
 
 /-- On a non-empty accessor list, `memberAuxA` never returns `.inl` — the
     `.inl` (pass-through) result only arises for the empty accessor list. -/
@@ -2088,12 +2050,6 @@ theorem Cst.Primary.toAttr?_consistent (p : Cst.Primary) :
     simp [Cst.Primary.toAttr?, Cst.Primary.toExprOrSpecial?, Option.bind]
     cases (rInitsToMap? r) <;> simp [ExprOrSpecial.toValidAttr?]
 
-/-- A translation result that always produces an `.expr` is never a valid attribute. -/
-private theorem bind_validAttr_expr {α : Type} (o : Option α) (g : α → Expr) :
-    (o.bind (fun a => some (ExprOrSpecial.expr (g a)))).bind ExprOrSpecial.toValidAttr? = none := by
-  cases o <;> simp [ExprOrSpecial.toValidAttr?]
-
-set_option linter.unusedSimpArgs false in
 /-- The CST-native record-key attribute extractor on an `Expr` agrees with the
     translator's `toExprOrSpecial? >>= toValidAttr?`.  Peeling lemma: the key must
     reduce to a bare primary; analogous to the `addExpr_to*_agrees` peeling proofs. -/
@@ -2222,7 +2178,7 @@ theorem Cst.Expr.toAttr?_consistent (e : Cst.Expr) :
                     · have hL : Cst.Expr.toAttr? (.expr ⟨.edOr o⟩) = none := by
                         simp [Cst.Expr.toAttr?, hoe, hae, hrel, hext, hax, hmx, hop, hn]
                       rw [hL]
-                      simp only [hn]
+                      simp
                       repeat' split
                       all_goals simp [ExprOrSpecial.toValidAttr?, Option.bind_assoc]
                   | nBang n =>
@@ -2239,20 +2195,6 @@ theorem Cst.Expr.toAttr?_consistent (e : Cst.Expr) :
                       simp [Cst.Expr.toAttr?, hoe, hae, hrel, hext, hax, hmx, hop]
                     rw [hL]; simp
 
-
-/-- Lift an element-wise `Except`-result agreement through one `mapM` cons step. -/
-private theorem except_bind_cons_iff {β γ : Type} {X Y : Except γ (List β)} {hd : β}
-    {vs : List β} (h : ∀ vs', X = .ok vs' ↔ Y = .ok vs') :
-    (X >>= fun tl => Except.ok (hd :: tl)) = .ok vs ↔
-    (Y >>= fun tl => Except.ok (hd :: tl)) = .ok vs := by
-  cases hX : X with
-  | error e =>
-    cases hY : Y with
-    | error e' => simp [bind, Except.bind]
-    | ok vsy => have := (h vsy).mpr hY; rw [hX] at this; cases this
-  | ok vsx =>
-    have hY := (h vsx).mp hX
-    rw [hY]
 
 /-- Record-level bridge (evaluation equality): when `rInitsToMap? r = some map`,
     evaluating the translated inits equals evaluating the CST record inits. -/
