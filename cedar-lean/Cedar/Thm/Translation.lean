@@ -53,14 +53,11 @@ theorem policy_satisfied_agrees (cp : Cst.Policy) (ap : Spec.Policy)
   Cst.satisfied cp req es = satisfied ap req es := by
   intro htrans
   obtain ⟨ae, hae⟩ := toPolicy?_implies_toAExpr? htrans
-  have h1 : evaluate ae req es = .ok (↑true : Value) ↔ cp.toExpr.evaluate req es = .ok (↑true : Value) := by
-    rw [expr_to_expr_sound hae]
-  have h2 := policy_to_expr_agrees cp ap cp.toExpr ae req es htrans rfl hae (val := (↑true : Value))
-  have hiff : cp.toExpr.evaluate req es = .ok ↑true ↔ evaluate ap.toExpr req es = .ok ↑true :=
-    ⟨fun hcst => h2.mp (h1.mpr hcst), fun hast => h1.mp (h2.mpr hast)⟩
+  have heq : cp.toExpr.evaluate req es = evaluate ap.toExpr req es :=
+    (expr_to_expr_sound hae).symm.trans
+      (policy_to_expr_sound cp ap cp.toExpr ae req es htrans rfl hae)
   unfold Cst.satisfied satisfied
-  simp only [show (cp.toExpr.evaluate req es = .ok ↑true) = (evaluate ap.toExpr req es = .ok ↑true)
-      from propext hiff]
+  rw [heq]
 
 /-- Under a successful translation, `extractScope?` succeeds, so the new scope
     guard in `Cst.hasError` is a no-op and it reduces to the plain
@@ -86,20 +83,11 @@ theorem policy_hasError_agrees (cp : Cst.Policy) (ap : Spec.Policy)
   Cst.hasError cp req es = hasError ap req es := by
   intro htrans
   obtain ⟨ae, hae⟩ := toPolicy?_implies_toAExpr? htrans
-  have h1 : ∀ v, evaluate ae req es = .ok v ↔ cp.toExpr.evaluate req es = .ok v :=
-    fun v => by rw [expr_to_expr_sound hae]
-  have h2 : ∀ v, evaluate ae req es = .ok v ↔ evaluate ap.toExpr req es = .ok v :=
-    policy_to_expr_agrees cp ap cp.toExpr ae req es htrans rfl hae
-  have hiff : ∀ v, cp.toExpr.evaluate req es = .ok v ↔ evaluate ap.toExpr req es = .ok v :=
-    fun v => ⟨fun hcst => (h2 v).mp ((h1 v).mpr hcst), fun hast => (h1 v).mp ((h2 v).mpr hast)⟩
-  rw [cst_hasError_eq_of_toPolicy htrans]
-  unfold hasError
-  cases hcst : cp.toExpr.evaluate req es with
-  | ok v => rw [(hiff v).mp hcst]
-  | error e =>
-    cases hast : evaluate ap.toExpr req es with
-    | ok v => rw [(hiff v).mpr hast] at hcst; cases hcst
-    | error e' => rfl
+  have heq : cp.toExpr.evaluate req es = evaluate ap.toExpr req es :=
+    (expr_to_expr_sound hae).symm.trans
+      (policy_to_expr_sound cp ap cp.toExpr ae req es htrans rfl hae)
+  rw [cst_hasError_eq_of_toPolicy htrans, heq]
+  rfl
 
 /-- Per-policy agreement of the error check. -/
 theorem policy_errored_agrees (cp : Cst.Policy) (ap : Spec.Policy)
@@ -176,7 +164,6 @@ theorem translation_is_sound (cps : Cst.Policies) (aps : Spec.Policies)
 theorem noHasError_translates (cp : Cst.Policy) (req : Request) (es : Entities) :
   ¬ Cst.hasError cp req es →
   ∃ ap, cp.toPolicy? = ap := by simp
-  -- I don't know why simp solves this goal
 
 theorem translation_is_complete (cps : Cst.Policies) (req : Request) (es : Entities) :
   ∀ cp ∈ cps.ps, cp.id ∉ (Cst.isAuthorized req es cps).erroringPolicies →
