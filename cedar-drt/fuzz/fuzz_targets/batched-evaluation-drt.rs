@@ -18,7 +18,10 @@
 use cedar_drt::logger::initialize_log;
 use cedar_drt_inner::{abac::FuzzTargetInput, fuzz_target};
 
-use cedar_lean_ffi::CedarLeanFfi;
+use cedar_lean_ffi::{
+    CedarLeanFfi,
+    FfiError::{self, LeanBackendError},
+};
 use cedar_policy::{Schema, TestEntityLoader};
 use cedar_policy_core::batched_evaluator::err::BatchedEvalError;
 
@@ -56,7 +59,10 @@ fuzz_target!(|input: FuzzTargetInput<true>| {
                 (Err(rust_err), Ok(lean_decision)) => {
                     panic!("Lean reached decisions {lean_decision:?} but rust errored: {rust_err}")
                 }
-                (Err(_), Err(_)) => {}
+                (Err(_), Err(FfiError::LeanBackendError(_))) => {}
+                (Err(_), Err(lean_err)) => {
+                    panic!("Unexpected error from Lean FFI: {lean_err}")
+                }
             }
         }
     }

@@ -106,9 +106,9 @@ pub fn lean_smtlib_of_check_asserts(
 }
 
 #[track_caller]
-pub fn assert_smtlib_scripts_match<E1: Display, E2: Display>(
+pub fn assert_smtlib_scripts_match<E1: Display>(
     rust_smtlib: Result<String, E1>,
-    lean_smtlib: Result<String, E2>,
+    lean_smtlib: Result<String, FfiError>,
 ) {
     match (rust_smtlib, lean_smtlib) {
         (Ok(rust), Ok(lean)) => {
@@ -116,7 +116,8 @@ pub fn assert_smtlib_scripts_match<E1: Display, E2: Display>(
         }
         (Ok(_), Err(e)) => panic!("Lean encoding should succeed: {e}"),
         (Err(e), Ok(_)) => panic!("Rust encoding should succeed: {e}"),
-        (Err(_), Err(_)) => {}
+        (Err(_), Err(FfiError::LeanBackendError(_))) => {}
+        (Err(_), Err(lean_err)) => panic!("Unexpected error from Lean FFI: {lean_err}"),
     }
 }
 
