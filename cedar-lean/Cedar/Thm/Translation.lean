@@ -67,13 +67,8 @@ theorem cst_hasError_eq_of_toPolicy {cp : Cst.Policy} {ap : Spec.Policy}
     Cst.hasError cp req es =
       (match cp.toExpr.evaluate req es with | .ok _ => false | .error _ => true) := by
   obtain ⟨p⟩ := cp
-  have hsc : ∃ s, extractScope? p.vars = some s := by
-    simp only [Cst.Policy.toPolicy?, Cst.PolicyImpl.toPolicy?, bind,
-               Option.bind_eq_some_iff] at htrans
-    obtain ⟨_, _, s, hs, _⟩ := htrans
-    exact ⟨s, hs⟩
-  obtain ⟨s, hs⟩ := hsc
-  have hcond : ¬ ((extractScope? p.vars).isNone = true) := by rw [hs]; simp
+  have hpp : p.toPolicy? = some ap := htrans
+  have hcond : ¬ (p.toPolicy?.isNone = true) := by rw [hpp]; simp
   simp only [Cst.hasError, if_neg hcond]
   rfl
 
@@ -163,11 +158,28 @@ theorem translation_is_sound (cps : Cst.Policies) (aps : Spec.Policies)
 
 theorem noHasError_translates (cp : Cst.Policy) (req : Request) (es : Entities) :
   ¬ Cst.hasError cp req es →
-  ∃ ap, cp.toPolicy? = ap := by simp
+  ∃ ap, cp.toPolicy? = some ap := by
+  intro h
+  obtain ⟨p⟩ := cp
+  cases hp : p.toPolicy? with
+  | none =>
+    exfalso; apply h
+    simp only [Cst.hasError, hp, Option.isNone_none, if_true]
+  | some ap =>
+    exact ⟨ap, by simp [Cst.Policy.toPolicy?, hp]⟩
 
 theorem translation_is_complete (cps : Cst.Policies) (req : Request) (es : Entities) :
   ∀ cp ∈ cps.ps, cp.id ∉ (Cst.isAuthorized req es cps).erroringPolicies →
-  ∃ ap, cp.toPolicy? = ap := by simp
+  ∃ ap, cp.toPolicy? = some ap := by
+  intro cp hmem hnoterr
+  apply noHasError_translates cp req es
+  intro herr
+  apply hnoterr
+  have herrp : cp.id ∈ Cst.errorPolicies cps req es := by
+    simp only [Cst.errorPolicies, Set.mem_make]
+    exact List.mem_filterMap.mpr ⟨cp, hmem, by simp [herr]⟩
+  simp only [Cst.isAuthorized]
+  split <;> exact herrp
 
 theorem cst_validated_no_type_error
     {cst : Cst.Expr} {ast : Spec.Expr} {c₁ c₂ : Capabilities} {ty : TypedExpr}

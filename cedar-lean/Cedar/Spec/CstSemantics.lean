@@ -703,12 +703,12 @@ public def satisfiedPolicies (effect : Effect) (policies : Policies) (req : Requ
 public def hasError (policy : Policy) (req : Request) (entities : Entities) : Bool :=
   match policy with
   | .policy p =>
-    -- Strengthening: a policy whose scope variables don't form a valid
-    -- (principal, action, resource) triple has no AST translation
-    -- (`extractScope?` fails), so we treat it as an error.  Under a successful
-    -- translation `extractScope?` succeeds, so this guard is a no-op and
-    -- agreement with the AST (`policy_hasError_agrees`) is preserved.
-    if (extractScope? p.vars).isNone then true
+    -- Strengthening: a policy with no AST translation (`toPolicy?` fails — due to
+    -- an invalid effect, an invalid scope triple, or a malformed/untranslatable
+    -- condition) is treated as an error.  Under a successful translation
+    -- `toPolicy?` succeeds, so this guard is a no-op and agreement with the AST
+    -- (`policy_hasError_agrees`) is preserved.
+    if p.toPolicy?.isNone then true
     else match policy.toExpr.evaluate req entities with
          | .ok _ => false
          | .error _ => true

@@ -385,7 +385,8 @@ theorem extractScope_complete
     | none =>
       exfalso
       apply hne
-      simp [Cst.hasError, h]
+      have hpn : p.toPolicy? = none := by simp [Cst.PolicyImpl.toPolicy?, h]
+      simp only [Cst.hasError, hpn, Option.isNone_none, if_true]
     | some trip => exact ⟨trip, h⟩
 
 end Cedar.Thm

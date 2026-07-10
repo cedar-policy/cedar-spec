@@ -612,7 +612,7 @@ decreasing_by
 theorem expr_to_expr_complete
   {e : Cst.Expr} {req : Request} {es : Entities} {v : Value} :
   e.evaluate req es = .ok v →
-  ∃ ae, e.toAExpr? = ae := by
+  ∃ ae, e.toAExpr? = some ae := by
   intro hev
   have h := Cst.Expr.toAExpr?_complete hev
   obtain ⟨eos, ae, h1, h2⟩ := h
