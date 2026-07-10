@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sysinfo::{CpuRefreshKind, RefreshKind, System};
 
 /// Top-level benchmark output format
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct BenchmarkOutput {
     pub cedar_version: String,
     pub system: SystemInfo,
@@ -26,7 +26,7 @@ pub struct BenchmarkOutput {
 }
 
 /// Information about the system running the benchmarks
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SystemInfo {
     pub cpu_model: String,
     pub cpu_count: usize,
@@ -57,7 +57,7 @@ impl SystemInfo {
 }
 
 /// A single benchmark result
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct BenchmarkResult {
     pub benchmark: String,
     pub target: String,
