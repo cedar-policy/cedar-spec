@@ -51,10 +51,10 @@ large_enum_variant = "allow"
 
 [dependencies]
 arbitrary = "1.4"
-cedar-policy = { version = "=4.11.0", path = "../cedar/cedar-policy", features = [
+cedar-policy = { version = "4", path = "../cedar/cedar-policy", features = [
     "protobufs",
 ] }
-cedar-policy-core = { version = "=4.11.0", path = "../cedar/cedar-policy-core" }
+cedar-policy-core = { version = "4", path = "../cedar/cedar-policy-core" }
 cedar-policy-generators = { version = "4", path = "../cedar-policy-generators", features = [
     "cedar-policy",
 ] }
