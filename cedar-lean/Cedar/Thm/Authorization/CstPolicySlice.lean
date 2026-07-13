@@ -1,7 +1,7 @@
 import Cedar.Slice.PolicySlice
 import Cedar.Slice.CstPolicySlice
 import Cedar.Thm.Authorization.Authorizer
-import Cedar.Thm.Translation.Aux
+import Cedar.Thm.Translation.AuxSound
 import Cedar.Thm.Translation
 import Cedar.Thm.PolicySlice
 

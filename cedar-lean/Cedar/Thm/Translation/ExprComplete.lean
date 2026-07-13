@@ -2,7 +2,7 @@ import Cedar.Spec
 import Cedar.Spec.Cst
 import Cedar.Spec.CstSemantics
 import Cedar.Spec.CstToAst
-import Cedar.Thm.Translation.Aux
+import Cedar.Thm.Translation.AuxSound
 import Cedar.Thm.Translation.AuxComplete
 import Cedar.Thm.Translation.ExprTranslation
 import Cedar.Thm.Data.List.Lemmas
