@@ -15,7 +15,7 @@
  */
 
 use crate::output::{BenchmarkOutput, BenchmarkResult};
-use miette::IntoDiagnostic;
+use miette::{Context, IntoDiagnostic};
 use owo_colors::OwoColorize;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -124,10 +124,13 @@ pub struct ComparisonReport {
 pub fn load_baseline(path: &Path) -> miette::Result<BenchmarkOutput> {
     let file = std::fs::File::open(path)
         .into_diagnostic()
-        .map_err(|e| miette::miette!("Failed to open baseline file '{}': {e}", path.display()))?;
+        .wrap_err(format!("Failed to open baseline file '{}'", path.display()))?;
     serde_json::from_reader(file)
         .into_diagnostic()
-        .map_err(|e| miette::miette!("Failed to parse baseline file '{}': {e}", path.display()))
+        .wrap_err(format!(
+            "Failed to parse baseline file '{}'",
+            path.display()
+        ))
 }
 
 /// Compare current results against a baseline, producing a report.
