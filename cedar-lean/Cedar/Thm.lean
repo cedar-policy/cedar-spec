@@ -28,3 +28,4 @@ import Cedar.Thm.BatchedEvaluator
 import Cedar.Thm.WellTypedVerification
 import Cedar.Thm.Translation
 import Cedar.Thm.CstAuthorizer
+import Cedar.Thm.CstValidation
