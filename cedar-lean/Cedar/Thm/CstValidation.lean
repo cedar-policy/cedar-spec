@@ -29,7 +29,7 @@ theorem cst_validated_no_type_error
 /--
 **CST validation soundness (policy-set level).** The CST counterpart of
 `validation_is_sound`: if a set of CST policies translates to a set of AST
-policies that is well-typed (valid) with respect to the schema, and the request
+policies that is validated with respect to the schema, and the request
 and entities are consistent with the schema, then evaluating each CST policy's
 expression never throws a `typeError` (it produces a boolean value or one of the
 runtime-only errors `entityDoesNotExist`, `extensionError`, `arithBoundsError`). -/
