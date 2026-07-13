@@ -21,7 +21,7 @@ private theorem toPolicy?_implies_toAExpr?
   obtain ⟨p⟩ := cp
   simp only [Cst.Policy.toPolicy?, Cst.PolicyImpl.toPolicy?, bind, Option.bind_eq_some_iff,
     Option.some.injEq] at htrans
-  obtain ⟨eff, heff, ⟨ps, as, rs⟩, hsc, conds, hconds, _⟩ := htrans
+  obtain ⟨eff, heff, ⟨ps, acts, rs⟩, hsc, conds, hconds, _⟩ := htrans
   -- Invert `extractScope?`: exactly three scope variables.
   simp only [Cst.Policy.toExpr, Cst.PolicyImpl.toExpr]
   match hvars : p.vars, hsc with
@@ -104,7 +104,7 @@ theorem policy_satisfiedWithEffect_agrees (cp : Cst.Policy) (ap : Spec.Policy)
   have htrans' := htrans
   simp only [Cst.Policy.toPolicy?, Cst.PolicyImpl.toPolicy?, bind, Option.bind_eq_some_iff,
     Option.some.injEq] at htrans'
-  obtain ⟨e0, he0, ⟨ps, as, rs⟩, hsc, conds, hconds, heq⟩ := htrans'
+  obtain ⟨e0, he0, ⟨ps, acts, rs⟩, hsc, conds, hconds, heq⟩ := htrans'
   have heffeq : e0 = ap.effect := by
     have := congrArg Spec.Policy.effect heq; simpa using this
   have heff : CstCommon.Ident.toEffect? p.effect = some ap.effect := by

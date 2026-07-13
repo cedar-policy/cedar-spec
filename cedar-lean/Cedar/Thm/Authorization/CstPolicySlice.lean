@@ -91,8 +91,8 @@ private theorem toResourceScope?_inv {v : Cst.VariableDef} {rs : ResourceScope}
     rw [hscope]; rfl
   · simp at h
 
-private theorem toActionScope?_var {v : Cst.VariableDef} {as : ActionScope}
-    (h : v.toActionScope? = some as) : v.var = .idAction := by
+private theorem toActionScope?_var {v : Cst.VariableDef} {acts : ActionScope}
+    (h : v.toActionScope? = some acts) : v.var = .idAction := by
   cases hvar : v.var <;>
     simp_all [Cst.VariableDef.toActionScope?, Cst.VariableDef.toActionScopeAux?,
       bind, Option.bind_eq_some_iff]
@@ -107,7 +107,7 @@ theorem policy_translation_success_prVars_isSome
   obtain ⟨p⟩ := cp
   simp only [Cst.Policy.toPolicy?, Cst.PolicyImpl.toPolicy?, bind, Option.bind_eq_some_iff,
     Option.some.injEq] at hap
-  obtain ⟨eff, heff, ⟨ps, as, rs⟩, hsc, conds, hconds, _⟩ := hap
+  obtain ⟨eff, heff, ⟨ps, acts, rs⟩, hsc, conds, hconds, _⟩ := hap
   match hvars : p.vars, hsc with
   | [a, b, c], hsc =>
     simp only [extractScope?, bind, Option.bind_eq_some_iff] at hsc
@@ -228,7 +228,7 @@ theorem translation_preserves_scopeAnalysis'
   obtain ⟨p⟩ := cp
   simp only [Cst.Policy.toPolicy?, Cst.PolicyImpl.toPolicy?, bind, Option.bind_eq_some_iff,
     Option.some.injEq] at htrans
-  obtain ⟨eff, heff, ⟨ps, as, rs⟩, hsc, conds, hconds, hap⟩ := htrans
+  obtain ⟨eff, heff, ⟨ps, acts, rs⟩, hsc, conds, hconds, hap⟩ := htrans
   match hvars : p.vars, hsc with
   | [a, b, c], hsc =>
     simp only [extractScope?, bind, Option.bind_eq_some_iff] at hsc

@@ -2604,7 +2604,7 @@ theorem toPolicy?_id_eq {cp : Cst.Policy} {ap : Spec.Policy} :
   obtain ⟨p⟩ := cp
   simp only [Cst.Policy.toPolicy?, Cst.PolicyImpl.toPolicy?, bind, Option.bind_eq_some_iff,
     Option.some.injEq] at h
-  obtain ⟨eff, heff, ⟨ps, as, rs⟩, hsc, conds, hconds, heq⟩ := h
+  obtain ⟨eff, heff, ⟨ps, acts, rs⟩, hsc, conds, hconds, heq⟩ := h
   simp only [← heq, Cst.Policy.id]
 
 /-- `filterMap` congruence across two lists related pointwise. -/

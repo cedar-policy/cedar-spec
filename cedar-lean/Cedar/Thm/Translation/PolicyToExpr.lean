@@ -589,7 +589,7 @@ theorem policy_to_expr_sound (cp : Cst.Policy) (ap : Policy)
   simp only [Cst.Policy.toExpr, Cst.PolicyImpl.toExpr] at hae
   simp only [Cst.Policy.toPolicy?, Cst.PolicyImpl.toPolicy?, bind, Option.bind_eq_some_iff,
     Option.some.injEq] at hap
-  obtain ⟨eff', heff, ⟨ps, as, rs⟩, hsc, apConds, hconds, hapeq⟩ := hap
+  obtain ⟨eff', heff, ⟨ps, acts, rs⟩, hsc, apConds, hconds, hapeq⟩ := hap
   subst hapeq
   match vars, hsc, hae with
   | [vp, va, vr], hscope, hae =>
