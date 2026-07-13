@@ -1,0 +1,2603 @@
+[
+  {
+    "uid": {
+      "__entity": {
+        "type": "Platform",
+        "id": "platform_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Platform",
+        "id": "platform_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Platform",
+        "id": "platform_2"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Platform",
+        "id": "platform_3"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Platform",
+        "id": "platform_4"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Platform",
+        "id": "platform_5"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Platform",
+        "id": "platform_6"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Platform",
+        "id": "platform_7"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Platform",
+        "id": "platform_8"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Platform",
+        "id": "platform_9"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Platform",
+        "id": "platform_10"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Platform",
+        "id": "platform_11"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Platform",
+        "id": "platform_12"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Platform",
+        "id": "platform_13"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Platform",
+        "id": "platform_14"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Namespace",
+        "id": "namespace_0"
+      }
+    },
+    "attrs": {
+      "name": "val_alpha_955",
+      "quota": {
+        "max_pods": 4,
+        "max_cpu": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "6397.34"
+          }
+        },
+        "max_memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "2483.89"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Platform",
+          "id": "platform_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Namespace",
+        "id": "namespace_1"
+      }
+    },
+    "attrs": {
+      "name": "val_main_588",
+      "quota": {
+        "max_pods": 0,
+        "max_cpu": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "8444.90"
+          }
+        },
+        "max_memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "8039.61"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Platform",
+          "id": "platform_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Namespace",
+        "id": "namespace_2"
+      }
+    },
+    "attrs": {
+      "name": "val_main_864",
+      "quota": {
+        "max_pods": 93,
+        "max_cpu": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "1148.69"
+          }
+        },
+        "max_memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "3700.00"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Platform",
+          "id": "platform_6"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Namespace",
+        "id": "namespace_3"
+      }
+    },
+    "attrs": {
+      "name": "val_secondary_124",
+      "quota": {
+        "max_pods": 72,
+        "max_cpu": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "8770.45"
+          }
+        },
+        "max_memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "5463.87"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Platform",
+          "id": "platform_6"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Namespace",
+        "id": "namespace_4"
+      }
+    },
+    "attrs": {
+      "name": "val_main_56",
+      "quota": {
+        "max_pods": 80,
+        "max_cpu": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "1485.46"
+          }
+        },
+        "max_memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "8759.43"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Platform",
+          "id": "platform_4"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Namespace",
+        "id": "namespace_5"
+      }
+    },
+    "attrs": {
+      "name": "val_primary_778",
+      "quota": {
+        "max_pods": 98,
+        "max_cpu": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "4750.82"
+          }
+        },
+        "max_memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "3327.22"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Platform",
+          "id": "platform_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Namespace",
+        "id": "namespace_6"
+      }
+    },
+    "attrs": {
+      "name": "val_beta_990",
+      "quota": {
+        "max_pods": 49,
+        "max_cpu": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "3129.38"
+          }
+        },
+        "max_memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "6391.13"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Platform",
+          "id": "platform_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Namespace",
+        "id": "namespace_7"
+      }
+    },
+    "attrs": {
+      "name": "val_test_498",
+      "quota": {
+        "max_pods": 10,
+        "max_cpu": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "7175.94"
+          }
+        },
+        "max_memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "3104.17"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Platform",
+          "id": "platform_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Namespace",
+        "id": "namespace_8"
+      }
+    },
+    "attrs": {
+      "name": "val_eta_25",
+      "quota": {
+        "max_pods": 92,
+        "max_cpu": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "9714.30"
+          }
+        },
+        "max_memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "8015.49"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Platform",
+          "id": "platform_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Namespace",
+        "id": "namespace_9"
+      }
+    },
+    "attrs": {
+      "name": "val_staging_511",
+      "quota": {
+        "max_pods": 68,
+        "max_cpu": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "7361.02"
+          }
+        },
+        "max_memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "606.43"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Platform",
+          "id": "platform_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Namespace",
+        "id": "namespace_10"
+      }
+    },
+    "attrs": {
+      "name": "val_dev_806",
+      "quota": {
+        "max_pods": 92,
+        "max_cpu": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "701.51"
+          }
+        },
+        "max_memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "1936.27"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Platform",
+          "id": "platform_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Namespace",
+        "id": "namespace_11"
+      }
+    },
+    "attrs": {
+      "name": "val_primary_962",
+      "quota": {
+        "max_pods": 86,
+        "max_cpu": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "8791.19"
+          }
+        },
+        "max_memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "9492.29"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Platform",
+          "id": "platform_12"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Namespace",
+        "id": "namespace_12"
+      }
+    },
+    "attrs": {
+      "name": "val_gamma_37",
+      "quota": {
+        "max_pods": 94,
+        "max_cpu": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "2319.62"
+          }
+        },
+        "max_memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "312.60"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Platform",
+          "id": "platform_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Namespace",
+        "id": "namespace_13"
+      }
+    },
+    "attrs": {
+      "name": "val_beta_248",
+      "quota": {
+        "max_pods": 89,
+        "max_cpu": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "2138.01"
+          }
+        },
+        "max_memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "2822.80"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Platform",
+          "id": "platform_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Namespace",
+        "id": "namespace_14"
+      }
+    },
+    "attrs": {
+      "name": "val_staging_840",
+      "quota": {
+        "max_pods": 12,
+        "max_cpu": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "7474.78"
+          }
+        },
+        "max_memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "2796.75"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Platform",
+          "id": "platform_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pod",
+        "id": "pod_0"
+      }
+    },
+    "attrs": {
+      "name": "val_delta_116",
+      "image": "val_secondary_609",
+      "resources": {
+        "cpu_request": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "3613.08"
+          }
+        },
+        "memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "3320.54"
+          }
+        },
+        "gpu": 43
+      },
+      "network": {
+        "pod_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "208.205.166.31/32"
+          }
+        },
+        "host_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "176.70.164.215/32"
+          }
+        },
+        "ports": [
+          50085,
+          2988
+        ]
+      },
+      "scheduling": {
+        "started": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2024-06-03T03:00:00Z"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "281s"
+          }
+        },
+        "priority": 96
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "namespace_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pod",
+        "id": "pod_1"
+      }
+    },
+    "attrs": {
+      "name": "val_zeta_713",
+      "image": "val_test_566",
+      "resources": {
+        "cpu_request": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "2703.56"
+          }
+        },
+        "memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "3991.74"
+          }
+        },
+        "gpu": 5
+      },
+      "network": {
+        "pod_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "35.51.192.200/32"
+          }
+        },
+        "host_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "41.8.249.21/32"
+          }
+        },
+        "ports": [
+          474
+        ]
+      },
+      "scheduling": {
+        "started": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2024-02-23T20:00:00Z"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "608m"
+          }
+        },
+        "priority": 53
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "namespace_6"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pod",
+        "id": "pod_2"
+      }
+    },
+    "attrs": {
+      "name": "val_secondary_708",
+      "image": "val_epsilon_211",
+      "resources": {
+        "cpu_request": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "2344.81"
+          }
+        },
+        "memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "4439.66"
+          }
+        },
+        "gpu": 57
+      },
+      "network": {
+        "pod_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "106.122.89.157/32"
+          }
+        },
+        "host_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "178.19.92.184/32"
+          }
+        },
+        "ports": [
+          40112,
+          62279,
+          5769,
+          41104
+        ]
+      },
+      "scheduling": {
+        "started": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2025-06-14T00:00:00Z"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "572s"
+          }
+        },
+        "priority": 24
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "namespace_11"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pod",
+        "id": "pod_3"
+      }
+    },
+    "attrs": {
+      "name": "val_delta_633",
+      "image": "val_test_883",
+      "resources": {
+        "cpu_request": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "8842.64"
+          }
+        },
+        "memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "3592.59"
+          }
+        },
+        "gpu": 98
+      },
+      "network": {
+        "pod_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "161.106.141.14/32"
+          }
+        },
+        "host_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "50.57.76.176/32"
+          }
+        },
+        "ports": [
+          32606,
+          11556,
+          10471,
+          43919
+        ]
+      },
+      "scheduling": {
+        "started": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2023-01-21T11:00:00Z"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "292s"
+          }
+        },
+        "priority": 55
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "namespace_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pod",
+        "id": "pod_4"
+      }
+    },
+    "attrs": {
+      "name": "val_dev_631",
+      "image": "val_primary_44",
+      "resources": {
+        "cpu_request": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "1710.94"
+          }
+        },
+        "memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "859.68"
+          }
+        },
+        "gpu": 22
+      },
+      "network": {
+        "pod_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "41.14.248.132/32"
+          }
+        },
+        "host_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "30.36.120.185/32"
+          }
+        },
+        "ports": [
+          38844,
+          37996,
+          21363,
+          27464
+        ]
+      },
+      "scheduling": {
+        "started": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2024-12-22T10:00:00Z"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "236ms"
+          }
+        },
+        "priority": 41
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "namespace_4"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pod",
+        "id": "pod_5"
+      }
+    },
+    "attrs": {
+      "name": "val_delta_242",
+      "image": "val_backup_890",
+      "resources": {
+        "cpu_request": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "3276.48"
+          }
+        },
+        "memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "3615.09"
+          }
+        },
+        "gpu": 60
+      },
+      "network": {
+        "pod_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "150.248.27.228/32"
+          }
+        },
+        "host_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "112.74.110.238/32"
+          }
+        },
+        "ports": [
+          29819,
+          11670,
+          25385,
+          24477,
+          8940
+        ]
+      },
+      "scheduling": {
+        "started": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2026-12-07T20:00:00Z"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "368m"
+          }
+        },
+        "priority": 25
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "namespace_3"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pod",
+        "id": "pod_6"
+      }
+    },
+    "attrs": {
+      "name": "val_epsilon_32",
+      "image": "val_beta_287",
+      "resources": {
+        "cpu_request": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "2236.14"
+          }
+        },
+        "memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "7627.58"
+          }
+        },
+        "gpu": 53
+      },
+      "network": {
+        "pod_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "44.175.112.227/32"
+          }
+        },
+        "host_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "76.80.87.148/32"
+          }
+        },
+        "ports": [
+          56034,
+          15054,
+          5668,
+          26981,
+          56163
+        ]
+      },
+      "scheduling": {
+        "started": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2026-04-19T15:00:00Z"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "858h"
+          }
+        },
+        "priority": 35
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "namespace_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pod",
+        "id": "pod_7"
+      }
+    },
+    "attrs": {
+      "name": "val_backup_753",
+      "image": "val_theta_253",
+      "resources": {
+        "cpu_request": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "5362.55"
+          }
+        },
+        "memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "9493.28"
+          }
+        },
+        "gpu": 75
+      },
+      "network": {
+        "pod_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "39.2.213.251/32"
+          }
+        },
+        "host_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "12.20.240.188/32"
+          }
+        },
+        "ports": [
+          2204,
+          27899,
+          34808,
+          25843,
+          31410
+        ]
+      },
+      "scheduling": {
+        "started": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2023-08-16T07:00:00Z"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "86d"
+          }
+        },
+        "priority": 96
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "namespace_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pod",
+        "id": "pod_8"
+      }
+    },
+    "attrs": {
+      "name": "val_backup_972",
+      "image": "val_eta_135",
+      "resources": {
+        "cpu_request": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "5872.37"
+          }
+        },
+        "memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "3916.82"
+          }
+        },
+        "gpu": 11
+      },
+      "network": {
+        "pod_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "5.245.156.42/32"
+          }
+        },
+        "host_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "181.235.12.250/32"
+          }
+        },
+        "ports": [
+          30394,
+          50583,
+          9085,
+          57292
+        ]
+      },
+      "scheduling": {
+        "started": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2026-03-26T11:00:00Z"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "642h"
+          }
+        },
+        "priority": 90
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "namespace_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pod",
+        "id": "pod_9"
+      }
+    },
+    "attrs": {
+      "name": "val_alpha_881",
+      "image": "val_gamma_394",
+      "resources": {
+        "cpu_request": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "5454.67"
+          }
+        },
+        "memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "535.37"
+          }
+        },
+        "gpu": 54
+      },
+      "network": {
+        "pod_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "193.138.106.202/32"
+          }
+        },
+        "host_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "176.41.171.189/32"
+          }
+        },
+        "ports": [
+          33734
+        ]
+      },
+      "scheduling": {
+        "started": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2025-01-04T12:00:00Z"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "375h"
+          }
+        },
+        "priority": 79
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "namespace_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pod",
+        "id": "pod_10"
+      }
+    },
+    "attrs": {
+      "name": "val_test_375",
+      "image": "val_zeta_663",
+      "resources": {
+        "cpu_request": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "9155.90"
+          }
+        },
+        "memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "1097.71"
+          }
+        },
+        "gpu": 90
+      },
+      "network": {
+        "pod_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "199.104.70.252/32"
+          }
+        },
+        "host_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "86.122.58.167/32"
+          }
+        },
+        "ports": [
+          48325,
+          61548,
+          49302,
+          38019
+        ]
+      },
+      "scheduling": {
+        "started": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2024-12-25T07:00:00Z"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "329m"
+          }
+        },
+        "priority": 34
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "namespace_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pod",
+        "id": "pod_11"
+      }
+    },
+    "attrs": {
+      "name": "val_backup_283",
+      "image": "val_beta_64",
+      "resources": {
+        "cpu_request": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "6108.44"
+          }
+        },
+        "memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "7412.62"
+          }
+        },
+        "gpu": 64
+      },
+      "network": {
+        "pod_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "135.62.240.182/32"
+          }
+        },
+        "host_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "137.149.231.159/32"
+          }
+        },
+        "ports": [
+          52423,
+          44126,
+          61956
+        ]
+      },
+      "scheduling": {
+        "started": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2023-04-15T02:00:00Z"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "83h"
+          }
+        },
+        "priority": 22
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "namespace_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pod",
+        "id": "pod_12"
+      }
+    },
+    "attrs": {
+      "name": "val_gamma_111",
+      "image": "val_zeta_282",
+      "resources": {
+        "cpu_request": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "1835.89"
+          }
+        },
+        "memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "2424.63"
+          }
+        },
+        "gpu": 19
+      },
+      "network": {
+        "pod_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "53.11.150.107/32"
+          }
+        },
+        "host_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "175.67.242.89/32"
+          }
+        },
+        "ports": [
+          29089,
+          48347,
+          42251,
+          1408
+        ]
+      },
+      "scheduling": {
+        "started": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2025-04-03T00:00:00Z"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "893s"
+          }
+        },
+        "priority": 66
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "namespace_4"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pod",
+        "id": "pod_13"
+      }
+    },
+    "attrs": {
+      "name": "val_dev_421",
+      "image": "val_dev_671",
+      "resources": {
+        "cpu_request": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "5346.62"
+          }
+        },
+        "memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "9721.85"
+          }
+        },
+        "gpu": 89
+      },
+      "network": {
+        "pod_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "136.227.234.78/32"
+          }
+        },
+        "host_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "146.67.156.44/32"
+          }
+        },
+        "ports": [
+          14863,
+          31736,
+          24373
+        ]
+      },
+      "scheduling": {
+        "started": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2025-01-05T11:00:00Z"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "292h"
+          }
+        },
+        "priority": 21
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "namespace_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pod",
+        "id": "pod_14"
+      }
+    },
+    "attrs": {
+      "name": "val_zeta_728",
+      "image": "val_staging_186",
+      "resources": {
+        "cpu_request": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "2873.90"
+          }
+        },
+        "memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "2514.20"
+          }
+        },
+        "gpu": 30
+      },
+      "network": {
+        "pod_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "30.21.162.148/32"
+          }
+        },
+        "host_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "33.225.133.95/32"
+          }
+        },
+        "ports": [
+          13446,
+          36864
+        ]
+      },
+      "scheduling": {
+        "started": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2023-11-11T11:00:00Z"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "152m"
+          }
+        },
+        "priority": 57
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "namespace_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "ServiceAccount",
+        "id": "serviceaccount_0"
+      }
+    },
+    "attrs": {},
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "namespace_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "ServiceAccount",
+        "id": "serviceaccount_1"
+      }
+    },
+    "attrs": {},
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "namespace_2"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "ServiceAccount",
+        "id": "serviceaccount_2"
+      }
+    },
+    "attrs": {},
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "namespace_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "ServiceAccount",
+        "id": "serviceaccount_3"
+      }
+    },
+    "attrs": {},
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "namespace_4"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "ServiceAccount",
+        "id": "serviceaccount_4"
+      }
+    },
+    "attrs": {},
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "namespace_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "ServiceAccount",
+        "id": "serviceaccount_5"
+      }
+    },
+    "attrs": {},
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "namespace_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "ServiceAccount",
+        "id": "serviceaccount_6"
+      }
+    },
+    "attrs": {},
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "namespace_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "ServiceAccount",
+        "id": "serviceaccount_7"
+      }
+    },
+    "attrs": {},
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "namespace_6"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "ServiceAccount",
+        "id": "serviceaccount_8"
+      }
+    },
+    "attrs": {},
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "namespace_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "ServiceAccount",
+        "id": "serviceaccount_9"
+      }
+    },
+    "attrs": {},
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "namespace_7"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "ServiceAccount",
+        "id": "serviceaccount_10"
+      }
+    },
+    "attrs": {},
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "namespace_12"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "ServiceAccount",
+        "id": "serviceaccount_11"
+      }
+    },
+    "attrs": {},
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "namespace_2"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "ServiceAccount",
+        "id": "serviceaccount_12"
+      }
+    },
+    "attrs": {},
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "namespace_7"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "ServiceAccount",
+        "id": "serviceaccount_13"
+      }
+    },
+    "attrs": {},
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "namespace_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "ServiceAccount",
+        "id": "serviceaccount_14"
+      }
+    },
+    "attrs": {},
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "namespace_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Platform",
+        "id": "prod_cluster"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Platform",
+        "id": "staging_cluster"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Namespace",
+        "id": "kube-system"
+      }
+    },
+    "attrs": {
+      "name": "kube-system",
+      "quota": {
+        "max_pods": 200,
+        "max_cpu": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "64.00"
+          }
+        },
+        "max_memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "256.00"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Platform",
+          "id": "prod_cluster"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Namespace",
+        "id": "default"
+      }
+    },
+    "attrs": {
+      "name": "default",
+      "quota": {
+        "max_pods": 50,
+        "max_cpu": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "16.00"
+          }
+        },
+        "max_memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "64.00"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Platform",
+          "id": "prod_cluster"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Namespace",
+        "id": "ml-training"
+      }
+    },
+    "attrs": {
+      "name": "ml-training",
+      "quota": {
+        "max_pods": 20,
+        "max_cpu": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "128.00"
+          }
+        },
+        "max_memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "512.00"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Platform",
+          "id": "prod_cluster"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Namespace",
+        "id": "frontend"
+      }
+    },
+    "attrs": {
+      "name": "frontend",
+      "quota": {
+        "max_pods": 100,
+        "max_cpu": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "32.00"
+          }
+        },
+        "max_memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "128.00"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Platform",
+          "id": "staging_cluster"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pod",
+        "id": "coredns-7d8f9b"
+      }
+    },
+    "attrs": {
+      "name": "coredns-7d8f9b",
+      "image": "registry.k8s.io/coredns:v1.11.1",
+      "resources": {
+        "cpu_request": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "0.10"
+          }
+        },
+        "memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "0.17"
+          }
+        },
+        "gpu": 0
+      },
+      "network": {
+        "pod_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "10.244.0.5/32"
+          }
+        },
+        "host_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "10.0.1.10/32"
+          }
+        },
+        "ports": [
+          53,
+          9153
+        ]
+      },
+      "scheduling": {
+        "started": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2025-11-01T00:00:00Z"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "0ms"
+          }
+        },
+        "priority": 2000
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "kube-system"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pod",
+        "id": "nginx-frontend-abc"
+      }
+    },
+    "attrs": {
+      "name": "nginx-frontend-abc",
+      "image": "nginx:1.25-alpine",
+      "resources": {
+        "cpu_request": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "0.50"
+          }
+        },
+        "memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "0.50"
+          }
+        },
+        "gpu": 0
+      },
+      "network": {
+        "pod_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "10.244.1.22/32"
+          }
+        },
+        "host_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "10.0.2.5/32"
+          }
+        },
+        "ports": [
+          80,
+          443
+        ]
+      },
+      "scheduling": {
+        "started": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2025-12-10T08:30:00Z"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "30s"
+          }
+        },
+        "priority": 10
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "frontend"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pod",
+        "id": "gpu-trainer-01"
+      }
+    },
+    "attrs": {
+      "name": "gpu-trainer-01",
+      "image": "internal/ml-trainer:v2.4.0",
+      "resources": {
+        "cpu_request": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "8.00"
+          }
+        },
+        "memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "64.00"
+          }
+        },
+        "gpu": 4
+      },
+      "network": {
+        "pod_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "10.244.3.100/32"
+          }
+        },
+        "host_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "10.0.5.2/32"
+          }
+        },
+        "ports": [
+          8080,
+          6006
+        ]
+      },
+      "scheduling": {
+        "started": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2025-12-20T02:00:00Z"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "48h"
+          }
+        },
+        "priority": 50
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "ml-training"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pod",
+        "id": "redis-cache-0"
+      }
+    },
+    "attrs": {
+      "name": "redis-cache-0",
+      "image": "redis:7.2",
+      "resources": {
+        "cpu_request": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "1.00"
+          }
+        },
+        "memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "4.00"
+          }
+        },
+        "gpu": 0
+      },
+      "network": {
+        "pod_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "10.244.0.88/32"
+          }
+        },
+        "host_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "10.0.1.10/32"
+          }
+        },
+        "ports": [
+          6379
+        ]
+      },
+      "scheduling": {
+        "started": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2025-10-15T12:00:00Z"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "0ms"
+          }
+        },
+        "priority": 100
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "default"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pod",
+        "id": "etcd-master-0"
+      }
+    },
+    "attrs": {
+      "name": "etcd-master-0",
+      "image": "registry.k8s.io/etcd:3.5.10",
+      "resources": {
+        "cpu_request": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "2.00"
+          }
+        },
+        "memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "8.00"
+          }
+        },
+        "gpu": 0
+      },
+      "network": {
+        "pod_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "10.244.0.3/32"
+          }
+        },
+        "host_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "10.0.1.10/32"
+          }
+        },
+        "ports": [
+          2379,
+          2380
+        ]
+      },
+      "scheduling": {
+        "started": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2025-06-01T00:00:00Z"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "0ms"
+          }
+        },
+        "priority": 2000
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "kube-system"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Pod",
+        "id": "zombie-pod"
+      }
+    },
+    "attrs": {
+      "name": "zombie-pod",
+      "image": "busybox:latest",
+      "resources": {
+        "cpu_request": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "0.01"
+          }
+        },
+        "memory_gb": {
+          "__extn": {
+            "fn": "decimal",
+            "arg": "0.01"
+          }
+        },
+        "gpu": 0
+      },
+      "network": {
+        "pod_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "10.244.9.200/32"
+          }
+        },
+        "host_ip": {
+          "__extn": {
+            "fn": "ip",
+            "arg": "10.0.9.1/32"
+          }
+        },
+        "ports": []
+      },
+      "scheduling": {
+        "started": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2023-01-01T00:00:00Z"
+          }
+        },
+        "timeout": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "1h"
+          }
+        },
+        "priority": 1
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "default"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "ServiceAccount",
+        "id": "sa-deployer"
+      }
+    },
+    "attrs": {},
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "default"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "ServiceAccount",
+        "id": "sa-ml-runner"
+      }
+    },
+    "attrs": {},
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "ml-training"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "ServiceAccount",
+        "id": "sa-admin"
+      }
+    },
+    "attrs": {},
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "kube-system"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "ServiceAccount",
+        "id": "sa-frontend-ci"
+      }
+    },
+    "attrs": {},
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "frontend"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "ServiceAccount",
+        "id": "sa-readonly"
+      }
+    },
+    "attrs": {},
+    "parents": [
+      {
+        "__entity": {
+          "type": "Namespace",
+          "id": "default"
+        }
+      }
+    ]
+  }
+]

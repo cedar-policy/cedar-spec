@@ -92,7 +92,7 @@ def inₑ (uid₁ uid₂ : EntityUID) (es : PartialEntities) : Option Bool :=
   if uid₁ = uid₂ then .some true else (es.ancestors uid₁).map (Set.contains · uid₂)
 
 def inₛ (uid : EntityUID) (vs : Set Value) (es : PartialEntities): Option Bool := do
-  (← vs.toList.mapM (Except.toOption ∘ Value.asEntityUID)).anyM (inₑ uid · es)
+  (← vs.toList.mapM (Except.toOption ∘ Value.asEntityUID)).ternaryAny (inₑ uid · es)
 
 def hasTag (uid : EntityUID) (tag : String) (es : PartialEntities) : Option Bool :=
   (es.tags uid).map (Map.contains · tag)

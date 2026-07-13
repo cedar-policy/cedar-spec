@@ -16,30 +16,16 @@
 
 module
 
-public import Cedar.Thm.Data.Control -- needs to be public because this tactic assumes that some Control lemmas are available
+public import Cedar.Thm.Tactics
 import Cedar.Thm.SymCC.Data
-public import Lean.Elab.Tactic.Basic
 public meta import Lean.Meta.Tactic.Clear
 
 /-!
-This file contains basic utility tactics.
+This file contains basic utility tactics specific to symbolic compilation.
+General-purpose tactics live in `Cedar.Thm.Tactics`.
 --/
 
 namespace Cedar.Thm
-
-
-/--
-This tactic simplifes assumptions of the form `do (let x ← expr ...)` by
-performing a `cases` and `simp` on `expr`.
--/
-
-syntax "simp_do_let" term (" at " ident)? : tactic
-
-macro_rules
-| `(tactic| simp_do_let $e $[at $h:ident]?) =>
-  `(tactic|
-    cases h' : $e <;>
-    simp only [h', Except.bind_err, Except.bind_ok, reduceCtorEq] $[at $h:ident]?)
 
 open Lean Elab Meta Tactic in
 elab "clean_i" : tactic => liftMetaTactic fun mvarId => mvarId.withContext do

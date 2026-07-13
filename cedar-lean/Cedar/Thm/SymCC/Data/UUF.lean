@@ -31,7 +31,6 @@ theorem prefix_ne_at_index {p₁ p₂ x y : String} {i : Nat}
   (p₁ ++ x).toList ≠ (p₂ ++ y).toList := by
   intro h
   have hᵢ := congrArg (fun l => l[i]?) h
-  simp only at hᵢ
   rw [String.toList_append, String.toList_append,
       List.getElem?_append_left h₁, List.getElem?_append_left h₂] at hᵢ
   contradiction

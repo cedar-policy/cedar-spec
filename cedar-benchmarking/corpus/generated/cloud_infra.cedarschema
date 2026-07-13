@@ -1,0 +1,40 @@
+entity Cloud;
+entity Region in [Cloud] = {
+    "name": __cedar::String,
+    "compliance": Set<__cedar::String>
+};
+entity VPC in [Region] = {
+    "cidr": ipaddr,
+    "name": __cedar::String
+};
+entity Subnet in [VPC] = {
+    "cidr": ipaddr,
+    "public": __cedar::Bool
+};
+entity Instance in [Subnet] = {
+    "ip": ipaddr,
+    "type": __cedar::String,
+    "cost_per_hour": decimal,
+    "launched": datetime
+};
+entity SecurityGroup = {
+    "ingress_cidr": ipaddr,
+    "egress_cidr": ipaddr,
+    "ports": Set<__cedar::Long>
+};
+entity Admin;
+action "launch" appliesTo {
+    principal: [Admin],
+    resource: [Subnet],
+    context: { "instance_type": __cedar::String, "cost": decimal, "source_ip": ipaddr }
+};
+action "terminate" appliesTo {
+    principal: [Admin],
+    resource: [Instance],
+    context: { "source_ip": ipaddr, "reason": __cedar::String }
+};
+action "modify_sg" appliesTo {
+    principal: [Admin],
+    resource: [SecurityGroup],
+    context: { "source_ip": ipaddr, "new_cidr": ipaddr }
+};

@@ -34,8 +34,8 @@ theorem type_of_hasTag_inversion {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {
     typeOfHasTag ety x₁ x₂ c₁ env = .ok (ty.typeOf, c₂)
 := by
   simp only [typeOf] at h₁
-  cases h₂ : typeOf x₁ c₁ env <;> simp only [h₂, Except.bind_ok, Except.bind_err, reduceCtorEq] at h₁
-  cases h₃ : typeOf x₂ c₁ env <;> simp only [h₃, Except.bind_ok, Except.bind_err, reduceCtorEq] at h₁
+  simp_do_let (typeOf x₁ c₁ env) as h₂ at h₁
+  simp_do_let (typeOf x₂ c₁ env) as h₃ at h₁
   rename_i tyc₁ tyc₂
   cases tyc₁
   cases tyc₂

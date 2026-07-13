@@ -18,11 +18,15 @@
 
 use cedar_drt_inner::fuzz_target;
 
+use cedar_drt_inner::props::request_context_to_cedar_parses;
 use cedar_policy::Request;
 use cedar_policy::proto::traits::Protobuf;
 
 // Feed arbitrary bytes into each protobuf decoder.
 // The property under test: decode either returns Ok or Err, never panics.
 fuzz_target!(|input: &[u8]| {
-    let _ = Request::decode(input);
+    match Request::decode(input) {
+        Ok(r) => request_context_to_cedar_parses(r),
+        Err(_) => (), // we expect errors here
+    }
 });

@@ -142,7 +142,7 @@ theorem well_typed_implies_wf_type
     · intros attr qty hattr
       have := (Map.in_list_iff_find?_some hwf_rty).mpr hattr
       simp only [hrty] at this
-      have := Map.make_mem_list_mem this
+      have := Map.mem_make_mem_list this
       simp only [List.mem_map, Prod.mk.injEq, Prod.exists] at this
       have ⟨attr, tx, htx, heq_attr, hqty⟩ := this
       have := hwt_attrs attr tx htx

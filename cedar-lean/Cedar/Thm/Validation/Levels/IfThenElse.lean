@@ -51,7 +51,7 @@ theorem level_based_slicing_is_sound_if {x₁ x₂ x₃ : Expr} {n : Nat} {c₀ 
     rename_i hl₁ hl₂ hl₃
     specialize ih₁ hc hr htx₁ hl₁
     simp only [ih₁, evaluate]
-    cases he₁' : Result.as Bool (evaluate x₁ request (entities.sliceAtLevel request n)) <;> simp only [Except.bind_err, Except.bind_ok]
+    simp_do_let (Result.as Bool (evaluate x₁ request (entities.sliceAtLevel request n))) as he₁'
     rename_i b
     replace he₁' : evaluate x₁ request (entities.sliceAtLevel request n) = .ok (.prim (.bool b)) := by
       simp only [Result.as, Coe.coe, Value.asBool] at he₁'

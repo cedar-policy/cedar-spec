@@ -1,0 +1,32 @@
+entity OrgPermission;
+entity Organization in [OrgPermission] = {"admins": OrgPermission, "readers": OrgPermission, "writers": OrgPermission};
+entity RepoPermission;
+entity Repository = {"admins": RepoPermission, "maintainers": RepoPermission, "owner": Organization, "readers": RepoPermission, "triagers": RepoPermission, "writers": RepoPermission};
+entity Team in [Team, RepoPermission];
+entity User in [Organization, Team, OrgPermission, RepoPermission];
+action "admin" appliesTo {
+  principal: [User],
+  resource: [Repository],
+  context: {}
+};
+action "maintain" in [Action::"admin"] appliesTo {
+  principal: [User],
+  resource: [Repository],
+  context: {}
+};
+action "read" in [Action::"triage"] appliesTo {
+  principal: [User],
+  resource: [Repository],
+  context: {}
+};
+action "triage" in [Action::"write"] appliesTo {
+  principal: [User],
+  resource: [Repository],
+  context: {}
+};
+action "write" in [Action::"maintain"] appliesTo {
+  principal: [User],
+  resource: [Repository],
+  context: {}
+};
+

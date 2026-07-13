@@ -60,19 +60,17 @@ Additional commands available with `cargo fuzz help`.
 
 ## VSCode
 
-To work with `cedar-drt` in VSCode, first configure two settings so that the rust analyzer plugin doesn't error when trying to find the Lean installation and so that it works properly in the `fuzz` crate.
-Add the following entries to your `.vscode/settings.json`. First run `source set_env_vars.sh && echo $LEAN_LIB_DIR` to get the correct value for `LEAN_LIB_DIR`.
+To work with `cedar-drt` in VSCode, copy the recommended settings into place:
+
+```bash
+cp .vscode/settings.json.default .vscode/settings.json
+```
+
+Then add the `LEAN_LIB_DIR` environment variable so rust-analyzer can find the Lean installation. Run `source set_env_vars.sh && echo $LEAN_LIB_DIR`, then add the following to your `.vscode/settings.json`:
 
 ```json
-{
-    "rust-analyzer.linkedProjects": [
-        "./cedar-drt/fuzz/Cargo.toml",
-        "./cedar/Cargo.toml",
-        "./cedar-lean-cli/Cargo.toml",
-    ],
-    "rust-analyzer.cargo.extraEnv": {
-        "LEAN_LIB_DIR": <$LEAN_LIB_DIR as populated by set_env_vars.sh>
-    }
+"rust-analyzer.cargo.extraEnv": {
+    "LEAN_LIB_DIR": <$LEAN_LIB_DIR as populated by set_env_vars.sh>
 }
 ```
 

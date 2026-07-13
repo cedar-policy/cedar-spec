@@ -1,0 +1,41 @@
+entity Warehouse;
+entity Rack in [Warehouse] = {
+    "zone": __cedar::String,
+    "temperature": decimal,
+    "humidity": decimal,
+    "network": ipaddr
+};
+entity Item in [Rack] = {
+    "sku": __cedar::String,
+    "weight_kg": decimal,
+    "value": decimal,
+    "expiry": datetime,
+    "hazmat": __cedar::Bool,
+    "dimensions": {
+        "length_cm": decimal,
+        "width_cm": decimal,
+        "height_cm": decimal
+    }
+};
+entity Worker = {
+    "role": __cedar::String,
+    "certifications": Set<__cedar::String>,
+    "shift_start": datetime,
+    "shift_end": datetime,
+    "max_weight_kg": decimal
+};
+action "pick" appliesTo {
+    principal: [Worker],
+    resource: [Item],
+    context: { "timestamp": datetime, "quantity": __cedar::Long }
+};
+action "store" appliesTo {
+    principal: [Worker],
+    resource: [Rack],
+    context: { "item_weight_kg": decimal, "timestamp": datetime, "hazmat": __cedar::Bool }
+};
+action "inspect" appliesTo {
+    principal: [Worker],
+    resource: [Item],
+    context: { "timestamp": datetime, "source_ip": ipaddr }
+};

@@ -79,8 +79,8 @@ theorem level_based_slicing_is_sound_binary_app {op : BinaryOp} {e₁ e₂ : Exp
     have hl₁' := entity_access_at_level_then_at_level hl₁
     specialize ihe₁ hc hr htx₁ hl₁'
     rw [←ihe₁]
-    cases he₁ : evaluate e₁ request entities <;> simp only [Except.bind_ok, Except.bind_err]
-    cases he₂ : evaluate e₂ request entities <;> simp only [Except.bind_ok, Except.bind_err]
+    simp_do_let (evaluate e₁ request entities) as he₁
+    simp_do_let (evaluate e₂ request entities) as he₂
     rename_i v₁ v₂
     cases v₁ <;> cases v₂ <;> simp only [apply₂]
     rename_i p₁ p₂
@@ -94,8 +94,8 @@ theorem level_based_slicing_is_sound_binary_app {op : BinaryOp} {e₁ e₂ : Exp
     have hl₁' := entity_access_at_level_then_at_level hl₁
     specialize ihe₁ hc hr htx₁ hl₁'
     rw [←ihe₁]
-    cases he₁ : evaluate e₁ request entities <;> simp only [Except.bind_ok, Except.bind_err]
-    cases he₂ : evaluate e₂ request entities <;> simp only [Except.bind_ok, Except.bind_err]
+    simp_do_let (evaluate e₁ request entities) as he₁
+    simp_do_let (evaluate e₂ request entities) as he₂
     rename_i v₁ v₂
     cases v₁ <;> cases v₂ <;> simp only [apply₂]
     case prim =>

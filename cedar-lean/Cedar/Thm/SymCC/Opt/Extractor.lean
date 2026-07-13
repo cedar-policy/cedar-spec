@@ -120,7 +120,6 @@ theorem extractOpt?_eqv_extract? {cpsets : List CompiledPolicies} {I : Interpret
       · first
         | have := cp_compile_produces_the_right_footprint hcompile
         | have := cpset_compile_produces_the_right_footprint hcompile
-        simp only at this
         simp [CompiledPolicies.footprint, this, footprint_wf, footprints_wf]
       · rename_i hcps
         specialize hcompile' cps hcps

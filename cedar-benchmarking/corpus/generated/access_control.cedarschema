@@ -1,0 +1,23 @@
+entity Building;
+entity Room in [Building] = {
+    "name": __cedar::String,
+    "floor": __cedar::Long,
+    "capacity": __cedar::Long,
+    "network": ipaddr
+};
+entity Badge = {
+    "holder": __cedar::String,
+    "issued": datetime,
+    "expires": datetime,
+    "access_level": __cedar::Long
+};
+action "enter" appliesTo {
+    principal: [Badge],
+    resource: [Room],
+    context: { "timestamp": datetime, "reader_ip": ipaddr }
+};
+action "unlock" appliesTo {
+    principal: [Badge],
+    resource: [Room],
+    context: { "timestamp": datetime, "duration": duration }
+};

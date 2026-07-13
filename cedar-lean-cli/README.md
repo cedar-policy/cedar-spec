@@ -132,13 +132,13 @@ For both sub-commands, the CLI supports both a "human readable output" (default)
 
 #### Analyze Policies
 
-The `analyze policies` command presents five findings: if a policy is vacuous, if a subset of policies are redundant (i.e., are equivalent to each other), if a permit policy is shadowed by another permit policy, if a permit policy is overrident by forbid policy, or if a fordid policy is shadowed by another forbid policy. We present the findings (other than vacuousness of policies) per request type.
+The `analyze policies` command presents five findings: if a policy is vacuous, if a subset of policies are redundant (i.e., are equivalent to each other), if a permit policy is shadowed by another permit policy, if a permit policy is overridden by forbid policy, or if a fordid policy is shadowed by another forbid policy. We present the findings (other than vacuousness of policies) per request type.
 
-* A policy is vacous if either (1) it applies to all requests (allows all) or (2) it applies to no requests (allows none).
+* A policy is vacuous if either (1) it applies to all requests (allows all) or (2) it applies to no requests (allows none).
 * A set of policies are redundant with each other if every policy within the set are equivalent (allows the same set of authorization requests).
 * A permit policy `policy1` is shadowed by a permit policy `policy2` if every request allowed by `policy1` is allowed by `policy2` and `policy1` and `policy2` are not redundant.
-* A permit policy `policy1` is overriden by a forbid policy `policy2` if every request allowed by `policy1` is denied by `policy2`.
-* A forbid policy `policy1` is shaddowed by a forbid policy `policy2` if every request denied by `policy1` is denied by `policy2` and `policy1` and `policy2` are not redundant.
+* A permit policy `policy1` is overridden by a forbid policy `policy2` if every request allowed by `policy1` is denied by `policy2`.
+* A forbid policy `policy1` is shadowed by a forbid policy `policy2` if every request denied by `policy1` is denied by `policy2` and `policy1` and `policy2` are not redundant.
 
 #### Analyze Compare
 
@@ -192,7 +192,7 @@ Request Environment Options:
       --principal-type <PRINCIPAL_TYPE_NAME>
           Restrict Analysis to Request Environments for the given PrincipalType
       --action-name <ACTION_NAME>
-          Restrict Analysis to Request Environmetns for the given Action
+          Restrict Analysis to Request Environments for the given Action
       --resource-type <RESOURCE_TYPE_NAME>
           Restrict Analysis to Request Environments for the given ResourceType
 ```
@@ -201,7 +201,7 @@ Request Environment Options:
 
 The `evaluate` command provides two sub-commands `authorize` and `evaluate`.
 * The `authorize` sub-command evaluates an authorization request.
-* The `evaluate` sub-command evalutes a cedar expression (and optionally compares the evaluated expression to a cedar value).
+* The `evaluate` sub-command evaluates a cedar expression (and optionally compares the evaluated expression to a cedar value).
 
 ```
 > cedar-lean-cli evaluate --help

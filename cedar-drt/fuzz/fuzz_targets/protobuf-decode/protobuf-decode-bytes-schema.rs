@@ -18,11 +18,27 @@
 
 use cedar_drt_inner::fuzz_target;
 
+use cedar_drt_inner::props::{schema_to_cedar_parses, schema_to_json_deserializes};
+use cedar_drt_inner::schemas::schemas_are_equivalent;
 use cedar_policy::Schema;
 use cedar_policy::proto::traits::Protobuf;
 
 // Feed arbitrary bytes into Schema protobuf decoder.
 // The property under test: decode either returns Ok or Err, never panics.
 fuzz_target!(|input: &[u8]| {
-    let _ = Schema::decode(input);
+    match Schema::decode(input) {
+        Ok(schema) => {
+            schemas_are_equivalent(
+                &schema,
+                &schema_to_cedar_parses(&schema),
+                "Cedar Roundtripped",
+            );
+            schemas_are_equivalent(
+                &schema,
+                &schema_to_json_deserializes(&schema),
+                "JSON Roundtripped",
+            );
+        }
+        Err(_) => (), // we expect errors
+    }
 });

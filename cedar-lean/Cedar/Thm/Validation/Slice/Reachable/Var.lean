@@ -32,8 +32,7 @@ open Cedar.Validation
 
 theorem var_entity_reachable {var : Var} {v : Value} {n : Nat} {request : Request} {entities : Entities} {euid : EntityUID} {path : List Attr}
   (he : evaluate (.var var) request entities = .ok v)
-  (ha : Value.EuidViaPath v path euid)
-  (hf : entities.contains euid) :
+  (ha : Value.EuidViaPath v path euid) :
   ReachableIn entities request.sliceEUIDs euid (n + 1)
 := by
   have hi : euid ∈ request.sliceEUIDs := by

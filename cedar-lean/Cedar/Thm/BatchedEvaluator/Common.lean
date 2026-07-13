@@ -29,16 +29,13 @@ theorem as_partial_request_refines {req : Request} :
   RequestRefines req req.asPartialRequest := by
   simp only [Request.asPartialRequest, RequestRefines, PartialEntityUID.asEntityUID, Option.map_some]
   constructor
-  · apply PartialIsValid.some
-    rfl
+  · apply PartialIsValid.some <;> rfl
   constructor
   · trivial
   constructor
-  · apply PartialIsValid.some
-    rfl
+  · apply PartialIsValid.some <;> rfl
   constructor
-  · apply PartialIsValid.some
-    rfl
+  · apply PartialIsValid.some <;> rfl
   constructor <;> trivial
 
 theorem any_refines_empty_entities :
@@ -78,8 +75,8 @@ theorem direct_request_and_entities_refine (req : Request) (es : Entities) :
     obtain ⟨data₁, h_find₁, h_eq⟩ := h_mapOnValues
     exists data₁
     exact ⟨h_find₁,
-           by rw [h_eq]; apply PartialIsValid.some; rfl,
-           by rw [h_eq]; apply PartialIsValid.some; rfl,
-           by rw [h_eq]; apply PartialIsValid.some; rfl⟩
+           by rw [h_eq]; apply PartialIsValid.some <;> rfl,
+           by rw [h_eq]; apply PartialIsValid.some <;> rfl,
+           by rw [h_eq]; apply PartialIsValid.some <;> rfl⟩
 
 end Cedar.Thm

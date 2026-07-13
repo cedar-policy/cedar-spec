@@ -892,8 +892,7 @@ private theorem evaluate_ite_wf {x₁ x₂ x₃ : Expr} {env : Env} {v : Value}
   replace hwf := wf_env_for_ite_implies hwf
   rw [evaluate.eq_def] at hok
   simp only [Result.as] at hok
-  cases hok₁ : evaluate x₁ env.request env.entities <;>
-  simp only [hok₁, Except.bind_err, reduceCtorEq] at hok
+  simp_do_let (evaluate x₁ env.request env.entities) as hok₁ at hok
   rename_i v₁
   simp only [Coe.coe, Value.asBool] at hok
   split at hok <;>
@@ -912,8 +911,7 @@ private theorem evaluate_and_or_wf {x₁ x₂ : Expr} {env : Env} {v : Value} {s
   Value.WellFormed env.entities v
 := by
   simp only [Result.as] at hok
-  cases hok₁ : evaluate x₁ env.request env.entities <;>
-  simp only [hok₁, Except.bind_err, reduceCtorEq] at hok
+  simp_do_let (evaluate x₁ env.request env.entities) as hok₁ at hok
   rename_i v₁
   simp only [Coe.coe, Value.asBool] at hok
   split at hok <;>
@@ -1116,7 +1114,7 @@ private theorem evaluate_record_wf {env : Env} {v : Value} {axs : List (Attr × 
   apply Value.WellFormed.record_wf _ (Map.make_wf vs)
   intro a v hv
   replace hv := Map.find?_mem_toList hv
-  replace hv := Map.make_mem_list_mem hv
+  replace hv := Map.mem_make_mem_list hv
   replace ⟨x, hx, hvs⟩ := List.mapM'_ok_implies_all_from_ok hvs (a, v) hv
   simp [bindAttr] at hvs
   simp_do_let (evaluate x.snd env.request env.entities) at hvs

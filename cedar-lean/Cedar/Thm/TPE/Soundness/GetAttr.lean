@@ -78,10 +78,9 @@ theorem partial_evaluate_is_sound_get_attr
       rcases h₄ with ⟨_, h₄⟩
       specialize h₄ uid data heq₂
       rcases h₄ with ⟨_, h₄₁, h₄₂, _⟩
-      rw [heq₃] at h₄₂
-      rcases h₄₂
-      rename_i data' _ h₄
-      subst h₄
+      simp only [heq₃, PartialIsValid.some_inv] at h₄₂
+      subst h₄₂
+      rename_i data' h₄
       simp [Entities.attrs, Data.Map.findOrErr, h₄₁]
       generalize h₄ : data'.attrs.find? attr = res
       cases res <;> simp [someOrError, Residual.evaluate, Except.toOption]

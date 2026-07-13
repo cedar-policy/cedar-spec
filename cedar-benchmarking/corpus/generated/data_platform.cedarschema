@@ -1,0 +1,55 @@
+entity DataLake;
+entity Dataset in [DataLake] = {
+    "name": __cedar::String,
+    "classification": __cedar::String,
+    "size_gb": decimal,
+    "created": datetime,
+    "retention": duration,
+    "schema_version": __cedar::Long
+};
+entity Pipeline in [DataLake] = {
+    "name": __cedar::String,
+    "schedule": duration,
+    "last_run": datetime,
+    "config": {
+        "source": {
+            "type": __cedar::String,
+            "connection": {
+                "host": ipaddr,
+                "port": __cedar::Long,
+                "encrypted": __cedar::Bool
+            }
+        },
+        "destination": {
+            "type": __cedar::String,
+            "connection": {
+                "host": ipaddr,
+                "port": __cedar::Long,
+                "encrypted": __cedar::Bool
+            }
+        },
+        "transform": {
+            "timeout": duration,
+            "max_records": __cedar::Long
+        }
+    }
+};
+entity DataEngineer = {
+    "level": __cedar::Long,
+    "certifications": Set<__cedar::String>
+};
+action "query" appliesTo {
+    principal: [DataEngineer],
+    resource: [Dataset],
+    context: { "source_ip": ipaddr, "timestamp": datetime, "row_limit": __cedar::Long }
+};
+action "run_pipeline" appliesTo {
+    principal: [DataEngineer],
+    resource: [Pipeline],
+    context: { "source_ip": ipaddr, "timestamp": datetime, "override_schedule": __cedar::Bool }
+};
+action "export" appliesTo {
+    principal: [DataEngineer],
+    resource: [Dataset],
+    context: { "destination_ip": ipaddr, "format": __cedar::String, "encrypted": __cedar::Bool }
+};

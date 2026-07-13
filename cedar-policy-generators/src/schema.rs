@@ -328,12 +328,28 @@ pub fn schematype_to_type(
     namespace: Option<&ast::Name>,
 ) -> Type {
     match schematy {
-        json_schema::Type::CommonTypeRef { type_name, .. } => schematype_to_type(
-            schema,
-            lookup_common_type(schema, type_name)
-                .unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")),
-            namespace,
-        ),
+        json_schema::Type::CommonTypeRef { type_name, .. } => {
+            if let Some(ty) = lookup_common_type(schema, type_name) {
+                return schematype_to_type(schema, ty, namespace);
+            }
+            // Extension types appear as CommonTypeRef after JSON schema deserialization
+            // This is not a path typically triggered by the DRT which generates the
+            // TypeVariant::Extension, but used by generators built from parsed schemas.
+            // In Cedar, the translation registers the extension types as common types, this
+            // effectively does the same.
+            schematype_to_type(
+                schema,
+                &json_schema::Type::Type {
+                    ty: json_schema::TypeVariant::Extension {
+                        name: type_name.basename().clone().try_into().unwrap_or_else(|_| {
+                            panic!("reference to undefined common type: {type_name}")
+                        }),
+                    },
+                    loc: None,
+                },
+                namespace,
+            )
+        }
         json_schema::Type::Type { ty, .. } => match ty {
             json_schema::TypeVariant::Boolean => Type::bool(),
             json_schema::TypeVariant::Long => Type::long(),
@@ -449,11 +465,12 @@ fn attrs_in_schematype(
                 Box::new(toplevel.into_iter().chain(recursed))
             }
         },
-        json_schema::Type::CommonTypeRef { type_name, .. } => attrs_in_schematype(
-            schema,
-            lookup_common_type(schema, type_name)
-                .unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")),
-        ),
+        json_schema::Type::CommonTypeRef { type_name, .. } => {
+            match lookup_common_type(schema, type_name) {
+                Some(ty) => attrs_in_schematype(schema, ty),
+                None => Box::new(std::iter::empty()), // extension types have no attributes
+            }
+        }
     }
 }
 
@@ -910,13 +927,22 @@ impl Schema {
         u: &mut Unstructured<'_>,
     ) -> Result<Schema> {
         let namespace_internal: Option<&ast::InternalName> = namespace.as_ref().map(AsRef::as_ref);
-        let all_defs = AllDefs::single_fragment(&ValidatorSchemaFragment::from_namespaces([
+        let mut all_defs = AllDefs::single_fragment(&ValidatorSchemaFragment::from_namespaces([
             ValidatorNamespaceDef::from_namespace_definition(
                 namespace.clone().map(Into::into),
                 nsdef.clone(),
             )
             .map_err(|e| Error::SchemaError(Box::new(e)))?,
         ]));
+        // Just like in Cedar mark extension types as common types if they don't shadow a
+        // user defined one.
+        for ext_type in Extensions::all_available().ext_types() {
+            if !all_defs.is_defined_as_common(ext_type.as_ref())
+                && !all_defs.is_defined_as_entity(ext_type.as_ref())
+            {
+                all_defs.mark_as_defined_as_common_type(ext_type.as_ref().qualify_with(None));
+            }
+        }
         Self::from_nsdef(
             nsdef
                 .conditionally_qualify_type_references(namespace_internal)

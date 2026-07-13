@@ -145,7 +145,7 @@ theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List
         first
         | apply Residual.WellTyped.val
           apply InstanceOfType.instance_of_ext
-          simp [InstanceOfExtType]
+          simp [Coe.coe, InstanceOfExtType]
         | exact well_typed_bool
       case h_2 x₂ h₄ =>
         simp only [someOrError, Except.toOption]
@@ -194,7 +194,7 @@ theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List
         first
         | apply Residual.WellTyped.val
           apply InstanceOfType.instance_of_ext
-          simp [InstanceOfExtType]
+          simp [InstanceOfExtType, Coe.coe]
         | exact well_typed_bool
       case h_2 x₂ h₄ =>
         simp only [someOrError, Except.toOption]

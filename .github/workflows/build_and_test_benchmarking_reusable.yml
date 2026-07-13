@@ -1,0 +1,54 @@
+name: Build and Test Benchmarking
+
+on:
+  workflow_call:
+    inputs:
+      cedar_spec_ref:
+        required: false
+        default: "main"
+        type: string
+      cedar_policy_ref:
+        required: false
+        default: "main"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build_and_test_benchmarking:
+    name: Build and test benchmarking
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        toolchain:
+          - stable
+    steps:
+      - name: Checkout cedar-spec
+        uses: actions/checkout@v6
+        with:
+          repository: cedar-policy/cedar-spec
+          ref: ${{ inputs.cedar_spec_ref }}
+          path: ./cedar-spec
+      - name: Checkout cedar
+        uses: actions/checkout@v6
+        with:
+          repository: cedar-policy/cedar
+          path: ./cedar-spec/cedar
+          ref: ${{ inputs.cedar_policy_ref }}
+      - name: Install protoc
+        run: sudo apt-get update && sudo apt-get install protobuf-compiler
+      - name: Prepare Rust build
+        run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }} && rustup component add rustfmt clippy
+      - name: cargo fmt
+        working-directory: ./cedar-spec/cedar-benchmarking
+        run: cargo fmt --all --check
+      - name: cargo clippy
+        working-directory: ./cedar-spec/cedar-benchmarking
+        run: cargo clippy --all-targets -- -D warnings
+      - name: cargo build
+        working-directory: ./cedar-spec/cedar-benchmarking
+        run: cargo build --release
+      - name: Run mini benchmark
+        working-directory: ./cedar-spec/cedar-benchmarking
+        run: cargo run --release -- --corpus corpus/tasks.json --trials 10 --output table

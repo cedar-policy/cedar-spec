@@ -1,0 +1,161 @@
+{
+  "": {
+    "entityTypes": {
+      "Item": {
+        "memberOfTypes": [
+          "Rack"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "dimensions": {
+              "type": "Record",
+              "attributes": {
+                "height_cm": {
+                  "type": "decimal"
+                },
+                "length_cm": {
+                  "type": "decimal"
+                },
+                "width_cm": {
+                  "type": "decimal"
+                }
+              }
+            },
+            "expiry": {
+              "type": "datetime"
+            },
+            "hazmat": {
+              "type": "Boolean"
+            },
+            "sku": {
+              "type": "String"
+            },
+            "value": {
+              "type": "decimal"
+            },
+            "weight_kg": {
+              "type": "decimal"
+            }
+          }
+        }
+      },
+      "Rack": {
+        "memberOfTypes": [
+          "Warehouse"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "humidity": {
+              "type": "decimal"
+            },
+            "network": {
+              "type": "ipaddr"
+            },
+            "temperature": {
+              "type": "decimal"
+            },
+            "zone": {
+              "type": "String"
+            }
+          }
+        }
+      },
+      "Warehouse": {},
+      "Worker": {
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "certifications": {
+              "type": "Set",
+              "element": {
+                "type": "String"
+              }
+            },
+            "max_weight_kg": {
+              "type": "decimal"
+            },
+            "role": {
+              "type": "String"
+            },
+            "shift_end": {
+              "type": "datetime"
+            },
+            "shift_start": {
+              "type": "datetime"
+            }
+          }
+        }
+      }
+    },
+    "actions": {
+      "inspect": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Item"
+          ],
+          "principalTypes": [
+            "Worker"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "source_ip": {
+                "type": "ipaddr"
+              },
+              "timestamp": {
+                "type": "datetime"
+              }
+            }
+          }
+        }
+      },
+      "pick": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Item"
+          ],
+          "principalTypes": [
+            "Worker"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "quantity": {
+                "type": "Long"
+              },
+              "timestamp": {
+                "type": "datetime"
+              }
+            }
+          }
+        }
+      },
+      "store": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Rack"
+          ],
+          "principalTypes": [
+            "Worker"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "hazmat": {
+                "type": "Boolean"
+              },
+              "item_weight_kg": {
+                "type": "decimal"
+              },
+              "timestamp": {
+                "type": "datetime"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

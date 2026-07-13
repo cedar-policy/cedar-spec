@@ -1,0 +1,105 @@
+{
+  "": {
+    "entityTypes": {
+      "Client": {
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "ip": {
+              "type": "ipaddr"
+            },
+            "mac": {
+              "type": "String"
+            }
+          }
+        }
+      },
+      "Firewall": {},
+      "Service": {
+        "memberOfTypes": [
+          "Zone"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "allowed_sources": {
+              "type": "Set",
+              "element": {
+                "type": "ipaddr"
+              }
+            },
+            "port": {
+              "type": "Long"
+            },
+            "protocol": {
+              "type": "String"
+            }
+          }
+        }
+      },
+      "Zone": {
+        "memberOfTypes": [
+          "Firewall"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "cidr": {
+              "type": "ipaddr"
+            },
+            "name": {
+              "type": "String"
+            },
+            "trust_level": {
+              "type": "Long"
+            }
+          }
+        }
+      }
+    },
+    "actions": {
+      "connect": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Service"
+          ],
+          "principalTypes": [
+            "Client"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "dest_ip": {
+                "type": "ipaddr"
+              },
+              "source_ip": {
+                "type": "ipaddr"
+              },
+              "timestamp": {
+                "type": "Long"
+              }
+            }
+          }
+        }
+      },
+      "scan": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Zone"
+          ],
+          "principalTypes": [
+            "Client"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "source_ip": {
+                "type": "ipaddr"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

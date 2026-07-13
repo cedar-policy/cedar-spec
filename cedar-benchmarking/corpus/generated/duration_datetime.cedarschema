@@ -1,0 +1,20 @@
+entity Scheduler;
+entity Task in [Scheduler] = {
+    "name": __cedar::String,
+    "max_duration": duration,
+    "timeout": duration
+};
+entity Worker = {
+    "shift_start": datetime,
+    "shift_end": datetime
+};
+action "execute" appliesTo {
+    principal: [Worker],
+    resource: [Task],
+    context: { "current_time": datetime, "elapsed": duration }
+};
+action "schedule" appliesTo {
+    principal: [Worker],
+    resource: [Scheduler],
+    context: { "requested_duration": duration, "start_time": datetime }
+};

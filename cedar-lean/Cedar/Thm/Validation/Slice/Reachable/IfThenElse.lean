@@ -37,7 +37,6 @@ theorem checked_eval_entity_reachable_ite {e₁ e₂ e₃: Expr} {n : Nat} {c c'
   (hl : tx.EntityAccessAtLevel env n nmax path)
   (he : evaluate (.ite e₁ e₂ e₃) request entities = .ok v)
   (ha : Value.EuidViaPath v path euid)
-  (hf : entities.contains euid)
   (ih₂ : CheckedEvalEntityReachable e₂)
   (ih₃ : CheckedEvalEntityReachable e₃) :
   ReachableIn entities request.sliceEUIDs euid (n + 1)
@@ -50,7 +49,7 @@ theorem checked_eval_entity_reachable_ite {e₁ e₂ e₃: Expr} {n : Nat} {c c'
   rename_i hl₁ hl₂ hl₃
 
   simp only [evaluate] at he
-  cases he₁' : Result.as Bool (evaluate e₁ request entities) <;> simp only [he₁', Except.bind_err, Except.bind_ok, reduceCtorEq] at he
+  simp_do_let (Result.as Bool (evaluate e₁ request entities)) as he₁' at he
   rename_i b
   replace he₁' : evaluate e₁ request entities = .ok (.prim (.bool b)) := by
     simp only [Result.as, Coe.coe, Value.asBool] at he₁'
@@ -72,7 +71,7 @@ theorem checked_eval_entity_reachable_ite {e₁ e₂ e₃: Expr} {n : Nat} {c c'
           contradiction
     replace hgc : CapabilitiesInvariant c₁ request entities := by
       simpa [he₁', GuardedCapabilitiesInvariant] using hgc
-    exact ih₂ (capability_union_invariant hc hgc) hr htx₂ hl₂ he ha hf
+    exact ih₂ (capability_union_invariant hc hgc) hr htx₂ hl₂ he ha
   case isFalse hb =>
     replace hb : b = false := by
       cases b <;> simp only [Bool.true_eq_false] ; contradiction
@@ -82,4 +81,4 @@ theorem checked_eval_entity_reachable_ite {e₁ e₂ e₃: Expr} {n : Nat} {c c'
         | simp only [hif]
         | rw [hty₁] at hi₁
           contradiction
-    exact ih₃ hc hr htx₃ hl₃ he ha hf
+    exact ih₃ hc hr htx₃ hl₃ he ha

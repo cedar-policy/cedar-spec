@@ -71,10 +71,8 @@ theorem partial_evaluate_is_sound_has_attr
       rcases h₄ with ⟨_, h₄⟩
       specialize h₄ uid data heq₂
       rcases h₄ with ⟨_, h₄₁, h₄₂, _⟩
-      rw [heq₃] at h₄₂
-      rcases h₄₂
-      rename_i h₄
-      subst h₄
+      simp only [heq₃, PartialIsValid.some_inv] at h₄₂
+      subst h₄₂
       simp [Entities.attrsOrEmpty, h₄₁]
     case _ => cases heq
   case _ =>

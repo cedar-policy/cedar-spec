@@ -1,0 +1,17 @@
+entity Account;
+entity Transaction in [Account] = {
+    "amount": decimal,
+    "currency": __cedar::String,
+    "category": __cedar::String
+};
+entity User;
+action "approve" appliesTo {
+    principal: [User],
+    resource: [Transaction],
+    context: { "daily_total": decimal, "user_limit": decimal }
+};
+action "submit" appliesTo {
+    principal: [User],
+    resource: [Account],
+    context: { "amount": decimal }
+};

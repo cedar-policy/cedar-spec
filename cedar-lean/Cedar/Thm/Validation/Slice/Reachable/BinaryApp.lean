@@ -23,6 +23,7 @@ import Cedar.Thm.Data.MapUnion
 import Cedar.Thm.Validation.Levels.CheckLevel
 
 import Cedar.Thm.Validation.Slice.Reachable.Basic
+import Cedar.Thm.Tactics
 
 namespace Cedar.Thm
 
@@ -64,8 +65,8 @@ theorem checked_eval_entity_reachable_get_tag {e₁ e₂: Expr} {n : Nat} {c c' 
   ReachableIn entities request.sliceEUIDs euid (n + 1)
 := by
   simp only [evaluate] at he
-  cases he₁ : evaluate e₁ request entities <;> simp only [he₁, Except.bind_err, Except.bind_ok, reduceCtorEq] at he
-  cases he₂ : evaluate e₂ request entities <;> simp only [he₂, Except.bind_err, Except.bind_ok, reduceCtorEq] at he
+  simp_do_let (evaluate e₁ request entities) as he₁ at he
+  simp_do_let (evaluate e₂ request entities) as he₂ at he
   simp only [apply₂] at he
   split at he <;> try contradiction
   rename_i euid' _ _
@@ -75,7 +76,7 @@ theorem checked_eval_entity_reachable_get_tag {e₁ e₂: Expr} {n : Nat} {c c' 
   cases hl
   rename_i hl₁ hl₂
   simp only [getTag] at he
-  cases he₃ : entities.tags euid' <;> simp only [he₃, Except.bind_ok, Except.bind_err, reduceCtorEq] at he
+  simp_do_let (entities.tags euid') as he₃ at he
   simp only [Map.findOrErr] at he
   split at he <;> simp only [reduceCtorEq, Except.ok.injEq] at he
   subst he
@@ -83,9 +84,8 @@ theorem checked_eval_entity_reachable_get_tag {e₁ e₂: Expr} {n : Nat} {c c' 
 
   have ⟨ ed, hed, hed' ⟩ := entities_tags_then_find? he₃
   subst hed'
-  have hf' : entities.contains euid' := by simp [Map.contains, Option.isSome, hed]
 
-  have ih := ih₁ hc hr htx₁ hl₁ he₁ (.euid euid') hf'
+  have ih := ih₁ hc hr htx₁ hl₁ he₁ (.euid euid')
   exact reachable_tag_step ih hed hv ha
 
 theorem binary_op_not_euid_via_path {op : BinaryOp} {e₁ e₂: Expr} {entities : Entities} {path : List Attr}
@@ -95,8 +95,8 @@ theorem binary_op_not_euid_via_path {op : BinaryOp} {e₁ e₂: Expr} {entities 
 := by
   intro ha
   simp only [evaluate] at he
-  cases he₁ : evaluate e₁ request entities <;> simp only [he₁, Except.bind_err, Except.bind_ok, reduceCtorEq] at he
-  cases he₂ : evaluate e₂ request entities <;> simp only [he₂, Except.bind_err, Except.bind_ok, reduceCtorEq] at he
+  simp_do_let (evaluate e₁ request entities) as he₁ at he
+  simp_do_let (evaluate e₂ request entities) as he₂ at he
   simp only [apply₂, intOrErr, inₛ, hasTag] at he
   split at he <;> try split at he
   all_goals first
@@ -105,7 +105,8 @@ theorem binary_op_not_euid_via_path {op : BinaryOp} {e₁ e₂: Expr} {entities 
     rw [←he] at ha
     cases ha
   | rename_i vs
-    cases he₃ : Set.mapOrErr Value.asEntityUID vs Error.typeError <;> simp only [he₃, Except.bind_err, Except.bind_ok, reduceCtorEq, Except.ok.injEq] at he
+    simp_do_let Set.mapOrErr Value.asEntityUID vs Error.typeError  as he₃ at he
+    simp only [Except.ok.injEq] at he
     rw [←he] at ha
     cases ha
 

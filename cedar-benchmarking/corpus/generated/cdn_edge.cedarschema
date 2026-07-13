@@ -1,0 +1,31 @@
+entity CDN;
+entity Origin in [CDN] = {
+    "hostname": __cedar::String,
+    "ip": ipaddr,
+    "health_check": {
+        "interval": duration,
+        "timeout": duration,
+        "last_check": datetime
+    }
+};
+entity CacheNode in [CDN] = {
+    "ip": ipaddr,
+    "region": __cedar::String,
+    "capacity_gb": decimal,
+    "ttl": duration
+};
+entity EdgeClient = {
+    "ip": ipaddr,
+    "geo": __cedar::String,
+    "bandwidth_limit": decimal
+};
+action "fetch" appliesTo {
+    principal: [EdgeClient],
+    resource: [Origin],
+    context: { "source_ip": ipaddr, "request_size": decimal, "timestamp": datetime }
+};
+action "purge" appliesTo {
+    principal: [EdgeClient],
+    resource: [CacheNode],
+    context: { "source_ip": ipaddr, "pattern": __cedar::String }
+};

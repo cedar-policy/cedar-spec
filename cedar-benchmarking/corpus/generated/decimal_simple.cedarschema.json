@@ -1,0 +1,68 @@
+{
+  "": {
+    "entityTypes": {
+      "Account": {},
+      "Transaction": {
+        "memberOfTypes": [
+          "Account"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "amount": {
+              "type": "decimal"
+            },
+            "category": {
+              "type": "String"
+            },
+            "currency": {
+              "type": "String"
+            }
+          }
+        }
+      },
+      "User": {}
+    },
+    "actions": {
+      "approve": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Transaction"
+          ],
+          "principalTypes": [
+            "User"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "daily_total": {
+                "type": "decimal"
+              },
+              "user_limit": {
+                "type": "decimal"
+              }
+            }
+          }
+        }
+      },
+      "submit": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Account"
+          ],
+          "principalTypes": [
+            "User"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "amount": {
+                "type": "decimal"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

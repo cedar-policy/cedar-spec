@@ -1,0 +1,204 @@
+{
+  "": {
+    "entityTypes": {
+      "DataEngineer": {
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "certifications": {
+              "type": "Set",
+              "element": {
+                "type": "String"
+              }
+            },
+            "level": {
+              "type": "Long"
+            }
+          }
+        }
+      },
+      "DataLake": {},
+      "Dataset": {
+        "memberOfTypes": [
+          "DataLake"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "classification": {
+              "type": "String"
+            },
+            "created": {
+              "type": "datetime"
+            },
+            "name": {
+              "type": "String"
+            },
+            "retention": {
+              "type": "duration"
+            },
+            "schema_version": {
+              "type": "Long"
+            },
+            "size_gb": {
+              "type": "decimal"
+            }
+          }
+        }
+      },
+      "Pipeline": {
+        "memberOfTypes": [
+          "DataLake"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "config": {
+              "type": "Record",
+              "attributes": {
+                "destination": {
+                  "type": "Record",
+                  "attributes": {
+                    "connection": {
+                      "type": "Record",
+                      "attributes": {
+                        "encrypted": {
+                          "type": "Boolean"
+                        },
+                        "host": {
+                          "type": "ipaddr"
+                        },
+                        "port": {
+                          "type": "Long"
+                        }
+                      }
+                    },
+                    "type": {
+                      "type": "String"
+                    }
+                  }
+                },
+                "source": {
+                  "type": "Record",
+                  "attributes": {
+                    "connection": {
+                      "type": "Record",
+                      "attributes": {
+                        "encrypted": {
+                          "type": "Boolean"
+                        },
+                        "host": {
+                          "type": "ipaddr"
+                        },
+                        "port": {
+                          "type": "Long"
+                        }
+                      }
+                    },
+                    "type": {
+                      "type": "String"
+                    }
+                  }
+                },
+                "transform": {
+                  "type": "Record",
+                  "attributes": {
+                    "max_records": {
+                      "type": "Long"
+                    },
+                    "timeout": {
+                      "type": "duration"
+                    }
+                  }
+                }
+              }
+            },
+            "last_run": {
+              "type": "datetime"
+            },
+            "name": {
+              "type": "String"
+            },
+            "schedule": {
+              "type": "duration"
+            }
+          }
+        }
+      }
+    },
+    "actions": {
+      "export": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Dataset"
+          ],
+          "principalTypes": [
+            "DataEngineer"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "destination_ip": {
+                "type": "ipaddr"
+              },
+              "encrypted": {
+                "type": "Boolean"
+              },
+              "format": {
+                "type": "String"
+              }
+            }
+          }
+        }
+      },
+      "query": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Dataset"
+          ],
+          "principalTypes": [
+            "DataEngineer"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "row_limit": {
+                "type": "Long"
+              },
+              "source_ip": {
+                "type": "ipaddr"
+              },
+              "timestamp": {
+                "type": "datetime"
+              }
+            }
+          }
+        }
+      },
+      "run_pipeline": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Pipeline"
+          ],
+          "principalTypes": [
+            "DataEngineer"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "override_schedule": {
+                "type": "Boolean"
+              },
+              "source_ip": {
+                "type": "ipaddr"
+              },
+              "timestamp": {
+                "type": "datetime"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

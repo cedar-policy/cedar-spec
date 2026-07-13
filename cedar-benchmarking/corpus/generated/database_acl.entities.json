@@ -1,0 +1,1727 @@
+[
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cluster",
+        "id": "cluster_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cluster",
+        "id": "cluster_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cluster",
+        "id": "cluster_2"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cluster",
+        "id": "cluster_3"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cluster",
+        "id": "cluster_4"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cluster",
+        "id": "cluster_5"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cluster",
+        "id": "cluster_6"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cluster",
+        "id": "cluster_7"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cluster",
+        "id": "cluster_8"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cluster",
+        "id": "cluster_9"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cluster",
+        "id": "cluster_10"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cluster",
+        "id": "cluster_11"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cluster",
+        "id": "cluster_12"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cluster",
+        "id": "cluster_13"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cluster",
+        "id": "cluster_14"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Database",
+        "id": "database_0"
+      }
+    },
+    "attrs": {
+      "name": "val_zeta_701",
+      "engine": "val_main_173",
+      "version": "val_epsilon_275",
+      "endpoint": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "78.137.252.38/32"
+        }
+      },
+      "port": 8,
+      "storage_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "2739.55"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-07-10T15:00:00Z"
+        }
+      },
+      "maintenance_window": {
+        "start": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2023-06-09T07:00:00Z"
+          }
+        },
+        "duration": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "739h"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cluster",
+          "id": "cluster_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Database",
+        "id": "database_1"
+      }
+    },
+    "attrs": {
+      "name": "val_eta_468",
+      "engine": "val_delta_138",
+      "version": "val_staging_6",
+      "endpoint": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "102.170.194.206/32"
+        }
+      },
+      "port": 42,
+      "storage_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "7212.42"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-11-20T04:00:00Z"
+        }
+      },
+      "maintenance_window": {
+        "start": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2025-06-20T22:00:00Z"
+          }
+        },
+        "duration": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "206h"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cluster",
+          "id": "cluster_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Database",
+        "id": "database_2"
+      }
+    },
+    "attrs": {
+      "name": "val_zeta_987",
+      "engine": "val_main_991",
+      "version": "val_dev_298",
+      "endpoint": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "189.251.124.84/32"
+        }
+      },
+      "port": 48,
+      "storage_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "4592.50"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-02-19T06:00:00Z"
+        }
+      },
+      "maintenance_window": {
+        "start": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2024-11-25T17:00:00Z"
+          }
+        },
+        "duration": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "28h"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cluster",
+          "id": "cluster_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Database",
+        "id": "database_3"
+      }
+    },
+    "attrs": {
+      "name": "val_eta_448",
+      "engine": "val_staging_851",
+      "version": "val_gamma_838",
+      "endpoint": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "218.209.255.36/32"
+        }
+      },
+      "port": 81,
+      "storage_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "4961.30"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-11-05T22:00:00Z"
+        }
+      },
+      "maintenance_window": {
+        "start": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2026-07-03T14:00:00Z"
+          }
+        },
+        "duration": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "613h"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cluster",
+          "id": "cluster_11"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Database",
+        "id": "database_4"
+      }
+    },
+    "attrs": {
+      "name": "val_main_547",
+      "engine": "val_backup_556",
+      "version": "val_beta_809",
+      "endpoint": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "93.43.55.197/32"
+        }
+      },
+      "port": 31,
+      "storage_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "5816.21"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-10-21T21:00:00Z"
+        }
+      },
+      "maintenance_window": {
+        "start": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2026-06-26T13:00:00Z"
+          }
+        },
+        "duration": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "109ms"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cluster",
+          "id": "cluster_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Database",
+        "id": "database_5"
+      }
+    },
+    "attrs": {
+      "name": "val_prod_227",
+      "engine": "val_theta_456",
+      "version": "val_test_400",
+      "endpoint": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "119.77.176.7/32"
+        }
+      },
+      "port": 61,
+      "storage_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "1712.37"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-02-04T23:00:00Z"
+        }
+      },
+      "maintenance_window": {
+        "start": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2024-06-10T10:00:00Z"
+          }
+        },
+        "duration": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "467s"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cluster",
+          "id": "cluster_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Database",
+        "id": "database_6"
+      }
+    },
+    "attrs": {
+      "name": "val_secondary_356",
+      "engine": "val_secondary_99",
+      "version": "val_primary_739",
+      "endpoint": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "179.231.163.18/32"
+        }
+      },
+      "port": 38,
+      "storage_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "732.90"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-01-28T10:00:00Z"
+        }
+      },
+      "maintenance_window": {
+        "start": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2023-11-26T05:00:00Z"
+          }
+        },
+        "duration": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "953s"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cluster",
+          "id": "cluster_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Database",
+        "id": "database_7"
+      }
+    },
+    "attrs": {
+      "name": "val_zeta_565",
+      "engine": "val_zeta_338",
+      "version": "val_backup_981",
+      "endpoint": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "119.118.207.162/32"
+        }
+      },
+      "port": 23,
+      "storage_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "3053.81"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-07-01T23:00:00Z"
+        }
+      },
+      "maintenance_window": {
+        "start": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2024-08-19T13:00:00Z"
+          }
+        },
+        "duration": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "399ms"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cluster",
+          "id": "cluster_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Database",
+        "id": "database_8"
+      }
+    },
+    "attrs": {
+      "name": "val_eta_210",
+      "engine": "val_prod_770",
+      "version": "val_gamma_591",
+      "endpoint": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "27.95.187.84/32"
+        }
+      },
+      "port": 25,
+      "storage_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "7496.14"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-11-28T15:00:00Z"
+        }
+      },
+      "maintenance_window": {
+        "start": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2025-10-13T19:00:00Z"
+          }
+        },
+        "duration": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "402d"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cluster",
+          "id": "cluster_11"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Database",
+        "id": "database_9"
+      }
+    },
+    "attrs": {
+      "name": "val_test_360",
+      "engine": "val_primary_632",
+      "version": "val_zeta_833",
+      "endpoint": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "173.152.43.173/32"
+        }
+      },
+      "port": 17,
+      "storage_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "5131.15"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-05-04T05:00:00Z"
+        }
+      },
+      "maintenance_window": {
+        "start": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2025-12-05T16:00:00Z"
+          }
+        },
+        "duration": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "398h"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cluster",
+          "id": "cluster_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Database",
+        "id": "database_10"
+      }
+    },
+    "attrs": {
+      "name": "val_epsilon_588",
+      "engine": "val_main_433",
+      "version": "val_zeta_498",
+      "endpoint": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "163.88.85.126/32"
+        }
+      },
+      "port": 36,
+      "storage_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "2298.23"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-08-20T01:00:00Z"
+        }
+      },
+      "maintenance_window": {
+        "start": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2025-01-16T04:00:00Z"
+          }
+        },
+        "duration": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "200h"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cluster",
+          "id": "cluster_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Database",
+        "id": "database_11"
+      }
+    },
+    "attrs": {
+      "name": "val_secondary_418",
+      "engine": "val_secondary_425",
+      "version": "val_primary_500",
+      "endpoint": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "43.42.15.204/32"
+        }
+      },
+      "port": 97,
+      "storage_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "3613.37"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-05-08T17:00:00Z"
+        }
+      },
+      "maintenance_window": {
+        "start": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2025-03-25T14:00:00Z"
+          }
+        },
+        "duration": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "580h"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cluster",
+          "id": "cluster_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Database",
+        "id": "database_12"
+      }
+    },
+    "attrs": {
+      "name": "val_delta_586",
+      "engine": "val_delta_274",
+      "version": "val_test_555",
+      "endpoint": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "211.21.225.140/32"
+        }
+      },
+      "port": 27,
+      "storage_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "6965.13"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-05-28T01:00:00Z"
+        }
+      },
+      "maintenance_window": {
+        "start": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2026-05-12T02:00:00Z"
+          }
+        },
+        "duration": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "450ms"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cluster",
+          "id": "cluster_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Database",
+        "id": "database_13"
+      }
+    },
+    "attrs": {
+      "name": "val_theta_214",
+      "engine": "val_test_881",
+      "version": "val_backup_169",
+      "endpoint": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "158.71.105.209/32"
+        }
+      },
+      "port": 26,
+      "storage_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "972.72"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-09-09T19:00:00Z"
+        }
+      },
+      "maintenance_window": {
+        "start": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2024-06-23T09:00:00Z"
+          }
+        },
+        "duration": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "297d"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cluster",
+          "id": "cluster_12"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Database",
+        "id": "database_14"
+      }
+    },
+    "attrs": {
+      "name": "val_delta_138",
+      "engine": "val_backup_940",
+      "version": "val_beta_283",
+      "endpoint": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "222.64.67.64/32"
+        }
+      },
+      "port": 18,
+      "storage_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "5277.31"
+        }
+      },
+      "created": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-08-05T18:00:00Z"
+        }
+      },
+      "maintenance_window": {
+        "start": {
+          "__extn": {
+            "fn": "datetime",
+            "arg": "2025-11-14T12:00:00Z"
+          }
+        },
+        "duration": {
+          "__extn": {
+            "fn": "duration",
+            "arg": "463ms"
+          }
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cluster",
+          "id": "cluster_4"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Table",
+        "id": "table_0"
+      }
+    },
+    "attrs": {
+      "name": "val_gamma_412",
+      "row_count": 65,
+      "size_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "4558.88"
+        }
+      },
+      "pii": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Database",
+          "id": "database_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Table",
+        "id": "table_1"
+      }
+    },
+    "attrs": {
+      "name": "val_secondary_335",
+      "row_count": 74,
+      "size_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "40.99"
+        }
+      },
+      "pii": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Database",
+          "id": "database_7"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Table",
+        "id": "table_2"
+      }
+    },
+    "attrs": {
+      "name": "val_primary_650",
+      "row_count": 85,
+      "size_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "5869.08"
+        }
+      },
+      "pii": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Database",
+          "id": "database_11"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Table",
+        "id": "table_3"
+      }
+    },
+    "attrs": {
+      "name": "val_backup_844",
+      "row_count": 27,
+      "size_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "8105.34"
+        }
+      },
+      "pii": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Database",
+          "id": "database_3"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Table",
+        "id": "table_4"
+      }
+    },
+    "attrs": {
+      "name": "val_staging_345",
+      "row_count": 70,
+      "size_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "9468.16"
+        }
+      },
+      "pii": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Database",
+          "id": "database_13"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Table",
+        "id": "table_5"
+      }
+    },
+    "attrs": {
+      "name": "val_dev_915",
+      "row_count": 87,
+      "size_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "793.05"
+        }
+      },
+      "pii": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Database",
+          "id": "database_12"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Table",
+        "id": "table_6"
+      }
+    },
+    "attrs": {
+      "name": "val_primary_16",
+      "row_count": 15,
+      "size_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "2588.56"
+        }
+      },
+      "pii": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Database",
+          "id": "database_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Table",
+        "id": "table_7"
+      }
+    },
+    "attrs": {
+      "name": "val_backup_207",
+      "row_count": 88,
+      "size_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "2161.83"
+        }
+      },
+      "pii": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Database",
+          "id": "database_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Table",
+        "id": "table_8"
+      }
+    },
+    "attrs": {
+      "name": "val_prod_95",
+      "row_count": 83,
+      "size_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "5905.32"
+        }
+      },
+      "pii": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Database",
+          "id": "database_2"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Table",
+        "id": "table_9"
+      }
+    },
+    "attrs": {
+      "name": "val_zeta_53",
+      "row_count": 50,
+      "size_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "5005.92"
+        }
+      },
+      "pii": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Database",
+          "id": "database_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Table",
+        "id": "table_10"
+      }
+    },
+    "attrs": {
+      "name": "val_gamma_720",
+      "row_count": 12,
+      "size_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "17.27"
+        }
+      },
+      "pii": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Database",
+          "id": "database_6"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Table",
+        "id": "table_11"
+      }
+    },
+    "attrs": {
+      "name": "val_epsilon_607",
+      "row_count": 28,
+      "size_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "8510.87"
+        }
+      },
+      "pii": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Database",
+          "id": "database_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Table",
+        "id": "table_12"
+      }
+    },
+    "attrs": {
+      "name": "val_alpha_712",
+      "row_count": 43,
+      "size_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "1975.54"
+        }
+      },
+      "pii": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Database",
+          "id": "database_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Table",
+        "id": "table_13"
+      }
+    },
+    "attrs": {
+      "name": "val_gamma_234",
+      "row_count": 49,
+      "size_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "1463.93"
+        }
+      },
+      "pii": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Database",
+          "id": "database_7"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Table",
+        "id": "table_14"
+      }
+    },
+    "attrs": {
+      "name": "val_dev_376",
+      "row_count": 38,
+      "size_gb": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "2246.48"
+        }
+      },
+      "pii": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Database",
+          "id": "database_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DBUser",
+        "id": "dbuser_0"
+      }
+    },
+    "attrs": {
+      "role": "val_epsilon_70",
+      "source_ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "136.4.84.113/32"
+        }
+      },
+      "max_query_duration": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "360s"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DBUser",
+        "id": "dbuser_1"
+      }
+    },
+    "attrs": {
+      "role": "val_epsilon_941",
+      "source_ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "106.226.111.23/32"
+        }
+      },
+      "max_query_duration": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "919ms"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DBUser",
+        "id": "dbuser_2"
+      }
+    },
+    "attrs": {
+      "role": "val_epsilon_770",
+      "source_ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "32.196.179.247/32"
+        }
+      },
+      "max_query_duration": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "440m"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DBUser",
+        "id": "dbuser_3"
+      }
+    },
+    "attrs": {
+      "role": "val_epsilon_253",
+      "source_ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "71.43.127.142/32"
+        }
+      },
+      "max_query_duration": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "616d"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DBUser",
+        "id": "dbuser_4"
+      }
+    },
+    "attrs": {
+      "role": "val_staging_797",
+      "source_ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "177.13.154.53/32"
+        }
+      },
+      "max_query_duration": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "531d"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DBUser",
+        "id": "dbuser_5"
+      }
+    },
+    "attrs": {
+      "role": "val_eta_765",
+      "source_ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "101.151.27.201/32"
+        }
+      },
+      "max_query_duration": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "920s"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DBUser",
+        "id": "dbuser_6"
+      }
+    },
+    "attrs": {
+      "role": "val_secondary_395",
+      "source_ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "29.123.255.164/32"
+        }
+      },
+      "max_query_duration": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "609ms"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DBUser",
+        "id": "dbuser_7"
+      }
+    },
+    "attrs": {
+      "role": "val_alpha_369",
+      "source_ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "82.67.198.221/32"
+        }
+      },
+      "max_query_duration": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "860d"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DBUser",
+        "id": "dbuser_8"
+      }
+    },
+    "attrs": {
+      "role": "val_backup_374",
+      "source_ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "140.88.241.245/32"
+        }
+      },
+      "max_query_duration": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "789ms"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DBUser",
+        "id": "dbuser_9"
+      }
+    },
+    "attrs": {
+      "role": "val_alpha_601",
+      "source_ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "18.7.134.56/32"
+        }
+      },
+      "max_query_duration": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "41ms"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DBUser",
+        "id": "dbuser_10"
+      }
+    },
+    "attrs": {
+      "role": "val_main_518",
+      "source_ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "74.212.216.180/32"
+        }
+      },
+      "max_query_duration": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "412ms"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DBUser",
+        "id": "dbuser_11"
+      }
+    },
+    "attrs": {
+      "role": "val_epsilon_284",
+      "source_ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "22.158.40.131/32"
+        }
+      },
+      "max_query_duration": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "944s"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DBUser",
+        "id": "dbuser_12"
+      }
+    },
+    "attrs": {
+      "role": "val_epsilon_549",
+      "source_ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "84.200.33.80/32"
+        }
+      },
+      "max_query_duration": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "716h"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DBUser",
+        "id": "dbuser_13"
+      }
+    },
+    "attrs": {
+      "role": "val_theta_59",
+      "source_ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "63.44.222.30/32"
+        }
+      },
+      "max_query_duration": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "465d"
+        }
+      }
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "DBUser",
+        "id": "dbuser_14"
+      }
+    },
+    "attrs": {
+      "role": "val_beta_316",
+      "source_ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "171.89.61.4/32"
+        }
+      },
+      "max_query_duration": {
+        "__extn": {
+          "fn": "duration",
+          "arg": "725s"
+        }
+      }
+    },
+    "parents": []
+  }
+]

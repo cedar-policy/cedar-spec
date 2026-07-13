@@ -17,7 +17,10 @@
 #![no_main]
 
 use cedar_drt::logger::initialize_log;
-use cedar_drt_inner::{fuzz_target, pst_equiv, pst_gen::PolicySetFuzzTargetInput};
+use cedar_drt_inner::{
+    fuzz_target, props::policyset_to_json_deserializes, pst_equiv,
+    pst_gen::PolicySetFuzzTargetInput,
+};
 
 use cedar_policy::PolicySet;
 use log::debug;
@@ -34,13 +37,9 @@ fuzz_target!(|input: PolicySetFuzzTargetInput| {
     let policy_set = PolicySet::from_pst(pst_set.clone())
         .unwrap_or_else(|e| panic!("Failed to create PolicySet from PST.\nError: {:?}", e));
 
-    // PolicySet -> JSON
-    let policy_set_json = policy_set
-        .to_json()
-        .unwrap_or_else(|e| panic!("Failed to get JSON from PolicySet:\nError: {:?}", e));
-    // JSON -> PolicySet
-    let policy_set_2 = PolicySet::from_json_value(policy_set_json)
-        .unwrap_or_else(|e| panic!("Failed to get PolicySet from JSON:\nError: {:?}", e));
+    // PolicySet -> JSON -> PolicySet
+    let policy_set_2 = policyset_to_json_deserializes(policy_set);
+
     // PolicySet -> PST
     let pst_set_2 = policy_set_2
         .to_pst()

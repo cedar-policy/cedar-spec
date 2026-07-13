@@ -137,7 +137,6 @@ theorem entity_type_in_false_implies_inₑ_false
     decide_eq_false_iff_not] at h₂
   simp only [inₑ, Bool.or_eq_false_iff, beq_eq_false_iff_ne, ne_eq]
   by_contra h₃
-  simp only [] at h₃
   simp only [not_and, Bool.not_eq_false] at h₃
   simp only [← Classical.or_iff_not_imp_right] at h₃
   rcases h₃ with h₃ | h₃
@@ -155,7 +154,6 @@ theorem entity_type_in_false_implies_inₑ_false
     | inr h₁ =>
       have ⟨h₁, _, ⟨entry, h₅, _⟩⟩ := h₁
       have h₂ := h₂.2
-      simp only at h₂
       split at h₂
       · apply False.elim
         apply wf_env_disjoint_ets_acts hwf.wf_env
@@ -316,7 +314,6 @@ theorem entity_type_in_false_implies_inₛ_false
         decide_eq_false_iff_not,
       ] at h₂
       have h₂ := h₂.2
-      simp only [] at h₂
       split at h₂
       · apply False.elim
         apply wf_env_disjoint_ets_acts hwf.wf_env
@@ -405,7 +402,6 @@ theorem action_type_in_eq_action_inₛ
   rename_i entry
   have h₁ := h₁.wf_action_data h₄
   constructor <;> intro h₄ <;> rename_i hfnd <;>
-  simp only [] at h₁ <;>
   have ⟨data, hl₁, hr₁⟩ := h₁ <;> clear h₁
   case some.mp =>
     rw [List.any_eq_true] at h₄

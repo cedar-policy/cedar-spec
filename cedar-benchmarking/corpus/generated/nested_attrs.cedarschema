@@ -1,0 +1,57 @@
+entity Org;
+entity Department in [Org] = {
+    "name": __cedar::String,
+    "budget": decimal,
+    "metadata": {
+        "created": datetime,
+        "modified": datetime,
+        "owner": {
+            "name": __cedar::String,
+            "email": __cedar::String,
+            "role": __cedar::String
+        }
+    }
+};
+entity Project in [Department] = {
+    "name": __cedar::String,
+    "config": {
+        "environment": __cedar::String,
+        "settings": {
+            "max_instances": __cedar::Long,
+            "timeout": duration,
+            "network": {
+                "vpc_cidr": ipaddr,
+                "subnet": ipaddr,
+                "allow_public": __cedar::Bool
+            }
+        },
+        "tags": Set<__cedar::String>
+    },
+    "status": __cedar::String
+};
+entity User;
+action "deploy" appliesTo {
+    principal: [User],
+    resource: [Project],
+    context: {
+        "request": {
+            "source_ip": ipaddr,
+            "timestamp": datetime,
+            "params": {
+                "instance_count": __cedar::Long,
+                "region": __cedar::String
+            }
+        }
+    }
+};
+action "configure" appliesTo {
+    principal: [User],
+    resource: [Project],
+    context: {
+        "change": {
+            "field": __cedar::String,
+            "old_value": __cedar::String,
+            "new_value": __cedar::String
+        }
+    }
+};

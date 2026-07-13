@@ -61,7 +61,7 @@ theorem level_based_slicing_is_sound_has_attr_record {e : Expr} {tx : TypedExpr}
   rename_i hl
   have ih := ihe hc hr htx hl
   simp only [evaluate, ←ih]
-  cases he₁ : evaluate e request entities <;> simp only [Except.bind_err, Except.bind_ok]
+  simp_do_let (evaluate e request entities) as he₁
   rename_i v
   have ⟨avs, he⟩ : ∃ avs, v = .record avs := by
     have ⟨ _, _, he, hty⟩ := type_of_is_sound hc hr htx

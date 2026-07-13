@@ -97,10 +97,17 @@ def testsParseValidSMTStrings :=
     testParseOk parseString "\"\\u{a01b}\"" "\ua01b",
     testParseOk parseBinary "#b0" [false],
     testParseOk parseBinary "#b1011" [true, false, true, true],
+    testParseOk parseHex "#x0" [false, false, false, false],
+    testParseOk parseHex "#xF" [true, true, true, true],
+    testParseOk parseHex "#xff" [true, true, true, true, true, true, true, true],
+    testParseOk parseHex "#x0A" [false, false, false, false, true, false, true, false],
     testParseOk SExpr.parse "true" (.symbol "true"),
     testParseOk SExpr.parse "123" (.numeral 123),
     testParseOk SExpr.parse "\"hello \"\"world\"\"\"" (.string "hello \"world\""),
     testParseOk SExpr.parse "#b1011" (.bitvec 11#4),
+    testParseOk SExpr.parse "#xFF" (.bitvec 255#8),
+    testParseOk SExpr.parse "#x0A" (.bitvec 10#8),
+    testParseOk SExpr.parse "#xDEAD" (.bitvec 0xDEAD#16),
     testParseOk SExpr.parse "(hello \"world\" (123 #b10))" (.sexpr [.symbol "hello", .string "world",
       .sexpr [.numeral 123, .bitvec 2#2]])
   ]
@@ -216,7 +223,7 @@ private def uufs : IdMap UUF := IdMap.ofList [
 private def ids : IdMaps := ⟨types, vars, uufs, enums⟩
 
 private def getValue! [Inhabited α] (m : IdMap α) (key : String) : α :=
-  if let some v := m.find? key then v else default
+  if let some v := m.get? key then v else default
 
 private def types.get! (key : String) := getValue! types key
 private def enums.get! (key : String) := getValue! enums key
@@ -278,6 +285,8 @@ def testsDecodeInvalidTypeStrings :=
 
 private def testDecodeLitOk := (testDecodeOk (SExpr.decodeLit ids))
 
+private def testDecodeLitWithTyOk (ty : TermType) := (testDecodeOk (SExpr.decodeLit ids (.some ty)))
+
 private def testDecodeLitError := (testDecodeError (SExpr.decodeLit ids))
 
 def testsDecodeValidLitStrings :=
@@ -286,11 +295,17 @@ def testsDecodeValidLitStrings :=
     testDecodeLitOk "true" (.bool true),
     testDecodeLitOk "false" (.bool false),
     testDecodeLitOk "#b0001" (.bitvec 1#4),
+    testDecodeLitOk "#xFF" (.bitvec 255#8),
+    testDecodeLitOk "#xBEEF" (.bitvec 0xBEEF#16),
+    testDecodeLitOk "(_ bv42 8)" (.bitvec 42#8),
+    testDecodeLitOk "(_ bv255 8)" (.bitvec 255#8),
+    testDecodeLitOk "(_ bv0 16)" (.bitvec 0#16),
     testDecodeLitOk "\"hello world\"" (.string "hello world"),
     testDecodeLitOk "E0_m0" (.entity (enums.get! "E0_m0")),
     testDecodeLitOk "E0_m1" (.entity (enums.get! "E0_m1")),
     testDecodeLitOk "E0_m2" (.entity (enums.get! "E0_m2")),
     testDecodeLitOk "((as some (Option E0)) E0_m0)" (.some (.entity (enums.get! "E0_m0"))),
+    testDecodeLitOk "(some E0_m0)" (.some (.entity (enums.get! "E0_m0"))),
     testDecodeLitOk "(as none (Option Bool))" (.none .bool),
     testDecodeLitOk "(as set.empty (Set (_ BitVec 64)))" (.set Set.empty (.bitvec 64)),
     testDecodeLitOk "(set.singleton (set.singleton #b0001))" (.set (Set.singleton (.set (Set.singleton 1#4) (.bitvec 4))) (.set (.bitvec 4))),
@@ -308,6 +323,10 @@ def testsDecodeValidLitStrings :=
     testDecodeLitOk "(R4 (as none (Option Bool)) #b0000000000000000000000000000000000000000000000000000000000001010 E0_m2)"
       (.record (Map.make [("a", .none .bool), ("b", 10#64), ("c", .entity ⟨colorType, "red"⟩)])),
     testDecodeLitOk "(R6 (R5 true))" (.record (Map.make [("d", .record (Map.make [("e", .bool true)]))])),
+    testDecodeLitWithTyOk (.option .bool) "none" (.none .bool),
+    testDecodeLitWithTyOk (.option .bool) "(some true)" (.some (.bool true)),
+    testDecodeLitOk "(R4 none #b0000000000000000000000000000000000000000000000000000000000001010 E0_m2)"
+      (.record (Map.make [("a", .none .bool), ("b", 10#64), ("c", .entity ⟨colorType, "red"⟩)])),
   ]
 
 def testsDecodeInvalidLitStrings :=
@@ -315,8 +334,10 @@ def testsDecodeInvalidLitStrings :=
   [
     testDecodeLitError "True",
     testDecodeLitError "()",
+    testDecodeLitError "(_ bv256 8)",
+    testDecodeLitError "(_ bv0 0)",
     testDecodeLitError "(some)",
-    testDecodeLitError "(some E0_m0)",
+    testDecodeLitError "none",
     testDecodeLitError "(as none Bool)",
     testDecodeLitError "(as set.empty Bool)", -- must be a set type
     testDecodeLitError "(set.union (set.singleton true) false)",
@@ -336,13 +357,13 @@ def testsDecodeValidFunctionTableStrings :=
     testDecodeTableOk "true" ([], .bool true),
     testDecodeTableOk "(ite (= #b0000 x) #b0001 #b0010)" ([(0#4, 1#4)], 2#4),
     testDecodeTableOk "(ite (= #b0000 x) #b0001 (ite (= #b0001 x) #b0010 #b0011))" ([(0#4, 1#4), (1#4, 2#4)], 3#4),
+    testDecodeTableOk "(ite (= x #b0000) #b0001 #b0010)" ([(0#4, 1#4)], 2#4),
   ]
 
 def testsDecodeInvalidFunctionTableStrings :=
   suite "Decoder.SExpr.decodeUnaryFunctionTable for invalid unary function body strings"
   [
     testDecodeTableError "foo",
-    testDecodeTableError "(ite (= x #b0000) #b0001 #b0010)",
     testDecodeTableError "(ite (= #b0000 y) #b0001 #b0010)", -- we're using x as var name in these tests
     testDecodeTableError "(ite (= #b0000 x) (ite (= #b0001 x) #b0010 #b0011) #b0010)",
   ]
@@ -351,8 +372,8 @@ private def testDecodeModelOk := (testDecodeOk (SExpr.decodeModel ids))
 
 private def testDecodeModelError := (testDecodeError (SExpr.decodeModel ids))
 
-private abbrev mkvars : List (TermVar × Term) → VarMap := (List.toRBMap · (compareOfLessAndEq · ·))
-private abbrev mkuufs : List (UUF × UDF) → UUFMap := (List.toRBMap · (compareOfLessAndEq · ·))
+private abbrev mkvars : List (TermVar × Term) → VarMap := (Std.TreeMap.ofList · (compareOfLessAndEq · ·))
+private abbrev mkuufs : List (UUF × UDF) → UUFMap := (Std.TreeMap.ofList · (compareOfLessAndEq · ·))
 
 def testsDecodeValidModelStrings :=
   suite "Decoder.SExpr.decodeModel for valid model strings"
@@ -397,7 +418,6 @@ def testsDecodeInvalidModelStrings :=
   [
     testDecodeModelError "true",
     testDecodeModelError "(true)",
-    testDecodeModelError "((define-fun foo () E0 E0_m0))",
     testDecodeModelError "((define-fun t1 () E1 E0_m0))",
     testDecodeModelError "((define-fun t1 (()) E0 E0_m0))",
     testDecodeModelError "((define-fun f1 () (Set E2) (as set.empty (Set E2))))",

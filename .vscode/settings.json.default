@@ -1,0 +1,10 @@
+{
+    "rust-analyzer.linkedProjects": [
+        "./cedar-drt/Cargo.toml",
+        "./cedar-drt/fuzz/Cargo.toml",
+        "./cedar/Cargo.toml",
+        "./cedar-lean-cli/Cargo.toml",
+        "./cedar-lean-ffi/Cargo.toml",
+        "./cedar-policy-generators/Cargo.toml"
+    ]
+}

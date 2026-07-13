@@ -18,11 +18,15 @@
 
 use cedar_drt_inner::fuzz_target;
 
+use cedar_drt_inner::props::template_to_cedar_parses;
 use cedar_policy::Template;
 use cedar_policy::proto::traits::Protobuf;
 
 // Feed arbitrary bytes into Template protobuf decoder.
 // The property under test: decode either returns Ok or Err, never panics.
 fuzz_target!(|input: &[u8]| {
-    let _ = Template::decode(input);
+    match Template::decode(input) {
+        Ok(t) => template_to_cedar_parses(t),
+        Err(_) => (), // errors are expeccted to happen
+    }
 });

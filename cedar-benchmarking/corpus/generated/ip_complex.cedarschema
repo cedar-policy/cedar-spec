@@ -1,0 +1,25 @@
+entity Firewall;
+entity Zone in [Firewall] = {
+    "cidr": ipaddr,
+    "name": __cedar::String,
+    "trust_level": __cedar::Long
+};
+entity Service in [Zone] = {
+    "port": __cedar::Long,
+    "protocol": __cedar::String,
+    "allowed_sources": Set<ipaddr>
+};
+entity Client = {
+    "ip": ipaddr,
+    "mac": __cedar::String
+};
+action "connect" appliesTo {
+    principal: [Client],
+    resource: [Service],
+    context: { "source_ip": ipaddr, "dest_ip": ipaddr, "timestamp": __cedar::Long }
+};
+action "scan" appliesTo {
+    principal: [Client],
+    resource: [Zone],
+    context: { "source_ip": ipaddr }
+};

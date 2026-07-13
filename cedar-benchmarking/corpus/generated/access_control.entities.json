@@ -1,0 +1,932 @@
+[
+  {
+    "uid": {
+      "__entity": {
+        "type": "Building",
+        "id": "building_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Building",
+        "id": "building_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Building",
+        "id": "building_2"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Building",
+        "id": "building_3"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Building",
+        "id": "building_4"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Building",
+        "id": "building_5"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Building",
+        "id": "building_6"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Building",
+        "id": "building_7"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Building",
+        "id": "building_8"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Building",
+        "id": "building_9"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Building",
+        "id": "building_10"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Building",
+        "id": "building_11"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Building",
+        "id": "building_12"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Building",
+        "id": "building_13"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Building",
+        "id": "building_14"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Room",
+        "id": "room_0"
+      }
+    },
+    "attrs": {
+      "name": "val_delta_25",
+      "floor": 94,
+      "capacity": 35,
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "63.114.71.189/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Building",
+          "id": "building_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Room",
+        "id": "room_1"
+      }
+    },
+    "attrs": {
+      "name": "val_gamma_604",
+      "floor": 54,
+      "capacity": 4,
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "8.47.111.60/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Building",
+          "id": "building_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Room",
+        "id": "room_2"
+      }
+    },
+    "attrs": {
+      "name": "val_alpha_574",
+      "floor": 25,
+      "capacity": 91,
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "167.214.112.115/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Building",
+          "id": "building_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Room",
+        "id": "room_3"
+      }
+    },
+    "attrs": {
+      "name": "val_prod_828",
+      "floor": 0,
+      "capacity": 97,
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "207.81.216.88/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Building",
+          "id": "building_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Room",
+        "id": "room_4"
+      }
+    },
+    "attrs": {
+      "name": "val_epsilon_220",
+      "floor": 97,
+      "capacity": 43,
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "27.47.194.25/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Building",
+          "id": "building_4"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Room",
+        "id": "room_5"
+      }
+    },
+    "attrs": {
+      "name": "val_test_618",
+      "floor": 33,
+      "capacity": 5,
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "187.235.63.250/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Building",
+          "id": "building_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Room",
+        "id": "room_6"
+      }
+    },
+    "attrs": {
+      "name": "val_main_80",
+      "floor": 70,
+      "capacity": 37,
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "213.185.98.181/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Building",
+          "id": "building_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Room",
+        "id": "room_7"
+      }
+    },
+    "attrs": {
+      "name": "val_beta_677",
+      "floor": 29,
+      "capacity": 98,
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "75.40.119.222/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Building",
+          "id": "building_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Room",
+        "id": "room_8"
+      }
+    },
+    "attrs": {
+      "name": "val_main_284",
+      "floor": 58,
+      "capacity": 81,
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "214.186.83.95/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Building",
+          "id": "building_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Room",
+        "id": "room_9"
+      }
+    },
+    "attrs": {
+      "name": "val_eta_686",
+      "floor": 34,
+      "capacity": 89,
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "175.36.87.137/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Building",
+          "id": "building_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Room",
+        "id": "room_10"
+      }
+    },
+    "attrs": {
+      "name": "val_theta_167",
+      "floor": 59,
+      "capacity": 48,
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "70.112.166.216/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Building",
+          "id": "building_11"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Room",
+        "id": "room_11"
+      }
+    },
+    "attrs": {
+      "name": "val_beta_234",
+      "floor": 4,
+      "capacity": 40,
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "103.137.33.55/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Building",
+          "id": "building_12"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Room",
+        "id": "room_12"
+      }
+    },
+    "attrs": {
+      "name": "val_dev_217",
+      "floor": 83,
+      "capacity": 63,
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "102.234.73.68/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Building",
+          "id": "building_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Room",
+        "id": "room_13"
+      }
+    },
+    "attrs": {
+      "name": "val_theta_762",
+      "floor": 71,
+      "capacity": 68,
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "68.219.204.93/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Building",
+          "id": "building_2"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Room",
+        "id": "room_14"
+      }
+    },
+    "attrs": {
+      "name": "val_epsilon_521",
+      "floor": 63,
+      "capacity": 11,
+      "network": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "194.24.56.40/32"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Building",
+          "id": "building_3"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Badge",
+        "id": "badge_0"
+      }
+    },
+    "attrs": {
+      "holder": "val_zeta_811",
+      "issued": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-10-03T12:00:00Z"
+        }
+      },
+      "expires": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-10-15T16:00:00Z"
+        }
+      },
+      "access_level": 32
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Badge",
+        "id": "badge_1"
+      }
+    },
+    "attrs": {
+      "holder": "val_alpha_696",
+      "issued": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-11-18T08:00:00Z"
+        }
+      },
+      "expires": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-02-10T13:00:00Z"
+        }
+      },
+      "access_level": 20
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Badge",
+        "id": "badge_2"
+      }
+    },
+    "attrs": {
+      "holder": "val_primary_3",
+      "issued": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-09-25T05:00:00Z"
+        }
+      },
+      "expires": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-11-10T20:00:00Z"
+        }
+      },
+      "access_level": 64
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Badge",
+        "id": "badge_3"
+      }
+    },
+    "attrs": {
+      "holder": "val_eta_156",
+      "issued": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-03-18T16:00:00Z"
+        }
+      },
+      "expires": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-10-11T15:00:00Z"
+        }
+      },
+      "access_level": 2
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Badge",
+        "id": "badge_4"
+      }
+    },
+    "attrs": {
+      "holder": "val_delta_951",
+      "issued": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-05-08T01:00:00Z"
+        }
+      },
+      "expires": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-10-03T02:00:00Z"
+        }
+      },
+      "access_level": 93
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Badge",
+        "id": "badge_5"
+      }
+    },
+    "attrs": {
+      "holder": "val_secondary_835",
+      "issued": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-09-25T04:00:00Z"
+        }
+      },
+      "expires": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-11-16T17:00:00Z"
+        }
+      },
+      "access_level": 21
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Badge",
+        "id": "badge_6"
+      }
+    },
+    "attrs": {
+      "holder": "val_prod_540",
+      "issued": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-04-18T23:00:00Z"
+        }
+      },
+      "expires": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-12-10T12:00:00Z"
+        }
+      },
+      "access_level": 85
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Badge",
+        "id": "badge_7"
+      }
+    },
+    "attrs": {
+      "holder": "val_test_448",
+      "issued": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-02-08T07:00:00Z"
+        }
+      },
+      "expires": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-06-01T18:00:00Z"
+        }
+      },
+      "access_level": 70
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Badge",
+        "id": "badge_8"
+      }
+    },
+    "attrs": {
+      "holder": "val_theta_602",
+      "issued": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-01-03T22:00:00Z"
+        }
+      },
+      "expires": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-04-03T01:00:00Z"
+        }
+      },
+      "access_level": 42
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Badge",
+        "id": "badge_9"
+      }
+    },
+    "attrs": {
+      "holder": "val_gamma_526",
+      "issued": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-05-22T15:00:00Z"
+        }
+      },
+      "expires": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-09-05T23:00:00Z"
+        }
+      },
+      "access_level": 73
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Badge",
+        "id": "badge_10"
+      }
+    },
+    "attrs": {
+      "holder": "val_secondary_248",
+      "issued": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-07-07T03:00:00Z"
+        }
+      },
+      "expires": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-11-14T11:00:00Z"
+        }
+      },
+      "access_level": 54
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Badge",
+        "id": "badge_11"
+      }
+    },
+    "attrs": {
+      "holder": "val_backup_478",
+      "issued": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-11-21T20:00:00Z"
+        }
+      },
+      "expires": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-01-13T23:00:00Z"
+        }
+      },
+      "access_level": 43
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Badge",
+        "id": "badge_12"
+      }
+    },
+    "attrs": {
+      "holder": "val_delta_254",
+      "issued": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-04-18T14:00:00Z"
+        }
+      },
+      "expires": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-07-06T08:00:00Z"
+        }
+      },
+      "access_level": 59
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Badge",
+        "id": "badge_13"
+      }
+    },
+    "attrs": {
+      "holder": "val_theta_895",
+      "issued": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-08-26T17:00:00Z"
+        }
+      },
+      "expires": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-01-21T17:00:00Z"
+        }
+      },
+      "access_level": 1
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Badge",
+        "id": "badge_14"
+      }
+    },
+    "attrs": {
+      "holder": "val_gamma_948",
+      "issued": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-03-14T15:00:00Z"
+        }
+      },
+      "expires": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-04-28T12:00:00Z"
+        }
+      },
+      "access_level": 7
+    },
+    "parents": []
+  }
+]

@@ -154,7 +154,7 @@ theorem entity_access_at_level_succ {path} {tx : TypedExpr} {env : TypeEnv} {n n
     · assumption
     · rename_i path hf _ hl
       have : sizeOf tx < sizeOf attrs := by
-        have h₁ := List.sizeOf_lt_of_mem ∘ Map.make_mem_list_mem ∘ Map.find?_mem_toList $ hf
+        have h₁ := List.sizeOf_lt_of_mem ∘ Map.mem_make_mem_list ∘ Map.find?_mem_toList $ hf
         rw [Prod.mk.sizeOf_spec ha tx] at h₁
         omega
       exact entity_access_at_level_succ hl
@@ -291,7 +291,7 @@ theorem entity_access_level_spec {tx : TypedExpr} {env : TypeEnv} {n nmax : Nat}
           subst tx
           and_intros
           · have : sizeOf tx' < 1 + sizeOf atxs := by
-              replace h₁ := List.sizeOf_lt_of_mem ∘ Map.make_mem_list_mem ∘ Map.find?_mem_toList $ h₁
+              replace h₁ := List.sizeOf_lt_of_mem ∘ Map.mem_make_mem_list ∘ Map.find?_mem_toList $ h₁
               rw [Prod.mk.sizeOf_spec _ tx'] at h₁
               omega
             have ih := @entity_access_level_spec tx'
@@ -319,7 +319,7 @@ theorem entity_access_level_spec {tx : TypedExpr} {env : TypeEnv} {n nmax : Nat}
           · assumption
           · rename_i a _ tx hf
             have : sizeOf tx < 1 + sizeOf atxs := by
-              replace h₁ := List.sizeOf_lt_of_mem ∘ Map.make_mem_list_mem ∘ Map.find?_mem_toList $ hf
+              replace h₁ := List.sizeOf_lt_of_mem ∘ Map.mem_make_mem_list ∘ Map.find?_mem_toList $ hf
               rw [Prod.mk.sizeOf_spec _ tx] at h₁
               omega
             have ih := @entity_access_level_spec tx

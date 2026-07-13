@@ -1,0 +1,141 @@
+{
+  "": {
+    "entityTypes": {
+      "Account": {
+        "memberOfTypes": [
+          "Branch"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "balance": {
+              "type": "decimal"
+            },
+            "daily_limit": {
+              "type": "decimal"
+            },
+            "opened": {
+              "type": "datetime"
+            },
+            "owner": {
+              "type": "String"
+            },
+            "type": {
+              "type": "String"
+            }
+          }
+        }
+      },
+      "Bank": {},
+      "Branch": {
+        "memberOfTypes": [
+          "Bank"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "name": {
+              "type": "String"
+            },
+            "network": {
+              "type": "ipaddr"
+            },
+            "region": {
+              "type": "String"
+            }
+          }
+        }
+      },
+      "Employee": {
+        "memberOfTypes": [
+          "Branch"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "approval_limit": {
+              "type": "decimal"
+            },
+            "level": {
+              "type": "Long"
+            },
+            "role": {
+              "type": "String"
+            }
+          }
+        }
+      }
+    },
+    "actions": {
+      "audit": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Account"
+          ],
+          "principalTypes": [
+            "Employee"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "period": {
+                "type": "duration"
+              },
+              "source_ip": {
+                "type": "ipaddr"
+              }
+            }
+          }
+        }
+      },
+      "close_account": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Account"
+          ],
+          "principalTypes": [
+            "Employee"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "reason": {
+                "type": "String"
+              },
+              "source_ip": {
+                "type": "ipaddr"
+              }
+            }
+          }
+        }
+      },
+      "transfer": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Account"
+          ],
+          "principalTypes": [
+            "Employee"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "amount": {
+                "type": "decimal"
+              },
+              "destination": {
+                "type": "String"
+              },
+              "source_ip": {
+                "type": "ipaddr"
+              },
+              "timestamp": {
+                "type": "datetime"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

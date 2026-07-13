@@ -1,0 +1,36 @@
+{
+  "": {
+    "entityTypes": {
+      "Resource": {
+        "memberOfTypes": [
+          "System"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "level": {
+              "type": "Long"
+            },
+            "name": {
+              "type": "String"
+            }
+          }
+        }
+      },
+      "System": {},
+      "User": {}
+    },
+    "actions": {
+      "access": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Resource"
+          ],
+          "principalTypes": [
+            "User"
+          ]
+        }
+      }
+    }
+  }
+}

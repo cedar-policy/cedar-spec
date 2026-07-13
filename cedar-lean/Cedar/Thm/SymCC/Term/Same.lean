@@ -906,7 +906,6 @@ private theorem record_value?_find?_none_rev {a : Attr} {t : Term} {rt : Map Att
   case none =>
     have hav' : av = (a, none) := by
       have := value?_attrValue?_fst hr'
-      simp only at this
       exact Prod.ext this.symm hav
     rw [hav'] at hr'
     exact value?_attrValue?_none_implies_none hr'
@@ -914,7 +913,6 @@ private theorem record_value?_find?_none_rev {a : Attr} {t : Term} {rt : Map Att
     exfalso
     have hav' : av = (a, some v) := by
       have := value?_attrValue?_fst hr'
-      simp only at this
       exact Prod.ext this.symm hav
     rw [hav'] at hr' hmem
     subst hv
@@ -950,7 +948,6 @@ private theorem record_value?_find?_some_rev {a : Attr} {t : Term} {v : Value}
   replace ⟨avs, hr, hv⟩ := record_value?_mapM' hr
   replace ⟨av, hmem, hr'⟩ := record_value_find? hf hr
   have hfst := value?_attrValue?_fst hr'
-  simp only at hfst
   cases hav : av.snd
   case none =>
     exfalso

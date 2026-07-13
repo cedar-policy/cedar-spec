@@ -70,10 +70,8 @@ theorem partial_evaluate_is_sound_var
       simp [Residual.evaluate]
       simp [RequestAndEntitiesRefine, RequestRefines] at h₄
       rcases h₄ with ⟨⟨h₄, _⟩, _⟩
-      rw [heq₁] at h₄
-      cases h₄
-      rename_i heq₂
-      subst heq₂
+      simp only [heq₁, PartialIsValid.some_inv] at h₄
+      subst h₄
       rfl
     case _ heq =>
       simp only [Residual.evaluate]
@@ -86,10 +84,8 @@ theorem partial_evaluate_is_sound_var
       simp [Residual.evaluate]
       simp [RequestAndEntitiesRefine, RequestRefines] at h₄
       rcases h₄ with ⟨⟨_, ⟨_, ⟨h₄, _⟩⟩⟩, _⟩
-      rw [heq₁] at h₄
-      cases h₄
-      rename_i heq₂
-      subst heq₂
+      simp only [heq₁, PartialIsValid.some_inv] at h₄
+      subst h₄
       rfl
     case _ heq =>
       simp only [Residual.evaluate]
@@ -107,10 +103,8 @@ theorem partial_evaluate_is_sound_var
       simp [Residual.evaluate]
       simp [RequestAndEntitiesRefine, RequestRefines] at h₄
       rcases h₄ with ⟨⟨_, ⟨_, ⟨_, ⟨h₄, _, _⟩⟩⟩⟩, _⟩
-      rw [heq₁] at h₄
-      cases h₄
-      rename_i heq₂
-      subst heq₂
+      simp only [heq₁, PartialIsValid.some_inv] at h₄
+      subst h₄
       rfl
     case _ =>
       simp only [Residual.evaluate]

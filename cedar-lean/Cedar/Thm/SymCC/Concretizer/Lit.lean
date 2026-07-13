@@ -504,7 +504,7 @@ private theorem concretize?_wfl_εs_implies_some {εs : SymEntities} {uids : Set
   simp only [Union.union] at h
   simp only [SymEntities.concretize?]
   exists (Map.make es)
-  simp only [h, Option.bind_some_fun]
+  simp [h, Union.union]
 
 public theorem concretize?_wfl_implies_some {x : Expr} {εnv : SymEnv} :
   εnv.WellFormedLiteralFor x →

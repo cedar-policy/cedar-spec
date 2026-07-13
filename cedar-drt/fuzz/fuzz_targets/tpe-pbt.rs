@@ -65,7 +65,7 @@ fuzz_target!(|input: TpeFuzzTargetInput| {
                         .tpe(&partial_request, &partial_entities, &schema)
                         .expect("tpe failed");
                     assert!(test_weak_equiv(
-                        &PolicySet::from_policies(response.residual_policies()).unwrap(),
+                        &PolicySet::from_policies(response.policies()).unwrap(),
                         &policyset,
                         &request,
                         &input.abac_input.entities

@@ -1,0 +1,11 @@
+entity System;
+entity Resource in [System] = {
+    "name": __cedar::String,
+    "level": __cedar::Long
+};
+entity User;
+action "access" appliesTo {
+    principal: [User],
+    resource: [Resource],
+    context: {}
+};

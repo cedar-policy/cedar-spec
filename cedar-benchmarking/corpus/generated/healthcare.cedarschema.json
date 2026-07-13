@@ -1,0 +1,182 @@
+{
+  "": {
+    "entityTypes": {
+      "Department": {
+        "memberOfTypes": [
+          "Hospital"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "floor": {
+              "type": "Long"
+            },
+            "name": {
+              "type": "String"
+            }
+          }
+        }
+      },
+      "Hospital": {},
+      "Patient": {
+        "memberOfTypes": [
+          "Department"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "admitted": {
+              "type": "datetime"
+            },
+            "diagnosis": {
+              "type": "Record",
+              "attributes": {
+                "code": {
+                  "type": "String"
+                },
+                "details": {
+                  "type": "Record",
+                  "attributes": {
+                    "primary": {
+                      "type": "String"
+                    },
+                    "secondary": {
+                      "type": "Set",
+                      "element": {
+                        "type": "String"
+                      }
+                    },
+                    "vitals": {
+                      "type": "Record",
+                      "attributes": {
+                        "bp_diastolic": {
+                          "type": "decimal"
+                        },
+                        "bp_systolic": {
+                          "type": "decimal"
+                        },
+                        "heart_rate": {
+                          "type": "Long"
+                        },
+                        "temperature": {
+                          "type": "decimal"
+                        }
+                      }
+                    }
+                  }
+                },
+                "severity": {
+                  "type": "Long"
+                }
+              }
+            },
+            "insurance": {
+              "type": "Record",
+              "attributes": {
+                "coverage": {
+                  "type": "decimal"
+                },
+                "policy_id": {
+                  "type": "String"
+                },
+                "provider": {
+                  "type": "String"
+                }
+              }
+            },
+            "name": {
+              "type": "String"
+            }
+          }
+        }
+      },
+      "Staff": {
+        "memberOfTypes": [
+          "Department"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "license_expiry": {
+              "type": "datetime"
+            },
+            "role": {
+              "type": "String"
+            },
+            "specializations": {
+              "type": "Set",
+              "element": {
+                "type": "String"
+              }
+            }
+          }
+        }
+      }
+    },
+    "actions": {
+      "modify_record": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Patient"
+          ],
+          "principalTypes": [
+            "Staff"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "access_time": {
+                "type": "datetime"
+              },
+              "reason": {
+                "type": "String"
+              }
+            }
+          }
+        }
+      },
+      "prescribe": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Patient"
+          ],
+          "principalTypes": [
+            "Staff"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "dosage": {
+                "type": "decimal"
+              },
+              "medication": {
+                "type": "String"
+              }
+            }
+          }
+        }
+      },
+      "view_record": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Patient"
+          ],
+          "principalTypes": [
+            "Staff"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "access_time": {
+                "type": "datetime"
+              },
+              "source_ip": {
+                "type": "ipaddr"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

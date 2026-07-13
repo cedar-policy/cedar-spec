@@ -86,10 +86,9 @@ theorem attrs_if_partial_attrs
     cases h_pe : pe.attrs <;> rw [h_pe] at h_attrs
     . simp at h_attrs
     . simp only [Option.some.injEq] at h_attrs
-      rw [h_pe] at h_pa
-      cases h_pa
-      rename_i h_eq
-      exact ⟨edata, by rw [← h_attrs, h_eq], h_entry⟩
+      simp only [h_pe, PartialIsValid.some_inv] at h_pa
+      subst h_pa
+      exact ⟨edata, by simp_all, h_entry⟩
 
 theorem entity_attr_well_typed
   {env : TypeEnv} {req : Request} {es : Entities} {pes : PartialEntities}

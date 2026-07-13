@@ -1,0 +1,2397 @@
+[
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cloud",
+        "id": "cloud_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cloud",
+        "id": "cloud_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cloud",
+        "id": "cloud_2"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cloud",
+        "id": "cloud_3"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cloud",
+        "id": "cloud_4"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cloud",
+        "id": "cloud_5"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cloud",
+        "id": "cloud_6"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cloud",
+        "id": "cloud_7"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cloud",
+        "id": "cloud_8"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cloud",
+        "id": "cloud_9"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cloud",
+        "id": "cloud_10"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cloud",
+        "id": "cloud_11"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cloud",
+        "id": "cloud_12"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cloud",
+        "id": "cloud_13"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Cloud",
+        "id": "cloud_14"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Region",
+        "id": "region_0"
+      }
+    },
+    "attrs": {
+      "name": "val_beta_7",
+      "compliance": [
+        "val_staging_968",
+        "val_eta_785"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cloud",
+          "id": "cloud_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Region",
+        "id": "region_1"
+      }
+    },
+    "attrs": {
+      "name": "val_prod_296",
+      "compliance": [
+        "val_delta_7",
+        "val_secondary_764",
+        "val_backup_179"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cloud",
+          "id": "cloud_2"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Region",
+        "id": "region_2"
+      }
+    },
+    "attrs": {
+      "name": "val_main_545",
+      "compliance": [
+        "val_test_73",
+        "val_main_882"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cloud",
+          "id": "cloud_2"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Region",
+        "id": "region_3"
+      }
+    },
+    "attrs": {
+      "name": "val_beta_446",
+      "compliance": [
+        "val_primary_943"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cloud",
+          "id": "cloud_11"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Region",
+        "id": "region_4"
+      }
+    },
+    "attrs": {
+      "name": "val_dev_589",
+      "compliance": [
+        "val_main_726",
+        "val_backup_296",
+        "val_delta_414",
+        "val_alpha_989"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cloud",
+          "id": "cloud_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Region",
+        "id": "region_5"
+      }
+    },
+    "attrs": {
+      "name": "val_zeta_820",
+      "compliance": [
+        "val_primary_851",
+        "val_test_90",
+        "val_backup_864",
+        "val_delta_249",
+        "val_backup_603"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cloud",
+          "id": "cloud_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Region",
+        "id": "region_6"
+      }
+    },
+    "attrs": {
+      "name": "val_gamma_405",
+      "compliance": [
+        "val_dev_226",
+        "val_dev_797",
+        "val_zeta_78"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cloud",
+          "id": "cloud_6"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Region",
+        "id": "region_7"
+      }
+    },
+    "attrs": {
+      "name": "val_delta_543",
+      "compliance": [
+        "val_eta_927",
+        "val_test_359",
+        "val_epsilon_241",
+        "val_delta_149",
+        "val_prod_202"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cloud",
+          "id": "cloud_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Region",
+        "id": "region_8"
+      }
+    },
+    "attrs": {
+      "name": "val_epsilon_778",
+      "compliance": [
+        "val_zeta_974"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cloud",
+          "id": "cloud_2"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Region",
+        "id": "region_9"
+      }
+    },
+    "attrs": {
+      "name": "val_secondary_475",
+      "compliance": [
+        "val_primary_697",
+        "val_dev_884",
+        "val_dev_154",
+        "val_primary_69",
+        "val_secondary_452"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cloud",
+          "id": "cloud_12"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Region",
+        "id": "region_10"
+      }
+    },
+    "attrs": {
+      "name": "val_staging_815",
+      "compliance": [
+        "val_beta_360",
+        "val_gamma_317",
+        "val_primary_462"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cloud",
+          "id": "cloud_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Region",
+        "id": "region_11"
+      }
+    },
+    "attrs": {
+      "name": "val_beta_377",
+      "compliance": [
+        "val_gamma_660",
+        "val_gamma_629",
+        "val_main_473"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cloud",
+          "id": "cloud_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Region",
+        "id": "region_12"
+      }
+    },
+    "attrs": {
+      "name": "val_beta_460",
+      "compliance": [
+        "val_eta_329",
+        "val_secondary_513",
+        "val_epsilon_980",
+        "val_beta_461",
+        "val_delta_830"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cloud",
+          "id": "cloud_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Region",
+        "id": "region_13"
+      }
+    },
+    "attrs": {
+      "name": "val_dev_731",
+      "compliance": [
+        "val_zeta_40"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cloud",
+          "id": "cloud_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Region",
+        "id": "region_14"
+      }
+    },
+    "attrs": {
+      "name": "val_primary_449",
+      "compliance": [
+        "val_zeta_372",
+        "val_test_939",
+        "val_staging_396",
+        "val_backup_793",
+        "val_dev_695"
+      ]
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Cloud",
+          "id": "cloud_3"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "VPC",
+        "id": "vpc_0"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "14.171.33.85/32"
+        }
+      },
+      "name": "val_delta_571"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Region",
+          "id": "region_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "VPC",
+        "id": "vpc_1"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "99.145.129.186/32"
+        }
+      },
+      "name": "val_epsilon_341"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Region",
+          "id": "region_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "VPC",
+        "id": "vpc_2"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "150.72.179.80/32"
+        }
+      },
+      "name": "val_main_132"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Region",
+          "id": "region_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "VPC",
+        "id": "vpc_3"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "182.43.158.144/32"
+        }
+      },
+      "name": "val_main_658"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Region",
+          "id": "region_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "VPC",
+        "id": "vpc_4"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "85.65.47.166/32"
+        }
+      },
+      "name": "val_backup_520"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Region",
+          "id": "region_12"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "VPC",
+        "id": "vpc_5"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "5.185.158.47/32"
+        }
+      },
+      "name": "val_eta_349"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Region",
+          "id": "region_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "VPC",
+        "id": "vpc_6"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "125.98.115.36/32"
+        }
+      },
+      "name": "val_epsilon_79"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Region",
+          "id": "region_12"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "VPC",
+        "id": "vpc_7"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "217.51.19.170/32"
+        }
+      },
+      "name": "val_dev_897"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Region",
+          "id": "region_4"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "VPC",
+        "id": "vpc_8"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "159.67.192.40/32"
+        }
+      },
+      "name": "val_zeta_185"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Region",
+          "id": "region_12"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "VPC",
+        "id": "vpc_9"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "178.84.224.12/32"
+        }
+      },
+      "name": "val_backup_373"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Region",
+          "id": "region_13"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "VPC",
+        "id": "vpc_10"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "185.121.227.157/32"
+        }
+      },
+      "name": "val_staging_770"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Region",
+          "id": "region_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "VPC",
+        "id": "vpc_11"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "201.229.119.137/32"
+        }
+      },
+      "name": "val_theta_316"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Region",
+          "id": "region_11"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "VPC",
+        "id": "vpc_12"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "201.240.99.95/32"
+        }
+      },
+      "name": "val_primary_472"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Region",
+          "id": "region_12"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "VPC",
+        "id": "vpc_13"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "73.195.214.248/32"
+        }
+      },
+      "name": "val_zeta_836"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Region",
+          "id": "region_12"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "VPC",
+        "id": "vpc_14"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "206.70.128.14/32"
+        }
+      },
+      "name": "val_secondary_895"
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Region",
+          "id": "region_3"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Subnet",
+        "id": "subnet_0"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "142.52.63.73/32"
+        }
+      },
+      "public": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "VPC",
+          "id": "vpc_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Subnet",
+        "id": "subnet_1"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "42.139.230.232/32"
+        }
+      },
+      "public": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "VPC",
+          "id": "vpc_12"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Subnet",
+        "id": "subnet_2"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "112.46.113.210/32"
+        }
+      },
+      "public": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "VPC",
+          "id": "vpc_13"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Subnet",
+        "id": "subnet_3"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "90.13.212.14/32"
+        }
+      },
+      "public": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "VPC",
+          "id": "vpc_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Subnet",
+        "id": "subnet_4"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "96.120.197.21/32"
+        }
+      },
+      "public": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "VPC",
+          "id": "vpc_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Subnet",
+        "id": "subnet_5"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "8.163.50.215/32"
+        }
+      },
+      "public": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "VPC",
+          "id": "vpc_3"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Subnet",
+        "id": "subnet_6"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "38.70.19.74/32"
+        }
+      },
+      "public": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "VPC",
+          "id": "vpc_12"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Subnet",
+        "id": "subnet_7"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "213.71.240.115/32"
+        }
+      },
+      "public": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "VPC",
+          "id": "vpc_11"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Subnet",
+        "id": "subnet_8"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "21.9.131.56/32"
+        }
+      },
+      "public": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "VPC",
+          "id": "vpc_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Subnet",
+        "id": "subnet_9"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "187.216.56.199/32"
+        }
+      },
+      "public": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "VPC",
+          "id": "vpc_8"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Subnet",
+        "id": "subnet_10"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "78.62.24.62/32"
+        }
+      },
+      "public": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "VPC",
+          "id": "vpc_3"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Subnet",
+        "id": "subnet_11"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "204.234.32.29/32"
+        }
+      },
+      "public": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "VPC",
+          "id": "vpc_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Subnet",
+        "id": "subnet_12"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "138.8.123.184/32"
+        }
+      },
+      "public": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "VPC",
+          "id": "vpc_9"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Subnet",
+        "id": "subnet_13"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "110.0.180.62/32"
+        }
+      },
+      "public": false
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "VPC",
+          "id": "vpc_4"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Subnet",
+        "id": "subnet_14"
+      }
+    },
+    "attrs": {
+      "cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "171.43.184.18/32"
+        }
+      },
+      "public": true
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "VPC",
+          "id": "vpc_2"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instance",
+        "id": "instance_0"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "121.22.198.252/32"
+        }
+      },
+      "type": "val_test_259",
+      "cost_per_hour": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "266.45"
+        }
+      },
+      "launched": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-06-08T23:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Subnet",
+          "id": "subnet_6"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instance",
+        "id": "instance_1"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "161.53.170.35/32"
+        }
+      },
+      "type": "val_beta_360",
+      "cost_per_hour": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "8945.43"
+        }
+      },
+      "launched": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-11-15T22:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Subnet",
+          "id": "subnet_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instance",
+        "id": "instance_2"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "162.93.69.17/32"
+        }
+      },
+      "type": "val_primary_37",
+      "cost_per_hour": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "4807.25"
+        }
+      },
+      "launched": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-04-02T10:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Subnet",
+          "id": "subnet_7"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instance",
+        "id": "instance_3"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "80.203.242.65/32"
+        }
+      },
+      "type": "val_beta_771",
+      "cost_per_hour": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "3131.36"
+        }
+      },
+      "launched": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-01-28T20:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Subnet",
+          "id": "subnet_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instance",
+        "id": "instance_4"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "70.63.188.112/32"
+        }
+      },
+      "type": "val_main_761",
+      "cost_per_hour": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "7204.49"
+        }
+      },
+      "launched": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-03-16T22:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Subnet",
+          "id": "subnet_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instance",
+        "id": "instance_5"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "95.136.42.187/32"
+        }
+      },
+      "type": "val_backup_80",
+      "cost_per_hour": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "7055.77"
+        }
+      },
+      "launched": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-09-10T10:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Subnet",
+          "id": "subnet_7"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instance",
+        "id": "instance_6"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "21.167.151.79/32"
+        }
+      },
+      "type": "val_primary_617",
+      "cost_per_hour": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "6981.21"
+        }
+      },
+      "launched": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-06-15T01:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Subnet",
+          "id": "subnet_1"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instance",
+        "id": "instance_7"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "223.180.222.71/32"
+        }
+      },
+      "type": "val_beta_76",
+      "cost_per_hour": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "6655.46"
+        }
+      },
+      "launched": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-01-05T19:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Subnet",
+          "id": "subnet_11"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instance",
+        "id": "instance_8"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "201.224.17.33/32"
+        }
+      },
+      "type": "val_gamma_241",
+      "cost_per_hour": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "6001.46"
+        }
+      },
+      "launched": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-10-02T19:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Subnet",
+          "id": "subnet_10"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instance",
+        "id": "instance_9"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "174.230.189.96/32"
+        }
+      },
+      "type": "val_primary_781",
+      "cost_per_hour": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "1259.73"
+        }
+      },
+      "launched": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-09-12T12:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Subnet",
+          "id": "subnet_2"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instance",
+        "id": "instance_10"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "167.142.127.246/32"
+        }
+      },
+      "type": "val_delta_26",
+      "cost_per_hour": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "3048.63"
+        }
+      },
+      "launched": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2026-09-04T08:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Subnet",
+          "id": "subnet_5"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instance",
+        "id": "instance_11"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "67.228.109.157/32"
+        }
+      },
+      "type": "val_staging_710",
+      "cost_per_hour": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "8047.25"
+        }
+      },
+      "launched": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-03-28T02:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Subnet",
+          "id": "subnet_12"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instance",
+        "id": "instance_12"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "45.227.44.208/32"
+        }
+      },
+      "type": "val_dev_683",
+      "cost_per_hour": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "5692.90"
+        }
+      },
+      "launched": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2023-09-18T09:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Subnet",
+          "id": "subnet_7"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instance",
+        "id": "instance_13"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "77.80.89.204/32"
+        }
+      },
+      "type": "val_test_520",
+      "cost_per_hour": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "3673.15"
+        }
+      },
+      "launched": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2024-03-08T15:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Subnet",
+          "id": "subnet_14"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Instance",
+        "id": "instance_14"
+      }
+    },
+    "attrs": {
+      "ip": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "93.188.239.206/32"
+        }
+      },
+      "type": "val_epsilon_626",
+      "cost_per_hour": {
+        "__extn": {
+          "fn": "decimal",
+          "arg": "1412.08"
+        }
+      },
+      "launched": {
+        "__extn": {
+          "fn": "datetime",
+          "arg": "2025-07-23T23:00:00Z"
+        }
+      }
+    },
+    "parents": [
+      {
+        "__entity": {
+          "type": "Subnet",
+          "id": "subnet_0"
+        }
+      }
+    ]
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "SecurityGroup",
+        "id": "securitygroup_0"
+      }
+    },
+    "attrs": {
+      "ingress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "123.210.209.211/32"
+        }
+      },
+      "egress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "148.37.64.249/32"
+        }
+      },
+      "ports": [
+        42097,
+        4861,
+        29490
+      ]
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "SecurityGroup",
+        "id": "securitygroup_1"
+      }
+    },
+    "attrs": {
+      "ingress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "120.176.65.225/32"
+        }
+      },
+      "egress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "213.93.66.111/32"
+        }
+      },
+      "ports": [
+        59685,
+        56900,
+        3632,
+        54487,
+        8138
+      ]
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "SecurityGroup",
+        "id": "securitygroup_2"
+      }
+    },
+    "attrs": {
+      "ingress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "133.78.155.43/32"
+        }
+      },
+      "egress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "42.165.115.89/32"
+        }
+      },
+      "ports": [
+        58650,
+        18616,
+        55440,
+        5169,
+        16424
+      ]
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "SecurityGroup",
+        "id": "securitygroup_3"
+      }
+    },
+    "attrs": {
+      "ingress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "51.140.64.161/32"
+        }
+      },
+      "egress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "78.47.86.152/32"
+        }
+      },
+      "ports": [
+        10106,
+        11220,
+        43171,
+        40926,
+        47228
+      ]
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "SecurityGroup",
+        "id": "securitygroup_4"
+      }
+    },
+    "attrs": {
+      "ingress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "155.172.21.212/32"
+        }
+      },
+      "egress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "222.14.41.12/32"
+        }
+      },
+      "ports": [
+        17345,
+        42673,
+        13816,
+        50264,
+        37496
+      ]
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "SecurityGroup",
+        "id": "securitygroup_5"
+      }
+    },
+    "attrs": {
+      "ingress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "107.15.254.228/32"
+        }
+      },
+      "egress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "161.148.154.124/32"
+        }
+      },
+      "ports": [
+        52737,
+        52911
+      ]
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "SecurityGroup",
+        "id": "securitygroup_6"
+      }
+    },
+    "attrs": {
+      "ingress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "176.207.152.117/32"
+        }
+      },
+      "egress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "19.30.80.113/32"
+        }
+      },
+      "ports": [
+        31736,
+        30438,
+        13371,
+        22295
+      ]
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "SecurityGroup",
+        "id": "securitygroup_7"
+      }
+    },
+    "attrs": {
+      "ingress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "156.73.160.221/32"
+        }
+      },
+      "egress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "184.163.176.250/32"
+        }
+      },
+      "ports": [
+        8570,
+        49851,
+        24284,
+        33750
+      ]
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "SecurityGroup",
+        "id": "securitygroup_8"
+      }
+    },
+    "attrs": {
+      "ingress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "144.54.163.62/32"
+        }
+      },
+      "egress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "120.62.136.116/32"
+        }
+      },
+      "ports": [
+        9233,
+        6345
+      ]
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "SecurityGroup",
+        "id": "securitygroup_9"
+      }
+    },
+    "attrs": {
+      "ingress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "13.148.196.222/32"
+        }
+      },
+      "egress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "158.214.127.247/32"
+        }
+      },
+      "ports": [
+        53313,
+        21459
+      ]
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "SecurityGroup",
+        "id": "securitygroup_10"
+      }
+    },
+    "attrs": {
+      "ingress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "148.160.97.196/32"
+        }
+      },
+      "egress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "41.255.239.128/32"
+        }
+      },
+      "ports": [
+        32596,
+        1519,
+        5902
+      ]
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "SecurityGroup",
+        "id": "securitygroup_11"
+      }
+    },
+    "attrs": {
+      "ingress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "101.234.123.56/32"
+        }
+      },
+      "egress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "150.180.24.13/32"
+        }
+      },
+      "ports": [
+        32434,
+        39159,
+        57825
+      ]
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "SecurityGroup",
+        "id": "securitygroup_12"
+      }
+    },
+    "attrs": {
+      "ingress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "216.240.146.138/32"
+        }
+      },
+      "egress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "3.55.220.35/32"
+        }
+      },
+      "ports": [
+        47678,
+        23972,
+        50061
+      ]
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "SecurityGroup",
+        "id": "securitygroup_13"
+      }
+    },
+    "attrs": {
+      "ingress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "104.187.23.103/32"
+        }
+      },
+      "egress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "14.99.185.142/32"
+        }
+      },
+      "ports": [
+        4819,
+        25320,
+        33047
+      ]
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "SecurityGroup",
+        "id": "securitygroup_14"
+      }
+    },
+    "attrs": {
+      "ingress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "116.143.60.33/32"
+        }
+      },
+      "egress_cidr": {
+        "__extn": {
+          "fn": "ip",
+          "arg": "25.201.191.204/32"
+        }
+      },
+      "ports": [
+        36559,
+        61535,
+        23961
+      ]
+    },
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Admin",
+        "id": "admin_0"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Admin",
+        "id": "admin_1"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Admin",
+        "id": "admin_2"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Admin",
+        "id": "admin_3"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Admin",
+        "id": "admin_4"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Admin",
+        "id": "admin_5"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Admin",
+        "id": "admin_6"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Admin",
+        "id": "admin_7"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Admin",
+        "id": "admin_8"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Admin",
+        "id": "admin_9"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Admin",
+        "id": "admin_10"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Admin",
+        "id": "admin_11"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Admin",
+        "id": "admin_12"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Admin",
+        "id": "admin_13"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "__entity": {
+        "type": "Admin",
+        "id": "admin_14"
+      }
+    },
+    "attrs": {},
+    "parents": []
+  }
+]

@@ -57,7 +57,7 @@ theorem intoCompiledPolicySet_correctness {p : Policy} {Γ : Validation.TypeEnv}
   simp [Opt.isAuthorized, Opt.satisfiedPolicies, Opt.compileWithEffect]
   cases p'.effect <;> simp [Factory.anyTrue, Factory.or, Factory.not, Factory.and]
   all_goals {
-    simp_do_let Opt.compile p'.toExpr (SymEnv.ofEnv Γ) ; rename_i h
+    simp_do_let Opt.compile p'.toExpr (SymEnv.ofEnv Γ) as h
     simp only [Except.ok.injEq, CompiledPolicySet.mk.injEq, true_and]
     have hwf := Opt.compile_footprint_wf h
     simp [EmptyCollection.emptyCollection, Data.Set.union_empty_right List.mapUnion_wf, Data.Set.union_empty_left List.mapUnion_wf]

@@ -49,12 +49,11 @@ theorem partial_eval_well_typed_var {env : TypeEnv} {v : Var} {ty : CedarType} {
       assumption
     case some =>
       simp only [Option.bind_some, varₚ.varₒ, someOrSelf]
-      rw [h] at h_pv
-      cases h_pv with | some _ h₃ =>
+      simp only [h, PartialIsValid.some_inv] at h_pv
+      subst h_pv
       cases h_wt with | var h₄ =>
       cases h₄ with | principal =>
       rcases h_wf with ⟨_, ⟨h_principal, _, _, _⟩, _⟩
-      rw [h₃]
       exact well_typed_entity h_principal
   case resource =>
     simp only [Option.pure_def, Option.bind_eq_bind]
@@ -64,12 +63,11 @@ theorem partial_eval_well_typed_var {env : TypeEnv} {v : Var} {ty : CedarType} {
     . dsimp only [Option.bind_none, varₚ.varₒ, someOrSelf]
       exact h_wt
     . dsimp only [Option.bind_some, varₚ.varₒ, someOrSelf]
-      rw [h] at h_rv
-      cases h_rv with | some _ h₃ =>
+      simp only [h, PartialIsValid.some_inv] at h_rv
+      subst h_rv
       cases h_wt with | var h₄ =>
       cases h₄ with | resource =>
       rcases h_wf with ⟨_, ⟨_, _, h_resource, _⟩, _⟩
-      rw [h₃]
       exact well_typed_entity h_resource
   case action =>
     simp only [varₚ.varₒ, someOrSelf]
@@ -93,10 +91,9 @@ theorem partial_eval_well_typed_var {env : TypeEnv} {v : Var} {ty : CedarType} {
     . simp only [Option.map_none, varₚ.varₒ, someOrSelf]
       exact h_wt
     . simp only [Option.map_some, varₚ.varₒ, someOrSelf]
-      rw [h] at h_cv
+      simp only [h, PartialIsValid.some_inv] at h_cv
+      subst h_cv
       apply Residual.WellTyped.val
-      cases h_cv with | some _ h₃ =>
-      rw [h₃]
       cases h_wt with | var h₄ =>
       cases h₄ with | context =>
 

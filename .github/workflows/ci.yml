@@ -3,6 +3,9 @@ name: Build and Test cedar-spec
 on:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   get-branch-name:
     runs-on: ubuntu-latest
@@ -134,3 +137,10 @@ jobs:
       cedar_spec_ref: ${{ github.ref }}
       cedar_policy_ref: ${{ needs.get-branch-name.outputs.branch_name }}
       cedar_integration_tests_ref: ${{ needs.get-branch-name.outputs.branch_name }}
+
+  build_and_test_benchmarking:
+    needs: get-branch-name
+    uses: ./.github/workflows/build_and_test_benchmarking_reusable.yml
+    with:
+      cedar_spec_ref: ${{ github.ref }}
+      cedar_policy_ref: ${{ needs.get-branch-name.outputs.branch_name }}

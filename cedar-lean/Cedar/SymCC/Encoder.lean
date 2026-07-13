@@ -19,7 +19,7 @@ module
 public import Cedar.SymCC.Env
 import Cedar.SymCC.Factory
 public import Cedar.SymCC.Solver
-public import Batteries.Data.RBMap
+public import Std.Data.TreeMap
 
 /-!
 This file defines the Cedar encoder, which translates a list of boolean Terms
@@ -72,15 +72,15 @@ open Cedar.Spec Cedar.Validation
 open Solver Batteries
 
 public structure EncoderState where
-  terms : RBMap Term String (compareOfLessAndEq · ·)
-  types : RBMap TermType String (compareOfLessAndEq · ·)
-  uufs  : RBMap UUF String (compareOfLessAndEq · ·)
-  enums : RBMap EntityType (List String) (compareOfLessAndEq · ·)
+  terms : Std.TreeMap Term String (compareOfLessAndEq · ·)
+  types : Std.TreeMap TermType String (compareOfLessAndEq · ·)
+  uufs  : Std.TreeMap UUF String (compareOfLessAndEq · ·)
+  enums : Std.TreeMap EntityType (List String) (compareOfLessAndEq · ·)
 deriving Repr
 
 def EncoderState.init (εnv : SymEnv) : EncoderState :=
   let enums := εnv.entities.toList.filterMap λ (ety, d) => do (ety, (← d.members).toList)
-  ⟨RBMap.empty, RBMap.empty, RBMap.empty, RBMap.ofList enums (compareOfLessAndEq · ·)⟩
+  ⟨Std.TreeMap.empty, Std.TreeMap.empty, Std.TreeMap.empty, Std.TreeMap.ofList enums (compareOfLessAndEq · ·)⟩
 
 abbrev EncoderM (α) := StateT EncoderState SolverM α
 
@@ -103,7 +103,7 @@ def declareType (id : String) (mks : List String) : EncoderM String := do
 
 def declareEntityType (ety : EntityType) : EncoderM String := do
   let etyId := entityTypeId (← typeNum)
-  match (← get).enums.find? ety with
+  match (← get).enums.get? ety with
   | .some members =>
     comment s!"{toString ety}::[{String.intercalate ", " members}]"
     declareType etyId (members.mapIdx λ i _ => s!"({enumId etyId i})")
@@ -130,7 +130,7 @@ def declareRecordType (rty : List (Attr × String)) : EncoderM String := do
   declareType rtyId [s!"({rtyId} {String.intercalate " " attrs})"]
 
 def encodeType (ty : TermType) : EncoderM String := do
-  if let (.some enc) := (← get).types.find? ty then return enc
+  if let (.some enc) := (← get).types.get? ty then return enc
   let enc ←
     match ty with
     | .bool             => return "Bool"
@@ -230,7 +230,7 @@ def defineRecord (tyEnc : String) (tEncs : List String) : EncoderM String := do
   defineTerm tyEnc (if tEncs.isEmpty then tyEnc else s!"({tyEnc} {String.intercalate " " tEncs})")
 
 def encodeUUF (uuf : UUF) : EncoderM String := do
-  if let (.some enc) := (← get).uufs.find? uuf then return enc
+  if let (.some enc) := (← get).uufs.get? uuf then return enc
   let id := uufId (← uufNum)
   comment uuf.id
   declareFun id [(← encodeType uuf.arg)] (← encodeType uuf.out)
@@ -265,7 +265,7 @@ def encodePattern : Pattern → EncoderM String
   | p   => return s!"(re.++ {String.intercalate " " (← p.mapM encodePatElem)})"
 
 def defineEntity (tyEnc : String) (entity : EntityUID) : EncoderM String := do
-  match (← get).enums.find? entity.ty with
+  match (← get).enums.get? entity.ty with
   | .some members =>
     match members.idxOf? entity.eid with
     | .some enum_idx => return s!"{enumId tyEnc enum_idx}"
@@ -280,7 +280,7 @@ private def indexOfAttr (a : Attr) : TermType → EncoderM Nat
   | ty                => throw (IO.userError s!"Bad term: (record.get {a} {reprStr ty})")
 
 def defineRecordGet (tyEnc a tEnc : String) (ty : TermType) : EncoderM String := do
-  let rId := (← get).types.find! ty
+  let rId := (← get).types.get! ty
   let aId ← indexOfAttr a ty
   defineTerm tyEnc s!"({recordAttrId rId aId} {tEnc})"
 
@@ -293,7 +293,7 @@ def defineApp (tyEnc : String) (op : Op) (tEncs : List String) (ts : List Term):
   | _              => defineTerm tyEnc s!"({encodeOp op} {args})"
 
 def encodeTerm (t : Term) : EncoderM String := do
-  if let (.some enc) := (← get).terms.find? t then return enc
+  if let (.some enc) := (← get).terms.get? t then return enc
   let tyEnc ← encodeType t.typeOf
   let enc ←
     match t with

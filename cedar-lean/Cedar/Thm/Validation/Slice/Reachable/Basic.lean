@@ -58,10 +58,9 @@ theorem in_val_then_val_slice {v path euid}
   case record attrs =>
     suffices h : ∃ kv ∈ attrs.toList, euid ∈ kv.snd.sliceEUIDs by
       unfold Value.sliceEUIDs
-      simpa [
-        List.mem_mapUnion_iff_mem_exists,
-        List.mapUnion₃_eq_mapUnion (λ e : (Attr × Value) => e.snd.sliceEUIDs)
-      ] using h
+      simp only [Prod.exists] at h
+      simp only [List.mapUnion₃_eq_mapUnion (λ e : (Attr × Value) => e.snd.sliceEUIDs), List.mem_mapUnion_iff_mem_exists, Prod.exists]
+      exact h
     cases path <;> cases hv
     rename_i a _ v ha hv
     exists (a, v)
@@ -78,7 +77,6 @@ def CheckedEvalEntityReachable (e : Expr) :=
     tx.EntityAccessAtLevel env n nmax path →
     evaluate e request entities = .ok v →
     Value.EuidViaPath v path euid →
-    entities.contains euid →
     ReachableIn entities request.sliceEUIDs euid (n + 1)
 
 theorem reachable_succ {n : Nat} {euid : EntityUID} {start : Set EntityUID} {entities : Entities}

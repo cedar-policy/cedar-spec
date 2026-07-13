@@ -1,0 +1,42 @@
+entity CI;
+entity Repository in [CI] = {
+    "name": __cedar::String,
+    "visibility": __cedar::String,
+    "default_branch": __cedar::String
+};
+entity Pipeline in [Repository] = {
+    "name": __cedar::String,
+    "timeout": duration,
+    "created": datetime,
+    "config": {
+        "runner": {
+            "type": __cedar::String,
+            "network": ipaddr,
+            "max_duration": duration
+        },
+        "artifacts": {
+            "retention": duration,
+            "max_size_mb": decimal
+        }
+    }
+};
+entity Developer = {
+    "role": __cedar::String,
+    "joined": datetime,
+    "ip_allowlist": ipaddr
+};
+action "trigger" appliesTo {
+    principal: [Developer],
+    resource: [Pipeline],
+    context: { "source_ip": ipaddr, "branch": __cedar::String, "timestamp": datetime }
+};
+action "view_logs" appliesTo {
+    principal: [Developer],
+    resource: [Pipeline],
+    context: { "source_ip": ipaddr }
+};
+action "download_artifact" appliesTo {
+    principal: [Developer],
+    resource: [Pipeline],
+    context: { "source_ip": ipaddr, "artifact_size_mb": decimal }
+};

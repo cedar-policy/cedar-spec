@@ -1,0 +1,98 @@
+{
+  "": {
+    "entityTypes": {
+      "APIGateway": {},
+      "Client": {
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "quota": {
+              "type": "Record",
+              "attributes": {
+                "bandwidth_mb": {
+                  "type": "decimal"
+                },
+                "requests_per_minute": {
+                  "type": "Long"
+                }
+              }
+            },
+            "registered": {
+              "type": "datetime"
+            },
+            "tier": {
+              "type": "String"
+            }
+          }
+        }
+      },
+      "Endpoint": {
+        "memberOfTypes": [
+          "APIGateway"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "auth_required": {
+              "type": "Boolean"
+            },
+            "method": {
+              "type": "String"
+            },
+            "path": {
+              "type": "String"
+            },
+            "rate_limit": {
+              "type": "Long"
+            }
+          }
+        }
+      }
+    },
+    "actions": {
+      "invoke": {
+        "appliesTo": {
+          "resourceTypes": [
+            "Endpoint"
+          ],
+          "principalTypes": [
+            "Client"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "request": {
+                "type": "Record",
+                "attributes": {
+                  "content_length": {
+                    "type": "Long"
+                  },
+                  "headers": {
+                    "type": "Record",
+                    "attributes": {
+                      "authorization": {
+                        "type": "String"
+                      },
+                      "content_type": {
+                        "type": "String"
+                      }
+                    }
+                  },
+                  "user_agent": {
+                    "type": "String"
+                  }
+                }
+              },
+              "source_ip": {
+                "type": "ipaddr"
+              },
+              "timestamp": {
+                "type": "datetime"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

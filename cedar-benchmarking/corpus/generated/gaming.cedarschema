@@ -1,0 +1,37 @@
+entity GameServer;
+entity World in [GameServer] = {
+    "name": __cedar::String,
+    "max_players": __cedar::Long,
+    "created": datetime
+};
+entity Zone in [World] = {
+    "name": __cedar::String,
+    "level_requirement": __cedar::Long,
+    "pvp_enabled": __cedar::Bool
+};
+entity Player = {
+    "username": __cedar::String,
+    "level": __cedar::Long,
+    "premium": __cedar::Bool,
+    "registered": datetime,
+    "stats": {
+        "play_time": duration,
+        "last_login": datetime,
+        "reputation": decimal
+    }
+};
+action "enter_zone" appliesTo {
+    principal: [Player],
+    resource: [Zone],
+    context: { "source_ip": ipaddr, "session_duration": duration }
+};
+action "trade" appliesTo {
+    principal: [Player],
+    resource: [Zone],
+    context: { "amount": decimal, "item": __cedar::String }
+};
+action "chat" appliesTo {
+    principal: [Player],
+    resource: [Zone],
+    context: { "channel": __cedar::String }
+};

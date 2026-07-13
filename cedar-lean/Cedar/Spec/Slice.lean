@@ -54,3 +54,19 @@ where
       let eds := work.elts.filterMap es.find?
       let slice := eds.mapUnion λ ed => sliceAtLevel ed.sliceEUIDs level
       work ∪ slice
+
+/--
+Executable check deciding whether `es` is *closed at a level* for request `r`:
+every entity reachable from the request roots within `level` dereferences is
+present in `es`.  It reuses the reachable-entity set computed by the slicing
+algorithm (`Entities.sliceAtLevel.sliceAtLevel`, which collects every entity
+reachable in `level` hops, whether or not it is present) and checks that each is
+actually in the store.
+
+`Cedar.Thm.closedAtLevel_iff` proves this returns `true` exactly when the
+`EntitiesClosedAtLevel` predicate holds, so a Cedar user can run this to obtain
+the issue-#642 guarantee: a level-validated policy set evaluated against a store
+passing this check never errors with `entityDoesNotExist`.
+-/
+public def Entities.closedAtLevel (es : Entities) (r : Request) (level : Nat) : Bool :=
+  (Entities.sliceAtLevel.sliceAtLevel es r.sliceEUIDs level).all es.contains

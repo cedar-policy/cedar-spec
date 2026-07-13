@@ -58,7 +58,6 @@ theorem partial_eval_well_typed_record {env : TypeEnv} {ls : List (Attr × Resid
 
       have h₈ := Map.list_find?_mapM_implies_exists_unmapped (λ x => (TPE.evaluate x preq pes).asValue) h₃ h₄
       rcases h₈ with ⟨v₂, h₈, h₉⟩
-      simp at h₈
 
       rw [Map.list_find?_some_iff_map_find?_some] at h₉
       replace h₉ := Map.find?_mapOnValues_some (λ x => Qualified.required x.typeOf) h₉

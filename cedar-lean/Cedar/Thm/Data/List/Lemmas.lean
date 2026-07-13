@@ -2189,4 +2189,37 @@ public theorem anyM_some_implies_any {α} {xs : List α} {b : Bool}  (f : α →
         specialize h₁ head false h₃
         simp only [h₁, Bool.false_eq_true, false_implies]
 
+
+public theorem ternary_any_some_implies_any {α} {xs : List α} {b : Bool} (f : α → Option Bool) (g : α → Bool) :
+  (∀ x b, f x = some b → g x = b) →
+  xs.ternaryAny f = some b →
+  xs.any g = b
+:= by
+  intro h₁ h₂
+  simp only [ternaryAny, any_map, any_eq_true, Function.comp_apply, beq_iff_eq, Option.isNone_iff_eq_none] at h₂
+  split at h₂
+  case isTrue h₃ =>
+    simp only [Option.some.injEq] at h₂
+    subst h₂
+    obtain ⟨x, hx, hfx⟩ := h₃
+    rw [List.any_eq_true]
+    exact ⟨x, hx, h₁ x true hfx⟩
+  case isFalse h₃ =>
+    split at h₂
+    case isTrue => exact absurd h₂ (by simp)
+    case isFalse h₄ =>
+      simp only [Option.some.injEq] at h₂
+      subst h₂
+      rw [← Bool.not_eq_true, List.any_eq_true]
+      rintro ⟨x, hx, hgx⟩
+      have hfx : f x = some false := by
+        cases hc : f x with
+        | none => exact absurd ⟨x, hx, hc⟩ h₄
+        | some c =>
+          cases c with
+          | true => exact absurd ⟨x, hx, hc⟩ h₃
+          | false => rfl
+      rw [h₁ x false hfx] at hgx
+      exact absurd hgx (by simp)
+
 end List

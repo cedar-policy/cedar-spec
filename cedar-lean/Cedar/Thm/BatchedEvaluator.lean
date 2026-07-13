@@ -84,10 +84,11 @@ theorem batched_authorize_decision_eq_authorize
     rw [List.mapM_ok_iff_forall₂] at h_mapM
     match policies, h_mapM with
     | [], .nil =>
-      replace h_dec : (isAuthorizedFromResiduals []).decision = some d := by
-        unfold batchedAuthorizeLoop at h_dec
-        simpa using h_dec
-      exact residuals_decision_agrees .nil h_dec
+      have h_dec' : (isAuthorizedFromResiduals []).decision = some .deny := by
+        simp [isAuthorizedFromResiduals, isAuthorizedFromResiduals.satisfiedPolicies, isAuthorizedFromResiduals.residualPolicies]
+      apply residuals_decision_agrees .nil
+      unfold batchedAuthorizeLoop at h_dec
+      simpa [h_dec'] using h_dec
     | p :: _, .cons h_first h_rest =>
       have ⟨r, h_ep⟩ : ∃ r, evaluatePolicy schema p req.asPartialRequest Map.empty = .ok r := by
         cases h_ep : evaluatePolicy schema p req.asPartialRequest Map.empty <;>
