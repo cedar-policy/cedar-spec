@@ -39,13 +39,18 @@ pub fn pretty_assert_entities_deep_eq(original: &Entities, roundtripped: &Entiti
     }
 }
 
-pub fn fuzz_target(entities: Entities, schema: Option<Schema>) {
-    let json = match entities.as_ref().to_json_value() {
-        Ok(json) => json,
+/// Serialize `entities` to JSON.
+///
+/// Panics on an unexpected failure. Returns `None` on an expected failure. Fuzz targets should
+/// `return` on `None` to assert that there are no unexpected errors while passing on expected
+/// errors.
+pub fn assert_entities_to_json(entities: &Entities) -> Option<serde_json::Value> {
+    match entities.as_ref().to_json_value() {
+        Ok(json) => Some(json),
         Err(EntitiesError::Serialization(JsonSerializationError::ReservedKey(_))) => {
             // Serializing to JSON is expected to fail when there's a record
             // attribute `__entity`, `__expr`, or `__extn`
-            return;
+            None
         }
         Err(EntitiesError::Serialization(JsonSerializationError::ExtnCall2OrMoreArguments(
             err,
@@ -55,11 +60,17 @@ pub fn fuzz_target(entities: Entities, schema: Option<Schema>) {
             // This is because years before AD 1 cannot be constructed using the
             // `datetime` function, of which the valid inputs span from AD 1 to
             // year 9999.
-            return;
+            None
         }
         Err(err) => {
             panic!("Should be able to serialize entities to JSON, instead got error: {err}")
         }
+    }
+}
+
+pub fn fuzz_target(entities: Entities, schema: Option<Schema>) {
+    let Some(json) = assert_entities_to_json(&entities) else {
+        return;
     };
 
     let roundtripped_entities = Entities::from_json_value(json.clone(), None)

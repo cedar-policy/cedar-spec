@@ -348,6 +348,18 @@ test = false
 doc = false
 
 [[bin]]
+name = "concrete-entities-convert-partial-consistency-pbt"
+path = "fuzz_targets/concrete-entities-convert-partial-consistency-pbt.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "concrete-entities-parse-partial-consistency-pbt"
+path = "fuzz_targets/concrete-entities-parse-partial-consistency-pbt.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "symcc-term-roundtrip-abac-type-directed"
 path = "fuzz_targets/symcc-term-roundtrip-abac-type-directed.rs"
 test = false
