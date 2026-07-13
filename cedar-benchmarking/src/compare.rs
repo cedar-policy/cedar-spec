@@ -334,9 +334,16 @@ fn compute_comparison(
 }
 
 /// Compute the percentage change from `baseline` to `current`.
+/// When `baseline` is 0 and `current` is non-zero, returns a large sentinel
+/// value (`f64::MAX`) to ensure the change is always flagged as significant
+/// while remaining JSON-serializable.
 fn pct_change(current: u128, baseline: u128) -> f64 {
     if baseline == 0 {
-        0.0
+        if current == 0 {
+            0.0
+        } else {
+            f64::MAX
+        }
     } else {
         (current as f64 - baseline as f64) / baseline as f64 * 100.0
     }
@@ -351,7 +358,10 @@ fn format_signed(value: i128) -> String {
 }
 
 fn format_pct(pct: f64) -> String {
-    if pct > 0.0 {
+    // Sentinel value from pct_change when baseline was 0
+    if pct >= f64::MAX {
+        "+∞%".to_string()
+    } else if pct > 0.0 {
         format!("+{pct:.1}%")
     } else {
         format!("{pct:.1}%")

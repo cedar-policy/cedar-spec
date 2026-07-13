@@ -52,7 +52,7 @@ struct Args {
     #[arg(short, long, value_delimiter = ',', requires = "corpus")]
     targets: Option<Vec<Target>>,
 
-    /// Number of trials per benchmark. Only valid with --corpus.
+    /// Number of trials per benchmark. Ignored in --baseline mode.
     #[arg(long, default_value = "1000")]
     trials: usize,
 
@@ -90,16 +90,19 @@ fn main() -> miette::Result<()> {
         compare::load_baseline(args.baseline.as_ref().expect("validated above"))?
     };
 
-    // Print benchmark results (only when running, not in baseline-only mode)
+    // Print benchmark results when running benchmarks directly (not in
+    // baseline-only mode). In JSON mode, skip this when --compare is active to
+    // avoid emitting two separate JSON documents on stdout.
     if args.corpus.is_some() {
         match args.output {
-            OutputFormat::Json => {
+            OutputFormat::Json if args.compare.is_none() => {
                 serde_json::to_writer_pretty(std::io::stdout(), &output).into_diagnostic()?;
                 println!();
             }
             OutputFormat::Table => {
                 print_table(&output);
             }
+            _ => {}
         }
     }
 
