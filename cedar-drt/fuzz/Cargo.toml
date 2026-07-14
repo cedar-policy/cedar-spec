@@ -282,6 +282,84 @@ test = false
 doc = false
 
 [[bin]]
+name = "protobuf-encode-bytes-policyset"
+path = "fuzz_targets/protobuf-encode/protobuf-encode-bytes-policyset.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-encode-bytes-entity"
+path = "fuzz_targets/protobuf-encode/protobuf-encode-bytes-entity.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-encode-bytes-entities"
+path = "fuzz_targets/protobuf-encode/protobuf-encode-bytes-entities.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-encode-bytes-schema"
+path = "fuzz_targets/protobuf-encode/protobuf-encode-bytes-schema.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-encode-bytes-expression"
+path = "fuzz_targets/protobuf-encode/protobuf-encode-bytes-expression.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-encode-bytes-template"
+path = "fuzz_targets/protobuf-encode/protobuf-encode-bytes-template.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-encode-gen-policyset"
+path = "fuzz_targets/protobuf-encode/protobuf-encode-gen-policyset.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-encode-gen-entity"
+path = "fuzz_targets/protobuf-encode/protobuf-encode-gen-entity.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-encode-gen-entities"
+path = "fuzz_targets/protobuf-encode/protobuf-encode-gen-entities.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-encode-gen-schema"
+path = "fuzz_targets/protobuf-encode/protobuf-encode-gen-schema.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-encode-gen-expression"
+path = "fuzz_targets/protobuf-encode/protobuf-encode-gen-expression.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-encode-gen-request"
+path = "fuzz_targets/protobuf-encode/protobuf-encode-gen-request.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-encode-gen-template"
+path = "fuzz_targets/protobuf-encode/protobuf-encode-gen-template.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "entity-validation"
 path = "fuzz_targets/entity-validation.rs"
 test = false
