@@ -15,7 +15,7 @@
  */
 
 //! If we serialize any valid concrete entities to JSON, then the original
-//! entities must be consistent with the partial entities obtained form parsing
+//! entities must be consistent with the partial entities obtained from parsing
 //! the JSON as partial entities.
 
 #![no_main]

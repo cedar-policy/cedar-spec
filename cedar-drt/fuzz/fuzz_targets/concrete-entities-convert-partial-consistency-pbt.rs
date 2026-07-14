@@ -38,7 +38,7 @@ fuzz_target!(|input: FuzzTargetInput<true>| {
         }
     };
 
-    partial.as_ref().check_consistency(&input.entities.as_ref().clone()).unwrap_or_else(|e| {
+    partial.as_ref().check_consistency(input.entities.as_ref()).unwrap_or_else(|e| {
         panic!(
             "Partial entities derived from concrete entities should be consistent with them: {e}"
         )
