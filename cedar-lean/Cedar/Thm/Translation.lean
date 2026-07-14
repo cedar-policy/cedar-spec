@@ -60,16 +60,20 @@ theorem policy_satisfied_agrees (cp : Cst.Policy) (ap : Spec.Policy)
   unfold Cst.satisfied satisfied
   rw [heq]
 
-/-- Under a successful translation, `extractScope?` succeeds, so the new scope
+/-- Under a successful translation, all three translation checks succeed, so the
     guard in `Cst.hasError` is a no-op and it reduces to the plain
     evaluate-the-policy-expression check. -/
+
 theorem cst_hasError_eq_of_toPolicy {cp : Cst.Policy} {ap : Spec.Policy}
     {req : Request} {es : Entities} (htrans : cp.toPolicy? = some ap) :
     Cst.hasError cp req es =
       (match cp.toExpr.evaluate req es with | .ok _ => false | .error _ => true) := by
   obtain ⟨p⟩ := cp
   have hpp : p.toPolicy? = some ap := htrans
-  have hcond : ¬ (p.toPolicy?.isNone = true) := by rw [hpp]; simp
+  have hcond : ¬ (((CstCommon.Ident.toEffect? p.effect).isNone ||
+                   (extractScope? p.vars).isNone ||
+                   (toConditions? p.conds).isNone) = true) := by
+    rw [toPolicy?_isNone_eq, hpp]; simp
   simp only [Cst.hasError, if_neg hcond]
   rfl
 
@@ -165,7 +169,7 @@ theorem noHasError_translates (cp : Cst.Policy) (req : Request) (es : Entities) 
   cases hp : p.toPolicy? with
   | none =>
     exfalso; apply h
-    simp only [Cst.hasError, hp, Option.isNone_none, if_true]
+    simp only [Cst.hasError, toPolicy?_isNone_eq, hp, Option.isNone_none, if_true]
   | some ap =>
     exact ⟨ap, by simp [Cst.Policy.toPolicy?, hp]⟩
 

@@ -385,8 +385,19 @@ theorem extractScope_complete
     | none =>
       exfalso
       apply hne
-      have hpn : p.toPolicy? = none := by simp [Cst.PolicyImpl.toPolicy?, h]
-      simp only [Cst.hasError, hpn, Option.isNone_none, if_true]
+      simp [Cst.hasError, h]
     | some trip => exact ⟨trip, h⟩
+
+/-- `Cst.hasError`'s spelled-out guard equals `p.toPolicy?.isNone`: `toPolicy?`
+    fails exactly when the effect, scope, or conditions fail to translate. -/
+theorem toPolicy?_isNone_eq (p : Cst.PolicyImpl) :
+    ((CstCommon.Ident.toEffect? p.effect).isNone ||
+     (extractScope? p.vars).isNone ||
+     (toConditions? p.conds).isNone) = p.toPolicy?.isNone := by
+  simp only [Cst.PolicyImpl.toPolicy?, bind]
+  cases CstCommon.Ident.toEffect? p.effect <;>
+    cases extractScope? p.vars <;>
+    cases toConditions? p.conds <;>
+    simp [Option.bind]
 
 end Cedar.Thm
