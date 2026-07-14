@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-//! All valid concrete entities must be consistent with the partial entities
-//! obtained from [`PartialEntities::from_concrete`].
+//! All valid concrete entities must be consistent with themselves converted to
+//! partial entities with [`PartialEntities::from_concrete`].
 
 #![no_main]
 use cedar_drt_inner::{abac::FuzzTargetInput, fuzz_target};
