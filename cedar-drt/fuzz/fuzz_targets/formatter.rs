@@ -34,7 +34,7 @@ use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
 use logos::Logos;
 use rand::rngs::SmallRng;
-use rand::{Rng, SeedableRng};
+use rand::{RngExt, SeedableRng};
 use similar_asserts::SimpleDiff;
 use std::sync::Arc;
 use uuid::Builder;
