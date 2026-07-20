@@ -53,10 +53,6 @@ open Cedar.Data
     error set, `.2` the optional value. -/
 public abbrev CollectResult := Set Error × Option Value
 
-/-- Union a list of error sets. -/
-public def unionErrs (ss : List (Set Error)) : Set Error :=
-  ss.foldl (· ∪ ·) (∅ : Set Error)
-
 /-- Lift one evaluator result into a `CollectResult`. -/
 public def CollectResult.ofResult : Result Value → CollectResult
   | .ok v    => (∅, some v)
@@ -64,28 +60,75 @@ public def CollectResult.ofResult : Result Value → CollectResult
 
 mutual
 
-/-- TODO: real comprehensive collector for the expr family. -/
-public def Expr.collectErrors (e : Expr) (req : Request) (es : Entities) : CollectResult :=
-  sorry
+public def collectExprList (xs : List Expr) (req : Request) (es : Entities) :
+    Set Error × List (Option Value) :=
+  match xs with
+  | [] => (∅, [])
+  | x :: rest =>
+    let hd := x.collectErrors req es
+    let tl := collectExprList rest req es
+    (hd.1 ∪ tl.1, hd.2 :: tl.2)
+termination_by sizeOf xs
+
+public def collectRInits (r : List RecInit) (req : Request) (es : Entities) : Set Error :=
+  match r with
+  | [] => ∅
+  | ⟨k, v⟩ :: rest =>
+    (match k.toAttr? with
+     | some _ => ∅
+     | none   => Set.singleton (Error.cstError .stringError))
+    ∪ (v.collectErrors req es).1
+    ∪ collectRInits rest req es
+termination_by sizeOf r
+
+public def collectMults (xs : List (MultOp × Unary)) (req : Request) (es : Entities) : Set Error :=
+  match xs with
+  | [] => ∅
+  | (op, u) :: rest =>
+    (match op with
+     | .mTimes => ∅
+     | _       => Set.singleton (Error.cstError .unsupportedError))
+    ∪ (u.collectErrors req es).1
+    ∪ collectMults rest req es
+termination_by sizeOf xs
+
+public def collectAdds (xs : List (AddOp × MultExpr)) (req : Request) (es : Entities) : Set Error :=
+  match xs with
+  | [] => ∅
+  | (_, m) :: rest => (m.collectErrors req es).1 ∪ collectAdds rest req es
+termination_by sizeOf xs
+
+public def collectRels (xs : List (RelOp × AddExpr)) (req : Request) (es : Entities) : Set Error :=
+  match xs with
+  | [] => ∅
+  | (_, a) :: rest => (a.collectErrors req es).1 ∪ collectRels rest req es
+termination_by sizeOf xs
+
+public def collectRelations (xs : List Relation) (req : Request) (es : Entities) : Set Error :=
+  match xs with
+  | [] => ∅
+  | r :: rest => (r.collectErrors req es).1 ∪ collectRelations rest req es
+termination_by sizeOf xs
+
+public def collectAndExprs (xs : List AndExpr) (req : Request) (es : Entities) : Set Error :=
+  match xs with
+  | [] => ∅
+  | a :: rest => (a.collectErrors req es).1 ∪ collectAndExprs rest req es
+termination_by sizeOf xs
 
 /--
 Error collector for `Primary`, mirroring `Primary.evaluate` but never
-short-circuiting: it visits every sub-expression and accumulates all errors.
-The value channel (`.2`) always equals the ordinary evaluator's result.
+short-circuiting.  The value channel (`.2`) always equals the evaluator's.
 -/
 public def Primary.collectErrors (e : Primary) (req : Request) (es : Entities) : CollectResult :=
   let evalres := CollectResult.ofResult (e.evaluate req es)
   match e with
   | .expr ex  => ((ex.collectErrors req es).1, evalres.2)
-  | .eList xs => (unionErrs (xs.attach.map (fun ⟨x, _⟩ => (x.collectErrors req es).1)), evalres.2)
-  | .rInits r =>
-      ( unionErrs (r.attach.map (fun ⟨ri, _⟩ =>
-          (match ri.key.toAttr? with
-           | some _ => ∅
-           | none   => Set.singleton (Error.cstError .stringError))
-          ∪ (ri.value.collectErrors req es).1))
-      , evalres.2 )
+  | .eList xs => ((collectExprList xs req es).1, evalres.2)
+  | .rInits r => (collectRInits r req es, evalres.2)
   | .literal _ | .name _ | .ref _ => evalres
+termination_by sizeOf e
+decreasing_by all_goals simp_wf
 
 /--
 Collect errors along an accessor spine, mirroring `Member.evalAccessors`.
@@ -97,7 +140,7 @@ public def Member.collectAccessors
   match accs with
   | [] => (∅, head)
   | .field i :: .call args :: rest =>
-      let argErrs := unionErrs (args.attach.map (fun ⟨a, _⟩ => (a.collectErrors req es).1))
+      let argErrs := (collectExprList args req es).1
       match CstCommon.Ident.toUnreservedString? i with
       | none =>
           (Set.singleton (Error.cstError .stringError) ∪ argErrs ∪ (Member.collectAccessors none rest req es).1, none)
@@ -152,48 +195,124 @@ public def Member.collectAccessors
 termination_by sizeOf accs
 decreasing_by all_goals (simp_wf; omega)
 
-/--
-Error collector for `Member`, mirroring `Member.evaluate` but never
-short-circuiting.  The value channel mirrors the evaluator.
--/
+/-- Error collector for `Member`, mirroring `Member.evaluate`. -/
 public def Member.collectErrors (e : Member) (req : Request) (es : Entities) : CollectResult :=
   match e with
   | { item := .name { path := [], name := .idIdent s }, access := .call args :: rest } =>
-      let argErrs := unionErrs (args.attach.map (fun ⟨a, _⟩ => (a.collectErrors req es).1))
+      let ec := collectExprList args req es
       match CstCommon.String.toExtFun? s with
       | none =>
-          (Set.singleton (Error.cstError .unsupportedError) ∪ argErrs ∪ (Member.collectAccessors none rest req es).1, none)
+          (Set.singleton (Error.cstError .unsupportedError) ∪ ec.1 ∪ (Member.collectAccessors none rest req es).1, none)
       | some xfn =>
-          let argVals := args.attach.map (fun ⟨a, _⟩ => (a.collectErrors req es).2)
           let hd : CollectResult :=
-            if argVals.all Option.isSome
-            then CollectResult.ofResult (call xfn (argVals.filterMap id))
+            if ec.2.all Option.isSome
+            then CollectResult.ofResult (call xfn (ec.2.filterMap id))
             else (∅, none)
           let rst := Member.collectAccessors hd.2 rest req es
-          (argErrs ∪ hd.1 ∪ rst.1, rst.2)
+          (ec.1 ∪ hd.1 ∪ rst.1, rst.2)
   | { item := item, access := access } =>
       let hd := item.collectErrors req es
       let rst := Member.collectAccessors hd.2 access req es
       (hd.1 ∪ rst.1, rst.2)
+termination_by sizeOf e
+decreasing_by all_goals (simp_wf; omega)
 
 public def Unary.collectErrors (e : Unary) (req : Request) (es : Entities) : CollectResult :=
   let evalres := CollectResult.ofResult (e.evaluate req es)
   let itemerrs := e.item.collectErrors req es
   (evalres.1 ∪ itemerrs.1, evalres.2)
+termination_by sizeOf e
+decreasing_by all_goals (cases e; simp_wf; omega)
 
 public def MultExpr.collectErrors (e : MultExpr) (req : Request) (es : Entities) : CollectResult :=
   let evalres := CollectResult.ofResult (e.evaluate req es)
-  let initerr := e.initial.collectErrors req es
-  let exterrs := unionErrs (e.extended.map (fun (op, b) => match op with
-    | .mTimes => (b.collectErrors req es).1
-    | _ => Set.singleton (Error.cstError .unsupportedError) ∪ (b.collectErrors req es).1))
-  (evalres.1 ∪ initerr.1 ∪ exterrs, evalres.2)
+  let initerr := (e.initial.collectErrors req es).1
+  (evalres.1 ∪ initerr ∪ collectMults e.extended req es, evalres.2)
+termination_by sizeOf e
+decreasing_by all_goals (cases e; simp_wf; omega)
 
 public def AddExpr.collectErrors (e : AddExpr) (req : Request) (es : Entities) : CollectResult :=
   let evalres := CollectResult.ofResult (e.evaluate req es)
-  let initerr := e.initial.collectErrors req es
-  let exterrs := unionErrs (e.extended.map (fun (_, b) => (b.collectErrors req es).1))
-  (evalres.1 ∪ initerr.1 ∪ exterrs, evalres.2)
+  let initerr := (e.initial.collectErrors req es).1
+  (evalres.1 ∪ initerr ∪ collectAdds e.extended req es, evalres.2)
+termination_by sizeOf e
+decreasing_by all_goals (cases e; simp_wf; omega)
 
+public def Relation.collectErrors (e : Relation) (req : Request) (es : Entities) : CollectResult :=
+  let evalres := CollectResult.ofResult (e.evaluate req es)
+  let errs := match e with
+    | .rCommon initial extended =>
+        (initial.collectErrors req es).1 ∪ collectRels extended req es
+    | .rHas target field =>
+        (target.collectErrors req es).1 ∪
+        (match field.toAttrs? with
+         | some (_ :: _) => ∅
+         | _             => Set.singleton (Error.cstError .unsupportedError))
+    | .rLike target pattern =>
+        (target.collectErrors req es).1 ∪
+        (match pattern.toPatternString? with
+         | none   => Set.singleton (Error.cstError .stringError)
+         | some s => match CstCommon.toPattern? s with
+                     | some _ => ∅
+                     | none   => Set.singleton (Error.cstError .stringError))
+    | .rIsIn target entityType inEntity =>
+        (target.collectErrors req es).1 ∪
+        (match entityType.toEntityType? with
+         | some _ => ∅
+         | none   => Set.singleton (Error.cstError .nameError)) ∪
+        (match inEntity with
+         | none    => ∅
+         | some ie => (ie.collectErrors req es).1 ∪
+                      (if ie.toAExpr?.isNone then Set.singleton (Error.cstError .translationError) else ∅))
+  (evalres.1 ∪ errs, evalres.2)
+termination_by sizeOf e
+decreasing_by all_goals (simp_wf; omega)
+
+public def AndExpr.collectErrors (e : AndExpr) (req : Request) (es : Entities) : CollectResult :=
+  let evalres := CollectResult.ofResult (e.evaluate req es)
+  let initerr := (e.initial.collectErrors req es).1
+  (evalres.1 ∪ initerr ∪ collectRelations e.extended req es, evalres.2)
+termination_by sizeOf e
+decreasing_by all_goals (cases e; simp_wf; omega)
+
+public def OrExpr.collectErrors (e : OrExpr) (req : Request) (es : Entities) : CollectResult :=
+  let evalres := CollectResult.ofResult (e.evaluate req es)
+  let initerr := (e.initial.collectErrors req es).1
+  (evalres.1 ∪ initerr ∪ collectAndExprs e.extended req es, evalres.2)
+termination_by sizeOf e
+decreasing_by all_goals (cases e; simp_wf; omega)
+
+public def ExprData.collectErrors (e : ExprData) (req : Request) (es : Entities) : CollectResult :=
+  let evalres := CollectResult.ofResult (e.evaluate req es)
+  let errs := match e with
+    | .edOr oe    => (oe.collectErrors req es).1
+    | .edIf i t f =>
+        (i.collectErrors req es).1 ∪ (t.collectErrors req es).1 ∪ (f.collectErrors req es).1
+  (evalres.1 ∪ errs, evalres.2)
+termination_by sizeOf e
+decreasing_by all_goals (simp_wf; try omega)
+
+public def ExprImpl.collectErrors (e : ExprImpl) (req : Request) (es : Entities) : CollectResult :=
+  e.expr.collectErrors req es
+termination_by sizeOf e
+decreasing_by all_goals (cases e; simp_wf)
+
+public def Expr.collectErrors (e : Expr) (req : Request) (es : Entities) : CollectResult :=
+  match e with
+  | .expr ei => ei.collectErrors req es
+termination_by sizeOf e
+decreasing_by all_goals simp_wf
 
 end
+
+public def Policy.collectErrors (p : Policy) (req : Request) (es : Entities) : CollectResult :=
+  let e := p.toExpr
+  e.collectErrors req es
+
+public def collectPolicies (ps : List Policy) (req : Request) (es : Entities) : Set Error :=
+  match ps with
+  | [] => ∅
+  | p :: rest => (p.collectErrors req es).1 ∪ collectPolicies rest req es
+
+public def Policies.collectErrors (ps : Policies) (req : Request) (es : Entities) : Set Error :=
+  collectPolicies ps.ps req es
