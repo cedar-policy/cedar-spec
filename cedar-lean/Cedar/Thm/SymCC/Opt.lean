@@ -36,6 +36,21 @@ namespace Cedar.Thm
 open Cedar.Spec Cedar.SymCC
 
 /--
+The schema obtained by compiling `⟨Γ.ets, Γ.acts⟩` produces exactly the type
+environment `Γ` for request type `Γ.reqty`. Used to bridge `CompiledPolicy.compile`
+(which now takes a `CompiledSchema` and `RequestType`) with the `Γ`-based theorems.
+-/
+@[local simp] private theorem compile_schema_typeEnv {Γ : Validation.TypeEnv} :
+  (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩).typeEnv Γ.reqty = Γ := rfl
+
+/--
+The schema obtained by compiling `⟨Γ.ets, Γ.acts⟩` produces exactly the symbolic
+environment `SymEnv.ofTypeEnv Γ` for request type `Γ.reqty`.
+-/
+@[local simp] private theorem compile_schema_symEnv {Γ : Validation.TypeEnv} :
+  (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩).symEnv Γ.reqty = SymEnv.ofTypeEnv Γ := rfl
+
+/--
 If `SymCC.satisfiedPolicies` fails, that must be because `SymCC.compile` failed
 with that error on some policy
 -/
@@ -75,7 +90,7 @@ Note: `Γ.WellFormed` is technically only required for the reverse direction
 -/
 theorem compile_ok_iff_welltypedpolicy_ok {p : Policy} {Γ : Validation.TypeEnv} :
   Γ.WellFormed → (
-  Except.isOk (CompiledPolicy.compile p Γ) ↔
+  Except.isOk (CompiledPolicy.compile p (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty) ↔
   Except.isOk (wellTypedPolicy p Γ)
   )
 := by
@@ -96,7 +111,7 @@ Note: `Γ.WellFormed` is technically only required for the reverse direction
 -/
 theorem compile_ok_iff_welltypedpolicies_ok {ps : Policies} {Γ : Validation.TypeEnv} :
   Γ.WellFormed → (
-  Except.isOk (CompiledPolicySet.compile ps Γ) ↔
+  Except.isOk (CompiledPolicySet.compile ps (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty) ↔
   Except.isOk (wellTypedPolicies ps Γ)
   )
 := by
@@ -127,7 +142,7 @@ Note: Can be proved without `Γ.WellFormed`
 -/
 theorem compile_ok_then_exists_wtp {p : Policy} {cp : CompiledPolicy} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicy.compile p Γ = .ok cp →
+  CompiledPolicy.compile p (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cp →
   ∃ wp, wellTypedPolicy p Γ = .ok wp
 := by
   intro hwf h₀
@@ -145,7 +160,7 @@ Note: Can be proved without `Γ.WellFormed`
 -/
 theorem compile_ok_then_exists_wtps {ps : Policies} {cpset : CompiledPolicySet} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicySet.compile ps Γ = .ok cpset →
+  CompiledPolicySet.compile ps (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cpset →
   ∃ wps, wellTypedPolicies ps Γ = .ok wps
 := by
   intro hwf h₀
@@ -164,7 +179,7 @@ compilation with `CompiledPolicy.compile` succeeds, then `satAsserts?` and
 theorem cp_satAssertsOpt?_eqv_satAsserts?_ok {ps wps : Policies} {cps : List CompiledPolicy} {Γ : Validation.TypeEnv} :
   ps.length = cps.length →
   cps ≠ [] →
-  ps.mapM (CompiledPolicy.compile · Γ) = .ok cps →
+  ps.mapM (CompiledPolicy.compile · (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty) = .ok cps →
   ps.mapM (wellTypedPolicy · Γ) = .ok wps →
   satAsserts? wps asserts (SymEnv.ofTypeEnv Γ) = satAssertsOpt? (cps.map CompiledPolicies.policy) asserts
 := by
@@ -221,14 +236,14 @@ theorem cp_satAssertsOpt?_eqv_satAsserts?_ok {ps wps : Policies} {cps : List Com
       simp [CompiledPolicies.εnv, hεnv, hεnv' cp' hcp']
   · intro cps' hcps'
     cases hcps'
-    · exists p, Γ
+    · exists p, CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩, Γ.reqty
     · rename_i hcps'
       change cps' ∈ cps.map CompiledPolicies.policy at hcps'
       simp only [List.mem_map] at hcps'
       replace ⟨cp', hcp', hcps'⟩ := hcps' ; subst cps'
       simp only
       replace ⟨p', hp', hcps⟩ := List.mapM_ok_implies_all_from_ok hcps cp' hcp'
-      exists p', Γ
+      exists p', CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩, Γ.reqty
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
@@ -238,7 +253,7 @@ compilation with `CompiledPolicySet.compile` succeeds, then `satAsserts?` and
 theorem cpset_satAssertsOpt?_eqv_satAsserts?_ok {pss wpss : List Policies} {cpsets : List CompiledPolicySet} {Γ : Validation.TypeEnv} :
   pss.length = cpsets.length →
   cpsets ≠ [] →
-  pss.mapM (CompiledPolicySet.compile · Γ) = .ok cpsets →
+  pss.mapM (CompiledPolicySet.compile · (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty) = .ok cpsets →
   pss.mapM (wellTypedPolicies · Γ) = .ok wpss →
   satAsserts? wpss.flatten asserts (SymEnv.ofTypeEnv Γ) = satAssertsOpt? (cpsets.map CompiledPolicies.pset) asserts
 := by
@@ -298,13 +313,13 @@ theorem cpset_satAssertsOpt?_eqv_satAsserts?_ok {pss wpss : List Policies} {cpse
       simp [CompiledPolicies.εnv, hεnv, hεnv' cpset' hcpset']
   · intro cps hcps
     cases hcps
-    · exists ps, Γ
+    · exists ps, CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩, Γ.reqty
     · rename_i hcps
       change cps ∈ cpsets.map CompiledPolicies.pset at hcps
       simp only [List.mem_map] at hcps
       replace ⟨cpset', hcpset', hcps⟩ := hcps ; subst cps
       replace ⟨ps', hps', hcpsets⟩ := List.mapM_ok_implies_all_from_ok hcpsets cpset' hcpset'
-      exists ps', Γ
+      exists ps', CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩, Γ.reqty
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
@@ -313,7 +328,7 @@ compilation succeeds, then `wellTypedPolicy` succeeds and `neverErrors?` and
 -/
 theorem neverErrorsOpt?_eqv_neverErrors?_ok {p : Policy} {cp : CompiledPolicy} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicy.compile p Γ = .ok cp →
+  CompiledPolicy.compile p (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cp →
   ∃ wp,
     wellTypedPolicy p Γ = .ok wp ∧
     neverErrorsOpt? cp = neverErrors? wp (SymEnv.ofTypeEnv Γ)
@@ -339,7 +354,7 @@ compilation succeeds, then `wellTypedPolicy` succeeds and `alwaysMatches?` and
 -/
 theorem alwaysMatchesOpt?_eqv_alwaysMatches?_ok {p : Policy} {cp : CompiledPolicy} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicy.compile p Γ = .ok cp →
+  CompiledPolicy.compile p (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cp →
   ∃ wp,
     wellTypedPolicy p Γ = .ok wp ∧
     alwaysMatchesOpt? cp = alwaysMatches? wp (SymEnv.ofTypeEnv Γ)
@@ -365,7 +380,7 @@ compilation succeeds, then `wellTypedPolicy` succeeds and `neverMatches?` and
 -/
 theorem neverMatchesOpt?_eqv_neverMatches?_ok {p : Policy} {cp : CompiledPolicy} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicy.compile p Γ = .ok cp →
+  CompiledPolicy.compile p (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cp →
   ∃ wp,
     wellTypedPolicy p Γ = .ok wp ∧
     neverMatchesOpt? cp = neverMatches? wp (SymEnv.ofTypeEnv Γ)
@@ -391,8 +406,8 @@ compilation succeeds, then `wellTypedPolicy` succeeds and `matchesEquivalent?` a
 -/
 theorem matchesEquivalentOpt?_eqv_matchesEquivalent?_ok {p₁ p₂ wp₁ wp₂ : Policy} {cp₁ cp₂ : CompiledPolicy} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicy.compile p₁ Γ = .ok cp₁ →
-  CompiledPolicy.compile p₂ Γ = .ok cp₂ →
+  CompiledPolicy.compile p₁ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cp₁ →
+  CompiledPolicy.compile p₂ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cp₂ →
   wellTypedPolicy p₁ Γ = .ok wp₁ →
   wellTypedPolicy p₂ Γ = .ok wp₂ →
   matchesEquivalentOpt? cp₁ cp₂ = matchesEquivalent? wp₁ wp₂ (SymEnv.ofTypeEnv Γ)
@@ -416,8 +431,8 @@ compilation succeeds, then `wellTypedPolicy` succeeds and `matchesImplies?` and
 -/
 theorem matchesImpliesOpt?_eqv_matchesImplies?_ok {p₁ p₂ wp₁ wp₂ : Policy} {cp₁ cp₂ : CompiledPolicy} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicy.compile p₁ Γ = .ok cp₁ →
-  CompiledPolicy.compile p₂ Γ = .ok cp₂ →
+  CompiledPolicy.compile p₁ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cp₁ →
+  CompiledPolicy.compile p₂ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cp₂ →
   wellTypedPolicy p₁ Γ = .ok wp₁ →
   wellTypedPolicy p₂ Γ = .ok wp₂ →
   matchesImpliesOpt? cp₁ cp₂ = matchesImplies? wp₁ wp₂ (SymEnv.ofTypeEnv Γ)
@@ -441,8 +456,8 @@ compilation succeeds, then `wellTypedPolicy` succeeds and `matchesDisjoint?` and
 -/
 theorem matchesDisjointOpt?_eqv_matchesDisjoint?_ok {p₁ p₂ wp₁ wp₂ : Policy} {cp₁ cp₂ : CompiledPolicy} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicy.compile p₁ Γ = .ok cp₁ →
-  CompiledPolicy.compile p₂ Γ = .ok cp₂ →
+  CompiledPolicy.compile p₁ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cp₁ →
+  CompiledPolicy.compile p₂ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cp₂ →
   wellTypedPolicy p₁ Γ = .ok wp₁ →
   wellTypedPolicy p₂ Γ = .ok wp₂ →
   matchesDisjointOpt? cp₁ cp₂ = matchesDisjoint? wp₁ wp₂ (SymEnv.ofTypeEnv Γ)
@@ -466,7 +481,8 @@ Full equivalence for `neverErrors?` and `neverErrorsOpt?`, including both the
 theorem neverErrorsOpt?_eqv_neverErrors? {p : Policy} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
   (do
-    let cp ← CompiledPolicy.compile p Γ
+    let s := CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩
+    let cp ← CompiledPolicy.compile p s Γ.reqty
     pure $ neverErrorsOpt? cp
   ) =
   (do
@@ -474,13 +490,13 @@ theorem neverErrorsOpt?_eqv_neverErrors? {p : Policy} {Γ : Validation.TypeEnv} 
     pure $ neverErrors? wp (SymEnv.ofTypeEnv Γ)
   )
 := by
-  cases hcp : CompiledPolicy.compile p Γ
+  cases hcp : CompiledPolicy.compile p (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
   case ok cp =>
     intro hwf
     have ⟨wp, hwp, h⟩ := neverErrorsOpt?_eqv_neverErrors?_ok hwf hcp
-    simp [Except.mapError, hwp, h]
+    simp [Except.mapError, hcp, hwp, h]
   case error e =>
-    simp [Except.mapError]
+    simp [Except.mapError, hcp]
     cases hwp : wellTypedPolicy p Γ
     case error e' =>
       simp [CompiledPolicy.compile, Except.mapError, hwp] at hcp
@@ -497,7 +513,8 @@ Full equivalence for `alwaysMatches?` and `alwaysMatchesOpt?`, including both th
 theorem alwaysMatchesOpt?_eqv_alwaysMatches? {p : Policy} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
   (do
-    let cp ← CompiledPolicy.compile p Γ
+    let s := CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩
+    let cp ← CompiledPolicy.compile p s Γ.reqty
     pure $ alwaysMatchesOpt? cp
   ) =
   (do
@@ -505,13 +522,13 @@ theorem alwaysMatchesOpt?_eqv_alwaysMatches? {p : Policy} {Γ : Validation.TypeE
     pure $ alwaysMatches? wp (SymEnv.ofTypeEnv Γ)
   )
 := by
-  cases hcp : CompiledPolicy.compile p Γ
+  cases hcp : CompiledPolicy.compile p (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
   case ok cp =>
     intro hwf
     have ⟨wp, hwp, h⟩ := alwaysMatchesOpt?_eqv_alwaysMatches?_ok hwf hcp
-    simp [Except.mapError, hwp, h]
+    simp [Except.mapError, hcp, hwp, h]
   case error e =>
-    simp [Except.mapError]
+    simp [Except.mapError, hcp]
     cases hwp : wellTypedPolicy p Γ
     case error e' =>
       simp [CompiledPolicy.compile, Except.mapError, hwp] at hcp
@@ -528,7 +545,8 @@ Full equivalence for `neverMatches?` and `neverMatchesOpt?`, including both the
 theorem neverMatchesOpt?_eqv_neverMatches? {p : Policy} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
   (do
-    let cp ← CompiledPolicy.compile p Γ
+    let s := CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩
+    let cp ← CompiledPolicy.compile p s Γ.reqty
     pure $ neverMatchesOpt? cp
   ) =
   (do
@@ -536,13 +554,13 @@ theorem neverMatchesOpt?_eqv_neverMatches? {p : Policy} {Γ : Validation.TypeEnv
     pure $ neverMatches? wp (SymEnv.ofTypeEnv Γ)
   )
 := by
-  cases hcp : CompiledPolicy.compile p Γ
+  cases hcp : CompiledPolicy.compile p (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
   case ok cp =>
     intro hwf
     have ⟨wp, hwp, h⟩ := neverMatchesOpt?_eqv_neverMatches?_ok hwf hcp
-    simp [Except.mapError, hwp, h]
+    simp [Except.mapError, hcp, hwp, h]
   case error e =>
-    simp [Except.mapError]
+    simp [Except.mapError, hcp]
     cases hwp : wellTypedPolicy p Γ
     case error e' =>
       simp [CompiledPolicy.compile, Except.mapError, hwp] at hcp
@@ -559,8 +577,9 @@ Full equivalence for `matchesEquivalent?` and `matchesEquivalentOpt?`, including
 theorem matchesEquivalentOpt?_eqv_matchesEquivalent? {p₁ p₂ : Policy} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
   (do
-    let cp₁ ← CompiledPolicy.compile p₁ Γ
-    let cp₂ ← CompiledPolicy.compile p₂ Γ
+    let s := CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩
+    let cp₁ ← CompiledPolicy.compile p₁ s Γ.reqty
+    let cp₂ ← CompiledPolicy.compile p₂ s Γ.reqty
     pure $ matchesEquivalentOpt? cp₁ cp₂
   ) =
   (do
@@ -572,8 +591,8 @@ theorem matchesEquivalentOpt?_eqv_matchesEquivalent? {p₁ p₂ : Policy} {Γ : 
   intro hwf
   have h₁ := compile_ok_iff_welltypedpolicy_ok hwf (p := p₁)
   have h₂ := compile_ok_iff_welltypedpolicy_ok hwf (p := p₂)
-  cases hcp₁ : CompiledPolicy.compile p₁ Γ
-  <;> cases hcp₂ : CompiledPolicy.compile p₂ Γ
+  cases hcp₁ : CompiledPolicy.compile p₁ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
+  <;> cases hcp₂ : CompiledPolicy.compile p₂ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
   <;> cases hwp₁ : wellTypedPolicy p₁ Γ
   <;> cases hwp₂ : wellTypedPolicy p₂ Γ
   -- this eliminates all the cases where the behavior of CompiledPolicy.compile is inconsistent
@@ -595,8 +614,9 @@ Full equivalence for `matchesImplies?` and `matchesImpliesOpt?`, including both 
 theorem matchesImpliesOpt?_eqv_matchesImplies? {p₁ p₂ : Policy} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
   (do
-    let cp₁ ← CompiledPolicy.compile p₁ Γ
-    let cp₂ ← CompiledPolicy.compile p₂ Γ
+    let s := CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩
+    let cp₁ ← CompiledPolicy.compile p₁ s Γ.reqty
+    let cp₂ ← CompiledPolicy.compile p₂ s Γ.reqty
     pure $ matchesImpliesOpt? cp₁ cp₂
   ) =
   (do
@@ -608,8 +628,8 @@ theorem matchesImpliesOpt?_eqv_matchesImplies? {p₁ p₂ : Policy} {Γ : Valida
   intro hwf
   have h₁ := compile_ok_iff_welltypedpolicy_ok hwf (p := p₁)
   have h₂ := compile_ok_iff_welltypedpolicy_ok hwf (p := p₂)
-  cases hcp₁ : CompiledPolicy.compile p₁ Γ
-  <;> cases hcp₂ : CompiledPolicy.compile p₂ Γ
+  cases hcp₁ : CompiledPolicy.compile p₁ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
+  <;> cases hcp₂ : CompiledPolicy.compile p₂ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
   <;> cases hwp₁ : wellTypedPolicy p₁ Γ
   <;> cases hwp₂ : wellTypedPolicy p₂ Γ
   -- this eliminates all the cases where the behavior of CompiledPolicy.compile is inconsistent
@@ -631,8 +651,9 @@ Full equivalence for `matchesDisjoint?` and `matchesDisjointOpt?`, including bot
 theorem matchesDisjointOpt?_eqv_matchesDisjoint? {p₁ p₂ : Policy} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
   (do
-    let cp₁ ← CompiledPolicy.compile p₁ Γ
-    let cp₂ ← CompiledPolicy.compile p₂ Γ
+    let s := CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩
+    let cp₁ ← CompiledPolicy.compile p₁ s Γ.reqty
+    let cp₂ ← CompiledPolicy.compile p₂ s Γ.reqty
     pure $ matchesDisjointOpt? cp₁ cp₂
   ) =
   (do
@@ -644,8 +665,8 @@ theorem matchesDisjointOpt?_eqv_matchesDisjoint? {p₁ p₂ : Policy} {Γ : Vali
   intro hwf
   have h₁ := compile_ok_iff_welltypedpolicy_ok hwf (p := p₁)
   have h₂ := compile_ok_iff_welltypedpolicy_ok hwf (p := p₂)
-  cases hcp₁ : CompiledPolicy.compile p₁ Γ
-  <;> cases hcp₂ : CompiledPolicy.compile p₂ Γ
+  cases hcp₁ : CompiledPolicy.compile p₁ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
+  <;> cases hcp₂ : CompiledPolicy.compile p₂ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
   <;> cases hwp₁ : wellTypedPolicy p₁ Γ
   <;> cases hwp₂ : wellTypedPolicy p₂ Γ
   -- this eliminates all the cases where the behavior of CompiledPolicy.compile is inconsistent
@@ -667,8 +688,8 @@ compilation succeeds, then `wellTypedPolicies` succeeds and `implies?` and
 -/
 theorem impliesOpt?_eqv_implies?_ok {ps₁ ps₂ : Policies} {cpset₁ cpset₂ : CompiledPolicySet} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicySet.compile ps₁ Γ = .ok cpset₁ →
-  CompiledPolicySet.compile ps₂ Γ = .ok cpset₂ →
+  CompiledPolicySet.compile ps₁ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cpset₁ →
+  CompiledPolicySet.compile ps₂ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cpset₂ →
   ∃ wps₁ wps₂,
     wellTypedPolicies ps₁ Γ = .ok wps₁ ∧
     wellTypedPolicies ps₂ Γ = .ok wps₂ ∧
@@ -699,8 +720,9 @@ Full equivalence for `implies?` and `impliesOpt?`, including both the
 theorem impliesOpt?_eqv_implies? {ps₁ ps₂ : Policies} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
   (do
-    let cpset₁ ← CompiledPolicySet.compile ps₁ Γ
-    let cpset₂ ← CompiledPolicySet.compile ps₂ Γ
+    let s := CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩
+    let cpset₁ ← CompiledPolicySet.compile ps₁ s Γ.reqty
+    let cpset₂ ← CompiledPolicySet.compile ps₂ s Γ.reqty
     pure $ impliesOpt? cpset₁ cpset₂
   ) =
   (do
@@ -712,8 +734,8 @@ theorem impliesOpt?_eqv_implies? {ps₁ ps₂ : Policies} {Γ : Validation.TypeE
   intro hwf
   have h₁ := compile_ok_iff_welltypedpolicies_ok hwf (ps := ps₁)
   have h₂ := compile_ok_iff_welltypedpolicies_ok hwf (ps := ps₂)
-  cases hcpset₁ : CompiledPolicySet.compile ps₁ Γ
-  <;> cases hcpset₂ : CompiledPolicySet.compile ps₂ Γ
+  cases hcpset₁ : CompiledPolicySet.compile ps₁ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
+  <;> cases hcpset₂ : CompiledPolicySet.compile ps₂ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
   <;> cases hwps₁ : wellTypedPolicies ps₁ Γ
   <;> cases hwps₂ : wellTypedPolicies ps₂ Γ
   -- this eliminates all the cases where the behavior of CompiledPolicySet.compile is inconsistent
@@ -736,7 +758,7 @@ compilation succeeds, then `wellTypedPolicies` succeeds and `alwaysAllows?` and
 -/
 theorem alwaysAllowsOpt?_eqv_alwaysAllows?_ok {ps : Policies} {cpset : CompiledPolicySet} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicySet.compile ps Γ = .ok cpset →
+  CompiledPolicySet.compile ps (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cpset →
   ∃ wps,
     wellTypedPolicies ps Γ = .ok wps ∧
     alwaysAllowsOpt? cpset = alwaysAllows? wps (SymEnv.ofTypeEnv Γ)
@@ -764,7 +786,8 @@ Full equivalence for `alwaysAllows?` and `alwaysAllowsOpt?`, including both the
 theorem alwaysAllowsOpt?_eqv_alwaysAllows? {ps : Policies} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
   (do
-    let cpset ← CompiledPolicySet.compile ps Γ
+    let s := CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩
+    let cpset ← CompiledPolicySet.compile ps s Γ.reqty
     pure $ alwaysAllowsOpt? cpset
   ) =
   (do
@@ -774,7 +797,7 @@ theorem alwaysAllowsOpt?_eqv_alwaysAllows? {ps : Policies} {Γ : Validation.Type
 := by
   intro hwf
   have h₁ := compile_ok_iff_welltypedpolicies_ok hwf (ps := ps)
-  cases hcpset : CompiledPolicySet.compile ps Γ
+  cases hcpset : CompiledPolicySet.compile ps (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
   <;> cases hwps : wellTypedPolicies ps Γ
   -- this eliminates all the cases where the behavior of CompiledPolicySet.compile is inconsistent
   -- with the behavior of wellTypedPolicies on the same policyset
@@ -793,7 +816,7 @@ compilation succeeds, then `wellTypedPolicies` succeeds and `alwaysDenies?` and
 -/
 theorem alwaysDeniesOpt?_eqv_alwaysDenies?_ok {ps : Policies} {cpset : CompiledPolicySet} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicySet.compile ps Γ = .ok cpset →
+  CompiledPolicySet.compile ps (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cpset →
   ∃ wps,
     wellTypedPolicies ps Γ = .ok wps ∧
     alwaysDeniesOpt? cpset = alwaysDenies? wps (SymEnv.ofTypeEnv Γ)
@@ -821,7 +844,8 @@ Full equivalence for `alwaysDenies?` and `alwaysDeniesOpt?`, including both the
 theorem alwaysDeniesOpt?_eqv_alwaysDenies? {ps : Policies} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
   (do
-    let cpset ← CompiledPolicySet.compile ps Γ
+    let s := CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩
+    let cpset ← CompiledPolicySet.compile ps s Γ.reqty
     pure $ alwaysDeniesOpt? cpset
   ) =
   (do
@@ -831,7 +855,7 @@ theorem alwaysDeniesOpt?_eqv_alwaysDenies? {ps : Policies} {Γ : Validation.Type
 := by
   intro hwf
   have h₁ := compile_ok_iff_welltypedpolicies_ok hwf (ps := ps)
-  cases hcpset : CompiledPolicySet.compile ps Γ
+  cases hcpset : CompiledPolicySet.compile ps (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
   <;> cases hwps : wellTypedPolicies ps Γ
   -- this eliminates all the cases where the behavior of CompiledPolicySet.compile is inconsistent
   -- with the behavior of wellTypedPolicies on the same policyset
@@ -850,8 +874,8 @@ compilation succeeds, then `wellTypedPolicies` succeeds and `equivalent?` and
 -/
 theorem equivalentOpt?_eqv_equivalent?_ok {ps₁ ps₂ : Policies} {cpset₁ cpset₂ : CompiledPolicySet} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicySet.compile ps₁ Γ = .ok cpset₁ →
-  CompiledPolicySet.compile ps₂ Γ = .ok cpset₂ →
+  CompiledPolicySet.compile ps₁ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cpset₁ →
+  CompiledPolicySet.compile ps₂ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cpset₂ →
   ∃ wps₁ wps₂,
     wellTypedPolicies ps₁ Γ = .ok wps₁ ∧
     wellTypedPolicies ps₂ Γ = .ok wps₂ ∧
@@ -882,8 +906,9 @@ Full equivalence for `equivalent?` and `equivalentOpt?`, including both the
 theorem equivalentOpt?_eqv_equivalent? {ps₁ ps₂ : Policies} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
   (do
-    let cpset₁ ← CompiledPolicySet.compile ps₁ Γ
-    let cpset₂ ← CompiledPolicySet.compile ps₂ Γ
+    let s := CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩
+    let cpset₁ ← CompiledPolicySet.compile ps₁ s Γ.reqty
+    let cpset₂ ← CompiledPolicySet.compile ps₂ s Γ.reqty
     pure $ equivalentOpt? cpset₁ cpset₂
   ) =
   (do
@@ -895,8 +920,8 @@ theorem equivalentOpt?_eqv_equivalent? {ps₁ ps₂ : Policies} {Γ : Validation
   intro hwf
   have h₁ := compile_ok_iff_welltypedpolicies_ok hwf (ps := ps₁)
   have h₂ := compile_ok_iff_welltypedpolicies_ok hwf (ps := ps₂)
-  cases hcpset₁ : CompiledPolicySet.compile ps₁ Γ
-  <;> cases hcpset₂ : CompiledPolicySet.compile ps₂ Γ
+  cases hcpset₁ : CompiledPolicySet.compile ps₁ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
+  <;> cases hcpset₂ : CompiledPolicySet.compile ps₂ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
   <;> cases hwps₁ : wellTypedPolicies ps₁ Γ
   <;> cases hwps₂ : wellTypedPolicies ps₂ Γ
   -- this eliminates all the cases where the behavior of CompiledPolicySet.compile is inconsistent
@@ -919,8 +944,8 @@ compilation succeeds, then `wellTypedPolicies` succeeds and `disjoint?` and
 -/
 theorem disjointOpt?_eqv_disjoint?_ok {ps₁ ps₂ : Policies} {cpset₁ cpset₂ : CompiledPolicySet} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicySet.compile ps₁ Γ = .ok cpset₁ →
-  CompiledPolicySet.compile ps₂ Γ = .ok cpset₂ →
+  CompiledPolicySet.compile ps₁ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cpset₁ →
+  CompiledPolicySet.compile ps₂ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cpset₂ →
   ∃ wps₁ wps₂,
     wellTypedPolicies ps₁ Γ = .ok wps₁ ∧
     wellTypedPolicies ps₂ Γ = .ok wps₂ ∧
@@ -951,8 +976,9 @@ Full equivalence for `disjoint?` and `disjointOpt?`, including both the
 theorem disjointOpt?_eqv_disjoint? {ps₁ ps₂ : Policies} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
   (do
-    let cpset₁ ← CompiledPolicySet.compile ps₁ Γ
-    let cpset₂ ← CompiledPolicySet.compile ps₂ Γ
+    let s := CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩
+    let cpset₁ ← CompiledPolicySet.compile ps₁ s Γ.reqty
+    let cpset₂ ← CompiledPolicySet.compile ps₂ s Γ.reqty
     pure $ disjointOpt? cpset₁ cpset₂
   ) =
   (do
@@ -964,8 +990,8 @@ theorem disjointOpt?_eqv_disjoint? {ps₁ ps₂ : Policies} {Γ : Validation.Typ
   intro hwf
   have h₁ := compile_ok_iff_welltypedpolicies_ok hwf (ps := ps₁)
   have h₂ := compile_ok_iff_welltypedpolicies_ok hwf (ps := ps₂)
-  cases hcpset₁ : CompiledPolicySet.compile ps₁ Γ
-  <;> cases hcpset₂ : CompiledPolicySet.compile ps₂ Γ
+  cases hcpset₁ : CompiledPolicySet.compile ps₁ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
+  <;> cases hcpset₂ : CompiledPolicySet.compile ps₂ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
   <;> cases hwps₁ : wellTypedPolicies ps₁ Γ
   <;> cases hwps₂ : wellTypedPolicies ps₂ Γ
   -- this eliminates all the cases where the behavior of CompiledPolicySet.compile is inconsistent
@@ -988,7 +1014,7 @@ compilation succeeds, then `wellTypedPolicies` succeeds and `checkNeverErrors` a
 -/
 theorem checkNeverErrorsOpt_eqv_checkNeverErrors_ok {p : Policy} {cp : CompiledPolicy} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicy.compile p Γ = .ok cp →
+  CompiledPolicy.compile p (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cp →
   ∃ wp,
     wellTypedPolicy p Γ = .ok wp ∧
     checkNeverErrorsOpt cp = checkNeverErrors wp (SymEnv.ofTypeEnv Γ)
@@ -1012,7 +1038,7 @@ compilation succeeds, then `wellTypedPolicy` succeeds and `checkAlwaysMatches` a
 -/
 theorem checkAlwaysMatchesOpt_eqv_checkAlwaysMatches_ok {p : Policy} {cp : CompiledPolicy} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicy.compile p Γ = .ok cp →
+  CompiledPolicy.compile p (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cp →
   ∃ wp,
     wellTypedPolicy p Γ = .ok wp ∧
     checkAlwaysMatchesOpt cp = checkAlwaysMatches wp (SymEnv.ofTypeEnv Γ)
@@ -1036,7 +1062,7 @@ compilation succeeds, then `wellTypedPolicy` succeeds and `checkNeverMatches` an
 -/
 theorem checkNeverMatchesOpt_eqv_checkNeverMatches_ok {p : Policy} {cp : CompiledPolicy} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicy.compile p Γ = .ok cp →
+  CompiledPolicy.compile p (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cp →
   ∃ wp,
     wellTypedPolicy p Γ = .ok wp ∧
     checkNeverMatchesOpt cp = checkNeverMatches wp (SymEnv.ofTypeEnv Γ)
@@ -1060,8 +1086,8 @@ compilation succeeds, then `wellTypedPolicy` succeeds and `checkMatchesEquivalen
 -/
 theorem checkMatchesEquivalentOpt_eqv_checkMatchesEquivalent_ok {p₁ p₂ wp₁ wp₂ : Policy} {cp₁ cp₂ : CompiledPolicy} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicy.compile p₁ Γ = .ok cp₁ →
-  CompiledPolicy.compile p₂ Γ = .ok cp₂ →
+  CompiledPolicy.compile p₁ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cp₁ →
+  CompiledPolicy.compile p₂ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cp₂ →
   wellTypedPolicy p₁ Γ = .ok wp₁ →
   wellTypedPolicy p₂ Γ = .ok wp₂ →
   checkMatchesEquivalentOpt cp₁ cp₂ = checkMatchesEquivalent wp₁ wp₂ (SymEnv.ofTypeEnv Γ)
@@ -1083,8 +1109,8 @@ compilation succeeds, then `wellTypedPolicy` succeeds and `checkMatchesImplies` 
 -/
 theorem checkMatchesImpliesOpt_eqv_checkMatchesImplies_ok {p₁ p₂ wp₁ wp₂ : Policy} {cp₁ cp₂ : CompiledPolicy} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicy.compile p₁ Γ = .ok cp₁ →
-  CompiledPolicy.compile p₂ Γ = .ok cp₂ →
+  CompiledPolicy.compile p₁ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cp₁ →
+  CompiledPolicy.compile p₂ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cp₂ →
   wellTypedPolicy p₁ Γ = .ok wp₁ →
   wellTypedPolicy p₂ Γ = .ok wp₂ →
   checkMatchesImpliesOpt cp₁ cp₂ = checkMatchesImplies wp₁ wp₂ (SymEnv.ofTypeEnv Γ)
@@ -1106,8 +1132,8 @@ compilation succeeds, then `wellTypedPolicy` succeeds and `checkMatchesDisjoint`
 -/
 theorem checkMatchesDisjointOpt_eqv_checkMatchesDisjoint_ok {p₁ p₂ wp₁ wp₂ : Policy} {cp₁ cp₂ : CompiledPolicy} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicy.compile p₁ Γ = .ok cp₁ →
-  CompiledPolicy.compile p₂ Γ = .ok cp₂ →
+  CompiledPolicy.compile p₁ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cp₁ →
+  CompiledPolicy.compile p₂ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cp₂ →
   wellTypedPolicy p₁ Γ = .ok wp₁ →
   wellTypedPolicy p₂ Γ = .ok wp₂ →
   checkMatchesDisjointOpt cp₁ cp₂ = checkMatchesDisjoint wp₁ wp₂ (SymEnv.ofTypeEnv Γ)
@@ -1129,7 +1155,8 @@ Full equivalence for checkNeverErrors` and `checkNeverErrorsOpt`, including both
 theorem checkNeverErrorsOpt_eqv_checkNeverErrors {p : Policy} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
   (do
-    let cp ← CompiledPolicy.compile p Γ
+    let s := CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩
+    let cp ← CompiledPolicy.compile p s Γ.reqty
     pure $ checkNeverErrorsOpt cp
   ) =
   (do
@@ -1137,13 +1164,13 @@ theorem checkNeverErrorsOpt_eqv_checkNeverErrors {p : Policy} {Γ : Validation.T
     pure $ checkNeverErrors wp (SymEnv.ofTypeEnv Γ)
   )
 := by
-  cases hcp : CompiledPolicy.compile p Γ
+  cases hcp : CompiledPolicy.compile p (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
   case ok cp =>
     intro hwf
     have ⟨wp, hwp, h⟩ := checkNeverErrorsOpt_eqv_checkNeverErrors_ok hwf hcp
-    simp [Except.mapError, hwp, h]
+    simp [Except.mapError, hcp, hwp, h]
   case error e =>
-    simp [Except.mapError]
+    simp [Except.mapError, hcp]
     cases hwp : wellTypedPolicy p Γ
     case error e' =>
       simp [CompiledPolicy.compile, Except.mapError, hwp] at hcp
@@ -1160,7 +1187,8 @@ Full equivalence for `checkAlwaysMatches` and `checkAlwaysMatchesOpt`, including
 theorem checkAlwaysMatchesOpt_eqv_checkAlwaysMatches {p : Policy} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
   (do
-    let cp ← CompiledPolicy.compile p Γ
+    let s := CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩
+    let cp ← CompiledPolicy.compile p s Γ.reqty
     pure $ checkAlwaysMatchesOpt cp
   ) =
   (do
@@ -1168,13 +1196,13 @@ theorem checkAlwaysMatchesOpt_eqv_checkAlwaysMatches {p : Policy} {Γ : Validati
     pure $ checkAlwaysMatches wp (SymEnv.ofTypeEnv Γ)
   )
 := by
-  cases hcp : CompiledPolicy.compile p Γ
+  cases hcp : CompiledPolicy.compile p (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
   case ok cp =>
     intro hwf
     have ⟨wp, hwp, h⟩ := checkAlwaysMatchesOpt_eqv_checkAlwaysMatches_ok hwf hcp
-    simp [Except.mapError, hwp, h]
+    simp [Except.mapError, hcp, hwp, h]
   case error e =>
-    simp [Except.mapError]
+    simp [Except.mapError, hcp]
     cases hwp : wellTypedPolicy p Γ
     case error e' =>
       simp [CompiledPolicy.compile, Except.mapError, hwp] at hcp
@@ -1191,7 +1219,8 @@ Full equivalence for `checkNeverMatches` and `checkNeverMatchesOpt`, including b
 theorem checkNeverMatchesOpt_eqv_checkNeverMatches {p : Policy} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
   (do
-    let cp ← CompiledPolicy.compile p Γ
+    let s := CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩
+    let cp ← CompiledPolicy.compile p s Γ.reqty
     pure $ checkNeverMatchesOpt cp
   ) =
   (do
@@ -1199,13 +1228,13 @@ theorem checkNeverMatchesOpt_eqv_checkNeverMatches {p : Policy} {Γ : Validation
     pure $ checkNeverMatches wp (SymEnv.ofTypeEnv Γ)
   )
 := by
-  cases hcp : CompiledPolicy.compile p Γ
+  cases hcp : CompiledPolicy.compile p (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
   case ok cp =>
     intro hwf
     have ⟨wp, hwp, h⟩ := checkNeverMatchesOpt_eqv_checkNeverMatches_ok hwf hcp
-    simp [Except.mapError, hwp, h]
+    simp [Except.mapError, hcp, hwp, h]
   case error e =>
-    simp [Except.mapError]
+    simp [Except.mapError, hcp]
     cases hwp : wellTypedPolicy p Γ
     case error e' =>
       simp [CompiledPolicy.compile, Except.mapError, hwp] at hcp
@@ -1222,8 +1251,9 @@ Full equivalence for `checkMatchesEquivalent` and `checkMatchesEquivalentOpt`, i
 theorem checkMatchesEquivalentOpt_eqv_checkMatchesEquivalent {p₁ p₂ : Policy} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
   (do
-    let cp₁ ← CompiledPolicy.compile p₁ Γ
-    let cp₂ ← CompiledPolicy.compile p₂ Γ
+    let s := CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩
+    let cp₁ ← CompiledPolicy.compile p₁ s Γ.reqty
+    let cp₂ ← CompiledPolicy.compile p₂ s Γ.reqty
     pure $ checkMatchesEquivalentOpt cp₁ cp₂
   ) =
   (do
@@ -1235,8 +1265,8 @@ theorem checkMatchesEquivalentOpt_eqv_checkMatchesEquivalent {p₁ p₂ : Policy
   intro hwf
   have h₁ := compile_ok_iff_welltypedpolicy_ok hwf (p := p₁)
   have h₂ := compile_ok_iff_welltypedpolicy_ok hwf (p := p₂)
-  cases hcp₁ : CompiledPolicy.compile p₁ Γ
-  <;> cases hcp₂ : CompiledPolicy.compile p₂ Γ
+  cases hcp₁ : CompiledPolicy.compile p₁ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
+  <;> cases hcp₂ : CompiledPolicy.compile p₂ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
   <;> cases hwp₁ : wellTypedPolicy p₁ Γ
   <;> cases hwp₂ : wellTypedPolicy p₂ Γ
   -- this eliminates all the cases where the behavior of CompiledPolicy.compile is inconsistent
@@ -1258,8 +1288,9 @@ Full equivalence for `checkMatchesImplies` and `checkMatchesImpliesOpt`, includi
 theorem checkMatchesImpliesOpt_eqv_checkMatchesImplies {p₁ p₂ : Policy} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
   (do
-    let cp₁ ← CompiledPolicy.compile p₁ Γ
-    let cp₂ ← CompiledPolicy.compile p₂ Γ
+    let s := CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩
+    let cp₁ ← CompiledPolicy.compile p₁ s Γ.reqty
+    let cp₂ ← CompiledPolicy.compile p₂ s Γ.reqty
     pure $ checkMatchesImpliesOpt cp₁ cp₂
   ) =
   (do
@@ -1271,8 +1302,8 @@ theorem checkMatchesImpliesOpt_eqv_checkMatchesImplies {p₁ p₂ : Policy} {Γ 
   intro hwf
   have h₁ := compile_ok_iff_welltypedpolicy_ok hwf (p := p₁)
   have h₂ := compile_ok_iff_welltypedpolicy_ok hwf (p := p₂)
-  cases hcp₁ : CompiledPolicy.compile p₁ Γ
-  <;> cases hcp₂ : CompiledPolicy.compile p₂ Γ
+  cases hcp₁ : CompiledPolicy.compile p₁ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
+  <;> cases hcp₂ : CompiledPolicy.compile p₂ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
   <;> cases hwp₁ : wellTypedPolicy p₁ Γ
   <;> cases hwp₂ : wellTypedPolicy p₂ Γ
   -- this eliminates all the cases where the behavior of CompiledPolicy.compile is inconsistent
@@ -1294,8 +1325,9 @@ Full equivalence for `checkMatchesDisjoint` and `checkMatchesDisjointOpt`, inclu
 theorem checkMatchesDisjointOpt_eqv_checkMatchesDisjoint {p₁ p₂ : Policy} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
   (do
-    let cp₁ ← CompiledPolicy.compile p₁ Γ
-    let cp₂ ← CompiledPolicy.compile p₂ Γ
+    let s := CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩
+    let cp₁ ← CompiledPolicy.compile p₁ s Γ.reqty
+    let cp₂ ← CompiledPolicy.compile p₂ s Γ.reqty
     pure $ checkMatchesDisjointOpt cp₁ cp₂
   ) =
   (do
@@ -1307,8 +1339,8 @@ theorem checkMatchesDisjointOpt_eqv_checkMatchesDisjoint {p₁ p₂ : Policy} {�
   intro hwf
   have h₁ := compile_ok_iff_welltypedpolicy_ok hwf (p := p₁)
   have h₂ := compile_ok_iff_welltypedpolicy_ok hwf (p := p₂)
-  cases hcp₁ : CompiledPolicy.compile p₁ Γ
-  <;> cases hcp₂ : CompiledPolicy.compile p₂ Γ
+  cases hcp₁ : CompiledPolicy.compile p₁ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
+  <;> cases hcp₂ : CompiledPolicy.compile p₂ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
   <;> cases hwp₁ : wellTypedPolicy p₁ Γ
   <;> cases hwp₂ : wellTypedPolicy p₂ Γ
   -- this eliminates all the cases where the behavior of CompiledPolicy.compile is inconsistent
@@ -1330,8 +1362,8 @@ compilation succeeds, then `wellTypedPolicies` succeeds and `checkImplies` and
 -/
 theorem checkImpliesOpt_eqv_checkImplies_ok {ps₁ ps₂ : Policies} {cpset₁ cpset₂ : CompiledPolicySet} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicySet.compile ps₁ Γ = .ok cpset₁ →
-  CompiledPolicySet.compile ps₂ Γ = .ok cpset₂ →
+  CompiledPolicySet.compile ps₁ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cpset₁ →
+  CompiledPolicySet.compile ps₂ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cpset₂ →
   ∃ wps₁ wps₂,
     wellTypedPolicies ps₁ Γ = .ok wps₁ ∧
     wellTypedPolicies ps₂ Γ = .ok wps₂ ∧
@@ -1358,8 +1390,9 @@ Full equivalence for `checkImplies` and `checkImpliesOpt`, including both the
 theorem checkImpliesOpt_eqv_checkImplies {ps₁ ps₂ : Policies} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
   (do
-    let cpset₁ ← CompiledPolicySet.compile ps₁ Γ
-    let cpset₂ ← CompiledPolicySet.compile ps₂ Γ
+    let s := CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩
+    let cpset₁ ← CompiledPolicySet.compile ps₁ s Γ.reqty
+    let cpset₂ ← CompiledPolicySet.compile ps₂ s Γ.reqty
     pure $ checkImpliesOpt cpset₁ cpset₂
   ) =
   (do
@@ -1371,8 +1404,8 @@ theorem checkImpliesOpt_eqv_checkImplies {ps₁ ps₂ : Policies} {Γ : Validati
   intro hwf
   have h₁ := compile_ok_iff_welltypedpolicies_ok hwf (ps := ps₁)
   have h₂ := compile_ok_iff_welltypedpolicies_ok hwf (ps := ps₂)
-  cases hcpset₁ : CompiledPolicySet.compile ps₁ Γ
-  <;> cases hcpset₂ : CompiledPolicySet.compile ps₂ Γ
+  cases hcpset₁ : CompiledPolicySet.compile ps₁ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
+  <;> cases hcpset₂ : CompiledPolicySet.compile ps₂ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
   <;> cases hwps₁ : wellTypedPolicies ps₁ Γ
   <;> cases hwps₂ : wellTypedPolicies ps₂ Γ
   -- this eliminates all the cases where the behavior of CompiledPolicySet.compile is inconsistent
@@ -1395,7 +1428,7 @@ compilation succeeds, then `wellTypedPolicies` succeeds and `checkAlwaysAllows` 
 -/
 theorem checkAlwaysAllowsOpt_eqv_checkAlwaysAllows_ok {ps : Policies} {cpset : CompiledPolicySet} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicySet.compile ps Γ = .ok cpset →
+  CompiledPolicySet.compile ps (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cpset →
   ∃ wps,
     wellTypedPolicies ps Γ = .ok wps ∧
     checkAlwaysAllowsOpt cpset = checkAlwaysAllows wps (SymEnv.ofTypeEnv Γ)
@@ -1419,7 +1452,8 @@ Full equivalence for `checkAlwaysAllows` and `checkAlwaysAllowsOpt`, including b
 theorem checkAlwaysAllowsOpt_eqv_checkAlwaysAllows {ps : Policies} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
   (do
-    let cpset ← CompiledPolicySet.compile ps Γ
+    let s := CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩
+    let cpset ← CompiledPolicySet.compile ps s Γ.reqty
     pure $ checkAlwaysAllowsOpt cpset
   ) =
   (do
@@ -1429,7 +1463,7 @@ theorem checkAlwaysAllowsOpt_eqv_checkAlwaysAllows {ps : Policies} {Γ : Validat
 := by
   intro hwf
   have h₁ := compile_ok_iff_welltypedpolicies_ok hwf (ps := ps)
-  cases hcpset : CompiledPolicySet.compile ps Γ
+  cases hcpset : CompiledPolicySet.compile ps (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
   <;> cases hwps : wellTypedPolicies ps Γ
   -- this eliminates all the cases where the behavior of CompiledPolicySet.compile is inconsistent
   -- with the behavior of wellTypedPolicies on the same policyset
@@ -1448,7 +1482,7 @@ compilation succeeds, then `wellTypedPolicies` succeeds and `checkAlwaysDenies` 
 -/
 theorem checkAlwaysDeniesOpt_eqv_checkAlwaysDenies_ok {ps : Policies} {cpset : CompiledPolicySet} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicySet.compile ps Γ = .ok cpset →
+  CompiledPolicySet.compile ps (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cpset →
   ∃ wps,
     wellTypedPolicies ps Γ = .ok wps ∧
     checkAlwaysDeniesOpt cpset = checkAlwaysDenies wps (SymEnv.ofTypeEnv Γ)
@@ -1472,7 +1506,8 @@ Full equivalence for `checkAlwaysDenies` and `checkAlwaysDeniesOpt`, including b
 theorem checkAlwaysDeniesOpt_eqv_checkAlwaysDenies {ps : Policies} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
   (do
-    let cpset ← CompiledPolicySet.compile ps Γ
+    let s := CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩
+    let cpset ← CompiledPolicySet.compile ps s Γ.reqty
     pure $ checkAlwaysDeniesOpt cpset
   ) =
   (do
@@ -1482,7 +1517,7 @@ theorem checkAlwaysDeniesOpt_eqv_checkAlwaysDenies {ps : Policies} {Γ : Validat
 := by
   intro hwf
   have h₁ := compile_ok_iff_welltypedpolicies_ok hwf (ps := ps)
-  cases hcpset : CompiledPolicySet.compile ps Γ
+  cases hcpset : CompiledPolicySet.compile ps (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
   <;> cases hwps : wellTypedPolicies ps Γ
   -- this eliminates all the cases where the behavior of CompiledPolicySet.compile is inconsistent
   -- with the behavior of wellTypedPolicies on the same policyset
@@ -1501,8 +1536,8 @@ compilation succeeds, then `wellTypedPolicies` succeeds and `checkEquivalent` an
 -/
 theorem checkEquivalentOpt_eqv_checkEquivalent_ok {ps₁ ps₂ : Policies} {cpset₁ cpset₂ : CompiledPolicySet} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicySet.compile ps₁ Γ = .ok cpset₁ →
-  CompiledPolicySet.compile ps₂ Γ = .ok cpset₂ →
+  CompiledPolicySet.compile ps₁ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cpset₁ →
+  CompiledPolicySet.compile ps₂ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cpset₂ →
   ∃ wps₁ wps₂,
     wellTypedPolicies ps₁ Γ = .ok wps₁ ∧
     wellTypedPolicies ps₂ Γ = .ok wps₂ ∧
@@ -1529,8 +1564,9 @@ Full equivalence for `checkEquivalent` and `checkEquivalentOpt`, including both 
 theorem checkEquivalentOpt_eqv_checkEquivalent {ps₁ ps₂ : Policies} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
   (do
-    let cpset₁ ← CompiledPolicySet.compile ps₁ Γ
-    let cpset₂ ← CompiledPolicySet.compile ps₂ Γ
+    let s := CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩
+    let cpset₁ ← CompiledPolicySet.compile ps₁ s Γ.reqty
+    let cpset₂ ← CompiledPolicySet.compile ps₂ s Γ.reqty
     pure $ checkEquivalentOpt cpset₁ cpset₂
   ) =
   (do
@@ -1542,8 +1578,8 @@ theorem checkEquivalentOpt_eqv_checkEquivalent {ps₁ ps₂ : Policies} {Γ : Va
   intro hwf
   have h₁ := compile_ok_iff_welltypedpolicies_ok hwf (ps := ps₁)
   have h₂ := compile_ok_iff_welltypedpolicies_ok hwf (ps := ps₂)
-  cases hcpset₁ : CompiledPolicySet.compile ps₁ Γ
-  <;> cases hcpset₂ : CompiledPolicySet.compile ps₂ Γ
+  cases hcpset₁ : CompiledPolicySet.compile ps₁ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
+  <;> cases hcpset₂ : CompiledPolicySet.compile ps₂ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
   <;> cases hwps₁ : wellTypedPolicies ps₁ Γ
   <;> cases hwps₂ : wellTypedPolicies ps₂ Γ
   -- this eliminates all the cases where the behavior of CompiledPolicySet.compile is inconsistent
@@ -1566,8 +1602,8 @@ compilation succeeds, then `wellTypedPolicies` succeeds and `checkDisjoint` and
 -/
 theorem checkDisjointOpt_eqv_checkDisjoint_ok {ps₁ ps₂ : Policies} {cpset₁ cpset₂ : CompiledPolicySet} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
-  CompiledPolicySet.compile ps₁ Γ = .ok cpset₁ →
-  CompiledPolicySet.compile ps₂ Γ = .ok cpset₂ →
+  CompiledPolicySet.compile ps₁ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cpset₁ →
+  CompiledPolicySet.compile ps₂ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty = .ok cpset₂ →
   ∃ wps₁ wps₂,
     wellTypedPolicies ps₁ Γ = .ok wps₁ ∧
     wellTypedPolicies ps₂ Γ = .ok wps₂ ∧
@@ -1594,8 +1630,9 @@ Full equivalence for `checkDisjoint` and `checkDisjointOpt`, including both the
 theorem checkDisjointOpt_eqv_checkDisjoint {ps₁ ps₂ : Policies} {Γ : Validation.TypeEnv} :
   Γ.WellFormed →
   (do
-    let cpset₁ ← CompiledPolicySet.compile ps₁ Γ
-    let cpset₂ ← CompiledPolicySet.compile ps₂ Γ
+    let s := CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩
+    let cpset₁ ← CompiledPolicySet.compile ps₁ s Γ.reqty
+    let cpset₂ ← CompiledPolicySet.compile ps₂ s Γ.reqty
     pure $ checkDisjointOpt cpset₁ cpset₂
   ) =
   (do
@@ -1607,8 +1644,8 @@ theorem checkDisjointOpt_eqv_checkDisjoint {ps₁ ps₂ : Policies} {Γ : Valida
   intro hwf
   have h₁ := compile_ok_iff_welltypedpolicies_ok hwf (ps := ps₁)
   have h₂ := compile_ok_iff_welltypedpolicies_ok hwf (ps := ps₂)
-  cases hcpset₁ : CompiledPolicySet.compile ps₁ Γ
-  <;> cases hcpset₂ : CompiledPolicySet.compile ps₂ Γ
+  cases hcpset₁ : CompiledPolicySet.compile ps₁ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
+  <;> cases hcpset₂ : CompiledPolicySet.compile ps₂ (CompiledSchema.compile ⟨Γ.ets, Γ.acts⟩) Γ.reqty
   <;> cases hwps₁ : wellTypedPolicies ps₁ Γ
   <;> cases hwps₂ : wellTypedPolicies ps₂ Γ
   -- this eliminates all the cases where the behavior of CompiledPolicySet.compile is inconsistent

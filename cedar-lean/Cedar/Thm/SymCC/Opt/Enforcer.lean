@@ -30,10 +30,10 @@ open Cedar.Spec Cedar.SymCC
 This theorem covers the "happy path" -- showing that if optimized policy
 compilation succeeds, then `enforce` and `enforceCompiledPolicy` are equivalent.
 -/
-theorem enforceCompiledPolicy_eqv_enforce_ok {p wp : Policy} {cp : CompiledPolicy} {Γ : Validation.TypeEnv} :
-  CompiledPolicy.compile p Γ = .ok cp →
-  wellTypedPolicy p Γ = .ok wp →
-  enforce [wp.toExpr] (SymEnv.ofTypeEnv Γ) = enforceCompiledPolicy cp
+theorem enforceCompiledPolicy_eqv_enforce_ok {p wp : Policy} {cp : CompiledPolicy} {s : CompiledSchema} {reqty : Validation.RequestType}  :
+  CompiledPolicy.compile p s reqty = .ok cp →
+  wellTypedPolicy p (s.typeEnv reqty) = .ok wp →
+  enforce [wp.toExpr] (s.symEnv reqty) = enforceCompiledPolicy cp
 := by
   simp [enforce, enforceCompiledPolicy]
   intro h₀ h₁
@@ -87,12 +87,12 @@ This theorem covers the "happy path" -- showing that if optimized policy
 compilation succeeds, then `enforce` and `enforcePairCompiledPolicy` are
 equivalent.
 -/
-theorem enforcePairCompiledPolicy_eqv_enforce_ok {p₁ p₂ wp₁ wp₂ : Policy} {cp₁ cp₂ : CompiledPolicy} {Γ : Validation.TypeEnv} :
-  CompiledPolicy.compile p₁ Γ = .ok cp₁ →
-  CompiledPolicy.compile p₂ Γ = .ok cp₂ →
-  wellTypedPolicy p₁ Γ = .ok wp₁ →
-  wellTypedPolicy p₂ Γ = .ok wp₂ →
-  enforce [wp₁.toExpr, wp₂.toExpr] (SymEnv.ofTypeEnv Γ) = enforcePairCompiledPolicy cp₁ cp₂
+theorem enforcePairCompiledPolicy_eqv_enforce_ok {p₁ p₂ wp₁ wp₂ : Policy} {cp₁ cp₂ : CompiledPolicy} {s : CompiledSchema} {reqty : Validation.RequestType} :
+  CompiledPolicy.compile p₁ s reqty = .ok cp₁ →
+  CompiledPolicy.compile p₂ s reqty = .ok cp₂ →
+  wellTypedPolicy p₁ (s.typeEnv reqty) = .ok wp₁ →
+  wellTypedPolicy p₂ (s.typeEnv reqty) = .ok wp₂ →
+  enforce [wp₁.toExpr, wp₂.toExpr] (s.symEnv reqty) = enforcePairCompiledPolicy cp₁ cp₂
 := by
   simp [enforce, enforcePairCompiledPolicy]
   intro h₀ h₁ h₂ h₃
@@ -143,12 +143,12 @@ This theorem covers the "happy path" -- showing that if optimized policy
 compilation succeeds, then `enforce` and `enforcePairCompiledPolicySet` are
 equivalent.
 -/
-theorem enforcePairCompiledPolicySet_eqv_enforce_ok {ps₁ ps₂ wps₁ wps₂ : Policies} {cpset₁ cpset₂ : CompiledPolicySet} {Γ : Validation.TypeEnv} :
-  CompiledPolicySet.compile ps₁ Γ = .ok cpset₁ →
-  CompiledPolicySet.compile ps₂ Γ = .ok cpset₂ →
-  wellTypedPolicies ps₁ Γ = .ok wps₁ →
-  wellTypedPolicies ps₂ Γ = .ok wps₂ →
-  enforce (wps₁.map Policy.toExpr ++ wps₂.map Policy.toExpr) (SymEnv.ofTypeEnv Γ) = enforcePairCompiledPolicySet cpset₁ cpset₂
+theorem enforcePairCompiledPolicySet_eqv_enforce_ok {ps₁ ps₂ wps₁ wps₂ : Policies} {cpset₁ cpset₂ : CompiledPolicySet} {s : CompiledSchema} {reqty : Validation.RequestType} :
+  CompiledPolicySet.compile ps₁ s reqty = .ok cpset₁ →
+  CompiledPolicySet.compile ps₂ s reqty = .ok cpset₂ →
+  wellTypedPolicies ps₁ (s.typeEnv reqty) = .ok wps₁ →
+  wellTypedPolicies ps₂ (s.typeEnv reqty) = .ok wps₂ →
+  enforce (wps₁.map Policy.toExpr ++ wps₂.map Policy.toExpr) (s.symEnv reqty) = enforcePairCompiledPolicySet cpset₁ cpset₂
 := by
   simp [enforce, enforcePairCompiledPolicySet]
   intro hcpset₁ hcpset₂ hwps₁ hwps₂
