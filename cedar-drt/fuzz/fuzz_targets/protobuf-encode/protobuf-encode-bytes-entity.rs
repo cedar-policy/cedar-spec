@@ -19,7 +19,7 @@
 use cedar_drt_inner::fuzz_target;
 
 use cedar_policy::Entity;
-use cedar_policy::proto::traits::Protobuf;
+use cedar_policy::proto::traits::{EncodeError, Protobuf};
 
 // Feed arbitrary bytes into the Entity JSON parser.
 // Property: if JSON parsing succeeds, encoding to protobuf must not panic,
@@ -31,7 +31,11 @@ fuzz_target!(|input: &[u8]| {
     let Ok(entity) = Entity::from_json_value(json, None) else {
         return;
     };
-    let buf = entity.encode();
+    let buf = match entity.encode() {
+        Ok(buf) => buf,
+        Err(EncodeError::MaxDepthExceeded) => return,
+        Err(e) => panic!("only error expected encoding Entity is MaxDepthExceeded, got {e}"),
+    };
     let decoded =
         Entity::decode(&buf[..]).expect("Failed to decode an Entity that was just encoded");
     assert_eq!(entity, decoded);

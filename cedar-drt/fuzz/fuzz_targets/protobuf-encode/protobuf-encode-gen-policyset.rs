@@ -19,7 +19,7 @@
 use cedar_drt_inner::fuzz_target;
 
 use cedar_policy::PolicySet;
-use cedar_policy::proto::traits::Protobuf;
+use cedar_policy::proto::traits::{EncodeError, Protobuf};
 
 use cedar_policy_generators::schema_gen::SchemaGen;
 use cedar_policy_generators::{
@@ -61,8 +61,11 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 // the result must produce an equivalent PolicySet.
 fuzz_target!(|input: FuzzTargetInput| {
     let policy_set = input.policy.into_policy_set();
-
-    let buf = policy_set.encode();
+    let buf = match policy_set.encode() {
+        Ok(buf) => buf,
+        Err(EncodeError::MaxDepthExceeded) => return,
+        Err(e) => panic!("only error expected encoding PolicySet is MaxDepthExceeded, got {e}"),
+    };
     let decoded =
         PolicySet::decode(&buf[..]).expect("Failed to decode a PolicySet that was just encoded");
     assert_eq!(policy_set, decoded);

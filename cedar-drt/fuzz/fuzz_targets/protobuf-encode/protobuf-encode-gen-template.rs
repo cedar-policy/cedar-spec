@@ -19,7 +19,7 @@
 use cedar_drt_inner::fuzz_target;
 
 use cedar_policy::Template;
-use cedar_policy::proto::traits::Protobuf;
+use cedar_policy::proto::traits::{EncodeError, Protobuf};
 
 use cedar_policy_generators::schema_gen::SchemaGen;
 use cedar_policy_generators::{hierarchy::HierarchyGenerator, schema, settings::ABACSettings};
@@ -59,7 +59,11 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 // Property: encoding a well-formed Template must not panic, and decoding
 // the result must produce an equivalent Template.
 fuzz_target!(|input: FuzzTargetInput| {
-    let buf = input.template.encode();
+    let buf = match input.template.encode() {
+        Ok(buf) => buf,
+        Err(EncodeError::MaxDepthExceeded) => return,
+        Err(e) => panic!("only error expected encoding Template is MaxDepthExceeded, got {e}"),
+    };
     let decoded =
         Template::decode(&buf[..]).expect("Failed to decode a Template that was just encoded");
     assert_eq!(input.template, decoded);

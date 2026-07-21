@@ -19,7 +19,7 @@
 use cedar_drt_inner::fuzz_target;
 
 use cedar_policy::Request;
-use cedar_policy::proto::traits::Protobuf;
+use cedar_policy::proto::traits::{EncodeError, Protobuf};
 
 use cedar_policy_generators::schema_gen::SchemaGen;
 use cedar_policy_generators::{
@@ -61,7 +61,11 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 // Property: encoding a well-formed Request must not panic, and decoding
 // the result must produce an equivalent Request.
 fuzz_target!(|input: FuzzTargetInput| {
-    let buf = input.request.encode();
+    let buf = match input.request.encode() {
+        Ok(buf) => buf,
+        Err(EncodeError::MaxDepthExceeded) => return,
+        Err(e) => panic!("only error expected encoding Request is MaxDepthExceeded, got {e}"),
+    };
     let decoded =
         Request::decode(&buf[..]).expect("Failed to decode a Request that was just encoded");
     assert_eq!(input.request, decoded);

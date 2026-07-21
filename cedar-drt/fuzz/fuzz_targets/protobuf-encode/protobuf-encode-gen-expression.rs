@@ -20,7 +20,7 @@ use cedar_drt_inner::fuzz_target;
 use cedar_drt_inner::props::expression_to_cedar_parses;
 
 use cedar_policy::Expression;
-use cedar_policy::proto::traits::Protobuf;
+use cedar_policy::proto::traits::{EncodeError, Protobuf};
 
 use cedar_policy_generators::schema_gen::SchemaGen;
 use cedar_policy_generators::{hierarchy::HierarchyGenerator, schema, settings::ABACSettings};
@@ -66,7 +66,11 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 // between their conditions. If we really wanted to test equality here, we'd need equality for
 // standalone expressions.
 fuzz_target!(|input: FuzzTargetInput| {
-    let buf = input.expression.encode();
+    let buf = match input.expression.encode() {
+        Ok(buf) => buf,
+        Err(EncodeError::MaxDepthExceeded) => return,
+        Err(e) => panic!("only error expected encoding Expression is MaxDepthExceeded, got {e}"),
+    };
     let decoded =
         Expression::decode(&buf[..]).expect("Failed to decode an Expression that was just encoded");
     expression_to_cedar_parses(decoded);

@@ -19,7 +19,7 @@
 use cedar_drt_inner::fuzz_target;
 
 use cedar_policy::Entity;
-use cedar_policy::proto::traits::Protobuf;
+use cedar_policy::proto::traits::{EncodeError, Protobuf};
 
 use cedar_policy_generators::schema_gen::SchemaGen;
 use cedar_policy_generators::{hierarchy::HierarchyGenerator, schema, settings::ABACSettings};
@@ -63,7 +63,11 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 // Property: encoding a well-formed Entity must not panic, and decoding
 // the result must produce an equivalent Entity.
 fuzz_target!(|input: FuzzTargetInput| {
-    let buf = input.entity.encode();
+    let buf = match input.entity.encode() {
+        Ok(buf) => buf,
+        Err(EncodeError::MaxDepthExceeded) => return,
+        Err(e) => panic!("only error expected encoding Entity is MaxDepthExceeded, got {e}"),
+    };
     let decoded =
         Entity::decode(&buf[..]).expect("Failed to decode an Entity that was just encoded");
     assert_eq!(input.entity, decoded);

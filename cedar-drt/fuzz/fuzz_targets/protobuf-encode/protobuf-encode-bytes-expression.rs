@@ -20,7 +20,7 @@ use cedar_drt_inner::fuzz_target;
 use cedar_drt_inner::props::expression_to_cedar_parses;
 
 use cedar_policy::Expression;
-use cedar_policy::proto::traits::Protobuf;
+use cedar_policy::proto::traits::{EncodeError, Protobuf};
 
 // Feed arbitrary strings into the Expression parser.
 // Property: if parsing succeeds, encoding to protobuf must not panic,
@@ -30,7 +30,13 @@ fuzz_target!(|input: String| {
     let Ok(expression) = input.parse::<Expression>() else {
         return;
     };
-    let buf = expression.encode();
+    let buf = match expression.encode() {
+        Ok(buf) => buf,
+        Err(EncodeError::MaxDepthExceeded) => return,
+        Err(e) => {
+            panic!("only error expected encoding Expression is MaxDepthExceeded, got {e}")
+        }
+    };
     let decoded =
         Expression::decode(&buf[..]).expect("Failed to decode an Expression that was just encoded");
     expression_to_cedar_parses(decoded);

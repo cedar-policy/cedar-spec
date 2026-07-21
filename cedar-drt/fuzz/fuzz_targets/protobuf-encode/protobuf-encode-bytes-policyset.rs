@@ -19,7 +19,7 @@
 use cedar_drt_inner::fuzz_target;
 
 use cedar_policy::PolicySet;
-use cedar_policy::proto::traits::Protobuf;
+use cedar_policy::proto::traits::{EncodeError, Protobuf};
 
 // Feed arbitrary strings into the Cedar policy parser.
 // Property: if parsing succeeds, encoding to protobuf must not panic,
@@ -28,7 +28,11 @@ fuzz_target!(|input: String| {
     let Ok(policy_set) = input.parse::<PolicySet>() else {
         return;
     };
-    let buf = policy_set.encode();
+    let buf = match policy_set.encode() {
+        Ok(buf) => buf,
+        Err(EncodeError::MaxDepthExceeded) => return,
+        Err(e) => panic!("only error expected encoding PolicySet is MaxDepthExceeded, got {e}"),
+    };
     let decoded =
         PolicySet::decode(&buf[..]).expect("Failed to decode a PolicySet that was just encoded");
     assert_eq!(policy_set, decoded);

@@ -20,7 +20,7 @@ use cedar_drt_inner::fuzz_target;
 use cedar_drt_inner::schemas::Equiv;
 
 use cedar_policy::Schema;
-use cedar_policy::proto::traits::Protobuf;
+use cedar_policy::proto::traits::{EncodeError, Protobuf};
 
 // Feed arbitrary strings into the Cedar schema parser.
 // Property: if parsing succeeds, encoding to protobuf must not panic,
@@ -29,7 +29,11 @@ fuzz_target!(|input: String| {
     let Ok((schema, _)) = Schema::from_cedarschema_str(&input) else {
         return;
     };
-    let buf = schema.encode();
+    let buf = match schema.encode() {
+        Ok(buf) => buf,
+        Err(EncodeError::MaxDepthExceeded) => return,
+        Err(e) => panic!("only error expected encoding Schema is MaxDepthExceeded, got {e}"),
+    };
     let decoded =
         Schema::decode(&buf[..]).expect("Failed to decode a Schema that was just encoded");
     Equiv::equiv(schema.as_ref(), decoded.as_ref()).unwrap();

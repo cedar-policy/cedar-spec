@@ -19,7 +19,7 @@
 use cedar_drt_inner::fuzz_target;
 
 use cedar_policy::Template;
-use cedar_policy::proto::traits::Protobuf;
+use cedar_policy::proto::traits::{EncodeError, Protobuf};
 
 // Feed arbitrary strings into the Template parser.
 // Property: if parsing succeeds, encoding to protobuf must not panic,
@@ -28,7 +28,11 @@ fuzz_target!(|input: String| {
     let Ok(template) = input.parse::<Template>() else {
         return;
     };
-    let buf = template.encode();
+    let buf = match template.encode() {
+        Ok(buf) => buf,
+        Err(EncodeError::MaxDepthExceeded) => return,
+        Err(e) => panic!("only error expected encoding Template is MaxDepthExceeded, got {e}"),
+    };
     let decoded =
         Template::decode(&buf[..]).expect("Failed to decode a Template that was just encoded");
     assert_eq!(template, decoded);
