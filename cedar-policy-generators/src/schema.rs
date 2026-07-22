@@ -1921,7 +1921,7 @@ mod tests {
     use cedar_policy_core::entities::Entities;
     use cedar_policy_core::extensions::Extensions;
     use cedar_policy_core::validator::{json_schema, CoreSchema, RawName, ValidatorSchema};
-    use rand::{rng, rngs::ThreadRng, RngCore};
+    use rand::{rng, rngs::ThreadRng, Rng};
 
     const RANDOM_BYTE_SIZE: u16 = 1024;
     const ITERATION: u8 = 100;
