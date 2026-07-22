@@ -1,0 +1,6 @@
+entity User;
+entity Document tags Bool;
+action view appliesTo {
+    principal: [User],
+    resource: [Document]
+};

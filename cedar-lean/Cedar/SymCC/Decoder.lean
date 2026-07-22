@@ -209,6 +209,10 @@ public abbrev Result (α) := Except String α
 instance : Coe α (Result α) where
   coe := Except.ok
 
+def SExpr.isAppOf (fn : String) : SExpr → Bool
+  | .sexpr ((.symbol fn') :: _)  => fn == fn'
+  | _ => false
+
 def SExpr.fail {α β} [Repr α] (expected : String) (actual : α) : Result β :=
   .error s!"expected {expected}, but got {reprStr actual}"
 
@@ -343,18 +347,41 @@ termination_by xs => sizeOf xs
 
 end
 
-def SExpr.decodeUnaryFunctionTable (arg : String) (ids : IdMaps) (retTy : Option TermType := .none) : SExpr → Result ((List (Term × Term)) × Term)
+def SExpr.decodeUnaryFunctionIteTable (arg : String) (ids : IdMaps) (retTy : Option TermType := .none) : SExpr → Result ((List (Term × Term)) × Term)
   | .sexpr [.symbol "ite", .sexpr [.symbol "=", condExpr, .symbol v], thenExpr, elseExpr]
   | .sexpr [.symbol "ite", .sexpr [.symbol "=", .symbol v, condExpr], thenExpr, elseExpr] => do
     if v == arg then
       let condTerm ← condExpr.decodeLit ids
       let thenTerm ← thenExpr.decodeLit ids retTy
-      let (elseTable, dflt) ← elseExpr.decodeUnaryFunctionTable arg ids retTy
+      let (elseTable, dflt) ← elseExpr.decodeUnaryFunctionIteTable arg ids retTy
       .ok ((condTerm, thenTerm) :: elseTable, dflt)
     else
       fail arg v
   | other => do
     .ok ([], ← other.decodeLit ids retTy)
+
+def SExpr.decodeUnaryFunctionOrTable (arg : String) (ids : IdMaps) : SExpr → Result ((List (Term × Term)) × Term)
+  | .sexpr ((.symbol "or") :: disjuncts) => do
+    let trueTerms ← disjuncts.mapM λ d =>
+      match d with
+      | .sexpr [(.symbol "="), condExpr, .symbol v]
+      | .sexpr [(.symbol "="), .symbol v, condExpr] => do
+        if v == arg then
+          condExpr.decodeLit ids
+        else
+          fail arg v
+      | _ => fail "=" d
+    (trueTerms.map λ t => (t, Term.prim (.bool true)), Term.prim (.bool false))
+  | other => fail "or" other
+
+def SExpr.decodeUnaryFunctionEqTable (arg : String) (ids : IdMaps) : SExpr → Result ((List (Term × Term)) × Term)
+  | .sexpr [(.symbol "="), condExpr, .symbol v]
+  | .sexpr [(.symbol "="), .symbol v, condExpr] => do
+    if v == arg then
+      ([(←condExpr.decodeLit ids, Term.prim (.bool true))], Term.prim (.bool false))
+    else
+      fail arg v
+  | other => fail "=" other
 
 def SExpr.decodeVarBinding (v : TermVar) (ids : IdMaps) : List SExpr → Result Term
   | [.sexpr [], tyExpr, vExpr] => do
@@ -372,7 +399,13 @@ def SExpr.decodeUUFBinding (f : UUF) (ids : IdMaps) : List SExpr → Result UDF
       fail s!"type {reprStr f.arg}" tyᵢ
     if tyₒ != f.out then
       fail s!"type {reprStr f.out}" tyₒ
-    let (tbl, dflt) ← tblExpr.decodeUnaryFunctionTable v ids (.some tyₒ)
+    let (tbl, dflt) ←
+      if tblExpr.isAppOf "or" then
+        tblExpr.decodeUnaryFunctionOrTable v ids
+      else if tblExpr.isAppOf "=" then
+        tblExpr.decodeUnaryFunctionEqTable v ids
+      else
+        tblExpr.decodeUnaryFunctionIteTable v ids (.some tyₒ)
     .ok ⟨tyᵢ, tyₒ, Map.make tbl, dflt⟩
   | other                      => fail "UUF binding" other
 
