@@ -17,7 +17,7 @@
 #![no_main]
 
 use cedar_drt_inner::fuzz_target;
-use cedar_drt_inner::roundtrip_entities::pretty_assert_entities_deep_eq;
+use cedar_drt_inner::props::entities_protobuf_decodes;
 
 use cedar_policy::proto::traits::{EncodeError, Protobuf};
 use cedar_policy::{Entities, Entity};
@@ -69,7 +69,5 @@ fuzz_target!(|input: FuzzTargetInput| {
         Err(EncodeError::MaxDepthExceeded) => return,
         Err(e) => panic!("only error expected encoding Entities is MaxDepthExceeded, got {e}"),
     };
-    let decoded =
-        Entities::decode(&buf[..]).expect("Failed to decode Entities that were just encoded");
-    pretty_assert_entities_deep_eq(&input.entities, &decoded);
+    entities_protobuf_decodes(&buf[..], &input.entities);
 });

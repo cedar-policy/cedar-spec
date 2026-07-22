@@ -17,6 +17,7 @@
 #![no_main]
 
 use cedar_drt_inner::fuzz_target;
+use cedar_drt_inner::props::request_protobuf_decodes;
 
 use cedar_policy::Request;
 use cedar_policy::proto::traits::{EncodeError, Protobuf};
@@ -66,7 +67,5 @@ fuzz_target!(|input: FuzzTargetInput| {
         Err(EncodeError::MaxDepthExceeded) => return,
         Err(e) => panic!("only error expected encoding Request is MaxDepthExceeded, got {e}"),
     };
-    let decoded =
-        Request::decode(&buf[..]).expect("Failed to decode a Request that was just encoded");
-    assert_eq!(input.request, decoded);
+    request_protobuf_decodes(&buf[..], &input.request);
 });

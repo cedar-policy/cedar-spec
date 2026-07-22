@@ -17,7 +17,7 @@
 #![no_main]
 
 use cedar_drt_inner::fuzz_target;
-use cedar_drt_inner::schemas::Equiv;
+use cedar_drt_inner::props::schema_protobuf_decodes;
 
 use cedar_policy::Schema;
 use cedar_policy::proto::traits::{EncodeError, Protobuf};
@@ -60,7 +60,5 @@ fuzz_target!(|input: FuzzTargetInput| {
         Err(EncodeError::MaxDepthExceeded) => return,
         Err(e) => panic!("only error expected encoding Schema is MaxDepthExceeded, got {e}"),
     };
-    let decoded =
-        Schema::decode(&buf[..]).expect("Failed to decode a Schema that was just encoded");
-    Equiv::equiv(input.schema.as_ref(), decoded.as_ref()).unwrap();
+    schema_protobuf_decodes(&buf[..], &input.schema);
 });
