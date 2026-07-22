@@ -253,7 +253,32 @@ theorem rInitsToMap?_complete (r : List Cst.RecInit)
     obtain ⟨mtl, hmtl⟩ := ih (fun x hx => h x (List.mem_cons_of_mem _ hx))
     exact ⟨(attr, aval) :: mtl, by simp [rInitsToMap?, heos, hvalid, haval, hmtl]⟩
 
+/-- `toUnreservedString?` succeeds only on an (unreserved) `.idIdent`. -/
+theorem toUnreservedString?_some {i : Cst.Ident} {s : String}
+    (h : CstCommon.Ident.toUnreservedString? i = some s) : i = .idIdent s := by
+  cases i
+  case idIdent s' =>
+    simp only [CstCommon.Ident.toUnreservedString?] at h
+    split at h
+    · injection h with h'; subst h'; rfl
+    · exact absurd h (by simp)
+  all_goals simp [CstCommon.Ident.toUnreservedString?] at h
 
+/-- Prepending a field accessor reduces through `memberAuxB`'s attribute branch
+    as long as the remaining accessors don't begin with a call. -/
+theorem memberAuxB_field_cons (id : Cst.Ident) (l : List AstAccessor) (he : Cedar.Spec.Expr)
+    (hnc : ∀ cargs t, l ≠ AstAccessor.call cargs :: t) :
+    memberAuxB he (.field id :: l) = memberAuxB (.getAttr he (CstCommon.Ident.toString id)) l := by
+  cases l with
+  | nil => simp [memberAuxB]
+  | cons a t =>
+    cases a with
+    | call cargs => exact absurd rfl (hnc cargs t)
+    | field f => simp [memberAuxB]
+    | index s => simp [memberAuxB]
+
+
+set_option maxHeartbeats 400000 in
 mutual
 
 theorem Cst.Primary.collect_complete {e : Cst.Primary} {req : Request} {es : Entities} :
@@ -368,9 +393,9 @@ decreasing_by
   all_goals simp_wf
   all_goals first
     | (simp only [Cst.Primary.expr.sizeOf_spec] at *; omega)
-    | (rename_i hmem; have := List.sizeOf_lt_of_mem hmem;
+    | (have := List.sizeOf_lt_of_mem (by assumption : _ ∈ _);
        simp only [Cst.Primary.eList.sizeOf_spec] at *; omega)
-    | (rename_i hmem; have := List.sizeOf_lt_of_mem hmem; cases ‹Cst.RecInit›;
+    | (have := List.sizeOf_lt_of_mem (by assumption : _ ∈ _); cases ‹Cst.RecInit›;
        simp only [Cst.Primary.rInits.sizeOf_spec, Cst.RecInit.mk.sizeOf_spec] at *; omega)
 
 theorem Cst.Member.collectAccessors_complete
@@ -379,12 +404,204 @@ theorem Cst.Member.collectAccessors_complete
     ∃ accs_ast, accs.mapM Cst.MemAccess.toAstAccessor? = some accs_ast ∧
       (∀ cargs t, accs_ast ≠ AstAccessor.call cargs :: t) ∧
       ∀ he : Cedar.Spec.Expr, ∃ r, memberAuxB he accs_ast = some r := by
-  intro h; sorry
+  intro h
+  match accs with
+  | [] => exact ⟨[], by simp, by simp, fun he => ⟨he, rfl⟩⟩
+  | .call _ :: _ =>
+    unfold Cst.Member.collectAccessors at h
+    rw [noCstError_singleton] at h
+    simp [Error.isCstError] at h
+  | .field i :: .call args :: rest =>
+    unfold Cst.Member.collectAccessors at h
+    cases hi : CstCommon.Ident.toUnreservedString? i with
+    | none =>
+      simp only [hi] at h
+      obtain ⟨hab, _⟩ := (noCstError_union _ _).mpr h
+      obtain ⟨hs, _⟩ := (noCstError_union _ _).mpr hab
+      rw [noCstError_singleton] at hs; simp [Error.isCstError] at hs
+    | some m =>
+      have hii := toUnreservedString?_some hi
+      cases hop : CstCommon.String.toMethodOp? m with
+      | none =>
+        simp only [hi, hop] at h
+        obtain ⟨hab, _⟩ := (noCstError_union _ _).mpr h
+        obtain ⟨hs, _⟩ := (noCstError_union _ _).mpr hab
+        rw [noCstError_singleton] at hs; simp [Error.isCstError] at hs
+      | some mop =>
+        cases mop with
+        | inl bop =>
+          match hargs : args with
+          | [arg] =>
+            simp only [hi, hop, hargs] at h
+            obtain ⟨hab, hrst⟩ := (noCstError_union _ _).mpr h
+            obtain ⟨hargErrs, _⟩ := (noCstError_union _ _).mpr hab
+            have hargA : arg.toAExpr?.isSome := by
+              obtain ⟨_, _, ea, fa⟩ :=
+                Cst.Expr.collect_complete (collectExprList_no_cst [arg] req es hargErrs arg List.mem_cons_self)
+              simp [Cst.Expr.toAExpr?, ea, fa]
+            obtain ⟨a, ha⟩ := Option.isSome_iff_exists.mp hargA
+            obtain ⟨rest_ast, hrest_ast, hnc, hmemb⟩ := Cst.Member.collectAccessors_complete _ rest hrst
+            subst hii
+            refine ⟨.field (.idIdent m) :: .call [a] :: rest_ast, ?_, by simp, ?_⟩
+            · rw [List.mapM_cons, List.mapM_cons]
+              simp [Cst.MemAccess.toAstAccessor?, hi, Cst.Expr.toAExprs?, ha, hrest_ast]
+            · intro he
+              obtain ⟨r, hr⟩ := hmemb (Expr.binaryApp bop he a)
+              exact ⟨r, by simp only [memberAuxB, Cst.Ident.toMeth?, hop, oneArg?]; exact hr⟩
+          | [] =>
+            simp only [hi, hop, hargs] at h
+            obtain ⟨hab, _⟩ := (noCstError_union _ _).mpr h
+            obtain ⟨hs, _⟩ := (noCstError_union _ _).mpr hab
+            rw [noCstError_singleton] at hs; simp [Error.isCstError] at hs
+          | a1 :: a2 :: rst =>
+            simp only [hi, hop, hargs] at h
+            obtain ⟨hab, _⟩ := (noCstError_union _ _).mpr h
+            obtain ⟨hs, _⟩ := (noCstError_union _ _).mpr hab
+            rw [noCstError_singleton] at hs; simp [Error.isCstError] at hs
+        | inr uop =>
+          match hargs : args with
+          | [] =>
+            simp only [hi, hop, hargs, List.isEmpty_nil, if_true] at h
+            obtain ⟨_, hrst⟩ := (noCstError_union _ _).mpr h
+            obtain ⟨rest_ast, hrest_ast, hnc, hmemb⟩ := Cst.Member.collectAccessors_complete _ rest hrst
+            subst hii
+            refine ⟨.field (.idIdent m) :: .call [] :: rest_ast, ?_, by simp, ?_⟩
+            · rw [List.mapM_cons, List.mapM_cons]
+              simp [Cst.MemAccess.toAstAccessor?, hi, Cst.Expr.toAExprs?, hrest_ast]
+            · intro he
+              obtain ⟨r, hr⟩ := hmemb (Expr.unaryApp uop he)
+              exact ⟨r, by simp only [memberAuxB, Cst.Ident.toMeth?, hop, List.isEmpty_nil, if_true]; exact hr⟩
+          | a :: rst =>
+            simp only [hi, hop, hargs, List.isEmpty_cons, if_false] at h
+            obtain ⟨hab, _⟩ := (noCstError_union _ _).mpr h
+            obtain ⟨hs, _⟩ := (noCstError_union _ _).mpr hab
+            rw [noCstError_singleton] at hs; simp [Error.isCstError] at hs
+  | .field i :: [] =>
+    unfold Cst.Member.collectAccessors at h
+    cases hi : CstCommon.Ident.toUnreservedString? i with
+    | none =>
+      simp only [hi] at h
+      obtain ⟨hs, _⟩ := (noCstError_union _ _).mpr h
+      rw [noCstError_singleton] at hs; simp [Error.isCstError] at hs
+    | some attr =>
+      have hii := toUnreservedString?_some hi; subst hii
+      refine ⟨[.field (.idIdent attr)], ?_, by simp, ?_⟩
+      · simp [List.mapM_cons, Cst.MemAccess.toAstAccessor?, hi]
+      · intro he; exact ⟨Expr.getAttr he attr, by simp [memberAuxB, CstCommon.Ident.toString]⟩
+  | .field i :: .field i2 :: rest =>
+    unfold Cst.Member.collectAccessors at h
+    cases hi : CstCommon.Ident.toUnreservedString? i with
+    | none =>
+      simp only [hi] at h
+      obtain ⟨hs, _⟩ := (noCstError_union _ _).mpr h
+      rw [noCstError_singleton] at hs; simp [Error.isCstError] at hs
+    | some attr =>
+      simp only [hi] at h
+      obtain ⟨_, hrst⟩ := (noCstError_union _ _).mpr h
+      obtain ⟨rest_ast, hrest_ast, hnc, hmemb⟩ :=
+        Cst.Member.collectAccessors_complete _ (.field i2 :: rest) hrst
+      have hii := toUnreservedString?_some hi; subst hii
+      refine ⟨.field (.idIdent attr) :: rest_ast, ?_, by simp, ?_⟩
+      · rw [List.mapM_cons]; simp [Cst.MemAccess.toAstAccessor?, hi, hrest_ast]
+      · intro he
+        obtain ⟨r, hr⟩ := hmemb (Expr.getAttr he attr)
+        exact ⟨r, by rw [memberAuxB_field_cons _ rest_ast he hnc]; simpa [CstCommon.Ident.toString] using hr⟩
+  | .field i :: .index ex :: rest =>
+    unfold Cst.Member.collectAccessors at h
+    cases hi : CstCommon.Ident.toUnreservedString? i with
+    | none =>
+      simp only [hi] at h
+      obtain ⟨hs, _⟩ := (noCstError_union _ _).mpr h
+      rw [noCstError_singleton] at hs; simp [Error.isCstError] at hs
+    | some attr =>
+      simp only [hi] at h
+      obtain ⟨_, hrst⟩ := (noCstError_union _ _).mpr h
+      obtain ⟨rest_ast, hrest_ast, hnc, hmemb⟩ :=
+        Cst.Member.collectAccessors_complete _ (.index ex :: rest) hrst
+      have hii := toUnreservedString?_some hi; subst hii
+      refine ⟨.field (.idIdent attr) :: rest_ast, ?_, by simp, ?_⟩
+      · rw [List.mapM_cons]; simp [Cst.MemAccess.toAstAccessor?, hi, hrest_ast]
+      · intro he
+        obtain ⟨r, hr⟩ := hmemb (Expr.getAttr he attr)
+        exact ⟨r, by rw [memberAuxB_field_cons _ rest_ast he hnc]; simpa [CstCommon.Ident.toString] using hr⟩
+  | .index ex :: rest =>
+    unfold Cst.Member.collectAccessors at h
+    cases hex : CstCommon.Expr.toUnescapedStringLiteral? ex with
+    | none =>
+      simp only [hex] at h
+      obtain ⟨hs, _⟩ := (noCstError_union _ _).mpr h
+      rw [noCstError_singleton] at hs; simp [Error.isCstError] at hs
+    | some attr =>
+      simp only [hex] at h
+      obtain ⟨_, hrst⟩ := (noCstError_union _ _).mpr h
+      obtain ⟨rest_ast, hrest_ast, hnc, hmemb⟩ := Cst.Member.collectAccessors_complete _ rest hrst
+      refine ⟨.index attr :: rest_ast, ?_, by simp, ?_⟩
+      · rw [List.mapM_cons]; simp [Cst.MemAccess.toAstAccessor?, hex, hrest_ast]
+      · intro he
+        obtain ⟨r, hr⟩ := hmemb (Expr.getAttr he attr)
+        exact ⟨r, by simp only [memberAuxB]; exact hr⟩
+termination_by sizeOf accs
+decreasing_by
+  all_goals simp_wf
+  all_goals (try subst_vars)
+  all_goals (
+    try simp only [List.cons.sizeOf_spec, Cst.MemAccess.field.sizeOf_spec,
+      Cst.MemAccess.call.sizeOf_spec, Cst.MemAccess.index.sizeOf_spec]
+    omega)
 
 theorem Cst.Member.collect_complete {e : Cst.Member} {req : Request} {es : Entities} :
     noCstError (e.collectErrors req es).1 →
     ∃ eos ae, e.toExprOrSpecial? = some eos ∧ eos.toExpr? = some ae := by
-  intro h; sorry
+  intro h
+  unfold Cst.Member.collectErrors at h
+  split at h
+  case h_1 s args rest =>
+    cases hfn : CstCommon.String.toExtFun? s with
+    | none =>
+      simp only [hfn] at h
+      obtain ⟨hab, _⟩ := (noCstError_union _ _).mpr h
+      obtain ⟨hs, _⟩ := (noCstError_union _ _).mpr hab
+      rw [noCstError_singleton] at hs; simp [Error.isCstError] at hs
+    | some xfn =>
+      simp only [hfn] at h
+      obtain ⟨hab, hrst⟩ := (noCstError_union _ _).mpr h
+      obtain ⟨hec, _⟩ := (noCstError_union _ _).mpr hab
+      have hxsA : ∀ x ∈ args, x.toAExpr?.isSome := by
+        intro x hx
+        obtain ⟨_, _, ea, fa⟩ := Cst.Expr.collect_complete (collectExprList_no_cst args req es hec x hx)
+        simp [Cst.Expr.toAExpr?, ea, fa]
+      obtain ⟨xs, hxs⟩ := list_toAExpr_complete args hxsA
+      obtain ⟨rest_ast, hrest, _, hmemb⟩ := Cst.Member.collectAccessors_complete _ rest hrst
+      obtain ⟨r, hr⟩ := hmemb (.call xfn xs)
+      refine ⟨.expr r, r, ?_, by simp [ExprOrSpecial.toExpr?]⟩
+      unfold Cst.Member.toExprOrSpecial?
+      simp [Cst.Primary.toExprOrSpecial?, Cst.Name.toVar?,
+        List.isEmpty_nil, Cst.Name.toAName?, CstCommon.Name.toAName?,
+        CstCommon.Ident.toUnrestrictedString?,
+        List.mapM_cons, Cst.MemAccess.toAstAccessor?, Cedar.Thm.toAExprs?_eq_mapM, hxs, hrest,
+        memberAux, memberAuxA, Name.toFunc?, Cedar.Thm.toExtFun?_some_isFunctionName hfn, hfn, hr]
+  case h_2 item access _ =>
+    obtain ⟨hd, hrst⟩ := (noCstError_union _ _).mpr h
+    obtain ⟨peos, headExpr, hpeos, hpe⟩ := Cst.Primary.collect_complete hd
+    obtain ⟨accs_ast, haccs, _, hmemb⟩ := Cst.Member.collectAccessors_complete _ access hrst
+    obtain ⟨r, hr⟩ := hmemb headExpr
+    have hbind : (memberAux peos accs_ast).bind ExprOrSpecial.toExpr? = some r := by
+      rw [Cedar.Thm.memberAux_toExpr_eq accs_ast hpe]; exact hr
+    rw [Option.bind_eq_some_iff] at hbind
+    obtain ⟨eos, hmaux, heos⟩ := hbind
+    refine ⟨eos, r, ?_, heos⟩
+    simp only [Cst.Member.toExprOrSpecial?, hpeos, haccs, hmaux, Option.bind_some,
+      Option.bind_eq_bind]
+termination_by sizeOf e
+decreasing_by
+  all_goals simp_wf
+  all_goals (try subst_vars)
+  all_goals (
+    try simp only [Cst.Member.mk.sizeOf_spec, List.cons.sizeOf_spec,
+      Cst.MemAccess.call.sizeOf_spec]
+    first
+    | omega
+    | (have := List.sizeOf_lt_of_mem (by assumption : _ ∈ _); omega))
 
 theorem Cst.Unary.collect_complete {e : Cst.Unary} {req : Request} {es : Entities} :
     noCstError (e.collectErrors req es).1 →
@@ -406,10 +623,38 @@ theorem Cst.Unary.collect_complete {e : Cst.Unary} {req : Request} {es : Entitie
       exact ⟨eos_i, ae_i, by simp [Cst.Unary.toExprOrSpecial?, hop, heos_i], hae_i⟩
     · match hlit : CstCommon.Member.toLit? e.item with
       | some (.liNum x) =>
-        -- Provable: an overflowing negative literal has its magnitude `x`
-        -- overflow `Int64` too, so `e.item.collectErrors` carries
-        -- `primaryOverflowError`; needs a `toLit?`↔`toExprOrSpecial?` bridge.
-        sorry
+        -- `e.item` is the bare literal `x`.  The Member IH says it translates, so its
+        -- magnitude fits `Int64` (`ofInt? x = some`), placing us in the `lt` branch.
+        have hstruct : e.item.item = Cst.Primary.literal (.liNum x) ∧ e.item.access = [] := by
+          simp only [CstCommon.Member.toLit?] at hlit
+          split at hlit
+          · exact absurd hlit (by simp)
+          · rename_i hacc
+            split at hlit
+            · rename_i l hl; injection hlit with hlx; subst hlx; exact ⟨hl, by simpa using hacc⟩
+            · exact absurd hlit (by simp)
+        obtain ⟨hii, hacc⟩ := hstruct
+        have hof : (Int64.ofInt? (x.toNat)).isSome := by
+          cases hc : Int64.ofInt? (x.toNat) with
+          | some i => simp
+          | none =>
+            exfalso
+            have hnone : e.item.toExprOrSpecial? = none := by
+              unfold Cst.Member.toExprOrSpecial?
+              rw [hii, hacc]
+              simp [Cst.Primary.toExprOrSpecial?, Cst.Literal.toExprOrSpecial?, hc]
+            rw [hnone] at heos_i; simp at heos_i
+        obtain ⟨i, hi⟩ := Option.isSome_iff_exists.mp hof
+        have hbound : (x.toNat : Int) ≤ Int64.MAX := by
+          by_contra hc
+          have hc' : (x.toNat : Int) > Int64.MAX := Int.not_le.mp hc
+          rw [Int64.ofInt?_none_iff.mp (Or.inr hc')] at hi; simp at hi
+        have hlt : compare (x.toNat) (Int64.MAX + 1).toNat = .lt := by
+          have hb : x.toNat < (Int64.MAX + 1).toNat := by simp only [Int64.MAX] at hbound ⊢; omega
+          exact Nat.compare_eq_lt.mpr hb
+        refine ⟨.expr ((Expr.lit (.int (-i))).dashN (n-1).toNat),
+                (Expr.lit (.int (-i))).dashN (n-1).toNat, ?_, by simp [ExprOrSpecial.toExpr?]⟩
+        simp [Cst.Unary.toExprOrSpecial?, hop, hn0, hlit, hlt, hi]
       | some .liTrue | some .liFalse | some (.liStr _) | none =>
         refine ⟨.expr (ae_i.dashN n.toNat), ae_i.dashN n.toNat, ?_, by simp [ExprOrSpecial.toExpr?]⟩
         simp [Cst.Unary.toExprOrSpecial?, hop, hn0, hlit, heos_i, hae_i]
@@ -444,8 +689,9 @@ theorem Cst.MultExpr.collect_complete {e : Cst.MultExpr} {req : Request} {es : E
       fun x hx => (collectMults_no_cst e.extended req es hMul x hx).1
     have htr : ∀ x ∈ e.extended, x.2.toAExpr?.isSome := by
       intro x hx
+      obtain ⟨xop, xu⟩ := x
       obtain ⟨_, _, heosx, haex⟩ :=
-        Cst.Unary.collect_complete (collectMults_no_cst e.extended req es hMul x hx).2
+        Cst.Unary.collect_complete (collectMults_no_cst e.extended req es hMul (xop, xu) hx).2
       simp [Cst.Unary.toAExpr?, heosx, haex]
     obtain ⟨result, hresult⟩ := multFoldExtended_complete e.extended ae_i hop htr
     refine ⟨.expr result, result, ?_, by simp [ExprOrSpecial.toExpr?]⟩
@@ -455,10 +701,10 @@ termination_by sizeOf e
 decreasing_by
   all_goals simp_wf
   all_goals (cases e; simp only [Cst.MultExpr.mk.sizeOf_spec] at *)
-  all_goals first
+  all_goals (first
     | omega
-    | (rename_i hmem; have := List.sizeOf_lt_of_mem hmem;
-       simp only [Prod.mk.sizeOf_spec] at *; omega)
+    | (have := List.sizeOf_lt_of_mem (by assumption : _ ∈ _);
+       simp only [Prod.mk.sizeOf_spec] at this; omega))
 
 theorem Cst.AddExpr.collect_complete {e : Cst.AddExpr} {req : Request} {es : Entities} :
     noCstError (e.collectErrors req es).1 →
@@ -476,8 +722,9 @@ theorem Cst.AddExpr.collect_complete {e : Cst.AddExpr} {req : Request} {es : Ent
     have hinitA : e.initial.toAExpr? = some ae_i := by simp [Cst.MultExpr.toAExpr?, heos_i, hae_i]
     have htr : ∀ x ∈ e.extended, x.2.toAExpr?.isSome := by
       intro x hx
+      obtain ⟨xop, xm⟩ := x
       obtain ⟨_, _, heosx, haex⟩ :=
-        Cst.MultExpr.collect_complete (collectAdds_no_cst e.extended req es hAdd x hx)
+        Cst.MultExpr.collect_complete (collectAdds_no_cst e.extended req es hAdd (xop, xm) hx)
       simp [Cst.MultExpr.toAExpr?, heosx, haex]
     obtain ⟨result, hresult⟩ := addFoldExtended_complete e.extended ae_i htr
     refine ⟨.expr result, result, ?_, by simp [ExprOrSpecial.toExpr?]⟩
@@ -487,10 +734,10 @@ termination_by sizeOf e
 decreasing_by
   all_goals simp_wf
   all_goals (cases e; simp only [Cst.AddExpr.mk.sizeOf_spec] at *)
-  all_goals first
+  all_goals (first
     | omega
-    | (rename_i hmem; have := List.sizeOf_lt_of_mem hmem;
-       simp only [Prod.mk.sizeOf_spec] at *; omega)
+    | (have := List.sizeOf_lt_of_mem (by assumption : _ ∈ _);
+       simp only [Prod.mk.sizeOf_spec] at this; omega))
 
 theorem Cst.Relation.collect_complete {e : Cst.Relation} {req : Request} {es : Entities} :
     noCstError (e.collectErrors req es).1 →
@@ -589,10 +836,12 @@ theorem Cst.Relation.collect_complete {e : Cst.Relation} {req : Request} {es : E
 termination_by sizeOf e
 decreasing_by
   all_goals simp_wf
-  all_goals (first
-    | omega
-    | (rename_i hmem; have := List.sizeOf_lt_of_mem hmem;
-       simp only [Prod.mk.sizeOf_spec] at *; omega))
+  all_goals (
+    try subst_vars
+    try simp only [Cst.Relation.rCommon.sizeOf_spec, Cst.Relation.rHas.sizeOf_spec,
+      Cst.Relation.rLike.sizeOf_spec, Cst.Relation.rIsIn.sizeOf_spec,
+      List.cons.sizeOf_spec, Prod.mk.sizeOf_spec]
+    omega)
 
 theorem Cst.AndExpr.collect_complete {e : Cst.AndExpr} {req : Request} {es : Entities} :
     noCstError (e.collectErrors req es).1 →
@@ -623,7 +872,7 @@ decreasing_by
   all_goals (cases e; simp only [Cst.AndExpr.mk.sizeOf_spec] at *)
   all_goals first
     | omega
-    | (rename_i hmem; have := List.sizeOf_lt_of_mem hmem; omega)
+    | (have := List.sizeOf_lt_of_mem (by assumption : _ ∈ _); omega)
 
 theorem Cst.OrExpr.collect_complete {e : Cst.OrExpr} {req : Request} {es : Entities} :
     noCstError (e.collectErrors req es).1 →
@@ -654,7 +903,7 @@ decreasing_by
   all_goals (cases e; simp only [Cst.OrExpr.mk.sizeOf_spec] at *)
   all_goals first
     | omega
-    | (rename_i hmem; have := List.sizeOf_lt_of_mem hmem; omega)
+    | (have := List.sizeOf_lt_of_mem (by assumption : _ ∈ _); omega)
 
 theorem Cst.ExprData.collect_complete {e : Cst.ExprData} {req : Request} {es : Entities} :
     noCstError (e.collectErrors req es).1 →
@@ -703,5 +952,23 @@ termination_by sizeOf e
 decreasing_by all_goals simp_wf
 
 end
+
+/-- The collector's value channel agrees with the ordinary evaluator: the second
+    component is `some v` exactly when evaluation succeeds with `v`. -/
+theorem expr_error_collector_evaluate (e : Cst.Expr) (req : Request) (es : Entities) :
+  ∀ v, (e.collectErrors req es).2 = some v ↔ e.evaluate req es = .ok v := by
+  intro v
+  obtain ⟨⟨ed⟩⟩ := e
+  unfold Cst.Expr.collectErrors Cst.ExprImpl.collectErrors Cst.ExprData.collectErrors
+         Cst.Expr.evaluate Cst.ExprImpl.evaluate
+  cases hev : Cst.ExprData.evaluate ed req es <;>
+    simp [Cst.CollectResult.ofResult]
+
+
+theorem expr_collect_complete (e : Cst.Expr) (req : Request) (es : Entities) :
+    noCstError (e.collectErrors req es).1 → e.toAExpr?.isSome := by
+  intro h
+  obtain ⟨eos, ae, heos, hae⟩ := Cst.Expr.collect_complete h
+  simp [Cst.Expr.toAExpr?, heos, hae]
 
 end Cedar.Spec

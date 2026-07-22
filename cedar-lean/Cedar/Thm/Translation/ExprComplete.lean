@@ -623,15 +623,4 @@ theorem expr_to_expr_complete
 
 end
 
-/-- The collector's value channel agrees with the ordinary evaluator: the second
-    component is `some v` exactly when evaluation succeeds with `v`. -/
-theorem expr_error_collector_evaluate (e : Cst.Expr) (req : Request) (es : Entities) :
-  ∀ v, (e.collectErrors req es).2 = some v ↔ e.evaluate req es = .ok v := by
-  intro v
-  obtain ⟨⟨ed⟩⟩ := e
-  unfold Cst.Expr.collectErrors Cst.ExprImpl.collectErrors Cst.ExprData.collectErrors
-         Cst.Expr.evaluate Cst.ExprImpl.evaluate
-  cases hev : Cst.ExprData.evaluate ed req es <;>
-    simp [Cst.CollectResult.ofResult]
-
 end Cedar.Thm
