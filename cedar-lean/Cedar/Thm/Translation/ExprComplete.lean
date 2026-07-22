@@ -632,6 +632,6 @@ theorem expr_error_collector_evaluate (e : Cst.Expr) (req : Request) (es : Entit
   unfold Cst.Expr.collectErrors Cst.ExprImpl.collectErrors Cst.ExprData.collectErrors
          Cst.Expr.evaluate Cst.ExprImpl.evaluate
   cases hev : Cst.ExprData.evaluate ed req es <;>
-    simp [Cst.CollectResult.ofResult, hev]
+    simp [Cst.CollectResult.ofResult]
 
 end Cedar.Thm

@@ -221,7 +221,7 @@ public def Primary.evaluate (e : Primary) (req : Request) (es : Entities) : Resu
     | .liFalse => .ok (.prim (.bool false))
     | .liNum n => match Int64.ofInt? n.toNat with
       | some i => .ok (.prim (.int i))
-      | none => .error .arithBoundsError
+      | none => .error (.cstError .primaryOverflowError)
     | .liStr s => do
       let s' ← Str.toUnescapedString (.string s)
       .ok (.prim (.string s'))

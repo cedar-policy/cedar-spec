@@ -4,6 +4,7 @@ import Cedar.Spec.CstSemantics
 import Cedar.Spec.CstToAst
 import Cedar.Thm.Translation.AuxComplete
 import Cedar.Thm.Translation.AuxSound
+import Cedar.Thm.Translation.CstErrorCollector
 import Cedar.Thm.Translation.ExprComplete
 import Cedar.Thm.Translation.ExprTranslation
 import Cedar.Thm.Translation.PolicyToExpr

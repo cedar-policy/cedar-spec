@@ -26,6 +26,7 @@ public def CstError.rank : CstError → Nat
   | .unsupportedError => 2
   | .arityError       => 3
   | .translationError => 4
+  | .primaryOverflowError => 5
 
 public def Error.rank : Error → Nat
   | .entityDoesNotExist => 0
@@ -40,6 +41,33 @@ public instance : LT Error := ⟨fun a b => Error.rank a < Error.rank b⟩
 
 public instance (a b : Error) : Decidable (a < b) :=
   inferInstanceAs (Decidable (Error.rank a < Error.rank b))
+
+theorem CstError.rank_inj (a b : CstError) (h : CstError.rank a = CstError.rank b) : a = b := by
+  cases a <;> cases b <;> simp_all [CstError.rank]
+
+theorem Error.rank_inj (a b : Error) (h : Error.rank a = Error.rank b) : a = b := by
+  cases a <;> cases b <;> simp only [Error.rank] at h <;>
+    first
+      | rfl
+      | omega
+      | exact congrArg Error.cstError (CstError.rank_inj _ _ (by omega))
+
+public instance : StrictLT Error where
+  asymmetric a b h := by
+    have hab : Error.rank a < Error.rank b := h
+    intro hba
+    have hba' : Error.rank b < Error.rank a := hba
+    omega
+  transitive a b c h1 h2 := by
+    have h1' : Error.rank a < Error.rank b := h1
+    have h2' : Error.rank b < Error.rank c := h2
+    show Error.rank a < Error.rank c
+    omega
+  connected a b hne := by
+    rcases Nat.lt_trichotomy (Error.rank a) (Error.rank b) with h | h | h
+    · exact Or.inl h
+    · exact absurd (Error.rank_inj a b h) hne
+    · exact Or.inr h
 
 end Cedar.Spec
 
@@ -316,3 +344,5 @@ public def collectPolicies (ps : List Policy) (req : Request) (es : Entities) : 
 
 public def Policies.collectErrors (ps : Policies) (req : Request) (es : Entities) : Set Error :=
   collectPolicies ps.ps req es
+
+end Cedar.Spec.Cst
