@@ -188,4 +188,19 @@ theorem translation_is_complete (cps : Cst.Policies) (req : Request) (es : Entit
   split <;> exact herrp
 
 
+/-- **Strong completeness of CST→AST translation.** If the comprehensively
+    collected errors of a policy set contain no *translation* (`cstError`) error,
+    then the whole set translates to AST — even in the presence of
+    (non-`cstError`) runtime errors.  This strengthens `translation_is_complete`,
+    which requires each policy to be free of runtime errors: because the
+    collector never short-circuits, a translation error can never be hidden
+    behind a runtime error elsewhere. -/
+theorem translation_is_strongly_complete (cps : Cst.Policies) (req : Request) (es : Entities) :
+    noCstError (cps.collectErrors req es) →
+    ∃ aps, cps.toPolicies? = some aps := by
+  intro h
+  unfold Cst.Policies.collectErrors at h
+  unfold Cst.Policies.toPolicies?
+  exact collectPolicies_complete cps.ps req es h
+
 end Cedar.Thm

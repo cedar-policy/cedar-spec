@@ -356,8 +356,8 @@ theorem Cst.Primary.collect_complete {e : Cst.Primary} {req : Request} {es : Ent
         obtain ⟨npath, nname⟩ := n
         simp only [Cst.Name.toVar?] at hvar
         cases hpath : npath with
-        | nil => cases nname <;> simp_all [Cst.Primary.evaluate, Cst.Name.toVar?]
-        | cons hd tl => simp [Cst.Primary.evaluate, hpath]
+        | nil => cases nname <;> simp_all [Cst.Primary.evaluate]
+        | cons hd tl => simp [Cst.Primary.evaluate]
       have := hev _ hce
       simp [Error.isCstError] at this
   | .ref r =>
@@ -392,11 +392,10 @@ termination_by sizeOf e
 decreasing_by
   all_goals simp_wf
   all_goals first
-    | (simp only [Cst.Primary.expr.sizeOf_spec] at *; omega)
-    | (have := List.sizeOf_lt_of_mem (by assumption : _ ∈ _);
-       simp only [Cst.Primary.eList.sizeOf_spec] at *; omega)
+    | omega
+    | (have := List.sizeOf_lt_of_mem (by assumption : _ ∈ _); omega)
     | (have := List.sizeOf_lt_of_mem (by assumption : _ ∈ _); cases ‹Cst.RecInit›;
-       simp only [Cst.Primary.rInits.sizeOf_spec, Cst.RecInit.mk.sizeOf_spec] at *; omega)
+       simp only [Cst.RecInit.mk.sizeOf_spec] at *; omega)
 
 theorem Cst.Member.collectAccessors_complete
     (head : Option Value) (accs : List Cst.MemAccess) {req : Request} {es : Entities} :
@@ -432,7 +431,7 @@ theorem Cst.Member.collectAccessors_complete
         | inl bop =>
           match hargs : args with
           | [arg] =>
-            simp only [hi, hop, hargs] at h
+            simp only [hi, hop] at h
             obtain ⟨hab, hrst⟩ := (noCstError_union _ _).mpr h
             obtain ⟨hargErrs, _⟩ := (noCstError_union _ _).mpr hab
             have hargA : arg.toAExpr?.isSome := by
@@ -449,19 +448,19 @@ theorem Cst.Member.collectAccessors_complete
               obtain ⟨r, hr⟩ := hmemb (Expr.binaryApp bop he a)
               exact ⟨r, by simp only [memberAuxB, Cst.Ident.toMeth?, hop, oneArg?]; exact hr⟩
           | [] =>
-            simp only [hi, hop, hargs] at h
+            simp only [hi, hop] at h
             obtain ⟨hab, _⟩ := (noCstError_union _ _).mpr h
             obtain ⟨hs, _⟩ := (noCstError_union _ _).mpr hab
             rw [noCstError_singleton] at hs; simp [Error.isCstError] at hs
           | a1 :: a2 :: rst =>
-            simp only [hi, hop, hargs] at h
+            simp only [hi, hop] at h
             obtain ⟨hab, _⟩ := (noCstError_union _ _).mpr h
             obtain ⟨hs, _⟩ := (noCstError_union _ _).mpr hab
             rw [noCstError_singleton] at hs; simp [Error.isCstError] at hs
         | inr uop =>
           match hargs : args with
           | [] =>
-            simp only [hi, hop, hargs, List.isEmpty_nil, if_true] at h
+            simp only [hi, hop, List.isEmpty_nil, if_true] at h
             obtain ⟨_, hrst⟩ := (noCstError_union _ _).mpr h
             obtain ⟨rest_ast, hrest_ast, hnc, hmemb⟩ := Cst.Member.collectAccessors_complete _ rest hrst
             subst hii
@@ -472,7 +471,7 @@ theorem Cst.Member.collectAccessors_complete
               obtain ⟨r, hr⟩ := hmemb (Expr.unaryApp uop he)
               exact ⟨r, by simp only [memberAuxB, Cst.Ident.toMeth?, hop, List.isEmpty_nil, if_true]; exact hr⟩
           | a :: rst =>
-            simp only [hi, hop, hargs, List.isEmpty_cons, if_false] at h
+            simp only [hi, hop, List.isEmpty_cons] at h
             obtain ⟨hab, _⟩ := (noCstError_union _ _).mpr h
             obtain ⟨hs, _⟩ := (noCstError_union _ _).mpr hab
             rw [noCstError_singleton] at hs; simp [Error.isCstError] at hs
@@ -545,8 +544,7 @@ decreasing_by
   all_goals simp_wf
   all_goals (try subst_vars)
   all_goals (
-    try simp only [List.cons.sizeOf_spec, Cst.MemAccess.field.sizeOf_spec,
-      Cst.MemAccess.call.sizeOf_spec, Cst.MemAccess.index.sizeOf_spec]
+    try simp only [List.cons.sizeOf_spec]
     omega)
 
 theorem Cst.Member.collect_complete {e : Cst.Member} {req : Request} {es : Entities} :
@@ -654,10 +652,10 @@ theorem Cst.Unary.collect_complete {e : Cst.Unary} {req : Request} {es : Entitie
           exact Nat.compare_eq_lt.mpr hb
         refine ⟨.expr ((Expr.lit (.int (-i))).dashN (n-1).toNat),
                 (Expr.lit (.int (-i))).dashN (n-1).toNat, ?_, by simp [ExprOrSpecial.toExpr?]⟩
-        simp [Cst.Unary.toExprOrSpecial?, hop, hn0, hlit, hlt, hi]
+        simp [Cst.Unary.toExprOrSpecial?, hop, hlit, hlt, hi]
       | some .liTrue | some .liFalse | some (.liStr _) | none =>
         refine ⟨.expr (ae_i.dashN n.toNat), ae_i.dashN n.toNat, ?_, by simp [ExprOrSpecial.toExpr?]⟩
-        simp [Cst.Unary.toExprOrSpecial?, hop, hn0, hlit, heos_i, hae_i]
+        simp [Cst.Unary.toExprOrSpecial?, hop, hlit, heos_i, hae_i]
   | some .nOverBang =>
     exfalso
     have hce := (noCstError_ofResult _).mp hev
@@ -751,13 +749,13 @@ theorem Cst.Relation.collect_complete {e : Cst.Relation} {req : Request} {es : E
     obtain ⟨eos_i, ae_i, heos_i, hae_i⟩ := Cst.AddExpr.collect_complete hinit
     match hext : extended with
     | [] =>
-      exact ⟨eos_i, ae_i, by simp [Cst.Relation.toExprOrSpecial?, hext, heos_i], hae_i⟩
+      exact ⟨eos_i, ae_i, by simp [Cst.Relation.toExprOrSpecial?, heos_i], hae_i⟩
     | (op, y) :: rest =>
       match hrest : rest with
       | _ :: _ =>
         exfalso
         have := (noCstError_ofResult _).mp hev (.cstError .unsupportedError)
-          (by simp [Cst.Relation.evaluate, hext, hrest])
+          (by simp [Cst.Relation.evaluate])
         simp [Error.isCstError] at this
       | [] =>
         have hyA : y.toAExpr?.isSome := by
@@ -768,7 +766,7 @@ theorem Cst.Relation.collect_complete {e : Cst.Relation} {req : Request} {es : E
         obtain ⟨yexpr, hyexpr⟩ := Option.isSome_iff_exists.mp hyA
         refine ⟨.expr (constructExprRel op ae_i yexpr), constructExprRel op ae_i yexpr, ?_,
                 by simp [ExprOrSpecial.toExpr?]⟩
-        simp [Cst.Relation.toExprOrSpecial?, hext, hrest, heos_i, hae_i, hyexpr]
+        simp [Cst.Relation.toExprOrSpecial?, heos_i, hae_i, hyexpr]
   | .rHas target field =>
     unfold Cst.Relation.collectErrors at h
     obtain ⟨hev, herrs⟩ := (noCstError_union _ _).mpr h
@@ -838,9 +836,7 @@ decreasing_by
   all_goals simp_wf
   all_goals (
     try subst_vars
-    try simp only [Cst.Relation.rCommon.sizeOf_spec, Cst.Relation.rHas.sizeOf_spec,
-      Cst.Relation.rLike.sizeOf_spec, Cst.Relation.rIsIn.sizeOf_spec,
-      List.cons.sizeOf_spec, Prod.mk.sizeOf_spec]
+    try simp only [List.cons.sizeOf_spec, Prod.mk.sizeOf_spec]
     omega)
 
 theorem Cst.AndExpr.collect_complete {e : Cst.AndExpr} {req : Request} {es : Entities} :
@@ -970,5 +966,77 @@ theorem expr_collect_complete (e : Cst.Expr) (req : Request) (es : Entities) :
   intro h
   obtain ⟨eos, ae, heos, hae⟩ := Cst.Expr.collect_complete h
   simp [Cst.Expr.toAExpr?, heos, hae]
+
+/-- If a policy's conditions collect no `cstError`, they all translate. -/
+theorem collectConds_complete (conds : List Cst.Cond) (req : Request) (es : Entities) :
+    noCstError (Cst.collectConds conds req es) → ∃ cs, toConditions? conds = some cs := by
+  induction conds with
+  | nil => intro _; exact ⟨[], by simp [toConditions?]⟩
+  | cons c rest ih =>
+    intro h
+    unfold Cst.collectConds at h
+    obtain ⟨hab, hrest⟩ := (noCstError_union _ _).mpr h
+    obtain ⟨hkind, hexpr⟩ := (noCstError_union _ _).mpr hab
+    have hk : ∃ k, c.cond.toConditionKind? = some k := by
+      cases hkc : c.cond.toConditionKind? with
+      | some k => exact ⟨k, rfl⟩
+      | none => simp [hkc, noCstError_singleton, Error.isCstError] at hkind
+    have hb : ∃ b, c.expr.bind Cst.Expr.toAExpr? = some b := by
+      cases hce : c.expr with
+      | none => simp [hce, noCstError_singleton, Error.isCstError] at hexpr
+      | some e =>
+        simp only [hce] at hexpr ⊢
+        obtain ⟨ae, hae⟩ := Option.isSome_iff_exists.mp (expr_collect_complete e req es hexpr)
+        exact ⟨ae, hae⟩
+    obtain ⟨k, hk⟩ := hk
+    obtain ⟨b, hb⟩ := hb
+    obtain ⟨cs, hcs⟩ := ih hrest
+    have hcc : c.toCondition? = some { kind := k, body := b } := by
+      simp [Cst.Cond.toCondition?, hk, hb]
+    refine ⟨{ kind := k, body := b } :: cs, ?_⟩
+    simp only [toConditions?] at hcs ⊢
+    simp [List.mapM_cons, hcc, hcs]
+
+/-- **Policy-level completeness.** If a `PolicyImpl`'s comprehensively-collected
+    errors contain no translation (`cstError`) error, it translates to a `Policy`. -/
+theorem policyImpl_collect_complete (p : Cst.PolicyImpl) (req : Request) (es : Entities) :
+    noCstError (Cst.PolicyImpl.collectErrors p req es) → p.toPolicy?.isSome := by
+  intro h
+  unfold Cst.PolicyImpl.collectErrors at h
+  obtain ⟨hab, hconds⟩ := (noCstError_union _ _).mpr h
+  obtain ⟨heff, hscope⟩ := (noCstError_union _ _).mpr hab
+  have heffS : ∃ ef, CstCommon.Ident.toEffect? p.effect = some ef := by
+    cases hef : CstCommon.Ident.toEffect? p.effect with
+    | some ef => exact ⟨ef, rfl⟩
+    | none => simp [hef, noCstError_singleton, Error.isCstError] at heff
+  have hscopeS : ∃ sc, extractScope? p.vars = some sc := by
+    cases hsc : extractScope? p.vars with
+    | some sc => exact ⟨sc, rfl⟩
+    | none => simp [hsc, noCstError_singleton, Error.isCstError] at hscope
+  obtain ⟨cs, hcs⟩ := collectConds_complete p.conds req es hconds
+  obtain ⟨ef, hef⟩ := heffS
+  obtain ⟨⟨psc, asc, rsc⟩, hsc⟩ := hscopeS
+  simp [Cst.PolicyImpl.toPolicy?, hef, hsc, hcs]
+
+theorem policy_collect_complete (p : Cst.Policy) (req : Request) (es : Entities) :
+    noCstError (Cst.Policy.collectErrors p req es) → p.toPolicy?.isSome := by
+  cases p with
+  | policy pi =>
+    intro h
+    unfold Cst.Policy.collectErrors at h
+    unfold Cst.Policy.toPolicy?
+    exact policyImpl_collect_complete pi req es h
+
+theorem collectPolicies_complete (pl : List Cst.Policy) (req : Request) (es : Entities) :
+    noCstError (Cst.collectPolicies pl req es) → ∃ res, pl.mapM Cst.Policy.toPolicy? = some res := by
+  induction pl with
+  | nil => intro _; exact ⟨[], by simp⟩
+  | cons p rest ih =>
+    intro h
+    unfold Cst.collectPolicies at h
+    obtain ⟨hp, hrest⟩ := (noCstError_union _ _).mpr h
+    obtain ⟨q, hq⟩ := Option.isSome_iff_exists.mp (policy_collect_complete p req es hp)
+    obtain ⟨qs, hqs⟩ := ih hrest
+    exact ⟨q :: qs, by simp [List.mapM_cons, hq, hqs]⟩
 
 end Cedar.Spec
