@@ -333,14 +333,36 @@ decreasing_by all_goals simp_wf
 
 end
 
-public def Policy.collectErrors (p : Policy) (req : Request) (es : Entities) : CollectResult :=
-  let e := p.toExpr
-  e.collectErrors req es
+public def collectConds (conds : List Cond) (req : Request) (es : Entities) : Set Error :=
+  match conds with
+  | [] => ∅
+  | c :: rest =>
+    (match c.cond.toConditionKind? with
+     | some _ => ∅
+     | none   => Set.singleton (Error.cstError .translationError))
+    ∪ (match c.expr with
+       | some e => (e.collectErrors req es).1
+       | none   => Set.singleton (Error.cstError .translationError))
+    ∪ collectConds rest req es
+termination_by sizeOf conds
+
+public def PolicyImpl.collectErrors (p : PolicyImpl) (req : Request) (es : Entities) : Set Error :=
+  (match CstCommon.Ident.toEffect? p.effect with
+   | some _ => ∅
+   | none   => Set.singleton (Error.cstError .translationError))
+  ∪ (match extractScope? p.vars with
+     | some _ => ∅
+     | none   => Set.singleton (Error.cstError .translationError))
+  ∪ collectConds p.conds req es
+
+public def Policy.collectErrors (p : Policy) (req : Request) (es : Entities) : Set Error :=
+  match p with
+  | .policy pi => pi.collectErrors req es
 
 public def collectPolicies (ps : List Policy) (req : Request) (es : Entities) : Set Error :=
   match ps with
   | [] => ∅
-  | p :: rest => (p.collectErrors req es).1 ∪ collectPolicies rest req es
+  | p :: rest => p.collectErrors req es ∪ collectPolicies rest req es
 
 public def Policies.collectErrors (ps : Policies) (req : Request) (es : Entities) : Set Error :=
   collectPolicies ps.ps req es
