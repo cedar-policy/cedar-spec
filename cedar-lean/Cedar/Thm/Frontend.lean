@@ -2,18 +2,17 @@ import Cedar.Spec
 import Cedar.Frontend.Cst
 import Cedar.Frontend.Cst.Semantics
 import Cedar.Frontend.Cst.ToAst
-import Cedar.Thm.Translation.AuxComplete
-import Cedar.Thm.Translation.AuxSound
-import Cedar.Thm.Translation.ExprComplete
-import Cedar.Thm.Translation.ExprTranslation
-import Cedar.Thm.Translation.PolicyToExpr
+import Cedar.Thm.Frontend.Translation.AuxComplete
+import Cedar.Thm.Frontend.Translation.AuxSound
+import Cedar.Thm.Frontend.Translation.ExprComplete
+import Cedar.Thm.Frontend.Translation.ExprTranslation
+import Cedar.Thm.Frontend.Translation.PolicyToExpr
 
 namespace Cedar.Thm
 
 open Cedar.Data
 open Cedar.Spec
 open Cedar.Frontend
-open Cedar.Frontend.Cst hiding Expr ExprImpl ExprData OrExpr AndExpr AddExpr MultExpr Name Policy PolicyImpl Policies Ident Literal Primary Member MemAccess Unary Relation RelOp Cond VariableDef Ref RecInit Str
 
 /-- When `toPolicy?` succeeds, the CST policy's expression also translates to AST. -/
 theorem toPolicy?_implies_toAExpr?
@@ -29,7 +28,7 @@ theorem toPolicy?_implies_toAExpr?
   simp only [Cst.Policy.toExpr, Cst.PolicyImpl.toExpr]
   match hvars : p.vars, hsc with
   | [a, b, c], hsc =>
-    simp only [extractScope?, bind, Option.bind_eq_some_iff] at hsc
+    simp only [Cst.extractScope?, bind, Option.bind_eq_some_iff] at hsc
     obtain ⟨ps', hps, as', has, rs', hrs, _⟩ := hsc
     -- Each variable leaf translates.
     obtain ⟨lp, hlp⟩ := principal_leaf_isSome hps
@@ -40,15 +39,15 @@ theorem toPolicy?_implies_toAExpr?
       refine ⟨[lp, la, lr], ?_⟩
       simp [List.map_cons, List.mapM_cons, hlp, hla, hlr]
     -- The condition-expression list translates.
-    have hcondsMapM := conds_mapM_toAExpr_isSome (by simpa [toConditions?] using hconds)
+    have hcondsMapM := conds_mapM_toAExpr_isSome (by simpa [Cst.toConditions?] using hconds)
     -- The append translates.
     obtain ⟨r, hr⟩ := mapM_append_isSome hvarsMapM hcondsMapM
     -- Conclude via `foldAnd_toAExpr`.
     exact ⟨_, foldAnd_toAExpr _ r hr⟩
-  | [], hsc => simp [extractScope?] at hsc
-  | [_], hsc => simp [extractScope?] at hsc
-  | [_, _], hsc => simp [extractScope?] at hsc
-  | _ :: _ :: _ :: _ :: _, hsc => simp [extractScope?] at hsc
+  | [], hsc => simp [Cst.extractScope?] at hsc
+  | [_], hsc => simp [Cst.extractScope?] at hsc
+  | [_, _], hsc => simp [Cst.extractScope?] at hsc
+  | _ :: _ :: _ :: _ :: _, hsc => simp [Cst.extractScope?] at hsc
 
 theorem policy_satisfied_agrees (cp : Cst.Policy) (ap : Spec.Policy)
   (req : Request) (es : Entities) :

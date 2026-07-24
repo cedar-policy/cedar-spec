@@ -17,7 +17,8 @@
 import Cedar.Frontend.Cst
 import Cedar.Frontend.Cst.Semantics
 import Cedar.Frontend.Cst.ToAst
-import Cedar.Thm.Translation
+import Cedar.Thm.Frontend
+import Cedar.Thm.Frontend.Translation.ExprTranslation
 import Cedar.Thm.Validation
 
 namespace Cedar.Thm
