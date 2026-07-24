@@ -2,7 +2,7 @@ import Cedar.Spec
 import Cedar.Frontend.Cst
 import Cedar.Frontend.Cst.Semantics
 import Cedar.Frontend.Cst.ToAst
-import Cedar.Thm.Translation.AuxSound
+import Cedar.Thm.Frontend.Translation.AuxSound
 import Cedar.Thm.Data.List.Lemmas
 
 /-!
@@ -20,7 +20,6 @@ namespace Cedar.Thm
 open Cedar.Data
 open Cedar.Spec
 open Cedar.Frontend
-open Cedar.Frontend.Cst hiding Expr ExprImpl ExprData OrExpr AndExpr AddExpr MultExpr Name Policy PolicyImpl Policies Ident Literal Primary Member MemAccess Unary Relation RelOp Cond VariableDef Ref RecInit Str
 
 /-- If a list of CST expressions all evaluate (the `Except` `mapM` is `.ok`),
     and each translates whenever it evaluates, then the list translates. -/
@@ -58,10 +57,10 @@ theorem rInits_complete {req : Request} {es : Entities} :
         | none => Except.error (Error.cstError CstError.stringError)
         | some attr => do let val ← ri.value.evaluate req es; .ok (attr, val)) = .ok avs →
       (∀ ri ∈ r, ∀ v, ri.value.evaluate req es = .ok v → ∃ ae, ri.value.toAExpr? = some ae) →
-      ∃ map, rInitsToMap? r = some map := by
+      ∃ map, Cst.rInitsToMap? r = some map := by
   intro r
   induction r with
-  | nil => intro avs _ _; exact ⟨[], by simp [rInitsToMap?]⟩
+  | nil => intro avs _ _; exact ⟨[], by simp [Cst.rInitsToMap?]⟩
   | cons ri rs ih =>
     intro avs hev hcomp
     rw [List.mapM_ok_iff_forall₂] at hev
@@ -86,7 +85,7 @@ theorem rInits_complete {req : Request} {es : Entities} :
               | some attr => do let val ← ri.value.evaluate req es; .ok (attr, val)) = .ok av_tl := by
             rw [List.mapM_ok_iff_forall₂]; exact htl
           obtain ⟨mtl, hmtl⟩ := ih av_tl htl' (fun x hx => hcomp x (List.mem_cons_of_mem _ hx))
-          exact ⟨(attr, vae) :: mtl, by simp [rInitsToMap?, heos, hattr, hvae, hmtl]⟩
+          exact ⟨(attr, vae) :: mtl, by simp [Cst.rInitsToMap?, heos, hattr, hvae, hmtl]⟩
 
 /-- `toUnreservedString?` succeeds only on an (unreserved) `.idIdent`. -/
 private theorem toUnreservedString?_some {i : Cst.Ident} {s : String}
@@ -101,16 +100,16 @@ private theorem toUnreservedString?_some {i : Cst.Ident} {s : String}
 
 /-- Prepending a field accessor reduces through `memberAuxB`'s attribute branch
     as long as the remaining accessors don't begin with a call. -/
-private theorem memberAuxB_field_cons (id : Cst.Ident) (l : List AstAccessor) (he : Expr)
-    (hnc : ∀ cargs t, l ≠ AstAccessor.call cargs :: t) :
-    memberAuxB he (.field id :: l) = memberAuxB (.getAttr he (Cst.Ident.toString id)) l := by
+private theorem memberAuxB_field_cons (id : Cst.Ident) (l : List Cst.AstAccessor) (he : Expr)
+    (hnc : ∀ cargs t, l ≠ Cst.AstAccessor.call cargs :: t) :
+    Cst.memberAuxB he (.field id :: l) = Cst.memberAuxB (.getAttr he (Cst.Ident.toString id)) l := by
   cases l with
-  | nil => simp [memberAuxB]
+  | nil => simp [Cst.memberAuxB]
   | cons a t =>
     cases a with
     | call cargs => exact absurd rfl (hnc cargs t)
-    | field f => simp [memberAuxB]
-    | index s => simp [memberAuxB]
+    | field f => simp [Cst.memberAuxB]
+    | index s => simp [Cst.memberAuxB]
 
 /-- Core accessor-list completeness: if `Member.evalAccessors` succeeds on `accs`
     (and each call-argument translates when it evaluates), then `accs` translates
@@ -122,8 +121,8 @@ theorem evalAccessors_complete {req : Request} {es : Entities}
     (hcomp : ∀ ce : Cst.Expr, sizeOf ce < sizeOf accs →
       ∀ w, ce.evaluate req es = .ok w → ∃ ax, ce.toAExpr? = some ax) :
     ∃ accs_ast, accs.mapM Cst.MemAccess.toAstAccessor? = some accs_ast ∧
-      (∀ cargs t, accs_ast ≠ AstAccessor.call cargs :: t) ∧
-      ∀ he : Expr, ∃ r, memberAuxB he accs_ast = some r := by
+      (∀ cargs t, accs_ast ≠ Cst.AstAccessor.call cargs :: t) ∧
+      ∀ he : Expr, ∃ r, Cst.memberAuxB he accs_ast = some r := by
   match accs, hev with
   | [], _ => exact ⟨[], by simp, by simp, fun he => ⟨he, rfl⟩⟩
   | .call _ :: _, hev => simp [Cst.Member.evalAccessors] at hev
@@ -142,7 +141,7 @@ theorem evalAccessors_complete {req : Request} {es : Entities}
         · simp [List.mapM_cons, Cst.MemAccess.toAstAccessor?, hex, hrest_ast]
         · intro he
           obtain ⟨r, hr⟩ := hmemb (Expr.getAttr he attr)
-          exact ⟨r, by simp only [memberAuxB]; exact hr⟩
+          exact ⟨r, by simp only [Cst.memberAuxB]; exact hr⟩
   | .field i :: .call args :: rest, hev =>
     cases hi : Cst.Ident.toUnreservedString? i with
     | none => simp [Cst.Member.evalAccessors, hi] at hev
@@ -180,7 +179,7 @@ theorem evalAccessors_complete {req : Request} {es : Entities}
                   · intro he
                     obtain ⟨r, hr⟩ := hmemb (Expr.binaryApp bop he a)
                     refine ⟨r, ?_⟩
-                    simp only [memberAuxB, Cst.Ident.toMeth?, hop, oneArg?]
+                    simp only [Cst.memberAuxB, Cst.Ident.toMeth?, hop, Cst.oneArg?]
                     exact hr
         | inr uop =>
           cases args with
@@ -200,7 +199,7 @@ theorem evalAccessors_complete {req : Request} {es : Entities}
               · intro he
                 obtain ⟨r, hr⟩ := hmemb (Expr.unaryApp uop he)
                 refine ⟨r, ?_⟩
-                simp only [memberAuxB, Cst.Ident.toMeth?, hop, List.isEmpty_nil, if_true]
+                simp only [Cst.memberAuxB, Cst.Ident.toMeth?, hop, List.isEmpty_nil, if_true]
                 exact hr
   | .field i :: [], hev =>
     cases hi : Cst.Ident.toUnreservedString? i with
@@ -210,7 +209,7 @@ theorem evalAccessors_complete {req : Request} {es : Entities}
       refine ⟨[.field (.idIdent attr hm_kw)], ?_, by simp, ?_⟩
       · simp [List.mapM_cons, Cst.MemAccess.toAstAccessor?, hi]
       · intro he
-        exact ⟨Expr.getAttr he attr, by simp [memberAuxB, Cst.Ident.toString]⟩
+        exact ⟨Expr.getAttr he attr, by simp [Cst.memberAuxB, Cst.Ident.toString]⟩
   | .field i :: .field i2 :: rest, hev =>
     cases hi : Cst.Ident.toUnreservedString? i with
     | none => simp [Cst.Member.evalAccessors, hi] at hev
@@ -379,11 +378,11 @@ theorem extractScope_complete
   (cp : Cst.Policy) (req : Request) (es : Entities) :
   ¬ Cst.hasError cp req es →
   ∃ trip, match cp with
-  | .policy p => extractScope? p.vars = some trip := by
+  | .policy p => Cst.extractScope? p.vars = some trip := by
   intro hne
   cases cp with
   | policy p =>
-    cases h : extractScope? p.vars with
+    cases h : Cst.extractScope? p.vars with
     | none =>
       exfalso
       apply hne

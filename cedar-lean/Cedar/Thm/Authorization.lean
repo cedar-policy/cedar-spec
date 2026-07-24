@@ -18,6 +18,7 @@ module
 
 import Cedar.Spec
 import Cedar.Thm.Authorization.CstPolicySlice
+import Cedar.Thm.Authorization.Authorizer
 import Cedar.Thm.Authorization.PolicySlice
 import Cedar.Thm.Authorization.Evaluator
 
