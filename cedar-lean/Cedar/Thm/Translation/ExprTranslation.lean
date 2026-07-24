@@ -154,6 +154,9 @@ theorem Cst.Primary.toAExpr?_sound
       obtain ⟨vEos, hvEos, hvExpr⟩ := hax
       exact Cst.Expr.toAExpr?_sound hvEos ax hvExpr
     exact rInits_record_eval_eq req es r map hmap hperElt
+  | slot _ =>
+    intro hprim
+    simp [Cst.Primary.toExprOrSpecial?] at hprim
 
 termination_by (sizeOf prim, 0)
 decreasing_by all_goals (apply Prod.Lex.left; first | (subst_vars; assumption) | simp_wf)
@@ -179,7 +182,7 @@ theorem Cst.Member.toAExpr?_sound
     exact Cst.Expr.toAExpr?_sound hceos ax hax2
   unfold Cst.Member.evaluate
   split
-  case h_1 _ s args rest =>
+  case h_1 _ s _ args rest =>
     simp only [Cst.Primary.toExprOrSpecial?, Cst.Name.toVar?, Cst.Name.toAName?,
       Cst.Name.toAName?,
       Cst.Ident.toUnrestrictedString?, List.isEmpty_nil, Bool.not_true, Bool.false_eq_true,
@@ -275,12 +278,12 @@ theorem Cst.Member.toAExpr?_sound
                 · rename_i hcond
                   simp only [Bool.and_eq_true] at hcond
                   obtain ⟨hpath, hfn⟩ := hcond
-                  obtain ⟨ss, hs⟩ := toExprOrSpecial_name_func hitem (by simpa using hpath) hfn
+                  obtain ⟨ss, hss_kw, hs⟩ := toExprOrSpecial_name_func hitem (by simpa using hpath) hfn
                   cases haccess : access with
                   | nil => rw [haccess] at haccs; simp at haccs
                   | cons aa rr =>
                     cases aa with
-                    | call cargs => exact hnfc ss cargs rr hs haccess
+                    | call cargs => exact hnfc ss hss_kw cargs rr hs haccess
                     | field f =>
                       rw [haccess] at haccs
                       cases f <;>
@@ -315,10 +318,6 @@ theorem Cst.Unary.toAExpr?_sound
     simp [Cst.Unary.toExprOrSpecial?, hop] at hu
     simp [Cst.Unary.evaluate, hop]
     exact Cst.Member.toAExpr?_sound hu aexp heos
-  | some .nOverBang =>
-    simp [Cst.Unary.toExprOrSpecial?, hop] at hu
-  | some .nOverDash =>
-    simp [Cst.Unary.toExprOrSpecial?, hop] at hu
   | some (.nBang n) =>
     simp [Cst.Unary.toExprOrSpecial?, hop] at hu
     simp [Cst.Unary.evaluate, hop]
