@@ -18,6 +18,7 @@ import Cedar.Thm.Data
 import Cedar.Thm.Tactics
 import Cedar.Thm.Authorization
 import Cedar.Thm.PolicySlice
+import Cedar.Thm.CstPolicySlice
 import Cedar.Thm.SymCC.Opt
 import Cedar.Thm.Typechecking
 import Cedar.Thm.Validation
@@ -25,3 +26,6 @@ import Cedar.Thm.WellTyped
 import Cedar.Thm.TPE
 import Cedar.Thm.BatchedEvaluator
 import Cedar.Thm.WellTypedVerification
+import Cedar.Thm.Translation
+import Cedar.Thm.CstAuthorizer
+import Cedar.Thm.CstValidation
