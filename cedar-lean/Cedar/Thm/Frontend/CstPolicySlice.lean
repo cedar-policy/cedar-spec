@@ -47,6 +47,9 @@ as an extra hypothesis.
 namespace Cedar.Thm
 
 open Cedar.Spec Cedar.Slice Cedar.Slice.Cst
+open Cedar.Frontend
+open Cedar.Frontend.Cst hiding Expr ExprImpl ExprData OrExpr AndExpr AddExpr MultExpr Name Policy PolicyImpl Policies Ident Literal Primary Member MemAccess Unary Relation RelOp Cond VariableDef Ref RecInit Str
+
 
 /--
 Scope analysis computed natively on a CST policy agrees with scope analysis

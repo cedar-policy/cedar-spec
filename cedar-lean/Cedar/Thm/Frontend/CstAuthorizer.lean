@@ -1,12 +1,31 @@
+/-
+ Copyright Cedar Contributors
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-/
+
 import Cedar.Spec
-import Cedar.Spec.Cst
-import Cedar.Spec.CstSemantics
+import Cedar.Frontend.Cst
+import Cedar.Frontend.Cst.Semantics
 import Cedar.Thm.Data.Set
 
 namespace Cedar.Thm.Cst
 
 open Cedar.Data
 open Cedar.Spec
+open Cedar.Frontend
+open Cedar.Frontend.Cst hiding Expr ExprImpl ExprData OrExpr AndExpr AddExpr MultExpr Name Policy PolicyImpl Policies Ident Literal Primary Member MemAccess Unary Relation RelOp Cond VariableDef Ref RecInit Str
+
 
 def HasSatisfiedEffect (effect : Effect) (request : Request) (entities : Entities) (policies : Cst.Policies) : Prop :=
   ∃ policy ∈ policies.ps,

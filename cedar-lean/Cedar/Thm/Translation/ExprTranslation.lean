@@ -1,7 +1,7 @@
 import Cedar.Spec
-import Cedar.Spec.Cst
-import Cedar.Spec.CstSemantics
-import Cedar.Spec.CstToAst
+import Cedar.Frontend.Cst
+import Cedar.Frontend.Cst.Semantics
+import Cedar.Frontend.Cst.ToAst
 import Cedar.Thm.Translation.AuxSound
 import Cedar.Thm.Data.List.Lemmas
 
@@ -9,6 +9,8 @@ namespace Cedar.Thm
 
 open Cedar.Data
 open Cedar.Spec
+open Cedar.Frontend
+open Cedar.Frontend.Cst hiding Expr ExprImpl ExprData OrExpr AndExpr AddExpr MultExpr Name Policy PolicyImpl Policies Literal Primary Member MemAccess Unary Relation RelOp Cond VariableDef Ref RecInit Str
 
 set_option maxHeartbeats 1000000
 
@@ -18,14 +20,14 @@ theorem Cst.ExprOrSpecial.toExpr?_sound {eos : ExprOrSpecial} {aexp : Expr} req 
       (match eos with
         | .expr e    => evaluate e req es
         | .var var   => evaluate (Expr.var var) req es
-        | .strLit s  => (CstCommon.unescape? s).elim
+        | .strLit s  => (Cst.unescape? s).elim
                           (.error (.cstError .stringError))
                           (fun s' => .ok (.prim (.string s')))
         | .boolLit b => .ok (.prim (.bool b))
         | .name _    => .error (.cstError .nameError)) := by
   cases eos <;> intro h <;> simp_all [ExprOrSpecial.toExpr?]
   · rename_i lit
-    cases hsome : CstCommon.unescape? lit with
+    cases hsome : Cst.unescape? lit with
     | none => simp [hsome] at h
     | some s' => simp only [hsome] at h ⊢; simp at h; subst h; simp [evaluate]
   · rename_i b; subst h; simp [evaluate]
@@ -56,7 +58,7 @@ theorem Cst.Primary.toAExpr?_sound
     | liStr s =>
       simp at hprim; subst hprim
       simp [Cst.Primary.evaluate, Cst.Str.toUnescapedString]
-      cases hs : CstCommon.unescape? s <;> simp
+      cases hs : Cst.unescape? s <;> simp
   | ref r =>
     intro href aexp heos
     rw [Cst.ExprOrSpecial.toExpr?_sound req es heos]
@@ -69,12 +71,11 @@ theorem Cst.Primary.toAExpr?_sound
       obtain ⟨ty, hty, su, hsu1, hsu2⟩ := href
       simp at hsu2; subst hsu2
       simp [Cst.Primary.evaluate, Cst.Str.toUnescapedString]
-      cases hs : CstCommon.unescape? s with
+      cases hs : Cst.unescape? s with
       | none => rw [hs] at hsu1; contradiction
       | some su' =>
         rw [hs] at hsu1; simp at hsu1
         simp [hsu1, bind, Except.bind]
-        simp only [Cst.Name.toAName?] at hty
         simp [evaluate, hty]
     | ref path rinits => simp [Cst.Ref.toExprOrSpecial?] at href
   | name n =>
@@ -180,8 +181,8 @@ theorem Cst.Member.toAExpr?_sound
   split
   case h_1 _ s args rest =>
     simp only [Cst.Primary.toExprOrSpecial?, Cst.Name.toVar?, Cst.Name.toAName?,
-      CstCommon.Name.toAName?,
-      CstCommon.Ident.toUnrestrictedString?, List.isEmpty_nil, Bool.not_true, Bool.false_eq_true,
+      Cst.Name.toAName?,
+      Cst.Ident.toUnrestrictedString?, List.isEmpty_nil, Bool.not_true, Bool.false_eq_true,
       reduceIte, Option.pure_def, List.mapM_nil, Option.bind_eq_bind, Option.bind_some,
       Option.some.injEq] at hitem
     subst hitem
@@ -197,15 +198,15 @@ theorem Cst.Member.toAExpr?_sound
         have := List.sizeOf_lt_of_mem hce
         simp only [Cst.MemAccess.call.sizeOf_spec,
           List.cons.sizeOf_spec]; omega) ax hax
-    cases hfn : CstCommon.String.toExtFun? s with
+    cases hfn : Cst.String.toExtFun? s with
     | none =>
-      have htf : Name.toFunc? { id := s, path := [] } xs = none := by
-        simp [Name.toFunc?, hfn]
+      have htf : toFunc? { id := s, path := [] } xs = none := by
+        simp [toFunc?, hfn]
       rw [memberAux, memberAuxA, htf] at hmem
       simp at hmem
     | some xfn =>
-      have htf : Name.toFunc? { id := s, path := [] } xs = some (.call xfn xs) := by
-        simp [Name.toFunc?, hfn, toExtFun?_some_isFunctionName hfn]
+      have htf : toFunc? { id := s, path := [] } xs = some (.call xfn xs) := by
+        simp [toFunc?, hfn, toExtFun?_some_isFunctionName hfn]
       have hb : memberAuxB (.call xfn xs) rest_ast = some aexp := by
         have hmeq : memberAux (.name { id := s, path := [] }) (.call xs :: rest_ast)
                   = (memberAuxB (.call xfn xs) rest_ast).bind (fun r => some (.expr r)) := by
@@ -266,10 +267,10 @@ theorem Cst.Member.toAExpr?_sound
               | cons a2 r2 => cases a2 <;> simp [memberAux, memberAuxA] at hmem
             | index id => simp [memberAux, memberAuxA] at hmem
             | call xs =>
-              cases hfunc : Name.toFunc? an xs with
+              cases hfunc : toFunc? an xs with
               | none => simp [memberAux, memberAuxA, hfunc] at hmem
               | some e'' =>
-                simp only [Name.toFunc?] at hfunc
+                simp only [toFunc?] at hfunc
                 split at hfunc
                 · rename_i hcond
                   simp only [Bool.and_eq_true] at hcond
@@ -382,7 +383,7 @@ theorem Cst.Unary.toAExpr?_sound
         rw [UInt8.toNat_sub, h1]
         have hbnd : n.toNat < 256 := n.toNat_lt
         omega
-      match hlit : CstCommon.Member.toLit? u.item with
+      match hlit : Cst.Member.toLit? u.item with
       | some (.liNum x) =>
         simp [hlit] at hu
         match hcmp : compare x.toNat (Int64.MAX + 1).toNat with
