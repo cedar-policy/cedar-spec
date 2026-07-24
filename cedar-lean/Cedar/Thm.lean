@@ -26,5 +26,5 @@ import Cedar.Thm.TPE
 import Cedar.Thm.BatchedEvaluator
 import Cedar.Thm.WellTypedVerification
 import Cedar.Thm.Frontend
-import Cedar.Thm.Frontend.CstAuthorizer
-import Cedar.Thm.Frontend.CstValidation
+import Cedar.Thm.Frontend.Authorizer
+import Cedar.Thm.Frontend.Validation
