@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Data
+import Cedar.Frontend
 import Cedar.Spec
 import Cedar.Spec.Json
 import Cedar.Thm
