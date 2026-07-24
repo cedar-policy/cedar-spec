@@ -1,3 +1,19 @@
+/-
+ Copyright Cedar Contributors
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-/
+
 import Cedar.Slice.PolicySlice
 import Cedar.Frontend.Cst.Slice
 import Cedar.Thm.Authorization.Authorizer
@@ -20,12 +36,12 @@ Key theorems in this file:
   via `prVars?` (i.e. `prVars?` is `isSome`). This well-formedness fact is the
   precondition required to run scope analysis on the CST. (The policy-store level
   variant `policies_translation_success_prVars_isSome` lives in
-  `Cedar/Thm/CstPolicySlice.lean`.)
+  `Cedar/Thm/Frontend/PolicySlice.lean`.)
 
 * `translation_preserves_scopeAnalysis'`: Scope analysis computed natively on a CST
   policy (`Cst.scopeAnalysis`) agrees with scope analysis computed on the AST policy
   it translates to (`scopeAnalysis`). (The packaged form
-  `translation_preserves_scopeAnalysis` lives in `Cedar/Thm/CstPolicySlice.lean`.)
+  `translation_preserves_scopeAnalysis` lives in `Cedar/Thm/PolicySlice.lean`.)
 
 * `cst_slice_chooses_same_policies`: Lifting the previous result to whole policy
   stores, the CST slice and the AST slice select corresponding policies in lockstep.
