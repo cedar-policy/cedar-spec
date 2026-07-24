@@ -1,11 +1,14 @@
 import Cedar.Spec
-import Cedar.Spec.Cst
-import Cedar.Spec.CstToAst
+import Cedar.Frontend.Cst
+import Cedar.Frontend.Cst.ToAst
 import Cedar.Slice.PolicySlice
 
 namespace Cedar.Slice.Cst
 
 open Cedar.Spec
+open Cedar.Frontend
+open Cedar.Frontend.Cst hiding Expr ExprImpl ExprData OrExpr AndExpr AddExpr MultExpr Name Policy PolicyImpl Policies Ident Literal Primary Member MemAccess Unary Relation RelOp Cond VariableDef Ref RecInit Str
+
 
 -- Returns true if a `VariableDef` is well-formed.
 def varBoundWF (vd : Cst.VariableDef) : Bool :=
