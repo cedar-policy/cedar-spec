@@ -30,7 +30,7 @@ open Cedar.Validation
 
 /-- If a translated CST expression is well-typed, evaluating the CST expression
 never throws a `typeError`. -/
-theorem cst_validated_no_type_error
+theorem validated_no_type_error
     {cst : Cst.Expr} {ast : Spec.Expr} {c₁ c₂ : Capabilities} {ty : TypedExpr}
     {env : TypeEnv} {request : Request} {entities : Entities}
     (htrans : cst.toAExpr? = some ast)
