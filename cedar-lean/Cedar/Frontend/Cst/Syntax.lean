@@ -1,23 +1,4 @@
-/-
- Copyright Cedar Contributors
-
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
-
-      https://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
--/
-
 module
-
-public import Cedar.Spec.Policy
-public import Cedar.Spec.Wildcard
 
 @[expose] public section
 
@@ -49,6 +30,12 @@ namespace Cedar.Frontend.Cst
 --
 -- Generally, the cst::* concrete syntax tree structures are represented without location
 -- information in Lean. We also omit elements that are useful in Rust only for nice error reporting.
+
+/-- The list of Cedar keywords that cannot appear as plain identifiers. -/
+public def keywords : List String :=
+  ["principal", "action", "resource", "context", "true", "false",
+   "permit", "forbid", "when", "unless", "in", "has", "like", "is",
+   "if", "then", "else", "__cedar"]
 
 -- Identifiers of the Cedar language, including special ones
 public inductive Ident where
@@ -87,8 +74,31 @@ public inductive Ident where
   -- cst::Ident::Else
   | idElse
   -- cst::Ident::Ident(SmoltStr)
-  | idIdent (s : String)
+  | idIdent (s : String) (h : s ∉ keywords)
   -- Note: the cst::Ident::Invalid(String) is not represented in Lean
+
+deriving instance DecidableEq, Repr for Ident
+
+/-- Convert an `Ident` back to its string representation. -/
+public def Ident.toString : Ident → String
+  | .idPrincipal => "principal"
+  | .idAction    => "action"
+  | .idResource  => "resource"
+  | .idContext   => "context"
+  | .idTrue      => "true"
+  | .idFalse     => "false"
+  | .idPermit    => "permit"
+  | .idForbid    => "forbid"
+  | .idWhen      => "when"
+  | .idUnless    => "unless"
+  | .idIn        => "in"
+  | .idHas       => "has"
+  | .idLike      => "like"
+  | .idIs        => "is"
+  | .idIf        => "if"
+  | .idThen      => "then"
+  | .idElse      => "else"
+  | .idIdent s _ => s
 
 -- This is a cst::Literal in Rust.
 -- Should the type of n match the Rust implementation (i.e. UInt64)?
@@ -143,8 +153,6 @@ public inductive NegOp where
   | nBang (n : UInt8)
   -- cst::NegOp::Dash(u8)
   | nDash (n : UInt8)
-  | nOverBang
-  | nOverDash
   -- cst::NegOp::OverBand and cst::NegOp::OverDash are not represented in Lean, they are used
   -- to return nice errors
 
@@ -153,6 +161,12 @@ public inductive NegOp where
 -- constructors in the future
 
 mutual
+
+-- This is a cst::Cond
+-- Cond := Ident '{' Expr '}'
+public structure Cond where
+  kind : Ident
+  body : Expr
 
 -- This is a cst::Str
 -- There is no correspondence of Rust's `SmolStr` in LEAN
@@ -173,12 +187,17 @@ public inductive Policy where
 
 -- This is a cst::PolicyImpl
 public structure PolicyImpl where
-  -- annotations : List Annotation
-  -- cst::PolicyImpl::annotations not formalized at this stage
+  id : String
+  -- cst::PolicyImpl::annotations
+  annotations : List Annotation
   effect : Ident
   vars : List VariableDef
   conds : List Cond
-  id : String
+
+-- This is a cst::Annotation
+public structure Annotation where
+  name : Ident
+  value : Option Str
 
 -- This is a cst::VariableDef
 -- `variable` is a LEAN keyword
@@ -191,9 +210,6 @@ public structure VariableDef where
   -- cst::VariableDef::ineq
   ineq : Option (RelOp × Expr)
 
-public structure Cond where
-  cond : Ident
-  expr : Option Expr
 
 -- This is a cst::Expr
 public inductive Expr where
@@ -259,9 +275,8 @@ public structure Member where
 public inductive MemAccess where
   -- cst::MemAccess::Field(Node<Ident>)
   | field (i : Ident)
-  -- cst::MemAccess::Call(Vec<Node<Expr>>) is not represented in Lean
-  -- Supporting function calls will require thinking about extension functions
-  | call (fs : List Expr)
+  -- cst::MemAccess::Call(Vec<Node<Expr>>)
+  | call (args : List Expr)
   -- cst::MemAccess::Index(Node<Expr>)
   | index (e : Expr)
 
@@ -273,14 +288,19 @@ public inductive Primary where
   | ref (r : Ref)
   -- cst::Primary::Name(Node<Name>)
   | name (n : Name)
-  -- cst::Primary::Slot(Node<Slot>) is not represented in Lean (support will be added later)
-  -- | slot (s : Slot)
+  -- cst::Primary::Slot(Node<Slot>)
+  | slot (s : Str)
   -- cst::Primary::Expr(Node<Expr>)
   | expr (e : Expr)
   -- cst::Primary::EList(Vec<Node<Expr>>)
   | eList (es : List Expr)
-  -- cst::Primary::RInits(Vec<Node<RecInit>>) is not represented in Lean (support will be added later)
-  | rInits (r : List RecInit)
+  -- cst::Primary::RInits(Vec<Node<RecInit>>)
+  | rInits (rs : List RecInit)
+
+-- This is a cst::RecInit(Node<Expr>, Node<Expr>)
+public structure RecInit where
+  attr : Expr
+  value : Expr
 
 -- This is a cst::Name
 public structure Name where
@@ -298,10 +318,6 @@ public inductive Ref where
 public structure RefInit where
   id : Ident
   lit : Literal
-
-public structure RecInit where
-  key : Expr
-  value : Expr
 
 end
 

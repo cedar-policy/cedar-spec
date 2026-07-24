@@ -480,7 +480,7 @@ theorem addExpr_toHasRhs_toAttrs_agrees
         rw [han_eq] at hfirst
         simp at hfirst
         cases hname : nname with
-        | idIdent s =>
+        | idIdent s hs_kw =>
           rw [hname] at hfirst
           simp [Cst.Ident.toString] at hfirst
           have hs_eq_and_unreserved : s = first ∧ Cst.Unreserved? s = true := by
@@ -508,8 +508,8 @@ theorem addExpr_toHasRhs_toAttrs_agrees
     rw [hmi] at hbody; simp at hbody
   | .rInits r =>
     rw [hmi] at hbody; simp at hbody
-
-/-- `fieldChain?` returns the empty list only for an empty access list. -/
+  | .slot _ =>
+    rw [hmi] at hbody; simp at hbody
 theorem fieldChain?_eq_nil {access : List Cst.MemAccess} :
     Cst.fieldChain? access = some [] → access = [] := by
   intro h
@@ -590,7 +590,7 @@ theorem addExpr_toAttrs_toHasRhs {e : Cst.AddExpr} {attrs : List Attr} :
                   exact ⟨.inr ("context" :: fields), by
                     simp [Cst.AddExpr.toHasRhs?, Cst.Primary.toExprOrSpecial?,
                           Cst.Name.toVar?, varToString, constructAttrs?, hcaeq]⟩
-                | idIdent s =>
+                | idIdent s hs_kw =>
                   simp only [Cst.Ident.toHasHead?] at hhh
                   split at hhh
                   · rename_i hunres
@@ -608,7 +608,7 @@ theorem addExpr_toAttrs_toHasRhs {e : Cst.AddExpr} {attrs : List Attr} :
                 | idTrue | idFalse | idPermit | idForbid | idWhen | idUnless
                 | idIn | idHas | idLike | idIs | idIf | idThen | idElse =>
                   simp [Cst.Ident.toHasHead?] at hhh
-          | ref _ | expr _ | eList _ | rInits _ => simp at h
+          | ref _ | expr _ | slot _ | eList _ | rInits _ => simp at h
 /-- `toAttrs?` always produces a non-empty list when it succeeds: the result is
     either `[unescaped_lit]` or `head :: fields`. -/
 theorem toAttrs?_nonempty {e : Cst.AddExpr} {fs : List Attr} :
@@ -819,7 +819,8 @@ private theorem primary_toExprOrSpecial_strLit
     simp [Cst.Primary.toExprOrSpecial?, Option.bind_eq_some_iff] at h
   | rInits _ =>
     simp [Cst.Primary.toExprOrSpecial?, Option.bind_eq_some_iff] at h
-
+  | slot _ =>
+    simp [Cst.Primary.toExprOrSpecial?] at h
 /-- Helper: `Cst.Member.toExprOrSpecial? m = some (.strLit lit)` iff
     `m.access = []` and `m.item = .literal (.liStr lit)`. -/
 private theorem member_toExprOrSpecial_strLit
@@ -899,7 +900,6 @@ theorem addExpr_toPattern_toPatternString_agrees
               · simp [Option.bind_eq_some_iff] at heos
           | nBang _ =>
             simp [Option.bind_eq_some_iff] at heos
-          | nOverBang | nOverDash => simp at heos
 
 /-- Converse direction (eval ⟹ translate) for `rLike`: if the evaluator's
     `toPatternString?` succeeds with `s`, then the AddExpr translates to the
@@ -932,7 +932,7 @@ theorem addExpr_toPatternString_toExprOrSpecial {e : Cst.AddExpr} {s : String} :
                     Cst.Primary.toExprOrSpecial?, Cst.Literal.toExprOrSpecial?,
                     memberAux, memberAuxA, List.mapM_nil]
             | liTrue | liFalse | liNum _ => simp at h
-          | ref _ | name _ | expr _ | eList _ | rInits _ => simp at h
+          | ref _ | name _ | expr _ | slot _ | eList _ | rInits _ => simp at h
       | some o =>
         cases o with
         | nDash n =>
@@ -951,9 +951,9 @@ theorem addExpr_toPatternString_toExprOrSpecial {e : Cst.AddExpr} {s : String} :
                         Cst.Primary.toExprOrSpecial?, Cst.Literal.toExprOrSpecial?,
                         memberAux, memberAuxA, List.mapM_nil]
                 | liTrue | liFalse | liNum _ => simp at h
-              | ref _ | name _ | expr _ | eList _ | rInits _ => simp at h
+              | ref _ | name _ | expr _ | slot _ | eList _ | rInits _ => simp at h
           · simp [hn] at h
-        | nBang _ | nOverBang | nOverDash => simp at h
+        | nBang _ => simp at h
 
 /-- Helper: `memberAux ieos accs = some (.name an)` requires `accs = []`
     and `ieos = .name an`. -/
@@ -1019,7 +1019,8 @@ private theorem primary_toExprOrSpecial_name
     simp [Cst.Primary.toExprOrSpecial?, Option.bind_eq_some_iff] at h
   | rInits _ =>
     simp [Cst.Primary.toExprOrSpecial?, Option.bind_eq_some_iff] at h
-
+  | slot _ =>
+    simp [Cst.Primary.toExprOrSpecial?] at h
 /-- Helper: `Cst.Member.toExprOrSpecial? m = some (.name an)` requires
     `m.access = []` and `m.item = .name n` with `n.toAName? = some an`. -/
 private theorem member_toExprOrSpecial_name
@@ -1151,7 +1152,7 @@ private theorem toMeth?_eval_error_eq
     (herr : evaluate he req es = .error err) :
     evaluate head' req es = .error err := by
   cases id with
-  | idIdent s =>
+  | idIdent s hs_kw =>
     cases hop : Cst.String.toMethodOp? s with
     | none => simp [Cst.Ident.toMeth?, hop] at hm
     | some op =>
@@ -1237,7 +1238,7 @@ private theorem mapM_toAst_field_head {i2 : Cst.Ident} {rest2 : List Cst.MemAcce
     Option.some.injEq] at h
   obtain ⟨a2, ha2, r2, _, rfl⟩ := h
   cases i2 with
-  | idIdent s2 =>
+  | idIdent s2 hs2 =>
     simp only [Cst.MemAccess.toAstAccessor?, Option.bind_eq_bind, Option.bind_eq_some_iff,
       Option.some.injEq] at ha2
     obtain ⟨s2, _, rfl⟩ := ha2
@@ -1301,18 +1302,20 @@ theorem evalAccessors_eq
       Option.some.injEq] at htrans
     obtain ⟨a_ast, ha_ast, rest_ast, hrest, rfl⟩ := htrans
     cases i with
-    | idIdent s0 =>
-      simp only [Cst.MemAccess.toAstAccessor?, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at ha_ast
+    | idIdent s0 hs0 =>
+      simp only [Cst.MemAccess.toAstAccessor?, Cst.Ident.toUnreservedString?, Unreserved?,
+        Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at ha_ast
       obtain ⟨s, hs, rfl⟩ := ha_ast
       subst hrest
+      have hs_eq : s = s0 := by simp at hs; exact hs.2.symm
       rw [memberAuxB_field_nil] at hb
-      have hev : Cst.Member.evalAccessors head [.field (.idIdent s0)] req es
-               = (do let hv ← getAttr head s es; Cst.Member.evalAccessors hv [] req es) := by
-        simp [Cst.Member.evalAccessors, hs]
-      have hstep : evaluate (Expr.getAttr headExpr (Cst.Ident.toString (.idIdent s))) req es
-                   = getAttr head s es := by
-        simp [evaluate, hhead, Cst.Ident.toString, bind, Except.bind]
-      have hbrec : memberAuxB (Expr.getAttr headExpr (Cst.Ident.toString (.idIdent s))) [] = some bexp := hb
+      have hev : Cst.Member.evalAccessors head [.field (.idIdent s0 hs0)] req es
+               = (do let hv ← Spec.getAttr head s0 es; Cst.Member.evalAccessors hv [] req es) := by
+        simp [Cst.Member.evalAccessors]
+      have hstep : evaluate (Expr.getAttr headExpr s0) req es
+                   = Spec.getAttr head s0 es := by
+        simp [evaluate, hhead, bind, Except.bind]
+      have hbrec : memberAuxB (Expr.getAttr headExpr s0) [] = some bexp := hb
       rw [hev]
       exact evalAccessors_step_eq hstep hbrec
         (fun hv' hge => evalAccessors_eq [] [] _ bexp hv' (by simp) hbrec hge
@@ -1323,9 +1326,11 @@ theorem evalAccessors_eq
     simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at htrans
     obtain ⟨a_ast, ha_ast, tl_ast, htl, rfl⟩ := htrans
     cases i with
-    | idIdent s0 =>
+    | idIdent s0 hs0 =>
       simp only [Cst.MemAccess.toAstAccessor?, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at ha_ast
       obtain ⟨s, hs, rfl⟩ := ha_ast
+      have hs_eq : s = s0 := by simp at hs; exact hs.symm
+      subst hs_eq
       rw [List.mapM_cons] at htl
       simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at htl
       obtain ⟨a2_ast, ha2_ast, rest2_ast, hrest2, rfl⟩ := htl
@@ -1354,7 +1359,7 @@ theorem evalAccessors_eq
               have hstep : evaluate (Expr.binaryApp bop headExpr ax) req es
                            = (do let argVal ← arg.evaluate req es; apply₂ bop head argVal es) := by
                 simp [evaluate, hhead, hagr, bind, Except.bind]
-              have hev : Cst.Member.evalAccessors head (.field (.idIdent s0) :: .call [arg] :: rest2) req es
+              have hev : Cst.Member.evalAccessors head (.field (.idIdent s hs0) :: .call [arg] :: rest2) req es
                        = (do let hv ← (do let argVal ← arg.evaluate req es; apply₂ bop head argVal es);
                              Cst.Member.evalAccessors hv rest2 req es) := by
                 simp [Cst.Member.evalAccessors, hs, hop, bind_assoc]
@@ -1374,7 +1379,7 @@ theorem evalAccessors_eq
             simp only [Cst.Ident.toMeth?, hop, List.isEmpty_nil, if_true] at hb
             have hstep : evaluate (Expr.unaryApp uop headExpr) req es = apply₁ uop head := by
               simp [evaluate, hhead, bind, Except.bind]
-            have hev : Cst.Member.evalAccessors head (.field (.idIdent s0) :: .call [] :: rest2) req es
+            have hev : Cst.Member.evalAccessors head (.field (.idIdent s hs0) :: .call [] :: rest2) req es
                      = (do let hv ← apply₁ uop head; Cst.Member.evalAccessors hv rest2 req es) := by
               simp [Cst.Member.evalAccessors, hs, hop, bind, Except.bind]
             rw [hev]
@@ -1388,17 +1393,17 @@ theorem evalAccessors_eq
     simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at htrans
     obtain ⟨a_ast, ha_ast, tl_ast, htl, rfl⟩ := htrans
     cases i with
-    | idIdent s0 =>
+    | idIdent s0 hs0 =>
       simp only [Cst.MemAccess.toAstAccessor?, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at ha_ast
       obtain ⟨s, hs, rfl⟩ := ha_ast
       obtain ⟨id2, r2, htl_shape⟩ := mapM_toAst_field_head htl
       rw [htl_shape, memberAuxB_field_field, ← htl_shape] at hb
-      have hev : Cst.Member.evalAccessors head (.field (.idIdent s0) :: .field i2 :: rest2) req es
-               = (do let hv ← getAttr head s es; Cst.Member.evalAccessors hv (.field i2 :: rest2) req es) := by
-        simp [Cst.Member.evalAccessors, hs]
-      have hstep : evaluate (Expr.getAttr headExpr (Cst.Ident.toString (.idIdent s))) req es
-                   = getAttr head s es := by
-        simp [evaluate, hhead, Cst.Ident.toString, bind, Except.bind]
+      have hev : Cst.Member.evalAccessors head (.field (.idIdent s0 hs0) :: .field i2 :: rest2) req es
+               = (do let hv ← getAttr head s0 es; Cst.Member.evalAccessors hv (.field i2 :: rest2) req es) := by
+        simp [Cst.Member.evalAccessors]
+      have hstep : evaluate (Expr.getAttr headExpr (s0)) req es
+                   = getAttr head s0 es := by
+        simp [evaluate, hhead, bind, Except.bind]
       rw [hev]
       exact evalAccessors_step_eq hstep hb
         (fun hv' hge => evalAccessors_eq (.field i2 :: rest2) tl_ast _ bexp hv'
@@ -1409,17 +1414,17 @@ theorem evalAccessors_eq
     simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at htrans
     obtain ⟨a_ast, ha_ast, tl_ast, htl, rfl⟩ := htrans
     cases i with
-    | idIdent s0 =>
+    | idIdent s0 hs0 =>
       simp only [Cst.MemAccess.toAstAccessor?, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at ha_ast
       obtain ⟨s, hs, rfl⟩ := ha_ast
       obtain ⟨id2, r2, htl_shape⟩ := mapM_toAst_index_head htl
       rw [htl_shape, memberAuxB_field_index, ← htl_shape] at hb
-      have hev : Cst.Member.evalAccessors head (.field (.idIdent s0) :: .index ex2 :: rest2) req es
-               = (do let hv ← getAttr head s es; Cst.Member.evalAccessors hv (.index ex2 :: rest2) req es) := by
-        simp [Cst.Member.evalAccessors, hs]
-      have hstep : evaluate (Expr.getAttr headExpr (Cst.Ident.toString (.idIdent s))) req es
-                   = getAttr head s es := by
-        simp [evaluate, hhead, Cst.Ident.toString, bind, Except.bind]
+      have hev : Cst.Member.evalAccessors head (.field (.idIdent s0 hs0) :: .index ex2 :: rest2) req es
+               = (do let hv ← getAttr head s0 es; Cst.Member.evalAccessors hv (.index ex2 :: rest2) req es) := by
+        simp [Cst.Member.evalAccessors, ]
+      have hstep : evaluate (Expr.getAttr headExpr (s0)) req es
+                   = getAttr head s0 es := by
+        simp [evaluate, hhead,  bind, Except.bind]
       rw [hev]
       exact evalAccessors_step_eq hstep hb
         (fun hv' hge => evalAccessors_eq (.index ex2 :: rest2) tl_ast _ bexp hv'
@@ -1433,7 +1438,7 @@ decreasing_by all_goals (simp_wf <;> omega)
 theorem toExprOrSpecial_name_func {item : Cst.Primary} {an : Spec.Name}
     (h : item.toExprOrSpecial? = some (.name an))
     (hp : an.path = []) (hf : Cst.String.isFunctionName? an.id = true) :
-    ∃ s, item = .name { path := [], name := .idIdent s } := by
+    ∃ s h, item = .name { path := [], name := .idIdent s h } := by
   cases item with
   | name n =>
     obtain ⟨npath, nname⟩ := n
@@ -1450,7 +1455,7 @@ theorem toExprOrSpecial_name_func {item : Cst.Primary} {an : Spec.Name}
       simp only [List.map_eq_nil_iff] at hp
       subst hp
       cases nname with
-      | idIdent s => exact ⟨s, rfl⟩
+      | idIdent s hs_kw => exact ⟨s, hs_kw, rfl⟩
       | _ => exact absurd hf (by simp [Cst.Ident.toString, Cst.String.isFunctionName?])
   | literal l =>
     cases l <;>
@@ -1471,7 +1476,8 @@ theorem toExprOrSpecial_name_func {item : Cst.Primary} {an : Spec.Name}
     simp [Cst.Primary.toExprOrSpecial?, Option.bind_eq_bind, Option.bind_eq_some_iff] at h
   | rInits r =>
     simp [Cst.Primary.toExprOrSpecial?, Option.bind_eq_bind, Option.bind_eq_some_iff] at h
-
+  | slot _ =>
+    simp [Cst.Primary.toExprOrSpecial?] at h
 /-- `apply₂ .mem` only ever yields a boolean value (or an error), so its result
     survives the `.as Bool` coercion the translated `.and` applies to it. -/
 theorem apply₂_mem_returns_bool {v₁ v₂ : Value} {es : Entities} {r : Value} :
@@ -2053,7 +2059,8 @@ theorem Cst.Primary.toAttr?_consistent (p : Cst.Primary) :
   | rInits r =>
     simp [Cst.Primary.toAttr?, Cst.Primary.toExprOrSpecial?, Option.bind]
     cases (rInitsToMap? r) <;> simp [ExprOrSpecial.toValidAttr?]
-
+  | slot _ =>
+    simp [Cst.Primary.toAttr?, Cst.Primary.toExprOrSpecial?]
 /-- The CST-native record-key attribute extractor on an `Expr` agrees with the
     translator's `toExprOrSpecial? >>= toValidAttr?`.  Peeling lemma: the key must
     reduce to a bare primary; analogous to the `addExpr_to*_agrees` peeling proofs. -/
@@ -2190,14 +2197,6 @@ theorem Cst.Expr.toAttr?_consistent (e : Cst.Expr) :
                       simp [Cst.Expr.toAttr?, hoe, hae, hrel, hext, hax, hmx, hop]
                     rw [hL]
                     simp [ExprOrSpecial.toValidAttr?, Option.bind_assoc]
-                  | nOverBang =>
-                    have hL : Cst.Expr.toAttr? (.expr ⟨.edOr o⟩) = none := by
-                      simp [Cst.Expr.toAttr?, hoe, hae, hrel, hext, hax, hmx, hop]
-                    rw [hL]; simp
-                  | nOverDash =>
-                    have hL : Cst.Expr.toAttr? (.expr ⟨.edOr o⟩) = none := by
-                      simp [Cst.Expr.toAttr?, hoe, hae, hrel, hext, hax, hmx, hop]
-                    rw [hL]; simp
 
 
 /-- Record-level bridge (evaluation equality): when `rInitsToMap? r = some map`,
@@ -2209,7 +2208,7 @@ theorem rInits_eval_eq (req : Request) (es : Entities) :
         evaluate ax req es = ri.value.evaluate req es) →
       map.mapM (fun x => bindAttr x.fst (evaluate x.snd req es)) =
       r.mapM (fun ri =>
-        match ri.key.toAttr? with
+        match ri.attr.toAttr? with
         | none => Except.error (Error.cstError CstError.stringError)
         | some attr => do let val ← ri.value.evaluate req es; .ok (attr, val)) := by
   intro r
@@ -2224,7 +2223,7 @@ theorem rInits_eval_eq (req : Request) (es : Entities) :
     simp [rInitsToMap?, Option.bind_eq_some_iff] at hmap
     obtain ⟨attr_eos, hattr_eos, attr, hattr, vexpr, hvexpr, rest, hrest, hmapeq⟩ := hmap
     subst hmapeq
-    have hkey : ri.key.toAttr? = some attr := by
+    have hkey : ri.attr.toAttr? = some attr := by
       rw [Cst.Expr.toAttr?_consistent, hattr_eos]; simpa using hattr
     have hhd_eq : evaluate vexpr req es = ri.value.evaluate req es :=
       hperElt ri List.mem_cons_self vexpr hvexpr
@@ -2253,14 +2252,14 @@ theorem rInits_record_eval_eq (req : Request) (es : Entities)
     simp only [evaluate, List.mapM₂_eq_mapM (fun x => bindAttr x.fst (evaluate x.snd req es))]
   have hCST : (Cst.Primary.rInits r).evaluate req es =
       (r.mapM (fun ri =>
-        match ri.key.toAttr? with
+        match ri.attr.toAttr? with
         | none => Except.error (Error.cstError CstError.stringError)
         | some attr => do let val ← ri.value.evaluate req es; Except.ok (attr, val))) >>=
       fun avs => Except.ok (Value.record (Map.make avs)) := by
     simp only [Cst.Primary.evaluate]
     congr 1
     exact List.mapM₁_eq_mapM (fun ri : Cst.RecInit =>
-      match ri.key.toAttr? with
+      match ri.attr.toAttr? with
       | none => Except.error (Error.cstError CstError.stringError)
       | some attr => do let val ← ri.value.evaluate req es; Except.ok (attr, val)) r
   rw [hAST, hCST, hbridge]
@@ -2325,6 +2324,8 @@ theorem prim_mem_toAExpr {p : Cst.Primary} {r : EntityUID ⊕ List EntityUID} :
     rw [List.mapM₁_eq_mapM (fun x : Cst.Expr => x.toAExpr?), hlist]
     simp [ExprOrSpecial.toExpr?, memToExpr]
   | rInits _ =>
+    simp [Cst.Primary.toMultipleEntityUID?] at h
+  | slot _ =>
     simp [Cst.Primary.toMultipleEntityUID?] at h
 termination_by (sizeOf p, 0)
 decreasing_by all_goals (simp_wf; first | assumption | decreasing_tactic)
@@ -2541,14 +2542,14 @@ theorem action_leaf_isSome {va : Cst.VariableDef} {as : ActionScope}
 theorem cond_leaf_isSome {c : Cst.Cond} {cond : Condition}
     (hcond : c.toCondition? = some cond) :
     ∃ leaf, (Cst.Cond.toExpr c).toAExpr? = some leaf := by
-  obtain ⟨ccond, cexpr⟩ := c
-  cases ccond <;> cases cexpr <;>
+  obtain ⟨ccond, cbody⟩ := c
+  cases ccond <;>
     simp_all [Cst.Cond.toCondition?, Cst.Ident.toConditionKind?, Cst.Cond.toExpr,
       Option.bind_eq_some_iff]
-  case idWhen.some e =>
+  case idWhen =>
     obtain ⟨body, hbody, _⟩ := hcond
     exact ⟨body, hbody⟩
-  case idUnless.some e =>
+  case idUnless =>
     obtain ⟨body, hbody, _⟩ := hcond
     exact ⟨_, cond_not_toAExpr hbody⟩
 

@@ -51,7 +51,7 @@ public inductive ExprOrSpecial where
   | boolLit (v : Bool)
 
 public def Ident.toUnreservedId? : Ident → Option String
-  | .idIdent s => if Unreserved? s then some s else none
+  | .idIdent s _ => if Unreserved? s then some s else none
   | _ => none
 
 public def varToString : Spec.Var → String
@@ -121,7 +121,7 @@ public def toFunc? (n : Spec.Name) (args : List Spec.Expr) : Option Spec.Expr :=
 -- Remember to check that id is unreserved
 public def Ident.toMeth? (id : Ident) (recv : Spec.Expr) (args : List Spec.Expr) : Option Spec.Expr :=
   match id with
-  | .idIdent s => do
+  | .idIdent s _ => do
     let op ← String.toMethodOp? s
     match op with
     | .inl bop => let arg ← oneArg? args; some (.binaryApp bop recv arg)
@@ -256,7 +256,7 @@ public def rInitsToMap? (rs : List RecInit) : Option (List (Spec.Attr × Spec.Ex
   match rs with
   | [] => some []
   | r :: rs => do
-    let attr_eos ← r.key.toExprOrSpecial?
+    let attr_eos ← r.attr.toExprOrSpecial?
     let maybe_attr ← attr_eos.toValidAttr?
     let maybe_value ← r.value.toAExpr?
     let rest ← rInitsToMap? rs
@@ -271,9 +271,9 @@ decreasing_by
 public def MemAccess.toAstAccessor? (m : MemAccess) : Option AstAccessor :=
   match m with
   | .field i => match i with
-    | id@(.idIdent _) => do
-      let s ← Ident.toUnreservedString? id
-      some (.field (.idIdent s))
+    | .idIdent s h => do
+      let _ ← Ident.toUnreservedString? (.idIdent s h)
+      some (.field (.idIdent s h))
     | _ => none
   | .index e => do
     let s ← Expr.toUnescapedStringLiteral? e
@@ -298,6 +298,7 @@ public def Primary.toExprOrSpecial? (e : Primary) : Option ExprOrSpecial :=
   | .expr e => do
     let ae ← e.toAExpr?
     some (.expr ae)
+  | .slot _ => none
   | .eList es => do
     let aes ← es.mapM₁ (fun ⟨x, _⟩ => x.toAExpr?)
     some (.expr (.set aes))
@@ -357,7 +358,6 @@ public def Unary.toExprOrSpecial? (e : Unary) : Option ExprOrSpecial :=
       let eos ← e.item.toExprOrSpecial?
       let expr ← eos.toExpr?
       some (ExprOrSpecial.expr (dashN expr n.toNat))
-  | some .nOverBang | some .nOverDash => none
 termination_by (sizeOf e, 0)
 decreasing_by
   all_goals (cases e; simp only [Unary.mk.sizeOf_spec]; omega)
@@ -598,8 +598,8 @@ public def Ident.toConditionKind? : Ident →  Option Spec.ConditionKind
   | _ => none
 
 public def Cond.toCondition? (cond : Cond) : Option Spec.Condition := do
-  let kind ← cond.cond.toConditionKind?
-  let body ← cond.expr.bind (Expr.toAExpr?)
+  let kind ← cond.kind.toConditionKind?
+  let body ← cond.body.toAExpr?
   some {kind := kind, body := body}
 
 public def toConditions? (conds : List Cond) : Option Spec.Conditions := do
@@ -634,7 +634,7 @@ mutual
 
 public def Primary.toMultipleEntityUID? (p : Primary) : Option (Spec.EntityUID ⊕ List Spec.EntityUID) :=
   match p with
-  | .literal _ | .name _ => none
+  | .literal _ | .name _ | .slot _ => none
   | .ref r => match r with
     | .uid path (.string s) => do
       let maybe_path ← path.toAName?
