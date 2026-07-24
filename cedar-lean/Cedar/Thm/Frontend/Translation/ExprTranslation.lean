@@ -2,7 +2,7 @@ import Cedar.Spec
 import Cedar.Frontend.Cst
 import Cedar.Frontend.Cst.Semantics
 import Cedar.Frontend.Cst.ToAst
-import Cedar.Thm.Translation.AuxSound
+import Cedar.Thm.Frontend.Translation.AuxSound
 import Cedar.Thm.Data.List.Lemmas
 
 namespace Cedar.Thm
@@ -10,11 +10,11 @@ namespace Cedar.Thm
 open Cedar.Data
 open Cedar.Spec
 open Cedar.Frontend
-open Cedar.Frontend.Cst hiding Expr ExprImpl ExprData OrExpr AndExpr AddExpr MultExpr Name Policy PolicyImpl Policies Literal Primary Member MemAccess Unary Relation RelOp Cond VariableDef Ref RecInit Str
+
 
 set_option maxHeartbeats 1000000
 
-theorem Cst.ExprOrSpecial.toExpr?_sound {eos : ExprOrSpecial} {aexp : Expr} req es :
+theorem Cst.ExprOrSpecial.toExpr?_sound {eos : Cst.ExprOrSpecial} {aexp : Expr} req es :
     eos.toExpr? = some aexp →
     evaluate aexp req es =
       (match eos with
@@ -25,7 +25,7 @@ theorem Cst.ExprOrSpecial.toExpr?_sound {eos : ExprOrSpecial} {aexp : Expr} req 
                           (fun s' => .ok (.prim (.string s')))
         | .boolLit b => .ok (.prim (.bool b))
         | .name _    => .error (.cstError .nameError)) := by
-  cases eos <;> intro h <;> simp_all [ExprOrSpecial.toExpr?]
+  cases eos <;> intro h <;> simp_all  [Cst.ExprOrSpecial.toExpr?]
   · rename_i lit
     cases hsome : Cst.unescape? lit with
     | none => simp [hsome] at h
@@ -35,7 +35,7 @@ theorem Cst.ExprOrSpecial.toExpr?_sound {eos : ExprOrSpecial} {aexp : Expr} req 
 mutual
 
 theorem Cst.Primary.toAExpr?_sound
-  {prim : Cst.Primary} {eos : ExprOrSpecial}
+  {prim : Cst.Primary} {eos : Cst.ExprOrSpecial}
   {req : Request} {es : Entities} :
   prim.toExprOrSpecial? = some eos →
   ∀ aexp, eos.toExpr? = some aexp →
@@ -89,7 +89,7 @@ theorem Cst.Primary.toAExpr?_sound
       simp only [Option.bind_eq_some_iff] at hname
       obtain ⟨name, hname1, hname2⟩ := hname
       simp at hname2; subst hname2
-      simp [ExprOrSpecial.toExpr?] at heos
+      simp  [Cst.ExprOrSpecial.toExpr?] at heos
     | some var =>
       simp [hvar] at hname; subst hname
       cases hpath : n.path with
@@ -109,7 +109,7 @@ theorem Cst.Primary.toAExpr?_sound
     simp [Cst.Primary.toExprOrSpecial?, Option.bind_eq_some_iff] at hprim
     obtain ⟨ae, hae, heq⟩ := hprim
     rw [← heq] at heos
-    simp [ExprOrSpecial.toExpr?] at heos
+    simp  [Cst.ExprOrSpecial.toExpr?] at heos
     rw [← heos]
     simp [Cst.Primary.evaluate]
     simp [Cst.Expr.toAExpr?, Option.bind_eq_some_iff] at hae
@@ -120,7 +120,7 @@ theorem Cst.Primary.toAExpr?_sound
     simp [Cst.Primary.toExprOrSpecial?, Option.bind_eq_some_iff] at hprim
     obtain ⟨aes, haes, heq⟩ := hprim
     rw [← heq] at heos
-    simp [ExprOrSpecial.toExpr?] at heos
+    simp  [Cst.ExprOrSpecial.toExpr?] at heos
     rw [← heos]
     have hperElt : ∀ x ∈ xs, ∀ ax, x.toAExpr? = some ax →
         evaluate ax req es = x.evaluate req es := by
@@ -140,7 +140,7 @@ theorem Cst.Primary.toAExpr?_sound
     simp [Cst.Primary.toExprOrSpecial?, Option.bind_eq_some_iff] at hprim
     obtain ⟨map, hmap, heq⟩ := hprim
     rw [← heq] at heos
-    simp [ExprOrSpecial.toExpr?] at heos
+    simp  [Cst.ExprOrSpecial.toExpr?] at heos
     rw [← heos]
     have hperElt : ∀ ri ∈ r, ∀ ax, ri.value.toAExpr? = some ax →
         evaluate ax req es = ri.value.evaluate req es := by
@@ -162,7 +162,7 @@ termination_by (sizeOf prim, 0)
 decreasing_by all_goals (apply Prod.Lex.left; first | (subst_vars; assumption) | simp_wf)
 
 theorem Cst.Member.toAExpr?_sound
-  {mem : Cst.Member} {eos : ExprOrSpecial}
+  {mem : Cst.Member} {eos : Cst.ExprOrSpecial}
   {req : Request} {es : Entities} :
   mem.toExprOrSpecial? = some eos →
   ∀ aexp, eos.toExpr? = some aexp →
@@ -203,22 +203,22 @@ theorem Cst.Member.toAExpr?_sound
           List.cons.sizeOf_spec]; omega) ax hax
     cases hfn : Cst.String.toExtFun? s with
     | none =>
-      have htf : toFunc? { id := s, path := [] } xs = none := by
-        simp [toFunc?, hfn]
-      rw [memberAux, memberAuxA, htf] at hmem
+      have htf : Cst.toFunc? { id := s, path := [] } xs = none := by
+        simp [Cst.toFunc?, hfn]
+      rw [Cst.memberAux, Cst.memberAuxA, htf] at hmem
       simp at hmem
     | some xfn =>
-      have htf : toFunc? { id := s, path := [] } xs = some (.call xfn xs) := by
-        simp [toFunc?, hfn, toExtFun?_some_isFunctionName hfn]
-      have hb : memberAuxB (.call xfn xs) rest_ast = some aexp := by
-        have hmeq : memberAux (.name { id := s, path := [] }) (.call xs :: rest_ast)
-                  = (memberAuxB (.call xfn xs) rest_ast).bind (fun r => some (.expr r)) := by
-          simp [memberAux, memberAuxA, htf]
+      have htf : Cst.toFunc? { id := s, path := [] } xs = some (.call xfn xs) := by
+        simp [Cst.toFunc?, hfn, toExtFun?_some_isFunctionName hfn]
+      have hb : Cst.memberAuxB (.call xfn xs) rest_ast = some aexp := by
+        have hmeq : Cst.memberAux (.name { id := s, path := [] }) (.call xs :: rest_ast)
+                  = (Cst.memberAuxB (.call xfn xs) rest_ast).bind (fun r => some (.expr r)) := by
+          simp [Cst.memberAux, Cst.memberAuxA, htf]
         rw [hmeq] at hmem
         simp only [Option.bind_eq_some_iff] at hmem
         obtain ⟨ret, hret, heq2⟩ := hmem
         rw [← Option.some.inj heq2] at heos
-        simp only [ExprOrSpecial.toExpr?, Option.some.injEq] at heos
+        simp only  [Cst.ExprOrSpecial.toExpr?, Option.some.injEq] at heos
         rw [heos] at hret; exact hret
       have hstep : evaluate (Expr.call xfn xs) req es =
           (do let argVals ← args.mapM (fun a : Cst.Expr => a.evaluate req es); call xfn argVals) := by
@@ -233,7 +233,7 @@ theorem Cst.Member.toAExpr?_sound
     simp only [] at hitem haccs harg
     match hpe : peos.toExpr? with
     | some headExpr =>
-      have hb : memberAuxB headExpr accs = some aexp := by
+      have hb : Cst.memberAuxB headExpr accs = some aexp := by
         have he := memberAux_toExpr_eq accs hpe
         rw [hmem, Option.bind_some, heos] at he; exact he.symm
       have hheadEq := @Cst.Primary.toAExpr?_sound item peos req es hitem headExpr hpe
@@ -252,13 +252,13 @@ theorem Cst.Member.toAExpr?_sound
         obtain ⟨e, heq⟩ := hr
         subst heq
         cases peos with
-        | expr _ => simp [ExprOrSpecial.toExpr?] at hpe
-        | var _ => simp [ExprOrSpecial.toExpr?] at hpe
-        | boolLit _ => simp [ExprOrSpecial.toExpr?] at hpe
+        | expr _ => simp  [Cst.ExprOrSpecial.toExpr?] at hpe
+        | var _ => simp  [Cst.ExprOrSpecial.toExpr?] at hpe
+        | boolLit _ => simp  [Cst.ExprOrSpecial.toExpr?] at hpe
         | strLit ss =>
           cases accs with
           | nil => rw [memberAux_nil] at hmem; simp at hmem
-          | cons a r => simp [memberAux, memberAuxA, hpe] at hmem
+          | cons a r => simp [Cst.memberAux, Cst.memberAuxA, hpe] at hmem
         | name an =>
           cases accs with
           | nil => rw [memberAux_nil] at hmem; simp at hmem
@@ -266,14 +266,14 @@ theorem Cst.Member.toAExpr?_sound
             cases a with
             | field id =>
               cases rest_ast with
-              | nil => simp [memberAux, memberAuxA] at hmem
-              | cons a2 r2 => cases a2 <;> simp [memberAux, memberAuxA] at hmem
-            | index id => simp [memberAux, memberAuxA] at hmem
+              | nil => simp [Cst.memberAux, Cst.memberAuxA] at hmem
+              | cons a2 r2 => cases a2 <;> simp [Cst.memberAux, Cst.memberAuxA] at hmem
+            | index id => simp [Cst.memberAux, Cst.memberAuxA] at hmem
             | call xs =>
-              cases hfunc : toFunc? an xs with
-              | none => simp [memberAux, memberAuxA, hfunc] at hmem
+              cases hfunc : Cst.toFunc? an xs with
+              | none => simp [Cst.memberAux, Cst.memberAuxA, hfunc] at hmem
               | some e'' =>
-                simp only [toFunc?] at hfunc
+                simp only [Cst.toFunc?] at hfunc
                 split at hfunc
                 · rename_i hcond
                   simp only [Bool.and_eq_true] at hcond
@@ -302,7 +302,7 @@ decreasing_by
     | (subst_vars; simp only [Cst.Member.mk.sizeOf_spec] at *; omega))
 
 theorem Cst.Unary.toAExpr?_sound
-  {u : Cst.Unary} {eos : ExprOrSpecial}
+  {u : Cst.Unary} {eos : Cst.ExprOrSpecial}
   {req : Request} {es : Entities} :
   u.toExprOrSpecial? = some eos →
   ∀ aexp, eos.toExpr? = some aexp →
@@ -329,7 +329,7 @@ theorem Cst.Unary.toAExpr?_sound
       | none => simp [hioes_trans] at hu
       | some iexp =>
         simp [hioes_trans] at hu
-        simp [← hu, ExprOrSpecial.toExpr?] at heos
+        simp [← hu, Cst.ExprOrSpecial.toExpr?] at heos
         rw [← heos]
         have hitem_eq : evaluate iexp req es = u.item.evaluate req es :=
           Cst.Member.toAExpr?_sound hitem_trans iexp hioes_trans
@@ -391,7 +391,7 @@ theorem Cst.Unary.toAExpr?_sound
         | .eq =>
           rw [hcmp] at hu
           simp at hu
-          simp [← hu, ExprOrSpecial.toExpr?] at heos
+          simp [← hu, Cst.ExprOrSpecial.toExpr?] at heos
           rw [← heos]
           rw [dashN_evaluate_general (Expr.lit (.int Int64.MIN.toInt64)) (n - 1).toNat req es]
           simp [evaluate]
@@ -417,7 +417,7 @@ theorem Cst.Unary.toAExpr?_sound
           | some y =>
             rw [hofInt] at hu
             simp at hu
-            simp [← hu, ExprOrSpecial.toExpr?] at heos
+            simp [← hu, Cst.ExprOrSpecial.toExpr?] at heos
             rw [← heos]
             rw [dashN_evaluate_general (Expr.lit (.int (-y))) (n - 1).toNat req es]
             simp [evaluate]
@@ -501,7 +501,7 @@ theorem Cst.Unary.toAExpr?_sound
             | none => simp [hioes_trans] at hu
             | some iexp =>
               simp [hioes_trans] at hu
-              simp [← hu, ExprOrSpecial.toExpr?] at heos
+              simp [← hu, Cst.ExprOrSpecial.toExpr?] at heos
               rw [← heos]
               have hitem_eq : evaluate iexp req es = u.item.evaluate req es :=
                 Cst.Member.toAExpr?_sound hitem_trans iexp hioes_trans
@@ -528,7 +528,7 @@ termination_by (sizeOf u, 0)
 decreasing_by all_goals (apply Prod.Lex.left; (subst_vars; assumption))
 
 theorem Cst.MultExpr.toAExpr?_sound
-  {mult : Cst.MultExpr} {eos : ExprOrSpecial}
+  {mult : Cst.MultExpr} {eos : Cst.ExprOrSpecial}
   {req : Request} {es : Entities} :
   mult.toExprOrSpecial? = some eos →
   ∀ aexp, eos.toExpr? = some aexp →
@@ -558,7 +558,7 @@ theorem Cst.MultExpr.toAExpr?_sound
     simp [Cst.MultExpr.toExprOrSpecial?, hext, Option.bind_eq_some_iff] at hmult
     obtain ⟨first, hfirst, result, hres, heos_eq⟩ := hmult
     rw [← heos_eq] at heos
-    simp [ExprOrSpecial.toExpr?] at heos
+    simp  [Cst.ExprOrSpecial.toExpr?] at heos
     rw [← heos]
     rw [hext] at hueq
     rw [multExprFoldExtended_foldOps_eq req es _ hueq _ _ hres]
@@ -573,7 +573,7 @@ termination_by (sizeOf mult, 0)
 decreasing_by all_goals (apply Prod.Lex.left; (subst_vars; assumption))
 
 theorem Cst.AddExpr.toAExpr?_sound
-  {add : Cst.AddExpr} {eos : ExprOrSpecial}
+  {add : Cst.AddExpr} {eos : Cst.ExprOrSpecial}
   {req : Request} {es : Entities} :
   add.toExprOrSpecial? = some eos →
   ∀ aexp, eos.toExpr? = some aexp →
@@ -603,7 +603,7 @@ theorem Cst.AddExpr.toAExpr?_sound
     simp [Cst.AddExpr.toExprOrSpecial?, hext, Option.bind_eq_some_iff] at hadd
     obtain ⟨first, hfirst, result, hres, heos_eq⟩ := hadd
     rw [← heos_eq] at heos
-    simp [ExprOrSpecial.toExpr?] at heos
+    simp  [Cst.ExprOrSpecial.toExpr?] at heos
     rw [← heos]
     rw [hext] at hmeq
     rw [addExprFoldExtended_foldOps_eq req es _ hmeq _ _ hres]
@@ -618,7 +618,7 @@ termination_by (sizeOf add, 0)
 decreasing_by all_goals (apply Prod.Lex.left; (subst_vars; assumption))
 
 theorem Cst.Relation.toAExpr?_sound
-  {rel : Cst.Relation} {eos : ExprOrSpecial}
+  {rel : Cst.Relation} {eos : Cst.ExprOrSpecial}
   {req : Request} {es : Entities} :
   rel.toExprOrSpecial? = some eos →
   ∀ aexp, eos.toExpr? = some aexp →
@@ -637,7 +637,7 @@ theorem Cst.Relation.toAExpr?_sound
       obtain ⟨ieos, hieos, eFirst, hFirst, eSecond, hSecond, hres⟩ := hrel
       injection hres with hres
       rw [← hres] at heos
-      simp [ExprOrSpecial.toExpr?] at heos
+      simp  [Cst.ExprOrSpecial.toExpr?] at heos
       rw [← heos]
       have hinit_eq : evaluate eFirst req es = initial.evaluate req es :=
         @Cst.AddExpr.toAExpr?_sound initial ieos req es hieos eFirst hFirst
@@ -649,14 +649,14 @@ theorem Cst.Relation.toAExpr?_sound
       | error err =>
         have h_first : evaluate eFirst req es = .error err := hinit_eq.trans h_init
         cases op <;>
-          simp [constructExprRel, evaluate, Cst.Relation.evaluate, h_first, h_init, bind, Except.bind]
+          simp [Cst.constructExprRel, evaluate, Cst.Relation.evaluate, h_first, h_init, bind, Except.bind]
       | ok iv =>
         have h_first : evaluate eFirst req es = .ok iv := hinit_eq.trans h_init
         cases h_x : x.evaluate req es with
         | error err =>
           have h_second : evaluate eSecond req es = .error err := hx_eq.trans h_x
           cases op <;>
-            simp [constructExprRel, evaluate, Cst.Relation.evaluate, h_first, h_second, h_init, h_x, bind, Except.bind]
+            simp [Cst.constructExprRel, evaluate, Cst.Relation.evaluate, h_first, h_second, h_init, h_x, bind, Except.bind]
         | ok xv =>
           have h_second : evaluate eSecond req es = .ok xv := hx_eq.trans h_x
           rw [constructExprRel_applyRelOp_eq op eFirst eSecond req es iv xv h_first h_second]
@@ -677,7 +677,7 @@ theorem Cst.Relation.toAExpr?_sound
     | inl f =>
       simp at hres
       rw [← hres] at heos
-      simp [ExprOrSpecial.toExpr?] at heos
+      simp  [Cst.ExprOrSpecial.toExpr?] at heos
       rw [← heos]
       simp [hasRhsToList]
       cases htgt : target.evaluate req es with
@@ -690,7 +690,7 @@ theorem Cst.Relation.toAExpr?_sound
     | inr fs =>
       simp at hres
       rw [← hres] at heos
-      simp [ExprOrSpecial.toExpr?] at heos
+      simp  [Cst.ExprOrSpecial.toExpr?] at heos
       rw [← heos]
       simp [hasRhsToList] at hfield_attrs hfield_nonempty
       cases hfs : fs with
@@ -701,8 +701,8 @@ theorem Cst.Relation.toAExpr?_sound
         | error err =>
           have htgtMt : evaluate mt req es = .error err := htarget_eq.trans htgt
           cases as with
-          | nil => simp [extendedHasAttr, evaluate, htgtMt, bind, Except.bind]
-          | cons b bs => simp [extendedHasAttr, evaluate, htgtMt, bind, Except.bind, Result.as]
+          | nil => simp [Cst.extendedHasAttr, evaluate, htgtMt, bind, Except.bind]
+          | cons b bs => simp [Cst.extendedHasAttr, evaluate, htgtMt, bind, Except.bind, Result.as]
         | ok vt =>
           have htgtMt : evaluate mt req es = .ok vt := htarget_eq.trans htgt
           rw [extendedHasAttr_evaluate_agrees mt a as req es vt htgtMt]
@@ -711,7 +711,7 @@ theorem Cst.Relation.toAExpr?_sound
     simp [Cst.Relation.toExprOrSpecial?, Option.bind_eq_some_iff] at hrel
     obtain ⟨mt, hmt, mp, hmp, hres⟩ := hrel
     rw [← hres] at heos
-    simp [ExprOrSpecial.toExpr?] at heos
+    simp  [Cst.ExprOrSpecial.toExpr?] at heos
     rw [← heos]
     simp [Cst.AddExpr.toAExpr?, Option.bind_eq_some_iff] at hmt
     obtain ⟨tEos, htEos, htExpr⟩ := hmt
@@ -733,7 +733,7 @@ theorem Cst.Relation.toAExpr?_sound
     | none, hMatch =>
       simp at hMatch
       subst hMatch
-      simp [ExprOrSpecial.toExpr?] at heos
+      simp  [Cst.ExprOrSpecial.toExpr?] at heos
       rw [← heos]
       simp [Cst.AddExpr.toAExpr?, Option.bind_eq_some_iff] at hmt
       have ⟨tEos, htEos, htExpr⟩ := hmt
@@ -752,7 +752,7 @@ theorem Cst.Relation.toAExpr?_sound
       simp [Option.bind_eq_some_iff] at hMatch
       have ⟨mi, hmi, hres⟩ := hMatch
       subst hres
-      simp [ExprOrSpecial.toExpr?] at heos
+      simp  [Cst.ExprOrSpecial.toExpr?] at heos
       rw [← heos]
       simp [Cst.AddExpr.toAExpr?, Option.bind_eq_some_iff] at hmt
       have ⟨tEos, htEos, htExpr⟩ := hmt
@@ -776,7 +776,7 @@ decreasing_by
     omega
 
 theorem Cst.AndExpr.toAExpr?_sound
-  {ae : Cst.AndExpr} {eos : ExprOrSpecial}
+  {ae : Cst.AndExpr} {eos : Cst.ExprOrSpecial}
   {req : Request} {es : Entities} :
   ae.toExprOrSpecial? = some eos →
   ∀ aexp, eos.toExpr? = some aexp →
@@ -805,7 +805,7 @@ theorem Cst.AndExpr.toAExpr?_sound
     simp [Cst.AndExpr.toExprOrSpecial?, hext, Option.bind_eq_some_iff] at hae
     obtain ⟨first, hfirst, result, hres, heos_eq⟩ := hae
     rw [← heos_eq] at heos
-    simp [ExprOrSpecial.toExpr?] at heos
+    simp  [Cst.ExprOrSpecial.toExpr?] at heos
     rw [← heos]
     rw [hext] at hreq
     rw [andExprFoldExtended_foldOps_eq req es _ hreq _ _ hres]
@@ -822,7 +822,7 @@ termination_by (sizeOf ae, 0)
 decreasing_by all_goals (apply Prod.Lex.left; (subst_vars; assumption))
 
 theorem Cst.OrExpr.toAExpr?_sound
-  {oe : Cst.OrExpr} {eos : ExprOrSpecial}
+  {oe : Cst.OrExpr} {eos : Cst.ExprOrSpecial}
   {req : Request} {es : Entities} :
   oe.toExprOrSpecial? = some eos →
   ∀ aexp, eos.toExpr? = some aexp →
@@ -851,7 +851,7 @@ theorem Cst.OrExpr.toAExpr?_sound
     simp [Cst.OrExpr.toExprOrSpecial?, hext, Option.bind_eq_some_iff] at hoe
     obtain ⟨first, hfirst, result, hres, heos_eq⟩ := hoe
     rw [← heos_eq] at heos
-    simp [ExprOrSpecial.toExpr?] at heos
+    simp  [Cst.ExprOrSpecial.toExpr?] at heos
     rw [← heos]
     rw [hext] at hareq
     rw [orExprFoldExtended_foldOps_eq req es _ hareq _ _ hres]
@@ -868,7 +868,7 @@ termination_by (sizeOf oe, 0)
 decreasing_by all_goals (apply Prod.Lex.left; (subst_vars; assumption))
 
 theorem Cst.ExprData.toAExpr?_sound
-  {ed : Cst.ExprData} {eos : ExprOrSpecial}
+  {ed : Cst.ExprData} {eos : Cst.ExprOrSpecial}
   {req : Request} {es : Entities} :
   ed.toExprOrSpecial? = some eos →
   ∀ aexp, eos.toExpr? = some aexp →
@@ -886,7 +886,7 @@ theorem Cst.ExprData.toAExpr?_sound
     obtain ⟨eg, hg, et, ht, ef, hf, hres⟩ := hed
     have hguard : (t.toAExpr?.isSome && f.toAExpr?.isSome) = true := by simp [ht, hf]
     rw [← hres] at heos
-    simp [ExprOrSpecial.toExpr?] at heos
+    simp  [Cst.ExprOrSpecial.toExpr?] at heos
     rw [← heos]
     simp [Cst.Expr.toAExpr?, Option.bind_eq_some_iff] at hg ht hf
     obtain ⟨gEos, hgEos, hgExpr⟩ := hg
@@ -921,7 +921,7 @@ termination_by (sizeOf ed, 0)
 decreasing_by all_goals (apply Prod.Lex.left; (subst_vars; assumption))
 
 theorem Cst.ExprImpl.toAExpr?_sound
-  {ei : Cst.ExprImpl} {eos : ExprOrSpecial}
+  {ei : Cst.ExprImpl} {eos : Cst.ExprOrSpecial}
   {req : Request} {es : Entities} :
   ei.toExprOrSpecial? = some eos →
   ∀ aexp, eos.toExpr? = some aexp →
@@ -937,7 +937,7 @@ decreasing_by
   omega
 
 theorem Cst.Expr.toAExpr?_sound
-  {e : Cst.Expr} {eos : ExprOrSpecial}
+  {e : Cst.Expr} {eos : Cst.ExprOrSpecial}
   {req : Request} {es : Entities} :
   e.toExprOrSpecial? = some eos →
   ∀ aexp, eos.toExpr? = some aexp →
