@@ -586,7 +586,7 @@ theorem policy_to_expr_sound (cp : Cst.Policy) (ap : Policy)
   ce.toAExpr? = some ae →
   evaluate ae req es = evaluate ap.toExpr req es := by
   intro hap hce hae
-  obtain ⟨⟨eff, vars, conds⟩⟩ := cp
+  obtain ⟨⟨pid, annots, eff, vars, conds⟩⟩ := cp
   rw [← hce] at hae
   simp only [Cst.Policy.toExpr, Cst.PolicyImpl.toExpr] at hae
   simp only [Cst.Policy.toPolicy?, Cst.PolicyImpl.toPolicy?, bind, Option.bind_eq_some_iff,
