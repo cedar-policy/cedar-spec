@@ -16,13 +16,15 @@
 
 module
 
-public import Cedar.Spec
-public import Cedar.Thm.Authorization.Authorizer
-public import Cedar.Thm.Authorization.PolicySlice
-public import Cedar.Thm.Authorization.Evaluator
-import all Cedar.Spec.Authorizer
+import Cedar.Spec
+import Cedar.Thm.Authorization.CstPolicySlice
+import Cedar.Thm.Authorization.PolicySlice
+import Cedar.Thm.Authorization.Evaluator
+
+import all Cedar.Thm.Authorization.Authorizer
 
 @[expose] public section
+
 
 /-! This file contains basic theorems about Cedar's authorizer. -/
 
