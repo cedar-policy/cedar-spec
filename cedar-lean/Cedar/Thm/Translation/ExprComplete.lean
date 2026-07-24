@@ -6,6 +6,7 @@ import Cedar.Thm.Translation.AuxSound
 import Cedar.Thm.Translation.AuxComplete
 import Cedar.Thm.Translation.ExprTranslation
 import Cedar.Thm.Data.List.Lemmas
+import Cedar.Spec.CstErrorCollector
 
 /-!
 Translation completeness for CST expressions: if a CST expression evaluates

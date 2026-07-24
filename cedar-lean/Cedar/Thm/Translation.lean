@@ -4,6 +4,7 @@ import Cedar.Spec.CstSemantics
 import Cedar.Spec.CstToAst
 import Cedar.Thm.Translation.AuxComplete
 import Cedar.Thm.Translation.AuxSound
+import Cedar.Thm.Translation.CstErrorCollector
 import Cedar.Thm.Translation.ExprComplete
 import Cedar.Thm.Translation.ExprTranslation
 import Cedar.Thm.Translation.PolicyToExpr
@@ -60,16 +61,20 @@ theorem policy_satisfied_agrees (cp : Cst.Policy) (ap : Spec.Policy)
   unfold Cst.satisfied satisfied
   rw [heq]
 
-/-- Under a successful translation, `extractScope?` succeeds, so the new scope
+/-- Under a successful translation, all three translation checks succeed, so the
     guard in `Cst.hasError` is a no-op and it reduces to the plain
     evaluate-the-policy-expression check. -/
+
 theorem cst_hasError_eq_of_toPolicy {cp : Cst.Policy} {ap : Spec.Policy}
     {req : Request} {es : Entities} (htrans : cp.toPolicy? = some ap) :
     Cst.hasError cp req es =
       (match cp.toExpr.evaluate req es with | .ok _ => false | .error _ => true) := by
   obtain ⟨p⟩ := cp
   have hpp : p.toPolicy? = some ap := htrans
-  have hcond : ¬ (p.toPolicy?.isNone = true) := by rw [hpp]; simp
+  have hcond : ¬ (((CstCommon.Ident.toEffect? p.effect).isNone ||
+                   (extractScope? p.vars).isNone ||
+                   (toConditions? p.conds).isNone) = true) := by
+    rw [toPolicy?_isNone_eq, hpp]; simp
   simp only [Cst.hasError, if_neg hcond]
   rfl
 
@@ -165,7 +170,7 @@ theorem noHasError_translates (cp : Cst.Policy) (req : Request) (es : Entities) 
   cases hp : p.toPolicy? with
   | none =>
     exfalso; apply h
-    simp only [Cst.hasError, hp, Option.isNone_none, if_true]
+    simp only [Cst.hasError, toPolicy?_isNone_eq, hp, Option.isNone_none, if_true]
   | some ap =>
     exact ⟨ap, by simp [Cst.Policy.toPolicy?, hp]⟩
 
@@ -182,5 +187,20 @@ theorem translation_is_complete (cps : Cst.Policies) (req : Request) (es : Entit
   simp only [Cst.isAuthorized]
   split <;> exact herrp
 
+
+/-- **Strong completeness of CST→AST translation.** If the comprehensively
+    collected errors of a policy set contain no *translation* (`cstError`) error,
+    then the whole set translates to AST — even in the presence of
+    (non-`cstError`) runtime errors.  This strengthens `translation_is_complete`,
+    which requires each policy to be free of runtime errors: because the
+    collector never short-circuits, a translation error can never be hidden
+    behind a runtime error elsewhere. -/
+theorem translation_is_strongly_complete (cps : Cst.Policies) (req : Request) (es : Entities) :
+    noCstError (cps.collectErrors req es) →
+    ∃ aps, cps.toPolicies? = some aps := by
+  intro h
+  unfold Cst.Policies.collectErrors at h
+  unfold Cst.Policies.toPolicies?
+  exact collectPolicies_complete cps.ps req es h
 
 end Cedar.Thm

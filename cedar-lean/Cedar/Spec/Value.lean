@@ -33,6 +33,7 @@ public inductive CstError where
   | unsupportedError
   | arityError
   | translationError
+  | primaryOverflowError
 
 public inductive Error where
   | entityDoesNotExist

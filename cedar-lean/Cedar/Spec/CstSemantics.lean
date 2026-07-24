@@ -221,7 +221,7 @@ public def Primary.evaluate (e : Primary) (req : Request) (es : Entities) : Resu
     | .liFalse => .ok (.prim (.bool false))
     | .liNum n => match Int64.ofInt? n.toNat with
       | some i => .ok (.prim (.int i))
-      | none => .error .arithBoundsError
+      | none => .error (.cstError .primaryOverflowError)
     | .liStr s => do
       let s' ← Str.toUnescapedString (.string s)
       .ok (.prim (.string s'))
@@ -703,12 +703,9 @@ public def satisfiedPolicies (effect : Effect) (policies : Policies) (req : Requ
 public def hasError (policy : Policy) (req : Request) (entities : Entities) : Bool :=
   match policy with
   | .policy p =>
-    -- Strengthening: a policy with no AST translation (`toPolicy?` fails — due to
-    -- an invalid effect, an invalid scope triple, or a malformed/untranslatable
-    -- condition) is treated as an error.  Under a successful translation
-    -- `toPolicy?` succeeds, so this guard is a no-op and agreement with the AST
-    -- (`policy_hasError_agrees`) is preserved.
-    if p.toPolicy?.isNone then true
+    if (CstCommon.Ident.toEffect? p.effect).isNone ||
+       (extractScope? p.vars).isNone ||
+       (toConditions? p.conds).isNone then true
     else match policy.toExpr.evaluate req entities with
          | .ok _ => false
          | .error _ => true
