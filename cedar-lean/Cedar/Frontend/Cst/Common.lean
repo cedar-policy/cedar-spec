@@ -19,6 +19,7 @@ module
 
 public import Cedar.Frontend.Cst.Syntax
 public import Cedar.Spec.Wildcard
+public import Cedar.Spec.Policy
 
 namespace Cedar.Frontend.Cst
 
@@ -124,26 +125,6 @@ public def unescape? (s : String) : Option String := do
   let chars ← unescapeAux s.toList
   some (String.ofList chars)
 
-public def Ident.toString : Ident → String
-  | .idPrincipal => "principal"
-  | .idAction => "action"
-  | .idResource => "resource"
-  | .idContext => "context"
-  | .idTrue => "true"
-  | .idFalse => "false"
-  | .idPermit => "permit"
-  | .idForbid => "forbid"
-  | .idWhen => "when"
-  | .idUnless => "unless"
-  | .idIn => "in"
-  | .idHas => "has"
-  | .idLike => "like"
-  | .idIs => "is"
-  | .idIf => "if"
-  | .idThen => "then"
-  | .idElse => "else"
-  | .idIdent s => s
-
 public def Unreserved? (s : String) : Bool :=
   match s with
   | "principal" => false
@@ -166,9 +147,32 @@ public def Unreserved? (s : String) : Bool :=
   | "__cedar" => false
   | _ => true
 
+public theorem unreserved_iff_not_in_keywords {s : String} :
+    Unreserved? s = true ↔ s ∉ keywords := by
+  simp only [Unreserved?, keywords, List.mem_cons, not_or, List.mem_nil_iff,
+    not_false_eq_true, and_true]
+  constructor
+  · intro h
+    split at h <;> simp_all
+  · intro ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12, h13, h14, h15, h16, h17, h18⟩
+    split <;> simp_all
+
+public theorem not_in_keywords_unreserved {s : String} (h : s ∉ keywords) :
+    Unreserved? s = true :=
+  unreserved_iff_not_in_keywords.mpr h
+
 public def Ident.toUnreservedString? : Ident → Option String
-  | .idIdent s => if (Unreserved? s) then some s else none
+  | .idIdent s _ => if (Unreserved? s) then some s else none
   | _ => none
+
+@[simp]
+public theorem Ident.toUnreservedString?_idIdent (s : String) (h : s ∉ keywords) :
+    Ident.toUnreservedString? (.idIdent s h) = some s := by
+  simp [Ident.toUnreservedString?, not_in_keywords_unreserved h]
+
+@[simp]
+public theorem Ident.toString_idIdent (s : String) (h : s ∉ keywords) :
+    Ident.toString (.idIdent s h) = s := rfl
 
 /-- Convert an identifier to its string form, accepting variable/keyword
     identifiers that are valid as (parts of) entity-type names but rejecting
@@ -184,7 +188,7 @@ public def Ident.toUnrestrictedString? : Ident → Option String
   | .idForbid => some "forbid"
   | .idWhen => some "when"
   | .idUnless => some "unless"
-  | .idIdent s => some s
+  | .idIdent s _ => some s
   | _ => none
 
 /-- Convert a CST name to an AST entity-type `Name`, failing if any component
