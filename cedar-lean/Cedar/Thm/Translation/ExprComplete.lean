@@ -1,7 +1,7 @@
 import Cedar.Spec
-import Cedar.Spec.Cst
-import Cedar.Spec.CstSemantics
-import Cedar.Spec.CstToAst
+import Cedar.Frontend.Cst
+import Cedar.Frontend.Cst.Semantics
+import Cedar.Frontend.Cst.ToAst
 import Cedar.Thm.Translation.AuxSound
 import Cedar.Thm.Translation.AuxComplete
 import Cedar.Thm.Translation.ExprTranslation
@@ -19,6 +19,8 @@ namespace Cedar.Thm
 
 open Cedar.Data
 open Cedar.Spec
+open Cedar.Frontend
+open Cedar.Frontend.Cst hiding Expr ExprImpl ExprData OrExpr AndExpr AddExpr MultExpr Name Policy PolicyImpl Policies Ident Literal Primary Member MemAccess Unary Relation RelOp Cond VariableDef Ref RecInit Str
 
 mutual
 
@@ -47,7 +49,7 @@ theorem Cst.Primary.toAExpr?_complete
         simp [Cst.Primary.toExprOrSpecial?, Cst.Literal.toExprOrSpecial?, hn]
     | liStr s =>
       simp only [Cst.Primary.evaluate, Cst.Str.toUnescapedString] at hev
-      cases hs : CstCommon.unescape? s with
+      cases hs : Cst.unescape? s with
       | none => rw [hs] at hev; simp at hev
       | some s' =>
         refine ⟨.strLit s, .lit (.string s'),
@@ -69,16 +71,16 @@ theorem Cst.Primary.toAExpr?_complete
     | uid path eid =>
       let (.string s) := eid
       simp only [Cst.Primary.evaluate, Cst.Str.toUnescapedString] at hev
-      cases hs : CstCommon.unescape? s with
+      cases hs : Cst.unescape? s with
       | none => rw [hs] at hev; simp [bind, Except.bind] at hev
       | some s' =>
         rw [hs] at hev
-        cases hty : CstCommon.Name.toAName? path with
+        cases hty : Cst.Name.toAName? path with
         | none => simp [hty, bind, Except.bind] at hev
         | some ty =>
           refine ⟨.expr (.lit (.entityUID { ty := ty, eid := s' })),
                   .lit (.entityUID { ty := ty, eid := s' }), ?_, by simp [ExprOrSpecial.toExpr?]⟩
-          simp [Cst.Primary.toExprOrSpecial?, Cst.Ref.toExprOrSpecial?, Cst.Name.toAName?, hty, hs]
+          simp [Cst.Primary.toExprOrSpecial?, Cst.Ref.toExprOrSpecial?, hty, hs]
     | ref path rinits =>
       simp [Cst.Primary.evaluate] at hev
   | expr e =>
@@ -157,7 +159,7 @@ theorem Cst.Member.toAExpr?_complete
   unfold Cst.Member.evaluate at hev
   split at hev
   case h_1 s args rest =>
-    cases hfn : CstCommon.String.toExtFun? s with
+    cases hfn : Cst.String.toExtFun? s with
     | none => rw [hfn] at hev; simp at hev
     | some xfn =>
       rw [hfn] at hev
@@ -182,9 +184,9 @@ theorem Cst.Member.toAExpr?_complete
           obtain ⟨r, hr⟩ := hmemb (.call xfn xs)
           refine ⟨.expr r, r, ?_, by simp [ExprOrSpecial.toExpr?]⟩
           simp [Cst.Member.toExprOrSpecial?, Cst.Primary.toExprOrSpecial?,
-            Cst.Name.toVar?, List.isEmpty_nil, Cst.Name.toAName?, CstCommon.Name.toAName?,
-            CstCommon.Ident.toUnrestrictedString?, List.mapM_cons, Cst.MemAccess.toAstAccessor?,
-            toAExprs?_eq_mapM, hxs, hrest, memberAux, memberAuxA, Name.toFunc?,
+            Cst.Name.toVar?, List.isEmpty_nil, Cst.Name.toAName?, Cst.Name.toAName?,
+            Cst.Ident.toUnrestrictedString?, List.mapM_cons, Cst.MemAccess.toAstAccessor?,
+            toAExprs?_eq_mapM, hxs, hrest, memberAux, memberAuxA, toFunc?,
             toExtFun?_some_isFunctionName hfn, hfn, hr]
   case h_2 item access hnfc =>
     simp only [bind, Except.bind] at hev
@@ -226,7 +228,7 @@ theorem Cst.Unary.toAExpr?_complete
     | error e => simp [hitem, bind, Except.bind] at hev
     | ok mval =>
       obtain ⟨ieos, iexpr, hieos, hiexpr⟩ := Cst.Member.toAExpr?_complete hitem
-      exact ⟨.expr (iexpr.bangN n.toNat), iexpr.bangN n.toNat,
+      exact ⟨.expr (Cst.bangN iexpr n.toNat), Cst.bangN iexpr n.toNat,
              by simp [Cst.Unary.toExprOrSpecial?, hop, hieos, hiexpr],
              by simp [ExprOrSpecial.toExpr?]⟩
   | some (.nDash n) =>
@@ -238,14 +240,14 @@ theorem Cst.Unary.toAExpr?_complete
       exact ⟨eos, ae, by simp [Cst.Unary.toExprOrSpecial?, hop, heos], hae⟩
     · simp only [Cst.Unary.evaluate, hop] at hev
       rw [if_neg (by simp [hn0])] at hev
-      cases hlit : CstCommon.Member.toLit? u.item with
+      cases hlit : Cst.Member.toLit? u.item with
       | none =>
         simp only [hlit] at hev
         cases hitem : u.item.evaluate req es with
         | error e => rw [hitem] at hev; simp [bind, Except.bind] at hev
         | ok mval =>
           obtain ⟨ieos, iexpr, hieos, hiexpr⟩ := Cst.Member.toAExpr?_complete hitem
-          exact ⟨.expr (iexpr.dashN n.toNat), iexpr.dashN n.toNat,
+          exact ⟨.expr (Cst.dashN iexpr n.toNat), Cst.dashN iexpr n.toNat,
                  by simp [Cst.Unary.toExprOrSpecial?, hop, hlit, hieos, hiexpr],
                  by simp [ExprOrSpecial.toExpr?]⟩
       | some lit =>
@@ -255,8 +257,8 @@ theorem Cst.Unary.toAExpr?_complete
           cases hcmp : compare x.toNat (Int64.MAX + 1).toNat with
           | gt => rw [hcmp] at hev; simp at hev
           | eq =>
-            exact ⟨.expr ((Expr.lit (.int Int64.MIN.toInt64)).dashN (n-1).toNat),
-                   (Expr.lit (.int Int64.MIN.toInt64)).dashN (n-1).toNat,
+            exact ⟨.expr (Cst.dashN (Expr.lit (.int Int64.MIN.toInt64)) (n-1).toNat),
+                   Cst.dashN (Expr.lit (.int Int64.MIN.toInt64)) (n-1).toNat,
                    by simp [Cst.Unary.toExprOrSpecial?, hop, hlit, hcmp],
                    by simp [ExprOrSpecial.toExpr?]⟩
           | lt =>
@@ -264,8 +266,8 @@ theorem Cst.Unary.toAExpr?_complete
             cases hof : Int64.ofInt? (x.toNat : Int) with
             | none => simp [hof] at hev
             | some y =>
-              exact ⟨.expr ((Expr.lit (.int (-y))).dashN (n-1).toNat),
-                     (Expr.lit (.int (-y))).dashN (n-1).toNat,
+              exact ⟨.expr (Cst.dashN (Expr.lit (.int (-y))) (n-1).toNat),
+                     Cst.dashN (Expr.lit (.int (-y))) (n-1).toNat,
                      by simp [Cst.Unary.toExprOrSpecial?, hop, hlit, hcmp, hof],
                      by simp [ExprOrSpecial.toExpr?]⟩
         | liTrue =>
@@ -274,7 +276,7 @@ theorem Cst.Unary.toAExpr?_complete
           | error e => rw [hitem] at hev; simp [bind, Except.bind] at hev
           | ok mval =>
             obtain ⟨ieos, iexpr, hieos, hiexpr⟩ := Cst.Member.toAExpr?_complete hitem
-            exact ⟨.expr (iexpr.dashN n.toNat), iexpr.dashN n.toNat,
+            exact ⟨.expr (Cst.dashN iexpr n.toNat), Cst.dashN iexpr n.toNat,
                    by simp [Cst.Unary.toExprOrSpecial?, hop, hlit, hieos, hiexpr],
                    by simp [ExprOrSpecial.toExpr?]⟩
         | liFalse =>
@@ -283,7 +285,7 @@ theorem Cst.Unary.toAExpr?_complete
           | error e => rw [hitem] at hev; simp [bind, Except.bind] at hev
           | ok mval =>
             obtain ⟨ieos, iexpr, hieos, hiexpr⟩ := Cst.Member.toAExpr?_complete hitem
-            exact ⟨.expr (iexpr.dashN n.toNat), iexpr.dashN n.toNat,
+            exact ⟨.expr (Cst.dashN iexpr n.toNat), Cst.dashN iexpr n.toNat,
                    by simp [Cst.Unary.toExprOrSpecial?, hop, hlit, hieos, hiexpr],
                    by simp [ExprOrSpecial.toExpr?]⟩
         | liStr s =>
@@ -292,7 +294,7 @@ theorem Cst.Unary.toAExpr?_complete
           | error e => rw [hitem] at hev; simp [bind, Except.bind] at hev
           | ok mval =>
             obtain ⟨ieos, iexpr, hieos, hiexpr⟩ := Cst.Member.toAExpr?_complete hitem
-            exact ⟨.expr (iexpr.dashN n.toNat), iexpr.dashN n.toNat,
+            exact ⟨.expr (Cst.dashN iexpr n.toNat), Cst.dashN iexpr n.toNat,
                    by simp [Cst.Unary.toExprOrSpecial?, hop, hlit, hieos, hiexpr],
                    by simp [ExprOrSpecial.toExpr?]⟩
   | some .nOverBang => simp [Cst.Unary.evaluate, hop] at hev
@@ -436,7 +438,7 @@ theorem Cst.Relation.toAExpr?_complete
       | ok vt =>
         rw [htgt] at hev
         simp only [bind, Except.bind] at hev
-        cases hcp : Cedar.Spec.CstCommon.toPattern? s with
+        cases hcp : Cst.toPattern? s with
         | none => rw [hcp] at hev; simp at hev
         | some mp =>
           obtain ⟨teos, texpr, hteos, htexpr⟩ := Cst.AddExpr.toAExpr?_complete htgt
