@@ -1,36 +1,40 @@
 import Cedar.Spec
-import Cedar.Spec.Cst
-import Cedar.Spec.CstSemantics
-import Cedar.Spec.CstToAst
+import Cedar.Frontend.Cst
+import Cedar.Frontend.Cst.Semantics
+import Cedar.Frontend.Cst.ToAst
 import Cedar.Thm.Data.List.Lemmas
 
 namespace Cedar.Thm
 
 open Cedar.Data
 open Cedar.Spec
+open Cedar.Frontend
+open Cedar.Frontend.Cst hiding Expr ExprImpl ExprData OrExpr AndExpr AddExpr MultExpr
+  Name Policy PolicyImpl Policies Ident Literal Primary Member MemAccess Unary
+  Relation RelOp Cond VariableDef Ref RecInit Str
 
 /-- If `toExtFun?` succeeds on a string, that string is a function name. -/
 theorem toExtFun?_some_isFunctionName {s : String} {xfn : ExtFun}
-    (h : CstCommon.String.toExtFun? s = some xfn) :
-    CstCommon.String.isFunctionName? s = true := by
-  simp only [CstCommon.String.toExtFun?] at h
-  split at h <;> simp_all [CstCommon.String.isFunctionName?]
+    (h : Cst.String.toExtFun? s = some xfn) :
+    Cst.String.isFunctionName? s = true := by
+  simp only [Cst.String.toExtFun?] at h
+  split at h <;> simp_all [Cst.String.isFunctionName?]
 
 /- For Primary -/
 
 theorem Cst.Ident.toUnrestrictedString?_eq_toString
     {i : Cst.Ident} {s : String} :
     Cst.Ident.toUnrestrictedString? i = some s →
-    s = CstCommon.Ident.toString i := by
+    s = Cst.Ident.toString i := by
   cases i <;> intro h <;>
-    simp_all [Cst.Ident.toUnrestrictedString?, CstCommon.Ident.toUnrestrictedString?,
-      CstCommon.Ident.toString]
+    simp_all [Cst.Ident.toUnrestrictedString?, Cst.Ident.toUnrestrictedString?,
+      Cst.Ident.toString]
 
 /-- If `mapM` over `toUnrestrictedString?` succeeds, the result equals `map toString`. -/
 theorem mapM_toUnrestrictedString?_eq_map
     {l : List Cst.Ident} {result : List String} :
     l.mapM Cst.Ident.toUnrestrictedString? = some result →
-    result = l.map CstCommon.Ident.toString := by
+    result = l.map Cst.Ident.toString := by
   induction l generalizing result with
   | nil =>
     intro h
@@ -48,9 +52,9 @@ theorem Cst.Name.toAName?_agrees
     {n : Cst.Name} {an : Spec.Name} :
     n.toAName? = some an →
     an = { id := n.name.toString,
-           path := n.path.map CstCommon.Ident.toString } := by
+           path := n.path.map Cst.Ident.toString } := by
   intro h
-  simp [Cst.Name.toAName?, CstCommon.Name.toAName?, Option.bind_eq_some_iff] at h
+  simp [Cst.Name.toAName?, Cst.Name.toAName?, Option.bind_eq_some_iff] at h
   obtain ⟨id, hid, path, hpath, han⟩ := h
   rw [← han]; congr 1
   · exact Cst.Ident.toUnrestrictedString?_eq_toString hid
@@ -79,27 +83,27 @@ theorem Cst.Name.toVar?_agrees
 
 theorem bangN_evaluate_error (e : Expr) (n : Nat) (req : Request) (es : Entities) (err : Error) :
   evaluate e req es = .error err →
-  evaluate (e.bangN n) req es = .error err := by
+  evaluate (Cst.bangN e n) req es = .error err := by
   induction n generalizing e with
   | zero =>
     intro he
-    rw [Expr.bangN]; simp; exact he
+    rw [Cst.bangN]; simp; exact he
   | succ n ih =>
     intro he
-    rw [Expr.bangN]; simp
+    rw [Cst.bangN]; simp
     apply ih (.unaryApp .not e)
     simp [evaluate, he, bind, Except.bind]
 
 theorem bangN_evaluate
   (e : Expr) (n : Nat) (req : Request) (es : Entities) (b : Bool) :
   evaluate e req es = .ok (.prim (.bool b)) →
-  evaluate (e.bangN n) req es =
+  evaluate (Cst.bangN e n) req es =
     if n%2 == 0 then .ok (.prim (.bool b)) else .ok (.prim (.bool !b)) := by
   intro he
   induction n generalizing e b with
-  | zero => simp [Expr.bangN]; exact he
+  | zero => simp [Cst.bangN]; exact he
   | succ n ih =>
-    rw [Expr.bangN]; simp
+    rw [Cst.bangN]; simp
     have hnot : evaluate (Expr.unaryApp UnaryOp.not e) req es = .ok (.prim (.bool !b)) := by
       simp [evaluate, he, bind, Except.bind, apply₁]
     rw [ih (Expr.unaryApp UnaryOp.not e) (!b) hnot]
@@ -116,12 +120,12 @@ theorem bangN_evaluate_nonBool
   evaluate e req es = .ok v →
   (∀ b, v ≠ .prim (.bool b)) →
   n > 0 →
-  evaluate (e.bangN n) req es = .error .typeError := by
+  evaluate (Cst.bangN e n) req es = .error .typeError := by
   intro he hnb hpos
   cases n with
   | zero => omega
   | succ k =>
-    rw [Expr.bangN]; simp
+    rw [Cst.bangN]; simp
     apply bangN_evaluate_error (.unaryApp .not e) k req es .typeError
     simp [evaluate, he, bind, Except.bind]
     cases v with
@@ -134,7 +138,7 @@ theorem bangN_evaluate_nonBool
 theorem bangN_evaluate_ok
   (e : Expr) (n : Nat) (req : Request) (es : Entities) (v : Value) :
   evaluate e req es = .ok v →
-  evaluate (e.bangN n) req es = (
+  evaluate (Cst.bangN e n) req es = (
     if n == 0 then .ok v
     else match v with
       | .prim (.bool b) =>
@@ -143,7 +147,7 @@ theorem bangN_evaluate_ok
   intro hev
   cases hn : n with
   | zero =>
-    simp [Expr.bangN, hev]
+    simp [Cst.bangN, hev]
   | succ k =>
     cases v with
     | prim p =>
@@ -162,7 +166,7 @@ theorem bangN_evaluate_ok
 
 theorem bangN_evaluate_general
   (e : Expr) (n : Nat) (req : Request) (es : Entities) :
-  evaluate (e.bangN n) req es = (match evaluate e req es with
+  evaluate (Cst.bangN e n) req es = (match evaluate e req es with
     | .error err => .error err
     | .ok v =>
       if n == 0 then .ok v
@@ -178,14 +182,14 @@ theorem bangN_evaluate_general
 
 theorem dashN_evaluate_error (e : Expr) (n : Nat) (req : Request) (es : Entities) (err : Error) :
   evaluate e req es = .error err →
-  evaluate (e.dashN n) req es = .error err := by
+  evaluate (Cst.dashN e n) req es = .error err := by
   induction n generalizing e with
   | zero =>
     intro he
-    rw [Expr.dashN]; simp; exact he
+    rw [Cst.dashN]; simp; exact he
   | succ n ih =>
     intro he
-    rw [Expr.dashN]; simp
+    rw [Cst.dashN]; simp
     apply ih (.unaryApp .neg e)
     simp [evaluate, he, bind, Except.bind]
 
@@ -194,12 +198,12 @@ theorem dashN_evaluate_nonInt
   evaluate e req es = .ok v →
   (∀ i, v ≠ .prim (.int i)) →
   n > 0 →
-  evaluate (e.dashN n) req es = .error .typeError := by
+  evaluate (Cst.dashN e n) req es = .error .typeError := by
   intro he hni hpos
   cases n with
   | zero => omega
   | succ k =>
-    rw [Expr.dashN]; simp
+    rw [Cst.dashN]; simp
     apply dashN_evaluate_error (.unaryApp .neg e) k req es .typeError
     simp [evaluate, he, bind, Except.bind]
     cases v with
@@ -251,7 +255,7 @@ theorem Int64.neg?_neg? {i j : Int64} :
 theorem dashN_evaluate_int
   (e : Expr) (n : Nat) (req : Request) (es : Entities) (i : Int64) :
   evaluate e req es = .ok (.prim (.int i)) →
-  evaluate (e.dashN n) req es =
+  evaluate (Cst.dashN e n) req es =
     (if n == 0 then .ok (.prim (.int i))
      else match i.neg? with
        | none => .error .arithBoundsError
@@ -260,9 +264,9 @@ theorem dashN_evaluate_int
            else .ok (.prim (.int j))) := by
   intro he
   induction n generalizing e i with
-  | zero => simp [Expr.dashN]; exact he
+  | zero => simp [Cst.dashN]; exact he
   | succ n ih =>
-    rw [Expr.dashN]; simp
+    rw [Cst.dashN]; simp
     cases hneg : i.neg? with
     | none =>
       have hev_err : evaluate (Expr.unaryApp UnaryOp.neg e) req es = .error .arithBoundsError := by
@@ -288,7 +292,7 @@ theorem dashN_evaluate_int
 theorem dashN_evaluate_ok
   (e : Expr) (n : Nat) (req : Request) (es : Entities) (v : Value) :
   evaluate e req es = .ok v →
-  evaluate (e.dashN n) req es = (
+  evaluate (Cst.dashN e n) req es = (
     if n == 0 then .ok v
     else match v with
       | .prim (.int i) =>
@@ -300,7 +304,7 @@ theorem dashN_evaluate_ok
       | _ => .error .typeError) := by
   intro hev
   cases hn : n with
-  | zero => simp [Expr.dashN, hev]
+  | zero => simp [Cst.dashN, hev]
   | succ k =>
     cases v with
     | prim p =>
@@ -322,7 +326,7 @@ theorem dashN_evaluate_ok
     `Int64.MIN` inputs with even count. -/
 theorem dashN_evaluate_general
   (e : Expr) (n : Nat) (req : Request) (es : Entities) :
-  evaluate (e.dashN n) req es = (match evaluate e req es with
+  evaluate (Cst.dashN e n) req es = (match evaluate e req es with
     | .error err => .error err
     | .ok v =>
       if n == 0 then .ok v
@@ -412,7 +416,7 @@ theorem addExpr_toHasRhs_toAttrs_agrees
       | nil =>
         rw [haccess] at hbody
         simp at hbody
-        cases hunesc : Cedar.Spec.CstCommon.unescape? s with
+        cases hunesc : Cst.unescape? s with
         | none => rw [hunesc] at hbody; simp at hbody
         | some s' =>
           rw [hunesc] at hbody
@@ -445,22 +449,22 @@ theorem addExpr_toHasRhs_toAttrs_agrees
         simp at hname; subst hname
         simp [fieldChain?_eq_constructAttrsAux?, htail]
         rw [← hrhsEq]
-        simp [hasRhsToList, ← hattrsEq, Cst.Ident.toHasHead?, Var.toString]
+        simp [hasRhsToList, ← hattrsEq, Cst.Ident.toHasHead?, varToString]
       | action =>
         simp at hname; subst hname
         simp [fieldChain?_eq_constructAttrsAux?, htail]
         rw [← hrhsEq]
-        simp [hasRhsToList, ← hattrsEq, Cst.Ident.toHasHead?, Var.toString]
+        simp [hasRhsToList, ← hattrsEq, Cst.Ident.toHasHead?, varToString]
       | resource =>
         simp at hname; subst hname
         simp [fieldChain?_eq_constructAttrsAux?, htail]
         rw [← hrhsEq]
-        simp [hasRhsToList, ← hattrsEq, Cst.Ident.toHasHead?, Var.toString]
+        simp [hasRhsToList, ← hattrsEq, Cst.Ident.toHasHead?, varToString]
       | context =>
         simp at hname; subst hname
         simp [fieldChain?_eq_constructAttrsAux?, htail]
         rw [← hrhsEq]
-        simp [hasRhsToList, ← hattrsEq, Cst.Ident.toHasHead?, Var.toString]
+        simp [hasRhsToList, ← hattrsEq, Cst.Ident.toHasHead?, varToString]
     | none =>
       rw [hvar] at hbody
       cases han : (⟨np, nname⟩ : Cst.Name).toAName? with
@@ -478,9 +482,9 @@ theorem addExpr_toHasRhs_toAttrs_agrees
         cases hname : nname with
         | idIdent s =>
           rw [hname] at hfirst
-          simp [CstCommon.Ident.toString] at hfirst
-          have hs_eq_and_unreserved : s = first ∧ Cedar.Spec.CstCommon.Unreserved? s = true := by
-            simp [String.toUnreservedId?, Cedar.Spec.CstCommon.Unreserved?] at hfirst ⊢
+          simp [Cst.Ident.toString] at hfirst
+          have hs_eq_and_unreserved : s = first ∧ Cst.Unreserved? s = true := by
+            simp [String.toUnreservedId?, Cst.Unreserved?] at hfirst ⊢
             split at hfirst <;> rename_i heq
             all_goals (simp_all)
           obtain ⟨hs_first, hs_unreserved⟩ := hs_eq_and_unreserved
@@ -495,7 +499,7 @@ theorem addExpr_toHasRhs_toAttrs_agrees
         | idWhen | idUnless | idIn | idHas | idLike | idIs
         | idIf | idThen | idElse =>
           rw [hname] at hfirst
-          simp [CstCommon.Ident.toString, String.toUnreservedId?] at hfirst
+          simp [Cst.Ident.toString, String.toUnreservedId?] at hfirst
   | .ref r =>
     rw [hmi] at hbody; simp at hbody
   | .expr e' =>
@@ -554,7 +558,7 @@ theorem addExpr_toAttrs_toHasRhs {e : Cst.AddExpr} {attrs : List Attr} :
                 have hfields : fields = [] := by simpa using hfe
                 have hacc : access = [] := fieldChain?_eq_nil (hfields ▸ hfc)
                 subst hacc
-                cases hun : Cedar.Spec.CstCommon.unescape? s with
+                cases hun : Cst.unescape? s with
                 | none => simp [hfe, hun] at h
                 | some s' =>
                   exact ⟨.inl s', by
@@ -573,32 +577,32 @@ theorem addExpr_toAttrs_toHasRhs {e : Cst.AddExpr} {attrs : List Attr} :
                 | idPrincipal =>
                   exact ⟨.inr ("principal" :: fields), by
                     simp [Cst.AddExpr.toHasRhs?, Cst.Primary.toExprOrSpecial?,
-                          Cst.Name.toVar?, Var.toString, constructAttrs?, hcaeq]⟩
+                          Cst.Name.toVar?, varToString, constructAttrs?, hcaeq]⟩
                 | idAction =>
                   exact ⟨.inr ("action" :: fields), by
                     simp [Cst.AddExpr.toHasRhs?, Cst.Primary.toExprOrSpecial?,
-                          Cst.Name.toVar?, Var.toString, constructAttrs?, hcaeq]⟩
+                          Cst.Name.toVar?, varToString, constructAttrs?, hcaeq]⟩
                 | idResource =>
                   exact ⟨.inr ("resource" :: fields), by
                     simp [Cst.AddExpr.toHasRhs?, Cst.Primary.toExprOrSpecial?,
-                          Cst.Name.toVar?, Var.toString, constructAttrs?, hcaeq]⟩
+                          Cst.Name.toVar?, varToString, constructAttrs?, hcaeq]⟩
                 | idContext =>
                   exact ⟨.inr ("context" :: fields), by
                     simp [Cst.AddExpr.toHasRhs?, Cst.Primary.toExprOrSpecial?,
-                          Cst.Name.toVar?, Var.toString, constructAttrs?, hcaeq]⟩
+                          Cst.Name.toVar?, varToString, constructAttrs?, hcaeq]⟩
                 | idIdent s =>
                   simp only [Cst.Ident.toHasHead?] at hhh
                   split at hhh
                   · rename_i hunres
                     have htus : String.toUnreservedId? s = some s := by
                       simp only [String.toUnreservedId?]
-                      simp only [Cedar.Spec.CstCommon.Unreserved?] at hunres
+                      simp only [Cst.Unreserved?] at hunres
                       split <;> simp_all
                     refine ⟨.inr (s :: fields), ?_⟩
                     simp [Cst.AddExpr.toHasRhs?, Cst.Primary.toExprOrSpecial?,
                           Cst.Name.toVar?, Cst.Name.toAName?,
-                          CstCommon.Name.toAName?,
-                          CstCommon.Ident.toUnrestrictedString?,
+                          Cst.Name.toAName?,
+                          Cst.Ident.toUnrestrictedString?,
                           htus, constructAttrs?, hcaeq]
                   · simp at hhh
                 | idTrue | idFalse | idPermit | idForbid | idWhen | idUnless
@@ -836,15 +840,15 @@ private theorem member_toExprOrSpecial_strLit
 
 /-- For the `rLike` case: if the translator's `toPattern?` succeeds with `p`,
     then the evaluator's `toPatternString?` succeeds with some `s` such that
-    `CstCommon.toPattern? s = some p`.
+    `Cst.toPattern? s = some p`.
 
     Both functions enforce the same shape (extended/op/access empty, item is
-    a `liStr`) and call `CstCommon.toPattern?` on the same raw string. -/
+    a `liStr`) and call `Cst.toPattern?` on the same raw string. -/
 theorem addExpr_toPattern_toPatternString_agrees
     {e : Cst.AddExpr} {p : Pattern} :
     Cst.AddExpr.toPattern? e = some p →
     ∃ s, Cst.AddExpr.toPatternString? e = some s ∧
-         Cedar.Spec.CstCommon.toPattern? s = some p := by
+         Cst.toPattern? s = some p := by
   intro h
   simp [Cst.AddExpr.toPattern?, Option.bind_eq_some_iff] at h
   obtain ⟨eos, heos, hmatch⟩ := h
@@ -1072,13 +1076,13 @@ private theorem memberAuxB_field_call (he : Expr) (id : Cst.Ident) (args : List 
     memberAuxB he (.field id :: .call args :: rest)
       = (id.toMeth? he args).bind (fun h' => memberAuxB h' rest) := rfl
 private theorem memberAuxB_field_nil (he : Expr) (id : Cst.Ident) :
-    memberAuxB he [.field id] = some (.getAttr he (CstCommon.Ident.toString id)) := rfl
+    memberAuxB he [.field id] = some (.getAttr he (Cst.Ident.toString id)) := rfl
 private theorem memberAuxB_field_field (he : Expr) (id id2 : Cst.Ident) (rest2 : List AstAccessor) :
     memberAuxB he (.field id :: .field id2 :: rest2)
-      = memberAuxB (.getAttr he (CstCommon.Ident.toString id)) (.field id2 :: rest2) := rfl
+      = memberAuxB (.getAttr he (Cst.Ident.toString id)) (.field id2 :: rest2) := rfl
 private theorem memberAuxB_field_index (he : Expr) (id : Cst.Ident) (id2 : String) (rest2 : List AstAccessor) :
     memberAuxB he (.field id :: .index id2 :: rest2)
-      = memberAuxB (.getAttr he (CstCommon.Ident.toString id)) (.index id2 :: rest2) := rfl
+      = memberAuxB (.getAttr he (Cst.Ident.toString id)) (.index id2 :: rest2) := rfl
 
 /-- Bridge: collapsing `memberAux` of a (non-name) head through `toExpr?` equals
     running `memberAuxB` on the collapsed head expression. -/
@@ -1099,7 +1103,7 @@ theorem memberAux_toExpr_eq
       simp [memberAux, memberAuxA, ExprOrSpecial.toExpr?]
       cases memberAuxB (Expr.lit (.bool b)) (acc :: rest) <;> rfl
   | strLit s =>
-    cases hus : CstCommon.unescape? s with
+    cases hus : Cst.unescape? s with
     | none => simp [ExprOrSpecial.toExpr?, hus] at hpe
     | some us =>
       simp [ExprOrSpecial.toExpr?, hus] at hpe
@@ -1133,10 +1137,10 @@ theorem memberAux_toExpr_eq
               cases memberAuxB e rest2 <;> rfl
           | field id2 =>
             simp [memberAux, memberAuxA, memberAuxB_field_field]
-            cases memberAuxB (Expr.getAttr (.var v) (CstCommon.Ident.toString id)) (.field id2 :: rest2) <;> rfl
+            cases memberAuxB (Expr.getAttr (.var v) (Cst.Ident.toString id)) (.field id2 :: rest2) <;> rfl
           | index id2 =>
             simp [memberAux, memberAuxA, memberAuxB_field_index]
-            cases memberAuxB (Expr.getAttr (.var v) (CstCommon.Ident.toString id)) (.index id2 :: rest2) <;> rfl
+            cases memberAuxB (Expr.getAttr (.var v) (Cst.Ident.toString id)) (.index id2 :: rest2) <;> rfl
 
 /-- When a method-call translation's receiver errors, the method application
     propagates the head error *unchanged*. -/
@@ -1148,7 +1152,7 @@ private theorem toMeth?_eval_error_eq
     evaluate head' req es = .error err := by
   cases id with
   | idIdent s =>
-    cases hop : CstCommon.String.toMethodOp? s with
+    cases hop : Cst.String.toMethodOp? s with
     | none => simp [Cst.Ident.toMeth?, hop] at hm
     | some op =>
       cases op with
@@ -1305,10 +1309,10 @@ theorem evalAccessors_eq
       have hev : Cst.Member.evalAccessors head [.field (.idIdent s0)] req es
                = (do let hv ← getAttr head s es; Cst.Member.evalAccessors hv [] req es) := by
         simp [Cst.Member.evalAccessors, hs]
-      have hstep : evaluate (Expr.getAttr headExpr (CstCommon.Ident.toString (.idIdent s))) req es
+      have hstep : evaluate (Expr.getAttr headExpr (Cst.Ident.toString (.idIdent s))) req es
                    = getAttr head s es := by
-        simp [evaluate, hhead, CstCommon.Ident.toString, bind, Except.bind]
-      have hbrec : memberAuxB (Expr.getAttr headExpr (CstCommon.Ident.toString (.idIdent s))) [] = some bexp := hb
+        simp [evaluate, hhead, Cst.Ident.toString, bind, Except.bind]
+      have hbrec : memberAuxB (Expr.getAttr headExpr (Cst.Ident.toString (.idIdent s))) [] = some bexp := hb
       rw [hev]
       exact evalAccessors_step_eq hstep hbrec
         (fun hv' hge => evalAccessors_eq [] [] _ bexp hv' (by simp) hbrec hge
@@ -1328,7 +1332,7 @@ theorem evalAccessors_eq
       simp only [Cst.MemAccess.toAstAccessor?, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at ha2_ast
       obtain ⟨xs, hxs, rfl⟩ := ha2_ast
       rw [memberAuxB_field_call] at hb
-      cases hop : CstCommon.String.toMethodOp? s with
+      cases hop : Cst.String.toMethodOp? s with
       | none => simp [Cst.Ident.toMeth?, hop] at hb
       | some op =>
         cases op with
@@ -1392,9 +1396,9 @@ theorem evalAccessors_eq
       have hev : Cst.Member.evalAccessors head (.field (.idIdent s0) :: .field i2 :: rest2) req es
                = (do let hv ← getAttr head s es; Cst.Member.evalAccessors hv (.field i2 :: rest2) req es) := by
         simp [Cst.Member.evalAccessors, hs]
-      have hstep : evaluate (Expr.getAttr headExpr (CstCommon.Ident.toString (.idIdent s))) req es
+      have hstep : evaluate (Expr.getAttr headExpr (Cst.Ident.toString (.idIdent s))) req es
                    = getAttr head s es := by
-        simp [evaluate, hhead, CstCommon.Ident.toString, bind, Except.bind]
+        simp [evaluate, hhead, Cst.Ident.toString, bind, Except.bind]
       rw [hev]
       exact evalAccessors_step_eq hstep hb
         (fun hv' hge => evalAccessors_eq (.field i2 :: rest2) tl_ast _ bexp hv'
@@ -1413,9 +1417,9 @@ theorem evalAccessors_eq
       have hev : Cst.Member.evalAccessors head (.field (.idIdent s0) :: .index ex2 :: rest2) req es
                = (do let hv ← getAttr head s es; Cst.Member.evalAccessors hv (.index ex2 :: rest2) req es) := by
         simp [Cst.Member.evalAccessors, hs]
-      have hstep : evaluate (Expr.getAttr headExpr (CstCommon.Ident.toString (.idIdent s))) req es
+      have hstep : evaluate (Expr.getAttr headExpr (Cst.Ident.toString (.idIdent s))) req es
                    = getAttr head s es := by
-        simp [evaluate, hhead, CstCommon.Ident.toString, bind, Except.bind]
+        simp [evaluate, hhead, Cst.Ident.toString, bind, Except.bind]
       rw [hev]
       exact evalAccessors_step_eq hstep hb
         (fun hv' hge => evalAccessors_eq (.index ex2 :: rest2) tl_ast _ bexp hv'
@@ -1428,7 +1432,7 @@ decreasing_by all_goals (simp_wf <;> omega)
     syntactically `.name ⟨[], .idIdent s⟩`. -/
 theorem toExprOrSpecial_name_func {item : Cst.Primary} {an : Spec.Name}
     (h : item.toExprOrSpecial? = some (.name an))
-    (hp : an.path = []) (hf : CstCommon.String.isFunctionName? an.id = true) :
+    (hp : an.path = []) (hf : Cst.String.isFunctionName? an.id = true) :
     ∃ s, item = .name { path := [], name := .idIdent s } := by
   cases item with
   | name n =>
@@ -1447,7 +1451,7 @@ theorem toExprOrSpecial_name_func {item : Cst.Primary} {an : Spec.Name}
       subst hp
       cases nname with
       | idIdent s => exact ⟨s, rfl⟩
-      | _ => exact absurd hf (by simp [CstCommon.Ident.toString, CstCommon.String.isFunctionName?])
+      | _ => exact absurd hf (by simp [Cst.Ident.toString, Cst.String.isFunctionName?])
   | literal l =>
     cases l <;>
       simp [Cst.Primary.toExprOrSpecial?, Cst.Literal.toExprOrSpecial?,
@@ -2018,9 +2022,9 @@ theorem Cst.Primary.toAttr?_consistent (p : Cst.Primary) :
     | nil =>
       cases name <;>
         simp [Cst.Primary.toAttr?, Cst.Ident.toAttr?, Cst.Primary.toExprOrSpecial?, Cst.Name.toVar?,
-              Cst.Name.toAName?, CstCommon.Name.toAName?,
-              CstCommon.Ident.toUnrestrictedString?, ExprOrSpecial.toValidAttr?,
-              Var.toString]
+              Cst.Name.toAName?, Cst.Name.toAName?,
+              Cst.Ident.toUnrestrictedString?, ExprOrSpecial.toValidAttr?,
+              varToString]
     | cons hd tl =>
       simp only [Cst.Primary.toAttr?, Cst.Primary.toExprOrSpecial?, Cst.Name.toVar?,
         List.isEmpty_cons, Bool.not_false, ite_true]
@@ -2037,7 +2041,7 @@ theorem Cst.Primary.toAttr?_consistent (p : Cst.Primary) :
         simp [Cst.Primary.toAttr?, Cst.Primary.toExprOrSpecial?, Cst.Ref.toExprOrSpecial?,
               Option.bind]
         cases (Cst.Name.toAName? path) <;>
-          cases (CstCommon.unescape? s) <;> simp [ExprOrSpecial.toValidAttr?]
+          cases (Cst.unescape? s) <;> simp [ExprOrSpecial.toValidAttr?]
     | ref _ _ =>
       simp [Cst.Primary.toAttr?, Cst.Primary.toExprOrSpecial?, Cst.Ref.toExprOrSpecial?]
   | expr e =>
@@ -2401,7 +2405,7 @@ theorem cond_not_toAExpr {e : Cst.Expr} {b : Expr} :
     Cst.ExprImpl.toExprOrSpecial?, Cst.ExprData.toExprOrSpecial?, Cst.OrExpr.toExprOrSpecial?,
     Cst.AndExpr.toExprOrSpecial?, Cst.Relation.toExprOrSpecial?, Cst.AddExpr.toExprOrSpecial?,
     Cst.MultExpr.toExprOrSpecial?, Cst.Unary.toExprOrSpecial?, Cst.Member.toExprOrSpecial?,
-    Cst.Primary.toExprOrSpecial?, memberAuxA, memberAux, Expr.bangN, ExprOrSpecial.toExpr?, h]
+    Cst.Primary.toExprOrSpecial?, memberAuxA, memberAux, Cst.bangN, ExprOrSpecial.toExpr?, h]
 
 /-- If both halves of an append `mapM`-translate, so does the whole list. -/
 theorem mapM_append_isSome {α β : Type} {f : α → Option β} :
