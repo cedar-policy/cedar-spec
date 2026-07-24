@@ -74,7 +74,7 @@ public def Ident.toAttr? : Ident → Option Spec.Attr
   | .idForbid    => some "forbid"
   | .idWhen      => some "when"
   | .idUnless    => some "unless"
-  | .idIdent s   => some s
+  | .idIdent s _   => some s
   | _            => none
 
 /-- Attribute name of a `Primary` used as a record key. -/
@@ -146,7 +146,7 @@ public def Ident.toHasHead? : Cst.Ident → Option String
   | .idAction    => some "action"
   | .idResource  => some "resource"
   | .idContext   => some "context"
-  | .idIdent s   => if Unreserved? s then some s else none
+  | .idIdent s _   => if Unreserved? s then some s else none
   | _            => none
 
 public def AddExpr.toAttrs? (e : AddExpr) : Option (List Spec.Attr) :=
@@ -269,18 +269,19 @@ public def Primary.evaluate (e : Primary) (req : Spec.Request) (es : Spec.Entiti
         simp only [RecInit.mk.sizeOf_spec] at h1
         show sizeOf v < 1 + sizeOf r
         omega
-      match ri.key.toAttr? with
+      match ri.attr.toAttr? with
       | none => .error (.cstError .stringError)
       | some attr => do
           let val ← ri.value.evaluate req es
           .ok (attr, val))
     .ok (.record (Map.make avs))
+  | .slot _ => .error (.cstError .unsupportedError)
 termination_by sizeOf e
 
 public def Member.evaluate (e : Member) (req : Spec.Request) (es : Spec.Entities) : Spec.Result Spec.Value :=
   match e with
   -- Function calls
-  | { item := .name { path := [], name := .idIdent s }, access := .call args :: rest } =>
+  | { item := .name { path := [], name := .idIdent s _ }, access := .call args :: rest } =>
     match String.toExtFun? s with
     | none => .error (.cstError .unsupportedError)
     | some xfn => do
@@ -389,7 +390,6 @@ public def Unary.evaluate (e : Unary) (req : Spec.Request) (es : Spec.Entities) 
                   if n % 2 == 0 then .ok (.prim (.int i))
                   else .ok (.prim (.int j))
           | _ => .error .typeError
-  | some _ => .error (.cstError .unsupportedError)
 termination_by sizeOf e
 decreasing_by
   all_goals cases e; simp_wf; omega
@@ -676,10 +676,10 @@ public def VariableDef.toExpr (vd : VariableDef) : Expr :=
   vd.toAndExpr.toOrExpr.toExpr
 
 public def Cond.toExpr (c : Cond) : Expr :=
-  match c.cond, c.expr with
-  | .idWhen, some e => e
-  | .idUnless, some e => Expr.not e
-  | _, _ => Expr.tt
+  match c.kind with
+  | .idWhen => c.body
+  | .idUnless => Expr.not c.body
+  | _ => Expr.tt
 
 -- The `effect` field is not considered in this translation
 public def PolicyImpl.toExpr (p : PolicyImpl) : Expr :=

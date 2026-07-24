@@ -54,7 +54,7 @@ theorem list_eval_complete {req : Request} {es : Entities} :
 theorem rInits_complete {req : Request} {es : Entities} :
     ∀ (r : List Cst.RecInit) (avs : List (Attr × Value)),
       r.mapM (fun ri =>
-        match ri.key.toAttr? with
+        match ri.attr.toAttr? with
         | none => Except.error (Error.cstError CstError.stringError)
         | some attr => do let val ← ri.value.evaluate req es; .ok (attr, val)) = .ok avs →
       (∀ ri ∈ r, ∀ v, ri.value.evaluate req es = .ok v → ∃ ae, ri.value.toAExpr? = some ae) →
@@ -68,20 +68,20 @@ theorem rInits_complete {req : Request} {es : Entities} :
     cases hev with
     | cons hhd htl =>
       rename_i av_hd av_tl
-      cases hkey : ri.key.toAttr? with
+      cases hkey : ri.attr.toAttr? with
       | none => simp [hkey] at hhd
       | some attr =>
         cases hvalv : ri.value.evaluate req es with
         | error e => simp [hkey, hvalv, bind, Except.bind] at hhd
         | ok vval =>
-          have hkey_t := Cst.Expr.toAttr?_consistent ri.key
+          have hkey_t := Cst.Expr.toAttr?_consistent ri.attr
           rw [hkey] at hkey_t
           replace hkey_t := hkey_t.symm
           rw [Option.bind_eq_some_iff] at hkey_t
           obtain ⟨eos, heos, hattr⟩ := hkey_t
           obtain ⟨vae, hvae⟩ := hcomp ri List.mem_cons_self vval hvalv
           have htl' : rs.mapM (fun ri =>
-              match ri.key.toAttr? with
+              match ri.attr.toAttr? with
               | none => Except.error (Error.cstError CstError.stringError)
               | some attr => do let val ← ri.value.evaluate req es; .ok (attr, val)) = .ok av_tl := by
             rw [List.mapM_ok_iff_forall₂]; exact htl
@@ -90,12 +90,12 @@ theorem rInits_complete {req : Request} {es : Entities} :
 
 /-- `toUnreservedString?` succeeds only on an (unreserved) `.idIdent`. -/
 private theorem toUnreservedString?_some {i : Cst.Ident} {s : String}
-    (h : Cst.Ident.toUnreservedString? i = some s) : i = .idIdent s := by
+    (h : Cst.Ident.toUnreservedString? i = some s) : ∃ hk, i = .idIdent s hk := by
   cases i
-  case idIdent s' =>
+  case idIdent s' hk' =>
     simp only [Cst.Ident.toUnreservedString?] at h
     split at h
-    · injection h with h'; subst h'; rfl
+    · injection h with h'; subst h'; exact ⟨hk', rfl⟩
     · exact absurd h (by simp)
   all_goals simp [Cst.Ident.toUnreservedString?] at h
 
@@ -147,7 +147,7 @@ theorem evalAccessors_complete {req : Request} {es : Entities}
     cases hi : Cst.Ident.toUnreservedString? i with
     | none => simp [Cst.Member.evalAccessors, hi] at hev
     | some m =>
-      have hii := toUnreservedString?_some hi; subst hii
+      obtain ⟨hm_kw, hii⟩ := toUnreservedString?_some hi; subst hii
       cases hop : Cst.String.toMethodOp? m with
       | none => simp [Cst.Member.evalAccessors, hi, hop] at hev
       | some op =>
@@ -174,7 +174,7 @@ theorem evalAccessors_complete {req : Request} {es : Entities}
                   obtain ⟨rest_ast, hrest_ast, _, hmemb⟩ := evalAccessors_complete rest v' v hev
                     (fun ce hsz w hcw => hcomp ce
                       (by simp only [List.cons.sizeOf_spec] at hsz ⊢; omega) w hcw)
-                  refine ⟨.field (.idIdent m) :: .call [a] :: rest_ast, ?_, by simp, ?_⟩
+                  refine ⟨.field (.idIdent m hm_kw) :: .call [a] :: rest_ast, ?_, by simp, ?_⟩
                   · rw [List.mapM_cons, List.mapM_cons]
                     simp [Cst.MemAccess.toAstAccessor?, hi, Cst.Expr.toAExprs?, ha, hrest_ast]
                   · intro he
@@ -194,7 +194,7 @@ theorem evalAccessors_complete {req : Request} {es : Entities}
               obtain ⟨rest_ast, hrest_ast, _, hmemb⟩ := evalAccessors_complete rest v' v hev
                 (fun ce hsz w hcw => hcomp ce
                   (by simp only [List.cons.sizeOf_spec] at hsz ⊢; omega) w hcw)
-              refine ⟨.field (.idIdent m) :: .call [] :: rest_ast, ?_, by simp, ?_⟩
+              refine ⟨.field (.idIdent m hm_kw) :: .call [] :: rest_ast, ?_, by simp, ?_⟩
               · rw [List.mapM_cons, List.mapM_cons]
                 simp [Cst.MemAccess.toAstAccessor?, hi, Cst.Expr.toAExprs?, hrest_ast]
               · intro he
@@ -206,8 +206,8 @@ theorem evalAccessors_complete {req : Request} {es : Entities}
     cases hi : Cst.Ident.toUnreservedString? i with
     | none => simp [Cst.Member.evalAccessors, hi] at hev
     | some attr =>
-      have hii := toUnreservedString?_some hi; subst hii
-      refine ⟨[.field (.idIdent attr)], ?_, by simp, ?_⟩
+      obtain ⟨hm_kw, hii⟩ := toUnreservedString?_some hi; subst hii
+      refine ⟨[.field (.idIdent attr hm_kw)], ?_, by simp, ?_⟩
       · simp [List.mapM_cons, Cst.MemAccess.toAstAccessor?, hi]
       · intro he
         exact ⟨Expr.getAttr he attr, by simp [memberAuxB, Cst.Ident.toString]⟩
@@ -215,7 +215,7 @@ theorem evalAccessors_complete {req : Request} {es : Entities}
     cases hi : Cst.Ident.toUnreservedString? i with
     | none => simp [Cst.Member.evalAccessors, hi] at hev
     | some attr =>
-      have hii := toUnreservedString?_some hi; subst hii
+      obtain ⟨hm_kw, hii⟩ := toUnreservedString?_some hi; subst hii
       simp only [Cst.Member.evalAccessors, hi] at hev
       cases hga : getAttr head attr es with
       | error e => simp [hga, bind, Except.bind] at hev
@@ -225,7 +225,7 @@ theorem evalAccessors_complete {req : Request} {es : Entities}
         obtain ⟨rest_ast, hrest_ast, hnc, hmemb⟩ :=
           evalAccessors_complete (.field i2 :: rest) v' v hev'
             (fun ce hsz w hcw => hcomp ce (by simp only [List.cons.sizeOf_spec] at hsz ⊢; omega) w hcw)
-        refine ⟨.field (.idIdent attr) :: rest_ast, ?_, by simp, ?_⟩
+        refine ⟨.field (.idIdent attr hm_kw) :: rest_ast, ?_, by simp, ?_⟩
         · rw [List.mapM_cons]; simp [Cst.MemAccess.toAstAccessor?, hi, hrest_ast]
         · intro he
           obtain ⟨r, hr⟩ := hmemb (Expr.getAttr he attr)
@@ -236,8 +236,8 @@ theorem evalAccessors_complete {req : Request} {es : Entities}
     cases hi : Cst.Ident.toUnreservedString? i with
     | none => simp [Cst.Member.evalAccessors, hi] at hev
     | some attr =>
-      have hii := toUnreservedString?_some hi; subst hii
-      have hstep : Cst.Member.evalAccessors head (.field (.idIdent attr) :: .index ex :: rest) req es
+      obtain ⟨hm_kw, hii⟩ := toUnreservedString?_some hi; subst hii
+      have hstep : Cst.Member.evalAccessors head (.field (.idIdent attr hm_kw) :: .index ex :: rest) req es
                  = (do let hv ← getAttr head attr es;
                        Cst.Member.evalAccessors hv (.index ex :: rest) req es) := by
         simp [Cst.Member.evalAccessors, hi]
@@ -249,7 +249,7 @@ theorem evalAccessors_complete {req : Request} {es : Entities}
         obtain ⟨rest_ast, hrest_ast, hnc, hmemb⟩ :=
           evalAccessors_complete (.index ex :: rest) v' v hev
             (fun ce hsz w hcw => hcomp ce (by simp only [List.cons.sizeOf_spec] at hsz ⊢; omega) w hcw)
-        refine ⟨.field (.idIdent attr) :: rest_ast, ?_, by simp, ?_⟩
+        refine ⟨.field (.idIdent attr hm_kw) :: rest_ast, ?_, by simp, ?_⟩
         · rw [List.mapM_cons]; simp [Cst.MemAccess.toAstAccessor?, hi, hrest_ast]
         · intro he
           obtain ⟨r, hr⟩ := hmemb (Expr.getAttr he attr)

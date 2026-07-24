@@ -102,19 +102,19 @@ theorem Cst.Primary.toAExpr?_complete
   | rInits r =>
     have hCST : (Cst.Primary.rInits r).evaluate req es =
         (r.mapM (fun ri =>
-          match ri.key.toAttr? with
+          match ri.attr.toAttr? with
           | none => Except.error (Error.cstError CstError.stringError)
           | some attr => do let val ← ri.value.evaluate req es; Except.ok (attr, val))) >>=
         fun avs => Except.ok (Value.record (Map.make avs)) := by
       simp only [Cst.Primary.evaluate]
       congr 1
       exact List.mapM₁_eq_mapM (fun ri : Cst.RecInit =>
-        match ri.key.toAttr? with
+        match ri.attr.toAttr? with
         | none => Except.error (Error.cstError CstError.stringError)
         | some attr => do let val ← ri.value.evaluate req es; Except.ok (attr, val)) r
     rw [hCST] at hev
     cases hrv : r.mapM (fun ri =>
-        match ri.key.toAttr? with
+        match ri.attr.toAttr? with
         | none => Except.error (Error.cstError CstError.stringError)
         | some attr => do let val ← ri.value.evaluate req es; Except.ok (attr, val)) with
     | error e => rw [hrv] at hev; simp [bind, Except.bind] at hev
@@ -125,6 +125,8 @@ theorem Cst.Primary.toAExpr?_complete
           exact ⟨ae, by simp [Cst.Expr.toAExpr?, heos, hae]⟩)
       refine ⟨.expr (.record map), .record map, ?_, by simp [ExprOrSpecial.toExpr?]⟩
       simp [Cst.Primary.toExprOrSpecial?, hmap]
+  | slot _ =>
+    simp [Cst.Primary.evaluate] at hev
 termination_by (sizeOf prim, 0)
 decreasing_by
   all_goals simp_wf
@@ -158,7 +160,7 @@ theorem Cst.Member.toAExpr?_complete
     exact ⟨ae', by simp [Cst.Expr.toAExpr?, heos', hae']⟩
   unfold Cst.Member.evaluate at hev
   split at hev
-  case h_1 s args rest =>
+  case h_1 s _ args rest =>
     cases hfn : Cst.String.toExtFun? s with
     | none => rw [hfn] at hev; simp at hev
     | some xfn =>
@@ -297,8 +299,6 @@ theorem Cst.Unary.toAExpr?_complete
             exact ⟨.expr (Cst.dashN iexpr n.toNat), Cst.dashN iexpr n.toNat,
                    by simp [Cst.Unary.toExprOrSpecial?, hop, hlit, hieos, hiexpr],
                    by simp [ExprOrSpecial.toExpr?]⟩
-  | some .nOverBang => simp [Cst.Unary.evaluate, hop] at hev
-  | some .nOverDash => simp [Cst.Unary.evaluate, hop] at hev
 termination_by (sizeOf u, 0)
 decreasing_by
   all_goals
