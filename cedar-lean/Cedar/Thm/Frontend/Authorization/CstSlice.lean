@@ -1,19 +1,16 @@
 import Cedar.Slice.PolicySlice
-import Cedar.Slice.CstPolicySlice
+import Cedar.Frontend.Cst.Slice
 import Cedar.Thm.Authorization.Authorizer
-import Cedar.Thm.Translation.AuxSound
-import Cedar.Thm.Translation
+import Cedar.Thm.Frontend
+import Cedar.Thm.Frontend.Translation.AuxSound
 import Cedar.Thm.PolicySlice
 
 namespace Cedar.Thm
-open Cedar.Spec Cedar.Slice Cedar.Slice.Cst Cedar.Data
+open Cedar.Spec Cedar.Slice Cedar.Frontend.Cst.Slice Cedar.Data
 open Cedar.Frontend
 open Cedar.Frontend.Cst hiding Expr ExprImpl ExprData OrExpr AndExpr AddExpr MultExpr Name Policy PolicyImpl Policies Ident Literal Primary Member MemAccess Unary Relation RelOp Cond VariableDef Ref RecInit Str
 
 
-
--- write the specifications so that the style is more consistant and the code is more readable
--- and then prove that the functions satisfy the specs
 
 /-!
 Key theorems in this file:
@@ -227,7 +224,7 @@ theorem translation_preserves_scopeAnalysis'
   {cp : Cst.Policy} {ap : Policy}
   (htrans : cp.toPolicy? = some ap)
   (h : (prVars? cp).isSome) : -- redundant, but provides flexibility in future uses
-  Cst.scopeAnalysis cp h = scopeAnalysis ap := by
+  Cst.Slice.scopeAnalysis cp h = scopeAnalysis ap := by
   obtain ⟨p⟩ := cp
   simp only [Cst.Policy.toPolicy?, Cst.PolicyImpl.toPolicy?, bind, Option.bind_eq_some_iff,
     Option.some.injEq] at htrans
@@ -251,7 +248,7 @@ theorem translation_preserves_scopeAnalysis'
     obtain ⟨hpe, _, hre⟩ := hsceq
     subst hpe; subst hre; subst hap
     have hget : (prVars? (Cst.Policy.policy p)).get h = (a, c) := Option.get_of_eq_some h hpr
-    unfold Cedar.Slice.Cst.scopeAnalysis Cedar.Slice.scopeAnalysis
+    unfold Cst.Slice.scopeAnalysis Cedar.Slice.scopeAnalysis
     simp only [hget, hpseq, hrseq, PrincipalScope.scope, ResourceScope.scope, hba, hbc]
   | [], hsc => simp [extractScope?] at hsc
   | [_], hsc => simp [extractScope?] at hsc
@@ -283,7 +280,7 @@ def Cst.IsSoundPolicyBound (bound : PolicyBound) (policy : Cst.Policy) : Prop :=
   (Cst.satisfied policy req entities → satisfiedBound bound req entities) ∧
   (Cst.hasError policy req entities → satisfiedBound bound req entities)
 
-def Cst.IsSoundBoundAnalysis (ba : Cst.BoundAnalysis) : Prop :=
+def Cst.IsSoundBoundAnalysis (ba : Cst.Slice.BoundAnalysis) : Prop :=
   ∀ (policy : Cst.Policy) (h : (prVars? policy).isSome),
     (policy.toPolicy?).isSome → Cst.IsSoundPolicyBound (ba policy h) policy
 
@@ -305,7 +302,7 @@ private theorem scope_slice_translate
       (hwf : ∀ policy ∈ cps, (prVars? policy).isSome),
       List.Forall₂ (fun cp ap => cp.toPolicy? = some ap) cps aps →
       (cps.attach.filterMap (fun x =>
-          if satisfiedBound (Cedar.Slice.Cst.scopeAnalysis x.1 (hwf x.1 x.2)) req entities
+          if satisfiedBound (Cst.Slice.scopeAnalysis x.1 (hwf x.1 x.2)) req entities
           then some x.1 else none)).mapM Cst.Policy.toPolicy?
         = some (aps.filter (fun ap => satisfiedBound (Cedar.Slice.scopeAnalysis ap) req entities)) := by
   intro cps
@@ -320,28 +317,28 @@ private theorem scope_slice_translate
     | cons hhd htl =>
       rename_i ap aps'
       have ihtl := ih aps' (fun p hp => hwf p (List.mem_cons_of_mem hd hp)) htl
-      have hsc : Cedar.Slice.Cst.scopeAnalysis hd (hwf hd List.mem_cons_self)
+      have hsc : Cst.Slice.scopeAnalysis hd (hwf hd List.mem_cons_self)
                = Cedar.Slice.scopeAnalysis ap :=
         translation_preserves_scopeAnalysis' hhd (hwf hd List.mem_cons_self)
       cases hb : satisfiedBound (Cedar.Slice.scopeAnalysis ap) req entities
       · have hF : (fun x : {x // x ∈ hd :: tl} =>
-            if satisfiedBound (Cedar.Slice.Cst.scopeAnalysis x.1 (hwf x.1 x.2)) req entities
+            if satisfiedBound (Cst.Slice.scopeAnalysis x.1 (hwf x.1 x.2)) req entities
             then some x.1 else none) ⟨hd, List.mem_cons_self⟩ = none := by
           simp [hsc, hb]
         rw [List.attach_cons,
           List.filterMap_cons_none (f := fun x : {x // x ∈ hd :: tl} =>
-            if satisfiedBound (Cedar.Slice.Cst.scopeAnalysis x.1 (hwf x.1 x.2)) req entities
+            if satisfiedBound (Cst.Slice.scopeAnalysis x.1 (hwf x.1 x.2)) req entities
             then some x.1 else none) hF,
           List.filterMap_map, List.filter_cons]
         simp only [hb, Bool.false_eq_true, if_false]
         exact ihtl
       · have hF : (fun x : {x // x ∈ hd :: tl} =>
-            if satisfiedBound (Cedar.Slice.Cst.scopeAnalysis x.1 (hwf x.1 x.2)) req entities
+            if satisfiedBound (Cst.Slice.scopeAnalysis x.1 (hwf x.1 x.2)) req entities
             then some x.1 else none) ⟨hd, List.mem_cons_self⟩ = some hd := by
           simp [hsc, hb]
         rw [List.attach_cons,
           List.filterMap_cons_some (f := fun x : {x // x ∈ hd :: tl} =>
-            if satisfiedBound (Cedar.Slice.Cst.scopeAnalysis x.1 (hwf x.1 x.2)) req entities
+            if satisfiedBound (Cst.Slice.scopeAnalysis x.1 (hwf x.1 x.2)) req entities
             then some x.1 else none) hF,
           List.filterMap_map, List.filter_cons]
         simp only [hb, if_true]
@@ -355,10 +352,10 @@ theorem cst_slice_chooses_same_policies'
     (req : Request) (entities : Entities)
     (htrans : cps.toPolicies? = some aps)
     (hwf : ∀ policy ∈ cps.ps, (prVars? policy).isSome) :
-    (Cedar.Slice.Cst.BoundAnalysis.slice Cedar.Slice.Cst.scopeAnalysis req entities cps hwf).toPolicies?
+    (Cst.Slice.BoundAnalysis.slice Cst.Slice.scopeAnalysis req entities cps hwf).toPolicies?
       = some (Cedar.Slice.BoundAnalysis.slice Cedar.Slice.scopeAnalysis req entities aps) := by
   have hforall := toPolicies?_forall₂ htrans
-  simp only [Cedar.Slice.Cst.BoundAnalysis.slice, Cst.Policies.toPolicies?,
+  simp only [Cst.Slice.BoundAnalysis.slice, Cst.Policies.toPolicies?,
     Cedar.Slice.BoundAnalysis.slice]
   exact scope_slice_translate req entities cps.ps aps hwf hforall
 
@@ -367,7 +364,7 @@ theorem cst_slice_chooses_same_policies
   (req : Request) (entities : Entities)
   (htrans : cps.toPolicies? = some aps) :
     ∃ hwf : ∀ policy ∈ cps.ps, (prVars? policy).isSome,
-    (Cedar.Slice.Cst.BoundAnalysis.slice Cedar.Slice.Cst.scopeAnalysis req entities cps hwf).toPolicies?
+    (Cst.Slice.BoundAnalysis.slice Cst.Slice.scopeAnalysis req entities cps hwf).toPolicies?
     = some (Cedar.Slice.BoundAnalysis.slice Cedar.Slice.scopeAnalysis req entities aps) := by
   have h := policies_translation_success_prVars_isSome' htrans
   exists h
@@ -456,25 +453,25 @@ theorem cst_sound_slice_translates
 
 /-- Every policy kept by the CST bound-analysis slice is a member of the
     original policy store. -/
-theorem cst_bound_slice_subset (ba : Cedar.Slice.Cst.BoundAnalysis) (request : Request)
+theorem cst_bound_slice_subset (ba : Cst.Slice.BoundAnalysis) (request : Request)
     (entities : Entities) (policies : Cst.Policies)
     (hwf : ∀ policy ∈ policies.ps, (prVars? policy).isSome) :
-    (Cedar.Slice.Cst.BoundAnalysis.slice ba request entities policies hwf).ps ⊆ policies.ps := by
+    (Cst.Slice.BoundAnalysis.slice ba request entities policies hwf).ps ⊆ policies.ps := by
   intro x hx
-  simp only [Cedar.Slice.Cst.BoundAnalysis.slice, List.mem_filterMap] at hx
+  simp only [Cst.Slice.BoundAnalysis.slice, List.mem_filterMap] at hx
   obtain ⟨⟨a, ha⟩, _, hF⟩ := hx
   split at hF
   · injection hF with h; exact h ▸ ha
   · contradiction
 
 /-- If a policy's bound is satisfied, it is kept by the CST bound-analysis slice. -/
-theorem cst_bound_slice_kept (ba : Cedar.Slice.Cst.BoundAnalysis) (request : Request)
+theorem cst_bound_slice_kept (ba : Cst.Slice.BoundAnalysis) (request : Request)
     (entities : Entities) (policies : Cst.Policies)
     (hwf : ∀ policy ∈ policies.ps, (prVars? policy).isSome)
     {policy : Cst.Policy} (hmem : policy ∈ policies.ps)
     (hsat : satisfiedBound (ba policy (hwf policy hmem)) request entities) :
-    policy ∈ (Cedar.Slice.Cst.BoundAnalysis.slice ba request entities policies hwf).ps := by
-  simp only [Cedar.Slice.Cst.BoundAnalysis.slice, List.mem_filterMap]
+    policy ∈ (Cst.Slice.BoundAnalysis.slice ba request entities policies hwf).ps := by
+  simp only [Cst.Slice.BoundAnalysis.slice, List.mem_filterMap]
   exact ⟨⟨policy, hmem⟩, List.mem_attach _ _, by simp [hsat]⟩
 
 

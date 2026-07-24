@@ -14,9 +14,9 @@
  limitations under the License.
 -/
 
-import Cedar.Slice.CstPolicySlice
+import Cedar.Frontend.Cst.Slice
 import Cedar.Thm.Authorization.Authorizer
-import Cedar.Thm.Authorization.CstPolicySlice
+import Cedar.Thm.Frontend.Authorization.CstSlice
 
 /-!
 This file defines what it means for a CST (concrete syntax tree) policy slice to
@@ -46,7 +46,7 @@ as an extra hypothesis.
 
 namespace Cedar.Thm
 
-open Cedar.Spec Cedar.Slice Cedar.Slice.Cst
+open Cedar.Spec Cedar.Slice
 open Cedar.Frontend
 open Cedar.Frontend.Cst hiding Expr ExprImpl ExprData OrExpr AndExpr AddExpr MultExpr Name Policy PolicyImpl Policies Ident Literal Primary Member MemAccess Unary Relation RelOp Cond VariableDef Ref RecInit Str
 
@@ -58,8 +58,8 @@ computed on the AST policy it translates to.
 theorem Cst.translation_preserves_scopeAnalysis
   {cp : Cst.Policy} {ap : Policy}
   (htrans : cp.toPolicy? = some ap) :
-  ∃ h : (prVars? cp).isSome,
-  Cedar.Slice.Cst.scopeAnalysis cp h = Cedar.Slice.scopeAnalysis ap := by
+  ∃ h : (Slice.prVars? cp).isSome,
+  Cst.Slice.scopeAnalysis cp h = Cedar.Slice.scopeAnalysis ap := by
   exists (policy_translation_success_prVars_isSome' htrans)
   apply translation_preserves_scopeAnalysis' htrans
 
@@ -85,13 +85,13 @@ theorem Cst.isAuthorized_eq_for_sound_policy_slice
 A sound CST bound analysis produces sound CST policy slices.
 -/
 theorem Cst.sound_bound_analysis_produces_sound_slices
-    (ba : Cedar.Slice.Cst.BoundAnalysis) (request : Request) (entities : Entities)
+    (ba : Cst.Slice.BoundAnalysis) (request : Request) (entities : Entities)
     (policies : Cst.Policies)
     (htrans : (policies.toPolicies?).isSome) :
     Cst.IsSoundBoundAnalysis ba →
-    ∃ (h : ∀ policy ∈ policies.ps, (prVars? policy).isSome),
+    ∃ (h : ∀ policy ∈ policies.ps, (Slice.prVars? policy).isSome),
     Cst.IsSoundPolicySlice request entities
-      (Cedar.Slice.Cst.BoundAnalysis.slice ba request entities policies h) policies := by
+      (Cst.Slice.BoundAnalysis.slice ba request entities policies h) policies := by
   intro hba
   have hwf := policies_translation_success_prVars_isSome htrans
   exists hwf
@@ -108,8 +108,8 @@ CST scope-based bounds are sound.
 -/
 theorem Cst.scope_bound_is_sound (policy : Cst.Policy)
     (htrans : (policy.toPolicy?).isSome) :
-    ∃ h : (prVars? policy).isSome,
-    Cst.IsSoundPolicyBound (Cedar.Slice.Cst.scopeAnalysis policy h) policy := by
+    ∃ h : (Slice.prVars? policy).isSome,
+    Cst.IsSoundPolicyBound (Cst.Slice.scopeAnalysis policy h) policy := by
   obtain ⟨ap, hap⟩ := Option.isSome_iff_exists.mp htrans
   exists (policy_translation_success_prVars_isSome' hap)
   intro req es
@@ -123,7 +123,7 @@ theorem Cst.scope_bound_is_sound (policy : Cst.Policy)
 CST scope-based bound analysis is sound.
 -/
 theorem Cst.scope_analysis_is_sound :
-    Cst.IsSoundBoundAnalysis Cedar.Slice.Cst.scopeAnalysis := by
+    Cst.IsSoundBoundAnalysis Cst.Slice.scopeAnalysis := by
   intro policy _ hpt
   obtain ⟨_, hsound⟩ := Cst.scope_bound_is_sound policy hpt
   exact hsound
@@ -136,9 +136,9 @@ policies.
 theorem Cst.isAuthorized_eq_for_scope_based_policy_slice
     (request : Request) (entities : Entities) (policies : Cst.Policies)
     (htrans : (policies.toPolicies?).isSome) :
-    ∃ (hwf : ∀ policy ∈ policies.ps, (prVars? policy).isSome),
+    ∃ (hwf : ∀ policy ∈ policies.ps, (Slice.prVars? policy).isSome),
     Cst.isAuthorized request entities
-      (Cedar.Slice.Cst.BoundAnalysis.slice Cedar.Slice.Cst.scopeAnalysis request entities policies hwf) =
+      (Cst.Slice.BoundAnalysis.slice Cst.Slice.scopeAnalysis request entities policies hwf) =
     Cst.isAuthorized request entities policies := by
   exists (policies_translation_success_prVars_isSome htrans)
   obtain ⟨aps, htrans'⟩ := Option.isSome_iff_exists.mp htrans
