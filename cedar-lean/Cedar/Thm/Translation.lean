@@ -1,7 +1,7 @@
 import Cedar.Spec
-import Cedar.Spec.Cst
-import Cedar.Spec.CstSemantics
-import Cedar.Spec.CstToAst
+import Cedar.Frontend.Cst
+import Cedar.Frontend.Cst.Semantics
+import Cedar.Frontend.Cst.ToAst
 import Cedar.Thm.Translation.AuxComplete
 import Cedar.Thm.Translation.AuxSound
 import Cedar.Thm.Translation.ExprComplete
@@ -12,6 +12,8 @@ namespace Cedar.Thm
 
 open Cedar.Data
 open Cedar.Spec
+open Cedar.Frontend
+open Cedar.Frontend.Cst hiding Expr ExprImpl ExprData OrExpr AndExpr AddExpr MultExpr Name Policy PolicyImpl Policies Ident Literal Primary Member MemAccess Unary Relation RelOp Cond VariableDef Ref RecInit Str
 
 /-- When `toPolicy?` succeeds, the CST policy's expression also translates to AST. -/
 theorem toPolicy?_implies_toAExpr?
@@ -57,7 +59,7 @@ theorem policy_satisfied_agrees (cp : Cst.Policy) (ap : Spec.Policy)
   have heq : cp.toExpr.evaluate req es = evaluate ap.toExpr req es :=
     (expr_to_expr_sound hae).symm.trans
       (policy_to_expr_sound cp ap cp.toExpr ae req es htrans rfl hae)
-  unfold Cst.satisfied satisfied
+  unfold Cst.satisfied Spec.satisfied
   rw [heq]
 
 /-- Under a successful translation, `extractScope?` succeeds, so the new scope
@@ -108,7 +110,7 @@ theorem policy_satisfiedWithEffect_agrees (cp : Cst.Policy) (ap : Spec.Policy)
   obtain ⟨e0, he0, ⟨ps, acts, rs⟩, hsc, conds, hconds, heq⟩ := htrans'
   have heffeq : e0 = ap.effect := by
     have := congrArg Spec.Policy.effect heq; simpa using this
-  have heff : CstCommon.Ident.toEffect? p.effect = some ap.effect := by
+  have heff : Cst.Ident.toEffect? p.effect = some ap.effect := by
     rw [he0, heffeq]
   have hsat : Cst.satisfied (.policy p) req es = satisfied ap req es :=
     policy_satisfied_agrees (.policy p) ap req es htrans
@@ -128,7 +130,7 @@ theorem satisfiedPolicies_agrees (cps : Cst.Policies) (aps : Spec.Policies)
   intro htrans
   have hforall := toPolicies?_forall₂ htrans
   -- The two filterMaps agree pointwise.
-  simp only [Cst.satisfiedPolicies, satisfiedPolicies]
+  simp only [Cst.satisfiedPolicies, Spec.satisfiedPolicies]
   congr 1
   apply filterMap_congr_forall₂ hforall
   intro cp ap htp
@@ -140,7 +142,7 @@ theorem errorPolicies_agrees (cps : Cst.Policies) (aps : Spec.Policies)
   Cst.errorPolicies cps req es = errorPolicies aps req es := by
   intro htrans
   have hforall := toPolicies?_forall₂ htrans
-  simp only [Cst.errorPolicies, errorPolicies]
+  simp only [Cst.errorPolicies, Spec.errorPolicies]
   congr 1
   apply filterMap_congr_forall₂ hforall
   intro cp ap htp
@@ -154,7 +156,7 @@ theorem translation_is_sound (cps : Cst.Policies) (aps : Spec.Policies)
   have hforbids := satisfiedPolicies_agrees cps aps req es .forbid htrans
   have hpermits := satisfiedPolicies_agrees cps aps req es .permit htrans
   have herrors := errorPolicies_agrees cps aps req es htrans
-  simp [Cst.isAuthorized, isAuthorized]
+  simp [Cst.isAuthorized, Spec.isAuthorized]
   simp [hforbids, hpermits, herrors]
 
 theorem noHasError_translates (cp : Cst.Policy) (req : Request) (es : Entities) :
