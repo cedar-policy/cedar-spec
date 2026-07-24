@@ -7,6 +7,9 @@ import Cedar.Thm.PolicySlice
 
 namespace Cedar.Thm
 open Cedar.Spec Cedar.Slice Cedar.Slice.Cst Cedar.Data
+open Cedar.Frontend
+open Cedar.Frontend.Cst hiding Expr ExprImpl ExprData OrExpr AndExpr AddExpr MultExpr Name Policy PolicyImpl Policies Ident Literal Primary Member MemAccess Unary Relation RelOp Cond VariableDef Ref RecInit Str
+
 
 
 -- write the specifications so that the style is more consistant and the code is more readable

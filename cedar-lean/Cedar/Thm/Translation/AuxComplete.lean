@@ -1,7 +1,7 @@
 import Cedar.Spec
-import Cedar.Spec.Cst
-import Cedar.Spec.CstSemantics
-import Cedar.Spec.CstToAst
+import Cedar.Frontend.Cst
+import Cedar.Frontend.Cst.Semantics
+import Cedar.Frontend.Cst.ToAst
 import Cedar.Thm.Translation.AuxSound
 import Cedar.Thm.Data.List.Lemmas
 
@@ -19,6 +19,8 @@ namespace Cedar.Thm
 
 open Cedar.Data
 open Cedar.Spec
+open Cedar.Frontend
+open Cedar.Frontend.Cst hiding Expr ExprImpl ExprData OrExpr AndExpr AddExpr MultExpr Name Policy PolicyImpl Policies Ident Literal Primary Member MemAccess Unary Relation RelOp Cond VariableDef Ref RecInit Str
 
 /-- If a list of CST expressions all evaluate (the `Except` `mapM` is `.ok`),
     and each translates whenever it evaluates, then the list translates. -/
@@ -88,20 +90,20 @@ theorem rInits_complete {req : Request} {es : Entities} :
 
 /-- `toUnreservedString?` succeeds only on an (unreserved) `.idIdent`. -/
 private theorem toUnreservedString?_some {i : Cst.Ident} {s : String}
-    (h : CstCommon.Ident.toUnreservedString? i = some s) : i = .idIdent s := by
+    (h : Cst.Ident.toUnreservedString? i = some s) : i = .idIdent s := by
   cases i
   case idIdent s' =>
-    simp only [CstCommon.Ident.toUnreservedString?] at h
+    simp only [Cst.Ident.toUnreservedString?] at h
     split at h
     · injection h with h'; subst h'; rfl
     · exact absurd h (by simp)
-  all_goals simp [CstCommon.Ident.toUnreservedString?] at h
+  all_goals simp [Cst.Ident.toUnreservedString?] at h
 
 /-- Prepending a field accessor reduces through `memberAuxB`'s attribute branch
     as long as the remaining accessors don't begin with a call. -/
 private theorem memberAuxB_field_cons (id : Cst.Ident) (l : List AstAccessor) (he : Expr)
     (hnc : ∀ cargs t, l ≠ AstAccessor.call cargs :: t) :
-    memberAuxB he (.field id :: l) = memberAuxB (.getAttr he (CstCommon.Ident.toString id)) l := by
+    memberAuxB he (.field id :: l) = memberAuxB (.getAttr he (Cst.Ident.toString id)) l := by
   cases l with
   | nil => simp [memberAuxB]
   | cons a t =>
@@ -126,7 +128,7 @@ theorem evalAccessors_complete {req : Request} {es : Entities}
   | [], _ => exact ⟨[], by simp, by simp, fun he => ⟨he, rfl⟩⟩
   | .call _ :: _, hev => simp [Cst.Member.evalAccessors] at hev
   | .index ex :: rest, hev =>
-    cases hex : CstCommon.Expr.toUnescapedStringLiteral? ex with
+    cases hex : Cst.Expr.toUnescapedStringLiteral? ex with
     | none => simp [Cst.Member.evalAccessors, hex] at hev
     | some attr =>
       simp only [Cst.Member.evalAccessors, hex] at hev
@@ -142,11 +144,11 @@ theorem evalAccessors_complete {req : Request} {es : Entities}
           obtain ⟨r, hr⟩ := hmemb (Expr.getAttr he attr)
           exact ⟨r, by simp only [memberAuxB]; exact hr⟩
   | .field i :: .call args :: rest, hev =>
-    cases hi : CstCommon.Ident.toUnreservedString? i with
+    cases hi : Cst.Ident.toUnreservedString? i with
     | none => simp [Cst.Member.evalAccessors, hi] at hev
     | some m =>
       have hii := toUnreservedString?_some hi; subst hii
-      cases hop : CstCommon.String.toMethodOp? m with
+      cases hop : Cst.String.toMethodOp? m with
       | none => simp [Cst.Member.evalAccessors, hi, hop] at hev
       | some op =>
         cases op with
@@ -201,16 +203,16 @@ theorem evalAccessors_complete {req : Request} {es : Entities}
                 simp only [memberAuxB, Cst.Ident.toMeth?, hop, List.isEmpty_nil, if_true]
                 exact hr
   | .field i :: [], hev =>
-    cases hi : CstCommon.Ident.toUnreservedString? i with
+    cases hi : Cst.Ident.toUnreservedString? i with
     | none => simp [Cst.Member.evalAccessors, hi] at hev
     | some attr =>
       have hii := toUnreservedString?_some hi; subst hii
       refine ⟨[.field (.idIdent attr)], ?_, by simp, ?_⟩
       · simp [List.mapM_cons, Cst.MemAccess.toAstAccessor?, hi]
       · intro he
-        exact ⟨Expr.getAttr he attr, by simp [memberAuxB, CstCommon.Ident.toString]⟩
+        exact ⟨Expr.getAttr he attr, by simp [memberAuxB, Cst.Ident.toString]⟩
   | .field i :: .field i2 :: rest, hev =>
-    cases hi : CstCommon.Ident.toUnreservedString? i with
+    cases hi : Cst.Ident.toUnreservedString? i with
     | none => simp [Cst.Member.evalAccessors, hi] at hev
     | some attr =>
       have hii := toUnreservedString?_some hi; subst hii
@@ -229,9 +231,9 @@ theorem evalAccessors_complete {req : Request} {es : Entities}
           obtain ⟨r, hr⟩ := hmemb (Expr.getAttr he attr)
           refine ⟨r, ?_⟩
           rw [memberAuxB_field_cons _ rest_ast he hnc]
-          simpa [CstCommon.Ident.toString] using hr
+          simpa [Cst.Ident.toString] using hr
   | .field i :: .index ex :: rest, hev =>
-    cases hi : CstCommon.Ident.toUnreservedString? i with
+    cases hi : Cst.Ident.toUnreservedString? i with
     | none => simp [Cst.Member.evalAccessors, hi] at hev
     | some attr =>
       have hii := toUnreservedString?_some hi; subst hii
@@ -253,7 +255,7 @@ theorem evalAccessors_complete {req : Request} {es : Entities}
           obtain ⟨r, hr⟩ := hmemb (Expr.getAttr he attr)
           refine ⟨r, ?_⟩
           rw [memberAuxB_field_cons _ rest_ast he hnc]
-          simpa [CstCommon.Ident.toString] using hr
+          simpa [Cst.Ident.toString] using hr
 termination_by sizeOf accs
 decreasing_by
   all_goals simp_wf

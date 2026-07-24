@@ -1,6 +1,22 @@
-import Cedar.Spec.Cst
-import Cedar.Spec.CstSemantics
-import Cedar.Spec.CstToAst
+/-
+ Copyright Cedar Contributors
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-/
+
+import Cedar.Frontend.Cst
+import Cedar.Frontend.Cst.Semantics
+import Cedar.Frontend.Cst.ToAst
 import Cedar.Thm.Translation
 import Cedar.Thm.Validation
 
@@ -8,6 +24,7 @@ namespace Cedar.Thm
 
 open Cedar.Data
 open Cedar.Spec
+open Cedar.Frontend
 open Cedar.Validation
 
 /-- If a translated CST expression is well-typed, evaluating the CST expression

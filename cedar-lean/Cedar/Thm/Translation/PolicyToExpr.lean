@@ -1,7 +1,7 @@
 import Cedar.Spec
-import Cedar.Spec.Cst
-import Cedar.Spec.CstSemantics
-import Cedar.Spec.CstToAst
+import Cedar.Frontend.Cst
+import Cedar.Frontend.Cst.Semantics
+import Cedar.Frontend.Cst.ToAst
 import Cedar.Thm.Translation.AuxSound
 import Cedar.Thm.Data.List.Lemmas
 import Cedar.Thm.Data.Set
@@ -11,6 +11,8 @@ namespace Cedar.Thm
 
 open Cedar.Data
 open Cedar.Spec
+open Cedar.Frontend
+open Cedar.Frontend.Cst hiding Expr ExprImpl ExprData OrExpr AndExpr AddExpr MultExpr Name Policy PolicyImpl Policies Ident Literal Primary Member MemAccess Unary Relation RelOp Cond VariableDef Ref RecInit Str
 
 /-! ## Proof structure for `policy_to_expr_sound`
 
@@ -273,7 +275,7 @@ theorem evaluate_policy_toExpr (ap : Policy) (req : Request) (es : Entities) :
     evaluate (bigAnd ap.principalScope.toExpr
                (ap.actionScope.toExpr :: ap.resourceScope.toExpr ::
                 ap.condition.map Condition.toExpr)) req es := by
-  unfold Policy.toExpr
+  unfold Spec.Policy.toExpr
   rw [← evaluate_and_assoc]
   rw [← evaluate_and_assoc]
   rw [cond_flatten _ ap.condition req es (and_Boolish _ _ req es)]
@@ -513,7 +515,7 @@ theorem action_leaf_eq {va : Cst.VariableDef} {as : ActionScope} {leaf : Expr}
       cases ineq with
       | none =>
         simp [Cst.VariableDef.toActionScope?, Cst.VariableDef.toActionScopeAux?,
-          ActionScope.containsOnlyActionTypes?] at has
+          containsOnlyActionTypes?] at has
         subst has
         rw [collapse] at hleaf
         simp [Cst.Relation.tt, Cst.Primary.toMember, Cst.Member.toUnary, Cst.Unary.toMultExpr,
