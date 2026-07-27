@@ -27,7 +27,7 @@ public def String.toUnreservedId? (s : String) : Option String :=
   | "principal" | "action" | "resource" | "context"
   | "true" | "false" | "permit" | "forbid"
   | "when" | "unless" | "in" | "has" | "like" | "is"
-  | "if" | "then" | "else" | "__cedar" => none
+  | "if" | "then" | "else" => none
   | _ => some s
 
 namespace Cedar.Frontend.Cst
