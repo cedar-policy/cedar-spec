@@ -16,10 +16,8 @@
 
 module
 
-public import Cedar.Spec.Policy
-public import Cedar.Spec.Wildcard
-
-@[expose] public section
-
-namespace Cedar.Frontend.Cst
-end Cedar.Frontend.Cst
+public import Cedar.Frontend.Cst.Common
+public import Cedar.Frontend.Cst.Syntax
+public import Cedar.Frontend.Cst.Semantics
+public import Cedar.Frontend.Cst.Slice
+public import Cedar.Frontend.Cst.ToAst

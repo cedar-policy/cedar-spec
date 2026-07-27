@@ -15,10 +15,13 @@
 -/
 
 import Cedar.Frontend.Parser
+import Cedar.Frontend.Cst
 
 /-! This file contains lemmas for proving roundtrip properties of hex string conversion. -/
 
-namespace Cedar.Spec.Cst.Parser
+namespace Cedar.Frontend.Cst.Parser
+
+open Cedar.Frontend.Cst
 
 instance : DecidableEq (Except String Nat) := fun a b =>
   match a, b with
@@ -113,7 +116,7 @@ theorem go_length (n : Nat) (acc : List Char) :
     omega
 termination_by n
 
-theorem go_nonempty (n : Nat) (hn : n > 0) :
+public theorem go_nonempty (n : Nat) (hn : n > 0) :
     (Nat.toHexChars.go n []).length ≥ 1 := by
   match n with
   | n + 1 =>
@@ -122,7 +125,7 @@ theorem go_nonempty (n : Nat) (hn : n > 0) :
     rw [go_length]
     simp [List.length]
 
-theorem go_length_le (n : Nat) (hn : n ≤ 0xFFFFFF) :
+public theorem go_length_le (n : Nat) (hn : n ≤ 0xFFFFFF) :
     (Nat.toHexChars.go n []).length ≤ 6 := by
   suffices ∀ (k : Nat) (m : Nat), m < 16^k → (Nat.toHexChars.go m []).length ≤ k from
     this 6 n (by omega)
@@ -147,7 +150,7 @@ theorem go_length_le (n : Nat) (hn : n ≤ 0xFFFFFF) :
 ----- classifyIdent / Ident.toString roundtrip -----
 
 /-- `classifyIdent` is a left inverse of `Ident.toString` for keyword identifiers. -/
-theorem classifyIdent_toString_keyword (i : Ident) (h : ¬∃ s hs, i = .idIdent s hs) :
+theorem classifyIdent_toString_keyword (i : Cst.Ident) (h : ¬∃ s hs, i = .idIdent s hs) :
     classifyIdent (Ident.toString i) = i := by
   cases i with
   | idIdent s hs => exact absurd ⟨s, hs, rfl⟩ h
@@ -160,8 +163,7 @@ theorem classifyIdent_toString_ident (s : String)
   simp only [Ident.toString, classifyIdent, dif_neg h]
 
 /-- `Ident.toString` is a left inverse of `classifyIdent` for all Cedar keywords. -/
-theorem toString_classifyIdent_keyword (s : String)
-    (h : s ∈ keywords) :
+theorem toString_classifyIdent_keyword (s : String) (h : s ∈ keywords) :
     Ident.toString (classifyIdent s) = s := by
   simp only [keywords, List.mem_cons, List.mem_nil_iff, or_false] at h
   rcases h with h | h | h | h | h | h | h | h | h | h | h | h | h | h | h | h | h <;>
@@ -184,4 +186,4 @@ def isLowerHex (c : Char) : Prop :=
 theorem Char.eq_of_toNat_eq {c₁ c₂ : Char} (h : c₁.toNat = c₂.toNat) : c₁ = c₂ :=
   Char.ext_iff.mpr (congrArg UInt32.ofBitVec (BitVec.eq_of_toNat_eq h))
 
-end Cedar.Spec.Cst.Parser
+end Cedar.Frontend.Cst.Parser
