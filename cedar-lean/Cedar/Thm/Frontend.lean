@@ -23,6 +23,7 @@ import Cedar.Thm.Frontend.Translation.AuxSound
 import Cedar.Thm.Frontend.Translation.ExprComplete
 import Cedar.Thm.Frontend.Translation.ExprTranslation
 import Cedar.Thm.Frontend.Translation.PolicyToExpr
+import Cedar.Thm.Frontend.Translation.CstErrorCollector
 
 namespace Cedar.Thm
 
