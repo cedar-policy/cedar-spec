@@ -18,7 +18,7 @@ import Cedar.Thm.Frontend.Parser.Strings
 
 /-! This file states and proves the main theorems about the Cedar parser's pure functions. -/
 
-namespace Cedar.Spec.Cst.Parser
+namespace Cedar.Frontend.Cst.Parser
 
 /-- `Nat.toHexChars` is equivalent to `Nat.toDigits 16` for values up to 4095.
     This gives additional assurance that our custom implementation matches the stdlib. -/
@@ -71,4 +71,4 @@ theorem Char.asHexNat_injective_lower (c₁ c₂ : Char) (n : Nat)
       (split at h₁ <;> split at h₂ <;> simp_all <;> omega)
   exact Char.eq_of_toNat_eq heq
 
-end Cedar.Spec.Cst.Parser
+end Cedar.Frontend.Cst.Parser
