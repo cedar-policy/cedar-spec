@@ -121,7 +121,7 @@ def rawIdent : Parser String := tok do
     Uses dependent `if` rather than `match` because Lean's pattern matching on `String`
     does not provide discrimination hypotheses in the catch-all case, which are needed
     to prove that the keyword branch is exhaustive and to supply the `s ∉ keywords` proof. -/
-def classifyIdent (s : String) : Ident :=
+public def classifyIdent (s : String) : Ident :=
   if h : s ∈ keywords then
     if _ : s = "principal" then .idPrincipal
     else if _ : s = "action" then .idAction
@@ -147,23 +147,23 @@ def classifyIdent (s : String) : Ident :=
     .idIdent s h
 
 /-- Parse an identifier -/
-def parseIdent : Parser Ident := do
+public def parseIdent : Parser Ident := do
   return classifyIdent (← rawIdent)
 
 /-- Expect a specific keyword -/
-def keyword (s : String) : Parser Unit := do
+public def keyword (s : String) : Parser Unit := do
   let i ← rawIdent
   if i != s then fail s!"expected '{s}', got '{i}'"
 
 /-- Try to consume a keyword; return true if successful -/
-def tryKeyword (s : String) : Parser Bool :=
+public def tryKeyword (s : String) : Parser Bool :=
   (attempt (keyword s) *> pure true) <|> pure false
 
 
 ----- Literals -----
 
 /-- Parse a natural number -/
-def parseNat : Parser UInt64 := tok do
+public def parseNat : Parser UInt64 := tok do
   let s ← many1Chars (satisfy Char.isDigit)
   match s.toNat? with
   | some n => return n.toUInt64
@@ -175,7 +175,7 @@ def parseNat : Parser UInt64 := tok do
   following escape sequences: \", \\, \n, \r, \t, \0, \xHH (2-digit ASCII hex escape),
   and \u{...} (1–6 digit Unicode escape).
 -/
-partial def stringLit : Parser String := do
+public partial def stringLit : Parser String := do
   skipChar '"'
   stringLitBody ""
 where
