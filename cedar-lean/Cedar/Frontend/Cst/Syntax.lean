@@ -51,7 +51,9 @@ namespace Cedar.Frontend.Cst
 public def keywords : List String :=
   ["principal", "action", "resource", "context", "true", "false",
    "permit", "forbid", "when", "unless", "in", "has", "like", "is",
-   "if", "then", "else", "__cedar"]
+   "if", "then", "else"]
+
+--- "__cedar"] TODO: the __cedar identifier
 
 -- Identifiers of the Cedar language, including special ones
 public inductive Ident where
