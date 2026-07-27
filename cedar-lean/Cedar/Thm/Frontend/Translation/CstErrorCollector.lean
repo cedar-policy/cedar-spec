@@ -1033,17 +1033,5 @@ theorem collectPolicies_complete (pl : List Cst.Policy) (req : Request) (es : En
     obtain ⟨qs, hqs⟩ := ih hrest
     exact ⟨q :: qs, by simp [List.mapM_cons, hq, hqs]⟩
 
-/-- **Strong completeness (headline).** If the comprehensive CST error collector
-    reports no CST error for a policy set, then every policy translates to AST.
-    Because the collector never short-circuits, a translation error can never be
-    hidden behind a runtime error elsewhere. -/
-theorem translation_is_strongly_complete (cps : Cst.Policies) (req : Request) (es : Entities) :
-    noCstError (cps.collectErrors req es) →
-    ∃ aps, cps.toPolicies? = some aps := by
-  intro h
-  unfold Cst.Policies.collectErrors at h
-  unfold Cst.Policies.toPolicies?
-  exact collectPolicies_complete cps.ps req es h
-
 end Cedar.Spec
 
