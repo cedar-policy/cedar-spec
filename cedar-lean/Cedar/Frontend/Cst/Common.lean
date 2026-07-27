@@ -144,7 +144,6 @@ public def Unreserved? (s : String) : Bool :=
   | "if" => false
   | "then" => false
   | "else" => false
-  | "__cedar" => false
   | _ => true
 
 public theorem unreserved_iff_not_in_keywords {s : String} :
@@ -154,7 +153,7 @@ public theorem unreserved_iff_not_in_keywords {s : String} :
   constructor
   · intro h
     split at h <;> simp_all
-  · intro ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12, h13, h14, h15, h16, h17, h18⟩
+  · intro ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12, h13, h14, h15, h16, h17⟩
     split <;> simp_all
 
 public theorem not_in_keywords_unreserved {s : String} (h : s ∉ keywords) :
