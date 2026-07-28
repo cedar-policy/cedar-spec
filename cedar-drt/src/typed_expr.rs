@@ -717,7 +717,16 @@ fn rust_env_key(env: &cedar_policy_core::validator::types::RequestEnv<'_>) -> Op
             ..
         } => Some((
             principal.to_string(),
-            action.to_string(),
+            // Built field by field rather than via `Display for EntityUID`,
+            // which renders the eid through `Eid::escaped()`. Lean's
+            // `ToString EntityUID` emits the raw eid, so an action whose eid
+            // holds a control character escapes on one side only and the two
+            // keys never align.
+            format!(
+                "{}::\"{}\"",
+                action.entity_type(),
+                <cedar_policy_core::ast::Eid as AsRef<str>>::as_ref(action.eid())
+            ),
             resource.to_string(),
         )),
         // Partial validation is not enabled for this target; an undeclared
@@ -766,7 +775,10 @@ pub fn run_typed_expr_drt(
 
     let tc = Typechecker::new(vschema, ValidationMode::Strict);
     for template in policies.all_templates() {
-        let pid = template.id().to_string();
+        // `Display for PolicyID` escapes via `escape_debug`, so a policy id
+        // containing control characters renders as `\\0` here and as a raw NUL
+        // on the Lean side, and the two never align. Use the raw string.
+        let pid = template.id().as_ref().to_string();
         for (env, check) in tc.typecheck_by_request_env(template) {
             let Some(key) = rust_env_key(&env) else {
                 continue;

@@ -654,3 +654,9 @@ name = "tc-repair-equivalence"
 path = "fuzz_targets/tc-repair-equivalence.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "typed-expression-drt"
+path = "fuzz_targets/typed-expression-drt.rs"
+test = false
+doc = false
