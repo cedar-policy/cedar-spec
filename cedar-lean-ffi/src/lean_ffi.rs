@@ -22,8 +22,8 @@
 mod tpe;
 
 use crate::datatypes::{
-    AuthorizationResponse, AuthorizationResponseInner, Env, ResultDef, Term, TimedDef, TimedResult,
-    TpeResponse, TpeResponseInner, ValidationResponse,
+    AuthorizationResponse, AuthorizationResponseInner, Env, LeanTypedExprPolicyResult, ResultDef,
+    Term, TimedDef, TimedResult, TpeResponse, TpeResponseInner, ValidationResponse,
 };
 use crate::err::FfiError;
 use crate::lean_object::{
@@ -226,6 +226,7 @@ unsafe extern "C" {
 
     fn isAuthorized(req: *mut lean_object) -> *mut lean_object;
     fn validate(req: *mut lean_object) -> *mut lean_object;
+    fn typecheckPolicyTyped(req: *mut lean_object) -> *mut lean_object;
     fn levelValidate(req: *mut lean_object) -> *mut lean_object;
     fn printEvaluation(req: *mut lean_object) -> *mut lean_object;
     fn checkEvaluate(req: *mut lean_object) -> *mut lean_object;
@@ -1139,6 +1140,29 @@ impl CedarLeanFfi {
         mode: &ValidationMode,
     ) -> Result<ValidationResponse, FfiError> {
         Ok(self.validate_timed(policyset, schema, mode)?.take_result())
+    }
+
+    /// Calls the Lean backend to typecheck every policy in `policyset` against
+    /// `schema`, returning the `TypedExpr` produced for each (policy,
+    /// environment) pair rather than only a pass/fail verdict (issue #840).
+    pub fn typecheck_policy_typed(
+        &self,
+        policyset: &PolicySet,
+        schema: &Schema,
+        mode: &ValidationMode,
+    ) -> Result<Vec<LeanTypedExprPolicyResult>, FfiError> {
+        let response = unsafe {
+            call_lean_ffi_takes_protobuf(
+                typecheckPolicyTyped,
+                &proto::ValidationRequest::new(policyset, schema, mode),
+            )
+        };
+        let parsed: ResultDef<TimedDef<Vec<LeanTypedExprPolicyResult>>> =
+            response.as_borrowed().deserialize_into()?;
+        match parsed {
+            ResultDef::Ok(timed) => Ok(timed.data),
+            ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
+        }
     }
 
     /// Calls the lean backend to validate the `PolicySet` against the provided `Schema` at level `level`
