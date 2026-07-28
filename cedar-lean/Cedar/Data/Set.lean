@@ -131,6 +131,9 @@ public def singleton? [Inhabited α] (s : Set α) : Option α :=
 public def foldl {α β} (f : α → β → α) (init : α) (s : Set β) : α :=
   s.elts.foldl f init
 
+public def product {α β} (s₁ : Set α) (s₂ : Set β) : Set (α × β) :=
+  Set.mk $ s₁.elts.product s₂.elts
+
 ----- Instances -----
 
 public instance [LT α] : LT (Set α) where
