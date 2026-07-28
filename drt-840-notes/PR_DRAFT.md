@@ -1,4 +1,4 @@
-# PR draft — NOT PUSHED, NOT OPENED
+# PR draft. NOT PUSHED, NOT OPENED.
 
 Branch: `drt-typed-expression-840`. Target: `cedar-policy/cedar-spec` `main`.
 
