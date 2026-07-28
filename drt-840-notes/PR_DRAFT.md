@@ -79,7 +79,14 @@ the shared Cedar specification: if the spec is wrong, both sides can agree and b
 wrong.
 
 Over 40000 fuzz executions the target completes with zero harness problems, covering
-71865 (policy, environment) pairs.
+71865 (policy, environment) pairs. Of those pairs, 10.65% carry the `Var(Action)`
+against literal result described below.
+
+That percentage needs reading carefully and I would rather state the limit than let it
+be taken for more than it is. libFuzzer is coverage-guided, so the executions are not
+independent draws, and the generated schemas skew small. 10.65% describes this
+generator's output under this harness. It is not a prevalence estimate for real Cedar
+policies, and nothing here supports treating it as one.
 
 ## One result worth a maintainer decision
 
@@ -90,10 +97,14 @@ let expr := substituteAction env.reqty.action policy.toExpr
 ```
 
 `typecheck_by_single_request_env` typechecks `t.condition()` directly and has no
-equivalent, so it keeps `Var(Action)` where Lean has the literal. This is deliberate on
-the Lean side. Both sides reach the same validation verdict, which is why a pass/fail
-comparison never surfaced it. Whether the Rust typed expression should mirror the
-substitution is your call, so the target reports it rather than normalising it away.
+equivalent, so it keeps `Var(Action)` where Lean has the literal.
+
+This is not offered as a defect in either implementation. The substitution is
+deliberate and documented on the Lean side, and both sides reach the same validation
+verdict, which is why a pass/fail comparison never surfaced it. It is a scope question:
+whether the Rust typed expression is meant to mirror the specification's substitution
+is yours to decide, and the target reports the difference rather than normalising it
+away so that the decision stays with you.
 
 ## Running it
 
