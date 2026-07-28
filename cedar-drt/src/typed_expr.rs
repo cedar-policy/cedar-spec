@@ -42,6 +42,22 @@
 //!   Inputs reaching them yield [`Divergence::UnsupportedRustVariant`] rather
 //!   than a spurious shape mismatch.
 //!
+//! ## Known cause of the `var` against `lit` result
+//!
+//! Lean's `typecheckPolicy` substitutes the concrete action EUID into the
+//! policy expression before typechecking (`Cedar/Validation/Validator.lean`,
+//! `let expr := substituteAction env.reqty.action policy.toExpr`). Rust's
+//! `typecheck_by_single_request_env` typechecks `t.condition()` directly and
+//! has no equivalent substitution, so it keeps `Var(Action)` where Lean has
+//! the literal.
+//!
+//! This is deliberate on the Lean side and is recorded here so the result is
+//! not read as an unexplained disagreement. It is left as a finding rather
+//! than normalised away, because whether the Rust typed expression should
+//! mirror the spec's substitution is a question for the maintainers and not
+//! one this harness should answer by hiding it. Both sides reach the same
+//! validation verdict, which is why a pass/fail comparison never surfaced it.
+//!
 //! ## Independence
 //!
 //! The two typecheckers are independently authored (different repositories,
@@ -96,6 +112,24 @@ pub enum Divergence {
     /// A Rust AST variant with no Lean counterpart (`Slot`, `Unknown`).
     /// Out of scope for this target, recorded rather than dropped.
     UnsupportedRustVariant { path: String, variant: String },
+    /// One side folded a statically-true policy condition to a boolean
+    /// literal and the other kept the scope-constraint conjunction.
+    ///
+    /// Its own bucket rather than a `ShapeMismatch`, because it is a
+    /// difference in constant folding and not a disagreement about the shape
+    /// of a shared expression: the folded side has no subtree to compare, so
+    /// grouping it with genuine shape disagreements buries them.
+    ///
+    /// The types the two sides assign to the whole condition are still
+    /// compared and reported here, which is the only part of these trees that
+    /// remains comparable.
+    ConstantFoldedCondition {
+        path: String,
+        folded: &'static str,
+        rust_ty: String,
+        lean_ty: String,
+        types_agree: bool,
+    },
     /// The Lean JSON did not have the expected tagged shape. A harness
     /// problem: the encoding changed under us.
     MalformedLeanJson { path: String, detail: String },
@@ -111,6 +145,21 @@ impl Divergence {
         )
     }
 
+    /// A representational difference that is declared and tested rather than
+    /// a disagreement to act on: the two implementations constant-fold a
+    /// statically-true condition differently but assign it the same type.
+    ///
+    /// A folded pair whose types DISAGREE is not declared and stays a finding.
+    pub fn is_declared_difference(&self) -> bool {
+        matches!(
+            self,
+            Divergence::ConstantFoldedCondition {
+                types_agree: true,
+                ..
+            }
+        )
+    }
+
     pub fn bucket(&self) -> &'static str {
         match self {
             Divergence::ShapeMismatch { .. } => "SHAPE_MISMATCH",
@@ -119,6 +168,7 @@ impl Divergence {
             Divergence::OutcomeMismatch { .. } => "OUTCOME_MISMATCH",
             Divergence::EnvUnmatched { .. } => "ENV_UNMATCHED",
             Divergence::UnsupportedRustVariant { .. } => "UNSUPPORTED_RUST_VARIANT",
+            Divergence::ConstantFoldedCondition { .. } => "CONSTANT_FOLDED_CONDITION",
             Divergence::MalformedLeanJson { .. } => "MALFORMED_LEAN_JSON",
         }
     }
@@ -607,6 +657,31 @@ pub fn rust_to_node(e: &Expr<Option<Type>>, path: &str) -> Result<Node, Divergen
     Ok(node.with_scalar("ty", ty).canonical())
 }
 
+/// Is this pair a folded-literal against an unfolded conjunction?
+///
+/// Returns which side did the folding, or `None` if this is an ordinary
+/// constructor disagreement. Only a *boolean* literal counts: an integer or
+/// string literal opposite a compound expression is a real disagreement.
+fn folded_side(rust: &Node, lean: &Node) -> Option<&'static str> {
+    fn is_bool_lit(n: &Node) -> bool {
+        n.ctor == "lit"
+            && n.children.is_empty()
+            && n.scalars
+                .get("p")
+                .is_some_and(|p| p == r#"{"bool":true}"# || p == r#"{"bool":false}"#)
+    }
+    fn is_compound(n: &Node) -> bool {
+        !n.children.is_empty()
+    }
+    if is_bool_lit(rust) && is_compound(lean) {
+        Some("rust")
+    } else if is_bool_lit(lean) && is_compound(rust) {
+        Some("lean")
+    } else {
+        None
+    }
+}
+
 /// Compare two rendered trees, returning every disagreement found.
 ///
 /// Comparison stops descending at the first disagreement on a given subtree
@@ -616,6 +691,22 @@ pub fn compare(rust: &Node, lean: &Node, path: &str) -> Vec<Divergence> {
     let mut out = Vec::new();
 
     if rust.ctor != lean.ctor {
+        // A boolean literal against a compound expression is constant folding,
+        // not a shape disagreement. The folded side is a leaf, so there is
+        // nothing below it to descend into; the types are all that is left to
+        // compare, and they are compared here rather than dropped.
+        if let Some(folded) = folded_side(rust, lean) {
+            let rust_ty = rust.scalars.get("ty").cloned().unwrap_or_default();
+            let lean_ty = lean.scalars.get("ty").cloned().unwrap_or_default();
+            out.push(Divergence::ConstantFoldedCondition {
+                path: path.to_string(),
+                folded,
+                types_agree: rust_ty == lean_ty,
+                rust_ty,
+                lean_ty,
+            });
+            return out;
+        }
         out.push(Divergence::ShapeMismatch {
             path: path.to_string(),
             rust: rust.ctor.clone(),
@@ -684,10 +775,20 @@ pub struct RunReport {
 }
 
 impl RunReport {
+    /// Disagreements to act on: everything that is neither a harness problem
+    /// nor a declared representational difference.
     pub fn findings(&self) -> Vec<&Divergence> {
         self.divergences
             .iter()
-            .filter(|d| !d.is_harness_problem())
+            .filter(|d| !d.is_harness_problem() && !d.is_declared_difference())
+            .collect()
+    }
+
+    /// Declared representational differences, reported but not acted on.
+    pub fn declared_differences(&self) -> Vec<&Divergence> {
+        self.divergences
+            .iter()
+            .filter(|d| d.is_declared_difference())
             .collect()
     }
     pub fn harness_problems(&self) -> Vec<&Divergence> {
@@ -1293,6 +1394,63 @@ mod tests {
             "clean half: {clean_findings} findings over {} pairs; broken half: {} divergences",
             clean.compared,
             ds.len()
+        );
+    }
+
+    /// CONSTANT-FOLDING CONTROL, two-halved.
+    ///
+    /// A statically-true policy condition is folded to `lit true` by the Rust
+    /// typechecker and kept as a conjunction by Lean. The clean half is that
+    /// this lands in its own bucket with the two types reconciled as equal.
+    /// The broken half is that a genuine constructor disagreement, and a
+    /// folded pair whose types DISAGREE, are both still reported.
+    #[test]
+    fn constant_folded_condition_two_halved() {
+        let lean_and = lean_to_node(&lean_sample(), "$").expect("lean parse");
+
+        // Clean half: Rust folded to `true`, both sides type it anyBool.
+        let rust_folded = ExprBuilder::with_data(t_bool()).val(true);
+        let ds = compare(&rust_to_node(&rust_folded, "$").unwrap(), &lean_and, "$");
+        assert_eq!(ds.len(), 1, "expected one divergence, got {ds:?}");
+        assert_eq!(ds[0].bucket(), "CONSTANT_FOLDED_CONDITION");
+        match &ds[0] {
+            Divergence::ConstantFoldedCondition {
+                folded,
+                types_agree,
+                ..
+            } => {
+                assert_eq!(*folded, "rust");
+                assert!(types_agree, "both sides type the condition anyBool");
+            }
+            other => panic!("wrong shape: {other:?}"),
+        }
+
+        // Broken half 1: same folding, but the types disagree. Must still be
+        // reported as a disagreement rather than reconciled away.
+        let rust_folded_long = ExprBuilder::with_data(t_long()).val(true);
+        let ds = compare(
+            &rust_to_node(&rust_folded_long, "$").unwrap(),
+            &lean_and,
+            "$",
+        );
+        assert_eq!(ds.len(), 1);
+        match &ds[0] {
+            Divergence::ConstantFoldedCondition { types_agree, .. } => {
+                assert!(!types_agree, "a type disagreement must not be reconciled");
+            }
+            other => panic!("wrong shape: {other:?}"),
+        }
+
+        // Broken half 2: a non-boolean literal against a compound expression
+        // is a real shape disagreement and must NOT be absorbed into the
+        // folding bucket.
+        let rust_int = ExprBuilder::with_data(t_long()).val(1i64);
+        let ds = compare(&rust_to_node(&rust_int, "$").unwrap(), &lean_and, "$");
+        assert_eq!(ds.len(), 1);
+        assert_eq!(
+            ds[0].bucket(),
+            "SHAPE_MISMATCH",
+            "an int literal opposite a conjunction is not constant folding"
         );
     }
 

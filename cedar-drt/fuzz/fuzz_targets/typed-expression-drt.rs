@@ -51,15 +51,22 @@ fuzz_target!(|input: FuzzTargetInput<true>| {
     };
 
     let findings = report.findings();
-    if findings.is_empty() {
-        return;
-    }
 
     if survey_mode() {
+        // Emitted on every execution, including those with no findings, so the
+        // tally has a denominator. Counting only executions that produced a
+        // finding gives a numerator with nothing to divide by.
+        println!("SURVEY_PAIRS\t{}", report.compared);
         for f in &findings {
             println!("SURVEY\t{}\t{f:?}", f.bucket());
         }
-        println!("SURVEY_PAIRS\t{}", report.compared);
+        for d in report.declared_differences() {
+            println!("SURVEY_DECLARED\t{}\t{d:?}", d.bucket());
+        }
+        return;
+    }
+
+    if findings.is_empty() {
         return;
     }
 
