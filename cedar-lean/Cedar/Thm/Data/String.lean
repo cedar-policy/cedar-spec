@@ -23,6 +23,21 @@ open Cedar.Spec.Ext
 public def IsDigits (s : String) : Prop :=
   0 < s.length ∧ ∀ c ∈ s.toList, c.isDigit = true
 
+/-- `Digit{n}`: a run of exactly `n` decimal digits. The fixed-width refinement of `IsDigits`,
+    used wherever a grammar pins a field's width (the datetime grammar's `YYYY`, `MM`, `SSS`, …). -/
+public def IsFixedDigits (n : Nat) (s : String) : Prop :=
+  IsDigits s ∧ s.length = n
+
+/-- `Digit{1,n}`: between one and `n` decimal digits. `IsDigits` supplies the lower bound and the
+    length constraint the upper (the decimal grammar's `Fraction ::= Digit{1,4}`). -/
+public def IsDigitsUpTo (n : Nat) (s : String) : Prop :=
+  IsDigits s ∧ s.length ≤ n
+
+/-- `['-']`: an optional leading minus sign, either present or absent. Shared by the numeric
+    grammars that admit a signed literal (decimal's `Sign`, duration's leading `'-'`). -/
+public def IsWfSign (s : String) : Prop :=
+  s = "-" ∨ s = ""
+
 /-- A digit string contains no `'_'`, so `toInt?'`/`toNat?'` (which reject `'_'`) do not
     short-circuit on it. -/
 theorem no_underscore_of_isDigits {s : String} (h : IsDigits s) : s.contains '_' = false := by

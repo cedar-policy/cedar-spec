@@ -17,7 +17,7 @@ open Cedar.Spec.Ext
 /-! ============================================================================================
     # Grammar ↔ parser bridge lemmas
 
-    `IsWfDecimal` is phrased over the grammar's productions (`IsWfSign`/`IsWfNat`/`IsWfFrac`) as a
+    `IsWfDecimal` is phrased over the grammar's productions (`IsWfSign`/`IsDigits`/`IsWfFrac`) as a
     rendering `sign ++ natural ++ "." ++ fraction`, while `Decimal.parse` and `computeValue` work
     by splitting on `'.'` and extracting numeric values through `toInt?'`/`toNat?'`. These lemmas
     connect the two views: the rendering splits back into its parts, and a digit string is exactly
@@ -33,7 +33,7 @@ open Cedar.Spec.Ext
 /-- The concatenation of a well-formed `Sign` and `Natural` — the grammar's integer part —
     contains no `'_'`. -/
 theorem no_underscore_of_sign_nat {sign natural : String}
-    (hs : IsWfSign sign) (hn : IsWfNat natural) : (sign ++ natural).contains '_' = false := by
+    (hs : IsWfSign sign) (hn : IsDigits natural) : (sign ++ natural).contains '_' = false := by
   obtain ⟨_, hnd⟩ := hn
   have hnot : ¬ ('_' ∈ (sign ++ natural).toList) := by
     rw [String.toList_append]; intro hm
@@ -44,7 +44,7 @@ theorem no_underscore_of_sign_nat {sign natural : String}
 
 /-- Forward bridge (integer): a well-formed `Sign` followed by a `Natural` parses as an integer. -/
 theorem toInt?'_isSome_of_sign_nat {sign natural : String}
-    (hs : IsWfSign sign) (hn : IsWfNat natural) :
+    (hs : IsWfSign sign) (hn : IsDigits natural) :
     (toInt?' (sign ++ natural)).isSome = true := by
   unfold toInt?'
   rw [no_underscore_of_sign_nat hs hn]
@@ -58,7 +58,7 @@ theorem toInt?'_isSome_of_sign_nat {sign natural : String}
 /-- Backward bridge (integer): anything `toInt?'` accepts splits into a well-formed `Sign` and
     `Natural`. -/
 theorem sign_nat_of_toInt?'_isSome {s : String} (h : (toInt?' s).isSome = true) :
-    ∃ sign natural, s = sign ++ natural ∧ IsWfSign sign ∧ IsWfNat natural := by
+    ∃ sign natural, s = sign ++ natural ∧ IsWfSign sign ∧ IsDigits natural := by
   unfold toInt?' at h
   split at h
   · simp at h
@@ -81,7 +81,7 @@ theorem sign_nat_of_toInt?'_isSome {s : String} (h : (toInt?' s).isSome = true) 
 /-- A well-formed integer part is never a bare `"-"`: the grammar's `Digit⁺` requires at least one
     digit after the sign. This is what the `left ≠ "-"` side condition asserts explicitly. -/
 theorem ne_dash_of_sign_nat {sign natural : String}
-    (hs : IsWfSign sign) (hn : IsWfNat natural) : sign ++ natural ≠ "-" := by
+    (hs : IsWfSign sign) (hn : IsDigits natural) : sign ++ natural ≠ "-" := by
   obtain ⟨hlen, hdig⟩ := hn
   rcases hs with rfl | rfl
   · intro hEq
@@ -109,7 +109,7 @@ theorem no_dot_of_isDigits {s : String} (h : IsDigits s) :
 
 /-- The grammar's integer part contains no `'.'`. -/
 theorem no_dot_of_sign_nat {sign natural : String}
-    (hs : IsWfSign sign) (hn : IsWfNat natural) :
+    (hs : IsWfSign sign) (hn : IsDigits natural) :
     ∀ c ∈ (sign ++ natural).toList, decide (c = '.') = false := by
   intro c hc
   rw [String.toList_append] at hc
@@ -124,7 +124,7 @@ theorem no_dot_of_sign_nat {sign natural : String}
 /-- Splitting a well-formed rendering on `'.'` recovers the integer part and the fraction: the
     only `'.'` in `sign ++ natural ++ "." ++ fraction` is the separator the grammar writes. -/
 theorem splitToList_of_isWfDecimal {sign natural fraction : String}
-    (hs : IsWfSign sign) (hn : IsWfNat natural) (hf : IsWfFrac fraction) :
+    (hs : IsWfSign sign) (hn : IsDigits natural) (hf : IsWfFrac fraction) :
     (sign ++ natural ++ "." ++ fraction).splitToList (· = '.') = [sign ++ natural, fraction] :=
   splitToList_eq (sign ++ natural) fraction (· = '.') '.' (by decide)
     (no_dot_of_sign_nat hs hn) (no_dot_of_isDigits hf.1)
