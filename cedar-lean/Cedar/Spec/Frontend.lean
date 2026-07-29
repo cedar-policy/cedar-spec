@@ -14,32 +14,8 @@
  limitations under the License.
 -/
 
-import UnitTest.CedarProto
-import UnitTest.Datetime
-import UnitTest.Decimal
-import UnitTest.IPAddr
-import UnitTest.Parser
-import UnitTest.ParserStrings
-import UnitTest.ParserStress
-import UnitTest.Proto
-import UnitTest.Wildcard
-import UnitTest.TPE
-import UnitTest.Levels
 
-open UnitTest
+module
 
-def tests :=
-  Datetime.tests ++
-  Decimal.tests ++
-  IPAddr.tests ++
-  Parser.tests ++
-  ParserStrings.tests ++
-  ParserStress.tests ++
-  Wildcard.tests ++
-  Proto.tests ++
-  CedarProto.tests ++
-  TPE.tests ++
-  Levels.tests
-
-def main : IO UInt32 := do
-  TestSuite.runAll tests
+public import Cedar.Frontend.Cst
+public import Cedar.Frontend.CstErrorCollector
