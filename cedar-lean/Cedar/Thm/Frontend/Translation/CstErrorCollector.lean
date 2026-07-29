@@ -810,20 +810,20 @@ theorem Cst.Relation.collect_complete {e : Cst.Relation} {req : Request} {es : E
     obtain ⟨htgt, hety⟩ := (noCstError_union _ _).mpr hte
     obtain ⟨teos, texpr, hteos, htexpr⟩ := Cst.AddExpr.collect_complete htgt
     have htgtA : target.toAExpr? = some texpr := by simp [Cst.AddExpr.toAExpr?, hteos, htexpr]
-    cases hety' : ety.toEntityType? with
+    cases hety' : ety.toEntityTypeName? with
     | none => simp [hety', noCstError_singleton, Error.isCstError] at hety
     | some etyName =>
       match hinE : inEntity with
       | none =>
         exact ⟨.expr (.unaryApp (.is etyName) texpr), .unaryApp (.is etyName) texpr,
-               by simp [Cst.Relation.toExprOrSpecial?, htgtA, hety'], by simp [ExprOrSpecial.toExpr?]⟩
+               by simp [Cst.Relation.toExprOrSpecial?, Cst.AddExpr.toEntityType?, htgtA, hety'], by simp [ExprOrSpecial.toExpr?]⟩
       | some ie =>
         have hIE : noCstError (ie.collectErrors req es).1 := by simpa using hInE
         obtain ⟨ieos, mi, hieos, hmi⟩ := Cst.AddExpr.collect_complete hIE
         have hie : ie.toAExpr? = some mi := by simp [Cst.AddExpr.toAExpr?, hieos, hmi]
         exact ⟨.expr (.and (.unaryApp (.is etyName) texpr) (.binaryApp .mem texpr mi)),
                .and (.unaryApp (.is etyName) texpr) (.binaryApp .mem texpr mi),
-               by simp [Cst.Relation.toExprOrSpecial?, htgtA, hety', hie], by simp [ExprOrSpecial.toExpr?]⟩
+               by simp [Cst.Relation.toExprOrSpecial?, Cst.AddExpr.toEntityType?, htgtA, hety', hie], by simp [ExprOrSpecial.toExpr?]⟩
 termination_by sizeOf e
 decreasing_by
   all_goals simp_wf

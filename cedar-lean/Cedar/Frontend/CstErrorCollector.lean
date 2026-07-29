@@ -302,7 +302,7 @@ public def Relation.collectErrors (e : Relation) (req : Request) (es : Entities)
                      | none   => Set.singleton (Error.cstError .stringError))
     | .rIsIn target entityType inEntity =>
         (target.collectErrors req es).1 ∪
-        (match entityType.toEntityType? with
+        (match entityType.toEntityTypeName? with
          | some _ => ∅
          | none   => Set.singleton (Error.cstError .nameError)) ∪
         (match inEntity with
