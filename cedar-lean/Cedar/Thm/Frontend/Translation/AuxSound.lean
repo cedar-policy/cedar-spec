@@ -849,109 +849,7 @@ theorem addExpr_toPattern_toPatternString_agrees
     ∃ s, Cst.AddExpr.toPatternString? e = some s ∧
          Cst.toPattern? s = some p := by
   intro h
-  simp [Cst.AddExpr.toPattern?, Option.bind_eq_some_iff] at h
-  obtain ⟨eos, heos, hmatch⟩ := h
-  -- For the inner match to succeed, eos must be .strLit lit.
-  cases eos with
-  | expr _ | var _ | name _ | boolLit _ => simp at hmatch
-  | strLit lit =>
-    simp at hmatch
-    refine ⟨lit, ?_, hmatch⟩
-    -- Trace `e.toExprOrSpecial? = some (.strLit lit)` through the chain.
-    -- The chain delegates to the underlying member only when extended/mext
-    -- are empty AND op is `none` or `.nDash 0`.
-    obtain ⟨⟨⟨op, member⟩, mext⟩, ext⟩ := e
-    simp [Cst.AddExpr.toExprOrSpecial?, Cst.MultExpr.toExprOrSpecial?,
-          Cst.Unary.toExprOrSpecial?] at heos
-    -- ext = [] required; otherwise produces .expr.
-    cases ext with
-    | cons _ _ =>
-      simp [Option.bind_eq_some_iff] at heos
-    | nil =>
-      simp at heos
-      cases mext with
-      | cons _ _ =>
-        simp [Option.bind_eq_some_iff] at heos
-      | nil =>
-        simp at heos
-        -- Now the unary's match on `op` runs. Show op ∈ {none, .nDash 0}.
-        cases op with
-        | none =>
-          obtain ⟨hAccNil, hItem⟩ := member_toExprOrSpecial_strLit heos
-          simp [Cst.AddExpr.toPatternString?, hAccNil, hItem]
-        | some op' =>
-          cases op' with
-          | nDash n =>
-            by_cases hn : n = 0
-            · subst hn
-              obtain ⟨hAccNil, hItem⟩ := member_toExprOrSpecial_strLit heos
-              simp [Cst.AddExpr.toPatternString?, hAccNil, hItem]
-            · simp at heos
-              -- For non-zero n, falls into the toLit?/eos chain producing .expr/none.
-              split at heos
-              · split at heos
-                · simp at heos
-                · split at heos
-                  · simp at heos
-                  · simp at heos
-                · simp at heos
-              · simp [Option.bind_eq_some_iff] at heos
-          | nBang _ =>
-            simp [Option.bind_eq_some_iff] at heos
-
-/-- Converse direction (eval ⟹ translate) for `rLike`: if the evaluator's
-    `toPatternString?` succeeds with `s`, then the AddExpr translates to the
-    string-literal special form `.strLit s`.  Both functions accept exactly the
-    bare string-literal shape (extended/op/access empty, item a `liStr`). -/
-theorem addExpr_toPatternString_toExprOrSpecial {e : Cst.AddExpr} {s : String} :
-    Cst.AddExpr.toPatternString? e = some s →
-    e.toExprOrSpecial? = some (.strLit s) := by
-  intro h
-  obtain ⟨⟨⟨op, ⟨prim, access⟩⟩, mext⟩, ext⟩ := e
-  simp only [Cst.AddExpr.toPatternString?] at h
-  cases ext with
-  | cons _ _ => simp at h
-  | nil =>
-    cases mext with
-    | cons _ _ => simp at h
-    | nil =>
-      cases op with
-      | none =>
-        cases access with
-        | cons _ _ => simp at h
-        | nil =>
-          cases prim with
-          | literal lit =>
-            cases lit with
-            | liStr str =>
-              simp at h; subst h
-              simp [Cst.AddExpr.toExprOrSpecial?, Cst.MultExpr.toExprOrSpecial?,
-                    Cst.Unary.toExprOrSpecial?, Cst.Member.toExprOrSpecial?,
-                    Cst.Primary.toExprOrSpecial?, Cst.Literal.toExprOrSpecial?,
-                    Cst.memberAux, Cst.memberAuxA, List.mapM_nil]
-            | liTrue | liFalse | liNum _ => simp at h
-          | ref _ | name _ | expr _ | slot _ | eList _ | rInits _ => simp at h
-      | some o =>
-        cases o with
-        | nDash n =>
-          by_cases hn : n = 0
-          · subst hn
-            cases access with
-            | cons _ _ => simp at h
-            | nil =>
-              cases prim with
-              | literal lit =>
-                cases lit with
-                | liStr str =>
-                  simp at h; subst h
-                  simp [Cst.AddExpr.toExprOrSpecial?, Cst.MultExpr.toExprOrSpecial?,
-                        Cst.Unary.toExprOrSpecial?, Cst.Member.toExprOrSpecial?,
-                        Cst.Primary.toExprOrSpecial?, Cst.Literal.toExprOrSpecial?,
-                        Cst.memberAux, Cst.memberAuxA, List.mapM_nil]
-                | liTrue | liFalse | liNum _ => simp at h
-              | ref _ | name _ | expr _ | slot _ | eList _ | rInits _ => simp at h
-          · simp [hn] at h
-        | nBang _ => simp at h
+  simpa [Cst.AddExpr.toPattern?, Option.bind_eq_some_iff] using h
 
 /-- Helper: `memberAux ieos accs = some (.name an)` requires `accs = []`
     and `ieos = .name an`. -/
@@ -969,7 +867,7 @@ private theorem memberAux_eq_name
 private theorem primary_toExprOrSpecial_name
     {p : Cst.Primary} {an : Spec.Name} :
     p.toExprOrSpecial? = some (.name an) →
-    ∃ n, p = .name n ∧ n.toAName? = some an := by
+    ∃ n, p = .name n ∧ n.toVar? = none ∧ n.toAName? = some an := by
   intro h
   cases p with
   | literal lit' =>
@@ -1001,7 +899,7 @@ private theorem primary_toExprOrSpecial_name
       simp [hv, Option.map] at h
       cases hname : n.toAName? with
       | none => simp [hname] at h
-      | some a => simp [hname] at h; exact ⟨n, rfl, h ▸ hname⟩
+      | some a => simp [hname] at h; exact ⟨n, rfl, hv, h ▸ hname⟩
   | ref r =>
     cases r with
     | uid _ eid =>
@@ -1024,14 +922,14 @@ private theorem primary_toExprOrSpecial_name
 private theorem member_toExprOrSpecial_name
     {m : Cst.Member} {an : Spec.Name} :
     m.toExprOrSpecial? = some (.name an) →
-    m.access = [] ∧ ∃ n, m.item = .name n ∧ n.toAName? = some an := by
+    m.access = [] ∧ ∃ n, m.item = .name n ∧ n.toVar? = none ∧ n.toAName? = some an := by
   intro h
   simp [Cst.Member.toExprOrSpecial?, Option.bind_eq_some_iff] at h
   obtain ⟨ieos, hieos, accs, haccs, hmaux⟩ := h
   obtain ⟨hAccs, hIeos⟩ := memberAux_eq_name hmaux
   subst hAccs
-  obtain ⟨n, hItem, hAName⟩ := primary_toExprOrSpecial_name (hIeos ▸ hieos)
-  refine ⟨?_, n, hItem, hAName⟩
+  obtain ⟨n, hItem, hv, hAName⟩ := primary_toExprOrSpecial_name (hIeos ▸ hieos)
+  refine ⟨?_, n, hItem, hv, hAName⟩
   cases hAcc : m.access with
   | nil => rfl
   | cons _ _ =>
@@ -1488,6 +1386,15 @@ theorem apply₂_mem_returns_bool {v₁ v₂ : Value} {es : Entities} {r : Value
     · simp at h
     · simp only [Except.ok.injEq] at h; exact ⟨_, h.symm⟩
 
+/-- The evaluator's structural `toEntityTypeName?` agrees with the translator's
+    `toEntityType?` in the translate→eval direction: whenever the translator
+    extracts an entity type, the structural extractor extracts the same one. -/
+theorem addExpr_toEntityType_toEntityTypeName
+    {e : Cst.AddExpr} {et : EntityType} :
+    e.toEntityType? = some et →
+    e.toEntityTypeName? = some et := by
+  intro h; simpa [Cst.AddExpr.toEntityType?] using h
+
 /-- For the `rIsIn` case with `inEntity = some ie`: the translated AST evaluates
     equally to the applied `in` relation. -/
 theorem rIsIn_some_eval_eq
@@ -1496,11 +1403,11 @@ theorem rIsIn_some_eval_eq
     (hEt : ety.toEntityType? = some et)
     (htarget_eq : evaluate mt req es = target.evaluate req es)
     (hinEntity_eq : evaluate mi req es = ie.evaluate req es)
-    (hie_trans : ie.toAExpr? = some mi) :
+    (_hie_trans : ie.toAExpr? = some mi) :
     evaluate (Expr.and (.unaryApp (.is et) mt) (.binaryApp .mem mt mi)) req es =
          (Cst.Relation.rIsIn target ety (some ie)).evaluate req es := by
-  simp only [Cst.Relation.evaluate, hEt, evaluate, hie_trans, Option.isNone_some,
-             Bool.false_eq_true, if_false]
+  have hEtN : ety.toEntityTypeName? = some et := addExpr_toEntityType_toEntityTypeName hEt
+  simp only [Cst.Relation.evaluate, hEtN, evaluate]
   rw [htarget_eq]
   cases htgt : target.evaluate req es with
   | error e => simp [bind, Except.bind, Result.as]
@@ -1856,10 +1763,10 @@ theorem andExprFoldExtended_some_all_translate (xs : List Cst.Relation) :
 /-- When every conjunct translates, `AndExpr.evaluate`'s guard is a no-op and it
     reduces to the plain `initial`-then-`foldOps` evaluation. -/
 theorem AndExpr.evaluate_eq {e : Cst.AndExpr} {req : Request} {es : Entities}
-    (h : (e.extended.all fun r => r.toAExpr?.isSome) = true) :
+    (_h : (e.extended.all fun r => r.toAExpr?.isSome) = true) :
     Cst.AndExpr.evaluate e req es =
       (do let acc ← e.initial.evaluate req es; Cst.AndExpr.foldOps acc e.extended req es) := by
-  simp only [Cst.AndExpr.evaluate, if_pos h]
+  simp only [Cst.AndExpr.evaluate]
 
 /-- If `foldExtended` succeeds on `xs`, every disjunct in `xs` translates. -/
 theorem orExprFoldExtended_some_all_translate (xs : List Cst.AndExpr) :
@@ -1880,19 +1787,19 @@ theorem orExprFoldExtended_some_all_translate (xs : List Cst.AndExpr) :
 /-- When every disjunct translates, `OrExpr.evaluate`'s guard is a no-op and it
     reduces to the plain `initial`-then-`foldOps` evaluation. -/
 theorem OrExpr.evaluate_eq {e : Cst.OrExpr} {req : Request} {es : Entities}
-    (h : (e.extended.all fun r => r.toAExpr?.isSome) = true) :
+    (_h : (e.extended.all fun r => r.toAExpr?.isSome) = true) :
     Cst.OrExpr.evaluate e req es =
       (do let acc ← e.initial.evaluate req es; Cst.OrExpr.foldOps acc e.extended req es) := by
-  simp only [Cst.OrExpr.evaluate, if_pos h]
+  simp only [Cst.OrExpr.evaluate]
 
 /-- When both branches translate, `ExprData.evaluate`'s `edIf` guard is a no-op
     and it reduces to the plain conditional evaluation. -/
 theorem ExprData.evaluate_edIf_eq {i t f : Cst.Expr} {req : Request} {es : Entities}
-    (h : (t.toAExpr?.isSome && f.toAExpr?.isSome) = true) :
+    (_h : (t.toAExpr?.isSome && f.toAExpr?.isSome) = true) :
     Cst.ExprData.evaluate (.edIf i t f) req es =
       (do let b ← (i.evaluate req es).as Bool;
           if b then t.evaluate req es else f.evaluate req es) := by
-  simp only [Cst.ExprData.evaluate, if_pos h]
+  simp only [Cst.ExprData.evaluate]
 
 /- For Primary's eList case -/
 
@@ -2025,7 +1932,7 @@ theorem Cst.Primary.toAttr?_consistent (p : Cst.Primary) :
     cases path with
     | nil =>
       cases name <;>
-        simp [Cst.Primary.toAttr?, Cst.Ident.toAttr?, Cst.Primary.toExprOrSpecial?, Cst.Name.toVar?,
+        simp [Cst.Primary.toAttr?, Cst.Ident.toUnrestrictedString?, Cst.Primary.toExprOrSpecial?, Cst.Name.toVar?,
               Cst.Name.toAName?, Cst.Name.toAName?,
               Cst.Ident.toUnrestrictedString?, Cst.ExprOrSpecial.toValidAttr?,
               Cst.varToString]

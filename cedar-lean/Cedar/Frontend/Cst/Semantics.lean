@@ -18,12 +18,12 @@
 module
 
 public import Cedar.Frontend.Cst.Syntax
+public import Cedar.Frontend.Cst.Common
 public import Cedar.Spec.Entities
 public import Cedar.Spec.Request
 public import Cedar.Spec.Response
 public import Cedar.Spec.Value
 public import Cedar.Spec.Evaluator
-public import Cedar.Frontend.Cst.ToAst
 
 namespace Cedar.Frontend.Cst
 
@@ -37,71 +37,8 @@ open Cedar
 
 /- Evaluator helpers -/
 
-public def AttrChain? (ms : List MemAccess) : Option (List Spec.Attr) :=
-  match ms with
-  | [] => some []
-  | m :: ms => match m with
-    | .field i => match (Ident.toUnreservedString? i) with
-      | none => none
-      | some s => (AttrChain? ms).map (s :: ·)
-    | .index e => match (Expr.toUnescapedStringLiteral? e) with
-      | none => none
-      | some s => (AttrChain? ms).map (s :: ·)
-    | .call _ => none
 
-private def Member.toAttrs? (e : Member) : Option (List Spec.Attr) :=
-  match AttrChain? e.access with
-  | none => none
-  | some attrs => match e.item with
-    | .literal (.liStr s) =>
-      if attrs.isEmpty then some [s] else none
-    | .literal _ => none
-    | .name { path := [], name := id } => match (Ident.toUnreservedString? id) with
-      | some s => some (s :: attrs)
-      | none   => none
-    | .name _ => none
-    | _ => none
 
-/-- Attribute name of an identifier used as a record key, read structurally
-    (no translation).  Reserved keywords map to their spellings; ordinary
-    identifiers map to themselves; `true`/`false`/`in`/`has`/… are rejected. -/
-public def Ident.toAttr? : Ident → Option Spec.Attr
-  | .idPrincipal => some "principal"
-  | .idAction    => some "action"
-  | .idResource  => some "resource"
-  | .idContext   => some "context"
-  | .idPermit    => some "permit"
-  | .idForbid    => some "forbid"
-  | .idWhen      => some "when"
-  | .idUnless    => some "unless"
-  | .idIdent s _   => some s
-  | _            => none
-
-/-- Attribute name of a `Primary` used as a record key. -/
-public def Primary.toAttr? (p : Primary) : Option Spec.Attr :=
-  match p with
-  | .literal (.liStr s)              => unescape? s
-  | .name { path := [], name := id } => Ident.toAttr? id
-  | _                                => none
-
-/-- Extract a record-key attribute name from a CST expression, without
-    translating it: the key must be a "bare" primary (no operators other than a
-    no-op `-0`, no extended chains, no member accesses) that is a string literal
-    or an identifier name.  This matches the keys the translator accepts. -/
-public def Expr.toAttr? (e : Expr) : Option Spec.Attr :=
-  match e with
-  | .expr ⟨.edIf _ _ _⟩ => none
-  | .expr ⟨.edOr o⟩ =>
-    if !o.extended.isEmpty || !o.initial.extended.isEmpty then none
-    else match o.initial.initial with
-      | .rCommon ae ext =>
-        if !ext.isEmpty || !ae.extended.isEmpty || !ae.initial.extended.isEmpty
-            || !ae.initial.initial.item.access.isEmpty then none
-        else match ae.initial.initial.op with
-          | none            => Primary.toAttr? ae.initial.initial.item.item
-          | some (.nDash 0) => Primary.toAttr? ae.initial.initial.item.item
-          | _               => none
-      | _ => none
 
 -- RelOp: rLess, rLessEq, rGreaterEq, rGreater, rNotEq, rEq, rIn
 -- `rGreater`/`rGreaterEq` use the `not (less/lessEq v₁ v₂)` pattern to match
@@ -124,88 +61,8 @@ public def applyRelOp (op : RelOp) (v₁ v₂ : Spec.Value) (es : Spec.Entities)
     Spec.apply₁ .not eq
   | .rIn => Spec.apply₂ .mem v₁ v₂ es
 
--- When the list is all `.field id` with `id` unreserved, return the converted
--- list of `Attr`s. Otherwise return `none`. Matches the translator's
--- `constructAttrsAux?` filter.
-public def fieldChain? : List MemAccess → Option (List Spec.Attr)
-  | [] => some []
-  | .field id :: xs => do
-      let head ← Ident.toUnreservedString? id
-      let tail ← fieldChain? xs
-      some (head :: tail)
-  | _ :: _ => none
 
--- Head string for a name appearing at the start of a `has` field chain.
--- Mirrors the translator's two paths:
---   * `.var v` arm (when `n.toVar? = some v`): use `v.toString` directly,
---     allowing the four var idents through without an unreserved check.
---   * `.name an` arm (when `n.toVar? = none`): filter via `toUnreservedId?`,
---     accepting only `.idIdent s` with `s` unreserved.
-public def Ident.toHasHead? : Cst.Ident → Option String
-  | .idPrincipal => some "principal"
-  | .idAction    => some "action"
-  | .idResource  => some "resource"
-  | .idContext   => some "context"
-  | .idIdent s _   => if Unreserved? s then some s else none
-  | _            => none
 
-public def AddExpr.toAttrs? (e : AddExpr) : Option (List Spec.Attr) :=
-  if !e.extended.isEmpty then none else
-  let mult := e.initial
-  if !mult.extended.isEmpty then none else
-  let unary := mult.initial
-  match unary.op with
-  | some _ => none
-  | none => let member := unary.item
-    match fieldChain? member.access with
-    | none => none
-    | some fields => match member.item with
-      | .literal (.liStr s) =>
-        -- Apply unescape? to mirror the translator's `(unescape? lit).map .inl`.
-        if fields.isEmpty then (unescape? s).map (fun s' => [s'])
-        else none
-      | .literal _ => none
-      | .name { path := [], name := id } =>
-        -- Mirror the translator's combined `.var v` / `.name n` arms via
-        -- the helper above.
-        match Ident.toHasHead? id with
-        | some idStr => some (idStr :: fields)
-        | none       => none
-      | .name _ => none
-      | _ => none
-
--- Only Literal.liStr s is allowed
--- Mirrors the translator's `Cst.AddExpr.toPattern?`: the unary `op` may be
--- `none` or `some (.nDash 0)` (a structural no-op that the translator allows).
-public def AddExpr.toPatternString? (e : AddExpr) : Option String :=
-  if !e.extended.isEmpty then none else
-  let mult := e.initial
-  if !mult.extended.isEmpty then none else
-  let unary := mult.initial
-  match unary.op with
-  | some (.nDash 0) | none =>
-    let member := unary.item
-    if !member.access.isEmpty then none else
-    let item := member.item
-    match item with
-    | .literal (.liStr s) => some s
-    | _ => none
-  | some _ => none
-
--- Extracts an EntityType (Spec.Name) from an AddExpr that is a bare name.
-public def AddExpr.toEntityTypeName? (e : AddExpr) : Option Spec.EntityType :=
-  if !e.extended.isEmpty then none else
-  let mult := e.initial
-  if !mult.extended.isEmpty then none else
-  let unary := mult.initial
-  match unary.op with
-  | some (.nDash 0) | none =>
-    let member := unary.item
-    if !member.access.isEmpty then none else
-    match member.item with
-    | .name n => Name.toAName? n
-    | _ => none
-  | some _ => none
 
 /- Evaluators -/
 
@@ -460,40 +317,24 @@ public def Relation.evaluate (e : Relation) (req : Spec.Request) (es : Spec.Enti
       match toPattern? s with
       | some p => Spec.apply₁ (.like p) v
       | none => .error (.cstError  .stringError)
-  | .rIsIn t ety inEntity => match ety.toEntityType? with
+  | .rIsIn t ety inEntity => match ety.toEntityTypeName? with
     | none => .error (.cstError .nameError)
     | some etyName => do
       let v ← t.evaluate req es
       let isResult ← Spec.apply₁ (.is etyName) v
       match inEntity with
       | none => .ok isResult
-      | some ie =>
-        -- Strengthening: fail the evaluation when the `in` branch does not
-        -- translate, even if the `is` branch short-circuits to `false`. Under a
-        -- successful translation `ie.toAExpr?.isSome` holds, so this guard is a
-        -- no-op and the evaluator still agrees with the short-circuiting AST;
-        -- but it lets a successful evaluation witness that `ie` translates,
-        -- which is needed for translation completeness.
-        if ie.toAExpr?.isNone then .error (.cstError .translationError)
+      | some ie => do
+        let b ← isResult.asBool
+        if !b then .ok false
         else do
-          let b ← isResult.asBool
-          if !b then .ok false
-          else do
-            let v₂ ← ie.evaluate req es
-            Spec.apply₂ .mem v v₂ es
+          let v₂ ← ie.evaluate req es
+          Spec.apply₂ .mem v v₂ es
 termination_by sizeOf e
 
-public def AndExpr.evaluate (e : AndExpr) (req : Spec.Request) (es : Spec.Entities) : Spec.Result Spec.Value :=
-  -- Strengthening (mirrors the `rIsIn` guard): fail when some
-  -- conjunct does not translate, even if `foldOps` short-circuits past it on a
-  -- `false`. Under a successful translation every conjunct translates, so this
-  -- guard is a no-op and the evaluator still agrees with the short-circuiting
-  -- AST; but it lets a successful evaluation witness that every conjunct
-  -- translates, which completeness needs.
-  if e.extended.all (fun r => r.toAExpr?.isSome) then do
-    let acc ← e.initial.evaluate req es
-    AndExpr.foldOps acc e.extended req es
-  else .error (.cstError .translationError)
+public def AndExpr.evaluate (e : AndExpr) (req : Spec.Request) (es : Spec.Entities) : Spec.Result Spec.Value := do
+  let acc ← e.initial.evaluate req es
+  AndExpr.foldOps acc e.extended req es
 termination_by sizeOf e
 decreasing_by
   all_goals cases e; simp_wf; omega
@@ -511,16 +352,9 @@ public def AndExpr.foldOps (acc : Spec.Value) (xs : List Relation)
       AndExpr.foldOps (.prim (.bool b')) rest req es
 termination_by sizeOf xs
 
-public def OrExpr.evaluate (e : OrExpr) (req : Spec.Request) (es : Spec.Entities) : Spec.Result Spec.Value :=
-  -- Strengthening (mirrors `AndExpr.evaluate`): fail when some disjunct does not
-  -- translate, even if `foldOps` short-circuits past it on a `true`. Under a
-  -- successful translation every disjunct translates, so this guard is a no-op
-  -- and the evaluator still agrees with the short-circuiting AST; but it lets a
-  -- successful evaluation witness that every disjunct translates.
-  if e.extended.all (fun r => r.toAExpr?.isSome) then do
-    let acc ← e.initial.evaluate req es
-    OrExpr.foldOps acc e.extended req es
-  else .error (.cstError .translationError)
+public def OrExpr.evaluate (e : OrExpr) (req : Spec.Request) (es : Spec.Entities) : Spec.Result Spec.Value := do
+  let acc ← e.initial.evaluate req es
+  OrExpr.foldOps acc e.extended req es
 termination_by sizeOf e
 decreasing_by
   all_goals cases e; simp_wf; omega
@@ -541,18 +375,9 @@ termination_by sizeOf xs
 public def ExprData.evaluate (e : ExprData) (req : Spec.Request) (es : Spec.Entities) : Spec.Result Spec.Value :=
   match e with
   | .edOr e => e.evaluate req es
-  | .edIf i t f =>
-    -- Strengthening (mirrors the `rIsIn` `in` guard): the guard `i` is always
-    -- evaluated, but only one of `t`/`f` is (the conditional short-circuits), so
-    -- we only fail when a *branch* `t`/`f` does not translate. Under a successful
-    -- translation both branches translate, so this guard is a no-op and the
-    -- evaluator still agrees with the AST `ite`; but it lets a successful
-    -- evaluation witness that both branches translate (completeness recovers
-    -- `i`'s translatability from the fact that `i` is always evaluated).
-    if t.toAExpr?.isSome && f.toAExpr?.isSome then do
-      let b ← (i.evaluate req es).as Bool
-      if b then t.evaluate req es else f.evaluate req es
-    else .error (.cstError .translationError)
+  | .edIf i t f => do
+    let b ← (i.evaluate req es).as Bool
+    if b then t.evaluate req es else f.evaluate req es
 termination_by sizeOf e
 
 public def ExprImpl.evaluate (e : ExprImpl) (req : Spec.Request) (es : Spec.Entities) : Spec.Result Spec.Value :=
@@ -718,17 +543,9 @@ public def satisfiedPolicies (effect : Spec.Effect) (policies : Policies) (req :
     policies.ps)
 
 public def hasError (policy : Policy) (req : Spec.Request) (entities : Spec.Entities) : Bool :=
-  match policy with
-  | .policy p =>
-    -- Strengthening: a policy with no AST translation (`toPolicy?` fails — due to
-    -- an invalid effect, an invalid scope triple, or a malformed/untranslatable
-    -- condition) is treated as an error.  Under a successful translation
-    -- `toPolicy?` succeeds, so this guard is a no-op and agreement with the AST
-    -- (`policy_hasError_agrees`) is preserved.
-    if p.toPolicy?.isNone then true
-    else match policy.toExpr.evaluate req entities with
-         | .ok _ => false
-         | .error _ => true
+  match policy.toExpr.evaluate req entities with
+  | .ok _ => false
+  | .error _ => true
 
 public def errorPolicies (policies : Policies) (req : Spec.Request) (entities : Spec.Entities) : Set Spec.PolicyID :=
   Set.make (List.filterMap

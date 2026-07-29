@@ -800,7 +800,7 @@ theorem Cst.Relation.collect_complete {e : Cst.Relation} {req : Request} {es : E
       | none => simp [hps, hcp, noCstError_singleton, Error.isCstError] at hpat
       | some mp =>
         have hpatT : pattern.toPattern? = some mp := by
-          simp [Cst.AddExpr.toPattern?, Cedar.Thm.addExpr_toPatternString_toExprOrSpecial hps, hcp]
+          simp [Cst.AddExpr.toPattern?, hps, hcp]
         exact ⟨.expr (.unaryApp (.like mp) texpr), .unaryApp (.like mp) texpr,
                by simp [Cst.Relation.toExprOrSpecial?, htgtA, hpatT], by simp [ExprOrSpecial.toExpr?]⟩
   | .rIsIn target ety inEntity =>
@@ -818,23 +818,18 @@ theorem Cst.Relation.collect_complete {e : Cst.Relation} {req : Request} {es : E
         exact ⟨.expr (.unaryApp (.is etyName) texpr), .unaryApp (.is etyName) texpr,
                by simp [Cst.Relation.toExprOrSpecial?, htgtA, hety'], by simp [ExprOrSpecial.toExpr?]⟩
       | some ie =>
-        cases hie : ie.toAExpr? with
-        | none =>
-          exfalso
-          simp only [hie, Option.isNone_none, if_true] at hInE
-          obtain ⟨_, hg⟩ := (noCstError_union _ _).mpr hInE
-          rw [noCstError_singleton] at hg
-          simp [Error.isCstError] at hg
-        | some mi =>
-          exact ⟨.expr (.and (.unaryApp (.is etyName) texpr) (.binaryApp .mem texpr mi)),
-                 .and (.unaryApp (.is etyName) texpr) (.binaryApp .mem texpr mi),
-                 by simp [Cst.Relation.toExprOrSpecial?, htgtA, hety', hie], by simp [ExprOrSpecial.toExpr?]⟩
+        have hIE : noCstError (ie.collectErrors req es).1 := by simpa using hInE
+        obtain ⟨ieos, mi, hieos, hmi⟩ := Cst.AddExpr.collect_complete hIE
+        have hie : ie.toAExpr? = some mi := by simp [Cst.AddExpr.toAExpr?, hieos, hmi]
+        exact ⟨.expr (.and (.unaryApp (.is etyName) texpr) (.binaryApp .mem texpr mi)),
+               .and (.unaryApp (.is etyName) texpr) (.binaryApp .mem texpr mi),
+               by simp [Cst.Relation.toExprOrSpecial?, htgtA, hety', hie], by simp [ExprOrSpecial.toExpr?]⟩
 termination_by sizeOf e
 decreasing_by
   all_goals simp_wf
   all_goals (
     try subst_vars
-    try simp only [List.cons.sizeOf_spec, Prod.mk.sizeOf_spec]
+    try simp only [List.cons.sizeOf_spec, Prod.mk.sizeOf_spec, Option.some.sizeOf_spec]
     omega)
 
 theorem Cst.AndExpr.collect_complete {e : Cst.AndExpr} {req : Request} {es : Entities} :

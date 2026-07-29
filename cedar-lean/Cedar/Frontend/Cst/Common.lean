@@ -198,9 +198,25 @@ public def Name.toAName? (n : Name) : Option Spec.Name := do
   let path ← n.path.mapM Ident.toUnrestrictedString?
   some {id := id, path := path}
 
+/-- Classify a bare (unqualified) CST name as a reserved AST variable. Shared by
+    the translator and the evaluator. -/
+public def Name.toVar? (n : Name) : Option Spec.Var :=
+  if !n.path.isEmpty then none
+  else match n.name with
+    | .idPrincipal => some .principal
+    | .idAction => some .action
+    | .idResource => some .resource
+    | .idContext => some .context
+    | _ => none
+
 public def Ident.toEffect? : Ident → Option Spec.Effect
   | .idPermit => some .permit
   | .idForbid => some .forbid
+  | _ => none
+
+public def Ident.toConditionKind? : Ident → Option Spec.ConditionKind
+  | .idWhen => some .when
+  | .idUnless => some .unless
   | _ => none
 
 public def Expr.toStringLiteral? : Expr → Option String
@@ -289,5 +305,116 @@ public def String.toMethodOp? : String → Option (Spec.BinaryOp ⊕ Spec.UnaryO
   | _ => none
 
 
+
+-- Only Literal.liStr s is allowed
+-- Mirrors the translator's `Cst.AddExpr.toPattern?`: the unary `op` may be
+-- `none` or `some (.nDash 0)` (a structural no-op that the translator allows).
+public def AddExpr.toPatternString? (e : AddExpr) : Option String :=
+  if !e.extended.isEmpty then none else
+  let mult := e.initial
+  if !mult.extended.isEmpty then none else
+  let unary := mult.initial
+  match unary.op with
+  | some (.nDash 0) | none =>
+    let member := unary.item
+    if !member.access.isEmpty then none else
+    let item := member.item
+    match item with
+    | .literal (.liStr s) => some s
+    | _ => none
+  | some _ => none
+
+-- Extracts an EntityType (Spec.Name) from an AddExpr that is a bare name.
+public def AddExpr.toEntityTypeName? (e : AddExpr) : Option Spec.EntityType :=
+  if !e.extended.isEmpty then none else
+  let mult := e.initial
+  if !mult.extended.isEmpty then none else
+  let unary := mult.initial
+  match unary.op with
+  | some (.nDash 0) | none =>
+    let member := unary.item
+    if !member.access.isEmpty then none else
+    match member.item with
+    | .name n => match n.toVar? with
+      | some _ => none
+      | none   => Name.toAName? n
+    | _ => none
+  | some _ => none
+
+-- When the list is all `.field id` with `id` unreserved, return the converted
+-- list of `Attr`s. Otherwise return `none`. Matches the translator's
+-- `constructAttrsAux?` filter.
+public def fieldChain? : List MemAccess → Option (List Spec.Attr)
+  | [] => some []
+  | .field id :: xs => do
+      let head ← Ident.toUnreservedString? id
+      let tail ← fieldChain? xs
+      some (head :: tail)
+  | _ :: _ => none
+
+/-- Attribute name of a `Primary` used as a record key. -/
+public def Primary.toAttr? (p : Primary) : Option Spec.Attr :=
+  match p with
+  | .literal (.liStr s)              => unescape? s
+  | .name { path := [], name := id } => Ident.toUnrestrictedString? id
+  | _                                => none
+
+/-- Extract a record-key attribute name from a CST expression, without
+    translating it: the key must be a "bare" primary (no operators other than a
+    no-op `-0`, no extended chains, no member accesses) that is a string literal
+    or an identifier name.  This matches the keys the translator accepts. -/
+public def Expr.toAttr? (e : Expr) : Option Spec.Attr :=
+  match e with
+  | .expr ⟨.edIf _ _ _⟩ => none
+  | .expr ⟨.edOr o⟩ =>
+    if !o.extended.isEmpty || !o.initial.extended.isEmpty then none
+    else match o.initial.initial with
+      | .rCommon ae ext =>
+        if !ext.isEmpty || !ae.extended.isEmpty || !ae.initial.extended.isEmpty
+            || !ae.initial.initial.item.access.isEmpty then none
+        else match ae.initial.initial.op with
+          | none            => Primary.toAttr? ae.initial.initial.item.item
+          | some (.nDash 0) => Primary.toAttr? ae.initial.initial.item.item
+          | _               => none
+      | _ => none
+
+-- Head string for a name appearing at the start of a `has` field chain.
+-- Mirrors the translator's two paths:
+--   * `.var v` arm (when `n.toVar? = some v`): use `v.toString` directly,
+--     allowing the four var idents through without an unreserved check.
+--   * `.name an` arm (when `n.toVar? = none`): filter via `toUnreservedId?`,
+--     accepting only `.idIdent s` with `s` unreserved.
+public def Ident.toHasHead? : Cst.Ident → Option String
+  | .idPrincipal => some "principal"
+  | .idAction    => some "action"
+  | .idResource  => some "resource"
+  | .idContext   => some "context"
+  | .idIdent s _   => if Unreserved? s then some s else none
+  | _            => none
+
+public def AddExpr.toAttrs? (e : AddExpr) : Option (List Spec.Attr) :=
+  if !e.extended.isEmpty then none else
+  let mult := e.initial
+  if !mult.extended.isEmpty then none else
+  let unary := mult.initial
+  match unary.op with
+  | some _ => none
+  | none => let member := unary.item
+    match fieldChain? member.access with
+    | none => none
+    | some fields => match member.item with
+      | .literal (.liStr s) =>
+        -- Apply unescape? to mirror the translator's `(unescape? lit).map .inl`.
+        if fields.isEmpty then (unescape? s).map (fun s' => [s'])
+        else none
+      | .literal _ => none
+      | .name { path := [], name := id } =>
+        -- Mirror the translator's combined `.var v` / `.name n` arms via
+        -- the helper above.
+        match Ident.toHasHead? id with
+        | some idStr => some (idStr :: fields)
+        | none       => none
+      | .name _ => none
+      | _ => none
 
 end Cedar.Frontend.Cst
