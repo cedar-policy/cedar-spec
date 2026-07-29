@@ -19,7 +19,7 @@ components — the same shape used by the duration and datetime grammars. The le
 these definitions to `Decimal.parse` (in particular the digit-string ↔ `toInt?'`/`toNat?'`
 bridges) live in `Cedar.Thm.Ext.Decimal.Lemmas`.
 
-`Sign ::= ['-']` and `Natural ::= Digit⁺` are spelled with the shared `IsWfSign` and `IsDigits`
+`Sign ::= ['-']` and `Natural ::= Digit⁺` are spelled with the shared `IsWfSign` and `IsNatural`
 predicates directly, so only the decimal-specific `Fraction` needs a local definition. Those
 shared predicates — along with the width refinements `IsFixedDigits`/`IsDigitsUpTo` and the
 `toNat?'` bridges — live in `Cedar.Thm.Data.String`. -/
@@ -43,7 +43,7 @@ public def IsWfDecimal (s : String) : Prop :=
   ∃ sign natural fraction,
     s = sign ++ natural ++ "." ++ fraction ∧
     IsWfSign sign ∧
-    IsDigits natural ∧
+    IsNatural natural ∧
     IsWfFrac fraction
 -- ANCHOR_END: IsWfDecimal
 
