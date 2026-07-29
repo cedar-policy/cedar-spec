@@ -25,18 +25,24 @@ public def IsDigits (s : String) : Prop :=
 
 /-- `Digit{n}`: a run of exactly `n` decimal digits. The fixed-width refinement of `IsDigits`,
     used wherever a grammar pins a field's width (the datetime grammar's `YYYY`, `MM`, `SSS`, …). -/
+-- ANCHOR: IsFixedDigits
 public def IsFixedDigits (n : Nat) (s : String) : Prop :=
   IsDigits s ∧ s.length = n
+-- ANCHOR_END: IsFixedDigits
 
 /-- `Digit{1,n}`: between one and `n` decimal digits. `IsDigits` supplies the lower bound and the
     length constraint the upper (the decimal grammar's `Fraction ::= Digit{1,4}`). -/
+-- ANCHOR: IsDigitsUpTo
 public def IsDigitsUpTo (n : Nat) (s : String) : Prop :=
   IsDigits s ∧ s.length ≤ n
+-- ANCHOR_END: IsDigitsUpTo
 
 /-- `['-']`: an optional leading minus sign, either present or absent. Shared by the numeric
     grammars that admit a signed literal (decimal's `Sign`, duration's leading `'-'`). -/
+-- ANCHOR: IsWfSign
 public def IsWfSign (s : String) : Prop :=
   s = "-" ∨ s = ""
+-- ANCHOR_END: IsWfSign
 
 /-- A digit string contains no `'_'`, so `toInt?'`/`toNat?'` (which reject `'_'`) do not
     short-circuit on it. -/
