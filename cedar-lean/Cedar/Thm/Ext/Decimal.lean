@@ -32,8 +32,7 @@ public theorem parse_complete (s : String) (d : Decimal)
         = d.toInt := by
       rw [parse_value_eq_sign_form]
       have := hval
-      rw [computeValue_eq_of_isWfDecimal hwf h_split] at this
-      simp only [valueOfParts, String.empty_append, hl, hr, Option.some.injEq] at this
+      simp only [computeValue, h_split, hl, hr, Option.some.injEq] at this
       exact this
     rw [hval']
     exact Int64.ofInt?_toInt d
@@ -66,8 +65,7 @@ public theorem parse_eq_none_iff (s : String) :
       -- h : Int64.ofInt? (if ... then ... + ... else ... - ...) = none
       refine ⟨_, ?_, Int64.ofInt?_none_iff.mpr h⟩
       rw [parse_value_eq_sign_form]
-      rw [computeValue_eq_of_isWfDecimal hwf h_split]
-      simp only [valueOfParts, String.empty_append, hl, hr]
+      simp only [computeValue, h_split, hl, hr]
     · left; exact hwf
   · -- ← direction: malformed or overflow implies parse s = none
     intro h
@@ -95,8 +93,7 @@ public theorem parse_eq_none_iff (s : String) :
             = v := by
           rw [parse_value_eq_sign_form]
           have := hcv
-          rw [computeValue_eq_of_isWfDecimal hwf h_split] at this
-          simp only [valueOfParts, String.empty_append, hl, hr, Option.some.injEq] at this
+          simp only [computeValue, h_split, hl, hr, Option.some.injEq] at this
           exact this
         rw [hcv']
         exact Int64.ofInt?_none_iff.mp hovf
