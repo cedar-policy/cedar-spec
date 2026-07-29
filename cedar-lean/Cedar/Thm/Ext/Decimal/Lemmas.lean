@@ -18,10 +18,11 @@ open Cedar.Spec.Ext
     # Grammar ↔ parser bridge lemmas
 
     `IsWfDecimal` is phrased over the grammar's productions (`IsWfSign`/`IsNatural`/`IsWfFrac`) as
-    a rendering `sign ++ natural ++ "." ++ fraction`, while `Decimal.parse` and `computeValue`
-    split on `'.'` and extract numeric values through `toInt?'`/`toNat?'`. These lemmas connect the
-    two views: the rendering splits back into its parts, and a digit string is exactly one the
-    stdlib parser accepts. They are what lets the soundness/completeness proofs move between the
+    a rendering `sign ++ natural ++ "." ++ fraction`. `computeValue` strips that outer sign and
+    parses the two unsigned fields, while `Decimal.parse` splits first and parses the signed left
+    field through `toInt?'`. These lemmas connect the views: the rendering splits back into its
+    parts, a digit string is exactly one the stdlib parser accepts, and both value expressions are
+    equal on well-formed inputs. They let the soundness/completeness proofs move between the
     grammar view and the parser view.
 
     The `IsDigits` predicate and its `toNat?'` bridges (`no_underscore_of_isDigits`,
@@ -129,6 +130,75 @@ theorem splitToList_of_isWfDecimal {sign natural fraction : String}
   splitToList_eq (sign ++ natural) fraction (· = '.') '.' (by decide)
     (no_dot_of_sign_nat hs hn) (no_dot_of_isDigits hf.1)
 
+private theorem dash_append_front_eq_dash (body : String) :
+    ("-" ++ body).front = '-' := by
+  simp [String.front_eq, String.front?_eq, String.toList_append]
+
+private theorem dash_append_drop_one_copy (body : String) :
+    (("-" ++ body).drop 1).copy = body := by
+  apply String.ext
+  simp [String.toList_append]
+
+private theorem startsWith_dash_eq_false_of_isDigits {natural : String}
+    (hn : IsDigits natural) : natural.startsWith "-" = false := by
+  apply Bool.eq_false_iff.mpr
+  intro h
+  cases hs : natural.toList with
+  | nil =>
+    have hp := hn.1
+    rw [← String.length_toList, hs] at hp
+    simp at hp
+  | cons c cs =>
+    have hc : c.isDigit = true := hn.2 c (by rw [hs]; simp)
+    have hceq : c = '-' := by
+      have hcopy : natural = String.ofList (c :: cs) := by
+        rw [← String.toList_inj, hs, String.toList_ofList]
+      rw [hcopy] at h
+      simp at h
+      exact h.symm
+    rw [hceq] at hc
+    simp at hc
+
+private theorem front_ne_dash_of_isDigits_append {natural fraction : String}
+    (hn : IsDigits natural) : (natural ++ "." ++ fraction).front ≠ '-' := by
+  intro h
+  cases hs : natural.toList with
+  | nil =>
+    have hp := hn.1
+    rw [← String.length_toList, hs] at hp
+    simp at hp
+  | cons c cs =>
+    have hc : c.isDigit = true := hn.2 c (by rw [hs]; simp)
+    have hceq : c = '-' := by
+      simpa [String.front_eq, String.front?_eq, String.toList_append, hs] using h
+    rw [hceq] at hc
+    simp at hc
+
+private theorem toInt?'_eq_some_of_toNat?' {natural : String} {n : Nat}
+    (hn : IsDigits natural) (h : toNat?' natural = some n) :
+    toInt?' natural = some (n : Int) := by
+  unfold toInt?' toNat?' at *
+  rw [no_underscore_of_isDigits hn]
+  rw [no_underscore_of_isDigits hn] at h
+  simp only [Bool.false_eq_true, ↓reduceIte] at h ⊢
+  rw [String.toInt?, String.Slice.toInt?_eq_some_iff]
+  left
+  exact ⟨n, by rwa [String.toNat?_toSlice], rfl⟩
+
+private theorem toInt?'_dash_eq_some_of_toNat?' {natural : String} {n : Nat}
+    (hn : IsDigits natural) (h : toNat?' natural = some n) :
+    toInt?' ("-" ++ natural) = some (-(n : Int)) := by
+  unfold toInt?' toNat?' at *
+  rw [no_underscore_of_isDigits hn] at h
+  have hno : ("-" ++ natural).contains '_' = false :=
+    no_underscore_of_sign_nat (Or.inl rfl) hn
+  rw [hno]
+  simp only [Bool.false_eq_true, ↓reduceIte] at h ⊢
+  rw [String.toInt?, String.Slice.toInt?_eq_some_iff]
+  right
+  refine ⟨natural, ?_, n, h, rfl⟩
+  rw [String.copy_toSlice]
+
 /-- `IsWfDecimal` restated in the parser-primitive form the parse proofs consume: the rendering
     becomes a split on `'.'`, the digit-string clauses become `(toInt?'/toNat?').isSome`, and
     `left ≠ "-"` / `0 < right.length` fall out of the grammar's `Digit⁺` productions. -/
@@ -154,22 +224,68 @@ theorem isWfDecimal_iff {s : String} :
     simp only [String.append_assoc] at hjoin ⊢
     exact hjoin
 
-/-- Bridge between `Decimal.parse`'s branching value expression (`if not-negative then + else −`)
-    and `computeValue`'s single-`sign`-factor form (matching the grammar). The two are equal. -/
-theorem parse_value_eq_sign_form (l : Int) (r : Nat) (b : Bool) (P Q : Int) :
-    (if !b then l * P + (r : Int) * Q else l * P - (r : Int) * Q)
-      = l * P + (if b then (-1 : Int) else 1) * (r : Int) * Q := by
-  cases b <;> simp [Int.sub_eq_add_neg, Int.neg_mul, Int.one_mul]
+/-- On a well-formed input, the grammar's outer-sign value equals the parser's expression, which
+    reads the sign together with the left field and branches between adding and subtracting the
+    fraction. -/
+theorem computeValue_eq_parser_value {s left right : String} {l : Int} {r : Nat}
+    (hwf : IsWfDecimal s)
+    (h_split : s.splitToList (· = '.') = [left, right])
+    (hl : toInt?' left = some l) (hr : toNat?' right = some r) :
+    computeValue s = some (if !left.startsWith "-"
+      then l * Int.pow 10 DECIMAL_DIGITS + r * Int.pow 10 (DECIMAL_DIGITS - right.length)
+      else l * Int.pow 10 DECIMAL_DIGITS - r * Int.pow 10 (DECIMAL_DIGITS - right.length)) := by
+  obtain ⟨sign, natural, fraction, hs, hsign, hn, hf⟩ := hwf
+  have hparts : left = sign ++ natural ∧ right = fraction := by
+    have h := h_split
+    rw [hs, splitToList_of_isWfDecimal hsign hn hf] at h
+    exact ⟨(List.cons.inj h).1.symm, (List.cons.inj (List.cons.inj h).2).1.symm⟩
+  rcases hparts with ⟨rfl, rfl⟩
+  obtain ⟨n, hnat⟩ := Option.isSome_iff_exists.mp (toNat?'_isSome_of_isDigits hn)
+  have hbody_split :
+      (natural ++ "." ++ right).splitToList (· = '.') = [natural, right] :=
+    splitToList_eq natural right (· = '.') '.' (by decide)
+      (no_dot_of_isDigits hn) (no_dot_of_isDigits hf.1)
+  rcases hsign with rfl | rfl
+  · have hl' := toInt?'_dash_eq_some_of_toNat?' hn hnat
+    rw [hl'] at hl
+    injection hl with hl
+    subst l
+    rw [hs]
+    rw [show "-" ++ natural ++ "." ++ right = "-" ++ (natural ++ "." ++ right) by
+      simp [String.append_assoc]]
+    unfold computeValue
+    rw [dash_append_front_eq_dash, if_pos rfl, dash_append_drop_one_copy]
+    simp only
+    rw [hbody_split]
+    simp only
+    rw [hnat, hr]
+    simp [Int.sub_eq_add_neg, Int.neg_add, Int.neg_mul]
+  · simp only [String.empty_append] at hl hs ⊢
+    have hl' := toInt?'_eq_some_of_toNat?' hn hnat
+    rw [hl'] at hl
+    injection hl with hl
+    subst l
+    rw [hs]
+    have hfront := front_ne_dash_of_isDigits_append (fraction := right) hn
+    have hstarts := startsWith_dash_eq_false_of_isDigits hn
+    unfold computeValue
+    rw [if_neg hfront]
+    simp only
+    rw [hbody_split]
+    simp only
+    rw [hnat, hr]
+    simp [hstarts]
 
 /-- A well-formed string always has a computed value: `computeValue` succeeds because both the
-    split and the integer/fraction primitives succeed. (The converse fails: `computeValue` can
-    succeed on strings that violate the `right.length ≤ DECIMAL_DIGITS` bound.) -/
+    parser split and numeric primitives succeed. (The converse fails: `computeValue` can succeed
+    on strings that violate the `right.length ≤ DECIMAL_DIGITS` bound.) -/
 theorem computeValue_isSome_of_isWfDecimal {s : String} (h : IsWfDecimal s) :
     (computeValue s).isSome = true := by
   obtain ⟨left, right, h_split, _, _, _, h_lint, h_rnat⟩ := isWfDecimal_iff.mp h
   obtain ⟨l, hl⟩ := Option.isSome_iff_exists.mp h_lint
   obtain ⟨r, hr⟩ := Option.isSome_iff_exists.mp h_rnat
-  simp only [computeValue, h_split, hl, hr, Option.isSome_some]
+  rw [computeValue_eq_parser_value h h_split hl hr]
+  rfl
 
 /-! ============================================================================================
     # `toString` well-formedness and value
@@ -411,34 +527,26 @@ public theorem toString_isWfDecimal (d : Decimal) : IsWfDecimal (toString d) := 
 /-- The canonical string representation of a decimal encodes the same integer value. -/
 public theorem computeValue_toString (d : Decimal) : computeValue (toString d) = some d.toInt := by
   obtain ⟨h_split, h_rlen, h_lint, h_rnat, h_starts⟩ := toString_split d
-  -- `computeValue` uses the grammar's positive `sign` factor keyed on `startsWith "-"`;
-  -- recover that directly from the negated form `h_starts` provides.
-  have h_starts' :
-      ((if d < 0 then "-" else "") ++ toString (d.natAbs / Nat.pow 10 4)).startsWith "-"
-        = decide (d < 0) := by
-    have := Bool.not_inj h_starts
-    simpa using this
-  simp only [computeValue, h_split, h_lint, h_rnat, h_rlen, h_starts', DECIMAL_DIGITS,
-    Option.some.injEq]
+  rw [computeValue_eq_parser_value (toString_isWfDecimal d) h_split h_lint h_rnat]
+  simp only [h_rlen, h_starts, DECIMAL_DIGITS, Option.some.injEq]
   simp only [show Nat.pow 10 4 = 10000 from rfl, show (4 : Nat) - 4 = 0 from rfl,
     show Int.pow 10 4 = (10000 : Int) from rfl,
     show Int.pow 10 0 = (1 : Int) from rfl, Int.mul_one]
   simp (config := { decide := true }) only [Int64.natAbs]
   by_cases hd : d < 0
-  · simp only [hd, ↓reduceIte, decide_true, Int.neg_one_mul]
-    have h1 := Int.natAbs_eq d.toInt
+  · simp only [hd, ↓reduceIte, decide_true, Bool.not_true, Bool.false_eq_true]
     have h3 :
         -(↑(d.toInt.natAbs / 10000) : Int) * 10000 + -↑(d.toInt.natAbs % 10000) =
           -↑d.toInt.natAbs := by
       have := Nat.div_add_mod d.toInt.natAbs 10000
       omega
-    simp_all
-    apply Eq.symm (Int.eq_neg_natAbs_of_nonpos (by
+    rw [Int.sub_eq_add_neg, h3]
+    exact Eq.symm (Int.eq_neg_natAbs_of_nonpos (by
       rw [Int64.lt_def_toInt] at hd
       have : (0 : Int64).toInt = 0 := by rfl
       omega))
   ·
-    simp only [hd, ↓reduceIte, decide_false, Bool.false_eq_true, Int.one_mul]
+    simp only [hd, ↓reduceIte, decide_false, Bool.not_false]
     have hge : d.toInt ≥ 0 := by
       simp only [Int64.lt_def_toInt] at hd
       have : (0 : Int64).toInt = 0 := by rfl

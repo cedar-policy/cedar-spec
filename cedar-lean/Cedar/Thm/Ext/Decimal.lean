@@ -30,10 +30,9 @@ public theorem parse_complete (s : String) (d : Decimal)
         then l * Int.pow 10 DECIMAL_DIGITS + ↑r * Int.pow 10 (DECIMAL_DIGITS - right.length)
         else l * Int.pow 10 DECIMAL_DIGITS - ↑r * Int.pow 10 (DECIMAL_DIGITS - right.length))
         = d.toInt := by
-      rw [parse_value_eq_sign_form]
       have := hval
-      simp only [computeValue, h_split, hl, hr, Option.some.injEq] at this
-      exact this
+      rw [computeValue_eq_parser_value hwf h_split hl hr] at this
+      exact Option.some.inj this
     rw [hval']
     exact Int64.ofInt?_toInt d
   · rename_i h; exact (h left right rfl).elim
@@ -64,8 +63,7 @@ public theorem parse_eq_none_iff (s : String) :
         hl, hr, Decimal.decimal?, ite_true, and_true] at h
       -- h : Int64.ofInt? (if ... then ... + ... else ... - ...) = none
       refine ⟨_, ?_, Int64.ofInt?_none_iff.mpr h⟩
-      rw [parse_value_eq_sign_form]
-      simp only [computeValue, h_split, hl, hr]
+      exact computeValue_eq_parser_value hwf h_split hl hr
     · left; exact hwf
   · -- ← direction: malformed or overflow implies parse s = none
     intro h
@@ -91,10 +89,9 @@ public theorem parse_eq_none_iff (s : String) :
             then l * Int.pow 10 DECIMAL_DIGITS + ↑r * Int.pow 10 (DECIMAL_DIGITS - right.length)
             else l * Int.pow 10 DECIMAL_DIGITS - ↑r * Int.pow 10 (DECIMAL_DIGITS - right.length))
             = v := by
-          rw [parse_value_eq_sign_form]
           have := hcv
-          simp only [computeValue, h_split, hl, hr, Option.some.injEq] at this
-          exact this
+          rw [computeValue_eq_parser_value hwf h_split hl hr] at this
+          exact Option.some.inj this
         rw [hcv']
         exact Int64.ofInt?_none_iff.mp hovf
       · -- s is not well-formed → parse = none (same as the other branch)

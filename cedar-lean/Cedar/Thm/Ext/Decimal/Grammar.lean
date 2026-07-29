@@ -50,25 +50,24 @@ public def IsWfDecimal (s : String) : Prop :=
     IsWfFrac fraction
 -- ANCHOR_END: IsWfDecimal
 
-/-- Compute the integer value that a decimal string represents, or `none` if the string does not
-    split into an integer part and a fraction part. The grammar's value function is
+/-- Compute the integer value that a decimal string represents, or `none` if its unsigned body
+    does not split into parsable `Natural` and `Fraction` fields. This directly implements the
+    grammar's value function:
 
       value = sign × (nat(Natural) × 10⁴ + nat(Fraction) × 10^(4 − |Fraction|))
       where sign = −1 if Sign is '-', else 1
-
-    and this computes an equivalent regrouping of it: `toInt?'` reads the `Sign` together with the
-    `Natural` digits, so the sign is already carried by the integer part and the explicit `sign`
-    factor is only needed to negate the fraction. -/
+ -/
 -- ANCHOR: computeValue
 public def computeValue (s : String) : Option Int :=
-  match s.splitToList (· = '.') with
-  | [left, right] =>
-    match toInt?' left, toNat?' right with
-      | .some l, .some r =>
-        let sign : Int := if left.startsWith "-" then -1 else 1
-        some (l * Int.pow 10 DECIMAL_DIGITS
-          + sign * r * Int.pow 10 (DECIMAL_DIGITS - right.length))
-      | _, _ => none
+  let (sign, body) :=
+    if s.front = '-' then ((-1 : Int), (s.drop 1).copy) else (1, s)
+  match body.splitToList (· = '.') with
+  | [natural, fraction] =>
+    match toNat?' natural, toNat?' fraction with
+    | some n, some f =>
+      some (sign * (n * Int.pow 10 DECIMAL_DIGITS
+        + f * Int.pow 10 (DECIMAL_DIGITS - fraction.length)))
+    | _, _ => none
   | _ => none
 -- ANCHOR_END: computeValue
 
