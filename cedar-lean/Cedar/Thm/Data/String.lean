@@ -162,6 +162,26 @@ theorem splitToList_eq (s₁ s₂ : String) (p : Char → Bool) (sep : Char)
   rw [splitOnPPrepend_one_sep p s₁.toList s₂.toList [] sep hsep h₁ h₂]
   simp
 
+/-- Converse of `splitToList_eq`: if splitting `s` on `'.'` yields exactly two parts, then `s` is
+    their concatenation with the separator between them. Rejoining the split is the inverse of
+    splitting, so this recovers the rendering from the parser's view of a string. -/
+theorem join_splitToList {s left right : String}
+    (h : s.splitToList (· = '.') = [left, right]) :
+    s = left ++ "." ++ right := by
+  rw [String.splitToList_of_valid] at h
+  have hp : (fun x : Char => decide (x = '.')) = (fun x => x == '.') := by
+    funext x
+    apply Bool.eq_iff_iff.mpr
+    rw [decide_eq_true_eq, beq_iff_eq]
+  have hsplits : List.splitOn '.' s.toList = [left.toList, right.toList] := by
+    rw [List.splitOn_eq_splitOnP]
+    have h' := congrArg (List.map String.toList) h
+    simpa [Function.comp_def, hp] using h'
+  have hi := congrArg (List.intercalate ['.']) hsplits
+  rw [List.intercalate_splitOn] at hi
+  rw [← String.toList_inj]
+  simpa [List.intercalate] using hi
+
 /-! ==============================================================================================
     # `toString`/`repr` of naturals contains no `'.'`
     ============================================================================================== -/

@@ -13,18 +13,25 @@ open Cedar.Spec.Ext
 /-! # Decimal grammar: definitions
 
 This file contains only the grammar-level definitions — the well-formedness predicates and the
-value function — as a direct, parser-independent transcription of the decimal grammar. The lemmas
-connecting these definitions to `Decimal.parse` (in particular the digit-string ↔ `toInt?'`/
-`toNat?'` bridges) live in `Cedar.Thm.Ext.Decimal.Lemmas`. The `Digit⁺` predicate `IsDigits` and
-its `toNat?'` bridges are shared with the duration grammar and live in `Cedar.Thm.Data.String`. -/
+value function — as a direct, parser-independent transcription of the decimal grammar. Each
+production (`Sign`, `Natural`, `Fraction`) gets its own predicate, and `IsWfDecimal` says the
+string is the rendering of well-formed components, the same shape used by the duration and
+datetime grammars. The lemmas connecting these definitions to `Decimal.parse` (in particular the
+digit-string ↔ `toInt?'`/`toNat?'` bridges) live in `Cedar.Thm.Ext.Decimal.Lemmas`. The `Digit⁺`
+predicate `IsDigits` and its `toNat?'` bridges are shared with the duration grammar and live in
+`Cedar.Thm.Data.String`. -/
 
-/-- The grammar's `Integer ::= ['-'] Digit⁺`: either a bare non-empty digit string, or a
-    `'-'` followed by one. The `∃ t` branch requires `IsDigits t`, so a bare `"-"` is
-    excluded — this is what the grammar's `Digit⁺` (at least one digit) buys us. -/
--- ANCHOR: IsWfInt
-public def IsWfInt (s : String) : Prop :=
-  IsDigits s ∨ ∃ t, s = "-" ++ t ∧ IsDigits t
--- ANCHOR_END: IsWfInt
+/-- The grammar's `Sign ::= ['-']`: the optional leading minus, present or absent. -/
+-- ANCHOR: IsWfSign
+public def IsWfSign (s : String) : Prop :=
+  s = "-" ∨ s = ""
+-- ANCHOR_END: IsWfSign
+
+/-- The grammar's `Natural ::= Digit⁺`: a non-empty digit string. -/
+-- ANCHOR: IsWfNat
+public def IsWfNat (s : String) : Prop :=
+  IsDigits s
+-- ANCHOR_END: IsWfNat
 
 /-- The grammar's `Fraction ::= Digit{1,4}`: 1 to `DECIMAL_DIGITS` digits. `IsDigits` supplies
     the lower bound (at least one digit) and the length constraint supplies the upper bound. -/
@@ -33,16 +40,19 @@ public def IsWfFrac (s : String) : Prop :=
   IsDigits s ∧ s.length ≤ DECIMAL_DIGITS
 -- ANCHOR_END: IsWfFrac
 
-/-- Well-formed decimal syntax: `s` splits on `.` into exactly two parts, where the left part
-    matches the grammar's `Integer ::= ['-'] Digit⁺` and the right part matches
-    `Fraction ::= Digit{1,4}`. This is a direct transcription of the grammar's character-level
-    productions, independent of any string-to-number parser. -/
+/-- Well-formed decimal syntax: `s` is the rendering of a well-formed `Sign`, `Natural`, `'.'`,
+    and `Fraction`, concatenated in that order. Phrasing well-formedness existentially over the
+    rendering bakes in the separator and the field order, exactly as the duration and datetime
+    grammars do — and, unlike a split-based phrasing, it names the optional sign as its own
+    production rather than folding it into the integer part. This is a direct transcription of the
+    grammar's character-level productions, independent of any string-to-number parser. -/
 -- ANCHOR: IsWfDecimal
 public def IsWfDecimal (s : String) : Prop :=
- ∃ left right,
-    s.splitToList (· = '.') = [left, right] ∧
-    IsWfInt left ∧
-    IsWfFrac right
+  ∃ sign natural fraction,
+    s = sign ++ natural ++ "." ++ fraction ∧
+    IsWfSign sign ∧
+    IsWfNat natural ∧
+    IsWfFrac fraction
 -- ANCHOR_END: IsWfDecimal
 
 /-- Compute the integer value that a decimal string represents, or `none` if the string does not
