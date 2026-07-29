@@ -23,13 +23,6 @@ open Cedar.Spec.Ext
 public def IsDigits (s : String) : Prop :=
   0 < s.length ∧ ∀ c ∈ s.toList, c.isDigit = true
 
-/-- `Natural ::= Digit⁺`: the unsigned natural-number production. An `abbrev` for `IsDigits`, so
-    grammars can name this production the way they name `Sign`/`Fraction` (`IsWfSign`,
-    `IsDigitsUpTo`) while every `IsDigits` lemma still applies without unfolding. -/
--- ANCHOR: IsNatural
-public abbrev IsNatural (s : String) : Prop := IsDigits s
--- ANCHOR_END: IsNatural
-
 /-- `Digit{n}`: a run of exactly `n` decimal digits. The fixed-width refinement of `IsDigits`,
     used wherever a grammar pins a field's width (the datetime grammar's `YYYY`, `MM`, `SSS`, …). -/
 -- ANCHOR: IsFixedDigits

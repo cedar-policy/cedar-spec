@@ -14,15 +14,19 @@ open Cedar.Spec.Ext
 
 This file contains only the grammar-level definitions — the well-formedness predicates and the
 value function — as a direct, parser-independent transcription of the decimal grammar. Each
-production becomes a predicate, and `IsWfDecimal` says the string is the rendering of well-formed
-components — the same shape used by the duration and datetime grammars. The lemmas connecting
-these definitions to `Decimal.parse` (in particular the digit-string ↔ `toInt?'`/`toNat?'`
-bridges) live in `Cedar.Thm.Ext.Decimal.Lemmas`.
+production becomes a predicate, and `IsWfDecimal` says the string is their rendering. The lemmas
+connecting these definitions to `Decimal.parse` (in particular the digit-string ↔
+`toInt?'`/`toNat?'` bridges) live in `Cedar.Thm.Ext.Decimal.Lemmas`.
 
-`Sign ::= ['-']` and `Natural ::= Digit⁺` are spelled with the shared `IsWfSign` and `IsNatural`
-predicates directly, so only the decimal-specific `Fraction` needs a local definition. Those
-shared predicates — along with the width refinements `IsFixedDigits`/`IsDigitsUpTo` and the
-`toNat?'` bridges — live in `Cedar.Thm.Data.String`. -/
+`Sign ::= ['-']` uses the shared `IsWfSign` predicate. The decimal-specific `Natural` and
+`Fraction` productions are named locally using the shared digit predicates `IsDigits` and
+`IsDigitsUpTo`; their string-to-number bridges live in `Cedar.Thm.Data.String`. -/
+
+/-- The grammar's `Natural ::= Digit⁺`: the unsigned natural-number production. An `abbrev` for
+    the shared `IsDigits` predicate, so every `IsDigits` lemma applies without unfolding. -/
+-- ANCHOR: IsNatural
+public abbrev IsNatural (s : String) : Prop := IsDigits s
+-- ANCHOR_END: IsNatural
 
 /-- The grammar's `Fraction ::= Digit{1,4}`: 1 to `DECIMAL_DIGITS` digits, an instance of the
     shared bounded-digits predicate. -/
@@ -33,10 +37,9 @@ public def IsWfFrac (s : String) : Prop :=
 
 /-- Well-formed decimal syntax: `s` is the rendering of a well-formed `Sign ::= ['-']`,
     `Natural ::= Digit⁺`, `'.'`, and `Fraction ::= Digit{1,4}`, concatenated in that order.
-    Phrasing well-formedness existentially over the rendering bakes in the separator and the field
-    order, exactly as the duration and datetime grammars do — and, unlike a split-based phrasing,
-    it names the optional sign as its own production rather than folding it into the integer part.
-    This is a direct transcription of the grammar's character-level productions, independent of any
+    Phrasing well-formedness existentially over the rendering bakes in the separator and field
+    order without introducing a record for this single flat production. This is a direct
+    transcription of the grammar's character-level productions, independent of any
     string-to-number parser. -/
 -- ANCHOR: IsWfDecimal
 public def IsWfDecimal (s : String) : Prop :=
@@ -47,27 +50,47 @@ public def IsWfDecimal (s : String) : Prop :=
     IsWfFrac fraction
 -- ANCHOR_END: IsWfDecimal
 
-/-- Compute the integer value that a decimal string represents, or `none` if the string does not
-    split into an integer part and a fraction part. The grammar's value function is
+/-- Split a character sequence at its first decimal point. Unlike `String.splitToList`, this
+    follows the grammar's one `Natural '.' Fraction` production directly. -/
+public def splitAtDecimalPoint : List Char → Option (List Char × List Char)
+  | [] => none
+  | c :: rest =>
+    if c = '.' then
+      some ([], rest)
+    else
+      match splitAtDecimalPoint rest with
+      | some (natural, fraction) => some (c :: natural, fraction)
+      | none => none
+
+/-- Compute the integer value represented by already-separated grammar fields:
 
       value = sign × (nat(Natural) × 10⁴ + nat(Fraction) × 10^(4 − |Fraction|))
       where sign = −1 if Sign is '-', else 1
 
-    and this computes an equivalent regrouping of it: `toInt?'` reads the `Sign` together with the
-    `Natural` digits, so the sign is already carried by the integer part and the explicit `sign`
-    factor is only needed to negate the fraction.
--/
+    `toInt?'` reads the sign together with the natural digits, so the sign is already carried by
+    the whole part and the explicit factor is needed only for the fraction. This is an equivalent
+    regrouping of the displayed formula. -/
+public def valueOfParts (sign natural fraction : String) : Option Int :=
+  match toInt?' (sign ++ natural), toNat?' fraction with
+  | some whole, some frac =>
+    let polarity : Int := if (sign ++ natural).startsWith "-" then -1 else 1
+    some (whole * Int.pow 10 DECIMAL_DIGITS
+      + polarity * frac * Int.pow 10 (DECIMAL_DIGITS - fraction.length))
+  | _, _ => none
+
+/-- Compute the integer value that a decimal string represents, or `none` when the string does not
+    contain a decimal point or one of its numeric fields does not parse. It peels the optional
+    leading sign and follows the grammar's single `Natural '.' Fraction` production directly,
+    without splitting the string into an arbitrary list of fields. -/
 -- ANCHOR: computeValue
 public def computeValue (s : String) : Option Int :=
-  match s.splitToList (· = '.') with
-  | [left, right] =>
-    match toInt?' left, toNat?' right with
-      | .some l, .some r =>
-        let sign : Int := if left.startsWith "-" then -1 else 1
-        some (l * Int.pow 10 DECIMAL_DIGITS
-          + sign * r * Int.pow 10 (DECIMAL_DIGITS - right.length))
-      | _, _ => none
-  | _ => none
+  let (sign, body) := match s.toList with
+    | [] => ("", [])
+    | c :: rest => if c = '-' then ("-", rest) else ("", c :: rest)
+  match splitAtDecimalPoint body with
+  | some (natural, fraction) =>
+    valueOfParts sign (String.ofList natural) (String.ofList fraction)
+  | none => none
 -- ANCHOR_END: computeValue
 
 /-- Canonical-form normalizer: parse the string and re-serialize.

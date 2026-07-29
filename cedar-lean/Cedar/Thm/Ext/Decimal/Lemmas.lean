@@ -148,7 +148,8 @@ theorem isWfDecimal_iff {s : String} :
       toInt?'_isSome_of_sign_nat hs hn, toNat?'_isSome_of_isDigits hf.1⟩
   · rintro ⟨left, right, h_split, _, _, h_rle, h_lint, h_rnat⟩
     obtain ⟨sign, natural, rfl, hs, hn⟩ := sign_nat_of_toInt?'_isSome h_lint
-    refine ⟨sign, natural, right, ?_, hs, hn, ⟨isDigits_of_toNat?'_isSome h_rnat, h_rle⟩⟩
+    refine ⟨sign, natural, right, ?_, hs, hn,
+      ⟨isDigits_of_toNat?'_isSome h_rnat, h_rle⟩⟩
     have hjoin := join_splitToList h_split
     simp only [String.append_assoc] at hjoin ⊢
     exact hjoin
@@ -160,15 +161,97 @@ theorem parse_value_eq_sign_form (l : Int) (r : Nat) (b : Bool) (P Q : Int) :
       = l * P + (if b then (-1 : Int) else 1) * (r : Int) * Q := by
   cases b <;> simp [Int.sub_eq_add_neg, Int.neg_mul, Int.one_mul]
 
-/-- A well-formed string always has a computed value: `computeValue` succeeds because both the
-    split and the integer/fraction primitives succeed. (The converse fails — `computeValue` can
-    succeed on strings that violate the `right.length ≤ DECIMAL_DIGITS` bound.) -/
+/-- The direct decimal-point decomposition recovers the two sides of a rendered production. -/
+theorem splitAtDecimalPoint_eq (natural fraction : List Char)
+    (h : ∀ c ∈ natural, c ≠ '.') :
+    splitAtDecimalPoint (natural ++ '.' :: fraction) = some (natural, fraction) := by
+  induction natural with
+  | nil => simp [splitAtDecimalPoint]
+  | cons c natural ih =>
+    have hc : c ≠ '.' := h c (by simp)
+    rw [List.cons_append]
+    simp only [splitAtDecimalPoint, hc, ↓reduceIte]
+    rw [ih (fun c hc => h c (by simp [hc]))]
+
+/-- `computeValue` recovers the three fields from a well-formed rendering and applies
+    `valueOfParts` to them. -/
+theorem computeValue_rendering {sign natural fraction : String}
+    (hs : IsWfSign sign) (hn : IsNatural natural) :
+    computeValue (sign ++ natural ++ "." ++ fraction) =
+      valueOfParts sign natural fraction := by
+  have hsplit := splitAtDecimalPoint_eq natural.toList fraction.toList
+    (fun c hc => by
+      have hdigit := hn.2 c hc
+      intro heq
+      subst c
+      simp at hdigit)
+  rcases hs with rfl | rfl
+  · have hchars :
+        ("-" ++ natural ++ "." ++ fraction).toList =
+          '-' :: (natural.toList ++ '.' :: fraction.toList) := by
+      simp [String.toList_append]
+    unfold computeValue
+    rw [hchars]
+    simp only [if_true]
+    rw [hsplit]
+    simp
+  · rw [String.empty_append]
+    have hne : natural.toList ≠ [] := by
+      intro hnil
+      exact hn.ne_empty (String.toList_inj.mp (by simp [hnil]))
+    cases hnatural : natural.toList with
+    | nil => exact absurd hnatural hne
+    | cons c rest =>
+      have hc : c ≠ '-' := by
+        intro heq
+        subst c
+        have hdigit := hn.2 '-' (by rw [hnatural]; simp)
+        simp at hdigit
+      rw [hnatural] at hsplit
+      have hchars :
+          (natural ++ "." ++ fraction).toList =
+            c :: (rest ++ '.' :: fraction.toList) := by
+        simp [String.toList_append, hnatural]
+      unfold computeValue
+      rw [hchars]
+      simp only [hc, ↓reduceIte]
+      change splitAtDecimalPoint (c :: (rest ++ '.' :: fraction.toList)) =
+        some (c :: rest, fraction.toList) at hsplit
+      rw [hsplit]
+      simp
+      have hnatural' : natural = String.ofList (c :: rest) := by
+        rw [← hnatural]
+        simp
+      rw [hnatural']
+      simp
+
+/-- On a well-formed string, the direct value function agrees with the split-oriented expression
+    used by `Decimal.parse`. -/
+theorem computeValue_eq_of_isWfDecimal {s left right : String}
+    (hwf : IsWfDecimal s)
+    (hsplit : s.splitToList (· = '.') = [left, right]) :
+    computeValue s = valueOfParts "" left right := by
+  obtain ⟨sign, natural, fraction, rfl, hs, hn, hf⟩ := hwf
+  have hcanonical := splitToList_of_isWfDecimal hs hn hf
+  rw [hcanonical] at hsplit
+  have hleft : sign ++ natural = left := (List.cons.inj hsplit).1
+  have hright : fraction = right := (List.cons.inj (List.cons.inj hsplit).2).1
+  subst left
+  subst right
+  rw [computeValue_rendering hs hn]
+  simp [valueOfParts]
+
+/-- A well-formed string always has a computed value: the rendering decomposition succeeds and
+    both numeric fields are accepted. -/
 theorem computeValue_isSome_of_isWfDecimal {s : String} (h : IsWfDecimal s) :
     (computeValue s).isSome = true := by
-  obtain ⟨left, right, h_split, _, _, _, h_lint, h_rnat⟩ := isWfDecimal_iff.mp h
-  obtain ⟨l, hl⟩ := Option.isSome_iff_exists.mp h_lint
-  obtain ⟨r, hr⟩ := Option.isSome_iff_exists.mp h_rnat
-  simp only [computeValue, h_split, hl, hr, Option.isSome_some]
+  obtain ⟨sign, natural, fraction, rfl, hs, hn, hf⟩ := h
+  rw [computeValue_rendering hs hn]
+  obtain ⟨whole, hwhole⟩ :=
+    Option.isSome_iff_exists.mp (toInt?'_isSome_of_sign_nat hs hn)
+  obtain ⟨frac, hfrac⟩ :=
+    Option.isSome_iff_exists.mp (toNat?'_isSome_of_isDigits hf.1)
+  simp [valueOfParts, hwhole, hfrac]
 
 /-! ============================================================================================
     # `toString` well-formedness and value
@@ -410,38 +493,42 @@ public theorem toString_isWfDecimal (d : Decimal) : IsWfDecimal (toString d) := 
 /-- The canonical string representation of a decimal encodes the same integer value. -/
 public theorem computeValue_toString (d : Decimal) : computeValue (toString d) = some d.toInt := by
   obtain ⟨h_split, h_rlen, h_lint, h_rnat, h_starts⟩ := toString_split d
-  -- `computeValue` uses the grammar's positive `sign` factor keyed on `startsWith "-"`;
-  -- recover that directly from the negated form `h_starts` provides.
-  have h_starts' : ((if d < 0 then "-" else "") ++ toString (d.natAbs / Nat.pow 10 4)).startsWith "-"
-      = decide (d < 0) := by
-    have := Bool.not_inj h_starts; simpa using this
-  simp only [computeValue, h_split, h_lint, h_rnat, h_rlen, h_starts', DECIMAL_DIGITS,
-    Option.some.injEq]
+  have h_starts' :
+      ((if d < 0 then "-" else "") ++ toString (d.natAbs / Nat.pow 10 4)).startsWith "-"
+        = decide (d < 0) := by
+    have := Bool.not_inj h_starts
+    simpa using this
+  rw [computeValue_eq_of_isWfDecimal (toString_isWfDecimal d) h_split]
+  simp only [valueOfParts, String.empty_append, h_lint, h_rnat, h_rlen, h_starts',
+    DECIMAL_DIGITS, Option.some.injEq]
   simp only [show Nat.pow 10 4 = 10000 from rfl, show (4 : Nat) - 4 = 0 from rfl,
     show Int.pow 10 4 = (10000 : Int) from rfl,
     show Int.pow 10 0 = (1 : Int) from rfl, Int.mul_one]
   simp (config := { decide := true }) only [Int64.natAbs]
   by_cases hd : d < 0
-  · -- Goal: -↑(n/10000) * 10000 + -1 * ↑(n%10000) = d.toInt
-    simp only [hd, ↓reduceIte, decide_true, Int.neg_one_mul]
+  · simp only [hd, ↓reduceIte, decide_true, Int.neg_one_mul]
     have h1 := Int.natAbs_eq d.toInt
-    have h3 : -(↑(d.toInt.natAbs / 10000) : Int) * 10000 + -↑(d.toInt.natAbs % 10000) =
-        -↑d.toInt.natAbs := by
-      have := Nat.div_add_mod d.toInt.natAbs 10000; omega
+    have h3 :
+        -(↑(d.toInt.natAbs / 10000) : Int) * 10000 + -↑(d.toInt.natAbs % 10000) =
+          -↑d.toInt.natAbs := by
+      have := Nat.div_add_mod d.toInt.natAbs 10000
+      omega
     simp_all
     apply Eq.symm (Int.eq_neg_natAbs_of_nonpos (by
       rw [Int64.lt_def_toInt] at hd
       have : (0 : Int64).toInt = 0 := by rfl
       omega))
-  · -- Goal: ↑(n/10000) * 10000 + 1 * ↑(n%10000) = d.toInt
+  ·
     simp only [hd, ↓reduceIte, decide_false, Bool.false_eq_true, Int.one_mul]
     have hge : d.toInt ≥ 0 := by
       simp only [Int64.lt_def_toInt] at hd
       have : (0 : Int64).toInt = 0 := by rfl
       omega
-    have h3 : (↑(d.toInt.natAbs / 10000) : Int) * 10000 + ↑(d.toInt.natAbs % 10000) =
-        ↑d.toInt.natAbs := by
-      have := Nat.div_add_mod d.toInt.natAbs 10000; omega
+    have h3 :
+        (↑(d.toInt.natAbs / 10000) : Int) * 10000 + ↑(d.toInt.natAbs % 10000) =
+          ↑d.toInt.natAbs := by
+      have := Nat.div_add_mod d.toInt.natAbs 10000
+      omega
     rw [h3, Int.natAbs_of_nonneg hge]
 
 end Cedar.Thm.Decimal
