@@ -48,11 +48,14 @@ public def IsWfDecimal (s : String) : Prop :=
 -- ANCHOR_END: IsWfDecimal
 
 /-- Compute the integer value that a decimal string represents, or `none` if the string does not
-    split into an integer part and a fraction part. This mirrors the
-    grammar's value function directly:
+    split into an integer part and a fraction part. The grammar's value function is
 
-      value = int(Integer) × 10⁴ + sign × nat(Fraction) × 10^(4 − |Fraction|)
-      where sign = −1 if Integer starts with '-', else 1
+      value = sign × (nat(Natural) × 10⁴ + nat(Fraction) × 10^(4 − |Fraction|))
+      where sign = −1 if Sign is '-', else 1
+
+    and this computes an equivalent regrouping of it: `toInt?'` reads the `Sign` together with the
+    `Natural` digits, so the sign is already carried by the integer part and the explicit `sign`
+    factor is only needed to negate the fraction.
 -/
 -- ANCHOR: computeValue
 public def computeValue (s : String) : Option Int :=
