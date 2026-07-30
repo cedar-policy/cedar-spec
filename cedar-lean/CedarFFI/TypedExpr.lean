@@ -24,7 +24,7 @@ import Protobuf
 import CedarFFI.Main
 import CedarFFI.ToJson
 
-/-! Typed-expression entry point for DRT (cedar-spec issue #840).
+/-! Typed-expression FFI entry point (cedar-spec issue #840).
 
     `validate` reports only whether validation passed. This entry point
     additionally returns the `TypedExpr` that `typecheckPolicy` produces for

@@ -15,4 +15,4 @@
 -/
 
 import CedarFFI.Main
-import CedarFFI.TypedExprDRT
+import CedarFFI.TypedExpr

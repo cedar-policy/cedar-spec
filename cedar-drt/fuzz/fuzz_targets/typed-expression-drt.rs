@@ -27,17 +27,6 @@ use std::sync::LazyLock;
 
 static FFI: LazyLock<CedarLeanFfi> = LazyLock::new(CedarLeanFfi::new);
 
-/// Survey mode. When `CEDAR_TYPED_EXPR_SURVEY` is set, findings are counted
-/// and printed instead of asserted on.
-///
-/// This WEAKENS the target: with it set the target observes rather than
-/// blocks, so it can no longer fail a run. It exists to measure how often a
-/// divergence class appears across generated input before deciding whether
-/// that class is a defect or a declared difference. Leave it unset in CI.
-fn survey_mode() -> bool {
-    std::env::var_os("CEDAR_TYPED_EXPR_SURVEY").is_some()
-}
-
 fuzz_target!(|input: FuzzTargetInput<true>| {
     initialize_log();
 
@@ -51,20 +40,6 @@ fuzz_target!(|input: FuzzTargetInput<true>| {
     };
 
     let findings = report.findings();
-
-    if survey_mode() {
-        // Emitted on every execution, including those with no findings, so the
-        // tally has a denominator. Counting only executions that produced a
-        // finding gives a numerator with nothing to divide by.
-        println!("SURVEY_PAIRS\t{}", report.compared);
-        for f in &findings {
-            println!("SURVEY\t{}\t{f:?}", f.bucket());
-        }
-        for d in report.declared_differences() {
-            println!("SURVEY_DECLARED\t{}\t{d:?}", d.bucket());
-        }
-        return;
-    }
 
     if findings.is_empty() {
         return;

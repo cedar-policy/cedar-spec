@@ -501,9 +501,15 @@ fn literal_json(l: &Literal) -> Value {
         Literal::Bool(b) => json!({ "bool": b }),
         Literal::Long(i) => json!({ "int": i }),
         Literal::String(s) => json!({ "string": s.to_string() }),
+        // The eid is taken raw rather than through `Eid::escaped()`. `escaped()`
+        // is a Rust display convention: it renders U+0007 as the six characters
+        // `\u{7}`, which serde then escapes again to `\\u{7}`. Lean emits the
+        // raw character and its JSON encoder escapes it once, to `\u0007`. Only
+        // the raw form is comparable. This is the same cause as the environment
+        // key fix below, at a site that fix did not reach.
         Literal::EntityUID(uid) => json!({"entityUID": {
             "ty": entity_type_json(uid.entity_type()),
-            "eid": uid.eid().escaped().to_string(),
+            "eid": <cedar_policy_core::ast::Eid as AsRef<str>>::as_ref(uid.eid()),
         }}),
     }
 }
@@ -1253,6 +1259,60 @@ mod tests {
             vec![],
             "field order alone must never be reported as a divergence"
         );
+    }
+
+    /// Seventh phantom-divergence class, found by re-running the target after
+    /// the survey switch was removed. `Eid::escaped()` is a Rust display
+    /// convention: it renders a control character as the literal text `\u{7}`,
+    /// which serde then escapes again. Lean emits the raw character and its
+    /// JSON encoder escapes it once. Rendering the Rust eid through
+    /// `escaped()` made every entity literal holding a control character
+    /// mismatch, in the harness rather than in either typechecker.
+    ///
+    /// The environment-key fix (phantom class 5) addressed the same cause at a
+    /// different site and did not reach this one.
+    #[test]
+    fn control_character_in_entity_literal_is_not_a_divergence() {
+        // Lean's encoder emits the raw eid; serde_json parses "" to it.
+        let lean_lit = json!({"lit": {
+            "p": {"entityUID": {"ty": {"id": "a", "path": []}, "eid": "\u{7}"}},
+            "ty": {"entity": {"ety": {"path": [], "id": "a"}}}}});
+        let lean = lean_to_node(&lean_lit, "$").expect("lean parse");
+
+        let uid: cedar_policy_core::ast::EntityUID = r#"a::"\u{7}""#.parse().expect("euid parse");
+        let ety: cedar_policy_core::ast::EntityType =
+            "a".parse::<cedar_policy_core::ast::Name>().unwrap().into();
+        let ty = Some(Type::Entity(EntityKind::Entity(EntityLUB::single_entity(
+            ety,
+        ))));
+        let rust = ExprBuilder::with_data(ty).val(uid);
+
+        assert_eq!(
+            compare(&rust_to_node(&rust, "$").unwrap(), &lean, "$"),
+            vec![],
+            "eid escaping alone must never be reported as a divergence"
+        );
+    }
+
+    /// The other half: a genuinely different eid is still caught, so the fix
+    /// above widened nothing.
+    #[test]
+    fn differing_entity_literal_eid_is_still_caught() {
+        let lean_lit = json!({"lit": {
+            "p": {"entityUID": {"ty": {"id": "a", "path": []}, "eid": "\u{7}"}},
+            "ty": {"entity": {"ety": {"path": [], "id": "a"}}}}});
+        let lean = lean_to_node(&lean_lit, "$").expect("lean parse");
+
+        let uid: cedar_policy_core::ast::EntityUID = r#"a::"\u{8}""#.parse().expect("euid parse");
+        let ety: cedar_policy_core::ast::EntityType =
+            "a".parse::<cedar_policy_core::ast::Name>().unwrap().into();
+        let ty = Some(Type::Entity(EntityKind::Entity(EntityLUB::single_entity(
+            ety,
+        ))));
+        let rust = ExprBuilder::with_data(ty).val(uid);
+
+        let ds = compare(&rust_to_node(&rust, "$").unwrap(), &lean, "$");
+        expect_one(&ds, "OPERATOR_MISMATCH");
     }
 
     // -----------------------------------------------------------------
