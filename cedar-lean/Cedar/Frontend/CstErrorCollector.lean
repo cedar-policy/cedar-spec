@@ -23,7 +23,6 @@ public import Cedar.Spec.Request
 public import Cedar.Spec.Response
 public import Cedar.Spec.Value
 public import Cedar.Spec.Evaluator
-public import Cedar.Frontend.Cst.ToAst
 
 namespace Cedar.Spec
 
@@ -302,13 +301,12 @@ public def Relation.collectErrors (e : Relation) (req : Request) (es : Entities)
                      | none   => Set.singleton (Error.cstError .stringError))
     | .rIsIn target entityType inEntity =>
         (target.collectErrors req es).1 ∪
-        (match entityType.toEntityType? with
+        (match entityType.toEntityTypeName? with
          | some _ => ∅
          | none   => Set.singleton (Error.cstError .nameError)) ∪
         (match inEntity with
          | none    => ∅
-         | some ie => (ie.collectErrors req es).1 ∪
-                      (if ie.toAExpr?.isNone then Set.singleton (Error.cstError .translationError) else ∅))
+         | some ie => (ie.collectErrors req es).1)
   (evalres.1 ∪ errs, evalres.2)
 termination_by sizeOf e
 decreasing_by all_goals (simp_wf; omega)
@@ -365,9 +363,8 @@ public def PolicyImpl.collectErrors (p : PolicyImpl) (req : Request) (es : Entit
   (match Ident.toEffect? p.effect with
    | some _ => ∅
    | none   => Set.singleton (Error.cstError .translationError))
-  ∪ (match extractScope? p.vars with
-     | some _ => ∅
-     | none   => Set.singleton (Error.cstError .translationError))
+  ∪ (if scopeValid? p.vars then ∅
+     else Set.singleton (Error.cstError .translationError))
   ∪ collectConds p.conds req es
 
 public def Policy.collectErrors (p : Policy) (req : Request) (es : Entities) : Set Error :=
@@ -383,4 +380,3 @@ public def Policies.collectErrors (ps : Policies) (req : Request) (es : Entities
   collectPolicies ps.ps req es
 
 end Cedar.Frontend.Cst
-

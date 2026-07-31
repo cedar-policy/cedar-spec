@@ -800,7 +800,7 @@ theorem Cst.Relation.collect_complete {e : Cst.Relation} {req : Request} {es : E
       | none => simp [hps, hcp, noCstError_singleton, Error.isCstError] at hpat
       | some mp =>
         have hpatT : pattern.toPattern? = some mp := by
-          simp [Cst.AddExpr.toPattern?, Cedar.Thm.addExpr_toPatternString_toExprOrSpecial hps, hcp]
+          simp [Cst.AddExpr.toPattern?, hps, hcp]
         exact ⟨.expr (.unaryApp (.like mp) texpr), .unaryApp (.like mp) texpr,
                by simp [Cst.Relation.toExprOrSpecial?, htgtA, hpatT], by simp [ExprOrSpecial.toExpr?]⟩
   | .rIsIn target ety inEntity =>
@@ -810,31 +810,26 @@ theorem Cst.Relation.collect_complete {e : Cst.Relation} {req : Request} {es : E
     obtain ⟨htgt, hety⟩ := (noCstError_union _ _).mpr hte
     obtain ⟨teos, texpr, hteos, htexpr⟩ := Cst.AddExpr.collect_complete htgt
     have htgtA : target.toAExpr? = some texpr := by simp [Cst.AddExpr.toAExpr?, hteos, htexpr]
-    cases hety' : ety.toEntityType? with
+    cases hety' : ety.toEntityTypeName? with
     | none => simp [hety', noCstError_singleton, Error.isCstError] at hety
     | some etyName =>
       match hinE : inEntity with
       | none =>
         exact ⟨.expr (.unaryApp (.is etyName) texpr), .unaryApp (.is etyName) texpr,
-               by simp [Cst.Relation.toExprOrSpecial?, htgtA, hety'], by simp [ExprOrSpecial.toExpr?]⟩
+               by simp [Cst.Relation.toExprOrSpecial?, Cst.AddExpr.toEntityType?, htgtA, hety'], by simp [ExprOrSpecial.toExpr?]⟩
       | some ie =>
-        cases hie : ie.toAExpr? with
-        | none =>
-          exfalso
-          simp only [hie, Option.isNone_none, if_true] at hInE
-          obtain ⟨_, hg⟩ := (noCstError_union _ _).mpr hInE
-          rw [noCstError_singleton] at hg
-          simp [Error.isCstError] at hg
-        | some mi =>
-          exact ⟨.expr (.and (.unaryApp (.is etyName) texpr) (.binaryApp .mem texpr mi)),
-                 .and (.unaryApp (.is etyName) texpr) (.binaryApp .mem texpr mi),
-                 by simp [Cst.Relation.toExprOrSpecial?, htgtA, hety', hie], by simp [ExprOrSpecial.toExpr?]⟩
+        have hIE : noCstError (ie.collectErrors req es).1 := by simpa using hInE
+        obtain ⟨ieos, mi, hieos, hmi⟩ := Cst.AddExpr.collect_complete hIE
+        have hie : ie.toAExpr? = some mi := by simp [Cst.AddExpr.toAExpr?, hieos, hmi]
+        exact ⟨.expr (.and (.unaryApp (.is etyName) texpr) (.binaryApp .mem texpr mi)),
+               .and (.unaryApp (.is etyName) texpr) (.binaryApp .mem texpr mi),
+               by simp [Cst.Relation.toExprOrSpecial?, Cst.AddExpr.toEntityType?, htgtA, hety', hie], by simp [ExprOrSpecial.toExpr?]⟩
 termination_by sizeOf e
 decreasing_by
   all_goals simp_wf
   all_goals (
     try subst_vars
-    try simp only [List.cons.sizeOf_spec, Prod.mk.sizeOf_spec]
+    try simp only [List.cons.sizeOf_spec, Prod.mk.sizeOf_spec, Option.some.sizeOf_spec]
     omega)
 
 theorem Cst.AndExpr.collect_complete {e : Cst.AndExpr} {req : Request} {es : Entities} :
@@ -1004,9 +999,14 @@ theorem policyImpl_collect_complete (p : Cst.PolicyImpl) (req : Request) (es : E
     | some ef => exact ⟨ef, rfl⟩
     | none => simp [hef, noCstError_singleton, Error.isCstError] at heff
   have hscopeS : ∃ sc, extractScope? p.vars = some sc := by
+    have hvalid : Cst.scopeValid? p.vars = true := by
+      cases hsv : Cst.scopeValid? p.vars with
+      | true => rfl
+      | false => simp [hsv, noCstError_singleton, Error.isCstError] at hscope
+    have := Cedar.Thm.scopeValid_extractScope hvalid
     cases hsc : extractScope? p.vars with
     | some sc => exact ⟨sc, rfl⟩
-    | none => simp [hsc, noCstError_singleton, Error.isCstError] at hscope
+    | none => rw [hsc] at this; simp at this
   obtain ⟨cs, hcs⟩ := collectConds_complete p.conds req es hconds
   obtain ⟨ef, hef⟩ := heffS
   obtain ⟨⟨psc, asc, rsc⟩, hsc⟩ := hscopeS
