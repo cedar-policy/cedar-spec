@@ -417,4 +417,105 @@ public def AddExpr.toAttrs? (e : AddExpr) : Option (List Spec.Attr) :=
       | .name _ => none
       | _ => none
 
+-- Helper lemma: a `Primary` reachable through the AddExpr→Primary chain
+-- has strictly smaller `sizeOf` than the surrounding `OrExpr`.
+public theorem sizeOf_addExpr_primary_lt_orExpr (o : OrExpr) (ae : AddExpr) (ext : List (RelOp × AddExpr))
+    (h : o.initial.initial = .rCommon ae ext) :
+    sizeOf ae.initial.initial.item.item < sizeOf o := by
+  obtain ⟨ae_mult, ae_ext⟩ := ae
+  obtain ⟨ae_unary, ae_mult_ext⟩ := ae_mult
+  obtain ⟨ae_op, ae_member⟩ := ae_unary
+  obtain ⟨ae_prim, ae_access⟩ := ae_member
+  obtain ⟨o_and, o_ext⟩ := o
+  obtain ⟨o_rel, o_and_ext⟩ := o_and
+  simp_all
+  omega
+
+mutual
+public def Primary.uidTypes? : Primary → Option (Spec.Name ⊕ List Spec.Name)
+  | .literal _ | .name _ | .slot _ => none
+  | .ref r => match r with
+    | .uid path (.string s) => do
+      let ty ← path.toAName?
+      let _ ← unescape? s
+      some (.inl ty)
+    | .ref _ _ => none
+  | .expr e => e.uidTypes?
+  | .eList es => do
+    let tys ← es.attach.mapM (fun ⟨x, hmem⟩ =>
+      have : sizeOf x < sizeOf es := List.sizeOf_lt_of_mem hmem
+      match x.uidTypes? with
+      | some (.inl ty) => some ty
+      | _ => none)
+    some (.inr tys)
+  | .rInits _ => none
+termination_by p => (sizeOf p, 0)
+decreasing_by all_goals (simp_wf; omega)
+
+public def Expr.uidTypes? : Expr → Option (Spec.Name ⊕ List Spec.Name)
+  | .expr ⟨.edIf _ _ _⟩ => none
+  | .expr ⟨.edOr o⟩ =>
+    if !o.extended.isEmpty || !o.initial.extended.isEmpty then none
+    else
+      match h : o.initial.initial with
+      | .rHas _ _ | .rLike _ _ => none
+      | .rCommon ae ext =>
+        if !ext.isEmpty || !ae.extended.isEmpty || !ae.initial.extended.isEmpty
+            || !ae.initial.initial.op.isNone || !ae.initial.initial.item.access.isEmpty then none
+        else
+          have : sizeOf ae.initial.initial.item.item < sizeOf o :=
+            sizeOf_addExpr_primary_lt_orExpr o ae ext h
+          ae.initial.initial.item.item.uidTypes?
+      | .rIsIn _ _ _ => none
+termination_by e => (sizeOf e, 1)
+decreasing_by all_goals (simp_wf; omega)
+end
+
+/-- Structural check that `e` denotes a single bare entity-UID reference
+    (mirrors the translator's `toEntityUID?` succeeding). -/
+public def Expr.isSingleUID? (e : Expr) : Bool :=
+  match e.uidTypes? with
+  | some (.inl _) => true
+  | _             => false
+
+/-- Validity of a principal/resource scope clause, mirroring `toPRScope?`. -/
+public def VariableDef.prScopeValid? (v : VariableDef) : Bool :=
+  match v.ineq, v.entityType with
+  | none, none => true
+  | some (op, e), _ => match op, v.entityType with
+    | .rEq, none   => e.isSingleUID?
+    | .rEq, some _ => false
+    | .rIn, none   => e.isSingleUID?
+    | .rIn, some t => e.isSingleUID? && t.toEntityTypeName?.isSome
+    | _, _         => false
+  | none, some t => t.toEntityTypeName?.isSome
+
+/-- Validity of an action scope clause, mirroring `toActionScope?`
+    (= `toActionScopeAux?` filtered by `containsOnlyActionTypes?`). -/
+public def VariableDef.actionScopeValid? (v : VariableDef) : Bool :=
+  v.entityType.isNone &&
+  (match v.ineq with
+   | none => true
+   | some (op, e) => match op with
+     | .rEq => match e.uidTypes? with
+       | some (.inl ty) => ty.id == "Action"
+       | _              => false
+     | .rIn => match e.uidTypes? with
+       | some (.inl ty)  => ty.id == "Action"
+       | some (.inr tys) => tys.all (fun ty => ty.id == "Action")
+       | none            => false
+     | _ => false)
+
+/-- Structural validity of a policy's scope: exactly a `principal`, `action`,
+    `resource` triple in that order, each with a translatable clause. Mirrors
+    the translator's `extractScope?` (kept in agreement in the Thm layer), but
+    returns only validity — never builds the AST scope. -/
+public def scopeValid? (vars : List VariableDef) : Bool :=
+  match vars with
+  | [a, b, c] =>
+    (match a.var with | .idPrincipal => true | _ => false) && a.prScopeValid? &&
+    (match b.var with | .idAction => true | _ => false) && b.actionScopeValid? &&
+    (match c.var with | .idResource => true | _ => false) && c.prScopeValid?
+  | _ => false
+
 end Cedar.Frontend.Cst

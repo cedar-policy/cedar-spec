@@ -999,9 +999,14 @@ theorem policyImpl_collect_complete (p : Cst.PolicyImpl) (req : Request) (es : E
     | some ef => exact ⟨ef, rfl⟩
     | none => simp [hef, noCstError_singleton, Error.isCstError] at heff
   have hscopeS : ∃ sc, extractScope? p.vars = some sc := by
+    have hvalid : Cst.scopeValid? p.vars = true := by
+      cases hsv : Cst.scopeValid? p.vars with
+      | true => rfl
+      | false => simp [hsv, noCstError_singleton, Error.isCstError] at hscope
+    have := Cedar.Thm.scopeValid_extractScope hvalid
     cases hsc : extractScope? p.vars with
     | some sc => exact ⟨sc, rfl⟩
-    | none => simp [hsc, noCstError_singleton, Error.isCstError] at hscope
+    | none => rw [hsc] at this; simp at this
   obtain ⟨cs, hcs⟩ := collectConds_complete p.conds req es hconds
   obtain ⟨ef, hef⟩ := heffS
   obtain ⟨⟨psc, asc, rsc⟩, hsc⟩ := hscopeS

@@ -23,7 +23,6 @@ public import Cedar.Spec.Request
 public import Cedar.Spec.Response
 public import Cedar.Spec.Value
 public import Cedar.Spec.Evaluator
-public import Cedar.Frontend.Cst.ToAst
 
 namespace Cedar.Spec
 
@@ -364,9 +363,8 @@ public def PolicyImpl.collectErrors (p : PolicyImpl) (req : Request) (es : Entit
   (match Ident.toEffect? p.effect with
    | some _ => ∅
    | none   => Set.singleton (Error.cstError .translationError))
-  ∪ (match extractScope? p.vars with
-     | some _ => ∅
-     | none   => Set.singleton (Error.cstError .translationError))
+  ∪ (if scopeValid? p.vars then ∅
+     else Set.singleton (Error.cstError .translationError))
   ∪ collectConds p.conds req es
 
 public def Policy.collectErrors (p : Policy) (req : Request) (es : Entities) : Set Error :=
@@ -382,4 +380,3 @@ public def Policies.collectErrors (ps : Policies) (req : Request) (es : Entities
   collectPolicies ps.ps req es
 
 end Cedar.Frontend.Cst
-

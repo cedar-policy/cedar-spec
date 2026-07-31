@@ -585,24 +585,6 @@ public def toConditions? (conds : List Cond) : Option Spec.Conditions := do
   conds.mapM (·.toCondition?)
 
 
--- Helper lemma: a `Primary` reachable through the AddExpr→Primary chain
--- has strictly smaller `sizeOf` than the surrounding `OrExpr`.
-public theorem sizeOf_addExpr_primary_lt_orExpr (o : OrExpr) (ae : AddExpr) (ext : List (RelOp × AddExpr))
-    (h : o.initial.initial = .rCommon ae ext) :
-    sizeOf ae.initial.initial.item.item < sizeOf o := by
-  -- ae.initial : MultExpr ⟨Unary, List _⟩
-  -- ae.initial.initial : Unary ⟨Option NegOp, Member⟩
-  -- ae.initial.initial.item : Member ⟨Primary, List MemAccess⟩
-  -- ae.initial.initial.item.item : Primary
-  obtain ⟨ae_mult, ae_ext⟩ := ae
-  obtain ⟨ae_unary, ae_mult_ext⟩ := ae_mult
-  obtain ⟨ae_op, ae_member⟩ := ae_unary
-  obtain ⟨ae_prim, ae_access⟩ := ae_member
-  obtain ⟨o_and, o_ext⟩ := o
-  obtain ⟨o_rel, o_and_ext⟩ := o_and
-  simp_all
-  omega
-
 mutual
 
 public def Primary.toMultipleEntityUID? (p : Primary) : Option (Spec.EntityUID ⊕ List Spec.EntityUID) :=
