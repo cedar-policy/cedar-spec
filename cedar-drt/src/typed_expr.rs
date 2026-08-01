@@ -41,6 +41,13 @@
 //! * Rust `ExprKind::Slot` and `ExprKind::Unknown` have no Lean counterpart.
 //!   Inputs reaching them yield [`Divergence::UnsupportedRustVariant`] rather
 //!   than a spurious shape mismatch.
+//! * Rust `PolicyCheck::Irrelevant` (the policy always evaluates to false for
+//!   this environment, whether from the scope or from a folded condition)
+//!   against a Lean error is [`Divergence::StaticallyFalsePolicy`], a declared
+//!   difference.
+//!   Neither side offers an expression, so there is nothing to disagree about.
+//!   The same `Irrelevant` against a Lean expression is compared normally, and
+//!   a Rust `Success` against a Lean error stays an outcome disagreement.
 //!
 //! ## Known cause of the `var` against `lit` result
 //!
@@ -130,6 +137,18 @@ pub enum Divergence {
         lean_ty: String,
         types_agree: bool,
     },
+    /// Rust reported the policy statically false for this environment
+    /// (`PolicyCheck::Irrelevant`) and Lean's `typecheckPolicy` reported an
+    /// error. Both sides decline to offer a typed expression to compare, for
+    /// the same underlying reason, so this is a representational difference
+    /// and not a disagreement to act on.
+    ///
+    /// Its own bucket rather than an `OutcomeMismatch`, because the two are
+    /// not the same claim: an `OutcomeMismatch` says one side typechecked a
+    /// policy the other rejected, and that is never what this is. A Rust
+    /// *success* against a Lean error is still an `OutcomeMismatch`, which is
+    /// what keeps this from swallowing a real outcome disagreement.
+    StaticallyFalsePolicy { policy: String, env: String },
     /// The Lean JSON did not have the expected tagged shape. A harness
     /// problem: the encoding changed under us.
     MalformedLeanJson { path: String, detail: String },
@@ -146,17 +165,21 @@ impl Divergence {
     }
 
     /// A representational difference that is declared and tested rather than
-    /// a disagreement to act on: the two implementations constant-fold a
-    /// statically-true condition differently but assign it the same type.
+    /// a disagreement to act on. Two of them:
     ///
-    /// A folded pair whose types DISAGREE is not declared and stays a finding.
+    /// * The two implementations constant-fold a statically-true condition
+    ///   differently but assign it the same type. A folded pair whose types
+    ///   DISAGREE is not declared and stays a finding.
+    /// * Rust reports a policy statically false for an environment and Lean
+    ///   reports an error for it. Neither offers an expression to compare, so
+    ///   there is nothing they disagree about.
     pub fn is_declared_difference(&self) -> bool {
         matches!(
             self,
             Divergence::ConstantFoldedCondition {
                 types_agree: true,
                 ..
-            }
+            } | Divergence::StaticallyFalsePolicy { .. }
         )
     }
 
@@ -169,6 +192,7 @@ impl Divergence {
             Divergence::EnvUnmatched { .. } => "ENV_UNMATCHED",
             Divergence::UnsupportedRustVariant { .. } => "UNSUPPORTED_RUST_VARIANT",
             Divergence::ConstantFoldedCondition { .. } => "CONSTANT_FOLDED_CONDITION",
+            Divergence::StaticallyFalsePolicy { .. } => "STATICALLY_FALSE_POLICY",
             Divergence::MalformedLeanJson { .. } => "MALFORMED_LEAN_JSON",
         }
     }
@@ -842,6 +866,36 @@ fn rust_env_key(env: &cedar_policy_core::validator::types::RequestEnv<'_>) -> Op
     }
 }
 
+/// The typed expression the Rust side offers for comparison, or `None` when it
+/// offers none.
+///
+/// `Irrelevant` carries a typed expression and it is compared: Lean returns an
+/// expression for most statically-false (policy, env) pairs, so dropping them
+/// here would stop comparing trees the two sides both produce. Which of those
+/// pairs Lean instead rejects is handled at the call site by
+/// [`is_statically_false`], not by discarding the expression.
+fn rust_check_expr(
+    check: &cedar_policy_core::validator::typecheck::PolicyCheck,
+) -> Option<&cedar_policy_core::ast::Expr<Option<Type>>> {
+    use cedar_policy_core::validator::typecheck::PolicyCheck;
+    match check {
+        PolicyCheck::Success(e) | PolicyCheck::Irrelevant(_, e) => Some(e),
+        PolicyCheck::Fail(_) => None,
+    }
+}
+
+/// Whether the Rust typechecker found the policy always false for this
+/// environment, from the scope or from a condition it folded to false.
+///
+/// This is the only thing that separates a declared
+/// [`Divergence::StaticallyFalsePolicy`] from a real
+/// [`Divergence::OutcomeMismatch`] when Lean reports an error, so it reads the
+/// `PolicyCheck` variant rather than any property of the expression.
+fn is_statically_false(check: &cedar_policy_core::validator::typecheck::PolicyCheck) -> bool {
+    use cedar_policy_core::validator::typecheck::PolicyCheck;
+    matches!(check, PolicyCheck::Irrelevant(_, _))
+}
+
 /// Run the typed-expression comparison for one policy set against one schema.
 ///
 /// `vschema` and `policies` drive the Rust typechecker; `ffi_schema` and
@@ -861,7 +915,7 @@ pub fn run_typed_expr_drt(
     ffi_policies: &cedar_policy::PolicySet,
 ) -> Result<RunReport, cedar_lean_ffi::FfiError> {
     use cedar_policy_core::validator::ValidationMode;
-    use cedar_policy_core::validator::typecheck::{PolicyCheck, Typechecker};
+    use cedar_policy_core::validator::typecheck::Typechecker;
 
     let lean_results = ffi.typecheck_policy_typed(
         ffi_policies,
@@ -903,18 +957,25 @@ pub fn run_typed_expr_drt(
             seen.insert(full);
             report.compared += 1;
 
-            // `Irrelevant` still carries a typed expression: the policy
-            // typechecked, it is just statically false. Treating it as a
-            // failure would hide every comparison on that branch.
-            let rust_expr = match &check {
-                PolicyCheck::Success(e) | PolicyCheck::Irrelevant(_, e) => Some(e),
-                PolicyCheck::Fail(_) => None,
-            };
+            let rust_expr = rust_check_expr(&check);
 
             match (rust_expr, &lean.typed_expr) {
                 // Both sides failed to typecheck. Agreement on rejection; the
                 // reason is out of scope for this target.
                 (None, None) => {}
+                // Rust found the policy always false for this environment,
+                // from the scope or from a condition it folded to false, and
+                // Lean reported an error. Neither side offers an expression to
+                // compare and both decline for the same reason, so this is
+                // declared rather than reported as a disagreement. A Rust
+                // SUCCESS against a Lean error does not come here and stays an
+                // `OutcomeMismatch`.
+                (Some(_), None) if is_statically_false(&check) => {
+                    report.divergences.push(Divergence::StaticallyFalsePolicy {
+                        policy: pid.clone(),
+                        env: env_str,
+                    });
+                }
                 (Some(_), None) | (None, Some(_)) => {
                     report.divergences.push(Divergence::OutcomeMismatch {
                         policy: pid.clone(),
@@ -1401,6 +1462,15 @@ mod tests {
     /// typed expression after typechecking and shows the same comparison path
     /// reports it. Without this, a clean end-to-end run is indistinguishable
     /// from a comparison that cannot fire on real input.
+    ///
+    /// KNOWN ISSUE: the broken half panics through
+    /// `.expect("at least one policy must typecheck on the Rust side")` on any
+    /// input where every `PolicyCheck` is `Irrelevant`, because it needs one
+    /// real typed expression to plant a fault into and takes the first it
+    /// finds. `E2E_POLICIES` is fixed and does typecheck, so it cannot fire
+    /// today; it would become reachable if these inputs were ever generated.
+    /// Pre-existing and not introduced by the `rust_check_expr` seam, which
+    /// keeps returning the expression `Irrelevant` carries.
     #[test]
     fn end_to_end_negative_control_two_halved() {
         use cedar_policy_core::validator::ValidationMode;
@@ -1522,5 +1592,281 @@ mod tests {
         let err = lean_to_node(&bad, "$").expect_err("two tags must be rejected");
         assert_eq!(err.bucket(), "MALFORMED_LEAN_JSON");
         assert!(err.is_harness_problem());
+    }
+
+    // -----------------------------------------------------------------
+    // Statically-false policies (`PolicyCheck::Irrelevant`)
+    // -----------------------------------------------------------------
+
+    /// Entity types are enums because that is what the corpus case below uses;
+    /// the reproducer is kept verbatim rather than minimised by guesswork.
+    const SF_SCHEMA: &str = r#"
+        entity a enum [""];
+        action "action" appliesTo { principal: a, resource: a, context: {} };
+    "#;
+
+    /// Taken verbatim from a corpus input that produces the declared
+    /// difference. Rust folds the condition to statically false and returns
+    /// `PolicyCheck::Irrelevant`; Lean's `typecheckPolicy` returns an error.
+    const SF_POLICY: &str = r#"forbid(principal, action in Action::"action", resource) when { ((true && ((ip("::ffff:255.255.48.48")).isMulticast())) && false) && false };"#;
+
+    /// A statically-false policy for which Lean DOES return a typed
+    /// expression. The corpus says this is the common case: of 8,976
+    /// `Irrelevant` pairs, Lean returns an expression for 7,969 of them.
+    const SF_COMPARED_SCHEMA: &str = r#"
+        entity User { name: String };
+        entity Account { balance: Long };
+        action transfer appliesTo { principal: User, resource: Account };
+        action close appliesTo { principal: User, resource: Account };
+    "#;
+    const SF_COMPARED_POLICY: &str = r#"
+        permit(principal, action == Action::"transfer", resource)
+        when { resource.balance < 1000 };
+    "#;
+
+    fn run_src(schema: &str, policies: &str) -> RunReport {
+        use std::str::FromStr;
+        let vschema =
+            cedar_policy_core::validator::ValidatorSchema::from_str(schema).expect("vschema");
+        let core_policies = cedar_policy_core::parser::parse_policyset(policies).expect("policies");
+        let ffi_schema = cedar_policy::Schema::from_str(schema).expect("ffi schema");
+        let ffi_policies = cedar_policy::PolicySet::from_str(policies).expect("ffi policies");
+        let ffi = cedar_lean_ffi::CedarLeanFfi::new();
+        run_typed_expr_drt(&ffi, &vschema, &core_policies, &ffi_schema, &ffi_policies)
+            .expect("Lean FFI call failed")
+    }
+
+    /// Collect the Rust `PolicyCheck` for each request environment, keyed by
+    /// the action in that environment.
+    fn checks_by_action(
+        schema: &str,
+        policies: &str,
+    ) -> Vec<(String, cedar_policy_core::validator::typecheck::PolicyCheck)> {
+        use cedar_policy_core::validator::ValidationMode;
+        use cedar_policy_core::validator::typecheck::Typechecker;
+        use std::str::FromStr;
+        let vschema =
+            cedar_policy_core::validator::ValidatorSchema::from_str(schema).expect("vschema");
+        let core_policies = cedar_policy_core::parser::parse_policyset(policies).expect("policies");
+        let tc = Typechecker::new(&vschema, ValidationMode::Strict);
+        let mut out = Vec::new();
+        for t in core_policies.all_templates() {
+            for (env, check) in tc.typecheck_by_request_env(t) {
+                if let Some(k) = rust_env_key(&env) {
+                    out.push((k.1, check));
+                }
+            }
+        }
+        out
+    }
+
+    /// Eighth phantom-divergence class.
+    ///
+    /// `PolicyCheck::Irrelevant` means the Rust typechecker found the policy
+    /// statically false for this environment. For some of those pairs Lean's
+    /// `typecheckPolicy` returns an error. Neither side then offers a typed
+    /// expression, and both decline for the same reason, so reporting it as an
+    /// `OutcomeMismatch` claimed a disagreement that is not there.
+    ///
+    /// It is declared rather than silenced: the bucket is still recorded and
+    /// still counted, it is just not a finding.
+    ///
+    /// Bound to the production predicate rather than re-deciding the rule in
+    /// the test. A test that re-implemented `is_statically_false` would pass
+    /// against a broken mapping, which is how the first attempt at this fix
+    /// went wrong.
+    #[test]
+    fn statically_false_against_lean_error_is_a_declared_difference() {
+        // The predicate itself, on real typechecker output.
+        let checks = checks_by_action(SF_SCHEMA, SF_POLICY);
+        let (_, check) = checks.first().expect("one request environment");
+        assert!(
+            is_statically_false(check),
+            "test premise: this policy must be statically false on the Rust side"
+        );
+
+        // End to end against the real Lean backend, so Lean's rejection is
+        // observed here rather than assumed.
+        let report = run_src(SF_SCHEMA, SF_POLICY);
+        assert_eq!(
+            report.harness_problems().len(),
+            0,
+            "harness problems must be fixed before any finding is believable: {:?}",
+            report.harness_problems()
+        );
+        assert_eq!(
+            report
+                .divergences
+                .iter()
+                .filter(|d| d.bucket() == "STATICALLY_FALSE_POLICY")
+                .count(),
+            1,
+            "expected the declared bucket, got {:?}",
+            report.divergences
+        );
+        assert!(
+            report.findings().is_empty(),
+            "a declared difference must not be a finding: {:?}",
+            report.findings()
+        );
+        assert_eq!(
+            report.declared_differences().len(),
+            1,
+            "it must still be recorded and reported, not dropped"
+        );
+    }
+
+    /// The half that keeps the declaration from widening.
+    ///
+    /// Three things must survive it. A Rust SUCCESS against a Lean error is a
+    /// real outcome disagreement and must stay one, which is the case the
+    /// corpus cannot exercise because it contains none. The `OutcomeMismatch`
+    /// reporting path must still surface as a finding in both directions. And
+    /// a statically-false policy for which Lean DOES return an expression must
+    /// still have its tree compared: dropping those was the refuted fix, and
+    /// it cost 7,969 pairs of comparison coverage on the corpus.
+    #[test]
+    fn genuine_outcome_divergence_is_still_caught() {
+        // A policy that typechecks is not statically false, so the declared
+        // branch cannot capture it however Lean answers.
+        let checks = checks_by_action(SF_COMPARED_SCHEMA, SF_COMPARED_POLICY);
+        let (_, success) = checks
+            .iter()
+            .find(|(a, c)| a.contains("transfer") && !is_statically_false(c))
+            .expect("the `transfer` environment must typecheck");
+        assert!(
+            rust_check_expr(success).is_some(),
+            "a policy that typechecks must still offer its expression"
+        );
+
+        // The reporting path for a real outcome divergence is still live, in
+        // both directions.
+        for (rust_ok, lean_ok) in [(true, false), (false, true)] {
+            let report = RunReport {
+                compared: 1,
+                divergences: vec![Divergence::OutcomeMismatch {
+                    policy: "p".into(),
+                    env: "a, Action::\"action\", a".into(),
+                    rust_ok,
+                    lean_ok,
+                }],
+            };
+            let findings = report.findings();
+            assert_eq!(
+                findings.len(),
+                1,
+                "an outcome divergence (rust_ok={rust_ok}, lean_ok={lean_ok}) must be a finding"
+            );
+            assert_eq!(findings[0].bucket(), "OUTCOME_MISMATCH");
+            assert!(!findings[0].is_declared_difference());
+        }
+
+        // Coverage: a statically-false pair whose Lean side DID produce an
+        // expression is still compared as a tree, not declared away.
+        let (_, irrelevant) = checks
+            .iter()
+            .find(|(a, _)| a.contains("close"))
+            .expect("the `close` environment must be reachable");
+        assert!(
+            is_statically_false(irrelevant),
+            "test premise: the `close` environment must be statically false"
+        );
+        assert!(
+            rust_check_expr(irrelevant).is_some(),
+            "a statically-false policy must keep offering its expression, or the \
+             pairs Lean also types stop being compared"
+        );
+        let report = run_src(SF_COMPARED_SCHEMA, SF_COMPARED_POLICY);
+        let close: Vec<_> = report
+            .divergences
+            .iter()
+            .filter(|d| format!("{d:?}").contains("close"))
+            .collect();
+        assert!(
+            !close.is_empty(),
+            "the statically-false pair must still be compared, got {:?}",
+            report.divergences
+        );
+        assert!(
+            close
+                .iter()
+                .all(|d| d.bucket() != "STATICALLY_FALSE_POLICY"),
+            "Lean produced an expression here, so this is not the declared case: {close:?}"
+        );
+    }
+
+    /// A policy that typechecks cleanly under [`SF_SCHEMA`], so the Rust side
+    /// returns `PolicyCheck::Success` for the single request environment.
+    const OM_RUST_POLICY: &str =
+        r#"permit(principal, action == Action::"action", resource) when { true };"#;
+
+    /// The `OutcomeMismatch` arm, driven through `run_typed_expr_drt` itself.
+    ///
+    /// The corpus contains no pair where one side typechecks a policy the
+    /// other rejects: over 26,745 compared pairs, `Success` against a Lean
+    /// error and `Fail` against a Lean expression are both empty. So the arm
+    /// that reports a real outcome disagreement is never exercised end to end
+    /// by real input, and the rest of the suite only reaches it by building a
+    /// `RunReport` directly, which tests the reporting path but not the
+    /// driver's routing into it.
+    ///
+    /// This drives it for real. `run_typed_expr_drt` takes the Rust-side and
+    /// Lean-side views as separate arguments and documents that keeping them
+    /// in step is the caller's job, so the two sides are deliberately given
+    /// different policies under the same id and schema: one the Rust
+    /// typechecker accepts, one Lean rejects. The environment keys still
+    /// align, so the pair is compared rather than reported as unmatched.
+    ///
+    /// What this shows is that the routing works and the arm is reachable.
+    /// What it does NOT show is that the two typecheckers disagree on any
+    /// real input, because the disagreement here is manufactured by feeding
+    /// them different policies.
+    #[test]
+    fn outcome_divergence_is_reported_through_the_driver() {
+        use std::str::FromStr;
+
+        let vschema =
+            cedar_policy_core::validator::ValidatorSchema::from_str(SF_SCHEMA).expect("vschema");
+        let ffi_schema = cedar_policy::Schema::from_str(SF_SCHEMA).expect("ffi schema");
+        // Rust sees a policy that typechecks.
+        let core_policies =
+            cedar_policy_core::parser::parse_policyset(OM_RUST_POLICY).expect("rust policies");
+        // Lean sees one it rejects, under the same policy id.
+        let ffi_policies = cedar_policy::PolicySet::from_str(SF_POLICY).expect("lean policies");
+
+        let ffi = cedar_lean_ffi::CedarLeanFfi::new();
+        let report = run_typed_expr_drt(&ffi, &vschema, &core_policies, &ffi_schema, &ffi_policies)
+            .expect("Lean FFI call failed");
+
+        // The two sides must still be aligned, or this would be testing the
+        // unmatched-environment path instead of the outcome path.
+        assert_eq!(
+            report.harness_problems().len(),
+            0,
+            "the two views must stay aligned: {:?}",
+            report.harness_problems()
+        );
+        assert_eq!(report.compared, 1, "expected one compared pair");
+
+        let findings = report.findings();
+        assert_eq!(
+            findings.len(),
+            1,
+            "expected one finding, got {:?}",
+            report.divergences
+        );
+        assert_eq!(findings[0].bucket(), "OUTCOME_MISMATCH");
+        assert!(matches!(
+            findings[0],
+            Divergence::OutcomeMismatch {
+                rust_ok: true,
+                lean_ok: false,
+                ..
+            }
+        ));
+        assert!(
+            !findings[0].is_declared_difference(),
+            "a real outcome disagreement must not be declared away"
+        );
     }
 }
