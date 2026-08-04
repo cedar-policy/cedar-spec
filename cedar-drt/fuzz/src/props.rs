@@ -36,21 +36,23 @@ pub fn entity_to_json_roundtrips(original: Entity) {
 
 /// An [`Entities`] should roundtrip through serialization with json and then deserialization.
 pub fn entities_to_json_roundtrips(original: Entities) {
-    // Serialize to JSON
-    let json = original.to_json_value().unwrap_or_else(|e| {
-        panic!(
-            "Entities could not be serialized to JSON.\n\
-             Original: {:?}\nError: {e}",
-            e
-        )
-    });
+    // Serialize to JSON. Written as closure so we can print it in the `panic`
+    // message without cloning on the non-error path.
+    let mk_json = || {
+        original.to_json_value().unwrap_or_else(|e| {
+            panic!(
+                "Entities could not be serialized to JSON.\n\
+             Original: {original:?}\nError: {e}",
+            )
+        })
+    };
 
     // Re-parse from JSON
-    let roundtripped = Entities::from_json_value(json.clone(), None).unwrap_or_else(|e| {
+    let roundtripped = Entities::from_json_value(mk_json(), None).unwrap_or_else(|e| {
         panic!(
             "JSON from Entities failed to re-parse.\n\
-             Original: {:?}\nJSON: {json}\nParse error: {e}",
-            e
+             Original: {original:?}\nJSON: {}\nParse error: {e}",
+            mk_json()
         )
     });
 

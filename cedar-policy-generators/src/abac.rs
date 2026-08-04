@@ -30,6 +30,7 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::ops::{Deref, DerefMut};
+use std::str::FromStr;
 use thiserror::Error;
 
 // Mutate a hypothetically valid string (randomly).
@@ -184,30 +185,26 @@ impl ConstantPool {
     }
 
     /// Get an arbitrary string constant from the pool, with maximum size
-    /// indicated by `bound`. If there are no string constants in the pool,
-    /// get a purely arbitrary string constant with that maximum size
+    /// indicated by `bound`. May truncate a longer string in the pool to this
+    /// length.
     pub fn arbitrary_string_constant_bounded(
         &self,
         u: &mut Unstructured<'_>,
         bound: usize,
     ) -> Result<SmolStr> {
-        let short_consts: Vec<&SmolStr> = self
-            .string_constants
-            .iter()
-            .filter(|s| s.len() < bound)
-            .collect();
-        u.choose(&short_consts)
-            .map(|s| (*s).clone())
-            .map_err(|e| while_doing("getting an arbitrary string constant".into(), e))
-            .or_else(|_| arbitrary_string(u, Some(bound)))
+        let s = self.arbitrary_string_constant(u)?;
+        if s.len() <= bound {
+            Ok(s)
+        } else {
+            Ok(SmolStr::new(&s[..s.floor_char_boundary(bound)]))
+        }
     }
 
     /// Get an arbitrary string constant from the pool.
     /// If there are no string constants in the pool, get a purely arbitrary string constant
     pub fn arbitrary_string_constant(&self, u: &mut Unstructured<'_>) -> Result<SmolStr> {
         u.choose(&self.string_constants).cloned().or_else(|_| {
-            u.arbitrary::<String>()
-                .map(|s| s.into())
+            u.arbitrary::<SmolStr>()
                 .map_err(|e| while_doing("getting an arbitrary string constant".into(), e))
         })
     }
