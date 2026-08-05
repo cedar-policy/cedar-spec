@@ -315,22 +315,29 @@ At each step `aᵢ`:
 3. If more attributes remain, recurse with `tyNext` and `Expr.getAttr x₁ aᵢ`
 -/
 public def typeOfExtHasAttr (ty₁ : TypedExpr) (x₁ : Expr) (attrs : List Attr)
-    (c : Capabilities) (env : TypeEnv) : Except TypeError (TypedExpr × Capabilities) :=
+    (c : Capabilities) (env : TypeEnv) : Except TypeError (BoolType × Capabilities) :=
   match attrs with
-  | [] => .ok (ty₁, ∅)
+  | [] => .ok (.anyBool, ∅)
   | [a] => do
-    -- Last attribute: just check hasAttr
-    let (_, ci) ← typeOfHasAttr ty₁ x₁ a c env
-    .ok (ty₁, ci)
+    -- Last attribute: just check hasAttr, propagate its precise boolean type
+    let (tyHas, ci) ← typeOfHasAttr ty₁ x₁ a c env
+    match tyHas.typeOf with
+    | .bool bty => .ok (bty, ci)
+    | _         => .ok (.anyBool, ci)
   | a :: rest => do
     -- Check that getAttr x₁ a is well-typed (gives next type)
     let (tyNext, _) ← typeOfGetAttr ty₁ x₁ a c env
     -- Earn capability for hasAttr x₁ a
-    let (_, ci) ← typeOfHasAttr ty₁ x₁ a c env
+    let (tyHas, ci) ← typeOfHasAttr ty₁ x₁ a c env
     -- Recurse on the rest of the chain with the next type/expr
     let nextExpr := Expr.getAttr x₁ a
-    let (_, c') ← typeOfExtHasAttr tyNext nextExpr rest (c ∪ ci) env
-    .ok (ty₁, ci ∪ c')
+    let (bty, c') ← typeOfExtHasAttr tyNext nextExpr rest (c ∪ ci) env
+    -- Only propagate the precise boolean type from the recursive call
+    -- if the intermediate `has` is definitely true (entity guaranteed to exist).
+    -- Otherwise the loop may short-circuit to `false` before reaching the end.
+    match tyHas.typeOf with
+    | .bool .tt => .ok (bty, ci ∪ c')
+    | _         => .ok (.anyBool, ci ∪ c')
 
 public def typeOfSet (tys : List TypedExpr) : ResultType :=
   match tys with
@@ -416,8 +423,8 @@ public def typeOf (x : Expr) (c : Capabilities) (env : TypeEnv) : ResultType :=
     typeOfHasAttr ty₁ x₁ a c env
   | .extHasAttr x₁ a as => do
     let (ty₁, _) ← typeOf x₁ c env
-    let (_, c') ← typeOfExtHasAttr ty₁ x₁ (a :: as) c env
-    ok (TypedExpr.extHasAttr ty₁ a as (.bool .anyBool)) c'
+    let (bty, c') ← typeOfExtHasAttr ty₁ x₁ (a :: as) c env
+    ok (TypedExpr.extHasAttr ty₁ a as (.bool bty)) c'
   | .getAttr x₁ a => do
     let (ty₁, _) ← typeOf x₁ c env
     typeOfGetAttr ty₁ x₁ a c env

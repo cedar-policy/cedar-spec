@@ -603,8 +603,8 @@ theorem level_based_no_dne_ext_has_attr {e : Expr} {a : Attr} {attrs : List Attr
   | ok val_e =>
     obtain ⟨ty₁, c₁'⟩ := val_e
     simp only at ht
-    -- After the first bind, the remaining binds produce tx = .extHasAttr ty₁ a attrs (.bool .anyBool)
-    have htx : tx = TypedExpr.extHasAttr ty₁ a attrs (.bool .anyBool) := by
+    -- After the first bind, the remaining binds produce tx = .extHasAttr ty₁ a attrs (.bool bty)
+    have htx : ∃ bty, tx = TypedExpr.extHasAttr ty₁ a attrs (.bool bty) := by
       revert ht
       generalize typeOfExtHasAttr ty₁ e (a :: attrs) c₀ env = res_ext
       intro ht
@@ -612,7 +612,8 @@ theorem level_based_no_dne_ext_has_attr {e : Expr} {a : Attr} {attrs : List Attr
       | error => simp only [ExceptT.stM_eq, reduceCtorEq] at ht
       | ok val_ext =>
         simp only [ok, Except.ok.injEq, Prod.mk.injEq] at ht
-        exact ht.1.symm
+        exact ⟨val_ext.1, ht.1.symm⟩
+    obtain ⟨bty, htx⟩ := htx
     rw [htx] at hl
     -- evaluate (.extHasAttr e a attrs) = evaluate e >>= hasAttrs · a attrs entities
     simp only [evaluate]

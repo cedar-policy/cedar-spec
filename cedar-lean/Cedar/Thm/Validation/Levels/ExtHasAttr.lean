@@ -469,7 +469,7 @@ theorem level_based_slicing_is_sound_ext_has_attr
       | ok res => exact ⟨res, rfl⟩
     obtain ⟨extRes, hext⟩ := hext_ok
     have hstrict := typeOfExtHasAttr_implies_chain_strict hext
-    have htx : tx = TypedExpr.extHasAttr ty₁ a attrs (.bool .anyBool) := by
+    have htx : ∃ bty, tx = TypedExpr.extHasAttr ty₁ a attrs (.bool bty) := by
       revert ht
       generalize typeOfExtHasAttr ty₁ e (a :: attrs) c₀ env = res_ext
       intro ht
@@ -477,7 +477,8 @@ theorem level_based_slicing_is_sound_ext_has_attr
       | error => simp at ht
       | ok val_ext =>
         simp only [ok, Except.ok.injEq, Prod.mk.injEq] at ht
-        exact ht.1.symm
+        exact ⟨val_ext.1, ht.1.symm⟩
+    obtain ⟨bty, htx⟩ := htx
     rw [htx] at hl
     simp only [evaluate]
     cases hl with

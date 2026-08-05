@@ -808,7 +808,7 @@ private theorem typeOfGetAttr_record_ok_implies
 
 theorem typeOfExtHasAttr_tyNext_type_entity_or_record
   {tyNext : TypedExpr} {x₁ : Expr} {b : Attr} {rest : List Attr}
-  {c : Capabilities} {env : TypeEnv} {res : TypedExpr × Capabilities}
+  {c : Capabilities} {env : TypeEnv} {res : BoolType × Capabilities}
   (hrec : typeOfExtHasAttr tyNext x₁ (b :: rest) c env = .ok res) :
   (∃ ety, tyNext.typeOf = .entity ety) ∨ (∃ rty, tyNext.typeOf = .record rty) := by
   cases rest with
@@ -834,7 +834,7 @@ theorem typeOfExtHasAttr_tyNext_type_entity_or_record
 
 private theorem typeOfExtHasAttr_implies_chain_valid
   {ty₁ : TypedExpr} {x₁ : Expr} {attr : Attr} {attrs : List Attr}
-  {c : Capabilities} {env : TypeEnv} {res : TypedExpr × Capabilities}
+  {c : Capabilities} {env : TypeEnv} {res : BoolType × Capabilities}
   (h : typeOfExtHasAttr ty₁ x₁ (attr :: attrs) c env = .ok res) :
   (∀ ety, ty₁.typeOf = .entity ety → ExtHasAttrChainValid env.ets (.entity ety) (attr :: attrs)) ∧
   (∀ rty, ty₁.typeOf = .record rty → ExtHasAttrChainValid env.ets (.record rty) (attr :: attrs)) := by
@@ -895,7 +895,7 @@ private theorem typeOfExtHasAttr_implies_chain_valid
 
 theorem typeOfExtHasAttr_implies_chain_strict
   {ty₁ : TypedExpr} {x₁ : Expr} {attr : Attr} {attrs : List Attr}
-  {c : Capabilities} {env : TypeEnv} {res : TypedExpr × Capabilities}
+  {c : Capabilities} {env : TypeEnv} {res : BoolType × Capabilities}
   (h : typeOfExtHasAttr ty₁ x₁ (attr :: attrs) c env = .ok res) :
   (∀ ety, ty₁.typeOf = .entity ety → ExtHasAttrChainStrict env.ets (.entity ety) (attr :: attrs)) ∧
   (∀ rty, ty₁.typeOf = .record rty → ExtHasAttrChainStrict env.ets (.record rty) (attr :: attrs)) := by
