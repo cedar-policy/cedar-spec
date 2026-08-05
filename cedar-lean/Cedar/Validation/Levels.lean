@@ -158,6 +158,26 @@ public def extHasAttrChainCostTy (env : TypeEnv) (ty : CedarType) : List Attr �
       | .none => 0
     | _ => 0
 
+/--
+Find the path from a record base to the first entity value that extended `has`
+will actually dereference. The final attribute is excluded: `hasAttrs.loop`
+only tests that attribute for presence and does not dereference its value.
+-/
+public def extHasAttrFirstEntityPath? (env : TypeEnv) (ty : CedarType) :
+    List Attr → Option (List Attr)
+  | [] | [_] => none
+  | a :: b :: rest =>
+    let nextTy? := match ty with
+      | .entity ety => (env.ets.attrs? ety).bind fun rty =>
+        (rty.find? a).map Qualified.getType
+      | .record rty => (rty.find? a).map Qualified.getType
+      | _ => none
+    match nextTy? with
+    | some (.entity _) => some [a]
+    | some nextTy =>
+      (extHasAttrFirstEntityPath? env nextTy (b :: rest)).map (a :: ·)
+    | none => none
+
 /-- Backwards-compatible wrapper for entity-typed base. -/
 public def checkExtHasAttrChain (env : TypeEnv) (ety : EntityType) (attrs : List Attr) (currentLevel : Nat) : Bool :=
   checkExtHasAttrChainTy env (.entity ety) attrs currentLevel
@@ -211,11 +231,17 @@ public def TypedExpr.checkLevel (tx : TypedExpr) (env : TypeEnv) (n : Nat) : Boo
       x₁.checkEntityAccessLevel env (n - k - 1) n [] &&
       checkExtHasAttrChain env ety (attr :: attrs) k
     | .record rty =>
-      -- Record base: chain might still have entity hops through record fields.
-      -- Budget those entity hops as well.
+      -- A record base can contain an entity that this chain later dereferences.
+      -- Check the expression specifically along the path to the first such
+      -- entity; subsequent entity hops are covered by the chain budget.
       let k := extHasAttrChainCostTy env (.record rty) (attr :: attrs)
+      let baseAccessOk :=
+        match extHasAttrFirstEntityPath? env (.record rty) (attr :: attrs) with
+        | some path => x₁.checkEntityAccessLevel env (n - k) n path
+        | none => true
       n > k &&
       x₁.checkLevel env n &&
+      baseAccessOk &&
       checkExtHasAttrChainTy env (.record rty) (attr :: attrs) k
     | _ => x₁.checkLevel env n
   | .call _ xs _

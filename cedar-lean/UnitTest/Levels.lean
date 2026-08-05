@@ -137,6 +137,9 @@ def levelOne :=
 def recordFoo (e : Expr) : Expr := .record [("foo", e)]
 def getFoo (e : Expr) : Expr := .getAttr e "foo"
 
+def extHasRecordEntityLit := Expr.extHasAttr (recordFoo euidLit) "foo" ["manager"]
+def extHasRecordPrincipal := Expr.extHasAttr (recordFoo principal) "foo" ["manager"]
+
 def composeN (f : α → α) : Nat → (α → α)
 | 0 => id
 | n + 1 => f ∘ (composeN f n)
@@ -157,10 +160,20 @@ def levelThree :=
   let testLevelCheck := (testLevelCheck · · 3)
   suite "Expressions which should check at level 3, but not at level 2"
   [
+    testLevelCheck "extHasAttr through a request-rooted entity in a record" extHasRecordPrincipal,
     testLevelCheck "getAttr thrice on var" (.getAttr (.getAttr (.getAttr principal "manager") "manager") "manager"),
   ].flatten
 
-def tests := [levelZero, levelOne, levelTwo, levelThree]
+def rejectedRecordEntityLiteral : TestSuite IO :=
+  suite "Expressions which must fail level checking"
+  [
+    test "extHasAttr cannot dereference an arbitrary entity literal through a record" ⟨λ _ => do
+      match schema.environment? UserType DocumentType Action with
+      | .some env => checkEq (levelCheckExpr extHasRecordEntityLit env 3) (.ok false)
+      | .none => return (Except.error "Could not find test environment in schema!" : TestResult)⟩
+  ]
+
+def tests := [levelZero, levelOne, levelTwo, levelThree, rejectedRecordEntityLiteral]
 
 -- Uncomment for interactive debugging
 -- #eval TestSuite.runAll tests

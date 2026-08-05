@@ -806,7 +806,7 @@ private theorem typeOfGetAttr_record_ok_implies
       · simp [err] at hgir
     case h_3 => simp [err] at hgir
 
-private theorem typeOfExtHasAttr_tyNext_type_entity_or_record
+theorem typeOfExtHasAttr_tyNext_type_entity_or_record
   {tyNext : TypedExpr} {x₁ : Expr} {b : Attr} {rest : List Attr}
   {c : Capabilities} {env : TypeEnv} {res : TypedExpr × Capabilities}
   (hrec : typeOfExtHasAttr tyNext x₁ (b :: rest) c env = .ok res) :
@@ -893,7 +893,7 @@ private theorem typeOfExtHasAttr_implies_chain_valid
               have h_chain := ihResult.2 nextRty hnext
               exact ExtHasAttrChainValid.cons_record_from_record hfind hqtyType h_chain
 
-private theorem typeOfExtHasAttr_implies_chain_strict
+theorem typeOfExtHasAttr_implies_chain_strict
   {ty₁ : TypedExpr} {x₁ : Expr} {attr : Attr} {attrs : List Attr}
   {c : Capabilities} {env : TypeEnv} {res : TypedExpr × Capabilities}
   (h : typeOfExtHasAttr ty₁ x₁ (attr :: attrs) c env = .ok res) :

@@ -630,7 +630,8 @@ theorem level_based_no_dne_ext_has_attr {e : Expr} {a : Attr} {attrs : List Attr
         | refl => exact h
         | step _ ih => exact entity_access_at_level_succ ih
       exact bump _ _ _ _ (Nat.sub_le _ _) hl₁
-    | extHasAttrRecord _ _ _ _ _ hl₁ _ => exact hl₁
+    | extHasAttrRecord _ _ _ _ _ hl₁ _ _ => exact hl₁
+    | extHasAttrRecordEntity _ _ _ _ _ _ _ hl₁ _ _ _ _ _ => exact hl₁
 
 theorem level_based_no_dne_set {xs : List Expr} {n : Nat} {c₀ c₁ : Capabilities} {env : TypeEnv} {request : Request} {entities : Entities}
   (hc : CapabilitiesInvariant c₀ request entities)
