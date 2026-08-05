@@ -309,6 +309,21 @@ private theorem CompileWellTypedCondition.eliminate_hasAttr
       constructor
       any_goals assumption
 
+private theorem CompileWellTypedCondition.eliminate_extHasAttr
+  {expr : TypedExpr} {attr : Attr} {attrs : List Attr} {ty : CedarType}
+  {Γ : TypeEnv} {εnv : SymEnv}
+  (h : CompileWellTypedCondition (.extHasAttr expr attr attrs ty) Γ εnv) :
+  CompileWellTypedCondition expr Γ εnv
+:= by
+  have ⟨hεnv, hwt, ⟨_, hrefs⟩⟩ := h
+  simp only [SymEntities.ValidRefsFor, TypedExpr.toExpr] at hrefs
+  cases hwt
+  all_goals
+    cases hrefs
+    all_goals repeat
+      constructor
+      any_goals assumption
+
 /--
 CompileWellTypedCondition decomposes for set
 -/
@@ -1056,6 +1071,544 @@ theorem compile_well_typed_hasAttr
       apply typeOf_ifSome_option
       simp only [Factory.someOf, Term.typeOf, typeOf_bool, TypedExpr.typeOf, TermType.ofType]
 
+public theorem compileHasAttr_always_ok {t₁ : Term} {a : Attr} {εs : SymEntities}
+  (hwε : εs.WellFormed)
+  (hw₁ : t₁.WellFormed εs)
+  (hty₁ : (∃ ety, t₁.typeOf = .entity ety) ∨ (∃ rty, t₁.typeOf = .record rty))
+  : ∃ t, compileHasAttr t₁ a εs = .ok t := by
+  simp only [compileHasAttr, compileAttrsOf, bind, Except.bind]
+  cases hty₁ with
+  | inl hty =>
+    obtain ⟨ety, hty⟩ := hty
+    have hwf_ty := typeOf_wf_term_is_wf hw₁
+    rw [hty] at hwf_ty
+    cases hwf_ty with | entity_wf hvalid =>
+    simp only [SymEntities.isValidEntityType] at hvalid
+    have ⟨d, hd⟩ := Map.contains_iff_some_find?.mp hvalid
+    have hattrs : εs.attrs ety = .some d.attrs := by
+      simp [SymEntities.attrs, hd]
+    simp only [hty, hattrs]
+    have hwf_attrs := wf_εs_implies_wf_attrs hwε hattrs
+    have ⟨rty, hrty⟩ := isCedarRecordType_implies_term_record_type hwf_attrs.right.right
+    have happ_ty : (Factory.app d.attrs t₁).typeOf = .record rty := by
+      rw [← hrty]
+      exact (wf_app hw₁ (by rw [hty]; exact hwf_attrs.right.left.symm) hwf_attrs.left).right
+    simp only [happ_ty]
+    split <;> exact ⟨_, rfl⟩
+  | inr hty =>
+    obtain ⟨rty, hty⟩ := hty
+    simp only [hty]
+    split <;> exact ⟨_, rfl⟩
+
+public theorem compileGetAttr_always_ok' {t₁ : Term} {a : Attr} {εs : SymEntities}
+  (hwε : εs.WellFormed)
+  (hw₁ : t₁.WellFormed εs)
+  (hty₁ : (∃ ety, t₁.typeOf = .entity ety) ∨ (∃ rty, t₁.typeOf = .record rty))
+  (hfind_ne : ∀ attrs rty, compileAttrsOf t₁ εs = .ok attrs → attrs.typeOf = .record rty → rty.find? a ≠ .none)
+  : ∃ t, compileGetAttr t₁ a εs = .ok t := by
+  have ⟨attrs, hok_attrs⟩ : ∃ attrs, compileAttrsOf t₁ εs = .ok attrs := by
+    simp only [compileAttrsOf]
+    cases hty₁ with
+    | inl h =>
+      obtain ⟨ety, hty⟩ := h
+      have hwf_ty := typeOf_wf_term_is_wf hw₁
+      rw [hty] at hwf_ty
+      cases hwf_ty with | entity_wf hvalid =>
+      simp only [SymEntities.isValidEntityType] at hvalid
+      have ⟨d, hd⟩ := Map.contains_iff_some_find?.mp hvalid
+      simp only [hty, SymEntities.attrs, hd]
+      exact ⟨_, rfl⟩
+    | inr h =>
+      obtain ⟨rty', hty⟩ := h
+      simp only [hty]
+      exact ⟨_, rfl⟩
+  have ⟨rty, hty_attrs⟩ : ∃ rty, attrs.typeOf = .record rty := by
+    have ⟨_, rty', h, _⟩ := compileAttrsOf_wf hwε hw₁ hok_attrs
+    exact ⟨rty', h⟩
+  have hfind := hfind_ne attrs rty hok_attrs hty_attrs
+  unfold compileGetAttr
+  rw [show compileAttrsOf t₁ εs = .ok attrs from hok_attrs]
+  simp only [bind, Except.bind, hty_attrs]
+  split
+  · exact ⟨_, rfl⟩
+  · exact ⟨_, rfl⟩
+  · rename_i h; exact absurd h hfind
+
+public theorem compileGetAttr_always_ok {t₁ : Term} {a : Attr} {εs : SymEntities}
+  (hwε : εs.WellFormed)
+  (hw₁ : t₁.WellFormed εs)
+  (hty₁ : (∃ ety, t₁.typeOf = .entity ety) ∨ (∃ rty, t₁.typeOf = .record rty))
+  (hhas : compileHasAttr t₁ a εs ≠ .ok (Term.some (Term.prim (.bool false))))
+  : ∃ t, compileGetAttr t₁ a εs = .ok t := by
+  -- First show compileAttrsOf succeeds and get the record type
+  have ⟨attrs, hok_attrs⟩ : ∃ attrs, compileAttrsOf t₁ εs = .ok attrs := by
+    simp only [compileAttrsOf]
+    cases hty₁ with
+    | inl h =>
+      obtain ⟨ety, hty⟩ := h
+      have hwf_ty := typeOf_wf_term_is_wf hw₁
+      rw [hty] at hwf_ty
+      cases hwf_ty with | entity_wf hvalid =>
+      simp only [SymEntities.isValidEntityType] at hvalid
+      have ⟨d, hd⟩ := Map.contains_iff_some_find?.mp hvalid
+      simp only [hty, SymEntities.attrs, hd]
+      exact ⟨_, rfl⟩
+    | inr h =>
+      obtain ⟨rty, hty⟩ := h
+      simp only [hty]
+      exact ⟨_, rfl⟩
+  -- Get record type of attrs
+  have ⟨rty, hty_attrs⟩ : ∃ rty, attrs.typeOf = .record rty := by
+    have ⟨_, rty', h, _⟩ := compileAttrsOf_wf hwε hw₁ hok_attrs
+    exact ⟨rty', h⟩
+  -- Show rty.find? a ≠ .none using hhas
+  have hfind : rty.find? a ≠ .none := by
+    intro hcontra
+    apply hhas
+    simp only [compileHasAttr, bind, Except.bind, hok_attrs, hty_attrs, hcontra]
+    rfl
+  -- Now compileGetAttr succeeds
+  have hfind' : ∃ ty, rty.find? a = .some ty := by
+    cases hf : rty.find? a with
+    | none => exact absurd hf hfind
+    | some ty => exact ⟨ty, rfl⟩
+  obtain ⟨ty_a, hty_a⟩ := hfind'
+  have hok_ga : ∃ t, compileGetAttr t₁ a εs = .ok t := by
+    unfold compileGetAttr
+    rw [show compileAttrsOf t₁ εs = .ok attrs from hok_attrs]
+    simp only [bind, Except.bind, hty_attrs]
+    split
+    · exact ⟨_, rfl⟩
+    · exact ⟨_, rfl⟩
+    · rename_i h; exact absurd h hfind
+  exact hok_ga
+
+private theorem compileAnd_ne_error {t₁ : Term} {r₂ : SymCC.Result Term} {e : SymCC.Error}
+  (hty₁ : t₁.typeOf = .option .bool)
+  (hr₂ : ∃ t₂, r₂ = .ok t₂ ∧ t₂.typeOf = .option .bool)
+  : compileAnd t₁ r₂ ≠ .error e := by
+  obtain ⟨_, h₂, h₃⟩ := hr₂; subst h₂
+  simp only [compileAnd, bind, Except.bind, hty₁, h₃, ↓reduceIte, ne_eq]
+  intro h
+  split at h <;> simp_all [reduceCtorEq]
+
+private theorem compileAttrsOf_find_ne_none
+  {t₁ : Term}
+  {εs : SymEntities}
+  {Γ : TypeEnv}
+  {cty : CedarType}
+  {a b : Attr}
+  {rest' : List Attr}
+  (hwε : εs.WellFormed)
+  (hw₁ : Term.WellFormed εs t₁)
+  (hεs : εs = (SymEnv.ofEnv Γ).entities)
+  (hty_cty : t₁.typeOf = (TermType.ofType cty).option)
+  (hwo : Term.WellFormed εs (Factory.option.get t₁))
+  (hchain : ExtHasAttrChainStrict Γ.ets cty (a :: b :: rest'))
+  (attrs : Term)
+  (rty : Map Attr TermType)
+  (hok_attrs : compileAttrsOf (Factory.option.get t₁) εs = .ok attrs)
+  (hty_attrs : attrs.typeOf = .record rty) :
+  rty.find? a ≠ .none := by
+    have h₁ := (wf_option_get hw₁ hty_cty).right
+    have ⟨_, r₁, h₂, h₃⟩ := compileAttrsOf_wf hwε hwo hok_attrs
+    have h₄ : rty = r₁ := TermType.record.inj (hty_attrs.symm.trans h₂)
+    subst h₄
+    -- Now case-split on the chain to get find? a = some _
+    cases hchain with
+    | cons_entity h₅ h₆ h₇ h₈ =>
+      -- Entity case: use ofEnv to connect entity schema to εs
+      rename_i t₁ t₂ _ _
+      simp only [TermType.ofType] at h₁
+      cases h₃ with
+      | inl hrec =>
+        -- t₁.typeOf = .record rty' contradicts hty_get which says entity type
+        simp [h₁] at hrec
+      | inr hent =>
+        obtain ⟨t₁', fₐ, h₉, h₁₀, h₁₁⟩ := hent
+        simp only [EntitySchema.attrs?, Option.map_eq_some_iff] at h₅
+        obtain ⟨h₁₂, h₁₃, h₁₄⟩ := h₅
+        have h₁₇ := ofEnv_preserves_entity (εnv := SymEnv.ofEnv Γ) rfl h₁₃
+        rw [← hεs] at h₁₇
+        have h₀ : t₁' = t₁ := by have h := h₉.symm.trans h₁; injection h with h; injection h
+        simp only [SymEntities.attrs, h₀, h₁₇, bind, Option.bind] at h₁₀
+        have ⟨h₁₅, h₁₆, _⟩ := ofRecordType_preserves_attr (rty := h₁₂.attrs) (h₁₄ ▸ h₆) h₇
+        rw [← (Option.some.inj h₁₀)] at h₁₁
+        cases h₁₂ with
+        | standard sch =>
+          simp only [
+            SymEntityData.ofEntityType, SymEntityData.ofStandardEntityType,
+            SymEntityData.ofStandardEntityType.attrsUUF,
+            UnaryFunction.outType, TermType.ofType, EntitySchemaEntry.attrs,
+            TermType.record.injEq,
+          ] at h₁₁ h₁₆
+          rw [← h₁₁]; simp [h₁₆]
+        | enum eids =>
+          simp only [EntitySchemaEntry.attrs] at h₁₄
+          rw [← h₁₄] at h₆
+          simp [Map.empty, Map.find?, Data.Map.find?] at h₆
+    | cons_record_from_entity h₅ h₆ h₇ h₈ =>
+      simp only [TermType.ofType] at h₁
+      rename_i t₁ t₂ _ _
+      cases h₃ with
+      | inl hrec => simp [h₁] at hrec
+      | inr hent =>
+        obtain ⟨t₁', fₐ, h₉, h₁₀, h₁₁⟩ := hent
+        simp only [EntitySchema.attrs?, Option.map_eq_some_iff] at h₅
+        obtain ⟨x, h₁₅, h₁₆⟩ := h₅
+        have h₁₂ := ofEnv_preserves_entity (εnv := SymEnv.ofEnv Γ) rfl h₁₅
+        rw [← hεs] at h₁₂
+        have ⟨t₂, h₁₃, _⟩ := ofRecordType_preserves_attr (rty := x.attrs) (h₁₆ ▸ h₆) h₇
+        have h₁₄ : t₁' = t₁ := by
+          have h := h₉.symm.trans h₁; injection h with h; injection h
+        simp only [SymEntities.attrs, h₁₄, h₁₂, bind, Option.bind] at h₁₀
+        rw [← (Option.some.inj h₁₀)] at h₁₁
+        cases x with
+        | standard sch =>
+          simp only [
+            SymEntityData.ofEntityType, SymEntityData.ofStandardEntityType,
+            SymEntityData.ofStandardEntityType.attrsUUF,
+            UnaryFunction.outType, TermType.ofType, EntitySchemaEntry.attrs,
+            TermType.record.injEq,
+          ] at h₁₁ h₁₃
+          rw [← h₁₁]; simp [h₁₃]
+        | enum eids =>
+          simp only [EntitySchemaEntry.attrs] at h₁₆
+          rw [← h₁₆] at h₆
+          simp [Map.empty, Map.find?, Data.Map.find?] at h₆
+    | cons_entity_from_record h₅ h₆ h₇ =>
+      have ⟨_, h₈, _⟩ := ofRecordType_preserves_attr h₅ h₆
+      cases h₃ with
+      | inl h₉ =>
+        simp only [TermType.ofType] at h₁
+        have h₁₀: rty = Map.mk (TermType.ofRecordType _) := TermType.record.inj (h₉.symm.trans h₁)
+        rw [h₁₀]; simp [h₈]
+      | inr h₉ =>
+        obtain ⟨_, _, h₁₀, _, _⟩ := h₉
+        simp [TermType.ofType, h₁₀] at h₁
+    | cons_record_from_record h_find h_qty_ty h_rest =>
+      have ⟨_, h₈, _⟩ := ofRecordType_preserves_attr h_find h_qty_ty
+      cases h₃ with
+      | inl hrec =>
+        simp only [TermType.ofType] at h₁
+        have h₉ : rty = Map.mk (TermType.ofRecordType _) := TermType.record.inj (hrec.symm.trans h₁)
+        rw [h₉]; simp [h₈]
+      | inr h₉ =>
+        obtain ⟨_, _, h₁₀, _, _⟩ := h₉
+        simp [h₁₀, TermType.ofType] at h₁
+
+/-- Core closing step for compileGetAttr_chain_step: once we know
+    `ty_ga = TermType.ofType cty'`, construct the existential. -/
+private theorem chain_step_close
+  {t₁ t_ga : Term} {b : Attr} {rest' : List Attr}
+  {Γ : TypeEnv} {cty' : CedarType} {ty_ga : TermType}
+  (hty_ifsome : (Factory.ifSome t₁ t_ga).typeOf = .option ty_ga)
+  (hchain_rest : ExtHasAttrChainStrict Γ.ets cty' (b :: rest'))
+  (hty_ga_eq : ty_ga = TermType.ofType cty')
+  (hcty_shape : (∃ ety, cty' = .entity ety) ∨ (∃ rty, cty' = .record rty)) :
+  ∃ cty'',
+    ExtHasAttrChainStrict Γ.ets cty'' (b :: rest') ∧
+    (Factory.ifSome t₁ t_ga).typeOf = .option (TermType.ofType cty'') ∧
+    ((∃ ety, (Factory.ifSome t₁ t_ga).typeOf = .option (.entity ety)) ∨
+     (∃ rty, (Factory.ifSome t₁ t_ga).typeOf = .option (.record rty))) := by
+  have heq : (Factory.ifSome t₁ t_ga).typeOf = .option (TermType.ofType cty') := by
+    rw [hty_ifsome, hty_ga_eq]
+  exact ⟨cty', hchain_rest, heq, by
+    cases hcty_shape with
+    | inl h => obtain ⟨ety, hety⟩ := h; subst hety; exact Or.inl ⟨_, heq⟩
+    | inr h => obtain ⟨rty, hrty⟩ := h; subst hrty; exact Or.inr ⟨_, heq⟩⟩
+
+/-- After compileGetAttr succeeds on the first attribute of a multi-attr chain,
+    the result type matches the chain's next type, giving us a sub-chain. -/
+private theorem compileGetAttr_chain_step
+  {t₁ : Term} {a b : Attr} {rest' : List Attr} {t_ga : Term}
+  {εs : SymEntities} {Γ : TypeEnv} {cty : CedarType}
+  (hwε : εs.WellFormed)
+  (hw₁ : t₁.WellFormed εs)
+  (hεs : εs = (SymEnv.ofEnv Γ).entities)
+  (hty_cty : t₁.typeOf = .option (TermType.ofType cty))
+  (hchain : ExtHasAttrChainStrict Γ.ets cty (a :: b :: rest'))
+  (hga_ok : compileGetAttr (Factory.option.get t₁) a εs = .ok t_ga) :
+  ∃ cty',
+    ExtHasAttrChainStrict Γ.ets cty' (b :: rest') ∧
+    (Factory.ifSome t₁ t_ga).typeOf = .option (TermType.ofType cty') ∧
+    ((∃ ety, (Factory.ifSome t₁ t_ga).typeOf = .option (.entity ety)) ∨
+     (∃ rty, (Factory.ifSome t₁ t_ga).typeOf = .option (.record rty))) := by
+  have hwo := wf_option_get hw₁ hty_cty
+  have ⟨hwf_ga, ty_ga, hty_ga⟩ := compileGetAttr_wf hwε hwo.left hga_ok
+  have hty_ifsome : (Factory.ifSome t₁ t_ga).typeOf = .option ty_ga :=
+    (wf_ifSome_option hw₁ hwf_ga hty_ga).right
+  have ⟨t₂, rty, hok_attrs, hrga⟩ := compileGetAttr_ok_implies hga_ok
+  obtain ⟨hty_t₂, tyₐ, hfind_a, hshape⟩ := hrga
+  have hrg_ty : (Factory.record.get t₂ a).typeOf = tyₐ := by
+    have ⟨_, r₁, h₂, _⟩ := compileAttrsOf_wf hwε hwo.left hok_attrs
+    have h₄ : rty = r₁ := TermType.record.inj (hty_t₂.symm.trans h₂)
+    subst h₄
+    exact (wf_record_get (compileAttrsOf_wf hwε hwo.left hok_attrs).left hty_t₂ hfind_a).right
+  have h₁ := hwo.right
+  have ⟨_, r₁, h₂, h₃⟩ := compileAttrsOf_wf hwε hwo.left hok_attrs
+  have h₄ : rty = r₁ := TermType.record.inj (hty_t₂.symm.trans h₂)
+  subst h₄
+  -- The chain tells us what rty.find? a must be (= TermType.ofType cty' for some cty')
+  -- and gives us a sub-chain for (b :: rest').
+  -- We use compileAttrsOf_find_ne_none's approach to connect.
+  cases hchain with
+  | cons_entity h₅ h₆ h₇ h₈ =>
+    rename_i ety₁ nextEty₁ _ _
+    simp only [TermType.ofType] at h₁
+    cases h₃ with
+    | inl hrec => simp [h₁] at hrec
+    | inr hent =>
+      obtain ⟨ety', fₐ, h₉, h₁₀, h₁₁⟩ := hent
+      simp only [EntitySchema.attrs?, Option.map_eq_some_iff] at h₅
+      obtain ⟨entry, h₁₃, h₁₄⟩ := h₅
+      have h₁₇ := ofEnv_preserves_entity (εnv := SymEnv.ofEnv Γ) rfl h₁₃
+      rw [← hεs] at h₁₇
+      have h₀ : ety' = ety₁ := by have h := h₉.symm.trans h₁; injection h with h; injection h
+      simp only [SymEntities.attrs, h₀, h₁₇, bind, Option.bind] at h₁₀
+      have ⟨tty_find, hfind_schema, hty_rel⟩ := ofRecordType_preserves_attr (rty := entry.attrs) (h₁₄ ▸ h₆) h₇
+      rw [← (Option.some.inj h₁₀)] at h₁₁
+      cases entry with
+      | standard sch =>
+        simp only [
+          SymEntityData.ofEntityType, SymEntityData.ofStandardEntityType,
+          SymEntityData.ofStandardEntityType.attrsUUF,
+          UnaryFunction.outType, TermType.ofType, EntitySchemaEntry.attrs,
+          TermType.record.injEq,
+        ] at h₁₁ hfind_schema
+        have htyₐ_eq : tyₐ = tty_find := Option.some.inj (hfind_a.symm.trans (h₁₁ ▸ hfind_schema))
+        cases htyₐ_cases : tty_find with
+        | option ti =>
+          simp only [htyₐ_cases] at hty_rel htyₐ_eq
+          simp only [htyₐ_eq] at hshape
+          rw [hshape] at hty_ga; rw [hrg_ty, htyₐ_eq] at hty_ga
+          obtain ⟨hrel_eq, _⟩ := hty_rel
+          exact chain_step_close hty_ifsome h₈
+            ((TermType.option.inj hty_ga) ▸ hrel_eq).symm (Or.inl ⟨_, rfl⟩)
+        | _ =>
+          simp only [htyₐ_cases] at hty_rel htyₐ_eq
+          simp only [htyₐ_eq] at hshape
+          rw [hshape] at hty_ga
+          simp only [typeOf_term_some, hrg_ty] at hty_ga
+          obtain ⟨hrel_eq, _⟩ := hty_rel
+          exact chain_step_close hty_ifsome h₈
+            ((TermType.option.inj hty_ga).symm.trans (htyₐ_eq.trans hrel_eq.symm))
+            (Or.inl ⟨_, rfl⟩)
+      | enum eids =>
+        simp only [EntitySchemaEntry.attrs] at h₁₄
+        rw [← h₁₄] at h₆
+        simp [Map.empty, Map.find?, Data.Map.find?] at h₆
+  | cons_record_from_entity h₅ h₆ h₇ h₈ =>
+    rename_i ety₂ _ _ _
+    simp only [TermType.ofType] at h₁
+    cases h₃ with
+    | inl hrec => simp [h₁] at hrec
+    | inr hent =>
+      obtain ⟨ety', fₐ, h₉, h₁₀, h₁₁⟩ := hent
+      simp only [EntitySchema.attrs?, Option.map_eq_some_iff] at h₅
+      obtain ⟨entry, h₁₅, h₁₆⟩ := h₅
+      have h₁₂ := ofEnv_preserves_entity (εnv := SymEnv.ofEnv Γ) rfl h₁₅
+      rw [← hεs] at h₁₂
+      have ⟨tty_find, hfind_schema, hty_rel⟩ := ofRecordType_preserves_attr (rty := entry.attrs) (h₁₆ ▸ h₆) h₇
+      have h₁₄ : ety' = ety₂ := by
+        have h := h₉.symm.trans h₁; injection h with h; injection h
+      simp only [SymEntities.attrs, h₁₄, h₁₂, bind, Option.bind] at h₁₀
+      rw [← (Option.some.inj h₁₀)] at h₁₁
+      cases entry with
+      | standard sch =>
+        simp only [
+          SymEntityData.ofEntityType, SymEntityData.ofStandardEntityType,
+          SymEntityData.ofStandardEntityType.attrsUUF,
+          UnaryFunction.outType, TermType.ofType, EntitySchemaEntry.attrs,
+          TermType.record.injEq,
+        ] at h₁₁ hfind_schema
+        have htyₐ_eq : tyₐ = tty_find := Option.some.inj (hfind_a.symm.trans (h₁₁ ▸ hfind_schema))
+        cases htyₐ_cases : tty_find with
+        | option ti =>
+          simp only [htyₐ_cases] at hty_rel htyₐ_eq
+          simp only [htyₐ_eq] at hshape
+          rw [hshape] at hty_ga; rw [hrg_ty, htyₐ_eq] at hty_ga
+          obtain ⟨hrel_eq, _⟩ := hty_rel
+          exact chain_step_close hty_ifsome h₈
+            ((TermType.option.inj hty_ga) ▸ hrel_eq).symm (Or.inr ⟨_, rfl⟩)
+        | _ =>
+          simp only [htyₐ_cases] at hty_rel htyₐ_eq
+          simp only [htyₐ_eq] at hshape
+          rw [hshape] at hty_ga
+          simp only [typeOf_term_some, hrg_ty] at hty_ga
+          obtain ⟨hrel_eq, _⟩ := hty_rel
+          exact chain_step_close hty_ifsome h₈
+            ((TermType.option.inj hty_ga).symm.trans (htyₐ_eq.trans hrel_eq.symm))
+            (Or.inr ⟨_, rfl⟩)
+      | enum eids =>
+        simp only [EntitySchemaEntry.attrs] at h₁₆
+        rw [← h₁₆] at h₆
+        simp [Map.empty, Map.find?, Data.Map.find?] at h₆
+  | cons_entity_from_record h₅ h₆ h₇ =>
+    have ⟨tty_find, hfind_schema, hty_rel⟩ := ofRecordType_preserves_attr h₅ h₆
+    cases h₃ with
+    | inl hrec =>
+      simp only [TermType.ofType] at h₁
+      have h₉ : rty = Map.mk (TermType.ofRecordType _) := TermType.record.inj (hrec.symm.trans h₁)
+      have htyₐ_eq : tyₐ = tty_find := Option.some.inj (hfind_a.symm.trans (h₉ ▸ hfind_schema))
+      cases htyₐ_cases : tty_find with
+      | option ti =>
+        simp only [htyₐ_cases] at hty_rel htyₐ_eq
+        simp only [htyₐ_eq] at hshape
+        rw [hshape] at hty_ga; rw [hrg_ty, htyₐ_eq] at hty_ga
+        obtain ⟨hrel_eq, _⟩ := hty_rel
+        exact chain_step_close hty_ifsome h₇
+          ((TermType.option.inj hty_ga) ▸ hrel_eq).symm (Or.inl ⟨_, rfl⟩)
+      | _ =>
+        simp only [htyₐ_cases] at hty_rel htyₐ_eq
+        simp only [htyₐ_eq] at hshape
+        rw [hshape] at hty_ga
+        simp only [typeOf_term_some, hrg_ty] at hty_ga
+        obtain ⟨hrel_eq, _⟩ := hty_rel
+        exact chain_step_close hty_ifsome h₇
+          ((TermType.option.inj hty_ga).symm.trans (htyₐ_eq.trans hrel_eq.symm))
+          (Or.inl ⟨_, rfl⟩)
+    | inr h₉ =>
+      obtain ⟨_, _, h₁₀, _, _⟩ := h₉
+      simp [TermType.ofType, h₁₀] at h₁
+  | cons_record_from_record h₅ h₆ h₇ =>
+    have ⟨tty_find, hfind_schema, hty_rel⟩ := ofRecordType_preserves_attr h₅ h₆
+    cases h₃ with
+    | inl hrec =>
+      simp only [TermType.ofType] at h₁
+      have h₉ : rty = Map.mk (TermType.ofRecordType _) := TermType.record.inj (hrec.symm.trans h₁)
+      have htyₐ_eq : tyₐ = tty_find := Option.some.inj (hfind_a.symm.trans (h₉ ▸ hfind_schema))
+      cases htyₐ_cases : tty_find with
+      | option ti =>
+        simp only [htyₐ_cases] at hty_rel htyₐ_eq
+        simp only [htyₐ_eq] at hshape
+        rw [hshape] at hty_ga; rw [hrg_ty, htyₐ_eq] at hty_ga
+        obtain ⟨hrel_eq, _⟩ := hty_rel
+        exact chain_step_close hty_ifsome h₇
+          ((TermType.option.inj hty_ga) ▸ hrel_eq).symm (Or.inr ⟨_, rfl⟩)
+      | _ =>
+        simp only [htyₐ_cases] at hty_rel htyₐ_eq
+        simp only [htyₐ_eq] at hshape
+        rw [hshape] at hty_ga
+        simp only [typeOf_term_some, hrg_ty] at hty_ga
+        obtain ⟨hrel_eq, _⟩ := hty_rel
+        exact chain_step_close hty_ifsome h₇
+          ((TermType.option.inj hty_ga).symm.trans (htyₐ_eq.trans hrel_eq.symm))
+          (Or.inr ⟨_, rfl⟩)
+    | inr h₉ =>
+      obtain ⟨_, _, h₁₀, _, _⟩ := h₉
+      simp [TermType.ofType, h₁₀] at h₁
+
+
+
+public theorem compileExtHasAttr_ne_error {t₁ : Term} {attrs : List Attr} {εs : SymEntities} {e : SymCC.Error}
+  {Γ : TypeEnv} {cty : CedarType}
+  (hwε : εs.WellFormed)
+  (hw₁ : t₁.WellFormed εs)
+  (hty₁ : (∃ ety, t₁.typeOf = .option (.entity ety)) ∨ (∃ rty, t₁.typeOf = .option (.record rty)))
+  (hchain : ExtHasAttrChainStrict Γ.ets cty attrs)
+  (hεs : εs = (SymEnv.ofEnv Γ).entities)
+  (hty_cty : t₁.typeOf = .option (TermType.ofType cty))
+  : compileExtHasAttr t₁ attrs εs ≠ .error e := by
+  induction attrs generalizing t₁ cty e with
+  | nil => simp [compileExtHasAttr, pure, Except.pure]
+  | cons a rest ih =>
+    have hwo_and_type : (Factory.option.get t₁).WellFormed εs ∧
+      ((∃ ety, (Factory.option.get t₁).typeOf = .entity ety) ∨
+       (∃ rty, (Factory.option.get t₁).typeOf = .record rty)) := by
+      cases hty₁ with
+      | inl h =>
+        obtain ⟨ety, hety⟩ := h
+        have hwo := wf_option_get hw₁ hety
+        exact ⟨hwo.left, .inl ⟨ety, hwo.right⟩⟩
+      | inr h =>
+        obtain ⟨rty, hrty⟩ := h
+        have hwo := wf_option_get hw₁ hrty
+        exact ⟨hwo.left, .inr ⟨rty, hwo.right⟩⟩
+    have hwo := hwo_and_type.left
+    have hty_ent_or_rec := hwo_and_type.right
+    intro hcontra
+    cases rest with
+    | nil =>
+      have ⟨_, hok_ha⟩ := compileHasAttr_always_ok hwε hwo hty_ent_or_rec (a := a)
+      simp only [compileExtHasAttr, bind, Except.bind, hok_ha, reduceCtorEq] at hcontra
+    | cons b rest' =>
+      have ⟨_, hok_ha⟩ := compileHasAttr_always_ok hwε hwo hty_ent_or_rec (a := a)
+      simp only [compileExtHasAttr, bind, Except.bind, hok_ha] at hcontra
+      have ⟨_, hga_ok⟩ := compileGetAttr_always_ok' hwε hwo hty_ent_or_rec
+        (compileAttrsOf_find_ne_none hwε hw₁ hεs hty_cty hwo hchain)
+        (a := a)
+      simp only [hga_ok] at hcontra
+      -- After getAttr, hcontra is about: ← compileExtHasAttr ... >>= compileAnd
+      generalize heq_rest : compileExtHasAttr (Factory.ifSome t₁ _) (b :: rest') εs = r_rest at hcontra
+      cases r_rest with
+      | error e' =>
+        cases hcontra
+        -- Now heq_rest : compileExtHasAttr (Factory.ifSome t₁ w✝) (b :: rest') εs = .error e
+        -- Use IH to derive contradiction by inverting the chain
+        have hwf_ga := compileGetAttr_wf hwε hwo hga_ok
+        have hwf_ifsome_ga := wf_ifSome_option hw₁ hwf_ga.left hwf_ga.right.choose_spec
+        have ⟨cty', hchain', hty_cty', hty₁'⟩ :=
+          compileGetAttr_chain_step hwε hw₁ hεs hty_cty hchain hga_ok
+        exact absurd heq_rest (ih hwf_ifsome_ga.left hty₁' hchain' hty_cty')
+      | ok tRest =>
+        simp only [] at hcontra
+        have hwf_ha := compileHasAttr_wf hwε hwo hok_ha
+        have hty_tHas := (wf_ifSome_option hw₁ hwf_ha.left hwf_ha.right).right
+        have hwf_ga := compileGetAttr_wf hwε hwo hga_ok
+        have hwf_ifsome_ga := wf_ifSome_option hw₁ hwf_ga.left hwf_ga.right.choose_spec
+        have ⟨_, hty_rest⟩ := compileExtHasAttr_wf hwε hwf_ifsome_ga.left ⟨_, hwf_ifsome_ga.right⟩ heq_rest
+        simp only [compileAnd, hty_tHas, bind, Except.bind, hty_rest, ↓reduceIte] at hcontra
+        split at hcontra <;> simp at hcontra
+        . simp [hty_tHas] at *
+
+private theorem ofType_entity_or_record {t : Term} {cty : CedarType} {ety : EntityType}
+  (hty : t.typeOf = (TermType.ofType cty).option)
+  (hent : cty = .entity ety) :
+  (∃ ety, t.typeOf = (TermType.entity ety).option) ∨
+  (∃ rty, t.typeOf = (TermType.record rty).option) := by
+  subst hent; exact Or.inl ⟨_, hty⟩
+
+private theorem ofType_entity_or_record' {t : Term} {cty : CedarType} {rty : RecordType}
+  (hty : t.typeOf = (TermType.ofType cty).option)
+  (hrec : cty = .record rty) :
+  (∃ ety, t.typeOf = (TermType.entity ety).option) ∨
+  (∃ rty, t.typeOf = (TermType.record rty).option) := by
+  subst hrec; exact Or.inr ⟨_, hty⟩
+
+theorem compile_well_typed_extHasAttr
+  {expr : TypedExpr} {attr : Attr} {attrs : List Attr} {ty : CedarType}
+  {Γ : TypeEnv} {εnv : SymEnv}
+  (ihexpr : CompileWellTypedAndWF expr εnv)
+  (hcond : CompileWellTypedCondition (.extHasAttr expr attr attrs ty) Γ εnv) :
+  CompileWellTyped (.extHasAttr expr attr attrs ty) εnv
+:= by
+  have ⟨hεnv_eq, hwt, hwf_εnv, _⟩ := hcond
+  have ⟨compile_expr, hcomp_expr, hty_comp_expr, hwf_comp_expr⟩ := ihexpr
+  have hwε := hwf_εnv.right
+  have hεs : εnv.entities = (SymEnv.ofEnv Γ).entities := by rw [hεnv_eq]
+  cases hwt with
+  | extHasAttr_entity h₁ h₂ h₃ =>
+    have hty' := ofType_entity_or_record hty_comp_expr h₂
+    simp only [CompileWellTyped, TypedExpr.toExpr, compile, hcomp_expr, Except.bind_ok,
+      TypedExpr.typeOf, TermType.ofType]
+    cases hext : compileExtHasAttr compile_expr _ εnv.entities with
+    | error =>
+      exfalso
+      exact absurd hext (compileExtHasAttr_ne_error hwε hwf_comp_expr hty' h₃ hεs (by rw [hty_comp_expr]; congr 1; exact congrArg TermType.ofType h₂))
+    | ok t_ext =>
+      exact ⟨t_ext, rfl, (compileExtHasAttr_wf hwε hwf_comp_expr ⟨_, hty_comp_expr⟩ hext).right⟩
+  | extHasAttr_record h₁ h₂ h₃ =>
+    have hty' := ofType_entity_or_record' hty_comp_expr h₂
+    simp only [CompileWellTyped, TypedExpr.toExpr, compile, hcomp_expr, Except.bind_ok,
+      TypedExpr.typeOf, TermType.ofType]
+    cases hext : compileExtHasAttr compile_expr _ εnv.entities with
+    | error =>
+      exfalso
+      exact absurd hext (compileExtHasAttr_ne_error hwε hwf_comp_expr hty' h₃ hεs (by rw [hty_comp_expr]; congr 1; exact congrArg TermType.ofType h₂))
+    | ok t_ext =>
+      exact ⟨t_ext, rfl, (compileExtHasAttr_wf hwε hwf_comp_expr ⟨_, hty_comp_expr⟩ hext).right⟩
+
 theorem compile_well_typed_set
   {xs : List TypedExpr} {ty : CedarType}
   {Γ : TypeEnv} {εnv : SymEnv}
@@ -1524,6 +2077,13 @@ theorem compile_well_typed_on_wf_expr {Γ : TypeEnv} {εnv : SymEnv} {tx : Typed
     any_goals apply CompileWellTyped.add_wf
     any_goals apply compile_well_typed_on_wf_expr
     all_goals assumption
+  case extHasAttr =>
+    have hcond := h.eliminate_extHasAttr
+    apply compile_well_typed_extHasAttr
+    · apply CompileWellTyped.add_wf
+      · apply compile_well_typed_on_wf_expr hcond
+      · exact hcond
+    · exact h
   case set =>
     have hcond := h.eliminate_set
     apply compile_well_typed_set

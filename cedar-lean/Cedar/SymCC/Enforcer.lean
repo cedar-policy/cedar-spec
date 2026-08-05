@@ -68,6 +68,7 @@ def footprint (x : Expr) (εnv : SymEnv) : Set Term :=
   | .binaryApp _ x₁ x₂ => ofEntity ∪ footprint x₁ εnv ∪ footprint x₂ εnv
   | .getAttr x₁ _      => ofEntity ∪ footprint x₁ εnv
   | .hasAttr x₁ _
+  | .extHasAttr x₁ _ _
   | .unaryApp _ x₁     => footprint x₁ εnv
   | .call _ xs
   | .set xs            => xs.mapUnion₁ (λ ⟨xᵢ, _⟩ => footprint xᵢ εnv)

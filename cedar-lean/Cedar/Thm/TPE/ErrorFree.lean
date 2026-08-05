@@ -38,6 +38,7 @@ inductive Residual.ErrorFree : Residual → Prop where
   | or : Residual.ErrorFree x₁ → Residual.ErrorFree x₂ → Residual.ErrorFree (.or x₁ x₂ ty)
   | ite : Residual.ErrorFree x₁ → Residual.ErrorFree x₂ → Residual.ErrorFree x₃ → Residual.ErrorFree (.ite x₁ x₂ x₃ ty)
   | hasAttr : Residual.ErrorFree x₁ → Residual.ErrorFree (.hasAttr x₁ attr ty)
+  | extHasAttr : Residual.ErrorFree x₁ → Residual.ErrorFree (.extHasAttr x₁ attr attrs ty)
   | set : (∀ r ∈ rs, Residual.ErrorFree r) → Residual.ErrorFree (.set rs ty)
   | record : (∀ ax ∈ axs, Residual.ErrorFree ax.snd) → Residual.ErrorFree (.record axs ty)
 
@@ -144,6 +145,15 @@ theorem Residual.error_free_spec (r : Residual) : r.errorFree = true ↔ r.Error
     · intro h
       cases h
       assumption
+  case extHasAttr x₁ _ _ _ =>
+    simp only [Residual.errorFree]
+    rw [error_free_spec x₁]
+    constructor
+    · intro h₁
+      exact .extHasAttr h₁
+    · intro h
+      cases h
+      assumption
   case set rs ty =>
     simp only [Residual.errorFree, List.all_subtype, List.unattach_attach, List.all_eq_true]
     have ih : ∀ r ∈ rs, r.errorFree = true ↔ r.ErrorFree := by
@@ -189,6 +199,131 @@ decreasing_by
   all_goals
     simp [*] at *
     omega
+
+private theorem hasAttrs_loop_ok_of_chain_valid
+  {v : Value} {ty : CedarType} {attrs : List Attr}
+  (hwf : InstanceOfWellFormedEnvironment req es env)
+  (hio : InstanceOfType env v ty)
+  (hchain : ExtHasAttrChainValid env.ets ty attrs)
+  (hty_er : (∃ ety, ty = .entity ety) ∨ (∃ rty, ty = .record rty)) :
+  (hasAttrs.loop v attrs es).isOk := by
+  induction hchain generalizing v with
+  | last =>
+    rcases hty_er with ⟨ety, hety⟩ | ⟨rty, hrty⟩
+    · subst hety
+      have ⟨uid, _, hv⟩ := instance_of_entity_type_is_entity hio
+      subst hv
+      simp [hasAttrs.loop, attrsOf]
+      split <;> simp [Except.isOk, Except.toBool]
+    · subst hrty
+      have ⟨r, hv⟩ := instance_of_record_type_is_record hio
+      subst hv
+      simp [hasAttrs.loop, attrsOf]
+      split <;> simp [Except.isOk, Except.toBool]
+  | cons_entity h₁ h₂ h₃ _h₄ ih =>
+    rename_i ety nextEty attr rest rty qty
+    have ⟨uid, huid_ty, hv⟩ := instance_of_entity_type_is_entity hio
+    subst hv
+    simp [hasAttrs.loop, attrsOf]
+    cases hfind_ent : es.find? uid with
+    | none =>
+      simp [Entities.attrsOrEmpty, hfind_ent, Except.isOk, Except.toBool]
+    | some d =>
+      simp [Entities.attrsOrEmpty, hfind_ent]
+      cases hfind_attr : d.attrs.find? attr with
+      | none => simp [Except.isOk, Except.toBool]
+      | some next =>
+        simp only
+        subst huid_ty
+        have hio_attrs := well_typed_entity_attributes hwf hfind_ent h₁
+        have hio_next := instance_of_attribute_type hio_attrs h₂ h₃ hfind_attr
+        split
+        · simp [Except.isOk, Except.toBool]
+        · exact ih hio_next (.inl ⟨_, rfl⟩)
+  | cons_record_from_entity h₁ h₂ h₃ _h₄ ih =>
+    rename_i ety attr rest rty qty recRty
+    have ⟨uid, huid_ty, hv⟩ := instance_of_entity_type_is_entity hio
+    subst hv
+    simp [hasAttrs.loop, attrsOf]
+    cases hfind_ent : es.find? uid with
+    | none =>
+      simp [Entities.attrsOrEmpty, hfind_ent, Except.isOk, Except.toBool]
+    | some d =>
+      simp [Entities.attrsOrEmpty, hfind_ent]
+      cases hfind_attr : d.attrs.find? attr with
+      | none => simp [Except.isOk, Except.toBool]
+      | some next =>
+        simp only
+        subst huid_ty
+        have hio_attrs := well_typed_entity_attributes hwf hfind_ent h₁
+        have hio_next := instance_of_attribute_type hio_attrs h₂ h₃ hfind_attr
+        split
+        · simp [Except.isOk, Except.toBool]
+        · exact ih hio_next (.inr ⟨_, rfl⟩)
+  | cons_not_in_schema_entity h₁ =>
+    rename_i ety attr rest
+    have ⟨uid, huid_ty, hv⟩ := instance_of_entity_type_is_entity hio
+    subst hv
+    simp [hasAttrs.loop, attrsOf]
+    cases hfind_ent : es.find? uid with
+    | none =>
+      simp [Entities.attrsOrEmpty, hfind_ent, Except.isOk, Except.toBool]
+    | some d =>
+      simp [Entities.attrsOrEmpty, hfind_ent]
+      subst huid_ty
+      have ⟨_, _, hiso⟩ := hwf
+      have ⟨hiso_ent, _⟩ := hiso
+      have hentry := hiso_ent uid d hfind_ent
+      cases hentry with
+      | inl h_ets =>
+        have ⟨entry, hentry_find, _, hio_attrs, _, _⟩ := h_ets
+        cases h₁ with
+        | inl h_none =>
+          simp [EntitySchema.attrs?] at h_none
+          simp [hentry_find] at h_none
+        | inr h_all_none =>
+          have hschema : env.ets.attrs? uid.ty = .some entry.attrs := by
+            simp [EntitySchema.attrs?, hentry_find]
+          have h_attr_none := h_all_none entry.attrs hschema
+          have h_abs := absent_attribute_is_absent hio_attrs h_attr_none
+          simp [h_abs, Except.isOk, Except.toBool]
+      | inr h_acts =>
+        have ⟨h_empty, _, _acts_entry, _h_acts_find, _⟩ := h_acts
+        rw [h_empty]
+        simp [Except.isOk, Except.toBool]
+  | cons_entity_from_record h₁ h₂ _h₃ ih =>
+    rename_i recRty attr rest qty nextEty
+    have ⟨r, hv⟩ := instance_of_record_type_is_record hio
+    subst hv
+    simp [hasAttrs.loop, attrsOf]
+    cases hfind_attr : r.find? attr with
+    | none => simp [Except.isOk, Except.toBool]
+    | some next =>
+      simp only
+      have hio_next := instance_of_attribute_type hio h₁ h₂ hfind_attr
+      split
+      · simp [Except.isOk, Except.toBool]
+      · exact ih hio_next (.inl ⟨_, rfl⟩)
+  | cons_record_from_record h₁ h₂ _h₃ ih =>
+    rename_i recRty attr rest qty nextRecRty
+    have ⟨r, hv⟩ := instance_of_record_type_is_record hio
+    subst hv
+    simp [hasAttrs.loop, attrsOf]
+    cases hfind_attr : r.find? attr with
+    | none => simp [Except.isOk, Except.toBool]
+    | some next =>
+      simp only
+      have hio_next := instance_of_attribute_type hio h₁ h₂ hfind_attr
+      split
+      · simp [Except.isOk, Except.toBool]
+      · exact ih hio_next (.inr ⟨_, rfl⟩)
+  | cons_not_in_record h₁ =>
+    rename_i recRty attr rest
+    have ⟨r, hv⟩ := instance_of_record_type_is_record hio
+    subst hv
+    simp [hasAttrs.loop, attrsOf]
+    have h_abs := absent_attribute_is_absent hio h₁
+    simp [h_abs, Except.isOk, Except.toBool]
 
 theorem error_free_evaluate_ok {r : Residual} :
   InstanceOfWellFormedEnvironment req es env →
@@ -375,6 +510,23 @@ theorem error_free_evaluate_ok {r : Residual} :
         | have h_val₁ := instance_of_record_type_is_record hty₁'
           rw [h_val₁.choose_spec]
       simp [Except.isOk, Except.toBool]
+  case extHasAttr =>
+    simp only [Residual.evaluate]
+    rename_i x₁ attr attrs _ he₁
+    have hwt₁ : Residual.WellTyped env x₁ := by
+      cases hwt <;> assumption
+    have ih₁ := error_free_evaluate_ok hwf hwt₁ he₁
+    rw [Except.isOk_iff_exists] at ih₁
+    rw [ih₁.choose_spec]
+    simp only [hasAttrs, Except.bind_ok]
+    have hty₁' := residual_well_typed_is_sound hwf hwt₁ ih₁.choose_spec
+    cases hwt with
+    | extHasAttr_entity h₁ hty₁ hchain =>
+      rw [hty₁] at hty₁'
+      exact hasAttrs_loop_ok_of_chain_valid hwf hty₁' hchain (.inl ⟨_, rfl⟩)
+    | extHasAttr_record h₁ hty₁ hchain =>
+      rw [hty₁] at hty₁'
+      exact hasAttrs_loop_ok_of_chain_valid hwf hty₁' hchain (.inr ⟨_, rfl⟩)
   case record =>
     rename_i axs ty haxs₁
     cases hwt

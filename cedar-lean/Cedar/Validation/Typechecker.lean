@@ -282,6 +282,56 @@ public def typeOfGetAttr (ty : TypedExpr) (x : Expr) (a : Attr) (c : Capabilitie
     | .none     => err (.unknownEntity ety)
   | _           => err (.unexpectedType ty.typeOf)
 
+/--
+Helper for typing the attribute chain in `extHasAttr`.
+Given the current typed expression, the current expression, the previous attribute,
+the accumulated capabilities, the input capabilities, and the environment,
+walk the remaining attribute list and accumulate capabilities.
+-/
+public def typeOfExtHasAttrLoop (curTy : TypedExpr) (curExpr : Expr) (prevAttr : Attr)
+    (acc : Capabilities) (c : Capabilities) (env : TypeEnv) :
+    List Attr → Except TypeError (TypedExpr × Expr × Attr × Capabilities)
+  | [] => .ok (curTy, curExpr, prevAttr, acc)
+  | attr :: rest => do
+    let (tyNext, _) ← typeOfGetAttr curTy curExpr prevAttr (c ∪ acc) env
+    let nextExpr := Expr.getAttr curExpr prevAttr
+    let (_, ci) ← typeOfHasAttr tyNext nextExpr attr (c ∪ acc) env
+    typeOfExtHasAttrLoop tyNext nextExpr attr (acc ∪ ci) c env rest
+
+/--
+Type-check an extended `has` attribute chain. Mirrors the evaluator's `hasAttrs.loop`:
+at each step, check that the current type supports `getAttr a` (giving the next type),
+accumulate capabilities, and recurse on the remaining attributes.
+
+The structure is:
+- `ty₁` : typed expression for the base (current position in the chain)
+- `x₁`  : expression for the base
+- `attrs`: the remaining attribute chain `[a₁, a₂, ..., aₙ]`
+- `c`   : input capabilities
+
+At each step `aᵢ`:
+1. Verify `getAttr x₁ aᵢ` is well-typed (via `typeOfGetAttr`)
+2. Add capability `(x₁, .attr aᵢ)` (via `typeOfHasAttr`)
+3. If more attributes remain, recurse with `tyNext` and `Expr.getAttr x₁ aᵢ`
+-/
+public def typeOfExtHasAttr (ty₁ : TypedExpr) (x₁ : Expr) (attrs : List Attr)
+    (c : Capabilities) (env : TypeEnv) : Except TypeError (TypedExpr × Capabilities) :=
+  match attrs with
+  | [] => .ok (ty₁, ∅)
+  | [a] => do
+    -- Last attribute: just check hasAttr
+    let (_, ci) ← typeOfHasAttr ty₁ x₁ a c env
+    .ok (ty₁, ci)
+  | a :: rest => do
+    -- Check that getAttr x₁ a is well-typed (gives next type)
+    let (tyNext, _) ← typeOfGetAttr ty₁ x₁ a c env
+    -- Earn capability for hasAttr x₁ a
+    let (_, ci) ← typeOfHasAttr ty₁ x₁ a c env
+    -- Recurse on the rest of the chain with the next type/expr
+    let nextExpr := Expr.getAttr x₁ a
+    let (_, c') ← typeOfExtHasAttr tyNext nextExpr rest (c ∪ ci) env
+    .ok (ty₁, ci ∪ c')
+
 public def typeOfSet (tys : List TypedExpr) : ResultType :=
   match tys with
   | []       => err .emptySetErr
@@ -364,6 +414,10 @@ public def typeOf (x : Expr) (c : Capabilities) (env : TypeEnv) : ResultType :=
   | .hasAttr x₁ a => do
     let (ty₁, _) ← typeOf x₁ c env
     typeOfHasAttr ty₁ x₁ a c env
+  | .extHasAttr x₁ a as => do
+    let (ty₁, _) ← typeOf x₁ c env
+    let (_, c') ← typeOfExtHasAttr ty₁ x₁ (a :: as) c env
+    ok (TypedExpr.extHasAttr ty₁ a as (.bool .anyBool)) c'
   | .getAttr x₁ a => do
     let (ty₁, _) ← typeOf x₁ c env
     typeOfGetAttr ty₁ x₁ a c env

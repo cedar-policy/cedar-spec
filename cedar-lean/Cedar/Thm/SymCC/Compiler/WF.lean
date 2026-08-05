@@ -240,6 +240,42 @@ public theorem compileHasAttr_wf {t t₁: Term} {a : Attr} {εs : SymEntities}
     simp only [typeOf_term_some, typeOf_bool, and_true]
     exact Term.WellFormed.some_wf wf_bool
 
+public theorem compileAnd_preserves_wf {εs : SymEntities} {t₁ t : Term} {r₂ : SymCC.Result Term}
+  (hw₁ : t₁.WellFormed εs)
+  (hty₁ : t₁.typeOf = .option .bool)
+  (hr₂ : ∀ t₂, r₂ = .ok t₂ → t₂.WellFormed εs ∧ t₂.typeOf = .option .bool)
+  (hok : compileAnd t₁ r₂ = .ok t) :
+  t.WellFormed εs ∧ t.typeOf = .option .bool
+:= by
+  simp only [compileAnd] at hok
+  split at hok
+  case h_1 =>
+    simp only [Except.ok.injEq] at hok
+    subst hok
+    exact ⟨hw₁, hty₁⟩
+  case h_2 heq _ =>
+    simp only [bind, Except.bind] at hok
+    split at hok
+    · simp at hok
+    · rename_i hr₂' t₂
+      have ⟨hw₂, hty₂⟩ := hr₂ t₂ (by rfl)
+      split at hok
+      · simp only [Except.ok.injEq] at hok
+        subst hok
+        have hopt := wf_option_get hw₁ hty₁
+        have hw₃ : (Term.some (Term.prim (TermPrim.bool false))).WellFormed εs :=
+          Term.WellFormed.some_wf (wf_bool (b := false))
+        have hite := wf_ite hopt.left hw₂ hw₃
+          hopt.right (by simp only [hty₂, typeOf_term_some, typeOf_bool])
+        rw [hty₂] at hite
+        have h := wf_ifSome_option hw₁ hite.left hite.right
+        exact ⟨h.left, h.right⟩
+      · rename_i hne
+        exact absurd hty₂ hne
+  case h_3 =>
+    rw [hty₁] at *
+    contradiction
+
 private theorem compile_hasAttr_wf {x₁ : Expr} {a : Attr} {εnv : SymEnv} {t : Term}
   (hwf : SymEnv.WellFormedFor εnv (Expr.hasAttr x₁ a))
   (hok : compile (Expr.hasAttr x₁ a) εnv = Except.ok t)
@@ -292,6 +328,73 @@ private theorem compile_getAttr_wf {x₁ : Expr} {a : Attr} {εnv : SymEnv} {t :
   simp only [h.left, true_and]
   exists tyₐ
   exact h.right
+
+public theorem compileExtHasAttr_wf {t₁ : Term} {attrs : List Attr} {εs : SymEntities} {t : Term}
+  (hwε : εs.WellFormed)
+  (hw₁ : t₁.WellFormed εs) (hty₁ : ∃ ty, t₁.typeOf = .option ty)
+  (hok : compileExtHasAttr t₁ attrs εs = .ok t) :
+  t.WellFormed εs ∧ t.typeOf = .option .bool := by
+  induction attrs generalizing t₁ t with
+  | nil =>
+    simp [compileExtHasAttr, pure, Except.pure] at hok
+    rw [← hok]
+    exact ⟨Term.WellFormed.some_wf wf_bool, by simp [typeOf_bool]⟩
+  | cons a rest ih =>
+    cases rest with
+    | nil =>
+      -- Single attr case: ifSome t₁ (compileHasAttr ...)
+      simp only [compileExtHasAttr, bind, Except.bind] at hok
+      split at hok
+      case h_1 => simp at hok
+      case h_2 t_ha hok_ha =>
+      simp only [Except.ok.injEq] at hok; subst hok
+      have hwo := wf_option_get hw₁ hty₁.choose_spec
+      have hwha := compileHasAttr_wf hwε hwo.left hok_ha
+      have h := wf_ifSome_option hw₁ hwha.left hwha.right
+      exact ⟨h.left, h.right⟩
+    | cons b rest' =>
+      -- Multi attr case
+      simp only [compileExtHasAttr, bind, Except.bind] at hok
+      split at hok
+      case h_1 => simp at hok
+      case h_2 t_ha hok_ha =>
+      split at hok
+      case h_1 => simp at hok
+      case h_2 t_ga hok_ga =>
+      split at hok
+      case h_1 => simp at hok
+      case h_2 t_rest hok_rest =>
+      have hwo := wf_option_get hw₁ hty₁.choose_spec
+      have hwha := compileHasAttr_wf hwε hwo.left hok_ha
+      have hwtHas := wf_ifSome_option hw₁ hwha.left hwha.right
+      have ⟨hwga, tyga, htyga⟩ := compileGetAttr_wf hwε hwo.left hok_ga
+      have hwtNext := wf_ifSome_option hw₁ hwga htyga
+      have ⟨hwrest, htyrest⟩ := ih hwtNext.left ⟨tyga, hwtNext.right⟩ hok_rest
+      exact compileAnd_preserves_wf hwtHas.left hwtHas.right
+        (fun t₂ h => by simp only [Except.ok.injEq] at h; subst h; exact ⟨hwrest, htyrest⟩) hok
+
+private theorem compile_extHasAttr_wf' {x₁ : Expr} {a : Attr} {l : List Attr} {εnv : SymEnv} {t : Term}
+  (hwf : SymEnv.WellFormedFor εnv (Expr.extHasAttr x₁ a l))
+  (hok : compile (Expr.extHasAttr x₁ a l) εnv = Except.ok t)
+  (ih₁ : CompileWF x₁) :
+  t.WellFormed εnv.entities ∧ t.typeOf = .option .bool
+:= by
+  have hwφ₁ := wf_εnv_for_extHasAttr_implies hwf
+  rw [compile.eq_def] at hok
+  simp only at hok
+  simp_do_let (compile x₁ εnv) at hok
+  rename_i t₁ hok₁
+  have ⟨hwt₁, ty₁, hty₁⟩ := ih₁ hwφ₁ hok₁
+  exact compileExtHasAttr_wf hwφ₁.left.right hwt₁ ⟨ty₁, hty₁⟩ hok
+
+private theorem compile_extHasAttr_wf {x₁ : Expr} {a : Attr} {l : List Attr} {εnv : SymEnv} {t : Term}
+  (hwf : SymEnv.WellFormedFor εnv (Expr.extHasAttr x₁ a l))
+  (hok : compile (Expr.extHasAttr x₁ a l) εnv = Except.ok t)
+  (ih₁ : CompileWF x₁) :
+  t.WellFormed εnv.entities ∧ ∃ ty, t.typeOf = .option ty
+:= by
+  have ⟨h₁, h₂⟩ := compile_extHasAttr_wf' hwf hok ih₁
+  exact ⟨h₁, .bool, h₂⟩
 
 public theorem compileApp₁_wf_types {op₁ : UnaryOp} {t t₁: Term} {εs : SymEntities}
   (hw₁ : Term.WellFormed εs t₁)
@@ -797,6 +900,9 @@ public theorem compile_wf {x : Expr} {εnv : SymEnv} {t : Term} :
   | .hasAttr x₁ _    =>
     have ih₁ := @compile_wf x₁
     exact compile_hasAttr_wf hwf hok ih₁
+  | .extHasAttr x₁ _ _ =>
+    have ih₁ := @compile_wf x₁
+    exact compile_extHasAttr_wf hwf hok ih₁
   | .set xs          =>
     have ih : ∀ xᵢ ∈ xs, CompileWF xᵢ := by
       intro xᵢ _
@@ -813,6 +919,14 @@ public theorem compile_wf {x : Expr} {εnv : SymEnv} {t : Term} :
       intro xᵢ _
       exact @compile_wf xᵢ
     exact compile_call_wf hwf hok ih
+
+public theorem compile_extHasAttr_typeOf {x₁ : Expr} {a : Attr} {l : List Attr} {εnv : SymEnv} {t : Term}
+  (hwf : SymEnv.WellFormedFor εnv (Expr.extHasAttr x₁ a l))
+  (hok : compile (Expr.extHasAttr x₁ a l) εnv = Except.ok t) :
+  t.typeOf = .option .bool
+:= by
+  have ih₁ : CompileWF x₁ := fun hwε hok => compile_wf hwε hok
+  exact (compile_extHasAttr_wf' hwf hok ih₁).right
 
 public theorem compile_option_get_wf {x : Expr} {εnv : SymEnv} {t : Term} :
   εnv.WellFormedFor x →
@@ -963,6 +1077,47 @@ private theorem evaluate_hasAttr_wf {x : Expr} {a : Attr} {env : Env} {v : Value
     simp only [Except.bind_ok, Except.ok.injEq] at hok
     subst hok
     exact value_bool_wf
+
+private theorem hasAttrs_loop_ok_is_bool {v : Value} {attrs : List Attr} {es : Entities} {r : Value} :
+  hasAttrs.loop v attrs es = .ok r →
+  ∃ b, r = Value.prim (.bool b)
+:= by
+  intro hok
+  induction attrs generalizing v with
+  | nil =>
+    simp only [hasAttrs.loop, Except.ok.injEq] at hok
+    exact ⟨true, hok.symm⟩
+  | cons a rest ih =>
+    simp only [hasAttrs.loop] at hok
+    split at hok
+    · rename_i m _
+      split at hok
+      · rename_i next _
+        split at hok
+        · simp only [Except.ok.injEq] at hok
+          exact ⟨true, hok.symm⟩
+        · exact ih hok
+      · simp only [Except.ok.injEq] at hok
+        exact ⟨false, hok.symm⟩
+    · simp at hok
+
+private theorem hasAttrs_ok_is_bool {v : Value} {attr : Attr} {attrs : List Attr} {es : Entities} {r : Value} :
+  hasAttrs v attr attrs es = .ok r →
+  ∃ b, r = Value.prim (.bool b)
+:= by
+  intro hok
+  simp only [hasAttrs] at hok
+  exact hasAttrs_loop_ok_is_bool hok
+
+private theorem evaluate_extHasAttr_wf {x : Expr} {a : Attr} {l : List Attr} {env : Env} {v : Value}
+  (hok : evaluate (Expr.extHasAttr x a l) env.request env.entities = Except.ok v) :
+  Value.WellFormed env.entities v
+:= by
+  rw [evaluate.eq_def] at hok
+  simp_do_let (evaluate x env.request env.entities) at hok
+  have ⟨b, hb⟩ := hasAttrs_ok_is_bool hok
+  subst hb
+  exact value_bool_wf
 
 private theorem evaluate_getAttr_wf {x : Expr} {a : Attr} {env : Env} {v : Value}
   (hwf : Env.WellFormedFor env (Expr.getAttr x a))
@@ -1142,6 +1297,7 @@ public theorem evaluate_wf {x : Expr} {env : Env} {v : Value} :
   | .binaryApp _ x₁ _ => exact evaluate_binaryApp_wf hwf hok (@evaluate_wf x₁)
   | .getAttr x₁ _     => exact evaluate_getAttr_wf hwf hok (@evaluate_wf x₁)
   | .hasAttr _ _      => exact evaluate_hasAttr_wf hok
+  | .extHasAttr _ _ _ => exact evaluate_extHasAttr_wf hok
   | .set xs           =>
     have ih : ∀ xᵢ, xᵢ ∈ xs → EvaluateWF xᵢ := by
       intro xᵢ _

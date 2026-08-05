@@ -163,6 +163,28 @@ def hasAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : 
     | .some m => m.contains a
     | .none   => .hasAttr r a ty
 
+def extHasAttr (r : Residual) (a : Attr) (as : List Attr) (es : PartialEntities) (ty : CedarType) : Residual :=
+  match r with
+  | .error _ => .error ty
+  | _ =>
+    match attrsOf r es.attrs with
+    | .some m => extHasAttr.loop m (a :: as) es ty
+    | .none   => .extHasAttr r a as ty
+where
+  loop (m : Map Attr Value) (attrs : List Attr) (es : PartialEntities) (ty : CedarType) : Residual :=
+    match attrs with
+    | []     => true
+    | [a]    => m.contains a
+    | a :: rest =>
+      match m.find? a with
+      | .none => false
+      | .some next =>
+        match attrsOf (.val next ty) es.attrs with
+        | .some m' => loop m' rest es ty
+        | .none    => match next with
+          | .prim (.entityUID uid) => .extHasAttr (.val next (.entity uid.ty)) rest.head! (rest.tail) ty
+          | _ => .error ty
+
 def getAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : Residual :=
   match r with
   | .error _ => .error ty
@@ -206,6 +228,8 @@ def evaluate
     apply₂ op₂ (evaluate x₁ req es) (evaluate x₂ req es) es ty
   | .hasAttr x₁ a ty =>
     hasAttr (evaluate x₁ req es) a es ty
+  | .extHasAttr x₁ a as ty =>
+    extHasAttr (evaluate x₁ req es) a as es ty
   | .getAttr x₁ a ty =>
     getAttr (evaluate x₁ req es) a es ty
   | .set xs ty =>

@@ -53,6 +53,8 @@ theorem type_lifting_preserves_expr (x : TypedExpr) :
     simp only [type_lifting_preserves_expr a]
   case hasAttr a _ _ =>
     simp only [type_lifting_preserves_expr a]
+  case extHasAttr a _ _ _ =>
+    simp only [type_lifting_preserves_expr a]
   case set s _ =>
     simp only [List.map₁_eq_map, List.map_map, Expr.set.injEq, List.map_inj_left,
       Function.comp_apply]

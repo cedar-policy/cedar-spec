@@ -43,6 +43,7 @@ public inductive TypedExpr where
   | binaryApp (op : BinaryOp) (a : TypedExpr) (b : TypedExpr) (ty : CedarType)
   | getAttr (expr : TypedExpr) (attr : Attr) (ty : CedarType)
   | hasAttr (expr : TypedExpr) (attr : Attr) (ty : CedarType)
+  | extHasAttr (expr : TypedExpr) (attr : Attr) (attrs : List Attr) (ty : CedarType)
   | set (ls : List TypedExpr) (ty : CedarType)
   | record (map : List (Attr × TypedExpr)) (ty : CedarType)
   | call (xfn : ExtFun) (args : List TypedExpr) (ty : CedarType)
@@ -79,6 +80,10 @@ public def decTypedExpr (x y : TypedExpr) : Decidable (x = y) := by
     exact match decTypedExpr x₁ y₁, decEq a a', decEq tx ty with
     | isTrue h₁, isTrue h₂, isTrue h₃ => isTrue (by rw [h₁, h₂, h₃])
     | isFalse _, _, _ | _, isFalse _, _ | _, _, isFalse _ => isFalse (by intro h; injection h; contradiction)
+  case extHasAttr.extHasAttr x₁ a as tx y₁ a' as' ty =>
+    exact match decTypedExpr x₁ y₁, decEq a a', decEq as as', decEq tx ty with
+    | isTrue h₁, isTrue h₂, isTrue h₃, isTrue h₄ => isTrue (by rw [h₁, h₂, h₃, h₄])
+    | isFalse _, _, _, _ | _, isFalse _, _, _ | _, _, isFalse _, _ | _, _, _, isFalse _ => isFalse (by intro h; injection h; contradiction)
   case set.set xs tx ys ty =>
     exact match decExprList xs ys, decEq tx ty with
     | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
@@ -124,6 +129,7 @@ public def TypedExpr.typeOf : TypedExpr → CedarType
   | binaryApp _ _ _ ty
   | getAttr _ _ ty
   | hasAttr _ _ ty
+  | extHasAttr _ _ _ ty
   | set _ ty
   | record _ ty
   | call _ _ ty => ty
@@ -138,6 +144,7 @@ public def TypedExpr.toExpr : TypedExpr → Expr
   | binaryApp op a b _ => Expr.binaryApp op a.toExpr b.toExpr
   | getAttr expr attr _ => Expr.getAttr expr.toExpr attr
   | hasAttr expr attr _ => Expr.hasAttr expr.toExpr attr
+  | extHasAttr expr attr attrs _ => Expr.extHasAttr expr.toExpr attr attrs
   | set ls _ => Expr.set $ ls.map₁ (λ ⟨e, _⟩  => e.toExpr)
   | record ls _ => Expr.record $ ls.map₂ (λ ⟨(a, e), _⟩  => (a, e.toExpr))
   | call xfn args _ => Expr.call xfn $ args.map₁ (λ ⟨e, _⟩ => e.toExpr)
@@ -159,6 +166,7 @@ public def TypedExpr.liftBoolTypes : TypedExpr → TypedExpr
   | .binaryApp op a b ty => .binaryApp op a.liftBoolTypes b.liftBoolTypes ty.liftBoolTypes
   | .getAttr expr attr ty => .getAttr expr.liftBoolTypes attr ty.liftBoolTypes
   | .hasAttr expr attr ty => .hasAttr expr.liftBoolTypes attr ty.liftBoolTypes
+  | .extHasAttr expr attr attrs ty => .extHasAttr expr.liftBoolTypes attr attrs ty.liftBoolTypes
   | .set ls ty => .set (ls.map₁ (λ ⟨e, _⟩ => e.liftBoolTypes)) ty.liftBoolTypes
   | .record ls ty => .record (ls.map₂ (λ ⟨(a, e), _⟩ => (a, e.liftBoolTypes))) ty.liftBoolTypes
   | .call xfn args ty => .call xfn (args.map₁ (λ ⟨e, _⟩ => e.liftBoolTypes)) ty.liftBoolTypes

@@ -89,6 +89,84 @@ public def TypedExpr.checkEntityAccessLevel (tx : TypedExpr) (env : TypeEnv) (n 
 
 
 /--
+Check that the attribute chain in `extHasAttr` doesn't exceed the level limit.
+For each attribute access, if the result type is an entity, it requires an
+additional dereference level (including the last attribute, since looking it up
+still requires the entity to be in the slice).
+Works for any starting `CedarType`:
+- `.entity ety`: look up entity schema for the attribute
+- `.record rty`: look up attribute directly in the record type
+- other: no sub-fields, chain trivially valid
+-/
+public def checkExtHasAttrChainTy (env : TypeEnv) (ty : CedarType) (attrs : List Attr) (currentLevel : Nat) : Bool :=
+  match attrs with
+  | [] => true
+  | a :: rest =>
+    match ty with
+    | .entity ety =>
+      match env.ets.attrs? ety with
+      | .some rty =>
+        match rty.find? a with
+        | .some qty =>
+          match qty.getType with
+          | .entity nextEty =>
+            -- Accessing this attr requires dereferencing the entity it points to
+            currentLevel > 0 &&
+            checkExtHasAttrChainTy env (.entity nextEty) rest (currentLevel - 1)
+          | nextTy =>
+            -- Not an entity type: no dereference for this step, but continue checking rest
+            checkExtHasAttrChainTy env nextTy rest currentLevel
+        | .none => true  -- attribute not in schema, can't check further
+      | .none => true  -- entity type not in schema
+    | .record rty =>
+      match rty.find? a with
+      | .some qty =>
+        match qty.getType with
+        | .entity nextEty =>
+          currentLevel > 0 &&
+          checkExtHasAttrChainTy env (.entity nextEty) rest (currentLevel - 1)
+        | nextTy =>
+          checkExtHasAttrChainTy env nextTy rest currentLevel
+      | .none => true  -- attribute not in record type
+    | _ => true  -- no sub-fields possible
+
+/--
+Compute the number of entity-typed hops in an attribute chain starting from
+a given `CedarType`. Each entity-to-entity transition costs 1. Record field
+accesses that lead to entities also cost 1 for the entity step.
+-/
+public def extHasAttrChainCostTy (env : TypeEnv) (ty : CedarType) : List Attr → Nat
+  | [] => 0
+  | a :: rest =>
+    match ty with
+    | .entity ety =>
+      match env.ets.attrs? ety with
+      | .some rty =>
+        match rty.find? a with
+        | .some qty =>
+          match qty.getType with
+          | .entity nextEty => 1 + extHasAttrChainCostTy env (.entity nextEty) rest
+          | nextTy => extHasAttrChainCostTy env nextTy rest
+        | .none => 0
+      | .none => 0
+    | .record rty =>
+      match rty.find? a with
+      | .some qty =>
+        match qty.getType with
+        | .entity nextEty => 1 + extHasAttrChainCostTy env (.entity nextEty) rest
+        | nextTy => extHasAttrChainCostTy env nextTy rest
+      | .none => 0
+    | _ => 0
+
+/-- Backwards-compatible wrapper for entity-typed base. -/
+public def checkExtHasAttrChain (env : TypeEnv) (ety : EntityType) (attrs : List Attr) (currentLevel : Nat) : Bool :=
+  checkExtHasAttrChainTy env (.entity ety) attrs currentLevel
+
+/-- Backwards-compatible wrapper for entity-typed base. -/
+public def extHasAttrChainCost (env : TypeEnv) (ety : EntityType) : List Attr → Nat :=
+  extHasAttrChainCostTy env (.entity ety)
+
+/--
 Main entry point for level checking an expression. For most expressions, this is
 a simple recursive traversal of the AST. For entity dereferencing expressions,
 it calls to `checkEntityAccessLevel` which ensures that expression is valid
@@ -121,6 +199,24 @@ public def TypedExpr.checkLevel (tx : TypedExpr) (env : TypeEnv) (n : Nat) : Boo
     | .entity _ =>
       n > 0 &&
       x₁.checkEntityAccessLevel env (n - 1) n []
+    | _ => x₁.checkLevel env n
+  | .extHasAttr x₁ attr attrs _ =>
+    match x₁.typeOf with
+    | .entity ety =>
+      -- Compute chain cost first, then give remaining budget to base expression.
+      -- This ensures: depth(base) + chain_hops ≤ n - 1 < n, so all entities
+      -- (base + chain) fit within slice level n.
+      let k := extHasAttrChainCost env ety (attr :: attrs)
+      n > k &&
+      x₁.checkEntityAccessLevel env (n - k - 1) n [] &&
+      checkExtHasAttrChain env ety (attr :: attrs) k
+    | .record rty =>
+      -- Record base: chain might still have entity hops through record fields.
+      -- Budget those entity hops as well.
+      let k := extHasAttrChainCostTy env (.record rty) (attr :: attrs)
+      n > k &&
+      x₁.checkLevel env n &&
+      checkExtHasAttrChainTy env (.record rty) (attr :: attrs) k
     | _ => x₁.checkLevel env n
   | .call _ xs _
   | .set xs _ =>

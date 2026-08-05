@@ -184,6 +184,32 @@ theorem has_attr_value_ne_dne (v : Value) (a : Attr) (es : Entities) :
   | (simp [hasAttr, attrsOf] ; done)
   | (rename_i p ; cases p <;> simp [hasAttr, attrsOf])
 
+private theorem has_attrs_loop_ne_dne (v : Value) (attrs : List Attr) (es : Entities) :
+  hasAttrs.loop v attrs es ≠ .error .entityDoesNotExist := by
+  induction attrs generalizing v with
+  | nil => simp [hasAttrs.loop]
+  | cons attr rest ih =>
+    simp only [hasAttrs.loop]
+    -- The result of attrsOf v (fun uid => .ok (es.attrsOrEmpty uid)) is either
+    -- .ok m (for records/entities) or .error .typeError (for other values)
+    match hattr : attrsOf v (fun uid => .ok (es.attrsOrEmpty uid)) with
+    | .ok m =>
+      simp only [ExceptT.stM_eq, List.isEmpty_iff, ne_eq]
+      match hfind : m.find? attr with
+      | .some next =>
+        simp only [ne_eq]
+        split
+        · simp  -- .ok true
+        · exact ih next  -- recurse
+      | .none => simp
+    | .error e => simp
+
+
+theorem has_attrs_value_ne_dne (v : Value) (a : Attr) (attrs : List Attr) (es : Entities) :
+  hasAttrs v a attrs es ≠ .error .entityDoesNotExist := by
+  simp only [hasAttrs]
+  exact has_attrs_loop_ne_dne v (a :: attrs) es
+
 /--
 Coercing a result to `Bool` (`Result.as Bool`) never introduces an
 `entityDoesNotExist`: on success it runs `Value.asBool` (at worst `typeError`),
@@ -560,6 +586,52 @@ theorem level_based_no_dne_has_attr {e : Expr} {a : Attr} {n : Nat} {c₀ c₁ :
   · exact entity_access_at_level_then_at_level (by assumption)
   · assumption
 
+theorem level_based_no_dne_ext_has_attr {e : Expr} {a : Attr} {attrs : List Attr} {n : Nat} {c₀ c₁ : Capabilities} {env : TypeEnv} {request : Request} {entities : Entities}
+  (hc : CapabilitiesInvariant c₀ request entities)
+  (hr : InstanceOfWellFormedEnvironment request entities env)
+  (hcl : EntitiesClosedAtLevel entities request n)
+  (ht : typeOf (e.extHasAttr a attrs) c₀ env = Except.ok (tx, c₁))
+  (hl : tx.AtLevel env n)
+  (ihe : TypedAtLevelHasNoDNEError e) :
+  evaluate (.extHasAttr e a attrs) request entities ≠ .error .entityDoesNotExist
+:= by
+  -- Extract sub-expression typing from extHasAttr typing
+  simp only [typeOf, bind, Except.bind] at ht
+  generalize hte : typeOf e c₀ env = res_e at ht
+  cases res_e with
+  | error => simp at ht
+  | ok val_e =>
+    obtain ⟨ty₁, c₁'⟩ := val_e
+    simp only at ht
+    -- After the first bind, the remaining binds produce tx = .extHasAttr ty₁ a attrs (.bool .anyBool)
+    have htx : tx = TypedExpr.extHasAttr ty₁ a attrs (.bool .anyBool) := by
+      revert ht
+      generalize typeOfExtHasAttr ty₁ e (a :: attrs) c₀ env = res_ext
+      intro ht
+      cases res_ext with
+      | error => simp only [ExceptT.stM_eq, reduceCtorEq] at ht
+      | ok val_ext =>
+        simp only [ok, Except.ok.injEq, Prod.mk.injEq] at ht
+        exact ht.1.symm
+    rw [htx] at hl
+    -- evaluate (.extHasAttr e a attrs) = evaluate e >>= hasAttrs · a attrs entities
+    simp only [evaluate]
+    refine bind_ne_error ?_ (fun v _ => has_attrs_value_ne_dne v a attrs entities)
+    -- Show evaluate e ≠ .error .entityDoesNotExist using ihe
+    apply ihe hc hr hcl hte
+    -- Extract sub-expression level from hl
+    cases hl with
+    | extHasAttr _ _ _ _ _ hl₁ _ _ hk =>
+      apply entity_access_at_level_then_at_level (path := [])
+      have bump : ∀ m n nmax path, m ≤ n →
+          ty₁.EntityAccessAtLevel env m nmax path → ty₁.EntityAccessAtLevel env n nmax path := by
+        intro m n nmax path hmn h
+        induction hmn with
+        | refl => exact h
+        | step _ ih => exact entity_access_at_level_succ ih
+      exact bump _ _ _ _ (Nat.sub_le _ _) hl₁
+    | extHasAttrRecord _ _ _ _ _ hl₁ _ => exact hl₁
+
 theorem level_based_no_dne_set {xs : List Expr} {n : Nat} {c₀ c₁ : Capabilities} {env : TypeEnv} {request : Request} {entities : Entities}
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : InstanceOfWellFormedEnvironment request entities env)
@@ -669,6 +741,9 @@ theorem level_based_no_dne_expr {e : Expr} {n : Nat} {tx : TypedExpr} {c c₁ : 
   case hasAttr e _ =>
     have ihe := @level_based_no_dne_expr e
     exact level_based_no_dne_has_attr hc hr hcl ht hl ihe
+  case extHasAttr e _ _ =>
+    have ihe := @level_based_no_dne_expr e
+    exact level_based_no_dne_ext_has_attr hc hr hcl ht hl ihe
   case set xs =>
     have ih : ∀ x ∈ xs, TypedAtLevelHasNoDNEError x := by
       intro x hx

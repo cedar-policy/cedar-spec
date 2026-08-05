@@ -1152,6 +1152,7 @@ theorem ofEnv_entities_valid_refs_for_wt_expr
     exact ofEnv_entities_valid_refs_for_wt_expr hwf h₂
   | unaryApp h
   | hasAttr_entity h | hasAttr_record h
+  | extHasAttr_entity h | extHasAttr_record h
   | getAttr_entity h | getAttr_record h =>
     simp only [TypedExpr.toExpr]
     constructor
@@ -1244,6 +1245,11 @@ theorem ValidRefs_invariant_under_liftBoolTypes
   | hasAttr tx attr ty =>
     simp only [TypedExpr.toExpr, TypedExpr.liftBoolTypes] at hrefs ⊢
     cases hrefs with | hasAttr_valid h =>
+    constructor
+    exact ValidRefs_invariant_under_liftBoolTypes h
+  | extHasAttr tx attr attrs ty =>
+    simp only [TypedExpr.toExpr, TypedExpr.liftBoolTypes] at hrefs ⊢
+    cases hrefs with | extHasAttr_valid h =>
     constructor
     exact ValidRefs_invariant_under_liftBoolTypes h
   | getAttr tx attr ty =>

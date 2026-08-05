@@ -28,6 +28,7 @@ import Cedar.Thm.Validation.Levels.CheckLevel
 import Cedar.Thm.Validation.Levels.IfThenElse
 import Cedar.Thm.Validation.Levels.GetAttr
 import Cedar.Thm.Validation.Levels.HasAttr
+import Cedar.Thm.Validation.Levels.ExtHasAttr
 import Cedar.Thm.Validation.Levels.UnaryApp
 import Cedar.Thm.Validation.Levels.BinaryApp
 import Cedar.Thm.Validation.Levels.And
@@ -79,6 +80,9 @@ theorem level_based_slicing_is_sound_expr {e : Expr} {n : Nat} {tx : TypedExpr} 
   case hasAttr e _ =>
     have ihe := @level_based_slicing_is_sound_expr e
     exact level_based_slicing_is_sound_has_attr hc hr ht hl ihe
+  case extHasAttr e _ _ =>
+    have ihe := @level_based_slicing_is_sound_expr e
+    exact level_based_slicing_is_sound_ext_has_attr hc hr ht hl ihe
   case set xs =>
     have ih : ∀ x ∈ xs, TypedAtLevelIsSound x := by
       intro x hx

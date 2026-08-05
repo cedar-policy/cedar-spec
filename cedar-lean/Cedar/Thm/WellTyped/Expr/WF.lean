@@ -94,6 +94,8 @@ theorem well_typed_implies_wf_type
     | _ => constructor
   | hasAttr_entity => constructor
   | hasAttr_record => constructor
+  | extHasAttr_entity => constructor
+  | extHasAttr_record => constructor
   | getAttr_entity _ _ hattrs hattr =>
     simp only [TypedExpr.typeOf]
     simp only [Option.map_eq_some_iff] at hattrs hattr

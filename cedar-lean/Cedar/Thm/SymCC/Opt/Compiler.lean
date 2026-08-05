@@ -490,6 +490,16 @@ theorem Opt.compile_footprint_wf {x : Expr} {εnv : SymEnv} {res : Opt.CompileRe
               exact Opt.compile_footprint_wf h₁
             }
           · simp
+  case extHasAttr x₁ attr attrs =>
+    simp_do_let Opt.compile x₁ εnv
+    case error => simp
+    case ok res₁ h₁ =>
+      simp_do_let SymCC.compileExtHasAttr res₁.term (attr :: attrs) εnv.entities
+      case error => simp
+      case ok t ht =>
+        simp ; intro h ; subst res
+        simp
+        exact Opt.compile_footprint_wf h₁
   case getAttr x₁ attr =>
     simp_do_let Opt.compile x₁ εnv
     case error => simp
@@ -1127,6 +1137,10 @@ theorem Opt.compile.correctness (x : Expr) (εnv : SymEnv) :
   case binaryApp op x₁ x₂ => exact Opt.compile.correctness.binaryApp op x₁ x₂ εnv
   case getAttr x₁ attr    => exact Opt.compile.correctness.getAttr x₁ attr εnv
   case hasAttr x₁ attr    => exact Opt.compile.correctness.hasAttr x₁ attr εnv
+  case extHasAttr x₁ attr attrs =>
+    simp [Opt.compile, SymCC.compile, footprint]
+    rw [Opt.compile.correctness x₁ εnv]
+    cases h₁ : SymCC.compile x₁ εnv <;> simp
   case set xs             => exact Opt.compile.correctness.set xs εnv
   case record m           => exact Opt.compile.correctness.record m εnv
   case call xfn args      => exact Opt.compile.correctness.call xfn args εnv

@@ -182,6 +182,23 @@ def compileOr (t₁ : Term) (r₂ : Result Term) : Result Term := do
     else .error .typeError
   | _, _ => .error .typeError
 
+/--
+Compile an extended `has` attribute chain. Given a compiled term `t` (the entity/record
+to start from) and a list of attributes, produces a term that is `some true` iff all
+attributes in the chain exist, `some false` if any doesn't, and `none` on type error.
+-/
+def compileExtHasAttr (t : Term) (attrs : List Attr) (εs : SymEntities) : Result Term :=
+  match attrs with
+  | [] => pure (Term.some (Term.prim (.bool true)))
+  | [a] => do ifSome t (← compileHasAttr (option.get t) a εs)
+  | a :: rest => do
+    let tHasRaw ← compileHasAttr (option.get t) a εs
+    let tHas := ifSome t tHasRaw
+    let tGa ← compileGetAttr (option.get t) a εs
+    let tNext := ifSome t tGa
+    let tRest ← compileExtHasAttr tNext rest εs
+    compileAnd tHas (.ok tRest)
+
 def compileSet (ts : List Term) : Result Term := do
    match ts with
     | []     => .error .unsupportedError  -- reject empty set literals
@@ -272,6 +289,9 @@ def compile (x : Expr) (εnv : SymEnv) : Result Term := do
   | .hasAttr x a =>
     let t ← compile x εnv
     ifSome t (← compileHasAttr (option.get t) a εnv.entities)
+  | .extHasAttr x a as =>
+    let t ← compile x εnv
+    compileExtHasAttr t (a :: as) εnv.entities
   | .getAttr x a =>
     let t ← compile x εnv
     ifSome t (← compileGetAttr (option.get t) a εnv.entities)

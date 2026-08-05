@@ -202,6 +202,19 @@ theorem substitute_action_preserves_valid_refs
       rename_i hrefs
       constructor
       exact (substitute_action_preserves_valid_refs hinst).mpr hrefs
+  | extHasAttr e _ _ =>
+    simp only [substituteAction, mapOnVars]
+    constructor
+    · intros hrefs
+      cases hrefs
+      rename_i hrefs
+      constructor
+      exact (substitute_action_preserves_valid_refs hinst).mp hrefs
+    · intros hrefs
+      cases hrefs
+      rename_i hrefs
+      constructor
+      exact (substitute_action_preserves_valid_refs hinst).mpr hrefs
   | set s | call _ s =>
     simp only [substituteAction, mapOnVars]
     constructor

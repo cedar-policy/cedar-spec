@@ -550,6 +550,20 @@ theorem typeOf_preserves_valid_refs
   | hasAttr e _ =>
     apply typeOf_preserves_valid_refs_hasAttr entities hty hrefs
     intros tx c c'; apply typeOf_preserves_valid_refs
+  | extHasAttr e _ _ =>
+    simp only [typeOf] at hty
+    cases hrefs with | extHasAttr_valid hrefs =>
+    cases hty₁ : typeOf e c₁ Γ with
+    | error => simp [hty₁] at hty
+    | ok r₁ =>
+      have ⟨tx₁, c₃⟩ := r₁
+      simp only [hty₁, bind, Except.bind] at hty
+      split at hty
+      · simp at hty
+      · simp [ok] at hty
+        obtain ⟨hty_eq, _⟩ := hty
+        simp only [←hty_eq, TypedExpr.toExpr]
+        exact .extHasAttr_valid (typeOf_preserves_valid_refs entities hty₁ hrefs)
   | set s =>
     apply typeOf_preserves_valid_refs_set entities hty hrefs
     intros x hmem_x tx c c'

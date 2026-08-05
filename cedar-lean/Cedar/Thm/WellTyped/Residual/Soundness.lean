@@ -354,6 +354,75 @@ InstanceOfType env v (Residual.binaryApp op₂ x₁ x₂ ty).typeOf
         · simp only [reduceCtorEq, false_and, exists_const] at hᵢ
       · cases h₃
 
+private theorem hasAttrs_loop_ok_is_bool {v₁ : Value} {attrs : List Attr} {es : Entities} {r : Value} :
+  hasAttrs.loop v₁ attrs es = .ok r →
+  ∃ b, r = Value.prim (.bool b)
+:= by
+  intro hok
+  induction attrs generalizing v₁ with
+  | nil =>
+    simp only [hasAttrs.loop, Except.ok.injEq] at hok
+    exact ⟨true, hok.symm⟩
+  | cons a rest ih =>
+    simp only [hasAttrs.loop] at hok
+    split at hok
+    · rename_i m _
+      split at hok
+      · rename_i next _
+        split at hok
+        · simp only [Except.ok.injEq] at hok
+          exact ⟨true, hok.symm⟩
+        · exact ih hok
+      · simp only [Except.ok.injEq] at hok
+        exact ⟨false, hok.symm⟩
+    · simp at hok
+
+private theorem hasAttrs_ok_is_bool {v₁ : Value} {attr : Attr} {attrs : List Attr} {es : Entities} {r : Value} :
+  hasAttrs v₁ attr attrs es = .ok r →
+  ∃ b, r = Value.prim (.bool b)
+:= by
+  intro hok
+  simp only [hasAttrs] at hok
+  exact hasAttrs_loop_ok_is_bool hok
+
+theorem residual_well_typed_is_sound_ext_has_attr_entity
+{v : Value}
+{x₁ : Residual}
+{attr : Attr}
+{attrs : List Attr}
+{env : TypeEnv}
+{request : Request}
+{entities : Entities}
+(h₃ : (Residual.extHasAttr x₁ attr attrs (CedarType.bool BoolType.anyBool)).evaluate request entities = Except.ok v) :
+InstanceOfType env v (Residual.extHasAttr x₁ attr attrs (CedarType.bool BoolType.anyBool)).typeOf
+:= by
+  simp only [Residual.typeOf]
+  simp only [Residual.evaluate] at h₃
+  generalize hᵢ' : x₁.evaluate request entities = res₁
+  cases res₁ <;> simp [hᵢ'] at h₃
+  have ⟨b, hb⟩ := hasAttrs_ok_is_bool h₃
+  subst hb
+  exact bool_is_instance_of_anyBool b
+
+theorem residual_well_typed_is_sound_ext_has_attr_record
+{v : Value}
+{x₁ : Residual}
+{attr : Attr}
+{attrs : List Attr}
+{env : TypeEnv}
+{request : Request}
+{entities : Entities}
+(h₃ : (Residual.extHasAttr x₁ attr attrs (CedarType.bool BoolType.anyBool)).evaluate request entities = Except.ok v) :
+InstanceOfType env v (Residual.extHasAttr x₁ attr attrs (CedarType.bool BoolType.anyBool)).typeOf
+:= by
+  simp only [Residual.typeOf]
+  simp only [Residual.evaluate] at h₃
+  generalize hᵢ' : x₁.evaluate request entities = res₁
+  cases res₁ <;> simp [hᵢ'] at h₃
+  have ⟨b, hb⟩ := hasAttrs_ok_is_bool h₃
+  subst hb
+  exact bool_is_instance_of_anyBool b
+
 theorem residual_well_typed_is_sound_has_attr_entity
 {v : Value}
 {x₁ : Residual}

@@ -225,6 +225,108 @@ open Cedar.Validation
 open Cedar.Spec
 open Cedar.Data
 
+/--
+Chain validity for extended `has` attribute checks.
+Starting from a Cedar type, each intermediate attribute access in the chain
+must yield an entity or record type (so that `attrsOf` succeeds on the next value).
+The LAST attribute in the chain doesn't need this constraint (we just check existence).
+-/
+public inductive ExtHasAttrChainValid (ets : EntitySchema) : CedarType → List Attr → Prop where
+  /-- A single-attribute chain is always valid (just a `has` check, no deeper traversal) -/
+  | last {ty : CedarType} {attr : Attr} :
+    ExtHasAttrChainValid ets ty [attr]
+  /-- Intermediate attribute has entity type in the schema -/
+  | cons_entity {ety nextEty : EntityType} {attr : Attr} {rest : List Attr}
+    {rty : RecordType} {qty : QualifiedType}
+    (h₁ : ets.attrs? ety = .some rty)
+    (h₂ : rty.find? attr = .some qty)
+    (h₃ : qty.getType = .entity nextEty)
+    (h₄ : ExtHasAttrChainValid ets (.entity nextEty) rest) :
+    ExtHasAttrChainValid ets (.entity ety) (attr :: rest)
+  /-- Intermediate attribute has record type in the schema -/
+  | cons_record_from_entity {ety : EntityType} {attr : Attr} {rest : List Attr}
+    {rty : RecordType} {qty : QualifiedType} {recRty : RecordType}
+    (h₁ : ets.attrs? ety = .some rty)
+    (h₂ : rty.find? attr = .some qty)
+    (h₃ : qty.getType = .record recRty)
+    (h₄ : ExtHasAttrChainValid ets (.record recRty) rest) :
+    ExtHasAttrChainValid ets (.entity ety) (attr :: rest)
+  /-- Attribute not found in schema for entity — chain is vacuously valid
+      (at runtime, `find?` will return `.none` → `.ok false`) -/
+  | cons_not_in_schema_entity {ety : EntityType} {attr : Attr} {rest : List Attr}
+    (h₁ : ets.attrs? ety = .none ∨ ∀ rty, ets.attrs? ety = .some rty → rty.find? attr = .none) :
+    ExtHasAttrChainValid ets (.entity ety) (attr :: rest)
+  /-- Record type: intermediate attribute has entity type -/
+  | cons_entity_from_record {recRty : RecordType} {attr : Attr} {rest : List Attr}
+    {qty : QualifiedType} {nextEty : EntityType}
+    (h₁ : recRty.find? attr = .some qty)
+    (h₂ : qty.getType = .entity nextEty)
+    (h₃ : ExtHasAttrChainValid ets (.entity nextEty) rest) :
+    ExtHasAttrChainValid ets (.record recRty) (attr :: rest)
+  /-- Record type: intermediate attribute has record type -/
+  | cons_record_from_record {recRty : RecordType} {attr : Attr} {rest : List Attr}
+    {qty : QualifiedType} {nextRecRty : RecordType}
+    (h₁ : recRty.find? attr = .some qty)
+    (h₂ : qty.getType = .record nextRecRty)
+    (h₃ : ExtHasAttrChainValid ets (.record nextRecRty) rest) :
+    ExtHasAttrChainValid ets (.record recRty) (attr :: rest)
+  /-- Record type: attribute not in record type — vacuously valid -/
+  | cons_not_in_record {recRty : RecordType} {attr : Attr} {rest : List Attr}
+    (h₁ : recRty.find? attr = .none) :
+    ExtHasAttrChainValid ets (.record recRty) (attr :: rest)
+
+/-- A strict version of `ExtHasAttrChainValid` that requires all intermediate
+    attributes to exist in the type. This is what the typechecker guarantees:
+    at every intermediate step, the attribute is found in the schema/record type.
+    Unlike `ExtHasAttrChainValid`, this excludes the "vacuously valid" cases where
+    the attribute doesn't exist.
+
+    This is needed by SymCC's `compileExtHasAttr_ne_error` to prove that `compileGetAttr`
+    never fails along the chain (since the definition has no short-circuit on `hasAttr = false`). -/
+public inductive ExtHasAttrChainStrict (ets : EntitySchema) : CedarType → List Attr → Prop where
+  /-- A single-attribute chain is always strict (just a `has` check) -/
+  | last {ty : CedarType} {attr : Attr} :
+    ExtHasAttrChainStrict ets ty [attr]
+  /-- Intermediate attribute has entity type in the schema -/
+  | cons_entity {ety nextEty : EntityType} {attr : Attr} {rest : List Attr}
+    {rty : RecordType} {qty : QualifiedType}
+    (h₁ : ets.attrs? ety = .some rty)
+    (h₂ : rty.find? attr = .some qty)
+    (h₃ : qty.getType = .entity nextEty)
+    (h₄ : ExtHasAttrChainStrict ets (.entity nextEty) rest) :
+    ExtHasAttrChainStrict ets (.entity ety) (attr :: rest)
+  /-- Intermediate attribute has record type in the schema -/
+  | cons_record_from_entity {ety : EntityType} {attr : Attr} {rest : List Attr}
+    {rty : RecordType} {qty : QualifiedType} {recRty : RecordType}
+    (h₁ : ets.attrs? ety = .some rty)
+    (h₂ : rty.find? attr = .some qty)
+    (h₃ : qty.getType = .record recRty)
+    (h₄ : ExtHasAttrChainStrict ets (.record recRty) rest) :
+    ExtHasAttrChainStrict ets (.entity ety) (attr :: rest)
+  /-- Record type: intermediate attribute has entity type -/
+  | cons_entity_from_record {recRty : RecordType} {attr : Attr} {rest : List Attr}
+    {qty : QualifiedType} {nextEty : EntityType}
+    (h₁ : recRty.find? attr = .some qty)
+    (h₂ : qty.getType = .entity nextEty)
+    (h₃ : ExtHasAttrChainStrict ets (.entity nextEty) rest) :
+    ExtHasAttrChainStrict ets (.record recRty) (attr :: rest)
+  /-- Record type: intermediate attribute has record type -/
+  | cons_record_from_record {recRty : RecordType} {attr : Attr} {rest : List Attr}
+    {qty : QualifiedType} {nextRecRty : RecordType}
+    (h₁ : recRty.find? attr = .some qty)
+    (h₂ : qty.getType = .record nextRecRty)
+    (h₃ : ExtHasAttrChainStrict ets (.record nextRecRty) rest) :
+    ExtHasAttrChainStrict ets (.record recRty) (attr :: rest)
+
+public theorem ExtHasAttrChainStrict.toValid {ets : EntitySchema} {ty : CedarType} {attrs : List Attr}
+  (h : ExtHasAttrChainStrict ets ty attrs) : ExtHasAttrChainValid ets ty attrs := by
+  induction h with
+  | last => exact .last
+  | cons_entity h₁ h₂ h₃ _ ih => exact .cons_entity h₁ h₂ h₃ ih
+  | cons_record_from_entity h₁ h₂ h₃ _ ih => exact .cons_record_from_entity h₁ h₂ h₃ ih
+  | cons_entity_from_record h₁ h₂ _ ih => exact .cons_entity_from_record h₁ h₂ ih
+  | cons_record_from_record h₁ h₂ _ ih => exact .cons_record_from_record h₁ h₂ ih
+
 public inductive TypedExpr.WellTyped (env : TypeEnv) : TypedExpr → Prop
 | lit {p : Prim} {ty : CedarType}
   (h₁ : p.WellTyped env ty) :
@@ -268,6 +370,16 @@ public inductive TypedExpr.WellTyped (env : TypeEnv) : TypedExpr → Prop
   (h₁ : WellTyped env x₁)
   (h₂ : x₁.typeOf = .record rty) :
   WellTyped env (.hasAttr x₁ attr (.bool .anyBool))
+| extHasAttr_entity {ety : EntityType} {x₁ : TypedExpr} {attr : Attr} {attrs : List Attr}
+  (h₁ : WellTyped env x₁)
+  (h₂ : x₁.typeOf = .entity ety)
+  (h₃ : Cedar.Thm.ExtHasAttrChainStrict env.ets (.entity ety) (attr :: attrs)) :
+  WellTyped env (.extHasAttr x₁ attr attrs (.bool .anyBool))
+| extHasAttr_record {rty : RecordType} {x₁ : TypedExpr} {attr : Attr} {attrs : List Attr}
+  (h₁ : WellTyped env x₁)
+  (h₂ : x₁.typeOf = .record rty)
+  (h₃ : Cedar.Thm.ExtHasAttrChainStrict env.ets (.record rty) (attr :: attrs)) :
+  WellTyped env (.extHasAttr x₁ attr attrs (.bool .anyBool))
 | getAttr_entity {ety : EntityType} {rty : RecordType} {x₁ : TypedExpr} {attr : Attr} {ty : CedarType}
   (h₁ : WellTyped env x₁)
   (h₂ : x₁.typeOf = .entity ety)
