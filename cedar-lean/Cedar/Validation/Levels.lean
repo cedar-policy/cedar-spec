@@ -90,9 +90,9 @@ public def TypedExpr.checkEntityAccessLevel (tx : TypedExpr) (env : TypeEnv) (n 
 
 /--
 Check that the attribute chain in `extHasAttr` doesn't exceed the level limit.
-For each attribute access, if the result type is an entity, it requires an
-additional dereference level (including the last attribute, since looking it up
-still requires the entity to be in the slice).
+For each attribute access except the last, if the result type is an entity, it
+requires an additional dereference level. The last attribute is only tested for
+presence and its result is never dereferenced, so it costs no level.
 Works for any starting `CedarType`:
 - `.entity ety`: look up entity schema for the attribute
 - `.record rty`: look up attribute directly in the record type
@@ -101,6 +101,7 @@ Works for any starting `CedarType`:
 public def checkExtHasAttrChainTy (env : TypeEnv) (ty : CedarType) (attrs : List Attr) (currentLevel : Nat) : Bool :=
   match attrs with
   | [] => true
+  | [_] => true  -- last attribute: never dereferenced, no level consumed
   | a :: rest =>
     match ty with
     | .entity ety =>
@@ -132,11 +133,13 @@ public def checkExtHasAttrChainTy (env : TypeEnv) (ty : CedarType) (attrs : List
 
 /--
 Compute the number of entity-typed hops in an attribute chain starting from
-a given `CedarType`. Each entity-to-entity transition costs 1. Record field
-accesses that lead to entities also cost 1 for the entity step.
+a given `CedarType`. Each entity-to-entity transition costs 1, except for
+the last attribute: the evaluator only checks its presence without
+dereferencing the result, so no level is consumed for the last hop.
 -/
 public def extHasAttrChainCostTy (env : TypeEnv) (ty : CedarType) : List Attr → Nat
   | [] => 0
+  | [_] => 0  -- last attribute: never dereferenced
   | a :: rest =>
     match ty with
     | .entity ety =>

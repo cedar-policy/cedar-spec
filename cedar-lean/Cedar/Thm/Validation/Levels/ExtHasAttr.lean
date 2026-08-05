@@ -62,15 +62,36 @@ private theorem chain_step
   ∃ nextTy : CedarType,
     checkExtHasAttrChainTy env nextTy rest
       (extHasAttrChainCostTy env nextTy rest) = true := by
-  simp only [checkExtHasAttrChainTy, extHasAttrChainCostTy] at hchain
-  cases ty with
-  | entity ety =>
-    cases h1 : env.ets.attrs? ety with
-    | none => exact ⟨.int, by cases rest <;> simp [checkExtHasAttrChainTy]⟩
-    | some rty =>
-      simp only [h1] at hchain
+  cases rest with
+  | nil =>
+    -- (a :: []) = [a], checkExtHasAttrChainTy returns true, cost is 0
+    exact ⟨.int, by simp [checkExtHasAttrChainTy]⟩
+  | cons b bs =>
+    -- (a :: b :: bs): unfold definitions which now match the (a :: rest) pattern
+    simp only [checkExtHasAttrChainTy, extHasAttrChainCostTy] at hchain
+    cases ty with
+    | entity ety =>
+      cases h1 : env.ets.attrs? ety with
+      | none => exact ⟨.int, by cases bs <;> simp [checkExtHasAttrChainTy]⟩
+      | some rty =>
+        simp only [h1] at hchain
+        cases h2 : rty.find? a with
+        | none => exact ⟨.int, by cases bs <;> simp [checkExtHasAttrChainTy]⟩
+        | some qty =>
+          simp only [h2] at hchain
+          cases hty : qty.getType <;> simp only [hty] at hchain
+          all_goals first
+            | (rename_i nextEty
+               simp only [gt_iff_lt, Bool.and_eq_true, decide_eq_true_eq] at hchain
+               have h := hchain.2
+               have : 1 + extHasAttrChainCostTy env (.entity nextEty) (b :: bs) - 1 =
+                   extHasAttrChainCostTy env (.entity nextEty) (b :: bs) := by omega
+               rw [this] at h
+               exact ⟨_, h⟩)
+            | exact ⟨_, hchain⟩
+    | record rty =>
       cases h2 : rty.find? a with
-      | none => exact ⟨.int, by cases rest <;> simp [checkExtHasAttrChainTy]⟩
+      | none => exact ⟨.int, by cases bs <;> simp [checkExtHasAttrChainTy]⟩
       | some qty =>
         simp only [h2] at hchain
         cases hty : qty.getType <;> simp only [hty] at hchain
@@ -78,30 +99,13 @@ private theorem chain_step
           | (rename_i nextEty
              simp only [gt_iff_lt, Bool.and_eq_true, decide_eq_true_eq] at hchain
              have h := hchain.2
-             have : 1 + extHasAttrChainCostTy env (.entity nextEty) rest - 1 =
-                 extHasAttrChainCostTy env (.entity nextEty) rest := by omega
+             have : 1 + extHasAttrChainCostTy env (.entity nextEty) (b :: bs) - 1 =
+                 extHasAttrChainCostTy env (.entity nextEty) (b :: bs) := by omega
              rw [this] at h
              exact ⟨_, h⟩)
           | exact ⟨_, hchain⟩
-  | record rty =>
-    cases h2 : rty.find? a with
-    | none => exact ⟨.int, by cases rest <;> simp [checkExtHasAttrChainTy]⟩
-    | some qty =>
-      simp only [h2] at hchain
-      cases hty : qty.getType <;> simp only [hty] at hchain
-      all_goals first
-        | (rename_i nextEty
-           simp only [gt_iff_lt, Bool.and_eq_true, decide_eq_true_eq] at hchain
-           have h := hchain.2
-           have : 1 + extHasAttrChainCostTy env (.entity nextEty) rest - 1 =
-               extHasAttrChainCostTy env (.entity nextEty) rest := by omega
-           rw [this] at h
-           exact ⟨_, h⟩)
-        | exact ⟨_, hchain⟩
-  | _ =>
-    cases rest with
-    | nil => exact ⟨.int, by simp [checkExtHasAttrChainTy]⟩
-    | cons b bs => exact ⟨.int, by simp [checkExtHasAttrChainTy]⟩
+    | _ =>
+      exact ⟨.int, by cases bs <;> simp [checkExtHasAttrChainTy]⟩
 
 
 /--
@@ -218,6 +222,10 @@ private theorem hasAttrs_loop_chain_sound_strict
     rename_i ety nextEty attr rest rty qty
     have ⟨uid, huidty, hv⟩ := instance_of_entity_type_is_entity hinst
     subst hv
+    -- rest must be non-empty (from ExtHasAttrChainStrict); case-split to help simp unfold costTy
+    cases rest with
+    | nil => exact absurd htail (by intro h; cases h)
+    | cons b bs =>
     simp [ExtHasAttrChainReachable, extHasAttrChainCostTy, hschema, htyfind, hqty] at hreach hcost
     have hr := hreach uid (by simp [Value.sliceEUIDs, Set.mem_singleton])
     have hf := find?_slice_eq (sliceLevel := sliceLevel) hr (by omega) (by omega)
@@ -249,19 +257,23 @@ private theorem hasAttrs_loop_chain_sound_strict
             have hmemed : uid2 ∈ ed.sliceEUIDs :=
               sliceEUIDs_entity_attr hfind uid2 (by simp [Value.sliceEUIDs, Set.mem_singleton])
             have hpos : 0 < sliceLevel - (1 +
-                extHasAttrChainCostTy env (.entity nextEty) rest) := by omega
+                extHasAttrChainCostTy env (.entity nextEty) (b :: bs)) := by omega
             have heq : sliceLevel - (1 +
-                extHasAttrChainCostTy env (.entity nextEty) rest) =
-                (sliceLevel - (1 + extHasAttrChainCostTy env (.entity nextEty) rest) - 1) + 1 := by omega
+                extHasAttrChainCostTy env (.entity nextEty) (b :: bs)) =
+                (sliceLevel - (1 + extHasAttrChainCostTy env (.entity nextEty) (b :: bs)) - 1) + 1 := by omega
             have hc := reachable_child (heq ▸ hr) hed hmemed
             have htarget :
-                (sliceLevel - (1 + extHasAttrChainCostTy env (.entity nextEty) rest) - 1) + 2 =
-                sliceLevel - extHasAttrChainCostTy env (.entity nextEty) rest := by omega
+                (sliceLevel - (1 + extHasAttrChainCostTy env (.entity nextEty) (b :: bs)) - 1) + 2 =
+                sliceLevel - extHasAttrChainCostTy env (.entity nextEty) (b :: bs) := by omega
             exact htarget ▸ hc
   | cons_record_from_entity hschema htyfind hqty htail ih =>
     rename_i ety attr rest rty qty recRty
     have ⟨uid, huidty, hv⟩ := instance_of_entity_type_is_entity hinst
     subst hv
+    -- rest must be non-empty (from ExtHasAttrChainStrict); case-split to help simp unfold costTy
+    cases rest with
+    | nil => exact absurd htail (by intro h; cases h)
+    | cons b bs =>
     simp [ExtHasAttrChainReachable, extHasAttrChainCostTy, hschema, htyfind, hqty] at hreach hcost
     have hr := hreach uid (by simp [Value.sliceEUIDs, Set.mem_singleton])
     have hf := find?_slice_eq (sliceLevel := sliceLevel) hr (by omega) (by omega)
@@ -288,18 +300,21 @@ private theorem hasAttrs_loop_chain_sound_strict
             intro uid2 hmem
             have hmemed := sliceEUIDs_entity_attr hfind uid2 hmem
             have hpos : 0 < sliceLevel -
-                extHasAttrChainCostTy env (.record recRty) rest := by omega
-            have heq : sliceLevel - extHasAttrChainCostTy env (.record recRty) rest =
-                (sliceLevel - extHasAttrChainCostTy env (.record recRty) rest - 1) + 1 := by omega
+                extHasAttrChainCostTy env (.record recRty) (b :: bs) := by omega
+            have heq : sliceLevel - extHasAttrChainCostTy env (.record recRty) (b :: bs) =
+                (sliceLevel - extHasAttrChainCostTy env (.record recRty) (b :: bs) - 1) + 1 := by omega
             have hc := reachable_child (heq ▸ hr) hed hmemed
             have htarget :
-                (sliceLevel - extHasAttrChainCostTy env (.record recRty) rest - 1) + 2 =
-                sliceLevel - extHasAttrChainCostTy env (.record recRty) rest + 1 := by omega
+                (sliceLevel - extHasAttrChainCostTy env (.record recRty) (b :: bs) - 1) + 2 =
+                sliceLevel - extHasAttrChainCostTy env (.record recRty) (b :: bs) + 1 := by omega
             exact htarget ▸ hc
   | cons_entity_from_record htyfind hqty htail ih =>
     rename_i recRty attr rest qty nextEty
     have ⟨r, hv⟩ := instance_of_record_type_is_record hinst
     subst hv
+    cases rest with
+    | nil => exact absurd htail (by intro h; cases h)
+    | cons b bs =>
     simp only [hasAttrs.loop, attrsOf]
     cases hfind : r.find? _ with
     | none => simp
@@ -320,12 +335,16 @@ private theorem hasAttrs_loop_chain_sound_strict
           have hm := hreach uid (sliceEUIDs_record_field hfind uid
             (by simp [Value.sliceEUIDs, Set.mem_singleton]))
           simp [extHasAttrChainCostTy, htyfind, hqty] at hcost hm
-          have heq : sliceLevel - (1 + extHasAttrChainCostTy env (.entity nextEty) rest) + 1 =
-              sliceLevel - extHasAttrChainCostTy env (.entity nextEty) rest := by omega
+          have heq : sliceLevel - (1 + extHasAttrChainCostTy env (.entity nextEty) (b :: bs)) + 1 =
+              sliceLevel - extHasAttrChainCostTy env (.entity nextEty) (b :: bs) := by omega
           exact heq ▸ hm
   | cons_record_from_record htyfind hqty htail ih =>
+    rename_i recRty attr rest qty nextRecRty
     have ⟨r, hv⟩ := instance_of_record_type_is_record hinst
     subst hv
+    cases rest with
+    | nil => exact absurd htail (by intro h; cases h)
+    | cons b bs =>
     simp only [hasAttrs.loop, attrsOf]
     cases hfind : r.find? _ with
     | none => simp
