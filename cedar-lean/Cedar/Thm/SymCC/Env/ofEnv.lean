@@ -1152,7 +1152,7 @@ theorem ofEnv_entities_valid_refs_for_wt_expr
     exact ofEnv_entities_valid_refs_for_wt_expr hwf h₂
   | unaryApp h
   | hasAttr_entity h | hasAttr_record h
-  | extHasAttr_entity h | extHasAttr_record h
+  | extHasAttr_entity h | extHasAttr_record h | extHasAttr_ff h
   | getAttr_entity h | getAttr_record h =>
     simp only [TypedExpr.toExpr]
     constructor

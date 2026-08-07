@@ -271,6 +271,127 @@ private theorem attrsOf_ok_of_typeOfHasAttr
   · simp [err] at h₀
 
 /--
+If `typeOfHasAttr` returns `.bool .ff` (attribute definitely not in the type),
+but the runtime value has the attribute (attrsOf succeeds, find? = some), this is a contradiction.
+Well-typed values respect their schema.
+-/
+private theorem typeOfHasAttr_ff_contradicts_find
+  {ty₁ : TypedExpr} {x₁ : Expr} {a : Attr} {c : Capabilities} {env : TypeEnv}
+  {tyHas : TypedExpr} {ci : Capabilities}
+  {v : Value} {m : Map Attr Value} {next : Value}
+  {request : Request} {entities : Entities}
+  (hwf : InstanceOfWellFormedEnvironment request entities env)
+  (hha : typeOfHasAttr ty₁ x₁ a c env = .ok (tyHas, ci))
+  (hff : tyHas.typeOf = .bool .ff)
+  (hio : InstanceOfType env v ty₁.typeOf)
+  (hattrs : (attrsOf v fun uid => .ok (entities.attrsOrEmpty uid)) = .ok m)
+  (hfind : m.find? a = .some next) : False := by
+  simp only [typeOfHasAttr, bind, Except.bind] at hha
+  split at hha
+  case h_1 rty heq =>
+    -- Record case: ty₁.typeOf = .record rty
+    -- hasAttrInRecord rty returns .ff → rty.find? a = .none
+    simp only [hasAttrInRecord] at hha
+    split at hha
+    · simp at hha  -- error case impossible
+    · rename_i v₁ heq₂
+      simp only [ok, Except.ok.injEq, Prod.mk.injEq] at hha
+      obtain ⟨hty_eq, _⟩ := hha
+      split at heq₂
+      case h_1 qty hfind_rty =>
+        -- rty.find? a = .some qty → result is .tt or .anyBool, never .ff
+        split at heq₂ <;> {
+          simp only [ok, Except.ok.injEq] at heq₂
+          subst heq₂; simp [TypedExpr.typeOf, ← hty_eq] at hff
+        }
+      case h_2 hfind_rty_none =>
+        rw [heq] at hio
+        cases hio with
+        | instance_of_record r h₁_contains _ _ =>
+          have heq_rm : r = m := by simpa [attrsOf] using hattrs
+          subst heq_rm
+          rename_i h_closed _ _
+          have hrc := h_closed a (Map.contains_iff_some_find?.mpr ⟨next, hfind⟩)
+          rw [Map.contains_iff_some_find?] at hrc
+          obtain ⟨_, habs⟩ := hrc
+          simp [hfind_rty_none] at habs
+  case h_2 ety heq =>
+    -- Entity case: similar reasoning using InstanceOfEntityType
+    rw [heq] at hio
+    have ⟨uid, _, hv_eq⟩ := instance_of_entity_type_is_entity hio
+    subst hv_eq
+    simp [attrsOf] at hattrs
+    subst hattrs
+    -- split on env.ets.attrs? ety in hha
+    split at hha
+    case h_1 rty hety_schema =>
+      -- Entity schema found — same logic as record: hasAttrInRecord returns .ff → find? = none
+      simp only [hasAttrInRecord] at hha
+      split at hha
+      · simp at hha
+      · rename_i v₁ heq₂
+        simp only [ok, Except.ok.injEq, Prod.mk.injEq] at hha
+        obtain ⟨hty_eq, _⟩ := hha
+        split at heq₂
+        case h_1 qty hfind_schema =>
+          split at heq₂ <;> {
+            simp only [ok, Except.ok.injEq] at heq₂
+            subst heq₂; simp [TypedExpr.typeOf, ← hty_eq] at hff
+          }
+        case h_2 hfind_schema_none =>
+          -- entities.attrsOrEmpty uid has attr a → entities.find? uid = some data
+          have hent : ∃ data, entities.find? uid = some data := by
+            cases hf : entities.find? uid with
+            | some d => exact ⟨d, rfl⟩
+            | none => simp [Entities.attrsOrEmpty, hf] at hfind
+          obtain ⟨data, hent⟩ := hent
+          -- attrsOrEmpty uid = data.attrs
+          have hattrs_eq : entities.attrsOrEmpty uid = data.attrs := by
+            simp [Entities.attrsOrEmpty, hent]
+          rw [hattrs_eq] at hfind
+          -- InstanceOfSchema → InstanceOfSchemaEntry
+          have hschema := hwf.2.2.1 uid data hent
+          -- Must be entity schema entry (not action, since we have env.ets.attrs? ety = some rty)
+          rcases hschema with ⟨entry, hets_find, _, hinst_attrs, _, _⟩ | ⟨_, _, _⟩
+          · -- entry.attrs = rty
+            have huid_ety : uid.ty = ety := by assumption
+            have hfind_ety : env.ets.find? ety = some entry := huid_ety ▸ hets_find
+            have hrty_eq : entry.attrs = rty := by
+              have h : env.ets.attrs? ety = some entry.attrs := by
+                simp [EntitySchema.attrs?, hfind_ety]
+              simp [h] at hety_schema; exact hety_schema
+            have habsent := absent_attribute_is_absent hinst_attrs (hrty_eq ▸ hfind_schema_none)
+            rw [hfind] at habsent
+            contradiction
+          · -- Action schema case: action entities have empty attrs
+            rename_i hempty _ _
+            rw [hempty] at hfind
+            simp [Map.find?, Map.empty] at hfind
+    case h_2 hety_none =>
+      -- Entity type not in schema
+      split at hha
+      · -- action type → .ff result — action entities have empty attrs
+        have hent : ∃ data, entities.find? uid = some data := by
+          cases hf : entities.find? uid with
+          | some d => exact ⟨d, rfl⟩
+          | none => simp [Entities.attrsOrEmpty, hf] at hfind
+        obtain ⟨data, hent⟩ := hent
+        have hschema := hwf.2.2.1 uid data hent
+        rcases hschema with ⟨entry, hets_find, _, _, _, _⟩ | ⟨hempty, _, _⟩
+        · -- env.ets.find? uid.ty = some entry contradicts env.ets.attrs? ety = none
+          have huid_ety : uid.ty = ety := by assumption
+          have : env.ets.find? ety = none := by
+            simp [EntitySchema.attrs?] at hety_none
+            exact hety_none
+          rw [huid_ety] at hets_find
+          simp [this] at hets_find
+        · -- Action schema entry: data.attrs = .empty
+          simp [Entities.attrsOrEmpty, hent, hempty] at hfind
+      · simp [err] at hha
+  case h_3 =>
+    simp [err] at hha
+
+/--
 If `typeOfExtHasAttr` succeeds and `InstanceOfType env v ty₁.typeOf` holds,
 then `hasAttrs.loop v attrs entities` cannot produce a type error.
 The recursion of `typeOfExtHasAttr` mirrors `hasAttrs.loop`, so we can induct simultaneously.
@@ -283,119 +404,86 @@ private theorem typeOfExtHasAttr_no_typeError
   (h₂ : InstanceOfWellFormedEnvironment request entities env)
   (hext : typeOfExtHasAttr ty₁ x₁ attrs c env = .ok res)
   (hio : InstanceOfType env v ty₁.typeOf)
-  (h₁ : CapabilitiesInvariant c request entities)
+  (hcap : CapabilitiesInvariant c request entities)
   (heval : evaluate x₁ request entities = .ok v) :
   ∀ e, hasAttrs.loop v attrs entities ≠ .error e := by
   induction attrs generalizing ty₁ x₁ v c res with
   | nil =>
-    -- hasAttrs.loop v [] = .ok true, never errors
-    intro e he; simp [hasAttrs.loop] at he
+    intro _ h₁; simp [hasAttrs.loop] at h₁
   | cons a rest ih =>
-    intro e he
-    -- Unfold hasAttrs.loop
-    simp only [hasAttrs.loop] at he
-    split at he
-    case h_1 m hattrs_ok =>
-      split at he
+    intro e h₁
+    simp only [hasAttrs.loop] at h₁
+    split at h₁
+    case h_1 m h₃ =>
+      split at h₁
       case h_1 next hfind =>
-        split at he
-        case isTrue => simp at he
+        split at h₁
+        case isTrue => simp at h₁
         case isFalse hne =>
           cases rest with
           | nil => simp at hne
           | cons b rest' =>
             simp only [typeOfExtHasAttr, bind, Except.bind] at hext
-            -- typeOfGetAttr must succeed
-            cases hga : typeOfGetAttr ty₁ x₁ a c env with
-            | error => simp [hga] at hext
-            | ok val_ga =>
-              simp only [hga] at hext
-              obtain ⟨tyNext, _⟩ := val_ga
-              -- typeOfHasAttr must succeed
-              cases hha_ty : typeOfHasAttr ty₁ x₁ a c env with
-              | error => simp [hha_ty] at hext
-              | ok val_ha =>
-                simp only [hha_ty] at hext
-                obtain ⟨_, ci⟩ := val_ha
-                -- Recursive typeOfExtHasAttr call
-                cases hrec : typeOfExtHasAttr tyNext (Expr.getAttr x₁ a) (b :: rest') (c ∪ ci) env with
-                | error => simp [hrec] at hext
-                | ok val_rec =>
-                  -- We have: InstanceOfType env next tyNext.typeOf
-                  have hio_next : InstanceOfType env next tyNext.typeOf :=
-                    instance_of_getAttr_type h₂ hga hio hattrs_ok hfind heval
-                  -- evaluate (Expr.getAttr x₁ a) = .ok next
-                  have heval_next : evaluate (Expr.getAttr x₁ a) request entities = .ok next := by
-                    simp [evaluate, heval, getAttr_ok_of_attrsOf_find hattrs_ok hfind]
-                  -- CapabilitiesInvariant (c ∪ ci) (from typeOfHasAttr caps being valid)
-                  -- Actually we need hasAttr to hold for ci to be valid
-                  -- But we know m.find? a = .some next, so hasAttr v a = .ok true
-                  have hhasattr : hasAttr v a entities = .ok true :=
-                    hasAttr_true_of_attrsOf_find hattrs_ok hfind
-                  have hci_shape := typeOfHasAttr_caps_subset hha_ty
-                  have hci_inv : CapabilitiesInvariant ci request entities := by
-                    cases hci_shape with
-                    | inl h => rw [h]; exact empty_capabilities_invariant request entities
-                    | inr h =>
-                      rw [h]
-                      constructor
-                      · intro x k hm
-                        simp [Capabilities.singleton] at hm
-                        obtain ⟨hx, hk⟩ := hm
-                        subst hx; subst hk
-                        simp [EvaluatesTo]
-                        exact Or.inr (Or.inr (Or.inr (by simp [evaluate, heval, hhasattr])))
-                      · intro x k hm
-                        simp [Capabilities.singleton] at hm
-                  have hc_ci_inv : CapabilitiesInvariant (c ∪ ci) request entities :=
-                    capability_union_invariant h₁ hci_inv
-                  -- Apply IH
-                  exact ih hrec hio_next hc_ci_inv heval_next e he
-      case h_2 =>
-        -- m.find? a = .none → .ok false ≠ .error
-        simp at he
-    case h_2 hattrs_err =>
-      -- attrsOf v failed. But InstanceOfType + typeOfExtHasAttr succeeding means
-      -- ty₁.typeOf is entity or record, so v is entity/record, so attrsOf succeeds.
-      -- Contradiction.
+            -- typeOfHasAttr must succeed
+            cases hha_ty : typeOfHasAttr ty₁ x₁ a c env with
+            | error => simp [hha_ty] at hext
+            | ok val_ha =>
+              obtain ⟨tyHas, ci⟩ := val_ha
+              simp only [hha_ty] at hext
+              -- Split on the .ff match
+              split at hext
+              case h_1 hff_ty =>
+                -- typeOfHasAttr returned .ff — contradicts runtime find
+                exfalso
+                exact typeOfHasAttr_ff_contradicts_find h₂ hha_ty hff_ty hio h₃ hfind
+              case h_2 hnotff =>
+                -- Normal case: typeOfGetAttr must succeed
+                cases hga : typeOfGetAttr ty₁ x₁ a c env with
+                | error => simp [hga] at hext
+                | ok val_ga =>
+                  simp only [hga] at hext
+                  obtain ⟨tyNext, _⟩ := val_ga
+                  -- Recursive typeOfExtHasAttr call
+                  cases hrec : typeOfExtHasAttr tyNext (Expr.getAttr x₁ a) (b :: rest') (c ∪ ci) env with
+                  | error => simp [hrec] at hext
+                  | ok val_rec =>
+                    clear hext  -- no longer needed; we have hrec
+                    -- Apply IH
+                    have hio_next : InstanceOfType env next tyNext.typeOf :=
+                      instance_of_getAttr_type h₂ hga hio h₃ hfind heval
+                    have heval_next : evaluate (Expr.getAttr x₁ a) request entities = .ok next := by
+                      simp [evaluate, heval, getAttr_ok_of_attrsOf_find h₃ hfind]
+                    have hhasattr : hasAttr v a entities = .ok true :=
+                      hasAttr_true_of_attrsOf_find h₃ hfind
+                    have hci_shape := typeOfHasAttr_caps_subset hha_ty
+                    have hci_inv : CapabilitiesInvariant ci request entities := by
+                      cases hci_shape with
+                      | inl h => rw [h]; exact empty_capabilities_invariant request entities
+                      | inr h =>
+                        rw [h]
+                        constructor
+                        · intro _ _ h₉
+                          simp [Capabilities.singleton] at h₉
+                          obtain ⟨h₁₀, h₁₁⟩ := h₉; subst h₁₀ h₁₁
+                          simp [EvaluatesTo]
+                          exact Or.inr (Or.inr (Or.inr (by simp [evaluate, heval, hhasattr])))
+                        · intro _ _ h₉
+                          simp [Capabilities.singleton] at h₉
+                    have hc_ci_inv : CapabilitiesInvariant (c ∪ ci) request entities :=
+                      capability_union_invariant hcap hci_inv
+                    exact ih hrec hio_next hc_ci_inv heval_next e h₁
+      case h_2 => simp at h₁
+    case h_2 h₁₀ =>
       exfalso
-      -- typeOfExtHasAttr on (a :: rest) calls typeOfHasAttr or typeOfGetAttr which requires
-      -- ty₁.typeOf to be entity or record
-      have hattrsOf_ok : ∃ m, attrsOf v (fun uid => .ok (entities.attrsOrEmpty uid)) = .ok m := by
-        cases rest with
-        | nil =>
-          -- typeOfExtHasAttr ty₁ x₁ [a] c env = typeOfHasAttr ty₁ x₁ a c env >>= ...
+      have h₁₁ : ∃ m, attrsOf v (fun uid => .ok (entities.attrsOrEmpty uid)) = .ok m := by
+        cases rest <;> {
           simp only [typeOfExtHasAttr, bind, Except.bind] at hext
-          cases hha : typeOfHasAttr ty₁ x₁ a c env with
-          | error => simp [hha] at hext
-          | ok val =>
-            -- typeOfHasAttr succeeding means ty₁.typeOf is entity or record
-            exact attrsOf_ok_of_typeOfHasAttr ⟨val, hha⟩ hio
-        | cons b rest' =>
-          -- typeOfExtHasAttr ty₁ x₁ (a :: b :: rest') starts with typeOfGetAttr
-          simp only [typeOfExtHasAttr, bind, Except.bind] at hext
-          cases hga : typeOfGetAttr ty₁ x₁ a c env with
-          | error => simp [hga] at hext
-          | ok val_ga =>
-            -- typeOfGetAttr succeeding means ty₁.typeOf is entity or record
-            simp only [typeOfGetAttr, bind, Except.bind] at hga
-            split at hga
-            · -- record
-              rename_i rty hrty
-              rw [hrty] at hio
-              have ⟨avs, hv⟩ := instance_of_record_type_is_record hio
-              subst hv
-              exact ⟨avs, by simp [attrsOf]⟩
-            · -- entity
-              rename_i ety hety
-              split at hga <;> simp [err] at hga
-              rw [hety] at hio
-              have ⟨euid, _, hv⟩ := instance_of_entity_type_is_entity hio
-              subst hv
-              exact ⟨entities.attrsOrEmpty euid, by simp [attrsOf]⟩
-            · simp [err] at hga
-      obtain ⟨m, hm⟩ := hattrsOf_ok
-      simp [hm] at hattrs_err
+          cases h₆ : typeOfHasAttr ty₁ x₁ a c env with
+          | error => simp [h₆] at hext
+          | ok val => exact attrsOf_ok_of_typeOfHasAttr ⟨val, h₆⟩ hio
+        }
+      obtain ⟨_, h₁₁⟩ := h₁₁
+      simp [h₁₁] at h₁₀
 
 /--
 If `typeOfExtHasAttr` succeeds and `hasAttrs.loop` returns true,
@@ -419,14 +507,12 @@ private theorem typeOfExtHasAttr_gci
     rw [← hext]; simp
     exact empty_capabilities_invariant request entities
   | cons a rest ih =>
-    -- hasAttrs.loop v (a :: rest) = .ok true implies attrsOf v succeeds and find? works
-    have ⟨m, x₀, h₀, h₁, h₃⟩ := hasAttrs_loop_true_implies_find hloop
-    -- hasAttr v a = .ok true
+    -- hasAttrs.loop v (a :: rest) = .ok true → attrsOf v ok, find? a = some next, recurse
+    have ⟨m, x₀, h₀, h₁_find, h₃⟩ := hasAttrs_loop_true_implies_find hloop
     have h₄ : hasAttr v a entities = .ok true :=
-      hasAttr_true_of_attrsOf_find h₀ h₁
+      hasAttr_true_of_attrsOf_find h₀ h₁_find
     cases rest with
     | nil =>
-      -- typeOfExtHasAttr ty₁ x₁ [a] c env = typeOfHasAttr ty₁ x₁ a c env >>= ...
       simp only [typeOfExtHasAttr, bind, Except.bind] at hext
       cases h₅ : typeOfHasAttr ty₁ x₁ a c env with
       | error => simp [h₅] at hext
@@ -459,61 +545,60 @@ private theorem typeOfExtHasAttr_gci
               simp only [EvaluatesTo, ExceptT.stM_eq]
               exact Or.inr (Or.inr (Or.inr (by simp [evaluate, heval, h₄])))
     | cons b rest' =>
-      -- typeOfExtHasAttr ty₁ x₁ (a :: b :: rest') c env
       simp only [typeOfExtHasAttr, bind, Except.bind] at hext
-      cases h₅ : typeOfGetAttr ty₁ x₁ a c env with
-      | error => simp [h₅] at hext
-      | ok val_ga =>
-        simp only [h₅] at hext
-        obtain ⟨tyNext, _⟩ := val_ga
-        cases h₆ : typeOfHasAttr ty₁ x₁ a c env with
-        | error => simp [h₆] at hext
-        | ok val_ha =>
-          simp only [h₆] at hext
-          cases h₇ : typeOfExtHasAttr tyNext (Expr.getAttr x₁ a) (b :: rest') (c ∪ val_ha.2) env with
-          | error => simp [h₇] at hext
-          | ok val_rec =>
-            simp only [h₇] at hext
-            -- Both branches of the match on val_ha.fst.typeOf give caps = val_ha.2 ∪ val_rec.snd
-            have hcaps : res.2 = val_ha.2 ∪ val_rec.2 := by
-              revert hext; split
-              · intro hext
-                obtain ⟨_, h⟩ := Prod.mk.inj (Except.ok.inj hext)
-                exact h.symm
-              · intro hext
-                obtain ⟨_, h⟩ := Prod.mk.inj (Except.ok.inj hext)
-                exact h.symm
-            rw [hcaps]
-            -- val_ha.2 is valid (same as before)
-            have h₉ : CapabilitiesInvariant val_ha.2 request entities := by
-              cases typeOfHasAttr_caps_subset h₆ with
-              | inl h => rw [h]; exact empty_capabilities_invariant request entities
-              | inr h =>
-                rw [h]
-                constructor <;> intro _ _ h₇ <;> simp [Capabilities.singleton] at h₇
-                · obtain ⟨h₈, h₉⟩ := h₇; subst h₈ h₉
-                  simp [EvaluatesTo]
-                  exact Or.inr (Or.inr (Or.inr (by simp [evaluate, heval, h₄])))
-            -- val_rec.2 is valid by IH
-            -- InstanceOfType env next tyNext.typeOf
-            have hio_next : InstanceOfType env x₀ tyNext.typeOf :=
-              instance_of_getAttr_type hwf h₅ hio h₀ h₁ heval
-            -- evaluate (Expr.getAttr x₁ a) = .ok next
-            have heval_next : evaluate (Expr.getAttr x₁ a) request entities = .ok x₀ := by
-              simp [evaluate, heval, getAttr_ok_of_attrsOf_find h₀ h₁]
-            -- CapabilitiesInvariant (c ∪ val_ha.2)
-            have hc_ci_inv : CapabilitiesInvariant (c ∪ val_ha.2) request entities :=
-              capability_union_invariant hcap h₉
-            have hrec_inv : CapabilitiesInvariant val_rec.2 request entities := by
+      cases h₆ : typeOfHasAttr ty₁ x₁ a c env with
+      | error => simp [h₆] at hext
+      | ok val_ha =>
+        simp only [h₆] at hext
+        obtain ⟨tyHas, ci⟩ := val_ha
+        simp only at hext
+        split at hext
+        case h_1 hff =>
+          -- .ff case: contradicts runtime find (attr found since loop returned true)
+          exfalso
+          exact typeOfHasAttr_ff_contradicts_find hwf h₆ hff hio h₀ h₁_find
+        case h_2 hnotff =>
+          cases h₅ : typeOfGetAttr ty₁ x₁ a c env with
+          | error => simp [h₅] at hext
+          | ok val_ga =>
+            simp only [h₅] at hext
+            obtain ⟨tyNext, _⟩ := val_ga
+            cases h₇ : typeOfExtHasAttr tyNext (Expr.getAttr x₁ a) (b :: rest') (c ∪ ci) env with
+            | error => simp [h₇] at hext
+            | ok val_rec =>
+              simp only [h₇] at hext
+              -- Both branches of the match on tyHas.typeOf give caps = ci ∪ val_rec.snd
+              have hcaps : res.2 = ci ∪ val_rec.2 := by
+                revert hext; split
+                · intro hext
+                  obtain ⟨_, h⟩ := Prod.mk.inj (Except.ok.inj hext)
+                  exact h.symm
+                · intro hext
+                  obtain ⟨_, h⟩ := Prod.mk.inj (Except.ok.inj hext)
+                  exact h.symm
+              rw [hcaps]
+              -- ci is valid
+              have h₉ : CapabilitiesInvariant ci request entities := by
+                cases typeOfHasAttr_caps_subset h₆ with
+                | inl h => rw [h]; exact empty_capabilities_invariant request entities
+                | inr h =>
+                  rw [h]
+                  constructor <;> intro _ _ h₇ <;> simp [Capabilities.singleton] at h₇
+                  · obtain ⟨h₈, h₉⟩ := h₇; subst h₈ h₉
+                    simp [EvaluatesTo]
+                    exact Or.inr (Or.inr (Or.inr (by simp [evaluate, heval, h₄])))
+              -- val_rec.2 is valid by IH
+              have hio_next : InstanceOfType env x₀ tyNext.typeOf :=
+                instance_of_getAttr_type hwf h₅ hio h₀ h₁_find heval
+              have heval_next : evaluate (Expr.getAttr x₁ a) request entities = .ok x₀ := by
+                simp [evaluate, heval, getAttr_ok_of_attrsOf_find h₀ h₁_find]
+              have hc_ci_inv : CapabilitiesInvariant (c ∪ ci) request entities :=
+                capability_union_invariant hcap h₉
               have hloop_rest : hasAttrs.loop x₀ (b :: rest') entities = .ok true :=
                 h₃.resolve_left (by simp)
-              apply ih
-              · exact h₇
-              · exact hloop_rest
-              · exact hio_next
-              · exact hc_ci_inv
-              · exact heval_next
-            exact capability_union_invariant h₉ hrec_inv
+              have hrec_inv : CapabilitiesInvariant val_rec.2 request entities :=
+                ih h₇ hloop_rest hio_next hc_ci_inv heval_next
+              exact capability_union_invariant h₉ hrec_inv
 
 /--
 Helper: typeOfHasAttr returning .tt contradicts find? a = none at runtime.
@@ -681,13 +766,10 @@ private theorem typeOfExtHasAttr_bool_type_sound
                   split at hattr_rec
                   case h_1 qty hqty =>
                     simp only [ok] at hattr_rec
-                    split at hattr_rec
-                    · simp only [Except.ok.injEq] at hattr_rec
-                      rw [← hattr_rec] at hha
-                      rw [← hha] at heq; simp [TypedExpr.typeOf] at heq
-                    · simp only [Except.ok.injEq] at hattr_rec
-                      rw [← hattr_rec] at hha
-                      rw [← hha] at heq; simp [TypedExpr.typeOf] at heq
+                    split at hattr_rec <;> {
+                      simp only [Except.ok.injEq] at hattr_rec
+                      rw [← hha, ← hattr_rec] at heq; simp [TypedExpr.typeOf] at heq
+                    }
                   case h_2 =>
                     simp only [ok, Except.ok.injEq] at hattr_rec
                     have hio_rec : InstanceOfType env v (.record rty) := by rwa [hrty] at hio
@@ -712,13 +794,10 @@ private theorem typeOfExtHasAttr_bool_type_sound
                     split at hattr_rec
                     case h_1 qty hqty =>
                       simp only [ok] at hattr_rec
-                      split at hattr_rec
-                      · simp only [Except.ok.injEq] at hattr_rec
-                        rw [← hattr_rec] at hha
-                        rw [← hha] at heq; simp [TypedExpr.typeOf] at heq
-                      · simp only [Except.ok.injEq] at hattr_rec
-                        rw [← hattr_rec] at hha
-                        rw [← hha] at heq; simp [TypedExpr.typeOf] at heq
+                      split at hattr_rec <;> {
+                        simp only [Except.ok.injEq] at hattr_rec
+                        rw [← hha, ← hattr_rec] at heq; simp [TypedExpr.typeOf] at heq
+                      }
                     case h_2 hfind_none =>
                       simp only [ok, Except.ok.injEq] at hattr_rec
                       have hio_ety : InstanceOfType env v (.entity ety) := by rwa [hety] at hio
@@ -880,70 +959,88 @@ private theorem typeOfExtHasAttr_bool_type_sound
           rw [← hbty_eq]
           simp [InstanceOfBoolType]
     | cons b more =>
-      -- Recursive case: typeOfExtHasAttr ty₁ x₁ (a :: b :: more) unfolds to
-      -- typeOfGetAttr, typeOfHasAttr, then recurse on (b :: more) with tyNext
+      -- Unfold typeOfExtHasAttr and hasAttrs.loop
       simp only [typeOfExtHasAttr, bind, Except.bind] at hext
-      cases hga : typeOfGetAttr ty₁ x₁ a c env with
-      | error => simp [hga] at hext
-      | ok val_ga =>
-        simp only [hga] at hext
-        obtain ⟨tyNext, _⟩ := val_ga
-        cases hha_step : typeOfHasAttr ty₁ x₁ a c env with
-        | error => simp [hha_step] at hext
-        | ok val_ha =>
-          simp only [hha_step] at hext
-          -- hext now relates to the recursive call
-          -- hasAttrs.loop v (a :: b :: more): attrsOf v, find? a, then recurse
-          simp only [hasAttrs.loop] at hloop
-          split at hloop
-          case h_2 => simp at hloop -- attrsOf fails → contradiction
-          rename_i r hattrs
-          split at hloop
-          case h_2 =>
-            -- find? a = none → loop returns false
-            simp at hloop; subst hloop
-            -- Need InstanceOfBoolType false bty
-            -- First resolve the typeOfExtHasAttr call in hext
-            cases h_rec : typeOfExtHasAttr tyNext (Expr.getAttr x₁ a) (b :: more) (c ∪ val_ha.2) env with
-            | error => simp [h_rec] at hext
-            | ok val_rec =>
-              simp only [h_rec] at hext
-              -- Now split on val_ha.fst.typeOf
-              split at hext
-              · exfalso
-                rename_i hfind_none _ heq_tt
-                exact typeOfHasAttr_tt_contradicts_find_none hha_step heq_tt hio hcap heval hattrs hfind_none
-              · simp only [Except.ok.injEq, Prod.mk.injEq] at hext
-                rw [← hext.1]; simp [InstanceOfBoolType]
-          case h_1 next hfind =>
-            simp only [List.isEmpty] at hloop
-            cases h_rec : typeOfExtHasAttr tyNext (Expr.getAttr x₁ a) (b :: more) (c ∪ val_ha.2) env with
-            | error => simp [h_rec] at hext
-            | ok val_rec =>
-              simp only [h_rec] at hext
-              split at hext
-              · simp only [Except.ok.injEq, Prod.mk.injEq] at hext
-                rw [← hext.1]
-                have hio_next : InstanceOfType env next tyNext.typeOf :=
-                  instance_of_getAttr_type hwf hga hio hattrs hfind heval
-                have heval_next : evaluate (Expr.getAttr x₁ a) request entities = .ok next := by
-                  simp [evaluate, heval, getAttr_ok_of_attrsOf_find hattrs hfind]
-                have hcap_ci : CapabilitiesInvariant (c ∪ val_ha.2) request entities := by
-                  apply capability_union_invariant hcap
-                  cases typeOfHasAttr_caps_subset hha_step with
-                  | inl h => rw [h]; exact empty_capabilities_invariant request entities
-                  | inr h =>
-                    rw [h]; constructor <;> intro _ _ hh <;> simp [Capabilities.singleton] at hh
-                    · obtain ⟨hh₁, hh₂⟩ := hh; subst hh₁ hh₂
-                      simp only [EvaluatesTo]
-                      refine Or.inr (Or.inr (Or.inr ?_))
-                      simp only [evaluate, heval, hasAttr, bind, Except.bind,
-                        hattrs, Map.contains]
-                      rw [hfind]; rfl
-                exact ih h_rec hio_next hcap_ci heval_next hloop
-              · -- non-.tt → bty = .anyBool
-                simp only [Except.ok.injEq, Prod.mk.injEq] at hext
-                rw [← hext.1]; simp [InstanceOfBoolType]
+      cases hha_step : typeOfHasAttr ty₁ x₁ a c env with
+      | error => simp [hha_step] at hext
+      | ok val_ha =>
+        simp only [hha_step] at hext
+        obtain ⟨tyHas, ci_ha⟩ := val_ha
+        simp only at hext
+        -- hasAttrs.loop v (a :: b :: more): attrsOf v, find? a, then recurse
+        simp only [hasAttrs.loop] at hloop
+        split at hloop
+        case h_2 => simp at hloop -- attrsOf fails → contradiction
+        rename_i r hattrs
+        split at hloop
+        case h_2 hfind_none =>
+          -- find? a = none → loop returns false
+          simp at hloop; subst hloop
+          -- Need InstanceOfBoolType false bty
+          -- typeOfHasAttr returned some type. split on .ff match in hext
+          split at hext
+          case h_1 hff =>
+            -- bty = .ff
+            simp only [Except.ok.injEq, Prod.mk.injEq] at hext
+            rw [← hext.1]; simp [InstanceOfBoolType]
+          case h_2 hnotff =>
+            -- Normal case: typeOfGetAttr...
+            cases hga : typeOfGetAttr ty₁ x₁ a c env with
+            | error => simp [hga] at hext
+            | ok val_ga =>
+              simp only [hga] at hext
+              cases h_rec : typeOfExtHasAttr val_ga.1 (Expr.getAttr x₁ a) (b :: more) (c ∪ ci_ha) env with
+              | error => simp [h_rec] at hext
+              | ok val_rec =>
+                simp only [h_rec] at hext
+                split at hext
+                · -- .tt branch: contradicts hfind_none
+                  exfalso
+                  rename_i heq_tt
+                  exact typeOfHasAttr_tt_contradicts_find_none hha_step heq_tt hio hcap heval hattrs hfind_none
+                · simp only [Except.ok.injEq, Prod.mk.injEq] at hext
+                  rw [← hext.1]; simp [InstanceOfBoolType]
+        case h_1 next hfind =>
+          simp only [List.isEmpty] at hloop
+          split at hext
+          case h_1 hff =>
+            exfalso
+            exact typeOfHasAttr_ff_contradicts_find hwf hha_step hff hio hattrs hfind
+          case h_2 hnotff =>
+            cases hga : typeOfGetAttr ty₁ x₁ a c env with
+            | error => simp [hga] at hext
+            | ok val_ga =>
+              simp only [hga] at hext
+              obtain ⟨tyNext, _⟩ := val_ga
+              cases h_rec : typeOfExtHasAttr tyNext (Expr.getAttr x₁ a) (b :: more) (c ∪ ci_ha) env with
+              | error => simp [h_rec] at hext
+              | ok val_rec =>
+                simp only [h_rec] at hext
+                split at hext
+                · simp only [Except.ok.injEq, Prod.mk.injEq] at hext
+                  rw [← hext.1]
+                  have hio_next : InstanceOfType env next tyNext.typeOf :=
+                    instance_of_getAttr_type hwf hga hio hattrs hfind heval
+                  have heval_next : evaluate (Expr.getAttr x₁ a) request entities = .ok next := by
+                    simp [evaluate, heval, getAttr_ok_of_attrsOf_find hattrs hfind]
+                  have hhasattr : hasAttr v a entities = .ok true :=
+                    hasAttr_true_of_attrsOf_find hattrs hfind
+                  have hcap_ci : CapabilitiesInvariant (c ∪ ci_ha) request entities := by
+                    apply capability_union_invariant hcap
+                    cases typeOfHasAttr_caps_subset hha_step with
+                    | inl h => rw [h]; exact empty_capabilities_invariant request entities
+                    | inr h =>
+                      rw [h]; constructor <;> intro _ _ hh <;> simp [Capabilities.singleton] at hh
+                      · obtain ⟨hh₁, hh₂⟩ := hh; subst hh₁ hh₂
+                        simp only [EvaluatesTo]
+                        refine Or.inr (Or.inr (Or.inr ?_))
+                        simp only [evaluate, heval, hasAttr, bind, Except.bind,
+                          hattrs, Map.contains]
+                        rw [hfind]; rfl
+                  exact ih h_rec hio_next hcap_ci heval_next hloop
+                · -- non-.tt → bty = .anyBool
+                  simp only [Except.ok.injEq, Prod.mk.injEq] at hext
+                  rw [← hext.1]; simp [InstanceOfBoolType]
 
 theorem type_of_extHasAttr_is_sound {x₁ : Expr} {a : Attr} {attrs : List Attr} {c₁ c₂ : Capabilities} {env : TypeEnv} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
@@ -1042,10 +1139,9 @@ theorem type_of_extHasAttr_is_sound {x₁ : Expr} {a : Attr} {attrs : List Attr}
           apply InstanceOfType.instance_of_bool
           exact typeOfExtHasAttr_bool_type_sound h₂ hext₀ hio₁ h₁ hev₁ (by simp [hasAttrs] at hha ⊢; exact hha)
       | error e =>
+        exfalso
         have he := hasAttrs_safe_errors hha
         subst he
-        -- Impossible: typeOfExtHasAttr succeeding + InstanceOfType means no typeError
-        exfalso
         have hne := typeOfExtHasAttr_no_typeError h₂ hext₀ hio₁ h₁ hev₁
         exact hne .typeError (by simp [hasAttrs] at hha; exact hha)
 

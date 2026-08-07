@@ -139,6 +139,26 @@ def getFoo (e : Expr) : Expr := .getAttr e "foo"
 
 def extHasRecordEntityLit := Expr.extHasAttr (recordFoo euidLit) "foo" ["manager"]
 def extHasRecordPrincipal := Expr.extHasAttr (recordFoo principal) "foo" ["manager"]
+def extHasRecordMissing := Expr.extHasAttr (recordFoo principal) "missing" ["manager"]
+
+def desugaredExtHasRecordPrincipal :=
+  Expr.and
+    (.hasAttr (recordFoo principal) "foo")
+    (.hasAttr (.getAttr (recordFoo principal) "foo") "manager")
+
+def desugaredExtHasRecordMissing :=
+  Expr.and
+    (.hasAttr (recordFoo principal) "missing")
+    (.hasAttr (.getAttr (recordFoo principal) "missing") "manager")
+
+def extHasAttrDesugaredLevels :=
+  suite "extHasAttr and guarded-and desugaring should check at the same level"
+  [
+    testLevelCheck "extHasAttr with a statically missing record attribute" extHasRecordMissing 0,
+    testLevelCheck "desugared has-chain with a statically missing record attribute" desugaredExtHasRecordMissing 0,
+    testLevelCheck "extHasAttr through a request-rooted entity in a record" extHasRecordPrincipal 1,
+    testLevelCheck "desugared has-chain through a request-rooted entity in a record" desugaredExtHasRecordPrincipal 1,
+  ].flatten
 
 def composeN (f : α → α) : Nat → (α → α)
 | 0 => id
@@ -160,7 +180,6 @@ def levelThree :=
   let testLevelCheck := (testLevelCheck · · 3)
   suite "Expressions which should check at level 3, but not at level 2"
   [
-    testLevelCheck "extHasAttr through a request-rooted entity in a record" extHasRecordPrincipal,
     testLevelCheck "getAttr thrice on var" (.getAttr (.getAttr (.getAttr principal "manager") "manager") "manager"),
   ].flatten
 
@@ -173,7 +192,8 @@ def rejectedRecordEntityLiteral : TestSuite IO :=
       | .none => return (Except.error "Could not find test environment in schema!" : TestResult)⟩
   ]
 
-def tests := [levelZero, levelOne, levelTwo, levelThree, rejectedRecordEntityLiteral]
+def tests := [levelZero, levelOne, extHasAttrDesugaredLevels, levelTwo, levelThree,
+  rejectedRecordEntityLiteral]
 
 -- Uncomment for interactive debugging
 -- #eval TestSuite.runAll tests

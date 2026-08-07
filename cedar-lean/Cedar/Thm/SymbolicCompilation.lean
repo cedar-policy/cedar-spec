@@ -359,12 +359,24 @@ private theorem compileExtHasAttr_option_typed {t₁ : Term} {attrs : List Attr}
       cases h₁ : compileHasAttr (Factory.option.get t₁) a εs
       · simp [h₁] at h
       · simp only [h₁] at h
-        cases h₂ : compileGetAttr (Factory.option.get t₁) a εs
-        · simp [h₂] at h
-        · simp only [h₂] at h
-          split at h
-          · contradiction
-          · exact compileAnd_option_typed h
+        cases h₂ : compileGetAttr (Factory.option.get t₁) a εs <;> simp only [h₂] at h
+        · split at h
+          . rename_i h₁
+            simp only [h₁, pure, Except.pure, Except.ok.injEq] at h
+            simp [h.symm, OptionTyped, IsOption]
+          . rename_i t_ha e tHas hne
+            cases e <;> simp_all
+            simp only [pure, Except.pure, Except.ok.injEq] at h
+            subst t
+            apply typeOf_ifSome
+            exact compileHasAttr_option_typed h₁
+        · split at h
+          · rename_i h₁
+            simp only [h₁, pure, Except.pure, Except.ok.injEq] at h
+            simp [h.symm, OptionTyped, IsOption]
+          · split at h
+            . contradiction
+            . apply compileAnd_option_typed h
 
 /--
 Weaker result than `compile_well_typed`, but requiring weaker hypotheses:

@@ -430,14 +430,24 @@ theorem conversion_preserves_typedness:
         exact h₁
       · rw [←conversion_preserves_typeof x₁]
         exact h₂
-      · exact ExtHasAttrChainStrict.toValid h₃
+      · exact h₃
     | extHasAttr_record h₁ h₂ h₃ =>
       apply Residual.WellTyped.extHasAttr_record
       · apply conversion_preserves_typedness
         exact h₁
       · rw [←conversion_preserves_typeof x₁]
         exact h₂
-      · exact ExtHasAttrChainStrict.toValid h₃
+      · exact h₃
+    | extHasAttr_ff h₁ h₂ h₃ =>
+      rcases h₂ with ⟨ety, hety⟩ | ⟨rty, hrty⟩
+      · apply Residual.WellTyped.extHasAttr_entity
+        · apply conversion_preserves_typedness; exact h₁
+        · rw [←conversion_preserves_typeof x₁]; exact hety
+        · rw [hety] at h₃; exact h₃
+      · apply Residual.WellTyped.extHasAttr_record
+        · apply conversion_preserves_typedness; exact h₁
+        · rw [←conversion_preserves_typeof x₁]; exact hrty
+        · rw [hrty] at h₃; exact h₃
   | set ls ty' =>
     simp [TypedExpr.toResidual] at h ⊢
     cases h with

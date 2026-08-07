@@ -824,82 +824,81 @@ private theorem compileExtHasAttr_interpret_eq
             interpret_ifSome hI₂ hw₁ (Term.WellFormed.some_wf wf_bool),
             hih, interpret_term_some, interpret_term_prim]
     | cons b rest' =>
-      simp only [compileExtHasAttr, bind, Except.bind] at hok
-      simp_do_let (compileHasAttr (option.get t₁) a εs) as hha at hok
-      rename_i t_ha
-      simp_do_let (compileGetAttr (option.get t₁) a εs) as hga at hok
-      rename_i t_ga
-      simp_do_let (compileExtHasAttr (ifSome t₁ t_ga) (b :: rest') εs) as hrest at hok
-      rename_i t_rest
-      -- Now hok : compileAnd (ifSome t₁ t_ha) (.ok t_rest) = .ok t
-      -- Establish well-formedness
-      have hwo := wf_option_get hw₁ hty₁.choose_spec
-      have hwha := compileHasAttr_wf hwε hwo.left hha
-      have hwtHas := wf_ifSome_option hw₁ hwha.left hwha.right
-      have ⟨hwga, tyga, htyga⟩ := compileGetAttr_wf hwε hwo.left hga
-      have hwtNext := wf_ifSome_option hw₁ hwga htyga
-      have ⟨hwrest, htyrest⟩ := compileExtHasAttr_wf hwε hwtNext.left ⟨tyga, hwtNext.right⟩ hrest
-      -- Show (ifSome t₁ t_ga).interpret I₁ = (ifSome t₁ t_ga).interpret I₂
-      have hih_next : (ifSome t₁ t_ga).interpret I₁ = (ifSome t₁ t_ga).interpret I₂ := by
-        simp_ifSome_eq hI₁ hI₂ hw₁ hty₁.choose_spec hwga htyga hih
-        rename_i ht₁ _
-        replace ⟨t₃, rty, hok_attrs, hr⟩ := compileGetAttr_ok_implies hga
-        replace ⟨hty₃, tyₐ, htyₐ, hr⟩ := hr
-        have hwt₃ := (compileAttrsOf_wf hwε hwo.left hok_attrs).left
-        have ⟨hwr, hwrty⟩ := wf_record_get hwt₃ hty₃ htyₐ
-        split at hr <;> subst hr
-        case h_1 =>
-          exact compileAttrsOf_interpret_record_get_eq
-            hwε hI₁ hI₂ hsm hwo.left hok_attrs hwt₃ hty₃ htyₐ
-            (interpret_option_get_eq hw₁ hty₁.choose_spec hih ht₁)
-        case h_2 =>
-          simp only [interpret_term_some,
-            compileAttrsOf_interpret_record_get_eq
-              hwε hI₁ hI₂ hsm hwo.left hok_attrs hwt₃ hty₃ htyₐ
-              (interpret_option_get_eq hw₁ hty₁.choose_spec hih ht₁)]
-      -- Apply IH to get t_rest interpretation equality
-      have hih_rest : t_rest.interpret I₁ = t_rest.interpret I₂ :=
-        ih hwtNext.left ⟨tyga, hwtNext.right⟩ hih_next hrest
-      -- Show (ifSome t₁ t_ha).interpret I₁ = (ifSome t₁ t_ha).interpret I₂
-      have hih_has : (ifSome t₁ t_ha).interpret I₁ = (ifSome t₁ t_ha).interpret I₂ := by
-        simp_ifSome_eq hI₁ hI₂ hw₁ hty₁.choose_spec hwha.left hwha.right hih
-        rename_i ht₁ _
-        replace ⟨t₃, rty, hok_attrs, hr⟩ := compileHasAttr_ok_implies hha
-        replace ⟨hty₃, hr⟩ := hr
-        have hwt₃ := (compileAttrsOf_wf hwε hwo.left hok_attrs).left
-        split at hr <;> subst hr
-        case h_1 tyₐ htyₐ =>
-          have hwr := wf_record_get hwt₃ hty₃ htyₐ
-          simp only [interpret_term_some,
-            interpret_isSome hI₁ hwr.left,
-            interpret_isSome hI₂ hwr.left,
-            compileAttrsOf_interpret_record_get_eq
-              hwε hI₁ hI₂ hsm hwo.left hok_attrs hwt₃ hty₃ htyₐ
-              (interpret_option_get_eq hw₁ hty₁.choose_spec hih ht₁)]
-        case h_2 | h_3 =>
-          simp only [interpret_term_some, interpret_term_prim]
-      -- Handle compileAnd
-      by_cases hsc : ifSome t₁ t_ha = .some (.prim (.bool false))
-      case pos =>
-        simp only [compileAnd, hsc, Except.ok.injEq] at hok
-        subst hok
-        simp only [interpret_term_some, interpret_term_prim]
-      case neg =>
-        simp only [compileAnd] at hok
+      simp [compileExtHasAttr, bind, Except.bind] at hok
+      split at hok
+      . contradiction
+      . rename_i _ t_ha hha
+        have hwo := wf_option_get hw₁ hty₁.choose_spec
+        have hwha := compileHasAttr_wf hwε hwo.left hha
+        have hiha :
+          (ifSome t₁ t_ha).interpret I₁ = (ifSome t₁ t_ha).interpret I₂ := by
+          have ⟨t₃, rty, hok_attrs, hr⟩ := compileHasAttr_ok_implies hha
+          replace ⟨hty₃, hr⟩ := hr
+          split at hr <;> subst hr
+          case h_1 tyₐ htyₐ =>
+            have hwt₃ := (compileAttrsOf_wf hwε hwo.left hok_attrs).left
+            have hwr := wf_record_get hwt₃ hty₃ htyₐ
+            have ⟨hws, hwsty⟩ := wf_isSome hwr.left
+            replace ⟨hws, hwsty⟩ := wf_term_some hws hwsty
+            simp_ifSome_eq hI₁ hI₂ hw₁ hty₁.choose_spec hws hwsty hih
+            rename_i ht₁ _
+            simp only [interpret_term_some, interpret_isSome hI₁ hwr.left,
+              interpret_isSome hI₂ hwr.left,
+              compileAttrsOf_interpret_record_get_eq
+                hwε hI₁ hI₂ hsm hwo.left hok_attrs hwt₃ hty₃ htyₐ
+                (interpret_option_get_eq hw₁ hty₁.choose_spec hih ht₁)]
+          case h_2 | h_3 =>
+            simp only [interpret_ifSome hI₁ hw₁ (Term.WellFormed.some_wf wf_bool),
+              interpret_ifSome hI₂ hw₁ (Term.WellFormed.some_wf wf_bool),
+              hih, interpret_term_some, interpret_term_prim]
         split at hok
-        case h_1 => contradiction
-        case h_2 hne hty_eq =>
-          simp only [Except.bind_ok, htyrest, ↓reduceIte, Except.ok.injEq] at hok
-          subst hok
-          exact interpret_ifSome_ifSome_ite_eq hI₁ hI₂
-            hwtHas.left hwrest (Term.WellFormed.some_wf wf_bool)
-            hwtHas.right htyrest (by simp only [someOf, typeOf_term_some, typeOf_bool])
-            hih_has hih_rest
-            (by simp only [someOf, interpret_term_some, interpret_term_prim])
-        case h_3 hty_eq =>
-          exfalso
-          rw [hwtHas.right] at hty_eq
-          exact hty_eq rfl
+        case h_1 =>
+          simp only [pure, Except.pure, Except.ok.injEq] at hok
+          subst t
+          exact hiha
+        case h_2 =>
+          split at hok
+          case h_1 =>
+            simp only [pure, Except.pure, Except.ok.injEq] at hok
+            subst t
+            exact hiha
+          case h_2 => simp only [reduceCtorEq] at hok
+          case h_3 =>
+            rename_i _ _ _ _ t_ga hga
+            have ⟨hwga, tyga, htyga⟩ := compileGetAttr_wf hwε hwo.left hga
+            have hwnext := wf_ifSome_option hw₁ hwga htyga
+            have hinext :
+              (ifSome t₁ t_ga).interpret I₁ = (ifSome t₁ t_ga).interpret I₂ := by
+              have ⟨t₃, rty, hok_attrs, hr⟩ := compileGetAttr_ok_implies hga
+              replace ⟨hty₃, tyₐ, htyₐ, hr⟩ := hr
+              have hwt₃ := (compileAttrsOf_wf hwε hwo.left hok_attrs).left
+              have ⟨hwr, hwrty⟩ := wf_record_get hwt₃ hty₃ htyₐ
+              split at hr <;> subst hr
+              case' h_2 => replace ⟨hwr, hwrty⟩ := wf_term_some hwr hwrty
+              all_goals simp_ifSome_eq hI₁ hI₂ hw₁ hty₁.choose_spec hwr hwrty hih
+              all_goals rename_i ht₁ _
+              all_goals simp only [interpret_term_some,
+                compileAttrsOf_interpret_record_get_eq
+                  hwε hI₁ hI₂ hsm hwo.left hok_attrs hwt₃ hty₃ htyₐ
+                  (interpret_option_get_eq hw₁ hty₁.choose_spec hih ht₁)]
+            split at hok
+            case h_1 => simp only [reduceCtorEq] at hok
+            case h_2 =>
+              rename_i _ t_rest hrest
+              have hirest := ih hwnext.left ⟨tyga, hwnext.right⟩ hinext hrest
+              have hwhas := wf_ifSome_option hw₁ hwha.left hwha.right
+              have hwrest := compileExtHasAttr_wf hwε hwnext.left ⟨tyga, hwnext.right⟩ hrest
+              simp only [compileAnd] at hok
+              split at hok
+              case h_1 => contradiction
+              case h_2 =>
+                simp only [Except.bind_ok, hwrest.right, ↓reduceIte, Except.ok.injEq] at hok
+                subst t
+                exact interpret_ifSome_ifSome_ite_eq hI₁ hI₂
+                  hwhas.left hwrest.left (Term.WellFormed.some_wf wf_bool)
+                  hwhas.right hwrest.right (by simp only [someOf, typeOf_term_some, typeOf_bool])
+                  hiha hirest (by simp only [interpret_someOf, interpret_term_prim])
+              case h_3 => simp only [reduceCtorEq] at hok
 
 
 private theorem compile_interpret_extHasAttr_on_footprint {x₁ : Expr} {a₁ : Attr} {attrs : List Attr} {ft : Set Term} {εnv : SymEnv} {I₁ I₂ : Interpretation} {t : Term}

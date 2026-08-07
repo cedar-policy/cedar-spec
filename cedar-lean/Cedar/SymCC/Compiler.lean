@@ -194,10 +194,18 @@ def compileExtHasAttr (t : Term) (attrs : List Attr) (εs : SymEntities) : Resul
   | a :: rest => do
     let tHasRaw ← compileHasAttr (option.get t) a εs
     let tHas := ifSome t tHasRaw
-    let tGa ← compileGetAttr (option.get t) a εs
-    let tNext := ifSome t tGa
-    let tRest ← compileExtHasAttr tNext rest εs
-    compileAnd tHas (.ok tRest)
+    -- If the guarded hasAttr result is statically false, the whole chain is
+    -- false — no need to attempt getAttr.
+    match tHas with
+    | .some (.prim (.bool false)) => pure tHas
+    | _ =>
+      match compileGetAttr (option.get t) a εs with
+      | .error .noSuchAttribute => pure tHas
+      | .error e => .error e
+      | .ok tGa =>
+        let tNext := ifSome t tGa
+        let tRest ← compileExtHasAttr tNext rest εs
+        compileAnd tHas (.ok tRest)
 
 def compileSet (ts : List Term) : Result Term := do
    match ts with

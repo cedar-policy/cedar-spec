@@ -819,18 +819,68 @@ theorem typeOfExtHasAttr_tyNext_type_entity_or_record
     | error => simp at hrec
     | ok val => exact typeOfHasAttr_ok_implies_entity_or_record hha
   | cons c' more =>
+    -- After the change, typeOfExtHasAttr for (b :: c' :: more) starts with typeOfHasAttr
     simp only [typeOfExtHasAttr, bind, Except.bind] at hrec
-    generalize hga : typeOfGetAttr tyNext x₁ b c env = resGA at hrec
-    cases resGA with
+    generalize hha : typeOfHasAttr tyNext x₁ b c env = resHA at hrec
+    cases resHA with
     | error => simp at hrec
-    | ok val =>
-      -- typeOfGetAttr succeeded means tyNext.typeOf is entity or record
-      unfold typeOfGetAttr at hga
-      simp only [bind, Except.bind] at hga
-      split at hga
-      case h_1 rty heq => exact Or.inr ⟨rty, heq⟩
-      case h_2 ety heq => exact Or.inl ⟨ety, heq⟩
-      case h_3 => simp [err] at hga
+    | ok val => exact typeOfHasAttr_ok_implies_entity_or_record hha
+
+private theorem typeOfHasAttr_ff_implies_attr_not_found
+  {ty₁ : TypedExpr} {x₁ : Expr} {attr : Attr} {c : Capabilities} {env : TypeEnv}
+  {tyHas : TypedExpr} {ci : Capabilities}
+  (hha : typeOfHasAttr ty₁ x₁ attr c env = .ok (tyHas, ci))
+  (hety : ty₁.typeOf = .entity ety)
+  (hff : tyHas.typeOf = .bool .ff) :
+  env.ets.attrs? ety = .none ∨ ∀ rty, env.ets.attrs? ety = .some rty → rty.find? attr = .none := by
+  simp only [typeOfHasAttr, hety, bind, Except.bind] at hha
+  split at hha
+  case h_1 rty hattrs =>
+    -- env.ets.attrs? ety = .some rty — need to show rty.find? attr = .none
+    right; intro rty' hrty'
+    have hrty_eq : rty = rty' := by rw [hattrs] at hrty'; exact Option.some.inj hrty'
+    subst hrty_eq
+    simp only [hasAttrInRecord] at hha
+    split at hha
+    · simp at hha
+    · rename_i v heq
+      simp only [ok, Except.ok.injEq, Prod.mk.injEq] at hha
+      obtain ⟨hty_eq, _⟩ := hha
+      split at heq
+      case h_1 qty hfind =>
+        split at heq <;> {
+          simp only [ok, Except.ok.injEq] at heq
+          subst heq; simp [TypedExpr.typeOf, ← hty_eq] at hff
+        }
+      case h_2 hfind => exact hfind
+  case h_2 hattrs =>
+    -- env.ets.attrs? ety = .none
+    exact Or.inl hattrs
+
+private theorem typeOfHasAttr_ff_implies_record_attr_not_found
+  {ty₁ : TypedExpr} {x₁ : Expr} {attr : Attr} {c : Capabilities} {env : TypeEnv}
+  {tyHas : TypedExpr} {ci : Capabilities}
+  (hha : typeOfHasAttr ty₁ x₁ attr c env = .ok (tyHas, ci))
+  (hrty : ty₁.typeOf = .record rty)
+  (hff : tyHas.typeOf = .bool .ff) :
+  rty.find? attr = .none := by
+  simp only [typeOfHasAttr, hrty, bind, Except.bind] at hha
+  simp only [hasAttrInRecord] at hha
+  split at hha
+  · simp at hha
+  · rename_i v heq
+    simp only [ok, Except.ok.injEq, Prod.mk.injEq] at hha
+    obtain ⟨hty_eq, _⟩ := hha
+    split at heq
+    case h_1 qty hfind =>
+      -- rty.find? attr = .some qty → result is .tt or .anyBool, contradicts hff
+      split at heq <;> {
+        simp only [ok, Except.ok.injEq] at heq
+        subst heq
+        simp [TypedExpr.typeOf, ← hty_eq] at hff
+      }
+    case h_2 hfind =>
+      exact hfind
 
 private theorem typeOfExtHasAttr_implies_chain_valid
   {ty₁ : TypedExpr} {x₁ : Expr} {attr : Attr} {attrs : List Attr}
@@ -845,101 +895,64 @@ private theorem typeOfExtHasAttr_implies_chain_valid
     · intro rty _; exact ExtHasAttrChainValid.last
   | cons b rest ih =>
     simp only [typeOfExtHasAttr, bind, Except.bind] at h
-    -- typeOfGetAttr ty₁ x₁ attr c env must succeed
-    generalize hga : typeOfGetAttr ty₁ x₁ attr c env = resGA at h
-    cases resGA with
+    -- typeOfHasAttr ty₁ x₁ attr c env must succeed (first in the new structure)
+    generalize hha : typeOfHasAttr ty₁ x₁ attr c env = resHA at h
+    cases resHA with
     | error => simp at h
-    | ok valGA =>
-      obtain ⟨tyNext, cga⟩ := valGA
+    | ok valHA =>
+      obtain ⟨tyHas, ci⟩ := valHA
       simp only at h
-      -- typeOfHasAttr ty₁ x₁ attr c env must succeed
-      generalize hha : typeOfHasAttr ty₁ x₁ attr c env = resHA at h
-      cases resHA with
-      | error => simp at h
-      | ok valHA =>
-        obtain ⟨_, ci⟩ := valHA
-        simp only at h
-        -- recursive call must succeed
-        generalize hrec : typeOfExtHasAttr tyNext (Expr.getAttr x₁ attr) (b :: rest) (c ∪ ci) env = resRec at h
-        cases resRec with
+      -- Split on tyHas.typeOf to handle the match
+      split at h
+      case h_1 hff =>
+        -- tyHas.typeOf = .bool .ff: intermediate attr definitely missing → vacuously valid
+        simp only [Except.ok.injEq] at h
+        constructor
+        · intro ety hety
+          have hnotfound := typeOfHasAttr_ff_implies_attr_not_found hha hety hff
+          exact .cons_not_in_schema_entity hnotfound
+        · intro rty hrty
+          have hnotfound := typeOfHasAttr_ff_implies_record_attr_not_found hha hrty hff
+          exact .cons_not_in_record hnotfound
+      case h_2 hnotff =>
+        -- Normal case: proceed to typeOfGetAttr
+        generalize hga : typeOfGetAttr ty₁ x₁ attr c env = resGA at h
+        cases resGA with
         | error => simp at h
-        | ok valRec =>
-          have ihResult := ih hrec
-          -- tyNext.typeOf must be entity or record
-          have htyNext_ety_or_rty := typeOfExtHasAttr_tyNext_type_entity_or_record hrec
-          constructor
-          · -- Entity case
-            intro ety hety
-            have ⟨rty_schema, qty, hschema, hfind, htyNext⟩ := typeOfGetAttr_entity_ok_implies hga hety
-            rcases htyNext_ety_or_rty with ⟨nextEty, hnext⟩ | ⟨nextRty, hnext⟩
-            · -- Next type is entity
-              have hqtyType : qty.getType = .entity nextEty := by rw [← htyNext]; exact hnext
-              have h_chain := ihResult.1 nextEty hnext
-              exact ExtHasAttrChainValid.cons_entity hschema hfind hqtyType h_chain
-            · -- Next type is record
-              have hqtyType : qty.getType = .record nextRty := by rw [← htyNext]; exact hnext
-              have h_chain := ihResult.2 nextRty hnext
-              exact ExtHasAttrChainValid.cons_record_from_entity hschema hfind hqtyType h_chain
-          · -- Record case
-            intro rty hrty
-            have ⟨qty, hfind, htyNext⟩ := typeOfGetAttr_record_ok_implies hga hrty
-            rcases htyNext_ety_or_rty with ⟨nextEty, hnext⟩ | ⟨nextRty, hnext⟩
-            · -- Next type is entity
-              have hqtyType : qty.getType = .entity nextEty := by rw [← htyNext]; exact hnext
-              have h_chain := ihResult.1 nextEty hnext
-              exact ExtHasAttrChainValid.cons_entity_from_record hfind hqtyType h_chain
-            · -- Next type is record
-              have hqtyType : qty.getType = .record nextRty := by rw [← htyNext]; exact hnext
-              have h_chain := ihResult.2 nextRty hnext
-              exact ExtHasAttrChainValid.cons_record_from_record hfind hqtyType h_chain
+        | ok valGA =>
+          obtain ⟨tyNext, cga⟩ := valGA
+          simp only at h
+          generalize hrec : typeOfExtHasAttr tyNext (Expr.getAttr x₁ attr) (b :: rest) (c ∪ ci) env = resRec at h
+          cases resRec with
+          | error => simp at h
+          | ok valRec =>
+            -- The final match on tyHas.typeOf (for .tt vs other) doesn't affect chain validity
+            have hrec_ok : ∃ r, typeOfExtHasAttr tyNext (Expr.getAttr x₁ attr) (b :: rest) (c ∪ ci) env = .ok r :=
+              ⟨valRec, hrec⟩
+            have ihResult := ih hrec
+            have htyNext_ety_or_rty := typeOfExtHasAttr_tyNext_type_entity_or_record hrec
+            constructor
+            · intro ety hety
+              have ⟨rty_schema, qty, hschema, hfind, htyNext⟩ := typeOfGetAttr_entity_ok_implies hga hety
+              rcases htyNext_ety_or_rty with ⟨nextEty, hnext⟩ | ⟨nextRty, hnext⟩
+              · have hqtyType : qty.getType = .entity nextEty := by rw [← htyNext]; exact hnext
+                exact .cons_entity hschema hfind hqtyType (ihResult.1 nextEty hnext)
+              · have hqtyType : qty.getType = .record nextRty := by rw [← htyNext]; exact hnext
+                exact .cons_record_from_entity hschema hfind hqtyType (ihResult.2 nextRty hnext)
+            · intro rty hrty
+              have ⟨qty, hfind, htyNext⟩ := typeOfGetAttr_record_ok_implies hga hrty
+              rcases htyNext_ety_or_rty with ⟨nextEty, hnext⟩ | ⟨nextRty, hnext⟩
+              · have hqtyType : qty.getType = .entity nextEty := by rw [← htyNext]; exact hnext
+                exact .cons_entity_from_record hfind hqtyType (ihResult.1 nextEty hnext)
+              · have hqtyType : qty.getType = .record nextRty := by rw [← htyNext]; exact hnext
+                exact .cons_record_from_record hfind hqtyType (ihResult.2 nextRty hnext)
 
-theorem typeOfExtHasAttr_implies_chain_strict
-  {ty₁ : TypedExpr} {x₁ : Expr} {attr : Attr} {attrs : List Attr}
-  {c : Capabilities} {env : TypeEnv} {res : BoolType × Capabilities}
-  (h : typeOfExtHasAttr ty₁ x₁ (attr :: attrs) c env = .ok res) :
-  (∀ ety, ty₁.typeOf = .entity ety → ExtHasAttrChainStrict env.ets (.entity ety) (attr :: attrs)) ∧
-  (∀ rty, ty₁.typeOf = .record rty → ExtHasAttrChainStrict env.ets (.record rty) (attr :: attrs)) := by
-  induction attrs generalizing ty₁ x₁ attr c res with
-  | nil =>
-    constructor
-    · intro ety _; exact ExtHasAttrChainStrict.last
-    · intro rty _; exact ExtHasAttrChainStrict.last
-  | cons b rest ih =>
-    simp only [typeOfExtHasAttr, bind, Except.bind] at h
-    generalize hga : typeOfGetAttr ty₁ x₁ attr c env = resGA at h
-    cases resGA with
-    | error => simp at h
-    | ok valGA =>
-      obtain ⟨tyNext, cga⟩ := valGA
-      simp only at h
-      generalize hha : typeOfHasAttr ty₁ x₁ attr c env = resHA at h
-      cases resHA with
-      | error => simp at h
-      | ok valHA =>
-        obtain ⟨_, ci⟩ := valHA
-        simp only at h
-        generalize hrec : typeOfExtHasAttr tyNext (Expr.getAttr x₁ attr) (b :: rest) (c ∪ ci) env = resRec at h
-        cases resRec with
-        | error => simp at h
-        | ok valRec =>
-          have ihResult := ih hrec
-          have htyNext_ety_or_rty := typeOfExtHasAttr_tyNext_type_entity_or_record hrec
-          constructor
-          · intro ety hety
-            have ⟨rty_schema, qty, hschema, hfind, htyNext⟩ := typeOfGetAttr_entity_ok_implies hga hety
-            rcases htyNext_ety_or_rty with ⟨nextEty, hnext⟩ | ⟨nextRty, hnext⟩
-            · have hqtyType : qty.getType = .entity nextEty := by rw [← htyNext]; exact hnext
-              exact .cons_entity hschema hfind hqtyType (ihResult.1 nextEty hnext)
-            · have hqtyType : qty.getType = .record nextRty := by rw [← htyNext]; exact hnext
-              exact .cons_record_from_entity hschema hfind hqtyType (ihResult.2 nextRty hnext)
-          · intro rty hrty
-            have ⟨qty, hfind, htyNext⟩ := typeOfGetAttr_record_ok_implies hga hrty
-            rcases htyNext_ety_or_rty with ⟨nextEty, hnext⟩ | ⟨nextRty, hnext⟩
-            · have hqtyType : qty.getType = .entity nextEty := by rw [← htyNext]; exact hnext
-              exact .cons_entity_from_record hfind hqtyType (ihResult.1 nextEty hnext)
-            · have hqtyType : qty.getType = .record nextRty := by rw [← htyNext]; exact hnext
-              exact .cons_record_from_record hfind hqtyType (ihResult.2 nextRty hnext)
 
+
+private theorem ExtHasAttrChainValid_liftBoolTypes_entity
+  {ets : EntitySchema} {ety : EntityType} {attrs : List Attr}
+  (h : ExtHasAttrChainValid ets (.entity ety) attrs) :
+  ExtHasAttrChainValid ets (.entity ety) attrs := h
 
 private theorem ExtHasAttrChainValid_liftBoolTypes_record
   {ets : EntitySchema} {rty : RecordType} {attrs : List Attr}
@@ -968,27 +981,6 @@ private theorem ExtHasAttrChainValid_liftBoolTypes_record
   | cons_record_from_entity _ _ _ _ => cases hty_eq
   | cons_not_in_schema_entity _ => cases hty_eq
 
-private theorem ExtHasAttrChainStrict_liftBoolTypes_record
-  {ets : EntitySchema} {rty : RecordType} {attrs : List Attr}
-  (h : ExtHasAttrChainStrict ets (.record rty) attrs) :
-  ExtHasAttrChainStrict ets (.record (RecordType.liftBoolTypes rty)) attrs := by
-  generalize hty_eq : CedarType.record rty = ty at h
-  induction h generalizing rty with
-  | last => exact ExtHasAttrChainStrict.last
-  | cons_entity_from_record h₁ h₂ h₃ _ =>
-    cases hty_eq
-    exact ExtHasAttrChainStrict.cons_entity_from_record
-      (by rw [lift_bool_types_record_eq_map_on_values]; exact Data.Map.find?_mapOnValues_some QualifiedType.liftBoolTypes h₁)
-      (by rw [qualifiedType_liftBoolTypes_getType]; simp [h₂, CedarType.liftBoolTypes])
-      h₃
-  | cons_record_from_record h₁ h₂ _ ih =>
-    cases hty_eq
-    exact ExtHasAttrChainStrict.cons_record_from_record
-      (by rw [lift_bool_types_record_eq_map_on_values]; exact Data.Map.find?_mapOnValues_some QualifiedType.liftBoolTypes h₁)
-      (by rw [qualifiedType_liftBoolTypes_getType]; simp [h₂, CedarType.liftBoolTypes])
-      (ih rfl)
-  | cons_entity _ _ _ _ => cases hty_eq
-  | cons_record_from_entity _ _ _ _ => cases hty_eq
 
 theorem typechecked_is_well_typed_after_lifting_ext_has_attr
 {x₁ : Expr}
@@ -1025,21 +1017,22 @@ theorem typechecked_is_well_typed_after_lifting_ext_has_attr
     | cons attr₂ rest =>
       simp only [typeOfExtHasAttr, bind, Except.bind] at h
       split at h <;> simp_all
-      split at h <;> simp_all
-      rename_i v _
-      have (v₁, v₂) := v
-      exact ⟨v₁, by exact ⟨v₂, by simp⟩⟩
   obtain ⟨⟨_, _⟩, hha⟩ := hha
   have hety_or_rty := typeOfHasAttr_ok_implies_entity_or_record hha
+  have hchain_valid := typeOfExtHasAttr_implies_chain_valid hext
   rcases hety_or_rty with ⟨ety, hety⟩ | ⟨rty, hrty⟩
-  · apply @TypedExpr.WellTyped.extHasAttr_entity env ety
+  · have hlift : ty₁.liftBoolTypes.typeOf = .entity ety := by
+      simp [type_of_after_lifted_is_lifted, hety, CedarType.liftBoolTypes]
+    apply @TypedExpr.WellTyped.extHasAttr_ff env
     · exact hwt₁
-    · simp only [type_of_after_lifted_is_lifted, hety, CedarType.liftBoolTypes]
-    · exact (typeOfExtHasAttr_implies_chain_strict hext).1 ety hety
-  · apply @TypedExpr.WellTyped.extHasAttr_record env (RecordType.liftBoolTypes rty)
+    · exact Or.inl ⟨ety, hlift⟩
+    · rw [hlift]; exact hchain_valid.1 ety hety
+  · have hlift : ty₁.liftBoolTypes.typeOf = .record (RecordType.liftBoolTypes rty) := by
+      simp [type_of_after_lifted_is_lifted, hrty, CedarType.liftBoolTypes]
+    apply @TypedExpr.WellTyped.extHasAttr_ff env
     · exact hwt₁
-    · simp only [type_of_after_lifted_is_lifted, hrty, CedarType.liftBoolTypes]
-    · exact ExtHasAttrChainStrict_liftBoolTypes_record ((typeOfExtHasAttr_implies_chain_strict hext).2 rty hrty)
+    · exact Or.inr ⟨RecordType.liftBoolTypes rty, hlift⟩
+    · rw [hlift]; exact ExtHasAttrChainValid_liftBoolTypes_record (hchain_valid.2 rty hrty)
 
 theorem typechecked_is_well_typed_after_lifting_get_attr_in_record
 {x₁ : Expr}

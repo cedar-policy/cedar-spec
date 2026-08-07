@@ -134,7 +134,7 @@ inductive TypedExpr.AtLevel (env : TypeEnv) : TypedExpr → Nat → Prop where
     (hl₁ : tx₁.AtLevel env n)
     (hty : ∀ ety, tx₁.typeOf ≠ .entity ety)
     (hchain : ∀ rty, tx₁.typeOf = .record rty →
-      Cedar.Validation.extHasAttrChainCostTy env (.record rty) (a :: as) < n ∧
+      Cedar.Validation.extHasAttrChainCostTy env (.record rty) (a :: as) <= n ∧
       Cedar.Validation.checkExtHasAttrChainTy env (.record rty) (a :: as)
         (Cedar.Validation.extHasAttrChainCostTy env (.record rty) (a :: as)) = true ∧
       Cedar.Validation.extHasAttrFirstEntityPath? env (.record rty) (a :: as) = none)
@@ -143,7 +143,7 @@ inductive TypedExpr.AtLevel (env : TypeEnv) : TypedExpr → Nat → Prop where
     (ty : CedarType) (n : Nat) (rty : RecordType) (path : List Attr)
     (hl₁ : tx₁.AtLevel env n)
     (hty : tx₁.typeOf = .record rty)
-    (hk : Cedar.Validation.extHasAttrChainCostTy env (.record rty) (a :: as) < n)
+    (hk : Cedar.Validation.extHasAttrChainCostTy env (.record rty) (a :: as) <= n)
     (hchain : Cedar.Validation.checkExtHasAttrChainTy env (.record rty) (a :: as)
       (Cedar.Validation.extHasAttrChainCostTy env (.record rty) (a :: as)) = true)
     (hpath : Cedar.Validation.extHasAttrFirstEntityPath? env (.record rty) (a :: as) = some path)

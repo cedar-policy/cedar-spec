@@ -359,19 +359,37 @@ public theorem compileExtHasAttr_wf {t₁ : Term} {attrs : List Attr} {εs : Sym
       case h_1 => simp at hok
       case h_2 t_ha hok_ha =>
       split at hok
-      case h_1 => simp at hok
+      case h_1 =>
+        simp only [pure, Except.pure, Except.ok.injEq] at hok
+        subst t
+        have hwo := wf_option_get hw₁ hty₁.choose_spec
+        have hwha := compileHasAttr_wf hwε hwo.left hok_ha
+        exact wf_ifSome_option hw₁ hwha.left hwha.right
       case h_2 t_ga hok_ga =>
       split at hok
-      case h_1 => simp at hok
-      case h_2 t_rest hok_rest =>
-      have hwo := wf_option_get hw₁ hty₁.choose_spec
-      have hwha := compileHasAttr_wf hwε hwo.left hok_ha
-      have hwtHas := wf_ifSome_option hw₁ hwha.left hwha.right
-      have ⟨hwga, tyga, htyga⟩ := compileGetAttr_wf hwε hwo.left hok_ga
-      have hwtNext := wf_ifSome_option hw₁ hwga htyga
-      have ⟨hwrest, htyrest⟩ := ih hwtNext.left ⟨tyga, hwtNext.right⟩ hok_rest
-      exact compileAnd_preserves_wf hwtHas.left hwtHas.right
-        (fun t₂ h => by simp only [Except.ok.injEq] at h; subst h; exact ⟨hwrest, htyrest⟩) hok
+      case h_1 =>
+        simp only [pure, Except.pure, Except.ok.injEq] at hok
+        subst t
+        have hwo := wf_option_get hw₁ hty₁.choose_spec
+        have hwha := compileHasAttr_wf hwε hwo.left hok_ha
+        exact wf_ifSome_option hw₁ hwha.left hwha.right
+      case h_2 => simp at hok
+      case h_3 =>
+        rename_i t_ga hga
+        have hwo := wf_option_get hw₁ hty₁.choose_spec
+        have hwha := compileHasAttr_wf hwε hwo.left hok_ha
+        have hwtHas := wf_ifSome_option hw₁ hwha.left hwha.right
+        have ⟨hwga, tyga, htyga⟩ := compileGetAttr_wf hwε hwo.left hga
+        have hwtNext := wf_ifSome_option hw₁ hwga htyga
+        simp_do_let (compileExtHasAttr (ifSome t₁ t_ga) (b :: rest') εs) at hok
+        rename_i t_rest hrest
+        have ⟨hwrest, htyrest⟩ := ih hwtNext.left ⟨tyga, hwtNext.right⟩ hrest
+        exact compileAnd_preserves_wf hwtHas.left hwtHas.right
+          (fun t₂ h => by
+            simp only [Except.ok.injEq] at h
+            subst h
+            exact ⟨hwrest, htyrest⟩)
+          hok
 
 private theorem compile_extHasAttr_wf' {x₁ : Expr} {a : Attr} {l : List Attr} {εnv : SymEnv} {t : Term}
   (hwf : SymEnv.WellFormedFor εnv (Expr.extHasAttr x₁ a l))

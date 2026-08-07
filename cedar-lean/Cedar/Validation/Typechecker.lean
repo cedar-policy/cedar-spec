@@ -325,19 +325,24 @@ public def typeOfExtHasAttr (ty₁ : TypedExpr) (x₁ : Expr) (attrs : List Attr
     | .bool bty => .ok (bty, ci)
     | _         => .ok (.anyBool, ci)
   | a :: rest => do
-    -- Check that getAttr x₁ a is well-typed (gives next type)
-    let (tyNext, _) ← typeOfGetAttr ty₁ x₁ a c env
     -- Earn capability for hasAttr x₁ a
     let (tyHas, ci) ← typeOfHasAttr ty₁ x₁ a c env
-    -- Recurse on the rest of the chain with the next type/expr
-    let nextExpr := Expr.getAttr x₁ a
-    let (bty, c') ← typeOfExtHasAttr tyNext nextExpr rest (c ∪ ci) env
-    -- Only propagate the precise boolean type from the recursive call
-    -- if the intermediate `has` is definitely true (entity guaranteed to exist).
-    -- Otherwise the loop may short-circuit to `false` before reaching the end.
+    -- If the intermediate attribute definitely doesn't exist, the `has` chain
+    -- short-circuits to `false` at runtime (matching the desugared `&&` form).
     match tyHas.typeOf with
-    | .bool .tt => .ok (bty, ci ∪ c')
-    | _         => .ok (.anyBool, ci ∪ c')
+    | .bool .ff => .ok (.ff, ci)
+    | _ =>
+      -- Check that getAttr x₁ a is well-typed (gives next type)
+      let (tyNext, _) ← typeOfGetAttr ty₁ x₁ a c env
+      -- Recurse on the rest of the chain with the next type/expr
+      let nextExpr := Expr.getAttr x₁ a
+      let (bty, c') ← typeOfExtHasAttr tyNext nextExpr rest (c ∪ ci) env
+      -- Only propagate the precise boolean type from the recursive call
+      -- if the intermediate `has` is definitely true (entity guaranteed to exist).
+      -- Otherwise the loop may short-circuit to `false` before reaching the end.
+      match tyHas.typeOf with
+      | .bool .tt => .ok (bty, ci ∪ c')
+      | _         => .ok (.anyBool, ci ∪ c')
 
 public def typeOfSet (tys : List TypedExpr) : ResultType :=
   match tys with

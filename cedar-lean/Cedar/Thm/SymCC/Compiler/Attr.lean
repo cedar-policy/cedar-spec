@@ -329,6 +329,61 @@ private theorem compileHasAttr_ok_typeOf {t t₁ t₂ : Term} {a : Attr} {εs : 
     simp only [hty', ht.left]
     split <;> simp only [Except.ok.injEq, exists_eq']
 
+private theorem compileHasAttr_false_of_getAttr_error_typeOf_eq
+  {t₁ t₂ : Term} {a : Attr} {εs : SymEntities} {e : SymCC.Error}
+  (hwε : εs.WellFormed)
+  (hw₁ : t₁.WellFormed εs)
+  (hw₂ : t₂.WellFormed εs)
+  (hty : t₁.typeOf = t₂.typeOf)
+  (hha : compileHasAttr t₁ a εs = .ok (⊙ false))
+  (hga : compileGetAttr t₁ a εs = .error e) :
+  compileHasAttr t₂ a εs = .ok (⊙ false)
+:= by
+  replace ⟨t₄, rty, hattrs, ht⟩ := compileHasAttr_ok_implies hha
+  simp only [RecordHasAttr] at ht
+  have hfind : rty.find? a = .none := by
+    simp only [compileGetAttr, hattrs, Except.bind_ok, ht.left] at hga
+    split at hga <;> simp_all
+  have ⟨t₅, hattrs', hty'⟩ := compileAttrsOf_ok_typeOf hwε hw₁ hw₂ hty hattrs
+  simp only [compileHasAttr, hattrs', Except.bind_ok, hty', ht.left, hfind]
+
+private theorem compileGetAttr_noSuchAttribute_of_error_typeOf_eq
+  {t₁ t₂ : Term} {a : Attr} {εs : SymEntities} {e : SymCC.Error}
+  (hwε : εs.WellFormed)
+  (hw₁ : t₁.WellFormed εs)
+  (hw₂ : t₂.WellFormed εs)
+  (hty : t₁.typeOf = t₂.typeOf)
+  (hha : compileHasAttr t₁ a εs = .ok (⊙ false))
+  (hga : compileGetAttr t₁ a εs = .error e) :
+  compileGetAttr t₂ a εs = .error .noSuchAttribute
+:= by
+  obtain ⟨t₄, rty, hattrs, ht⟩ := compileHasAttr_ok_implies hha
+  simp only [RecordHasAttr] at ht
+  have hfind : rty.find? a = .none := by
+    simp only [compileGetAttr, hattrs, Except.bind_ok, ht.left] at hga
+    split at hga <;> simp_all
+  have ⟨t₅, hattrs', hty'⟩ := compileAttrsOf_ok_typeOf hwε hw₁ hw₂ hty hattrs
+  simp only [compileGetAttr, hattrs', Except.bind_ok, hty', ht.left, hfind]
+
+private theorem interpret_compileGetAttr_error_of_compileHasAttr_false
+  {t₁ : Term} {a : Attr} {εs : SymEntities} {I : Interpretation} {e : SymCC.Error}
+  (hwε : εs.WellFormed)
+  (hI : I.WellFormed εs)
+  (hwt : t₁.WellFormed εs)
+  (hha : compileHasAttr t₁ a εs = .ok (⊙ false))
+  (hga : compileGetAttr t₁ a εs = .error e) :
+  compileGetAttr (t₁.interpret I) a (εs.interpret I) = .error .noSuchAttribute
+:= by
+  replace ⟨t₂, rty, hattrs, ht⟩ := compileHasAttr_ok_implies hha
+  simp only [RecordHasAttr] at ht
+  have hfind : rty.find? a = .none := by
+    simp only [compileGetAttr, hattrs, Except.bind_ok, ht.left] at hga
+    split at hga <;> simp_all
+  have hattrs' := interpret_compileAttrsOf hwε hI hwt hattrs
+  have hwt₂ := (compileAttrsOf_wf hwε hwt hattrs).left
+  have hty₂ := (interpret_term_wf hI hwt₂).right
+  simp only [compileGetAttr, hattrs', Except.bind_ok, hty₂, ht.left, hfind]
+
 private theorem interpret_option_get_aux {εs : SymEntities} {I : Interpretation} {t : Term} {ty : TermType}
   (hI  : I.WellFormed εs)
   (hwt : t.WellFormed εs)
@@ -759,31 +814,35 @@ private theorem compileExtHasAttr_none_eq {ty : TermType} {a : Attr} {rest : Lis
     -- Without short-circuit, go directly to compileGetAttr
     generalize hga : compileGetAttr (option.get (.none ty)) a εs = rga at hok
     cases rga with
-    | error => simp only [reduceCtorEq] at hok
+    | error e =>
+      cases e <;> simp_all
+      simpa only [pure, Except.pure, Except.ok.injEq] using hok.symm
     | ok t_ga =>
     have ⟨_, ty_ga, hty_ga⟩ := compileGetAttr_wf hwε (wf_option_get hwt (typeOf_term_none ty)).left hga
     have hifs_ga := pe_ifSome_none (gty := ty) hty_ga
     simp only [hifs_ga] at hok
     generalize hrest : compileExtHasAttr (.none ty_ga) (b :: rest') εs = rrest at hok
     cases rrest with
-    | error => simp only [] at hok; contradiction
+    | error => simp only [reduceCtorEq] at hok
     | ok t_rest =>
-    -- hok : compileAnd (.none .bool) (.ok t_rest) = .ok t
     have hwt_ga : (Term.none ty_ga).WellFormed εs := by
       have h := typeOf_wf_term_is_wf (compileGetAttr_wf hwε (wf_option_get hwt (typeOf_term_none ty)).left hga).left
       rw [hty_ga] at h; cases h; exact Term.WellFormed.none_wf (by assumption)
     have hty_rest := (compileExtHasAttr_wf hwε hwt_ga ⟨_, typeOf_term_none _⟩ hrest).right
-    simp only [compileAnd, typeOf_term_none, bind, Except.bind, hty_rest, ↓reduceIte, Except.ok.injEq] at hok
-    subst hok
+    simp only [compileAnd, typeOf_term_none, bind, Except.bind, hty_rest, ↓reduceIte,
+      Except.ok.injEq] at hok
+    rw [← hok]
     apply pe_ifSome_none
-    have hwog := wf_option_get (Term.WellFormed.none_wf (εs := εs) TermType.WellFormed.bool_wf) (typeOf_term_none .bool)
-    have hwt_rest := (compileExtHasAttr_wf hwε hwt_ga ⟨_, typeOf_term_none _⟩ hrest).left
+    have hwog := wf_option_get
+      (Term.WellFormed.none_wf (εs := εs) TermType.WellFormed.bool_wf)
+      (typeOf_term_none .bool)
+    have hwt_rest :=
+      (compileExtHasAttr_wf hwε hwt_ga ⟨_, typeOf_term_none _⟩ hrest).left
     have hwf_false : (⊙ Term.prim (TermPrim.bool false)).WellFormed εs :=
       (wf_term_some (εs := εs) wf_bool typeOf_bool).left
     have hty_ite := (wf_ite hwog.left hwt_rest hwf_false hwog.right
       (by simp [someOf, typeOf_term_some, typeOf_bool, hty_rest])).right
-    rw [hty_rest] at hty_ite
-    exact hty_ite
+    simpa only [hty_rest] using hty_ite
 
 -- Helper: from v ∼ t' and compileHasAttr t' a εs = .ok t_ha, derive hasAttr v a es ∼ t_ha
 private theorem same_value_hasAttr {v : Value} {t' t_ha : Term} {a : Attr}
@@ -1026,6 +1085,17 @@ private theorem hasAttrs_loop_false {v₁ : Value} {a : Attr} {rest : List Attr}
     simp only [hasAttrs.loop, hattr, hfind]
 
 
+private theorem compileHasAttr_eq_false_of_compileGetAttr_error
+  {t t_ha : Term} {a : Attr} {εs : SymEntities} {e : SymCC.Error}
+  (hha : compileHasAttr t a εs = .ok t_ha)
+  (hga : compileGetAttr t a εs = .error e) :
+  t_ha = (⊙ false)
+:= by
+  obtain ⟨t₂, rty, hattrs, hrecord⟩ := compileHasAttr_ok_implies hha
+  simp only [RecordHasAttr] at hrecord
+  simp only [compileGetAttr, hattrs, Except.bind_ok, hrecord.left] at hga
+  split at hga <;> simp_all [someOf]
+
 private theorem compile_evaluate_extHasAttr_loop
   {v₁ : Value} {t₁' : Term} {a : Attr} {l : List Attr}
   {es : Entities} {εs : SymEntities} {t : Term}
@@ -1098,28 +1168,11 @@ private theorem compile_evaluate_extHasAttr_loop
       have htha_eq := same_ok_bool_implies h₄; subst htha_eq
       cases b_val with
       | false =>
-        -- hasAttr returns false at runtime → hasAttrs.loop returns false immediately
-        -- With the new definition, t = ⊙false because compileAnd (⊙false) _ short-circuits
-        have hok' := hok
-        revert hok'
-        simp only [pe_option_get_some, pe_ifSome_some h₃]
-        intro hok'
-        -- hok' now: (compileGetAttr t₁' a εs >>= fun tGa => ...) = .ok t
-        generalize hga' : compileGetAttr t₁' a εs = rga at hok'
-        cases rga with
-        | error => simp only [reduceCtorEq] at hok'
-        | ok t_ga =>
-        simp only [] at hok'
-        -- t_ha = ⊙false, so compileAnd short-circuits
-        generalize hrest' : compileExtHasAttr _ (b :: rest) εs = r_rest at hok'
-        cases r_rest with
-        | error => simp only [] at hok'; contradiction
-        | ok t_rest =>
-          simp only [compileAnd, Except.ok.injEq] at hok'
-          subst hok'
-          -- t = ⊙false, and hasAttrs.loop with hasAttr = false returns .ok false
-          simp only [hasAttrs_loop_false h₅]
-          exact same_ok_bool
+        -- The compiled hasAttr is statically false, so compileExtHasAttr returns it immediately.
+        simp only [pe_ifSome_some h₃, pure, Except.pure, Except.ok.injEq] at hok
+        subst t
+        rw [hasAttrs_loop_false h₅]
+        exact h₄
       | true =>
         -- hasAttr is true: recurse case
         -- hok : compileExtHasAttr (.some t₁') (a :: b :: rest) εs = .ok t
@@ -1132,7 +1185,9 @@ private theorem compile_evaluate_extHasAttr_loop
         -- hok' is now: (compileGetAttr t₁' a εs >>= fun tGa => ...) = .ok t
         generalize hga : compileGetAttr t₁' a εs = rga at hok'
         cases rga with
-        | error => simp only [reduceCtorEq] at hok'
+        | error e =>
+          have ht_ha := compileHasAttr_eq_false_of_compileGetAttr_error h₁ hga
+          simp [someOf] at ht_ha
         | ok t_ga =>
         simp only [] at hok'
         have ⟨hwt_ga, _, hty_ga⟩ := compileGetAttr_wf hwε (wf_option_get (Term.WellFormed.some_wf hwt) typeOf_term_some).left hga
@@ -1286,6 +1341,22 @@ private theorem ifSome_none_bool (g : Term) :
   simp only [Factory.ite, Factory.ite.simplify]
   split <;> simp_all
 
+private theorem compileAnd_none_eq {tr : Term} {εs : SymEntities}
+  (hwtr : tr.WellFormed εs)
+  (htyr : tr.typeOf = .option .bool) :
+  compileAnd (.none .bool) (.ok tr) = .ok (.none .bool)
+:= by
+  simp only [compileAnd, typeOf_term_none, Except.bind_ok, htyr, ↓reduceIte]
+  have hwog := wf_option_get
+    (Term.WellFormed.none_wf (εs := εs) TermType.WellFormed.bool_wf)
+    (typeOf_term_none .bool)
+  have hwfalse : (⊙ Term.prim (TermPrim.bool false)).WellFormed εs :=
+    (wf_term_some (εs := εs) wf_bool typeOf_bool).left
+  have hty_ite := (wf_ite hwog.left hwtr hwfalse hwog.right
+    (by simp [someOf, typeOf_term_some, typeOf_bool, htyr])).right
+  simp only [Except.ok.injEq]
+  exact pe_ifSome_none (hty_ite.trans htyr)
+
 private theorem compileExtHasAttr_interpret {t₁ : Term} {attrs : List Attr} {εnv : SymEnv} {I : Interpretation} {t : Term}
   (hI : I.WellFormed εnv.entities)
   (hwε : εnv.entities.WellFormed)
@@ -1341,7 +1412,52 @@ private theorem compileExtHasAttr_interpret {t₁ : Term} {attrs : List Attr} {�
       -- Extract compileGetAttr from hok
       generalize hga : compileGetAttr (option.get t₁) a εnv.entities = rga at hok
       cases rga with
-      | error => simp only [reduceCtorEq] at hok
+      | error e =>
+        have ht_ha := compileHasAttr_eq_false_of_compileGetAttr_error hha hga
+        subst t_ha
+        simp only [] at hok
+        split at hok
+        case h_1 heq =>
+          simp only [pure, Except.pure, Except.ok.injEq] at hok
+          subst t
+          have hwo := wf_option_get hw₁ hty₁.choose_spec
+          have hi_ha := interpret_compileHasAttr hwε hI hwo.left hha
+          have hwε' := interpret_εntities_wf hwε hI
+          have ⟨hwo_i₁, hwo_i₂, hty_i⟩ := interpret_option_get_aux hI hw₁ hty₁.choose_spec
+          have hga_i := interpret_compileGetAttr_error_of_compileHasAttr_false
+            hwε hI hwo.left hha hga
+          simp only [interpret_someOf, interpret_term_prim] at hi_ha
+          have hha_i := compileHasAttr_false_of_getAttr_error_typeOf_eq
+            hwε' hwo_i₁ hwo_i₂ hty_i hi_ha hga_i
+          have hwt_ha := (compileHasAttr_wf hwε hwo.left hha).left
+          simp only [hha_i]
+          have heq_i := congrArg (Term.interpret I) heq
+          rw [interpret_ifSome hI hw₁ hwt_ha] at heq_i
+          simp only [interpret_someOf, interpret_term_prim] at heq_i
+          simp only [someOf] at heq heq_i ⊢
+          simp only [interpret_term_some, interpret_term_prim] at heq_i
+          rw [heq_i, heq]
+          simp only [interpret_term_some, interpret_term_prim, pure, Except.pure]
+        case h_2 =>
+          cases e <;> simp_all
+          simp only [pure, Except.pure, Except.ok.injEq] at hok
+          subst t
+          have hwo := wf_option_get hw₁ hty₁.choose_spec
+          have hi_ha := interpret_compileHasAttr hwε hI hwo.left hha
+          have hwε' := interpret_εntities_wf hwε hI
+          have ⟨hwo_i₁, hwo_i₂, hty_i⟩ := interpret_option_get_aux hI hw₁ hty₁.choose_spec
+          have hga_i := interpret_compileGetAttr_error_of_compileHasAttr_false
+            hwε hI hwo.left hha hga
+          simp only [interpret_someOf, interpret_term_prim] at hi_ha
+          have hha_i := compileHasAttr_false_of_getAttr_error_typeOf_eq
+            hwε' hwo_i₁ hwo_i₂ hty_i hi_ha hga_i
+          have hga_i' := compileGetAttr_noSuchAttribute_of_error_typeOf_eq
+            hwε' hwo_i₁ hwo_i₂ hty_i hi_ha hga_i
+          have hwt_ha := (compileHasAttr_wf hwε hwo.left hha).left
+          rw [interpret_ifSome hI hw₁ hwt_ha]
+          simp only [hha_i, interpret_someOf, interpret_term_prim]
+          split
+          all_goals simp only [someOf, hga_i', pure, Except.pure]
       | ok t_ga =>
       -- WF setup
       have hwo := wf_option_get hw₁ hty₁.choose_spec
@@ -1357,15 +1473,12 @@ private theorem compileExtHasAttr_interpret {t₁ : Term} {attrs : List Attr} {�
       rename_i heq_ha
       case error =>
         have ⟨_, hok'⟩ := compileHasAttr_interpret_ok hI hwε hw₁ hty₁.choose_spec hi_ha
-        simp only [hok', reduceCtorEq] at heq_ha
+        rw [hok'] at heq_ha
+        simp at heq_ha
       case ok t_ha' =>
-      -- Bridge option.get' vs option.get for getAttr
-      simp_do_let (compileGetAttr (option.get (Term.interpret I t₁)) a (SymEntities.interpret I εnv.entities)) <;>
-      rename_i heq_ga
-      case error =>
-        have ⟨_, hok'⟩ := compileGetAttr_interpret_ok hI hwε hw₁ hty₁.choose_spec hi_ga
-        simp only [hok', reduceCtorEq] at heq_ga
-      case ok t_ga' =>
+      have ⟨t_ga', heq_ga⟩ := compileGetAttr_interpret_ok hI hwε hw₁ hty₁.choose_spec hi_ga
+      simp only [heq_ga]
+      simp only [] at hok
       -- Now handle the recursive compileExtHasAttr on ifSome t₁ t_ga
       have hwt_next := (wf_ifSome_option hw₁ hwt_ga hty_ga).left
       have hty_next : ∃ ty, (ifSome t₁ t_ga).typeOf = .option ty :=
@@ -1374,19 +1487,18 @@ private theorem compileExtHasAttr_interpret {t₁ : Term} {attrs : List Attr} {�
       generalize hrest : compileExtHasAttr (ifSome t₁ t_ga) (b :: rest') εnv.entities = rrest at hok
       cases rrest with
       | ok t_rest =>
-        -- Simplify hok
-        simp only [] at hok
         -- Apply IH to get interpreted recursive result
         have hi_rest := ih hwt_next hty_next hrest
         rw [interpret_ifSome hI hw₁ hwt_ga] at hi_rest
-        -- Bridge: ifSome (t₁.interpret I) t_ga' = ifSome (t₁.interpret I) (t_ga.interpret I)
-        have hwφ₂ := interpret_term_wfl hI hw₁; rw [hty₁.choose_spec] at hwφ₂
+        have hwφ₂ := interpret_term_wfl hI hw₁
+        rw [hty₁.choose_spec] at hwφ₂
         have hdom := interpret_entities_same_domain εnv.entities I
         have hwo_i := wf_option_get hwφ₂.left.left hwφ₂.right
         have hwφ₄ := wf_term_same_domain hdom hwo_i.left
         have hwφ₅ := wf_term_same_domain hdom (interpret_term_wf hI hwo.left).left
         have hty_ga_i : (t_ga.interpret I).typeOf = .option tyₐ := by
-          rw [(interpret_term_wf hI hwt_ga).right]; exact hty_ga
+          rw [(interpret_term_wf hI hwt_ga).right]
+          exact hty_ga
         have hty_ga' : t_ga'.typeOf = .option tyₐ := by
           have h_eq := compileGetAttr_ok_typeOf_eq hwε' hwφ₅ hwφ₄
             (by exact (interpret_term_wf hI hwo.left).right.trans (hwo.right.trans hwo_i.right.symm)) hi_ga heq_ga
@@ -1396,30 +1508,57 @@ private theorem compileExtHasAttr_interpret {t₁ : Term} {attrs : List Attr} {�
         have h_ifSome_ga := pe_ifSome_ok_get_eq_get' I
           (compileGetAttr · a (SymEntities.interpret I εnv.entities))
           hwφ₂ hty_ga_i hty_ga' hi_ga heq_ga
-        -- h_ifSome_ga : ifSome (t₁.interpret I) t_ga' = ifSome (t₁.interpret I) (t_ga.interpret I)
         rw [h_ifSome_ga, hi_rest]
-        -- Now goal: compileAnd (ifSome (t₁.interpret I) t_ha') (.ok (t_rest.interpret I)) = .ok (t.interpret I)
-        -- Bridge hasAttr similarly
         rw [interpret_option_get I hw₁ hty₁.choose_spec] at hi_ha
         have hty_ha_i : (t_ha.interpret I).typeOf = .option .bool := by
-          rw [(interpret_term_wf hI hwt_ha).right]; exact hty_ha
+          rw [(interpret_term_wf hI hwt_ha).right]
+          exact hty_ha
         have hty_ha' : t_ha'.typeOf = .option .bool :=
           (compileHasAttr_wf hwε' hwφ₄ heq_ha).right
         have h_ifSome_ha := pe_ifSome_ok_get_eq_get' I
           (compileHasAttr · a (SymEntities.interpret I εnv.entities))
           hwφ₂ hty_ha_i hty_ha' hi_ha heq_ha
         rw [h_ifSome_ha]
-        -- Now goal: compileAnd (ifSome (t₁.interpret I) (t_ha.interpret I)) (.ok (t_rest.interpret I)) = .ok (t.interpret I)
         have hwt_ifha := (wf_ifSome_option hw₁ hwt_ha hty_ha).left
         have hty_ifha := (wf_ifSome_option hw₁ hwt_ha hty_ha).right
         have hwt_rest := (compileExtHasAttr_wf hwε hwt_next hty_next hrest).left
         have hty_rest := (compileExtHasAttr_wf hwε hwt_next hty_next hrest).right
         rw [← interpret_ifSome hI hw₁ hwt_ha]
-        simp only [hrest] at hok
-        exact compileAnd_interpret hI hwε hwt_ifha hty_ifha hwt_rest hty_rest hok
+        split at hok
+        case h_1 heq =>
+          simp only [pure, Except.pure, Except.ok.injEq] at hok
+          subst t
+          rw [heq]
+          simp only [interpret_term_some, interpret_term_prim, pure, Except.pure]
+        case h_2 =>
+          have hci := compileAnd_interpret hI hwε hwt_ifha hty_ifha hwt_rest hty_rest hok
+          split
+          case h_1 heq_i =>
+            rw [heq_i] at hci ⊢
+            simpa only [pure, Except.pure, compileAnd] using hci
+          case h_2 => exact hci
       | error =>
-        -- With the new definition, error propagates, contradicting hok
-        simp only [hrest, reduceCtorEq] at hok
+        simp only [] at hok
+        split at hok
+        case h_1 heq =>
+          simp only [pure, Except.pure, Except.ok.injEq] at hok
+          subst t
+          have hwφ₂ := interpret_term_wfl hI hw₁
+          rw [hty₁.choose_spec] at hwφ₂
+          have hdom := interpret_entities_same_domain εnv.entities I
+          have hwo_i := wf_option_get hwφ₂.left.left hwφ₂.right
+          have hwφ₄ := wf_term_same_domain hdom hwo_i.left
+          rw [interpret_option_get I hw₁ hty₁.choose_spec] at hi_ha
+          have hty_ha_i : (t_ha.interpret I).typeOf = .option .bool :=
+            (interpret_term_wf hI hwt_ha).right.trans hty_ha
+          have hty_ha' : t_ha'.typeOf = .option .bool :=
+            (compileHasAttr_wf hwε' hwφ₄ heq_ha).right
+          have h_ifSome_ha := pe_ifSome_ok_get_eq_get' I
+            (compileHasAttr · a (SymEntities.interpret I εnv.entities))
+            hwφ₂ hty_ha_i hty_ha' hi_ha heq_ha
+          rw [h_ifSome_ha, ← interpret_ifSome hI hw₁ hwt_ha, heq]
+          simp only [interpret_term_some, interpret_term_prim, pure, Except.pure]
+        case h_2 => simp only [reduceCtorEq] at hok
 
 theorem compile_interpret_extHasAttr {x₁ : Expr} {a : Attr} {l : List Attr} {εnv : SymEnv} {I : Interpretation} {t : Term}
   (hI  : I.WellFormed εnv.entities)
@@ -1435,11 +1574,6 @@ theorem compile_interpret_extHasAttr {x₁ : Expr} {a : Attr} {l : List Attr} {�
   rename_i t₁ hok₁
   have ⟨hwt₁, ty₁, hty₁⟩ := compile_wf hwφ₁ hok₁
   have ih₁ := ih hI hwφ₁ hok₁
-  -- hok : compileExtHasAttr t₁ (a :: l) εnv.entities = .ok t
-  -- Goal: compile (.extHasAttr x₁ a l) (εnv.interpret I) = .ok (t.interpret I)
-  -- LHS unfolds to: compile x₁ (εnv.interpret I) >>= fun t₁' => compileExtHasAttr t₁' (a :: l) (εnv.entities.interpret I)
-  -- = .ok (t₁.interpret I) >>= ... = compileExtHasAttr (t₁.interpret I) (a :: l) (εnv.entities.interpret I)
-  -- By compileExtHasAttr_interpret: = .ok (t.interpret I)
   simp only [compile, ih₁, Except.bind_ok]
   simp only [SymEnv.interpret]
   exact compileExtHasAttr_interpret hI hwε.left.right hwt₁ ⟨ty₁, hty₁⟩ hok

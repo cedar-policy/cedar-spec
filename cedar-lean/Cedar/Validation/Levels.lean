@@ -242,7 +242,7 @@ public def TypedExpr.checkLevel (tx : TypedExpr) (env : TypeEnv) (n : Nat) : Boo
         match extHasAttrFirstEntityPath? env (.record rty) (attr :: attrs) with
         | some path => x₁.checkEntityAccessLevel env (n - k) n path
         | none => true
-      n > k &&
+      n >= k &&
       x₁.checkLevel env n &&
       baseAccessOk &&
       checkExtHasAttrChainTy env (.record rty) (attr :: attrs) k
