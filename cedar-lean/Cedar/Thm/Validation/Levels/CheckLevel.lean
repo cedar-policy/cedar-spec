@@ -117,10 +117,10 @@ inductive TypedExpr.AtLevel (env : TypeEnv) : TypedExpr → Nat → Prop where
     (hty : tx₁.typeOf = .entity ety) :
     AtLevel env (.hasAttr tx₁ a ty) (n + 1)
   | extHasAttr (tx₁ : TypedExpr) (a : Attr) (as : List Attr) (ty : CedarType) {ety : EntityType} (n : Nat)
-    (hl₁ : tx₁.EntityAccessAtLevel env (n - Cedar.Validation.extHasAttrChainCost env ety (a :: as)) (n + 1) [])
+    (hl₁ : tx₁.EntityAccessAtLevel env (n - extHasAttrChainCost env (.entity ety) (a :: as)) (n + 1) [])
     (hty : tx₁.typeOf = .entity ety)
-    (hchain : Cedar.Validation.checkExtHasAttrChain env ety (a :: as) (Cedar.Validation.extHasAttrChainCost env ety (a :: as)) = true)
-    (hk : Cedar.Validation.extHasAttrChainCost env ety (a :: as) ≤ n) :
+    (hchain : checkExtHasAttrChain env (.entity ety) (a :: as) (extHasAttrChainCost env (.entity ety) (a :: as)) = true)
+    (hk : extHasAttrChainCost env (.entity ety) (a :: as) ≤ n) :
     AtLevel env (.extHasAttr tx₁ a as ty) (n + 1)
   | getAttrRecord (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) (n : Nat)
     (hl₁ : tx₁.AtLevel env n)
@@ -134,21 +134,21 @@ inductive TypedExpr.AtLevel (env : TypeEnv) : TypedExpr → Nat → Prop where
     (hl₁ : tx₁.AtLevel env n)
     (hty : ∀ ety, tx₁.typeOf ≠ .entity ety)
     (hchain : ∀ rty, tx₁.typeOf = .record rty →
-      Cedar.Validation.extHasAttrChainCostTy env (.record rty) (a :: as) <= n ∧
-      Cedar.Validation.checkExtHasAttrChainTy env (.record rty) (a :: as)
-        (Cedar.Validation.extHasAttrChainCostTy env (.record rty) (a :: as)) = true ∧
-      Cedar.Validation.extHasAttrFirstEntityPath? env (.record rty) (a :: as) = none)
+      extHasAttrChainCost env (.record rty) (a :: as) <= n ∧
+      checkExtHasAttrChain env (.record rty) (a :: as)
+        (extHasAttrChainCost env (.record rty) (a :: as)) = true ∧
+      extHasAttrFirstEntityPath? env (.record rty) (a :: as) = none)
     : AtLevel env (.extHasAttr tx₁ a as ty) n
   | extHasAttrRecordEntity (tx₁ : TypedExpr) (a : Attr) (as : List Attr)
     (ty : CedarType) (n : Nat) (rty : RecordType) (path : List Attr)
     (hl₁ : tx₁.AtLevel env n)
     (hty : tx₁.typeOf = .record rty)
-    (hk : Cedar.Validation.extHasAttrChainCostTy env (.record rty) (a :: as) <= n)
-    (hchain : Cedar.Validation.checkExtHasAttrChainTy env (.record rty) (a :: as)
-      (Cedar.Validation.extHasAttrChainCostTy env (.record rty) (a :: as)) = true)
-    (hpath : Cedar.Validation.extHasAttrFirstEntityPath? env (.record rty) (a :: as) = some path)
+    (hk : extHasAttrChainCost env (.record rty) (a :: as) <= n)
+    (hchain : checkExtHasAttrChain env (.record rty) (a :: as)
+      (extHasAttrChainCost env (.record rty) (a :: as)) = true)
+    (hpath : extHasAttrFirstEntityPath? env (.record rty) (a :: as) = some path)
     (haccess : tx₁.EntityAccessAtLevel env
-      (n - Cedar.Validation.extHasAttrChainCostTy env (.record rty) (a :: as)) n path) :
+      (n - extHasAttrChainCost env (.record rty) (a :: as)) n path) :
     AtLevel env (.extHasAttr tx₁ a as ty) n
   | set (txs : List TypedExpr) (ty : CedarType) (n : Nat)
     (hl : ∀ tx ∈ txs, tx.AtLevel env n) :
@@ -483,8 +483,8 @@ theorem level_spec {tx : TypedExpr} {env : TypeEnv} {n : Nat}:
         simp only [Bool.and_eq_true, decide_eq_true_eq]
         refine ⟨⟨by omega, ?_⟩, hchain⟩
         rw [←entity_access_level_spec]
-        have heq : n_inner + 1 - extHasAttrChainCost env ety (a :: attrs) - 1 =
-            n_inner - extHasAttrChainCost env ety (a :: attrs) := by omega
+        have heq : n_inner + 1 - extHasAttrChainCost env (.entity ety) (a :: attrs) - 1 =
+            n_inner - extHasAttrChainCost env (.entity ety) (a :: attrs) := by omega
         exact heq ▸ hl₁
       | extHasAttrRecord _ _ _ _ _ hl₁ hnety hchain₁ =>
         have hne : ∀ ety, tx₁.typeOf ≠ .entity ety := hnety
@@ -511,10 +511,10 @@ theorem level_spec {tx : TypedExpr} {env : TypeEnv} {n : Nat}:
         have ⟨n', hn⟩ : ∃ n', n = n' + 1 := ⟨n - 1, by omega⟩
         subst hn
         rw [←entity_access_level_spec] at h₂
-        have hk : extHasAttrChainCost env ety (a :: attrs) ≤ n' := by omega
-        have h₂' : tx₁.EntityAccessAtLevel env (n' - extHasAttrChainCost env ety (a :: attrs)) (n' + 1) [] := by
-          have heq2 : n' + 1 - extHasAttrChainCost env ety (a :: attrs) - 1 =
-                     n' - extHasAttrChainCost env ety (a :: attrs) := by omega
+        have hk : extHasAttrChainCost env (.entity ety) (a :: attrs) ≤ n' := by omega
+        have h₂' : tx₁.EntityAccessAtLevel env (n' - extHasAttrChainCost env (.entity ety) (a :: attrs)) (n' + 1) [] := by
+          have heq2 : n' + 1 - extHasAttrChainCost env (.entity ety) (a :: attrs) - 1 =
+                     n' - extHasAttrChainCost env (.entity ety) (a :: attrs) := by omega
           exact heq2 ▸ h₂
         exact TypedExpr.AtLevel.extHasAttr tx₁ a attrs _ n' h₂' heq h₃ hk
       · -- record branch
@@ -534,7 +534,7 @@ theorem level_spec {tx : TypedExpr} {env : TypeEnv} {n : Nat}:
             exact ⟨h₁, h₃, hpath⟩)
         | some path =>
           have haccess : tx₁.EntityAccessAtLevel env
-              (n - extHasAttrChainCostTy env (.record rty) (a :: attrs)) n path := by
+              (n - extHasAttrChainCost env (.record rty) (a :: attrs)) n path := by
             rw [entity_access_level_spec]
             simpa [hpath] using hpathcheck
           exact .extHasAttrRecordEntity tx₁ a attrs _ _ rty path h₂ heq h₁ h₃ hpath haccess

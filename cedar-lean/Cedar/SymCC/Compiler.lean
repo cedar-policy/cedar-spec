@@ -182,30 +182,22 @@ def compileOr (t₁ : Term) (r₂ : Result Term) : Result Term := do
     else .error .typeError
   | _, _ => .error .typeError
 
-/--
-Compile an extended `has` attribute chain. Given a compiled term `t` (the entity/record
-to start from) and a list of attributes, produces a term that is `some true` iff all
-attributes in the chain exist, `some false` if any doesn't, and `none` on type error.
--/
-def compileExtHasAttr (t : Term) (attrs : List Attr) (εs : SymEntities) : Result Term :=
-  match attrs with
+def compileExtHasAttr (t : Term) (as : List Attr) (εs : SymEntities) : Result Term :=
+  match as with
   | [] => pure (Term.some (Term.prim (.bool true)))
   | [a] => do ifSome t (← compileHasAttr (option.get t) a εs)
-  | a :: rest => do
-    let tHasRaw ← compileHasAttr (option.get t) a εs
-    let tHas := ifSome t tHasRaw
-    -- If the guarded hasAttr result is statically false, the whole chain is
-    -- false — no need to attempt getAttr.
-    match tHas with
-    | .some (.prim (.bool false)) => pure tHas
+  | a :: as₁ => do
+    let t₀ ← compileHasAttr (option.get t) a εs
+    let t₁ := ifSome t t₀
+    match t₁ with
+    | .some (.prim (.bool false)) => pure t₁
     | _ =>
       match compileGetAttr (option.get t) a εs with
-      | .error .noSuchAttribute => pure tHas
+      | .error .noSuchAttribute => pure t₁
       | .error e => .error e
-      | .ok tGa =>
-        let tNext := ifSome t tGa
-        let tRest ← compileExtHasAttr tNext rest εs
-        compileAnd tHas (.ok tRest)
+      | .ok t₂ =>
+        let t₄ ← compileExtHasAttr (ifSome t t₂) as₁ εs
+        compileAnd t₁ (.ok t₄)
 
 def compileSet (ts : List Term) : Result Term := do
    match ts with

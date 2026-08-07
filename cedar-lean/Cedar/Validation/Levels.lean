@@ -98,7 +98,7 @@ Works for any starting `CedarType`:
 - `.record rty`: look up attribute directly in the record type
 - other: no sub-fields, chain trivially valid
 -/
-public def checkExtHasAttrChainTy (env : TypeEnv) (ty : CedarType) (attrs : List Attr) (currentLevel : Nat) : Bool :=
+public def checkExtHasAttrChain (env : TypeEnv) (ty : CedarType) (attrs : List Attr) (currentLevel : Nat) : Bool :=
   match attrs with
   | [] => true
   | [_] => true  -- last attribute: never dereferenced, no level consumed
@@ -113,10 +113,10 @@ public def checkExtHasAttrChainTy (env : TypeEnv) (ty : CedarType) (attrs : List
           | .entity nextEty =>
             -- Accessing this attr requires dereferencing the entity it points to
             currentLevel > 0 &&
-            checkExtHasAttrChainTy env (.entity nextEty) rest (currentLevel - 1)
+            checkExtHasAttrChain env (.entity nextEty) rest (currentLevel - 1)
           | nextTy =>
             -- Not an entity type: no dereference for this step, but continue checking rest
-            checkExtHasAttrChainTy env nextTy rest currentLevel
+            checkExtHasAttrChain env nextTy rest currentLevel
         | .none => true  -- attribute not in schema, can't check further
       | .none => true  -- entity type not in schema
     | .record rty =>
@@ -125,9 +125,9 @@ public def checkExtHasAttrChainTy (env : TypeEnv) (ty : CedarType) (attrs : List
         match qty.getType with
         | .entity nextEty =>
           currentLevel > 0 &&
-          checkExtHasAttrChainTy env (.entity nextEty) rest (currentLevel - 1)
+          checkExtHasAttrChain env (.entity nextEty) rest (currentLevel - 1)
         | nextTy =>
-          checkExtHasAttrChainTy env nextTy rest currentLevel
+          checkExtHasAttrChain env nextTy rest currentLevel
       | .none => true  -- attribute not in record type
     | _ => true  -- no sub-fields possible
 
@@ -137,7 +137,7 @@ a given `CedarType`. Each entity-to-entity transition costs 1, except for
 the last attribute: the evaluator only checks its presence without
 dereferencing the result, so no level is consumed for the last hop.
 -/
-public def extHasAttrChainCostTy (env : TypeEnv) (ty : CedarType) : List Attr → Nat
+public def extHasAttrChainCost (env : TypeEnv) (ty : CedarType) : List Attr → Nat
   | [] => 0
   | [_] => 0  -- last attribute: never dereferenced
   | a :: rest =>
@@ -148,16 +148,16 @@ public def extHasAttrChainCostTy (env : TypeEnv) (ty : CedarType) : List Attr �
         match rty.find? a with
         | .some qty =>
           match qty.getType with
-          | .entity nextEty => 1 + extHasAttrChainCostTy env (.entity nextEty) rest
-          | nextTy => extHasAttrChainCostTy env nextTy rest
+          | .entity nextEty => 1 + extHasAttrChainCost env (.entity nextEty) rest
+          | nextTy => extHasAttrChainCost env nextTy rest
         | .none => 0
       | .none => 0
     | .record rty =>
       match rty.find? a with
       | .some qty =>
         match qty.getType with
-        | .entity nextEty => 1 + extHasAttrChainCostTy env (.entity nextEty) rest
-        | nextTy => extHasAttrChainCostTy env nextTy rest
+        | .entity nextEty => 1 + extHasAttrChainCost env (.entity nextEty) rest
+        | nextTy => extHasAttrChainCost env nextTy rest
       | .none => 0
     | _ => 0
 
@@ -180,14 +180,6 @@ public def extHasAttrFirstEntityPath? (env : TypeEnv) (ty : CedarType) :
     | some nextTy =>
       (extHasAttrFirstEntityPath? env nextTy (b :: rest)).map (a :: ·)
     | none => none
-
-/-- Backwards-compatible wrapper for entity-typed base. -/
-public def checkExtHasAttrChain (env : TypeEnv) (ety : EntityType) (attrs : List Attr) (currentLevel : Nat) : Bool :=
-  checkExtHasAttrChainTy env (.entity ety) attrs currentLevel
-
-/-- Backwards-compatible wrapper for entity-typed base. -/
-public def extHasAttrChainCost (env : TypeEnv) (ety : EntityType) : List Attr → Nat :=
-  extHasAttrChainCostTy env (.entity ety)
 
 /--
 Main entry point for level checking an expression. For most expressions, this is
@@ -229,15 +221,15 @@ public def TypedExpr.checkLevel (tx : TypedExpr) (env : TypeEnv) (n : Nat) : Boo
       -- Compute chain cost first, then give remaining budget to base expression.
       -- This ensures: depth(base) + chain_hops ≤ n - 1 < n, so all entities
       -- (base + chain) fit within slice level n.
-      let k := extHasAttrChainCost env ety (attr :: attrs)
+      let k := extHasAttrChainCost env (.entity ety) (attr :: attrs)
       n > k &&
       x₁.checkEntityAccessLevel env (n - k - 1) n [] &&
-      checkExtHasAttrChain env ety (attr :: attrs) k
+      checkExtHasAttrChain env (.entity ety) (attr :: attrs) k
     | .record rty =>
       -- A record base can contain an entity that this chain later dereferences.
       -- Check the expression specifically along the path to the first such
       -- entity; subsequent entity hops are covered by the chain budget.
-      let k := extHasAttrChainCostTy env (.record rty) (attr :: attrs)
+      let k := extHasAttrChainCost env (.record rty) (attr :: attrs)
       let baseAccessOk :=
         match extHasAttrFirstEntityPath? env (.record rty) (attr :: attrs) with
         | some path => x₁.checkEntityAccessLevel env (n - k) n path
@@ -245,7 +237,7 @@ public def TypedExpr.checkLevel (tx : TypedExpr) (env : TypeEnv) (n : Nat) : Boo
       n >= k &&
       x₁.checkLevel env n &&
       baseAccessOk &&
-      checkExtHasAttrChainTy env (.record rty) (attr :: attrs) k
+      checkExtHasAttrChain env (.record rty) (attr :: attrs) k
     | _ => x₁.checkLevel env n
   | .call _ xs _
   | .set xs _ =>

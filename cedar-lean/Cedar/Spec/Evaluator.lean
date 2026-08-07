@@ -91,8 +91,8 @@ public def getAttr (v : Value) (a : Attr) (es : Entities) : Result Value := do
   let r ← attrsOf v es.attrs
   r.findOrErr a attrDoesNotExist
 
-public def hasAttrs (v : Value) (attr : Attr) (attrs : List Attr) (es : Entities) : Result Value :=
-  hasAttrs.loop v (attr :: attrs) es
+public def hasAttrs (v : Value) (a : Attr) (as : List Attr) (es : Entities) : Result Value :=
+  hasAttrs.loop v (a :: as) es
 where
   loop (v : Value) (attrs : List Attr) (es : Entities) : Result Value :=
     match attrs with
@@ -101,13 +101,9 @@ where
       match attrsOf v (fun uid => .ok (es.attrsOrEmpty uid)) with
       | .ok r =>
         match r.find? a with
-        | .some next =>
-          if as.isEmpty then .ok true
-          else loop next as es
+        | .some v₁ => if as.isEmpty then .ok true else loop v₁ as es
         | .none => .ok false
       | .error _ => .error .typeError
-
-
 
 public def bindAttr [Monad m] (a : Attr) (res : m α) : m (Attr × α) := do
   let v ← res

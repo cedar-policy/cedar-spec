@@ -57,10 +57,10 @@ private def ExtHasAttrChainReachable
   match ty with
   | .entity _ => ∀ uid, uid ∈ v.sliceEUIDs →
       ReachableIn entities request.sliceEUIDs uid
-        (sliceLevel - extHasAttrChainCostTy env ty attrs)
+        (sliceLevel - extHasAttrChainCost env ty attrs)
   | .record _ => ∀ uid, uid ∈ v.sliceEUIDs →
       ReachableIn entities request.sliceEUIDs uid
-        (sliceLevel - extHasAttrChainCostTy env ty attrs + 1)
+        (sliceLevel - extHasAttrChainCost env ty attrs + 1)
   | _ => True
 
 private theorem find?_slice_eq
@@ -101,9 +101,9 @@ theorem hasAttrs_loop_entity_sound
   {entities : Entities} {request : Request} {env : TypeEnv}
   (hwf : InstanceOfWellFormedEnvironment request entities env)
   (huidty : InstanceOfEntityType uid ety env)
-  (hcost : extHasAttrChainCostTy env (.entity ety) attrs < sliceLevel)
+  (hcost : extHasAttrChainCost env (.entity ety) attrs < sliceLevel)
   (hreach : ReachableIn entities request.sliceEUIDs uid
-    (sliceLevel - extHasAttrChainCostTy env (.entity ety) attrs)) :
+    (sliceLevel - extHasAttrChainCost env (.entity ety) attrs)) :
   hasAttrs.loop (.prim (.entityUID uid)) attrs entities =
     hasAttrs.loop (.prim (.entityUID uid)) attrs (entities.sliceAtLevel request sliceLevel) := by
   cases attrs with
@@ -154,45 +154,45 @@ theorem hasAttrs_loop_entity_sound
             -- Recurse on the tail: uid2 is reachable
             apply hasAttrs_loop_entity_sound hwf huid2ty
             · -- cost: extHasAttrChainCostTy env (.entity nextEty) (b :: bs) < sliceLevel
-              simp [extHasAttrChainCostTy, h₅, h₈, hqty] at hcost
+              simp [extHasAttrChainCost, h₅, h₈, hqty] at hcost
               omega
             · -- reach: uid2 is reachable at (sliceLevel - cost)
               have hmem : uid2 ∈ ed.sliceEUIDs :=
                 sliceEUIDs_entity_attr h₂ uid2 (by simp [Value.sliceEUIDs, Set.mem_singleton])
-              have hcost_eq : extHasAttrChainCostTy env (.entity ety) (a :: b :: bs) =
-                  1 + extHasAttrChainCostTy env (.entity nextEty) (b :: bs) := by
-                simp [extHasAttrChainCostTy, h₅, h₈, hqty]
+              have hcost_eq : extHasAttrChainCost env (.entity ety) (a :: b :: bs) =
+                  1 + extHasAttrChainCost env (.entity nextEty) (b :: bs) := by
+                simp [extHasAttrChainCost, h₅, h₈, hqty]
               rw [hcost_eq] at hreach hcost
               have hreach' : ReachableIn entities request.sliceEUIDs uid
-                  (sliceLevel - (1 + extHasAttrChainCostTy env (.entity nextEty) (b :: bs))) := hreach
-              have hn_eq : sliceLevel - (1 + extHasAttrChainCostTy env (.entity nextEty) (b :: bs)) =
-                  (sliceLevel - (1 + extHasAttrChainCostTy env (.entity nextEty) (b :: bs)) - 1) + 1 := by omega
+                  (sliceLevel - (1 + extHasAttrChainCost env (.entity nextEty) (b :: bs))) := hreach
+              have hn_eq : sliceLevel - (1 + extHasAttrChainCost env (.entity nextEty) (b :: bs)) =
+                  (sliceLevel - (1 + extHasAttrChainCost env (.entity nextEty) (b :: bs)) - 1) + 1 := by omega
               have hreach_child := reachable_child (hn_eq ▸ hreach') h₁ hmem
-              have heq : (sliceLevel - (1 + extHasAttrChainCostTy env (.entity nextEty) (b :: bs)) - 1) + 2 =
-                  sliceLevel - extHasAttrChainCostTy env (.entity nextEty) (b :: bs) := by omega
+              have heq : (sliceLevel - (1 + extHasAttrChainCost env (.entity nextEty) (b :: bs)) - 1) + 2 =
+                  sliceLevel - extHasAttrChainCost env (.entity nextEty) (b :: bs) := by omega
               exact heq ▸ hreach_child
           | record nextRty =>
             rw [hqty] at h₉
             obtain ⟨nextRecord, rfl⟩ := instance_of_record_type_is_record h₉
             apply hasAttrs_loop_record_sound hwf h₉
             · exact Nat.le_of_lt (by
-                simpa [extHasAttrChainCostTy, h₅, h₈, hqty] using hcost)
+                simpa [extHasAttrChainCost, h₅, h₈, hqty] using hcost)
             · intro path _ uid₂ hpath
               have hmem := in_val_then_val_slice hpath
               have hcost_eq :
-                  extHasAttrChainCostTy env (.entity ety) (a :: b :: bs) =
-                    extHasAttrChainCostTy env (.record nextRty) (b :: bs) := by
-                simp [extHasAttrChainCostTy, h₅, h₈, hqty]
+                  extHasAttrChainCost env (.entity ety) (a :: b :: bs) =
+                    extHasAttrChainCost env (.record nextRty) (b :: bs) := by
+                simp [extHasAttrChainCost, h₅, h₈, hqty]
               rw [hcost_eq] at hreach hcost
               have hn_eq :
-                  sliceLevel - extHasAttrChainCostTy env (.record nextRty) (b :: bs) =
-                    (sliceLevel - extHasAttrChainCostTy env (.record nextRty) (b :: bs) - 1) + 1 := by
+                  sliceLevel - extHasAttrChainCost env (.record nextRty) (b :: bs) =
+                    (sliceLevel - extHasAttrChainCost env (.record nextRty) (b :: bs) - 1) + 1 := by
                 omega
               have hreach_child := reachable_child (hn_eq ▸ hreach) h₁
                 (sliceEUIDs_entity_attr h₂ uid₂ hmem)
               have heq :
-                  (sliceLevel - extHasAttrChainCostTy env (.record nextRty) (b :: bs) - 1) + 2 =
-                    sliceLevel - extHasAttrChainCostTy env (.record nextRty) (b :: bs) + 1 := by
+                  (sliceLevel - extHasAttrChainCost env (.record nextRty) (b :: bs) - 1) + 2 =
+                    sliceLevel - extHasAttrChainCost env (.record nextRty) (b :: bs) + 1 := by
                 omega
               exact heq ▸ hreach_child
           | _ =>
@@ -207,12 +207,12 @@ theorem hasAttrs_loop_record_sound
   {entities : Entities} {request : Request} {env : TypeEnv}
   (hwf : InstanceOfWellFormedEnvironment request entities env)
   (hinst : InstanceOfType env (.record r) (.record rty))
-  (hcost : extHasAttrChainCostTy env (.record rty) attrs <= sliceLevel)
+  (hcost : extHasAttrChainCost env (.record rty) attrs <= sliceLevel)
   (hreach : ∀ path,
     extHasAttrFirstEntityPath? env (.record rty) attrs = some path →
     ∀ uid, Value.EuidViaPath (.record r) path uid →
       ReachableIn entities request.sliceEUIDs uid
-        (sliceLevel - extHasAttrChainCostTy env (.record rty) attrs + 1)) :
+        (sliceLevel - extHasAttrChainCost env (.record rty) attrs + 1)) :
   hasAttrs.loop (.record r) attrs entities =
     hasAttrs.loop (.record r) attrs (entities.sliceAtLevel request sliceLevel) := by
   cases attrs with
@@ -238,19 +238,19 @@ theorem hasAttrs_loop_record_sound
           cases hnext_inst with
           | instance_of_entity uid _ huidty =>
             apply hasAttrs_loop_entity_sound hwf huidty
-            · simp [extHasAttrChainCostTy, hfindq, hqty] at hcost
+            · simp [extHasAttrChainCost, hfindq, hqty] at hcost
               omega
             · have hr := hreach [a]
                 (by simp [extHasAttrFirstEntityPath?, hfindq, hqty]) uid
                 (.record hfind (.euid uid))
-              have hcost_eq : extHasAttrChainCostTy env (.record rty) (a :: b :: bs) =
-                    extHasAttrChainCostTy env (.entity nextEty) (b :: bs) + 1 := by
-                    simp [extHasAttrChainCostTy, hfindq, hqty]
+              have hcost_eq : extHasAttrChainCost env (.record rty) (a :: b :: bs) =
+                    extHasAttrChainCost env (.entity nextEty) (b :: bs) + 1 := by
+                    simp [extHasAttrChainCost, hfindq, hqty]
                     omega
               rw [hcost_eq] at hr hcost
               have heq :
-                  sliceLevel - (extHasAttrChainCostTy env (.entity nextEty) (b :: bs) + 1) + 1 =
-                    sliceLevel - extHasAttrChainCostTy env (.entity nextEty) (b :: bs) := by
+                  sliceLevel - (extHasAttrChainCost env (.entity nextEty) (b :: bs) + 1) + 1 =
+                    sliceLevel - extHasAttrChainCost env (.entity nextEty) (b :: bs) := by
                 omega
               exact heq ▸ hr
         | record nextRty =>
@@ -258,15 +258,15 @@ theorem hasAttrs_loop_record_sound
           obtain ⟨nextRecord, rfl⟩ :=
             instance_of_record_type_is_record hnext_inst
           apply hasAttrs_loop_record_sound hwf hnext_inst
-          · simpa [extHasAttrChainCostTy, hfindq, hqty] using hcost
+          · simpa [extHasAttrChainCost, hfindq, hqty] using hcost
           · intro path hpath uid hvia
             have hr := hreach (a :: path)
               (by simp [extHasAttrFirstEntityPath?, hfindq, hqty, hpath]) uid
               (.record hfind hvia)
             have hcost_eq :
-                extHasAttrChainCostTy env (.record rty) (a :: b :: bs) =
-                  extHasAttrChainCostTy env (.record nextRty) (b :: bs) := by
-              simp [extHasAttrChainCostTy, hfindq, hqty]
+                extHasAttrChainCost env (.record rty) (a :: b :: bs) =
+                  extHasAttrChainCost env (.record nextRty) (b :: bs) := by
+              simp [extHasAttrChainCost, hfindq, hqty]
             rw [hcost_eq] at hr
             exact hr
         | _ =>
@@ -322,12 +322,12 @@ theorem level_based_slicing_is_sound_ext_has_attr
       apply hasAttrs_loop_entity_sound hr huidty
       · simpa [extHasAttrChainCost] using Nat.lt_succ_of_le hk
       · have hreach := checked_eval_entity_reachable hc hr hte hl₁ he (.euid uid)
-        change extHasAttrChainCostTy env (.entity ety) (a :: attrs) ≤ level at hk
+        change extHasAttrChainCost env (.entity ety) (a :: attrs) ≤ level at hk
         change ReachableIn entities request.sliceEUIDs uid
-          (level - extHasAttrChainCostTy env (.entity ety) (a :: attrs) + 1) at hreach
+          (level - extHasAttrChainCost env (.entity ety) (a :: attrs) + 1) at hreach
         have heq :
-            level - extHasAttrChainCostTy env (.entity ety) (a :: attrs) + 1 =
-              level + 1 - extHasAttrChainCostTy env (.entity ety) (a :: attrs) := by
+            level - extHasAttrChainCost env (.entity ety) (a :: attrs) + 1 =
+              level + 1 - extHasAttrChainCost env (.entity ety) (a :: attrs) := by
           omega
         exact heq ▸ hreach
   case extHasAttrRecord =>
