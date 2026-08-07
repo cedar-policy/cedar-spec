@@ -438,7 +438,7 @@ private theorem typeOfExtHasAttr_no_typeError
                 exact typeOfHasAttr_ff_contradicts_find h₂ hha_ty hff_ty hio h₃ hfind
               case h_2 hnotff =>
                 -- Normal case: typeOfGetAttr must succeed
-                cases hga : typeOfGetAttr ty₁ x₁ a c env with
+                cases hga : typeOfGetAttr ty₁ x₁ a (c ∪ ci) env with
                 | error => simp [hga] at hext
                 | ok val_ga =>
                   simp only [hga] at hext
@@ -558,7 +558,7 @@ private theorem typeOfExtHasAttr_gci
           exfalso
           exact typeOfHasAttr_ff_contradicts_find hwf h₆ hff hio h₀ h₁_find
         case h_2 hnotff =>
-          cases h₅ : typeOfGetAttr ty₁ x₁ a c env with
+          cases h₅ : typeOfGetAttr ty₁ x₁ a (c ∪ ci) env with
           | error => simp [h₅] at hext
           | ok val_ga =>
             simp only [h₅] at hext
@@ -567,16 +567,19 @@ private theorem typeOfExtHasAttr_gci
             | error => simp [h₇] at hext
             | ok val_rec =>
               simp only [h₇] at hext
-              -- Both branches of the match on tyHas.typeOf give caps = ci ∪ val_rec.snd
-              have hcaps : res.2 = ci ∪ val_rec.2 := by
-                revert hext; split
-                · intro hext
-                  obtain ⟨_, h⟩ := Prod.mk.inj (Except.ok.inj hext)
-                  exact h.symm
-                · intro hext
-                  obtain ⟨_, h⟩ := Prod.mk.inj (Except.ok.inj hext)
-                  exact h.symm
-              rw [hcaps]
+              have hcaps : res.2 = ∅ ∨ res.2 = ci ∪ val_rec.2 := by
+                cases hbty : val_rec.1
+                all_goals simp only [hbty] at hext
+                case ff =>
+                  left
+                  exact (Prod.mk.inj (Except.ok.inj hext)).2.symm
+                case anyBool =>
+                  right
+                  exact (Prod.mk.inj (Except.ok.inj hext)).2.symm
+                case tt =>
+                  split at hext
+                  all_goals right
+                  all_goals exact (Prod.mk.inj (Except.ok.inj hext)).2.symm
               -- ci is valid
               have h₉ : CapabilitiesInvariant ci request entities := by
                 cases typeOfHasAttr_caps_subset h₆ with
@@ -598,7 +601,13 @@ private theorem typeOfExtHasAttr_gci
                 h₃.resolve_left (by simp)
               have hrec_inv : CapabilitiesInvariant val_rec.2 request entities :=
                 ih h₇ hloop_rest hio_next hc_ci_inv heval_next
-              exact capability_union_invariant h₉ hrec_inv
+              cases hcaps with
+              | inl h =>
+                rw [h]
+                exact empty_capabilities_invariant request entities
+              | inr h =>
+                rw [h]
+                exact capability_union_invariant h₉ hrec_inv
 
 /--
 Helper: typeOfHasAttr returning .tt contradicts find? a = none at runtime.
@@ -958,7 +967,7 @@ private theorem typeOfExtHasAttr_bool_type_sound
           obtain ⟨hbty_eq, _⟩ := hext
           rw [← hbty_eq]
           simp [InstanceOfBoolType]
-    | cons b more =>
+    | cons nextAttr more =>
       -- Unfold typeOfExtHasAttr and hasAttrs.loop
       simp only [typeOfExtHasAttr, bind, Except.bind] at hext
       cases hha_step : typeOfHasAttr ty₁ x₁ a c env with
@@ -967,7 +976,7 @@ private theorem typeOfExtHasAttr_bool_type_sound
         simp only [hha_step] at hext
         obtain ⟨tyHas, ci_ha⟩ := val_ha
         simp only at hext
-        -- hasAttrs.loop v (a :: b :: more): attrsOf v, find? a, then recurse
+        -- hasAttrs.loop v (a :: nextAttr :: more): attrsOf v, find? a, then recurse
         simp only [hasAttrs.loop] at hloop
         split at hloop
         case h_2 => simp at hloop -- attrsOf fails → contradiction
@@ -985,19 +994,34 @@ private theorem typeOfExtHasAttr_bool_type_sound
             rw [← hext.1]; simp [InstanceOfBoolType]
           case h_2 hnotff =>
             -- Normal case: typeOfGetAttr...
-            cases hga : typeOfGetAttr ty₁ x₁ a c env with
+            cases hga : typeOfGetAttr ty₁ x₁ a (c ∪ ci_ha) env with
             | error => simp [hga] at hext
             | ok val_ga =>
               simp only [hga] at hext
-              cases h_rec : typeOfExtHasAttr val_ga.1 (Expr.getAttr x₁ a) (b :: more) (c ∪ ci_ha) env with
+              cases h_rec : typeOfExtHasAttr val_ga.1 (Expr.getAttr x₁ a) (nextAttr :: more) (c ∪ ci_ha) env with
               | error => simp [h_rec] at hext
               | ok val_rec =>
                 simp only [h_rec] at hext
                 split at hext
-                · -- .tt branch: contradicts hfind_none
-                  exfalso
+                . simp only [List.empty_eq, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at hext
+                  simp [InstanceOfBoolType, hext.left.symm]
+                · -- recursive result is .tt: the result follows the current guard
                   rename_i heq_tt
-                  exact typeOfHasAttr_tt_contradicts_find_none hha_step heq_tt hio hcap heval hattrs hfind_none
+                  split at hext
+                  all_goals simp only [Except.ok.injEq, Prod.mk.injEq] at hext
+                  all_goals rw [← hext.1]
+                  case h_1 hasBty hhas =>
+                    cases hasBty
+                    case anyBool =>
+                      simp [InstanceOfBoolType]
+                    case ff =>
+                      simp [InstanceOfBoolType]
+                    case tt =>
+                      exfalso
+                      exact typeOfHasAttr_tt_contradicts_find_none hha_step hhas
+                        hio hcap heval hattrs hfind_none
+                  case h_2 =>
+                    simp [InstanceOfBoolType]
                 · simp only [Except.ok.injEq, Prod.mk.injEq] at hext
                   rw [← hext.1]; simp [InstanceOfBoolType]
         case h_1 next hfind =>
@@ -1007,12 +1031,12 @@ private theorem typeOfExtHasAttr_bool_type_sound
             exfalso
             exact typeOfHasAttr_ff_contradicts_find hwf hha_step hff hio hattrs hfind
           case h_2 hnotff =>
-            cases hga : typeOfGetAttr ty₁ x₁ a c env with
+            cases hga : typeOfGetAttr ty₁ x₁ a (c ∪ ci_ha) env with
             | error => simp [hga] at hext
             | ok val_ga =>
               simp only [hga] at hext
               obtain ⟨tyNext, _⟩ := val_ga
-              cases h_rec : typeOfExtHasAttr tyNext (Expr.getAttr x₁ a) (b :: more) (c ∪ ci_ha) env with
+              cases h_rec : typeOfExtHasAttr tyNext (Expr.getAttr x₁ a) (nextAttr :: more) (c ∪ ci_ha) env with
               | error => simp [h_rec] at hext
               | ok val_rec =>
                 simp only [h_rec] at hext
@@ -1037,7 +1061,42 @@ private theorem typeOfExtHasAttr_bool_type_sound
                         simp only [evaluate, heval, hasAttr, bind, Except.bind,
                           hattrs, Map.contains]
                         rw [hfind]; rfl
-                  exact ih h_rec hio_next hcap_ci heval_next hloop
+                  have hih := ih h_rec hio_next hcap_ci heval_next hloop
+                  rename_i heq_ff
+                  rw [heq_ff] at hih
+                  exact hih
+                · rename_i heq_tt
+                  have hio_next : InstanceOfType env next tyNext.typeOf :=
+                    instance_of_getAttr_type hwf hga hio hattrs hfind heval
+                  have heval_next : evaluate (Expr.getAttr x₁ a) request entities = .ok next := by
+                    simp [evaluate, heval, getAttr_ok_of_attrsOf_find hattrs hfind]
+                  have hcap_ci : CapabilitiesInvariant (c ∪ ci_ha) request entities := by
+                    apply capability_union_invariant hcap
+                    cases typeOfHasAttr_caps_subset hha_step with
+                    | inl h => rw [h]; exact empty_capabilities_invariant request entities
+                    | inr h =>
+                      rw [h]; constructor <;> intro _ _ hh <;> simp [Capabilities.singleton] at hh
+                      · obtain ⟨hh₁, hh₂⟩ := hh; subst hh₁ hh₂
+                        simp only [EvaluatesTo]
+                        refine Or.inr (Or.inr (Or.inr ?_))
+                        simp only [evaluate, heval, hasAttr, bind, Except.bind,
+                          hattrs, Map.contains]
+                        rw [hfind]; rfl
+                  have hih := ih h_rec hio_next hcap_ci heval_next hloop
+                  rw [heq_tt] at hih
+                  simp [InstanceOfBoolType] at hih
+                  cases b
+                  case false =>
+                    simp at hih
+                  case true =>
+                    split at hext
+                    all_goals simp only [Except.ok.injEq, Prod.mk.injEq] at hext; rw [← hext.1]
+                    all_goals simp [InstanceOfBoolType]
+                    case h_1 hasBty hhas =>
+                      cases hasBty <;> simp
+                      case ff =>
+                        exfalso
+                        exact hnotff hhas
                 · -- non-.tt → bty = .anyBool
                   simp only [Except.ok.injEq, Prod.mk.injEq] at hext
                   rw [← hext.1]; simp [InstanceOfBoolType]

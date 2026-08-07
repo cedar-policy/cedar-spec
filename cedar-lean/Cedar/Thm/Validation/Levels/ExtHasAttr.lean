@@ -142,14 +142,14 @@ theorem hasAttrs_loop_entity_sound
             cases hf : x.find? a with
             | some qty => exact ⟨qty, rfl⟩
             | none => exact absurd (absent_attribute_is_absent h₆ hf) (by simp [h₂])
-          obtain ⟨qty, h₈⟩ := h₇
-          have hnext_inst := instance_of_attribute_type h₆ h₈ rfl h₂
+          obtain ⟨x₁, h₈⟩ := h₇
+          have h₉ := instance_of_attribute_type h₆ h₈ rfl h₂
           -- Determine the type of next
-          cases hqty : qty.getType with
+          cases hqty : x₁.getType with
           | entity nextEty =>
             -- next is an entity uid
-            rw [hqty] at hnext_inst
-            cases hnext_inst with
+            rw [hqty] at h₉
+            cases h₉ with
             | instance_of_entity uid2 _ huid2ty =>
             -- Recurse on the tail: uid2 is reachable
             apply hasAttrs_loop_entity_sound hwf huid2ty
@@ -172,9 +172,9 @@ theorem hasAttrs_loop_entity_sound
                   sliceLevel - extHasAttrChainCostTy env (.entity nextEty) (b :: bs) := by omega
               exact heq ▸ hreach_child
           | record nextRty =>
-            rw [hqty] at hnext_inst
-            obtain ⟨nextRecord, rfl⟩ := instance_of_record_type_is_record hnext_inst
-            apply hasAttrs_loop_record_sound hwf hnext_inst
+            rw [hqty] at h₉
+            obtain ⟨nextRecord, rfl⟩ := instance_of_record_type_is_record h₉
+            apply hasAttrs_loop_record_sound hwf h₉
             · exact Nat.le_of_lt (by
                 simpa [extHasAttrChainCostTy, h₅, h₈, hqty] using hcost)
             · intro path _ uid₂ hpath
@@ -196,8 +196,8 @@ theorem hasAttrs_loop_entity_sound
                 omega
               exact heq ▸ hreach_child
           | _ =>
-            rw [hqty] at hnext_inst
-            cases hnext_inst ; simp [hasAttrs.loop, attrsOf]
+            rw [hqty] at h₉
+            cases h₉ ; simp [hasAttrs.loop, attrsOf]
 termination_by attrs.length
 decreasing_by
   all_goals simp_all

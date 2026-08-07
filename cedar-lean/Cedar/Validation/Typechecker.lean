@@ -299,20 +299,11 @@ public def typeOfExtHasAttrLoop (curTy : TypedExpr) (curExpr : Expr) (prevAttr :
     typeOfExtHasAttrLoop tyNext nextExpr attr (acc ∪ ci) c env rest
 
 /--
-Type-check an extended `has` attribute chain. Mirrors the evaluator's `hasAttrs.loop`:
-at each step, check that the current type supports `getAttr a` (giving the next type),
-accumulate capabilities, and recurse on the remaining attributes.
+Type-check an extended `has` attribute chain, mirroring its guarded-`&&`
+desugaring.
 
-The structure is:
-- `ty₁` : typed expression for the base (current position in the chain)
-- `x₁`  : expression for the base
-- `attrs`: the remaining attribute chain `[a₁, a₂, ..., aₙ]`
-- `c`   : input capabilities
-
-At each step `aᵢ`:
-1. Verify `getAttr x₁ aᵢ` is well-typed (via `typeOfGetAttr`)
-2. Add capability `(x₁, .attr aᵢ)` (via `typeOfHasAttr`)
-3. If more attributes remain, recurse with `tyNext` and `Expr.getAttr x₁ aᵢ`
+For the final attribute, type-check `hasAttr` and return its BoolType and
+capabilities.
 -/
 public def typeOfExtHasAttr (ty₁ : TypedExpr) (x₁ : Expr) (attrs : List Attr)
     (c : Capabilities) (env : TypeEnv) : Except TypeError (BoolType × Capabilities) :=
@@ -333,16 +324,19 @@ public def typeOfExtHasAttr (ty₁ : TypedExpr) (x₁ : Expr) (attrs : List Attr
     | .bool .ff => .ok (.ff, ci)
     | _ =>
       -- Check that getAttr x₁ a is well-typed (gives next type)
-      let (tyNext, _) ← typeOfGetAttr ty₁ x₁ a c env
+      let (tyNext, _) ← typeOfGetAttr ty₁ x₁ a (c ∪ ci) env
       -- Recurse on the rest of the chain with the next type/expr
       let nextExpr := Expr.getAttr x₁ a
       let (bty, c') ← typeOfExtHasAttr tyNext nextExpr rest (c ∪ ci) env
-      -- Only propagate the precise boolean type from the recursive call
-      -- if the intermediate `has` is definitely true (entity guaranteed to exist).
-      -- Otherwise the loop may short-circuit to `false` before reaching the end.
-      match tyHas.typeOf with
-      | .bool .tt => .ok (bty, ci ∪ c')
-      | _         => .ok (.anyBool, ci ∪ c')
+      -- Combine the current `has` result with the recursive result exactly as
+      -- `typeOfAnd` combines the two sides of the desugared `&&` chain.
+      match bty with
+      | .ff => .ok (.ff, ∅)
+      | .tt =>
+        match tyHas.typeOf with
+        | .bool hasBty => .ok (hasBty, ci ∪ c')
+        | _            => .ok (.anyBool, ci ∪ c')
+      | .anyBool => .ok (.anyBool, ci ∪ c')
 
 public def typeOfSet (tys : List TypedExpr) : ResultType :=
   match tys with

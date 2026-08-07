@@ -916,7 +916,7 @@ private theorem typeOfExtHasAttr_implies_chain_valid
           exact .cons_not_in_record hnotfound
       case h_2 hnotff =>
         -- Normal case: proceed to typeOfGetAttr
-        generalize hga : typeOfGetAttr ty₁ x₁ attr c env = resGA at h
+        generalize hga : typeOfGetAttr ty₁ x₁ attr (c ∪ ci) env = resGA at h
         cases resGA with
         | error => simp at h
         | ok valGA =>
