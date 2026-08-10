@@ -9,7 +9,6 @@ import Cedar.Thm.Validation.Slice
 import Cedar.Thm.Validation.Levels.Basic
 import Cedar.Thm.Validation.Levels.CheckLevel
 import Cedar.Thm.Validation.Levels.ReachableChild
-import Cedar.Thm.Validation.Levels.ChainCostStep
 import Cedar.Thm.Validation.Levels.SliceHelpers
 import Cedar.Thm.WellTyped.Expr.Typechecking
 
@@ -51,18 +50,6 @@ theorem reachable_implies_find_agree
     rw [←hmake]
     exact (Map.find?_filterMap_key_id hi).symm ▸ hf
 
-private def ExtHasAttrChainReachable
-  (entities : Entities) (request : Request) (env : TypeEnv)
-  (v : Value) (ty : CedarType) (attrs : List Attr) (sliceLevel : Nat) : Prop :=
-  match ty with
-  | .entity _ => ∀ uid, uid ∈ v.sliceEUIDs →
-      ReachableIn entities request.sliceEUIDs uid
-        (sliceLevel - extHasAttrChainCost env ty attrs)
-  | .record _ => ∀ uid, uid ∈ v.sliceEUIDs →
-      ReachableIn entities request.sliceEUIDs uid
-        (sliceLevel - extHasAttrChainCost env ty attrs + 1)
-  | _ => True
-
 private theorem find?_slice_eq
   {entities : Entities} {request : Request} {uid : EntityUID}
   {level sliceLevel : Nat}
@@ -74,27 +61,38 @@ private theorem find?_slice_eq
   rw [← heq] at hr' ⊢
   exact reachable_implies_find_agree entities request uid (sliceLevel - 1) hr'
 
+private theorem instance_of_found_attribute
+  {env : TypeEnv} {r : Map Attr Value} {rty : RecordType}
+  {a : Attr} {v : Value}
+  (hinst : InstanceOfType env (.record r) (.record rty))
+  (hfind : r.find? a = .some v) :
+  ∃ qty, rty.find? a = .some qty ∧ InstanceOfType env v qty.getType := by
+  cases hqty : rty.find? a with
+  | none =>
+    have h := absent_attribute_is_absent hinst hqty
+    simp [hfind] at h
+  | some qty =>
+    exact ⟨qty, rfl, instance_of_attribute_type hinst hqty rfl hfind⟩
 
+private theorem reachable_child_succ
+  {entities : Entities} {start : Set EntityUID} {uid uid' : EntityUID}
+  {ed : EntityData} {level : Nat}
+  (hr : ReachableIn entities start uid level)
+  (hpos : 0 < level)
+  (hfind : entities.find? uid = .some ed)
+  (hmem : uid' ∈ ed.sliceEUIDs) :
+  ReachableIn entities start uid' (level + 1) := by
+  have heq : level = level - 1 + 1 := by omega
+  have hr' := reachable_child (heq ▸ hr) hfind hmem
+  have heq' : level - 1 + 2 = level + 1 := by omega
+  exact heq' ▸ hr'
 
 /-! ## The main soundness theorem -/
-
 
 mutual
 /--
 Core lemma: `hasAttrs.loop` on an entity uid agrees between full and sliced
 stores when the uid is reachable and the chain cost budget is sufficient.
-
-Unlike the old `ChainStrict`-based proof, this does NOT require that all
-intermediate attrs exist in the schema. Instead, it works by induction on the
-list, case-splitting on runtime behavior:
-- If the entity isn't found: both sides agree trivially
-- If the attr isn't found at runtime: loop returns false on both sides
-- If the attr IS found: we use the schema + InstanceOfType to determine
-  the next value's type and prove the recursive case
-
-The key insight: if `ed.attrs.find? a = some next`, then by well-typedness
-(`InstanceOfType`), `a` must be in the schema (attr types must be declared).
-So we can always determine the type of `next` when the attr is found at runtime.
 -/
 theorem hasAttrs_loop_entity_sound
   {uid : EntityUID} {ety : EntityType} {attrs : List Attr} {sliceLevel : Nat}
@@ -138,13 +136,7 @@ theorem hasAttrs_loop_entity_sound
               rw [h₅] at h₂
               simp [Map.find?, Map.empty] at h₂
           obtain ⟨x, h₅, h₆⟩ := h₄
-          have h₇ : ∃ qty, x.find? a = .some qty := by
-            cases hf : x.find? a with
-            | some qty => exact ⟨qty, rfl⟩
-            | none => exact absurd (absent_attribute_is_absent h₆ hf) (by simp [h₂])
-          obtain ⟨x₁, h₈⟩ := h₇
-          have h₉ := instance_of_attribute_type h₆ h₈ rfl h₂
-          -- Determine the type of next
+          obtain ⟨x₁, h₈, h₉⟩ := instance_of_found_attribute h₆ h₂
           cases hqty : x₁.getType with
           | entity nextEty =>
             -- next is an entity uid
@@ -163,13 +155,11 @@ theorem hasAttrs_loop_entity_sound
                   1 + extHasAttrChainCost env (.entity nextEty) (b :: bs) := by
                 simp [extHasAttrChainCost, h₅, h₈, hqty]
               rw [hcost_eq] at hreach hcost
-              have hreach' : ReachableIn entities request.sliceEUIDs uid
-                  (sliceLevel - (1 + extHasAttrChainCost env (.entity nextEty) (b :: bs))) := hreach
-              have hn_eq : sliceLevel - (1 + extHasAttrChainCost env (.entity nextEty) (b :: bs)) =
-                  (sliceLevel - (1 + extHasAttrChainCost env (.entity nextEty) (b :: bs)) - 1) + 1 := by omega
-              have hreach_child := reachable_child (hn_eq ▸ hreach') h₁ hmem
-              have heq : (sliceLevel - (1 + extHasAttrChainCost env (.entity nextEty) (b :: bs)) - 1) + 2 =
-                  sliceLevel - extHasAttrChainCost env (.entity nextEty) (b :: bs) := by omega
+              have hreach_child := reachable_child_succ hreach (by omega) h₁ hmem
+              have heq :
+                  sliceLevel - (1 + extHasAttrChainCost env (.entity nextEty) (b :: bs)) + 1 =
+                    sliceLevel - extHasAttrChainCost env (.entity nextEty) (b :: bs) := by
+                omega
               exact heq ▸ hreach_child
           | record nextRty =>
             rw [hqty] at h₉
@@ -184,17 +174,8 @@ theorem hasAttrs_loop_entity_sound
                     extHasAttrChainCost env (.record nextRty) (b :: bs) := by
                 simp [extHasAttrChainCost, h₅, h₈, hqty]
               rw [hcost_eq] at hreach hcost
-              have hn_eq :
-                  sliceLevel - extHasAttrChainCost env (.record nextRty) (b :: bs) =
-                    (sliceLevel - extHasAttrChainCost env (.record nextRty) (b :: bs) - 1) + 1 := by
-                omega
-              have hreach_child := reachable_child (hn_eq ▸ hreach) h₁
+              exact reachable_child_succ hreach (by omega) h₁
                 (sliceEUIDs_entity_attr h₂ uid₂ hmem)
-              have heq :
-                  (sliceLevel - extHasAttrChainCost env (.record nextRty) (b :: bs) - 1) + 2 =
-                    sliceLevel - extHasAttrChainCost env (.record nextRty) (b :: bs) + 1 := by
-                omega
-              exact heq ▸ hreach_child
           | _ =>
             rw [hqty] at h₉
             cases h₉ ; simp [hasAttrs.loop, attrsOf]
@@ -226,12 +207,7 @@ theorem hasAttrs_loop_record_sound
       | nil => simp
       | cons b bs =>
         simp only [List.isEmpty_cons, Bool.false_eq_true, ↓reduceIte]
-        have hfindq : ∃ qty, rty.find? a = .some qty := by
-          cases hf : rty.find? a with
-          | some qty => exact ⟨qty, rfl⟩
-          | none => exact absurd (absent_attribute_is_absent hinst hf) (by simp [hfind])
-        obtain ⟨qty, hfindq⟩ := hfindq
-        have hnext_inst := instance_of_attribute_type hinst hfindq rfl hfind
+        obtain ⟨qty, hfindq, hnext_inst⟩ := instance_of_found_attribute hinst hfind
         cases hqty : qty.getType with
         | entity nextEty =>
           rw [hqty] at hnext_inst
@@ -277,6 +253,20 @@ decreasing_by
   all_goals simp_all
 end
 
+private theorem evaluate_extHasAttr_eq_of_loop_eq
+  {e : Expr} {a : Attr} {attrs : List Attr} {request : Request}
+  {entities entities' : Entities} {v : Value}
+  (he : EvaluatesTo e request entities v)
+  (hie : evaluate e request entities = evaluate e request entities')
+  (hloop : evaluate e request entities = .ok v →
+    hasAttrs.loop v (a :: attrs) entities =
+      hasAttrs.loop v (a :: attrs) entities') :
+  evaluate (.extHasAttr e a attrs) request entities =
+    evaluate (.extHasAttr e a attrs) request entities' := by
+  simp only [evaluate, ← hie]
+  rcases he with he | he | he | he <;> simp only [he, Except.bind_err]
+  simpa only [Except.bind_ok, hasAttrs] using hloop he
+
 theorem level_based_slicing_is_sound_ext_has_attr
   {e : Expr} {tx : TypedExpr} {a : Attr} {attrs : List Attr}
   {n : Nat} {c₀ c₁: Capabilities} {env : TypeEnv} {request : Request} {entities : Entities}
@@ -284,8 +274,9 @@ theorem level_based_slicing_is_sound_ext_has_attr
   (hr : InstanceOfWellFormedEnvironment request entities env)
   (ht : typeOf (e.extHasAttr a attrs) c₀ env = Except.ok (tx, c₁))
   (hl : tx.AtLevel env n)
-  (ihe : TypedAtLevelIsSound e)
-  : evaluate (.extHasAttr e a attrs) request entities = evaluate (.extHasAttr e a attrs) request (entities.sliceAtLevel request n)
+  (ihe : TypedAtLevelIsSound e) :
+  evaluate (.extHasAttr e a attrs) request entities =
+    evaluate (.extHasAttr e a attrs) request (entities.sliceAtLevel request n)
 := by
   simp only [typeOf] at ht
   simp_do_let (typeOf e c₀ env) as hte at ht
@@ -296,11 +287,11 @@ theorem level_based_slicing_is_sound_ext_has_attr
   rename_i chainResult
   obtain ⟨bty, c'⟩ := chainResult
   simp only [ok, Except.ok.injEq, Prod.mk.injEq] at ht
+  have ⟨_, v, he, hv⟩ := type_of_is_sound hc hr hte
   rw [← ht.1] at hl
   cases hl
   case extHasAttr =>
     rename_i ety level hty hchain hk hl₁
-    have ⟨_, v, he, hv⟩ := type_of_is_sound hc hr hte
     rw [hty] at hv
     cases hv with
     | instance_of_entity uid _ huidty =>
@@ -314,11 +305,8 @@ theorem level_based_slicing_is_sound_ext_has_attr
           | refl => exact h
           | step _ ih => exact entity_access_at_level_succ ih
         exact bump _ _ _ _ (Nat.sub_le _ _) hl₁
-      have hie := ihe hc hr hte hlbase
-      simp only [evaluate, ← hie]
-      unfold EvaluatesTo at he
-      rcases he with he | he | he | he <;> simp only [he, Except.bind_err]
-      simp only [Except.bind_ok, hasAttrs]
+      apply evaluate_extHasAttr_eq_of_loop_eq he (ihe hc hr hte hlbase)
+      intro he
       apply hasAttrs_loop_entity_sound hr huidty
       · simpa [extHasAttrChainCost] using Nat.lt_succ_of_le hk
       · have hreach := checked_eval_entity_reachable hc hr hte hl₁ he (.euid uid)
@@ -332,7 +320,6 @@ theorem level_based_slicing_is_sound_ext_has_attr
         exact heq ▸ hreach
   case extHasAttrRecord =>
     rename_i hnety hlbase hchain
-    have ⟨_, v, he, hv⟩ := type_of_is_sound hc hr hte
     have hrty : ∃ rty, tx₁.typeOf = .record rty := by
       cases hty : tx₁.typeOf with
       | record rty => exact ⟨rty, rfl⟩
@@ -342,25 +329,18 @@ theorem level_based_slicing_is_sound_ext_has_attr
     rw [hrty] at hv
     obtain ⟨record, rfl⟩ := instance_of_record_type_is_record hv
     obtain ⟨hk, _, hpathnone⟩ := hchain rty hrty
-    have hie := ihe hc hr hte hlbase
-    simp only [evaluate, ← hie]
-    unfold EvaluatesTo at he
-    rcases he with he | he | he | he <;> simp only [he, Except.bind_err]
-    simp only [Except.bind_ok, hasAttrs]
+    apply evaluate_extHasAttr_eq_of_loop_eq he (ihe hc hr hte hlbase)
+    intro _
     apply hasAttrs_loop_record_sound hr hv hk
     intro path hpath
     rw [hpathnone] at hpath
     contradiction
   case extHasAttrRecordEntity =>
     rename_i rty path hty hchain hpath hlbase hk haccess
-    have ⟨_, v, he, hv⟩ := type_of_is_sound hc hr hte
     rw [hty] at hv
     obtain ⟨record, rfl⟩ := instance_of_record_type_is_record hv
-    have hie := ihe hc hr hte hlbase
-    simp only [evaluate, ← hie]
-    unfold EvaluatesTo at he
-    rcases he with he | he | he | he <;> simp only [he, Except.bind_err]
-    simp only [Except.bind_ok, hasAttrs]
+    apply evaluate_extHasAttr_eq_of_loop_eq he (ihe hc hr hte hlbase)
+    intro he
     apply hasAttrs_loop_record_sound hr hv hk
     intro path' hpath' uid hvia
     have hpath_eq : path = path' := Option.some.inj (hpath.symm.trans hpath')

@@ -954,6 +954,22 @@ theorem Opt.compile.correctness.hasAttr (expr : Expr) (attr : Attr) (εnv : SymE
     simp only [Opt.CompileResult.mapTerm, bind_assoc, Except.bind_ok]
 termination_by 1 + 2 * sizeOf expr
 
+
+/--
+Correctness theorem for `Opt.compile` -- `extHasAttr` case
+-/
+theorem Opt.compile.correctness.extHasAttr (expr : Expr) (attr : Attr) (attrs: List Attr) (εnv : SymEnv) :
+  Opt.compile (.extHasAttr expr attr attrs) εnv = (do
+    let term ← SymCC.compile (.extHasAttr expr attr attrs) εnv
+    let footprint := footprint (.extHasAttr expr attr attrs) εnv
+    .ok { term, footprint }
+  )
+:= by
+  simp [Opt.compile, SymCC.compile, footprint]
+  rw [Opt.compile.correctness expr εnv]
+  cases h₁ : SymCC.compile expr εnv <;> simp
+termination_by 1 + 2 * sizeOf expr
+
 /--
 Correctness theorem for `Opt.compile` -- `set` case
 -/
@@ -1137,10 +1153,7 @@ theorem Opt.compile.correctness (x : Expr) (εnv : SymEnv) :
   case binaryApp op x₁ x₂ => exact Opt.compile.correctness.binaryApp op x₁ x₂ εnv
   case getAttr x₁ attr    => exact Opt.compile.correctness.getAttr x₁ attr εnv
   case hasAttr x₁ attr    => exact Opt.compile.correctness.hasAttr x₁ attr εnv
-  case extHasAttr x₁ attr attrs =>
-    simp [Opt.compile, SymCC.compile, footprint]
-    rw [Opt.compile.correctness x₁ εnv]
-    cases h₁ : SymCC.compile x₁ εnv <;> simp
+  case extHasAttr x₁ attr attrs => exact Opt.compile.correctness.extHasAttr x₁ attr attrs εnv
   case set xs             => exact Opt.compile.correctness.set xs εnv
   case record m           => exact Opt.compile.correctness.record m εnv
   case call xfn args      => exact Opt.compile.correctness.call xfn args εnv
