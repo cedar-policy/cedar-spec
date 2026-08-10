@@ -225,6 +225,10 @@ def ExprKind.HasAttr := ExprKind
 instance : Inhabited ExprKind.HasAttr where
   default := .hasAttr default default
 
+def ExprKind.ExtHasAttr := ExprKind
+instance : Inhabited ExprKind.ExtHasAttr where
+  default := .extHasAttr default default default
+
 def ExprKind.Like := ExprKind
 instance : Inhabited ExprKind.Like where
   default := .unaryApp (.like default) default
@@ -261,6 +265,8 @@ def Expr.merge (e1 : Expr) (e2 : Expr) : Expr :=
     .getAttr (merge e1 e2) (Field.merge a1 a2)
   | .hasAttr e1 a1, .hasAttr e2 a2 =>
     .hasAttr (merge e1 e2) (Field.merge a1 a2)
+  | .extHasAttr e1 a1 as1, .extHasAttr e2 a2 as2 =>
+    .extHasAttr (merge e1 e2) (Field.merge a1 a2) (as1 ++ as2)
   | .set es1, .set es2 => .set (es1 ++ es2)
   | .record m1, .record m2 => .record (m1 ++ m2)
   | .call _ args1, .call fn2 args2 => .call fn2 (args1 ++ args2)
@@ -576,6 +582,37 @@ def merge (x1 x2 : ExprKind.HasAttr) : ExprKind.HasAttr :=
 -- parseField requires mutual recursion and can be found at the end of this file
 end Proto.ExprKind.HasAttr
 
+namespace Proto.ExprKind.ExtHasAttr
+
+@[inline]
+def mergeExpr (result : ExprKind.ExtHasAttr) (e2 : Expr) : ExprKind.ExtHasAttr :=
+  match result with
+  | .extHasAttr e1 attr attrs => .extHasAttr (Expr.merge e1 e2) attr attrs
+  | _                         => panic!("Expected ExprKind.ExtHasAttr to be constructor .extHasAttr")
+
+@[inline]
+def mergeAttrs (result : ExprKind.ExtHasAttr) (as2 : Array String) : ExprKind.ExtHasAttr :=
+  -- note this assumes protobuf of syntactically correct extended has: the attr are non-empty
+  -- ids
+  match result with
+  | .extHasAttr expr attr attrs =>
+    if attr == "" && attrs == [] then
+      match as2.toList with
+      | []      => .extHasAttr expr attr attrs
+      | a :: as => .extHasAttr expr a as
+    else
+      .extHasAttr expr attr (attrs ++ as2.toList)
+  | _ => panic!("Expected ExprKind.ExtHasAttr to be constructor .extHasAttr")
+
+@[inline]
+def merge (x1 x2 : ExprKind.ExtHasAttr) : ExprKind.ExtHasAttr :=
+  match x1, x2 with
+  | .extHasAttr e1 a1 as1, .extHasAttr e2 a2 as2 => .extHasAttr (Expr.merge e1 e2) (Field.merge a1 a2) (as1 ++ as2)
+  | _, _                                          => panic!("Expected ExprKind.ExtHasAttr to be constructor .extHasAttr")
+
+-- parseField requires mutual recursion and can be found at the end of this file
+end Proto.ExprKind.ExtHasAttr
+
 namespace Proto.ExprKind.Like
 
 @[inline]
@@ -717,6 +754,12 @@ def mergeHasAttr (result : ExprKind) (x : ExprKind.HasAttr) : ExprKind :=
   match result with
   | .hasAttr _ _ => ExprKind.HasAttr.merge result x
   | _            => x
+
+@[inline]
+def mergeExtHasAttr (result : ExprKind) (x : ExprKind.ExtHasAttr) : ExprKind :=
+  match result with
+  | .extHasAttr _ _ _ => ExprKind.ExtHasAttr.merge result x
+  | _                 => x
 
 @[inline]
 def mergeLike (result : ExprKind) (x : ExprKind.Like) : ExprKind :=
@@ -864,6 +907,19 @@ partial def Proto.ExprKind.HasAttr.parseField (t : Proto.Tag) : BParsec (MergeFn
     t.wireType.skip
     pure ignore
 
+partial def Proto.ExprKind.ExtHasAttr.parseField (t : Proto.Tag) : BParsec (MergeFn Proto.ExprKind.ExtHasAttr) := do
+  have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
+  match t.fieldNum with
+  | 1 =>
+    let x : Expr ← Field.guardedParse t
+    pureMergeFn (Proto.ExprKind.ExtHasAttr.mergeExpr · x)
+  | 2 =>
+    let x : Repeated String ← Field.guardedParse t
+    pureMergeFn (Proto.ExprKind.ExtHasAttr.mergeAttrs · x)
+  | _ =>
+    t.wireType.skip
+    pure ignore
+
 partial def Proto.ExprKind.Like.parseField (t : Proto.Tag) : BParsec (MergeFn Proto.ExprKind.Like) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
   match t.fieldNum with
@@ -919,6 +975,7 @@ partial def Expr.parseField (t : Proto.Tag) : BParsec (MergeFn Expr) := do
   have : Message Proto.ExprKind.ExtensionFunctionApp := { parseField := Proto.ExprKind.ExtensionFunctionApp.parseField, merge := Proto.ExprKind.ExtensionFunctionApp.merge }
   have : Message Proto.ExprKind.GetAttr := { parseField := Proto.ExprKind.GetAttr.parseField, merge := Proto.ExprKind.GetAttr.merge }
   have : Message Proto.ExprKind.HasAttr := { parseField := Proto.ExprKind.HasAttr.parseField, merge := Proto.ExprKind.HasAttr.merge }
+  have : Message Proto.ExprKind.ExtHasAttr := { parseField := Proto.ExprKind.ExtHasAttr.parseField, merge := Proto.ExprKind.ExtHasAttr.merge }
   have : Message Proto.ExprKind.Like := { parseField := Proto.ExprKind.Like.parseField, merge := Proto.ExprKind.Like.merge }
   have : Message Proto.ExprKind.Is := { parseField := Proto.ExprKind.Is.parseField, merge := Proto.ExprKind.Is.merge }
   have : Message Proto.ExprKind.Set := { parseField := Proto.ExprKind.Set.parseField, merge := Proto.ExprKind.Set.merge }
@@ -966,6 +1023,9 @@ partial def Expr.parseField (t : Proto.Tag) : BParsec (MergeFn Expr) := do
   | 15 =>
     let x : Proto.ExprKind.Record ← Field.guardedParse t
     pureMergeFn (Proto.ExprKind.mergeRecord · x)
+  | 16 =>
+    let x : Proto.ExprKind.ExtHasAttr ← Field.guardedParse t
+    pureMergeFn (Proto.ExprKind.mergeExtHasAttr · x)
   | _ =>
     t.wireType.skip
     pure ignore
