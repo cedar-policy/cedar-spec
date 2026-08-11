@@ -282,12 +282,6 @@ public def typeOfGetAttr (ty : TypedExpr) (x : Expr) (a : Attr) (c : Capabilitie
     | .none     => err (.unknownEntity ety)
   | _           => err (.unexpectedType ty.typeOf)
 
-/--
-Helper for typing the attribute chain in `extHasAttr`.
-Given the current typed expression, the current expression, the previous attribute,
-the accumulated capabilities, the input capabilities, and the environment,
-walk the remaining attribute list and accumulate capabilities.
--/
 public def typeOfExtHasAttrLoop (curTy : TypedExpr) (curExpr : Expr) (prevAttr : Attr)
     (acc : Capabilities) (c : Capabilities) (env : TypeEnv) :
     List Attr → Except TypeError (TypedExpr × Expr × Attr × Capabilities)
@@ -298,13 +292,6 @@ public def typeOfExtHasAttrLoop (curTy : TypedExpr) (curExpr : Expr) (prevAttr :
     let (_, ci) ← typeOfHasAttr tyNext nextExpr attr (c ∪ acc) env
     typeOfExtHasAttrLoop tyNext nextExpr attr (acc ∪ ci) c env rest
 
-/--
-Type-check an extended `has` attribute chain, mirroring its guarded-`&&`
-desugaring.
-
-For the final attribute, type-check `hasAttr` and return its BoolType and
-capabilities.
--/
 public def typeOfExtHasAttr (ty₁ : TypedExpr) (x₁ : Expr) (attrs : List Attr)
     (c : Capabilities) (env : TypeEnv) : Except TypeError (BoolType × Capabilities) :=
   match attrs with

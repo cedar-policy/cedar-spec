@@ -218,17 +218,11 @@ public def TypedExpr.checkLevel (tx : TypedExpr) (env : TypeEnv) (n : Nat) : Boo
   | .extHasAttr x₁ attr attrs _ =>
     match x₁.typeOf with
     | .entity ety =>
-      -- Compute chain cost first, then give remaining budget to base expression.
-      -- This ensures: depth(base) + chain_hops ≤ n - 1 < n, so all entities
-      -- (base + chain) fit within slice level n.
       let k := extHasAttrChainCost env (.entity ety) (attr :: attrs)
       n > k &&
       x₁.checkEntityAccessLevel env (n - k - 1) n [] &&
       checkExtHasAttrChain env (.entity ety) (attr :: attrs) k
     | .record rty =>
-      -- A record base can contain an entity that this chain later dereferences.
-      -- Check the expression specifically along the path to the first such
-      -- entity; subsequent entity hops are covered by the chain budget.
       let k := extHasAttrChainCost env (.record rty) (attr :: attrs)
       let baseAccessOk :=
         match extHasAttrFirstEntityPath? env (.record rty) (attr :: attrs) with

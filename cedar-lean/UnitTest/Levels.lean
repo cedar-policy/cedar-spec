@@ -158,6 +158,8 @@ def extHasAttrDesugaredLevels :=
     testLevelCheck "desugared has-chain with a statically missing record attribute" desugaredExtHasRecordMissing 0,
     testLevelCheck "extHasAttr through a request-rooted entity in a record" extHasRecordPrincipal 1,
     testLevelCheck "desugared has-chain through a request-rooted entity in a record" desugaredExtHasRecordPrincipal 1,
+    testLevelCheck "extHasAttr on context with one entity hop" (.extHasAttr (.var .context) "otherUser" ["isAdmin"]) 1,
+    testLevelCheck "extHasAttr on context with two entity hops" (.extHasAttr (.var .context) "otherUser" ["manager", "isAdmin"]) 2,
   ].flatten
 
 def composeN (f : α → α) : Nat → (α → α)
