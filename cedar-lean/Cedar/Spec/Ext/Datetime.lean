@@ -101,32 +101,24 @@ def tzOffsetMinsLt60 (str : String) : Bool :=
   | .none => false
 
 /--
-  Workaround an issue in the datetime library by checking that the year, month,
-  day, hour, minute, and second components of the datetime string are not longer
-  than expected.  https://github.com/leanprover/lean4/issues/7478
+  Check that the timezone offset, when present, is exactly 4 digits: `(+|-)hhmm`.
+  The date is split off on `T` first so the date's `-` separators are not
+  mistaken for the offset sign. A date-only string, or a time without a sign
+  (UTC `Z`), has no offset and passes.
 -/
-def checkComponentLen (str : String) : Bool :=
+def checkOffsetLen (str : String) : Bool :=
   match str.splitToList (· == 'T') with
-  | [date] => checkDateComponentLen date
-  | [date, timeMsOffset] => checkDateComponentLen date && checkTimeMsOffsetComponentLen timeMsOffset
+  | [_] => true
+  | [_, timeMsOffset] =>
+    match timeMsOffset.splitToList (λ c => c == '+' || c == '-') with
+    | [_] => true
+    | [_, offset] => offset.length == 4 && offset.all Char.isDigit
+    | _ => false
   | _ => false
-  where
-    checkDateComponentLen (str : String) : Bool :=
-      match str.splitToList (· == '-') with
-      | [year, month, day] => year.length == 4 && month.length == 2 && day.length == 2
-      | _ => false
-    checkTimeMsOffsetComponentLen (str : String) : Bool :=
-      match str.splitToList (λ c => c == '.' || c == '+' || c == '-' || c == 'Z') with
-      | time :: _ => checkTimeLen time
-      | _ => false
-    checkTimeLen (str : String) : Bool :=
-      match str.splitToList (· == ':') with
-      | [h, m, s] => h.length == 2 && m.length == 2 && s.length == 2
-      | _ => false
 
 public def parse (str: String) : Option Datetime := do
   if dateContainsLeapSeconds str then failure
-  if !checkComponentLen str then failure
+  if !checkOffsetLen str then failure
   if !tzOffsetMinsLt60 str then failure
   let val :=
     DateOnly.parse str <|>
