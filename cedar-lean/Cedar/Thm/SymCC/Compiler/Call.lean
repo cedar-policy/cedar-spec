@@ -36,14 +36,15 @@ private theorem pe_decimal_lessThan {d₁ d₂ : Ext.Decimal} :
   Decimal.lessThan (Term.prim (TermPrim.ext (Ext.decimal d₁))) (Term.prim (TermPrim.ext (Ext.decimal d₂))) =
   Term.prim (TermPrim.bool (decide (d₁ < d₂)))
 := by
-  simp only [Decimal.lessThan, pe_ext_decimal_val, pe_bvslt, LT.lt, Int64.lt, Bool.decide_eq_true]
+  simp only [Decimal.lessThan, pe_ext_decimal_val, pe_bvslt, LT.lt, Int64.lt]
+  exact congrArg (fun b => Term.prim (TermPrim.bool b)) Bool.decide_eq_true.symm
 
 private theorem pe_decimal_lessThanOrEqual {d₁ d₂ : Ext.Decimal} :
   Decimal.lessThanOrEqual (Term.prim (TermPrim.ext (Ext.decimal d₁))) (Term.prim (TermPrim.ext (Ext.decimal d₂))) =
   Term.prim (TermPrim.bool (decide (d₁ ≤ d₂)))
 := by
-  simp only [Decimal.lessThanOrEqual, pe_ext_decimal_val, pe_bvsle, LE.le, Int64.le,
-    Bool.decide_eq_true]
+  simp only [Decimal.lessThanOrEqual, pe_ext_decimal_val, pe_bvsle, LE.le, Int64.le]
+  exact congrArg (fun b => Term.prim (TermPrim.bool b)) Bool.decide_eq_true.symm
 
 private theorem pe_decimal_greaterThan {d₁ d₂ : Ext.Decimal} :
   Decimal.greaterThan (Term.prim (TermPrim.ext (Ext.decimal d₁))) (Term.prim (TermPrim.ext (Ext.decimal d₂))) =

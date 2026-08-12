@@ -1338,7 +1338,7 @@ theorem compile_well_typed_call
     duration _ _ hparse _
   =>
     simp only [
-      List.map_cons, List.map_nil, List.attach_cons,
+      List.attach_map, List.map_cons, List.map_nil, List.attach_cons,
       List.attach_nil, List.mapM_cons,
       List.mapM_nil,
       bind, Except.bind,
@@ -1383,7 +1383,7 @@ theorem compile_well_typed_call
     have ⟨hwf_comp_x1, _⟩ := compile_wf ((hcond_xs x1 ?_).2.2) hcomp_x1
     have hcomp_xs : tcomp_xs = [tcomp_x1] := by
       simp only [
-        List.map_cons, List.map_nil, List.attach_cons,
+        List.attach_map, List.map_cons, List.map_nil, List.attach_cons,
         List.attach_nil, List.mapM_cons,
         bind, Except.bind, List.mapM_nil,
         pure, Except.pure,
@@ -1434,7 +1434,7 @@ theorem compile_well_typed_call
     have hcomp_xs : tcomp_xs = [tcomp_x1, tcomp_x2]
     := by
       simp only [
-        List.map_cons, List.map_nil, List.attach_cons,
+        List.attach_map, List.map_cons, List.map_nil, List.attach_cons,
         List.attach_nil, List.mapM_cons,
         bind, Except.bind, List.mapM_nil,
         pure, Except.pure,

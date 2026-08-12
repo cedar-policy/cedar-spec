@@ -478,7 +478,8 @@ private theorem compileApp₂_less_implies_apply₂ {t₁ t₂ t₃ : Term} {v�
       subst hv₁ hv₂ hok
       simp only [apply₂, pe_bvslt, ← same_ok_bool_iff]
       simp only [Int64.toInt, BitVec.toInt_inj] at ih₁ ih₂
-      simp only [LT.lt, Int64.lt, Bool.decide_eq_true, ih₁, ih₂]
+      simp only [LT.lt, Int64.lt, ih₁, ih₂]
+      exact Bool.decide_eq_true
     case _ => -- Duration
       have ⟨d₁, ht₁⟩ := wfl_of_type_duration_is_duration (And.intro hwφ₁ (same_value_implies_lit ih₁)) hty₁
       have ⟨d₂, ht₂⟩ := wfl_of_type_duration_is_duration (And.intro hwφ₂ (same_value_implies_lit ih₂)) hty₂
@@ -487,7 +488,8 @@ private theorem compileApp₂_less_implies_apply₂ {t₁ t₂ t₃ : Term} {v�
       have hv₂ := same_ext_term_implies ih₂
       subst hv₁ hv₂ hok
       simp only [apply₂, pe_ext_duration_val, LT.lt, Ext.Datetime.Duration.lt, pe_bvslt, ← same_ok_bool_iff]
-      simp only [Int64.lt, Bool.decide_eq_true]
+      simp only [Int64.lt]
+      exact Bool.decide_eq_true.trans Bool.decide_eq_true
     case _ => -- Datetime
       have ⟨d₁, ht₁⟩ := wfl_of_type_datetime_is_datetime (And.intro hwφ₁ (same_value_implies_lit ih₁)) hty₁
       have ⟨d₂, ht₂⟩ := wfl_of_type_datetime_is_datetime (And.intro hwφ₂ (same_value_implies_lit ih₂)) hty₂
@@ -496,7 +498,8 @@ private theorem compileApp₂_less_implies_apply₂ {t₁ t₂ t₃ : Term} {v�
       have hv₂ := same_ext_term_implies ih₂
       subst hv₁ hv₂ hok
       simp only [apply₂, pe_ext_datetime_val, LT.lt, Ext.Datetime.lt, pe_bvslt, ← same_ok_bool_iff]
-      simp only [Int64.lt, Bool.decide_eq_true]
+      simp only [Int64.lt]
+      exact Bool.decide_eq_true.trans Bool.decide_eq_true
 
 private theorem compileApp₂_lessEq_implies_apply₂ {t₁ t₂ t₃ : Term} {v₁ v₂ : Value}
   (hwφ₁ : Term.WellFormed εs t₁)
@@ -516,7 +519,8 @@ private theorem compileApp₂_lessEq_implies_apply₂ {t₁ t₂ t₃ : Term} {v
       subst hv₁ hv₂ hok
       simp only [apply₂, pe_bvsle, ← same_ok_bool_iff]
       simp only [Int64.toInt, BitVec.toInt_inj] at ih₁ ih₂
-      simp only [LE.le, Int64.le, Bool.decide_eq_true, ih₁, ih₂]
+      simp only [LE.le, Int64.le, ih₁, ih₂]
+      exact Bool.decide_eq_true
     case _ => -- Duration
       have ⟨d₁, ht₁⟩ := wfl_of_type_duration_is_duration (And.intro hwφ₁ (same_value_implies_lit ih₁)) hty₁
       have ⟨d₂, ht₂⟩ := wfl_of_type_duration_is_duration (And.intro hwφ₂ (same_value_implies_lit ih₂)) hty₂
@@ -525,7 +529,8 @@ private theorem compileApp₂_lessEq_implies_apply₂ {t₁ t₂ t₃ : Term} {v
       have hv₂ := same_ext_term_implies ih₂
       subst hv₁ hv₂ hok
       simp only [apply₂, pe_ext_duration_val, LE.le, Ext.Datetime.Duration.le, pe_bvsle, ← same_ok_bool_iff]
-      simp only [Int64.le, Bool.decide_eq_true]
+      simp only [Int64.le]
+      exact Bool.decide_eq_true.trans Bool.decide_eq_true
     case _ => -- Datetime
       have ⟨d₁, ht₁⟩ := wfl_of_type_datetime_is_datetime (And.intro hwφ₁ (same_value_implies_lit ih₁)) hty₁
       have ⟨d₂, ht₂⟩ := wfl_of_type_datetime_is_datetime (And.intro hwφ₂ (same_value_implies_lit ih₂)) hty₂
@@ -534,7 +539,8 @@ private theorem compileApp₂_lessEq_implies_apply₂ {t₁ t₂ t₃ : Term} {v
       have hv₂ := same_ext_term_implies ih₂
       subst hv₁ hv₂ hok
       simp only [apply₂, pe_ext_datetime_val, LE.le, Ext.Datetime.le, pe_bvsle, ← same_ok_bool_iff]
-      simp only [Int64.le, Bool.decide_eq_true]
+      simp only [Int64.le]
+      exact Bool.decide_eq_true.trans Bool.decide_eq_true
 
 private theorem compileApp₂_add_implies_apply₂ {t₁ t₂ t₃ : Term} {v₁ v₂ : Value}
   (hwφ₁ : Term.WellFormed εs t₁)
