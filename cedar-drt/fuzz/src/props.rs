@@ -188,7 +188,12 @@ pub fn schema_to_cedar_parses(schema: &Schema) -> Schema {
 /// indicate a bug.
 pub fn entity_protobuf_decodes(buf: &[u8], original: &Entity) {
     match Entity::decode(buf) {
-        Ok(decoded) => assert_eq!(*original, decoded),
+        Ok(decoded) => pretty_assert_entities_deep_eq(
+            &Entities::from_entities([original.clone()], None)
+                .expect("failed to create entities from single entity"),
+            &Entities::from_entities([decoded], None)
+                .expect("failed to create entities from single entity"),
+        ),
         // we expect conversion errors here: the entity has not been validated first, we only
         // test that the protobuf decoding part works, not the conversion
         Err(DecodeError::Conversion(_)) => (),
