@@ -30,7 +30,6 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::ops::{Deref, DerefMut};
-use std::str::FromStr;
 use thiserror::Error;
 
 // Mutate a hypothetically valid string (randomly).
@@ -372,21 +371,6 @@ impl ConstantPool {
     pub fn arbitrary_string_constant_size_hint(_depth: usize) -> (usize, Option<usize>) {
         size_hint_for_choose(None)
     }
-}
-
-/// Generate an arbitrary string of up to `bound` size
-fn arbitrary_string(u: &mut Unstructured<'_>, bound: Option<usize>) -> Result<SmolStr> {
-    let s: String = u.arbitrary()?;
-    let result_s = if let Some(bound) = bound {
-        if s.len() < bound {
-            SmolStr::from(s)
-        } else {
-            s.chars().take(bound).collect()
-        }
-    } else {
-        s.into()
-    };
-    Ok(result_s)
 }
 
 /// Data describing an extension function available for use in policies/etc

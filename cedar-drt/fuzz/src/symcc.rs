@@ -247,7 +247,7 @@ fn arbitrary_policies(
     );
     let mut policies: Vec<StaticABACPolicy> = Vec::with_capacity(len);
     for _ in 0..len {
-        policies.push(schema.arbitrary_static_policy(&hierarchy, u)?);
+        policies.push(schema.arbitrary_static_policy(hierarchy, u)?);
     }
     // we want to ensure that the policies all have unique IDs.
     // this will be a list of policy IDs that we have seen (and will ensure there are no duplicates of)

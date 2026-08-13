@@ -522,7 +522,7 @@ impl SchemaGen for ValidatorSchema<'_> {
         TypeGenerator {
             schema: self,
             constant_pool: &self.constant_pool,
-            settings: &self.settings,
+            settings: self.settings,
         }
     }
     fn arbitrary_hierarchy(&self, u: &mut Unstructured<'_>) -> Result<Hierarchy> {

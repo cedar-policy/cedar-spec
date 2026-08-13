@@ -50,11 +50,6 @@ impl<'a> Analyzer<'a> {
         })
     }
 
-    /// Change the `json_output` setting without reconstructing an entire new `Analyzer`
-    pub fn set_json_output(&mut self, json_output: bool) {
-        self.json_output = json_output;
-    }
-
     /// Analyze a Cedar `PolicySet` with respect to the `Analyzer`'s `Schema` and print the findings
     pub fn analyze_policyset(&self, policy_set: PolicySet) -> Result<(), ExecError> {
         let mut policy_vacuity_results = HashMap::new();
@@ -245,13 +240,13 @@ impl PerSigFindings {
 
     pub fn nfindings(&self) -> usize {
         let mut ret = self.equiv_classes.len();
-        for (_, s) in self.permit_shadowed_by_permits.iter() {
+        for s in self.permit_shadowed_by_permits.values() {
             ret += s.len();
         }
-        for (_, s) in self.permit_overridden_by_forbids.iter() {
+        for s in self.permit_overridden_by_forbids.values() {
             ret += s.len();
         }
-        for (_, s) in self.forbid_shadowed_by_forbids.iter() {
+        for s in self.forbid_shadowed_by_forbids.values() {
             ret += s.len();
         }
         ret

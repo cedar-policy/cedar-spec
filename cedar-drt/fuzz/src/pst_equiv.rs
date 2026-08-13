@@ -54,8 +54,8 @@ pub fn check_policy_set_equivalence(
             .get(id)
             .unwrap_or_else(|| panic!("Static policy {:?} missing after roundtrip", id));
         check_template_equivalence(
-            &orig.body(),
-            &rt.body(),
+            orig.body(),
+            rt.body(),
             CheckingParams {
                 check_ids: params.check_ids,
             },

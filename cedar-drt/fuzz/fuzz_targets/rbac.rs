@@ -69,16 +69,16 @@ pub enum PolicyGroup {
 
 impl std::fmt::Display for FuzzTargetInput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "policy groups: {:?}", &self.policy_groups)?;
-        writeln!(f, "hierarchy: {}", &self.hierarchy)?;
-        writeln!(f, "request: {}", &self.requests[0])?;
-        writeln!(f, "request: {}", &self.requests[1])?;
-        writeln!(f, "request: {}", &self.requests[2])?;
-        writeln!(f, "request: {}", &self.requests[3])?;
-        writeln!(f, "request: {}", &self.requests[4])?;
-        writeln!(f, "request: {}", &self.requests[5])?;
-        writeln!(f, "request: {}", &self.requests[6])?;
-        writeln!(f, "request: {}", &self.requests[7])?;
+        writeln!(f, "policy groups: {:?}", self.policy_groups)?;
+        writeln!(f, "hierarchy: {}", self.hierarchy)?;
+        writeln!(f, "request: {}", self.requests[0])?;
+        writeln!(f, "request: {}", self.requests[1])?;
+        writeln!(f, "request: {}", self.requests[2])?;
+        writeln!(f, "request: {}", self.requests[3])?;
+        writeln!(f, "request: {}", self.requests[4])?;
+        writeln!(f, "request: {}", self.requests[5])?;
+        writeln!(f, "request: {}", self.requests[6])?;
+        writeln!(f, "request: {}", self.requests[7])?;
         Ok(())
     }
 }

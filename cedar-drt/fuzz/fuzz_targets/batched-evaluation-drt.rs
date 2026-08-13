@@ -18,10 +18,7 @@
 use cedar_drt::logger::initialize_log;
 use cedar_drt_inner::{abac::FuzzTargetInput, fuzz_target};
 
-use cedar_lean_ffi::{
-    CedarLeanFfi,
-    FfiError::{self, LeanBackendError},
-};
+use cedar_lean_ffi::{CedarLeanFfi, FfiError};
 use cedar_policy::{Schema, TestEntityLoader};
 use cedar_policy_core::batched_evaluator::err::BatchedEvalError;
 
