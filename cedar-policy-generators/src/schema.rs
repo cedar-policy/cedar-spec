@@ -1338,8 +1338,8 @@ impl Schema {
             .chain(
                 nsdef
                     .actions
-                    .iter()
-                    .filter_map(|(_, action)| action.applies_to.as_ref())
+                    .values()
+                    .filter_map(|action| action.applies_to.as_ref())
                     .map(|a| attrs_from_attrs_or_context(&nsdef, &a.context)),
             );
         let attributes: Vec<(SmolStr, json_schema::Type<_>)> = attrsorcontexts

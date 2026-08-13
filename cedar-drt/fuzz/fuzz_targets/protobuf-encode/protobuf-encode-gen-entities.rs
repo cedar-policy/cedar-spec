@@ -19,8 +19,8 @@
 use cedar_drt_inner::fuzz_target;
 use cedar_drt_inner::props::entities_protobuf_decodes;
 
+use cedar_policy::Entities;
 use cedar_policy::proto::traits::{EncodeError, Protobuf};
-use cedar_policy::{Entities, Entity};
 
 use cedar_policy_generators::schema_gen::SchemaGen;
 use cedar_policy_generators::{hierarchy::HierarchyGenerator, schema, settings::ABACSettings};

@@ -774,11 +774,10 @@ impl ExprGenerator<'_> {
                 _ => {
                     let r = m
                         .iter()
-                        .filter_map(|(a, qt)| {
-                            qt.required.then(|| {
-                                self.generate_expr_for_type_structurally_recursive(&qt.ty, u)
-                                    .map(|e| (a.clone(), e))
-                            })
+                        .filter(|(_, qt)| qt.required)
+                        .map(|(a, qt)| {
+                            self.generate_expr_for_type_structurally_recursive(&qt.ty, u)
+                                .map(|e| (a.clone(), e))
                         })
                         .collect::<Result<IndexMap<_, _>>>()?;
                     Ok(ast::Expr::record(r)

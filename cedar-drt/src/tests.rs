@@ -94,8 +94,8 @@ pub fn run_auth_test(
             } else {
                 panic!(
                     "Unexpected error for {request}\nPolicies:\n{}\nEntities:\n{}\nError: {err}",
-                    &policies,
-                    &entities.as_ref()
+                    policies,
+                    entities.as_ref()
                 );
             }
         }
@@ -198,8 +198,7 @@ fn compare_validation_results(
                 && !err.contains("unknown extension type")
             {
                 panic!(
-                    "Unexpected error\nPolicies:\n{}\nSchema:\n{:?}\nError: {err}",
-                    &policies, schema
+                    "Unexpected error\nPolicies:\n{policies}\nSchema:\n{schema:?}\nError: {err}"
                 );
             }
         }
@@ -220,7 +219,7 @@ fn compare_validation_results(
                 assert!(
                     definitional_res.validation_passed(),
                     "Mismatch for Policies:\n{}\nSchema:\n{:?}\ncedar-policy response: {:?}\nTest engine response: {:?}\n",
-                    &policies,
+                    policies,
                     schema,
                     miette::Report::new(rust_res),
                     definitional_res,
@@ -238,7 +237,7 @@ fn compare_validation_results(
                         assert!(
                             !definitional_res.validation_passed(),
                             "Mismatch for Policies:\n{}\nSchema:\n{:?}\ncedar-policy response:\n{:?}\nTest engine response: {:?}\n",
-                            &policies,
+                            policies,
                             schema,
                             miette::Report::new(rust_res),
                             definitional_res,
@@ -264,12 +263,12 @@ pub fn run_ent_val_test(
             panic!("failed to execute entity validation: {e}");
         }
         TestResult::Success(definitional_res) => {
-            if rust_res.is_ok() {
+            if let Ok(rust_res) = rust_res {
                 assert!(
                     definitional_res.validation_passed(),
                     "Definitional Errors: {:?}\n, Rust output: {:?}",
                     definitional_res.errors,
-                    rust_res.unwrap()
+                    rust_res
                 );
             } else {
                 assert!(
@@ -303,12 +302,12 @@ pub fn run_req_val_test(
             panic!("failed to execute request validation: {e}");
         }
         TestResult::Success(definitional_res) => {
-            if rust_res.is_ok() {
+            if let Ok(rust_res) = rust_res {
                 assert!(
                     definitional_res.validation_passed(),
                     "Definitional Errors: {:?}\n, Rust output: {:?}",
                     definitional_res.errors,
-                    rust_res.unwrap()
+                    rust_res
                 );
             } else {
                 assert!(

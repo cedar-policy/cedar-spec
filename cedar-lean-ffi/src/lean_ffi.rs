@@ -1235,7 +1235,7 @@ impl CedarLeanFfi {
             call_lean_ffi_takes_protobuf(
                 batchedAuthorizationFFI,
                 &proto::BatchedAuthorizationRequest::new(
-                    &policyset, schema, request, entities, iteration,
+                    policyset, schema, request, entities, iteration,
                 ),
             )
         };
