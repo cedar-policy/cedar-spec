@@ -519,9 +519,8 @@ fn is_internal_type<N: TypeName + Clone>(type_name: &N, expected: &str) -> bool 
     (qualed.basename().to_string() == expected)
         && qualed
             .namespace_components()
-            .map(Id::to_string)
-            .collect_vec()
-            == vec!["__cedar"]
+            .exactly_one()
+            .is_ok_and(|id| id.as_ref() == "__cedar")
 }
 
 /// Trait for taking either `N` to a concrete type we can do equality over

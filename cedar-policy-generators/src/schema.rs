@@ -62,9 +62,9 @@ pub struct Schema {
     /// list of entity types that occur as a valid principal for at least one
     /// action in the `schema`
     pub principal_types: Vec<ast::EntityType>,
-    /// list of Eids that exist as a non-`None` actions name for an action in
+    /// list of EntityUIDs that exist as a non-`None` actions name for an action in
     /// the schema.
-    pub actions_eids: Vec<ast::Eid>,
+    pub actions_euids: Vec<ast::EntityUID>,
     /// list of entity types that occur as a valid resource for at least one
     /// action in the `schema`
     pub resource_types: Vec<ast::EntityType>,
@@ -689,8 +689,8 @@ impl Bindings {
                             loc: None,
                         },
                     );
-                    common_types.insert(ids[ids.len() - 1].clone(), self.rewrite_type(u, ty)?);
                 }
+                common_types.insert(ids[ids.len() - 1].clone(), self.rewrite_type(u, ty)?);
             }
         }
         Ok(common_types)
@@ -992,6 +992,16 @@ impl Schema {
             .collect();
         let attributes_by_type =
             build_attributes_by_type(&nsdef, &nsdef.entity_types, namespace.as_ref());
+        let action_ty = EntityType::from_normalized_str("Action")
+            .unwrap()
+            .qualify_with(namespace.as_ref());
+        let actions_euids = nsdef
+            .actions
+            .keys()
+            .map(|name| {
+                EntityUID::from_components(action_ty.clone(), ast::Eid::new(name.clone()), None)
+            })
+            .collect();
         Ok(Schema {
             constant_pool: u
                 .arbitrary()
@@ -1010,7 +1020,7 @@ impl Schema {
                 .cloned()
                 .map(|iname| ast::Name::try_from(iname).unwrap().into())
                 .collect(),
-            actions_eids: nsdef.actions.keys().cloned().map(ast::Eid::new).collect(),
+            actions_euids,
             resource_types: resource_types
                 .into_iter()
                 .cloned()
@@ -1344,10 +1354,15 @@ impl Schema {
             .collect();
         let attributes_by_type =
             build_attributes_by_type(&nsdef, nsdef.entity_types.iter(), namespace.as_ref());
-        let actions_eids = nsdef
+        let action_ty = EntityType::from_normalized_str("Action")
+            .unwrap()
+            .qualify_with(namespace.as_ref());
+        let actions_euids = nsdef
             .actions
             .keys()
-            .map(|name| ast::Eid::new(name.clone()))
+            .map(|name| {
+                EntityUID::from_components(action_ty.clone(), ast::Eid::new(name.clone()), None)
+            })
             .collect();
         let entitytypes_by_type = nsdef
             .entity_types
@@ -1374,7 +1389,7 @@ impl Schema {
                 .into_iter()
                 .map(|ptype| ast::Name::try_from(ptype).unwrap().into())
                 .collect(),
-            actions_eids,
+            actions_euids,
             resource_types: resource_types
                 .into_iter()
                 .map(|rtype| ast::Name::try_from(rtype).unwrap().into())
@@ -1539,22 +1554,7 @@ impl Schema {
     }
 
     pub(crate) fn arbitrary_action_uid(&self, u: &mut Unstructured<'_>) -> Result<ast::EntityUID> {
-        Ok(u.choose(
-            &self
-                .actions_eids
-                .iter()
-                .map(|eid| {
-                    EntityUID::from_components(
-                        EntityType::from_normalized_str("Action")
-                            .unwrap()
-                            .qualify_with(self.namespace()),
-                        eid.clone(),
-                        None,
-                    )
-                })
-                .collect::<Vec<_>>(),
-        )?
-        .clone())
+        Ok(u.choose(&self.actions_euids)?.clone())
     }
 
     /// Size hint for [`Self::arbitrary_action_constraint()`].

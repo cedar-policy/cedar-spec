@@ -40,13 +40,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
         let schema: schema::Schema = schema::Schema::arbitrary(SETTINGS.clone(), u)?;
         let hierarchy = schema.arbitrary_hierarchy(u)?;
-
-        let entities = Entities::from_entities(
-            hierarchy.entities().map(|x| Entity::from(x.to_owned())),
-            None,
-        )
-        .expect("Failed to create entities");
-
+        let entities = hierarchy.try_into().expect("Failed to create entities");
         Ok(Self { entities })
     }
 

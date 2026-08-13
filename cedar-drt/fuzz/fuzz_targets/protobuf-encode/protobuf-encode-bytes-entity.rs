@@ -25,11 +25,8 @@ use cedar_policy::proto::traits::{EncodeError, Protobuf};
 // Feed arbitrary bytes into the Entity JSON parser.
 // Property: if JSON parsing succeeds, encoding to protobuf must not panic,
 // and decoding the encoded bytes must produce an equivalent Entity.
-fuzz_target!(|input: &[u8]| {
-    let Ok(json) = serde_json::from_slice::<serde_json::Value>(input) else {
-        return;
-    };
-    let Ok(entity) = Entity::from_json_value(json, None) else {
+fuzz_target!(|input: &str| {
+    let Ok(entity) = Entity::from_json_str(input, None) else {
         return;
     };
     let buf = match entity.encode() {

@@ -81,7 +81,7 @@ pub fn fuzz_target(entities: Entities, schema: Option<Schema>) {
     if let Some(schema) = schema {
         // The entity store generator currently produces entities of enumerated entity types but with invalid EIDs,
         // which are rejected by entity validation
-        match Entities::from_json_value(json.clone(), Some(&schema)) {
+        match Entities::from_json_value(json, Some(&schema)) {
             Ok(roundtripped_entities) => {
                 // Weaker assertion for schema based parsing because it adds actions from the schema into entities.
                 for e in entities {
