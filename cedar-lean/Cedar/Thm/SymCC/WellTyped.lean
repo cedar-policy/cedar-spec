@@ -437,10 +437,9 @@ theorem wellTypedPolicies_preserves_errored
   = errored p' request entities
 := by
   have h := wellTypedPolicy_preserves_evaluation hinst hwt
-  simp [
-    errored, hasError,
-    h, wellTypedPolicies_preserves_policy_id_and_effect hwt
-  ]
+  have herr : hasError p request entities = hasError p' request entities := by
+    simp only [hasError, h]
+  simp only [errored, herr, wellTypedPolicies_preserves_policy_id_and_effect hwt]
 
 theorem wellTypedPolicies_preserves_errorPolicies
   {Γ : TypeEnv} {entities : Entities} {request : Request}

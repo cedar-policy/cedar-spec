@@ -40,6 +40,12 @@ strict.
 -- set_option profiler true
 set_option linter.all false
 
+-- Lean 4.33 enabled `backward.isDefEq.respectTransparency.types` by default (lean4#13895),
+-- which makes the `decide`-based strictness proofs below (over the `import all`-reducible
+-- `.lt` definitions) blow up with `whnf` timeouts. Disabled locally for this file only;
+-- the rest of the SymCC proofs are migrated to the new transparency behavior properly.
+set_option backward.isDefEq.respectTransparency.types false
+
 namespace Cedar.Thm
 
 open Cedar Data Spec SymCC Validation

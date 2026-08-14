@@ -777,8 +777,10 @@ theorem Opt.compile.correctness.var (v : Var) (εnv : SymEnv) :
   )
 := by
   simp [Opt.compile, SymCC.compile, footprint]
-  cases v <;> simp [Opt.compileVar, SymCC.compileVar, footprint.ofEntity, SymCC.compile, EmptyCollection.emptyCollection, Factory.someOf, TermType.isEntityType, TermType.isOptionEntityType]
-  case principal | action | resource => split <;> simp [*]
+  cases v <;> simp [Opt.compileVar, SymCC.compileVar, footprint.ofEntity, SymCC.compile, EmptyCollection.emptyCollection, Factory.someOf, TermType.isOptionEntityType]
+  case principal | action | resource =>
+    split <;> rename_i h <;>
+      simp only [TermType.isEntityType] at h <;> split at h <;> simp_all
   case context =>
     split <;> rename_i h
     · simp [TermType.isRecordType] at *

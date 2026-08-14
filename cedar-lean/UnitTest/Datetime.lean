@@ -41,6 +41,8 @@ def testsForValidDatetimeStrings :=
     testValidDatetime "2024-10-15T11:38:02.101+1134" 1728950642101,
     testValidDatetime "2024-10-15T11:38:02+1134" 1728950642000,
     testValidDatetime "2024-10-15T11:38:02-1134" 1729033922000,
+    testValidDatetime "2024-10-15T11:38:02+0000" 1728992282000,
+    testValidDatetime "2024-10-15T11:38:02-0000" 1728992282000,
   ]
 
 private def testInvalidDatetime (str : String) (msg : String) : TestCase IO :=
@@ -73,6 +75,7 @@ def testsForInvalidDatetimeStrings :=
     testInvalidDatetime "0001-01-01T01:01:01.0001Z" "four digits for ms",
     testInvalidDatetime "0001-01-01T01:01:01.001+01" "two digits for offset",
     testInvalidDatetime "0001-01-01T01:01:01.001+001" "three digits for offset",
+    testInvalidDatetime "0001-01-01T01:01:01.001-001" "three digits for negative offset",
     testInvalidDatetime "0001-01-01T01:01:01.001+00001" "six digits for offset",
     testInvalidDatetime "0001-01-01T01:01:01.001+00:01" "offset with colon",
     testInvalidDatetime "0001-01-01T01:01:01.001+00:00:01" "six offset with colon",

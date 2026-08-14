@@ -108,7 +108,7 @@ instance : Lean.ToJson Op where
   ---------- Core ADT operators with a trusted mapping to SMT ----------
   | Op.option.get => Lean.Json.str "option.get"
   | Op.record.get attr => Lean.Json.mkObj [("record.get", Lean.Json.str attr)]
-  | Op.string.like pattern => Lean.Json.mkObj [("string.like", pattern.toJson)]
+  | Op.string.like pattern => Lean.Json.mkObj [("string.like", Lean.toJson pattern)]
   ---------- Extension ADT operators with a trusted mapping to SMT ----------
   | .ext xop => Lean.Json.mkObj [("ext", Lean.toJson xop)]
 

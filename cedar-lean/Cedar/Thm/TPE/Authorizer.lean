@@ -191,12 +191,15 @@ theorem no_satisfied_effect_if_empty_satisfied_and_residual_policies
   := by
     simp only [isAuthorizedFromResiduals.satisfiedPolicies, Set.empty_iff_not_exists, Set.mem_make,
       List.mem_filterMap, ResidualPolicy.satisfiedWithEffect, ResidualPolicy.satisfied,
-      Residual.isTrue, Option.ite_none_right_eq_some] at h_satisfied_empty
+      Residual.isTrue] at h_satisfied_empty
     simp only [isAuthorizedFromResiduals.residualPolicies, Set.empty_iff_not_exists, Set.mem_make,
       List.mem_filterMap, ResidualPolicy.residualWithEffect, ResidualPolicy.isResidual,
       ResidualPolicy.satisfied, Residual.isTrue, ResidualPolicy.isFalse, Residual.isFalse,
-      ResidualPolicy.hasError, Residual.isError, Option.ite_none_right_eq_some, not_exists] at h_residual_empty
-    grind
+      ResidualPolicy.hasError, Residual.isError, not_exists] at h_residual_empty
+    have hee : rp.effect = effect := h_eff.trans hp₂
+    have hr := h_residual_empty rp.id rp
+    simp only [h₅, hee, beq_self_eq_true, Bool.true_and, true_and] at hr
+    cases hrr : rp.residual <;> grind
 
   have ha : rp.residual.evaluate req es = Except.ok (Value.prim (Prim.bool true)) :=
     to_option_right_ok h_eval h
@@ -284,8 +287,8 @@ theorem partial_authorize_error_policies_is_sound
       replace herr := isError_evaluate_err herr req es
       rw [herr.choose_spec] at h_eval
       exact to_option_left_err h_eval
-    simp [ha]
-  · exact h_id ▸ hpid
+    simp only [ha]
+    exact h_id ▸ hpid
 
 theorem partial_authorize_satisfied_policies_is_sound
   {policies : List Policy}

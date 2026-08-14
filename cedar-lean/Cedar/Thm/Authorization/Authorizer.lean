@@ -88,7 +88,9 @@ theorem error_policies_congr_evaluate {ps : Policies} {r₁ r₂ : Request} {es�
   replace heq : ∀ p ∈ ps, errored p r₁ es₁ = errored p r₂ es₂ := by
     intro p hp
     specialize heq p hp
-    simp [heq, errored, hasError]
+    have herr : hasError p r₁ es₁ = hasError p r₂ es₂ := by
+      simp only [hasError, heq]
+    simp only [errored, herr]
   rw [List.filterMap_congr heq]
 
 theorem is_authorized_congr_evaluate {ps : Policies} {r₁ r₂ : Request} {es₁ es₂ : Entities}
@@ -182,8 +184,8 @@ theorem satisfied_implies_principal_scope {policy : Policy} {request : Request} 
   inₑ request.principal uid entities = true
 := by
   intro h₁ h₂
-  simp [satisfied, Policy.toExpr] at h₁
-  replace h₁ := and_true_implies_left_true h₁
+  simp only [satisfied, Policy.toExpr] at h₁
+  replace h₁ := and_true_implies_left_true (of_decide_eq_true h₁)
   exact principal_eval_ok_means_principal_in_uid h₁ h₂
 
 theorem satisfied_implies_resource_scope {policy : Policy} {request : Request} {entities : Entities} {uid : EntityUID} :
@@ -192,11 +194,11 @@ theorem satisfied_implies_resource_scope {policy : Policy} {request : Request} {
   inₑ request.resource uid entities = true
 := by
   intro h₁ h₂
-  simp [satisfied, Policy.toExpr] at h₁
+  simp only [satisfied, Policy.toExpr] at h₁
   replace h₁ :=
     and_true_implies_left_true
       (and_true_implies_right_true
-        (and_true_implies_right_true h₁))
+        (and_true_implies_right_true (of_decide_eq_true h₁)))
   exact resource_eval_ok_means_resource_in_uid h₁ h₂
 
 theorem mapM_evaluate_uids_produces_uids (list : List EntityUID) (request : Request) (entities : Entities) :

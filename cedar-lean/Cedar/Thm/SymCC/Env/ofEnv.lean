@@ -973,7 +973,7 @@ theorem ofActionType_is_wf
   · exact Map.wf_empty
   · intros; contradiction
   · simp only [TermType.isCedarRecordType, TermType.cedarType?, Map.empty]
-    grind
+    rfl
   -- Symbolic ancestors are well-formed
   · intros anc sym_anc_f hfind_anc
     have := Map.find?_mem_toList hfind_anc
