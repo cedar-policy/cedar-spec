@@ -19,6 +19,7 @@ import Cedar.Validation
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.Map
 
+
 /-!
 This file contains useful definitions and lemmas about the
 least upper bound (LUB) functions on Cedar types.
@@ -140,6 +141,17 @@ theorem lubBool_comm {bty₁ bty₂ : BoolType} :
   simp [lubBool] ; split <;> rename_i h <;>
   rw [eq_comm] at h <;> simp [h]
 
+theorem sizeOf_qualified_lt_sizeOf_record_type (x : Attr × Qualified CedarType) (xs : List (Attr × Qualified CedarType)) :
+  sizeOf x.snd < sizeOf (x :: xs)
+:= by
+  simp only [List.cons.sizeOf_spec]
+  simp only [Nat.add_assoc]
+  rw [Nat.add_comm]
+  apply Nat.lt_add_right
+  apply Nat.lt_add_right
+  simp only [sizeOf, Prod._sizeOf_1]
+  omega
+
 mutual
 theorem lubQualified_comm {qty₁ qty₂ : Qualified CedarType} :
   lubQualifiedType qty₁ qty₂ = lubQualifiedType qty₂ qty₁
@@ -156,6 +168,7 @@ theorem lubQualified_comm {qty₁ qty₂ : Qualified CedarType} :
     rename_i ty₁ ty₂ <;> by_contra
     apply h₁ ty₂ ty₁ <;> rfl
     apply h₂ ty₂ ty₁ <;> rfl
+  termination_by sizeOf qty₁
 
 theorem lubRecord_comm {rty₁ rty₂ : List (Attr × Qualified CedarType)} :
   lubRecordType rty₁ rty₂ = lubRecordType rty₂ rty₁
@@ -176,6 +189,7 @@ theorem lubRecord_comm {rty₁ rty₂ : List (Attr × Qualified CedarType)} :
     rename_i a₁ hd₁ tl₁ a₂ hd₂ tl₂ h₃ ; subst h₃
     by_contra
     apply h₂ a₁ hd₂ tl₂ a₁ hd₁ tl₁ <;> rfl
+  termination_by sizeOf rty₁
 
 theorem lub_comm {ty₁ ty₂ : CedarType} :
   (ty₁ ⊔ ty₂) = (ty₂ ⊔ ty₁)
@@ -205,6 +219,7 @@ theorem lub_comm {ty₁ ty₂ : CedarType} :
       try { apply h₂ v₂ v₁ <;> rfl  }
       try { apply h₃ v₂ v₁ <;> rfl  }
     }
+  termination_by sizeOf ty₁
 end
 
 mutual
@@ -220,6 +235,7 @@ theorem lub_refl (ty : CedarType) :
   case h_3 rty =>
     have h₁ := lubRecordType_refl rty
     simp [h₁]
+  termination_by sizeOf ty
 
 theorem lubRecordType_refl (rty : List (Attr × QualifiedType)) :
   lubRecordType rty rty = some rty
@@ -235,6 +251,7 @@ theorem lubRecordType_refl (rty : List (Attr × QualifiedType)) :
     case cons hd tl =>
       specialize h₂ hd.fst hd.snd tl hd.fst hd.snd tl
       simp at h₂
+  termination_by sizeOf rty
 
 theorem lubQualifiedType_refl (qty : QualifiedType) :
   lubQualifiedType qty qty = some qty
@@ -254,6 +271,7 @@ theorem lubQualifiedType_refl (qty : QualifiedType) :
     have h₁ := lub_refl ty
     simp [h₁]
   }
+  termination_by sizeOf qty
 end
 
 
@@ -329,6 +347,7 @@ theorem lub_trans {ty₁ ty₂ ty₃ : CedarType} :
         rename_i ety₁ ety₂ ety₃
         rw [h₁] at h₆ ; contradiction
       }
+  termination_by sizeOf ty₁
 
 theorem lubRecordType_trans {rty₁ rty₂ rty₃ : List (Attr × QualifiedType)} :
   (lubRecordType rty₁ rty₂) = some rty₂ →
@@ -358,12 +377,15 @@ theorem lubRecordType_trans {rty₁ rty₂ rty₃ : List (Attr × QualifiedType)
     rw [eq_comm] at hl₁ hl₂ hr₁ hr₂
     subst hl₁ hl₂ hr₁ hr₂
     simp at *
+    have _ : sizeOf hd₁.snd < sizeOf (hd₁ :: tl₁) := by -- termination
+      apply sizeOf_qualified_lt_sizeOf_record_type hd₁ tl₁
     have h₉ := lubQualifiedType_trans h₅ h₇
     have h₁₀ := lubRecordType_trans h₆ h₈
     simp [h₉, h₁₀]
   all_goals {
     cases rty₂ <;> simp at h₁ h₂
   }
+  termination_by sizeOf rty₁
 
 theorem lubQualifiedType_trans {qty₁ qty₂ qty₃ : QualifiedType} :
   (lubQualifiedType qty₁ qty₂) = some qty₂ →
@@ -384,6 +406,7 @@ theorem lubQualifiedType_trans {qty₁ qty₂ qty₃ : QualifiedType} :
   all_goals {
     cases qty₂ <;> simp at h₁ h₂
   }
+  termination_by sizeOf qty₁
 
 end
 
@@ -436,6 +459,7 @@ theorem lub_left_subty {ty₁ ty₂ ty₃ : CedarType} :
     simp at h₁
     subst h₁
     simp [lub_refl ty₁]
+  termination_by sizeOf ty₁
 
 theorem lubRecordType_left_subty {rty₁ rty₂ rty₃ : List (Attr × QualifiedType)} :
   lubRecordType rty₁ rty₂ = some rty₃ →
@@ -457,6 +481,7 @@ theorem lubRecordType_left_subty {rty₁ rty₂ rty₃ : List (Attr × Qualified
     have h₄ := lubQualifiedType_left_subty h₂
     have h₅ := lubRecordType_left_subty h₃
     simp [←h₁, h₄, h₅]
+  termination_by sizeOf rty₁
 
 theorem lubQualifiedType_left_subty {qty₁ qty₂ qty₃ : QualifiedType} :
   lubQualifiedType qty₁ qty₂ = some qty₃ →
@@ -478,19 +503,9 @@ theorem lubQualifiedType_left_subty {qty₁ qty₂ qty₃ : QualifiedType} :
     by_contra h₅
     simp [h₅] at h₃
   }
+  termination_by sizeOf qty₁
 
 end
-
-theorem sizeOf_qualified_lt_sizeOf_record_type (x : Attr × Qualified CedarType) (xs : List (Attr × Qualified CedarType)) :
-  sizeOf x.snd < sizeOf (x :: xs)
-:= by
-  simp only [List.cons.sizeOf_spec]
-  simp only [Nat.add_assoc]
-  rw [Nat.add_comm]
-  apply Nat.lt_add_right
-  apply Nat.lt_add_right
-  simp only [sizeOf, Prod._sizeOf_1]
-  omega
 
 theorem lubBool_assoc_none_some {ty₁ ty₂ : CedarType} {bty₁ bty₂ : BoolType}
   (h₁ : (ty₁ ⊔ CedarType.bool bty₁) = none)
@@ -543,6 +558,7 @@ theorem lub_assoc_none_some {ty₁ ty₂ ty₃ ty₄ : CedarType}
     rename_i h₃ ; simp at h₂
     subst h₂ h₃
     exact h₁
+  termination_by sizeOf ty₁
 
 theorem lubRecordType_assoc_none_some {rty₁ rty₂ rty₃ rty₄ : List (Attr × QualifiedType)}
   (h₁ : (lubRecordType rty₁ rty₂) = none)
@@ -580,6 +596,7 @@ theorem lubRecordType_assoc_none_some {rty₁ rty₂ rty₃ rty₄ : List (Attr 
           cases h₈ : lubRecordType tl rty₂' <;> simp [h₈] at h₁
           have h₉ := lubRecordType_assoc_none_some h₈ h₅
           simp [h₉]
+  termination_by sizeOf rty₁
 
 theorem lubQualifiedType_assoc_none_some {qty₁ qty₂ qty₃ qty₄ : QualifiedType}
   (h₁ : (lubQualifiedType qty₁ qty₂) = none)
@@ -600,6 +617,7 @@ theorem lubQualifiedType_assoc_none_some {qty₁ qty₂ qty₃ qty₄ : Qualifie
     have h₅ := lub_assoc_none_some h₄ h₃
     simp [h₅]
   }
+  termination_by sizeOf qty₁
 
 end
 

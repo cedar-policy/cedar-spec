@@ -206,9 +206,9 @@ private theorem compile_interpret_var_in_footprint {v : Var} {εnv : SymEnv} {I 
     simp only [footprint, footprint.ofEntity, hok', hty, ↓reduceIte, Set.mem_singleton,
       exists_eq_left, interpret_term_some, ht]
   case context hty' =>
-    cases h : εnv.request.context.typeOf <;>
-    simp only [TermType.isRecordType, h, Bool.false_eq_true] at hty'
-    simp only [TermType.isOptionEntityType, typeOf_term_some, h, Bool.false_eq_true] at hty
+    replace ⟨_, hty⟩ := isOptionEntityType_implies_option_entity_type hty
+    replace ⟨_, hty'⟩ := isRecordType_implies_record_type hty'
+    simp only [typeOf_term_some, hty', TermType.option.injEq, reduceCtorEq] at hty
 
 private theorem interpret_ifSome_ite_eq_implies {t₁ t₂ t₃ t₄ : Term} {ty : TermType} {I : Interpretation} {εs : SymEntities} :
   I.WellFormed εs → t₁.WellFormed εs → t₂.WellFormed εs → t₃.WellFormed εs →

@@ -352,6 +352,14 @@ public theorem isOptionEntityType_implies_option_entity_type {ty : TermType} :
   · simp only [TermType.option.injEq, TermType.prim.injEq, TermPrimType.entity.injEq, exists_eq', imp_self]
   · simp only [Bool.false_eq_true, false_implies]
 
+public theorem isRecordType_implies_record_type {ty : TermType} :
+  ty.isRecordType → ∃ rty, ty = .record rty
+:= by
+  simp only [TermType.isRecordType]
+  split
+  · simp only [TermType.record.injEq, exists_eq', imp_self]
+  · simp only [Bool.false_eq_true, false_implies]
+
 private theorem typeOf_ite_simplify_option {g t : Term} {ty : TermType} :
   t.typeOf = .option ty →
   (Factory.ite.simplify g (Term.none ty) t).typeOf = ty.option

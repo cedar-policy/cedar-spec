@@ -81,8 +81,8 @@ theorem lt_trans_irrefl_implies_asymm {α} [LT α] {a b : α} :
 local macro "simp_decide_lt" h:ident lt_fun:ident name_fun:ident : tactic => do
  `(tactic| (
     revert $h
-    simp only [$lt_fun:ident, $name_fun:ident, decide_eq_true_eq]
-    decide
+    simp only [$lt_fun:ident, $name_fun:ident, decide_eq_true_eq, String.reduceLT, not_true, false_implies]
+    done
     ))
 
 ----- `<` is strict on `ExtOp` -----
@@ -109,7 +109,7 @@ theorem ExtOp.lt_conn {a b : ExtOp} :
   intro h₁
   cases a <;> cases b
   any_goals (simp only [ne_eq, not_true_eq_false] at h₁ )
-  all_goals (simp only [ExtOp.mkName] ; decide)
+  all_goals (simp only [ExtOp.mkName, String.reduceLT, or_true, or_false] ; done)
 
 public instance ExtOp.strictLT : StrictLT ExtOp where
   asymmetric a b   := by exact lt_trans_irrefl_implies_asymm ExtOp.lt_trans ExtOp.lt_irrefl
@@ -152,7 +152,7 @@ theorem TermPrimType.lt_conn {a b : TermPrimType} :
   cases a <;> cases b <;>
   simp only [LT.lt] <;>
   simp only [TermPrimType.lt, TermPrimType.mkName, decide_eq_true_eq]
-  any_goals (decide)
+  any_goals (simp only [String.reduceLT, true_or, or_true, false_or, or_false] ; done)
   case bool | string =>
     simp only [ne_eq, not_true_eq_false] at h
   case bitvec =>
@@ -597,7 +597,7 @@ theorem Op.lt_trans (a b c : Op) :
 local macro "simp_op_mkName_neq_parametric" b:ident h:ident inj:ident : tactic => do
  `(tactic| (
     cases $b:ident
-    any_goals (simp only [Op.mkName, not_true_eq_false] ; decide)
+    any_goals (simp only [Op.mkName, not_true_eq_false, ne_eq, String.reduceEq, not_false_eq_true] ; done)
     simp only [$inj:ident, forall_apply_eq_imp_iff, forall_eq'] at $h:ident
     ))
 
@@ -618,7 +618,7 @@ private theorem Op.mkName.neq {a b: Op}
   case ext         => simp_op_mkName_neq_parametric b h₅ Op.ext.injEq
   all_goals {
     cases b
-    any_goals (simp only [Op.mkName] ; decide)
+    any_goals (simp only [Op.mkName, ne_eq, String.reduceEq, not_false_eq_true] ; done)
     simp only [not_true_eq_false] at h₀
   }
 
@@ -754,7 +754,7 @@ theorem TermPrim.lt_conn {a b : TermPrim} :
   simp only [ne_eq, LT.lt]
   intro h₁
   cases a <;> cases b <;> simp only [TermPrim.lt, decide_eq_true_eq]
-  any_goals (simp only [TermPrim.mkName] ; decide)
+  any_goals (simp only [TermPrim.mkName, String.reduceLT, true_or, or_true, false_or, or_false] ; done)
   case bool =>
     simp only [TermPrim.bool.injEq] at h₁
     exact StrictLT.connected _ _ h₁
