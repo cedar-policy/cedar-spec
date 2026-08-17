@@ -26,25 +26,115 @@ import Cedar.Thm.WellTyped
 import Cedar.Thm.Data.Control
 
 import Cedar.Thm.TPE.Soundness.Basic
+import Cedar.Thm.TPE.PreservesTypeOf
 
 namespace Cedar.Thm
 
+open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 open Cedar.TPE
 open Cedar.Thm
 
+/-- A record value whose type does not declare an attribute `a` does not have `a`. -/
+theorem has_attr_false_of_record_type_absent
+  {env : TypeEnv} {r : Map Attr Value} {rty : RecordType} {a : Attr} {es : Entities}
+  (hinst : InstanceOfType env (.record r) (.record rty))
+  (hnone : rty.find? a = .none) :
+  Spec.hasAttr (.record r) a es = .ok (.prim (.bool false))
+:= by
+  have habsent := absent_attribute_is_absent hinst hnone
+  simp only [Spec.hasAttr, Spec.attrsOf, Except.bind_ok, Map.contains, habsent,
+    Option.isSome_none]
+
+/-- If the schema does not declare an attribute `a` for an entity, then it does not have `a`. -/
+theorem has_attr_false_of_entity_type_absent
+  {env : TypeEnv} {request : Request} {entities : Entities}
+  {uid : EntityUID} {rty : RecordType} {a : Attr}
+  (hwf : InstanceOfWellFormedEnvironment request entities env)
+  (hattrs : EntitySchema.attrs? env.ets uid.ty = some rty)
+  (hnone : rty.find? a = .none) :
+  Spec.hasAttr (.prim (.entityUID uid)) a entities = .ok (.prim (.bool false))
+:= by
+  have habsent : (entities.attrsOrEmpty uid).find? a = .none := by
+    simp only [Entities.attrsOrEmpty]
+    split
+    case _ d hfind =>
+      exact absent_attribute_is_absent (well_typed_entity_attributes hwf hfind hattrs) hnone
+    case _ =>
+      exact Map.find?_empty a
+  simp only [Spec.hasAttr, Spec.attrsOf, Except.bind_ok, Map.contains, habsent,
+    Option.isSome_none]
+
+/--
+If `tryDecideHasResidual` decides a `has` expression from the operand's type,
+then concrete evaluation agrees.
+-/
+theorem try_decide_has_residual_sound
+{env : TypeEnv}
+{r₁ : Residual}
+{req : Request}
+{es : Entities}
+{attr : Attr}
+{v : Value}
+(hwf : InstanceOfWellFormedEnvironment req es env)
+(hwt : Residual.WellTyped env r₁)
+(hdec : TPE.tryDecideHasResidual env r₁ attr = .some v) :
+  ∃ v', r₁.evaluate req es = .ok v' ∧ Spec.hasAttr v' attr es = .ok v
+:= by
+  unfold TPE.tryDecideHasResidual at hdec
+  split at hdec
+  case isFalse => simp at hdec
+  case isTrue hef =>
+  have hok := error_free_evaluate_ok hwf hwt ((Residual.error_free_spec _).mp hef)
+  rw [Except.isOk_iff_exists] at hok
+  have ⟨v', hev⟩ := hok
+  have hinst := residual_well_typed_is_sound hwf hwt hev
+  refine ⟨v', hev, ?_⟩
+  split at hdec
+  case h_1 rty heqty =>
+    rw [heqty] at hinst
+    have ⟨r, hr⟩ := instance_of_record_type_is_record hinst
+    subst hr
+    split at hdec
+    case isFalse => simp at hdec
+    case isTrue hnone =>
+    simp only [Option.some.injEq] at hdec
+    subst hdec
+    exact has_attr_false_of_record_type_absent hinst (Option.isNone_iff_eq_none.mp hnone)
+  case h_2 ety heqty =>
+    rw [heqty] at hinst
+    cases hinst
+    case instance_of_entity uid hient =>
+      split at hdec
+      case h_1 rty hattrs =>
+        split at hdec
+        case isFalse => simp at hdec
+        case isTrue hnone =>
+        simp only [Option.some.injEq] at hdec
+        subst hdec
+        have hty : uid.ty = ety := by
+          simp only [InstanceOfEntityType] at hient
+          exact hient.left.symm
+        exact has_attr_false_of_entity_type_absent hwf (by rw [hty]; exact hattrs)
+          (Option.isNone_iff_eq_none.mp hnone)
+      case h_2 => simp at hdec
+  case h_3 => simp at hdec
+
 theorem partial_evaluate_is_sound_has_attr
+{env : TypeEnv}
 {x₁ : Residual}
 {req : Request}
 {es : Entities}
 {preq : PartialRequest}
 {pes : PartialEntities}
 {attr : Attr}
+(h₂ : InstanceOfWellFormedEnvironment req es env)
+(hwt : Residual.WellTyped env x₁)
 (h₄ : RequestAndEntitiesRefine req es preq pes)
-(hᵢ₁ : Except.toOption (x₁.evaluate req es) = Except.toOption ((TPE.evaluate x₁ preq pes).evaluate req es)) :
+(hᵢ₁ : Except.toOption (x₁.evaluate req es) = Except.toOption ((TPE.evaluate env x₁ preq pes).evaluate req es)) :
   Except.toOption ((x₁.hasAttr attr (CedarType.bool BoolType.anyBool)).evaluate req es) =
-  Except.toOption ((TPE.evaluate (x₁.hasAttr attr (CedarType.bool BoolType.anyBool)) preq pes).evaluate req es)
+  Except.toOption ((TPE.evaluate env (x₁.hasAttr attr (CedarType.bool BoolType.anyBool)) preq pes).evaluate req es)
 := by
   simp [TPE.evaluate, TPE.hasAttr]
   split
@@ -52,6 +142,15 @@ theorem partial_evaluate_is_sound_has_attr
     simp [heq, Residual.evaluate] at hᵢ₁
     rcases to_option_right_err hᵢ₁ with ⟨_, hᵢ₁⟩
     simp [Residual.evaluate, hᵢ₁, Except.toOption]
+  split
+  case h_1 hdec =>
+    have hwt' := partial_eval_preserves_well_typed h₂ h₄ hwt
+    have ⟨v, hev, hres⟩ := try_decide_has_residual_sound h₂ hwt' hdec
+    have hev₁ : Except.toOption (x₁.evaluate req es) = some v := by
+      rw [hᵢ₁, hev]; rfl
+    rw [to_option_some] at hev₁
+    simp [Residual.evaluate, hev₁, hres, Except.toOption]
+  case h_2 =>
   split
   case _ heq =>
     simp [TPE.attrsOf] at heq

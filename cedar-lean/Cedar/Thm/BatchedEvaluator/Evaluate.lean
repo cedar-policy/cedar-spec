@@ -30,7 +30,7 @@ theorem batched_evaluate_loop_eq_evaluate
   Residual.WellTyped env x →
   RequestAndEntitiesRefine req es req.asPartialRequest current_store →
   InstanceOfWellFormedEnvironment req es env →
-  (Residual.evaluate (batchedEvaluateLoop x req loader current_store iters) req es).toOption = (Residual.evaluate x req es).toOption := by
+  (Residual.evaluate (batchedEvaluateLoop env x req loader current_store iters) req es).toOption = (Residual.evaluate x req es).toOption := by
   intro h₀ h₁ h₂ h₃
   unfold batchedEvaluateLoop
   split
@@ -46,7 +46,7 @@ theorem batched_evaluate_loop_eq_evaluate
       · apply entities_refine_append
         · exact h₂.right
         · exact (h₀ toLoad).2
-    let newRes := TPE.evaluate x req.asPartialRequest newStore
+    let newRes := TPE.evaluate env x req.asPartialRequest newStore
     have h₇ : (Residual.evaluate newRes req es).toOption = (Residual.evaluate x req es).toOption := by
       rw [← partial_evaluate_is_sound h₁ h₃ h₆]
 

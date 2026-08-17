@@ -44,11 +44,11 @@ theorem partial_evaluate_is_sound_ite
 (h₂ : InstanceOfWellFormedEnvironment req es env)
 (hwt : Residual.WellTyped env x₁)
 (hₜ : x₁.typeOf = CedarType.bool BoolType.anyBool)
-(hᵢ₁ : Except.toOption (x₁.evaluate req es) = Except.toOption ((TPE.evaluate x₁ preq pes).evaluate req es))
-(hᵢ₂ : Except.toOption (x₂.evaluate req es) = Except.toOption ((TPE.evaluate x₂ preq pes).evaluate req es))
-(hᵢ₃ : Except.toOption (x₃.evaluate req es) = Except.toOption ((TPE.evaluate x₃ preq pes).evaluate req es)) :
+(hᵢ₁ : Except.toOption (x₁.evaluate req es) = Except.toOption ((TPE.evaluate env x₁ preq pes).evaluate req es))
+(hᵢ₂ : Except.toOption (x₂.evaluate req es) = Except.toOption ((TPE.evaluate env x₂ preq pes).evaluate req es))
+(hᵢ₃ : Except.toOption (x₃.evaluate req es) = Except.toOption ((TPE.evaluate env x₃ preq pes).evaluate req es)) :
   Except.toOption ((x₁.ite x₂ x₃ x₂.typeOf).evaluate req es) =
-  Except.toOption ((TPE.evaluate (x₁.ite x₂ x₃ x₂.typeOf) preq pes).evaluate req es) := by
+  Except.toOption ((TPE.evaluate env (x₁.ite x₂ x₃ x₂.typeOf) preq pes).evaluate req es) := by
   simp [Residual.evaluate, TPE.evaluate, TPE.ite]
   split
   case _ heq =>

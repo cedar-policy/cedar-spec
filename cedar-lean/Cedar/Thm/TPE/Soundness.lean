@@ -51,7 +51,7 @@ theorem partial_evaluate_is_sound_error
 {pes : PartialEntities}
 {ty : CedarType} :
   Except.toOption ((Residual.error ty).evaluate req es) =
-  Except.toOption ((TPE.evaluate (Residual.error ty) preq pes).evaluate req es)
+  Except.toOption ((TPE.evaluate env (Residual.error ty) preq pes).evaluate req es)
 := by
   simp [TPE.evaluate, Residual.evaluate]
 
@@ -70,7 +70,7 @@ theorem partial_evaluate_is_sound
   Residual.WellTyped env x →
   InstanceOfWellFormedEnvironment req es env →
   RequestAndEntitiesRefine req es preq pes →
-  (x.evaluate req es).toOption = ((Cedar.TPE.evaluate x preq pes).evaluate req es).toOption
+  (x.evaluate req es).toOption = ((Cedar.TPE.evaluate env x preq pes).evaluate req es).toOption
 := by
   intro h₁ h₂ h₃
   induction h₁
@@ -84,14 +84,14 @@ theorem partial_evaluate_is_sound
     exact partial_evaluate_is_sound_and h₂ h₃ hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ hᵢ₆
   case or x₁ x₂ hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ hᵢ₆ =>
     exact partial_evaluate_is_sound_or h₂ h₃ hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ hᵢ₆
-  case unaryApp op₁ x₁ ty hᵢ₁ =>
-    exact partial_evaluate_is_sound_unary_app h₃ hᵢ₁
-  case binaryApp op₂ x₁ x₂ ty _ hwt howt hᵢ₁ hᵢ₂ =>
-    exact partial_evaluate_is_sound_binary_app h₂ h₃ hwt howt hᵢ₁ hᵢ₂
-  case hasAttr_entity ety x₁ attr hᵢ₁ =>
-    exact partial_evaluate_is_sound_has_attr h₃ hᵢ₁
-  case hasAttr_record rty x₁ attr hᵢ₁ =>
-    exact partial_evaluate_is_sound_has_attr h₃ hᵢ₁
+  case unaryApp op₁ x₁ ty hwt _ hᵢ₁ =>
+    exact partial_evaluate_is_sound_unary_app h₂ hwt h₃ hᵢ₁
+  case binaryApp op₂ x₁ x₂ ty hwt₁ hwt howt hᵢ₁ hᵢ₂ =>
+    exact partial_evaluate_is_sound_binary_app h₂ h₃ hwt₁ hwt howt hᵢ₁ hᵢ₂
+  case hasAttr_entity ety x₁ attr hwt _ hᵢ₁ =>
+    exact partial_evaluate_is_sound_has_attr h₂ hwt h₃ hᵢ₁
+  case hasAttr_record rty x₁ attr hwt _ hᵢ₁ =>
+    exact partial_evaluate_is_sound_has_attr h₂ hwt h₃ hᵢ₁
   case getAttr_entity ety rty x₁ attr ty hᵢ₁ =>
     exact partial_evaluate_is_sound_get_attr h₃ hᵢ₁
   case getAttr_record rty x₁ attr ty hᵢ₁ =>

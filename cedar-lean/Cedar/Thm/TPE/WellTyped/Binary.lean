@@ -31,6 +31,17 @@ open Cedar.Spec
 open Cedar.Validation
 open Cedar.TPE
 
+/-- The reductions only ever decide a boolean. -/
+theorem try_decide_residual₂_is_bool
+  {env : TypeEnv} {op₂ : BinaryOp} {r₁ r₂ : Residual} {v : Value}
+  (hdec : TPE.tryDecideResidual₂ env op₂ r₁ r₂ = .some v) :
+  ∃ b : Bool, v = .prim (.bool b)
+:= by
+  unfold TPE.tryDecideResidual₂ at hdec
+  repeat' split at hdec
+  all_goals simp only [Option.some.injEq, reduceCtorEq] at hdec
+  all_goals exact ⟨_, hdec.symm⟩
+
 theorem tags_if_partial_tags
   {env : TypeEnv} {req : Request} {es : Entities} {pes : PartialEntities}
   {uid : EntityUID} {tags : Map Tag Value}
@@ -97,13 +108,13 @@ theorem entity_tag_well_typed
     simp [Map.empty, Map.values] at h_mem
 
 theorem partial_eval_well_typed_app₂_values_hasTag :
-  Residual.WellTyped env (TPE.evaluate expr1 preq pes) →
-  Residual.WellTyped env (TPE.evaluate expr2 preq pes) →
-  (TPE.evaluate expr1 preq pes).asValue = some (Value.prim (Prim.entityUID id₁)) →
-  (TPE.evaluate expr2 preq pes).asValue = some (Value.prim (Prim.string id₂)) →
+  Residual.WellTyped env (TPE.evaluate env expr1 preq pes) →
+  Residual.WellTyped env (TPE.evaluate env expr2 preq pes) →
+  (TPE.evaluate env expr1 preq pes).asValue = some (Value.prim (Prim.entityUID id₁)) →
+  (TPE.evaluate env expr2 preq pes).asValue = some (Value.prim (Prim.string id₂)) →
   PEWellTyped env (Residual.binaryApp BinaryOp.hasTag expr1 expr2 ty)
     (someOrSelf ((TPE.hasTag id1 id2 pes).bind fun a => some (Value.prim (Prim.bool a))) ty
-    (Residual.binaryApp BinaryOp.hasTag (TPE.evaluate expr1 preq pes) (TPE.evaluate expr2 preq pes) ty)) req preq es pes
+    (Residual.binaryApp BinaryOp.hasTag (TPE.evaluate env expr1 preq pes) (TPE.evaluate env expr2 preq pes) ty)) req preq es pes
 := by
   unfold PEWellTyped
   intros ih₁ ih₂ h₁ h₂ h_wf h_ref h_wt
@@ -168,10 +179,10 @@ theorem partial_eval_well_typed_app₂_values_hasTag :
 
 
 theorem partial_eval_well_typed_app₂_values_getTag :
-  Residual.WellTyped env (TPE.evaluate expr1 preq pes) →
-  Residual.WellTyped env (TPE.evaluate expr2 preq pes) →
-  (TPE.evaluate expr1 preq pes).asValue = some (Value.prim (Prim.entityUID id₁)) →
-  (TPE.evaluate expr2 preq pes).asValue = some (Value.prim (Prim.string id₂)) →
+  Residual.WellTyped env (TPE.evaluate env expr1 preq pes) →
+  Residual.WellTyped env (TPE.evaluate env expr2 preq pes) →
+  (TPE.evaluate env expr1 preq pes).asValue = some (Value.prim (Prim.entityUID id₁)) →
+  (TPE.evaluate env expr2 preq pes).asValue = some (Value.prim (Prim.string id₂)) →
   PEWellTyped env (Residual.binaryApp BinaryOp.getTag expr1 expr2 ty) (TPE.getTag id₁ id₂ pes ty) req preq es pes
 := by
   unfold PEWellTyped
@@ -203,7 +214,7 @@ theorem partial_eval_well_typed_app₂_values_getTag :
       have h_ent : InstanceOfEntityType id₁ ety env := by
         have h₂₁ := partial_eval_preserves_typeof _ h_expr1 preq pes
         unfold Residual.asValue at h₁
-        cases h₂₂: TPE.evaluate expr1 preq pes
+        cases h₂₂: TPE.evaluate env expr1 preq pes
         case val v ty₃ =>
           replace h₁ : v = .prim (.entityUID id₁) := by
             simpa [h₂₂] using h₁
@@ -223,7 +234,7 @@ theorem partial_eval_well_typed_app₂_values_getTag :
     . apply Residual.WellTyped.error
   . apply Residual.WellTyped.binaryApp
     . unfold Residual.asValue at h₁
-      cases h₃: TPE.evaluate expr1 preq pes
+      cases h₃: TPE.evaluate env expr1 preq pes
       all_goals (rw [h₃] at h₁
                  simp at h₁)
       rename_i x heq v ty
@@ -274,11 +285,11 @@ theorem partial_eval_well_typed_app₂_values_getTag :
 
 
 theorem partial_eval_well_typed_app₂_values_mem :
-  Residual.WellTyped env (TPE.evaluate expr1 preq pes) →
-  Residual.WellTyped env (TPE.evaluate expr2 preq pes) →
-  (TPE.evaluate expr1 preq pes).asValue = .some v₁ →
-  (TPE.evaluate expr2 preq pes).asValue = .some v₂ →
-  PEWellTyped env (Residual.binaryApp BinaryOp.mem expr1 expr2 ty) (Residual.binaryApp BinaryOp.mem (TPE.evaluate expr1 preq pes) (TPE.evaluate expr2 preq pes) ty) req preq es pes
+  Residual.WellTyped env (TPE.evaluate env expr1 preq pes) →
+  Residual.WellTyped env (TPE.evaluate env expr2 preq pes) →
+  (TPE.evaluate env expr1 preq pes).asValue = .some v₁ →
+  (TPE.evaluate env expr2 preq pes).asValue = .some v₂ →
+  PEWellTyped env (Residual.binaryApp BinaryOp.mem expr1 expr2 ty) (Residual.binaryApp BinaryOp.mem (TPE.evaluate env expr1 preq pes) (TPE.evaluate env expr2 preq pes) ty) req preq es pes
 := by
   unfold PEWellTyped
   intros ih₁ ih₂ h₁ h₂ h_wf h_ref h_wt
@@ -358,11 +369,11 @@ theorem partial_eval_well_typed_app₂_values_mem :
   . contradiction
 
 theorem partial_eval_well_typed_app₂_values :
-  Residual.WellTyped env (TPE.evaluate expr1 preq pes) →
-  Residual.WellTyped env (TPE.evaluate expr2 preq pes) →
-  (TPE.evaluate expr1 preq pes).asValue = .some v₁ →
-  (TPE.evaluate expr2 preq pes).asValue = .some v₂ →
-  PEWellTyped env (Residual.binaryApp op expr1 expr2 ty) (TPE.apply₂ op (TPE.evaluate expr1 preq pes) (TPE.evaluate expr2 preq pes) pes ty) req preq es pes
+  Residual.WellTyped env (TPE.evaluate env expr1 preq pes) →
+  Residual.WellTyped env (TPE.evaluate env expr2 preq pes) →
+  (TPE.evaluate env expr1 preq pes).asValue = .some v₁ →
+  (TPE.evaluate env expr2 preq pes).asValue = .some v₂ →
+  PEWellTyped env (Residual.binaryApp op expr1 expr2 ty) (TPE.apply₂ env op (TPE.evaluate env expr1 preq pes) (TPE.evaluate env expr2 preq pes) pes ty) req preq es pes
 := by
   unfold PEWellTyped
   intros ih₁ ih₂ h₁ h₂ h_wf h_ref h_wt
@@ -376,6 +387,18 @@ theorem partial_eval_well_typed_app₂_values :
   | binaryApp h_expr1 h_expr2 h_op =>
 
   simp only [TPE.apply₂]
+  split
+  case h_1 => exact Residual.WellTyped.error
+  case h_2 => exact Residual.WellTyped.error
+  split
+  case h_1 hdec =>
+    have ⟨_, hb⟩ := try_decide_residual₂_is_bool hdec
+    subst hb
+    cases h_op <;>
+      first
+      | exact well_typed_bool
+      | simp [TPE.tryDecideResidual₂] at hdec
+  case h_2 =>
   rw [h₁, h₂]
   simp only
   split
@@ -415,10 +438,10 @@ theorem partial_eval_well_typed_app₂_values :
     apply Residual.WellTyped.error
 
 theorem partial_eval_well_typed_app₂_nonvalues :
-  Residual.WellTyped env (TPE.evaluate expr1 preq pes) →
-  Residual.WellTyped env (TPE.evaluate expr2 preq pes) →
-  (TPE.evaluate expr1 preq pes).asValue = .none ∨ (TPE.evaluate expr2 preq pes).asValue = .none →
-  PEWellTyped env (Residual.binaryApp op expr1 expr2 ty) (TPE.apply₂ op (TPE.evaluate expr1 preq pes) (TPE.evaluate expr2 preq pes) pes ty) req preq es pes
+  Residual.WellTyped env (TPE.evaluate env expr1 preq pes) →
+  Residual.WellTyped env (TPE.evaluate env expr2 preq pes) →
+  (TPE.evaluate env expr1 preq pes).asValue = .none ∨ (TPE.evaluate env expr2 preq pes).asValue = .none →
+  PEWellTyped env (Residual.binaryApp op expr1 expr2 ty) (TPE.apply₂ env op (TPE.evaluate env expr1 preq pes) (TPE.evaluate env expr2 preq pes) pes ty) req preq es pes
 := by
   unfold PEWellTyped
   intros ih₁ ih₂ h₁ h_wf h_ref h_wt
@@ -434,6 +457,18 @@ theorem partial_eval_well_typed_app₂_nonvalues :
 
   simp only [TPE.apply₂]
   split
+  case h_1 => exact Residual.WellTyped.error
+  case h_2 => exact Residual.WellTyped.error
+  split
+  case h_1 hdec =>
+    have ⟨_, hb⟩ := try_decide_residual₂_is_bool hdec
+    subst hb
+    cases h_op <;>
+      first
+      | exact well_typed_bool
+      | simp [TPE.tryDecideResidual₂] at hdec
+  case h_2 =>
+  split
   case h_1 h₂ h₃ =>
     cases h₁
     case inl h₁ =>
@@ -445,14 +480,6 @@ theorem partial_eval_well_typed_app₂_nonvalues :
   case h_2 _ _ =>
     have h₁ := partial_eval_preserves_typeof _ h_expr1
     have h₂ := partial_eval_preserves_typeof _ h_expr2
-    split
-    case h_1 =>
-      apply Residual.WellTyped.error
-    case h_2 =>
-      apply Residual.WellTyped.error
-
-    case h_3 =>
-    rename_i h₁ r₁ r₂ h₃ h₄
     unfold apply₂.self
     apply Residual.WellTyped.binaryApp
     cases op
@@ -547,19 +574,19 @@ theorem partial_eval_well_typed_app₂_nonvalues :
 
 
 theorem partial_eval_well_typed_app₂ :
-  Residual.WellTyped env (TPE.evaluate expr1 preq pes) →
-  Residual.WellTyped env (TPE.evaluate expr2 preq pes) →
-  PEWellTyped env (Residual.binaryApp op expr1 expr2 ty) (TPE.apply₂ op (TPE.evaluate expr1 preq pes) (TPE.evaluate expr2 preq pes) pes ty) req preq es pes
+  Residual.WellTyped env (TPE.evaluate env expr1 preq pes) →
+  Residual.WellTyped env (TPE.evaluate env expr2 preq pes) →
+  PEWellTyped env (Residual.binaryApp op expr1 expr2 ty) (TPE.apply₂ env op (TPE.evaluate env expr1 preq pes) (TPE.evaluate env expr2 preq pes) pes ty) req preq es pes
 := by
   intro ih₁ ih₂ h₁
-  cases h₂ : (TPE.evaluate expr1 preq pes).asValue
+  cases h₂ : (TPE.evaluate env expr1 preq pes).asValue
   case none =>
     apply partial_eval_well_typed_app₂_nonvalues ih₁ ih₂
     . left
       exact h₂
     . exact h₁
   case some v₁ =>
-    cases h₃ : (TPE.evaluate expr2 preq pes).asValue
+    cases h₃ : (TPE.evaluate env expr2 preq pes).asValue
     case none =>
       apply partial_eval_well_typed_app₂_nonvalues ih₁ ih₂
       . right

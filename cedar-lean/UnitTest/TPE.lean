@@ -583,8 +583,63 @@ def tests :=
 #eval TestSuite.runAll [tests]
 end UnitTest.TPE.Spec
 
+namespace UnitTest.TPE.SchemaInformed
+open Cedar.TPE
+open Cedar.Spec
+open Cedar.Validation
+open Cedar.Data
+
+/-!
+Tests for the schema-informed reductions of `is`, `==`, `in`, and `hasTag`
+-/
+
+def A0 : EntityType := ⟨"A0", []⟩
+def A1 : EntityType := ⟨"A1", []⟩
+
+def schema : Schema :=
+  ⟨Map.make [
+    (ActionType, .standard ⟨default, default, default⟩),
+    (A0, .standard ⟨Set.singleton A1, default, default⟩),
+    (A1, .standard ⟨default, default, .some (.entity A0)⟩)
+  ],
+  Map.make [
+    (⟨ActionType, "a"⟩, ⟨Set.singleton A0, Set.singleton A1, default, default⟩)
+  ]⟩
+
+def es : PartialEntities :=
+  Map.make [(⟨ActionType, "a"⟩, ⟨.some default, .some default, .some default⟩)]
+
+def req : PartialRequest :=
+  ⟨⟨A0, default⟩, ⟨ActionType, "a"⟩, ⟨A1, default⟩, default⟩
+
+def mkPolicy (x : Expr) : Policy :=
+  ⟨"0", .permit, .principalScope .any, .actionScope .any, .resourceScope .any, [⟨.when, x⟩]⟩
+
+def boolLit (b : Bool) : Residual := .val (.prim (.bool b)) (.bool .anyBool)
+
+def tests :=
+  suite "TPE schema-informed reduction of is/==/in/hasTag/has"
+  [
+    testResult (mkPolicy (.unaryApp (.is A0) (.var .principal))) schema req es
+      (boolLit true),
+    testResult (mkPolicy (.unaryApp (.is A1) (.var .principal))) schema req es
+      (boolLit false),
+    testResult (mkPolicy (.binaryApp .eq (.var .principal) (.var .resource))) schema req es
+      (boolLit false),
+    testResult (mkPolicy (.binaryApp .mem (.var .resource) (.var .principal))) schema req es
+      (boolLit false),
+    testResult (mkPolicy (.binaryApp .hasTag (.var .principal) (.lit (.string "x")))) schema req es
+      (boolLit false),
+    testResult (mkPolicy (.binaryApp .mem (.var .resource) (.set [.var .principal]))) schema req es
+      (boolLit false),
+    testResult (mkPolicy (.hasAttr (.var .principal) "x")) schema req es
+      (boolLit false),
+  ]
+
+end UnitTest.TPE.SchemaInformed
+
 open UnitTest.TPE
 
-def tests := [Basic.tests, Motivation.tests, Spec.tests]
+def tests := [Basic.tests, Motivation.tests, Spec.tests, SchemaInformed.tests]
 
 end UnitTest.TPE

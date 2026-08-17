@@ -32,15 +32,15 @@ open Cedar.Validation
 open Cedar.TPE
 
 theorem partial_eval_well_typed_record {env : TypeEnv} {ls : List (Attr × Residual)} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
-  (∀ k v, (k, v) ∈ ls → Residual.WellTyped env (TPE.evaluate v preq pes)) →
-  PEWellTyped env (Residual.record ls ty) (TPE.evaluate (Residual.record ls ty) preq pes) req preq es pes
+  (∀ k v, (k, v) ∈ ls → Residual.WellTyped env (TPE.evaluate env v preq pes)) →
+  PEWellTyped env (Residual.record ls ty) (TPE.evaluate env (Residual.record ls ty) preq pes) req preq es pes
 := by
   intros h_ls_wt h_wf h_ref h_wt
   cases h_wt
   rename_i ty₁ h₀ h₁
   simp only [TPE.evaluate]
   unfold List.map₁ List.attach List.attachWith
-  rw [List.map_pmap_subtype (fun x => (x.fst, TPE.evaluate x.snd preq pes)) ls]
+  rw [List.map_pmap_subtype (fun x => (x.fst, TPE.evaluate env x.snd preq pes)) ls]
   simp only [record, List.mapM_map, List.any_map, List.any_eq_true, Function.comp_apply, Prod.exists]
   let m := Map.mk ls
   split
@@ -56,7 +56,7 @@ theorem partial_eval_well_typed_record {env : TypeEnv} {ls : List (Attr × Resid
       unfold Function.comp at h₃
       simp [bindAttr] at h₃
 
-      have h₈ := Map.list_find?_mapM_implies_exists_unmapped (λ x => (TPE.evaluate x preq pes).asValue) h₃ h₄
+      have h₈ := Map.list_find?_mapM_implies_exists_unmapped (λ x => (TPE.evaluate env x preq pes).asValue) h₃ h₄
       rcases h₈ with ⟨v₂, h₈, h₉⟩
 
       rw [Map.list_find?_some_iff_map_find?_some] at h₉
@@ -76,7 +76,7 @@ theorem partial_eval_well_typed_record {env : TypeEnv} {ls : List (Attr × Resid
       rw [← Map.list_find?_iff_make_find?] at h₇
       unfold Function.comp at h₃
       simp only [bindAttr, Option.pure_def, Option.bind_eq_bind] at h₃
-      have h₈ := Map.list_find?_mapM_implies_exists_unmapped (λ x => (TPE.evaluate x preq pes).asValue) h₃ h₆
+      have h₈ := Map.list_find?_mapM_implies_exists_unmapped (λ x => (TPE.evaluate env x preq pes).asValue) h₃ h₆
       rcases h₈ with ⟨v₂, _, h₈⟩
 
 
@@ -128,7 +128,7 @@ theorem partial_eval_well_typed_record {env : TypeEnv} {ls : List (Attr × Resid
 
       unfold Function.comp at h₃
       simp only [bindAttr, Option.pure_def, Option.bind_eq_bind] at h₃
-      have h₆ := Map.list_find?_mapM_implies_exists_mapped (λ x => (TPE.evaluate x preq pes).asValue) h₃ h₅
+      have h₆ := Map.list_find?_mapM_implies_exists_mapped (λ x => (TPE.evaluate env x preq pes).asValue) h₃ h₅
 
       rw [Map.contains_iff_some_find?]
       rcases h₆ with ⟨v₃, _, h₆⟩
