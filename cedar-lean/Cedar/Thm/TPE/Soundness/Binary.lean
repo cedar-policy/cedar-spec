@@ -221,7 +221,7 @@ theorem partial_evaluate_is_sound_binary_app
 (h₂ : InstanceOfWellFormedEnvironment req es env)
 (h₄ : RequestAndEntitiesRefine req es preq pes)
 (hwt₁ : Residual.WellTyped env x₁)
-(hwt : Residual.WellTyped env x₂)
+(hwt₂ : Residual.WellTyped env x₂)
 (howt : BinaryResidualWellTyped env op₂ x₁ x₂ ty)
 (hᵢ₁ : Except.toOption (x₁.evaluate req es) = Except.toOption ((TPE.evaluate env x₁ preq pes).evaluate req es))
 (hᵢ₂ : Except.toOption (x₂.evaluate req es) = Except.toOption ((TPE.evaluate env x₂ preq pes).evaluate req es)) :
@@ -242,7 +242,7 @@ theorem partial_evaluate_is_sound_binary_app
   split
   case h_1 hdec =>
     have hwt₁' := partial_eval_preserves_well_typed h₂ h₄ hwt₁
-    have hwt₂' := partial_eval_preserves_well_typed h₂ h₄ hwt
+    have hwt₂' := partial_eval_preserves_well_typed h₂ h₄ hwt₂
     have ⟨v₁, v₂, hev₁, hev₂, hres⟩ := try_decide_residual₂_sound h₂ hwt₁' hwt₂' hdec
     have hev₁' : Except.toOption (x₁.evaluate req es) = some v₁ := by
       rw [hᵢ₁, hev₁]; rfl
@@ -299,7 +299,7 @@ theorem partial_evaluate_is_sound_binary_app
         subst heq₃₂
         simp [Spec.inₛ]
         cases howt <;>
-        (rename_i h₅; have h₆ := residual_well_typed_is_sound h₂ hwt hᵢ₂; rw [h₅] at h₆; cases h₆)
+        (rename_i h₅; have h₆ := residual_well_typed_is_sound h₂ hwt₂ hᵢ₂; rw [h₅] at h₆; cases h₆)
         rename_i h₆
         simp [Data.Set.mapOrErr]
         generalize h₇ : List.mapM Value.asEntityUID vs.elts = res
