@@ -59,7 +59,7 @@ def testBatchedEvaluatorEquivalence (name : String) (expr : Expr) (req : Request
     -- Create a minimal TypeEnv for typechecking
     match typeOf expr ∅ type_env with
     | .ok (typedExpr, _) =>
-      let batchedResult := batchedEvaluate action_schema typedExpr req loader 10
+      let batchedResult := batchedEvaluate type_env typedExpr req loader 10
       match batchedResult.asValue, regularResult with
       | .some bv, .ok rv => checkEq bv rv
       | .none, .error _ => .ok (.ok ())

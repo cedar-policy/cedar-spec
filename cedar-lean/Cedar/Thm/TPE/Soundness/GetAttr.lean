@@ -43,9 +43,9 @@ theorem partial_evaluate_is_sound_get_attr
 {attr : Attr}
 {ty : CedarType}
 (h₄ : RequestAndEntitiesRefine req es preq pes)
-(hᵢ₁ : Except.toOption (x₁.evaluate req es) = Except.toOption ((TPE.evaluate x₁ preq pes).evaluate req es)) :
+(hᵢ₁ : Except.toOption (x₁.evaluate req es) = Except.toOption ((TPE.evaluate env x₁ preq pes).evaluate req es)) :
   Except.toOption ((x₁.getAttr attr ty).evaluate req es) =
-  Except.toOption ((TPE.evaluate (x₁.getAttr attr ty) preq pes).evaluate req es)
+  Except.toOption ((TPE.evaluate env (x₁.getAttr attr ty) preq pes).evaluate req es)
 := by
   simp [TPE.evaluate, TPE.getAttr]
   split

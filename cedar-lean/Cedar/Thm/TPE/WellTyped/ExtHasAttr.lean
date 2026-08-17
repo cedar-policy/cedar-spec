@@ -22,6 +22,7 @@ import Cedar.Thm.Data.List
 import Cedar.Thm.Data.Map
 
 import Cedar.Thm.TPE.WellTyped.Basic
+import Cedar.Thm.TPE.WellTyped.HasAttr
 
 namespace Cedar.Thm
 
@@ -50,6 +51,19 @@ private theorem entity_chain_to_record_chain
     | inl h_none => exact absurd (h_schema ▸ h_none) (by simp)
     | inr h_all_none => exact .cons_not_in_record (h_all_none rty h_schema)
 
+/-- Deciding a chain from the schema yields a boolean, so it is well typed either way. -/
+private theorem extHasAttr_tryDecide_well_typed
+  {env : TypeEnv} {r : Residual} {a : Attr} {rest : List Attr}
+  (hleave : Residual.WellTyped env (.extHasAttr r a rest (.bool .anyBool))) :
+  Residual.WellTyped env (TPE.extHasAttr.tryDecide env r a rest (.bool .anyBool)) := by
+  simp only [TPE.extHasAttr.tryDecide]
+  split
+  case h_1 v hdec =>
+    obtain ⟨b, hb⟩ := try_decide_has_residual_is_bool hdec
+    subst hb
+    exact well_typed_bool
+  case h_2 => exact hleave
+
 /-- The extHasAttr TPE loop produces a well-typed residual when given
     chain validity from a record type and InstanceOfType for the map.
 -/
@@ -63,7 +77,7 @@ private theorem extHasAttr_loop_well_typed
   (href : RequestAndEntitiesRefine req es preq pes)
   (h_inst : InstanceOfType env (.record m) (.record rty))
   (h_chain : ExtHasAttrChainValid env.ets (.record rty) attrs) :
-  Residual.WellTyped env (TPE.extHasAttr.loop m attrs pes (.bool .anyBool)) := by
+  Residual.WellTyped env (TPE.extHasAttr.loop env m attrs pes (.bool .anyBool)) := by
   induction attrs generalizing m rty with
   | nil =>
     unfold TPE.extHasAttr.loop
@@ -87,19 +101,19 @@ private theorem extHasAttr_loop_well_typed
           cases h_pes_find : pes.find? uid with
           | none =>
             simp [Option.bind]
-            exact Residual.WellTyped.extHasAttr_entity
+            exact extHasAttr_tryDecide_well_typed (Residual.WellTyped.extHasAttr_entity
               (Residual.WellTyped.val h_next_inst)
               (by simp [Residual.typeOf])
-              h₃
+              h₃)
           | some pedata =>
             simp only [Option.bind]
             cases h_pe_attrs : pedata.attrs with
             | none =>
               simp only
-              exact Residual.WellTyped.extHasAttr_entity
+              exact extHasAttr_tryDecide_well_typed (Residual.WellTyped.extHasAttr_entity
                 (Residual.WellTyped.val h_next_inst)
                 (by simp [Residual.typeOf])
-                h₃
+                h₃)
             | some m' =>
               simp only
               have ⟨edata, h_es_find, h_attrs_ref, _, _, _⟩ :=
@@ -172,8 +186,8 @@ private theorem extHasAttr_loop_well_typed
         exact well_typed_bool
 
 theorem partial_eval_well_typed_extHasAttr {env : TypeEnv} {expr : Residual} {attr : Attr} {attrs : List Attr} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
-  Residual.WellTyped env (TPE.evaluate expr preq pes) →
-  PEWellTyped env (Residual.extHasAttr expr attr attrs ty) (TPE.evaluate (Residual.extHasAttr expr attr attrs ty) preq pes) req preq es pes
+  Residual.WellTyped env (TPE.evaluate env expr preq pes) →
+  PEWellTyped env (Residual.extHasAttr expr attr attrs ty) (TPE.evaluate env (Residual.extHasAttr expr attr attrs ty) preq pes) req preq es pes
 := by
   intros h₁ hwf href h₂
   simp only [TPE.evaluate, TPE.extHasAttr]
@@ -188,7 +202,7 @@ theorem partial_eval_well_typed_extHasAttr {env : TypeEnv} {expr : Residual} {at
       cases h₂ with
       | extHasAttr_entity h₅ h₆ h₇ =>
         rename_i ety
-        have h_typeof : (TPE.evaluate expr preq pes).typeOf = .entity ety := by
+        have h_typeof : (TPE.evaluate env expr preq pes).typeOf = .entity ety := by
           rw [partial_eval_preserves_typeof _ h₅ preq pes, h₆]
         -- Analyze attrsOf
         simp [TPE.attrsOf] at heq
@@ -197,7 +211,7 @@ theorem partial_eval_well_typed_extHasAttr {env : TypeEnv} {expr : Residual} {at
           simp [Option.some.injEq] at heq; subst heq
           simp only [heq₁, Residual.typeOf] at h_typeof
           -- h_typeof : ty_r = .entity ety
-          -- h₁ : WellTyped env (TPE.evaluate expr preq pes)
+          -- h₁ : WellTyped env (TPE.evaluate env expr preq pes)
           rw [heq₁] at h₁
           -- Now h₁ : WellTyped env (.val (.record m_rec) ty_r)
           subst h_typeof
@@ -273,7 +287,7 @@ theorem partial_eval_well_typed_extHasAttr {env : TypeEnv} {expr : Residual} {at
         case h_3 => simp at heq
       | extHasAttr_record h₅ h₆ h₇ =>
         rename_i rty
-        have h_typeof : (TPE.evaluate expr preq pes).typeOf = .record rty := by
+        have h_typeof : (TPE.evaluate env expr preq pes).typeOf = .record rty := by
           rw [partial_eval_preserves_typeof _ h₅ preq pes, h₆]
         simp [TPE.attrsOf] at heq
         split at heq
@@ -295,16 +309,12 @@ theorem partial_eval_well_typed_extHasAttr {env : TypeEnv} {expr : Residual} {at
     case h_2 x _ =>
       cases h₂ with
       | extHasAttr_entity h₅ h₆ h₇ =>
-        apply Residual.WellTyped.extHasAttr_entity
-        · exact h₁
-        · have h₁₀ := partial_eval_preserves_typeof _ h₅
-          rw [h₁₀, h₆]
-        · exact h₇
+        refine extHasAttr_tryDecide_well_typed (Residual.WellTyped.extHasAttr_entity h₁ ?_ h₇)
+        have h₁₀ := partial_eval_preserves_typeof _ h₅
+        rw [h₁₀, h₆]
       | extHasAttr_record h₅ h₆ h₇ =>
-        apply Residual.WellTyped.extHasAttr_record
-        · exact h₁
-        · have h₁₀ := partial_eval_preserves_typeof _ h₅
-          rw [h₁₀, h₆]
-        · exact h₇
+        refine extHasAttr_tryDecide_well_typed (Residual.WellTyped.extHasAttr_record h₁ ?_ h₇)
+        have h₁₀ := partial_eval_preserves_typeof _ h₅
+        rw [h₁₀, h₆]
 
 end Cedar.Thm

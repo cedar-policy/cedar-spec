@@ -32,7 +32,7 @@ open Cedar.Validation
 open Cedar.TPE
 
 theorem partial_eval_well_typed_var {env : TypeEnv} {v : Var} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
-  PEWellTyped env (Residual.var v ty) (TPE.evaluate (Residual.var v ty) preq pes) req preq es pes
+  PEWellTyped env (Residual.var v ty) (TPE.evaluate env (Residual.var v ty) preq pes) req preq es pes
 := by
   unfold PEWellTyped
   intro h_wf h_ref h_wt

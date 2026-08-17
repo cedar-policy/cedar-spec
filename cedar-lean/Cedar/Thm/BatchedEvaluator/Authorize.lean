@@ -95,7 +95,7 @@ theorem residuals_equiv_preserved
   (h_wf : InstanceOfWellFormedEnvironment req es env)
   (h_ref : RequestAndEntitiesRefine req es req.asPartialRequest pes) :
   ResidualPoliciesEquivAndWellTyped env policies
-    (residuals.map λ rp => ⟨rp.id, rp.effect, Cedar.TPE.evaluate rp.residual req.asPartialRequest pes⟩)
+    (residuals.map λ rp => ⟨rp.id, rp.effect, Cedar.TPE.evaluate env rp.residual req.asPartialRequest pes⟩)
     req es
 := by
   unfold ResidualPoliciesEquivAndWellTyped at *
@@ -114,7 +114,7 @@ theorem batched_authorize_loop_equiv
   ResidualPoliciesEquivAndWellTyped env policies residuals req es →
   RequestAndEntitiesRefine req es req.asPartialRequest current_store →
   InstanceOfWellFormedEnvironment req es env →
-  ∃ rps, batchedAuthorizeLoop residuals req loader current_store iters
+  ∃ rps, batchedAuthorizeLoop env residuals req loader current_store iters
       = isAuthorizedFromResiduals rps ∧
     ResidualPoliciesEquivAndWellTyped env policies rps req es
 := by
@@ -147,7 +147,7 @@ theorem batched_authorize_loop_decision_agrees
   ResidualPoliciesEquivAndWellTyped env policies residuals req es →
   RequestAndEntitiesRefine req es req.asPartialRequest current_store →
   InstanceOfWellFormedEnvironment req es env →
-  (batchedAuthorizeLoop residuals req loader current_store iters).decision = some d →
+  (batchedAuthorizeLoop env residuals req loader current_store iters).decision = some d →
   (Spec.isAuthorized req es policies).decision = d
 := by
   intro h₀ h₁ h₂ h₃ h_dec
