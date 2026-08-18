@@ -311,8 +311,10 @@ impl BenchmarkExecutor {
     fn benchmark<T: Clone>(self, f: impl Fn(T), x: T) -> TimingInfo {
         let mut runs = Vec::with_capacity(self.trials);
 
-        // Warm-up run
-        f(x.clone());
+        // Warm-up runs
+        for _ in 0..10 {
+            f(x.clone());
+        }
 
         for _ in 0..self.trials {
             let dur = Self::time(&f, x.clone());

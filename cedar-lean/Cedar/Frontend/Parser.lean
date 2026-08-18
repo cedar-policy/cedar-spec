@@ -14,11 +14,15 @@
  limitations under the License.
 -/
 
-import Cedar.Frontend.Cst
-import Cedar.Frontend.Cst.Syntax
-import Std.Internal.Parsec.String
+module
+
+public import Cedar.Frontend.Cst
+public import Cedar.Frontend.Cst.Syntax
+public import Std.Internal.Parsec.String
 
 /-! This file defines a parser from Cedar policy text to the CST. -/
+
+@[expose] public section
 
 ---- String conversion utilities ---
 
@@ -101,14 +105,14 @@ where
 
 ----- Identifiers -----
 
-private def isIdentStart (c : Char) : Bool :=
+def isIdentStart (c : Char) : Bool :=
   c.isAlpha || c == '_'
 
-private def isIdentCont (c : Char) : Bool :=
+def isIdentCont (c : Char) : Bool :=
   c.isAlphanum || c == '_'
 
 /-- Parse a raw identifier string -/
-private def rawIdent : Parser String := tok do
+def rawIdent : Parser String := tok do
   let c ← satisfy isIdentStart
   let rest ← manyChars (satisfy isIdentCont)
   return String.ofList (c :: rest.toList)
@@ -117,7 +121,7 @@ private def rawIdent : Parser String := tok do
     Uses dependent `if` rather than `match` because Lean's pattern matching on `String`
     does not provide discrimination hypotheses in the catch-all case, which are needed
     to prove that the keyword branch is exhaustive and to supply the `s ∉ keywords` proof. -/
-def classifyIdent (s : String) : Ident :=
+public def classifyIdent (s : String) : Ident :=
   if h : s ∈ keywords then
     if _ : s = "principal" then .idPrincipal
     else if _ : s = "action" then .idAction
@@ -143,23 +147,23 @@ def classifyIdent (s : String) : Ident :=
     .idIdent s h
 
 /-- Parse an identifier -/
-def parseIdent : Parser Ident := do
+public def parseIdent : Parser Ident := do
   return classifyIdent (← rawIdent)
 
 /-- Expect a specific keyword -/
-def keyword (s : String) : Parser Unit := do
+public def keyword (s : String) : Parser Unit := do
   let i ← rawIdent
   if i != s then fail s!"expected '{s}', got '{i}'"
 
 /-- Try to consume a keyword; return true if successful -/
-def tryKeyword (s : String) : Parser Bool :=
+public def tryKeyword (s : String) : Parser Bool :=
   (attempt (keyword s) *> pure true) <|> pure false
 
 
 ----- Literals -----
 
 /-- Parse a natural number -/
-private def parseNat : Parser UInt64 := tok do
+public def parseNat : Parser UInt64 := tok do
   let s ← many1Chars (satisfy Char.isDigit)
   match s.toNat? with
   | some n => return n.toUInt64
@@ -171,7 +175,7 @@ private def parseNat : Parser UInt64 := tok do
   following escape sequences: \", \\, \n, \r, \t, \0, \xHH (2-digit ASCII hex escape),
   and \u{...} (1–6 digit Unicode escape).
 -/
-private partial def stringLit : Parser String := do
+public partial def stringLit : Parser String := do
   skipChar '"'
   stringLitBody ""
 where
@@ -217,7 +221,7 @@ def parseLiteral : Parser Literal :=
 
 ----- RelOp parsing -----
 
-private def tryRelOp : Parser (Option RelOp) :=
+def tryRelOp : Parser (Option RelOp) :=
   (attempt (str' "<=" *> pure (some RelOp.rLessEq))) <|>
   (attempt (str' ">=" *> pure (some RelOp.rGreaterEq))) <|>
   (attempt (str' "!=" *> pure (some RelOp.rNotEq))) <|>
@@ -566,3 +570,5 @@ def parse (input : String) : Except String Policies :=
   | .error err => .error err
 
 end Cedar.Frontend.Cst.Parser
+
+end

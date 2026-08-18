@@ -8,7 +8,10 @@ import asyncio
 import fnmatch
 import os
 import re
+import shlex
+import shutil
 import signal
+import subprocess
 import sys
 import time
 from dataclasses import dataclass, field
@@ -89,6 +92,7 @@ STATUS_ICONS = {
     "running": f"{GREEN}●{RESET}",
     "done": f"{DIM}✓{RESET}",
     "error": f"{RED}✗{RESET}",
+    "stopped": f"{YELLOW}⊘{RESET}",
 }
 
 
@@ -183,13 +187,14 @@ def render(targets: dict[str, FuzzStats], term_width: int):
         elif st.status in ("starting", "building"):
             label = "building…" if st.status == "building" else "starting…"
             lines.append(f"  {icon} {name:<{pad}} {DIM}{label:<10}{RESET} {'':>10} {'':>6} {'':>6} {'':>6} {'':>8} {elapsed:>7}")
-        elif st.status == "done":
+        elif st.status in ("done", "stopped"):
             runs_s = colorized(st.runs, max_runs, 10)
             cov_s = colorized(st.cov, max_cov, 6)
             ft_s = colorized(st.ft, max_ft, 6)
             delta = cov_delta(st)
+            state = "done" if st.status == "done" else "stopped"
             lines.append(
-                f"  {icon} {name:<{pad}} {DIM}{'done':<10}{RESET} {runs_s} {cov_s} {delta} "
+                f"  {icon} {name:<{pad}} {DIM}{state:<10}{RESET} {runs_s} {cov_s} {delta} "
                 f"{ft_s} {DIM}{'—':>8}{RESET} {elapsed:>7}"
             )
         else:
@@ -207,8 +212,13 @@ def render(targets: dict[str, FuzzStats], term_width: int):
 
     active = sum(1 for s in targets.values() if s.status in ("starting", "building", "running"))
     done = sum(1 for s in targets.values() if s.status == "done")
+    stopped = sum(1 for s in targets.values() if s.status == "stopped")
     errors = sum(1 for s in targets.values() if s.status == "error")
-    lines.append(f"  {GREEN}▶ {active} active{RESET}  {DIM}✓ {done} done{RESET}  {RED}✗ {errors} errors{RESET}")
+    footer = f"  {GREEN}▶ {active} active{RESET}  {DIM}✓ {done} done{RESET}"
+    if stopped:
+        footer += f"  {YELLOW}⊘ {stopped} stopped{RESET}"
+    footer += f"  {RED}✗ {errors} errors{RESET}"
+    lines.append(footer)
 
     return "\n".join(lines)
 
@@ -216,7 +226,12 @@ def render(targets: dict[str, FuzzStats], term_width: int):
 # ─── Runner ──────────────────────────────────────────────────────────────────
 
 async def run_target(
-    name: str, stats: FuzzStats, timeout: int | None, reports_dir: Path, sanitizer: str
+    name: str,
+    label: str,
+    stats: FuzzStats,
+    timeout: int | None,
+    reports_dir: Path,
+    sanitizer: str,
 ):
     cmd = ["cargo", "fuzz", "run", "-s", sanitizer, name, "--"]
     if timeout:
@@ -231,19 +246,25 @@ async def run_target(
 
     output_lines: list[str] = []
     assert proc.stdout is not None
-    while True:
-        line = await proc.stdout.readline()
-        if not line:
-            break
-        decoded = line.decode("utf-8", errors="replace")
-        output_lines.append(decoded)
-        parse_line(decoded, stats)
-
-    await proc.wait()
+    try:
+        while True:
+            line = await proc.stdout.readline()
+            if not line:
+                break
+            decoded = line.decode("utf-8", errors="replace")
+            output_lines.append(decoded)
+            parse_line(decoded, stats)
+        await proc.wait()
+    except asyncio.CancelledError:
+        stats.status = "stopped"
+        if proc.returncode is None:
+            proc.terminate()
+            await proc.wait()
+        return
 
     if proc.returncode != 0 and stats.status != "done":
         stats.status = "error"
-        report_path = reports_dir / f"{name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        report_path = reports_dir / f"{label}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
         report_path.write_text("".join(output_lines))
         stats.report_path = str(report_path)
     elif stats.status != "error":
@@ -279,18 +300,49 @@ async def display_loop(targets: dict[str, FuzzStats]):
         sys.stdout.write(SHOW_CURSOR)
         sys.stdout.flush()
 
+def set_env_vars():
+    env_script = Path(__file__).resolve().parent / "set_env_vars.sh"
+    proc = subprocess.run(
+        ["bash", "-c", f"source {shlex.quote(str(env_script))} && env -0"],
+        capture_output=True,
+        text=True,
+    )
+    if proc.returncode != 0:
+        sys.exit(f"{RED}Failed to source {env_script}:{RESET}\n{proc.stderr}")
+    os.environ.update(e.split("=", 1) for e in proc.stdout.split("\0") if e)
 
 async def main():
     parser = argparse.ArgumentParser(description="Run multiple fuzz targets in parallel")
     parser.add_argument(
-        "--matching", required=True, help="Glob pattern to match target names (e.g. 'protobuf-*')"
+        "--matching",
+        required=True,
+        action="append",
+        metavar="GLOB",
+        help="Glob pattern to match target names (e.g. 'protobuf-*').",
     )
     parser.add_argument("--timeout", type=int, default=None, help="Max seconds per target")
     parser.add_argument(
         "--sanitizer", "-s", default="none", help="Sanitizer to use (default: none)"
     )
     parser.add_argument("--jobs", "-j", type=int, default=None, help="Max parallel targets")
+    parser.add_argument(
+        "--instances",
+        "-n",
+        type=int,
+        default=1,
+        help="Number of instances to run per matching target (default: 1).",
+    )
+    parser.add_argument(
+        "--no-tmux",
+        action="store_true",
+        help="Run in the current terminal instead of re-launching inside a tmux session.",
+    )
     args = parser.parse_args()
+    if args.instances < 1:
+        print(f"{RED}--instances must be at least 1{RESET}")
+        sys.exit(1)
+    # Source set_env_vars.sh so callers don't have to do it themselves.
+    set_env_vars()
 
     # Get target list
     proc = await asyncio.create_subprocess_exec(
@@ -302,23 +354,32 @@ async def main():
     stdout, _ = await proc.communicate()
     all_targets = stdout.decode().strip().splitlines()
 
-    matched = [t for t in all_targets if fnmatch.fnmatch(t, args.matching)]
-    if not matched:
-        print(f"{RED}No targets matching '{args.matching}'{RESET}")
-        print(f"Available: {', '.join(all_targets[:10])}...")
-        sys.exit(1)
+    matched = []
+    for p in args.matching:
+        hits = fnmatch.filter(all_targets, p)
+        if not hits:
+            print(f"{RED}No targets matching '{p}'{RESET}")
+            print(f"Available: {', '.join(all_targets[:10])}...")
+            sys.exit(1)
+        matched += (t for t in hits if t not in matched)
 
     print(f"Matched {len(matched)} targets: {', '.join(matched)}")
 
     # Pre-build all targets to avoid cargo lock contention during parallel runs
     print(f"Pre-building {len(matched)} targets...")
-    for name in matched:
+    for i, name in enumerate(matched, 1):
+        print(f"{BOLD}[{i}/{len(matched)}] Building {name}...{RESET}")
         build_proc = await asyncio.create_subprocess_exec(
             "cargo", "fuzz", "build", "-s", args.sanitizer, name,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
             cwd=str(Path(__file__).parent),
         )
+        assert build_proc.stdout is not None
+        async for raw in build_proc.stdout:
+            line = raw.decode(errors="replace").rstrip()
+            if line:
+                print(f"{DIM}  {name}| {line}{RESET}")
         await build_proc.wait()
         if build_proc.returncode != 0:
             print(f"{RED}Failed to build target '{name}'{RESET}")
@@ -328,24 +389,41 @@ async def main():
     reports_dir = Path(__file__).parent / "fuzz_reports"
     reports_dir.mkdir(exist_ok=True)
 
-    targets: dict[str, FuzzStats] = {name: FuzzStats() for name in matched}
+    # Expand each matching target into `--instances` runs.
+    if args.instances > 1:
+        runs = [
+            (name, f"{name}#{i}") for name in matched for i in range(1, args.instances + 1)
+        ]
+    else:
+        runs = [(name, name) for name in matched]
+
+    targets: dict[str, FuzzStats] = {label: FuzzStats() for _, label in runs}
 
     # Semaphore for concurrency limit
-    sem = asyncio.Semaphore(args.jobs or len(matched))
+    sem = asyncio.Semaphore(args.jobs or len(runs))
 
-    async def run_with_sem(name: str, stats: FuzzStats):
+    async def run_with_sem(name: str, label: str, stats: FuzzStats):
         async with sem:
-            await run_target(name, stats, args.timeout, reports_dir, args.sanitizer)
+            await run_target(name, label, stats, args.timeout, reports_dir, args.sanitizer)
 
     display_task = asyncio.create_task(display_loop(targets))
-    fuzz_tasks = [asyncio.create_task(run_with_sem(n, s)) for n, s in targets.items()]
+    fuzz_tasks = [
+        asyncio.create_task(run_with_sem(name, label, targets[label]))
+        for name, label in runs
+    ]
 
     # Handle Ctrl+C gracefully
     loop = asyncio.get_event_loop()
-    stop_event = asyncio.Event()
+    interrupted = False
 
     def handle_signal():
-        stop_event.set()
+        nonlocal interrupted
+        if interrupted:
+            # Second Ctrl+C: give up on a clean shutdown.
+            sys.stdout.write(SHOW_CURSOR)
+            sys.stdout.flush()
+            os._exit(1)
+        interrupted = True
         for t in fuzz_tasks:
             t.cancel()
 
@@ -374,6 +452,29 @@ async def main():
             print(f"  ✗ {name}: {st.report_path}")
         sys.exit(1)
 
+def reexec_in_tmux():
+    """If tmux is available and we're not already inside a tmux session,
+    launch this script inside a fresh tmux session.
+    """
+    if os.environ.get("TMUX"):
+        return
+    # Don't hijack `--help`/`-h` or an explicit `--no-tmux` request. This runs
+    # before argparse, so we inspect argv directly.
+    if {"--help", "-h", "--no-tmux"} & set(sys.argv[1:]):
+        return
+    tmux = shutil.which("tmux")
+    if tmux is None:
+        return
+
+    session = f"fuzz-{os.getpid()}"
+    argv = [sys.executable, os.path.abspath(sys.argv[0]), *sys.argv[1:]]
+    # Re-exec the script. This time we're in `tmux`, so `TMUX` is set, preventing infinite recursion
+    inner = f"{shlex.join(argv)}; read -p '[exited, press Enter]'"
+    os.execvp(
+        tmux,
+        ["tmux", "new-session", "-A", "-s", session, "--", "bash", "-c", inner],
+    )
 
 if __name__ == "__main__":
+    reexec_in_tmux()
     asyncio.run(main())

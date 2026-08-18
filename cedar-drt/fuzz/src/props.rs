@@ -17,6 +17,8 @@
 //! This module contains properties that API-level entities should satisfy.
 
 use crate::roundtrip_entities::pretty_assert_entities_deep_eq;
+use crate::schemas::Equiv;
+use cedar_policy::proto::traits::{DecodeError, Protobuf};
 use cedar_policy::{
     Entities, Entity, Expression, Policy, PolicySet, Request, RestrictedExpression, Schema,
     Template,
@@ -177,4 +179,95 @@ pub fn schema_to_cedar_parses(schema: &Schema) -> Schema {
             panic!("Cedar schema text failed to re-parse.\nText: {cedar_text}\nError: {e}")
         })
         .0
+}
+
+/// Decode an [`Entity`] from a protobuf-encoded buffer and assert it equals the original.
+/// Conversion errors are expected (input has not been validated), but other decode errors
+/// indicate a bug.
+pub fn entity_protobuf_decodes(buf: &[u8], original: &Entity) {
+    match Entity::decode(buf) {
+        Ok(decoded) => assert_eq!(*original, decoded),
+        // we expect conversion errors here: the entity has not been validated first, we only
+        // test that the protobuf decoding part works, not the conversion
+        Err(DecodeError::Conversion(_)) => (),
+        Err(e) => panic!("failed to decode an entity that was just encoded: {e}"),
+    }
+}
+
+/// Decode [`Entities`] from a protobuf-encoded buffer and assert they equal the original.
+/// Conversion errors are expected (input has not been validated), but other decode errors
+/// indicate a bug.
+pub fn entities_protobuf_decodes(buf: &[u8], original: &Entities) {
+    match Entities::decode(buf) {
+        Ok(decoded) => pretty_assert_entities_deep_eq(original, &decoded),
+        // we expect conversion errors here: the entities have not been validated first, we only
+        // test that the protobuf decoding part works, not the conversion
+        Err(DecodeError::Conversion(_)) => (),
+        Err(e) => panic!("failed to decode entities that were just encoded: {e}"),
+    }
+}
+
+/// Decode an [`Expression`] from a protobuf-encoded buffer and check it parses back to Cedar.
+/// Conversion errors are expected (input has not been validated), but other decode errors
+/// indicate a bug.
+pub fn expression_protobuf_decodes(buf: &[u8]) {
+    match Expression::decode(buf) {
+        Ok(decoded) => expression_to_cedar_parses(decoded),
+        // we expect conversion errors here: the expression has not been validated first, we only
+        // test that the protobuf decoding part works, not the conversion
+        Err(DecodeError::Conversion(_)) => (),
+        Err(e) => panic!("failed to decode an expression that was just encoded: {e}"),
+    }
+}
+
+/// Decode a [`PolicySet`] from a protobuf-encoded buffer and assert it equals the original.
+/// Conversion errors are expected (input has not been validated), but other decode errors
+/// indicate a bug.
+pub fn policyset_protobuf_decodes(buf: &[u8], original: &PolicySet) {
+    match PolicySet::decode(buf) {
+        Ok(decoded) => assert_eq!(*original, decoded),
+        // we expect conversion errors here: the policy set has not been validated first, we only
+        // test that the protobuf decoding part works, not the conversion
+        Err(DecodeError::Conversion(_)) => (),
+        Err(e) => panic!("failed to decode a policy set that was just encoded: {e}"),
+    }
+}
+
+/// Decode a [`Request`] from a protobuf-encoded buffer and assert it equals the original.
+/// Conversion errors are expected (input has not been validated), but other decode errors
+/// indicate a bug.
+pub fn request_protobuf_decodes(buf: &[u8], original: &Request) {
+    match Request::decode(buf) {
+        Ok(decoded) => assert_eq!(*original, decoded),
+        // we expect conversion errors here: the request has not been validated first, we only
+        // test that the protobuf decoding part works, not the conversion
+        Err(DecodeError::Conversion(_)) => (),
+        Err(e) => panic!("failed to decode a request that was just encoded: {e}"),
+    }
+}
+
+/// Decode a [`Schema`] from a protobuf-encoded buffer and assert it is equivalent to the original.
+/// Conversion errors are expected (input has not been validated), but other decode errors
+/// indicate a bug.
+pub fn schema_protobuf_decodes(buf: &[u8], original: &Schema) {
+    match Schema::decode(buf) {
+        Ok(decoded) => Equiv::equiv(original.as_ref(), decoded.as_ref()).unwrap(),
+        // we expect conversion errors here: the schema has not been validated first, we only
+        // test that the protobuf decoding part works, not the conversion
+        Err(DecodeError::Conversion(_)) => (),
+        Err(e) => panic!("failed to decode a schema that was just encoded: {e}"),
+    }
+}
+
+/// Decode a [`Template`] from a protobuf-encoded buffer and assert it equals the original.
+/// Conversion errors are expected (input has not been validated), but other decode errors
+/// indicate a bug.
+pub fn template_protobuf_decodes(buf: &[u8], original: &Template) {
+    match Template::decode(buf) {
+        Ok(decoded) => assert_eq!(*original, decoded),
+        // we expect conversion errors here: the template has not been validated first, we only
+        // test that the protobuf decoding part works, not the conversion
+        Err(DecodeError::Conversion(_)) => (),
+        Err(e) => panic!("failed to decode a template that was just encoded: {e}"),
+    }
 }

@@ -25,16 +25,16 @@ cedar-policy-generators = { path = "../../cedar-policy-generators", version = "4
 ] }
 log = "0.4"
 logos = "0.16.0"
-itertools = "0.14.0"
+itertools = "0.15.0"
 miette = "7.1.0"
 prost = "0.14"
-rand = { version = "0.9", features = ["small_rng"] }
+rand = "0.10.2"
 ref-cast = "1.0"
 regex = "1"
 serde = "1.0"
 serde_json = { version = "1.0", features = ["unbounded_depth"] }
 serde_stacker = "0.1"
-similar-asserts = "1.5.0"
+similar-asserts = "2.0.0"
 smol_str = { version = "0.3", features = ["serde"] }
 thiserror = "2.0"
 uuid = { version = "1.3.1", features = ["v4", "fast-rng"] }
@@ -282,6 +282,84 @@ test = false
 doc = false
 
 [[bin]]
+name = "protobuf-encode-bytes-policyset"
+path = "fuzz_targets/protobuf-encode/protobuf-encode-bytes-policyset.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-encode-bytes-entity"
+path = "fuzz_targets/protobuf-encode/protobuf-encode-bytes-entity.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-encode-bytes-entities"
+path = "fuzz_targets/protobuf-encode/protobuf-encode-bytes-entities.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-encode-bytes-schema"
+path = "fuzz_targets/protobuf-encode/protobuf-encode-bytes-schema.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-encode-bytes-expression"
+path = "fuzz_targets/protobuf-encode/protobuf-encode-bytes-expression.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-encode-bytes-template"
+path = "fuzz_targets/protobuf-encode/protobuf-encode-bytes-template.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-encode-gen-policyset"
+path = "fuzz_targets/protobuf-encode/protobuf-encode-gen-policyset.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-encode-gen-entity"
+path = "fuzz_targets/protobuf-encode/protobuf-encode-gen-entity.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-encode-gen-entities"
+path = "fuzz_targets/protobuf-encode/protobuf-encode-gen-entities.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-encode-gen-schema"
+path = "fuzz_targets/protobuf-encode/protobuf-encode-gen-schema.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-encode-gen-expression"
+path = "fuzz_targets/protobuf-encode/protobuf-encode-gen-expression.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-encode-gen-request"
+path = "fuzz_targets/protobuf-encode/protobuf-encode-gen-request.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-encode-gen-template"
+path = "fuzz_targets/protobuf-encode/protobuf-encode-gen-template.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "entity-validation"
 path = "fuzz_targets/entity-validation.rs"
 test = false
@@ -344,6 +422,24 @@ doc = false
 [[bin]]
 name = "tpe-query-resource-pbt"
 path = "fuzz_targets/tpe-query-resource-pbt.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "concrete-entities-convert-partial-consistency-pbt"
+path = "fuzz_targets/concrete-entities-convert-partial-consistency-pbt.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "concrete-entities-parse-partial-consistency-pbt"
+path = "fuzz_targets/concrete-entities-parse-partial-consistency-pbt.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "concrete-request-convert-partial-consistency-pbt"
+path = "fuzz_targets/concrete-request-convert-partial-consistency-pbt.rs"
 test = false
 doc = false
 

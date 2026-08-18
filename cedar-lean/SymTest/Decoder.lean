@@ -347,25 +347,51 @@ def testsDecodeInvalidLitStrings :=
     testDecodeLitError "(R4 (as none (Option Bool)) #b0000000000000000000000000000000000000000000000000000000000001010 false)"
   ]
 
-private def testDecodeTableOk := (testDecodeOk (SExpr.decodeUnaryFunctionTable "x" ids))
+private def bv4 : TermType := .bitvec 4
 
-private def testDecodeTableError := (testDecodeError (SExpr.decodeUnaryFunctionTable "x" ids))
+private def decodeBinding (outTy : TermType) (s : SExpr) : Decoder.Result UDF :=
+  match s with
+  | .sexpr xs => SExpr.decodeUUFBinding ⟨"tbl", bv4, outTy⟩ ids xs
+  | other     => SExpr.fail "UUF binding" other
+
+private def outTyStr : TermType → String
+  | .prim .bool        => "Bool"
+  | .prim (.bitvec n)  => s!"(_ BitVec {n})"
+  | _                  => "unsupported"
+
+private def bindingStr (outTy : TermType) (body : String) : String :=
+  s!"(((x (_ BitVec 4))) {outTyStr outTy} {body})"
+
+private def testDecodeTableOk (outTy : TermType) (body : String) (tbl : List (Term × Term)) (dflt : Term) : TestCase IO :=
+  testDecodeOk (decodeBinding outTy) (bindingStr outTy body) ⟨bv4, outTy, Map.make tbl, dflt⟩
+
+private def testDecodeTableError (outTy : TermType) (body : String) : TestCase IO :=
+  testDecodeError (decodeBinding outTy) (bindingStr outTy body)
 
 def testsDecodeValidFunctionTableStrings :=
-  suite "Decoder.SExpr.decodeUnaryFunctionTable for valid unary function body strings"
+  suite "Decoder.SExpr.decodeUUFBinding for valid unary function definitions"
   [
-    testDecodeTableOk "true" ([], .bool true),
-    testDecodeTableOk "(ite (= #b0000 x) #b0001 #b0010)" ([(0#4, 1#4)], 2#4),
-    testDecodeTableOk "(ite (= #b0000 x) #b0001 (ite (= #b0001 x) #b0010 #b0011))" ([(0#4, 1#4), (1#4, 2#4)], 3#4),
-    testDecodeTableOk "(ite (= x #b0000) #b0001 #b0010)" ([(0#4, 1#4)], 2#4),
+    testDecodeTableOk .bool "true" [] (.bool true),
+    testDecodeTableOk bv4 "(ite (= #b0000 x) #b0001 #b0010)" [(0#4, 1#4)] 2#4,
+    testDecodeTableOk bv4 "(ite (= #b0000 x) #b0001 (ite (= #b0001 x) #b0010 #b0011))" [(0#4, 1#4), (1#4, 2#4)] 3#4,
+    testDecodeTableOk bv4 "(ite (= x #b0000) #b0001 #b0010)" [(0#4, 1#4)] 2#4,
+    testDecodeTableOk .bool "(= x #b0000)" [(0#4, .bool true)] (.bool false),
+    testDecodeTableOk .bool "(= #b0000 x)" [(0#4, .bool true)] (.bool false),
+    testDecodeTableOk .bool "(or (= #b0000 x) (= #b0001 x))" [(0#4, .bool true), (1#4, .bool true)] (.bool false),
   ]
 
 def testsDecodeInvalidFunctionTableStrings :=
-  suite "Decoder.SExpr.decodeUnaryFunctionTable for invalid unary function body strings"
+  suite "Decoder.SExpr.decodeUUFBinding for invalid unary function definitions"
   [
-    testDecodeTableError "foo",
-    testDecodeTableError "(ite (= #b0000 y) #b0001 #b0010)", -- we're using x as var name in these tests
-    testDecodeTableError "(ite (= #b0000 x) (ite (= #b0001 x) #b0010 #b0011) #b0010)",
+    testDecodeTableError bv4 "foo",
+    testDecodeTableError bv4 "(ite (= #b0000 y) #b0001 #b0010)", -- we're using x as var name in these tests
+    testDecodeTableError bv4 "(ite (= #b0000 x) (ite (= #b0001 x) #b0010 #b0011) #b0010)",
+    testDecodeTableError .bool "(= y #b0000)",
+    testDecodeTableError .bool "(or (= #b0000 x) (= y #b0001))",
+    testDecodeTableError .bool "(or true false)",
+    -- declared arg/out types must match the UUF's
+    testDecodeError (decodeBinding .bool) "(((x Bool)) Bool true)",
+    testDecodeError (decodeBinding bv4) "(((x (_ BitVec 4))) Bool true)",
   ]
 
 private def testDecodeModelOk := (testDecodeOk (SExpr.decodeModel ids))

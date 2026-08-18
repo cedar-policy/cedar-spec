@@ -11,12 +11,16 @@ To install from source, run `cargo install --path .`.
 
 ### Options
 
-| Flag | Description |
-|------|-------------|
-| `--corpus <path>` | Path to a `tasks.json` file defining the benchmark corpus (required) |
-| `--targets <list>` | Comma-separated list of targets to run (optional, runs all by default) |
-| `--trials <n>` | Number of iterations per benchmark (default: 1000) |
-| `--output <format>` | Output format: `json` (default) or `table` (human-readable) |
+| Flag                           | Description                                                                                                                                      |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `--corpus <path>`              | Path to a `tasks.json` file defining the benchmark corpus. Mutually exclusive with `--baseline`.                                                 |
+| `--baseline <path>`            | Load "current" results from a previous JSON output file instead of running benchmarks. Mutually exclusive with `--corpus`. Requires `--compare`. |
+| `--targets <list>`             | Comma-separated list of targets to run (optional, runs all by default). Only valid with `--corpus`.                                              |
+| `--trials <n>`                 | Number of iterations per benchmark (default: 1000). Only valid with `--corpus`.                                                                  |
+| `--output <format>`            | Output format: `json` (default) or `table` (human-readable)                                                                                      |
+| `--compare <files...>`         | One or more baseline JSON files to compare against                                                                                               |
+| `--no-color`                   | Disable colored output in comparison tables                                                                                                      |
+| `--regression-threshold <pct>` | Exit non-zero if any benchmark's average regresses beyond this percentage. Requires `--compare`.                                                 |
 
 ### Example: run only parsing benchmarks with 500 trials
 
@@ -72,31 +76,31 @@ Cedar <version> | <hardware information>
 ### Fields
 Each `results` object in the JSON output has the following fields:
 
-| Field | Description |
-|-------|-------------|
-| `average` | Arithmetic mean across all trials |
-| `min` / `max` | Fastest and slowest trial |
-| `stddev` | Standard deviation (lower = more consistent) |
-| `iqr` | Interquartile range (p75 - p25), robust measure of spread |
-| `p50` | Median latency |
-| `p95` / `p99` | Tail latencies |
+| Field         | Description                                               |
+| ------------- | --------------------------------------------------------- |
+| `average`     | Arithmetic mean across all trials                         |
+| `min` / `max` | Fastest and slowest trial                                 |
+| `stddev`      | Standard deviation (lower = more consistent)              |
+| `iqr`         | Interquartile range (p75 - p25), robust measure of spread |
+| `p50`         | Median latency                                            |
+| `p95` / `p99` | Tail latencies                                            |
 
 ## Benchmark targets
 
-| Target | Description |
-|--------|-------------|
-| `policy_parse` | Parse Cedar policy text |
-| `json_policy_parse` | Parse policies from JSON representation |
-| `protobuf_policy_parse` | Parse policies from protobuf encoding |
-| `schema_parse` | Parse Cedar schema text |
-| `json_schema_parse` | Parse schema from JSON representation |
-| `protobuf_schema_parse` | Parse schema from protobuf encoding |
-| `validation` | Validate policies against a schema |
-| `authorization` | Run authorization requests |
-| `entity_parse_with_schema` | Parse entities with schema validation |
-| `entity_parse_without_schema` | Parse entities without schema |
-| `protobuf_entity_parse` | Parse entities from protobuf encoding |
-| `incremental_entities` | Incrementally add entities (measures transitive closure recomputation) |
+| Target                        | Description                                                            |
+| ----------------------------- | ---------------------------------------------------------------------- |
+| `policy_parse`                | Parse Cedar policy text                                                |
+| `json_policy_parse`           | Parse policies from JSON representation                                |
+| `protobuf_policy_parse`       | Parse policies from protobuf encoding                                  |
+| `schema_parse`                | Parse Cedar schema text                                                |
+| `json_schema_parse`           | Parse schema from JSON representation                                  |
+| `protobuf_schema_parse`       | Parse schema from protobuf encoding                                    |
+| `validation`                  | Validate policies against a schema                                     |
+| `authorization`               | Run authorization requests                                             |
+| `entity_parse_with_schema`    | Parse entities with schema validation                                  |
+| `entity_parse_without_schema` | Parse entities without schema                                          |
+| `protobuf_entity_parse`       | Parse entities from protobuf encoding                                  |
+| `incremental_entities`        | Incrementally add entities (measures transitive closure recomputation) |
 
 ## Corpus format
 
@@ -131,7 +135,34 @@ cp target/release/cedar-benchmarking cedar-bench-4.10
 git checkout cedar-benchmarking-v4.11.0 && cargo build --release -p cedar-benchmarking
 cp target/release/cedar-benchmarking cedar-bench-4.11
 
-# Run against same corpus
+# Run against same corpus, use compare to compare
 ./cedar-bench-4.10 --corpus corpus/tasks.json > results-4.10.json
-./cedar-bench-4.11 --corpus corpus/tasks.json > results-4.11.json
+./cedar-bench-4.11 --corpus corpus/tasks.json --compare results-4.10.json
 ```
+
+## Comparing results
+
+Use `--compare` to compare against one or more previous JSON outputs. Benchmarks are matched by `(name, target)` pair; unmatched entries are reported separately.
+
+```bash
+# Compare a live run against saved baselines
+cedar-benchmarking --corpus corpus/tasks.json --compare results-4.10.json results-4.9.json
+
+# Compare two saved results without re-running
+cedar-benchmarking --baseline results-4.11.json --compare results-4.10.json
+
+# CI gate: exit non-zero if any benchmark significantly regresses
+cedar-benchmarking --corpus corpus/tasks.json --compare baseline.json --regression-threshold 5
+```
+
+Comparison output respects `--output`: JSON by default, or a colored table with `--output table`. Use `--no-color` to disable ANSI colors.
+
+### Regression detection
+
+A benchmark is flagged as a regression only when **all three** conditions are met:
+
+1. The average latency increased by more than the threshold percentage (default 5%).
+2. The absolute delta exceeds 10µs (filters out noise on very fast benchmarks).
+3. The absolute delta exceeds 2× the pooled standard deviation (`√(σ_baseline² + σ_current²)`), which accounts for variance in both runs.
+
+This prevents false positives from tiny benchmarks (e.g., 15µs → 16µs = +6.7% but only 1µs absolute) and from high-variance benchmarks where the change is within expected noise.

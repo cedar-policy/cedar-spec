@@ -16,8 +16,5 @@
 
 module
 
-public import Cedar.Frontend.Cst.Common
-public import Cedar.Frontend.Cst.Syntax
-public import Cedar.Frontend.Cst.Semantics
-public import Cedar.Frontend.Cst.Slice
-public import Cedar.Frontend.Cst.ToAst
+public import Cedar.Frontend.Cst
+public import Cedar.Frontend.Parser

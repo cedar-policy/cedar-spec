@@ -14,19 +14,21 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
-import Cedar.Frontend.Cst
-import Cedar.Frontend.Cst.ToAst
-import Cedar.Slice.PolicySlice
+module
 
-namespace Cedar.Frontend.Cst.Slice
+import Cedar.Spec
+public import Cedar.Frontend.Cst.Syntax
+import Cedar.Frontend.Cst.ToAst
+public import Cedar.Slice.PolicySlice
+
+namespace Cedar.Frontend.Cst
 
 open Cedar.Spec
 open Cedar.Frontend
 open Cedar.Slice
 
 -- Returns true if a `VariableDef` is well-formed.
-def varBoundWF (vd : Cst.VariableDef) : Bool :=
+public def varBoundWF (vd : VariableDef) : Bool :=
   match vd.entityType, vd.ineq with
   | none,   some (.rEq, e) => (e.toEntityUID?).isSome
   | none,   some (.rIn, e) => (e.toEntityUID?).isSome
@@ -35,7 +37,7 @@ def varBoundWF (vd : Cst.VariableDef) : Bool :=
 
 -- Extracts the principal and resource `VariableDef` from a CST Policy.
 -- Returns none if the scopes are out of order or missing.
-def prVars? (policy : Cst.Policy) : Option (Cst.VariableDef × Cst.VariableDef) :=
+public def prVars? (policy : Policy) : Option (VariableDef × VariableDef) :=
   match policy with
   | .policy p => match p.vars with
     | [pr, act, res] =>
@@ -46,7 +48,7 @@ def prVars? (policy : Cst.Policy) : Option (Cst.VariableDef × Cst.VariableDef) 
     | _ => none
 
 -- Get the variable bound from a `VariableDef`.
-def varBound? (vd : Cst.VariableDef) : Option EntityUID :=
+public def varBound? (vd : VariableDef) : Option EntityUID :=
   match vd.entityType, vd.ineq with
   | none,   some (.rEq, e) => e.toEntityUID?   -- principal == e
   | none,   some (.rIn, e) => e.toEntityUID?   -- principal in e
@@ -56,23 +58,23 @@ def varBound? (vd : Cst.VariableDef) : Option EntityUID :=
 -- Given a CST Policy and a proof term that the extraction of the
 -- principal and resource `VariableDef` is successful, a `BoundAnalysis`
 -- computes the `PolicyBound`.
-abbrev BoundAnalysis := (policy : Cst.Policy) → (prVars? policy).isSome → PolicyBound
+public abbrev BoundAnalysis := (policy : Policy) → (prVars? policy).isSome → PolicyBound
 
 -- A bound-based slicing algorithm takes as input a bound analysis, request,
 -- entities, policies, and a hypothesis that the principal and resourse
 -- `VariableDef`s can be extracted from all policies,
 -- and filters out the policies whose bound is not satisfied by the
 -- request and entities.
-def BoundAnalysis.slice (ba : BoundAnalysis) (request : Request) (entities : Entities)
+public def BoundAnalysis.slice (ba : BoundAnalysis) (request : Request) (entities : Entities)
     (policies : Cst.Policies)
     (h : ∀ policy ∈ policies.ps, (prVars? policy).isSome) : Cst.Policies :=
   { ps := policies.ps.attach.filterMap (fun ⟨policy, hmem⟩ =>
       if satisfiedBound (ba policy (h policy hmem)) request entities then some policy else none) }
 
 -- Scope-based analysis extracts the bound from the policy.
-def scopeAnalysis (policy : Cst.Policy) (h : (prVars? policy).isSome) : PolicyBound :=
+public def scopeAnalysis (policy : Cst.Policy) (h : (prVars? policy).isSome) : PolicyBound :=
   let (pr, res) := (prVars? policy).get h
   { principalBound := varBound? pr,
     resourceBound  := varBound? res }
 
-end Cedar.Frontend.Cst.Slice
+end Cedar.Frontend.Cst

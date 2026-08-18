@@ -9,7 +9,7 @@ cedar-policy = { version = "*", path = "../cedar/cedar-policy" }
 cedar-policy-core = { version = "*", path = "../cedar/cedar-policy-core" }
 cedar-lean-ffi = { version = "*", path = "../cedar-lean-ffi" }
 clap = { version = "4.5.36", features = ["derive"] }
-itertools = "0.14"
+itertools = "0.15.0"
 miette = "7.6.0"
 nonempty = "0.12"
 prettytable-rs = "0.10"
@@ -19,7 +19,7 @@ thiserror = "2.0"
 
 [dev-dependencies]
 assert_cmd = "2.0.17"
-insta = { version = "~1.46", features = ["filters"] }
+insta = { version = "1.48.0", features = ["filters"] }
 
 # https://insta.rs/docs/quickstart/ recommends compiling `insta` and `similar` in release mode
 [profile.dev.package]

@@ -51,16 +51,17 @@ large_enum_variant = "allow"
 
 [dependencies]
 arbitrary = "1.4"
-cedar-policy = { version = "=4.11.0", path = "../cedar/cedar-policy", features = [
+cedar-policy = { version = "4", path = "../cedar/cedar-policy", features = [
     "protobufs",
 ] }
-cedar-policy-core = { version = "=4.11.0", path = "../cedar/cedar-policy-core" }
+cedar-policy-core = { version = "4", path = "../cedar/cedar-policy-core" }
 cedar-policy-generators = { version = "4", path = "../cedar-policy-generators", features = [
     "cedar-policy",
 ] }
 clap = { version = "4", features = ["derive"] }
 miette = { version = "7.6.0", features = ["fancy"] }
-rand = "0.9"
+rand = "0.10.2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-sysinfo = "0.33"
+sysinfo = "0.39.6"
+owo-colors = "4"

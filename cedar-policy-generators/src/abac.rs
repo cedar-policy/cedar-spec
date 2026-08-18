@@ -957,7 +957,7 @@ mod tests {
         evaluator::Evaluator,
         extensions::Extensions,
     };
-    use rand::{rngs::StdRng, RngCore, SeedableRng};
+    use rand::{rngs::StdRng, Rng, SeedableRng};
     use smol_str::SmolStr;
 
     use super::ConstantPool;

@@ -655,6 +655,22 @@ fn test_analyze_compare_tabular_misc1() {
 }
 
 #[test]
+fn test_analyze_compare_tabular_tags_bool() {
+    SETTINGS.bind(|| {
+        insta::assert_snapshot!(cmd_output(
+            &mut cargo::cargo_bin_cmd!()
+                .current_dir("examples/analyze/tags")
+                .arg("analyze")
+                .arg("compare")
+                .arg("policies1.cedar")
+                .arg("empty.cedar")
+                .arg("policies.cedarschema"),
+            false,
+        ));
+    });
+}
+
+#[test]
 fn test_analyze_policies_tabular_demo1() {
     SETTINGS.bind(|| {
         insta::assert_snapshot!(cmd_output(

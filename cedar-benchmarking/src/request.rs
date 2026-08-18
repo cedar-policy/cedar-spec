@@ -19,7 +19,7 @@ use cedar_policy::Request;
 use cedar_policy_core::ast;
 use cedar_policy_core::validator::{json_schema::Fragment, RawName};
 use cedar_policy_generators::{hierarchy::Hierarchy, settings::ABACSettings};
-use rand::{rngs::StdRng, Rng, SeedableRng};
+use rand::{rngs::StdRng, RngExt, SeedableRng};
 
 struct RandomBytes {
     bytes: Vec<u8>,
