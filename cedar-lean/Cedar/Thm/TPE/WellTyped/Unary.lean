@@ -65,7 +65,7 @@ theorem partial_eval_well_typed_unaryApp {env : TypeEnv} {op : UnaryOp} {expr : 
       cases h_op <;>
         first
         | exact well_typed_bool
-        | simp [TPE.tryDecideResidual₁] at hdec
+        | simp only [TPE.tryDecideResidual₁, ite_self, reduceCtorEq] at hdec
     case h_2 =>
     split
     case h_1 =>

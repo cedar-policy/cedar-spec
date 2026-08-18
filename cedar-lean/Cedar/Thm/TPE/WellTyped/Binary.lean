@@ -397,7 +397,7 @@ theorem partial_eval_well_typed_app₂_values :
     cases h_op <;>
       first
       | exact well_typed_bool
-      | simp [TPE.tryDecideResidual₂] at hdec
+      | simp only [TPE.tryDecideResidual₂, ite_self, reduceCtorEq] at hdec
   case h_2 =>
   rw [h₁, h₂]
   simp only
@@ -466,7 +466,7 @@ theorem partial_eval_well_typed_app₂_nonvalues :
     cases h_op <;>
       first
       | exact well_typed_bool
-      | simp [TPE.tryDecideResidual₂] at hdec
+      | simp only [TPE.tryDecideResidual₂, ite_self, reduceCtorEq] at hdec
   case h_2 =>
   split
   case h_1 h₂ h₃ =>

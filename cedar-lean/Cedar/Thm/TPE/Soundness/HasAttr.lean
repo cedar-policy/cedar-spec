@@ -37,7 +37,7 @@ open Cedar.TPE
 open Cedar.Thm
 
 /-- A record value whose type does not declare an attribute `a` does not have `a`. -/
-theorem has_attr_false_of_record_type_absent
+theorem has_attr_false_of_absent_in_record_type
   {env : TypeEnv} {r : Map Attr Value} {rty : RecordType} {a : Attr} {es : Entities}
   (hinst : InstanceOfType env (.record r) (.record rty))
   (hnone : rty.find? a = .none) :
@@ -48,7 +48,7 @@ theorem has_attr_false_of_record_type_absent
     Option.isSome_none]
 
 /-- If the schema does not declare an attribute `a` for an entity, then it does not have `a`. -/
-theorem has_attr_false_of_entity_type_absent
+theorem has_attr_false_of_absent_in_entity_type
   {env : TypeEnv} {request : Request} {entities : Entities}
   {uid : EntityUID} {rty : RecordType} {a : Attr}
   (hwf : InstanceOfWellFormedEnvironment request entities env)
@@ -63,8 +63,7 @@ theorem has_attr_false_of_entity_type_absent
       exact absent_attribute_is_absent (well_typed_entity_attributes hwf hfind hattrs) hnone
     case _ =>
       exact Map.find?_empty a
-  simp only [Spec.hasAttr, Spec.attrsOf, Except.bind_ok, Map.contains, habsent,
-    Option.isSome_none]
+  simp only [Spec.hasAttr, Spec.attrsOf, Except.bind_ok, Map.contains, habsent, Option.isSome_none]
 
 /--
 If `tryDecideHasResidual` decides a `has` expression from the operand's type,
@@ -101,7 +100,7 @@ theorem try_decide_has_residual_sound
     case isTrue hnone =>
     simp only [Option.some.injEq] at hdec
     subst hdec
-    exact has_attr_false_of_record_type_absent hinst (Option.isNone_iff_eq_none.mp hnone)
+    exact has_attr_false_of_absent_in_record_type hinst (Option.isNone_iff_eq_none.mp hnone)
   case h_2 ety heqty =>
     rw [heqty] at hinst
     cases hinst
@@ -116,8 +115,7 @@ theorem try_decide_has_residual_sound
         have hty : uid.ty = ety := by
           simp only [InstanceOfEntityType] at hient
           exact hient.left.symm
-        exact has_attr_false_of_entity_type_absent hwf (by rw [hty]; exact hattrs)
-          (Option.isNone_iff_eq_none.mp hnone)
+        exact has_attr_false_of_absent_in_entity_type hwf (by rw [hty]; exact hattrs) (Option.isNone_iff_eq_none.mp hnone)
       case h_2 => simp at hdec
   case h_3 => simp at hdec
 

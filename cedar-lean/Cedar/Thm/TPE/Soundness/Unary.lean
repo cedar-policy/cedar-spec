@@ -46,33 +46,28 @@ theorem is_eq_type_comparison_of_entity_type
   simp only [Spec.apply₁]
 
 theorem try_decide_residual₁_sound
-{env : TypeEnv}
-{r₁ : Residual}
-{req : Request}
-{es : Entities}
-{op₁ : UnaryOp}
-{v : Value}
+{env : TypeEnv} {r₁ : Residual} {req : Request}
+{es : Entities} {op₁ : UnaryOp} {v : Value}
 (hwf : InstanceOfWellFormedEnvironment req es env)
 (hwt : Residual.WellTyped env r₁)
 (hdec : TPE.tryDecideResidual₁ op₁ r₁ = .some v) :
   ∃ v', r₁.evaluate req es = .ok v' ∧ Spec.apply₁ op₁ v' = .ok v
 := by
-  unfold TPE.tryDecideResidual₁ at hdec
-  split at hdec
-  case isFalse => simp at hdec
+  unfold TPE.tryDecideResidual₁ at hdec ; split at hdec
+  case isFalse => contradiction
   case isTrue hef =>
-  have hok := error_free_evaluate_ok hwf hwt ((Residual.error_free_spec _).mp hef)
-  rw [Except.isOk_iff_exists] at hok
-  have ⟨v', hev⟩ := hok
-  have hinst := residual_well_typed_is_sound hwf hwt hev
-  refine ⟨v', hev, ?_⟩
-  split at hdec
-  case h_1 ety₁ ety₂ htyeq =>
-    rw [htyeq] at hinst
-    simp only [Option.some.injEq] at hdec
-    subst hdec
-    exact is_eq_type_comparison_of_entity_type hinst
-  case h_2 => simp at hdec
+    have hok := error_free_evaluate_ok hwf hwt ((Residual.error_free_spec _).mp hef)
+    rw [Except.isOk_iff_exists] at hok
+    have ⟨v', hev⟩ := hok
+    exists v' ; apply And.intro hev
+    split at hdec
+    case h_1 ety₁ ety₂ htyeq =>
+      have hinst := residual_well_typed_is_sound hwf hwt hev
+      rw [htyeq] at hinst
+      simp only [Option.some.injEq] at hdec
+      subst hdec
+      exact is_eq_type_comparison_of_entity_type hinst
+    case h_2 => simp at hdec
 
 theorem partial_evaluate_is_sound_unary_app
 {x₁ : Residual}
@@ -90,7 +85,7 @@ theorem partial_evaluate_is_sound_unary_app
   Except.toOption ((Residual.unaryApp op₁ x₁ ty).evaluate req es) =
   Except.toOption ((TPE.evaluate env (Residual.unaryApp op₁ x₁ ty) preq pes).evaluate req es)
 := by
-  simp [TPE.evaluate, TPE.apply₁]
+  simp only [TPE.evaluate, TPE.apply₁]
   split
   case _ heq =>
     simp only [heq, Residual.evaluate] at hᵢ₁
@@ -110,18 +105,17 @@ theorem partial_evaluate_is_sound_unary_app
       case _ heq =>
         rw [asValue_evaluate_val heq] at hᵢ₁
         replace hᵢ₁ := to_option_right_ok' hᵢ₁
-        simp [someOrError, Residual.evaluate, hᵢ₁]
-        split
+        unfold someOrError ; split
         case _ heq₂ =>
           simp only [to_option_some] at heq₂
-          simp [heq₂, Residual.evaluate]
+          simp [Residual.evaluate, heq₂, hᵢ₁]
         case _ heq₂ =>
           rcases to_option_none.mp heq₂ with ⟨_, heq₂⟩
-          simp [heq₂, Residual.evaluate, Except.toOption]
+          simp [Residual.evaluate, Except.toOption, heq₂, hᵢ₁]
       case _ =>
-        simp [Residual.evaluate]
+        simp only [Residual.evaluate]
         generalize h₅ : x₁.evaluate req es = res₁
-        cases res₁ <;> simp [h₅] at hᵢ₁
+        cases res₁ <;> simp only [h₅] at hᵢ₁
         case error =>
           rcases to_option_left_err hᵢ₁ with ⟨_, hᵢ₁⟩
           simp [hᵢ₁, Except.toOption]

@@ -44,12 +44,11 @@ theorem has_tag_false_of_entity_type_tagless
   Spec.hasTag uid tag entities = .ok (.prim (.bool false))
 := by
   have hnone : (entities.tagsOrEmpty uid).find? tag = .none := by
-    simp only [Entities.tagsOrEmpty]
-    split
+    unfold Entities.tagsOrEmpty ; split
     case _ d hfind =>
       have ⟨_, _, hschema, _⟩ := hwf
       simp only [InstanceOfSchemaEntry] at hschema
-      replace hschema := hschema uid d hfind
+      specialize hschema uid d hfind
       cases hschema with
       | inl hents =>
         have ⟨entry, hfind_entry, _, _, _, htags⟩ := hents
