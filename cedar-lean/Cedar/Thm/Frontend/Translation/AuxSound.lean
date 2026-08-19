@@ -1203,7 +1203,10 @@ theorem evalAccessors_eq
         Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at ha_ast
       obtain ⟨s, hs, rfl⟩ := ha_ast
       subst hrest
-      have hs_eq : s = s0 := by simp at hs; exact hs.2.symm
+      have hs_eq : s = s0 := by
+        simp only [Cst.keywords, List.mem_cons, List.not_mem_nil, or_false, not_or] at hs0
+        simp only [hs0, imp_self, ↓reduceIte, Option.some.injEq] at hs
+        exact hs.symm
       rw [memberAuxB_field_nil] at hb
       have hev : Cst.Member.evalAccessors head [.field (.idIdent s0 hs0)] req es
                = (do let hv ← Spec.getAttr head s0 es; Cst.Member.evalAccessors hv [] req es) := by

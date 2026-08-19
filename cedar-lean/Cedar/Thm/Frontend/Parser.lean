@@ -53,7 +53,7 @@ theorem String.asHexNat_toHexString (n : Nat) (h : n ≤ 0xFFFFFF) :
 theorem classifyIdent_roundtrip (i : Ident) :
     classifyIdent i.toString = i := by
   cases i with
-  | idIdent s h => simp only [Ident.toString, classifyIdent, dif_neg h]
+  | idIdent s h => apply classifyIdent_toString_ident
   | _ => rfl
 
 /-- `Char.asHexNat` is injective on lowercase hex chars:
