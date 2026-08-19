@@ -739,7 +739,8 @@ theorem Cst.Relation.toAExpr?_sound
       have ⟨tEos, htEos, htExpr⟩ := hmt
       have htarget_eq : evaluate mt req es = target.evaluate req es :=
         @Cst.AddExpr.toAExpr?_sound target tEos req es htEos mt htExpr
-      simp [Cst.Relation.evaluate, hEt]
+      have hEtN : ety.toEntityTypeName? = some et := addExpr_toEntityType_toEntityTypeName hEt
+      simp [Cst.Relation.evaluate, hEtN]
       cases htgt : target.evaluate req es with
       | error err =>
         have hmtE : evaluate mt req es = .error err := htarget_eq.trans htgt

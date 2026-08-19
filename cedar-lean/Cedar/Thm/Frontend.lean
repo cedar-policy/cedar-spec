@@ -18,11 +18,10 @@ import Cedar.Spec
 import Cedar.Frontend.Cst
 import Cedar.Frontend.Cst.Semantics
 import Cedar.Frontend.Cst.ToAst
-import Cedar.Thm.Frontend.Translation.AuxComplete
 import Cedar.Thm.Frontend.Translation.AuxSound
-import Cedar.Thm.Frontend.Translation.ExprComplete
 import Cedar.Thm.Frontend.Translation.ExprTranslation
 import Cedar.Thm.Frontend.Translation.PolicyToExpr
+import Cedar.Thm.Frontend.Translation.CstErrorCollector
 import Cedar.Thm.Frontend.CstSlice
 import Cedar.Thm.Frontend.Authorizer
 import Cedar.Thm.Frontend.Parser
@@ -33,6 +32,7 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Frontend
 open Cedar.Validation
+
 
 /-- When `toPolicy?` succeeds, the CST policy's expression also translates to AST. -/
 theorem toPolicy?_implies_toAExpr?
@@ -85,13 +85,9 @@ theorem policy_satisfied_agrees (cp : Cst.Policy) (ap : Spec.Policy)
     guard in `Cst.hasError` is a no-op and it reduces to the plain
     evaluate-the-policy-expression check. -/
 theorem cst_hasError_eq_of_toPolicy {cp : Cst.Policy} {ap : Spec.Policy}
-    {req : Request} {es : Entities} (htrans : cp.toPolicy? = some ap) :
+    {req : Request} {es : Entities} (_htrans : cp.toPolicy? = some ap) :
     Cst.hasError cp req es =
       (match cp.toExpr.evaluate req es with | .ok _ => false | .error _ => true) := by
-  obtain ⟨p⟩ := cp
-  have hpp : p.toPolicy? = some ap := htrans
-  have hcond : ¬ (p.toPolicy?.isNone = true) := by rw [hpp]; simp
-  simp only [Cst.hasError, if_neg hcond]
   rfl
 
 theorem policy_hasError_agrees (cp : Cst.Policy) (ap : Spec.Policy)
@@ -178,31 +174,17 @@ theorem translation_is_sound (cps : Cst.Policies) (aps : Spec.Policies)
   simp [Cst.isAuthorized, Spec.isAuthorized]
   simp [hforbids, hpermits, herrors]
 
-theorem noHasError_translates (cp : Cst.Policy) (req : Request) (es : Entities) :
-  ¬ Cst.hasError cp req es →
-  ∃ ap, cp.toPolicy? = some ap := by
+/-- **Strong completeness (headline).** If the comprehensive CST error collector
+    reports no CST error for a policy set, then every policy translates to AST.
+    Because the collector never short-circuits, a translation error can never be
+    hidden behind a runtime error elsewhere. -/
+theorem translation_is_strongly_complete (cps : Cst.Policies) (req : Request) (es : Entities) :
+    noCstError (cps.collectErrors req es) →
+    ∃ aps, cps.toPolicies? = some aps := by
   intro h
-  obtain ⟨p⟩ := cp
-  cases hp : p.toPolicy? with
-  | none =>
-    exfalso; apply h
-    simp only [Cst.hasError, hp, Option.isNone_none, if_true]
-  | some ap =>
-    exact ⟨ap, by simp [Cst.Policy.toPolicy?, hp]⟩
-
-theorem translation_is_complete (cps : Cst.Policies) (req : Request) (es : Entities) :
-  ∀ cp ∈ cps.ps, cp.id ∉ (Cst.isAuthorized req es cps).erroringPolicies →
-  ∃ ap, cp.toPolicy? = some ap := by
-  intro cp hmem hnoterr
-  apply noHasError_translates cp req es
-  intro herr
-  apply hnoterr
-  have herrp : cp.id ∈ Cst.errorPolicies cps req es := by
-    simp only [Cst.errorPolicies, Set.mem_make]
-    exact List.mem_filterMap.mpr ⟨cp, hmem, by simp [herr]⟩
-  simp only [Cst.isAuthorized]
-  split <;> exact herrp
-
+  unfold Cst.Policies.collectErrors at h
+  unfold Cst.Policies.toPolicies?
+  exact collectPolicies_complete cps.ps req es h
 
 /-- Translating a sound CST policy slice yields a sound AST policy slice. -/
 theorem cst_sound_slice_translates
@@ -354,9 +336,7 @@ theorem validated_no_type_error
 `validation_is_sound`: if a set of CST policies translates to a set of AST
 policies that is validated with respect to the schema, and the request
 and entities are consistent with the schema, then evaluating each CST policy's
-expression never throws a `typeError` (it produces a boolean value or one of the
-runtime-only errors `entityDoesNotExist`, `extensionError`, `arithBoundsError`). -/
-
+expression never throws a `typeError`. -/
 theorem cst_validation_is_sound (cps : Cst.Policies) (aps : Policies)
     (schema : Schema) (request : Request) (entities : Entities) :
     cps.toPolicies? = some aps →
