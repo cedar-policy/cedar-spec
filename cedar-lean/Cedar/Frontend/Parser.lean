@@ -75,7 +75,8 @@ end Except
 
 namespace Cedar.Frontend.Cst.Parser
 
-open Std.Internal.Parsec String
+open Std.Internal.Parsec
+open Std.Internal.Parsec.String
 
 ----- Utilities -----
 
@@ -139,10 +140,9 @@ public def classifyIdent (s : String) : Ident :=
     else if _ : s = "is" then .idIs
     else if _ : s = "if" then .idIf
     else if _ : s = "then" then .idThen
-    else if _ : s = "else" then .idElse
-    else -- only remaining keyword is "__cedar"
-      have : s = "__cedar" := by simp_all [keywords]
-      .idElse -- placeholder: __cedar never appears as a standalone identifier
+    else -- only remaining keyword is "else"
+      have : s = "else" := by simp_all [keywords]
+      .idElse
   else
     .idIdent s h
 
