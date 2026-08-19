@@ -160,7 +160,7 @@ theorem classifyIdent_toString_keyword (i : Cst.Ident) (h : ¬∃ s hs, i = .idI
 theorem classifyIdent_toString_ident (s : String)
     (h : s ∉ keywords) :
     classifyIdent (Ident.toString (.idIdent s h)) = .idIdent s h := by
-  simp only [Ident.toString, classifyIdent, dif_neg h]
+  simp only [Ident.toString, classifyIdent, h, ↓reduceDIte]
 
 /-- `Ident.toString` is a left inverse of `classifyIdent` for all Cedar keywords. -/
 theorem toString_classifyIdent_keyword (s : String) (h : s ∈ keywords) :
