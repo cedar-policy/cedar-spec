@@ -50,6 +50,7 @@ public inductive ExprOrSpecial where
   -- A boolean literal
   | boolLit (v : Bool)
 
+
 public def Ident.toUnreservedId? : Ident → Option String
   | .idIdent s _ => if Unreserved? s then some s else none
   | _ => none
@@ -87,15 +88,6 @@ public def Literal.toExprOrSpecial? (l : Literal) : Option ExprOrSpecial :=
     let i ← Int64.ofInt? (n.toNat)
     some (.expr (.lit (.int i)))
   | .liStr s => some (.strLit s)
-
-public def Name.toVar? (n : Name) : Option Spec.Var :=
-  if !n.path.isEmpty then none
-  else match n.name with
-    | .idPrincipal => some .principal
-    | .idAction => some .action
-    | .idResource => some .resource
-    | .idContext => some .context
-    | _ => none
 
 public def Ref.toExprOrSpecial? (r : Ref) : Option ExprOrSpecial :=
   match r with
@@ -419,13 +411,8 @@ public def AddExpr.toAExpr? (e : AddExpr) : Option Spec.Expr := do
   ret.toExpr?
 termination_by (sizeOf e, 1)
 
-public def AddExpr.toEntityType? (e : AddExpr) : Option Spec.EntityType := do
-  let eos ← e.toExprOrSpecial?
-  match eos with
-  | .name n => some n
-  | .var  _ => none --  in Rust unqualified name
-  | _ => none
-termination_by (sizeOf e, 1)
+public def AddExpr.toEntityType? (e : AddExpr) : Option Spec.EntityType :=
+  e.toEntityTypeName?
 
 
 -- In Rust, `to_has_rhs` has the output type `Option (String ⊕ UnreservedId)`.
@@ -458,11 +445,8 @@ decreasing_by
     omega
 
 public def AddExpr.toPattern? (e : AddExpr) : Option Spec.Pattern := do
-  let eos ← e.toExprOrSpecial?
-  match eos with
-  | .strLit lit => toPattern? lit
-  | _ => none
-termination_by (sizeOf e, 2)
+  let s ← e.toPatternString?
+  toPattern? s
 
 public def Relation.toExprOrSpecial? : Relation → Option ExprOrSpecial
   | .rCommon initial extended =>
@@ -592,11 +576,6 @@ decreasing_by
 
 end
 
-public def Ident.toConditionKind? : Ident →  Option Spec.ConditionKind
-  | .idWhen => some .when
-  | .idUnless => some .unless
-  | _ => none
-
 public def Cond.toCondition? (cond : Cond) : Option Spec.Condition := do
   let kind ← cond.kind.toConditionKind?
   let body ← cond.body.toAExpr?
@@ -605,30 +584,6 @@ public def Cond.toCondition? (cond : Cond) : Option Spec.Condition := do
 public def toConditions? (conds : List Cond) : Option Spec.Conditions := do
   conds.mapM (·.toCondition?)
 
-private def Ident.toVar? : Ident → Option Spec.Var
-  | .idPrincipal => some .principal
-  | .idAction => some .action
-  | .idResource => some .resource
-  | .idContext => some .context
-  | _ => none
-
--- Helper lemma: a `Primary` reachable through the AddExpr→Primary chain
--- has strictly smaller `sizeOf` than the surrounding `OrExpr`.
-public theorem sizeOf_addExpr_primary_lt_orExpr (o : OrExpr) (ae : AddExpr) (ext : List (RelOp × AddExpr))
-    (h : o.initial.initial = .rCommon ae ext) :
-    sizeOf ae.initial.initial.item.item < sizeOf o := by
-  -- ae.initial : MultExpr ⟨Unary, List _⟩
-  -- ae.initial.initial : Unary ⟨Option NegOp, Member⟩
-  -- ae.initial.initial.item : Member ⟨Primary, List MemAccess⟩
-  -- ae.initial.initial.item.item : Primary
-  obtain ⟨ae_mult, ae_ext⟩ := ae
-  obtain ⟨ae_unary, ae_mult_ext⟩ := ae_mult
-  obtain ⟨ae_op, ae_member⟩ := ae_unary
-  obtain ⟨ae_prim, ae_access⟩ := ae_member
-  obtain ⟨o_and, o_ext⟩ := o
-  obtain ⟨o_rel, o_and_ext⟩ := o_and
-  simp_all
-  omega
 
 mutual
 
