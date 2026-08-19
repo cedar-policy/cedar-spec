@@ -849,109 +849,7 @@ theorem addExpr_toPattern_toPatternString_agrees
     ∃ s, Cst.AddExpr.toPatternString? e = some s ∧
          Cst.toPattern? s = some p := by
   intro h
-  simp [Cst.AddExpr.toPattern?, Option.bind_eq_some_iff] at h
-  obtain ⟨eos, heos, hmatch⟩ := h
-  -- For the inner match to succeed, eos must be .strLit lit.
-  cases eos with
-  | expr _ | var _ | name _ | boolLit _ => simp at hmatch
-  | strLit lit =>
-    simp at hmatch
-    refine ⟨lit, ?_, hmatch⟩
-    -- Trace `e.toExprOrSpecial? = some (.strLit lit)` through the chain.
-    -- The chain delegates to the underlying member only when extended/mext
-    -- are empty AND op is `none` or `.nDash 0`.
-    obtain ⟨⟨⟨op, member⟩, mext⟩, ext⟩ := e
-    simp [Cst.AddExpr.toExprOrSpecial?, Cst.MultExpr.toExprOrSpecial?,
-          Cst.Unary.toExprOrSpecial?] at heos
-    -- ext = [] required; otherwise produces .expr.
-    cases ext with
-    | cons _ _ =>
-      simp [Option.bind_eq_some_iff] at heos
-    | nil =>
-      simp at heos
-      cases mext with
-      | cons _ _ =>
-        simp [Option.bind_eq_some_iff] at heos
-      | nil =>
-        simp at heos
-        -- Now the unary's match on `op` runs. Show op ∈ {none, .nDash 0}.
-        cases op with
-        | none =>
-          obtain ⟨hAccNil, hItem⟩ := member_toExprOrSpecial_strLit heos
-          simp [Cst.AddExpr.toPatternString?, hAccNil, hItem]
-        | some op' =>
-          cases op' with
-          | nDash n =>
-            by_cases hn : n = 0
-            · subst hn
-              obtain ⟨hAccNil, hItem⟩ := member_toExprOrSpecial_strLit heos
-              simp [Cst.AddExpr.toPatternString?, hAccNil, hItem]
-            · simp at heos
-              -- For non-zero n, falls into the toLit?/eos chain producing .expr/none.
-              split at heos
-              · split at heos
-                · simp at heos
-                · split at heos
-                  · simp at heos
-                  · simp at heos
-                · simp at heos
-              · simp [Option.bind_eq_some_iff] at heos
-          | nBang _ =>
-            simp [Option.bind_eq_some_iff] at heos
-
-/-- Converse direction (eval ⟹ translate) for `rLike`: if the evaluator's
-    `toPatternString?` succeeds with `s`, then the AddExpr translates to the
-    string-literal special form `.strLit s`.  Both functions accept exactly the
-    bare string-literal shape (extended/op/access empty, item a `liStr`). -/
-theorem addExpr_toPatternString_toExprOrSpecial {e : Cst.AddExpr} {s : String} :
-    Cst.AddExpr.toPatternString? e = some s →
-    e.toExprOrSpecial? = some (.strLit s) := by
-  intro h
-  obtain ⟨⟨⟨op, ⟨prim, access⟩⟩, mext⟩, ext⟩ := e
-  simp only [Cst.AddExpr.toPatternString?] at h
-  cases ext with
-  | cons _ _ => simp at h
-  | nil =>
-    cases mext with
-    | cons _ _ => simp at h
-    | nil =>
-      cases op with
-      | none =>
-        cases access with
-        | cons _ _ => simp at h
-        | nil =>
-          cases prim with
-          | literal lit =>
-            cases lit with
-            | liStr str =>
-              simp at h; subst h
-              simp [Cst.AddExpr.toExprOrSpecial?, Cst.MultExpr.toExprOrSpecial?,
-                    Cst.Unary.toExprOrSpecial?, Cst.Member.toExprOrSpecial?,
-                    Cst.Primary.toExprOrSpecial?, Cst.Literal.toExprOrSpecial?,
-                    Cst.memberAux, Cst.memberAuxA, List.mapM_nil]
-            | liTrue | liFalse | liNum _ => simp at h
-          | ref _ | name _ | expr _ | slot _ | eList _ | rInits _ => simp at h
-      | some o =>
-        cases o with
-        | nDash n =>
-          by_cases hn : n = 0
-          · subst hn
-            cases access with
-            | cons _ _ => simp at h
-            | nil =>
-              cases prim with
-              | literal lit =>
-                cases lit with
-                | liStr str =>
-                  simp at h; subst h
-                  simp [Cst.AddExpr.toExprOrSpecial?, Cst.MultExpr.toExprOrSpecial?,
-                        Cst.Unary.toExprOrSpecial?, Cst.Member.toExprOrSpecial?,
-                        Cst.Primary.toExprOrSpecial?, Cst.Literal.toExprOrSpecial?,
-                        Cst.memberAux, Cst.memberAuxA, List.mapM_nil]
-                | liTrue | liFalse | liNum _ => simp at h
-              | ref _ | name _ | expr _ | slot _ | eList _ | rInits _ => simp at h
-          · simp [hn] at h
-        | nBang _ => simp at h
+  simpa [Cst.AddExpr.toPattern?, Option.bind_eq_some_iff] using h
 
 /-- Helper: `memberAux ieos accs = some (.name an)` requires `accs = []`
     and `ieos = .name an`. -/
@@ -969,7 +867,7 @@ private theorem memberAux_eq_name
 private theorem primary_toExprOrSpecial_name
     {p : Cst.Primary} {an : Spec.Name} :
     p.toExprOrSpecial? = some (.name an) →
-    ∃ n, p = .name n ∧ n.toAName? = some an := by
+    ∃ n, p = .name n ∧ n.toVar? = none ∧ n.toAName? = some an := by
   intro h
   cases p with
   | literal lit' =>
@@ -1001,7 +899,7 @@ private theorem primary_toExprOrSpecial_name
       simp [hv, Option.map] at h
       cases hname : n.toAName? with
       | none => simp [hname] at h
-      | some a => simp [hname] at h; exact ⟨n, rfl, h ▸ hname⟩
+      | some a => simp [hname] at h; exact ⟨n, rfl, hv, h ▸ hname⟩
   | ref r =>
     cases r with
     | uid _ eid =>
@@ -1024,14 +922,14 @@ private theorem primary_toExprOrSpecial_name
 private theorem member_toExprOrSpecial_name
     {m : Cst.Member} {an : Spec.Name} :
     m.toExprOrSpecial? = some (.name an) →
-    m.access = [] ∧ ∃ n, m.item = .name n ∧ n.toAName? = some an := by
+    m.access = [] ∧ ∃ n, m.item = .name n ∧ n.toVar? = none ∧ n.toAName? = some an := by
   intro h
   simp [Cst.Member.toExprOrSpecial?, Option.bind_eq_some_iff] at h
   obtain ⟨ieos, hieos, accs, haccs, hmaux⟩ := h
   obtain ⟨hAccs, hIeos⟩ := memberAux_eq_name hmaux
   subst hAccs
-  obtain ⟨n, hItem, hAName⟩ := primary_toExprOrSpecial_name (hIeos ▸ hieos)
-  refine ⟨?_, n, hItem, hAName⟩
+  obtain ⟨n, hItem, hv, hAName⟩ := primary_toExprOrSpecial_name (hIeos ▸ hieos)
+  refine ⟨?_, n, hItem, hv, hAName⟩
   cases hAcc : m.access with
   | nil => rfl
   | cons _ _ =>
@@ -1488,6 +1386,15 @@ theorem apply₂_mem_returns_bool {v₁ v₂ : Value} {es : Entities} {r : Value
     · simp at h
     · simp only [Except.ok.injEq] at h; exact ⟨_, h.symm⟩
 
+/-- The evaluator's structural `toEntityTypeName?` agrees with the translator's
+    `toEntityType?` in the translate→eval direction: whenever the translator
+    extracts an entity type, the structural extractor extracts the same one. -/
+theorem addExpr_toEntityType_toEntityTypeName
+    {e : Cst.AddExpr} {et : EntityType} :
+    e.toEntityType? = some et →
+    e.toEntityTypeName? = some et := by
+  intro h; simpa [Cst.AddExpr.toEntityType?] using h
+
 /-- For the `rIsIn` case with `inEntity = some ie`: the translated AST evaluates
     equally to the applied `in` relation. -/
 theorem rIsIn_some_eval_eq
@@ -1496,11 +1403,11 @@ theorem rIsIn_some_eval_eq
     (hEt : ety.toEntityType? = some et)
     (htarget_eq : evaluate mt req es = target.evaluate req es)
     (hinEntity_eq : evaluate mi req es = ie.evaluate req es)
-    (hie_trans : ie.toAExpr? = some mi) :
+    (_hie_trans : ie.toAExpr? = some mi) :
     evaluate (Expr.and (.unaryApp (.is et) mt) (.binaryApp .mem mt mi)) req es =
          (Cst.Relation.rIsIn target ety (some ie)).evaluate req es := by
-  simp only [Cst.Relation.evaluate, hEt, evaluate, hie_trans, Option.isNone_some,
-             Bool.false_eq_true, if_false]
+  have hEtN : ety.toEntityTypeName? = some et := addExpr_toEntityType_toEntityTypeName hEt
+  simp only [Cst.Relation.evaluate, hEtN, evaluate]
   rw [htarget_eq]
   cases htgt : target.evaluate req es with
   | error e => simp [bind, Except.bind, Result.as]
@@ -1856,10 +1763,10 @@ theorem andExprFoldExtended_some_all_translate (xs : List Cst.Relation) :
 /-- When every conjunct translates, `AndExpr.evaluate`'s guard is a no-op and it
     reduces to the plain `initial`-then-`foldOps` evaluation. -/
 theorem AndExpr.evaluate_eq {e : Cst.AndExpr} {req : Request} {es : Entities}
-    (h : (e.extended.all fun r => r.toAExpr?.isSome) = true) :
+    (_h : (e.extended.all fun r => r.toAExpr?.isSome) = true) :
     Cst.AndExpr.evaluate e req es =
       (do let acc ← e.initial.evaluate req es; Cst.AndExpr.foldOps acc e.extended req es) := by
-  simp only [Cst.AndExpr.evaluate, if_pos h]
+  simp only [Cst.AndExpr.evaluate]
 
 /-- If `foldExtended` succeeds on `xs`, every disjunct in `xs` translates. -/
 theorem orExprFoldExtended_some_all_translate (xs : List Cst.AndExpr) :
@@ -1880,19 +1787,19 @@ theorem orExprFoldExtended_some_all_translate (xs : List Cst.AndExpr) :
 /-- When every disjunct translates, `OrExpr.evaluate`'s guard is a no-op and it
     reduces to the plain `initial`-then-`foldOps` evaluation. -/
 theorem OrExpr.evaluate_eq {e : Cst.OrExpr} {req : Request} {es : Entities}
-    (h : (e.extended.all fun r => r.toAExpr?.isSome) = true) :
+    (_h : (e.extended.all fun r => r.toAExpr?.isSome) = true) :
     Cst.OrExpr.evaluate e req es =
       (do let acc ← e.initial.evaluate req es; Cst.OrExpr.foldOps acc e.extended req es) := by
-  simp only [Cst.OrExpr.evaluate, if_pos h]
+  simp only [Cst.OrExpr.evaluate]
 
 /-- When both branches translate, `ExprData.evaluate`'s `edIf` guard is a no-op
     and it reduces to the plain conditional evaluation. -/
 theorem ExprData.evaluate_edIf_eq {i t f : Cst.Expr} {req : Request} {es : Entities}
-    (h : (t.toAExpr?.isSome && f.toAExpr?.isSome) = true) :
+    (_h : (t.toAExpr?.isSome && f.toAExpr?.isSome) = true) :
     Cst.ExprData.evaluate (.edIf i t f) req es =
       (do let b ← (i.evaluate req es).as Bool;
           if b then t.evaluate req es else f.evaluate req es) := by
-  simp only [Cst.ExprData.evaluate, if_pos h]
+  simp only [Cst.ExprData.evaluate]
 
 /- For Primary's eList case -/
 
@@ -2025,7 +1932,7 @@ theorem Cst.Primary.toAttr?_consistent (p : Cst.Primary) :
     cases path with
     | nil =>
       cases name <;>
-        simp [Cst.Primary.toAttr?, Cst.Ident.toAttr?, Cst.Primary.toExprOrSpecial?, Cst.Name.toVar?,
+        simp [Cst.Primary.toAttr?, Cst.Ident.toUnrestrictedString?, Cst.Primary.toExprOrSpecial?, Cst.Name.toVar?,
               Cst.Name.toAName?, Cst.Name.toAName?,
               Cst.Ident.toUnrestrictedString?, Cst.ExprOrSpecial.toValidAttr?,
               Cst.varToString]
@@ -2381,6 +2288,301 @@ theorem list_mem_toAExpr {es : List Cst.Expr} {uids : List EntityUID} :
 termination_by (sizeOf es, 2)
 decreasing_by all_goals (simp_wf; first | assumption | decreasing_tactic)
 end
+
+def uidTypesOf : EntityUID ⊕ List EntityUID → Spec.Name ⊕ List Spec.Name
+  | .inl uid  => .inl uid.ty
+  | .inr uids => .inr (uids.map (fun u => u.ty))
+
+mutual
+theorem prim_uidTypes_toMulti {p : Cst.Primary} {r : Spec.Name ⊕ List Spec.Name} :
+    p.uidTypes? = some r →
+    ∃ r', p.toMultipleEntityUID? = some r' ∧ uidTypesOf r' = r := by
+  intro h
+  cases p with
+  | literal _ => simp [Cst.Primary.uidTypes?] at h
+  | name _ => simp [Cst.Primary.uidTypes?] at h
+  | slot _ => simp [Cst.Primary.uidTypes?] at h
+  | rInits _ => simp [Cst.Primary.uidTypes?] at h
+  | ref rf =>
+    cases rf with
+    | uid path eid =>
+      cases eid with
+      | string s =>
+        cases hp : path.toAName? with
+        | none => simp [Cst.Primary.uidTypes?, hp] at h
+        | some ty =>
+          cases hu : Cst.unescape? s with
+          | none => simp [Cst.Primary.uidTypes?, hp, hu] at h
+          | some a =>
+            simp [Cst.Primary.uidTypes?, hp, hu] at h
+            subst h
+            exact ⟨.inl ⟨ty, a⟩,
+                   by simp [Cst.Primary.toMultipleEntityUID?, hp, hu],
+                   by simp [uidTypesOf]⟩
+    | ref _ _ => simp [Cst.Primary.uidTypes?] at h
+  | expr e =>
+    simp only [Cst.Primary.uidTypes?] at h
+    obtain ⟨r', hr', htys⟩ := expr_uidTypes_toMulti h
+    exact ⟨r', by simp [Cst.Primary.toMultipleEntityUID?, hr'], htys⟩
+  | eList es =>
+    simp [Cst.Primary.uidTypes?, Option.bind_eq_some_iff] at h
+    obtain ⟨tys, htys, heq⟩ := h
+    subst heq
+    obtain ⟨uids, huids, htyseq⟩ := list_uidTypes_toMulti htys
+    refine ⟨.inr uids, ?_, by simp [uidTypesOf, htyseq]⟩
+    simp [Cst.Primary.toMultipleEntityUID?, Option.bind_eq_some_iff]
+    exact huids
+termination_by (sizeOf p, 0)
+decreasing_by all_goals (simp_wf; first | assumption | decreasing_tactic)
+
+theorem expr_uidTypes_toMulti {e : Cst.Expr} {r : Spec.Name ⊕ List Spec.Name} :
+    e.uidTypes? = some r →
+    ∃ r', e.toMultipleEntityUID? = some r' ∧ uidTypesOf r' = r := by
+  intro h
+  match he : e with
+  | .expr ⟨.edIf _ _ _⟩ => simp [Cst.Expr.uidTypes?] at h
+  | .expr ⟨.edOr o⟩ =>
+    simp only [Cst.Expr.uidTypes?] at h
+    split at h
+    · simp at h
+    · rename_i hc1
+      split at h <;> try simp at h
+      rename_i ae ext heq
+      simp at hc1
+      obtain ⟨hoext, hoiext⟩ := hc1
+      obtain ⟨⟨⟨⟨⟨hext, haeext⟩, hmext⟩, hop⟩, hacc⟩, hinner⟩ := h
+      have hsz : sizeOf ae.initial.initial.item.item < sizeOf e := by
+        have h1 := Cst.sizeOf_addExpr_primary_lt_orExpr o ae ext heq
+        have h2 : sizeOf o < sizeOf e := by rw [he]; decreasing_tactic
+        exact Nat.lt_trans h1 h2
+      obtain ⟨r', hr', htys⟩ := prim_uidTypes_toMulti hinner
+      refine ⟨r', ?_, htys⟩
+      simp only [Cst.Expr.toMultipleEntityUID?]
+      rw [heq]
+      simp [hoext, hoiext, hext, haeext, hmext, hop, hacc, hr']
+termination_by (sizeOf e, 1)
+decreasing_by all_goals (simp_wf; first | assumption | decreasing_tactic)
+
+theorem list_uidTypes_toMulti {es : List Cst.Expr} {tys : List Spec.Name} :
+    es.mapM (fun x => match x.uidTypes? with | some (.inl ty) => some ty | _ => none) = some tys →
+    ∃ uids, es.mapM (fun x => match x.toMultipleEntityUID? with | some (.inl e) => some e | _ => none) = some uids ∧
+            uids.map (fun u => u.ty) = tys := by
+  intro h
+  cases es with
+  | nil => simp_all
+  | cons x xs =>
+    rw [List.mapM_cons] at h
+    simp only [bind, Option.bind_eq_some_iff] at h
+    obtain ⟨ty, hfx, restT, hrest, heq⟩ := h
+    have hxm : x.uidTypes? = some (.inl ty) := by
+      cases hx : x.uidTypes? with
+      | none => rw [hx] at hfx; simp at hfx
+      | some rr => cases rr with
+        | inl t => rw [hx] at hfx; simp at hfx; subst hfx; rfl
+        | inr _ => rw [hx] at hfx; simp at hfx
+    obtain ⟨r', hr', htys⟩ := expr_uidTypes_toMulti hxm
+    cases r' with
+    | inr _ => simp [uidTypesOf] at htys
+    | inl uid =>
+      simp only [uidTypesOf, Sum.inl.injEq] at htys
+      obtain ⟨uidsRest, hrestU, htyseqRest⟩ := list_uidTypes_toMulti hrest
+      refine ⟨uid :: uidsRest, ?_, ?_⟩
+      · rw [List.mapM_cons]
+        simp only [bind, Option.bind_eq_some_iff]
+        exact ⟨uid, by simp [hr'], uidsRest, hrestU, rfl⟩
+      · simp only [List.map_cons, htys, htyseqRest]
+        simpa using heq
+termination_by (sizeOf es, 2)
+decreasing_by all_goals (simp_wf; first | assumption | decreasing_tactic)
+end
+
+-- `isSingleUID?` implies the translator's `toEntityUID?` succeeds.
+theorem isSingleUID_toEntityUID {e : Cst.Expr} :
+    e.isSingleUID? = true → (e.toEntityUID?).isSome := by
+  intro h
+  simp only [Cst.Expr.isSingleUID?] at h
+  cases hu : e.uidTypes? with
+  | none => rw [hu] at h; simp at h
+  | some r =>
+    rw [hu] at h
+    cases r with
+    | inr _ => simp at h
+    | inl ty =>
+      obtain ⟨r', hr', htys⟩ := expr_uidTypes_toMulti hu
+      cases r' with
+      | inr _ => simp [uidTypesOf] at htys
+      | inl uid => simp [Cst.Expr.toEntityUID?, hr']
+
+-- A `uidTypes?` list result implies `toEntityUIDs?` succeeds.
+theorem uidTypes_toEntityUIDs {e : Cst.Expr} {r : Spec.Name ⊕ List Spec.Name} :
+    e.uidTypes? = some r → (e.toEntityUIDs?).isSome := by
+  intro h
+  obtain ⟨r', hr', _⟩ := expr_uidTypes_toMulti h
+  cases r' with
+  | inl uid => simp [Cst.Expr.toEntityUIDs?, hr']
+  | inr uids => simp [Cst.Expr.toEntityUIDs?, hr']
+
+-- `prScopeValid?` implies the translator's `toPRScope?` succeeds.
+theorem prScopeValid_toPRScope {v : Cst.VariableDef} :
+    v.prScopeValid? = true → (v.toPRScope?).isSome := by
+  intro h
+  obtain ⟨var, ety, ineq⟩ := v
+  simp only [Cst.VariableDef.prScopeValid?] at h
+  simp only [Cst.VariableDef.toPRScope?]
+  cases ineq with
+  | none =>
+    cases ety with
+    | none => simp
+    | some t =>
+      simp only at h
+      cases ht : t.toEntityTypeName? with
+      | none => simp [ht] at h
+      | some etyName =>
+        have ht' : t.toEntityType? = some etyName := by simpa [Cst.AddExpr.toEntityType?] using ht
+        simp [ht']
+  | some opE =>
+    obtain ⟨op, e⟩ := opE
+    cases op with
+    | rEq =>
+      cases ety with
+      | none =>
+        simp only at h
+        have hE := isSingleUID_toEntityUID (e := e) h
+        cases hu : e.toEntityUID? with
+        | none => simp [hu] at hE
+        | some uid => simp [hu]
+      | some t => simp at h
+    | rIn =>
+      cases ety with
+      | none =>
+        simp only at h
+        have hE := isSingleUID_toEntityUID (e := e) h
+        cases hu : e.toEntityUID? with
+        | none => simp [hu] at hE
+        | some uid => simp [hu]
+      | some t =>
+        simp only [Bool.and_eq_true] at h
+        obtain ⟨h1, h2⟩ := h
+        have hE := isSingleUID_toEntityUID (e := e) h1
+        cases hu : e.toEntityUID? with
+        | none => simp [hu] at hE
+        | some uid =>
+          cases ht : t.toEntityTypeName? with
+          | none => simp [ht] at h2
+          | some etyName =>
+            have ht' : t.toEntityType? = some etyName := by simpa [Cst.AddExpr.toEntityType?] using ht
+            simp [hu, ht']
+    | rLess | rLessEq | rGreater | rGreaterEq | rNotEq => simp at h
+
+-- `actionScopeValid?` implies the translator's `toActionScope?` succeeds.
+theorem actionScopeValid_toActionScope {v : Cst.VariableDef} :
+    v.var = .idAction → v.actionScopeValid? = true → (v.toActionScope?).isSome := by
+  intro hvar h
+  obtain ⟨var, ety, ineq⟩ := v
+  subst hvar
+  simp only [Cst.VariableDef.actionScopeValid?, Bool.and_eq_true] at h
+  obtain ⟨hety, hineq⟩ := h
+  cases ety with
+  | some _ => simp at hety
+  | none =>
+    simp only [Cst.VariableDef.toActionScope?, Cst.VariableDef.toActionScopeAux?]
+    cases ineq with
+    | none => simp [Cst.containsOnlyActionTypes?]
+    | some opE =>
+      obtain ⟨op, e⟩ := opE
+      cases op with
+      | rEq =>
+        simp only at hineq
+        cases hu : e.uidTypes? with
+        | none => simp [hu] at hineq
+        | some r =>
+          cases r with
+          | inr _ => simp [hu] at hineq
+          | inl ty =>
+            simp only [hu] at hineq
+            obtain ⟨r', hr', htys⟩ := expr_uidTypes_toMulti hu
+            cases r' with
+            | inr _ => simp [uidTypesOf] at htys
+            | inl uid =>
+              simp only [uidTypesOf, Sum.inl.injEq] at htys
+              subst htys
+              simp only [beq_iff_eq] at hineq
+              simp [Cst.Expr.toEntityUID?, hr', Cst.containsOnlyActionTypes?,
+                    Cst.isAction?, hineq]
+      | rIn =>
+        simp only at hineq
+        cases hu : e.uidTypes? with
+        | none => simp [hu] at hineq
+        | some r =>
+          obtain ⟨r', hr', htys⟩ := expr_uidTypes_toMulti hu
+          cases r' with
+          | inl uid =>
+            cases r with
+            | inr _ => simp [uidTypesOf] at htys
+            | inl ty =>
+              simp only [hu] at hineq
+              simp only [uidTypesOf, Sum.inl.injEq] at htys
+              subst htys
+              simp only [beq_iff_eq] at hineq
+              simp [Cst.Expr.toEntityUIDs?, hr', Cst.containsOnlyActionTypes?,
+                    Cst.isAction?, hineq]
+          | inr uids =>
+            cases r with
+            | inl _ => simp [uidTypesOf] at htys
+            | inr tys =>
+              simp only [hu] at hineq
+              simp only [uidTypesOf, Sum.inr.injEq] at htys
+              subst htys
+              simp only [List.all_eq_true] at hineq
+              simp only [Cst.Expr.toEntityUIDs?, hr', Cst.containsOnlyActionTypes?,
+                         Cst.isAction?]
+              simpa using fun u hu2 => hineq u.ty (List.mem_map.mpr ⟨u, hu2, rfl⟩)
+      | rLess | rLessEq | rGreater | rGreaterEq | rNotEq => simp at hineq
+
+-- Headline agreement: structural scope validity implies the translator's
+-- `extractScope?` succeeds (the direction collector completeness needs).
+theorem scopeValid_extractScope {vars : List Cst.VariableDef} :
+    Cst.scopeValid? vars = true → (Cst.extractScope? vars).isSome := by
+  intro h
+  match vars with
+  | [] | [_] | [_, _] | _ :: _ :: _ :: _ :: _ => simp [Cst.scopeValid?] at h
+  | [a, b, c] =>
+    simp only [Cst.scopeValid?, Bool.and_eq_true] at h
+    obtain ⟨⟨⟨⟨⟨hA, hAv⟩, hB⟩, hBv⟩, hC⟩, hCv⟩ := h
+    have hAvar : a.var = .idAction ∨ True := Or.inr trivial
+    simp only [Cst.extractScope?]
+    -- principal
+    have hPS : (a.toPrincipalScope?).isSome := by
+      cases hav : a.var with
+      | idPrincipal =>
+        have := prScopeValid_toPRScope hAv
+        cases hp : a.toPRScope? with
+        | none => simp [hp] at this
+        | some sc => simp [Cst.VariableDef.toPrincipalScope?, hav, hp]
+      | _ => simp [hav] at hA
+    -- action
+    have hAS : (b.toActionScope?).isSome := by
+      cases hbv : b.var with
+      | idAction => exact actionScopeValid_toActionScope hbv hBv
+      | _ => simp [hbv] at hB
+    -- resource
+    have hRS : (c.toResourceScope?).isSome := by
+      cases hcv : c.var with
+      | idResource =>
+        have := prScopeValid_toPRScope hCv
+        cases hp : c.toPRScope? with
+        | none => simp [hp] at this
+        | some sc => simp [Cst.VariableDef.toResourceScope?, hcv, hp]
+      | _ => simp [hcv] at hC
+    cases hps : a.toPrincipalScope? with
+    | none => simp [hps] at hPS
+    | some ps =>
+      cases has : b.toActionScope? with
+      | none => simp [has] at hAS
+      | some as =>
+        cases hrs : c.toResourceScope? with
+        | none => simp [hrs] at hRS
+        | some rs => simp
 
 /- Forward translation helpers (used by the policy-translation soundness proof) -/
 
