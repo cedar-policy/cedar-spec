@@ -280,14 +280,19 @@ private def indexOfAttr (a : Attr) : TermType → EncoderM Nat
   | ty                => throw (IO.userError s!"Bad term: (record.get {a} {reprStr ty})")
 
 def defineRecordGet (tyEnc a tEnc : String) (ty : TermType) : EncoderM String := do
-  let rId := (← get).types.get! ty
+  let rId ← match (← get).types.get? ty with
+    | .some rId => pure rId
+    | .none => throw (IO.userError s!"Bad term: record.get on unencoded type {reprStr ty}")
   let aId ← indexOfAttr a ty
   defineTerm tyEnc s!"({recordAttrId rId aId} {tEnc})"
 
 def defineApp (tyEnc : String) (op : Op) (tEncs : List String) (ts : List Term): EncoderM String := do
   let args := String.intercalate " " tEncs
   match op with
-  | Op.record.get a  => defineRecordGet tyEnc a args ts.head!.typeOf
+  | Op.record.get a  =>
+    match ts with
+    | t :: _ => defineRecordGet tyEnc a args t.typeOf
+    | []     => throw (IO.userError s!"Bad term: (record.get {a}) applied to no arguments")
   | Op.string.like p => defineTerm tyEnc s!"(str.in_re {args} {← encodePattern p})"
   | .uuf f         => defineTerm tyEnc s!"({← encodeUUF f} {args})"
   | _              => defineTerm tyEnc s!"({encodeOp op} {args})"
