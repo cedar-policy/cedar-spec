@@ -27,4 +27,3 @@ import Cedar.Thm.BatchedEvaluator
 import Cedar.Thm.WellTypedVerification
 import Cedar.Thm.Frontend
 import Cedar.Thm.Frontend.Authorizer
-import Cedar.Thm.Frontend.Validation
