@@ -18,3 +18,4 @@
 module
 
 public import Cedar.Frontend.Cst
+public import Cedar.Frontend.CstErrorCollector
