@@ -21,7 +21,7 @@ import Cedar.Frontend.Cst.ToAst
 import Cedar.Thm.Frontend.Translation.AuxSound
 import Cedar.Thm.Frontend.Translation.ExprTranslation
 import Cedar.Thm.Frontend.Translation.PolicyToExpr
-import Cedar.Thm.Frontend.Translation.CstErrorCollector
+import Cedar.Thm.Frontend.Translation.Completeness
 import Cedar.Thm.Frontend.CstSlice
 import Cedar.Thm.Frontend.Authorizer
 import Cedar.Thm.Frontend.Parser
