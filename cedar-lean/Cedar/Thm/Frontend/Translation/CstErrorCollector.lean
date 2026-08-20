@@ -1,4 +1,4 @@
-import Cedar.Frontend.CstErrorCollector
+import Cedar.Frontend.Cst.ErrorCollectingSemantics
 import Cedar.Thm.Data.Set
 import Cedar.Thm.Frontend.Translation.AuxSound
 
@@ -1034,4 +1034,3 @@ theorem collectPolicies_complete (pl : List Cst.Policy) (req : Request) (es : En
     exact ⟨q :: qs, by simp [List.mapM_cons, hq, hqs]⟩
 
 end Cedar.Spec
-
