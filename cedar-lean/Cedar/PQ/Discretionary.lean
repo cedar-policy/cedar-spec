@@ -87,8 +87,8 @@ def discretionaryResourcesForPrincipal
   let principal_groups := es.ancestorsOrEmpty pq.principal
   let principal_policies := policiesForPrincipalAndResourceType ps pq.principal principal_groups pq.resourceType
   let resource_policy_map := policiesByResource principal_policies
-  Map.keys ∘ resource_policy_map.filter $
-    λ resource rps => (isAuthorized (pq.req resource) es rps).decision == .allow
+  (resource_policy_map.filter
+    λ resource rps => (isAuthorized (pq.req resource) es rps).decision == .allow).keys
 
 /--
 Determines if a policy is discretionary. A policy is discretionary if:

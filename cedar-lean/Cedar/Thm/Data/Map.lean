@@ -1863,9 +1863,9 @@ public theorem find?_filter_if_find? {α : Type u} {β : Type v} [BEq α] [Lawfu
       simp_all
   · contradiction
 
-public theorem mem_filter_if_find? {α β : Type _} [LT α] [DecidableLT α] [DecidableEq α]  {m : Map α β} {k : α} {v : β} {f : α → β → Bool} :
-  f k v = true → m.find? k = some v → v ∈ (m.filter f).values :=
-by
+public theorem mem_filter_if_find? {α : Type u} {β : Type v} [LT α] [DecidableLT α] [DecidableEq α] {m : Map α β} {k : α} {v : β} {f : α → β → Bool} :
+  f k v = true → m.find? k = some v → v ∈ (m.filter f).values
+:= by
   intro hf hfind
   exact Map.find?_some_implies_in_values (Map.find?_filter_if_find? hfind hf)
 

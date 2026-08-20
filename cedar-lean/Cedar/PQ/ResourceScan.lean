@@ -48,7 +48,7 @@ def scanResourcesForPrincipal
   Set EntityUID
 :=
   let policySlice := policySliceByResourceType pq policies entities schema
-  let entityScan := resource_candidates pq policies entities
+  let entityScan := resourceCandidates pq policies entities
   entityScan.filter λ resource =>
     let entitySlice := entities.sliceAtLevel (pq.req resource) level
     (isAuthorized (pq.req resource) entitySlice policySlice).decision == .allow

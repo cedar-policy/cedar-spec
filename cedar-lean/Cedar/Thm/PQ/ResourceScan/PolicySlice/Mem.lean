@@ -75,16 +75,15 @@ theorem principal_bound_false {pq : ResourcesForPrincipalRequest}
   (hpp : p.principalScope.scope.bound = .some euid)
   (hnp₃ : isPrincipalPolicyUnqualifiedResource pq.principal p = false)
   (hnp₄ : ∀ x ∈ (schema.ancestorTypes pq.resourceType).elts, isPrincipalPolicyForResourceType pq.principal x p = false)
-  (hnp₅ : ∀ x ∈ (schema.ancestorTypes pq.resourceType).elts, ∀ x₁ ∈ (entities.ancestorsOrEmpty pq.principal).elts, isPrincipalParentPolicy x₁ x p = false) :
+  (hnp₅ : ∀ x ∈ (schema.ancestorTypes pq.resourceType).elts, ∀ x₁ ∈ (entities.ancestorsOrEmpty pq.principal).elts, isPrincipalPolicyForResourceType x₁ x p = false) :
   evaluate p.resourceScope.toExpr (pq.req resource) entities = Except.ok (Value.prim (Prim.bool false))
 := by
   simp only [isPrincipalPolicyUnqualifiedResource] at hnp₃
-  simp only [isPrincipalPolicyForResourceType] at hnp₄
-  simp only [isPrincipalParentPolicy] at hnp₅
+  simp only [isPrincipalPolicyForResourceType] at hnp₄ hnp₅
   simp only [hpp, Option.some_beq_some, Option.beq_none, Bool.and_eq_false_imp, beq_iff_eq, Option.isNone_eq_false_iff] at hnp₃ hnp₄ hnp₅
   simp only [Scope.bound] at hnp₃ hnp₄ hnp₅
   simp only [ResourceScope.toExpr, Scope.toExpr]
-  cases hpr : p.5.1
+  cases hpr : p.resourceScope.1
   case any | is =>
     simp only [ResourceScope.scope, hpr, Option.isSome_none, Bool.false_eq_true, imp_false, Bool.true_eq_false] at hnp₃ hnp₅
     cases heuid₁
@@ -147,7 +146,7 @@ theorem principal_mem_false {pq : ResourcesForPrincipalRequest}
   (hpp : p.principalScope.scope = .mem euid)
   (hnp₃ : isPrincipalPolicyUnqualifiedResource pq.principal p = false)
   (hnp₄ : ∀ x ∈ (schema.ancestorTypes pq.resourceType).elts, isPrincipalPolicyForResourceType pq.principal x p = false)
-  (hnp₅ : ∀ x ∈ (schema.ancestorTypes pq.resourceType).elts, ∀ x₁ ∈ (entities.ancestorsOrEmpty pq.principal).elts, isPrincipalParentPolicy x₁ x p = false) :
+  (hnp₅ : ∀ x ∈ (schema.ancestorTypes pq.resourceType).elts, ∀ x₁ ∈ (entities.ancestorsOrEmpty pq.principal).elts, isPrincipalPolicyForResourceType x₁ x p = false) :
   evaluate p.resourceScope.toExpr (pq.req resource) entities = Except.ok (Value.prim (Prim.bool false))
 := by
   replace hpp : p.principalScope.scope.bound = .some euid := by
@@ -161,7 +160,7 @@ theorem principal_is_ty_mem_false {pq : ResourcesForPrincipalRequest}
   (hpp : p.principalScope.scope = .isMem ty euid)
   (hnp₃ : isPrincipalPolicyUnqualifiedResource pq.principal p = false)
   (hnp₄ : ∀ x ∈ (schema.ancestorTypes pq.resourceType).elts, isPrincipalPolicyForResourceType pq.principal x p = false)
-  (hnp₅ : ∀ x ∈ (schema.ancestorTypes pq.resourceType).elts, ∀ x₁ ∈ (entities.ancestorsOrEmpty pq.principal).elts, isPrincipalParentPolicy x₁ x p = false) :
+  (hnp₅ : ∀ x ∈ (schema.ancestorTypes pq.resourceType).elts, ∀ x₁ ∈ (entities.ancestorsOrEmpty pq.principal).elts, isPrincipalPolicyForResourceType x₁ x p = false) :
   evaluate p.resourceScope.toExpr (pq.req resource) entities = Except.ok (Value.prim (Prim.bool false))
 := by
   replace hpp : p.principalScope.scope.bound = .some euid := by

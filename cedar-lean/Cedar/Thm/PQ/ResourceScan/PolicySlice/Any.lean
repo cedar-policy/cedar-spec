@@ -35,10 +35,7 @@ theorem principal_any_resource_eq_false {pq : ResourcesForPrincipalRequest}  {sc
     simpa [Var.eqEntityUID, evaluate, apply₂] using h
   intro heuid
   simp only [←heuid] at hnp₂
-  specialize hnp₂ pq.resourceType
-  have hin : pq.resourceType ∈ schema.ancestorTypes pq.resourceType := by
-    simp [Schema.ancestorTypes, Set.mem_union, Set.mem_singleton]
-  specialize hnp₂ hin
+  have := hnp₂ pq.resourceType mem_ancestorTypes_self
   contradiction
 
 theorem principal_any_resource_in_false {pq : ResourcesForPrincipalRequest}
@@ -53,10 +50,7 @@ theorem principal_any_resource_in_false {pq : ResourcesForPrincipalRequest}
   · intro heuid
     have hty : resource.ty ≠ pq.resourceType := by
       simp only [←heuid] at hnp₂
-      specialize hnp₂ pq.resourceType
-      have hin : pq.resourceType ∈ schema.ancestorTypes pq.resourceType := by
-        simp [Schema.ancestorTypes, Set.mem_union, Set.mem_singleton]
-      exact hnp₂ hin
+      exact hnp₂ pq.resourceType mem_ancestorTypes_self
     contradiction
   · have hnin : euid.ty ∉ schema.ancestorTypes resource.ty := by
       simpa [←hr] using hnp₂ euid.ty
@@ -75,7 +69,7 @@ theorem principal_bound_none_false {pq : ResourcesForPrincipalRequest}
   simp only [hpp] at hnp₁ hnp₂
   simp only [Scope.bound, ResourceScope.scope] at hnp₁ hnp₂
   simp only [ResourceScope.toExpr, Scope.toExpr]
-  cases hpr : p.5.1
+  cases hpr : p.resourceScope.1
   case is _ | any =>
     simp [hpr] at hnp₁
 

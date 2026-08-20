@@ -45,7 +45,7 @@ theorem eq_scope_authorizes_principal {policy : Policy} {req : Request} {es : En
   have h_eval : evaluate policy.toExpr req es = .ok (.prim (.bool true)) := by
     simpa [satisfied] using h_satisfied
   have h_principal := and_true_implies_left_true h_eval
-  replace h_scope : policy.3.1 = Scope.eq p := h_scope
+  replace h_scope : policy.principalScope.1 = Scope.eq p := h_scope
   simpa [h_scope, evaluate, Var.eqEntityUID, apply₂, PrincipalScope.toExpr, Scope.toExpr] using h_principal
 
 theorem mem_scope_authorizes_principal_ancestor {policy : Policy} {req : Request} {es : Entities} {p : EntityUID} :
@@ -57,7 +57,7 @@ theorem mem_scope_authorizes_principal_ancestor {policy : Policy} {req : Request
   have h_eval : evaluate policy.toExpr req es = .ok (.prim (.bool true)) := by
     simpa [satisfied] using h_satisfied
   replace h_eval := and_true_implies_left_true h_eval
-  replace h_scope : policy.3.1 = Scope.mem p := h_scope
+  replace h_scope : policy.principalScope.1 = Scope.mem p := h_scope
   simp only [PrincipalScope.toExpr, Scope.toExpr, h_scope, evaluate, Var.inEntityUID, apply₂, inₑ] at h_eval
   cases h_eq : (req.principal == p)
   · right
@@ -73,7 +73,7 @@ theorem is_mem_scope_authorizes_principal_ancestor {policy : Policy} {req : Requ
   have h_eval : evaluate policy.toExpr req es = .ok (.prim (.bool true)) := by
     simpa [satisfied] using h_satisfied
   replace h_eval := and_true_implies_left_true h_eval
-  replace h_scope : policy.3.1 = Scope.isMem ty p := h_scope
+  replace h_scope : policy.principalScope.1 = Scope.isMem ty p := h_scope
   simp only [PrincipalScope.toExpr, Scope.toExpr, h_scope] at h_eval
   replace h_eval := and_true_implies_right_true h_eval
   simp only [evaluate, Var.inEntityUID, apply₂, inₑ] at h_eval
@@ -118,7 +118,7 @@ theorem eq_resource_authorizes_resource {policy : Policy} {req : Request} {es : 
   have h_eval : evaluate policy.toExpr req es = .ok (.prim (.bool true)) := by
     simpa [satisfied] using h_satisfied
   replace h_eval := and_true_implies_left_true ∘ and_true_implies_right_true ∘ and_true_implies_right_true $ h_eval
-  replace h_scope : policy.5.1 = Scope.eq r := h_scope
+  replace h_scope : policy.resourceScope.1 = Scope.eq r := h_scope
   simpa [ResourceScope.toExpr, Scope.toExpr, h_scope, evaluate, Var.eqEntityUID, apply₂] using h_eval
 
 theorem discretionary_policy_has_expected_shape {policy : Policy} :

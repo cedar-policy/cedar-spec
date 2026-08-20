@@ -26,15 +26,14 @@ open Cedar.Spec
 open Cedar.Validation
 
 /--
-  If this policy is a `permit` policy constrains the resource to be `in` or `==`
-  to a concrete entity in the policy scope, return a list of entities which it
-  could apply to. It may or may not actually apply to those resources depending
-  on the policy condition and the exact authorization request made.  If it's a
-  `forbid` policy, return an empty list since the policy can never authorize any
-  request.  Returns `None` for other policies, indicating that any resources
-  might be authorized.
+  If this is a `permit` policy whose scope constrains the resource to be `in` or
+  `==` a concrete entity, return a list of the entities it could apply to. It may
+  or may not actually apply to those resources, depending on the policy condition
+  and the exact authorization request made. If it is a `forbid` policy, return an
+  empty list, since a `forbid` policy can never authorize a request. Returns
+  `none` for any other policy, indicating that any resource might be authorized.
 -/
-def resource_candidates_for_policy (p : Policy) (es : Entities) : Option (List EntityUID) :=
+def resourceCandidatesForPolicy (p : Policy) (es : Entities) : Option (List EntityUID) :=
   match p.effect with
   | .permit =>
     match p.resourceScope.scope with
@@ -44,30 +43,27 @@ def resource_candidates_for_policy (p : Policy) (es : Entities) : Option (List E
   | .forbid => some []
 
 /--
-  Apply `resource_candidates_for_policy` across all policies in the policy
-  store. A resources is returned if access to it might be authorized by any
-  policy in the store. If any policy return `None`, indicating that it does not
-  constrain the resource, then we assume all resources might be authorized, and
-  this function also returns `None`.
+  Apply `resourceCandidatesForPolicy` across all policies in the policy store. A
+  resource is returned if access to it might be authorized by any policy in the
+  store. If any policy returns `none`, indicating that it does not constrain the
+  resource, then any resource might be authorized and this function also returns
+  `none`.
 -/
-def resource_candidates_for_policies (ps : Policies) (es : Entities) : Option (List EntityUID) :=
-  ps.mapM (resource_candidates_for_policy · es)|>.map List.flatten
+def resourceCandidatesForPolicies (ps : Policies) (es : Entities) : Option (List EntityUID) :=
+  ps.mapM (resourceCandidatesForPolicy · es)|>.map List.flatten
 
 /--
-  Computes the resources candidates that must be checked for a
-  resources-for-principals permissions query.
+  Computes the candidate resources that must be checked for a
+  resources-for-principal permissions query.
 
-  If all policies contains have a resource constraint, this takes the candidates
-  as determined by `resources_candidates_for_policies` and additionally filters
-  them to include only entities which have the requested resource type and are
-  present in the entity store.
-
-  If any policy does not have a resource constraint (`resources_candidates_for_policies` returns `None`),
-  this assumes all entities need to be checked, so it only filters candidates
-  based on their entity type.
+  Candidates are always drawn from the entity store and restricted to the
+  requested resource type. When every policy constrains the resource
+  (`resourceCandidatesForPolicies` returns `some`), candidates are additionally
+  restricted to that list; otherwise every entity of the requested type must be
+  checked.
 -/
-def resource_candidates (pq : ResourcesForPrincipalRequest) (ps : Policies) (es : Entities): Set EntityUID :=
-  let candidates := resource_candidates_for_policies ps es
+def resourceCandidates (pq : ResourcesForPrincipalRequest) (ps : Policies) (es : Entities): Set EntityUID :=
+  let candidates := resourceCandidatesForPolicies ps es
   es.keys.filter λ e =>
     e.ty == pq.resourceType &&
     match candidates with

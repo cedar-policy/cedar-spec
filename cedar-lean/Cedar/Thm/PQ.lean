@@ -50,11 +50,7 @@ theorem resource_scan_correct (n : Nat) (schema : Schema) (req : ResourcesForPri
 := by
   intro h₁ h₂ h₃ h₄
   constructor
-  · intro h_mem
-    have h_req_eq : Request.mk req.principal req.action r req.context = req.req r := by
-      simp only [ResourcesForPrincipalRequest.req]
-    have h_sound := resource_scan_sound n schema req entities policies r h₁ h₂ h₃ h₄ h_mem
-    simp [h_sound]
+  · exact resource_scan_sound n schema req entities policies r h₁ h₂ h₃ h₄
   · intro ⟨h₅, h_ty, h_allow⟩
     exact resource_scan_complete n schema req entities policies r h₁ h₂ h₃ h₄ h₅ h_ty h_allow
 

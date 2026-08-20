@@ -43,12 +43,6 @@ def isPrincipalPolicyForResourceType (principal : EntityUID) (resourceType : Ent
   | some e => e.ty == resourceType
   | none => true
 
-def isPrincipalParentPolicy (principalAncestor : EntityUID) (resourceType : EntityType) (p : Policy) : Bool :=
-  p.principalScope.scope.bound == some principalAncestor &&
-  match p.resourceScope.scope.bound with
-  | some e => e.ty == resourceType
-  | none => true
-
 def policySliceByResourceType (pq : ResourcesForPrincipalRequest) (policies : Policies) (entities : Entities) (schema : Schema)  : Policies :=
   let resourceAncestorTypes := schema.ancestorTypes pq.resourceType
   policies.filter λ p =>
@@ -56,4 +50,4 @@ def policySliceByResourceType (pq : ResourcesForPrincipalRequest) (policies : Po
       resourceAncestorTypes.any (isUnqualifiedPrincipalResourceTypePolicy · p) ||
       isPrincipalPolicyUnqualifiedResource pq.principal p ||
       resourceAncestorTypes.any (isPrincipalPolicyForResourceType pq.principal · p) ||
-      resourceAncestorTypes.any ((entities.ancestorsOrEmpty pq.principal).any λ group => isPrincipalParentPolicy group · p)
+      resourceAncestorTypes.any ((entities.ancestorsOrEmpty pq.principal).any λ group => isPrincipalPolicyForResourceType group · p)

@@ -29,7 +29,7 @@ theorem not_descendant_implies_not_ancestor {es : Entities} :
   ¬ (es.descendantsOrEmpty e₀).contains e₁ →
   ¬ (es.ancestorsOrEmpty e₁).contains e₀
 := by
-  simp only [Entities.descendantsOrEmpty, Entities.ancestorsOrEmpty]
+  simp only [Entities.descendantsOrEmpty, Entities.ancestorsOrEmpty, Map.keys, Map.filter]
   intro h
   cases he₁ : es.find? e₁ <;> simp
   · exact Set.not_mem_empty _
@@ -46,7 +46,7 @@ theorem descendant_implies_ancestor {es : Entities} :
   (es.ancestorsOrEmpty e₁).contains e₀
 := by
   intro hwf
-  simp only [Entities.descendantsOrEmpty, Entities.ancestorsOrEmpty]
+  simp only [Entities.descendantsOrEmpty, Entities.ancestorsOrEmpty, Map.keys, Map.filter]
   cases he₁ : es.find? e₁ <;> simp
   · replace he₁ := Map.find?_none_all_absent he₁
     simp [← Set.mem_set_iff_mem_mk, he₁]
@@ -72,14 +72,14 @@ theorem descendant_eq_ancestor {es : Entities} :
   · exact (descendant_implies_ancestor hwf h₁).symm
 
 theorem resource_candidates_for_policy_complete {p : Policy}
-  (hc : resource_candidates_for_policy p es = some candidates)
+  (hc : resourceCandidatesForPolicy p es = some candidates)
   (hr : req.resource ∉ candidates)
   (hp : p.effect = .permit) :
   evaluate p.toExpr req es = .ok false
 := by
   suffices hr_false : evaluate p.resourceScope.toExpr req es = .ok false from
     resource_scope_false_then_policy_false hr_false
-  simp only [resource_candidates_for_policy, hp] at hc
+  simp only [resourceCandidatesForPolicy, hp] at hc
   split at hc <;> try contradiction
   all_goals
     simp only [Option.some.injEq] at hc
@@ -107,14 +107,14 @@ theorem resource_candidates_for_policy_complete {p : Policy}
     simp [Var.inEntityUID, evaluate, apply₂, inₑ, hnin, hneq]
 
 theorem resource_candidates_policies_complete
-  (hc : resource_candidates_for_policies ps es = some rs)
+  (hc : resourceCandidatesForPolicies ps es = some rs)
   (hr : req.resource ∉ rs) :
   (isAuthorized req es ps).decision = .deny
 := by
   suffices h_not_permitted : ¬ IsExplicitlyPermitted req es ps from
     default_deny _ _ _ h_not_permitted
 
-  simp only [resource_candidates_for_policies, Option.map_eq_some_iff] at hc
+  simp only [resourceCandidatesForPolicies, Option.map_eq_some_iff] at hc
   replace ⟨ _, hc, _ ⟩ := hc
   subst rs
 
@@ -128,13 +128,13 @@ theorem resource_candidates_policies_complete
   simp [satisfied, h_false]
 
 theorem resource_candidates_complete'
-  (hr : resource ∉ resource_candidates pq ps es)
+  (hr : resource ∉ resourceCandidates pq ps es)
   (he : resource ∈ es)
   (hty : resource.ty = pq.resourceType) :
   (isAuthorized (pq.req resource) es ps).decision = .deny
 := by
-  simp only [resource_candidates, Set.mem_filter] at hr
-  cases hr₁ : resource_candidates_for_policies ps es <;> simp only [hr₁] at hr
+  simp only [resourceCandidates, Set.mem_filter] at hr
+  cases hr₁ : resourceCandidatesForPolicies ps es <;> simp only [hr₁] at hr
   case some rs =>
     suffices hr₂ : resource ∉ rs from by
       apply resource_candidates_policies_complete hr₁
@@ -152,7 +152,7 @@ theorem resource_candidates_complete : ∀ {pq ps es resource},
     resource.ty = pq.resourceType →
     resource ∈ es →
     (isAuthorized (pq.req resource) es ps).decision = .allow  →
-    resource ∈ resource_candidates pq ps es := by
+    resource ∈ resourceCandidates pq ps es := by
   intro pq es ps r h₁ h₂ h₃
   have h₄ := mt (@resource_candidates_complete' pq es ps r)
   simp only [not_imp, Classical.not_not, and_imp] at h₄
@@ -160,7 +160,7 @@ theorem resource_candidates_complete : ∀ {pq ps es resource},
   simp [h₃]
 
 theorem resource_candidates_sound : ∀ {pq ps es resource},
-    resource ∈ resource_candidates pq ps es → (resource.ty = pq.resourceType ∧ resource ∈ es) := by
+    resource ∈ resourceCandidates pq ps es → (resource.ty = pq.resourceType ∧ resource ∈ es) := by
   intro pq ps es r hr
-  simp only [resource_candidates, Set.mem_filter, Bool.and_eq_true, beq_iff_eq] at hr
+  simp only [resourceCandidates, Set.mem_filter, Bool.and_eq_true, beq_iff_eq] at hr
   exact .intro hr.right.left hr.left

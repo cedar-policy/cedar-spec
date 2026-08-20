@@ -66,7 +66,7 @@ theorem policy_slice_sound : ∀ {pq ps es schema r},
   simp only [Set.any, List.any_eq_false, Bool.not_eq_true, List.any_eq_true, not_exists, not_and] at hnp
   have ⟨⟨⟨⟨hnp₁, hnp₂⟩, hnp₃⟩, hnp₄⟩, hnp₅⟩ := hnp ; clear hnp
 
-  cases hpp : p.3.1
+  cases hpp : p.principalScope.1
   case any =>
     right
     exact principal_any_false hpp hnp₁ hnp₂ hr hwf

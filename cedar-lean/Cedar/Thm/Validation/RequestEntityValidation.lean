@@ -288,29 +288,10 @@ theorem request_and_entities_validate_implies_instance_of_wf_schema (schema : Sc
   assumption
   simp only [List.forM_ok_implies_all_ok schema.environments (entitiesMatchEnvironment · entities) h₂ env h₁]
 
-theorem entities_instance_of_schema_types_is_defined :
-  InstanceOfWellFormedSchema schema req entities →
-  entities.contains e → schema.ets.contains e.ty ∨ schema.acts.contains e
-:= by
-  intros hwf he
-  have ⟨env, henv, hewf, hirty, ⟨hes, hacts⟩⟩ := hwf ; clear hwf
-  simp [EntitySchema.contains, ActionSchema.contains, Option.isSome]
-  simp [Map.contains, Option.isSome] at he
-  cases he' : entities.find? e <;> simp [he'] at he
-  rename_i ed
-  specialize hes _ _ he'
-  have hets : env.ets = schema.ets := env_in_schema_ets_eq henv
-  have hacts : env.acts = schema.acts := env_in_schema_acts_eq henv
-  rw [←hets, ←hacts]
-  cases hes
-  · rename_i hes
-    unfold InstanceOfEntitySchemaEntry at hes
-    replace ⟨es, hes₁, hes₂, hes₃, hes₄, hes₅ ⟩ := hes ; clear hes
-    simp [hes₁]
-  · rename_i has
-    unfold InstanceOfActionSchemaEntry at has
-    replace ⟨hattrs, has₁, has₂, has₃, has₄ ⟩ := has ; clear has
-    simp [has₃]
+/-- Every entity type is among its own `ancestorTypes`. -/
+theorem mem_ancestorTypes_self {schema : Schema} {ety : EntityType} :
+  ety ∈ schema.ancestorTypes ety
+:= by simp [Schema.ancestorTypes, Set.mem_union, Set.mem_singleton]
 
 theorem instance_of_wf_schema_not_ancestor_type_implies_not_ancestor :
   InstanceOfWellFormedSchema schema req entities →
@@ -343,34 +324,3 @@ theorem instance_of_wf_schema_not_ancestor_type_implies_not_ancestor :
           Map.mem_filter_if_find? (by simp only [BEq.rfl]) ha₁
         simp only [List.mem_mapUnion_iff_mem_exists, Set.mem_map] at hnin₂
         grind
-
-theorem instance_of_wf_schema_resource_type_defined :
-  InstanceOfWellFormedSchema schema req entities →
-  schema.ets.contains req.resource.ty ∨ schema.acts.IsActionEntityType req.resource.ty
-:= by
-  simp only [InstanceOfWellFormedSchema, forall_exists_index, and_imp]
-  intro env henv hwf
-
-  have hawf : ∀ uid entry , Map.find? env.acts uid = some entry → ActionSchemaEntry.WellFormed env entry := by
-    simp only [InstanceOfWellFormedEnvironment, TypeEnv.WellFormed, ActionSchema.WellFormed] at hwf
-    grind
-
-  have ⟨aentry, hfa, happ⟩ : ∃ aentry, Map.find? env.acts env.reqty.action = some aentry ∧ env.reqty.resource ∈ aentry.appliesToResource := by
-    simp only [InstanceOfWellFormedEnvironment, TypeEnv.WellFormed, RequestType.WellFormed] at hwf
-    grind
-
-  have hrty : env.reqty.resource = req.resource.ty := by
-    simp only [InstanceOfWellFormedEnvironment, InstanceOfRequestType, InstanceOfEntityType] at hwf
-    simp [hwf]
-
-  suffices hdef : env.ets.contains env.reqty.resource ∨ env.acts.IsActionEntityType env.reqty.resource from by
-    have hets : env.ets = schema.ets := env_in_schema_ets_eq henv
-    have hacts : env.acts = schema.acts := env_in_schema_acts_eq henv
-    rw [←hrty, ←hets, ←hacts]
-    exact hdef
-
-  specialize hawf env.reqty.action aentry hfa
-  replace hawf := hawf.right.right.right.right.left
-  specialize hawf req.resource.ty
-  rw [Set.contains_prop_bool_equiv, ←hrty] at hawf
-  exact hawf happ

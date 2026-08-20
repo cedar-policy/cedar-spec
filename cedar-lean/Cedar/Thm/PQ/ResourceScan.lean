@@ -43,10 +43,25 @@ theorem subset_policies_preserves_valid_with_level :
   exact List.all_ok_implies_forM_ok _ _ hvalid
 
 
+/--
+The structural half of soundness: every resource returned by the scan exists in
+the entity store and has the requested type. This holds with no validation
+hypotheses, since it follows from the candidate filter alone.
+-/
+theorem resource_scan_sound_shape (n : Nat) (schema : Schema) (req : ResourcesForPrincipalRequest) (entities : Entities) (policies : Policies) (r : EntityUID) :
+    r ∈ scanResourcesForPrincipal n schema req entities policies →
+    r ∈ entities ∧ r.ty = req.resourceType
+:= by
+  intro h_r_mem_query
+  unfold scanResourcesForPrincipal at h_r_mem_query
+  simp only [Set.mem_filter, beq_iff_eq] at h_r_mem_query
+  have ⟨h_r_ty, h_r_mem_es⟩ := resource_candidates_sound h_r_mem_query.left
+  exact .intro h_r_mem_es h_r_ty
+
 theorem resource_scan_sound (n : Nat) (schema : Schema) (req : ResourcesForPrincipalRequest) (entities : Entities) (policies : Policies) (r : EntityUID) :
     validateWithLevel policies schema n = .ok () →
     schema.validateWellFormed = .ok () →
-    validateRequest schema (Request.mk req.principal req.action r req.context) = .ok () →
+    validateRequest schema (req.req r) = .ok () →
     validateEntities schema entities = .ok () →
     r ∈ scanResourcesForPrincipal n schema req entities policies →
     r ∈ entities ∧ r.ty = req.resourceType ∧
@@ -54,19 +69,14 @@ theorem resource_scan_sound (n : Nat) (schema : Schema) (req : ResourcesForPrinc
 := by
   intros h_ps_valid hswf hrv hve h_r_mem_query
   have hwf := request_and_entities_validate_implies_instance_of_wf_schema _  _ _ hswf hrv hve
+  have ⟨h_r_mem_es, h_r_ty⟩ := resource_scan_sound_shape n schema req entities policies r h_r_mem_query
   unfold scanResourcesForPrincipal at h_r_mem_query
 
-  replace ⟨ h_r_mem_candidates, h_allow ⟩ :
-    r ∈ resource_candidates req policies entities  ∧
+  replace h_allow :
     (isAuthorized (req.req r) (entities.sliceAtLevel (req.req r) n) (policySliceByResourceType req policies entities schema)).decision = Decision.allow
   := by
     simp only [Set.mem_filter, beq_iff_eq] at h_r_mem_query
-    exact h_r_mem_query
-
-  have ⟨h_r_ty, h_r_mem_es⟩  :
-    r.ty = req.resourceType ∧
-    r ∈ entities
-  := resource_candidates_sound h_r_mem_candidates
+    exact h_r_mem_query.right
 
   have ⟨h_pslice_eq, h_pslice_valid⟩ :
     isAuthorized (req.req r) entities (policySliceByResourceType req policies entities schema) = isAuthorized (req.req r) entities policies ∧
