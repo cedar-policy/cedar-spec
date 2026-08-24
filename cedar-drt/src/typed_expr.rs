@@ -41,6 +41,10 @@
 //! * Rust `ExprKind::Slot` and `ExprKind::Unknown` have no Lean counterpart.
 //!   Inputs reaching them yield [`Divergence::UnsupportedRustVariant`] rather
 //!   than a spurious shape mismatch.
+//! * Rust `Var(Action)` against the Lean literal for this environment's own
+//!   action is [`Divergence::ActionSubstituted`], a declared difference. A
+//!   `var` against any OTHER entity literal, or against this action with a
+//!   differing type, stays a `ShapeMismatch`.
 //! * Rust `PolicyCheck::Irrelevant` (the policy always evaluates to false for
 //!   this environment, whether from the scope or from a folded condition)
 //!   against a Lean error is [`Divergence::StaticallyFalsePolicy`], a declared
@@ -59,11 +63,22 @@
 //! the literal.
 //!
 //! This is deliberate on the Lean side and is recorded here so the result is
-//! not read as an unexplained disagreement. It is left as a finding rather
-//! than normalised away, because whether the Rust typed expression should
-//! mirror the spec's substitution is a question for the maintainers and not
-//! one this harness should answer by hiding it. Both sides reach the same
+//! not read as an unexplained disagreement. Both sides reach the same
 //! validation verdict, which is why a pass/fail comparison never surfaced it.
+//!
+//! It is recorded as [`Divergence::ActionSubstituted`], a declared difference,
+//! and it is recognised ONLY when the Lean literal is this environment's own
+//! action and the two sides agree on the node's type. Declaring it is what
+//! lets the target assert on everything else: while it was a finding the
+//! target panicked on roughly one pair in ten of ordinary generated input, so
+//! it could not be run.
+//!
+//! Declaring it does NOT answer whether the Rust typed expression ought to
+//! mirror the specification's substitution. That question is open, and the
+//! pairs are still counted and still reported through
+//! [`RunReport::declared_differences`]. Removing the `ActionSubstituted` arm
+//! of [`Divergence::is_declared_difference`] puts them back among the findings
+//! and changes nothing else.
 //!
 //! ## Independence
 //!
@@ -137,6 +152,25 @@ pub enum Divergence {
         lean_ty: String,
         types_agree: bool,
     },
+    /// Rust kept `Var(Action)` where Lean substituted the concrete action
+    /// EUID literal for this environment.
+    ///
+    /// Its own bucket rather than a `ShapeMismatch`, for the same reason as
+    /// constant folding: it is a difference in what each side typechecks, not
+    /// a disagreement about the shape of a shared expression.
+    ///
+    /// Recognised ONLY when the Lean literal is *this environment's* action.
+    /// A `var` against any other entity literal is not this case and stays a
+    /// `ShapeMismatch`, so a substitution of the WRONG action is still caught.
+    /// The types both sides assign are compared and carried here; a pair whose
+    /// types DISAGREE is not declared and stays a finding.
+    ActionSubstituted {
+        path: String,
+        action: String,
+        rust_ty: String,
+        lean_ty: String,
+        types_agree: bool,
+    },
     /// Rust reported the policy statically false for this environment
     /// (`PolicyCheck::Irrelevant`) and Lean's `typecheckPolicy` reported an
     /// error. Both sides decline to offer a typed expression to compare, for
@@ -173,10 +207,23 @@ impl Divergence {
     /// * Rust reports a policy statically false for an environment and Lean
     ///   reports an error for it. Neither offers an expression to compare, so
     ///   there is nothing they disagree about.
+    /// * Lean substituted this environment's concrete action EUID where Rust
+    ///   kept `Var(Action)`, and both sides gave the node the same type. A
+    ///   substitution of a DIFFERENT action never reaches this bucket, and one
+    ///   whose types disagree stays a finding.
+    ///
+    /// Declaring the substitution case does not settle whether the Rust typed
+    /// expression ought to mirror the specification's substitution. It is
+    /// still reported, through [`RunReport::declared_differences`]; removing
+    /// the `ActionSubstituted` arm below puts those pairs back among the
+    /// findings without touching anything else.
     pub fn is_declared_difference(&self) -> bool {
         matches!(
             self,
             Divergence::ConstantFoldedCondition {
+                types_agree: true,
+                ..
+            } | Divergence::ActionSubstituted {
                 types_agree: true,
                 ..
             } | Divergence::StaticallyFalsePolicy { .. }
@@ -192,6 +239,7 @@ impl Divergence {
             Divergence::EnvUnmatched { .. } => "ENV_UNMATCHED",
             Divergence::UnsupportedRustVariant { .. } => "UNSUPPORTED_RUST_VARIANT",
             Divergence::ConstantFoldedCondition { .. } => "CONSTANT_FOLDED_CONDITION",
+            Divergence::ActionSubstituted { .. } => "ACTION_SUBSTITUTED",
             Divergence::StaticallyFalsePolicy { .. } => "STATICALLY_FALSE_POLICY",
             Divergence::MalformedLeanJson { .. } => "MALFORMED_LEAN_JSON",
         }
@@ -712,12 +760,47 @@ fn folded_side(rust: &Node, lean: &Node) -> Option<&'static str> {
     }
 }
 
+/// Rust `Var(Action)` against the Lean literal for the environment's own
+/// action EUID.
+///
+/// `action_lit` is the canonical `lit` scalar for that EUID, built by
+/// [`action_lit_scalar`] through the same renderer the Rust tree uses, so this
+/// check cannot drift from the encoding it is checking.
+///
+/// Returns false when no environment is in scope, and false for a literal that
+/// is any entity other than this environment's action. Both refusals matter:
+/// they are what stops the bucket absorbing a substitution of the wrong action.
+fn is_action_substitution(rust: &Node, lean: &Node, action_lit: Option<&str>) -> bool {
+    let Some(action_lit) = action_lit else {
+        return false;
+    };
+    rust.ctor == "var"
+        && rust.scalars.get("v").is_some_and(|v| v == "action")
+        && lean.ctor == "lit"
+        && lean.scalars.get("p").is_some_and(|p| p == action_lit)
+}
+
 /// Compare two rendered trees, returning every disagreement found.
 ///
 /// Comparison stops descending at the first disagreement on a given subtree
 /// (a shape mismatch makes its children incomparable) but continues across
 /// siblings, so one run reports every independent divergence.
+///
+/// No environment is supplied, so `Var(Action)` against an action literal is
+/// reported as a plain [`Divergence::ShapeMismatch`]. Callers that have the
+/// environment should use [`compare_in_env`].
 pub fn compare(rust: &Node, lean: &Node, path: &str) -> Vec<Divergence> {
+    compare_in_env(rust, lean, path, None)
+}
+
+/// [`compare`], with the environment's action literal in scope so that the
+/// `substituteAction` difference can be recognised as itself.
+pub fn compare_in_env(
+    rust: &Node,
+    lean: &Node,
+    path: &str,
+    action_lit: Option<&str>,
+) -> Vec<Divergence> {
     let mut out = Vec::new();
 
     if rust.ctor != lean.ctor {
@@ -731,6 +814,22 @@ pub fn compare(rust: &Node, lean: &Node, path: &str) -> Vec<Divergence> {
             out.push(Divergence::ConstantFoldedCondition {
                 path: path.to_string(),
                 folded,
+                types_agree: rust_ty == lean_ty,
+                rust_ty,
+                lean_ty,
+            });
+            return out;
+        }
+        // Lean substituted this environment's action EUID before typechecking
+        // and Rust did not. Like constant folding, the substituted side is a
+        // leaf with nothing below it to descend into, so the types are all
+        // that is left to compare and they are compared here.
+        if is_action_substitution(rust, lean, action_lit) {
+            let rust_ty = rust.scalars.get("ty").cloned().unwrap_or_default();
+            let lean_ty = lean.scalars.get("ty").cloned().unwrap_or_default();
+            out.push(Divergence::ActionSubstituted {
+                path: path.to_string(),
+                action: action_lit.unwrap_or_default().to_string(),
                 types_agree: rust_ty == lean_ty,
                 rust_ty,
                 lean_ty,
@@ -791,7 +890,7 @@ pub fn compare(rust: &Node, lean: &Node, path: &str) -> Vec<Divergence> {
             });
             continue;
         }
-        out.extend(compare(rc, lc, &format!("{path}.{rk}")));
+        out.extend(compare_in_env(rc, lc, &format!("{path}.{rk}"), action_lit));
     }
 
     out
@@ -862,6 +961,28 @@ fn rust_env_key(env: &cedar_policy_core::validator::types::RequestEnv<'_>) -> Op
         )),
         // Partial validation is not enabled for this target; an undeclared
         // action has no Lean counterpart to align with.
+        RequestEnv::UndeclaredAction => None,
+    }
+}
+
+/// The canonical `lit` scalar for this environment's action EUID.
+///
+/// Built by handing the EUID to [`literal_json`], the same renderer that
+/// produces the Rust tree's literals, rather than by formatting the EUID here.
+/// A second formatting path is exactly how the eid double-escaping defect got
+/// in, and reusing the renderer makes that class of drift impossible.
+fn action_lit_scalar(
+    env: &cedar_policy_core::validator::types::RequestEnv<'_>,
+) -> Option<String> {
+    use cedar_policy_core::validator::types::RequestEnv;
+    match env {
+        RequestEnv::DeclaredAction { action, .. } => {
+            Some(canonical_scalar(&literal_json(
+                &cedar_policy_core::ast::Literal::EntityUID(std::sync::Arc::new(
+                    (*action).clone(),
+                )),
+            )))
+        }
         RequestEnv::UndeclaredAction => None,
     }
 }
@@ -986,8 +1107,14 @@ pub fn run_typed_expr_drt(
                 }
                 (Some(r), Some(l)) => {
                     let root = format!("{pid}[{env_str}]");
+                    let action_lit = action_lit_scalar(&env);
                     match (rust_to_node(r, &root), lean_to_node(l, &root)) {
-                        (Ok(rn), Ok(ln)) => report.divergences.extend(compare(&rn, &ln, &root)),
+                        (Ok(rn), Ok(ln)) => report.divergences.extend(compare_in_env(
+                            &rn,
+                            &ln,
+                            &root,
+                            action_lit.as_deref(),
+                        )),
                         (Err(d), _) | (_, Err(d)) => report.divergences.push(d),
                     }
                 }
@@ -1658,6 +1785,160 @@ mod tests {
             }
         }
         out
+    }
+
+    const AS_SCHEMA: &str = r#"
+        entity User { name: String };
+        entity Account { balance: Long };
+        action transfer appliesTo { principal: User, resource: Account };
+        action close appliesTo { principal: User, resource: Account };
+    "#;
+
+    /// The condition mentions `action`, so the substitution reaches the typed
+    /// expression instead of being confined to the scope.
+    const AS_POLICY: &str = r#"
+        permit(principal, action == Action::"transfer", resource)
+        when { action == Action::"transfer" };
+    "#;
+
+    /// The canonical `lit` scalar for an action EUID, built the way the
+    /// production helper builds it.
+    fn action_lit_of(src: &str) -> String {
+        let uid: cedar_policy_core::ast::EntityUID = src.parse().expect("euid parse");
+        canonical_scalar(&literal_json(&Literal::EntityUID(std::sync::Arc::new(uid))))
+    }
+
+    fn action_entity_ty(name: &str) -> Option<Type> {
+        let ety: cedar_policy_core::ast::EntityType = name
+            .parse::<cedar_policy_core::ast::Name>()
+            .unwrap()
+            .into();
+        Some(Type::Entity(EntityKind::Entity(EntityLUB::single_entity(
+            ety,
+        ))))
+    }
+
+    /// ACTION-SUBSTITUTION CONTROL, two-halved.
+    ///
+    /// Clean half: Rust keeps `Var(Action)` where Lean has this environment's
+    /// action literal, both sides type it the same, and that lands in its own
+    /// declared bucket.
+    ///
+    /// Three broken halves, and they are the whole reason the bucket is safe.
+    /// A different action, a type disagreement, and the absence of an
+    /// environment must each stay a finding, so the declaration cannot widen
+    /// into "any var against any literal".
+    #[test]
+    fn action_substitution_two_halved() {
+        let transfer = action_lit_of(r#"Action::"transfer""#);
+        let lean_lit = json!({"lit": {
+            "p": {"entityUID": {"ty": {"path": [], "id": "Action"}, "eid": "transfer"}},
+            "ty": {"entity": {"ety": {"path": [], "id": "Action"}}}}});
+        let lean = lean_to_node(&lean_lit, "$").expect("lean parse");
+
+        let rust = ExprBuilder::with_data(action_entity_ty("Action"))
+            .var(cedar_policy_core::ast::Var::Action);
+        let rust_node = rust_to_node(&rust, "$").unwrap();
+
+        // Clean half.
+        let ds = compare_in_env(&rust_node, &lean, "$", Some(&transfer));
+        assert_eq!(ds.len(), 1, "expected one divergence, got {ds:?}");
+        assert_eq!(ds[0].bucket(), "ACTION_SUBSTITUTED");
+        match &ds[0] {
+            Divergence::ActionSubstituted { types_agree, .. } => {
+                assert!(types_agree, "both sides type the node as the action entity");
+            }
+            other => panic!("wrong shape: {other:?}"),
+        }
+        assert!(
+            ds[0].is_declared_difference(),
+            "the clean case must not be a finding"
+        );
+
+        // Broken half 1: a DIFFERENT action. Substituting the wrong action is
+        // exactly what this bucket must never absorb.
+        let close = action_lit_of(r#"Action::"close""#);
+        let ds = compare_in_env(&rust_node, &lean, "$", Some(&close));
+        assert_eq!(ds.len(), 1);
+        assert_eq!(
+            ds[0].bucket(),
+            "SHAPE_MISMATCH",
+            "a literal that is not this environment's action is not the declared case"
+        );
+        assert!(!ds[0].is_declared_difference());
+
+        // Broken half 2: this environment's action, but the two sides give the
+        // node different types.
+        let rust_wrong_ty = ExprBuilder::with_data(t_long())
+            .var(cedar_policy_core::ast::Var::Action);
+        let ds = compare_in_env(
+            &rust_to_node(&rust_wrong_ty, "$").unwrap(),
+            &lean,
+            "$",
+            Some(&transfer),
+        );
+        assert_eq!(ds.len(), 1);
+        assert_eq!(ds[0].bucket(), "ACTION_SUBSTITUTED");
+        match &ds[0] {
+            Divergence::ActionSubstituted { types_agree, .. } => {
+                assert!(!types_agree, "a type disagreement must not be reconciled");
+            }
+            other => panic!("wrong shape: {other:?}"),
+        }
+        assert!(
+            !ds[0].is_declared_difference(),
+            "a type disagreement stays a finding"
+        );
+
+        // Broken half 3: no environment in scope. `compare` must not guess.
+        let ds = compare(&rust_node, &lean, "$");
+        assert_eq!(ds.len(), 1);
+        assert_eq!(
+            ds[0].bucket(),
+            "SHAPE_MISMATCH",
+            "without an environment there is nothing to recognise the literal against"
+        );
+    }
+
+    /// The substitution end to end against the real Lean backend, so Lean's
+    /// substitution is observed here rather than assumed from the source.
+    ///
+    /// This is the test that records why the declaration exists: before it,
+    /// `findings()` was non-empty on this ordinary two-action policy and the
+    /// fuzz target panicked on it.
+    #[test]
+    fn action_substitution_is_declared_end_to_end() {
+        let report = run_src(AS_SCHEMA, AS_POLICY);
+        assert_eq!(
+            report.harness_problems().len(),
+            0,
+            "harness problems must be fixed before any finding is believable: {:?}",
+            report.harness_problems()
+        );
+        let substituted = report
+            .divergences
+            .iter()
+            .filter(|d| d.bucket() == "ACTION_SUBSTITUTED")
+            .count();
+        assert!(
+            substituted > 0,
+            "test premise: this policy must produce the substitution, got {:?}",
+            report.divergences
+        );
+        assert!(
+            report.findings().is_empty(),
+            "a declared difference must not be a finding: {:?}",
+            report.findings()
+        );
+        assert!(
+            report.declared_differences().len() >= substituted,
+            "it must still be recorded and reported, not dropped"
+        );
+        println!(
+            "end-to-end: {} pairs compared, {substituted} ACTION_SUBSTITUTED, {} findings",
+            report.compared,
+            report.findings().len()
+        );
     }
 
     /// Eighth phantom-divergence class.
