@@ -58,7 +58,6 @@ private theorem extHasAttr_loop_sound
       cases h₁ : m.find? a with
       | none => simp [Residual.evaluate, Except.toOption]
       | some next =>
-        simp only [List.isEmpty_cons, Bool.false_eq_true, ↓reduceIte]
         cases next with
         | record m_next =>
           simp only [TPE.attrsOf]

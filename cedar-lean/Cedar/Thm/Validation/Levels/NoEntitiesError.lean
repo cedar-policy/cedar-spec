@@ -194,13 +194,9 @@ private theorem has_attrs_loop_ne_dne (v : Value) (attrs : List Attr) (es : Enti
     -- .ok m (for records/entities) or .error .typeError (for other values)
     match hattr : attrsOf v (fun uid => .ok (es.attrsOrEmpty uid)) with
     | .ok m =>
-      simp only [ExceptT.stM_eq, List.isEmpty_iff, ne_eq]
+      simp only [ExceptT.stM_eq, ne_eq]
       match hfind : m.find? attr with
-      | .some next =>
-        simp only [ne_eq]
-        split
-        · simp  -- .ok true
-        · exact ih next  -- recurse
+      | .some next => exact ih next
       | .none => simp
     | .error e => simp
 

@@ -110,9 +110,7 @@ private theorem hasAttrs_loop_true_implies_find {v : Value} {a : Attr} {rest_att
   · rename_i m hattrs
     split at h
     · rename_i h₁ h₂
-      split at h
-      · exact ⟨m, h₁, hattrs, h₂, Or.inl (List.isEmpty_iff.mp (by assumption))⟩
-      · exact ⟨m, h₁, hattrs, h₂, Or.inr h⟩
+      exact ⟨m, h₁, hattrs, h₂, Or.inr h⟩
     · simp at h
   · simp at h
 
@@ -417,12 +415,9 @@ private theorem typeOfExtHasAttr_no_typeError
     case h_1 m h₃ =>
       split at h₁
       case h_1 next hfind =>
-        split at h₁
-        case isTrue => simp at h₁
-        case isFalse hne =>
-          cases rest with
-          | nil => simp at hne
-          | cons b rest' =>
+        cases rest with
+        | nil => simp [hasAttrs.loop] at h₁
+        | cons b rest' =>
             simp only [typeOfExtHasAttr, bind, Except.bind] at hext
             -- typeOfHasAttr must succeed
             cases hha_ty : typeOfHasAttr ty₁ x₁ a c env with
@@ -1025,7 +1020,6 @@ private theorem typeOfExtHasAttr_bool_type_sound
                 · simp only [Except.ok.injEq, Prod.mk.injEq] at hext
                   rw [← hext.1]; simp [InstanceOfBoolType]
         case h_1 next hfind =>
-          simp only [List.isEmpty] at hloop
           split at hext
           case h_1 hff =>
             exfalso

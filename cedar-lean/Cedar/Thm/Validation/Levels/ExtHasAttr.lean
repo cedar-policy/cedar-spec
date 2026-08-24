@@ -119,9 +119,8 @@ theorem hasAttrs_loop_entity_sound
       | some next =>
         simp only []
         cases rest with
-        | nil => simp
+        | nil => simp only [ExceptT.stM_eq]; unfold hasAttrs.loop; simp
         | cons b bs =>
-          simp only [List.isEmpty_cons, Bool.false_eq_true, ↓reduceIte]
           -- Derive schema info from InstanceOfWellFormedEnvironment + entities.find? uid = some ed
           have h₃ := hwf.2.2.1 uid ed h₁
           have h₄ : ∃ rty, env.ets.attrs? ety = .some rty ∧
@@ -204,9 +203,8 @@ theorem hasAttrs_loop_record_sound
     | none => simp
     | some next =>
       cases rest with
-      | nil => simp
+      | nil => simp only [ExceptT.stM_eq]; unfold hasAttrs.loop; simp
       | cons b bs =>
-        simp only [List.isEmpty_cons, Bool.false_eq_true, ↓reduceIte]
         obtain ⟨qty, hfindq, hnext_inst⟩ := instance_of_found_attribute hinst hfind
         cases hqty : qty.getType with
         | entity nextEty =>

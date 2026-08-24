@@ -237,9 +237,7 @@ private theorem hasAttrs_loop_ok_of_chain_valid
         subst huid_ty
         have hio_attrs := well_typed_entity_attributes hwf hfind_ent h₁
         have hio_next := instance_of_attribute_type hio_attrs h₂ h₃ hfind_attr
-        split
-        · simp [Except.isOk, Except.toBool]
-        · exact ih hio_next (.inl ⟨_, rfl⟩)
+        exact ih hio_next (.inl ⟨_, rfl⟩)
   | cons_record_from_entity h₁ h₂ h₃ _h₄ ih =>
     rename_i ety attr rest rty qty recRty
     have ⟨uid, huid_ty, hv⟩ := instance_of_entity_type_is_entity hio
@@ -257,9 +255,7 @@ private theorem hasAttrs_loop_ok_of_chain_valid
         subst huid_ty
         have hio_attrs := well_typed_entity_attributes hwf hfind_ent h₁
         have hio_next := instance_of_attribute_type hio_attrs h₂ h₃ hfind_attr
-        split
-        · simp [Except.isOk, Except.toBool]
-        · exact ih hio_next (.inr ⟨_, rfl⟩)
+        exact ih hio_next (.inr ⟨_, rfl⟩)
   | cons_not_in_schema_entity h₁ =>
     rename_i ety attr rest
     have ⟨uid, huid_ty, hv⟩ := instance_of_entity_type_is_entity hio
@@ -301,9 +297,7 @@ private theorem hasAttrs_loop_ok_of_chain_valid
     | some next =>
       simp only
       have hio_next := instance_of_attribute_type hio h₁ h₂ hfind_attr
-      split
-      · simp [Except.isOk, Except.toBool]
-      · exact ih hio_next (.inl ⟨_, rfl⟩)
+      exact ih hio_next (.inl ⟨_, rfl⟩)
   | cons_record_from_record h₁ h₂ _h₃ ih =>
     rename_i recRty attr rest qty nextRecRty
     have ⟨r, hv⟩ := instance_of_record_type_is_record hio
@@ -314,9 +308,7 @@ private theorem hasAttrs_loop_ok_of_chain_valid
     | some next =>
       simp only
       have hio_next := instance_of_attribute_type hio h₁ h₂ hfind_attr
-      split
-      · simp [Except.isOk, Except.toBool]
-      · exact ih hio_next (.inr ⟨_, rfl⟩)
+      exact ih hio_next (.inr ⟨_, rfl⟩)
   | cons_not_in_record h₁ =>
     rename_i recRty attr rest
     have ⟨r, hv⟩ := instance_of_record_type_is_record hio

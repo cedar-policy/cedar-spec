@@ -101,7 +101,7 @@ where
       match attrsOf v (fun uid => .ok (es.attrsOrEmpty uid)) with
       | .ok r =>
         match r.find? a with
-        | .some v₁ => if as.isEmpty then .ok true else loop v₁ as es
+        | .some v₁ => loop v₁ as es
         | .none => .ok false
       | .error _ => .error .typeError
 

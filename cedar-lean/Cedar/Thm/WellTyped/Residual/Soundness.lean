@@ -368,11 +368,7 @@ private theorem hasAttrs_loop_ok_is_bool {v₁ : Value} {attrs : List Attr} {es 
     split at hok
     · rename_i m _
       split at hok
-      · rename_i next _
-        split at hok
-        · simp only [Except.ok.injEq] at hok
-          exact ⟨true, hok.symm⟩
-        · exact ih hok
+      · exact ih hok
       · simp only [Except.ok.injEq] at hok
         exact ⟨false, hok.symm⟩
     · simp at hok

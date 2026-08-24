@@ -950,14 +950,13 @@ private theorem hasAttrs_loop_cons {v₁ v_next : Value} {a : Attr} {b : Attr} {
           simp only [Map.findOrErr_ok_iff_find?_some] at hfind; exact hfind
         have hfa : d.attrs.find? a = .some v_next := by
           simp only [Map.findOrErr_ok_iff_find?_some] at hga; exact hga
-        simp only [hasAttrs.loop, attrsOf, Entities.attrsOrEmpty, hd, List.isEmpty_iff,
-          reduceCtorEq, ↓reduceIte, hfa]
+        simp only [hasAttrs.loop, attrsOf, Entities.attrsOrEmpty, hd, hfa]
     | _ => simp only [hasAttr, attrsOf, Except.bind_err, reduceCtorEq] at hha
   | record avs =>
     simp only [getAttr, attrsOf, Except.bind_ok] at hga
     have hfa : avs.find? a = .some v_next := by
       simp only [Map.findOrErr_ok_iff_find?_some] at hga; exact hga
-    simp only [hasAttrs.loop, attrsOf, List.isEmpty_iff, reduceCtorEq, ↓reduceIte, hfa]
+    simp only [hasAttrs.loop, attrsOf, hfa]
   | set _ => simp only [hasAttr, attrsOf, Except.bind_err, reduceCtorEq] at hha
   | ext _ => simp only [hasAttr, attrsOf, Except.bind_err, reduceCtorEq] at hha
 
@@ -975,7 +974,7 @@ private theorem hasAttr_returns_bool {v₁ : Value} {a : Attr} {es : Entities} {
 
 private theorem hasAttrs_loop_singleton_eq_hasAttr {v₁ : Value} {a : Attr} {es : Entities} :
     hasAttrs.loop v₁ [a] es = hasAttr v₁ a es := by
-  simp only [hasAttrs.loop, hasAttr, attrsOf, List.isEmpty_iff]
+  simp only [hasAttrs.loop, hasAttr, attrsOf]
   cases v₁ with
   | prim p => cases p with
     | entityUID uid => simp [Map.contains, Option.isSome]; cases (es.attrsOrEmpty uid).find? a <;> simp

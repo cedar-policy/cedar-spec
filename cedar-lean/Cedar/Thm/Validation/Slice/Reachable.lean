@@ -222,13 +222,9 @@ theorem checked_eval_entity_reachable {e : Expr} {n nmax: Nat} {c c' : Capabilit
         intro es r hok
         simp only [hasAttrs.loop] at hok
         split at hok
-        · rename_i m _
-          split at hok
+        · split at hok
           · rename_i next _
-            split at hok
-            · simp only [Except.ok.injEq] at hok
-              exact ⟨true, hok.symm⟩
-            · exact ih next es r hok
+            exact ih next es r hok
           · simp only [Except.ok.injEq] at hok
             exact ⟨false, hok.symm⟩
         · simp at hok
