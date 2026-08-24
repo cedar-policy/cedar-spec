@@ -21,6 +21,7 @@ mod lean_object;
 mod messages;
 
 pub use datatypes::{AuthorizationResponse, TimedResult, ValidationResponse};
+pub use datatypes::{LeanTypedExprEnvResult, LeanTypedExprPolicyResult};
 // Term, Env, and associated types
 pub use datatypes::{
     Bitvec, Cidr, Datetime, Decimal, Duration, EntityData, EntityUid, Env, Ext, ExtOp, ExtType,

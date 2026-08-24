@@ -20,6 +20,9 @@ pub mod tpe;
 pub use tpe::TpeResponse;
 pub(crate) use tpe::TpeResponseInner;
 
+pub mod typed_expr;
+pub use typed_expr::{LeanTypedExprEnvResult, LeanTypedExprPolicyResult};
+
 /*************************************** Lean return types ***************************************/
 
 /// List type

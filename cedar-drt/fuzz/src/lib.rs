@@ -25,4 +25,5 @@ pub mod roundtrip_entities;
 pub mod schemas;
 pub mod symcc;
 pub mod tpe;
+pub mod typed_expr;
 pub mod validation_drt;
