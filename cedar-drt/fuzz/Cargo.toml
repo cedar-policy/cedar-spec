@@ -396,6 +396,12 @@ test = false
 doc = false
 
 [[bin]]
+name = "tpe-residual-reauthorize-drt"
+path = "fuzz_targets/tpe-residual-reauthorize-drt.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "tpe-is-authorized-abstract-drt"
 path = "fuzz_targets/tpe-is-authorized-abstract-drt.rs"
 test = false

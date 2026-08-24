@@ -281,6 +281,8 @@ unsafe extern "C" {
 
     fn isAuthorizedPartial(req: *mut lean_object) -> *mut lean_object;
 
+    fn reauthorizeResidual(req: *mut lean_object) -> *mut lean_object;
+
     fn initialize_Cedar_CedarFFI(builtin: u8, ob: *mut lean_object) -> *mut lean_object;
 
     fn loadProtobufSchema(req: *mut lean_object) -> *mut lean_object;

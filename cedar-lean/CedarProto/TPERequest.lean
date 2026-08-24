@@ -25,6 +25,7 @@ import CedarProto.Entities
 import CedarProto.PolicySet
 import CedarProto.PartialInput
 import CedarProto.Request
+import CedarProto.Residual
 import CedarProto.Schema
 
 open Proto
@@ -88,5 +89,36 @@ instance : Message PartialAuthorizationRequest where
   }
 
 end PartialAuthorizationRequest
+
+/-- Reauthorization of an arbitrary residual: evaluating it against concrete data. -/
+structure ResidualReauthorizationRequest where
+  residual: Spec.Residual
+  request: Spec.Request
+  entities: Spec.Entities
+  expectedValue: Spec.Value
+  expectsError: Bool
+deriving Inhabited
+
+namespace ResidualReauthorizationRequest
+
+instance : Message ResidualReauthorizationRequest where
+  parseField (t: Proto.Tag) := do
+    match t.fieldNum with
+      | 1 => parseFieldElement t residual (update residual)
+      | 2 => parseFieldElement t request (update request)
+      | 3 => parseFieldElement t entities (update entities)
+      | 4 => parseFieldElement t expectedValue (update expectedValue)
+      | 5 => parseFieldElement t expectsError (update expectsError)
+      | _ => let _ <- t.wireType.skip; pure ignore
+
+  merge x y := {
+    residual := Field.merge x.residual y.residual
+    request := Field.merge x.request y.request
+    entities := Field.merge x.entities y.entities
+    expectedValue := Field.merge x.expectedValue y.expectedValue
+    expectsError := Field.merge x.expectsError y.expectsError
+  }
+
+end ResidualReauthorizationRequest
 
 end Cedar.Proto

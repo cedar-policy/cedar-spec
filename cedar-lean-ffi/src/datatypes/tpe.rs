@@ -523,3 +523,16 @@ mod convert {
         }
     }
 }
+
+/// The model's verdict on an answer we sent it, mirroring `CedarFFI.CheckResult`.
+#[derive(Debug, Clone, Deserialize)]
+pub struct CheckResult {
+    /// Whether the model reached the same answer we did.
+    pub agrees: bool,
+    /// Our answer, as the model rendered it. Empty when `agrees`.
+    #[serde(default)]
+    pub expected: String,
+    /// The model's answer. Empty when `agrees`.
+    #[serde(default)]
+    pub actual: String,
+}

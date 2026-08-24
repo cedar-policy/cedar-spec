@@ -18,9 +18,9 @@ use crate::datatypes::{self as datatypes, ResultDef, TimedDef, TimedResult, TpeR
 use crate::err::FfiError;
 use crate::messages::proto;
 
-use cedar_policy::{PartialEntities, PartialRequest, PolicySet, Schema};
+use cedar_policy::{Entities, PartialEntities, PartialRequest, PolicySet, Request, Schema};
 
-use super::{CedarLeanFfi, call_lean_ffi_takes_protobuf, isAuthorizedPartial};
+use super::{CedarLeanFfi, call_lean_ffi_takes_protobuf, isAuthorizedPartial, reauthorizeResidual};
 
 impl CedarLeanFfi {
     /// Calls the Lean backend and performs type-aware partial evaluation of the partial request,
@@ -54,6 +54,29 @@ impl CedarLeanFfi {
                 }
                 ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
             },
+            ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
+        }
+    }
+
+    /// Ask the Lean model to evaluate a residual against concrete data and compare its answer to `expected`.
+    pub fn check_reauthorize_residual(
+        &self,
+        residual: &cedar_policy_core::tpe::residual::Residual,
+        request: &Request,
+        entities: &Entities,
+        expected: Result<&cedar_policy_core::ast::Value, ()>,
+    ) -> Result<datatypes::tpe::CheckResult, FfiError> {
+        let response = unsafe {
+            call_lean_ffi_takes_protobuf(
+                reauthorizeResidual,
+                &proto::ResidualReauthorizationRequest::new(residual, request, entities, expected),
+            )
+        };
+        match response
+            .as_borrowed()
+            .deserialize_into::<ResultDef<TimedDef<datatypes::tpe::CheckResult>>>()?
+        {
+            ResultDef::Ok(resp) => Ok(resp.data),
             ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
         }
     }
@@ -93,6 +116,9 @@ mod test {
     use std::str::FromStr;
 
     use crate::CedarLeanFfi;
+    use cedar_policy_core::ast::{EntityUID, Value, Var};
+    use cedar_policy_core::tpe::residual::{Residual, ResidualKind};
+    use cedar_policy_core::validator::types::{EntityKind, EntityLUB, Type};
 
     /// Helper to compare Rust and Lean TPE responses: decision, policy categorizations,
     /// and residual expressions (via PST comparison).
@@ -213,6 +239,115 @@ mod test {
             eprint!("TPE response comparison failed:\n{msg}\n");
             std::process::exit(1);
         }
+    }
+
+    /// Concrete entities for the arbitrary-residual tests.
+    fn concrete_entities() -> cedar_policy::Entities {
+        let schema = tpe_schema();
+        cedar_policy::Entities::from_json_value(
+            serde_json::json!([
+                {
+                    "uid": { "type": "User", "id": "alice" },
+                    "attrs": { "name": "Alice", "age": 30 },
+                    "parents": []
+                }
+            ]),
+            Some(&schema),
+        )
+        .expect("concrete entities should parse")
+    }
+
+    /// Concrete request for the arbitrary-residual tests.
+    fn concrete_req() -> cedar_policy::Request {
+        let schema = tpe_schema();
+        cedar_policy::Request::new(
+            EntityUid::from_str(r#"User::"alice""#).unwrap(),
+            EntityUid::from_str(r#"Action::"transfer""#).unwrap(),
+            EntityUid::from_str(r#"Account::"checking""#).unwrap(),
+            Context::from_pairs([
+                ("amount".into(), RestrictedExpression::new_long(500)),
+                (
+                    "memo".into(),
+                    RestrictedExpression::new_string("rent".into()),
+                ),
+            ])
+            .unwrap(),
+            Some(&schema),
+        )
+        .expect("concrete request should validate")
+    }
+
+    #[test]
+    fn test_residual_check_detects_disagreement() {
+        let request = concrete_req();
+        let entities = concrete_entities();
+        let ffi = CedarLeanFfi::new();
+        let residual = Residual::Concrete {
+            value: Value::from(7),
+            ty: Type::primitive_long(),
+        };
+        let check = ffi
+            .check_reauthorize_residual(&residual, &request, &entities, Ok(&Value::from(8)))
+            .expect("the model should answer");
+        assert!(!check.agrees, "a wrong `expected` must not be accepted");
+        assert!(
+            check.expected.contains('8') && check.actual.contains('7'),
+            "both answers should be rendered, got expected={:?} actual={:?}",
+            check.expected,
+            check.actual
+        );
+    }
+
+    #[test]
+    fn test_residual_agree_concrete() {
+        let request = concrete_req();
+        let entities = concrete_entities();
+        let ffi = CedarLeanFfi::new();
+        let residual = Residual::Concrete {
+            value: Value::from(7),
+            ty: Type::primitive_long(),
+        };
+        let check = ffi
+            .check_reauthorize_residual(&residual, &request, &entities, Ok(&Value::from(7)))
+            .expect("the model should answer");
+        assert!(check.agrees);
+    }
+
+    #[test]
+    fn test_residual_agree_error() {
+        let request = concrete_req();
+        let entities = concrete_entities();
+        let ffi = CedarLeanFfi::new();
+        let residual = Residual::Error(Type::primitive_boolean());
+        let check = ffi
+            .check_reauthorize_residual(&residual, &request, &entities, Err(()))
+            .expect("the model should answer");
+        assert!(check.agrees);
+    }
+
+    #[test]
+    fn test_residual_agree_partial() {
+        let request = concrete_req();
+        let entities = concrete_entities();
+        let ffi = CedarLeanFfi::new();
+        let residual = Residual::Partial {
+            kind: ResidualKind::Var(Var::Principal),
+            ty: Type::Entity(EntityKind::Entity(EntityLUB::single_entity(
+                "User".parse().unwrap(),
+            ))),
+        };
+
+        let check = ffi
+            .check_reauthorize_residual(
+                &residual,
+                &request,
+                &entities,
+                Ok(&Value::from(
+                    EntityUID::from_str(r#"User::"alice""#).unwrap(),
+                )),
+            )
+            .expect("the model should answer");
+        assert!(check.agrees);
     }
 
     fn tpe_schema() -> Schema {

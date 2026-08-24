@@ -835,6 +835,39 @@ def parsePartialAuthzRequest (req: ByteArray): Except String (Schema × List Pol
 
 
 /--
+The outcome of checking Lean's answer against the one the caller supplied.
+-/
+structure CheckResult where
+  agrees : Bool
+  expected : String := ""
+  actual : String := ""
+deriving Lean.ToJson
+
+def parseResidualReauthorizationRequest (req: ByteArray):
+  Except String Proto.ResidualReauthorizationRequest :=
+  (@Proto.Message.interpret? Proto.ResidualReauthorizationRequest) req
+    |> .mapError (s!"Failed to parse input: {.}")
+
+/--
+  `req`: binary protobuf for a `ResidualReauthorizationRequest`
+
+  Evaluates a residual against a concrete request and entities and compares the result with
+  the caller's expected result.
+-/
+@[export reauthorizeResidual] unsafe def reauthorizeResidual (req: ByteArray): String :=
+  runFfiM do
+    let req ← parseResidualReauthorizationRequest req
+    runAndTime (λ () =>
+      let actual := req.residual.evaluate req.request req.entities
+      let agrees := match actual with
+        | .ok v    => !req.expectsError && v = req.expectedValue
+        | .error _ => req.expectsError
+      if agrees then ({ agrees := true } : CheckResult)
+      else
+        let expected := if req.expectsError then "error" else reprStr req.expectedValue
+        { agrees := false, expected := expected, actual := reprStr actual })
+
+/--
   `req`: binary protobuf for a `PartialAuthorizationRequest`
 
   returns a string containing a JSON encoding of `Timed TPE.Response`

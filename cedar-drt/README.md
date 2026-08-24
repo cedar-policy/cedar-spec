@@ -19,6 +19,7 @@ The table below lists all available fuzz targets, including which component of t
 | [`entity-validation`](fuzz/fuzz_targets/entity-validation.rs) | Entity Validator | DRT | Diff test entity validation |
 | [`request-validation`](fuzz/fuzz_targets/request-validation.rs) | Request Validator | DRT | Diff test request validation |
 | [`tpe-is-authorized-drt`](fuzz/fuzz_targets/tpe-is-authorized-drt.rs) | TPE (partial authorization) | DRT | Diff test Rust and Lean TPE is_authorized API: decisions, policy categorizations, and residual expressions |
+| [`tpe-residual-reauthorize-drt`](fuzz/fuzz_targets/tpe-residual-reauthorize-drt.rs) | TPE (reauthorization of arbitrary residuals) | DRT | Diff test concrete evaluation of a generated residual. The model walks the residual directly; Rust projects it to an `Expr` and evaluates that, so this compares the two routes `reauthorize` and `Residual.evaluate` take |
 |  |  |  |  |
 | [`formatter`](fuzz/fuzz_targets/formatter.rs) | Policy formatter, Pretty printer, Parser | PBT | Test round trip property: parse ∘ format ∘ pretty-print == id for ASTs |
 | [`formatter-bytes`](fuzz/fuzz_targets/formatter-bytes.rs) | Policy formatter, Parser | PBT | The same as `formatter`, but we start with an arbitrary string instead of pretty-printing a policy AST |
