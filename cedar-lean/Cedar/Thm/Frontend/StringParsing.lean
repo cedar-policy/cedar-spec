@@ -18,7 +18,7 @@
 import Cedar.Frontend.Cst
 import Cedar.Frontend.StringParsing
 
-/-! This file contains lemmas for proving roundtrip properties of hex string conversion. -/
+/-! This file contains lemmas for proving roundtrip properties of string conversions and parsers. -/
 
 namespace Cedar.Frontend
 

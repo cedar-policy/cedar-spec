@@ -2,6 +2,7 @@ import Cedar.Spec
 import Cedar.Frontend.Cst
 import Cedar.Frontend.Cst.Semantics
 import Cedar.Frontend.Cst.ToAst
+import Cedar.Frontend.Parser
 import Cedar.Thm.Data.List.Lemmas
 import Cedar.Thm.Frontend.Parser.Ident
 
@@ -368,7 +369,6 @@ theorem fieldChain?_eq_constructAttrsAux?
     cases hd with
     | field id =>
       simp [Cst.fieldChain?, Cst.constructAttrsAux?, ih]
-      rfl
     | index e =>
       simp [Cst.fieldChain?, Cst.constructAttrsAux?]
     | call args =>
@@ -475,23 +475,21 @@ theorem addExpr_toHasRhs_toAttrs_agrees
         | idIdent s hs_kw =>
           rw [hname] at hfirst
           simp [Cst.Ident.toString] at hfirst
-          have hs_eq_and_unreserved : s = first ∧ Cst.Unreserved? s = true := by
-            simp [String.toUnreservedId?, Cst.Unreserved?] at hfirst ⊢
-            split at hfirst <;> rename_i heq
-            all_goals (simp_all)
-          obtain ⟨hs_first, hs_unreserved⟩ := hs_eq_and_unreserved
+          have hs_first : s = first := by
+            simp only [String.toUnreservedCedarId?] at hfirst
+            split at hfirst <;> simp_all
           simp [Cst.constructAttrs?, Option.bind_eq_some_iff] at hattrs
           obtain ⟨tail, htail, hattrs_eq2⟩ := hattrs
           simp [fieldChain?_eq_constructAttrsAux?, htail]
           rw [← hrhseq]
-          simp [hasRhsToList, Cst.Ident.toHasHead?, hs_unreserved,
+          simp [hasRhsToList, Cst.Ident.toHasHead?, hfirst,
                 ← hs_first, ← hattrs_eq2]
         | idPrincipal | idAction | idResource | idContext
         | idTrue | idFalse | idPermit | idForbid
         | idWhen | idUnless | idIn | idHas | idLike | idIs
         | idIf | idThen | idElse =>
           rw [hname] at hfirst
-          simp [Cst.Ident.toString, String.toUnreservedId?] at hfirst
+          simp [Cst.Ident.toString, String.toUnreservedCedarId?] at hfirst
   | .ref r =>
     rw [hmi] at hbody; simp at hbody
   | .expr e' =>
@@ -584,19 +582,15 @@ theorem addExpr_toAttrs_toHasRhs {e : Cst.AddExpr} {attrs : List Attr} :
                           Cst.Name.toVar?, Cst.varToString, Cst.constructAttrs?, hcaeq]⟩
                 | idIdent s hs_kw =>
                   simp only [Cst.Ident.toHasHead?] at hhh
-                  split at hhh
-                  · rename_i hunres
-                    have htus : String.toUnreservedId? s = some s := by
-                      simp only [String.toUnreservedId?]
-                      simp only [Cst.Unreserved?] at hunres
-                      split <;> simp_all
-                    refine ⟨.inr (s :: fields), ?_⟩
-                    simp [Cst.AddExpr.toHasRhs?, Cst.Primary.toExprOrSpecial?,
-                          Cst.Name.toVar?, Cst.Name.toAName?,
-                          Cst.Name.toAName?,
-                          Cst.Ident.toUnrestrictedString?,
-                          htus, Cst.constructAttrs?, hcaeq]
-                  · simp at hhh
+                  have htus : String.toUnreservedCedarId? s = some s := by
+                    simp only [String.toUnreservedCedarId?] at hhh ⊢
+                    split at hhh <;> simp_all
+                  refine ⟨.inr (s :: fields), ?_⟩
+                  simp [Cst.AddExpr.toHasRhs?, Cst.Primary.toExprOrSpecial?,
+                        Cst.Name.toVar?, Cst.Name.toAName?,
+                        Cst.Name.toAName?,
+                        Cst.Ident.toUnrestrictedString?,
+                        htus, Cst.constructAttrs?, hcaeq]
                 | idTrue | idFalse | idPermit | idForbid | idWhen | idUnless
                 | idIn | idHas | idLike | idIs | idIf | idThen | idElse =>
                   simp [Cst.Ident.toHasHead?] at hhh
@@ -1043,7 +1037,7 @@ private theorem toMeth?_eval_error_eq
     evaluate head' req es = .error err := by
   cases id with
   | idIdent s hs_kw =>
-    cases hop : Cst.String.toMethodOp? s with
+    cases hop : s.toCedarMethodOp? with
     | none => simp [Cst.Ident.toMeth?, hop] at hm
     | some op =>
       cases op with
@@ -1193,14 +1187,11 @@ theorem evalAccessors_eq
     obtain ⟨a_ast, ha_ast, rest_ast, hrest, rfl⟩ := htrans
     cases i with
     | idIdent s0 hs0 =>
-      simp only [Cst.MemAccess.toAstAccessor?, Cst.Ident.toUnreservedString?, Cst.Unreserved?,
+      simp only [Cst.MemAccess.toAstAccessor?, Cst.Ident.toUnreservedString?,
         Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at ha_ast
       obtain ⟨s, hs, rfl⟩ := ha_ast
       subst hrest
-      have hs_eq : s = s0 := by
-        simp only [Cst.keywords, List.mem_cons, List.not_mem_nil, or_false, not_or] at hs0
-        simp only [hs0, imp_self, ↓reduceIte, Option.some.injEq] at hs
-        exact hs.symm
+      have hs_eq : s0 = s := Cst.Parser.toUnreservedCedarId_some_eq hs
       rw [memberAuxB_field_nil] at hb
       have hev : Cst.Member.evalAccessors head [.field (.idIdent s0 hs0)] req es
                = (do let hv ← Spec.getAttr head s0 es; Cst.Member.evalAccessors hv [] req es) := by
@@ -1220,9 +1211,10 @@ theorem evalAccessors_eq
     obtain ⟨a_ast, ha_ast, tl_ast, htl, rfl⟩ := htrans
     cases i with
     | idIdent s0 hs0 =>
-      simp only [Cst.MemAccess.toAstAccessor?, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at ha_ast
+      simp only [Cst.MemAccess.toAstAccessor?, Cst.Ident.toUnreservedString?,
+        Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at ha_ast
       obtain ⟨s, hs, rfl⟩ := ha_ast
-      have hs_eq : s = s0 := by simp [Cst.Ident.toUnreservedString?] at hs; exact hs.right.symm
+      have hs_eq : s = s0 := (Cst.Parser.toUnreservedCedarId_some_eq hs).symm
       subst hs_eq
       rw [List.mapM_cons] at htl
       simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at htl
@@ -1230,7 +1222,7 @@ theorem evalAccessors_eq
       simp only [Cst.MemAccess.toAstAccessor?, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at ha2_ast
       obtain ⟨xs, hxs, rfl⟩ := ha2_ast
       rw [memberAuxB_field_call] at hb
-      cases hop : Cst.String.toMethodOp? s with
+      cases hop : s.toCedarMethodOp? with
       | none => simp [Cst.Ident.toMeth?, hop] at hb
       | some op =>
         cases op with
@@ -1255,7 +1247,7 @@ theorem evalAccessors_eq
               have hev : Cst.Member.evalAccessors head (.field (.idIdent s hs0) :: .call [arg] :: rest2) req es
                        = (do let hv ← (do let argVal ← arg.evaluate req es; apply₂ bop head argVal es);
                              Cst.Member.evalAccessors hv rest2 req es) := by
-                simp [Cst.Member.evalAccessors, hs, hop, bind_assoc]
+                simp [Cst.Member.evalAccessors, hop, bind_assoc]
               rw [hev]
               exact evalAccessors_step_eq hstep hb
                 (fun hv' hge => evalAccessors_eq rest2 rest2_ast (.binaryApp bop headExpr ax) bexp hv'
@@ -1274,7 +1266,7 @@ theorem evalAccessors_eq
               simp [evaluate, hhead, bind, Except.bind]
             have hev : Cst.Member.evalAccessors head (.field (.idIdent s hs0) :: .call [] :: rest2) req es
                      = (do let hv ← apply₁ uop head; Cst.Member.evalAccessors hv rest2 req es) := by
-              simp [Cst.Member.evalAccessors, hs, hop, bind, Except.bind]
+              simp [Cst.Member.evalAccessors, hop, bind, Except.bind]
             rw [hev]
             exact evalAccessors_step_eq hstep hb
               (fun hv' hge => evalAccessors_eq rest2 rest2_ast (.unaryApp uop headExpr) bexp hv'
@@ -1330,7 +1322,7 @@ decreasing_by all_goals (simp_wf <;> omega)
     syntactically `.name ⟨[], .idIdent s⟩`. -/
 theorem toExprOrSpecial_name_func {item : Cst.Primary} {an : Spec.Name}
     (h : item.toExprOrSpecial? = some (.name an))
-    (hp : an.path = []) (hf : (Cst.String.toExtFun? an.id).isSome) :
+    (hp : an.path = []) (hf : an.id.toCedarExtFun?.isSome) :
     ∃ s h, item = .name { path := [], name := .idIdent s h } := by
   cases item with
   | name n =>
@@ -1349,7 +1341,7 @@ theorem toExprOrSpecial_name_func {item : Cst.Primary} {an : Spec.Name}
       subst hp
       cases nname with
       | idIdent s hs_kw => exact ⟨s, hs_kw, rfl⟩
-      | _ => exact absurd hf (by simp [Cst.Ident.toString, Cst.String.toExtFun?])
+      | _ => exact absurd hf (by simp [Cst.Ident.toString, String.toCedarExtFun?])
   | literal l =>
     cases l <;>
       simp [Cst.Primary.toExprOrSpecial?, Cst.Literal.toExprOrSpecial?,
