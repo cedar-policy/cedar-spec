@@ -519,44 +519,4 @@ public def Policies.toExpr (ps : Policies) : Expr :=
   let exprs := List.map Policy.toExpr ps.ps
   Expr.foldAnd exprs
 
-/- Authorizer -/
-
-public def Policy.id : Policy → Spec.PolicyID
-  | .policy p => p.id
-
-public def satisfied (policy : Policy) (req : Spec.Request) (entities : Spec.Entities) : Bool :=
-  policy.toExpr.evaluate req entities = .ok true
-
--- To avoid returning an `Option Bool`, this function returns `false`
--- when the `effect` field of `policy` is not an effect
-public def satisfiedWithEffect (effect : Spec.Effect) (policy : Policy) (req : Spec.Request) (entities : Spec.Entities) : Bool :=
-  if satisfied policy req entities then
-  match policy with
-  | .policy p => match Ident.toEffect? p.effect with
-    | none => false
-    | some eff => eff = effect
-  else false
-
-public def satisfiedPolicies (effect : Spec.Effect) (policies : Policies) (req : Spec.Request) (entities : Spec.Entities) : Set Spec.PolicyID :=
-  Set.make (List.filterMap
-    (fun p => if satisfiedWithEffect effect p req entities then some p.id else none)
-    policies.ps)
-
-public def hasError (policy : Policy) (req : Spec.Request) (entities : Spec.Entities) : Bool :=
-  match policy.toExpr.evaluate req entities with
-  | .ok _ => false
-  | .error _ => true
-
-public def errorPolicies (policies : Policies) (req : Spec.Request) (entities : Spec.Entities) : Set Spec.PolicyID :=
-  Set.make (List.filterMap
-    (fun p => if hasError p req entities then some p.id else none)
-    policies.ps)
-
-
-public def isAuthorized (req : Spec.Request) (entities : Spec.Entities) (policies : Policies) : Spec.Response :=
-  let forbids := satisfiedPolicies .forbid policies req entities
-  let permits := satisfiedPolicies .permit policies req entities
-  let erroringPolicies := errorPolicies policies req entities
-  if forbids.isEmpty && !permits.isEmpty
-  then {decision := .allow, determiningPolicies := permits, erroringPolicies}
-  else {decision := .deny, determiningPolicies := forbids, erroringPolicies}
+end Cedar.Frontend.Cst
