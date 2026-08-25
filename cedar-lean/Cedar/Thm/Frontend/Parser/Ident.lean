@@ -53,19 +53,13 @@ theorem toString_classifyIdent_ident (s : String)
 
 public theorem unreserved_iff_not_in_keywords {s : String} :
     s.toUnreservedCedarId?.isSome = true ↔ s ∉ keywords := by
-  simp only [String.toUnreservedCedarId?, keywords, List.mem_cons, not_or, List.mem_nil_iff,
-    not_false_eq_true, and_true]
-  constructor
-  · intro h
-    split at h <;> simp_all
-  · intro ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12, h13, h14, h15, h16, h17⟩
-    split <;> simp_all
+  simp only [String.toUnreservedCedarId?]
+  split <;> simp_all
 
 @[simp]
 public theorem Ident.toUnreservedString?_idIdent (s : String) (h : s ∉ keywords) :
     Ident.toUnreservedString? (.idIdent s h) = some s := by
-  simp only [Ident.toUnreservedString?, String.toUnreservedCedarId?]
-  split <;> simp_all [keywords]
+  simp [Ident.toUnreservedString?, String.toUnreservedCedarId?, h]
 
 @[simp]
 public theorem Ident.toString_idIdent (s : String) (h : s ∉ keywords) :
