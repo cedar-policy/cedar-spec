@@ -105,10 +105,7 @@ public def oneArg? (args : List Spec.Expr) : Option Spec.Expr :=
   | _ => none
 
 public def toFunc? (n : Spec.Name) (args : List Spec.Expr) : Option Spec.Expr := do
-  if n.path.isEmpty && String.isFunctionName? n.id then
-    let xfn ← String.toExtFun? n.id
-    some (.call xfn args)
-  else none
+  if n.path.isEmpty then (.call · args) <$> String.toExtFun? n.id else none
 
 -- Remember to check that id is unreserved
 public def Ident.toMeth? (id : Ident) (recv : Spec.Expr) (args : List Spec.Expr) : Option Spec.Expr :=
