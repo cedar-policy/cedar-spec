@@ -201,7 +201,7 @@ theorem Cst.Member.toAExpr?_sound
         have := List.sizeOf_lt_of_mem hce
         simp only [Cst.MemAccess.call.sizeOf_spec,
           List.cons.sizeOf_spec]; omega) ax hax
-    cases hfn : Cst.String.toExtFun? s with
+    cases hfn : s.toCedarExtFun? with
     | none =>
       have htf : Cst.toFunc? { id := s, path := [] } xs = none := by
         simp [Cst.toFunc?, hfn]
@@ -277,8 +277,8 @@ theorem Cst.Member.toAExpr?_sound
                 split at hfunc
                 · rename_i hcond
                   have hpath : an.path = [] := List.isEmpty_iff.mp hcond
-                  have hfn : (Cst.String.toExtFun? an.id).isSome := by
-                    cases hxfn : Cst.String.toExtFun? an.id with
+                  have hfn : an.id.toCedarExtFun?.isSome := by
+                    cases hxfn : an.id.toCedarExtFun? with
                     | none => rw [hxfn] at hfunc; simp at hfunc
                     | some xfn => simp
                   obtain ⟨ss, hss_kw, hs⟩ := toExprOrSpecial_name_func hitem hpath hfn
