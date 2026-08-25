@@ -30,7 +30,8 @@
         "policy_file": "clauses/policies_1KB.cedar",
         "exclude_targets": [
             "json_policy_parse",
-            "protobuf_policy_parse"
+            "protobuf_policy_parse",
+            "protobuf_policy_parse_unchecked"
         ]
     },
     {
@@ -38,7 +39,8 @@
         "policy_file": "clauses/policies_10KB.cedar",
         "exclude_targets": [
             "json_policy_parse",
-            "protobuf_policy_parse"
+            "protobuf_policy_parse",
+            "protobuf_policy_parse_unchecked"
         ]
     },
     {

@@ -92,14 +92,17 @@ Each `results` object in the JSON output has the following fields:
 | `policy_parse`                | Parse Cedar policy text                                                |
 | `json_policy_parse`           | Parse policies from JSON representation                                |
 | `protobuf_policy_parse`       | Parse policies from protobuf encoding                                  |
+| `protobuf_policy_parse_unchecked` | Parse policies from protobuf encoding, skipping input validation   |
 | `schema_parse`                | Parse Cedar schema text                                                |
 | `json_schema_parse`           | Parse schema from JSON representation                                  |
 | `protobuf_schema_parse`       | Parse schema from protobuf encoding                                    |
+| `protobuf_schema_parse_unchecked` | Parse schema from protobuf encoding, skipping input validation     |
 | `validation`                  | Validate policies against a schema                                     |
 | `authorization`               | Run authorization requests                                             |
 | `entity_parse_with_schema`    | Parse entities with schema validation                                  |
 | `entity_parse_without_schema` | Parse entities without schema                                          |
 | `protobuf_entity_parse`       | Parse entities from protobuf encoding                                  |
+| `protobuf_entity_parse_unchecked` | Parse entities from protobuf encoding, skipping input validation   |
 | `incremental_entities`        | Incrementally add entities (measures transitive closure recomputation) |
 
 ## Corpus format
