@@ -189,7 +189,7 @@ public def Member.collectAccessors
       | none =>
           (Set.singleton (Error.cstError .stringError) ∪ argErrs ∪ (Member.collectAccessors none rest req es).1, none)
       | some m =>
-          match String.toMethodOp? m with
+          match m.toCedarMethodOp? with
           | some (.inl bop) =>
               match args with
               | [arg] =>
@@ -244,7 +244,7 @@ public def Member.collectErrors (e : Member) (req : Request) (es : Entities) : C
   match e with
   | { item := .name { path := [], name := .idIdent s _ }, access := .call args :: rest } =>
       let ec := collectExprList args req es
-      match String.toExtFun? s with
+      match s.toCedarExtFun? with
       | none =>
           (Set.singleton (Error.cstError .unsupportedError) ∪ ec.1 ∪ (Member.collectAccessors none rest req es).1, none)
       | some xfn =>
