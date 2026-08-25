@@ -139,7 +139,7 @@ public def Member.evaluate (e : Member) (req : Spec.Request) (es : Spec.Entities
   match e with
   -- Function calls
   | { item := .name { path := [], name := .idIdent s _ }, access := .call args :: rest } =>
-    match String.toExtFun? s with
+    match s.toCedarExtFun? with
     | none => .error (.cstError .unsupportedError)
     | some xfn => do
       let args ← args.mapM (fun a => a.evaluate req es)
@@ -164,7 +164,7 @@ public def Member.evalAccessors (head : Spec.Value) (accs : List MemAccess)
   | .field i :: .call args :: rest =>
     match Ident.toUnreservedString? i with
     | none => .error (.cstError .stringError)
-    | some m => match String.toMethodOp? m with
+    | some m => match m.toCedarMethodOp? with
       | some (.inl bop) => match args with
         | [arg] => do
           let argVal ← arg.evaluate req es

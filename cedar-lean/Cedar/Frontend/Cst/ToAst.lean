@@ -22,13 +22,7 @@ public import Cedar.Spec.Expr
 public import Cedar.Spec.Policy
 public import Cedar.Spec.Value
 
-public def String.toUnreservedId? (s : String) : Option String :=
-  match s with
-  | "principal" | "action" | "resource" | "context"
-  | "true" | "false" | "permit" | "forbid"
-  | "when" | "unless" | "in" | "has" | "like" | "is"
-  | "if" | "then" | "else" => none
-  | _ => some s
+
 
 namespace Cedar.Frontend.Cst
 
@@ -49,11 +43,6 @@ public inductive ExprOrSpecial where
   | strLit (lit : String)
   -- A boolean literal
   | boolLit (v : Bool)
-
-
-public def Ident.toUnreservedId? : Ident → Option String
-  | .idIdent s _ => if Unreserved? s then some s else none
-  | _ => none
 
 public def varToString : Spec.Var → String
   | .principal => "principal"
@@ -105,13 +94,13 @@ public def oneArg? (args : List Spec.Expr) : Option Spec.Expr :=
   | _ => none
 
 public def toFunc? (n : Spec.Name) (args : List Spec.Expr) : Option Spec.Expr := do
-  if n.path.isEmpty then (.call · args) <$> String.toExtFun? n.id else none
+  if n.path.isEmpty then (.call · args) <$> n.id.toCedarExtFun? else none
 
 -- Remember to check that id is unreserved
 public def Ident.toMeth? (id : Ident) (recv : Spec.Expr) (args : List Spec.Expr) : Option Spec.Expr :=
   match id with
   | .idIdent s _ => do
-    let op ← String.toMethodOp? s
+    let op ← s.toCedarMethodOp?
     match op with
     | .inl bop => let arg ← oneArg? args; some (.binaryApp bop recv arg)
     | .inr uop => if args.isEmpty then some (.unaryApp uop recv) else none
@@ -212,7 +201,7 @@ public def constructExprRel (op : RelOp) (e₁ e₂ : Spec.Expr) : Spec.Expr :=
 public def constructAttrsAux? : List MemAccess → Option (List String)
   | [] => some []
   | .field id :: rest => do
-    let head ← id.toUnreservedId? -- move toUnreserbvedId to CstCommon later
+    let head ← Ident.toUnreservedString? id
     let tail ← constructAttrsAux? rest
     head :: tail
   | .index _ :: _ => none
@@ -426,7 +415,7 @@ public def AddExpr.toHasRhs? (e : AddExpr) : Option (String ⊕ List String) := 
     | .strLit lit, [] => (unescape? lit).map .inl
     | .var v, rest => (constructAttrs? (varToString v) rest).map .inr
     | .name n, rest => if !n.path.isEmpty then none else
-      let first ← n.id.toUnreservedId?
+      let first ← n.id.toUnreservedCedarId?
       (constructAttrs? first rest).map .inr
     | _, _ => none
   | _ => none
