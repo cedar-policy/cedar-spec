@@ -489,7 +489,7 @@ theorem addExpr_toHasRhs_toAttrs_agrees
         | idWhen | idUnless | idIn | idHas | idLike | idIs
         | idIf | idThen | idElse =>
           rw [hname] at hfirst
-          simp [Cst.Ident.toString, String.toUnreservedCedarId?] at hfirst
+          simp [Cst.Ident.toString, String.toUnreservedCedarId?, Cst.keywords] at hfirst
   | .ref r =>
     rw [hmi] at hbody; simp at hbody
   | .expr e' =>
@@ -583,8 +583,8 @@ theorem addExpr_toAttrs_toHasRhs {e : Cst.AddExpr} {attrs : List Attr} :
                 | idIdent s hs_kw =>
                   simp only [Cst.Ident.toHasHead?] at hhh
                   have htus : String.toUnreservedCedarId? s = some s := by
-                    simp only [String.toUnreservedCedarId?] at hhh ⊢
-                    split at hhh <;> simp_all
+                    have := Cst.Parser.toUnreservedCedarId_some_eq hhh
+                    subst this; exact hhh
                   refine ⟨.inr (s :: fields), ?_⟩
                   simp [Cst.AddExpr.toHasRhs?, Cst.Primary.toExprOrSpecial?,
                         Cst.Name.toVar?, Cst.Name.toAName?,
