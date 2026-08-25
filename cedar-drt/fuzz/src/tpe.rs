@@ -24,6 +24,7 @@ use cedar_policy::{
     PartialRequest, PolicyId, PolicySet, Request, Schema, Validator,
 };
 use cedar_policy_core::ast::{self, Value};
+use cedar_policy_core::extensions::Extensions;
 use cedar_policy_core::tpe::residual::Residual;
 use cedar_policy_generators::abac::ABACRequest;
 use cedar_policy_generators::hierarchy::HierarchyGenerator;
@@ -246,16 +247,15 @@ pub fn test_tpe_reauthorize_residual_equiv(
     entities: &Entities,
 ) {
     let expr = ast::Expr::from(residual.clone());
-    let core_entities: &cedar_policy_core::entities::Entities = entities.as_ref();
     let evaluator = cedar_policy_core::evaluator::Evaluator::new(
         request.as_ref().clone(),
-        core_entities,
-        cedar_policy_core::extensions::Extensions::all_available(),
+        entities.as_ref(),
+        Extensions::all_available(),
     );
-    let rust = evaluator.interpret(&expr, &std::collections::HashMap::new());
-    let expected = rust.as_ref().map_err(|_| ());
+    let rust_val = evaluator.interpret(&expr, &HashMap::new());
+    let rust_val = rust_val.as_ref().map_err(|_| ());
 
-    let check = match ffi.check_reauthorize_residual(residual, request, entities, expected) {
+    let check = match ffi.check_reauthorize_residual(residual, request, entities, rust_val) {
         Ok(c) => c,
         Err(FfiError::LeanBackendError(e)) => {
             debug!("{e}");
