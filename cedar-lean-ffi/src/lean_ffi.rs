@@ -886,88 +886,88 @@ impl CedarLeanFfi {
         asserts_of_check_never_errors_timed,
         asserts_of_check_never_errors,
         assertsOfCheckNeverErrors,
-        ResultDef::to_result,
-        Result<Vec<Term>, String>
+        ResultDef::to_terms_result,
+        Result<Vec<cedar_policy_symcc::term::Term>, String>
     );
 
     checkPolicy_func!(
         asserts_of_check_always_matches_timed,
         asserts_of_check_always_matches,
         assertsOfCheckAlwaysMatches,
-        ResultDef::to_result,
-        Result<Vec<Term>, String>
+        ResultDef::to_terms_result,
+        Result<Vec<cedar_policy_symcc::term::Term>, String>
     );
 
     checkPolicy_func!(
         asserts_of_check_never_matches_timed,
         asserts_of_check_never_matches,
         assertsOfCheckNeverMatches,
-        ResultDef::to_result,
-        Result<Vec<Term>, String>
+        ResultDef::to_terms_result,
+        Result<Vec<cedar_policy_symcc::term::Term>, String>
     );
 
     checkPolicySet_func!(
         asserts_of_check_always_allows_timed,
         asserts_of_check_always_allows,
         assertsOfCheckAlwaysAllows,
-        ResultDef::to_result,
-        Result<Vec<Term>, String>
+        ResultDef::to_terms_result,
+        Result<Vec<cedar_policy_symcc::term::Term>, String>
     );
 
     checkPolicySet_func!(
         asserts_of_check_always_denies_timed,
         asserts_of_check_always_denies,
         assertsOfCheckAlwaysDenies,
-        ResultDef::to_result,
-        Result<Vec<Term>, String>
+        ResultDef::to_terms_result,
+        Result<Vec<cedar_policy_symcc::term::Term>, String>
     );
 
     comparePolicySet_func!(
         asserts_of_check_equivalent_timed,
         asserts_of_check_equivalent,
         assertsOfCheckEquivalent,
-        ResultDef::to_result,
-        Result<Vec<Term>, String>
+        ResultDef::to_terms_result,
+        Result<Vec<cedar_policy_symcc::term::Term>, String>
     );
 
     comparePolicySet_func!(
         asserts_of_check_implies_timed,
         asserts_of_check_implies,
         assertsOfCheckImplies,
-        ResultDef::to_result,
-        Result<Vec<Term>, String>
+        ResultDef::to_terms_result,
+        Result<Vec<cedar_policy_symcc::term::Term>, String>
     );
 
     comparePolicySet_func!(
         asserts_of_check_disjoint_timed,
         asserts_of_check_disjoint,
         assertsOfCheckDisjoint,
-        ResultDef::to_result,
-        Result<Vec<Term>, String>
+        ResultDef::to_terms_result,
+        Result<Vec<cedar_policy_symcc::term::Term>, String>
     );
 
     comparePolicies_func!(
         asserts_of_check_matches_equivalent_timed,
         asserts_of_check_matches_equivalent,
         assertsOfCheckMatchesEquivalent,
-        ResultDef::to_result,
-        Result<Vec<Term>, String>
+        ResultDef::to_terms_result,
+        Result<Vec<cedar_policy_symcc::term::Term>, String>
     );
 
     comparePolicies_func!(
         asserts_of_check_matches_implies_timed,
         asserts_of_check_matches_implies,
         assertsOfCheckMatchesImplies,
-        ResultDef::to_result,
-        Result<Vec<Term>, String>
+        ResultDef::to_terms_result,
+        Result<Vec<cedar_policy_symcc::term::Term>, String>
     );
 
     comparePolicies_func!(
         asserts_of_check_matches_disjoint_timed,
         asserts_of_check_matches_disjoint,
         assertsOfCheckMatchesDisjoint,
-        ResultDef::to_result,
-        Result<Vec<Term>, String>
+        ResultDef::to_terms_result,
+        Result<Vec<cedar_policy_symcc::term::Term>, String>
     );
 
     // Adds each of the smtlib_of_(symcc-command) to call the corresponding lean function
