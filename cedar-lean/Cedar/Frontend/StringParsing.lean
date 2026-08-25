@@ -18,6 +18,7 @@
 module
 public import Std.Internal.Parsec.String
 public import Cedar.Spec.Policy
+public import Cedar.Frontend.Cst.Syntax
 
 ---- String parsing and conversion utilities ---
 
@@ -62,12 +63,7 @@ where
 
 
 public def String.toUnreservedCedarId? (s : String) : Option String :=
-  match s with
-  | "principal" | "action" | "resource" | "context"
-  | "true" | "false" | "permit" | "forbid"
-  | "when" | "unless" | "in" | "has" | "like" | "is"
-  | "if" | "then" | "else" => none
-  | _ => some s
+  if s ∈ Cedar.Frontend.Cst.keywords then none else some s
 
 public def String.toCedarExtFun? : String → Option Cedar.Spec.ExtFun
   | "decimal" => some .decimal
@@ -107,6 +103,32 @@ public def String.toCedarMethodOp? : String → Option (Cedar.Spec.BinaryOp ⊕ 
 --- Subparsers: parsing patterns and escaping strings  ---
 namespace Cedar.Frontend.Cst
 
+/-- Parse a `\u{...}` unicode escape body from `cs` (the characters *after* the
+    opening `{`). On success, returns the decoded character together with the
+    characters remaining *after* the closing `}`. Returns `none` if the escape
+    is malformed (missing `}`, empty/overlong digit run, invalid hex digit, or
+    codepoint out of range). -/
+def parseUnicodeEscape? (cs : List Char) :
+    Option (Char × { remaining : List Char // remaining.length < cs.length }) :=
+  let digits := cs.takeWhile (· ≠ '}')
+  let afterBrace := cs.drop digits.length
+  match hab : afterBrace with
+  | '}' :: remaining => do
+    if digits.isEmpty ∨ digits.length > 6 then none else do
+    let codepoint ← digits.foldlM (fun acc d => do
+      let v ← d.asHexNat.toOption
+      some (acc * 16 + v)) 0
+    if codepoint > 0x10FFFF then none
+    have hlt : remaining.length < cs.length := by
+      have hdig : digits.length ≤ cs.length :=
+        List.IsPrefix.length_le (List.takeWhile_prefix _)
+      have hlen : afterBrace.length = cs.length - digits.length := by
+        simp [afterBrace, List.length_drop]
+      have hrem : remaining.length + 1 = afterBrace.length := by simp [hab]
+      omega
+    some (Char.ofNat codepoint, ⟨remaining, hlt⟩)
+  | _ => none
+
 def toPatternAux (input : List Char) : Option Spec.Pattern :=
   match input with
   | [] => some []
@@ -119,18 +141,11 @@ def toPatternAux (input : List Char) : Option Spec.Pattern :=
   | '\\' :: '"'  :: cs => do let tail ← toPatternAux cs; some (.justChar '"' :: tail)
   | '\\' :: '\'' :: cs => do let tail ← toPatternAux cs; some (.justChar '\'' :: tail)
   | '\\' :: 'u'  :: '{' :: cs =>
-    let digits := cs.takeWhile (· ≠ '}')
-    let afterBrace := cs.drop digits.length
-    match h : afterBrace with
-    | '}' :: remaining => do
-      if digits.isEmpty ∨ digits.length > 6 then none else do
-      let codepoint ← digits.foldlM (fun acc d => do
-        let v ← d.asHexNat.toOption
-        some (acc * 16 + v)) 0
-      if codepoint > 0x10FFFF then none
-      let tail ← toPatternAux remaining
-      some (.justChar (Char.ofNat codepoint) :: tail)
-    | _ => none
+    match parseUnicodeEscape? cs with
+    | some (c, remaining) => do
+      let tail ← toPatternAux remaining.val
+      some (.justChar c :: tail)
+    | none => none
   | '\\' :: _ => none
   | '*' :: cs => do let tail ← toPatternAux cs; some (.star :: tail)
   | c :: cs => do let tail ← toPatternAux cs; some (.justChar c :: tail)
@@ -138,13 +153,6 @@ termination_by input.length
 decreasing_by
   all_goals simp_wf
   all_goals (try omega)
-  · have h1 : digits.length ≤ cs.length :=
-      List.IsPrefix.length_le (List.takeWhile_prefix _)
-    have h2 : afterBrace.length = cs.length - digits.length := by
-      simp [afterBrace, List.length_drop]
-    have h3 : remaining.length + 1 = afterBrace.length := by
-      simp [h]
-    omega
 
 /--
   `toPattern?` parse a string representing a Cedar pattern.
@@ -163,18 +171,11 @@ def unescapeAux (input : List Char) : Option (List Char) :=
   | '\\' :: '"'  :: cs => do let tail ← unescapeAux cs; some ('"' :: tail)
   | '\\' :: '\'' :: cs => do let tail ← unescapeAux cs; some ('\'' :: tail)
   | '\\' :: 'u'  :: '{' :: cs =>
-    let digits := cs.takeWhile (· ≠ '}')
-    let afterBrace := cs.drop digits.length
-    match h : afterBrace with
-    | '}' :: remaining => do
-      if digits.isEmpty ∨ digits.length > 6 then none else do
-      let codepoint ← digits.foldlM (fun acc d => do
-        let v ← d.asHexNat.toOption
-        some (acc * 16 + v)) 0
-      if codepoint > 0x10FFFF then none
-      let tail ← unescapeAux remaining
-      some (Char.ofNat codepoint :: tail)
-    | _ => none
+    match parseUnicodeEscape? cs with
+    | some (c, remaining) => do
+      let tail ← unescapeAux remaining.val
+      some (c :: tail)
+    | none => none
   | '\\' :: _ => none
   | c :: cs => do
     let tail ← unescapeAux cs
@@ -183,15 +184,8 @@ termination_by input.length
 decreasing_by
   all_goals simp_wf
   all_goals (try omega)
-  · have h1 : digits.length ≤ cs.length :=
-      List.IsPrefix.length_le (List.takeWhile_prefix _)
-    have h2 : afterBrace.length = cs.length - digits.length := by
-      simp [afterBrace, List.length_drop]
-    have h3 : remaining.length + 1 = afterBrace.length := by
-      simp [h]
-    omega
 
-/-- `unescape?` un-escapces a string S.
+/-- `unescape?` un-escapes a string S.
 -/
 public def unescape? (s : String) : Option String := do
   let chars ← unescapeAux s.toList
