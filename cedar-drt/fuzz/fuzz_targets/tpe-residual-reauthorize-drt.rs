@@ -35,9 +35,8 @@ use cedar_policy::Request;
 fuzz_target!(|input: TpeResidualFuzzTargetInput| {
     initialize_log();
     let ffi = CedarLeanFfi::new();
-    let entities = input.entities;
     for request in input.reqs {
         let request: Request = request.into();
-        test_tpe_reauthorize_residual_equiv(&ffi, &input.residual, &request, &entities);
+        test_tpe_reauthorize_residual_equiv(&ffi, &input.residual, &request, &input.entities);
     }
 });
