@@ -37,9 +37,6 @@ open Cedar
 
 /- Evaluator helpers -/
 
-
-
-
 -- RelOp: rLess, rLessEq, rGreaterEq, rGreater, rNotEq, rEq, rIn
 -- `rGreater`/`rGreaterEq` use the `not (less/lessEq v₁ v₂)` pattern to match
 -- the translator's `constructExprRel`. Behaviorally equivalent on totally-
@@ -88,6 +85,18 @@ termination_by sizeOf rest
 
 mutual
 
+/--
+  Evaluate an expression of `Primary` type, given a set of entities and a request.
+  - A `.literal` is immediately evaluated. Errors in literal evaluation occur for numbers that
+  don't fit in `Int64` and string literals that have malformed escape sequences.
+  - A `.name` results in an entity UID value, unless the name is malformed (empty, or not in principal,
+  action, resource, context).
+  - An `.expr` recursively evaluates.
+  - For a `.ref`, the type and name of the entity referenced are extracted, resulting in an
+  entity UID value.
+  - A literal record `.rInits` has its values evaluatred, resulting in a value record.
+  - Slots `.slot` are not supported.
+-/
 public def Primary.evaluate (e : Primary) (req : Spec.Request) (es : Spec.Entities) : Spec.Result Spec.Value :=
   match e with
   | .literal l => match l with
@@ -113,8 +122,8 @@ public def Primary.evaluate (e : Primary) (req : Spec.Request) (es : Spec.Entiti
     .ok (.set (Set.make vs))
   | .ref r => match r with
     | .uid path eid => do
-      let eid' ← Str.toUnescapedString eid
-      match Name.toAName? path with
+      let eid' ← eid.toUnescapedString
+      match path.toAName? with
       | some etype => .ok (.prim (.entityUID { ty := etype, eid := eid' }))
       | none       => .error (.cstError .unsupportedError)
     | .ref _ _ => .error (.cstError .unsupportedError)
@@ -135,6 +144,15 @@ public def Primary.evaluate (e : Primary) (req : Spec.Request) (es : Spec.Entiti
   | .slot _ => .error (.cstError .unsupportedError)
 termination_by sizeOf e
 
+/--
+  Evaluate an expression of type `Member`, given a request and set of entities.
+
+  A member in the CST representes either a function call or an accessor. In both cases,
+  we first evaluate the head, and then defer to evaluation the rest of the accessors.
+
+  Function arguments are evaluated eagerly, and the function evaluation itself defers to the
+  evaluation in `Spec` (we don't duplicate semantics of "extensions").
+-/
 public def Member.evaluate (e : Member) (req : Spec.Request) (es : Spec.Entities) : Spec.Result Spec.Value :=
   match e with
   -- Function calls
@@ -156,6 +174,10 @@ decreasing_by
     | omega
     | (have := List.sizeOf_lt_of_mem (by assumption); omega)
 
+/--
+  Evaluate a sequence of accessors given the value of a head.
+  Accessors are either method calls or field accesses.
+-/
 public def Member.evalAccessors (head : Spec.Value) (accs : List MemAccess)
     (req : Spec.Request) (es : Spec.Entities) : Spec.Result Spec.Value :=
   match accs with
