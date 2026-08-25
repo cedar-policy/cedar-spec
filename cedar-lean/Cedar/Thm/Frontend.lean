@@ -163,6 +163,9 @@ theorem errorPolicies_agrees (cps : Cst.Policies) (aps : Spec.Policies)
   intro cp ap htp
   exact policy_errored_agrees cp ap req es htp
 
+/-- **Soundness**: this theorem states that the translation is sound: if the translation is
+    successful, then the implementations of `isAuthorized` agree.
+-/
 theorem translation_is_sound (cps : Cst.Policies) (aps : Spec.Policies)
 (req : Request) (es : Entities) :
   cps.toPolicies? = some aps →
@@ -174,7 +177,7 @@ theorem translation_is_sound (cps : Cst.Policies) (aps : Spec.Policies)
   simp [Cst.isAuthorized, Spec.isAuthorized]
   simp [hforbids, hpermits, herrors]
 
-/-- **Strong completeness (headline).** If the comprehensive CST error collector
+/-- **Strong completeness.** If the comprehensive CST error collector
     reports no CST error for a policy set, then every policy translates to AST.
     Because the collector never short-circuits, a translation error can never be
     hidden behind a runtime error elsewhere. -/
