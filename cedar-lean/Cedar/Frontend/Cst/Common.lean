@@ -21,8 +21,6 @@ public import Cedar.Frontend.StringParsing
 public import Cedar.Spec.Wildcard
 public import Cedar.Spec.Policy
 
-
-
 namespace Cedar.Frontend.Cst
 
 open Cedar
@@ -98,11 +96,6 @@ public def Expr.toStringLiteral? : Expr → Option String
 public def Expr.toUnescapedStringLiteral? (e : Expr) : Option String := do
   let s ← Expr.toStringLiteral? e
   unescape? s
-
-
-
-
-
 
 -- Only Literal.liStr s is allowed
 -- Mirrors the translator's `Cst.AddExpr.toPattern?`: the unary `op` may be
