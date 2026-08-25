@@ -3,6 +3,7 @@ import Cedar.Frontend.Cst
 import Cedar.Frontend.Cst.Semantics
 import Cedar.Frontend.Cst.ToAst
 import Cedar.Thm.Data.List.Lemmas
+import Cedar.Thm.Frontend.Parser.Ident
 
 namespace Cedar.Thm
 
@@ -10,13 +11,6 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Frontend
 
-
-/-- If `toExtFun?` succeeds on a string, that string is a function name. -/
-theorem toExtFun?_some_isFunctionName {s : String} {xfn : ExtFun}
-    (h : Cst.String.toExtFun? s = some xfn) :
-    Cst.String.isFunctionName? s = true := by
-  simp only [Cst.String.toExtFun?] at h
-  split at h <;> simp_all [Cst.String.isFunctionName?]
 
 /- For Primary -/
 
@@ -1228,7 +1222,7 @@ theorem evalAccessors_eq
     | idIdent s0 hs0 =>
       simp only [Cst.MemAccess.toAstAccessor?, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at ha_ast
       obtain ⟨s, hs, rfl⟩ := ha_ast
-      have hs_eq : s = s0 := by simp at hs; exact hs.symm
+      have hs_eq : s = s0 := by simp [Cst.Ident.toUnreservedString?] at hs; exact hs.right.symm
       subst hs_eq
       rw [List.mapM_cons] at htl
       simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at htl
@@ -1320,7 +1314,7 @@ theorem evalAccessors_eq
       rw [htl_shape, memberAuxB_field_index, ← htl_shape] at hb
       have hev : Cst.Member.evalAccessors head (.field (.idIdent s0 hs0) :: .index ex2 :: rest2) req es
                = (do let hv ← getAttr head s0 es; Cst.Member.evalAccessors hv (.index ex2 :: rest2) req es) := by
-        simp [Cst.Member.evalAccessors, ]
+        simp [Cst.Member.evalAccessors]
       have hstep : evaluate (Expr.getAttr headExpr (s0)) req es
                    = getAttr head s0 es := by
         simp [evaluate, hhead,  bind, Except.bind]
@@ -1336,7 +1330,7 @@ decreasing_by all_goals (simp_wf <;> omega)
     syntactically `.name ⟨[], .idIdent s⟩`. -/
 theorem toExprOrSpecial_name_func {item : Cst.Primary} {an : Spec.Name}
     (h : item.toExprOrSpecial? = some (.name an))
-    (hp : an.path = []) (hf : Cst.String.isFunctionName? an.id = true) :
+    (hp : an.path = []) (hf : (Cst.String.toExtFun? an.id).isSome) :
     ∃ s h, item = .name { path := [], name := .idIdent s h } := by
   cases item with
   | name n =>
@@ -1355,7 +1349,7 @@ theorem toExprOrSpecial_name_func {item : Cst.Primary} {an : Spec.Name}
       subst hp
       cases nname with
       | idIdent s hs_kw => exact ⟨s, hs_kw, rfl⟩
-      | _ => exact absurd hf (by simp [Cst.Ident.toString, Cst.String.isFunctionName?])
+      | _ => exact absurd hf (by simp [Cst.Ident.toString, Cst.String.toExtFun?])
   | literal l =>
     cases l <;>
       simp [Cst.Primary.toExprOrSpecial?, Cst.Literal.toExprOrSpecial?,
