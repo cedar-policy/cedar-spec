@@ -14,12 +14,13 @@
  limitations under the License.
 -/
 
-import Cedar.Frontend.Parser
+-- import Cedar.Frontend.Parser
 import Cedar.Frontend.Cst
+import Cedar.Frontend.StringParsing
 
 /-! This file contains lemmas for proving roundtrip properties of hex string conversion. -/
 
-namespace Cedar.Frontend.Cst.Parser
+namespace Cedar.Frontend
 
 open Cedar.Frontend.Cst
 
@@ -39,12 +40,15 @@ theorem Char.asHexNat_digitChar (n : Nat) (h : n < 16) :
     simp [Char.asHexNat, Nat.digitChar]
   | n + 16, h => omega
 
+/-- `Nat.toHexChars` is equivalent to `Nat.toDigits 16` for values up to 4095.
+    This gives additional assurance that our custom implementation matches the stdlib. -/
+theorem toHexChars_eq_toDigits :
+    ∀ n : Fin 4096, Nat.toHexChars n.val = Nat.toDigits 16 n.val := by
+  native_decide
+
 /-- The fold that `String.asHexNat` performs, extracted for reasoning. -/
 def hexFold (cs : List Char) (init : Except String Nat) : Except String Nat :=
   cs.foldl (fun acc c => do let v ← acc; let d ← c.asHexNat; .ok (v * 16 + d)) init
-
-theorem hexFold_nil (init : Except String Nat) :
-    hexFold [] init = init := rfl
 
 theorem hexFold_cons (c : Char) (cs : List Char) (init : Except String Nat) :
     hexFold (c :: cs) init = hexFold cs (do let v ← init; let d ← c.asHexNat; .ok (v * 16 + d)) := by
@@ -147,35 +151,28 @@ public theorem go_length_le (n : Nat) (hn : n ≤ 0xFFFFFF) :
         exact this
       exact ih _ hdiv
 
------ classifyIdent / Ident.toString roundtrip -----
-
-/-- `classifyIdent` is a left inverse of `Ident.toString` for keyword identifiers. -/
-theorem classifyIdent_toString_keyword (i : Cst.Ident) (h : ¬∃ s hs, i = .idIdent s hs) :
-    classifyIdent (Ident.toString i) = i := by
-  cases i with
-  | idIdent s hs => exact absurd ⟨s, hs, rfl⟩ h
-  | _ => rfl
-
-/-- `classifyIdent` roundtrips with `Ident.toString` when the string is not a keyword. -/
-theorem classifyIdent_toString_ident (s : String)
-    (h : s ∉ keywords) :
-    classifyIdent (Ident.toString (.idIdent s h)) = .idIdent s h := by
-  simp only [Ident.toString, classifyIdent, h, ↓reduceDIte]
-
-/-- `Ident.toString` is a left inverse of `classifyIdent` for all Cedar keywords. -/
-theorem toString_classifyIdent_keyword (s : String) (h : s ∈ keywords) :
-    Ident.toString (classifyIdent s) = s := by
-  simp only [keywords, List.mem_cons, List.mem_nil_iff, or_false] at h
-  rcases h with h | h | h | h | h | h | h | h | h | h | h | h | h | h | h | h | h <;>
-    subst h <;> rfl
-
-/-- `Ident.toString` is a left inverse of `classifyIdent` for non-keyword identifiers. -/
-theorem toString_classifyIdent_ident (s : String)
-    (h : s ∉ keywords) :
-    Ident.toString (classifyIdent s) = s := by
-  simp only [classifyIdent, dif_neg h, Ident.toString]
-
------ String.asHexNat injectivity -----
+/-- `Nat.toHexString` roundtrips through `String.asHexNat` for all values ≤ 0xFFFFFF. -/
+theorem String.asHexNat_toHexString (n : Nat) (h : n ≤ 0xFFFFFF) :
+    (Nat.toHexString n).asHexNat = .ok n := by
+  simp only [Nat.toHexString]
+  have hne : Nat.toHexChars n ≠ [] := by
+    unfold Nat.toHexChars
+    split
+    · exact List.cons_ne_nil _ _
+    · next h0 =>
+      intro heq
+      have hpos : n > 0 := by simp [BEq.beq] at h0; omega
+      have hlen := go_nonempty n hpos
+      rw [heq] at hlen; simp at hlen
+  have hlen : (Nat.toHexChars n).length ≤ 6 := by
+    unfold Nat.toHexChars
+    split
+    · simp
+    · exact go_length_le n h
+  rw [asHexNat_eq_hexFold _ hne hlen]
+  match hn : n with
+  | 0 => exact toHexChars_zero_roundtrip
+  | n + 1 => exact toHexChars_pos_roundtrip (n + 1) (by omega)
 
 
 /-- A lowercase hex char is one in '0'..'9' or 'a'..'f'. -/
@@ -186,4 +183,19 @@ def isLowerHex (c : Char) : Prop :=
 theorem Char.eq_of_toNat_eq {c₁ c₂ : Char} (h : c₁.toNat = c₂.toNat) : c₁ = c₂ :=
   Char.ext_iff.mpr (congrArg UInt32.ofBitVec (BitVec.eq_of_toNat_eq h))
 
-end Cedar.Frontend.Cst.Parser
+/-- `Char.asHexNat` is injective on lowercase hex chars:
+    if two chars in '0'..'9' or 'a'..'f' map to the same value, they are equal. -/
+theorem Char.asHexNat_injective_lower (c₁ c₂ : Char) (n : Nat)
+    (h₁ : Char.asHexNat c₁ = .ok n)
+    (h₂ : Char.asHexNat c₂ = .ok n)
+    (hlc₁ : isLowerHex c₁) (hlc₂ : isLowerHex c₂) :
+    c₁ = c₂ := by
+  unfold Char.asHexNat at h₁ h₂
+  simp only [Bool.and_eq_true, decide_eq_true_eq, Char.le_def, UInt32.le_iff_toNat_le] at h₁ h₂
+  unfold isLowerHex at hlc₁ hlc₂
+  have heq : c₁.toNat = c₂.toNat := by
+    rcases hlc₁ with ⟨lo₁, hi₁⟩ | ⟨lo₁, hi₁⟩ <;> rcases hlc₂ with ⟨lo₂, hi₂⟩ | ⟨lo₂, hi₂⟩ <;>
+      (split at h₁ <;> split at h₂ <;> simp_all <;> omega)
+  exact Char.eq_of_toNat_eq heq
+
+end Cedar.Frontend
