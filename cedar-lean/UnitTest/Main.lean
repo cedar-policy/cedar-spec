@@ -19,14 +19,11 @@ import UnitTest.CedarProto
 import UnitTest.Datetime
 import UnitTest.Decimal
 import UnitTest.IPAddr
-<<<<<<< HEAD
 import UnitTest.Linker
 import UnitTest.PartialSchema
-=======
 import UnitTest.Parser
 import UnitTest.ParserStrings
 import UnitTest.ParserStress
->>>>>>> c16bf367 (Adding the parser)
 import UnitTest.Proto
 import UnitTest.Wildcard
 import UnitTest.TPE
@@ -39,14 +36,11 @@ def tests :=
   Datetime.tests ++
   Decimal.tests ++
   IPAddr.tests ++
-<<<<<<< HEAD
   Linker.tests ++
   PartialSchema.tests ++
-=======
   Parser.tests ++
   ParserStrings.tests ++
   ParserStress.tests ++
->>>>>>> c16bf367 (Adding the parser)
   Wildcard.tests ++
   Proto.tests ++
   CedarProto.tests ++

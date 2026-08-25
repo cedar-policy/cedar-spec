@@ -52,8 +52,8 @@ theorem toString_classifyIdent_ident (s : String)
   simp only [classifyIdent, dif_neg h, Ident.toString]
 
 public theorem unreserved_iff_not_in_keywords {s : String} :
-    Unreserved? s = true ↔ s ∉ keywords := by
-  simp only [Unreserved?, keywords, List.mem_cons, not_or, List.mem_nil_iff,
+    s.toUnreservedCedarId?.isSome = true ↔ s ∉ keywords := by
+  simp only [String.toUnreservedCedarId?, keywords, List.mem_cons, not_or, List.mem_nil_iff,
     not_false_eq_true, and_true]
   constructor
   · intro h
@@ -64,10 +64,16 @@ public theorem unreserved_iff_not_in_keywords {s : String} :
 @[simp]
 public theorem Ident.toUnreservedString?_idIdent (s : String) (h : s ∉ keywords) :
     Ident.toUnreservedString? (.idIdent s h) = some s := by
-  simp [Ident.toUnreservedString?, unreserved_iff_not_in_keywords.mpr h]
+  simp only [Ident.toUnreservedString?, String.toUnreservedCedarId?]
+  split <;> simp_all [keywords]
 
 @[simp]
 public theorem Ident.toString_idIdent (s : String) (h : s ∉ keywords) :
     Ident.toString (.idIdent s h) = s := rfl
+
+public theorem toUnreservedCedarId_some_eq {s s0: String} (h: s.toUnreservedCedarId? = some s0) :
+     s = s0 := by
+  simp only [String.toUnreservedCedarId?] at h
+  split at h <;> simp_all
 
 end Cedar.Frontend.Cst.Parser

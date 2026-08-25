@@ -61,6 +61,49 @@ where
   String.ofList (Nat.toHexChars n)
 
 
+public def String.toUnreservedCedarId? (s : String) : Option String :=
+  match s with
+  | "principal" | "action" | "resource" | "context"
+  | "true" | "false" | "permit" | "forbid"
+  | "when" | "unless" | "in" | "has" | "like" | "is"
+  | "if" | "then" | "else" => none
+  | _ => some s
+
+public def String.toCedarExtFun? : String → Option Cedar.Spec.ExtFun
+  | "decimal" => some .decimal
+  | "lessThan" => some .lessThan
+  | "lessThanOrEqual" => some .lessThanOrEqual
+  | "greaterThan" => some .greaterThan
+  | "greaterThanOrEqual" => some .greaterThanOrEqual
+  | "ip" => some .ip
+  | "isIpv4" => some .isIpv4
+  | "isIpv6" => some .isIpv6
+  | "isLoopback" => some .isLoopback
+  | "isMulticast" => some .isMulticast
+  | "isInRange" => some .isInRange
+  | "datetime" => some .datetime
+  | "duration" => some .duration
+  | "offset" => some .offset
+  | "durationSince" => some .durationSince
+  | "toDate" => some .toDate
+  | "toTime" => some .toTime
+  | "toMilliseconds" => some .toMilliseconds
+  | "toSeconds" => some .toSeconds
+  | "toMinutes" => some .toMinutes
+  | "toHours" => some .toHours
+  | "toDays" => some .toDays
+  | _ => none
+
+public def String.toCedarMethodOp? : String → Option (Cedar.Spec.BinaryOp ⊕ Cedar.Spec.UnaryOp)
+  | "contains" => some (.inl .contains)
+  | "containsAll" => some (.inl .containsAll)
+  | "containsAny" => some (.inl .containsAny)
+  | "getTag" => some (.inl .getTag)
+  | "hasTag" => some (.inl .hasTag)
+  | "isEmpty" => some (.inr .isEmpty)
+  | _ => none
+
+
 --- Subparsers: parsing patterns and escaping strings  ---
 namespace Cedar.Frontend.Cst
 
