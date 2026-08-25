@@ -19,51 +19,11 @@ module
 public import Cedar.Frontend.Cst
 public import Cedar.Frontend.Cst.Syntax
 public import Std.Internal.Parsec.String
+public import Cedar.Frontend.StringParsing
 
 /-! This file defines a parser from Cedar policy text to the CST. -/
 
 @[expose] public section
-
----- String conversion utilities ---
-
--- Parsing hex numbers `\xHH` and unicode codepoints `\u{...}` is done with the
--- functions `Char.asHexNat` and `String.asHexNat`. We prove that the latter roundtrips
--- with `Nat.toHexString` implemented here, for natural numbers ≤ 0xFFFFFF.
-
-
-/-- Parses a character into a `Nat` number, assuming the character is the hex reprsentation of
-that natural number. -/
-def Char.asHexNat (c : Char) : Except String Nat :=
-  if '0' ≤ c && c ≤ '9' then .ok (c.toNat - '0'.toNat)
-    else if 'a' ≤ c && c ≤ 'f' then .ok (c.toNat - 'a'.toNat + 10)
-    else if 'A' ≤ c && c ≤ 'F' then .ok (c.toNat - 'A'.toNat + 10)
-    else .error s!"invalid hex digit: '{c}'"
-
-/-- Parses a string into a `Nat` number, assuming the string is the hex representation of that
-    natural number. -/
-def String.asHexNat (s : String) : Except String Nat :=
-  if s.isEmpty then .error "empty hex string"
-  else if s.length > 6 then .error "hex string too long"
-  else s.toList.foldl (fun acc c => do
-    let n ← acc
-    let d ← c.asHexNat
-    .ok (n * 16 + d)) (.ok 0)
-
-/-- Simple recursive hex digit list with explicit termination. -/
-def Nat.toHexChars (n : Nat) : List Char :=
-  if n == 0 then ['0'] else go n []
-where
-  go : Nat → List Char → List Char
-    | 0, acc => acc
-    | n + 1, acc =>
-      let val := n + 1
-      let d := val % 16
-      let r := val / 16
-      go r (Nat.digitChar d :: acc)
-  termination_by n => n
-
-def Nat.toHexString (n : Nat) : String :=
-  String.ofList (Nat.toHexChars n)
 
 namespace Except
 open Std.Internal.Parsec String

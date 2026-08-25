@@ -585,7 +585,7 @@ theorem Cst.Member.collect_complete {e : Cst.Member} {req : Request} {es : Entit
         List.isEmpty_nil, Cst.Name.toAName?, Name.toAName?,
         Ident.toUnrestrictedString?,
         List.mapM_cons, Cst.MemAccess.toAstAccessor?, Cedar.Thm.toAExprs?_eq_mapM, hxs, hrest,
-        memberAux, memberAuxA, toFunc?, Cedar.Thm.toExtFun?_some_isFunctionName hfn, hfn, hr]
+        memberAux, memberAuxA, toFunc?, hfn, hr]
   case h_2 item access _ =>
     obtain ⟨hd, hrst⟩ := (noCstError_union _ _).mpr h
     obtain ⟨peos, headExpr, hpeos, hpe⟩ := Cst.Primary.collect_complete hd
