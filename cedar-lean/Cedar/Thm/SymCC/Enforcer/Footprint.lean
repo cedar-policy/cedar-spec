@@ -29,7 +29,7 @@ namespace Cedar.SymCC
 
 open Data Spec SymCC Factory
 
-def footprint_ofEntity_wf :
+theorem footprint_ofEntity_wf :
   (footprint.ofEntity x εnv).WellFormed
 := by
   simp [footprint.ofEntity]
@@ -37,7 +37,7 @@ def footprint_ofEntity_wf :
   · split <;> simp [Set.singleton_wf, Set.empty_wf]
   · exact Set.empty_wf
 
-def footprint_ofBranch_wf :
+theorem footprint_ofBranch_wf :
   ft₂.WellFormed →
   ft₃.WellFormed →
   (footprint.ofBranch εnv x ft₁ ft₂ ft₃).WellFormed
@@ -46,7 +46,7 @@ def footprint_ofBranch_wf :
   simp [footprint.ofBranch]
   split <;> simp [h₂, h₃, Set.empty_wf, Set.union_wf]
 
-def footprint_wf (x : Expr) (εnv : SymEnv) :
+theorem footprint_wf (x : Expr) (εnv : SymEnv) :
   (footprint x εnv).WellFormed
 := by
   cases x
@@ -54,7 +54,7 @@ def footprint_wf (x : Expr) (εnv : SymEnv) :
     List.mapUnion₁_eq_mapUnion (footprint · εnv), List.mapUnion₂_eq_mapUnion (λ x => footprint x.snd εnv),
     Set.empty_wf, List.mapUnion_wf, Set.union_wf]
 
-def footprints_wf (xs : List Expr) (εnv : SymEnv) :
+theorem footprints_wf (xs : List Expr) (εnv : SymEnv) :
   (footprints xs εnv).WellFormed
 := by
   simp [footprints, List.mapUnion_wf]

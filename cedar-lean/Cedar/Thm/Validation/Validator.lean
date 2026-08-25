@@ -93,7 +93,7 @@ theorem typecheck_policy_with_environments_is_sound (policy : Policy) (schema : 
   cases h₃ : List.mapM (typecheckPolicy policy) schema.environments with
   | error => simp only [h₃, Except.bind_err, reduceCtorEq] at h₂
   | ok ts =>
-    simp only [h₃, Except.bind_ok, ite_eq_right_iff, allFalse] at h₂
+    simp only [h₃, Except.bind_ok, allFalse] at h₂
     obtain ⟨env, ⟨h₀, h₁⟩⟩ := h₀
     rw [List.mapM_ok_iff_forall₂] at h₃
     have h₄ := List.forall₂_implies_all_left h₃
