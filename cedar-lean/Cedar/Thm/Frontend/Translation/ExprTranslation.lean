@@ -209,7 +209,7 @@ theorem Cst.Member.toAExpr?_sound
       simp at hmem
     | some xfn =>
       have htf : Cst.toFunc? { id := s, path := [] } xs = some (.call xfn xs) := by
-        simp [Cst.toFunc?, hfn, toExtFun?_some_isFunctionName hfn]
+        simp [Cst.toFunc?, hfn]
       have hb : Cst.memberAuxB (.call xfn xs) rest_ast = some aexp := by
         have hmeq : Cst.memberAux (.name { id := s, path := [] }) (.call xs :: rest_ast)
                   = (Cst.memberAuxB (.call xfn xs) rest_ast).bind (fun r => some (.expr r)) := by
@@ -276,9 +276,12 @@ theorem Cst.Member.toAExpr?_sound
                 simp only [Cst.toFunc?] at hfunc
                 split at hfunc
                 · rename_i hcond
-                  simp only [Bool.and_eq_true] at hcond
-                  obtain ⟨hpath, hfn⟩ := hcond
-                  obtain ⟨ss, hss_kw, hs⟩ := toExprOrSpecial_name_func hitem (by simpa using hpath) hfn
+                  have hpath : an.path = [] := List.isEmpty_iff.mp hcond
+                  have hfn : (Cst.String.toExtFun? an.id).isSome := by
+                    cases hxfn : Cst.String.toExtFun? an.id with
+                    | none => rw [hxfn] at hfunc; simp at hfunc
+                    | some xfn => simp
+                  obtain ⟨ss, hss_kw, hs⟩ := toExprOrSpecial_name_func hitem hpath hfn
                   cases haccess : access with
                   | nil => rw [haccess] at haccs; simp at haccs
                   | cons aa rr =>
