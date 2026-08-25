@@ -21,7 +21,10 @@ public import Cedar.Frontend.Cst.Syntax
 public import Std.Internal.Parsec.String
 public import Cedar.Frontend.StringParsing
 
-/-! This file defines a parser from Cedar policy text to the CST. -/
+/-!
+  This file defines a parser from Cedar policy text to the CST.
+  This parser is *unverified*.
+ -/
 
 @[expose] public section
 
