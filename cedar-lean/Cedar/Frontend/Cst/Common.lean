@@ -21,10 +21,11 @@ public import Cedar.Frontend.StringParsing
 public import Cedar.Spec.Wildcard
 public import Cedar.Spec.Policy
 
+
+
 namespace Cedar.Frontend.Cst
 
 open Cedar
-
 
 public def Member.toLit? (e : Member) : Option Literal :=
   if !e.access.isEmpty then none else
@@ -32,29 +33,8 @@ public def Member.toLit? (e : Member) : Option Literal :=
   | .literal l => some l
   | _ => none
 
-public def Unreserved? (s : String) : Bool :=
-  match s with
-  | "principal"
-  | "action"
-  | "resource"
-  | "context"
-  | "true"
-  | "false"
-  | "permit"
-  | "forbid"
-  | "when"
-  | "unless"
-  | "in"
-  | "has"
-  | "like"
-  | "is"
-  | "if"
-  | "then"
-  | "else" => false
-  | _ => true
-
 public def Ident.toUnreservedString? : Ident → Option String
-  | .idIdent s _ => if (Unreserved? s) then some s else none
+  | .idIdent s _ => s.toUnreservedCedarId?
   | _ => none
 
 /-- Convert an identifier to its string form, accepting variable/keyword
@@ -119,39 +99,8 @@ public def Expr.toUnescapedStringLiteral? (e : Expr) : Option String := do
   let s ← Expr.toStringLiteral? e
   unescape? s
 
-public def String.toExtFun? : String → Option Spec.ExtFun
-  | "decimal" => some .decimal
-  | "lessThan" => some .lessThan
-  | "lessThanOrEqual" => some .lessThanOrEqual
-  | "greaterThan" => some .greaterThan
-  | "greaterThanOrEqual" => some .greaterThanOrEqual
-  | "ip" => some .ip
-  | "isIpv4" => some .isIpv4
-  | "isIpv6" => some .isIpv6
-  | "isLoopback" => some .isLoopback
-  | "isMulticast" => some .isMulticast
-  | "isInRange" => some .isInRange
-  | "datetime" => some .datetime
-  | "duration" => some .duration
-  | "offset" => some .offset
-  | "durationSince" => some .durationSince
-  | "toDate" => some .toDate
-  | "toTime" => some .toTime
-  | "toMilliseconds" => some .toMilliseconds
-  | "toSeconds" => some .toSeconds
-  | "toMinutes" => some .toMinutes
-  | "toHours" => some .toHours
-  | "toDays" => some .toDays
-  | _ => none
 
-public def String.toMethodOp? : String → Option (Spec.BinaryOp ⊕ Spec.UnaryOp)
-  | "contains" => some (.inl .contains)
-  | "containsAll" => some (.inl .containsAll)
-  | "containsAny" => some (.inl .containsAny)
-  | "getTag" => some (.inl .getTag)
-  | "hasTag" => some (.inl .hasTag)
-  | "isEmpty" => some (.inr .isEmpty)
-  | _ => none
+
 
 
 
@@ -238,7 +187,7 @@ public def Ident.toHasHead? : Cst.Ident → Option String
   | .idAction    => some "action"
   | .idResource  => some "resource"
   | .idContext   => some "context"
-  | .idIdent s _   => if Unreserved? s then some s else none
+  | .idIdent s _   => String.toUnreservedCedarId? s
   | _            => none
 
 public def AddExpr.toAttrs? (e : AddExpr) : Option (List Spec.Attr) :=
