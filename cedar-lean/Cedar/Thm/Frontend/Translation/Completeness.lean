@@ -261,9 +261,8 @@ theorem toUnreservedString?_some {i : Cst.Ident} {s : String}
   cases i
   case idIdent s' hk' =>
     simp only [Ident.toUnreservedString?] at h
-    split at h
-    · injection h with h'; subst h'; exact ⟨hk', rfl⟩
-    · exact absurd h (by simp)
+    have hs' : s' = s := Cst.Parser.toUnreservedCedarId_some_eq h
+    subst hs'; exact ⟨hk', rfl⟩
   all_goals simp [Ident.toUnreservedString?] at h
 
 /-- Prepending a field accessor reduces through `memberAuxB`'s attribute branch
@@ -428,7 +427,7 @@ theorem Cst.Member.collectAccessors_complete
       rw [noCstError_singleton] at hs; simp [Error.isCstError] at hs
     | some m =>
       have ⟨hk, hii⟩ := toUnreservedString?_some hi
-      cases hop : String.toMethodOp? m with
+      cases hop : m.toCedarMethodOp? with
       | none =>
         simp only [hi, hop] at h
         obtain ⟨hab, _⟩ := (noCstError_union _ _).mpr h
@@ -562,7 +561,7 @@ theorem Cst.Member.collect_complete {e : Cst.Member} {req : Request} {es : Entit
   unfold Cst.Member.collectErrors at h
   split at h
   case h_1 s hkw args rest =>
-    cases hfn : String.toExtFun? s with
+    cases hfn : s.toCedarExtFun? with
     | none =>
       simp only [hfn] at h
       obtain ⟨hab, _⟩ := (noCstError_union _ _).mpr h
