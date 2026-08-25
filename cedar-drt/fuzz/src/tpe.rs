@@ -27,7 +27,7 @@ use cedar_policy_core::ast::{self, Value};
 use cedar_policy_core::tpe::residual::Residual;
 use cedar_policy_generators::abac::ABACRequest;
 use cedar_policy_generators::hierarchy::HierarchyGenerator;
-use cedar_policy_generators::schema as generator_schema;
+use cedar_policy_generators::schema;
 use cedar_policy_generators::schema_gen::SchemaGen;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
@@ -185,7 +185,6 @@ impl<'a> Arbitrary<'a> for TpeFuzzTargetInput {
 /// A schema, a hierarchy, and eight (request, residual) pairs.
 #[derive(Debug, Clone)]
 pub struct TpeResidualFuzzTargetInput {
-    pub schema: Schema,
     pub entities: Entities,
     pub residual: Residual,
     pub reqs: [ABACRequest; 8],
@@ -194,9 +193,9 @@ pub struct TpeResidualFuzzTargetInput {
 impl<'a> Arbitrary<'a> for TpeResidualFuzzTargetInput {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
         let settings = abac::FuzzTargetInput::<true>::settings();
-        let gen_schema = generator_schema::Schema::arbitrary(settings.clone(), u)?;
+        let gen_schema = schema::Schema::arbitrary(settings.clone(), u)?;
         let hierarchy = gen_schema.arbitrary_hierarchy(u)?;
-        let requests = [
+        let reqs = [
             gen_schema.arbitrary_request(&hierarchy, u)?,
             gen_schema.arbitrary_request(&hierarchy, u)?,
             gen_schema.arbitrary_request(&hierarchy, u)?,
@@ -206,23 +205,15 @@ impl<'a> Arbitrary<'a> for TpeResidualFuzzTargetInput {
             gen_schema.arbitrary_request(&hierarchy, u)?,
             gen_schema.arbitrary_request(&hierarchy, u)?,
         ];
-        let reqs: [_; 8] = requests
-            .into_iter()
-            .map(|request| Ok(request))
-            .collect::<arbitrary::Result<Vec<_>>>()?
-            .try_into()
-            .unwrap();
         let residual = gen_schema
             .exprgenerator(Some(&hierarchy))
             .generate_residual(settings.max_depth, u)?;
 
-        let schema = Schema::try_from(gen_schema).map_err(|_| arbitrary::Error::IncorrectFormat)?;
-        let all_entities =
-            Entities::try_from(hierarchy).map_err(|_| arbitrary::Error::NotEnoughData)?;
-        let entities =
-            crate::schemas::add_actions_to_entities(&schema, drop_some_entities(all_entities, u)?)?;
+        let entities = drop_some_entities(
+            Entities::try_from(hierarchy).map_err(|_| arbitrary::Error::NotEnoughData)?,
+            u,
+        )?;
         Ok(Self {
-            schema,
             entities,
             reqs,
             residual,
@@ -233,9 +224,16 @@ impl<'a> Arbitrary<'a> for TpeResidualFuzzTargetInput {
         depth: usize,
     ) -> arbitrary::Result<(usize, Option<usize>), arbitrary::MaxRecursionReached> {
         Ok(arbitrary::size_hint::and_all(&[
-            generator_schema::Schema::arbitrary_size_hint(depth)?,
+            schema::Schema::arbitrary_size_hint(depth)?,
             HierarchyGenerator::size_hint(depth),
-            generator_schema::Schema::arbitrary_request_size_hint(depth),
+            schema::Schema::arbitrary_request_size_hint(depth),
+            schema::Schema::arbitrary_request_size_hint(depth),
+            schema::Schema::arbitrary_request_size_hint(depth),
+            schema::Schema::arbitrary_request_size_hint(depth),
+            schema::Schema::arbitrary_request_size_hint(depth),
+            schema::Schema::arbitrary_request_size_hint(depth),
+            schema::Schema::arbitrary_request_size_hint(depth),
+            schema::Schema::arbitrary_request_size_hint(depth),
         ]))
     }
 }

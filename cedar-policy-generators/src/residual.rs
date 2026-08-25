@@ -124,7 +124,7 @@ fn residual_of_expr(e: Expr, u: &mut Unstructured<'_>) -> Result<Residual> {
                     .collect::<Result<Vec<_>>>()?,
             ),
         },
-        // We can't translate these, but on the principal that it's better not to error when generating
+        // We can't translate these, but on the principle that it's better not to error when generating
         // inputs, we'll use `true` as a place holder.
         ExprKind::Unknown(_) | ExprKind::Slot(_) => {
             return Ok(Residual::Concrete {
