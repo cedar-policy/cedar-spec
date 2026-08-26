@@ -289,7 +289,7 @@ theorem level_based_slicing_is_sound_ext_has_attr
   rw [← ht.1] at hl
   cases hl
   case extHasAttr =>
-    rename_i ety level hty hchain hk hl₁
+    rename_i ety level hty hk hl₁
     rw [hty] at hv
     cases hv with
     | instance_of_entity uid _ huidty =>
@@ -326,7 +326,7 @@ theorem level_based_slicing_is_sound_ext_has_attr
     obtain ⟨rty, hrty⟩ := hrty
     rw [hrty] at hv
     obtain ⟨record, rfl⟩ := instance_of_record_type_is_record hv
-    obtain ⟨hk, _, hpathnone⟩ := hchain rty hrty
+    obtain ⟨hk, hpathnone⟩ := hchain rty hrty
     apply evaluate_extHasAttr_eq_of_loop_eq he (ihe hc hr hte hlbase)
     intro _
     apply hasAttrs_loop_record_sound hr hv hk
@@ -334,10 +334,10 @@ theorem level_based_slicing_is_sound_ext_has_attr
     rw [hpathnone] at hpath
     contradiction
   case extHasAttrRecordEntity =>
-    rename_i rty path hty hchain hpath hlbase hk haccess
+    rename_i rty path hty hpath hl₁ hk haccess
     rw [hty] at hv
     obtain ⟨record, rfl⟩ := instance_of_record_type_is_record hv
-    apply evaluate_extHasAttr_eq_of_loop_eq he (ihe hc hr hte hlbase)
+    apply evaluate_extHasAttr_eq_of_loop_eq he (ihe hc hr hte hl₁)
     intro he
     apply hasAttrs_loop_record_sound hr hv hk
     intro path' hpath' uid hvia

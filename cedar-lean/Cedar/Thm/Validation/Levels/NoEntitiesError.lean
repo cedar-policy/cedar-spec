@@ -618,7 +618,7 @@ theorem level_based_no_dne_ext_has_attr {e : Expr} {a : Attr} {attrs : List Attr
     apply ihe hc hr hcl hte
     -- Extract sub-expression level from hl
     cases hl with
-    | extHasAttr _ _ _ _ _ hl₁ _ _ hk =>
+    | extHasAttr _ _ _ _ _ hl₁ _ hk =>
       apply entity_access_at_level_then_at_level (path := [])
       have bump : ∀ m n nmax path, m ≤ n →
           ty₁.EntityAccessAtLevel env m nmax path → ty₁.EntityAccessAtLevel env n nmax path := by
@@ -628,7 +628,7 @@ theorem level_based_no_dne_ext_has_attr {e : Expr} {a : Attr} {attrs : List Attr
         | step _ ih => exact entity_access_at_level_succ ih
       exact bump _ _ _ _ (Nat.sub_le _ _) hl₁
     | extHasAttrRecord _ _ _ _ _ hl₁ _ _ => exact hl₁
-    | extHasAttrRecordEntity _ _ _ _ _ _ _ hl₁ _ _ _ _ _ => exact hl₁
+    | extHasAttrRecordEntity _ _ _ _ _ _ _ hl₁ _ _ _ _ => exact hl₁
 
 theorem level_based_no_dne_set {xs : List Expr} {n : Nat} {c₀ c₁ : Capabilities} {env : TypeEnv} {request : Request} {entities : Entities}
   (hc : CapabilitiesInvariant c₀ request entities)

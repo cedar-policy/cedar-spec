@@ -88,48 +88,6 @@ public def TypedExpr.checkEntityAccessLevel (tx : TypedExpr) (env : TypeEnv) (n 
   | _, _ => false
 
 
-/--
-Check that the attribute chain in `extHasAttr` doesn't exceed the level limit.
-For each attribute access except the last, if the result type is an entity, it
-requires an additional dereference level. The last attribute is only tested for
-presence and its result is never dereferenced, so it costs no level.
-Works for any starting `CedarType`:
-- `.entity ety`: look up entity schema for the attribute
-- `.record rty`: look up attribute directly in the record type
-- other: no sub-fields, chain trivially valid
--/
-public def checkExtHasAttrChain (env : TypeEnv) (ty : CedarType) (attrs : List Attr) (currentLevel : Nat) : Bool :=
-  match attrs with
-  | [] => true
-  | [_] => true  -- last attribute: never dereferenced, no level consumed
-  | a :: rest =>
-    match ty with
-    | .entity ety =>
-      match env.ets.attrs? ety with
-      | .some rty =>
-        match rty.find? a with
-        | .some qty =>
-          match qty.getType with
-          | .entity nextEty =>
-            -- Accessing this attr requires dereferencing the entity it points to
-            currentLevel > 0 &&
-            checkExtHasAttrChain env (.entity nextEty) rest (currentLevel - 1)
-          | nextTy =>
-            -- Not an entity type: no dereference for this step, but continue checking rest
-            checkExtHasAttrChain env nextTy rest currentLevel
-        | .none => true  -- attribute not in schema, can't check further
-      | .none => true  -- entity type not in schema
-    | .record rty =>
-      match rty.find? a with
-      | .some qty =>
-        match qty.getType with
-        | .entity nextEty =>
-          currentLevel > 0 &&
-          checkExtHasAttrChain env (.entity nextEty) rest (currentLevel - 1)
-        | nextTy =>
-          checkExtHasAttrChain env nextTy rest currentLevel
-      | .none => true  -- attribute not in record type
-    | _ => true  -- no sub-fields possible
 
 /--
 Compute the number of entity-typed hops in an attribute chain starting from
@@ -219,19 +177,14 @@ public def TypedExpr.checkLevel (tx : TypedExpr) (env : TypeEnv) (n : Nat) : Boo
     match x₁.typeOf with
     | .entity ety =>
       let k := extHasAttrChainCost env (.entity ety) (attr :: attrs)
-      n > k &&
-      x₁.checkEntityAccessLevel env (n - k - 1) n [] &&
-      checkExtHasAttrChain env (.entity ety) (attr :: attrs) k
+      n > k && x₁.checkEntityAccessLevel env (n - k - 1) n []
     | .record rty =>
       let k := extHasAttrChainCost env (.record rty) (attr :: attrs)
       let baseAccessOk :=
         match extHasAttrFirstEntityPath? env (.record rty) (attr :: attrs) with
         | some path => x₁.checkEntityAccessLevel env (n - k) n path
         | none => true
-      n >= k &&
-      x₁.checkLevel env n &&
-      baseAccessOk &&
-      checkExtHasAttrChain env (.record rty) (attr :: attrs) k
+      baseAccessOk && n >= k && x₁.checkLevel env n
     | _ => x₁.checkLevel env n
   | .call _ xs _
   | .set xs _ =>
