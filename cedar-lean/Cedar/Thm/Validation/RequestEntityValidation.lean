@@ -18,7 +18,7 @@ theorem instance_of_bool_type_refl {b : Bool} {bty : BoolType} :
   cases h₁ : b <;> cases h₂ : bty <;> subst h₁ <;> subst h₂ <;> simp only [Bool.false_eq_true] at *
 
 theorem instance_of_entity_type_refl {e : EntityUID} {ety : EntityType} {env : TypeEnv} :
-  instanceOfEntityType e ety env = true → InstanceOfEntityType e ety env
+  instanceOfEntityType e ety env.schema = true → InstanceOfEntityType e ety env
 := by
   simp only [InstanceOfEntityType, instanceOfEntityType]
   intro h₀
@@ -34,7 +34,7 @@ theorem instance_of_ext_type_refl {ext : Ext} {extty : ExtType} :
   cases h₁ : ext <;> cases h₂ : extty <;> subst h₁ <;> subst h₂ <;> simp only [Bool.false_eq_true] at *
 
 theorem instance_of_type_refl {v : Value} {ty : CedarType} {env : TypeEnv} :
-  instanceOfType v ty env = true → InstanceOfType env v ty
+  instanceOfType v ty env.schema = true → InstanceOfType env v ty
 := by
   intro h₀
   unfold instanceOfType at h₀
@@ -70,7 +70,7 @@ theorem instance_of_type_refl {v : Value} {ty : CedarType} {env : TypeEnv} :
       split at h₀ <;> simp only [reduceCtorEq, imp_self, implies_true, Value.set.injEq,
         CedarType.set.injEq, imp_false, forall_apply_eq_imp_iff, forall_eq'] at *
       subst s sty
-      rw [Set.all₁_eq_all (f := (instanceOfType · _ env))] at h₀
+      rw [Set.all₁_eq_all (f := (instanceOfType · _ env.schema))] at h₀
       simp only [Set.all, List.all_eq_true] at h₀
       intro v hv
       simp only [Set.mem_elts_iff_mem_set] at h₀

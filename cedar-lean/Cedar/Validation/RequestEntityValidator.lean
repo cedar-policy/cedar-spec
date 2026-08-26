@@ -47,9 +47,9 @@ public def instanceOfBoolType (b : Bool) (bty : BoolType) : Bool :=
   | _, .anyBool => true
   | _, _ => false
 
-public def instanceOfEntityType (e : EntityUID) (ety : EntityType) (env : TypeEnv) : Bool :=
+public def instanceOfEntityType (e : EntityUID) (ety : EntityType) (schema : Schema) : Bool :=
   ety == e.ty &&
-  (env.ets.isValidEntityUID e || env.acts.contains e)
+  (schema.ets.isValidEntityUID e || schema.acts.contains e)
 
 public def instanceOfExtType (ext : Ext) (extty: ExtType) : Bool :=
 match ext, extty with
@@ -64,17 +64,17 @@ match rty.find? k with
     | .some qty => if qty.isRequired then r.contains k else true
     | _ => true
 
-public def instanceOfType (v : Value) (ty : CedarType) (env : TypeEnv) : Bool :=
+public def instanceOfType (v : Value) (ty : CedarType) (schema : Schema) : Bool :=
   match v, ty with
   | .prim (.bool b), .bool bty => instanceOfBoolType b bty
   | .prim (.int _), .int => true
   | .prim (.string _), .string => true
-  | .prim (.entityUID e), .entity ety => instanceOfEntityType e ety env
-  | .set s, .set ty => s.all₁ (λ ⟨v, _⟩ => instanceOfType v ty env)
+  | .prim (.entityUID e), .entity ety => instanceOfEntityType e ety schema
+  | .set s, .set ty => s.all₁ (λ ⟨v, _⟩ => instanceOfType v ty schema)
   | .record r, .record rty =>
     r.toList.all (λ (k, _) => rty.contains k) &&
     (r.toList.attach₂.all (λ ⟨(k, v), _⟩ => (match rty.find? k with
-        | .some qty => instanceOfType v qty.getType env
+        | .some qty => instanceOfType v qty.getType schema
         | _ => true))) &&
     rty.toList.all (λ (k, _) => requiredAttributePresent r rty k)
   | .ext x, .ext xty => instanceOfExtType x xty
@@ -91,10 +91,10 @@ public def instanceOfType (v : Value) (ty : CedarType) (env : TypeEnv) : Bool :=
         omega
 
 public def instanceOfRequestType (request : Request) (env : TypeEnv) : Bool :=
-  instanceOfEntityType request.principal env.reqty.principal env &&
+  instanceOfEntityType request.principal env.reqty.principal env.schema &&
   request.action == env.reqty.action &&
-  instanceOfEntityType request.resource env.reqty.resource env &&
-  instanceOfType request.context (.record env.reqty.context) env
+  instanceOfEntityType request.resource env.reqty.resource env.schema &&
+  instanceOfType request.context (.record env.reqty.context) env.schema
 
 /--
 For every entity in the store,
@@ -115,14 +115,14 @@ public def instanceOfSchema (entities : Entities) (env : TypeEnv) : EntityValida
 where
   instanceOfEntityTags (data : EntityData) (entry : EntitySchemaEntry) : Bool :=
     match entry.tags? with
-    | .some tty => data.tags.values.all (instanceOfType · tty env)
+    | .some tty => data.tags.values.all (instanceOfType · tty env.schema)
     | .none     => data.tags == Map.empty
   instanceOfEntitySchemaEntry uid data entry :=
     if entry.isValidEntityEID uid.eid then
-      if instanceOfType data.attrs (.record entry.attrs) env then
+      if instanceOfType data.attrs (.record entry.attrs) env.schema then
         if data.ancestors.all (λ ancestor =>
           entry.ancestors.contains ancestor.ty &&
-          instanceOfEntityType ancestor ancestor.ty env) then
+          instanceOfEntityType ancestor ancestor.ty env.schema) then
           if instanceOfEntityTags data entry then .ok ()
           else .error (.typeError s!"entity tags inconsistent with type store")
         else .error (.typeError s!"entity ancestors inconsistent with type store")

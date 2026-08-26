@@ -244,9 +244,9 @@ def evaluatePolicy (schema : Schema)
   (req : PartialRequest)
   (es : PartialEntities)
   : Except Error Residual :=
-  match schema.environment? req.principal.ty req.resource.ty req.action with
-    | .some env =>
-      if requestAndEntitiesIsValid env req es
+  match validatePartialRequest schema req with
+    | .ok env =>
+      if entitiesIsValid env.schema es
       then
         do
           checkEntities schema p.toExpr|>.mapError .invalidPolicy
@@ -254,6 +254,6 @@ def evaluatePolicy (schema : Schema)
           let (te, _) ← (typeOf expr ∅ env).mapError Error.invalidPolicy
           .ok (evaluate te.liftBoolTypes.toResidual req es)
       else .error .invalidRequestOrEntities
-    | .none => .error .invalidEnvironment
+    | .error _ => .error .invalidEnvironment
 
 end Cedar.TPE

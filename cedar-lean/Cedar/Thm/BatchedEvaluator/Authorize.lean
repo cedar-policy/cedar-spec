@@ -26,7 +26,7 @@ theorem evaluatePolicy_ok_implies_env_some {schema : Schema} {p : Policy}
   ∃ env, schema.environment? preq.principal.ty preq.resource.ty preq.action = .some env
 := by
   intro h
-  simp only [evaluatePolicy] at h
+  simp only [evaluatePolicy, validatePartialRequest] at h
   split at h <;> grind
 
 private theorem requestIsValid_asPartialRequest_eq {env : TypeEnv} {req : Request} :
@@ -42,12 +42,10 @@ theorem evaluatePolicy_ok_implies_requestMatchesEnvironment
   requestMatchesEnvironment env req
 := by
   intro h env h_env
-  simp only [evaluatePolicy, h_env] at h
-  split at h <;> try cases h
-  rename_i h_valid
-  simp only [requestAndEntitiesIsValid, Bool.and_eq_true] at h_valid
-  simp only [requestMatchesEnvironment, ← requestIsValid_asPartialRequest_eq]
-  exact h_valid.1
+  simp only [evaluatePolicy, validatePartialRequest, h_env] at h
+  by_cases h_valid : requestIsValid env req.asPartialRequest <;>
+    simp only [h_valid, Bool.false_eq_true, ↓reduceIte, reduceCtorEq] at h
+  simp only [h_valid, requestMatchesEnvironment, ← requestIsValid_asPartialRequest_eq]
 
 /--
 If `evaluatePolicy` succeeds on a concrete request, and the schema and entities
@@ -159,7 +157,9 @@ theorem evaluatePolicies_equiv_and_well_typed
   simp only [Except.map_ok, Except.ok.injEq] at h
   subst h
   refine ⟨rfl, rfl, (partial_evaluate_policy_is_sound h_ep h_schema_env h_wf h_ref).symm, ?_⟩
-  simp only [evaluatePolicy, h_schema_env, List.empty_eq] at h_ep
+  simp only [evaluatePolicy, validatePartialRequest, h_schema_env, List.empty_eq] at h_ep
+  by_cases h_valid : requestIsValid env preq <;>
+    simp only [h_valid, Bool.false_eq_true, ↓reduceIte, reduceCtorEq] at h_ep
   split at h_ep <;> try cases h_ep
   simp_do_let (Except.mapError Error.invalidPolicy (checkEntities schema p.toExpr)) as hcheck at h_ep
   simp only [do_ok_eq_ok, Prod.exists, exists_and_right] at h_ep

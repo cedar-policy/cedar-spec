@@ -49,7 +49,7 @@ theorem PartialIsValid.some_inv {p : α → Prop} {x : α} :  (PartialIsValid p 
     | none heq => simp at heq
   · exact some _ rfl
 
-theorem partial_is_valid_rfl (f : α → Bool) (p : α → Prop) (o : Option α) :
+theorem partial_is_valid_rfl {f : α → Bool} {p : α → Prop} {o : Option α} :
   (∀ x, f x = true → p x) → partialIsValid o f → PartialIsValid p o
 := by
   intro h₁ h₂
@@ -79,78 +79,95 @@ def EntitiesRefine (es : Entities) (pes : PartialEntities) : Prop :=
 def RequestAndEntitiesRefine (req : Request) (es : Entities) (preq : PartialRequest) (pes : PartialEntities) : Prop :=
   RequestRefines req preq ∧ EntitiesRefine es pes
 
-/-- Requests and entities that pass `isValidAndConsistent` satisfy `RequestAndEntitiesRefine`.
--/
+theorem validatePartialRequest_ok_environment? {schema : Schema} {req : PartialRequest} {env : TypeEnv} :
+  validatePartialRequest schema req = .ok env →
+  schema.environment? req.principal.ty req.resource.ty req.action = .some env
+:= by
+  intro h
+  simp only [validatePartialRequest] at h
+  split at h
+  · rename_i env' heq
+    split at h <;> try contradiction
+    simp only [Except.ok.injEq] at h
+    simp [h, heq]
+  · contradiction
+
+theorem entitiesIsConsistent_implies_refines {es : Entities} {pes : PartialEntities} :
+  entitiesIsConsistent es pes → EntitiesRefine es pes
+:= by
+  intro h uid data₂ hᵢ
+  replace hᵢ := Data.Map.find?_mem_toList hᵢ
+  simp only [entitiesIsConsistent, List.all_eq_true, Prod.forall] at h
+  specialize h uid data₂ hᵢ
+  split at h <;> simp only [Bool.false_eq_true, Bool.and_eq_true] at h
+  rcases h with ⟨⟨h₂₁, h₂₂⟩, h₂₃⟩
+  rename_i data₁ heq
+  exists data₁
+  and_intros
+  · exact heq
+  · exact partial_is_valid_rfl decide_eq_implies_eq h₂₁
+  · exact partial_is_valid_rfl decide_eq_implies_eq h₂₂
+  · exact partial_is_valid_rfl decide_eq_implies_eq h₂₃
+
+theorem environment?_reqty {schema : Schema} {p r : EntityType} {a : EntityUID} {env : TypeEnv} :
+  schema.environment? p r a = .some env →
+  env.reqty.principal = p ∧ env.reqty.resource = r
+:= by
+  intro h
+  unfold Schema.environment? at h
+  cases h_find : schema.acts.find? a
+  · simp [h_find] at h
+  · simp only [h_find, Option.bind_some_fun] at h
+    split at h <;> try contradiction
+    simp only [Option.some.injEq] at h
+    simp [←h]
+
+theorem requestIsConsistent_implies_refines {schema : Schema} {env : TypeEnv} {req : Request} {preq : PartialRequest} :
+  schema.environment? preq.principal.ty preq.resource.ty preq.action = .some env →
+  requestMatchesEnvironment env req →
+  requestIsConsistent req preq →
+  RequestRefines req preq
+:= by
+  intro heq h_guard h₁
+  simp only [requestIsConsistent, Bool.and_eq_true, decide_eq_true_eq] at h₁
+  obtain ⟨⟨⟨h₁₁, h₁₂⟩, h₁₃⟩, h₁₄⟩ := h₁
+  have ⟨h_penv, h_renv⟩ := environment?_reqty heq
+  simp only [requestMatchesEnvironment, instanceOfRequestType, instanceOfEntityType,
+    Bool.and_eq_true, beq_iff_eq] at h_guard
+  and_intros
+  · exact partial_is_valid_rfl decide_eq_implies_eq h₁₁
+  · exact h₁₂
+  · exact partial_is_valid_rfl decide_eq_implies_eq h₁₃
+  · exact partial_is_valid_rfl decide_eq_implies_eq h₁₄
+  · simp [← h_penv, h_guard]
+  · simp [← h_renv, h_guard]
+
+/-- Requests and entities that pass `isValidAndConsistent` satisfy `RequestAndEntitiesRefine`.  -/
 theorem consistent_checks_ensure_refinement {schema : Schema} {req : Request} {es : Entities} {preq : PartialRequest} {pes : PartialEntities} :
   isValidAndConsistent schema req es preq pes = .ok () → RequestAndEntitiesRefine req es preq pes
 := by
   intro h
   simp only [isValidAndConsistent] at h
   split at h <;> try cases h
+  rename_i env heq
   rcases do_eq_ok₂ h with ⟨h₁, h₂⟩
-  simp only [RequestAndEntitiesRefine]
   constructor
   case _ =>
-    simp only [RequestRefines]
-    simp only [
-      isValidAndConsistent.requestIsValidAndConsistent,
-      requestIsConsistent,
-      Bool.or_eq_true,
-      Bool.not_eq_eq_eq_not,
-      Bool.not_true,
-      Bool.and_eq_true,
-      decide_eq_true_eq
-    ] at h₁
-    split at h₁ <;> simp at h₁
-    rcases h₁ with ⟨h₁₁, h₁₂, h₁₃, h₁₄⟩
-    -- Extract type equalities from requestMatchesEnvironment and schema.environment?
-    rename_i env heq h_guard
-    simp only [not_or, Bool.not_eq_false] at h_guard
-    have h_rm := h_guard.2
-    simp only [requestMatchesEnvironment, instanceOfRequestType, instanceOfEntityType,
-      Bool.and_eq_true, beq_iff_eq] at h_rm
-    refine ⟨
-      partial_is_valid_rfl _ _ _ decide_eq_implies_eq h₁₁,
-      h₁₂,
-      partial_is_valid_rfl _ _ _ decide_eq_implies_eq h₁₃,
-      partial_is_valid_rfl _ _ _ decide_eq_implies_eq h₁₄,
-      ?_, ?_⟩
-    all_goals {
-      unfold Schema.environment? at heq
-      cases h_find : schema.acts.find? preq.action
-      · simp [h_find] at heq
-      · simp only [h_find, Option.bind_some_fun] at heq
-        split at heq <;> simp at heq
-        rw [← heq] at h_rm
-        simp_all
-    }
-
+    have ⟨h_matches, h_consistent⟩ :
+      requestMatchesEnvironment env req ∧ requestIsConsistent req preq
+    := by
+      simp only [isValidAndConsistent.requestIsValidAndConsistent] at h₁
+      split at h₁ <;> simp_all
+    exact requestIsConsistent_implies_refines
+      (validatePartialRequest_ok_environment? heq) h_matches h_consistent
   case _ =>
-    simp [
-      isValidAndConsistent.envIsWellFormed,
-      bind, Except.bind,
-    ] at h₂
-    split at h₂ <;> simp at h₂
-    rename_i h₃
-    replace h₂ := h₃
-    simp [isValidAndConsistent.entitiesIsValidAndConsistent] at h₂
-    split at h₂ <;> simp at h₂
-    simp [entitiesIsConsistent] at h₂
-    simp [EntitiesRefine]
-    intro uid data₂ hᵢ
-    replace hᵢ := Data.Map.find?_mem_toList hᵢ
-    simp [Data.Map.toList] at hᵢ
-    specialize h₂ uid data₂ hᵢ
-    split at h₂ <;> simp at h₂
-    rcases h₂ with ⟨⟨h₂₁, h₂₂⟩, h₂₃⟩
-    rename_i data₁ heq
-    exists data₁
-    constructor
-    exact heq
-    constructor
-    exact partial_is_valid_rfl (fun x => decide (x = data₁.attrs)) (fun x => x = data₁.attrs) data₂.attrs decide_eq_implies_eq h₂₁
-    constructor
-    exact partial_is_valid_rfl (fun x => decide (x = data₁.ancestors)) (fun x => x = data₁.ancestors) data₂.ancestors decide_eq_implies_eq h₂₂
-    exact partial_is_valid_rfl (fun x => decide (x = data₁.tags)) (fun x => x = data₁.tags) data₂.tags decide_eq_implies_eq h₂₃
+    have h₃ : isValidAndConsistent.entitiesIsValidAndConsistent es pes env = .ok ()
+    := by
+      simp only [isValidAndConsistent.envIsWellFormed, bind, Except.bind] at h₂
+      split at h₂ <;> simp_all
+    have h_consistent : entitiesIsConsistent es pes := by
+      simp only [isValidAndConsistent.entitiesIsValidAndConsistent] at h₃
+      split at h₃ <;> simp_all
+    exact entitiesIsConsistent_implies_refines h_consistent
 
 end Cedar.Thm

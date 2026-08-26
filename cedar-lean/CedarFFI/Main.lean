@@ -886,8 +886,7 @@ def parseResidualReauthorizationRequest (req: ByteArray):
   runFfiM do
     let v ← (@Proto.Message.interpret? Proto.PartialEntityValidationRequest) req |>.mapError (s!"failed to parse input: {·}")
     runAndTime (λ () =>
-      -- entity validity does not depend on the request type
-      (if TPE.entitiesIsValid { ets := schema.ets, acts := schema.acts, reqty := default } v.entities
+      (if TPE.entitiesIsValid schema v.entities
        then .ok ()
        else .error (.typeError "partial entities are inconsistent with the type store")
        : EntityValidationResult))
@@ -911,7 +910,7 @@ def parseResidualReauthorizationRequest (req: ByteArray):
   runFfiM do
     let v ← (@Proto.Message.interpret? Proto.PartialRequestValidationRequest) req |>.mapError (s!"failed to parse input: {·}")
     runAndTime (λ () =>
-      TPE.validatePartialRequest schema v.request)
+      ((TPE.validatePartialRequest schema v.request).map (λ _ => ()) : RequestValidationResult))
 
 /--
   `req`: binary protobuf for a `PartialRequestConsistencyRequest`
