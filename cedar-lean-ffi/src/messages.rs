@@ -231,7 +231,12 @@ impl proto::RequestValidationRequest {
 }
 
 pub mod tpe {
-    use cedar_policy::{Entities, PartialEntities, PartialRequest, PolicySet, Request, Schema};
+    use cedar_policy::{
+        Entities, EntityUid, PartialEntities, PartialEntityUid, PartialRequest, PolicySet, Request,
+        RestrictedExpression, Schema, proto::models as cedar_proto,
+    };
+    use smol_str::SmolStr;
+    use std::collections::{BTreeMap, HashMap, HashSet};
 
     use super::proto;
 
@@ -485,6 +490,115 @@ pub mod tpe {
                 has_attrs,
                 has_ancestors,
                 has_tags,
+            }
+        }
+    }
+
+    /// A partial entity that has not been validated against any schema.
+    ///
+    /// All constructors of `PartialEntity` (for both the core and public types) enforce validation,
+    /// so they cannot be used to build an invalid entity to send to Lean.
+    #[derive(Debug, Clone)]
+    pub struct UncheckedPartialEntity {
+        pub uid: EntityUid,
+        pub attrs: Option<BTreeMap<SmolStr, RestrictedExpression>>,
+        pub ancestors: Option<HashSet<EntityUid>>,
+        pub tags: Option<BTreeMap<SmolStr, RestrictedExpression>>,
+    }
+
+    /// A partial request that has not been validated against any schema.
+    #[derive(Debug, Clone)]
+    pub struct UncheckedPartialRequest {
+        pub principal: PartialEntityUid,
+        pub action: EntityUid,
+        pub resource: PartialEntityUid,
+        pub context: Option<BTreeMap<SmolStr, RestrictedExpression>>,
+    }
+
+    fn to_proto_exprs(
+        m: &Option<BTreeMap<SmolStr, RestrictedExpression>>,
+    ) -> HashMap<String, cedar_proto::Expr> {
+        m.iter()
+            .flatten()
+            .map(|(k, v)| {
+                let e = cedar_policy_core::ast::Expr::from(v.as_ref().clone());
+                (k.to_string(), cedar_proto::Expr::from(&e))
+            })
+            .collect()
+    }
+
+    impl proto::PartialEntity {
+        fn from_unchecked(entity: &UncheckedPartialEntity) -> Self {
+            Self {
+                uid: Some(cedar_proto::EntityUid::from(entity.uid.as_ref())),
+                has_attrs: entity.attrs.is_some(),
+                attrs: to_proto_exprs(&entity.attrs),
+                has_ancestors: entity.ancestors.is_some(),
+                ancestors: entity
+                    .ancestors
+                    .iter()
+                    .flatten()
+                    .map(|uid| cedar_proto::EntityUid::from(uid.as_ref()))
+                    .collect(),
+                has_tags: entity.tags.is_some(),
+                tags: to_proto_exprs(&entity.tags),
+            }
+        }
+    }
+
+    impl proto::PartialRequest {
+        fn from_unchecked(req: &UncheckedPartialRequest) -> Self {
+            Self {
+                principal: Some(proto::PartialEntityUid::from_inner(req.principal.as_ref())),
+                action: Some(cedar_proto::EntityUid::from(req.action.as_ref())),
+                resource: Some(proto::PartialEntityUid::from_inner(req.resource.as_ref())),
+                has_context: req.context.is_some(),
+                context: to_proto_exprs(&req.context),
+            }
+        }
+    }
+
+    /// Serialize a partial entity validation request
+    impl proto::PartialEntityValidationRequest {
+        pub(crate) fn new(entities: &[UncheckedPartialEntity]) -> Self {
+            Self {
+                entities: Some(proto::PartialEntities {
+                    entities: entities
+                        .iter()
+                        .map(proto::PartialEntity::from_unchecked)
+                        .collect(),
+                }),
+            }
+        }
+    }
+
+    /// Serialize a partial entity consistency request
+    impl proto::PartialEntityConsistencyRequest {
+        pub(crate) fn new(entities: &Entities, partial_entities: &PartialEntities) -> Self {
+            Self {
+                entities: Some(cedar_proto::Entities::from(entities)),
+                partial_entities: Some(proto::PartialEntities::from_inner(
+                    partial_entities.as_ref(),
+                )),
+            }
+        }
+    }
+
+    /// Serialize a partial request validation request
+    impl proto::PartialRequestValidationRequest {
+        pub(crate) fn new(request: &UncheckedPartialRequest) -> Self {
+            Self {
+                request: Some(proto::PartialRequest::from_unchecked(request)),
+            }
+        }
+    }
+
+    /// Serialize a partial request consistency request
+    impl proto::PartialRequestConsistencyRequest {
+        pub(crate) fn new(request: &Request, partial_request: &PartialRequest) -> Self {
+            Self {
+                request: Some(cedar_proto::Request::from(request)),
+                partial_request: Some(proto::PartialRequest::from_inner(partial_request.as_ref())),
             }
         }
     }

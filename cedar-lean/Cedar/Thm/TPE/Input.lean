@@ -93,7 +93,8 @@ theorem consistent_checks_ensure_refinement {schema : Schema} {req : Request} {e
   case _ =>
     simp only [RequestRefines]
     simp only [
-      isValidAndConsistent.requestIsConsistent,
+      isValidAndConsistent.requestIsValidAndConsistent,
+      requestIsConsistent,
       Bool.or_eq_true,
       Bool.not_eq_eq_eq_not,
       Bool.not_true,
@@ -132,9 +133,9 @@ theorem consistent_checks_ensure_refinement {schema : Schema} {req : Request} {e
     split at h₂ <;> simp at h₂
     rename_i h₃
     replace h₂ := h₃
-    simp [isValidAndConsistent.entitiesIsConsistent] at h₂
+    simp [isValidAndConsistent.entitiesIsValidAndConsistent] at h₂
     split at h₂ <;> simp at h₂
-    simp [isValidAndConsistent.entitiesMatch] at h₂
+    simp [entitiesIsConsistent] at h₂
     simp [EntitiesRefine]
     intro uid data₂ hᵢ
     replace hᵢ := Data.Map.find?_mem_toList hᵢ

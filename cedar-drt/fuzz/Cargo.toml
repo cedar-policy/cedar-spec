@@ -660,3 +660,27 @@ name = "tc-repair-equivalence"
 path = "fuzz_targets/tc-repair-equivalence.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "partial-entity-validation-drt"
+path = "fuzz_targets/partial-entity-validation-drt.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "partial-entity-consistency-drt"
+path = "fuzz_targets/partial-entity-consistency-drt.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "partial-request-validation-drt"
+path = "fuzz_targets/partial-request-validation-drt.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "partial-request-consistency-drt"
+path = "fuzz_targets/partial-request-consistency-drt.rs"
+test = false
+doc = false

@@ -17,30 +17,115 @@
 //! Test utilities for type-directed partial evaluation fuzz targets
 
 use cedar_drt::tests::drop_some_entities;
-use cedar_lean_ffi::{CedarLeanFfi, FfiError};
+use cedar_lean_ffi::{
+    CedarLeanFfi, FfiError, LeanSchema, UncheckedPartialEntity, UncheckedPartialRequest,
+    ValidationResponse,
+};
 use cedar_policy::pst::{Clause, Expr, UnaryOp};
 use cedar_policy::{
-    Entities, Entity, EntityId, EntityUid, PartialEntities, PartialEntity, PartialEntityUid,
-    PartialRequest, PolicyId, PolicySet, Request, Schema, Validator,
+    Context, Entities, Entity, EntityId, EntityUid, PartialEntities, PartialEntity,
+    PartialEntityUid, PartialRequest, PolicyId, PolicySet, Request, RestrictedExpression, Schema,
+    Validator,
 };
 use cedar_policy_core::ast::{self, Value};
 use cedar_policy_core::extensions::Extensions;
 use cedar_policy_core::tpe::residual::Residual;
-use cedar_policy_generators::abac::ABACRequest;
-use cedar_policy_generators::hierarchy::HierarchyGenerator;
-use cedar_policy_generators::schema;
-use cedar_policy_generators::schema_gen::SchemaGen;
+use cedar_policy_generators::{
+    abac::ABACRequest, hierarchy::HierarchyGenerator, schema, schema_gen::SchemaGen,
+    settings::ABACSettings,
+};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
 use ref_cast::RefCast;
+use smol_str::SmolStr;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::convert::TryFrom;
 use std::sync::Arc;
 
-use crate::abac;
+use crate::{abac, schemas};
 
+/// Generates a schema and a hierarchy of entities for it, including its action entities.
+pub fn arbitrary_schema_and_entities(
+    settings: ABACSettings,
+    u: &mut Unstructured<'_>,
+) -> arbitrary::Result<(Schema, Entities)> {
+    let generated_schema = schema::Schema::arbitrary(settings, u)?;
+    let hierarchy = generated_schema.arbitrary_hierarchy(u)?;
+    let schema =
+        Schema::try_from(generated_schema).map_err(|_| arbitrary::Error::IncorrectFormat)?;
+    let entities = schemas::add_actions_to_entities(
+        &schema,
+        Entities::try_from(hierarchy).map_err(|_| arbitrary::Error::NotEnoughData)?,
+    )?;
+    Ok((schema, entities))
+}
+
+/// Generates a schema and 8 requests for it.
+pub fn arbitrary_schema_and_requests(
+    u: &mut Unstructured<'_>,
+) -> arbitrary::Result<(Schema, [ABACRequest; 8])> {
+    let generated_schema = schema::Schema::arbitrary(ABACSettings::undirected(), u)?;
+    let hierarchy = generated_schema.arbitrary_hierarchy(u)?;
+    let requests = [
+        generated_schema.arbitrary_request(&hierarchy, u)?,
+        generated_schema.arbitrary_request(&hierarchy, u)?,
+        generated_schema.arbitrary_request(&hierarchy, u)?,
+        generated_schema.arbitrary_request(&hierarchy, u)?,
+        generated_schema.arbitrary_request(&hierarchy, u)?,
+        generated_schema.arbitrary_request(&hierarchy, u)?,
+        generated_schema.arbitrary_request(&hierarchy, u)?,
+        generated_schema.arbitrary_request(&hierarchy, u)?,
+    ];
+    let schema =
+        Schema::try_from(generated_schema).map_err(|_| arbitrary::Error::IncorrectFormat)?;
+    Ok((schema, requests))
+}
+
+/// Size hint for the inputs of [`arbitrary_schema_and_entities`].
+pub fn schema_and_entities_size_hint(
+    depth: usize,
+) -> arbitrary::Result<(usize, Option<usize>), arbitrary::MaxRecursionReached> {
+    Ok(arbitrary::size_hint::and_all(&[
+        schema::Schema::arbitrary_size_hint(depth)?,
+        HierarchyGenerator::size_hint(depth),
+    ]))
+}
+
+/// Size hint for the inputs of [`arbitrary_schema_and_requests`].
+pub fn schema_and_requests_size_hint(
+    depth: usize,
+) -> arbitrary::Result<(usize, Option<usize>), arbitrary::MaxRecursionReached> {
+    Ok(arbitrary::size_hint::and_all(&[
+        schema_and_entities_size_hint(depth)?,
+        schema::Schema::arbitrary_request_size_hint(depth),
+        schema::Schema::arbitrary_request_size_hint(depth),
+        schema::Schema::arbitrary_request_size_hint(depth),
+        schema::Schema::arbitrary_request_size_hint(depth),
+        schema::Schema::arbitrary_request_size_hint(depth),
+        schema::Schema::arbitrary_request_size_hint(depth),
+        schema::Schema::arbitrary_request_size_hint(depth),
+        schema::Schema::arbitrary_request_size_hint(depth),
+    ]))
+}
+
+fn to_restricted_exprs<'a>(
+    pairs: impl Iterator<Item = (&'a SmolStr, &'a ast::PartialValue)>,
+) -> BTreeMap<SmolStr, RestrictedExpression> {
+    pairs
+        .map(|(k, v)| {
+            (
+                k.clone(),
+                ast::RestrictedExpr::from(Value::try_from(v.clone()).unwrap()).into(),
+            )
+        })
+        .collect()
+}
+
+/// Builds a partial entity whose uid and ancestors come from `entity` and whose attributes
+/// and tags come from `attrs_from`, which must have the same entity type as `entity`.
 fn entity_to_partial_entity(
     entity: &Entity,
+    attrs_from: &Entity,
     u: &mut Unstructured<'_>,
     leafs: &HashSet<EntityUid>,
     schema: &Schema,
@@ -51,24 +136,11 @@ fn entity_to_partial_entity(
         if !is_action && u.ratio(1, 4)? {
             None
         } else {
-            Some(BTreeMap::from_iter(entity.as_ref().attrs().map(
-                |(k, v)| {
-                    (
-                        k.clone(),
-                        ast::RestrictedExpr::from(Value::try_from(v.clone()).unwrap()).into(),
-                    )
-                },
-            )))
+            Some(to_restricted_exprs(attrs_from.as_ref().attrs()))
         },
         // We can only mark ancestors of leaf nodes to unknown
-        if !is_action && leafs.contains(&entity.uid()) {
-            if u.ratio(1, 4)? {
-                None
-            } else {
-                Some(HashSet::from_iter(
-                    entity.as_ref().ancestors().cloned().map(Into::into),
-                ))
-            }
+        if !is_action && leafs.contains(&entity.uid()) && u.ratio(1, 4)? {
+            None
         } else {
             Some(HashSet::from_iter(
                 entity.as_ref().ancestors().cloned().map(Into::into),
@@ -77,23 +149,46 @@ fn entity_to_partial_entity(
         if !is_action && u.ratio(1, 4)? {
             None
         } else {
-            Some(BTreeMap::from_iter(entity.as_ref().tags().map(|(k, v)| {
-                (
-                    k.clone(),
-                    ast::RestrictedExpr::from(Value::try_from(v.clone()).unwrap()).into(),
-                )
-            })))
+            Some(to_restricted_exprs(attrs_from.as_ref().tags()))
         },
         schema,
     )
     .map_err(|_| arbitrary::Error::IncorrectFormat)
 }
 
+// Reorders `sorted` so that each entity might be associated with another entity of the same type to
+// take its attributes from. This functions doesn't actually change the attributes. That's done when
+// building the final partial entity.
+fn shuffle_within_entity_types<'a>(
+    sorted: &[&'a Entity],
+    u: &mut Unstructured<'_>,
+) -> arbitrary::Result<Vec<&'a Entity>> {
+    sorted
+        .iter()
+        .enumerate()
+        .map(|(i, e)| {
+            if u.ratio(1, 2)? {
+                Ok(*e)
+            } else {
+                Ok(sorted
+                    .get(i + 1)
+                    .filter(|next| next.uid().type_name() == e.uid().type_name())
+                    .copied()
+                    .unwrap_or(*e))
+            }
+        })
+        .collect()
+}
+
 /// Constructs a `PartialEntities` given some concrete entities, using `u` to
 /// arbitrarily choose some data to delete, making it unknown in subsequent
 /// partial evaluation.
+///
+/// When `shuffle_attrs` is set each resulting partial entity may take its attributes from a different
+/// entity of the same type. This way the entities are valid, but aren't consistent.
 pub fn entities_to_partial_entities<'a>(
     entities: impl Iterator<Item = &'a Entity>,
+    shuffle_attrs: bool,
     u: &mut Unstructured<'_>,
     schema: &Schema,
 ) -> arbitrary::Result<PartialEntities> {
@@ -104,14 +199,23 @@ pub fn entities_to_partial_entities<'a>(
             leafs.remove(RefCast::ref_cast(a));
         }
     }
-    PartialEntities::from_partial_entities(
+    let partial_entities = if shuffle_attrs {
+        // Sort for determinism: `HashSet` iteration order is unspecified
+        let mut sorted: Vec<&Entity> = entities.iter().collect();
+        sorted.sort_by_cached_key(|e| e.uid().to_string());
+        sorted
+            .iter()
+            .zip(shuffle_within_entity_types(&sorted, u)?)
+            .map(|(e, attrs_from)| entity_to_partial_entity(e, attrs_from, u, &leafs, schema))
+            .collect::<arbitrary::Result<Vec<PartialEntity>>>()?
+    } else {
         entities
             .iter()
-            .map(|e| entity_to_partial_entity(e, u, &leafs, schema))
-            .collect::<arbitrary::Result<Vec<PartialEntity>>>()?,
-        schema,
-    )
-    .map_err(|_| arbitrary::Error::IncorrectFormat)
+            .map(|e| entity_to_partial_entity(e, e, u, &leafs, schema))
+            .collect::<arbitrary::Result<Vec<PartialEntity>>>()?
+    };
+    PartialEntities::from_partial_entities(partial_entities, schema)
+        .map_err(|_| arbitrary::Error::IncorrectFormat)
 }
 
 /// Input for TPE fuzz targets: an ABAC hierarchy, schema, and 8 associated partial requests.
@@ -122,6 +226,76 @@ pub struct TpeFuzzTargetInput {
     pub partial_entities: PartialEntities,
 }
 
+fn maybe_eid(
+    uid: &ast::EntityUID,
+    u: &mut Unstructured<'_>,
+) -> arbitrary::Result<PartialEntityUid> {
+    Ok(PartialEntityUid::new(
+        uid.entity_type().clone().into(),
+        if u.ratio(1, 4)? {
+            None
+        } else {
+            Some(EntityId::new(uid.eid()))
+        },
+    ))
+}
+
+/// Constructs a partial request that is not validated against any schema, taking the principal
+/// and resource from `req` but the action and context from `action_from`. Mixing two requests
+/// yields requests whose principal and resource types don't apply to the action, or whose
+/// context doesn't match it.
+pub fn make_unchecked_partial_request(
+    req: &ABACRequest,
+    action_from: &ABACRequest,
+    u: &mut Unstructured<'_>,
+) -> arbitrary::Result<UncheckedPartialRequest> {
+    let ast::Context::Value(context) = &action_from.context else {
+        // generated requests always have concrete contexts
+        return Err(arbitrary::Error::IncorrectFormat);
+    };
+    Ok(UncheckedPartialRequest {
+        principal: maybe_eid(&req.principal, u)?,
+        action: action_from.action.clone().into(),
+        resource: maybe_eid(&req.resource, u)?,
+        context: if u.ratio(1, 4)? {
+            None
+        } else {
+            Some(
+                context
+                    .iter()
+                    .map(|(k, v)| (k.clone(), ast::RestrictedExpr::from(v.clone()).into()))
+                    .collect(),
+            )
+        },
+    })
+}
+
+pub fn entity_to_unchecked_partial_entity(
+    entity: &Entity,
+    u: &mut Unstructured<'_>,
+) -> arbitrary::Result<UncheckedPartialEntity> {
+    Ok(UncheckedPartialEntity {
+        uid: entity.uid(),
+        attrs: if u.ratio(1, 4)? {
+            None
+        } else {
+            Some(to_restricted_exprs(entity.as_ref().attrs()))
+        },
+        ancestors: if u.ratio(1, 4)? {
+            None
+        } else {
+            Some(HashSet::from_iter(
+                entity.as_ref().ancestors().cloned().map(Into::into),
+            ))
+        },
+        tags: if u.ratio(1, 4)? {
+            None
+        } else {
+            Some(to_restricted_exprs(entity.as_ref().tags()))
+        },
+    })
+}
+
 /// Construct a partial request from a concrete request, randomly dropping eids.
 pub fn make_partial_request(
     req: &ABACRequest,
@@ -129,23 +303,9 @@ pub fn make_partial_request(
     schema: &Schema,
 ) -> arbitrary::Result<PartialRequest> {
     PartialRequest::new(
-        PartialEntityUid::new(
-            req.principal.entity_type().clone().into(),
-            if u.ratio(1, 4)? {
-                None
-            } else {
-                Some(EntityId::new(req.principal.eid()))
-            },
-        ),
+        maybe_eid(&req.principal, u)?,
         req.action.clone().into(),
-        PartialEntityUid::new(
-            req.resource.entity_type().clone().into(),
-            if u.ratio(1, 4)? {
-                None
-            } else {
-                Some(EntityId::new(req.resource.eid()))
-            },
-        ),
+        maybe_eid(&req.resource, u)?,
         None,
         schema,
     )
@@ -168,7 +328,7 @@ impl<'a> Arbitrary<'a> for TpeFuzzTargetInput {
             .try_into()
             .unwrap();
         let partial_entities =
-            entities_to_partial_entities(abac_input.entities.iter(), u, &schema)?;
+            entities_to_partial_entities(abac_input.entities.iter(), false, u, &schema)?;
         Ok(Self {
             abac_input,
             partial_requests,
@@ -417,4 +577,121 @@ pub fn test_tpe_is_authorized_equiv(
             lean_rp.id,
         );
     }
+}
+
+/// Panics unless Lean agrees with `rust_passed`. `detail` is only formatted on failure.
+fn assert_lean_agrees(
+    check: &str,
+    rust_passed: bool,
+    lean: &ValidationResponse,
+    detail: impl FnOnce() -> String,
+) {
+    assert_eq!(
+        rust_passed,
+        lean == &ValidationResponse::Ok(()),
+        "{check} mismatch\nLean: {lean:?}\n{}",
+        detail()
+    );
+}
+
+/// Check that Rust and Lean agree on whether `entities` are valid for `schema`.
+pub fn test_partial_entity_validation_equiv(
+    ffi: &CedarLeanFfi,
+    schema: &Schema,
+    lean_schema: LeanSchema,
+    entities: &[UncheckedPartialEntity],
+) {
+    // `PartialEntity::new` validates; unlike `PartialEntities::from_partial_entities` it
+    // does not additionally compute the transitive closure, which Lean does not model.
+    let rust_err = entities.iter().find_map(|e| {
+        PartialEntity::new(
+            e.uid.clone(),
+            e.attrs.clone(),
+            e.ancestors.clone(),
+            e.tags.clone(),
+            schema,
+        )
+        .err()
+    });
+    let lean_res = ffi
+        .validate_partial_entities(lean_schema, entities)
+        .expect("failed to execute partial entity validation");
+    assert_lean_agrees(
+        "partial entity validation",
+        rust_err.is_none(),
+        &lean_res,
+        || format!("Rust: {rust_err:?}\nEntities: {entities:?}"),
+    );
+}
+
+/// Check that Rust and Lean agree on whether `partial_entities` are consistent with `entities`.
+pub fn test_partial_entity_consistency_equiv(
+    ffi: &CedarLeanFfi,
+    entities: &Entities,
+    partial_entities: &PartialEntities,
+) {
+    let rust_res = partial_entities
+        .as_ref()
+        .check_consistency(entities.as_ref());
+    let lean_res = ffi
+        .check_partial_entity_consistency(entities, partial_entities)
+        .expect("failed to execute partial entity consistency check");
+    assert_lean_agrees(
+        "partial entity consistency",
+        rust_res.is_ok(),
+        &lean_res,
+        || {
+            format!(
+                "Rust: {rust_res:?}\nPartial entities: {partial_entities:?}\nEntities: {}",
+                entities.as_ref()
+            )
+        },
+    );
+}
+
+/// Check that Rust and Lean agree on whether `request` is valid for `schema`.
+pub fn test_partial_request_validation_equiv(
+    ffi: &CedarLeanFfi,
+    schema: &Schema,
+    lean_schema: LeanSchema,
+    request: &UncheckedPartialRequest,
+) {
+    let context = request.context.clone().map(|c| {
+        Context::from_pairs(c.into_iter().map(|(k, v)| (k.to_string(), v)))
+            .expect("context built from a concrete context should be valid")
+    });
+    let rust_res = PartialRequest::new(
+        request.principal.clone(),
+        request.action.clone(),
+        request.resource.clone(),
+        context,
+        schema,
+    );
+    let lean_res = ffi
+        .validate_partial_request(lean_schema, request)
+        .expect("failed to execute partial request validation");
+    assert_lean_agrees(
+        "partial request validation",
+        rust_res.is_ok(),
+        &lean_res,
+        || format!("Rust: {:?}\nRequest: {request:?}", rust_res.err()),
+    );
+}
+
+/// Check that Rust and Lean agree on whether `partial_request` is consistent with `request`.
+pub fn test_partial_request_consistency_equiv(
+    ffi: &CedarLeanFfi,
+    request: &Request,
+    partial_request: &PartialRequest,
+) {
+    let rust_res = partial_request.as_ref().check_consistency(request.as_ref());
+    let lean_res = ffi
+        .check_partial_request_consistency(request, partial_request)
+        .expect("failed to execute partial request consistency check");
+    assert_lean_agrees(
+        "partial request consistency",
+        rust_res.is_ok(),
+        &lean_res,
+        || format!("Rust: {rust_res:?}\nPartial request: {partial_request:?}\nRequest: {request}"),
+    );
 }

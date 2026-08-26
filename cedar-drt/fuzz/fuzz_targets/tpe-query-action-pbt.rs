@@ -81,7 +81,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
             .try_into()
             .unwrap();
         let partial_entities =
-            entities_to_partial_entities(abac_input.entities.iter(), u, &cedar_schema)?;
+            entities_to_partial_entities(abac_input.entities.iter(), false, u, &cedar_schema)?;
         Ok(Self {
             abac_input,
             partial_requests,

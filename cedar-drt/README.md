@@ -20,6 +20,10 @@ The table below lists all available fuzz targets, including which component of t
 | [`request-validation`](fuzz/fuzz_targets/request-validation.rs) | Request Validator | DRT | Diff test request validation |
 | [`tpe-is-authorized-drt`](fuzz/fuzz_targets/tpe-is-authorized-drt.rs) | TPE (partial authorization) | DRT | Diff test Rust and Lean TPE is_authorized API: decisions, policy categorizations, and residual expressions |
 | [`tpe-residual-reauthorize-drt`](fuzz/fuzz_targets/tpe-residual-reauthorize-drt.rs) | TPE (reauthorization of arbitrary residuals) | DRT | Diff test concrete evaluation of a generated residual. The model walks the residual directly; Rust projects it to an `Expr` and evaluates that, so this compares the two routes `reauthorize` and `Residual.evaluate` take |
+| [`partial-entity-validation-drt`](fuzz/fuzz_targets/partial-entity-validation-drt.rs) | TPE (partial entity validator) | DRT | Diff test whether partial entities are valid for a schema |
+| [`partial-entity-consistency-drt`](fuzz/fuzz_targets/partial-entity-consistency-drt.rs) | TPE (partial entity validator) | DRT | Diff test whether partial entities are consistent with concrete entities |
+| [`partial-request-validation-drt`](fuzz/fuzz_targets/partial-request-validation-drt.rs) | TPE (partial request validator) | DRT | Diff test whether a partial request is valid for a schema |
+| [`partial-request-consistency-drt`](fuzz/fuzz_targets/partial-request-consistency-drt.rs) | TPE (partial request validator) | DRT | Diff test whether a partial request is consistent with a concrete request |
 |  |  |  |  |
 | [`formatter`](fuzz/fuzz_targets/formatter.rs) | Policy formatter, Pretty printer, Parser | PBT | Test round trip property: parse ∘ format ∘ pretty-print == id for ASTs |
 | [`formatter-bytes`](fuzz/fuzz_targets/formatter-bytes.rs) | Policy formatter, Parser | PBT | The same as `formatter`, but we start with an arbitrary string instead of pretty-printing a policy AST |
