@@ -35,7 +35,7 @@ open _root_.Proto
 
 inductive ResidualKind where
   | val | var | ite | and | or | unaryApp | binaryApp
-  | getAttr | hasAttr | set | record | call | error | like | is
+  | getAttr | hasAttr | extHasAttr | set | record | call | error | like | is
 deriving Inhabited, Repr
 
 namespace ResidualKind
@@ -50,12 +50,13 @@ def fromInt : Int → Except String ResidualKind
   | 6  => .ok .binaryApp
   | 7  => .ok .getAttr
   | 8  => .ok .hasAttr
-  | 9  => .ok .set
-  | 10 => .ok .record
-  | 11 => .ok .call
-  | 12 => .ok .error
-  | 13 => .ok .like
-  | 14 => .ok .is
+  | 9  => .ok .extHasAttr
+  | 10 => .ok .set
+  | 11 => .ok .record
+  | 12 => .ok .call
+  | 13 => .ok .error
+  | 14 => .ok .like
+  | 15 => .ok .is
   | n  => .error s!"Field {n} does not exist in Residual.Kind"
 
 instance : ProtoEnum ResidualKind := { fromInt := fromInt }
@@ -69,6 +70,7 @@ structure ProtoResidual where
   val        : Option Expr := none
   var        : Var := .principal
   attr       : String := ""
+  attrs      : List String := []
   fieldNames : List String := []
   unaryOp    : Proto.ExprKind.UnaryApp.Op := .not
   binaryOp   : Proto.ExprKind.BinaryApp.Op := .eq
@@ -91,6 +93,7 @@ def merge (r₁ r₂ : ProtoResidual) : ProtoResidual :=
     val        := r₂.val.orElse (λ _ => r₁.val)
     var        := r₂.var
     attr       := Field.merge r₁.attr r₂.attr
+    attrs      := r₁.attrs ++ r₂.attrs
     fieldNames := r₁.fieldNames ++ r₂.fieldNames
     unaryOp    := r₂.unaryOp
     binaryOp   := r₂.binaryOp
@@ -123,20 +126,23 @@ partial def parseField (t : _root_.Proto.Tag) : BParsec (MergeFn ProtoResidual) 
     pureMergeFn (λ r => { r with attr := Field.merge r.attr x })
   | 7 =>
     let x : Repeated String ← Field.guardedParse t
-    pureMergeFn (λ r => { r with fieldNames := r.fieldNames ++ x.toList })
+    pureMergeFn (λ r => { r with attrs := r.attrs ++ x.toList })
   | 8 =>
+    let x : Repeated String ← Field.guardedParse t
+    pureMergeFn (λ r => { r with fieldNames := r.fieldNames ++ x.toList })
+  | 9 =>
     let x : Proto.ExprKind.UnaryApp.Op ← Field.guardedParse t
     pureMergeFn (λ r => { r with unaryOp := x })
-  | 9 =>
+  | 10 =>
     let x : Proto.ExprKind.BinaryApp.Op ← Field.guardedParse t
     pureMergeFn (λ r => { r with binaryOp := x })
-  | 10 =>
+  | 11 =>
     let x : Spec.Proto.Name ← Field.guardedParse t
     pureMergeFn (λ r => { r with fnName := some x })
-  | 11 =>
+  | 12 =>
     let x : Pattern ← Field.guardedParse t
     pureMergeFn (λ r => { r with pattern := r.pattern ++ x })
-  | 12 =>
+  | 13 =>
     let x : EntityType ← Field.guardedParse t
     pureMergeFn (λ r => { r with entityType := some x })
   | _ =>
@@ -221,6 +227,10 @@ partial def toResidual (r : ProtoResidual) : Except String Residual := do
   | .unaryApp, [a] => .ok (.unaryApp (unaryOpOf r.unaryOp) a ty)
   | .getAttr, [a] => .ok (.getAttr a r.attr ty)
   | .hasAttr, [a] => .ok (.hasAttr a r.attr ty)
+  | .extHasAttr, [a] =>
+    match r.attrs with
+    | [] => .error "Residual: EXT_HAS_ATTR with empty `attrs`"
+    | hd :: tl => .ok (.extHasAttr a hd tl ty)
   | .like, [a] => .ok (.unaryApp (.like r.pattern) a ty)
   | .is, [a] => do
     let some ety := r.entityType | .error "Residual: IS without `entity_type`"
@@ -237,7 +247,7 @@ partial def toResidual (r : ProtoResidual) : Except String Residual := do
   -- Wrong number of children for the kind; `arity` produces the message.
   | .ite, _ => do arity 3; .error "unreachable"
   | .and, _ | .or, _ | .binaryApp, _ => do arity 2; .error "unreachable"
-  | .unaryApp, _ | .getAttr, _ | .hasAttr, _ | .like, _ | .is, _ => do
+  | .unaryApp, _ | .getAttr, _ | .hasAttr, _ | .extHasAttr, _ | .like, _ | .is, _ => do
     arity 1; .error "unreachable"
 
 end ProtoResidual
