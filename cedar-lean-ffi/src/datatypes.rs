@@ -54,7 +54,7 @@ impl<T> ResultDef<T> {
     }
 }
 
-impl ResultDef<Vec<TermWithDefs>> {
+impl ResultDef<Vec<CseTerm>> {
     /// Convert a `Result (List Term)` that was serialized in the memoized
     /// referential format into a `Result<Vec<cedar_policy_symcc::term::Term>, String>`.
     /// Each element is a self-contained `ReferentialTerm` (produced by
@@ -568,66 +568,54 @@ pub enum Term {
     },
 }
 
-/// A single node in the memoized serialization of a `Term`, as
-/// produced by `CedarFFI.termToJsonSharing` on the Lean side.
-///
-/// It is either a reference `{"tid": <id>}` to a previously-defined compound
-/// term, an inline leaf (`prim`/`var`/`none`),  or a compound node (`some`/`set`/`record`/`app`)
-/// whose children are themselves `TermNode`s (references or inline leaves). Compound nodes
-/// only appear inline as the `main` of a definition; everywhere else a compound
-/// term is represented by its `{"tid": ...}` reference.
+/// The body of a term definition, which has all the usual [`Term`] variants plus a variant to
+/// denote a reference to another term definition.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-enum TermNode {
-    /// Reference to a definition emitted earlier in the `defs` list.
-    Tid(String),
+enum TermDefBody {
+    /// Reference to a definition id.
+    Ref(String),
     // --- inline leaves (mirror the leaf cases of `Term`) ---
     Prim(TermPrim),
     Var(TermVar),
     None(TermType),
     // --- compound nodes (only appear as a definition's `main`) ---
-    Some(Box<TermNode>),
+    Some(Box<TermDefBody>),
     #[serde(rename_all = "camelCase")]
     Set {
-        elts: Vec<TermNode>,
+        elts: Vec<TermDefBody>,
         elts_ty: TermType,
     },
-    Record(Vec<(SmolStr, TermNode)>),
+    Record(Vec<(SmolStr, TermDefBody)>),
     #[serde(rename_all = "camelCase")]
     App {
         op: Op,
-        args: Vec<TermNode>,
+        args: Vec<TermDefBody>,
         ret_ty: TermType,
     },
 }
 
-/// A single definition in the referential format: a generated id paired with
-/// the shallow term (`main`) it names. `main`'s children are references to
-/// earlier definitions or inline leaves.
+/// A term definition node assigns a term body to an id.
 #[derive(Debug, Deserialize)]
-struct TermDefNode {
-    generated_id: String,
-    main: TermNode,
+struct TermDef {
+    id: String,
+    body: TermDefBody,
 }
 
-/// The memoized serialization of a single `Term`, as produced by
-/// `CedarFFI.termToJsonSharing`.
-///
-/// `defs` lists compound sub-terms, and the list is ordered so that every
-/// definition only references ids that appear *earlier* in the list.
-/// `root` is the reference to the whole term (a
-/// `{"tid": ...}` for a compound term, or an inline leaf).
+/// A single term is represented by a `CseTerm`, a term where common sub-expressions have been
+/// factored out in `defs`. The `CseTerm` represents the term that can be constructed from the
+/// `root` by iteratively replacing references to definitions in `defs` with their body.
 #[derive(Debug, Deserialize)]
-pub struct TermWithDefs {
+pub struct CseTerm {
     #[serde(default)]
-    defs: Vec<TermDefNode>,
-    root: TermNode,
+    defs: Vec<TermDef>,
+    root: TermDefBody,
 }
 
 /// Error raised while reconstructing a `cedar_policy_symcc::term::Term` from its
 /// representation with shared definitions.
 #[derive(Debug, Error)]
-pub enum TermWithDefsError {
+pub enum CseTermError {
     /// A `{"tid": ...}` reference pointed at an id that had not been defined
     /// yet (or at all). Because `defs` is emitted in dependency order this
     /// indicates a malformed/reordered payload.
@@ -643,24 +631,24 @@ pub enum TermWithDefsError {
 
 type SymccTerm = cedar_policy_symcc::term::Term;
 
-impl TermNode {
+impl TermDefBody {
     /// Build a reference to a [`cedar_policy_symcc::term::Term`] by resolving the
     /// shared definitions. It takes advanted of the `Arc<..>` sharing in the
     /// resulting `Term` itself by building the term with the already resolved terms.
     fn resolve(
         self,
         resolved: &std::collections::HashMap<String, Arc<SymccTerm>>,
-    ) -> Result<Arc<SymccTerm>, TermWithDefsError> {
+    ) -> Result<Arc<SymccTerm>, CseTermError> {
         Ok(match self {
-            TermNode::Tid(id) => resolved
+            TermDefBody::Ref(id) => resolved
                 .get(&id)
                 .map(Arc::clone)
-                .ok_or(TermWithDefsError::UnknownId(id))?,
-            TermNode::Prim(p) => Arc::new(SymccTerm::Prim(p.try_into()?)),
-            TermNode::Var(v) => Arc::new(SymccTerm::Var(v.into())),
-            TermNode::None(ty) => Arc::new(SymccTerm::None(ty.into())),
-            TermNode::Some(inner) => Arc::new(SymccTerm::Some(inner.resolve(resolved)?)),
-            TermNode::Set { elts, elts_ty } => {
+                .ok_or(CseTermError::UnknownId(id))?,
+            TermDefBody::Prim(p) => Arc::new(SymccTerm::Prim(p.try_into()?)),
+            TermDefBody::Var(v) => Arc::new(SymccTerm::Var(v.into())),
+            TermDefBody::None(ty) => Arc::new(SymccTerm::None(ty.into())),
+            TermDefBody::Some(inner) => Arc::new(SymccTerm::Some(inner.resolve(resolved)?)),
+            TermDefBody::Set { elts, elts_ty } => {
                 let elts = elts
                     .into_iter()
                     .map(|n| n.resolve(resolved).map(Arc::unwrap_or_clone))
@@ -670,14 +658,14 @@ impl TermNode {
                     elts_ty: elts_ty.into(),
                 })
             }
-            TermNode::Record(entries) => {
+            TermDefBody::Record(entries) => {
                 let map = entries
                     .into_iter()
                     .map(|(k, n)| Ok((k, Arc::unwrap_or_clone(n.resolve(resolved)?))))
-                    .collect::<Result<BTreeMap<SmolStr, SymccTerm>, TermWithDefsError>>()?;
+                    .collect::<Result<BTreeMap<SmolStr, SymccTerm>, CseTermError>>()?;
                 Arc::new(SymccTerm::Record(Arc::new(map)))
             }
-            TermNode::App { op, args, ret_ty } => {
+            TermDefBody::App { op, args, ret_ty } => {
                 let args = args
                     .into_iter()
                     .map(|n| n.resolve(resolved).map(Arc::unwrap_or_clone))
@@ -692,20 +680,20 @@ impl TermNode {
     }
 }
 
-impl TryFrom<TermWithDefs> for SymccTerm {
-    type Error = TermWithDefsError;
+impl TryFrom<CseTerm> for SymccTerm {
+    type Error = CseTermError;
 
     /// Reconstruct the `cedar_policy_symcc::term::Term` from its definition sharing
     /// representation.
-    fn try_from(value: TermWithDefs) -> Result<Self, Self::Error> {
-        let TermWithDefs { defs, root } = value;
+    fn try_from(value: CseTerm) -> Result<Self, Self::Error> {
+        let CseTerm { defs, root } = value;
         let mut resolved: std::collections::HashMap<String, Arc<SymccTerm>> =
             std::collections::HashMap::with_capacity(defs.len());
         // defs should be in the correct order, otherwise we return an error
-        for TermDefNode { generated_id, main } in defs {
+        for TermDef { id, body: main } in defs {
             let term = main.resolve(&resolved)?;
-            if resolved.insert(generated_id.clone(), term).is_some() {
-                return Err(TermWithDefsError::DuplicateId(generated_id));
+            if resolved.insert(id.clone(), term).is_some() {
+                return Err(CseTermError::DuplicateId(id));
             }
         }
         Ok(Arc::unwrap_or_clone(root.resolve(&resolved)?))

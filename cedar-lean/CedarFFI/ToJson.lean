@@ -140,144 +140,86 @@ instance : Lean.ToJson Cedar.Spec.Prim where
   | .string s => Lean.Json.mkObj [("string", Lean.toJson s)]
   | .entityUID uid => Lean.Json.mkObj [("entityUID", Lean.toJson uid)]
 
-def termToJson : Term → Lean.Json
-  | .prim p => Lean.Json.mkObj [("prim", Lean.toJson p)]
-  | .var v  => Lean.Json.mkObj [("var",  Lean.toJson v)]
-  | .none t => Lean.Json.mkObj [("none", Lean.toJson t)]
-  | .some t => Lean.Json.mkObj [("some", termToJson t)]
-  | .set elts eltsTy =>
-    Lean.Json.mkObj [
-      ("set",
-        Lean.Json.mkObj [
-          ("elts",
-            Lean.Json.arr (List.map₁ elts.elts (fun ⟨t,_⟩ => termToJson t) |>.toArray)),
-          ("eltsTy", Lean.toJson eltsTy)
-        ])
-    ]
-  | .record m =>
-    Lean.Json.mkObj [
-      ("record",
-        Lean.Json.arr (m.toList.map₂ (fun ⟨(k,v), _⟩ =>
-          Lean.Json.arr [Lean.Json.str k, termToJson v].toArray)).toArray)
-    ]
-  | .app op args retTy =>
-    Lean.Json.mkObj [
-      ("app",
-        Lean.Json.mkObj [
-          ("op",   Lean.toJson op),
-          ("args", Lean.Json.arr (List.map₁ args (fun ⟨t,_⟩ => termToJson t) |>.toArray)),
-          ("retTy", Lean.toJson retTy)
-        ])
-    ]
-decreasing_by
-  all_goals simp_wf
-  case _ h₁ =>
-    have := Set.sizeOf_lt_of_mem h₁
-    omega
-  case _ h₁ =>
-    cases m
-    simp only [Map.toList_mk_id] at h₁
-    simp only [Map.mk.sizeOf_spec]
-    omega
-  case _ h₁ =>
-    have := List.sizeOf_lt_of_mem h₁
-    omega
-
 /--
-  A local `Hashable Term` instance, used only for memoized serialization.
-  We already have `DecidableEq Term` (hence `BEq`), so a `Hashable` instance is
-  all that is additionally required to key a `Std.HashMap Term _` on terms.
-
-  We derive the hash from the term's `Repr`. This is trivially consistent with
-  the derived `DecidableEq` (equal terms have identical `Repr`), avoids any
-  termination obligations, and is kept local to `CedarFFI` because it is only
-  needed for serialization -- the verified core does not depend on it. Hash
-  collisions are resolved by `BEq`, so correctness does not rely on the hash
-  being injective.
+  Local hashable for Terms.
+  This is only used by the bottom-up serialization: no large terms should be hashed with this.
 -/
 instance : Hashable Term where
   hash t := hash (reprStr t)
 
 /--
-  State threaded through the memoized serialization.
-
-  * `memo`  maps an already-serialized (compound) term to its generated id.
-  * `defs`  accumulates the emitted definitions in *reverse* dependency order
-            (most recently emitted first).  Because children are always emitted
-            before their parents, reversing `defs` at the end yields a list
-            ordered so that every term only refers to ids that appear earlier.
-  * `next`  is the counter used to mint fresh ids.
+  An environment with bindings, with already converted Json terms, and the
+  next id to use for a new binding.
 -/
-structure MemoState where
+structure BindingEnv where
   memo : Std.HashMap Term String
   defs : List Lean.Json
   next : Nat
 
-def MemoState.empty : MemoState := ⟨Std.HashMap.emptyWithCapacity, [], 0⟩
+def BindingEnv.empty : BindingEnv := ⟨Std.HashMap.emptyWithCapacity, [], 0⟩
 
-/-- Build a reference to a compound term that has already been emitted. -/
-private def tidRef (id : String) : Lean.Json :=
-  Lean.Json.mkObj [("tid", Lean.Json.str id)]
+/-- Build a reference to a compound term that has already been bound. -/
+private def idRef (id : String) : Lean.Json :=
+  Lean.Json.mkObj [("ref", Lean.Json.str id)]
 
 /--
-  Given the already-computed shallow `main` json for a compound term `t`,
-  register `t` in the memo table under a fresh id, append the definition
-  `{"gid": <id>, "main": <main>}` to the (reversed) `defs`
-  accumulator, and return a reference `{"tid": <id>}`.
+  Given the already-computed shallow `body` json for a compound term `t`,
+  bind `t` in the table under a fresh id and return a reference `{"tid": <id>}`
+  to be used in place of `body`.
 -/
-private def emitDef (t : Term) (main : Lean.Json) (s : MemoState) :
-    (Lean.Json × MemoState) :=
-  let id := s!"t{s.next}"
-  let definition := Lean.Json.mkObj [("gid", Lean.Json.str id), ("main", main)]
+private def BindingEnv.bind (s : BindingEnv) (t : Term) (body : Lean.Json) :
+    (Lean.Json × BindingEnv) :=
+  let id := s!"t{s.next}" -- a fresh id
+  let definition := Lean.Json.mkObj [("id", Lean.Json.str id), ("body", body)]
   let s := { s with
     memo := s.memo.insert t id,
     defs := definition :: s.defs,
     next := s.next + 1 }
-  (tidRef id, s)
+  (idRef id, s)
 
 /-
   Bottom-up serialization of a `Term` with memoization of compound terms.
 
   Compound terms (`some`, `set`, `record`, `app`) are memoized:
-  shared terms are emitted as definitions: `{"gid": <id>, "main": <shallow json>}`,
-  terms that reference those shared terms use the reference `{"tid": <id>}`.
+  shared terms are emitted as definitions: `{"id": <id>, "body": <shallow json>}`,
+  terms that reference those shared terms use the reference `{"ref": <id>}`.
 -/
 mutual
 
-def termToJsonMemo : Term → MemoState → (Lean.Json × MemoState)
+def termToJsonBindings : Term → BindingEnv → (Lean.Json × BindingEnv)
   | .prim p, s => (Lean.Json.mkObj [("prim", Lean.toJson p)], s)
   | .var v,  s => (Lean.Json.mkObj [("var",  Lean.toJson v)], s)
   | .none t, s => (Lean.Json.mkObj [("none", Lean.toJson t)], s)
   | t@(.some inner), s =>
     match s.memo[t]? with
-    | .some id => (tidRef id, s)
+    | .some id => (idRef id, s)
     | .none =>
-      let (ref, s) := termToJsonMemo inner s
-      emitDef t (Lean.Json.mkObj [("some", ref)]) s
+      let (ref, s) := termToJsonBindings inner s
+      s.bind t (Lean.Json.mkObj [("some", ref)])
   | t@(.set elts eltsTy), s =>
     match s.memo[t]? with
-    | .some id => (tidRef id, s)
+    | .some id => (idRef id, s)
     | .none =>
-      let (refs, s) := termToJsonMemoList elts.elts s
-      let main := Lean.Json.mkObj [
+      let (refs, s) := termListToJsonBindings elts.elts s
+      let body := Lean.Json.mkObj [
         ("set",
           Lean.Json.mkObj [
             ("elts", Lean.Json.arr refs.toArray),
             ("eltsTy", Lean.toJson eltsTy)
           ])
       ]
-      emitDef t main s
+      s.bind t body
   | t@(.record m), s =>
     match s.memo[t]? with
-    | .some id => (tidRef id, s)
+    | .some id => (idRef id, s)
     | .none =>
-      let (entries, s) := termToJsonMemoProd m.toList s
-      emitDef t (Lean.Json.mkObj [("record", Lean.Json.arr entries.toArray)]) s
+      let (entries, s) := termRecordToJsonBindings m.toList s
+      s.bind t (Lean.Json.mkObj [("record", Lean.Json.arr entries.toArray)])
   | t@(.app op args retTy), s =>
     match s.memo[t]? with
-    | .some id => (tidRef id, s)
+    | .some id => (idRef id, s)
     | .none =>
-      let (refs, s) := termToJsonMemoList args s
+      let (refs, s) := termListToJsonBindings args s
       let main := Lean.Json.mkObj [
         ("app",
           Lean.Json.mkObj [
@@ -286,7 +228,7 @@ def termToJsonMemo : Term → MemoState → (Lean.Json × MemoState)
             ("retTy", Lean.toJson retTy)
           ])
       ]
-      emitDef t main s
+      s.bind t main
 termination_by t => sizeOf t
 decreasing_by
   all_goals simp_wf
@@ -297,20 +239,20 @@ decreasing_by
   · omega
 
 /-- Serialize a list of child terms left to right, threading state. -/
-def termToJsonMemoList : List Term → MemoState → (List Lean.Json × MemoState)
+def termListToJsonBindings : List Term → BindingEnv → (List Lean.Json × BindingEnv)
   | [], s => ([], s)
   | t :: ts, s =>
-    let (ref, s) := termToJsonMemo t s
-    let (refs, s) := termToJsonMemoList ts s
+    let (ref, s) := termToJsonBindings t s
+    let (refs, s) := termListToJsonBindings ts s
     (ref :: refs, s)
 termination_by ts => sizeOf ts
 
 /-- Serialize record entries as `[key, ref]` pairs left to right, threading state. -/
-def termToJsonMemoProd : List (Attr × Term) → MemoState → (List Lean.Json × MemoState)
+def termRecordToJsonBindings : List (Attr × Term) → BindingEnv → (List Lean.Json × BindingEnv)
   | [], s => ([], s)
   | (k, v) :: ats, s =>
-    let (ref, s) := termToJsonMemo v s
-    let (entries, s) := termToJsonMemoProd ats s
+    let (ref, s) := termToJsonBindings v s
+    let (entries, s) := termRecordToJsonBindings ats s
     (Lean.Json.arr #[Lean.Json.str k, ref] :: entries, s)
 termination_by ats => sizeOf ats
 
@@ -325,15 +267,15 @@ end
   A deserializer can take advantage of the structure by building terms left-to-right, using shared
   memory representations following the explicit term sharing.
 -/
-def termToJsonSharing (t : Term) : Lean.Json :=
-  let (root, s) := termToJsonMemo t MemoState.empty
+def termToJson (t : Term) : Lean.Json :=
+  let (root, s) := termToJsonBindings t BindingEnv.empty
   Lean.Json.mkObj [
     ("defs", Lean.Json.arr s.defs.reverse.toArray),
     ("root", root)
   ]
 
 instance : Lean.ToJson Term where
-  toJson := termToJsonSharing
+  toJson := termToJson
 
 deriving instance Lean.ToJson for Cedar.SymCC.Error
 
