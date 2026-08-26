@@ -50,6 +50,9 @@ pub mod rbac;
 /// This module contains the `Request` data structure
 pub mod request;
 
+/// Generation of arbitrary TPE residuals
+pub mod residual;
+
 /// This module contains the `Schema` data structure and methods for generating
 /// both schemas and hierarchies/policies that conform to a schema
 pub mod schema;

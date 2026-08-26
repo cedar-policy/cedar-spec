@@ -65,11 +65,7 @@ impl ExprGenerator<'_> {
     /// `max_depth`: maximum size (i.e., depth) of the expression.
     /// For instance, maximum depth of nested sets. Not to be confused with the
     /// `depth` parameter to size_hint.
-    pub fn generate_expr(
-        &mut self,
-        max_depth: usize,
-        u: &mut Unstructured<'_>,
-    ) -> Result<ast::Expr> {
+    pub fn generate_expr(&self, max_depth: usize, u: &mut Unstructured<'_>) -> Result<ast::Expr> {
         if max_depth == 0 {
             // no recursion allowed: just generate a literal
             self.generate_literal_or_var(u)

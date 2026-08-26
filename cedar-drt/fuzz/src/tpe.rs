@@ -16,15 +16,22 @@
 
 //! Test utilities for type-directed partial evaluation fuzz targets
 
+use cedar_drt::tests::drop_some_entities;
 use cedar_lean_ffi::{CedarLeanFfi, FfiError};
 use cedar_policy::pst::{Clause, Expr, UnaryOp};
 use cedar_policy::{
-    Entity, EntityId, EntityUid, PartialEntities, PartialEntity, PartialEntityUid, PartialRequest,
-    PolicyId, PolicySet, Request, Schema, Validator,
+    Entities, Entity, EntityId, EntityUid, PartialEntities, PartialEntity, PartialEntityUid,
+    PartialRequest, PolicyId, PolicySet, Request, Schema, Validator,
 };
 use cedar_policy_core::ast::{self, Value};
+use cedar_policy_core::extensions::Extensions;
+use cedar_policy_core::tpe::residual::Residual;
 use cedar_policy_generators::abac::ABACRequest;
+use cedar_policy_generators::hierarchy::HierarchyGenerator;
+use cedar_policy_generators::schema;
+use cedar_policy_generators::schema_gen::SchemaGen;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
+use log::debug;
 use ref_cast::RefCast;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::convert::TryFrom;
@@ -174,6 +181,96 @@ impl<'a> Arbitrary<'a> for TpeFuzzTargetInput {
     ) -> arbitrary::Result<(usize, Option<usize>), arbitrary::MaxRecursionReached> {
         abac::FuzzTargetInput::<true>::try_size_hint(depth)
     }
+}
+
+/// A schema, a hierarchy, and eight (request, residual) pairs.
+#[derive(Debug, Clone)]
+pub struct TpeResidualFuzzTargetInput {
+    pub entities: Entities,
+    pub residual: Residual,
+    pub reqs: [ABACRequest; 8],
+}
+
+impl<'a> Arbitrary<'a> for TpeResidualFuzzTargetInput {
+    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
+        let settings = abac::FuzzTargetInput::<true>::settings();
+        let gen_schema = schema::Schema::arbitrary(settings.clone(), u)?;
+        let hierarchy = gen_schema.arbitrary_hierarchy(u)?;
+        let reqs = [
+            gen_schema.arbitrary_request(&hierarchy, u)?,
+            gen_schema.arbitrary_request(&hierarchy, u)?,
+            gen_schema.arbitrary_request(&hierarchy, u)?,
+            gen_schema.arbitrary_request(&hierarchy, u)?,
+            gen_schema.arbitrary_request(&hierarchy, u)?,
+            gen_schema.arbitrary_request(&hierarchy, u)?,
+            gen_schema.arbitrary_request(&hierarchy, u)?,
+            gen_schema.arbitrary_request(&hierarchy, u)?,
+        ];
+        let residual = gen_schema
+            .exprgenerator(Some(&hierarchy))
+            .generate_residual(settings.max_depth, u)?;
+
+        let entities = drop_some_entities(
+            Entities::try_from(hierarchy).map_err(|_| arbitrary::Error::NotEnoughData)?,
+            u,
+        )?;
+        Ok(Self {
+            entities,
+            reqs,
+            residual,
+        })
+    }
+
+    fn try_size_hint(
+        depth: usize,
+    ) -> arbitrary::Result<(usize, Option<usize>), arbitrary::MaxRecursionReached> {
+        Ok(arbitrary::size_hint::and_all(&[
+            schema::Schema::arbitrary_size_hint(depth)?,
+            HierarchyGenerator::size_hint(depth),
+            schema::Schema::arbitrary_request_size_hint(depth),
+            schema::Schema::arbitrary_request_size_hint(depth),
+            schema::Schema::arbitrary_request_size_hint(depth),
+            schema::Schema::arbitrary_request_size_hint(depth),
+            schema::Schema::arbitrary_request_size_hint(depth),
+            schema::Schema::arbitrary_request_size_hint(depth),
+            schema::Schema::arbitrary_request_size_hint(depth),
+            schema::Schema::arbitrary_request_size_hint(depth),
+        ]))
+    }
+}
+
+/// Compare Rust and the model on reauthorizing an arbitrary residual against concrete data.
+pub fn test_tpe_reauthorize_residual_equiv(
+    ffi: &CedarLeanFfi,
+    residual: &Residual,
+    request: &Request,
+    entities: &Entities,
+) {
+    let expr = ast::Expr::from(residual.clone());
+    let evaluator = cedar_policy_core::evaluator::Evaluator::new(
+        request.as_ref().clone(),
+        entities.as_ref(),
+        Extensions::all_available(),
+    );
+    let rust_val = evaluator.interpret(&expr, &HashMap::new());
+    let rust_val = rust_val.as_ref().map_err(|_| ());
+
+    let check = match ffi.check_reauthorize_residual(residual, request, entities, rust_val) {
+        Ok(c) => c,
+        Err(FfiError::LeanBackendError(e)) => {
+            debug!("{e}");
+            return;
+        }
+        Err(e) => panic!("Unexpected FfiError: {e:?}"),
+    };
+    assert!(
+        check.agrees,
+        "arbitrary-residual reauthorization mismatch\n\
+         input: {residual:?}\n\
+         Rust:  {}\n\
+         Lean:  {}",
+        check.expected, check.actual
+    );
 }
 
 /// Whether a policyset passes strict validation.

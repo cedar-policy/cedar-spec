@@ -231,7 +231,7 @@ impl proto::RequestValidationRequest {
 }
 
 pub mod tpe {
-    use cedar_policy::{PartialEntities, PartialRequest, PolicySet, Schema};
+    use cedar_policy::{Entities, PartialEntities, PartialRequest, PolicySet, Request, Schema};
 
     use super::proto;
 
@@ -258,6 +258,143 @@ pub mod tpe {
                 policies: Some(cedar_policy::proto::models::PolicySet::from(policies)),
                 request: Some(proto::PartialRequest::from_inner(request.as_ref())),
                 entities: Some(proto::PartialEntities::from_inner(entities.as_ref())),
+            }
+        }
+    }
+
+    impl proto::Residual {
+        pub(crate) fn from_inner(r: &cedar_policy_core::tpe::residual::Residual) -> Self {
+            use cedar_policy_core::ast::{BinaryOp, UnaryOp};
+            use cedar_policy_core::tpe::residual::{Residual as R, ResidualKind as K};
+            use proto::residual::Kind;
+
+            let ty = Some(cedar_policy::proto::models::Type::from(r.ty()));
+            let mut out = Self {
+                ty,
+                ..Default::default()
+            };
+            let child = |r: &cedar_policy_core::tpe::residual::Residual| Self::from_inner(r);
+            match r {
+                R::Concrete { value, .. } => {
+                    out.set_kind(Kind::Val);
+                    out.val = Some(cedar_policy::proto::models::Expr::from(
+                        &cedar_policy_core::ast::Expr::from(value.clone()),
+                    ));
+                }
+                R::Error(_) => out.set_kind(Kind::Error),
+                R::Partial { kind, .. } => match kind {
+                    K::Var(v) => {
+                        out.set_kind(Kind::Var);
+                        out.set_var(cedar_policy::proto::models::expr::Var::from(v));
+                    }
+                    K::If {
+                        test_expr,
+                        then_expr,
+                        else_expr,
+                    } => {
+                        out.set_kind(Kind::Ite);
+                        out.children = vec![child(test_expr), child(then_expr), child(else_expr)];
+                    }
+                    K::And { left, right } => {
+                        out.set_kind(Kind::And);
+                        out.children = vec![child(left), child(right)];
+                    }
+                    K::Or { left, right } => {
+                        out.set_kind(Kind::Or);
+                        out.children = vec![child(left), child(right)];
+                    }
+                    K::UnaryApp { op, arg } => {
+                        out.set_kind(Kind::UnaryApp);
+                        out.set_unary_op(match op {
+                            UnaryOp::Not => cedar_policy::proto::models::expr::unary_app::Op::Not,
+                            UnaryOp::Neg => cedar_policy::proto::models::expr::unary_app::Op::Neg,
+                            UnaryOp::IsEmpty => {
+                                cedar_policy::proto::models::expr::unary_app::Op::IsEmpty
+                            }
+                        });
+                        out.children = vec![child(arg)];
+                    }
+                    K::BinaryApp { op, arg1, arg2 } => {
+                        use cedar_policy::proto::models::expr::binary_app::Op as POp;
+                        out.set_kind(Kind::BinaryApp);
+                        out.set_binary_op(match op {
+                            BinaryOp::Eq => POp::Eq,
+                            BinaryOp::Less => POp::Less,
+                            BinaryOp::LessEq => POp::LessEq,
+                            BinaryOp::Add => POp::Add,
+                            BinaryOp::Sub => POp::Sub,
+                            BinaryOp::Mul => POp::Mul,
+                            BinaryOp::In => POp::In,
+                            BinaryOp::Contains => POp::Contains,
+                            BinaryOp::ContainsAll => POp::ContainsAll,
+                            BinaryOp::ContainsAny => POp::ContainsAny,
+                            BinaryOp::GetTag => POp::GetTag,
+                            BinaryOp::HasTag => POp::HasTag,
+                        });
+                        out.children = vec![child(arg1), child(arg2)];
+                    }
+                    K::GetAttr { expr, attr } => {
+                        out.set_kind(Kind::GetAttr);
+                        out.attr = attr.to_string();
+                        out.children = vec![child(expr)];
+                    }
+                    K::HasAttr { expr, attr } => {
+                        out.set_kind(Kind::HasAttr);
+                        out.attr = attr.to_string();
+                        out.children = vec![child(expr)];
+                    }
+                    K::Like { expr, pattern } => {
+                        out.set_kind(Kind::Like);
+                        out.pattern = pattern
+                            .iter()
+                            .map(cedar_policy::proto::models::expr::like::PatternElem::from)
+                            .collect();
+                        out.children = vec![child(expr)];
+                    }
+                    K::Is { expr, entity_type } => {
+                        out.set_kind(Kind::Is);
+                        out.entity_type =
+                            Some(cedar_policy::proto::models::Name::from(entity_type.name()));
+                        out.children = vec![child(expr)];
+                    }
+                    K::Set(items) => {
+                        out.set_kind(Kind::Set);
+                        out.children = items.iter().map(child).collect();
+                    }
+                    K::Record(attrs) => {
+                        out.set_kind(Kind::Record);
+                        out.field_names = attrs.keys().map(|k| k.to_string()).collect();
+                        out.children = attrs.values().map(child).collect();
+                    }
+                    K::ExtensionFunctionApp { fn_name, args } => {
+                        out.set_kind(Kind::Call);
+                        out.fn_name = Some(cedar_policy::proto::models::Name::from(fn_name));
+                        out.children = args.iter().map(child).collect();
+                    }
+                },
+            }
+            out
+        }
+    }
+
+    /// Serialize a request to reauthorize an arbitrary residual against concrete data.
+    impl proto::ResidualReauthorizationRequest {
+        pub(crate) fn new(
+            residual: &cedar_policy_core::tpe::residual::Residual,
+            request: &Request,
+            entities: &Entities,
+            expected: Result<&cedar_policy_core::ast::Value, ()>,
+        ) -> Self {
+            Self {
+                residual: Some(proto::Residual::from_inner(residual)),
+                request: Some(cedar_policy::proto::models::Request::from(request)),
+                entities: Some(cedar_policy::proto::models::Entities::from(entities)),
+                expected_value: expected.ok().map(|v| {
+                    cedar_policy::proto::models::Expr::from(&cedar_policy_core::ast::Expr::from(
+                        v.clone(),
+                    ))
+                }),
+                expects_error: expected.is_err(),
             }
         }
     }

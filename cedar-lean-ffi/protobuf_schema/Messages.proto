@@ -332,6 +332,56 @@ message PartialAuthorizationRequest {
     PartialEntities entities = 4;
 }
 
+// A TPE residual expression
+message Residual {
+    cedar_policy_validator.Type ty = 1;
+
+    Kind kind = 2;
+
+    // Operands, in the order the corresponding `Residual` constructor takes them.
+    repeated Residual children = 3;
+
+    // A value, carried as a literal `Expr` because that is how Lean parses values — see
+    // `Cedar.Spec.Value.exprToValue`.
+    cedar_policy_core.Expr val = 4;
+    cedar_policy_core.Expr.Var var = 5;
+    string attr = 6;
+    // Record attribute names, positionally paired with `children`.
+    repeated string field_names = 7;
+    cedar_policy_core.Expr.UnaryApp.Op unary_op = 8;
+    cedar_policy_core.Expr.BinaryApp.Op binary_op = 9;
+    cedar_policy_core.Name fn_name = 10;
+    repeated cedar_policy_core.Expr.Like.PatternElem pattern = 11;
+    cedar_policy_core.Name entity_type = 12;
+
+    enum Kind {
+        VAL = 0;
+        VAR = 1;
+        ITE = 2;
+        AND = 3;
+        OR = 4;
+        UNARY_APP = 5;
+        BINARY_APP = 6;
+        GET_ATTR = 7;
+        HAS_ATTR = 8;
+        SET = 9;
+        RECORD = 10;
+        CALL = 11;
+        ERROR = 12;
+        LIKE = 13;
+        IS = 14;
+    }
+}
+
+// Reevaluate a residual against concrete, comparing it to the expected value 
+message ResidualReauthorizationRequest {
+    Residual residual = 1;
+    cedar_policy_core.Request request = 2;
+    cedar_policy_core.Entities entities = 3;
+    cedar_policy_core.Expr expected_value = 4;
+    bool expects_error = 5;
+}
+
 // Batched authorization request
 message BatchedAuthorizationRequest {
     cedar_policy_core.PolicySet policies = 1;
