@@ -58,14 +58,14 @@ theorem isValidAndConsistent_env
   simp only [isValidAndConsistent] at h_valid
   split at h_valid <;> try cases h_valid
   rename_i env heq
-  exists env; refine ⟨heq, ?_⟩
+  exists env; apply And.intro (validatePartialRequest_ok_environment? heq)
   rcases do_eq_ok₂ h_valid with ⟨h₁, h₂⟩
-  simp only [isValidAndConsistent.requestIsValidAndConsistent, Bool.or_eq_true,
+  simp only [isValidAndConsistent.requestIsValidAndConsistent,
     Bool.not_eq_eq_eq_not, Bool.not_true] at h₁
   split at h₁ <;> try cases h₁
-  rename_i h_guard; simp only [not_or, Bool.not_eq_false] at h_guard
-  simp only [isValidAndConsistent.entitiesIsValidAndConsistent, Bool.or_eq_true, Bool.not_eq_eq_eq_not,
-    Bool.not_true] at h₂
+  rename_i h_guard; simp only [Bool.not_eq_false] at h_guard
+  simp only [isValidAndConsistent.entitiesIsValidAndConsistent, Bool.or_eq_true,
+    Bool.not_eq_eq_eq_not, Bool.not_true] at h₂
   split at h₂ <;> try cases h₂
   rename_i heq₄; simp only [not_or, Bool.not_eq_false] at heq₄
   rcases heq₄ with ⟨_, heq₄⟩
@@ -77,7 +77,7 @@ theorem isValidAndConsistent_env
   simp only [ite_eq_right_iff, reduceCtorEq, imp_false, Bool.not_eq_false] at h₂
   simp only [Except.isOk, Except.toBool] at h₂
   split at h₂ <;> cases h₂; rename_i heq₅
-  exact instance_of_well_formed_env heq₅ h_guard.2 heq₄
+  exact instance_of_well_formed_env heq₅ h_guard heq₄
 
 theorem evaluatePolicies_residuals_equiv
   {schema : Schema}

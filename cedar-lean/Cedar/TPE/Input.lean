@@ -84,47 +84,45 @@ def partialIsValid {α} (o : Option α) (f : α → Bool) : Bool :=
 
 def requestIsValid (env : TypeEnv) (req : PartialRequest) : Bool :=
   (partialIsValid req.principal.asEntityUID λ principal =>
-    instanceOfEntityType principal env.reqty.principal env) &&
+    instanceOfEntityType principal env.reqty.principal env.schema) &&
   req.action == env.reqty.action &&
   (partialIsValid req.resource.asEntityUID λ resource =>
-    instanceOfEntityType resource env.reqty.resource env) &&
+    instanceOfEntityType resource env.reqty.resource env.schema) &&
   (partialIsValid req.context λ m =>
-    instanceOfType (.record m) (.record env.reqty.context) env)
+    instanceOfType (.record m) (.record env.reqty.context) env.schema)
 
-/--`requestIsValid` using a schema instead of a `TypeEnv`. The request's principal, action, and
-resource must identify a request environment in the schema, and the request must be valid in it.-/
-def validatePartialRequest (schema : Schema) (req : PartialRequest) : RequestValidationResult :=
+def validatePartialRequest (schema : Schema) (req : PartialRequest) : Except RequestValidationError TypeEnv :=
   match schema.environment? req.principal.ty req.resource.ty req.action with
   | .some env =>
     if requestIsValid env req
-    then .ok ()
+    then .ok env
     else .error (.typeError "partial request is inconsistent with the type store")
   | .none => .error (.typeError "partial request does not match any environment")
 
-def entitiesIsValid (env : TypeEnv) (es : PartialEntities) : Bool :=
-  (es.toList.all entityIsValid) && (env.acts.toList.all instanceOfActionSchema)
+def entitiesIsValid (schema : Schema) (es : PartialEntities) : Bool :=
+  (es.toList.all entityIsValid) && (schema.acts.toList.all instanceOfActionSchema)
 where
   actionEntityIsValid uid entityData : Bool :=
-    match env.acts.find? uid with
+    match schema.acts.find? uid with
     | .some actionEntry =>
       (partialIsValid entityData.ancestors (actionEntry.ancestors == ·)) &&
-      (partialIsValid entityData.attrs (instanceOfType · (.record Map.empty) env)) &&
+      (partialIsValid entityData.attrs (instanceOfType · (.record Map.empty) schema)) &&
       (partialIsValid entityData.tags (· == Map.empty))
     | .none             => false
   entityIsValid p :=
     let (uid, entityData) := p
     let (attrs, ancestors, tags) := (entityData.attrs, entityData.ancestors, entityData.tags)
-    match env.ets.find? uid.ty with
+    match schema.ets.find? uid.ty with
     | .some entry =>
       entry.isValidEntityEID uid.eid &&
       (partialIsValid ancestors λ ancestors =>
         ancestors.all (λ ancestor =>
         entry.ancestors.contains ancestor.ty &&
-        instanceOfEntityType ancestor ancestor.ty env)) &&
-      (partialIsValid attrs (instanceOfType · (.record entry.attrs) env)) &&
+        instanceOfEntityType ancestor ancestor.ty schema)) &&
+      (partialIsValid attrs (instanceOfType · (.record entry.attrs) schema)) &&
       (partialIsValid tags λ tags =>
         match entry.tags? with
-        | .some tty => tags.values.all (instanceOfType · tty env)
+        | .some tty => tags.values.all (instanceOfType · tty schema)
         | .none     => tags == Map.empty)
     | .none => actionEntityIsValid uid entityData
   instanceOfActionSchema p :=
@@ -132,9 +130,6 @@ where
     match es.find? uid with
     | .some entry₁ => actionEntityIsValid uid entry₁
     | _            => true
-
-def requestAndEntitiesIsValid (env : TypeEnv) (req : PartialRequest) (es : PartialEntities) : Bool :=
-  requestIsValid env req && entitiesIsValid env es
 
 /-- Every known component of `req₂` agrees with `req₁`. -/
 def requestIsConsistent (req₁ : Request) (req₂ : PartialRequest) : Bool :=
@@ -162,12 +157,12 @@ inductive ConcretizationError
   | invalidEnvironment
 
 def isValidAndConsistent (schema : Schema) (req₁ : Request) (es₁ : Entities) (req₂ : PartialRequest) (es₂ : PartialEntities) : Except ConcretizationError Unit :=
-  match schema.environment? req₂.principal.ty req₂.resource.ty req₂.action with
-  | .some env => do requestIsValidAndConsistent env; entitiesIsValidAndConsistent env; envIsWellFormed env
-  | .none => .error .invalidEnvironment
+  match validatePartialRequest schema req₂ with
+  | .ok env => do requestIsValidAndConsistent env; entitiesIsValidAndConsistent env; envIsWellFormed env
+  | .error _ => .error .invalidEnvironment
 where
   requestIsValidAndConsistent env :=
-  if !requestIsValid env req₂ || !requestMatchesEnvironment env req₁
+  if !requestMatchesEnvironment env req₁
   then
     .error .typeError
   else
@@ -177,7 +172,7 @@ where
     else
       .error .requestsDoNotMatch
   entitiesIsValidAndConsistent env : Except ConcretizationError Unit :=
-    if !entitiesIsValid env es₂ || !(entitiesMatchEnvironment env es₁).isOk
+    if !entitiesIsValid env.schema es₂ || !(entitiesMatchEnvironment env es₁).isOk
     then
       .error .typeError
     else
