@@ -60,11 +60,11 @@ theorem isValidAndConsistent_env
   rename_i env heq
   exists env; refine ⟨heq, ?_⟩
   rcases do_eq_ok₂ h_valid with ⟨h₁, h₂⟩
-  simp only [isValidAndConsistent.requestIsConsistent, Bool.or_eq_true, Bool.not_eq_eq_eq_not,
-    Bool.not_true, Bool.and_eq_true, decide_eq_true_eq] at h₁
+  simp only [isValidAndConsistent.requestIsValidAndConsistent, Bool.or_eq_true,
+    Bool.not_eq_eq_eq_not, Bool.not_true] at h₁
   split at h₁ <;> try cases h₁
   rename_i h_guard; simp only [not_or, Bool.not_eq_false] at h_guard
-  simp only [isValidAndConsistent.entitiesIsConsistent, Bool.or_eq_true, Bool.not_eq_eq_eq_not,
+  simp only [isValidAndConsistent.entitiesIsValidAndConsistent, Bool.or_eq_true, Bool.not_eq_eq_eq_not,
     Bool.not_true] at h₂
   split at h₂ <;> try cases h₂
   rename_i heq₄; simp only [not_or, Bool.not_eq_false] at heq₄

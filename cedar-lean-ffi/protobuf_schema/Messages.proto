@@ -382,6 +382,24 @@ message ResidualReauthorizationRequest {
     bool expects_error = 5;
 }
 
+message PartialEntityValidationRequest {
+    PartialEntities entities = 1;
+}
+
+message PartialRequestValidationRequest {
+    PartialRequest request = 1;
+}
+
+message PartialRequestConsistencyRequest {
+    cedar_policy_core.Request request = 1;
+    PartialRequest partial_request = 2;
+}
+
+message PartialEntityConsistencyRequest {
+    cedar_policy_core.Entities entities = 1;
+    PartialEntities partial_entities = 2;
+}
+
 // Batched authorization request
 message BatchedAuthorizationRequest {
     cedar_policy_core.PolicySet policies = 1;

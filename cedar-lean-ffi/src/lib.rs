@@ -28,3 +28,4 @@ pub use datatypes::{
 };
 pub use err::FfiError;
 pub use lean_ffi::{CedarLeanFfi, LeanSchema};
+pub use messages::tpe::{UncheckedPartialEntity, UncheckedPartialRequest};

@@ -282,6 +282,14 @@ unsafe extern "C" {
     fn isAuthorizedPartial(req: *mut lean_object) -> *mut lean_object;
 
     fn reauthorizeResidual(req: *mut lean_object) -> *mut lean_object;
+    fn validatePartialEntities(schema: *mut lean_object, req: *mut lean_object)
+    -> *mut lean_object;
+
+    fn checkPartialEntityConsistency(req: *mut lean_object) -> *mut lean_object;
+
+    fn validatePartialRequest(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
+
+    fn checkPartialRequestConsistency(req: *mut lean_object) -> *mut lean_object;
 
     fn initialize_Cedar_CedarFFI(builtin: u8, ob: *mut lean_object) -> *mut lean_object;
 
