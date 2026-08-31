@@ -182,22 +182,37 @@ def compileOr (t₁ : Term) (r₂ : Result Term) : Result Term := do
     else .error .typeError
   | _, _ => .error .typeError
 
+/--
+  This is an iterative implementation of the compilation of extended has. We also define
+  a proved equivalent recursive implementation in `Cedar.Thm.SymCC.Compiler.ExtHasAttrRec` that is
+  easier to use in proofs.
+-/
 def compileExtHasAttr (t : Term) (as : List Attr) (εs : SymEntities) : Result Term :=
-  match as with
-  | [] => pure (Term.some (Term.prim (.bool true)))
-  | [a] => do ifSome t (← compileHasAttr (option.get t) a εs)
-  | a :: as₁ => do
-    let t₀ ← compileHasAttr (option.get t) a εs
-    let t₁ := ifSome t t₀
-    match t₁ with
-    | .some (.prim (.bool false)) => pure t₁
-    | _ =>
-      match compileGetAttr (option.get t) a εs with
-      | .error .noSuchAttribute => pure t₁
-      | .error e => .error e
-      | .ok t₂ =>
-        let t₄ ← compileExtHasAttr (ifSome t t₂) as₁ εs
-        compileAnd t₁ (.ok t₄)
+  let rec loop (current : Term) (as : List Attr) (acc : List Term) : Result (List Term) :=
+    match as with
+    | [] => .ok acc.reverse
+    | a :: rest => do
+      let has := ifSome current (← compileHasAttr (option.get current) a εs)
+      -- `statically_false`: `has` is literally `some false`.
+      let staticallyFalse :=
+        match has with
+        | .some (.prim (.bool false)) => true
+        | _ => false
+      let acc := has :: acc
+      if staticallyFalse || rest.isEmpty then
+        .ok acc.reverse
+      else
+        match compileGetAttr (option.get current) a εs with
+        | .error .noSuchAttribute => .ok acc.reverse
+        | .error e => .error e
+        | .ok getRes => loop (ifSome current getRes) rest acc
+  do
+    let results ← loop t as []
+    match results.reverse with
+    | [] =>
+      pure (Term.some (Term.prim (.bool true)))
+    | r :: rs =>
+      rs.foldlM (fun result has => compileAnd has (.ok result)) r
 
 def compileSet (ts : List Term) : Result Term := do
    match ts with

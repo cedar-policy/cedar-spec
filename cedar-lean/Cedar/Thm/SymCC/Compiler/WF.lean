@@ -19,6 +19,7 @@ module
 public import Cedar.SymCC.Compiler
 import all Cedar.SymCC.Compiler -- proving things about internals of the compiler
 import Cedar.Thm.SymCC.Compiler.Basic
+public import Cedar.Thm.SymCC.Compiler.ExtHasAttrRec
 import all Cedar.Thm.SymCC.Compiler.Invert -- we require some lemmas from Compiler.Invert that are about private compiler internals
 public import Cedar.Thm.SymCC.Env.WF
 import Cedar.Thm.SymCC.Term.TypeOf
@@ -329,21 +330,21 @@ private theorem compile_getAttr_wf {x₁ : Expr} {a : Attr} {εnv : SymEnv} {t :
   exists tyₐ
   exact h.right
 
-public theorem compileExtHasAttr_wf {t₁ : Term} {attrs : List Attr} {εs : SymEntities} {t : Term}
+public theorem compileExtHasAttrRec_wf {t₁ : Term} {attrs : List Attr} {εs : SymEntities} {t : Term}
   (hwε : εs.WellFormed)
   (hw₁ : t₁.WellFormed εs) (hty₁ : ∃ ty, t₁.typeOf = .option ty)
-  (hok : compileExtHasAttr t₁ attrs εs = .ok t) :
+  (hok : compileExtHasAttrRec t₁ attrs εs = .ok t) :
   t.WellFormed εs ∧ t.typeOf = .option .bool := by
   induction attrs generalizing t₁ t with
   | nil =>
-    simp [compileExtHasAttr, pure, Except.pure] at hok
+    simp [compileExtHasAttrRec, pure, Except.pure] at hok
     rw [← hok]
     exact ⟨Term.WellFormed.some_wf wf_bool, by simp [typeOf_bool]⟩
   | cons a rest ih =>
     cases rest with
     | nil =>
       -- Single attr case: ifSome t₁ (compileHasAttr ...)
-      simp only [compileExtHasAttr, bind, Except.bind] at hok
+      simp only [compileExtHasAttrRec, bind, Except.bind] at hok
       split at hok
       case h_1 => simp at hok
       case h_2 t_ha hok_ha =>
@@ -354,7 +355,7 @@ public theorem compileExtHasAttr_wf {t₁ : Term} {attrs : List Attr} {εs : Sym
       exact ⟨h.left, h.right⟩
     | cons b rest' =>
       -- Multi attr case
-      simp only [compileExtHasAttr, bind, Except.bind] at hok
+      simp only [compileExtHasAttrRec, bind, Except.bind] at hok
       split at hok
       case h_1 => simp at hok
       case h_2 t_ha hok_ha =>
@@ -381,7 +382,7 @@ public theorem compileExtHasAttr_wf {t₁ : Term} {attrs : List Attr} {εs : Sym
         have hwtHas := wf_ifSome_option hw₁ hwha.left hwha.right
         have ⟨hwga, tyga, htyga⟩ := compileGetAttr_wf hwε hwo.left hga
         have hwtNext := wf_ifSome_option hw₁ hwga htyga
-        simp_do_let (compileExtHasAttr (ifSome t₁ t_ga) (b :: rest') εs) at hok
+        simp_do_let (compileExtHasAttrRec (ifSome t₁ t_ga) (b :: rest') εs) at hok
         rename_i t_rest hrest
         have ⟨hwrest, htyrest⟩ := ih hwtNext.left ⟨tyga, hwtNext.right⟩ hrest
         exact compileAnd_preserves_wf hwtHas.left hwtHas.right
@@ -403,7 +404,8 @@ private theorem compile_extHasAttr_wf' {x₁ : Expr} {a : Attr} {l : List Attr} 
   simp_do_let (compile x₁ εnv) at hok
   rename_i t₁ hok₁
   have ⟨hwt₁, ty₁, hty₁⟩ := ih₁ hwφ₁ hok₁
-  exact compileExtHasAttr_wf hwφ₁.left.right hwt₁ ⟨ty₁, hty₁⟩ hok
+  rw [compileExtHasAttr_eq_compileExtHasAttrRec] at hok
+  exact compileExtHasAttrRec_wf hwφ₁.left.right hwt₁ ⟨ty₁, hty₁⟩ hok
 
 private theorem compile_extHasAttr_wf {x₁ : Expr} {a : Attr} {l : List Attr} {εnv : SymEnv} {t : Term}
   (hwf : SymEnv.WellFormedFor εnv (Expr.extHasAttr x₁ a l))

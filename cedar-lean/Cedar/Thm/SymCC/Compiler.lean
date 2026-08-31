@@ -20,6 +20,7 @@ import Cedar.Thm.SymCC.Compiler.Attr
 import Cedar.Thm.SymCC.Compiler.Binary
 import Cedar.Thm.SymCC.Compiler.Call
 import Cedar.Thm.SymCC.Compiler.Control
+import Cedar.Thm.SymCC.Compiler.ExtHasAttr
 import Cedar.Thm.SymCC.Compiler.LitVar
 import Cedar.Thm.SymCC.Compiler.Record
 import Cedar.Thm.SymCC.Compiler.Set

@@ -775,7 +775,7 @@ private theorem compile_interpret_hasAttr_on_footprint {x₁ : Expr}  {a₁ : At
       interpret_ifSome hI₂ hwt₁ (Term.WellFormed.some_wf wf_bool),
       ih₁, interpret_term_some, interpret_term_prim]
 
-private theorem compileExtHasAttr_interpret_eq
+private theorem compileExtHasAttrRec_interpret_eq
   {t₁ : Term} {attrs : List Attr} {εs : SymEntities} {ft : Set Term}
   {I₁ I₂ : Interpretation} {t : Term}
   (hwε : εs.WellFormed)
@@ -785,17 +785,17 @@ private theorem compileExtHasAttr_interpret_eq
   (hw₁ : t₁.WellFormed εs)
   (hty₁ : ∃ ty, t₁.typeOf = .option ty)
   (hih : t₁.interpret I₁ = t₁.interpret I₂)
-  (hok : compileExtHasAttr t₁ attrs εs = .ok t) :
+  (hok : compileExtHasAttrRec t₁ attrs εs = .ok t) :
   t.interpret I₁ = t.interpret I₂ := by
   induction attrs generalizing t₁ t with
   | nil =>
-    simp only [compileExtHasAttr, pure, Except.pure, Except.ok.injEq] at hok
+    simp only [compileExtHasAttrRec, pure, Except.pure, Except.ok.injEq] at hok
     subst hok
     simp [interpret_term_some, interpret_term_prim]
   | cons a rest ih =>
     cases rest with
     | nil =>
-      simp only [compileExtHasAttr, bind, Except.bind] at hok
+      simp only [compileExtHasAttrRec, bind, Except.bind] at hok
       generalize hha : compileHasAttr (option.get t₁) a εs = rha at hok
       cases rha with
       | error => simp only [reduceCtorEq] at hok
@@ -824,7 +824,7 @@ private theorem compileExtHasAttr_interpret_eq
             interpret_ifSome hI₂ hw₁ (Term.WellFormed.some_wf wf_bool),
             hih, interpret_term_some, interpret_term_prim]
     | cons b rest' =>
-      simp [compileExtHasAttr, bind, Except.bind] at hok
+      simp [compileExtHasAttrRec, bind, Except.bind] at hok
       split at hok
       . contradiction
       . rename_i _ t_ha hha
@@ -887,7 +887,7 @@ private theorem compileExtHasAttr_interpret_eq
               rename_i _ t_rest hrest
               have hirest := ih hwnext.left ⟨tyga, hwnext.right⟩ hinext hrest
               have hwhas := wf_ifSome_option hw₁ hwha.left hwha.right
-              have hwrest := compileExtHasAttr_wf hwε hwnext.left ⟨tyga, hwnext.right⟩ hrest
+              have hwrest := compileExtHasAttrRec_wf hwε hwnext.left ⟨tyga, hwnext.right⟩ hrest
               simp only [compileAnd] at hok
               split at hok
               case h_1 => contradiction
@@ -917,9 +917,10 @@ private theorem compile_interpret_extHasAttr_on_footprint {x₁ : Expr} {a₁ : 
   simp only at hok
   simp_do_let (compile x₁ εnv) at hok
   rename_i t₁ hok₁
+  rw [compileExtHasAttr_eq_compileExtHasAttrRec] at hok
   specialize ih₁ hwε' hI₁ hI₂ hsm hft hok₁
   have ⟨hwt₁, ty₁, hty₁⟩ := compile_wf hwε' hok₁
-  exact compileExtHasAttr_interpret_eq hwε'.left.right hI₁ hI₂ hsm.right hwt₁ ⟨ty₁, hty₁⟩ ih₁ hok
+  exact compileExtHasAttrRec_interpret_eq hwε'.left.right hI₁ hI₂ hsm.right hwt₁ ⟨ty₁, hty₁⟩ ih₁ hok
 
 private theorem compile_interpret_getAttr_on_footprint {x₁ : Expr}  {a₁ : Attr} {ft : Set Term} {εnv : SymEnv} {I₁ I₂ : Interpretation} {t : Term}
   (hwε : εnv.WellFormedFor (.getAttr x₁ a₁))

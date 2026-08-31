@@ -344,18 +344,18 @@ private theorem compileAnd_option_typed {t₁ : Term} {r₂ : SymCC.Result Term}
       · simp at h
   · simp at h
 
-private theorem compileExtHasAttr_option_typed {t₁ : Term} {attrs : List Attr} {εs : SymEntities} {t : Term}
-  (h : compileExtHasAttr t₁ attrs εs = .ok t) : OptionTyped t := by
+private theorem compileExtHasAttrRec_option_typed {t₁ : Term} {attrs : List Attr} {εs : SymEntities} {t : Term}
+  (h : compileExtHasAttrRec t₁ attrs εs = .ok t) : OptionTyped t := by
   induction attrs generalizing t₁ t with
-  | nil => simp [compileExtHasAttr, pure, Except.pure] at h; subst h; apply typeOf_someOf
+  | nil => simp [compileExtHasAttrRec, pure, Except.pure] at h; subst h; apply typeOf_someOf
   | cons a rest ih =>
     cases rest with
     | nil =>
-      simp only [compileExtHasAttr, bind, Except.bind] at h
+      simp only [compileExtHasAttrRec, bind, Except.bind] at h
       cases h₁ : compileHasAttr (Factory.option.get t₁) a εs <;> simp [h₁] at h
       subst h; apply typeOf_ifSome; exact compileHasAttr_option_typed h₁
     | cons b rest' =>
-      simp only [compileExtHasAttr, bind, Except.bind] at h
+      simp only [compileExtHasAttrRec, bind, Except.bind] at h
       cases h₁ : compileHasAttr (Factory.option.get t₁) a εs
       · simp [h₁] at h
       · simp only [h₁] at h
@@ -548,7 +548,8 @@ theorem compile_ok_implies_option {x : Expr} {εnv : SymEnv} {t : Term} :
     cases hx : compile x εnv <;> simp only [Except.bind_ok, Except.bind_err, reduceCtorEq, false_implies]
     case ok t' =>
     intro h
-    exact compileExtHasAttr_option_typed h
+    rw [compileExtHasAttr_eq_compileExtHasAttrRec] at h
+    exact compileExtHasAttrRec_option_typed h
   case getAttr x attr =>
     cases hx : compile x εnv <;> simp only [Except.bind_ok, Except.bind_err, reduceCtorEq, false_implies]
     case ok t' =>

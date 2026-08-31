@@ -1426,7 +1426,7 @@ private theorem compileGetAttr_chain_step
 
 
 
-public theorem compileExtHasAttr_ne_error {t₁ : Term} {attrs : List Attr} {εs : SymEntities} {e : SymCC.Error}
+public theorem compileExtHasAttrRec_ne_error {t₁ : Term} {attrs : List Attr} {εs : SymEntities} {e : SymCC.Error}
   {Γ : TypeEnv} {cty : CedarType}
   (hwε : εs.WellFormed)
   (hw₁ : t₁.WellFormed εs)
@@ -1434,9 +1434,9 @@ public theorem compileExtHasAttr_ne_error {t₁ : Term} {attrs : List Attr} {εs
   (hchain : ExtHasAttrChainValid Γ.ets cty attrs)
   (hεs : εs = (SymEnv.ofEnv Γ).entities)
   (hty_cty : t₁.typeOf = .option (TermType.ofType cty))
-  : compileExtHasAttr t₁ attrs εs ≠ .error e := by
+  : compileExtHasAttrRec t₁ attrs εs ≠ .error e := by
   induction attrs generalizing t₁ cty e with
-  | nil => simp [compileExtHasAttr, pure, Except.pure]
+  | nil => simp [compileExtHasAttrRec, pure, Except.pure]
   | cons a rest ih =>
     have hwo_and_type : (Factory.option.get t₁).WellFormed εs ∧
       ((∃ ety, (Factory.option.get t₁).typeOf = .entity ety) ∨
@@ -1456,10 +1456,10 @@ public theorem compileExtHasAttr_ne_error {t₁ : Term} {attrs : List Attr} {εs
     cases rest with
     | nil =>
       have ⟨t_ha, hok_ha⟩ := compileHasAttr_always_ok hwε hwo hty_ent_or_rec (a := a)
-      simp only [compileExtHasAttr, bind, Except.bind, hok_ha, reduceCtorEq] at hcontra
+      simp only [compileExtHasAttrRec, bind, Except.bind, hok_ha, reduceCtorEq] at hcontra
     | cons b rest' =>
       have ⟨t_ha, hok_ha⟩ := compileHasAttr_always_ok hwε hwo hty_ent_or_rec (a := a)
-      simp only [compileExtHasAttr, hok_ha, Except.bind_ok] at hcontra
+      simp only [compileExtHasAttrRec, hok_ha, Except.bind_ok] at hcontra
       split at hcontra
       case h_1 => simp only [pure, Except.pure, reduceCtorEq] at hcontra
       case h_2 =>
@@ -1475,14 +1475,14 @@ public theorem compileExtHasAttr_ne_error {t₁ : Term} {attrs : List Attr} {εs
           have hwf_ifsome_ga := wf_ifSome_option hw₁ hwf_ga.left hwf_ga.right.choose_spec
           have ⟨cty', hchain', hty_cty', hty₁'⟩ :=
             compileGetAttr_chain_step hwε hw₁ hεs hty_cty hchain hga
-          generalize heq_rest : compileExtHasAttr (Factory.ifSome t₁ t_ga) (b :: rest') εs = r_rest at hcontra
+          generalize heq_rest : compileExtHasAttrRec (Factory.ifSome t₁ t_ga) (b :: rest') εs = r_rest at hcontra
           cases r_rest with
           | error e' =>
             exact absurd heq_rest (ih hwf_ifsome_ga.left hty₁' hchain' hty_cty')
           | ok t_rest =>
             have hwf_ha := compileHasAttr_wf hwε hwo hok_ha
             have hty_tHas := (wf_ifSome_option hw₁ hwf_ha.left hwf_ha.right).right
-            have hty_rest := (compileExtHasAttr_wf hwε hwf_ifsome_ga.left
+            have hty_rest := (compileExtHasAttrRec_wf hwε hwf_ifsome_ga.left
               ⟨TermType.ofType cty', hty_cty'⟩ heq_rest).right
             simp only [Except.bind_ok] at hcontra
             exact (compileAnd_ne_error hty_tHas ⟨t_rest, rfl, hty_rest⟩) hcontra
@@ -1517,22 +1517,24 @@ theorem compile_well_typed_extHasAttr
     have hty' := ofType_entity_or_record hty_comp_expr h₂
     simp only [CompileWellTyped, TypedExpr.toExpr, compile, hcomp_expr, Except.bind_ok,
       TypedExpr.typeOf, TermType.ofType]
-    cases hext : compileExtHasAttr compile_expr _ εnv.entities with
+    rw [compileExtHasAttr_eq_compileExtHasAttrRec]
+    cases hext : compileExtHasAttrRec compile_expr _ εnv.entities with
     | error =>
       exfalso
-      exact absurd hext (compileExtHasAttr_ne_error hwε hwf_comp_expr hty' h₃ hεs (by rw [hty_comp_expr]; congr 1; exact congrArg TermType.ofType h₂))
+      exact absurd hext (compileExtHasAttrRec_ne_error hwε hwf_comp_expr hty' h₃ hεs (by rw [hty_comp_expr]; congr 1; exact congrArg TermType.ofType h₂))
     | ok t_ext =>
-      exact ⟨t_ext, rfl, (compileExtHasAttr_wf hwε hwf_comp_expr ⟨_, hty_comp_expr⟩ hext).right⟩
+      exact ⟨t_ext, rfl, (compileExtHasAttrRec_wf hwε hwf_comp_expr ⟨_, hty_comp_expr⟩ hext).right⟩
   | extHasAttr_record h₁ h₂ h₃ =>
     have hty' := ofType_entity_or_record' hty_comp_expr h₂
     simp only [CompileWellTyped, TypedExpr.toExpr, compile, hcomp_expr, Except.bind_ok,
       TypedExpr.typeOf, TermType.ofType]
-    cases hext : compileExtHasAttr compile_expr _ εnv.entities with
+    rw [compileExtHasAttr_eq_compileExtHasAttrRec]
+    cases hext : compileExtHasAttrRec compile_expr _ εnv.entities with
     | error =>
       exfalso
-      exact absurd hext (compileExtHasAttr_ne_error hwε hwf_comp_expr hty' h₃ hεs (by rw [hty_comp_expr]; congr 1; exact congrArg TermType.ofType h₂))
+      exact absurd hext (compileExtHasAttrRec_ne_error hwε hwf_comp_expr hty' h₃ hεs (by rw [hty_comp_expr]; congr 1; exact congrArg TermType.ofType h₂))
     | ok t_ext =>
-      exact ⟨t_ext, rfl, (compileExtHasAttr_wf hwε hwf_comp_expr ⟨_, hty_comp_expr⟩ hext).right⟩
+      exact ⟨t_ext, rfl, (compileExtHasAttrRec_wf hwε hwf_comp_expr ⟨_, hty_comp_expr⟩ hext).right⟩
   | extHasAttr_ff h₁ h₂ h₃ =>
     have hty' :
       (∃ ety, compile_expr.typeOf = .option (.entity ety)) ∨
@@ -1542,14 +1544,15 @@ theorem compile_well_typed_extHasAttr
       · exact ofType_entity_or_record' hty_comp_expr hrty
     simp only [CompileWellTyped, TypedExpr.toExpr, compile, hcomp_expr, Except.bind_ok,
       TypedExpr.typeOf, TermType.ofType]
-    cases hext : compileExtHasAttr compile_expr (attr :: attrs) εnv.entities with
+    rw [compileExtHasAttr_eq_compileExtHasAttrRec]
+    cases hext : compileExtHasAttrRec compile_expr (attr :: attrs) εnv.entities with
     | error =>
       exfalso
       exact absurd hext
-        (compileExtHasAttr_ne_error hwε hwf_comp_expr hty' h₃ hεs hty_comp_expr)
+        (compileExtHasAttrRec_ne_error hwε hwf_comp_expr hty' h₃ hεs hty_comp_expr)
     | ok t_ext =>
       exact ⟨t_ext, rfl,
-        (compileExtHasAttr_wf hwε hwf_comp_expr ⟨_, hty_comp_expr⟩ hext).right⟩
+        (compileExtHasAttrRec_wf hwε hwf_comp_expr ⟨_, hty_comp_expr⟩ hext).right⟩
 
 theorem compile_well_typed_set
   {xs : List TypedExpr} {ty : CedarType}
