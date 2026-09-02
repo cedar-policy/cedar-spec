@@ -6,6 +6,7 @@ import all Cedar.Spec.Ext.Util
 import all Cedar.Spec.Ext.IPAddr
 import all Cedar.Thm.Ext.IPAddr.Grammar
 import all Cedar.Thm.Ext.IPAddr.Lemmas
+import all Init.Data.Repr
 
 namespace Cedar.Thm.IPAddr
 open Cedar.Spec.Ext

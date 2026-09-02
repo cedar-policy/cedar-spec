@@ -290,10 +290,10 @@ public instance IPNet.decLt (d₁ d₂ : IPNet) : Decidable (d₁ < d₂) :=
 
 -- as of this writing, only handles nats up to 0xffff
 public def toHex (n : Nat) : String :=
-  let a0 := String.singleton ((n % 0x10000) / 0x1000).digitChar
-  let a1 := String.singleton ((n % 0x1000) / 0x100).digitChar
-  let a2 := String.singleton ((n % 0x100) / 0x10).digitChar
-  let a3 := String.singleton ((n % 0x10) / 0x1).digitChar
+  let a0 := hexDigitRepr ((n % 0x10000) / 0x1000)
+  let a1 := hexDigitRepr ((n % 0x1000) / 0x100)
+  let a2 := hexDigitRepr ((n % 0x100) / 0x10)
+  let a3 := hexDigitRepr ((n % 0x10) / 0x1)
   s!"{a0}{a1}{a2}{a3}"
 
 public instance : ToString IPNet where

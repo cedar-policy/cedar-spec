@@ -100,7 +100,6 @@ def tzOffsetMinsLt60 (str : String) : Bool :=
   | .some minsOffset => minsOffset < 60
   | .none => false
 
--- `Std.Time` accepts one or two digits per offset field; Cedar requires exactly `hhmm`.
 /--
   Check that the timezone offset, when present, is exactly 4 digits: `(+|-)hhmm`.
   The date is split off on `T` first so the date's `-` separators are not
