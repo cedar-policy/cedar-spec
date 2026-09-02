@@ -203,21 +203,10 @@ private def parseNumSegsV6 (str : String) : Option (List (BitVec 16)) :=
   then .some []
   else (str.splitToList (· = ':')).mapM parseNumV6
 
-public def splitDoubleColonAux : List Char → List Char → List String
-  | current, ':' :: ':' :: rest =>
-      String.ofList current :: splitDoubleColonAux [] rest
-  | current, c :: rest =>
-      splitDoubleColonAux (current ++ [c]) rest
-  | current, [] =>
-      [String.ofList current]
-
-public def splitDoubleColon (str : String) : List String :=
-  splitDoubleColonAux [] str.toList
-
 -- ANCHOR: parseSegsV6
 private def parseSegsV6 (str : String) : Option IPv6Addr := do
   let segs ←
-    match splitDoubleColon str with
+    match str.splitOn "::" with
     | [s₁] => parseNumSegsV6 s₁
     | [s₁, s₂] => do
       let ns₁ ← parseNumSegsV6 s₁

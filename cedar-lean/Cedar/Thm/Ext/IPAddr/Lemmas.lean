@@ -6,6 +6,7 @@ import all Cedar.Spec.Ext.Util
 import all Cedar.Spec.Ext.IPAddr
 import all Cedar.Thm.Data.String
 import all Cedar.Thm.Ext.IPAddr.Grammar
+import all Init.Data.String.Legacy
 import Init.Data.String.Lemmas.Pattern.TakeDrop.Pred
 import Init.Data.List.SplitOn.Lemmas
 
@@ -661,6 +662,247 @@ private theorem parseNumSegsV6_some_wf {str : String} {values : List (BitVec 16)
     refine ⟨parts, ?_, hall, hvalues⟩
     exact eq_intercalate_of_splitToList_eq ':' hsplits
 
+/-! ## Specialized model of `String.splitOn "::"` -/
+
+/-- A character-list model of splitting on `"::"`, used only in the proof layer. -/
+private def splitDoubleColonModelAux : List Char → List Char → List String
+  | current, ':' :: ':' :: rest =>
+      String.ofList current :: splitDoubleColonModelAux [] rest
+  | current, c :: rest =>
+      splitDoubleColonModelAux (current ++ [c]) rest
+  | current, [] =>
+      [String.ofList current]
+
+/-- The proof-layer model of `String.splitOn "::"`. -/
+public def splitDoubleColonModel (str : String) : List String :=
+  splitDoubleColonModelAux [] str.toList
+
+/--
+The two reachable separator-cursor states of `String.splitOnAux` for the fixed separator `"::"`.
+When `pending` is true, the scanner has matched the first colon and is waiting for the second.
+-/
+private def splitDoubleColonScan : Bool → List Char → List Char → List String
+  | false, current, [] => [String.ofList current]
+  | false, current, c :: rest =>
+      if c = ':' then
+        splitDoubleColonScan true current rest
+      else
+        splitDoubleColonScan false (current ++ [c]) rest
+  | true, current, [] => [String.ofList (current ++ [':'])]
+  | true, current, c :: rest =>
+      if c = ':' then
+        String.ofList current :: splitDoubleColonScan false [] rest
+      else
+        splitDoubleColonScan false (current ++ [':']) (c :: rest)
+termination_by pending _ remaining =>
+  remaining.length * 2 + if pending then 1 else 0
+
+private def splitDoubleColonModelState
+    (pending : Bool) (current remaining : List Char) : List String :=
+  if pending then
+    splitDoubleColonModelAux current (':' :: remaining)
+  else
+    splitDoubleColonModelAux current remaining
+
+private theorem splitDoubleColonScan_eq_model (pending current remaining) :
+    splitDoubleColonScan pending current remaining =
+      splitDoubleColonModelState pending current remaining := by
+  induction pending, current, remaining using splitDoubleColonScan.induct <;>
+    simp [splitDoubleColonScan, splitDoubleColonModelState, splitDoubleColonModelAux, *,
+      List.append_assoc]
+
+private def splitDoubleColonScannedChars
+    (pending : Bool) (pre current : List Char) : List Char :=
+  pre ++ current ++ if pending then [':'] else []
+
+private def splitDoubleColonSepPos (pending : Bool) : String.Pos.Raw :=
+  if pending then ⟨1⟩ else 0
+
+private theorem splitOnAux_doubleColon_eq_scan :
+    ∀ pending current remaining pre acc,
+      String.splitOnAux
+          (String.ofList
+            (splitDoubleColonScannedChars pending pre current ++ remaining))
+          "::"
+          ⟨String.utf8Len pre⟩
+          ⟨String.utf8Len (splitDoubleColonScannedChars pending pre current)⟩
+          (splitDoubleColonSepPos pending)
+          acc =
+        acc.reverse ++ splitDoubleColonScan pending current remaining := by
+  intro pending current remaining
+  induction pending, current, remaining using splitDoubleColonScan.induct <;>
+    intro pre acc
+  case case1 current =>
+    simp only [splitDoubleColonScannedChars, splitDoubleColonSepPos, Bool.false_eq_true,
+      ↓reduceIte, List.append_nil, splitDoubleColonScan]
+    rw [String.splitOnAux]
+    rw [if_pos]
+    · rw [String.utf8Len_append]
+      have hextract :
+          String.Pos.Raw.extract (String.ofList (pre ++ current))
+            ⟨String.utf8Len pre⟩
+            ⟨String.utf8Len pre + String.utf8Len current⟩ =
+              String.ofList current := by
+        simpa using String.extract_of_valid pre current []
+      rw [hextract]
+      simp
+    · simpa using (String.atEnd_of_valid (pre ++ current) []).2 rfl
+  case case2 current rest ih =>
+    simp only [splitDoubleColonScannedChars, splitDoubleColonSepPos, Bool.false_eq_true,
+      ↓reduceIte, List.append_nil, splitDoubleColonScan]
+    have hnot :
+        ¬String.Pos.Raw.atEnd (String.ofList ((pre ++ current) ++ ':' :: rest))
+          ⟨String.utf8Len (pre ++ current)⟩ := by
+      simpa using
+        (not_congr (String.atEnd_of_valid (pre ++ current) (':' :: rest))).2 (by simp)
+    rw [String.splitOnAux, if_neg hnot]
+    rw [show
+      String.Pos.Raw.get (String.ofList ((pre ++ current) ++ ':' :: rest))
+          ⟨String.utf8Len (pre ++ current)⟩ = ':' by
+        simpa using String.get_of_valid (pre ++ current) (':' :: rest)]
+    rw [show String.Pos.Raw.get "::" 0 = ':' by rfl]
+    simp only [beq_self_eq_true, ↓reduceIte]
+    rw [show
+      String.Pos.Raw.next (String.ofList ((pre ++ current) ++ ':' :: rest))
+          ⟨String.utf8Len (pre ++ current)⟩ =
+            ⟨String.utf8Len (pre ++ current) + ':'.utf8Size⟩ by
+        simpa using String.next_of_valid (pre ++ current) ':' rest]
+    rw [show String.Pos.Raw.next "::" 0 = ⟨1⟩ by rfl]
+    rw [if_neg (show ¬String.Pos.Raw.atEnd "::" ⟨1⟩ by decide)]
+    simpa [splitDoubleColonScannedChars, splitDoubleColonSepPos, String.utf8Len_append,
+      List.append_assoc, Nat.add_assoc] using ih pre acc
+  case case3 current c rest hc ih =>
+    simp only [splitDoubleColonScannedChars, splitDoubleColonSepPos, Bool.false_eq_true,
+      ↓reduceIte, List.append_nil, splitDoubleColonScan, if_neg hc]
+    have hnot :
+        ¬String.Pos.Raw.atEnd (String.ofList ((pre ++ current) ++ c :: rest))
+          ⟨String.utf8Len (pre ++ current)⟩ := by
+      simpa using
+        (not_congr (String.atEnd_of_valid (pre ++ current) (c :: rest))).2 (by simp)
+    rw [String.splitOnAux, if_neg hnot]
+    rw [show
+      String.Pos.Raw.get (String.ofList ((pre ++ current) ++ c :: rest))
+          ⟨String.utf8Len (pre ++ current)⟩ = c by
+        simpa using String.get_of_valid (pre ++ current) (c :: rest)]
+    rw [show String.Pos.Raw.get "::" 0 = ':' by rfl]
+    rw [if_neg (by simpa using hc)]
+    simp only [String.Pos.Raw.unoffsetBy_zero]
+    rw [show
+      String.Pos.Raw.next (String.ofList ((pre ++ current) ++ c :: rest))
+          ⟨String.utf8Len (pre ++ current)⟩ =
+            ⟨String.utf8Len (pre ++ current) + c.utf8Size⟩ by
+        simpa using String.next_of_valid (pre ++ current) c rest]
+    simpa [splitDoubleColonScannedChars, splitDoubleColonSepPos, String.utf8Len_append,
+      List.append_assoc, Nat.add_assoc] using ih pre acc
+  case case4 current =>
+    simp only [splitDoubleColonScannedChars, splitDoubleColonSepPos, ↓reduceIte,
+      List.append_nil, splitDoubleColonScan]
+    rw [String.splitOnAux]
+    rw [if_pos]
+    · simp only [String.utf8Len_append]
+      have hextract :
+          String.Pos.Raw.extract (String.ofList (pre ++ current ++ [':']))
+            ⟨String.utf8Len pre⟩
+            ⟨String.utf8Len pre + String.utf8Len current + String.utf8Len [':']⟩ =
+              String.ofList (current ++ [':']) := by
+        simpa [List.append_assoc, String.utf8Len_append, Nat.add_assoc] using
+          String.extract_of_valid pre (current ++ [':']) []
+      rw [hextract]
+      simp
+    · simpa [List.append_assoc] using
+        (String.atEnd_of_valid (pre ++ current ++ [':']) []).2 rfl
+  case case5 current rest ih =>
+    simp only [splitDoubleColonScannedChars, splitDoubleColonSepPos, ↓reduceIte,
+      splitDoubleColonScan]
+    have hnot :
+        ¬String.Pos.Raw.atEnd
+          (String.ofList ((pre ++ current ++ [':']) ++ ':' :: rest))
+          ⟨String.utf8Len (pre ++ current ++ [':'])⟩ := by
+      simpa using
+        (not_congr
+          (String.atEnd_of_valid (pre ++ current ++ [':']) (':' :: rest))).2
+          (by simp)
+    rw [String.splitOnAux, if_neg hnot]
+    rw [show
+      String.Pos.Raw.get
+          (String.ofList ((pre ++ current ++ [':']) ++ ':' :: rest))
+          ⟨String.utf8Len (pre ++ current ++ [':'])⟩ = ':' by
+        simpa using String.get_of_valid (pre ++ current ++ [':']) (':' :: rest)]
+    rw [show String.Pos.Raw.get "::" ⟨1⟩ = ':' by rfl]
+    simp only [beq_self_eq_true, ↓reduceIte]
+    rw [show
+      String.Pos.Raw.next
+          (String.ofList ((pre ++ current ++ [':']) ++ ':' :: rest))
+          ⟨String.utf8Len (pre ++ current ++ [':'])⟩ =
+            ⟨String.utf8Len (pre ++ current ++ [':']) + ':'.utf8Size⟩ by
+        simpa using String.next_of_valid (pre ++ current ++ [':']) ':' rest]
+    rw [show String.Pos.Raw.next "::" ⟨1⟩ = ⟨2⟩ by rfl]
+    rw [if_pos (show String.Pos.Raw.atEnd "::" ⟨2⟩ by decide)]
+    have hunoffset :
+        (⟨String.utf8Len (pre ++ current ++ [':']) + ':'.utf8Size⟩ :
+          String.Pos.Raw).unoffsetBy ⟨2⟩ =
+            ⟨String.utf8Len (pre ++ current)⟩ := by
+      ext
+      simp [String.utf8Len_append, String.utf8Len_cons, Char.utf8Size]
+    rw [hunoffset]
+    have hextract :
+        String.Pos.Raw.extract
+          (String.ofList ((pre ++ current ++ [':']) ++ ':' :: rest))
+          ⟨String.utf8Len pre⟩
+          ⟨String.utf8Len (pre ++ current)⟩ =
+            String.ofList current := by
+      simpa [List.append_assoc] using
+        String.extract_of_valid pre current ([':', ':'] ++ rest)
+    rw [hextract]
+    simpa [splitDoubleColonScannedChars, splitDoubleColonSepPos, String.utf8Len_append,
+      List.append_assoc, Nat.add_assoc] using
+        ih (pre ++ current ++ [':', ':']) (String.ofList current :: acc)
+  case case6 current c rest hc ih =>
+    simp only [splitDoubleColonScannedChars, splitDoubleColonSepPos, ↓reduceIte,
+      splitDoubleColonScan, if_neg hc]
+    have hnot :
+        ¬String.Pos.Raw.atEnd
+          (String.ofList ((pre ++ current ++ [':']) ++ c :: rest))
+          ⟨String.utf8Len (pre ++ current ++ [':'])⟩ := by
+      simpa using
+        (not_congr
+          (String.atEnd_of_valid (pre ++ current ++ [':']) (c :: rest))).2
+          (by simp)
+    rw [String.splitOnAux, if_neg hnot]
+    rw [show
+      String.Pos.Raw.get
+          (String.ofList ((pre ++ current ++ [':']) ++ c :: rest))
+          ⟨String.utf8Len (pre ++ current ++ [':'])⟩ = c by
+        simpa using String.get_of_valid (pre ++ current ++ [':']) (c :: rest)]
+    rw [show String.Pos.Raw.get "::" ⟨1⟩ = ':' by rfl]
+    rw [if_neg (by simpa using hc)]
+    have hunoffset :
+        (⟨String.utf8Len (pre ++ current ++ [':'])⟩ :
+          String.Pos.Raw).unoffsetBy ⟨1⟩ =
+            ⟨String.utf8Len (pre ++ current)⟩ := by
+      ext
+      simp [String.utf8Len_append, String.utf8Len_cons, Char.utf8Size]
+    rw [hunoffset]
+    rw [show
+      String.Pos.Raw.next
+          (String.ofList ((pre ++ current ++ [':']) ++ c :: rest))
+          ⟨String.utf8Len (pre ++ current)⟩ =
+            ⟨String.utf8Len (pre ++ current) + ':'.utf8Size⟩ by
+        have h := String.next_of_valid (pre ++ current) ':' (c :: rest)
+        simpa [List.append_assoc] using h]
+    simpa [splitDoubleColonScan, if_neg hc, splitDoubleColonScannedChars,
+      splitDoubleColonSepPos, String.utf8Len_append, List.append_assoc, Nat.add_assoc] using
+        ih pre acc
+
+/-- `String.splitOn "::"` agrees with the proof-layer character-list model on every string. -/
+public theorem splitOn_doubleColon_eq (s : String) :
+    s.splitOn "::" = splitDoubleColonModel s := by
+  unfold String.splitOn
+  rw [if_neg (by decide)]
+  have h := splitOnAux_doubleColon_eq_scan false [] s.toList [] []
+  simpa [splitDoubleColonScannedChars, splitDoubleColonSepPos,
+    splitDoubleColonScan_eq_model, splitDoubleColonModelState, splitDoubleColonModel] using h
+
 private theorem renderGroups_cons_toList (part : String) (parts : List String) :
     (String.intercalate ":" (part :: parts)).toList =
       part.toList ++
@@ -669,11 +911,11 @@ private theorem renderGroups_cons_toList (part : String) (parts : List String) :
         | _ => ':' :: (String.intercalate ":" parts).toList := by
   cases parts <;> simp [String.toList_append]
 
-private theorem splitDoubleColonAux_consume_noColon
+private theorem splitDoubleColonModelAux_consume_noColon
     (current chars rest : List Char)
     (h : ∀ c ∈ chars, c ≠ ':') :
-    splitDoubleColonAux current (chars ++ rest) =
-      splitDoubleColonAux (current ++ chars) rest := by
+    splitDoubleColonModelAux current (chars ++ rest) =
+      splitDoubleColonModelAux (current ++ chars) rest := by
   induction chars generalizing current with
   | nil => simp
   | cons c cs ih =>
@@ -682,21 +924,21 @@ private theorem splitDoubleColonAux_consume_noColon
           ∀ suffix, c = ':' → cs ++ rest = ':' :: suffix → False := by
         intro suffix heq _
         exact hc heq
-      rw [List.cons_append, splitDoubleColonAux.eq_2 current c (cs ++ rest) hnonmatch]
+      rw [List.cons_append, splitDoubleColonModelAux.eq_2 current c (cs ++ rest) hnonmatch]
       simpa only [List.append_assoc, List.singleton_append] using
         ih (current ++ [c]) (fun d hd => h d (by simp [hd]))
 
-private theorem splitDoubleColonAux_consume_renderGroups
+private theorem splitDoubleColonModelAux_consume_renderGroups
     (current suffix : List Char) (parts : List String)
     (hall : ∀ part ∈ parts, IsHexGroup part) :
-    splitDoubleColonAux current ((String.intercalate ":" parts).toList ++ suffix) =
-      splitDoubleColonAux (current ++ (String.intercalate ":" parts).toList) suffix := by
+    splitDoubleColonModelAux current ((String.intercalate ":" parts).toList ++ suffix) =
+      splitDoubleColonModelAux (current ++ (String.intercalate ":" parts).toList) suffix := by
   induction parts generalizing current with
   | nil => simp
   | cons part parts ih =>
       cases parts with
       | nil =>
-          simpa using splitDoubleColonAux_consume_noColon current part.toList suffix
+          simpa using splitDoubleColonModelAux_consume_noColon current part.toList suffix
             (neColonOfHex (hall part (by simp)))
       | cons next tail =>
           have hpart := hall part (by simp)
@@ -726,10 +968,10 @@ private theorem splitDoubleColonAux_consume_renderGroups
             exact hc heq
           rw [renderGroups_cons_toList]
           simp only [List.cons_append, List.append_assoc]
-          rw [splitDoubleColonAux_consume_noColon current part.toList
+          rw [splitDoubleColonModelAux_consume_noColon current part.toList
             (':' :: ((String.intercalate ":" (next :: tail)).toList ++ suffix))
             (neColonOfHex hpart)]
-          rw [splitDoubleColonAux.eq_2 (current ++ part.toList) ':'
+          rw [splitDoubleColonModelAux.eq_2 (current ++ part.toList) ':'
             ((String.intercalate ":" (next :: tail)).toList ++ suffix) hnonmatch]
           have hrec := ih ((current ++ part.toList) ++ [':']) htail
           rw [hrec]
@@ -742,32 +984,32 @@ private theorem ofList_intercalate_toList (sep : String) (parts : List String) :
   apply String.toList_inj.mp
   simp
 
-private theorem splitDoubleColon_renderGroups (parts : List String)
+private theorem splitDoubleColonModel_renderGroups (parts : List String)
     (hall : ∀ part ∈ parts, IsHexGroup part) :
-    splitDoubleColon (String.intercalate ":" parts) =
+    splitDoubleColonModel (String.intercalate ":" parts) =
       [String.intercalate ":" parts] := by
-  unfold splitDoubleColon
-  have h := splitDoubleColonAux_consume_renderGroups [] [] parts hall
-  simp [splitDoubleColonAux] at h
+  unfold splitDoubleColonModel
+  have h := splitDoubleColonModelAux_consume_renderGroups [] [] parts hall
+  simp [splitDoubleColonModelAux] at h
   rw [String.toList_intercalate]
   rw [← ofList_intercalate_toList ":" parts]
   exact h
 
-private theorem splitDoubleColon_renderGroups_gap (left right : List String)
+private theorem splitDoubleColonModel_renderGroups_gap (left right : List String)
     (hleft : ∀ part ∈ left, IsHexGroup part)
     (hright : ∀ part ∈ right, IsHexGroup part) :
-    splitDoubleColon (String.intercalate ":" left ++ "::" ++
+    splitDoubleColonModel (String.intercalate ":" left ++ "::" ++
       String.intercalate ":" right) =
       [String.intercalate ":" left, String.intercalate ":" right] := by
-  unfold splitDoubleColon
+  unfold splitDoubleColonModel
   simp only [String.toList_append]
   rw [show "::".toList = [':', ':'] by rfl]
   simp only [List.append_assoc, List.cons_append, List.nil_append]
-  rw [splitDoubleColonAux_consume_renderGroups []
+  rw [splitDoubleColonModelAux_consume_renderGroups []
     (':' :: ':' :: (String.intercalate ":" right).toList) left hleft]
-  rw [splitDoubleColonAux.eq_1]
-  have hrightAux := splitDoubleColonAux_consume_renderGroups [] [] right hright
-  simp [splitDoubleColonAux] at hrightAux
+  rw [splitDoubleColonModelAux.eq_1]
+  have hrightAux := splitDoubleColonModelAux_consume_renderGroups [] [] right hright
+  simp [splitDoubleColonModelAux] at hrightAux
   have hrightChars :
       [':'].intercalate (right.map String.toList) =
         (String.intercalate ":" right).toList := by simp
@@ -776,23 +1018,23 @@ private theorem splitDoubleColon_renderGroups_gap (left right : List String)
   simp only [List.nil_append, String.ofList_toList]
   rw [hrightAux]
 
-private theorem splitDoubleColonAux_ne_nil (current remaining : List Char) :
-    splitDoubleColonAux current remaining ≠ [] := by
-  induction current, remaining using splitDoubleColonAux.induct with
-  | case1 current rest ih => simp [splitDoubleColonAux]
+private theorem splitDoubleColonModelAux_ne_nil (current remaining : List Char) :
+    splitDoubleColonModelAux current remaining ≠ [] := by
+  induction current, remaining using splitDoubleColonModelAux.induct with
+  | case1 current rest ih => simp [splitDoubleColonModelAux]
   | case2 current c rest hnomatch ih =>
-      rw [splitDoubleColonAux.eq_2 current c rest hnomatch]
+      rw [splitDoubleColonModelAux.eq_2 current c rest hnomatch]
       exact ih
-  | case3 current => simp [splitDoubleColonAux]
+  | case3 current => simp [splitDoubleColonModelAux]
 
-private theorem intercalate_splitDoubleColonAux (current remaining : List Char) :
-    String.intercalate "::" (splitDoubleColonAux current remaining) =
+private theorem intercalate_splitDoubleColonModelAux (current remaining : List Char) :
+    String.intercalate "::" (splitDoubleColonModelAux current remaining) =
       String.ofList current ++ String.ofList remaining := by
-  induction current, remaining using splitDoubleColonAux.induct with
+  induction current, remaining using splitDoubleColonModelAux.induct with
   | case1 current rest ih =>
-      rw [splitDoubleColonAux.eq_1]
-      have hne : splitDoubleColonAux [] rest ≠ [] :=
-        splitDoubleColonAux_ne_nil [] rest
+      rw [splitDoubleColonModelAux.eq_1]
+      have hne : splitDoubleColonModelAux [] rest ≠ [] :=
+        splitDoubleColonModelAux_ne_nil [] rest
       obtain ⟨part, parts, hparts⟩ := List.exists_cons_of_ne_nil hne
       rw [hparts, String.intercalate_cons_cons]
       rw [hparts] at ih
@@ -807,16 +1049,16 @@ private theorem intercalate_splitDoubleColonAux (current remaining : List Char) 
       rw [hcolon]
       simp only [String.append_assoc]
   | case2 current c rest hnomatch ih =>
-      rw [splitDoubleColonAux.eq_2 current c rest hnomatch]
+      rw [splitDoubleColonModelAux.eq_2 current c rest hnomatch]
       simpa only [← String.ofList_append, List.append_assoc, List.singleton_append] using ih
   | case3 current =>
-      simp [splitDoubleColonAux]
+      simp [splitDoubleColonModelAux]
 
-private theorem eq_intercalate_of_splitDoubleColon_eq {str : String} {parts : List String}
-    (h : splitDoubleColon str = parts) :
+private theorem eq_intercalate_of_splitDoubleColonModel_eq {str : String} {parts : List String}
+    (h : splitDoubleColonModel str = parts) :
     str = String.intercalate "::" parts := by
-  unfold splitDoubleColon at h
-  rw [← h, intercalate_splitDoubleColonAux]
+  unfold splitDoubleColonModel at h
+  rw [← h, intercalate_splitDoubleColonModelAux]
   simp
 
 /-- `parseSegsV6` inverts `V6Components.asString` on a syntactically well-formed V6 address:
@@ -829,15 +1071,15 @@ theorem parseSegsV6_asString {v : V6Components} (hsyn : v.syntaxWf) :
   | full parts =>
       obtain ⟨hlen, hall⟩ := hsyn
       have hsplit :
-          splitDoubleColon (V6Components.asString (.full parts)) =
+          splitDoubleColonModel (V6Components.asString (.full parts)) =
             [String.intercalate ":" parts] := by
-        simpa [V6Components.asString] using splitDoubleColon_renderGroups parts hall
+        simpa [V6Components.asString] using splitDoubleColonModel_renderGroups parts hall
       have hparse :
           parseNumSegsV6 (String.intercalate ":" parts) =
             some (groupValues parts) :=
         parseNumSegsV6_eq_some hall
       unfold parseSegsV6
-      rw [hsplit]
+      rw [splitOn_doubleColon_eq, hsplit]
       simp only
       rw [hparse]
       change finishV6 (groupValues parts) =
@@ -847,10 +1089,10 @@ theorem parseSegsV6_asString {v : V6Components} (hsyn : v.syntaxWf) :
   | gap left right =>
       obtain ⟨hcount, hleft, hright⟩ := hsyn
       have hsplit :
-          splitDoubleColon (V6Components.asString (.gap left right)) =
+          splitDoubleColonModel (V6Components.asString (.gap left right)) =
             [String.intercalate ":" left, String.intercalate ":" right] := by
         simpa [V6Components.asString] using
-          splitDoubleColon_renderGroups_gap left right hleft hright
+          splitDoubleColonModel_renderGroups_gap left right hleft hright
       have hleftParse :
           parseNumSegsV6 (String.intercalate ":" left) =
             some (groupValues left) :=
@@ -862,7 +1104,7 @@ theorem parseSegsV6_asString {v : V6Components} (hsyn : v.syntaxWf) :
       have hvalueCount : (groupValues left).length + (groupValues right).length < 8 := by
         simpa [groupValues] using hcount
       unfold parseSegsV6
-      rw [hsplit]
+      rw [splitOn_doubleColon_eq, hsplit]
       simp only
       rw [hleftParse, hrightParse]
       simp only [bind, Option.bind]
@@ -887,7 +1129,8 @@ private theorem parseSegsV6_some_wf {str : String} {addr : IPv6Addr}
     ∃ v : V6Components,
       str = v.asString ∧ v.syntaxWf ∧ addr = v.toAddr := by
   unfold parseSegsV6 at h
-  generalize hsplits : splitDoubleColon str = splits at h
+  rw [splitOn_doubleColon_eq] at h
+  generalize hsplits : splitDoubleColonModel str = splits at h
   rcases splits with _ | ⟨leftStr, rest⟩
   · simp at h
   rcases rest with _ | ⟨rightStr, rest⟩
@@ -903,7 +1146,7 @@ private theorem parseSegsV6_some_wf {str : String} {addr : IPv6Addr}
         rw [hvalues] at hlenValues
         simpa [groupValues] using hlenValues
       refine ⟨.full parts, ?_, ⟨hlen, hall⟩, ?_⟩
-      · have hstr := eq_intercalate_of_splitDoubleColon_eq hsplits
+      · have hstr := eq_intercalate_of_splitDoubleColonModel_eq hsplits
         rw [String.intercalate_singleton, hleftStr] at hstr
         simpa [V6Components.asString] using hstr
       · rw [hvalues] at h
@@ -940,7 +1183,7 @@ private theorem parseSegsV6_some_wf {str : String} {addr : IPv6Addr}
           have hsyntaxCount : left.length + right.length < 8 := by
             simpa [groupValues] using hcount
           refine ⟨.gap left right, ?_, ⟨hsyntaxCount, hleft, hright⟩, ?_⟩
-          · have hstr := eq_intercalate_of_splitDoubleColon_eq hsplits
+          · have hstr := eq_intercalate_of_splitDoubleColonModel_eq hsplits
             rw [String.intercalate_cons_cons, String.intercalate_singleton,
               hleftStr, hrightStr] at hstr
             simpa [V6Components.asString, String.append_assoc] using hstr
