@@ -831,7 +831,9 @@ def parseBatchedAuthorizationReq (req : ByteArray) : Except String (Schema × Li
 
 def parsePartialAuthzRequest (req: ByteArray): Except String (Schema × List Policy × PartialRequest × PartialEntities) := do
   let req <- (@Proto.Message.interpret? Proto.PartialAuthorizationRequest) req |> .mapError (s!"Failed to parse input: {.}")
-  return (req.schema, req.policies, req.request, req.entities)
+  let request ← req.request.toPartialRequest
+  let entities ← req.entities.toPartialEntities
+  return (req.schema, req.policies, request, entities)
 
 
 /--
@@ -885,8 +887,9 @@ def parseResidualReauthorizationRequest (req: ByteArray):
 @[export validatePartialEntities] unsafe def validatePartialEntitiesFFI (schema : Schema) (req : ByteArray) : String :=
   runFfiM do
     let v ← (@Proto.Message.interpret? Proto.PartialEntityValidationRequest) req |>.mapError (s!"failed to parse input: {·}")
+    let entities ← v.entities.toPartialEntities
     runAndTime (λ () =>
-      (if TPE.entitiesIsValid schema v.entities
+      (if TPE.entitiesIsValid schema entities
        then .ok ()
        else .error (.typeError "partial entities are inconsistent with the type store")
        : EntityValidationResult))
@@ -897,8 +900,9 @@ def parseResidualReauthorizationRequest (req: ByteArray):
 @[export checkPartialEntityConsistency] unsafe def checkPartialEntityConsistencyFFI (req : ByteArray) : String :=
   runFfiM do
     let v ← (@Proto.Message.interpret? Proto.PartialEntityConsistencyRequest) req |>.mapError (s!"failed to parse input: {·}")
+    let partialEntities ← v.partialEntities.toPartialEntities
     runAndTime (λ () =>
-      (if TPE.entitiesIsConsistent v.entities v.partialEntities
+      (if TPE.entitiesIsConsistent v.entities partialEntities
        then .ok ()
        else .error (.typeError "partial entities are inconsistent with the concrete entities")
        : EntityValidationResult))
@@ -909,8 +913,9 @@ def parseResidualReauthorizationRequest (req: ByteArray):
 @[export validatePartialRequest] unsafe def validatePartialRequestFFI (schema : Schema) (req : ByteArray) : String :=
   runFfiM do
     let v ← (@Proto.Message.interpret? Proto.PartialRequestValidationRequest) req |>.mapError (s!"failed to parse input: {·}")
+    let request ← v.request.toPartialRequest
     runAndTime (λ () =>
-      ((TPE.validatePartialRequest schema v.request).map (λ _ => ()) : RequestValidationResult))
+      ((TPE.validatePartialRequest schema request).map (λ _ => ()) : RequestValidationResult))
 
 /--
   `req`: binary protobuf for a `PartialRequestConsistencyRequest`
@@ -918,8 +923,9 @@ def parseResidualReauthorizationRequest (req: ByteArray):
 @[export checkPartialRequestConsistency] unsafe def checkPartialRequestConsistencyFFI (req : ByteArray) : String :=
   runFfiM do
     let v ← (@Proto.Message.interpret? Proto.PartialRequestConsistencyRequest) req |>.mapError (s!"failed to parse input: {·}")
+    let partialRequest ← v.partialRequest.toPartialRequest
     runAndTime (λ () =>
-      (if TPE.requestIsConsistent v.request v.partialRequest
+      (if TPE.requestIsConsistent v.request partialRequest
        then .ok ()
        else .error (.typeError "partial request is inconsistent with the concrete request")
        : RequestValidationResult))

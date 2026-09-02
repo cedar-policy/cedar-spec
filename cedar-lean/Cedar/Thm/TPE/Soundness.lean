@@ -76,8 +76,8 @@ theorem partial_evaluate_is_sound
   induction h₁
   case val =>
     exact partial_evaluate_is_sound_val
-  case var =>
-    exact partial_evaluate_is_sound_var h₃
+  case var v ty hv =>
+    exact partial_evaluate_is_sound_var h₂ (Residual.WellTyped.var hv) h₃
   case ite x₁ x₂ x₃ hwt _ _ hₜ _ hᵢ₁ hᵢ₂ hᵢ₃ =>
     exact partial_evaluate_is_sound_ite h₂ hwt hₜ hᵢ₁ hᵢ₂ hᵢ₃
   case and x₁ x₂ hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ hᵢ₆ =>
@@ -92,10 +92,12 @@ theorem partial_evaluate_is_sound
     exact partial_evaluate_is_sound_has_attr h₂ hwt h₃ hᵢ₁
   case hasAttr_record rty x₁ attr hwt _ hᵢ₁ =>
     exact partial_evaluate_is_sound_has_attr h₂ hwt h₃ hᵢ₁
-  case getAttr_entity ety rty x₁ attr ty hᵢ₁ =>
-    exact partial_evaluate_is_sound_get_attr h₃ hᵢ₁
-  case getAttr_record rty x₁ attr ty hᵢ₁ =>
-    exact partial_evaluate_is_sound_get_attr h₃ hᵢ₁
+  case getAttr_entity ety rty x₁ attr ty hwt hty hattrs hfind hᵢ₁ =>
+    exact partial_evaluate_is_sound_get_attr h₂ (.getAttr_entity hwt hty hattrs hfind)
+      (partial_eval_preserves_well_typed h₂ h₃ hwt) h₃ hᵢ₁
+  case getAttr_record rty x₁ attr ty hwt hty hfind hᵢ₁ =>
+    exact partial_evaluate_is_sound_get_attr h₂ (.getAttr_record hwt hty hfind)
+      (partial_eval_preserves_well_typed h₂ h₃ hwt) h₃ hᵢ₁
   case set ls ty hᵢ₁ =>
     exact partial_evaluate_is_sound_set hᵢ₁
   case record rty m hᵢ₁ hᵢ₁ =>

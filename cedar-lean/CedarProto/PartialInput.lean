@@ -91,7 +91,8 @@ instance : Message PartialRequest where
 
 def toPartialRequest (p : PartialRequest) : Except String TPE.PartialRequest := do
   let context ← if p.hasContext then do
-      let pairs ← p.context.mapM fun (k, v) => do .ok (k, ← Spec.Value.exprToValue v)
+      let pairs ← p.context.mapM fun (k, v) =>
+        do .ok (k, TPE.AttrState.value (← Spec.Value.exprToValue v))
       .ok (some (Data.Map.make pairs.toList))
     else .ok none
   .ok {
@@ -160,9 +161,11 @@ instance : Message PartialEntities where
 
   merge := (· ++ ·)
 
-private def convertMap (has : Bool) (m : Proto.Map String Expr) : Except String (Option (Data.Map Attr Value)) :=
+private def convertMap (has : Bool) (m : Proto.Map String Expr) :
+  Except String (Option TPE.PartialRecord) :=
   if has then do
-    let pairs ← m.mapM fun (k, v) => do .ok (k, ← Spec.Value.exprToValue v)
+    let pairs ← m.mapM fun (k, v) =>
+      do .ok (k, TPE.AttrState.value (← Spec.Value.exprToValue v))
     .ok (some (Data.Map.make pairs.toList))
   else .ok none
 

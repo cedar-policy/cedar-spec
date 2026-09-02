@@ -22,6 +22,7 @@ import Cedar.Thm.Data.List
 import Cedar.Thm.Data.Map
 
 import Cedar.Thm.TPE.WellTyped.Basic
+import Cedar.Thm.TPE.State
 
 namespace Cedar.Thm
 
@@ -84,18 +85,23 @@ theorem partial_eval_well_typed_var {env : TypeEnv} {v : Var} {ty : CedarType} {
     rw [←h_av, h_action]
     exact well_typed_entity this
   case context =>
-    simp only
     unfold RequestRefines at h_rref
     rcases h_rref with ⟨h_pv, ⟨h_av, h_rv, ⟨ h_cv, _, _ ⟩⟩⟩
-    cases h : preq.context
-    . simp only [Option.map_none, varₚ.varₒ, someOrSelf]
-      exact h_wt
-    . simp only [Option.map_some, varₚ.varₒ, someOrSelf]
-      simp only [h, PartialIsValid.some_inv] at h_cv
-      subst h_cv
-      apply Residual.WellTyped.val
-      cases h_wt with | var h₄ =>
-      cases h₄ with | context =>
-
-      rcases h_wf with ⟨_, ⟨_, _, _, h_context⟩, _⟩
-      exact type_lifting_preserves_instance_of_type h_context
+    cases h_wt with | var h₄ =>
+    cases h₄ with | context =>
+    have h_wf' := h_wf
+    rcases h_wf with ⟨_, ⟨_, _, _, h_context⟩, _⟩
+    have h_context' := type_lifting_preserves_instance_of_type h_context
+    simp only [CedarType.liftBoolTypes] at h_context'
+    have hvar : Residual.WellTyped env
+        (Residual.var Var.context (.record (RecordType.liftBoolTypes env.reqty.context))) := by
+      have h := @Residual.WellTyped.var env Var.context
+        ((CedarType.record env.reqty.context).liftBoolTypes) Var.WellTyped.context
+      simpa only [CedarType.liftBoolTypes] using h
+    simp only [CedarType.liftBoolTypes]
+    cases hctx : preq.context with
+    | none => exact hvar
+    | some r =>
+      simp only [hctx, PartialIsValid.some_inv] at h_cv
+      refine stateToResidual_well_typed h_wf' ?_ hvar rfl
+      simpa only [Residual.evaluate, Except.toOption] using h_cv.toAttrState

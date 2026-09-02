@@ -66,8 +66,8 @@ end BatchedAuthorizationRequest
 structure PartialAuthorizationRequest where
   schema: Validation.Schema
   policies: Spec.Policies
-  request: TPE.PartialRequest
-  entities: TPE.PartialEntities
+  request: TPE.Proto.PartialRequest
+  entities: TPE.Proto.PartialEntities
 deriving Inhabited
 
 namespace PartialAuthorizationRequest
@@ -121,7 +121,7 @@ instance : Message ResidualReauthorizationRequest where
 
 end ResidualReauthorizationRequest
 structure PartialEntityValidationRequest where
-  entities: TPE.PartialEntities
+  entities: TPE.Proto.PartialEntities
 deriving Inhabited
 
 namespace PartialEntityValidationRequest
@@ -139,7 +139,7 @@ instance : Message PartialEntityValidationRequest where
 end PartialEntityValidationRequest
 
 structure PartialRequestValidationRequest where
-  request: TPE.PartialRequest
+  request: TPE.Proto.PartialRequest
 deriving Inhabited
 
 namespace PartialRequestValidationRequest
@@ -158,7 +158,7 @@ end PartialRequestValidationRequest
 
 structure PartialRequestConsistencyRequest where
   request: Spec.Request
-  partialRequest: TPE.PartialRequest
+  partialRequest: TPE.Proto.PartialRequest
 deriving Inhabited
 
 namespace PartialRequestConsistencyRequest
@@ -179,7 +179,7 @@ end PartialRequestConsistencyRequest
 
 structure PartialEntityConsistencyRequest where
   entities: Spec.Entities
-  partialEntities: TPE.PartialEntities
+  partialEntities: TPE.Proto.PartialEntities
 deriving Inhabited
 
 namespace PartialEntityConsistencyRequest

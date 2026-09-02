@@ -2,6 +2,7 @@ import Cedar.TPE.Input
 import Cedar.TPE.BatchedEvaluator
 import Cedar.Spec
 import Cedar.Thm.TPE.Input
+import Cedar.Thm.TPE.Attrs
 
 /-!
 Shared definitions and lemmas for batched evaluator theorems.
@@ -14,17 +15,15 @@ open Cedar.Spec
 open Cedar.Data
 open Cedar.Validation
 
-/-- A well behaved entity loader
-1. Loads all the requested entities, returning none for missing entities
-2. Refines the backing entity store
+/-- A well behaved entity loader refines the backing entity store on every
+requested slice.
 
-The first condition is required for convergence of
-batched evaluation, which has not been proven. It is unused
-in the code base at the moment.
+(A convergence-oriented "loads all the requested entities" condition is not
+included here: it is required only for a batched-evaluation convergence proof
+that has not been done and is unused elsewhere.)
 -/
-abbrev EntityLoader.WellBehaved (store: Entities) (loader: EntityLoader) : Prop :=
-  ∀ s, s ⊆ (loader s).keys ∧
-       EntitiesRefine store ((loader s).mapOnValues MaybeEntityData.asPartial)
+abbrev EntityLoader.WellBehaved (ets : EntitySchema) (store: Entities) (loader: EntityLoader) : Prop :=
+  ∀ s, EntitiesRefine store (SlicedEntities.asPartial ets (loader s))
 
 /-- `Schema.environment?` carries the schema's entity and action types through unchanged. -/
 theorem environment?_schema {schema : Schema} {pty rty : EntityType} {act : EntityUID}
@@ -65,20 +64,98 @@ theorem actionEntities_refines {env : TypeEnv} {es : Entities}
       rw [hact] at hentry
       simpa only [Option.some.injEq] using hentry.symm
     subst hentry'
-    exact ⟨data, hdata, .some _ rfl hattrs.symm, .some _ rfl hanc.symm, .some _ rfl htags.symm⟩
+    -- `EntitiesRefine` now states the three components independently, and an empty partial record
+    -- claims nothing, so it is consistent with whatever the concrete entity carries.
+    have hempty : ∀ (m : Data.Map Attr Value), PartialRecordConsistent Map.empty m := by
+      intro m a
+      simp only [PartialRecord.attr, Data.Map.find?_empty, Option.getD_none]
+      exact .unknown
+    have hanc' : p.snd.ancestors = es.ancestorsOrEmpty p.fst := by
+      simp only [Entities.ancestorsOrEmpty, hdata]
+      exact hanc.symm
+    exact ⟨.some _ rfl ⟨data, hdata, hempty _⟩, .some _ rfl hanc',
+      .some _ rfl ⟨data, hdata, hempty _⟩⟩
 
-theorem as_partial_request_refines {req : Request} :
-  RequestRefines req req.asPartialRequest := by
+/--
+A partial record built from a concrete record by `PartialRecord.ofConcrete`
+claims nothing about that record that isn't true.
+-/
+theorem of_concrete_consistent {m : Data.Map Attr Value} {rty : RecordType} :
+  PartialRecordConsistent (PartialRecord.ofConcrete m rty) m
+:= by
+  intro a
+  rw [ofConcrete_attr]
+  cases hm : m.find? a with
+  | some v => simp only; exact .value
+  | none =>
+    cases (rty.find? a).isSome
+    · simp only [Bool.false_eq_true, if_false]; exact .unknown
+    · simp only [if_true]; exact .absent
+
+/-- A partial record built from concrete tags claims nothing about them that isn't true. -/
+theorem of_concrete_tags_consistent {m : Data.Map Tag Value} :
+  PartialRecordConsistent (PartialRecord.ofConcreteTags m) m
+:= by
+  intro a
+  simp only [PartialRecord.attr, PartialRecord.ofConcreteTags, Map.find?_mapOnValues]
+  cases hm : m.find? a with
+  | none => simp only [Option.map_none, Option.getD_none]; exact .unknown
+  | some v => simp only [Option.map_some, Option.getD_some]; exact .value
+
+/-- Validity of the partial record built from a concrete record implies full
+`instanceOfType` conformance: the closed-record absent-marking recovers the
+"required attributes present" and "no undeclared attributes" checks. -/
+theorem instanceOfType_of_ofConcrete_valid {schema : Schema} {m : Data.Map Attr Value} {rty : RecordType}
+  (hmwf : m.WellFormed)
+  (h : partialRecordIsValid schema (PartialRecord.ofConcrete m rty) rty = true) :
+  instanceOfType (.record m) (.record rty) schema = true
+:= by
+  obtain ⟨hA, hB⟩ := partialRecordIsValid_inv h
+  simp only [instanceOfType, Bool.and_eq_true, List.all_eq_true]
+  refine ⟨⟨?_, ?_⟩, ?_⟩
+  · -- present attributes are declared
+    intro (k, v) hmem
+    have hw : m.find? k = some v := (Data.Map.in_list_iff_find?_some hmwf).mp hmem
+    have hattr : (PartialRecord.ofConcrete m rty).attr k = .value v := by
+      rw [ofConcrete_attr, hw]
+    have := hB k (by rw [hattr]; rfl)
+    simpa only [Map.contains] using this
+  · -- present attributes have the declared type
+    intro ⟨(k, v), hsz⟩ hmem
+    simp only [List.attach₂, List.mem_pmap_subtype] at hmem
+    cases hrf : rty.find? k with
+    | none => simp []
+    | some qty =>
+      simp only
+      have hw : m.find? k = some v := (Data.Map.in_list_iff_find?_some hmwf).mp hmem
+      have hAentry := hA k qty hrf
+      rw [ofConcrete_attr, hw] at hAentry
+      exact hAentry
+  · -- required attributes are present
+    intro (k, qty) hmem
+    simp only [requiredAttributePresent]
+    cases hrf : rty.find? k with
+    | none => simp
+    | some qty' =>
+      by_cases hreq : qty'.isRequired
+      · simp only [hreq, if_true]
+        have hAentry := hA k qty' hrf
+        rw [ofConcrete_attr] at hAentry
+        cases hm : m.find? k with
+        | some w => simp only [Map.contains, hm, Option.isSome_some]
+        | none =>
+          rw [hm] at hAentry
+          simp only [hrf, Option.isSome_some, if_true] at hAentry
+          simp only [hreq, Bool.true_eq_false] at hAentry
+      · simp [hreq]
+
+theorem as_partial_request_refines {req : Request} {ctxTy : RecordType}
+  (hwf : req.context.WellFormed) :
+  RequestRefines req (req.asPartialRequest ctxTy) := by
   simp only [Request.asPartialRequest, RequestRefines, PartialEntityUID.asEntityUID, Option.map_some]
-  constructor
-  · apply PartialIsValid.some <;> rfl
-  constructor
-  · trivial
-  constructor
-  · apply PartialIsValid.some <;> rfl
-  constructor
-  · apply PartialIsValid.some <;> rfl
-  constructor <;> trivial
+  refine ⟨by apply PartialIsValid.some <;> rfl, trivial,
+          by apply PartialIsValid.some <;> rfl, ?_, trivial, trivial⟩
+  exact .some _ rfl ⟨Map.make_wf _, hwf, of_concrete_consistent⟩
 
 theorem any_refines_empty_entities :
   EntitiesRefine es Data.Map.empty := by
@@ -107,18 +184,25 @@ theorem entities_refine_append (es : Entities) (m1 m2 : PartialEntities) :
       rw [h_find]
     exact h1 a e₂ h_find1
 
-theorem direct_request_and_entities_refine (req : Request) (es : Entities) :
-  RequestAndEntitiesRefine req es req.asPartialRequest es.asPartial := by
+theorem direct_request_and_entities_refine (ets : EntitySchema) (req : Request) (es : Entities) (ctxTy : RecordType)
+  (hwf : req.context.WellFormed) :
+  RequestAndEntitiesRefine req es (req.asPartialRequest ctxTy) (Entities.asPartial ets es) := by
   constructor
-  · exact as_partial_request_refines
-  · unfold EntitiesRefine Entities.asPartial
+  · exact as_partial_request_refines hwf
+  · unfold EntitiesRefine
     intro uid data₂ h_find
-    have h_mapOnValues := Map.find?_mapOnValues_some' EntityData.asPartial h_find
-    obtain ⟨data₁, h_find₁, h_eq⟩ := h_mapOnValues
-    exists data₁
-    exact ⟨h_find₁,
-           by rw [h_eq]; apply PartialIsValid.some <;> rfl,
-           by rw [h_eq]; apply PartialIsValid.some <;> rfl,
-           by rw [h_eq]; apply PartialIsValid.some <;> rfl⟩
+    rw [find?_as_partial] at h_find
+    cases h_find₁ : es.find? uid with
+    | none => rw [h_find₁] at h_find; simp at h_find
+    | some data₁ =>
+      rw [h_find₁] at h_find
+      simp only [Option.map_some, Option.some.injEq] at h_find
+      subst h_find
+      simp only [EntityData.asPartial]
+      refine ⟨?_, ?_, ?_⟩
+      · exact .some _ rfl ⟨data₁, h_find₁, of_concrete_consistent⟩
+      · exact .some _ rfl (by
+          simp only [Entities.ancestorsOrEmpty, h_find₁])
+      · exact .some _ rfl ⟨data₁, h_find₁, of_concrete_tags_consistent⟩
 
 end Cedar.Thm

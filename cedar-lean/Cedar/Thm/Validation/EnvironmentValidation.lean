@@ -522,6 +522,17 @@ theorem env_validate_well_formed_is_sound
   simp only [hwf_reqs] at hok
   exact request_type_validate_well_formed_is_sound hwf_reqs
 
+theorem environment?_ets {schema : Schema} {pty rty : EntityType} {act : EntityUID} {env : TypeEnv}
+  (h : schema.environment? pty rty act = .some env) :
+  env.ets = schema.ets
+:= by
+  simp only [Schema.environment?] at h
+  cases h_find : schema.acts.find? act <;>
+    simp only [h_find, Option.bind_none_fun, Option.bind_some_fun, reduceCtorEq] at h
+  split at h <;> simp only [reduceCtorEq, Option.some.injEq] at h
+  subst h
+  rfl
+
 theorem environment_some_mem_environments {schema : Schema}
   {principal resource : EntityType} {action : EntityUID} {env : TypeEnv}
   (h : schema.environment? principal resource action = .some env) :
