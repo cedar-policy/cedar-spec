@@ -36,8 +36,8 @@ private theorem requestIsValid_asPartialRequest_eq {env : TypeEnv} {req : Reques
     partialIsValid, Option.map_some, Option.getD_some, instanceOfRequestType]
 
 theorem evaluatePolicy_ok_implies_requestMatchesEnvironment
-  {schema : Schema} {p : Policy} {req : Request} {r : Residual} :
-  evaluatePolicy schema p req.asPartialRequest Map.empty = .ok r →
+  {schema : Schema} {p : Policy} {req : Request} {r : Residual} {pes : PartialEntities} :
+  evaluatePolicy schema p req.asPartialRequest pes = .ok r →
   ∀ env, schema.environment? req.asPartialRequest.principal.ty req.asPartialRequest.resource.ty req.asPartialRequest.action = .some env →
   requestMatchesEnvironment env req
 := by
@@ -53,8 +53,9 @@ pass validation, then `InstanceOfWellFormedEnvironment` holds for the
 environment determined by the schema and request.
 -/
 theorem evaluatePolicy_ok_implies_well_formed_env
-  {schema : Schema} {p : Policy} {req : Request} {es : Entities} {r : Residual} :
-  evaluatePolicy schema p req.asPartialRequest Map.empty = .ok r →
+  {schema : Schema} {p : Policy} {req : Request} {es : Entities} {r : Residual}
+  {pes : PartialEntities} :
+  evaluatePolicy schema p req.asPartialRequest pes = .ok r →
   schema.validateWellFormed = .ok () →
   validateEntities schema es = .ok () →
   ∃ env,
@@ -105,6 +106,40 @@ theorem residuals_equiv_preserved
      partial_eval_preserves_well_typed h_wf h_ref h_wt⟩
   ) h_sound
 
+/-- The loop's response is `isAuthorizedFromResiduals` of a list still equivalent to the policies. -/
+theorem batched_authorize_loop_equiv
+  {policies : List Policy} {residuals : List ResidualPolicy} {req : Request}
+  (es : Entities) {current_store : PartialEntities} {env : TypeEnv} :
+  EntityLoader.WellBehaved es loader →
+  ResidualPoliciesEquivAndWellTyped env policies residuals req es →
+  RequestAndEntitiesRefine req es req.asPartialRequest current_store →
+  InstanceOfWellFormedEnvironment req es env →
+  ∃ rps, batchedAuthorizeLoop residuals req loader current_store iters
+      = isAuthorizedFromResiduals rps ∧
+    ResidualPoliciesEquivAndWellTyped env policies rps req es
+:= by
+  intro h₀ h₁ h₂ h₃
+  unfold batchedAuthorizeLoop
+  simp only
+  split
+  case isTrue => exact ⟨residuals, rfl, h₁⟩
+  case isFalse =>
+    cases iters with
+    | zero => exact ⟨residuals, rfl, h₁⟩
+    | succ n =>
+      have h₆ : RequestAndEntitiesRefine req es req.asPartialRequest
+        ((((loader
+          (Set.filter (fun uid => (Map.find? current_store uid).isNone)
+            (List.mapUnion (fun rp => rp.residual.allLiteralUIDs) residuals))).mapOnValues
+            MaybeEntityData.asPartial)) ++ current_store) := by
+        constructor
+        · exact as_partial_request_refines
+        · apply entities_refine_append
+          · exact h₂.right
+          · exact (h₀ _).2
+      exact batched_authorize_loop_equiv es h₀ (residuals_equiv_preserved h₁ h₃ h₆) h₆ h₃
+
+/-- The loop's decision agrees with concrete authorization. -/
 theorem batched_authorize_loop_decision_agrees
   {policies : List Policy} {residuals : List ResidualPolicy} {req : Request}
   (es : Entities) {current_store : PartialEntities} {env : TypeEnv} {d : Decision} :
@@ -116,28 +151,9 @@ theorem batched_authorize_loop_decision_agrees
   (Spec.isAuthorized req es policies).decision = d
 := by
   intro h₀ h₁ h₂ h₃ h_dec
-  unfold batchedAuthorizeLoop at h_dec
-  simp only at h_dec
-  split at h_dec
-  case isTrue =>
-    exact residuals_decision_agrees (equiv_well_typed_implies_equiv h₁) h_dec
-  case isFalse =>
-    cases iters with
-    | zero =>
-      exact residuals_decision_agrees (equiv_well_typed_implies_equiv h₁) h_dec
-    | succ n =>
-      have h₆ : RequestAndEntitiesRefine req es req.asPartialRequest
-        (((loader
-          (Set.filter (fun uid => (Map.find? current_store uid).isNone)
-            (List.mapUnion (fun rp => rp.residual.allLiteralUIDs) residuals))).mapOnValues
-            MaybeEntityData.asPartial) ++ current_store) := by
-        constructor
-        · exact as_partial_request_refines
-        · apply entities_refine_append
-          · exact h₂.right
-          · exact (h₀ _).2
-      exact batched_authorize_loop_decision_agrees es h₀
-        (residuals_equiv_preserved h₁ h₃ h₆) h₆ h₃ h_dec
+  obtain ⟨rps, heq, hequiv⟩ := batched_authorize_loop_equiv es h₀ h₁ h₂ h₃
+  rw [heq] at h_dec
+  exact residuals_decision_agrees (equiv_well_typed_implies_equiv hequiv) h_dec
 
 theorem evaluatePolicies_equiv_and_well_typed
   {schema : Schema} {policies : List Policy} {rps : List ResidualPolicy}

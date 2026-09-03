@@ -59,11 +59,12 @@ def testBatchedEvaluatorEquivalence (name : String) (expr : Expr) (req : Request
     -- Create a minimal TypeEnv for typechecking
     match typeOf expr ∅ type_env with
     | .ok (typedExpr, _) =>
-      let batchedResult := batchedEvaluate typedExpr req loader
-      match (batchedResult, regularResult) with
-      | (.ok br, .ok rr) => checkEq br rr
-      | (.error _, .error _) => (.ok (.ok ()))
-      | _ => checkEq batchedResult regularResult
+      let batchedResult := batchedEvaluate action_schema typedExpr req loader 10
+      match batchedResult.asValue, regularResult with
+      | .some bv, .ok rv => checkEq bv rv
+      | .none, .error _ => .ok (.ok ())
+      | _, _ =>
+        .error s!"batched {repr batchedResult} disagrees with concrete {repr regularResult}"
     | .error e =>
       .error s!"Type error: {repr e}"
   ⟩
@@ -115,7 +116,7 @@ def tests :=
       testEntities
       testLoader,
     testBatchedEvaluatorEquivalence
-     "missing entity - User::\"nonexistent\".name == \"test\""
+      "missing entity - User::\"nonexistent\".name == \"test\""
       (.binaryApp .eq (.getAttr (.lit (.entityUID ⟨UserType, "nonexistent"⟩)) "name") (.lit (.string "test")))
       testRequest
       testEntities
@@ -131,6 +132,5 @@ def tests :=
       testLoader
   ]
 
-#eval do TestSuite.runAll [tests]
 
 end UnitTest.BatchedEvaluator
