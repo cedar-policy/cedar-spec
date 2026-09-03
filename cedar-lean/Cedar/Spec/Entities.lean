@@ -42,6 +42,15 @@ public def Entities.ancestors (es : Entities) (uid : EntityUID) : Result (Set En
   let d ← es.findOrErr uid .entityDoesNotExist
   .ok d.ancestors
 
+/--
+The entities in `es` that list `uid` among their ancestors. Empty when `uid` has
+no descendants, including when `uid` is absent from `es`. This is the converse of
+`Entities.ancestorsOrEmpty`, and requires scanning the whole store.
+-/
+@[expose]
+public def Entities.descendantsOrEmpty (es : Entities) (uid : EntityUID) : Set EntityUID :=
+  (es.filter λ _ ed => ed.ancestors.contains uid).keys
+
 @[expose]
 public def Entities.ancestorsOrEmpty (es : Entities) (uid : EntityUID) : Set EntityUID :=
   match es.find? uid with

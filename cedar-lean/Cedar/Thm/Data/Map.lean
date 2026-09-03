@@ -1863,6 +1863,12 @@ public theorem find?_filter_if_find? {α : Type u} {β : Type v} [BEq α] [Lawfu
       simp_all
   · contradiction
 
+public theorem mem_filter_if_find? {α : Type u} {β : Type v} [LT α] [DecidableLT α] [DecidableEq α] {m : Map α β} {k : α} {v : β} {f : α → β → Bool} :
+  f k v = true → m.find? k = some v → v ∈ (m.filter f).values
+:= by
+  intro hf hfind
+  exact Map.find?_some_implies_in_values (Map.find?_filter_if_find? hfind hf)
+
 public theorem find?_filter_iff_find {α : Type u} {β : Type v} [BEq α] [LawfulBEq α] [DecidableEq α] [LT α] [StrictLT α] [DecidableLT α]
   {k : α} {val : β} {m : Map α β} {p : α → β → Bool} :
   m.WellFormed →
@@ -1894,7 +1900,7 @@ public theorem filter_contains_if_find_matching {α : Type u} {β : Type v} [BEq
   exact Map.find?_filter_if_find? hfind hpred
 
 public theorem find_matching_iff_filter_contains {α : Type u} {β : Type v} [BEq α] [LawfulBEq α] [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α]
-  {k : α} {m : Map α β} (p : α → β → Bool) :
+  {k : α} {m : Map α β} {p : α → β → Bool} :
   m.WellFormed →
   ((∃ v, m.find? k = some v ∧ p k v = true) ↔ (m.filter p).contains k)
 := by

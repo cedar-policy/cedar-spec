@@ -190,6 +190,13 @@ public structure Schema where
   ets : EntitySchema
   acts : ActionSchema
 
+@[expose]
+public def Schema.ancestorTypes (schema : Schema) (ety : EntityType) : Set EntityType :=
+  Set.singleton ety ∪
+    match schema.ets.find? ety with
+      | .some entry => entry.ancestors
+      | .none       => schema.acts.filter (λ act _ => act.ty == ety)|>.values.mapUnion (·.ancestors.map (·.ty))
+
 public structure RequestType where
   principal : EntityType
   action : EntityUID
