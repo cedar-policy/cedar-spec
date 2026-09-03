@@ -232,16 +232,15 @@ impl proto::RequestValidationRequest {
 
 pub mod tpe {
     use cedar_policy::{
-        Entities, EntityUid, PartialEntities, PartialEntityUid, PartialRequest, PolicySet, Request,
-        RestrictedExpression, Schema, proto::models as cedar_proto,
+        Entities, EntityUid, PartialAttribute, PartialEntities, PartialEntityUid, PartialRequest,
+        PartialValue, PolicySet, Request, Schema, proto::models as cedar_proto,
     };
-    use cedar_policy_core::ast::{Expr, Value, ValueKind};
+    use cedar_policy_core::ast::{Expr, Value};
     use cedar_policy_core::tpe::value::{
-        PartialAttribute as CorePartialAttribute, PartialRecord as CorePartialRecord,
-        PartialValue as CorePartialValue,
+        AttrState as CoreAttrState, PartialRecord as CorePartialRecord,
     };
     use smol_str::SmolStr;
-    use std::collections::{BTreeMap, HashMap, HashSet};
+    use std::collections::{BTreeMap, HashSet};
 
     use super::proto;
 
@@ -409,61 +408,96 @@ pub mod tpe {
         }
     }
 
-    fn expr_from_partial_value(value: &CorePartialValue) -> Option<Expr> {
-        match value {
-            CorePartialValue::Lit(lit) => Some(Expr::from(Value::new(lit.clone(), None))),
-            CorePartialValue::Set(set) => {
-                Some(Expr::from(Value::new(ValueKind::Set(set.clone()), None)))
+    fn expr_from_value(value: &Value) -> cedar_proto::Expr {
+        cedar_proto::Expr::from(&Expr::from(value.clone()))
+    }
+
+    impl proto::AttrState {
+        fn from_inner(attr: &CoreAttrState) -> Self {
+            let mut state = Self::default();
+            match attr {
+                CoreAttrState::PartialRecord(record) => {
+                    state.set_kind(proto::AttrStateKind::AttrStatePartialRecord);
+                    state.record = record
+                        .attrs()
+                        .map(proto::AttrStateEntry::from_inner)
+                        .collect();
+                }
+                CoreAttrState::Value(value) => {
+                    state.set_kind(proto::AttrStateKind::AttrStateValue);
+                    state.value = Some(expr_from_value(value));
+                }
+                CoreAttrState::Present => state.set_kind(proto::AttrStateKind::AttrStatePresent),
+                CoreAttrState::Absent => state.set_kind(proto::AttrStateKind::AttrStateAbsent),
+                CoreAttrState::Unknown => state.set_kind(proto::AttrStateKind::AttrStateUnknown),
             }
-            CorePartialValue::ExtensionValue(ext) => Some(Expr::from(Value::new(
-                ValueKind::ExtensionValue(ext.clone()),
-                None,
-            ))),
-            CorePartialValue::Record(record) => {
-                let fields = partial_record_exprs(record)?;
-                Expr::record(fields).ok()
+            state
+        }
+
+        fn from_unchecked(attr: &PartialAttribute) -> Self {
+            let mut state = Self::default();
+            match attr {
+                // The public `PartialRecord` exposes no field accessor, so the unchecked path
+                // cannot introspect a nested record; nesting is covered by the checked generator.
+                PartialAttribute::Value(PartialValue::Record(_)) => {
+                    state.set_kind(proto::AttrStateKind::AttrStatePresent)
+                }
+                PartialAttribute::Value(PartialValue::Concrete(value)) => {
+                    let expr = Expr::from(value.as_ref().clone());
+                    state.value = Some(cedar_proto::Expr::from(&expr));
+                    state.set_kind(proto::AttrStateKind::AttrStateValue);
+                }
+                PartialAttribute::Exists => state.set_kind(proto::AttrStateKind::AttrStatePresent),
+                PartialAttribute::Absent => state.set_kind(proto::AttrStateKind::AttrStateAbsent),
+                PartialAttribute::Unknown => state.set_kind(proto::AttrStateKind::AttrStateUnknown),
+            }
+            state
+        }
+    }
+
+    impl proto::AttrStateEntry {
+        fn from_inner((key, state): (&SmolStr, &CoreAttrState)) -> Self {
+            Self {
+                key: key.to_string(),
+                state: Some(proto::AttrState::from_inner(state)),
+            }
+        }
+
+        fn from_unchecked((key, attr): (&SmolStr, &PartialAttribute)) -> Self {
+            Self {
+                key: key.to_string(),
+                state: Some(proto::AttrState::from_unchecked(attr)),
             }
         }
     }
 
-    /// Encode only records representable by the legacy concrete-value wire format.
-    /// Returning `None` makes the entire component unknown, which is conservative.
-    fn partial_record_exprs(record: &CorePartialRecord) -> Option<BTreeMap<SmolStr, Expr>> {
-        record
-            .attrs()
-            .filter_map(|(key, state)| match state {
-                CorePartialAttribute::Value(value) => {
-                    Some(expr_from_partial_value(value).map(|expr| (key.clone(), expr)))
-                }
-                CorePartialAttribute::Absent => None,
-                CorePartialAttribute::Exists | CorePartialAttribute::Unknown => Some(None),
-            })
-            .collect()
-    }
+    impl proto::PartialRecord {
+        fn from_inner(record: &CorePartialRecord) -> Self {
+            Self {
+                entries: record
+                    .attrs()
+                    .map(proto::AttrStateEntry::from_inner)
+                    .collect(),
+            }
+        }
 
-    fn partial_record_to_proto(
-        record: &CorePartialRecord,
-    ) -> Option<HashMap<String, cedar_proto::Expr>> {
-        Some(
-            partial_record_exprs(record)?
-                .into_iter()
-                .map(|(key, expr)| (key.to_string(), cedar_proto::Expr::from(&expr)))
-                .collect(),
-        )
+        fn from_unchecked(record: &BTreeMap<SmolStr, PartialAttribute>) -> Self {
+            Self {
+                entries: record
+                    .iter()
+                    .map(proto::AttrStateEntry::from_unchecked)
+                    .collect(),
+            }
+        }
     }
 
     impl proto::PartialRequest {
         fn from_inner(req: &cedar_policy_core::tpe::request::PartialRequest) -> Self {
-            let (context, has_context) = req
-                .context()
-                .and_then(partial_record_to_proto)
-                .map_or_else(|| (Default::default(), false), |context| (context, true));
             Self {
                 principal: Some(proto::PartialEntityUid::from_inner(req.principal())),
                 action: Some(cedar_proto::EntityUid::from(req.action())),
                 resource: Some(proto::PartialEntityUid::from_inner(req.resource())),
-                context,
-                has_context,
+                context: req.context().map(proto::PartialRecord::from_inner),
             }
         }
     }
@@ -481,31 +515,13 @@ pub mod tpe {
 
     impl proto::PartialEntity {
         fn from_inner(entity: &cedar_policy_core::tpe::entities::PartialEntity) -> Self {
-            let (attrs, has_attrs) = entity
-                .attrs()
-                .and_then(partial_record_to_proto)
-                .map_or_else(|| (Default::default(), false), |attrs| (attrs, true));
-            let (ancestors, has_ancestors) = entity.ancestors().map_or_else(
-                || (Default::default(), false),
-                |ancestors| {
-                    (
-                        ancestors.iter().map(cedar_proto::EntityUid::from).collect(),
-                        true,
-                    )
-                },
-            );
-            let (tags, has_tags) = entity
-                .tags()
-                .and_then(partial_record_to_proto)
-                .map_or_else(|| (Default::default(), false), |tags| (tags, true));
             Self {
                 uid: Some(cedar_proto::EntityUid::from(entity.uid())),
-                attrs,
-                ancestors,
-                tags,
-                has_attrs,
-                has_ancestors,
-                has_tags,
+                attrs: entity.attrs().map(proto::PartialRecord::from_inner),
+                ancestors: entity.ancestors().map(|ancestors| proto::EntityUidSet {
+                    uids: ancestors.iter().map(cedar_proto::EntityUid::from).collect(),
+                }),
+                tags: entity.tags().map(proto::PartialRecord::from_inner),
             }
         }
     }
@@ -517,9 +533,9 @@ pub mod tpe {
     #[derive(Debug, Clone)]
     pub struct UncheckedPartialEntity {
         pub uid: EntityUid,
-        pub attrs: Option<BTreeMap<SmolStr, RestrictedExpression>>,
+        pub attrs: Option<BTreeMap<SmolStr, PartialAttribute>>,
         pub ancestors: Option<HashSet<EntityUid>>,
-        pub tags: Option<BTreeMap<SmolStr, RestrictedExpression>>,
+        pub tags: Option<BTreeMap<SmolStr, PartialAttribute>>,
     }
 
     /// A partial request that has not been validated against any schema.
@@ -528,36 +544,30 @@ pub mod tpe {
         pub principal: PartialEntityUid,
         pub action: EntityUid,
         pub resource: PartialEntityUid,
-        pub context: Option<BTreeMap<SmolStr, RestrictedExpression>>,
-    }
-
-    fn to_proto_exprs(
-        m: &Option<BTreeMap<SmolStr, RestrictedExpression>>,
-    ) -> HashMap<String, cedar_proto::Expr> {
-        m.iter()
-            .flatten()
-            .map(|(k, v)| {
-                let e = cedar_policy_core::ast::Expr::from(v.as_ref().clone());
-                (k.to_string(), cedar_proto::Expr::from(&e))
-            })
-            .collect()
+        pub context: Option<BTreeMap<SmolStr, PartialAttribute>>,
     }
 
     impl proto::PartialEntity {
         fn from_unchecked(entity: &UncheckedPartialEntity) -> Self {
             Self {
                 uid: Some(cedar_proto::EntityUid::from(entity.uid.as_ref())),
-                has_attrs: entity.attrs.is_some(),
-                attrs: to_proto_exprs(&entity.attrs),
-                has_ancestors: entity.ancestors.is_some(),
+                attrs: entity
+                    .attrs
+                    .as_ref()
+                    .map(proto::PartialRecord::from_unchecked),
                 ancestors: entity
                     .ancestors
-                    .iter()
-                    .flatten()
-                    .map(|uid| cedar_proto::EntityUid::from(uid.as_ref()))
-                    .collect(),
-                has_tags: entity.tags.is_some(),
-                tags: to_proto_exprs(&entity.tags),
+                    .as_ref()
+                    .map(|ancestors| proto::EntityUidSet {
+                        uids: ancestors
+                            .iter()
+                            .map(|uid| cedar_proto::EntityUid::from(uid.as_ref()))
+                            .collect(),
+                    }),
+                tags: entity
+                    .tags
+                    .as_ref()
+                    .map(proto::PartialRecord::from_unchecked),
             }
         }
     }
@@ -568,8 +578,10 @@ pub mod tpe {
                 principal: Some(proto::PartialEntityUid::from_inner(req.principal.as_ref())),
                 action: Some(cedar_proto::EntityUid::from(req.action.as_ref())),
                 resource: Some(proto::PartialEntityUid::from_inner(req.resource.as_ref())),
-                has_context: req.context.is_some(),
-                context: to_proto_exprs(&req.context),
+                context: req
+                    .context
+                    .as_ref()
+                    .map(proto::PartialRecord::from_unchecked),
             }
         }
     }

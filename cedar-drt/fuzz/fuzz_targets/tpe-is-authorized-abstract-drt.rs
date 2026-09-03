@@ -149,6 +149,6 @@ fuzz_target!(|input: AbstractAuthorizerInput| {
         &SCHEMA,
         &policyset,
         &REQUEST,
-        &PartialEntities::empty(),
+        &PartialEntities::empty(&SCHEMA).unwrap(),
     );
 });
