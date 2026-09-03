@@ -24,7 +24,6 @@ import Cedar.Thm.Frontend.Translation.PolicyToExpr
 import Cedar.Thm.Frontend.Translation.Completeness
 import Cedar.Thm.Frontend.CstSlice
 import Cedar.Thm.Frontend.Authorizer
-import Cedar.Thm.Frontend.Parser
 import Cedar.Thm.Validation
 namespace Cedar.Thm
 

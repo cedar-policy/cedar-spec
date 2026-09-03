@@ -261,7 +261,7 @@ theorem toUnreservedString?_some {i : Cst.Ident} {s : String}
   cases i
   case idIdent s' hk' =>
     simp only [Ident.toUnreservedString?] at h
-    have hs' : s' = s := Cst.Parser.toUnreservedCedarId_some_eq h
+    have hs' : s' = s := Cst.toUnreservedCedarId_some_eq h
     subst hs'; exact ⟨hk', rfl⟩
   all_goals simp [Ident.toUnreservedString?] at h
 
