@@ -2,9 +2,8 @@ import Cedar.Spec
 import Cedar.Frontend.Cst
 import Cedar.Frontend.Cst.Semantics
 import Cedar.Frontend.Cst.ToAst
-import Cedar.Frontend.Parser
 import Cedar.Thm.Data.List.Lemmas
-import Cedar.Thm.Frontend.Parser.Ident
+import Cedar.Thm.Frontend.StringParsing
 
 namespace Cedar.Thm
 
@@ -583,7 +582,7 @@ theorem addExpr_toAttrs_toHasRhs {e : Cst.AddExpr} {attrs : List Attr} :
                 | idIdent s hs_kw =>
                   simp only [Cst.Ident.toHasHead?] at hhh
                   have htus : String.toUnreservedCedarId? s = some s := by
-                    have := Cst.Parser.toUnreservedCedarId_some_eq hhh
+                    have := Cst.toUnreservedCedarId_some_eq hhh
                     subst this; exact hhh
                   refine ⟨.inr (s :: fields), ?_⟩
                   simp [Cst.AddExpr.toHasRhs?, Cst.Primary.toExprOrSpecial?,
@@ -1191,7 +1190,7 @@ theorem evalAccessors_eq
         Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at ha_ast
       obtain ⟨s, hs, rfl⟩ := ha_ast
       subst hrest
-      have hs_eq : s0 = s := Cst.Parser.toUnreservedCedarId_some_eq hs
+      have hs_eq : s0 = s := Cst.toUnreservedCedarId_some_eq hs
       rw [memberAuxB_field_nil] at hb
       have hev : Cst.Member.evalAccessors head [.field (.idIdent s0 hs0)] req es
                = (do let hv ← Spec.getAttr head s0 es; Cst.Member.evalAccessors hv [] req es) := by
@@ -1214,7 +1213,7 @@ theorem evalAccessors_eq
       simp only [Cst.MemAccess.toAstAccessor?, Cst.Ident.toUnreservedString?,
         Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at ha_ast
       obtain ⟨s, hs, rfl⟩ := ha_ast
-      have hs_eq : s = s0 := (Cst.Parser.toUnreservedCedarId_some_eq hs).symm
+      have hs_eq : s = s0 := (Cst.toUnreservedCedarId_some_eq hs).symm
       subst hs_eq
       rw [List.mapM_cons] at htl
       simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at htl
