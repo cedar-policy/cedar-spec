@@ -21,3 +21,8 @@ indexmap = { version = "2.12.0", features = ["arbitrary"] }
 
 [features]
 cedar-policy = ["dep:cedar-policy"]
+# Must be kept in sync with the features DRT builds cedar with.
+variadic-is-in-range = [
+    "cedar-policy-core/variadic-is-in-range",
+    "cedar-policy?/variadic-is-in-range",
+]
