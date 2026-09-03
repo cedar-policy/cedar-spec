@@ -1,1 +1,0 @@
-permit(action, resource);
