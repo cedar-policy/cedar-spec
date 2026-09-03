@@ -1,1 +1,0 @@
-allow(principal, action, resource);
