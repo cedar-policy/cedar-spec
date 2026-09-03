@@ -109,38 +109,20 @@ theorem entitiesIsConsistent_implies_refines {es : Entities} {pes : PartialEntit
   · exact partial_is_valid_rfl decide_eq_implies_eq h₂₂
   · exact partial_is_valid_rfl decide_eq_implies_eq h₂₃
 
-theorem environment?_reqty {schema : Schema} {p r : EntityType} {a : EntityUID} {env : TypeEnv} :
-  schema.environment? p r a = .some env →
-  env.reqty.principal = p ∧ env.reqty.resource = r
-:= by
-  intro h
-  unfold Schema.environment? at h
-  cases h_find : schema.acts.find? a
-  · simp [h_find] at h
-  · simp only [h_find, Option.bind_some_fun] at h
-    split at h <;> try contradiction
-    simp only [Option.some.injEq] at h
-    simp [←h]
-
-theorem requestIsConsistent_implies_refines {schema : Schema} {env : TypeEnv} {req : Request} {preq : PartialRequest} :
-  schema.environment? preq.principal.ty preq.resource.ty preq.action = .some env →
-  requestMatchesEnvironment env req →
+theorem requestIsConsistent_implies_refines {req : Request} {preq : PartialRequest} :
   requestIsConsistent req preq →
   RequestRefines req preq
 := by
-  intro heq h_guard h₁
+  intro h₁
   simp only [requestIsConsistent, Bool.and_eq_true, decide_eq_true_eq] at h₁
-  obtain ⟨⟨⟨h₁₁, h₁₂⟩, h₁₃⟩, h₁₄⟩ := h₁
-  have ⟨h_penv, h_renv⟩ := environment?_reqty heq
-  simp only [requestMatchesEnvironment, instanceOfRequestType, instanceOfEntityType,
-    Bool.and_eq_true, beq_iff_eq] at h_guard
+  obtain ⟨⟨⟨⟨⟨h_pty, h_rty⟩, h₁₁⟩, h₁₂⟩, h₁₃⟩, h₁₄⟩ := h₁
   and_intros
   · exact partial_is_valid_rfl decide_eq_implies_eq h₁₁
   · exact h₁₂
   · exact partial_is_valid_rfl decide_eq_implies_eq h₁₃
   · exact partial_is_valid_rfl decide_eq_implies_eq h₁₄
-  · simp [← h_penv, h_guard]
-  · simp [← h_renv, h_guard]
+  · exact h_pty
+  · exact h_rty
 
 /-- Requests and entities that pass `isValidAndConsistent` satisfy `RequestAndEntitiesRefine`.  -/
 theorem consistent_checks_ensure_refinement {schema : Schema} {req : Request} {es : Entities} {preq : PartialRequest} {pes : PartialEntities} :
@@ -153,13 +135,10 @@ theorem consistent_checks_ensure_refinement {schema : Schema} {req : Request} {e
   rcases do_eq_ok₂ h with ⟨h₁, h₂⟩
   constructor
   case _ =>
-    have ⟨h_matches, h_consistent⟩ :
-      requestMatchesEnvironment env req ∧ requestIsConsistent req preq
-    := by
+    have h_consistent : requestIsConsistent req preq := by
       simp only [isValidAndConsistent.requestIsValidAndConsistent] at h₁
       split at h₁ <;> simp_all
-    exact requestIsConsistent_implies_refines
-      (validatePartialRequest_ok_environment? heq) h_matches h_consistent
+    exact requestIsConsistent_implies_refines h_consistent
   case _ =>
     have h₃ : isValidAndConsistent.entitiesIsValidAndConsistent es pes env = .ok ()
     := by

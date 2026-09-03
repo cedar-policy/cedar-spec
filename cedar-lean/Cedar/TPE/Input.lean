@@ -135,6 +135,8 @@ where
 def requestIsConsistent (req₁ : Request) (req₂ : PartialRequest) : Bool :=
   let ⟨p₁, a₁, r₁, c₁⟩ := req₁
   let ⟨p₂, a₂, r₂, c₂⟩ := req₂
+  p₂.ty = p₁.ty &&
+  r₂.ty = r₁.ty &&
   partialIsValid p₂.asEntityUID (· = p₁) &&
   a₁ = a₂ &&
   partialIsValid r₂.asEntityUID (· = r₁) &&
