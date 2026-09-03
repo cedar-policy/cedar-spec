@@ -16,5 +16,9 @@
 
 module
 
+/- Those are the modules part of Cedar's frontend (e.g. parsers and internal representation
+     transformations).
+   As of this writing, only the CST for policies is implemented in Lean.
+ -/
+
 public import Cedar.Frontend.Cst
-public import Cedar.Frontend.Parser

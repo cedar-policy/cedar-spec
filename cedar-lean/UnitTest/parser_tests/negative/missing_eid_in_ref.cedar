@@ -1,1 +1,0 @@
-permit(principal == User::, action, resource);
