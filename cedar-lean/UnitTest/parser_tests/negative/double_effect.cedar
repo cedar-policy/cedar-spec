@@ -1,1 +1,0 @@
-permit forbid(principal, action, resource);

@@ -14,11 +14,13 @@
  limitations under the License.
 -/
 
--- import Cedar.Frontend.Parser
 import Cedar.Frontend.Cst
 import Cedar.Frontend.StringParsing
 
-/-! This file contains lemmas for proving roundtrip properties of string conversions and parsers. -/
+/-!
+  This file contains lemmas for proving roundtrip properties of string conversions and small
+ parsers.
+ -/
 
 namespace Cedar.Frontend
 
@@ -197,5 +199,29 @@ theorem Char.asHexNat_injective_lower (c₁ c₂ : Char) (n : Nat)
     rcases hlc₁ with ⟨lo₁, hi₁⟩ | ⟨lo₁, hi₁⟩ <;> rcases hlc₂ with ⟨lo₂, hi₂⟩ | ⟨lo₂, hi₂⟩ <;>
       (split at h₁ <;> split at h₂ <;> simp_all <;> omega)
   exact Char.eq_of_toNat_eq heq
-
 end Cedar.Frontend
+
+
+/- CST Identifiers theorems below. -/
+namespace Cedar.Frontend.Cst
+
+public theorem unreserved_iff_not_in_keywords {s : String} :
+    s.toUnreservedCedarId?.isSome = true ↔ s ∉ keywords := by
+  simp only [String.toUnreservedCedarId?]
+  split <;> simp_all
+
+@[simp]
+public theorem Ident.toUnreservedString?_idIdent (s : String) (h : s ∉ keywords) :
+    Ident.toUnreservedString? (.idIdent s h) = some s := by
+  simp [Ident.toUnreservedString?, String.toUnreservedCedarId?, h]
+
+@[simp]
+public theorem Ident.toString_idIdent (s : String) (h : s ∉ keywords) :
+    Ident.toString (.idIdent s h) = s := rfl
+
+public theorem toUnreservedCedarId_some_eq {s s0: String} (h: s.toUnreservedCedarId? = some s0) :
+     s = s0 := by
+  simp only [String.toUnreservedCedarId?] at h
+  split at h <;> simp_all
+
+end Cedar.Frontend.Cst
