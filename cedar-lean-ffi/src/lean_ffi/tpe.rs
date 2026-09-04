@@ -189,9 +189,9 @@ mod test {
     unsafe extern "C" {}
 
     use cedar_policy::{
-        Context, Entities, EntityTypeName, EntityUid, PartialEntities, PartialEntity,
-        PartialEntityUid, PartialRequest, Policy, PolicyId, PolicySet, RestrictedExpression,
-        Schema,
+        Context, Entities, EntityTypeName, EntityUid, PartialAttribute, PartialEntities,
+        PartialEntity, PartialEntityUid, PartialRequest, Policy, PolicyId, PolicySet,
+        RestrictedExpression, Schema,
     };
     use cool_asserts::assert_matches;
 
@@ -203,6 +203,15 @@ mod test {
     };
     use cedar_policy_core::ast::{EntityUID, Value, Var};
     use cedar_policy_core::tpe::residual::{Residual, ResidualKind};
+
+    fn partial_attrs<const N: usize>(
+        attrs: [(smol_str::SmolStr, RestrictedExpression); N],
+    ) -> BTreeMap<smol_str::SmolStr, PartialAttribute> {
+        attrs
+            .into_iter()
+            .map(|(key, value)| (key, PartialAttribute::value(value)))
+            .collect()
+    }
     use cedar_policy_core::validator::types::{EntityKind, EntityLUB, Type};
 
     /// Helper to compare Rust and Lean TPE responses: decision, policy categorizations,
@@ -490,7 +499,7 @@ mod test {
 
         let account = PartialEntity::new(
             EntityUid::from_str(r#"Account::"checking""#).unwrap(),
-            Some(BTreeMap::from([
+            Some(partial_attrs([
                 ("balance".into(), RestrictedExpression::new_long(10000)),
                 (
                     "owner".into(),
@@ -504,7 +513,7 @@ mod test {
         .unwrap();
         let user = PartialEntity::new(
             EntityUid::from_str(r#"User::"alice""#).unwrap(),
-            Some(BTreeMap::from([
+            Some(partial_attrs([
                 (
                     "name".into(),
                     RestrictedExpression::new_string("Alice".into()),
@@ -572,7 +581,7 @@ mod test {
 
         let user = PartialEntity::new(
             EntityUid::from_str(r#"User::"alice""#).unwrap(),
-            Some(BTreeMap::from([
+            Some(partial_attrs([
                 (
                     "name".into(),
                     RestrictedExpression::new_string("Alice".into()),
@@ -625,7 +634,7 @@ mod test {
 
         let account = PartialEntity::new(
             EntityUid::from_str(r#"Account::"checking""#).unwrap(),
-            Some(BTreeMap::from([
+            Some(partial_attrs([
                 ("balance".into(), RestrictedExpression::new_long(10000)),
                 (
                     "owner".into(),
@@ -639,7 +648,7 @@ mod test {
         .unwrap();
         let user = PartialEntity::new(
             EntityUid::from_str(r#"User::"alice""#).unwrap(),
-            Some(BTreeMap::from([
+            Some(partial_attrs([
                 (
                     "name".into(),
                     RestrictedExpression::new_string("Alice".into()),
@@ -703,7 +712,7 @@ mod test {
 
         let user = PartialEntity::new(
             EntityUid::from_str(r#"User::"alice""#).unwrap(),
-            Some(BTreeMap::from([
+            Some(partial_attrs([
                 (
                     "name".into(),
                     RestrictedExpression::new_string("Alice".into()),
@@ -797,7 +806,7 @@ mod test {
 
         let account = PartialEntity::new(
             EntityUid::from_str(r#"Account::"checking""#).unwrap(),
-            Some(BTreeMap::from([
+            Some(partial_attrs([
                 ("balance".into(), RestrictedExpression::new_long(10000)),
                 (
                     "owner".into(),
@@ -811,7 +820,7 @@ mod test {
         .unwrap();
         let user = PartialEntity::new(
             EntityUid::from_str(r#"User::"alice""#).unwrap(),
-            Some(BTreeMap::from([
+            Some(partial_attrs([
                 (
                     "name".into(),
                     RestrictedExpression::new_string("Alice".into()),

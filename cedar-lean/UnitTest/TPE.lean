@@ -208,7 +208,7 @@ def req : PartialRequest :=
      ⟨UserType, "Alice"⟩,
      ⟨ActionType, "View"⟩,
      ⟨DocumentType, default⟩,
-     .some $ Map.make [("hasMFA", true)]
+     .some $ Map.make [("hasMFA", .value true)]
   ⟩
 
 def es : PartialEntities :=
@@ -355,7 +355,7 @@ def req : PartialRequest :=
 def es : PartialEntities :=
   Map.make [
      (⟨ActionType, "PickUp"⟩, ⟨.some default, .some default, .some default⟩),
-     (⟨UserType, "Alice"⟩, ⟨.some $ Map.make [("address", .record $ Map.make [("street", "Sesame Street")])], .some default, default⟩)
+     (⟨UserType, "Alice"⟩, ⟨.some $ Map.make [("address", .value (.record $ Map.make [("street", "Sesame Street")]))], .some default, default⟩)
   ]
 
 def tests :=
@@ -638,8 +638,252 @@ def tests :=
 
 end UnitTest.TPE.SchemaInformed
 
+namespace UnitTest.TPE.AttrStates
+open Cedar.TPE
+open Cedar.Spec
+open Cedar.Validation
+open Cedar.Data
+
+/-!
+Tests for the five attribute states. `E` has a required `req`, an optional `opt`,
+and a required record `rec` with a required `inner`.
+-/
+
+def E : EntityType := ⟨"E", []⟩
+
+def RecType : RecordType := Map.make [("inner", .required .string)]
+
+def schema : Schema :=
+  ⟨Map.make [
+    (ActionType, .standard ⟨default, default, default⟩),
+    (E, .standard ⟨default,
+       Map.make [
+         ("req", .required .string),
+         ("opt", .optional .string),
+         ("rec", .required (.record RecType))
+       ],
+       .some .string⟩)
+  ],
+  Map.make [
+    (⟨ActionType, "a"⟩, ⟨Set.singleton E, Set.singleton E, default, default⟩)
+  ]⟩
+
+def req : PartialRequest :=
+  ⟨⟨E, .some "p"⟩, ⟨ActionType, "a"⟩, ⟨E, default⟩, default⟩
+
+/-- `E::"p"` states: `req` unknown (but declared required), `opt` explicitly
+absent, `rec` a record we only partly know, and tag `t` present-but-unvalued. -/
+def es : PartialEntities :=
+  Map.make [
+    (⟨ActionType, "a"⟩, ⟨.some default, .some default, .some default⟩),
+    (⟨E, "p"⟩, ⟨
+      .some (Map.make [
+        ("opt", .absent),
+        ("rec", .partialRecord (Map.make [("inner", .present)]))
+      ]),
+      .some default,
+      .some (Map.make [("t", .present)])⟩)
+  ]
+
+/-- Like `es`, but `rec` is given in partial form yet fully determined: `inner`
+has a known value, so the record folds to a concrete value. -/
+def esDetermined : PartialEntities :=
+  Map.make [
+    (⟨ActionType, "a"⟩, ⟨.some default, .some default, .some default⟩),
+    (⟨E, "p"⟩, ⟨
+      .some (Map.make [
+        ("opt", .absent),
+        ("rec", .partialRecord (Map.make [("inner", .value (.prim (.string "v")))]))
+      ]),
+      .some default,
+      .some default⟩)
+  ]
+
+def mkPolicy (x : Expr) : Policy :=
+  ⟨"0", .permit, .principalScope .any, .actionScope .any, .resourceScope .any, [⟨.when, x⟩]⟩
+
+def boolLit (b : Bool) : Residual := .val (.prim (.bool b)) (.bool .anyBool)
+
+def principalE : Residual := .val (.prim (.entityUID ⟨E, "p"⟩)) (.entity E)
+
+def tests :=
+  suite "TPE attribute states: value/partialRecord/present/absent/unknown"
+  [
+    -- required-but-unmentioned is recovered as `present`, so `has` is `true`
+    testResult (mkPolicy (.hasAttr (.var .principal) "req")) schema req es
+      (boolLit true),
+    -- explicitly absent, so `has` is `false`
+    testResult (mkPolicy (.hasAttr (.var .principal) "opt")) schema req es
+      (boolLit false),
+    -- a partly-known record still asserts the attribute exists
+    testResult (mkPolicy (.hasAttr (.var .principal) "rec")) schema req es
+      (boolLit true),
+    -- undeclared attributes cannot exist on a closed record type
+    testResult (mkPolicy (.hasAttr (.var .principal) "bogus")) schema req es
+      (boolLit false),
+    -- a tag known to exist without a known value
+    testResult (mkPolicy (.binaryApp .hasTag (.var .principal) (.lit (.string "t")))) schema req es
+      (boolLit true),
+    -- tags have no declared key set, so an unmentioned tag stays unknown
+    testResult (mkPolicy (.binaryApp .hasTag (.var .principal) (.lit (.string "u")))) schema req es
+      (.binaryApp .hasTag principalE (.val (.prim (.string "u")) .string) (.bool .anyBool)),
+    -- the value is not known, so access stays a residual
+    testResult (mkPolicy (.binaryApp .eq (.getAttr (.var .principal) "req") (.lit (.string "x"))))
+      schema req es
+      (.binaryApp .eq (.getAttr principalE "req" .string)
+        (.val (.prim (.string "x")) .string) (.bool .anyBool)),
+    -- an optional attribute must be guarded to typecheck, and the guard folding
+    -- to `false` is what keeps the (erroring) access unreachable
+    testResult (mkPolicy (.and (.hasAttr (.var .principal) "opt")
+        (.binaryApp .eq (.getAttr (.var .principal) "opt") (.lit (.string "x")))))
+      schema req es
+      (boolLit false),
+
+    -- Knowledge reaches *through* a partly-known record: `rec` is only partly
+    -- known, but it does say `inner` exists.
+    testResult (mkPolicy (.hasAttr (.getAttr (.var .principal) "rec") "inner")) schema req es
+      (boolLit true),
+    -- ... and that `bogus` cannot, since the nested record type is closed
+    testResult (mkPolicy (.hasAttr (.getAttr (.var .principal) "rec") "bogus")) schema req es
+      (boolLit false),
+    -- the nested value itself is not known, so reading it stays a residual
+    testResult (mkPolicy (.binaryApp .eq
+        (.getAttr (.getAttr (.var .principal) "rec") "inner") (.lit (.string "x"))))
+      schema req es
+      (.binaryApp .eq
+        (.getAttr (.getAttr principalE "rec" (.record RecType)) "inner" .string)
+        (.val (.prim (.string "x")) .string) (.bool .anyBool)),
+
+    -- Under conservative error-freedom an attribute access is treated as
+    -- possibly-erroring even when the attribute is known to exist, so the
+    -- `&& false` fold is blocked and the access is preserved.
+    testResult (mkPolicy (.and
+        (.binaryApp .eq (.getAttr (.var .principal) "req") (.lit (.string "x")))
+        (.lit (.bool false))))
+      schema req es
+      (.and
+        (.binaryApp .eq (.getAttr principalE "req" .string)
+          (.val (.prim (.string "x")) .string) (.bool .anyBool))
+        (.val (.prim (.bool false)) (.bool .anyBool)) (.bool .anyBool)),
+    -- the same for a tag read: it is conservatively possibly-erroring, so the
+    -- guarded access is preserved rather than folded away
+    testResult (mkPolicy (.and
+        (.and (.binaryApp .hasTag (.var .principal) (.lit (.string "t")))
+          (.binaryApp .eq (.binaryApp .getTag (.var .principal) (.lit (.string "t")))
+            (.lit (.string "x"))))
+        (.lit (.bool false))))
+      schema req es
+      (.and
+        (.binaryApp .eq
+          (.binaryApp .getTag principalE (.val (.prim (.string "t")) .string) .string)
+          (.val (.prim (.string "x")) .string) (.bool .anyBool))
+        (.val (.prim (.bool false)) (.bool .anyBool)) (.bool .anyBool)),
+    -- A nested record given in partial form but fully determined folds all the
+    -- way to a concrete value.
+    testResult (mkPolicy (.binaryApp .eq
+        (.getAttr (.getAttr (.var .principal) "rec") "inner") (.lit (.string "v"))))
+      schema req esDetermined
+      (boolLit true),
+    -- and the whole nested record folds too, so it can be compared as a value
+    testResult (mkPolicy (.binaryApp .eq
+        (.getAttr (.var .principal) "rec")
+        (.record [("inner", .lit (.string "v"))])))
+      schema req esDetermined
+      (boolLit true),
+
+    -- but an entity we have no data for at all leaves the access possibly
+    -- erroring, so the fold is blocked
+    testResult (mkPolicy (.and
+        (.binaryApp .eq (.getAttr (.lit (.entityUID ⟨E, "q"⟩)) "req") (.lit (.string "x")))
+        (.lit (.bool false))))
+      schema req es
+      (.and
+        (.binaryApp .eq
+          (.getAttr (.val (.prim (.entityUID ⟨E, "q"⟩)) (.entity E)) "req" .string)
+          (.val (.prim (.string "x")) .string) (.bool .anyBool))
+        (.val (.prim (.bool false)) (.bool .anyBool)) (.bool .anyBool)),
+  ]
+
+end UnitTest.TPE.AttrStates
+
+namespace UnitTest.TPE.Context
+open Cedar.TPE
+open Cedar.Spec
+open Cedar.Validation
+open Cedar.Data
+
+/-!
+Tests that partial knowledge of the *context* is reached through the same way
+entity data is: `context.rec.inner` resolves from a partly-known context record.
+-/
+
+def E : EntityType := ⟨"E", []⟩
+
+def RecType : RecordType := Map.make [("inner", .required .string), ("opt", .optional .string)]
+
+def CtxType : RecordType :=
+  Map.make [("rec", .required (.record RecType)), ("flag", .required (.bool .anyBool))]
+
+def schema : Schema :=
+  ⟨Map.make [
+    (ActionType, .standard ⟨default, default, default⟩),
+    (E, .standard ⟨default, default, default⟩)
+  ],
+  Map.make [
+    (⟨ActionType, "a"⟩, ⟨Set.singleton E, Set.singleton E, default, CtxType⟩)
+  ]⟩
+
+def es : PartialEntities :=
+  Map.make [(⟨ActionType, "a"⟩, ⟨.some default, .some default, .some default⟩)]
+
+/-- The context knows `rec.inner` but neither `rec.opt` nor `flag`. -/
+def req : PartialRequest :=
+  ⟨⟨E, .some "p"⟩, ⟨ActionType, "a"⟩, ⟨E, default⟩,
+   .some (Map.make [
+     ("rec", .partialRecord (Map.make [("inner", .value (.prim (.string "v")))]))
+   ])⟩
+
+def mkPolicy (x : Expr) : Policy :=
+  ⟨"0", .permit, .principalScope .any, .actionScope .any, .resourceScope .any, [⟨.when, x⟩]⟩
+
+def boolLit (b : Bool) : Residual := .val (.prim (.bool b)) (.bool .anyBool)
+
+def ctxVar : Residual := .var .context (.record (RecordType.liftBoolTypes CtxType))
+
+def tests :=
+  suite "TPE resolution through a partly-known context"
+  [
+    -- the known nested attribute resolves all the way to its value
+    testResult (mkPolicy (.binaryApp .eq
+        (.getAttr (.getAttr (.var .context) "rec") "inner") (.lit (.string "v"))))
+      schema req es
+      (boolLit true),
+    -- `rec` is required by the context type, so it must exist
+    testResult (mkPolicy (.hasAttr (.getAttr (.var .context) "rec") "inner")) schema req es
+      (boolLit true),
+    -- `opt` is optional and unmentioned, so its existence is unknown
+    testResult (mkPolicy (.hasAttr (.getAttr (.var .context) "rec") "opt")) schema req es
+      (.hasAttr (.getAttr ctxVar "rec" (.record RecType)) "opt" (.bool .anyBool)),
+    -- an undeclared attribute of the nested record cannot exist
+    testResult (mkPolicy (.hasAttr (.getAttr (.var .context) "rec") "bogus")) schema req es
+      (boolLit false),
+    -- `flag` is required but unmentioned, so `has` is true while the value is unknown
+    testResult (mkPolicy (.hasAttr (.var .context) "flag")) schema req es
+      (boolLit true),
+    testResult (mkPolicy (.getAttr (.var .context) "flag")) schema req es
+      (.getAttr ctxVar "flag" (.bool .anyBool)),
+    -- ... and although `flag` is known to exist, a read is conservatively
+    -- possibly-erroring, so the `&& false` fold is blocked
+    testResult (mkPolicy (.and (.getAttr (.var .context) "flag") (.lit (.bool false))))
+      schema req es
+      (.and (.getAttr ctxVar "flag" (.bool .anyBool))
+        (.val (.prim (.bool false)) (.bool .anyBool)) (.bool .anyBool)),
+  ]
+
+end UnitTest.TPE.Context
+
 open UnitTest.TPE
 
-def tests := [Basic.tests, Motivation.tests, Spec.tests, SchemaInformed.tests]
+def tests := [Basic.tests, Motivation.tests, Spec.tests, SchemaInformed.tests, AttrStates.tests, Context.tests]
 
 end UnitTest.TPE

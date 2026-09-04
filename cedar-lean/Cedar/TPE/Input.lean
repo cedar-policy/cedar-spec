@@ -17,6 +17,7 @@
 import Cedar.Spec.Expr
 import Cedar.Spec.Request
 import Cedar.Spec.Value
+import Cedar.TPE.Value
 import Cedar.Validation.RequestEntityValidator
 import Cedar.Validation.EnvironmentValidator
 import Cedar.Validation.TypedExpr
@@ -42,15 +43,15 @@ structure PartialRequest where
   -- We don't need type annotation here because the value of `context` can only
   -- be accessed via evaluating a `TypedExpr`, which allows us to obtain a
   -- (typed) `Residual`
-  context   : Option (Map Attr Value)
+  context   : Option PartialRecord
 deriving Inhabited
 
 
 -- We don't need type annotations here following the rationale above
 structure PartialEntityData where
-  attrs     : Option (Map Attr Value)
+  attrs     : Option PartialRecord
   ancestors : Option (Set EntityUID)
-  tags      : Option (Map Attr Value)
+  tags      : Option PartialRecord
 deriving Inhabited
 
 abbrev MaybeEntityData := Option EntityData
@@ -73,14 +74,63 @@ def PartialEntities.get (es : PartialEntities) (uid : EntityUID) (f : PartialEnt
 
 def PartialEntities.ancestors (es : PartialEntities) (uid : EntityUID) : Option (Set EntityUID) := es.get uid PartialEntityData.ancestors
 
-def PartialEntities.tags (es : PartialEntities) (uid : EntityUID) : Option (Map Tag Value) := es.get uid PartialEntityData.tags
+def PartialEntities.tags (es : PartialEntities) (uid : EntityUID) : Option PartialRecord := es.get uid PartialEntityData.tags
 
-def PartialEntities.attrs (es : PartialEntities) (uid : EntityUID) : Option (Map Tag Value) := es.get uid PartialEntityData.attrs
+def PartialEntities.attrs (es : PartialEntities) (uid : EntityUID) : Option PartialRecord := es.get uid PartialEntityData.attrs
 
 
 
 def partialIsValid {α} (o : Option α) (f : α → Bool) : Bool :=
   (o.map f).getD true
+
+mutual
+
+/--
+Is `r` a valid record of type `rty`
+-/
+def partialRecordIsValid (schema : Schema) (r : PartialRecord) (rty : RecordType) : Bool :=
+  r.toList.attach₂.all λ x =>
+    match rty.find? x.val.fst with
+    -- The partial record can't define an attribute as existing if it's not in the type.
+    -- This allows explicitly absent attributes, but also an explicitly unknown attribute which
+    -- could never exist in a valid concrete record of the same type.
+    | .none => !x.val.snd.exists?
+    | .some qty =>
+      match x.val.snd with
+      | .absent => !qty.isRequired
+      | _ =>
+        have : sizeOf x.val.snd < sizeOf r := by
+          have h := x.property
+          cases r
+          simp only [Map.toList_mk_id, Map.mk.sizeOf_spec] at *
+          omega
+        attrStateIsValidAt schema x.val.snd qty.getType
+termination_by sizeOf r
+
+/--
+Is this a valid attribute with type `ty`.
+-/
+def attrStateIsValidAt (schema : Schema) (s : AttrState) (ty : CedarType) : Bool :=
+  match s with
+  | .value v => instanceOfType v ty schema
+  | .partialRecord r =>
+    match ty with
+    | .record rty => partialRecordIsValid schema r rty
+    | _           => false
+  | .present
+  | .absent
+  | .unknown => true
+termination_by sizeOf s
+
+end
+
+/--
+Any tag key may exist, but if the schema declares no tag type then none may.
+-/
+def partialTagsAreValid (schema : Schema) (tags : PartialRecord) (tty? : Option CedarType) : Bool :=
+  match tty? with
+  | .some tty => tags.toList.all λ (_, s) => attrStateIsValidAt schema s tty
+  | .none => tags.toList.all λ (_, s) => !s.exists?
 
 def requestIsValid (env : TypeEnv) (req : PartialRequest) : Bool :=
   (partialIsValid req.principal.asEntityUID λ principal =>
@@ -88,8 +138,8 @@ def requestIsValid (env : TypeEnv) (req : PartialRequest) : Bool :=
   req.action == env.reqty.action &&
   (partialIsValid req.resource.asEntityUID λ resource =>
     instanceOfEntityType resource env.reqty.resource env.schema) &&
-  (partialIsValid req.context λ m =>
-    instanceOfType (.record m) (.record env.reqty.context) env.schema)
+  (partialIsValid req.context λ r =>
+    partialRecordIsValid env.schema r env.reqty.context)
 
 def validatePartialRequest (schema : Schema) (req : PartialRequest) : Except RequestValidationError TypeEnv :=
   match schema.environment? req.principal.ty req.resource.ty req.action with
@@ -105,10 +155,10 @@ where
   actionEntityIsValid uid entityData : Bool :=
     match schema.acts.find? uid with
     | .some actionEntry =>
-      (partialIsValid entityData.ancestors (actionEntry.ancestors == ·)) &&
-      (partialIsValid entityData.attrs (instanceOfType · (.record Map.empty) schema)) &&
-      (partialIsValid entityData.tags (· == Map.empty))
-    | .none             => false
+      partialIsValid entityData.ancestors (· == actionEntry.ancestors) &&
+      partialIsValid entityData.attrs (·.toList.isEmpty) &&
+      partialIsValid entityData.tags (·.toList.isEmpty)
+    | .none => true
   entityIsValid p :=
     let (uid, entityData) := p
     let (attrs, ancestors, tags) := (entityData.attrs, entityData.ancestors, entityData.tags)
@@ -119,11 +169,8 @@ where
         ancestors.all (λ ancestor =>
         entry.ancestors.contains ancestor.ty &&
         instanceOfEntityType ancestor ancestor.ty schema)) &&
-      (partialIsValid attrs (instanceOfType · (.record entry.attrs) schema)) &&
-      (partialIsValid tags λ tags =>
-        match entry.tags? with
-        | .some tty => tags.values.all (instanceOfType · tty schema)
-        | .none     => tags == Map.empty)
+      (partialIsValid attrs (partialRecordIsValid schema · entry.attrs)) &&
+      (partialIsValid tags (partialTagsAreValid schema · entry.tags?))
     | .none => actionEntityIsValid uid entityData
   instanceOfActionSchema p :=
     let (uid, _) := p
@@ -140,16 +187,16 @@ def requestIsConsistent (req₁ : Request) (req₂ : PartialRequest) : Bool :=
   partialIsValid p₂.asEntityUID (· = p₁) &&
   a₁ = a₂ &&
   partialIsValid r₂.asEntityUID (· = r₁) &&
-  partialIsValid c₂ (· = c₁)
+  partialIsValid c₂ (λ r => r.wellFormed && c₁.wellFormed && r.consistentWith c₁)
 
 /-- Every entity of `es₂` is in `es₁`, and every known component of it agrees with `es₁`. -/
 def entitiesIsConsistent (es₁ : Entities) (es₂ : PartialEntities) : Bool :=
   es₂.toList.all λ (a₂, e₂) => match es₁.find? a₂ with
     | .some e₁ =>
       let ⟨attrs₁, ancestors₁, tags₁⟩ := e₁
-      partialIsValid e₂.attrs (· = attrs₁) &&
+      partialIsValid e₂.attrs (·.consistentWith attrs₁) &&
       partialIsValid e₂.ancestors (· = ancestors₁) &&
-      partialIsValid e₂.tags (· = tags₁)
+      partialIsValid e₂.tags (·.consistentWith tags₁)
     | .none => false
 
 inductive ConcretizationError
@@ -199,47 +246,43 @@ open Cedar.Spec
 open Cedar.Validation
 open Cedar.TPE
 
-def Request.asPartialRequest (req : Request) : PartialRequest :=
+def Request.asPartialRequest (req : Request) (ctxTy : RecordType) : PartialRequest :=
   { principal := { ty := req.principal.ty, id := .some req.principal.eid }
   , action    := req.action
   , resource  := { ty := req.resource.ty, id := .some req.resource.eid }
-  , context   := req.context }
+  , context   := .some (PartialRecord.ofConcrete req.context ctxTy) }
 
 open Cedar.TPE
 
-def EntityData.asPartial (data : EntityData) : PartialEntityData :=
-  { attrs := (.some data.attrs)
+def EntityData.asPartial (data : EntityData) (rty : RecordType) : PartialEntityData :=
+  { attrs := .some (PartialRecord.ofConcrete data.attrs rty)
   , ancestors := (.some data.ancestors)
-  , tags := (.some data.tags)}
-
-def Entities.asPartial (entities: Entities) : PartialEntities :=
-  entities.mapOnValues EntityData.asPartial
-
+  , tags := (.some (PartialRecord.ofConcreteTags data.tags)) }
 
 end Cedar.Spec
 
 
 namespace Cedar.TPE
 open Cedar.Data
+open Cedar.Spec
+open Cedar.Validation
 
-/-- subtle: a missing entity bahaves the same way as a concrete entity
-with empty attrs, ancestors, and tags.
-This is because
-1. Cedar doesn't have a way to check for a presence of a particular entity id in the database.
-2. Each of the cedar operations behave the same way when encountering a missing entity compared to a empty one.
+def attrsOrEmpty (ets : EntitySchema) (ety : EntityType) : RecordType :=
+  (ets.attrs? ety).getD Map.empty
 
-This is a necessary condition for the soundness of batched entity loading.
+def Entities.asPartial (ets : EntitySchema) (entities : Entities) : PartialEntities :=
+  Map.mk (entities.toList.map λ (uid, data) => (uid, data.asPartial (attrsOrEmpty ets uid.ty)))
+
+/--
+Convert the entities returned by a batched loader into partial data.
+
+A `none` means the store has no such entity. It is omitted rather than recorded with empty
+attributes: an entry in the partial store is taken to exist, and `resolveAttr` may report a
+required attribute as `present`, which is sound only for an entity that really exists. The uid
+may be requested again on a later iteration.
 -/
-def MaybeEntityData.asPartial :
-  MaybeEntityData → PartialEntityData
-| none =>
-  { attrs :=  (.some Map.empty)
-  , ancestors := (.some Set.empty)
-  , tags := (.some Map.empty)}
-| some d =>
-  d.asPartial
-
-def EntitiesWithMissing.asPartial (store: SlicedEntities) : PartialEntities :=
-  store.mapOnValues MaybeEntityData.asPartial
+def SlicedEntities.asPartial (ets : EntitySchema) (store : SlicedEntities) : PartialEntities :=
+  Map.mk (store.toList.filterMap λ (uid, data?) =>
+    data?.map λ data => (uid, data.asPartial (attrsOrEmpty ets uid.ty)))
 
 end Cedar.TPE

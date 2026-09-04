@@ -59,12 +59,36 @@ def testBatchedEvaluatorEquivalence (name : String) (expr : Expr) (req : Request
     -- Create a minimal TypeEnv for typechecking
     match typeOf expr ∅ type_env with
     | .ok (typedExpr, _) =>
-      let batchedResult := batchedEvaluate action_schema typedExpr req loader 10
+      let batchedResult := batchedEvaluate type_env typedExpr req loader 10
       match batchedResult.asValue, regularResult with
       | .some bv, .ok rv => checkEq bv rv
       | .none, .error _ => .ok (.ok ())
       | _, _ =>
         .error s!"batched {repr batchedResult} disagrees with concrete {repr regularResult}"
+    | .error e =>
+      .error s!"Type error: {repr e}"
+  ⟩
+
+/--
+Batched evaluation is allowed to reach no value at all.
+
+A `has`/`hasTag` on an entity the loader reports as *absent* stays unresolved: a `PartialRecord` is
+open, so an entity dropped from the store keeps every key `unknown`, and there is no way to say "this
+entity definitely has no tags". Inserting an empty record instead would be unsound --- `resolveAttr`
+falls back to `AttrState.ofDeclared`, which would make every *required* attribute `present` for an
+entity that does not exist, letting `has` reduce to `true`.
+
+TPE never returns a *wrong* value, so the contract here is only that no value is produced.
+-/
+def testBatchedEvaluatorNoDecision (name : String) (expr : Expr) (req : Request) (loader : EntityLoader) : TestCase IO :=
+  test name ⟨λ _ =>
+    match typeOf expr ∅ type_env with
+    | .ok (typedExpr, _) =>
+      let batchedResult := batchedEvaluate type_env typedExpr req loader 10
+      match batchedResult.asValue with
+      | .none => .ok (.ok ())
+      | .some v =>
+        .error s!"expected batched evaluation to reach no decision, but got {repr v}"
     | .error e =>
       .error s!"Type error: {repr e}"
   ⟩
@@ -121,14 +145,14 @@ def tests :=
       testRequest
       testEntities
       testLoader,
-    -- handling has on entity that isn't there
-    testBatchedEvaluatorEquivalence
-      "missing entity has attribute"
+    -- `has`/`hasTag` on an entity the loader says is absent cannot be resolved, so batched
+    -- evaluation reaches no decision here. See `testBatchedEvaluatorNoDecision`.
+    testBatchedEvaluatorNoDecision
+      "missing entity has attribute - no decision"
       (.and (hasTag oliver delayed_friend_string) (
         (.getAttr
           (getTag oliver delayed_friend_string) "isAdmin")))
       testRequest
-      testEntities
       testLoader
   ]
 

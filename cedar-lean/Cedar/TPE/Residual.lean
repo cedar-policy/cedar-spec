@@ -17,12 +17,14 @@
 import Cedar.Spec.Expr
 import Cedar.Spec.Value
 import Cedar.Validation.TypedExpr
+import Cedar.TPE.Input
 
 namespace Cedar.Spec
 
 open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
+open Cedar.TPE
 
 /- The result produced by TPE -/
 -- We do not need `unknown`s because they can be represented by entity dereferences
@@ -79,6 +81,59 @@ def Residual.typeOf : Residual → CedarType
   | .call _ _ ty
   | .error ty => ty
 
+/--
+What we know about `uid`'s tag `tag`.
+
+There's no declared set of tags, so we can never conclude a tag is absent.
+-/
+def entityTag (es : PartialEntities) (uid : EntityUID) (tag : Tag) : AttrState :=
+  match es.tags uid with
+  | .some tags => tags.attr tag
+  | .none      => .unknown
+
+
+/--
+What we know about an entity's attribute, given the partial entity data and attribute types.
+-/
+def entityAttr (env : TypeEnv) (es : PartialEntities) (uid : EntityUID) (a : Attr) : AttrState :=
+  match es.attrs uid, env.ets.attrs? uid.ty with
+  | .some attrs, .some rty => attrs.resolveAttr a rty
+  | _, _                   => .unknown
+
+mutual
+
+/--
+What TPE knows about a residual value
+-/
+def residualState (env : TypeEnv) (req : PartialRequest) (es : PartialEntities) :
+  Residual → AttrState
+  | .val v _ => .value v
+  | .var .context _ =>
+    match req.context with
+    | .some r => .partialRecord r
+    | .none   => .unknown
+  | .getAttr r a _ => attrStateAt env req es r a
+  | .binaryApp .getTag r₁ r₂ _ =>
+    match residualState env req es r₁, residualState env req es r₂ with
+    | .value (.prim (.entityUID uid)), .value (.prim (.string tag)) => entityTag es uid tag
+    | _, _ => .unknown
+  | _ => .unknown
+
+/--
+What TPE knows about attribute `a` of the value residual `r` denotes.
+-/
+def attrStateAt (env : TypeEnv) (req : PartialRequest) (es : PartialEntities)
+  (r : Residual) (a : Attr) : AttrState :=
+  match residualState env req es r, r.typeOf with
+  | .value (.record m), _ =>
+    match m.find? a with
+    | .some v => .value v
+    | .none   => .absent
+  | .value (.prim (.entityUID uid)), _ => entityAttr env es uid a
+  | .partialRecord pr, .record rty => PartialRecord.resolveAttr pr a rty
+  | _, _ => .unknown
+
+end
 
 def BinaryOp.canError : BinaryOp → Bool
   | .add | .sub | .mul | .getTag => true
@@ -165,11 +220,30 @@ decreasing_by
     try simp at h
     omega
 
+def Value.allLiteralUIDs (v : Value) : Set EntityUID :=
+  match v with
+  | .prim (.entityUID uid) => Set.singleton uid
+  | .prim _                => Set.empty
+  | .ext _                 => Set.empty
+  | .set s                 => s.elts.mapUnion₁ (λ ⟨v, _⟩ => Value.allLiteralUIDs v)
+  | .record m              => m.toList.mapUnion₂ (λ ⟨⟨_, v⟩, _⟩ => Value.allLiteralUIDs v)
+termination_by sizeOf v
+decreasing_by
+  all_goals
+    rename_i h
+    simp only [Value.set.sizeOf_spec, Value.record.sizeOf_spec]
+    first
+      | (have := Set.sizeOf_lt_of_mem h
+         cases s
+         simp only [Set.elts] at *
+         omega)
+      | (cases m
+         simp only [Map.toList_mk_id, Map.mk.sizeOf_spec] at *
+         omega)
 
 def Residual.allLiteralUIDs (x : Residual) : Set EntityUID :=
   match x with
-  | .val (.prim (.entityUID uid)) _ty  => Set.singleton uid
-  | .val _ _                           => Set.empty
+  | .val v _                           => v.allLiteralUIDs
   | .error _e                          => Set.empty
   | .var _ _                           => Set.empty
   | .ite x₁ x₂ x₃ _      =>

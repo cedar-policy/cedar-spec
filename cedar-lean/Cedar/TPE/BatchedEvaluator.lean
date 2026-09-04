@@ -53,10 +53,10 @@ def batchedEvaluateLoop
   | 0 => residual
   | n + 1 =>
     let toLoad := residual.allLiteralUIDs.filter (λ uid => (store.find? uid).isNone)
-    let newEntities := ((loader toLoad).mapOnValues MaybeEntityData.asPartial)
+    let newEntities := SlicedEntities.asPartial env.ets (loader toLoad)
     let newStore := newEntities ++ store
 
-    match Cedar.TPE.evaluate env residual req.asPartialRequest newStore with
+    match Cedar.TPE.evaluate env residual (req.asPartialRequest env.reqty.context) newStore with
     | .val v _ty => .val v _ty
     | newRes => batchedEvaluateLoop env newRes req loader newStore n
 
@@ -77,8 +77,8 @@ def batchedEvaluate
   (loader : EntityLoader)
   (iters : Nat)
   : Residual :=
-  let residual :=
-    Cedar.TPE.evaluate env x.toResidual req.asPartialRequest (actionEntities env.acts)
+  let residual := Cedar.TPE.evaluate env x.toResidual
+    (req.asPartialRequest env.reqty.context) (actionEntities env.acts)
   batchedEvaluateLoop env residual req loader (actionEntities env.acts) iters
 
 /--
@@ -97,11 +97,11 @@ def batchedAuthorizeLoop
     | 0 => resp
     | n + 1 =>
       let toLoad := residuals.mapUnion (λ rp : ResidualPolicy => rp.residual.allLiteralUIDs)|>.filter (λ uid => (store.find? uid).isNone)
-      let newEntities := ((loader toLoad).mapOnValues MaybeEntityData.asPartial)
+      let newEntities := SlicedEntities.asPartial env.ets (loader toLoad)
       let newStore := newEntities ++ store
 
       let residuals : List ResidualPolicy := residuals.map λ rp =>
-        ⟨rp.id, rp.effect, Cedar.TPE.evaluate env rp.residual req.asPartialRequest newStore⟩
+        ⟨rp.id, rp.effect, Cedar.TPE.evaluate env rp.residual (req.asPartialRequest env.reqty.context) newStore⟩
       batchedAuthorizeLoop env residuals req loader newStore n
 
 /--
@@ -116,12 +116,13 @@ def batchedAuthorize
   (loader : EntityLoader)
   (iters : Nat)
   : Except Error Response := do
-  let residualPolicies ← policies.mapM (λ p => do
-    pure ⟨p.id, p.effect,
-      ← evaluatePolicy schema p req.asPartialRequest (actionEntities schema.acts)⟩)
   match schema.environment? req.principal.ty req.resource.ty req.action with
   | .none => .error .invalidEnvironment
   | .some env =>
+    let residualPolicies ← policies.mapM (λ p => do
+      pure ⟨p.id, p.effect,
+        ← evaluatePolicy schema p (req.asPartialRequest env.reqty.context)
+            (actionEntities schema.acts)⟩)
     pure (batchedAuthorizeLoop env residualPolicies req loader (actionEntities schema.acts) iters)
 
 /--

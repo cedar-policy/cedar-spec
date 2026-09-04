@@ -26,6 +26,8 @@ import Cedar.Thm.WellTyped
 import Cedar.Thm.Data.Control
 
 import Cedar.Thm.TPE.Soundness.Basic
+import Cedar.Thm.TPE.Attrs
+import Cedar.Thm.TPE.State
 
 namespace Cedar.Thm
 
@@ -33,6 +35,21 @@ open Cedar.Spec
 open Cedar.Validation
 open Cedar.TPE
 open Cedar.Thm
+
+/-- `getAttr` on an entity errors exactly when the (concrete) attribute is
+missing, whether because the entity is absent or the attribute is. -/
+theorem get_attr_entity_none {es : Entities} {uid : EntityUID} {attr : Attr}
+  (h : (es.attrsOrEmpty uid).find? attr = .none) :
+  Spec.getAttr (.prim (.entityUID uid)) attr es = .error .entityDoesNotExist ∨
+  Spec.getAttr (.prim (.entityUID uid)) attr es = .error .attrDoesNotExist
+:= by
+  simp only [Spec.getAttr, Spec.attrsOf, Entities.attrs, Entities.attrsOrEmpty] at *
+  cases hf : es.find? uid with
+  | none => left; simp [hf, Data.Map.findOrErr, bind, Except.bind]
+  | some d =>
+    right
+    simp only [hf] at h
+    simp [hf, Data.Map.findOrErr, h, bind, Except.bind]
 
 theorem partial_evaluate_is_sound_get_attr
 {x₁ : Residual}
@@ -42,51 +59,28 @@ theorem partial_evaluate_is_sound_get_attr
 {pes : PartialEntities}
 {attr : Attr}
 {ty : CedarType}
+(h₂ : InstanceOfWellFormedEnvironment req es env)
+(hwt : Residual.WellTyped env (Residual.getAttr x₁ attr ty))
+(hwt' : Residual.WellTyped env (TPE.evaluate env x₁ preq pes))
 (h₄ : RequestAndEntitiesRefine req es preq pes)
 (hᵢ₁ : Except.toOption (x₁.evaluate req es) = Except.toOption ((TPE.evaluate env x₁ preq pes).evaluate req es)) :
   Except.toOption ((x₁.getAttr attr ty).evaluate req es) =
   Except.toOption ((TPE.evaluate env (x₁.getAttr attr ty) preq pes).evaluate req es)
 := by
-  simp [TPE.evaluate, TPE.getAttr]
+  simp only [TPE.evaluate, TPE.getAttr]
   split
-  case _ heq =>
+  case h_1 heq =>
     simp [heq, Residual.evaluate] at hᵢ₁
     rcases to_option_right_err hᵢ₁ with ⟨_, hᵢ₁⟩
     simp [Residual.evaluate, hᵢ₁, Except.toOption]
-  split
-  case _ heq =>
-    simp [TPE.attrsOf] at heq
-    split at heq
-    case _ heq₁ =>
-      simp at heq
-      simp [heq₁, Residual.evaluate] at hᵢ₁
-      replace hᵢ₁ := to_option_right_ok' hᵢ₁
-      simp [Residual.evaluate, hᵢ₁, someOrError, Spec.getAttr, Spec.attrsOf]
-      subst heq
-      split <;>
-      (
-        rename_i heq₂
-        simp [Data.Map.findOrErr, heq₂, Residual.evaluate, Except.toOption]
-      )
-    case _ uid _ heq₁ =>
-      simp [heq₁, Residual.evaluate] at hᵢ₁
-      replace hᵢ₁ := to_option_right_ok' hᵢ₁
-      simp [Residual.evaluate, hᵢ₁, Spec.getAttr, Spec.attrsOf]
-      simp [PartialEntities.attrs, PartialEntities.get, Option.bind_eq_some_iff] at heq
-      rcases heq with ⟨data, heq₂, heq₃⟩
-      simp [RequestAndEntitiesRefine, EntitiesRefine] at h₄
-      rcases h₄ with ⟨_, h₄⟩
-      specialize h₄ uid data heq₂
-      rcases h₄ with ⟨_, h₄₁, h₄₂, _⟩
-      simp only [heq₃, PartialIsValid.some_inv] at h₄₂
-      subst h₄₂
-      rename_i data' h₄
-      simp [Entities.attrs, Data.Map.findOrErr, h₄₁]
-      generalize h₄ : data'.attrs.find? attr = res
-      cases res <;> simp [someOrError, Residual.evaluate, Except.toOption]
-    case _ => cases heq
-  case _ =>
-    simp [Residual.evaluate]
+  case h_2 =>
+    have hself := get_attr_residual_well_typed hwt' hwt
+    have hcons : AttrStateConsistent (attrStateAt env preq pes (TPE.evaluate env x₁ preq pes) attr)
+        ((((TPE.evaluate env x₁ preq pes).getAttr attr ty).evaluate req es).toOption) := by
+      simpa only [Residual.evaluate, bind, Except.bind] using
+        attrStateAt_sound (a := attr) h₂ h₄ hwt'
+    rw [stateToResidual_sound (ty := ty) h₂ hcons hself rfl]
+    simp only [Residual.evaluate]
     exact to_option_eq_do₁ (Spec.getAttr · attr es) hᵢ₁
 
 end Cedar.Thm

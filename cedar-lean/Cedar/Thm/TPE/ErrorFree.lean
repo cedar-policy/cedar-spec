@@ -17,8 +17,14 @@
 import Cedar.TPE
 import Cedar.Thm.WellTyped
 import Cedar.Thm.TPE.Input
+import Cedar.Thm.TPE.State
 
 namespace Cedar.Spec
+
+open Cedar.Data
+open Cedar.Spec
+open Cedar.Validation
+open Cedar.TPE
 
 inductive BinaryOp.CanError : BinaryOp → Prop where
   | add : BinaryOp.CanError .add
@@ -83,17 +89,31 @@ theorem Residual.error_free_spec (r : Residual) : r.errorFree = true ↔ r.Error
   case var =>
     simp only [Residual.errorFree, true_iff]
     constructor
-  case binaryApp op x₁ x₂ _ =>
-    simp only [Residual.errorFree, Bool.and_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true]
-    have hop : op.canError = false ↔ ¬ op.CanError := by
-      grind [BinaryOp.can_error_spec]
-    rw [hop, error_free_spec x₁, error_free_spec x₂]
-    constructor
-    · intro ⟨⟨h₁, h₂⟩, h₃⟩
-      constructor <;> assumption
-    · intro h
-      cases h
-      and_intros <;> assumption
+  case binaryApp op x₁ x₂ ty =>
+    cases op
+    case getTag =>
+      -- a tag read is conservatively treated as possibly-erroring
+      simp only [Residual.errorFree, BinaryOp.canError, Bool.not_true, Bool.false_and,
+        Bool.false_eq_true, false_iff]
+      intro h
+      cases h with
+      | binary hop _ _ => exact hop (by constructor)
+    case add | sub | mul =>
+      simp only [Residual.errorFree, BinaryOp.canError, Bool.not_true, Bool.false_and,
+        Bool.false_eq_true, false_iff]
+      intro h
+      cases h with
+      | binary hop _ _ => exact hop (by constructor)
+    all_goals
+      simp only [Residual.errorFree, BinaryOp.canError, Bool.not_false, Bool.true_and,
+        Bool.and_eq_true]
+      rw [error_free_spec x₁, error_free_spec x₂]
+      constructor
+      · intro ⟨h₁, h₂⟩
+        exact .binary (by intro hc; cases hc) h₁ h₂
+      · intro h
+        cases h with
+        | binary _ h₁ h₂ => exact ⟨h₁, h₂⟩
   case unaryApp op x₁ _ =>
     simp only [Residual.errorFree, Bool.and_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true]
     have hop : op.canError = false ↔ ¬ op.CanError := by
