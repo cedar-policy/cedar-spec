@@ -44,6 +44,7 @@ The batched evaluation loop for a single residual expression.
   3. Exits if a value has been found or it hits the maximum iteration limit
 -/
 def batchedEvaluateLoop
+  (env : TypeEnv)
   (residual : Residual)
   (req : Request)
   (loader : EntityLoader)
@@ -55,9 +56,9 @@ def batchedEvaluateLoop
     let newEntities := ((loader toLoad).mapOnValues MaybeEntityData.asPartial)
     let newStore := newEntities ++ store
 
-    match Cedar.TPE.evaluate residual req.asPartialRequest newStore with
+    match Cedar.TPE.evaluate env residual req.asPartialRequest newStore with
     | .val v _ty => .val v _ty
-    | newRes => batchedEvaluateLoop newRes req loader newStore n
+    | newRes => batchedEvaluateLoop env newRes req loader newStore n
 
 def actionEntities (acts : ActionSchema) : PartialEntities :=
   Map.make (acts.toList.map λ (uid, entry) =>
@@ -70,19 +71,21 @@ Performs a maximum of `iter` number of calls to `loader`,
 but may perform fewer when a value is found.
 -/
 def batchedEvaluate
-  (acts : ActionSchema)
+  (env : TypeEnv)
   (x : TypedExpr)
   (req : Request)
   (loader : EntityLoader)
   (iters : Nat)
   : Residual :=
-  let residual := Cedar.TPE.evaluate x.toResidual req.asPartialRequest (actionEntities acts)
-  batchedEvaluateLoop residual req loader (actionEntities acts) iters
+  let residual :=
+    Cedar.TPE.evaluate env x.toResidual req.asPartialRequest (actionEntities env.acts)
+  batchedEvaluateLoop env residual req loader (actionEntities env.acts) iters
 
 /--
 The batched authorization loop for authorization over a list of policies.
 -/
 def batchedAuthorizeLoop
+  (env : TypeEnv)
   (residuals : List ResidualPolicy) (req : Request) (loader : EntityLoader)
   (store : PartialEntities) (n : Nat)
   : Response
@@ -98,8 +101,8 @@ def batchedAuthorizeLoop
       let newStore := newEntities ++ store
 
       let residuals : List ResidualPolicy := residuals.map λ rp =>
-        ⟨rp.id, rp.effect, Cedar.TPE.evaluate rp.residual req.asPartialRequest newStore⟩
-      batchedAuthorizeLoop residuals req loader newStore n
+        ⟨rp.id, rp.effect, Cedar.TPE.evaluate env rp.residual req.asPartialRequest newStore⟩
+      batchedAuthorizeLoop env residuals req loader newStore n
 
 /--
 Evaluate an authorization request using an EntityLoader instead of a full Entities store.
@@ -116,7 +119,10 @@ def batchedAuthorize
   let residualPolicies ← policies.mapM (λ p => do
     pure ⟨p.id, p.effect,
       ← evaluatePolicy schema p req.asPartialRequest (actionEntities schema.acts)⟩)
-  pure (batchedAuthorizeLoop residualPolicies req loader (actionEntities schema.acts) iters)
+  match schema.environment? req.principal.ty req.resource.ty req.action with
+  | .none => .error .invalidEnvironment
+  | .some env =>
+    pure (batchedAuthorizeLoop env residualPolicies req loader (actionEntities schema.acts) iters)
 
 /--
 Create an entity loader for a given entity store.

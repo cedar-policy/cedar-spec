@@ -31,7 +31,7 @@ open Cedar.TPE
 abbrev PEPreservesTypeOf (res : Residual) : Prop :=
   ∀ {env : TypeEnv} , Residual.WellTyped env res →
     ∀ (preq : PartialRequest) (pes : PartialEntities),
-      (TPE.evaluate res preq pes).typeOf = res.typeOf
+      (TPE.evaluate env res preq pes).typeOf = res.typeOf
 
 private theorem partial_eval_preserves_typeof_and {a b : Residual} {ty : CedarType}
   (ih_a : PEPreservesTypeOf a)
@@ -116,28 +116,24 @@ private theorem partial_eval_preserves_typeof_unaryApp {op : UnaryOp} {e : Resid
   simp only [TPE.evaluate, TPE.apply₁]
   split
   . simp [Residual.typeOf]
-  . rename CedarType => ty₂
-    rename Residual => r
-    rename_i h₁
-    split
-    . rename Option Value => x
-      rename Value => v
-      rename_i h₂
-      unfold Spec.apply₁
-      split
-      any_goals simp only [Residual.typeOf, someOrError, Except.toOption]
-      case h_2 =>
-        rename Int64 => i
-        cases h₃ : i.neg?
-        all_goals
-          simp [intOrErr]
-    . split <;> simp [Residual.typeOf]
+  . split
+    . simp [Residual.typeOf]
+    . split
+      . unfold someOrError
+        split <;> simp [Residual.typeOf]
+      . simp [Residual.typeOf]
 
 private theorem partial_eval_preserves_typeof_binaryApp {op : BinaryOp} {e1 e2 : Residual} {ty : CedarType} :
   PEPreservesTypeOf (Residual.binaryApp op e1 e2 ty)
 := by
   intro env h_wt preq pes
   simp only [TPE.evaluate, TPE.apply₂, Option.pure_def, Option.bind_eq_bind]
+  split
+  case h_1 => simp [Residual.typeOf]
+  case h_2 => simp [Residual.typeOf]
+  split
+  case h_1 => simp [Residual.typeOf]
+  case h_2 hdec =>
   split
   case h_1 =>
     split
@@ -176,11 +172,7 @@ private theorem partial_eval_preserves_typeof_binaryApp {op : BinaryOp} {e1 e2 :
       case binaryApp.some v =>
         simp only [someOrError]
         cases v.find? tag <;> simp
-  case h_2 =>
-    split
-    · simp [Residual.typeOf]
-    · simp [Residual.typeOf]
-    · simp [apply₂.self, Residual.typeOf]
+  case h_2 => simp [apply₂.self, Residual.typeOf]
 
 private theorem partial_eval_preserves_typeof_call {xfn : ExtFun} {args : List Residual} {ty : CedarType} :
   PEPreservesTypeOf (Residual.call xfn args ty)
@@ -218,10 +210,12 @@ private theorem partial_eval_preserves_typeof_hasAttr {expr : Residual} {attr : 
   split
   . simp [Residual.typeOf]
   . split
-    . cases h_wt
-      . simp [Residual.typeOf]
-      . simp [Residual.typeOf]
     . simp [Residual.typeOf]
+    . split
+      . cases h_wt
+        . simp [Residual.typeOf]
+        . simp [Residual.typeOf]
+      . simp [Residual.typeOf]
 
 private theorem partial_eval_preserves_typeof_set {ls : List Residual} {ty : CedarType} :
   PEPreservesTypeOf (Residual.set ls ty)
@@ -246,7 +240,7 @@ private theorem partial_eval_preserves_typeof_record {ls : List (Attr × Residua
     · simp [Residual.typeOf]
 
 /--
-Theorem: TPE.evaluate preserves the typeOf property.
+Theorem: TPE.evaluate env preserves the typeOf property.
 
 If a residual has a certain type, then partially evaluating it produces
 a residual with the same type.

@@ -76,17 +76,24 @@ def or : Residual → Residual → CedarType → Residual
     if l.errorFree then true else .or l (.val true rty) ty
   | l, r, ty           => .or l r ty
 
-def apply₁ (req: PartialRequest) (op₁ : UnaryOp) (r : Residual) (ty : CedarType) : Residual :=
+/-  Given a unary operation applied to a non-value residual, reduce it to a value if possible -/
+def tryDecideResidual₁ (op₁ : UnaryOp) (r : Residual) : Option Value :=
+  if r.errorFree then
+    match op₁, r.typeOf with
+    | .is ety₁, .entity ety₂ => .some (ety₁ == ety₂)
+    | _, _ => .none
+  else .none
+
+def apply₁ (op₁ : UnaryOp) (r : Residual) (ty : CedarType) : Residual :=
   match r with
   | .error _ => .error ty
   | _ =>
-    match r.asValue with
-    | .some v => someOrError (Spec.apply₁ op₁ v).toOption ty
-    | .none   =>
-      match op₁, r with
-      | .is ety, .var .resource _ => .val (req.resource.ty == ety) ty
-      | .is ety, .var .principal _ => .val (req.principal.ty == ety) ty
-      | _, _ => .unaryApp op₁ r ty
+  match tryDecideResidual₁ op₁ r with
+  | .some v => .val v ty
+  | .none =>
+  match r.asValue with
+  | .some v => someOrError (Spec.apply₁ op₁ v).toOption ty
+  | .none => .unaryApp op₁ r ty
 
 def inₑ (uid₁ uid₂ : EntityUID) (es : PartialEntities) : Option Bool :=
   if uid₁ = uid₂ then .some true else (es.ancestors uid₁).map (Set.contains · uid₂)
@@ -102,7 +109,24 @@ def getTag (uid : EntityUID) (tag : String) (es : PartialEntities) (ty : CedarTy
   | .some tags => someOrError (tags.find? tag) ty
   | .none => .binaryApp .getTag uid tag ty
 
-def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (ty : CedarType) : Residual :=
+/- Given a unary operation applied to a non-value residuals, reduce it to a value if possible -/
+def tryDecideResidual₂ (env : TypeEnv) (op₂ : BinaryOp) (r₁ r₂ : Residual) : Option Value :=
+  if r₁.errorFree && r₂.errorFree then
+    match op₂, r₁.typeOf, r₂.typeOf with
+    | .mem, .entity ety₁, .entity ety₂
+    | .mem, .entity ety₁, .set (.entity ety₂) => if !env.descendentOf ety₁ ety₂ then .some false else none
+    | .eq,  .entity ety₁, .entity ety₂        => if ety₁ != ety₂ then .some false else none
+    | .hasTag, .entity ety, .string           => if env.ets.tags? ety == some .none then .some false else none
+    | _, _, _                                 => .none
+  else .none
+
+def apply₂ (env : TypeEnv) (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (ty : CedarType) : Residual :=
+  match r₁, r₂ with
+  | .error _, _ | _, .error _ => .error ty
+  | _, _ =>
+  match tryDecideResidual₂ env op₂ r₁ r₂ with
+  | .some v => .val v ty
+  | .none =>
   match r₁.asValue, r₂.asValue with
   | .some v₁, .some v₂ =>
     match op₂, v₁, v₂ with
@@ -141,10 +165,7 @@ def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (t
     | .getTag, .prim (.entityUID uid₁), .prim (.string tag) =>
       getTag uid₁ tag es ty
     | _, _, _ => .error ty
-  | _, _ =>
-    match r₁, r₂ with
-    | .error _, _ | _, .error _ => .error ty
-    | _, _ => self
+  | _, _ => self
   where
   self := .binaryApp op₂ r₁ r₂ ty
 
@@ -155,13 +176,30 @@ def attrsOf (r : Residual) (lookup : EntityUID → Option (Map Attr Value)) : Op
   | .val (.prim (.entityUID uid)) _ => lookup uid
   | _                               => none
 
-def hasAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : Residual :=
+/- Given a `has` expression applied to a non-value residuals, reduce it to a value if possible -/
+def tryDecideHasResidual (env : TypeEnv) (r : Residual) (a : Attr) : Option Value :=
+  if r.errorFree then
+    match r.typeOf with
+    | .record rty =>
+      if (rty.find? a).isNone then .some false else .none
+    | .entity ety =>
+      match env.ets.attrs? ety with
+      | .some rty =>
+        if (rty.find? a).isNone then .some false else none
+      | .none => .none
+    | _ => .none
+  else .none
+
+def hasAttr (env : TypeEnv) (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : Residual :=
   match r with
   | .error _ => .error ty
   | _ =>
-    match attrsOf r es.attrs with
-    | .some m => m.contains a
-    | .none   => .hasAttr r a ty
+  match tryDecideHasResidual env r a with
+  | .some v => .val v ty
+  | .none =>
+  match attrsOf r es.attrs with
+  | .some m => m.contains a
+  | .none   => .hasAttr r a ty
 
 def getAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : Residual :=
   match r with
@@ -187,6 +225,7 @@ def call (xfn : ExtFun) (rs : List Residual) (ty : CedarType) : Residual :=
   | .none    => if rs.any Residual.isError then .error ty else .call xfn rs ty
 
 def evaluate
+  (env : TypeEnv)
   (x : Residual)
   (req : PartialRequest)
   (es : PartialEntities) : Residual :=
@@ -195,25 +234,25 @@ def evaluate
   | .var v ty => varₚ req v ty
   | .error ty => .error ty
   | .ite x₁ x₂ x₃ ty =>
-    ite (evaluate x₁ req es) (evaluate x₂ req es) (evaluate x₃ req es) ty
+    ite (evaluate env x₁ req es) (evaluate env x₂ req es) (evaluate env x₃ req es) ty
   | .and x₁ x₂ ty =>
-    and (evaluate x₁ req es) (evaluate x₂ req es) ty
+    and (evaluate env x₁ req es) (evaluate env x₂ req es) ty
   | .or x₁ x₂ ty =>
-    or (evaluate x₁ req es) (evaluate x₂ req es) ty
+    or (evaluate env x₁ req es) (evaluate env x₂ req es) ty
   | .unaryApp op₁ x₁ ty =>
-    apply₁ req op₁ (evaluate x₁ req es) ty
+    apply₁ op₁ (evaluate env x₁ req es) ty
   | .binaryApp op₂ x₁ x₂ ty =>
-    apply₂ op₂ (evaluate x₁ req es) (evaluate x₂ req es) es ty
+    apply₂ env op₂ (evaluate env x₁ req es) (evaluate env x₂ req es) es ty
   | .hasAttr x₁ a ty =>
-    hasAttr (evaluate x₁ req es) a es ty
+    hasAttr env (evaluate env x₁ req es) a es ty
   | .getAttr x₁ a ty =>
-    getAttr (evaluate x₁ req es) a es ty
+    getAttr (evaluate env x₁ req es) a es ty
   | .set xs ty =>
-    set (xs.map₁ (λ ⟨x₁, _⟩ => evaluate x₁ req es)) ty
+    set (xs.map₁ (λ ⟨x₁, _⟩ => evaluate env x₁ req es)) ty
   | .record axs ty =>
-    record (axs.map₁ (λ ⟨(a, x₁), _⟩ => (a, (evaluate x₁ req es)))) ty
+    record (axs.map₁ (λ ⟨(a, x₁), _⟩ => (a, (evaluate env x₁ req es)))) ty
   | .call xfn xs ty =>
-    call xfn (xs.map₁ (λ ⟨x₁, _⟩ => evaluate x₁ req es)) ty
+    call xfn (xs.map₁ (λ ⟨x₁, _⟩ => evaluate env x₁ req es)) ty
 termination_by x
 decreasing_by
   all_goals
@@ -252,7 +291,7 @@ def evaluatePolicy (schema : Schema)
           checkEntities schema p.toExpr|>.mapError .invalidPolicy
           let expr := substituteAction env.reqty.action p.toExpr
           let (te, _) ← (typeOf expr ∅ env).mapError Error.invalidPolicy
-          .ok (evaluate te.liftBoolTypes.toResidual req es)
+          .ok (evaluate env te.liftBoolTypes.toResidual req es)
       else .error .invalidRequestOrEntities
     | .error _ => .error .invalidEnvironment
 

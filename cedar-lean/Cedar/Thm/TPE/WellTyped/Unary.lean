@@ -32,64 +32,76 @@ open Cedar.Validation
 open Cedar.TPE
 
 
+/-- The reductions only ever decide a boolean. -/
+theorem try_decide_residual₁_is_bool
+  {op₁ : UnaryOp} {r : Residual} {v : Value}
+  (hdec : TPE.tryDecideResidual₁ op₁ r = .some v) :
+  ∃ b : Bool, v = .prim (.bool b)
+:= by
+  unfold TPE.tryDecideResidual₁ at hdec
+  repeat' split at hdec
+  all_goals simp only [Option.some.injEq, reduceCtorEq] at hdec
+  all_goals exact ⟨_, hdec.symm⟩
+
 /--
 Helper theorem: Partial evaluation preserves well-typedness for unary application residuals.
 -/
 theorem partial_eval_well_typed_unaryApp {env : TypeEnv} {op : UnaryOp} {expr : Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
-  Residual.WellTyped env (TPE.evaluate expr preq pes) →
-  PEWellTyped env (Residual.unaryApp op expr ty) (TPE.evaluate (Residual.unaryApp op expr ty) preq pes) req preq es pes
+  Residual.WellTyped env (TPE.evaluate env expr preq pes) →
+  PEWellTyped env (Residual.unaryApp op expr ty) (TPE.evaluate env (Residual.unaryApp op expr ty) preq pes) req preq es pes
 := by
   intros h_expr_wt h_wf h_ref h_wt
   simp only [TPE.evaluate]
   cases h_wt with
   | unaryApp h_expr h_op =>
-    let expr_eval := TPE.evaluate expr preq pes
     unfold TPE.apply₁
     split
     case h_1 => apply Residual.WellTyped.error
     case h_2 =>
-      cases h : expr_eval.asValue with
-      | some v =>
-        simp only [someOrError]
-        split
-        case h_2 =>
-          apply Residual.WellTyped.error
-        case h_1 v ty ox x v₂ heq =>
-          unfold Spec.apply₁ at heq
-          split at heq
-          any_goals
-            cases h_op
-            simp only [Except.toOption, Option.some.injEq] at heq
-            rw [← heq]
-            exact well_typed_bool
-          case h_2 =>
-            simp only [Except.toOption, intOrErr] at heq
-            rename Int64 => i
-            cases h₂: i.neg?
-            . rw [h₂] at heq
-              simp at heq
-            . rw [h₂] at heq
-              simp only [Option.some.injEq] at heq
-              rw [← heq]
-              cases h_op
-              exact well_typed_int
-          case h_6 =>
-           contradiction
-      | none =>
-        simp only []
-        split
-        . cases h_op; exact well_typed_bool
-        . cases h_op; exact well_typed_bool
-        . case h_3 =>
-          apply Residual.WellTyped.unaryApp
-          exact h_expr_wt
+    split
+    case h_1 hdec =>
+      have ⟨_, hb⟩ := try_decide_residual₁_is_bool hdec
+      subst hb
+      cases h_op <;>
+        first
+        | exact well_typed_bool
+        | simp only [TPE.tryDecideResidual₁, ite_self, reduceCtorEq] at hdec
+    case h_2 =>
+    split
+    case h_1 =>
+      simp only [someOrError]
+      split
+      case h_2 => apply Residual.WellTyped.error
+      case h_1 v ty ox x v₂ heq =>
+        unfold Spec.apply₁ at heq
+        split at heq
+        any_goals
           cases h_op
-          all_goals
-            first
-            | apply UnaryResidualWellTyped.not
-            | apply UnaryResidualWellTyped.neg
-            | apply UnaryResidualWellTyped.isEmpty
-            | apply UnaryResidualWellTyped.like
-            | apply UnaryResidualWellTyped.is
-            rw [partial_eval_preserves_typeof _ h_expr]
-            assumption
+          simp only [Except.toOption, Option.some.injEq] at heq
+          rw [← heq]
+          exact well_typed_bool
+        case h_2 =>
+          simp only [Except.toOption, intOrErr] at heq
+          rename Int64 => i
+          cases h₂: i.neg?
+          . rw [h₂] at heq
+            simp at heq
+          . rw [h₂] at heq
+            simp only [Option.some.injEq] at heq
+            rw [← heq]
+            cases h_op
+            exact well_typed_int
+        case h_6 =>
+          contradiction
+    case h_2 =>
+      apply Residual.WellTyped.unaryApp h_expr_wt
+      cases h_op
+      all_goals
+        first
+        | apply UnaryResidualWellTyped.not
+        | apply UnaryResidualWellTyped.neg
+        | apply UnaryResidualWellTyped.isEmpty
+        | apply UnaryResidualWellTyped.like
+        | apply UnaryResidualWellTyped.is
+        rw [partial_eval_preserves_typeof _ h_expr]
+        assumption
