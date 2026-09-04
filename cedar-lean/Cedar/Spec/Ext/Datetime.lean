@@ -116,6 +116,7 @@ def checkOffsetLen (str : String) : Bool :=
     | _ => false
   | _ => false
 
+-- ANCHOR: datetimeParse
 public def parse (str: String) : Option Datetime := do
   if dateContainsLeapSeconds str then failure
   if !checkOffsetLen str then failure
@@ -131,6 +132,7 @@ public def parse (str: String) : Option Datetime := do
   if zonedTime.timezone.offset.second.val.natAbs < MAX_OFFSET_SECONDS
   then datetime? zonedTime.toTimestamp.toMillisecondsSinceUnixEpoch.toInt
   else none
+-- ANCHOR_END: datetimeParse
 
 public abbrev datetime := parse
 
@@ -235,6 +237,7 @@ def parseUnit? (isNegative : Bool) (str : String) (suffix : String) : Option (In
   else
     some (0, str)
 
+-- ANCHOR: parseDuration
 def parseDuration? (isNegative : Bool) (str : String) : Option Duration := do
   if str.isEmpty then failure
   let (milliseconds, restStr) ← parseUnit? isNegative str "ms"
@@ -245,10 +248,13 @@ def parseDuration? (isNegative : Bool) (str : String) : Option Duration := do
   if restStr.isEmpty
   then duration? (days + hours + minutes + seconds + milliseconds)
   else none
+-- ANCHOR_END: parseDuration
 
+-- ANCHOR: parse
 public def Duration.parse (str : String) : Option Duration :=
   let (isNegative, restStr) := isNegativeDuration str
   parseDuration? isNegative restStr
+-- ANCHOR_END: parse
 
 deriving instance Repr for Duration
 
@@ -291,5 +297,36 @@ public def Duration.toHours (duration: Duration) : Int64 :=
 
 public def Duration.toDays (duration: Duration) : Int64 :=
   duration.toHours / 24
+
+/-- Render a duration component as `toString n ++ suffix`. -/
+private def durationComponent (n : Nat) (suffix : String) : String :=
+  toString n ++ suffix
+
+/-- Convert a `Duration` to its canonical string representation.
+    The format is `[-]<days>d<hours>h<minutes>m<seconds>s<milliseconds>ms`,
+    with units maximized and printed largest-to-smallest.
+
+    `Cedar.Thm.Duration.parse_toString_roundtrip` proves that parsing
+    this representation recovers the original duration. -/
+-- ANCHOR: toString
+public def Duration.toString (d : Duration) : String :=
+  let neg := d.val < 0
+  let totalMs := d.val.toInt.natAbs
+  let days := totalMs / MILLISECONDS_PER_DAY.toNat
+  let rem := totalMs % MILLISECONDS_PER_DAY.toNat
+  let hours := rem / MILLISECONDS_PER_HOUR.toNat
+  let rem := rem % MILLISECONDS_PER_HOUR.toNat
+  let minutes := rem / MILLISECONDS_PER_MINUTE.toNat
+  let rem := rem % MILLISECONDS_PER_MINUTE.toNat
+  let seconds := rem / MILLISECONDS_PER_SECOND.toNat
+  let ms := rem % MILLISECONDS_PER_SECOND.toNat
+  let body := durationComponent days "d" ++ durationComponent hours "h" ++
+    durationComponent minutes "m" ++ durationComponent seconds "s" ++
+    durationComponent ms "ms"
+  if neg then "-" ++ body else body
+-- ANCHOR_END: toString
+
+public instance : ToString Duration where
+  toString := Duration.toString
 
 end Datetime
