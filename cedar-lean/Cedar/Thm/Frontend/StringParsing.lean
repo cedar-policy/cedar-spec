@@ -1,0 +1,227 @@
+/-
+ Copyright Cedar Contributors
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-/
+
+import Cedar.Frontend.Cst
+import Cedar.Frontend.StringParsing
+
+/-!
+  This file contains lemmas for proving roundtrip properties of string conversions and small
+ parsers.
+ -/
+
+namespace Cedar.Frontend
+
+open Cedar.Frontend.Cst
+
+instance : DecidableEq (Except String Nat) := fun a b =>
+  match a, b with
+  | .ok n, .ok m => if h : n = m then isTrue (by rw [h]) else isFalse (by intro h'; injection h'; contradiction)
+  | .error s, .error t => if h : s = t then isTrue (by rw [h]) else isFalse (by intro h'; injection h'; contradiction)
+  | .ok _, .error _ => isFalse (by intro h; injection h)
+  | .error _, .ok _ => isFalse (by intro h; injection h)
+
+/-- `Nat.digitChar n` for `n < 16` roundtrips through `Char.asHexNat`. -/
+theorem Char.asHexNat_digitChar (n : Nat) (h : n < 16) :
+    Char.asHexNat (Nat.digitChar n) = .ok n := by
+  match n, h with
+  | 0, _ | 1, _ | 2, _ | 3, _ | 4, _ | 5, _ | 6, _ | 7, _ |
+    8, _ | 9, _ | 10, _ | 11, _ | 12, _ | 13, _ | 14, _ | 15, _ =>
+    simp [Char.asHexNat, Nat.digitChar]
+  | n + 16, h => omega
+
+/-- `Nat.toHexChars` is equivalent to `Nat.toDigits 16` for values up to 4095.
+    This gives additional assurance that our custom implementation matches the stdlib. -/
+theorem toHexChars_eq_toDigits :
+    ∀ n : Fin 4096, Nat.toHexChars n.val = Nat.toDigits 16 n.val := by
+  native_decide
+
+/-- The fold that `String.asHexNat` performs, extracted for reasoning. -/
+def hexFold (cs : List Char) (init : Except String Nat) : Except String Nat :=
+  cs.foldl (fun acc c => do let v ← acc; let d ← c.asHexNat; .ok (v * 16 + d)) init
+
+theorem hexFold_cons (c : Char) (cs : List Char) (init : Except String Nat) :
+    hexFold (c :: cs) init = hexFold cs (do let v ← init; let d ← c.asHexNat; .ok (v * 16 + d)) := by
+  simp [hexFold, List.foldl]
+
+theorem hexFold_ok_digit (cs : List Char) (v d : Nat) (hd : d < 16) :
+    hexFold (Nat.digitChar d :: cs) (.ok v) = hexFold cs (.ok (v * 16 + d)) := by
+  rw [hexFold_cons]
+  simp [bind, Except.bind, Char.asHexNat_digitChar d hd]
+
+/-- The generalized invariant: `hexFold (go n acc) (.ok 0) = hexFold acc (.ok n)` -/
+theorem go_hexFold (n : Nat) (acc : List Char) :
+    hexFold (Nat.toHexChars.go n acc) (.ok 0) = hexFold acc (.ok n) := by
+  match n with
+  | 0 => simp [Nat.toHexChars.go]
+  | n + 1 =>
+    unfold Nat.toHexChars.go
+    simp only []
+    have hmod : (n + 1) % 16 < 16 := Nat.mod_lt _ (by omega)
+    rw [go_hexFold ((n + 1) / 16) (Nat.digitChar ((n + 1) % 16) :: acc)]
+    rw [hexFold_ok_digit _ _ _ hmod]
+    have heq : (n + 1) / 16 * 16 + (n + 1) % 16 = n + 1 := by
+      have := Nat.div_add_mod (n + 1) 16; omega
+    rw [heq]
+termination_by n
+
+/-- `toHexChars` for `n > 0` satisfies the roundtrip via hexFold. -/
+theorem toHexChars_pos_roundtrip (n : Nat) (hn : n > 0) :
+    hexFold (Nat.toHexChars n) (.ok 0) = .ok n := by
+  simp only [Nat.toHexChars]
+  have hne : (n == 0) = false := by simp [BEq.beq]; omega
+  rw [if_neg (by simp [hne])]
+  rw [go_hexFold]
+  simp [hexFold]
+
+/-- `toHexChars 0` roundtrips. -/
+theorem toHexChars_zero_roundtrip :
+    hexFold (Nat.toHexChars 0) (.ok 0) = .ok 0 := by
+  simp [Nat.toHexChars, hexFold, List.foldl, Char.asHexNat, bind, Except.bind]
+
+/-- Relate `String.asHexNat` to `hexFold`. -/
+theorem asHexNat_eq_hexFold (cs : List Char) (hne : cs ≠ []) (hlen : cs.length ≤ 6) :
+    (String.ofList cs).asHexNat = hexFold cs (.ok 0) := by
+  unfold String.asHexNat hexFold
+  have h1 : (String.ofList cs).isEmpty = false := by
+    cases cs with
+    | nil => exact absurd rfl hne
+    | cons c cs =>
+      have hne' : String.ofList (c :: cs) ≠ "" := by
+        intro h
+        have := String.toList_ofList (l := c :: cs)
+        rw [h] at this; simp at this
+      exact Bool.eq_false_iff.mpr (mt String.isEmpty_iff.mp hne')
+  rw [if_neg (by rw [h1]; exact Bool.false_ne_true)]
+  rw [if_neg (by rw [String.length_ofList]; omega)]
+  rw [String.toList_ofList]
+
+/-- Length of `toHexChars.go` output. -/
+theorem go_length (n : Nat) (acc : List Char) :
+    (Nat.toHexChars.go n acc).length = (Nat.toHexChars.go n []).length + acc.length := by
+  match n with
+  | 0 => simp [Nat.toHexChars.go]
+  | n + 1 =>
+    unfold Nat.toHexChars.go
+    simp only []
+    rw [go_length ((n+1)/16) (Nat.digitChar ((n+1) % 16) :: acc)]
+    rw [go_length ((n+1)/16) [Nat.digitChar ((n+1) % 16)]]
+    simp [List.length]
+    omega
+termination_by n
+
+public theorem go_nonempty (n : Nat) (hn : n > 0) :
+    (Nat.toHexChars.go n []).length ≥ 1 := by
+  match n with
+  | n + 1 =>
+    unfold Nat.toHexChars.go
+    simp only []
+    rw [go_length]
+    simp [List.length]
+
+public theorem go_length_le (n : Nat) (hn : n ≤ 0xFFFFFF) :
+    (Nat.toHexChars.go n []).length ≤ 6 := by
+  suffices ∀ (k : Nat) (m : Nat), m < 16^k → (Nat.toHexChars.go m []).length ≤ k from
+    this 6 n (by omega)
+  intro k
+  induction k with
+  | zero => intro m hm; simp at hm; subst hm; simp [Nat.toHexChars.go]
+  | succ k ih =>
+    intro m hm
+    match m with
+    | 0 => simp [Nat.toHexChars.go]
+    | m + 1 =>
+      unfold Nat.toHexChars.go
+      simp only []
+      rw [go_length]
+      simp [List.length]
+      have hdiv : (m + 1) / 16 < 16 ^ k := by
+        have : (m + 1) / 16 < (16 ^ (k + 1)) / 16 := Nat.div_lt_div_of_lt_of_dvd (by omega) hm
+        simp [Nat.pow_succ] at this
+        exact this
+      exact ih _ hdiv
+
+/-- `Nat.toHexString` roundtrips through `String.asHexNat` for all values ≤ 0xFFFFFF. -/
+theorem String.asHexNat_toHexString (n : Nat) (h : n ≤ 0xFFFFFF) :
+    (Nat.toHexString n).asHexNat = .ok n := by
+  simp only [Nat.toHexString]
+  have hne : Nat.toHexChars n ≠ [] := by
+    unfold Nat.toHexChars
+    split
+    · exact List.cons_ne_nil _ _
+    · next h0 =>
+      intro heq
+      have hpos : n > 0 := by simp [BEq.beq] at h0; omega
+      have hlen := go_nonempty n hpos
+      rw [heq] at hlen; simp at hlen
+  have hlen : (Nat.toHexChars n).length ≤ 6 := by
+    unfold Nat.toHexChars
+    split
+    · simp
+    · exact go_length_le n h
+  rw [asHexNat_eq_hexFold _ hne hlen]
+  match hn : n with
+  | 0 => exact toHexChars_zero_roundtrip
+  | n + 1 => exact toHexChars_pos_roundtrip (n + 1) (by omega)
+
+
+/-- A lowercase hex char is one in '0'..'9' or 'a'..'f'. -/
+def isLowerHex (c : Char) : Prop :=
+  (48 ≤ c.toNat ∧ c.toNat ≤ 57) ∨ (97 ≤ c.toNat ∧ c.toNat ≤ 102)
+
+/-- Two chars with the same `toNat` are equal. -/
+theorem Char.eq_of_toNat_eq {c₁ c₂ : Char} (h : c₁.toNat = c₂.toNat) : c₁ = c₂ :=
+  Char.ext_iff.mpr (congrArg UInt32.ofBitVec (BitVec.eq_of_toNat_eq h))
+
+/-- `Char.asHexNat` is injective on lowercase hex chars:
+    if two chars in '0'..'9' or 'a'..'f' map to the same value, they are equal. -/
+theorem Char.asHexNat_injective_lower (c₁ c₂ : Char) (n : Nat)
+    (h₁ : Char.asHexNat c₁ = .ok n)
+    (h₂ : Char.asHexNat c₂ = .ok n)
+    (hlc₁ : isLowerHex c₁) (hlc₂ : isLowerHex c₂) :
+    c₁ = c₂ := by
+  unfold Char.asHexNat at h₁ h₂
+  simp only [Bool.and_eq_true, decide_eq_true_eq, Char.le_def, UInt32.le_iff_toNat_le] at h₁ h₂
+  unfold isLowerHex at hlc₁ hlc₂
+  have heq : c₁.toNat = c₂.toNat := by
+    rcases hlc₁ with ⟨lo₁, hi₁⟩ | ⟨lo₁, hi₁⟩ <;> rcases hlc₂ with ⟨lo₂, hi₂⟩ | ⟨lo₂, hi₂⟩ <;>
+      (split at h₁ <;> split at h₂ <;> simp_all <;> omega)
+  exact Char.eq_of_toNat_eq heq
+end Cedar.Frontend
+
+
+/- CST Identifiers theorems below. -/
+namespace Cedar.Frontend.Cst
+
+public theorem unreserved_iff_not_in_keywords {s : String} :
+    s.toUnreservedCedarId?.isSome = true ↔ s ∉ keywords := by
+  simp only [String.toUnreservedCedarId?]
+  split <;> simp_all
+
+@[simp]
+public theorem Ident.toUnreservedString?_idIdent (s : String) (h : s ∉ keywords) :
+    Ident.toUnreservedString? (.idIdent s h) = some s := by
+  simp [Ident.toUnreservedString?, String.toUnreservedCedarId?, h]
+
+@[simp]
+public theorem Ident.toString_idIdent (s : String) (h : s ∉ keywords) :
+    Ident.toString (.idIdent s h) = s := rfl
+
+public theorem toUnreservedCedarId_some_eq {s s0: String} (h: s.toUnreservedCedarId? = some s0) :
+     s = s0 := by
+  simp only [String.toUnreservedCedarId?] at h
+  split at h <;> simp_all
+
+end Cedar.Frontend.Cst

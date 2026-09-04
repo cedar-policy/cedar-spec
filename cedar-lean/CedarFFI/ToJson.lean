@@ -209,6 +209,7 @@ deriving instance Lean.ToJson for Residual
 deriving instance Lean.ToJson for Effect
 deriving instance Lean.ToJson for TPE.ResidualPolicy
 deriving instance Lean.ToJson for TPE.Response
+deriving instance Lean.ToJson for Spec.CstError
 deriving instance Lean.ToJson for Spec.Error
 
 

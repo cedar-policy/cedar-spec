@@ -14,16 +14,11 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.Data
-import Cedar.Thm.Tactics
-import Cedar.Thm.Authorization
-import Cedar.Thm.PolicySlice
-import Cedar.Thm.SymCC.Opt
-import Cedar.Thm.Typechecking
-import Cedar.Thm.Validation
-import Cedar.Thm.WellTyped
-import Cedar.Thm.TPE
-import Cedar.Thm.BatchedEvaluator
-import Cedar.Thm.WellTypedVerification
-import Cedar.Thm.Frontend
-import Cedar.Thm.Frontend.Authorizer
+module
+
+public import Cedar.Frontend.Cst.Common
+public import Cedar.Frontend.Cst.Syntax
+public import Cedar.Frontend.Cst.Semantics
+public import Cedar.Frontend.Cst.Authorizer
+public import Cedar.Frontend.Cst.Slice
+public import Cedar.Frontend.Cst.ToAst
