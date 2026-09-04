@@ -12,6 +12,7 @@ namespace Cedar.Thm
 open Cedar.TPE
 open Cedar.Spec
 open Cedar.Data
+open Cedar.Validation
 
 /-- A well behaved entity loader
 1. Loads all the requested entities, returning none for missing entities
@@ -24,6 +25,47 @@ in the code base at the moment.
 abbrev EntityLoader.WellBehaved (store: Entities) (loader: EntityLoader) : Prop :=
   ∀ s, s ⊆ (loader s).keys ∧
        EntitiesRefine store ((loader s).mapOnValues MaybeEntityData.asPartial)
+
+/-- `Schema.environment?` carries the schema's entity and action types through unchanged. -/
+theorem environment?_schema {schema : Schema} {pty rty : EntityType} {act : EntityUID}
+  {env : TypeEnv} (h : schema.environment? pty rty act = .some env) :
+  env.ets = schema.ets ∧ env.acts = schema.acts
+:= by
+  simp only [Schema.environment?] at h
+  cases h_find : schema.acts.find? act <;>
+    simp only [h_find, Option.bind_none_fun, Option.bind_some_fun, reduceCtorEq] at h
+  split at h <;> simp only [reduceCtorEq, Option.some.injEq] at h
+  subst h
+  exact ⟨rfl, rfl⟩
+
+theorem actionEntities_refines {env : TypeEnv} {es : Entities}
+  (hwf : env.WellFormed) (hinst : InstanceOfSchema es env) :
+  EntitiesRefine es (actionEntities env.acts)
+:= by
+  intro uid ped hfind
+  rw [actionEntities] at hfind
+  have hmem := Data.Map.mem_make_mem_list (Data.Map.find?_mem_toList hfind)
+  simp only [List.mem_map, Prod.mk.injEq] at hmem
+  obtain ⟨p, hp, huid, hped⟩ := hmem
+  subst huid
+  subst hped
+  have hact : env.acts.find? p.fst = .some p.snd :=
+    (Data.Map.in_list_iff_find?_some hwf.2.1.1).mp hp
+  obtain ⟨data, hdata⟩ := hinst.2 p.fst p.snd hact
+  rcases hinst.1 p.fst data hdata with hentity | haction
+  · exfalso
+    obtain ⟨entry, hentry, _⟩ := hentity
+    refine hwf.2.1.2.2.1 p.fst ?_ ?_
+    · show (env.acts.find? p.fst).isSome = true
+      simp only [hact, Option.isSome_some]
+    · show (env.ets.find? p.fst.ty).isSome = true
+      simp only [hentry, Option.isSome_some]
+  · obtain ⟨hattrs, htags, entry, hentry, hanc⟩ := haction
+    have hentry' : entry = p.snd := by
+      rw [hact] at hentry
+      simpa only [Option.some.injEq] using hentry.symm
+    subst hentry'
+    exact ⟨data, hdata, .some _ rfl hattrs.symm, .some _ rfl hanc.symm, .some _ rfl htags.symm⟩
 
 theorem as_partial_request_refines {req : Request} :
   RequestRefines req req.asPartialRequest := by
