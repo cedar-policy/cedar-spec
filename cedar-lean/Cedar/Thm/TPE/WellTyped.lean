@@ -27,6 +27,7 @@ import Cedar.Thm.TPE.WellTyped.Binary
 import Cedar.Thm.TPE.WellTyped.Call
 import Cedar.Thm.TPE.WellTyped.GetAttr
 import Cedar.Thm.TPE.WellTyped.HasAttr
+import Cedar.Thm.TPE.WellTyped.ExtHasAttr
 import Cedar.Thm.TPE.WellTyped.IfThenElse
 import Cedar.Thm.TPE.WellTyped.Or
 import Cedar.Thm.TPE.WellTyped.Record
@@ -163,6 +164,15 @@ theorem partial_eval_preserves_well_typed
     case hasAttr_record rty h₆ h₇ =>
       have ih_expr : Residual.WellTyped env (TPE.evaluate expr preq pes) := partial_eval_preserves_well_typed h_wf h_ref h₆
       exact partial_eval_well_typed_hasAttr ih_expr h_wf h_ref h_wt
+  case extHasAttr expr attr attrs ty =>
+    let h_wt₂ := h_wt
+    cases h_wt₂
+    case extHasAttr_entity ety h₅ h₆ h₇ =>
+      have ih_expr : Residual.WellTyped env (TPE.evaluate expr preq pes) := partial_eval_preserves_well_typed h_wf h_ref h₅
+      exact partial_eval_well_typed_extHasAttr ih_expr h_wf h_ref h_wt
+    case extHasAttr_record rty h₅ h₆ h₇ =>
+      have ih_expr : Residual.WellTyped env (TPE.evaluate expr preq pes) := partial_eval_preserves_well_typed h_wf h_ref h₅
+      exact partial_eval_well_typed_extHasAttr ih_expr h_wf h_ref h_wt
   case call xfn args ty =>
     let h_wt₂ := h_wt
     cases h_wt₂

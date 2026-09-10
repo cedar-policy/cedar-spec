@@ -33,6 +33,7 @@ partial def mkWf : Cedar.Spec.Expr → Cedar.Spec.Expr
   | .binaryApp op a b => .binaryApp op a.mkWf b.mkWf
   | .getAttr x attr => .getAttr x.mkWf attr
   | .hasAttr x attr => .hasAttr x.mkWf attr
+  | .extHasAttr x attr attrs => .extHasAttr x.mkWf attr attrs
   | .set xs => .set (xs.map mkWf)
   | .record pairs =>
     let m := Map.make (pairs.map λ (k, v) => (k, v.mkWf))

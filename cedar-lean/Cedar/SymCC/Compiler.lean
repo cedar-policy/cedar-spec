@@ -182,6 +182,38 @@ def compileOr (t₁ : Term) (r₂ : Result Term) : Result Term := do
     else .error .typeError
   | _, _ => .error .typeError
 
+/--
+  This is an iterative implementation of the compilation of extended has. We also define
+  a proved equivalent recursive implementation in `Cedar.Thm.SymCC.Compiler.ExtHasAttrRec` that is
+  easier to use in proofs.
+-/
+def compileExtHasAttr (t : Term) (as : List Attr) (εs : SymEntities) : Result Term :=
+  let rec loop (current : Term) (as : List Attr) (acc : List Term) : Result (List Term) :=
+    match as with
+    | [] => .ok acc.reverse
+    | a :: rest => do
+      let has := ifSome current (← compileHasAttr (option.get current) a εs)
+      -- `statically_false`: `has` is literally `some false`.
+      let staticallyFalse :=
+        match has with
+        | .some (.prim (.bool false)) => true
+        | _ => false
+      let acc := has :: acc
+      if staticallyFalse || rest.isEmpty then
+        .ok acc.reverse
+      else
+        match compileGetAttr (option.get current) a εs with
+        | .error .noSuchAttribute => .ok acc.reverse
+        | .error e => .error e
+        | .ok getRes => loop (ifSome current getRes) rest acc
+  do
+    let results ← loop t as []
+    match results.reverse with
+    | [] =>
+      pure (Term.some (Term.prim (.bool true)))
+    | r :: rs =>
+      rs.foldlM (fun result has => compileAnd has (.ok result)) r
+
 def compileSet (ts : List Term) : Result Term := do
    match ts with
     | []     => .error .unsupportedError  -- reject empty set literals
@@ -272,6 +304,9 @@ def compile (x : Expr) (εnv : SymEnv) : Result Term := do
   | .hasAttr x a =>
     let t ← compile x εnv
     ifSome t (← compileHasAttr (option.get t) a εnv.entities)
+  | .extHasAttr x a as =>
+    let t ← compile x εnv
+    compileExtHasAttr t (a :: as) εnv.entities
   | .getAttr x a =>
     let t ← compile x εnv
     ifSome t (← compileGetAttr (option.get t) a εnv.entities)

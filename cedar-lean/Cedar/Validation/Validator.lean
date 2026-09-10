@@ -135,6 +135,7 @@ public def checkEntities (schema : Schema) : Expr → Except TypeError Unit
     checkEntities schema x₂
   | .getAttr x₁ _
   | .hasAttr x₁ _
+  | .extHasAttr x₁ _ _
   | .unaryApp _ x₁ =>
     checkEntities schema x₁
   | .call _ xs
@@ -171,6 +172,9 @@ public def mapOnVars (f : Var → Expr) : Expr → Expr
   | .hasAttr x₁ a =>
     let x₁ := mapOnVars f x₁
     .hasAttr x₁ a
+  | .extHasAttr x₁ a as =>
+    let x₁ := mapOnVars f x₁
+    .extHasAttr x₁ a as
   | .getAttr x₁ a =>
     let x₁ := mapOnVars f x₁
     .getAttr x₁ a

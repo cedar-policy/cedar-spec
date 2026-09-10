@@ -318,6 +318,66 @@ private theorem typeOf_ifAllSome {gs : List Term} {t : Term} :
     apply typeOf_noneOf
   · intro h ; apply typeOf_ifFalse
 
+private theorem compileHasAttr_option_typed {t : Term} {a : Attr} {εs : SymEntities} {t' : Term}
+  (h : compileHasAttr t a εs = .ok t') : OptionTyped t' := by
+  simp only [compileHasAttr] at h
+  cases hattrs : compileAttrsOf t εs <;> simp [hattrs] at h
+  split at h <;> try simp at h
+  split at h <;> simp only [Except.ok.injEq] at h <;> subst h <;> apply typeOf_someOf
+
+private theorem compileAnd_option_typed {t₁ : Term} {r₂ : SymCC.Result Term} {t : Term}
+  (h : compileAnd t₁ r₂ = .ok t) : OptionTyped t := by
+  simp only [compileAnd, bind, Except.bind] at h
+  split at h
+  · simp only [Except.ok.injEq] at h; subst h
+    simp [OptionTyped, IsOption]
+  · rename_i hne hty
+    cases r₂ with
+    | error => simp at h
+    | ok t₂ =>
+      simp only [] at h
+      split at h
+      · simp only [Except.ok.injEq] at h; subst h
+        apply typeOf_ifSome; apply typeOf_ite
+        · exact ⟨_, ‹_›⟩
+        · apply typeOf_someOf
+      · simp at h
+  · simp at h
+
+private theorem compileExtHasAttrRec_option_typed {t₁ : Term} {attrs : List Attr} {εs : SymEntities} {t : Term}
+  (h : compileExtHasAttrRec t₁ attrs εs = .ok t) : OptionTyped t := by
+  induction attrs generalizing t₁ t with
+  | nil => simp [compileExtHasAttrRec, pure, Except.pure] at h; subst h; apply typeOf_someOf
+  | cons a rest ih =>
+    cases rest with
+    | nil =>
+      simp only [compileExtHasAttrRec, bind, Except.bind] at h
+      cases h₁ : compileHasAttr (Factory.option.get t₁) a εs <;> simp [h₁] at h
+      subst h; apply typeOf_ifSome; exact compileHasAttr_option_typed h₁
+    | cons b rest' =>
+      simp only [compileExtHasAttrRec, bind, Except.bind] at h
+      cases h₁ : compileHasAttr (Factory.option.get t₁) a εs
+      · simp [h₁] at h
+      · simp only [h₁] at h
+        cases h₂ : compileGetAttr (Factory.option.get t₁) a εs <;> simp only [h₂] at h
+        · split at h
+          . rename_i h₁
+            simp only [h₁, pure, Except.pure, Except.ok.injEq] at h
+            simp [h.symm, OptionTyped, IsOption]
+          . rename_i t_ha e tHas hne
+            cases e <;> simp_all
+            simp only [pure, Except.pure, Except.ok.injEq] at h
+            subst t
+            apply typeOf_ifSome
+            exact compileHasAttr_option_typed h₁
+        · split at h
+          · rename_i h₁
+            simp only [h₁, pure, Except.pure, Except.ok.injEq] at h
+            simp [h.symm, OptionTyped, IsOption]
+          · split at h
+            . contradiction
+            . apply compileAnd_option_typed h
+
 /--
 Weaker result than `compile_well_typed`, but requiring weaker hypotheses:
 
@@ -484,6 +544,12 @@ theorem compile_ok_implies_option {x : Expr} {εnv : SymEnv} {t : Term} :
       <;> subst hattr
       <;> apply typeOf_someOf
     · simp at hattr
+  case extHasAttr x attr attrs =>
+    cases hx : compile x εnv <;> simp only [Except.bind_ok, Except.bind_err, reduceCtorEq, false_implies]
+    case ok t' =>
+    intro h
+    rw [compileExtHasAttr_eq_compileExtHasAttrRec] at h
+    exact compileExtHasAttrRec_option_typed h
   case getAttr x attr =>
     cases hx : compile x εnv <;> simp only [Except.bind_ok, Except.bind_err, reduceCtorEq, false_implies]
     case ok t' =>

@@ -6,6 +6,7 @@ use std::collections::HashSet;
 
 use super::{ExtType, NameDef, PatElem, Value};
 use crate::FfiError;
+use nonempty::NonEmpty;
 
 /// TPE Response (partial authorization)
 /// Note: Sets are serialized as flat JSON arrays by the Lean TPE's custom ToJson
@@ -207,6 +208,13 @@ pub enum Residual {
     HasAttr {
         expr: Box<Residual>,
         attr: String,
+        ty: CedarType,
+    },
+    /// extHasAttr (expr : Residual) (attr: Attr) (attrs: Attrs) (ty : CedarType)
+    ExtHasAttr {
+        expr: Box<Residual>,
+        attr: String,
+        attrs: Vec<String>,
         ty: CedarType,
     },
     /// set (ls : List Residual)  (ty : CedarType)
@@ -500,8 +508,21 @@ mod convert {
             }),
             Residual::HasAttr { expr, attr, .. } => Ok(pst::Expr::HasAttr {
                 expr: Arc::new(convert_residual(*expr)?),
-                attrs: nonempty::NonEmpty::new(SmolStr::new(attr)),
+                attrs: NonEmpty::new(SmolStr::new(attr)),
             }),
+            Residual::ExtHasAttr {
+                expr, attr, attrs, ..
+            } => {
+                let mut ext_attrs = NonEmpty::new(SmolStr::new(attr));
+                attrs
+                    .into_iter()
+                    .map(SmolStr::new)
+                    .for_each(|a| ext_attrs.push(a));
+                Ok(pst::Expr::HasAttr {
+                    expr: Arc::new(convert_residual(*expr)?),
+                    attrs: ext_attrs,
+                })
+            }
             Residual::Set { ls, .. } => Ok(pst::Expr::Set(
                 ls.into_iter()
                     .map(|r| Ok(Arc::new(convert_residual(r)?)))

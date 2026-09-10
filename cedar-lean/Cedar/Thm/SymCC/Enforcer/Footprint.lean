@@ -160,13 +160,13 @@ theorem mem_footprint_option_entity {x : Expr} {εnv : SymEnv} {t : Term} :
     rcases hin with hin | hin
     · exact mem_footprint_ofEntity_option_entity hin
     · exact ih hin
-  case case8 ih | case9 ih =>
+  case case8 ih | case9 ih | case10 ih =>
     exact ih hin
-  case case10 _ _ ih | case11 _ ih =>
+  case case11 _ _ ih | case12 _ ih =>
     simp only [List.mapUnion₁_eq_mapUnion (footprint · εnv), List.mem_mapUnion_iff_mem_exists] at hin
     replace ⟨xᵢ, hinᵢ, hin⟩ := hin
     exact ih xᵢ hinᵢ hin
-  case case12 _ ih =>
+  case case13 _ ih =>
     simp only [List.mapUnion₂_eq_mapUnion λ y : Attr × Expr => footprint y.snd εnv,
       List.mem_mapUnion_iff_mem_exists] at hin
     replace ⟨(aᵢ, xᵢ), hinᵢ, hin⟩ := hin
@@ -184,6 +184,7 @@ private theorem mem_footprint_exists_wf_prop {p : Expr → Prop} {x : Expr} {t�
   (happ₂ : ∀ {o x₁ x₂}, p (Expr.binaryApp o x₁ x₂) → p x₁ ∧ p x₂)
   (hget  : ∀ {a x₁}, p (Expr.getAttr x₁ a) → p x₁)
   (hhas  : ∀ {a x₁}, p (Expr.hasAttr x₁ a) → p x₁)
+  (hexthas : ∀ {a attrs x₁}, p (Expr.extHasAttr x₁ a attrs) → p x₁)
   (hset  : ∀ {xs}, p (Expr.set xs) → ∀ x ∈ xs, p x)
   (hrec  : ∀ {axs}, p (Expr.record axs) → ∀ ax ∈ axs, p ax.snd)
   (hcall : ∀ {f xs}, p (Expr.call f xs) → ∀ x ∈ xs, p x) :
@@ -228,19 +229,21 @@ private theorem mem_footprint_exists_wf_prop {p : Expr → Prop} {x : Expr} {t�
   case case8 ih =>
     exact ih (wf_εnv_for_hasAttr_implies hwε) (hhas hp) hin
   case case9 ih =>
+    exact ih (wf_εnv_for_extHasAttr_implies hwε) (hexthas hp) hin
+  case case10 ih =>
     exact ih (wf_εnv_for_unaryApp_implies hwε) (happ₁ hp) hin
-  case' case10 =>
+  case' case11 =>
     replace hwε := wf_εnv_for_call_implies hwε
     replace hwe := hcall hp
-  case' case11 =>
+  case' case12 =>
     replace hwε := wf_εnv_for_set_implies hwε
     replace hwe := hset hp
-  case case10 _ _ ih | case11 _ ih =>
+  case case11 _ _ ih | case12 _ ih =>
     simp only [List.mapUnion₁_eq_mapUnion (footprint · εnv),
       List.mem_mapUnion_iff_mem_exists] at hin
     replace ⟨xᵢ, hinᵢ, hin⟩ := hin
     exact ih xᵢ hinᵢ (hwε xᵢ hinᵢ) (hwe xᵢ hinᵢ) hin
-  case case12 _ ih =>
+  case case13 _ ih =>
     replace hwε := wf_εnv_for_record_implies hwε
     replace hwe := hrec hp
     simp only [List.mapUnion₂_eq_mapUnion λ y : Attr × Expr => footprint y.snd εnv,
@@ -263,6 +266,7 @@ theorem mem_footprint_exists_wf {x : Expr} {tₑ : Term} {env : Env} {εnv : Sym
     wf_env_for_ite_implies wf_env_for_and_implies wf_env_for_or_implies
     wf_env_for_unaryApp_implies wf_env_for_binaryApp_implies
     wf_env_for_getAttr_implies wf_env_for_hasAttr_implies
+    wf_env_for_extHasAttr_implies
     wf_env_for_set_implies wf_env_for_record_implies
     wf_env_for_call_implies
 

@@ -348,6 +348,11 @@ pub mod tpe {
                         out.attr = attr.to_string();
                         out.children = vec![child(expr)];
                     }
+                    K::ExtHasAttr { expr, attrs } => {
+                        out.set_kind(Kind::ExtHasAttr);
+                        out.attrs = attrs.into_iter().map(|s| s.to_string()).collect();
+                        out.children = vec![child(expr)];
+                    }
                     K::Like { expr, pattern } => {
                         out.set_kind(Kind::Like);
                         out.pattern = pattern

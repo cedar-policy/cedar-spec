@@ -16,6 +16,7 @@
 
 
 import Cedar.TPE
+import Cedar.Thm.WellTyped.Expr.Definition
 import Cedar.Thm.WellTyped.Residual.Definition
 import Cedar.Thm.Data.List.Lemmas
 
@@ -121,6 +122,10 @@ theorem conversion_preserves_evaluation (te : TypedExpr) (req : Request) (es : E
     have ih := conversion_preserves_evaluation expr req es
     rw [←ih]
   | hasAttr expr attr ty =>
+    simp [TypedExpr.toExpr, TypedExpr.toResidual, Spec.evaluate, Residual.evaluate]
+    have ih := conversion_preserves_evaluation expr req es
+    rw [←ih]
+  | extHasAttr expr attr attrs ty =>
     simp [TypedExpr.toExpr, TypedExpr.toResidual, Spec.evaluate, Residual.evaluate]
     have ih := conversion_preserves_evaluation expr req es
     rw [←ih]
@@ -416,6 +421,33 @@ theorem conversion_preserves_typedness:
         exact h₁
       · rw [←conversion_preserves_typeof x₁]
         exact h₂
+  | extHasAttr x₁ attr attrs ty' =>
+    simp [TypedExpr.toResidual] at h ⊢
+    cases h with
+    | extHasAttr_entity h₁ h₂ h₃ =>
+      apply Residual.WellTyped.extHasAttr_entity
+      · apply conversion_preserves_typedness
+        exact h₁
+      · rw [←conversion_preserves_typeof x₁]
+        exact h₂
+      · exact h₃
+    | extHasAttr_record h₁ h₂ h₃ =>
+      apply Residual.WellTyped.extHasAttr_record
+      · apply conversion_preserves_typedness
+        exact h₁
+      · rw [←conversion_preserves_typeof x₁]
+        exact h₂
+      · exact h₃
+    | extHasAttr_ff h₁ h₂ h₃ =>
+      rcases h₂ with ⟨ety, hety⟩ | ⟨rty, hrty⟩
+      · apply Residual.WellTyped.extHasAttr_entity
+        · apply conversion_preserves_typedness; exact h₁
+        · rw [←conversion_preserves_typeof x₁]; exact hety
+        · rw [hety] at h₃; exact h₃
+      · apply Residual.WellTyped.extHasAttr_record
+        · apply conversion_preserves_typedness; exact h₁
+        · rw [←conversion_preserves_typeof x₁]; exact hrty
+        · rw [hrty] at h₃; exact h₃
   | set ls ty' =>
     simp [TypedExpr.toResidual] at h ⊢
     cases h with
@@ -595,29 +627,11 @@ theorem conversion_preserves_typedness:
           exact h₂
 termination_by sizeOf expr
 decreasing_by
-  all_goals (
-    rename_i a b d d _e _f _g _ _i _j _k _l _m _n _o
-    (first
-     | rename_i p r _s; rw [r]; simp; omega
-     | rename_i p q r s t u _v; rw [s]; simp; omega
-     | rw [a]; simp; omega
-     | rw [b]; simp; omega
-     | rw [d]; simp; omega
-     | skip)
-  )
-  . rw [d]
-    simp
-    let h := List.sizeOf_lt_of_mem hy
-    omega
-  . rename_i p q r _s
-    rw [r]
-    simp
-    let h := List.sizeOf_lt_of_mem inm
-    simp at h
-    omega
-  . rw [b]
-    simp
-    let h := List.sizeOf_lt_of_mem hy
+  all_goals
+    try subst_vars
+    simp_wf
+    try (have := List.sizeOf_lt_of_mem hy)
+    try (have h := List.sizeOf_lt_of_mem inm; simp at h)
     omega
 
 end Cedar.Thm

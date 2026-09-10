@@ -137,6 +137,31 @@ def levelOne :=
 def recordFoo (e : Expr) : Expr := .record [("foo", e)]
 def getFoo (e : Expr) : Expr := .getAttr e "foo"
 
+def extHasRecordEntityLit := Expr.extHasAttr (recordFoo euidLit) "foo" ["manager"]
+def extHasRecordPrincipal := Expr.extHasAttr (recordFoo principal) "foo" ["manager"]
+def extHasRecordMissing := Expr.extHasAttr (recordFoo principal) "missing" ["manager"]
+
+def desugaredExtHasRecordPrincipal :=
+  Expr.and
+    (.hasAttr (recordFoo principal) "foo")
+    (.hasAttr (.getAttr (recordFoo principal) "foo") "manager")
+
+def desugaredExtHasRecordMissing :=
+  Expr.and
+    (.hasAttr (recordFoo principal) "missing")
+    (.hasAttr (.getAttr (recordFoo principal) "missing") "manager")
+
+def extHasAttrDesugaredLevels :=
+  suite "extHasAttr and guarded-and desugaring should check at the same level"
+  [
+    testLevelCheck "extHasAttr with a statically missing record attribute" extHasRecordMissing 0,
+    testLevelCheck "desugared has-chain with a statically missing record attribute" desugaredExtHasRecordMissing 0,
+    testLevelCheck "extHasAttr through a request-rooted entity in a record" extHasRecordPrincipal 1,
+    testLevelCheck "desugared has-chain through a request-rooted entity in a record" desugaredExtHasRecordPrincipal 1,
+    testLevelCheck "extHasAttr on context with one entity hop" (.extHasAttr (.var .context) "otherUser" ["isAdmin"]) 1,
+    testLevelCheck "extHasAttr on context with two entity hops" (.extHasAttr (.var .context) "otherUser" ["manager", "isAdmin"]) 2,
+  ].flatten
+
 def composeN (f : α → α) : Nat → (α → α)
 | 0 => id
 | n + 1 => f ∘ (composeN f n)
@@ -160,7 +185,17 @@ def levelThree :=
     testLevelCheck "getAttr thrice on var" (.getAttr (.getAttr (.getAttr principal "manager") "manager") "manager"),
   ].flatten
 
-def tests := [levelZero, levelOne, levelTwo, levelThree]
+def rejectedRecordEntityLiteral : TestSuite IO :=
+  suite "Expressions which must fail level checking"
+  [
+    test "extHasAttr cannot dereference an arbitrary entity literal through a record" ⟨λ _ => do
+      match schema.environment? UserType DocumentType Action with
+      | .some env => checkEq (levelCheckExpr extHasRecordEntityLit env 3) (.ok false)
+      | .none => return (Except.error "Could not find test environment in schema!" : TestResult)⟩
+  ]
+
+def tests := [levelZero, levelOne, extHasAttrDesugaredLevels, levelTwo, levelThree,
+  rejectedRecordEntityLiteral]
 
 -- Uncomment for interactive debugging
 -- #eval TestSuite.runAll tests

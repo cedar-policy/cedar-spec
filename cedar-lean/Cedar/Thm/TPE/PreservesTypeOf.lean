@@ -223,6 +223,83 @@ private theorem partial_eval_preserves_typeof_hasAttr {expr : Residual} {attr : 
       . simp [Residual.typeOf]
     . simp [Residual.typeOf]
 
+private theorem tpe_hasAttr_typeOf_bool (r : Residual) (a : Attr) (pes : PartialEntities) :
+  (TPE.hasAttr r a pes (.bool .anyBool)).typeOf = .bool .anyBool := by
+  simp only [TPE.hasAttr]
+  split
+  · simp [Residual.typeOf]
+  · split
+    · simp [Residual.typeOf]
+    · simp [Residual.typeOf]
+
+private theorem tpe_extHasAttr_foldl_typeOf (r : Residual) (pes : PartialEntities)
+    (acc : Residual) (rest : List Attr) (hacc : acc.typeOf = CedarType.bool BoolType.anyBool) :
+    (rest.foldl (init := acc) fun acc attr =>
+      match acc with
+      | .val (.prim (.bool false)) _ => false
+      | .val (.prim (.bool true)) _  => TPE.hasAttr r attr pes (.bool .anyBool)
+      | _                            => acc).typeOf = CedarType.bool BoolType.anyBool := by
+  induction rest generalizing acc with
+  | nil => simpa using hacc
+  | cons a rest ih =>
+    simp only [List.foldl_cons]
+    apply ih
+    split
+    · simp [Residual.typeOf]
+    · exact tpe_hasAttr_typeOf_bool r a pes
+    · exact hacc
+
+private theorem tpe_extHasAttr_loop_typeOf (m : Map Attr Value) (attrs : List Attr) (pes : PartialEntities) (ty : CedarType)
+    (hty : ty = .bool .anyBool) :
+    (TPE.extHasAttr.loop m attrs pes ty).typeOf = ty := by
+  subst hty
+  induction attrs generalizing m with
+  | nil =>
+    unfold TPE.extHasAttr.loop
+    simp [Residual.typeOf]
+  | cons a rest ih =>
+    unfold TPE.extHasAttr.loop
+    cases rest with
+    | nil =>
+      simp [Residual.typeOf]
+    | cons b rest' =>
+      simp only
+      split
+      · -- m.find? a = .none → false
+        simp [Residual.typeOf]
+      · -- m.find? a = .some next
+        rename_i next _
+        split
+        · -- attrsOf succeeds → recurse
+          exact ih _
+        · -- attrsOf fails
+          split
+          · simp [Residual.typeOf]  -- entity uid → .extHasAttr
+          · simp [Residual.typeOf]  -- _ → .error ty
+
+private theorem tpe_extHasAttr_typeOf (r : Residual) (a : Attr) (attrs : List Attr) (pes : PartialEntities) (ty : CedarType)
+    (hty : ty = .bool .anyBool) :
+    (TPE.extHasAttr r a attrs pes ty).typeOf = ty := by
+  simp only [TPE.extHasAttr]
+  split
+  · simp [Residual.typeOf]  -- .error case
+  · split
+    · -- attrsOf succeeds → extHasAttr.loop
+      exact tpe_extHasAttr_loop_typeOf _ _ _ _ hty
+    · -- attrsOf fails → .extHasAttr r a attrs ty
+      simp [Residual.typeOf]
+
+private theorem partial_eval_preserves_typeof_extHasAttr {expr : Residual} {attr : Attr} {attrs : List Attr} {ty : CedarType} :
+  PEPreservesTypeOf (Residual.extHasAttr expr attr attrs ty)
+:= by
+  intro env h_wt preq pes
+  simp only [TPE.evaluate, Residual.typeOf]
+  cases h_wt with
+  | extHasAttr_entity h₁ h₂ h₃ =>
+    exact tpe_extHasAttr_typeOf _ _ _ _ _ rfl
+  | extHasAttr_record h₁ h₂ h₃ =>
+    exact tpe_extHasAttr_typeOf _ _ _ _ _ rfl
+
 private theorem partial_eval_preserves_typeof_set {ls : List Residual} {ty : CedarType} :
   PEPreservesTypeOf (Residual.set ls ty)
 := by
@@ -291,6 +368,8 @@ theorem partial_eval_preserves_typeof :
     exact partial_eval_preserves_typeof_getAttr
   | hasAttr expr attr ty =>
     exact partial_eval_preserves_typeof_hasAttr
+  | extHasAttr expr attr attrs ty =>
+    exact partial_eval_preserves_typeof_extHasAttr
   | set ls ty =>
     exact partial_eval_preserves_typeof_set
   | record ls ty =>

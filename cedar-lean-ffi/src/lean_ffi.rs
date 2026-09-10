@@ -886,88 +886,88 @@ impl CedarLeanFfi {
         asserts_of_check_never_errors_timed,
         asserts_of_check_never_errors,
         assertsOfCheckNeverErrors,
-        ResultDef::to_result,
-        Result<Vec<Term>, String>
+        ResultDef::to_terms_result,
+        Result<Vec<cedar_policy_symcc::term::Term>, String>
     );
 
     checkPolicy_func!(
         asserts_of_check_always_matches_timed,
         asserts_of_check_always_matches,
         assertsOfCheckAlwaysMatches,
-        ResultDef::to_result,
-        Result<Vec<Term>, String>
+        ResultDef::to_terms_result,
+        Result<Vec<cedar_policy_symcc::term::Term>, String>
     );
 
     checkPolicy_func!(
         asserts_of_check_never_matches_timed,
         asserts_of_check_never_matches,
         assertsOfCheckNeverMatches,
-        ResultDef::to_result,
-        Result<Vec<Term>, String>
+        ResultDef::to_terms_result,
+        Result<Vec<cedar_policy_symcc::term::Term>, String>
     );
 
     checkPolicySet_func!(
         asserts_of_check_always_allows_timed,
         asserts_of_check_always_allows,
         assertsOfCheckAlwaysAllows,
-        ResultDef::to_result,
-        Result<Vec<Term>, String>
+        ResultDef::to_terms_result,
+        Result<Vec<cedar_policy_symcc::term::Term>, String>
     );
 
     checkPolicySet_func!(
         asserts_of_check_always_denies_timed,
         asserts_of_check_always_denies,
         assertsOfCheckAlwaysDenies,
-        ResultDef::to_result,
-        Result<Vec<Term>, String>
+        ResultDef::to_terms_result,
+        Result<Vec<cedar_policy_symcc::term::Term>, String>
     );
 
     comparePolicySet_func!(
         asserts_of_check_equivalent_timed,
         asserts_of_check_equivalent,
         assertsOfCheckEquivalent,
-        ResultDef::to_result,
-        Result<Vec<Term>, String>
+        ResultDef::to_terms_result,
+        Result<Vec<cedar_policy_symcc::term::Term>, String>
     );
 
     comparePolicySet_func!(
         asserts_of_check_implies_timed,
         asserts_of_check_implies,
         assertsOfCheckImplies,
-        ResultDef::to_result,
-        Result<Vec<Term>, String>
+        ResultDef::to_terms_result,
+        Result<Vec<cedar_policy_symcc::term::Term>, String>
     );
 
     comparePolicySet_func!(
         asserts_of_check_disjoint_timed,
         asserts_of_check_disjoint,
         assertsOfCheckDisjoint,
-        ResultDef::to_result,
-        Result<Vec<Term>, String>
+        ResultDef::to_terms_result,
+        Result<Vec<cedar_policy_symcc::term::Term>, String>
     );
 
     comparePolicies_func!(
         asserts_of_check_matches_equivalent_timed,
         asserts_of_check_matches_equivalent,
         assertsOfCheckMatchesEquivalent,
-        ResultDef::to_result,
-        Result<Vec<Term>, String>
+        ResultDef::to_terms_result,
+        Result<Vec<cedar_policy_symcc::term::Term>, String>
     );
 
     comparePolicies_func!(
         asserts_of_check_matches_implies_timed,
         asserts_of_check_matches_implies,
         assertsOfCheckMatchesImplies,
-        ResultDef::to_result,
-        Result<Vec<Term>, String>
+        ResultDef::to_terms_result,
+        Result<Vec<cedar_policy_symcc::term::Term>, String>
     );
 
     comparePolicies_func!(
         asserts_of_check_matches_disjoint_timed,
         asserts_of_check_matches_disjoint,
         assertsOfCheckMatchesDisjoint,
-        ResultDef::to_result,
-        Result<Vec<Term>, String>
+        ResultDef::to_terms_result,
+        Result<Vec<cedar_policy_symcc::term::Term>, String>
     );
 
     // Adds each of the smtlib_of_(symcc-command) to call the corresponding lean function
@@ -2366,5 +2366,49 @@ action "" appliesTo {
             )
             .unwrap()
         );
+    }
+
+    fn nested_has_schema() -> Schema {
+        Schema::from_str(
+            r#"
+            entity Principal;
+            entity Resource = {
+                "m": {
+                    "r": { "r": { "r": Bool } },
+                    "A": { "r": Bool }
+                }
+            };
+            action "act" appliesTo {
+                principal: [Principal],
+                resource: [Resource],
+                context: {}
+            };
+            "#,
+        )
+        .expect("nested-has schema should parse")
+    }
+
+    fn nested_if_has_policy(depth: usize) -> String {
+        let mut e = "resource".to_string();
+        for _ in 0..depth {
+            e = format!("(if ({e} has m.A.r) then {e} else {e})");
+        }
+        format!("permit(principal, action, resource) when {{ {e} has m.r.r.r }};")
+    }
+
+    #[test]
+    fn pathological_nested_ext_has_encoding() {
+        let schema = nested_has_schema();
+        // With depth 10 and without the serialization based on common subexrepssion elimination,
+        // this would trigger serde's recursion limit exceeded. We test it doesn't
+        let policy =
+            Policy::from_str(&nested_if_has_policy(10)).expect("pathological policy should parse");
+        let ffi = CedarLeanFfi::new();
+        let lean_schema = ffi.load_lean_schema_object(&schema).unwrap();
+        let req_env = request_env("Principal", "Action::\"act\"", "Resource");
+
+        ffi.asserts_of_check_never_errors(&policy, lean_schema, &req_env)
+            .expect("Lean call unexpectedly failed for asserts_of_check_never_errors")
+            .expect("SymCC unexpectedly failed to encode/serialize the pathological term");
     }
 }

@@ -88,6 +88,57 @@ public def TypedExpr.checkEntityAccessLevel (tx : TypedExpr) (env : TypeEnv) (n 
   | _, _ => false
 
 
+
+/--
+Compute the number of entity-typed hops in an attribute chain starting from
+a given `CedarType`. Each entity-to-entity transition costs 1, except for
+the last attribute: the evaluator only checks its presence without
+dereferencing the result, so no level is consumed for the last hop.
+-/
+public def extHasAttrChainCost (env : TypeEnv) (ty : CedarType) : List Attr → Nat
+  | [] => 0
+  | [_] => 0  -- last attribute: never dereferenced
+  | a :: rest =>
+    match ty with
+    | .entity ety =>
+      match env.ets.attrs? ety with
+      | .some rty =>
+        match rty.find? a with
+        | .some qty =>
+          match qty.getType with
+          | .entity nextEty => 1 + extHasAttrChainCost env (.entity nextEty) rest
+          | nextTy => extHasAttrChainCost env nextTy rest
+        | .none => 0
+      | .none => 0
+    | .record rty =>
+      match rty.find? a with
+      | .some qty =>
+        match qty.getType with
+        | .entity nextEty => 1 + extHasAttrChainCost env (.entity nextEty) rest
+        | nextTy => extHasAttrChainCost env nextTy rest
+      | .none => 0
+    | _ => 0
+
+/--
+Find the path from a record base to the first entity value that extended `has`
+will actually dereference. The final attribute is excluded: `hasAttrs.loop`
+only tests that attribute for presence and does not dereference its value.
+-/
+public def extHasAttrFirstEntityPath? (env : TypeEnv) (ty : CedarType) :
+    List Attr → Option (List Attr)
+  | [] | [_] => none
+  | a :: b :: rest =>
+    let nextTy? := match ty with
+      | .entity ety => (env.ets.attrs? ety).bind fun rty =>
+        (rty.find? a).map Qualified.getType
+      | .record rty => (rty.find? a).map Qualified.getType
+      | _ => none
+    match nextTy? with
+    | some (.entity _) => some [a]
+    | some nextTy =>
+      (extHasAttrFirstEntityPath? env nextTy (b :: rest)).map (a :: ·)
+    | none => none
+
 /--
 Main entry point for level checking an expression. For most expressions, this is
 a simple recursive traversal of the AST. For entity dereferencing expressions,
@@ -121,6 +172,19 @@ public def TypedExpr.checkLevel (tx : TypedExpr) (env : TypeEnv) (n : Nat) : Boo
     | .entity _ =>
       n > 0 &&
       x₁.checkEntityAccessLevel env (n - 1) n []
+    | _ => x₁.checkLevel env n
+  | .extHasAttr x₁ attr attrs _ =>
+    match x₁.typeOf with
+    | .entity ety =>
+      let k := extHasAttrChainCost env (.entity ety) (attr :: attrs)
+      n > k && x₁.checkEntityAccessLevel env (n - k - 1) n []
+    | .record rty =>
+      let k := extHasAttrChainCost env (.record rty) (attr :: attrs)
+      let baseAccessOk :=
+        match extHasAttrFirstEntityPath? env (.record rty) (attr :: attrs) with
+        | some path => x₁.checkEntityAccessLevel env (n - k) n path
+        | none => true
+      baseAccessOk && n >= k && x₁.checkLevel env n
     | _ => x₁.checkLevel env n
   | .call _ xs _
   | .set xs _ =>

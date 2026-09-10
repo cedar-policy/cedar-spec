@@ -95,6 +95,10 @@ fn residual_of_expr(e: Expr, u: &mut Unstructured<'_>) -> Result<Residual> {
             expr: Arc::new(residual_of_expr(Arc::unwrap_or_clone(expr), u)?),
             attr: attr.clone(),
         },
+        ExprKind::ExtHasAttr { expr, attrs } => ResidualKind::ExtHasAttr {
+            expr: Arc::new(residual_of_expr(Arc::unwrap_or_clone(expr), u)?),
+            attrs: attrs.clone(),
+        },
         ExprKind::Like { expr, pattern } => ResidualKind::Like {
             expr: Arc::new(residual_of_expr(Arc::unwrap_or_clone(expr), u)?),
             pattern: pattern.clone(),

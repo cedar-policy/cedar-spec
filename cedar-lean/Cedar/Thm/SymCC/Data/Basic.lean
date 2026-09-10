@@ -164,6 +164,9 @@ public inductive Expr.ValidRefs (validRef : EntityUID → Prop) : Expr → Prop
   | hasAttr_valid {x₁ : Expr} {a : Attr}
     (h₁ : ValidRefs validRef x₁) :
     ValidRefs validRef (.hasAttr x₁ a)
+  | extHasAttr_valid {x₁ : Expr} {a : Attr} {as : List Attr}
+    (h₁ : ValidRefs validRef x₁) :
+    ValidRefs validRef (.extHasAttr x₁ a as)
   | getAttr_valid {x₁ : Expr} {a : Attr}
     (h₁ : ValidRefs validRef x₁) :
     ValidRefs validRef (.getAttr x₁ a)

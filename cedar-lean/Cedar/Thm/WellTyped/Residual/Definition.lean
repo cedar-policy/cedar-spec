@@ -251,6 +251,16 @@ inductive Residual.WellTyped (env : TypeEnv) : Residual → Prop
   (h₁ : WellTyped env x₁)
   (h₂ : x₁.typeOf = .record rty) :
   WellTyped env (.hasAttr x₁ attr (.bool .anyBool))
+| extHasAttr_entity {ety : EntityType} {x₁ : Residual} {attr : Attr} {attrs : List Attr}
+  (h₁ : WellTyped env x₁)
+  (h₂ : x₁.typeOf = .entity ety)
+  (h₃ : ExtHasAttrChainValid env.ets (.entity ety) (attr :: attrs)) :
+  WellTyped env (.extHasAttr x₁ attr attrs (.bool .anyBool))
+| extHasAttr_record {rty : RecordType} {x₁ : Residual} {attr : Attr} {attrs : List Attr}
+  (h₁ : WellTyped env x₁)
+  (h₂ : x₁.typeOf = .record rty)
+  (h₃ : ExtHasAttrChainValid env.ets (.record rty) (attr :: attrs)) :
+  WellTyped env (.extHasAttr x₁ attr attrs (.bool .anyBool))
 | getAttr_entity {ety : EntityType} {rty : RecordType} {x₁ : Residual} {attr : Attr} {ty : CedarType}
   (h₁ : WellTyped env x₁)
   (h₂ : x₁.typeOf = .entity ety)
