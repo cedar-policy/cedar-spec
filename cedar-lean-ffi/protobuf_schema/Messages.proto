@@ -303,22 +303,45 @@ message PartialEntityUID {
     optional string id = 2;
 }
 
+message AttrState {
+    AttrStateKind kind = 1;
+    cedar_policy_core.Expr value = 2;
+    repeated AttrStateEntry record = 3;
+}
+
+enum AttrStateKind {
+    ATTR_STATE_UNKNOWN = 0;
+    ATTR_STATE_VALUE = 1;
+    ATTR_STATE_PRESENT = 2;
+    ATTR_STATE_ABSENT = 3;
+    ATTR_STATE_PARTIAL_RECORD = 4;
+}
+
+message AttrStateEntry {
+    string key = 1;
+    AttrState state = 2;
+}
+
+message PartialRecord {
+    repeated AttrStateEntry entries = 1;
+}
+
+message EntityUidSet {
+    repeated cedar_policy_core.EntityUid uids = 1;
+}
+
 message PartialRequest {
     PartialEntityUID principal = 1;
     cedar_policy_core.EntityUid action = 2;
     PartialEntityUID resource = 3;
-    map<string, cedar_policy_core.Expr> context = 4;
-    bool has_context = 5;
+    PartialRecord context = 4;
 }
 
 message PartialEntity {
     cedar_policy_core.EntityUid uid = 1;
-    map<string, cedar_policy_core.Expr> attrs = 2;
-    repeated cedar_policy_core.EntityUid ancestors = 3;
-    map<string, cedar_policy_core.Expr> tags = 4;
-    bool has_attrs = 5;
-    bool has_ancestors = 6;
-    bool has_tags = 7;
+    PartialRecord attrs = 2;
+    EntityUidSet ancestors = 3;
+    PartialRecord tags = 4;
 }
 
 message PartialEntities {

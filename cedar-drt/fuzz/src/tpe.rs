@@ -23,11 +23,11 @@ use cedar_lean_ffi::{
 };
 use cedar_policy::pst::{Clause, Expr, UnaryOp};
 use cedar_policy::{
-    Context, Entities, Entity, EntityId, EntityUid, PartialEntities, PartialEntity,
-    PartialEntityUid, PartialRequest, PolicyId, PolicySet, Request, RestrictedExpression, Schema,
-    Validator,
+    Context, Entities, Entity, EntityId, EntityUid, PartialAttribute, PartialContext,
+    PartialEntities, PartialEntity, PartialEntityUid, PartialRecord, PartialRequest, PolicyId,
+    PolicySet, Request, RestrictedExpression, Schema, Validator,
 };
-use cedar_policy_core::ast::{self, Value};
+use cedar_policy_core::ast::{self, Value, ValueKind};
 use cedar_policy_core::extensions::Extensions;
 use cedar_policy_core::tpe::residual::Residual;
 use cedar_policy_generators::{
@@ -108,17 +108,112 @@ pub fn schema_and_requests_size_hint(
     ]))
 }
 
-fn to_restricted_exprs<'a>(
+/// Downgrade one concrete attribute value into an arbitrary [`PartialAttribute`].
+///
+/// Never emits [`PartialAttribute::Absent`]: absence of a required attribute is a schema violation,
+/// and the value alone does not say whether the attribute is required. The unchecked builders cover
+/// that case.
+fn arbitrary_partial_attribute(
+    value: &Value,
+    u: &mut Unstructured<'_>,
+) -> arbitrary::Result<PartialAttribute> {
+    if let ValueKind::Record(fields) = value.value_kind() {
+        if u.ratio(1, 2)? {
+            let mut sub = Vec::new();
+            for (k, v) in fields.iter() {
+                // Omission is not `Absent`: a key that is not stated is `Unknown`.
+                if u.ratio(1, 5)? {
+                    continue;
+                }
+                sub.push((k.clone(), arbitrary_partial_attribute(v, u)?));
+            }
+            return Ok(PartialAttribute::record(sub));
+        }
+    }
+    Ok(match u.int_in_range::<u8>(0..=2)? {
+        0 => PartialAttribute::value(RestrictedExpression::from(ast::RestrictedExpr::from(
+            value.clone(),
+        ))),
+        1 => PartialAttribute::Exists,
+        _ => PartialAttribute::Unknown,
+    })
+}
+
+/// Downgrade concrete attributes or tags; every state produced is schema-valid, so the result
+/// passes the validation gate in `PartialEntity::new`/`PartialRequest::new`.
+fn to_partial_attrs<'a>(
     pairs: impl Iterator<Item = (&'a SmolStr, &'a ast::PartialValue)>,
-) -> BTreeMap<SmolStr, RestrictedExpression> {
-    pairs
-        .map(|(k, v)| {
-            (
-                k.clone(),
-                ast::RestrictedExpr::from(Value::try_from(v.clone()).unwrap()).into(),
-            )
-        })
-        .collect()
+    u: &mut Unstructured<'_>,
+) -> arbitrary::Result<BTreeMap<SmolStr, PartialAttribute>> {
+    let mut out = BTreeMap::new();
+    for (k, v) in pairs {
+        if u.ratio(1, 5)? {
+            continue;
+        }
+        let value = Value::try_from(v.clone()).map_err(|_| arbitrary::Error::IncorrectFormat)?;
+        out.insert(k.clone(), arbitrary_partial_attribute(&value, u)?);
+    }
+    Ok(out)
+}
+
+/// As [`to_partial_attrs`], but may emit [`PartialAttribute::Absent`] for a *required* attribute.
+///
+/// That is a schema violation on purpose: the validation and consistency targets check that Rust
+/// and Lean agree on which inputs are rejected.
+fn unchecked_partial_attrs<'a>(
+    pairs: impl Iterator<Item = (&'a SmolStr, &'a ast::PartialValue)>,
+    u: &mut Unstructured<'_>,
+) -> arbitrary::Result<BTreeMap<SmolStr, PartialAttribute>> {
+    let mut out = BTreeMap::new();
+    for (k, v) in pairs {
+        if u.ratio(1, 6)? {
+            continue;
+        }
+        let attr = match u.int_in_range::<u8>(0..=3)? {
+            0 => {
+                let value =
+                    Value::try_from(v.clone()).map_err(|_| arbitrary::Error::IncorrectFormat)?;
+                PartialAttribute::value(RestrictedExpression::from(ast::RestrictedExpr::from(
+                    value,
+                )))
+            }
+            1 => PartialAttribute::Exists,
+            2 => PartialAttribute::Absent,
+            _ => PartialAttribute::Unknown,
+        };
+        out.insert(k.clone(), attr);
+    }
+    Ok(out)
+}
+
+fn concrete_context(context: &ast::Context) -> arbitrary::Result<Context> {
+    let ast::Context::Value(fields) = context else {
+        return Err(arbitrary::Error::IncorrectFormat);
+    };
+    Context::from_pairs(fields.iter().map(|(k, v)| {
+        (
+            k.to_string(),
+            RestrictedExpression::from(ast::RestrictedExpr::from(v.clone())),
+        )
+    }))
+    .map_err(|_| arbitrary::Error::IncorrectFormat)
+}
+
+fn to_partial_context(
+    context: &ast::Context,
+    u: &mut Unstructured<'_>,
+) -> arbitrary::Result<PartialContext> {
+    let ast::Context::Value(fields) = context else {
+        return Err(arbitrary::Error::IncorrectFormat);
+    };
+    let mut record = Vec::new();
+    for (k, v) in fields.iter() {
+        if u.ratio(1, 5)? {
+            continue;
+        }
+        record.push((k.clone(), arbitrary_partial_attribute(v, u)?));
+    }
+    Ok(PartialContext::Partial(PartialRecord::new(record)))
 }
 
 /// Builds a partial entity whose uid and ancestors come from `entity` and whose attributes
@@ -136,7 +231,7 @@ fn entity_to_partial_entity(
         if !is_action && u.ratio(1, 4)? {
             None
         } else {
-            Some(to_restricted_exprs(attrs_from.as_ref().attrs()))
+            Some(to_partial_attrs(attrs_from.as_ref().attrs(), u)?)
         },
         // We can only mark ancestors of leaf nodes to unknown
         if !is_action && leafs.contains(&entity.uid()) && u.ratio(1, 4)? {
@@ -149,7 +244,7 @@ fn entity_to_partial_entity(
         if !is_action && u.ratio(1, 4)? {
             None
         } else {
-            Some(to_restricted_exprs(attrs_from.as_ref().tags()))
+            Some(to_partial_attrs(attrs_from.as_ref().tags(), u)?)
         },
         schema,
     )
@@ -260,12 +355,22 @@ pub fn make_unchecked_partial_request(
         context: if u.ratio(1, 4)? {
             None
         } else {
-            Some(
-                context
-                    .iter()
-                    .map(|(k, v)| (k.clone(), ast::RestrictedExpr::from(v.clone()).into()))
-                    .collect(),
-            )
+            let mut out = BTreeMap::new();
+            for (k, v) in context.iter() {
+                if u.ratio(1, 6)? {
+                    continue;
+                }
+                let attr = match u.int_in_range::<u8>(0..=3)? {
+                    0 => PartialAttribute::value(RestrictedExpression::from(
+                        ast::RestrictedExpr::from(v.clone()),
+                    )),
+                    1 => PartialAttribute::Exists,
+                    2 => PartialAttribute::Absent,
+                    _ => PartialAttribute::Unknown,
+                };
+                out.insert(k.clone(), attr);
+            }
+            Some(out)
         },
     })
 }
@@ -279,7 +384,7 @@ pub fn entity_to_unchecked_partial_entity(
         attrs: if u.ratio(1, 4)? {
             None
         } else {
-            Some(to_restricted_exprs(entity.as_ref().attrs()))
+            Some(unchecked_partial_attrs(entity.as_ref().attrs(), u)?)
         },
         ancestors: if u.ratio(1, 4)? {
             None
@@ -291,22 +396,26 @@ pub fn entity_to_unchecked_partial_entity(
         tags: if u.ratio(1, 4)? {
             None
         } else {
-            Some(to_restricted_exprs(entity.as_ref().tags()))
+            Some(unchecked_partial_attrs(entity.as_ref().tags(), u)?)
         },
     })
 }
 
-/// Construct a partial request from a concrete request, randomly dropping eids.
 pub fn make_partial_request(
     req: &ABACRequest,
     u: &mut Unstructured<'_>,
     schema: &Schema,
 ) -> arbitrary::Result<PartialRequest> {
+    let context: PartialContext = match u.int_in_range::<u8>(0..=2)? {
+        0 => PartialContext::Unknown,
+        1 => concrete_context(&req.context)?.into(),
+        _ => to_partial_context(&req.context, u)?,
+    };
     PartialRequest::new(
         maybe_eid(&req.principal, u)?,
         req.action.clone().into(),
         maybe_eid(&req.resource, u)?,
-        None,
+        context,
         schema,
     )
     .map_err(|_| arbitrary::Error::IncorrectFormat)
@@ -656,10 +765,10 @@ pub fn test_partial_request_validation_equiv(
     lean_schema: LeanSchema,
     request: &UncheckedPartialRequest,
 ) {
-    let context = request.context.clone().map(|c| {
-        Context::from_pairs(c.into_iter().map(|(k, v)| (k.to_string(), v)))
-            .expect("context built from a concrete context should be valid")
-    });
+    let context: PartialContext = match request.context.clone() {
+        Some(fields) => PartialContext::Partial(PartialRecord::new(fields)),
+        None => PartialContext::Unknown,
+    };
     let rust_res = PartialRequest::new(
         request.principal.clone(),
         request.action.clone(),

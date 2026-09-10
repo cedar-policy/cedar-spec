@@ -892,9 +892,12 @@ mod test {
             attrs: Some(BTreeMap::from([
                 (
                     "name".into(),
-                    RestrictedExpression::new_string("Alice".into()),
+                    PartialAttribute::value(RestrictedExpression::new_string("Alice".into())),
                 ),
-                ("age".into(), RestrictedExpression::new_long(30)),
+                (
+                    "age".into(),
+                    PartialAttribute::value(RestrictedExpression::new_long(30)),
+                ),
             ])),
             ancestors: None,
             tags: None,
@@ -912,9 +915,12 @@ mod test {
             attrs: Some(BTreeMap::from([
                 (
                     "name".into(),
-                    RestrictedExpression::new_string("Alice".into()),
+                    PartialAttribute::value(RestrictedExpression::new_string("Alice".into())),
                 ),
-                ("age".into(), RestrictedExpression::new_string("30".into())),
+                (
+                    "age".into(),
+                    PartialAttribute::value(RestrictedExpression::new_string("30".into())),
+                ),
             ])),
             ..user
         };
