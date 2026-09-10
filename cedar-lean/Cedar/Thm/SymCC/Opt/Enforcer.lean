@@ -27,6 +27,29 @@ namespace Cedar.Thm
 open Cedar.Spec Cedar.SymCC
 
 /--
+Rephrases the unoptimized `enforce` as the union of the acyclicity and transitivity constraints
+using the `Set.map`/`Set.product`/`∪` operations that the optimized `enforce*CompiledPolicy*`
+functions are defined with.
+-/
+theorem enforce_eq_map_union {xs : List Expr} {εnv : SymEnv} :
+  enforce xs εnv =
+    (footprints xs εnv).map (acyclicity · εnv.entities) ∪
+    ((footprints xs εnv).product (footprints xs εnv)).map (fun (t₁, t₂) => transitivity t₁ t₂ εnv.entities)
+:= by
+  simp only [enforce]
+  rw [Data.Set.eq_means_eqv (Data.Set.make_wf _) (Data.Set.union_wf _ _)]
+  simp only [List.Equiv, List.subset_def, Data.Set.mem_elts_iff_mem_set, Data.Set.mem_make,
+    Data.Set.mem_union, List.mem_union_iff, List.mem_flatMap, List.mem_map, Data.Set.mem_map]
+  constructor <;> intro a h
+  · rcases h with ⟨x, hx, hf⟩ | ⟨x, hx, y, hy, hf⟩
+    · exact Or.inl ⟨x, hx, hf⟩
+    · exact Or.inr ⟨(x, y), Data.Set.mem_product.mpr ⟨hx, hy⟩, hf⟩
+  · rcases h with ⟨x, hx, hf⟩ | ⟨⟨x, y⟩, hxy, hf⟩
+    · exact Or.inl ⟨x, hx, hf⟩
+    · rw [Data.Set.mem_product] at hxy
+      exact Or.inr ⟨x, hxy.1, y, hxy.2, hf⟩
+
+/--
 This theorem covers the "happy path" -- showing that if optimized policy
 compilation succeeds, then `enforce` and `enforceCompiledPolicy` are equivalent.
 -/
@@ -35,52 +58,16 @@ theorem enforceCompiledPolicy_eqv_enforce_ok {p wp : Policy} {cp : CompiledPolic
   wellTypedPolicy p Γ = .ok wp →
   enforce [wp.toExpr] (SymEnv.ofTypeEnv Γ) = enforceCompiledPolicy cp
 := by
-  simp [enforce, enforceCompiledPolicy]
   intro h₀ h₁
-  simp [
+  simp only [
+    enforceCompiledPolicy,
+    enforce_eq_map_union,
+    footprints_singleton,
     cp_compile_produces_the_right_env h₀,
     cp_compile_produces_the_right_footprint h₀,
     cp_compile_produces_the_right_acyclicity h₀,
     cp_compile_produces_the_right_policy h₀ h₁,
   ]
-  simp [footprints]
-  simp [Data.Set.make_make_eqv, List.Equiv, List.subset_def]
-  constructor
-  · intro t h₂
-    cases h₂
-    · left
-      rename_i h₂
-      replace ⟨t', h₂, ht⟩ := h₂ ; subst t ; rename Term => t
-      rw [Data.Set.mem_elts_iff_mem_set] at *
-      rw [List.mem_mapUnion_iff_mem_exists] at h₂
-      replace ⟨s, hs, h₂⟩ := h₂
-      simp at hs ; subst s
-      simp [Data.Set.mem_map]
-      exists t
-    · right
-      rename_i h₂
-      replace ⟨s, hs, t', ht', h₂⟩ := h₂ ; subst t ; rename Term => t
-      simp [Data.Set.mem_elts_iff_mem_set, List.mem_mapUnion_iff_mem_exists] at *
-      exists s
-      simp [hs]
-      exists t
-  · intro t h₂
-    cases h₂
-    · left
-      rename_i h₂
-      simp [Data.Set.mem_elts_iff_mem_set, Data.Set.mem_map] at h₂
-      replace ⟨t', ht', h₂⟩ := h₂ ; subst t ; rename Term => t
-      exists t
-      simp [Data.Set.mem_elts_iff_mem_set, List.mem_mapUnion_iff_mem_exists]
-      exact ht'
-    · right
-      rename_i h₂
-      replace ⟨s, hs, t', ht', h₂⟩ := h₂ ; subst t ; rename Term => t
-      exists s
-      rw [Data.Set.mem_elts_iff_mem_set] at *
-      simp [List.mem_mapUnion_iff_mem_exists, hs]
-      exists t
-      simp [Data.Set.mem_elts_iff_mem_set, List.mem_mapUnion_iff_mem_exists, ht']
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
@@ -94,9 +81,16 @@ theorem enforcePairCompiledPolicy_eqv_enforce_ok {p₁ p₂ wp₁ wp₂ : Policy
   wellTypedPolicy p₂ Γ = .ok wp₂ →
   enforce [wp₁.toExpr, wp₂.toExpr] (SymEnv.ofTypeEnv Γ) = enforcePairCompiledPolicy cp₁ cp₂
 := by
-  simp [enforce, enforcePairCompiledPolicy]
   intro h₀ h₁ h₂ h₃
-  simp [
+  have h_split : [wp₁.toExpr, wp₂.toExpr] = [wp₁.toExpr] ++ [wp₂.toExpr] := by simp
+  simp only [
+    enforcePairCompiledPolicy,
+    enforce_eq_map_union,
+    h_split,
+    footprints_append,
+    footprints_singleton,
+    Data.Set.map_union,
+    Data.Set.append_eq_union,
     cp_compile_produces_the_right_env h₀,
     cp_compile_produces_the_right_env h₁,
     cp_compile_produces_the_right_footprint h₀,
@@ -105,38 +99,8 @@ theorem enforcePairCompiledPolicy_eqv_enforce_ok {p₁ p₂ wp₁ wp₂ : Policy
     cp_compile_produces_the_right_acyclicity h₁,
     cp_compile_produces_the_right_policy h₀ h₂,
     cp_compile_produces_the_right_policy h₁ h₃,
+    reduceIte,
   ]
-  have h_split : [wp₁.toExpr, wp₂.toExpr] = [wp₁.toExpr] ++ [wp₂.toExpr] := by simp
-  rw [h_split, footprints_append, footprints_singleton, footprints_singleton]
-  simp [Data.Set.make_make_eqv, List.Equiv, List.subset_def]
-  constructor
-  · intro t₁ h₁
-    cases h₁ <;> rename_i h₁
-    · replace ⟨t₂, h₁, htemp⟩ := h₁ ; subst t₁
-      simp only [List.cons_append, List.nil_append, Data.Set.mem_elts_iff_mem_set,
-        Data.Set.mem_map] at *
-      change t₂ ∈ _ ∪ _ at h₁
-      rw [Data.Set.mem_union] at h₁
-      cases h₁ <;> rename_i h₁
-      case' inl => left
-      case' inr => right ; left
-      all_goals exists t₂
-    · right ; right
-      simp [*]
-  · intro t₁ h₁
-    cases h₁ <;> rename_i h₁ <;> try (cases h₁ <;> rename_i h₁)
-    case right.inr.inr => right ; exact h₁
-    case' right.inl | right.inr.inl =>
-      left
-      simp [Data.Set.mem_elts_iff_mem_set, Data.Set.mem_map] at h₁
-      replace ⟨t₂, h₁, htemp⟩ := h₁ ; subst t₁
-      exists t₂
-      simp [Data.Set.mem_elts_iff_mem_set, HAppend.hAppend]
-      change t₂ ∈ _ ∪ _
-      rw [Data.Set.mem_union]
-    case' right.inl => left
-    case' right.inr.inl => right
-    all_goals exact h₁
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
@@ -150,9 +114,13 @@ theorem enforcePairCompiledPolicySet_eqv_enforce_ok {ps₁ ps₂ wps₁ wps₂ :
   wellTypedPolicies ps₂ Γ = .ok wps₂ →
   enforce (wps₁.map Policy.toExpr ++ wps₂.map Policy.toExpr) (SymEnv.ofTypeEnv Γ) = enforcePairCompiledPolicySet cpset₁ cpset₂
 := by
-  simp [enforce, enforcePairCompiledPolicySet]
   intro hcpset₁ hcpset₂ hwps₁ hwps₂
-  simp [
+  simp only [
+    enforcePairCompiledPolicySet,
+    enforce_eq_map_union,
+    footprints_append,
+    Data.Set.append_eq_union,
+    Data.Set.map_union,
     cpset_compile_produces_the_right_env hcpset₁,
     cpset_compile_produces_the_right_env hcpset₂,
     cpset_compile_produces_the_right_footprint hcpset₁,
@@ -161,49 +129,5 @@ theorem enforcePairCompiledPolicySet_eqv_enforce_ok {ps₁ ps₂ wps₁ wps₂ :
     cpset_compile_produces_the_right_acyclicity hcpset₂,
     cpset_compile_produces_the_right_policies hcpset₁ hwps₁,
     cpset_compile_produces_the_right_policies hcpset₂ hwps₂,
+    reduceIte,
   ]
-  simp [footprints_append]
-  rw [Data.Set.make_make_eqv]
-  simp [List.Equiv, List.subset_def]
-  constructor
-  · intro t₁ h₁
-    cases h₁ <;> rename_i h₁
-    · replace ⟨t₂, h₁, htemp⟩ := h₁ ; subst t₁
-      simp only [Data.Set.mem_elts_iff_mem_set, Data.Set.mem_map] at *
-      simp only [footprints, List.mapUnion_map]
-      change t₂ ∈ _ ∪ _ at h₁
-      rw [Data.Set.mem_union] at h₁
-      cases h₁ <;> rename_i h₁
-      case' inl => left
-      case' inr => right ; left
-      all_goals {
-        simp only [footprints, List.mapUnion_map] at h₁
-        rw [List.mem_mapUnion_iff_mem_exists] at h₁
-        replace ⟨x, h₁, h₂⟩ := h₁
-        exists t₂
-        simp only [List.mem_mapUnion_iff_mem_exists, Function.comp_apply, and_true]
-        exists x
-      }
-    · right ; right
-      simp [*]
-  · intro t₁ h₁
-    cases h₁ <;> rename_i h₁ <;> try (cases h₁ <;> rename_i h₁)
-    case right.inr.inr => right ; exact h₁
-    case' right.inl | right.inr.inl =>
-      left
-      simp [Data.Set.mem_elts_iff_mem_set, Data.Set.mem_map] at h₁
-      replace ⟨t₂, h₁, htemp⟩ := h₁ ; subst t₁
-      simp [mem_footprints_iff] at h₁
-      replace ⟨x, ⟨p, hp, htemp⟩, h₁⟩ := h₁ ; subst x
-      exists t₂
-      simp [Data.Set.mem_elts_iff_mem_set, HAppend.hAppend]
-      change t₂ ∈ _ ∪ _
-      rw [Data.Set.mem_union]
-    case' right.inl => left
-    case' right.inr.inl => right
-    all_goals {
-      simp [mem_footprints_iff]
-      exists p.toExpr
-      apply And.intro _ h₁
-      exists p
-    }

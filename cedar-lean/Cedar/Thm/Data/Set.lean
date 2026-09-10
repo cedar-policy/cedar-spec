@@ -519,6 +519,12 @@ public theorem make_cons_eq_singleton_union [LT α] [DecidableLT α] [StrictLT �
   · apply List.Equiv.refl
   · simp [List.canonicalize_idempotent]
 
+/-- The `++` notation on sets  is definitionally `∪`. -/
+@[simp]
+public theorem append_eq_union [LT α] [DecidableLT α] (s₁ s₂ : Set α) :
+  s₁ ++ s₂ = s₁ ∪ s₂
+:= rfl
+
 @[simp]
 public theorem mem_union [LT α] [DecidableLT α] [StrictLT α] (s₁ s₂ : Set α) (a : α) :
   a ∈ s₁ ∪ s₂ ↔ (a ∈ s₁ ∨ a ∈ s₂)
@@ -746,7 +752,7 @@ public theorem map_id [LT α] [DecidableLT α] (s : Set α) :
 
 /-- Analogue of `List.mem_map` but for sets -/
 @[simp]
-public theorem mem_map [LT α] [DecidableLT α] [StrictLT α] [LT β] [DecidableLT β] [StrictLT β] {b : β} {f : α → β} {s : Set α} :
+public theorem mem_map [LT β] [DecidableLT β] [StrictLT β] {b : β} {f : α → β} {s : Set α} :
   b ∈ s.map f ↔ ∃ a ∈ s, f a = b
 := by
   simp [Set.map, Set.mem_make, Set.mem_elts_iff_mem_set]
@@ -787,6 +793,21 @@ public theorem map_make [LT α] [DecidableLT α] [StrictLT α] [LT β] [Decidabl
 public theorem map_def [LT β] [DecidableLT β] (f : α → β) (s : Set α) :
   s.map f = Set.make (s.elts.map f)
 := by simp [Set.map]
+
+/-- `Set.map` distributes over `∪`. -/
+public theorem map_union [LT α] [DecidableLT α] [StrictLT α] [LT β] [DecidableLT β] [StrictLT β]
+  (f : α → β) (s₁ s₂ : Set α) :
+  (s₁ ∪ s₂).map f = s₁.map f ∪ s₂.map f
+:= by
+  rw [eq_means_eqv (map_wf _ _) (union_wf _ _)]
+  simp only [List.Equiv, List.subset_def, mem_elts_iff_mem_set, mem_union, mem_map]
+  constructor <;> intro a h
+  · rcases h with ⟨x, hx | hx, hf⟩
+    · exact Or.inl ⟨x, hx, hf⟩
+    · exact Or.inr ⟨x, hx, hf⟩
+  · rcases h with ⟨x, hx, hf⟩ | ⟨x, hx, hf⟩
+    · exact ⟨x, Or.inl hx, hf⟩
+    · exact ⟨x, Or.inr hx, hf⟩
 
 /-! ### filter and differences -/
 
@@ -869,5 +890,32 @@ public theorem all₁_eq_all {s : Set α} {f : α → Bool} :
 public theorem any₁_eq_any {s : Set α} {f : α → Bool} :
   (s.any₁ λ ⟨elt, _⟩ => f elt) = s.any f
 := by simp [any₁, any]
+
+/-! ### product  -/
+
+/-- An element is in `s₁.product s₂` iff its components are in `s₁` and `s₂`. -/
+@[simp]
+public theorem mem_product {α β} {a : α} {b : β} {s₁ : Set α} {s₂ : Set β} :
+  (a, b) ∈ s₁.product s₂ ↔ a ∈ s₁ ∧ b ∈ s₂
+:= by
+  rw [←mem_elts_iff_mem_set]
+  simp only [Set.product, elts, List.product, List.mem_flatMap, List.mem_map]
+  constructor
+  · rintro ⟨x, hx, y, hy, heq⟩
+    simp only [Prod.mk.injEq] at heq
+    obtain ⟨rfl, rfl⟩ := heq
+    exact ⟨hx, hy⟩
+  · rintro ⟨ha, hb⟩
+    exact ⟨a, ha, b, hb, rfl⟩
+
+@[simp]
+public theorem product_empty {α β} (s : Set α) :
+  s.product (Set.empty : Set β) = Set.empty
+:= by simp [product, empty, elts, List.product]
+
+@[simp]
+public theorem empty_product {α β} (s : Set β) :
+  (Set.empty : Set α).product s = Set.empty
+:= by simp [product, List.product, empty, elts]
 
 end Cedar.Data.Set
