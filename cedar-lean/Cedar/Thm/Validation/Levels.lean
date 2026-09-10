@@ -37,6 +37,8 @@ import Cedar.Thm.Validation.Levels.Record
 import Cedar.Thm.Validation.Levels.Set
 import Cedar.Thm.Validation.Levels.Call
 import Cedar.Thm.Validation.Levels.NoEntitiesError
+import Cedar.Thm.Validation.Levels.ReachableChild
+import Cedar.Thm.Validation.Levels.SliceHelpers
 
 namespace Cedar.Thm
 
