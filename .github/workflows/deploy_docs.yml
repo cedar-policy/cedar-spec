@@ -35,21 +35,23 @@ jobs:
               wget https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh
               bash elan-init.sh -y
       - name: Download dependencies
-        working-directory: ./cedar-lean
+        working-directory: ./cedar-lean/doc
         shell: bash
-        run: source ~/.profile && lake -R -Kenv=dev update
-      - name: Build docs
-        working-directory: ./cedar-lean
+        run: source ~/.profile && lake update
+      - name: Build Verso doc site
+        working-directory: ./cedar-lean/doc
         shell: bash
-        run: source ~/.profile && lake -R -Kenv=dev build Cedar:docs
-      - name: Move documentation to `docs/docs`
-        run: |
-              mkdir docs
-              cp -r cedar-lean/.lake/build/doc docs/docs
+        run: source ~/.profile && lake build
+      - name: Generate HTML
+        working-directory: ./cedar-lean/doc
+        shell: bash
+        run: source ~/.profile && .lake/build/bin/generate-doc
+      - name: Copy static assets
+        run: cp -r cedar-lean/doc/static cedar-lean/doc/_out/html-multi/
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
         with:
-            path: docs/
+            path: cedar-lean/doc/_out/html-multi/
 
   # Deployment job
   deploy:
