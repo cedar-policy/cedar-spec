@@ -1416,13 +1416,52 @@ theorem compile_well_typed_call
     · simp [hty_comp_x1, hty_x1, TermType.ofType]
     · simp
     · simp
+  -- isInRange (variadic)
+  case isInRange x₁ xtl hty_x₁ hlen_xtl hty_xtl hwt_xs =>
+    -- Every compiled argument has type `.option (.ext .ipAddr)` and is well-formed.
+    have hty_comp_xs :
+      ∀ y ∈ tcomp_xs,
+        y.typeOf = TermType.option (.ext .ipAddr) ∧ Term.WellFormed εnv.entities y
+    := by
+      intro y hy
+      have ⟨⟨x', hx⟩, _, hcomp_x⟩ := List.mapM_ok_implies_all_from_ok hcomp_xs y hy
+      simp only [List.mem_map] at hx
+      have ⟨x, hx, hx_to_x'⟩ := hx
+      have ⟨_, hcomp_x2, hty_comp_x, hwf_comp_x⟩ := ihxs x hx
+      simp only at hcomp_x
+      simp only [← hx_to_x', hcomp_x2, Except.ok.injEq] at hcomp_x
+      subst hcomp_x
+      have hxty : x.typeOf = CedarType.ext ExtType.ipAddr := by
+        rcases List.mem_cons.mp hx with rfl | h
+        · exact hty_x₁
+        · exact hty_xtl x h
+      rw [hty_comp_x, hxty]
+      exact ⟨rfl, hwf_comp_x⟩
+    -- The compiled arg list has ≥ 2 elements, so it matches `t₁ :: t₂ :: ts`.
+    have hlen2 : 2 ≤ tcomp_xs.length := by
+      have h := List.mapM_preserves_length hcomp_xs
+      simp only [List.length_attach, List.length_map, List.length_cons] at h
+      omega
+    rcases tcomp_xs with _ | ⟨thd, _ | ⟨t₂, ts'⟩⟩
+    · simp only [List.length_nil] at hlen2; omega
+    · simp only [List.length_cons, List.length_nil] at hlen2; omega
+    · have hty_all : ∀ y ∈ thd :: t₂ :: ts', y.typeOf = TermType.option (.ext .ipAddr) :=
+        fun y hy => (hty_comp_xs y hy).1
+      have hwf_all : ∀ y ∈ thd :: t₂ :: ts', Term.WellFormed εnv.entities y :=
+        fun y hy => (hty_comp_xs y hy).2
+      have ⟨t₀, hok0⟩ : ∃ t, compileCall ExtFun.isInRange (thd :: t₂ :: ts') = .ok t := by
+        simp only [compileCall, compileCallₙ]
+        rw [if_pos ⟨hty_all thd (by simp), fun tᵢ h => hty_all tᵢ (by simp [h])⟩]
+        exact ⟨_, rfl⟩
+      refine ⟨t₀, hok0, ?_⟩
+      have hty := (compileCall_wf_types hwf_all hok0).2
+      simpa only [TypedExpr.typeOf, TermType.ofType] using hty
   -- Resolve cases compiled with compileCall₂
   case
     lessThan x1 x2 hty_x1 hty_x2 _ |
     lessThanOrEqual x1 x2 hty_x1 hty_x2 _ |
     greaterThan x1 x2 hty_x1 hty_x2 _ |
     greaterThanOrEqual x1 x2 hty_x1 hty_x2 _ |
-    isInRange x1 x2 hty_x1 hty_x2 _ |
     offset x1 x2 hty_x1 hty_x2 _ |
     durationSince x1 x2 hty_x1 hty_x2 _
   =>
@@ -1460,7 +1499,6 @@ theorem compile_well_typed_call
       | apply (wf_decimal_lessThanOrEqual (εs := εnv.entities) ?_ ?_).right
       | apply (wf_decimal_greaterThan (εs := εnv.entities) ?_ ?_).right
       | apply (wf_decimal_greaterThanOrEqual (εs := εnv.entities) ?_ ?_).right
-      | apply (wf_ipaddr_isInRange (εs := εnv.entities) ?_ ?_).right
       | apply (wf_datetime_offset (εs := εnv.entities) ?_ ?_).right
       | apply (wf_datetime_durationSince (εs := εnv.entities) ?_ ?_).right
     all_goals

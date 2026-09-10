@@ -7,11 +7,13 @@ publish = false
 [dependencies]
 libfuzzer-sys = "0.4"
 cedar-lean-ffi = { path = "../cedar-lean-ffi", version = "4.4.0" }
-cedar-policy = "4.4.0"
-cedar-policy-core = { version = "4.4.0", features = ["arbitrary", "entity-manifest", "tpe"] }
+# `variadic-is-in-range` is experimental in cedar but unconditional in the Lean
+# spec, so DRT builds the variadic Rust configuration to match.
+cedar-policy = { version = "4.4.0", features = ["variadic-is-in-range"] }
+cedar-policy-core = { version = "4.4.0", features = ["arbitrary", "entity-manifest", "tpe", "variadic-is-in-range"] }
 cedar-policy-formatter = "4.4.0"
 cedar-testing = { path = "../cedar/cedar-testing", version = "4.4.0" }
-cedar-policy-generators = { path = "../cedar-policy-generators", version = "4.0.0", features = ["cedar-policy"] }
+cedar-policy-generators = { path = "../cedar-policy-generators", version = "4.0.0", features = ["cedar-policy", "variadic-is-in-range"] }
 env_logger = "0.11"
 log = "0.4"
 miette = "7.1.0"

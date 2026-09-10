@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Spec.Ext.IPAddr
+import Cedar.Spec.ExtFun
 import UnitTest.Run
 
 /-! This file defines unit tests for IPAddr functions. -/
@@ -157,12 +158,53 @@ def testsForIpNetEquality :=
     testEq "10.0.0.0/24" "10.0.0.0/29" false
   ]
 
+private def ipVal (str : String) : Cedar.Spec.Value := .ext (.ipaddr (ip! str))
+
+private def testCall (name : String) (args : List Cedar.Spec.Value)
+  (expected : Cedar.Spec.Result Cedar.Spec.Value) : TestCase IO :=
+  test name ⟨λ _ => checkEq (Cedar.Spec.call .isInRange args) expected⟩
+
+/--
+Tests for the variadic `isInRange` call itself rather than the underlying
+`IPNet.inRange`. Mirrors the arity and error cases of the Rust
+`variadic_ip_is_in_range` in `cedar-policy-core/src/extensions/ipaddr.rs`.
+-/
+def testsForIsInRangeCall :=
+  suite "IPAddr.isInRange (call)"
+  [
+    -- A target with no ranges is an error, not `false`. `x.isInRange()` parses, so
+    -- this is reachable when evaluating a policy that has not been validated.
+    testCall "no ranges" [ipVal "192.168.0.1"] (.error .typeError),
+    testCall "no arguments" [] (.error .typeError),
+    -- The target itself must be an ipaddr.
+    testCall "target is not an ipaddr"
+      [.prim (.string "192.168.0.1"), ipVal "192.168.0.0/24"] (.error .typeError),
+    -- No short-circuiting: a bad range after a matching one still errors.
+    testCall "bad range after a match"
+      [ipVal "192.168.0.255", ipVal "192.168.0.0/24", .prim (.string "not ipaddr")]
+      (.error .typeError),
+    testCall "bad range before a match"
+      [ipVal "192.168.0.255", .prim (.string "not ipaddr"), ipVal "192.168.0.0/24"]
+      (.error .typeError),
+    -- Ranges are checked against all of `ranges`, regardless of position.
+    testCall "first range matches"
+      [ipVal "192.168.0.1", ipVal "192.168.0.0/24", ipVal "10.0.0.0/8"] (.ok true),
+    testCall "last range matches"
+      [ipVal "10.0.0.50", ipVal "192.168.0.0/24", ipVal "10.0.0.0/8"] (.ok true),
+    testCall "no range matches"
+      [ipVal "8.8.8.8", ipVal "192.168.0.0/24", ipVal "10.0.0.0/8"] (.ok false),
+    -- A range of the wrong IP version is skipped rather than erroring.
+    testCall "mixed IP versions"
+      [ipVal "1:2:3:4::", ipVal "192.168.0.0/24", ipVal "1:2:3:4::/48"] (.ok true)
+  ]
+
 def tests := [
   testsForValidStrings,
   testsForInvalidStrings,
   testsForIsLoopback,
   testsForInRange,
-  testsForIpNetEquality]
+  testsForIpNetEquality,
+  testsForIsInRangeCall]
 
 -- Uncomment for interactive debugging
 -- #eval TestSuite.runAll tests

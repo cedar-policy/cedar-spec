@@ -596,7 +596,21 @@ theorem level_based_no_dne_call {xfn : ExtFun} {xs : List Expr} {n : Nat} {c₀ 
   simp only [evaluate, xs.mapM₁_eq_mapM (evaluate · request entities)]
   apply bind_ne_error _ (fun vs _ => by
     unfold Cedar.Spec.call
-    split <;> first | (simp ; done) | (unfold Cedar.Spec.res ; split <;> simp))
+    split
+    all_goals try (first | (simp ; done) | (unfold Cedar.Spec.res ; split <;> simp))
+    rename_i _ _ target head tail _
+    split
+    all_goals
+      cases hm : List.mapM
+        (fun x => match x with
+          | Value.ext (Ext.ipaddr a) => Except.ok a
+          | _ => Except.error Error.typeError) (head :: tail) with
+      | error e =>
+        obtain ⟨ y, _, hy ⟩ := List.mapM_error_implies_exists_error hm
+        have he : e = Error.typeError := by split at hy <;> simp_all
+        simp [he]
+      | ok rs => simp
+    )
   intro hmapm
   obtain ⟨ x, hx, hxe ⟩ := List.mapM_error_implies_exists_error hmapm
   replace ⟨ tx', htxs, c', htxe ⟩ := List.forall₂_implies_all_left ht x hx

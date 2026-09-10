@@ -72,8 +72,14 @@ public def call : ExtFun → List Value → Result Value
   | .isIpv6, [.ext (.ipaddr a)]                 => .ok a.isV6
   | .isLoopback, [.ext (.ipaddr a)]             => .ok a.isLoopback
   | .isMulticast, [.ext (.ipaddr a)]            => .ok a.isMulticast
-  | .isInRange,
-    [.ext (.ipaddr a₁), .ext (.ipaddr a₂)]      => .ok (a₁.inRange a₂)
+  | .isInRange, target :: ranges@(_ :: _)        => do
+    let t ← match target with
+      | .ext (.ipaddr a) => .ok a
+      | _ => .error .typeError
+    let rs ← ranges.mapM fun
+      | .ext (.ipaddr a) => .ok a
+      | _ => .error .typeError
+    .ok (rs.any (t.inRange ·) : Bool)
   | .datetime, [.prim (.string s)]              => res (Datetime.parse s)
   | .duration, [.prim (.string s)]              => res (Datetime.Duration.parse s)
   | .offset,

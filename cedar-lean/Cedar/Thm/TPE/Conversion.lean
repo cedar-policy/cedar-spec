@@ -539,12 +539,18 @@ theorem conversion_preserves_typedness:
           apply ExtResidualWellTyped.isMulticast
           rw [←conversion_preserves_typeof]
           exact h₂
-        | isInRange h₂ h₃ =>
+        | isInRange h₂ h₃ h₄ =>
+          rw [List.map_cons]
           apply ExtResidualWellTyped.isInRange
           · rw [←conversion_preserves_typeof]
             exact h₂
-          · rw [←conversion_preserves_typeof]
+          · rw [List.length_map]
             exact h₃
+          · intro x hx
+            simp only [List.mem_map] at hx
+            obtain ⟨y, hy, hxy⟩ := hx
+            rw [←hxy, ←conversion_preserves_typeof]
+            exact h₄ y hy
         | datetime h₂ =>
           simp [TypedExpr.toResidual]
           apply ExtResidualWellTyped.datetime

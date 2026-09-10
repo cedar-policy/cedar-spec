@@ -194,8 +194,14 @@ impl ExprGenerator<'_> {
                         let arity = if !self.settings.enable_arbitrary_func_call
                             || u.ratio::<u8>(9, 10)?
                         {
-                            // 90% of the time respect the correct arity, but sometimes don't
-                            func.parameter_types.len()
+                            // 90% of the time respect the correct arity, but sometimes don't.
+                            // A variadic function's declared arity is a minimum.
+                            if func.is_variadic {
+                                func.parameter_types.len()
+                                    + u.int_in_range::<usize>(0..=self.settings.max_width)?
+                            } else {
+                                func.parameter_types.len()
+                            }
                         } else {
                             u.int_in_range::<usize>(0..=4)?
                         };
@@ -928,7 +934,12 @@ impl ExprGenerator<'_> {
             .iter()
             .map(|param_ty| self.generate_expr_for_type(param_ty, max_depth, u))
             .collect::<Result<_>>()?;
-        if self.settings.enable_arbitrary_func_call && u.ratio::<u8>(1, 20)? {
+        // For a variadic function the extra arguments are well-typed, so generate
+        // them unconditionally. For any other function they are a deliberate arity
+        // error, so generate them only rarely and only when that is enabled.
+        let extra_args = func.is_variadic
+            || (self.settings.enable_arbitrary_func_call && u.ratio::<u8>(1, 20)?);
+        if extra_args {
             let last_param_ty = func
                 .parameter_types
                 .last()
@@ -1351,4 +1362,105 @@ fn record_type_with_attr(attr_name: SmolStr, attr_type: Type) -> Type {
             required: true,
         },
     )]))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::schema::Schema;
+    use cedar_policy_core::ast::ExprKind;
+    use cedar_policy_core::validator::{json_schema, RawName};
+    use rand::{rngs::StdRng, Rng, SeedableRng};
+
+    const TEST_SETTINGS: ABACSettings = ABACSettings {
+        max_depth: 3,
+        max_width: 3,
+        ..ABACSettings::type_directed()
+    };
+
+    const SCHEMA_STR: &str = r#"
+    {
+        "": {
+            "entityTypes": { "User": {} },
+            "actions": {
+                "read": {
+                    "appliesTo": {
+                        "principalTypes": ["User"],
+                        "resourceTypes": ["User"]
+                    }
+                }
+            }
+        }
+    }"#;
+
+    /// Arities of every `isInRange` call the type-directed generator produces
+    /// when asked for boolean expressions.
+    #[allow(deprecated)]
+    fn generated_is_in_range_arities() -> Vec<usize> {
+        let fragment = json_schema::Fragment::<RawName>::from_json_file(SCHEMA_STR.as_bytes())
+            .expect("schema str should be valid");
+        let mut rng = StdRng::seed_from_u64(1234);
+        let mut schema_bytes = [0; 4096];
+        rng.fill_bytes(&mut schema_bytes);
+        // Generate the schema from its own bytes: it consumes most of a buffer,
+        // leaving too few for expression generation to be interesting.
+        let schema = Schema::from_raw_schemafrag(
+            fragment,
+            TEST_SETTINGS,
+            &mut Unstructured::new(&schema_bytes),
+        )
+        .expect("failed to generate schema");
+        let exprgenerator = schema.exprgenerator(None);
+        let mut arities = Vec::new();
+        for _ in 0..200 {
+            let mut bytes = [0; 4096];
+            rng.fill_bytes(&mut bytes);
+            let mut u = Unstructured::new(&bytes);
+            while !u.is_empty() {
+                let Ok(expr) = exprgenerator.generate_expr_for_type(
+                    &Type::bool(),
+                    TEST_SETTINGS.max_depth,
+                    &mut u,
+                ) else {
+                    break;
+                };
+                arities.extend(expr.subexpressions().filter_map(|e| match e.expr_kind() {
+                    ExprKind::ExtensionFunctionApp { fn_name, args }
+                        if fn_name.basename_as_ref().as_ref() == "isInRange" =>
+                    {
+                        Some(args.len())
+                    }
+                    _ => None,
+                }));
+            }
+        }
+        arities
+    }
+
+    #[test]
+    fn is_in_range_arity() {
+        let arities = generated_is_in_range_arities();
+        assert!(
+            !arities.is_empty(),
+            "generator never produced an isInRange call, so this test proves nothing"
+        );
+        assert!(
+            arities.iter().all(|arity| *arity >= 2),
+            "isInRange needs a target plus at least one range, got arities {arities:?}"
+        );
+        if cfg!(feature = "variadic-is-in-range") {
+            assert!(
+                arities.iter().any(|arity| *arity > 2),
+                "with the variadic feature on the generator should exercise more than one \
+                 range, but every generated call had arity 2 ({} calls)",
+                arities.len()
+            );
+        } else {
+            assert!(
+                arities.iter().all(|arity| *arity == 2),
+                "with the variadic feature off isInRange takes exactly two arguments, got \
+                 arities {arities:?}"
+            );
+        }
+    }
 }
