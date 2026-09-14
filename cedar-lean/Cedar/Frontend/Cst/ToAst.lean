@@ -217,8 +217,7 @@ public def extendedHasAttr (target : Spec.Expr) (fields : List String) : Spec.Ex
   match fields with
   | [] => target
   | [f] => .hasAttr target f
-  | f :: rest =>
-    .and (.hasAttr target f) (extendedHasAttr (.getAttr target f) rest)
+  | f :: rest => .extHasAttr target f rest
 
 public def ExprOrSpecial.toValidAttr? (eos : ExprOrSpecial) : Option Spec.Attr :=
   match eos with
