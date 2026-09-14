@@ -11,17 +11,24 @@ cargo-fuzz = true
 libfuzzer-sys = "0.4"
 cedar-drt = { path = "..", version = "4.4.0" }
 cedar-lean-ffi = { path = "../../cedar-lean-ffi", version = "4.4.0" }
+
 cedar-policy = { version = "4.4.0", features = [
     "permissive-validate",
     "entity-manifest",
     "tpe",
+    "variadic-is-in-range",
 ] }
-cedar-policy-core = { version = "4.4.0", features = ["arbitrary", "tpe"] }
+cedar-policy-core = { version = "4.4.0", features = [
+    "arbitrary",
+    "tpe",
+    "variadic-is-in-range",
+] }
 cedar-policy-formatter = "4.4.0"
-cedar-policy-symcc = "*"
+cedar-policy-symcc = { version = "*", features = ["variadic-is-in-range"] }
 cedar-testing = { path = "../../cedar/cedar-testing", version = "4.4.0" }
 cedar-policy-generators = { path = "../../cedar-policy-generators", version = "4.0.0", features = [
     "cedar-policy",
+    "variadic-is-in-range",
 ] }
 log = "0.4"
 logos = "0.16.0"

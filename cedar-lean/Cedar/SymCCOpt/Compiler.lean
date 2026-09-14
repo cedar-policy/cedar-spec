@@ -328,6 +328,22 @@ def compileCallWithError₂ (xty₁ xty₂ : ExtType) (enc : Term → Term → T
 def compileCall₂ (xty : ExtType) (enc : Term → Term → Term) (arg₁ arg₂ : CompileResult) : Result CompileResult :=
   compileCallWithError₂ xty xty (λ t₁ t₂ => ⊙ enc t₁ t₂) arg₁ arg₂
 
+/--
+Variadic version of `compileCall₂` for a non-erroring call whose target `arg₁`
+and all arguments `args` share extension type `xty`. Errors (`.typeError`) unless
+every term has type `.option (.ext xty)`; otherwise encodes `enc` under nested
+`ifSome` guards (so a `.none` in any position propagates) and unions all
+footprints.
+-/
+def compileCallₙ (xty : ExtType) (enc : Term → List Term → Term) (arg₁ : CompileResult) (args : List CompileResult) : Result CompileResult := do
+  let ty := TermType.option (.ext xty)
+  if arg₁.term.typeOf = ty ∧ ∀ a ∈ args, a.term.typeOf = ty
+  then .ok {
+    term := ifSome arg₁.term (args.foldr (λ a acc => ifSome a.term acc) (⊙ enc (option.get arg₁.term) (args.map (λ a => option.get a.term))))
+    footprint := args.foldl (λ acc a => acc ∪ a.footprint) arg₁.footprint
+  }
+  else .error .typeError
+
 def compileCall (xfn : ExtFun) (args : List CompileResult) : Result CompileResult := do
   match xfn, args with
   | .decimal, [t₁]                => compileCall₀ Ext.Decimal.decimal t₁
@@ -340,7 +356,7 @@ def compileCall (xfn : ExtFun) (args : List CompileResult) : Result CompileResul
   | .isIpv6, [t₁]                 => compileCall₁ .ipAddr IPAddr.isIpv6 t₁
   | .isLoopback, [t₁]             => compileCall₁ .ipAddr IPAddr.isLoopback t₁
   | .isMulticast, [t₁]            => compileCall₁ .ipAddr IPAddr.isMulticast t₁
-  | .isInRange, [t₁, t₂]          => compileCall₂ .ipAddr IPAddr.isInRange t₁ t₂
+  | .isInRange, t₁ :: t₂ :: ts    => compileCallₙ .ipAddr IPAddr.isInRangeV t₁ (t₂ :: ts)
   | .datetime, [t₁]               => compileCall₀ Ext.Datetime.datetime t₁
   | .duration, [t₁]               => compileCall₀ Ext.Datetime.duration t₁
   | .offset, [t₁, t₂]             => compileCallWithError₂ .datetime .duration Datetime.offset t₁ t₂
