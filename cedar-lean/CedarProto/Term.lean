@@ -823,7 +823,7 @@ mutual
 
   partial def Set.toCedar (s : Set) : Option (Cedar.Data.Set Cedar.SymCC.Term × Cedar.SymCC.TermType) := do
     let elts ← s.elts.mapM Term.toCedar
-    return ⟨Cedar.Data.Set.mk elts, s.ty.toCedarTermType⟩
+    return ⟨Cedar.Data.Set.make elts, s.ty.toCedarTermType⟩
 
   partial def Term.toCedar (t : Term) : Option Cedar.SymCC.Term := do
     match t with
