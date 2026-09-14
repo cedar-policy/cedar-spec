@@ -68,21 +68,6 @@ public def Str.toUnescapedString : Str → Spec.Result String
     | some s' => .ok s'
     | none    => .error (.cstError .stringError)
 
-/-- Evaluate the chain of attribute checks for `r has a₀.a₁.….aₙ` with
-    short-circuiting on the inner `Spec.hasAttr` returning `false`. Mirrors the
-    translator's `extendedHasAttr`, which builds nested `.and (Spec.hasAttr ...) ...`. -/
-public def rHasChain (v : Spec.Value) (a : Spec.Attr) (rest : List Spec.Attr) (es : Spec.Entities) : Spec.Result Spec.Value :=
-  match rest with
-  | [] => Spec.hasAttr v a es
-  | b :: bs => do
-    let h ← Spec.hasAttr v a es
-    match h with
-    | .prim (.bool false) => .ok (.prim (.bool false))
-    | _ => do
-      let v' ← Spec.getAttr v a es
-      rHasChain v' b bs es
-termination_by sizeOf rest
-
 mutual
 
 /--
@@ -327,11 +312,8 @@ public def Relation.evaluate (e : Relation) (req : Spec.Request) (es : Spec.Enti
       match f.toAttrs? with
       | none => .error (.cstError .unsupportedError)
       | some [] => .error (.cstError .unsupportedError)
-      | some (a :: as) =>
-        -- For `r has x.y.z`: short-circuit on `false` between getAttr steps,
-        -- mirroring the translator's `.and (hasAttr ...) (extendedHasAttr ...)`
-        -- which short-circuits on the inner `hasAttr` returning `false`.
-        rHasChain v a as es
+      | some [a] => Spec.hasAttr v a es
+      | some (a :: b :: as) => Spec.hasAttrs v a (b :: as) es
   | .rLike t p => match p.toPatternString? with
     | none => .error (.cstError .stringError)
     | some s => do
