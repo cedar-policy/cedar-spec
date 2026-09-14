@@ -1,0 +1,23 @@
+name = "cedar-doc"
+defaultTargets = ["CedarDoc", "generate-doc"]
+
+[[require]]
+name = "verso"
+git = "https://github.com/leanprover/verso"
+rev = "v4.33.0"
+
+[[require]]
+name = "subverso"
+git = "https://github.com/leanprover/subverso"
+rev = "3a75ede05278806fd3249bb0c97a6fb5777a4f7d"
+
+[[require]]
+name = "Cedar"
+path = "../"
+
+[[lean_lib]]
+name = "CedarDoc"
+
+[[lean_exe]]
+name = "generate-doc"
+root = "Main"

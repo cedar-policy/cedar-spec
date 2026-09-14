@@ -96,6 +96,18 @@ public theorem ofInt?_toInt (v : Int64) : ofInt? v.toInt = some v := by
   simp only [hv_lo, hv_hi, and_self, ↓reduceDIte, ofIntChecked, Int64.ofInt]
   exact congrArg some (ofInt_toInt v)
 
+/-- `ofInt?` roundtrip: when it succeeds, coercing the result back to `Int` recovers the original
+    value. This is the converse companion to `ofInt?_toInt`. -/
+public theorem ofInt?_some_toInt {n : Int} {i : Int64} (h : ofInt? n = some i) : i.toInt = n := by
+  have hrange : MIN ≤ n ∧ n ≤ MAX := by
+    by_contra hne
+    have hout : n < MIN ∨ n > MAX := by simp only [MIN, MAX] at hne ⊢; omega
+    rw [(ofInt?_none_iff (i := n)).mp hout] at h; exact absurd h (by simp)
+  rw [(ofInt?_some_iff (i := n)).mp hrange] at h
+  have h_eq : i = Int64.ofInt n := (Option.some.inj h).symm
+  subst h_eq
+  rw [Int64.toInt_ofInt]; simp only [MIN, MAX] at hrange; simp [Int.bmod]; omega
+
 public theorem toInt_nonneg_of_ge_zero {v : Int64} (h : v ≥ 0) : v.toInt ≥ 0 := by
   simp only [GE.ge, LE.le, Int64.le, BitVec.sle, decide_eq_true_eq, toInt_toBitVec] at h
   rwa [show (0 : Int64).toInt = 0 from by native_decide] at h
