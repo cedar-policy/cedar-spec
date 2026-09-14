@@ -682,34 +682,18 @@ theorem Cst.Relation.toAExpr?_sound
       rw [← hres] at heos
       simp  [Cst.ExprOrSpecial.toExpr?] at heos
       rw [← heos]
-      simp [hasRhsToList]
-      cases htgt : target.evaluate req es with
-      | error err =>
-        have hmtE : evaluate mt req es = .error err := htarget_eq.trans htgt
-        simp [evaluate, hmtE, bind, Except.bind]
-      | ok vt =>
-        have hmtO : evaluate mt req es = .ok vt := htarget_eq.trans htgt
-        simp [evaluate, hmtO, bind, Except.bind, Cst.rHasChain]
+      simp [hasRhsToList, evaluate, htarget_eq, bind, Except.bind]
     | inr fs =>
       simp at hres
       rw [← hres] at heos
       simp  [Cst.ExprOrSpecial.toExpr?] at heos
       rw [← heos]
-      simp [hasRhsToList] at hfield_attrs hfield_nonempty
-      cases hfs : fs with
-      | nil => rw [hfs] at hfield_nonempty; simp at hfield_nonempty
+      simp [hasRhsToList] at hfield_nonempty
+      cases fs with
+      | nil => simp at hfield_nonempty
       | cons a as =>
-        rw [hfs] at hfield_attrs
-        cases htgt : target.evaluate req es with
-        | error err =>
-          have htgtMt : evaluate mt req es = .error err := htarget_eq.trans htgt
-          cases as with
-          | nil => simp [Cst.extendedHasAttr, evaluate, htgtMt, bind, Except.bind]
-          | cons b bs => simp [Cst.extendedHasAttr, evaluate, htgtMt, bind, Except.bind, Result.as]
-        | ok vt =>
-          have htgtMt : evaluate mt req es = .ok vt := htarget_eq.trans htgt
-          rw [extendedHasAttr_evaluate_agrees mt a as req es vt htgtMt]
-          simp [hasRhsToList, bind, Except.bind]
+        cases as <;>
+          simp [Cst.extendedHasAttr, hasRhsToList, evaluate, htarget_eq, bind, Except.bind]
   | rLike target pattern =>
     simp [Cst.Relation.toExprOrSpecial?, Option.bind_eq_some_iff] at hrel
     obtain ⟨mt, hmt, mp, hmp, hres⟩ := hrel
