@@ -21,10 +21,16 @@ import Cedar.Thm.Data.Set
 
 namespace Cedar.Thm.Cst
 
+/-!
+Authorization properties proved directly for CST policies: a satisfied forbid policy
+causes denial, an allow decision requires a satisfied permit policy, and requests without
+such a permit are denied.
+-/
+
 open Cedar.Data
 open Cedar.Spec
 open Cedar.Frontend
-open Cedar.Frontend.Cst hiding Expr ExprImpl ExprData OrExpr AndExpr AddExpr MultExpr Name Policy PolicyImpl Policies Ident Literal Primary Member MemAccess Unary Relation RelOp Cond VariableDef Ref RecInit Str
+open Cedar.Frontend.Cst
 
 
 def HasSatisfiedEffect (effect : Effect) (request : Request) (entities : Entities) (policies : Cst.Policies) : Prop :=
@@ -64,6 +70,7 @@ theorem explicitly_permitted_iff_satisfying_permit
   unfold IsExplicitlyPermitted
   simp [satisfied_iff_satisfiedPolicies_non_empty]
 
+/-- A satisfied forbid policy causes the authorizer to deny the request. -/
 theorem forbid_trumps_permit
   (request : Request) (entities : Entities) (policies : Cst.Policies) :
   (IsExplicitlyForbidden request entities policies) →
@@ -73,6 +80,7 @@ theorem forbid_trumps_permit
   rw [explicitly_forbidden_iff_satisfying_forbid] at h
   simp [h]
 
+/-- An allow decision implies that some permit policy was satisfied. -/
 theorem allowed_only_if_explicitly_permitted (request : Request) (entities : Entities) (policies : Cst.Policies) :
   (Cst.isAuthorized request entities policies).decision = .allow →
   IsExplicitlyPermitted request entities policies := by
@@ -89,6 +97,7 @@ theorem allowed_only_if_explicitly_permitted (request : Request) (entities : Ent
     have h := explicitly_permitted_iff_satisfying_permit request entities policies
     simp [h]; exact hpemp
 
+/-- If no permit policy is satisfied, the authorizer denies the request. -/
 theorem default_deny
   (request : Request) (entities : Entities) (policies : Cst.Policies) :
   ¬ IsExplicitlyPermitted request entities policies →
@@ -101,12 +110,6 @@ theorem default_deny
     have hperm := allowed_only_if_explicitly_permitted request entities policies hdec
     contradiction
   | deny => contradiction
-
-theorem explicit_allow
-  (request : Request) (entities : Entities) (policies : Cst.Policies) :
-  (Cst.isAuthorized request entities policies).decision = .allow →
-  IsExplicitlyPermitted request entities policies :=
-  allowed_only_if_explicitly_permitted request entities policies
 
 
 end Cedar.Thm.Cst
