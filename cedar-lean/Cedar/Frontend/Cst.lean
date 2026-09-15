@@ -14,6 +14,10 @@
  limitations under the License.
 -/
 
+/-
+This module collects the concrete syntax tree (CST), its evaluation and authorization
+semantics, its translation to the Cedar AST, and CST-native policy slicing.
+-/
 module
 
 public import Cedar.Frontend.Cst.Common

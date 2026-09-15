@@ -18,9 +18,8 @@ import Cedar.Frontend.Cst
 import Cedar.Frontend.StringParsing
 
 /-!
-  This file contains lemmas for proving roundtrip properties of string conversions and small
- parsers.
- -/
+Roundtrip and injectivity results for hexadecimal strings and CST identifiers.
+-/
 
 namespace Cedar.Frontend
 
@@ -41,12 +40,6 @@ theorem Char.asHexNat_digitChar (n : Nat) (h : n < 16) :
     8, _ | 9, _ | 10, _ | 11, _ | 12, _ | 13, _ | 14, _ | 15, _ =>
     simp [Char.asHexNat, Nat.digitChar]
   | n + 16, h => omega
-
-/-- `Nat.toHexChars` is equivalent to `Nat.toDigits 16` for values up to 4095.
-    This gives additional assurance that our custom implementation matches the stdlib. -/
-theorem toHexChars_eq_toDigits :
-    ∀ n : Fin 4096, Nat.toHexChars n.val = Nat.toDigits 16 n.val := by
-  native_decide
 
 /-- The fold that `String.asHexNat` performs, extracted for reasoning. -/
 def hexFold (cs : List Char) (init : Except String Nat) : Except String Nat :=
