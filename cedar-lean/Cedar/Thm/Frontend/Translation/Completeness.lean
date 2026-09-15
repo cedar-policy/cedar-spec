@@ -3,10 +3,9 @@ import Cedar.Thm.Data.Set
 import Cedar.Thm.Frontend.Translation.AuxSound
 
 /-!
-Theorems about the CST error collector (`Cedar/Spec/CstErrorCollector.lean`).
-
-A (non-`module`) `Thm` file, so the CST evaluator's definitions and the
-`Set` membership lemmas (`Cedar.Data.Set.mem_union`, …) are available.
+Completeness of CST-to-AST translation. The comprehensive CST error collector
+visits every subterm, so an unrelated runtime error cannot hide a translation
+error. `Cedar.Thm.translation_is_strongly_complete` packages the policy-store result.
 -/
 
 namespace Cedar.Spec
