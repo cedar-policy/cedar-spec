@@ -83,7 +83,7 @@ theorem batched_authorize_ok_equiv
           isAuthorizedFromResiduals.residualPolicies]
       refine ⟨[], ?_, .nil⟩
       unfold batchedAuthorizeLoop
-      simp only [h_dec, if_true]
+      simp only [h_dec, ite_true]
     | p :: _, .cons h_first h_rest =>
       have ⟨r, h_ep⟩ : ∃ r,
           evaluatePolicy schema p req.asPartialRequest (actionEntities schema.acts) = .ok r := by
