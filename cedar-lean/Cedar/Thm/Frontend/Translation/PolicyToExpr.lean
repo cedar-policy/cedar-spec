@@ -577,11 +577,8 @@ theorem action_leaf_eq {va : Cst.VariableDef} {as : ActionScope} {leaf : Expr}
         | rNotEq => simp [Cst.VariableDef.toActionScope?, Cst.VariableDef.toActionScopeAux?] at has
   all_goals simp [Cst.VariableDef.toActionScope?, Cst.VariableDef.toActionScopeAux?] at has
 
-/-- **Full `Except`-equality policy bridge.** When a CST policy translates to an
-    AST policy, the CST policy's expression translation evaluates identically
-    (errors included) to the AST policy's expression. This is the policy-level
-    analog of `expr_to_expr_sound`, strengthening `policy_to_expr_agrees` from an
-    `ok`-iff to a full equality. -/
+/-- Successful policy translation makes the translated CST expression and the AST
+    policy expression evaluate identically, including errors. -/
 theorem policy_to_expr_sound (cp : Cst.Policy) (ap : Policy)
   (ce : Cst.Expr) (ae : Expr) (req : Request) (es : Entities) :
   cp.toPolicy? = some ap →
