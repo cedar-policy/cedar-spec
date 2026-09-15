@@ -33,6 +33,14 @@ open Cedar.Spec
 open Cedar.Frontend
 open Cedar.Validation
 
+/-!
+Main correctness results for the Cedar CST frontend. `translation_is_sound` says
+that successful CST-to-AST translation preserves authorization. The corresponding
+`translation_is_strongly_complete` result says that a policy store translates when
+the comprehensive CST error collector reports no translation error. This file also
+lifts AST slicing and validation results to successfully translated CST policies.
+-/
+
 
 /-- When `toPolicy?` succeeds, the CST policy's expression also translates to AST. -/
 theorem toPolicy?_implies_toAExpr?
@@ -163,9 +171,8 @@ theorem errorPolicies_agrees (cps : Cst.Policies) (aps : Spec.Policies)
   intro cp ap htp
   exact policy_errored_agrees cp ap req es htp
 
-/-- **Soundness**: this theorem states that the translation is sound: if the translation is
-    successful, then the implementations of `isAuthorized` agree.
--/
+/-- **CST-to-AST translation soundness.** Successful policy-store translation
+    preserves the full authorization response. -/
 theorem translation_is_sound (cps : Cst.Policies) (aps : Spec.Policies)
 (req : Request) (es : Entities) :
   cps.toPolicies? = some aps →
@@ -202,15 +209,17 @@ theorem cst_sound_slice_translates
   have hfp := toPolicies?_forall₂ haps
   refine ⟨?_, ?_⟩
   · intro ap hap
-    obtain ⟨cp, hcp_mem, hcp⟩ := forall₂_exists_mem_right hfs hap
-    obtain ⟨ap', hap'_mem, hr'⟩ := forall₂_exists_mem_left hfp (hsub hcp_mem)
+    obtain ⟨cp, hcp_mem, hcp⟩ := List.forall₂_implies_all_right hfs ap hap
+    obtain ⟨ap', hap'_mem, hr'⟩ :=
+      List.forall₂_implies_all_left hfp cp (hsub hcp_mem)
     have : ap = ap' := by rw [hcp] at hr'; exact Option.some.inj hr'
     rw [this]; exact hap'_mem
   · intro ap hap_aps hap_not_sps
-    obtain ⟨cp, hcp_mem_pol, hcp⟩ := forall₂_exists_mem_right hfp hap_aps
+    obtain ⟨cp, hcp_mem_pol, hcp⟩ := List.forall₂_implies_all_right hfp ap hap_aps
     have hcp_not_slice : cp ∉ slice.ps := by
       intro hcp_slice
-      obtain ⟨ap'', hap''_mem, hr''⟩ := forall₂_exists_mem_left hfs hcp_slice
+      obtain ⟨ap'', hap''_mem, hr''⟩ :=
+        List.forall₂_implies_all_left hfs cp hcp_slice
       have : ap = ap'' := by rw [hcp] at hr''; exact Option.some.inj hr''
       rw [this] at hap_not_sps
       exact hap_not_sps hap''_mem
@@ -229,7 +238,7 @@ theorem Cst.translation_preserves_scopeAnalysis
   (htrans : cp.toPolicy? = some ap) :
   ∃ h : (Cst.prVars? cp).isSome,
   Cst.scopeAnalysis cp h = Cedar.Slice.scopeAnalysis ap := by
-  exists (policy_translation_success_prVars_isSome' htrans)
+  exists (policy_translation_success_prVars_isSome (by rw [htrans]; rfl))
   apply translation_preserves_scopeAnalysis' htrans
 
 /--
@@ -280,9 +289,10 @@ theorem Cst.scope_bound_is_sound (policy : Cst.Policy)
     ∃ h : (Cst.prVars? policy).isSome,
     Cst.IsSoundPolicyBound (Cst.scopeAnalysis policy h) policy := by
   obtain ⟨ap, hap⟩ := Option.isSome_iff_exists.mp htrans
-  exists (policy_translation_success_prVars_isSome' hap)
+  have hwf := policy_translation_success_prVars_isSome (by rw [hap]; rfl)
+  exists hwf
   intro req es
-  have hscope := translation_preserves_scopeAnalysis' hap (policy_translation_success_prVars_isSome' hap)
+  have hscope := translation_preserves_scopeAnalysis' hap hwf
   have hsat := policy_satisfied_agrees policy ap req es hap
   have herr := policy_hasError_agrees policy ap req es hap
   rw [hscope, hsat, herr]

@@ -28,25 +28,9 @@ open Cedar.Frontend.Cst hiding Expr ExprImpl ExprData OrExpr AndExpr AddExpr Mul
 
 
 /-!
-Key theorems in this file:
-
-* `policy_translation_success_prVars_isSome`: Whenever a CST policy successfully
-  translates to the AST, its principal/resource scope variables can be extracted
-  via `prVars?` (i.e. `prVars?` is `isSome`). This well-formedness fact is the
-  precondition required to run scope analysis on the CST. (The policy-store level
-  variant `policies_translation_success_prVars_isSome` lives in
-  `Cedar/Thm/Frontend/PolicySlice.lean`.)
-
-* `translation_preserves_scopeAnalysis'`: Scope analysis computed natively on a CST
-  policy (`Cst.scopeAnalysis`) agrees with scope analysis computed on the AST policy
-  it translates to (`scopeAnalysis`). (The packaged form
-  `translation_preserves_scopeAnalysis` lives in `Cedar/Thm/PolicySlice.lean`.)
-
-* `cst_slice_chooses_same_policies`: Lifting the previous result to whole policy
-  stores, the CST slice and the AST slice select corresponding policies in lockstep.
-
-* `cst_slice_is_sound`: The headline result. Authorizing a request against the CST
-  slice produces the same decision as authorizing against the full CST policy store, so slicing on the CST is decision-preserving.
+Proofs that CST scope analysis and slicing commute with CST-to-AST translation.
+The main result here is `cst_slice_chooses_same_policies`. `Cedar.Thm.Frontend`
+uses it to prove that CST scope-based slicing preserves authorization results.
 -/
 
 /-- `toPRScope?` succeeding implies the variable's bound is interpretable. -/
@@ -112,7 +96,8 @@ private theorem toActionScope?_var {v : Cst.VariableDef} {acts : ActionScope}
     simp_all [Cst.VariableDef.toActionScope?, Cst.VariableDef.toActionScopeAux?,
       bind, Option.bind_eq_some_iff]
 
--- When the policy translation is successful, the three scopes can be extracted
+/-- Successful policy translation implies that its principal and resource variables
+    can be extracted for CST scope analysis. -/
 theorem policy_translation_success_prVars_isSome
   {cp : Cst.Policy} :
   (cp.toPolicy?).isSome →
@@ -138,16 +123,7 @@ theorem policy_translation_success_prVars_isSome
   | [_, _], hsc => simp [extractScope?] at hsc
   | _ :: _ :: _ :: _ :: _, hsc => simp [extractScope?] at hsc
 
-theorem policy_translation_success_prVars_isSome'
-  {cp : Cst.Policy} {ap : Policy} :
-  cp.toPolicy? = some ap →
-  (prVars? cp).isSome := by
-  intro htrans
-  have h : (cp.toPolicy?).isSome := by
-    rw [Option.isSome_iff_exists]; exists ap
-  apply (policy_translation_success_prVars_isSome h)
-
--- When the policies translation is successful, the three scopes can be extracted
+/-- Successful policy-store translation makes every policy eligible for CST scope analysis. -/
 theorem policies_translation_success_prVars_isSome
   {cps : Cst.Policies} :
   (cps.toPolicies?).isSome →
@@ -163,15 +139,6 @@ theorem policies_translation_success_prVars_isSome
   rw [Option.isSome_iff_exists]
   obtain ⟨ap, hap1, hap2⟩ := (hall cp hcp)
   exists ap
-
-theorem policies_translation_success_prVars_isSome'
-  {cps : Cst.Policies} {aps : Policies} :
-  cps.toPolicies? = aps →
-  ∀ cp ∈ cps.ps, (prVars? cp).isSome := by
-  intro htrans
-  have h : (cps.toPolicies?).isSome := by
-    rw [Option.isSome_iff_exists]; exists aps
-  apply (policies_translation_success_prVars_isSome h)
 
 /-- The CST-native `varBound?` agrees with the AST `Scope.bound` of the scope the
     variable translates to. -/
@@ -299,7 +266,7 @@ def Cst.IsSoundBoundAnalysis (ba : Cst.BoundAnalysis) : Prop :=
   ∀ (policy : Cst.Policy) (h : (prVars? policy).isSome),
     (policy.toPolicy?).isSome → Cst.IsSoundPolicyBound (ba policy h) policy
 
-/-- `mapM`-cons helper specialised to `toPolicy?`. -/
+/-- Prepends one successfully translated policy to a successful `mapM`. -/
 private theorem mapM_toPolicy?_cons {hd : Cst.Policy} {ap : Spec.Policy}
     {tl : List Cst.Policy} {r : List Spec.Policy}
     (h1 : hd.toPolicy? = some ap) (h2 : tl.mapM Cst.Policy.toPolicy? = some r) :
@@ -381,36 +348,10 @@ theorem cst_slice_chooses_same_policies
     ∃ hwf : ∀ policy ∈ cps.ps, (prVars? policy).isSome,
     (Cst.BoundAnalysis.slice Cst.scopeAnalysis req entities cps hwf).toPolicies?
     = some (Cedar.Slice.BoundAnalysis.slice Cedar.Slice.scopeAnalysis req entities aps) := by
-  have h := policies_translation_success_prVars_isSome' htrans
+  have h := policies_translation_success_prVars_isSome (by rw [htrans]; rfl)
   exists h
   apply (cst_slice_chooses_same_policies' req entities htrans)
 
-
-/-- From `Forall₂ R xs ys` and `y ∈ ys`, recover a related `x ∈ xs`. -/
-public theorem forall₂_exists_mem_right {α β : Type _} {R : α → β → Prop}
-    {xs : List α} {ys : List β}
-    (h : List.Forall₂ R xs ys) : ∀ {y}, y ∈ ys → ∃ x ∈ xs, R x y := by
-  induction h with
-  | nil => intro y hy; simp at hy
-  | @cons x y' xs' ys' hr _ ih =>
-    intro y hy
-    rcases List.mem_cons.mp hy with heq | hmem
-    · subst heq; exact ⟨x, List.mem_cons_self, hr⟩
-    · obtain ⟨x', hx'mem, hx'r⟩ := ih hmem
-      exact ⟨x', List.mem_cons_of_mem _ hx'mem, hx'r⟩
-
-/-- From `Forall₂ R xs ys` and `x ∈ xs`, recover a related `y ∈ ys`. -/
-public theorem forall₂_exists_mem_left {α β : Type _} {R : α → β → Prop}
-    {xs : List α} {ys : List β}
-    (h : List.Forall₂ R xs ys) : ∀ {x}, x ∈ xs → ∃ y ∈ ys, R x y := by
-  induction h with
-  | nil => intro x hx; simp at hx
-  | @cons x' y' xs' ys' hr _ ih =>
-    intro x hx
-    rcases List.mem_cons.mp hx with heq | hmem
-    · subst heq; exact ⟨y', List.mem_cons_self, hr⟩
-    · obtain ⟨y'', hy''mem, hy''r⟩ := ih hmem
-      exact ⟨y'', List.mem_cons_of_mem _ hy''mem, hy''r⟩
 
 /-- If every element of `xs` maps to `some`, then `mapM` succeeds. -/
 private theorem mapM_some_of_all_isSome {α β : Type _} {f : α → Option β} :
@@ -432,7 +373,7 @@ theorem slice_toPolicies?_isSome {slice policies : Cst.Policies} {aps : Spec.Pol
   simp only [Cst.Policies.toPolicies?]
   apply mapM_some_of_all_isSome
   intro cp hcp
-  obtain ⟨ap, _, hr⟩ := forall₂_exists_mem_left hfp (hsub hcp)
+  obtain ⟨ap, _, hr⟩ := List.forall₂_implies_all_left hfp cp (hsub hcp)
   rw [Option.isSome_iff_exists]; exact ⟨ap, hr⟩
 
 
@@ -466,5 +407,6 @@ theorem policy_toPolicy?_isSome_of_mem {policies : Cst.Policies} {policy : Cst.P
     (htrans : (policies.toPolicies?).isSome) (hmem : policy ∈ policies.ps) :
     (policy.toPolicy?).isSome := by
   obtain ⟨aps, haps⟩ := Option.isSome_iff_exists.mp htrans
-  obtain ⟨ap, _, hr⟩ := forall₂_exists_mem_left (toPolicies?_forall₂ haps) hmem
+  obtain ⟨ap, _, hr⟩ :=
+    List.forall₂_implies_all_left (toPolicies?_forall₂ haps) policy hmem
   rw [Option.isSome_iff_exists]; exact ⟨ap, hr⟩
