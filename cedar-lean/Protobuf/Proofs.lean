@@ -161,7 +161,7 @@ theorem foldl_iterator_progress {f : BParsec α} {g : β → α → β} {remaini
     intro (H1 : ni > 0)
     unfold foldlHelper at H
     have H2 : ¬(ni = 0) := by omega
-    rw [if_neg H2] at H
+    rw [ite_eq_right H2] at H
     simp only [Bind.bind, bind, pos, inspect, throw_eq_fail] at H
     cases H3 : f pos₀ ; simp only [H3] at H ; rename_i pos₂ res₂
     cases res₂ <;> simp only [ParseResult.mk.injEq, reduceCtorEq, and_false] at H
@@ -182,7 +182,7 @@ theorem foldl_iterator_progress {f : BParsec α} {g : β → α → β} {remaini
           have Hn : ni2 = 0 := by omega
           simp only [Hn] at H
           unfold foldlHelper at H
-          rw [if_pos (by decide)] at H
+          rw [ite_eq_left (by decide)] at H
           simp only [pure, ParseResult.mk.injEq, Except.ok.injEq] at H
           replace ⟨H, _⟩ := H
           subst pos₂
