@@ -150,7 +150,7 @@ public theorem compileExtHasAttr_eq_compileExtHasAttrRec (t : Term) (as : List A
       cases hha : compileHasAttr (Factory.option.get t) a εs with
       | error e => simp only [bind, Except.bind]
       | ok ht =>
-        simp only [bind, Except.bind, List.isEmpty_nil, Bool.or_true, if_true,
+        simp only [bind, Except.bind, List.isEmpty_nil, Bool.or_true, ite_true,
           List.reverse_singleton, foldExtHasChecks_singleton]
     | cons b rest =>
       rw [compileExtHasAttr_eq_loop_fold, compileExtHasAttr.loop]
@@ -160,9 +160,9 @@ public theorem compileExtHasAttr_eq_compileExtHasAttrRec (t : Term) (as : List A
       | ok ht =>
         simp only [bind, Except.bind, List.isEmpty_cons, Bool.or_false]
         by_cases hsf : Factory.ifSome t ht = Term.some (Term.prim (.bool false))
-        · simp only [hsf, if_true, List.reverse_singleton, foldExtHasChecks_singleton,
+        · simp only [hsf, ite_true, List.reverse_singleton, foldExtHasChecks_singleton,
             pure, Except.pure]
-        · simp only [Bool.false_eq_true, if_false]
+        · simp only [Bool.false_eq_true, ite_false]
           cases hga : compileGetAttr (Factory.option.get t) a εs with
           | error e =>
             cases e <;> simp only [List.reverse_singleton, foldExtHasChecks_singleton,

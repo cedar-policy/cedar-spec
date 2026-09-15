@@ -112,7 +112,7 @@ theorem instance_of_type_refl {v : Value} {ty : CedarType} {env : TypeEnv} :
       intro k qty h₁ h₂
       have ⟨⟨_, h₄⟩, h₅⟩ := h₀ ; clear h₀
       simp only [List.attach₂] at h₄
-      simp only [requiredAttributePresent, Bool.if_true_right, Bool.decide_eq_true] at h₅
+      simp only [requiredAttributePresent, Bool.ite_true_right, Bool.decide_eq_true] at h₅
       specialize h₅ (k, qty)
       simp only [h₁, Bool.or_eq_true, Bool.not_eq_true'] at h₅
       have h₆ := Map.find?_mem_toList h₁

@@ -949,9 +949,9 @@ public theorem interpret_set_isEmpty {εs : SymEntities} {t : Term} {ty : TermTy
     case false =>
       rw [(pe_eq_lit hwl.left.right (isLiteral_empty ty)).right]
       simp only [Term.prim.injEq, TermPrim.bool.injEq]
-      replace hempty := ne_true_of_eq_false hempty
-      rw [Set.isEmpty_iff_eq_empty] at hempty
-      simp [hempty]
+      have hne : ts ≠ Set.empty := fun h =>
+        absurd (Set.isEmpty_iff_eq_empty.mpr h) (by simp [hempty])
+      simp [hne]
 
 public theorem interpret_set_intersects {εs : SymEntities} {I : Interpretation} {t₁ t₂ : Term} {ty : TermType} :
   I.WellFormed εs → t₁.WellFormed εs → t₂.WellFormed εs →
