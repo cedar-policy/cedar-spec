@@ -2321,15 +2321,6 @@ theorem isSingleUID_toEntityUID {e : Cst.Expr} :
       | inr _ => simp [uidTypesOf] at htys
       | inl uid => simp [Cst.Expr.toEntityUID?, hr']
 
--- A `uidTypes?` list result implies `toEntityUIDs?` succeeds.
-theorem uidTypes_toEntityUIDs {e : Cst.Expr} {r : Spec.Name ⊕ List Spec.Name} :
-    e.uidTypes? = some r → (e.toEntityUIDs?).isSome := by
-  intro h
-  obtain ⟨r', hr', _⟩ := expr_uidTypes_toMulti h
-  cases r' with
-  | inl uid => simp [Cst.Expr.toEntityUIDs?, hr']
-  | inr uids => simp [Cst.Expr.toEntityUIDs?, hr']
-
 -- `prScopeValid?` implies the translator's `toPRScope?` succeeds.
 theorem prScopeValid_toPRScope {v : Cst.VariableDef} :
     v.prScopeValid? = true → (v.toPRScope?).isSome := by

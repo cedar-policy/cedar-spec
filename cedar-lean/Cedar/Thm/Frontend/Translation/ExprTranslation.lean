@@ -941,6 +941,7 @@ theorem Cst.Expr.toAExpr?_sound
 termination_by (sizeOf e, 0)
 decreasing_by all_goals (apply Prod.Lex.left; (subst_vars; assumption))
 
+/-- Successful CST expression translation preserves evaluation results, including errors. -/
 theorem expr_to_expr_sound
   {e : Cst.Expr} {aexp : Expr} {req : Request} {es : Entities} :
   e.toAExpr? = some aexp →

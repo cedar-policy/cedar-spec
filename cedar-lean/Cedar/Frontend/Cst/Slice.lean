@@ -27,7 +27,9 @@ open Cedar.Spec
 open Cedar.Frontend
 open Cedar.Slice
 
--- Returns true if a `VariableDef` is well-formed.
+/--
+  Returns true if a `VariableDef` is well-formed.
+-/
 public def varBoundWF (vd : VariableDef) : Bool :=
   match vd.entityType, vd.ineq with
   | none,   some (.rEq, e) => (e.toEntityUID?).isSome
@@ -35,8 +37,10 @@ public def varBoundWF (vd : VariableDef) : Bool :=
   | some _, some (.rIn, e) => (e.toEntityUID?).isSome
   | _, _ => true
 
--- Extracts the principal and resource `VariableDef` from a CST Policy.
--- Returns none if the scopes are out of order or missing.
+/--
+  Extracts the principal and resource `VariableDef` from a CST Policy.
+  Returns none if the scopes are out of order or missing.
+-/
 public def prVars? (policy : Policy) : Option (VariableDef × VariableDef) :=
   match policy with
   | .policy p => match p.vars with
