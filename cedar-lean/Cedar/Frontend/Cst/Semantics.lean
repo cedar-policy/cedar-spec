@@ -57,6 +57,9 @@ public def applyRelOp (op : RelOp) (v₁ v₂ : Spec.Value) (es : Spec.Entities)
     let eq ← Spec.apply₂ .eq v₁ v₂ es
     Spec.apply₁ .not eq
   | .rIn => Spec.apply₂ .mem v₁ v₂ es
+  -- `=` never yields a value; the translator rejects it (matches Rust
+  -- `InvalidSingleEq`). Error on the CST-eval path since no value exists.
+  | .rInvalidSingleEq => .error (.cstError .translationError)
 
 
 
@@ -254,6 +257,10 @@ public def Unary.evaluate (e : Unary) (req : Spec.Request) (es : Spec.Entities) 
                   if n % 2 == 0 then .ok (.prim (.int i))
                   else .ok (.prim (.int j))
           | _ => .error .typeError
+  -- Too many `!`/`-` prefixes: the translator rejects these (matches Rust
+  -- `UnaryOpLimit`). Error on the CST-eval path since no value exists.
+  | some .nOverBang => .error (.cstError .translationError)
+  | some .nOverDash => .error (.cstError .translationError)
 termination_by sizeOf e
 decreasing_by
   all_goals cases e; simp_wf; omega
@@ -302,10 +309,12 @@ public def Relation.evaluate (e : Relation) (req : Spec.Request) (es : Spec.Enti
   -- `RelOp` cannot be chained
   | .rCommon x xs => match xs with
     | [] => x.evaluate req es
-    | [(op, y)] => do
-      let v₁ ← x.evaluate req es
-      let v₂ ← y.evaluate req es
-      applyRelOp op v₁ v₂ es
+    | [(op, y)] => match op with
+      | .rInvalidSingleEq => .error (.cstError .translationError)
+      | _ => do
+        let v₁ ← x.evaluate req es
+        let v₂ ← y.evaluate req es
+        applyRelOp op v₁ v₂ es
     | _ => .error (.cstError .unsupportedError)
   | .rHas t f => do
       let v ← t.evaluate req es

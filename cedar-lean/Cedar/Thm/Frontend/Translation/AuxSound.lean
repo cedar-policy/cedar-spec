@@ -341,13 +341,13 @@ theorem dashN_evaluate_general
 /-- `Cst.constructExprRel op e₁ e₂` and the applied relational op evaluate equally. -/
 theorem constructExprRel_applyRelOp_eq
     (op : Cst.RelOp) (e₁ e₂ : Expr) (req : Request) (es : Entities)
-    (v₁ v₂ : Value) :
+    (v₁ v₂ : Value) (hop : op ≠ .rInvalidSingleEq) :
     evaluate e₁ req es = .ok v₁ →
     evaluate e₂ req es = .ok v₂ →
     evaluate (Cst.constructExprRel op e₁ e₂) req es = Cst.applyRelOp op v₁ v₂ es := by
   intro he₁ he₂
   cases op <;>
-    simp [Cst.constructExprRel, Cst.applyRelOp, evaluate, he₁, he₂,
+    simp_all [Cst.constructExprRel, Cst.applyRelOp, evaluate,
           bind, Except.bind]
 
 /-- Collapse the `String ⊕ List String` shape from the translator's `toHasRhs?`
@@ -1180,7 +1180,7 @@ theorem evalAccessors_eq
             simp [Cst.Ident.toMeth?, hop] at hb
           | nil =>
             simp only [Cst.Expr.toAExprs?, Option.some.injEq] at hxs; subst hxs
-            simp only [Cst.Ident.toMeth?, hop, List.isEmpty_nil, if_true] at hb
+            simp only [Cst.Ident.toMeth?, hop, List.isEmpty_nil, ite_true] at hb
             have hstep : evaluate (Expr.unaryApp uop headExpr) req es = apply₁ uop head := by
               simp [evaluate, hhead, bind, Except.bind]
             have hev : Cst.Member.evalAccessors head (.field (.idIdent s hs0) :: .call [] :: rest2) req es
@@ -1332,7 +1332,7 @@ theorem rIsIn_some_eval_eq
           | false => simp [Result.as, Coe.coe, Value.asBool]
           | true =>
             simp only [Result.as, Coe.coe, Value.asBool, Bool.not_true,
-                       Bool.false_eq_true, if_false]
+                       Bool.false_eq_true, ite_false]
             rw [hinEntity_eq]
             cases hie : ie.evaluate req es with
             | error e => simp
@@ -1891,7 +1891,7 @@ theorem Cst.Expr.toAttr?_consistent (e : Cst.Expr) :
     rw [hred]
     cases hoe : o.extended with
     | cons _ _ =>
-      simp only [Cst.Expr.toAttr?, hoe, List.isEmpty_cons, Bool.not_false, Bool.true_or, if_true]
+      simp only [Cst.Expr.toAttr?, hoe, List.isEmpty_cons, Bool.not_false, Bool.true_or, ite_true]
       rw [Cst.OrExpr.toExprOrSpecial?, hoe]
       simp [Cst.ExprOrSpecial.toValidAttr?, Option.bind_assoc]
     | nil =>
@@ -1899,7 +1899,7 @@ theorem Cst.Expr.toAttr?_consistent (e : Cst.Expr) :
       cases hae : o.initial.extended with
       | cons _ _ =>
         simp only [Cst.Expr.toAttr?, hoe, hae, List.isEmpty_nil, List.isEmpty_cons,
-          Bool.not_true, Bool.not_false, Bool.or_true, if_true]
+          Bool.not_true, Bool.not_false, Bool.or_true, ite_true]
         rw [Cst.AndExpr.toExprOrSpecial?, hae]
         simp [Cst.ExprOrSpecial.toValidAttr?, Option.bind_assoc]
       | nil =>
@@ -1944,7 +1944,9 @@ theorem Cst.Expr.toAttr?_consistent (e : Cst.Expr) :
             cases tl with
             | cons _ _ => simp [Cst.Relation.toExprOrSpecial?]
             | nil =>
-              simp [Cst.Relation.toExprOrSpecial?, Cst.ExprOrSpecial.toValidAttr?, Option.bind_assoc]
+              obtain ⟨hdOp, hdSnd⟩ := hd
+              cases hdOp <;>
+                simp [Cst.Relation.toExprOrSpecial?, Cst.ExprOrSpecial.toValidAttr?, Option.bind_assoc]
           | nil =>
             cases hax : ae.extended with
             | cons _ _ =>
@@ -2010,6 +2012,16 @@ theorem Cst.Expr.toAttr?_consistent (e : Cst.Expr) :
                       simp [Cst.Expr.toAttr?, hoe, hae, hrel, hext, hax, hmx, hop]
                     rw [hL]
                     simp [Cst.ExprOrSpecial.toValidAttr?, Option.bind_assoc]
+                  | nOverBang =>
+                    have hL : Cst.Expr.toAttr? (.expr ⟨.edOr o⟩) = none := by
+                      simp [Cst.Expr.toAttr?, hoe, hae, hrel, hext, hax, hmx, hop]
+                    rw [hL]
+                    simp
+                  | nOverDash =>
+                    have hL : Cst.Expr.toAttr? (.expr ⟨.edOr o⟩) = none := by
+                      simp [Cst.Expr.toAttr?, hoe, hae, hrel, hext, hax, hmx, hop]
+                    rw [hL]
+                    simp
 
 
 /-- Record-level bridge (evaluation equality): when `rInitsToMap? r = some map`,
@@ -2371,7 +2383,7 @@ theorem prScopeValid_toPRScope {v : Cst.VariableDef} :
           | some etyName =>
             have ht' : t.toEntityType? = some etyName := by simpa [Cst.AddExpr.toEntityType?] using ht
             simp [hu, ht']
-    | rLess | rLessEq | rGreater | rGreaterEq | rNotEq => simp at h
+    | rLess | rLessEq | rGreater | rGreaterEq | rNotEq | rInvalidSingleEq => simp at h
 
 -- `actionScopeValid?` implies the translator's `toActionScope?` succeeds.
 theorem actionScopeValid_toActionScope {v : Cst.VariableDef} :
@@ -2436,7 +2448,7 @@ theorem actionScopeValid_toActionScope {v : Cst.VariableDef} :
               simp only [Cst.Expr.toEntityUIDs?, hr', Cst.containsOnlyActionTypes?,
                          Cst.isAction?]
               simpa using fun u hu2 => hineq u.ty (List.mem_map.mpr ⟨u, hu2, rfl⟩)
-      | rLess | rLessEq | rGreater | rGreaterEq | rNotEq => simp at hineq
+      | rLess | rLessEq | rGreater | rGreaterEq | rNotEq | rInvalidSingleEq => simp at hineq
 
 -- Headline agreement: structural scope validity implies the translator's
 -- `extractScope?` succeeds (the direction collector completeness needs).
@@ -2635,6 +2647,7 @@ theorem action_leaf_isSome {va : Cst.VariableDef} {as : ActionScope}
         | rGreater => simp [Cst.VariableDef.toActionScope?, Cst.VariableDef.toActionScopeAux?] at has
         | rGreaterEq => simp [Cst.VariableDef.toActionScope?, Cst.VariableDef.toActionScopeAux?] at has
         | rNotEq => simp [Cst.VariableDef.toActionScope?, Cst.VariableDef.toActionScopeAux?] at has
+        | rInvalidSingleEq => simp [Cst.VariableDef.toActionScope?, Cst.VariableDef.toActionScopeAux?] at has
   all_goals simp [Cst.VariableDef.toActionScope?, Cst.VariableDef.toActionScopeAux?] at has
 
 /-- Forward leaf translation for a condition. -/

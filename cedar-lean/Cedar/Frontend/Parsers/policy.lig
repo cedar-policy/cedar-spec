@@ -1,0 +1,336 @@
+%header {
+import Cedar.Frontend.Cst
+open Cedar.Frontend.Cst
+}
+%lexerheader {
+/-- Classify an identifier exactly as `grammar.lalrpop`'s lexical match block.
+    Prototype for a refined token payload (`%token <{ s // s ∉ keywords }> IDENTIFIER`):
+    the identifier case decides keyword membership so the token carries the proof. -/
+def keywordOrIdentifier (value : String) : Tok :=
+  match value with
+  | "true" => .TRUE
+  | "false" => .FALSE
+  | "if" => .IF
+  | "permit" => .PERMIT
+  | "forbid" => .FORBID
+  | "when" => .WHEN
+  | "unless" => .UNLESS
+  | "in" => .IN
+  | "has" => .HAS
+  | "like" => .LIKE
+  | "is" => .IS
+  | "then" => .THEN
+  | "else" => .ELSE
+  | "principal" => .PRINCIPAL
+  | "action" => .ACTION
+  | "resource" => .RESOURCE
+  | "context" => .CONTEXT
+  | _ =>
+    if h : value ∈ keywords then
+      -- Unreachable: every element of `keywords` is matched above. Fall back to a
+      -- keyword token rather than fabricating a proof.
+      .IF
+    else
+      .IDENTIFIER ⟨value, h⟩
+
+/-- Remove only the surrounding quotes. Escape sequences remain raw CST text. -/
+def stripStringQuotes (value : String) : String :=
+  ((value.drop 1).dropEnd 1).toString
+}
+%tokentype Tok
+%token TRUE FALSE IF
+%token PERMIT FORBID WHEN UNLESS IN HAS LIKE IS THEN ELSE
+%token PRINCIPAL ACTION RESOURCE CONTEXT
+%token PRINCIPAL_SLOT RESOURCE_SLOT
+%token <String> OTHER_SLOT
+%token <{ s : String // s ∉ keywords }> IDENTIFIER
+%token <Nat> NUMBER
+%token <String> STRINGLIT
+%token AT DOT COMMA SEMICOLON COLON COLONCOLON
+%token LPAREN RPAREN LBRACE RBRACE LBRACKET RBRACKET
+%token EQ NEQ LT LEQ GEQ GT OR AND
+%token PLUS MINUS STAR SLASH PERCENT BANG SINGLE_EQ
+%token EOF
+%eof EOF
+%lexer {
+  let ws = ' ' | '\t' | '\n' | '\r'
+  let digit = ['0'-'9']
+  let identStart = ['a'-'z' 'A'-'Z' '_']
+  let identCont = ['a'-'z' 'A'-'Z' '0'-'9' '_']
+  | ws+                                             => skip
+  | "//" [^ '\n' '\r']* ("\n" | "\r")*              => skip
+  | "?principal"                                    => { Tok.PRINCIPAL_SLOT }
+  | "?resource"                                     => { Tok.RESOURCE_SLOT }
+  | "?" identStart identCont* as value              => { Tok.OTHER_SLOT value }
+  | identStart identCont* as value                  => { keywordOrIdentifier value }
+  | digit+ as value                                 => { Tok.NUMBER value.toNat! }
+  | "\"" (("\\" [^ '\n']) | [^ '"' '\\'])* "\"" as value => { Tok.STRINGLIT (stripStringQuotes value) }
+  | "=="                                            => { Tok.EQ }
+  | "!="                                            => { Tok.NEQ }
+  | "<="                                            => { Tok.LEQ }
+  | ">="                                            => { Tok.GEQ }
+  | "||"                                            => { Tok.OR }
+  | "&&"                                            => { Tok.AND }
+  | "::"                                            => { Tok.COLONCOLON }
+  | "@"                                             => { Tok.AT }
+  | "."                                             => { Tok.DOT }
+  | ","                                             => { Tok.COMMA }
+  | ";"                                             => { Tok.SEMICOLON }
+  | ":"                                             => { Tok.COLON }
+  | "("                                             => { Tok.LPAREN }
+  | ")"                                             => { Tok.RPAREN }
+  | "{"                                             => { Tok.LBRACE }
+  | "}"                                             => { Tok.RBRACE }
+  | "["                                             => { Tok.LBRACKET }
+  | "]"                                             => { Tok.RBRACKET }
+  | "<"                                             => { Tok.LT }
+  | ">"                                             => { Tok.GT }
+  | "+"                                             => { Tok.PLUS }
+  | "-"                                             => { Tok.MINUS }
+  | "*"                                             => { Tok.STAR }
+  | "/"                                             => { Tok.SLASH }
+  | "%"                                             => { Tok.PERCENT }
+  | "!"                                             => { Tok.BANG }
+  | "="                                             => { Tok.SINGLE_EQ }
+  eof => { Tok.EOF }
+}
+%option compress_tables
+%start policies
+%%
+
+-- Policies := { Policy }
+policies :: Policies
+  | ps=list(policy)                              { Policies.mk ps }
+-- Annotation := '@' AnyIdent ('(' Str ')')?
+annotation :: Annotation
+  | AT key=any_ident                            { Annotation.mk key none }
+  | AT key=any_ident LPAREN value=str_lit RPAREN { Annotation.mk key (some value) }
+
+-- Policy := Annotation* AnyIdent '(' Comma<VariableDef> ')' Cond* ';'
+policy :: Policy
+  | annotations=list(annotation) effect=any_ident LPAREN variables=variable_def_list RPAREN conds=list(cond) SEMICOLON
+      { Policy.policy (PolicyImpl.mk "" annotations effect variables conds) }
+
+-- Comma<VariableDef>, including an optional trailing comma
+variable_def_list :: List VariableDef
+  |                                             { [] }
+  | v=variable_def rest=variable_def_comma_tail { v :: rest }
+variable_def_comma_tail :: List VariableDef
+  |                                             { [] }
+  | COMMA                                       { [] }
+  | COMMA v=variable_def rest=variable_def_comma_tail { v :: rest }
+
+-- VariableDef := AnyIdent (':' Name)? ('is' Add)? (RelOp Expr)?
+-- CST VariableDef has no unused-type field; the ':' Name clause has no CST home.
+variable_def :: VariableDef
+  | varName=any_ident unused=opt_unused_type entity=opt_entity_type ineq=opt_ineq
+      { VariableDef.mk varName entity ineq }
+opt_unused_type :: Option Name
+  |                                             { none }
+  | COLON name=name                             { some name }
+opt_entity_type :: Option AddExpr
+  |                                             { none }
+  | IS entity=add                              { some entity }
+opt_ineq :: Option (RelOp × Expr)
+  |                                             { none }
+  | op=rel_op expression=expr                  { some (op, expression) }
+
+-- Cond := AnyIdent '{' Expr '}' (empty/recovered bodies intentionally omitted)
+cond :: Cond
+  | kind=any_ident LBRACE expression=expr RBRACE { Cond.mk kind expression }
+
+-- Expr := Or | 'if' Expr 'then' Expr 'else' Expr
+expr :: Expr
+  | value=or_expr                               { Expr.expr (ExprImpl.mk (ExprData.edOr value)) }
+  | IF condition=expr THEN thenExpr=expr ELSE elseExpr=expr
+      { Expr.expr (ExprImpl.mk (ExprData.edIf condition thenExpr elseExpr)) }
+
+-- Or := And ('||' And)*
+or_expr :: OrExpr
+  | initial=and_expr extended=or_tail           { OrExpr.mk initial extended }
+or_tail :: List AndExpr
+  |                                             { [] }
+  | OR next=and_expr rest=or_tail               { next :: rest }
+
+-- And := Relation ('&&' Relation)*
+and_expr :: AndExpr
+  | initial=relation extended=and_tail          { AndExpr.mk initial extended }
+and_tail :: List Relation
+  |                                             { [] }
+  | AND next=relation rest=and_tail             { next :: rest }
+
+-- Relation := Add (RelOp Add)* | Add has Add | Add like Add | Add is Add (in Add)?
+relation :: Relation
+  | target=add HAS field=add                    { Relation.rHas target field }
+  | target=add HAS IF access=list(mem_access)    { Relation.rHas target (AddExpr.ofMember (Member.mk (Primary.name (Name.mk [] .idIf)) access)) }
+  | target=add LIKE pattern=add                 { Relation.rLike target pattern }
+  | target=add IS entityType=add inEntity=opt_in_add
+      { Relation.rIsIn target entityType inEntity }
+  | initial=add extended=relation_tail          { Relation.rCommon initial extended }
+relation_tail :: List (RelOp × AddExpr)
+  |                                             { [] }
+  | op=rel_op next=add rest=relation_tail       { (op, next) :: rest }
+opt_in_add :: Option AddExpr
+  |                                             { none }
+  | IN entity=add                               { some entity }
+
+rel_op :: RelOp
+  | LT                                          { .rLess }
+  | LEQ                                         { .rLessEq }
+  | GEQ                                         { .rGreaterEq }
+  | GT                                          { .rGreater }
+  | NEQ                                         { .rNotEq }
+  | EQ                                          { .rEq }
+  | IN                                          { .rIn }
+  | SINGLE_EQ                                   { .rInvalidSingleEq }
+
+add_op :: AddOp
+  | PLUS                                        { .aPlus }
+  | MINUS                                       { .aMinus }
+mult_op :: MultOp
+  | STAR                                        { .mTimes }
+  | SLASH                                       { .mDivide }
+  | PERCENT                                     { .mMod }
+
+-- Add := Mult (AddOp Mult)*
+add :: AddExpr
+  | initial=mult extended=add_tail              { AddExpr.mk initial extended }
+add_tail :: List (AddOp × MultExpr)
+  |                                             { [] }
+  | op=add_op next=mult rest=add_tail           { (op, next) :: rest }
+
+-- Mult := Unary (MultOp Unary)*
+mult :: MultExpr
+  | initial=unary extended=mult_tail            { MultExpr.mk initial extended }
+mult_tail :: List (MultOp × Unary)
+  |                                             { [] }
+  | op=mult_op next=unary rest=mult_tail        { (op, next) :: rest }
+
+-- Unary := zero to four identical prefixes, or five-or-more overflow
+unary :: Unary
+  | item=member                                 { Unary.mk none item }
+  | BANG item=member                            { Unary.mk (some (.nBang 1)) item }
+  | BANG BANG item=member                       { Unary.mk (some (.nBang 2)) item }
+  | BANG BANG BANG item=member                  { Unary.mk (some (.nBang 3)) item }
+  | BANG BANG BANG BANG item=member             { Unary.mk (some (.nBang 4)) item }
+  | BANG BANG BANG BANG _bang=bang_more item=member { Unary.mk (some .nOverBang) item }
+  | MINUS item=member                           { Unary.mk (some (.nDash 1)) item }
+  | MINUS MINUS item=member                     { Unary.mk (some (.nDash 2)) item }
+  | MINUS MINUS MINUS item=member               { Unary.mk (some (.nDash 3)) item }
+  | MINUS MINUS MINUS MINUS item=member         { Unary.mk (some (.nDash 4)) item }
+  | MINUS MINUS MINUS MINUS _dash=dash_more item=member { Unary.mk (some .nOverDash) item }
+bang_more :: Unit
+  | BANG                                        { () }
+  | BANG _rest=bang_more                        { () }
+dash_more :: Unit
+  | MINUS                                       { () }
+  | MINUS _rest=dash_more                       { () }
+
+-- Member := Primary MemAccess*
+member :: Member
+  | item=primary access=list(mem_access)         { Member.mk item access }
+mem_access :: MemAccess
+  | DOT field=any_ident                         { MemAccess.field field }
+  | LPAREN args=expr_list RPAREN                { MemAccess.call args }
+  | LBRACKET index=expr RBRACKET                { MemAccess.index index }
+
+-- Primary forms
+primary :: Primary
+  | literal=literal                             { Primary.literal literal }
+  | value=primary_name_or_ref                   { value }
+  | PRINCIPAL_SLOT                              { Primary.slot .sPrincipal }
+  | RESOURCE_SLOT                               { Primary.slot .sResource }
+  | slot=OTHER_SLOT                             { Primary.slot (.sOther slot) }
+  | LPAREN expression=expr RPAREN               { Primary.expr expression }
+  | LBRACKET elements=expr_list RBRACKET        { Primary.eList elements }
+  | LBRACE fields=rec_init_list RBRACE          { Primary.rInits fields }
+
+-- Comma<Expr>, including an optional trailing comma
+expr_list :: List Expr
+  |                                             { [] }
+  | expression=expr rest=expr_comma_tail        { expression :: rest }
+expr_comma_tail :: List Expr
+  |                                             { [] }
+  | COMMA                                       { [] }
+  | COMMA expression=expr rest=expr_comma_tail  { expression :: rest }
+
+-- Comma<RecInit>, including an optional trailing comma
+rec_init_list :: List RecInit
+  |                                             { [] }
+  | init=rec_init rest=rec_init_comma_tail      { init :: rest }
+rec_init_comma_tail :: List RecInit
+  |                                             { [] }
+  | COMMA                                       { [] }
+  | COMMA init=rec_init rest=rec_init_comma_tail { init :: rest }
+-- `if: value` record key uses an ident-as-expr coercion with no CST helper.
+rec_init :: RecInit
+  | IF COLON value=expr                         { RecInit.mk (Expr.ofPrimary (Primary.name (Name.mk [] .idIf))) value }
+  | key=expr COLON value=expr                   { RecInit.mk key value }
+
+-- Name/Ref are left-factored to preserve LALRPOP NameInline's LR(1) behavior.
+-- `path_tail` builds a Primary from the accumulated ident path; the trailing
+-- component becomes the Name's `name` via `Name.fromComponents`.
+primary_name_or_ref :: Primary
+  | first=common_ident                          { Primary.name (Name.mk [] first) }
+  | first=common_ident COLONCOLON tail=path_tail { tail [first] }
+  | first=special_ident COLONCOLON last=any_ident
+      { Primary.name (Name.mk [first] last) }
+  | first=special_ident COLONCOLON next=any_ident COLONCOLON tail=path_tail
+      { tail [first, next] }
+path_tail :: (List Ident → Primary)
+  | last=any_ident                              { fun path => Primary.name (Name.mk path last) }
+  | eid=str_lit                                 { fun components => Primary.ref (Ref.uid (Name.fromComponents components) eid) }
+  | LBRACE fields=ref_init_list RBRACE          { fun components => Primary.ref (Ref.ref (Name.fromComponents components) fields) }
+  | next=any_ident COLONCOLON tail=path_tail    { fun path => tail (path ++ [next]) }
+
+-- Name := CommonIdent | (AnyIdent '::')+ AnyIdent
+name :: Name
+  | name=common_ident                           { Name.mk [] name }
+  | first=any_ident COLONCOLON tail=name_tail   { Name.mk (first :: tail.1) tail.2 }
+name_tail :: (List Ident × Ident)
+  | last=any_ident                              { ([], last) }
+  | next=any_ident COLONCOLON tail=name_tail    { (next :: tail.1, tail.2) }
+
+-- Comma<RefInit>, including an optional trailing comma
+ref_init_list :: List RefInit
+  |                                             { [] }
+  | init=ref_init rest=ref_init_comma_tail      { init :: rest }
+ref_init_comma_tail :: List RefInit
+  |                                             { [] }
+  | COMMA                                       { [] }
+  | COMMA init=ref_init rest=ref_init_comma_tail { init :: rest }
+ref_init :: RefInit
+  | field=any_ident COLON value=literal         { RefInit.mk field value }
+
+literal :: Literal
+  | TRUE                                        { .liTrue }
+  | FALSE                                       { .liFalse }
+  | number=NUMBER                               { .liNum number.toUInt64 }
+  | value=str_lit                               { .liStr (match value with | .string s => s) }
+str_lit :: Str
+  | value=STRINGLIT                             { .string value }
+
+-- CommonIdent excludes only the three special expression starters.
+common_ident :: Ident
+  | PRINCIPAL                                   { .idPrincipal }
+  | ACTION                                      { .idAction }
+  | RESOURCE                                    { .idResource }
+  | CONTEXT                                     { .idContext }
+  | PERMIT                                      { .idPermit }
+  | FORBID                                      { .idForbid }
+  | WHEN                                        { .idWhen }
+  | UNLESS                                      { .idUnless }
+  | IN                                          { .idIn }
+  | HAS                                         { .idHas }
+  | LIKE                                        { .idLike }
+  | IS                                          { .idIs }
+  | THEN                                        { .idThen }
+  | ELSE                                        { .idElse }
+  | value=IDENTIFIER                            { .idIdent value.1 value.2 }
+special_ident :: Ident
+  | IF                                          { .idIf }
+  | TRUE                                        { .idTrue }
+  | FALSE                                       { .idFalse }
+any_ident :: Ident
+  | value=common_ident                          { value }
+  | value=special_ident                         { value }

@@ -25,6 +25,29 @@ namespace Cedar.Frontend.Cst
 
 open Cedar
 
+/-- Build a CST `Name` from a non-empty list of `::`-separated components: the
+    last is the name, the rest is the path. Mirrors the Rust grammar's
+    `Name { path, name }` where the trailing component is the name. On the empty
+    list (unreachable from the grammar, which always supplies at least one
+    component) it falls back to a `context` name. -/
+public def Name.fromComponents (components : List Ident) : Name :=
+  match components.reverse with
+  | [] => Name.mk [] .idContext
+  | last :: revPath => Name.mk revPath.reverse last
+
+/-- Lift a `Member` to an `AddExpr` with no arithmetic/negation applied.
+    Used to place a bare member (e.g. `if.foo`) where the grammar expects an
+    `AddExpr`. -/
+public def AddExpr.ofMember (m : Member) : AddExpr :=
+  AddExpr.mk (MultExpr.mk (Unary.mk none m) []) []
+
+/-- Lift a `Primary` to an `Expr` with no operators applied, threading it up
+    through the full precedence chain. Used to turn a bare name (e.g. the `if`
+    keyword used as a record key) into an `Expr`. -/
+public def Expr.ofPrimary (p : Primary) : Expr :=
+  Expr.expr (ExprImpl.mk (ExprData.edOr
+    (OrExpr.mk (AndExpr.mk (Relation.rCommon (AddExpr.ofMember (Member.mk p [])) []) []) [])))
+
 public def Member.toLit? (e : Member) : Option Literal :=
   if !e.access.isEmpty then none else
   match e.item with

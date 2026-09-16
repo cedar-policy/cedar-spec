@@ -140,7 +140,7 @@ theorem policy_satisfiedWithEffect_agrees (cp : Cst.Policy) (ap : Spec.Policy)
   have hid : (Cst.Policy.policy p).id = ap.id := (toPolicy?_id_eq htrans).symm
   simp only [Cst.satisfiedWithEffect, Spec.satisfiedWithEffect, heff, hsat, hid]
   by_cases hs : satisfied ap req es
-  · simp only [hs, if_true, Bool.and_true]
+  · simp only [hs, ite_true, Bool.and_true]
     by_cases he : ap.effect = eff
     · simp [he]
     · simp [he]

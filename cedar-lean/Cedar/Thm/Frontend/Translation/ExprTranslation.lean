@@ -526,6 +526,10 @@ theorem Cst.Unary.toAExpr?_sound
                         simp [h0, hpar, hp2, hneg, bind, Except.bind]
                   | _ => simp [h0, bind, Except.bind]
                 | _ => simp [h0, bind, Except.bind]
+  | some .nOverBang =>
+    simp [Cst.Unary.toExprOrSpecial?, hop] at hu
+  | some .nOverDash =>
+    simp [Cst.Unary.toExprOrSpecial?, hop] at hu
 
 termination_by (sizeOf u, 0)
 decreasing_by all_goals (apply Prod.Lex.left; (subst_vars; assumption))
@@ -635,6 +639,8 @@ theorem Cst.Relation.toAExpr?_sound
       rw [@Cst.AddExpr.toAExpr?_sound initial eos req es hrel aexp heos]
       simp [Cst.Relation.evaluate]
     | [(op, x)] =>
+      by_cases hop : op = .rInvalidSingleEq
+      · subst hop; simp [Cst.Relation.toExprOrSpecial?] at hrel
       simp [Cst.Relation.toExprOrSpecial?] at hrel
       simp only [Option.bind_eq_some_iff] at hrel
       obtain ⟨ieos, hieos, eFirst, hFirst, eSecond, hSecond, hres⟩ := hrel
@@ -652,17 +658,21 @@ theorem Cst.Relation.toAExpr?_sound
       | error err =>
         have h_first : evaluate eFirst req es = .error err := hinit_eq.trans h_init
         cases op <;>
-          simp [Cst.constructExprRel, evaluate, Cst.Relation.evaluate, h_first, h_init, bind, Except.bind]
+          first
+          | exact absurd rfl hop
+          | simp [Cst.constructExprRel, evaluate, Cst.Relation.evaluate, h_first, h_init, bind, Except.bind]
       | ok iv =>
         have h_first : evaluate eFirst req es = .ok iv := hinit_eq.trans h_init
         cases h_x : x.evaluate req es with
         | error err =>
           have h_second : evaluate eSecond req es = .error err := hx_eq.trans h_x
           cases op <;>
-            simp [Cst.constructExprRel, evaluate, Cst.Relation.evaluate, h_first, h_second, h_init, h_x, bind, Except.bind]
+            first
+            | exact absurd rfl hop
+            | simp [Cst.constructExprRel, evaluate, Cst.Relation.evaluate, h_first, h_second, h_init, h_x, bind, Except.bind]
         | ok xv =>
           have h_second : evaluate eSecond req es = .ok xv := hx_eq.trans h_x
-          rw [constructExprRel_applyRelOp_eq op eFirst eSecond req es iv xv h_first h_second]
+          rw [constructExprRel_applyRelOp_eq op eFirst eSecond req es iv xv hop h_first h_second]
           simp [Cst.Relation.evaluate, h_init, h_x, bind, Except.bind]
     | _ :: _ :: _ =>
       simp [Cst.Relation.toExprOrSpecial?] at hrel

@@ -197,6 +197,9 @@ public def constructExprRel (op : RelOp) (e₁ e₂ : Spec.Expr) : Spec.Expr :=
   | .rNotEq => .unaryApp .not (.binaryApp .eq e₁ e₂)
   | .rEq => .binaryApp .eq e₁ e₂
   | .rIn => .binaryApp .mem e₁ e₂
+  -- Unreachable: `Relation.toExprOrSpecial?` rejects `rInvalidSingleEq` before
+  -- calling this. Kept only to make the match exhaustive.
+  | .rInvalidSingleEq => .binaryApp .eq e₁ e₂
 
 public def constructAttrsAux? : List MemAccess → Option (List String)
   | [] => some []
@@ -335,6 +338,9 @@ public def Unary.toExprOrSpecial? (e : Unary) : Option ExprOrSpecial :=
       let eos ← e.item.toExprOrSpecial?
       let expr ← eos.toExpr?
       some (ExprOrSpecial.expr (dashN expr n.toNat))
+  -- Too many `!`/`-` prefixes: reject (matches Rust `UnaryOpLimit`).
+  | some .nOverBang => none
+  | some .nOverDash => none
 termination_by (sizeOf e, 0)
 decreasing_by
   all_goals (cases e; simp only [Unary.mk.sizeOf_spec]; omega)
@@ -440,9 +446,13 @@ public def Relation.toExprOrSpecial? : Relation → Option ExprOrSpecial
     match extended with
     | [] => some first
     | (op, x) :: _ =>
-      let first ← first.toExpr?
-      let second ← x.toAExpr?
-      some (.expr (constructExprRel op first second))
+      match op with
+      -- `=` is always invalid; reject before folding (matches Rust `InvalidSingleEq`).
+      | .rInvalidSingleEq => none
+      | _ =>
+        let first ← first.toExpr?
+        let second ← x.toAExpr?
+        some (.expr (constructExprRel op first second))
   | .rHas target field => do
     let maybe_target ← target.toAExpr?
     let maybe_fields ← field.toHasRhs?
