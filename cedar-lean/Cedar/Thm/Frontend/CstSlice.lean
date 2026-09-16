@@ -62,7 +62,7 @@ private theorem varBoundWF_of_toPRScope? {v : Cst.VariableDef} (h : (v.toPRScope
         cases hu : e.toEntityUID? with
         | none => rw [hu] at h; simp at h
         | some x => simp [varBoundWF, hineq, het, hu]
-      | rLess | rLessEq | rGreater | rGreaterEq | rNotEq =>
+      | rLess | rLessEq | rGreater | rGreaterEq | rNotEq | rInvalidSingleEq =>
         simp [Cst.VariableDef.toPRScope?, hineq, het] at h
     | some t =>
       cases op with
@@ -71,7 +71,7 @@ private theorem varBoundWF_of_toPRScope? {v : Cst.VariableDef} (h : (v.toPRScope
         cases hu : e.toEntityUID? with
         | none => rw [hu] at h; simp at h
         | some x => simp [varBoundWF, hineq, het, hu]
-      | rEq | rLess | rLessEq | rGreater | rGreaterEq | rNotEq =>
+      | rEq | rLess | rLessEq | rGreater | rGreaterEq | rNotEq | rInvalidSingleEq =>
         simp [Cst.VariableDef.toPRScope?, hineq, het] at h
 
 private theorem toPrincipalScope?_inv {v : Cst.VariableDef} {ps : PrincipalScope}
@@ -176,7 +176,7 @@ private theorem varBound?_eq_scope_bound {v : Cst.VariableDef} {scope : Scope}
           Option.some.injEq] at h
         obtain ⟨eref, hu, hsc⟩ := h; subst hsc
         simp [varBound?, hineq, het, Scope.bound, hu]
-      | rLess | rLessEq | rGreater | rGreaterEq | rNotEq =>
+      | rLess | rLessEq | rGreater | rGreaterEq | rNotEq | rInvalidSingleEq =>
         simp [Cst.VariableDef.toPRScope?, hineq, het] at h
     | some t =>
       cases op with
@@ -185,7 +185,7 @@ private theorem varBound?_eq_scope_bound {v : Cst.VariableDef} {scope : Scope}
           Option.some.injEq] at h
         obtain ⟨eref, hu, ety, _, hsc⟩ := h; subst hsc
         simp [varBound?, hineq, het, Scope.bound, hu]
-      | rEq | rLess | rLessEq | rGreater | rGreaterEq | rNotEq =>
+      | rEq | rLess | rLessEq | rGreater | rGreaterEq | rNotEq | rInvalidSingleEq =>
         simp [Cst.VariableDef.toPRScope?, hineq, het] at h
 
 private theorem toPrincipalScope?_some {v : Cst.VariableDef} {ps : PrincipalScope}

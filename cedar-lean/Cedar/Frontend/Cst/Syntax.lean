@@ -147,7 +147,9 @@ public inductive RelOp where
   | rEq
   -- cst::RelOp::In
   | rIn
-  -- cst::InvalidSingleEq is not represented in Lean
+  -- cst::RelOp::InvalidSingleEq: `=`, always invalid, kept to give a nice error
+  -- suggesting `==`
+  | rInvalidSingleEq
 
 -- This is a cst::AddOp
 public inductive AddOp where
@@ -171,12 +173,23 @@ public inductive NegOp where
   | nBang (n : UInt8)
   -- cst::NegOp::Dash(u8)
   | nDash (n : UInt8)
-  -- cst::NegOp::OverBand and cst::NegOp::OverDash are not represented in Lean, they are used
-  -- to return nice errors
+  -- cst::NegOp::OverBang: too many `!`'s; kept so translation can reject with a nice error
+  | nOverBang
+  -- cst::NegOp::OverDash: too many `-`'s; kept so translation can reject with a nice error
+  | nOverDash
 
 -- `inductive` is still used for single-constructor definitions that
 -- are defined using enum in cst.rs so that it is easier to add
 -- constructors in the future
+
+-- This is a cst::Slot
+public inductive Slot where
+  -- cst::Slot::Principal (`?principal`)
+  | sPrincipal
+  -- cst::Slot::Resource (`?resource`)
+  | sResource
+  -- cst::Slot::Other(SmolStr): a slot other than one of the valid slots
+  | sOther (s : String)
 
 mutual
 
@@ -307,7 +320,7 @@ public inductive Primary where
   -- cst::Primary::Name(Node<Name>)
   | name (n : Name)
   -- cst::Primary::Slot(Node<Slot>)
-  | slot (s : Str)
+  | slot (s : Slot)
   -- cst::Primary::Expr(Node<Expr>)
   | expr (e : Expr)
   -- cst::Primary::EList(Vec<Node<Expr>>)

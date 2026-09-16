@@ -686,6 +686,12 @@ theorem Cst.Unary.collect_complete {e : Cst.Unary} {req : Request} {es : Entitie
       | some .liTrue | some .liFalse | some (.liStr _) | none =>
         refine ⟨.expr (dashN ae_i n.toNat), dashN ae_i n.toNat, ?_, by simp [ExprOrSpecial.toExpr?]⟩
         simp [Cst.Unary.toExprOrSpecial?, hop, hlit, heos_i, hae_i]
+  | some .nOverBang =>
+    exact absurd ((noCstError_ofResult _).mp hev (.cstError .translationError)
+      (by simp [Cst.Unary.evaluate, hop])) (by simp [Error.isCstError])
+  | some .nOverDash =>
+    exact absurd ((noCstError_ofResult _).mp hev (.cstError .translationError)
+      (by simp [Cst.Unary.evaluate, hop])) (by simp [Error.isCstError])
 termination_by sizeOf e
 decreasing_by all_goals (cases e; simp_wf; omega)
 
@@ -784,6 +790,12 @@ theorem Cst.Relation.collect_complete {e : Cst.Relation} {req : Request} {es : E
               (collectRels_no_cst _ req es hrels (op, y) List.mem_cons_self)
           simp [Cst.AddExpr.toAExpr?, hyeos, hyae]
         obtain ⟨yexpr, hyexpr⟩ := Option.isSome_iff_exists.mp hyA
+        by_cases hop : op = .rInvalidSingleEq
+        · subst hop
+          exfalso
+          exact absurd ((noCstError_ofResult _).mp hev (.cstError .translationError)
+            (by simp [Cst.Relation.evaluate]))
+            (by simp [Error.isCstError])
         refine ⟨.expr (constructExprRel op ae_i yexpr), constructExprRel op ae_i yexpr, ?_,
                 by simp [ExprOrSpecial.toExpr?]⟩
         simp [Cst.Relation.toExprOrSpecial?, heos_i, hae_i, hyexpr]
