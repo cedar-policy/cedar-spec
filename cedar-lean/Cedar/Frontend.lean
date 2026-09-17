@@ -22,3 +22,5 @@ module
  -/
 
 public import Cedar.Frontend.Cst
+public import Cedar.Frontend.Parsers.PolicyLexer
+public import Cedar.Frontend.Parsers.PolicyParser
