@@ -835,6 +835,39 @@ def parsePartialAuthzRequest (req: ByteArray): Except String (Schema × List Pol
 
 
 /--
+The outcome of checking Lean's answer against the one the caller supplied.
+-/
+structure CheckResult where
+  agrees : Bool
+  expected : String := ""
+  actual : String := ""
+deriving Lean.ToJson
+
+def parseResidualReauthorizationRequest (req: ByteArray):
+  Except String Proto.ResidualReauthorizationRequest :=
+  (@Proto.Message.interpret? Proto.ResidualReauthorizationRequest) req
+    |> .mapError (s!"Failed to parse input: {.}")
+
+/--
+  `req`: binary protobuf for a `ResidualReauthorizationRequest`
+
+  Evaluates a residual against a concrete request and entities and compares the result with
+  the caller's expected result.
+-/
+@[export reauthorizeResidual] unsafe def reauthorizeResidual (req: ByteArray): String :=
+  runFfiM do
+    let req ← parseResidualReauthorizationRequest req
+    runAndTime (λ () =>
+      let actual := req.residual.evaluate req.request req.entities
+      let agrees := match actual with
+        | .ok v    => !req.expectsError && v = req.expectedValue
+        | .error _ => req.expectsError
+      if agrees then ({ agrees := true } : CheckResult)
+      else
+        let expected := if req.expectsError then "error" else reprStr req.expectedValue
+        { agrees := false, expected := expected, actual := reprStr actual })
+
+/--
   `req`: binary protobuf for a `PartialAuthorizationRequest`
 
   returns a string containing a JSON encoding of `Timed TPE.Response`
@@ -845,6 +878,51 @@ def parsePartialAuthzRequest (req: ByteArray): Except String (Schema × List Pol
     runAndTime (λ () =>
       (TPE.isAuthorized schema policies partialReq partialEnts).mapError
         (s!"TPE error: {repr ·}"))
+
+/--
+  `req`: binary protobuf for a `PartialEntityValidationRequest`
+-/
+@[export validatePartialEntities] unsafe def validatePartialEntitiesFFI (schema : Schema) (req : ByteArray) : String :=
+  runFfiM do
+    let v ← (@Proto.Message.interpret? Proto.PartialEntityValidationRequest) req |>.mapError (s!"failed to parse input: {·}")
+    runAndTime (λ () =>
+      (if TPE.entitiesIsValid schema v.entities
+       then .ok ()
+       else .error (.typeError "partial entities are inconsistent with the type store")
+       : EntityValidationResult))
+
+/--
+  `req`: binary protobuf for a `PartialEntityConsistencyRequest`
+-/
+@[export checkPartialEntityConsistency] unsafe def checkPartialEntityConsistencyFFI (req : ByteArray) : String :=
+  runFfiM do
+    let v ← (@Proto.Message.interpret? Proto.PartialEntityConsistencyRequest) req |>.mapError (s!"failed to parse input: {·}")
+    runAndTime (λ () =>
+      (if TPE.entitiesIsConsistent v.entities v.partialEntities
+       then .ok ()
+       else .error (.typeError "partial entities are inconsistent with the concrete entities")
+       : EntityValidationResult))
+
+/--
+  `req`: binary protobuf for a `PartialRequestValidationRequest`
+-/
+@[export validatePartialRequest] unsafe def validatePartialRequestFFI (schema : Schema) (req : ByteArray) : String :=
+  runFfiM do
+    let v ← (@Proto.Message.interpret? Proto.PartialRequestValidationRequest) req |>.mapError (s!"failed to parse input: {·}")
+    runAndTime (λ () =>
+      ((TPE.validatePartialRequest schema v.request).map (λ _ => ()) : RequestValidationResult))
+
+/--
+  `req`: binary protobuf for a `PartialRequestConsistencyRequest`
+-/
+@[export checkPartialRequestConsistency] unsafe def checkPartialRequestConsistencyFFI (req : ByteArray) : String :=
+  runFfiM do
+    let v ← (@Proto.Message.interpret? Proto.PartialRequestConsistencyRequest) req |>.mapError (s!"failed to parse input: {·}")
+    runAndTime (λ () =>
+      (if TPE.requestIsConsistent v.request v.partialRequest
+       then .ok ()
+       else .error (.typeError "partial request is inconsistent with the concrete request")
+       : RequestValidationResult))
 
 
 

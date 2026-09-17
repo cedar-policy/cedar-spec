@@ -16,6 +16,7 @@
 
 import Cedar.Thm.SymCC.Compiler.Invert
 import Cedar.Thm.SymCC.Compiler.WF
+import Cedar.Thm.SymCC.Compiler.WellTyped
 import Cedar.Thm.SymCC.Env.Interpret
 import Cedar.Thm.SymCC.Term.Interpret
 
@@ -72,7 +73,7 @@ private theorem compile_evaluate_hasAttr_record_aux
     simp only [Same.same, SameResults, SameValues, value?_bool, Map.contains, heq,
       Option.isSome_none]
 
-private theorem compile_evaluate_hasAttr_record
+theorem compile_evaluate_hasAttr_record
   {a : Attr} {v₁ : Value} {es : Entities}
   {εs : SymEntities} {t₁ t₂ : Term} {ty₁ : TermType} {rty rty': Map Attr TermType}
   (hwφ₁ : Term.WellFormed εs t₁)
@@ -141,7 +142,7 @@ private theorem compile_evaluate_attrsOrEmpty
   simp only [hrty, heq, and_true, true_and]
   exact (And.intro hwa.left hlit)
 
-private theorem compile_evaluate_hasAttr_entity
+theorem compile_evaluate_hasAttr_entity
   {a : Attr} {v₁ : Value} {es : Entities}
   {εs : SymEntities} {t₁ t₂ : Term} {fₐ : UnaryFunction}
   {ety : EntityType} {rty : Map Attr TermType}
@@ -256,7 +257,7 @@ private theorem interpret_compileAttrsOf {t t₁: Term} {εs : SymEntities} {I :
   case h_2 =>
     simp only [hok]
 
-private theorem interpret_compileHasAttr {t t₁: Term} {a : Attr} {εs : SymEntities} {I : Interpretation}
+theorem interpret_compileHasAttr {t t₁: Term} {a : Attr} {εs : SymEntities} {I : Interpretation}
   (hwε : εs.WellFormed)
   (hI  : Interpretation.WellFormed I εs)
   (hwt : Term.WellFormed εs t₁)
@@ -328,7 +329,62 @@ private theorem compileHasAttr_ok_typeOf {t t₁ t₂ : Term} {a : Attr} {εs : 
     simp only [hty', ht.left]
     split <;> simp only [Except.ok.injEq, exists_eq']
 
-private theorem interpret_option_get_aux {εs : SymEntities} {I : Interpretation} {t : Term} {ty : TermType}
+theorem compileHasAttr_false_of_getAttr_error_typeOf_eq
+  {t₁ t₂ : Term} {a : Attr} {εs : SymEntities} {e : SymCC.Error}
+  (hwε : εs.WellFormed)
+  (hw₁ : t₁.WellFormed εs)
+  (hw₂ : t₂.WellFormed εs)
+  (hty : t₁.typeOf = t₂.typeOf)
+  (hha : compileHasAttr t₁ a εs = .ok (⊙ false))
+  (hga : compileGetAttr t₁ a εs = .error e) :
+  compileHasAttr t₂ a εs = .ok (⊙ false)
+:= by
+  replace ⟨t₄, rty, hattrs, ht⟩ := compileHasAttr_ok_implies hha
+  simp only [RecordHasAttr] at ht
+  have hfind : rty.find? a = .none := by
+    simp only [compileGetAttr, hattrs, Except.bind_ok, ht.left] at hga
+    split at hga <;> simp_all
+  have ⟨t₅, hattrs', hty'⟩ := compileAttrsOf_ok_typeOf hwε hw₁ hw₂ hty hattrs
+  simp only [compileHasAttr, hattrs', Except.bind_ok, hty', ht.left, hfind]
+
+theorem compileGetAttr_noSuchAttribute_of_error_typeOf_eq
+  {t₁ t₂ : Term} {a : Attr} {εs : SymEntities} {e : SymCC.Error}
+  (hwε : εs.WellFormed)
+  (hw₁ : t₁.WellFormed εs)
+  (hw₂ : t₂.WellFormed εs)
+  (hty : t₁.typeOf = t₂.typeOf)
+  (hha : compileHasAttr t₁ a εs = .ok (⊙ false))
+  (hga : compileGetAttr t₁ a εs = .error e) :
+  compileGetAttr t₂ a εs = .error .noSuchAttribute
+:= by
+  obtain ⟨t₄, rty, hattrs, ht⟩ := compileHasAttr_ok_implies hha
+  simp only [RecordHasAttr] at ht
+  have hfind : rty.find? a = .none := by
+    simp only [compileGetAttr, hattrs, Except.bind_ok, ht.left] at hga
+    split at hga <;> simp_all
+  have ⟨t₅, hattrs', hty'⟩ := compileAttrsOf_ok_typeOf hwε hw₁ hw₂ hty hattrs
+  simp only [compileGetAttr, hattrs', Except.bind_ok, hty', ht.left, hfind]
+
+theorem interpret_compileGetAttr_error_of_compileHasAttr_false
+  {t₁ : Term} {a : Attr} {εs : SymEntities} {I : Interpretation} {e : SymCC.Error}
+  (hwε : εs.WellFormed)
+  (hI : I.WellFormed εs)
+  (hwt : t₁.WellFormed εs)
+  (hha : compileHasAttr t₁ a εs = .ok (⊙ false))
+  (hga : compileGetAttr t₁ a εs = .error e) :
+  compileGetAttr (t₁.interpret I) a (εs.interpret I) = .error .noSuchAttribute
+:= by
+  replace ⟨t₂, rty, hattrs, ht⟩ := compileHasAttr_ok_implies hha
+  simp only [RecordHasAttr] at ht
+  have hfind : rty.find? a = .none := by
+    simp only [compileGetAttr, hattrs, Except.bind_ok, ht.left] at hga
+    split at hga <;> simp_all
+  have hattrs' := interpret_compileAttrsOf hwε hI hwt hattrs
+  have hwt₂ := (compileAttrsOf_wf hwε hwt hattrs).left
+  have hty₂ := (interpret_term_wf hI hwt₂).right
+  simp only [compileGetAttr, hattrs', Except.bind_ok, hty₂, ht.left, hfind]
+
+theorem interpret_option_get_aux {εs : SymEntities} {I : Interpretation} {t : Term} {ty : TermType}
   (hI  : I.WellFormed εs)
   (hwt : t.WellFormed εs)
   (hty : t.typeOf = .option ty) :
@@ -345,6 +401,19 @@ private theorem interpret_option_get_aux {εs : SymEntities} {I : Interpretation
   have h₂ := interpret_term_wf hI' hwt' ; rw [hty] at h₂
   replace h₂ := wf_option_get h₂.left h₂.right
   simp only [h₁, h₂, hwo.right, and_self]
+
+-- Helper: if compileHasAttr on the interpreted option.get succeeds, then compileHasAttr on
+-- option.get of the interpreted term also succeeds.
+theorem compileHasAttr_interpret_ok {εs : SymEntities} {I : Interpretation}
+  {t₁ t_ha : Term} {a : Attr} {ty : TermType}
+  (hI : I.WellFormed εs) (hwε : εs.WellFormed)
+  (hwt : t₁.WellFormed εs) (hty : t₁.typeOf = .option ty)
+  (hi : compileHasAttr ((option.get t₁).interpret I) a (εs.interpret I) = .ok (t_ha.interpret I)) :
+  ∃ t', compileHasAttr (option.get (t₁.interpret I)) a (εs.interpret I) = .ok t'
+:= by
+  have hwε' := interpret_εntities_wf hwε hI
+  have ⟨hwo₁, hwo₂, hty'⟩ := interpret_option_get_aux hI hwt hty
+  exact compileHasAttr_ok_typeOf hwε' hwo₁ hwo₂ hty' hi
 
 theorem compile_interpret_hasAttr {x₁ : Expr} {a : Attr} {εnv : SymEnv} {I : Interpretation} {t : Term}
   (hI  : I.WellFormed εnv.entities)
@@ -366,8 +435,7 @@ theorem compile_interpret_hasAttr {x₁ : Expr} {a : Attr} {εnv : SymEnv} {I : 
   rename_i heq <;>
   simp only [SymEnv.interpret] at heq
   case error =>
-    have ⟨hwo₁, hwo₂, hty'⟩ := interpret_option_get_aux hI hwφ₁ hty₁
-    have ⟨_, hok'⟩ := compileHasAttr_ok_typeOf hwε' hwo₁ hwo₂ hty' hi
+    have ⟨_, hok'⟩ := compileHasAttr_interpret_ok hI hwε.left.right hwφ₁ hty₁ hi
     simp only [hok', reduceCtorEq] at heq
   case ok t₄ =>
     have ⟨hwφ₃, hty₃⟩ := compileHasAttr_wf hwε.left.right hwo.left ha
@@ -417,7 +485,7 @@ private theorem compile_evaluate_getAttr_record_aux
     replace ⟨vₐ, hf', hf''⟩ := record_value?_find?_required (wf_term_record_implies_wf_map hwo.left) hnopt hf ih
     simp only [Same.same, SameResults, Map.findOrErr, hf', pe_record_get hf, SameValues, hf'']
 
-private theorem compile_evaluate_getAttr_record
+theorem compile_evaluate_getAttr_record
   {a : Attr} {v₁ : Value} {es : Entities}
   {εs : SymEntities} {t₁ t₂ : Term} {ty₁ tyₐ : TermType} {rty rty': Map Attr TermType}
   (hwφ₁ : Term.WellFormed εs t₁)
@@ -455,7 +523,7 @@ private theorem compile_evaluate_getAttr_record
     exact compile_evaluate_getAttr_record_aux hwφ₂ htyₐ ha hf hwo hlit ih
 
 
-private theorem compile_evaluate_getAttr_entity
+theorem compile_evaluate_getAttr_entity
   {a : Attr} {v₁ : Value} {es : Entities}
   {εs : SymEntities} {t₁ t₂ : Term} {fₐ : UnaryFunction}
   {ety : EntityType} {tyₐ : TermType} {rty : Map Attr TermType}
@@ -539,7 +607,7 @@ theorem compile_evaluate_getAttr {x₁ : Expr} {a : Attr} {env : Env} {εnv : Sy
       exact compile_evaluate_getAttr_entity
        heq.right hwε hwf₁ hwφ₁ hty₁ hwo hwφ₂ htyₐ hf ha ih
 
-private theorem interpret_compileGetAttr {t t₁: Term} {a : Attr} {εs : SymEntities} {I : Interpretation}
+theorem interpret_compileGetAttr {t t₁: Term} {a : Attr} {εs : SymEntities} {I : Interpretation}
   (hwε : εs.WellFormed)
   (hI  : Interpretation.WellFormed I εs)
   (hwt : Term.WellFormed εs t₁)
@@ -596,6 +664,19 @@ private theorem compileGetAttr_ok_typeOf {t t₁ t₂ : Term} {a : Attr} {εs : 
     replace ⟨_, _, ht, _⟩ := ht
     simp only [heq, reduceCtorEq] at ht
 
+-- Helper: if compileGetAttr on the interpreted option.get succeeds, then compileGetAttr on
+-- option.get of the interpreted term also succeeds.
+theorem compileGetAttr_interpret_ok {εs : SymEntities} {I : Interpretation}
+  {t₁ t_ga : Term} {a : Attr} {ty : TermType}
+  (hI : I.WellFormed εs) (hwε : εs.WellFormed)
+  (hwt : t₁.WellFormed εs) (hty : t₁.typeOf = .option ty)
+  (hi : compileGetAttr ((option.get t₁).interpret I) a (εs.interpret I) = .ok (t_ga.interpret I)) :
+  ∃ t', compileGetAttr (option.get (t₁.interpret I)) a (εs.interpret I) = .ok t'
+:= by
+  have hwε' := interpret_εntities_wf hwε hI
+  have ⟨hwo₁, hwo₂, hty'⟩ := interpret_option_get_aux hI hwt hty
+  exact compileGetAttr_ok_typeOf hwε' hwo₁ hwo₂ hty' hi
+
 private theorem compileAttrsOf_ok_typeOf_eq {t₁ t₁' t₂ t₂' : Term} {εs : SymEntities}
   (hwε : εs.WellFormed)
   (hw₁ : t₁.WellFormed εs)
@@ -637,7 +718,7 @@ private theorem compileAttrsOf_ok_typeOf_eq {t₁ t₁' t₂ t₂' : Term} {εs 
     replace hwf₂ := wf_app hw₂ hwf₂ hwf.left
     simp only [hwf₁.right, hwf₂.right]
 
-private theorem compileGetAttr_ok_typeOf_eq {t t₁ t₂ t₃ : Term} {a : Attr} {εs : SymEntities}
+theorem compileGetAttr_ok_typeOf_eq {t t₁ t₂ t₃ : Term} {a : Attr} {εs : SymEntities}
   (hwε : εs.WellFormed)
   (hw₁ : t₁.WellFormed εs)
   (hw₂ : t₂.WellFormed εs)
@@ -646,11 +727,11 @@ private theorem compileGetAttr_ok_typeOf_eq {t t₁ t₂ t₃ : Term} {a : Attr}
   (hok₂ : compileGetAttr t₂ a εs = Except.ok t₃) :
   t₃.typeOf = t.typeOf
 := by
-  replace ⟨t₁', rty₁, hok₁, ht₁⟩ := compileGetAttr_ok_implies hok₁
-  replace ⟨t₂', rty₂, hok₂, ht₂⟩ := compileGetAttr_ok_implies hok₂
+  replace ⟨t₁', _, hok₁, ht₁⟩ := compileGetAttr_ok_implies hok₁
+  replace ⟨t₂', _, hok₂, ht₂⟩ := compileGetAttr_ok_implies hok₂
   have heq := compileAttrsOf_ok_typeOf_eq hwε hw₁ hw₂ hty hok₁ hok₂
-  replace ⟨heq₁, tya₁, hf₁, ht₁⟩ := ht₁
-  replace ⟨heq₂, tya₂, hf₂, ht₂⟩ := ht₂
+  replace ⟨heq₁, _, hf₁, ht₁⟩ := ht₁
+  replace ⟨heq₂, _, hf₂, ht₂⟩ := ht₂
   replace hok₁ := wf_record_get (compileAttrsOf_wf hwε hw₁ hok₁).left heq₁ hf₁
   replace hok₂ := wf_record_get (compileAttrsOf_wf hwε hw₂ hok₂).left heq₂ hf₂
   simp only [heq, heq₂, TermType.record.injEq] at heq₁
@@ -685,8 +766,7 @@ theorem compile_interpret_getAttr {x₁ : Expr} {a : Attr} {εnv : SymEnv} {I : 
   rename_i heq <;>
   simp only [SymEnv.interpret] at heq
   case error =>
-    have ⟨hwo₁, hwo₂, hty'⟩ := interpret_option_get_aux hI hwφ₁ hty₁
-    have ⟨_, hok'⟩ := compileGetAttr_ok_typeOf hwε' hwo₁ hwo₂ hty' hi
+    have ⟨_, hok'⟩ := compileGetAttr_interpret_ok hI hwε.left.right hwφ₁ hty₁ hi
     simp only [hok', reduceCtorEq] at heq
   case ok t₄ =>
     have ⟨hwφ₂, tyₐ, hty₂⟩ := compileGetAttr_wf hwε.left.right hwo.left ha

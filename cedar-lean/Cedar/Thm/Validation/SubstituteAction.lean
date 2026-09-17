@@ -253,6 +253,11 @@ theorem substitute_action_preserves_evaluation (expr : Expr) (request : Request)
   | hasAttr x attr =>
     have ih₁ := substitute_action_preserves_evaluation x request entities
     exact @substitute_action_preserves_evaluation_hasAttr x attr request entities ih₁
+  | extHasAttr x attr attrs =>
+    have ih₁ := substitute_action_preserves_evaluation x request entities
+    simp only [substituteAction] at ih₁
+    simp only [substituteAction, mapOnVars, evaluate]
+    rw [ih₁]
   | set xs =>
     have ih : ∀ xᵢ, xᵢ ∈ xs → SubstituteActionPreservesEvaluation xᵢ request entities := by
       intro xᵢ _

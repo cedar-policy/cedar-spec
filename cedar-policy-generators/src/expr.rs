@@ -65,11 +65,7 @@ impl ExprGenerator<'_> {
     /// `max_depth`: maximum size (i.e., depth) of the expression.
     /// For instance, maximum depth of nested sets. Not to be confused with the
     /// `depth` parameter to size_hint.
-    pub fn generate_expr(
-        &mut self,
-        max_depth: usize,
-        u: &mut Unstructured<'_>,
-    ) -> Result<ast::Expr> {
+    pub fn generate_expr(&self, max_depth: usize, u: &mut Unstructured<'_>) -> Result<ast::Expr> {
         if max_depth == 0 {
             // no recursion allowed: just generate a literal
             self.generate_literal_or_var(u)
@@ -254,6 +250,25 @@ impl ExprGenerator<'_> {
                         Ok(ast::Expr::has_attr(
                             self.generate_expr(max_depth - 1, u)?,
                             attr_name,
+                        ))
+                    },
+                    2 => {
+                        // Extended has: `expr has a.b.c` with 2-5 attributes
+                        // Each attribute must be a valid identifier
+                        let first_attr = uniform!(u,
+                            self.schema.arbitrary_attr(u)?,
+                            SmolStr::from(ast::Id::arbitrary(u)?.as_ref()));
+                        let mut attrs = nonempty::NonEmpty::new(first_attr);
+                        let extra_count = u.int_in_range(1..=4)?;
+                        for _ in 0..extra_count {
+                            let attr = uniform!(u,
+                                self.schema.arbitrary_attr(u)?,
+                                SmolStr::from(ast::Id::arbitrary(u)?.as_ref()));
+                            attrs.push(attr);
+                        }
+                        Ok(ast::Expr::extended_has_attr(
+                            self.generate_expr(max_depth - 1, u)?,
+                            attrs,
                         ))
                     },
                     4 => {
@@ -535,6 +550,42 @@ impl ExprGenerator<'_> {
                             )?,
                             self.constant_pool.arbitrary_string_constant(u)?,
                         )),
+                        // extended has expression on an entity with 2-5 attributes
+                        // attribute names in extended has must be ids (not arbitrary string)
+                        1 => {
+                            let ety = self.schema.arbitrary_entity_type(u)?;
+                            let first_attr = self.schema.arbitrary_attr_of_entity_type(&ety, u)?;
+                            let mut attrs = nonempty::NonEmpty::new(first_attr);
+                            let extra_count = u.int_in_range(1..=3)?;
+                            for _ in 0..extra_count {
+                                attrs.push(ast::Id::arbitrary(u)?.into_smolstr());
+                            }
+                            Ok(ast::Expr::extended_has_attr(
+                                self.generate_expr_for_type(
+                                    &Type::Entity(ety),
+                                    max_depth - 1,
+                                    u,
+                                )?,
+                                attrs,
+                            ))
+                        },
+                        // extended has expression on a record with 2-5 attributes
+                        1 => {
+                            let first_attr = ast::Id::arbitrary(u)?.into_smolstr();
+                            let mut attrs = nonempty::NonEmpty::new(first_attr);
+                            let extra_count = u.int_in_range(1..=3)?;
+                            for _ in 0..extra_count {
+                                attrs.push(ast::Id::arbitrary(u)?.into_smolstr());
+                            }
+                            Ok(ast::Expr::extended_has_attr(
+                                self.generate_expr_for_type(
+                                    &self.as_type_gen().generate_record_type(max_depth, u)?,
+                                    max_depth - 1,
+                                    u,
+                                )?,
+                                attrs,
+                            ))
+                        },
                         // extension function that returns bool
                         2 => self.generate_ext_func_call_for_type(&Type::Bool, max_depth - 1, u),
                         // if-then-else expression, where both arms are bools

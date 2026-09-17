@@ -20,6 +20,7 @@ import Cedar.Thm.SymCC.Compiler.Attr
 import Cedar.Thm.SymCC.Compiler.Binary
 import Cedar.Thm.SymCC.Compiler.Call
 import Cedar.Thm.SymCC.Compiler.Control
+import Cedar.Thm.SymCC.Compiler.ExtHasAttr
 import Cedar.Thm.SymCC.Compiler.LitVar
 import Cedar.Thm.SymCC.Compiler.Record
 import Cedar.Thm.SymCC.Compiler.Set
@@ -81,6 +82,9 @@ theorem compile_evaluate {x : Expr} {env : Env} {εnv : SymEnv} {t : Term} :
   | .hasAttr x₁ _     =>
     have ih₁ := @compile_evaluate x₁
     exact compile_evaluate_hasAttr h₁ h₂ h₃ h₄ ih₁
+  | .extHasAttr x₁ _ _ =>
+    have ih₁ := @compile_evaluate x₁
+    exact compile_evaluate_extHasAttr h₁ h₂ h₃ h₄ ih₁
   | .set xs           =>
     have ih : ∀ xᵢ ∈ xs, CompileEvaluate xᵢ := by
       intro xᵢ _
@@ -141,6 +145,9 @@ theorem compile_interpret {x : Expr} {εnv : SymEnv} {I : Interpretation} {t : T
   | .hasAttr x₁ _      =>
     have ih₁ := @compile_interpret x₁
     exact compile_interpret_hasAttr h₁ h₂ h₃ ih₁
+  | .extHasAttr x₁ _ _ =>
+    have ih₁ := @compile_interpret x₁
+    exact compile_interpret_extHasAttr h₁ h₂ h₃ ih₁
   | .set xs            =>
     have ih : ∀ xᵢ ∈ xs, CompileInterpret xᵢ := by
       intro xᵢ _

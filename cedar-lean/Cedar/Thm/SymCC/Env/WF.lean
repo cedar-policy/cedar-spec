@@ -278,8 +278,18 @@ public theorem wf_εnv_for_hasAttr_implies {x₁ : Expr} {a : Attr} {εnv : SymE
   εnv.WellFormedFor x₁
 := by show_wf_εnv_for_unary_expr_implies
 
+public theorem wf_εnv_for_extHasAttr_implies {x₁ : Expr} {a : Attr} {as : List Attr} {εnv : SymEnv} :
+  εnv.WellFormedFor (.extHasAttr x₁ a as) →
+  εnv.WellFormedFor x₁
+:= by show_wf_εnv_for_unary_expr_implies
+
 public theorem wf_env_for_hasAttr_implies {x₁ : Expr} {a : Attr} {env : Env} :
   env.WellFormedFor (.hasAttr x₁ a) →
+  env.WellFormedFor x₁
+:= by show_wf_εnv_for_unary_expr_implies
+
+public theorem wf_env_for_extHasAttr_implies {x₁ : Expr} {a : Attr} {as : List Attr} {env : Env} :
+  env.WellFormedFor (.extHasAttr x₁ a as) →
   env.WellFormedFor x₁
 := by show_wf_εnv_for_unary_expr_implies
 
@@ -652,6 +662,8 @@ public theorem expr_valid_refs_same_domain {εs₁ εs₂ : SymEntities} {x : Ex
     exact Expr.ValidRefs.unaryApp_valid ih₁
   case hasAttr_valid ih₁ =>
     exact Expr.ValidRefs.hasAttr_valid ih₁
+  case extHasAttr_valid ih₁ =>
+    exact Expr.ValidRefs.extHasAttr_valid ih₁
   case getAttr_valid ih₁ =>
     exact Expr.ValidRefs.getAttr_valid ih₁
   case set_valid ih₁ =>

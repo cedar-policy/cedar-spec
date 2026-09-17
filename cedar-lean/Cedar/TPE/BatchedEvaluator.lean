@@ -59,6 +59,10 @@ def batchedEvaluateLoop
     | .val v _ty => .val v _ty
     | newRes => batchedEvaluateLoop newRes req loader newStore n
 
+def actionEntities (acts : ActionSchema) : PartialEntities :=
+  Map.make (acts.toList.map λ (uid, entry) =>
+    (uid, ⟨.some Map.empty, .some entry.ancestors, .some Map.empty⟩))
+
 /--
 Evaluate a single cedar expression using an EntityLoader
 instead of a full Entities store.
@@ -66,13 +70,14 @@ Performs a maximum of `iter` number of calls to `loader`,
 but may perform fewer when a value is found.
 -/
 def batchedEvaluate
+  (acts : ActionSchema)
   (x : TypedExpr)
   (req : Request)
   (loader : EntityLoader)
   (iters : Nat)
   : Residual :=
-  let residual := Cedar.TPE.evaluate x.toResidual req.asPartialRequest Map.empty
-  batchedEvaluateLoop residual req loader Map.empty iters
+  let residual := Cedar.TPE.evaluate x.toResidual req.asPartialRequest (actionEntities acts)
+  batchedEvaluateLoop residual req loader (actionEntities acts) iters
 
 /--
 The batched authorization loop for authorization over a list of policies.
@@ -109,8 +114,9 @@ def batchedAuthorize
   (iters : Nat)
   : Except Error Response := do
   let residualPolicies ← policies.mapM (λ p => do
-    pure ⟨p.id, p.effect, ← evaluatePolicy schema p req.asPartialRequest Map.empty⟩)
-  pure (batchedAuthorizeLoop residualPolicies req loader Map.empty iters)
+    pure ⟨p.id, p.effect,
+      ← evaluatePolicy schema p req.asPartialRequest (actionEntities schema.acts)⟩)
+  pure (batchedAuthorizeLoop residualPolicies req loader (actionEntities schema.acts) iters)
 
 /--
 Create an entity loader for a given entity store.

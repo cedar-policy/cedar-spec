@@ -215,4 +215,5 @@ theorem type_of_hasAttr_is_sound {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilit
     · have h₈ : (typeOf x₁ c₁ env).typeOf = Except.ok (CedarType.record rty, c₁') := by simp [h₄, hty₁, ResultType.typeOf, Except.map]
       exact type_of_hasAttr_is_sound_for_records h₁ h₃ h₈ h₆ h₇
 
+
 end Cedar.Thm

@@ -124,12 +124,9 @@ pub fn assert_smtlib_scripts_match<E1: Display>(
 #[track_caller]
 pub fn assert_that_asserts_match(
     rust_asserts: WellFormedAsserts<'_>,
-    lean_asserts: impl IntoIterator<Item = cedar_lean_ffi::Term>,
+    lean_asserts: impl IntoIterator<Item = Term>,
 ) {
-    let lean_asserts = lean_asserts
-        .into_iter()
-        .map(|t| Term::try_from(t).expect("term conversion should succeed"))
-        .collect::<BTreeSet<_>>();
+    let lean_asserts = lean_asserts.into_iter().collect::<BTreeSet<_>>();
     let rust_asserts = BTreeSet::from_iter(rust_asserts.asserts().as_ref().iter().cloned());
 
     if lean_asserts != rust_asserts {

@@ -159,21 +159,23 @@ private theorem expr_entityUIDs_valid_refs {x : Expr} {uids : Set EntityUID} {es
     exact Expr.ValidRefs.getAttr_valid (ih hsub)
   case case9 ih =>          -- hasAttr
     exact Expr.ValidRefs.hasAttr_valid (ih hsub)
-  case case10 ih =>         -- set
+  case case10 ih =>         -- extHasAttr
+    exact Expr.ValidRefs.extHasAttr_valid (ih hsub)
+  case case11 ih =>         -- set
     simp only [List.mapUnion₁_eq_mapUnion] at hsub
     apply Expr.ValidRefs.set_valid
     intro xᵢ hᵢ
     have hsubᵢ := List.mem_implies_subset_mapUnion Expr.entityUIDs hᵢ
     replace hsubᵢ := Set.subset_trans hsubᵢ hsub
     exact ih xᵢ hᵢ hsubᵢ
-  case case11 ih =>         -- call
+  case case12 ih =>         -- call
     simp only [List.mapUnion₁_eq_mapUnion] at hsub
     apply Expr.ValidRefs.call_valid
     intro xᵢ hᵢ
     have hsubᵢ := List.mem_implies_subset_mapUnion Expr.entityUIDs hᵢ
     replace hsubᵢ := Set.subset_trans hsubᵢ hsub
     exact ih xᵢ hᵢ hsubᵢ
-  case case12 ih =>         -- record
+  case case13 ih =>         -- record
     simp only [List.mapUnion₂_eq_mapUnion λ x : Attr × Expr => x.snd.entityUIDs] at hsub
     apply Expr.ValidRefs.record_valid
     intro (aᵢ, xᵢ) hᵢ

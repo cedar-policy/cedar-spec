@@ -66,6 +66,7 @@ public inductive Expr where
   | binaryApp (op : BinaryOp) (a : Expr) (b : Expr)
   | getAttr (expr : Expr) (attr : Attr)
   | hasAttr (expr : Expr) (attr : Attr)
+  | extHasAttr (expr : Expr) (attr : Attr) (attrs : List Attr)
   | set (ls : List Expr)
   | record (map : List (Attr × Expr))
   | call (xfn : ExtFun) (args : List Expr)
@@ -79,7 +80,7 @@ deriving instance Repr, Inhabited for Expr
 
 mutual
 
--- We should be able to get rid of this manual deriviation eventually.
+-- We should be able to get rid of this manual derivation eventually.
 -- There is work in progress on making these mutual derivations automatic.
 
 public def decExpr (x y : Expr) : Decidable (x = y) := by
@@ -109,6 +110,10 @@ public def decExpr (x y : Expr) : Decidable (x = y) := by
     exact match decExpr x₁ y₁, decEq a a' with
     | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
     | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
+  case extHasAttr.extHasAttr x₁ a b y₁ a' b' =>
+    exact match decExpr x₁ y₁, decEq a a', decEq b b' with
+    | isTrue h₁, isTrue h₂, isTrue h₃ => isTrue (by rw [h₁, h₂, h₃])
+    | isFalse _, _, _ | _, isFalse _, _ | _, _, isFalse _ => isFalse (by intro h; injection h; contradiction)
   case set.set xs ys =>
     exact match decExprList xs ys with
     | isTrue h₁ => isTrue (by rw [h₁])

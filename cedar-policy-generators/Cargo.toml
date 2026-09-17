@@ -6,7 +6,7 @@ publish = false
 
 [dependencies]
 arbitrary = "1.4"
-cedar-policy-core = { path = "../cedar/cedar-policy-core", version = "4.*", features = ["arbitrary"] }
+cedar-policy-core = { path = "../cedar/cedar-policy-core", version = "4.*", features = ["arbitrary", "tpe"] }
 cedar-policy = { path = "../cedar/cedar-policy", version = "4.*", optional = true }
 clap = { version = "4.3.16", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }

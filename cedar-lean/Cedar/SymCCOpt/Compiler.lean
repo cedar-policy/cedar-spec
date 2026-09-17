@@ -389,6 +389,10 @@ def compile (x : Expr) (εnv : SymEnv) : Result CompileResult := do
     let res₁ ← compile x εnv
     let res ← compileHasAttr (res₁.mapTerm option.get) a εnv.entities
     res.mapTerm (ifSome res₁.term ·)
+  | .extHasAttr x a as =>
+    let res₁ ← compile x εnv
+    let term ← SymCC.compileExtHasAttr res₁.term (a :: as) εnv.entities
+    .ok { term, footprint := res₁.footprint }
   | .getAttr x a =>
     -- subtlety:
     -- similar to the comment above in the `binaryApp` case

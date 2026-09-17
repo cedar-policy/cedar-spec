@@ -40,4 +40,5 @@ import CedarProto.Type
 import CedarProto.ValidationRequest
 import CedarProto.LevelValidationRequest
 import CedarProto.Value
+import CedarProto.Residual
 import CedarProto.TPERequest

@@ -61,6 +61,10 @@ theorem residual_well_typed_is_sound {r : Residual} {v : Value} {env : TypeEnv} 
     exact residual_well_typed_is_sound_has_attr_entity h₃
   case hasAttr_record rty x₁ attr h₁ h₂ h₃ =>
     exact residual_well_typed_is_sound_has_attr_record h₃
+  case extHasAttr_entity ety x₁ attr attrs h₁ h₂ h₃ =>
+    exact residual_well_typed_is_sound_ext_has_attr_entity h₃
+  case extHasAttr_record rty x₁ attr attrs h₁ h₂ h₃ =>
+    exact residual_well_typed_is_sound_ext_has_attr_record h₃
   case getAttr_entity ety rty x₁ attr ty h₄ h₅ h₆ h₇ hᵢ =>
     exact residual_well_typed_is_sound_get_attr_entity h₁ hᵢ h₅ h₆ h₇ h₃
   case getAttr_record rty x₁ attr ty h₄ h₅ h₆ hᵢ =>

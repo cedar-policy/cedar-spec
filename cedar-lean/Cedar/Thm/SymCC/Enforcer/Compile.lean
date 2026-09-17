@@ -121,6 +121,12 @@ private theorem typeOf_compile_hasAttr_option_bool {x : Expr} {a : Attr} {t : Te
   have ⟨hwt₂, hty₂⟩ := compileHasAttr_wf hwε.left.right hwo₁.left hok
   simp only [wf_ifSome_option hwt₁ hwt₂ hty₂]
 
+private theorem typeOf_compile_extHasAttr_option_bool {x : Expr} {a : Attr} {attrs : List Attr} {t : Term} {εnv : SymEnv}
+  (hwε : εnv.WellFormedFor (.extHasAttr x a attrs))
+  (hok : compile (.extHasAttr x a attrs) εnv = .ok t) :
+  t.typeOf = .option .bool
+:= compile_extHasAttr_typeOf hwε hok
+
 private theorem typeOf_compile_set_option_set {xs : List Expr} {t : Term} {εnv : SymEnv}
   (hok : compile (.set xs) εnv = .ok t) :
   ∃ ty, t.typeOf = .option (.set ty)
@@ -276,7 +282,7 @@ theorem compile_interpret_in_footprint {x : Expr} {εnv : SymEnv} {I : Interpret
       · have ⟨tₑ, ih₃⟩ := ih₃ hwε.right.right hok₃ heq
         exists tₑ
         simp only [ih₃, or_true, and_self]
-  case case9 =>
+  case case10 =>
     simp only [footprint, footprint.ofEntity, hok, compile_isOptionEntityType hwε hI hok ht,
       ↓reduceIte, Set.mem_union, Set.mem_singleton, exists_eq_or_imp, ht, true_or]
   case' case4 =>
@@ -292,11 +298,13 @@ theorem compile_interpret_in_footprint {x : Expr} {εnv : SymEnv} {I : Interpret
       ↓reduceIte, Set.mem_union, Set.mem_singleton, ht]
   case' case8 =>
     have hty := typeOf_compile_hasAttr_option_bool hwε hok
-  case' case10 =>
-    have ⟨_, hty⟩ := typeOf_compile_set_option_set hok
+  case' case9 =>
+    have hty := typeOf_compile_extHasAttr_option_bool hwε hok
   case' case11 =>
-    have ⟨_, hty⟩ := typeOf_compile_record_option_record hok
+    have ⟨_, hty⟩ := typeOf_compile_set_option_set hok
   case' case12 =>
+    have ⟨_, hty⟩ := typeOf_compile_record_option_record hok
+  case' case13 =>
     have hty := typeOf_compile_call_option_types hwε hok
     rcases hty with hty | ⟨_, hty⟩ | hty
   all_goals {
@@ -767,6 +775,153 @@ private theorem compile_interpret_hasAttr_on_footprint {x₁ : Expr}  {a₁ : At
       interpret_ifSome hI₂ hwt₁ (Term.WellFormed.some_wf wf_bool),
       ih₁, interpret_term_some, interpret_term_prim]
 
+private theorem compileExtHasAttrRec_interpret_eq
+  {t₁ : Term} {attrs : List Attr} {εs : SymEntities} {ft : Set Term}
+  {I₁ I₂ : Interpretation} {t : Term}
+  (hwε : εs.WellFormed)
+  (hI₁ : I₁.WellFormed εs)
+  (hI₂ : I₂.WellFormed εs)
+  (hsm : εs.SameOn ft I₁ I₂)
+  (hw₁ : t₁.WellFormed εs)
+  (hty₁ : ∃ ty, t₁.typeOf = .option ty)
+  (hih : t₁.interpret I₁ = t₁.interpret I₂)
+  (hok : compileExtHasAttrRec t₁ attrs εs = .ok t) :
+  t.interpret I₁ = t.interpret I₂ := by
+  induction attrs generalizing t₁ t with
+  | nil =>
+    simp only [compileExtHasAttrRec, pure, Except.pure, Except.ok.injEq] at hok
+    subst hok
+    simp [interpret_term_some, interpret_term_prim]
+  | cons a rest ih =>
+    cases rest with
+    | nil =>
+      simp only [compileExtHasAttrRec, bind, Except.bind] at hok
+      generalize hha : compileHasAttr (option.get t₁) a εs = rha at hok
+      cases rha with
+      | error => simp only [reduceCtorEq] at hok
+      | ok t_ha =>
+        simp only [Except.ok.injEq] at hok; subst hok
+        -- This is the same as hasAttr: t = ifSome t₁ t_ha
+        have hwo := wf_option_get hw₁ hty₁.choose_spec
+        have hwt₁ : t₁.WellFormed εs ∧ t₁.typeOf = .option hty₁.choose := ⟨hw₁, hty₁.choose_spec⟩
+        have ⟨t₃, rty, hok_attrs, hr⟩ := compileHasAttr_ok_implies hha
+        replace ⟨hty₃, hr⟩ := hr
+        split at hr <;> subst hr
+        case h_1 tyₐ htyₐ =>
+          have hwt₃ := (compileAttrsOf_wf hwε hwo.left hok_attrs).left
+          have hwr := wf_record_get hwt₃ hty₃ htyₐ
+          have ⟨hws, hwsty⟩ := wf_isSome hwr.left
+          replace ⟨hws, hwsty⟩ := wf_term_some hws hwsty
+          simp_ifSome_eq hI₁ hI₂ hw₁ hty₁.choose_spec hws hwsty hih
+          rename_i ht₁ _
+          simp only [interpret_term_some, interpret_isSome hI₁ hwr.left,
+            interpret_isSome hI₂ hwr.left,
+            compileAttrsOf_interpret_record_get_eq
+              hwε hI₁ hI₂ hsm hwo.left hok_attrs hwt₃ hty₃ htyₐ
+              (interpret_option_get_eq hw₁ hty₁.choose_spec hih ht₁)]
+        case h_2 | h_3 =>
+          simp only [interpret_ifSome hI₁ hw₁ (Term.WellFormed.some_wf wf_bool),
+            interpret_ifSome hI₂ hw₁ (Term.WellFormed.some_wf wf_bool),
+            hih, interpret_term_some, interpret_term_prim]
+    | cons b rest' =>
+      simp [compileExtHasAttrRec, bind, Except.bind] at hok
+      split at hok
+      . contradiction
+      . rename_i _ t_ha hha
+        have hwo := wf_option_get hw₁ hty₁.choose_spec
+        have hwha := compileHasAttr_wf hwε hwo.left hha
+        have hiha :
+          (ifSome t₁ t_ha).interpret I₁ = (ifSome t₁ t_ha).interpret I₂ := by
+          have ⟨t₃, rty, hok_attrs, hr⟩ := compileHasAttr_ok_implies hha
+          replace ⟨hty₃, hr⟩ := hr
+          split at hr <;> subst hr
+          case h_1 tyₐ htyₐ =>
+            have hwt₃ := (compileAttrsOf_wf hwε hwo.left hok_attrs).left
+            have hwr := wf_record_get hwt₃ hty₃ htyₐ
+            have ⟨hws, hwsty⟩ := wf_isSome hwr.left
+            replace ⟨hws, hwsty⟩ := wf_term_some hws hwsty
+            simp_ifSome_eq hI₁ hI₂ hw₁ hty₁.choose_spec hws hwsty hih
+            rename_i ht₁ _
+            simp only [interpret_term_some, interpret_isSome hI₁ hwr.left,
+              interpret_isSome hI₂ hwr.left,
+              compileAttrsOf_interpret_record_get_eq
+                hwε hI₁ hI₂ hsm hwo.left hok_attrs hwt₃ hty₃ htyₐ
+                (interpret_option_get_eq hw₁ hty₁.choose_spec hih ht₁)]
+          case h_2 | h_3 =>
+            simp only [interpret_ifSome hI₁ hw₁ (Term.WellFormed.some_wf wf_bool),
+              interpret_ifSome hI₂ hw₁ (Term.WellFormed.some_wf wf_bool),
+              hih, interpret_term_some, interpret_term_prim]
+        split at hok
+        case h_1 =>
+          simp only [pure, Except.pure, Except.ok.injEq] at hok
+          subst t
+          exact hiha
+        case h_2 =>
+          split at hok
+          case h_1 =>
+            simp only [pure, Except.pure, Except.ok.injEq] at hok
+            subst t
+            exact hiha
+          case h_2 => simp only [reduceCtorEq] at hok
+          case h_3 =>
+            rename_i _ _ _ _ t_ga hga
+            have ⟨hwga, tyga, htyga⟩ := compileGetAttr_wf hwε hwo.left hga
+            have hwnext := wf_ifSome_option hw₁ hwga htyga
+            have hinext :
+              (ifSome t₁ t_ga).interpret I₁ = (ifSome t₁ t_ga).interpret I₂ := by
+              have ⟨t₃, rty, hok_attrs, hr⟩ := compileGetAttr_ok_implies hga
+              replace ⟨hty₃, tyₐ, htyₐ, hr⟩ := hr
+              have hwt₃ := (compileAttrsOf_wf hwε hwo.left hok_attrs).left
+              have ⟨hwr, hwrty⟩ := wf_record_get hwt₃ hty₃ htyₐ
+              split at hr <;> subst hr
+              case' h_2 => replace ⟨hwr, hwrty⟩ := wf_term_some hwr hwrty
+              all_goals simp_ifSome_eq hI₁ hI₂ hw₁ hty₁.choose_spec hwr hwrty hih
+              all_goals rename_i ht₁ _
+              all_goals simp only [interpret_term_some,
+                compileAttrsOf_interpret_record_get_eq
+                  hwε hI₁ hI₂ hsm hwo.left hok_attrs hwt₃ hty₃ htyₐ
+                  (interpret_option_get_eq hw₁ hty₁.choose_spec hih ht₁)]
+            split at hok
+            case h_1 => simp only [reduceCtorEq] at hok
+            case h_2 =>
+              rename_i _ t_rest hrest
+              have hirest := ih hwnext.left ⟨tyga, hwnext.right⟩ hinext hrest
+              have hwhas := wf_ifSome_option hw₁ hwha.left hwha.right
+              have hwrest := compileExtHasAttrRec_wf hwε hwnext.left ⟨tyga, hwnext.right⟩ hrest
+              simp only [compileAnd] at hok
+              split at hok
+              case h_1 => contradiction
+              case h_2 =>
+                simp only [Except.bind_ok, hwrest.right, ↓reduceIte, Except.ok.injEq] at hok
+                subst t
+                exact interpret_ifSome_ifSome_ite_eq hI₁ hI₂
+                  hwhas.left hwrest.left (Term.WellFormed.some_wf wf_bool)
+                  hwhas.right hwrest.right (by simp only [someOf, typeOf_term_some, typeOf_bool])
+                  hiha hirest (by simp only [interpret_someOf, interpret_term_prim])
+              case h_3 => simp only [reduceCtorEq] at hok
+
+
+private theorem compile_interpret_extHasAttr_on_footprint {x₁ : Expr} {a₁ : Attr} {attrs : List Attr} {ft : Set Term} {εnv : SymEnv} {I₁ I₂ : Interpretation} {t : Term}
+  (hwε : εnv.WellFormedFor (.extHasAttr x₁ a₁ attrs))
+  (hI₁ : I₁.WellFormed εnv.entities)
+  (hI₂ : I₂.WellFormed εnv.entities)
+  (hsm : εnv.SameOn ft I₁ I₂)
+  (hft : footprint (.extHasAttr x₁ a₁ attrs) εnv ⊆ ft)
+  (hok : compile (.extHasAttr x₁ a₁ attrs) εnv = .ok t)
+  (ih₁ : CompileInterpretOnFootprint x₁ ft εnv I₁ I₂) :
+  t.interpret I₁ = t.interpret I₂
+:= by
+  simp only [footprint] at hft
+  replace hwε' := wf_εnv_for_extHasAttr_implies hwε
+  rw [compile.eq_def] at hok
+  simp only at hok
+  simp_do_let (compile x₁ εnv) at hok
+  rename_i t₁ hok₁
+  rw [compileExtHasAttr_eq_compileExtHasAttrRec] at hok
+  specialize ih₁ hwε' hI₁ hI₂ hsm hft hok₁
+  have ⟨hwt₁, ty₁, hty₁⟩ := compile_wf hwε' hok₁
+  exact compileExtHasAttrRec_interpret_eq hwε'.left.right hI₁ hI₂ hsm.right hwt₁ ⟨ty₁, hty₁⟩ ih₁ hok
+
 private theorem compile_interpret_getAttr_on_footprint {x₁ : Expr}  {a₁ : Attr} {ft : Set Term} {εnv : SymEnv} {I₁ I₂ : Interpretation} {t : Term}
   (hwε : εnv.WellFormedFor (.getAttr x₁ a₁))
   (hI₁ : I₁.WellFormed εnv.entities)
@@ -977,12 +1132,14 @@ theorem compile_interpret_on_footprint {x : Expr} {ft : Set Term} {εnv : SymEnv
   case case8 ih₁ =>
     exact compile_interpret_hasAttr_on_footprint hwε hI₁ hI₂ hsm hft hok (λ hwε _ _ _ => ih₁ hwε)
   case case9 ih₁ =>
+    exact compile_interpret_extHasAttr_on_footprint hwε hI₁ hI₂ hsm hft hok (λ hwε _ _ _ => ih₁ hwε)
+  case case10 ih₁ =>
     exact compile_interpret_getAttr_on_footprint hwε hI₁ hI₂ hsm hft hok (λ hwε _ _ _ => ih₁ hwε)
-  case case10 ih =>
-    exact compile_interpret_set_on_footprint hwε hI₁ hI₂ hsm hft hok (λ x₁ hmem _ hwε _ _ _ => ih x₁ hmem hwε)
   case case11 ih =>
-    exact compile_interpret_record_on_footprint hwε hI₁ hI₂ hsm hft hok (λ a₁ x₁ hsizeOf t hwε _ _ _ => ih a₁ x₁ hsizeOf hwε)
+    exact compile_interpret_set_on_footprint hwε hI₁ hI₂ hsm hft hok (λ x₁ hmem _ hwε _ _ _ => ih x₁ hmem hwε)
   case case12 ih =>
+    exact compile_interpret_record_on_footprint hwε hI₁ hI₂ hsm hft hok (λ a₁ x₁ hsizeOf t hwε _ _ _ => ih a₁ x₁ hsizeOf hwε)
+  case case13 ih =>
     exact compile_interpret_call_on_footprint hwε hI₁ hI₂ hsm hft hok (λ x₁ hmem _ hwε _ _ _ => ih x₁ hmem hwε)
 
 end Cedar.Thm

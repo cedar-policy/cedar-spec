@@ -33,6 +33,7 @@ import Cedar.Thm.TPE.Soundness.Unary
 import Cedar.Thm.TPE.Soundness.Binary
 import Cedar.Thm.TPE.Soundness.HasAttr
 import Cedar.Thm.TPE.Soundness.GetAttr
+import Cedar.Thm.TPE.Soundness.ExtHasAttr
 import Cedar.Thm.TPE.Soundness.Set
 import Cedar.Thm.TPE.Soundness.Record
 import Cedar.Thm.TPE.Soundness.Call
@@ -92,6 +93,10 @@ theorem partial_evaluate_is_sound
     exact partial_evaluate_is_sound_has_attr h₃ hᵢ₁
   case hasAttr_record rty x₁ attr hᵢ₁ =>
     exact partial_evaluate_is_sound_has_attr h₃ hᵢ₁
+  case extHasAttr_entity ety x₁ attr attrs hᵢ₁ =>
+    exact partial_evaluate_is_sound_ext_has_attr h₃ hᵢ₁
+  case extHasAttr_record rty x₁ attr attrs hᵢ₁ =>
+    exact partial_evaluate_is_sound_ext_has_attr h₃ hᵢ₁
   case getAttr_entity ety rty x₁ attr ty hᵢ₁ =>
     exact partial_evaluate_is_sound_get_attr h₃ hᵢ₁
   case getAttr_record rty x₁ attr ty hᵢ₁ =>

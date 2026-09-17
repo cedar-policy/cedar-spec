@@ -38,6 +38,7 @@ inductive Residual where
   | binaryApp (op : BinaryOp) (a : Residual) (b : Residual)  (ty : CedarType)
   | getAttr (expr : Residual) (attr : Attr)  (ty : CedarType)
   | hasAttr (expr : Residual) (attr : Attr)  (ty : CedarType)
+  | extHasAttr (expr : Residual) (attr : Attr) (attrs : List Attr)  (ty : CedarType)
   | set (ls : List Residual)  (ty : CedarType)
   | record (map : List (Attr × Residual))  (ty : CedarType)
   | call (xfn : ExtFun) (args : List Residual) (ty : CedarType)
@@ -74,6 +75,7 @@ def Residual.typeOf : Residual → CedarType
   | .binaryApp _ _ _ ty
   | .getAttr _ _ ty
   | .hasAttr _ _ ty
+  | .extHasAttr _ _ _ ty
   | .set _ ty
   | .record _ ty
   | .call _ _ ty
@@ -103,6 +105,8 @@ def Residual.errorFree : Residual → Bool
   | ite x₁ x₂ x₃ _ =>
     x₁.errorFree && x₂.errorFree && x₃.errorFree
   | hasAttr x₁ _ _ =>
+    x₁.errorFree
+  | extHasAttr x₁ _ _ _ =>
     x₁.errorFree
   | .set xs _ => xs.attach.all λ x =>
     have : sizeOf x.val < sizeOf xs :=
@@ -143,6 +147,9 @@ def Residual.evaluate (x : Residual) (req : Request) (es: Entities) : Result Val
   | .hasAttr e a _ => do
     let v ← e.evaluate req es
     Cedar.Spec.hasAttr v a es
+  | .extHasAttr e a as _ => do
+    let v ← e.evaluate req es
+    Cedar.Spec.hasAttrs v a as es
   | .getAttr e a _ => do
     let v ← e.evaluate req es
     Cedar.Spec.getAttr v a es
@@ -184,6 +191,7 @@ def Residual.allLiteralUIDs (x : Residual) : Set EntityUID :=
     x₁.allLiteralUIDs ∪ x₂.allLiteralUIDs
   | .getAttr x _ _       => Residual.allLiteralUIDs x
   | .hasAttr x _ _       => Residual.allLiteralUIDs x
+  | .extHasAttr x _ _ _  => Residual.allLiteralUIDs x
   | .set x _             =>
     x.mapUnion₁ (λ ⟨v, _⟩ => Residual.allLiteralUIDs v)
   | .record x _          =>
@@ -233,6 +241,10 @@ def decResidual (x y : Residual) : Decidable (x = y) := by
     exact match decResidual x₁ y₁, decEq a a', decEq tx ty with
     | isTrue h₁, isTrue h₂, isTrue h₃ => isTrue (by rw [h₁, h₂, h₃])
     | isFalse _, _, _ | _, isFalse _, _ | _, _, isFalse _ => isFalse (by intro h; injection h; contradiction)
+  case extHasAttr.extHasAttr x₁ a as tx y₁ a' as' ty =>
+    exact match decResidual x₁ y₁, decEq a a', decEq as as', decEq tx ty with
+    | isTrue h₁, isTrue h₂, isTrue h₃, isTrue h₄ => isTrue (by rw [h₁, h₂, h₃, h₄])
+    | isFalse _, _, _, _ | _, isFalse _, _, _ | _, _, isFalse _, _ | _, _, _, isFalse _ => isFalse (by intro h; injection h; contradiction)
   case set.set xs tx ys ty =>
     exact match decResidualList xs ys, decEq tx ty with
     | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
@@ -290,6 +302,7 @@ def TypedExpr.toResidual : TypedExpr → Residual
   | .binaryApp op a b ty => .binaryApp op (TypedExpr.toResidual a) (TypedExpr.toResidual b) ty
   | .getAttr expr attr ty => .getAttr (TypedExpr.toResidual expr) attr ty
   | .hasAttr expr attr ty => .hasAttr (TypedExpr.toResidual expr) attr ty
+  | .extHasAttr expr attr attrs ty => .extHasAttr (TypedExpr.toResidual expr) attr attrs ty
   | .set ls ty => .set (ls.map₁ (λ ⟨e, _⟩ => TypedExpr.toResidual e)) ty
   | .record ls ty => .record (ls.map₂ (λ ⟨(a, e), _⟩ => (a, TypedExpr.toResidual e))) ty
   | .call xfn args ty => .call xfn (args.map₁ (λ ⟨e, _⟩ => TypedExpr.toResidual e)) ty

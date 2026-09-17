@@ -91,6 +91,20 @@ public def getAttr (v : Value) (a : Attr) (es : Entities) : Result Value := do
   let r ← attrsOf v es.attrs
   r.findOrErr a attrDoesNotExist
 
+public def hasAttrs (v : Value) (a : Attr) (as : List Attr) (es : Entities) : Result Value :=
+  hasAttrs.loop v (a :: as) es
+where
+  loop (v : Value) (attrs : List Attr) (es : Entities) : Result Value :=
+    match attrs with
+    | []      => .ok true
+    | a :: as =>
+      match attrsOf v (fun uid => .ok (es.attrsOrEmpty uid)) with
+      | .ok r =>
+        match r.find? a with
+        | .some v₁ => loop v₁ as es
+        | .none => .ok false
+      | .error _ => .error .typeError
+
 public def bindAttr [Monad m] (a : Attr) (res : m α) : m (Attr × α) := do
   let v ← res
   pure (a, v)
@@ -122,6 +136,9 @@ public def evaluate (x : Expr) (req : Request) (es : Entities) : Result Value :=
   | .hasAttr x₁ a    => do
     let v₁ ← evaluate x₁ req es
     hasAttr v₁ a es
+  | .extHasAttr x₁ a l  => do
+    let v₁ ← evaluate x₁ req es
+    hasAttrs v₁ a l es
   | .getAttr x₁ a    => do
     let v₁ ← evaluate x₁ req es
     getAttr v₁ a es

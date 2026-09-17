@@ -14,13 +14,20 @@
  * limitations under the License.
  */
 
-use crate::datatypes::{self as datatypes, ResultDef, TimedDef, TimedResult, TpeResponseInner};
+use crate::datatypes::{
+    self as datatypes, ResultDef, TimedDef, TimedResult, TpeResponseInner, ValidationResponse,
+};
 use crate::err::FfiError;
 use crate::messages::proto;
+use crate::messages::tpe::{UncheckedPartialEntity, UncheckedPartialRequest};
 
-use cedar_policy::{PartialEntities, PartialRequest, PolicySet, Schema};
+use cedar_policy::{Entities, PartialEntities, PartialRequest, PolicySet, Request, Schema};
 
-use super::{CedarLeanFfi, call_lean_ffi_takes_protobuf, isAuthorizedPartial};
+use super::{
+    CedarLeanFfi, LeanSchema, call_lean_ffi_takes_obj_and_protobuf, call_lean_ffi_takes_protobuf,
+    checkPartialEntityConsistency, checkPartialRequestConsistency, isAuthorizedPartial,
+    reauthorizeResidual, validatePartialEntities, validatePartialRequest,
+};
 
 impl CedarLeanFfi {
     /// Calls the Lean backend and performs type-aware partial evaluation of the partial request,
@@ -58,6 +65,29 @@ impl CedarLeanFfi {
         }
     }
 
+    /// Ask the Lean model to evaluate a residual against concrete data and compare its answer to `expected`.
+    pub fn check_reauthorize_residual(
+        &self,
+        residual: &cedar_policy_core::tpe::residual::Residual,
+        request: &Request,
+        entities: &Entities,
+        expected: Result<&cedar_policy_core::ast::Value, ()>,
+    ) -> Result<datatypes::tpe::CheckResult, FfiError> {
+        let response = unsafe {
+            call_lean_ffi_takes_protobuf(
+                reauthorizeResidual,
+                &proto::ResidualReauthorizationRequest::new(residual, request, entities, expected),
+            )
+        };
+        match response
+            .as_borrowed()
+            .deserialize_into::<ResultDef<TimedDef<datatypes::tpe::CheckResult>>>()?
+        {
+            ResultDef::Ok(resp) => Ok(resp.data),
+            ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
+        }
+    }
+
     /// Takes the result out of [`Self::is_authorized_partial_timed`].
     pub fn is_authorized_partial(
         &self,
@@ -69,6 +99,80 @@ impl CedarLeanFfi {
         Ok(self
             .is_authorized_partial_timed(policies, request, entities, schema)?
             .take_result())
+    }
+
+    /// Calls the Lean backend to validate partial entities against the provided schema
+    pub fn validate_partial_entities(
+        &self,
+        schema: LeanSchema,
+        entities: &[UncheckedPartialEntity],
+    ) -> Result<ValidationResponse, FfiError> {
+        let response = unsafe {
+            call_lean_ffi_takes_obj_and_protobuf(
+                validatePartialEntities,
+                schema.0,
+                &proto::PartialEntityValidationRequest::new(entities),
+            )
+        };
+        match response.as_borrowed().deserialize_into()? {
+            ResultDef::Ok(res) => Ok(TimedResult::from_def(res).take_result()),
+            ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
+        }
+    }
+
+    /// Calls the Lean backend to check that `partial_entities` are consistent with `entities`.
+    pub fn check_partial_entity_consistency(
+        &self,
+        entities: &Entities,
+        partial_entities: &PartialEntities,
+    ) -> Result<ValidationResponse, FfiError> {
+        let response = unsafe {
+            call_lean_ffi_takes_protobuf(
+                checkPartialEntityConsistency,
+                &proto::PartialEntityConsistencyRequest::new(entities, partial_entities),
+            )
+        };
+        match response.as_borrowed().deserialize_into()? {
+            ResultDef::Ok(res) => Ok(TimedResult::from_def(res).take_result()),
+            ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
+        }
+    }
+
+    /// Calls the Lean backend to validate a partial request against the provided schema.
+    pub fn validate_partial_request(
+        &self,
+        schema: LeanSchema,
+        request: &UncheckedPartialRequest,
+    ) -> Result<ValidationResponse, FfiError> {
+        let response = unsafe {
+            call_lean_ffi_takes_obj_and_protobuf(
+                validatePartialRequest,
+                schema.0,
+                &proto::PartialRequestValidationRequest::new(request),
+            )
+        };
+        match response.as_borrowed().deserialize_into()? {
+            ResultDef::Ok(res) => Ok(TimedResult::from_def(res).take_result()),
+            ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
+        }
+    }
+
+    /// Calls the Lean backend to check that `partial_request` is consistent with `request`.
+    pub fn check_partial_request_consistency(
+        &self,
+        request: &Request,
+        partial_request: &PartialRequest,
+    ) -> Result<ValidationResponse, FfiError> {
+        let response = unsafe {
+            call_lean_ffi_takes_protobuf(
+                checkPartialRequestConsistency,
+                &proto::PartialRequestConsistencyRequest::new(request, partial_request),
+            )
+        };
+        match response.as_borrowed().deserialize_into()? {
+            ResultDef::Ok(res) => Ok(TimedResult::from_def(res).take_result()),
+            ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
+        }
     }
 }
 
@@ -85,14 +189,21 @@ mod test {
     unsafe extern "C" {}
 
     use cedar_policy::{
-        Context, EntityTypeName, EntityUid, PartialEntities, PartialEntity, PartialEntityUid,
-        PartialRequest, Policy, PolicyId, PolicySet, RestrictedExpression, Schema,
+        Context, Entities, EntityTypeName, EntityUid, PartialEntities, PartialEntity,
+        PartialEntityUid, PartialRequest, Policy, PolicyId, PolicySet, RestrictedExpression,
+        Schema,
     };
+    use cool_asserts::assert_matches;
 
     use std::collections::{BTreeMap, HashMap, HashSet};
     use std::str::FromStr;
 
-    use crate::CedarLeanFfi;
+    use crate::{
+        CedarLeanFfi, UncheckedPartialEntity, UncheckedPartialRequest, ValidationResponse,
+    };
+    use cedar_policy_core::ast::{EntityUID, Value, Var};
+    use cedar_policy_core::tpe::residual::{Residual, ResidualKind};
+    use cedar_policy_core::validator::types::{EntityKind, EntityLUB, Type};
 
     /// Helper to compare Rust and Lean TPE responses: decision, policy categorizations,
     /// and residual expressions (via PST comparison).
@@ -213,6 +324,115 @@ mod test {
             eprint!("TPE response comparison failed:\n{msg}\n");
             std::process::exit(1);
         }
+    }
+
+    /// Concrete entities for the arbitrary-residual tests.
+    fn concrete_entities() -> cedar_policy::Entities {
+        let schema = tpe_schema();
+        cedar_policy::Entities::from_json_value(
+            serde_json::json!([
+                {
+                    "uid": { "type": "User", "id": "alice" },
+                    "attrs": { "name": "Alice", "age": 30 },
+                    "parents": []
+                }
+            ]),
+            Some(&schema),
+        )
+        .expect("concrete entities should parse")
+    }
+
+    /// Concrete request for the arbitrary-residual tests.
+    fn concrete_req() -> cedar_policy::Request {
+        let schema = tpe_schema();
+        cedar_policy::Request::new(
+            EntityUid::from_str(r#"User::"alice""#).unwrap(),
+            EntityUid::from_str(r#"Action::"transfer""#).unwrap(),
+            EntityUid::from_str(r#"Account::"checking""#).unwrap(),
+            Context::from_pairs([
+                ("amount".into(), RestrictedExpression::new_long(500)),
+                (
+                    "memo".into(),
+                    RestrictedExpression::new_string("rent".into()),
+                ),
+            ])
+            .unwrap(),
+            Some(&schema),
+        )
+        .expect("concrete request should validate")
+    }
+
+    #[test]
+    fn test_residual_check_detects_disagreement() {
+        let request = concrete_req();
+        let entities = concrete_entities();
+        let ffi = CedarLeanFfi::new();
+        let residual = Residual::Concrete {
+            value: Value::from(7),
+            ty: Type::primitive_long(),
+        };
+        let check = ffi
+            .check_reauthorize_residual(&residual, &request, &entities, Ok(&Value::from(8)))
+            .expect("the model should answer");
+        assert!(!check.agrees, "a wrong `expected` must not be accepted");
+        assert!(
+            check.expected.contains('8') && check.actual.contains('7'),
+            "both answers should be rendered, got expected={:?} actual={:?}",
+            check.expected,
+            check.actual
+        );
+    }
+
+    #[test]
+    fn test_residual_agree_concrete() {
+        let request = concrete_req();
+        let entities = concrete_entities();
+        let ffi = CedarLeanFfi::new();
+        let residual = Residual::Concrete {
+            value: Value::from(7),
+            ty: Type::primitive_long(),
+        };
+        let check = ffi
+            .check_reauthorize_residual(&residual, &request, &entities, Ok(&Value::from(7)))
+            .expect("the model should answer");
+        assert!(check.agrees);
+    }
+
+    #[test]
+    fn test_residual_agree_error() {
+        let request = concrete_req();
+        let entities = concrete_entities();
+        let ffi = CedarLeanFfi::new();
+        let residual = Residual::Error(Type::primitive_boolean());
+        let check = ffi
+            .check_reauthorize_residual(&residual, &request, &entities, Err(()))
+            .expect("the model should answer");
+        assert!(check.agrees);
+    }
+
+    #[test]
+    fn test_residual_agree_partial() {
+        let request = concrete_req();
+        let entities = concrete_entities();
+        let ffi = CedarLeanFfi::new();
+        let residual = Residual::Partial {
+            kind: ResidualKind::Var(Var::Principal),
+            ty: Type::Entity(EntityKind::Entity(EntityLUB::single_entity(
+                "User".parse().unwrap(),
+            ))),
+        };
+
+        let check = ffi
+            .check_reauthorize_residual(
+                &residual,
+                &request,
+                &entities,
+                Ok(&Value::from(
+                    EntityUID::from_str(r#"User::"alice""#).unwrap(),
+                )),
+            )
+            .expect("the model should answer");
+        assert!(check.agrees);
     }
 
     fn tpe_schema() -> Schema {
@@ -653,6 +873,154 @@ mod test {
         assert_eq!(lean_resp.decision, None);
         // 4 policies → 4 residuals
         assert_eq!(lean_resp.residuals.len(), 4);
+    }
+
+    #[test]
+    fn test_validate_partial_entities() {
+        let schema = tpe_schema();
+        let user = UncheckedPartialEntity {
+            uid: EntityUid::from_str(r#"User::"alice""#).unwrap(),
+            attrs: Some(BTreeMap::from([
+                (
+                    "name".into(),
+                    RestrictedExpression::new_string("Alice".into()),
+                ),
+                ("age".into(), RestrictedExpression::new_long(30)),
+            ])),
+            ancestors: None,
+            tags: None,
+        };
+
+        let ffi = CedarLeanFfi::new();
+        let lean_schema = ffi.load_lean_schema_object(&schema).unwrap();
+        assert_eq!(
+            ffi.validate_partial_entities(lean_schema.clone(), std::slice::from_ref(&user))
+                .expect("Lean FFI call failed"),
+            ValidationResponse::Ok(())
+        );
+
+        let ill_typed = UncheckedPartialEntity {
+            attrs: Some(BTreeMap::from([
+                (
+                    "name".into(),
+                    RestrictedExpression::new_string("Alice".into()),
+                ),
+                ("age".into(), RestrictedExpression::new_string("30".into())),
+            ])),
+            ..user
+        };
+        assert_matches!(
+            ffi.validate_partial_entities(lean_schema, &[ill_typed])
+                .expect("Lean FFI call failed"),
+            ValidationResponse::Error(_)
+        );
+    }
+
+    #[test]
+    fn test_check_partial_entity_consistency() {
+        let schema = tpe_schema();
+        let concrete = |age| {
+            Entities::from_json_value(
+                serde_json::json!([
+                    {"uid": {"type": "User", "id": "alice"}, "attrs": {"name": "Alice", "age": age}, "parents": []},
+                    {"uid": {"type": "Action", "id": "transfer"}, "attrs": {}, "parents": []},
+                ]),
+                Some(&schema),
+            )
+            .expect("entities should conform to the schema")
+        };
+        let entities = concrete(30);
+        let partial = PartialEntities::from_concrete(entities.clone(), &schema)
+            .expect("from_concrete should succeed on valid entities");
+        let ffi = CedarLeanFfi::new();
+        assert_eq!(
+            ffi.check_partial_entity_consistency(&entities, &partial)
+                .expect("Lean FFI call failed"),
+            ValidationResponse::Ok(())
+        );
+        assert_matches!(
+            ffi.check_partial_entity_consistency(&concrete(31), &partial)
+                .expect("Lean FFI call failed"),
+            ValidationResponse::Error(_)
+        );
+        assert_matches!(
+            ffi.check_partial_entity_consistency(&Entities::empty(), &partial)
+                .expect("Lean FFI call failed"),
+            ValidationResponse::Error(_)
+        );
+    }
+
+    #[test]
+    fn test_validate_partial_request() {
+        let schema = tpe_schema();
+        let ffi = CedarLeanFfi::new();
+        let lean_schema = ffi.load_lean_schema_object(&schema).unwrap();
+        let valid = UncheckedPartialRequest {
+            principal: PartialEntityUid::new(EntityTypeName::from_str("User").unwrap(), None),
+            action: EntityUid::from_str(r#"Action::"transfer""#).unwrap(),
+            resource: PartialEntityUid::new(EntityTypeName::from_str("Account").unwrap(), None),
+            context: None,
+        };
+        assert_eq!(
+            ffi.validate_partial_request(lean_schema.clone(), &valid)
+                .expect("Lean FFI call failed"),
+            ValidationResponse::Ok(())
+        );
+
+        // `transfer` does not apply to a `User` resource
+        let bad_resource = UncheckedPartialRequest {
+            resource: PartialEntityUid::new(EntityTypeName::from_str("User").unwrap(), None),
+            ..valid
+        };
+        assert_matches!(
+            ffi.validate_partial_request(lean_schema, &bad_resource)
+                .expect("Lean FFI call failed"),
+            ValidationResponse::Error(_)
+        );
+    }
+
+    #[test]
+    fn test_check_partial_request_consistency() {
+        let schema = tpe_schema();
+        let ffi = CedarLeanFfi::new();
+        let action = EntityUid::from_str(r#"Action::"transfer""#).unwrap();
+        let request = cedar_policy::Request::new(
+            EntityUid::from_str(r#"User::"alice""#).unwrap(),
+            action.clone(),
+            EntityUid::from_str(r#"Account::"checking""#).unwrap(),
+            Context::from_pairs([
+                ("amount".into(), RestrictedExpression::new_long(1)),
+                (
+                    "memo".into(),
+                    RestrictedExpression::new_string("rent".into()),
+                ),
+            ])
+            .unwrap(),
+            Some(&schema),
+        )
+        .expect("request should conform to the schema");
+        // the principal eid is unknown, so any `User` principal is consistent
+        let partial = |resource: &str| {
+            PartialRequest::new(
+                PartialEntityUid::new(EntityTypeName::from_str("User").unwrap(), None),
+                action.clone(),
+                PartialEntityUid::from_concrete(EntityUid::from_str(resource).unwrap()),
+                None,
+                &schema,
+            )
+            .unwrap()
+        };
+        assert_eq!(
+            ffi.check_partial_request_consistency(&request, &partial(r#"Account::"checking""#))
+                .expect("Lean FFI call failed"),
+            ValidationResponse::Ok(())
+        );
+        // a known resource eid must match
+        assert_matches!(
+            ffi.check_partial_request_consistency(&request, &partial(r#"Account::"savings""#))
+                .expect("Lean FFI call failed"),
+            ValidationResponse::Error(_)
+        );
     }
 
     /// Regression: enum entity type with `principal is a` scope and unknown principal eid.

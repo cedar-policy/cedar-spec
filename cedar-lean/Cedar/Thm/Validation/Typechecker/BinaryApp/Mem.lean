@@ -133,7 +133,7 @@ theorem entity_type_in_false_implies_inₑ_false
   inₑ euid₁ euid₂ entities = false
 := by
   have hwf := h₁
-  simp only [TypeEnv.descendentOf, Bool.if_true_left, Bool.or_eq_false_iff,
+  simp only [TypeEnv.descendentOf, Bool.ite_true_left, Bool.or_eq_false_iff,
     decide_eq_false_iff_not] at h₂
   simp only [inₑ, Bool.or_eq_false_iff, beq_eq_false_iff_ne, ne_eq]
   by_contra h₃
@@ -309,7 +309,7 @@ theorem entity_type_in_false_implies_inₛ_false
     | inr h₁ =>
       have ⟨h₁, _, ⟨entry, h₉, _⟩⟩ := h₁
       simp only [
-        Bool.if_true_left,
+        Bool.ite_true_left,
         Bool.or_eq_false_iff,
         decide_eq_false_iff_not,
       ] at h₂
@@ -415,7 +415,7 @@ theorem action_type_in_eq_action_inₛ
     case inl =>
       subst h₅ ; simp [ActionSchema.descendentOf]
     case inr =>
-      simp only [ActionSchema.descendentOf, beq_iff_eq, hfnd, Bool.if_true_left, Bool.or_eq_true,
+      simp only [ActionSchema.descendentOf, beq_iff_eq, hfnd, Bool.ite_true_left, Bool.or_eq_true,
         decide_eq_true_eq]
       simp only [Entities.ancestorsOrEmpty, hl₁, hr₁] at h₅
       simp [h₅]
@@ -426,7 +426,7 @@ theorem action_type_in_eq_action_inₛ
     replace ⟨_, h₃⟩ := h₃
     simp only [List.subset_def] at h₃
     specialize h₃ h₄ ; simp [h₃]
-    simp only [ActionSchema.descendentOf, beq_iff_eq, hfnd, Bool.if_true_left, Bool.or_eq_true,
+    simp only [ActionSchema.descendentOf, beq_iff_eq, hfnd, Bool.ite_true_left, Bool.or_eq_true,
       decide_eq_true_eq] at h₅
     by_cases h₆ : auid = euid <;> simp [h₆] at h₅
     case pos =>

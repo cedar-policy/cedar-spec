@@ -98,6 +98,7 @@ def Expr.entityUIDs : Expr → Set EntityUID
   | .unaryApp _ x₁
   | .getAttr x₁ _
   | .hasAttr x₁ _      => x₁.entityUIDs
+  | .extHasAttr x₁ _ _ => x₁.entityUIDs
   | .set xs
   | .call _ xs         => xs.mapUnion₁ (λ ⟨x, _⟩ => x.entityUIDs)
   | .record axs        => axs.mapUnion₂ (λ ⟨(_, x), _⟩ => x.entityUIDs)

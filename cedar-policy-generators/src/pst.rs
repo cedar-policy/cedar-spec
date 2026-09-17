@@ -22,7 +22,7 @@
 use crate::err::Result;
 use crate::hierarchy::Hierarchy;
 use crate::size_hint_utils::{size_hint_for_range, size_hint_for_ratio};
-use arbitrary::Unstructured;
+use arbitrary::{Arbitrary, Unstructured};
 use cedar_policy_core::ast;
 use cedar_policy_core::pst;
 use smol_str::SmolStr;
@@ -164,6 +164,17 @@ pub fn arbitrary_pst_expr(
                 let expr = Arc::new(arbitrary_pst_expr(hierarchy, max_depth - 1, max_width, u)?);
                 let attr: SmolStr = u.arbitrary()?;
                 Ok(pst::Expr::HasAttr { expr, attrs: nonempty::nonempty![attr] })
+            },
+            1 => {
+                // Extended has: `expr has a.b.c` with 2+ valid identifier attributes
+                let expr = Arc::new(arbitrary_pst_expr(hierarchy, max_depth - 1, max_width, u)?);
+                let first_attr = ast::Id::arbitrary(u)?.into_smolstr();
+                let mut attrs = nonempty::NonEmpty::new(first_attr);
+                let extra_count = u.int_in_range(1..=4)?;
+                for _ in 0..extra_count {
+                    attrs.push(ast::Id::arbitrary(u)?.into_smolstr());
+                }
+                Ok(pst::Expr::HasAttr { expr, attrs })
             },
             1 => {
                 let expr = Arc::new(arbitrary_pst_expr(hierarchy, max_depth - 1, max_width, u)?);

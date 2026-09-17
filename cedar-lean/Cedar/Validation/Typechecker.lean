@@ -282,6 +282,49 @@ public def typeOfGetAttr (ty : TypedExpr) (x : Expr) (a : Attr) (c : Capabilitie
     | .none     => err (.unknownEntity ety)
   | _           => err (.unexpectedType ty.typeOf)
 
+public def typeOfExtHasAttrLoop (curTy : TypedExpr) (curExpr : Expr) (prevAttr : Attr)
+    (acc : Capabilities) (c : Capabilities) (env : TypeEnv) :
+    List Attr → Except TypeError (TypedExpr × Expr × Attr × Capabilities)
+  | [] => .ok (curTy, curExpr, prevAttr, acc)
+  | attr :: rest => do
+    let (tyNext, _) ← typeOfGetAttr curTy curExpr prevAttr (c ∪ acc) env
+    let nextExpr := Expr.getAttr curExpr prevAttr
+    let (_, ci) ← typeOfHasAttr tyNext nextExpr attr (c ∪ acc) env
+    typeOfExtHasAttrLoop tyNext nextExpr attr (acc ∪ ci) c env rest
+
+public def typeOfExtHasAttr (ty₁ : TypedExpr) (x₁ : Expr) (attrs : List Attr)
+    (c : Capabilities) (env : TypeEnv) : Except TypeError (BoolType × Capabilities) :=
+  match attrs with
+  | [] => .ok (.anyBool, ∅)
+  | [a] => do
+    -- Last attribute: just check hasAttr, propagate its precise boolean type
+    let (tyHas, ci) ← typeOfHasAttr ty₁ x₁ a c env
+    match tyHas.typeOf with
+    | .bool bty => .ok (bty, ci)
+    | _         => .ok (.anyBool, ci)
+  | a :: rest => do
+    -- Earn capability for hasAttr x₁ a
+    let (tyHas, ci) ← typeOfHasAttr ty₁ x₁ a c env
+    -- If the intermediate attribute definitely doesn't exist, the `has` chain
+    -- short-circuits to `false` at runtime (matching the desugared `&&` form).
+    match tyHas.typeOf with
+    | .bool .ff => .ok (.ff, ci)
+    | _ =>
+      -- Check that getAttr x₁ a is well-typed (gives next type)
+      let (tyNext, _) ← typeOfGetAttr ty₁ x₁ a (c ∪ ci) env
+      -- Recurse on the rest of the chain with the next type/expr
+      let nextExpr := Expr.getAttr x₁ a
+      let (bty, c') ← typeOfExtHasAttr tyNext nextExpr rest (c ∪ ci) env
+      -- Combine the current `has` result with the recursive result exactly as
+      -- `typeOfAnd` combines the two sides of the desugared `&&` chain.
+      match bty with
+      | .ff => .ok (.ff, ∅)
+      | .tt =>
+        match tyHas.typeOf with
+        | .bool hasBty => .ok (hasBty, ci ∪ c')
+        | _            => .ok (.anyBool, ci ∪ c')
+      | .anyBool => .ok (.anyBool, ci ∪ c')
+
 public def typeOfSet (tys : List TypedExpr) : ResultType :=
   match tys with
   | []       => err .emptySetErr
@@ -364,6 +407,10 @@ public def typeOf (x : Expr) (c : Capabilities) (env : TypeEnv) : ResultType :=
   | .hasAttr x₁ a => do
     let (ty₁, _) ← typeOf x₁ c env
     typeOfHasAttr ty₁ x₁ a c env
+  | .extHasAttr x₁ a as => do
+    let (ty₁, _) ← typeOf x₁ c env
+    let (bty, c') ← typeOfExtHasAttr ty₁ x₁ (a :: as) c env
+    ok (TypedExpr.extHasAttr ty₁ a as (.bool bty)) c'
   | .getAttr x₁ a => do
     let (ty₁, _) ← typeOf x₁ c env
     typeOfGetAttr ty₁ x₁ a c env

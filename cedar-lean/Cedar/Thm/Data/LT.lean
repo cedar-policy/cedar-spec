@@ -34,15 +34,6 @@ namespace Cedar.Thm
 open Cedar.Spec
 open Cedar.Data
 
-namespace Decide
--- Temporary `simp` lemmas.  We should be able to get rid of these when we upgrade to a
--- future version of Lean.
-@[simp] theorem decide_eq_true_eq {_ : Decidable p} : (decide p = true) = p := propext <| Iff.intro of_decide_eq_true decide_eq_true
-@[simp] theorem decide_eq_false_eq {h : Decidable p} : (decide p = false) = ¬ p := by cases h <;> simp [decide, *]
-@[simp] theorem decide_not {h : Decidable p} : decide (¬ p) = !decide p := by cases h <;> rfl
-@[simp] theorem not_decide_eq_true {h : Decidable p} : ((!decide p) = true) = ¬ p := by cases h <;> simp [decide, *]
-end Decide
-
 ----- `<` is strict on `IPNetPrefix` -----
 
 public instance IPNetPrefix.strictLT {w} : StrictLT (Ext.IPAddr.IPNetPrefix w) where

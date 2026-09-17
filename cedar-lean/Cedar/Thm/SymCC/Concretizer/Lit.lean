@@ -248,7 +248,7 @@ private theorem valid_refs_implies_valid_uids {x : Expr} {εs : SymEntities} :
     rcases hin with hin | hin
     · exact ih₁ hin
     · exact ih₂ hin
-  case unaryApp_valid ih | hasAttr_valid ih | getAttr_valid ih =>
+  case unaryApp_valid ih | hasAttr_valid ih | extHasAttr_valid ih | getAttr_valid ih =>
     exact ih hin
   case ite_valid ih₁ ih₂ ih₃ =>
     simp only [Set.mem_union] at hin

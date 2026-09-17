@@ -285,7 +285,7 @@ pub trait SchemaGen: std::fmt::Debug {
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Expr> {
         let mut abac_constraints = Vec::new();
-        let mut exprgenerator = self.exprgenerator(Some(hierarchy));
+        let exprgenerator = self.exprgenerator(Some(hierarchy));
         u.arbitrary_loop(
             Some(0),
             Some(self.get_abac_settings().max_depth as u32),

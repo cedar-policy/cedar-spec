@@ -25,14 +25,17 @@ pub enum Target {
     PolicyParse,
     JsonPolicyParse,
     ProtobufPolicyParse,
+    ProtobufPolicyParseUnchecked,
     SchemaParse,
     JsonSchemaParse,
     ProtobufSchemaParse,
+    ProtobufSchemaParseUnchecked,
     Validation,
     Authorization,
     EntityParseWithSchema,
     EntityParseWithoutSchema,
     ProtobufEntityParse,
+    ProtobufEntityParseUnchecked,
     IncrementalEntities,
 }
 
@@ -42,14 +45,17 @@ impl std::fmt::Display for Target {
             Self::PolicyParse => write!(f, "policy_parse"),
             Self::JsonPolicyParse => write!(f, "json_policy_parse"),
             Self::ProtobufPolicyParse => write!(f, "protobuf_policy_parse"),
+            Self::ProtobufPolicyParseUnchecked => write!(f, "protobuf_policy_parse_unchecked"),
             Self::SchemaParse => write!(f, "schema_parse"),
             Self::JsonSchemaParse => write!(f, "json_schema_parse"),
             Self::ProtobufSchemaParse => write!(f, "protobuf_schema_parse"),
+            Self::ProtobufSchemaParseUnchecked => write!(f, "protobuf_schema_parse_unchecked"),
             Self::Validation => write!(f, "validation"),
             Self::Authorization => write!(f, "authorization"),
             Self::EntityParseWithSchema => write!(f, "entity_parse_with_schema"),
             Self::EntityParseWithoutSchema => write!(f, "entity_parse_without_schema"),
             Self::ProtobufEntityParse => write!(f, "protobuf_entity_parse"),
+            Self::ProtobufEntityParseUnchecked => write!(f, "protobuf_entity_parse_unchecked"),
             Self::IncrementalEntities => write!(f, "incremental_entities"),
         }
     }
@@ -62,14 +68,17 @@ impl std::str::FromStr for Target {
             "policy_parse" => Ok(Self::PolicyParse),
             "json_policy_parse" => Ok(Self::JsonPolicyParse),
             "protobuf_policy_parse" => Ok(Self::ProtobufPolicyParse),
+            "protobuf_policy_parse_unchecked" => Ok(Self::ProtobufPolicyParseUnchecked),
             "schema_parse" => Ok(Self::SchemaParse),
             "json_schema_parse" => Ok(Self::JsonSchemaParse),
             "protobuf_schema_parse" => Ok(Self::ProtobufSchemaParse),
+            "protobuf_schema_parse_unchecked" => Ok(Self::ProtobufSchemaParseUnchecked),
             "validation" => Ok(Self::Validation),
             "authorization" => Ok(Self::Authorization),
             "entity_parse_with_schema" => Ok(Self::EntityParseWithSchema),
             "entity_parse_without_schema" => Ok(Self::EntityParseWithoutSchema),
             "protobuf_entity_parse" => Ok(Self::ProtobufEntityParse),
+            "protobuf_entity_parse_unchecked" => Ok(Self::ProtobufEntityParseUnchecked),
             "incremental_entities" => Ok(Self::IncrementalEntities),
             _ => Err(format!("unknown target: {s}")),
         }
@@ -105,6 +114,10 @@ pub enum BenchmarkTask {
         name: String,
         policy_file: PathBuf,
     },
+    ProtobufPolicyParseUnchecked {
+        name: String,
+        policy_file: PathBuf,
+    },
     SchemaParse {
         name: String,
         cedar_schema_file: PathBuf,
@@ -114,6 +127,10 @@ pub enum BenchmarkTask {
         json_schema_file: PathBuf,
     },
     ProtobufSchemaParse {
+        name: String,
+        cedar_schema_file: PathBuf,
+    },
+    ProtobufSchemaParseUnchecked {
         name: String,
         cedar_schema_file: PathBuf,
     },
@@ -142,6 +159,10 @@ pub enum BenchmarkTask {
         name: String,
         entities_file: PathBuf,
     },
+    ProtobufEntityParseUnchecked {
+        name: String,
+        entities_file: PathBuf,
+    },
     IncrementalEntities {
         name: String,
         cedar_schema_file: PathBuf,
@@ -155,14 +176,17 @@ impl BenchmarkTask {
             Self::PolicyParse { name, .. }
             | Self::JsonPolicyParse { name, .. }
             | Self::ProtobufPolicyParse { name, .. }
+            | Self::ProtobufPolicyParseUnchecked { name, .. }
             | Self::SchemaParse { name, .. }
             | Self::JsonSchemaParse { name, .. }
             | Self::ProtobufSchemaParse { name, .. }
+            | Self::ProtobufSchemaParseUnchecked { name, .. }
             | Self::Validation { name, .. }
             | Self::Authorization { name, .. }
             | Self::EntityParseWithSchema { name, .. }
             | Self::EntityParseWithoutSchema { name, .. }
             | Self::ProtobufEntityParse { name, .. }
+            | Self::ProtobufEntityParseUnchecked { name, .. }
             | Self::IncrementalEntities { name, .. } => name,
         }
     }
@@ -172,14 +196,17 @@ impl BenchmarkTask {
             Self::PolicyParse { .. } => Target::PolicyParse,
             Self::JsonPolicyParse { .. } => Target::JsonPolicyParse,
             Self::ProtobufPolicyParse { .. } => Target::ProtobufPolicyParse,
+            Self::ProtobufPolicyParseUnchecked { .. } => Target::ProtobufPolicyParseUnchecked,
             Self::SchemaParse { .. } => Target::SchemaParse,
             Self::JsonSchemaParse { .. } => Target::JsonSchemaParse,
             Self::ProtobufSchemaParse { .. } => Target::ProtobufSchemaParse,
+            Self::ProtobufSchemaParseUnchecked { .. } => Target::ProtobufSchemaParseUnchecked,
             Self::Validation { .. } => Target::Validation,
             Self::Authorization { .. } => Target::Authorization,
             Self::EntityParseWithSchema { .. } => Target::EntityParseWithSchema,
             Self::EntityParseWithoutSchema { .. } => Target::EntityParseWithoutSchema,
             Self::ProtobufEntityParse { .. } => Target::ProtobufEntityParse,
+            Self::ProtobufEntityParseUnchecked { .. } => Target::ProtobufEntityParseUnchecked,
             Self::IncrementalEntities { .. } => Target::IncrementalEntities,
         }
     }
@@ -216,6 +243,12 @@ impl Task {
                     policy_file: policy_file.clone(),
                 });
             }
+            if self.is_target_enabled(Target::ProtobufPolicyParseUnchecked) {
+                tasks.push(BenchmarkTask::ProtobufPolicyParseUnchecked {
+                    name: self.name.clone(),
+                    policy_file: policy_file.clone(),
+                });
+            }
         }
 
         if let Some(ref cedar_schema_file) = self.cedar_schema_file {
@@ -227,6 +260,12 @@ impl Task {
             }
             if self.is_target_enabled(Target::ProtobufSchemaParse) {
                 tasks.push(BenchmarkTask::ProtobufSchemaParse {
+                    name: self.name.clone(),
+                    cedar_schema_file: cedar_schema_file.clone(),
+                });
+            }
+            if self.is_target_enabled(Target::ProtobufSchemaParseUnchecked) {
+                tasks.push(BenchmarkTask::ProtobufSchemaParseUnchecked {
                     name: self.name.clone(),
                     cedar_schema_file: cedar_schema_file.clone(),
                 });
@@ -298,6 +337,12 @@ impl Task {
             }
             if self.is_target_enabled(Target::ProtobufEntityParse) {
                 tasks.push(BenchmarkTask::ProtobufEntityParse {
+                    name: self.name.clone(),
+                    entities_file: entities_file.clone(),
+                });
+            }
+            if self.is_target_enabled(Target::ProtobufEntityParseUnchecked) {
+                tasks.push(BenchmarkTask::ProtobufEntityParseUnchecked {
                     name: self.name.clone(),
                     entities_file: entities_file.clone(),
                 });

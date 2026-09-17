@@ -116,6 +116,11 @@ inductive TypedExpr.AtLevel (env : TypeEnv) : TypedExpr → Nat → Prop where
     (hl₁ : tx₁.EntityAccessAtLevel env n (n + 1) [])
     (hty : tx₁.typeOf = .entity ety) :
     AtLevel env (.hasAttr tx₁ a ty) (n + 1)
+  | extHasAttr (tx₁ : TypedExpr) (a : Attr) (as : List Attr) (ty : CedarType) {ety : EntityType} (n : Nat)
+    (hl₁ : tx₁.EntityAccessAtLevel env (n - extHasAttrChainCost env (.entity ety) (a :: as)) (n + 1) [])
+    (hty : tx₁.typeOf = .entity ety)
+    (hk : extHasAttrChainCost env (.entity ety) (a :: as) ≤ n) :
+    AtLevel env (.extHasAttr tx₁ a as ty) (n + 1)
   | getAttrRecord (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) (n : Nat)
     (hl₁ : tx₁.AtLevel env n)
     (hty : ∀ ety, tx₁.typeOf ≠ .entity ety) :
@@ -124,6 +129,22 @@ inductive TypedExpr.AtLevel (env : TypeEnv) : TypedExpr → Nat → Prop where
     (hl₁ : tx₁.AtLevel env n)
     (hty : ∀ ety, tx₁.typeOf ≠ .entity ety) :
     AtLevel env (.hasAttr tx₁ a ty) n
+  | extHasAttrRecord (tx₁ : TypedExpr) (a : Attr) (as : List Attr) (ty : CedarType) (n : Nat)
+    (hl₁ : tx₁.AtLevel env n)
+    (hty : ∀ ety, tx₁.typeOf ≠ .entity ety)
+    (hchain : ∀ rty, tx₁.typeOf = .record rty →
+      extHasAttrChainCost env (.record rty) (a :: as) <= n ∧
+      extHasAttrFirstEntityPath? env (.record rty) (a :: as) = none)
+    : AtLevel env (.extHasAttr tx₁ a as ty) n
+  | extHasAttrRecordEntity (tx₁ : TypedExpr) (a : Attr) (as : List Attr)
+    (ty : CedarType) (n : Nat) (rty : RecordType) (path : List Attr)
+    (hl₁ : tx₁.AtLevel env n)
+    (hty : tx₁.typeOf = .record rty)
+    (hk : extHasAttrChainCost env (.record rty) (a :: as) <= n)
+    (hpath : extHasAttrFirstEntityPath? env (.record rty) (a :: as) = some path)
+    (haccess : tx₁.EntityAccessAtLevel env
+      (n - extHasAttrChainCost env (.record rty) (a :: as)) n path) :
+    AtLevel env (.extHasAttr tx₁ a as ty) n
   | set (txs : List TypedExpr) (ty : CedarType) (n : Nat)
     (hl : ∀ tx ∈ txs, tx.AtLevel env n) :
     AtLevel env (.set txs ty) n
@@ -444,6 +465,86 @@ theorem level_spec {tx : TypedExpr} {env : TypeEnv} {n : Nat}:
       have ih₁ := @level_spec tx₁
       rw [←ih₁] at h
       constructor <;> assumption
+
+  case extHasAttr tx₁ a attrs _ =>
+    simp only [TypedExpr.checkLevel, gt_iff_lt]
+    constructor
+    · -- forward: AtLevel → checkLevel = true
+      intro h
+      cases h with
+      | extHasAttr _ _ _ _ n_inner hl₁ hty  hk =>
+        rename_i ety
+        simp only [hty]
+        simp only [Bool.and_eq_true, decide_eq_true_eq]
+        refine ⟨by omega, ?_⟩
+        rw [←entity_access_level_spec]
+        have heq : n_inner + 1 - extHasAttrChainCost env (.entity ety) (a :: attrs) - 1 =
+            n_inner - extHasAttrChainCost env (.entity ety) (a :: attrs) := by omega
+        exact heq ▸ hl₁
+      | extHasAttrRecord _ _ _ _ _ hl₁ hnety hchain =>
+        have hne : ∀ ety, tx₁.typeOf ≠ .entity ety := hnety
+        split
+        · rename_i ety heq
+          exfalso; exact hne ety heq
+        · rename_i rty heq
+          simp only [Bool.and_eq_true, decide_eq_true_eq]
+          obtain ⟨hlt, hpath⟩ := hchain rty heq
+          exact ⟨⟨by simp [hpath], hlt⟩, level_spec.mp hl₁⟩
+        · rw [←level_spec]; exact hl₁
+      | extHasAttrRecordEntity _ _ _ _ _ rty path hl₁ hrty hk hpath haccess =>
+        simp only [hrty, Bool.and_eq_true, decide_eq_true_eq]
+        exact ⟨⟨
+          by simp only [hpath]; exact entity_access_level_spec.mp haccess,
+          hk⟩,
+          level_spec.mp hl₁
+        ⟩
+    · -- backward: checkLevel = true → AtLevel
+      intro h
+      split at h
+      · -- entity branch
+        rename_i ety heq
+        simp only [Bool.and_eq_true, decide_eq_true_eq] at h
+        obtain ⟨h₁, h₂⟩ := h
+        have ⟨n', hn⟩ : ∃ n', n = n' + 1 := ⟨n - 1, by omega⟩
+        subst hn
+        rw [←entity_access_level_spec] at h₂
+        have hk : extHasAttrChainCost env (.entity ety) (a :: attrs) ≤ n' := by omega
+        have h₂' : tx₁.EntityAccessAtLevel env (n' - extHasAttrChainCost env (.entity ety) (a :: attrs)) (n' + 1) [] := by
+          have heq2 : n' + 1 - extHasAttrChainCost env (.entity ety) (a :: attrs) - 1 =
+                     n' - extHasAttrChainCost env (.entity ety) (a :: attrs) := by omega
+          exact heq2 ▸ h₂
+        exact TypedExpr.AtLevel.extHasAttr tx₁ a attrs _ n' h₂' heq hk
+      · -- record branch
+        rename_i rty heq
+        simp only [Bool.and_eq_true, decide_eq_true_eq] at h
+        obtain ⟨⟨hpathcheck, h₁⟩, hlvl⟩ := h
+        rw [←level_spec] at hlvl
+        cases hpath : extHasAttrFirstEntityPath? env (.record rty) (a :: attrs) with
+        | none =>
+          have hnotety : ∀ ety, tx₁.typeOf ≠ .entity ety := by
+            intro ety he; simp [heq] at he
+          exact .extHasAttrRecord tx₁ a attrs _ _ hlvl hnotety (fun rty' hrty' => by
+            have : rty = rty' := by
+              have := heq ▸ hrty'
+              exact CedarType.record.inj this
+            subst rty'
+            exact ⟨h₁, hpath⟩)
+        | some path =>
+          have haccess : tx₁.EntityAccessAtLevel env
+              (n - extHasAttrChainCost env (.record rty) (a :: attrs)) n path := by
+            rw [entity_access_level_spec]
+            simpa [hpath] using hpathcheck
+          exact .extHasAttrRecordEntity tx₁ a attrs _ _ rty path hlvl heq h₁ hpath haccess
+      · -- other branch
+        rename_i hne
+        rw [←level_spec] at h
+        have hnotety : ∀ ety, tx₁.typeOf ≠ .entity ety := by
+          intro ety he
+          have : ∀ ety, tx₁.typeOf = .entity ety → False := by assumption
+          exact this ety he
+        exact .extHasAttrRecord tx₁ a attrs _ _ h hnotety (fun rty hrty => by
+          have : ∀ rty, tx₁.typeOf = .record rty → False := by assumption
+          exact absurd hrty (this rty))
 
   case call | set =>
     simp only [TypedExpr.checkLevel, List.all_eq_true, List.mem_attach, forall_const, Subtype.forall]

@@ -49,6 +49,9 @@ impl BenchmarkExecutor {
             BenchmarkTask::ProtobufPolicyParse { policy_file, .. } => {
                 self.bench_protobuf_policy_parsing(policy_file)
             }
+            BenchmarkTask::ProtobufPolicyParseUnchecked { policy_file, .. } => {
+                self.bench_protobuf_policy_parsing_unchecked(policy_file)
+            }
             BenchmarkTask::SchemaParse {
                 cedar_schema_file, ..
             } => self.bench_schema_parsing(cedar_schema_file),
@@ -58,6 +61,9 @@ impl BenchmarkExecutor {
             BenchmarkTask::ProtobufSchemaParse {
                 cedar_schema_file, ..
             } => self.bench_protobuf_schema_parsing(cedar_schema_file),
+            BenchmarkTask::ProtobufSchemaParseUnchecked {
+                cedar_schema_file, ..
+            } => self.bench_protobuf_schema_parsing_unchecked(cedar_schema_file),
             BenchmarkTask::Validation {
                 policy_file,
                 cedar_schema_file,
@@ -85,6 +91,9 @@ impl BenchmarkExecutor {
             }
             BenchmarkTask::ProtobufEntityParse { entities_file, .. } => {
                 self.bench_protobuf_entity_parsing(entities_file)
+            }
+            BenchmarkTask::ProtobufEntityParseUnchecked { entities_file, .. } => {
+                self.bench_protobuf_entity_parsing_unchecked(entities_file)
             }
             BenchmarkTask::IncrementalEntities {
                 cedar_schema_file,
@@ -138,6 +147,22 @@ impl BenchmarkExecutor {
         ))
     }
 
+    fn bench_protobuf_policy_parsing_unchecked(
+        self,
+        policy_file: &Path,
+    ) -> miette::Result<TimingInfo> {
+        let src = std::fs::read_to_string(policy_file).into_diagnostic()?;
+        let policy_set = src.parse::<PolicySet>()?;
+        let proto = policy_set.encode().expect("policy encoding failed");
+        Ok(self.benchmark(
+            |proto| {
+                PolicySet::decode_unchecked(proto.as_slice())
+                    .expect("protobuf policy parse failed");
+            },
+            &proto,
+        ))
+    }
+
     fn bench_schema_parsing(self, schema_file: &Path) -> miette::Result<TimingInfo> {
         let src = std::fs::read_to_string(schema_file).into_diagnostic()?;
         Ok(self.benchmark(
@@ -164,6 +189,20 @@ impl BenchmarkExecutor {
         Ok(self.benchmark(
             |proto| {
                 Schema::decode(proto.as_slice()).expect("protobuf schema parse failed");
+            },
+            &proto,
+        ))
+    }
+
+    fn bench_protobuf_schema_parsing_unchecked(
+        self,
+        schema_file: &Path,
+    ) -> miette::Result<TimingInfo> {
+        let schema = Self::load_cedar_schema(schema_file)?;
+        let proto = schema.encode().expect("schema encoding failed");
+        Ok(self.benchmark(
+            |proto| {
+                Schema::decode_unchecked(proto.as_slice()).expect("protobuf schema parse failed");
             },
             &proto,
         ))
@@ -249,6 +288,23 @@ impl BenchmarkExecutor {
         Ok(self.benchmark(
             |proto| {
                 cedar_policy::Entities::decode(proto.as_slice())
+                    .expect("protobuf entity parse failed");
+            },
+            &proto,
+        ))
+    }
+
+    fn bench_protobuf_entity_parsing_unchecked(
+        self,
+        entities_file: &Path,
+    ) -> miette::Result<TimingInfo> {
+        let entities_str = std::fs::read_to_string(entities_file).into_diagnostic()?;
+        let entities =
+            cedar_policy::Entities::from_json_str(&entities_str, None).into_diagnostic()?;
+        let proto = entities.encode().expect("entity encoding failed");
+        Ok(self.benchmark(
+            |proto| {
+                cedar_policy::Entities::decode_unchecked(proto.as_slice())
                     .expect("protobuf entity parse failed");
             },
             &proto,

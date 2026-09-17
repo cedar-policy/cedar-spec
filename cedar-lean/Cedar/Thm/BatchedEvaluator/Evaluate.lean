@@ -52,8 +52,8 @@ theorem batched_evaluate_loop_eq_evaluate
 
     simp only
     split
-    case h_1 h₆ =>
-      rw [← h₆]
+    case h_1 hval =>
+      rw [← hval]
       exact h₇
     case h_2 =>
       have h₈ := (partial_eval_preserves_well_typed h₃ h₆ h₁)

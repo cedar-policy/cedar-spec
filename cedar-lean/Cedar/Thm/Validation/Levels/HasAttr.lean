@@ -88,3 +88,5 @@ theorem level_based_slicing_is_sound_has_attr {e : Expr} {tx : TypedExpr} {a : A
   case _ hrty =>
     replace ⟨ rty, hrty ⟩ := hrty
     exact level_based_slicing_is_sound_has_attr_record hc hr hl ht hrty ihe
+
+end Cedar.Thm

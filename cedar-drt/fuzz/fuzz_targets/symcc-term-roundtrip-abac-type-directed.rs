@@ -38,6 +38,8 @@ fuzz_target!(|input: SinglePolicyFuzzTargetInput<128>| {
                         &req_env,
                     ) {
                         Ok(Ok(asserts)) => {
+                            let asserts: Vec<cedar_lean_ffi::Term> =
+                                asserts.into_iter().map(Into::into).collect();
                             // Compute SMTLib script from the intermediate Assertions
                             match lean_ffi.smtlib_of_check_asserts(
                                 &asserts,
@@ -70,6 +72,8 @@ fuzz_target!(|input: SinglePolicyFuzzTargetInput<128>| {
                         &req_env,
                     ) {
                         Ok(Ok(asserts)) => {
+                            let asserts: Vec<cedar_lean_ffi::Term> =
+                                asserts.into_iter().map(Into::into).collect();
                             if lean_ffi
                                 .smtlib_of_check_asserts(&asserts, lean_schema.clone(), &req_env)
                                 .is_ok()

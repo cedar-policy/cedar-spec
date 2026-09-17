@@ -25,6 +25,7 @@ import CedarProto.Entities
 import CedarProto.PolicySet
 import CedarProto.PartialInput
 import CedarProto.Request
+import CedarProto.Residual
 import CedarProto.Schema
 
 open Proto
@@ -88,5 +89,113 @@ instance : Message PartialAuthorizationRequest where
   }
 
 end PartialAuthorizationRequest
+
+/-- Reauthorization of an arbitrary residual: evaluating it against concrete data. -/
+structure ResidualReauthorizationRequest where
+  residual: Spec.Residual
+  request: Spec.Request
+  entities: Spec.Entities
+  expectedValue: Spec.Value
+  expectsError: Bool
+deriving Inhabited
+
+namespace ResidualReauthorizationRequest
+
+instance : Message ResidualReauthorizationRequest where
+  parseField (t: Proto.Tag) := do
+    match t.fieldNum with
+      | 1 => parseFieldElement t residual (update residual)
+      | 2 => parseFieldElement t request (update request)
+      | 3 => parseFieldElement t entities (update entities)
+      | 4 => parseFieldElement t expectedValue (update expectedValue)
+      | 5 => parseFieldElement t expectsError (update expectsError)
+      | _ => let _ <- t.wireType.skip; pure ignore
+
+  merge x y := {
+    residual := Field.merge x.residual y.residual
+    request := Field.merge x.request y.request
+    entities := Field.merge x.entities y.entities
+    expectedValue := Field.merge x.expectedValue y.expectedValue
+    expectsError := Field.merge x.expectsError y.expectsError
+  }
+
+end ResidualReauthorizationRequest
+structure PartialEntityValidationRequest where
+  entities: TPE.PartialEntities
+deriving Inhabited
+
+namespace PartialEntityValidationRequest
+
+instance : Message PartialEntityValidationRequest where
+  parseField (t: Proto.Tag) := do
+    match t.fieldNum with
+      | 1 => parseFieldElement t entities (update entities)
+      | _ => let _ <- t.wireType.skip; pure ignore
+
+  merge x y := {
+    entities := Field.merge x.entities y.entities
+  }
+
+end PartialEntityValidationRequest
+
+structure PartialRequestValidationRequest where
+  request: TPE.PartialRequest
+deriving Inhabited
+
+namespace PartialRequestValidationRequest
+
+instance : Message PartialRequestValidationRequest where
+  parseField (t: Proto.Tag) := do
+    match t.fieldNum with
+      | 1 => parseFieldElement t request (update request)
+      | _ => let _ <- t.wireType.skip; pure ignore
+
+  merge x y := {
+    request := Field.merge x.request y.request
+  }
+
+end PartialRequestValidationRequest
+
+structure PartialRequestConsistencyRequest where
+  request: Spec.Request
+  partialRequest: TPE.PartialRequest
+deriving Inhabited
+
+namespace PartialRequestConsistencyRequest
+
+instance : Message PartialRequestConsistencyRequest where
+  parseField (t: Proto.Tag) := do
+    match t.fieldNum with
+      | 1 => parseFieldElement t request (update request)
+      | 2 => parseFieldElement t partialRequest (update partialRequest)
+      | _ => let _ <- t.wireType.skip; pure ignore
+
+  merge x y := {
+    request := Field.merge x.request y.request
+    partialRequest := Field.merge x.partialRequest y.partialRequest
+  }
+
+end PartialRequestConsistencyRequest
+
+structure PartialEntityConsistencyRequest where
+  entities: Spec.Entities
+  partialEntities: TPE.PartialEntities
+deriving Inhabited
+
+namespace PartialEntityConsistencyRequest
+
+instance : Message PartialEntityConsistencyRequest where
+  parseField (t: Proto.Tag) := do
+    match t.fieldNum with
+      | 1 => parseFieldElement t entities (update entities)
+      | 2 => parseFieldElement t partialEntities (update partialEntities)
+      | _ => let _ <- t.wireType.skip; pure ignore
+
+  merge x y := {
+    entities := Field.merge x.entities y.entities
+    partialEntities := Field.merge x.partialEntities y.partialEntities
+  }
+
+end PartialEntityConsistencyRequest
 
 end Cedar.Proto

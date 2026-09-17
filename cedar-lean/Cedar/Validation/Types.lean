@@ -203,6 +203,8 @@ public structure TypeEnv where
   reqty : RequestType
 deriving Inhabited
 
+public def TypeEnv.schema (env : TypeEnv) : Schema := ⟨env.ets, env.acts⟩
+
 public def ActionSchema.maybeDescendentOf (as : ActionSchema) (ety₁ ety₂ : EntityType) : Bool :=
   as.toList.any λ (act, entry) => act.ty = ety₁ && entry.ancestors.any (EntityUID.ty · == ety₂)
 

@@ -19,6 +19,7 @@ import Cedar.Thm.Validation.Typechecker.BinaryApp
 import Cedar.Thm.Validation.Typechecker.Call
 import Cedar.Thm.Validation.Typechecker.GetAttr
 import Cedar.Thm.Validation.Typechecker.HasAttr
+import Cedar.Thm.Validation.Typechecker.ExtHasAttr
 import Cedar.Thm.Validation.Typechecker.IfThenElse
 import Cedar.Thm.Validation.Typechecker.LitVar
 import Cedar.Thm.Validation.Typechecker.Record
@@ -81,6 +82,9 @@ theorem type_of_is_sound {e : Expr} {c₁ c₂ : Capabilities} {env : TypeEnv} {
   | .hasAttr x₁ a =>
     have ih := @type_of_is_sound x₁
     exact type_of_hasAttr_is_sound h₁ h₂ h₃ ih
+  | .extHasAttr x₁ a attrs =>
+    have ih := @type_of_is_sound x₁
+    exact type_of_extHasAttr_is_sound h₁ h₂ h₃ ih
   | .getAttr x₁ a =>
     have ih := @type_of_is_sound x₁
     exact type_of_getAttr_is_sound h₁ h₂ h₃ ih
@@ -374,7 +378,7 @@ theorem type_of_preserves_evaluation_results {e : Expr} {c₁ c₂ : Capabilitie
       rcases h₃₂ with ⟨_, _, h₃₂⟩
       subst h₃₂
       simp only [TypedExpr.toExpr, evaluate, hᵢ]
-    case _ =>
+    case _ => --hasAttr
       split at h₃₂ <;>
       try split at h₃₂
       case _ =>
@@ -389,7 +393,23 @@ theorem type_of_preserves_evaluation_results {e : Expr} {c₁ c₂ : Capabilitie
         simp only [TypedExpr.toExpr, evaluate, hᵢ]
       simp only [err, reduceCtorEq] at h₃₂
     simp only [err, reduceCtorEq] at h₃₂
-  case _ hᵢ =>
+  case _ hᵢ => -- extHasAttr
+    simp only [typeOf] at h₃
+    generalize hx₁ : typeOf _ _ env = res₁ at h₃
+    cases res₁ with
+    | error => simp at h₃
+    | ok v =>
+      simp at h₃
+      specialize hᵢ h₁ hx₁
+      generalize hext : typeOfExtHasAttr _ _ _ _ _ = res₂ at h₃
+      cases res₂ with
+      | error => simp at h₃
+      | ok r =>
+        simp [ok] at h₃
+        obtain ⟨h₃, _⟩ := h₃
+        subst h₃
+        simp only [TypedExpr.toExpr, evaluate, hᵢ]
+  case _ hᵢ => -- getAttr
     simp only [typeOf, do_eq_ok, Prod.exists, exists_and_right] at h₃
     rcases h₃ with ⟨ty, ⟨c, h₃₁⟩, h₃₂⟩
     simp only [typeOfGetAttr] at h₃₂

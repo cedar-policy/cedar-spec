@@ -396,6 +396,12 @@ test = false
 doc = false
 
 [[bin]]
+name = "tpe-residual-reauthorize-drt"
+path = "fuzz_targets/tpe-residual-reauthorize-drt.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "tpe-is-authorized-abstract-drt"
 path = "fuzz_targets/tpe-is-authorized-abstract-drt.rs"
 test = false
@@ -652,5 +658,29 @@ doc = false
 [[bin]]
 name = "tc-repair-equivalence"
 path = "fuzz_targets/tc-repair-equivalence.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "partial-entity-validation-drt"
+path = "fuzz_targets/partial-entity-validation-drt.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "partial-entity-consistency-drt"
+path = "fuzz_targets/partial-entity-consistency-drt.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "partial-request-validation-drt"
+path = "fuzz_targets/partial-request-validation-drt.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "partial-request-consistency-drt"
+path = "fuzz_targets/partial-request-consistency-drt.rs"
 test = false
 doc = false

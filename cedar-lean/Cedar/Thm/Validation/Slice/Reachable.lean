@@ -197,6 +197,39 @@ theorem checked_eval_entity_reachable {e : Expr} {n nmax: Nat} {c c' : Capabilit
     exfalso
     exact has_attr_not_euid_via_path he ha
 
+  case extHasAttr e a attrs =>
+    exfalso
+    simp only [evaluate] at he
+    cases he' : evaluate e request entities <;>
+      simp only [he', Except.bind_err, reduceCtorEq, Except.bind_ok] at he
+    rename_i v₁
+    -- Prove hasAttrs returns a bool
+    suffices h : ∃ b : Bool, v = .prim (.bool b) by
+      obtain ⟨b, hb⟩ := h
+      subst hb ; cases ha
+    -- hasAttrs always returns a bool value
+    simp only [hasAttrs] at he
+    -- hasAttrs.loop returns a bool
+    have hloop_bool : ∀ (v₁ : Value) (attrs : List Attr) (es : Entities) (r : Value),
+        hasAttrs.loop v₁ attrs es = .ok r → ∃ b, r = Value.prim (.bool b) := by
+      intro v₁ attrs
+      induction attrs generalizing v₁ with
+      | nil =>
+        intro es r hok
+        simp only [hasAttrs.loop, Except.ok.injEq] at hok
+        exact ⟨true, hok.symm⟩
+      | cons a rest ih =>
+        intro es r hok
+        simp only [hasAttrs.loop] at hok
+        split at hok
+        · split at hok
+          · rename_i next _
+            exact ih next es r hok
+          · simp only [Except.ok.injEq] at hok
+            exact ⟨false, hok.symm⟩
+        · simp at hok
+    exact hloop_bool _ _ _ _ he
+
   case set es =>
     exfalso
     exact set_not_euid_via_path he ha

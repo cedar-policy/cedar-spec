@@ -339,7 +339,7 @@ public theorem make_singleton_nonempty [LT α] [DecidableLT α] [StrictLT α] [D
 := by
   simp [make, empty, List.canonicalize_singleton]
 
-public def eq_means_eqv [LT α] [DecidableLT α] [StrictLT α] {s₁ s₂ : Set α} :
+public theorem eq_means_eqv [LT α] [DecidableLT α] [StrictLT α] {s₁ s₂ : Set α} :
   WellFormed s₁ → WellFormed s₂ →
   (s₁ = s₂ ↔ s₁.elts ≡ s₂.elts)
 := by
