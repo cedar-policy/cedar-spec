@@ -53,7 +53,7 @@ def stripStringQuotes (value : String) : String :=
 %token EOF
 %eof EOF
 %lexer {
-  let ws = ' ' | '\t' | '\n' | '\r'
+  let ws = ' ' | '\t' | '\n' | '\r' | '\u000b' | '\u000c'
   let digit = ['0'-'9']
   let identStart = ['a'-'z' 'A'-'Z' '_']
   let identCont = ['a'-'z' 'A'-'Z' '0'-'9' '_']

@@ -138,6 +138,12 @@ test = false
 doc = false
 
 [[bin]]
+name = "lean-parser-drt"
+path = "fuzz_targets/lean-parser-drt.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "wildcard-matching"
 path = "fuzz_targets/wildcard-matching.rs"
 test = false

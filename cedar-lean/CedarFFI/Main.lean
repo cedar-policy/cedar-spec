@@ -18,6 +18,7 @@ import Lean.Data.Json.FromToJson
 
 import Cedar.Spec
 import Cedar.Validation
+import Cedar.Frontend
 import Cedar.SymCC
 import Cedar.SymCC.Verifier
 import Cedar.SymCCOpt
@@ -925,6 +926,30 @@ def parseResidualReauthorizationRequest (req: ByteArray):
        : RequestValidationResult))
 
 
+
+--------------------------------- Cedar Policy Parsing ---------------------------------
+
+/--
+  Full Lean policy-parsing pipeline: `String → lexer → parse → CST → Spec.Policies`.
+  Returns `some` iff the input lexes, parses, and translates to an AST.
+-/
+def parsePoliciesPipeline (input : String) : Option Spec.Policies := do
+  let toks ← (Cedar.Frontend.Parsers.PolicyLexer.tokenize input).toOption
+  let cst ← Cedar.Frontend.Parsers.PolicyParser.parse toks
+  Cedar.Frontend.Cst.Policies.toPolicies? cst
+
+/--
+  `req`: the raw policy source text, as a UTF-8 `ByteArray`
+
+  returns a string containing JSON encoding `Timed Bool`, where the `Bool` is
+  `true` iff the input parses and translates to a `Spec.Policies` AST
+-/
+@[export parsePolicies] unsafe def parsePoliciesFFI (req : ByteArray) : String :=
+  runFfiM do
+    let input ← match String.fromUTF8? req with
+      | some s => .ok s
+      | none => .error "failed to decode input as UTF-8"
+    runAndTime (λ () => (parsePoliciesPipeline input).isSome)
 
 --------------------------------- FFI Test Utils ---------------------------------
 /- Some definitions used to test lean object decoding in Rust -/
